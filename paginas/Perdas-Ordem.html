@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Waste · Linha Vacutainer · V1.8.9</title>
+<title>Waste · Linha Vacutainer · V1.8.10</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600&family=Barlow+Condensed:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
 <style>
@@ -503,10 +503,10 @@ button.b,label.b,a.b{border-radius:8px}
    Base: perdas-base.json na pasta da rede (mesmo padrão OEE / Gel)
    Contrato: bloco "exports" (exportsVersion 1) lido pelas outras páginas
    ===================================================================== */
-const APP_VER='1.8.9', BASE_FN='perdas-base.json', DIR_ORIG='00. Originais SAP', DIR_BKP='00. Backups', DIR_IN='00. Entrada KKBC', DIR_DONE='00. Entrada KKBC/Processados';
+const APP_VER='1.8.10', BASE_FN='perdas-base.json', DIR_ORIG='00. Originais SAP', DIR_BKP='00. Backups', DIR_IN='00. Entrada KKBC', DIR_DONE='00. Entrada KKBC/Processados';
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 /* página para o núcleo comum, o cabeçalho (vac-cabecalho v2) e o quadro de Versões do Portal */
-const PAGE={id:'perdas',titulo:'Waste · Linha Vacutainer',tituloCurto:'Waste',subtitulo:'Custos e perdas por ordem',versao:'1.8.9',/* igual a APP_VER; o Portal lê este valor */baseFile:BASE_FN,backupDir:'00. Backups/Perdas',busca:q=>buscaPerdas(q)};
+const PAGE={id:'perdas',titulo:'Waste · Linha Vacutainer',tituloCurto:'Waste',subtitulo:'Custos e perdas por ordem',versao:'1.8.10',/* igual a APP_VER; o Portal lê este valor */baseFile:BASE_FN,backupDir:'00. Backups/Perdas',busca:q=>buscaPerdas(q)};
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,7);
 const nowISO=()=>new Date().toISOString();
@@ -693,16 +693,18 @@ async function conflitoPendente(d,mod){downloadJSON(B,'perdas-base_NAO-GRAVADO_'
  toast('A base da pasta foi alterada por outra pessoa enquanto a sua alteração não tinha sido gravada. Sua cópia foi baixada (_NAO-GRAVADO) para conferência; a página agora mostra a base da pasta.',9000);
  B=fixBase(d);ST.mod=mod;ST.pending=false;await IDB.set('base',B);await IDB.set('pending',{p:false})}
 async function commit(label,mut,det=''){
- if(ST.mode==='pasta'){try{const r=await readRemote();
-   if(ST.pending){if(!semMudanca(r.data,r.mod))await conflitoPendente(r.data,r.mod)}
-   else if(r.data.rev!==B.rev){B=fixBase(r.data);ST.mod=r.mod;toast('A base foi alterada por outra pessoa; sua alteração foi aplicada sobre a versão mais nova.')}}catch(e){}}
+ /* 1.8.10 · sem conseguir ler a base da pasta antes, não grava (gravaria por cima do que outra pessoa gravou): fica pendente e a sincronização confere */
+ let lida=null;if(ST.mode==='pasta'){try{lida=await readRemote()}catch(e){lida=null}
+   if(lida){const r=lida;if(ST.pending){if(!semMudanca(r.data,r.mod))await conflitoPendente(r.data,r.mod)}
+   else if(r.data.rev!==B.rev){B=fixBase(r.data);ST.mod=r.mod;toast('A base foi alterada por outra pessoa; sua alteração foi aplicada sobre a versão mais nova.')}}}
  const before=B.rev;
  mut(B);
  B.rev=(B.rev||0)+1;B.updatedAt=nowISO();B.updatedBy=user();B.appVersion=APP_VER;
  B.audit.push({t:B.updatedAt,u:user(),a:label,d:det});if(B.audit.length>3000)B.audit.splice(0,B.audit.length-3000);
  B.exports=buildExports();
  if(ST.mode==='teste'){renderAll();return}
- if(ST.mode==='pasta'){try{await writeRemote();ST.err='';ST.pending=false}catch(e){console.warn(e);ST.err=String(e.message||e);if(!ST.pending){ST.pending=true;ST.pendFrom=before}toast('Não consegui gravar na pasta. A alteração ficou neste computador e será gravada quando a pasta responder.',6000)}}
+ if(ST.mode==='pasta'&&!lida){ST.err='Não consegui ler a base da pasta antes de gravar';if(!ST.pending){ST.pending=true;ST.pendFrom=before}toast('Não consegui ler a base da pasta. A alteração ficou neste computador e será gravada depois de conferir a base da pasta.',6000)}
+ else if(ST.mode==='pasta'){try{await writeRemote();ST.err='';ST.pending=false}catch(e){console.warn(e);ST.err=String(e.message||e);if(!ST.pending){ST.pending=true;ST.pendFrom=before}toast('Não consegui gravar na pasta. A alteração ficou neste computador e será gravada quando a pasta responder.',6000)}}
  else if(!ST.pending){ST.pending=true;ST.pendFrom=before}
  await IDB.set('base',B);await IDB.set('pending',{p:ST.pending,from:ST.pendFrom});
  renderAll();
@@ -1481,7 +1483,10 @@ async function loadGel(force){
  try{const fh=await ST.dir.getFileHandle(GEL.fn);const f=await fh.getFile();if(f.lastModified===GEL.mod&&GEL.src)return;const d=JSON.parse(await f.text());
   GEL.src={exports:d.exports||null,full:d.exports?null:d,updatedAt:d.updatedAt||d.savedAt||null};GEL.mod=f.lastModified;GEL.err=''}
  catch(e){GEL.err=e.name==='NotFoundError'?'Não encontrei '+GEL.fn+' na pasta.':String(e.message||e);GEL.src=null}}
-function gelFind(ordem){if(!GEL.src)return null;const root=GEL.src.exports||GEL.src.full;const hits=oeeWalk(root,ORD_KEYS,ordem,GEL.src.exports?'exports':'base',[]);
+function gelFind(ordem){if(!GEL.src)return null;
+ /* 1.8.10 · exports do Gel em versão desconhecida: não lê nada dele (nem pela busca genérica) */
+ {const e=GEL.src.exports;if(e&&e.exportsVersion!=null&&+e.exportsVersion!==1)return{hits:[],lotHits:[],lote:null,lps:[],consumo:null,scrap:null,incompat:e.exportsVersion}}
+ const root=GEL.src.exports||GEL.src.full;const hits=oeeWalk(root,ORD_KEYS,ordem,GEL.src.exports?'exports':'base',[]);
  const lote=(()=>{for(const h of hits)for(const k in h.obj)if(LOTE_KEYS.test(k)&&h.obj[k])return h.obj[k];return null})();
  const lotHits=lote!=null?oeeWalk(root,LOTE_KEYS,cleanOrd(lote),GEL.src.exports?'exports':'base',[]).filter(h=>!hits.some(x=>x.obj===h.obj)).slice(0,40):[];
  const num=re=>{let t=null;for(const h of hits)for(const k in h.obj)if(re.test(k)&&typeof h.obj[k]==='number'){t=(t||0)+h.obj[k]}return t};
@@ -1498,7 +1503,7 @@ function gelBlock(ordem){
  if(ST.mode==='teste')return'<p class="muted small">Modo de teste: o Gel não é consultado.</p>';
  if(ST.mode!=='pasta')return'<p class="muted small">Conecte a página à pasta da rede para ver os dados da ordem no Gel.</p>';
  if(!GEL.src)return`<p class="muted small">${esc(GEL.err||'Lendo o Gel…')}</p>`;
- const f=gelFind(ordem);if(!f||!f.hits.length)return`<p class="muted small">A ordem ${esc(ordem)} não aparece no Gel.</p>`;
+ const f=gelFind(ordem);if(f&&f.incompat!=null)return`<p class="muted small">A base do Gel publica o resumo na versão ${esc(String(f.incompat))}, que este Waste não conhece: atualize o Waste para ver os dados da ordem no Gel.</p>`;if(!f||!f.hits.length)return`<p class="muted small">A ordem ${esc(ordem)} não aparece no Gel.</p>`;
  const card=(l,v,sub='')=>`<div class="kpi"><div class="l">${l}</div><div class="v" style="font-size:20px">${v}</div>${sub?`<div class="s">${sub}</div>`:''}</div>`;
  const det=[...f.hits,...f.lotHits];
  return`<div class="kpis">${card('Lote',oeeVal('',f.lote))}${card('Consumo de gel',f.consumo!=null?fmtQ(f.consumo):'–')}${card('Scrap de gel',f.scrap!=null?fmtQ(f.scrap):'–')}${card('Barris (LP)',f.lps.length||'–',f.lps.slice(0,3).map(l=>`<a href="${esc(sysLink('gel'))}" target="_blank">${esc(l)}</a>`).join(' · '))}</div>

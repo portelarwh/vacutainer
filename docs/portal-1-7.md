@@ -165,3 +165,8 @@ Registro completo das decisões em `docs/auditorias/registro-decisoes.md`.
 - **F03**: o resultado de cada base vale só no dia em que foi lido (`MOD.files[id].dia`); na virada do dia a sincronização automática (1 min) reavalia `aPartirDe` sem nova gravação na página de origem.
 - **F08**: `exports` com `exportsVersion` desconhecida não alimenta nenhum número (nem nos caminhos de dados brutos do OEE e do Waste); `r.ex` e `cadProp` também passam pelo teste de versão.
 - **5.2**: Versões das páginas e cartões leem `databaseVersion`, `lastModifiedAt`, `lastModifiedBy` e `applicationVersion` da Produção.
+
+## 16. Portal 1.8.6 (06/11/2026) · diagnóstico pós-merge
+
+- **M01**: se a leitura da `portal-base.json` antes de gravar falhar, a alteração não é gravada (gravaria por cima de outra pessoa): fica pendente e a sincronização confere a base (`semMudanca` / `_NAO-GRAVADO`).
+- **M03**: `readModules` conta as mudanças nos dados adaptados (`MOD.versao`); a volta para a página e a rotina de 1 min redesenham quando ela muda (inclui a virada do dia). Antes, a volta para a página só olhava a data do arquivo.

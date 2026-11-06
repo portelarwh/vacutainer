@@ -113,3 +113,8 @@ Por ordem: MB51 (saldo, data principal) × COOIS (tipo, status, datas, fornecida
 - **Gravação**: cada gravação leva `saveId`; a releitura confere o `saveId`, não só o `databaseVersion`. Se outra pessoa gravou a mesma versão ao mesmo tempo, a alteração continua pendente ("Outra pessoa gravou ao mesmo tempo…") e a próxima tentativa reaplica as operações sobre a versão dela (caminho de conflito que já existia).
 - **CadSync**: vigência de catálogo desativada no Portal fica `active:false` (não é apagada: os registros antigos acham o catálogo pelo id); o Portal manda nas metas quando tem metas cadastradas, mesmo todas inativas; turno inativo = vigências inativas. Se o `vacutainer-cadastros.json` sumir da pasta, vale a última cópia lida (as travas continuam) e a faixa avisa.
 - **Importador MB51/COOIS**: data que não existe (31.02.2026) é recusada; número só é aceito inteiro ("123abc" → vazio). As amostras de `testes/amostras/` dão o mesmo resultado de antes. Zeros à esquerda do material **continuam sendo tirados** (mesma regra do Portal/CS12, ver registro de decisões).
+
+## 14. Produção 2.4.4 (06/11/2026) · identidade das vigências de catálogo (CadSync)
+
+- Um registro de catálogo com outra data só é reaproveitado no mapeamento inicial de catálogo local nunca sincronizado (sem `portalDe`, não criado pelo Portal, data fora das vigências desativadas). A vigência antiga mantém id, data e PPH (fica inativa); a nova ganha registro próprio. Campo novo `portalDe` (data da vigência do Portal que o registro representa).
+- Corrigido junto: ao criar a nova vigência, o id marcado como "usado" era o calculado (`cat_<código>`) e não o que o registro recebia de fato; com isso a vigência antiga escapava da desativação.

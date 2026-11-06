@@ -9,7 +9,7 @@ def R(a,b,cnt=1):
     c=s.count(a)
     if c!=cnt: raise SystemExit(f'ERRO ({c}x): {a[:90]!r}')
     s=s.replace(a,b)
-R("const APP_VERSION = '2.0.1';","const APP_VERSION = '2.4.3';")
+R("const APP_VERSION = '2.0.1';","const APP_VERSION = '2.4.4';")
 # 2.4.3 · F01: a releitura confere a identidade da gravação (saveId), não só o número da versão;
 # duas gravações simultâneas geram o mesmo databaseVersion e a de quem perdeu não pode ser dada como salva
 R("        next.databaseVersion = (extV || 0) + 1;\n","        next.databaseVersion = (extV || 0) + 1;\n        next.saveId = U.uid('sv');   // 2.4.3 · identidade desta gravação\n")
