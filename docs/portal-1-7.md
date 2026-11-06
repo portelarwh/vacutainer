@@ -140,3 +140,15 @@ Base: `claude/centralizacao-configuracoes.md`. Pedido do Pedro: ⓘ em todos os 
 - **Prévia:** uma linha por família e mês, com situação **nova** (marcada), **igual** (ignorada) ou **alterada** (desmarcada; se marcar, a antiga vai para Desativadas com o motivo "substituída pela importação da Meta OEE FY27"). OEE meta e PPH editáveis na prévia; linha sem OEE ou sem PPH não entra. Uma operação `importação` por meta, com origem "planilha <arquivo> · aba Meta OEE FY27".
 - **Ficha da meta:** o quadro hora a hora aparece como "06:00–07:00 · 34.500".
 - Teste: `testes/tmeta.js` (planilha fictícia: 4 registros, reimportação igual, substituição de um mês, auditoria).
+
+## 13. Portal 1.8.3 (06/11/2026) · números iguais aos das páginas (auditoria de integração)
+
+Origem: auditoria externa de 05/11/2026 (A01–A10). Adotado o que corrige dado; descartado o que reescreve sem ganho (bibliotecas `shared/*.js`, contrato `schemaVersion 2`, autenticação em servidor).
+- **Visão geral lê o `exports` de cada página** (regra 1 da plataforma): OEE (cartões, pendências, série por dia e ordens em produção pelo motor do OEE), Gel (saldo já descontadas as retiradas parciais, `estoque.porLocal`, pendências do Gel), Paradas (`adaptParadas`: série de minutos por mês). A soma dos dados brutos só fica para base sem `exports` ou com `exportsVersion` desconhecida, com a pílula **dados brutos**. Antes, o estoque do Gel no Portal era o kg do relatório SAP, sem as retiradas parciais.
+- **Urgência**: no `exports`, `sev 1` = urgente e `sev 2` = atenção (contrato em "Portal e padrão comum" § 4). O Portal invertia (barril vencido aparecia como atenção). Convertido na entrada.
+- **Waste**: o cartão diz "provisório" no mês aberto e "mês fechado" depois do fechamento; meses abertos no gráfico com "(aberto)".
+- **Gravação pendente**: se uma gravação falhou e a base da pasta mudou depois (outra pessoa gravou), a sincronização não grava mais por cima: baixa a cópia local `portal-base_NAO-GRAVADO_<data>.json` e passa a usar a base da pasta. Se a pasta não mudou, grava normalmente. Uma alteração nova feita com outra pendente não descarta mais a pendente. Sincronização entra na mesma fila das gravações.
+- **Versões das páginas**: aviso de `exportsVersion` desconhecida (crítico) e de `exports` mais antigo que a última gravação da base.
+- **Catálogo de sistemas único** (`fontes/kit/sistemas.js`, `DEFAULT_SYSTEMS`): os mesmos nomes e a mesma ordem em todas as páginas (antes Gel, Produção e Waste não tinham o Paradas e usavam outros nomes). Paradas deixa de ser "em construção".
+- Teste: `node testes/tintegra.js` (gera o `exports` real do Gel e da Produção e confere que o Portal mostra os mesmos números; simula duas pessoas gravando).
+- Fica para depois: Waste publicar `pendencias`/`kpis` no `exports` (o Portal ainda monta as pendências do Waste a partir das ações da base); `eventoId` comum OEE × Paradas (A10, já previsto em `paradas-arquitetura.md`).

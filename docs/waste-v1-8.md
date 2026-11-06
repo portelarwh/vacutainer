@@ -52,3 +52,9 @@ Mudanças aditivas; tudo da 1.7.3 preservado (importação KKBC_ORD nos dois lay
 - Tipo do componente (agrupamento) = Portal › Materiais › Tipo, quando o material está cadastrado (gel, rolha, tubo, etiqueta, caixa, aditivo). A regra por palavra fica como reserva.
 - Logo = a do Portal (`vac.logo`), quando houver.
 - Leitura em cache de 10 s.
+
+## Waste 1.8.7 (06/11/2026) · gravação pendente não grava por cima de outra pessoa
+
+- Se uma gravação falhou (alteração pendente) e a `perdas-base.json` da pasta mudou depois, a sincronização baixa a cópia local `perdas-base_NAO-GRAVADO_<data>.json` e passa a usar a base da pasta, em vez de gravar por cima. Se a pasta não mudou, grava normalmente.
+- Uma alteração nova feita enquanto outra está pendente leva as duas juntas (antes a pendente era descartada ao reler a pasta).
+- Catálogo de sistemas único do kit (`fontes/kit/sistemas.js`).

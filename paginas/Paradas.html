@@ -211,7 +211,7 @@ const MATRIZ_PROPOSTA={"OUT": ["Tullip A", "Tullip B", "Packout", "Metro", "Cap 
    PARADAS · núcleo (pasta, base, fila de gravação, backups, cadastro, utilidades)
    ===================================================================================== */
 const PAGE={id:'paradas',titulo:'Paradas · Análise de falhas e paradas de máquina',tituloCurto:'Paradas',subtitulo:'Análise de falhas e paradas de máquina',
-  versao:'1.0.5',baseFile:'paradas-base.json',backupDir:'00. Backups/Paradas',busca:q=>buscaPagina(q)};
+  versao:'1.0.6',baseFile:'paradas-base.json',backupDir:'00. Backups/Paradas',busca:q=>buscaPagina(q)};
 const APP_VERSION=PAGE.versao;
 const CAD_FILE='vacutainer-cadastros.json',OEE_FILE='oee-vacutainer-base.json';
 const $=(s,r=document)=>r.querySelector(s),$$=(s,r=document)=>[...r.querySelectorAll(s)];
@@ -372,6 +372,7 @@ const Cad={codes:[],byCod:new Map(),byNum:new Map(),eqs:[],eqByCod:new Map(),lim
   this.codes=L.sort((a,b)=>String(a.numero).localeCompare(String(b.numero)));this.byCod=new Map(L.map(x=>[x.codigo,x]));this.byNum=new Map(L.filter(x=>/^\d{3}$/.test(x.numero)).map(x=>[x.numero,x]));
   this.proposto=L.filter(x=>!x.noCadastro).length;
   this.limite=+(raw.parametros?.limiteMicroMin||Store.data.config.limiteMicroMin||10);
+  /* 1.0.6 · catálogo de sistemas único do kit (fontes/kit/sistemas.js): mesmos nomes e ordem do Portal */
   /* 1.0.5 · do cadastro geral: parada longa (fila técnica), turnos (tempo programado) e outros nomes dos equipamentos (de-para) */
   this.paradaLonga=+(raw.parametros?.paradaLongaMin||Store.data.config.filaMin||30);this.longaPortal=!!raw.parametros?.paradaLongaMin;this.turnosRaw=(raw.turnos||[]).filter(t=>t.ativo!==false);
   this.apelidos={};for(const e of raw.equipamentos||[])String(e.apelidos||'').split(';').map(x=>x.trim()).filter(Boolean).forEach(n=>{this.apelidos[norm(n)]=e.codigo});
@@ -644,12 +645,12 @@ function renderTop(){renderSysNav();$('#appVer').textContent='v'+PAGE.versao;con
 const VAC_CAB_VERSAO=2;
 const DEFAULT_SYSTEMS=[
  {id:'portal',nome:'Portal',html:'Portal.html',base:'portal-base.json'},
- {id:'oee',nome:'OEE',html:'OEE-Vacutainer.html',base:'oee-vacutainer-base.json'},
- {id:'gel',nome:'Gel',html:'Gestão-Gel-Vacutainer.html',alt:['Gestao-Gel-Vacutainer.html','controle-fifo-gel.html'],base:'fifo-base.json'},
- {id:'perdas',nome:'Perdas',html:'Perdas-Ordem.html',base:'perdas-base.json'},
+ {id:'oee',nome:'Produção',html:'OEE-Vacutainer.html',base:'oee-vacutainer-base.json'},
+ {id:'perdas',nome:'Waste',html:'Perdas-Ordem.html',base:'perdas-base.json'},
+ {id:'gel',nome:'Gestão de Gel',html:'Gestão-Gel-Vacutainer.html',alt:['Gestao-Gel-Vacutainer.html','controle-fifo-gel.html'],base:'fifo-base.json'},
  {id:'paradas',nome:'Paradas',html:'Paradas.html',base:'paradas-base.json'},
- {id:'maquinas',nome:'Máquinas',html:'Maquinas.html',base:'maquinas-base.json',futuro:true},
- {id:'manut',nome:'Manutenção',html:'Manutencao.html',base:'manutencao-base.json',futuro:true},
+ {id:'equip',nome:'Equipamentos',html:'Equipamentos.html',base:'equipamentos-base.json',futuro:true},
+ {id:'inic',nome:'Iniciativas',html:'Iniciativas.html',base:'iniciativas-base.json',futuro:true,sub:'5S · OSM · KAS'},
  {id:'projetos',nome:'Projetos',html:'Projetos.html',base:'projetos-base.json',futuro:true}];
 function systems(){let L;try{const s=JSON.parse(localStorage.getItem('vac.sistemas')||'null');if(Array.isArray(s)&&s.length){const ids=new Set(s.map(x=>x.id));L=s.concat(DEFAULT_SYSTEMS.filter(d=>!ids.has(d.id)))}}catch(e){}
  L=L||DEFAULT_SYSTEMS.map(x=>({...x}));/* esta página existe (está aberta) mesmo que o Portal ainda a marque como futura */return L.map(x=>x.id==='paradas'?{...x,futuro:false,oculto:false}:x)}

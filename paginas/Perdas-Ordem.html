@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Waste · Linha Vacutainer · V1.8.6</title>
+<title>Waste · Linha Vacutainer · V1.8.7</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600&family=Barlow+Condensed:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
 <style>
@@ -503,10 +503,10 @@ button.b,label.b,a.b{border-radius:8px}
    Base: perdas-base.json na pasta da rede (mesmo padrão OEE / Gel)
    Contrato: bloco "exports" (exportsVersion 1) lido pelas outras páginas
    ===================================================================== */
-const APP_VER='1.8.6', BASE_FN='perdas-base.json', DIR_ORIG='00. Originais SAP', DIR_BKP='00. Backups', DIR_IN='00. Entrada KKBC', DIR_DONE='00. Entrada KKBC/Processados';
+const APP_VER='1.8.7', BASE_FN='perdas-base.json', DIR_ORIG='00. Originais SAP', DIR_BKP='00. Backups', DIR_IN='00. Entrada KKBC', DIR_DONE='00. Entrada KKBC/Processados';
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 /* página para o núcleo comum, o cabeçalho (vac-cabecalho v2) e o quadro de Versões do Portal */
-const PAGE={id:'perdas',titulo:'Waste · Linha Vacutainer',tituloCurto:'Waste',subtitulo:'Custos e perdas por ordem',versao:'1.8.6',/* igual a APP_VER; o Portal lê este valor */baseFile:BASE_FN,backupDir:'00. Backups/Perdas',busca:q=>buscaPerdas(q)};
+const PAGE={id:'perdas',titulo:'Waste · Linha Vacutainer',tituloCurto:'Waste',subtitulo:'Custos e perdas por ordem',versao:'1.8.7',/* igual a APP_VER; o Portal lê este valor */baseFile:BASE_FN,backupDir:'00. Backups/Perdas',busca:q=>buscaPerdas(q)};
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,7);
 const nowISO=()=>new Date().toISOString();
@@ -686,15 +686,23 @@ async function connectDir(dir,{ask=false}={}){
  Promise.all([loadOEE(true),loadGel(true),loadOrdens(true),Logo.load(),scanSystems()]).then(()=>renderAll());
  return true;
 }
+/* 1.8.7 · alteração pendente (gravação que falhou) só vai para a pasta se a base de lá não mudou desde então;
+   se mudou, a cópia local é baixada (_NAO-GRAVADO) e a página passa a usar a base da pasta: nunca grava por cima de outra pessoa */
+const semMudanca=(d,mod)=>(ST.mod!=null&&mod===ST.mod)||d.rev===ST.pendFrom;
+async function conflitoPendente(d,mod){downloadJSON(B,'perdas-base_NAO-GRAVADO_'+todayISO()+'.json');
+ toast('A base da pasta foi alterada por outra pessoa enquanto a sua alteração não tinha sido gravada. Sua cópia foi baixada (_NAO-GRAVADO) para conferência; a página agora mostra a base da pasta.',9000);
+ B=fixBase(d);ST.mod=mod;ST.pending=false;await IDB.set('base',B);await IDB.set('pending',{p:false})}
 async function commit(label,mut,det=''){
- if(ST.mode==='pasta'){try{const r=await readRemote();if(r.data.rev!==B.rev){B=fixBase(r.data);ST.mod=r.mod;toast('A base foi alterada por outra pessoa; sua alteração foi aplicada sobre a versão mais nova.')}}catch(e){}}
+ if(ST.mode==='pasta'){try{const r=await readRemote();
+   if(ST.pending){if(!semMudanca(r.data,r.mod))await conflitoPendente(r.data,r.mod)}
+   else if(r.data.rev!==B.rev){B=fixBase(r.data);ST.mod=r.mod;toast('A base foi alterada por outra pessoa; sua alteração foi aplicada sobre a versão mais nova.')}}catch(e){}}
  const before=B.rev;
  mut(B);
  B.rev=(B.rev||0)+1;B.updatedAt=nowISO();B.updatedBy=user();B.appVersion=APP_VER;
  B.audit.push({t:B.updatedAt,u:user(),a:label,d:det});if(B.audit.length>3000)B.audit.splice(0,B.audit.length-3000);
  B.exports=buildExports();
  if(ST.mode==='teste'){renderAll();return}
- if(ST.mode==='pasta'){try{await writeRemote();ST.err=''}catch(e){console.warn(e);ST.err=String(e.message||e);if(!ST.pending){ST.pending=true;ST.pendFrom=before}toast('Não consegui gravar na pasta. A alteração ficou neste computador e será gravada quando a pasta responder.',6000)}}
+ if(ST.mode==='pasta'){try{await writeRemote();ST.err='';ST.pending=false}catch(e){console.warn(e);ST.err=String(e.message||e);if(!ST.pending){ST.pending=true;ST.pendFrom=before}toast('Não consegui gravar na pasta. A alteração ficou neste computador e será gravada quando a pasta responder.',6000)}}
  else if(!ST.pending){ST.pending=true;ST.pendFrom=before}
  await IDB.set('base',B);await IDB.set('pending',{p:ST.pending,from:ST.pendFrom});
  renderAll();
@@ -703,7 +711,8 @@ async function syncNow(silent){
  if(ST.mode!=='pasta'||!ST.dir)return;
  {const had=OEE.mod,hg=GEL.mod,ho=ORDX.mod;await Promise.all([loadOEE(!silent),loadGel(!silent),loadOrdens(!silent)]);if(!silent){Logo.load();scanSystems()}if((OEE.mod!==had||GEL.mod!==hg||ORDX.mod!==ho)&&!$('.modal.on'))renderTab(curTab())}
  try{const fh=await ST.dir.getFileHandle(BASE_FN);const f=await fh.getFile();
-   if(ST.pending){try{await writeRemote();ST.pending=false;ST.err='';await IDB.set('pending',{p:false});toast('Alterações pendentes gravadas.')}catch(e){}return renderMeta()}
+   if(ST.pending){try{const d=JSON.parse(await f.text());if(!semMudanca(d,f.lastModified)){await conflitoPendente(d,f.lastModified);ST.err='';renderAll();return renderMeta()}
+     await writeRemote();ST.pending=false;ST.err='';await IDB.set('pending',{p:false});toast('Alterações pendentes gravadas.')}catch(e){}return renderMeta()}
    if(f.lastModified!==ST.mod){const d=JSON.parse(await f.text());if(d.rev!==B.rev){B=fixBase(d);ST.mod=f.lastModified;await IDB.set('base',B);if(!$('.modal.on'))renderAll();else renderMeta();if(!silent)toast('Base atualizada.')}else ST.mod=f.lastModified}
    else if(!silent)toast('A base já está atualizada.');
    ST.err=''}catch(e){ST.err=String(e.message||e)}
@@ -1355,10 +1364,13 @@ const Logo={url:null,
 /* ===================== SISTEMAS DA LINHA (navegação entre páginas da mesma pasta) ===================== */
 const DEFAULT_SYSTEMS=[
  {id:'portal',nome:'Portal',html:'Portal.html',base:'portal-base.json'},
- {id:'oee',nome:'OEE',html:'OEE-Vacutainer.html',base:'oee-vacutainer-base.json'},
- {id:'gel',nome:'Gel',html:'Gestão-Gel-Vacutainer.html',alt:['Gestao-Gel-Vacutainer.html','controle-fifo-gel.html'],base:'fifo-base.json'},
+ {id:'oee',nome:'Produção',html:'OEE-Vacutainer.html',base:'oee-vacutainer-base.json'},
  {id:'perdas',nome:'Waste',html:'Perdas-Ordem.html',base:'perdas-base.json'},
- {id:'manut',nome:'Manutenção',html:'Manutencao.html',base:'manutencao-base.json',futuro:true}];
+ {id:'gel',nome:'Gestão de Gel',html:'Gestão-Gel-Vacutainer.html',alt:['Gestao-Gel-Vacutainer.html','controle-fifo-gel.html'],base:'fifo-base.json'},
+ {id:'paradas',nome:'Paradas',html:'Paradas.html',base:'paradas-base.json'},
+ {id:'equip',nome:'Equipamentos',html:'Equipamentos.html',base:'equipamentos-base.json',futuro:true},
+ {id:'inic',nome:'Iniciativas',html:'Iniciativas.html',base:'iniciativas-base.json',futuro:true,sub:'5S · OSM · KAS'},
+ {id:'projetos',nome:'Projetos',html:'Projetos.html',base:'projetos-base.json',futuro:true}];
 function systems(){const ren=l=>l.map(x=>x&&x.id==='perdas'&&(!x.nome||x.nome==='Perdas')?{...x,nome:'Waste'}:x);try{const s=JSON.parse(localStorage.getItem('vac.sistemas')||'null');if(Array.isArray(s)&&s.length){const ids=new Set(s.map(x=>x.id));return ren(s.concat(DEFAULT_SYSTEMS.filter(d=>!ids.has(d.id))))}}catch(e){}return ren(DEFAULT_SYSTEMS.map(x=>({...x})))}
 /* pasta única: todas as páginas na mesma pasta, então o link é só o nome do arquivo */
 function sysHref(s,hash=''){return String(s.html||s.url||'').split('/').pop()+(hash?'#'+hash:'')}

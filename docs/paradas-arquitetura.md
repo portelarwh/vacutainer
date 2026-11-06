@@ -113,3 +113,7 @@ O Excel de respostas (ID, Hora de início, Hora de conclusão, Email, Nome, as p
 2. Cadastrar os equipamentos com código (EQ..) e ligar o de-para do histórico; criar o Forms novo com as listas copiadas.
 3. OEE: ler `exports.eventos` do Paradas como sugestão no hora a hora e aceitar `reclassificacoes`.
 4. Decisões ainda abertas: REF/REV (desconto), RTB, 3 hours delay, limite de 10 min no documento vigente.
+
+## 11. Paradas 1.0.6 (06/11/2026)
+
+- Catálogo de sistemas único do kit (`fontes/kit/sistemas.js`). O Portal 1.8.3 passa a desenhar `exports.serie` (`{rotulo, pontos}`) e lê `sev 1` como urgente.

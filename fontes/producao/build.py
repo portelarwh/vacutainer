@@ -9,7 +9,7 @@ def R(a,b,cnt=1):
     c=s.count(a)
     if c!=cnt: raise SystemExit(f'ERRO ({c}x): {a[:90]!r}')
     s=s.replace(a,b)
-R("const APP_VERSION = '2.0.1';","const APP_VERSION = '2.4.1';")
+R("const APP_VERSION = '2.0.1';","const APP_VERSION = '2.4.2';")
 R("  $('#nav').innerHTML = visibleRoutes().map(([k, l]) => { const g = ROUTE_GROUP[k] || ''; const sep","  if (typeof renderNavGrupos === 'function') { renderNavGrupos(); renderBanner(); return; }\n  $('#nav').innerHTML = visibleRoutes().map(([k, l]) => { const g = ROUTE_GROUP[k] || ''; const sep")
 R("    <span title=\"${esc(S.mode === 'pasta' ? 'Pasta ' + (S.backend && S.backend.name) : S.mode === 'arquivo' ? 'Arquivo ' + (S.fileName || '') : 'Somente neste navegador')}\">Última gravação <b>${d ? U.brDT(d.lastModifiedAt) : '—'}</b>${d ? ' por ' + esc(d.lastModifiedBy || '—') : ''}</span>`;","    <span class=\"pill none\" title=\"${esc((S.mode === 'pasta' ? 'Pasta ' + (S.backend && S.backend.name) : S.mode === 'arquivo' ? 'Arquivo ' + (S.fileName || '') : 'Somente neste navegador') + (d ? ' · última gravação ' + U.brDT(d.lastModifiedAt) + ' por ' + (d.lastModifiedBy || '—') : ''))}\">${d ? U.brDT(d.lastModifiedAt).slice(0, 5) + ' ' + U.brDT(d.lastModifiedAt).slice(-5) : '—'}</span>`;")
 R("const PAGE = { id: 'oee', titulo: 'OEE · Linha Vacutainer', tituloCurto: 'OEE', subtitulo: 'Produção e OEE',","const PAGE = { id: 'oee', titulo: 'Produção · Linha Vacutainer', tituloCurto: 'Produção', subtitulo: 'Plano, ordens, apontamento e OEE',")
@@ -61,6 +61,12 @@ css="""<style>
 </style>
 """
 kit21=open(os.path.join(RAIZ,'fontes','kit','kit_v21.js'),encoding='utf-8').read()
+# catálogo de sistemas único (fontes/kit/sistemas.js), igual nas 5 páginas
+import re as _re
+_sis=open(os.path.join(RAIZ,'fontes','kit','sistemas.js'),encoding='utf-8').read().strip()
+_pad=_re.compile(r'const DEFAULT_SYSTEMS=\[.*?\];',_re.S)
+if len(_pad.findall(s))!=1: raise SystemExit('ERRO: DEFAULT_SYSTEMS não achado exatamente 1 vez')
+s=_pad.sub(lambda m:_sis,s)
 sync=open(os.path.join(AQUI,'cad_sync.js'),encoding='utf-8').read()
 R("S.cadastro = c && c.schema === 'vac-cadastros' ? { rev: c.rev, revAt: c.revAt, revBy: c.revBy } : null; }","S.cadastro = c && c.schema === 'vac-cadastros' ? { rev: c.rev, revAt: c.revAt, revBy: c.revBy } : null; S.cadDoc = S.cadastro ? c : null; if (S.cadDoc && typeof CadSync !== 'undefined') setTimeout(() => CadSync.talvez(), 0); }")
 R("// cadastro base do Portal na mesma pasta: só a revisão, para a pílula do cabeçalho (o OEE ainda usa os próprios cadastros)","// cadastro base do Portal na mesma pasta: guarda o documento e aplica na base quando a revisão muda (CadSync, Produção 2.4)")

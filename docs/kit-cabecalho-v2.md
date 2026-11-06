@@ -31,3 +31,7 @@ Bloco `vac-cabecalho v2.1` (arquivo-fonte `kit/kit_v21.js`, igual em Portal 1.7.
 - Página com aba "virtual" define `vacNavAtual()` → `{attr,val,sub}` (Produção: rota + sub-aba de Ordens).
 - `history.replaceState(null…)` da página não apaga a posição gravada (o kit preserva `vacNav`).
 - **Ao voltar para a página** (visibilitychange, focus, pageshow restaurada) chama `vacAoVoltar()` se a página definir. Produção: relê `perdas-base.json` (KKBC) e `ordens-base.json` sem F5 e redesenha se mudou (não redesenha com modal aberto, campo em foco ou texto colado). Portal: relê as bases das páginas (readModules) e o cadastro. Waste, Gel e Paradas já reliam a própria base ao voltar.
+
+## Catálogo de sistemas único (06/11/2026)
+
+`fontes/kit/sistemas.js` = `const DEFAULT_SYSTEMS=[…]` (ids, nomes, HTML, base, `futuro`). `aplicar_kit21.py` troca o bloco nas 4 páginas e o `build.py` na Produção (param com `ERRO` se não acharem exatamente 1 vez). O Portal continua podendo sobrescrever pelo `localStorage['vac.sistemas']`. Versões: Portal 1.8.3, Produção 2.4.2, Waste 1.8.7, Gestão de Gel 1.96, Paradas 1.0.6.
