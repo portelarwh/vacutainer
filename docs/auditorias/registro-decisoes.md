@@ -11,9 +11,49 @@ Este arquivo responde às auditorias externas da plataforma e registra, para cad
 |---|---|---|---|
 | Auditoria de integração (A01–A10) | 05/11/2026 | anterior a `ca46d0c` | Portal 1.8.3 e 1.8.4 (PRs portelarwh/vacutainer#1 e #2) |
 | Diagnóstico técnico (F01–F08, § 5) | 06/11/2026 | `9cc1dc4` | Portal 1.8.5, Produção 2.4.3, Waste 1.8.9, Gel 1.97, Paradas 1.0.7 (PR portelarwh/vacutainer#4) |
-| Diagnóstico pós-merge (M01–M04, ressalvas) | 06/11/2026 | `c2ca6af` | Portal 1.8.6, Produção 2.4.4, Waste 1.8.10, Gel 1.98 (§ 0) |
+| Diagnóstico pós-merge (M01–M04, ressalvas) | 06/11/2026 | `c2ca6af` | Portal 1.8.6, Produção 2.4.4, Waste 1.8.10, Gel 1.98 (§ 0, PR portelarwh/vacutainer#5) |
+| Revisão do PR #5 (base que some) | 06/11/2026 | `142b9c2` | Portal 1.8.7 (§ 0.1) |
+| Auditoria visual (V01–V08) | 06/11/2026 | `142b9c2` (registrada em `ce1d971`) | Portal 1.8.8, Produção 2.4.5, Waste 1.8.11, Gel 1.99, Paradas 1.0.8 (§ L) |
 
 Status usados: **corrigido** · **corrigido em parte** · **recusado** · **adiado** · **já existia**.
+
+---
+
+## L. Resposta à auditoria visual (`docs/auditorias/layout-2026-11-06/`)
+
+### Parecer
+A auditoria foi conferida contra o código atual, que inclui as entregas posteriores ao `142b9c2` (PRs #5 e #6). Nenhuma delas tinha mexido em layout, então **todos os achados ainda valiam**. O novo `testes/tvisual.js` reproduziu os números da auditoria: Gel com 8 px de margem e deslocado 30 px, Paradas 20 px à esquerda, abas do Gel com 84 px em 1024 px e 169 px em 390 px, e contadores com 2,19:1 e 2,89:1. São 48 checagens que falhavam antes e 112 que passam agora.
+
+**Divergências encontradas:**
+- **V08 era mais amplo.** O Paradas também lia `vac.user` e `vac.logo` com `JSON.parse`. Por isso não reconhecia o usuário nem a logo gravados pelo Portal, e o nome que gravava aparecia com aspas nas outras páginas. Corrigido junto.
+- **Contraste no tema claro.** Também havia pares abaixo de 4,5:1 que a auditoria não listou: pílula "Adiantado" do Gel (4,29), contador do Waste (4,45) e texto de pílulas de estado (3,4 a 4,3). Corrigidos.
+- **Botão "Resolver" do Paradas (2,58:1).** Não aparece no estado vazio. A causa, texto branco sobre o `--accent` claro do escuro, foi corrigida com `--accent-ink`, e o `.b.pri` passa no `tvisual.js`.
+
+### Prioridade 1 · **corrigida**
+| Item | O que mudou | Conferência |
+|---|---|---|
+| V08 Tema entre páginas | Paradas lê e grava as chaves comuns em texto simples, lendo também o formato antigo | Portal escuro → Paradas escuro → troca no Paradas → as cinco páginas iguais na volta |
+| V01 Estrutura e cabeçalho | `kit_visual.css`: corpo sem margem, 1560 px + 16 px, faixa de 52 px, botões de 30 px. Gel: Importar, Sincronizar, Backup, TV e **Mais** | Barra, título e conteúdo no mesmo x nas cinco páginas, nas 5 larguras e nos 2 temas |
+| V02 Abas | 15 px, marca de 3 px, uma linha com rolagem e setas ‹ ›; aba ativa à vista | Abas do Gel com 44,8 px em todas as larguras (antes 84 px a 169 px) |
+| V05 Contraste no escuro | `--cnt-bg`/`--cnt-ink` e `--on-fill`; Paradas com `color-scheme: dark` | Nenhum contador, badge ou botão abaixo de 4,5:1; campos de data no esquema escuro |
+| V06 Gráficos compactos do Portal | `miniChart` na largura do card; menos rótulos; título com unidade | Texto renderizado de 11,7 px em 1440 px (antes ~5,3 px) |
+
+### Prioridade 2 · **corrigida em parte**
+| Item | Decisão |
+|---|---|
+| V04 Cores de estado | **Corrigido.** Mesmos `--ok`, `--warn`, `--crit`, `--info` e `--none` nas cinco páginas; Paradas com a paleta comum; modo exemplo em roxo no Gel e no Paradas, que antes usavam vermelho e âmbar |
+| V04 Sinais contraditórios no indicador | **Corrigido.** Na Produção, o valor segue o estado do card (antes: borda âmbar e número vermelho). No Waste, a borda segue o âmbar do valor. Nenhum limiar mudou |
+| V04 Pílulas | **Corrigido.** Gel com pílula suave por padrão; ficam cheias só onde precisam destacar (cabeçalho do barril, cor do catálogo). No Paradas, "Conectar pasta" deixou de ser vermelha cheia |
+| V03 Cards | **Corrigido em parte.** Indicador principal com valor de 28 px nas cinco páginas (Waste 24 → 28, Gel 30 → 28); resumo do Portal como variante compacta. **Mantida a diferença** entre o topo do Gel (borda lateral) e o Painel analítico (borda superior, com minigráfico): é a variante analítica. Agora há um título para cada faixa, em vez de unificar a borda |
+| V06 Unidades dos gráficos | **Corrigido** no Paradas (uma unidade por escala) e nos cards do Portal (título com unidade). **Adiado:** revisão de títulos e legendas de todos os gráficos de cada página. Gatilho: a próxima mudança em cada gráfico |
+| V07 Densidade | **Corrigido em parte.** Produção: um aviso de demonstração a menos no modo exemplo. Gel: título "Período selecionado · datas" separa as faixas do Painel. **Adiado:** juntar Resumo e indicadores do Waste e uniformizar a posição de Ação prioritária e filtros. A própria auditoria pede validar isso com o uso; vai com a conferência na pasta real |
+
+### Prioridade 3
+- **Feito:** o CSS comum passou a ser distribuído pelo kit e pelo build (`kit_visual.css`), e há uma verificação visual curta (`testes/tvisual.js`), que também roda com `--sem-print`.
+- **Adiado:** exemplos visuais de componentes; conferência na pasta real com a equipe, observando tarefas de operador e liderança.
+
+### Diferença que continua de propósito
+- **Abas da Produção:** 49,8 px de altura, contra 44,8 px nas demais. As abas agrupadas mostram o subtítulo da seção aberta (ex.: "Análise · Visão geral"). Elas não rolam, porque os menus dos grupos seriam cortados pela faixa rolável.
 
 ---
 
@@ -54,6 +94,11 @@ Ao reproduzir o M02, achamos **um defeito a mais no mesmo trecho**: ao criar a n
 - **Waste lê estruturas internas da Produção:** a descrição antiga estava **incompleta** e foi corrigida na tabela do § 1. A correção de código continua adiada, com o motivo e o gatilho lá.
 - **Leitor do Gel no Waste com `exports` de versão desconhecida:** **corrigido no código** (Waste 1.8.10). `gelFind` não lê nada desse `exports`, nem pela busca genérica, e a tela pede para atualizar o Waste. Teste: `tdiag.js` › Ressalva.
 - **"Teste aprovado não prova ausência de outras falhas":** concordamos. Neste registro, um teste aprovado vale **só para o cenário que ele reproduz**.
+
+### 0.1 · P2 · Base que some da pasta deixava números antigos na tela · **corrigido** (Portal 1.8.7)
+- **Apontado na revisão do PR #5 e confirmado:** quando `findModule` não achava mais a base, o Portal trocava os dados pelo erro, mas **não subia `MOD.versao`**. A tela não redesenhava e o cartão continuava com os números antigos. Era uma lacuna da correção do M03: só o erro de leitura subia o contador.
+- **Feito:** as duas transições para erro (base não encontrada e erro de leitura) passam por `modErro`. Ele sobe o contador quando o erro é novo e esquece o arquivo lido. A recuperação já funcionava (a base que volta é reprocessada) e foi mantida.
+- **Teste:** `tdiag.js` › "Base some", que confere o DOM em três momentos: com os dados, depois do sumiço (aviso no lugar dos números) e depois da volta da base (dados de novo). No código de `142b9c2`, só o cenário do sumiço falha.
 
 ---
 

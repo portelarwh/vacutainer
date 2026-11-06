@@ -170,3 +170,12 @@ Registro completo das decisões em `docs/auditorias/registro-decisoes.md`.
 
 - **M01**: se a leitura da `portal-base.json` antes de gravar falhar, a alteração não é gravada (gravaria por cima de outra pessoa): fica pendente e a sincronização confere a base (`semMudanca` / `_NAO-GRAVADO`).
 - **M03**: `readModules` conta as mudanças nos dados adaptados (`MOD.versao`); a volta para a página e a rotina de 1 min redesenham quando ela muda (inclui a virada do dia). Antes, a volta para a página só olhava a data do arquivo.
+
+## 17. Portal 1.8.7 (06/11/2026) · base que some da pasta
+
+- Quando uma base que estava disponível some da pasta (ou passa a dar erro), `modErro` troca os números pelo aviso **e sobe `MOD.versao`**: a tela redesenha (volta para a página ou rotina de 1 min) em vez de continuar mostrando valores antigos. O arquivo lido é esquecido, para a base reaparecer sempre reprocessada. Lacuna do M03 (1.8.6), que só subia o contador no erro de leitura.
+
+## 18. Portal 1.8.8 (06/11/2026) · layout (vac-visual v1)
+
+- Gráfico dos cards de módulo (`miniChart`): desenhado na largura do card, com texto de 11 px. Antes, o gráfico do relatório era encolhido e o texto ficava com cerca de 5 px. Mostra só o último valor, o maior e a primeira/última data; o resto fica na dica. Cada card ganhou título com unidade: peças, kg, R$, min. Os relatórios e a TV continuam com `barChart`.
+- Padrão visual comum do kit (ver `kit-cabecalho-v2.md` › vac-visual v1).

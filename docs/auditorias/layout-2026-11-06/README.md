@@ -21,3 +21,5 @@ Análise de layout, cabeçalho, navegação, cards, indicadores, gráficos, píl
 Manter as decisões documentadas em [registro-decisoes.md](../registro-decisoes.md), os HTMLs únicos e os fluxos próprios de cada módulo. As recomendações visuais não alteram metas, limiares nem contratos de dados. Produção deve ser alterada por suas fontes e pelo build.
 
 As imagens são capturas do sistema existente, com dados fictícios. Não representam telas já redesenhadas.
+
+**Resposta (06/11/2026):** implementada no Portal 1.8.8, Produção 2.4.5, Waste 1.8.11, Gel 1.99 e Paradas 1.0.8. O que foi corrigido, adiado e mantido de propósito está em [registro-decisoes.md › § L](../registro-decisoes.md). A verificação é feita por `node testes/tvisual.js`.

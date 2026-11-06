@@ -85,6 +85,7 @@ main{padding-block:16px 60px}
 .tab{display:none}.tab.on{display:block}
 
 /* cartões */
+.minichart{margin-top:8px}.minichart .mtit{font-size:12px;color:var(--muted);margin-bottom:2px}.minichart svg{display:block;overflow:visible}
 .card{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:14px;margin-bottom:14px;min-width:0}
 .card h3{margin:0 0 10px;font-size:15.5px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
 .row{display:flex;gap:14px;flex-wrap:wrap}.row>*{flex:1;min-width:280px}
@@ -335,6 +336,71 @@ button.b,label.b,a.b{border-radius:8px}
 .kpi{border:1px solid var(--line);border-left:4px solid var(--accent);border-radius:var(--r);box-shadow:var(--sh)}
 .kpi:has(.v.bad){border-left-color:var(--crit)}.kpi:has(.v.good){border-left-color:var(--ok)}
 .mx table th.c,.mx table td.c{text-align:center;padding:4px 6px}.mx tr.mxch td{background:color-mix(in srgb,var(--warn,#c90) 12%,transparent)}.mx tr.mxtot td{border-top:2px solid var(--line)}.mx td input[type=checkbox]{width:16px;height:16px}
+</style>
+<style id="vac-visual">
+/* ===== vac-visual v1 · padrão visual comum (fontes/kit/kit_visual.css; igual em todas as páginas; não editar só numa) =====
+   Vem por último no <head>: ajusta o que cada página definiu do seu jeito, sem tocar em cálculo, meta ou dado.
+   Copiado por fontes/kit/aplicar_kit21.py (Portal, Waste, Gel, Paradas) e por fontes/producao/build.py (Produção).
+   Auditoria de layout de 06/11/2026: docs/auditorias/layout-2026-11-06/. */
+
+/* --- tokens comuns: texto sobre preenchimento forte e contadores (contraste ≥ 4,5 nos dois temas) --- */
+:root{--on-fill:#ffffff;--cnt-bg:#b34e0a;--cnt-ink:#ffffff;--ex-bg:#f0eaf7;--ex-ink:#5b3390;--ex-line:#d9c8ee}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--on-fill:#0e141a;--cnt-bg:#f39a5a;--cnt-ink:#0e141a;--ex-bg:#2a2038;--ex-ink:#cdb0f0;--ex-line:#4a3a63}}
+:root[data-theme="dark"]{--on-fill:#0e141a;--cnt-bg:#f39a5a;--cnt-ink:#0e141a;--ex-bg:#2a2038;--ex-ink:#cdb0f0;--ex-line:#4a3a63}
+
+/* --- cores de estado iguais em todas as páginas (V04): verde = adequado, âmbar = atenção, vermelho = crítico, azul = informação,
+   cinza = neutro/sem dados. No claro, um pouco mais escuras que antes, para o texto das pílulas passar de 4,5:1 sobre o fundo suave.
+   Cores de domínio (classes de parada, turnos, barris) continuam nas páginas. --- */
+:root{--ok:#19713f;--warn:#8f5a00;--crit:#c22a2a;--info:#2360a8;--none:#5f6b78}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--ok:#4dc282;--warn:#f0b54c;--crit:#ff7070;--info:#6ea7ee;--none:#8d99a6}}
+:root[data-theme="dark"]{--ok:#4dc282;--warn:#f0b54c;--crit:#ff7070;--info:#6ea7ee;--none:#8d99a6}
+
+/* --- estrutura: corpo sem margem, mesmo contêiner (1560 px, 16 px nas laterais) --- */
+html,body{margin:0}
+.wrap{max-width:1560px}
+.vsuite .wrap,.vpage .wrap,nav.vtabs .wrap{box-sizing:border-box;max-width:1560px;margin-inline:auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.vsuite,.vpage,nav.vtabs{line-height:1.45}
+
+/* --- cabeçalho da página: mesma altura, alinhamento e botões --- */
+.vpage .wrap{min-height:52px;padding-block:8px;align-items:center;row-gap:6px}
+.vpage .vacts{align-items:center;gap:6px}
+.vpage .vacts>button,.vpage .vacts>.tvmenu>button,.vpage .vacts>details>summary{box-sizing:border-box;height:30px;padding:0 10px;font-size:13px;line-height:1;border-radius:8px;display:inline-flex;align-items:center;gap:6px;white-space:nowrap}
+.vpage .vacts .icon{width:14px;height:14px}
+/* ações secundárias num menu "Mais" (Gel e quem precisar) */
+.vmais{position:relative;display:inline-flex}
+.vmais>summary{list-style:none;cursor:pointer}.vmais>summary::-webkit-details-marker{display:none}
+.vmais>summary::after{content:'▾';font-size:10px;margin-left:2px}
+.vmais-l{position:absolute;right:0;top:calc(100% + 4px);z-index:70;min-width:210px;max-width:calc(100vw - 16px);display:flex;flex-direction:column;gap:2px;padding:6px;background:var(--surface);border:1px solid var(--line);border-radius:8px;box-shadow:0 8px 24px rgba(0,0,0,.18)}
+.vmais-l>button{all:unset;box-sizing:border-box;display:block;padding:8px 10px;border-radius:6px;font-size:14px;color:var(--ink);cursor:pointer;white-space:nowrap}
+.vmais-l>button:hover,.vmais-l>button:focus-visible{background:var(--surface-2,rgba(0,0,0,.06))}
+.vmais-l>button small{display:block;font-size:12px;color:var(--muted);white-space:normal}
+
+/* --- abas: mesma escala, marca ativa de 3 px, sempre numa linha (rolagem com indicação nas bordas) --- */
+nav.vtabs .tabs{margin:0;border:0}
+nav.vtabs .tabs>.ngrp>.tab{font-size:15px}   /* Produção: abas agrupadas mantêm o espaçamento próprio (subtítulo do grupo) */
+nav.vtabs .tabs>button{font-family:var(--f-display);font-weight:600;font-size:15px;letter-spacing:.04em;text-transform:uppercase;padding:10px 13px 9px;line-height:1.45;border-bottom:3px solid transparent;white-space:nowrap}
+nav.vtabs:not(.nav) .tabs{display:flex;flex-wrap:nowrap;gap:2px;overflow-x:auto;scrollbar-width:none;scroll-behavior:smooth}
+nav.vtabs:not(.nav) .tabs::-webkit-scrollbar{display:none}
+nav.vtabs .wrap{position:relative}
+nav.vtabs[data-mais-esq] .wrap::before,nav.vtabs[data-mais-dir] .wrap::after{content:'';position:absolute;top:0;bottom:0;width:36px;pointer-events:none;z-index:2}
+nav.vtabs[data-mais-esq] .wrap::before{left:0;background:linear-gradient(to left,transparent,var(--surface) 70%)}
+nav.vtabs[data-mais-dir] .wrap::after{right:0;background:linear-gradient(to right,transparent,var(--surface) 70%)}
+nav.vtabs .vrola{position:absolute;top:50%;transform:translateY(-50%);z-index:3;width:26px;height:26px;border-radius:50%;border:1px solid var(--line);background:var(--surface);color:var(--ink);cursor:pointer;display:none;align-items:center;justify-content:center;font-size:14px;line-height:1;padding:0}
+nav.vtabs .vrola.e{left:max(4px,env(safe-area-inset-left,0px))}nav.vtabs .vrola.d{right:max(4px,env(safe-area-inset-right,0px))}
+nav.vtabs[data-mais-esq] .vrola.e,nav.vtabs[data-mais-dir] .vrola.d{display:inline-flex}
+/* contadores nas abas: mesma forma e cor em todas */
+nav.vtabs .tab .cnt,nav.vtabs .badge{font-family:var(--f-body);font-size:11px;font-weight:600;letter-spacing:0;background:var(--cnt-bg);color:var(--cnt-ink);border-radius:99px;padding:0 6px;margin-left:6px;vertical-align:2px}
+nav.vtabs .badge[hidden]{display:none}
+
+/* --- texto sobre preenchimento forte no tema escuro (botões e contadores fora das abas) --- */
+.tab .cnt{color:var(--cnt-ink);background:var(--cnt-bg)}
+
+/* --- "Modo de exemplo": mesma pílula roxa em todas as páginas --- */
+.vex,.vpage .pill.vex{background:var(--ex-bg)!important;color:var(--ex-ink)!important;border:1px solid var(--ex-line)!important}
+
+@media(max-width:600px){.vpage .wrap{min-height:0}.vpage .vacts>button,.vpage .vacts>.tvmenu>button,.vpage .vacts>details>summary{height:28px;padding:0 8px;font-size:12.5px}}
+@media print{.vrola{display:none!important}}
+/* ===== fim vac-visual v1 ===== */
 </style>
 </head>
 <body>
@@ -669,6 +735,18 @@ function svgToPng(svg,width=1400){return new Promise((ok,ko)=>{const el=document
  const vb=(s.getAttribute('viewBox')||'0 0 800 300').split(/\s+/).map(Number);const h=Math.round(width*vb[3]/vb[2]);const im=new Image();im.onload=()=>{const c=document.createElement('canvas');c.width=width;c.height=h;const g=c.getContext('2d');g.fillStyle='#fff';g.fillRect(0,0,width,h);g.drawImage(im,0,0,width,h);ok(c.toDataURL('image/png'))};im.onerror=ko;im.src='data:image/svg+xml;charset=utf-8,'+encodeURIComponent(txt)})}
 
 /* ---------- gráfico de barras simples (mesmas cores do OEE: verde atinge a meta, vermelho não) ---------- */
+/* 1.8.8 · vac-visual: gráfico compacto do card de cada módulo. Desenhado na largura real do card (texto de 11 px, sem encolher);
+   imprime só o último valor, o maior e a primeira/última data; o resto fica na dica (passar o mouse) e no módulo. */
+function miniChart(d,{fmt=fmtK,tit=''}={}){if(!d.length)return'';
+ const W=290,h=104,pl=4,pr=4,pt=16,pb=16,vals=d.map(x=>+x.value||0);let mx=Math.max(0,...vals),mn=Math.min(0,...vals);if(mx===mn)mx=mn+1;
+ const y=v=>pt+(mx-v)/(mx-mn)*(h-pt-pb),bw=(W-pl-pr)/d.length,iU=d.length-1;let iM=vals.indexOf(Math.max(...vals));if(Math.abs(iM-iU)<3)iM=-1;
+ const cx=X=>Math.min(W-pr-22,Math.max(pl+22,X));let s=`<svg class="mini" viewBox="0 0 ${W} ${h}" width="100%" role="img" aria-label="${esc(tit)}">`;
+ s+=`<line x1="${pl}" x2="${W-pr}" y1="${y(0)}" y2="${y(0)}" stroke="var(--axis)"/>`;
+ d.forEach((x,i)=>{const X=pl+i*bw+bw*.15,w=Math.max(2,bw*.7),y0=y(0),y1=y(vals[i]),dest=i===iU||i===iM;
+  s+=`<g><title>${esc(x.label)}: ${esc(fmt(vals[i]))}</title><rect x="${X}" y="${Math.min(y0,y1)}" width="${w}" height="${Math.max(1,Math.abs(y1-y0))}" fill="${x.color||'var(--accent)'}" opacity="${dest?1:.72}" rx="1.5"/></g>`;
+  if(dest)s+=`<text x="${cx(X+w/2)}" y="${vals[i]>=0?Math.max(12,y1-4):Math.min(h-pb+12,y1+13)}" font-size="11" font-weight="600" text-anchor="middle" fill="var(--ink)">${esc(fmt(vals[i]))}</text>`});
+ s+=`<text x="${pl}" y="${h-3}" font-size="11" fill="var(--muted)">${esc(d[0].label)}</text>`;if(d.length>1)s+=`<text x="${W-pr}" y="${h-3}" font-size="11" text-anchor="end" fill="var(--muted)">${esc(d[iU].label)}</text>`;
+ return`<div class="minichart">${tit?`<div class="mtit">${esc(tit)}</div>`:''}${s}</svg></div>`}
 function barChart(d,{h=220,meta=null,fmt=fmtK,click=null,minW=560}={}){if(!d.length)return'<p class="muted small">Sem dados.</p>';
  const W=Math.max(minW,d.length*(minW<560?34:60)),pl=62,pb=26,pt=14;const vals=d.map(x=>x.value).concat(meta!=null?[meta]:[]);let mx=Math.max(0,...vals),mn=Math.min(0,...vals);if(mx===mn)mx=mn+1;const pad=(mx-mn)*.08;mx+=pad;if(mn<0)mn-=pad;
  const y=v=>pt+(mx-v)/(mx-mn)*(h-pt-pb),bw=(W-pl-10)/d.length;let s=`<svg viewBox="0 0 ${W} ${h}" width="100%" style="max-height:${h}px">`;
@@ -713,6 +791,8 @@ function wireConfigComum(){$('#cPasta').onclick=async()=>{if(await Store.pick())
    com o aviso "base em local antigo". Prefere o bloco "exports" de cada base.
    1.1: aba Cadastros, dona do vacutainer-cadastros.json (única que grava nele).
    1.1.1: página do Gel = Gestão-Gel-Vacutainer.html (aceita o nome antigo controle-fifo-gel.html).
+   1.8.8: layout (vac-visual v1, auditoria de 06/11/2026): gráfico compacto nos cards (miniChart: texto de 11 px, último/maior valor, título com unidade); padrão visual comum do kit.
+   1.8.7: base que some da pasta: a tela troca os números antigos pelo aviso (MOD.versao também sobe nessa transição).
    1.8.6: resposta ao diagnóstico pós-merge (M01, M03): sem ler a base antes, a alteração fica pendente (não grava por cima); a volta para a página redesenha quando os dados mudaram (MOD.versao).
    1.8.5: resposta ao diagnóstico de 06/11/2026: pendências por data reavaliadas na virada do dia (cache por dia); exports em versão desconhecida não alimenta nenhum número;
           Versões das páginas reconhece databaseVersion/lastModifiedAt/lastModifiedBy da Produção.
@@ -741,7 +821,7 @@ function wireConfigComum(){$('#cPasta').onclick=async()=>{if(await Store.pick())
         entrar pelo ID (autocadastro como Consulta); página inicial por perfil (1x por sessão); vigência gravada não se edita (desativar com motivo); painel de vigências; semáforo central; saída do modo de teste.
    1.1.2: aviso da carga diz qual base foi lida.  1.5: páginas Paradas, Máquinas, Manutenção e Projetos na lista (aparecem quando o HTML chega na pasta).  1.4: lista técnica pela CS12 multinível (itens = nível 1, estrutura = níveis 2+); CS03 sai.  1.3: cabeçalho comum (vac-cabecalho v2: barra do sistema + página + abas), busca Ctrl K, acabamento V1.90, Versões com cabeçalho e último backup.  1.2: Configuração › Versões das páginas (versão e data de cada HTML, gravação das bases, cópias repetidas, histórico).
    ===================================================================== */
-const PAGE={id:'portal',titulo:'Portal · Linha Vacutainer',tituloCurto:'Portal',subtitulo:'Sistemas de gestão da linha',versao:'1.8.6',baseFile:'portal-base.json',idb:'vac-portal',backupDir:'00. Backups/Portal',
+const PAGE={id:'portal',titulo:'Portal · Linha Vacutainer',tituloCurto:'Portal',subtitulo:'Sistemas de gestão da linha',versao:'1.8.8',baseFile:'portal-base.json',idb:'vac-portal',backupDir:'00. Backups/Portal',
  vazio:()=>({schema:'portal-base',rev:0,config:{modulos:{},avisoDias:30,notas:{}},audit:[]}),
  /* itens do Portal para a busca Ctrl K: cadastro, pendências e telas */
  busca:q=>{const R=[],D=Cad.D;if(D)for(const t of CAD_ORD){for(const it of D[t]||[]){const c=String(it[kOf(t)]),nm=t==='bom'?((cadItem('catalogos',it.catalogo)||{}).nome||''):it.nome||'';if(norm(c+' '+nm).includes(q))R.push({tipo:CAD_T[t].um,txt:c+(nm?' · '+nm:''),sub:'Cadastros'+(cadAtivo(t,it,D)?'':' · inativo'),href:'#cadastros/'+t+'/'+encodeURIComponent(c)});if(R.length>30)break}}
@@ -770,18 +850,21 @@ async function findModule(sys){
  let html=null;if(Store.dir){const n=await achaHtml(Store.dir);if(n)html=n}if(!html&&pasta){const n=await achaHtml(dir);if(n)html=pasta+'/'+n}
  return{dir,pasta,html,antigo:!!pasta}}
 const BKP_MOD={portal:'Portal',oee:'OEE',gel:'Gel',perdas:'Perdas',paradas:'Paradas',equip:'Equipamentos',inic:'Iniciativas',maquinas:'Maquinas',manut:'Manutencao',projetos:'Projetos'};
+/* 1.8.7 · base que some (ou passa a dar erro) troca os números pelo aviso e sobe MOD.versao: a tela redesenha e não fica mostrando valores antigos.
+   Esquece o arquivo lido, para a base reaparecer sempre reprocessada. */
+function modErro(s,er){if(!MOD.data[s.id]||MOD.data[s.id].erro!==er)MOD.versao=(MOD.versao||0)+1;MOD.data[s.id]={sys:s,erro:er};delete MOD.files[s.id]}
 async function readModules(force){
  if(MOD.teste)return;if(Store.mode!=='pasta'||!Store.dir){MOD.data={};return}
  if(MOD.busy)return;MOD.busy=true;
  try{for(const s of systems()){if(s.id==='portal'||!s.base)continue;
    try{if(s.futuro&&Store.dir){try{await Store.dir.getFileHandle(s.html);const l=systems().map(x=>x.id===s.id?{...x,futuro:false}:x);localStorage.setItem('vac.sistemas',JSON.stringify(l));s.futuro=false;toast(`Página nova encontrada na pasta: ${s.nome}.`)}catch(e){}}
-    const loc=await findModule(s);if(!loc){MOD.data[s.id]={sys:s,erro:s.futuro?'Página ainda não criada (o HTML não está na pasta).':'Não encontrei '+s.base+' na pasta do Portal nem nas subpastas.'};continue}
+    const loc=await findModule(s);if(!loc){modErro(s,s.futuro?'Página ainda não criada (o HTML não está na pasta).':'Não encontrei '+s.base+' na pasta do Portal nem nas subpastas.');continue}
     if(loc.html&&loc.html!==s.html)saveSysPath(s.id,loc.html);
     const f=await (await loc.dir.getFileHandle(s.base)).getFile();
     if(!force&&MOD.files[s.id]&&MOD.files[s.id].mod===f.lastModified&&MOD.files[s.id].pasta===loc.pasta&&MOD.files[s.id].dia===todayISO()&&MOD.data[s.id]&&!MOD.data[s.id].erro)continue;
     const d=JSON.parse(await f.text());MOD.files[s.id]={mod:f.lastModified,size:f.size,pasta:loc.pasta,antigo:loc.antigo,dia:todayISO()};
     MOD.data[s.id]=adapt(s,d,f.lastModified);MOD.data[s.id].antigo=loc.antigo;MOD.data[s.id].pasta=loc.pasta;MOD.versao=(MOD.versao||0)+1}
-   catch(e){console.warn(s.id,e);const er='Erro ao ler '+s.base+': '+(e.message||e);if(!MOD.data[s.id]||MOD.data[s.id].erro!==er)MOD.versao=(MOD.versao||0)+1;MOD.data[s.id]={sys:s,erro:er}}}}
+   catch(e){console.warn(s.id,e);modErro(s,'Erro ao ler '+s.base+': '+(e.message||e))}}}
  finally{MOD.busy=false;MOD.at=Date.now()}}
 function saveSysPath(id,html){const list=systems().map(x=>x.id===id?{...x,html}:x);localStorage.setItem('vac.sistemas',JSON.stringify(list))}
 function adapt(s,d,mod){const f={oee:adaptOEE,gel:adaptGel,perdas:adaptPerdas,paradas:adaptParadas}[s.id]||adaptGeneric;const r=f(d);r.ex=exV1(d.exports)?d.exports:null;if(s.id==='paradas'&&exV1(d.exports)&&d.exports.cadastros)r.cadProp=d.exports.cadastros;r.sys=s;(r.pend||[]).forEach(p=>{if(!p.mod)p.mod=s.id});r.mod=mod;r.updatedAt=d.updatedAt||d.savedAt||d.lastSavedAt||d.lastModifiedAt||null;r.updatedBy=d.updatedBy||d.savedBy||d.lastModifiedBy||'';r.temExports=!!d.exports;return r}
@@ -797,7 +880,7 @@ function adaptOEE(d){const ex=d.exports;
  if(exV1(ex)&&Array.isArray(ex.porMes)&&Array.isArray(ex.kpis)){const hoje=todayISO(),mes=curM(),m=ex.porMes.find(p=>p.mes===mes)||null;
   const serie=(ex.porDia||[]).filter(x=>x.dia>=addDays(hoje,-20)&&x.dia<=hoje).sort((a,b)=>a.dia<b.dia?-1:1).map(x=>({label:x.dia.slice(8,10)+'/'+x.dia.slice(5,7),value:+x.boa||0,key:x.dia}));
   const emProd=(ex.ordens||[]).filter(o=>o.mes===mes&&o.inicioReal&&!o.fimReal).map(o=>`${o.ordem} · lote ${o.lote||'–'}`);
-  return{kpis:ex.kpis,pend:pendDoModulo(ex,'oee'),serie,extra:{emProd},oeePct:m?m.oee:null}}
+  return{kpis:ex.kpis,pend:pendDoModulo(ex,'oee'),serie,serieTit:'Produção boa por dia · últimos 21 dias (peças)',extra:{emProd},oeePct:m?m.oee:null}}
  return adaptOEEBruto(d)}
 function adaptOEEBruto(d){
  const hoje=todayISO(),mes=curM();
@@ -820,13 +903,13 @@ function adaptOEEBruto(d){
   [oeeMes!=null?'OEE do mês':'Último dia lançado',oeeMes!=null?fmtP(oeeMes):ult?fmtK(byDate[ult].g):'–',oeeMes!=null?(oeeMeta!=null?'meta '+fmtP(oeeMeta):''):ult?fmtD(ult):'nenhum',oeeMes!=null&&oeeMeta!=null?(oeeMes>=oeeMeta?'good':'bad'):''],
   ['Scrap no mês',fmtK(mesS),fmtP(mesG+mesS?mesS/(mesG+mesS):null,2)+' do processado',''],
   ['Pendências',String(pend.length),pend.length?'turnos e lançamentos':'nada pendente',pend.length?'bad':'good']];
- return{kpis,pend,serie,extra:{plan:!!plan,planTot,mesG,ordens:ords.length,emProd:emProd.map(o=>`${o.order} · lote ${o.lot||'–'}`),ult},oeePct:oeeMes,bruto:true};
+ return{kpis,pend,serie,serieTit:'Produção boa por dia · últimos 21 dias (peças)',extra:{plan:!!plan,planTot,mesG,ordens:ords.length,emProd:emProd.map(o=>`${o.order} · lote ${o.lot||'–'}`),ult},oeePct:oeeMes,bruto:true};
 }
 /* ----- Gel: saldo (já descontadas as retiradas parciais), validade e pendências vêm do exports do Gel; sem exports, dados brutos ----- */
 function adaptGel(d){const ex=d.exports;
  if(exV1(ex)&&ex.estoque&&Array.isArray(ex.kpis)){const pl=Array.isArray(ex.estoque.porLocal)?ex.estoque.porLocal:[];
   const serie=pl.slice().sort((a,b)=>b.kg-a.kg).slice(0,8).map(x=>({label:x.local||'sem local',value:+x.kg||0,key:x.local||''}));
-  return{kpis:ex.kpis,pend:pendDoModulo(ex,'gel'),serie,serieFmt:v=>fmtN(v)+' kg'}}
+  return{kpis:ex.kpis,pend:pendDoModulo(ex,'gel'),serie,serieTit:'Saldo de gel por local (kg)',serieFmt:v=>fmtN(v)+' kg'}}
  return adaptGelBruto(d)}
 function adaptGelBruto(d){
  const hoje=todayISO(),lim=addDays(hoje,CFGP().avisoDias||30),lps=(d.lps||[]).filter(l=>!l.closedAt);
@@ -841,7 +924,7 @@ function adaptGelBruto(d){
   [`Vencendo em ${CFGP().avisoDias||30} dias`,String(vencendo.length),venc.length?`${venc.length} já vencido(s)`:'nenhum vencido',venc.length?'bad':vencendo.length?'':'good'],
   ['Último relatório SAP',imp?fmtD(imp.slice(0,10)):'–',imp?fmtDT(imp).slice(11):'nenhuma importação',imp&&imp.slice(0,10)<addDays(hoje,-7)?'bad':'']];
  const serie=Object.entries(porLoc).sort((a,b)=>b[1]-a[1]).slice(0,8).map(([k,v])=>({label:k,value:v,key:k}));
- return{kpis,pend,serie,serieFmt:v=>fmtN(v)+' kg',bruto:true};
+ return{kpis,pend,serie,serieTit:'Saldo de gel por local (kg)',serieFmt:v=>fmtN(v)+' kg',bruto:true};
 }
 /* ----- Waste: tudo do exports (Waste 1.8.8 publica pendências e a última KKBC); base antiga sem pendências no exports: dados brutos ----- */
 function adaptPerdas(d){
@@ -862,12 +945,12 @@ function adaptPerdas(d){
   ['Críticas/altas sem causa',String(nSem),'comentar no detalhe da ordem',nSem?'bad':'good'],
   ['Ações vencidas',String(nVenc),imp?'última KKBC '+fmtD(imp.slice(0,10)):'nenhuma importação',nVenc?'bad':'good']];
  const serie=pm.slice(-6).map(p=>({label:fmtM(p.per)+(p.fechado===false?' (aberto)':''),value:p.liquido,key:p.per,color:p.liquido>0?'var(--crit)':'var(--ok)'}));
- return{kpis,pend,serie,serieFmt:v=>fmtR(v),bruto:!doExports};
+ return{kpis,pend,serie,serieTit:'Desvio líquido por mês (R$) · vermelho = perda, verde = ganho',serieFmt:v=>fmtR(v),bruto:!doExports};
 }
 /* série no exports: lista [{label,value,key}] ou {rotulo, pontos:[{x,y}]} (Paradas); x = 'AAAA-MM' vira mês */
 function serieDoModulo(s){if(Array.isArray(s))return s;if(s&&Array.isArray(s.pontos))return s.pontos.map(p=>({label:/^\d{4}-\d{2}$/.test(String(p.x))?fmtM(p.x):String(p.x),value:+p.y||0,key:String(p.x)}));return[]}
 function adaptGeneric(d){const ex=d.exports,ok=exV1(ex);return{kpis:ok&&ex.kpis?ex.kpis:[['Base','lida',fmtDT(d.updatedAt||d.revAt),'']],pend:ok?pendDoModulo(ex,undefined):[],serie:ok?serieDoModulo(ex.serie):[],bruto:!!ex&&!ok}}
-function adaptParadas(d){const r=adaptGeneric(d);const ex=d.exports;if(ex&&ex.serie&&!Array.isArray(ex.serie))r.serieFmt=v=>fmtN(v)+' min';return r}
+function adaptParadas(d){const r=adaptGeneric(d);const ex=d.exports;if(ex&&ex.serie&&!Array.isArray(ex.serie)){r.serieFmt=v=>fmtN(v)+' min';r.serieTit=(ex.serie.rotulo||'Minutos de parada por mês')+' (min)'}return r}
 
 /* ---------- telas ---------- */
 const App={tab:'geral',
@@ -888,7 +971,7 @@ function card(s){const x=MOD.data[s.id];const href=sysHref(s);
  if(!x||x.erro)return`<section class="mod off"><header><h2>${esc(s.nome)}</h2><span class="pill none">${s.futuro?'em construção':'sem dados'}</span></header><p class="muted small">${esc(x?x.erro:(Store.mode==='pasta'?'Lendo…':'Conecte a pasta da rede em Configuração para ver os números.'))}</p>${s.futuro?'':`<footer><a class="b sm" href="${esc(href)}">Abrir ${esc(s.nome)}</a></footer>`}</section>`;
  return`<section class="mod"><header><h2>${esc(s.nome)}</h2>${x.antigo?`<span class="pill warn" title="Base lida em ${esc(x.pasta)}/. Pasta única: mova o HTML e a base para a pasta principal (Configuração › Pasta única).">local antigo</span>`:''}${x.temExports&&!x.bruto?'':`<span class="pill none" title="${x.temExports?'O resumo (exports) deste módulo está numa versão que o Portal não conhece':'Este módulo ainda não publica o resumo (exports)'}; o Portal soma os dados brutos e os números podem diferir do módulo.">dados brutos</span>`}</header>${x.updatedAt?`<div class="small muted" style="margin-top:-6px">gravado em ${fmtDT(x.updatedAt)}${x.updatedBy?' por '+esc(x.updatedBy):''}</div>`:''}
  <div class="mk">${x.kpis.map(k=>`<div><div class="l">${esc(k[0])}</div><div class="v ${k[3]||''}">${esc(k[1])}</div><div class="s">${esc(k[2]||'')}</div></div>`).join('')}</div>
- ${x.serie&&x.serie.length?`<div>${barChart(x.serie,{h:150,fmt:x.serieFmt||fmtK,minW:320})}</div>`:''}
+ ${x.serie&&x.serie.length?miniChart(x.serie,{fmt:x.serieFmt||fmtK,tit:x.serieTit||''}):''}
  ${s.id==='oee'&&x.extra&&x.extra.emProd.length?`<div class="small"><b>Em produção:</b> ${x.extra.emProd.map(esc).join(' · ')}</div>`:''}
  <footer><a class="b sm p" href="${esc(href)}">Abrir ${esc(s.nome)}</a>${(QUICK[s.id]||[]).map(([l,h])=>`<a class="b sm" href="${esc(sysHref(s,h))}">${esc(l)}</a>`).join('')}${x.pend.length?`<button class="b sm" onclick="App.show('pend')">${x.pend.length} pendência${x.pend.length>1?'s':''}</button>`:''}</footer></section>`}
 function viewGeral(m){
@@ -2870,6 +2953,44 @@ function vacPrecoEm(material, data) { const c = typeof vacCad === 'function' ? v
 function vacMetaArea(codigo, data) { const c = typeof vacCad === 'function' ? vacCad() : null; const it = c && (c.metasArea || []).find(m => m.codigo === codigo && m.ativo !== false); const v = it ? vacVig(it.vigencias, data) : null; return v && v.valor != null ? { valor: +v.valor, alerta: v.alerta != null ? +v.alerta : null, unidade: it.unidade, sentido: it.sentido, periodo: it.periodo, de: v.de } : null; }
 /* link para uma tela do Portal (Administração) */
 function vacPortalHref(h) { const port = (typeof systems === 'function' ? systems() : []).find(s => s.id === 'portal') || { id: 'portal', html: 'Portal.html' }; return typeof sysHref === 'function' ? sysHref(port, h) : 'Portal.html#' + h; }
+/* kit v2.1 · vac-visual v1 (06/11/2026): abas numa linha só. Quando não cabem, a faixa rola na horizontal, com sombra e seta ‹ › na borda
+   que tem mais abas, e a aba ativa fica à vista. A Produção (abas agrupadas com menus, nav.vtabs.nav) não rola. CSS em fontes/kit/kit_visual.css. */
+(function () {
+  const marcar = () => {
+    const nav = document.querySelector('nav.vtabs:not(.nav)'); if (!nav) return; const t = nav.querySelector('.tabs'); if (!t) return;
+    const w = nav.querySelector('.wrap');
+    if (w && !w.querySelector('.vrola')) {
+      w.insertAdjacentHTML('beforeend', '<button type="button" class="vrola e" aria-label="Ver abas anteriores" tabindex="-1">‹</button><button type="button" class="vrola d" aria-label="Ver mais abas" tabindex="-1">›</button>');
+      w.querySelector('.vrola.e').onclick = () => { t.scrollLeft -= t.clientWidth * .7; };
+      w.querySelector('.vrola.d').onclick = () => { t.scrollLeft += t.clientWidth * .7; };
+      t.addEventListener('scroll', () => requestAnimationFrame(estado), { passive: true });
+    }
+    estado();
+  };
+  const estado = () => {
+    const nav = document.querySelector('nav.vtabs:not(.nav)'); const t = nav && nav.querySelector('.tabs'); if (!t) return;
+    const esq = t.scrollLeft > 2, dir = t.scrollLeft + t.clientWidth < t.scrollWidth - 2;
+    nav.toggleAttribute('data-mais-esq', esq); nav.toggleAttribute('data-mais-dir', dir);
+  };
+  const ativaVisivel = () => {
+    const t = document.querySelector('nav.vtabs:not(.nav) .tabs'); if (!t || t.scrollWidth <= t.clientWidth) return estado();
+    const on = t.querySelector('.on, [aria-selected="true"]'); if (!on) return estado();
+    const a = on.offsetLeft - t.offsetLeft, b = a + on.offsetWidth;
+    if (a < t.scrollLeft + 24) t.scrollLeft = Math.max(0, a - 40); else if (b > t.scrollLeft + t.clientWidth - 24) t.scrollLeft = b - t.clientWidth + 40;
+    estado();
+  };
+  window.vacAbasRolagem = () => { marcar(); ativaVisivel(); };
+  const ini = () => { marcar(); ativaVisivel(); const t = document.querySelector('nav.vtabs:not(.nav) .tabs'); if (t) { new MutationObserver(() => requestAnimationFrame(() => { marcar(); ativaVisivel(); })).observe(t, { subtree: true, childList: true, attributes: true, attributeFilter: ['class', 'aria-selected'] }); } };
+  window.addEventListener('resize', () => requestAnimationFrame(estado));
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', ini); else setTimeout(ini, 0);
+})();
+/* kit v2.1 · vac-visual v1: menu "Mais" (details.vmais) sempre dentro da tela. Abre alinhado à direita do botão; se não couber, alinha à esquerda */
+document.addEventListener('toggle', e => {
+  const d = e.target; if (!d || !d.classList || !d.classList.contains('vmais') || !d.open) return;
+  const l = d.querySelector('.vmais-l'); if (!l) return; l.style.left = ''; l.style.right = '';
+  const r = l.getBoundingClientRect(); if (r.left < 8) { l.style.right = 'auto'; l.style.left = '0'; }
+  const r2 = l.getBoundingClientRect(); if (r2.right > innerWidth - 8) l.style.left = (innerWidth - 8 - r2.width - d.getBoundingClientRect().left) + 'px';
+}, true);
 
 </script>
 </body>

@@ -118,3 +118,9 @@ Por ordem: MB51 (saldo, data principal) × COOIS (tipo, status, datas, fornecida
 
 - Um registro de catálogo com outra data só é reaproveitado no mapeamento inicial de catálogo local nunca sincronizado (sem `portalDe`, não criado pelo Portal, data fora das vigências desativadas). A vigência antiga mantém id, data e PPH (fica inativa); a nova ganha registro próprio. Campo novo `portalDe` (data da vigência do Portal que o registro representa).
 - Corrigido junto: ao criar a nova vigência, o id marcado como "usado" era o calculado (`cat_<código>`) e não o que o registro recebia de fato; com isso a vigência antiga escapava da desativação.
+
+## 15. Produção 2.4.5 (06/11/2026) · layout (vac-visual v1)
+
+- No card com estado (borda e ícone do semáforo), o valor usa a cor do estado. Antes, o OEE de 70,4% com meta de 72,3% tinha borda âmbar e número vermelho. Sem estado, abaixo da meta continua vermelho. Só CSS, sem mudar regra.
+- No modo exemplo, o aviso "Dados de demonstração carregados" deixa de aparecer: repetia o aviso do exemplo, e Remover não grava nada ali.
+- Padrão visual comum do kit, pelo `build.py`.

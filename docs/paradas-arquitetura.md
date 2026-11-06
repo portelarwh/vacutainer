@@ -121,3 +121,10 @@ O Excel de respostas (ID, Hora de início, Hora de conclusão, Email, Nome, as p
 ## 12. Paradas 1.0.7 (06/11/2026)
 
 - `eventosTodos`: um evento do OEE (`exports.paradasEventos`, quando o OEE publicar) substitui só o evento que é a mesma parada (D1): mesmo dia e equipamento, turno igual quando os dois têm, início a até 10 min (sem horário: duração a até 1 min); cada evento do OEE substitui no máximo um; contagem de microparadas (tally) nunca é substituída. Antes, qualquer evento do OEE no dia escondia todos os do Forms do dia.
+
+## 13. Paradas 1.0.8 (06/11/2026) · layout (vac-visual v1)
+
+- **Tema e chaves comuns:** `vac.theme`, `vac.user`, `vac.userId`, `vac.perfil` e `vac.logo` são lidos e gravados como texto simples, como nas outras páginas. O formato antigo, com aspas, também é lido. Antes, o Paradas voltava ao claro vindo de uma página escura, gravava o tema com aspas (as outras páginas não reconheciam) e não lia o usuário nem a logo do Portal. As preferências próprias continuam em JSON.
+- **Cores:** paleta comum (Portal, Produção, Waste), com `color-scheme: dark` no escuro para os campos de data. O botão principal usa `--accent-ink`. As cores de classe (`--g0`…`--g9`) não mudaram.
+- **Status:** "modo de teste" em roxo; "Só neste navegador · conectar pasta" com pílula de atenção, e não mais vermelha cheia.
+- **Gráfico por mês:** uma unidade só para a escala inteira (h, se o máximo passar de 600 min). Antes, o eixo misturava "300 min" e "12,5 h". A dica mantém o valor exato.
