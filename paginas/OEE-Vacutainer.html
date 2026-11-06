@@ -683,7 +683,7 @@ const U = (() => {
 
 /* ---- 02-model.js ---- */
 /* ================= modelo de dados, valores iniciais e integridade ================= */
-const APP_VERSION = '2.4.2';
+const APP_VERSION = '2.4.3';
 const SCHEMA_VERSION = 1;
 const BASE_FILE = 'oee-vacutainer-base.json';
 const BACKUP_DIR = '00. Backups';
@@ -1738,11 +1738,15 @@ const Store = (() => {
         // resumo para Portal, Gel e Perdas: falha aqui nunca impede a gravação
         if (typeof Exports !== 'undefined') { try { next.exports = Exports.build(S.db); S.db.exports = next.exports; } catch (e) { console.warn('exports', e); } }
         next.databaseVersion = (extV || 0) + 1;
+        next.saveId = U.uid('sv');   // 2.4.3 · identidade desta gravação
         next.lastModifiedAt = U.nowIso(); next.lastModifiedBy = S.user || 'Sem nome'; next.applicationVersion = APP_VERSION; next.appVersion = APP_VERSION;
         const text = serialize(next);
         await S.backend.write(text);
         const check = await readExternal();
         if (!check || check.db.databaseVersion !== next.databaseVersion) throw new Error('A gravação não foi confirmada na releitura do arquivo.');
+        if (check.db.saveId !== next.saveId) {   // outra pessoa gravou a mesma versão ao mesmo tempo: continua pendente e reaplica sobre a versão dela
+          await savePending(); setStatus('pendente', 'Outra pessoa gravou ao mesmo tempo: suas alterações serão reaplicadas sobre a versão dela.'); flushSoon(); return;
+        }
         S.db.databaseVersion = next.databaseVersion; S.db.lastModifiedAt = next.lastModifiedAt; S.db.lastModifiedBy = next.lastModifiedBy;
         S.baseVersion = next.databaseVersion; S._needBackup = [];
         S.lastSavedAt = U.nowIso(); S.lastReadAt = S.lastSavedAt;
@@ -1792,7 +1796,7 @@ const Store = (() => {
   // cadastro base do Portal na mesma pasta: guarda o documento e aplica na base quando a revisão muda (CadSync, Produção 2.4)
   async function readCadastro() {
     if (!S.backend || !S.backend.readSibling) { S.cadastro = null; return null; }
-    try { const t = await S.backend.readSibling('vacutainer-cadastros.json'); if (!t) { S.cadastro = null; return null; } const c = JSON.parse(t); S.cadastro = c && c.schema === 'vac-cadastros' ? { rev: c.rev, revAt: c.revAt, revBy: c.revBy } : null; S.cadDoc = S.cadastro ? c : null; if (S.cadDoc && typeof CadSync !== 'undefined') setTimeout(() => CadSync.talvez(), 0); }
+    try { const t = await S.backend.readSibling('vacutainer-cadastros.json'); if (!t) { S.cadastro = null; S.cadDocAusente = !!S.cadDoc; return null; } const c = JSON.parse(t); S.cadastro = c && c.schema === 'vac-cadastros' ? { rev: c.rev, revAt: c.revAt, revBy: c.revBy } : null; S.cadDoc = S.cadastro ? c : null; S.cadDocAusente = false; if (S.cadDoc && typeof CadSync !== 'undefined') setTimeout(() => CadSync.talvez(), 0); }
     catch (e) { S.cadastro = null; }
     emit('status'); return S.cadastro;
   }
@@ -8311,16 +8315,19 @@ const OrdensSAP = (() => {
     if (c && d) s = s.lastIndexOf(',') > s.lastIndexOf('.') ? s.replace(/\./g, '').replace(',', '.') : s.replace(/,/g, '');
     else if (c) s = c > 1 ? s.replace(/,/g, '') : s.replace(',', '.');
     else if (d > 1 || /^\d{1,3}\.\d{3}$/.test(s)) s = s.replace(/\./g, '');
+    if (!/^(\d+\.?\d*|\.\d+)$/.test(s)) return null;   // 2.4.3 · só aceita o número inteiro ("123abc" não vira 123)
     const x = parseFloat(s); return isFinite(x) ? (neg ? -x : x) : null;
   }
   const pad = n => String(n).padStart(2, '0');
+  /* 2.4.3 · data que não existe no calendário (31.02.2026) é recusada */
+  const valida = (a, m, d) => { const x = new Date(Date.UTC(a, m - 1, d)); return x.getUTCFullYear() === a && x.getUTCMonth() === m - 1 && x.getUTCDate() === d ? `${a}-${pad(m)}-${pad(d)}` : null; };
   function data(v) {
     if (v == null || v === '') return null;
     if (v instanceof Date && !isNaN(v)) return `${v.getFullYear()}-${pad(v.getMonth() + 1)}-${pad(v.getDate())}`;
     if (typeof v === 'number' && v > 20000 && v < 80000) { const d = new Date(Math.round((v - 25569) * 864e5)); return `${d.getUTCFullYear()}-${pad(d.getUTCMonth() + 1)}-${pad(d.getUTCDate())}`; }
     const s = String(v).trim(); let m;
-    if ((m = s.match(/^(\d{4})-(\d{2})-(\d{2})/))) return `${m[1]}-${m[2]}-${m[3]}`;
-    if ((m = s.match(/^(\d{1,2})[./-](\d{1,2})[./-](\d{4})/))) return `${m[3]}-${pad(m[2])}-${pad(m[1])}`;
+    if ((m = s.match(/^(\d{4})-(\d{2})-(\d{2})/))) return valida(+m[1], +m[2], +m[3]);
+    if ((m = s.match(/^(\d{1,2})[./-](\d{1,2})[./-](\d{4})/))) return valida(+m[3], +m[2], +m[1]);
     return null;
   }
   function hora(v) { if (v == null || v === '') return ''; if (typeof v === 'number' && v < 1) { const s = Math.round(v * 86400); return `${pad(Math.floor(s / 3600))}:${pad(Math.floor(s / 60) % 60)}:${pad(s % 60)}`; } if (v instanceof Date) return `${pad(v.getHours())}:${pad(v.getMinutes())}:${pad(v.getSeconds())}`; return String(v).trim(); }
@@ -8989,7 +8996,7 @@ function ordSapCel(o) {
 }
 document.addEventListener('click', e => { const x = e.target.closest('[data-oord2]'); if (!x) return; const I = ordIndice(), v = I && I.get(x.dataset.oord2); if (v) { Ord.comp = v.comp; ordFicha(x.dataset.oord2); } });
 
-/* ===== Produção 2.4.1 · cadastro geral do Portal (vacutainer-cadastros.json) =====
+/* ===== Produção 2.4.1 (2.4.3: desativações do Portal propagadas) · cadastro geral do Portal (vacutainer-cadastros.json) =====
    O Portal é o dono de: linhas, famílias, máquinas (equipamentos), catálogos (tubos), turnos (pausas, intervalos do Hora a Hora),
    tipos de parada, metas de OEE e parâmetros comuns (parada longa, semáforo, motivos de abono e de "sem produção").
    Quando a revisão do cadastro muda, a Produção copia esses dados para a própria base numa alteração só (com auditoria),
@@ -9048,6 +9055,9 @@ const CadSync = (() => {
         const p = { code: c.codigo, name: c.nome || c.codigo, familyId: famId(c.familia), lineId: lineId(c.linha), pph: v.pphNominal != null ? +v.pphNominal : (o ? o.pph : null), color: c.cor || (o && o.color) || null, validFrom: v.de, validTo: v.ate || null, active: c.ativo !== false };
         if (o) { usados.add(o.id); upd(o, p, 'catálogo', 'catalogos'); } else { const id = 'cat_' + c.codigo + (k && ex.some(x => x.id === 'cat_' + c.codigo) ? '_' + v.de : ''); usados.add(id); add(d.catalogs, { id: d.catalogs.some(x => x.id === id) ? U.uid('cat') : id, machineId: null, note: 'Origem: cadastro do Portal', ...p, ...novo() }, 'catálogo', 'catalogos'); }
       });
+      /* 2.4.3 · vigência desativada no Portal (não está mais nas vigências válidas): fica inativa aqui. Não é apagada:
+         os registros antigos continuam achando o catálogo pelo id. Só quando o Portal tem vigências (válidas ou desativadas) */
+      if (vs.length || (c.vigenciasDesativadas || []).length) for (const x of ex) if (!usados.has(x.id) && x.active !== false) upd(x, { active: false }, 'catálogo', 'catalogos');
     }
     const catId = (cod, data) => { if (!cod) return null; const L = live(d.catalogs).filter(x => x.code === cod); return (L.find(x => (!data || (x.validFrom || '') <= data) && (!x.validTo || !data || x.validTo >= data)) || L[0] || {}).id || null; };
     /* tipos de parada */
@@ -9063,7 +9073,7 @@ const CadSync = (() => {
     for (const t of (C.turnos || []).filter(x => x && x.codigo)) {
       let o = live(d.shifts).find(x => x.code === t.codigo);
       const versoes = (t.vigencias || []).slice().sort((a, b) => a.de < b.de ? -1 : 1).map(v => ({ v, p: {
-        validFrom: v.de, validTo: v.ate || null, start: v.inicio, end: v.fim, weekdays: (v.dias || []).slice(), color: t.cor || null, active: v.ativo !== false,
+        validFrom: v.de, validTo: v.ate || null, start: v.inicio, end: v.fim, weekdays: (v.dias || []).slice(), color: t.cor || null, active: v.ativo !== false && t.ativo !== false,   /* 2.4.3 · turno inativo no Portal = vigências inativas */
         breaks: (v.pausas || []).map(x => ({ label: x.nome || (x.codigo || 'Pausa'), start: x.inicio || '', end: x.fim || '', minutes: x.inicio && x.fim ? null : (+x.duracaoMin || null), weekdays: (x.dias || []).slice(), deducts: x.desconta !== false, codeId: dcId(x.codigo) })),
         tailMergeMax: v.regraPedacoFinal != null && v.regraPedacoFinal !== '' ? +v.regraPedacoFinal : null,
         template: (v.intervalos || []).length ? v.intervalos.map(x => ({ start: x.inicio, end: x.fim })) : null } }));
@@ -9079,8 +9089,9 @@ const CadSync = (() => {
       if (n) { o.updatedAt = now; o.updatedBy = by; R.turnos++; }
     }
     /* metas de OEE: o Portal manda quando tem pelo menos uma */
+    /* 2.4.3 · o Portal manda quando tem metas cadastradas, mesmo todas inativas (antes, desativar a última mantinha a cópia local) */
     const metas = (C.metasOee || []).filter(m => m && m.ativo !== false);
-    if (metas.length) {
+    if ((C.metasOee || []).some(m => m && m.codigo)) {
       const toq = new Set();
       for (const m of metas) for (const v of (m.vigencias || [])) {
         const sc = { lineId: lineId(m.linha), machineId: macId(m.equipamento), familyId: famId(m.familia), catalogId: catId(m.catalogo, v.de) };
@@ -9121,7 +9132,7 @@ const CadSync = (() => {
   function portalHref(h) { const port = (typeof systems === 'function' ? systems() : []).find(s => s.id === 'portal') || { id: 'portal', html: 'Portal.html' }; return typeof sysHref === 'function' ? sysHref(port, h) : 'Portal.html#' + h; }
   function banner(sec) {
     const D = dominios(), C = doc(), s = (db().settings || {}).cadSync; if (!D[sec]) return '';
-    return `<div class="banner info" style="margin-bottom:10px"><p><b>Vem do cadastro do Portal</b> ${ib('cadPortal')} · rev ${esc(C.rev)}${s && s.em ? ` · aplicado em ${U.brDT(s.em)}` : ''}. Aqui fica só para consulta.
+    return `<div class="banner info" style="margin-bottom:10px"><p><b>Vem do cadastro do Portal</b> ${ib('cadPortal')} · rev ${esc(C.rev)}${Store.S.cadDocAusente ? ' · <b class="bad">o vacutainer-cadastros.json não foi achado na última leitura da pasta: vale a última cópia lida</b>' : ''}${s && s.em ? ` · aplicado em ${U.brDT(s.em)}` : ''}. Aqui fica só para consulta.
       <a class="btn sm primary" href="${esc(portalHref('cadastros/' + SEC_PORTAL[sec]))}" data-keep="1">Editar no Portal ↗</a>${sec === 'metas' ? `<br><span class="small">A Meta OEE FY27 (planilha OEE-Vacutainer_v2.xlsm) é importada no Portal: <a href="${esc(portalHref('cadastros/importar/metaoee'))}" data-keep="1">Cadastros › Importar › Meta OEE FY27 ↗</a>. As metas e o quadro hora a hora chegam aqui pelo cadastro.</span>` : ''}${pend() ? ' <button class="btn sm" data-keep="1" id="csNow">Aplicar a revisão nova agora</button>' : ''}</p></div>`;
   }
   /* trava a edição da seção que vem do Portal (botões de criar/editar/salvar e campos de formulário) */

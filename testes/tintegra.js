@@ -1,5 +1,5 @@
 // Portal 1.8.3 · os números do Portal são os do exports de cada página (auditoria A01–A04, A06)
-// node testes/tintegra.js  → imprime as conferências e "sem erros"
+// node testes/tintegra.js  → imprime as conferências e "sem erros"; sai com código 1 se alguma falhar
 const SP=require('path').resolve(__dirname,'..')+'/';const S='file://'+SP+'paginas/';
 const {chromium}=require('playwright');
 (async()=>{const b=await chromium.launch();const ctx=await b.newContext({viewport:{width:1440,height:1000}});const errs=[];
@@ -94,4 +94,4 @@ ok(c.disco1==='outra pessoa'&&!c.pend2&&c.dl1.some(n=>/_NAO-GRAVADO_/.test(n)),`
 ok(c.disco2==='minha 2'&&!c.pend3,'sem conflito: a alteração pendente é gravada na sincronização');
 ok(c.c1==='um'&&c.c2==='dois'&&!c.pend4,'pendente + nova alteração: as duas chegam na pasta (antes a pendente era descartada)');
 await p.screenshot({path:SP+'testes/saida/tintegra.png'});
-console.log(errs.join('\n')||'sem erros');await b.close()})();
+console.log(errs.join('\n')||'sem erros');await b.close();if(errs.length)process.exitCode=1})();

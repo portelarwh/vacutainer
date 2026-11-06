@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Gestão de Gel · Linha Vacutainer · V1.96</title>
+<title>Gestão de Gel · Linha Vacutainer · V1.97</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600&family=Barlow+Condensed:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
@@ -599,7 +599,7 @@ nav.vtabs .tabs{margin-top:0;border-bottom:0}
   <button type="button" class="vic" id="btnTheme" title="Tema claro, escuro ou automático" aria-label="Alternar tema">◐</button>
 </div></header>
 <div class="vpage"><div class="wrap">
-  <h1 id="vacTitulo">Gel</h1><span class="rule" id="vacSub">FIFO, consumo, scrap e saving</span><span class="ver" id="appVer" title="Versões das páginas">v1.96</span>
+  <h1 id="vacTitulo">Gel</h1><span class="rule" id="vacSub">FIFO, consumo, scrap e saving</span><span class="ver" id="appVer" title="Versões das páginas">v1.97</span>
   <span id="stBase"></span><span class="sp"></span>
   <span class="vacts"><button class="btn sm primary" id="btnImport">Importar relatório</button><button class="btn sm" id="btnSend">Enviar relatório</button><button class="btn sm" id="btnPdf">Fichas e relatórios</button><button class="btn sm" id="btnSync" title="Gravar pendências e reler a base">↻ Sincronizar</button><button class="btn sm" id="btnBackup" title="Criar backup agora">⛁ Backup</button><span class="tvmenu" id="tvMenu"><button class="btn sm" id="btnTV" title="Modo TV" aria-haspopup="true" aria-expanded="false">▣ TV ▾</button><span class="tvdrop" role="menu">
         <button type="button" role="menuitem" data-tvkind="linha"><b>Linha · Liderança</b><small>Resumo, produção × plano, OEE, PCP, índice de uso, scrap e hoje</small></button>
@@ -975,7 +975,10 @@ async function fsFlush(){
       await fsWriteBase(snapshotData());
       // confere: se outra gravação entrou logo depois desta, grava de novo (até 3 vezes) para não perder as alterações
       const fh=await FS.base.getFileHandle(BASE_FILE);const hd=await fsReadHead(fh);
-      if(hd&&hd.rev!=null&&(hd.rev!==FS.rev||hd.by!==FS_WRITER)&&++tries<3){fsLog('Gravação simultânea (rev '+hd.rev+'): reaplicando as alterações');FS.mod=0;FS.again=true;continue}
+      if(hd&&hd.rev!=null&&(hd.rev!==FS.rev||hd.by!==FS_WRITER)){
+        if(++tries<3){fsLog('Gravação simultânea (rev '+hd.rev+'): reaplicando as alterações');FS.mod=0;FS.again=true;continue}
+        // 1.97 · esgotou as tentativas sem confirmar: as alterações continuam na fila (nunca são dadas como gravadas); nova tentativa em 30 s
+        FS.mod=0;throw new Error('Gravação simultânea com outra pessoa: as alterações continuam guardadas neste computador e serão gravadas de novo.')}
       FS.pending.splice(0,chs.length);FS.err='';await fsPendSave();localBackend.save()}while(FS.again||FS.pending.length);
     if(hadErr)toast('Alterações pendentes gravadas na pasta da rede.')}
   catch(e){console.warn(e);FS.err=String(e.message||e);await fsPendSave();if(!hadErr)toast(`Não consegui gravar na pasta da rede. ${FS.pending.length} alteração(ões) ficaram guardadas neste computador e serão gravadas automaticamente quando a pasta responder.`)}
@@ -986,7 +989,7 @@ const fileBackend={kind:'file',async commit(ch){applyLocal(ch);FS.pending.push(c
 async function fsRefresh(){if(S.mode!=='file'||FS.busy||ui.demo)return;try{const cur=await fsReadBase(fsKnown());if(cur&&!cur.same){FS.mod=cur.mod;FS.rev=cur.rev;FS.revBy=cur.by;loadData(cur.data);FS.pending.forEach(applyLocal);localBackend.save();render()}}catch(e){}}
 /* ================= V1.89 · integração com as outras páginas (Portal, OEE, Perdas) ================= */
 // versão da página (topo, Guia e base gravada)
-const APP_VERSION='1.96';
+const APP_VERSION='1.97';
 const FS_WRITER=Math.random().toString(36).slice(2,10);
 // ordem → página de Perdas (#ordem=); sem caminho conhecido, abre o resumo da ordem aqui
 const perdasUrl=wo=>{const pe=systems().find(x=>x.id==='perdas');return pe?sysHref(pe,'ordem='+encodeURIComponent(wo)):null};

@@ -710,6 +710,8 @@ function wireConfigComum(){$('#cPasta').onclick=async()=>{if(await Store.pick())
    com o aviso "base em local antigo". Prefere o bloco "exports" de cada base.
    1.1: aba Cadastros, dona do vacutainer-cadastros.json (única que grava nele).
    1.1.1: página do Gel = Gestão-Gel-Vacutainer.html (aceita o nome antigo controle-fifo-gel.html).
+   1.8.5: resposta ao diagnóstico de 06/11/2026: pendências por data reavaliadas na virada do dia (cache por dia); exports em versão desconhecida não alimenta nenhum número;
+          Versões das páginas reconhece databaseVersion/lastModifiedAt/lastModifiedBy da Produção.
    1.8.4: Waste: pendências (ações vencidas, críticas/altas sem causa) e última KKBC vêm do exports do Waste 1.8.8; pendência com aPartirDe só vale a partir desse dia.
    1.8.3: Visão geral lê o exports de cada módulo (números, pendências e séries iguais aos da página de origem; "dados brutos" só sem exports):
           Gel com saldo já descontadas as retiradas parciais; OEE pelo motor do OEE; série do Paradas (minutos por mês); Waste marca o mês aberto como provisório.
@@ -735,7 +737,7 @@ function wireConfigComum(){$('#cPasta').onclick=async()=>{if(await Store.pick())
         entrar pelo ID (autocadastro como Consulta); página inicial por perfil (1x por sessão); vigência gravada não se edita (desativar com motivo); painel de vigências; semáforo central; saída do modo de teste.
    1.1.2: aviso da carga diz qual base foi lida.  1.5: páginas Paradas, Máquinas, Manutenção e Projetos na lista (aparecem quando o HTML chega na pasta).  1.4: lista técnica pela CS12 multinível (itens = nível 1, estrutura = níveis 2+); CS03 sai.  1.3: cabeçalho comum (vac-cabecalho v2: barra do sistema + página + abas), busca Ctrl K, acabamento V1.90, Versões com cabeçalho e último backup.  1.2: Configuração › Versões das páginas (versão e data de cada HTML, gravação das bases, cópias repetidas, histórico).
    ===================================================================== */
-const PAGE={id:'portal',titulo:'Portal · Linha Vacutainer',tituloCurto:'Portal',subtitulo:'Sistemas de gestão da linha',versao:'1.8.4',baseFile:'portal-base.json',idb:'vac-portal',backupDir:'00. Backups/Portal',
+const PAGE={id:'portal',titulo:'Portal · Linha Vacutainer',tituloCurto:'Portal',subtitulo:'Sistemas de gestão da linha',versao:'1.8.5',baseFile:'portal-base.json',idb:'vac-portal',backupDir:'00. Backups/Portal',
  vazio:()=>({schema:'portal-base',rev:0,config:{modulos:{},avisoDias:30,notas:{}},audit:[]}),
  /* itens do Portal para a busca Ctrl K: cadastro, pendências e telas */
  busca:q=>{const R=[],D=Cad.D;if(D)for(const t of CAD_ORD){for(const it of D[t]||[]){const c=String(it[kOf(t)]),nm=t==='bom'?((cadItem('catalogos',it.catalogo)||{}).nome||''):it.nome||'';if(norm(c+' '+nm).includes(q))R.push({tipo:CAD_T[t].um,txt:c+(nm?' · '+nm:''),sub:'Cadastros'+(cadAtivo(t,it,D)?'':' · inativo'),href:'#cadastros/'+t+'/'+encodeURIComponent(c)});if(R.length>30)break}}
@@ -772,13 +774,13 @@ async function readModules(force){
     const loc=await findModule(s);if(!loc){MOD.data[s.id]={sys:s,erro:s.futuro?'Página ainda não criada (o HTML não está na pasta).':'Não encontrei '+s.base+' na pasta do Portal nem nas subpastas.'};continue}
     if(loc.html&&loc.html!==s.html)saveSysPath(s.id,loc.html);
     const f=await (await loc.dir.getFileHandle(s.base)).getFile();
-    if(!force&&MOD.files[s.id]&&MOD.files[s.id].mod===f.lastModified&&MOD.files[s.id].pasta===loc.pasta&&MOD.data[s.id]&&!MOD.data[s.id].erro)continue;
-    const d=JSON.parse(await f.text());MOD.files[s.id]={mod:f.lastModified,size:f.size,pasta:loc.pasta,antigo:loc.antigo};
+    if(!force&&MOD.files[s.id]&&MOD.files[s.id].mod===f.lastModified&&MOD.files[s.id].pasta===loc.pasta&&MOD.files[s.id].dia===todayISO()&&MOD.data[s.id]&&!MOD.data[s.id].erro)continue;
+    const d=JSON.parse(await f.text());MOD.files[s.id]={mod:f.lastModified,size:f.size,pasta:loc.pasta,antigo:loc.antigo,dia:todayISO()};
     MOD.data[s.id]=adapt(s,d,f.lastModified);MOD.data[s.id].antigo=loc.antigo;MOD.data[s.id].pasta=loc.pasta}
    catch(e){console.warn(s.id,e);MOD.data[s.id]={sys:s,erro:'Erro ao ler '+s.base+': '+(e.message||e)}}}}
  finally{MOD.busy=false;MOD.at=Date.now()}}
 function saveSysPath(id,html){const list=systems().map(x=>x.id===id?{...x,html}:x);localStorage.setItem('vac.sistemas',JSON.stringify(list))}
-function adapt(s,d,mod){const f={oee:adaptOEE,gel:adaptGel,perdas:adaptPerdas,paradas:adaptParadas}[s.id]||adaptGeneric;const r=f(d);r.ex=d.exports||null;if(s.id==='paradas'&&d.exports&&d.exports.cadastros)r.cadProp=d.exports.cadastros;r.sys=s;(r.pend||[]).forEach(p=>{if(!p.mod)p.mod=s.id});r.mod=mod;r.updatedAt=d.updatedAt||d.savedAt||d.lastSavedAt||null;r.updatedBy=d.updatedBy||d.savedBy||'';r.temExports=!!d.exports;return r}
+function adapt(s,d,mod){const f={oee:adaptOEE,gel:adaptGel,perdas:adaptPerdas,paradas:adaptParadas}[s.id]||adaptGeneric;const r=f(d);r.ex=exV1(d.exports)?d.exports:null;if(s.id==='paradas'&&exV1(d.exports)&&d.exports.cadastros)r.cadProp=d.exports.cadastros;r.sys=s;(r.pend||[]).forEach(p=>{if(!p.mod)p.mod=s.id});r.mod=mod;r.updatedAt=d.updatedAt||d.savedAt||d.lastSavedAt||d.lastModifiedAt||null;r.updatedBy=d.updatedBy||d.savedBy||d.lastModifiedBy||'';r.temExports=!!d.exports;return r}
 /* ----- severidade: no exports das páginas (exportsVersion 1) sev 1 = urgente, 2 = atenção.
    Dentro do Portal a escala é 2 = urgente, 1 = atenção: converte aqui, na entrada (Portal 1.8.3). ----- */
 const sevDoModulo=s=>+s===1?2:1;
@@ -806,7 +808,7 @@ function adaptOEEBruto(d){
  for(const x of days)for(const ps of x.shifts||[]){if(ps.status==='pendente de conferência')pend.push({sev:1,mod:'oee',txt:`Turno ${ps.snap&&ps.snap.name||''} de ${fmtD(x.date)} aguardando conferência`,link:'',quando:x.date})}
  for(const x of days)if(x.date<hoje&&(x.status==='em lançamento'||x.status==='não iniciado')&&!off.has(x.date))pend.push({sev:x.date<addDays(hoje,-2)?2:1,mod:'oee',txt:`Lançamento de ${fmtD(x.date)} ainda aberto (${x.status})`,quando:x.date});
  const ords=plan&&plan.orders||[];const emProd=ords.filter(o=>o.startReal&&!o.endReal);
- const ex=d.exports||null;let oeeMes=null,oeeMeta=null;
+ const ex=exV1(d.exports)?d.exports:null;let oeeMes=null,oeeMeta=null;
  if(ex&&ex.porMes){const m=(ex.porMes||[]).find(p=>(p.mes||p.per||p.month)===mes);if(m){oeeMes=m.oee;oeeMeta=m.oeeMeta??m.oeeTarget}}
  const serie=datas.filter(dt=>dt>=addDays(hoje,-20)&&dt<=hoje).map(dt=>({label:dt.slice(8,10)+'/'+dt.slice(5,7),value:byDate[dt].g,key:dt}));
  const kpis=[
@@ -839,8 +841,8 @@ function adaptGelBruto(d){
 }
 /* ----- Waste: tudo do exports (Waste 1.8.8 publica pendências e a última KKBC); base antiga sem pendências no exports: dados brutos ----- */
 function adaptPerdas(d){
- const ex=d.exports||{};const pm=ex.porMes||[];const mes=curM();const m=pm.find(p=>p.per===mes)||pm[pm.length-1]||null;
- const doExports=exV1(d.exports)&&Array.isArray(ex.pendencias);let pend,nVenc,nSem,imp;
+ const ex=exV1(d.exports)?d.exports:{};const pm=ex.porMes||[];const mes=curM();const m=pm.find(p=>p.per===mes)||pm[pm.length-1]||null;
+ const doExports=Array.isArray(ex.pendencias);let pend,nVenc,nSem,imp;
  if(doExports){const P=pendDoModulo(ex,'perdas');const sc=P.filter(p=>p.tipo==='semCausa');nVenc=P.filter(p=>p.tipo==='acaoVencida').length;nSem=sc.length;
   pend=P.filter(p=>p.tipo!=='semCausa').concat(sc.slice(0,15));imp=ex.ultimaImportacao||null}
  else{const hoje=todayISO(),done=['concluída','encerrada eficaz','encerrada sem eficácia','cancelada','eficácia em acompanhamento'];
@@ -947,7 +949,7 @@ const vNorm=v=>String(v??'').replace(/^(portal|oee|gel|perdas|gest[aã]o de gel)
 const Vers={dados:null,busy:false,cache:{},
  nomes(s){const def=DEFAULT_SYSTEMS.find(x=>x.id===s.id)||{};return[...new Set([def.html,String(s.html||'').split('/').pop(),...(def.alt||[])].filter(Boolean))]},
  async info(h,key,fn){const f=await h.getFile();const c=this.cache[key];if(c&&c.mod===f.lastModified&&c.size===f.size)return c;const r={mod:f.lastModified,size:f.size,...fn(await f.text())};this.cache[key]=r;return r},
- baseInfo(t){try{const d=JSON.parse(t),ex=d.exports;return{rev:d.rev??null,app:d.appVersion||(ex&&ex.appVersion)||null,em:d.updatedAt||d.revAt||d.savedAt||d.lastSavedAt||null,por:d.updatedBy||d.revBy||d.savedBy||'',exp:!!ex,expEm:ex&&ex.geradoEm||null,expV:ex?(ex.exportsVersion??null):null}}catch(e){return{erro:'JSON inválido'}}},
+ baseInfo(t){try{const d=JSON.parse(t),ex=d.exports;return{rev:d.rev??d.databaseVersion??null,app:d.appVersion||d.applicationVersion||(ex&&ex.appVersion)||null,em:d.updatedAt||d.revAt||d.savedAt||d.lastSavedAt||d.lastModifiedAt||null,por:d.updatedBy||d.revBy||d.savedBy||d.lastModifiedBy||'',exp:!!ex,expEm:ex&&ex.geradoEm||null,expV:ex?(ex.exportsVersion??null):null}}catch(e){return{erro:'JSON inválido'}}},
  scan(){if(Store.mode!=='pasta'||!Store.dir)return Promise.resolve(null);if(this._p)return this._p;this._p=this._scan().finally(()=>{this._p=null});return this._p},
  async _scan(){this.busy=true;
   try{const pastas=[['',Store.dir]];for await(const[n,h]of Store.dir.entries())if(h.kind==='directory'&&!/^00\. |^lib$|^Equipamentos$/i.test(n))pastas.push([n,h]);
@@ -2789,9 +2791,9 @@ const emEdicao=()=>{const a=document.activeElement;return!!(a&&/^(INPUT|TEXTAREA
  if(location.hash==='#tv')App.tv();else if(h0)cadRota();
  window.addEventListener('hashchange',()=>{if(location.hash==='#tv'){if(!TV.on)App.tv()}else cadRota()});
  document.addEventListener('visibilitychange',async()=>{if(document.hidden||Store.mode!=='pasta')return;const fm=JSON.stringify(Object.values(MOD.files).map(f=>f.mod));await readModules(false);if(fm!==JSON.stringify(Object.values(MOD.files).map(f=>f.mod))&&App.tab!=='cad'&&!emEdicao()&&!$('.modal.on'))App.render();const cc=await Cad.ler();if(cc){if(Ficha.aberta()&&!Ficha.dirty)Ficha.recarregar();if(App.tab==='cad'&&!emEdicao())App.render()}});
- setInterval(async()=>{if(document.hidden||Store.mode!=='pasta')return;const ch=await Store.sync(true);const before=JSON.stringify(Object.values(MOD.files).map(f=>f.mod+'|'+f.pasta));await readModules(false);const cc=await Cad.ler();if((Vers._n=(Vers._n||0)+1)%5===0)await Vers.scan();
+ setInterval(async()=>{if(document.hidden||Store.mode!=='pasta')return;const ch=await Store.sync(true);const before=JSON.stringify(Object.values(MOD.files).map(f=>f.mod+'|'+f.pasta+'|'+f.dia));await readModules(false);const cc=await Cad.ler();if((Vers._n=(Vers._n||0)+1)%5===0)await Vers.scan();
   if(Cad.fila.length&&!Cad.gravando&&Cad.status!=='conflito')Cad.gravar();if(cc&&Ficha.aberta()&&!Ficha.dirty)Ficha.recarregar();
-  if((ch||cc||JSON.stringify(Object.values(MOD.files).map(f=>f.mod+'|'+f.pasta))!==before)&&!$('.modal.on')&&!TV.on&&!emEdicao())App.render()},60000)})();
+  if((ch||cc||JSON.stringify(Object.values(MOD.files).map(f=>f.mod+'|'+f.pasta+'|'+f.dia))!==before)&&!$('.modal.on')&&!TV.on&&!emEdicao())App.render()},60000)})();
 
 </script>
 <script>

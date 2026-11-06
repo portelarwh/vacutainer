@@ -65,3 +65,7 @@ Mudanças aditivas; tudo da 1.7.3 preservado (importação KKBC_ORD nos dois lay
   - Ação aberta com prazo: `{sev:1, tipo:'acaoVencida', aPartirDe:<dia seguinte ao prazo>, quando:<prazo>, txt, link}`. Publicada antes de vencer, com `aPartirDe`, porque o `exports` só é recalculado quando alguém grava: assim a ação vence no Portal no dia certo mesmo sem gravação nova.
   - Ordem crítica/alta sem causa: `{sev: crítica 1 · alta 2, tipo:'semCausa', txt, link:'ordem=…'}`.
 - O Portal 1.8.4 deixa de ler `actions` e `imports` da base do Waste (regra 1).
+
+## Waste 1.8.9 (06/11/2026) · consumo de gel sem o scrap
+
+- Detalhe da ordem › Gel: consumo e scrap lidos pelos nomes do contrato (`exports.ordens[].consumoKg` / `scrapKg`). A busca por nome de campo fica só para base do Gel sem `exports` e nunca soma campos de scrap no consumo (antes `scrapKg` entrava em "kg": 100 + 5 = 105).
