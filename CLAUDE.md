@@ -67,7 +67,26 @@ Ao terminar uma entrega, atualizar o doc da página (seção nova com a versão 
 
 ## Pendências conhecidas
 
+Lista única do que ficou para depois. O motivo e o gatilho de cada item estão no `docs/auditorias/registro-decisoes.md` (seção indicada). Ao resolver um item, tirar daqui e marcar no registro.
+
+**Funcionalidade e integração**
 - Calendário de produção no Portal.
-- Gel lendo catálogos e equipamentos do Portal.
-- Conferência com a pasta real (primeira abertura: ver o aviso do CadSync na Produção).
-- `eventoId` comum OEE × Paradas (evita contagem dupla; ver `docs/paradas-arquitetura.md`).
+- Gel lendo catálogos e equipamentos do Portal; produção OEE → Gel (registro § 1).
+- `eventoId` comum OEE × Paradas, que evita contagem dupla, quando o OEE publicar `paradasEventos` (ver `docs/paradas-arquitetura.md`; registro F07/A10).
+- Waste ainda lê da base da Produção `monthPlans` (ordens antigas) e `server.dayLot` (dias do lote). Sai quando a Produção publicar isso no `exports` (registro § 1).
+
+**Dados e gravação**
+- Meta `WASTE-MES` lida pela data de hoje, e não pela do mês consultado (regra 3; registro § 1).
+- `Ord.gravar` (Ordens na Produção) sem releitura que confirme a gravação (registro § 1).
+
+**Layout (auditoria visual; registro § L)**
+- Juntar Resumo e indicadores do Waste (hoje há totais repetidos).
+- Mesma posição de Ação prioritária, filtros e resumo nas telas equivalentes das páginas.
+- Revisar títulos, unidades e legendas dos gráficos internos de cada página. Já feito: cards do Portal e gráfico mensal do Paradas.
+- Exemplos visuais dos componentes (cards, pílulas, abas) nos dois temas.
+
+**Homologação e testes**
+- Conferência com a pasta real: primeira abertura (aviso do CadSync na Produção), duas estações gravando ao mesmo tempo (os testes de gravação usam pasta simulada), uso sem internet, Chrome/Edge, acentos nos caminhos (registro A09), densidade observada com operador e liderança (registro § L).
+- `package.json`/CI e a pasta `lib/` fora do repositório (registro § 1).
+- `testes/tz.js` falha às vezes e passa ao rodar de novo (instabilidade do teste).
+- `testes/t181.js` expira no fim (passo da matriz; problema do teste).
