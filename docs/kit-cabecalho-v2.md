@@ -76,3 +76,10 @@ Gestão de Gel 1.99: cabeçalho com Importar relatório, Sincronizar, Backup e T
 - **Teste:** `node testes/tbases.js`. Usa o sistema de arquivos do próprio navegador (OPFS), com as mesmas operações da pasta da rede, e cobre: mover, ler antes e depois, gravar sem recriar na raiz, cópia mais nova e cópia mais velha na raiz.
 
 Gestão de Gel 2.00 (06/11/2026): a pasta da base passa por `vacRaiz`, e `fifo-base.json` vai para `00. Bases` ao usar a pasta (cópia em `00. Backups/Gel`). A ajuda cita a subpasta do relatório SAP como `01. Relatórios MES-SAP`, nome usado na pasta da linha; o nome real é o da configuração (Pasta da rede).
+
+## Guia de instalação (06/11/2026)
+
+- **`Guia de instalação.html`:** fica na raiz do repositório, e por isso na raiz do ZIP. Tem um passo a passo para baixar e extrair o ZIP, fazer a primeira instalação na rede, atualizar, acompanhar a mudança das bases para `00. Bases`, liberar o sistema no computador de outra pessoa (mapear unidade, atalho, entrar, conectar cada página), conferir em Versões das páginas, voltar de versão e resolver problemas comuns.
+- **Imagens:** prints reais das páginas, com moldura vermelha numerada onde clicar ou preencher, mais ilustrações (marcadas como tal) das telas do Windows, do navegador e do GitHub. As imagens vão embutidas, então o arquivo é único.
+- **Como gerar:** `node fontes/guia/gerar_guia.js`, a partir de `fontes/guia/guia_modelo.html`; os marcadores `{{IMG:nome}}` e `{{VERSOES}}` são preenchidos pelo gerador. O gerador abre as páginas por HTTP local. O print de Versões usa uma pasta de teste no armazenamento do navegador, que recusa "ã" no nome, então ali o Gel aparece com o nome alternativo `Gestao-Gel-Vacutainer.html`.
+- **Quando gerar de novo:** quando mudar a instalação, a estrutura da pasta, as telas de entrar/conectar ou as versões. O `Guia de instalação.html` nunca deve ser editado à mão.

@@ -1,6 +1,6 @@
 # Sistemas · Linha Vacutainer (BD Curitiba)
 
-Plataforma de páginas HTML de arquivo único que trabalham juntas numa **pasta única da rede** (File System Access API). Na raiz da pasta ficam só os HTML, `lib/`, `Logo.png` e as pastas; **as bases `.json` ficam em `00. Bases/`** (kit vac-bases), os backups em `00. Backups/<módulo>/`. Instalação e atualização: `paginas/LEIA-ME.txt`. Cada página tem a sua base JSON; o **Portal** é dono do cadastro geral. Interface e mensagens sempre em **português do Brasil**.
+Plataforma de páginas HTML de arquivo único que trabalham juntas numa **pasta única da rede** (File System Access API). Na raiz da pasta ficam só os HTML, `lib/`, `Logo.png` e as pastas; **as bases `.json` ficam em `00. Bases/`** (kit vac-bases), os backups em `00. Backups/<módulo>/`. Instalação e atualização: **`Guia de instalação.html`** (raiz; prints de onde clicar), resumo em `paginas/LEIA-ME.txt`. Cada página tem a sua base JSON; o **Portal** é dono do cadastro geral. Interface e mensagens sempre em **português do Brasil**.
 
 ## Páginas (em `paginas/`, com `paginas/lib/`, é o que vai para a pasta da rede)
 
@@ -24,6 +24,7 @@ node testes/tintegra.js                # Portal × exports: números iguais aos 
 node testes/tdiag.js                   # cenários das auditorias de 06/11/2026 (F01–F08, M01–M04: colisão e falha de leitura na gravação, CadSync, SAP, Gel, Paradas, versões); tintegra e tdiag saem com código 1 se falhar
 node testes/tvisual.js                 # layout: 5 páginas × 2 temas × 5 larguras (geometria, abas, contraste, tema entre páginas); prints em testes/saida/visual/; código 1 se falhar
 node testes/tbases.js                  # bases em 00. Bases: mover da raiz, ler antes/depois, gravar, cópia mais nova/velha na raiz (OPFS + HTTP local); código 1 se falhar
+node fontes/guia/gerar_guia.js         # gera "Guia de instalação.html" (raiz) a partir de fontes/guia/guia_modelo.html, com prints reais das páginas embutidos; rodar quando mudar tela de conexão/entrada ou versão
 node testes/tmeta.js                   # importação da Meta OEE FY27 no Portal (precisa também do pacote npm xlsx)
 ```
 
@@ -60,7 +61,7 @@ Produção aplica o cadastro na base do OEE pelo `CadSync` (`fontes/producao/cad
 - Kit: `kit-cabecalho-e-backups.md` (v1), `kit-cabecalho-v2.md` (v2/v2.1)
 - Páginas: `portal-1-7.md` (Portal 1.7–1.8.9), `producao-ordens-sap.md`, `waste-v1-8.md`, `perdas-ordem-v1.md`, `paradas-arquitetura.md`, `portal-pedido-paradas.md`, `paginas-novas.md`, `osm-arquitetura.md`
 
-Ao terminar uma entrega, atualizar o doc da página (seção nova com a versão e a data) e o `CLAUDE.md` se mudar regra, versão ou comando.
+Ao terminar uma entrega, atualizar o doc da página (seção nova com a versão e a data) e o `CLAUDE.md` se mudar regra, versão ou comando. Se mudar a instalação, a estrutura da pasta ou as telas de entrar/conectar, editar `fontes/guia/guia_modelo.html` e rodar `node fontes/guia/gerar_guia.js` (nunca editar o `Guia de instalação.html` gerado).
 
 ## Auditorias externas
 
