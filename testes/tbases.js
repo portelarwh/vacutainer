@@ -162,6 +162,15 @@ r=await cenario(async([PB,BK])=>{const X=__H;await X.prep({raiz:{[PB]:'{"v":"P1"
   const res=await vacMoverBases(await X.ROOT(),[[PB,BK]],{esperaTrava:20});return{res,...await X.estado()}},[PB,BK]);
 ok(r.bases[PB]==='{"v":"P1"}'&&r.raiz===undefined&&!r.bases['.'+PB+'.migrando'],'trava de sessão que caiu (> 2 min) expira e a mudança completa');
 
+// conexão normal (base já em 00. Bases, nada na raiz): sem trava, sem espera, sem aviso de "aguardando" mesmo com outra sessão conectando
+r=await cenario(async([PB,BK])=>{const X=__H;await X.prep({bases:{[PB]:'{"v":"P1"}',['.'+PB+'.migrando']:JSON.stringify({id:'outra',em:Date.now()})}});
+  const d=await (await X.ROOT()).getDirectoryHandle('00. Bases');await d.removeEntry('.'+PB+'.migrando');
+  const t0=performance.now();const res=await vacMoverBases(await X.ROOT(),[[PB,BK]]);const ms=performance.now()-t0;return{res,ms,...await X.estado()}},[PB,BK]);
+ok(r.res.length===1&&r.res[0].ok&&!r.res[0].aguardando&&r.ms<250&&r.bases[PB]==='{"v":"P1"}'&&Object.keys(r.bases).every(n=>!/\.migrando|\.copiando-/.test(n)),`conexão normal sem nada na raiz: não pega trava nem espera (${Math.round(r.ms)} ms; espera da trava é 300 ms)`);
+r=await cenario(async([PB,BK])=>{const X=__H;await X.prep({bases:{[PB]:'{"v":"P1"}',['.'+PB+'.migrando']:JSON.stringify({id:'outra',em:Date.now()})}});
+  const res=await vacMoverBases(await X.ROOT(),[[PB,BK]]);return{res,...await X.estado()}},[PB,BK]);
+ok(r.res[0].ok&&!r.res[0].aguardando,'conexão normal com outra sessão segurando a trava: sem aviso falso de "aguardando"');
+
 // erro de leitura da base na conexão da página: não oferece criar base nova por cima
 r=await cenario(async()=>{const X=__H;await X.prep({bases:{'perdas-base.json':'{corrompida'}});let pergunta=false;const c0=window.confirm;window.confirm=()=>{pergunta=true;return true};
   const ok=await connectDir(await X.ROOT());window.confirm=c0;return{ok,pergunta,...await X.estado()}});

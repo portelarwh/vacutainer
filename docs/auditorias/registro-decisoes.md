@@ -28,7 +28,7 @@ Status usados: **corrigido** · **corrigido em parte** · **recusado** · **adia
 | Item | Decisão | O que mudou · teste |
 |---|---|---|
 | B01 Gravação recente na raiz apagada depois da cópia | **corrigido** | Antes de tirar a base da raiz, o código confere de novo se ela mudou desde a leitura; se mudou, não apaga nada. A base também não é mais apagada: é **movida** para `00. Backups/<módulo>`, então uma gravação de último instante fica guardada lá, e a página avisa. Teste: `tbases.js` › B01 |
-| B02 Migração atrasada sobrescrevendo gravação confirmada no destino | **corrigido** | Trava entre computadores (arquivo `.<base>.migrando` em `00. Bases`, com prazo de 2 min) e nova conferência do destino antes de pôr a cópia no lugar. Se o destino já tiver base, não sobrescreve: decide pela data, e a raiz mais velha vai para o backup. Teste: `tbases.js` › B02 (dois momentos) e concorrência |
+| B02 Migração atrasada sobrescrevendo gravação confirmada no destino | **corrigido** | Trava entre computadores (arquivo `.<base>.migrando` em `00. Bases`, com prazo de 2 min; só é pega quando a base ainda está na raiz, então a conexão normal não grava nada nem espera) e nova conferência do destino antes de pôr a cópia no lugar. Se o destino já tiver base, não sobrescreve: decide pela data, e a raiz mais velha vai para o backup. Teste: `tbases.js` › B02 (dois momentos) e concorrência |
 | B03 Conferência divergente apagando o arquivo de outra sessão | **corrigido** | Quando a conferência diverge, não apaga nada (nem destino nem raiz) e avisa o conflito. Teste: `tbases.js` › B03 |
 | B04 Erro de leitura interpretado como ausência | **corrigido** | Só `NotFoundError`/`TypeMismatchError` contam como "não existe" (`vacNaoAchou`). Qualquer outro erro é "estado desconhecido", e nada é mudado. Valeu também para `vacRaiz` (não troca `00. Bases` pela raiz se a pasta der erro) e para a conexão de Portal, Waste, Gel e Produção, que não oferecem mais "Criar a base" quando a base existe mas não pode ser lida. Teste: `tbases.js` › B04 e "página: base ilegível" |
 | B05 Cópia interrompida deixando arquivo vazio como base preferida | **corrigido** | A cópia vai para um arquivo temporário (`.<base>.copiando-<sessão>`), é conferida e só então entra no lugar. Na leitura, um arquivo vazio em `00. Bases` não é preferido. Temporários com mais de 10 min são limpos. Teste: `tbases.js` › B05 (interrupção e sobra vazia) |
@@ -61,9 +61,10 @@ Status usados: **corrigido** · **corrigido em parte** · **recusado** · **adia
   - recuperação (volta de versão e duas cópias da base).
 
 ### Testes reforçados
-- **`tbases.js` (34 checagens):**
+- **`tbases.js` (36 checagens):**
   - B01 a B07 com falhas injetadas no meio da migração;
   - duas sessões migrando ao mesmo tempo e trava expirada;
+  - conexão normal (nada na raiz): sem trava, sem espera e sem aviso falso de "aguardando";
   - base ilegível na conexão;
   - volta de versão com a Produção antiga real;
   - conferência do conteúdo final e dos backups.

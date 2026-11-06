@@ -86,7 +86,7 @@ Gestão de Gel 2.00 (06/11/2026): a pasta da base passa por `vacRaiz`, e `fifo-b
 
 ## vac-bases v2 (06/11/2026) · migração segura (revisão c341f8e)
 
-- **Trava entre computadores:** arquivo `00. Bases/.<base>.migrando` (`{id, em}`). Quem chega com a trava de outra sessão ativa (menos de 2 min) espera (`aguardando`).
+- **Trava entre computadores:** arquivo `00. Bases/.<base>.migrando` (`{id, em}`). Quem chega com a trava de outra sessão ativa (menos de 2 min) espera (`aguardando`). A trava só é pega quando a base ainda está na raiz: depois da mudança, conectar não grava arquivo de trava, não espera e não dá aviso de `aguardando` (`tbases.js` › conexão normal).
 - **Leitura:** só `NotFoundError`/`TypeMismatchError` é ausência (`vacNaoAchou`). Qualquer outro erro é "estado desconhecido" e não muda nada.
 - **Cópia:** por temporário `.<base>.copiando-<sessão>`, conferido. Antes de entrar no lugar, confere de novo o destino. Depois de entrar, confere outra vez; se divergir, não apaga nada.
 - **Saída da raiz:** confere se a raiz mudou desde a leitura e então **move** (`FileSystemHandle.move`) a base para `00. Backups/<módulo>/<base>_<tipo>_<data>_<hora>.json`. Sem `move()`, grava o backup e apaga.

@@ -673,7 +673,7 @@ nav.vtabs .badge[hidden]{display:none}
      ainda não foi movida (ou se lá só existe um arquivo vazio de uma cópia interrompida), na raiz. O resto continua na raiz.
      A pasta original (do seletor) é a que vai para o IndexedDB; vacRaiz só envolve, nunca é gravada.
    - vacMoverBases(pasta, [[nome, pastaBackup], …]): cada página move SÓ as próprias bases, ao conectar. Regras (v2, revisão c341f8e):
-     · trava por arquivo em 00. Bases (.<base>.migrando, vale entre computadores; expira em 2 min): outra sessão no meio da mudança = espera;
+     · trava por arquivo em 00. Bases (.<base>.migrando, vale entre computadores; expira em 2 min), só quando a base ainda está na raiz: outra sessão no meio da mudança = espera;
      · erro de leitura NÃO é ausência: só "não encontrado" conta como não existe; qualquer outro erro = estado desconhecido, nada muda (B04);
      · cópia por arquivo temporário, conferida antes de entrar no lugar: nunca deixa base vazia como preferida (B05);
      · antes de pôr no lugar, confere de novo o destino: se outra sessão já gravou lá, não sobrescreve (B02);
@@ -734,6 +734,8 @@ async function vacMoverBases(pasta, lista, opts = {}) {
     const trava = '.' + nome + '.migrando';
     let dono = false;
     try {
+      // nada na raiz (o normal depois da mudança): não pega trava, não espera, não grava nada na pasta
+      if (!(await ler(raiz, nome))) { res.push({ nome, ok: true }); continue; }
       // trava entre computadores: arquivo na pasta compartilhada, conferido depois de uma pausa
       const L = await ler(dest, trava);
       if (L) { let j = null; try { j = JSON.parse(L.txt); } catch (e) { } if (j && j.id !== VAC_SESSAO && Date.now() - (+j.em || 0) < 120000) { res.push({ nome, aguardando: true }); continue; } }
