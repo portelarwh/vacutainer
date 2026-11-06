@@ -60,3 +60,19 @@ Resposta à auditoria de layout (`docs/auditorias/layout-2026-11-06/`). Decisõe
 - **Verificação:** `node testes/tvisual.js`, com 112 checagens. Cobre as cinco páginas × 2 temas × 1920/1440/1024/768/390 px: geometria, abas, contraste, campos de data, tema na navegação, gráficos do Portal e menu Mais. Os prints ficam em `testes/saida/visual/`.
 
 Gestão de Gel 1.99: cabeçalho com Importar relatório, Sincronizar, Backup e TV; Enviar relatório, Fichas e relatórios, Configuração e Guia passam para o menu **Mais**, com os mesmos botões e ids. Pílulas suaves por padrão; ficam cheias só no cabeçalho do barril e nas pílulas de cor do catálogo. "Dados de exemplo" e o aviso do exemplo em roxo. Indicador principal em 28 px. Título "Período selecionado · datas" no Painel.
+
+## vac-bases v1 (06/11/2026) · bases na subpasta 00. Bases
+
+- **Arquivo-fonte:** `fontes/kit/kit_bases.js`, num `<script id="vac-bases">` logo depois do `vac-visual`, antes do código da página. É distribuído pelo `aplicar_kit21.py` e pelo `build.py`.
+- **`vacRaiz(pasta)`:** devolve a pasta principal "com bases", que é o que a página guarda como pasta conectada.
+  - As 7 bases (`VAC_BASES`) são gravadas em `00. Bases`. Na leitura, procura em `00. Bases` e, se a base ainda não foi movida, na raiz.
+  - Logo, backups, `lib`, relatórios e anexos continuam na raiz, como antes.
+  - No IndexedDB vai sempre a pasta original; o `vacRaiz` só envolve, nunca é gravado.
+- **`vacMoverBases(pasta, [[nome, pastaBackup], …])`:** cada página move **só as próprias bases** ao conectar.
+  - Portal: portal-base e vacutainer-cadastros. Produção: oee-vacutainer-base e ordens-base. Waste: perdas-base. Gel: fifo-base. Paradas: paradas-base.
+  - Passos: copia, confere a cópia, guarda uma cópia em `00. Backups/<módulo>/<base>_antes-de-mover-para-00-Bases_<data>_<hora>.json` e apaga da raiz.
+  - Se a mesma base existir nos dois lugares: com conteúdo igual, tira a da raiz. Se a da raiz for mais velha, guarda em backup (`raiz-antiga`) e tira. Se a da raiz for **mais nova** (página antiga ainda aberta gravando lá), não apaga nada: avisa (`vacAvisoBases`), e o Portal › Versões das páginas mostra as duas cópias.
+- **Portal › Versões das páginas:** procura as bases também em `00. Bases`, que é o lugar certo, e avisa "base ainda na raiz" até a página dona ser aberta.
+- **Teste:** `node testes/tbases.js`. Usa o sistema de arquivos do próprio navegador (OPFS), com as mesmas operações da pasta da rede, e cobre: mover, ler antes e depois, gravar sem recriar na raiz, cópia mais nova e cópia mais velha na raiz.
+
+Gestão de Gel 2.00 (06/11/2026): a pasta da base passa por `vacRaiz`, e `fifo-base.json` vai para `00. Bases` ao usar a pasta (cópia em `00. Backups/Gel`). A ajuda cita a subpasta do relatório SAP como `01. Relatórios MES-SAP`, nome usado na pasta da linha; o nome real é o da configuração (Pasta da rede).

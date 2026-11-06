@@ -1,5 +1,6 @@
 """Reaplica o bloco do cabeçalho comum v2.1 (fontes/kit/kit_v21.js), o catálogo de sistemas (fontes/kit/sistemas.js:
-const DEFAULT_SYSTEMS=[...]) e o padrão visual comum (fontes/kit/kit_visual.css, <style id="vac-visual"> no fim do <head>)
+const DEFAULT_SYSTEMS=[...]) o padrão visual comum (fontes/kit/kit_visual.css, <style id="vac-visual"> no fim do <head>) e as bases em 00. Bases
+(fontes/kit/kit_bases.js, <script id="vac-bases"> logo depois)
 nas páginas que não são montadas por build.
 Uso (na raiz do projeto): python fontes/kit/aplicar_kit21.py
 A Produção pega o kit_v21.js ao rodar fontes/producao/build.py."""
@@ -10,10 +11,12 @@ sis=open(os.path.join(RAIZ,'fontes','kit','sistemas.js'),encoding='utf-8').read(
 PAD=re.compile(r'const DEFAULT_SYSTEMS=\[.*?\];',re.S)
 vis=open(os.path.join(RAIZ,'fontes','kit','kit_visual.css'),encoding='utf-8').read().strip()
 VIS=re.compile(r'<style id="vac-visual">.*?</style>\n?',re.S)
+bas=open(os.path.join(RAIZ,'fontes','kit','kit_bases.js'),encoding='utf-8').read().strip()
+BAS=re.compile(r'<script id="vac-bases">.*?</script>\n?',re.S)
 def visual(s,nome):
     # padrão visual comum: último <style> do <head>, para valer sobre o CSS da página
-    s=VIS.sub('',s)
-    bloco='<style id="vac-visual">\n'+vis+'\n</style>\n'
+    s=VIS.sub('',s); s=BAS.sub('',s)
+    bloco='<style id="vac-visual">\n'+vis+'\n</style>\n<script id="vac-bases">\n'+bas+'\n</script>\n'   # bases em 00. Bases (antes do código da página)
     if s.count('\n</head>\n')==1: return s.replace('\n</head>\n','\n'+bloco+'</head>\n')
     ancora='<!-- vac-cabecalho v2 · barra do sistema'   # página sem </head> explícito (Gel): logo antes do cabeçalho comum
     if s.count(ancora)!=1: raise SystemExit('ERRO: nem </head> nem o início do vac-cabecalho achados exatamente 1 vez em '+nome)

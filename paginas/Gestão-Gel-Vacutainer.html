@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Gestão de Gel · Linha Vacutainer · V1.99</title>
+<title>Gestão de Gel · Linha Vacutainer · V2.00</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600&family=Barlow+Condensed:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
@@ -660,6 +660,86 @@ nav.vtabs .badge[hidden]{display:none}
 @media print{.vrola{display:none!important}}
 /* ===== fim vac-visual v1 ===== */
 </style>
+<script id="vac-bases">
+/* ===== vac-bases v1 · 06/11/2026 · bases .json na subpasta "00. Bases" da pasta principal (igual em todas as páginas; não editar só numa) =====
+   Arquivo-fonte: fontes/kit/kit_bases.js. Vai num <script id="vac-bases"> no topo de cada página (aplicar_kit21.py e build da Produção),
+   antes do código da página. Na raiz da pasta principal ficam só os HTML, lib\, Logo.png e as pastas.
+   - vacRaiz(pasta): devolve a pasta principal "com bases". Para as 7 bases, grava em 00. Bases; para ler, procura em 00. Bases e,
+     se a base ainda não foi movida, na raiz. Todo o resto (Logo.png, 00. Backups, lib, relatórios) continua na raiz, sem mudança.
+     A pasta original (do seletor) é a que vai para o IndexedDB; vacRaiz só envolve, nunca é gravada.
+   - vacMoverBases(pasta, [[nome, pastaBackup], …]): cada página move SÓ as próprias bases, ao conectar: copia para 00. Bases, confere,
+     guarda uma cópia em 00. Backups/<módulo> e apaga da raiz. Se a raiz tiver uma versão MAIS NOVA que a de 00. Bases (página antiga
+     ainda aberta gravando na raiz), não apaga nada: avisa, e o Portal › Versões das páginas mostra as duas cópias. */
+const VAC_BASES_DIR = '00. Bases';
+const VAC_BASES = ['portal-base.json', 'vacutainer-cadastros.json', 'oee-vacutainer-base.json', 'ordens-base.json', 'perdas-base.json', 'fifo-base.json', 'paradas-base.json'];
+function vacEhBase(nome) { return VAC_BASES.includes(String(nome)); }
+function vacRaiz(raiz) {
+  if (!raiz || raiz.__vacRaiz) return raiz;
+  let sub = null;
+  const pastaBases = async criar => {
+    if (sub) return sub;
+    try { const d = await raiz.getDirectoryHandle(VAC_BASES_DIR, { create: !!criar }); sub = d; return d; }
+    catch (e) { if (criar) throw e; return null; }
+  };
+  return {
+    __vacRaiz: true, raiz, kind: 'directory',
+    get name() { return raiz.name; },
+    async getFileHandle(nome, o) {
+      if (!vacEhBase(nome)) return raiz.getFileHandle(nome, o);
+      if (o && o.create) return (await pastaBases(true)).getFileHandle(nome, o);
+      const d = await pastaBases(false);
+      if (d) { try { return await d.getFileHandle(nome); } catch (e) { if (!e || e.name !== 'NotFoundError') throw e; } }
+      return raiz.getFileHandle(nome);
+    },
+    getDirectoryHandle: (n, o) => raiz.getDirectoryHandle(n, o),
+    removeEntry: (n, o) => raiz.removeEntry(n, o),
+    entries: () => raiz.entries(), values: () => raiz.values(), keys: () => raiz.keys(),
+    [Symbol.asyncIterator]: () => raiz.entries(),
+    queryPermission: o => raiz.queryPermission(o), requestPermission: o => raiz.requestPermission(o),
+    isSameEntry: h => raiz.isSameEntry(h && h.__vacRaiz ? h.raiz : h), resolve: h => raiz.resolve(h)
+  };
+}
+async function vacMoverBases(pasta, lista) {
+  const raiz = pasta && pasta.__vacRaiz ? pasta.raiz : pasta, res = [];
+  if (!raiz) return res;
+  let dest; try { dest = await raiz.getDirectoryHandle(VAC_BASES_DIR, { create: true }); } catch (e) { return [{ erro: 'Não consegui criar a pasta ' + VAC_BASES_DIR + ': ' + (e.message || e) }]; }
+  const dia = new Date().toISOString().slice(0, 10), hora = new Date().toTimeString().slice(0, 5).replace(':', 'h');
+  const gravar = async (dir, nome, txt) => { const fh = await dir.getFileHandle(nome, { create: true }); const w = await fh.createWritable(); await w.write(txt); await w.close(); return fh; };
+  const backup = async (sub, nome, txt, tipo) => { let b = raiz; for (const p of String(sub || '00. Backups').split('/').filter(Boolean)) b = await b.getDirectoryHandle(p, { create: true }); await gravar(b, nome.replace(/\.json$/i, '') + '_' + tipo + '_' + dia + '_' + hora + '.json', txt); };
+  for (const [nome, sub] of lista) {
+    try {
+      let fr = null; try { fr = await (await raiz.getFileHandle(nome)).getFile(); } catch (e) { }
+      if (!fr) { res.push({ nome, ok: true }); continue; }                                   // já está só em 00. Bases (ou ainda não existe)
+      const tr = await fr.text();
+      let fn = null; try { fn = await (await dest.getFileHandle(nome)).getFile(); } catch (e) { }
+      if (fn) {
+        const tn = await fn.text();
+        if (tn !== tr && fr.lastModified > fn.lastModified) { res.push({ nome, conflito: true }); continue; }   // raiz mais nova: não decide sozinho
+        if (tn !== tr) await backup(sub, nome, tr, 'raiz-antiga');                          // raiz antiga: guarda e tira
+        await raiz.removeEntry(nome); res.push({ nome, ok: true, limpou: true }); continue;
+      }
+      const fh = await gravar(dest, nome, tr);
+      if ((await (await fh.getFile()).text()) !== tr) { res.push({ nome, erro: 'a cópia em ' + VAC_BASES_DIR + ' não conferiu; a base continua na raiz' }); try { await dest.removeEntry(nome); } catch (e) { } continue; }
+      await backup(sub, nome, tr, 'antes-de-mover-para-00-Bases');
+      await raiz.removeEntry(nome); res.push({ nome, ok: true, movida: true });
+    } catch (e) { res.push({ nome, erro: e && e.message || String(e) }); }
+  }
+  return res;
+}
+/* mensagem para a pessoa (toast da página, se houver) */
+function vacAvisoBases(res) {
+  const m = [];
+  for (const r of res || []) {
+    if (r.movida) m.push(`${r.nome} foi para ${VAC_BASES_DIR} (cópia de segurança em 00. Backups).`);
+    if (r.conflito) m.push(`Atenção: há uma cópia MAIS NOVA de ${r.nome} na raiz da pasta (página antiga aberta em outro computador?). Esta página usa a de ${VAC_BASES_DIR}; confira em Portal › Versões das páginas antes de apagar.`);
+    if (r.erro) m.push(`Não consegui mover ${r.nome || 'as bases'}: ${r.erro}`);
+  }
+  if (!m.length) return;
+  console.warn('[vac-bases]', m.join(' '));
+  try { if (typeof toast === 'function') toast(m.join(' '), 9000); } catch (e) { }
+}
+/* ===== fim vac-bases v1 ===== */
+</script>
 <!-- vac-cabecalho v2 · barra do sistema (igual em todas) + cabeçalho da página + abas -->
 <header class="vsuite"><div class="wrap">
   <img id="brandLogo" class="vlogo brandLogo" alt="Logo" hidden><a class="vnm" id="vacNome" href="Portal.html">Sistemas · Linha Vacutainer</a>
@@ -671,7 +751,7 @@ nav.vtabs .badge[hidden]{display:none}
   <button type="button" class="vic" id="btnTheme" title="Tema claro, escuro ou automático" aria-label="Alternar tema">◐</button>
 </div></header>
 <div class="vpage"><div class="wrap">
-  <h1 id="vacTitulo">Gel</h1><span class="rule" id="vacSub">FIFO, consumo, scrap e saving</span><span class="ver" id="appVer" title="Versões das páginas">v1.99</span>
+  <h1 id="vacTitulo">Gel</h1><span class="rule" id="vacSub">FIFO, consumo, scrap e saving</span><span class="ver" id="appVer" title="Versões das páginas">v2.00</span>
   <span id="stBase"></span><span class="sp"></span>
   <span class="vacts"><button class="btn sm primary" id="btnImport">Importar relatório</button><button class="btn sm" id="btnSync" title="Gravar pendências e reler a base">↻ Sincronizar</button><button class="btn sm" id="btnBackup" title="Criar backup agora">⛁ Backup</button><span class="tvmenu" id="tvMenu"><button class="btn sm" id="btnTV" title="Modo TV" aria-haspopup="true" aria-expanded="false">▣ TV ▾</button><span class="tvdrop" role="menu">
         <button type="button" role="menuitem" data-tvkind="linha"><b>Linha · Liderança</b><small>Resumo, produção × plano, OEE, PCP, índice de uso, scrap e hoje</small></button>
@@ -1063,7 +1143,7 @@ const fileBackend={kind:'file',async commit(ch){applyLocal(ch);FS.pending.push(c
 async function fsRefresh(){if(S.mode!=='file'||FS.busy||ui.demo)return;try{const cur=await fsReadBase(fsKnown());if(cur&&!cur.same){FS.mod=cur.mod;FS.rev=cur.rev;FS.revBy=cur.by;loadData(cur.data);FS.pending.forEach(applyLocal);localBackend.save();render()}}catch(e){}}
 /* ================= V1.89 · integração com as outras páginas (Portal, OEE, Perdas) ================= */
 // versão da página (topo, Guia e base gravada)
-const APP_VERSION='1.99';
+const APP_VERSION='2.00';
 /* 1.99 · menu Mais do cabeçalho (vac-visual v1): fecha ao escolher uma ação, ao clicar fora e com Esc */
 document.addEventListener('click',e=>{const m=document.getElementById('gelMais');if(!m||!m.open)return;if(!m.contains(e.target)||e.target.closest('.vmais-l>button'))m.open=false});
 document.addEventListener('keydown',e=>{const m=document.getElementById('gelMais');if(e.key==='Escape'&&m&&m.open){m.open=false;m.querySelector('summary').focus()}});
@@ -1361,7 +1441,9 @@ function backupListWire(){
     catch(e){msg.innerHTML=`<div class="alert">${esc(e.message||'Falha ao restaurar.')}</div>`}}))}
 
 async function fsUse(h,{create}={}){
-  FS.base=h;const cur=await fsReadBase();
+  /* 2.00 · bases em 00. Bases: o Gel move a dele (fifo-base) e lê/grava por vacRaiz */
+  FS.base=vacRaiz(h);try{vacAvisoBases(await vacMoverBases(h,[[BASE_FILE,PAGE.backupDir]]))}catch(e){console.warn('bases',e)}
+  const cur=await fsReadBase();
   if(cur){loadData(cur.data);FS.mod=cur.mod;FS.rev=cur.rev||0;FS.revBy=cur.by||'';
     try{const pend=await idb.get('fsPending');if(Array.isArray(pend)&&pend.length&&!FS.pending.length){FS.pending=pend;pend.forEach(applyLocal);setTimeout(()=>fsFlush(),300)}}catch(e){}
     localBackend.save()}
@@ -1373,7 +1455,7 @@ async function fsBoot(){
   if(!FS_OK()){fsLog('Navegador sem acesso a pastas (use Chrome ou Edge).');return}
   const h=await idb.get('base');
   if(!h){fsLog('Nenhuma pasta da base guardada neste navegador.');render();return}
-  FS.base=h;fsLog(`Pasta guardada: ${h.name}.`);
+  FS.base=vacRaiz(h);fsLog(`Pasta guardada: ${h.name}.`);
   if(await fsPerm(h,false)){fsLog('Permissão já concedida.');try{if(await fsUse(h)){fsLog('Base carregada.');await fsCheckReport()}else{fsLog(`${BASE_FILE} não encontrado na pasta.`);fsMissingBase(h)}}catch(e){fsLog('Erro ao abrir a base: '+(e.message||e));console.warn(e)}return}
   fsLog('Aguardando permissão do navegador.');fsConnectModal(h);
 }
@@ -1405,8 +1487,8 @@ function fsPickError(e,mode){
     const r=$('#fpRead');r&&r.addEventListener('click',async()=>{const h=await fsPickDir('fifo-base','read');if(h){closeModal();modal('Leitura permitida',`<p>A leitura da pasta <b>${esc(h.name)}</b> funcionou; a gravação foi bloqueada.</p><p class="sub" style="margin:0">Me envie este resultado: dá para seguir com a leitura automática do relatório e guardar a base de outro jeito.</p>`,'<button class="btn primary" data-close>OK</button>')}});
   });
 }
-async function fsChooseBase(h){await idb.set('base',h);FS.base=h;
-    let exists=false;try{await h.getFileHandle(BASE_FILE);exists=true}catch(e){}
+async function fsChooseBase(h){await idb.set('base',h);FS.base=vacRaiz(h);
+    let exists=false;try{await FS.base.getFileHandle(BASE_FILE);exists=true}catch(e){}
     const go=async create=>{await idb.set('base',h);try{await fsUse(h,{create});closeModal();toast(create?`Base criada em ${h.name}.`:`Base carregada de ${h.name}.`);await fsCheckReport()}catch(e){fsLog(`Falha ao ${create?'criar':'ler'} a base: ${e.name} – ${e.message}`);fsPickError(e,'readwrite')}};
     if(exists)modal('Base encontrada',`<p>A pasta <b>${esc(h.name)}</b> já tem uma base (${BASE_FILE}). A página vai passar a usar essa base; os dados que estão só neste navegador não entram nela.</p>`,`<button class="btn" data-close>Cancelar</button><button class="btn primary" id="fsUseB">Usar a base da pasta</button>`,()=>$('#fsUseB').addEventListener('click',()=>go(false)));
     else modal('Criar a base na pasta',`<p>A pasta <b>${esc(h.name)}</b> ainda não tem base. A página vai criar o arquivo ${BASE_FILE} com os dados que estão hoje neste navegador (${S.lps.size} LPs, ${S.imports.length} importações).</p>`,`<button class="btn" data-close>Cancelar</button><button class="btn primary" id="fsNew">Criar base</button>`,()=>$('#fsNew').addEventListener('click',()=>go(true)));
@@ -1507,8 +1589,8 @@ function bindFsCfg(saveCfg){
     {await idb.set('__t',{x:1});const t=await idb.get('__t');t?ok('O navegador guarda dados desta página (IndexedDB)'):bad('O navegador não guarda dados desta página (IndexedDB bloqueado): a pasta escolhida não fica registrada');await idb.set('__t',null)}
     const h=FS.base||await idb.get('base');if(!h){bad('Nenhuma pasta da base guardada neste navegador. Clique em "Escolher pasta da base". Se isso se repetir a cada abertura, o navegador pode estar apagando os dados dos sites ao fechar (política da empresa).')}
     else{ok('Pasta da base guardada: '+h.name);const pm=await fsPerm(h,true);pm?ok('Permissão de leitura e gravação concedida'):bad('Sem permissão na pasta da base');
-      if(pm){try{const f=await (await h.getFileHandle(BASE_FILE)).getFile();ok(`${BASE_FILE} encontrado (gravado em ${fmtDT(isoDT(new Date(f.lastModified)))})`)}catch(e){bad(BASE_FILE+' não encontrado na pasta')}
-        FS.base=h;{const b=await fsBackup(true);b&&b.where?ok(`Backup do dia: ${b.where}${b.err?' (a pasta '+PAGE.backupDir+' falhou: '+b.err+')':''}`):bad('Backup falhou: '+((b&&b.err)||'base não encontrada'))}
+      if(pm){try{const f=await (await vacRaiz(h).getFileHandle(BASE_FILE)).getFile();ok(`${BASE_FILE} encontrado (gravado em ${fmtDT(isoDT(new Date(f.lastModified)))})`)}catch(e){bad(BASE_FILE+' não encontrado na pasta')}
+        FS.base=vacRaiz(h);{const b=await fsBackup(true);b&&b.where?ok(`Backup do dia: ${b.where}${b.err?' (a pasta '+PAGE.backupDir+' falhou: '+b.err+')':''}`):bad('Backup falhou: '+((b&&b.err)||'base não encontrada'))}
         const c=S.config.sapSrc||{mode:'same'};ok('Relatório: '+(c.mode==='same'?'mesma pasta da base':c.mode==='sub'?'subpasta "'+c.name+'"':'outra pasta ('+((FS.sapOther||await idb.get('sap'))||{name:'nenhuma escolhida'}).name+')'));
         try{const d=await fsSapDir(true);const b=await fsNewest(d);b?ok(`Arquivo mais recente: ${b.name} (modificado em ${fmtDT(isoDT(new Date(b.file.lastModified)))})`):bad('Nenhum .xlsx na pasta do relatório '+d.name)}catch(e){bad(e.message)}}}
     const last=S.imports[S.imports.length-1];const age=last?(Date.now()-toDate(last.at).getTime())/3600000:null;
@@ -1530,13 +1612,13 @@ const GUIA=[
  ['dia','Abrir no dia a dia',`<ol class="gsteps">
    <li>Abra o atalho do HTML (pela unidade Z:).</li>
    <li>Aparece <b>Abrir a base da pasta</b>. O navegador pede essa confirmação a cada abertura, porque a página é aberta como arquivo. Isso é normal.
-    <ul><li>Se o relatório tem mais de 12 h: clique em <b>Conectar e atualizar relatório</b>, depois em <b>Permitir</b>. A tela de importação abre com o arquivo mais recente da pasta <span class="mono">00. Relatórios MES-SAP</span>; confira e clique em <b>Confirmar importação</b>.</li>
+    <ul><li>Se o relatório tem mais de 12 h: clique em <b>Conectar e atualizar relatório</b>, depois em <b>Permitir</b>. A tela de importação abre com o arquivo mais recente da pasta <span class="mono">01. Relatórios MES-SAP</span>; confira e clique em <b>Confirmar importação</b>.</li>
     <li>Se o relatório está em dia: clique em <b>Conectar</b> e depois em <b>Permitir</b>.</li></ul></li>
    <li>Pronto: o que você registrar é gravado na pasta e aparece para todos. A página relê a base a cada minuto e quando você volta para a janela.</li>
   </ol>
   <p class="sub">Se clicar em <b>Agora não</b>, a página mostra só a cópia guardada no navegador e não grava na pasta. Use <b>Conectar à pasta</b> no cabeçalho para ligar de novo.</p>`],
  ['rel','Atualizar o relatório SAP',`<ul>
-   <li>Salve o export do SAP (ex.: <span class="mono">export_all_….xlsx</span>) na subpasta <b>00. Relatórios MES-SAP</b>. Não precisa renomear: a página usa sempre o arquivo <b>mais recente</b>.</li>
+   <li>Salve o export do SAP (ex.: <span class="mono">export_all_….xlsx</span>) na subpasta <b>01. Relatórios MES-SAP</b>. Não precisa renomear: a página usa sempre o arquivo <b>mais recente</b>.</li>
    <li>Ao abrir, se o último relatório importado tiver mais de 12 h, a página pergunta <b>Atualizar base de dados?</b>. O limite muda em Configuração › Pasta da rede.</li>
    <li>A qualquer momento: <b>Importar relatório › Buscar o mais recente na pasta</b>, ou escolha/arraste o arquivo.</li>
    <li>Com a página aberta, ela olha a pasta a cada 10 minutos. Se alguém salvar um export novo, aparece no topo <b>Relatório novo na pasta</b> com o botão <b>Atualizar agora</b>. Em Configuração › Pasta da rede dá para mudar o intervalo ou escolher <b>Importar sozinho</b> (útil no computador da TV).</li>
@@ -1615,7 +1697,7 @@ const GUIA=[
   </ul>`],
  ['cfg','Configuração',`<ul>
    <li><b>Locais</b>: tipo de cada local. Etapa 1, 2, 3 é o caminho do gel (CFPAS → DINA101 → ALMPAS, a linha); <b>Alerta</b> marca transferência errada (RECPAS); <b>Fora do fluxo</b> não gera alerta. <b>+ Criar local</b> para locais que ainda não vieram do SAP.</li>
-   <li><b>Pasta da rede</b>: pasta da base, onde fica o relatório (subpasta <span class="mono">00. Relatórios MES-SAP</span>), limite de horas e <b>Diagnóstico › Testar agora</b>.</li>
+   <li><b>Pasta da rede</b>: pasta da base, onde fica o relatório (subpasta <span class="mono">01. Relatórios MES-SAP</span>), limite de horas e <b>Diagnóstico › Testar agora</b>.</li>
    <li><b>Programação, Parâmetros de processo, Preço do gel, Catálogos</b>: usados no simulador e no registro de produção.</li>
    <li><b>Backup</b>: exportar/importar a base e o modo exemplo. A pasta também guarda uma cópia por dia em <span class="mono">00. Backups/Gel</span>; o botão <b>⛁ Backup</b> do topo cria outra na hora, e a lista em Configuração › Backup restaura qualquer uma. A logo vem do arquivo <span class="mono">Logo.png</span> da pasta da base.</li>
   </ul>`],

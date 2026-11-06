@@ -9,7 +9,12 @@ def R(a,b,cnt=1):
     c=s.count(a)
     if c!=cnt: raise SystemExit(f'ERRO ({c}x): {a[:90]!r}')
     s=s.replace(a,b)
-R("const APP_VERSION = '2.0.1';","const APP_VERSION = '2.4.5';")
+R("const APP_VERSION = '2.0.1';","const APP_VERSION = '2.4.6';")
+# 2.4.6 · bases em 00. Bases (kit vac-bases): a pasta da base passa por vacRaiz (as 7 bases ficam em 00. Bases; Logo, backups e o resto na raiz)
+R("function FolderBackend(dir) {\n  return {\n    kind: 'pasta', ","function FolderBackend(dir) {\n  dir = typeof vacRaiz === 'function' ? vacRaiz(dir) : dir;   // 2.4.6 · bases em 00. Bases\n  return {\n    kind: 'pasta', ")
+# e a Produção move as dela (oee-vacutainer-base e ordens-base) ao conectar com permissão de gravação
+R("    if (S.access === 'none') { S.mode = 'local'; setStatus('reconectar'); emit('need-permission'); return 'permission'; }\n    const ext = await readExternal();",
+  "    if (S.access === 'none') { S.mode = 'local'; setStatus('reconectar'); emit('need-permission'); return 'permission'; }\n    if (S.access === 'readwrite' && backend.dir && typeof vacMoverBases === 'function') { try { vacAvisoBases(await vacMoverBases(backend.dir, [[BASE_FILE, BACKUP_DIR + '/' + MODULE_BK], ['ordens-base.json', BACKUP_DIR + '/Ordens']])); } catch (e) { console.warn('bases', e); } }\n    const ext = await readExternal();")
 # 2.4.5 · vac-visual (V07): no modo exemplo, o aviso "Dados de demonstração carregados" repetia o do modo exemplo (e Remover não grava nada ali)
 R("  if (!App.op && Demo.present()) h += `<div class=\"banner demo\"><p><b>Dados de demonstração carregados.","  if (!App.op && Demo.present() && S.mode !== 'exemplo') h += `<div class=\"banner demo\"><p><b>Dados de demonstração carregados.")
 # 2.4.5 · vac-visual: no card com estado (borda e ícone do semáforo), o valor usa a mesma cor do estado; sem estado, abaixo da meta continua vermelho
@@ -82,7 +87,8 @@ s=_pad.sub(lambda m:_sis,s)
 # padrão visual comum (fontes/kit/kit_visual.css): último <style> do <head>, igual nas 5 páginas
 _vis=open(os.path.join(RAIZ,'fontes','kit','kit_visual.css'),encoding='utf-8').read().strip()
 if s.count('\n</head>\n')!=1: raise SystemExit('ERRO: </head> (linha própria) não achado exatamente 1 vez')
-s=s.replace('\n</head>\n','\n<style id="vac-visual">\n'+_vis+'\n</style>\n</head>\n')
+_bas=open(os.path.join(RAIZ,'fontes','kit','kit_bases.js'),encoding='utf-8').read().strip()   # bases em 00. Bases (antes do código da página)
+s=s.replace('\n</head>\n','\n<style id="vac-visual">\n'+_vis+'\n</style>\n<script id="vac-bases">\n'+_bas+'\n</script>\n</head>\n')
 sync=open(os.path.join(AQUI,'cad_sync.js'),encoding='utf-8').read()
 R("S.cadastro = c && c.schema === 'vac-cadastros' ? { rev: c.rev, revAt: c.revAt, revBy: c.revBy } : null; }","S.cadastro = c && c.schema === 'vac-cadastros' ? { rev: c.rev, revAt: c.revAt, revBy: c.revBy } : null; S.cadDoc = S.cadastro ? c : null; S.cadDocAusente = false; if (S.cadDoc && typeof CadSync !== 'undefined') setTimeout(() => CadSync.talvez(), 0); }")
 # 2.4.3 · arquivo do cadastro sumiu: mantém a última cópia (travas continuam; destravar deixaria editar o que a próxima sincronização apagaria) e avisa na faixa

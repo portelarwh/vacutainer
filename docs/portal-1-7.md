@@ -179,3 +179,9 @@ Registro completo das decisões em `docs/auditorias/registro-decisoes.md`.
 
 - Gráfico dos cards de módulo (`miniChart`): desenhado na largura do card, com texto de 11 px. Antes, o gráfico do relatório era encolhido e o texto ficava com cerca de 5 px. Mostra só o último valor, o maior e a primeira/última data; o resto fica na dica. Cada card ganhou título com unidade: peças, kg, R$, min. Os relatórios e a TV continuam com `barChart`.
 - Padrão visual comum do kit (ver `kit-cabecalho-v2.md` › vac-visual v1).
+
+## 19. Portal 1.8.9 (06/11/2026) · bases em 00. Bases
+
+- Ao conectar, move `portal-base.json` e `vacutainer-cadastros.json` para `00. Bases` (kit vac-bases), com cópia em `00. Backups/Portal` e `00. Backups/Cadastros`. Lê as bases dos módulos em `00. Bases` ou, enquanto não forem movidas, na raiz.
+- Versões das páginas: `00. Bases` é o lugar certo; avisa base ainda na raiz e duas cópias da mesma base.
+- Pasta única (Configuração): a estrutura descrita passa a incluir `00. Bases` e `Paradas.html`.
