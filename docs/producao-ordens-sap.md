@@ -103,3 +103,7 @@ Por ordem: MB51 (saldo, data principal) × COOIS (tipo, status, datas, fornecida
 - Com as metas de OEE vindo do Portal, Configurações › Importação › "1 · Metas" troca o botão por **"Importar no Portal ↗"** (`Portal.html#cadastros/importar/metaoee`). Importar aqui gravaria metas que a sincronização do cadastro removeria.
 - A faixa de Metas e capacidades aponta para o mesmo lugar. Sem metas no Portal, a importação local continua como antes.
 - As metas e o quadro hora a hora chegam pelo CadSync na próxima revisão do cadastro (`intervalBoard` = `quadro` da vigência).
+
+## 12. Produção 2.4.2 (06/11/2026)
+
+- Catálogo de sistemas único do kit (`fontes/kit/sistemas.js`): a barra passa a ter Paradas e os mesmos nomes do Portal. Sem mudança na base nem no `exports` (o Portal 1.8.3 passa a usar `exports.kpis`, `pendencias`, `porDia` e `ordens` no lugar de recalcular).

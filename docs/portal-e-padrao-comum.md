@@ -84,7 +84,8 @@ exports: { exportsVersion: 1, geradoEm, modulo:'oee', appVersion, linha:'line_va
 **Gel (V1.89)**: `fifo-base.json` começa com `{"rev":N,"revBy":"…","appVersion":"1.89", …}` e traz o bloco `exports`, recalculado a cada gravação:
 ```
 exports: { exportsVersion: 1, geradoEm, modulo:'gel', appVersion,
-  estoque:  { kg, barris, naLinha, disponivelKg, disponiveis, coberturaDias },
+  estoque:  { kg, barris, naLinha, disponivelKg, disponiveis, coberturaDias,
+              porLocal:[{ local, kg, barris }] },                          // Gel 1.96; kg = saldo (relatório − retiradas parciais)
   vencendo: [{ lp, lote, validade, local, dias, kg }],                    // até "Atenção" dias (config warnDays)
   ordens:   [{ ordem, lote, catalogo, inicio, fim, tubos, tamanho, consumoKg, scrapKg, lps:[...],
                sapPrimeira, sapUltima, gPorTubo, indice, metaG, bomG, concluida, fonte }],   // últimos 150 dias
@@ -95,6 +96,14 @@ exports: { exportsVersion: 1, geradoEm, modulo:'gel', appVersion,
 - `scrapKg` = scrap de gel estimado: scrap de cada dia do Registro de produção × parte dos tubos do dia que foi para o lote (PCP).
 - Ordem ↔ lote: campo Ordem do lote no PCP, tabela "Ordens × lotes" (`config.woMap`) ou o lote da transação SAP.
 - **Proposto para o Gel** (para a carga do cadastro): publicar também `exports.cadastros = { catalogos:[{codigo,nome}], materiais:[…], bom:[formato do contrato], gel:{material,nome} }`. Até lá, o Portal tira catálogos e BOM de gel (`bomG`) de `exports.ordens`.
+
+**Severidade das pendências (contrato, vale para todo `exports.pendencias`)** · registrado em 06/11/2026 (Portal 1.8.3):
+- `sev: 1` = **urgente** (vermelho), `sev: 2` = **atenção** (âmbar). É o que OEE, Gel e Paradas já publicavam (ex.: barril vencido = 1; vencendo em 30 dias = 2).
+- Dentro do Portal a escala interna é a inversa (2 = urgente); a conversão é feita **na entrada** (`sevDoModulo`), nunca na página de origem. Mudar o significado de `sev` exige `exportsVersion 2`.
+
+**Série para o gráfico do Portal (`exports.serie`)**: lista `[{label, value, key}]` ou `{rotulo, pontos:[{x, y}]}` (Paradas; `x` = `AAAA-MM` vira mês).
+
+**O Portal mostra o que a página publica (Portal 1.8.3)**: cartões, pendências e séries vêm do `exports` (OEE, Gel, Paradas e Waste). Os dados brutos só são somados quando a base não tem `exports` ou tem uma `exportsVersion` que o Portal não conhece; nesse caso o cartão mostra a pílula **dados brutos**.
 
 Quando o `exports` existe, o Portal e a página de Perdas usam ele automaticamente (o leitor do Perdas já procura `ordem/lote` no `exports`).
 
