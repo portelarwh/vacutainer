@@ -700,6 +700,8 @@ function wireConfigComum(){$('#cPasta').onclick=async()=>{if(await Store.pick())
    com o aviso "base em local antigo". Prefere o bloco "exports" de cada base.
    1.1: aba Cadastros, dona do vacutainer-cadastros.json (única que grava nele).
    1.1.1: página do Gel = Gestão-Gel-Vacutainer.html (aceita o nome antigo controle-fifo-gel.html).
+   1.8.2: Cadastros › Importar › Meta OEE FY27: lê a aba da planilha OEE-Vacutainer_v2.xlsm (mesma leitura da Produção) e grava em Metas de OEE
+          (uma meta por família, uma vigência por mês, com OEE, PPH, meta diária e quadro hora a hora); prévia nova / igual / alterada; #cadastros/importar/metaoee.
    1.8.1: turnos completos como na Produção (intervalos do Hora a Hora pela regra ou personalizados, horas brutas e produtivas); motivos de abono e de "sem produção" nos Parâmetros;
           Metas de OEE com semáforo próprio, observação, quadro hora a hora e PPM; preparação de aditivo ligada à BOM (onde é usada / tem BOM própria);
           Matriz de paradas nova (busca, marcar linha e coluna, visão por máquina).
@@ -718,7 +720,7 @@ function wireConfigComum(){$('#cPasta').onclick=async()=>{if(await Store.pick())
         entrar pelo ID (autocadastro como Consulta); página inicial por perfil (1x por sessão); vigência gravada não se edita (desativar com motivo); painel de vigências; semáforo central; saída do modo de teste.
    1.1.2: aviso da carga diz qual base foi lida.  1.5: páginas Paradas, Máquinas, Manutenção e Projetos na lista (aparecem quando o HTML chega na pasta).  1.4: lista técnica pela CS12 multinível (itens = nível 1, estrutura = níveis 2+); CS03 sai.  1.3: cabeçalho comum (vac-cabecalho v2: barra do sistema + página + abas), busca Ctrl K, acabamento V1.90, Versões com cabeçalho e último backup.  1.2: Configuração › Versões das páginas (versão e data de cada HTML, gravação das bases, cópias repetidas, histórico).
    ===================================================================== */
-const PAGE={id:'portal',titulo:'Portal · Linha Vacutainer',tituloCurto:'Portal',subtitulo:'Sistemas de gestão da linha',versao:'1.8.1',baseFile:'portal-base.json',idb:'vac-portal',backupDir:'00. Backups/Portal',
+const PAGE={id:'portal',titulo:'Portal · Linha Vacutainer',tituloCurto:'Portal',subtitulo:'Sistemas de gestão da linha',versao:'1.8.2',baseFile:'portal-base.json',idb:'vac-portal',backupDir:'00. Backups/Portal',
  vazio:()=>({schema:'portal-base',rev:0,config:{modulos:{},avisoDias:30,notas:{}},audit:[]}),
  /* itens do Portal para a busca Ctrl K: cadastro, pendências e telas */
  busca:q=>{const R=[],D=Cad.D;if(D)for(const t of CAD_ORD){for(const it of D[t]||[]){const c=String(it[kOf(t)]),nm=t==='bom'?((cadItem('catalogos',it.catalogo)||{}).nome||''):it.nome||'';if(norm(c+' '+nm).includes(q))R.push({tipo:CAD_T[t].um,txt:c+(nm?' · '+nm:''),sub:'Cadastros'+(cadAtivo(t,it,D)?'':' · inativo'),href:'#cadastros/'+t+'/'+encodeURIComponent(c)});if(R.length>30)break}}
@@ -1159,7 +1161,7 @@ const AJUDA_CAMPO={
  'turnos.horas':'Bruto = fim − início. Produtivo = bruto − pausas que descontam do planejado, por dia da semana (abono de sábado muda o sábado). É o tempo planejado que entra no OEE.',
  'metasOee.observacao':'Anotação da meta. Ex.: "Meta OEE FY27, aprovada na reunião de 10/10".',
  'metasOee.semaforoVerdePct':'Opcional: verde desta meta (% da meta). Vazio = semáforo comum dos Parâmetros. Ex.: 100.','metasOee.semaforoAmareloPct':'Opcional: amarelo desta meta. Vazio = semáforo comum. Ex.: 95 (mais rigoroso que o comum de 90).',
- 'metasOee.quadro':'Metas por intervalo (hora a hora) importadas da planilha Meta OEE FY27 pela Produção. Só consulta aqui; a Produção usa no quadro do Hora a Hora.',
+ 'metasOee.quadro':'Metas por intervalo (hora a hora) importadas da planilha OEE-Vacutainer_v2.xlsm, aba Meta OEE FY27 (Cadastros › Importar › Meta OEE FY27). Só consulta aqui; a Produção usa no quadro do Hora a Hora. Ex.: 06:00–07:00 · 43.500 peças.',
  'catalogos.preparacao':'Mesmo código, dois papéis: como catálogo, a preparação é produzida em ordem própria (MB51, COOIS, KKBC_ORD própria, BOM própria pela CS12); como material, é componente da BOM dos tubos. No Waste, a perda de fazer a solução fica na ordem da preparação e o consumo dela pelo tubo fica na ordem do tubo: não há dupla contagem. Ex.: 17132AAB entra na BOM do 360060 em mL por 1.000 tubos.',
  'parametros.motivosAbono':'Lista que aparece ao lançar um abono na Produção (um por linha). Ex.: Almoço, Revezamento, Produção encerrada antes.',
  'parametros.motivosSemProducaoProg':'Dia ou turno sem produção programado: sai do plano e do OEE (um por linha). Ex.: Feriado, Inventário, Sem demanda.',
@@ -1481,7 +1483,7 @@ function cs12NovoCat(I,g){const c=g.P.cab,nv=I.novo&&normCat(I.novo.codigo)===no
 function cadHash(cod){const s=Cad.ui.sec||'inicio';const h='#cadastros'+(s!=='inicio'?'/'+s:'')+(cod!=null?'/'+encodeURIComponent(cod):'');if(location.hash!==h)history.replaceState(null,'',h)}
 function cadRota(){const raw=location.hash.slice(1);if(/^cs12=/.test(raw)){cadNovoCS12(raw);return true}if(/^(geral|pend|rel|config)$/.test(raw)){App.show(raw);return true}if(raw==='admin'){App.show('cad');return true}if(raw==='entrar'){App.show('geral',{keepHash:true});setTimeout(()=>Entrar.abrir(),50);return true}if(raw==='versoes'){irVersoes();return true}
  if(!/^cadastros(\/|$)/.test(raw))return false;const p=raw.split('/').slice(1).map(x=>{try{return decodeURIComponent(x)}catch(e){return x}});
- const sec=p[0]||'inicio';Cad.ui.sec=CAD_T[sec]||CAD_SECS.includes(sec)?sec:'inicio';App.show('cad',{keepHash:true});
+ const sec=p[0]||'inicio';if(sec==='importar'&&/^meta/i.test(p[1]||'')){const I=Cad.ui.imp=Cad.ui.imp||{modo:'cs12',fmt:'auto',de:todayISO(),map:{},soBOM:true,txt:'',prev:null};I.modo='meta'}Cad.ui.sec=CAD_T[sec]||CAD_SECS.includes(sec)?sec:'inicio';App.show('cad',{keepHash:true});
  if(p[1]&&CAD_T[Cad.ui.sec]&&Cad.D&&Cad.ui.sec!=='cambio'){if(cadItem(Cad.ui.sec,p[1]))Ficha.abrir(Cad.ui.sec,p[1]);else{Cad.ui.q=p[1];Cad.ui.sit='todos';App.render();toast(`${cap1(CAD_T[Cad.ui.sec].um)} ${p[1]} não está no cadastro.`,5000,true)}}
  return true}
 
@@ -1676,7 +1678,7 @@ const Ficha={t:null,cod:null,orig:null,W:null,novo:false,edit:false,dirty:false,
    const h=`<div class="vig ${cur?'cur':''}${nova?'':' trav'}"><div class="vh"><b>${fmtD(v.de)||'?'} → ${v.ate?fmtD(v.ate):'em aberto'}</b>${cur?'<span class="pill ok">vigente hoje</span>':v.de>hoje?'<span class="pill info">futura</span>':'<span class="pill">encerrada</span>'}${nova?'<span class="pill pend">nova · ainda não gravada</span>':'<span class="small muted" title="Vigência gravada não se edita: desative (com motivo) e crie de novo.">🔒 gravada</span>'}<span style="flex:1"></span>${nova&&e?`<button class="b sm d" data-delvig="${i}">Remover</button>`:''}${!nova&&e?`<button class="b sm d" data-desvig="${i}" title="Tira esta vigência da lista usada pelas páginas (fica em Desativadas, com motivo). Não é possível se ela já foi usada em registros fechados.">Desativar…</button>`:''}</div>
    ${v.criadoPor||v.origem?`<div class="small muted" style="margin:2px 0 4px">${v.criadoPor?'criada por '+esc(v.criadoPor)+(v.criadoEm?' em '+fmtDT(v.criadoEm):''):''}${v.criadoPor&&v.origem&&t!=='bom'?' · ':''}${v.origem&&t!=='bom'?'origem '+esc(v.origem):''}</div>`:''}
    <div class="fg">${(T.vcampos||[]).map(f=>this.campo(f,b)).join('')}${t==='bom'?this.campo(['origem','Origem','txt',null,{w:2}],b):''}</div>
-   ${t==='turnos'?this.pausas(v,b)+this.intervalos(v,b):''}${t==='metasOee'&&(v.quadro||[]).length?`<details class="cd" style="margin-top:6px"><summary>Quadro hora a hora (${v.quadro.length}) ${ib('Quadro hora a hora',AJUDA_CAMPO['metasOee.quadro'])}</summary><table class="small">${v.quadro.map(q=>`<tr>${Object.entries(q).map(([k,x])=>`<td><span class="muted">${esc(k)}</span> ${esc(typeof x==='number'?fmtN(x):x)}</td>`).join('')}</tr>`).join('')}</table></details>`:''}${t==='bom'?this.itens(v,b):''}</div>`;this.edit=sv;return h}).join('')||'<p class="muted small">Sem vigências.</p>'}
+   ${t==='turnos'?this.pausas(v,b)+this.intervalos(v,b):''}${t==='metasOee'&&(v.quadro||[]).length?`<details class="cd" style="margin-top:6px"><summary>Quadro hora a hora (${v.quadro.length}) ${ib('Quadro hora a hora',AJUDA_CAMPO['metasOee.quadro'])}</summary><table class="small">${v.quadro.map(q=>q.start!=null&&q.end!=null&&q.target!=null?`<tr><td class="mono">${mofHM(q.start)}–${mofHM(q.end)}</td><td class="n">${fmtN(q.target)}</td></tr>`:`<tr>${Object.entries(q).map(([k,x])=>`<td><span class="muted">${esc(k)}</span> ${esc(typeof x==='number'?fmtN(x):x)}</td>`).join('')}</tr>`).join('')}</table></details>`:''}${t==='bom'?this.itens(v,b):''}</div>`;this.edit=sv;return h}).join('')||'<p class="muted small">Sem vigências.</p>'}
   ${dz.length?`<details class="cd" style="margin-top:8px"><summary>Desativadas (${dz.length}) · fora da lista usada pelas páginas</summary><div class="tw"><table class="small"><tr><th>Período</th><th>Desativada em</th><th>Por</th><th>Motivo</th><th>Criada por</th></tr>${dz.map(v=>`<tr class="muted"><td>${fmtD(v.de)} → ${v.ate?fmtD(v.ate):'em aberto'}</td><td>${fmtDT(v.desativadaEm)}</td><td>${esc(v.desativadaPor||'')}</td><td>${esc(v.motivoDesativacao||'')}</td><td>${esc(v.criadoPor||'')}</td></tr>`).join('')}</table></div></details>`:''}`},
  pausas(v,b){const e=this.edit,ps=v.pausas||[],D=Cad.D,PA=(D.paradas||[]).filter(x=>x.ativo!==false).sort((x,y)=>(y.planejada?1:0)-(x.planejada?1:0)||String(x.codigo).localeCompare(String(y.codigo)));
   const th=(l,k)=>`<th>${esc(l)} ${ib(l,AJUDA_CAMPO['pausas.'+k])}</th>`;
@@ -1904,7 +1906,7 @@ function prevComp(txt){const D=Cad.D,L=String(txt||'').split(/\r?\n/).map(l=>l.r
  return{linhas:R,erros:[]}}
 function cadImportarComp(el,I){const pe=Cad.podeEditar(true);
  el.innerHTML=`<div class="card form"><h3>Importar componentes ${ib('Importar componentes','Cole uma tabela (Excel ou SAP) com as colunas equipamento, nome, sistema, criticidade e, opcional, material SAP. O equipamento pode ser o código (EQ02) ou o nome (Tullip B). O código do componente é gerado como EQ02-C01, C02… Componente com o mesmo nome no mesmo equipamento é ignorado.')}</h3>
-  <span class="seg" id="iModo"><button data-m="cs12">Lista técnica (CS12)</button><button data-m="mat">Materiais</button><button data-m="comp" class="on">Componentes</button></span>
+  ${MOF_SEG('comp')}
   <p class="small muted" style="margin:8px 0">Colunas: <b>equipamento · nome · sistema · criticidade · material SAP</b> (com ou sem cabeçalho; separado por tabulação ou ponto e vírgula). Sistemas: ${CAD_T.componentes.campos[3][3].join(', ')}.</p>
   <label>Cole aqui (Ctrl V)<textarea id="iTxt" rows="9">${esc(I.txtComp||'')}</textarea></label>
   <div style="display:flex;gap:8px"><button class="b p" id="iLer">Ler e mostrar prévia</button><button class="b" id="iLimpar">Limpar</button></div></div><div id="iPrev"></div>`;
@@ -1916,6 +1918,133 @@ function cadImportarComp(el,I){const pe=Cad.podeEditar(true);
   ${ok.length?(pe?`<button class="b p" id="iGo" style="margin-top:8px">Importar ${ok.length} componente(s)</button>`:'<p class="small warn">Desbloqueie a edição para importar.</p>'):''}</div>`;
   const go=$('#iGo');if(go)go.onclick=()=>{if(!Cad.podeEditar())return;const origem='componentes colados em '+fmtD(todayISO());
    Cad.ops(ok.map(r=>({acao:'importação',tipo:'componentes',codigo:r.codigo,item:{codigo:r.codigo,equipamento:r.equipamento,nome:r.nome,sistema:r.sistema,criticidade:r.criticidade,materialSAP:r.materialSAP,ativo:true},origem,motivo:null})));toast(ok.length+' componente(s) importado(s); gravando…');I.txtComp='';Cad.ui.sec='componentes';cadHash();App.render()}}}
+
+/* ===== 1.8.2 · Importar a Meta OEE FY27 (planilha OEE-Vacutainer_v2.xlsm) =====
+   Mesma leitura da Produção (Importers.parseMetaFY27): quadro mensal (célula "Mês" com os horários à direita, a família acima
+   e o Total "1.043 (69,0%)") e quadros hora a hora explícitos ("EDTA – Outubro/26" + "Horário"). PPH nominal pela aba
+   BASE DE DADOS (bloco FY27) ou pelo PPH nominal do catálogo da família. Valores em milheiros viram peças (escala pelo PPH × minutos × OEE).
+   Grava em Metas de OEE: uma meta por família (OEE-<família>, a mesma se já existir), uma vigência por mês a partir do dia 1º;
+   o fim é calculado (véspera da próxima). Mês que já tem vigência diferente: só substitui se marcar (a antiga vai para Desativadas). */
+const MOF_ABA='Meta OEE FY27',MOF_MES={janeiro:1,fevereiro:2,marco:3,abril:4,maio:5,junho:6,julho:7,agosto:8,setembro:9,outubro:10,novembro:11,dezembro:12};
+const mofN=s=>String(s??'').normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/\s+/g,' ').trim().toLowerCase();
+const mofMin=s=>{const m=/^(\d{1,2}):(\d{2})$/.exec(String(s||'').trim());return m&&+m[1]<=47&&+m[2]<=59?+m[1]*60+ +m[2]:null};
+const mofHM=m=>{m=((+m%1440)+1440)%1440;return String(Math.floor(m/60)).padStart(2,'0')+':'+String(m%60).padStart(2,'0')};
+/* "06:00–07:00", "22:00–23:00 (até 22:47)" → {start,end} em minutos (fim depois da meia-noite em 24 h+) */
+function mofSpan(l){const s=String(l||''),t=s.match(/\d{1,2}:\d{2}/g);if(!t||t.length<2)return null;let a=mofMin(t[0]),b=mofMin(t[1]);if(t.length>=3&&/\(/.test(s))b=mofMin(t[2]);if(a==null||b==null)return null;if(b<=a)b+=1440;return{start:a,end:b}}
+/* "1.043 (69,0%)" → {total:1043, oee:0.69} */
+function mofTotal(v){if(typeof v==='number')return{total:v,oee:null};const s=String(v||''),pm=s.match(/(\d+(?:[.,]\d+)?)\s*%/),tm=s.replace(/\(.*\)/,'').match(/[\d.]+(?:,\d+)?/);return{total:tm?+tm[0].replace(/\./g,'').replace(',','.'):null,oee:pm?+pm[1].replace(',','.')/100:null}}
+/* grupo "06:00–13:00" com meta por hora → linhas de 1 h; os demais ficam como vieram */
+function mofExpand(sp,val){const n=sp.end-sp.start;if(n>90&&n%60===0){const o=[];for(let s=sp.start;s<sp.end;s+=60)o.push({start:s,end:s+60,target:val});return o}return[{start:sp.start,end:sp.end,target:val}]}
+function mofData(v){const iso=d=>d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+ if(v instanceof Date&&!isNaN(v))return iso(new Date(v.getFullYear(),v.getMonth(),v.getDate()+(v.getHours()>=23?1:0),12));
+ if(typeof v==='number'&&v>20000&&v<80000){const d=new Date(Math.round((v-25569)*864e5));return iso(new Date(d.getUTCFullYear(),d.getUTCMonth(),d.getUTCDate(),12))}
+ if(typeof v==='string'){let m=/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/.exec(v.trim());if(m)return`${m[3]}-${m[2].padStart(2,'0')}-${m[1].padStart(2,'0')}`;m=/^(\d{4})-(\d{2})-(\d{2})/.exec(v.trim());if(m)return m[0]}return null}
+function mofFam(D,txt){const n=mofN(txt);if(!n)return null;return(D.familias||[]).find(f=>{const c=mofN(f.codigo);return n===c||n.startsWith(c+' ')||n.startsWith(c+'–')||n.startsWith(c+'-')||n===mofN(f.nome)})||null}
+/* PPH nominal de um catálogo (tubo) ativo da família, na vigência do 1º dia do mês */
+function mofPphCat(D,fam,de){for(const c of D.catalogos||[]){if(c.familia!==fam||c.ativo===false||c.tipoItem==='preparacao')continue;const v=vigEm(c.vigencias||[],de);if(v&&+v.pphNominal>0)return{pph:+v.pphNominal,src:'catálogo '+c.codigo}}return null}
+/* lê a aba e devolve {recs, naoLidas}; recs = um por família e mês */
+function mofLer(X,wb,D){const nm=n=>{const k=wb.SheetNames.find(s=>mofN(s)===mofN(n));return k?wb.Sheets[k]:null};
+ const ws=nm(MOF_ABA);if(!ws)throw new Error(`A aba "${MOF_ABA}" não foi encontrada no arquivo. Abas lidas: ${wb.SheetNames.join(', ')}.`);
+ const A=X.utils.sheet_to_json(ws,{header:1,raw:true,defval:null,blankrows:true}),cell=(r,c)=>(A[r]||[])[c],usado=new Set(),mk=(r,c)=>usado.add(r+','+c),nao=[];
+ /* PPH nominal FY27 da aba BASE DE DADOS */
+ const pphBD={},bd=nm('BASE DE DADOS');
+ if(bd){const B=X.utils.sheet_to_json(bd,{header:1,raw:true,defval:null,blankrows:true});for(let r=0;r<B.length;r++)for(let c=0;c<(B[r]||[]).length;c++)
+  if(mofN(B[r][c])==='pph nominal'&&/fy27/i.test(String((B[r]||[]).join(' '))))for(let k=0;k<2;k++){const f=mofFam(D,(B[r+1]||[])[c+k]),v=(B[r+2]||[])[c+k];if(f&&+v>0)pphBD[f.codigo]={pph:+v,src:'BASE DE DADOS (FY27)'}}}
+ /* 1) quadro mensal */
+ const mens=[];
+ for(let r=0;r<A.length;r++)for(let c=0;c<(A[r]||[]).length;c++){if(mofN(cell(r,c))!=='mes')continue;
+  const ft=cell(r-1,c)||cell(r-1,c-1),f=mofFam(D,ft),cols=[];let tc=null;
+  for(let k=c+1;k<(A[r]||[]).length;k++){const h=cell(r,k);if(h==null||h==='')break;if(/total/i.test(String(h))){tc=k;mk(r,k);break}const sp=mofSpan(h);if(sp){cols.push({k,sp});mk(r,k)}else nao.push(`Cabeçalho "${h}" (linha ${r+1})`)}
+  mk(r,c);if(ft)mk(r-1,c);
+  if(!f){nao.push(`Quadro mensal na linha ${r+1}: família "${ft||'?'}" não está no cadastro (Famílias)`);continue}
+  for(let rr=r+1;rr<A.length;rr++){const d=mofData(cell(rr,c));if(!d)break;mk(rr,c);const rows=[];
+   for(const{k,sp}of cols){const v=cell(rr,k);mk(rr,k);if(typeof v==='number')rows.push(...mofExpand(sp,v))}
+   const t=tc!=null?mofTotal(cell(rr,tc)):{total:null,oee:null};if(tc!=null)mk(rr,tc);mens.push({fam:f.codigo,mes:d.slice(0,7),rows,total:t.total,oee:t.oee})}}
+ /* 2) quadros hora a hora "EDTA – Outubro/26" */
+ const qds=[];
+ for(let r=0;r<A.length;r++)for(let c=0;c<(A[r]||[]).length;c++){const v=cell(r,c);if(typeof v!=='string')continue;const m=mofN(v).match(/^([a-z0-9]+)\s*[–-]\s*([a-z]+)\s*\/\s*(\d{2,4})$/);if(!m)continue;
+  const f=mofFam(D,m[1]),mo=MOF_MES[m[2]];if(!f||!mo){nao.push(`Título "${v}" (linha ${r+1})${!f?': família não está no cadastro':''}`);continue}
+  const yr=m[3].length===2?2000+ +m[3]:+m[3];mk(r,c);let hr=-1;for(let k=r+1;k<=r+3;k++)if(mofN(cell(k,c))==='horario'){hr=k;break}
+  if(hr<0){nao.push(`Quadro "${v}" sem a linha "Horário"`);continue}mk(hr,c);mk(hr,c+1);mk(hr,c+2);const rows=[];let total=null,oee=null;
+  for(let k=hr+1;k<A.length;k++){const lab=cell(k,c);if(lab==null)break;mk(k,c);mk(k,c+1);mk(k,c+2);
+   if(/total/i.test(String(lab))){total=typeof cell(k,c+2)==='number'?cell(k,c+2):mofTotal(cell(k,c+1)).total;oee=mofTotal(lab).oee;break}
+   const sp=mofSpan(lab),val=cell(k,c+1);if(!sp||typeof val!=='number'){nao.push(`Linha "${lab}" do quadro "${v}"`);continue}rows.push({start:sp.start,end:sp.end,target:val})}
+  qds.push({fam:f.codigo,mes:`${yr}-${String(mo).padStart(2,'0')}`,titulo:v,rows,total,oee})}
+ /* 3) um registro por família e mês */
+ const recs=[],keys=new Set([...mens.map(x=>x.fam+'|'+x.mes),...qds.map(x=>x.fam+'|'+x.mes)]);
+ for(const key of keys){const[fam,mes]=key.split('|'),mr=mens.find(x=>x.fam===fam&&x.mes===mes),qd=qds.find(x=>x.fam===fam&&x.mes===mes),de=mes+'-01',av=[];
+  const rows=qd?qd.rows:mr?mr.rows:[],soma=rows.reduce((a,x)=>a+x.target,0),total=(mr&&mr.total)||(qd&&qd.total)||soma||null,pi=pphBD[fam]||mofPphCat(D,fam,de);
+  if(qd&&mr){const dif=[];for(const b of qd.rows){const x=mr.rows.find(y=>y.start===b.start&&y.end===b.end);if(!x)dif.push(`${mofHM(b.start)}–${mofHM(b.end)} só no quadro do mês`);else if(x.target!==b.target)dif.push(`${mofHM(b.start)}–${mofHM(b.end)}: ${b.target} no quadro × ${x.target} no resumo`)}
+   if(dif.length)av.push('Quadro hora a hora difere do resumo mensal: '+dif.join('; ')+'.');if(qd.total!=null&&mr.total!=null&&qd.total!==mr.total)av.push(`Total diário ${qd.total} no quadro × ${mr.total} no resumo mensal.`)}
+  if(total!=null&&rows.length&&Math.abs(soma-total)>1e-9)av.push(`A soma dos intervalos (${fmtN(soma)}) é diferente do total diário (${fmtN(total)}).`);
+  recs.push({fam,mes,de,oee:(mr&&mr.oee)||(qd&&qd.oee)||null,pph:pi?pi.pph:null,pphSrc:pi?pi.src:null,total,rows,quadroSrc:qd?`quadro "${qd.titulo}"`:'resumo mensal (grupos de horário divididos por hora)',av})}
+ recs.sort((a,b)=>a.mes.localeCompare(b.mes)||a.fam.localeCompare(b.fam));
+ for(let r=0;r<A.length;r++)for(let c=0;c<(A[r]||[]).length;c++){const v=A[r][c];if(v!=null&&v!==''&&!usado.has(r+','+c))nao.push(`Célula ${X.utils.encode_cell({r,c})} = "${String(v).slice(0,40)}"`)}
+ if(!recs.length)throw new Error(`Nenhuma meta reconhecida na aba "${MOF_ABA}".`+(nao.length?' '+nao.slice(0,3).join(' · '):''));
+ return{recs,nao}}
+/* meta de OEE da família (sem catálogo e sem máquina) que recebe as vigências */
+function mofMeta(D,fam){const L=(D.metasOee||[]).filter(m=>m.familia===fam&&!m.catalogo&&!m.equipamento&&m.ativo!==false);return L.find(m=>m.codigo==='OEE-'+fam)||L[0]||null}
+const MOF_CMP=['oeeMetaPct','pph','metaDiaria','quadro'];
+/* calcula, para cada registro, a escala, a vigência nova e a situação (nova / igual / alterada) */
+function mofPlano(P,D){const usados=new Set((D.metasOee||[]).map(m=>m.codigo)),novos={},L0=(D.linhas.find(l=>l.ativo!==false)||{}).codigo||null,agora=isoLocal(),quem=user()||null;
+ for(const r of P.recs){r.erro=null;r.av2=[];let it=mofMeta(D,r.fam),novo=null;
+  if(!it){novo=novos[r.fam];if(!novo){let c='OEE-'+r.fam,n=2;while(usados.has(c))c='OEE-'+r.fam+'-'+n++;usados.add(c);novo=novos[r.fam]={codigo:c,nome:'Meta família '+r.fam,linha:L0,equipamento:null,familia:r.fam,catalogo:null,observacao:'Meta OEE FY27 (planilha)',ativo:true,vigencias:[]}}}
+  r.cod=it?it.codigo:novo.codigo;r.novoItem=!it;
+  const mins=r.rows.reduce((a,x)=>a+x.end-x.start,0);let fat=1;
+  if(r.pph&&r.oee&&r.total&&mins){const exp=r.pph*mins/60*r.oee,ratio=exp/r.total;fat=Math.pow(10,Math.round(Math.log10(ratio)));if(Math.abs(ratio/fat-1)>.05)r.av2.push(`O total do quadro (${fmtN(r.total)}) não bate com PPH × minutos × OEE (${fmtN(exp)}): confira a unidade.`)}
+  r.escala=fat;const k=v=>Math.round(v*fat*1000)/1000,base=it?vigEm(it.vigencias||[],r.de):null,her=f=>base&&base[f]!=null?base[f]:null;
+  if(!(r.oee>0))r.erro='sem OEE meta (informe o %)';else if(!(r.pph>0))r.erro='sem PPH (informe)';
+  r.nv={de:r.de,ate:null,oeeMetaPct:r.oee>0?Math.round(r.oee*10000)/100:null,pph:r.pph>0?Math.round(+r.pph):null,metaDiaria:r.total!=null?Math.round(k(r.total)):null,
+   semaforoVerdePct:her('semaforoVerdePct'),semaforoAmareloPct:her('semaforoAmareloPct'),coberturaMinPct:her('coberturaMinPct'),divergenciaMaxPct:her('divergenciaMaxPct'),
+   quadro:r.rows.length?r.rows.map(x=>({start:x.start,end:x.end,target:k(x.target)})):null,origem:P.origem,criadoPor:quem,criadoEm:agora};
+  r.igual=it?(it.vigencias||[]).find(v=>v.de===r.de)||null:null;
+  r.st=!r.igual?'nova':MOF_CMP.every(f=>deq(r.igual[f]??null,r.nv[f]??null))?'igual':'alterada';
+  r.cobre=!r.igual&&base?base:null;
+  if(r.sel==null)r.sel=r.st==='nova'&&!r.erro}
+ P.novos=novos;return P}
+/* operações: uma por meta (criação ou edição das vigências) */
+function mofOps(P,D,mot){const sel=P.recs.filter(r=>r.sel&&!r.erro&&r.st!=='igual'),por={},agora=isoLocal(),quem=user()||null,ops=[];
+ for(const r of sel)(por[r.cod]=por[r.cod]||[]).push(r);
+ for(const[cod,L]of Object.entries(por)){const it=cadItem('metasOee',cod,D),novo=!it?P.novos[L[0].fam]:null,vs=clone(it?it.vigencias||[]:[]),des=clone(it?it.vigenciasDesativadas||[]:[]);
+  for(const r of L){const i=vs.findIndex(v=>v.de===r.de);if(i>=0){const{_nova,...x}=vs[i];des.push({...x,desativadaEm:agora,desativadaPor:quem,motivoDesativacao:'substituída pela importação da '+MOF_ABA});vs.splice(i,1)}vs.push(clone(r.nv))}
+  vs.sort((a,b)=>a.de<b.de?-1:1);vs.forEach((v,i)=>{v.ate=vs[i+1]?addDays(vs[i+1].de,-1):null});
+  if(novo)ops.push({acao:'importação',tipo:'metasOee',codigo:cod,item:{...clone(novo),vigencias:vs},origem:P.origem,motivo:mot});
+  else ops.push({acao:'importação',tipo:'metasOee',codigo:cod,mudancas:Object.assign({vigencias:{antes:clone(it.vigencias||[]),depois:vs}},des.length!==(it.vigenciasDesativadas||[]).length?{vigenciasDesativadas:{antes:clone(it.vigenciasDesativadas||null),depois:des}}:{}),origem:P.origem,motivo:mot})}
+ return ops}
+const MOF_SEG=m=>`<span class="seg" id="iModo"><button data-m="cs12" class="${m==='cs12'?'on':''}">Lista técnica (CS12)</button><button data-m="mat" class="${m==='mat'?'on':''}">Materiais</button><button data-m="comp" class="${m==='comp'?'on':''}">Componentes</button><button data-m="meta" class="${m==='meta'?'on':''}">Meta OEE FY27</button></span>`;
+function cadImportarMeta(el,I){const D=Cad.D,pe=Cad.podeEditar(true),P=I.mof||null;
+ el.innerHTML=`<div class="card form"><h3>Importar a Meta OEE FY27 ${ib('Importar a Meta OEE FY27','Lê a aba "Meta OEE FY27" da planilha OEE-Vacutainer_v2.xlsm (o resto do arquivo é ignorado) e grava em Metas de OEE: uma meta por família (OEE-EDTA, OEE-SST…; usa a que já existe para a família), uma vigência por mês a partir do dia 1º, com OEE meta, PPH, meta diária e o quadro hora a hora. O fim de cada vigência é a véspera da próxima; o último mês continua valendo até a próxima importação.\nO PPH vem da aba BASE DE DADOS (bloco FY27) ou do PPH nominal do catálogo da família. Valores em milheiros viram peças.\nMês que já tem vigência igual é ignorado; diferente só é substituído se você marcar (a antiga vai para Desativadas, com motivo). Semáforo, cobertura e divergência da meta são mantidos.\nA Produção recebe as metas pelo cadastro na próxima abertura.')}</h3>
+  ${MOF_SEG('meta')}
+  <p class="small muted" style="margin:8px 0">Escolha a planilha inteira (<b>OEE-Vacutainer_v2.xlsm</b>, .xlsx ou .xls). Nada é gravado antes da prévia. Se a planilha tiver rótulo de confidencialidade ou senha, salve uma cópia sem proteção.</p>
+  <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center"><label class="b p">Escolher a planilha…<input type="file" id="mofArq" accept=".xlsm,.xlsx,.xls" hidden></label>${P?`<span class="small">Arquivo <b>${esc(P.arq)}</b></span><button class="b" id="mofLimpar">Limpar</button>`:''}</div></div><div id="iPrev"></div>`;
+ $$('#iModo button').forEach(b=>b.onclick=()=>{I.modo=b.dataset.m;I.prev=null;cadImportar(el)});
+ const lp=$('#mofLimpar');if(lp)lp.onclick=()=>{I.mof=null;cadImportarMeta(el,I)};
+ $('#mofArq').onchange=async e=>{const f=e.target.files[0];e.target.value='';if(!f)return;
+  try{const X=await Libs.xlsx();let wb;try{wb=X.read(await f.arrayBuffer(),{type:'array',cellDates:true})}catch(x){throw new Error('Não consegui abrir a planilha. Se ela tem rótulo de confidencialidade ou senha, salve uma cópia sem proteção (ou exporte a aba como .xlsx) e tente de novo.')}
+   const L=mofLer(X,wb,Cad.D);I.mof={arq:f.name,origem:`planilha ${f.name} · aba ${MOF_ABA} · importada em ${fmtD(todayISO())}`,...L};mofPlano(I.mof,Cad.D);cadImportarMeta(el,I);toast('Planilha lida: '+f.name)}
+  catch(x){toast(x.message||String(x),8000,true)}};
+ if(!P)return;const box=$('#iPrev'),R=P.recs,cnt=s=>R.filter(r=>r.st===s).length,sel=R.filter(r=>r.sel&&!r.erro&&r.st!=='igual'),esc1=[...new Set(R.map(r=>r.escala))];
+ const fy=d=>{const y=+d.slice(0,4),m=+d.slice(5,7);return'FY'+String(m>=10?y+1:y).slice(2)};
+ box.innerHTML=`<div class="card"><h3>Prévia · ${esc(MOF_ABA)} <span class="muted small">${R.length} registro(s) · ${[...new Set(R.map(r=>r.fam))].join(', ')} · ${[...new Set(R.map(r=>fy(r.de)))].join(', ')}</span> ${ib('Como ler a prévia','Uma linha por família e mês. Nova: o mês ainda não tem vigência nessa meta (vem marcada). Igual: já está gravada com os mesmos valores (ignorada). Alterada: o mês já tem vigência com outros valores; só é substituída se você marcar. OEE meta e PPH podem ser corrigidos aqui antes de importar. Avisos amarelos não impedem a importação.')}</h3>
+  <div class="legend"><span><span class="pill ok" style="font-size:11px">nova</span> ${cnt('nova')}</span><span><span class="pill warn" style="font-size:11px">alterada</span> ${cnt('alterada')}</span><span><span class="pill" style="font-size:11px">igual</span> ${cnt('igual')}</span>${Object.keys(P.novos||{}).length?`<span class="small" style="white-space:nowrap">Metas novas: <b class="mono">${Object.values(P.novos).map(m=>esc(m.codigo)).join(', ')}</b></span>`:''}</div>
+  ${esc1.length===1&&esc1[0]!==1?`<p class="small muted">Unidade detectada: valores da planilha × ${fmtN(esc1[0])} (milheiros → peças).</p>`:esc1.length>1?'<div class="note w">A unidade não é a mesma em todas as linhas (algumas parecem em milheiros, outras em peças): confira a meta diária.</div>':''}
+  <div class="tw" style="max-height:56vh"><table><tr><th><input type="checkbox" id="mofAll" aria-label="Marcar todas" ${sel.length&&sel.length===R.filter(r=>!r.erro&&r.st!=='igual').length?'checked':''}></th><th>Mês</th><th>Família</th><th>Meta</th><th class="n">OEE meta % ${ib('OEE meta',AJUDA_CAMPO['metasOee.oeeMetaPct'])}</th><th class="n">PPH ${ib('PPH',AJUDA_CAMPO['metasOee.pph'])}</th><th class="n">Meta diária</th><th>Quadro hora a hora</th><th>Situação</th><th>Avisos</th></tr>
+  ${R.map((r,i)=>{const mm=CB_MES[+r.mes.slice(5,7)-1]+'/'+r.mes.slice(2,4),ig=r.igual;return`<tr><td><input type="checkbox" data-ms="${i}" ${r.sel&&!r.erro&&r.st!=='igual'?'checked':''} ${r.erro||r.st==='igual'?'disabled':''}></td><td>${mm}</td><td class="mono">${esc(r.fam)}</td><td class="mono small">${esc(r.cod)}${r.novoItem?' <span class="tag b">nova</span>':''}</td>
+   <td class="n"><input data-mo="${i}" inputmode="decimal" value="${r.oee>0?fmtN(Math.round(r.oee*10000)/100,2):''}" style="width:70px;text-align:right">${ig&&r.st==='alterada'&&!deq(ig.oeeMetaPct??null,r.nv.oeeMetaPct)?`<br><span class="small muted">era ${fmtN(ig.oeeMetaPct,2)}</span>`:''}</td>
+   <td class="n"><input data-mp="${i}" inputmode="numeric" value="${r.pph>0?fmtN(r.pph):''}" style="width:86px;text-align:right">${r.pphSrc?`<br><span class="small muted">${esc(r.pphSrc)}</span>`:''}</td>
+   <td class="n">${r.nv.metaDiaria!=null?fmtN(r.nv.metaDiaria):'–'}${ig&&r.st==='alterada'&&!deq(ig.metaDiaria??null,r.nv.metaDiaria)?`<br><span class="small muted">era ${fmtN(ig.metaDiaria)}</span>`:''}</td>
+   <td class="small">${r.nv.quadro?`<details><summary>${r.nv.quadro.length} intervalo(s)</summary><table class="small">${r.nv.quadro.map(q=>`<tr><td class="mono">${mofHM(q.start)}–${mofHM(q.end)}</td><td class="n">${fmtN(q.target)}</td></tr>`).join('')}</table><span class="muted">${esc(r.quadroSrc)}</span></details>`:'<span class="muted">sem quadro</span>'}</td>
+   <td>${r.erro?`<span class="pill crit">${esc(r.erro)}</span>`:r.st==='nova'?'<span class="pill ok">nova</span>':r.st==='igual'?'<span class="pill">igual</span>':`<span class="pill warn">alterada</span><br><span class="small muted">substitui a de ${fmtD(ig.de)}</span>`}${r.cobre?`<br><span class="small muted">divide a vigência de ${fmtD(r.cobre.de)}</span>`:''}</td>
+   <td class="small">${r.av.concat(r.av2).map(a=>`<div class="warn">${esc(a)}</div>`).join('')}</td></tr>`}).join('')}</table></div>
+  ${P.nao.length?`<details class="cd" style="margin-top:8px"><summary class="small">${P.nao.length} campo(s) da aba não reconhecido(s) ${ib('Não reconhecidos','Células preenchidas que nenhuma regra usou (comentários, totais extras, família fora do cadastro…). Não entram. Se for uma família que falta, cadastre em Famílias e leia a planilha de novo.')}</summary><ul class="small">${P.nao.slice(0,300).map(u=>`<li>${esc(u)}</li>`).join('')}</ul></details>`:'<p class="small muted">Todos os campos preenchidos da aba foram reconhecidos.</p>'}
+  ${sel.length?`<div class="filters"><label style="flex:1;min-width:240px">Observação (opcional)<input id="iMot" placeholder="ex.: Meta OEE FY27 aprovada em 10/10"></label>${pe?`<button class="b p" id="mofGo">Importar ${sel.length} mês(es)</button>`:'<span class="small warn">Desbloqueie a edição para importar.</span>'}</div>`:'<p class="small muted">Nada marcado para importar.</p>'}</div>`;
+ const redraw=()=>{mofPlano(P,Cad.D);cadImportarMeta(el,I)};
+ box.querySelectorAll('[data-ms]').forEach(c=>c.onchange=()=>{R[+c.dataset.ms].sel=c.checked;redraw()});
+ const all=$('#mofAll');if(all)all.onchange=()=>{R.forEach(r=>{if(!r.erro&&r.st!=='igual')r.sel=all.checked});redraw()};
+ box.querySelectorAll('[data-mo]').forEach(x=>x.onchange=()=>{const r=R[+x.dataset.mo],v=cbNum(x.value);r.oee=v?v/100:null;if(r.oee>0&&r.pph>0&&r.st!=='igual')r.sel=true;redraw()});
+ box.querySelectorAll('[data-mp]').forEach(x=>x.onchange=()=>{const r=R[+x.dataset.mp],v=cbNum(String(x.value).replace(/\./g,''));r.pph=v||null;r.pphSrc=v?'informado na prévia':null;if(r.oee>0&&r.pph>0&&r.st!=='igual')r.sel=true;redraw()});
+ const go=$('#mofGo');if(go)go.onclick=()=>{if(!Cad.podeEditar())return;const mot=($('#iMot').value||'').trim()||null,ops=mofOps(P,Cad.D,mot);if(!ops.length)return toast('Nada para importar.');
+  const n=sel.length;Cad.ops(ops);toast(`${n} mês(es) da ${MOF_ABA} em ${ops.length} meta(s); gravando…`,6000);I.mof=null;cadImportarMeta(el,I);el.scrollIntoView({block:'start'})}}
 
 /* ---------- auditoria ---------- */
 function cadAuditoria(el){const D=Cad.D,F=Cad.ui.aud;const q=norm(F.q);let A=(D.auditoria||[]).slice().reverse();if(F.t)A=A.filter(a=>a.tipo===F.t);if(q)A=A.filter(a=>norm([a.por,a.acao,a.codigo,a.campo,a.motivo,a.origem,audTxt(a.antes),audTxt(a.depois)].join(' ')).includes(q));
@@ -2320,9 +2449,9 @@ function cs12Avisos(g){const ord={erro:0,aviso:1,info:2},by={};g.av.forEach(x=>(
  return ks.map(k=>{const T=CS12_TIPOS[k],L=by[k],cl=T.sev==='erro'?'crit':T.sev==='aviso'?'warn':'';
   return`<details class="cd"${T.sev==='erro'?' open':''}><summary><span class="pill ${cl}" style="font-size:11px">${T.sev==='erro'?'Erro':T.sev==='aviso'?'Aviso':'Info'}</span> ${esc(T.t)} <span class="muted small">(${L.length})</span> ${ib(T.t,T.h+(T.sev==='erro'?' Enquanto houver erro, este catálogo não entra.':T.sev==='aviso'?' Não impede a importação.':''))}</summary>
    <ul class="small" style="margin:6px 0 2px 18px;padding:0;max-height:220px;overflow:auto">${L.map(x=>`<li>${x.linha?`<span class="muted">linha ${x.linha}</span> · `:''}${esc(x.t)}</li>`).join('')}</ul></details>`}).join('')}
-function cadImportar(el){const I=Cad.ui.imp||(Cad.ui.imp={modo:'cs12',fmt:'auto',de:todayISO(),map:{},soBOM:true,txt:'',prev:null});if(!I.map)I.map={};if(I.modo==='comp')return cadImportarComp(el,I);if(I.modo!=='mat')I.modo='cs12';const D=Cad.D,pe=Cad.podeEditar(true);
+function cadImportar(el){const I=Cad.ui.imp||(Cad.ui.imp={modo:'cs12',fmt:'auto',de:todayISO(),map:{},soBOM:true,txt:'',prev:null});if(!I.map)I.map={};if(I.modo==='comp')return cadImportarComp(el,I);if(I.modo==='meta')return cadImportarMeta(el,I);if(I.modo!=='mat')I.modo='cs12';const D=Cad.D,pe=Cad.podeEditar(true);
  el.innerHTML=`<div class="card form"><h3>Importar do SAP ${ib('Importar do SAP','Lista técnica: CS12 "Estrutura multinível" (é a única fonte da BOM do cadastro). Materiais: lista do SAP com Material, Texto breve e UM básica. Nada é gravado antes da prévia; o SAP manda no que vem dele. Exige a edição desbloqueada para gravar.')}</h3>
-  <span class="seg" id="iModo"><button data-m="cs12" class="${I.modo==='cs12'?'on':''}">Lista técnica (CS12)</button><button data-m="mat" class="${I.modo==='mat'?'on':''}">Materiais</button><button data-m="comp">Componentes</button></span>
+  ${MOF_SEG(I.modo)}
   ${I.modo==='cs12'&&I.novo?`<div class="note" style="margin:8px 0"><b>Cadastrar o material ${esc(I.novo.codigo)}</b>${I.novo.nome?' · '+esc(I.novo.nome):''} · ${I.novo.tipoItem==='preparacao'?'Preparação (aditivo / solução)':'Tubo'} · ${esc(I.novo.unidade)}<br>No SAP: CS12 › material <b class="mono">${esc(I.novo.codigo)}</b> › Estrutura multinível › copie a lista inteira (Ctrl A, Ctrl C) e cole abaixo. O catálogo é criado junto com a BOM ao importar. <button class="b sm" id="iNovoX">Cancelar este cadastro</button></div>`:''}
   ${I.modo==='cs12'?`<p class="small muted" style="margin:8px 0">CS12 › Estrutura multinível › lista copiada (Ctrl C) ou salva em .txt / planilha. Leva junto o cabeçalho (Material, Cent./Util./Alt, Denominação, Qtd.base, Qtd.requer.) e a tabela com Ní, Item, ID objeto, Texto breve, Qtd., UM, UMB, ItRefCo, ProbEmpr. Pode colar várias listas de uma vez (uma por catálogo). Grava o nível 1 como itens da BOM e os níveis seguintes como estrutura; consumo por 1.000 tubos = quantidade ÷ Qtd.requer. × 1.000.</p>
    <div class="fg"><label>Vigência a partir de<input type="date" id="iDe" value="${esc(I.de)}"></label><label class="b" style="align-self:end">Abrir arquivo…<input type="file" id="iArq" accept=".txt,.csv,.xlsx,.xls,.xlsm" hidden></label></div>`

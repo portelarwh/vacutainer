@@ -122,3 +122,21 @@ Base: `claude/centralizacao-configuracoes.md`. Pedido do Pedro: ⓘ em todos os 
   - busca; ✓/✗ por coluna (máquina) e "todas/nenhuma" por linha;
   - legenda; linha alterada em amarelo; aviso quando o filtro "Onde se aponta" esconde tudo.
 - Correção: o ⓘ dos grupos do menu ficava em outra linha.
+
+## 12. Portal 1.8.2 (06/11/2026) · importar a Meta OEE FY27
+
+- **Onde:** Cadastros › Importar › **Meta OEE FY27** (link direto `Portal.html#cadastros/importar/metaoee`).
+- **Leitura:** escolhe a planilha inteira (`OEE-Vacutainer_v2.xlsm`); só a aba "Meta OEE FY27" é lida, com a mesma lógica da Produção:
+  - quadro mensal: célula "Mês" com a família acima, horários à direita (grupo de várias horas vira linhas de 1 h) e o Total "1.043 (69,0%)" (OEE meta);
+  - quadros hora a hora explícitos ("EDTA – Outubro/26" + "Horário"); quando existem, valem no lugar do resumo e são conferidos com ele;
+  - PPH da aba BASE DE DADOS (bloco FY27) ou o PPH nominal do catálogo (tubo) da família;
+  - milheiros viram peças pela escala PPH × minutos × OEE (aviso se não bater em 5 %);
+  - família pelo código ou nome do cadastro; família fora do cadastro e células não usadas aparecem em "não reconhecidos".
+- **Gravação em Metas de OEE:**
+  - uma meta por família (`OEE-<família>`, ou a meta que já existe para a família, sem catálogo e sem máquina);
+  - uma vigência por mês, a partir do dia 1º, com `oeeMetaPct`, `pph`, `metaDiaria`, `quadro [{start,end,target}]` (minutos, peças), `origem`, `criadoPor/Em`;
+  - semáforo, cobertura e divergência herdados da vigência que cobria o mês;
+  - o fim é a véspera da próxima; o último mês continua valendo até a próxima importação.
+- **Prévia:** uma linha por família e mês, com situação **nova** (marcada), **igual** (ignorada) ou **alterada** (desmarcada; se marcar, a antiga vai para Desativadas com o motivo "substituída pela importação da Meta OEE FY27"). OEE meta e PPH editáveis na prévia; linha sem OEE ou sem PPH não entra. Uma operação `importação` por meta, com origem "planilha <arquivo> · aba Meta OEE FY27".
+- **Ficha da meta:** o quadro hora a hora aparece como "06:00–07:00 · 34.500".
+- Teste: `testes/tmeta.js` (planilha fictícia: 4 registros, reimportação igual, substituição de um mês, auditoria).

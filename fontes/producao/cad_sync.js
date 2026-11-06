@@ -1,4 +1,4 @@
-/* ===== Produção 2.4 · cadastro geral do Portal (vacutainer-cadastros.json) =====
+/* ===== Produção 2.4.1 · cadastro geral do Portal (vacutainer-cadastros.json) =====
    O Portal é o dono de: linhas, famílias, máquinas (equipamentos), catálogos (tubos), turnos (pausas, intervalos do Hora a Hora),
    tipos de parada, metas de OEE e parâmetros comuns (parada longa, semáforo, motivos de abono e de "sem produção").
    Quando a revisão do cadastro muda, a Produção copia esses dados para a própria base numa alteração só (com auditoria),
@@ -131,7 +131,7 @@ const CadSync = (() => {
   function banner(sec) {
     const D = dominios(), C = doc(), s = (db().settings || {}).cadSync; if (!D[sec]) return '';
     return `<div class="banner info" style="margin-bottom:10px"><p><b>Vem do cadastro do Portal</b> ${ib('cadPortal')} · rev ${esc(C.rev)}${s && s.em ? ` · aplicado em ${U.brDT(s.em)}` : ''}. Aqui fica só para consulta.
-      <a class="btn sm primary" href="${esc(portalHref('cadastros/' + SEC_PORTAL[sec]))}" data-keep="1">Editar no Portal ↗</a>${sec === 'metas' ? '<br><span class="small">A importação da Meta OEE FY27 fica desligada enquanto as metas vêm do Portal: o quadro hora a hora entra pelo Portal (Trazer configurações das páginas).</span>' : ''}${pend() ? ' <button class="btn sm" data-keep="1" id="csNow">Aplicar a revisão nova agora</button>' : ''}</p></div>`;
+      <a class="btn sm primary" href="${esc(portalHref('cadastros/' + SEC_PORTAL[sec]))}" data-keep="1">Editar no Portal ↗</a>${sec === 'metas' ? `<br><span class="small">A Meta OEE FY27 (planilha OEE-Vacutainer_v2.xlsm) é importada no Portal: <a href="${esc(portalHref('cadastros/importar/metaoee'))}" data-keep="1">Cadastros › Importar › Meta OEE FY27 ↗</a>. As metas e o quadro hora a hora chegam aqui pelo cadastro.</span>` : ''}${pend() ? ' <button class="btn sm" data-keep="1" id="csNow">Aplicar a revisão nova agora</button>' : ''}</p></div>`;
   }
   /* trava a edição da seção que vem do Portal (botões de criar/editar/salvar e campos de formulário) */
   function travar(root, sec) {
@@ -160,6 +160,18 @@ const CadSync = (() => {
     P._portal = 1; const r0 = P.render, m0 = P.mount;
     P.render = function () { const D = CadSync.dominios(); return (D.parametros ? `<div class="banner info" style="margin-bottom:10px"><p><b>Parada longa e semáforo comum vêm do Portal</b> (Parâmetros e semáforo) e ficam travados aqui. <a class="btn sm" href="${esc(CadSync.portalHref('cadastros/parametros'))}">Editar no Portal ↗</a></p></div>` : '') + r0.apply(this, arguments); };
     P.mount = function (root) { if (m0) m0.apply(this, arguments); if (!CadSync.dominios().parametros) return; for (const k of ['longStopMin', 'semGreen', 'semYellow']) { const el = root.querySelector(`[data-k="${k}"]`); if (el) { el.disabled = true; el.title = 'Vem do Portal (Parâmetros e semáforo)'; } } };
+  }
+  /* 2.4.1 · Importação: com as metas vindo do Portal, a Meta OEE FY27 é importada lá (importar aqui gravaria metas que a sincronização tira) */
+  const Im = Cfg.importacao;
+  if (Im && !Im._portal) {
+    Im._portal = 1; const m0 = Im.mount;
+    Im.mount = function (root) {
+      if (m0) m0.apply(this, arguments); if (!CadSync.dominios().metas) return;
+      const b = root.querySelector('#imMeta'); if (!b) return;
+      const card = b.closest('.card'), p = card && card.querySelector('p.small');
+      if (p) p.innerHTML = 'As metas de OEE vêm do cadastro do Portal: a aba Meta OEE FY27 é importada lá (mesma leitura, com prévia) e chega aqui na próxima revisão do cadastro.';
+      const a = document.createElement('a'); a.className = 'btn primary'; a.href = CadSync.portalHref('cadastros/importar/metaoee'); a.textContent = 'Importar no Portal ↗'; a.title = 'Portal › Cadastros › Importar › Meta OEE FY27'; b.replaceWith(a);
+    };
   }
   /* Usuário: o nome vem do "Entrar" pelo ID (cabeçalho comum) */
   const Uu = Cfg.usuario;

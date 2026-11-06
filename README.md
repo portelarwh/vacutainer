@@ -28,5 +28,5 @@ CLAUDE.md  regras do projeto (o Claude Code lê sozinho)
 
 - Produção: nunca editar `paginas/OEE-Vacutainer.html` direto; editar `fontes/producao/` e rodar `python fontes/producao/build.py`.
 - Kit do cabeçalho: editar `fontes/kit/kit_v21.js` e rodar `python fontes/kit/aplicar_kit21.py` + o build da Produção.
-- Testes: `npm i -D playwright` (uma vez) e `node testes/tpg.js`.
+- Testes: `npm i -D playwright xlsx` (uma vez) e `node testes/tpg.js` (ou outro de `testes/`).
 - Um commit por entrega (ex.: "Waste 1.8.7: filtro por turno").

@@ -97,3 +97,9 @@ Por ordem: MB51 (saldo, data principal) × COOIS (tipo, status, datas, fornecida
   - parâmetros: parada longa, semáforo comum, motivos de abono e de "sem produção".
   Mantém os ids já usados nos lançamentos. Dias já lançados guardam o que usaram. Domínio vazio no Portal continua com o cadastro local. Grava `settings.cadSync = {stamp, rev, em, resumo}`.
 - **Configurações:** Estrutura, Turnos, Catálogos, Metas e capacidades e Tipos de parada ficam só para consulta, com faixa "Vem do cadastro do Portal · rev N" e o botão "Editar no Portal ↗". A importação da Meta OEE FY27 fica desligada enquanto as metas vêm do Portal (o quadro entra pelo Trazer do Portal). Em Parâmetros, a parada longa e o semáforo ficam travados. Em Usuário, a faixa aponta para o Entrar do cabeçalho.
+
+## 11. Produção 2.4.1 (06/11/2026) · Meta OEE FY27 importada no Portal
+
+- Com as metas de OEE vindo do Portal, Configurações › Importação › "1 · Metas" troca o botão por **"Importar no Portal ↗"** (`Portal.html#cadastros/importar/metaoee`). Importar aqui gravaria metas que a sincronização do cadastro removeria.
+- A faixa de Metas e capacidades aponta para o mesmo lugar. Sem metas no Portal, a importação local continua como antes.
+- As metas e o quadro hora a hora chegam pelo CadSync na próxima revisão do cadastro (`intervalBoard` = `quadro` da vigência).
