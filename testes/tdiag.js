@@ -152,6 +152,21 @@ const depoisM3=await p3.evaluate(()=>document.body.innerText.includes('teste M03
 await p3.evaluate(()=>{Store.mode='teste';Store.dir=null});
 ok(!antesM3&&depoisM3,`M03: ação vencida aparece na tela ao voltar para a página no dia seguinte (antes ${antesM3}, depois ${depoisM3})`);
 
+// ---- Base que some e volta · a tela troca os números antigos pelo aviso e depois volta aos números
+const p5=await nova('Portal.html#geral','PS');
+await p5.evaluate(async PASTA=>{const X=eval(PASTA);window.__X=X;
+  X.files['perdas-base.json']={txt:JSON.stringify({rev:3,exports:{exportsVersion:1,porMes:[],porOrdem:[],pendencias:[{sev:1,tipo:'semCausa',txt:'Ordem 999 crítica sem causa · teste SOME'}]}}),mod:1};
+  Store.dir=X.dir;Store.mode='pasta';MOD.teste=false;MOD.files={};MOD.data={};await readModules(false);App.show('geral')},PASTA);
+const txt=()=>p5.evaluate(()=>document.body.innerText);
+const s0=await txt();
+await p5.evaluate(()=>{delete window.__X.files['perdas-base.json'];document.dispatchEvent(new Event('visibilitychange'))});await p5.waitForTimeout(800);
+const s1=await txt();
+await p5.evaluate(()=>{window.__X.files['perdas-base.json']={txt:JSON.stringify({rev:4,exports:{exportsVersion:1,porMes:[],porOrdem:[],pendencias:[{sev:1,tipo:'semCausa',txt:'Ordem 999 crítica sem causa · teste SOME'}]}}),mod:1};document.dispatchEvent(new Event('visibilitychange'))});await p5.waitForTimeout(800);
+const s2=await txt();await p5.evaluate(()=>{Store.mode='teste';Store.dir=null});
+ok(s0.includes('teste SOME')&&!s0.includes('Não encontrei perdas-base.json'),'Base some: antes, a tela mostra os dados do Waste');
+ok(!s1.includes('teste SOME')&&s1.includes('Não encontrei perdas-base.json'),'Base some: ao voltar para a página, a tela troca os dados antigos pelo aviso');
+ok(s2.includes('teste SOME')&&!s2.includes('Não encontrei perdas-base.json'),'Base some: quando a base volta (mesma data de arquivo), os dados reaparecem');
+
 // ---- M04 · Gel: gravação sem releitura válida não esvazia a fila
 const g4=await nova('Gestão-Gel-Vacutainer.html','GM');
 const m4=await g4.evaluate(async PASTA=>{const X=eval(PASTA);X.files[BASE_FILE]={txt:'{"rev":5,"revBy":"outro","lps":[]}',mod:1};X.F.cabFalha=true;

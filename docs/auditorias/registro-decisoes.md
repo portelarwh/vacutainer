@@ -11,7 +11,8 @@ Este arquivo responde às auditorias externas da plataforma e registra, para cad
 |---|---|---|---|
 | Auditoria de integração (A01–A10) | 05/11/2026 | anterior a `ca46d0c` | Portal 1.8.3 e 1.8.4 (PRs portelarwh/vacutainer#1 e #2) |
 | Diagnóstico técnico (F01–F08, § 5) | 06/11/2026 | `9cc1dc4` | Portal 1.8.5, Produção 2.4.3, Waste 1.8.9, Gel 1.97, Paradas 1.0.7 (PR portelarwh/vacutainer#4) |
-| Diagnóstico pós-merge (M01–M04, ressalvas) | 06/11/2026 | `c2ca6af` | Portal 1.8.6, Produção 2.4.4, Waste 1.8.10, Gel 1.98 (§ 0) |
+| Diagnóstico pós-merge (M01–M04, ressalvas) | 06/11/2026 | `c2ca6af` | Portal 1.8.6, Produção 2.4.4, Waste 1.8.10, Gel 1.98 (§ 0, PR portelarwh/vacutainer#5) |
+| Revisão do PR #5 (base que some) | 06/11/2026 | `142b9c2` | Portal 1.8.7 (§ 0.1) |
 
 Status usados: **corrigido** · **corrigido em parte** · **recusado** · **adiado** · **já existia**.
 
@@ -54,6 +55,11 @@ Ao reproduzir o M02, achamos **um defeito a mais no mesmo trecho**: ao criar a n
 - **Waste lê estruturas internas da Produção:** a descrição antiga estava **incompleta** e foi corrigida na tabela do § 1. A correção de código continua adiada, com o motivo e o gatilho lá.
 - **Leitor do Gel no Waste com `exports` de versão desconhecida:** **corrigido no código** (Waste 1.8.10). `gelFind` não lê nada desse `exports`, nem pela busca genérica, e a tela pede para atualizar o Waste. Teste: `tdiag.js` › Ressalva.
 - **"Teste aprovado não prova ausência de outras falhas":** concordamos. Neste registro, um teste aprovado vale **só para o cenário que ele reproduz**.
+
+### 0.1 · P2 · Base que some da pasta deixava números antigos na tela · **corrigido** (Portal 1.8.7)
+- **Apontado na revisão do PR #5 e confirmado:** quando `findModule` não achava mais a base, o Portal trocava os dados pelo erro, mas **não subia `MOD.versao`**. A tela não redesenhava e o cartão continuava com os números antigos. Era uma lacuna da correção do M03: só o erro de leitura subia o contador.
+- **Feito:** as duas transições para erro (base não encontrada e erro de leitura) passam por `modErro`. Ele sobe o contador quando o erro é novo e esquece o arquivo lido. A recuperação já funcionava (a base que volta é reprocessada) e foi mantida.
+- **Teste:** `tdiag.js` › "Base some", que confere o DOM em três momentos: com os dados, depois do sumiço (aviso no lugar dos números) e depois da volta da base (dados de novo). No código de `142b9c2`, só o cenário do sumiço falha.
 
 ---
 
