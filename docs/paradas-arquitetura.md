@@ -128,3 +128,7 @@ O Excel de respostas (ID, Hora de início, Hora de conclusão, Email, Nome, as p
 - **Cores:** paleta comum (Portal, Produção, Waste), com `color-scheme: dark` no escuro para os campos de data. O botão principal usa `--accent-ink`. As cores de classe (`--g0`…`--g9`) não mudaram.
 - **Status:** "modo de teste" em roxo; "Só neste navegador · conectar pasta" com pílula de atenção, e não mais vermelha cheia.
 - **Gráfico por mês:** uma unidade só para a escala inteira (h, se o máximo passar de 600 min). Antes, o eixo misturava "300 min" e "12,5 h". A dica mantém o valor exato.
+
+## 14. Paradas 1.0.9 (06/11/2026) · bases em 00. Bases
+
+- Na primeira leitura da sessão com a pasta, move `paradas-base.json` para `00. Bases` (cópia em `00. Backups/Paradas`). Lê o cadastro e o OEE em `00. Bases` ou na raiz.

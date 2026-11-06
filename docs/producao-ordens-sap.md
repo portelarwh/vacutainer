@@ -124,3 +124,7 @@ Por ordem: MB51 (saldo, data principal) × COOIS (tipo, status, datas, fornecida
 - No card com estado (borda e ícone do semáforo), o valor usa a cor do estado. Antes, o OEE de 70,4% com meta de 72,3% tinha borda âmbar e número vermelho. Sem estado, abaixo da meta continua vermelho. Só CSS, sem mudar regra.
 - No modo exemplo, o aviso "Dados de demonstração carregados" deixa de aparecer: repetia o aviso do exemplo, e Remover não grava nada ali.
 - Padrão visual comum do kit, pelo `build.py`.
+
+## 16. Produção 2.4.6 (06/11/2026) · bases em 00. Bases
+
+- `FolderBackend` usa `vacRaiz`. Em `Store.connect`, com permissão de gravação, move `oee-vacutainer-base.json` (cópia em `00. Backups/OEE`) e `ordens-base.json` (cópia em `00. Backups/Ordens`) para `00. Bases`. Lê o cadastro e a KKBC em `00. Bases` ou na raiz.

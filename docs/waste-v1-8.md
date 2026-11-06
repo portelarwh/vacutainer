@@ -80,3 +80,7 @@ Mudanças aditivas; tudo da 1.7.3 preservado (importação KKBC_ORD nos dois lay
 - Indicador em atenção: a borda segue o âmbar do valor. Antes, valor âmbar com borda azul, como em "Críticas/altas sem causa".
 - Valor do indicador principal em 28 px, como nas outras páginas; a grade dos indicadores passa para 200 px por coluna.
 - Padrão visual comum do kit.
+
+## Waste 1.8.12 (06/11/2026) · bases em 00. Bases
+
+- Ao conectar, move `perdas-base.json` para `00. Bases` (kit vac-bases), com cópia em `00. Backups/Perdas`. Lê OEE, Gel e Ordens em `00. Bases` ou, enquanto não forem movidas, na raiz.
