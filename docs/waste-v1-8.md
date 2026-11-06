@@ -58,3 +58,10 @@ Mudanças aditivas; tudo da 1.7.3 preservado (importação KKBC_ORD nos dois lay
 - Se uma gravação falhou (alteração pendente) e a `perdas-base.json` da pasta mudou depois, a sincronização baixa a cópia local `perdas-base_NAO-GRAVADO_<data>.json` e passa a usar a base da pasta, em vez de gravar por cima. Se a pasta não mudou, grava normalmente.
 - Uma alteração nova feita enquanto outra está pendente leva as duas juntas (antes a pendente era descartada ao reler a pasta).
 - Catálogo de sistemas único do kit (`fontes/kit/sistemas.js`).
+
+## Waste 1.8.8 (06/11/2026) · pendências no exports
+
+- `exports.pendencias` (contrato: `sev 1` = urgente, `2` = atenção), `exports.ultimaImportacao`, `modulo`, `appVersion`.
+  - Ação aberta com prazo: `{sev:1, tipo:'acaoVencida', aPartirDe:<dia seguinte ao prazo>, quando:<prazo>, txt, link}`. Publicada antes de vencer, com `aPartirDe`, porque o `exports` só é recalculado quando alguém grava: assim a ação vence no Portal no dia certo mesmo sem gravação nova.
+  - Ordem crítica/alta sem causa: `{sev: crítica 1 · alta 2, tipo:'semCausa', txt, link:'ordem=…'}`.
+- O Portal 1.8.4 deixa de ler `actions` e `imports` da base do Waste (regra 1).

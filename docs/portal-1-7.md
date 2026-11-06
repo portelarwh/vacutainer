@@ -152,3 +152,9 @@ Origem: auditoria externa de 05/11/2026 (A01–A10). Adotado o que corrige dado;
 - **Catálogo de sistemas único** (`fontes/kit/sistemas.js`, `DEFAULT_SYSTEMS`): os mesmos nomes e a mesma ordem em todas as páginas (antes Gel, Produção e Waste não tinham o Paradas e usavam outros nomes). Paradas deixa de ser "em construção".
 - Teste: `node testes/tintegra.js` (gera o `exports` real do Gel e da Produção e confere que o Portal mostra os mesmos números; simula duas pessoas gravando).
 - Fica para depois: Waste publicar `pendencias`/`kpis` no `exports` (o Portal ainda monta as pendências do Waste a partir das ações da base); `eventoId` comum OEE × Paradas (A10, já previsto em `paradas-arquitetura.md`).
+
+## 14. Portal 1.8.4 (06/11/2026) · pendências do Waste pelo exports
+
+- Cartões "Críticas/altas sem causa" e "Ações vencidas", a lista de pendências e a "última KKBC" vêm do `exports` do Waste 1.8.8. Base do Waste sem `exports.pendencias` (versão antiga): leitura antiga, com a pílula **dados brutos**.
+- Contrato: pendência com `aPartirDe` (opcional) só aparece a partir desse dia. Vale para qualquer página.
+- Teste: `testes/tintegra.js` confere que cartões e pendências pelo `exports` são iguais aos da leitura antiga.
