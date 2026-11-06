@@ -53,16 +53,19 @@ const OrdensSAP = (() => {
     if (c && d) s = s.lastIndexOf(',') > s.lastIndexOf('.') ? s.replace(/\./g, '').replace(',', '.') : s.replace(/,/g, '');
     else if (c) s = c > 1 ? s.replace(/,/g, '') : s.replace(',', '.');
     else if (d > 1 || /^\d{1,3}\.\d{3}$/.test(s)) s = s.replace(/\./g, '');
+    if (!/^(\d+\.?\d*|\.\d+)$/.test(s)) return null;   // 2.4.3 · só aceita o número inteiro ("123abc" não vira 123)
     const x = parseFloat(s); return isFinite(x) ? (neg ? -x : x) : null;
   }
   const pad = n => String(n).padStart(2, '0');
+  /* 2.4.3 · data que não existe no calendário (31.02.2026) é recusada */
+  const valida = (a, m, d) => { const x = new Date(Date.UTC(a, m - 1, d)); return x.getUTCFullYear() === a && x.getUTCMonth() === m - 1 && x.getUTCDate() === d ? `${a}-${pad(m)}-${pad(d)}` : null; };
   function data(v) {
     if (v == null || v === '') return null;
     if (v instanceof Date && !isNaN(v)) return `${v.getFullYear()}-${pad(v.getMonth() + 1)}-${pad(v.getDate())}`;
     if (typeof v === 'number' && v > 20000 && v < 80000) { const d = new Date(Math.round((v - 25569) * 864e5)); return `${d.getUTCFullYear()}-${pad(d.getUTCMonth() + 1)}-${pad(d.getUTCDate())}`; }
     const s = String(v).trim(); let m;
-    if ((m = s.match(/^(\d{4})-(\d{2})-(\d{2})/))) return `${m[1]}-${m[2]}-${m[3]}`;
-    if ((m = s.match(/^(\d{1,2})[./-](\d{1,2})[./-](\d{4})/))) return `${m[3]}-${pad(m[2])}-${pad(m[1])}`;
+    if ((m = s.match(/^(\d{4})-(\d{2})-(\d{2})/))) return valida(+m[1], +m[2], +m[3]);
+    if ((m = s.match(/^(\d{1,2})[./-](\d{1,2})[./-](\d{4})/))) return valida(+m[3], +m[2], +m[1]);
     return null;
   }
   function hora(v) { if (v == null || v === '') return ''; if (typeof v === 'number' && v < 1) { const s = Math.round(v * 86400); return `${pad(Math.floor(s / 3600))}:${pad(Math.floor(s / 60) % 60)}:${pad(s % 60)}`; } if (v instanceof Date) return `${pad(v.getHours())}:${pad(v.getMinutes())}:${pad(v.getSeconds())}`; return String(v).trim(); }

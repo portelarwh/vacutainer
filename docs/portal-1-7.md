@@ -158,3 +158,10 @@ Origem: auditoria externa de 05/11/2026 (A01–A10). Adotado o que corrige dado;
 - Cartões "Críticas/altas sem causa" e "Ações vencidas", a lista de pendências e a "última KKBC" vêm do `exports` do Waste 1.8.8. Base do Waste sem `exports.pendencias` (versão antiga): leitura antiga, com a pílula **dados brutos**.
 - Contrato: pendência com `aPartirDe` (opcional) só aparece a partir desse dia. Vale para qualquer página.
 - Teste: `testes/tintegra.js` confere que cartões e pendências pelo `exports` são iguais aos da leitura antiga.
+
+## 15. Portal 1.8.5 (06/11/2026) · resposta ao diagnóstico técnico
+
+Registro completo das decisões em `docs/auditorias/registro-decisoes.md`.
+- **F03**: o resultado de cada base vale só no dia em que foi lido (`MOD.files[id].dia`); na virada do dia a sincronização automática (1 min) reavalia `aPartirDe` sem nova gravação na página de origem.
+- **F08**: `exports` com `exportsVersion` desconhecida não alimenta nenhum número (nem nos caminhos de dados brutos do OEE e do Waste); `r.ex` e `cadProp` também passam pelo teste de versão.
+- **5.2**: Versões das páginas e cartões leem `databaseVersion`, `lastModifiedAt`, `lastModifiedBy` e `applicationVersion` da Produção.

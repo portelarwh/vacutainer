@@ -107,3 +107,9 @@ Por ordem: MB51 (saldo, data principal) × COOIS (tipo, status, datas, fornecida
 ## 12. Produção 2.4.2 (06/11/2026)
 
 - Catálogo de sistemas único do kit (`fontes/kit/sistemas.js`): a barra passa a ter Paradas e os mesmos nomes do Portal. Sem mudança na base nem no `exports` (o Portal 1.8.3 passa a usar `exports.kpis`, `pendencias`, `porDia` e `ordens` no lugar de recalcular).
+
+## 13. Produção 2.4.3 (06/11/2026) · gravação, CadSync e importador
+
+- **Gravação**: cada gravação leva `saveId`; a releitura confere o `saveId`, não só o `databaseVersion`. Se outra pessoa gravou a mesma versão ao mesmo tempo, a alteração continua pendente ("Outra pessoa gravou ao mesmo tempo…") e a próxima tentativa reaplica as operações sobre a versão dela (caminho de conflito que já existia).
+- **CadSync**: vigência de catálogo desativada no Portal fica `active:false` (não é apagada: os registros antigos acham o catálogo pelo id); o Portal manda nas metas quando tem metas cadastradas, mesmo todas inativas; turno inativo = vigências inativas. Se o `vacutainer-cadastros.json` sumir da pasta, vale a última cópia lida (as travas continuam) e a faixa avisa.
+- **Importador MB51/COOIS**: data que não existe (31.02.2026) é recusada; número só é aceito inteiro ("123abc" → vazio). As amostras de `testes/amostras/` dão o mesmo resultado de antes. Zeros à esquerda do material **continuam sendo tirados** (mesma regra do Portal/CS12, ver registro de decisões).

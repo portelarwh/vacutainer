@@ -117,3 +117,7 @@ O Excel de respostas (ID, Hora de início, Hora de conclusão, Email, Nome, as p
 ## 11. Paradas 1.0.6 (06/11/2026)
 
 - Catálogo de sistemas único do kit (`fontes/kit/sistemas.js`). O Portal 1.8.3 passa a desenhar `exports.serie` (`{rotulo, pontos}`) e lê `sev 1` como urgente.
+
+## 12. Paradas 1.0.7 (06/11/2026)
+
+- `eventosTodos`: um evento do OEE (`exports.paradasEventos`, quando o OEE publicar) substitui só o evento que é a mesma parada (D1): mesmo dia e equipamento, turno igual quando os dois têm, início a até 10 min (sem horário: duração a até 1 min); cada evento do OEE substitui no máximo um; contagem de microparadas (tally) nunca é substituída. Antes, qualquer evento do OEE no dia escondia todos os do Forms do dia.

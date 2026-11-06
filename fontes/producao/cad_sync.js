@@ -1,4 +1,4 @@
-/* ===== Produção 2.4.1 · cadastro geral do Portal (vacutainer-cadastros.json) =====
+/* ===== Produção 2.4.1 (2.4.3: desativações do Portal propagadas) · cadastro geral do Portal (vacutainer-cadastros.json) =====
    O Portal é o dono de: linhas, famílias, máquinas (equipamentos), catálogos (tubos), turnos (pausas, intervalos do Hora a Hora),
    tipos de parada, metas de OEE e parâmetros comuns (parada longa, semáforo, motivos de abono e de "sem produção").
    Quando a revisão do cadastro muda, a Produção copia esses dados para a própria base numa alteração só (com auditoria),
@@ -57,6 +57,9 @@ const CadSync = (() => {
         const p = { code: c.codigo, name: c.nome || c.codigo, familyId: famId(c.familia), lineId: lineId(c.linha), pph: v.pphNominal != null ? +v.pphNominal : (o ? o.pph : null), color: c.cor || (o && o.color) || null, validFrom: v.de, validTo: v.ate || null, active: c.ativo !== false };
         if (o) { usados.add(o.id); upd(o, p, 'catálogo', 'catalogos'); } else { const id = 'cat_' + c.codigo + (k && ex.some(x => x.id === 'cat_' + c.codigo) ? '_' + v.de : ''); usados.add(id); add(d.catalogs, { id: d.catalogs.some(x => x.id === id) ? U.uid('cat') : id, machineId: null, note: 'Origem: cadastro do Portal', ...p, ...novo() }, 'catálogo', 'catalogos'); }
       });
+      /* 2.4.3 · vigência desativada no Portal (não está mais nas vigências válidas): fica inativa aqui. Não é apagada:
+         os registros antigos continuam achando o catálogo pelo id. Só quando o Portal tem vigências (válidas ou desativadas) */
+      if (vs.length || (c.vigenciasDesativadas || []).length) for (const x of ex) if (!usados.has(x.id) && x.active !== false) upd(x, { active: false }, 'catálogo', 'catalogos');
     }
     const catId = (cod, data) => { if (!cod) return null; const L = live(d.catalogs).filter(x => x.code === cod); return (L.find(x => (!data || (x.validFrom || '') <= data) && (!x.validTo || !data || x.validTo >= data)) || L[0] || {}).id || null; };
     /* tipos de parada */
@@ -72,7 +75,7 @@ const CadSync = (() => {
     for (const t of (C.turnos || []).filter(x => x && x.codigo)) {
       let o = live(d.shifts).find(x => x.code === t.codigo);
       const versoes = (t.vigencias || []).slice().sort((a, b) => a.de < b.de ? -1 : 1).map(v => ({ v, p: {
-        validFrom: v.de, validTo: v.ate || null, start: v.inicio, end: v.fim, weekdays: (v.dias || []).slice(), color: t.cor || null, active: v.ativo !== false,
+        validFrom: v.de, validTo: v.ate || null, start: v.inicio, end: v.fim, weekdays: (v.dias || []).slice(), color: t.cor || null, active: v.ativo !== false && t.ativo !== false,   /* 2.4.3 · turno inativo no Portal = vigências inativas */
         breaks: (v.pausas || []).map(x => ({ label: x.nome || (x.codigo || 'Pausa'), start: x.inicio || '', end: x.fim || '', minutes: x.inicio && x.fim ? null : (+x.duracaoMin || null), weekdays: (x.dias || []).slice(), deducts: x.desconta !== false, codeId: dcId(x.codigo) })),
         tailMergeMax: v.regraPedacoFinal != null && v.regraPedacoFinal !== '' ? +v.regraPedacoFinal : null,
         template: (v.intervalos || []).length ? v.intervalos.map(x => ({ start: x.inicio, end: x.fim })) : null } }));
@@ -88,8 +91,9 @@ const CadSync = (() => {
       if (n) { o.updatedAt = now; o.updatedBy = by; R.turnos++; }
     }
     /* metas de OEE: o Portal manda quando tem pelo menos uma */
+    /* 2.4.3 · o Portal manda quando tem metas cadastradas, mesmo todas inativas (antes, desativar a última mantinha a cópia local) */
     const metas = (C.metasOee || []).filter(m => m && m.ativo !== false);
-    if (metas.length) {
+    if ((C.metasOee || []).some(m => m && m.codigo)) {
       const toq = new Set();
       for (const m of metas) for (const v of (m.vigencias || [])) {
         const sc = { lineId: lineId(m.linha), machineId: macId(m.equipamento), familyId: famId(m.familia), catalogId: catId(m.catalogo, v.de) };
@@ -130,7 +134,7 @@ const CadSync = (() => {
   function portalHref(h) { const port = (typeof systems === 'function' ? systems() : []).find(s => s.id === 'portal') || { id: 'portal', html: 'Portal.html' }; return typeof sysHref === 'function' ? sysHref(port, h) : 'Portal.html#' + h; }
   function banner(sec) {
     const D = dominios(), C = doc(), s = (db().settings || {}).cadSync; if (!D[sec]) return '';
-    return `<div class="banner info" style="margin-bottom:10px"><p><b>Vem do cadastro do Portal</b> ${ib('cadPortal')} · rev ${esc(C.rev)}${s && s.em ? ` · aplicado em ${U.brDT(s.em)}` : ''}. Aqui fica só para consulta.
+    return `<div class="banner info" style="margin-bottom:10px"><p><b>Vem do cadastro do Portal</b> ${ib('cadPortal')} · rev ${esc(C.rev)}${Store.S.cadDocAusente ? ' · <b class="bad">o vacutainer-cadastros.json não foi achado na última leitura da pasta: vale a última cópia lida</b>' : ''}${s && s.em ? ` · aplicado em ${U.brDT(s.em)}` : ''}. Aqui fica só para consulta.
       <a class="btn sm primary" href="${esc(portalHref('cadastros/' + SEC_PORTAL[sec]))}" data-keep="1">Editar no Portal ↗</a>${sec === 'metas' ? `<br><span class="small">A Meta OEE FY27 (planilha OEE-Vacutainer_v2.xlsm) é importada no Portal: <a href="${esc(portalHref('cadastros/importar/metaoee'))}" data-keep="1">Cadastros › Importar › Meta OEE FY27 ↗</a>. As metas e o quadro hora a hora chegam aqui pelo cadastro.</span>` : ''}${pend() ? ' <button class="btn sm" data-keep="1" id="csNow">Aplicar a revisão nova agora</button>' : ''}</p></div>`;
   }
   /* trava a edição da seção que vem do Portal (botões de criar/editar/salvar e campos de formulário) */
