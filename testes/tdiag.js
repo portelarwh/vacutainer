@@ -90,4 +90,78 @@ const f06=await w.evaluate(()=>{const g0=GEL.src;
 ok(f06.a[0]===100&&f06.a[1]===5,`F06: consumo ${f06.a[0]} kg e scrap ${f06.a[1]} kg pelo contrato do Gel (antes 105)`);
 ok(f06.b[0]===100&&f06.b[1]===5,`F06: base sem exports também não soma o scrap no consumo (${f06.b[0]} / ${f06.b[1]})`);
 
+
+// ================= diagnóstico pós-merge (c2ca6af): M01–M04 e ressalva do Gel =================
+// pasta simulada: files[nome]={txt,mod}; falhas controladas por flags
+const PASTA=`(()=>{const files={},F={lerFalha:false,cabFalha:false,escritas:0};
+  const fh=n=>({kind:'file',async getFile(){if(F.lerFalha)throw new Error('pasta ocupada');const f=files[n];if(!f)throw Object.assign(new Error('NotFound'),{name:'NotFoundError'});
+     return{lastModified:f.mod,size:f.txt.length,text:async()=>f.txt,slice:(a,b2)=>({text:async()=>{if(F.cabFalha&&F.escritas>0)throw new Error('ilegível');return f.txt.slice(a,b2)}})}},
+    async createWritable(){let buf='';return{write:async x=>{buf+=x},close:async()=>{files[n]={txt:buf,mod:(files[n]?files[n].mod:0)+1};F.escritas++}}}});
+  const dir={async getFileHandle(n,o){if(!files[n]&&!(o&&o.create))throw Object.assign(new Error('NotFound'),{name:'NotFoundError'});return fh(n)},async getDirectoryHandle(){return dir},async *entries(){for(const n in files)yield[n,fh(n)]}};
+  return{files,F,dir}})()`;
+
+// ---- M01 · Portal: alteração pendente + leitura prévia falha → não grava por cima de B
+const p1=await nova('Portal.html#geral','PM');
+const m1p=await p1.evaluate(async PASTA=>{const X=eval(PASTA);const baixados=[];window.downloadBlob=(bl,n)=>baixados.push(n);
+  const base=JSON.parse(JSON.stringify(Store.B));base.rev=10;base.config.m01={};X.files[PAGE.baseFile]={txt:JSON.stringify(base),mod:1};
+  Store.dir=X.dir;Store.mode='pasta';Store.B=Store.fix(JSON.parse(X.files[PAGE.baseFile].txt));Store.mod=1;Store.pending=false;
+  const w0=Store.writeRemote;Store.writeRemote=async()=>{throw new Error('pasta ocupada')};await Store.commit('A1',b=>{b.config.m01.A1=1});Store.writeRemote=w0;
+  const outra=JSON.parse(X.files[PAGE.baseFile].txt);outra.rev=11;outra.config.m01={B:1};X.files[PAGE.baseFile]={txt:JSON.stringify(outra),mod:2};
+  const r0=Store.readRemote;Store.readRemote=async()=>{throw new Error('leitura falhou')};await Store.commit('A2',b=>{b.config.m01.A2=1});Store.readRemote=r0;
+  const disco=JSON.parse(X.files[PAGE.baseFile].txt).config.m01,pend=Store.pending,local=JSON.stringify(Store.B.config.m01);
+  await Store.sync(true);const disco2=JSON.parse(X.files[PAGE.baseFile].txt).config.m01;Store.mode='teste';Store.dir=null;
+  return{disco,pend,local,disco2,baixados}},PASTA);
+ok(m1p.disco.B===1&&!m1p.disco.A2&&m1p.pend,`M01 Portal: leitura prévia falhou → não grava; B continua na pasta e A1/A2 ficam pendentes (local ${m1p.local})`);
+ok(m1p.disco2.B===1&&m1p.baixados.some(n=>/_NAO-GRAVADO_/.test(n)),'M01 Portal: na sincronização, B é preservado e A1/A2 vão para o _NAO-GRAVADO');
+
+// ---- M01 · Waste: a mesma sequência
+const w1=await nova('Perdas-Ordem.html','WM');
+const m1w=await w1.evaluate(async PASTA=>{const X=eval(PASTA);const baixados=[];window.downloadJSON=(o,n)=>baixados.push(n);
+  const base=JSON.parse(JSON.stringify(B));base.rev=10;base.config.m01={};X.files[BASE_FN]={txt:JSON.stringify(base),mod:1};
+  ST.dir=X.dir;ST.mode='pasta';B=fixBase(JSON.parse(X.files[BASE_FN].txt));ST.mod=1;ST.pending=false;
+  const w0=window.writeRemote;window.writeRemote=async()=>{throw new Error('pasta ocupada')};await commit('A1',b=>{b.config.m01.A1=1});window.writeRemote=w0;
+  const outra=JSON.parse(X.files[BASE_FN].txt);outra.rev=11;outra.config.m01={B:1};X.files[BASE_FN]={txt:JSON.stringify(outra),mod:2};
+  const r0=window.readRemote;window.readRemote=async()=>{throw new Error('leitura falhou')};await commit('A2',b=>{b.config.m01.A2=1});window.readRemote=r0;
+  const disco=JSON.parse(X.files[BASE_FN].txt).config.m01,pend=ST.pending;
+  await syncNow(true);const disco2=JSON.parse(X.files[BASE_FN].txt).config.m01;ST.mode='teste';ST.dir=null;
+  return{disco,pend,disco2,baixados}},PASTA);
+ok(m1w.disco.B===1&&!m1w.disco.A2&&m1w.pend,'M01 Waste: leitura prévia falhou → não grava; B continua na pasta e a alteração fica pendente');
+ok(m1w.disco2.B===1&&m1w.baixados.some(n=>/_NAO-GRAVADO_/.test(n)),'M01 Waste: na sincronização, B é preservado e a cópia local vai para o _NAO-GRAVADO');
+
+// ---- M02 · CadSync: vigência antiga não vira a nova
+const m2=await o.evaluate(()=>{const d={lines:[],families:[],machines:[],catalogs:[],shifts:[],downtimeCodes:[],targets:[],settings:{}};
+  CadSync.aplicar(d,{rev:1,catalogos:[{codigo:'360060',nome:'Tubo',vigencias:[{de:'2025-01-01',pphNominal:100}]}],parametros:{}},()=>{});
+  const id1=d.catalogs[0].id;
+  CadSync.aplicar(d,{rev:2,catalogos:[{codigo:'360060',nome:'Tubo',vigencias:[{de:'2026-01-01',pphNominal:200}],vigenciasDesativadas:[{de:'2025-01-01',pphNominal:100}]}],parametros:{}},()=>{});
+  const velho=d.catalogs.find(x=>x.id===id1),novo=d.catalogs.find(x=>x.id!==id1);
+  const L={lines:[],families:[],machines:[],catalogs:[{id:'cat_leg',code:'360061',validFrom:'2024-01-01',pph:90,active:true,createdBy:'Ana'}],shifts:[],downtimeCodes:[],targets:[],settings:{}};
+  CadSync.aplicar(L,{rev:1,catalogos:[{codigo:'360061',nome:'Tubo 2',vigencias:[{de:'2025-01-01',pphNominal:95}]}],parametros:{}},()=>{});
+  return{n:d.catalogs.length,velho:velho&&[velho.validFrom,velho.pph,velho.active],novo:novo&&[novo.validFrom,novo.pph,novo.active],leg:[L.catalogs.length,L.catalogs[0].id,L.catalogs[0].validFrom]}});
+ok(m2.n===2&&JSON.stringify(m2.velho)==='["2025-01-01",100,false]'&&JSON.stringify(m2.novo)==='["2026-01-01",200,true]',`M02: registro antigo mantém data e PPH (${m2.velho}); a nova vigência ganha outro registro (${m2.novo})`);
+ok(m2.leg[0]===1&&m2.leg[1]==='cat_leg'&&m2.leg[2]==='2025-01-01','M02: catálogo local nunca sincronizado continua sendo aproveitado no mapeamento inicial');
+
+// ---- M03 · Portal: volta para a página no dia seguinte redesenha a tela
+const p3=await nova('Portal.html#geral','PV',async p=>{await p.clock.install({time:new Date('2026-11-06T10:00:00')})});
+await p3.evaluate(async PASTA=>{const X=eval(PASTA);window.__X=X;
+  X.files['perdas-base.json']={txt:JSON.stringify({rev:3,exports:{exportsVersion:1,porMes:[],porOrdem:[],pendencias:[{sev:1,tipo:'acaoVencida',aPartirDe:'2026-11-07',quando:'2026-11-06',txt:'Ação vencida em 06/11/2026: teste M03'}]}}),mod:1};
+  Store.dir=X.dir;Store.mode='pasta';MOD.teste=false;MOD.files={};MOD.data={};await readModules(false);App.show('geral')},PASTA);
+const antesM3=await p3.evaluate(()=>document.body.innerText.includes('teste M03'));
+await p3.clock.setSystemTime(new Date('2026-11-07T08:00:00'));
+await p3.evaluate(()=>document.dispatchEvent(new Event('visibilitychange')));await p3.waitForTimeout(800);
+const depoisM3=await p3.evaluate(()=>document.body.innerText.includes('teste M03'));
+await p3.evaluate(()=>{Store.mode='teste';Store.dir=null});
+ok(!antesM3&&depoisM3,`M03: ação vencida aparece na tela ao voltar para a página no dia seguinte (antes ${antesM3}, depois ${depoisM3})`);
+
+// ---- M04 · Gel: gravação sem releitura válida não esvazia a fila
+const g4=await nova('Gestão-Gel-Vacutainer.html','GM');
+const m4=await g4.evaluate(async PASTA=>{const X=eval(PASTA);X.files[BASE_FILE]={txt:'{"rev":5,"revBy":"outro","lps":[]}',mod:1};X.F.cabFalha=true;
+  S.mode='file';FS.base=X.dir;FS.mod=0;FS.rev=5;FS.revBy='outro';FS.pending=[];FS.err='';ui.demo=false;
+  FS.pending.push({lps:{del:[],set:[]},closed:{del:[],set:[]},events:[{id:'tM4',type:'nota',at:nowDT(),text:'teste M04'}],imports:[]});
+  await fsFlush();const r={pend:FS.pending.length,err:FS.err};S.mode='local';FS.base=null;FS.pending=[];return r},PASTA);
+ok(m4.pend===1&&/conferir a gravação/.test(m4.err),`M04: releitura de confirmação falhou → a fila fica (${m4.pend}) com aviso`);
+
+// ---- Ressalva · Waste não lê exports do Gel em versão desconhecida
+const r6=await w1.evaluate(()=>{const g0=GEL.src;GEL.src={exports:{exportsVersion:2,ordens:[{ordem:'110831563',consumoKg:100,scrapKg:5}]}};const a=gelFind('110831563');GEL.src=g0;return{inc:a.incompat,c:a.consumo,h:a.hits.length}});
+ok(r6.inc===2&&r6.c===null&&r6.h===0,'Ressalva: exports do Gel com versão desconhecida não é lido (nem pela busca genérica)');
+
 console.log(errs.join('\n')||'sem erros');await b.close();if(errs.length)process.exitCode=1})();

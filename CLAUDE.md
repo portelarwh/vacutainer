@@ -6,10 +6,10 @@ Plataforma de páginas HTML de arquivo único que trabalham juntas numa **pasta 
 
 | Página | Arquivo | Base | Versão | Como editar |
 |---|---|---|---|---|
-| Portal (cadastro geral, Administração) | `Portal.html` | `portal-base.json` + `vacutainer-cadastros.json` | 1.8.5 | direto no HTML |
-| Produção (OEE, plano, ordens SAP) | `OEE-Vacutainer.html` | `oee-vacutainer-base.json` (+ `ordens-base.json`) | 2.4.3 | **NÃO editar o HTML**: editar `fontes/producao/` e rodar o build |
-| Waste (perdas por ordem, KKBC) | `Perdas-Ordem.html` | `perdas-base.json` | 1.8.9 | direto no HTML |
-| Gestão de Gel | `Gestão-Gel-Vacutainer.html` | `fifo-base.json` | 1.97 | direto no HTML |
+| Portal (cadastro geral, Administração) | `Portal.html` | `portal-base.json` + `vacutainer-cadastros.json` | 1.8.6 | direto no HTML |
+| Produção (OEE, plano, ordens SAP) | `OEE-Vacutainer.html` | `oee-vacutainer-base.json` (+ `ordens-base.json`) | 2.4.4 | **NÃO editar o HTML**: editar `fontes/producao/` e rodar o build |
+| Waste (perdas por ordem, KKBC) | `Perdas-Ordem.html` | `perdas-base.json` | 1.8.10 | direto no HTML |
+| Gestão de Gel | `Gestão-Gel-Vacutainer.html` | `fifo-base.json` | 1.98 | direto no HTML |
 | Paradas | `Paradas.html` | `paradas-base.json` | 1.0.7 | direto no HTML |
 
 Futuras: Equipamentos/Máquinas, Manutenção, Projetos, OSM (ver `docs/paginas-novas.md`, `docs/osm-arquitetura.md`, `docs/plano-evolucao-plataforma.md`).
@@ -21,7 +21,7 @@ python fontes/producao/build.py        # monta paginas/OEE-Vacutainer.html a par
 python fontes/kit/aplicar_kit21.py     # recopia fontes/kit/kit_v21.js e o catálogo fontes/kit/sistemas.js nas outras 4 páginas (Portal, Waste, Paradas, Gel)
 node testes/tpg.js                     # testes Playwright (abrem paginas/ em modo teste/exemplo; imprimem "sem erros")
 node testes/tintegra.js                # Portal × exports: números iguais aos das páginas, urgência, gravação pendente com conflito
-node testes/tdiag.js                   # cenários do diagnóstico de 06/11/2026 (colisão de gravação, CadSync, SAP, Gel, Paradas, versões); tintegra e tdiag saem com código 1 se falhar
+node testes/tdiag.js                   # cenários das auditorias de 06/11/2026 (F01–F08, M01–M04: colisão e falha de leitura na gravação, CadSync, SAP, Gel, Paradas, versões); tintegra e tdiag saem com código 1 se falhar
 node testes/tmeta.js                   # importação da Meta OEE FY27 no Portal (precisa também do pacote npm xlsx)
 ```
 
@@ -40,7 +40,7 @@ node testes/tmeta.js                   # importação da Meta OEE FY27 no Portal
 7. **ⓘ em todos os campos e categorias** de configuração, com o que é e um exemplo (`AJUDA_CAMPO`, `CAT_AJUDA` no Portal; `HELP` na Produção).
 8. **Versão**: subir a versão da página a cada entrega (`PAGE.versao`, `APP_VERSION` ou `V1.xx` no `<title>`) e gravar `appVersion` na base. O Portal › Versões lê isso.
 9. Importações do SAP: ficar na tela com "Importar a próxima" depois de gravar. Valores da KKBC importados em **BRL** (a prévia confere a moeda); câmbio vem do Portal (`vacCambio(data,'USD')`).
-10. Uma alteração feita durante uma gravação nunca é dada como salva (grava de novo). Alteração pendente (gravação que falhou) só vai para a pasta se a base de lá não mudou; se mudou, baixa `_NAO-GRAVADO` e usa a da pasta.
+10. Uma alteração feita durante uma gravação nunca é dada como salva (grava de novo). Alteração pendente (gravação que falhou) só vai para a pasta se a base de lá não mudou; se mudou, baixa `_NAO-GRAVADO` e usa a da pasta. Sem ler a base antes, não grava; sem releitura que confirme a gravação, não dá como gravado.
 
 ## Leitores comuns do kit v2.1 (`fontes/kit/kit_v21.js`)
 
@@ -56,13 +56,13 @@ Produção aplica o cadastro na base do OEE pelo `CadSync` (`fontes/producao/cad
 - Plataforma: `arquitetura-integracao-sistemas.md`, `portal-e-padrao-comum.md`, `plano-evolucao-plataforma.md`, `centralizacao-configuracoes.md`
 - Cadastro: `cadastro-base-contrato.md`, `cs12-importacao-bom.md`
 - Kit: `kit-cabecalho-e-backups.md` (v1), `kit-cabecalho-v2.md` (v2/v2.1)
-- Páginas: `portal-1-7.md` (Portal 1.7–1.8.5), `producao-ordens-sap.md`, `waste-v1-8.md`, `perdas-ordem-v1.md`, `paradas-arquitetura.md`, `portal-pedido-paradas.md`, `paginas-novas.md`, `osm-arquitetura.md`
+- Páginas: `portal-1-7.md` (Portal 1.7–1.8.6), `producao-ordens-sap.md`, `waste-v1-8.md`, `perdas-ordem-v1.md`, `paradas-arquitetura.md`, `portal-pedido-paradas.md`, `paginas-novas.md`, `osm-arquitetura.md`
 
 Ao terminar uma entrega, atualizar o doc da página (seção nova com a versão e a data) e o `CLAUDE.md` se mudar regra, versão ou comando.
 
 ## Auditorias externas
 
-`docs/auditorias/registro-decisoes.md` registra cada apontamento das auditorias (05/11 e 06/11/2026), o que foi corrigido, o que foi recusado e por quê. **Antes de uma nova análise, ler o registro**: item recusado lá só volta com fato novo.
+`docs/auditorias/registro-decisoes.md` registra cada apontamento das auditorias (05/11, 06/11 e pós-merge de 06/11/2026), o que foi corrigido, o que foi recusado e por quê. **Antes de uma nova análise, ler o registro**: item recusado lá só volta com fato novo.
 
 ## Pendências conhecidas
 

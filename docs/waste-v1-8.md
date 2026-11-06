@@ -69,3 +69,8 @@ Mudanças aditivas; tudo da 1.7.3 preservado (importação KKBC_ORD nos dois lay
 ## Waste 1.8.9 (06/11/2026) · consumo de gel sem o scrap
 
 - Detalhe da ordem › Gel: consumo e scrap lidos pelos nomes do contrato (`exports.ordens[].consumoKg` / `scrapKg`). A busca por nome de campo fica só para base do Gel sem `exports` e nunca soma campos de scrap no consumo (antes `scrapKg` entrava em "kg": 100 + 5 = 105).
+
+## Waste 1.8.10 (06/11/2026) · diagnóstico pós-merge
+
+- **M01**: se a leitura da `perdas-base.json` antes de gravar falhar, a alteração fica pendente em vez de gravar por cima; a sincronização confere a base.
+- Detalhe da ordem › Gel: `exports` do Gel em versão desconhecida não é lido (nem pela busca genérica); a tela pede para atualizar o Waste.

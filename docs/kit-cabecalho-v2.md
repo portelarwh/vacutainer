@@ -37,3 +37,5 @@ Bloco `vac-cabecalho v2.1` (arquivo-fonte `kit/kit_v21.js`, igual em Portal 1.7.
 `fontes/kit/sistemas.js` = `const DEFAULT_SYSTEMS=[…]` (ids, nomes, HTML, base, `futuro`). `aplicar_kit21.py` troca o bloco nas 4 páginas e o `build.py` na Produção (param com `ERRO` se não acharem exatamente 1 vez). O Portal continua podendo sobrescrever pelo `localStorage['vac.sistemas']`. Versões: Portal 1.8.3, Produção 2.4.2, Waste 1.8.7, Gestão de Gel 1.96, Paradas 1.0.6.
 
 Gestão de Gel 1.97 (06/11/2026): na gravação, depois de 3 colisões seguidas as alterações continuam na fila (nova tentativa a cada 30 s) em vez de serem dadas como gravadas.
+
+Gestão de Gel 1.98 (06/11/2026): gravação sem releitura válida (arquivo ilegível ou sem `rev` no início) não é confirmada; a fila fica.

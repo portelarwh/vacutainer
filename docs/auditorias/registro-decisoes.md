@@ -10,9 +10,50 @@ Este arquivo responde às auditorias externas da plataforma e registra, para cad
 | Auditoria | Data | Commit analisado | Resposta |
 |---|---|---|---|
 | Auditoria de integração (A01–A10) | 05/11/2026 | anterior a `ca46d0c` | Portal 1.8.3 e 1.8.4 (PRs portelarwh/vacutainer#1 e #2) |
-| Diagnóstico técnico (F01–F08, § 5) | 06/11/2026 | `9cc1dc4` | Portal 1.8.5, Produção 2.4.3, Waste 1.8.9, Gel 1.97, Paradas 1.0.7 (este PR) |
+| Diagnóstico técnico (F01–F08, § 5) | 06/11/2026 | `9cc1dc4` | Portal 1.8.5, Produção 2.4.3, Waste 1.8.9, Gel 1.97, Paradas 1.0.7 (PR portelarwh/vacutainer#4) |
+| Diagnóstico pós-merge (M01–M04, ressalvas) | 06/11/2026 | `c2ca6af` | Portal 1.8.6, Produção 2.4.4, Waste 1.8.10, Gel 1.98 (§ 0) |
 
 Status usados: **corrigido** · **corrigido em parte** · **recusado** · **adiado** · **já existia**.
+
+---
+
+## 0. Resposta ao diagnóstico pós-merge (`c2ca6af`, 06/11/2026)
+
+### Parecer sobre o relatório
+
+Os quatro achados (M01 a M04) e as duas ressalvas sobre este registro foram **todos confirmados no código e corrigidos**. O relatório leu o registro antes, não reabriu decisões recusadas e marcou com precisão o limite de cada achado (o M01 não é perda permanente, porque havia backup; o M04 não demonstrou perda). Os cenários viraram testes em `testes/tdiag.js`. **Todos falham no código de `c2ca6af` e passam no código corrigido**, menos o caso do catálogo local legado, que é um teste de não-regressão e passa nos dois.
+
+Ao reproduzir o M02, achamos **um defeito a mais no mesmo trecho**: ao criar a nova vigência, o CadSync marcava como "usado" o id calculado (`cat_<código>`), e não o id que o registro recebia de fato. Com isso, a vigência antiga escapava da desativação do F04. Corrigido junto.
+
+### M01 · P1 · Portal e Waste gravavam depois de falhar a leitura prévia · **corrigido** (Portal 1.8.6, Waste 1.8.10)
+- **Confirmado:** em `Store._commit` (Portal) e em `commit` (Waste), a exceção da leitura era ignorada e a gravação seguia. Isso também acontecia **sem** alteração pendente: bastava outra pessoa ter gravado e a leitura falhar.
+- **Feito:** sem leitura da base, a página **não grava**. A alteração é aplicada na cópia local e fica pendente (`pendFrom` = revisão conhecida), com o aviso "Não consegui ler a base da pasta…". A sincronização, que já existia, confere a base antes de gravar: se ela não mudou, grava; se mudou, preserva a da pasta e baixa a cópia local como `_NAO-GRAVADO`.
+- **Teste:** `tdiag.js` › M01 Portal e M01 Waste, com a sequência do relatório (rev 10, A1 falha, B grava rev 11, leitura de A2 falha). O resultado é B na pasta, A1 e A2 pendentes e, depois da sincronização, B preservado e A1/A2 no `_NAO-GRAVADO`.
+
+### M02 · P1 · CadSync reaproveitava a vigência antiga como a nova · **corrigido** (Produção 2.4.4)
+- **Confirmado:** a segunda busca (`ex.find(x => !usados.has(x.id) && !vs.some(…))`) reaproveitava qualquer registro com data fora da lista nova.
+- **Feito:**
+  - O reaproveitamento com outra data só vale no **mapeamento inicial de um catálogo local nunca sincronizado**: sem `portalDe`, não criado pelo Portal (`createdBy !== 'Portal'`) e com data que não é de vigência desativada.
+  - Cada registro sincronizado passa a guardar `portalDe`, a data da vigência do Portal que ele representa.
+  - O defeito do id "usado" foi corrigido junto.
+- **Resultado:** a vigência antiga mantém id, data e PPH, e fica inativa (F04); a nova recebe outro registro.
+- **Teste:** `tdiag.js` › M02, com duas sincronizações. Também confere que o catálogo local legado continua sendo aproveitado.
+- **Efeito colateral conhecido:** na primeira sincronização depois da atualização, os registros já sincronizados ganham `portalDe`. Isso gera uma linha de auditoria "sincronização do Portal" por registro, uma única vez.
+
+### M03 · P1 · A volta para o Portal no dia seguinte não redesenhava a tela · **corrigido** (Portal 1.8.6)
+- **Confirmado:** o `visibilitychange` comparava só `f.mod`.
+- **Feito:** `readModules` conta as mudanças nos dados adaptados (`MOD.versao`, que só muda quando uma base é reprocessada ou quando aparece ou muda um erro de leitura). A volta para a página e a rotina de 1 minuto redesenham pelo mesmo critério.
+- **Teste:** `tdiag.js` › M03, que confere o **DOM**, como o relatório pediu. Com o relógio simulado, a pendência está ausente em 06/11 e presente em 07/11 depois do evento de retorno, sem trocar de aba.
+
+### M04 · P2 · Gel limpava a fila sem uma releitura válida · **corrigido** (Gel 1.98)
+- **Confirmado:** com `fsReadHead` retornando `null`, ou sem `rev`, o código seguia para `FS.pending.splice`.
+- **Feito:** releitura ausente, ilegível ou sem `rev` no início significa gravação **não confirmada**. A fila fica, com o aviso "Não consegui conferir a gravação…", e a nova tentativa a cada 30 s continua valendo. O próprio `fsWriteBase` sempre grava `{"rev":N,"revBy":…}` no início, então uma releitura válida sempre tem `rev`.
+- **Teste:** `tdiag.js` › M04.
+
+### Ressalvas sobre a precisão deste registro · **corrigidas**
+- **Waste lê estruturas internas da Produção:** a descrição antiga estava **incompleta** e foi corrigida na tabela do § 1. A correção de código continua adiada, com o motivo e o gatilho lá.
+- **Leitor do Gel no Waste com `exports` de versão desconhecida:** **corrigido no código** (Waste 1.8.10). `gelFind` não lê nada desse `exports`, nem pela busca genérica, e a tela pede para atualizar o Waste. Teste: `tdiag.js` › Ressalva.
+- **"Teste aprovado não prova ausência de outras falhas":** concordamos. Neste registro, um teste aprovado vale **só para o cenário que ele reproduz**.
 
 ---
 
@@ -93,7 +134,7 @@ Três ressalvas para as próximas análises:
 | 6.2 `tintegra.js` não falhava com código de erro | **corrigido** | `tintegra.js` e o novo `tdiag.js` saem com código 1 quando algo falha |
 | Meta `WASTE-MES` lida pela data de hoje | **adiado** (P2) | Viola a regra 3 (vigência da data do fato), mas só afeta a consulta de meses antigos, e a meta raramente muda. Gatilho: primeira mudança de valor da meta no Portal |
 | `Ord.gravar` sem releitura depois de gravar | **adiado** (P2) | A gravação já relê antes e aplica só a competência importada sobre a versão nova; importar uma competência substitui os dados do SAP dela por inteiro. Falta a confirmação depois de gravar (mesmo padrão do F01). Gatilho: próxima mudança em Ordens |
-| Waste lê estruturas internas da Produção (busca genérica) | **adiado** (P2) | O leitor já usa o `exports` quando existe; a busca na base inteira é só para bases antigas. Sai quando a Produção publicar tudo o que o Waste usa |
+| Waste lê estruturas internas da Produção | **adiado** (P2) · *descrição corrigida após o diagnóstico pós-merge* | O detalhe da ordem no Waste lê da base da Produção, **mesmo com `exports`**: `monthPlans`, para ordens fora da janela de `exports.ordens` (só o mês atual e o anterior), e `server.lotClass` / `lotNotes` / `dayLot` (classificação, observação e dias do lote). `exports.lotes` já cobre classificação e observação por 150 dias, mas não `dayLot` nem ordens antigas. Para sair, a Produção precisa publicar ordens de todos os meses e os dias do lote no `exports`. Gatilho: a próxima mudança no `exports` da Produção |
 | Gel e Waste dependem da cópia do cadastro no navegador | **já existia, por decisão** | Regra 2: as páginas leem `localStorage['vac.cadastros']` em modo consulta. É o desenho da plataforma, não um defeito |
 | Catálogos e equipamentos no Gel, produção OEE → Gel, calendário comum | **adiado** (P3) | Já estão nas pendências conhecidas do `CLAUDE.md` |
 | Recortes temporais dos `exports` (120 dias, 13 meses…) | **já existia** | As janelas estão documentadas em `docs/portal-e-padrao-comum.md` § 4 |

@@ -683,7 +683,7 @@ const U = (() => {
 
 /* ---- 02-model.js ---- */
 /* ================= modelo de dados, valores iniciais e integridade ================= */
-const APP_VERSION = '2.4.3';
+const APP_VERSION = '2.4.4';
 const SCHEMA_VERSION = 1;
 const BASE_FILE = 'oee-vacutainer-base.json';
 const BACKUP_DIR = '00. Backups';
@@ -8996,7 +8996,7 @@ function ordSapCel(o) {
 }
 document.addEventListener('click', e => { const x = e.target.closest('[data-oord2]'); if (!x) return; const I = ordIndice(), v = I && I.get(x.dataset.oord2); if (v) { Ord.comp = v.comp; ordFicha(x.dataset.oord2); } });
 
-/* ===== Produção 2.4.1 (2.4.3: desativações do Portal propagadas) · cadastro geral do Portal (vacutainer-cadastros.json) =====
+/* ===== Produção 2.4.1 (2.4.3: desativações do Portal propagadas; 2.4.4: identidade das vigências de catálogo) · cadastro geral do Portal (vacutainer-cadastros.json) =====
    O Portal é o dono de: linhas, famílias, máquinas (equipamentos), catálogos (tubos), turnos (pausas, intervalos do Hora a Hora),
    tipos de parada, metas de OEE e parâmetros comuns (parada longa, semáforo, motivos de abono e de "sem produção").
    Quando a revisão do cadastro muda, a Produção copia esses dados para a própria base numa alteração só (com auditoria),
@@ -9049,11 +9049,15 @@ const CadSync = (() => {
     const macId = cod => cod ? (live(d.machines).find(x => x.code === cod) || {}).id || null : null;
     /* catálogos (só tubos: preparação de aditivo não tem OEE da linha) */
     for (const c of (C.catalogos || []).filter(x => x && x.codigo && x.tipoItem !== 'preparacao')) {
+      const desat = new Set((c.vigenciasDesativadas || []).map(w => w && w.de).filter(Boolean));
       const vs = (c.vigencias || []).slice().sort((a, b) => a.de < b.de ? -1 : 1), ex = live(d.catalogs).filter(x => x.code === c.codigo).sort((a, b) => String(a.validFrom) < String(b.validFrom) ? -1 : 1), usados = new Set();
       vs.forEach((v, k) => {
-        let o = ex.find(x => x.validFrom === v.de && !usados.has(x.id)) || ex.find(x => !usados.has(x.id) && !vs.some(w => w.de === x.validFrom));
-        const p = { code: c.codigo, name: c.nome || c.codigo, familyId: famId(c.familia), lineId: lineId(c.linha), pph: v.pphNominal != null ? +v.pphNominal : (o ? o.pph : null), color: c.cor || (o && o.color) || null, validFrom: v.de, validTo: v.ate || null, active: c.ativo !== false };
-        if (o) { usados.add(o.id); upd(o, p, 'catálogo', 'catalogos'); } else { const id = 'cat_' + c.codigo + (k && ex.some(x => x.id === 'cat_' + c.codigo) ? '_' + v.de : ''); usados.add(id); add(d.catalogs, { id: d.catalogs.some(x => x.id === id) ? U.uid('cat') : id, machineId: null, note: 'Origem: cadastro do Portal', ...p, ...novo() }, 'catálogo', 'catalogos'); }
+        /* 2.4.4 · reaproveitar um registro com outra data só no mapeamento inicial de um catálogo local (nunca sincronizado: sem portalDe,
+           não criado pelo Portal e com data que não é de vigência desativada). Antes, uma vigência antiga podia virar a nova (mesmo id,
+           outra data e PPH) e as referências históricas passavam a apontar para outros parâmetros */
+        let o = ex.find(x => x.validFrom === v.de && !usados.has(x.id)) || ex.find(x => !usados.has(x.id) && !vs.some(w => w.de === x.validFrom) && !x.portalDe && x.createdBy !== 'Portal' && !desat.has(x.validFrom));
+        const p = { code: c.codigo, name: c.nome || c.codigo, familyId: famId(c.familia), lineId: lineId(c.linha), pph: v.pphNominal != null ? +v.pphNominal : (o ? o.pph : null), color: c.cor || (o && o.color) || null, validFrom: v.de, validTo: v.ate || null, portalDe: v.de, active: c.ativo !== false };
+        if (o) { usados.add(o.id); upd(o, p, 'catálogo', 'catalogos'); } else { const id = 'cat_' + c.codigo + (k && ex.some(x => x.id === 'cat_' + c.codigo) ? '_' + v.de : ''); const id2 = d.catalogs.some(x => x.id === id) ? U.uid('cat') : id; usados.add(id2); /* 2.4.4 · marca o id que o registro recebe de fato */ add(d.catalogs, { id: id2, machineId: null, note: 'Origem: cadastro do Portal', ...p, ...novo() }, 'catálogo', 'catalogos'); }
       });
       /* 2.4.3 · vigência desativada no Portal (não está mais nas vigências válidas): fica inativa aqui. Não é apagada:
          os registros antigos continuam achando o catálogo pelo id. Só quando o Portal tem vigências (válidas ou desativadas) */
