@@ -1,0 +1,124 @@
+# Portal 1.7 · Administração, pessoas e vigências
+
+05/11/2026 · feito. Complementa "Cadastro base · contrato" (`claude/cadastro-base-contrato.md`), "Portal e padrão comum" e o plano (`claude/plano-evolucao-plataforma.md`). **Nenhuma outra página foi alterada.**
+
+## 1. Decisões do Pedro (05/11/2026)
+
+- Nomes exibidos: **Produção** (OEE), **Waste** (Perdas), **Gestão de Gel**, **Paradas**, **Equipamentos** (inclui manutenção), **Iniciativas** (5S · OSM · KAS, **uma página com 3 abas**, `Iniciativas.html` + `iniciativas-base.json`, id `inic`), **Projetos** (tratado à parte, mais complexo), **Outros** (menu).
+- Máquinas e Manutenção saem da lista (manutenção fica em Equipamentos).
+- **Outros** = menu ▾ com as páginas marcadas "mostrar no menu Outros" e links externos cadastrados no Portal.
+- Usuário entra pelo **ID**; quem não está cadastrado se cadastra sozinho (nome + ID) e entra como **Consulta** até o administrador mudar. Objetivo: registrar quem mexeu.
+- Página inicial do perfil: o Portal leva a pessoa **uma vez por sessão** do navegador.
+
+## 2. O que mudou no Portal
+
+- **Barra**: Portal · Produção · Waste · Gestão de Gel · (Paradas, Equipamentos, Iniciativas, Projetos quando o HTML estiver na pasta) · Outros ▾ · **⚙** (Administração) ao lado do tema. O link "Cadastros" da barra saiu do Portal (as outras páginas ainda mostram até receberem o kit v2; o link continua funcionando).
+- **Migração do `vac.sistemas`** (lista guardada no navegador, que as outras páginas leem): troca OEE → Produção, Perdas → Waste, Gel → Gestão de Gel quando o nome ainda é o antigo; tira Máquinas/Manutenção que não existem na pasta (se existirem, vão para Outros). **Arquivos, bases e ids não mudam** (`oee`, `perdas`, `gel`; pastas de backup `00. Backups/OEE|Perdas|Gel`).
+- **⚙ Administração** (aba única; "Configuração" virou parte dela): menu agrupado
+  - Cadastros: linhas … modos de falha, Matriz de paradas
+  - Pessoas: **Usuários**, **Perfis e permissões**
+  - Regras: **Vigências**, **Parâmetros e semáforo**
+  - Sistema: Integrações SAP (Importar), Configuração do Portal (pasta, logo, módulos, links do menu Outros, modo de teste), Versões das páginas, Auditoria, Backups do cadastro, Segurança e senha
+  - Endereços: `#admin`, `#cadastros/usuarios`, `#cadastros/perfis`, `#cadastros/vigencias`, `#cadastros/parametros`, `#config`.
+- **Entrar** (topo): ID → usuário do cadastro (mostra nome reconhecido, perfil, página inicial, o que pode ver e lançar, botão "Ir para …"); ID novo → "Primeiro acesso" (nome, turno, especialidade) → cria o usuário com perfil CONSULTA (e o perfil CONSULTA, se faltar) **sem pedir a senha** (só essa operação), auditoria com `origem:"autocadastro"`. Grava `vac.user` (nome), `vac.userId`, `vac.perfil` no navegador; as outras páginas já registram `vac.user` nas alterações. "Sair" esquece o usuário no navegador.
+- **Página inicial**: `irPaginaInicial()` ao abrir o Portal sem `#`, uma vez por aba/sessão (`sessionStorage vac.inicial`); usa a do usuário ou, se "(do perfil)", a do perfil; só vai para página que existe na pasta. Na Visão geral: "Ir para minha página inicial".
+- **Permissões no Portal**: a barra esconde páginas com `ver:false` no perfil. As outras páginas passam a respeitar quando receberem o cabeçalho comum v2. Editar o cadastro continua pedindo a **senha de administrador** (a senha do cadastro).
+- **Vigências** (regra única): vigência gravada **não se edita** (campos travados, 🔒); errou → **Desativar…** (motivo obrigatório; vai para `vigenciasDesativadas`, a anterior passa a cobrir o período); vigência **usada em registros fechados** não pode ser desativada (conferido pelo `exports`: dias/turnos fechados na Produção, meses fechados no Waste, ordens concluídas no Gel; sem as bases lidas, avisa que não conferiu). Nova vigência: início escolhido em "Nova vigência a partir de" (encaixa na ordem; a anterior termina na véspera), grava `criadoPor`, `criadoEm`, `origem`. "Já existe vigência nessa data" agora orienta a desativar e criar de novo.
+- **Painel de vigências**: todas (catálogos, BOM, turnos), com início, fim calculado, situação (vigente, futura, encerrada, desativada), criada por/em, origem, em uso, filtros e busca. Metas de OEE, regras de scrap e códigos de parada com vigência entram quando a Produção ler o cadastro.
+- **Parâmetros e semáforo** (saíram de Segurança): fuso, unidade, setor, limite da microparada, ações padrão e **semáforo comum** (verde ≥ 100 %, amarelo ≥ 90 % da meta, editáveis) com o significado fixo das 7 cores.
+- **Modo de teste**: botão "Sair do modo de teste" na faixa roxa e em Configuração; perfis e 2 usuários fictícios.
+
+## 3. Contrato do cadastro · acréscimos (compatíveis com schemaVersion 1)
+
+```
+usuarios: [{ codigo:"<ID/matrícula>", nome, perfil:"<código do perfil>", turno:"T1"|null, especialidade, email,
+             paginaInicial:"(do perfil)"|"Portal"|"Produção"|"Produção › Tela do operador"|"Waste"|"Gestão de Gel"|"Paradas"|"Equipamentos"|"Iniciativas"|"Projetos",
+             ativo, origem:"autocadastro"?, primeiroAcessoEm? }]
+perfis:   [{ codigo:"ADMIN|LIDER|OPER|TEC|PROC|QUAL|PCP|ALMOX|CONSULTA|TV|…", nome, paginaInicial, descricao, ativo,
+             permissoes:{ <portal|oee|perdas|gel|paradas|equip|inic|projetos>: { ver, lancar, fechar, importar, exportar, excluir, configurar } } }]
+parametros.semaforoVerdePct (100), parametros.semaforoAmareloPct (90)
+<tipo com vigência>.vigencias[].criadoPor / criadoEm / origem      (novas a partir da 1.7)
+<tipo com vigência>.vigenciasDesativadas[] = vigência + desativadaEm, desativadaPor, motivoDesativacao   (quem lê ignora; só "vigencias" vale)
+```
+- Perfis padrão: botão "Criar os perfis padrão" em Pessoas › Perfis (com a senha).
+- `portal-base.json › config.links = [{nome, url}]` (menu Outros); cópia no navegador em `localStorage['vac.links']` para o kit v2 das outras páginas.
+- `vac.sistemas` ganha `grupo:'outros'` (opcional) e `sub` (Iniciativas: "5S · OSM · KAS").
+
+## 4. Próximo (plano § 8)
+
+Kit do cabeçalho v2 para as outras páginas (barra com Outros e ⚙, Entrar pelo ID, permissões do perfil, semáforo do cadastro, modo demonstração padrão, busca global), depois Produção → Paradas → Equipamentos → Iniciativas (OSM primeiro, `claude/osm-arquitetura.md`) → Gestão de Gel.
+
+## 5. Portal 1.7.3 (05/11/2026) · catálogo com preparações de aditivo
+
+- Catálogo ganha **Tipo de item** (`tipoItem: 'tubo' | 'preparacao'`: "Tubo (produto acabado)" / "Preparação (aditivo / solução)") e **Unidade** (`unidade: 'UN' | 'L' | 'G' | 'KG'`). Coluna "Tipo" na lista; ⓘ nos campos.
+- Código de 6 dígitos só é exigido para tubo; preparação usa o **código do material SAP** (o mesmo do MB51), com BOM e lista de perdas como os tubos.
+- Contrato: `catalogos[].tipoItem` (padrão 'tubo' quando ausente) e `catalogos[].unidade` (padrão 'UN'). A Produção 2.2 usa `tipoItem` para separar "Preparações (aditivo)" na conciliação das ordens.
+
+## 6. Portal 1.7.4 (05/11/2026) · cadastrar material pela CS12 a partir da Produção
+
+- Endereço `#cs12=<material>&nome=&tipo=tubo|preparacao&un=` (botão da ficha da ordem na Produção) abre **Importar do SAP › CS12** com uma faixa "Cadastrar o material X" e o passo a passo no SAP.
+- Colada a CS12 desse material, a prévia mostra **"catálogo novo"** (código = material sem NS, nome da Produção ou da Denominação da CS12, tipo e unidade vindos da Produção) e a importação cria o **catálogo e a BOM juntos** (auditoria: origem "SAP CS12 … (cadastro a partir da Produção)"). Família, PPH etc. se completam depois na ficha.
+- Também sem vir da Produção: no seletor "Catálogo desta lista" da CS12 há a opção **"＋ Criar catálogo novo <código>"** (tipo pelo código: 6 dígitos = tubo, senão preparação; unidade da Qtd.base).
+
+## 7. Portal 1.7.5 (05/11/2026) · CS12 na saída dinâmica textual
+
+- Títulos aceitos: `Nív | Item | Obj | Texto breve objeto | Quantidade | UM | UMB` (Nív = nível, também ".1"/"..2"; Obj = componente; Quantidade = quantidade SAP; UM = unidade original; UMB = unidade básica), além do layout anterior (ID objeto, Qtd.(UMC)…).
+- Linhas decorativas de hífens/travessões ignoradas; cabeçalho aceita "Material: X", "Denominação: …", "Qtd.base (L): …".
+- Número SAP `2.601.000,000` → 2601000, com o texto original guardado (`quantidadeOriginalTexto`, `quantidadeSAP`).
+- **Unidade nunca trocada**: ML continua ML. Com fator conhecido (ML↔L, G↔KG) grava também `qtdPorMilheiroUMB` (ex.: 1.610.000 ML = 1.610 L); sem fator, a prévia mostra "sem fator p/ UMB".
+- Prévia: "N itens de nível 1 · N itens da estrutura (níveis 2+ quando houver) · N erro(s) estrutural(is)".
+- Testado com o exemplo do 17132AAB: itens 0010 (8362091, 2.601.000,000 G, UMB G) e 0020 (8362310, 1.610.000,000 ML, UMB L), pai 17132AAB, 0 erros estruturais.
+
+## 8. Portal 1.7.6 (05/11/2026)
+
+- **Desbloqueio da edição vale para todas as abas e janelas** do navegador (antes: só na aba, em sessionStorage — a lógica era essa desde o início, não tinha sido alterada). Continua bloqueando sozinho com 30 min sem uso; "Bloquear" numa aba bloqueia todas.
+- **Perfil "Edita o cadastro sem senha"** (`perfis[].semSenha`): quem entra com esse perfil fica sempre desbloqueado. **ADMIN vale por padrão** enquanto o campo não for gravado desmarcado; perfis padrão novos já vêm com `semSenha:true` no ADMIN. Atenção: a entrada é só pelo ID.
+- Faixa "Cadastrar o material" mantém o código como veio do SAP (zero à esquerda preservado; a Produção 2.2.2 não tira mais).
+- Depois de importar CS12 ou materiais, a tela sobe para o topo da importação com o cursor na colagem.
+- Ao voltar para o Portal relê as bases das páginas e o cadastro; kit v2.1 (← Voltar).
+
+## 9. Portal 1.7.7 (05/11/2026) · Câmbio no cadastro geral
+
+- Tipo novo **Câmbio (moedas)** (`cambio`, em Administração › Cadastros): `{codigo:'USD', nome, ativo, vigencias:[{de, ate, cotacao}]}` — cotação = R$ por 1 unidade da moeda, com as regras de vigência de sempre (gravada não se edita; nova vigência fecha a anterior na véspera).
+- Kit v2.1 ganhou `vacCambio(data, moeda='USD')` → `{cotacao, de, ate}` ou null (lê a cópia `vac.cadastros`).
+- Consumidores: **Waste 1.8.3** (BRL/USD, cotação do último dia da competência) e **Gestão de Gel 1.94** (preço do gel = US$/kg × cotação do dia; a cotação do formulário de preço vem do cadastro e fica travada; dias sem câmbio no cadastro usam a cotação gravada com o preço, como antes).
+
+## 10. Portal 1.8 (05/11/2026) · centralização das configurações (fase A)
+
+Base: `claude/centralizacao-configuracoes.md`. Pedido do Pedro: ⓘ em todos os campos e categorias, com exemplo.
+
+- **Turnos › Pausas e abonos** (`turnos.vigencias[].pausas[]`): `{codigo (código de parada), nome, inicio, fim, duracaoMin, dias[], desconta}`. Pausa com horário fixo (início/fim, 24 h+ depois da meia-noite) ou só duração (abono, ex.: 60 min no sábado). Dias vazio = todos os dias do turno. Regra REF/REV: na Produção só o excedente da pausa padrão conta como perda.
+- **Metas** (grupo novo no menu, telas separadas):
+  - `metasOee`: `{codigo, nome, linha, equipamento, familia, catalogo, vigencias:[{de, ate, oeeMetaPct, pph, metaDiaria, coberturaMinPct, divergenciaMaxPct}]}`. Vale a meta mais específica: catálogo › família › linha.
+  - `metasArea`: `{codigo, nome (indicador), pagina, unidade, sentido (menor|maior), periodo, linha, vigencias:[{de, ate, valor, alerta}]}`. Ex.: WASTE-MES.
+  - `metasOsm`: `{codigo, nome, publico, periodo, linha, turno, vigencias:[{de, ate, quantidade, tema}]}`. Ex.: 4 OSM por operador por mês.
+- **Preços de material** (`precos`, chave = material): `vigencias:[{de, ate, preco, moeda USD|BRL, porUnidade kg|L|UN|mil UN}]`. O preço do gel passa a vir daqui (a Gestão de Gel só consulta; fase C).
+- **Parâmetros:** `paradaLongaMin` (padrão 30), parâmetro único para a lista "acima do limite" da Produção e a fila técnica da Paradas.
+- **Equipamentos:** `apelidos` (outros nomes, separados por ";"), o de-para do Forms.
+- **Códigos de parada:** novos `duracaoManual` e `relatorio`, que completam as regras de apontamento.
+- **Trazer configurações das páginas** (Resumo): lê as bases completas da Produção, Gel, Waste e Paradas (ou arquivos escolhidos) e propõe, com caixas de marcar:
+  - pausas da Produção (com código);
+  - pausa fixa e abono do Gel;
+  - metas de OEE (uma por escopo, com vigências);
+  - regras de apontamento diferentes;
+  - preço do gel;
+  - cotações gravadas com o preço (desmarcadas);
+  - meta mensal do Waste (WASTE-MES);
+  - parada longa;
+  - de-para de máquinas.
+  Vira operações normais com motivo "trazido das páginas (Portal 1.8)".
+- **ⓘ em todos os campos** (inclusive Dias), nos cabeçalhos da tabela de pausas, no título de cada lista de cadastro e nos grupos do menu (`CAT_AJUDA`), com exemplos.
+- Correção: na ficha de um item **novo** com vigência, a primeira vigência vinha travada ("gravada"); agora vem editável.
+- Câmbio usa a ação "edição" como os demais.
+
+## 11. Portal 1.8.1 (05/11/2026)
+
+- **Turnos completos (paridade com a Produção):** `vigencias[].regraPedacoFinal` (soma o pedaço final de até N min à hora anterior) e `vigencias[].intervalos[]` (`{inicio, fim}`; vazio = gerados pela regra; personalizado precisa cobrir o turno sem lacuna). A ficha mostra as horas brutas e produtivas por dia da semana e os intervalos gerados; o botão "Copiar os da regra para editar" preenche o personalizado.
+- **Parâmetros:** listas `motivosAbono`, `motivosSemProducaoProg` e `motivosSemProducaoNP`.
+- **Metas de OEE = Metas e capacidades da Produção:** ganharam `observacao`, `semaforoVerdePct`/`semaforoAmareloPct` por meta, `quadro` (quadro hora a hora da Meta OEE FY27, só consulta) e a coluna PPM. O Trazer traz semáforo, observação e quadro; traz também os intervalos, a regra do pedaço final e os motivos.
+- **Preparação de aditivo na BOM:** mesmo código, dois papéis. O catálogo de preparação mostra "produzida em ordem própria (BOM própria) e consumida na BOM de N catálogos". Na BOM dos tubos, o componente que é preparação ganha "preparação · BOM própria ↗". O material mostra a ligação com o catálogo, e a conferência avisa quando a unidade é diferente. No Waste não há dupla contagem: a perda de fazer a solução fica na ordem da preparação e o consumo pelo tubo fica na ordem do tubo.
+- **Matriz de paradas nova:**
+  - duas visões: "Todas as máquinas" (grade) e "Por máquina" (o formulário de uma máquina, por grupo, com "marcar todos/desmarcar" e "Imprimir o formulário desta máquina");
+  - busca; ✓/✗ por coluna (máquina) e "todas/nenhuma" por linha;
+  - legenda; linha alterada em amarelo; aviso quando o filtro "Onde se aponta" esconde tudo.
+- Correção: o ⓘ dos grupos do menu ficava em outra linha.

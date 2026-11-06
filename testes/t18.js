@@ -1,0 +1,18 @@
+const RAIZ=require('path').resolve(__dirname,'..')+'/';
+const {chromium}=require('playwright');const S='file://'+require('path').resolve(__dirname,'..')+'/paginas/';(async()=>{const b=await chromium.launch();const p=await b.newPage({viewport:{width:1440,height:1000}});const errs=[];p.on('pageerror',e=>errs.push(e.message));p.on('dialog',d=>d.accept());
+await p.goto(S+'Portal.html#geral');await p.waitForTimeout(600);await p.evaluate(()=>enterTest());await p.waitForTimeout(400);await p.evaluate(()=>Lock.on(Cad.D.seguranca.senhaHash));
+console.log('teste tem:',await p.evaluate(()=>CAD_ORD.map(t=>t+':'+(Cad.D[t]||[]).length).join(' ')),'| turnos:',await p.evaluate(()=>Cad.D.turnos.map(t=>t.codigo).join(',')),'| paradas:',await p.evaluate(()=>Cad.D.paradas.map(t=>t.codigo).join(',')),'| materiais:',await p.evaluate(()=>Cad.D.materiais.map(m=>m.codigo+'/'+m.tipo).join(',')));
+await p.evaluate(()=>{Cad.ui.sec='inicio';App.show('cad')});await p.waitForTimeout(400);
+console.log('menu metas:',await p.evaluate(()=>[...document.querySelectorAll('.cadside .sg')].map(x=>x.textContent.trim()).join(' | ')),'| botões:',await p.evaluate(()=>[...document.querySelectorAll('.cadside [data-sec]')].map(x=>x.dataset.sec).join(',')));
+for(const t of ['metasOee','metasArea','metasOsm','precos','turnos','paradas','equipamentos']){await p.evaluate(t=>{Cad.ui.sec=t;App.render()},t);await p.waitForTimeout(250);const h=await p.$eval('#cadMain h3',e=>e.innerText).catch(()=>'?');await p.click('#cadNovo').catch(()=>{});await p.waitForTimeout(300);const n=await p.evaluate(()=>{const f=document.querySelector('#fBox');return f?{campos:f.querySelectorAll('label').length,ib:f.querySelectorAll('.ib').length}:null});console.log(t,'| título:',h.replace(/\n/g,' '),'| ficha nova:',JSON.stringify(n));await p.evaluate(()=>Modal.close(true));}
+// turno: abrir ficha existente, nova vigência e pausa
+const tc=await p.evaluate(()=>Cad.D.turnos[0].codigo);await p.evaluate(c=>{Cad.ui.sec='turnos';App.render();Ficha.abrir('turnos',c)},tc);await p.waitForTimeout(400);
+await p.click('#fvNova');await p.waitForTimeout(300);await p.click('[data-add$="pausas"]');await p.waitForTimeout(300);
+console.log('pausas cab:',await p.$eval('#fBox .cadst',e=>e.querySelector('tr').innerText.replace(/\s+/g,' ')),'| ib no cab:',await p.$eval('#fBox .cadst',e=>e.querySelectorAll('th .ib').length));
+await p.screenshot({path:require('path').resolve(__dirname,'..')+'/testes/saida/f1.png'});
+await p.evaluate(()=>Modal.close(true));
+// validação
+console.log('valida:',JSON.stringify(await p.evaluate(()=>{const D=Cad.D;const t=clone(D.turnos[0]);t.vigencias[0].pausas=[{codigo:'XXX',nome:'a',inicio:'',fim:'',duracaoMin:null,dias:[],desconta:true},{nome:'b',inicio:'11:00',fim:'12:00',dias:[6],desconta:true},{nome:'c',duracaoMin:60,dias:[6]}];return[cadValidarItem('turnos',t,D),cadValidarItem('metasOee',{codigo:'OEE-L',nome:'x',vigencias:[{de:'2026-01-01',oeeMetaPct:120}]},D),cadValidarItem('metasOsm',{codigo:'O',nome:'x',vigencias:[{de:'2026-01-01',quantidade:0}]},D),cadValidarItem('precos',{material:D.materiais[0].codigo,vigencias:[{de:'2026-01-01',preco:12.3,moeda:'USD',porUnidade:'kg'}]},D)]})));
+// parâmetros
+await p.evaluate(()=>{Cad.ui.sec='parametros';App.render()});await p.waitForTimeout(300);console.log('parada longa:',await p.$eval('[data-par=paradaLongaMin]',e=>e.value));await p.fill('[data-par=paradaLongaMin]','25');await p.click('#sParOk');await p.waitForTimeout(800);console.log('gravado:',await p.evaluate(()=>Cad.D.parametros.paradaLongaMin));
+console.log(errs.join('\n')||'sem erros');await b.close()})();

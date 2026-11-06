@@ -1,0 +1,17 @@
+const RAIZ=require('path').resolve(__dirname,'..')+'/';
+const {chromium}=require('playwright');const SS=require('path').resolve(__dirname,'..')+'/';
+(async()=>{const b=await chromium.launch();const ctx=await b.newContext({viewport:{width:1440,height:900}});
+const pg0=await ctx.newPage();await pg0.goto('file://'+RAIZ+'paginas/Portal.html');
+await pg0.evaluate(()=>{const P=(v)=>Object.fromEntries(['portal','oee','perdas','gel','paradas','equip','inic','projetos'].map(m=>[m,{ver:v.includes(m),lancar:false}]));
+ localStorage.clear();localStorage.setItem('vac.cadastros',JSON.stringify({rev:3,usuarios:[{codigo:'2002',nome:'Bruno Operador',perfil:'OPER',ativo:true}],perfis:[{codigo:'OPER',nome:'Operador',permissoes:P(['portal','oee','paradas','inic'])}],parametros:{semaforoVerdePct:100,semaforoAmareloPct:90}}));
+ localStorage.setItem('vac.sistemas',JSON.stringify([{id:'portal',nome:'Portal',html:'Portal.html'},{id:'oee',nome:'OEE',html:'OEE-Vacutainer.html',base:'oee-vacutainer-base.json'},{id:'perdas',nome:'Perdas',html:'Perdas-Ordem.html',base:'perdas-base.json'},{id:'gel',nome:'Gel',html:'Gestão-Gel-Vacutainer.html',base:'fifo-base.json'},{id:'paradas',nome:'Paradas',html:'Paradas.html',base:'paradas-base.json',futuro:false},{id:'maquinas',nome:'Máquinas',html:'Maquinas.html',futuro:false}]));
+ localStorage.setItem('vac.links',JSON.stringify([{nome:'Forms de paradas',url:'https://forms.office.com/x'}]))});await pg0.close();
+for(const f of ['OEE-Vacutainer.html','Gestão-Gel-Vacutainer.html','Paradas.html','Perdas-Ordem.html','Portal.html']){
+ const p=await ctx.newPage();const errs=[];p.on('pageerror',e=>errs.push(e.message));p.on('dialog',d=>d.dismiss());
+ await p.goto('file://'+RAIZ+'paginas/'+encodeURI(f));await p.waitForTimeout(1500);
+ const info=async()=>p.evaluate(()=>({nav:[...document.querySelectorAll('#sysNav a')].map(a=>a.textContent).join('|'),outros:[...document.querySelectorAll('#sysOutros a')].map(a=>a.textContent).join('|'),h1:document.querySelector('#vacTitulo')?.textContent,admin:document.querySelector('#btnAdmin')?.getAttribute('href'),user:document.querySelector('#stUser')?.textContent.trim(),ver:document.querySelector('#appVer')?.textContent,sem:typeof vacSemaforo==='function'?[vacSemaforo(1.02,1),vacSemaforo(0.95,1),vacSemaforo(0.5,1),vacSemaforo(2,1,{inverso:true})].join(','):'-'}));
+ console.log('\n'+f,JSON.stringify(await info()));
+ if(f!=='Portal.html'){await p.evaluate(()=>{document.querySelectorAll('.overlay').forEach(o=>o.remove());document.querySelector('#stUser a').click()});await p.waitForTimeout(200);await p.fill('#veId','2002');await p.evaluate(()=>document.querySelector('#veOk').click());await p.waitForTimeout(400);console.log(' depois de entrar',JSON.stringify(await info()));
+  await p.evaluate(()=>document.querySelector('#stUser a').click());await p.fill('#veId','999');await p.evaluate(()=>document.querySelector('#veOk').click());await p.waitForTimeout(200);console.log(' id novo:',await p.$eval('#veMsg',e=>e.textContent.slice(0,80)));await p.screenshot({path:SS+'k_'+f.slice(0,4)+'.png',clip:{x:0,y:0,width:1440,height:420}});await p.evaluate(()=>document.querySelector('#veX').click())}
+ console.log(' erros:',errs.join(' / ')||'nenhum');if(f==='Perdas-Ordem.html'){await p.evaluate(()=>{localStorage.removeItem('vac.userId')})}await p.close()}
+await b.close()})();
