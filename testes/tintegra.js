@@ -20,14 +20,24 @@ await o.evaluate(()=>{document.querySelectorAll('.overlay').forEach(x=>x.remove(
 // o exemplo marca os dias como demo (o exports os ignora): cópia sem a marca para gerar o resumo
 const oee=await o.evaluate(()=>{const db=JSON.parse(JSON.stringify(Store.S.db));const tira=a=>(a||[]).forEach(x=>{delete x.demo});tira(db.productionDays);tira(db.monthPlans);tira(db.calendar);return{exports:Exports.build(db),productionDays:db.productionDays,monthPlans:db.monthPlans,calendar:db.calendar,catalogs:db.catalogs}});
 
+// ---- Waste: dados de teste da página; uma ação com prazo amanhã (não vencida ainda) e uma vencida ontem
+const w=await nova('Perdas-Ordem.html','W');
+const waste=await w.evaluate(()=>{enterTest();const d=n=>{const x=new Date();x.setDate(x.getDate()+n);return x.toISOString().slice(0,10)};
+  B.actions.push({id:'tA',desc:'teste amanhã',prazo:d(1),status:'aberta'},{id:'tB',desc:'teste ontem',prazo:d(-1),status:'aberta'});
+  const ex=buildExports();return{base:{actions:B.actions,imports:B.imports,exports:ex},venc:B.actions.filter(acVencida).length,
+   semCausa:ex.porOrdem.filter(o=>(o.nivel==='alta'||o.nivel==='crítica')&&!o.causa).length,futura:ex.pendencias.some(p=>p.txt.includes('teste amanhã'))}});
+
 // ---- Portal
 const p=await nova('Portal.html#geral','P');
-const r=await p.evaluate(({gel,oee})=>{
+const r=await p.evaluate(({gel,oee,waste})=>{
   const G=adaptGel({lps:gel.lps,exports:gel.ex}),GB=adaptGel({lps:gel.lps});
   const O=adaptOEE(oee),OB=adaptOEE({...oee,exports:null});
   const PA=adaptParadas({exports:{exportsVersion:1,kpis:[['Paradas','3','','']],pendencias:[{sev:1,txt:'urgente'},{sev:2,txt:'atenção'}],serie:{rotulo:'Minutos de parada por mês',pontos:[{x:'2026-09',y:120},{x:'2026-10',y:80}]}}});
   const V2=adaptGeneric({exports:{exportsVersion:2,kpis:[['x','1','','']],pendencias:[{sev:1,txt:'a'}]}});
   const W=adaptPerdas({exports:{exportsVersion:1,porMes:[{per:curM(),liquido:10,perda:12,ganho:2,ordens:3,criticas:1,fechado:false}],porOrdem:[]},actions:[],imports:[]});
+  const WE=adaptPerdas(waste.base),WB=adaptPerdas({...waste.base,exports:{...waste.base.exports,pendencias:undefined}});
+  const wTxt=x=>x.pend.map(p=>p.sev+'|'+p.txt).sort().join('\n');
+  const wr={kE:JSON.stringify(WE.kpis),kB:JSON.stringify(WB.kpis),pE:wTxt(WE),pB:wTxt(WB),brutoE:!!WE.bruto,brutoB:!!WB.bruto,amanha:WE.pend.some(p=>p.txt.includes('teste amanhã')),ontem:WE.pend.some(p=>p.txt.includes('teste ontem')),venc:+WE.kpis[3][1],sem:+WE.kpis[2][1]};
   const gelPendUrg=gel.ex.pendencias.filter(x=>x.sev===1).length,gelPendAt=gel.ex.pendencias.filter(x=>x.sev===2).length;
   return{gKpis:JSON.stringify(G.kpis)===JSON.stringify(gel.ex.kpis),gSerie:G.serie.reduce((s,x)=>s+x.value,0),gBruto:!!G.bruto,gbBruto:!!GB.bruto,
    gUrg:G.pend.filter(x=>x.sev>=2).length,gAt:G.pend.filter(x=>x.sev<2).length,gelPendUrg,gelPendAt,
@@ -35,7 +45,7 @@ const r=await p.evaluate(({gel,oee})=>{
    oUrg:O.pend.filter(x=>x.sev>=2).length,oexUrg:oee.exports.pendencias.filter(x=>x.sev===1).length,oBruto:!!O.bruto,obBruto:!!OB.bruto,
    oSerie:O.serie.length,
    pa:{serie:PA.serie.map(x=>x.label+'='+x.value).join(','),sev:PA.pend.map(x=>x.sev).join(',')},v2:{bruto:V2.bruto,pend:V2.pend.length},
-   w:W.kpis[0][2]}},{gel,oee});
+   w:W.kpis[0][2],wr}},{gel,oee,waste});
 ok(r.gKpis,'Portal mostra os mesmos 4 cartões do Gel');
 ok(Math.abs(r.gSerie-gel.ex.estoque.kg)<0.05,`gráfico do Gel no Portal soma ${r.gSerie.toFixed(2)} kg (saldo, não o kg do relatório)`);
 ok(!r.gBruto&&r.gbBruto,'Gel: com exports não é "dados brutos"; sem exports é');
@@ -47,6 +57,12 @@ ok(r.oSerie>0,`OEE: série por dia do exports (${r.oSerie} dias)`);
 ok(r.pa.serie==='set/26=120,out/26=80',`Paradas: série no Portal ${r.pa.serie}`);
 ok(r.pa.sev==='2,1','Paradas: sev 1 → urgente, sev 2 → atenção');
 ok(r.v2.bruto&&r.v2.pend===0,'exportsVersion desconhecida: não usa o exports e marca "dados brutos"');
+ok(waste.futura,'Waste publica a ação que vence amanhã (com aPartirDe)');
+ok(!r.wr.amanha&&r.wr.ontem,'Portal: ação que vence amanhã ainda não aparece; a de ontem aparece');
+ok(r.wr.venc===waste.venc&&r.wr.sem===waste.semCausa,`Waste: ${r.wr.venc} ações vencidas (Waste ${waste.venc}), ${r.wr.sem} críticas/altas sem causa (Waste ${waste.semCausa})`);
+ok(r.wr.kE===r.wr.kB,'Waste: cartões pelo exports = cartões pela leitura antiga da base');
+ok(r.wr.pE===r.wr.pB,'Waste: pendências pelo exports = pela leitura antiga (mesmo texto e urgência)');
+ok(!r.wr.brutoE&&r.wr.brutoB,'Waste: com pendências no exports não é "dados brutos"; sem, é');
 ok(/provisório/.test(r.w),`Waste mês aberto: "${r.w}"`);
 
 // ---- A06: alteração pendente não grava por cima de outra pessoa (pasta simulada em memória)

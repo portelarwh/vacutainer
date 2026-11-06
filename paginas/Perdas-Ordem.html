@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Waste · Linha Vacutainer · V1.8.7</title>
+<title>Waste · Linha Vacutainer · V1.8.8</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600&family=Barlow+Condensed:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
 <style>
@@ -503,10 +503,10 @@ button.b,label.b,a.b{border-radius:8px}
    Base: perdas-base.json na pasta da rede (mesmo padrão OEE / Gel)
    Contrato: bloco "exports" (exportsVersion 1) lido pelas outras páginas
    ===================================================================== */
-const APP_VER='1.8.7', BASE_FN='perdas-base.json', DIR_ORIG='00. Originais SAP', DIR_BKP='00. Backups', DIR_IN='00. Entrada KKBC', DIR_DONE='00. Entrada KKBC/Processados';
+const APP_VER='1.8.8', BASE_FN='perdas-base.json', DIR_ORIG='00. Originais SAP', DIR_BKP='00. Backups', DIR_IN='00. Entrada KKBC', DIR_DONE='00. Entrada KKBC/Processados';
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 /* página para o núcleo comum, o cabeçalho (vac-cabecalho v2) e o quadro de Versões do Portal */
-const PAGE={id:'perdas',titulo:'Waste · Linha Vacutainer',tituloCurto:'Waste',subtitulo:'Custos e perdas por ordem',versao:'1.8.7',/* igual a APP_VER; o Portal lê este valor */baseFile:BASE_FN,backupDir:'00. Backups/Perdas',busca:q=>buscaPerdas(q)};
+const PAGE={id:'perdas',titulo:'Waste · Linha Vacutainer',tituloCurto:'Waste',subtitulo:'Custos e perdas por ordem',versao:'1.8.8',/* igual a APP_VER; o Portal lê este valor */baseFile:BASE_FN,backupDir:'00. Backups/Perdas',busca:q=>buscaPerdas(q)};
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,7);
 const nowISO=()=>new Date().toISOString();
@@ -1098,7 +1098,16 @@ function buildExports0(){
  const rows=vigRows();const ords=aggOrders(rows);const pm={};
  for(const o of ords){const p=pm[o.per]||(pm[o.per]={per:o.per,fy:fyOf(o.per),perda:0,ganho:0,liquido:0,custoMeta:0,custoReal:0,ordens:0,criticas:0});p.perda+=o.perda;p.ganho+=o.ganho;p.liquido+=o.d;p.custoMeta+=o.cTc;p.custoReal+=o.cRc;p.ordens++;if(o.lvl===3)p.criticas++}
  const cm={};for(const r of rows){const k=r.per+'|'+compKey(r)+'|'+(r.un||'');const c=cm[k]||(cm[k]={per:r.per,componente:compKey(r),descricao:compName(r),un:r.un||'',qtdMeta:0,qtdReal:0,desvio:0,ordens:new Set()});c.qtdMeta+=r.qT||0;c.qtdReal+=r.qR||0;c.desvio+=dev(r);c.ordens.add(r.ordem)}
- return{exportsVersion:1,geradoEm:nowISO(),
+ /* 1.8.8 · pendências para o Portal (sev 1 = urgente, 2 = atenção). Ação com prazo entra com aPartirDe = dia seguinte ao prazo:
+    o Portal só mostra a partir dessa data, então a ação vence no Portal mesmo sem nova gravação aqui */
+ const diaSeg=iso=>{const d=new Date(iso.slice(0,10)+'T12:00:00Z');d.setUTCDate(d.getUTCDate()+1);return d.toISOString().slice(0,10)};
+ const pendencias=[];
+ for(const a of B.actions)if(a.prazo&&!DONE_AC.includes(a.status)&&a.status!=='eficácia em acompanhamento')
+  pendencias.push({sev:1,tipo:'acaoVencida',aPartirDe:diaSeg(a.prazo),quando:a.prazo,txt:`Ação vencida em ${fmtD(a.prazo)}: ${a.desc}${a.resp?' · '+a.resp:''}`,link:a.ordem?'ordem='+a.ordem:'aba=acoes'});
+ for(const o of ords)if(o.lvl>=2&&!causeOf(o.ordem))
+  pendencias.push({sev:o.lvl===3?1:2,tipo:'semCausa',txt:`Ordem ${o.ordem} (${o.cat||''}) ${LV[o.lvl]} sem causa · desvio ${fmtR(o.d)}`,link:'ordem='+o.ordem});
+ const ultimaImportacao=(B.imports||[]).filter(i=>i.status!=='cancelado').map(i=>i.data).filter(Boolean).sort().pop()||null;
+ return{exportsVersion:1,geradoEm:nowISO(),modulo:'perdas',appVersion:APP_VER,pendencias,ultimaImportacao,
   ordensExcluidas:[...exclMap().values()].map(e=>({ordem:e.ordem,em:e.em,por:e.por,motivo:e.motivo})),
   porOrdem:ords.map(o=>({ordem:o.ordem,per:o.per,catalogo:o.cat||'',produto:o.prod||'',lote:o.lote||'',status:o.status||'',qtdEntregue:o.qEnt,custoMeta:+o.cTc.toFixed(2),custoReal:+o.cRc.toFixed(2),desvio:+o.d.toFixed(2),perda:+o.perda.toFixed(2),varMaterial:+sum(o.rows.filter(r=>!isDelivery(r)),dEst).toFixed(2),scrap:+sum(o.rows.filter(r=>!isDelivery(r)),scrapOf).toFixed(2),nivel:LV[o.lvl],causa:causeOf(o.ordem),
     comentarios:B.comments.filter(c=>c.ordem===o.ordem&&c.ativo!==false).length,acoesAbertas:B.actions.filter(a=>a.ordem===o.ordem&&!DONE_AC.includes(a.status)).length})),

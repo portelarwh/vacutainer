@@ -101,6 +101,8 @@ exports: { exportsVersion: 1, geradoEm, modulo:'gel', appVersion,
 - `sev: 1` = **urgente** (vermelho), `sev: 2` = **atenção** (âmbar). É o que OEE, Gel e Paradas já publicavam (ex.: barril vencido = 1; vencendo em 30 dias = 2).
 - Dentro do Portal a escala interna é a inversa (2 = urgente); a conversão é feita **na entrada** (`sevDoModulo`), nunca na página de origem. Mudar o significado de `sev` exige `exportsVersion 2`.
 
+- `aPartirDe: 'AAAA-MM-DD'` (opcional, Portal 1.8.4): a pendência só aparece a partir desse dia. Serve para o que vence com o tempo sem nova gravação na página (ex.: ação do Waste com prazo). `tipo` (opcional) identifica a pendência para contagens (`acaoVencida`, `semCausa`).
+
 **Série para o gráfico do Portal (`exports.serie`)**: lista `[{label, value, key}]` ou `{rotulo, pontos:[{x, y}]}` (Paradas; `x` = `AAAA-MM` vira mês).
 
 **O Portal mostra o que a página publica (Portal 1.8.3)**: cartões, pendências e séries vêm do `exports` (OEE, Gel, Paradas e Waste). Os dados brutos só são somados quando a base não tem `exports` ou tem uma `exportsVersion` que o Portal não conhece; nesse caso o cartão mostra a pílula **dados brutos**.
