@@ -39,3 +39,24 @@ Bloco `vac-cabecalho v2.1` (arquivo-fonte `kit/kit_v21.js`, igual em Portal 1.7.
 Gestão de Gel 1.97 (06/11/2026): na gravação, depois de 3 colisões seguidas as alterações continuam na fila (nova tentativa a cada 30 s) em vez de serem dadas como gravadas.
 
 Gestão de Gel 1.98 (06/11/2026): gravação sem releitura válida (arquivo ilegível ou sem `rev` no início) não é confirmada; a fila fica.
+
+## vac-visual v1 (06/11/2026) · padrão visual comum
+
+Resposta à auditoria de layout (`docs/auditorias/layout-2026-11-06/`). Decisões em `docs/auditorias/registro-decisoes.md` § L.
+
+- **Arquivo-fonte:** `fontes/kit/kit_visual.css`. O `aplicar_kit21.py` grava em Portal, Waste, Gel e Paradas, e o `build.py` grava na Produção, como `<style id="vac-visual">`, o **último** estilo da página: no fim do `<head>` ou, no Gel, que não tem `</head>`, logo antes do `vac-cabecalho`. Rodar de novo substitui o bloco, sem duplicar.
+- **O que padroniza:**
+  - corpo sem margem e contêiner de 1560 px com 16 px nas laterais;
+  - cabeçalho da página com 52 px em uma linha, botões de 30 px e 13 px, e ordem: ação principal do módulo, depois Sincronizar, Backup, TV e Mais;
+  - abas de 15 px com marca ativa de 3 px, sempre em uma linha. Quando não cabem, a faixa rola, com sombra e seta ‹ › na borda. A Produção, com grupos e menus, não rola;
+  - contadores das abas (`--cnt-bg`/`--cnt-ink`) e texto sobre preenchimento (`--on-fill`), com contraste ≥ 4,5:1 nos dois temas;
+  - cores de estado iguais em todas as páginas: `--ok`, `--warn`, `--crit`, `--info` e `--none`, um pouco mais escuras no claro;
+  - "Modo de exemplo" em roxo (`.vex`, `--ex-*`);
+  - menu de ações secundárias (`details.vmais` + `.vmais-l`).
+- **JS no `kit_v21.js`:**
+  - setas e sombras de rolagem das abas, com a aba ativa sempre visível (`vacAbasRolagem`);
+  - menu Mais sempre dentro da tela.
+- **Não muda:** cálculo, meta, limiar, `sev` nem contrato de dados. As cores de domínio (classes de parada, turnos, barris, catálogos) continuam nas páginas.
+- **Verificação:** `node testes/tvisual.js`, com 112 checagens. Cobre as cinco páginas × 2 temas × 1920/1440/1024/768/390 px: geometria, abas, contraste, campos de data, tema na navegação, gráficos do Portal e menu Mais. Os prints ficam em `testes/saida/visual/`.
+
+Gestão de Gel 1.99: cabeçalho com Importar relatório, Sincronizar, Backup e TV; Enviar relatório, Fichas e relatórios, Configuração e Guia passam para o menu **Mais**, com os mesmos botões e ids. Pílulas suaves por padrão; ficam cheias só no cabeçalho do barril e nas pílulas de cor do catálogo. "Dados de exemplo" e o aviso do exemplo em roxo. Indicador principal em 28 px. Título "Período selecionado · datas" no Painel.

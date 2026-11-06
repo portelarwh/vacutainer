@@ -9,7 +9,11 @@ def R(a,b,cnt=1):
     c=s.count(a)
     if c!=cnt: raise SystemExit(f'ERRO ({c}x): {a[:90]!r}')
     s=s.replace(a,b)
-R("const APP_VERSION = '2.0.1';","const APP_VERSION = '2.4.4';")
+R("const APP_VERSION = '2.0.1';","const APP_VERSION = '2.4.5';")
+# 2.4.5 · vac-visual (V07): no modo exemplo, o aviso "Dados de demonstração carregados" repetia o do modo exemplo (e Remover não grava nada ali)
+R("  if (!App.op && Demo.present()) h += `<div class=\"banner demo\"><p><b>Dados de demonstração carregados.","  if (!App.op && Demo.present() && S.mode !== 'exemplo') h += `<div class=\"banner demo\"><p><b>Dados de demonstração carregados.")
+# 2.4.5 · vac-visual: no card com estado (borda e ícone do semáforo), o valor usa a mesma cor do estado; sem estado, abaixo da meta continua vermelho
+R(".kpi .v.below,.tv .bk .v.below{color:var(--crit)}",".kpi .v.below,.tv .bk .v.below{color:var(--crit)}\n.kpi.k-ok .v.below,.kpi.k-warn .v.below,.kpi.k-crit .v.below{color:var(--kc)}")
 # 2.4.3 · F01: a releitura confere a identidade da gravação (saveId), não só o número da versão;
 # duas gravações simultâneas geram o mesmo databaseVersion e a de quem perdeu não pode ser dada como salva
 R("        next.databaseVersion = (extV || 0) + 1;\n","        next.databaseVersion = (extV || 0) + 1;\n        next.saveId = U.uid('sv');   // 2.4.3 · identidade desta gravação\n")
@@ -75,6 +79,10 @@ _sis=open(os.path.join(RAIZ,'fontes','kit','sistemas.js'),encoding='utf-8').read
 _pad=_re.compile(r'const DEFAULT_SYSTEMS=\[.*?\];',_re.S)
 if len(_pad.findall(s))!=1: raise SystemExit('ERRO: DEFAULT_SYSTEMS não achado exatamente 1 vez')
 s=_pad.sub(lambda m:_sis,s)
+# padrão visual comum (fontes/kit/kit_visual.css): último <style> do <head>, igual nas 5 páginas
+_vis=open(os.path.join(RAIZ,'fontes','kit','kit_visual.css'),encoding='utf-8').read().strip()
+if s.count('\n</head>\n')!=1: raise SystemExit('ERRO: </head> (linha própria) não achado exatamente 1 vez')
+s=s.replace('\n</head>\n','\n<style id="vac-visual">\n'+_vis+'\n</style>\n</head>\n')
 sync=open(os.path.join(AQUI,'cad_sync.js'),encoding='utf-8').read()
 R("S.cadastro = c && c.schema === 'vac-cadastros' ? { rev: c.rev, revAt: c.revAt, revBy: c.revBy } : null; }","S.cadastro = c && c.schema === 'vac-cadastros' ? { rev: c.rev, revAt: c.revAt, revBy: c.revBy } : null; S.cadDoc = S.cadastro ? c : null; S.cadDocAusente = false; if (S.cadDoc && typeof CadSync !== 'undefined') setTimeout(() => CadSync.talvez(), 0); }")
 # 2.4.3 · arquivo do cadastro sumiu: mantém a última cópia (travas continuam; destravar deixaria editar o que a próxima sincronização apagaria) e avisa na faixa

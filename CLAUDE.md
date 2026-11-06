@@ -6,11 +6,11 @@ Plataforma de páginas HTML de arquivo único que trabalham juntas numa **pasta 
 
 | Página | Arquivo | Base | Versão | Como editar |
 |---|---|---|---|---|
-| Portal (cadastro geral, Administração) | `Portal.html` | `portal-base.json` + `vacutainer-cadastros.json` | 1.8.7 | direto no HTML |
-| Produção (OEE, plano, ordens SAP) | `OEE-Vacutainer.html` | `oee-vacutainer-base.json` (+ `ordens-base.json`) | 2.4.4 | **NÃO editar o HTML**: editar `fontes/producao/` e rodar o build |
-| Waste (perdas por ordem, KKBC) | `Perdas-Ordem.html` | `perdas-base.json` | 1.8.10 | direto no HTML |
-| Gestão de Gel | `Gestão-Gel-Vacutainer.html` | `fifo-base.json` | 1.98 | direto no HTML |
-| Paradas | `Paradas.html` | `paradas-base.json` | 1.0.7 | direto no HTML |
+| Portal (cadastro geral, Administração) | `Portal.html` | `portal-base.json` + `vacutainer-cadastros.json` | 1.8.8 | direto no HTML |
+| Produção (OEE, plano, ordens SAP) | `OEE-Vacutainer.html` | `oee-vacutainer-base.json` (+ `ordens-base.json`) | 2.4.5 | **NÃO editar o HTML**: editar `fontes/producao/` e rodar o build |
+| Waste (perdas por ordem, KKBC) | `Perdas-Ordem.html` | `perdas-base.json` | 1.8.11 | direto no HTML |
+| Gestão de Gel | `Gestão-Gel-Vacutainer.html` | `fifo-base.json` | 1.99 | direto no HTML |
+| Paradas | `Paradas.html` | `paradas-base.json` | 1.0.8 | direto no HTML |
 
 Futuras: Equipamentos/Máquinas, Manutenção, Projetos, OSM (ver `docs/paginas-novas.md`, `docs/osm-arquitetura.md`, `docs/plano-evolucao-plataforma.md`).
 
@@ -18,10 +18,11 @@ Futuras: Equipamentos/Máquinas, Manutenção, Projetos, OSM (ver `docs/paginas-
 
 ```bash
 python fontes/producao/build.py        # monta paginas/OEE-Vacutainer.html a partir de OEE-base-2.0.html + ordens_servico.js + ordens_tela.js + cad_sync.js + kit_v21.js
-python fontes/kit/aplicar_kit21.py     # recopia fontes/kit/kit_v21.js e o catálogo fontes/kit/sistemas.js nas outras 4 páginas (Portal, Waste, Paradas, Gel)
+python fontes/kit/aplicar_kit21.py     # recopia fontes/kit/kit_v21.js, o catálogo fontes/kit/sistemas.js e o padrão visual fontes/kit/kit_visual.css nas outras 4 páginas (Portal, Waste, Paradas, Gel)
 node testes/tpg.js                     # testes Playwright (abrem paginas/ em modo teste/exemplo; imprimem "sem erros")
 node testes/tintegra.js                # Portal × exports: números iguais aos das páginas, urgência, gravação pendente com conflito
 node testes/tdiag.js                   # cenários das auditorias de 06/11/2026 (F01–F08, M01–M04: colisão e falha de leitura na gravação, CadSync, SAP, Gel, Paradas, versões); tintegra e tdiag saem com código 1 se falhar
+node testes/tvisual.js                 # layout: 5 páginas × 2 temas × 5 larguras (geometria, abas, contraste, tema entre páginas); prints em testes/saida/visual/; código 1 se falhar
 node testes/tmeta.js                   # importação da Meta OEE FY27 no Portal (precisa também do pacote npm xlsx)
 ```
 
@@ -35,7 +36,7 @@ node testes/tmeta.js                   # importação da Meta OEE FY27 no Portal
 2. **O Portal é o único que grava `vacutainer-cadastros.json`.** Edição por operações (`criação`/`edição` com `mudancas {campo:{antes,depois}}`), fila, releitura, reaplicação, backup em `00. Backups/Cadastros/`, `rev`/`revId`. As outras páginas leem a cópia `localStorage['vac.cadastros']` (via `vacCad()`) em modo consulta, com "Editar no Portal" (`vacPortalHref('cadastros/<tipo>/<código>')`).
 3. **Vigências gravadas são imutáveis**: só se desativa (vai para `vigenciasDesativadas`) e cria outra. Quem lê usa a vigência da **data do fato** (`vacVig`).
 4. **Chave = código** (catálogo de 6 dígitos, `EQ01`, `FME`, `T1`). Códigos sempre guardados como **texto**, nunca convertidos em número. Material SAP **numérico** é normalizado do mesmo jeito em todas as páginas: sem os zeros à esquerda que o SAP põe até 18 dígitos (`normMat` no Portal/CS12, `cod` no importador MB51/COOIS) — é isso que faz a ordem bater com o cadastro; código não numérico fica como veio. Nada se apaga: `ativo:false`.
-5. **Kit do cabeçalho igual em todas** (`vac-cabecalho v1/v2` + `kit_v21.js` + catálogo `sistemas.js`): não editar só numa página. Mudou o kit → `aplicar_kit21.py` + build da Produção.
+5. **Kit do cabeçalho igual em todas** (`vac-cabecalho v1/v2` + `kit_v21.js` + catálogo `sistemas.js` + padrão visual `kit_visual.css`): não editar só numa página. Mudou o kit → `aplicar_kit21.py` + build da Produção. Estilo comum (contêiner, cabeçalho, abas, contadores, cores de estado, modo exemplo) vai no `kit_visual.css`; a página só define o que é dela. Chaves comuns do `localStorage` (`vac.theme`, `vac.user`, `vac.logo`…) em texto simples.
 6. **Mudanças cirúrgicas e aditivas**: não reescrever o que funciona; campos novos são opcionais e ignorados por quem não usa (compatível com `schemaVersion 1`). Mudar significado de campo = schemaVersion 2.
 7. **ⓘ em todos os campos e categorias** de configuração, com o que é e um exemplo (`AJUDA_CAMPO`, `CAT_AJUDA` no Portal; `HELP` na Produção).
 8. **Versão**: subir a versão da página a cada entrega (`PAGE.versao`, `APP_VERSION` ou `V1.xx` no `<title>`) e gravar `appVersion` na base. O Portal › Versões lê isso.
@@ -56,13 +57,13 @@ Produção aplica o cadastro na base do OEE pelo `CadSync` (`fontes/producao/cad
 - Plataforma: `arquitetura-integracao-sistemas.md`, `portal-e-padrao-comum.md`, `plano-evolucao-plataforma.md`, `centralizacao-configuracoes.md`
 - Cadastro: `cadastro-base-contrato.md`, `cs12-importacao-bom.md`
 - Kit: `kit-cabecalho-e-backups.md` (v1), `kit-cabecalho-v2.md` (v2/v2.1)
-- Páginas: `portal-1-7.md` (Portal 1.7–1.8.7), `producao-ordens-sap.md`, `waste-v1-8.md`, `perdas-ordem-v1.md`, `paradas-arquitetura.md`, `portal-pedido-paradas.md`, `paginas-novas.md`, `osm-arquitetura.md`
+- Páginas: `portal-1-7.md` (Portal 1.7–1.8.8), `producao-ordens-sap.md`, `waste-v1-8.md`, `perdas-ordem-v1.md`, `paradas-arquitetura.md`, `portal-pedido-paradas.md`, `paginas-novas.md`, `osm-arquitetura.md`
 
 Ao terminar uma entrega, atualizar o doc da página (seção nova com a versão e a data) e o `CLAUDE.md` se mudar regra, versão ou comando.
 
 ## Auditorias externas
 
-`docs/auditorias/registro-decisoes.md` registra cada apontamento das auditorias (05/11, 06/11 e pós-merge de 06/11/2026), o que foi corrigido, o que foi recusado e por quê. **Antes de uma nova análise, ler o registro**: item recusado lá só volta com fato novo.
+`docs/auditorias/registro-decisoes.md` registra cada apontamento das auditorias (05/11, 06/11, pós-merge e layout de 06/11/2026), o que foi corrigido, o que foi recusado e por quê. **Antes de uma nova análise, ler o registro**: item recusado lá só volta com fato novo.
 
 ## Pendências conhecidas
 
