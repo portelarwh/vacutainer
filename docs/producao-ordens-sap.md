@@ -128,3 +128,7 @@ Por ordem: MB51 (saldo, data principal) × COOIS (tipo, status, datas, fornecida
 ## 16. Produção 2.4.6 (06/11/2026) · bases em 00. Bases
 
 - `FolderBackend` usa `vacRaiz`. Em `Store.connect`, com permissão de gravação, move `oee-vacutainer-base.json` (cópia em `00. Backups/OEE`) e `ordens-base.json` (cópia em `00. Backups/Ordens`) para `00. Bases`. Lê o cadastro e a KKBC em `00. Bases` ou na raiz.
+
+## 17. Produção 2.4.7 (06/11/2026) · revisão c341f8e
+
+- Kit vac-bases v2, pelo build. `connectFolder`: um erro ao ler a base não abre "Criar base nesta pasta?". Contadores do submenu das abas com contraste ≥ 4,5 nos dois temas.

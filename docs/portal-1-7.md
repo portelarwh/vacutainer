@@ -185,3 +185,9 @@ Registro completo das decisões em `docs/auditorias/registro-decisoes.md`.
 - Ao conectar, move `portal-base.json` e `vacutainer-cadastros.json` para `00. Bases` (kit vac-bases), com cópia em `00. Backups/Portal` e `00. Backups/Cadastros`. Lê as bases dos módulos em `00. Bases` ou, enquanto não forem movidas, na raiz.
 - Versões das páginas: `00. Bases` é o lugar certo; avisa base ainda na raiz e duas cópias da mesma base.
 - Pasta única (Configuração): a estrutura descrita passa a incluir `00. Bases` e `Paradas.html`.
+
+## 20. Portal 1.8.10 (06/11/2026) · revisão c341f8e
+
+- Kit vac-bases v2: migração para `00. Bases` segura entre estações (registro § R).
+- Conexão: um erro ao ler a base (rede, permissão, JSON) não oferece mais "Criar a base nesta pasta?". A página avisa e não muda nada.
+- Aba ativa com a marca de volta; pílula "Modo de teste" visível em telas pequenas.

@@ -53,6 +53,15 @@ const FECHA=()=>document.querySelectorAll('.overlay,#toast,.toast').forEach(o=>{
  await G.evaluate(()=>{const b=[...document.querySelectorAll('#stBase button')].find(x=>/Conectar à pasta/.test(x.textContent));if(b)b.id='__gelCon'});
  await foto(G,'gel-pasta','Gestão de Gel · cabeçalho: clique em Conectar à pasta',[['#__gelCon',1]],{x:0,y:0,width:1280,height:150});
 
+ // ---- Gel: janela "Base encontrada" depois de escolher a pasta (pasta de teste no armazenamento do navegador)
+ {const g2=await nova('Gestão-Gel-Vacutainer.html');await g2.evaluate(FECHA);
+  await g2.evaluate(async()=>{const r=await navigator.storage.getDirectory();for await(const[n]of r.entries())await r.removeEntry(n,{recursive:true});
+    const B=await r.getDirectoryHandle('00. Bases',{create:true});const fh=await B.getFileHandle('fifo-base.json',{create:true});const s=await fh.createWritable();await s.write(await (await fetch('../testes/bases/fifo-base.json')).text());await s.close();
+    await fsChooseBase(r)});
+  await g2.waitForTimeout(500);
+  const r=await g2.evaluate(()=>{const b=document.querySelector('#fsUseB');const m=b.closest('.dlg, .modal, [role=dialog]')||b.parentElement.parentElement;const x=m.getBoundingClientRect();return{x:x.left,y:x.top,width:x.width,height:x.height}});
+  await foto(g2,'gel-base','Gestão de Gel · depois de escolher a pasta: clique em Usar a base da pasta',[['#fsUseB',1]],{x:Math.max(0,r.x-16),y:Math.max(0,r.y-16),width:Math.min(1280,r.width+32),height:Math.min(800,r.height+32)})}
+
  // ---- Paradas: Conectar a pasta da linha
  const A=await nova('Paradas.html');await A.evaluate(FECHA);versoes.Paradas=await A.evaluate(()=>PAGE.versao);
  await foto(A,'paradas-pasta','Paradas · Visão geral: clique em Conectar a pasta da linha (ou na pílula do cabeçalho)',[['#ivPasta',1],['#pPasta',2]],{x:0,y:0,width:1280,height:330});
