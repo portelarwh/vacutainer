@@ -14,8 +14,75 @@ Este arquivo responde às auditorias externas da plataforma e registra, para cad
 | Diagnóstico pós-merge (M01–M04, ressalvas) | 06/11/2026 | `c2ca6af` | Portal 1.8.6, Produção 2.4.4, Waste 1.8.10, Gel 1.98 (§ 0, PR portelarwh/vacutainer#5) |
 | Revisão do PR #5 (base que some) | 06/11/2026 | `142b9c2` | Portal 1.8.7 (§ 0.1) |
 | Auditoria visual (V01–V08) | 06/11/2026 | `142b9c2` (registrada em `ce1d971`) | Portal 1.8.8, Produção 2.4.5, Waste 1.8.11, Gel 1.99, Paradas 1.0.8 (§ L) |
+| Revisão da migração, do layout e do guia (B01–B07 e visuais) | 06/11/2026 | `c341f8e` | Portal 1.8.10, Produção 2.4.7, Waste 1.8.13, Gel 2.01, Paradas 1.0.10 (§ R) |
 
 Status usados: **corrigido** · **corrigido em parte** · **recusado** · **adiado** · **já existia**.
+
+---
+
+## R. Revisão `c341f8e`: migração para 00. Bases, fechamento do layout e guia
+
+**Limite desta resposta:** o relatório `revisao-vacutainer-c341f8e.md` e o zip de evidências **não chegaram** nesta sessão. Cada item foi reproduzido a partir da descrição recebida, com testes próprios. Todos os cenários novos **falham no código de `c341f8e` e passam agora**, menos o B06, que é um procedimento e passa nos dois.
+
+### Prioridade 1 · migração segura (kit `vac-bases v2`, `fontes/kit/kit_bases.js`)
+| Item | Decisão | O que mudou · teste |
+|---|---|---|
+| B01 Gravação recente na raiz apagada depois da cópia | **corrigido** | Antes de tirar a base da raiz, o código confere de novo se ela mudou desde a leitura; se mudou, não apaga nada. A base também não é mais apagada: é **movida** para `00. Backups/<módulo>`, então uma gravação de último instante fica guardada lá, e a página avisa. Teste: `tbases.js` › B01 |
+| B02 Migração atrasada sobrescrevendo gravação confirmada no destino | **corrigido** | Trava entre computadores (arquivo `.<base>.migrando` em `00. Bases`, com prazo de 2 min; só é pega quando a base ainda está na raiz, então a conexão normal não grava nada nem espera) e nova conferência do destino antes de pôr a cópia no lugar. Se o destino já tiver base, não sobrescreve: decide pela data, e a raiz mais velha vai para o backup. Teste: `tbases.js` › B02 (dois momentos) e concorrência |
+| B03 Conferência divergente apagando o arquivo de outra sessão | **corrigido** | Quando a conferência diverge, não apaga nada (nem destino nem raiz) e avisa o conflito. Teste: `tbases.js` › B03 |
+| B04 Erro de leitura interpretado como ausência | **corrigido** | Só `NotFoundError`/`TypeMismatchError` contam como "não existe" (`vacNaoAchou`). Qualquer outro erro é "estado desconhecido", e nada é mudado. Valeu também para `vacRaiz` (não troca `00. Bases` pela raiz se a pasta der erro) e para a conexão de Portal, Waste, Gel e Produção, que não oferecem mais "Criar a base" quando a base existe mas não pode ser lida. Teste: `tbases.js` › B04 e "página: base ilegível" |
+| B05 Cópia interrompida deixando arquivo vazio como base preferida | **corrigido** | A cópia vai para um arquivo temporário (`.<base>.copiando-<sessão>`), é conferida e só então entra no lugar. Na leitura, um arquivo vazio em `00. Bases` não é preferido. Temporários com mais de 10 min são limpos. Teste: `tbases.js` › B05 (interrupção e sobra vazia) |
+| Procedimento "F5 depois da troca" / "nada se perde" | **corrigido** | Guia (itens 5, 6, 9 e 10) e `LEIA-ME.txt`: é **obrigatório** que nenhuma página esteja aberta em nenhum computador durante a troca e a primeira abertura. A primeira abertura é feita num único computador. Os dados de uma página antiga **não se juntam sozinhos**. O guia lista as condições de uma migração segura e como saber que ela terminou |
+
+### Prioridade 2 · recuperação e compatibilidade
+| Item | Decisão | O que mudou · teste |
+|---|---|---|
+| B07 Backup na retomada depois de interrupção | **corrigido** | Toda saída da raiz passa por `tirarDaRaiz`, que move a base para o backup, inclusive quando a cópia já estava em `00. Bases`. Teste: `tbases.js` › B07 |
+| B06 Volta para a versão anterior depois da migração | **definido e validado** | **Reproduzido:** a Produção antiga (2.4.5, commit `38542d0`), ao reconectar, cria uma base nova vazia na raiz. **Procedimento** (guia, item 9): fechar tudo; mover os 7 `.json` de `00. Bases` para a raiz (sem substituir, guardando antes a que uma página antiga tenha criado); só então copiar os HTML antigos. Teste `tbases.js` › B06: com o procedimento, a Produção antiga abre a base real, e numa nova atualização a base volta para `00. Bases`. **Não automatizado de propósito:** um botão "devolver as bases" com páginas novas abertas causaria a mesma divisão de dados |
+| Pasta original no IndexedDB, `vacRaiz` só no acesso | **mantido** | Sem mudança: as páginas continuam guardando a pasta do seletor |
+
+### Prioridade 2 · fechamento do layout
+| Item | Decisão | O que mudou · teste |
+|---|---|---|
+| Marca colorida da aba ativa (Portal, Waste, Gel, Paradas) | **corrigido** | O `kit_visual.css` zerava a borda de todas as abas, inclusive da ativa; a regra da aba ativa (`.on`/`aria-selected`) foi devolvida. Teste: `tvisual.js` mede a borda da aba ativa nas 5 páginas e nos 2 temas |
+| Aba ativa à vista ao redimensionar o Gel | **corrigido** | O redimensionamento chama a mesma função que leva a aba ativa à área visível. Teste: troca de aba e redimensiona para 1024/768/390 px sem recarregar |
+| Contraste dos contadores no submenu da Produção | **corrigido** | `.nmenu .cnt` passa a usar `--cnt-bg`/`--cnt-ink` (antes 2,19:1 no escuro). Teste: mede com o submenu aberto, nos 2 temas |
+| Faixa de teste do Paradas | **corrigido** | Antes âmbar com texto preto (ficou pior com o `--warn` mais escuro da entrega anterior). Agora usa o roxo de exemplo, igual ao Portal e ao Waste, com o texto "Ambiente de teste · dados fictícios". Teste: contraste da faixa ≥ 4,5 (7,7 no claro, 8,1 no escuro) e entrada de fato no modo de teste (`modoTeste()`; antes o teste chamava uma função que não existe) |
+| Unidade da escala mensal do Paradas | **corrigido** | A chamada real usava um formatador próprio (`h` acima de 6000, número puro abaixo); passou a usar `fmtMin`, com uma unidade para a escala inteira. O Pareto (`hbars`) tinha o mesmo problema (h e min misturados) e foi corrigido junto. Teste: cada gráfico de barras da Visão geral e do Pareto com uma unidade só |
+| Preferências antigas de tema | **corrigido** | Seção `vac-prefs` do kit, que roda antes de qualquer página: converte `vac.theme`, `vac.user` etc. gravados com aspas (`"dark"`) para texto simples. Teste: as 5 páginas aplicam o tema com o valor antigo |
+| Cabeçalhos em telas menores | **avaliado e corrigido em parte** | Status e ações continuam visíveis e dentro da tela nas 5 páginas, em 768 e 390 px. **Achado:** a regra comum que esconde o subtítulo (`.vpage .rule`) também escondia a pílula roxa de estado ("Modo de teste"), que usa a classe `rule`, no Portal e no Waste em telas pequenas; corrigido no kit. A altura da faixa (52 a 180 px) continua variando conforme a quantidade de status e ações de cada página; reduzir isso tiraria informação e fica para a validação com o uso (§ L) |
+
+### Guia de instalação
+- **Incorporado:** o guia e o gerador (`fontes/guia/`) estavam no branch, sem merge no `main` auditado. Entram neste PR.
+- **Revisado contra as telas atuais:**
+  - conexão de cada módulo, com um print novo da janela "Base encontrada" do Gel;
+  - as perguntas de confirmação ("Criar a base nesta pasta?" = Cancelar);
+  - a migração das 7 bases, com condições de segurança, critérios de "terminou" e as mensagens possíveis;
+  - recuperação (volta de versão e duas cópias da base).
+
+### Testes reforçados
+- **`tbases.js` (36 checagens):**
+  - B01 a B07 com falhas injetadas no meio da migração;
+  - duas sessões migrando ao mesmo tempo e trava expirada;
+  - conexão normal (nada na raiz): sem trava, sem espera e sem aviso falso de "aguardando";
+  - base ilegível na conexão;
+  - volta de versão com a Produção antiga real;
+  - conferência do conteúdo final e dos backups.
+- **`tvisual.js` (170 checagens):**
+  - entrada real no modo de teste do Paradas, sem `try/catch` que esconda falha;
+  - telas do exemplo preenchidas (indicadores e gráficos);
+  - marca da aba ativa e troca de aba;
+  - redimensionamento sem recarregar;
+  - contraste com o submenu da Produção e o menu Mais do Gel abertos;
+  - unidade única por gráfico do Paradas;
+  - faixa de teste;
+  - tema antigo com aspas;
+  - status e ações do cabeçalho em telas menores.
+- **Na versão auditada**, o novo `tvisual.js` acusa 18 falhas e o novo `tbases.js`, 12.
+
+**Limites:**
+- Os cenários de pasta usam o sistema de arquivos do navegador (OPFS), com falhas e concorrência simuladas. Não substituem duas estações reais na pasta da rede.
+- O `move()` de arquivos foi validado no OPFS. Na pasta da rede, se o navegador não oferecer `move()`, o código grava o backup e confere a raiz antes de apagar. Nesse caminho alternativo ainda existe uma janela de milissegundos entre a conferência e a remoção.
 
 ---
 

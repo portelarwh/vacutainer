@@ -86,7 +86,9 @@ td.n,th.n{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
 .toast{background:#15222f;color:#fff;padding:9px 16px;border-radius:9px;box-shadow:0 6px 20px rgba(0,0,0,.25);font-size:13.5px;max-width:90vw}.toast.err{background:var(--crit)}
 .help{display:inline-grid;place-items:center;width:17px;height:17px;border-radius:50%;border:1px solid var(--line);font-size:11px;color:var(--muted);cursor:pointer;vertical-align:middle;margin-left:3px;background:var(--surface)}
 .pop{position:absolute;z-index:500;background:var(--surface);border:1px solid var(--line);border-radius:10px;box-shadow:0 10px 30px rgba(0,0,0,.2);padding:10px 12px;max-width:340px;font-size:13px}
-.testbar{background:var(--warn);color:#000;text-align:center;font-size:13px;padding:3px}
+/* 1.0.10 · faixa de teste igual à do Portal/Waste: roxo de exemplo (antes âmbar com texto preto, contraste baixo) */
+.testbar{background:var(--ex-bg,#f0eaf7);color:var(--ex-ink,#5b3390);border-bottom:1px solid var(--ex-line,#d9c8ee);text-align:center;font-family:var(--f-display);font-weight:700;letter-spacing:.12em;text-transform:uppercase;font-size:13px;padding:4px}
+.testbar a{color:inherit;font-weight:700}
 /* guia */
 .gcode{display:grid;grid-template-columns:60px 54px minmax(0,1fr);gap:4px 10px;padding:9px 0;border-bottom:1px solid var(--line)}
 .gcode .nm{font-weight:600}.gcode .ds{grid-column:3}.gcode .ex{grid-column:3;color:var(--muted);font-size:13px}
@@ -229,7 +231,9 @@ nav.vtabs .vrola{position:absolute;top:50%;transform:translateY(-50%);z-index:3;
 nav.vtabs .vrola.e{left:max(4px,env(safe-area-inset-left,0px))}nav.vtabs .vrola.d{right:max(4px,env(safe-area-inset-right,0px))}
 nav.vtabs[data-mais-esq] .vrola.e,nav.vtabs[data-mais-dir] .vrola.d{display:inline-flex}
 /* contadores nas abas: mesma forma e cor em todas */
-nav.vtabs .tab .cnt,nav.vtabs .badge{font-family:var(--f-body);font-size:11px;font-weight:600;letter-spacing:0;background:var(--cnt-bg);color:var(--cnt-ink);border-radius:99px;padding:0 6px;margin-left:6px;vertical-align:2px}
+/* aba ativa: marca de 3 px na cor de destaque (a regra acima zera a borda; esta devolve a marca da aba ativa) */
+nav.vtabs .tabs>button.on,nav.vtabs .tabs>button[aria-selected="true"]{color:var(--ink);border-bottom-color:var(--accent)}
+nav.vtabs .tab .cnt,nav.vtabs .badge,nav.vtabs .nitem .cnt,.nmenu .cnt{font-family:var(--f-body);font-size:11px;font-weight:600;letter-spacing:0;background:var(--cnt-bg);color:var(--cnt-ink);border-radius:99px;padding:0 6px;margin-left:6px;vertical-align:2px}
 nav.vtabs .badge[hidden]{display:none}
 
 /* --- texto sobre preenchimento forte no tema escuro (botões e contadores fora das abas) --- */
@@ -238,30 +242,40 @@ nav.vtabs .badge[hidden]{display:none}
 /* --- "Modo de exemplo": mesma pílula roxa em todas as páginas --- */
 .vex,.vpage .pill.vex{background:var(--ex-bg)!important;color:var(--ex-ink)!important;border:1px solid var(--ex-line)!important}
 
+/* status do cabeçalho sempre visível: a pílula roxa de estado ("Modo de teste") usa a classe .rule, que o cabeçalho esconde em telas
+   pequenas para tirar o subtítulo da página; aqui ela volta a aparecer */
+@media(max-width:600px){.vpage #stBase .rule,.vpage #stBase .pill{display:inline-flex}}
 @media(max-width:600px){.vpage .wrap{min-height:0}.vpage .vacts>button,.vpage .vacts>.tvmenu>button,.vpage .vacts>details>summary{height:28px;padding:0 8px;font-size:12.5px}}
 @media print{.vrola{display:none!important}}
 /* ===== fim vac-visual v1 ===== */
 </style>
 <script id="vac-bases">
-/* ===== vac-bases v1 · 06/11/2026 · bases .json na subpasta "00. Bases" da pasta principal (igual em todas as páginas; não editar só numa) =====
+/* ===== vac-bases v2 · 06/11/2026 · bases .json na subpasta "00. Bases" da pasta principal (igual em todas as páginas; não editar só numa) =====
    Arquivo-fonte: fontes/kit/kit_bases.js. Vai num <script id="vac-bases"> no topo de cada página (aplicar_kit21.py e build da Produção),
    antes do código da página. Na raiz da pasta principal ficam só os HTML, lib\, Logo.png e as pastas.
-   - vacRaiz(pasta): devolve a pasta principal "com bases". Para as 7 bases, grava em 00. Bases; para ler, procura em 00. Bases e,
-     se a base ainda não foi movida, na raiz. Todo o resto (Logo.png, 00. Backups, lib, relatórios) continua na raiz, sem mudança.
+   - vacRaiz(pasta): a pasta principal "com bases". Para as 7 bases, grava em 00. Bases; para ler, procura em 00. Bases e, se a base
+     ainda não foi movida (ou se lá só existe um arquivo vazio de uma cópia interrompida), na raiz. O resto continua na raiz.
      A pasta original (do seletor) é a que vai para o IndexedDB; vacRaiz só envolve, nunca é gravada.
-   - vacMoverBases(pasta, [[nome, pastaBackup], …]): cada página move SÓ as próprias bases, ao conectar: copia para 00. Bases, confere,
-     guarda uma cópia em 00. Backups/<módulo> e apaga da raiz. Se a raiz tiver uma versão MAIS NOVA que a de 00. Bases (página antiga
-     ainda aberta gravando na raiz), não apaga nada: avisa, e o Portal › Versões das páginas mostra as duas cópias. */
+   - vacMoverBases(pasta, [[nome, pastaBackup], …]): cada página move SÓ as próprias bases, ao conectar. Regras (v2, revisão c341f8e):
+     · trava por arquivo em 00. Bases (.<base>.migrando, vale entre computadores; expira em 2 min), só quando a base ainda está na raiz: outra sessão no meio da mudança = espera;
+     · erro de leitura NÃO é ausência: só "não encontrado" conta como não existe; qualquer outro erro = estado desconhecido, nada muda (B04);
+     · cópia por arquivo temporário, conferida antes de entrar no lugar: nunca deixa base vazia como preferida (B05);
+     · antes de pôr no lugar, confere de novo o destino: se outra sessão já gravou lá, não sobrescreve (B02);
+     · se o destino divergir depois da cópia, não apaga nada (nem destino nem raiz) (B03);
+     · a base sai da raiz MOVIDA para 00. Backups/<módulo> (nunca apagada), depois de conferir que a raiz não mudou desde a leitura;
+       uma gravação de último instante fica guardada no backup e a página avisa (B01); assim o backup existe também ao retomar (B07);
+     · raiz mais nova que 00. Bases (página antiga gravando na raiz): não mexe em nada, avisa; Portal › Versões mostra as duas cópias. */
 const VAC_BASES_DIR = '00. Bases';
 const VAC_BASES = ['portal-base.json', 'vacutainer-cadastros.json', 'oee-vacutainer-base.json', 'ordens-base.json', 'perdas-base.json', 'fifo-base.json', 'paradas-base.json'];
 function vacEhBase(nome) { return VAC_BASES.includes(String(nome)); }
+const vacNaoAchou = e => !!e && (e.name === 'NotFoundError' || e.name === 'TypeMismatchError');
 function vacRaiz(raiz) {
   if (!raiz || raiz.__vacRaiz) return raiz;
   let sub = null;
   const pastaBases = async criar => {
     if (sub) return sub;
     try { const d = await raiz.getDirectoryHandle(VAC_BASES_DIR, { create: !!criar }); sub = d; return d; }
-    catch (e) { if (criar) throw e; return null; }
+    catch (e) { if (criar || !vacNaoAchou(e)) throw e; return null; }   // só "não existe" vira ausência
   };
   return {
     __vacRaiz: true, raiz, kind: 'directory',
@@ -270,7 +284,13 @@ function vacRaiz(raiz) {
       if (!vacEhBase(nome)) return raiz.getFileHandle(nome, o);
       if (o && o.create) return (await pastaBases(true)).getFileHandle(nome, o);
       const d = await pastaBases(false);
-      if (d) { try { return await d.getFileHandle(nome); } catch (e) { if (!e || e.name !== 'NotFoundError') throw e; } }
+      if (d) {
+        try {
+          const fh = await d.getFileHandle(nome);
+          if ((await fh.getFile()).size > 0) return fh;
+          try { return await raiz.getFileHandle(nome); } catch (e) { if (!vacNaoAchou(e)) throw e; return fh; }   // vazio (cópia interrompida): usa a raiz se houver
+        } catch (e) { if (!vacNaoAchou(e)) throw e; }
+      }
       return raiz.getFileHandle(nome);
     },
     getDirectoryHandle: (n, o) => raiz.getDirectoryHandle(n, o),
@@ -281,50 +301,110 @@ function vacRaiz(raiz) {
     isSameEntry: h => raiz.isSameEntry(h && h.__vacRaiz ? h.raiz : h), resolve: h => raiz.resolve(h)
   };
 }
-async function vacMoverBases(pasta, lista) {
+const VAC_SESSAO = Math.random().toString(36).slice(2, 10) + Date.now().toString(36);
+async function vacMoverBases(pasta, lista, opts = {}) {
   const raiz = pasta && pasta.__vacRaiz ? pasta.raiz : pasta, res = [];
   if (!raiz) return res;
+  const espera = opts.esperaTrava ?? 300, h = opts.ganchos || {};   // ganchos: só para os testes simularem falhas no meio
   let dest; try { dest = await raiz.getDirectoryHandle(VAC_BASES_DIR, { create: true }); } catch (e) { return [{ erro: 'Não consegui criar a pasta ' + VAC_BASES_DIR + ': ' + (e.message || e) }]; }
-  const dia = new Date().toISOString().slice(0, 10), hora = new Date().toTimeString().slice(0, 5).replace(':', 'h');
+  const ler = async (dir, nome) => { try { const fh = await dir.getFileHandle(nome); const f = await fh.getFile(); return { fh, f, txt: await f.text() }; } catch (e) { if (vacNaoAchou(e)) return null; throw e; } };
   const gravar = async (dir, nome, txt) => { const fh = await dir.getFileHandle(nome, { create: true }); const w = await fh.createWritable(); await w.write(txt); await w.close(); return fh; };
-  const backup = async (sub, nome, txt, tipo) => { let b = raiz; for (const p of String(sub || '00. Backups').split('/').filter(Boolean)) b = await b.getDirectoryHandle(p, { create: true }); await gravar(b, nome.replace(/\.json$/i, '') + '_' + tipo + '_' + dia + '_' + hora + '.json', txt); };
+  const pastaBk = async sub => { let b = raiz; for (const p of String(sub || '00. Backups').split('/').filter(Boolean)) b = await b.getDirectoryHandle(p, { create: true }); return b; };
+  const carimbo = () => { const d = new Date(), p = n => String(n).padStart(2, '0'); return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}_${p(d.getHours())}h${p(d.getMinutes())}m${p(d.getSeconds())}s`; };
+  const dorme = ms => new Promise(r => setTimeout(r, ms));
+  // limpa temporários de cópias interrompidas há mais de 10 min (de qualquer sessão)
+  try { for await (const [n, x] of dest.entries()) if (x.kind === 'file' && /\.copiando-/.test(n)) { const f = await x.getFile(); if (Date.now() - f.lastModified > 600000) await dest.removeEntry(n); } } catch (e) { }
   for (const [nome, sub] of lista) {
+    const trava = '.' + nome + '.migrando';
+    let dono = false;
     try {
-      let fr = null; try { fr = await (await raiz.getFileHandle(nome)).getFile(); } catch (e) { }
-      if (!fr) { res.push({ nome, ok: true }); continue; }                                   // já está só em 00. Bases (ou ainda não existe)
-      const tr = await fr.text();
-      let fn = null; try { fn = await (await dest.getFileHandle(nome)).getFile(); } catch (e) { }
-      if (fn) {
-        const tn = await fn.text();
-        if (tn !== tr && fr.lastModified > fn.lastModified) { res.push({ nome, conflito: true }); continue; }   // raiz mais nova: não decide sozinho
-        if (tn !== tr) await backup(sub, nome, tr, 'raiz-antiga');                          // raiz antiga: guarda e tira
-        await raiz.removeEntry(nome); res.push({ nome, ok: true, limpou: true }); continue;
-      }
-      const fh = await gravar(dest, nome, tr);
-      if ((await (await fh.getFile()).text()) !== tr) { res.push({ nome, erro: 'a cópia em ' + VAC_BASES_DIR + ' não conferiu; a base continua na raiz' }); try { await dest.removeEntry(nome); } catch (e) { } continue; }
-      await backup(sub, nome, tr, 'antes-de-mover-para-00-Bases');
-      await raiz.removeEntry(nome); res.push({ nome, ok: true, movida: true });
-    } catch (e) { res.push({ nome, erro: e && e.message || String(e) }); }
+      // nada na raiz (o normal depois da mudança): não pega trava, não espera, não grava nada na pasta
+      if (!(await ler(raiz, nome))) { res.push({ nome, ok: true }); continue; }
+      // trava entre computadores: arquivo na pasta compartilhada, conferido depois de uma pausa
+      const L = await ler(dest, trava);
+      if (L) { let j = null; try { j = JSON.parse(L.txt); } catch (e) { } if (j && j.id !== VAC_SESSAO && Date.now() - (+j.em || 0) < 120000) { res.push({ nome, aguardando: true }); continue; } }
+      await gravar(dest, trava, JSON.stringify({ id: VAC_SESSAO, em: Date.now() }));
+      await dorme(espera);
+      const L2 = await ler(dest, trava); let j2 = null; try { j2 = JSON.parse(L2 && L2.txt); } catch (e) { }
+      if (!j2 || j2.id !== VAC_SESSAO) { res.push({ nome, aguardando: true }); continue; }
+      dono = true;
+      res.push(await vacMoverUma(nome, sub));
+    } catch (e) { res.push({ nome, erro: 'estado desconhecido (' + (e && (e.name || e.message) || e) + '); nada foi mudado' }); }
+    finally { if (dono) { try { const L = await ler(dest, trava); if (L && JSON.parse(L.txt).id === VAC_SESSAO) await dest.removeEntry(trava); } catch (e) { } } }
   }
   return res;
+
+  async function vacMoverUma(nome, sub) {
+    const R = await ler(raiz, nome);
+    if (!R) return { nome, ok: true };                                    // já não está na raiz
+    if (h.depoisDeLerRaiz) await h.depoisDeLerRaiz(nome);
+    const D = await ler(dest, nome);
+    if (D && D.txt.trim()) return decidir(nome, sub, R, D);
+    // destino ausente (ou vazio de cópia interrompida): copia por temporário
+    const tmp = '.' + nome + '.copiando-' + VAC_SESSAO;
+    const T0 = await gravar(dest, tmp, R.txt);
+    if (h.depoisDoTemporario) await h.depoisDoTemporario(nome);
+    const T = await ler(dest, tmp);
+    if (!T || T.txt !== R.txt) { try { await dest.removeEntry(tmp); } catch (e) { } return { nome, erro: 'a cópia temporária não conferiu; a base continua na raiz' }; }
+    const D2 = await ler(dest, nome);                                     // outra sessão gravou o destino nesse meio-tempo? (B02)
+    if (D2 && D2.txt.trim()) { try { await dest.removeEntry(tmp); } catch (e) { } return decidir(nome, sub, R, D2); }
+    if (typeof T0.move === 'function') { try { await T0.move(nome); } catch (e) { await gravar(dest, nome, R.txt); try { await dest.removeEntry(tmp); } catch (x) { } } }
+    else { await gravar(dest, nome, R.txt); try { await dest.removeEntry(tmp); } catch (e) { } }
+    if (h.depoisDeColocar) await h.depoisDeColocar(nome);
+    const D3 = await ler(dest, nome);                                     // conferência: divergiu = outra sessão gravou; não apaga nada (B03)
+    if (!D3 || D3.txt !== R.txt) return { nome, conflito: true, detalhe: 'a base em ' + VAC_BASES_DIR + ' mudou durante a cópia; nada foi apagado' };
+    return tirarDaRaiz(nome, sub, R, 'antes-de-mover-para-00-Bases');
+  }
+  async function decidir(nome, sub, R, D) {
+    if (D.txt === R.txt) return tirarDaRaiz(nome, sub, R, 'antes-de-mover-para-00-Bases');   // retomada: garante o backup (B07)
+    if (R.f.lastModified > D.f.lastModified) return { nome, conflito: true };                   // raiz mais nova: não decide sozinho
+    return tirarDaRaiz(nome, sub, R, 'raiz-antiga');
+  }
+  async function tirarDaRaiz(nome, sub, R, tipo) {
+    const bk = await pastaBk(sub), nb = nome.replace(/\.json$/i, '') + '_' + tipo + '_' + carimbo() + '.json';
+    if (h.antesDeTirar) await h.antesDeTirar(nome);
+    const R2 = await ler(raiz, nome);                                     // a raiz mudou desde a leitura? (gravação de página antiga: B01)
+    if (!R2) return { nome, ok: true };
+    if (R2.txt !== R.txt || R2.f.lastModified !== R.f.lastModified) return { nome, conflito: true, detalhe: 'a base da raiz foi gravada durante a mudança; nada foi apagado' };
+    if (typeof R2.fh.move === 'function') {
+      // move a base da raiz para o backup (não apaga): o arquivo inteiro vira a cópia de segurança, inclusive uma gravação de último instante
+      try { await R2.fh.move(bk, nb); } catch (e) { await gravar(bk, nb, R.txt); await raiz.removeEntry(nome); }
+      const M = await ler(bk, nb);
+      if (!M || M.txt !== R.txt) return { nome, movida: true, conflito: true, detalhe: 'a raiz recebeu uma gravação no último instante; ela está guardada em ' + (sub || '00. Backups') + '/' + nb };
+    } else { await gravar(bk, nb, R.txt); await raiz.removeEntry(nome); }
+    return { nome, ok: true, movida: tipo !== 'raiz-antiga', limpou: tipo === 'raiz-antiga', backup: (sub || '00. Backups') + '/' + nb };
+  }
 }
 /* mensagem para a pessoa (toast da página, se houver) */
 function vacAvisoBases(res) {
   const m = [];
   for (const r of res || []) {
-    if (r.movida) m.push(`${r.nome} foi para ${VAC_BASES_DIR} (cópia de segurança em 00. Backups).`);
-    if (r.conflito) m.push(`Atenção: há uma cópia MAIS NOVA de ${r.nome} na raiz da pasta (página antiga aberta em outro computador?). Esta página usa a de ${VAC_BASES_DIR}; confira em Portal › Versões das páginas antes de apagar.`);
+    if (r.movida && !r.conflito) m.push(`${r.nome} foi para ${VAC_BASES_DIR} (cópia de segurança em ${r.backup || '00. Backups'}).`);
+    if (r.conflito) m.push(`Atenção: ${r.nome} — ${r.detalhe || 'há uma cópia MAIS NOVA na raiz da pasta (página antiga aberta em outro computador?)'}. Esta página usa a de ${VAC_BASES_DIR}; nada foi apagado. Confira em Portal › Versões das páginas.`);
     if (r.erro) m.push(`Não consegui mover ${r.nome || 'as bases'}: ${r.erro}`);
+    if (r.aguardando) m.push(`${r.nome}: outra sessão está mudando a base para ${VAC_BASES_DIR} agora; esta página lê a base onde ela estiver e tenta de novo na próxima abertura.`);
   }
   if (!m.length) return;
   console.warn('[vac-bases]', m.join(' '));
   try { if (typeof toast === 'function') toast(m.join(' '), 9000); } catch (e) { }
 }
-/* ===== fim vac-bases v1 ===== */
+/* ===== vac-prefs · preferências comuns em texto simples =====
+   O Paradas até a 1.0.7 gravava vac.theme/vac.user/vac.logo… com aspas (JSON). Normaliza uma vez, antes de qualquer página ler,
+   para todas as páginas reconhecerem o valor (ex.: "\"dark\"" → dark). */
+(function () {
+  try {
+    for (const k of ['vac.theme', 'vac.user', 'vac.userId', 'vac.perfil', 'vac.logo']) {
+      const v = localStorage.getItem(k);
+      if (v != null && /^".*"$/s.test(v)) { try { const p = JSON.parse(v); if (typeof p === 'string') localStorage.setItem(k, p); } catch (e) { } }
+    }
+    const t = localStorage.getItem('vac.theme'); if (t != null && !['auto', 'light', 'dark'].includes(t)) localStorage.setItem('vac.theme', 'auto');
+  } catch (e) { }
+})();
+/* ===== fim vac-bases v2 ===== */
 </script>
 </head>
 <body>
-<div id="testBar" class="testbar" hidden>MODO DE TESTE · dados só na memória, nada é gravado na pasta · <a href="#" id="sairTeste">sair</a></div>
+<div id="testBar" class="testbar" hidden>Ambiente de teste · dados fictícios · nada é gravado na pasta · <a href="#" id="sairTeste">sair do modo de teste</a></div>
 <!-- vac-cabecalho v2 · barra do sistema (igual em todas) + cabeçalho da página + abas -->
 <header class="vsuite"><div class="wrap">
   <img id="brandLogo" class="vlogo brandLogo" alt="Logo" hidden><a class="vnm" id="vacNome" href="Portal.html">Sistemas · Linha Vacutainer</a>
@@ -357,7 +437,7 @@ const MATRIZ_PROPOSTA={"OUT": ["Tullip A", "Tullip B", "Packout", "Metro", "Cap 
    PARADAS · núcleo (pasta, base, fila de gravação, backups, cadastro, utilidades)
    ===================================================================================== */
 const PAGE={id:'paradas',titulo:'Paradas · Análise de falhas e paradas de máquina',tituloCurto:'Paradas',subtitulo:'Análise de falhas e paradas de máquina',
-  versao:'1.0.9',baseFile:'paradas-base.json',backupDir:'00. Backups/Paradas',busca:q=>buscaPagina(q)};
+  versao:'1.0.10',baseFile:'paradas-base.json',backupDir:'00. Backups/Paradas',busca:q=>buscaPagina(q)};
 const APP_VERSION=PAGE.versao;
 const CAD_FILE='vacutainer-cadastros.json',OEE_FILE='oee-vacutainer-base.json';
 const $=(s,r=document)=>r.querySelector(s),$$=(s,r=document)=>[...r.querySelectorAll(s)];
@@ -525,6 +605,7 @@ const Cad={codes:[],byCod:new Map(),byNum:new Map(),eqs:[],eqByCod:new Map(),lim
   this.codes=L.sort((a,b)=>String(a.numero).localeCompare(String(b.numero)));this.byCod=new Map(L.map(x=>[x.codigo,x]));this.byNum=new Map(L.filter(x=>/^\d{3}$/.test(x.numero)).map(x=>[x.numero,x]));
   this.proposto=L.filter(x=>!x.noCadastro).length;
   this.limite=+(raw.parametros?.limiteMicroMin||Store.data.config.limiteMicroMin||10);
+  /* 1.0.10 · revisão c341f8e: faixa de teste roxa (exemplo) com contraste; gráficos mensais com uma unidade na escala (chamada real); kit vac-bases v2 */
   /* 1.0.9 · bases .json em 00. Bases (kit vac-bases) */
   /* 1.0.8 · layout: tema, usuário e logo em texto simples (continuidade com as outras páginas); paleta comum; esquema escuro nos campos nativos */
   /* 1.0.7 · eventos do OEE substituem só a mesma parada (dia + turno + equipamento + horário), não o dia inteiro */
@@ -767,11 +848,13 @@ function cadastrosProposta(){const eqs=Cad.eqs.filter(e=>e.cad&&e.tipo!=='linha'
 /* ---------- gráficos SVG ---------- */
 function hbars(items,{fmt=fmtMin,max,pareto,onClick,sel,w=560,lw=170,color}={}){if(!items.length)return'<div class="empty">Sem dados no período.</div>';
  const rh=24,h=items.length*rh+6,M=max||Math.max(...items.map(x=>x.v))||1,tot=items.reduce((s,x)=>s+x.v,0);let acc=0;const bw=w-lw-110;
+ /* 1.0.10 · uma unidade para o gráfico inteiro (antes as barras grandes em h e as pequenas em min); a dica mantém o valor exato */
+ const fA=fmt===fmtMin?(Math.max(...items.map(x=>x.v))>=600?v=>n1(v/60)+' h':v=>n0(v)+' min'):fmt;
  return`<svg class="chart" viewBox="0 0 ${w} ${h}" style="max-height:${h}px">${items.map((x,i)=>{acc+=x.v;const y=i*rh+3,bl=Math.max(2,x.v/M*bw);const on=sel&&sel===x.k;
   return`<g data-k="${esc(x.k)}" style="cursor:${onClick?'pointer':'default'}"><title>${esc(x.label)}: ${esc(fmt(x.v))}${x.n!=null?' · '+n0(x.n)+' ocorr.':''}</title>
   <text x="${lw-6}" y="${y+15}" text-anchor="end" class="lbl" style="font-weight:${on?700:400}">${esc(String(x.label).slice(0,28))}</text>
   <rect x="${lw}" y="${y+3}" width="${bl}" height="${rh-8}" rx="3" fill="${x.color||color||'var(--accent)'}" opacity="${sel&&!on?.35:1}"/>
-  <text x="${lw+bl+5}" y="${y+15}">${esc(fmt(x.v))}${pareto?` · ${n0(acc/tot*100)}%`:''}</text></g>`}).join('')}</svg>`}
+  <text x="${lw+bl+5}" y="${y+15}">${esc(fA(x.v))}${pareto?` · ${n0(acc/tot*100)}%`:''}</text></g>`}).join('')}</svg>`}
 function vbars(cats,series,{h=230,fmt=v=>n0(v),onClick,sel}={}){if(!cats.length)return'<div class="empty">Sem dados no período.</div>';
  const w=Math.max(420,cats.length*46),pb=24,pt=10,ch=h-pb-pt;const tot=cats.map((c,i)=>series.reduce((s,S)=>s+(S.v[i]||0),0));const M=Math.max(...tot)||1;
  /* 1.0.8 · vac-visual: uma unidade só para a escala inteira (antes o eixo misturava "300 min" e "12,5 h"); a dica mantém o valor exato */
@@ -964,7 +1047,7 @@ function abrirAcao(id,pre={}){const a=id?Store.data.acoes.find(x=>x.id===id):{id
 function abrirEquip(eq){const all=eventosTodos().filter(e=>e.equipamento===eq);const ate=all.reduce((m,e)=>e.dia>m?e.dia:m,'')||todayISO();const meses=[...new Set(all.map(e=>e.dia.slice(0,7)))].sort().slice(-13);
  const S=meses.map(m=>statsEquip(all.filter(e=>e.dia.slice(0,7)===m),m+'-01',m+'-31')[0]||{});const L=F.apply(all,{eq:1});
  const cls=['quebra','operacional','micro','setup','consumivel','organizacao','planejada','partida','outros'];
- const body=`<div class="grid g2"><div class="card"><b>Minutos por mês e classe</b>${vbars(meses.map(m=>({k:m,label:brM(m)})),cls.map(c=>({nome:CLASSE[c][0],cor:CLASSE[c][1],v:meses.map(m=>all.filter(e=>e.dia.slice(0,7)===m&&classe(e)===c).reduce((s,e)=>s+e.minutos,0))})))}</div>
+ const body=`<div class="grid g2"><div class="card"><b>Tempo de parada por mês e classe</b>${vbars(meses.map(m=>({k:m,label:brM(m)})),cls.map(c=>({nome:CLASSE[c][0],cor:CLASSE[c][1],v:meses.map(m=>all.filter(e=>e.dia.slice(0,7)===m&&classe(e)===c).reduce((s,e)=>s+e.minutos,0))})),{fmt:fmtMin})}</div>
  <div class="card"><b>MTBF (h) e MTTR (min) por mês</b>${tabela([{h:'Mês',f:(r,i)=>brM(r.m)},{h:'Quebras',n:1,f:r=>n0(r.s.nQ)},{h:'MTBF h',n:1,f:r=>n1(r.s.mtbf)},{h:'MTTR min',n:1,f:r=>n0(r.s.mttr)},{h:'Parada',n:1,f:r=>fmtMin(r.s.min)}],meses.map((m,i)=>({m,s:S[i]})).reverse())}</div>
  <div class="card"><b>Principais códigos (período do filtro)</b>${hbars(agg(L,e=>codigoEf(e)).sort((a,b)=>b.min-a.min).slice(0,12).map(o=>({k:o.k,label:codLabel(o.k)+' '+(Cad.code(o.k)?.nome||''),v:o.min,n:o.n,color:GRUPO_COR(Cad.code(o.k)?.grupo)})),{pareto:1,w:620,lw:260})}</div>
  <div class="card"><b>Componentes com quebra</b>${hbars(agg(L.filter(e=>classe(e)==='quebra'),e=>Store.data.tecnico[e.id]?.componente||e.peca||'(sem componente)').sort((a,b)=>b.min-a.min).slice(0,12).map(o=>({k:o.k,label:o.k,v:o.min,n:o.n,color:'var(--g8)'})),{w:620,lw:220})}</div></div>
@@ -990,7 +1073,7 @@ VIEWS.geral={html(){const all=eventosTodos();if(!all.length)return inicioVazio()
  ${kpi('MTBF da linha',nQ?n1(op/nQ/60)+' h':'—','entre quebras · '+(P.fonte==='OEE'?'OEE':'estimado'),'','gauge')}${kpi('MTTR',nQ?n0(mQ/nQ)+' min':'—','reparo médio por quebra','','clock')}
  ${kpi('Microparadas',n0(nMic),'abaixo de '+Cad.limite+' min',nMic?'':'warn','repeat')}${kpi('Máquina crítica',SE[0]?.nome||'—',SE[0]?fmtMin(SE[0].min):'','','machine')}${kpi('Código temporário',n0(tmp),'OUT / NDI a classificar',tmp?'warn':'good','flag')}</div>
  ${nMic<perda.length*0.05&&perda.length>50?`<div class="tint small" style="--tc:var(--warn);padding:8px 12px;border-radius:8px;margin-bottom:14px">Quase não há microparadas registradas (${n0(nMic)} de ${n0(perda.length)}). No Forms novo, use o campo <b>Quantas vezes aconteceu?</b> para contar as paradas curtas.</div>`:''}
- <div class="grid g2"><div class="card">${secH('bar','Tempo por mês','por classe de perda · clique num mês para filtrar')}<div id="chMes">${vbars(meses.map(m=>({k:m,label:brM(m)})),cls.map(c=>({nome:CLASSE[c][0],cor:CLASSE[c][1],v:meses.map(m=>perda.filter(e=>e.dia.slice(0,7)===m&&classe(e)===c).reduce((s,e)=>s+e.minutos,0))})),{fmt:v=>v>=6000?n0(v/60)+'h':n0(v)})}</div></div>
+ <div class="grid g2"><div class="card">${secH('bar','Tempo por mês','por classe de perda · uma unidade na escala (h ou min) · clique num mês para filtrar')}<div id="chMes">${vbars(meses.map(m=>({k:m,label:brM(m)})),cls.map(c=>({nome:CLASSE[c][0],cor:CLASSE[c][1],v:meses.map(m=>perda.filter(e=>e.dia.slice(0,7)===m&&classe(e)===c).reduce((s,e)=>s+e.minutos,0))})),{fmt:fmtMin})}</div></div>
  <div class="card">${secH('machine','Pareto de equipamentos','minutos de parada · clique para filtrar')}<div id="chEq">${hbars(SE.slice(0,14).map(s=>({k:s.eq,label:s.nome,v:s.min,n:s.n})),{pareto:1,sel:F.eq,onClick:1})}</div></div>
  <div class="card">${secH('list','Por classe','como o tempo se divide')}<div id="chCl">${hbars(agg(perda,e=>classe(e)).sort((a,b)=>b.min-a.min).map(o=>({k:o.k,label:CLASSE[o.k][0],v:o.min,n:o.n,color:CLASSE[o.k][1]})),{pareto:1,sel:F.cls,onClick:1})}</div></div>
  <div class="card">${secH('clock','Por turno','minutos e ocorrências')}<div id="chTu">${hbars(agg(perda,e=>e.turno||'?').sort((a,b)=>a.k.localeCompare(b.k)).map(o=>({k:o.k,label:o.k,v:o.min,n:o.n})),{sel:F.turno,onClick:1})}</div></div></div>`},
@@ -1382,7 +1465,7 @@ function vacPortalHref(h) { const port = (typeof systems === 'function' ? system
   };
   window.vacAbasRolagem = () => { marcar(); ativaVisivel(); };
   const ini = () => { marcar(); ativaVisivel(); const t = document.querySelector('nav.vtabs:not(.nav) .tabs'); if (t) { new MutationObserver(() => requestAnimationFrame(() => { marcar(); ativaVisivel(); })).observe(t, { subtree: true, childList: true, attributes: true, attributeFilter: ['class', 'aria-selected'] }); } };
-  window.addEventListener('resize', () => requestAnimationFrame(estado));
+  window.addEventListener('resize', () => requestAnimationFrame(ativaVisivel));   // ao redimensionar, a aba ativa continua à vista
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', ini); else setTimeout(ini, 0);
 })();
 /* kit v2.1 · vac-visual v1: menu "Mais" (details.vmais) sempre dentro da tela. Abre alinhado à direita do botão; se não couber, alinha à esquerda */

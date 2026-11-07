@@ -9,7 +9,9 @@ def R(a,b,cnt=1):
     c=s.count(a)
     if c!=cnt: raise SystemExit(f'ERRO ({c}x): {a[:90]!r}')
     s=s.replace(a,b)
-R("const APP_VERSION = '2.0.1';","const APP_VERSION = '2.4.6';")
+R("const APP_VERSION = '2.0.1';","const APP_VERSION = '2.4.7';")
+# 2.4.7 · B04: só "não encontrado" é base ausente; erro de leitura (rede, permissão, JSON) não oferece criar base nova por cima
+R("const exists = await be.read().catch(() => null);","const exists = await be.read().catch(e => (typeof vacNaoAchou === 'function' && vacNaoAchou(e)) ? null : Promise.reject(e));")
 # 2.4.6 · bases em 00. Bases (kit vac-bases): a pasta da base passa por vacRaiz (as 7 bases ficam em 00. Bases; Logo, backups e o resto na raiz)
 R("function FolderBackend(dir) {\n  return {\n    kind: 'pasta', ","function FolderBackend(dir) {\n  dir = typeof vacRaiz === 'function' ? vacRaiz(dir) : dir;   // 2.4.6 · bases em 00. Bases\n  return {\n    kind: 'pasta', ")
 # e a Produção move as dela (oee-vacutainer-base e ordens-base) ao conectar com permissão de gravação

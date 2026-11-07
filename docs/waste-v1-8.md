@@ -84,3 +84,7 @@ Mudanças aditivas; tudo da 1.7.3 preservado (importação KKBC_ORD nos dois lay
 ## Waste 1.8.12 (06/11/2026) · bases em 00. Bases
 
 - Ao conectar, move `perdas-base.json` para `00. Bases` (kit vac-bases), com cópia em `00. Backups/Perdas`. Lê OEE, Gel e Ordens em `00. Bases` ou, enquanto não forem movidas, na raiz.
+
+## Waste 1.8.13 (06/11/2026) · revisão c341f8e
+
+- Kit vac-bases v2. Um erro ao ler a base não oferece criar base nova. Aba ativa com a marca de volta; pílula de estado visível em telas pequenas.

@@ -2,11 +2,15 @@
 
 Código-fonte das páginas da linha (Portal, Produção, Waste, Gel, Paradas).
 
+## Instalar e atualizar na pasta da rede
+
+Abra **`Guia de instalação.html`** (raiz do repositório e do ZIP) no Chrome ou no Edge: passo a passo com prints de onde clicar, para baixar o ZIP, atualizar a pasta da rede e liberar o sistema no computador de outra pessoa. Gerado por `node fontes/guia/gerar_guia.js`.
+
 ## Pastas
 
 ```
 paginas/   as 5 páginas prontas → é isto que vai para a pasta da rede
-fontes/    producao/ (base + módulos + build.py) · kit/ (cabeçalho comum)
+fontes/    producao/ (base + módulos + build.py) · kit/ (cabeçalho comum) · guia/ (gerador do Guia de instalação)
 docs/      arquitetura, contratos e histórico de cada página
 testes/    testes Playwright, bases fictícias, amostras do SAP
 CLAUDE.md  regras do projeto (o Claude Code lê sozinho)

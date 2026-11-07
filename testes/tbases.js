@@ -84,4 +84,115 @@ const r7=await w2.evaluate(async()=>{const d=await navigator.storage.getDirector
 L=await w2.evaluate(LISTA);
 ok(!r7.naRaiz&&L.bk.some(n=>/perdas-base_raiz-antiga_/.test(n)),'cópia velha na raiz: vai para 00. Backups/Perdas (raiz-antiga) e sai da raiz');
 
+
+// ================= revisão c341f8e: falhas no meio da mudança, concorrência e volta de versão =================
+// helpers na página: prepara o estado da pasta (OPFS) e lê o conteúdo final da raiz, de 00. Bases e dos backups
+const H=`(()=>{const ROOT=()=>navigator.storage.getDirectory();
+ const w=async(d,n,t)=>{const fh=await d.getFileHandle(n,{create:true});const s=await fh.createWritable();await s.write(t);await s.close()};
+ const prep=async E=>{const r=await ROOT();for await(const[n]of r.entries())await r.removeEntry(n,{recursive:true});for(const[n,t]of Object.entries(E.raiz||{}))await w(r,n,t);
+   if(E.bases){const d=await r.getDirectoryHandle('00. Bases',{create:true});for(const[n,t]of Object.entries(E.bases)){if(t===null){await d.getFileHandle(n,{create:true})}else await w(d,n,t)}}return r};
+ const txt=async(d,n)=>{try{return await (await (await d.getFileHandle(n)).getFile()).text()}catch(e){return undefined}};
+ const estado=async()=>{const r=await ROOT();let B={},K=[];try{const d=await r.getDirectoryHandle('00. Bases');for await(const[n,h]of d.entries())B[n]=h.kind==='file'?await (await h.getFile()).text():'/'}catch(e){}
+   try{const bk=await (await r.getDirectoryHandle('00. Backups')).getDirectoryHandle('Perdas');for await(const[n,h]of bk.entries())K.push([n,await (await h.getFile()).text()])}catch(e){}
+   return{raiz:await txt(r,'perdas-base.json'),bases:B,bk:K}};
+ const dorme=ms=>new Promise(r=>setTimeout(r,ms));
+ return{w,prep,txt,estado,ROOT,dorme}})()`;
+const PB='perdas-base.json',BK='00. Backups/Perdas';
+const rv=await nova('Perdas-Ordem.html','RV');await rv.evaluate(H=>{window.__H=eval(H)},H);
+const cenario=(fn,arg)=>rv.evaluate(fn,arg);
+
+// B01 · gravação recente na raiz depois da cópia: não pode ser apagada
+let r=await cenario(async([PB,BK])=>{const X=__H;await X.prep({raiz:{[PB]:'{"v":"P1"}'}});
+  const res=await vacMoverBases(await X.ROOT(),[[PB,BK]],{esperaTrava:20,ganchos:{antesDeTirar:async()=>{const r=await X.ROOT();await X.dorme(15);await X.w(r,PB,'{"v":"P1-gravacao-recente"}')}}});
+  return{res,...await X.estado()}},[PB,BK]);
+ok(r.res[0].conflito&&r.raiz==='{"v":"P1-gravacao-recente"}'&&r.bases[PB]==='{"v":"P1"}',`B01: gravação recente na raiz preservada (raiz=${r.raiz}, conflito=${!!r.res[0].conflito})`);
+
+// B02 · migração atrasada não sobrescreve gravação já confirmada no destino (antes e depois da cópia temporária)
+for(const momento of ['depoisDeLerRaiz','depoisDoTemporario']){
+ r=await cenario(async([PB,BK,momento])=>{const X=__H;await X.prep({raiz:{[PB]:'{"v":"P1"}'}});await X.dorme(20);
+   const g={};g[momento]=async()=>{const d=await (await X.ROOT()).getDirectoryHandle('00. Bases');await X.dorme(15);await X.w(d,PB,'{"v":"A-confirmada"}')};
+   const res=await vacMoverBases(await X.ROOT(),[[PB,BK]],{esperaTrava:20,ganchos:g});return{res,...await X.estado()}},[PB,BK,momento]);
+ ok(r.bases[PB]==='{"v":"A-confirmada"}'&&r.raiz===undefined&&r.bk.some(([n,t])=>/raiz-antiga/.test(n)&&t==='{"v":"P1"}'),`B02 (${momento}): gravação confirmada em 00. Bases mantida; raiz velha guardada em backup (destino=${r.bases[PB]})`);
+}
+
+// B03 · conferência divergente: não apaga o arquivo gravado por outra sessão nem a raiz
+r=await cenario(async([PB,BK])=>{const X=__H;await X.prep({raiz:{[PB]:'{"v":"P1"}'}});
+  const res=await vacMoverBases(await X.ROOT(),[[PB,BK]],{esperaTrava:20,ganchos:{depoisDeColocar:async()=>{const d=await (await X.ROOT()).getDirectoryHandle('00. Bases');await X.w(d,PB,'{"v":"outra-sessao"}')}}});
+  return{res,...await X.estado()}},[PB,BK]);
+ok(r.res[0].conflito&&r.bases[PB]==='{"v":"outra-sessao"}'&&r.raiz==='{"v":"P1"}',`B03: destino da outra sessão e raiz mantidos (destino=${r.bases[PB]}, raiz=${r.raiz})`);
+
+// B04 · erro de leitura não é ausência: nada muda (migração) e a leitura não cai para a raiz
+r=await cenario(async([PB,BK])=>{const X=__H;const raiz=await X.prep({raiz:{[PB]:'{"v":"P1"}'},bases:{[PB]:'{"v":"D-existente-mais-nova"}'}});
+  const erro=()=>Object.assign(new Error('rede indisponível'),{name:'NotReadableError'});
+  const destReal=await raiz.getDirectoryHandle('00. Bases');
+  const destFalho=new Proxy(destReal,{get(t,k){if(k==='getFileHandle')return async(n,o)=>{if(n===PB&&!(o&&o.create))throw erro();return t.getFileHandle(n,o)};const v=t[k];return typeof v==='function'?v.bind(t):v}});
+  const raizFalha=new Proxy(raiz,{get(t,k){if(k==='getDirectoryHandle')return async(n,o)=>n==='00. Bases'?destFalho:t.getDirectoryHandle(n,o);const v=t[k];return typeof v==='function'?v.bind(t):v}});
+  const res=await vacMoverBases(raizFalha,[[PB,BK]],{esperaTrava:20});
+  const raizSemBases=new Proxy(raiz,{get(t,k){if(k==='getDirectoryHandle')return async(n,o)=>{if(n==='00. Bases')throw erro();return t.getDirectoryHandle(n,o)};const v=t[k];return typeof v==='function'?v.bind(t):v}});
+  let leitura;try{const fh=await vacRaiz(raizSemBases).getFileHandle(PB);leitura='leu '+await (await fh.getFile()).text()}catch(e){leitura='erro '+e.name}
+  return{res,leitura,...await X.estado()}},[PB,BK]);
+ok(!!r.res[0].erro&&r.bases[PB]==='{"v":"D-existente-mais-nova"}'&&r.raiz==='{"v":"P1"}',`B04: erro de leitura = estado desconhecido, nada mudou (${r.res[0].erro})`);
+ok(/^erro NotReadableError/.test(r.leitura),`B04: vacRaiz não troca 00. Bases pela raiz quando a pasta dá erro (${r.leitura})`);
+
+// B05 · cópia interrompida: nunca deixa base vazia como preferida
+r=await cenario(async([PB,BK])=>{const X=__H;await X.prep({raiz:{[PB]:'{"v":"P1"}'}});
+  let res;try{res=await vacMoverBases(await X.ROOT(),[[PB,BK]],{esperaTrava:20,ganchos:{depoisDoTemporario:async()=>{throw new Error('aba fechada no meio')}}})}catch(e){res=[{erro:e.message}]}
+  const lida=await (await (await vacRaiz(await X.ROOT()).getFileHandle(PB)).getFile()).text();return{res,lida,...await X.estado()}},[PB,BK]);
+ok(r.bases[PB]===undefined&&r.raiz==='{"v":"P1"}'&&r.lida==='{"v":"P1"}',`B05: interrompida no meio, 00. Bases sem base vazia e a leitura usa a raiz (lida=${r.lida})`);
+r=await cenario(async([PB,BK])=>{const X=__H;await X.prep({raiz:{[PB]:'{"v":"P1"}'},bases:{[PB]:null}});   // sobra vazia de uma versão anterior
+  const lidaAntes=await (await (await vacRaiz(await X.ROOT()).getFileHandle(PB)).getFile()).text();
+  const res=await vacMoverBases(await X.ROOT(),[[PB,BK]],{esperaTrava:20});return{res,lidaAntes,...await X.estado()}},[PB,BK]);
+ok(r.lidaAntes==='{"v":"P1"}'&&r.bases[PB]==='{"v":"P1"}'&&r.raiz===undefined,`B05: arquivo vazio em 00. Bases não é preferido; a mudança completa por cima dele (destino=${r.bases[PB]})`);
+
+// B07 · retomada depois de interrupção (já copiada, sem backup): o backup é feito antes de tirar da raiz
+r=await cenario(async([PB,BK])=>{const X=__H;await X.prep({raiz:{[PB]:'{"v":"P1"}'},bases:{[PB]:'{"v":"P1"}'}});
+  const res=await vacMoverBases(await X.ROOT(),[[PB,BK]],{esperaTrava:20});return{res,...await X.estado()}},[PB,BK]);
+ok(r.raiz===undefined&&r.bk.some(([n,t])=>/antes-de-mover/.test(n)&&t==='{"v":"P1"}'),`B07: retomada cria o backup (${r.bk.map(x=>x[0]).join(', ')})`);
+
+// concorrência · duas sessões (duas páginas, pasta compartilhada) movendo a mesma base ao mesmo tempo
+{const rv2=await nova('Perdas-Ordem.html','RV2');await rv2.evaluate(H=>{window.__H=eval(H)},H);
+ await rv.evaluate(async PB=>{await __H.prep({raiz:{[PB]:'{"v":"P1"}'}})},PB);
+ const [a1,a2]=await Promise.all([rv.evaluate(async([PB,BK])=>vacMoverBases(await __H.ROOT(),[[PB,BK]],{esperaTrava:120}),[PB,BK]),rv2.evaluate(async([PB,BK])=>vacMoverBases(await __H.ROOT(),[[PB,BK]],{esperaTrava:120}),[PB,BK])]);
+ const e=await rv.evaluate(()=>__H.estado());const nomes=Object.keys(e.bases);
+ ok(e.bases[PB]==='{"v":"P1"}'&&e.raiz===undefined&&!a1.concat(a2).some(x=>x.erro||x.conflito)&&nomes.length===1,`concorrência: uma sessão move, a outra espera; resultado único (${a1[0].aguardando?'1ª esperou':'1ª moveu'} / ${a2[0].aguardando?'2ª esperou':'2ª moveu'}; 00. Bases: ${nomes.join(', ')})`);
+ ok(e.bk.filter(([n,t])=>t==='{"v":"P1"}').length>=1,'concorrência: conteúdo original guardado em backup');}
+
+// trava esquecida (sessão que caiu) expira e não bloqueia para sempre
+r=await cenario(async([PB,BK])=>{const X=__H;await X.prep({raiz:{[PB]:'{"v":"P1"}'},bases:{['.'+PB+'.migrando']:JSON.stringify({id:'caiu',em:Date.now()-180000})}});
+  const res=await vacMoverBases(await X.ROOT(),[[PB,BK]],{esperaTrava:20});return{res,...await X.estado()}},[PB,BK]);
+ok(r.bases[PB]==='{"v":"P1"}'&&r.raiz===undefined&&!r.bases['.'+PB+'.migrando'],'trava de sessão que caiu (> 2 min) expira e a mudança completa');
+
+// conexão normal (base já em 00. Bases, nada na raiz): sem trava, sem espera, sem aviso de "aguardando" mesmo com outra sessão conectando
+r=await cenario(async([PB,BK])=>{const X=__H;await X.prep({bases:{[PB]:'{"v":"P1"}',['.'+PB+'.migrando']:JSON.stringify({id:'outra',em:Date.now()})}});
+  const d=await (await X.ROOT()).getDirectoryHandle('00. Bases');await d.removeEntry('.'+PB+'.migrando');
+  const t0=performance.now();const res=await vacMoverBases(await X.ROOT(),[[PB,BK]]);const ms=performance.now()-t0;return{res,ms,...await X.estado()}},[PB,BK]);
+ok(r.res.length===1&&r.res[0].ok&&!r.res[0].aguardando&&r.ms<250&&r.bases[PB]==='{"v":"P1"}'&&Object.keys(r.bases).every(n=>!/\.migrando|\.copiando-/.test(n)),`conexão normal sem nada na raiz: não pega trava nem espera (${Math.round(r.ms)} ms; espera da trava é 300 ms)`);
+r=await cenario(async([PB,BK])=>{const X=__H;await X.prep({bases:{[PB]:'{"v":"P1"}',['.'+PB+'.migrando']:JSON.stringify({id:'outra',em:Date.now()})}});
+  const res=await vacMoverBases(await X.ROOT(),[[PB,BK]]);return{res,...await X.estado()}},[PB,BK]);
+ok(r.res[0].ok&&!r.res[0].aguardando,'conexão normal com outra sessão segurando a trava: sem aviso falso de "aguardando"');
+
+// erro de leitura da base na conexão da página: não oferece criar base nova por cima
+r=await cenario(async()=>{const X=__H;await X.prep({bases:{'perdas-base.json':'{corrompida'}});let pergunta=false;const c0=window.confirm;window.confirm=()=>{pergunta=true;return true};
+  const ok=await connectDir(await X.ROOT());window.confirm=c0;return{ok,pergunta,...await X.estado()}});
+ok(r.ok===false&&!r.pergunta&&r.bases['perdas-base.json']==='{corrompida',`página: base ilegível não é tratada como ausente (não pergunta "Criar a base", arquivo intacto)`);
+
+// B06 · volta para a versão anterior (sem 00. Bases): a Produção antiga recria base na raiz; com o procedimento do guia, não
+{const fsx=require('fs'),cp=require('child_process');let antigo=null;try{antigo=cp.execSync('git show 38542d0:paginas/OEE-Vacutainer.html',{cwd:RAIZ,maxBuffer:64e6}).toString()}catch(e){}
+ if(!antigo)console.log('obs  B06: git sem o commit 38542d0; cenário de volta de versão não executado');
+ else{const dir=path.join(RAIZ,'testes/saida/antigas');fsx.mkdirSync(dir,{recursive:true});fsx.writeFileSync(path.join(dir,'OEE-Vacutainer.html'),antigo);
+  const UA=U.replace('/paginas/','/testes/saida/antigas/');
+  const pn=await nova('OEE-Vacutainer.html','PN');   // versão nova: põe a base em 00. Bases
+  const v0=await pn.evaluate(async()=>{const d=await navigator.storage.getDirectory();for await(const[n]of d.entries())await d.removeEntry(n,{recursive:true});const db=Model.emptyBase('teste');db.databaseVersion=9;db.settings=db.settings||{};db.settings.marcaTeste='base-real';const fh=await d.getFileHandle('oee-vacutainer-base.json',{create:true});const s=await fh.createWritable();await s.write(JSON.stringify(db));await s.close();await Store.connect(FolderBackend(d),{ask:false});return Store.S.baseVersion});
+  const pa=await ctx.newPage();pa.on('dialog',d=>d.accept());await pa.goto(UA+'OEE-Vacutainer.html');await pa.waitForTimeout(1300);
+  // sem o procedimento: a Produção antiga reconecta e cria base nova (vazia) na raiz
+  const semProc=await pa.evaluate(async()=>{const d=await navigator.storage.getDirectory();document.querySelectorAll('.overlay').forEach(o=>o.remove());await Store.connect(FolderBackend(d),{ask:false});let raiz=null;try{raiz=JSON.parse(await (await (await d.getFileHandle('oee-vacutainer-base.json')).getFile()).text()).databaseVersion}catch(e){}return{raiz,ver:Store.S.baseVersion}});
+  ok(semProc.raiz!=null&&semProc.raiz<9,`B06 reproduzido: sem devolver as bases, a Produção antiga cria outra base na raiz (versão ${semProc.raiz}, a real é ${v0})`);
+  // com o procedimento do guia: apagar a base que a página antiga criou e mover 00. Bases de volta para a raiz
+  const comProc=await pa.evaluate(async()=>{const d=await navigator.storage.getDirectory();await d.removeEntry('oee-vacutainer-base.json');const B=await d.getDirectoryHandle('00. Bases');
+    for await(const[n,h]of B.entries())if(h.kind==='file'&&n.endsWith('.json')&&!n.startsWith('.')){const t=await (await h.getFile()).text();const fh=await d.getFileHandle(n,{create:true});const s=await fh.createWritable();await s.write(t);await s.close();await B.removeEntry(n)}
+    await Store.connect(FolderBackend(d),{ask:false});return{ver:Store.S.baseVersion,marca:(Store.S.db.settings||{}).marcaTeste}});
+  ok(comProc.marca==='base-real'&&comProc.ver>=9,`B06 com o procedimento do guia: a Produção antiga abre a base real (marca ${comProc.marca}, versão ${comProc.ver})`);
+  const volta=await pn.evaluate(async()=>{location.reload()});await pn.waitForTimeout(1500);
+  const re=await pn.evaluate(async()=>{const d=await navigator.storage.getDirectory();document.querySelectorAll('.overlay').forEach(o=>o.remove());await Store.connect(FolderBackend(d),{ask:false});let naRaiz=true;try{await d.getFileHandle('oee-vacutainer-base.json')}catch(e){naRaiz=false}return{ver:Store.S.baseVersion,naRaiz,marca:(Store.S.db.settings||{}).marcaTeste}});
+  ok(re.marca==='base-real'&&!re.naRaiz,`B06 nova atualização depois da volta: a base real vai de novo para 00. Bases (marca ${re.marca}, versão ${re.ver})`);}}
 console.log(errs.join('\n')||'sem erros');await b.close();srv.close();if(errs.length)process.exitCode=1})();

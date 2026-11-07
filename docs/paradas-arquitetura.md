@@ -132,3 +132,9 @@ O Excel de respostas (ID, Hora de início, Hora de conclusão, Email, Nome, as p
 ## 14. Paradas 1.0.9 (06/11/2026) · bases em 00. Bases
 
 - Na primeira leitura da sessão com a pasta, move `paradas-base.json` para `00. Bases` (cópia em `00. Backups/Paradas`). Lê o cadastro e o OEE em `00. Bases` ou na raiz.
+
+## 15. Paradas 1.0.10 (06/11/2026) · revisão c341f8e
+
+- A faixa do modo de teste segue o padrão de exemplo (roxo, "Ambiente de teste · dados fictícios"), com contraste ≥ 4,5.
+- "Tempo por mês" e "Tempo de parada por mês e classe" usam `fmtMin`, com uma unidade para a escala inteira. O Pareto (`hbars`) também passou a usar uma unidade só.
+- Kit vac-bases v2.
