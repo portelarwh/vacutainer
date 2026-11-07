@@ -4,12 +4,14 @@
 // Sai com código 1 se alguma checagem falhar.
 const SP=require('path').resolve(__dirname,'..')+'/';const S='file://'+SP+'paginas/';const fs=require('fs');
 const {chromium}=require('playwright');const PRINT=!process.argv.includes('--sem-print');
-const PAGS=[['Portal','Portal.html'],['Produção','OEE-Vacutainer.html'],['Waste','Perdas-Ordem.html'],['Gel','Gestão-Gel-Vacutainer.html'],['Paradas','Paradas.html']];
+const CONSTR=new Set(['Equipamentos','Iniciativas','Projetos']);   /* em construção: sem dados, sem ações de base, sem gráficos */
+const PAGS=[['Portal','Portal.html'],['Produção','OEE-Vacutainer.html'],['Waste','Perdas-Ordem.html'],['Gel','Gestão-Gel-Vacutainer.html'],['Paradas','Paradas.html'],
+  /* páginas em construção (fontes/modelo/gerar_paginas.py) */['Equipamentos','Equipamentos.html'],['Iniciativas','Iniciativas.html'],['Projetos','Projetos.html']];
 const LARG=[1920,1440,1024,768,390];
 const errs=[];const ok=(c,m)=>{console.log((c?'ok   ':'FALHA ')+m);if(!c)errs.push(m)};
 // entra no exemplo/teste de cada página (dados fictícios), fecha janelas iniciais
 // entra no exemplo/teste de cada página (dados fictícios), fecha janelas iniciais. Sem try/catch: se a entrada falhar, a página registra erro.
-const EXEMPLO={Portal:()=>{enterTest()},Waste:()=>{enterTest()},Paradas:()=>{modoTeste()},
+const EXEMPLO={Equipamentos:()=>{},Iniciativas:()=>{},Projetos:()=>{},Portal:()=>{enterTest()},Waste:()=>{enterTest()},Paradas:()=>{modoTeste()},
   Gel:()=>{enterDemo();render()},
   'Produção':()=>{document.querySelectorAll('.overlay').forEach(o=>o.remove());Demo.enterExample();
     // o exemplo marca os dias como demonstração (fora dos indicadores); em memória, tira a marca para a tela ficar preenchida (como na auditoria)
@@ -56,7 +58,7 @@ const MEDIR=()=>{const q=s=>document.querySelector(s),r=e=>e?e.getBoundingClient
   ok(L.every(x=>x.bodyMargin==='0px'),`${w}px ${tema}: body sem margem nas cinco`);
   ok(new Set(L.map(x=>x.left)).size===1,`${w}px ${tema}: barra começa no mesmo x nas cinco (${L.map(x=>x.left).join('/')})`);
   ok(new Set(L.map(x=>x.tituloX)).size===1,`${w}px ${tema}: título da página no mesmo x (${L.map(x=>x.tituloX).join('/')})`);
-  ok(L.every(x=>!x.scrollX),`${w}px ${tema}: sem rolagem horizontal da página`)}
+  ok(L.every(x=>!x.scrollX),`${w}px ${tema}: sem rolagem horizontal da página${L.some(x=>x.scrollX)?' ('+PAGS.filter((_,i)=>L[i].scrollX).map(x=>x[0]).join(', ')+')':''}`)}
  for(const [n] of PAGS)for(const w of LARG){const x=res[n+'|light|'+w].ex;ok(x.tabsH<=60,`${n} ${w}px: faixa de abas ≤ 60 px (${x.tabsH})`)}
  const CHEIO=/badge|cnt|count|tag-n|\bn\b|btn|\bb\b|primary|\bp\b/;
  for(const [n] of PAGS)for(const tema of ['light','dark']){const x=res[n+'|'+tema+'|1440'].ex;const ch=x.baixos.filter(b=>CHEIO.test(b.cls||'')&&b.k<4.5),ob=x.baixos.filter(b=>!ch.includes(b));
@@ -76,10 +78,10 @@ const MEDIR=()=>{const q=s=>document.querySelector(s),r=e=>e?e.getBoundingClient
   await p.evaluate(()=>localStorage.setItem('vac.user','Ana Teste'));await p.goto(S+'Paradas.html');await p.waitForTimeout(500);
   ok(await p.evaluate(()=>user()==='Ana Teste'),'Paradas lê o usuário gravado pelo Portal');await ctx.close()}
  // ---- cabeçalho em telas menores: status e ações continuam visíveis e dentro da tela
- for(const [n] of PAGS)for(const w of [768,390]){const x=res[n+'|light|'+w].ex.cab;ok(x.acoes>0&&x.acoesVisiveis===x.acoes&&x.status,`${n} ${w}px: cabeçalho com status e ${x.acoesVisiveis}/${x.acoes} ações visíveis (faixa de ${x.h}px)`)}
+ for(const [n] of PAGS.filter(([n])=>!CONSTR.has(n)))for(const w of [768,390]){const x=res[n+'|light|'+w].ex.cab;ok(x.acoes>0&&x.acoesVisiveis===x.acoes&&x.status,`${n} ${w}px: cabeçalho com status e ${x.acoesVisiveis}/${x.acoes} ações visíveis (faixa de ${x.h}px)`)}
  // ---- revisão c341f8e: telas preenchidas, aba ativa marcada, gráficos, modo de teste do Paradas
  const MINKPI={Portal:4,'Produção':4,Waste:4,Gel:4,Paradas:3};
- for(const [n] of PAGS)for(const tema of ['light','dark']){const x=res[n+'|'+tema+'|1440'].ex;
+ for(const [n] of PAGS)for(const tema of ['light','dark']){const x=res[n+'|'+tema+'|1440'].ex;if(CONSTR.has(n)){ok(x.abaAtiva&&x.abaAtiva.visivel&&x.abaAtiva.w>=2.5,`${n} ${tema}: aba ativa com a marca colorida (em construção)`);continue}
   ok(x.kpis>=MINKPI[n],`${n} ${tema}: tela do exemplo preenchida (${x.kpis} indicadores)`);
   ok(x.abaAtiva&&x.abaAtiva.visivel&&x.abaAtiva.w>=2.5,`${n} ${tema}: aba ativa com a marca colorida (${x.abaAtiva&&x.abaAtiva.txt}: ${x.abaAtiva&&x.abaAtiva.w}px, visível ${x.abaAtiva&&x.abaAtiva.visivel})`);
   ok(x.graficos>=1,`${n} ${tema}: gráficos presentes na tela inicial do exemplo (${x.graficos} svg)`)}

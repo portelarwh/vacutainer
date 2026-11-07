@@ -9,7 +9,8 @@ def R(a,b,cnt=1):
     c=s.count(a)
     if c!=cnt: raise SystemExit(f'ERRO ({c}x): {a[:90]!r}')
     s=s.replace(a,b)
-R("const APP_VERSION = '2.0.1';","const APP_VERSION = '2.4.8';")
+R("const APP_VERSION = '2.0.1';","const APP_VERSION = '2.4.9';")
+# 2.4.9 · kit: situação das páginas (selo na barra; docs/paginas-construcao.md)
 # 2.4.8 · relatório em PDF: comentário longo continua na página seguinte (antes o que passava do fim da folha se perdia)
 R("  if (c.note && c.note.trim()) { doc.setFillColor(227, 236, 245); const L = c.note.split(/\\n+/).filter(s => s.trim()).reduce((n, s) => n + doc.splitTextToSize(T(s), W - 6).length, 0); doc.rect(m, y - 1, W, L * 4.2 + 4, 'F'); y += 1.5; doc.setFont('helvetica', 'bold'); doc.setFontSize(8); doc.setTextColor(...ACC); doc.text('COMENTÁRIO', m + 3, y + 2); y += 4.5; for (const ln of c.note.split(/\\n+/).filter(s => s.trim())) { const LL = doc.splitTextToSize(T(ln), W - 6); doc.setFont('helvetica', 'normal'); doc.setFontSize(9.5); doc.setTextColor(...INK); doc.text(LL, m + 3, y + 3); y += LL.length * 4.2; } y += 3; }",
   "  if (c.note && c.note.trim()) { doc.setFont('helvetica', 'normal'); doc.setFontSize(9.5); const LN = c.note.split(/\\n+/).filter(s => s.trim()).flatMap(s => doc.splitTextToSize(T(s), W - 6)); let first = true; while (LN.length) { const room = Math.max(1, Math.floor((PH - m - 6 - y - (first ? 7 : 2.5)) / 4.2)); const P = LN.splice(0, room); doc.setFillColor(227, 236, 245); doc.rect(m, y - 1, W, P.length * 4.2 + (first ? 8.5 : 4), 'F'); if (first) { doc.setFont('helvetica', 'bold'); doc.setFontSize(8); doc.setTextColor(...ACC); doc.text('COMENTÁRIO', m + 3, y + 3.5); y += 4.5; } doc.setFont('helvetica', 'normal'); doc.setFontSize(9.5); doc.setTextColor(...INK); doc.text(P, m + 3, y + 3, { lineHeightFactor: 4.2 / (9.5 * 0.3528) }); y += P.length * 4.2 + 3; first = false; if (LN.length) { doc.addPage(); head(false); } } y += 1; }")

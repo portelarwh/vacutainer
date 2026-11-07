@@ -203,3 +203,9 @@ Responde à auditoria de relatórios e painéis (registro § P).
 - **Copiar texto:** avisa "… e mais N linha(s)" quando corta a tabela.
 - **Copiar para Outlook:** leva os gráficos como imagem, como a Produção. Desmarcando "gráficos como imagem no Outlook" (preferência deste navegador), o lugar do gráfico diz "gráfico no PDF".
 - **Página inicial:** Perfis e Usuários oferecem página e aba (ex.: "Produção › Painel", "Gestão de Gel › Operação", "Paradas › Fila técnica"). A lista é comum no kit (`VAC_INICIAL_ALVO`). A página aberta direto também respeita a aba do perfil, na 1ª abertura da sessão; um link com `#` tem prioridade.
+
+## Portal 1.8.12 (07/11/2026) · situação das páginas
+
+- Em construção / em atualização, editável em Configuração do Portal › Módulos ("Situação da página" + "Nota"), gravada no `portal-base.json` e aplicada ao `vac.sistemas` de cada navegador ao abrir o Portal.
+- Cartão "em construção" com as abas planejadas (bloco `vac-planejado` do HTML); página em construção sem base não gera erro, pendência nem slide de TV. Pílula "em atualização" nos cartões de Gel e Paradas. Selo na tabela de Versões.
+- Detalhes: `paginas-construcao.md` § 8.

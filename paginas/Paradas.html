@@ -251,6 +251,17 @@ nav.vtabs .badge[hidden]{display:none}
 @media(max-width:600px){.vpage .wrap{min-height:0}.vpage .vacts>button,.vpage .vacts>.tvmenu>button,.vpage .vacts>details>summary{height:28px;padding:0 8px;font-size:12.5px}}
 @media print{.vrola{display:none!important}}
 /* ===== fim vac-visual v1 ===== */
+
+/* --- situação da página (docs/paginas-construcao.md): selo na barra, faixa abaixo das abas --- */
+.vsuite .vest{display:inline-block;width:8px;height:8px;margin-left:6px;border-radius:50%;vertical-align:middle;font-size:0;overflow:hidden;background:var(--vs-mut);box-shadow:0 0 0 2px rgba(255,255,255,.12)}
+.vsuite .vest[data-e="atualizacao"]{background:var(--vs-hl)}
+.vmenu-l .vest::after{content:attr(aria-label)}
+.vmenu-l .vest{display:inline-block;margin-left:6px;padding:0 6px;border-radius:999px;font-size:10px;font-weight:600;text-transform:uppercase;color:var(--muted);background:var(--surface-2,rgba(127,127,127,.12));border:1px solid var(--line)}
+.vestfaixa{border-bottom:1px solid var(--line);font-size:13px;color:var(--ink);background:color-mix(in srgb,var(--none) 10%,var(--surface))}
+.vestfaixa.atualizacao{background:color-mix(in srgb,var(--info) 10%,var(--surface))}
+.vestfaixa .wrap{display:flex;flex-wrap:wrap;gap:4px 8px;align-items:center;padding-block:7px}
+.vestfaixa .vestx{margin-left:auto;border:0;background:transparent;color:var(--muted);cursor:pointer;font-size:14px;padding:0 4px}
+@media print{.vestfaixa{display:none!important}}
 </style>
 <script id="vac-bases">
 /* ===== vac-bases v2 · 06/11/2026 · bases .json na subpasta "00. Bases" da pasta principal (igual em todas as páginas; não editar só numa) =====
@@ -470,7 +481,7 @@ const MATRIZ_PROPOSTA={"OUT": ["Tullip A", "Tullip B", "Packout", "Metro", "Cap 
    PARADAS · núcleo (pasta, base, fila de gravação, backups, cadastro, utilidades)
    ===================================================================================== */
 const PAGE={id:'paradas',titulo:'Paradas · Análise de falhas e paradas de máquina',tituloCurto:'Paradas',subtitulo:'Análise de falhas e paradas de máquina',
-  versao:'1.0.11',baseFile:'paradas-base.json',backupDir:'00. Backups/Paradas',busca:q=>buscaPagina(q)};
+  versao:'1.0.12',estado:'atualizacao',estadoNota:'Matriz, componentes e limite de microparada passam a vir só do Portal; eventos da Produção entram como sugestão.',baseFile:'paradas-base.json',backupDir:'00. Backups/Paradas',busca:q=>buscaPagina(q)};
 const APP_VERSION=PAGE.versao;
 const CAD_FILE='vacutainer-cadastros.json',OEE_FILE='oee-vacutainer-base.json';
 const $=(s,r=document)=>r.querySelector(s),$$=(s,r=document)=>[...r.querySelectorAll(s)];
@@ -930,11 +941,11 @@ const DEFAULT_SYSTEMS=[
  {id:'portal',nome:'Portal',html:'Portal.html',base:'portal-base.json'},
  {id:'oee',nome:'Produção',html:'OEE-Vacutainer.html',base:'oee-vacutainer-base.json'},
  {id:'perdas',nome:'Waste',html:'Perdas-Ordem.html',base:'perdas-base.json'},
- {id:'gel',nome:'Gestão de Gel',html:'Gestão-Gel-Vacutainer.html',alt:['Gestao-Gel-Vacutainer.html','controle-fifo-gel.html'],base:'fifo-base.json'},
- {id:'paradas',nome:'Paradas',html:'Paradas.html',base:'paradas-base.json'},
- {id:'equip',nome:'Equipamentos',html:'Equipamentos.html',base:'equipamentos-base.json',futuro:true},
- {id:'inic',nome:'Iniciativas',html:'Iniciativas.html',base:'iniciativas-base.json',futuro:true,sub:'5S · OSM · KAS'},
- {id:'projetos',nome:'Projetos',html:'Projetos.html',base:'projetos-base.json',futuro:true}];
+ {id:'gel',nome:'Gestão de Gel',html:'Gestão-Gel-Vacutainer.html',alt:['Gestao-Gel-Vacutainer.html','controle-fifo-gel.html'],base:'fifo-base.json',estado:'atualizacao'},
+ {id:'paradas',nome:'Paradas',html:'Paradas.html',base:'paradas-base.json',estado:'atualizacao'},
+ {id:'equip',nome:'Equipamentos',html:'Equipamentos.html',base:'equipamentos-base.json',futuro:true,estado:'construcao'},
+ {id:'inic',nome:'Iniciativas',html:'Iniciativas.html',base:'iniciativas-base.json',futuro:true,sub:'5S · OSM · KAS',estado:'construcao'},
+ {id:'projetos',nome:'Projetos',html:'Projetos.html',base:'projetos-base.json',futuro:true,estado:'construcao'}];
 function systems(){let L;try{const s=JSON.parse(localStorage.getItem('vac.sistemas')||'null');if(Array.isArray(s)&&s.length){const ids=new Set(s.map(x=>x.id));L=s.concat(DEFAULT_SYSTEMS.filter(d=>!ids.has(d.id)))}}catch(e){}
  L=L||DEFAULT_SYSTEMS.map(x=>({...x}));/* esta página existe (está aberta) mesmo que o Portal ainda a marque como futura */return L.map(x=>x.id==='paradas'?{...x,futuro:false,oculto:false}:x)}
 function sysHref(s,hash=''){return String(s.html||s.url||'').split('/').pop()+(hash?'#'+hash:'')}
@@ -1522,6 +1533,64 @@ function vacTemaClaro(on) {
 }
 window.addEventListener('beforeprint', () => vacTemaClaro(true));
 window.addEventListener('afterprint', () => vacTemaClaro(false));
+/* kit v2.1 · situação da página (07/11/2026, docs/paginas-construcao.md): 'construcao' | 'atualizacao' | null (estável).
+   Vale, nesta ordem: Portal › Configuração do Portal › Módulos (vac.sistemas[].estado) > PAGE.estado do HTML > DEFAULT_SYSTEMS.
+   Mostra um selo na barra do sistema (ponto colorido; o texto aparece ao passar o mouse), uma pílula ao lado da versão, uma faixa abaixo das abas da página atual e o selo no Ctrl K. */
+const VAC_ESTADO = { construcao: { rot: 'em construção', cls: 'none' }, atualizacao: { rot: 'em atualização', cls: 'info' } };
+function vacEstadoDe(id) {
+  const L = typeof systems === 'function' ? systems() : [], s = L.find(x => x.id === id) || {};
+  const pg = typeof PAGE !== 'undefined' && PAGE && PAGE.id === id ? PAGE : {};
+  const d = (typeof DEFAULT_SYSTEMS !== 'undefined' ? DEFAULT_SYSTEMS : []).find(x => x.id === id) || {};
+  const e = s.estado !== undefined ? s.estado : pg.estado !== undefined ? pg.estado : d.estado;
+  return VAC_ESTADO[e] ? { estado: e, ...VAC_ESTADO[e], nota: s.estadoNota || pg.estadoNota || d.estadoNota || '' } : null;
+}
+(function () {
+  const esc2 = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  const arq = h => String(h || '').split('#')[0].split('/').pop();
+  const sisDoLink = a => { const h = a.getAttribute('href') || ''; const L = typeof systems === 'function' ? systems() : [];
+    if (typeof PAGE !== 'undefined' && PAGE.id === 'portal' && h === '#geral') return L.find(s => s.id === 'portal');
+    return L.find(s => s.html && arq(s.html) === arq(h) && arq(h)); };
+  const selos = () => {
+    document.querySelectorAll('#sysNav a, #sysOutros .vmenu-l a').forEach(a => {
+      const s = sisDoLink(a), e = s ? vacEstadoDe(s.id) : null, v = a.querySelector('.vest');
+      if (!e) { if (v) v.remove(); return; }
+      if (v && v.dataset.e === e.estado) return; if (v) v.remove();
+      a.insertAdjacentHTML('beforeend', `<span class="vest" data-e="${e.estado}" role="img" aria-label="${esc2(e.rot)}" title="${esc2(e.rot + (e.nota ? ' · ' + e.nota : ''))}"></span>`);
+    });
+  };
+  const oculta = id => { try { const d = localStorage.getItem('vac.estadoOculto.' + id); return d && Date.now() - new Date(d).getTime() < 7 * 864e5; } catch (e) { return false; } };
+  const pagina = () => {
+    if (typeof PAGE === 'undefined' || !PAGE) return; const e = vacEstadoDe(PAGE.id);
+    const ver = document.getElementById('appVer'); let p = document.getElementById('vacEstPill');
+    if (!e) { if (p) p.remove(); } else if (ver) {
+      if (!p) { ver.insertAdjacentHTML('afterend', '<span class="pill" id="vacEstPill"></span>'); p = document.getElementById('vacEstPill'); }
+      p.className = 'pill ' + e.cls; p.textContent = e.rot; p.title = e.nota || '';
+    }
+    let f = document.getElementById('vacEstFaixa'); const nav = document.querySelector('nav.vtabs');
+    if (!e || (e.estado === 'atualizacao' && oculta(PAGE.id))) { if (f) f.remove(); return; }
+    const ver2 = typeof vacPortalHref === 'function' ? vacPortalHref('versoes') : 'Portal.html#versoes';
+    const html = e.estado === 'construcao'
+      ? `<b>Página em construção.</b> Ainda não grava dados; mostra o que vai ter.${e.nota ? ' ' + esc2(e.nota) : ''}`
+      : `<b>Página em atualização.</b> Ela funciona normalmente; algumas telas ainda vão mudar.${e.nota ? ' ' + esc2(e.nota) : ''} <a href="${esc2(ver2)}">Ver o que muda ↗</a><button type="button" class="vestx" title="Esconder por 7 dias" aria-label="Esconder aviso">✕</button>`;
+    if (!f) { const box = document.createElement('div'); box.id = 'vacEstFaixa'; (nav || document.querySelector('.vpage') || document.body.firstElementChild).insertAdjacentElement('afterend', box); f = box; }
+    if (f.dataset.e !== e.estado || f.dataset.n !== e.nota) { f.dataset.e = e.estado; f.dataset.n = e.nota; f.className = 'vestfaixa ' + e.estado; f.innerHTML = `<div class="wrap">${html}</div>`;
+      const x = f.querySelector('.vestx'); if (x) x.onclick = () => { try { localStorage.setItem('vac.estadoOculto.' + PAGE.id, new Date().toISOString()); } catch (er) { } f.remove(); }; }
+  };
+  const busca = () => {
+    if (typeof Busca === 'undefined' || !Busca || Busca._vacEst) return; Busca._vacEst = 1; const f0 = Busca.itens;
+    Busca.itens = function () { const R = f0.apply(this, arguments) || []; for (const x of R) { if (x.tipo !== 'Ir para' || !x.href) continue;
+      const s = (typeof systems === 'function' ? systems() : []).find(s => s.html && arq(s.html) === arq(x.href) && !String(x.href).includes('#'));
+      const e = s && vacEstadoDe(s.id); if (e && !String(x.sub || '').includes(e.rot)) x.sub = (x.sub ? x.sub + ' · ' : '') + e.rot; } return R; };
+  };
+  function vacEstadoRender() { try { selos(); pagina(); busca(); } catch (e) { console.warn('vacEstadoRender', e); } }
+  window.vacEstadoRender = vacEstadoRender;
+  const ini = () => {
+    vacEstadoRender();
+    for (const id of ['sysNav', 'sysOutros']) { const el = document.getElementById(id); if (el) new MutationObserver(() => requestAnimationFrame(selos)).observe(el, { childList: true }); }
+  };
+  window.addEventListener('storage', e => { if (e.key === 'vac.sistemas' || (e.key || '').startsWith('vac.estadoOculto')) vacEstadoRender(); });
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', () => setTimeout(ini, 0)); else setTimeout(ini, 0);
+})();
 
 </script>
 </body></html>

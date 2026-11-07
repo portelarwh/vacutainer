@@ -1,6 +1,6 @@
 # Páginas em construção e em atualização
 
-06/11/2026 · **especificação para implementar** (nada feito ainda). Divisão final das páginas (Portal 1.7, confirmada em 06/11/2026):
+06/11/2026 · especificação. **Feito em 07/11/2026** (Portal 1.8.12, Produção 2.4.9, Waste 1.8.15, Gestão de Gel 2.03, Paradas 1.0.12, Equipamentos/Iniciativas/Projetos 0.1); o que ficou diferente do texto abaixo está no § 8. Divisão final das páginas (Portal 1.7, confirmada em 06/11/2026):
 
 **Portal · Produção · Waste · Gestão de Gel · Paradas · Equipamentos (com manutenção) · Iniciativas (5S · OSM · KAS) · Projetos · Outros ▾ · ⚙ Administração**
 
@@ -170,7 +170,15 @@ Marcar na Visão geral: "Escopo ainda não definido; esta lista é provisória."
 
 ## 7. Pronto quando
 
-- [ ] As 3 páginas novas na pasta aparecem na barra com selo "em construção", com as abas definitivas e sem gravar nada.
-- [ ] Gel e Paradas mostram "em atualização" (barra, pílula e faixa) e continuam funcionando igual.
-- [ ] Portal: Situação editável em Configuração › Módulos, cartões e Versões com o selo, nada de "base não encontrada" para página em construção.
-- [ ] Kit igual nas 8 páginas (`aplicar_kit21.py`), versões novas (§ 1) e docs: este arquivo marcado como feito, `portal-1-7.md` (seção da versão nova), CLAUDE.md (tabela de páginas com Situação, gerador das páginas em construção).
+- [x] As 3 páginas novas na pasta aparecem na barra com selo "em construção", com as abas definitivas e sem gravar nada.
+- [x] Gel e Paradas mostram "em atualização" (barra, pílula e faixa) e continuam funcionando igual.
+- [x] Portal: Situação editável em Configuração › Módulos, cartões e Versões com o selo, nada de "base não encontrada" para página em construção.
+- [x] Kit igual nas 8 páginas (`aplicar_kit21.py`), versões novas (§ 1) e docs: este arquivo marcado como feito, `portal-1-7.md` (seção da versão nova), CLAUDE.md (tabela de páginas com Situação, gerador das páginas em construção).
+
+## 8. Como ficou (07/11/2026)
+
+- **Kit** (`fontes/kit/kit_v21.js`): `vacEstadoDe(id)` e `vacEstadoRender()`; o selo da barra é um **ponto colorido** (cinza = em construção, azul = em atualização) com o texto no `title`/`aria-label` (com texto, a barra de 8 páginas quebrava em 2 linhas e a checagem de contraste do `tvisual` media o texto escondido); no menu Outros o texto aparece. Pílula ao lado da versão, faixa abaixo das abas (em atualização: ✕ esconde por 7 dias, `vac.estadoOculto.<id>`), selo no Ctrl K. CSS em `kit_visual.css`.
+- **Prioridade** igual à do § 2, mas a migração **não copia** `estado` para o `vac.sistemas`: o kit cai no `PAGE.estado` e depois no `DEFAULT_SYSTEMS` quando o item não tem a chave. Assim, mudar a situação no código chega a todos; a escolha do administrador grava a chave (inclusive `null` = estável) e passa a mandar.
+- **Portal 1.8.12**: Configuração › Módulos, em cada página: "Situação da página" + "Nota" (com ⓘ), gravadas em `vac.sistemas` e em `portal-base.json › config.sistemas`; ao abrir, o Portal aplica `estado`/`estadoNota` do portal-base no `vac.sistemas` do navegador (vale para todos os computadores). Página em construção com o HTML na pasta e sem base: cartão "em construção" com as abas lidas do bloco `<script type="application/json" id="vac-planejado">` do HTML (mais simples e seguro do que ler `PAGE.planejado` de dentro do JS); sem erro "base não encontrada" em cartões, Versões, Pendências; fora da TV, dos relatórios e das pílulas do topo. Página em atualização: pílula "em atualização" abaixo do título do cartão. Versões: selo na coluna Página e `estado` lido do `PAGE` do HTML.
+- **Páginas novas**: `fontes/modelo/pagina-em-construcao.html` (CSS e JS do cabeçalho v2 copiados do Paradas, com o `systems()` marcando a própria página como existente) e `fontes/modelo/gerar_paginas.py` (lista das 3 páginas com `PAGE` e o plano de abas; gera e roda o `aplicar_kit21.py`). O `aplicar_kit21.py` também leva o `kit_bases.js` a elas (só definições; a página não chama `vacRaiz`/`vacMoverBases`). Iniciativas sem rótulo de grupo nas abas (Visão geral · OSM · 5S · KAS); subabas por `#aba=osm/planner`.
+- **Testes**: `testes/tconstrucao.js` (48 checagens); `testes/tvisual.js` passou a incluir as 3 páginas (sem as checagens de dados/ações/gráficos, que não se aplicam).

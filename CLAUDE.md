@@ -6,28 +6,33 @@ Plataforma de páginas HTML de arquivo único que trabalham juntas numa **pasta 
 
 | Página | Arquivo | Base | Versão | Como editar |
 |---|---|---|---|---|
-| Portal (cadastro geral, Administração) | `Portal.html` | `portal-base.json` + `vacutainer-cadastros.json` | 1.8.11 | direto no HTML |
-| Produção (OEE, plano, ordens SAP) | `OEE-Vacutainer.html` | `oee-vacutainer-base.json` (+ `ordens-base.json`) | 2.4.8 | **NÃO editar o HTML**: editar `fontes/producao/` e rodar o build |
-| Waste (perdas por ordem, KKBC) | `Perdas-Ordem.html` | `perdas-base.json` | 1.8.14 | direto no HTML |
-| Gestão de Gel | `Gestão-Gel-Vacutainer.html` | `fifo-base.json` | 2.02 | direto no HTML |
-| Paradas | `Paradas.html` | `paradas-base.json` | 1.0.11 | direto no HTML |
+| Portal (cadastro geral, Administração) | `Portal.html` | `portal-base.json` + `vacutainer-cadastros.json` | 1.8.12 | direto no HTML |
+| Produção (OEE, plano, ordens SAP) | `OEE-Vacutainer.html` | `oee-vacutainer-base.json` (+ `ordens-base.json`) | 2.4.9 | **NÃO editar o HTML**: editar `fontes/producao/` e rodar o build |
+| Waste (perdas por ordem, KKBC) | `Perdas-Ordem.html` | `perdas-base.json` | 1.8.15 | direto no HTML |
+| Gestão de Gel | `Gestão-Gel-Vacutainer.html` | `fifo-base.json` | 2.03 · **em atualização** | direto no HTML |
+| Paradas | `Paradas.html` | `paradas-base.json` | 1.0.12 · **em atualização** | direto no HTML |
+| Equipamentos (com manutenção) | `Equipamentos.html` | (`equipamentos-base.json`, ainda não existe) | 0.1 · **em construção** | **gerada**: `fontes/modelo/gerar_paginas.py` |
+| Iniciativas (5S · OSM · KAS) | `Iniciativas.html` | (`iniciativas-base.json`, ainda não existe) | 0.1 · **em construção** | **gerada**: `fontes/modelo/gerar_paginas.py` |
+| Projetos | `Projetos.html` | (`projetos-base.json`, ainda não existe) | 0.1 · **em construção** | **gerada**: `fontes/modelo/gerar_paginas.py` |
 
 Divisão final (Portal 1.7): Portal · Produção · Waste · Gestão de Gel · Paradas · **Equipamentos** (inclui manutenção; não há página Manutenção) · **Iniciativas** (uma página, 3 abas: 5S · OSM · KAS; não há OSM.html) · **Projetos** · Outros ▾ · ⚙ Administração.
-Próxima entrega: páginas em construção (Equipamentos, Iniciativas, Projetos) e em atualização (Gel, Paradas) — especificação em `docs/paginas-construcao.md`. Arquitetura: `docs/plano-evolucao-plataforma.md`, `docs/osm-arquitetura.md` (aba OSM de Iniciativas). `docs/paginas-novas.md` é histórico (lista antiga Máquinas/Manutenção).
+Situação de cada página (em construção / em atualização / estável): `PAGE.estado` + `sistemas.js`, trocável no Portal › Configuração › Módulos; ver `docs/paginas-construcao.md`. Páginas em construção são **geradas** (não editar o HTML; editar `fontes/modelo/` e rodar o gerador). Quando uma delas começar de verdade (v1.0), tirar da lista do gerador e passar a editar direto. Arquitetura: `docs/plano-evolucao-plataforma.md`, `docs/osm-arquitetura.md` (aba OSM de Iniciativas). `docs/paginas-novas.md` é histórico (lista antiga Máquinas/Manutenção).
 
 ## Comandos
 
 ```bash
 python fontes/producao/build.py        # monta paginas/OEE-Vacutainer.html a partir de OEE-base-2.0.html + ordens_servico.js + ordens_tela.js + cad_sync.js + kit_v21.js
-python fontes/kit/aplicar_kit21.py     # recopia fontes/kit/kit_v21.js, o catálogo fontes/kit/sistemas.js, o padrão visual fontes/kit/kit_visual.css e as bases em 00. Bases fontes/kit/kit_bases.js nas outras 4 páginas (Portal, Waste, Paradas, Gel)
+python fontes/kit/aplicar_kit21.py     # recopia fontes/kit/kit_v21.js, o catálogo fontes/kit/sistemas.js, o padrão visual fontes/kit/kit_visual.css e as bases em 00. Bases fontes/kit/kit_bases.js nas outras páginas (Portal, Waste, Paradas, Gel e as 3 em construção)
+python fontes/modelo/gerar_paginas.py  # gera Equipamentos.html, Iniciativas.html e Projetos.html (em construção) a partir de fontes/modelo/pagina-em-construcao.html e roda o aplicar_kit21.py
 node testes/tpg.js                     # testes Playwright (abrem paginas/ em modo teste/exemplo; imprimem "sem erros")
 node testes/tintegra.js                # Portal × exports: números iguais aos das páginas, urgência, gravação pendente com conflito
 node testes/tdiag.js                   # cenários das auditorias de 06/11/2026 (F01–F08, M01–M04: colisão e falha de leitura na gravação, CadSync, SAP, Gel, Paradas, versões); tintegra e tdiag saem com código 1 se falhar
-node testes/tvisual.js                 # layout: 5 páginas × 2 temas × 5 larguras (geometria, abas, contraste, tema entre páginas); prints em testes/saida/visual/; código 1 se falhar
+node testes/tvisual.js                 # layout: 8 páginas (as 3 em construção sem as checagens de dados) × 2 temas × 5 larguras (geometria, abas, contraste, tema entre páginas); prints em testes/saida/visual/; código 1 se falhar
 node testes/tbases.js                  # bases em 00. Bases: mover da raiz, ler antes/depois, gravar, cópia mais nova/velha na raiz, B01–B07 com falhas injetadas, concorrência, volta de versão (OPFS + HTTP local); código 1 se falhar
 node testes/trelatorios.js            # relatórios: PDF (pdfinfo/pdftotext), texto, Outlook, impressão (2 temas), ordem das abas, aba inicial por perfil; código 1 se falhar
 node fontes/guia/gerar_guia.js         # gera "Guia de instalação.html" (raiz) a partir de fontes/guia/guia_modelo.html, com prints reais das páginas embutidos; rodar quando mudar tela de conexão/entrada ou versão
 node testes/tmeta.js                   # importação da Meta OEE FY27 no Portal (precisa também do pacote npm xlsx)
+node testes/tconstrucao.js             # situação das páginas: selos, faixa, Portal › Módulos, cartão em construção, as 3 páginas geradas (2 temas, 390 px); código 1 se falhar
 ```
 
 - O build usa substituições exatas (`R(antes, depois)`) sobre a base 2.0: se um trecho não for achado exatamente 1 vez, para com `ERRO`. Mudança na Produção = nova regra `R(...)` no `build.py` ou mudança nos `.js` de `fontes/producao/`.
@@ -62,7 +67,7 @@ Produção aplica o cadastro na base do OEE pelo `CadSync` (`fontes/producao/cad
 - Cadastro: `cadastro-base-contrato.md`, `cs12-importacao-bom.md`
 - Kit: `kit-cabecalho-e-backups.md` (v1), `kit-cabecalho-v2.md` (v2/v2.1)
 - Páginas novas: `paginas-construcao.md` (construção/atualização)
-- Páginas: `portal-1-7.md` (Portal 1.7–1.8.10), `producao-ordens-sap.md`, `waste-v1-8.md`, `perdas-ordem-v1.md`, `paradas-arquitetura.md`, `portal-pedido-paradas.md`, `paginas-novas.md`, `osm-arquitetura.md`
+- Páginas: `portal-1-7.md` (Portal 1.7–1.8.12), `producao-ordens-sap.md`, `waste-v1-8.md`, `perdas-ordem-v1.md`, `paradas-arquitetura.md`, `portal-pedido-paradas.md`, `paginas-novas.md`, `osm-arquitetura.md`
 
 Ao terminar uma entrega, atualizar o doc da página (seção nova com a versão e a data) e o `CLAUDE.md` se mudar regra, versão ou comando. Se mudar a instalação, a estrutura da pasta ou as telas de entrar/conectar, editar `fontes/guia/guia_modelo.html` e rodar `node fontes/guia/gerar_guia.js` (nunca editar o `Guia de instalação.html` gerado).
 
@@ -96,6 +101,8 @@ Lista única do que ficou para depois. O motivo e o gatilho de cada item estão 
 - Volta para versão anterior a `00. Bases`: procedimento manual no guia (item 9), validado no `tbases.js` › B06; não automatizado de propósito (registro § R).
 - `package.json`/CI (registro § 1).
 - `testes/tz.js` falha às vezes e passa ao rodar de novo (instabilidade do teste).
+- `testes/tintegra.js` › "ação que vence amanhã" falha quando roda entre 21h e 0h de Brasília (já em outro dia em UTC); problema de fuso do teste, não da página (visto em 07/11/2026).
+- `testes/tvisual.js`: Produção a 768 px com rolagem horizontal (já falhava antes de 07/11/2026).
 - `testes/t181.js` expira no fim (passo da matriz; problema do teste).
 - Cópia para o Outlook com imagens: conferir no Outlook da empresa (desktop e web) se os gráficos chegam (registro § P).
 

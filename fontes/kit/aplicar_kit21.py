@@ -1,7 +1,7 @@
 """Reaplica o bloco do cabeçalho comum v2.1 (fontes/kit/kit_v21.js), o catálogo de sistemas (fontes/kit/sistemas.js:
 const DEFAULT_SYSTEMS=[...]) o padrão visual comum (fontes/kit/kit_visual.css, <style id="vac-visual"> no fim do <head>) e as bases em 00. Bases
 (fontes/kit/kit_bases.js, <script id="vac-bases"> logo depois)
-nas páginas que não são montadas por build.
+nas páginas que não são montadas por build (inclusive as páginas em construção geradas por fontes/modelo/gerar_paginas.py).
 Uso (na raiz do projeto): python fontes/kit/aplicar_kit21.py
 A Produção pega o kit_v21.js ao rodar fontes/producao/build.py."""
 import os,re
@@ -21,7 +21,9 @@ def visual(s,nome):
     ancora='<!-- vac-cabecalho v2 · barra do sistema'   # página sem </head> explícito (Gel): logo antes do cabeçalho comum
     if s.count(ancora)!=1: raise SystemExit('ERRO: nem </head> nem o início do vac-cabecalho achados exatamente 1 vez em '+nome)
     return s.replace(ancora,bloco+ancora)
-for nome in ['Portal.html','Perdas-Ordem.html','Paradas.html','Gestão-Gel-Vacutainer.html']:
+# páginas em construção (geradas por fontes/modelo/gerar_paginas.py) recebem o mesmo kit; entram quando existirem
+NOVAS=[n for n in ['Equipamentos.html','Iniciativas.html','Projetos.html'] if os.path.exists(os.path.join(RAIZ,'paginas',n))]
+for nome in ['Portal.html','Perdas-Ordem.html','Paradas.html','Gestão-Gel-Vacutainer.html']+NOVAS:
     fn=os.path.join(RAIZ,'paginas',nome); s=open(fn,encoding='utf-8').read()
     i=s.index('<script>\n/* ----- vac-cabecalho v2.1'); j=s.index('\n</script>',i)
     s=s[:i]+'<script>\n'+k+s[j:]

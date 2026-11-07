@@ -406,6 +406,17 @@ nav.vtabs .badge[hidden]{display:none}
 @media(max-width:600px){.vpage .wrap{min-height:0}.vpage .vacts>button,.vpage .vacts>.tvmenu>button,.vpage .vacts>details>summary{height:28px;padding:0 8px;font-size:12.5px}}
 @media print{.vrola{display:none!important}}
 /* ===== fim vac-visual v1 ===== */
+
+/* --- situação da página (docs/paginas-construcao.md): selo na barra, faixa abaixo das abas --- */
+.vsuite .vest{display:inline-block;width:8px;height:8px;margin-left:6px;border-radius:50%;vertical-align:middle;font-size:0;overflow:hidden;background:var(--vs-mut);box-shadow:0 0 0 2px rgba(255,255,255,.12)}
+.vsuite .vest[data-e="atualizacao"]{background:var(--vs-hl)}
+.vmenu-l .vest::after{content:attr(aria-label)}
+.vmenu-l .vest{display:inline-block;margin-left:6px;padding:0 6px;border-radius:999px;font-size:10px;font-weight:600;text-transform:uppercase;color:var(--muted);background:var(--surface-2,rgba(127,127,127,.12));border:1px solid var(--line)}
+.vestfaixa{border-bottom:1px solid var(--line);font-size:13px;color:var(--ink);background:color-mix(in srgb,var(--none) 10%,var(--surface))}
+.vestfaixa.atualizacao{background:color-mix(in srgb,var(--info) 10%,var(--surface))}
+.vestfaixa .wrap{display:flex;flex-wrap:wrap;gap:4px 8px;align-items:center;padding-block:7px}
+.vestfaixa .vestx{margin-left:auto;border:0;background:transparent;color:var(--muted);cursor:pointer;font-size:14px;padding:0 4px}
+@media print{.vestfaixa{display:none!important}}
 </style>
 <script id="vac-bases">
 /* ===== vac-bases v2 · 06/11/2026 · bases .json na subpasta "00. Bases" da pasta principal (igual em todas as páginas; não editar só numa) =====
@@ -653,11 +664,11 @@ const DEFAULT_SYSTEMS=[
  {id:'portal',nome:'Portal',html:'Portal.html',base:'portal-base.json'},
  {id:'oee',nome:'Produção',html:'OEE-Vacutainer.html',base:'oee-vacutainer-base.json'},
  {id:'perdas',nome:'Waste',html:'Perdas-Ordem.html',base:'perdas-base.json'},
- {id:'gel',nome:'Gestão de Gel',html:'Gestão-Gel-Vacutainer.html',alt:['Gestao-Gel-Vacutainer.html','controle-fifo-gel.html'],base:'fifo-base.json'},
- {id:'paradas',nome:'Paradas',html:'Paradas.html',base:'paradas-base.json'},
- {id:'equip',nome:'Equipamentos',html:'Equipamentos.html',base:'equipamentos-base.json',futuro:true},
- {id:'inic',nome:'Iniciativas',html:'Iniciativas.html',base:'iniciativas-base.json',futuro:true,sub:'5S · OSM · KAS'},
- {id:'projetos',nome:'Projetos',html:'Projetos.html',base:'projetos-base.json',futuro:true}];
+ {id:'gel',nome:'Gestão de Gel',html:'Gestão-Gel-Vacutainer.html',alt:['Gestao-Gel-Vacutainer.html','controle-fifo-gel.html'],base:'fifo-base.json',estado:'atualizacao'},
+ {id:'paradas',nome:'Paradas',html:'Paradas.html',base:'paradas-base.json',estado:'atualizacao'},
+ {id:'equip',nome:'Equipamentos',html:'Equipamentos.html',base:'equipamentos-base.json',futuro:true,estado:'construcao'},
+ {id:'inic',nome:'Iniciativas',html:'Iniciativas.html',base:'iniciativas-base.json',futuro:true,sub:'5S · OSM · KAS',estado:'construcao'},
+ {id:'projetos',nome:'Projetos',html:'Projetos.html',base:'projetos-base.json',futuro:true,estado:'construcao'}];
 /* 1.7 · nomes exibidos novos (arquivos, bases e ids não mudam); Máquinas e Manutenção saem (manutenção fica em Equipamentos).
    grupo:'outros' = aparece no menu "Outros ▾" da barra, não como item principal. */
 const NOMES_ANTIGOS={oee:['OEE'],perdas:['Perdas'],gel:['Gel']},IDS_SAIRAM=['maquinas','manut'];
@@ -991,6 +1002,9 @@ function wireConfigComum(){$('#cPasta').onclick=async()=>{if(await Store.pick())
    com o aviso "base em local antigo". Prefere o bloco "exports" de cada base.
    1.1: aba Cadastros, dona do vacutainer-cadastros.json (única que grava nele).
    1.1.1: página do Gel = Gestão-Gel-Vacutainer.html (aceita o nome antigo controle-fifo-gel.html).
+   1.8.12: situação das páginas (docs/paginas-construcao.md): em construção / em atualização, editável em Configuração › Módulos (vale para
+          todos os computadores pelo portal-base); cartão "em construção" com as abas planejadas lidas do HTML; Versões, Pendências, TV e Relatórios
+          não tratam página em construção como base ausente; selo na barra e faixa pelo kit.
    1.8.10: revisão c341f8e: kit vac-bases v2 (mudança para 00. Bases segura entre estações); erro de leitura da base não oferece criar base nova; aba ativa com a marca de volta.
    1.8.9: bases .json na subpasta 00. Bases (kit vac-bases): o Portal move portal-base e vacutainer-cadastros ao conectar; Versões das páginas avisa base ainda na raiz.
    1.8.8: layout (vac-visual v1, auditoria de 06/11/2026): gráfico compacto nos cards (miniChart: texto de 11 px, último/maior valor, título com unidade); padrão visual comum do kit.
@@ -1023,7 +1037,7 @@ function wireConfigComum(){$('#cPasta').onclick=async()=>{if(await Store.pick())
         entrar pelo ID (autocadastro como Consulta); página inicial por perfil (1x por sessão); vigência gravada não se edita (desativar com motivo); painel de vigências; semáforo central; saída do modo de teste.
    1.1.2: aviso da carga diz qual base foi lida.  1.5: páginas Paradas, Máquinas, Manutenção e Projetos na lista (aparecem quando o HTML chega na pasta).  1.4: lista técnica pela CS12 multinível (itens = nível 1, estrutura = níveis 2+); CS03 sai.  1.3: cabeçalho comum (vac-cabecalho v2: barra do sistema + página + abas), busca Ctrl K, acabamento V1.90, Versões com cabeçalho e último backup.  1.2: Configuração › Versões das páginas (versão e data de cada HTML, gravação das bases, cópias repetidas, histórico).
    ===================================================================== */
-const PAGE={id:'portal',titulo:'Portal · Linha Vacutainer',tituloCurto:'Portal',subtitulo:'Sistemas de gestão da linha',versao:'1.8.11',baseFile:'portal-base.json',idb:'vac-portal',backupDir:'00. Backups/Portal',
+const PAGE={id:'portal',titulo:'Portal · Linha Vacutainer',tituloCurto:'Portal',subtitulo:'Sistemas de gestão da linha',versao:'1.8.12',baseFile:'portal-base.json',idb:'vac-portal',backupDir:'00. Backups/Portal',
  vazio:()=>({schema:'portal-base',rev:0,config:{modulos:{},avisoDias:30,notas:{}},audit:[]}),
  /* itens do Portal para a busca Ctrl K: cadastro, pendências e telas */
  busca:q=>{const R=[],D=Cad.D;if(D)for(const t of CAD_ORD){for(const it of D[t]||[]){const c=String(it[kOf(t)]),nm=t==='bom'?((cadItem('catalogos',it.catalogo)||{}).nome||''):it.nome||'';if(norm(c+' '+nm).includes(q))R.push({tipo:CAD_T[t].um,txt:c+(nm?' · '+nm:''),sub:'Cadastros'+(cadAtivo(t,it,D)?'':' · inativo'),href:'#cadastros/'+t+'/'+encodeURIComponent(c)});if(R.length>30)break}}
@@ -1055,12 +1069,17 @@ const BKP_MOD={portal:'Portal',oee:'OEE',gel:'Gel',perdas:'Perdas',paradas:'Para
 /* 1.8.7 · base que some (ou passa a dar erro) troca os números pelo aviso e sobe MOD.versao: a tela redesenha e não fica mostrando valores antigos.
    Esquece o arquivo lido, para a base reaparecer sempre reprocessada. */
 function modErro(s,er){if(!MOD.data[s.id]||MOD.data[s.id].erro!==er)MOD.versao=(MOD.versao||0)+1;MOD.data[s.id]={sys:s,erro:er};delete MOD.files[s.id]}
+/* 1.8.12 · página em construção: o HTML está na pasta e ainda não tem base. Lê só as abas planejadas (<script type="application/json" id="vac-planejado">) */
+async function modConstrucao(s){let pl=null,ver=null;
+ try{const f=await (await Store.dir.getFileHandle(sysHref(s))).getFile(),t=await f.text(),m=/<script type="application\/json" id="vac-planejado">([\s\S]*?)<\/script>/.exec(t);if(m)pl=JSON.parse(m[1]);ver=versaoHtml(t).v}catch(e){}
+ const k=JSON.stringify([pl,ver]);if(!MOD.data[s.id]||MOD.data[s.id]._k!==k)MOD.versao=(MOD.versao||0)+1;MOD.data[s.id]={sys:s,construcao:true,planejado:pl,versaoHtml:ver,pend:[],kpis:[],_k:k};delete MOD.files[s.id]}
+const emConstr=s=>!!(MOD.data[s.id]&&MOD.data[s.id].construcao);
 async function readModules(force){
  if(MOD.teste)return;if(Store.mode!=='pasta'||!Store.dir){MOD.data={};return}
  if(MOD.busy)return;MOD.busy=true;
  try{for(const s of systems()){if(s.id==='portal'||!s.base)continue;
    try{if(s.futuro&&Store.dir){try{await Store.dir.getFileHandle(s.html);const l=systems().map(x=>x.id===s.id?{...x,futuro:false}:x);localStorage.setItem('vac.sistemas',JSON.stringify(l));s.futuro=false;toast(`Página nova encontrada na pasta: ${s.nome}.`)}catch(e){}}
-    const loc=await findModule(s);if(!loc){modErro(s,s.futuro?'Página ainda não criada (o HTML não está na pasta).':'Não encontrei '+s.base+' na pasta do Portal nem nas subpastas.');continue}
+    const loc=await findModule(s);if(!loc&&!s.futuro&&(vacEstadoDe(s.id)||{}).estado==='construcao'){await modConstrucao(s);continue}if(!loc){modErro(s,s.futuro?'Página ainda não criada (o HTML não está na pasta).':'Não encontrei '+s.base+' na pasta do Portal nem nas subpastas.');continue}
     if(loc.html&&loc.html!==s.html)saveSysPath(s.id,loc.html);
     const f=await (await loc.dir.getFileHandle(s.base)).getFile();
     if(!force&&MOD.files[s.id]&&MOD.files[s.id].mod===f.lastModified&&MOD.files[s.id].pasta===loc.pasta&&MOD.files[s.id].dia===todayISO()&&MOD.data[s.id]&&!MOD.data[s.id].erro)continue;
@@ -1163,16 +1182,22 @@ const App={tab:'geral',
  afterChange(){this.render()},
  async onConnect(){await Promise.all([Logo.load(),readModules(true),Cad.ler()]);this.render();Vers.scan().then(()=>{if(!emEdicao()&&!$('.modal.on'))this.render()})},
  async onSync(force){await Promise.all([readModules(force),Cad.ler(),Vers.scan()]);if(Cad.fila.length&&Cad.status!=='conflito')Cad.gravar();this.render()},
- topExtra(){const cad=Cad.base?`<span class="pill ${Cad.fonte==='pasta'||Cad.fonte==='teste'?'ok':'warn'}" title="vacutainer-cadastros.json">Cadastro rev ${Cad.base.rev}</span>`:'';if(Store.mode!=='pasta'&&!MOD.teste)return cad?' '+cad:'';return' '+systems().filter(s=>s.id!=='portal'&&!s.futuro).map(s=>{const x=MOD.data[s.id];return`<span class="pill ${x&&!x.erro?(x.antigo?'warn':'ok'):'none'}" title="${esc(x?x.erro||s.base+(x.antigo?' lido no local antigo ('+x.pasta+'/)':' lido'):'não lido')}">${esc(s.nome)}</span>`}).join(' ')+' '+cad},
+ topExtra(){const cad=Cad.base?`<span class="pill ${Cad.fonte==='pasta'||Cad.fonte==='teste'?'ok':'warn'}" title="vacutainer-cadastros.json">Cadastro rev ${Cad.base.rev}</span>`:'';if(Store.mode!=='pasta'&&!MOD.teste)return cad?' '+cad:'';return' '+systems().filter(s=>s.id!=='portal'&&!s.futuro&&!emConstr(s)).map(s=>{const x=MOD.data[s.id];return`<span class="pill ${x&&!x.erro?(x.antigo?'warn':'ok'):'none'}" title="${esc(x?x.erro||s.base+(x.antigo?' lido no local antigo ('+x.pasta+'/)':' lido'):'não lido')}">${esc(s.nome)}</span>`}).join(' ')+' '+cad},
  tv(){location.hash='tv';TV.start(tvSlides,{titulo:'Linha Vacutainer',seg:20})},
  async tvRefresh(){await readModules(false)}};
 const sysOf=id=>systems().find(s=>s.id===id)||{nome:id,html:''};
 const allPend=()=>Object.values(MOD.data).flatMap(x=>x&&x.pend||[]).concat(Cad.pend(),Vers.pend()).sort((a,b)=>b.sev-a.sev||String(a.quando||'').localeCompare(String(b.quando||'')));
 const QUICK={oee:[['Tela do operador','turno']],gel:[['TV almoxarifado','tv'],['TV linha','linha']],perdas:[['Comparativos','aba=comp'],['Ações','aba=acoes']]};
-function card(s){const x=MOD.data[s.id];const href=sysHref(s);
- if(!x||x.erro)return`<section class="mod off"><header><h2>${esc(s.nome)}</h2><span class="pill none">${s.futuro?'em construção':'sem dados'}</span></header><p class="muted small">${esc(x?x.erro:(Store.mode==='pasta'?'Lendo…':'Conecte a pasta da rede em Configuração para ver os números.'))}</p>${s.futuro?'':`<footer><a class="b sm" href="${esc(href)}">Abrir ${esc(s.nome)}</a></footer>`}</section>`;
+function cardConstrucao(s,x){const e=vacEstadoDe(s.id)||{},P=x.planejado||{},G=P.abas||[];
+ return`<section class="mod off"><header><h2>${esc(s.nome)}</h2><span class="pill none">em construção</span>${x.versaoHtml?`<span class="small muted">v${esc(x.versaoHtml)}</span>`:''}</header>
+ <p class="small">${esc(e.nota||P.nota||'Página em construção: ainda não grava dados.')}</p>
+ ${G.length?`<div class="small"><b>Vai ter:</b> ${G.map(a=>esc(a.aba)+(a.subabas&&a.subabas.length?` <span class="muted">(${a.subabas.map(x=>esc(x&&x.nome||x)).join(' · ')})</span>`:'')).join(' · ')}</div>`:''}
+ <footer><a class="b sm" href="${esc(sysHref(s))}">Abrir ${esc(s.nome)}</a></footer></section>`}
+const pillEstado=s=>{const e=vacEstadoDe(s.id);return e&&e.estado==='atualizacao'?`<div class="small" style="margin:-4px 0 8px"><span class="pill info" title="${esc(e.nota||'Funciona normalmente; algumas telas ainda vão mudar.')}">em atualização</span></div>`:''};
+function card(s){const x=MOD.data[s.id];const href=sysHref(s);if(x&&x.construcao)return cardConstrucao(s,x);
+ if(!x||x.erro)return`<section class="mod off"><header><h2>${esc(s.nome)}</h2><span class="pill none">${s.futuro?'em construção':'sem dados'}</span></header>${pillEstado(s)}<p class="muted small">${esc(x?x.erro:(Store.mode==='pasta'?'Lendo…':'Conecte a pasta da rede em Configuração para ver os números.'))}</p>${s.futuro?'':`<footer><a class="b sm" href="${esc(href)}">Abrir ${esc(s.nome)}</a></footer>`}</section>`;
  return`<section class="mod"><header><h2>${esc(s.nome)}</h2>${x.antigo?`<span class="pill warn" title="Base lida em ${esc(x.pasta)}/. Pasta única: mova o HTML e a base para a pasta principal (Configuração › Pasta única).">local antigo</span>`:''}${x.temExports&&!x.bruto?'':`<span class="pill none" title="${x.temExports?'O resumo (exports) deste módulo está numa versão que o Portal não conhece':'Este módulo ainda não publica o resumo (exports)'}; o Portal soma os dados brutos e os números podem diferir do módulo.">dados brutos</span>`}</header>${x.updatedAt?`<div class="small muted" style="margin-top:-6px">gravado em ${fmtDT(x.updatedAt)}${x.updatedBy?' por '+esc(x.updatedBy):''}</div>`:''}
- <div class="mk">${x.kpis.map(k=>`<div><div class="l">${esc(k[0])}</div><div class="v ${k[3]||''}">${esc(k[1])}</div><div class="s">${esc(k[2]||'')}</div></div>`).join('')}</div>
+ ${pillEstado(s)}<div class="mk">${x.kpis.map(k=>`<div><div class="l">${esc(k[0])}</div><div class="v ${k[3]||''}">${esc(k[1])}</div><div class="s">${esc(k[2]||'')}</div></div>`).join('')}</div>
  ${x.serie&&x.serie.length?miniChart(x.serie,{fmt:x.serieFmt||fmtK,tit:x.serieTit||''}):''}
  ${s.id==='oee'&&x.extra&&x.extra.emProd.length?`<div class="small"><b>Em produção:</b> ${x.extra.emProd.map(esc).join(' · ')}</div>`:''}
  <footer><a class="b sm p" href="${esc(href)}">Abrir ${esc(s.nome)}</a>${(QUICK[s.id]||[]).map(([l,h])=>`<a class="b sm" href="${esc(sysHref(s,h))}">${esc(l)}</a>`).join('')}${x.pend.length?`<button class="b sm" onclick="App.show('pend')">${x.pend.length} pendência${x.pend.length>1?'s':''}</button>`:''}</footer></section>`}
@@ -1187,9 +1212,9 @@ function viewGeral(m){
 function pendList(P){if(!P.length)return'<p class="good small">Nenhuma pendência.</p>';
  return`<ul class="pl">${P.map(p=>{const s=sysOf(p.mod);return`<li><span class="pill ${p.sev>=2?'crit':'warn'}">${esc(s.nome)}</span><span class="t">${esc(p.txt)}</span><a class="b sm" href="${esc(sysHref(s,p.link||''))}">Abrir</a></li>`}).join('')}</ul>`}
 function viewPend(m){const P=allPend();const by={};P.forEach(p=>(by[p.mod]=by[p.mod]||[]).push(p));
- m.innerHTML=`<div class="kpis">${systems().filter(s=>s.id!=='portal'&&!s.futuro).map(s=>`<div class="kpi"><div class="l">${esc(s.nome)}</div><div class="v ${(by[s.id]||[]).length?'bad':'good'}">${(by[s.id]||[]).length}</div><div class="s">${(by[s.id]||[]).filter(p=>p.sev>=2).length} urgentes</div></div>`).join('')}</div>
+ m.innerHTML=`<div class="kpis">${systems().filter(s=>s.id!=='portal'&&!s.futuro&&!emConstr(s)).map(s=>`<div class="kpi"><div class="l">${esc(s.nome)}</div><div class="v ${(by[s.id]||[]).length?'bad':'good'}">${(by[s.id]||[]).length}</div><div class="s">${(by[s.id]||[]).filter(p=>p.sev>=2).length} urgentes</div></div>`).join('')}</div>
  ${Object.keys(by).length?Object.entries(by).map(([k,ps])=>`<div class="card"><h3>${esc(sysOf(k).nome)} <span class="muted small">${ps.length}</span></h3>${pendList(ps)}</div>`).join(''):'<div class="card"><p class="good">Nenhuma pendência em nenhum módulo.</p></div>'}`}
-function relDoc(){const blocos=[];for(const s of systems().filter(s=>s.id!=='portal'&&!s.futuro)){const x=MOD.data[s.id];if(!x||x.erro)continue;blocos.push({tipo:'kpis',titulo:s.nome,itens:x.kpis})}
+function relDoc(){const blocos=[];for(const s of systems().filter(s=>s.id!=='portal'&&!s.futuro)){const x=MOD.data[s.id];if(!x||x.erro||x.construcao)continue;blocos.push({tipo:'kpis',titulo:s.nome,itens:x.kpis})}
  const P=allPend();if(P.length)blocos.push({tipo:'tabela',titulo:'Pendências',cab:['Módulo','Pendência','Urgência'],linhas:P.map(p=>[sysOf(p.mod).nome,p.txt,p.sev>=2?'urgente':'atenção']),destaque:P.map(p=>p.sev>=2?'hl2':'hl1')});
  const sOEE=MOD.data.oee&&MOD.data.oee.serie;if(sOEE&&sOEE.length)blocos.push({tipo:'svg',titulo:'Produção boa por dia (OEE)',svg:barChart(sOEE,{h:200})});
  const sP=MOD.data.perdas&&MOD.data.perdas.serie;if(sP&&sP.length)blocos.push({tipo:'svg',titulo:'Perdas: desvio líquido por mês',svg:barChart(sP,{h:200,fmt:fmtR})});
@@ -1205,7 +1230,8 @@ function viewConfig(m){const list=systems();
  ${cardPastaUnica()}
  <div class="card form"><h3>Módulos ${ib('Módulos','O Portal procura a base de cada módulo na pasta principal e, por um tempo, também nas subpastas (local antigo, ex.: FIFO - GEL), avisando. O caminho do HTML é usado nos links de todas as páginas (lista vac.sistemas, com caminhos simples quando o módulo está na pasta principal). Se um módulo estiver numa pasta fora desta, escolha a pasta do módulo.')}</h3>
  <div class="tw"><table><tr><th>Módulo</th><th>HTML (caminho a partir do Portal)</th><th>Base</th><th>Situação</th><th></th></tr>
- ${list.filter(s=>s.id!=='portal').map(s=>{const x=MOD.data[s.id],f=MOD.files[s.id];return`<tr><td><b>${esc(s.nome)}</b>${s.sub?` <span class="small muted">${esc(s.sub)}</span>`:''}<br><label class="small"><input type="checkbox" data-hide="${s.id}" ${s.oculto?'checked':''}> ocultar da barra e do Portal</label><br><label class="small"><input type="checkbox" data-outros="${s.id}" ${s.grupo==='outros'?'checked':''}> mostrar no menu Outros</label>${s.futuro?'<br><span class="pill" style="font-size:11px">em construção</span>':''}</td><td><input data-html="${s.id}" value="${esc(s.html)}" style="width:100%;min-width:200px"></td><td class="small mono">${esc(s.base)}</td>
+ ${list.filter(s=>s.id!=='portal').map(s=>{const x=MOD.data[s.id],f=MOD.files[s.id];return`<tr><td><b>${esc(s.nome)}</b>${s.sub?` <span class="small muted">${esc(s.sub)}</span>`:''}<br><label class="small"><input type="checkbox" data-hide="${s.id}" ${s.oculto?'checked':''}> ocultar da barra e do Portal</label><br><label class="small"><input type="checkbox" data-outros="${s.id}" ${s.grupo==='outros'?'checked':''}> mostrar no menu Outros</label>${s.futuro?'<br><span class="pill" style="font-size:11px">HTML ainda não está na pasta</span>':''}
+  ${(e=>`<div class="small" style="margin-top:6px;display:grid;gap:4px"><label>Situação da página ${ib('Situação da página','Mostra um selo na barra, no Portal e na própria página.\nEstável: sem selo.\nEm atualização: a página funciona e grava normalmente; algumas telas ainda vão mudar.\nEm construção: só o esqueleto; não grava dados e o Portal não procura a base.\nVale para todos os computadores (fica no portal-base.json; cada navegador recebe ao abrir o Portal).\nEx.: Gestão de Gel · Em atualização · "Catálogos passam a vir do Portal".')}<select data-estado="${s.id}"><option value="">Estável</option><option value="atualizacao" ${e&&e.estado==='atualizacao'?'selected':''}>Em atualização</option><option value="construcao" ${e&&e.estado==='construcao'?'selected':''}>Em construção</option></select></label><label>Nota (o que está mudando) ${ib('Nota da situação','Uma frase que aparece na faixa da página e no cartão. Ex.: "Matriz e limite de microparada passam a vir só do Portal." Vazio = texto padrão.')}<input data-estnota="${s.id}" value="${esc(s.estadoNota||'')}" placeholder="${esc(e&&e.nota||'')}"></label></div>`)(vacEstadoDe(s.id))}</td><td><input data-html="${s.id}" value="${esc(s.html)}" style="width:100%;min-width:200px"></td><td class="small mono">${esc(s.base)}</td>
   <td class="small">${x&&!x.erro?(f&&f.antigo?`<span class="pill warn">local antigo</span> subpasta <b>${esc(f.pasta)}</b> · mover para a pasta principal`:`<span class="pill ok">lida</span> ${f&&f.pasta===null?'pasta própria':'pasta principal'}`):`<span class="pill none">não lida</span> ${esc(x?x.erro:'')}`}</td>
   <td><button class="b sm" data-own="${s.id}">Pasta do módulo…</button></td></tr>`}).join('')}</table></div>
  <div style="margin-top:8px;display:flex;gap:8px"><button class="b p" id="mSave">Salvar módulos</button><button class="b" id="mReread">Procurar de novo</button></div>
@@ -1218,7 +1244,8 @@ function viewConfig(m){const list=systems();
   try{localStorage.setItem('vac.links',JSON.stringify(L))}catch(e){}Store.commit('Links do menu Outros',b=>{b.config.links=L}).then(()=>{renderTop();toast(L.length+' link(s) salvos.')})};
  
  wireConfigComum();wireVersoes();
- $('#mSave').onclick=()=>{const l=systems().map(s=>{const h=$(`[data-html="${s.id}"]`),o=$(`[data-hide="${s.id}"]`),g=$(`[data-outros="${s.id}"]`);const x={...s,html:h?h.value.trim()||s.html:s.html,oculto:o?o.checked:s.oculto};if(g){if(g.checked)x.grupo='outros';else delete x.grupo}return x});localStorage.setItem('vac.sistemas',JSON.stringify(l));
+ $('#mSave').onclick=()=>{const l=systems().map(s=>{const h=$(`[data-html="${s.id}"]`),o=$(`[data-hide="${s.id}"]`),g=$(`[data-outros="${s.id}"]`);const x={...s,html:h?h.value.trim()||s.html:s.html,oculto:o?o.checked:s.oculto};if(g){if(g.checked)x.grupo='outros';else delete x.grupo}
+  const es=$(`[data-estado="${s.id}"]`),en=$(`[data-estnota="${s.id}"]`);if(es){x.estado=es.value||null;x.estadoNota=en&&en.value.trim()||null}return x});localStorage.setItem('vac.sistemas',JSON.stringify(l));
   Store.commit('Módulos',b=>{b.config.sistemas=l;b.config.avisoDias=+$('#mDias').value||30}).then(()=>readModules(true)).then(()=>{App.render();toast('Módulos salvos.')})};
  $('#mReread').onclick=async()=>{await readModules(true);App.render()};
  $$('[data-own]').forEach(b=>b.onclick=async()=>{try{const d=await window.showDirectoryPicker({mode:'read',id:'mod-'+b.dataset.own});await Store.idb.set('dir:'+b.dataset.own,d);await readModules(true);App.render()}catch(e){if(e.name!=='AbortError')alert(e.message)}})}
@@ -1247,7 +1274,7 @@ const Vers={dados:null,busy:false,cache:{},
    for(const s of systems()){const nm=new Set(this.nomes(s).map(norm)),bk=norm(s.base||'');
     const hs=F.filter(f=>nm.has(f.k)),bs=bk?F.filter(f=>f.k===bk):[];if(s.futuro&&!hs.length&&!bs.length)continue;
     const htmls=[],bases=[];
-    for(const f of hs.sort((a,b)=>(a.p?1:0)-(b.p?1:0))){try{htmls.push({loc:f.p,arq:(f.p?f.p+'/':'')+f.n,...await this.info(f.h,'h|'+f.p+'|'+f.n,t=>({...versaoHtml(t),cab:(/vac-cabecalho v(\d+)/.exec(t)||[])[1]||null}))})}catch(e){}}
+    for(const f of hs.sort((a,b)=>(a.p?1:0)-(b.p?1:0))){try{htmls.push({loc:f.p,arq:(f.p?f.p+'/':'')+f.n,...await this.info(f.h,'h|'+f.p+'|'+f.n,t=>({...versaoHtml(t),cab:(/vac-cabecalho v(\d+)/.exec(t)||[])[1]||null,estado:(/PAGE\s*=\s*\{[\s\S]{0,2000}?\bestado\s*:\s*['"](\w+)/.exec(t)||[])[1]||null}))})}catch(e){}}
     for(const f of bs.sort((a,b)=>(a.p===VAC_BASES_DIR?0:a.p?2:1)-(b.p===VAC_BASES_DIR?0:b.p?2:1))){   /* 1.8.9 · a de 00. Bases vem primeiro */try{bases.push({loc:f.p,arq:(f.p?f.p+'/':'')+f.n,...await this.info(f.h,'b|'+f.p+'|'+f.n,t=>this.baseInfo(t))})}catch(e){}}
     const bkx=s.base?await this.backups(s):{};L.push({id:s.id,nome:s.nome,html:htmls[0]||null,htmls,base:bases[0]||null,bases,...bkx})}
    const libs=[];for(const p of VERS_LIBS){try{const ps=p.split('/');const h=await (await Store.dir.getDirectoryHandle(ps[0])).getFileHandle(ps[1]);libs.push({arq:p,...await this.info(h,'l|'+p,t=>{const m=/XLSX\.version\s*=\s*["'](\d+\.\d+\.\d+)/.exec(t)||/jsPDF\.version\s*=\s*["'](\d+\.\d+\.\d+)/.exec(t)||/jsPDF-?AutoTable v?(\d+\.\d+\.\d+)/i.exec(t)||/@version\s+v?(\d+\.\d+\.\d+)/.exec(t)||/\bversion\s*[:=]\s*["'](\d+\.\d+\.\d+)/.exec(t);return{v:m?m[1]:null}})})}catch(e){libs.push({arq:p,falta:true})}}
@@ -1263,7 +1290,7 @@ const Vers={dados:null,busy:false,cache:{},
   if(r.htmls.length>1)A.push(['crit',`${r.htmls.length} cópias do HTML: ${r.htmls.map(h=>h.arq+(h.v?' (v'+h.v+')':'')).join(', ')}`]);
   if(r.bases.length>1)A.push(['crit',`${r.bases.length} cópias da base: ${r.bases.map(b=>b.arq).join(', ')} · vale a de ${VAC_BASES_DIR}; confira a outra (página antiga aberta?) e apague-a`]);
   else if(r.base&&r.base.loc!==VAC_BASES_DIR)A.push(['warn',r.base.loc?`base em ${r.base.loc}/ (o certo é ${VAC_BASES_DIR}/)`:`base ainda na raiz da pasta: vai para ${VAC_BASES_DIR}/ quando ${r.id==='portal'?'o Portal':'a página '+r.nome} for aberta`]);
-  if(r.id!=='portal'){if(!r.base)A.push(['crit','base não encontrada']);else if(r.base.erro)A.push(['crit','base: '+r.base.erro]);else if(!r.base.exp)A.push(['warn','base sem exports: o Portal soma os dados brutos'])
+  if(r.id!=='portal'&&!(!r.base&&(vacEstadoDe(r.id)||{}).estado==='construcao')){if(!r.base)A.push(['crit','base não encontrada']);else if(r.base.erro)A.push(['crit','base: '+r.base.erro]);else if(!r.base.exp)A.push(['warn','base sem exports: o Portal soma os dados brutos'])
    else{if(r.base.expV!=null&&+r.base.expV!==1)A.push(['crit',`exports na versão ${r.base.expV}: este Portal só conhece a 1; atualize o Portal`]);
     const te=Date.parse(r.base.expEm||''),tb=Date.parse(r.base.em||'');if(isFinite(te)&&isFinite(tb)&&tb-te>36e5)A.push(['warn',`exports gerado em ${fmtDT(r.base.expEm)}, mais antigo que a última gravação da base (${fmtDT(r.base.em)})`])}}
   if(r.html&&r.html.v&&r.base&&r.base.app&&vNorm(r.base.app)!==vNorm(r.html.v))A.push(['warn',`última gravação da base feita pela versão ${r.base.app}; o HTML da pasta é ${r.html.v}`]);
@@ -1291,7 +1318,7 @@ function cardVersoes(){const D=Vers.dados,V=CFGP().versoes||{},LG=(V.log||[]).sl
   <span style="flex:1"></span><button class="b sm" id="vScan">↻ Conferir agora</button><button class="b sm" id="vXls">⇩ Excel</button></h3>
   <p class="small">Esta janela: <b>Portal ${esc(PAGE.versao)}</b> · aberta de <span class="mono">${esc(decodeURIComponent(location.pathname))}</span> ${!D?'':igual?'<span class="pill ok">igual ao Portal.html da pasta</span>':`<span class="pill crit">diferente do Portal.html da pasta (${esc(P&&P.html?P.html.v||'?':'não encontrado')})</span>`}${D?` <span class="muted">· conferido às ${fmtDT(new Date(D.em).toISOString()).slice(11)}</span>`:''}</p>
   ${!D?'<p class="small muted">Lendo os arquivos da pasta…</p>':`<div class="tw"><table><tr><th>Página</th><th>HTML</th><th>Versão</th><th>HTML atualizado em</th><th>Base · rev</th><th>Última gravação da base</th><th>Gravada pela versão</th><th>exports</th><th>Cabeçalho</th><th>Último backup</th><th>Situação</th></tr>
-  ${D.L.map(r=>{const A=Vers.avisos(r),h=r.html,b=r.base;return`<tr class="${A.some(a=>a[0]==='crit')?'hl1':''}"><td><b>${esc(r.nome)}</b></td><td class="mono small">${h?esc(h.arq):'–'}</td><td><b>${h&&h.v?esc(h.v):'?'}</b>${h?` <span class="small muted">(${esc(h.como)})</span>`:''}</td><td class="small">${h?dtArq(h.mod):''}</td>
+  ${D.L.map(r=>{const A=Vers.avisos(r),h=r.html,b=r.base;return`<tr class="${A.some(a=>a[0]==='crit')?'hl1':''}"><td><b>${esc(r.nome)}</b>${(e=>e?`<br><span class="pill ${e.cls}" style="font-size:11px" title="${esc(e.nota||'')}">${esc(e.rot)}</span>`:'')(vacEstadoDe(r.id))}</td><td class="mono small">${h?esc(h.arq):'–'}</td><td><b>${h&&h.v?esc(h.v):'?'}</b>${h?` <span class="small muted">(${esc(h.como)})</span>`:''}</td><td class="small">${h?dtArq(h.mod):''}</td>
    <td class="small">${b?`<span class="mono">${esc(b.arq)}</span> · rev ${b.rev??'?'}`:'–'}</td><td class="small">${b&&b.em?fmtDT(b.em):b?dtArq(b.mod)+' (arquivo)':''}${b&&b.por?' · '+esc(b.por):''}</td><td class="small">${b?esc(b.app||'–'):''}</td><td class="small">${r.id==='portal'?'':b&&b.exp?'sim'+(b.expEm?' · '+fmtDT(b.expEm).slice(0,16):''):b?'<span class="warn">não</span>':''}</td><td class="small">${h?(h.cab?'v'+esc(h.cab):'<span class="warn">antigo</span>'):''}</td><td class="small">${r.bkp?`${dtArq(r.bkp.mod)}<div class="muted mono" style="font-size:11px">${esc(r.bkpPasta)}/ (${r.bkp.n})</div>`:r.bkpAnt?`<span class="warn">${dtArq(r.bkpAnt.mod)}</span><div class="muted mono" style="font-size:11px">00. Backups/ (local antigo)</div>`:r.base?'<span class="warn">nenhum</span>':''}</td>
    <td class="small">${A.length?A.map(a=>`<div class="${a[0]==='crit'?'bad':'warn'}">• ${esc(a[1])}</div>`).join(''):'<span class="good">ok</span>'}</td></tr>`}).join('')}</table></div>
   <p class="small" style="margin-top:8px"><b>Cadastro</b> (<span class="mono">${CAD_FILE}</span>): ${Cad.base?`rev ${Cad.base.rev} · gravado em ${fmtDT(Cad.base.revAt)}${Cad.base.revBy?' por '+esc(Cad.base.revBy):''} · ${esc(Cad.base.appVersion||'')}`:'ainda não criado'}
@@ -1306,7 +1333,7 @@ function wireVersoes(){const s=$('#vScan');if(s)s.onclick=async()=>{s.disabled=t
  if(!Vers.dados&&!Vers._p&&Store.mode==='pasta')Vers.scan().then(d=>{if(d&&App.tab==='config'&&!emEdicao())App.render()})}
 function irVersoes(){App.show('config');setTimeout(()=>{const c=$('#cardVers');if(c)c.scrollIntoView({behavior:'smooth',block:'start'})},60)}
 /* ---------- TV geral ---------- */
-function tvSlides(){const s=[];const mods=systems().filter(x=>x.id!=='portal'&&!x.futuro&&!x.oculto);
+function tvSlides(){const s=[];const mods=systems().filter(x=>x.id!=='portal'&&!x.futuro&&!x.oculto&&!emConstr(x));
  const top=mods.map(x=>{const d=MOD.data[x.id];if(!d||d.erro)return'';return d.kpis.slice(0,2).map(k=>`<div class="bk"><div class="l">${esc(x.nome)} · ${esc(k[0])}</div><div class="v sm ${k[3]||''}">${esc(k[1])}</div><div class="s">${esc(k[2]||'')}</div></div>`).join('')}).join('');
  s.push({titulo:'Visão geral',html:`<div class="big">${top}</div><div class="card"><h3>Pendências</h3>${pendList(allPend().slice(0,8))}</div>`});
  for(const x of mods){const d=MOD.data[x.id];if(!d||d.erro)continue;
@@ -3073,6 +3100,8 @@ const emEdicao=()=>{const a=document.activeElement;return!!(a&&/^(INPUT|TEXTAREA
 (async function(){wireTop();await Store.init();await Cad.init();if(Store.mode!=='teste'&&irPaginaInicial())return;
  if(Store.B.config.sistemas&&!localStorage.getItem('vac.sistemas'))localStorage.setItem('vac.sistemas',JSON.stringify(Store.B.config.sistemas));
  try{const L0=JSON.parse(localStorage.getItem('vac.sistemas')||'null');if(Array.isArray(L0))localStorage.setItem('vac.sistemas',JSON.stringify(migrarSistemas(L0)))}catch(e){}
+ /* 1.8.12 · situação escolhida em Configuração › Módulos vale em todos os computadores: o portal-base manda */
+ try{const C=Store.B.config.sistemas,L1=JSON.parse(localStorage.getItem('vac.sistemas')||'null');if(Array.isArray(C)&&Array.isArray(L1)){let mud=0;for(const c of C){if(!c||!('estado' in c))continue;const x=L1.find(y=>y.id===c.id);if(x&&(x.estado!==c.estado||(x.estadoNota||null)!==(c.estadoNota||null))){x.estado=c.estado;x.estadoNota=c.estadoNota||null;mud=1}}if(mud)localStorage.setItem('vac.sistemas',JSON.stringify(L1))}}catch(e){}
  try{if(Array.isArray(Store.B.config.links))localStorage.setItem('vac.links',JSON.stringify(Store.B.config.links))}catch(e){}
  /* grava a lista completa e na ordem padrão: as outras páginas montam a barra a partir dela */
  try{localStorage.setItem('vac.sistemas',JSON.stringify(systems()))}catch(e){}
@@ -3205,6 +3234,64 @@ function vacTemaClaro(on) {
 }
 window.addEventListener('beforeprint', () => vacTemaClaro(true));
 window.addEventListener('afterprint', () => vacTemaClaro(false));
+/* kit v2.1 · situação da página (07/11/2026, docs/paginas-construcao.md): 'construcao' | 'atualizacao' | null (estável).
+   Vale, nesta ordem: Portal › Configuração do Portal › Módulos (vac.sistemas[].estado) > PAGE.estado do HTML > DEFAULT_SYSTEMS.
+   Mostra um selo na barra do sistema (ponto colorido; o texto aparece ao passar o mouse), uma pílula ao lado da versão, uma faixa abaixo das abas da página atual e o selo no Ctrl K. */
+const VAC_ESTADO = { construcao: { rot: 'em construção', cls: 'none' }, atualizacao: { rot: 'em atualização', cls: 'info' } };
+function vacEstadoDe(id) {
+  const L = typeof systems === 'function' ? systems() : [], s = L.find(x => x.id === id) || {};
+  const pg = typeof PAGE !== 'undefined' && PAGE && PAGE.id === id ? PAGE : {};
+  const d = (typeof DEFAULT_SYSTEMS !== 'undefined' ? DEFAULT_SYSTEMS : []).find(x => x.id === id) || {};
+  const e = s.estado !== undefined ? s.estado : pg.estado !== undefined ? pg.estado : d.estado;
+  return VAC_ESTADO[e] ? { estado: e, ...VAC_ESTADO[e], nota: s.estadoNota || pg.estadoNota || d.estadoNota || '' } : null;
+}
+(function () {
+  const esc2 = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  const arq = h => String(h || '').split('#')[0].split('/').pop();
+  const sisDoLink = a => { const h = a.getAttribute('href') || ''; const L = typeof systems === 'function' ? systems() : [];
+    if (typeof PAGE !== 'undefined' && PAGE.id === 'portal' && h === '#geral') return L.find(s => s.id === 'portal');
+    return L.find(s => s.html && arq(s.html) === arq(h) && arq(h)); };
+  const selos = () => {
+    document.querySelectorAll('#sysNav a, #sysOutros .vmenu-l a').forEach(a => {
+      const s = sisDoLink(a), e = s ? vacEstadoDe(s.id) : null, v = a.querySelector('.vest');
+      if (!e) { if (v) v.remove(); return; }
+      if (v && v.dataset.e === e.estado) return; if (v) v.remove();
+      a.insertAdjacentHTML('beforeend', `<span class="vest" data-e="${e.estado}" role="img" aria-label="${esc2(e.rot)}" title="${esc2(e.rot + (e.nota ? ' · ' + e.nota : ''))}"></span>`);
+    });
+  };
+  const oculta = id => { try { const d = localStorage.getItem('vac.estadoOculto.' + id); return d && Date.now() - new Date(d).getTime() < 7 * 864e5; } catch (e) { return false; } };
+  const pagina = () => {
+    if (typeof PAGE === 'undefined' || !PAGE) return; const e = vacEstadoDe(PAGE.id);
+    const ver = document.getElementById('appVer'); let p = document.getElementById('vacEstPill');
+    if (!e) { if (p) p.remove(); } else if (ver) {
+      if (!p) { ver.insertAdjacentHTML('afterend', '<span class="pill" id="vacEstPill"></span>'); p = document.getElementById('vacEstPill'); }
+      p.className = 'pill ' + e.cls; p.textContent = e.rot; p.title = e.nota || '';
+    }
+    let f = document.getElementById('vacEstFaixa'); const nav = document.querySelector('nav.vtabs');
+    if (!e || (e.estado === 'atualizacao' && oculta(PAGE.id))) { if (f) f.remove(); return; }
+    const ver2 = typeof vacPortalHref === 'function' ? vacPortalHref('versoes') : 'Portal.html#versoes';
+    const html = e.estado === 'construcao'
+      ? `<b>Página em construção.</b> Ainda não grava dados; mostra o que vai ter.${e.nota ? ' ' + esc2(e.nota) : ''}`
+      : `<b>Página em atualização.</b> Ela funciona normalmente; algumas telas ainda vão mudar.${e.nota ? ' ' + esc2(e.nota) : ''} <a href="${esc2(ver2)}">Ver o que muda ↗</a><button type="button" class="vestx" title="Esconder por 7 dias" aria-label="Esconder aviso">✕</button>`;
+    if (!f) { const box = document.createElement('div'); box.id = 'vacEstFaixa'; (nav || document.querySelector('.vpage') || document.body.firstElementChild).insertAdjacentElement('afterend', box); f = box; }
+    if (f.dataset.e !== e.estado || f.dataset.n !== e.nota) { f.dataset.e = e.estado; f.dataset.n = e.nota; f.className = 'vestfaixa ' + e.estado; f.innerHTML = `<div class="wrap">${html}</div>`;
+      const x = f.querySelector('.vestx'); if (x) x.onclick = () => { try { localStorage.setItem('vac.estadoOculto.' + PAGE.id, new Date().toISOString()); } catch (er) { } f.remove(); }; }
+  };
+  const busca = () => {
+    if (typeof Busca === 'undefined' || !Busca || Busca._vacEst) return; Busca._vacEst = 1; const f0 = Busca.itens;
+    Busca.itens = function () { const R = f0.apply(this, arguments) || []; for (const x of R) { if (x.tipo !== 'Ir para' || !x.href) continue;
+      const s = (typeof systems === 'function' ? systems() : []).find(s => s.html && arq(s.html) === arq(x.href) && !String(x.href).includes('#'));
+      const e = s && vacEstadoDe(s.id); if (e && !String(x.sub || '').includes(e.rot)) x.sub = (x.sub ? x.sub + ' · ' : '') + e.rot; } return R; };
+  };
+  function vacEstadoRender() { try { selos(); pagina(); busca(); } catch (e) { console.warn('vacEstadoRender', e); } }
+  window.vacEstadoRender = vacEstadoRender;
+  const ini = () => {
+    vacEstadoRender();
+    for (const id of ['sysNav', 'sysOutros']) { const el = document.getElementById(id); if (el) new MutationObserver(() => requestAnimationFrame(selos)).observe(el, { childList: true }); }
+  };
+  window.addEventListener('storage', e => { if (e.key === 'vac.sistemas' || (e.key || '').startsWith('vac.estadoOculto')) vacEstadoRender(); });
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', () => setTimeout(ini, 0)); else setTimeout(ini, 0);
+})();
 
 </script>
 </body>

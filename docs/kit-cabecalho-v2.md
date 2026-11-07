@@ -117,3 +117,7 @@ Gestão de Gel 2.02 (07/11/2026):
 - "40 primeiros de N" no risco de vencimento;
 - Painel em 1º na ordem padrão das abas;
 - `#aba=<id>` e aba inicial do perfil, que vale sobre a página inicial pessoal só na 1ª abertura da sessão.
+
+## Kit v2.1 · situação da página (07/11/2026)
+
+`vacEstadoDe(id)` → `{estado:'construcao'|'atualizacao', rot, cls, nota}` ou `null` (estável). Ordem: `vac.sistemas[].estado` (Portal › Módulos) > `PAGE.estado` > `DEFAULT_SYSTEMS[].estado` (`fontes/kit/sistemas.js`). `vacEstadoRender()` desenha o ponto na barra (e o texto no menu Outros), a pílula `#vacEstPill` ao lado da versão, a faixa `#vacEstFaixa` abaixo das abas e o selo no Ctrl K; roda sozinho no carregamento, quando a barra é redesenhada e quando `vac.sistemas` muda em outra aba. Página declara `PAGE.estado` e `PAGE.estadoNota`. Especificação: `paginas-construcao.md`.
