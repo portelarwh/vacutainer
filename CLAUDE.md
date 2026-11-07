@@ -12,7 +12,8 @@ Plataforma de páginas HTML de arquivo único que trabalham juntas numa **pasta 
 | Gestão de Gel | `Gestão-Gel-Vacutainer.html` | `fifo-base.json` | 2.02 | direto no HTML |
 | Paradas | `Paradas.html` | `paradas-base.json` | 1.0.11 | direto no HTML |
 
-Futuras: Equipamentos/Máquinas, Manutenção, Projetos, OSM (ver `docs/paginas-novas.md`, `docs/osm-arquitetura.md`, `docs/plano-evolucao-plataforma.md`).
+Divisão final (Portal 1.7): Portal · Produção · Waste · Gestão de Gel · Paradas · **Equipamentos** (inclui manutenção; não há página Manutenção) · **Iniciativas** (uma página, 3 abas: 5S · OSM · KAS; não há OSM.html) · **Projetos** · Outros ▾ · ⚙ Administração.
+Próxima entrega: páginas em construção (Equipamentos, Iniciativas, Projetos) e em atualização (Gel, Paradas) — especificação em `docs/paginas-construcao.md`. Arquitetura: `docs/plano-evolucao-plataforma.md`, `docs/osm-arquitetura.md` (aba OSM de Iniciativas). `docs/paginas-novas.md` é histórico (lista antiga Máquinas/Manutenção).
 
 ## Comandos
 
@@ -60,6 +61,7 @@ Produção aplica o cadastro na base do OEE pelo `CadSync` (`fontes/producao/cad
 - Plataforma: `arquitetura-integracao-sistemas.md`, `portal-e-padrao-comum.md`, `plano-evolucao-plataforma.md`, `centralizacao-configuracoes.md`
 - Cadastro: `cadastro-base-contrato.md`, `cs12-importacao-bom.md`
 - Kit: `kit-cabecalho-e-backups.md` (v1), `kit-cabecalho-v2.md` (v2/v2.1)
+- Páginas novas: `paginas-construcao.md` (construção/atualização)
 - Páginas: `portal-1-7.md` (Portal 1.7–1.8.10), `producao-ordens-sap.md`, `waste-v1-8.md`, `perdas-ordem-v1.md`, `paradas-arquitetura.md`, `portal-pedido-paradas.md`, `paginas-novas.md`, `osm-arquitetura.md`
 
 Ao terminar uma entrega, atualizar o doc da página (seção nova com a versão e a data) e o `CLAUDE.md` se mudar regra, versão ou comando. Se mudar a instalação, a estrutura da pasta ou as telas de entrar/conectar, editar `fontes/guia/guia_modelo.html` e rodar `node fontes/guia/gerar_guia.js` (nunca editar o `Guia de instalação.html` gerado).

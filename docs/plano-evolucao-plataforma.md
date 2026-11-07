@@ -1,6 +1,6 @@
 # Plano de evolução da plataforma · Sistemas da Linha Vacutainer
 
-05/11/2026 (corrigido no mesmo dia: OSM = Observação de Segurança; KAS e 5S separados; MB51 sem referência do estorno; **prioridade atual: Waste**; divisão dos módulos em D1) · **planejamento, nada implementado** (decisão: nenhuma alteração antes de fechar o plano).
+05/11/2026 · **atualizado em 06/11/2026: divisão final das páginas** (§ 3.1, decidida no Portal 1.7): Portal · Produção · Waste · Gestão de Gel · Paradas · Equipamentos (com manutenção) · **Iniciativas (5S · OSM · KAS, uma página com 3 abas)** · Projetos · Outros ▾ · ⚙ Administração. Páginas em construção/atualização: `paginas-construcao.md`. (Corrigido em 05/11: OSM = Observação de Segurança; KAS e 5S separados; MB51 sem referência do estorno; **prioridade atual: Waste**; divisão dos módulos em D1) · **planejamento, nada implementado** (decisão: nenhuma alteração antes de fechar o plano).
 Base: "Documento consolidado de melhorias" (05/11/2026) cruzado com os HTMLs atuais — **Portal 1.6, OEE 2.0, Gestão de Gel V1.91, Perdas 1.7.3, Paradas 1.0.1** — e com os contratos do projeto (`arquitetura-integracao-sistemas`, `cadastro-base-contrato`, `portal-e-padrao-comum`, `paginas-novas`, `paradas-arquitetura`, `kit-cabecalho-e-backups`).
 
 Como ler: § 1 diz o que já existe; § 2 lista as decisões que precisam ser fechadas antes de começar (é onde o documento consolidado conflita com decisões anteriores); § 3 a § 7 são a arquitetura-alvo; § 8 é a ordem de execução; § 9 são os pontos a validar, com o que a análise do código já respondeu.
@@ -45,6 +45,7 @@ Cada item tem uma **recomendação**. São os pontos em que o documento consolid
 - **OSM**: observações de segurança e melhorias do dia a dia do operador, conduzidas pela área de Qualidade, Segurança e Meio Ambiente; **não tem ligação com máquina nem com a linha**. Meta por operador (ex.: 4 por mês). Ações tratadas no estilo planner.
 - **Projetos**: reúne vários tipos — projetos de melhoria, projetos grandes, compra de máquina, **KAS** (pequenos kaizens) e **5S**.
 - A fusão proposta antes (Máquinas → Equipamentos, Manutenção → OSM, Projetos → KAS) foi recusada.
+- **Revisto no Portal 1.7 (05/11/2026, vale este):** Máquinas passa a se chamar **Equipamentos** e inclui a **manutenção** (não há página Manutenção). **5S, OSM e KAS** ficam juntos numa página **Iniciativas** com 3 abas (`Iniciativas.html`, `iniciativas-base.json`, id `inic`). **Projetos** é página à parte (projetos de melhoria, grandes, compra de máquina), tratada depois por ser mais complexa.
 
 **D2 · Prioridade. DECIDIDO (05/11/2026):** **Waste primeiro** (reunião de reporte de waste em 05/11). OSM é tratada depois, junto com Projetos, KAS e 5S. O texto do OEE "Ordens de serviço de melhoria" está errado e deve ser corrigido no chat do OEE.
 
@@ -93,12 +94,13 @@ Cada item tem uma **recomendação**. São os pontos em que o documento consolid
 | Waste | `Perdas-Ordem.html` | `perdas-base.json` | `perdas` | KKBC, desvios de material, custo de waste |
 | Gestão de Gel | `Gestão-Gel-Vacutainer.html` | `fifo-base.json` | `gel` | LPs, FIFO, validade, consumo, scrap de gel, programação, simulador |
 | Paradas | `Paradas.html` | `paradas-base.json` | `paradas` | eventos validados, camada técnica, Pareto, recorrência, guia, formulários |
-| OSM | `OSM.html` | `osm-base.json` | `osm` | **observações de segurança**, meta por operador, ações estilo planner (prioridade atual) |
-| KAS | `KAS.html` | `kas-base.json` | `kas` | ideias e melhorias (iniciativa própria; depois) |
-| 5S | `5S.html` | `5s-base.json` | `5s` | auditorias 5S (iniciativa própria; depois) |
-| Máquinas / Equipamentos, Manutenção, Projetos | já reservados no Portal 1.5 | — | — | escopo a rever depois (D1) |
+| Equipamentos | `Equipamentos.html` | `equipamentos-base.json` | `equip` | ficha e indicadores por máquina, relatórios de máquina, OEE próprio, **manutenção** (preventiva, ordens de serviço, TPM) |
+| Iniciativas | `Iniciativas.html` | `iniciativas-base.json` | `inic` | **uma página, 3 abas**: **5S** (auditorias), **OSM** (observações de segurança, meta por operador, ações estilo planner), **KAS** (ideias e kaizens) |
+| Projetos | `Projetos.html` | `projetos-base.json` | `projetos` | projetos de melhoria, grandes, compra de máquina (escopo a desenhar) |
 
-Ordem na barra: Portal · Produção · Waste · Gel · Paradas · OSM · (KAS · 5S · demais quando existirem) · ⚙ (Administração, ao lado do tema).
+Saíram: `Maquinas.html` e `Manutencao.html` (manutenção fica em Equipamentos; se existirem na pasta, vão para Outros ▾); `OSM.html`, `KAS.html` e `5S.html` (viraram abas de Iniciativas).
+
+Ordem na barra: Portal · Produção · Waste · Gestão de Gel · Paradas · Equipamentos · Iniciativas · Projetos · Outros ▾ · ⚙ (Administração, ao lado do tema). Página em construção ou em atualização aparece com selo (`paginas-construcao.md`).
 
 ### 3.2 Dono de cada entidade (fonte única)
 
@@ -118,20 +120,21 @@ Ordem na barra: Portal · Produção · Waste · Gel · Paradas · OSM · (KAS �
 | Evento de parada | id com prefixo de origem | cada origem publica; **Paradas valida** (D5) | Produção, Equipamentos |
 | Custo / desvio por ordem | ordem + componente | Waste | ficha, Portal |
 | LP, consumo e scrap de gel | LP / ordem | Gel | ficha, Waste |
-| OSM (observação de segurança) e suas ações | `OSM-AAAA-nnnn` | OSM | Portal, Produção (indicador da diretoria) |
-| Ideia / ação de melhoria | `KAS-AAAA-nnnn` | KAS | Portal, ficha |
+| OSM (observação de segurança) e suas ações | `OSM-AAAA-nnnn` | Iniciativas › OSM | Portal, Produção (indicador da diretoria) |
+| Ideia / ação de melhoria | `KAS-AAAA-nnnn` | Iniciativas › KAS | Portal, ficha |
+| Auditoria 5S | `5S-AAAA-nnnn` | Iniciativas › 5S | Portal |
 
 ### 3.3 Pasta
 
 ```
 Vacutainer/
   Portal.html  OEE-Vacutainer.html  Gestão-Gel-Vacutainer.html  Perdas-Ordem.html
-  Paradas.html  Equipamentos.html  OSM.html  KAS.html  Modelo-Pagina.html
+  Paradas.html  Equipamentos.html  Iniciativas.html  Projetos.html
   vacutainer-cadastros.json                 ← só Administração grava
   portal-base.json  oee-vacutainer-base.json  ordens-base.json  fifo-base.json
-  perdas-base.json  paradas-base.json  equipamentos-base.json  osm-base.json  kas-base.json
+  perdas-base.json  paradas-base.json  equipamentos-base.json  iniciativas-base.json  projetos-base.json
   Logo.png  lib/  Equipamentos/<código>/  Importacoes/<módulo>/<competência>/   ← arquivos originais (opcional)
-  00. Backups/Cadastros|Portal|OEE|Ordens|Gel|Perdas|Paradas|Equipamentos|OSM|KAS/
+  00. Backups/Cadastros|Portal|OEE|Ordens|Gel|Perdas|Paradas|Equipamentos|Iniciativas|Projetos/
 ```
 
 ### 3.4 Contrato `exports` v2 (aditivo, `exportsVersion: 2`)
@@ -230,7 +233,7 @@ A aba "Configuração" atual do Portal e a aba "Cadastros" viram uma área só, 
 - `perfis`: `{ codigo, nome, paginas:{ <modulo>: { ver, lancar, fechar, reabrir, importar, exportar, excluir, configurar } }, paginaInicial, restaurarBackup }`.
 - Perfis iniciais: Administrador · Liderança · Operador · Técnico de manutenção · Processos · Qualidade · PCP · Almoxarifado · Consulta · TV.
 - Primeiro acesso: escolhe o nome na lista → a página mostra perfil, página inicial e permissões principais → confirma. Nome fora da lista: entra como **Consulta** e aparece como pendência para o administrador.
-- Página inicial: o Portal abre a do perfil (Operador → `OEE-Vacutainer.html#turno`; Liderança → Produção › painel do turno; Técnico → Paradas › Fila técnica; quem trata ações de OSM → `OSM.html#minhas`; PCP → Produção › Plano; Administrador → Portal). Link `Portal.html#geral` sempre abre o Portal.
+- Página inicial: o Portal abre a do perfil (Operador → `OEE-Vacutainer.html#turno`; Liderança → Produção › painel do turno; Técnico → Paradas › Fila técnica; quem trata ações de OSM → `Iniciativas.html#minhas`; PCP → Produção › Plano; Administrador → Portal). Link `Portal.html#geral` sempre abre o Portal.
 - Senha mestre = a senha do cadastro de hoje, renomeada para **senha de administrador**; ações sensíveis (configurar, restaurar backup, reabrir mês fechado, mudar perfil) pedem a senha.
 
 ---
@@ -270,7 +273,7 @@ Regras do documento mantidas integralmente (§ 8.5–8.21 do consolidado). Ponto
 **Muda:** lê matriz/componentes/modos/limite só do cadastro (remove `config.matriz`); passa a ler `exports.eventosParada` de Produção e Equipamentos e deduplicar (D5); publica `exports.eventos` validados; cada evento ganha "Abrir OSM" (cria OSM com evento, equipamento, ordem e lote preenchidos) e mostra as OSM ligadas; "Ações" migra para KAS (D3); diagnóstico de sincronização (origem, última leitura, nº de eventos, minutos recebidos, pendentes de classificação, diferença entre módulos).
 **Microparada**: uma definição só — código com `classe:'porDuracao'` e `parametros.limiteMicroMin`. Não existe código "MIC" (já inativado com `substituidoPor`).
 
-### 6.4 Equipamentos (novo, era "Máquinas")
+### 6.4 Equipamentos (novo, era "Máquinas"; inclui a manutenção)
 
 **Aprovado por Pedro (05/11/2026), com a regra do OEE por máquina:**
 - **OEE de reporte = o da Linha** (ponto de medição, normalmente a última máquina).
@@ -282,15 +285,16 @@ Regras do documento mantidas integralmente (§ 8.5–8.21 do consolidado). Ponto
 - Indicadores do documento (§ 11.2). MTBF/MTTR vêm do Paradas (não recalcular); OEE por máquina só para ativos com `participacaoOee:'proprio'`.
 - **Importação de relatórios de máquina**: um leitor por formato (pendente: amostras de cada máquina, § 9). Intervalo anormal vira evento `EQ-…` sugerido no `exports.eventosParada`.
 - A aba Equipamentos do Paradas vira atalho para cá (a análise de falhas continua no Paradas).
+- **Manutenção (dentro de Equipamentos, decidido no Portal 1.7):** grupo de abas Manutenção: Plano preventivo e preditivo · Ordens de serviço · TPM (pilares, etiquetas) · priorização pelas falhas do Paradas (`exports.recorrentes`, `porComponente`). Escopo detalhado na fase Equipamentos.
 - **Campo Papel** (§ 9): substituído por `tipoAtivo` (Linha/ponto de medição · Máquina principal · Equipamento auxiliar · Periférico · Esteira · Motor · Molde · Sistema de inspeção · Utilidade) e `participacaoOee` (`proprio` · `afetaLinha` · `soParadas` · `monitoramento`). Migração: `LINHA` (`papel:'oee'`, `tipo:'linha'`) → Linha/ponto de medição, `proprio`; `EQ01…EQ12` (`papel:'equipamento'`) → Máquina principal, `soParadas` (até haver relatório da máquina). `tipo` e `papel` ficam no arquivo por compatibilidade até todas as páginas lerem os campos novos.
 
-### 6.5 OSM · Observações de Segurança (prioridade atual)
+### 6.5 Iniciativas › OSM · Observações de Segurança
 
-**Corrigido em 05/11/2026**: OSM = observação de segurança, com meta por operador por mês, vários temas e ações tratadas no estilo planner. A arquitetura completa fica em **`claude/osm-arquitetura.md`**. As ideias do documento consolidado sobre status, histórico de eventos, comentários em linha do tempo, Kanban, cobrança e relatórios por pessoa (§ 12.4–12.11) **valem para as ações das OSM**; os campos de máquina, compra e fornecedor do § 12.2 não se aplicam.
+**Atualizado em 06/11/2026**: a OSM é a aba **OSM da página Iniciativas** (não há `OSM.html`); dados em `iniciativas-base.json › osm`. **Corrigido em 05/11/2026**: OSM = observação de segurança, com meta por operador por mês, vários temas e ações tratadas no estilo planner. A arquitetura completa fica em **`claude/osm-arquitetura.md`**. As ideias do documento consolidado sobre status, histórico de eventos, comentários em linha do tempo, Kanban, cobrança e relatórios por pessoa (§ 12.4–12.11) **valem para as ações das OSM**; os campos de máquina, compra e fornecedor do § 12.2 não se aplicam.
 
-### 6.6 KAS e 5S
+### 6.6 Iniciativas › 5S e KAS
 
-Iniciativas separadas, cada uma com a sua página, a planejar depois da OSM. Os campos do documento (§ 13) são o ponto de partida do KAS.
+Abas **5S** e **KAS** da página Iniciativas (não são páginas próprias), a desenhar depois da OSM. Os campos do documento consolidado (§ 13) são o ponto de partida do KAS. As três abas compartilham pessoas (cadastro), metas (`metasOsm` e as metas da área com página "Iniciativas"), quadro de ações estilo planner e relatórios.
 
 ### 6.7 Waste (atual Perdas)
 
@@ -322,7 +326,7 @@ Já vem só da CS12 com vigência. Falta: linhas e campos em cinza com cadeado n
 4. Busca global (`exports.indice` de todos).
 5. Cards e gráficos com o semáforo central.
 6. Botão de saída do modo de teste.
-7. Cartão da OSM na Visão geral (meta do mês por operador, ações vencidas) e pendências pelo `exports` da página OSM; KAS e 5S quando existirem.
+7. Cartão de Iniciativas na Visão geral (OSM: meta do mês por operador, ações vencidas; 5S e KAS quando existirem) e pendências pelo `exports` de `iniciativas-base.json`.
 
 ---
 
@@ -346,8 +350,10 @@ Todo gráfico relevante abre os registros que formam a barra/ponto; cada registr
 
 1. **Waste, antes da reunião** (`Perdas-Ordem.html`, nenhuma outra página muda): relatórios de custo e perdas já definidos (KKBC_ORD), importação por arquivo ou colagem, dados brutos, busca livre em qualquer campo, filtro por competência, localizar ordem/lote/material/status, dashboards e relatórios melhores, detalhe da ordem, exclusão lógica com justificativa e restauração, nome Waste, saída do modo teste; **tudo o que já funciona é preservado**.
    - MB51/COOIS **só se** forem necessários para completar ou validar as ordens, e então como **serviço importador reutilizável** (`vac-ordens-sap`: leitor, regras 101/102, consolidação, cobertura), em bloco de código separado e com dados num bloco próprio da base (`ordensSap`), pronto para ser movido. **Provisório**: o dono final é Produção › Ordens; o Waste passará a consumir a base consolidada de ordens e acrescentar custos, waste, variações, refugo, aproveitamento e dados financeiros.
-2. **Portal e Administração**: usuários, perfis, permissões, página inicial, cadastros compartilhados, configurações, vigências, navegação, novos nomes, inclusão de OSM e KAS, **contratos entre todas as bases**. Só depois disso as demais páginas, uma por vez.
-3. Produção · 4. Paradas · 5. Equipamentos · 6. OSM · 7. KAS · 8. Gestão de Gel.
+2. **Portal e Administração**: usuários, perfis, permissões, página inicial, cadastros compartilhados, configurações, vigências, navegação, novos nomes, inclusão de Equipamentos, Iniciativas e Projetos, **contratos entre todas as bases**. Só depois disso as demais páginas, uma por vez.
+3. Produção · 4. Paradas · 5. Equipamentos (com manutenção) · 6. Iniciativas › OSM · 7. Iniciativas › KAS e 5S · 8. Gestão de Gel · Projetos depois.
+
+**Antes disso (06/11/2026):** Equipamentos, Iniciativas e Projetos entram na pasta como páginas **em construção** e Paradas e Gestão de Gel ficam marcadas **em atualização** (`paginas-construcao.md`).
 
 ## 9. Pontos a validar
 

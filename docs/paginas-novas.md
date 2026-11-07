@@ -1,5 +1,7 @@
 # Páginas novas · Paradas, Máquinas, Manutenção e Projetos
 
+> **Histórico.** A lista de páginas mudou no Portal 1.7 (05/11/2026): Máquinas virou **Equipamentos** (com manutenção), Manutenção saiu, e 5S · OSM · KAS ficam em **Iniciativas**. Vale `plano-evolucao-plataforma.md` § 3.1 e `paginas-construcao.md`. O padrão de página nova (§ 3) continua valendo.
+
 03/11/2026 · ponto de partida para os chats das páginas novas. Vale junto com: "Arquitetura de integração", "Portal e padrão comum", "Cadastro base · contrato" e "Kit · cabeçalho comum e backups por módulo".
 
 ## 1. Identidade de cada página (fixa; as páginas se acham pelo nome)

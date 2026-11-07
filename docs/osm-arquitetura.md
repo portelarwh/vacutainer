@@ -1,4 +1,6 @@
-# OSM · Observações de Segurança · arquitetura (proposta)
+# Iniciativas › OSM · Observações de Segurança · arquitetura (proposta)
+
+> **Atualizado em 06/11/2026 (divisão do Portal 1.7):** a OSM **não é uma página própria**. É a aba **OSM** da página **Iniciativas** (`Iniciativas.html`, `iniciativas-base.json`, id `inic`, backups em `00. Backups/Iniciativas`), ao lado das abas **5S** e **KAS**. Tudo abaixo continua valendo, lido assim: "página" = aba OSM; as abas descritas no § 5 são **subabas** da OSM; a base é o bloco `osm` de `iniciativas-base.json`; os links ganham o prefixo da aba (`Iniciativas.html#osm/…`). A página em construção está especificada em `paginas-construcao.md`.
 
 05/11/2026 · **proposta para aprovação, nada implementado.** Prioridade atual da plataforma (ver `claude/plano-evolucao-plataforma.md`, D1/D2). Segue o padrão das páginas novas (`claude/paginas-novas.md`), o kit do cabeçalho (`claude/kit-cabecalho-e-backups.md`), o padrão comum e o contrato do cadastro.
 
@@ -15,11 +17,11 @@ A página responde a três perguntas:
 
 | Página | Arquivo | Base | `PAGE.id` | `backupDir` | Título / subtítulo |
 |---|---|---|---|---|---|
-| OSM | `OSM.html` | `osm-base.json` | `osm` | `00. Backups/OSM` | OSM · Observações de segurança |
+| Iniciativas › OSM | `Iniciativas.html` (aba OSM) | `iniciativas-base.json › osm` | `inic` | `00. Backups/Iniciativas` | INICIATIVAS · 5S · OSM · KAS (aba OSM · Observações de segurança) |
 
 Núcleo comum (pasta da rede, cópia no navegador, fila de operações reaplicada sobre a versão nova, `rev`/`revId`, backup diário e por botão, restaurar), cabeçalho `vac-cabecalho v1`, Ctrl K, TV, relatórios, tema e usuário comuns (`vac.theme`, `vac.user`). Nome do arquivo sem acento.
 
-**Portal**: hoje a lista padrão (`DEFAULT_SYSTEMS`) não tem `osm`. Precisa de uma entrada `{id:'osm', nome:'OSM', html:'OSM.html', base:'osm-base.json', futuro:true}` (pedido pequeno ao chat do Portal). Até lá a página funciona sozinha e a barra a mostra quando o Portal souber dela.
+**Portal**: já tem a entrada `{id:'inic', nome:'Iniciativas', html:'Iniciativas.html', base:'iniciativas-base.json', futuro:true, sub:'5S · OSM · KAS'}` (Portal 1.7). Não criar `osm` separado.
 
 ## 3. Entidades
 
@@ -96,7 +98,7 @@ Registrar OSM ──► Registrada ──(liderança/SESMT olha)──► Em an�
   - **Lista**: tabela ordenável, com edição rápida de responsável/prazo/status.
   - **Calendário**: ações por prazo no mês.
   - **Por responsável**: uma raia por pessoa (o que está com cada um).
-  - Filtro **"Minhas ações"** (pelo usuário do navegador) e link direto `OSM.html#minhas`.
+  - Filtro **"Minhas ações"** (pelo usuário do navegador) e link direto `Iniciativas.html#minhas`.
 
 **ANÁLISE**
 - **Painel**: Ação prioritária + Próximas decisões; KPIs do mês (OSM registradas × meta da equipe, % de operadores na meta, ações abertas, ações vencidas, tempo médio para concluir); tendência 13 meses; Pareto de temas e de locais; tipo × risco.
@@ -109,11 +111,12 @@ Registrar OSM ──► Registrada ──(liderança/SESMT olha)──► Em an�
 - **Importar**: planilha atual de OSM (histórico) e, se for usado, Excel de respostas do Microsoft Forms (o ID evita duplicar, como no Paradas).
 - **Configuração**: participantes, metas, listas (§ 3.4), prazos por risco, dias da cobrança, backups, modo de teste (com botão de saída).
 
-## 6. Base `osm-base.json`
+## 6. Base: bloco `osm` de `iniciativas-base.json`
+
+Fica dentro de `iniciativas-base.json` (`{ schema:'vac-iniciativas', schemaVersion:1, rev, revBy, revAt, revId, appVersion, osm:{…abaixo…}, s5:{…}, kas:{…}, auditoria:[…], exports:{…} }`); rev, backup e auditoria são da página inteira.
 
 ```
-{ schema:'vac-osm', schemaVersion:1, rev, revBy, revAt, revId, appVersion,
-  osms:[ … § 3.1 … ], acoes:[ … § 3.2 … ],
+osm: { osms:[ … § 3.1 … ], acoes:[ … § 3.2 … ],
   participantes:[ … ], metas:[ … ],
   config:{ temas[], tipos[], locais[], riscos[{codigo, nome, prazoDias}], motivosInvalida[], motivosAguardando[],
            cobranca:{ semAtualizacaoDias:7, aguardandoDias:15, avisoFimMesDias:7 } },
@@ -130,14 +133,14 @@ Volume esperado: ~4 × nº de operadores por mês (ex.: 40 operadores → ~160 O
 - `porMes [{ mes, registradas, validas, meta, operadoresNaMeta, operadores, acoesAbertas, acoesVencidas }]` — fonte do indicador "OSM válidos" da diretoria no OEE (que hoje está "em construção" e com o texto errado "ordens de serviço de melhoria").
 - `porOperadorMes [{ mes, operador, turno, validas, meta }]`.
 
-Links pelo endereço: `#osm=OSM-2026-0142`, `#acao=…`, `#minhas`, `#aba=planner|meta|cobranca`, `#operador=<matrícula>`, `#tv`, `#teste`.
+Links pelo endereço (em `Iniciativas.html`): `#osm` (abre a aba), `#osm=OSM-2026-0142`, `#acao=…`, `#minhas`, `#osm/planner|meta|cobranca`, `#operador=<matrícula>`, `#tv`, `#teste`. O `exports` de Iniciativas publica os blocos da OSM dentro de `exports.osm` e os `kpis`/`pendencias` das 3 abas juntos.
 
 ## 8. Entrega proposta
 
 1. **v1.0**: Nova OSM, Observações, Planner (Quadro + Lista + Por responsável), Meta por operador, Painel, Configuração, base e backups, exports, importação da planilha atual.
 2. **v1.1**: Cobrança, Relatórios, Calendário, fotos, Forms.
-3. Pedido ao Portal: entrada `osm` na lista de sistemas e cartão na Visão geral (pelo `exports`, sem código novo no Portal).
-4. Pedido ao OEE: indicador "OSM válidos" lendo `exports.porMes` da OSM e correção do texto.
+3. Portal: a entrada `inic` já existe; o cartão de Iniciativas na Visão geral vem pelo `exports` (sem código novo no Portal).
+4. Pedido ao OEE: indicador "OSM válidos" lendo `exports.osm.porMes` de `iniciativas-base.json` e correção do texto.
 
 ## 9. Perguntas para fechar antes de construir
 
