@@ -209,3 +209,7 @@ Responde à auditoria de relatórios e painéis (registro § P).
 - Em construção / em atualização, editável em Configuração do Portal › Módulos ("Situação da página" + "Nota"), gravada no `portal-base.json` e aplicada ao `vac.sistemas` de cada navegador ao abrir o Portal.
 - Cartão "em construção" com as abas planejadas (bloco `vac-planejado` do HTML); página em construção sem base não gera erro, pendência nem slide de TV. Pílula "em atualização" nos cartões de Gel e Paradas. Selo na tabela de Versões.
 - Detalhes: `paginas-construcao.md` § 8.
+
+## Portal 1.8.13 (07/11/2026) · restauração com cópia garantida
+
+Restaurar a base do Portal a partir de uma cópia: se a cópia `_antes-restaurar_` da base atual falhar (permissão, rede), o Portal avisa o motivo e só continua com "Restaurar mesmo assim?". Antes, a falha era ignorada e a base era substituída sem cópia. Registro § C, item 2.

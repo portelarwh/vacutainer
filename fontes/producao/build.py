@@ -9,7 +9,12 @@ def R(a,b,cnt=1):
     c=s.count(a)
     if c!=cnt: raise SystemExit(f'ERRO ({c}x): {a[:90]!r}')
     s=s.replace(a,b)
-R("const APP_VERSION = '2.0.1';","const APP_VERSION = '2.4.9';")
+R("const APP_VERSION = '2.0.1';","const APP_VERSION = '2.4.10';")
+# 2.4.10 · sair da TV redesenha a tela de baixo: a TV limpa o registro dos gráficos (Charts.reset) e a dica e o clique da tela paravam até trocar de aba
+R("    if (this.prevTheme) document.documentElement.setAttribute('data-theme', this.prevTheme); else applyTheme();\n    try { if (document.fullscreenElement) document.exitFullscreen(); } catch (e) { }\n  },",
+  "    if (this.prevTheme) document.documentElement.setAttribute('data-theme', this.prevTheme); else applyTheme();\n    try { if (document.fullscreenElement) document.exitFullscreen(); } catch (e) { }\n    { const y = window.scrollY; try { renderNow(); } catch (e) { console.warn(e); } window.scrollTo(0, y); }   // 2.4.10 · gráficos voltam a responder\n  },")
+# 2.4.10 · CSV: mesma regra das outras páginas (kit vacCsvTexto). Antes, número escrito como texto que começa com "-" (ex.: -12,5) também ganhava o prefixo '
+R("    if (/^[=+\\-@\\t\\r]/.test(s)) s = \"'\" + s;","    s = typeof vacCsvTexto === 'function' ? vacCsvTexto(s) : (/^[=+\\-@\\t\\r]/.test(s) ? \"'\" + s : s);")
 # 2.4.9 · kit: situação das páginas (selo na barra; docs/paginas-construcao.md)
 # 2.4.8 · relatório em PDF: comentário longo continua na página seguinte (antes o que passava do fim da folha se perdia)
 R("  if (c.note && c.note.trim()) { doc.setFillColor(227, 236, 245); const L = c.note.split(/\\n+/).filter(s => s.trim()).reduce((n, s) => n + doc.splitTextToSize(T(s), W - 6).length, 0); doc.rect(m, y - 1, W, L * 4.2 + 4, 'F'); y += 1.5; doc.setFont('helvetica', 'bold'); doc.setFontSize(8); doc.setTextColor(...ACC); doc.text('COMENTÁRIO', m + 3, y + 2); y += 4.5; for (const ln of c.note.split(/\\n+/).filter(s => s.trim())) { const LL = doc.splitTextToSize(T(ln), W - 6); doc.setFont('helvetica', 'normal'); doc.setFontSize(9.5); doc.setTextColor(...INK); doc.text(LL, m + 3, y + 3); y += LL.length * 4.2; } y += 3; }",
@@ -117,4 +122,4 @@ R("// cadastro base do Portal na mesma pasta: só a revisão, para a pílula do 
 R("</script>\n</body>","</script>\n"+css+"<script>\n'use strict';\n"+svc+"\n"+tela+"\n"+sync+"\n</script>\n<script>\n"+kit21+"\n</script>\n</body>")
 R('<th class="n">Diferença</th><th>Situação</th></tr></thead>','<th class="n">Diferença</th><th>Situação</th><th title="O que o MB51/COOIS (oficial) diz desta ordem: data principal, saldo, lote, tipo, KKBC no Waste">SAP</th></tr></thead>')
 R("data-accrow=\"${o.id}\">✓ Aceitar apurado</button>` : ''}</td></tr>`; }).join('')}</tbody>","data-accrow=\"${o.id}\">✓ Aceitar apurado</button>` : ''}</td><td>${typeof ordSapCel === 'function' ? ordSapCel(o) : ''}</td></tr>`; }).join('')}</tbody>")
-open(out,'w',encoding='utf-8').write(s);print('ok')
+open(out,'w',encoding='utf-8',newline='\n').write(s);print('ok')   # newline: no Windows o padrão gravaria CRLF

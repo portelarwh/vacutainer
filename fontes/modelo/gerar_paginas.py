@@ -11,7 +11,7 @@ DOCS_PLANO = 'docs/plano-evolucao-plataforma.md'
 PAGINAS = [
  {'arquivo': 'Equipamentos.html',
   'page': {'id': 'equip', 'titulo': 'Equipamentos · Máquinas da linha e manutenção', 'tituloCurto': 'Equipamentos',
-           'subtitulo': 'Máquinas da linha e manutenção', 'versao': '0.1', 'baseFile': 'equipamentos-base.json',
+           'subtitulo': 'Máquinas da linha e manutenção', 'versao': '0.1.1', 'baseFile': 'equipamentos-base.json',
            'backupDir': '00. Backups/Equipamentos', 'estado': 'construcao',
            'estadoNota': 'Ficha e indicadores por máquina, relatórios das máquinas e manutenção.'},
   'plano': {
@@ -42,7 +42,7 @@ PAGINAS = [
      'itens': ['Pilares do TPM e etiquetas', 'Priorização pelas falhas recorrentes do Paradas']}]}},
  {'arquivo': 'Iniciativas.html',
   'page': {'id': 'inic', 'titulo': 'Iniciativas · 5S · OSM · KAS', 'tituloCurto': 'Iniciativas', 'subtitulo': '5S · OSM · KAS',
-           'versao': '0.1', 'baseFile': 'iniciativas-base.json', 'backupDir': '00. Backups/Iniciativas', 'estado': 'construcao',
+           'versao': '0.1.1', 'baseFile': 'iniciativas-base.json', 'backupDir': '00. Backups/Iniciativas', 'estado': 'construcao',
            'estadoNota': 'Observações de segurança, auditorias 5S e kaizens numa página só.'},
   'plano': {
    'nota': 'Observações de segurança (OSM), auditorias 5S e kaizens (KAS) numa página só, com metas, ações estilo planner e relatórios.',
@@ -79,7 +79,7 @@ PAGINAS = [
                  {'id': 'painel', 'nome': 'Painel', 'itens': ['Ideias por área, ganhos, implantadas no mês']}]}]}},
  {'arquivo': 'Projetos.html',
   'page': {'id': 'projetos', 'titulo': 'Projetos · Projetos de melhoria e investimentos', 'tituloCurto': 'Projetos',
-           'subtitulo': 'Projetos de melhoria e investimentos', 'versao': '0.1', 'baseFile': 'projetos-base.json',
+           'subtitulo': 'Projetos de melhoria e investimentos', 'versao': '0.1.1', 'baseFile': 'projetos-base.json',
            'backupDir': '00. Backups/Projetos', 'estado': 'construcao',
            'estadoNota': 'Escopo a desenhar: projetos de melhoria, projetos grandes e compra de máquina.'},
   'plano': {
@@ -99,7 +99,10 @@ def js(o): return json.dumps(o, ensure_ascii=False, separators=(',', ':'))
 def jsobj(o): return '{' + ','.join(k + ':' + json.dumps(v, ensure_ascii=False) for k, v in o.items()) + '}'
 
 def gerar():
+    # duas fases (07/11/2026): monta as 3 páginas na memória; grava só se todas passarem. Se o aplicar_kit21.py falhar depois,
+    # devolve o conteúdo anterior das páginas (nada fica pela metade)
     m = open(MODELO, encoding='utf-8').read()
+    saida = []
     for p in PAGINAS:
         pg = p['page']; s = m
         cab = pg['titulo'].upper()
@@ -107,9 +110,16 @@ def gerar():
                      ('@@PLANO@@', js(p['plano']).replace('</', '<\\/'))]:
             if k not in s: raise SystemExit('ERRO: ' + k + ' não achado no modelo')
             s = s.replace(k, v)
-        open(os.path.join(RAIZ, 'paginas', p['arquivo']), 'w', encoding='utf-8', newline='\n').write(s); print('gerada', p['arquivo'])
+        saida.append((os.path.join(RAIZ, 'paginas', p['arquivo']), p['arquivo'], s))
+    antes = {fn: (open(fn, encoding='utf-8', newline='').read() if os.path.exists(fn) else None) for fn, _, _ in saida}
+    for fn, nome, s in saida:
+        open(fn, 'w', encoding='utf-8', newline='\n').write(s); print('gerada', nome)
     r = subprocess.run([sys.executable, os.path.join(RAIZ, 'fontes', 'kit', 'aplicar_kit21.py')])
-    if r.returncode: raise SystemExit('ERRO no aplicar_kit21.py')
+    if r.returncode:
+        for fn, s0 in antes.items():
+            if s0 is None: os.remove(fn)
+            else: open(fn, 'w', encoding='utf-8', newline='').write(s0)
+        raise SystemExit('ERRO no aplicar_kit21.py: as páginas geradas voltaram ao que eram')
 
 if __name__ == '__main__':
     gerar()

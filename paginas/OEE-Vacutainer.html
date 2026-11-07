@@ -944,7 +944,7 @@ const U = (() => {
     if (v == null) return '';
     if (typeof v === 'number') return String(v).replace('.', ',');
     let s = String(v);
-    if (/^[=+\-@\t\r]/.test(s)) s = "'" + s;
+    s = typeof vacCsvTexto === 'function' ? vacCsvTexto(s) : (/^[=+\-@\t\r]/.test(s) ? "'" + s : s);
     if (/[;"\n\r]/.test(s)) s = '"' + s.replace(/"/g, '""') + '"';
     return s;
   }
@@ -955,7 +955,7 @@ const U = (() => {
 
 /* ---- 02-model.js ---- */
 /* ================= modelo de dados, valores iniciais e integridade ================= */
-const APP_VERSION = '2.4.9';
+const APP_VERSION = '2.4.10';
 const SCHEMA_VERSION = 1;
 const BASE_FILE = 'oee-vacutainer-base.json';
 const BACKUP_DIR = '00. Backups';
@@ -6201,6 +6201,7 @@ const TV = {
     if (!this.el) return; this.el.remove(); this.el = null; clearTimeout(this.timer); clearInterval(this.clock); document.removeEventListener('keydown', this.onKey); Store.S.listeners.delete(this.unsub);
     if (this.prevTheme) document.documentElement.setAttribute('data-theme', this.prevTheme); else applyTheme();
     try { if (document.fullscreenElement) document.exitFullscreen(); } catch (e) { }
+    { const y = window.scrollY; try { renderNow(); } catch (e) { console.warn(e); } window.scrollTo(0, y); }   // 2.4.10 · gráficos voltam a responder
   },
   schedule() { clearTimeout(this.timer); this.timer = setTimeout(() => { if (!this.paused) this.step(1); else this.schedule(); }, (db().settings.tvRotateSec || 20) * 1000); },
   step(n) { this.idx = (this.idx + n + this.panels.length) % this.panels.length; this.render(); this.schedule(); },
@@ -9642,6 +9643,10 @@ function vacEstadoDe(id) {
   window.addEventListener('storage', e => { if (e.key === 'vac.sistemas' || (e.key || '').startsWith('vac.estadoOculto')) vacEstadoRender(); });
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', () => setTimeout(ini, 0)); else setTimeout(ini, 0);
 })();
+/* kit v2.1 · texto seguro para CSV (07/11/2026): texto que começa com = + - @ (ou tab/retorno) vira fórmula ao abrir o CSV no Excel.
+   Recebe um prefixo ' (o Excel mostra o texto como está). Número escrito como texto (-1.234 · -12,5 · -3%) não é mexido, e
+   valores number continuam número. Usado por Waste, Gel e Produção (cada página mantém o próprio formato de número e aspas). */
+function vacCsvTexto(v) { const s = String(v ?? ''); return /^[=+\-@\t\r]/.test(s) && !/^[+-]?[\d.,\s]+%?$/.test(s) ? "'" + s : s; }
 
 </script>
 </body>

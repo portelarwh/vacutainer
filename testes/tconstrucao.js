@@ -48,7 +48,8 @@ const NOVAS = [['Equipamentos', 'Equipamentos.html', 'equip', ['maquina', 'preve
         ok(r.pill === 'em construção' && r.faixa, `${nome} · pílula e faixa "em construção"`);
         ok(await p.evaluate(() => !!document.querySelector('#sysNav a.cur .vest[data-e="construcao"]')), `${nome} · página atual na barra com selo`);
         ok(abas.every(a => r.nav.includes(a)) && r.nav[0] === 'geral', `${nome} · abas planejadas: ${r.nav.join(', ')}`);
-        ok(r.ver === 'v0.1' && !r.sync, `${nome} · versão v0.1 e sem Sincronizar/Backup/TV`);
+        const vg = (fs.readFileSync(RAIZ + 'fontes/modelo/gerar_paginas.py', 'utf8').match(/'versao': '([\d.]+)'/) || [])[1];   // versão do gerador (0.1, 0.1.1…)
+        ok(r.ver === 'v' + vg && !r.sync, `${nome} · versão v${vg} (do gerador) e sem Sincronizar/Backup/TV`);
         ok(!r.ls.length, `${nome} · não grava nada no navegador além de tema/sistemas (${r.ls.join(',') || 'nada'})`);
         await p.click(`#nav [data-t="${abas[0]}"]`); await p.waitForTimeout(250);
         ok(await p.evaluate(a => location.hash === '#aba=' + a && /em construção/.test(document.querySelector('#main').textContent), abas[0]), `${nome} · aba ${abas[0]} abre o cartão de construção (#aba=…)`);
