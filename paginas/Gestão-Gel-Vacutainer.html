@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Gestão de Gel · Linha Vacutainer · V2.01</title>
+<title>Gestão de Gel · Linha Vacutainer · V2.02</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600&family=Barlow+Condensed:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
@@ -816,6 +816,36 @@ function vacAvisoBases(res) {
     const t = localStorage.getItem('vac.theme'); if (t != null && !['auto', 'light', 'dark'].includes(t)) localStorage.setItem('vac.theme', 'auto');
   } catch (e) { }
 })();
+/* ----- vac-inicial · 07/11/2026: página e aba inicial por perfil (Portal › Cadastros › Perfis e Usuários, campo "Página inicial")
+   Fica aqui (no topo de cada página) porque o Portal monta a lista de opções na carga. O alvo é [página, hash]:
+   hash "aba=<id>" abre a aba; "turno" é a tela do operador da Produção. Ordem ao abrir uma página: link direto (#…) >
+   aba do perfil (só na 1ª abertura da página na sessão) > preferência da pessoa (última aba, página inicial do Gel) > 1ª aba. */
+const VAC_INICIAL_ALVO = {
+  'Portal': ['portal', ''],
+  'Produção': ['oee', ''], 'Produção › Visão geral': ['oee', 'aba=overview'], 'Produção › Painel': ['oee', 'aba=panel'],
+  'Produção › Lançamento': ['oee', 'aba=launch'], 'Produção › Plano do mês': ['oee', 'aba=plan'], 'Produção › Tela do operador': ['oee', 'turno'],
+  'Waste': ['perdas', ''],
+  'Gestão de Gel': ['gel', ''], 'Gestão de Gel › Painel': ['gel', 'aba=painel'], 'Gestão de Gel › Operação': ['gel', 'aba=op'],
+  'Paradas': ['paradas', ''], 'Paradas › Visão geral': ['paradas', 'aba=geral'], 'Paradas › Fila técnica': ['paradas', 'aba=fila'],
+  'Equipamentos': ['equip', ''], 'Iniciativas': ['inic', ''], 'Projetos': ['projetos', '']
+};
+/* página inicial de quem entrou (vac.userId): a do usuário, senão a do perfil; lê a cópia do cadastro (vac.cadastros) */
+function vacPaginaInicial() {
+  try {
+    const C = typeof vacCad === 'function' ? vacCad() : JSON.parse(localStorage.getItem('vac.cadastros') || 'null'); if (!C) return null;
+    const id = localStorage.getItem('vac.userId') || ''; const u = id ? (C.usuarios || []).find(x => String(x.codigo) === id && x.ativo !== false) : null;
+    if (u && u.paginaInicial && u.paginaInicial !== '(do perfil)') return u.paginaInicial;
+    const pc = (u && u.perfil) || localStorage.getItem('vac.perfil') || ''; const p = pc ? (C.perfis || []).find(x => x.codigo === pc && x.ativo !== false) : null;
+    return (p && p.paginaInicial) || null;
+  } catch (e) { return null; }
+}
+/* hash da aba inicial desta página (ex.: "aba=panel"), só na 1ª abertura da página na sessão e sem link direto; senão null */
+function vacAbaInicial(pagina) {
+  try {
+    if (location.hash) return null; const k = 'vac.inicial.' + pagina; if (sessionStorage.getItem(k)) return null; sessionStorage.setItem(k, '1');
+    const a = VAC_INICIAL_ALVO[vacPaginaInicial()]; return a && a[0] === pagina && a[1] ? a[1] : null;
+  } catch (e) { return null; }
+}
 /* ===== fim vac-bases v2 ===== */
 </script>
 <!-- vac-cabecalho v2 · barra do sistema (igual em todas) + cabeçalho da página + abas -->
@@ -1221,7 +1251,7 @@ const fileBackend={kind:'file',async commit(ch){applyLocal(ch);FS.pending.push(c
 async function fsRefresh(){if(S.mode!=='file'||FS.busy||ui.demo)return;try{const cur=await fsReadBase(fsKnown());if(cur&&!cur.same){FS.mod=cur.mod;FS.rev=cur.rev;FS.revBy=cur.by;loadData(cur.data);FS.pending.forEach(applyLocal);localBackend.save();render()}}catch(e){}}
 /* ================= V1.89 · integração com as outras páginas (Portal, OEE, Perdas) ================= */
 // versão da página (topo, Guia e base gravada)
-const APP_VERSION='2.01';
+const APP_VERSION='2.02';   /* 2.02 · relatório montado: todas as linhas no PDF, comentário, aviso de corte no texto; Painel em 1º; aba inicial do perfil; impressão e PDF no tema claro */
 /* 1.99 · menu Mais do cabeçalho (vac-visual v1): fecha ao escolher uma ação, ao clicar fora e com Esc */
 document.addEventListener('click',e=>{const m=document.getElementById('gelMais');if(!m||!m.open)return;if(!m.contains(e.target)||e.target.closest('.vmais-l>button'))m.open=false});
 document.addEventListener('keydown',e=>{const m=document.getElementById('gelMais');if(e.key==='Escape'&&m&&m.open){m.open=false;m.querySelector('summary').focus()}});
@@ -2060,7 +2090,7 @@ function applyTheme(){
   const t=ui.prefs.theme||'auto',root=document.documentElement;
   if(t==='auto'){if(root.dataset.mine){delete root.dataset.mine;root.removeAttribute('data-theme')}}
   else if(root.getAttribute('data-theme')!==t){root.dataset.mine='1';root.setAttribute('data-theme',t)}
-  if(!themeObs&&window.MutationObserver){themeObs=new MutationObserver(()=>{const tt=ui.prefs.theme||'auto';if(tt!=='auto'&&root.getAttribute('data-theme')!==tt)root.setAttribute('data-theme',tt)});themeObs.observe(root,{attributes:true,attributeFilter:['data-theme']})}
+  if(!themeObs&&window.MutationObserver){themeObs=new MutationObserver(()=>{const tt=ui.prefs.theme||'auto';if(root.dataset.vacClaro!=null)return;/* 2.02 · tema claro temporário (impressão, PDF) */if(tt!=='auto'&&root.getAttribute('data-theme')!==tt)root.setAttribute('data-theme',tt)});themeObs.observe(root,{attributes:true,attributeFilter:['data-theme']})}
   const tvEl=$('#tv');if(tvEl){const tv=ui.prefs.tvTheme||'dark';const pageDark=t==='dark'||(t==='auto'&&(root.getAttribute('data-theme')==='dark'||(!root.getAttribute('data-theme')&&matchMedia('(prefers-color-scheme: dark)').matches)));
     tvEl.classList.toggle('tvlight',tv==='light'||(tv==='page'&&!pageDark))}
 }
@@ -2318,7 +2348,7 @@ function evOk(e){
   if(r._exp===undefined)r._exp=r.expiry?daysBetween(todayISO(),r.expiry):null;
   return filtOk(r);
 }
-const TABS=[['op','Operação'],['sim','Programação e simulador'],['prod','Registro de produção'],['val','Idade e validade'],['cons','Consumo'],['adh','Aderência FIFO'],['pend','Pendências Almox'],['aud','Auditoria'],['lotes','Lotes e LPs'],['hist','Histórico'],['painel','Painel']];
+const TABS=[['painel','Painel'],['op','Operação'],['sim','Programação e simulador'],['prod','Registro de produção'],['val','Idade e validade'],['cons','Consumo'],['adh','Aderência FIFO'],['pend','Pendências Almox'],['aud','Auditoria'],['lotes','Lotes e LPs'],['hist','Histórico']];
 function renderTabs(){
   const pc=pendencias().total;
   const hl=ui.prefs.tabHl||{};
@@ -3166,7 +3196,7 @@ function renderVal(){
    <div class="card"><h3>Horizonte de validade</h3><p class="sub">Quilos por dias até o vencimento (Batch Expiry Date), contando a partir de hoje.</p><div class="chart">${vbars({labels:expL.map((x,i)=>i?x+' d':x),values:st.expB,colors:expC})}</div></div>
    <div class="card span"><h3>Risco de vencimento projetado</h3><p class="sub">Percorre a fila FIFO acumulando kg e divide pelo consumo médio diário dos últimos ${c.rateWindow} dias. Se a data prevista de consumo passa da validade, o barril entra em risco. É aqui que se decide antecipar lote, pedir realocação ou acionar a Qualidade.</p>
    ${hasRate?`<div class="stat-row"><div class="stat"><div class="l">Barris em risco</div><div class="v" style="color:${risk.length?'var(--crit)':'var(--ok)'}">${risk.length}</div></div><div class="stat"><div class="l">Quilos em risco</div><div class="v">${kg(riskKg)} kg</div></div><div class="stat"><div class="l">${valLabel()} em risco</div><div class="v">${riskU!=null?moneyH(riskVal,riskU,0):nf0.format(riskVal)}</div></div><div class="stat"><div class="l">Bloqueados vencendo (≤ ${c.warnDays} d)</div><div class="v" style="color:${blkSoon.length?'var(--hold)':'inherit'}">${blkSoon.length}</div></div></div>
-   ${risk.length?`<div class="tw"><table><thead><tr><th>Pos.</th><th>Lote</th><th>LP</th><th class="n">kg</th><th>Validade</th><th>Consumo previsto</th><th class="n">Folga (dias)</th></tr></thead><tbody>${risk.slice(0,40).map(l=>`<tr><td class="n">${l._pos}</td><td>${esc(l.batch)}</td><td class="mono"><button class="linkish" data-detail="${esc(l.lp)}">${esc(l.lp)}</button></td><td class="n">${kg(l._remain)}</td><td>${fmtD(l.expiry)}</td><td>${fmtD(isoDate(new Date(Date.now()+l._projDays*DAY)))}</td><td class="n" style="color:var(--crit);font-weight:600">${nf0.format(l._slack)}</td></tr>`).join('')}</tbody></table></div>`:'<div class="info">No ritmo atual, todos os barris liberados são consumidos antes da validade.</div>'}`:'<div class="info">A projeção precisa de pelo menos dois relatórios importados para calcular o consumo médio diário.</div>'}
+   ${risk.length?`${risk.length>40?`<p class="sub" style="margin:4px 0">Mostrando os 40 primeiros de ${risk.length} barris em risco (na ordem FIFO).</p>`:''}<div class="tw"><table><thead><tr><th>Pos.</th><th>Lote</th><th>LP</th><th class="n">kg</th><th>Validade</th><th>Consumo previsto</th><th class="n">Folga (dias)</th></tr></thead><tbody>${risk.slice(0,40).map(l=>`<tr><td class="n">${l._pos}</td><td>${esc(l.batch)}</td><td class="mono"><button class="linkish" data-detail="${esc(l.lp)}">${esc(l.lp)}</button></td><td class="n">${kg(l._remain)}</td><td>${fmtD(l.expiry)}</td><td>${fmtD(isoDate(new Date(Date.now()+l._projDays*DAY)))}</td><td class="n" style="color:var(--crit);font-weight:600">${nf0.format(l._slack)}</td></tr>`).join('')}</tbody></table></div>`:'<div class="info">No ritmo atual, todos os barris liberados são consumidos antes da validade.</div>'}`:'<div class="info">A projeção precisa de pelo menos dois relatórios importados para calcular o consumo médio diário.</div>'}
    </div>
    <div class="card span"><h3>Evolução da idade média e do estoque</h3><p class="sub">Idade média ponderada (dias, linha) e estoque total no relatório (kg, barras), a cada importação.</p>
    ${trend.length>1?`<div class="grid2"><div class="chart">${tsChart({points:trend.map(i=>({label:lbl(i.at)})),series:[{name:'Idade média',values:trend.map(i=>Math.round(i.avgAge)),color:'var(--warn)'}],fmt:v=>nf0.format(v)})}</div><div class="chart">${tsChart({points:trend.map(i=>({label:lbl(i.at)})),series:[],bars:{name:'Estoque',values:trend.map(i=>i.totalKg),color:'var(--accent)'}})}</div></div>`:'<div class="info">Aparece depois do segundo relatório importado.</div>'}
@@ -6469,11 +6499,13 @@ function repCtx(tp){const o={...dbState(),pre:tp.pre||'sem_ant',f:{},cmp:'prev',
 function openReports(){
   const L=repList();
   modal('Relatórios montados',`<p class="sub" style="margin:0">Monte modelos com os blocos do painel. Cada modelo gera PDF (com gráficos e tabelas), CSV e um texto resumo para colar no e-mail, sempre sem filtros e no período escolhido.</p>
+   <label class="sub" style="display:block;margin:8px 0">Comentário / análise <span class="i" title="Vai no topo do PDF e do texto de qualquer modelo gerado agora. Ex.: &quot;Consumo acima da BOM na 2ª semana por troca de lote&quot;. Fica guardado neste navegador até você apagar.">ⓘ</span><textarea id="rpCm" rows="3" style="width:100%">${esc((()=>{try{return localStorage.getItem('gel.repCm')||''}catch(e){return ''}})())}</textarea></label>
    <div class="tw"><table><thead><tr><th>Modelo</th><th>Período padrão</th><th>Blocos</th><th></th></tr></thead><tbody>${L.map(tp=>`<tr><td><b>${esc(tp.name)}</b></td><td><select data-rppre="${esc(tp.id)}">${DB_PRES.filter(p=>p[0]!=='custom').map(([k,l])=>`<option value="${k}" ${tp.pre===k?'selected':''}>${l}</option>`).join('')}</select></td><td class="sub" style="margin:0">${tp.blocks.filter(id=>DBB[id]).map(id=>DBB[id].l).join(' · ')}</td><td class="rbtn"><button class="btn sm primary" data-rpgo="pdf|${esc(tp.id)}">PDF</button> <button class="btn sm" data-rpgo="txt|${esc(tp.id)}">Texto</button> <button class="btn sm" data-rpgo="csv|${esc(tp.id)}">CSV</button> <button class="btn sm" data-rped="${esc(tp.id)}">Editar</button>${S.config.repTpls&&S.config.repTpls.length?` <button class="btn sm danger" data-rpdel="${esc(tp.id)}">Excluir</button>`:''}</td></tr>`).join('')}</tbody></table></div><div id="rpMsg"></div>`,
    `<button class="btn" data-close>Fechar</button><button class="btn" id="rpFromView">Novo a partir do painel atual</button><button class="btn primary" id="rpNew">+ Novo modelo</button>`,()=>{
     $('#ov .dlg').style.width='min(1100px,97vw)';
     const pre={};document.querySelectorAll('[data-rppre]').forEach(s=>s.addEventListener('change',()=>pre[s.dataset.rppre]=s.value));
-    const get=id=>{const tp=repList().find(z=>z.id===id);return tp?{...tp,pre:pre[id]||tp.pre}:null};
+    $('#rpCm').addEventListener('input',e=>{try{localStorage.setItem('gel.repCm',e.target.value)}catch(x){}});
+    const get=id=>{const tp=repList().find(z=>z.id===id);return tp?{...tp,pre:pre[id]||tp.pre,_cm:($('#rpCm')?$('#rpCm').value.trim():'')}:null};
     document.querySelectorAll('[data-rpgo]').forEach(b=>b.addEventListener('click',()=>{const [k,id]=b.dataset.rpgo.split('|');const tp=get(id);if(!tp)return;if(k==='pdf')repPdf(tp);else if(k==='csv')repCsv(tp);else repText(tp)}));
     document.querySelectorAll('[data-rped]').forEach(b=>b.addEventListener('click',()=>repEdit(get(b.dataset.rped))));
     document.querySelectorAll('[data-rpdel]').forEach(b=>b.addEventListener('click',async()=>{const ch=newCh();ch.config={repTpls:repList().filter(z=>z.id!==b.dataset.rpdel)};try{await backend.commit(ch)}catch(e){return}openReports()}));
@@ -6500,9 +6532,10 @@ async function svgPng(svg){const cl=svg.cloneNode(true);const src=[svg,...svg.qu
   const url='data:image/svg+xml;charset=utf-8,'+encodeURIComponent(new XMLSerializer().serializeToString(cl));const img=new Image();await new Promise((ok,er)=>{img.onload=ok;img.onerror=er;img.src=url});
   const cv=document.createElement('canvas');cv.width=w*2;cv.height=h*2;const g=cv.getContext('2d');g.fillStyle='#fff';g.fillRect(0,0,cv.width,cv.height);g.scale(2,2);g.drawImage(img,0,0,w,h);return {data:cv.toDataURL('image/png'),w,h}}
 async function repPdf(tp){if(!(await needLib('pdf'))){toast('O gerador de PDF não carregou. Verifique a conexão com a internet.');return}const msg=$('#rpMsg');if(msg)msg.innerHTML='<div class="info">Montando o PDF…</div>';
-  const root=document.documentElement;const prevTheme=root.getAttribute('data-theme');root.setAttribute('data-theme','light');let R;
+  vacTemaClaro(true);let R;   /* 2.02 · antes o observador de tema podia voltar ao escuro durante a montagem */
   try{const x=repCtx(tp);R=repRender(tp,x);const {jsPDF}=window.jspdf;const doc=new jsPDF({orientation:'portrait',unit:'mm',format:'a4'});const W=210;
     let y=pdfHead(doc,tp.name.toUpperCase(),`${fmtD(x.a)} a ${fmtD(x.b)}   |   ${pageName()}   |   Emitido: ${fmtDT(nowDT())}`,W);
+    if(tp._cm){doc.setFont('helvetica','normal');doc.setFontSize(9.5);let L=doc.splitTextToSize(pdfTxt(tp._cm),W-26);while(L.length){const n=Math.max(1,Math.floor((280-y-6)/4.3));const P=L.slice(0,n);L=L.slice(n);const h=P.length*4.3+4;doc.setFillColor(227,236,245);doc.rect(10,y,W-20,h,'F');doc.setFillColor(29,75,115);doc.rect(10,y,1.2,h,'F');doc.setTextColor(20,30,45);doc.text(P,14,y+4.6,{lineHeightFactor:4.3/(9.5*0.3528)});y+=h+4;if(L.length){doc.addPage();y=16}}}   /* 2.02 · comentário do relatório, em várias páginas se preciso */
     const ks=tp.kpis.filter(k=>DBK[k]).map(k=>({l:DBK[k].l,...DBK[k].c(x)}));const bw=(W-20)/4;
     ks.forEach((k,i)=>{const xx=10+(i%4)*bw,yy=y+Math.floor(i/4)*19;doc.setDrawColor(205,212,220);doc.setFillColor(247,249,251);doc.roundedRect(xx+1,yy,bw-2,17,1.5,1.5,'FD');doc.setFont('helvetica','normal');doc.setFontSize(7);doc.setTextColor(90,100,110);doc.text(pdfTxt(k.l.toUpperCase()),xx+3,yy+4.2);doc.setFont('helvetica','bold');doc.setFontSize(11.5);doc.setTextColor(20,30,45);doc.text(pdfTxt(stripH(k.v)),xx+3,yy+10);doc.setFont('helvetica','normal');doc.setFontSize(6.6);doc.setTextColor(90,100,110);doc.text(doc.splitTextToSize(pdfTxt(stripH(k.s)),bw-6)[0]||'',xx+3,yy+14.5)});
     y+=Math.ceil(ks.length/4)*19+4;
@@ -6511,18 +6544,18 @@ async function repPdf(tp){if(!(await needLib('pdf'))){toast('O gerador de PDF n�
       for(const s of svgs){const p=await svgPng(s);const w=W-20,h=w*p.h/p.w;if(y+h>282){doc.addPage();y=16}doc.addImage(p.data,'PNG',10,y,w,h);y+=h+3}
       const tab=z.r.tab||((z.r.csv||[]).length&&!svgs.length?x.csv[z.r.csv[0]]:null);
       if(z.r.kv){y=pdfTable(doc,y,[{t:'Item',w:110},{t:'Valor',w:80,al:'r'}],z.r.kv.map(([a,b])=>[stripH(a),stripH(b)]))+3}
-      else if(tab&&tab.rows.length){const n=tab.head.length;const cw=(W-20)/n;y=pdfTable(doc,y,tab.head.map((hh,i)=>({t:hh,w:cw,al:i?'r':undefined})),tab.rows.slice(0,40).map(r=>r.map(c=>stripH(c))),{font:n>7?6.8:7.8})+3}
-      else if(!svgs.length){doc.setFontSize(8.5);doc.setTextColor(90,100,110);doc.text(pdfTxt(stripH(el.textContent).slice(0,180)||'Sem dados.'),10,y+4);y+=9}}
+      else if(tab&&tab.rows.length){const n=tab.head.length;const cw=(W-20)/n;y=pdfTable(doc,y,tab.head.map((hh,i)=>({t:hh,w:cw,al:i?'r':undefined})),tab.rows.map(r=>r.map(c=>stripH(c))),{font:n>7?6.8:7.8})+3}   /* 2.02 · todas as linhas (antes: as 40 primeiras, sem aviso); pdfTable quebra a página */
+      else if(!svgs.length){doc.setFontSize(8.5);doc.setTextColor(90,100,110);for(const ln of doc.splitTextToSize(pdfTxt(stripH(el.textContent))||'Sem dados.',W-20)){if(y>280){doc.addPage();y=16}doc.text(ln,10,y+4);y+=3.8}y+=5}}
     pdfFooter(doc,pageName()+' - '+tp.name);await savePdf(`${tp.name.replace(/[^\wÀ-ú-]+/g,'_')}_${x.a}_${x.b}.pdf`,doc.output('blob'));if(msg)msg.innerHTML=''}
   catch(e){console.error(e);if(msg)msg.innerHTML=`<div class="alert">Não consegui gerar o PDF: ${esc(e.message||e)}</div>`}
-  finally{if(R)R.box.remove();if(prevTheme==null)root.removeAttribute('data-theme');else root.setAttribute('data-theme',prevTheme);applyTheme()}}
+  finally{if(R)R.box.remove();vacTemaClaro(false);applyTheme()}}
 function repCsv(tp){const x=repCtx(tp);const R=repRender(tp,x);R.box.remove();const rows=[[tp.name,`${fmtD(x.a)} a ${fmtD(x.b)}`]];
   rows.push([],['Indicador','Valor','Detalhe']);tp.kpis.filter(k=>DBK[k]).forEach(k=>{const v=DBK[k].c(x);rows.push([DBK[k].l,stripH(v.v),stripH(v.s)])});
   R.out.forEach(z=>{const tabs=(z.r.csv||[]).map(id=>x.csv[id]).filter(Boolean);if(z.r.kv)tabs.push({head:['Item','Valor'],rows:z.r.kv});tabs.forEach(t=>{rows.push([],[stripH(z.r.t)],t.head);t.rows.forEach(r=>rows.push(r.map(stripH)))})});
   offerFile(`${tp.name.replace(/[^\wÀ-ú-]+/g,'_')}_${x.a}_${x.b}.csv`,toCsv(['Relatório',''],rows))}
-function repText(tp){const x=repCtx(tp);const R=repRender(tp,x);R.box.remove();const L=[`${tp.name.toUpperCase()} — ${fmtD(x.a)} a ${fmtD(x.b)}`,''];
+function repText(tp){const x=repCtx(tp);const R=repRender(tp,x);R.box.remove();const L=[`${tp.name.toUpperCase()} — ${fmtD(x.a)} a ${fmtD(x.b)}`,''];if(tp._cm)L.push(tp._cm,'');
   tp.kpis.filter(k=>DBK[k]).forEach(k=>{const v=DBK[k].c(x);L.push(`• ${DBK[k].l}: ${stripH(v.v)}${v.s?` (${stripH(v.s)})`:''}`)});
-  R.out.forEach(z=>{const r=z.r;let lines=[];if(r.kv)lines=r.kv.map(([a,b])=>`${a}: ${stripH(b)}`);else if(r.tab&&r.tab.rows.length)lines=r.tab.rows.slice(0,5).map(row=>row.map(stripH).filter(Boolean).join(' · '));if(lines.length){L.push('',stripH(r.t).toUpperCase());lines.forEach(l=>L.push('- '+l))}});
+  R.out.forEach(z=>{const r=z.r;let lines=[];if(r.kv)lines=r.kv.map(([a,b])=>`${a}: ${stripH(b)}`);else if(r.tab&&r.tab.rows.length){lines=r.tab.rows.slice(0,5).map(row=>row.map(stripH).filter(Boolean).join(' · '));if(r.tab.rows.length>5)lines.push(`… e mais ${r.tab.rows.length-5} linha(s): veja o PDF ou o CSV`)}if(lines.length){L.push('',stripH(r.t).toUpperCase());lines.forEach(l=>L.push('- '+l))}});
   const txt=L.join('\n');modal('Texto do relatório',`<textarea id="rpTxt" rows="18" style="font-family:var(--f-mono);font-size:12px">${esc(txt)}</textarea>`,`<button class="btn" id="rpTB">Voltar</button><button class="btn primary" id="rpCopy">Copiar</button>`,()=>{$('#rpTB').addEventListener('click',openReports);$('#rpCopy').addEventListener('click',async()=>{try{await navigator.clipboard.writeText(txt);toast('Copiado.')}catch(e){$('#rpTxt').select();toast('Selecionado. Use Ctrl+C.')}})})}
 
 const dbCsvBtn=id=>`<button type="button" class="btn sm ghost dbcsv" data-dbcsv="${id}" title="Salvar os dados deste gráfico em CSV">⤓ CSV</button>`;
@@ -7156,6 +7189,8 @@ function buildDemo(){
 
 /* ================= boot ================= */
 loadPrefsLocal();if(ui.prefs.home)ui.tab=ui.prefs.home;
+/* 2.02 · aba por link (#aba=painel) ou aba inicial do perfil (Portal › Perfis/Usuários): vale sobre a página inicial pessoal, só na 1ª abertura da sessão */
+try{const h=(location.hash||'').replace(/^#/,'');const ai=/^aba=/.test(h)?h:(typeof vacAbaInicial==='function'?vacAbaInicial('gel'):null);const m=ai&&/^aba=(\w+)$/.exec(ai);if(m&&TABS.some(t=>t[0]===m[1])){ui.tab=m[1];ui.homeApplied=true;if(h)history.replaceState(null,'',location.pathname+location.search)}}catch(e){}
 resetState();S.mode='local';backend=localBackend;
 try{render()}catch(e){console.error(e)}
 ui.hashGo=hashParse();if(ui.hashGo)setTimeout(hashTry,0);
@@ -7273,5 +7308,15 @@ document.addEventListener('toggle', e => {
   const r = l.getBoundingClientRect(); if (r.left < 8) { l.style.right = 'auto'; l.style.left = '0'; }
   const r2 = l.getBoundingClientRect(); if (r2.right > innerWidth - 8) l.style.left = (innerWidth - 8 - r2.width - d.getBoundingClientRect().left) + 'px';
 }, true);
+/* kit v2.1 · impressão e exportação sempre no tema claro (07/11/2026). vacTemaClaro(true) põe o tema claro e guarda o anterior;
+   vacTemaClaro(false) devolve. Ctrl+P e window.print() passam por aqui (beforeprint/afterprint). Páginas que vigiam o tema
+   (Gel) não desfazem enquanto data-vac-claro estiver marcado. */
+function vacTemaClaro(on) {
+  const r = document.documentElement;
+  if (on) { if (r.dataset.vacClaro != null) return; r.dataset.vacClaro = r.hasAttribute('data-theme') ? r.getAttribute('data-theme') : '-'; r.setAttribute('data-theme', 'light'); }
+  else { const t = r.dataset.vacClaro; if (t == null) return; delete r.dataset.vacClaro; if (t === '-') r.removeAttribute('data-theme'); else r.setAttribute('data-theme', t); }
+}
+window.addEventListener('beforeprint', () => vacTemaClaro(true));
+window.addEventListener('afterprint', () => vacTemaClaro(false));
 
 </script>

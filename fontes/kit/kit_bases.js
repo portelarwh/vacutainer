@@ -148,4 +148,34 @@ function vacAvisoBases(res) {
     const t = localStorage.getItem('vac.theme'); if (t != null && !['auto', 'light', 'dark'].includes(t)) localStorage.setItem('vac.theme', 'auto');
   } catch (e) { }
 })();
+/* ----- vac-inicial · 07/11/2026: página e aba inicial por perfil (Portal › Cadastros › Perfis e Usuários, campo "Página inicial")
+   Fica aqui (no topo de cada página) porque o Portal monta a lista de opções na carga. O alvo é [página, hash]:
+   hash "aba=<id>" abre a aba; "turno" é a tela do operador da Produção. Ordem ao abrir uma página: link direto (#…) >
+   aba do perfil (só na 1ª abertura da página na sessão) > preferência da pessoa (última aba, página inicial do Gel) > 1ª aba. */
+const VAC_INICIAL_ALVO = {
+  'Portal': ['portal', ''],
+  'Produção': ['oee', ''], 'Produção › Visão geral': ['oee', 'aba=overview'], 'Produção › Painel': ['oee', 'aba=panel'],
+  'Produção › Lançamento': ['oee', 'aba=launch'], 'Produção › Plano do mês': ['oee', 'aba=plan'], 'Produção › Tela do operador': ['oee', 'turno'],
+  'Waste': ['perdas', ''],
+  'Gestão de Gel': ['gel', ''], 'Gestão de Gel › Painel': ['gel', 'aba=painel'], 'Gestão de Gel › Operação': ['gel', 'aba=op'],
+  'Paradas': ['paradas', ''], 'Paradas › Visão geral': ['paradas', 'aba=geral'], 'Paradas › Fila técnica': ['paradas', 'aba=fila'],
+  'Equipamentos': ['equip', ''], 'Iniciativas': ['inic', ''], 'Projetos': ['projetos', '']
+};
+/* página inicial de quem entrou (vac.userId): a do usuário, senão a do perfil; lê a cópia do cadastro (vac.cadastros) */
+function vacPaginaInicial() {
+  try {
+    const C = typeof vacCad === 'function' ? vacCad() : JSON.parse(localStorage.getItem('vac.cadastros') || 'null'); if (!C) return null;
+    const id = localStorage.getItem('vac.userId') || ''; const u = id ? (C.usuarios || []).find(x => String(x.codigo) === id && x.ativo !== false) : null;
+    if (u && u.paginaInicial && u.paginaInicial !== '(do perfil)') return u.paginaInicial;
+    const pc = (u && u.perfil) || localStorage.getItem('vac.perfil') || ''; const p = pc ? (C.perfis || []).find(x => x.codigo === pc && x.ativo !== false) : null;
+    return (p && p.paginaInicial) || null;
+  } catch (e) { return null; }
+}
+/* hash da aba inicial desta página (ex.: "aba=panel"), só na 1ª abertura da página na sessão e sem link direto; senão null */
+function vacAbaInicial(pagina) {
+  try {
+    if (location.hash) return null; const k = 'vac.inicial.' + pagina; if (sessionStorage.getItem(k)) return null; sessionStorage.setItem(k, '1');
+    const a = VAC_INICIAL_ALVO[vacPaginaInicial()]; return a && a[0] === pagina && a[1] ? a[1] : null;
+  } catch (e) { return null; }
+}
 /* ===== fim vac-bases v2 ===== */

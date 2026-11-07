@@ -558,6 +558,36 @@ function vacAvisoBases(res) {
     const t = localStorage.getItem('vac.theme'); if (t != null && !['auto', 'light', 'dark'].includes(t)) localStorage.setItem('vac.theme', 'auto');
   } catch (e) { }
 })();
+/* ----- vac-inicial · 07/11/2026: página e aba inicial por perfil (Portal › Cadastros › Perfis e Usuários, campo "Página inicial")
+   Fica aqui (no topo de cada página) porque o Portal monta a lista de opções na carga. O alvo é [página, hash]:
+   hash "aba=<id>" abre a aba; "turno" é a tela do operador da Produção. Ordem ao abrir uma página: link direto (#…) >
+   aba do perfil (só na 1ª abertura da página na sessão) > preferência da pessoa (última aba, página inicial do Gel) > 1ª aba. */
+const VAC_INICIAL_ALVO = {
+  'Portal': ['portal', ''],
+  'Produção': ['oee', ''], 'Produção › Visão geral': ['oee', 'aba=overview'], 'Produção › Painel': ['oee', 'aba=panel'],
+  'Produção › Lançamento': ['oee', 'aba=launch'], 'Produção › Plano do mês': ['oee', 'aba=plan'], 'Produção › Tela do operador': ['oee', 'turno'],
+  'Waste': ['perdas', ''],
+  'Gestão de Gel': ['gel', ''], 'Gestão de Gel › Painel': ['gel', 'aba=painel'], 'Gestão de Gel › Operação': ['gel', 'aba=op'],
+  'Paradas': ['paradas', ''], 'Paradas › Visão geral': ['paradas', 'aba=geral'], 'Paradas › Fila técnica': ['paradas', 'aba=fila'],
+  'Equipamentos': ['equip', ''], 'Iniciativas': ['inic', ''], 'Projetos': ['projetos', '']
+};
+/* página inicial de quem entrou (vac.userId): a do usuário, senão a do perfil; lê a cópia do cadastro (vac.cadastros) */
+function vacPaginaInicial() {
+  try {
+    const C = typeof vacCad === 'function' ? vacCad() : JSON.parse(localStorage.getItem('vac.cadastros') || 'null'); if (!C) return null;
+    const id = localStorage.getItem('vac.userId') || ''; const u = id ? (C.usuarios || []).find(x => String(x.codigo) === id && x.ativo !== false) : null;
+    if (u && u.paginaInicial && u.paginaInicial !== '(do perfil)') return u.paginaInicial;
+    const pc = (u && u.perfil) || localStorage.getItem('vac.perfil') || ''; const p = pc ? (C.perfis || []).find(x => x.codigo === pc && x.ativo !== false) : null;
+    return (p && p.paginaInicial) || null;
+  } catch (e) { return null; }
+}
+/* hash da aba inicial desta página (ex.: "aba=panel"), só na 1ª abertura da página na sessão e sem link direto; senão null */
+function vacAbaInicial(pagina) {
+  try {
+    if (location.hash) return null; const k = 'vac.inicial.' + pagina; if (sessionStorage.getItem(k)) return null; sessionStorage.setItem(k, '1');
+    const a = VAC_INICIAL_ALVO[vacPaginaInicial()]; return a && a[0] === pagina && a[1] ? a[1] : null;
+  } catch (e) { return null; }
+}
 /* ===== fim vac-bases v2 ===== */
 </script>
 </head>
@@ -852,32 +882,41 @@ const Report={
      :`<div class="rk">${b.itens.map(k=>`<div><span>${esc(k[0])}</span><b class="${k[3]||''}">${esc(k[1])}</b><small class="muted">${esc(k[2]||'')}</small></div>`).join('')}</div>`;
    else if(b.tipo==='tabela')h+=`<table style="${S.t}"><tr>${b.cab.map((c,i)=>`<th style="${S.th}${(b.num||[]).includes(i)?';text-align:right':''}" class="${(b.num||[]).includes(i)?'n':''}">${esc(c)}</th>`).join('')}</tr>${b.linhas.map((r,j)=>`<tr class="${!inline&&b.destaque?b.destaque[j]||'':''}">${r.map((c,i)=>`<td style="${S.td}${(b.num||[]).includes(i)?';text-align:right':''};${inline&&b.destaque?hl[b.destaque[j]]||'':''}" class="${(b.num||[]).includes(i)?'n':''}">${esc(c)}</td>`).join('')}</tr>`).join('')}</table>`;
    else if(b.tipo==='texto')h+=`<p style="white-space:pre-wrap">${esc(b.texto)}</p>`;
-   else if(b.tipo==='svg'&&!inline)h+=`<div>${b.svg}</div>`;}
+   else if(b.tipo==='svg'){if(!inline)h+=`<div>${b.svg}</div>`;else if(b._png)h+=`<img src="${b._png}" width="760" alt="${esc(b.titulo||'Gráfico')}" style="display:block;border:0;max-width:100%">`;else h+=`<p style="color:#5b6979;font-size:12px">(gráfico no PDF)</p>`}}
   return h+'</div>'},
  texto(doc){const L=[doc.titulo.toUpperCase(),[doc.subtitulo,doc.periodo].filter(Boolean).join(' · ')];if(doc.comentario)L.push('',doc.comentario);
   for(const b of doc.blocos||[]){if(b.titulo)L.push('','*'+b.titulo+'*');if(b.tipo==='kpis')b.itens.forEach(k=>L.push(`• ${k[0]}: ${k[1]}${k[2]?' ('+k[2]+')':''}`));
-   else if(b.tipo==='tabela')b.linhas.slice(0,15).forEach(r=>L.push('• '+r.filter(x=>x!==''&&x!=null).join(' · ')));else if(b.tipo==='texto')L.push(b.texto)}return L.join('\n')},
+   else if(b.tipo==='tabela'){b.linhas.slice(0,15).forEach(r=>L.push('• '+r.filter(x=>x!==''&&x!=null).join(' · ')));if(b.linhas.length>15)L.push(`… e mais ${b.linhas.length-15} linha(s): veja o PDF ou o Excel`)}else if(b.tipo==='texto')L.push(b.texto)}return L.join('\n')},
  async open(doc,{notaKey}={}){doc._logo=await Logo.dataUrl();
   const nota=notaKey&&Store.B.config.notas?Store.B.config.notas[notaKey]:null;if(nota&&doc.comentario==null)doc.comentario=nota.texto;
-  const mb=Modal.open(`<h2>${esc(doc.titulo)}</h2><div class="repbar"><button class="b p" data-r="pdf">⇩ PDF</button><button class="b" data-r="xlsx">⇩ Excel</button><button class="b" data-r="txt">Copiar texto</button><button class="b" data-r="mail">Copiar para Outlook</button><button class="b" data-r="print">Imprimir</button></div>
+  const mb=Modal.open(`<h2>${esc(doc.titulo)}</h2><div class="repbar"><button class="b p" data-r="pdf">⇩ PDF</button><button class="b" data-r="xlsx">⇩ Excel</button><button class="b" data-r="txt">Copiar texto</button><button class="b" data-r="mail">Copiar para Outlook</button><button class="b" data-r="print">Imprimir</button><label class="small muted" style="display:inline-flex;align-items:center;gap:4px;margin-left:6px" title="Na cópia para o Outlook, os gráficos vão como imagem (o e-mail fica maior). Desmarcado: o lugar do gráfico diz &quot;gráfico no PDF&quot;."><input type="checkbox" id="repImg" ${Report.comImg()?'checked':''}> gráficos como imagem no Outlook</label></div>
    <label class="small muted" style="display:block;margin-bottom:8px">Comentário / análise ${notaKey?'(fica salvo com este relatório)':''}<textarea id="repCm" rows="3" style="font-family:var(--f-body);font-size:13px">${esc(doc.comentario||'')}</textarea></label>${nota?`<div class="small muted">Comentário salvo por ${esc(nota.u)} em ${fmtDT(nota.t)}</div>`:''}
    <div id="repPrev">${this.html(doc)}</div>`);
   const upd=()=>{doc.comentario=$('#repCm').value.trim();$('#repPrev').innerHTML=this.html(doc)};$('#repCm').oninput=upd;
+  $('#repImg').onchange=e=>{try{localStorage.setItem(PAGE.id+'.repImg',e.target.checked?'1':'0')}catch(x){}};
   $('#repCm').onchange=()=>{if(notaKey&&Store.mode!=='teste')Store.commit('Comentário de relatório',b=>{b.config.notas=b.config.notas||{};b.config.notas[notaKey]={texto:doc.comentario,u:user(),t:nowISO()}},notaKey)};
   mb.querySelectorAll('[data-r]').forEach(b=>b.onclick=async()=>{upd();try{await this[b.dataset.r](doc)}catch(e){console.error(e);toast(e.message||String(e),6000,true)}})},
+ comImg(){try{return localStorage.getItem(PAGE.id+'.repImg')!=='0'}catch(e){return true}},
+ /* texto em várias páginas: linhas que cabem até o rodapé; o resto continua na página seguinte */
+ pdfLinhas(pdf,L,y,x,{fundo}={}){const lh=4.6;while(L.length){let n=Math.max(1,Math.floor((196-5-y)/lh)+1);if(y>185){pdf.addPage();y=14;continue}const P=L.slice(0,n);L=L.slice(n);const h=P.length*lh+(fundo?5:1);
+   if(fundo){pdf.setFillColor(227,236,245);pdf.rect(12,y,pdf.internal.pageSize.getWidth()-24,h,'F');pdf.setFillColor(29,75,115);pdf.rect(12,y,1.2,h,'F')}pdf.text(P,x,y+(fundo?5:3),{lineHeightFactor:lh/(pdf.getFontSize()*0.3528)});y+=h+(fundo?4:3);if(L.length){pdf.addPage();y=14}}return y},
  async pdf(doc){const jsPDF=await Libs.pdf();const pdf=new jsPDF({orientation:'landscape',unit:'mm',format:'a4'});const W=pdf.internal.pageSize.getWidth();let y=12;
   if(doc._logo){try{const im=new Image();im.src=doc._logo;await im.decode();const h=12,w=im.width*h/im.height;pdf.addImage(doc._logo,'PNG',12,y-2,w,h);}catch(e){}}
   const x0=doc._logo?50:12;pdf.setFont('helvetica','bold');pdf.setFontSize(16);pdf.text(doc.titulo.toUpperCase(),x0,y+4);pdf.setFont('helvetica','normal');pdf.setFontSize(9);pdf.setTextColor(91,105,121);
   pdf.text(`${[doc.subtitulo,doc.periodo].filter(Boolean).join(' · ')} · gerado em ${fmtDT(nowISO())}${user()?' por '+user():''}`,x0,y+9);pdf.setTextColor(21,34,47);y+=16;
-  if(doc.comentario){const lines=pdf.splitTextToSize(doc.comentario,W-30);pdf.setFillColor(227,236,245);pdf.rect(12,y,W-24,lines.length*4.6+5,'F');pdf.setFillColor(29,75,115);pdf.rect(12,y,1.2,lines.length*4.6+5,'F');pdf.setFontSize(10);pdf.text(lines,16,y+5);y+=lines.length*4.6+9}
+  if(doc.comentario){pdf.setFontSize(10);y=this.pdfLinhas(pdf,pdf.splitTextToSize(doc.comentario,W-30),y,16,{fundo:true})+1}
   for(const b of doc.blocos||[]){if(y>180||(b.tipo==='svg'&&y>110)||(b.tipo==='tabela'&&y>160)){pdf.addPage();y=14}
    if(b.titulo){pdf.setFont('helvetica','bold');pdf.setFontSize(11);pdf.text(b.titulo.toUpperCase(),12,y+3);pdf.setFont('helvetica','normal');y+=6}
-   if(b.tipo==='kpis'){const per=Math.min(6,b.itens.length),cw=(W-24)/per;b.itens.forEach((k,i)=>{const cx=12+(i%per)*cw,cy=y+Math.floor(i/per)*20;pdf.setDrawColor(211,218,226);pdf.rect(cx,cy,cw-2,18);pdf.setFontSize(7.5);pdf.setTextColor(91,105,121);pdf.text(String(k[0]).toUpperCase(),cx+2,cy+4.5);
-     pdf.setFontSize(13);pdf.setTextColor(...(k[3]==='bad'?[194,42,42]:k[3]==='good'?[29,128,72]:[21,34,47]));pdf.text(String(k[1]),cx+2,cy+11);pdf.setFontSize(7);pdf.setTextColor(91,105,121);if(k[2])pdf.text(pdf.splitTextToSize(String(k[2]),cw-5)[0],cx+2,cy+15.5);pdf.setTextColor(21,34,47)});y+=Math.ceil(b.itens.length/per)*20+4}
+   if(b.tipo==='kpis'){const per=Math.min(6,b.itens.length),cw=(W-24)/per;
+     /* rótulo e detalhe em até 2 linhas (antes: rótulo sem limite de largura e detalhe só com a 1ª linha); altura igual para o bloco todo */
+     const lin=b.itens.map(k=>{pdf.setFontSize(7.5);const lb=pdf.splitTextToSize(String(k[0]).toUpperCase(),cw-5).slice(0,2);pdf.setFontSize(7);const sb=k[2]?pdf.splitTextToSize(String(k[2]),cw-5).slice(0,2):[];return{lb,sb}});
+     const nl=Math.max(...lin.map(z=>z.lb.length)),ns=Math.max(...lin.map(z=>z.sb.length)),ch=11+nl*3+ns*2.8;
+     b.itens.forEach((k,i)=>{const cx=12+(i%per)*cw,cy=y+Math.floor(i/per)*(ch+2),{lb,sb}=lin[i];pdf.setDrawColor(211,218,226);pdf.rect(cx,cy,cw-2,ch);pdf.setFontSize(7.5);pdf.setTextColor(91,105,121);pdf.text(lb,cx+2,cy+4.5,{lineHeightFactor:1.15});
+     const yv=cy+4.5+(nl-1)*3+6.5;pdf.setFontSize(13);pdf.setTextColor(...(k[3]==='bad'?[194,42,42]:k[3]==='good'?[29,128,72]:[21,34,47]));pdf.text(String(k[1]),cx+2,yv);pdf.setFontSize(7);pdf.setTextColor(91,105,121);if(sb.length)pdf.text(sb,cx+2,yv+4.5,{lineHeightFactor:1.15});pdf.setTextColor(21,34,47)});y+=Math.ceil(b.itens.length/per)*(ch+2)+4}
    else if(b.tipo==='tabela'){pdf.autoTable({startY:y,head:[b.cab],body:b.linhas.map(r=>r.map(c=>c==null?'':String(c))),theme:'grid',styles:{fontSize:8,cellPadding:1.4,lineColor:[211,218,226],textColor:[21,34,47]},headStyles:{fillColor:[29,75,115],textColor:255,fontStyle:'bold'},
      columnStyles:Object.fromEntries((b.num||[]).map(i=>[i,{halign:'right'}])),margin:{left:12,right:12},
      didParseCell:d=>{if(d.section!=='body'||!b.destaque)return;const k=b.destaque[d.row.index];if(k==='hl3'){d.cell.styles.fillColor=[143,21,21];d.cell.styles.textColor=255;d.cell.styles.fontStyle='bold'}else if(k==='hl2'){d.cell.styles.textColor=[194,42,42];d.cell.styles.fontStyle='bold'}else if(k==='hl1')d.cell.styles.textColor=[194,42,42]}});y=pdf.lastAutoTable.finalY+6}
-   else if(b.tipo==='texto'){pdf.setFontSize(10);const l=pdf.splitTextToSize(b.texto,W-24);pdf.text(l,12,y+3);y+=l.length*4.6+4}
+   else if(b.tipo==='texto'){pdf.setFontSize(10);y=this.pdfLinhas(pdf,pdf.splitTextToSize(b.texto,W-24),y,12)+1}
    else if(b.tipo==='svg'){try{const png=await svgToPng(b.svg,1400);const im=new Image();im.src=png;await im.decode();const w=W-24,h=Math.min(90,w*im.height/im.width);if(y+h>195){pdf.addPage();y=14}pdf.addImage(png,'PNG',12,y,h*im.width/im.height,h);y+=h+6}catch(e){console.warn(e)}}}
   const n=pdf.getNumberOfPages();for(let i=1;i<=n;i++){pdf.setPage(i);pdf.setFontSize(8);pdf.setTextColor(91,105,121);pdf.text(`${PAGE.titulo} · página ${i} de ${n}`,W-12,205,{align:'right'})}
   pdf.save((doc.arquivo||doc.titulo).replace(/[\\/:*?"<>|]/g,'_')+'.pdf');toast('PDF gerado.')},
@@ -887,11 +926,12 @@ const Report={
   for(const b of doc.blocos||[])if(b.tipo==='tabela'){n++;const rows=[b.cab,...(b.bruto||b.linhas)];X.utils.book_append_sheet(wb,X.utils.aoa_to_sheet(rows),String(b.titulo||'Tabela '+n).replace(/[\\/?*\[\]:]/g,' ').slice(0,30)||('Tabela '+n))}
   X.writeFile(wb,(doc.arquivo||doc.titulo).replace(/[\\/:*?"<>|]/g,'_')+'.xlsx');toast('Excel gerado.')},
  async txt(doc){await navigator.clipboard.writeText(this.texto(doc));toast('Texto copiado. Cole no WhatsApp ou no Teams.')},
- async mail(doc){const h=this.html(doc,{inline:true});try{await navigator.clipboard.write([new ClipboardItem({'text/html':new Blob([h],{type:'text/html'}),'text/plain':new Blob([this.texto(doc)],{type:'text/plain'})})]);toast('Relatório copiado. Cole no corpo do e-mail do Outlook.')}catch(e){await navigator.clipboard.writeText(this.texto(doc));toast('Seu navegador só permitiu copiar como texto.')}},
+ async mail(doc){const img=$('#repImg')?$('#repImg').checked:this.comImg();for(const b of doc.blocos||[])if(b.tipo==='svg'){b._png=null;if(img){try{b._png=await svgToPng(b.svg,1400)}catch(e){console.warn(e)}}}
+  const h=this.html(doc,{inline:true});for(const b of doc.blocos||[])delete b._png;try{await navigator.clipboard.write([new ClipboardItem({'text/html':new Blob([h],{type:'text/html'}),'text/plain':new Blob([this.texto(doc)],{type:'text/plain'})})]);toast(`Relatório copiado (${Math.max(1,Math.round(h.length/1024))} KB${img?', gráficos como imagem':''}). Cole no corpo do e-mail do Outlook.`)}catch(e){await navigator.clipboard.writeText(this.texto(doc));toast('Seu navegador só permitiu copiar como texto.')}},
  async print(doc){const w=window.open('','_blank');if(!w)return toast('Libere as janelas pop-up para imprimir.');const css=[...document.querySelectorAll('style')].map(s=>s.textContent).join('\n');
-  w.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>${esc(doc.titulo)}</title><style>${css}body{background:#fff}.rep{border:0}</style></head><body>${this.html(doc)}</body></html>`);w.document.close();setTimeout(()=>w.print(),400)}};
+  w.document.write(`<!doctype html><html data-theme="light"><head><meta charset="utf-8"><title>${esc(doc.titulo)}</title><style>${css}body{background:#fff}.rep{border:0}@page{size:A4 landscape;margin:10mm}.rep table{width:100%!important;max-width:100%;table-layout:auto}.rep th,.rep td{white-space:normal!important;overflow-wrap:anywhere;font-size:11px}.rep svg{max-width:100%;height:auto}</style></head><body>${this.html(doc)}</body></html>`);w.document.close();setTimeout(()=>w.print(),400)}};
 function svgToPng(svg,width=1400){return new Promise((ok,ko)=>{const el=document.createElement('div');el.innerHTML=svg;const s=el.querySelector('svg');if(!s)return ko(new Error('svg'));
- const cs=getComputedStyle(document.documentElement);let txt=new XMLSerializer().serializeToString(s).replace(/var\((--[\w-]+)\)/g,(m,v)=>cs.getPropertyValue(v).trim()||'#888');if(!/xmlns=/.test(txt))txt=txt.replace('<svg','<svg xmlns="http://www.w3.org/2000/svg"');txt=txt.replace(/<svg([^>]*)>/,'<svg$1><style>text{font-family:Arial,Helvetica,sans-serif}</style>');
+ const rt=document.documentElement,t0=rt.getAttribute('data-theme');rt.setAttribute('data-theme','light');const cs=getComputedStyle(rt);let txt;try{txt=new XMLSerializer().serializeToString(s).replace(/var\((--[\w-]+)\)/g,(m,v)=>cs.getPropertyValue(v).trim()||'#888')}finally{if(t0==null)rt.removeAttribute('data-theme');else rt.setAttribute('data-theme',t0)}if(!/xmlns=/.test(txt))txt=txt.replace('<svg','<svg xmlns="http://www.w3.org/2000/svg"');txt=txt.replace(/<svg([^>]*)>/,'<svg$1><style>text{font-family:Arial,Helvetica,sans-serif}</style>');
  const vb=(s.getAttribute('viewBox')||'0 0 800 300').split(/\s+/).map(Number);const h=Math.round(width*vb[3]/vb[2]);const im=new Image();im.onload=()=>{const c=document.createElement('canvas');c.width=width;c.height=h;const g=c.getContext('2d');g.fillStyle='#fff';g.fillRect(0,0,width,h);g.drawImage(im,0,0,width,h);ok(c.toDataURL('image/png'))};im.onerror=ko;im.src='data:image/svg+xml;charset=utf-8,'+encodeURIComponent(txt)})}
 
 /* ---------- gráfico de barras simples (mesmas cores do OEE: verde atinge a meta, vermelho não) ---------- */
@@ -983,7 +1023,7 @@ function wireConfigComum(){$('#cPasta').onclick=async()=>{if(await Store.pick())
         entrar pelo ID (autocadastro como Consulta); página inicial por perfil (1x por sessão); vigência gravada não se edita (desativar com motivo); painel de vigências; semáforo central; saída do modo de teste.
    1.1.2: aviso da carga diz qual base foi lida.  1.5: páginas Paradas, Máquinas, Manutenção e Projetos na lista (aparecem quando o HTML chega na pasta).  1.4: lista técnica pela CS12 multinível (itens = nível 1, estrutura = níveis 2+); CS03 sai.  1.3: cabeçalho comum (vac-cabecalho v2: barra do sistema + página + abas), busca Ctrl K, acabamento V1.90, Versões com cabeçalho e último backup.  1.2: Configuração › Versões das páginas (versão e data de cada HTML, gravação das bases, cópias repetidas, histórico).
    ===================================================================== */
-const PAGE={id:'portal',titulo:'Portal · Linha Vacutainer',tituloCurto:'Portal',subtitulo:'Sistemas de gestão da linha',versao:'1.8.10',baseFile:'portal-base.json',idb:'vac-portal',backupDir:'00. Backups/Portal',
+const PAGE={id:'portal',titulo:'Portal · Linha Vacutainer',tituloCurto:'Portal',subtitulo:'Sistemas de gestão da linha',versao:'1.8.11',baseFile:'portal-base.json',idb:'vac-portal',backupDir:'00. Backups/Portal',
  vazio:()=>({schema:'portal-base',rev:0,config:{modulos:{},avisoDias:30,notas:{}},audit:[]}),
  /* itens do Portal para a busca Ctrl K: cadastro, pendências e telas */
  busca:q=>{const R=[],D=Cad.D;if(D)for(const t of CAD_ORD){for(const it of D[t]||[]){const c=String(it[kOf(t)]),nm=t==='bom'?((cadItem('catalogos',it.catalogo)||{}).nome||''):it.nome||'';if(norm(c+' '+nm).includes(q))R.push({tipo:CAD_T[t].um,txt:c+(nm?' · '+nm:''),sub:'Cadastros'+(cadAtivo(t,it,D)?'':' · inativo'),href:'#cadastros/'+t+'/'+encodeURIComponent(c)});if(R.length>30)break}}
@@ -1333,8 +1373,9 @@ const CAD_T={
 CAD_T.componentes={nome:'Componentes',um:'componente',campos:[['codigo','Código (<EQ>-Cnn)','cod'],['equipamento','Equipamento','refcod','equipamentos'],['nome','Nome','txt',null,{w:2}],['sistema','Sistema','sel',['mecânico','elétrico','pneumático','hidráulico','automação','visão','ferramental','outro']],['criticidade','Criticidade','sel',['A','B','C']],['materialSAP','Material SAP','txt']]};
 CAD_T.modosFalha={nome:'Modos de falha',um:'modo de falha',campos:[['codigo','Código','cod'],['nome','Nome','txt',null,{w:2}]]};
 /* 1.7 · pessoas: usuários (entram pelo ID) e perfis (página inicial e permissões por página) */
-const INICIAIS=['(do perfil)','Portal','Produção','Produção › Tela do operador','Waste','Gestão de Gel','Paradas','Equipamentos','Iniciativas','Projetos'];
-const INICIAL_ALVO={'Portal':['portal',''],'Produção':['oee',''],'Produção › Tela do operador':['oee','turno'],'Waste':['perdas',''],'Gestão de Gel':['gel',''],'Paradas':['paradas',''],'Equipamentos':['equip',''],'Iniciativas':['inic',''],'Projetos':['projetos','']};
+/* 1.8.11 · página e aba inicial: lista comum no kit (vac-inicial em kit_bases.js), lida também pelas outras páginas quando abertas direto */
+const INICIAL_ALVO=VAC_INICIAL_ALVO;
+const INICIAIS=['(do perfil)',...Object.keys(VAC_INICIAL_ALVO)];
 const PERM_MODS=['portal','oee','perdas','gel','paradas','equip','inic','projetos'];
 const PERM_FN=[['ver','Ver'],['lancar','Lançar / editar'],['fechar','Fechar / reabrir'],['importar','Importar'],['exportar','Exportar'],['excluir','Excluir'],['configurar','Configurar']];
 const permDe=(fns,mods=PERM_MODS)=>Object.fromEntries(PERM_MODS.map(m=>[m,Object.fromEntries(PERM_FN.map(([f])=>[f,mods.includes(m)&&fns.includes(f)]))]));
@@ -1413,7 +1454,7 @@ const AJUDA_CAMPO={
  'usuarios.codigo':'ID ou matrícula: é o que a pessoa digita em "Entrar". Único e imutável.','usuarios.nome':'Nome registrado em tudo o que a pessoa altera, em todas as páginas.',
  'usuarios.perfil':'Perfil de acesso: define a página inicial e o que a pessoa pode ver e lançar. Quem se cadastra sozinho entra como Consulta.',
  'usuarios.turno':'Turno da pessoa (filtros e relatórios por turno).','usuarios.especialidade':'Ex.: mecânica, elétrica, qualidade, processos.','usuarios.email':'E-mail corporativo (relatórios e avisos no futuro).',
- 'usuarios.paginaInicial':'Para onde o Portal leva a pessoa ao abrir. "(do perfil)" = usa a página inicial do perfil.',
+ 'usuarios.paginaInicial':'Página e aba que abrem para a pessoa (ex.: "Produção › Painel"). Vale ao abrir pelo Portal e ao abrir a própria página direto (1ª vez na sessão; link com # tem prioridade). "(do perfil)" = usa a do perfil.',
  /* ---- 1.8: campos novos (com exemplo) ---- */
  'equipamentos.apelidos':'Outros nomes com que este equipamento aparece em formulários antigos, no Forms ou em planilhas, separados por ponto e vírgula. A Paradas usa para ligar o nome ao código (de-para). Ex.: "Tullip B; Tulip B; Rotuladora 2".',
  'paradas.duracaoManual':'Permite lançar só a duração (minutos), sem horário de início e fim. Ex.: RTB (retrabalho) ou abono de almoço.',
@@ -1483,7 +1524,7 @@ const AJUDA_CAMPO={
  'parametros.unidade':'Unidade fabril que aparece nos relatórios. Ex.: BD Curitiba.','parametros.setor':'Setor que aparece nos relatórios. Ex.: Vacutainer.',
  'parametros.paradaLongaMin':'A partir de quantos minutos uma parada é "longa" e pede análise: a Produção lista à parte (Paradas acima do limite) e a Paradas coloca na fila técnica pedindo ação (paradas operacionais). Ex.: 30.',
  'parametros.semaforoVerdePct':'Verde quando o resultado atinge esta % da meta. Ex.: 100 (bateu a meta).','parametros.semaforoAmareloPct':'Amarelo da % até o verde; abaixo dela, vermelho. Ex.: 90 (até 10 % abaixo da meta é atenção).',
- 'perfis.codigo':'Código do perfil (ADMIN, LIDER, OPER…).','cambio.codigo':'Código da moeda (USD). Cada vigência diz quantos reais vale 1 unidade da moeda a partir daquela data. O Waste usa a cotação vigente no último dia da competência para mostrar em BRL ou USD; a Gestão de Gel usa a do dia no preço do gel (US$/kg × cotação).','cambio.cotacao':'Reais por 1 unidade da moeda (ex.: 5,4500). Para mudar a cotação, crie uma vigência nova a partir da data; a anterior fecha na véspera.','perfis.semSenha':'Marcado: quem entra com este perfil edita o cadastro sem digitar a senha (fica sempre desbloqueado). O ADMIN vale assim por padrão; para voltar a pedir senha ao ADMIN, desmarque e salve. Atenção: a entrada é só pelo ID, então quem souber o ID de um administrador também edita.','perfis.paginaInicial':'Página aberta ao entrar, para quem tem este perfil (pode ser trocada por usuário).','perfis.descricao':'Para que serve o perfil.'};
+ 'perfis.codigo':'Código do perfil (ADMIN, LIDER, OPER…).','cambio.codigo':'Código da moeda (USD). Cada vigência diz quantos reais vale 1 unidade da moeda a partir daquela data. O Waste usa a cotação vigente no último dia da competência para mostrar em BRL ou USD; a Gestão de Gel usa a do dia no preço do gel (US$/kg × cotação).','cambio.cotacao':'Reais por 1 unidade da moeda (ex.: 5,4500). Para mudar a cotação, crie uma vigência nova a partir da data; a anterior fecha na véspera.','perfis.semSenha':'Marcado: quem entra com este perfil edita o cadastro sem digitar a senha (fica sempre desbloqueado). O ADMIN vale assim por padrão; para voltar a pedir senha ao ADMIN, desmarque e salve. Atenção: a entrada é só pelo ID, então quem souber o ID de um administrador também edita.','perfis.paginaInicial':'Página e aba abertas ao entrar, para quem tem este perfil (ex.: Liderança → "Produção › Visão geral"; Almoxarifado → "Gestão de Gel › Operação"). Pode ser trocada por usuário.','perfis.descricao':'Para que serve o perfil.'};
 /* 1.8 · ⓘ das categorias (listas de cadastro e grupos do menu) */
 const CAT_AJUDA={
  trazerCfg:'Lê as bases da Produção (oee-vacutainer-base.json), Gestão de Gel (fifo-base.json), Waste (perdas-base.json) e Paradas (paradas-base.json) e propõe levar para o cadastro o que hoje só existe nelas: pausas e abonos dos turnos, metas de OEE, regras de apontamento dos códigos de parada, preço do gel (e as cotações gravadas com ele), meta mensal do Waste, parada longa e o de-para de nomes das máquinas. Você escolhe o que entra; nada é gravado sem prévia, e fica na auditoria.',
@@ -3154,6 +3195,16 @@ document.addEventListener('toggle', e => {
   const r = l.getBoundingClientRect(); if (r.left < 8) { l.style.right = 'auto'; l.style.left = '0'; }
   const r2 = l.getBoundingClientRect(); if (r2.right > innerWidth - 8) l.style.left = (innerWidth - 8 - r2.width - d.getBoundingClientRect().left) + 'px';
 }, true);
+/* kit v2.1 · impressão e exportação sempre no tema claro (07/11/2026). vacTemaClaro(true) põe o tema claro e guarda o anterior;
+   vacTemaClaro(false) devolve. Ctrl+P e window.print() passam por aqui (beforeprint/afterprint). Páginas que vigiam o tema
+   (Gel) não desfazem enquanto data-vac-claro estiver marcado. */
+function vacTemaClaro(on) {
+  const r = document.documentElement;
+  if (on) { if (r.dataset.vacClaro != null) return; r.dataset.vacClaro = r.hasAttribute('data-theme') ? r.getAttribute('data-theme') : '-'; r.setAttribute('data-theme', 'light'); }
+  else { const t = r.dataset.vacClaro; if (t == null) return; delete r.dataset.vacClaro; if (t === '-') r.removeAttribute('data-theme'); else r.setAttribute('data-theme', t); }
+}
+window.addEventListener('beforeprint', () => vacTemaClaro(true));
+window.addEventListener('afterprint', () => vacTemaClaro(false));
 
 </script>
 </body>

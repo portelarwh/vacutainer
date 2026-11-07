@@ -9,7 +9,24 @@ def R(a,b,cnt=1):
     c=s.count(a)
     if c!=cnt: raise SystemExit(f'ERRO ({c}x): {a[:90]!r}')
     s=s.replace(a,b)
-R("const APP_VERSION = '2.0.1';","const APP_VERSION = '2.4.7';")
+R("const APP_VERSION = '2.0.1';","const APP_VERSION = '2.4.8';")
+# 2.4.8 · relatório em PDF: comentário longo continua na página seguinte (antes o que passava do fim da folha se perdia)
+R("  if (c.note && c.note.trim()) { doc.setFillColor(227, 236, 245); const L = c.note.split(/\\n+/).filter(s => s.trim()).reduce((n, s) => n + doc.splitTextToSize(T(s), W - 6).length, 0); doc.rect(m, y - 1, W, L * 4.2 + 4, 'F'); y += 1.5; doc.setFont('helvetica', 'bold'); doc.setFontSize(8); doc.setTextColor(...ACC); doc.text('COMENTÁRIO', m + 3, y + 2); y += 4.5; for (const ln of c.note.split(/\\n+/).filter(s => s.trim())) { const LL = doc.splitTextToSize(T(ln), W - 6); doc.setFont('helvetica', 'normal'); doc.setFontSize(9.5); doc.setTextColor(...INK); doc.text(LL, m + 3, y + 3); y += LL.length * 4.2; } y += 3; }",
+  "  if (c.note && c.note.trim()) { doc.setFont('helvetica', 'normal'); doc.setFontSize(9.5); const LN = c.note.split(/\\n+/).filter(s => s.trim()).flatMap(s => doc.splitTextToSize(T(s), W - 6)); let first = true; while (LN.length) { const room = Math.max(1, Math.floor((PH - m - 6 - y - (first ? 7 : 2.5)) / 4.2)); const P = LN.splice(0, room); doc.setFillColor(227, 236, 245); doc.rect(m, y - 1, W, P.length * 4.2 + (first ? 8.5 : 4), 'F'); if (first) { doc.setFont('helvetica', 'bold'); doc.setFontSize(8); doc.setTextColor(...ACC); doc.text('COMENTÁRIO', m + 3, y + 3.5); y += 4.5; } doc.setFont('helvetica', 'normal'); doc.setFontSize(9.5); doc.setTextColor(...INK); doc.text(P, m + 3, y + 3, { lineHeightFactor: 4.2 / (9.5 * 0.3528) }); y += P.length * 4.2 + 3; first = false; if (LN.length) { doc.addPage(); head(false); } } y += 1; }")
+# 2.4.8 · cartões do PDF: rótulo em até 2 linhas (antes "ATENDIMENTO AO PLANO INICIAL" saía "ATENDIMENTO AO PLANO")
+R("    const cols = Math.min(7, M.kpis.length), gap = 2, bw = (W - gap * (cols - 1)) / cols, bh = 19;",
+  "    const cols = Math.min(7, M.kpis.length), gap = 2, bw = (W - gap * (cols - 1)) / cols; doc.setFont('helvetica', 'normal'); doc.setFontSize(6.5); const dy = M.kpis.some(k => doc.splitTextToSize(T(k.l.toUpperCase()), bw - 4).length > 1) ? 2.6 : 0, bh = 19 + dy;")
+R("doc.text(doc.splitTextToSize(T(k.l.toUpperCase()), bw - 4).slice(0, 1), x0 + 2, y + 4);","doc.text(doc.splitTextToSize(T(k.l.toUpperCase()), bw - 4).slice(0, 2), x0 + 2, y + 4, { lineHeightFactor: 1.15 });")
+R("doc.text(v, x0 + 2, y + 10.5);","doc.text(v, x0 + 2, y + 10.5 + dy);")
+R("doc.text(T(k.u), x0 + 3 + vw, y + 10.5);","doc.text(T(k.u), x0 + 3 + vw, y + 10.5 + dy);")
+R(".slice(0, 2), x0 + 2, y + 13.5);",".slice(0, 2), x0 + 2, y + 13.5 + dy);")
+# 2.4.8 · imprimir o relatório: só o relatório (sem cabeçalho da página nem faixa de exemplo) e em A4 paisagem, como o PDF
+R("@media print{body.printing-report main>*:not(.rp-doc){display:none!important}",
+  "@media print{body.printing-report>*:not(main),body.printing-report main>*:not(.rp-doc){display:none!important}body.printing-report .rp-doc{page:relatorio}@page relatorio{size:A4 landscape;margin:10mm}")
+# 2.4.8 · aba por link (#aba=overview) e aba inicial do perfil (Portal › Perfis/Usuários), só na 1ª abertura da sessão
+R("  if (k === 'pend') { App.route = 'pend';","  if (k === 'aba' && ROUTES.some(r => r[0] === v)) { App.route = v; try { history.replaceState(null, '', location.pathname + location.search); } catch (e) { } return true; }\n  if (k === 'pend') { App.route = 'pend';")
+R("  App.op = location.hash === '#turno'; if (App.op) App.route = 'shift'; else applyHash();",
+  "  { const ai = typeof vacAbaInicial === 'function' ? vacAbaInicial('oee') : null; if (ai) try { history.replaceState(null, '', '#' + ai); } catch (e) { } }\n  App.op = location.hash === '#turno'; if (App.op) App.route = 'shift'; else applyHash();")
 # 2.4.7 · B04: só "não encontrado" é base ausente; erro de leitura (rede, permissão, JSON) não oferece criar base nova por cima
 R("const exists = await be.read().catch(() => null);","const exists = await be.read().catch(e => (typeof vacNaoAchou === 'function' && vacNaoAchou(e)) ? null : Promise.reject(e));")
 # 2.4.6 · bases em 00. Bases (kit vac-bases): a pasta da base passa por vacRaiz (as 7 bases ficam em 00. Bases; Logo, backups e o resto na raiz)

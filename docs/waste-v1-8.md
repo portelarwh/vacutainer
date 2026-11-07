@@ -88,3 +88,14 @@ Mudanças aditivas; tudo da 1.7.3 preservado (importação KKBC_ORD nos dois lay
 ## Waste 1.8.13 (06/11/2026) · revisão c341f8e
 
 - Kit vac-bases v2. Um erro ao ler a base não oferece criar base nova. Aba ativa com a marca de volta; pílula de estado visível em telas pequenas.
+
+## Waste 1.8.14 (07/11/2026) · relatórios
+
+As mesmas correções do relatório do Portal 1.8.11 (módulo `Report` igual):
+- comentário inteiro no PDF;
+- gráfico com as cores do tema claro;
+- impressão em paisagem e no tema claro;
+- aviso de corte no texto;
+- Outlook com os gráficos como imagem.
+
+No relatório mensal, o Pareto de componentes diz "20 maiores de N (todos no Excel)". O Excel já trazia todos. Registro § P.

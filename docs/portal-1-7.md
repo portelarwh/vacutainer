@@ -191,3 +191,15 @@ Registro completo das decisões em `docs/auditorias/registro-decisoes.md`.
 - Kit vac-bases v2: migração para `00. Bases` segura entre estações (registro § R).
 - Conexão: um erro ao ler a base (rede, permissão, JSON) não oferece mais "Criar a base nesta pasta?". A página avisa e não muda nada.
 - Aba ativa com a marca de volta; pílula "Modo de teste" visível em telas pequenas.
+
+## 21. Portal 1.8.11 (07/11/2026) · relatórios e página inicial com aba
+
+Responde à auditoria de relatórios e painéis (registro § P).
+- **PDF:**
+  - o comentário e o bloco de texto continuam na página seguinte; antes, o que passava do fim da folha se perdia;
+  - os cartões saem com rótulo e detalhe em até 2 linhas;
+  - o gráfico sai sempre com as cores do tema claro.
+- **Impressão:** em A4 paisagem, como o PDF, no tema claro, e a tabela larga quebra o texto nas células.
+- **Copiar texto:** avisa "… e mais N linha(s)" quando corta a tabela.
+- **Copiar para Outlook:** leva os gráficos como imagem, como a Produção. Desmarcando "gráficos como imagem no Outlook" (preferência deste navegador), o lugar do gráfico diz "gráfico no PDF".
+- **Página inicial:** Perfis e Usuários oferecem página e aba (ex.: "Produção › Painel", "Gestão de Gel › Operação", "Paradas › Fila técnica"). A lista é comum no kit (`VAC_INICIAL_ALVO`). A página aberta direto também respeita a aba do perfil, na 1ª abertura da sessão; um link com `#` tem prioridade.

@@ -6,11 +6,11 @@ Plataforma de páginas HTML de arquivo único que trabalham juntas numa **pasta 
 
 | Página | Arquivo | Base | Versão | Como editar |
 |---|---|---|---|---|
-| Portal (cadastro geral, Administração) | `Portal.html` | `portal-base.json` + `vacutainer-cadastros.json` | 1.8.10 | direto no HTML |
-| Produção (OEE, plano, ordens SAP) | `OEE-Vacutainer.html` | `oee-vacutainer-base.json` (+ `ordens-base.json`) | 2.4.7 | **NÃO editar o HTML**: editar `fontes/producao/` e rodar o build |
-| Waste (perdas por ordem, KKBC) | `Perdas-Ordem.html` | `perdas-base.json` | 1.8.13 | direto no HTML |
-| Gestão de Gel | `Gestão-Gel-Vacutainer.html` | `fifo-base.json` | 2.01 | direto no HTML |
-| Paradas | `Paradas.html` | `paradas-base.json` | 1.0.10 | direto no HTML |
+| Portal (cadastro geral, Administração) | `Portal.html` | `portal-base.json` + `vacutainer-cadastros.json` | 1.8.11 | direto no HTML |
+| Produção (OEE, plano, ordens SAP) | `OEE-Vacutainer.html` | `oee-vacutainer-base.json` (+ `ordens-base.json`) | 2.4.8 | **NÃO editar o HTML**: editar `fontes/producao/` e rodar o build |
+| Waste (perdas por ordem, KKBC) | `Perdas-Ordem.html` | `perdas-base.json` | 1.8.14 | direto no HTML |
+| Gestão de Gel | `Gestão-Gel-Vacutainer.html` | `fifo-base.json` | 2.02 | direto no HTML |
+| Paradas | `Paradas.html` | `paradas-base.json` | 1.0.11 | direto no HTML |
 
 Futuras: Equipamentos/Máquinas, Manutenção, Projetos, OSM (ver `docs/paginas-novas.md`, `docs/osm-arquitetura.md`, `docs/plano-evolucao-plataforma.md`).
 
@@ -24,6 +24,7 @@ node testes/tintegra.js                # Portal × exports: números iguais aos 
 node testes/tdiag.js                   # cenários das auditorias de 06/11/2026 (F01–F08, M01–M04: colisão e falha de leitura na gravação, CadSync, SAP, Gel, Paradas, versões); tintegra e tdiag saem com código 1 se falhar
 node testes/tvisual.js                 # layout: 5 páginas × 2 temas × 5 larguras (geometria, abas, contraste, tema entre páginas); prints em testes/saida/visual/; código 1 se falhar
 node testes/tbases.js                  # bases em 00. Bases: mover da raiz, ler antes/depois, gravar, cópia mais nova/velha na raiz, B01–B07 com falhas injetadas, concorrência, volta de versão (OPFS + HTTP local); código 1 se falhar
+node testes/trelatorios.js            # relatórios: PDF (pdfinfo/pdftotext), texto, Outlook, impressão (2 temas), ordem das abas, aba inicial por perfil; código 1 se falhar
 node fontes/guia/gerar_guia.js         # gera "Guia de instalação.html" (raiz) a partir de fontes/guia/guia_modelo.html, com prints reais das páginas embutidos; rodar quando mudar tela de conexão/entrada ou versão
 node testes/tmeta.js                   # importação da Meta OEE FY27 no Portal (precisa também do pacote npm xlsx)
 ```
@@ -47,7 +48,7 @@ node testes/tmeta.js                   # importação da Meta OEE FY27 no Portal
 
 ## Leitores comuns do kit v2.1 (`fontes/kit/kit_v21.js`)
 
-`vacCambio(data, moeda)` · `vacVig(vigencias, data)` · `vacParam(chave)` · `vacTurnosEm(data)` · `vacPrecoEm(material, data)` · `vacMetaArea(codigo, data)` · `vacPortalHref(hash)` · botão ← Voltar (abas entram no histórico; `vacNavAtual()` opcional) · `vacAoVoltar()` chamado ao voltar para a página (reler sem F5).
+`vacCambio(data, moeda)` · `vacVig(vigencias, data)` · `vacParam(chave)` · `vacTurnosEm(data)` · `vacPrecoEm(material, data)` · `vacMetaArea(codigo, data)` · `vacPortalHref(hash)` · botão ← Voltar (abas entram no histórico; `vacNavAtual()` opcional) · `vacAoVoltar()` chamado ao voltar para a página (reler sem F5) · `vacTemaClaro(on)` (impressão e PDF sempre claros; `beforeprint`/`afterprint`) · `vacAbaInicial(pagina)` (aba inicial do perfil; lista `VAC_INICIAL_ALVO` em `kit_bases.js`).
 
 ## Centralização no Portal (Portal 1.8/1.8.1)
 
@@ -65,7 +66,7 @@ Ao terminar uma entrega, atualizar o doc da página (seção nova com a versão 
 
 ## Auditorias externas
 
-`docs/auditorias/registro-decisoes.md` registra cada apontamento das auditorias (05/11, 06/11, pós-merge, layout e revisão c341f8e de 06/11/2026), o que foi corrigido, o que foi recusado e por quê. **Antes de uma nova análise, ler o registro**: item recusado lá só volta com fato novo.
+`docs/auditorias/registro-decisoes.md` registra cada apontamento das auditorias (05/11, 06/11, pós-merge, layout e revisão c341f8e de 06/11/2026; relatórios e painéis de 07/11/2026), o que foi corrigido, o que foi recusado e por quê. **Antes de uma nova análise, ler o registro**: item recusado lá só volta com fato novo.
 
 ## Pendências conhecidas
 
@@ -94,3 +95,8 @@ Lista única do que ficou para depois. O motivo e o gatilho de cada item estão 
 - `package.json`/CI (registro § 1).
 - `testes/tz.js` falha às vezes e passa ao rodar de novo (instabilidade do teste).
 - `testes/t181.js` expira no fim (passo da matriz; problema do teste).
+- Cópia para o Outlook com imagens: conferir no Outlook da empresa (desktop e web) se os gráficos chegam (registro § P).
+
+**Relatórios (registro § P)**
+- Paradas sem relatório próprio (PDF, Excel, cópia da análise); só Ctrl+P na aba.
+- Três geradores de PDF (Portal/Waste, Produção, Gel): unificar no kit se for preciso.
