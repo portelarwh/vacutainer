@@ -132,3 +132,17 @@ Por ordem: MB51 (saldo, data principal) × COOIS (tipo, status, datas, fornecida
 ## 17. Produção 2.4.7 (06/11/2026) · revisão c341f8e
 
 - Kit vac-bases v2, pelo build. `connectFolder`: um erro ao ler a base não abre "Criar base nesta pasta?". Contadores do submenu das abas com contraste ≥ 4,5 nos dois temas.
+
+## 18. Produção 2.4.8 (07/11/2026) · relatórios e abas
+
+Responde à auditoria de relatórios e painéis (registro § P). Regras `R(...)` novas no `build.py` e `NAV_GRUPOS` em `ordens_tela.js`.
+- **PDF do relatório:** o comentário longo continua na página seguinte (antes parava na linha 40 de 70), e o rótulo do cartão sai em até 2 linhas ("ATENDIMENTO AO PLANO INICIAL").
+- **Imprimir o relatório:** sai só o relatório (sem cabeçalho da página nem faixa de exemplo), em A4 paisagem (página nomeada `relatorio`) e no tema claro (kit).
+- **Menu:**
+  - "Visão geral" e "Painel" são os dois primeiros grupos;
+  - o grupo Análise fica com Paradas, Histórico, Semanal e Mensal;
+  - o grupo Gestão fica com Relatórios.
+- **Aba ao abrir:**
+  - `#aba=<rota>` abre a rota;
+  - a aba do perfil (`vacAbaInicial('oee')`) vale na 1ª abertura da sessão, antes da última rota lembrada (`oee-route`) e da aba inicial pessoal;
+  - "Produção › Tela do operador" abre `#turno`.

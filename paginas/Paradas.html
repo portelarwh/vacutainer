@@ -100,9 +100,12 @@ td.n,th.n{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
 .tv .tvb{flex:1;overflow:hidden;margin-top:14px}.tv .kpi .v{font-size:46px}
 /* formulário impresso */
 #printArea{display:none}
+/* 1.0.11 · a regra do formulário só vale ao imprimir formulários (classe no body). Antes valia sempre e Ctrl+P numa aba de análise saía em branco */
 @media print{
- body>*:not(#printArea){display:none!important}#printArea{display:block}
- @page{size:A4 portrait;margin:9mm}
+ body.imprimindo-forms>*:not(#printArea){display:none!important}body.imprimindo-forms #printArea{display:block}
+ #printArea{page:formulario}
+ @page formulario{size:A4 portrait;margin:9mm}
+ #toast{display:none!important}
 }
 .fp{-webkit-print-color-adjust:exact;print-color-adjust:exact;font-family:Arial,Helvetica,sans-serif;font-size:9.2px;color:#111;background:#fff;page-break-after:always;break-after:page}
 .fp .top{display:flex;justify-content:space-between;align-items:flex-end;border-bottom:2.5px solid #15222f;padding-bottom:4px}
@@ -400,6 +403,36 @@ function vacAvisoBases(res) {
     const t = localStorage.getItem('vac.theme'); if (t != null && !['auto', 'light', 'dark'].includes(t)) localStorage.setItem('vac.theme', 'auto');
   } catch (e) { }
 })();
+/* ----- vac-inicial · 07/11/2026: página e aba inicial por perfil (Portal › Cadastros › Perfis e Usuários, campo "Página inicial")
+   Fica aqui (no topo de cada página) porque o Portal monta a lista de opções na carga. O alvo é [página, hash]:
+   hash "aba=<id>" abre a aba; "turno" é a tela do operador da Produção. Ordem ao abrir uma página: link direto (#…) >
+   aba do perfil (só na 1ª abertura da página na sessão) > preferência da pessoa (última aba, página inicial do Gel) > 1ª aba. */
+const VAC_INICIAL_ALVO = {
+  'Portal': ['portal', ''],
+  'Produção': ['oee', ''], 'Produção › Visão geral': ['oee', 'aba=overview'], 'Produção › Painel': ['oee', 'aba=panel'],
+  'Produção › Lançamento': ['oee', 'aba=launch'], 'Produção › Plano do mês': ['oee', 'aba=plan'], 'Produção › Tela do operador': ['oee', 'turno'],
+  'Waste': ['perdas', ''],
+  'Gestão de Gel': ['gel', ''], 'Gestão de Gel › Painel': ['gel', 'aba=painel'], 'Gestão de Gel › Operação': ['gel', 'aba=op'],
+  'Paradas': ['paradas', ''], 'Paradas › Visão geral': ['paradas', 'aba=geral'], 'Paradas › Fila técnica': ['paradas', 'aba=fila'],
+  'Equipamentos': ['equip', ''], 'Iniciativas': ['inic', ''], 'Projetos': ['projetos', '']
+};
+/* página inicial de quem entrou (vac.userId): a do usuário, senão a do perfil; lê a cópia do cadastro (vac.cadastros) */
+function vacPaginaInicial() {
+  try {
+    const C = typeof vacCad === 'function' ? vacCad() : JSON.parse(localStorage.getItem('vac.cadastros') || 'null'); if (!C) return null;
+    const id = localStorage.getItem('vac.userId') || ''; const u = id ? (C.usuarios || []).find(x => String(x.codigo) === id && x.ativo !== false) : null;
+    if (u && u.paginaInicial && u.paginaInicial !== '(do perfil)') return u.paginaInicial;
+    const pc = (u && u.perfil) || localStorage.getItem('vac.perfil') || ''; const p = pc ? (C.perfis || []).find(x => x.codigo === pc && x.ativo !== false) : null;
+    return (p && p.paginaInicial) || null;
+  } catch (e) { return null; }
+}
+/* hash da aba inicial desta página (ex.: "aba=panel"), só na 1ª abertura da página na sessão e sem link direto; senão null */
+function vacAbaInicial(pagina) {
+  try {
+    if (location.hash) return null; const k = 'vac.inicial.' + pagina; if (sessionStorage.getItem(k)) return null; sessionStorage.setItem(k, '1');
+    const a = VAC_INICIAL_ALVO[vacPaginaInicial()]; return a && a[0] === pagina && a[1] ? a[1] : null;
+  } catch (e) { return null; }
+}
 /* ===== fim vac-bases v2 ===== */
 </script>
 </head>
@@ -437,7 +470,7 @@ const MATRIZ_PROPOSTA={"OUT": ["Tullip A", "Tullip B", "Packout", "Metro", "Cap 
    PARADAS · núcleo (pasta, base, fila de gravação, backups, cadastro, utilidades)
    ===================================================================================== */
 const PAGE={id:'paradas',titulo:'Paradas · Análise de falhas e paradas de máquina',tituloCurto:'Paradas',subtitulo:'Análise de falhas e paradas de máquina',
-  versao:'1.0.10',baseFile:'paradas-base.json',backupDir:'00. Backups/Paradas',busca:q=>buscaPagina(q)};
+  versao:'1.0.11',baseFile:'paradas-base.json',backupDir:'00. Backups/Paradas',busca:q=>buscaPagina(q)};
 const APP_VERSION=PAGE.versao;
 const CAD_FILE='vacutainer-cadastros.json',OEE_FILE='oee-vacutainer-base.json';
 const $=(s,r=document)=>r.querySelector(s),$$=(s,r=document)=>[...r.querySelectorAll(s)];
@@ -605,6 +638,7 @@ const Cad={codes:[],byCod:new Map(),byNum:new Map(),eqs:[],eqByCod:new Map(),lim
   this.codes=L.sort((a,b)=>String(a.numero).localeCompare(String(b.numero)));this.byCod=new Map(L.map(x=>[x.codigo,x]));this.byNum=new Map(L.filter(x=>/^\d{3}$/.test(x.numero)).map(x=>[x.numero,x]));
   this.proposto=L.filter(x=>!x.noCadastro).length;
   this.limite=+(raw.parametros?.limiteMicroMin||Store.data.config.limiteMicroMin||10);
+  /* 1.0.11 · relatórios: Ctrl+P imprime a aba atual (a regra do formulário só vale ao imprimir formulários), impressão no tema claro; aba inicial do perfil */
   /* 1.0.10 · revisão c341f8e: faixa de teste roxa (exemplo) com contraste; gráficos mensais com uma unidade na escala (chamada real); kit vac-bases v2 */
   /* 1.0.9 · bases .json em 00. Bases (kit vac-bases) */
   /* 1.0.8 · layout: tema, usuário e logo em texto simples (continuidade com as outras páginas); paleta comum; esquema escuro nos campos nativos */
@@ -1236,7 +1270,8 @@ function formHTML(eq){const e=Cad.eq(eq)||{codigo:eq,nome:Cad.eqNome(eq)};const 
  <h2>Paradas de 5 minutos ou mais (anote início e fim)</h2><table class="ap"><tr><th style="width:9%">Início</th><th style="width:9%">Fim</th><th style="width:7%">Min</th><th style="width:7%">Nº</th><th>O que aconteceu (curto)</th><th style="width:9%">Trocou peça?<br>S / N</th><th style="width:16%">Peça / técnico</th><th style="width:6%">Visto</th></tr>${'<tr>'+'<td></td>'.repeat(8)+'</tr>'.repeat(1)}${('<tr>'+'<td></td>'.repeat(8)+'</tr>').repeat(eq==='LINHA'?15:14)}</table>
  ${micro.length?`<h2>Microparadas (menos de 5 min) · um risco por ocorrência</h2><table class="mt2"><tr><th style="width:5%">Nº</th><th style="width:28%">Causa</th>${'<th>__h</th>'.repeat(hrs)}<th style="width:8%">Total</th></tr>${micro.map(c=>`<tr><td class="n">${c.numero}</td><td>${esc(c.nome.split(' / ')[0].split(':')[0])}</td>${'<td></td>'.repeat(hrs)}<td></td></tr>`).join('')}</table>`:''}
  <div class="foot"><div class="sig">Operador</div><div class="sig">Liderança (conferido)</div><div>Lançar no Forms ao fim do turno · Guia completo: Paradas › Guia</div></div></div>`}
-function imprimirForms(eqs){if(!eqs.length)return toast('Escolha ao menos uma máquina',1);$('#printArea').innerHTML=eqs.map(formHTML).join('');setTimeout(()=>window.print(),80)}
+function imprimirForms(eqs){if(!eqs.length)return toast('Escolha ao menos uma máquina',1);$('#printArea').innerHTML=eqs.map(formHTML).join('');
+ setTimeout(()=>{document.body.classList.add('imprimindo-forms');try{window.print()}finally{document.body.classList.remove('imprimindo-forms')}},80)}
 function matrizHTML(){const eqs=Cad.eqs.filter(e=>e.ativo&&!e.prov&&e.tipo!=='linha');const C=Cad.codes.filter(c=>c.ativo&&/^\d{3}$/.test(c.numero)&&/M[aá]quina/.test(c.ondeAponta));
  const fromCad=C.some(c=>Array.isArray(c.equipamentos));const m=Store.data.config.matriz;
  return`<p class="small muted">${fromCad?'A matriz vem do cadastro do Portal (campo equipamentos de cada código): edição só no Portal.':m?'Matriz provisória gravada nesta página. Quando o Portal tiver a matriz no cadastro, ela passa a valer e esta fica só como histórico.':'Rascunho inicial (proposta por nome de máquina). Marque e desmarque para ajustar; fica gravado nesta página até ir para o Portal.'}
@@ -1361,7 +1396,9 @@ async function iniciar(){applyTheme();wireCabecalho();$('#btnTheme').onclick=cyc
  $('#btnSync').onclick=async()=>{if(!Store.dir)return Store.pick();if(!Store.perm)return Store.reconnect();await Store.save();await Store.reload();App.render();toast('Sincronizado · rev '+Store.data.rev)};
  $('#sairTeste').onclick=e=>{e.preventDefault();location.hash='';location.reload()};
  $$('#nav [data-t]').forEach(b=>b.onclick=()=>App.go(b.dataset.t));
- await Store.init();await Ext.load();F.init();App.go('geral');rota();window.addEventListener('hashchange',rota);
+ await Store.init();await Ext.load();F.init();App.go('geral');
+ {const ai=typeof vacAbaInicial==='function'?vacAbaInicial('paradas'):null;if(ai){const[k,v]=ai.split('=');if(k==='aba'&&VIEWS[v])App.go(v)}}   /* 1.0.11 · aba inicial do perfil */
+ rota();window.addEventListener('hashchange',rota);
  const tick=async()=>{if(Store.test||!Store.dir||!Store.perm||document.hidden)return;if(Store.queue.length)await Store.save();else{const r=Store.data.rev;await Store.reload();if(Store.data.rev!==r)App.render()}};
  setInterval(tick,60000);document.addEventListener('visibilitychange',()=>{if(!document.hidden)tick()});
  window.addEventListener('beforeunload',e=>{if(Store.queue.length&&Store.dir&&Store.perm){e.preventDefault();e.returnValue=''}})}
@@ -1475,6 +1512,16 @@ document.addEventListener('toggle', e => {
   const r = l.getBoundingClientRect(); if (r.left < 8) { l.style.right = 'auto'; l.style.left = '0'; }
   const r2 = l.getBoundingClientRect(); if (r2.right > innerWidth - 8) l.style.left = (innerWidth - 8 - r2.width - d.getBoundingClientRect().left) + 'px';
 }, true);
+/* kit v2.1 · impressão e exportação sempre no tema claro (07/11/2026). vacTemaClaro(true) põe o tema claro e guarda o anterior;
+   vacTemaClaro(false) devolve. Ctrl+P e window.print() passam por aqui (beforeprint/afterprint). Páginas que vigiam o tema
+   (Gel) não desfazem enquanto data-vac-claro estiver marcado. */
+function vacTemaClaro(on) {
+  const r = document.documentElement;
+  if (on) { if (r.dataset.vacClaro != null) return; r.dataset.vacClaro = r.hasAttribute('data-theme') ? r.getAttribute('data-theme') : '-'; r.setAttribute('data-theme', 'light'); }
+  else { const t = r.dataset.vacClaro; if (t == null) return; delete r.dataset.vacClaro; if (t === '-') r.removeAttribute('data-theme'); else r.setAttribute('data-theme', t); }
+}
+window.addEventListener('beforeprint', () => vacTemaClaro(true));
+window.addEventListener('afterprint', () => vacTemaClaro(false));
 
 </script>
 </body></html>

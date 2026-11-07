@@ -15,8 +15,54 @@ Este arquivo responde às auditorias externas da plataforma e registra, para cad
 | Revisão do PR #5 (base que some) | 06/11/2026 | `142b9c2` | Portal 1.8.7 (§ 0.1) |
 | Auditoria visual (V01–V08) | 06/11/2026 | `142b9c2` (registrada em `ce1d971`) | Portal 1.8.8, Produção 2.4.5, Waste 1.8.11, Gel 1.99, Paradas 1.0.8 (§ L) |
 | Revisão da migração, do layout e do guia (B01–B07 e visuais) | 06/11/2026 | `c341f8e` | Portal 1.8.10, Produção 2.4.7, Waste 1.8.13, Gel 2.01, Paradas 1.0.10 (§ R) |
+| Relatórios, saídas e aba Painel | 07/11/2026 | `c341f8e` | Portal 1.8.11, Produção 2.4.8, Waste 1.8.14, Gel 2.02, Paradas 1.0.11 (§ P) |
 
 Status usados: **corrigido** · **corrigido em parte** · **recusado** · **adiado** · **já existia**.
+
+---
+
+## P. Relatórios, saídas e aba Painel (auditoria de `c341f8e`, 07/11/2026)
+
+**Limite:** o relatório `auditoria-relatorios-paineis-c341f8e.md` e o zip de evidências **não chegaram** nesta sessão. Os seis achados citados no pedido foram reproduzidos nos arquivos gerados, não só no código: PDF conferido com `pdfinfo`/`pdftotext`, impressão em mídia print A4, texto e HTML copiados. Antes de implementar, o diagnóstico e o plano foram entregues e aprovados pelo responsável.
+
+**Decisões do responsável (07/11/2026):**
+- Visão geral em 1º e Painel em 2º. Na Produção, os dois viram os primeiros grupos do menu. Portal e Paradas mantêm "Visão geral" em 1º, sem renomear. No Gel, o Painel passa a ser a 1ª aba na ordem padrão. O Waste já estava certo.
+- A aba que abre é definida pelo **perfil** do usuário.
+- O relatório montado do Gel ganha campo de comentário.
+- A cópia para o Outlook do Portal e do Waste fica igual à da Produção, com os gráficos como imagem.
+
+### Achados
+
+| Item | Status | O que mudou · teste (`testes/trelatorios.js`) |
+|---|---|---|
+| Comentário cortado no PDF (Portal, Waste, Produção) | **corrigido** | O comentário e o bloco de texto continuam na página seguinte. Antes, um comentário de 70 linhas parava na linha 44 (Portal/Waste) ou 40 (Produção) |
+| Gel: PDF montado com 40 linhas, sem aviso | **corrigido** | Todas as linhas (64 no teste), e o `pdfTable` quebra a página. O texto do bloco sem tabela também sai inteiro (antes, 180 caracteres) |
+| Cores escuras nas exportações | **corrigido** | Portal e Waste: o gráfico do PDF usa sempre as cores do tema claro (imagem igual nos dois temas). Impressão: o kit põe o tema claro no `beforeprint` e devolve no `afterprint` (`vacTemaClaro`), nas cinco páginas. Gel: o vigia de tema não desfaz mais o tema claro do PDF |
+| Paradas: impressão da análise vazia | **corrigido** | A regra do formulário só vale enquanto imprime formulários (classe `imprimindo-forms`, página nomeada em retrato). Ctrl+P no Pareto: 930 caracteres (antes 0) |
+| Encaixe em retrato / orientação diferente do PDF | **corrigido** | A impressão do relatório (Portal, Waste, Produção) sai em A4 paisagem, como o PDF. A tabela larga quebra o texto nas células: 14 colunas cabem |
+| Diferenças na cópia para o Outlook | **corrigido** | Portal e Waste copiam os gráficos como imagem, como a Produção, com a opção "gráficos como imagem no Outlook" (desmarcada, o lugar diz "gráfico no PDF"). O aviso informa o tamanho |
+| Copiar texto cortava a tabela em 15 linhas sem aviso (Portal, Waste; Gel em 5) | **corrigido** | O corte continua, por ser resumo de WhatsApp, mas agora vem com "… e mais N linha(s): veja o PDF ou o Excel" |
+| Impressão do relatório da Produção com cabeçalho e faixa de exemplo | **corrigido** | Só o relatório é impresso |
+| Rótulo do cartão cortado no PDF ("ATENDIMENTO AO PLANO") | **corrigido** | O rótulo sai em até 2 linhas na Produção; rótulo e detalhe também no Portal e no Waste |
+| Recortes sem aviso | **corrigido** | Waste: "20 maiores de N (todos no Excel)" no Pareto mensal. Gel: "Mostrando os 40 primeiros de N barris" no risco de vencimento |
+| Aba Painel em 1º, Visão geral ao lado | **corrigido** (conforme a decisão) | Produção: grupos "Visão geral" e "Painel" no início do menu. Gel: `TABS` com Painel em 1º; quem já ordenou as abas mantém a sua ordem |
+| Aba inicial por perfil | **novo** | O campo "Página inicial" de Perfis e Usuários no Portal passa a oferecer página e aba (ex.: "Produção › Painel"). Lista comum no kit (`VAC_INICIAL_ALVO` em `kit_bases.js`) |
+
+**Ordem ao abrir uma página:**
+1. link direto (`#aba=…`, `#dia=`, `#turno`, `#tv`…);
+2. aba do perfil, só na 1ª abertura da página na sessão;
+3. preferência da pessoa (última rota da Produção, página inicial do Gel);
+4. padrão da página.
+
+Sem perfil cadastrado, nada muda. O Gel continua abrindo na Operação, salvo se o perfil ou a pessoa escolherem outra aba.
+
+### Limitações (não corrigidas, registradas)
+- **Paradas sem relatório próprio:** não tem PDF, Excel nem cópia da análise; só Ctrl+P na aba. Entra se a liderança pedir.
+- **Relatório do Waste por período:** usa o mês escolhido em Relatórios, não os filtros do Painel. É de propósito: o selo mostra os critérios.
+- **Imagens no Outlook:** cada gráfico vira um PNG `data:` (cerca de 40 KB). O Outlook desktop aceita; o Outlook web e algumas políticas de e-mail removem as imagens. Validar com o Outlook da empresa (homologação). Desmarcar a opção deixa o aviso no lugar.
+- **"Salvar como PDF" do navegador × PDF próprio:** nunca saem idênticos (margens e "Gráficos de fundo" são da janela de impressão). Agora têm a mesma orientação e o mesmo tema.
+- **Três geradores de PDF** (`Report` do Portal/Waste, `rpPdf` da Produção, funções do Gel): unificar no kit fica para depois, se estas correções não bastarem.
+- **Formulário de papel da LINHA no Paradas:** ocupa 2 páginas A4 com os dados de teste, igual em `c341f8e`. Não mudou com esta entrega.
 
 ---
 

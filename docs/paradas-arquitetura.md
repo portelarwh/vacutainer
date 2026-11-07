@@ -138,3 +138,9 @@ O Excel de respostas (ID, Hora de início, Hora de conclusão, Email, Nome, as p
 - A faixa do modo de teste segue o padrão de exemplo (roxo, "Ambiente de teste · dados fictícios"), com contraste ≥ 4,5.
 - "Tempo por mês" e "Tempo de parada por mês e classe" usam `fmtMin`, com uma unidade para a escala inteira. O Pareto (`hbars`) também passou a usar uma unidade só.
 - Kit vac-bases v2.
+
+## 16. Paradas 1.0.11 (07/11/2026) · impressão e aba inicial
+
+- **Ctrl+P na análise:** antes saía em branco, porque a regra de impressão do formulário de papel valia sempre. Agora ela só vale enquanto `imprimirForms` imprime (classe `imprimindo-forms`, página nomeada `formulario` em A4 retrato). Fora disso, imprime a aba atual, no tema claro (kit).
+- **Aba inicial do perfil:** "Paradas › Visão geral" ou "Paradas › Fila técnica", na 1ª abertura da sessão; `#aba=` tem prioridade.
+- **Sem relatório próprio (PDF, Excel, cópia):** continua assim, ver registro § P, limitações.

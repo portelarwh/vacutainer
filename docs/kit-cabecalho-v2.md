@@ -101,3 +101,19 @@ vac-visual v1.1 (mesma data):
 - no redimensionamento, a aba ativa continua à vista.
 
 Gestão de Gel 2.01 (06/11/2026): um erro ao ler a base, ao escolher a pasta, não abre "Criar a base na pasta". Aba ativa com a marca de volta e à vista ao redimensionar.
+
+## Relatórios e página inicial (07/11/2026)
+
+- **`vac-inicial`** (`kit_bases.js`, no topo de cada página, porque o Portal monta a lista de opções na carga):
+  - `VAC_INICIAL_ALVO` dá, para cada opção de "Página inicial", o par página + hash (`aba=<id>` ou `turno`);
+  - `vacPaginaInicial()` lê a do usuário ou a do perfil na cópia `vac.cadastros`;
+  - `vacAbaInicial(pagina)` devolve o hash só na 1ª abertura da página na sessão e sem `#` no endereço.
+
+  Ordem ao abrir: link direto > perfil > preferência da pessoa > padrão.
+- **`vacTemaClaro(on)`** (`kit_v21.js`): põe e devolve o tema claro. É chamado no `beforeprint`/`afterprint`, então Ctrl+P e `window.print()` saem sempre claros nas cinco páginas. O Gel não desfaz enquanto `data-vac-claro` estiver marcado.
+
+Gestão de Gel 2.02 (07/11/2026):
+- relatório montado com todas as linhas no PDF (antes 40), comentário (rascunho neste navegador), aviso de corte no texto e tema claro garantido na montagem;
+- "40 primeiros de N" no risco de vencimento;
+- Painel em 1º na ordem padrão das abas;
+- `#aba=<id>` e aba inicial do perfil, que vale sobre a página inicial pessoal só na 1ª abertura da sessão.

@@ -6,8 +6,8 @@ await p.goto('file://'+RAIZ+'paginas/OEE-Vacutainer.html');await p.waitForTimeou
 // Voltar entre abas
 console.log('voltar visivel no inicio:',await p.evaluate(()=>{const b=document.getElementById('vacVoltar');return b?!b.hidden:'sem botão'}));
 await p.evaluate(()=>go('plan'));await p.waitForTimeout(300);
-await p.hover('.ngrp:nth-child(2)');await p.click('.nitem[data-osub2="conc"]');await p.waitForTimeout(500);
-await p.hover('.ngrp:nth-child(4)');await p.click('.ngrp:nth-child(4) .nitem >> nth=0');await p.waitForTimeout(500);
+await p.hover('.ngrp:nth-child(4)');await p.click('.nitem[data-osub2="conc"]');await p.waitForTimeout(500);
+await p.hover('.ngrp:nth-child(6)');await p.click('.ngrp:nth-child(6) .nitem >> nth=0');await p.waitForTimeout(500);
 console.log('rota agora:',await p.evaluate(()=>App.route),'voltar visível:',await p.evaluate(()=>!document.getElementById('vacVoltar').hidden));
 await p.click('#vacVoltar');await p.waitForTimeout(600);console.log('após voltar:',await p.evaluate(()=>[App.route,Ord.sub]));
 await p.click('#vacVoltar');await p.waitForTimeout(600);console.log('após voltar 2:',await p.evaluate(()=>[App.route,Ord.sub]));

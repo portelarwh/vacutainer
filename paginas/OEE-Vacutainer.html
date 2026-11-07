@@ -385,7 +385,7 @@ table input.num{width:120px;text-align:right;padding:4px 8px;font:inherit;font-v
 .rp-note{background:var(--accent-soft);border-left:3px solid var(--accent);padding:8px 12px;border-radius:var(--r);margin-bottom:8px}
 .rp-note p,.rp-sum p{margin:3px 0}
 .rp-sum{margin-bottom:12px}
-@media print{body.printing-report main>*:not(.rp-doc){display:none!important}body.printing-report .rp-doc{border:0;padding:0;background:#fff}body.printing-report .rp-doc{display:block!important}}
+@media print{body.printing-report>*:not(main),body.printing-report main>*:not(.rp-doc){display:none!important}body.printing-report .rp-doc{page:relatorio}@page relatorio{size:A4 landscape;margin:10mm}body.printing-report .rp-doc{border:0;padding:0;background:#fff}body.printing-report .rp-doc{display:block!important}}
 /* rótulos de valor dentro das colunas e marcas de família */
 .chart .vlbl{font-size:11px;font-weight:600;font-variant-numeric:tabular-nums;pointer-events:none}
 .chart .vlbl.in{fill:#fff}
@@ -804,6 +804,36 @@ function vacAvisoBases(res) {
     const t = localStorage.getItem('vac.theme'); if (t != null && !['auto', 'light', 'dark'].includes(t)) localStorage.setItem('vac.theme', 'auto');
   } catch (e) { }
 })();
+/* ----- vac-inicial · 07/11/2026: página e aba inicial por perfil (Portal › Cadastros › Perfis e Usuários, campo "Página inicial")
+   Fica aqui (no topo de cada página) porque o Portal monta a lista de opções na carga. O alvo é [página, hash]:
+   hash "aba=<id>" abre a aba; "turno" é a tela do operador da Produção. Ordem ao abrir uma página: link direto (#…) >
+   aba do perfil (só na 1ª abertura da página na sessão) > preferência da pessoa (última aba, página inicial do Gel) > 1ª aba. */
+const VAC_INICIAL_ALVO = {
+  'Portal': ['portal', ''],
+  'Produção': ['oee', ''], 'Produção › Visão geral': ['oee', 'aba=overview'], 'Produção › Painel': ['oee', 'aba=panel'],
+  'Produção › Lançamento': ['oee', 'aba=launch'], 'Produção › Plano do mês': ['oee', 'aba=plan'], 'Produção › Tela do operador': ['oee', 'turno'],
+  'Waste': ['perdas', ''],
+  'Gestão de Gel': ['gel', ''], 'Gestão de Gel › Painel': ['gel', 'aba=painel'], 'Gestão de Gel › Operação': ['gel', 'aba=op'],
+  'Paradas': ['paradas', ''], 'Paradas › Visão geral': ['paradas', 'aba=geral'], 'Paradas › Fila técnica': ['paradas', 'aba=fila'],
+  'Equipamentos': ['equip', ''], 'Iniciativas': ['inic', ''], 'Projetos': ['projetos', '']
+};
+/* página inicial de quem entrou (vac.userId): a do usuário, senão a do perfil; lê a cópia do cadastro (vac.cadastros) */
+function vacPaginaInicial() {
+  try {
+    const C = typeof vacCad === 'function' ? vacCad() : JSON.parse(localStorage.getItem('vac.cadastros') || 'null'); if (!C) return null;
+    const id = localStorage.getItem('vac.userId') || ''; const u = id ? (C.usuarios || []).find(x => String(x.codigo) === id && x.ativo !== false) : null;
+    if (u && u.paginaInicial && u.paginaInicial !== '(do perfil)') return u.paginaInicial;
+    const pc = (u && u.perfil) || localStorage.getItem('vac.perfil') || ''; const p = pc ? (C.perfis || []).find(x => x.codigo === pc && x.ativo !== false) : null;
+    return (p && p.paginaInicial) || null;
+  } catch (e) { return null; }
+}
+/* hash da aba inicial desta página (ex.: "aba=panel"), só na 1ª abertura da página na sessão e sem link direto; senão null */
+function vacAbaInicial(pagina) {
+  try {
+    if (location.hash) return null; const k = 'vac.inicial.' + pagina; if (sessionStorage.getItem(k)) return null; sessionStorage.setItem(k, '1');
+    const a = VAC_INICIAL_ALVO[vacPaginaInicial()]; return a && a[0] === pagina && a[1] ? a[1] : null;
+  } catch (e) { return null; }
+}
 /* ===== fim vac-bases v2 ===== */
 </script>
 </head>
@@ -907,7 +937,7 @@ const U = (() => {
 
 /* ---- 02-model.js ---- */
 /* ================= modelo de dados, valores iniciais e integridade ================= */
-const APP_VERSION = '2.4.7';
+const APP_VERSION = '2.4.8';
 const SCHEMA_VERSION = 1;
 const BASE_FILE = 'oee-vacutainer-base.json';
 const BACKUP_DIR = '00. Backups';
@@ -4436,6 +4466,7 @@ function applyHash() {
   const d = db();
   if (k === 'dia' && /^\d{4}-\d{2}-\d{2}$/.test(v)) { App.sel.date = v; App.sel.lineId = 'line_vac'; App.route = 'launch'; return true; }
   if (k === 'plano' && /^\d{4}-\d{2}$/.test(v)) { App.planMonth = v; App.route = 'plan'; return true; }
+  if (k === 'aba' && ROUTES.some(r => r[0] === v)) { App.route = v; try { history.replaceState(null, '', location.pathname + location.search); } catch (e) { } return true; }
   if (k === 'pend') { App.route = 'pend'; App.scrollTo = v === 'servidor' ? 'pend-srv' : 'pend-top'; return true; }
   if (k === 'lote') { App.lotsF = Object.assign(App.lotsF || {}, { q: v, st: '', m: '' }); App.route = 'lots'; return true; }
   if (k === 'ordem' && d) {
@@ -7788,19 +7819,19 @@ async function rpPdf(c) {
   head(true);
   // comentário e resumo
   const para = (txt, size, color, bold) => { doc.setFont('helvetica', bold ? 'bold' : 'normal'); doc.setFontSize(size); doc.setTextColor(...color); for (const ln of String(txt).split(/\n+/).filter(s => s.trim())) { const L = doc.splitTextToSize(T(ln), W); need(L.length * size * 0.42 + 1); doc.text(L, m, y + size * 0.35); y += L.length * size * 0.42 + 1.2; } };
-  if (c.note && c.note.trim()) { doc.setFillColor(227, 236, 245); const L = c.note.split(/\n+/).filter(s => s.trim()).reduce((n, s) => n + doc.splitTextToSize(T(s), W - 6).length, 0); doc.rect(m, y - 1, W, L * 4.2 + 4, 'F'); y += 1.5; doc.setFont('helvetica', 'bold'); doc.setFontSize(8); doc.setTextColor(...ACC); doc.text('COMENTÁRIO', m + 3, y + 2); y += 4.5; for (const ln of c.note.split(/\n+/).filter(s => s.trim())) { const LL = doc.splitTextToSize(T(ln), W - 6); doc.setFont('helvetica', 'normal'); doc.setFontSize(9.5); doc.setTextColor(...INK); doc.text(LL, m + 3, y + 3); y += LL.length * 4.2; } y += 3; }
+  if (c.note && c.note.trim()) { doc.setFont('helvetica', 'normal'); doc.setFontSize(9.5); const LN = c.note.split(/\n+/).filter(s => s.trim()).flatMap(s => doc.splitTextToSize(T(s), W - 6)); let first = true; while (LN.length) { const room = Math.max(1, Math.floor((PH - m - 6 - y - (first ? 7 : 2.5)) / 4.2)); const P = LN.splice(0, room); doc.setFillColor(227, 236, 245); doc.rect(m, y - 1, W, P.length * 4.2 + (first ? 8.5 : 4), 'F'); if (first) { doc.setFont('helvetica', 'bold'); doc.setFontSize(8); doc.setTextColor(...ACC); doc.text('COMENTÁRIO', m + 3, y + 3.5); y += 4.5; } doc.setFont('helvetica', 'normal'); doc.setFontSize(9.5); doc.setTextColor(...INK); doc.text(P, m + 3, y + 3, { lineHeightFactor: 4.2 / (9.5 * 0.3528) }); y += P.length * 4.2 + 3; first = false; if (LN.length) { doc.addPage(); head(false); } } y += 1; }
   if (c.sum && c.sum.trim()) { para(c.sum, 9, INK); y += 2; }
   // indicadores
   if (M.kpis.length) {
-    const cols = Math.min(7, M.kpis.length), gap = 2, bw = (W - gap * (cols - 1)) / cols, bh = 19;
+    const cols = Math.min(7, M.kpis.length), gap = 2, bw = (W - gap * (cols - 1)) / cols; doc.setFont('helvetica', 'normal'); doc.setFontSize(6.5); const dy = M.kpis.some(k => doc.splitTextToSize(T(k.l.toUpperCase()), bw - 4).length > 1) ? 2.6 : 0, bh = 19 + dy;
     M.kpis.forEach((k, i) => {
       const col = i % cols; if (col === 0) { if (i) y += bh + gap; need(bh); }
       const x0 = m + col * (bw + gap);
       doc.setDrawColor(...LINE); doc.setFillColor(255, 255, 255); doc.roundedRect(x0, y, bw, bh, 1.5, 1.5, 'FD');
-      doc.setFont('helvetica', 'normal'); doc.setFontSize(6.5); doc.setTextColor(...MUTED); doc.text(doc.splitTextToSize(T(k.l.toUpperCase()), bw - 4).slice(0, 1), x0 + 2, y + 4);
-      doc.setFont('helvetica', 'bold'); doc.setFontSize(13); doc.setTextColor(...(belowMeta(k.s) ? [194, 42, 42] : INK)); const v = T(rpStrip(k.v)); doc.text(v, x0 + 2, y + 10.5);
-      if (k.u) { const vw = doc.getTextWidth(v); doc.setFont('helvetica', 'normal'); doc.setFontSize(7); doc.setTextColor(...MUTED); doc.text(T(k.u), x0 + 3 + vw, y + 10.5); }
-      doc.setFont('helvetica', 'normal'); doc.setFontSize(6.3); doc.setTextColor(...MUTED); doc.text(doc.splitTextToSize(T([rpStrip(k.s), rpStrip(k.dl)].filter(Boolean).join(' · ')), bw - 4).slice(0, 2), x0 + 2, y + 13.5);
+      doc.setFont('helvetica', 'normal'); doc.setFontSize(6.5); doc.setTextColor(...MUTED); doc.text(doc.splitTextToSize(T(k.l.toUpperCase()), bw - 4).slice(0, 2), x0 + 2, y + 4, { lineHeightFactor: 1.15 });
+      doc.setFont('helvetica', 'bold'); doc.setFontSize(13); doc.setTextColor(...(belowMeta(k.s) ? [194, 42, 42] : INK)); const v = T(rpStrip(k.v)); doc.text(v, x0 + 2, y + 10.5 + dy);
+      if (k.u) { const vw = doc.getTextWidth(v); doc.setFont('helvetica', 'normal'); doc.setFontSize(7); doc.setTextColor(...MUTED); doc.text(T(k.u), x0 + 3 + vw, y + 10.5 + dy); }
+      doc.setFont('helvetica', 'normal'); doc.setFontSize(6.3); doc.setTextColor(...MUTED); doc.text(doc.splitTextToSize(T([rpStrip(k.s), rpStrip(k.dl)].filter(Boolean).join(' · ')), bw - 4).slice(0, 2), x0 + 2, y + 13.5 + dy);
     });
     y += bh + 5;
   }
@@ -8430,6 +8461,7 @@ async function boot() {
   }
   if (!started) await Store.startLocal(Model.seed(Model.emptyBase(Store.S.user || 'Administrador'), Store.S.user || 'Administrador'));
   App.sel.lineId = 'line_vac';
+  { const ai = typeof vacAbaInicial === 'function' ? vacAbaInicial('oee') : null; if (ai) try { history.replaceState(null, '', '#' + ai); } catch (e) { } }
   App.op = location.hash === '#turno'; if (App.op) App.route = 'shift'; else applyHash();
   Logo.load();
   renderNow();
@@ -9144,11 +9176,13 @@ window.vacNavAtual = () => ({ attr: 'data-route', val: App.route, sub: App.route
    Plano → Ordens → Apontamento → Análise → Gestão → Configurações. Menus abrem ao passar o mouse (ou tocar).
    ===================================================================== */
 const NAV_GRUPOS = [
+  { g: 'Visão geral', itens: [['overview', 'Visão geral']] },   // 2.4.8 · Visão geral em 1º e Painel em 2º (a aba que abre vem do perfil)
+  { g: 'Painel', itens: [['panel', 'Painel']] },
   { g: 'Plano', itens: [['plan', 'Plano do mês']] },
   { g: 'Ordens', itens: [['ordens', 'Importar MB51', 'mb51'], ['ordens', 'Complementar COOIS', 'coois'], ['ordens', 'Ordens produzidas', 'lista'], ['ordens', 'Conciliação', 'conc'], ['ordens', 'Histórico de competências', 'hist']] },
   { g: 'Apontamento', itens: [['launch', 'Lançamento'], ['hourly', 'Hora a hora'], ['lots', 'Lotes (MES)'], ['pend', 'Pendências']] },
-  { g: 'Análise', itens: [['overview', 'Visão geral'], ['stops', 'Paradas'], ['history', 'Histórico'], ['weekly', 'Semanal'], ['monthly', 'Mensal']] },
-  { g: 'Gestão', itens: [['panel', 'Painel'], ['reports', 'Relatórios']] },
+  { g: 'Análise', itens: [['stops', 'Paradas'], ['history', 'Histórico'], ['weekly', 'Semanal'], ['monthly', 'Mensal']] },
+  { g: 'Gestão', itens: [['reports', 'Relatórios']] },
   { g: 'Configurações', itens: [['config', 'Configurações']] }];
 function renderNavGrupos() {
   const vis = new Set(visibleRoutes().map(r => r[0])); vis.add('ordens'); vis.add('config');
@@ -9522,6 +9556,16 @@ document.addEventListener('toggle', e => {
   const r = l.getBoundingClientRect(); if (r.left < 8) { l.style.right = 'auto'; l.style.left = '0'; }
   const r2 = l.getBoundingClientRect(); if (r2.right > innerWidth - 8) l.style.left = (innerWidth - 8 - r2.width - d.getBoundingClientRect().left) + 'px';
 }, true);
+/* kit v2.1 · impressão e exportação sempre no tema claro (07/11/2026). vacTemaClaro(true) põe o tema claro e guarda o anterior;
+   vacTemaClaro(false) devolve. Ctrl+P e window.print() passam por aqui (beforeprint/afterprint). Páginas que vigiam o tema
+   (Gel) não desfazem enquanto data-vac-claro estiver marcado. */
+function vacTemaClaro(on) {
+  const r = document.documentElement;
+  if (on) { if (r.dataset.vacClaro != null) return; r.dataset.vacClaro = r.hasAttribute('data-theme') ? r.getAttribute('data-theme') : '-'; r.setAttribute('data-theme', 'light'); }
+  else { const t = r.dataset.vacClaro; if (t == null) return; delete r.dataset.vacClaro; if (t === '-') r.removeAttribute('data-theme'); else r.setAttribute('data-theme', t); }
+}
+window.addEventListener('beforeprint', () => vacTemaClaro(true));
+window.addEventListener('afterprint', () => vacTemaClaro(false));
 
 </script>
 </body>
