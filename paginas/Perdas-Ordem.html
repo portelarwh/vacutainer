@@ -780,8 +780,11 @@ function vacAbaInicial(pagina) {
 const APP_VER='1.8.15', BASE_FN='perdas-base.json', DIR_ORIG='00. Originais SAP', DIR_BKP='00. Backups', DIR_IN='00. Entrada KKBC', DIR_DONE='00. Entrada KKBC/Processados';
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 /* página para o núcleo comum, o cabeçalho (vac-cabecalho v2) e o quadro de Versões do Portal */
-const PAGE={id:'perdas',titulo:'Waste · Linha Vacutainer',tituloCurto:'Waste',subtitulo:'Custos e perdas por ordem',versao:'1.8.15',/* igual a APP_VER; o Portal lê este valor */baseFile:BASE_FN,backupDir:'00. Backups/Perdas',busca:q=>buscaPerdas(q)};
+const PAGE={id:'perdas',titulo:'Waste · Linha Vacutainer',tituloCurto:'Waste',subtitulo:'Custos e perdas por ordem',versao:'1.8.16',/* igual a APP_VER; o Portal lê este valor */baseFile:BASE_FN,backupDir:'00. Backups/Perdas',busca:q=>buscaPerdas(q)};
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+/* 1.8.16 · argumento de JavaScript dentro de onclick="…": JSON.stringify fecha a string do jeito certo (aspas, barras) e o esc protege o atributo.
+   Só esc() entre aspas simples não basta: o navegador desfaz o &#39; antes de rodar o código, e um código importado com aspa executava. */
+const jsArg=v=>esc(JSON.stringify(String(v??'')));
 const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,7);
 const nowISO=()=>new Date().toISOString();
 const todayISO=()=>{const d=new Date();return new Date(d-d.getTimezoneOffset()*6e4).toISOString().slice(0,10)};
@@ -995,7 +998,7 @@ async function syncNow(silent){
    ST.err=''}catch(e){ST.err=String(e.message||e)}
  renderMeta();
 }
-function downloadJSON(o,name){const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([JSON.stringify(o,null,1)],{type:'application/json'}));a.download=name;a.click()}
+function downloadJSON(o,name){downloadBlob(new Blob([JSON.stringify(o,null,1)],{type:'application/json'}),name)}   /* 1.8.16 · downloadBlob libera a URL depois do download */
 
 /* ===================== LEITURA DO TEXTO / ARQUIVO ===================== */
 function splitCSV(line,sep){const out=[];let cur='',q=false;for(let i=0;i<line.length;i++){const c=line[i];if(q){if(c==='"'){if(line[i+1]==='"'){cur+='"';i++}else q=false}else cur+=c}else if(c==='"')q=true;else if(c===sep){out.push(cur);cur=''}else cur+=c}out.push(cur);return out}
@@ -1526,7 +1529,7 @@ function renderTable(ords,rows){
    case 'stat':return v>=2?'<span class="tag r">outlier</span>':v===1?'<span class="tag o">atenção</span>':'';
    case 'rec':return v?'<span class="tag r">recorrente</span>':'';case 'ac':return v?`<span class="tag b">${v} aberta${v>1?'s':''}</span>`:'';
    case 'score':return `<b>${v}</b>`;case 'exEm':return fmtDT(v);case 'exMot':return `<span class="small">${esc(v||'')}</span>`;
-   case 'rest':return `<button class="b sm" onclick="event.stopPropagation();restaurarOrdem('${esc(r.ordem)}')">Restaurar</button>`;case 'causa':return v?esc(v):(r.d>0&&r.lvl>=1?'<span class="muted small">sem causa</span>':'');
+   case 'rest':return `<button class="b sm" onclick="event.stopPropagation();restaurarOrdem(${jsArg(r.ordem)})">Restaurar</button>`;case 'causa':return v?esc(v):(r.d>0&&r.lvl>=1?'<span class="muted small">sem causa</span>':'');
    case 'status':return esc(v||'')+(r.aberta?' <span class="tag o" title="Ordem aberta: valores provisórios">aberta</span>':'');
    default:return esc(v??'')}};
  const shown=data.slice(0,F.lim);
@@ -1798,7 +1801,7 @@ function openOrder(ordem){
  const coms=B.comments.filter(c=>c.ordem===ordem&&c.ativo!==false).sort((a,b)=>a.data<b.data?1:-1);
  const acs=B.actions.filter(a=>a.ordem===ordem);
  let h=`<h2 style="margin:0 0 4px">Ordem ${esc(ordem)} ${lvTag(o.lvl||0)} ${o.aberta?'<span class="tag o">aberta · valores provisórios</span>':''}${EXo?' <span class="tag r">excluída</span>':''}</h2>
- ${EXo?`<div class="note e"><b>Ordem excluída</b> em ${fmtDT(EXo.em)} por ${esc(EXo.por||'—')} · justificativa: ${esc(EXo.motivo)}. Está fora de todos os totais, painéis e relatórios; os dados continuam guardados. <button class="b sm" onclick="restaurarOrdem('${esc(ordem)}')">Restaurar ordem</button></div>`:''}
+ ${EXo?`<div class="note e"><b>Ordem excluída</b> em ${fmtDT(EXo.em)} por ${esc(EXo.por||'—')} · justificativa: ${esc(EXo.motivo)}. Está fora de todos os totais, painéis e relatórios; os dados continuam guardados. <button class="b sm" onclick="restaurarOrdem(${jsArg(ordem)})">Restaurar ordem</button></div>`:''}
  <div class="dnav small"><a href="#" data-go="dResumo">Resumo</a><a href="#" data-go="dProd">Produção (OEE)</a><a href="#" data-go="dGel">Gel</a><a href="#" data-go="dComps">Componentes</a><a href="#" data-go="dComent">Comentários e ações</a><a href="#" data-go="dVers">Versões</a><a href="#" data-go="dSap">Dados de origem (SAP)</a><a href="#" data-go="dHist">Histórico</a></div>
  <div id="dResumo"></div>
  <div class="muted">${esc(o.cat||'')} ${esc(o.prodDesc||'')} ${o.lote?'· lote '+esc(o.lote):''} ${o.status?'· status '+esc(o.status):''} · ${fmtM(o.per)} (${o.per?fyOf(o.per)+' P'+fpOf(o.per):''})</div>
@@ -1813,10 +1816,10 @@ function openOrder(ordem){
  <div style="margin-bottom:8px;display:flex;gap:6px;flex-wrap:wrap">
   <a class="b" href="${esc(sysLink('oee'))}#${(()=>{const q=oeeQuick(ordem);const d=String(q?.ini||'').match(/\d{4}-\d{2}-\d{2}/);return d?'dia='+d[0]:'ordem='+encodeURIComponent(ordem)})()}" target="_blank">Abrir no OEE</a>
   <a class="b" href="${esc(sysLink('gel'))}" target="_blank">Abrir o Gel</a>
-  <button class="b" onclick="copyLink('${esc(ordem)}')">Copiar link desta ordem</button>
-  <button class="b" onclick="Report.open(docOrdem('${esc(ordem)}'),{notaKey:'ordem:${esc(ordem)}'})">Relatório da ordem</button>
-  <button class="b" onclick="exportOrder('${esc(ordem)}')">⇩ Excel da ordem</button>
-  ${EXo?'':`<button class="b d" style="margin-left:auto" onclick="excluirOrdem('${esc(ordem)}')" title="Tira a ordem dos totais com justificativa. Pode ser restaurada.">Excluir ordem…</button>`}</div>
+  <button class="b" onclick="copyLink(${jsArg(ordem)})">Copiar link desta ordem</button>
+  <button class="b" onclick="Report.open(docOrdem(${jsArg(ordem)}),{notaKey:${jsArg('ordem:'+ordem)}})">Relatório da ordem</button>
+  <button class="b" onclick="exportOrder(${jsArg(ordem)})">⇩ Excel da ordem</button>
+  ${EXo?'':`<button class="b d" style="margin-left:auto" onclick="excluirOrdem(${jsArg(ordem)})" title="Tira a ordem dos totais com justificativa. Pode ser restaurada.">Excluir ordem…</button>`}</div>
  <div class="card" id="dProd" style="margin:0 0 12px;padding:10px 12px"><h3 style="margin-bottom:6px">No OEE <i class="i" title="Dados que o OEE tem desta ordem: plano do PCP (lote, quantidade, início e fim previstos e reais), produção e lotes do servidor. Somente leitura.">i</i></h3><div id="oeeBox">${oeeBlock(ordem)}</div></div>
  <div class="card" id="dGel" style="margin:0 0 12px;padding:10px 12px"><h3 style="margin-bottom:6px">No Gel <i class="i" title="Dados da Gestão de Gel para esta ordem e lote: consumo de gel, scrap de gel e barris (LP). Somente leitura.">i</i></h3><div id="gelBox">${gelBlock(ordem)}</div></div>
  ${(()=>{const v=versions.find(x=>x.vig);const og=v?.imp?.outrosGrupos?.[ordem];if(!og||!Object.keys(og).length)return'';
@@ -1827,13 +1830,13 @@ function openOrder(ordem){
   return`<tr class="${hl(l)}"><td>${esc(compKey(r))}${isDelivery(r)?' <span class="tag b">entrega</span>':''}</td><td>${esc(compName(r))}</td><td>${esc(r.un||'')}</td><td class="n">${fmtQ(r.qT)}</td><td class="n">${fmtQ(r.qR)}</td><td class="n">${r.qT!=null||r.qR!=null?fmtQ(dq):'–'}</td><td class="n">${r.qT?fmtP(dq/Math.abs(r.qT)):'–'}</td><td class="n">${fmtR(r.cT,2)}</td><td class="n">${fmtR(r.cR,2)}</td><td class="n ${d>0?'bad':'good'}">${fmtR(d,2)}</td><td class="n">${fmtR(split(r).eq,2)}</td><td class="n">${fmtR(split(r).ep,2)}</td>
   <td>${l?lvTag(l):''}${st>=2?'<span class="tag r">outlier</span>':st?'<span class="tag o">atenção</span>':''}${STAT.recSet.has(compKey(r))&&d>0?'<span class="tag r">recorrente</span>':''}${sapDiff?'<span class="tag o" title="Desvio SAP: '+fmtR(r.dSap,2)+'">SAP ≠ calc</span>':''}${r.cT===0&&r.cR?'<span class="tag o">sem base teórica</span>':''}</td>
   <td class="small">${esc(causeOf(ordem,r.comp))}${cc?` <span class="tag b">${cc}</span>`:''}</td>
-  <td><button class="b sm" onclick="commentForm('${esc(ordem)}','${esc(r.comp||'')}')">Comentar</button></td></tr>`}).join('')}</table></div>
+  <td><button class="b sm" onclick="commentForm(${jsArg(ordem)},${jsArg(r.comp||'')})">Comentar</button></td></tr>`}).join('')}</table></div>
  <div class="row" id="dComent" style="margin-top:12px">
- <div><h3>Comentários e causas <button class="b sm" onclick="commentForm('${esc(ordem)}','')">+ Comentário</button></h3>
+ <div><h3>Comentários e causas <button class="b sm" onclick="commentForm(${jsArg(ordem)},'')">+ Comentário</button></h3>
   ${coms.length?coms.map(c=>`<div class="hist"><div class="h">${fmtDT(c.data)} · ${esc(c.user||'—')} · ${esc(c.tipo)}${c.comp?' · componente '+esc(c.comp):''}${c.alteradoEm?' · editado':''}</div>${c.causa?`<b>${esc(c.causa)}${c.sub?' › '+esc(c.sub):''}</b><br>`:''}${esc(c.texto)}
-   <div><button class="b sm" onclick="commentForm('${esc(ordem)}','${esc(c.comp||'')}','${c.id}')">Editar</button> <button class="b sm d" onclick="delComment('${c.id}')">Excluir</button></div></div>`).join(''):'<p class="muted small">Sem comentários.</p>'}</div>
- <div><h3>Ações <button class="b sm" onclick="actionForm(null,'${esc(ordem)}')">+ Ação</button></h3>
-  ${acs.length?acs.map(a=>`<div class="hist"><div class="h">${esc(a.status)} · resp. ${esc(a.resp||'—')} · prazo ${fmtD(a.prazo)||'—'}${acVencida(a)?' · <b class="bad">vencida</b>':''}</div>${esc(a.desc)}${a.comp?' <span class="tag">'+esc(a.comp)+'</span>':''} <button class="b sm" onclick="actionForm('${a.id}')">Editar</button></div>`).join(''):'<p class="muted small">Sem ações.</p>'}
+   <div><button class="b sm" onclick="commentForm(${jsArg(ordem)},${jsArg(c.comp||'')},${jsArg(c.id)})">Editar</button> <button class="b sm d" onclick="delComment(${jsArg(c.id)})">Excluir</button></div></div>`).join(''):'<p class="muted small">Sem comentários.</p>'}</div>
+ <div><h3>Ações <button class="b sm" onclick="actionForm(null,${jsArg(ordem)})">+ Ação</button></h3>
+  ${acs.length?acs.map(a=>`<div class="hist"><div class="h">${esc(a.status)} · resp. ${esc(a.resp||'—')} · prazo ${fmtD(a.prazo)||'—'}${acVencida(a)?' · <b class="bad">vencida</b>':''}</div>${esc(a.desc)}${a.comp?' <span class="tag">'+esc(a.comp)+'</span>':''} <button class="b sm" onclick="actionForm(${jsArg(a.id)})">Editar</button></div>`).join(''):'<p class="muted small">Sem ações.</p>'}
   <h3 id="dVers" style="margin-top:12px">Versões importadas</h3>
   <table class="small"><tr><th>Importação</th><th>Mês</th><th class="n">Desvio</th><th></th></tr>${versions.map(v=>`<tr><td>${fmtDT(v.imp?.data)} · ${esc(v.imp?.usuario||'')}<div class="muted">${esc(v.imp?.arquivo||'')}</div></td><td>${v.per.map(fmtM).join(', ')}</td><td class="n">${fmtR(v.d)}</td><td>${v.vig?'<span class="tag b">vigente</span>':v.imp?.status==='cancelado'?'<span class="tag">desfeita</span>':'<span class="tag">substituída</span>'}</td></tr>`).join('')}</table></div></div>`;
  h+=dadosOrigem(ordem,all,imps)+historicoOrdem(ordem);
@@ -2238,8 +2241,8 @@ function buscaPerdas(k){const n=x=>String(x??'').normalize('NFD').replace(/[̀-�
 function renderHistorico(){
  const imps=[...B.imports].sort((a,b)=>a.data<b.data?1:-1);
  $('#tblImp').innerHTML=`<table><tr><th>Data</th><th>Quem</th><th>Arquivo</th><th>Mês</th><th>Moeda</th><th class="n">Linhas</th><th class="n">Ordens</th><th class="n">Rejeitadas</th><th class="n">Substituídas</th><th>Status</th><th></th></tr>
- ${imps.map(i=>`<tr><td>${fmtDT(i.data)}</td><td>${esc(i.usuario||'')}</td><td>${esc(i.arquivo)}${i.original?' <span class="tag b" title="Cópia do original guardada em '+DIR_ORIG+'">original</span>':''}<div class="muted small">${esc(i.granularidade||'')}${i.motivo?' · motivo: '+esc(i.motivo):''}</div></td><td>${(i.periodos||[]).map(fmtM).join(', ')}</td><td class="small">${i.moedas?Object.entries(i.moedas).map(([k,n])=>`<span class="tag ${k==='BRL'?'':'o'}">${esc(k)} ${n}</span>`).join(' '):'<span class="muted" title="Importada antes da coluna Moeda: lida na moeda padrão da Configuração">—</span>'}</td><td class="n">${fmtN(i.importadas)}</td><td class="n">${fmtN(i.ordens)}</td><td class="n">${i.rejeitadas?`<a href="#" onclick="showRej('${i.id}');return false">${i.rejeitadas}</a>`:0}</td><td class="n">${fmtN(i.substituidas||0)}</td><td>${esc(i.status)}</td>
- <td>${i.status!=='cancelado'?`<button class="b sm d" onclick="undoImport('${i.id}')">Desfazer</button>`:''}</td></tr>`).join('')||'<tr><td colspan="10" class="muted">Nenhuma importação.</td></tr>'}</table>`;
+ ${imps.map(i=>`<tr><td>${fmtDT(i.data)}</td><td>${esc(i.usuario||'')}</td><td>${esc(i.arquivo)}${i.original?' <span class="tag b" title="Cópia do original guardada em '+DIR_ORIG+'">original</span>':''}<div class="muted small">${esc(i.granularidade||'')}${i.motivo?' · motivo: '+esc(i.motivo):''}</div></td><td>${(i.periodos||[]).map(fmtM).join(', ')}</td><td class="small">${i.moedas?Object.entries(i.moedas).map(([k,n])=>`<span class="tag ${k==='BRL'?'':'o'}">${esc(k)} ${n}</span>`).join(' '):'<span class="muted" title="Importada antes da coluna Moeda: lida na moeda padrão da Configuração">—</span>'}</td><td class="n">${fmtN(i.importadas)}</td><td class="n">${fmtN(i.ordens)}</td><td class="n">${i.rejeitadas?`<a href="#" onclick="showRej(${jsArg(i.id)});return false">${i.rejeitadas}</a>`:0}</td><td class="n">${fmtN(i.substituidas||0)}</td><td>${esc(i.status)}</td>
+ <td>${i.status!=='cancelado'?`<button class="b sm d" onclick="undoImport(${jsArg(i.id)})">Desfazer</button>`:''}</td></tr>`).join('')||'<tr><td colspan="10" class="muted">Nenhuma importação.</td></tr>'}</table>`;
  $('#tblAudit').innerHTML=`<table><tr><th>Quando</th><th>Quem</th><th>O quê</th><th>Detalhe</th></tr>${B.audit.slice(-400).reverse().map(a=>`<tr><td>${fmtDT(a.t)}</td><td>${esc(a.u)}</td><td>${esc(a.a)}</td><td class="small">${esc(a.d)}</td></tr>`).join('')}</table>`;
 }
 function showRej(id){const i=B.imports.find(x=>x.id===id);$('#mFormBody').innerHTML=`<h3>Linhas rejeitadas · ${esc(i.arquivo)}</h3><table class="small"><tr><th>Linha</th><th>Motivo</th></tr>${(i.rejeicoes||[]).map(r=>`<tr><td>${r.ln}</td><td>${esc(r.why)}</td></tr>`).join('')}</table>`;$('#mForm').classList.add('on')}
@@ -2252,7 +2255,7 @@ async function undoImport(id){const i=B.imports.find(x=>x.id===id);const pers=(i
 function renderAcoes(){
  const all=$('#acTodas').checked;const acs=B.actions.filter(a=>all||!DONE_AC.includes(a.status)).sort((a,b)=>(a.prazo||'9')<(b.prazo||'9')?-1:1);
  $('#tblAcoes').innerHTML=`<table><tr><th>Ação</th><th>Ordem</th><th>Componente</th><th>Causa</th><th>Responsável</th><th>Abertura</th><th>Prazo</th><th class="n">Atraso</th><th>Status</th><th class="n">Econ. estimada</th></tr>
- ${acs.map(a=>{const late=acVencida(a)?Math.round((new Date(todayISO())-new Date(a.prazo))/864e5):0;return`<tr class="click" data-id="${a.id}"><td>${esc(a.desc)}</td><td>${a.ordem?`<a href="#" onclick="event.stopPropagation();openOrder('${esc(a.ordem)}');return false">${esc(a.ordem)}</a>`:''}</td><td>${esc(a.comp||'')}</td><td>${esc(a.causa||'')}</td><td>${esc(a.resp||'')}</td><td>${fmtD(a.abertura)}</td><td>${fmtD(a.prazo)}</td><td class="n ${late?'bad':''}">${late?late+' d':''}</td><td>${esc(a.status)}</td><td class="n">${a.econ!=null?fmtR(a.econ):''}</td></tr>`}).join('')||'<tr><td colspan="10" class="muted">Nenhuma ação.</td></tr>'}</table>`;
+ ${acs.map(a=>{const late=acVencida(a)?Math.round((new Date(todayISO())-new Date(a.prazo))/864e5):0;return`<tr class="click" data-id="${a.id}"><td>${esc(a.desc)}</td><td>${a.ordem?`<a href="#" onclick="event.stopPropagation();openOrder(${jsArg(a.ordem)});return false">${esc(a.ordem)}</a>`:''}</td><td>${esc(a.comp||'')}</td><td>${esc(a.causa||'')}</td><td>${esc(a.resp||'')}</td><td>${fmtD(a.abertura)}</td><td>${fmtD(a.prazo)}</td><td class="n ${late?'bad':''}">${late?late+' d':''}</td><td>${esc(a.status)}</td><td class="n">${a.econ!=null?fmtR(a.econ):''}</td></tr>`}).join('')||'<tr><td colspan="10" class="muted">Nenhuma ação.</td></tr>'}</table>`;
  $$('#tblAcoes tr.click').forEach(tr=>tr.onclick=()=>actionForm(tr.dataset.id));
 }
 function qualityIssues(){
@@ -2272,13 +2275,13 @@ function qualityIssues(){
  const lastPer=allPers().slice(-1)[0];if(lastPer&&lastPer<addM(curM(),-1))add(1,'Importação atrasada',`Último mês importado: ${fmtM(lastPer)}.`,[]);
  return out.sort((a,b)=>b.sev-a.sev)}
 function renderQualidade(){const q=qualityIssues();
- $('#qList').innerHTML=q.length?q.map(x=>`<div class="note ${x.sev===2?'e':x.sev===1?'w':''}"><b>${esc(x.tit)}</b><br>${esc(x.txt)}${x.list.length?`<div class="small" style="margin-top:4px">Ordens: ${x.list.slice(0,40).map(o=>`<a href="#" onclick="openOrder('${esc(o)}');return false">${esc(o)}</a>`).join(', ')}${x.list.length>40?' …':''}</div>`:''}</div>`).join(''):'<p class="good">Nenhum problema encontrado.</p>'}
+ $('#qList').innerHTML=q.length?q.map(x=>`<div class="note ${x.sev===2?'e':x.sev===1?'w':''}"><b>${esc(x.tit)}</b><br>${esc(x.txt)}${x.list.length?`<div class="small" style="margin-top:4px">Ordens: ${x.list.slice(0,40).map(o=>`<a href="#" onclick="openOrder(${jsArg(o)});return false">${esc(o)}</a>`).join(', ')}${x.list.length>40?' …':''}</div>`:''}</div>`).join(''):'<p class="good">Nenhum problema encontrado.</p>'}
 function renderFechamento(){
  const ps=allPers().slice().reverse();const ex=buildExports().porMes;const pm=Object.fromEntries(ex.map(p=>[p.per,p]));
  $('#fechBox').innerHTML=`<div class="tw"><table><tr><th>Mês</th><th>FY</th><th class="n">Ordens</th><th class="n">Líquido atual</th><th>Status</th><th class="n">Líquido oficial</th><th>Fechado por</th><th></th></tr>
  ${ps.map(p=>{const c=B.closings.filter(x=>x.per===p).sort((a,b)=>a.v-b.v).pop();const cur=pm[p]||{};const chg=c&&c.status==='fechado'&&Math.abs((cur.liquido||0)-c.liquido)>0.5;
   return`<tr><td>${fmtM(p)}</td><td>${fyOf(p)} P${fpOf(p)}</td><td class="n">${cur.ordens||0}</td><td class="n">${fmtR(cur.liquido)}</td><td>${c?esc(c.status)+' v'+c.v:'aberto'}${chg?' <span class="tag o">fechado com alterações</span>':''}</td><td class="n">${c?fmtR(c.liquido):''}</td><td class="small">${c?esc(c.user)+' · '+fmtDT(c.data):''}</td>
-  <td>${!c||c.status!=='fechado'?`<button class="b sm p" onclick="closeMonth('${p}')">Fechar</button>`:`<button class="b sm" onclick="reopenMonth('${p}')">Reabrir</button>`}</td></tr>`}).join('')||'<tr><td colspan="8" class="muted">Sem meses.</td></tr>'}</table></div>`}
+  <td>${!c||c.status!=='fechado'?`<button class="b sm p" onclick="closeMonth(${jsArg(p)})">Fechar</button>`:`<button class="b sm" onclick="reopenMonth(${jsArg(p)})">Reabrir</button>`}</td></tr>`}).join('')||'<tr><td colspan="8" class="muted">Sem meses.</td></tr>'}</table></div>`}
 async function closeMonth(p){const cur=buildExports();const pm=cur.porMes.find(x=>x.per===p);const ords=cur.porOrdem.filter(o=>o.per===p);
  const sem=ords.filter(o=>(o.nivel==='alta'||o.nivel==='crítica')&&!o.causa).length;
  if(!confirm(`Fechar ${fmtM(p)}? Líquido ${fmtR(pm.liquido)} em ${pm.ordens} ordens.${sem?`\n\nAtenção: ${sem} ordens altas/críticas sem causa.`:''}`))return;
@@ -2321,8 +2324,8 @@ function interpretPaste(){const t=$('#impTxt').value;if(!t.trim()){toast('Cole o
 /* ===================== EXPORTAÇÃO ===================== */
 function tableAOA(){const{cols,data}=F._lastData||{cols:[],data:[]};return[cols.map(c=>c[1]),...data.map(r=>cols.map(([c])=>{const v=r[c];if(c==='lvl')return LV[v];if(c==='rec')return v?'sim':'';if(c==='per')return fmtM(v);if(typeof v==='number')return+v.toFixed(c==='pct'||c==='pq'?4:2);return v??''}))]}
 async function exportXlsx(aoa,name){try{const X=await loadXLSX();const wb=X.utils.book_new();X.utils.book_append_sheet(wb,X.utils.aoa_to_sheet(aoa),'Dados');X.writeFile(wb,name)}catch(e){toast(e.message+' Exportando CSV.');exportCsv(aoa,name.replace(/\.xlsx$/,'.csv'))}}
-function exportCsv(aoa,name){const csv='﻿'+aoa.map(r=>r.map(v=>{let s=typeof v==='number'?String(v).replace('.',','):String(v??'');return/[;"\n]/.test(s)?'"'+s.replace(/"/g,'""')+'"':s}).join(';')).join('\r\n');
- const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'}));a.download=name;a.click()}
+function exportCsv(aoa,name){const csv='﻿'+aoa.map(r=>r.map(v=>{let s=typeof v==='number'?String(v).replace('.',','):vacCsvTexto(v);   /* 1.8.16 · texto que viraria fórmula no Excel ganha o prefixo ' */return/[;"\n]/.test(s)?'"'+s.replace(/"/g,'""')+'"':s}).join(';')).join('\r\n');
+ downloadBlob(new Blob([csv],{type:'text/csv'}),name)}
 function exportOrder(o){const rows=vigRows().filter(r=>r.ordem===o);exportXlsx([['Ordem','Mês','Catálogo','Componente','Descrição','Un','Qtd meta','Qtd real','Custo meta','Custo real','Desvio','Efeito qtd','Efeito preço','Desvio SAP','Causa'],...rows.map(r=>[r.ordem,r.per,r.cat,compKey(r),compName(r),r.un,r.qT,r.qR,r.cT,r.cR,+dev(r).toFixed(2),+split(r).eq.toFixed(2),+split(r).ep.toFixed(2),r.dSap,causeOf(o,r.comp)])],`Waste_ordem_${o}.xlsx`)}
 
 /* ===================== MODO TESTE ===================== */
@@ -2433,7 +2436,7 @@ async function renderBackups(){const el=$('#bkList');if(!el)return;
  const novos=BK.filter(x=>!x.antigo),ult=novos[0];
  el.innerHTML=`<p class="small">${ult?`Último backup em <b>${esc(PAGE.backupDir)}/</b>: ${esc(ult.nome)} · ${fmtDT(new Date(ult.mod).toISOString())}`:`Nenhum backup ainda em <b>${esc(PAGE.backupDir)}/</b>. O primeiro é feito na primeira gravação do dia ou pelo botão Backup.`}</p>
  ${BK.length?`<div class="tw" style="max-height:260px"><table><tr><th>Arquivo</th><th>Data</th><th class="n">Tamanho</th><th></th></tr>${BK.slice(0,80).map((x,i)=>`<tr><td class="small">${esc(x.nome)}${x.antigo?' <span class="tag o" title="Arquivo antigo, solto em '+esc(DIR_BKP)+'/. Nada novo é gravado ali.">local antigo</span>':''}</td><td class="small">${fmtDT(new Date(x.mod).toISOString())}</td><td class="n small">${fmtN(x.size/1024,0)} KB</td><td style="white-space:nowrap"><button class="b sm" data-bkd="${i}">⇩ Baixar</button> <button class="b sm" data-bkr="${i}">Restaurar</button></td></tr>`).join('')}</table></div>`:''}`;
- $$('[data-bkd]').forEach(b=>b.onclick=async()=>{const x=BK[+b.dataset.bkd];const f=await x.h.getFile();const a=document.createElement('a');a.href=URL.createObjectURL(f);a.download=x.nome;a.click()});
+ $$('[data-bkd]').forEach(b=>b.onclick=async()=>{const x=BK[+b.dataset.bkd];const f=await x.h.getFile();downloadBlob(f,x.nome)});
  $$('[data-bkr]').forEach(b=>b.onclick=async()=>{const x=BK[+b.dataset.bkr];try{const d=JSON.parse(await (await x.h.getFile()).text());if(await restoreBase(d,x.nome)){toast('Base restaurada de '+x.nome+'.');renderBackups()}}catch(e){alert('Não consegui restaurar: '+(e.message||e))}})}
 $('#btnTeste').onclick=enterTest;
 wireCabecalho();
@@ -2639,6 +2642,10 @@ function vacEstadoDe(id) {
   window.addEventListener('storage', e => { if (e.key === 'vac.sistemas' || (e.key || '').startsWith('vac.estadoOculto')) vacEstadoRender(); });
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', () => setTimeout(ini, 0)); else setTimeout(ini, 0);
 })();
+/* kit v2.1 · texto seguro para CSV (07/11/2026): texto que começa com = + - @ (ou tab/retorno) vira fórmula ao abrir o CSV no Excel.
+   Recebe um prefixo ' (o Excel mostra o texto como está). Número escrito como texto (-1.234 · -12,5 · -3%) não é mexido, e
+   valores number continuam número. Usado por Waste, Gel e Produção (cada página mantém o próprio formato de número e aspas). */
+function vacCsvTexto(v) { const s = String(v ?? ''); return /^[=+\-@\t\r]/.test(s) && !/^[+-]?[\d.,\s]+%?$/.test(s) ? "'" + s : s; }
 
 </script>
 </body>

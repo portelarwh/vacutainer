@@ -99,3 +99,9 @@ As mesmas correções do relatório do Portal 1.8.11 (módulo `Report` igual):
 - Outlook com os gráficos como imagem.
 
 No relatório mensal, o Pareto de componentes diz "20 maiores de N (todos no Excel)". O Excel já trazia todos. Registro § P.
+
+## Waste 1.8.16 (07/11/2026) · revisão `065fe6f` (registro § C)
+
+- **Botões do detalhe da ordem e das listas:** valores passam por `jsArg` (JSON + escape do atributo), nos 21 pontos. Um componente ou ordem importados com aspa executavam código no clique; um código com apóstrofo legítimo quebrava o botão.
+- **CSV:** texto que viraria fórmula no Excel ganha o prefixo `'` (`vacCsvTexto`, kit). Números iguais.
+- **Downloads** (CSV, JSON, backup) pelo `downloadBlob`, que libera a URL.

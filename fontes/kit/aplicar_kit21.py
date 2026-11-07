@@ -19,13 +19,19 @@ def visual(s,nome):
     bloco='<style id="vac-visual">\n'+vis+'\n</style>\n<script id="vac-bases">\n'+bas+'\n</script>\n'   # bases em 00. Bases (antes do código da página)
     if s.count('\n</head>\n')==1: return s.replace('\n</head>\n','\n'+bloco+'</head>\n')
     ancora='<!-- vac-cabecalho v2 · barra do sistema'   # página sem </head> explícito (Gel): logo antes do cabeçalho comum
-    if s.count(ancora)!=1: raise SystemExit('ERRO: nem </head> nem o início do vac-cabecalho achados exatamente 1 vez em '+nome)
+    if s.count(ancora)!=1: raise SystemExit('ERRO: nem </head> nem o início do vac-cabecalho achados exatamente 1 vez em '+nome+' (nada foi gravado)')
     return s.replace(ancora,bloco+ancora)
 # páginas em construção (geradas por fontes/modelo/gerar_paginas.py) recebem o mesmo kit; entram quando existirem
 NOVAS=[n for n in ['Equipamentos.html','Iniciativas.html','Projetos.html'] if os.path.exists(os.path.join(RAIZ,'paginas',n))]
+# duas fases (07/11/2026): monta e confere todas as páginas na memória; só grava se todas passarem (um ERRO não deixa parte regravada).
+# newline='\n': no Windows, o padrão gravaria CRLF e mudaria o arquivo inteiro no diff
+saida=[]
 for nome in ['Portal.html','Perdas-Ordem.html','Paradas.html','Gestão-Gel-Vacutainer.html']+NOVAS:
-    fn=os.path.join(RAIZ,'paginas',nome); s=open(fn,encoding='utf-8').read()
-    i=s.index('<script>\n/* ----- vac-cabecalho v2.1'); j=s.index('\n</script>',i)
+    fn=os.path.join(RAIZ,'paginas',nome); s=open(fn,encoding='utf-8',newline='').read()
+    i=s.find('<script>\n/* ----- vac-cabecalho v2.1'); j=s.find('\n</script>',i) if i>=0 else -1
+    if i<0 or j<0: raise SystemExit('ERRO: bloco do vac-cabecalho v2.1 não achado em '+nome+' (nada foi gravado)')
     s=s[:i]+'<script>\n'+k+s[j:]
-    if len(PAD.findall(s))!=1: raise SystemExit('ERRO: DEFAULT_SYSTEMS não achado exatamente 1 vez em '+nome)
-    s=PAD.sub(lambda m:sis,s); s=visual(s,nome); open(fn,'w',encoding='utf-8').write(s); print('ok',nome)
+    if len(PAD.findall(s))!=1: raise SystemExit('ERRO: DEFAULT_SYSTEMS não achado exatamente 1 vez em '+nome+' (nada foi gravado)')
+    s=PAD.sub(lambda m:sis,s); s=visual(s,nome); saida.append((fn,nome,s))
+for fn,nome,s in saida:
+    open(fn,'w',encoding='utf-8',newline='\n').write(s); print('ok',nome)

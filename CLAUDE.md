@@ -6,14 +6,14 @@ Plataforma de páginas HTML de arquivo único que trabalham juntas numa **pasta 
 
 | Página | Arquivo | Base | Versão | Como editar |
 |---|---|---|---|---|
-| Portal (cadastro geral, Administração) | `Portal.html` | `portal-base.json` + `vacutainer-cadastros.json` | 1.8.12 | direto no HTML |
-| Produção (OEE, plano, ordens SAP) | `OEE-Vacutainer.html` | `oee-vacutainer-base.json` (+ `ordens-base.json`) | 2.4.9 | **NÃO editar o HTML**: editar `fontes/producao/` e rodar o build |
-| Waste (perdas por ordem, KKBC) | `Perdas-Ordem.html` | `perdas-base.json` | 1.8.15 | direto no HTML |
-| Gestão de Gel | `Gestão-Gel-Vacutainer.html` | `fifo-base.json` | 2.03 · **em atualização** | direto no HTML |
-| Paradas | `Paradas.html` | `paradas-base.json` | 1.0.12 · **em atualização** | direto no HTML |
-| Equipamentos (com manutenção) | `Equipamentos.html` | (`equipamentos-base.json`, ainda não existe) | 0.1 · **em construção** | **gerada**: `fontes/modelo/gerar_paginas.py` |
-| Iniciativas (5S · OSM · KAS) | `Iniciativas.html` | (`iniciativas-base.json`, ainda não existe) | 0.1 · **em construção** | **gerada**: `fontes/modelo/gerar_paginas.py` |
-| Projetos | `Projetos.html` | (`projetos-base.json`, ainda não existe) | 0.1 · **em construção** | **gerada**: `fontes/modelo/gerar_paginas.py` |
+| Portal (cadastro geral, Administração) | `Portal.html` | `portal-base.json` + `vacutainer-cadastros.json` | 1.8.13 | direto no HTML |
+| Produção (OEE, plano, ordens SAP) | `OEE-Vacutainer.html` | `oee-vacutainer-base.json` (+ `ordens-base.json`) | 2.4.10 | **NÃO editar o HTML**: editar `fontes/producao/` e rodar o build |
+| Waste (perdas por ordem, KKBC) | `Perdas-Ordem.html` | `perdas-base.json` | 1.8.16 | direto no HTML |
+| Gestão de Gel | `Gestão-Gel-Vacutainer.html` | `fifo-base.json` | 2.04 · **em atualização** | direto no HTML |
+| Paradas | `Paradas.html` | `paradas-base.json` | 1.0.13 · **em atualização** | direto no HTML |
+| Equipamentos (com manutenção) | `Equipamentos.html` | (`equipamentos-base.json`, ainda não existe) | 0.1.1 · **em construção** | **gerada**: `fontes/modelo/gerar_paginas.py` |
+| Iniciativas (5S · OSM · KAS) | `Iniciativas.html` | (`iniciativas-base.json`, ainda não existe) | 0.1.1 · **em construção** | **gerada**: `fontes/modelo/gerar_paginas.py` |
+| Projetos | `Projetos.html` | (`projetos-base.json`, ainda não existe) | 0.1.1 · **em construção** | **gerada**: `fontes/modelo/gerar_paginas.py` |
 
 Divisão final (Portal 1.7): Portal · Produção · Waste · Gestão de Gel · Paradas · **Equipamentos** (inclui manutenção; não há página Manutenção) · **Iniciativas** (uma página, 3 abas: 5S · OSM · KAS; não há OSM.html) · **Projetos** · Outros ▾ · ⚙ Administração.
 Situação de cada página (em construção / em atualização / estável): `PAGE.estado` + `sistemas.js`, trocável no Portal › Configuração › Módulos; ver `docs/paginas-construcao.md`. Páginas em construção são **geradas** (não editar o HTML; editar `fontes/modelo/` e rodar o gerador). Quando uma delas começar de verdade (v1.0), tirar da lista do gerador e passar a editar direto. Arquitetura: `docs/plano-evolucao-plataforma.md`, `docs/osm-arquitetura.md` (aba OSM de Iniciativas). `docs/paginas-novas.md` é histórico (lista antiga Máquinas/Manutenção).
@@ -33,6 +33,7 @@ node testes/trelatorios.js            # relatórios: PDF (pdfinfo/pdftotext), te
 node fontes/guia/gerar_guia.js         # gera "Guia de instalação.html" (raiz) a partir de fontes/guia/guia_modelo.html, com prints reais das páginas embutidos; rodar quando mudar tela de conexão/entrada ou versão
 node testes/tmeta.js                   # importação da Meta OEE FY27 no Portal (precisa também do pacote npm xlsx)
 node testes/tconstrucao.js             # situação das páginas: selos, faixa, Portal › Módulos, cartão em construção, as 3 páginas geradas (2 temas, 390 px); código 1 se falhar
+node testes/tseguranca.js             # revisão 065fe6f: botões do Waste com valores importados, restauração sem cópia (Portal/Gel), CSV sem fórmulas, URLs de download, TV da Produção, índice do Gel, scripts em duas fases; código 1 se falhar
 ```
 
 - O build usa substituições exatas (`R(antes, depois)`) sobre a base 2.0: se um trecho não for achado exatamente 1 vez, para com `ERRO`. Mudança na Produção = nova regra `R(...)` no `build.py` ou mudança nos `.js` de `fontes/producao/`.
@@ -54,7 +55,7 @@ node testes/tconstrucao.js             # situação das páginas: selos, faixa, 
 
 ## Leitores comuns do kit v2.1 (`fontes/kit/kit_v21.js`)
 
-`vacCambio(data, moeda)` · `vacVig(vigencias, data)` · `vacParam(chave)` · `vacTurnosEm(data)` · `vacPrecoEm(material, data)` · `vacMetaArea(codigo, data)` · `vacPortalHref(hash)` · botão ← Voltar (abas entram no histórico; `vacNavAtual()` opcional) · `vacAoVoltar()` chamado ao voltar para a página (reler sem F5) · `vacTemaClaro(on)` (impressão e PDF sempre claros; `beforeprint`/`afterprint`) · `vacAbaInicial(pagina)` (aba inicial do perfil; lista `VAC_INICIAL_ALVO` em `kit_bases.js`).
+`vacCambio(data, moeda)` · `vacVig(vigencias, data)` · `vacParam(chave)` · `vacTurnosEm(data)` · `vacPrecoEm(material, data)` · `vacMetaArea(codigo, data)` · `vacPortalHref(hash)` · botão ← Voltar (abas entram no histórico; `vacNavAtual()` opcional) · `vacAoVoltar()` chamado ao voltar para a página (reler sem F5) · `vacCsvTexto(v)` (texto seguro para CSV) · `vacTemaClaro(on)` (impressão e PDF sempre claros; `beforeprint`/`afterprint`) · `vacAbaInicial(pagina)` (aba inicial do perfil; lista `VAC_INICIAL_ALVO` em `kit_bases.js`).
 
 ## Centralização no Portal (Portal 1.8/1.8.1)
 
@@ -73,7 +74,7 @@ Ao terminar uma entrega, atualizar o doc da página (seção nova com a versão 
 
 ## Auditorias externas
 
-`docs/auditorias/registro-decisoes.md` registra cada apontamento das auditorias (05/11, 06/11, pós-merge, layout e revisão c341f8e de 06/11/2026; relatórios e painéis de 07/11/2026), o que foi corrigido, o que foi recusado e por quê. **Antes de uma nova análise, ler o registro**: item recusado lá só volta com fato novo.
+`docs/auditorias/registro-decisoes.md` registra cada apontamento das auditorias (05/11, 06/11, pós-merge, layout e revisão c341f8e de 06/11/2026; relatórios e painéis de 07/11/2026; achados do Codex sobre 065fe6f, § C), o que foi corrigido, o que foi recusado e por quê. **Antes de uma nova análise, ler o registro**: item recusado lá só volta com fato novo.
 
 ## Pendências conhecidas
 
@@ -105,6 +106,12 @@ Lista única do que ficou para depois. O motivo e o gatilho de cada item estão 
 - `testes/tvisual.js`: Produção a 768 px com rolagem horizontal (já falhava antes de 07/11/2026).
 - `testes/t181.js` expira no fim (passo da matriz; problema do teste).
 - Cópia para o Outlook com imagens: conferir no Outlook da empresa (desktop e web) se os gráficos chegam (registro § P).
+
+**Manutenção e escala (registro § C)**
+- Waste: comentários e ações varridos por ordem (índice por ordem quando o Painel passar de 300 ms ou de 2 mil comentários).
+- Funções grandes (`computeDayRaw`, `CadSync.aplicar`, `openConfig` do Gel, `parseMetaFY27`, `cadValidarItem`): começar a próxima mudança por um teste que fixe o comportamento; leitura da Meta FY27 duplicada (Produção e Portal).
+- Backup diário automático do Portal ignora falha (aviso no status depende de decisão).
+- URLs de download sem revogação no Paradas, Produção e Portal (revisar caso a caso).
 
 **Relatórios (registro § P)**
 - Paradas sem relatório próprio (PDF, Excel, cópia da análise); só Ctrl+P na aba.

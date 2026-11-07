@@ -121,3 +121,15 @@ Gestão de Gel 2.02 (07/11/2026):
 ## Kit v2.1 · situação da página (07/11/2026)
 
 `vacEstadoDe(id)` → `{estado:'construcao'|'atualizacao', rot, cls, nota}` ou `null` (estável). Ordem: `vac.sistemas[].estado` (Portal › Módulos) > `PAGE.estado` > `DEFAULT_SYSTEMS[].estado` (`fontes/kit/sistemas.js`). `vacEstadoRender()` desenha o ponto na barra (e o texto no menu Outros), a pílula `#vacEstPill` ao lado da versão, a faixa `#vacEstFaixa` abaixo das abas e o selo no Ctrl K; roda sozinho no carregamento, quando a barra é redesenhada e quando `vac.sistemas` muda em outra aba. Página declara `PAGE.estado` e `PAGE.estadoNota`. Especificação: `paginas-construcao.md`.
+
+## Revisão `065fe6f` (07/11/2026)
+
+- **`vacCsvTexto(v)`** (`kit_v21.js`): texto que começa com `= + - @`, tabulação ou retorno ganha o prefixo `'` no CSV. Não mexe em número escrito como texto (`-1.234`, `-12,5`, `-3%`) nem em códigos. Usado por Waste, Gel e Produção; cada página mantém o próprio formato de número e aspas.
+- **Scripts:**
+  - `aplicar_kit21.py` monta e confere todas as páginas antes de gravar;
+  - `gerar_paginas.py` devolve as páginas geradas se o kit falhar;
+  - os três gravam com `\n`.
+- **Gestão de Gel 2.04:**
+  - a restauração por arquivo confirma antes e não segue sem a cópia anterior sem decisão explícita;
+  - CSV pela regra comum;
+  - o Painel usa um índice das baixas por dia durante o `dbCtx`, com os mesmos números e cerca de 20 vezes mais rápido com 7 mil movimentações.

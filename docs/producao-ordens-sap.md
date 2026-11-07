@@ -146,3 +146,9 @@ Responde à auditoria de relatórios e painéis (registro § P). Regras `R(...)`
   - `#aba=<rota>` abre a rota;
   - a aba do perfil (`vacAbaInicial('oee')`) vale na 1ª abertura da sessão, antes da última rota lembrada (`oee-route`) e da aba inicial pessoal;
   - "Produção › Tela do operador" abre `#turno`.
+
+## Produção 2.4.10 (07/11/2026) · revisão `065fe6f` (registro § C)
+
+- **Sair da TV redesenha a tela** (`TV.close` › `renderNow`, mantendo a rolagem). A TV limpava o registro dos gráficos, e a dica e o clique paravam até trocar de aba.
+- **CSV:** a mesma regra das outras páginas (`vacCsvTexto`). Número escrito como texto que começa com `-` não ganha mais o prefixo `'`.
+- **`build.py`:** grava com `\n`.

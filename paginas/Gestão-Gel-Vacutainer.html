@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Gestão de Gel · Linha Vacutainer · V2.03</title>
+<title>Gestão de Gel · Linha Vacutainer · V2.04</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600&family=Barlow+Condensed:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
@@ -1269,7 +1269,8 @@ const fileBackend={kind:'file',async commit(ch){applyLocal(ch);FS.pending.push(c
 async function fsRefresh(){if(S.mode!=='file'||FS.busy||ui.demo)return;try{const cur=await fsReadBase(fsKnown());if(cur&&!cur.same){FS.mod=cur.mod;FS.rev=cur.rev;FS.revBy=cur.by;loadData(cur.data);FS.pending.forEach(applyLocal);localBackend.save();render()}}catch(e){}}
 /* ================= V1.89 · integração com as outras páginas (Portal, OEE, Perdas) ================= */
 // versão da página (topo, Guia e base gravada)
-const APP_VERSION='2.03';   /* 2.03 · situação "em atualização" (kit: selo, pílula e faixa; docs/paginas-construcao.md) */
+const APP_VERSION='2.04';   /* 2.04 · revisão 065fe6f: restauração por arquivo confirma e não segue sem a cópia anterior; CSV sem fórmulas; índice por dia no Painel */
+/* 2.03 · situação "em atualização" (kit: selo, pílula e faixa; docs/paginas-construcao.md) */
 /* 2.02 · relatório montado: todas as linhas no PDF, comentário, aviso de corte no texto; Painel em 1º; aba inicial do perfil; impressão e PDF no tema claro */
 /* 1.99 · menu Mais do cabeçalho (vac-visual v1): fecha ao escolher uma ação, ao clicar fora e com Esc */
 document.addEventListener('click',e=>{const m=document.getElementById('gelMais');if(!m||!m.open)return;if(!m.contains(e.target)||e.target.closest('.vmais-l>button'))m.open=false});
@@ -3898,7 +3899,7 @@ async function doImport(){
 }
 
 /* ---------- export / backup / ajustes ---------- */
-const csvCell=v=>{const s=String(v??'');return /[;"\n]/.test(s)?'"'+s.replace(/"/g,'""')+'"':s};
+const csvCell=v=>{const s=typeof v==='number'?String(v):vacCsvTexto(v);   /* 2.04 · texto que viraria fórmula no Excel ganha o prefixo ' */return /[;"\n]/.test(s)?'"'+s.replace(/"/g,'""')+'"':s};
 const toCsv=(head,rows)=>'﻿'+[head,...rows].map(r=>r.map(csvCell).join(';')).join('\r\n');
 async function offerFile(filename,data){
   if(dlRef){try{await dlRef.save({filename,data});toast('Arquivo pronto: '+filename);return}catch(e){if(e&&e.code==='declined')return}}
@@ -4154,8 +4155,10 @@ function openConfig(sec){
     if(s==='backup'){
       backupListHtml().then(h=>{const el=$('#bkList');if(el){el.innerHTML=h;backupListWire()}}).catch(e=>console.warn(e));
       $('#bkE').addEventListener('click',()=>offerFile(`backup_fifo_${stamp()}.json`,JSON.stringify({version:2,exportedAt:nowDT(),lps:[...S.lps.values()].map(clean),closed:[...S.closed.values()].map(clean),events:S.events,imports:S.imports,config:S.config,plan:S.plan,catalogs:S.catalogs,prodlog:S.prodlog,supply:S.supply,supplyOn:S.supplyOn,supplyCfg:S.supplyCfg})));
-      $('#bkI').addEventListener('change',async e=>{const f=e.target.files[0];if(!f)return;try{const d=JSON.parse(await f.text());if(!d.lps||!d.imports)throw new Error('Arquivo de backup inválido.');
-        $('#bkMsg').innerHTML='<div class="info">Restaurando…</div>';let pre='';if(S.mode==='file'&&FS.base&&!ui.demo){try{pre=await fsBackupCopy('antes')}catch(e){}}
+      $('#bkI').addEventListener('change',async e=>{const f=e.target.files[0];e.target.value='';if(!f)return;try{const d=JSON.parse(await f.text());if(!d.lps||!d.imports)throw new Error('Arquivo de backup inválido.');
+        /* 2.04 · pede confirmação antes de substituir e, se a cópia da base atual falhar, só continua com decisão explícita (antes restaurava direto e ignorava a falha) */
+        if(!confirm(`Substituir os dados atuais pelo backup "${f.name}"? Antes, a base atual é copiada para ${PAGE.backupDir}.`))return;
+        $('#bkMsg').innerHTML='<div class="info">Restaurando…</div>';let pre='';if(S.mode==='file'&&FS.base&&!ui.demo){try{pre=await fsBackupCopy('antes')}catch(e){if(!confirm(`Não consegui salvar a cópia da base atual antes de restaurar (${e.message||e}).\n\nSem essa cópia, os dados atuais não poderão ser recuperados. Restaurar mesmo assim?`)){$('#bkMsg').innerHTML='<div class="info">Restauração cancelada. Nada foi alterado.</div>';return}}}
         await restoreData(d);closeModal();toast('Backup restaurado.'+(pre?' Cópia anterior: '+pre:''));render()}catch(err){$('#bkMsg').innerHTML=`<div class="alert">${esc(err.message||'Falha ao restaurar.')}</div>`}});
     }
   });
@@ -4666,7 +4669,11 @@ const rgNum=v=>v===''||v==null?null:parseNum(v);
 const nf1f=new Intl.NumberFormat('pt-BR',{minimumFractionDigits:1,maximumFractionDigits:1});
 const kg1=v=>nf2.format(v||0);
 const nf2s=v=>v==null||v===''?'':nf2.format(+v);
-function rgBaixas(date,all){return S.events.filter(e=>liveBx(e)&&(all||e.mov==='Consumido')&&(e.at||'').slice(0,10)===date&&(!D.planMat||e.material===D.planMat))}
+function rgBaixas(date,all){const L=RGX?(RGX.get(date)||[]):S.events.filter(e=>liveBx(e)&&(e.at||'').slice(0,10)===date);return L.filter(e=>(all||e.mov==='Consumido')&&(!D.planMat||e.material===D.planMat))}
+/* 2.04 · índice das baixas por dia, só enquanto o Painel monta os números (dbCtx não altera movimentações). Antes, cada dia do período
+   (e do período de comparação) percorria o histórico inteiro duas vezes. Fora do dbCtx, rgBaixas lê direto de S.events, como antes. */
+let RGX=null;
+function rgIndice(){const m=new Map();for(const e of S.events){if(!liveBx(e))continue;const d=(e.at||'').slice(0,10);let a=m.get(d);if(!a)m.set(d,a=[]);a.push(e)}return m}
 function rgInitDraft(date){
   const r=rgRecord(date);
   if(r){ui.rgDraft={date,orders:(r.orders||[]).map(o=>({cat:o.cat||'',t:+o.t||0})),turns:JSON.parse(JSON.stringify(r.turns||{})),eqScrap:recEquipScrap(r,date).any||Object.values(r.turns||{}).some(t=>t.none),sT:r.sT??'',sB:r.sB??'',sP:r.sP??'',resp:r.resp||lastResp(),obs:r.obs||'',exists:true};if(rgTubesMode(ui.rgDraft).m==='turn')ui.rgDraft._autoDay=true;return}
@@ -6305,7 +6312,8 @@ function dbSpark(vals,color){const v=vals.map(x=>x==null?null:x);const nn=v.filt
 function dbDelta(c,p,goodLow){if(c==null||p==null||!p)return '';const d=c/p-1;const good=goodLow?d<=0:d>=0;return `<span style="color:${Math.abs(d)<0.005?'var(--muted)':good?'var(--ok)':'var(--crit)'}">${d>=0?'▲':'▼'} ${nf2.format(Math.abs(d)*100)}%</span>`}
 /* ---- a aba ---- */
 /* ---- painel montável: contexto, indicadores e blocos ---- */
-function dbCtx(o,opt){opt=opt||{};const [a,b]=opt.range||dbRange(o);const f=opt.noFilter?{}:o.f;const meas=o.meas==='rel'?'gel':o.meas;
+function dbCtx(o,opt){if(RGX)return dbCtx0(o,opt);RGX=rgIndice();try{return dbCtx0(o,opt)}finally{RGX=null}}
+function dbCtx0(o,opt){opt=opt||{};const [a,b]=opt.range||dbRange(o);const f=opt.noFilter?{}:o.f;const meas=o.meas==='rel'?'gel':o.meas;
   const G=dbData(a,b,f,o.grp,meas);const [ca,cb]=dbCmpRange(o,a,b);const P=o.cmp==='prev'?dbData(ca,cb,f,o.grp,meas).T:null;
   return {o,a,b,f,meas,G,T:G.T,P,ca,cb,csv:{},mfmt:v=>o.meas==='rel'?nf2v(v):kg1(v),mU:o.meas==='rel'?relLbl():'kg',mL:{gel:'gel líquido',gross:'peso bruto',rel:relLbl()}[o.meas],
     relOf:(v,tb)=>tb?v/tb*G.base:null,M:v=>v>=1e6?nf1.format(v/1e6)+' mi':v>=1e3?nf0.format(v/1e3)+' mil':nf0.format(v)}}
@@ -7395,5 +7403,9 @@ function vacEstadoDe(id) {
   window.addEventListener('storage', e => { if (e.key === 'vac.sistemas' || (e.key || '').startsWith('vac.estadoOculto')) vacEstadoRender(); });
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', () => setTimeout(ini, 0)); else setTimeout(ini, 0);
 })();
+/* kit v2.1 · texto seguro para CSV (07/11/2026): texto que começa com = + - @ (ou tab/retorno) vira fórmula ao abrir o CSV no Excel.
+   Recebe um prefixo ' (o Excel mostra o texto como está). Número escrito como texto (-1.234 · -12,5 · -3%) não é mexido, e
+   valores number continuam número. Usado por Waste, Gel e Produção (cada página mantém o próprio formato de número e aspas). */
+function vacCsvTexto(v) { const s = String(v ?? ''); return /^[=+\-@\t\r]/.test(s) && !/^[+-]?[\d.,\s]+%?$/.test(s) ? "'" + s : s; }
 
 </script>

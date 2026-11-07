@@ -16,8 +16,32 @@ Este arquivo responde às auditorias externas da plataforma e registra, para cad
 | Auditoria visual (V01–V08) | 06/11/2026 | `142b9c2` (registrada em `ce1d971`) | Portal 1.8.8, Produção 2.4.5, Waste 1.8.11, Gel 1.99, Paradas 1.0.8 (§ L) |
 | Revisão da migração, do layout e do guia (B01–B07 e visuais) | 06/11/2026 | `c341f8e` | Portal 1.8.10, Produção 2.4.7, Waste 1.8.13, Gel 2.01, Paradas 1.0.10 (§ R) |
 | Relatórios, saídas e aba Painel | 07/11/2026 | `c341f8e` | Portal 1.8.11, Produção 2.4.8, Waste 1.8.14, Gel 2.02, Paradas 1.0.11 (§ P) |
+| Achados do Codex (segurança, dados, TV, scripts, desempenho) com revisão independente | 07/11/2026 | `065fe6f` | Portal 1.8.13, Produção 2.4.10, Waste 1.8.16, Gel 2.04, Paradas 1.0.13, páginas em construção 0.1.1 (§ C) |
 
 Status usados: **corrigido** · **corrigido em parte** · **recusado** · **adiado** · **já existia**.
+
+---
+
+## C. Achados do Codex sobre `065fe6f`, com revisão independente (07/11/2026)
+
+O Codex analisou `065fe6f`. Antes de implementar, uma revisão independente conferiu cada achado no código, reproduziu os de comportamento e mediu os de escala. O responsável aprovou o diagnóstico e o plano.
+
+O teste novo **`testes/tseguranca.js`** cobre todos os itens. Rodado sobre `065fe6f`, dá **24 falhas**; depois das correções, nenhuma.
+
+| # | Achado | Status | O que foi feito |
+|---|---|---|---|
+| 1 | Waste: identificador importado executava código no clique | **corrigido** (Waste 1.8.16) | **Reproduzido:** componente `MAT');…` e ordem `OS'+(…)+'` executaram código em "Copiar link". **Causa:** `esc()` entre aspas simples dentro de `onclick` (o navegador desfaz o `&#39;` antes de rodar). **Correção:** `jsArg(v)=esc(JSON.stringify(…))` nos 21 pontos (12 com identificadores e 9 com ids internos). O dado continua como veio (regra 4). Um código com apóstrofo legítimo (`D'AGUA`) agora funciona; antes quebrava o botão. Só o Waste tinha o padrão |
+| 2 | Portal: restaurava sem a cópia anterior | **corrigido** (Portal 1.8.13), **e no Gel** (2.04) | Se a cópia `_antes-restaurar_` falhar, a página avisa o motivo e só continua com "Restaurar mesmo assim?" (o padrão é não), como o Waste já fazia. O Gel por arquivo também ignorava a falha e nem confirmava antes de restaurar: agora confirma. O cadastro do Portal, o Paradas e a Produção já paravam na falha |
+| 3 | CSV com fórmulas (Waste, Gel) | **corrigido**; vale nas três páginas que exportam CSV | Regra comum no kit, `vacCsvTexto`: texto que começa com `= + - @`, tabulação ou retorno ganha o prefixo `'`, mas número escrito como texto (`-1.234`, `-12,5`, `-3%`) e códigos (`0123`, `EQ01`) ficam iguais. A Produção (2.4.10), que já protegia, passou à mesma regra: antes ela também prefixava número escrito como texto que começa com `-`. O `.xlsx` do Waste já era seguro |
+| 4 | Produção: gráficos paravam depois de sair da TV | **corrigido** (Produção 2.4.10) | **Reproduzido:** a dica sumia depois da TV. **Causa:** a TV limpava o registro de todos os gráficos (`Charts.reset`). **Correção:** `TV.close()` redesenha a tela, mantendo a rolagem (regra `R` no `build.py`). Testado na Visão geral e no Painel (TV pela visão) |
+| 5 | Scripts deixavam páginas pela metade | **corrigido** | `aplicar_kit21.py` monta e confere tudo antes de gravar. `gerar_paginas.py` devolve as páginas se o kit falhar. Os 3 scripts gravam com `\n` (no Windows o padrão gravaria CRLF). Rodar de novo dá os mesmos arquivos, byte a byte |
+| 6 | Waste: varreduras de comentários e ações por ordem | **adiado** | Medido: +~50 ms com 10 mil comentários; nos volumes reais o efeito é pequeno. **Gatilho:** Painel do Waste acima de 300 ms, ou mais de 2 mil comentários na base. A solução já está desenhada: índices por ordem montados uma vez por tela, mantendo a precedência do `causeOf` |
+| 7 | Gel: varredura por dia no Painel | **corrigido** (Gel 2.04) | Índice das baixas por dia, válido só durante o `dbCtx`, que não altera movimentações; fora dele, tudo lê `S.events` como antes. Com 7.200 movimentações e 12 meses: 6 ms, contra 144 ms antes. Números e indicadores idênticos com e sem índice (período, comparação e todos os KPIs) |
+| 8 | Complexidade concentrada | **adiado** (manutenção) | `computeDayRaw` (204 linhas), `CadSync.aplicar` (101), `openConfig` do Gel (236 linhas, 44 KB), `parseMetaFY27` (~114) e `cadValidarItem`. Não são defeitos, e não houve refatoração. O risco mais concreto é a leitura da Meta FY27 duplicada (Produção `parseMetaFY27` e Portal `mof*`). **Gatilho:** a próxima mudança numa dessas funções começa por um teste que fixe o comportamento atual |
+| 9 | Waste: URLs de download sem revogação | **corrigido** (Waste 1.8.16) | `downloadJSON`, `exportCsv` e o download de backup usam o `downloadBlob`, que libera a URL. Paradas, Produção e Portal têm contagens parecidas e ficam para a próxima revisão dessas páginas |
+| 10 | `toast` declarado duas vezes no modelo | **corrigido** (páginas em construção 0.1.1) | Linha duplicada (idêntica, sem efeito) tirada do modelo; páginas geradas de novo |
+
+**Não corrigido de propósito:** o backup diário automático do Portal (`writeRemote`) continua ignorando a falha. Não é o mesmo defeito, e o tratamento (aviso no status) depende de decisão do responsável.
 
 ---
 

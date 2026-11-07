@@ -183,3 +183,7 @@ Marcar na Visão geral: "Escopo ainda não definido; esta lista é provisória."
 - **Páginas novas**: `fontes/modelo/pagina-em-construcao.html` (CSS e JS do cabeçalho v2 copiados do Paradas, com o `systems()` marcando a própria página como existente) e `fontes/modelo/gerar_paginas.py` (lista das 3 páginas com `PAGE` e o plano de abas; gera e roda o `aplicar_kit21.py`). O `aplicar_kit21.py` também leva o `kit_bases.js` a elas (só definições; a página não chama `vacRaiz`/`vacMoverBases`). Iniciativas sem rótulo de grupo nas abas (Visão geral · OSM · 5S · KAS); subabas por `#aba=osm/planner`.
 - **Testes**: `testes/tconstrucao.js` (48 checagens); `testes/tvisual.js` passou a incluir as 3 páginas (sem as checagens de dados/ações/gráficos, que não se aplicam).
 - **Barra com 8 páginas** (`kit_visual.css`): com as páginas novas na pasta a barra quebrava em duas linhas até em 1920 px. A busca passou a ser só "⌕ Ctrl K", os links ficaram mais compactos e, abaixo de 1500 px, sai o texto "Sistemas · Linha Vacutainer" (o Portal continua como 1º link). Cabe numa linha de 1280 a 1920 px; em 1024 px usa duas.
+
+## 9. 0.1.1 (07/11/2026)
+
+O modelo `fontes/modelo/pagina-em-construcao.html` declarava `toast` duas vezes (idênticas, sem efeito). A linha duplicada foi tirada e as 3 páginas, geradas de novo. O `gerar_paginas.py` agora devolve as páginas ao que eram se o `aplicar_kit21.py` falhar.
