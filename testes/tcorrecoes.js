@@ -76,6 +76,34 @@ const CAD = { equipamentos: ['EQ01', 'EQ02', 'EQ03', 'EQ 04/B'].map(c => ({ codi
     await ctx.close();
   }
 
+  // ---------- C3 · AT-06 sem dado ≠ zero · AT-07 todas as ordens do grupo · link da Reunião com dia e turno
+  {
+    const ctx = await b.newContext(); const p = await nova(ctx, 'Portal.html');
+    const r = await ev(p, async () => { enterTest(); const h = todayISO(), D = addDays(h, -1);
+      MOD.data.paradas = { sys: sysOf('paradas'), kpis: [], pend: [], ex: { exportsVersion: 1, eventosCobertura: { de: addDays(D, -10), ate: D, cortado: false }, eventos: [
+        { dia: D, turno: 'T1', equipamento: 'EQ03', codigo: 'FAL', minutos: 30, ordem: '111' }, { dia: D, turno: 'T1', equipamento: 'EQ03', codigo: 'FAL', minutos: 20, ordem: '222' },
+        { dia: D, turno: 'T1', equipamento: 'EQ03', codigo: 'FAL', minutos: 5 }, { dia: D, turno: 'T2', equipamento: 'EQ03', codigo: 'FAL', minutos: 4, ordem: '111' }] } };
+      const tx = () => document.getElementById('main') ? document.getElementById('main').innerText : document.body.innerText;
+      Reu.dia = addDays(D, -20); Reu.rec = 'dia'; App.show('reuniao'); await new Promise(r => setTimeout(r, 150));
+      const fora = reuDados(Reu.dia, 'dia').par, tFora = tx();
+      Reu.dia = addDays(D, -3); App.render(); await new Promise(r => setTimeout(r, 100)); const zero = reuDados(Reu.dia, 'dia').par;
+      Reu.dia = D; Reu.rec = 'T1'; App.render(); await new Promise(r => setTimeout(r, 100));
+      const hr = [...document.querySelectorAll('a')].map(a => a.getAttribute('href') || '').find(x => /Iniciativas\.html#nova=/.test(x) && /EQ03/.test(decodeURIComponent(x)));
+      let nv = null; try { nv = JSON.parse(decodeURIComponent(hr.split('#nova=')[1])); } catch (e) { }
+      return { fora: fora && fora.min === null && fora.fora, tFora: /sem dado de paradas para esse dia/i.test(tFora), zero: zero && zero.min === 0 && !zero.fora,
+        ordens: nv ? nv.vinculos.filter(v => v.tipo === 'ordem').map(v => v.cod).sort().join(',') : null, link: nv && nv.origem && nv.origem.link, D }; });
+    ok(r.fora && r.tFora && r.zero, `AT-06 Portal › Reunião: dia fora da cobertura → "—" e "sem dado de paradas" (${r.fora}, ${r.tFora}); dia coberto sem paradas → 0 (${r.zero})`);
+    ok(r.ordens === '111,222', `AT-07 Portal › Reunião: ação do grupo EQ03 · FAL ligada às ordens ${r.ordens} (evento sem ordem e ordem repetida não duplicam)`);
+    const q = await nova(ctx, 'Portal.html', '#' + ((r.link || '').split('#')[1] || 'x')); const rq = await ev(q, () => App.tab + '|' + Reu.dia + '|' + Reu.rec);
+    ok(/reuniao=/.test(r.link || '') && rq === 'reuniao|' + r.D + '|T1', `link da Reunião com dia e turno (${r.link}) → abre em ${rq}`);
+    await ctx.close();
+    // o Paradas publica a cobertura (aditivo) e o corte de 3000 fica com os eventos mais recentes
+    const c2 = await b.newContext(); const pp = await nova(c2, 'Paradas.html', '#teste');
+    const ex = await ev(pp, () => { const e = calcExports(Store.data); const d = e.eventos.map(x => x.dia); return { cb: e.eventosCobertura, min: d.reduce((m, x) => x < m ? x : m, '9999'), ord: d.every((x, i) => !i || d[i - 1] <= x) }; });
+    ok(ex.cb && /^\d{4}-\d{2}-\d{2}$/.test(ex.cb.de) && /^\d{4}-\d{2}-\d{2}$/.test(ex.cb.ate) && ex.cb.cortado === false && ex.min >= ex.cb.de && ex.ord, `Paradas › exports.eventosCobertura ${JSON.stringify(ex.cb)}; eventos em ordem de dia a partir de ${ex.min}`);
+    await c2.close();
+  }
+
   ok(!pe.length, 'sem erro de página' + (pe.length ? ': ' + [...new Set(pe)].slice(0, 4).join(' | ') : ''));
   await b.close(); srv.close();
   if (errs.length) { console.log(`\n${errs.length} falha(s)`); process.exit(1); } console.log('\nsem erros');

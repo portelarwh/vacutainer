@@ -1034,8 +1034,9 @@ function calcExports(D){const old=Store.data;Store.data=D;try{
  const all=eventosTodos();const ate=all.reduce((m,e)=>e.dia>m?e.dia:m,'')||todayISO();const de13=addDays(ate.slice(0,7)+'-01',-365).slice(0,7);
  const porEq=[];const meses=[...new Set(all.map(e=>e.dia.slice(0,7)))].filter(m=>m>=de13).sort();
  for(const m of meses){const L=all.filter(e=>e.dia.slice(0,7)===m);for(const s of statsEquip(L,m+'-01',m+'-31'))porEq.push({mes:m,equipamento:s.eq,equipamentoNome:s.nome,minutos:s.min,ocorrencias:s.n,quebras:s.nQ,minQuebra:s.mQ,minOperacional:s.mOp,micro:s.nMicro,mtbfH:s.mtbf,mttrMin:s.mttr,disponibilidade:s.disp,fonteTempo:s.fonte})}
- const ult90=all.filter(e=>e.dia>=addDays(ate,-90));
+ const ult90=all.filter(e=>e.dia>=addDays(ate,-90)).sort((a,b)=>a.dia<b.dia?-1:a.dia>b.dia?1:0);   // AT-06 · em ordem de dia: o corte de 3000 fica com os mais recentes
  const porComp=agg(ult90.filter(e=>classe(e)==='quebra'),e=>{const t=D.tecnico[e.id]||{};return e.equipamento+'|'+(t.componente||e.peca||'(sem componente)')+'|'+(t.modo||'')}).map(o=>{const[eq,c,mo]=o.k.split('|');return{equipamento:eq,componente:c,modo:mo,ocorrencias:o.n,minutos:o.min,ultima:o.ev.reduce((m,e)=>e.dia>m?e.dia:m,'')}}).sort((a,b)=>b.minutos-a.minutos).slice(0,300);
+ const cortado=ult90.length>3000,eventosCobertura={de:cortado?addDays(ult90[ult90.length-3000].dia,1):addDays(ate,-90),ate,cortado};   // AT-06 · o Portal mostra "sem dado" fora disto
  const eventos=ult90.slice(-3000).map(e=>{const t=D.tecnico[e.id]||{};return{id:e.id,dia:e.dia,turno:e.turno,inicio:e.inicio,fim:e.fim,minutos:e.minutos,ocorrencias:e.ocorrencias||1,equipamento:e.equipamento,codigo:codigoEf(e),codigoApontado:e.codigo,classe:classe(e),
   descricao:e.descricao,trocouPeca:trocou(e),componente:t.componente||e.peca||'',modo:t.modo||'',acao:t.acao||'',os:t.os||'',tecnico:t.tecnico||e.tecnicoForms||'',ordem:e.ordem||'',validado:!!D.validacao[e.dia]}});
  const rec=recorrencias(all,ate).slice(0,100).map(r=>({chave:r.k,equipamento:r.eq,codigo:r.cod,componente:r.comp,ocorrencias30d:r.n30,minutos30d:r.min30,mesesSeguidos:r.meses,ultima:r.ult,acao:r.acao?.id||null}));
@@ -1050,7 +1051,7 @@ function calcExports(D){const old=Store.data;Store.data=D;try{
   /* E4 · resumo por ordem (todos os eventos com ordem), para a ficha da ordem e as outras páginas */
    porOrdem:(()=>{const m=new Map();for(const e of all){const o=String(e.ordem||'').trim().replace(/^0+(?=\d)/,'');if(!o)continue;let x=m.get(o);if(!x)m.set(o,x={ordem:o,eventos:0,minutos:0,equipamentos:[],de:e.dia,ate:e.dia});x.eventos+=e.ocorrencias||1;x.minutos+=+e.minutos||0;if(e.equipamento&&!x.equipamentos.includes(e.equipamento))x.equipamentos.push(e.equipamento);if(e.dia<x.de)x.de=e.dia;if(e.dia>x.ate)x.ate=e.dia}return[...m.values()].map(x=>({...x,minutos:Math.round(x.minutos*10)/10}))})(),
   serie:{rotulo:'Minutos de parada por mês',pontos:meses.map(m=>({x:m,y:all.filter(e=>e.dia.slice(0,7)===m&&!NAO_PERDA.has(classe(e))).reduce((s,e)=>s+e.minutos,0)}))},
-  porEquipamentoMes:porEq,porComponente:porComp,eventos,recorrentes:rec,reclassificacoes:recl,classificacoesValidadas:vali,cadastros:cadastrosProposta()}}finally{Store.data=old}}
+  porEquipamentoMes:porEq,porComponente:porComp,eventos,eventosCobertura,recorrentes:rec,reclassificacoes:recl,classificacoesValidadas:vali,cadastros:cadastrosProposta()}}finally{Store.data=old}}
 
 /* carga para o Portal (Cadastros › Trazer das páginas): catálogo proposto, matriz, modos de falha, ações, limite */
 function cadastrosProposta(){const eqs=Cad.eqs.filter(e=>e.cad&&e.tipo!=='linha'&&e.ativo);const SAI={FQL:'QAG',LIM:'LNP',MIC:'ENR',MPL:'MPR'};
