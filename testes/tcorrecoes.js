@@ -104,6 +104,21 @@ const CAD = { equipamentos: ['EQ01', 'EQ02', 'EQ03', 'EQ 04/B'].map(c => ({ codi
     await c2.close();
   }
 
+  // ---------- C5 · saúde dos dados no Portal › Versões: resumo de outro dia, cobertura cortada, pendentes deste navegador
+  {
+    const ctx = await b.newContext(); const pi = await nova(ctx, 'Paradas.html');
+    await ev(pi, () => vacFila('paradas').espelhar([{ qid: 'qa1', k: 'list', c: 'acoes', items: [{ id: 'P1' }] }, { qid: 'qa2', k: 'list', c: 'acoes', items: [{ id: 'P2' }] }])); await pi.close();
+    const p = await nova(ctx, 'Portal.html');
+    const r = await ev(p, async () => { const fila = await vacFila.contar(); const iso = new Date().toISOString();
+      const linha = { id: 'paradas', nome: 'Paradas', html: { arq: 'Paradas.html', v: '1.0.22', mod: Date.now(), cab: '2', como: 'PAGE.versao' }, base: { loc: '00. Bases', arq: '00. Bases/paradas-base.json', rev: 9, app: '1.0.22', em: iso, exp: true, expEm: '2020-01-01T10:00:00.000Z', expV: 1, cob: { de: '2019-12-20', ate: '2019-12-31', cortado: true } }, bkp: { arq: 'x.json', mod: Date.now(), n: 3 }, bkpPasta: '00. Backups/Paradas' };
+      linha.htmls = [linha.html]; linha.bases = [linha.base];
+      Vers.dados = { em: Date.now(), L: [linha], libs: [], fila }; const m0 = Store.mode; Store.mode = 'pasta'; const h = cardVersoes(); Store.mode = m0;
+      const A = Vers.avisos(linha).map(a => a[1]).join(' | '); return { fila, A, cel: /eventos de 20\/12\/2019 a 31\/12\/2019 \(cortada\)/.test(h), col: /Pendentes neste navegador/.test(h) }; });
+    ok(r.fila && r.fila.paradas === 2 && /resumo \(exports\) de 01\/01\/2020/.test(r.A) && /lista cortada/.test(r.A) && /2 alteração\(ões\) de Paradas ainda não gravada/.test(r.A) && r.cel && r.col,
+      `C5 Portal › Versões: pendentes deste navegador ${JSON.stringify(r.fila)}; avisos: ${r.A.slice(0, 230)}`);
+    await ctx.close();
+  }
+
   ok(!pe.length, 'sem erro de página' + (pe.length ? ': ' + [...new Set(pe)].slice(0, 4).join(' | ') : ''));
   await b.close(); srv.close();
   if (errs.length) { console.log(`\n${errs.length} falha(s)`); process.exit(1); } console.log('\nsem erros');

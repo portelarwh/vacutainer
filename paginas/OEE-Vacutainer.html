@@ -952,7 +952,11 @@ const vacFila = (() => {
       try { await tx('ops', 'readwrite', s => { for (const o of L) s.put(reg(o)); }); for (const o of L) F.meus.add(pagina + '|' + o.qid); renomear && renomear(); return true; } catch (e) { falhou(e); return false; } });
     return F;
   }
-  return pagina => filas[pagina] || (filas[pagina] = cria(pagina));
+  const fn = pagina => filas[pagina] || (filas[pagina] = cria(pagina));
+  /* C5 · só leitura, para o Portal › Versões: alterações ainda não gravadas na pasta, por página, neste navegador. Não cria aba nem sinal de vida.
+     Volta { pagina: n } ou null se o IndexedDB falhar. */
+  fn.contar = async () => { try { const L = await tx('ops', 'readonly', s => req(s.getAll())); const R = {}; for (const r of L) R[r.pagina] = (R[r.pagina] || 0) + 1; return R; } catch (e) { return null; } };
+  return fn;
 })();
 /* AT-03 · formato da própria base: schema da página (base antiga sem schema é aceita como versão 1) e schemaVersion até a conhecida.
    Volta '' (pode ler e gravar) ou o motivo (só leitura: a página não grava por cima de formato que não conhece). */
