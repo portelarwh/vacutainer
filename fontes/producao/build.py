@@ -9,7 +9,8 @@ def R(a,b,cnt=1):
     c=s.count(a)
     if c!=cnt: raise SystemExit(f'ERRO ({c}x): {a[:90]!r}')
     s=s.replace(a,b)
-R("const APP_VERSION = '2.0.1';","const APP_VERSION = '2.4.12';")
+R("const APP_VERSION = '2.0.1';","const APP_VERSION = '2.4.13';")
+# 2.4.13 · E5: ficha da ordem comum (kit): botão Ficha na ordem do SAP e vacPastaAtual() em ordens_tela.js
 # 2.4.11 · E1: FolderBackend tinha duas chaves readBackup; a segunda (sem o local antigo) vencia e os backups soltos em 00. Backups/ não eram lidos
 R("    async readBackup(name) { const bd = await this.backupDir(); const fh = await bd.getFileHandle(name); return (await fh.getFile()).text(); }\n  };","  };")
 # 2.4.10 · sair da TV redesenha a tela de baixo: a TV limpa o registro dos gráficos (Charts.reset) e a dica e o clique da tela paravam até trocar de aba

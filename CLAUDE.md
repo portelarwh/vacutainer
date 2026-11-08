@@ -6,14 +6,14 @@ Plataforma de páginas HTML de arquivo único que trabalham juntas numa **pasta 
 
 | Página | Arquivo | Base | Versão | Como editar |
 |---|---|---|---|---|
-| Portal (cadastro geral, Administração) | `Portal.html` | `portal-base.json` + `vacutainer-cadastros.json` | 1.8.15 | direto no HTML |
-| Produção (OEE, plano, ordens SAP) | `OEE-Vacutainer.html` | `oee-vacutainer-base.json` (+ `ordens-base.json`) | 2.4.12 | **NÃO editar o HTML**: editar `fontes/producao/` e rodar o build |
-| Waste (perdas por ordem, KKBC) | `Perdas-Ordem.html` | `perdas-base.json` | 1.8.18 | direto no HTML |
-| Gestão de Gel | `Gestão-Gel-Vacutainer.html` | `fifo-base.json` | 2.06 · **em atualização** | direto no HTML |
-| Paradas | `Paradas.html` | `paradas-base.json` | 1.0.15 · **em atualização** | direto no HTML |
-| Equipamentos (com manutenção) | `Equipamentos.html` | (`equipamentos-base.json`, ainda não existe) | 0.1.1 · **em construção** | **gerada**: `fontes/modelo/gerar_paginas.py` |
-| Iniciativas (5S · OSM · KAS) | `Iniciativas.html` | (`iniciativas-base.json`, ainda não existe) | 0.1.1 · **em construção** | **gerada**: `fontes/modelo/gerar_paginas.py` |
-| Projetos | `Projetos.html` | (`projetos-base.json`, ainda não existe) | 0.1.1 · **em construção** | **gerada**: `fontes/modelo/gerar_paginas.py` |
+| Portal (cadastro geral, Administração) | `Portal.html` | `portal-base.json` + `vacutainer-cadastros.json` | 1.8.16 | direto no HTML |
+| Produção (OEE, plano, ordens SAP) | `OEE-Vacutainer.html` | `oee-vacutainer-base.json` (+ `ordens-base.json`) | 2.4.13 | **NÃO editar o HTML**: editar `fontes/producao/` e rodar o build |
+| Waste (perdas por ordem, KKBC) | `Perdas-Ordem.html` | `perdas-base.json` | 1.8.19 | direto no HTML |
+| Gestão de Gel | `Gestão-Gel-Vacutainer.html` | `fifo-base.json` | 2.07 · **em atualização** | direto no HTML |
+| Paradas | `Paradas.html` | `paradas-base.json` | 1.0.16 · **em atualização** | direto no HTML |
+| Equipamentos (com manutenção) | `Equipamentos.html` | (`equipamentos-base.json`, ainda não existe) | 0.1.2 · **em construção** | **gerada**: `fontes/modelo/gerar_paginas.py` |
+| Iniciativas (5S · OSM · KAS) | `Iniciativas.html` | (`iniciativas-base.json`, ainda não existe) | 0.1.2 · **em construção** | **gerada**: `fontes/modelo/gerar_paginas.py` |
+| Projetos | `Projetos.html` | (`projetos-base.json`, ainda não existe) | 0.1.2 · **em construção** | **gerada**: `fontes/modelo/gerar_paginas.py` |
 
 Divisão final (Portal 1.7): Portal · Produção · Waste · Gestão de Gel · Paradas · **Equipamentos** (inclui manutenção; não há página Manutenção) · **Iniciativas** (uma página, 3 abas: 5S · OSM · KAS; não há OSM.html) · **Projetos** · Outros ▾ · ⚙ Administração.
 Situação de cada página (em construção / em atualização / estável): `PAGE.estado` + `sistemas.js`, trocável no Portal › Configuração › Módulos; ver `docs/paginas-construcao.md`. Páginas em construção são **geradas** (não editar o HTML; editar `fontes/modelo/` e rodar o gerador). Quando uma delas começar de verdade (v1.0), tirar da lista do gerador e passar a editar direto. Arquitetura: `docs/plano-evolucao-plataforma.md`, `docs/osm-arquitetura.md` (aba OSM de Iniciativas). `docs/paginas-novas.md` é histórico (lista antiga Máquinas/Manutenção).
@@ -37,6 +37,7 @@ node testes/tseguranca.js             # revisão 065fe6f: botões do Waste com v
 node testes/tordens.js                # E1 do plano único: Produção › Ordens com leitura estrita, pendência recuperável (Gravar de novo), releitura por revId, backup obrigatório antes de substituir, backups do local antigo (OPFS + HTTP local); código 1 se falhar
 node testes/tvigencias.js             # E2 do plano único: versão igual em tela/código/base/Portal nas 8 páginas, "hoje" no dia local (22h30 de Brasília), meta WASTE-MES por mês ponderada pelos dias; código 1 se falhar
 node testes/tnumeros.js               # E3: vacNumero (decimal, milhar, SAP) nas páginas, preço do Gel com "12a" não grava, minutos/vezes do Forms no Paradas; código 1 se falhar
+node testes/tficha.js                 # E5: ficha da ordem/lote/LP (mesmos números dos exports nas 5 páginas), Ctrl K por índice (LX1 antes de LX10), cópia sem pasta, versão 2 recusada, #ficha=, ← Voltar; código 1 se falhar
 node testes/tcontratos.js             # E4: exports por ordem (Produção 24 meses e dias do lote, Paradas, Gel), versão conferida pelos leitores, Waste com ordem em várias competências e dias do lote; código 1 se falhar
 ```
 
@@ -59,7 +60,7 @@ node testes/tcontratos.js             # E4: exports por ordem (Produção 24 mes
 
 ## Leitores comuns do kit v2.1 (`fontes/kit/kit_v21.js`)
 
-`vacCambio(data, moeda)` · `vacVig(vigencias, data)` · `vacParam(chave)` · `vacTurnosEm(data)` · `vacPrecoEm(material, data)` · `vacMetaArea(codigo, data)` · `vacMetaAreaMes(codigo, 'AAAA-MM')` (meta do mês pela vigência de cada dia; duas vigências no mês = ponderada pelos dias) · `vacHoje()` (dia local; padrão dos leitores sem data) · `vacPortalHref(hash)` · botão ← Voltar (abas entram no histórico; `vacNavAtual()` opcional) · `vacAoVoltar()` chamado ao voltar para a página (reler sem F5) · `vacCsvTexto(v)` (texto seguro para CSV) · `vacNumero(texto, {ponto, sap})` (número estrito por regra de campo: vazio null, inválido NaN) · `vacExportsOk(exports)` (confere a versão antes de usar o exports de outra página) · `vacTemaClaro(on)` (impressão e PDF sempre claros; `beforeprint`/`afterprint`) · `vacAbaInicial(pagina)` (aba inicial do perfil; lista `VAC_INICIAL_ALVO` em `kit_bases.js`).
+`vacCambio(data, moeda)` · `vacVig(vigencias, data)` · `vacParam(chave)` · `vacTurnosEm(data)` · `vacPrecoEm(material, data)` · `vacMetaArea(codigo, data)` · `vacMetaAreaMes(codigo, 'AAAA-MM')` (meta do mês pela vigência de cada dia; duas vigências no mês = ponderada pelos dias) · `vacHoje()` (dia local; padrão dos leitores sem data) · `vacPortalHref(hash)` · botão ← Voltar (abas entram no histórico; `vacNavAtual()` opcional) · `vacAoVoltar()` chamado ao voltar para a página (reler sem F5) · `vacCsvTexto(v)` (texto seguro para CSV) · `vacNumero(texto, {ponto, sap})` (número estrito por regra de campo: vazio null, inválido NaN) · `vacExportsOk(exports)` (confere a versão antes de usar o exports de outra página) · `vacTemaClaro(on)` (impressão e PDF sempre claros; `beforeprint`/`afterprint`) · `vacAbaInicial(pagina)` (aba inicial do perfil; lista `VAC_INICIAL_ALVO` em `kit_bases.js`) · `vacFicha.abrir('ordem'|'lote'|'lp', código)` (ficha comum, só com o `exports`; a página informa a pasta em `vacPastaAtual()`; botão `vacFichaBotao(ordem)`; link `#ficha=ordem/<n>`; Ctrl K com índice de ordem, lote, LP, catálogo e equipamento).
 
 ## Centralização no Portal (Portal 1.8/1.8.1)
 

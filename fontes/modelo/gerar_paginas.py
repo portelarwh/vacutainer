@@ -11,7 +11,7 @@ DOCS_PLANO = 'docs/plano-evolucao-plataforma.md'
 PAGINAS = [
  {'arquivo': 'Equipamentos.html',
   'page': {'id': 'equip', 'titulo': 'Equipamentos · Máquinas da linha e manutenção', 'tituloCurto': 'Equipamentos',
-           'subtitulo': 'Máquinas da linha e manutenção', 'versao': '0.1.1', 'baseFile': 'equipamentos-base.json',
+           'subtitulo': 'Máquinas da linha e manutenção', 'versao': '0.1.2', 'baseFile': 'equipamentos-base.json',
            'backupDir': '00. Backups/Equipamentos', 'estado': 'construcao',
            'estadoNota': 'Ficha e indicadores por máquina, relatórios das máquinas e manutenção.'},
   'plano': {
@@ -42,7 +42,7 @@ PAGINAS = [
      'itens': ['Pilares do TPM e etiquetas', 'Priorização pelas falhas recorrentes do Paradas']}]}},
  {'arquivo': 'Iniciativas.html',
   'page': {'id': 'inic', 'titulo': 'Iniciativas · 5S · OSM · KAS', 'tituloCurto': 'Iniciativas', 'subtitulo': '5S · OSM · KAS',
-           'versao': '0.1.1', 'baseFile': 'iniciativas-base.json', 'backupDir': '00. Backups/Iniciativas', 'estado': 'construcao',
+           'versao': '0.1.2', 'baseFile': 'iniciativas-base.json', 'backupDir': '00. Backups/Iniciativas', 'estado': 'construcao',
            'estadoNota': 'Observações de segurança, auditorias 5S e kaizens numa página só.'},
   'plano': {
    'nota': 'Observações de segurança (OSM), auditorias 5S e kaizens (KAS) numa página só, com metas, ações estilo planner e relatórios.',
@@ -79,7 +79,7 @@ PAGINAS = [
                  {'id': 'painel', 'nome': 'Painel', 'itens': ['Ideias por área, ganhos, implantadas no mês']}]}]}},
  {'arquivo': 'Projetos.html',
   'page': {'id': 'projetos', 'titulo': 'Projetos · Projetos de melhoria e investimentos', 'tituloCurto': 'Projetos',
-           'subtitulo': 'Projetos de melhoria e investimentos', 'versao': '0.1.1', 'baseFile': 'projetos-base.json',
+           'subtitulo': 'Projetos de melhoria e investimentos', 'versao': '0.1.2', 'baseFile': 'projetos-base.json',
            'backupDir': '00. Backups/Projetos', 'estado': 'construcao',
            'estadoNota': 'Escopo a desenhar: projetos de melhoria, projetos grandes e compra de máquina.'},
   'plano': {

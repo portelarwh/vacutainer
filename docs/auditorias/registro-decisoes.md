@@ -18,6 +18,7 @@ Este arquivo responde às auditorias externas da plataforma e registra, para cad
 | Relatórios, saídas e aba Painel | 07/11/2026 | `c341f8e` | Portal 1.8.11, Produção 2.4.8, Waste 1.8.14, Gel 2.02, Paradas 1.0.11 (§ P) |
 | Achados do Codex (segurança, dados, TV, scripts, desempenho) com revisão independente | 07/11/2026 | `065fe6f` | Portal 1.8.13, Produção 2.4.10, Waste 1.8.16, Gel 2.04, Paradas 1.0.13, páginas em construção 0.1.1 (§ C) |
 | Plano único (diagnósticos de 08/11 do Claude e do Codex), etapas E1 a E4 (Ordens e backups; versões, datas e metas; números; contratos por ordem) | 08/11/2026 | `e043513` / `9af2d3e` | Produção 2.4.12, Waste 1.8.18, Gel 2.06, Portal 1.8.15, Paradas 1.0.15 (§ U) |
+| Plano único, blocos A e B (E5 ficha da ordem e Ctrl K; …) | 08/11/2026 | `8ecec91` | Portal 1.8.16, Produção 2.4.13, Waste 1.8.19, Gel 2.07, Paradas 1.0.16 (§ U) |
 
 Status usados: **corrigido** · **corrigido em parte** · **recusado** · **adiado** · **já existia**.
 
@@ -30,7 +31,12 @@ Status usados: **corrigido** · **corrigido em parte** · **recusado** · **adia
 - Revisão consolidada do Codex em `e3dc973`, branch `codex/revisao-consolidada-2026-11-08`.
 - Parecer comparativo e plano em 15 etapas (E1–E15): `docs/auditorias/plano-unico-2026-11-08/plano-unico.md`. Esse arquivo tem o backlog rastreável aos IDs F/ARQ/IMP/RAS/PLA/OSM/KAS/OEE/TAG/MES/TPM/UX/REL/REF/FIL/REU do Codex e aos B/C do Claude.
 
-**Aprovação.** O responsável aprovou a primeira etapa (E1) em 08/11/2026. As demais aguardam aprovação.
+**Aprovação.** O responsável aprovou a E1 em 08/11/2026, depois a E2 a E4. Na mesma data aprovou fazer em sequência os blocos A (fundação: E5 e o modelo único de ação) e B (telas: E6, E8, E10, E10d, E11), depois dos esboços em `docs/auditorias/plano-unico-2026-11-08/esbocos/`, aprovados como estão:
+- ficha com os blocos numa ordem fixa (Produção, Paradas, Waste, Gel, SAP, Ações); "Detalhado" mostra as listas dentro da ficha;
+- quadro do Planner com A fazer · Em andamento · Aguardando · Concluída (+ Cancelada, escondida); o Planner é a 1ª aba de Iniciativas;
+- "Minha equipe" = pessoas da mesma área no cadastro do Portal;
+- Reunião diária por dia e por turno;
+- OS com aberta · programada · em execução · concluída · cancelada, e o número da nota/OS do SAP PM como campo opcional.
 
 ### E1 · Produção › Ordens: gravação e backups confiáveis · **corrigido** (Produção 2.4.11)
 
@@ -83,6 +89,22 @@ Teste novo: **`testes/tcontratos.js`**. Tudo é aditivo na `exportsVersion` 1 (r
 | F08 | O Waste procurava o lote no valor de `dayLot`; o lote está na chave "dia\|lote" | Leitura pela chave (LX1 não pega LX10). A Produção também publica os dias do lote no `porOrdem` |
 
 **Ficou para depois:** o Waste ainda cai na base da Produção (plano do mês, `lotClass`/`lotNotes`) para ordens fora da janela de 24 meses e para a classificação e observação dos lotes mais antigos que os 150 dias do `exports.lotes` (B7). Os eventos manuais com ID estável vão para a E12, junto da conciliação MES.
+
+### E5 · Ficha da ordem, do lote e da LP; Ctrl K; links · **feito** (kit; Portal 1.8.16, Produção 2.4.13, Waste 1.8.19, Gel 2.07, Paradas 1.0.16, páginas em construção 0.1.2)
+
+Teste novo: **`testes/tficha.js`** (pasta simulada com os `exports` das 5 páginas).
+
+| ID | O que era | O que ficou |
+|---|---|---|
+| RAS-01 | Para ver uma ordem inteira era preciso abrir cada página | **Ficha comum** no kit (`vacFicha`), painel lateral igual nas 8 páginas: Produção, Paradas, Waste, Gel, SAP e Ações. Só mostra o `exports` de cada página (regra 1), com a fonte e a hora em cada bloco. Bloco sem dado fica cinza e diz por quê (fora da janela publicada não é zero; base ausente; versão desconhecida do `exports`, que não é usada). Resumo ou Detalhado (listas de eventos, competências, LPs e dias do lote). Ficha do **lote** (ordens do lote e dados do servidor) e da **LP** (ordens que baixaram o barril) |
+| F09 / RAS-01 | Links de outra página caíam no topo | "Abrir em …" leva à página dona já filtrada (`#ordem=`, `#lote=`, `#lp=`). O Paradas ganhou a rota `#ordem=` (eventos filtrados pela ordem). O link da ficha é `<página>#ficha=ordem/<n>` (também `lote/` e `lp/`) e funciona em qualquer página |
+| Ctrl K | A busca de cada página só via os próprios dados e adivinhava pelo número de dígitos | A busca comum ganhou um **índice** do que existe nos `exports` e no cadastro: ordem, lote, LP, catálogo e equipamento (com apelidos). "LX1" mostra o lote LX1 antes do LX10. A ordem do SAP com zeros à esquerda é a mesma ordem (comparação sem mudar o código guardado, regra 4) |
+| Sem pasta | — | Cada base é lida só quando muda (data e tamanho). Sem pasta ou com erro de leitura, a ficha usa a última cópia lida neste computador (IndexedDB `vac-ficha`), com a data e o motivo |
+| ← Voltar | — | A ficha entra no histórico: o voltar do navegador fecha a ficha e mantém a tela e os filtros |
+
+Cada página só informa a pasta conectada (`vacPastaAtual()`) e põe o botão **Ficha** onde mostra uma ordem (Waste › ordem, Gel › ordem, Paradas › evento, Produção › Ordens SAP). A ficha não grava nada.
+
+**Limites:** a Produção não publica OEE por ordem (falta a regra de atribuição); a lista de eventos do Paradas vai até 90 dias (os totais por ordem são de todo o histórico). O bloco "Ações ligadas" aparece quando a base de Iniciativas existir (E6).
 
 ---
 
