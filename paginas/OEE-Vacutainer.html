@@ -955,7 +955,7 @@ const U = (() => {
 
 /* ---- 02-model.js ---- */
 /* ================= modelo de dados, valores iniciais e integridade ================= */
-const APP_VERSION = '2.4.10';
+const APP_VERSION = '2.4.11';
 const SCHEMA_VERSION = 1;
 const BASE_FILE = 'oee-vacutainer-base.json';
 const BACKUP_DIR = '00. Backups';
@@ -1890,10 +1890,10 @@ function FolderBackend(dir) {
     // outro arquivo da mesma pasta (pasta única): cadastro base do Portal
     async readSibling(name) { try { const fh = await dir.getFileHandle(name); return await (await fh.getFile()).text(); } catch (e) { return null; } },
     // 2.1 · outra base da mesma pasta (ordens-base.json) e backup em 00. Backups/<sub>
+    async readSiblingStrict(name) { try { const fh = await dir.getFileHandle(name); return await (await fh.getFile()).text(); } catch (e) { if (typeof vacNaoAchou === 'function' ? vacNaoAchou(e) : (e && (e.name === 'NotFoundError' || e.name === 'TypeMismatchError'))) return null; throw e; } },
     async writeSibling(name, text) { const fh = await dir.getFileHandle(name, { create: true }); const w = await fh.createWritable(); await w.write(text); await w.close(); },
     async backupSub(sub, name, text) { const r = await this.backupRoot(); const d = await r.getDirectoryHandle(sub, { create: true }); const fh = await d.getFileHandle(name, { create: true }); const w = await fh.createWritable(); await w.write(text); await w.close(); return name; },
     async readLogo() { for (const n of ['Logo.png', 'logo.png', 'LOGO.png', 'Logo.jpg', 'logo.jpg', 'Logo.svg', 'logo.svg', 'Logo.webp']) { try { const fh = await dir.getFileHandle(n); const f = await fh.getFile(); if (f.size && f.size < 5e6) return f; } catch (e) { /* tenta o próximo nome */ } } return null; },
-    async readBackup(name) { const bd = await this.backupDir(); const fh = await bd.getFileHandle(name); return (await fh.getFile()).text(); }
   };
 }
 // base em memória (testes) — mesma interface
@@ -8762,16 +8762,39 @@ const OrdensSAP = (() => {
    Usa o serviço OrdensSAP (acima). Regras: claude/producao-ordens-sap.md
    ===================================================================== */
 const ORD_FILE = 'ordens-base.json', ORD_BK = 'Ordens', ORD_PLANTA = '4017';
+/* 2.4.11 · leitura estrita do arquivo de ordens: null só quando o arquivo não existe; qualquer outro erro sobe */
+async function ordLerPasta() { const be = Store.S.backend; return be.readSiblingStrict ? be.readSiblingStrict(ORD_FILE) : be.readSibling(ORD_FILE); }
+const ordMotivo = e => (e && (e.message || e.name)) || String(e);
+/* junta auditoria sem repetir a mesma entrada (reenvio depois de uma gravação que chegou à pasta mas não foi confirmada) */
+const ordJuntaAud = (base, novas) => { const A = (base || []).slice(), vis = new Set(A.map(a => a.em + '|' + a.acao + '|' + a.por)); for (const a of novas || []) if (!vis.has(a.em + '|' + a.acao + '|' + a.por)) { A.push(a); vis.add(a.em + '|' + a.acao + '|' + a.por); } return A; };
 const Ord = {
   B: null, carregado: false, sub: 'mb51', comp: null, planta: ORD_PLANTA, prevMB: null, prevCO: null, f: { q: '', st: '', un: '', linha: 'todas' }, fc: { q: '', sit: '' }, per: null, audPend: [], err: '',
   vazio() { return { schema: 'vac-ordens', schemaVersion: 1, rev: 0, revBy: '', revAt: null, revId: '', appVersion: '', competencias: {}, auditoria: [], exports: {} }; },
   modo() { return Store.S.mode; },
+  /* 2.4.11 · E1 (revisão 08/11/2026): só "arquivo não existe" conta como ausente. Erro de leitura (rede, permissão, JSON) mostra a
+     cópia deste navegador identificada e não deixa gravar na pasta. Gravação não confirmada fica pendente neste navegador
+     (IDB 'ordens.pend') e é reaplicada sobre a versão da pasta ao carregar de novo ou em "Gravar de novo". */
   async carregar(force) {
-    if (this.carregado && !force) return; this.err = '';
-    try {
-      if (this.modo() === 'pasta' && Store.S.backend && Store.S.backend.readSibling) { const t = await Store.S.backend.readSibling(ORD_FILE); this.B = t ? JSON.parse(t) : null; }
-      if (!this.B && this.modo() !== 'exemplo') { const c = await IDB.get('ordens'); if (c && c.schema === 'vac-ordens') this.B = c; }
-    } catch (e) { this.err = 'Não consegui ler ' + ORD_FILE + ': ' + (e.message || e); }
+    if (this.carregado && !force) return; this.err = ''; this.fonte = '';
+    let remoto = null, falhou = null;
+    if (this.modo() === 'pasta' && Store.S.backend && Store.S.backend.readSibling) {
+      try { const t = await ordLerPasta(); if (t != null) { remoto = JSON.parse(t); this.fonte = 'pasta'; } else this.fonte = 'ausente'; }
+      catch (e) { falhou = e; }
+    }
+    let loc = null, pend = null;
+    if (this.modo() !== 'exemplo') { try { loc = await IDB.get('ordens'); pend = await IDB.get('ordens.pend'); } catch (e) { } }
+    if (!(loc && loc.schema === 'vac-ordens')) loc = null;
+    this.pend = pend && Array.isArray(pend.comps) && pend.comps.length ? pend : null;
+    this.B = null;
+    if (remoto) {
+      this.B = remoto; this.B.competencias = this.B.competencias || {};
+      if (this.pend && loc && loc.competencias) {   // reaplica a alteração pendente deste navegador sobre a versão da pasta
+        for (const comp of this.pend.comps) { const mine = loc.competencias[comp]; if (mine) this.B.competencias[comp] = mine; else delete this.B.competencias[comp]; }
+        this.audPend = (this.pend.aud || []).slice(); this.B.auditoria = ordJuntaAud(this.B.auditoria, this.audPend);
+      }
+    } else if (loc) { this.B = loc; if (this.fonte === 'ausente' || falhou) this.fonte = 'cache'; if (this.pend) this.audPend = (this.pend.aud || []).slice(); }
+    if (falhou) this.err = `Não consegui ler ${ORD_FILE} na pasta (${ordMotivo(falhou)}). ${this.B ? 'Mostrando a cópia deste navegador' + (this.B.revAt ? ' de ' + new Date(this.B.revAt).toLocaleString('pt-BR') : '') + '. ' : ''}Nada será gravado na pasta até ela voltar a responder.`;
+    else if (this.fonte === 'cache') this.err = `${ORD_FILE} ainda não existe na pasta: mostrando a cópia deste navegador. A próxima gravação cria o arquivo na pasta.`;
     if (!this.B) this.B = this.vazio(); this.B.competencias = this.B.competencias || {}; this.B.auditoria = this.B.auditoria || [];
     await this.lerWaste();
     const cs = Object.keys(this.B.competencias).sort(); if (!this.comp) this.comp = cs[cs.length - 1] || ordMesAnt(U.today());
@@ -8783,27 +8806,50 @@ const Ord = {
   aud(acao, det) { const a = { em: new Date().toISOString(), por: this.quem(), acao, comp: this.comp, det }; this.B.auditoria.push(a); this.audPend.push(a); },
   async gravar(comps, motivo) {
     comps = [].concat(comps);
-    const mode = this.modo(), B = this.B; let remoteTxt = null;
-    if (mode === 'pasta' && Store.S.backend && Store.S.backend.writeSibling) {
-      remoteTxt = await Store.S.backend.readSibling(ORD_FILE);
+    const mode = this.modo(), naPasta = mode === 'pasta' && Store.S.backend && Store.S.backend.writeSibling;
+    // a alteração fica pendente neste navegador até a releitura confirmar a gravação na pasta
+    const ant = this.pend, todas = [...new Set([...(ant ? ant.comps : []), ...comps])];
+    this.pend = { comps: todas, motivo: (ant && ant.motivo === 'substituição') || motivo === 'substituição' ? 'substituição' : motivo, em: (ant && ant.em) || new Date().toISOString(), aud: this.audPend.slice() };
+    const guardaLocal = async () => { if (mode !== 'exemplo') { try { await IDB.set('ordens', this.B); await IDB.set('ordens.pend', this.pend); } catch (e) { } } };
+    await guardaLocal();
+    const falha = async m => { this.err = m; await guardaLocal(); setTimeout(() => { try { if (App.route === 'ordens') render(); } catch (e) { } }, 0); throw new Error(m); };   // a tela mostra o aviso de pendência
+    if (naPasta) {
+      let remoteTxt;
+      try { remoteTxt = await ordLerPasta(); }
+      catch (e) { return falha(`Não consegui ler ${ORD_FILE} na pasta (${ordMotivo(e)}); nada foi gravado. A alteração continua pendente neste navegador.`); }
       if (remoteTxt) {
-        let R; try { R = JSON.parse(remoteTxt); } catch (e) { throw new Error(ORD_FILE + ' na pasta não é um JSON válido; nada foi gravado.'); }
-        if (R.rev !== B.rev || R.revId !== B.revId) { // outra pessoa gravou: aplica só a competência alterada sobre a versão nova
-          R.competencias = R.competencias || {}; for (const comp of comps) { const mine = B.competencias[comp]; if (mine) R.competencias[comp] = mine; else delete R.competencias[comp]; }
-          R.auditoria = (R.auditoria || []).concat(this.audPend); this.B = R; toast('O arquivo de ordens tinha sido alterado por outra pessoa: ' + comps.map(compTxt).join(', ') + ' aplicada(s) sobre a versão mais nova.');
+        let R; try { R = JSON.parse(remoteTxt); } catch (e) { return falha(ORD_FILE + ' na pasta não é um JSON válido; nada foi gravado. A alteração continua pendente neste navegador.'); }
+        const B = this.B;
+        if (R.rev !== B.rev || R.revId !== B.revId) { // outra pessoa gravou: aplica só as competências pendentes sobre a versão nova
+          R.competencias = R.competencias || {}; for (const comp of todas) { const mine = B.competencias[comp]; if (mine) R.competencias[comp] = mine; else delete R.competencias[comp]; }
+          R.auditoria = ordJuntaAud(R.auditoria, this.audPend); this.B = R; toast('O arquivo de ordens tinha sido alterado por outra pessoa: ' + todas.map(compTxt).join(', ') + ' aplicada(s) sobre a versão mais nova.');
         }
-        const dia = U.today(); const k = 'ordens.bk'; let ult = ''; try { ult = localStorage.getItem(k) || ''; } catch (e) { }
-        if (ult !== dia || motivo === 'substituição') { const h = new Date().toTimeString().slice(0, 5).replace(':', 'h'); try { await Store.S.backend.backupSub(ORD_BK, `ordens-base_${dia}${motivo === 'substituição' ? '_antes-substituir_' + comps.join('_') : ''}_${h}.json`, remoteTxt); localStorage.setItem(k, dia); } catch (e) { console.warn('backup ordens', e); } }
-      }
+        // backup: o diário é rotina (falha só avisa no console); antes de substituir competência é obrigatório
+        const crit = this.pend.motivo === 'substituição', dia = U.today(), k = 'ordens.bk'; let ult = ''; try { ult = localStorage.getItem(k) || ''; } catch (e) { }
+        if (ult !== dia || crit) {
+          const t = new Date(), h = [t.getHours(), t.getMinutes(), t.getSeconds()].map(n => String(n).padStart(2, '0')), suf = Math.random().toString(36).slice(2, 5);
+          const nome = `ordens-base_${dia}${crit ? '_antes-substituir_' + todas.join('_') : ''}_${h[0]}h${h[1]}m${h[2]}s_${suf}.json`;
+          try { await Store.S.backend.backupSub(ORD_BK, nome, remoteTxt); try { localStorage.setItem(k, dia); } catch (e) { } }
+          catch (e) { if (crit) return falha(`Não consegui salvar a cópia de ${ORD_FILE} em 00. Backups/${ORD_BK} antes de substituir (${ordMotivo(e)}); nada foi gravado. A alteração continua pendente neste navegador.`); console.warn('backup ordens', e); }
+        }
+      } else toast(ORD_FILE + ' ainda não existia na pasta: o arquivo foi criado.');
     }
     const b = this.B; b.rev = (b.rev || 0) + 1; b.revBy = this.quem(); b.revAt = new Date().toISOString(); b.revId = 'r' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6); b.appVersion = 'Produção ' + APP_VERSION;
     if (b.auditoria.length > 5000) b.auditoria.splice(0, b.auditoria.length - 5000);
     try { b.exports = this.exportsBuild(); } catch (e) { console.warn('exports ordens', e); }
     const txt = JSON.stringify(b);
-    if (mode === 'pasta' && Store.S.backend && Store.S.backend.writeSibling) await Store.S.backend.writeSibling(ORD_FILE, txt);
-    if (mode !== 'exemplo') { try { await IDB.set('ordens', b); } catch (e) { } }
-    this.audPend = [];
+    if (naPasta) {
+      try { await Store.S.backend.writeSibling(ORD_FILE, txt); } catch (e) { return falha(`Não consegui gravar ${ORD_FILE} na pasta (${ordMotivo(e)}). A alteração continua pendente neste navegador.`); }
+      // releitura: só dá como gravado se a pasta tiver exatamente esta gravação (revId)
+      let ok = false, why = '';
+      try { const t = await ordLerPasta(); const C = t ? JSON.parse(t) : null; ok = !!C && C.revId === b.revId; if (!ok) why = C ? `a pasta tem outra gravação (${C.revBy || '—'}, ${C.revAt ? new Date(C.revAt).toLocaleString('pt-BR') : 'sem data'})` : 'o arquivo não foi encontrado depois de gravar'; }
+      catch (e) { why = 'não consegui reler o arquivo (' + ordMotivo(e) + ')'; }
+      if (!ok) return falha(`A gravação de ${ORD_FILE} não foi confirmada: ${why}. A alteração continua pendente neste navegador; use "Gravar de novo".`);
+    }
+    this.pend = null; this.audPend = []; this.err = ''; this.fonte = naPasta ? 'pasta' : this.fonte;
+    if (mode !== 'exemplo') { try { await IDB.set('ordens', b); await IDB.set('ordens.pend', null); } catch (e) { } }
   },
+  async reenviar() { if (!this.pend) return; await this.gravar(this.pend.comps, this.pend.motivo); },
   exportsBuild() {
     const porOrdem = [], pend = [];
     for (const [comp, c] of Object.entries(this.B.competencias)) {
@@ -8923,6 +8969,7 @@ App.views.ordens = {
       <label class="f"><span>Planta ${ordAjuda('Planta esperada no MB51 (4017). Linhas de outra planta são contadas e ficam fora.')}</span><input id="oPlanta" value="${esc(Ord.planta)}" style="width:90px"></label>`}
       <div class="ord-st">${porPer ? '' : c && c.mb51 ? ordPill('MB51 · ' + c.mb51.arquivo + ' · ' + new Date(c.mb51.em).toLocaleDateString('pt-BR') + ' · ' + c.mb51.por, 'ok') : ordPill('MB51 não importado', 'warn')} ${porPer ? '' : c && c.coois ? ordPill('COOIS · cobertura ' + fmtPct(X.cobertura), X.cobertura < 1 ? 'warn' : 'ok') : R ? ordPill('COOIS pendente', 'pend') : ''} ${R && !porPer ? ordPill(R.kpi.ordensProduzidas + ' ordens produzidas', 'info') : ''} ${R && !porPer && Ord.waste && !Ord.waste.erro ? (n => n ? `<button class="pill crit" data-ofilt="sem KKBC" title="Ordens produzidas (MB51) sem KKBC_ORD lançada no Waste">${n} sem KKBC no Waste</button>` : ordPill('KKBC: todas lançadas', 'ok'))(R.ordens.filter(o => o.produzida && Ord.kkbc(o.ordem) === 'pendente').length) : ''} ${Ord.modo() === 'pasta' ? ordPill(ORD_FILE + ' · rev ' + (Ord.B.rev || 0), 'none') : ordPill(Ord.modo() === 'exemplo' ? 'modo exemplo: só na memória' : 'sem pasta: só neste navegador', 'warn')}</div></div>
       ${Ord.err ? `<div class="note e">${esc(Ord.err)}</div>` : ''}
+      ${Ord.pend ? `<div class="note w" id="oPend"><b>Alteração pendente</b> desde ${new Date(Ord.pend.em).toLocaleString('pt-BR')}: ${esc(Ord.pend.comps.map(compTxt).join(', '))} ainda não foi confirmada na pasta. <button type="button" class="btn sm primary" id="oPendGo">Gravar de novo</button></div>` : ''}
       <div class="seg ord-sub" role="tablist">${sub.map(([k, l]) => `<button type="button" data-osub="${k}" aria-pressed="${Ord.sub === k}">${l}</button>`).join('')}</div>${porPer ? ordPerBar() : ''}</section>`;
     const body = { mb51: () => this.vMB51(c), coois: () => this.vCOOIS(c), lista: () => this.vLista(c), conc: () => this.vConc(c), hist: () => this.vHist() }[Ord.sub]();
     return top + body;
@@ -9066,6 +9113,7 @@ App.views.ordens = {
     };
     const tx = root.querySelector('#oTxt'); if (tx) tx.addEventListener('input', () => { Ord.txtIn = Ord.txtIn || {}; Ord.txtIn[Ord.sub === 'coois' ? 'coois' : 'mb51'] = tx.value; });
     on('#oLer', 'onclick', () => ler(null)); on('#oFile', 'onchange', e => { const f = e.target.files[0]; e.target.value = ''; if (f) ler(f); });
+    on('#oPendGo', 'onclick', () => run(async () => { await Ord.reenviar(); render(); }, 'Alteração pendente gravada e confirmada na pasta.'));
     on('#oCanc', 'onclick', () => { Ord.prevMB = null; render(); }); on('#oCancCO', 'onclick', () => { Ord.prevCO = null; render(); });
     on('#oGrava', 'onclick', () => run(async () => {
       if (!Ord.podeImportar()) return toast('Seu perfil não pode importar.', true);

@@ -152,3 +152,17 @@ Responde à auditoria de relatórios e painéis (registro § P). Regras `R(...)`
 - **Sair da TV redesenha a tela** (`TV.close` › `renderNow`, mantendo a rolagem). A TV limpava o registro dos gráficos, e a dica e o clique paravam até trocar de aba.
 - **CSV:** a mesma regra das outras páginas (`vacCsvTexto`). Número escrito como texto que começa com `-` não ganha mais o prefixo `'`.
 - **`build.py`:** grava com `\n`.
+
+## 19. Produção 2.4.11 (08/11/2026) · E1 do plano único: Ordens e backups confiáveis (registro § U)
+
+- **Leitura estrita** (`readSiblingStrict`, regra `R` no `build.py`): só "arquivo não existe" é ausência. Erro de rede, permissão ou JSON:
+  - o `carregar` mostra a cópia deste navegador, com a data, e avisa que nada será gravado;
+  - o `gravar` não escreve.
+- **Pendência recuperável:** antes de gravar, a cópia e a lista de competências pendentes vão para o IDB (`ordens.pend`).
+  - Se a gravação ou a confirmação falhar, a tela mostra "Alteração pendente… Gravar de novo".
+  - Ao abrir de novo, a pendência é reaplicada sobre a versão da pasta (mesclagem por competência, sem repetir a auditoria).
+- **Confirmação:** depois de gravar, relê e confere o `revId`. Se divergir ou a releitura falhar, não dá como gravado.
+- **Backup antes de substituir competência:** obrigatório (se falhar, nada é gravado). Nome com segundos e sufixo, para não sobrescrever outro. O diário continua sendo rotina.
+- **Backups antigos:** o `FolderBackend` tinha duas chaves `readBackup`; ficou a que lê também `00. Backups/` (local antigo).
+- **Teste:** `testes/tordens.js`, com 15 checagens. Sobre a versão 2.4.10, reproduz a perda da competência de outra estação.
+

@@ -7,7 +7,7 @@ Plataforma de páginas HTML de arquivo único que trabalham juntas numa **pasta 
 | Página | Arquivo | Base | Versão | Como editar |
 |---|---|---|---|---|
 | Portal (cadastro geral, Administração) | `Portal.html` | `portal-base.json` + `vacutainer-cadastros.json` | 1.8.13 | direto no HTML |
-| Produção (OEE, plano, ordens SAP) | `OEE-Vacutainer.html` | `oee-vacutainer-base.json` (+ `ordens-base.json`) | 2.4.10 | **NÃO editar o HTML**: editar `fontes/producao/` e rodar o build |
+| Produção (OEE, plano, ordens SAP) | `OEE-Vacutainer.html` | `oee-vacutainer-base.json` (+ `ordens-base.json`) | 2.4.11 | **NÃO editar o HTML**: editar `fontes/producao/` e rodar o build |
 | Waste (perdas por ordem, KKBC) | `Perdas-Ordem.html` | `perdas-base.json` | 1.8.16 | direto no HTML |
 | Gestão de Gel | `Gestão-Gel-Vacutainer.html` | `fifo-base.json` | 2.04 · **em atualização** | direto no HTML |
 | Paradas | `Paradas.html` | `paradas-base.json` | 1.0.13 · **em atualização** | direto no HTML |
@@ -34,6 +34,7 @@ node fontes/guia/gerar_guia.js         # gera "Guia de instalação.html" (raiz)
 node testes/tmeta.js                   # importação da Meta OEE FY27 no Portal (precisa também do pacote npm xlsx)
 node testes/tconstrucao.js             # situação das páginas: selos, faixa, Portal › Módulos, cartão em construção, as 3 páginas geradas (2 temas, 390 px); código 1 se falhar
 node testes/tseguranca.js             # revisão 065fe6f: botões do Waste com valores importados, restauração sem cópia (Portal/Gel), CSV sem fórmulas, URLs de download, TV da Produção, índice do Gel, scripts em duas fases; código 1 se falhar
+node testes/tordens.js                # E1 do plano único: Produção › Ordens com leitura estrita, pendência recuperável (Gravar de novo), releitura por revId, backup obrigatório antes de substituir, backups do local antigo (OPFS + HTTP local); código 1 se falhar
 ```
 
 - O build usa substituições exatas (`R(antes, depois)`) sobre a base 2.0: se um trecho não for achado exatamente 1 vez, para com `ERRO`. Mudança na Produção = nova regra `R(...)` no `build.py` ou mudança nos `.js` de `fontes/producao/`.
@@ -74,7 +75,7 @@ Ao terminar uma entrega, atualizar o doc da página (seção nova com a versão 
 
 ## Auditorias externas
 
-`docs/auditorias/registro-decisoes.md` registra cada apontamento das auditorias (05/11, 06/11, pós-merge, layout e revisão c341f8e de 06/11/2026; relatórios e painéis de 07/11/2026; achados do Codex sobre 065fe6f, § C), o que foi corrigido, o que foi recusado e por quê. **Antes de uma nova análise, ler o registro**: item recusado lá só volta com fato novo.
+`docs/auditorias/registro-decisoes.md` registra cada apontamento das auditorias (05/11, 06/11, pós-merge, layout e revisão c341f8e de 06/11/2026; relatórios e painéis de 07/11/2026; achados do Codex sobre 065fe6f, § C; plano único de 08/11/2026 e suas etapas, § U em `docs/auditorias/plano-unico-2026-11-08/`), o que foi corrigido, o que foi recusado e por quê. **Antes de uma nova análise, ler o registro**: item recusado lá só volta com fato novo.
 
 ## Pendências conhecidas
 
@@ -88,7 +89,6 @@ Lista única do que ficou para depois. O motivo e o gatilho de cada item estão 
 
 **Dados e gravação**
 - Meta `WASTE-MES` lida pela data de hoje, e não pela do mês consultado (regra 3; registro § 1).
-- `Ord.gravar` (Ordens na Produção) sem releitura que confirme a gravação (registro § 1).
 
 **Layout (auditoria visual; registro § L)**
 - Juntar Resumo e indicadores do Waste (hoje há totais repetidos).
