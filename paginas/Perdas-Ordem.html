@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Waste · Linha Vacutainer · V1.8.13</title>
+<title>Waste · Linha Vacutainer</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600&family=Barlow+Condensed:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
 <style>
@@ -777,10 +777,10 @@ function vacAbaInicial(pagina) {
    Base: perdas-base.json na pasta da rede (mesmo padrão OEE / Gel)
    Contrato: bloco "exports" (exportsVersion 1) lido pelas outras páginas
    ===================================================================== */
-const APP_VER='1.8.15', BASE_FN='perdas-base.json', DIR_ORIG='00. Originais SAP', DIR_BKP='00. Backups', DIR_IN='00. Entrada KKBC', DIR_DONE='00. Entrada KKBC/Processados';
+const APP_VER='1.8.17',   /* 1.8.17 · E2: fonte única da versão (tela, base, exports e Portal › Versões) */ BASE_FN='perdas-base.json', DIR_ORIG='00. Originais SAP', DIR_BKP='00. Backups', DIR_IN='00. Entrada KKBC', DIR_DONE='00. Entrada KKBC/Processados';
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 /* página para o núcleo comum, o cabeçalho (vac-cabecalho v2) e o quadro de Versões do Portal */
-const PAGE={id:'perdas',titulo:'Waste · Linha Vacutainer',tituloCurto:'Waste',subtitulo:'Custos e perdas por ordem',versao:'1.8.16',/* igual a APP_VER; o Portal lê este valor */baseFile:BASE_FN,backupDir:'00. Backups/Perdas',busca:q=>buscaPerdas(q)};
+const PAGE={id:'perdas',titulo:'Waste · Linha Vacutainer',tituloCurto:'Waste',subtitulo:'Custos e perdas por ordem',versao:APP_VER,baseFile:BASE_FN,backupDir:'00. Backups/Perdas',busca:q=>buscaPerdas(q)};
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 /* 1.8.16 · argumento de JavaScript dentro de onclick="…": JSON.stringify fecha a string do jeito certo (aspas, barras) e o esc protege o atributo.
    Só esc() entre aspas simples não basta: o navegador desfaz o &#39; antes de rodar o código, e um código importado com aspa executava. */
@@ -923,6 +923,16 @@ function portalCad(){const n=Date.now();if(n-_pc.t<10000)return _pc;let c=null;t
  let lg=null;try{lg=localStorage.getItem('vac.logo')||null}catch(e){}_pc={t:n,meta:m,mat,logo:lg};return _pc}
 let _cfgB=null,_cfgM=undefined,_cfgO=null;
 const CFG=()=>{const c=B.config,P=portalCad(),mv=P.meta?P.meta.valor:null;if(mv==null)return c;if(_cfgB===c&&_cfgM===mv)return _cfgO;_cfgB=c;_cfgM=mv;_cfgO=Object.assign(Object.create(null),c,{meta:mv,_metaPortal:true});return _cfgO};
+/* 1.8.17 · E2 (regra 3): meta de cada mês pela vigência do próprio mês (Portal › Metas da área › WASTE-MES). Duas vigências no mesmo mês =
+   média ponderada pelos dias de cada uma (vacMetaAreaMes, kit). Mês sem vigência no Portal: a meta local da página (Configuração), se houver.
+   Antes, todos os meses usavam a meta de hoje. */
+const _metaMes=new Map();
+function metaMesInfo(per){if(!per)return null;const P=portalCad(),k=per+'|'+P.t;if(_metaMes.has(k))return _metaMes.get(k);
+ let r=null;const m=typeof vacMetaAreaMes==='function'?vacMetaAreaMes('WASTE-MES',per):null;
+ if(m&&m.valor!=null)r={valor:m.valor,ponderada:m.ponderada,partes:m.partes,fonte:'portal'};else{const c=B.config.meta;if(c!=null&&c!=='')r={valor:+c,ponderada:false,partes:null,fonte:'local'}}
+ if(_metaMes.size>500)_metaMes.clear();_metaMes.set(k,r);return r}
+const metaPer=per=>{const m=metaMesInfo(per);return m?m.valor:null};
+const metaNota=per=>{const m=metaMesInfo(per);return m&&m.ponderada?' (ponderada pelos dias: '+m.partes.map(x=>fmtR(x.valor)+' × '+x.dias+' d').join(' + ')+')':''};
 const user=()=>localStorage.getItem('vac.user')||localStorage.getItem('perdas.user')||'';
 
 /* ---------- IndexedDB (cache local + handle da pasta) ---------- */
@@ -1454,7 +1464,7 @@ function renderPainel(){
  const perda=sum(ords,o=>o.perda),ganho=sum(ords,o=>o.ganho),liq=sum(ords,o=>o.d),cT=sum(ords,o=>o.cT),cR=sum(ords,o=>o.cR),base=sum(ords,o=>o.base);
  const qE=sum(ords,o=>o.qEnt||0);const crit=ords.filter(o=>o.lvl===3).length,alta=ords.filter(o=>o.lvl===2).length;
  const semC=ords.filter(o=>o.lvl>=2&&!causeOf(o.ordem)).length;const venc=B.actions.filter(acVencida).length;
- const pers=[...new Set(ords.map(o=>o.per))];const meta=CFG().meta;const metaP=meta!=null&&meta!==''?+meta*pers.length:null;
+ const pers=[...new Set(ords.map(o=>o.per))];const _mp=pers.map(metaPer).filter(v=>v!=null);const metaP=_mp.length?_mp.reduce((a,b)=>a+b,0):null;   /* 1.8.17 · soma das metas de cada mês */
  const fyAc=(()=>{const last=F.ate||allPers().slice(-1)[0];if(!last)return null;const fy=fyOf(last);return sum(aggOrders(vigRows().filter(r=>fyOf(r.per)===fy&&r.per<=last)),o=>o.d)})();
  const mat=rows.filter(r=>!isDelivery(r));const vMat=sum(mat,dEst),vScr=sum(mat,scrapOf);const semEstr=mat.length&&!mat.some(r=>r.dEstr!=null);
  $('#selo').innerHTML=has?`${esc(seloTexto())} · ${fmtN(ords.length)} ordens · ${fmtN(rows.length)} linhas${exclMap().size?` · <a href="#" onclick="F.view='excl';renderPainel();return false">${exclMap().size} ordem(ns) excluída(s) fora dos totais</a>`:''}`:'';
@@ -1478,8 +1488,8 @@ function renderPainel(){
  ].map(([l,v,c,s])=>`<div class="kpi"><div class="l">${l}</div><div class="v ${c}">${v}</div><div class="s">${s}</div></div>`).join(''):'';
  // gráficos
  const pm={};for(const o of ords){pm[o.per]=(pm[o.per]||0)+o.d}
- const trend=Object.keys(pm).sort().map(p=>({label:fmtM(p),value:pm[p],key:p,color:(meta!=null&&meta!=='')?(pm[p]>+meta?'var(--bad)':'var(--good)'):(pm[p]>0?'var(--bad)':'var(--good)')}));
- $('#chTrend').innerHTML=has?barChart(trend,{h:220,meta:meta!=null&&meta!==''?+meta:null,click:'per'}):'';
+ const trend=Object.keys(pm).sort().map(p=>({label:fmtM(p),value:pm[p],key:p,meta:metaPer(p),color:metaPer(p)!=null?(pm[p]>metaPer(p)?'var(--bad)':'var(--good)'):(pm[p]>0?'var(--bad)':'var(--good)')}));
+ $('#chTrend').innerHTML=has?barChart(trend,{h:220,click:'per'}):'';
  const cr=(F._compRows||rows).filter(r=>!isDelivery(r));const cmap=new Map();for(const r of cr){const k=compKey(r);const x=cmap.get(k)||{v:0,d:compName(r)};x.v+=dev(r);cmap.set(k,x)}
  const par=[...cmap].map(([k,x])=>({label:k,sub:x.d,value:x.v,key:k})).filter(x=>x.value>0).sort((a,b)=>b.value-a.value).slice(0,10);
  $('#chComp').innerHTML=has?paretoChart(par,'comp'):'';
@@ -1494,8 +1504,8 @@ function renderPainel(){
 function renderPorComp(ords){const el=$('#porComp');if(!el)return;if(!ords.length){el.style.display='none';return}el.style.display='';
  const m=new Map();for(const o of ords){let x=m.get(o.per);if(!x)m.set(o.per,x={per:o.per,n:0,vm:0,sc:0,d:0,pe:0,ga:0,base:0,qE:0,crit:0,alta:0});const mr=o.rows.filter(r=>!isDelivery(r));x.n++;x.vm+=sum(mr,dEst);x.sc+=sum(mr,scrapOf);x.d+=o.d;x.pe+=o.perda;x.ga+=o.ganho;x.base+=o.base;x.qE+=o.qEnt||0;if(o.lvl===3)x.crit++;if(o.lvl===2)x.alta++}
  const L=[...m.values()].sort((a,b)=>a.per<b.per?1:-1);const T=L.reduce((t,x)=>{for(const k of['n','vm','sc','d','pe','ga','base','qE','crit','alta'])t[k]+=x[k];return t},{n:0,vm:0,sc:0,d:0,pe:0,ga:0,base:0,qE:0,crit:0,alta:0});
- const meta=CFG().meta;const cl=v=>v>0?'bad':'good';const fechado=closedPers();
- const tr=(x,tot)=>`<tr class="${tot?'tot':'click'}" ${tot?'':`data-per="${x.per}"`}><td>${tot?'<b>Total</b>':fmtM(x.per)+' <span class="muted small">'+fyOf(x.per)+' P'+fpOf(x.per)+'</span>'+(fechado.has(x.per)?' <span class="tag b">fechado</span>':'')}</td><td class="n">${fmtN(x.n)}</td><td class="n ${cl(x.vm)}">${fmtR(x.vm)}</td><td class="n ${cl(x.sc)}">${fmtR(x.sc)}</td><td class="n ${cl(x.d)}"><b>${fmtR(x.d)}</b></td><td class="n">${fmtP(x.base?x.d/x.base:null)}</td><td class="n">${x.qE?fmtR(x.d/x.qE*1e6):'–'}</td><td class="n">${!tot&&meta!=null&&meta!==''?`<span class="${x.d>+meta?'bad':'good'}">${x.d>+meta?'acima':'dentro'}</span>`:''}</td><td class="n">${x.crit?`<span class="tag r">${x.crit}</span>`:''} ${x.alta?`<span class="tag o">${x.alta}</span>`:''}</td></tr>`;
+ const cl=v=>v>0?'bad':'good';const fechado=closedPers();
+ const tr=(x,tot)=>`<tr class="${tot?'tot':'click'}" ${tot?'':`data-per="${x.per}"`}><td>${tot?'<b>Total</b>':fmtM(x.per)+' <span class="muted small">'+fyOf(x.per)+' P'+fpOf(x.per)+'</span>'+(fechado.has(x.per)?' <span class="tag b">fechado</span>':'')}</td><td class="n">${fmtN(x.n)}</td><td class="n ${cl(x.vm)}">${fmtR(x.vm)}</td><td class="n ${cl(x.sc)}">${fmtR(x.sc)}</td><td class="n ${cl(x.d)}"><b>${fmtR(x.d)}</b></td><td class="n">${fmtP(x.base?x.d/x.base:null)}</td><td class="n">${x.qE?fmtR(x.d/x.qE*1e6):'–'}</td><td class="n">${!tot&&metaPer(x.per)!=null?`<span class="${x.d>metaPer(x.per)?'bad':'good'}" title="meta ${esc(fmtR(metaPer(x.per))+metaNota(x.per))}">${x.d>metaPer(x.per)?'acima':'dentro'}</span>`:''}</td><td class="n">${x.crit?`<span class="tag r">${x.crit}</span>`:''} ${x.alta?`<span class="tag o">${x.alta}</span>`:''}</td></tr>`;
  el.innerHTML=`<h3>Por competência <i class="i" title="Uma linha por competência (mês de referência da KKBC_ORD), com os filtros atuais. VAR. MATERIAL = desvio de estrutura; SCRAP = desvio total − estrutura; TOTAL = real − meta. Clique numa linha para filtrar a competência.">i</i> <span class="muted small">${L.length} competência(s)</span></h3>
  <div class="tw"><table><tr><th>Competência</th><th class="n">Ordens</th><th class="n">Var. material</th><th class="n">Scrap</th><th class="n">Total</th><th class="n">Desvio %</th><th class="n">R$/milhão</th><th class="n">Meta</th><th class="n">Críticas · altas</th></tr>${L.map(x=>tr(x)).join('')}${L.length>1?tr(T,true):''}</table></div>`;
  $$('#porComp tr[data-per]').forEach(t=>t.onclick=()=>{F.de=F.ate=t.dataset.per;F.fy='';renderPainel()})}
@@ -1546,7 +1556,9 @@ function renderTable(ords,rows){
 /* ---------- gráficos SVG ---------- */
 function barChart(d,{h=200,meta=null,click=null,minW=560}={}){
  if(!d.length)return'<p class="muted small">Sem dados.</p>';
- const W=Math.max(minW,d.length*60),pl=62,pb=26,pt=12,H=h;const vals=d.map(x=>x.value).concat(meta!=null?[meta]:[]);
+ /* 1.8.17 · meta por barra (x.meta): igual em todas → uma linha; diferentes → um traço por barra */
+ const _ms=d.map(x=>x.meta).filter(v=>v!=null);let porBarra=false;if(meta==null&&_ms.length){if(_ms.every(v=>v===_ms[0])&&_ms.length===d.length)meta=_ms[0];else porBarra=true}
+ const W=Math.max(minW,d.length*60),pl=62,pb=26,pt=12,H=h;const vals=d.map(x=>x.value).concat(meta!=null?[meta]:[]).concat(porBarra?_ms:[]);
  let mx=Math.max(0,...vals),mn=Math.min(0,...vals);if(mx===mn)mx=mn+1;const pad=(mx-mn)*.08;mx+=pad;if(mn<0)mn-=pad;
  const y=v=>pt+(mx-v)/(mx-mn)*(H-pt-pb);const bw=(W-pl-10)/d.length;
  let s=`<svg viewBox="0 0 ${W} ${H}" width="100%" style="max-height:${H}px">`;
@@ -1556,6 +1568,7 @@ function barChart(d,{h=200,meta=null,click=null,minW=560}={}){
   s+=`<g ${click?`data-fk="${click}" data-fv="${esc(x.key)}" style="cursor:pointer"`:''}><title>${esc(x.label)}: ${fmtR(x.value)}</title><rect x="${X}" y="${Math.min(y0,y1)}" width="${w}" height="${Math.max(1,Math.abs(y1-y0))}" fill="${x.color||'var(--pri)'}" rx="2"/>
   <text x="${X+w/2}" y="${x.value>=0?y1-4:y1+12}" font-size="10" text-anchor="middle" fill="var(--ink)">${fmtK(x.value)}</text>
   <text x="${X+w/2}" y="${H-8}" font-size="11" text-anchor="middle" fill="var(--muted)">${esc(x.label)}</text></g>`});
+ if(porBarra)d.forEach((x,i)=>{if(x.meta==null)return;const X=pl+i*bw+bw*.05,w=bw*.9;s+=`<g><title>meta ${esc(x.label)}: ${fmtR(x.meta)}</title><line x1="${X}" x2="${X+w}" y1="${y(x.meta)}" y2="${y(x.meta)}" stroke="var(--ink)" stroke-width="2" stroke-dasharray="5 3"/></g>`});
  if(meta!=null)s+=`<line x1="${pl}" x2="${W}" y1="${y(meta)}" y2="${y(meta)}" stroke="var(--ink)" stroke-dasharray="5 4"/><text x="${W-4}" y="${y(meta)-4}" font-size="10" text-anchor="end" fill="var(--ink)">meta ${fmtK(meta)}</text>`;
  return s+'</svg>'}
 function fmtK(v){const a=Math.abs(v);return(a>=1e6?(v/1e6).toLocaleString('pt-BR',{maximumFractionDigits:1})+' mi':a>=1e3?(v/1e3).toLocaleString('pt-BR',{maximumFractionDigits:1})+' mil':v.toLocaleString('pt-BR',{maximumFractionDigits:0}))}
@@ -2147,14 +2160,14 @@ function resumoPeriodo(de,ate){
  const cats=[...cat.values()].map(x=>({...x,pm:x.tubos?x.d/x.tubos*1e6:null})).sort((a,b)=>(b.pm??-1e18)-(a.pm??-1e18));
  return{rows,ords,mat,liq,base,qE,vMat:sum(mat,dEst),vScr:sum(mat,scrapOf),perda:sum(ords,o=>o.perda),ganho:sum(ords,o=>o.ganho),comps,cats,
   crit:ords.filter(o=>o.lvl>=2).sort((a,b)=>b.d-a.d)}}
-function trendSerie(ate,n=12){const meta=CFG().meta;const pm={};for(const o of aggOrders(vigRows()))pm[o.per]=(pm[o.per]||0)+o.d;
- return Object.keys(pm).sort().filter(p=>!ate||p<=ate).slice(-n).map(p=>({label:fmtM(p),value:pm[p],key:p,color:(meta!=null&&meta!=='')?(pm[p]>+meta?'var(--crit)':'var(--ok)'):(pm[p]>0?'var(--crit)':'var(--ok)')}))}
+function trendSerie(ate,n=12){const pm={};for(const o of aggOrders(vigRows()))pm[o.per]=(pm[o.per]||0)+o.d;
+ return Object.keys(pm).sort().filter(p=>!ate||p<=ate).slice(-n).map(p=>({label:fmtM(p),value:pm[p],key:p,meta:metaPer(p),color:metaPer(p)!=null?(pm[p]>metaPer(p)?'var(--crit)':'var(--ok)'):(pm[p]>0?'var(--crit)':'var(--ok)')}))}
 /* ---------- TV ---------- */
 function tvSlides(){const ult=allPers().slice(-1)[0];if(!ult)return[{titulo:'Sem dados',html:'<div class="card"><p>Nenhuma KKBC importada ainda.</p></div>'}];
  const R=resumoPeriodo(ult,ult);const bk=(l,v,sub,c)=>`<div class="bk"><div class="l">${esc(l)}</div><div class="v sm ${c||''}">${esc(v)}</div><div class="s">${esc(sub||'')}</div></div>`;
- const meta=CFG().meta;const S=[];
- S.push({titulo:'Resumo · '+fmtML(ult),html:`<div class="big">${bk('Var. material',fmtC(R.vMat),'desvio de estrutura',R.vMat>0?'bad':'good')}${bk('Scrap',fmtC(R.vScr),'desvio total − estrutura',R.vScr>0?'bad':'good')}${bk('Total',fmtC(R.liq),meta!=null&&meta!==''?'meta '+fmtR(+meta):'real − meta',R.liq>(meta!=null&&meta!==''?+meta:0)?'bad':'good')}${bk('Por milhão de tubos',R.qE?fmtR(R.liq/R.qE*1e6,2):'–',R.ords.length+' ordens','')}</div>
-  <div class="card"><h3>Tendência mensal</h3>${barChart(trendSerie(ult),{h:440,minW:1300,meta:meta!=null&&meta!==''?+meta:null})}</div>`});
+ const meta=metaPer(ult);const S=[];
+ S.push({titulo:'Resumo · '+fmtML(ult),html:`<div class="big">${bk('Var. material',fmtC(R.vMat),'desvio de estrutura',R.vMat>0?'bad':'good')}${bk('Scrap',fmtC(R.vScr),'desvio total − estrutura',R.vScr>0?'bad':'good')}${bk('Total',fmtC(R.liq),meta!=null?'meta '+fmtR(meta)+metaNota(ult):'real − meta',R.liq>(meta!=null?meta:0)?'bad':'good')}${bk('Por milhão de tubos',R.qE?fmtR(R.liq/R.qE*1e6,2):'–',R.ords.length+' ordens','')}</div>
+  <div class="card"><h3>Tendência mensal</h3>${barChart(trendSerie(ult),{h:440,minW:1300})}</div>`});
  S.push({titulo:'Componentes com mais perda · '+fmtML(ult),html:`<div class="card">${paretoChart(R.comps.filter(c=>c.d>0).slice(0,10).map(c=>({label:c.comp,sub:c.desc,value:c.d,key:c.comp})),null)}</div>`});
  S.push({titulo:'Catálogos · R$ por milhão de tubos · '+fmtML(ult),html:`<div class="card"><table><tr><th>Catálogo</th><th>Descrição</th><th class="n">Ordens</th><th class="n">Tubos</th><th class="n">Desvio</th><th class="n">R$/milhão</th></tr>${R.cats.map(c=>`<tr><td><b>${esc(c.cat)}</b></td><td>${esc(c.desc)}</td><td class="n">${c.n}</td><td class="n">${fmtK(c.tubos)}</td><td class="n">${fmtR(c.d)}</td><td class="n"><b>${c.pm==null?'–':fmtR(c.pm,2)}</b></td></tr>`).join('')}</table></div>`});
  if(R.crit.length)S.push({titulo:'Ordens altas e críticas · '+fmtML(ult),html:`<div class="card"><table><tr><th>Ordem</th><th>Catálogo</th><th>Descrição</th><th class="n">Desvio</th><th class="n">%</th><th>Nível</th><th>Causa</th></tr>${R.crit.slice(0,12).map(o=>`<tr class="${hl(o.lvl)}"><td>${esc(o.ordem)}</td><td>${esc(o.cat||'')}</td><td>${esc(o.prodDesc||'')}</td><td class="n">${fmtR(o.d)}</td><td class="n">${fmtP(o.pct)}</td><td>${LV[o.lvl]}</td><td>${esc(causeOf(o.ordem)||'sem causa')}</td></tr>`).join('')}</table></div>`});
@@ -2185,14 +2198,14 @@ function docPorTipo(de,ate){const T=porTipoOrdem(de,ate),per=de===ate?fmtML(de):
   {tipo:'tabela',titulo:'Produção × preparação',cab,num:[1,2,3,4,5,6,7,8,9,10],linhas:T.L.map(row).concat([row(T.tot)]),destaque:T.L.map(()=>'').concat(['hl1']),bruto:T.L.map(raw).concat([raw(T.tot)])},
   ...TIPOS_ORD.map(([k,nome])=>tabOrd(k,nome)).filter(Boolean),
   ...(T.G.sem.ords.length?[{tipo:'texto',titulo:'Sem classificação',texto:'Ordens cujo catálogo não está no cadastro do Portal e que não são só em L/G/KG no MB51. Cadastre o catálogo (Portal › Catálogos › Tipo de item) para que entrem em produção ou preparação.'}]:[])]}}
-function docMensal(per){const R=resumoPeriodo(per,per);const meta=CFG().meta;const done=['concluída','encerrada eficaz','encerrada sem eficácia','cancelada'];
+function docMensal(per){const R=resumoPeriodo(per,per);const meta=metaPer(per);const done=['concluída','encerrada eficaz','encerrada sem eficácia','cancelada'];
  const acs=B.actions.filter(a=>!done.includes(a.status));
  return{titulo:'Waste por ordem · '+fmtML(per),subtitulo:'KKBC_ORD · Materials · '+seloTexto({de:per,ate:per}),periodo:fmtML(per)+' ('+fyOf(per)+' P'+fpOf(per)+')',arquivo:'Waste_'+per,blocos:[
-  {tipo:'kpis',titulo:'Resumo',itens:[['Var. material',fmtC(R.vMat),'desvio de estrutura',R.vMat>0?'bad':'good'],['Scrap',fmtC(R.vScr),'desvio total − estrutura',R.vScr>0?'bad':'good'],['Total',fmtC(R.liq),meta!=null&&meta!==''?'meta '+fmtR(+meta):'real − meta',R.liq>0?'bad':'good'],
+  {tipo:'kpis',titulo:'Resumo',itens:[['Var. material',fmtC(R.vMat),'desvio de estrutura',R.vMat>0?'bad':'good'],['Scrap',fmtC(R.vScr),'desvio total − estrutura',R.vScr>0?'bad':'good'],['Total',fmtC(R.liq),meta!=null?'meta '+fmtR(meta)+metaNota(per):'real − meta',R.liq>0?'bad':'good'],
    ['Perdas',fmtC(R.perda),'desvios positivos','bad'],['Ganhos',fmtC(R.ganho),'consumo abaixo da meta','good'],['Desvio %',fmtP(R.base?R.liq/R.base:null),'sobre o custo meta',''],['Por milhão de tubos',R.qE?fmtR(R.liq/R.qE*1e6,2):'–','',''],['Ordens',String(R.ords.length),`${R.ords.filter(o=>o.lvl===3).length} críticas · ${R.ords.filter(o=>o.lvl===2).length} altas`,'']]},
   (()=>{const T=porTipoOrdem(per,per);return{tipo:'tabela',titulo:'Produção × preparação',cab:['Tipo','Ordens','Custo meta','Custo real','Total (desvio)','Desvio %','Var. material','Scrap'],num:[1,2,3,4,5,6,7],
    linhas:T.L.concat([T.tot]).map(x=>[x.nome,x.n,fmtR(x.cT),fmtR(x.cR),fmtR(x.liq),fmtP(x.pct),fmtR(x.vMat),fmtR(x.vScr)]),destaque:T.L.map(()=>'').concat(['hl1'])}})(),
-  {tipo:'svg',titulo:'Tendência mensal (desvio líquido)',svg:barChart(trendSerie(per),{meta:meta!=null&&meta!==''?+meta:null})},
+  {tipo:'svg',titulo:'Tendência mensal (desvio líquido)',svg:barChart(trendSerie(per))},
   {tipo:'tabela',titulo:'Componentes (Pareto)'+(R.comps.length>20?` · 20 maiores de ${R.comps.length} (todos no Excel)`:''),cab:['Componente','Descrição','Ordens','Desvio','Efeito qtd','Efeito preço'],num:[2,3,4,5],linhas:R.comps.slice(0,20).map(c=>[c.comp,c.desc,c.ords.size,fmtR(c.d,2),fmtR(c.eq,2),fmtR(c.ep,2)]),bruto:R.comps.map(c=>[c.comp,c.desc,c.ords.size,+c.d.toFixed(2),+c.eq.toFixed(2),+c.ep.toFixed(2)])},
   {tipo:'tabela',titulo:'Por catálogo',cab:['Catálogo','Descrição','Ordens','Tubos','Desvio','R$/milhão'],num:[2,3,4,5],linhas:R.cats.map(c=>[c.cat,c.desc,c.n,fmtN(c.tubos),fmtR(c.d),c.pm==null?'–':fmtR(c.pm,2)]),bruto:R.cats.map(c=>[c.cat,c.desc,c.n,c.tubos,+c.d.toFixed(2),c.pm==null?null:+c.pm.toFixed(2)])},
   {tipo:'tabela',titulo:'Ordens altas e críticas',cab:['Ordem','Catálogo','Descrição','Desvio','Desvio %','Nível','Causa'],num:[3,4],linhas:R.crit.map(o=>[o.ordem,o.cat||'',o.prodDesc||'',fmtR(o.d),fmtP(o.pct),LV[o.lvl],causeOf(o.ordem)||'sem causa']),destaque:R.crit.map(o=>hl(o.lvl)),bruto:R.crit.map(o=>[o.ordem,o.cat||'',o.prodDesc||'',+o.d.toFixed(2),o.pct,LV[o.lvl],causeOf(o.ordem)||''])},
@@ -2519,14 +2532,17 @@ function kkbcPedRender(){const sec=$('#t-importar');if(!sec)return;let el=$('#kk
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', vacVoltarRender); else setTimeout(vacVoltarRender, 0);
 })();
 /* kit v2.1 · câmbio do cadastro geral (Portal › Câmbio): cotação vigente numa data, em R$ por 1 unidade da moeda. null = sem cadastro. */
+/* kit v2.1 · E2 (08/11/2026): "hoje" no dia local do computador (antes, sem data, valia o dia em UTC: às 22h de Brasília já era amanhã).
+   Os leitores abaixo usam a data do fato quando recebem uma; vacHoje() é só o padrão quando não recebem. */
+function vacHoje() { const d = new Date(); return new Date(d - d.getTimezoneOffset() * 6e4).toISOString().slice(0, 10); }
 function vacCambio(data, moeda = 'USD') {
   const c = typeof vacCad === 'function' ? vacCad() : null, m = c && (c.cambio || []).find(x => String(x.codigo).toUpperCase() === moeda && x.ativo !== false); if (!m) return null;
-  const d = String(data || '').slice(0, 10) || new Date().toISOString().slice(0, 10);
+  const d = String(data || '').slice(0, 10) || vacHoje();
   const v = (m.vigencias || []).filter(x => x.de <= d && (!x.ate || x.ate >= d)).sort((a, b) => a.de < b.de ? 1 : -1)[0];
   return v && +v.cotacao > 0 ? { cotacao: +v.cotacao, de: v.de, ate: v.ate || null } : null;
 }
 /* kit v2.1 · leituras do cadastro geral (cópia vac.cadastros), iguais em todas as páginas */
-const vacVig = (vs, data) => { const d = String(data || '').slice(0, 10) || new Date().toISOString().slice(0, 10); return (vs || []).filter(v => v.de <= d && (!v.ate || v.ate >= d)).sort((a, b) => a.de < b.de ? 1 : -1)[0] || null; };
+const vacVig = (vs, data) => { const d = String(data || '').slice(0, 10) || vacHoje(); return (vs || []).filter(v => v.de <= d && (!v.ate || v.ate >= d)).sort((a, b) => a.de < b.de ? 1 : -1)[0] || null; };
 function vacParam(k) { const c = typeof vacCad === 'function' ? vacCad() : null; return c && c.parametros ? c.parametros[k] ?? null : null; }
 /* turnos vigentes numa data: [{codigo, nome, inicio, fim, dias, ativo, pausas}] (fim em 24 h+) */
 function vacTurnosEm(data) { const c = typeof vacCad === 'function' ? vacCad() : null; return (c && c.turnos || []).filter(t => t.ativo !== false).map(t => { const v = vacVig(t.vigencias, data); return v ? { codigo: t.codigo, nome: t.nome, ...v } : null; }).filter(Boolean); }
@@ -2534,6 +2550,20 @@ function vacTurnosEm(data) { const c = typeof vacCad === 'function' ? vacCad() :
 function vacPrecoEm(material, data) { const c = typeof vacCad === 'function' ? vacCad() : null; const it = c && (c.precos || []).find(p => String(p.material) === String(material)); const v = it ? vacVig(it.vigencias, data) : null; return v && +v.preco > 0 ? { preco: +v.preco, moeda: v.moeda || 'USD', porUnidade: v.porUnidade || 'kg', de: v.de } : null; }
 /* meta da área vigente: {valor, alerta, unidade, sentido, periodo, de} */
 function vacMetaArea(codigo, data) { const c = typeof vacCad === 'function' ? vacCad() : null; const it = c && (c.metasArea || []).find(m => m.codigo === codigo && m.ativo !== false); const v = it ? vacVig(it.vigencias, data) : null; return v && v.valor != null ? { valor: +v.valor, alerta: v.alerta != null ? +v.alerta : null, unidade: it.unidade, sentido: it.sentido, periodo: it.periodo, de: v.de } : null; }
+/* kit v2.1 · E2 (08/11/2026): meta da área de um mês (AAAA-MM), pela vigência de cada dia (regra 3). Duas vigências no mesmo mês =
+   média ponderada pelos dias de cada uma (só os dias cobertos por vigência). null se nenhum dia do mês tem vigência.
+   Volta {valor, ponderada, partes:[{de, valor, dias}], diasCobertos, diasMes, unidade, sentido, periodo}. */
+function vacMetaAreaMes(codigo, per) {
+  const c = typeof vacCad === 'function' ? vacCad() : null; const it = c && (c.metasArea || []).find(m => m.codigo === codigo && m.ativo !== false);
+  if (!it || !/^\d{4}-\d{2}$/.test(String(per || ''))) return null;
+  const [y, mo] = String(per).split('-').map(Number), n = new Date(y, mo, 0).getDate(), partes = new Map(); let soma = 0, dias = 0;
+  for (let d = 1; d <= n; d++) {
+    const v = vacVig(it.vigencias, per + '-' + String(d).padStart(2, '0')); if (!v || v.valor == null || v.valor === '' || !isFinite(+v.valor)) continue;
+    soma += +v.valor; dias++; let p = partes.get(v.de); if (!p) partes.set(v.de, p = { de: v.de, valor: +v.valor, dias: 0 }); p.dias++;
+  }
+  if (!dias) return null; const P = [...partes.values()];
+  return { valor: soma / dias, ponderada: P.length > 1, partes: P, diasCobertos: dias, diasMes: n, unidade: it.unidade, sentido: it.sentido, periodo: it.periodo };
+}
 /* link para uma tela do Portal (Administração) */
 function vacPortalHref(h) { const port = (typeof systems === 'function' ? systems() : []).find(s => s.id === 'portal') || { id: 'portal', html: 'Portal.html' }; return typeof sysHref === 'function' ? sysHref(port, h) : 'Portal.html#' + h; }
 /* kit v2.1 · vac-visual v1 (06/11/2026): abas numa linha só. Quando não cabem, a faixa rola na horizontal, com sombra e seta ‹ › na borda

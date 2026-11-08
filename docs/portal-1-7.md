@@ -213,3 +213,7 @@ Responde à auditoria de relatórios e painéis (registro § P).
 ## Portal 1.8.13 (07/11/2026) · restauração com cópia garantida
 
 Restaurar a base do Portal a partir de uma cópia: se a cópia `_antes-restaurar_` da base atual falhar (permissão, rede), o Portal avisa o motivo e só continua com "Restaurar mesmo assim?". Antes, a falha era ignorada e a base era substituída sem cópia. Registro § C, item 2.
+
+## Portal 1.8.14 (08/11/2026) · kit da E2
+
+Só o kit: `vacHoje()` (dia local nos leitores sem data) e `vacMetaAreaMes` (meta do mês ponderada pelos dias). Registro § U.

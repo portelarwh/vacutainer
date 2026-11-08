@@ -133,3 +133,10 @@ Gestão de Gel 2.02 (07/11/2026):
   - a restauração por arquivo confirma antes e não segue sem a cópia anterior sem decisão explícita;
   - CSV pela regra comum;
   - o Painel usa um índice das baixas por dia durante o `dbCtx`, com os mesmos números e cerca de 20 vezes mais rápido com 7 mil movimentações.
+
+## E2 do plano único (08/11/2026)
+
+- **`vacHoje()`:** dia local do computador. É o padrão de `vacVig`/`vacCambio` quando não recebem data (antes, o dia em UTC; às 22h de Brasília já era amanhã).
+- **`vacMetaAreaMes(codigo, 'AAAA-MM')`:** meta da área no mês pela vigência de cada dia; duas vigências no mesmo mês = média ponderada pelos dias cobertos. Volta `{valor, ponderada, partes:[{de, valor, dias}], diasCobertos, diasMes}`.
+
+Gestão de Gel 2.05 (08/11/2026): o rótulo de versão do cabeçalho vem de `APP_VERSION` (estava fixo em v2.01); título sem número.
