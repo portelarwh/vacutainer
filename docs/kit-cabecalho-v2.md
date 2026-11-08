@@ -140,3 +140,16 @@ Gestão de Gel 2.02 (07/11/2026):
 - **`vacMetaAreaMes(codigo, 'AAAA-MM')`:** meta da área no mês pela vigência de cada dia; duas vigências no mesmo mês = média ponderada pelos dias cobertos. Volta `{valor, ponderada, partes:[{de, valor, dias}], diasCobertos, diasMes}`.
 
 Gestão de Gel 2.05 (08/11/2026): o rótulo de versão do cabeçalho vem de `APP_VERSION` (estava fixo em v2.01); título sem número.
+
+## E3 e E4 do plano único (08/11/2026)
+
+- **`vacNumero(texto, {ponto = 'decimal' | 'milhar', sap})`:** número estrito ("12a" é NaN; vazio é null).
+  - vírgula sozinha = decimal;
+  - com vírgula e ponto, o último é o decimal;
+  - ponto sozinho segue a regra do campo;
+  - sinal no fim só com `sap:true`.
+- **`vacExportsOk(exports, conhecida = 1)`:** quem lê o `exports` de outra página confere a versão. Sem número ou até a conhecida: usa. Mais nova: não usa e devolve o motivo.
+
+Gestão de Gel 2.06 (08/11/2026):
+- campos numéricos digitados validados: marcação em vermelho, prévia "valor inválido" e ações do cartão bloqueadas;
+- `exports.ordensCobertura`.

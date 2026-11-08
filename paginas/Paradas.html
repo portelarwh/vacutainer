@@ -488,7 +488,7 @@ const MATRIZ_PROPOSTA={"OUT": ["Tullip A", "Tullip B", "Packout", "Metro", "Cap 
    PARADAS · núcleo (pasta, base, fila de gravação, backups, cadastro, utilidades)
    ===================================================================================== */
 const PAGE={id:'paradas',titulo:'Paradas · Análise de falhas e paradas de máquina',tituloCurto:'Paradas',subtitulo:'Análise de falhas e paradas de máquina',
-  versao:'1.0.14',estado:'atualizacao',estadoNota:'Matriz, componentes e limite de microparada passam a vir só do Portal; eventos da Produção entram como sugestão.',baseFile:'paradas-base.json',backupDir:'00. Backups/Paradas',busca:q=>buscaPagina(q)};
+  versao:'1.0.15',estado:'atualizacao',estadoNota:'Matriz, componentes e limite de microparada passam a vir só do Portal; eventos da Produção entram como sugestão.',baseFile:'paradas-base.json',backupDir:'00. Backups/Paradas',busca:q=>buscaPagina(q)};
 const APP_VERSION=PAGE.versao;
 const CAD_FILE='vacutainer-cadastros.json',OEE_FILE='oee-vacutainer-base.json';
 const $=(s,r=document)=>r.querySelector(s),$$=(s,r=document)=>[...r.querySelectorAll(s)];
@@ -631,7 +631,7 @@ const bkNome=(tipo)=>{const b=PAGE.baseFile.replace(/\.json$/i,''),d=todayISO(),
 const Ext={cad:null,cadFonte:'nenhum',cadRev:null,cadAt:null,oee:null,oeeOk:false,logoUrl:null,
  async load(){if(Store.dir&&Store.perm&&!Store.test){
    try{const r=await Store.readJSON(CAD_FILE);if(r){this.cad=r.obj;this.cadFonte='pasta';this.cadRev=r.obj.rev;this.cadAt=r.file.lastModified;const c=clone(r.obj);delete c.auditoria;delete c.seguranca;c.copiaEm=new Date().toISOString();LS.set('vac.cadastros',c)}}catch(e){console.warn(e)}
-   try{const r=await Store.readJSON(OEE_FILE);this.oee=r?.obj?.exports||null;this.oeeOk=!!this.oee}catch(e){this.oeeOk=false}
+   try{const r=await Store.readJSON(OEE_FILE);const ex=r?.obj?.exports||null,vk=typeof vacExportsOk==='function'?vacExportsOk(ex):{ok:!!ex};this.oee=vk.ok?ex:null;this.oeeErr=ex&&!vk.ok?vk.motivo:'';this.oeeOk=!!this.oee}catch(e){this.oeeOk=false}   /* E4 · versão do exports conferida */
    try{const f=await(await Store.fh('Logo.png')).getFile();if(this.logoUrl)URL.revokeObjectURL(this.logoUrl);this.logoUrl=URL.createObjectURL(f)}catch(e){}}
   if(!this.cad){const c=LS.get('vac.cadastros',null);if(c){this.cad=c;this.cadFonte='cópia local';this.cadRev=c.rev}}
   Cad.build();Logo.apply()}};
@@ -881,6 +881,8 @@ function calcExports(D){const old=Store.data;Store.data=D;try{
   kpis:[['Parada no mês',fmtMin(perda),brM(mesA),''],['Quebras no mês',n0(nQ),nQ?'MTTR '+n0(mQ/nQ)+' min':'sem quebras',nQ>0?'bad':'good'],
    ['Máquina crítica',sM[0]?.nome||'—',sM[0]?fmtMin(sM[0].min):'',''],['Pendências',n0(pend.length),pend.filter(p=>p.sev===1).length+' críticas',pend.some(p=>p.sev===1)?'bad':'']],
   pendencias:pend.map(p=>({sev:p.sev,txt:p.txt,link:p.link})),
+  /* E4 · resumo por ordem (todos os eventos com ordem), para a ficha da ordem e as outras páginas */
+   porOrdem:(()=>{const m=new Map();for(const e of all){const o=String(e.ordem||'').trim().replace(/^0+(?=\d)/,'');if(!o)continue;let x=m.get(o);if(!x)m.set(o,x={ordem:o,eventos:0,minutos:0,equipamentos:[],de:e.dia,ate:e.dia});x.eventos+=e.ocorrencias||1;x.minutos+=+e.minutos||0;if(e.equipamento&&!x.equipamentos.includes(e.equipamento))x.equipamentos.push(e.equipamento);if(e.dia<x.de)x.de=e.dia;if(e.dia>x.ate)x.ate=e.dia}return[...m.values()].map(x=>({...x,minutos:Math.round(x.minutos*10)/10}))})(),
   serie:{rotulo:'Minutos de parada por mês',pontos:meses.map(m=>({x:m,y:all.filter(e=>e.dia.slice(0,7)===m&&!NAO_PERDA.has(classe(e))).reduce((s,e)=>s+e.minutos,0)}))},
   porEquipamentoMes:porEq,porComponente:porComp,eventos,recorrentes:rec,reclassificacoes:recl,classificacoesValidadas:vali,cadastros:cadastrosProposta()}}finally{Store.data=old}}
 
@@ -1638,6 +1640,14 @@ function vacNumero(v, { ponto = 'decimal', sap = false } = {}) {
   else if (lc >= 0) { const p = s.split(','); if (p.length === 2) s = p[0] + '.' + p[1]; else if (g3(s, ',')) s = p.join(''); else return NaN; }
   else if (ld >= 0) { const p = s.split('.'); if (p.length === 2 && !(ponto === 'milhar' && p[1].length === 3)) { /* decimal */ } else if (g3(s, '.')) s = p.join(''); else return NaN; }
   if (!/^(\d+\.?\d*|\.\d+)$/.test(s)) return NaN; const n = parseFloat(s); return Number.isFinite(n) ? (neg ? -n : n) : NaN;
+}
+/* kit v2.1 · E4 (08/11/2026): quem lê o exports de outra página confere a versão antes de usar (regra 1). Sem número (base antiga)
+   ou até a versão conhecida → usa; versão mais nova → não usa e avisa (não alimenta números com estrutura desconhecida).
+   Campos novos opcionais entram na mesma versão (regra 6) e quem não conhece ignora. */
+function vacExportsOk(ex, conhecida = 1) {
+  if (!ex || typeof ex !== 'object') return { ok: false, versao: null, motivo: 'a base não tem o bloco exports' };
+  const v = ex.exportsVersion; if (v == null || +v <= conhecida) return { ok: true, versao: v == null ? null : +v, motivo: '' };
+  return { ok: false, versao: +v, motivo: `exports na versão ${v}; esta página só conhece até a ${conhecida}: atualize esta página` };
 }
 
 

@@ -955,7 +955,7 @@ const U = (() => {
 
 /* ---- 02-model.js ---- */
 /* ================= modelo de dados, valores iniciais e integridade ================= */
-const APP_VERSION = '2.4.11';
+const APP_VERSION = '2.4.12';
 const SCHEMA_VERSION = 1;
 const BASE_FILE = 'oee-vacutainer-base.json';
 const BACKUP_DIR = '00. Backups';
@@ -4036,6 +4036,19 @@ const Exports = (() => {
           servidor: x ? { caixas: x.n, ultimaCaixa: x.maxB, trechos: x.segs.length, inicio: x.t0.slice(0, 16), fim: x.t1.slice(0, 16) } : null, retrabalhoDias: o.lot ? rwDays(String(o.lot).trim()) : [] });
       }
     }
+    // 2.4.12 · E4: ordens dos planos dos últimos 24 meses (ficha da ordem e Waste), com os dias de cada lote no servidor
+    const diasPorLote = new Map(); for (const [k, v] of Object.entries((db.server || {}).dayLot || {})) { const i = k.indexOf('|'); if (i < 0) continue; const lot = k.slice(i + 1).trim(); if (!lot) continue; let a = diasPorLote.get(lot); if (!a) diasPorLote.set(lot, a = []); a.push({ dia: k.slice(0, i), tipo: (v && v.kind) || null }); }
+    const porOrdem = [], mIni = shiftMonth(today, -23);
+    for (let i = 23; i >= 0; i--) {
+      const m = shiftMonth(today, -i), p = Engine.planFor(db, m, LINE); if (!p || !(p.orders || []).length) continue;
+      const G = Engine.orderProgress(db, p).byOrder;
+      for (const o of p.orders) {
+        const g = G.get(o.id) || {}, c = (db.catalogs || []).find(x => x.id === o.catalogId), lot = o.lot ? String(o.lot).trim() : '', dl = lot ? (diasPorLote.get(lot) || []) : [];
+        porOrdem.push({ mes: m, ordem: String(o.order), lote: lot || null, catalogo: c ? c.code : (o.code || null), qtd: n0(o.qty), qtdReal: o.qtyReal == null ? null : n0(o.qtyReal), inicio: o.start || null, fim: o.end || null, inicioReal: o.startReal || g.firstAt || null, fimReal: o.endReal || g.doneAt || null, produzido: n0(g.produced || 0),
+          diasLote: dl.map(x => x.dia).sort(), retrabalhoDias: dl.filter(x => x.tipo === 'retrabalho').map(x => x.dia).sort() });
+      }
+    }
+    const porOrdemCobertura = { de: mIni, ate: mk, meses: 24, ordens: porOrdem.length, fonte: 'Plano do mês (PCP) e servidor (dias do lote)' };
     // lotes do servidor (últimos 150 dias): retrabalho, situação e observação, para Perdas e Gel
     const d150 = U.addDays(today, -149), lotes = [];
     for (const x of L.values()) {
@@ -4058,7 +4071,7 @@ const Exports = (() => {
       ['Pendências', String(pendencias.length), `${pendencias.filter(p => p.sev === 1).length} urgente(s)`, pendencias.length ? 'bad' : 'good']];
     const cad = cadastros(db);
     return { exportsVersion: 1, geradoEm: U.nowIso(), cadastros: cad, modulo: 'oee', appVersion: typeof APP_VERSION !== 'undefined' ? APP_VERSION : null, linha: LINE,
-      porMes, porDia, porDiaTurno, porDiaCatalogo, paradasEquipamento, calendario, planoMes, ordens, lotes, pendencias, kpis };
+      porMes, porDia, porDiaTurno, porDiaCatalogo, paradasEquipamento, calendario, planoMes, ordens, porOrdem, porOrdemCobertura, lotes, pendencias, kpis };
   }
   // cadastro mestre da linha: o OEE é o dono; as outras páginas leem por código (nunca pelo id interno) e complementam localmente
   function cadastros(db) {
@@ -8866,7 +8879,7 @@ const Ord = {
   waste: null,
   async lerWaste() {
     this.waste = null; if (this.modo() !== 'pasta' || !Store.S.backend || !Store.S.backend.readSibling) return;
-    try { const t = await Store.S.backend.readSibling('perdas-base.json'); if (!t) { this.waste = { erro: 'perdas-base.json não está na pasta' }; return; } const d = JSON.parse(t), ex = d.exports || {};
+    try { const t = await Store.S.backend.readSibling('perdas-base.json'); if (!t) { this.waste = { erro: 'perdas-base.json não está na pasta' }; return; } const d = JSON.parse(t), vk = typeof vacExportsOk === 'function' ? vacExportsOk(d.exports) : { ok: true }; if (d.exports && !vk.ok) { this.waste = { erro: 'perdas-base.json: ' + vk.motivo }; return; } const ex = d.exports || {};   // 2.4.12 · E4: versão conferida
       const lanc = new Map((ex.porOrdem || []).map(o => [String(o.ordem).replace(/^0+/, ''), o])), excl = new Map((ex.ordensExcluidas || []).map(o => [String(o.ordem).replace(/^0+/, ''), o]));
       this.waste = { lanc, excl, em: d.updatedAt || d.revAt || null, rev: d.rev, temExports: !!d.exports }; } catch (e) { this.waste = { erro: String(e.message || e) }; }
   },
@@ -9730,6 +9743,14 @@ function vacNumero(v, { ponto = 'decimal', sap = false } = {}) {
   else if (lc >= 0) { const p = s.split(','); if (p.length === 2) s = p[0] + '.' + p[1]; else if (g3(s, ',')) s = p.join(''); else return NaN; }
   else if (ld >= 0) { const p = s.split('.'); if (p.length === 2 && !(ponto === 'milhar' && p[1].length === 3)) { /* decimal */ } else if (g3(s, '.')) s = p.join(''); else return NaN; }
   if (!/^(\d+\.?\d*|\.\d+)$/.test(s)) return NaN; const n = parseFloat(s); return Number.isFinite(n) ? (neg ? -n : n) : NaN;
+}
+/* kit v2.1 · E4 (08/11/2026): quem lê o exports de outra página confere a versão antes de usar (regra 1). Sem número (base antiga)
+   ou até a versão conhecida → usa; versão mais nova → não usa e avisa (não alimenta números com estrutura desconhecida).
+   Campos novos opcionais entram na mesma versão (regra 6) e quem não conhece ignora. */
+function vacExportsOk(ex, conhecida = 1) {
+  if (!ex || typeof ex !== 'object') return { ok: false, versao: null, motivo: 'a base não tem o bloco exports' };
+  const v = ex.exportsVersion; if (v == null || +v <= conhecida) return { ok: true, versao: v == null ? null : +v, motivo: '' };
+  return { ok: false, versao: +v, motivo: `exports na versão ${v}; esta página só conhece até a ${conhecida}: atualize esta página` };
 }
 
 

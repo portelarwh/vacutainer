@@ -17,7 +17,7 @@ Este arquivo responde às auditorias externas da plataforma e registra, para cad
 | Revisão da migração, do layout e do guia (B01–B07 e visuais) | 06/11/2026 | `c341f8e` | Portal 1.8.10, Produção 2.4.7, Waste 1.8.13, Gel 2.01, Paradas 1.0.10 (§ R) |
 | Relatórios, saídas e aba Painel | 07/11/2026 | `c341f8e` | Portal 1.8.11, Produção 2.4.8, Waste 1.8.14, Gel 2.02, Paradas 1.0.11 (§ P) |
 | Achados do Codex (segurança, dados, TV, scripts, desempenho) com revisão independente | 07/11/2026 | `065fe6f` | Portal 1.8.13, Produção 2.4.10, Waste 1.8.16, Gel 2.04, Paradas 1.0.13, páginas em construção 0.1.1 (§ C) |
-| Plano único (diagnósticos de 08/11 do Claude e do Codex), etapas E1 (Ordens e backups) e E2 (versões, datas e metas) | 08/11/2026 | `e043513` | Produção 2.4.11, Waste 1.8.17, Gel 2.05, Portal 1.8.14, Paradas 1.0.14 (§ U) |
+| Plano único (diagnósticos de 08/11 do Claude e do Codex), etapas E1 a E4 (Ordens e backups; versões, datas e metas; números; contratos por ordem) | 08/11/2026 | `e043513` / `9af2d3e` | Produção 2.4.12, Waste 1.8.18, Gel 2.06, Portal 1.8.15, Paradas 1.0.15 (§ U) |
 
 Status usados: **corrigido** · **corrigido em parte** · **recusado** · **adiado** · **já existia**.
 
@@ -60,6 +60,29 @@ O teste novo é o **`testes/tvigencias.js`**. Sobre `e043513`, ele falha nas ver
 | F05 (B2) | A meta WASTE-MES era lida pela data de hoje para qualquer mês | Função comum `vacMetaAreaMes(codigo, 'AAAA-MM')` no kit: vigência de cada dia do mês e média ponderada pelos dias cobertos. O Waste usa a meta de cada mês no painel (período = soma das metas dos meses), na tabela por mês, na tendência (um traço de meta por barra quando os meses têm metas diferentes; uma linha quando são iguais), na TV e no relatório mensal (com a nota "ponderada pelos dias: R$ a × d + R$ b × d"). Mês sem vigência no Portal: vale a meta local da página |
 | F12 (B4) | `vacVig`/`vacCambio` sem data usavam o dia em UTC (às 22h de Brasília já era amanhã) | `vacHoje()` no kit, com o dia local. A data explícita continua valendo. Nenhum consumidor atual chamava sem data, então era um risco latente |
 | F10 (B3) | Waste com três versões (título 1.8.13, tela/base/`exports` 1.8.15, código 1.8.16); Gel com o rótulo fixo em v2.01 e o código em 2.04 | Uma constante por página: `PAGE.versao = APP_VER` no Waste; no Gel o rótulo vem de `APP_VERSION`. Título sem número. O teste confere tela, código, constante, base e Portal › Versões nas 8 páginas |
+
+### E3 · Números por contrato de campo · **corrigido** (Gel 2.06, Paradas 1.0.15 e kit)
+
+Teste novo: **`testes/tnumeros.js`**.
+
+| ID | Problema | Correção |
+|---|---|---|
+| F13 (B5) | Gel: o preço "12a" com cotação 5 gravava 12 e R$ 60/kg, sem aviso; outros campos digitados também aceitavam texto parcial. Paradas: "12a" e "15-" nos minutos do Forms viravam 12 e 15 | `vacNumero(texto, {ponto, sap})` no kit, estrito (vazio = null, inválido = NaN), com a regra de cada campo ou fonte: ponto sozinho = decimal no Gel e milhar (3 dígitos) no Paradas, como cada página já fazia; sinal no fim só com `sap:true`. **Gel:** campos numéricos digitados (lista dos lidos por `parseNum` e os com `inputmode`) ficam vermelhos, a prévia mostra "valor inválido" e os botões de ação do mesmo cartão ou janela não executam; Cancelar e Fechar continuam. O `parseNum` e o adaptador SAP não mudam, então os valores válidos gravam como antes. **Paradas:** linha do Forms com minutos ou vezes inválidos vai para os erros da importação, com o motivo |
+
+### E4 · Contratos de integração por ordem · **corrigido** (Produção 2.4.12, Waste 1.8.18, Gel 2.06, Paradas 1.0.15 e kit)
+
+Teste novo: **`testes/tcontratos.js`**. Tudo é aditivo na `exportsVersion` 1 (regra 6), e quem não conhece os campos novos os ignora.
+
+| ID | Problema | Correção |
+|---|---|---|
+| RAS-02 (parte) | A Produção publicava só as ordens do mês atual e do anterior | `exports.porOrdem` com até 24 meses (mês, ordem, lote, catálogo, quantidades, início e fim previstos e reais, produzido, dias do lote e de retrabalho) e `porOrdemCobertura`. Com 720 ordens: 11 ms e 156 KB. O bloco `ordens` antigo continua igual. Sem OEE por ordem: falta a regra de atribuição |
+| RAS-02 (parte) | O Paradas não resumia por ordem | `exports.porOrdem` (eventos, minutos, equipamentos, primeiro e último dia), sobre todos os eventos com ordem |
+| RAS-03 (parte) | Cobertura das ordens do Gel implícita | `exports.ordensCobertura` (150 dias, fontes) |
+| F06 | Leitores usavam o `exports` de outra página sem conferir a versão | `vacExportsOk(ex)` no kit. Waste (Produção, Ordens), Produção › Ordens (Waste) e Paradas (Produção) não usam versão desconhecida e avisam o motivo |
+| F07 | No Waste, uma ordem em várias competências perdia informação (a última do arquivo apagava as outras, ex.: o tipo do COOIS) | Índice por ordem que junta as competências. O tipo vem da competência mais recente com COOIS; unidades e materiais, de todas |
+| F08 | O Waste procurava o lote no valor de `dayLot`; o lote está na chave "dia\|lote" | Leitura pela chave (LX1 não pega LX10). A Produção também publica os dias do lote no `porOrdem` |
+
+**Ficou para depois:** o Waste ainda cai na base da Produção (plano do mês, `lotClass`/`lotNotes`) para ordens fora da janela de 24 meses e para a classificação e observação dos lotes mais antigos que os 150 dias do `exports.lotes` (B7). Os eventos manuais com ID estável vão para a E12, junto da conciliação MES.
 
 ---
 

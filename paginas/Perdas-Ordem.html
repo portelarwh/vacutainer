@@ -777,7 +777,7 @@ function vacAbaInicial(pagina) {
    Base: perdas-base.json na pasta da rede (mesmo padrão OEE / Gel)
    Contrato: bloco "exports" (exportsVersion 1) lido pelas outras páginas
    ===================================================================== */
-const APP_VER='1.8.17',   /* 1.8.17 · E2: fonte única da versão (tela, base, exports e Portal › Versões) */ BASE_FN='perdas-base.json', DIR_ORIG='00. Originais SAP', DIR_BKP='00. Backups', DIR_IN='00. Entrada KKBC', DIR_DONE='00. Entrada KKBC/Processados';
+const APP_VER='1.8.18',   /* 1.8.18 · E4: versão do exports conferida (Produção, Ordens), ordem em várias competências, dias do lote pela chave · 1.8.17 · E2: fonte única da versão (tela, base, exports e Portal › Versões) */ BASE_FN='perdas-base.json', DIR_ORIG='00. Originais SAP', DIR_BKP='00. Backups', DIR_IN='00. Entrada KKBC', DIR_DONE='00. Entrada KKBC/Processados';
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 /* página para o núcleo comum, o cabeçalho (vac-cabecalho v2) e o quadro de Versões do Portal */
 const PAGE={id:'perdas',titulo:'Waste · Linha Vacutainer',tituloCurto:'Waste',subtitulo:'Custos e perdas por ordem',versao:APP_VER,baseFile:BASE_FN,backupDir:'00. Backups/Perdas',busca:q=>buscaPerdas(q)};
@@ -1591,8 +1591,9 @@ async function loadOEE(force){
  if(ST.mode!=='pasta'||!ST.dir)return;
  if(!force&&Date.now()-OEE.at<60000)return;OEE.at=Date.now();
  try{const fh=await ST.dir.getFileHandle(OEE_FN);const f=await fh.getFile();if(f.lastModified===OEE.mod&&OEE.src)return;
-  const d=JSON.parse(await f.text());OEE.src={exports:d.exports||null,monthPlans:d.monthPlans||null,server:d.server?{lotClass:d.server.lotClass,lotNotes:d.server.lotNotes,dayLot:d.server.dayLot}:null,updatedAt:d.updatedAt||d.savedAt||null,updatedBy:d.updatedBy||d.savedBy||null};
-  OEE.mod=f.lastModified;OEE.err='';OEE.idx=null}
+  const d=JSON.parse(await f.text());const vk=typeof vacExportsOk==='function'?vacExportsOk(d.exports):{ok:true};OEE.incompat=d.exports&&!vk.ok?vk.motivo:'';   /* E4 · versão conferida */
+  OEE.src={exports:vk.ok?(d.exports||null):null,monthPlans:d.monthPlans||null,server:d.server?{lotClass:d.server.lotClass,lotNotes:d.server.lotNotes,dayLot:d.server.dayLot}:null,updatedAt:d.updatedAt||d.savedAt||null,updatedBy:d.updatedBy||d.savedBy||null};
+  OEE.mod=f.lastModified;OEE.err=OEE.incompat?OEE_FN+': '+OEE.incompat:'';OEE.idx=null}
  catch(e){OEE.err=e.name==='NotFoundError'?'Não encontrei '+OEE_FN+' na pasta.':String(e.message||e);OEE.src=null;OEE.idx=null}
 }
 /* 1.8.2 · Ordens da Produção (ordens-base.json, só leitura do exports): tipo de ordem (COOIS) e unidades da ordem (MB51) */
@@ -1600,7 +1601,12 @@ const ORD_FN='ordens-base.json',ORDX={idx:null,mod:0,err:'',at:0};
 async function loadOrdens(force){
  if(ST.mode!=='pasta'||!ST.dir)return;if(!force&&Date.now()-ORDX.at<60000)return;ORDX.at=Date.now();
  try{const f=await (await ST.dir.getFileHandle(ORD_FN)).getFile();if(f.lastModified===ORDX.mod&&ORDX.idx)return;const d=JSON.parse(await f.text()),m=new Map();
-  for(const o of ((d.exports||{}).porOrdem||[]))m.set(String(o.ordem).replace(/^0+/,''),{tipo:o.coois&&o.coois.tipo||'',ums:(o.saldos||[]).map(x=>String(x.um||'').toUpperCase()),mat:o.materiais||[]});
+  const vk=typeof vacExportsOk==='function'?vacExportsOk(d.exports):{ok:true};if(d.exports&&!vk.ok)throw new Error(ORD_FN+': '+vk.motivo);   /* E4 · versão conferida */
+  /* E4 (F07) · a mesma ordem pode estar em várias competências: junta todas (antes a última do arquivo apagava as outras, ex.: o tipo do COOIS).
+     Tipo: o da competência mais recente que tem COOIS; unidades e materiais: todos */
+  for(const o of ((d.exports||{}).porOrdem||[])){const k=String(o.ordem).replace(/^0+/,'');const x=m.get(k)||{tipo:'',tipoComp:'',ums:[],mat:[],comps:[]};const t=o.coois&&o.coois.tipo||'',c=o.competencia||'';
+   if(t&&(!x.tipo||c>=x.tipoComp)){x.tipo=t;x.tipoComp=c}for(const u of(o.saldos||[]).map(s=>String(s.um||'').toUpperCase()))if(u&&!x.ums.includes(u))x.ums.push(u);
+   const vis=new Set(x.mat.map(v=>JSON.stringify(v)));for(const v of(o.materiais||[]))if(!vis.has(JSON.stringify(v))){x.mat.push(v);vis.add(JSON.stringify(v))}if(c&&!x.comps.includes(c))x.comps.push(c);m.set(k,x)}
   ORDX.idx=m;ORDX.mod=f.lastModified;ORDX.err=''}catch(e){ORDX.err=e.name==='NotFoundError'?'Ainda não há '+ORD_FN+' na pasta (Produção › Ordens).':String(e.message||e);ORDX.idx=null}}
 const ordX=o=>ORDX.idx?ORDX.idx.get(String(o).replace(/^0+/,'')):null;
 function tipoOrdDe(o){const x=ordX(o);return x&&x.tipo?x.tipo:'sem dado do COOIS'}
@@ -1626,7 +1632,8 @@ function oeeFind(ordem){
  const lote=pick(LOTE_KEYS);let lotHits=[];
  if(lote!=null){lotHits=oeeWalk(src.exports,LOTE_KEYS,cleanOrd(lote),'exports',[]).filter(h=>!hits.some(x=>x.obj===h.obj));
   if(src.server){for(const k of['lotClass','lotNotes']){const m=src.server[k];if(m&&m[lote]!=null)lotHits.push({path:'servidor › '+k,obj:typeof m[lote]==='object'?m[lote]:{[k==='lotClass'?'classificacao':'observacao']:m[lote]}})}
-   if(src.server.dayLot){const dl={};for(const[dia,v]of Object.entries(src.server.dayLot)){const s=JSON.stringify(v);if(s.includes(String(lote)))dl[dia]=v}if(Object.keys(dl).length)lotHits.push({path:'servidor › dias do lote',obj:dl})}}}
+   /* E4 (F08) · a chave é "dia|lote": o lote está na chave, não no valor (antes procurava no valor e não achava, ou achava outro lote que contém o número) */
+   if(src.server.dayLot){const dl={},L0=String(lote).trim();for(const[k,v]of Object.entries(src.server.dayLot)){const i=k.indexOf('|');if(i>0&&k.slice(i+1).trim()===L0)dl[k.slice(0,i)]=v}if(Object.keys(dl).length)lotHits.push({path:'servidor › dias do lote',obj:dl})}}}
  return{hits,lotHits,fonte,cat:pick(/^(cat|catalogo|catalog|codigo|code|material)$/i),lote,
   ini:pick(/^(inicioreal|inicio_real|realstart|startreal|realinicio|iniReal|inicioR)$/i),fim:pick(/^(fimreal|fim_real|realend|endreal|realfim|fimR)$/i),
   iniPrev:pick(/^(inicio|start|iniprev|inicioprevisto|ini)$/i),fimPrev:pick(/^(fim|end|fimprev|fimprevisto)$/i),
@@ -2694,6 +2701,14 @@ function vacNumero(v, { ponto = 'decimal', sap = false } = {}) {
   else if (lc >= 0) { const p = s.split(','); if (p.length === 2) s = p[0] + '.' + p[1]; else if (g3(s, ',')) s = p.join(''); else return NaN; }
   else if (ld >= 0) { const p = s.split('.'); if (p.length === 2 && !(ponto === 'milhar' && p[1].length === 3)) { /* decimal */ } else if (g3(s, '.')) s = p.join(''); else return NaN; }
   if (!/^(\d+\.?\d*|\.\d+)$/.test(s)) return NaN; const n = parseFloat(s); return Number.isFinite(n) ? (neg ? -n : n) : NaN;
+}
+/* kit v2.1 · E4 (08/11/2026): quem lê o exports de outra página confere a versão antes de usar (regra 1). Sem número (base antiga)
+   ou até a versão conhecida → usa; versão mais nova → não usa e avisa (não alimenta números com estrutura desconhecida).
+   Campos novos opcionais entram na mesma versão (regra 6) e quem não conhece ignora. */
+function vacExportsOk(ex, conhecida = 1) {
+  if (!ex || typeof ex !== 'object') return { ok: false, versao: null, motivo: 'a base não tem o bloco exports' };
+  const v = ex.exportsVersion; if (v == null || +v <= conhecida) return { ok: true, versao: v == null ? null : +v, motivo: '' };
+  return { ok: false, versao: +v, motivo: `exports na versão ${v}; esta página só conhece até a ${conhecida}: atualize esta página` };
 }
 
 

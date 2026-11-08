@@ -166,3 +166,9 @@ Responde à auditoria de relatórios e painéis (registro § P). Regras `R(...)`
 - **Backups antigos:** o `FolderBackend` tinha duas chaves `readBackup`; ficou a que lê também `00. Backups/` (local antigo).
 - **Teste:** `testes/tordens.js`, com 15 checagens. Sobre a versão 2.4.10, reproduz a perda da competência de outra estação.
 
+## 20. Produção 2.4.12 (08/11/2026) · E4 do plano único (registro § U)
+
+- **`exports.porOrdem`** (regra `R` no `build.py`): ordens dos planos dos últimos 24 meses, com mês, ordem, lote, catálogo, quantidades, início e fim previstos e reais, produzido, `diasLote` e `retrabalhoDias`. Os dias vêm do servidor pela chave "dia|lote". Também publica `porOrdemCobertura` (de, até, meses, número de ordens, fonte).
+- O bloco `ordens` (mês atual e anterior) continua igual.
+- Sem OEE por ordem: falta definir a atribuição de tempo e capacidade.
+- **Produção › Ordens:** só usa o `exports` do Waste se a versão for conhecida (`vacExportsOk`).

@@ -108,7 +108,7 @@ const Ord = {
   waste: null,
   async lerWaste() {
     this.waste = null; if (this.modo() !== 'pasta' || !Store.S.backend || !Store.S.backend.readSibling) return;
-    try { const t = await Store.S.backend.readSibling('perdas-base.json'); if (!t) { this.waste = { erro: 'perdas-base.json não está na pasta' }; return; } const d = JSON.parse(t), ex = d.exports || {};
+    try { const t = await Store.S.backend.readSibling('perdas-base.json'); if (!t) { this.waste = { erro: 'perdas-base.json não está na pasta' }; return; } const d = JSON.parse(t), vk = typeof vacExportsOk === 'function' ? vacExportsOk(d.exports) : { ok: true }; if (d.exports && !vk.ok) { this.waste = { erro: 'perdas-base.json: ' + vk.motivo }; return; } const ex = d.exports || {};   // 2.4.12 · E4: versão conferida
       const lanc = new Map((ex.porOrdem || []).map(o => [String(o.ordem).replace(/^0+/, ''), o])), excl = new Map((ex.ordensExcluidas || []).map(o => [String(o.ordem).replace(/^0+/, ''), o]));
       this.waste = { lanc, excl, em: d.updatedAt || d.revAt || null, rev: d.rev, temExports: !!d.exports }; } catch (e) { this.waste = { erro: String(e.message || e) }; }
   },
