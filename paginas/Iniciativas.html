@@ -502,6 +502,95 @@ function vacAbaInicial(pagina) {
   } catch (e) { return null; }
 }
 /* ===== fim vac-bases v2 ===== */
+/* vac-bases · C1 (08/11/2026), no <head> de todas as páginas (antes do código delas): alterações pendentes guardadas sem perda entre abas (AT-01), formato da própria base conferido antes de
+   gravar (AT-03), links de origem só com endereço seguro (AT-11) e trava da 2ª aba para as páginas que guardam a base inteira.
+   vacFila(pagina): fila durável no IndexedDB "vac-fila", UM registro por alteração (chave pagina|qid), com a aba dona.
+   · cada aba só grava e apaga as próprias alterações (algumas operações não podem ser aplicadas duas vezes: cadastro, Gel);
+   · alteração de aba que fechou (sem sinal de vida há 20 s) é adotada na abertura seguinte, com conferência depois de uma pausa;
+   · espelhar(lista): grava as alterações da lista e apaga as desta aba que saíram dela (substitui o "gravar a fila inteira");
+   · minhas(): alterações desta aba + as adotadas, na ordem em que foram feitas;
+   · confirmar/confirmadas/esquecer: operações já confirmadas na pasta, guardadas 24 h (até 2000), para regravar se outra estação
+     gravar por cima depois da releitura (R-01). Não mais que 24 h: depois de uma restauração de backup (procedimento manual), as
+     alterações deste computador que não estão no backup voltariam a ser gravadas; a página avisa quando regrava;
+   · falha do IndexedDB: erro visível em F.erro (a página avisa "alteração não protegida"), nunca silêncio.
+   As abas vivas ficam em localStorage "vac.aba.<pagina>.<id>" = {t, pend}, renovado a cada 5 s e apagado ao fechar. */
+const vacFila = (() => {
+  let dbP = null; const filas = {}, VIVA = 20000;
+  const abre = () => dbP || (dbP = new Promise((ok, no) => { const r = indexedDB.open('vac-fila', 1); r.onupgradeneeded = () => { const d = r.result; if (!d.objectStoreNames.contains('ops')) d.createObjectStore('ops', { keyPath: 'k' }); if (!d.objectStoreNames.contains('conf')) d.createObjectStore('conf', { keyPath: 'k' }); }; r.onsuccess = () => ok(r.result); r.onerror = () => { dbP = null; no(r.error); }; }));
+  const tx = async (st, modo, fn) => { const d = await abre(); return new Promise((ok, no) => { const t = d.transaction(st, modo), s = t.objectStore(st); let v; Promise.resolve(fn(s)).then(x => v = x); t.oncomplete = () => ok(v); t.onerror = () => no(t.error); t.onabort = () => no(t.error || new Error('transação abortada')); }); };
+  const req = r => new Promise((ok, no) => { r.onsuccess = () => ok(r.result); r.onerror = () => no(r.error); });
+  const faixa = p => IDBKeyRange.bound(p + '|', p + '|\uffff');
+  const uidq = () => 'q' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+  const dorme = ms => new Promise(r => setTimeout(r, ms));
+  function abas(pagina) { const L = []; try { for (let i = 0; i < localStorage.length; i++) { const k = localStorage.key(i); if (!k || !k.startsWith('vac.aba.' + pagina + '.')) continue; let v = null; try { v = JSON.parse(localStorage.getItem(k)); } catch (e) { } if (v && Date.now() - (+v.t || 0) < VIVA) L.push({ id: k.slice(('vac.aba.' + pagina + '.').length), pend: !!v.pend }); } } catch (e) { } return L; }
+  function cria(pagina) {
+    const aba = 'a' + Math.random().toString(36).slice(2, 10) + Date.now().toString(36), chaveLS = 'vac.aba.' + pagina + '.' + aba;
+    const F = { pagina, aba, erro: '', meus: new Set(), seq: 0, pend: false, _p: Promise.resolve() };
+    const sinal = () => { try { localStorage.setItem(chaveLS, JSON.stringify({ t: Date.now(), pend: F.pend })); } catch (e) { } };
+    sinal(); setInterval(sinal, 5000); addEventListener('pagehide', () => { try { localStorage.removeItem(chaveLS); } catch (e) { } });
+    const serie = fn => (F._p = F._p.then(fn, fn));          /* uma operação de cada vez, na ordem pedida */
+    const falhou = e => { F.erro = 'alterações pendentes não estão protegidas neste navegador (' + ((e && (e.name || e.message)) || e) + ')'; console.warn('[vacFila]', pagina, e); return null; };
+    const q = op => op.qid || (op.qid = uidq());
+    const reg = op => ({ k: pagina + '|' + q(op), pagina, qid: op.qid, aba, seq: op._seq || (op._seq = Date.now() * 1000 + (F.seq++ % 1000)), op: JSON.parse(JSON.stringify(op)) });
+    F.vivas = () => abas(pagina).filter(x => x.id !== aba);
+    F.marcarPendente = v => { if (F.pend !== !!v) { F.pend = !!v; sinal(); } };
+    F.outraComPendencia = () => F.vivas().some(x => x.pend);
+    F.espelhar = lista => serie(async () => { try { const L = (lista || []).filter(Boolean); const ks = new Set(L.map(o => pagina + '|' + q(o)));
+      await tx('ops', 'readwrite', s => { for (const o of L) s.put(reg(o)); for (const k of F.meus) if (!ks.has(k)) s.delete(k); }); F.meus = ks; F.erro = ''; return true; } catch (e) { falhou(e); return false; } });
+    F.minhas = () => serie(async () => { try {
+      const todos = await tx('ops', 'readonly', s => req(s.getAll(faixa(pagina)))); const vivas = new Set(abas(pagina).map(x => x.id));
+      const orfas = todos.filter(r => r.aba !== aba && !vivas.has(r.aba));
+      if (orfas.length) { await tx('ops', 'readwrite', s => { for (const r of orfas) s.put({ ...r, aba }); }); await dorme(400); }
+      const agora = await tx('ops', 'readonly', s => req(s.getAll(faixa(pagina)))); const meus = agora.filter(r => r.aba === aba).sort((a, b) => a.seq - b.seq);
+      F.meus = new Set(meus.map(r => r.k)); F.erro = ''; return meus.map(r => Object.assign(r.op, { qid: r.qid, _seq: r.seq }));
+    } catch (e) { falhou(e); return null; } });
+    F.outras = () => serie(async () => { try { const todos = await tx('ops', 'readonly', s => req(s.getAll(faixa(pagina)))); return todos.filter(r => r.aba !== aba).length; } catch (e) { return 0; } });
+    F.confirmar = ops => serie(async () => { try { const c = Date.now(); await tx('conf', 'readwrite', s => { for (const o of ops || []) s.put({ k: pagina + '|' + q(o), pagina, qid: o.qid, _c: c, op: JSON.parse(JSON.stringify(o)) }); }); return true; } catch (e) { return false; } });
+    F.confirmadas = (idade = 864e5) => serie(async () => { try { const lim = Date.now() - idade; let L = await tx('conf', 'readonly', s => req(s.getAll(faixa(pagina))));
+      const velhas = L.filter(r => r._c < lim).concat(L.filter(r => r._c >= lim).sort((a, b) => b._c - a._c).slice(2000));
+      if (velhas.length) { await tx('conf', 'readwrite', s => { for (const r of velhas) s.delete(r.k); }); const v = new Set(velhas.map(r => r.k)); L = L.filter(r => !v.has(r.k)); }
+      return L.map(r => Object.assign(r.op, { qid: r.qid, _c: r._c })); } catch (e) { return []; } });
+    F.esquecer = qids => serie(async () => { try { await tx('conf', 'readwrite', s => { for (const id of qids || []) s.delete(pagina + '|' + id); }); } catch (e) { } });
+    /* importa uma fila antiga (localStorage ou outro lugar) uma única vez: as operações entram como desta aba; a fonte antiga fica
+       renomeada (não é apagada) para recuperação manual. ler/renomear são funções da página. */
+    F.importar = (ops, renomear) => serie(async () => { const L = (ops || []).filter(Boolean); if (!L.length) { renomear && renomear(); return true; }
+      try { await tx('ops', 'readwrite', s => { for (const o of L) s.put(reg(o)); }); for (const o of L) F.meus.add(pagina + '|' + o.qid); renomear && renomear(); return true; } catch (e) { falhou(e); return false; } });
+    return F;
+  }
+  return pagina => filas[pagina] || (filas[pagina] = cria(pagina));
+})();
+/* AT-03 · formato da própria base: schema da página (base antiga sem schema é aceita como versão 1) e schemaVersion até a conhecida.
+   Volta '' (pode ler e gravar) ou o motivo (só leitura: a página não grava por cima de formato que não conhece). */
+function vacFormatoBase(base, schema, versaoMax = 1) {
+  if (!base || typeof base !== 'object' || Array.isArray(base)) return 'o arquivo não é uma base desta página';
+  if (base.schema != null && base.schema !== schema) return `o arquivo é de outro tipo (schema "${String(base.schema).slice(0, 40)}"; esperado "${schema}")`;
+  const v = base.schemaVersion; if (v != null && !(Number.isInteger(+v) && +v >= 1)) return 'versão do formato inválida (' + String(v).slice(0, 20) + ')';
+  if (v != null && +v > versaoMax) return `a base foi gravada por uma versão mais nova da página (formato ${v}; esta página conhece até ${versaoMax}): atualize esta página antes de gravar`;
+  return '';
+}
+/* AT-11 · link seguro para origem/evidência: só endereço que abre documento, nunca script.
+   Aceita: http(s):, file:, caminho de rede (\\servidor\…), página da própria pasta (Nome.html, Nome.html#…, #…). Volta '' se recusar. */
+function vacLinkSeguro(u) {
+  const s = String(u ?? '').trim(); if (!s || /[\u0000-\u001f]/.test(s)) return '';
+  if (/^(https?|file):/i.test(s)) return s;
+  if (/^\\\\[^\\]/.test(s)) return s;
+  if (/^#/.test(s)) return s;
+  if (/^[\w\-. %À-ÿ]+\.html?(#.*)?$/i.test(s)) return s;   /* página irmã, sem esquema e sem barra */
+  return '';
+}
+/* C1 · trava da 2ª aba nas páginas que guardam a BASE INTEIRA pendente (Portal, Waste): se outra aba da mesma página tem alteração
+   ainda não gravada na pasta, esta aba não altera nada (as duas versões pendentes se sobrescreveriam). Nada é descartado: a pessoa
+   grava ou fecha a outra aba. A recusa interrompe quem chamou (erro "VacAbaBloqueada", sem mensagem de "gravado" depois) e não
+   aparece como erro no console. A página informa o próprio estado com vacFila(p).marcarPendente(bool). */
+function vacGuardaAba(pagina, minhaPendente) {
+  if (typeof vacFila !== 'function' || minhaPendente) return;
+  let F; try { F = vacFila(pagina); } catch (e) { return; } if (!F.outraComPendencia()) return;
+  const m = 'Outra aba desta página tem alteração ainda não gravada na pasta. Para não perder nenhuma das duas, grave (ou feche) aquela aba antes de alterar aqui. Nada foi descartado.';
+  try { if (typeof toast === 'function') toast(m, 9000, true); else alert(m); } catch (x) { }
+  const e = new Error(m); e.name = 'VacAbaBloqueada'; throw e;
+}
+addEventListener('unhandledrejection', e => { if (e.reason && e.reason.name === 'VacAbaBloqueada') e.preventDefault(); });
+addEventListener('error', e => { if (e.error && e.error.name === 'VacAbaBloqueada') e.preventDefault(); });
 </script>
 </head>
 <body>
@@ -524,7 +613,7 @@ function vacAbaInicial(pagina) {
 <main class="wrap" id="main"></main>
 <div class="toasts" id="toasts"></div>
 <script>
-const PAGE={id:"inic",titulo:"Iniciativas · Ações · KAS · OSM · 5S",tituloCurto:"Iniciativas",subtitulo:"Ações (Planner) · KAS · OSM · 5S",versao:"1.0.1",baseFile:"iniciativas-base.json",backupDir:"00. Backups/Iniciativas",estado:"atualizacao",estadoNota:"Primeira versão: Ações (Planner) e KAS. OSM e 5S chegam nas próximas etapas."};
+const PAGE={id:"inic",titulo:"Iniciativas · Ações · KAS · OSM · 5S",tituloCurto:"Iniciativas",subtitulo:"Ações (Planner) · KAS · OSM · 5S",versao:"1.0.2",baseFile:"iniciativas-base.json",backupDir:"00. Backups/Iniciativas",estado:"atualizacao",estadoNota:"Primeira versão: Ações (Planner) e KAS. OSM e 5S chegam nas próximas etapas."};
 const APP_VERSION=PAGE.versao;
 /* ---------- vac-cabecalho v2 · JS (igual em todas as páginas) ---------- */
 const VAC_CAB_VERSAO=2;
@@ -1158,38 +1247,59 @@ function tempos(a,D=Store.data,agora=new Date()){
  soma(+agora);return{porSt,porRs:Object.entries(porRs),aberto}}
 
 /* ---------- Store: pasta da rede + cópia local + fila ---------- */
-const Store={dir:null,dirName:'',perm:false,data:completar(vazio()),queue:LS.get('inic.fila',[]),conf:LS.get('inic.conf',[]),saving:false,again:false,lastErr:'',readErr:'',test:false,baseFound:false,lastSaved:null,
- async init(){const c=LS.get('inic.cache',null);if(c){this.data=completar(c);this.queue.forEach(op=>applyOp(this.data,op))}
+const Store={dir:null,dirName:'',perm:false,data:completar(vazio()),queue:[],fila:null,sumiu:false,saving:false,again:false,lastErr:'',readErr:'',test:false,baseFound:false,lastSaved:null,
+ async init(){this.fila=vacFila('inic');const c=LS.get('inic.cache',null);if(c)this.data=completar(c);
+  /* C1 · fila durável do kit (um registro por alteração no IndexedDB); se o IndexedDB falhar, a reserva em localStorage */
+  await this.migrarFila();const m=await this.fila.minhas();this.queue=m||LS.get('inic.fila.reserva',[])||[];this.queue.forEach(op=>applyOp(this.data,op));
   try{const h=await IDB.get('pasta');if(h){this.dir=vacRaiz(h);this.dirName=h.name;this.perm=(await h.queryPermission({mode:'readwrite'}))==='granted'}}catch(e){}
-  if(this.perm){await this.reload();if(this.queue.length||(this.baseFound&&!this.readErr&&diaLocal((this.data.exports||{}).geradoEm)!==hoje()))this.save()}},
+  if(this.perm){await this.reload();if(!this.sumiu&&(this.queue.length||(this.baseFound&&!this.readErr&&diaLocal((this.data.exports||{}).geradoEm)!==hoje())))this.save()}},
+ /* C1 · a fila antiga (localStorage, até a 1.0.1) entra uma vez na fila durável; a original fica em inic.fila.antiga para conferência */
+ async migrarFila(){const v=LS.get('inic.fila',null),cf=LS.get('inic.conf',null);
+  if(Array.isArray(v)){v.forEach(o=>{o.qid=o.qid||o.id});await this.fila.importar(v,()=>{if(v.length)LS.set('inic.fila.antiga',v);LS.del('inic.fila')})}
+  if(Array.isArray(cf)){if(cf.length)await this.fila.confirmar(cf.map(o=>{const{_c,...x}=o;x.qid=x.qid||x.id;return x}));LS.del('inic.conf')}},
+ /* AT-02 · a última base lida nesta estação (por pasta): se ela some, nada é gravado até a pessoa decidir */
+ conhecer(b){LS.set('inic.base.conhecida',{rev:b.rev||0,revId:b.revId||'',pasta:this.dirName,em:new Date().toISOString()})},
+ async recriar(){if(!this.sumiu)return;const n=Object.values(this.data).filter(Array.isArray).reduce((s,L)=>s+L.length,0);
+  if(!confirm(`Recriar ${PAGE.baseFile} em 00. Bases com a cópia deste navegador?\n\nA cópia tem a rev ${this.data.rev||0} (${n} registro(s), histórico incluído) e as alterações pendentes. O que outras estações gravaram depois da última leitura deste computador não está nela.`))return;
+  this.dataRecriar=clone(this.data);this.dataRecriar.exports=null;this._recriar=true;this.readErr='';await this.save();render()},
  async pick(){if(!window.showDirectoryPicker){toast('Este navegador não permite acesso à pasta (use Chrome ou Edge).',1);return}
   try{const h=await showDirectoryPicker({id:'vac-sistemas',mode:'readwrite'});await this.usar(h);toast('Pasta conectada: '+h.name)}catch(e){if(e.name!=='AbortError')toast('Não foi possível abrir a pasta: '+e.message,1)}},
- async usar(h){this.dir=vacRaiz(h);this.dirName=h.name;this.perm=true;this._bases=false;await IDB.set('pasta',h);await this.reload();if(!this.readErr)await this.save();render()},
+ async usar(h){const antes={dir:this.dir,dirName:this.dirName,perm:this.perm};this.dir=vacRaiz(h);this.dirName=h.name;this.perm=true;this._bases=false;this.sumiu=false;await this.reload();
+  /* AT-02 · pasta sem a base: só cria com a confirmação (como o Portal); se é a pasta onde a base existia, não oferece criar por cima */
+  if(!this.readErr&&!this.baseFound&&!this.sumiu){if(!confirm(`A pasta "${h.name}" não tem 00. Bases/${PAGE.baseFile}.\n\nCriar a base nesta pasta? Só as alterações ainda pendentes deste navegador vão para a base nova.`)){Object.assign(this,antes);toast('Pasta não conectada: nada foi criado.');render();return}}
+  await IDB.set('pasta',h);if(!this.readErr&&!this.sumiu)await this.save();render()},
  async reconnect(){if(!this.dir)return this.pick();try{const p=await this.dir.requestPermission({mode:'readwrite'});this.perm=p==='granted';if(this.perm){await this.reload();await this.save();render()}}catch(e){toast(e.message,1)}},
  async sub(path,create){let d=this.dir;for(const p of path.split('/').filter(Boolean))d=await d.getDirectoryHandle(p,{create:!!create});return d},
  /* leitura estrita: só "não encontrado" é base ausente (vacNaoAchou); JSON inválido ou erro de rede = erro */
- async ler(){let f;try{f=await(await this.dir.getFileHandle(PAGE.baseFile)).getFile()}catch(e){if(vacNaoAchou(e))return null;throw e}const t=await f.text();let o;try{o=JSON.parse(t)}catch(e){throw new Error(PAGE.baseFile+' com JSON inválido')}const v=validarBase(o);if(v.length)throw new Error('base com problema: '+v.join('; '));return o},
+ async ler(){let f;try{f=await(await this.dir.getFileHandle(PAGE.baseFile)).getFile()}catch(e){if(vacNaoAchou(e))return null;throw e}const t=await f.text();let o;try{o=JSON.parse(t)}catch(e){throw new Error(PAGE.baseFile+' com JSON inválido')}const fm=typeof vacFormatoBase==='function'?vacFormatoBase(o,'vac-iniciativas',1):'';if(fm)throw new Error(fm);const v=validarBase(o);if(v.length)throw new Error('base com problema: '+v.join('; '));return o},
  async escrever(obj,dir,nome){const h=await(dir||this.dir).getFileHandle(nome||PAGE.baseFile,{create:true});const w=await h.createWritable();await w.write(JSON.stringify(obj));await w.close()},
  async reload(){if(this.test||!this.dir||!this.perm)return;
   if(!this._bases){this._bases=true;try{vacAvisoBases(await vacMoverBases(this.dir,[[PAGE.baseFile,PAGE.backupDir]]))}catch(e){console.warn('bases',e)}}
-  try{const r=await this.ler();this.readErr='';if(r&&this.perdidas(r)){console.warn('[iniciativas] alteração sobrescrita por outra estação: volta para a fila');setTimeout(()=>this.save(),50)}if(r){this.data=completar(r);this.baseFound=true;this.queue.forEach(op=>applyOp(this.data,op));this.cache()}else this.baseFound=false}
+  try{const r=await this.ler();this.readErr='';await this.recarga(r)}
   catch(e){this.readErr='Não consegui ler '+PAGE.baseFile+' ('+(e.message||e.name)+'). Nada será gravado até a leitura voltar; as alterações ficam pendentes neste navegador.';toast(this.readErr,1)}},
- cache(){if(this.test)return;const c=clone(this.data);c.exports=null;LS.set('inic.cache',c);LS.set('inic.fila',this.queue);LS.set('inic.conf',this.conf)},
- /* uma gravação confirmada pode ser sobrescrita depois por outra estação que leu antes dela (a releitura não é transação).
-    As operações confirmadas nos últimos 30 min ficam guardadas; se a base lida não tem o id delas na auditoria, voltam para a fila. */
- perdidas(base){const lim=Date.now()-1800000;this.conf=this.conf.filter(o=>o._c>lim);if(!base)return 0;const ids=new Set((base.auditoria||[]).map(a=>a.id));
-  const L=this.conf.filter(o=>!ids.has(o.id));if(!L.length)return 0;this.conf=this.conf.filter(o=>ids.has(o.id));const naFila=new Set(this.queue.map(o=>o.id));
-  this.queue=L.filter(o=>!naFila.has(o.id)).map(({_c,...o})=>o).concat(this.queue);return L.length},
- commit(op,{silencio}={}){op.id=op.id||uid('op');op.em=new Date().toISOString();op.por=user()||'';this.queue.push(op);applyOp(this.data,op);this.cache();if(!silencio)render();clearTimeout(this.t);this.t=setTimeout(()=>this.save(),600)},
+ async recarga(r){const k=LS.get('inic.base.conhecida',null);
+  if(r){const n=await this.perdidas(r);if(n){toast(n+' alteração(ões) sua(s) que outra estação gravou por cima voltaram para a fila e serão gravadas de novo.');setTimeout(()=>this.save(),50)}
+   this.sumiu=false;this.data=completar(r);this.baseFound=true;this.queue.forEach(op=>applyOp(this.data,op));this.conhecer(r);this.cache()}
+  else{this.baseFound=false;this.sumiu=!!(k&&k.pasta===this.dirName);if(this.sumiu)this.readErr=`${PAGE.baseFile} não está mais em 00. Bases (a última lida neste computador era a rev ${k.rev}, de ${brh(k.em)}). Nada será gravado: recrie a base com a cópia deste navegador ou escolha a pasta certa.`}},
+ cache(){if(this.test)return;const c=clone(this.data);c.exports=null;LS.set('inic.cache',c);
+  if(this.fila)this.fila.espelhar(this.queue).then(ok=>{if(ok)LS.del('inic.fila.reserva');else{LS.set('inic.fila.reserva',this.queue);topo()}})},
+ /* R-01 · operações confirmadas nas últimas 24 h (fila durável do kit) que não estão na auditoria da base: outra estação gravou por
+    cima depois da nossa releitura. Voltam para a fila (as operações são idempotentes) e a página avisa. */
+ async perdidas(base){if(!base||!this.fila)return 0;const C=await this.fila.confirmadas(864e5);if(!C.length)return 0;const ids=new Set((base.auditoria||[]).map(a=>a.id));
+  const L=C.filter(o=>!ids.has(o.id));if(!L.length)return 0;await this.fila.esquecer(L.map(o=>o.qid));const naFila=new Set(this.queue.map(o=>o.id));
+  this.queue=L.filter(o=>!naFila.has(o.id)).map(({_c,...o})=>o).concat(this.queue);this.cache();return L.length},
+ commit(op,{silencio}={}){op.id=op.id||uid('op');op.qid=op.id;op.em=new Date().toISOString();op.por=user()||'';this.queue.push(op);applyOp(this.data,op);this.cache();if(!silencio)render();clearTimeout(this.t);this.t=setTimeout(()=>this.save(),600)},
  async save(){if(this.test){this.queue=[];topo();return}
   if(!this.dir||!this.perm){topo();return}
   if(this.saving){this.again=true;return}this.saving=true;topo();
   try{for(let volta=0;volta<5;volta++){
     let fresh;
     try{fresh=await this.ler()}catch(e){throw new Error('não consegui ler a base antes de gravar ('+(e.message||e.name)+'); nada foi gravado')}
-    this.perdidas(fresh);const n=this.queue.length;
+    /* AT-02 · base que já existiu nesta pasta e sumiu: nada é gravado (sem recriar vazia) até "Recriar a base" */
+    if(!fresh&&!this._recriar){const k=LS.get('inic.base.conhecida',null);if(this.sumiu||(k&&k.pasta===this.dirName)){this.sumiu=true;throw new Error(PAGE.baseFile+' sumiu da pasta; nada foi gravado (use "Recriar a base" ou escolha a pasta certa)')}}
+    if(fresh)await this.perdidas(fresh);const n=this.queue.length;
     if(!n&&fresh&&fresh.exports&&fresh.appVersion===APP_VERSION&&diaLocal(fresh.exports.geradoEm)===hoje()){this.data=completar(fresh);this.baseFound=true;break}
-    const D=completar(fresh?clone(fresh):vazio()),revAntes=D.rev||0,ops=this.queue.slice(0,n);ops.forEach(op=>applyOp(D,op));
+    const D=completar(fresh?clone(fresh):this._recriar&&this.dataRecriar?clone(this.dataRecriar):vazio()),revAntes=D.rev||0,ops=this.queue.slice(0,n);ops.forEach(op=>applyOp(D,op));
     ops.forEach(op=>D.auditoria.push({em:op.em,por:op.por,k:op.k,id:op.id,acao:op.a?op.a.id:op.ac||(op.it&&op.it.id)||''}));if(D.auditoria.length>5000)D.auditoria=D.auditoria.slice(-5000);
     if(fresh)await this.backupDiario(fresh);
     D.rev=revAntes+1;D.revBy=user()||'?';D.revAt=new Date().toISOString();D.revId=uid('r');D.appVersion=APP_VERSION;
@@ -1197,7 +1307,7 @@ const Store={dir:null,dirName:'',perm:false,data:completar(vazio()),queue:LS.get
     await this.escrever(D);
     let chk=null;try{chk=await this.ler()}catch(e){}
     if(!chk||chk.revId!==D.revId)continue;   /* outra estação gravou junto (ou a releitura falhou): relê e reaplica */
-    this.conf=this.conf.concat(ops.map(o=>({...o,_c:Date.now()}))).slice(-500);this.queue.splice(0,n);this.data=D;this.queue.forEach(op=>applyOp(this.data,op));this.baseFound=true;this.lastSaved=new Date();this.lastErr='';this.readErr='';this.cache();
+    if(this.fila)this.fila.confirmar(ops);const feitas=new Set(ops.map(o=>o.qid||o.id));this.queue=this.queue.filter(o=>!feitas.has(o.qid||o.id));if(this._recriar){this._recriar=false;this.dataRecriar=null;toast('Base recriada em 00. Bases com a cópia deste navegador.')}this.sumiu=false;this.conhecer(D);this.data=D;this.queue.forEach(op=>applyOp(this.data,op));this.baseFound=true;this.lastSaved=new Date();this.lastErr='';this.readErr='';this.cache();
     if(!this.queue.length&&!this.again)break;this.again=false}
    if(this.queue.length&&!this.again)this.lastErr='a gravação não foi confirmada depois de 5 tentativas; as alterações continuam pendentes neste navegador';
   }catch(e){this.lastErr=e.message;toast('Gravação pendente: '+e.message,1)}finally{this.saving=false;topo();if(this.again){this.again=false;setTimeout(()=>this.save(),200)}}},
@@ -1236,8 +1346,10 @@ function topo(){const el=$('#stBase');if(!el)return;const S=Store,n=S.queue.leng
  else if(!S.dir)h='<span class="pill warn">só neste navegador</span> <button class="b sm" id="tConn">Conectar pasta</button>';
  else if(!S.perm)h=`<span class="pill warn">pasta ${esc(S.dirName)} sem permissão</span> <button class="b sm" id="tConn">Reconectar</button>`;
  else h=`<span>pasta <b>${esc(S.dirName)}</b> · rev ${S.data.rev||0}</span>${S.saving?' <span class="pill info">gravando…</span>':n?` <span class="pill warn">${n} alteração(ões) pendente(s)</span>`:S.lastSaved?` <span class="small">gravado ${brh(S.lastSaved.toISOString())}</span>`:''}`;
- if(S.readErr||S.lastErr)h+=` <span class="pill crit" title="${esc(S.readErr||S.lastErr)}">${S.readErr?'erro de leitura':'gravação pendente'}</span> ${S.dir&&S.perm?'<button class="b sm" id="tRetry">Gravar de novo</button>':''}`;
- el.innerHTML=h;const c=$('#tConn');if(c)c.onclick=()=>S.dir?S.reconnect():S.pick();const r=$('#tRetry');if(r)r.onclick=async()=>{await S.reload();await S.save();render()}}
+ if(S.sumiu)h+=` <span class="pill crit" title="${esc(S.readErr)}">base sumiu da pasta</span> <button class="b sm" id="tRecriar">Recriar a base</button> <button class="b sm" id="tOutra">Escolher outra pasta</button>`;
+ else if(S.readErr||S.lastErr)h+=` <span class="pill crit" title="${esc(S.readErr||S.lastErr)}">${S.readErr?'erro de leitura':'gravação pendente'}</span> ${S.dir&&S.perm?'<button class="b sm" id="tRetry">Gravar de novo</button>':''}`;
+ if(S.fila&&S.fila.erro)h+=` <span class="pill crit" title="${esc(S.fila.erro)}">alterações não protegidas</span>`;
+ el.innerHTML=h;const c=$('#tConn');if(c)c.onclick=()=>S.dir?S.reconnect():S.pick();const r=$('#tRetry');if(r)r.onclick=async()=>{await S.reload();await S.save();render()};const rc=$('#tRecriar');if(rc)rc.onclick=()=>S.recriar();const ou=$('#tOutra');if(ou)ou.onclick=()=>S.pick()}
 function navHtml(){const at=Store.data.acoes.filter(atrasada).length;return ABAS.map(([id,n])=>`<button data-t="${id}" class="${App.tab===id?'on':''}">${esc(n)}${id==='acoes'&&at?` <span class="cnt" title="ações atrasadas">${at}</span>`:''}</button>`).join('')}
 function ir(tab){App.tab=tab;const h='#aba='+tab;if(location.hash!==h)history.replaceState(history.state,'',h);render()}
 document.addEventListener('click',e=>{const b=e.target.closest('#nav [data-t]');if(b)ir(b.dataset.t)});
@@ -1283,12 +1395,12 @@ function detalheHtml(a){const T=tempos(a),ev=(Store.data.eventos||[]).filter(e=>
  return`<div class="row"><span class="pill ${orCls(o.tipo)}">${esc(orNome(o.tipo))}</span><span class="pill ${stCls(a.status)}">${esc(stNome(a.status))}</span>${atrasada(a)?'<span class="pill crit">atrasada</span>':''}<span class="sp"></span><span class="code small muted">${esc(a.id)}</span><button class="b sm" data-fx title="Fechar o detalhe">✕</button></div>
  <h2 class="dt">${esc(a.titulo)}</h2>${a.descricao?`<p class="small">${esc(a.descricao)}</p>`:''}
  <div class="row btns">${ab?`${a.status!=='em andamento'?'<button class="b sm" data-st="em andamento">▶ Em andamento</button>':''}${a.status!=='aguardando'?'<button class="b sm" data-st="aguardando">⏸ Aguardando</button>':''}<button class="b sm pri" data-st="concluída">✓ Concluir</button><button class="b sm" data-tr>Transferir</button><button class="b sm" data-pz>${a.prazo?'Adiar prazo':'Pôr prazo'}</button>`:'<button class="b sm" data-st="em andamento">Reabrir</button>'}<button class="b sm" data-ed>Editar</button>${ab?'<button class="b sm crit" data-st="cancelada">Cancelar</button>':''}</div>
- <div class="sec2"><h4>Origem e vínculos</h4><div class="small">${esc(orNome(o.tipo))}${o.resumo?' · '+esc(o.resumo):''}${o.link?` · <a href="${esc(o.link)}">reconsultar ↗</a>`:''}</div>${foto}${(a.vinculos||[]).length?`<div class="small" style="margin-top:4px">${(a.vinculos||[]).map(v=>`${esc(viNome(v.tipo))} ${v.tipo==='ordem'?`<a href="#" class="code" data-vac-ordem="${esc(v.cod)}">${esc(v.cod)}</a>`:v.tipo==='lote'?`<a href="#" class="code" data-vac-lote="${esc(v.cod)}">${esc(v.cod)}</a>`:`<span class="code">${esc(v.cod)}</span>`}`).join(' · ')}</div>`:''}</div>
+ <div class="sec2"><h4>Origem e vínculos</h4><div class="small">${esc(orNome(o.tipo))}${o.resumo?' · '+esc(o.resumo):''}${vacLinkSeguro(o.link)?` · <a href="${esc(vacLinkSeguro(o.link))}">reconsultar ↗</a>`:''}</div>${foto}${(a.vinculos||[]).length?`<div class="small" style="margin-top:4px">${(a.vinculos||[]).map(v=>`${esc(viNome(v.tipo))} ${v.tipo==='ordem'?`<a href="#" class="code" data-vac-ordem="${esc(v.cod)}">${esc(v.cod)}</a>`:v.tipo==='lote'?`<a href="#" class="code" data-vac-lote="${esc(v.cod)}">${esc(v.cod)}</a>`:`<span class="code">${esc(v.cod)}</span>`}`).join(' · ')}</div>`:''}</div>
  <div class="sec2"><h4>Responsável e prazo</h4><div class="small">${esc(a.responsavel||'sem responsável')}${(a.apoios||[]).length?' · apoio '+esc(a.apoios.join(', ')):''} · prioridade ${esc(prNome(a.prioridade))}<br>Prazo ${a.prazoOriginal&&a.prazoOriginal!==a.prazo?`original ${br(a.prazoOriginal)} · atual <b>${br(a.prazo)}</b> (adiado ${ev.filter(e=>e.tipo==='prazo').length}×)`:br(a.prazo)}${a.concluidaEm?' · concluída '+br(a.concluidaEm):''}</div></div>
  <div class="sec2"><h4>Checklist</h4><div class="ck">${(a.checklist||[]).map(i=>`<label><input type="checkbox" data-ck="${esc(i.id)}"${i.feito?' checked':''}> ${esc(i.txt)}</label>`).join('')}</div><div class="row"><input id="ckNovo" placeholder="Novo item" style="flex:1"><button class="b sm" id="ckAdd">+</button></div></div>
  <div class="sec2"><h4>Tempo (dias corridos) ${help('Calculado pelo histórico: quanto tempo a ação ficou em cada situação e com cada responsável (só enquanto aberta). Dias corridos, sem desconto de fim de semana; dias úteis e prazos por prioridade ficam para depois.')}</h4><div class="small">${T.porRs.length?T.porRs.map(([r,d])=>`com ${esc(r)} ${dias(d)}`).join(' → '):'—'}<br>${Object.entries(T.porSt).filter(([s])=>ABERTOS.includes(s)).map(([s,d])=>`${esc(stNome(s))} ${dias(d)}`).join(' · ')}${T.aberto!=null?` · aberta no total ${dias(T.aberto)}`:''}</div></div>
  <div class="sec2"><h4>Comentários</h4>${(a.comentarios||[]).map(c=>`<div class="small"><span class="muted">${brh(c.em)} ${esc(c.por||'')}</span> ${esc(c.txt)}</div>`).join('')}<div class="row"><input id="coNovo" placeholder="Comentar" style="flex:1"><button class="b sm" id="coAdd">Enviar</button></div></div>
- <div class="sec2"><h4>Evidências ${help('Link para a foto, o documento ou a pasta onde está a evidência (a página não guarda arquivos).')}</h4>${(a.evidencias||[]).map(x=>`<div class="small">${/^(https?:|file:|\\\\)/i.test(x.url||'')?`<a href="${esc(x.url)}" target="_blank" rel="noopener">${esc(x.txt||x.url)}</a>`:esc(x.txt||x.url)} <span class="muted">${brh(x.em)} ${esc(x.por||'')}</span></div>`).join('')}<div class="row"><input id="evUrl" placeholder="Link ou caminho" style="flex:1"><input id="evTxt" placeholder="Descrição" style="flex:1"><button class="b sm" id="evAdd">+</button></div></div>
+ <div class="sec2"><h4>Evidências ${help('Link para a foto, o documento ou a pasta onde está a evidência (a página não guarda arquivos).')}</h4>${(a.evidencias||[]).map(x=>`<div class="small">${vacLinkSeguro(x.url)?`<a href="${esc(vacLinkSeguro(x.url))}" target="_blank" rel="noopener">${esc(x.txt||x.url)}</a>`:esc(x.txt||x.url)} <span class="muted">${brh(x.em)} ${esc(x.por||'')}</span></div>`).join('')}<div class="row"><input id="evUrl" placeholder="Link ou caminho" style="flex:1"><input id="evTxt" placeholder="Descrição" style="flex:1"><button class="b sm" id="evAdd">+</button></div></div>
  <div class="sec2"><h4>Histórico</h4><div class="hist">${ev.map(e=>`<div><span class="muted">${brh(e.em)}</span><span>${evTxt(e)}${e.por?` · <span class="muted">${esc(e.por)}</span>`:''}${e.motivo?` <i>(“${esc(e.motivo)}”)</i>`:''}</span></div>`).join('')||'<div class="muted">—</div>'}</div></div>`}
 
 /* mudanças na ação (sempre por operação) */
@@ -1312,7 +1424,7 @@ function formAcao(a0,p={}){const ed=!!a0,a=a0||{titulo:p.titulo||'',descricao:p.
  const P=ed?[]:parecidas();
  janela({titulo:ed?'Editar ação':'Nova ação',ok:ed?'Gravar':'Criar ação',corpo:`${dlPessoas()}
   ${P.length?`<div class="aviso-dup"><b>Já existe ação aberta ligada ao mesmo ${esc([...new Set((a.vinculos||[]).map(v=>viNome(v.tipo).toLowerCase()))].join(' / ')||'item')}:</b>${P.map(x=>`<div class="small">· <a href="#acao=${esc(x.id)}" data-ir-acao="${esc(x.id)}">${esc(x.id)}</a> ${esc(x.titulo)} · ${esc(x.responsavel||'sem responsável')} · ${esc(stNome(x.status))}</div>`).join('')}<div class="small muted">Confira se não é a mesma antes de criar outra.</div></div>`:''}
-  ${o.tipo!=='manual'?`<div class="small muted" style="margin-bottom:8px">Origem: <b>${esc(orNome(o.tipo))}</b>${o.resumo?' · '+esc(o.resumo):''}${o.link?` · <a href="${esc(o.link)}" target="_blank">ver na origem ↗</a>`:''}</div>`:''}
+  ${o.tipo!=='manual'?`<div class="small muted" style="margin-bottom:8px">Origem: <b>${esc(orNome(o.tipo))}</b>${o.resumo?' · '+esc(o.resumo):''}${vacLinkSeguro(o.link)?` · <a href="${esc(vacLinkSeguro(o.link))}" target="_blank" rel="noopener">ver na origem ↗</a>`:''}</div>`:''}
   <div class="fgrid"><label class="wf">O que fazer *<input id="aT" value="${esc(a.titulo)}" maxlength="160"></label>
   <label class="wf">Detalhe<textarea id="aD">${esc(a.descricao||'')}</textarea></label>
   <label><span>Responsável ${help('Quem conduz a ação. Pode ficar vazio: aparece em "Sem responsável" na Minha fila do Portal.')}</span><input id="aR" list="dlP" value="${esc(a.responsavel||'')}"></label>
@@ -1413,7 +1525,7 @@ function rota(){let h=location.hash.slice(1);if(!h)return;let k,v;const i=h.inde
  if(k==='aba'&&ABAS.some(a=>a[0]===v)){App.tab=v;return render()}
  if(k==='acao'&&v){App.tab='acoes';App.sel=v;App.f.fechadas=true;render();return}
  if(k==='ordem'&&v){App.tab='acoes';App.f.q=v;App.f.fechadas=true;App.vis='lista';history.replaceState(history.state,'','#aba=acoes');return render()}
- if(k==='nova'){let p={};try{p=v?JSON.parse(v):{}}catch(e){toast('Link de nova ação inválido',1)}history.replaceState(history.state,'','#aba=acoes');App.tab='acoes';render();formAcao(null,p)}}
+ if(k==='nova'){let p={};try{p=v?JSON.parse(v):{}}catch(e){toast('Link de nova ação inválido',1)}if(!p||typeof p!=='object')p={};if(p.origem&&p.origem.link&&!vacLinkSeguro(p.origem.link)){delete p.origem.link;toast('O link de origem recebido não é um endereço seguro e foi descartado.',1)}history.replaceState(history.state,'','#aba=acoes');App.tab='acoes';render();formAcao(null,p)}}
 window.addEventListener('hashchange',rota);
 PAGE.busca=q=>{const k=norm(q);const R=[];for(const a of Store.data.acoes)if(norm(a.id+' '+a.titulo+' '+(a.responsavel||'')).includes(k))R.push({tipo:'Ação',txt:a.titulo,sub:`${a.id} · ${stNome(a.status)} · ${a.responsavel||'sem responsável'}`,go:()=>{App.sel=a.id;App.f.fechadas=true;ir('acoes')}});
  for(const x of Store.data.kas||[])if(norm(x.id+' '+x.titulo).includes(k))R.push({tipo:'KAS',txt:x.titulo,sub:x.id,go:()=>{App.kasSel=x.id;ir('kas')}});return R.slice(0,20)};

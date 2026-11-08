@@ -6,14 +6,14 @@ Plataforma de páginas HTML de arquivo único que trabalham juntas numa **pasta 
 
 | Página | Arquivo | Base | Versão | Como editar |
 |---|---|---|---|---|
-| Portal (cadastro geral, Administração) | `Portal.html` | `portal-base.json` + `vacutainer-cadastros.json` | 1.9.0 | direto no HTML |
-| Produção (OEE, plano, ordens SAP) | `OEE-Vacutainer.html` | `oee-vacutainer-base.json` (+ `ordens-base.json`) | 2.4.15 | **NÃO editar o HTML**: editar `fontes/producao/` e rodar o build |
-| Waste (perdas por ordem, KKBC) | `Perdas-Ordem.html` | `perdas-base.json` | 1.8.21 | direto no HTML |
-| Gestão de Gel | `Gestão-Gel-Vacutainer.html` | `fifo-base.json` | 2.09 · **em atualização** | direto no HTML |
-| Paradas | `Paradas.html` | `paradas-base.json` | 1.0.20 · **em atualização** | direto no HTML |
-| Equipamentos (com manutenção) | `Equipamentos.html` | `equipamentos-base.json` | 1.0.1 · **em atualização** | direto no HTML (saiu do gerador na 1.0.0; `docs/equipamentos-v1.md`) |
-| Iniciativas (Ações/Planner · KAS · OSM · 5S) | `Iniciativas.html` | `iniciativas-base.json` | 1.0.1 · **em atualização** | direto no HTML (saiu do gerador na 1.0.0; `docs/iniciativas-planner.md`) |
-| Projetos | `Projetos.html` | (`projetos-base.json`, ainda não existe) | 0.1.4 · **em construção** | **gerada**: `fontes/modelo/gerar_paginas.py` |
+| Portal (cadastro geral, Administração) | `Portal.html` | `portal-base.json` + `vacutainer-cadastros.json` | 1.9.1 | direto no HTML |
+| Produção (OEE, plano, ordens SAP) | `OEE-Vacutainer.html` | `oee-vacutainer-base.json` (+ `ordens-base.json`) | 2.4.16 | **NÃO editar o HTML**: editar `fontes/producao/` e rodar o build |
+| Waste (perdas por ordem, KKBC) | `Perdas-Ordem.html` | `perdas-base.json` | 1.8.22 | direto no HTML |
+| Gestão de Gel | `Gestão-Gel-Vacutainer.html` | `fifo-base.json` | 2.10 · **em atualização** | direto no HTML |
+| Paradas | `Paradas.html` | `paradas-base.json` | 1.0.21 · **em atualização** | direto no HTML |
+| Equipamentos (com manutenção) | `Equipamentos.html` | `equipamentos-base.json` | 1.0.2 · **em atualização** | direto no HTML (saiu do gerador na 1.0.0; `docs/equipamentos-v1.md`) |
+| Iniciativas (Ações/Planner · KAS · OSM · 5S) | `Iniciativas.html` | `iniciativas-base.json` | 1.0.2 · **em atualização** | direto no HTML (saiu do gerador na 1.0.0; `docs/iniciativas-planner.md`) |
+| Projetos | `Projetos.html` | (`projetos-base.json`, ainda não existe) | 0.1.5 · **em construção** | **gerada**: `fontes/modelo/gerar_paginas.py` |
 
 Divisão final (Portal 1.7): Portal · Produção · Waste · Gestão de Gel · Paradas · **Equipamentos** (inclui manutenção; não há página Manutenção) · **Iniciativas** (uma página: Ações/Planner · KAS · OSM · 5S; não há OSM.html) · **Projetos** · Outros ▾ · ⚙ Administração.
 Situação de cada página (em construção / em atualização / estável): `PAGE.estado` + `sistemas.js`, trocável no Portal › Configuração › Módulos; ver `docs/paginas-construcao.md`. Páginas em construção são **geradas** (não editar o HTML; editar `fontes/modelo/` e rodar o gerador). Quando uma delas começar de verdade (v1.0), tirar da lista do gerador e passar a editar direto. Arquitetura: `docs/plano-evolucao-plataforma.md`, `docs/osm-arquitetura.md` (aba OSM de Iniciativas). `docs/paginas-novas.md` é histórico (lista antiga Máquinas/Manutenção).
@@ -41,6 +41,7 @@ node testes/tficha.js                 # E5: ficha da ordem/lote/LP (mesmos núme
 node testes/tplanner.js               # E6/E8: Iniciativas › Ações (base em 00. Bases, operações, duas estações, erro de leitura, tempos com transferência/espera/reabertura, exports, #nova= com aviso de ação parecida, KAS, links das outras páginas); código 1 se falhar
 node testes/tfila.js                  # E10: Portal › Minha fila (Minhas, Minha equipe pela área do cadastro, Sem responsável) e Reunião diária (dia/turno, granularidade, pauta, decisão, fotografia, encaminhar); código 1 se falhar
 node testes/tequip.js                 # E11: Equipamentos (ficha, OS do evento do Paradas sem cópia, TAG com vigência, anomalia → OS, Paradas mostra a OS); código 1 se falhar
+node testes/tpendencias.js            # C1: alterações pendentes sem perda entre abas (fila durável; trava da 2ª aba no Portal/Waste), base que some não vira vazia, formato desconhecido não grava, link de origem seguro, regravação em 24 h; código 1 se falhar
 node testes/tcontratos.js             # E4: exports por ordem (Produção 24 meses e dias do lote, Paradas, Gel), versão conferida pelos leitores, Waste com ordem em várias competências e dias do lote; código 1 se falhar
 ```
 
@@ -54,7 +55,13 @@ node testes/tcontratos.js             # E4: exports por ordem (Produção 24 mes
 2. **O Portal é o único que grava `vacutainer-cadastros.json`.** Edição por operações (`criação`/`edição` com `mudancas {campo:{antes,depois}}`), fila, releitura, reaplicação, backup em `00. Backups/Cadastros/`, `rev`/`revId`. As outras páginas leem a cópia `localStorage['vac.cadastros']` (via `vacCad()`) em modo consulta, com "Editar no Portal" (`vacPortalHref('cadastros/<tipo>/<código>')`).
 3. **Vigências gravadas são imutáveis**: só se desativa (vai para `vigenciasDesativadas`) e cria outra. Quem lê usa a vigência da **data do fato** (`vacVig`).
 4. **Chave = código** (catálogo de 6 dígitos, `EQ01`, `FME`, `T1`). Códigos sempre guardados como **texto**, nunca convertidos em número. Material SAP **numérico** é normalizado do mesmo jeito em todas as páginas: sem os zeros à esquerda que o SAP põe até 18 dígitos (`normMat` no Portal/CS12, `cod` no importador MB51/COOIS) — é isso que faz a ordem bater com o cadastro; código não numérico fica como veio. Nada se apaga: `ativo:false`.
-5. **Kit do cabeçalho igual em todas** (`vac-cabecalho v1/v2` + `kit_v21.js` + catálogo `sistemas.js` + padrão visual `kit_visual.css`): não editar só numa página. Mudou o kit → `aplicar_kit21.py` + build da Produção. Estilo comum (contêiner, cabeçalho, abas, contadores, cores de estado, modo exemplo) vai no `kit_visual.css`; a página só define o que é dela. Chaves comuns do `localStorage` (`vac.theme`, `vac.user`, `vac.logo`…) em texto simples. Pasta conectada sempre por `vacRaiz(pasta)` (as bases da lista `VAC_BASES` em `00. Bases`: as 7 de antes + `iniciativas-base.json` e `equipamentos-base.json`); cada página move só as próprias bases (`vacMoverBases`) ao conectar, com trava entre computadores, cópia por temporário e a base da raiz movida (nunca apagada) para o backup; no IndexedDB vai a pasta original. Erro de leitura nunca é "base ausente" (`vacNaoAchou`): não oferecer criar base por cima.
+5. **Kit do cabeçalho igual em todas** (`vac-cabecalho v1/v2` + `kit_v21.js` + catálogo `sistemas.js` + padrão visual `kit_visual.css`): não editar só numa página. Mudou o kit → `aplicar_kit21.py` + build da Produção. Estilo comum (contêiner, cabeçalho, abas, contadores, cores de estado, modo exemplo) vai no `kit_visual.css`; a página só define o que é dela. Chaves comuns do `localStorage` (`vac.theme`, `vac.user`, `vac.logo`…) em texto simples. Pasta conectada sempre por `vacRaiz(pasta)` (as bases da lista `VAC_BASES` em `00. Bases`: as 7 de antes + `iniciativas-base.json` e `equipamentos-base.json`); cada página move só as próprias bases (`vacMoverBases`) ao conectar, com trava entre computadores, cópia por temporário e a base da raiz movida (nunca apagada) para o backup; no IndexedDB vai a pasta original. Erro de leitura nunca é "base ausente" (`vacNaoAchou`): não oferecer criar base por cima. **C1 (08/11/2026), em `kit_bases.js`:**
+   - alteração pendente vai para a fila durável `vacFila(pagina)`, um registro por alteração no IndexedDB, cada aba com as dela; nunca "a fila inteira" num valor só;
+   - página que guarda a base inteira pendente (Portal, Waste) usa `vacGuardaAba`: a 2ª aba não altera enquanto outra tem pendência;
+   - base que já existiu e sumiu não é recriada vazia ("Recriar a base" com a cópia local);
+   - base nova só com a confirmação;
+   - `vacFormatoBase` antes de gravar;
+   - link de origem por `vacLinkSeguro`.
 6. **Mudanças cirúrgicas e aditivas**: não reescrever o que funciona; campos novos são opcionais e ignorados por quem não usa (compatível com `schemaVersion 1`). Mudar significado de campo = schemaVersion 2.
 7. **ⓘ em todos os campos e categorias** de configuração, com o que é e um exemplo (`AJUDA_CAMPO`, `CAT_AJUDA` no Portal; `HELP` na Produção).
 8. **Versão**: subir a versão da página a cada entrega (`PAGE.versao`, `APP_VERSION` ou `V1.xx` no `<title>`) e gravar `appVersion` na base. O Portal › Versões lê isso.
@@ -63,7 +70,7 @@ node testes/tcontratos.js             # E4: exports por ordem (Produção 24 mes
 
 ## Leitores comuns do kit v2.1 (`fontes/kit/kit_v21.js`)
 
-`vacCambio(data, moeda)` · `vacVig(vigencias, data)` · `vacParam(chave)` · `vacTurnosEm(data)` · `vacPrecoEm(material, data)` · `vacMetaArea(codigo, data)` · `vacMetaAreaMes(codigo, 'AAAA-MM')` (meta do mês pela vigência de cada dia; duas vigências no mês = ponderada pelos dias) · `vacHoje()` (dia local; padrão dos leitores sem data) · `vacPortalHref(hash)` · botão ← Voltar (abas entram no histórico; `vacNavAtual()` opcional) · `vacAoVoltar()` chamado ao voltar para a página (reler sem F5) · `vacCsvTexto(v)` (texto seguro para CSV) · `vacNumero(texto, {ponto, sap})` (número estrito por regra de campo: vazio null, inválido NaN) · `vacExportsOk(exports)` (confere a versão antes de usar o exports de outra página) · `vacTemaClaro(on)` (impressão e PDF sempre claros; `beforeprint`/`afterprint`) · `vacAbaInicial(pagina)` (aba inicial do perfil; lista `VAC_INICIAL_ALVO` em `kit_bases.js`) · `vacFicha.abrir('ordem'|'lote'|'lp', código)` (ficha comum, só com o `exports`; a página informa a pasta em `vacPastaAtual()`; botão `vacFichaBotao(ordem)`; link `#ficha=ordem/<n>`; Ctrl K com índice de ordem, lote, LP, catálogo e equipamento) · `vacNovaAcaoHref(d)` / `vacNovaAcaoBotao(d)` (abre Iniciativas com a ação preenchida: origem, fotografia, link de reconsulta, vínculos; nada é gravado na página de origem) · `vacAquiHref(hash)`.
+`vacCambio(data, moeda)` · `vacVig(vigencias, data)` · `vacParam(chave)` · `vacTurnosEm(data)` · `vacPrecoEm(material, data)` · `vacMetaArea(codigo, data)` · `vacMetaAreaMes(codigo, 'AAAA-MM')` (meta do mês pela vigência de cada dia; duas vigências no mês = ponderada pelos dias) · `vacHoje()` (dia local; padrão dos leitores sem data) · `vacPortalHref(hash)` · botão ← Voltar (abas entram no histórico; `vacNavAtual()` opcional) · `vacAoVoltar()` chamado ao voltar para a página (reler sem F5) · `vacCsvTexto(v)` (texto seguro para CSV) · `vacNumero(texto, {ponto, sap})` (número estrito por regra de campo: vazio null, inválido NaN) · `vacExportsOk(exports)` (confere a versão antes de usar o exports de outra página) · `vacTemaClaro(on)` (impressão e PDF sempre claros; `beforeprint`/`afterprint`) · `vacAbaInicial(pagina)` (aba inicial do perfil; lista `VAC_INICIAL_ALVO` em `kit_bases.js`) · `vacFicha.abrir('ordem'|'lote'|'lp', código)` (ficha comum, só com o `exports`; a página informa a pasta em `vacPastaAtual()`; botão `vacFichaBotao(ordem)`; link `#ficha=ordem/<n>`; Ctrl K com índice de ordem, lote, LP, catálogo e equipamento) · em `kit_bases.js` (C1): `vacFila(pagina)` (`espelhar`, `minhas`, `importar`, `confirmar`/`confirmadas`/`esquecer`, `marcarPendente`, `outraComPendencia`, `erro`) · `vacFormatoBase(base, schema, versãoMáx)` · `vacLinkSeguro(url)` · `vacGuardaAba(pagina, minhaPendente)` · `vacNovaAcaoHref(d)` / `vacNovaAcaoBotao(d)` (abre Iniciativas com a ação preenchida: origem, fotografia, link de reconsulta, vínculos; nada é gravado na página de origem) · `vacAquiHref(hash)`.
 
 ## Centralização no Portal (Portal 1.8/1.8.1)
 
@@ -94,6 +101,13 @@ Lista única do que ficou para depois. O motivo e o gatilho de cada item estão 
 - OSM (E7, falta a amostra da planilha), importação por pasta (E9, falta decidir a estação coletora), MES (E12, faltam amostras e regras), conteúdo AM/TPM e 5S (E13, faltam os padrões), Projetos (E15, falta o escopo) e XLSX local (E3b, falta o arquivo): registro § U.
 - Gel lendo catálogos e equipamentos do Portal; produção OEE → Gel (registro § 1).
 - `eventoId` comum OEE × Paradas, que evita contagem dupla, quando o OEE publicar `paradasEventos` (ver `docs/paradas-arquitetura.md`; registro F07/A10).
+- Correções C2–C6 da contra-análise de `8cad6a6`:
+  - C2: AT-04, AT-05, AT-10, AT-12;
+  - C3: AT-06, AT-07, link da Reunião;
+  - C4: teste do Excel e `tvisual` com as páginas novas;
+  - C5: saúde dos dados no Portal;
+  - C6: AT-08, AT-09, id estável da pessoa.
+  - Homologação da C1 na pasta real (etapa H): duas abas, base renomeada, duas estações (registro § V).
 - Waste ainda cai na base da Produção (`monthPlans`, `server.lotClass/lotNotes`) para ordens fora dos 24 meses do `exports.porOrdem` e lotes fora dos 150 dias do `exports.lotes` (registro § U, E4).
 
 **Layout (auditoria visual; registro § L)**

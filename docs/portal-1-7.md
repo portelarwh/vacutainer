@@ -235,3 +235,8 @@ Só o kit (`vacNumero`, `vacExportsOk`). Os campos novos do `exports` (`porOrdem
 - **Cadastro de usuários:** campo novo `area`, opcional, com ⓘ.
 - **Pendências das páginas:** passam a carregar `responsavel`, `apoios`, `prazo` e `id` quando a página publica (aditivo).
 
+## Portal 1.9.1 (08/11/2026) · C1
+
+- **Fila do cadastro:** um registro por alteração na fila durável do kit; a fila antiga `cadFila` é importada uma vez.
+- **Trava da 2ª aba:** se outra aba do Portal tem alteração não gravada na pasta, esta não altera. Nada é descartado.
+

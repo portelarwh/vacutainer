@@ -93,3 +93,8 @@ A gravação é igual à de Iniciativas (`docs/iniciativas-planner.md`):
 - O `exports` é gerado de novo quando é de outro dia (ao gravar ou ao abrir a página com a pasta).
 - A OS programada publica a pendência de atraso com `aPartirDe` = dia seguinte à data programada.
 - A anomalia é gravada antes do formulário da OS: cancelar a OS não perde a anomalia.
+
+## 1.0.2 (08/11/2026) · C1
+
+Mesmas proteções de Iniciativas 1.0.2: fila durável, base que some, confirmação para criar a base, formato, link de origem seguro (`#novaOS=` descarta link inseguro) e regravação em 24 h.
+

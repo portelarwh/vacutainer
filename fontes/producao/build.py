@@ -9,7 +9,8 @@ def R(a,b,cnt=1):
     c=s.count(a)
     if c!=cnt: raise SystemExit(f'ERRO ({c}x): {a[:90]!r}')
     s=s.replace(a,b)
-R("const APP_VERSION = '2.0.1';","const APP_VERSION = '2.4.15';")
+R("const APP_VERSION = '2.0.1';","const APP_VERSION = '2.4.16';")
+# 2.4.16 · C1: kit com a fila durável (vacFila), formato da base (vacFormatoBase), link seguro (vacLinkSeguro) e trava da 2ª aba
 # 2.4.15 · E11: kit (busca leva o equipamento à ficha em Equipamentos; bases de Iniciativas e Equipamentos em 00. Bases)
 # 2.4.14 · E8: Paradas › Eventos filtrados por um item do Pareto → "+ Ação no Planner" (Iniciativas), com a fotografia e o link; a Produção não grava lá
 R("${list ? '<button class=\"btn sm\" id=\"stClr\">Limpar filtro</button>' : ''}",

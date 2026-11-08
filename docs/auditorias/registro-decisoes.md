@@ -20,11 +20,45 @@ Este arquivo responde às auditorias externas da plataforma e registra, para cad
 | Plano único (diagnósticos de 08/11 do Claude e do Codex), etapas E1 a E4 (Ordens e backups; versões, datas e metas; números; contratos por ordem) | 08/11/2026 | `e043513` / `9af2d3e` | Produção 2.4.12, Waste 1.8.18, Gel 2.06, Portal 1.8.15, Paradas 1.0.15 (§ U) |
 | Plano único, blocos A e B (E5 ficha da ordem e Ctrl K; E6/E8 Iniciativas, Planner, KAS e ações de OEE; E10a/b Minha fila e Reunião diária; E10d relatório do Paradas; E11 Equipamentos) | 08/11/2026 | `8ecec91` | Portal 1.9.0, Produção 2.4.15, Waste 1.8.21, Gel 2.09, Paradas 1.0.19, Iniciativas 1.0.0, Equipamentos 1.0.0 (§ U) |
 
+| Revisão do Codex sobre `8cad6a6` (AT-01–AT-12) com contra-análise; entrega C1 | 08/11/2026 | `8cad6a6` (revisão `64f9794`) | Portal 1.9.1, Produção 2.4.16, Waste 1.8.22, Gel 2.10, Paradas 1.0.21, Iniciativas 1.0.2, Equipamentos 1.0.2 (§ V) |
+
 Status usados: **corrigido** · **corrigido em parte** · **recusado** · **adiado** · **já existia**.
 
 ---
 
-## U. Plano único de implementação (08/11/2026)
+## V. Revisão do Codex sobre `8cad6a6` e contra-análise (08/11/2026)
+
+**Documentos:**
+- revisão do Codex: `docs/auditorias/revisao-main-8cad6a6/`;
+- contra-análise e plano C1–C6: `docs/auditorias/c1-2026-11-08/01-CONTRA-ANALISE-8cad6a6.md`;
+- relatório da C1: `00-RELATORIO-C1.md`, na mesma pasta.
+
+**Contra-análise:** os 12 achados procedem. Reproduzi 10 de forma independente e confirmei 2 pelo código (AT-08, AT-09). Ela também amplia:
+- AT-01 e AT-02 valem também para o Paradas;
+- AT-11 vale também para o Equipamentos;
+- a forma de guardar pendências do AT-01 também está no Portal, no Waste e no Gel.
+
+**Decisão do responsável (08/11/2026):** C1 como recomendada; na 2ª aba do Portal e do Waste, **bloquear sem descartar**.
+
+| ID | Situação |
+|---|---|
+| AT-01 duas abas perdiam alteração pendente | **corrigido** (C1): fila durável `vacFila` no kit (Iniciativas, Equipamentos, Paradas, fila do cadastro do Portal, Gel) e trava da 2ª aba (Portal, Waste) |
+| AT-02 base que some era recriada vazia | **corrigido** (C1): pergunta ao conectar; base conhecida que some → zero gravações, "Recriar a base" com a cópia local ou "Escolher outra pasta" (Iniciativas, Equipamentos, Paradas) |
+| AT-03 formato próprio desconhecido recebia gravação | **corrigido** (C1): `vacFormatoBase` (Iniciativas, Equipamentos, Paradas). Portal, Waste, Gel e Produção têm validação própria do conteúdo; o `schema` delas não foi tratado nesta entrega |
+| AT-11 link de origem executava `javascript:` | **corrigido** (C1): `vacLinkSeguro` ao receber e ao mostrar (Iniciativas, Equipamentos) |
+| R-01 regravação das confirmadas sobrescritas | **corrigido em parte** (C1): 24 h na fila durável, também no Paradas. Não 7 dias: depois de uma restauração de backup, as alterações deste computador fora do backup voltariam |
+| AT-04 aba aberta na virada do dia | **adiado** → C2 |
+| AT-05 link da anomalia | **adiado** → C2 |
+| AT-10 troca de usuário na Minha fila | **adiado** → C2 |
+| AT-12 ordem com zeros no Planner | **adiado** → C2 |
+| AT-06 sem dado ≠ zero | **adiado** → C3 |
+| AT-07 várias ordens no grupo | **adiado** → C3 |
+| AT-09 reconsulta com filtros | **adiado** → C3 (link da Reunião) e C6 (Pareto completo); reclassificado como melhoria |
+| AT-08 cache da ficha por pasta | **adiado** → C6 (gravidade baixa) |
+| Teste do Excel que sempre passava; `tvisual` com as páginas novas como em construção | **adiado** → C4 (as duas lacunas são do Claude) |
+
+Teste novo: **`testes/tpendencias.js`**, com 37 falhas na `main` anterior e sem erros com a C1.
+
 
 **Origem.**
 - Análise do Claude em `c3ae4b0` (`docs/auditorias/diagnostico-2026-11-08/`).

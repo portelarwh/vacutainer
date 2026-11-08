@@ -120,3 +120,8 @@ No relatório mensal, o Pareto de componentes diz "20 maiores de N (todos no Exc
 - **Versão do `exports` conferida:** os da Produção e das Ordens só são usados se a versão for conhecida (`vacExportsOk`); se não, a página avisa o motivo.
 - **Ordem em várias competências (Ordens SAP):** o índice junta todas. O tipo do COOIS vem da competência mais recente que o tem; antes, a última do arquivo apagava as outras.
 - **Dias do lote:** lidos pela chave "dia|lote" do servidor (antes, a página procurava no valor e não achava). Com a Produção 2.4.12, os dias também chegam pelo `exports.porOrdem`.
+
+## Waste 1.8.22 (08/11/2026) · C1
+
+Trava da 2ª aba: se outra aba do Waste tem alteração não gravada na pasta, esta não altera e avisa. Nada é descartado.
+
