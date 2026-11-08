@@ -180,3 +180,92 @@ function vacAbaInicial(pagina) {
   } catch (e) { return null; }
 }
 /* ===== fim vac-bases v2 ===== */
+/* vac-bases · C1 (08/11/2026), no <head> de todas as páginas (antes do código delas): alterações pendentes guardadas sem perda entre abas (AT-01), formato da própria base conferido antes de
+   gravar (AT-03), links de origem só com endereço seguro (AT-11) e trava da 2ª aba para as páginas que guardam a base inteira.
+   vacFila(pagina): fila durável no IndexedDB "vac-fila", UM registro por alteração (chave pagina|qid), com a aba dona.
+   · cada aba só grava e apaga as próprias alterações (algumas operações não podem ser aplicadas duas vezes: cadastro, Gel);
+   · alteração de aba que fechou (sem sinal de vida há 20 s) é adotada na abertura seguinte, com conferência depois de uma pausa;
+   · espelhar(lista): grava as alterações da lista e apaga as desta aba que saíram dela (substitui o "gravar a fila inteira");
+   · minhas(): alterações desta aba + as adotadas, na ordem em que foram feitas;
+   · confirmar/confirmadas/esquecer: operações já confirmadas na pasta, guardadas 24 h (até 2000), para regravar se outra estação
+     gravar por cima depois da releitura (R-01). Não mais que 24 h: depois de uma restauração de backup (procedimento manual), as
+     alterações deste computador que não estão no backup voltariam a ser gravadas; a página avisa quando regrava;
+   · falha do IndexedDB: erro visível em F.erro (a página avisa "alteração não protegida"), nunca silêncio.
+   As abas vivas ficam em localStorage "vac.aba.<pagina>.<id>" = {t, pend}, renovado a cada 5 s e apagado ao fechar. */
+const vacFila = (() => {
+  let dbP = null; const filas = {}, VIVA = 20000;
+  const abre = () => dbP || (dbP = new Promise((ok, no) => { const r = indexedDB.open('vac-fila', 1); r.onupgradeneeded = () => { const d = r.result; if (!d.objectStoreNames.contains('ops')) d.createObjectStore('ops', { keyPath: 'k' }); if (!d.objectStoreNames.contains('conf')) d.createObjectStore('conf', { keyPath: 'k' }); }; r.onsuccess = () => ok(r.result); r.onerror = () => { dbP = null; no(r.error); }; }));
+  const tx = async (st, modo, fn) => { const d = await abre(); return new Promise((ok, no) => { const t = d.transaction(st, modo), s = t.objectStore(st); let v; Promise.resolve(fn(s)).then(x => v = x); t.oncomplete = () => ok(v); t.onerror = () => no(t.error); t.onabort = () => no(t.error || new Error('transação abortada')); }); };
+  const req = r => new Promise((ok, no) => { r.onsuccess = () => ok(r.result); r.onerror = () => no(r.error); });
+  const faixa = p => IDBKeyRange.bound(p + '|', p + '|\uffff');
+  const uidq = () => 'q' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+  const dorme = ms => new Promise(r => setTimeout(r, ms));
+  function abas(pagina) { const L = []; try { for (let i = 0; i < localStorage.length; i++) { const k = localStorage.key(i); if (!k || !k.startsWith('vac.aba.' + pagina + '.')) continue; let v = null; try { v = JSON.parse(localStorage.getItem(k)); } catch (e) { } if (v && Date.now() - (+v.t || 0) < VIVA) L.push({ id: k.slice(('vac.aba.' + pagina + '.').length), pend: !!v.pend }); } } catch (e) { } return L; }
+  function cria(pagina) {
+    const aba = 'a' + Math.random().toString(36).slice(2, 10) + Date.now().toString(36), chaveLS = 'vac.aba.' + pagina + '.' + aba;
+    const F = { pagina, aba, erro: '', meus: new Set(), seq: 0, pend: false, _p: Promise.resolve() };
+    const sinal = () => { try { localStorage.setItem(chaveLS, JSON.stringify({ t: Date.now(), pend: F.pend })); } catch (e) { } };
+    sinal(); setInterval(sinal, 5000); addEventListener('pagehide', () => { try { localStorage.removeItem(chaveLS); } catch (e) { } });
+    const serie = fn => (F._p = F._p.then(fn, fn));          /* uma operação de cada vez, na ordem pedida */
+    const falhou = e => { F.erro = 'alterações pendentes não estão protegidas neste navegador (' + ((e && (e.name || e.message)) || e) + ')'; console.warn('[vacFila]', pagina, e); return null; };
+    const q = op => op.qid || (op.qid = uidq());
+    const reg = op => ({ k: pagina + '|' + q(op), pagina, qid: op.qid, aba, seq: op._seq || (op._seq = Date.now() * 1000 + (F.seq++ % 1000)), op: JSON.parse(JSON.stringify(op)) });
+    F.vivas = () => abas(pagina).filter(x => x.id !== aba);
+    F.marcarPendente = v => { if (F.pend !== !!v) { F.pend = !!v; sinal(); } };
+    F.outraComPendencia = () => F.vivas().some(x => x.pend);
+    F.espelhar = lista => serie(async () => { try { const L = (lista || []).filter(Boolean); const ks = new Set(L.map(o => pagina + '|' + q(o)));
+      await tx('ops', 'readwrite', s => { for (const o of L) s.put(reg(o)); for (const k of F.meus) if (!ks.has(k)) s.delete(k); }); F.meus = ks; F.erro = ''; return true; } catch (e) { falhou(e); return false; } });
+    F.minhas = () => serie(async () => { try {
+      const todos = await tx('ops', 'readonly', s => req(s.getAll(faixa(pagina)))); const vivas = new Set(abas(pagina).map(x => x.id));
+      const orfas = todos.filter(r => r.aba !== aba && !vivas.has(r.aba));
+      if (orfas.length) { await tx('ops', 'readwrite', s => { for (const r of orfas) s.put({ ...r, aba }); }); await dorme(400); }
+      const agora = await tx('ops', 'readonly', s => req(s.getAll(faixa(pagina)))); const meus = agora.filter(r => r.aba === aba).sort((a, b) => a.seq - b.seq);
+      F.meus = new Set(meus.map(r => r.k)); F.erro = ''; return meus.map(r => Object.assign(r.op, { qid: r.qid, _seq: r.seq }));
+    } catch (e) { falhou(e); return null; } });
+    F.outras = () => serie(async () => { try { const todos = await tx('ops', 'readonly', s => req(s.getAll(faixa(pagina)))); return todos.filter(r => r.aba !== aba).length; } catch (e) { return 0; } });
+    F.confirmar = ops => serie(async () => { try { const c = Date.now(); await tx('conf', 'readwrite', s => { for (const o of ops || []) s.put({ k: pagina + '|' + q(o), pagina, qid: o.qid, _c: c, op: JSON.parse(JSON.stringify(o)) }); }); return true; } catch (e) { return false; } });
+    F.confirmadas = (idade = 864e5) => serie(async () => { try { const lim = Date.now() - idade; let L = await tx('conf', 'readonly', s => req(s.getAll(faixa(pagina))));
+      const velhas = L.filter(r => r._c < lim).concat(L.filter(r => r._c >= lim).sort((a, b) => b._c - a._c).slice(2000));
+      if (velhas.length) { await tx('conf', 'readwrite', s => { for (const r of velhas) s.delete(r.k); }); const v = new Set(velhas.map(r => r.k)); L = L.filter(r => !v.has(r.k)); }
+      return L.map(r => Object.assign(r.op, { qid: r.qid, _c: r._c })); } catch (e) { return []; } });
+    F.esquecer = qids => serie(async () => { try { await tx('conf', 'readwrite', s => { for (const id of qids || []) s.delete(pagina + '|' + id); }); } catch (e) { } });
+    /* importa uma fila antiga (localStorage ou outro lugar) uma única vez: as operações entram como desta aba; a fonte antiga fica
+       renomeada (não é apagada) para recuperação manual. ler/renomear são funções da página. */
+    F.importar = (ops, renomear) => serie(async () => { const L = (ops || []).filter(Boolean); if (!L.length) { renomear && renomear(); return true; }
+      try { await tx('ops', 'readwrite', s => { for (const o of L) s.put(reg(o)); }); for (const o of L) F.meus.add(pagina + '|' + o.qid); renomear && renomear(); return true; } catch (e) { falhou(e); return false; } });
+    return F;
+  }
+  return pagina => filas[pagina] || (filas[pagina] = cria(pagina));
+})();
+/* AT-03 · formato da própria base: schema da página (base antiga sem schema é aceita como versão 1) e schemaVersion até a conhecida.
+   Volta '' (pode ler e gravar) ou o motivo (só leitura: a página não grava por cima de formato que não conhece). */
+function vacFormatoBase(base, schema, versaoMax = 1) {
+  if (!base || typeof base !== 'object' || Array.isArray(base)) return 'o arquivo não é uma base desta página';
+  if (base.schema != null && base.schema !== schema) return `o arquivo é de outro tipo (schema "${String(base.schema).slice(0, 40)}"; esperado "${schema}")`;
+  const v = base.schemaVersion; if (v != null && !(Number.isInteger(+v) && +v >= 1)) return 'versão do formato inválida (' + String(v).slice(0, 20) + ')';
+  if (v != null && +v > versaoMax) return `a base foi gravada por uma versão mais nova da página (formato ${v}; esta página conhece até ${versaoMax}): atualize esta página antes de gravar`;
+  return '';
+}
+/* AT-11 · link seguro para origem/evidência: só endereço que abre documento, nunca script.
+   Aceita: http(s):, file:, caminho de rede (\\servidor\…), página da própria pasta (Nome.html, Nome.html#…, #…). Volta '' se recusar. */
+function vacLinkSeguro(u) {
+  const s = String(u ?? '').trim(); if (!s || /[\u0000-\u001f]/.test(s)) return '';
+  if (/^(https?|file):/i.test(s)) return s;
+  if (/^\\\\[^\\]/.test(s)) return s;
+  if (/^#/.test(s)) return s;
+  if (/^[\w\-. %À-ÿ]+\.html?(#.*)?$/i.test(s)) return s;   /* página irmã, sem esquema e sem barra */
+  return '';
+}
+/* C1 · trava da 2ª aba nas páginas que guardam a BASE INTEIRA pendente (Portal, Waste): se outra aba da mesma página tem alteração
+   ainda não gravada na pasta, esta aba não altera nada (as duas versões pendentes se sobrescreveriam). Nada é descartado: a pessoa
+   grava ou fecha a outra aba. A recusa interrompe quem chamou (erro "VacAbaBloqueada", sem mensagem de "gravado" depois) e não
+   aparece como erro no console. A página informa o próprio estado com vacFila(p).marcarPendente(bool). */
+function vacGuardaAba(pagina, minhaPendente) {
+  if (typeof vacFila !== 'function' || minhaPendente) return;
+  let F; try { F = vacFila(pagina); } catch (e) { return; } if (!F.outraComPendencia()) return;
+  const m = 'Outra aba desta página tem alteração ainda não gravada na pasta. Para não perder nenhuma das duas, grave (ou feche) aquela aba antes de alterar aqui. Nada foi descartado.';
+  try { if (typeof toast === 'function') toast(m, 9000, true); else alert(m); } catch (x) { }
+  const e = new Error(m); e.name = 'VacAbaBloqueada'; throw e;
+}
+addEventListener('unhandledrejection', e => { if (e.reason && e.reason.name === 'VacAbaBloqueada') e.preventDefault(); });
+addEventListener('error', e => { if (e.error && e.error.name === 'VacAbaBloqueada') e.preventDefault(); });

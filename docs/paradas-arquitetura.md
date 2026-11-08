@@ -172,3 +172,10 @@ Só o kit da E2 do plano único (`vacHoje`, `vacMetaAreaMes`); sem mudança de c
 ## Paradas 1.0.20 (08/11/2026) · revisão do Codex no PR #15
 
 A recorrência do relatório usa o mesmo recorte da tela (equipamento, turno, classe e data final), mantendo o histórico anterior para os meses seguidos.
+
+## Paradas 1.0.21 (08/11/2026) · C1
+
+- **Fila e base:** fila durável, base que some com "Recriar a base" e confirmação para criar a base. O `pick` passa a usar `usar()`.
+- **Formato:** conferido no `findBase`, então vale tanto para ler quanto para gravar.
+- **Regravação:** o id da operação entra na auditoria (aditivo), o que permite a regravação em 24 h.
+

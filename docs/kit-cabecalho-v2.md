@@ -170,3 +170,25 @@ Gestão de Gel 2.06 (08/11/2026):
 - **`vacAquiHref(hash)`:** endereço desta página com uma rota (link de reconsulta).
 - A ficha da ordem ganhou "+ Abrir ação" (origem `ficha`, vínculo da ordem) e o bloco "Ações ligadas", que lê `iniciativas-base.json`.
 
+## C1 (08/11/2026) · alterações pendentes, base que some, formato e links (`kit_bases.js`)
+
+Ficam no `<head>` de todas as páginas, antes do código delas: o Paradas chama a fila antes do kit v2.1 carregar.
+
+**`vacFila(pagina)`:** fila durável no IndexedDB `vac-fila`, um registro por alteração (`pagina|qid`), com a aba dona. A aba fica viva em `localStorage['vac.aba.<pagina>.<id>'] = {t, pend}`, renovado a cada 5 s e considerado morto após 20 s.
+
+| Função | O que faz |
+|---|---|
+| `espelhar(lista)` | grava as da lista e apaga as desta aba que saíram dela |
+| `minhas()` | as desta aba mais as órfãs de abas fechadas, adotadas com conferência depois de 400 ms; `null` se o IndexedDB falhar |
+| `importar(ops, renomear)` | fila antiga, uma vez |
+| `confirmar` / `confirmadas(idade)` / `esquecer` | operações confirmadas, para a regravação em 24 h |
+| `marcarPendente(bool)` / `outraComPendencia()` | trava da 2ª aba |
+| `erro` | texto do problema; a página avisa "alterações não protegidas" |
+
+Cada aba só grava e apaga as próprias alterações, porque reaplicar operações do cadastro e do Gel duas vezes não é seguro.
+
+**Outras funções:**
+- **`vacFormatoBase(base, schema, versaoMax)`:** `''` = pode gravar; senão, o motivo (schema de outra página, versão futura ou inválida). Base sem `schema` é aceita como versão 1.
+- **`vacLinkSeguro(url)`:** `http(s):`, `file:`, `\\servidor\…`, `Nome.html#…` e `#…`; qualquer outro vira `''`.
+- **`vacGuardaAba(pagina, minhaPendente)`:** lança `VacAbaBloqueada` (sem erro no console) e avisa, se outra aba viva da página tem pendência. Usado pelo Portal (`Store.commit`) e pelo Waste (`commit`).
+

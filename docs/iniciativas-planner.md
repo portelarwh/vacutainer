@@ -113,3 +113,14 @@ A ficha da ordem (kit) lê `acoes` e mostra "Ações ligadas".
 ## 1.0.1 (08/11/2026) · revisão do Codex no PR #15
 
 O `exports` é gerado de novo quando é de outro dia (ao gravar ou ao abrir a página com a pasta). Antes, sem alteração, ficava o resumo do dia em que foi gravado.
+
+## 1.0.2 (08/11/2026) · C1
+
+- **Fila durável:** as alterações pendentes ficam na fila durável do kit, sem perda entre abas; a fila antiga do `localStorage` é importada uma vez.
+- **Base que some:** se a base conhecida some, nada é gravado; a barra mostra "Recriar a base" e "Escolher outra pasta".
+- **Pasta sem a base:** só é criada depois de confirmar.
+- **Formato:** base de formato desconhecido fica só para leitura.
+- **Links:** links de origem e de evidência só com endereço seguro.
+- **Regravação:** as confirmadas e sobrescritas voltam em até 24 h.
+- Teste: `tpendencias.js`.
+

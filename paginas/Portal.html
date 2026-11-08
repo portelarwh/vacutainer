@@ -665,6 +665,95 @@ function vacAbaInicial(pagina) {
   } catch (e) { return null; }
 }
 /* ===== fim vac-bases v2 ===== */
+/* vac-bases · C1 (08/11/2026), no <head> de todas as páginas (antes do código delas): alterações pendentes guardadas sem perda entre abas (AT-01), formato da própria base conferido antes de
+   gravar (AT-03), links de origem só com endereço seguro (AT-11) e trava da 2ª aba para as páginas que guardam a base inteira.
+   vacFila(pagina): fila durável no IndexedDB "vac-fila", UM registro por alteração (chave pagina|qid), com a aba dona.
+   · cada aba só grava e apaga as próprias alterações (algumas operações não podem ser aplicadas duas vezes: cadastro, Gel);
+   · alteração de aba que fechou (sem sinal de vida há 20 s) é adotada na abertura seguinte, com conferência depois de uma pausa;
+   · espelhar(lista): grava as alterações da lista e apaga as desta aba que saíram dela (substitui o "gravar a fila inteira");
+   · minhas(): alterações desta aba + as adotadas, na ordem em que foram feitas;
+   · confirmar/confirmadas/esquecer: operações já confirmadas na pasta, guardadas 24 h (até 2000), para regravar se outra estação
+     gravar por cima depois da releitura (R-01). Não mais que 24 h: depois de uma restauração de backup (procedimento manual), as
+     alterações deste computador que não estão no backup voltariam a ser gravadas; a página avisa quando regrava;
+   · falha do IndexedDB: erro visível em F.erro (a página avisa "alteração não protegida"), nunca silêncio.
+   As abas vivas ficam em localStorage "vac.aba.<pagina>.<id>" = {t, pend}, renovado a cada 5 s e apagado ao fechar. */
+const vacFila = (() => {
+  let dbP = null; const filas = {}, VIVA = 20000;
+  const abre = () => dbP || (dbP = new Promise((ok, no) => { const r = indexedDB.open('vac-fila', 1); r.onupgradeneeded = () => { const d = r.result; if (!d.objectStoreNames.contains('ops')) d.createObjectStore('ops', { keyPath: 'k' }); if (!d.objectStoreNames.contains('conf')) d.createObjectStore('conf', { keyPath: 'k' }); }; r.onsuccess = () => ok(r.result); r.onerror = () => { dbP = null; no(r.error); }; }));
+  const tx = async (st, modo, fn) => { const d = await abre(); return new Promise((ok, no) => { const t = d.transaction(st, modo), s = t.objectStore(st); let v; Promise.resolve(fn(s)).then(x => v = x); t.oncomplete = () => ok(v); t.onerror = () => no(t.error); t.onabort = () => no(t.error || new Error('transação abortada')); }); };
+  const req = r => new Promise((ok, no) => { r.onsuccess = () => ok(r.result); r.onerror = () => no(r.error); });
+  const faixa = p => IDBKeyRange.bound(p + '|', p + '|\uffff');
+  const uidq = () => 'q' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+  const dorme = ms => new Promise(r => setTimeout(r, ms));
+  function abas(pagina) { const L = []; try { for (let i = 0; i < localStorage.length; i++) { const k = localStorage.key(i); if (!k || !k.startsWith('vac.aba.' + pagina + '.')) continue; let v = null; try { v = JSON.parse(localStorage.getItem(k)); } catch (e) { } if (v && Date.now() - (+v.t || 0) < VIVA) L.push({ id: k.slice(('vac.aba.' + pagina + '.').length), pend: !!v.pend }); } } catch (e) { } return L; }
+  function cria(pagina) {
+    const aba = 'a' + Math.random().toString(36).slice(2, 10) + Date.now().toString(36), chaveLS = 'vac.aba.' + pagina + '.' + aba;
+    const F = { pagina, aba, erro: '', meus: new Set(), seq: 0, pend: false, _p: Promise.resolve() };
+    const sinal = () => { try { localStorage.setItem(chaveLS, JSON.stringify({ t: Date.now(), pend: F.pend })); } catch (e) { } };
+    sinal(); setInterval(sinal, 5000); addEventListener('pagehide', () => { try { localStorage.removeItem(chaveLS); } catch (e) { } });
+    const serie = fn => (F._p = F._p.then(fn, fn));          /* uma operação de cada vez, na ordem pedida */
+    const falhou = e => { F.erro = 'alterações pendentes não estão protegidas neste navegador (' + ((e && (e.name || e.message)) || e) + ')'; console.warn('[vacFila]', pagina, e); return null; };
+    const q = op => op.qid || (op.qid = uidq());
+    const reg = op => ({ k: pagina + '|' + q(op), pagina, qid: op.qid, aba, seq: op._seq || (op._seq = Date.now() * 1000 + (F.seq++ % 1000)), op: JSON.parse(JSON.stringify(op)) });
+    F.vivas = () => abas(pagina).filter(x => x.id !== aba);
+    F.marcarPendente = v => { if (F.pend !== !!v) { F.pend = !!v; sinal(); } };
+    F.outraComPendencia = () => F.vivas().some(x => x.pend);
+    F.espelhar = lista => serie(async () => { try { const L = (lista || []).filter(Boolean); const ks = new Set(L.map(o => pagina + '|' + q(o)));
+      await tx('ops', 'readwrite', s => { for (const o of L) s.put(reg(o)); for (const k of F.meus) if (!ks.has(k)) s.delete(k); }); F.meus = ks; F.erro = ''; return true; } catch (e) { falhou(e); return false; } });
+    F.minhas = () => serie(async () => { try {
+      const todos = await tx('ops', 'readonly', s => req(s.getAll(faixa(pagina)))); const vivas = new Set(abas(pagina).map(x => x.id));
+      const orfas = todos.filter(r => r.aba !== aba && !vivas.has(r.aba));
+      if (orfas.length) { await tx('ops', 'readwrite', s => { for (const r of orfas) s.put({ ...r, aba }); }); await dorme(400); }
+      const agora = await tx('ops', 'readonly', s => req(s.getAll(faixa(pagina)))); const meus = agora.filter(r => r.aba === aba).sort((a, b) => a.seq - b.seq);
+      F.meus = new Set(meus.map(r => r.k)); F.erro = ''; return meus.map(r => Object.assign(r.op, { qid: r.qid, _seq: r.seq }));
+    } catch (e) { falhou(e); return null; } });
+    F.outras = () => serie(async () => { try { const todos = await tx('ops', 'readonly', s => req(s.getAll(faixa(pagina)))); return todos.filter(r => r.aba !== aba).length; } catch (e) { return 0; } });
+    F.confirmar = ops => serie(async () => { try { const c = Date.now(); await tx('conf', 'readwrite', s => { for (const o of ops || []) s.put({ k: pagina + '|' + q(o), pagina, qid: o.qid, _c: c, op: JSON.parse(JSON.stringify(o)) }); }); return true; } catch (e) { return false; } });
+    F.confirmadas = (idade = 864e5) => serie(async () => { try { const lim = Date.now() - idade; let L = await tx('conf', 'readonly', s => req(s.getAll(faixa(pagina))));
+      const velhas = L.filter(r => r._c < lim).concat(L.filter(r => r._c >= lim).sort((a, b) => b._c - a._c).slice(2000));
+      if (velhas.length) { await tx('conf', 'readwrite', s => { for (const r of velhas) s.delete(r.k); }); const v = new Set(velhas.map(r => r.k)); L = L.filter(r => !v.has(r.k)); }
+      return L.map(r => Object.assign(r.op, { qid: r.qid, _c: r._c })); } catch (e) { return []; } });
+    F.esquecer = qids => serie(async () => { try { await tx('conf', 'readwrite', s => { for (const id of qids || []) s.delete(pagina + '|' + id); }); } catch (e) { } });
+    /* importa uma fila antiga (localStorage ou outro lugar) uma única vez: as operações entram como desta aba; a fonte antiga fica
+       renomeada (não é apagada) para recuperação manual. ler/renomear são funções da página. */
+    F.importar = (ops, renomear) => serie(async () => { const L = (ops || []).filter(Boolean); if (!L.length) { renomear && renomear(); return true; }
+      try { await tx('ops', 'readwrite', s => { for (const o of L) s.put(reg(o)); }); for (const o of L) F.meus.add(pagina + '|' + o.qid); renomear && renomear(); return true; } catch (e) { falhou(e); return false; } });
+    return F;
+  }
+  return pagina => filas[pagina] || (filas[pagina] = cria(pagina));
+})();
+/* AT-03 · formato da própria base: schema da página (base antiga sem schema é aceita como versão 1) e schemaVersion até a conhecida.
+   Volta '' (pode ler e gravar) ou o motivo (só leitura: a página não grava por cima de formato que não conhece). */
+function vacFormatoBase(base, schema, versaoMax = 1) {
+  if (!base || typeof base !== 'object' || Array.isArray(base)) return 'o arquivo não é uma base desta página';
+  if (base.schema != null && base.schema !== schema) return `o arquivo é de outro tipo (schema "${String(base.schema).slice(0, 40)}"; esperado "${schema}")`;
+  const v = base.schemaVersion; if (v != null && !(Number.isInteger(+v) && +v >= 1)) return 'versão do formato inválida (' + String(v).slice(0, 20) + ')';
+  if (v != null && +v > versaoMax) return `a base foi gravada por uma versão mais nova da página (formato ${v}; esta página conhece até ${versaoMax}): atualize esta página antes de gravar`;
+  return '';
+}
+/* AT-11 · link seguro para origem/evidência: só endereço que abre documento, nunca script.
+   Aceita: http(s):, file:, caminho de rede (\\servidor\…), página da própria pasta (Nome.html, Nome.html#…, #…). Volta '' se recusar. */
+function vacLinkSeguro(u) {
+  const s = String(u ?? '').trim(); if (!s || /[\u0000-\u001f]/.test(s)) return '';
+  if (/^(https?|file):/i.test(s)) return s;
+  if (/^\\\\[^\\]/.test(s)) return s;
+  if (/^#/.test(s)) return s;
+  if (/^[\w\-. %À-ÿ]+\.html?(#.*)?$/i.test(s)) return s;   /* página irmã, sem esquema e sem barra */
+  return '';
+}
+/* C1 · trava da 2ª aba nas páginas que guardam a BASE INTEIRA pendente (Portal, Waste): se outra aba da mesma página tem alteração
+   ainda não gravada na pasta, esta aba não altera nada (as duas versões pendentes se sobrescreveriam). Nada é descartado: a pessoa
+   grava ou fecha a outra aba. A recusa interrompe quem chamou (erro "VacAbaBloqueada", sem mensagem de "gravado" depois) e não
+   aparece como erro no console. A página informa o próprio estado com vacFila(p).marcarPendente(bool). */
+function vacGuardaAba(pagina, minhaPendente) {
+  if (typeof vacFila !== 'function' || minhaPendente) return;
+  let F; try { F = vacFila(pagina); } catch (e) { return; } if (!F.outraComPendencia()) return;
+  const m = 'Outra aba desta página tem alteração ainda não gravada na pasta. Para não perder nenhuma das duas, grave (ou feche) aquela aba antes de alterar aqui. Nada foi descartado.';
+  try { if (typeof toast === 'function') toast(m, 9000, true); else alert(m); } catch (x) { }
+  const e = new Error(m); e.name = 'VacAbaBloqueada'; throw e;
+}
+addEventListener('unhandledrejection', e => { if (e.reason && e.reason.name === 'VacAbaBloqueada') e.preventDefault(); });
+addEventListener('error', e => { if (e.error && e.error.name === 'VacAbaBloqueada') e.preventDefault(); });
 </script>
 </head>
 <body>
@@ -878,7 +967,7 @@ const Store={B:null,mode:'local',dir:null,mod:0,pending:false,pendFrom:0,err:'',
   try{const d=await window.showDirectoryPicker({mode:'readwrite',id:PAGE.id});if(await this.connect(d,{ask:true})){await this.idb.set('dir',d);return true}}catch(e){if(e.name!=='AbortError')alert('Não consegui abrir a pasta: '+e.message+'\nDica: escolha a pasta pela unidade mapeada (ex.: Z:).')}return false},
  async reconnect(){const h=await this.idb.get('dir');return this.connect(h,{ask:true})},
  /* gravações em fila: uma de cada vez, nunca duas ao mesmo tempo (alteração feita durante a gravação espera a anterior terminar) */
- commit(label,mut,det=''){const run=()=>this._commit(label,mut,det);this._q=(this._q||Promise.resolve()).then(run,run);return this._q},
+ commit(label,mut,det=''){if(this.mode!=='teste'){try{vacGuardaAba('portal',!!this.pending)}catch(e){return Promise.reject(e)}}const run=()=>this._commit(label,mut,det);this._q=(this._q||Promise.resolve()).then(run,run).then(v=>{try{vacFila('portal').marcarPendente(this.mode!=='teste'&&!!this.pending)}catch(e){}return v});return this._q},
  async _commit(label,mut,det=''){
   if(this.mode==='teste'){mut(this.B);this.B.rev=(this.B.rev||0)+1;return App.afterChange()}
   /* 1.8.6 · sem conseguir ler a base da pasta antes, não grava (gravaria por cima do que outra pessoa gravou): a alteração fica pendente
@@ -1105,7 +1194,7 @@ function wireConfigComum(){$('#cPasta').onclick=async()=>{if(await Store.pick())
         entrar pelo ID (autocadastro como Consulta); página inicial por perfil (1x por sessão); vigência gravada não se edita (desativar com motivo); painel de vigências; semáforo central; saída do modo de teste.
    1.1.2: aviso da carga diz qual base foi lida.  1.5: páginas Paradas, Máquinas, Manutenção e Projetos na lista (aparecem quando o HTML chega na pasta).  1.4: lista técnica pela CS12 multinível (itens = nível 1, estrutura = níveis 2+); CS03 sai.  1.3: cabeçalho comum (vac-cabecalho v2: barra do sistema + página + abas), busca Ctrl K, acabamento V1.90, Versões com cabeçalho e último backup.  1.2: Configuração › Versões das páginas (versão e data de cada HTML, gravação das bases, cópias repetidas, histórico).
    ===================================================================== */
-const PAGE={id:'portal',titulo:'Portal · Linha Vacutainer',tituloCurto:'Portal',subtitulo:'Sistemas de gestão da linha',versao:'1.9.0',baseFile:'portal-base.json',idb:'vac-portal',backupDir:'00. Backups/Portal',
+const PAGE={id:'portal',titulo:'Portal · Linha Vacutainer',tituloCurto:'Portal',subtitulo:'Sistemas de gestão da linha',versao:'1.9.1',baseFile:'portal-base.json',idb:'vac-portal',backupDir:'00. Backups/Portal',
  vazio:()=>({schema:'portal-base',rev:0,config:{modulos:{},avisoDias:30,notas:{}},audit:[]}),
  /* itens do Portal para a busca Ctrl K: cadastro, pendências e telas */
  busca:q=>{const R=[],D=Cad.D;if(D)for(const t of CAD_ORD){for(const it of D[t]||[]){const c=String(it[kOf(t)]),nm=t==='bom'?((cadItem('catalogos',it.catalogo)||{}).nome||''):it.nome||'';if(norm(c+' '+nm).includes(q))R.push({tipo:CAD_T[t].um,txt:c+(nm?' · '+nm:''),sub:'Cadastros'+(cadAtivo(t,it,D)?'':' · inativo'),href:'#cadastros/'+t+'/'+encodeURIComponent(c)});if(R.length>30)break}}
@@ -1787,13 +1876,18 @@ const EqFiles={
 /* ---------- o cadastro: leitura, fila e gravação ---------- */
 const Cad={base:null,D:null,mod:0,fonte:'nenhum',err:'',fila:[],gravando:false,denovo:false,conflitos:null,status:'salvo',_lk:false,
  ui:{sec:'inicio',q:'',sit:'ativos',imp:null,aud:{t:'',q:''}},
- async init(){try{const c=await Store.idb.get('cad');if(c&&!cadValida(c).length){this.base=cadFix(c);this.fonte='copia'}const f=await Store.idb.get('cadFila');if(Array.isArray(f))this.fila=f}catch(e){}
+ async init(){try{const c=await Store.idb.get('cad');if(c&&!cadValida(c).length){this.base=cadFix(c);this.fonte='copia'}const f=await Store.idb.get('cadFila');this.fq=vacFila('portal-cad');
+   /* C1 · a fila antiga (um valor só, que a 2ª aba sobrescrevia) entra uma vez na fila durável; a original fica em cadFila.antiga */
+   if(Array.isArray(f)){f.forEach(o=>{o.qid=o.qid||o.id});await this.fq.importar(f,()=>{if(f.length)Store.idb.set('cadFila.antiga',f);Store.idb.set('cadFila',null)})}
+   const m=await this.fq.minhas();this.fila=m||(Array.isArray(f)?f:[])}catch(e){console.warn('cadFila',e)}
   if(this.fila.length)this.status='pendente';this.recompute()},
  recompute(){let d=this.base?clone(this.base):null;
   for(const o of this.fila){o._erro=null;if(o.acao==='carga'){if(!d)d=cadFix(clone(o.doc));else o._erro='já existe um cadastro';continue}if(!d){o._erro='o cadastro não existe';continue}const r=aplicarOp(d,o,null);if(!r.ok)o._erro=r.motivo}
   this.D=d;this._probD=null},
  salvarCopia(){const b=this.base;if(!b)return;Store.idb.set('cad',b);try{const{auditoria,seguranca,...rest}=b;localStorage.setItem('vac.cadastros',JSON.stringify({...rest,copiaEm:isoLocal()}))}catch(e){console.warn('vac.cadastros',e)}},
- persistFila(){return Store.idb.set('cadFila',this.fila.map(o=>{const{_erro,...x}=o;return x}))},
+ /* C1 · cada alteração do cadastro é um registro na fila durável do kit; esta aba só grava e apaga as dela (as de outra aba ficam) */
+ persistFila(){if(Store.mode==='teste')return Promise.resolve();if(!this.fq)return Store.idb.set('cadFila',this.fila.map(o=>{const{_erro,...x}=o;return x}));
+  return this.fq.espelhar(this.fila.map(o=>{const{_erro,...x}=o;return x})).then(ok=>{if(!ok)return Store.idb.set('cadFila.reserva',this.fila.map(o=>{const{_erro,...x}=o;return x}))})},
  render(){if(App.tab==='cad'&&!emEdicao())App.render();else renderTop()},
  /* lê o arquivo da pasta; devolve true se mudou */
  async ler(){if(Store.mode==='teste'||this.gravando)return false;if(Store.mode!=='pasta'||!Store.dir){if(this.base&&this.fonte==='pasta')this.fonte='copia';return false}
@@ -1810,7 +1904,7 @@ const Cad={base:null,D:null,mod:0,fonte:'nenhum',err:'',fila:[],gravando:false,d
   else if(D.seguranca&&D.seguranca.trocar)m='Troque a senha inicial em Cadastros › Segurança antes de editar.';
   if(m&&!silent)toast(m,5000,true);return!m},
  op(o){return this.ops([o])},
- ops(list){const em=isoLocal(),por=user();for(const o of list){o.id=uid('op');o.em=em;o.por=por;this.fila.push(o)}this.persistFila();this.recompute();if(this.status==='salvo')this.status='pendente';this.render();return this.gravar()},
+ ops(list){const em=isoLocal(),por=user();for(const o of list){o.id=uid('op');o.qid=o.id;o.em=em;o.por=por;this.fila.push(o)}this.persistFila();this.recompute();if(this.status==='salvo')this.status='pendente';this.render();return this.gravar()},
  async gravar(){
   if(this.gravando){this.denovo=true;return}
   if(!this.fila.length){this.status='salvo';return}
@@ -3246,7 +3340,9 @@ function enterTest(){MOD.teste=true;Store.mode='teste';document.body.classList.a
 function exitTest(){if(Store.mode!=='teste'&&!MOD.teste)return;document.body.classList.remove('teste');history.replaceState(null,'',location.pathname+location.search);location.reload()}
 /* ---------- início ---------- */
 const emEdicao=()=>{const a=document.activeElement;return!!(a&&/^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName)&&a.closest('#main'))};
-(async function(){wireTop();await Store.init();await Cad.init();if(Store.mode!=='teste'&&irPaginaInicial())return;
+(async function(){wireTop();await Store.init();await Cad.init();
+ /* C1 · estado de alteração pendente desta aba, para a trava da 2ª aba (vacGuardaAba) */
+ setInterval(()=>{try{vacFila('portal').marcarPendente(Store.mode!=='teste'&&!!Store.pending)}catch(e){}},2000);if(Store.mode!=='teste'&&irPaginaInicial())return;
  if(Store.B.config.sistemas&&!localStorage.getItem('vac.sistemas'))localStorage.setItem('vac.sistemas',JSON.stringify(Store.B.config.sistemas));
  try{const L0=JSON.parse(localStorage.getItem('vac.sistemas')||'null');if(Array.isArray(L0))localStorage.setItem('vac.sistemas',JSON.stringify(migrarSistemas(L0)))}catch(e){}
  /* 1.8.12 · situação escolhida em Configuração › Módulos vale em todos os computadores: o portal-base manda */
