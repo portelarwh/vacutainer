@@ -6,14 +6,14 @@ Plataforma de páginas HTML de arquivo único que trabalham juntas numa **pasta 
 
 | Página | Arquivo | Base | Versão | Como editar |
 |---|---|---|---|---|
-| Portal (cadastro geral, Administração) | `Portal.html` | `portal-base.json` + `vacutainer-cadastros.json` | 1.9.1 | direto no HTML |
-| Produção (OEE, plano, ordens SAP) | `OEE-Vacutainer.html` | `oee-vacutainer-base.json` (+ `ordens-base.json`) | 2.4.16 | **NÃO editar o HTML**: editar `fontes/producao/` e rodar o build |
-| Waste (perdas por ordem, KKBC) | `Perdas-Ordem.html` | `perdas-base.json` | 1.8.22 | direto no HTML |
-| Gestão de Gel | `Gestão-Gel-Vacutainer.html` | `fifo-base.json` | 2.10 · **em atualização** | direto no HTML |
-| Paradas | `Paradas.html` | `paradas-base.json` | 1.0.21 · **em atualização** | direto no HTML |
-| Equipamentos (com manutenção) | `Equipamentos.html` | `equipamentos-base.json` | 1.0.2 · **em atualização** | direto no HTML (saiu do gerador na 1.0.0; `docs/equipamentos-v1.md`) |
-| Iniciativas (Ações/Planner · KAS · OSM · 5S) | `Iniciativas.html` | `iniciativas-base.json` | 1.0.2 · **em atualização** | direto no HTML (saiu do gerador na 1.0.0; `docs/iniciativas-planner.md`) |
-| Projetos | `Projetos.html` | (`projetos-base.json`, ainda não existe) | 0.1.5 · **em construção** | **gerada**: `fontes/modelo/gerar_paginas.py` |
+| Portal (cadastro geral, Administração) | `Portal.html` | `portal-base.json` + `vacutainer-cadastros.json` | 1.9.2 | direto no HTML |
+| Produção (OEE, plano, ordens SAP) | `OEE-Vacutainer.html` | `oee-vacutainer-base.json` (+ `ordens-base.json`) | 2.4.17 | **NÃO editar o HTML**: editar `fontes/producao/` e rodar o build |
+| Waste (perdas por ordem, KKBC) | `Perdas-Ordem.html` | `perdas-base.json` | 1.8.23 | direto no HTML |
+| Gestão de Gel | `Gestão-Gel-Vacutainer.html` | `fifo-base.json` | 2.11 · **em atualização** | direto no HTML |
+| Paradas | `Paradas.html` | `paradas-base.json` | 1.0.22 · **em atualização** | direto no HTML |
+| Equipamentos (com manutenção) | `Equipamentos.html` | `equipamentos-base.json` | 1.0.3 · **em atualização** | direto no HTML (saiu do gerador na 1.0.0; `docs/equipamentos-v1.md`) |
+| Iniciativas (Ações/Planner · KAS · OSM · 5S) | `Iniciativas.html` | `iniciativas-base.json` | 1.0.3 · **em atualização** | direto no HTML (saiu do gerador na 1.0.0; `docs/iniciativas-planner.md`) |
+| Projetos | `Projetos.html` | (`projetos-base.json`, ainda não existe) | 0.1.6 · **em construção** | **gerada**: `fontes/modelo/gerar_paginas.py` |
 
 Divisão final (Portal 1.7): Portal · Produção · Waste · Gestão de Gel · Paradas · **Equipamentos** (inclui manutenção; não há página Manutenção) · **Iniciativas** (uma página: Ações/Planner · KAS · OSM · 5S; não há OSM.html) · **Projetos** · Outros ▾ · ⚙ Administração.
 Situação de cada página (em construção / em atualização / estável): `PAGE.estado` + `sistemas.js`, trocável no Portal › Configuração › Módulos; ver `docs/paginas-construcao.md`. Páginas em construção são **geradas** (não editar o HTML; editar `fontes/modelo/` e rodar o gerador). Quando uma delas começar de verdade (v1.0), tirar da lista do gerador e passar a editar direto. Arquitetura: `docs/plano-evolucao-plataforma.md`, `docs/osm-arquitetura.md` (aba OSM de Iniciativas). `docs/paginas-novas.md` é histórico (lista antiga Máquinas/Manutenção).
@@ -42,6 +42,8 @@ node testes/tplanner.js               # E6/E8: Iniciativas › Ações (base em 
 node testes/tfila.js                  # E10: Portal › Minha fila (Minhas, Minha equipe pela área do cadastro, Sem responsável) e Reunião diária (dia/turno, granularidade, pauta, decisão, fotografia, encaminhar); código 1 se falhar
 node testes/tequip.js                 # E11: Equipamentos (ficha, OS do evento do Paradas sem cópia, TAG com vigência, anomalia → OS, Paradas mostra a OS); código 1 se falhar
 node testes/tpendencias.js            # C1: alterações pendentes sem perda entre abas (fila durável; trava da 2ª aba no Portal/Waste), base que some não vira vazia, formato desconhecido não grava, link de origem seguro, regravação em 24 h; código 1 se falhar
+node testes/tcorrecoes.js             # C2–C6: resumo do dia ao voltar à aba, link da anomalia, troca de usuário, ordem com zeros, sem dado de paradas ≠ 0, ação do grupo com todas as ordens, links da Reunião e do Pareto, saúde dos dados no Portal › Versões, ficha por pasta; código 1 se falhar
+node testes/tudo.js                   # a suíte inteira, uma por vez: passou / falhou / NÃO VERIFICADO (falta biblioteca ou pacote; não conta como aprovado); tz roda de novo uma vez; código 1 se alguma falhar
 node testes/tcontratos.js             # E4: exports por ordem (Produção 24 meses e dias do lote, Paradas, Gel), versão conferida pelos leitores, Waste com ordem em várias competências e dias do lote; código 1 se falhar
 ```
 
@@ -101,13 +103,9 @@ Lista única do que ficou para depois. O motivo e o gatilho de cada item estão 
 - OSM (E7, falta a amostra da planilha), importação por pasta (E9, falta decidir a estação coletora), MES (E12, faltam amostras e regras), conteúdo AM/TPM e 5S (E13, faltam os padrões), Projetos (E15, falta o escopo) e XLSX local (E3b, falta o arquivo): registro § U.
 - Gel lendo catálogos e equipamentos do Portal; produção OEE → Gel (registro § 1).
 - `eventoId` comum OEE × Paradas, que evita contagem dupla, quando o OEE publicar `paradasEventos` (ver `docs/paradas-arquitetura.md`; registro F07/A10).
-- Correções C2–C6 da contra-análise de `8cad6a6`:
-  - C2: AT-04, AT-05, AT-10, AT-12;
-  - C3: AT-06, AT-07, link da Reunião;
-  - C4: teste do Excel e `tvisual` com as páginas novas;
-  - C5: saúde dos dados no Portal;
-  - C6: AT-08, AT-09, id estável da pessoa.
-  - Homologação da C1 na pasta real (etapa H): duas abas, base renomeada, duas estações (registro § V).
+- Homologação da C1 na pasta real (etapa H): duas abas, base renomeada, duas estações (registro § V).
+- R-02, identificador estável da pessoa (responsável guardado pelo nome): falta decidir o que fazer com nomes digitados à mão (registro § V).
+- Última falha do backup diário em Portal › Versões: as páginas não registram a falha na pasta (registro § V, C5).
 - Waste ainda cai na base da Produção (`monthPlans`, `server.lotClass/lotNotes`) para ordens fora dos 24 meses do `exports.porOrdem` e lotes fora dos 150 dias do `exports.lotes` (registro § U, E4).
 
 **Layout (auditoria visual; registro § L)**
@@ -118,12 +116,11 @@ Lista única do que ficou para depois. O motivo e o gatilho de cada item estão 
 
 **Homologação e testes**
 - Conferência com a pasta real: primeira abertura (aviso do CadSync na Produção), duas estações gravando ao mesmo tempo (os testes de gravação usam pasta simulada), uso sem internet, Chrome/Edge, acentos nos caminhos (registro A09), densidade observada com operador e liderança (registro § L).
-- `paginas/lib/xlsx.full.min.js` (SheetJS 0.20.3) ainda não está no repositório: o ambiente de desenvolvimento não alcança cdn.sheetjs.com e o npm só tem até 0.18.5. Subir o arquivo que está na pasta da linha. jsPDF e AutoTable já estão em `paginas/lib/`.
+- `paginas/lib/xlsx.full.min.js` (SheetJS 0.20.3) ainda não está no repositório (o `trelatorios.js` marca o Excel como NÃO VERIFICADO): o ambiente de desenvolvimento não alcança cdn.sheetjs.com e o npm só tem até 0.18.5. Subir o arquivo que está na pasta da linha. jsPDF e AutoTable já estão em `paginas/lib/`.
 - Volta para versão anterior a `00. Bases`: procedimento manual no guia (item 9), validado no `tbases.js` › B06; não automatizado de propósito (registro § R).
 - `package.json`/CI (registro § 1).
 - `testes/tz.js` falha às vezes e passa ao rodar de novo (instabilidade do teste).
 - `testes/tintegra.js` › "ação que vence amanhã" falha quando roda entre 21h e 0h de Brasília (já em outro dia em UTC); problema de fuso do teste, não da página (visto em 07/11/2026).
-- `testes/tvisual.js`: Produção a 768 px com rolagem horizontal (já falhava antes de 07/11/2026).
 - `testes/t181.js` expira no fim (passo da matriz; problema do teste).
 - Cópia para o Outlook com imagens: conferir no Outlook da empresa (desktop e web) se os gráficos chegam (registro § P).
 

@@ -240,3 +240,16 @@ Só o kit (`vacNumero`, `vacExportsOk`). Os campos novos do `exports` (`porOrdem
 - **Fila do cadastro:** um registro por alteração na fila durável do kit; a fila antiga `cadFila` é importada uma vez.
 - **Trava da 2ª aba:** se outra aba do Portal tem alteração não gravada na pasta, esta não altera. Nada é descartado.
 
+## Portal 1.9.2 (08/11/2026) · C2, C3 e C5
+
+- **Troca de usuário (AT-10):** Entrar e Sair redesenham a página. Usuário trocado em outra aba também.
+- **Reunião diária:**
+  - fora da cobertura do Paradas, mostra "—" e "sem dado de paradas para esse dia", na tela e no relatório (AT-06);
+  - a ação de um grupo é ligada a cada ordem do grupo (AT-07);
+  - o link de reconsulta é `#reuniao=AAAA-MM-DD|turno`.
+- **Versões › saúde dos dados (C5):**
+  - coluna "Pendentes neste navegador", também no Excel;
+  - resumo de outro dia em destaque;
+  - período de eventos do Paradas, com "(cortada)";
+  - avisos de resumo antigo, lista cortada e alterações que ainda não chegaram à pasta.
+

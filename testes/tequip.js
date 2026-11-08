@@ -23,7 +23,7 @@ const espera = p => p.waitForFunction(() => !Store.saving && !Store.queue.length
     const p = await abre('Equipamentos.html', '#teste'); await p.waitForTimeout(300);
     const t = await p.evaluate(() => document.getElementById('main').innerText.replace(/\s+/g, ' '));
     ok(/EQ03 · Tampadora/.test(t) && /histórico · Paradas/.test(t) && /OS-T-0091/.test(t) && /L1\.TMP\.CNT_OUT/.test(t) && /Sem conteúdo/.test(t), 'ficha: cadastro, falhas (histórico do Paradas), OS, TAGs e AM/TPM sem conteúdo inventado');
-    ok(await p.evaluate(() => document.getElementById('appVer').textContent === 'v1.0.2'), 'versão 1.0.2 (saiu do gerador na 1.0.0)');
+    ok(await p.evaluate(() => document.getElementById('appVer').textContent === 'v1.0.3'), 'versão 1.0.3 (saiu do gerador na 1.0.0)');
     await p.screenshot({ path: path.join(SAI, 'ficha-claro.png'), fullPage: true }); await p.close();
   }
   // 2. pasta: OS a partir do evento do Paradas (#novaOS=), TAG com vigência, anomalia → OS, exports

@@ -47,17 +47,30 @@ Status usados: **corrigido** · **corrigido em parte** · **recusado** · **adia
 | AT-03 formato próprio desconhecido recebia gravação | **corrigido** (C1): `vacFormatoBase` (Iniciativas, Equipamentos, Paradas). Portal, Waste, Gel e Produção têm validação própria do conteúdo; o `schema` delas não foi tratado nesta entrega |
 | AT-11 link de origem executava `javascript:` | **corrigido** (C1): `vacLinkSeguro` ao receber e ao mostrar (Iniciativas, Equipamentos) |
 | R-01 regravação das confirmadas sobrescritas | **corrigido em parte** (C1): 24 h na fila durável, também no Paradas. Não 7 dias: depois de uma restauração de backup, as alterações deste computador fora do backup voltariam |
-| AT-04 aba aberta na virada do dia | **adiado** → C2 |
-| AT-05 link da anomalia | **adiado** → C2 |
-| AT-10 troca de usuário na Minha fila | **adiado** → C2 |
-| AT-12 ordem com zeros no Planner | **adiado** → C2 |
-| AT-06 sem dado ≠ zero | **adiado** → C3 |
-| AT-07 várias ordens no grupo | **adiado** → C3 |
-| AT-09 reconsulta com filtros | **adiado** → C3 (link da Reunião) e C6 (Pareto completo); reclassificado como melhoria |
-| AT-08 cache da ficha por pasta | **adiado** → C6 (gravidade baixa) |
-| Teste do Excel que sempre passava; `tvisual` com as páginas novas como em construção | **adiado** → C4 (as duas lacunas são do Claude) |
+| AT-04 aba aberta na virada do dia | **corrigido** (C2): `vacAoVoltar` de Iniciativas e Equipamentos refaz o resumo de outro dia |
+| AT-05 link da anomalia | **corrigido** (C2): código codificado no link; `#aba=equip&eq=` seleciona a máquina também ao abrir |
+| AT-10 troca de usuário na Minha fila | **corrigido** (C2): Entrar/Sair e a troca em outra aba redesenham o Portal |
+| AT-12 ordem com zeros no Planner | **corrigido** (C2): `#ordem=` filtra pelo vínculo de ordem, com a regra da ficha |
+| AT-06 sem dado ≠ zero | **corrigido** (C3): Paradas publica `eventosCobertura`; fora dela o Portal mostra "—" e "sem dado de paradas" |
+| AT-07 várias ordens no grupo | **corrigido** (C3): a ação do grupo é ligada a cada ordem distinta |
+| AT-09 reconsulta com filtros | **corrigido** (C3: `#reuniao=dia\|turno`; C6: `#pareto=de\|ate\|eq\|turno\|cls\|grupo\|dim\|k`, com aviso quando o período saiu da base) |
+| AT-08 cache da ficha por pasta | **corrigido** (C6): troca de pasta limpa a memória e o índice; a cópia do IndexedDB só vale para a pasta dela |
+| Teste do Excel que sempre passava; `tvisual` com as páginas novas como em construção | **corrigido** (C4): Excel "NÃO VERIFICADO" sem a biblioteca; `tvisual` entra em Iniciativas e Equipamentos pelo `#teste`; `testes/tudo.js` roda a suíte inteira |
 
 Teste novo: **`testes/tpendencias.js`**, com 37 falhas na `main` anterior e sem erros com a C1.
+
+**C2–C6 (08/11/2026, aprovadas com "Siga com o restante"):** Portal 1.9.2, Produção 2.4.17, Waste 1.8.23, Gel 2.11, Paradas 1.0.22, Iniciativas 1.0.3, Equipamentos 1.0.3, Projetos 0.1.6.
+- Teste novo **`testes/tcorrecoes.js`**: as 13 checagens das C2, C3, C5 e C6 falham na `main` `1c45308` e passam com a correção.
+- Relatório: `docs/auditorias/c1-2026-11-08/03-RELATORIO-C2-C6.md`.
+- **C5, saúde dos dados** (EV-01 e R-04 em parte): Portal › Versões mostra:
+  - as alterações deste navegador que ainda não chegaram à pasta (`vacFila.contar`);
+  - o resumo de outro dia;
+  - a cobertura do Paradas e a lista cortada.
+
+  O backup antigo já era avisado. A **última falha do backup** não é mostrada, porque as páginas não registram a falha na pasta: fica pendente, junto com a decisão do backup diário do Portal (§ C).
+- **Fora desta entrega:**
+  - **R-02**, identificador estável da pessoa: depende de decidir o que fazer com nomes digitados à mão;
+  - **H**, homologação na pasta real.
 
 **Revisão do Codex no PR #18 (commit `0b8eee9`)**, os três apontamentos procedem e foram corrigidos (Iniciativas, Equipamentos e Paradas):
 - **P1, reserva ignorada quando o IndexedDB volta:** a reserva em `localStorage` só era lida quando a fila durável falhava; com o IndexedDB de volta, a próxima gravação da fila apagava a reserva. Agora a reserva entra na fila ativa (sem repetir, pela `qid`) e só sai depois que a fila durável aceitar tudo.

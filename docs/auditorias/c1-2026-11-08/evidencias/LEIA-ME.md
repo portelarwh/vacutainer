@@ -7,6 +7,9 @@ Todos os dados são fictícios. A pasta é simulada no navegador (OPFS) e servid
 | `tpendencias-main-6347559.txt` | Saída de `testes/tpendencias.js` sobre a `main` antes da C1: **37 falhas** |
 | `tpendencias-c1.txt` | A mesma suíte com a C1: **sem erros** (43 checagens) |
 | `repro-contra-analise.js` | Script da contra-análise, independente dos scripts do Codex, que reproduz os AT-01 a AT-12 em `8cad6a6`. Uso: `node repro-contra-analise.js <cópia de 8cad6a6>` (git worktree) |
+| `tcorrecoes-main-1c45308.txt` | `testes/tcorrecoes.js` (C2 a C6) sobre a `main` antes destas entregas: **13 falhas** |
+| `tcorrecoes-c2-c6.txt` | O mesmo teste com as C2 a C6: **sem erros** |
+| `tudo-c2-c6.txt` | `node testes/tudo.js`: a suíte inteira com as C2 a C6 |
 | `repro-contra-analise.json` | Resultado do script sobre `8cad6a6`: os 12 achados reproduzidos ou confirmados no código |
 
 **Como repetir o "antes":**
