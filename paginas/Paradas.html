@@ -718,16 +718,16 @@ const Store={dir:null,dirName:'',perm:false,data:completar(vazio()),queue:[],fil
  baseFound:false,legacy:false,lastSaved:null,
  async init(){this.fila=vacFila('paradas');const c=LS.get('paradas.cache',null);if(c)this.data=completar(c);
   /* C1 · fila durável do kit (um registro por alteração no IndexedDB); se o IndexedDB falhar, a reserva em localStorage */
-  await this.migrarFila();const m=await this.fila.minhas();this.queue=m||LS.get('paradas.fila.reserva',[])||[];this.queue.forEach(op=>applyOp(this.data,op));
+  const leg=await this.migrarFila();const m=await this.fila.minhas();/* C1 · revisão do PR #18: a reserva (IndexedDB falhou antes) e a fila antiga que não migrou entram junto, sem repetir; a reserva só sai depois que a fila durável aceitar tudo (cache) */{const vis=new Set();this.queue=[].concat(leg||[],LS.get('paradas.fila.reserva',[])||[],m||[]).filter(o=>{if(!o)return false;const k=o.qid||o.id;if(!k)return true;if(vis.has(k))return false;vis.add(k);return true})}this._leg=!!(leg&&leg.length);this.queue.forEach(op=>applyOp(this.data,op));
   try{const h=await IDB.get('pasta');if(h){this.dir=vacRaiz(h);this.dirName=h.name;const p=await h.queryPermission({mode:'readwrite'});this.perm=p==='granted'}}catch(e){}
   if(this.perm){await this.reload();if(this.queue.length&&!this.sumiu)this.save()}},
  /* C1 · a fila antiga (localStorage, até a 1.0.20) entra uma vez na fila durável; a original fica em paradas.fila.antiga para conferência */
- async migrarFila(){const v=LS.get('paradas.fila',null);if(Array.isArray(v))await this.fila.importar(v,()=>{if(v.length)LS.set('paradas.fila.antiga',v);LS.del('paradas.fila')})},
+ async migrarFila(){const v=LS.get('paradas.fila',null);if(!Array.isArray(v))return[];v.forEach(o=>{o.qid=o.qid||o.id});return await this.fila.importar(v,()=>{if(v.length)LS.set('paradas.fila.antiga',v);LS.del('paradas.fila')})?[]:v},
  /* AT-02 · a última base lida nesta estação (por pasta): se ela some, nada é gravado até a pessoa decidir */
  conhecer(b){LS.set('paradas.base.conhecida',{rev:b.rev||0,revId:b.revId||'',pasta:this.dirName,em:new Date().toISOString()})},
  async recriar(){if(!this.sumiu)return;if(!confirm(`Recriar ${PAGE.baseFile} em 00. Bases com a cópia deste navegador?\n\nA cópia tem a rev ${this.data.rev||0} (${this.data.eventos.length} evento(s), ${this.data.acoes.length} ação(ões), histórico incluído) e as alterações pendentes. O que outras estações gravaram depois da última leitura deste computador não está nela.`))return;
   this.dataRecriar=clone(this.data);this.dataRecriar.exports=null;this._recriar=true;this.lastErr='';await this.save();App.render()},
- async usar(h){const antes={dir:this.dir,dirName:this.dirName,perm:this.perm};this.dir=vacRaiz(h);this.dirName=h.name;this.perm=true;this._bases=false;this.sumiu=false;await this.reload();
+ async usar(h){const antes={dir:this.dir,dirName:this.dirName,perm:this.perm};this.dir=vacRaiz(h);this.dirName=h.name;this.perm=true;this._bases=false;this.sumiu=false;this.lastErr='';await this.reload();
   /* AT-02 · pasta sem a base: só cria com a confirmação (como o Portal); se é a pasta onde a base existia, não oferece criar por cima */
   if(!this.lastErr&&!this.baseFound&&!this.sumiu){if(!confirm(`A pasta "${h.name}" não tem 00. Bases/${PAGE.baseFile}.\n\nCriar a base nesta pasta? Só as alterações ainda pendentes deste navegador vão para a base nova.`)){Object.assign(this,antes);toast('Pasta não conectada: nada foi criado.');App.render();return false}}
   await IDB.set('pasta',h);if(!this.lastErr&&!this.sumiu)await this.save();App.render();return true},
@@ -752,7 +752,7 @@ const Store={dir:null,dirName:'',perm:false,data:completar(vazio()),queue:[],fil
   else{this.baseFound=false;const k=LS.get('paradas.base.conhecida',null);this.sumiu=!!(k&&k.pasta===this.dirName);if(this.sumiu)this.lastErr=`${PAGE.baseFile} não está mais em 00. Bases (a última lida neste computador era a rev ${k.rev}). Nada será gravado: recrie a base com a cópia deste navegador ou escolha a pasta certa.`}
    await Ext.load();}catch(e){this.lastErr=e.message;console.warn(e);toast(e.message,1)}},
  cache(){if(this.test)return;const c=clone(this.data);c.exports=null;LS.set('paradas.cache',c);
-  if(this.fila)this.fila.espelhar(this.queue).then(ok=>{if(ok)LS.del('paradas.fila.reserva');else{LS.set('paradas.fila.reserva',this.queue);renderTop()}})},
+  if(this.fila)this.fila.espelhar(this.queue).then(ok=>{if(ok){LS.del('paradas.fila.reserva');if(this._leg){this._leg=false;const v=LS.get('paradas.fila',null);if(Array.isArray(v)){if(v.length)LS.set('paradas.fila.antiga',v);LS.del('paradas.fila')}}}else{LS.set('paradas.fila.reserva',this.queue);renderTop()}})},
  /* R-01 · operações confirmadas nas últimas 24 h (fila durável) ausentes da auditoria da base: outra estação gravou por cima depois
     da nossa releitura. Voltam para a fila (as operações do Paradas são idempotentes). Só as gravadas a partir da 1.0.21 (com id). */
  async perdidas(base){if(!base||!this.fila)return 0;const C=await this.fila.confirmadas(864e5);if(!C.length)return 0;const ids=new Set((base.auditoria||[]).map(a=>a.id).filter(Boolean));

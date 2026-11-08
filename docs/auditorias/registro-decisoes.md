@@ -59,6 +59,12 @@ Status usados: **corrigido** · **corrigido em parte** · **recusado** · **adia
 
 Teste novo: **`testes/tpendencias.js`**, com 37 falhas na `main` anterior e sem erros com a C1.
 
+**Revisão do Codex no PR #18 (commit `0b8eee9`)**, os três apontamentos procedem e foram corrigidos (Iniciativas, Equipamentos e Paradas):
+- **P1, reserva ignorada quando o IndexedDB volta:** a reserva em `localStorage` só era lida quando a fila durável falhava; com o IndexedDB de volta, a próxima gravação da fila apagava a reserva. Agora a reserva entra na fila ativa (sem repetir, pela `qid`) e só sai depois que a fila durável aceitar tudo.
+- **P2, fila antiga que não migrou:** se o IndexedDB falhava na importação, a fila antiga saía da fila ativa. Agora ela continua na memória e no `localStorage` até migrar.
+- **P2, erro antigo pulava a pergunta de criar a base (Paradas):** `usar()` limpa o erro antes de ler a pasta nova.
+- `tpendencias.js` ganhou 7 checagens; as 7 falham em `0b8eee9` e passam com a correção.
+
 
 **Origem.**
 - Análise do Claude em `c3ae4b0` (`docs/auditorias/diagnostico-2026-11-08/`).

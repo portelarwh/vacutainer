@@ -1250,13 +1250,13 @@ function applyOp(D,op){const ev=x=>{if(!D.eventos.some(e=>e.id===op.id))D.evento
 const Store={dir:null,dirName:'',perm:false,data:completar(vazio()),queue:[],fila:null,sumiu:false,saving:false,again:false,lastErr:'',readErr:'',test:false,baseFound:false,lastSaved:null,
  async init(){this.fila=vacFila('equip');const c=LS.get('equip.cache',null);if(c)this.data=completar(c);
   /* C1 · fila durável do kit (um registro por alteração no IndexedDB); se o IndexedDB falhar, a reserva em localStorage */
-  await this.migrarFila();const m=await this.fila.minhas();this.queue=m||LS.get('equip.fila.reserva',[])||[];this.queue.forEach(op=>applyOp(this.data,op));
+  const leg=await this.migrarFila();const m=await this.fila.minhas();/* C1 · revisão do PR #18: a reserva (IndexedDB falhou antes) e a fila antiga que não migrou entram junto, sem repetir; a reserva só sai depois que a fila durável aceitar tudo (cache) */{const vis=new Set();this.queue=[].concat(leg||[],LS.get('equip.fila.reserva',[])||[],m||[]).filter(o=>{if(!o)return false;const k=o.qid||o.id;if(!k)return true;if(vis.has(k))return false;vis.add(k);return true})}this._leg=!!(leg&&leg.length);this.queue.forEach(op=>applyOp(this.data,op));
   try{const h=await IDB.get('pasta');if(h){this.dir=vacRaiz(h);this.dirName=h.name;this.perm=(await h.queryPermission({mode:'readwrite'}))==='granted'}}catch(e){}
   if(this.perm){await this.reload();if(!this.sumiu&&(this.queue.length||(this.baseFound&&!this.readErr&&diaLocal((this.data.exports||{}).geradoEm)!==hoje())))this.save()}},
  /* C1 · a fila antiga (localStorage, até a 1.0.1) entra uma vez na fila durável; a original fica em equip.fila.antiga para conferência */
  async migrarFila(){const v=LS.get('equip.fila',null),cf=LS.get('equip.conf',null);
-  if(Array.isArray(v)){v.forEach(o=>{o.qid=o.qid||o.id});await this.fila.importar(v,()=>{if(v.length)LS.set('equip.fila.antiga',v);LS.del('equip.fila')})}
-  if(Array.isArray(cf)){if(cf.length)await this.fila.confirmar(cf.map(o=>{const{_c,...x}=o;x.qid=x.qid||x.id;return x}));LS.del('equip.conf')}},
+  let leg=[];if(Array.isArray(v)){v.forEach(o=>{o.qid=o.qid||o.id});if(!await this.fila.importar(v,()=>{if(v.length)LS.set('equip.fila.antiga',v);LS.del('equip.fila')}))leg=v}
+  if(Array.isArray(cf)){if(cf.length&&!await this.fila.confirmar(cf.map(o=>{const{_c,...x}=o;x.qid=x.qid||x.id;return x})))return leg;LS.del('equip.conf')}return leg},
  /* AT-02 · a última base lida nesta estação (por pasta): se ela some, nada é gravado até a pessoa decidir */
  conhecer(b){LS.set('equip.base.conhecida',{rev:b.rev||0,revId:b.revId||'',pasta:this.dirName,em:new Date().toISOString()})},
  async recriar(){if(!this.sumiu)return;const n=Object.values(this.data).filter(Array.isArray).reduce((s,L)=>s+L.length,0);
@@ -1284,7 +1284,7 @@ const Store={dir:null,dirName:'',perm:false,data:completar(vazio()),queue:[],fil
    this.sumiu=false;this.data=completar(r);this.baseFound=true;this.queue.forEach(op=>applyOp(this.data,op));this.conhecer(r);this.cache()}
   else{this.baseFound=false;this.sumiu=!!(k&&k.pasta===this.dirName);if(this.sumiu)this.readErr=`${PAGE.baseFile} não está mais em 00. Bases (a última lida neste computador era a rev ${k.rev}, de ${brh(k.em)}). Nada será gravado: recrie a base com a cópia deste navegador ou escolha a pasta certa.`}},
  cache(){if(this.test)return;const c=clone(this.data);c.exports=null;LS.set('equip.cache',c);
-  if(this.fila)this.fila.espelhar(this.queue).then(ok=>{if(ok)LS.del('equip.fila.reserva');else{LS.set('equip.fila.reserva',this.queue);topo()}})},
+  if(this.fila)this.fila.espelhar(this.queue).then(ok=>{if(ok){LS.del('equip.fila.reserva');if(this._leg){this._leg=false;const v=LS.get('equip.fila',null);if(Array.isArray(v)){if(v.length)LS.set('equip.fila.antiga',v);LS.del('equip.fila')}}}else{LS.set('equip.fila.reserva',this.queue);topo()}})},
  /* R-01 · operações confirmadas nas últimas 24 h (fila durável do kit) que não estão na auditoria da base: outra estação gravou por
     cima depois da nossa releitura. Voltam para a fila (as operações são idempotentes) e a página avisa. */
  async perdidas(base){if(!base||!this.fila)return 0;const C=await this.fila.confirmadas(864e5);if(!C.length)return 0;const ids=new Set((base.auditoria||[]).map(a=>a.id));

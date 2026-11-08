@@ -69,3 +69,18 @@ A recomendação está em `01-CONTRA-ANALISE-8cad6a6.md`, a contra-análise da r
 ## 6. Regras de uso que podem ser relaxadas depois da homologação
 
 As três regras do piloto (uma aba por página; não usar Iniciativas, Equipamentos e Paradas sem a pasta; conferir a cópia diária) foram escritas para o código antes da C1. Depois da etapa H, as duas primeiras podem cair: a fila durável cobre várias abas e o uso sem pasta. No Portal e no Waste, a 2ª aba é travada enquanto houver pendência.
+
+## 7. Revisão do Codex no PR #18 (08/11/2026)
+
+Três apontamentos sobre `0b8eee9`, todos conferidos no código e reproduzidos antes de corrigir:
+
+| Apontamento | Correção |
+|---|---|
+| P1: reserva em `localStorage` (gravada com o IndexedDB fora) era ignorada e depois apagada quando o IndexedDB voltava | `init` junta fila antiga, reserva e fila durável, sem repetir pela `qid`; a reserva só sai depois que a fila durável aceitou tudo |
+| P2: fila antiga que não migrou (IndexedDB fora) saía da fila ativa | `migrarFila` devolve as que não migraram; ficam na fila ativa e no `localStorage` até a fila durável aceitar |
+| P2: no Paradas, um erro antigo pulava a pergunta de criar a base | `usar()` limpa o erro antes de ler a pasta nova |
+
+Um limite continua: a reserva é uma só por página no `localStorage`. Se duas abas estiverem abertas e uma delas gravou a reserva, a outra também pode levar essas operações. Nessas três páginas as operações são idempotentes, então a mesma alteração não fica duplicada na base.
+
+`tpendencias.js`: 7 checagens novas, que falham em `0b8eee9` e passam com a correção.
+

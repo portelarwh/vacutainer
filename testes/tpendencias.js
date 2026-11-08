@@ -78,6 +78,30 @@ const BASE = (k, rev, n) => { const b = { schema: PG[k].schema, schemaVersion: 1
     ok(t.pill && t.res === 1, `AT-01 IndexedDB com falha: aviso "alterações não protegidas" e reserva em localStorage (${t.res})`); await c2.close();
   }
 
+  // ---------- revisão do PR #18 (Codex): reserva e fila antiga não se perdem quando o IndexedDB volta; erro antigo não pula a pergunta
+  for (const k of ['inic', 'equip', 'paradas']) {
+    const ctx = await b.newContext(); await ctx.addInitScript(() => { const o = indexedDB.open.bind(indexedDB); indexedDB.open = (n, v) => { if (n === 'vac-fila' && localStorage.getItem('teste.semidb') === '1') throw new Error('IndexedDB indisponível (simulado)'); return o(n, v); }; });
+    const A = await nova(ctx, PG[k].arq); await ev(A, () => localStorage.setItem('teste.semidb', '1')); await A.close();
+    const B = await nova(ctx, PG[k].arq); await ev(B, o => Store.commit(o), PG[k].op('RES-1')); await dorme(400);
+    const res = await ev(B, p => JSON.parse(localStorage.getItem(p + '.fila.reserva') || '[]').length, PG[k].ls); await B.close();
+    // fila antiga com o IndexedDB ainda fora: não pode sumir da fila ativa
+    const C0 = await nova(ctx, PG[k].arq); await ev(C0, ([p, op]) => localStorage.setItem(p + '.fila', JSON.stringify([op])), [PG[k].ls, Object.assign(PG[k].op('VELHA-X'), { id: 'opvx', qid: 'opvx' })]); await C0.close();
+    const C = await nova(ctx, PG[k].arq); const rC = await ids(C, k); const velha = await ev(C, p => !!localStorage.getItem(p + '.fila'), PG[k].ls); await ev(C, () => localStorage.setItem('teste.semidb', '0')); await C.close();
+    ok(res === 1 && rC === 'RES-1,VELHA-X' && velha, `PR #18 ${PG[k].arq}: IndexedDB fora → reserva (${res}) e fila antiga continuam na fila ativa (${rC}); a fila antiga fica no localStorage até migrar`);
+    // IndexedDB volta: as duas entram na fila durável, a reserva só sai depois disso, e nada se repete ao reabrir
+    const D = await nova(ctx, PG[k].arq); const rD = await ids(D, k); await ev(D, o => Store.commit(o), PG[k].op('DEPOIS')); await dorme(500);
+    const ls = await ev(D, p => ({ res: localStorage.getItem(p + '.fila.reserva'), fila: localStorage.getItem(p + '.fila') }), PG[k].ls); await D.close();
+    const E = await nova(ctx, PG[k].arq); const rE = await ids(E, k);
+    ok(rD === 'RES-1,VELHA-X' && rE === 'DEPOIS,RES-1,VELHA-X' && ls.res === null && ls.fila === null, `PR #18 ${PG[k].arq}: IndexedDB de volta → reserva e fila antiga recuperadas (${rD}); reabrir tem tudo uma vez (${rE}); reserva e fila antiga saem do localStorage`);
+    await ctx.close();
+  }
+  {
+    const ctx = await b.newContext(); const p = await nova(ctx, PG.paradas.arq, '', 'dismiss'); await ev(p, PASTA.limpa);
+    await ev(p, () => { Store.lastErr = 'erro de uma leitura anterior (simulado)'; }); await ev(p, PASTA.conecta);
+    const r = await ev(p, async () => ({ con: !!Store.dir })); const nada = await ev(p, PASTA.le, PG.paradas.base);
+    ok(!r.con && nada === null, `PR #18 Paradas: erro antigo não pula a pergunta de criar a base ("não" → sem pasta conectada, nada criado)`); await ctx.close();
+  }
+
   // ---------- AT-01 · fila do cadastro do Portal e fila do Gel: duas abas, nenhuma alteração perdida
   {
     const ctx = await b.newContext(); const A = await nova(ctx, 'Portal.html'), B = await nova(ctx, 'Portal.html');
