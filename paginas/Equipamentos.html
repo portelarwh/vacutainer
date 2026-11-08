@@ -1320,7 +1320,8 @@ const diaLocal=iso=>{const d=new Date(iso||'');return isNaN(d)?'':`${d.getFullYe
 function bkNome(t){const d=new Date(),p=n=>String(n).padStart(2,'0');return`equipamentos-base_${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())}${t==='diario'?'':'_'+p(d.getHours())+'h'+p(d.getMinutes())+'m'+p(d.getSeconds())+'s_'+t}.json`}
 const Ext={par:null,parErr:'',parEm:null};
 function vacPastaAtual(){return Store.perm&&!Store.test?Store.dir:null}
-function vacAoVoltar(){if(Store.test||!Store.perm)return;Store.reload().then(()=>render())}
+/* AT-04 · aba aberta na virada do dia: ao voltar, relê e, se o resumo (exports) é de outro dia, grava de novo (mesma regra do init) */
+function vacAoVoltar(){if(Store.test||!Store.perm)return;Store.reload().then(()=>{const S=Store;if(!S.sumiu&&!S.saving&&S.baseFound&&!S.readErr&&(S.queue.length||diaLocal((S.data.exports||{}).geradoEm)!==hoje()))S.save();render()})}
 
 /* ---------- exports (Paradas mostra a OS no evento; Portal: cartão, pendências, Minha fila) ---------- */
 function calcExports(D){const h=hoje(),ab=D.os.filter(osAberta),fim=addDias(h,-365);
@@ -1328,7 +1329,7 @@ function calcExports(D){const h=hoje(),ab=D.os.filter(osAberta),fim=addDias(h,-3
  const pend=[];for(const o of ab){if(o.programadaPara&&o.programadaPara<h)pend.push({sev:1,tipo:'osAtrasada',id:o.id,txt:`OS ${o.id} programada para ${br(o.programadaPara)} ainda ${osNome(o.status).toLowerCase()}: ${o.titulo}`,responsavel:o.responsavel||'',prazo:o.programadaPara,link:'os='+o.id});
   else if(o.programadaPara)pend.push({sev:1,tipo:'osAtrasada',id:o.id,aPartirDe:addDias(o.programadaPara,1),txt:`OS ${o.id} programada para ${br(o.programadaPara)} ainda não concluída: ${o.titulo}`,responsavel:o.responsavel||'',prazo:o.programadaPara,link:'os='+o.id});
   if(!(o.programadaPara&&o.programadaPara<h)&&!o.responsavel)pend.push({sev:2,tipo:'osSemResponsavel',id:o.id,txt:`OS ${o.id} sem responsável: ${o.titulo}`,responsavel:'',prazo:o.programadaPara||null,link:'os='+o.id})}
- for(const a of D.anomalias.filter(a=>!a.os))pend.push({sev:2,tipo:'anomaliaSemOS',id:a.id,txt:`Anomalia em ${a.equipamento} sem OS: ${a.descricao}`,responsavel:'',link:'aba=equip&eq='+a.equipamento});
+ for(const a of D.anomalias.filter(a=>!a.os))pend.push({sev:2,tipo:'anomaliaSemOS',id:a.id,txt:`Anomalia em ${a.equipamento} sem OS: ${a.descricao}`,responsavel:'',link:'aba=equip&eq='+encodeURIComponent(a.equipamento)});
  return{exportsVersion:1,geradoEm:new Date().toISOString(),modulo:'equip',appVersion:APP_VERSION,
   os:D.os.filter(o=>osAberta(o)||String(o.atualizadaEm||o.criadaEm||'').slice(0,10)>=fim).map(o=>({id:o.id,equipamento:o.equipamento,titulo:o.titulo,tipo:o.tipo,status:o.status,prioridade:o.prioridade||null,responsavel:o.responsavel||'',programadaPara:o.programadaPara||null,criadaEm:o.criadaEm,concluidaEm:o.concluidaEm||null,sapNota:o.sapNota||null,origem:o.origem?{tipo:o.origem.tipo,ref:o.origem.ref||null}:null})),
   porEvento,
@@ -1471,9 +1472,10 @@ function enterTest(){Store.test=true;Store.queue=[];const h=hoje(),D=completar(v
  if(!$('.testbar'))document.body.insertAdjacentHTML('afterbegin','<div class="testbar">Modo de teste · dados fictícios · nada é gravado · <a href="#" id="tbSair">sair</a></div>');$('#tbSair').onclick=e=>{e.preventDefault();location.hash='';location.reload()};render()}
 
 /* ---------- rotas: #aba=, #eq=, #os=, #novaOS=<json> (do Paradas) ---------- */
-function rota(){let h=location.hash.slice(1);if(!h)return;let k,v;const i=h.indexOf('=');if(i<0){k=h;v=''}else{k=h.slice(0,i);v=h.slice(i+1)}try{v=decodeURIComponent(v)}catch(e){}
+function rota(){let h=location.hash.slice(1);if(!h)return;let k,v,vr='';const i=h.indexOf('=');if(i<0){k=h;v=''}else{k=h.slice(0,i);v=vr=h.slice(i+1)}try{v=decodeURIComponent(v)}catch(e){}
+ const dec=x=>{try{return decodeURIComponent(x)}catch(e){return x}};
  if(k==='teste')return enterTest();
- if(k==='aba'){const[a,q]=v.split('&eq=');if(ABAS.some(x=>x[0]===a)){App.tab=a;if(q)App.eq=q;return render()}}
+ if(k==='aba'){const j=vr.indexOf('&eq='),a=dec(j<0?vr:vr.slice(0,j)),q=j<0?'':dec(vr.slice(j+4));if(ABAS.some(x=>x[0]===a)){App.tab=a;if(q)App.eq=q;return render()}}
  if((k==='eq'||k==='equipamento')&&v){App.tab='equip';App.eq=v;history.replaceState(history.state,'','#aba=equip');return render()}
  if(k==='os'&&v){App.tab='os';App.osSel=v;App.f.st='';return render()}
  if(k==='novaOS'){let p={};try{p=v?JSON.parse(v):{}}catch(e){toast('Link de OS inválido',1)}if(!p||typeof p!=='object')p={};if(p.origem&&p.origem.link&&!vacLinkSeguro(p.origem.link)){delete p.origem.link;toast('O link de origem recebido não é um endereço seguro e foi descartado.',1)}history.replaceState(history.state,'','#aba=os');App.tab='os';render();formOS(null,p)}}
@@ -1486,7 +1488,7 @@ function vacAoTrocarUsuario(){render()}
 (async()=>{applyTheme();Logo.apply();wireCabecalho();renderSysNav();$('#btnTheme').onclick=cycleTheme;$('#appVer').textContent='v'+PAGE.versao;
  window.addEventListener('storage',e=>{if(e.key==='vac.theme')applyTheme();if(e.key==='vac.cadastros')render()});
  const h0=location.hash;if(/^#aba=/.test(h0)){const t=h0.slice(5).split('&')[0];if(ABAS.some(a=>a[0]===t))App.tab=t}else if(!h0&&typeof vacAbaInicial==='function'){const ai=vacAbaInicial('equip');const m=ai&&/^aba=(\w+)$/.exec(ai);if(m&&ABAS.some(a=>a[0]===m[1]))App.tab=m[1]}
- render();if(h0==='#teste')return enterTest();await Store.init();render();if(h0&&!/^#aba=/.test(h0))rota()})();
+ render();if(h0==='#teste')return enterTest();await Store.init();render();if(h0&&(!/^#aba=/.test(h0)||/&eq=/.test(h0)))rota()})();
 </script>
 </body>
 </html>

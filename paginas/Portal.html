@@ -3217,7 +3217,7 @@ const Entrar={
   <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap"><button class="b p" id="enOk">Entrar</button>${user()?'<button class="b" id="enSair">Sair (esquecer neste navegador)</button>':''}</div>
   ${D?'':'<p class="small warn" style="margin-top:8px">O cadastro de usuários ainda não está disponível (sem a pasta ou sem cadastro): o nome fica só neste navegador.</p>'}<div id="enMsg"></div></div>`,{wide:false});
   const i=$('#enId');i.focus();i.select();i.onkeydown=e=>{if(e.key==='Enter')this.id(i.value)};$('#enOk').onclick=()=>this.id(i.value);
-  const sa=$('#enSair');if(sa)sa.onclick=()=>{localStorage.removeItem('vac.user');localStorage.removeItem('vac.userId');localStorage.removeItem('vac.perfil');Modal.close(true);renderTop();if(App.tab==='geral')App.render();toast('Usuário removido deste navegador.')}},
+  const sa=$('#enSair');if(sa)sa.onclick=()=>{localStorage.removeItem('vac.user');localStorage.removeItem('vac.userId');localStorage.removeItem('vac.perfil');Modal.close(true);renderTop();App.render();toast('Usuário removido deste navegador.')}},
  id(v){v=String(v||'').trim();if(!v)return toast('Digite o ID.',3000,true);if(/[\/#]/.test(v)||v.length>30)return toast('ID inválido.',3000,true);const D=Cad.D,u=D?cadItem('usuarios',v,D):null;
   if(u&&u.ativo===false)return $('#enMsg').innerHTML='<div class="note e">Este ID está inativo no cadastro. Fale com o administrador.</div>';
   if(u)return this.entrar(u,false);this.novo(v)},
@@ -3241,7 +3241,9 @@ const Entrar={
   <tr><th>Página inicial</th><td>${esc(pg)}</td></tr><tr><th>Pode ver</th><td>${p?lista('ver'):'todas'}</td></tr><tr><th>Pode lançar</th><td>${lista('lancar')}</td></tr></table>
   ${primeiro&&Store.mode!=='pasta'&&Store.mode!=='teste'?'<p class="small warn">Sem a pasta conectada: o cadastro fica na fila e é gravado quando a pasta responder.</p>':''}
   <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap">${alvo?`<a class="b p" href="${esc(alvo)}">Ir para ${esc(pg)}</a>`:''}<button class="b${alvo?'':' p'}" id="enFica">Ficar no Portal</button></div>`;
-  $('#enFica').onclick=()=>Modal.close(true);if(App.tab==='geral'||App.tab==='cad')App.render()}};
+  $('#enFica').onclick=()=>Modal.close(true);/* AT-10 · a Minha fila, o contador e as telas por pessoa mudam com o usuário */App.render()}};
+/* AT-10 · usuário trocado em outra aba: redesenha esta (Minha fila e contador), sem F5 */
+window.addEventListener('storage',e=>{if(e.key!=='vac.user'&&e.key!=='vac.userId')return;try{renderTop();App.render()}catch(x){console.warn(x)}});
 /* página inicial: uma vez por sessão do navegador, só quando o Portal abre sem endereço (#…) */
 function irPaginaInicial(){try{if(location.hash||sessionStorage.getItem('vac.inicial'))return false;sessionStorage.setItem('vac.inicial','1')}catch(e){return false}
  const u=usuarioAtual();if(!u||u.ativo===false)return false;const a=alvoInicial(u);if(!a)return false;location.href=a;return true}
