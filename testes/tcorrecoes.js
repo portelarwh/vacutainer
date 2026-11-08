@@ -109,7 +109,7 @@ const CAD = { equipamentos: ['EQ01', 'EQ02', 'EQ03', 'EQ 04/B'].map(c => ({ codi
     const ctx = await b.newContext(); const pi = await nova(ctx, 'Paradas.html');
     await ev(pi, () => vacFila('paradas').espelhar([{ qid: 'qa1', k: 'list', c: 'acoes', items: [{ id: 'P1' }] }, { qid: 'qa2', k: 'list', c: 'acoes', items: [{ id: 'P2' }] }])); await pi.close();
     const p = await nova(ctx, 'Portal.html');
-    const r = await ev(p, async () => { const fila = await vacFila.contar(); const iso = new Date().toISOString();
+    const r = await ev(p, async () => { const fila = typeof vacFila.contar === "function" ? await vacFila.contar() : null; const iso = new Date().toISOString();
       const linha = { id: 'paradas', nome: 'Paradas', html: { arq: 'Paradas.html', v: '1.0.22', mod: Date.now(), cab: '2', como: 'PAGE.versao' }, base: { loc: '00. Bases', arq: '00. Bases/paradas-base.json', rev: 9, app: '1.0.22', em: iso, exp: true, expEm: '2020-01-01T10:00:00.000Z', expV: 1, cob: { de: '2019-12-20', ate: '2019-12-31', cortado: true } }, bkp: { arq: 'x.json', mod: Date.now(), n: 3 }, bkpPasta: '00. Backups/Paradas' };
       linha.htmls = [linha.html]; linha.bases = [linha.base];
       Vers.dados = { em: Date.now(), L: [linha], libs: [], fila }; const m0 = Store.mode; Store.mode = 'pasta'; const h = cardVersoes(); Store.mode = m0;
@@ -117,6 +117,31 @@ const CAD = { equipamentos: ['EQ01', 'EQ02', 'EQ03', 'EQ 04/B'].map(c => ({ codi
     ok(r.fila && r.fila.paradas === 2 && /resumo \(exports\) de 01\/01\/2020/.test(r.A) && /lista cortada/.test(r.A) && /2 alteração\(ões\) de Paradas ainda não gravada/.test(r.A) && r.cel && r.col,
       `C5 Portal › Versões: pendentes deste navegador ${JSON.stringify(r.fila)}; avisos: ${r.A.slice(0, 230)}`);
     await ctx.close();
+  }
+
+  // ---------- C6 · AT-08 ficha: trocar de pasta na mesma aba não mostra dados da pasta anterior · AT-09 link do Pareto reproduz a tela
+  {
+    const ctx = await b.newContext(); const p = await nova(ctx, 'Iniciativas.html');
+    const r = await ev(p, async () => { const R = await navigator.storage.getDirectory(); for await (const [n] of R.entries()) await R.removeEntry(n, { recursive: true });
+      const f = vacFicha.FONTES[0]; const mk = async (nome, txt) => { const d = await R.getDirectoryHandle(nome, { create: true }), bd = await d.getDirectoryHandle('00. Bases', { create: true }); const w = await (await bd.getFileHandle(f.base, { create: true })).createWritable(); await w.write(txt); await w.close(); return d; };
+      const A = await mk('PastaA', JSON.stringify({ rev: 1, exports: { exportsVersion: 1, geradoEm: new Date().toISOString() } })), B = await mk('PastaB', '{ quebrado');
+      window.vacPastaAtual = () => A; await vacFicha.carregar(true); const ea = (vacFicha._S.dados[f.id] || {}).estado;
+      window.vacPastaAtual = () => B; await vacFicha.carregar(); const eb = (vacFicha._S.dados[f.id] || {}).estado; return { f: f.id, ea, eb }; });
+    // aba nova (sem memória) na pasta B: a cópia do IndexedDB é da pasta A e não vale
+    const q = await nova(ctx, 'Iniciativas.html');
+    const r2 = await ev(q, async () => { const R = await navigator.storage.getDirectory(), B = await R.getDirectoryHandle('PastaB'); const f = vacFicha.FONTES[0]; window.vacPastaAtual = () => B; await vacFicha.carregar(); return (vacFicha._S.dados[f.id] || {}).estado; });
+    ok(r.ea === 'pasta' && r.eb === 'erro' && r2 === 'erro', `AT-08 ficha (${r.f}): pasta A lida (${r.ea}); troca para a pasta B com erro de leitura → ${r.eb} (sem os dados da A); aba nova na B → ${r2} (cópia do IndexedDB é da A)`);
+    await ctx.close();
+    const c2 = await b.newContext(); const pp = await nova(c2, 'Paradas.html', '#teste');
+    const lk = await ev(pp, async () => { const all = eventosTodos(); const eq = all[0].equipamento; F.eq = eq; F.turno = ''; VIEWS.pareto.dim = 'codigo'; App.go('pareto'); const G = VIEWS.pareto.G; const k = G[1] ? G[1].k : G[0].k;
+      const L = G.find(g => g.k === k).ev; const a = acaoPlanner('pareto', 'codigo', k, k, L); return { link: a.origem.link, k, eq, de: F.de, ate: F.ate }; });
+    await ev(pp, () => { F.eq = ''; F.de = null; VIEWS.pareto.dim = 'equip'; App.sel.par = null; App.go('geral'); });
+    await ev(pp, h => { location.hash = '#' + h.split('#')[1]; }, lk.link); await pp.waitForTimeout(400);
+    const st = await ev(pp, () => ({ tab: App.tab || (document.querySelector('#nav .on') || {}).dataset?.t, eq: F.eq, de: F.de, ate: F.ate, dim: VIEWS.pareto.dim, sel: App.sel.par, achou: (VIEWS.pareto.G || []).some(g => g.k === App.sel.par) }));
+    ok(/Paradas\.html#pareto=/.test(lk.link) && st.eq === lk.eq && st.de === lk.de && st.ate === lk.ate && st.dim === 'codigo' && st.sel === lk.k && st.achou, `AT-09 Paradas: link do Pareto (${lk.link.slice(0, 80)}…) reabre com equipamento ${st.eq}, ${st.de}–${st.ate}, dimensão ${st.dim} e a barra ${st.sel}`);
+    const av = await ev(pp, async () => { const msgs = []; const t0 = window.toast; window.toast = (m, ...x) => { msgs.push(m); return t0(m, ...x); }; location.hash = '#pareto=' + encodeURIComponent('2001-01-01|2001-01-31||||||codigo|XYZ'); await new Promise(r => setTimeout(r, 300)); return msgs.join(' | '); });
+    ok(/não está mais nesta base/.test(av), `AT-09 Paradas: link de período que saiu da base avisa (${av.slice(0, 90)})`);
+    await c2.close();
   }
 
   ok(!pe.length, 'sem erro de página' + (pe.length ? ': ' + [...new Set(pe)].slice(0, 4).join(' | ') : ''));

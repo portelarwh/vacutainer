@@ -9934,6 +9934,10 @@ const vacFicha = (() => {
     if (S.carregando) return S.carregando;
     S.carregando = (async () => {
       const dir = pasta();
+      /* AT-08 · trocou de pasta na mesma aba: o que a ficha tem em memória e o índice da busca são da pasta anterior; relê tudo.
+         A cópia do IndexedDB guarda o nome da pasta e só serve para a mesma pasta. */
+      if (dir) { let mesma = false; try { mesma = !!S.pasta && await dir.isSameEntry(S.pasta); } catch (e) { } if (S.pasta && !mesma) { S.dados = {}; S.idx = null; } S.pasta = dir; }
+      const nomeP = dir ? String(dir.name || '') : '';
       for (const f of FONTES) {
         const atual = S.dados[f.id];
         try {
@@ -9943,10 +9947,10 @@ const vacFicha = (() => {
           if (!forcar && atual && atual.estado === 'pasta' && atual.mod === arq.lastModified && atual.tam === arq.size) continue;
           const j = JSON.parse(await arq.text()), ex = j && j.exports, v = typeof vacExportsOk === 'function' ? vacExportsOk(ex) : { ok: !!ex };
           if (!v.ok) { S.dados[f.id] = { estado: ex ? 'versao' : 'semexports', motivo: v.motivo || 'a base ainda não publica o resumo (exports)' }; continue; }
-          const x = { estado: 'pasta', mod: arq.lastModified, tam: arq.size, lidoEm: new Date().toISOString(), geradoEm: ex.geradoEm || null, d: f.pega(ex) };
+          const x = { estado: 'pasta', mod: arq.lastModified, tam: arq.size, lidoEm: new Date().toISOString(), geradoEm: ex.geradoEm || null, pasta: nomeP, d: f.pega(ex) };
           S.dados[f.id] = x; try { await idbSet(f.id, x); } catch (e) { }
         } catch (e) {
-          let c = atual && atual.d ? atual : null; if (!c) { try { c = await idbGet(f.id); } catch (x) { } }
+          let c = atual && atual.d ? atual : null; if (!c) { try { c = await idbGet(f.id); } catch (x) { } } if (c && nomeP && c.pasta && c.pasta !== nomeP) c = null;   // cópia de outra pasta não vale para esta
           const motivo = e && e.semPasta ? 'pasta da rede não conectada nesta página' : `não consegui ler ${f.base} (${(e && (e.name || e.message)) || e})`;
           S.dados[f.id] = c && c.d ? { ...c, estado: 'cache', motivo } : { estado: e && e.semPasta ? 'sempasta' : 'erro', motivo };
         }
