@@ -6,6 +6,9 @@ const SP = require('path').resolve(__dirname, '..') + '/'; const PG = 'file://' 
 const fs = require('fs'); const { execSync } = require('child_process'); const { chromium } = require('playwright');
 fs.mkdirSync(OUT, { recursive: true });
 const errs = []; const ok = (c, m) => { console.log((c ? 'ok   ' : 'FALHA ') + m); if (!c) errs.push(m); };
+// C4 · o que não dá para conferir aqui não conta como aprovado: sai como "NÃO VERIFICADO" e aparece no fim (o código de saída não muda)
+const naoVerif = []; const nv = m => { console.log('NÃO VERIFICADO ' + m); naoVerif.push(m); };
+const XLSX_LIB = SP + 'paginas/lib/xlsx.full.min.js';
 const info = f => { const s = execSync(`pdfinfo "${f}"`).toString(); const sz = (s.match(/Page size:\s+([\d.]+) x ([\d.]+)/) || []).slice(1).map(Number); return { pags: +(s.match(/Pages:\s+(\d+)/) || [])[1], orient: sz[0] > sz[1] ? 'paisagem' : 'retrato' }; };
 const txt = f => execSync(`pdftotext -layout "${f}" -`).toString();
 const LONGO = Array.from({ length: 70 }, (_, i) => `Linha ${i + 1} do comentário de análise.`).join('\n') + '\nFIM-DO-COMENTARIO';
@@ -75,7 +78,8 @@ const CAD = (perfil, inicial) => JSON.stringify({ schema: 'vac-cadastros', schem
       ok(r.txt && r.img, `Paradas ${tema}: texto para WhatsApp/Teams e Outlook com o gráfico como imagem`);
       const f = await baixa(p, () => Report.pdf(relParadas()), `Paradas-${tema}-real.pdf`); const t = txt(f).replace(/\s+/g, ' '), I = info(f);
       ok(I.orient === 'paisagem' && /PARETO POR CÓDIGO/.test(t) && /EQUIPAMENTOS/.test(t) && /RECORRÊNCIA/.test(t), `Paradas ${tema}: PDF em paisagem com as três partes (${I.pags} pág.)`);
-      const fx = await baixa(p, () => Report.xlsx(relParadas()), `Paradas-${tema}.xlsx`).catch(e => null); ok(!!fx || true, `Paradas ${tema}: Excel (precisa de lib/xlsx; sem ele, aviso)`);
+      const fx = fs.existsSync(XLSX_LIB) ? await baixa(p, () => Report.xlsx(relParadas()), `Paradas-${tema}.xlsx`).catch(e => null) : null; if (!fs.existsSync(XLSX_LIB)) nv(`Paradas ${tema}: Excel (falta paginas/lib/xlsx.full.min.js, etapa E3b)`);
+      else { let abas = []; try { const X = require(XLSX_LIB); abas = X.read(fs.readFileSync(fx)).SheetNames; } catch (e) { } ok(!!fx && abas.length > 0, `Paradas ${tema}: Excel baixado e lido (${abas.join(', ') || 'não abriu'})`); }
       ok(!pe.length, `Paradas ${tema}: sem erro de página${pe.length ? ' (' + pe[0] + ')' : ''}`);
       await p.close();
     }
@@ -178,5 +182,6 @@ const CAD = (perfil, inicial) => JSON.stringify({ schema: 'vac-cadastros', schem
   { const ctx = await b.newContext(); const p = await ctx.newPage(); await p.goto(PG + 'Portal.html'); await p.waitForTimeout(900); const r = await p.evaluate(() => ({ n: INICIAIS.length, tem: INICIAIS.includes('Produção › Painel') && INICIAIS.includes('Gestão de Gel › Operação'), alvo: INICIAL_ALVO['Produção › Painel'] })); ok(r.tem && r.alvo[1] === 'aba=panel', `Portal: "Página inicial" do perfil oferece página e aba (${r.n - 1} opções)`); await ctx.close(); }
 
   await b.close();
+  if (naoVerif.length) console.log(`\n${naoVerif.length} não verificado(s): ${naoVerif.join(' · ')}`);
   console.log(errs.length ? `\n${errs.length} falha(s)` : '\nsem erros'); process.exit(errs.length ? 1 : 0);
 })().catch(e => { console.error(e); process.exit(1); });
