@@ -395,7 +395,7 @@ const vacFicha = (() => {
     }
     const h = a.tipo === 'lote' ? htmlLote(a.cod) : a.tipo === 'lp' ? htmlLp(a.cod) : htmlOrdem(a.cod), md = modo();
     const asd = el.querySelector('.vficha'), rol = asd.scrollTop;
-    asd.innerHTML = `<header class="vf-cab">${h.cab}<div class="vf-acoes"><span class="vf-seg" role="group" aria-label="Nível de detalhe"><button type="button" data-vf-modo="res" class="${md === 'res' ? 'on' : ''}">Resumo</button><button type="button" data-vf-modo="det" class="${md === 'det' ? 'on' : ''}">Detalhado</button></span><span class="vf-sp"></span>${S.carregando ? '<span class="vf-nota">lendo as bases…</span>' : ''}<button type="button" class="vf-b" data-vf-link title="Copia o endereço que abre esta ficha">Copiar link</button><button type="button" class="vf-b" data-vf-fechar aria-label="Fechar a ficha" title="Fechar (Esc)">✕</button></div></header><div class="vf-corpo">${h.corpo}</div>`;
+    asd.innerHTML = `<header class="vf-cab">${h.cab}<div class="vf-acoes"><span class="vf-seg" role="group" aria-label="Nível de detalhe"><button type="button" data-vf-modo="res" class="${md === 'res' ? 'on' : ''}">Resumo</button><button type="button" data-vf-modo="det" class="${md === 'det' ? 'on' : ''}">Detalhado</button></span><span class="vf-sp"></span>${S.carregando ? '<span class="vf-nota">lendo as bases…</span>' : ''}${a.tipo === 'ordem' && typeof vacNovaAcaoHref === 'function' ? `<a class="vf-b" href="${e2(vacNovaAcaoHref({ titulo: '', origem: { tipo: 'ficha', ref: 'ordem|' + a.cod, resumo: 'Ficha da ordem ' + a.cod, link: link(a.tipo, a.cod) }, vinculos: [{ tipo: 'ordem', cod: a.cod }] }))}" target="_blank" rel="noopener" title="Abre Iniciativas com a ordem já ligada">+ Abrir ação</a>` : ''}<button type="button" class="vf-b" data-vf-link title="Copia o endereço que abre esta ficha">Copiar link</button><button type="button" class="vf-b" data-vf-fechar aria-label="Fechar a ficha" title="Fechar (Esc)">✕</button></div></header><div class="vf-corpo">${h.corpo}</div>`;
     asd.scrollTop = rol;
   }
   function abrir(tipo, cod, op = {}) {
@@ -440,3 +440,15 @@ const vacFicha = (() => {
 })();
 /* botão "Ficha" para as páginas porem ao lado de um número de ordem (abre a ficha comum) */
 function vacFichaBotao(ordem, tipo = 'ordem') { const v = String(ordem ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); return `<button type="button" class="vficha-bt" data-vac-${tipo}="${v}" title="Ficha: tudo sobre ${tipo === 'lp' ? 'o barril' : 'a ' + tipo} ${v} em todas as páginas">Ficha</button>`; }
+/* kit v2.1 · E8 (08/11/2026): link para abrir uma ação em Iniciativas (Planner) a partir de outra página, sem gravar lá (regra 1).
+   d = {titulo, descricao, origem:{tipo, ref, resumo, link, foto:{…}}, vinculos:[{tipo, cod}]}. Iniciativas abre o formulário
+   preenchido, mostra as ações abertas parecidas e só cria depois da confirmação. Use referências, não listas grandes (URL curta). */
+function vacNovaAcaoHref(d) {
+  const h = 'nova=' + encodeURIComponent(JSON.stringify(d || {}));
+  if (typeof PAGE !== 'undefined' && PAGE.id === 'inic') return '#' + h;
+  let s = null; try { s = (typeof systems === 'function' ? systems() : []).find(x => x.id === 'inic'); } catch (e) { }
+  return s && typeof sysHref === 'function' ? sysHref(s, h) : 'Iniciativas.html#' + h;
+}
+function vacNovaAcaoBotao(d, rot = '+ Ação no Planner', cls = 'b sm') { const e = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); return `<a class="${e(cls)}" href="${e(vacNovaAcaoHref(d))}" target="_blank" rel="noopener" title="Abre Iniciativas com a ação preenchida (você confere antes de criar)">${e(rot)}</a>`; }
+/* endereço desta página com uma rota (para o "reconsultar" da ação) */
+function vacAquiHref(hash) { return location.href.split('#')[0].split('/').pop() + (hash ? '#' + hash : ''); }

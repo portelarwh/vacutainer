@@ -464,6 +464,7 @@ nav.vtabs .badge[hidden]{display:none}
 .vficha .mono{font-family:var(--f-mono)}
 .vficha-bt{border:1px solid var(--line);background:var(--surface);color:var(--accent);border-radius:6px;padding:1px 7px;font:500 12px var(--f-body);text-transform:none;letter-spacing:0;cursor:pointer;vertical-align:middle}
 .vficha-bt:hover{background:var(--accent-soft)}
+.vficha a.vf-b{text-decoration:none;color:var(--ink);display:inline-block}
 @media(max-width:600px){.vficha .vf-dl{grid-template-columns:repeat(2,minmax(0,1fr))}.vficha-fundo{background:transparent}}
 @media print{.vficha-fundo{display:none!important}}
 </style>
@@ -471,7 +472,7 @@ nav.vtabs .badge[hidden]{display:none}
 /* ===== vac-bases v2 · 06/11/2026 · bases .json na subpasta "00. Bases" da pasta principal (igual em todas as páginas; não editar só numa) =====
    Arquivo-fonte: fontes/kit/kit_bases.js. Vai num <script id="vac-bases"> no topo de cada página (aplicar_kit21.py e build da Produção),
    antes do código da página. Na raiz da pasta principal ficam só os HTML, lib\, Logo.png e as pastas.
-   - vacRaiz(pasta): a pasta principal "com bases". Para as 7 bases, grava em 00. Bases; para ler, procura em 00. Bases e, se a base
+   - vacRaiz(pasta): a pasta principal "com bases". Para as bases da lista VAC_BASES, grava em 00. Bases; para ler, procura em 00. Bases e, se a base
      ainda não foi movida (ou se lá só existe um arquivo vazio de uma cópia interrompida), na raiz. O resto continua na raiz.
      A pasta original (do seletor) é a que vai para o IndexedDB; vacRaiz só envolve, nunca é gravada.
    - vacMoverBases(pasta, [[nome, pastaBackup], …]): cada página move SÓ as próprias bases, ao conectar. Regras (v2, revisão c341f8e):
@@ -484,7 +485,8 @@ nav.vtabs .badge[hidden]{display:none}
        uma gravação de último instante fica guardada no backup e a página avisa (B01); assim o backup existe também ao retomar (B07);
      · raiz mais nova que 00. Bases (página antiga gravando na raiz): não mexe em nada, avisa; Portal › Versões mostra as duas cópias. */
 const VAC_BASES_DIR = '00. Bases';
-const VAC_BASES = ['portal-base.json', 'vacutainer-cadastros.json', 'oee-vacutainer-base.json', 'ordens-base.json', 'perdas-base.json', 'fifo-base.json', 'paradas-base.json'];
+/* 08/11/2026 · E6/E11: + iniciativas-base.json e equipamentos-base.json (páginas que passaram a gravar) */
+const VAC_BASES = ['portal-base.json', 'vacutainer-cadastros.json', 'oee-vacutainer-base.json', 'ordens-base.json', 'perdas-base.json', 'fifo-base.json', 'paradas-base.json', 'iniciativas-base.json', 'equipamentos-base.json'];
 function vacEhBase(nome) { return VAC_BASES.includes(String(nome)); }
 const vacNaoAchou = e => !!e && (e.name === 'NotFoundError' || e.name === 'TypeMismatchError');
 function vacRaiz(raiz) {
@@ -716,7 +718,7 @@ const DEFAULT_SYSTEMS=[
  {id:'gel',nome:'Gestão de Gel',html:'Gestão-Gel-Vacutainer.html',alt:['Gestao-Gel-Vacutainer.html','controle-fifo-gel.html'],base:'fifo-base.json',estado:'atualizacao'},
  {id:'paradas',nome:'Paradas',html:'Paradas.html',base:'paradas-base.json',estado:'atualizacao'},
  {id:'equip',nome:'Equipamentos',html:'Equipamentos.html',base:'equipamentos-base.json',futuro:true,estado:'construcao'},
- {id:'inic',nome:'Iniciativas',html:'Iniciativas.html',base:'iniciativas-base.json',futuro:true,sub:'5S · OSM · KAS',estado:'construcao'},
+ {id:'inic',nome:'Iniciativas',html:'Iniciativas.html',base:'iniciativas-base.json',sub:'Ações · KAS · OSM · 5S',estado:'atualizacao'},
  {id:'projetos',nome:'Projetos',html:'Projetos.html',base:'projetos-base.json',futuro:true,estado:'construcao'}];
 /* 1.7 · nomes exibidos novos (arquivos, bases e ids não mudam); Máquinas e Manutenção saem (manutenção fica em Equipamentos).
    grupo:'outros' = aparece no menu "Outros ▾" da barra, não como item principal. */
@@ -1089,7 +1091,7 @@ function wireConfigComum(){$('#cPasta').onclick=async()=>{if(await Store.pick())
         entrar pelo ID (autocadastro como Consulta); página inicial por perfil (1x por sessão); vigência gravada não se edita (desativar com motivo); painel de vigências; semáforo central; saída do modo de teste.
    1.1.2: aviso da carga diz qual base foi lida.  1.5: páginas Paradas, Máquinas, Manutenção e Projetos na lista (aparecem quando o HTML chega na pasta).  1.4: lista técnica pela CS12 multinível (itens = nível 1, estrutura = níveis 2+); CS03 sai.  1.3: cabeçalho comum (vac-cabecalho v2: barra do sistema + página + abas), busca Ctrl K, acabamento V1.90, Versões com cabeçalho e último backup.  1.2: Configuração › Versões das páginas (versão e data de cada HTML, gravação das bases, cópias repetidas, histórico).
    ===================================================================== */
-const PAGE={id:'portal',titulo:'Portal · Linha Vacutainer',tituloCurto:'Portal',subtitulo:'Sistemas de gestão da linha',versao:'1.8.16',baseFile:'portal-base.json',idb:'vac-portal',backupDir:'00. Backups/Portal',
+const PAGE={id:'portal',titulo:'Portal · Linha Vacutainer',tituloCurto:'Portal',subtitulo:'Sistemas de gestão da linha',versao:'1.8.17',baseFile:'portal-base.json',idb:'vac-portal',backupDir:'00. Backups/Portal',
  vazio:()=>({schema:'portal-base',rev:0,config:{modulos:{},avisoDias:30,notas:{}},audit:[]}),
  /* itens do Portal para a busca Ctrl K: cadastro, pendências e telas */
  busca:q=>{const R=[],D=Cad.D;if(D)for(const t of CAD_ORD){for(const it of D[t]||[]){const c=String(it[kOf(t)]),nm=t==='bom'?((cadItem('catalogos',it.catalogo)||{}).nome||''):it.nome||'';if(norm(c+' '+nm).includes(q))R.push({tipo:CAD_T[t].um,txt:c+(nm?' · '+nm:''),sub:'Cadastros'+(cadAtivo(t,it,D)?'':' · inativo'),href:'#cadastros/'+t+'/'+encodeURIComponent(c)});if(R.length>30)break}}
@@ -3566,7 +3568,7 @@ const vacFicha = (() => {
     }
     const h = a.tipo === 'lote' ? htmlLote(a.cod) : a.tipo === 'lp' ? htmlLp(a.cod) : htmlOrdem(a.cod), md = modo();
     const asd = el.querySelector('.vficha'), rol = asd.scrollTop;
-    asd.innerHTML = `<header class="vf-cab">${h.cab}<div class="vf-acoes"><span class="vf-seg" role="group" aria-label="Nível de detalhe"><button type="button" data-vf-modo="res" class="${md === 'res' ? 'on' : ''}">Resumo</button><button type="button" data-vf-modo="det" class="${md === 'det' ? 'on' : ''}">Detalhado</button></span><span class="vf-sp"></span>${S.carregando ? '<span class="vf-nota">lendo as bases…</span>' : ''}<button type="button" class="vf-b" data-vf-link title="Copia o endereço que abre esta ficha">Copiar link</button><button type="button" class="vf-b" data-vf-fechar aria-label="Fechar a ficha" title="Fechar (Esc)">✕</button></div></header><div class="vf-corpo">${h.corpo}</div>`;
+    asd.innerHTML = `<header class="vf-cab">${h.cab}<div class="vf-acoes"><span class="vf-seg" role="group" aria-label="Nível de detalhe"><button type="button" data-vf-modo="res" class="${md === 'res' ? 'on' : ''}">Resumo</button><button type="button" data-vf-modo="det" class="${md === 'det' ? 'on' : ''}">Detalhado</button></span><span class="vf-sp"></span>${S.carregando ? '<span class="vf-nota">lendo as bases…</span>' : ''}${a.tipo === 'ordem' && typeof vacNovaAcaoHref === 'function' ? `<a class="vf-b" href="${e2(vacNovaAcaoHref({ titulo: '', origem: { tipo: 'ficha', ref: 'ordem|' + a.cod, resumo: 'Ficha da ordem ' + a.cod, link: link(a.tipo, a.cod) }, vinculos: [{ tipo: 'ordem', cod: a.cod }] }))}" target="_blank" rel="noopener" title="Abre Iniciativas com a ordem já ligada">+ Abrir ação</a>` : ''}<button type="button" class="vf-b" data-vf-link title="Copia o endereço que abre esta ficha">Copiar link</button><button type="button" class="vf-b" data-vf-fechar aria-label="Fechar a ficha" title="Fechar (Esc)">✕</button></div></header><div class="vf-corpo">${h.corpo}</div>`;
     asd.scrollTop = rol;
   }
   function abrir(tipo, cod, op = {}) {
@@ -3611,6 +3613,18 @@ const vacFicha = (() => {
 })();
 /* botão "Ficha" para as páginas porem ao lado de um número de ordem (abre a ficha comum) */
 function vacFichaBotao(ordem, tipo = 'ordem') { const v = String(ordem ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); return `<button type="button" class="vficha-bt" data-vac-${tipo}="${v}" title="Ficha: tudo sobre ${tipo === 'lp' ? 'o barril' : 'a ' + tipo} ${v} em todas as páginas">Ficha</button>`; }
+/* kit v2.1 · E8 (08/11/2026): link para abrir uma ação em Iniciativas (Planner) a partir de outra página, sem gravar lá (regra 1).
+   d = {titulo, descricao, origem:{tipo, ref, resumo, link, foto:{…}}, vinculos:[{tipo, cod}]}. Iniciativas abre o formulário
+   preenchido, mostra as ações abertas parecidas e só cria depois da confirmação. Use referências, não listas grandes (URL curta). */
+function vacNovaAcaoHref(d) {
+  const h = 'nova=' + encodeURIComponent(JSON.stringify(d || {}));
+  if (typeof PAGE !== 'undefined' && PAGE.id === 'inic') return '#' + h;
+  let s = null; try { s = (typeof systems === 'function' ? systems() : []).find(x => x.id === 'inic'); } catch (e) { }
+  return s && typeof sysHref === 'function' ? sysHref(s, h) : 'Iniciativas.html#' + h;
+}
+function vacNovaAcaoBotao(d, rot = '+ Ação no Planner', cls = 'b sm') { const e = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); return `<a class="${e(cls)}" href="${e(vacNovaAcaoHref(d))}" target="_blank" rel="noopener" title="Abre Iniciativas com a ação preenchida (você confere antes de criar)">${e(rot)}</a>`; }
+/* endereço desta página com uma rota (para o "reconsultar" da ação) */
+function vacAquiHref(hash) { return location.href.split('#')[0].split('/').pop() + (hash ? '#' + hash : ''); }
 
 </script>
 </body>

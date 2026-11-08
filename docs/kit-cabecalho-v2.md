@@ -163,3 +163,10 @@ Gestão de Gel 2.06 (08/11/2026):
 - **Busca:** a ficha estende o `Busca` do cabeçalho (sem editar o bloco v2 de cada página): ordem, lote, LP, catálogo e equipamento entram antes das abas e páginas. Comparação de códigos sem zeros à esquerda (só para comparar).
 - CSS em `kit_visual.css` (`.vficha*`). Teste: `node testes/tficha.js`.
 
+## E6 e E8 do plano único (08/11/2026)
+
+- **`VAC_BASES`** (kit vac-bases) passou a ter 9 bases: + `iniciativas-base.json` e `equipamentos-base.json`. Página nova que grava base precisa entrar nessa lista, senão `vacRaiz` grava na raiz da pasta.
+- **`vacNovaAcaoHref(d)` / `vacNovaAcaoBotao(d, rótulo, classe)`:** link para Iniciativas com a ação preenchida (`#nova=<JSON>`). `d = {titulo, descricao, origem:{tipo, ref, resumo, link, foto}, vinculos:[{tipo, cod}]}`. A página de origem não grava nada. Iniciativas mostra as ações abertas parecidas e só cria depois da confirmação. Mande referências, não listas.
+- **`vacAquiHref(hash)`:** endereço desta página com uma rota (link de reconsulta).
+- A ficha da ordem ganhou "+ Abrir ação" (origem `ficha`, vínculo da ordem) e o bloco "Ações ligadas", que lê `iniciativas-base.json`.
+

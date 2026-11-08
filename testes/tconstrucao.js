@@ -1,10 +1,10 @@
-/* Páginas em construção e em atualização (docs/paginas-construcao.md)
+/* Páginas em construção e em atualização (docs/paginas-construcao.md). Iniciativas saiu da construção na 1.0.0 (E6, 08/11/2026): testes/tplanner.js
    node testes/tconstrucao.js  → sai com código 1 se alguma checagem falhar. Prints em testes/saida/construcao/. */
 const RAIZ = require('path').resolve(__dirname, '..') + '/', fs = require('fs');
 const { chromium } = require('playwright');
 const S = 'file://' + RAIZ + 'paginas/', OUT = RAIZ + 'testes/saida/construcao/'; fs.mkdirSync(OUT, { recursive: true });
 const errs = []; const ok = (c, m) => { console.log((c ? 'ok    ' : 'FALHA ') + m); if (!c) errs.push(m); };
-const NOVAS = [['Equipamentos', 'Equipamentos.html', 'equip', ['maquina', 'preventiva', 'tpm']], ['Iniciativas', 'Iniciativas.html', 'inic', ['osm', 's5', 'kas']], ['Projetos', 'Projetos.html', 'projetos', ['lista', 'cronograma']]];
+const NOVAS = [['Equipamentos', 'Equipamentos.html', 'equip', ['maquina', 'preventiva', 'tpm']], ['Projetos', 'Projetos.html', 'projetos', ['lista', 'cronograma']]];
 (async () => {
   const b = await chromium.launch();
   const nova = async (vp = { width: 1440, height: 950 }) => { const ctx = await b.newContext({ viewport: vp }); const p = await ctx.newPage(); const E = [];
@@ -16,12 +16,12 @@ const NOVAS = [['Equipamentos', 'Equipamentos.html', 'equip', ['maquina', 'preve
     await p.goto(S + 'Portal.html#geral'); await p.evaluate(() => { localStorage.setItem('vac.sistemas', JSON.stringify([{ id: 'portal', nome: 'Portal', html: 'Portal.html' }, { id: 'gel', nome: 'Gel', html: 'Gestão-Gel-Vacutainer.html', base: 'fifo-base.json' }, { id: 'paradas', nome: 'Paradas', html: 'Paradas.html', base: 'paradas-base.json' }])); });
     await p.reload(); await p.waitForTimeout(700); await p.evaluate(() => enterTest()); await p.waitForTimeout(500);
     const st = await p.evaluate(() => ['gel', 'paradas', 'equip', 'inic', 'projetos', 'oee', 'perdas'].map(id => id + ':' + ((vacEstadoDe(id) || {}).estado || 'estável')).join(' '));
-    ok(st === 'gel:atualizacao paradas:atualizacao equip:construcao inic:construcao projetos:construcao oee:estável perdas:estável', 'Portal · situação vinda do catálogo com vac.sistemas antigo: ' + st);
+    ok(st === 'gel:atualizacao paradas:atualizacao equip:construcao inic:atualizacao projetos:construcao oee:estável perdas:estável', 'Portal · situação vinda do catálogo com vac.sistemas antigo: ' + st);
     ok(await p.evaluate(() => !!document.querySelector('#sysNav a .vest[data-e="atualizacao"]')), 'Portal · selo "em atualização" na barra');
     /* cartão de página em construção e Versões sem "base não encontrada" */
     const card = await p.evaluate(() => { const s = { id: 'inic', nome: 'Iniciativas', html: 'Iniciativas.html' }; MOD.data.inic = { sys: s, construcao: true, planejado: JSON.parse('{"nota":"x","abas":[{"aba":"OSM","subabas":[{"nome":"Planner"}]},{"aba":"5S"}]}'), versaoHtml: '0.1', pend: [], kpis: [] }; const h = card(s); delete MOD.data.inic; return h; });
     ok(/em construção/.test(card) && /Vai ter:/.test(card) && /OSM.*Planner/.test(card) && !/sem dados/.test(card), 'Portal · cartão "em construção" com as abas planejadas');
-    const av = await p.evaluate(() => Vers.avisos({ id: 'inic', nome: 'Iniciativas', html: { v: '0.1', cab: String(VAC_CAB_VERSAO), arq: 'Iniciativas.html' }, htmls: [1], bases: [], base: null }).map(a => a[1]).join(' | '));
+    const av = await p.evaluate(() => Vers.avisos({ id: 'projetos', nome: 'Projetos', html: { v: '0.1', cab: String(VAC_CAB_VERSAO), arq: 'Projetos.html' }, htmls: [1], bases: [], base: null }).map(a => a[1]).join(' | '));
     ok(!/base não encontrada/.test(av), 'Portal · Versões: página em construção sem aviso de base ausente (' + (av || 'nenhum aviso') + ')');
     const av2 = await p.evaluate(() => Vers.avisos({ id: 'gel', nome: 'Gestão de Gel', html: { v: '2.03', cab: String(VAC_CAB_VERSAO), arq: 'x' }, htmls: [1], bases: [], base: null }).map(a => a[1]).join(' | '));
     ok(/base não encontrada/.test(av2), 'Portal · Versões: página estável/atualização sem base continua com aviso');

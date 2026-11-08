@@ -18,7 +18,7 @@ Este arquivo responde às auditorias externas da plataforma e registra, para cad
 | Relatórios, saídas e aba Painel | 07/11/2026 | `c341f8e` | Portal 1.8.11, Produção 2.4.8, Waste 1.8.14, Gel 2.02, Paradas 1.0.11 (§ P) |
 | Achados do Codex (segurança, dados, TV, scripts, desempenho) com revisão independente | 07/11/2026 | `065fe6f` | Portal 1.8.13, Produção 2.4.10, Waste 1.8.16, Gel 2.04, Paradas 1.0.13, páginas em construção 0.1.1 (§ C) |
 | Plano único (diagnósticos de 08/11 do Claude e do Codex), etapas E1 a E4 (Ordens e backups; versões, datas e metas; números; contratos por ordem) | 08/11/2026 | `e043513` / `9af2d3e` | Produção 2.4.12, Waste 1.8.18, Gel 2.06, Portal 1.8.15, Paradas 1.0.15 (§ U) |
-| Plano único, blocos A e B (E5 ficha da ordem e Ctrl K; …) | 08/11/2026 | `8ecec91` | Portal 1.8.16, Produção 2.4.13, Waste 1.8.19, Gel 2.07, Paradas 1.0.16 (§ U) |
+| Plano único, blocos A e B (E5 ficha da ordem e Ctrl K; E6/E8 Iniciativas, Planner, KAS e ações de OEE; …) | 08/11/2026 | `8ecec91` | Portal 1.8.17, Produção 2.4.14, Waste 1.8.20, Gel 2.08, Paradas 1.0.17, Iniciativas 1.0.0 (§ U) |
 
 Status usados: **corrigido** · **corrigido em parte** · **recusado** · **adiado** · **já existia**.
 
@@ -105,6 +105,24 @@ Teste novo: **`testes/tficha.js`** (pasta simulada com os `exports` das 5 págin
 Cada página só informa a pasta conectada (`vacPastaAtual()`) e põe o botão **Ficha** onde mostra uma ordem (Waste › ordem, Gel › ordem, Paradas › evento, Produção › Ordens SAP). A ficha não grava nada.
 
 **Limites:** a Produção não publica OEE por ordem (falta a regra de atribuição); a lista de eventos do Paradas vai até 90 dias (os totais por ordem são de todo o histórico). O bloco "Ações ligadas" aparece quando a base de Iniciativas existir (E6).
+
+### E6 e E8 · Iniciativas: Planner e KAS; ações de OEE a partir das outras páginas · **feito** (Iniciativas 1.0.0; Paradas 1.0.17, Produção 2.4.14, Portal 1.8.17, Waste 1.8.20, Gel 2.08, páginas em construção 0.1.3; kit)
+
+Teste novo: **`testes/tplanner.js`**. Documentação: `docs/iniciativas-planner.md`.
+
+| ID | O que ficou |
+|---|---|
+| PLA-01/02 | Iniciativas virou página de verdade (saiu do gerador). Base `iniciativas-base.json` em `00. Bases`: ação com dono, apoios, prioridade, prazo atual e **original**, origem, vínculos (ordem, lote, equipamento, código, evento), checklist, comentários e evidências (link). Visões Quadro (arrastar ou botão), Lista, Por responsável e Minhas |
+| PLA-03/05 | Histórico de eventos (criação, situação, responsável, prazo com motivo, prioridade). Tempo por situação e por responsável calculado **por intervalo**, com a ação aberta, em dias corridos rotulados. Testado com transferência, espera e reabertura |
+| PLA-06 | Gravação por operações (fila, releitura, reaplicação, `revId`), como o Paradas. Sem leitura não grava (alteração pendente com "Gravar de novo") |
+| PLA-08 | As ações do Waste e do Paradas **não** foram migradas; continuam onde estão |
+| OEE-01/02 | Botão "+ Ação no Planner" no Paradas (Pareto selecionado, recorrência, evento), na Produção › Paradas (eventos filtrados por um item do Pareto) e na ficha da ordem. Abre Iniciativas com a origem, a **fotografia** (período, minutos, ocorrências, hora) e o link de reconsulta. A página de origem não grava nada lá (regra 1). Antes de criar, Iniciativas mostra as ações abertas ligadas ao mesmo equipamento, código, ordem ou referência |
+| KAS-01 | Aba KAS: problema, proposta, linha de base, meta, resultado, dono, área e situação. As ações do KAS entram no mesmo quadro, com origem KAS |
+| — | Base nova na lista `VAC_BASES` do kit (`iniciativas-base.json` e, para a E11, `equipamentos-base.json`): sem isso a base ia para a raiz da pasta |
+
+**Achado durante o teste:** duas estações gravando no mesmo instante. A segunda pode gravar por cima depois que a primeira já confirmou pela releitura: a releitura não é transação. Agora as operações confirmadas nos últimos 30 minutos ficam guardadas no navegador. Na leitura seguinte (gravação, volta para a página, F5), se o id delas não está na auditoria da base, elas voltam para a fila e são gravadas de novo. O teste reproduz o caso e confere que nada se perde.
+
+**Fora desta etapa (decisões registradas):** SLA, dias úteis e regras de prioridade (PLA-04, PLA-07); eficácia da ação de OEE (OEE-04) e ganho validado do KAS (KAS-02), que pedem método; OSM (E7, falta a amostra) e 5S (E13).
 
 ---
 

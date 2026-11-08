@@ -1,4 +1,4 @@
-"""Gera as páginas em construção (Equipamentos, Iniciativas, Projetos) a partir de fontes/modelo/pagina-em-construcao.html
+"""Gera as páginas em construção (Equipamentos, Projetos; Iniciativas saiu na 1.0.0, 08/11/2026) a partir de fontes/modelo/pagina-em-construcao.html
 e roda o fontes/kit/aplicar_kit21.py em seguida (kit v2.1, catálogo de sistemas, padrão visual e bases iguais às outras páginas).
 Uso (na raiz do projeto): python fontes/modelo/gerar_paginas.py
 Especificação: docs/paginas-construcao.md. Quando uma página começar de verdade (v1.0), tire-a da lista PAGINAS
@@ -11,7 +11,7 @@ DOCS_PLANO = 'docs/plano-evolucao-plataforma.md'
 PAGINAS = [
  {'arquivo': 'Equipamentos.html',
   'page': {'id': 'equip', 'titulo': 'Equipamentos · Máquinas da linha e manutenção', 'tituloCurto': 'Equipamentos',
-           'subtitulo': 'Máquinas da linha e manutenção', 'versao': '0.1.2', 'baseFile': 'equipamentos-base.json',
+           'subtitulo': 'Máquinas da linha e manutenção', 'versao': '0.1.3', 'baseFile': 'equipamentos-base.json',
            'backupDir': '00. Backups/Equipamentos', 'estado': 'construcao',
            'estadoNota': 'Ficha e indicadores por máquina, relatórios das máquinas e manutenção.'},
   'plano': {
@@ -40,46 +40,9 @@ PAGINAS = [
      'itens': ['Ordens de serviço abertas e fechadas', 'Ligação com os eventos de quebra do Paradas']},
     {'id': 'tpm', 'aba': 'TPM', 'grupo': 'Manutenção',
      'itens': ['Pilares do TPM e etiquetas', 'Priorização pelas falhas recorrentes do Paradas']}]}},
- {'arquivo': 'Iniciativas.html',
-  'page': {'id': 'inic', 'titulo': 'Iniciativas · 5S · OSM · KAS', 'tituloCurto': 'Iniciativas', 'subtitulo': '5S · OSM · KAS',
-           'versao': '0.1.2', 'baseFile': 'iniciativas-base.json', 'backupDir': '00. Backups/Iniciativas', 'estado': 'construcao',
-           'estadoNota': 'Observações de segurança, auditorias 5S e kaizens numa página só.'},
-  'plano': {
-   'nota': 'Observações de segurança (OSM), auditorias 5S e kaizens (KAS) numa página só, com metas, ações estilo planner e relatórios.',
-   'entrega': 'OSM é a próxima aba a ser construída (fase 6 do plano); 5S e KAS vêm depois (fase 7).',
-   'docs': ['docs/osm-arquitetura.md', DOCS_PLANO + ' § 6.5–6.6', 'docs/paginas-construcao.md § 5.4'],
-   'contagens': [{'tipo': 'metasOsm', 'rot': 'Metas de OSM cadastradas'}],
-   'hoje': [{'txt': 'Metas de OSM', 'portal': 'cadastros/metasOsm', 'obs': 'no Portal'},
-            {'txt': 'Metas da área', 'portal': 'cadastros/metasArea', 'obs': 'no Portal'}],
-   'grupoGeral': '',
-   'abas': [
-    {'id': 'osm', 'aba': 'OSM', 'grupo': '', 'status': 'próxima a ser construída',
-     'itens': ['Observações de segurança com meta por operador por mês', 'Ações tratadas no estilo planner (quadro, prazos, cobrança)', 'Participação por operador e por turno; temas e recorrência'],
-     'fonte': 'Pessoas e metas: cadastro do Portal (usuários, Metas de OSM). Observações e ações: base da página (iniciativas-base.json › osm).',
-     'subabas': [
-      {'id': 'nova', 'nome': 'Nova OSM', 'itens': ['Formulário curto para tablet/celular: observador, turno, tema, tipo, local, descrição, risco', '"Precisa de ação?" e "Registrar outra"']},
-      {'id': 'observacoes', 'nome': 'Observações', 'itens': ['Lista com busca e filtros (mês, turno, tema, tipo, risco, situação)', 'Ficha da OSM com ações e histórico']},
-      {'id': 'planner', 'nome': 'Ações (Planner)', 'itens': ['Quadro: A fazer · Em andamento · Aguardando · Concluída', 'Lista, Calendário e Por responsável', '"Minhas ações"']},
-      {'id': 'meta', 'nome': 'Meta por operador', 'itens': ['Matriz operador × mês com semáforo', 'Quanto falta no mês e total por turno']},
-      {'id': 'painel', 'nome': 'Painel', 'itens': ['OSM × meta da equipe, % de operadores na meta', 'Ações abertas e vencidas, Pareto de temas e locais']},
-      {'id': 'temas', 'nome': 'Temas e recorrência', 'itens': ['Mesmo tema + local 3 vezes ou mais em 30 dias']},
-      {'id': 'cobranca', 'nome': 'Cobrança', 'itens': ['Ações vencidas, sem responsável, paradas', 'Texto pronto para Teams/WhatsApp']},
-      {'id': 'relatorios', 'nome': 'Relatórios', 'itens': ['Mensal para a diretoria, por pessoa e por turno']},
-      {'id': 'importar', 'nome': 'Importar', 'itens': ['Planilha atual de OSM (histórico)', 'Excel de respostas do Forms']},
-      {'id': 'config', 'nome': 'Configuração', 'itens': ['Temas, tipos, locais, riscos e prazos', 'Regras da cobrança']}]},
-    {'id': 's5', 'aba': '5S', 'grupo': '', 'status': 'a desenhar',
-     'itens': ['Auditorias 5S por área, com nota por senso', 'Plano de ação das não conformidades', 'Evolução das notas'],
-     'subabas': [{'id': 'auditorias', 'nome': 'Auditorias', 'itens': ['Auditoria por área e data, nota por senso']},
-                 {'id': 'acoes', 'nome': 'Plano de ação', 'itens': ['Ações das não conformidades (mesmo quadro da OSM)']},
-                 {'id': 'painel', 'nome': 'Painel', 'itens': ['Notas por área e evolução']}]},
-    {'id': 'kas', 'aba': 'KAS', 'grupo': '', 'status': 'a desenhar',
-     'itens': ['Ideias e kaizens do dia a dia', 'Situação de cada ideia e ganhos', 'Campos do documento consolidado (§ 13) como ponto de partida'],
-     'subabas': [{'id': 'ideias', 'nome': 'Ideias', 'itens': ['Registro e avaliação das ideias']},
-                 {'id': 'quadro', 'nome': 'Quadro', 'itens': ['Ideias por situação']},
-                 {'id': 'painel', 'nome': 'Painel', 'itens': ['Ideias por área, ganhos, implantadas no mês']}]}]}},
  {'arquivo': 'Projetos.html',
   'page': {'id': 'projetos', 'titulo': 'Projetos · Projetos de melhoria e investimentos', 'tituloCurto': 'Projetos',
-           'subtitulo': 'Projetos de melhoria e investimentos', 'versao': '0.1.2', 'baseFile': 'projetos-base.json',
+           'subtitulo': 'Projetos de melhoria e investimentos', 'versao': '0.1.3', 'baseFile': 'projetos-base.json',
            'backupDir': '00. Backups/Projetos', 'estado': 'construcao',
            'estadoNota': 'Escopo a desenhar: projetos de melhoria, projetos grandes e compra de máquina.'},
   'plano': {

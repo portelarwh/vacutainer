@@ -566,3 +566,10 @@ function ordSapCel(o) {
 document.addEventListener('click', e => { const x = e.target.closest('[data-oord2]'); if (!x) return; const I = ordIndice(), v = I && I.get(x.dataset.oord2); if (v) { Ord.comp = v.comp; ordFicha(x.dataset.oord2); } });
 /* E5 · pasta conectada para a ficha comum (kit): a da base da Produção, só no modo pasta */
 function vacPastaAtual() { const S = typeof Store !== 'undefined' && Store.S; return S && S.mode === 'pasta' && S.backend && S.backend.dir || null; }
+/* E8 · ação no Planner (Iniciativas) a partir do Pareto de paradas da Produção: fotografia (período, minutos, eventos) e link para reconsultar */
+function oeeAcaoPlanner(dim, pick, evs) {
+  const min = evs.reduce((s, e) => s + (+e.minutes || 0), 0), dias = evs.map(e => e.day && e.day.date).filter(Boolean).sort(), br = d => d ? d.slice(8, 10) + '/' + d.slice(5, 7) + '/' + d.slice(0, 4) : '';
+  const per = dias.length ? (dias[0] === dias[dias.length - 1] ? br(dias[0]) : br(dias[0]) + '–' + br(dias[dias.length - 1])) : '';
+  return { titulo: 'Pareto da Produção: ' + pick, origem: { tipo: 'oee', ref: 'oee-pareto|' + dim + '|' + pick, resumo: `Pareto (${dim}) · ${pick} · ${Math.round(min)} min em ${evs.length} evento(s)${per ? ' · ' + per : ''}`,
+    link: typeof vacAquiHref === 'function' ? vacAquiHref('aba=stops') : '', foto: { período: per, minutos: Math.round(min), eventos: evs.length, em: new Date().toISOString() } }, vinculos: [] };
+}

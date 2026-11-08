@@ -187,3 +187,8 @@ Marcar na Visão geral: "Escopo ainda não definido; esta lista é provisória."
 ## 9. 0.1.1 (07/11/2026)
 
 O modelo `fontes/modelo/pagina-em-construcao.html` declarava `toast` duas vezes (idênticas, sem efeito). A linha duplicada foi tirada e as 3 páginas, geradas de novo. O `gerar_paginas.py` agora devolve as páginas ao que eram se o `aplicar_kit21.py` falhar.
+
+## Iniciativas saiu da construção (08/11/2026)
+
+Iniciativas virou página de verdade na **1.0.0** (E6 do plano único). Ela saiu da lista do `gerar_paginas.py` e agora se edita direto no HTML. Detalhes em `docs/iniciativas-planner.md`. Continuam em construção (geradas): Equipamentos e Projetos.
+
