@@ -153,6 +153,18 @@ Teste novo: **`testes/tequip.js`**. Documentação: `docs/equipamentos-v1.md`.
 | TPM-01/02/06 | Estrutura do ponto AM/TPM (tipo, ponto, periodicidade, faixa, habilitação, referência) **sem conteúdo inventado**; anomalia registrada vira OS ligada |
 | Ctrl K | Equipamento na busca abre a ficha em Equipamentos (antes, o cadastro no Portal) |
 
+### Revisão do Codex no PR #15 (08/11/2026) · **corrigido** (Iniciativas 1.0.1, Equipamentos 1.0.1, Paradas 1.0.20)
+
+Os três apontamentos (P2) foram conferidos no código e reproduzidos por teste: cada checagem nova falha com as páginas do merge `ef7793f`.
+
+| Apontamento | Correção |
+|---|---|
+| Exports com data velha: sem alteração na fila e com a mesma `appVersion`, a gravação pulava o `exports`. Uma OS que vencia sem nova edição não chegava à Minha fila, e uma vigência de TAG que começava não era publicada | O atalho "nada a gravar" só vale se o `exports` foi gerado **hoje** (dia local). Ao abrir a página com a pasta, um `exports` de outro dia é gerado de novo. Em Equipamentos, a OS programada já publica a pendência de atraso com `aPartirDe` = dia seguinte à data programada: ela aparece no Portal no dia certo, sem depender de nova gravação. Vale também para Iniciativas |
+| Anomalia perdida: com "abrir OS em seguida" marcado, cancelar o formulário da OS descartava a anomalia | A anomalia é gravada primeiro (sem OS); a OS criada depois se liga a ela |
+| Recorrência do relatório do Paradas fora do recorte: só filtrava pelo equipamento; turno, classe e data final eram ignorados | A entrada da recorrência usa o mesmo recorte (equipamento, turno, classe, até a data final), com o histórico anterior para os meses seguidos |
+
+Testes: `tequip.js`, `tplanner.js` e `trelatorios.js` › Paradas.
+
 ### Não feito nesta rodada (aguarda decisão ou material)
 
 | Etapa | O que falta |

@@ -23,7 +23,7 @@ const espera = p => p.waitForFunction(() => !Store.saving && !Store.queue.length
     const p = await abre('Equipamentos.html', '#teste'); await p.waitForTimeout(300);
     const t = await p.evaluate(() => document.getElementById('main').innerText.replace(/\s+/g, ' '));
     ok(/EQ03 · Tampadora/.test(t) && /histórico · Paradas/.test(t) && /OS-T-0091/.test(t) && /L1\.TMP\.CNT_OUT/.test(t) && /Sem conteúdo/.test(t), 'ficha: cadastro, falhas (histórico do Paradas), OS, TAGs e AM/TPM sem conteúdo inventado');
-    ok(await p.evaluate(() => document.getElementById('appVer').textContent === 'v1.0.0'), 'versão 1.0.0 (saiu do gerador)');
+    ok(await p.evaluate(() => document.getElementById('appVer').textContent === 'v1.0.1'), 'versão 1.0.1 (saiu do gerador na 1.0.0)');
     await p.screenshot({ path: path.join(SAI, 'ficha-claro.png'), fullPage: true }); await p.close();
   }
   // 2. pasta: OS a partir do evento do Paradas (#novaOS=), TAG com vigência, anomalia → OS, exports
@@ -52,12 +52,24 @@ const espera = p => p.waitForFunction(() => !Store.saving && !Store.queue.length
   ok(tg.vigencias.length === 2 && v[0] === 'L1.TMP.CNT' && v[1] === 'L1.TMP.CNT_OUT', `TAG: nova vigência não apaga a antiga; leitura pela data do fato (${v.join(' → ')})`);
   await p.evaluate(() => Store.commit({ k: 'tagdes', cod: 'EQ03-CNT', vid: 'v2', motivo: 'nome errado' })); await espera(p); B = await p.evaluate(LER);
   const tg2 = B.tags[0]; ok(tg2.vigencias.length === 1 && tg2.vigenciasDesativadas.length === 1 && tg2.vigenciasDesativadas[0].motivo === 'nome errado', 'desativar vigência: vai para vigenciasDesativadas com o motivo (regra 3)');
+  // revisão Codex (PR #15): anomalia gravada mesmo se a OS for cancelada
+  await p.evaluate(() => { App.tab = 'equip'; App.eq = 'EQ03'; render(); }); await p.click('#eqAn'); await p.waitForTimeout(150);
+  await p.fill('#aD', 'Ruído no redutor'); await p.click('.mod [data-ok]'); await p.waitForTimeout(250); await p.click('.mod [data-x]'); await espera(p);
+  B = await p.evaluate(LER); ok(B.anomalias.some(a => a.descricao === 'Ruído no redutor' && !a.os) && B.exports.pendencias.some(x => x.tipo === 'anomaliaSemOS'), 'anomalia registrada fica gravada (sem OS) mesmo cancelando o formulário da OS');
+  // OS programada para o futuro: a pendência de atraso já vai no exports, valendo a partir do dia seguinte
+  await p.evaluate(() => Store.commit({ k: 'os', it: { id: 'OS-FUT', equipamento: 'EQ03', titulo: 'Futura', tipo: 'preventiva', status: 'programada', responsavel: 'M. Reis', programadaPara: addDias(hoje(), 3), origem: { tipo: 'manual' }, criadaEm: new Date().toISOString(), apontamentos: [] } })); await espera(p);
+  B = await p.evaluate(LER); const pf = B.exports.pendencias.find(x => x.id === 'OS-FUT');
+  ok(pf && pf.sev === 1 && pf.aPartirDe === (await p.evaluate(() => addDias(hoje(), 4))) && pf.responsavel === 'M. Reis', `OS futura: pendência de atraso publicada com aPartirDe (${pf && pf.aPartirDe}), entra na Minha fila sem nova gravação`);
+  // resumo gerado em outro dia: abrir a página com a pasta gera de novo (o atalho "nada a gravar" exige exports de hoje)
+  const rv = await p.evaluate(async () => { const d = await navigator.storage.getDirectory(), b = await d.getDirectoryHandle('00. Bases'), fh = await b.getFileHandle('equipamentos-base.json'); const j = JSON.parse(await (await fh.getFile()).text());
+    j.exports.geradoEm = '2020-01-01T12:00:00Z'; const w = await fh.createWritable(); await w.write(JSON.stringify(j)); await w.close(); const rev = j.rev; Store.queue = []; await Store.save(); return rev; });
+  B = await p.evaluate(LER); ok(B.rev === rv + 1 && B.exports.geradoEm.slice(0, 4) !== '2020', `"Gravar agora" sem alteração refaz o resumo de outro dia (rev ${rv} → ${B.rev})`);
   // anomalia → OS
   await p.evaluate(() => { App.tab = 'equip'; App.eq = 'EQ05'; render(); }); await p.click('#eqAn'); await p.waitForTimeout(150);
   await p.fill('#aD', 'Vazamento no bico'); await p.click('.mod [data-ok]'); await p.waitForTimeout(250); await p.click('.mod [data-ok]'); await espera(p);
-  B = await p.evaluate(LER); const an = B.anomalias[0], osA = B.os.find(o => o.tipo === 'anomalia');
+  B = await p.evaluate(LER); const an = B.anomalias.find(a => a.descricao === 'Vazamento no bico'), osA = B.os.find(o => o.tipo === 'anomalia');
   ok(an && osA && an.os === osA.id && osA.origem.ref === an.id, 'anomalia registrada vira OS ligada (TPM-06)');
-  ok(B.exports.pendencias.every(x => x.tipo !== 'anomaliaSemOS') && B.exports.kpis[0][0] === 'OS abertas', 'exports: pendências e kpis para o Portal');
+  ok(!B.exports.pendencias.some(x => x.tipo === 'anomaliaSemOS' && x.id === an.id) && B.exports.kpis[0][0] === 'OS abertas', 'exports: pendências e kpis para o Portal');
   await p.close();
   // 3. Paradas mostra a OS no evento (lê o exports de Equipamentos) e oferece "+ Abrir OS"
   {

@@ -530,7 +530,7 @@ function vacAbaInicial(pagina) {
 <main class="wrap" id="main"></main>
 <div class="toasts" id="toasts"></div>
 <script>
-const PAGE={id:"equip",titulo:"Equipamentos · Máquinas da linha e manutenção",tituloCurto:"Equipamentos",subtitulo:"Ficha, OS, TAGs e AM/TPM",versao:"1.0.0",baseFile:"equipamentos-base.json",backupDir:"00. Backups/Equipamentos",estado:"atualizacao",estadoNota:"Primeira versão: ficha, ordens de serviço, TAGs e estrutura AM/TPM. MES e conteúdo dos padrões chegam nas próximas etapas."};
+const PAGE={id:"equip",titulo:"Equipamentos · Máquinas da linha e manutenção",tituloCurto:"Equipamentos",subtitulo:"Ficha, OS, TAGs e AM/TPM",versao:"1.0.1",baseFile:"equipamentos-base.json",backupDir:"00. Backups/Equipamentos",estado:"atualizacao",estadoNota:"Primeira versão: ficha, ordens de serviço, TAGs e estrutura AM/TPM. MES e conteúdo dos padrões chegam nas próximas etapas."};
 const APP_VERSION=PAGE.versao;
 /* ---------- vac-cabecalho v2 · JS (igual em todas as páginas) ---------- */
 const VAC_CAB_VERSAO=2;
@@ -1161,7 +1161,7 @@ function applyOp(D,op){const ev=x=>{if(!D.eventos.some(e=>e.id===op.id))D.evento
 const Store={dir:null,dirName:'',perm:false,data:completar(vazio()),queue:LS.get('equip.fila',[]),conf:LS.get('equip.conf',[]),saving:false,again:false,lastErr:'',readErr:'',test:false,baseFound:false,lastSaved:null,
  async init(){const c=LS.get('equip.cache',null);if(c){this.data=completar(c);this.queue.forEach(op=>applyOp(this.data,op))}
   try{const h=await IDB.get('pasta');if(h){this.dir=vacRaiz(h);this.dirName=h.name;this.perm=(await h.queryPermission({mode:'readwrite'}))==='granted'}}catch(e){}
-  if(this.perm){await this.reload();if(this.queue.length)this.save()}},
+  if(this.perm){await this.reload();if(this.queue.length||(this.baseFound&&!this.readErr&&diaLocal((this.data.exports||{}).geradoEm)!==hoje()))this.save()}},
  async pick(){if(!window.showDirectoryPicker){toast('Este navegador não permite acesso à pasta (use Chrome ou Edge).',1);return}
   try{const h=await showDirectoryPicker({id:'vac-sistemas',mode:'readwrite'});await this.usar(h);toast('Pasta conectada: '+h.name)}catch(e){if(e.name!=='AbortError')toast('Não foi possível abrir a pasta: '+e.message,1)}},
  async usar(h){this.dir=vacRaiz(h);this.dirName=h.name;this.perm=true;this._bases=false;await IDB.set('pasta',h);await this.reload();if(!this.readErr)await this.save();render()},
@@ -1187,7 +1187,7 @@ const Store={dir:null,dirName:'',perm:false,data:completar(vazio()),queue:LS.get
   try{for(let volta=0;volta<5;volta++){
     let fresh;try{fresh=await this.ler()}catch(e){throw new Error('não consegui ler a base antes de gravar ('+(e.message||e.name)+'); nada foi gravado')}
     this.perdidas(fresh);const n=this.queue.length;
-    if(!n&&fresh&&fresh.exports&&fresh.appVersion===APP_VERSION){this.data=completar(fresh);this.baseFound=true;break}
+    if(!n&&fresh&&fresh.exports&&fresh.appVersion===APP_VERSION&&diaLocal(fresh.exports.geradoEm)===hoje()){this.data=completar(fresh);this.baseFound=true;break}
     const D=completar(fresh?clone(fresh):vazio()),revAntes=D.rev||0,ops=this.queue.slice(0,n);ops.forEach(op=>applyOp(D,op));
     ops.forEach(op=>D.auditoria.push({em:op.em,por:op.por,k:op.k,id:op.id,ref:(op.it&&(op.it.id||op.it.codigo))||op.ac||op.cod||''}));if(D.auditoria.length>5000)D.auditoria=D.auditoria.slice(-5000);
     if(fresh)await this.backupDiario(fresh);
@@ -1203,6 +1203,8 @@ const Store={dir:null,dirName:'',perm:false,data:completar(vazio()),queue:LS.get
  async backupDiario(obj){try{const d=await this.sub(PAGE.backupDir,true);const nm=bkNome('diario');try{await d.getFileHandle(nm)}catch(e){if(!vacNaoAchou(e))throw e;await this.escrever(obj,d,nm)}}catch(e){console.warn('backup',e)}},
  async backupAgora(){if(this.test)return toast('Modo de teste: sem backup');if(!this.dir||!this.perm)return toast('Conecte a pasta para criar backup',1);
   let r;try{r=await this.ler()}catch(e){return toast('Não consegui ler a base: '+e.message,1)}if(!r)return toast('Ainda não existe base gravada');const d=await this.sub(PAGE.backupDir,true);const nm=bkNome('botao');await this.escrever(r,d,nm);toast('Backup criado: '+PAGE.backupDir+'/'+nm)}};
+/* dia local de um ISO (o exports guarda UTC) */
+const diaLocal=iso=>{const d=new Date(iso||'');return isNaN(d)?'':`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`};
 function bkNome(t){const d=new Date(),p=n=>String(n).padStart(2,'0');return`equipamentos-base_${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())}${t==='diario'?'':'_'+p(d.getHours())+'h'+p(d.getMinutes())+'m'+p(d.getSeconds())+'s_'+t}.json`}
 const Ext={par:null,parErr:'',parEm:null};
 function vacPastaAtual(){return Store.perm&&!Store.test?Store.dir:null}
@@ -1212,7 +1214,8 @@ function vacAoVoltar(){if(Store.test||!Store.perm)return;Store.reload().then(()=
 function calcExports(D){const h=hoje(),ab=D.os.filter(osAberta),fim=addDias(h,-365);
  const porEvento={};for(const o of D.os)if(o.origem&&o.origem.tipo==='paradas'&&o.origem.ref)(porEvento[o.origem.ref]=porEvento[o.origem.ref]||[]).push({id:o.id,status:o.status,titulo:o.titulo});
  const pend=[];for(const o of ab){if(o.programadaPara&&o.programadaPara<h)pend.push({sev:1,tipo:'osAtrasada',id:o.id,txt:`OS ${o.id} programada para ${br(o.programadaPara)} ainda ${osNome(o.status).toLowerCase()}: ${o.titulo}`,responsavel:o.responsavel||'',prazo:o.programadaPara,link:'os='+o.id});
-  else if(!o.responsavel)pend.push({sev:2,tipo:'osSemResponsavel',id:o.id,txt:`OS ${o.id} sem responsável: ${o.titulo}`,responsavel:'',prazo:o.programadaPara||null,link:'os='+o.id})}
+  else if(o.programadaPara)pend.push({sev:1,tipo:'osAtrasada',id:o.id,aPartirDe:addDias(o.programadaPara,1),txt:`OS ${o.id} programada para ${br(o.programadaPara)} ainda não concluída: ${o.titulo}`,responsavel:o.responsavel||'',prazo:o.programadaPara,link:'os='+o.id});
+  if(!(o.programadaPara&&o.programadaPara<h)&&!o.responsavel)pend.push({sev:2,tipo:'osSemResponsavel',id:o.id,txt:`OS ${o.id} sem responsável: ${o.titulo}`,responsavel:'',prazo:o.programadaPara||null,link:'os='+o.id})}
  for(const a of D.anomalias.filter(a=>!a.os))pend.push({sev:2,tipo:'anomaliaSemOS',id:a.id,txt:`Anomalia em ${a.equipamento} sem OS: ${a.descricao}`,responsavel:'',link:'aba=equip&eq='+a.equipamento});
  return{exportsVersion:1,geradoEm:new Date().toISOString(),modulo:'equip',appVersion:APP_VERSION,
   os:D.os.filter(o=>osAberta(o)||String(o.atualizadaEm||o.criadaEm||'').slice(0,10)>=fim).map(o=>({id:o.id,equipamento:o.equipamento,titulo:o.titulo,tipo:o.tipo,status:o.status,prioridade:o.prioridade||null,responsavel:o.responsavel||'',programadaPara:o.programadaPara||null,criadaEm:o.criadaEm,concluidaEm:o.concluidaEm||null,sapNota:o.sapNota||null,origem:o.origem?{tipo:o.origem.tipo,ref:o.origem.ref||null}:null})),
@@ -1309,7 +1312,7 @@ function formOS(o0,p={}){const ed=!!o0,o=o0||{equipamento:p.equipamento||App.eq|
    Store.commit({k:'os',it});if(p.anomalia)Store.commit({k:'anom',it:{...p.anomalia,os:it.id}});App.osSel=it.id;toast('OS aberta: '+it.id)}})}
 function formAnom(){janela({titulo:'Registrar anomalia',ok:'Registrar',corpo:`<div class="fgrid"><label>Equipamento *<select id="aEq">${optEq(App.eq)}</select></label><label class="wf">O que foi encontrado *<textarea id="aD"></textarea></label><label><input type="checkbox" id="aOS" checked> abrir OS em seguida</label></div>`,
  acao:bg=>{const eq=$('#aEq',bg).value,d=$('#aD',bg).value.trim();if(!eq||!d){toast('Escolha o equipamento e descreva',1);return false}const it={id:novoId('AN'),equipamento:eq,descricao:d,em:new Date().toISOString(),por:user()||'',os:null};
-  if($('#aOS',bg).checked)setTimeout(()=>formOS(null,{equipamento:eq,titulo:'Anomalia: '+d.slice(0,80),descricao:d,tipo:'anomalia',origem:{tipo:'anomalia',ref:it.id,resumo:'Anomalia de '+brh(it.em)},anomalia:it}),50);else Store.commit({k:'anom',it})}})}
+  Store.commit({k:'anom',it});if($('#aOS',bg).checked)setTimeout(()=>formOS(null,{equipamento:eq,titulo:'Anomalia: '+d.slice(0,80),descricao:d,tipo:'anomalia',origem:{tipo:'anomalia',ref:it.id,resumo:'Anomalia de '+brh(it.em)},anomalia:it}),50)}})}
 function formTag(t0){janela({titulo:t0?'TAG':'Nova TAG',corpo:`<div class="fgrid"><label>Código da TAG * ${help('Código interno, texto (ex.: EQ03-CNT). Não muda depois.')}<input id="gC" value="${esc(t0?t0.codigo:'')}"${t0?' disabled':''}></label><label>Equipamento *<select id="gE"><option value="">—</option>${optEq(t0?t0.equipamento:App.eq)}</select></label><label class="wf">Propósito * ${help('Para que serve a leitura. Ex.: contar tampas aplicadas para o OEE.')}<input id="gP" value="${esc(t0?t0.proposito||'':'')}"></label>
   ${t0?'':`<label>Nome no MES<input id="gN" placeholder="a definir"></label><label>Tipo<select id="gT">${TAG_TIPO.map(([v,n])=>`<option value="${v}">${n}</option>`).join('')}</select></label><label>Unidade<input id="gU" placeholder="un, un/min, °C…"></label><label>Vale a partir de<input type="date" id="gD" value="${hoje()}"></label>`}</div>`,
  acao:bg=>{const g=id=>{const x=$('#'+id,bg);return x?x.value.trim():''},c=t0?t0.codigo:g('gC'),eq=g('gE'),p=g('gP');if(!c||!eq||!p){toast('Código, equipamento e propósito são obrigatórios',1);return false}

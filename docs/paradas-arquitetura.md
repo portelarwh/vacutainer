@@ -169,3 +169,6 @@ Só o kit da E2 do plano único (`vacHoje`, `vacMetaAreaMes`); sem mudança de c
   - tem "+ Abrir OS", que abre Equipamentos com a referência do evento;
   - o Paradas não grava em Equipamentos.
 
+## Paradas 1.0.20 (08/11/2026) · revisão do Codex no PR #15
+
+A recorrência do relatório usa o mesmo recorte da tela (equipamento, turno, classe e data final), mantendo o histórico anterior para os meses seguidos.
