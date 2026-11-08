@@ -1,0 +1,259 @@
+**Vacutainer — diagnóstico do estado atual após o PR #16**
+
+08/11/2026. Aplicação examinada: [8cad6a66816b174c17df39823c31b799ea9b5ce8](https://github.com/portelarwh/vacutainer/tree/8cad6a66816b174c17df39823c31b799ea9b5ce8). Comparação histórica: e043513, base dos dois diagnósticos anteriores. As referências de arquivo/linha abaixo são do código 8cad6a6.
+
+**1. Conclusão sobre a maturidade**
+
+O sistema já tem um **MVP funcional** para operação e acompanhamento: as páginas possuem papéis definidos, existe consulta transversal por ordem e os novos fluxos cobrem ações, responsáveis, reunião diária e manutenção. A separação entre donos das bases continua adequada à restrição de trabalhar por arquivos, sem API ou servidor interno.
+
+Eu avançaria para **piloto assistido**, com cópia da pasta, conferência dos dados e uma rotina explícita para alterações pendentes. Para ampliar o uso entre pessoas/estações, faria antes uma rodada curta de estabilização. Foram reproduzidos problemas de persistência nas duas páginas novas e de interpretação/contexto nas telas integradas. A aprovação de testes existentes é um sinal positivo, mas não cobre esses cenários adicionais.
+
+Não há evidência nesta revisão que justifique uma reescrita geral. Também não acrescentaria outra página nesta etapa. O melhor retorno está em tornar confiáveis os fluxos já entregues, testar com os usuários e só depois expandir OSM, MES e AM/TPM conforme chegarem os materiais.
+
+| Dimensão | Avaliação atual | Consequência prática |
+|---|---|---|
+| Organização e escopo | Boa base; páginas com responsabilidades coerentes | Manter a divisão atual e evoluir as abas existentes |
+| Integração | Avanço concreto; ficha, busca e encaminhamentos existem | Corrigir chaves, filtros e vínculos que ainda se perdem |
+| Persistência | Melhor que em e043513; há falhas novas de recuperação/local | Corrigir AT-01/02/03 antes de ampliar uso simultâneo |
+| Interface | Padrão visual consistente; telas novas legíveis | Ajustes de densidade, celular e jornadas por perfil, sem reformulação geral |
+| Relatórios | PDF/texto/Outlook exercitados; Paradas tem relatório | Corrigir ausência versus zero e preservar o recorte; Excel offline continua pendente |
+| Uso na rede real | Ainda não homologado por esta revisão | Não declarar duas estações reais aprovadas com base em OPFS |
+
+**2. O que foi verificado**
+
+Foram lidos CLAUDE.md, registro de decisões, plano único, documentação das páginas novas e os trechos de implementação envolvidos. Conferi o merge do PR #16 e os três comentários de revisão do PR #15. A análise respeita as decisões recusadas/adiadas: não trata perfis como autenticação e não propõe um servidor como pré-condição.
+
+Executei 16 suítes do repositório, sem alterar seus arquivos: tordens, tvigencias, tnumeros, tcontratos, tficha, tplanner, tfila, tequip, tpg, tintegra, tdiag, tseguranca, tbases, trelatorios, tconstrucao e tvisual. Todas terminaram com código zero e “sem erros”. Há **656 linhas explícitas de checagem ok**; tpg é uma varredura de execução e não adiciona checagens a essa contagem. O resultado detalhado está em `evidencias/suites.json` e nos logs.
+
+Os testes foram executados numa cópia isolada, com Chromium/Playwright e dados fictícios. Um adaptador externo escolhe o Chromium instalado e converte file:// em HTTP local porque este navegador bloqueia file://. Isso é adaptação de teste, não proposta de servidor para a plataforma. Parte dos testes já usa HTTP/OPFS por projeto. Não houve leitura ou gravação nas bases reais da linha.
+
+Os comandos aplicar_kit21.py, build.py da Produção e gerar_paginas.py rodaram em outra cópia e produziram **zero diferenças** em relação aos arquivos publicados. Isso confirma alinhamento entre fontes e HTMLs gerados neste commit.
+
+A varredura complementar das duas páginas novas percorreu **56 cenas**: todas as abas, detalhe e formulário, em 1440/390 px e temas claro/escuro, com dados de teste. Não houve pageerror, rolagem horizontal do documento ou modal fora da largura da tela nesses cenários. Capturas foram inspecionadas visualmente; o quadro pode ter rolagem horizontal interna por projeto.
+
+Executei cenários adicionais em `verificar-adicional.cjs` e `verificar-fluxos.cjs`: 16 cenários reproduzem os 12 problemas AT abaixo. Alguns problemas afetam Iniciativas e Equipamentos, por isso duas reproduções não representam dois defeitos independentes. Há ainda uma verificação do limite de retenção de operações confirmadas e quatro verificações da dependência XLSX sem internet.
+
+**Limites:** não conferi fisicamente a pasta da linha, Edge corporativo, Outlook da empresa ou dois computadores reais. tmeta não foi executado: seu pacote Node xlsx não está disponível; isso é diferente da biblioteca local que falta na distribuição. Não usei a declaração “sem erros” como prova de que todo cálculo, importador ou gesto possível está correto.
+
+**3. Situação das entregas anteriores**
+
+| Frente | Situação encontrada | Evidência/ressalva |
+|---|---|---|
+| E1 — Ordens | Correções de leitura estrita, pendência recuperável, backup crítico e releitura presentes | tordens: 15 checagens. A concorrência física continua pendente |
+| E2 — versões/datas/metas | Presente | tvigencias: 18 checagens; regra mensal ponderada registrada pelo responsável |
+| E3 — números | Presente nos campos/fontes tratados | tnumeros: 12 checagens. Não significa validação universal de qualquer importação futura |
+| E3b — XLSX local | Pendente | Arquivo ausente no checkout; carga offline falhou nas quatro páginas verificadas |
+| E4 — contratos | Expansão presente, com cobertura e versão | tcontratos: 16 checagens; Waste ainda tem fallback interno declarado fora das janelas |
+| E5 — ficha/Ctrl K | Entregue e exercitado | tficha: 52 checagens. Novas bordas em AT-05/08/12 e reconsulta em AT-09 |
+| E6/E8 — Planner/KAS/OEE | MVP entregue | tplanner: 31 checagens. Persistência adicional falha em AT-01/02/03; OSM importada não está entregue |
+| E10a/b — fila/reunião | Entregue | tfila: 20 checagens. AT-06/07/09/10 delimitam falhas restantes |
+| E10d — relatório Paradas | Entregue | trelatorios: 111 checagens no conjunto. Aceite Excel está enfraquecido, conforme § 6 |
+| E11 — Equipamentos | Ficha, OS, TAGs e estrutura AM entregues | tequip: 20 checagens. Não é MES nem execução completa de TPM |
+| PR #16 — três apontamentos | Correções presentes e testes correspondentes passaram | Anomalia antes da OS; recorrência filtrada; exports atualizados ao abrir/gravar. AT-04 cobre retorno a uma aba já aberta no dia seguinte |
+| E7/E9/E10c/E12/E13/E15 | Continuam pendentes ou parciais | Requerem os materiais/decisões detalhados no plano desta revisão |
+
+**4. Novos problemas reproduzidos**
+
+Prioridades: **P1** = proteger alterações e recuperação antes de ampliar o uso; **P2** = confiabilidade de fluxos e informações; **P3** = refinamento posterior. Severidade representa a consequência, não a frequência já observada na fábrica. Todos os dados abaixo são sintéticos; não foram constatados incidentes nas bases reais.
+
+| ID | Problema | Severidade / prioridade | Reprodução |
+|---|---|---|---|
+| AT-01 | Duas abas sobrescrevem a fila local de alterações pendentes | Alta / P1 | A01-inic e A01-equip |
+| AT-02 | Base que desaparece é recriada vazia sem decisão de recuperação | Alta para recuperação / P1 | A02-inic e A02-equip |
+| AT-03 | Schema/versão própria desconhecidos são aceitos para escrita | Média/alta, condicional / P2 antes de novas migrações | A03-inic e A03-equip |
+| AT-04 | Retorno à aba após virar o dia mantém exports antigos | Média / P2 | A04-inic e A04-equip |
+| AT-05 | Link inicial de anomalia abre o primeiro equipamento | Média / P2 | A05-rota-anomalia |
+| AT-06 | Reunião/relatório apresentam zero fora da cobertura de Paradas | Média / P2 | A06-reuniao-cobertura |
+| AT-07 | Ação de grupo com várias ordens vincula apenas a primeira | Média / P2 | A07-reuniao-multiplas-ordens |
+| AT-08 | Ficha reutiliza dado de outra pasta se tamanho/data coincidirem | Média, condicional / P2 | A08-ficha-troca-pasta |
+| AT-09 | Reconsulta da ação não recompõe os filtros da evidência | Média / P2 | A09-reconsulta-filtros; links da Reunião diária |
+| AT-10 | Trocar o usuário no Portal mantém a fila da pessoa anterior | Média / P2 | A10-fila-troca-usuario |
+| AT-11 | Link de origem pode executar javascript ao ser clicado | Média, requer conteúdo malicioso e clique / P2 | A11-protocolo-link-origem |
+| AT-12 | Rota de ordem no Planner diverge da normalização da ficha | Média / P2 | A12-ordem-zeros-no-planner |
+
+**AT-01 — Uma das alterações pendentes desaparece ao usar duas abas**
+
+**Onde:** Store.cache em [Iniciativas:1177](https://github.com/portelarwh/vacutainer/blob/8cad6a66816b174c17df39823c31b799ea9b5ce8/paginas/Iniciativas.html#L1177) e [Equipamentos:1179](https://github.com/portelarwh/vacutainer/blob/8cad6a66816b174c17df39823c31b799ea9b5ce8/paginas/Equipamentos.html#L1179), junto de Store.init/commit. As duas abas usam as mesmas chaves localStorage, mas mantêm filas próprias em memória.
+
+**Resultado:** abri duas abas sem pasta, criei AUD-A na primeira e AUD-B na segunda e fechei ambas. Ao reabrir, só AUD-B existia, tanto na fila quanto no cache. Reproduzido para ação e OS. O mesmo mecanismo é relevante quando a pasta deixa de responder e as alterações precisam ficar pendentes.
+
+**Por que corrigir:** a promessa de guardar a alteração neste navegador deixa de valer justamente quando o operador precisa de recuperação. Duas janelas podem surgir naturalmente ao abrir encaminhamentos de outras páginas.
+
+**Como:** persistir operações individualmente por ID numa transação IndexedDB, ou usar uma coordenação local que mescle operações antes de substituir a fila. Apenas adicionar um listener storage não torna a atualização atômica. Uma prevenção temporária de segunda instância deve ser visível e não pode descartar o que já está pendente.
+
+**Aceite:** duas abas offline, duas abas com erro de leitura, fechamento em qualquer ordem, reabertura e sincronização preservam ambas as operações sem duplicá-las. Simular falha da persistência local e indicar claramente o que não ficou protegido.
+
+**AT-02 — Desaparecimento de base conhecida termina em arquivo vazio**
+
+**Onde:** Store.reload/save em [Iniciativas:1173](https://github.com/portelarwh/vacutainer/blob/8cad6a66816b174c17df39823c31b799ea9b5ce8/paginas/Iniciativas.html#L1173) e [Equipamentos:1174](https://github.com/portelarwh/vacutainer/blob/8cad6a66816b174c17df39823c31b799ea9b5ce8/paginas/Equipamentos.html#L1174). Ao receber null de ler(), reload mantém os registros em memória, mas save começa de vazio() e aplica só a fila.
+
+**Resultado:** uma base fictícia com um registro/revisão 5 foi lida; removi o arquivo da pasta simulada e executei reload/save, como no botão Gravar agora. Foi criado um arquivo com zero registros/revisão 1, sem erro. A primeira remoção é externa: o aplicativo não causou o desaparecimento inicial, mas descartou sua cópia recuperável e encobriu a situação com uma nova base vazia.
+
+**Como:** diferenciar primeira criação, troca intencional de pasta e ausência inesperada de base já conhecida. Na última, preservar cache/fila, oferecer cópia recuperável e exigir decisão explícita de recuperar ou criar. Não considerar todo NotFoundError uma autorização para reiniciar o histórico.
+
+**Aceite:** primeira instalação continua funcionando; base que some não apaga a cópia local; troca de pasta não importa silenciosamente dados da anterior; recuperar conserva registros, auditoria e operações pendentes. O teste deve conferir também ausência sem operações na fila.
+
+**AT-03 — Escrita em formato próprio desconhecido**
+
+**Onde:** validarBase em [Iniciativas:1135](https://github.com/portelarwh/vacutainer/blob/8cad6a66816b174c17df39823c31b799ea9b5ce8/paginas/Iniciativas.html#L1135) e [Equipamentos:1139](https://github.com/portelarwh/vacutainer/blob/8cad6a66816b174c17df39823c31b799ea9b5ce8/paginas/Equipamentos.html#L1139), chamadas por Store.ler.
+
+**Resultado:** uma base sintética com schema vac-formato-futuro, schemaVersion 99 e revisão 100 passou sem erro. save gravou revisão 101 e appVersion 1.0.1 sobre ela. Conferir exportsVersion dos leitores não protege a gravação do próprio formato.
+
+**Como:** validar schema, versões de base suportadas e estrutura mínima antes de completar ou gravar. Se houver formato legado sem esses campos, tratá-lo por uma regra de compatibilidade documentada, não aceitar qualquer objeto. Bloquear escrita de versão futura e orientar atualização/consulta recuperável.
+
+**Aceite:** versão suportada passa; schema alheio, versão futura e listas inválidas geram zero escritas. Não “corrigir” uma versão desconhecida apenas substituindo seu número.
+
+**AT-04 — Exports antigos em uma aba que ficou aberta**
+
+**Onde:** vacAoVoltar em Iniciativas:1213 e Equipamentos:1211; Store.init/save nas duas páginas. A correção do PR #16 está no carregamento inicial e na gravação, mas voltar para a aba chama apenas reload/render.
+
+**Resultado:** uma ação com prazo em 08/11 continuou publicada como a vencer no dia 09/11. Uma TAG cuja vigência passava a valer em 09/11 continuou publicada com nome/tipo anteriores. Executei vacAoVoltar; somente Gravar agora atualizou os exports. A tela pode calcular com a data nova enquanto outras páginas leem o resumo antigo.
+
+**Como:** ao retomar a aba, verificar o dia local de publicação e republicar pelos mecanismos existentes quando necessário. Se houver verificação periódica, respeitar aba suspensa, falta de permissão, gravação em andamento e fila pendente. Não prometer atualização com todos os navegadores fechados.
+
+**Aceite:** aba aberta na virada de dia/mês, suspensão do computador e troca de foco; sem edição, resumo correto e sem perda de fila. Distinguir dado dependente da data de timestamps de auditoria. Manter os testes do PR #16 passando.
+
+**AT-05 — Link de anomalia não seleciona a máquina na primeira abertura**
+
+**Onde:** exports.pendencias em Equipamentos:1219; rota em [Equipamentos:1360](https://github.com/portelarwh/vacutainer/blob/8cad6a66816b174c17df39823c31b799ea9b5ce8/paginas/Equipamentos.html#L1360) e inicialização:1372. O parser de rota entende &eq=, mas a entrada inicial de #aba= só aplica a aba e não chama rota depois de carregar.
+
+**Resultado:** #aba=equip&eq=EQ03 abriu EQ01, o primeiro cadastro. Chamar rota manualmente selecionou EQ03. É exatamente o formato do link de anomalia sem OS publicado para o Portal.
+
+**Como:** usar #eq=EQ03 no produtor, ou processar os parâmetros completos na inicialização. A solução mais simples é ajustar o link e manter compatibilidade com links já publicados.
+
+**Aceite:** abrir a pendência em nova janela, na mesma aba e pelo navegador já aberto seleciona a máquina correta; código com acentos/caracteres válidos é codificado sem perder o valor.
+
+**AT-06 — Fora da janela publicada aparece como zero**
+
+**Onde:** reuDados em [Portal:3193](https://github.com/portelarwh/vacutainer/blob/8cad6a66816b174c17df39823c31b799ea9b5ce8/paginas/Portal.html#L3193), card em 3210 e modelo do relatório em 3231.
+
+**Resultado:** reunião de um dia 120 dias atrás mostrou 0 min; o relatório também recebeu 0 min. A nota dizia “fora dos 90 dias publicados”, mas o número principal e a mensagem de nenhuma parada ainda sugeriam ausência real de ocorrências.
+
+**Como:** separar disponível/completo, parcial e fora da cobertura. Mostrar indisponível no lugar de zero e repetir essa condição no relatório. A cobertura deve vir do produtor, incluindo limites de quantidade quando existirem; contar 90 dias pelo relógio do leitor é uma aproximação, não prova de completude.
+
+**Aceite:** dia sem parada dentro de cobertura comprovada pode ser zero; dia fora da janela, arquivo ausente e lista parcial não viram zero. PDF, texto e Excel preservam a mesma distinção.
+
+**AT-07 — Ação sobre várias ordens fica ligada somente à primeira**
+
+**Onde:** agregação em Portal:3196 e botão de ação em [Portal:3220](https://github.com/portelarwh/vacutainer/blob/8cad6a66816b174c17df39823c31b799ea9b5ce8/paginas/Portal.html#L3220).
+
+**Resultado:** dois eventos EQ03/FAL, de ordens diferentes, somavam 75 minutos. A ação recebeu fotografia de 75 minutos/2 ocorrências, mas vínculo apenas com a primeira ordem. A ficha da segunda não consegue reconhecer a mesma ação pelo vínculo.
+
+**Como:** coletar as ordens únicas do grupo e preservá-las nos vínculos, ou declarar uma ação pelo grupo/critério sem atribuir arbitrariamente todo o conjunto à primeira ordem. Não duplicar a ação para cada ordem.
+
+**Aceite:** duas ordens, eventos sem ordem e uma ordem repetida. Totais da evidência permanecem corretos e a ação pode ser encontrada nos vínculos pertinentes, sem duplicação de contagem.
+
+**AT-08 — Cache de ficha não considera a identidade da pasta**
+
+**Onde:** carregar em [fontes/kit/kit_v21.js:257](https://github.com/portelarwh/vacutainer/blob/8cad6a66816b174c17df39823c31b799ea9b5ce8/fontes/kit/kit_v21.js#L257). A assinatura de reutilização é tamanho/data do arquivo, sob a mesma chave de módulo.
+
+**Resultado:** li uma pasta A com produzido 111 e troquei para B com produzido 222, mesmo tamanho e data. A ficha manteve 111 e classificou a fonte como pasta. Forçar leitura trouxe 222. Foram usados handles simulados; não se mediu a frequência dessa coincidência na rede real.
+
+**Como:** invalidar memória/índice ao mudar o handle da pasta; associar cache persistido à origem. Preferir comparação por identidade de handle quando disponível; nome da pasta sozinho não é identidade suficiente. O cache de outra pasta precisa ser rotulado ou descartado para aquela consulta.
+
+**Aceite:** duas pastas com nomes iguais, tamanho/data iguais, troca após erro e retorno offline. Fonte exibida e dados consultados pertencem à mesma origem.
+
+**AT-09 — Reconsultar a origem perde o recorte**
+
+**Onde:** acaoPlanner em [Paradas:1554](https://github.com/portelarwh/vacutainer/blob/8cad6a66816b174c17df39823c31b799ea9b5ce8/paginas/Paradas.html#L1554); links de reunião em Portal:3220/3223.
+
+**Resultado:** uma ação de Pareto filtrado por outubro, EQ03, T2, classe e código recebeu link apenas Paradas.html#aba=pareto. Os filtros não estão codificados no endereço. Na reunião, o link é Portal.html#reuniao, sem dia/turno. A fotografia continua guardada, mas abrir novamente não recompõe a evidência que gerou a ação.
+
+**Como:** rota de consulta com parâmetros versionados de período e filtros; origem guarda também o critério estruturado. Evento individual pode continuar pelo ID. Se uma fonte antiga já saiu da cobertura, mostrar a fotografia e declarar o limite da reconsulta. Não é necessário salvar grandes listas na URL.
+
+**Aceite:** abrir em navegador limpo, outra estação e uma semana depois; período/seleção/turno/classe são os mesmos, ou há mensagem explícita de indisponibilidade. Novos dados não são apresentados como a fotografia antiga.
+
+**AT-10 — Minha fila mantém os itens do usuário anterior**
+
+**Onde:** Entrar.entrar em [Portal:3142](https://github.com/portelarwh/vacutainer/blob/8cad6a66816b174c17df39823c31b799ea9b5ce8/paginas/Portal.html#L3142); condição final em 3150 só redesenha geral/cad.
+
+**Resultado:** Ana estava em Minha fila. Entrei como Bia pelo formulário real e escolhi Ficar no Portal. O nome corrente mudou, mas a lista continuou com a ação de Ana. Um App.render manual mostrou corretamente a ação de Bia. O teste existente troca a pessoa e força render, por isso não detecta o fluxo real.
+
+**Como:** redesenhar os componentes dependentes da pessoa após a troca, incluindo Minha fila, equipe e contador, preservando filtros permitidos. Tratar também alteração do usuário em outra aba. Isso é correção funcional de identidade na tela, sem reabrir a discussão de autenticação.
+
+**Aceite:** troca via Entrar, Ficar no Portal e troca em outra aba atualizam lista e contador sem precisar navegar ou pressionar F5.
+
+**AT-11 — Protocolo executável no link de origem**
+
+**Onde:** formAcao/detalheHtml, [Iniciativas:1280](https://github.com/portelarwh/vacutainer/blob/8cad6a66816b174c17df39823c31b799ea9b5ce8/paginas/Iniciativas.html#L1280) e 1308. O texto é escapado, mas o protocolo de origem.link não é validado. O campo pode chegar pelo payload de nova ação.
+
+**Resultado:** criei uma ação em modo de teste pelo formulário com um link javascript que apenas atribui 1 a uma variável de auditoria. Ao clicar em reconsultar, a variável foi alterada. Nenhum dado foi enviado ou arquivo real alterado. O ataque exige conteúdo malicioso na origem e clique; não é execução automática ao abrir qualquer ação.
+
+**Como:** validar protocolos/caminhos ao receber o payload, gravar e renderizar, reutilizando a política que já restringe links de evidência. Preservar links relativos internos, HTTPS, arquivo e caminhos de rede autorizados; recusar javascript/data e outros protocolos executáveis. Escape de HTML sozinho não resolve isso.
+
+**Aceite:** payload malicioso nunca gera link executável, inclusive em ação antiga; links internos, pasta e documentos legítimos continuam abrindo. Verificar os outros pontos que renderizam a mesma origem, sem remover a rastreabilidade.
+
+**AT-12 — Ordem com zeros não encontra as ações que a ficha reconhece**
+
+**Onde:** rota de Iniciativas em [1415](https://github.com/portelarwh/vacutainer/blob/8cad6a66816b174c17df39823c31b799ea9b5ce8/paginas/Iniciativas.html#L1415) e filtradas em 1248. A rota usa pesquisa textual livre; a ficha normaliza a chave numérica para comparação.
+
+**Resultado:** a ação ligada à ordem 100234567 aparece ao consultar #ordem=100234567, mas some em #ordem=000100234567. A ficha usa a comparação sem zeros e seus links podem preservar a forma digitada. O usuário chega à página dona e vê uma lista vazia apesar da associação existente.
+
+**Como:** filtro estruturado por vínculo de ordem, com a mesma comparação da ficha. Conservar o código como texto; não converter em número. Busca textual livre permanece como outra função.
+
+**Aceite:** ordem com/sem zeros, ordem não numérica, ordem citada apenas na descrição e ordens parecidas. A rota exata mostra só os vínculos corretos.
+
+**5. Riscos e limites relevantes, separados dos 12 bugs**
+
+**R-01 — Recuperação concorrente depende de retorno em uma janela limitada.** Store.perdidas em Iniciativas:1180 e Equipamentos:1180 conserva operações confirmadas por 30 minutos e até 500 operações. O teste novo da revisão chamou a função com uma operação ausente da auditoria após 31 minutos: ela foi descartada antes de voltar à fila. O teste do projeto cobre uma corrida seguida de releitura rápida; passou. Isso não demonstra proteção ilimitada se uma estação fechar ou ficar muito tempo sem reler. É um risco conhecido da estratégia por arquivos, agora delimitado por execução da função, não uma reprodução física de duas estações.
+
+Na homologação, incluir estação A confirmando, B sobrepondo após leitura antiga e A fechando/retornando depois da janela. Definir política operacional e retenção recuperável antes de prometer que qualquer edição simultânea é preservada. Um arquivo lock simples ou uma releitura não são transação distribuída. A solução pode combinar diário durável de operações e coordenação por módulo, conforme o resultado da rede real; não proponho reescrever todas as persistências nesta revisão.
+
+**R-02 — Identidade por nome.** Ações/OS guardam responsável como nome, e Minha fila compara nomes normalizados. Renomear uma pessoa ou ter homônimos pode fragmentar a atribuição e os indicadores. A estrutura atual é funcional com cadastro consistente; a evolução recomendada é acrescentar ID estável e nome de exibição/histórico, com compatibilidade para registros livres. Não foi reproduzido um incidente real de homônimo nesta análise.
+
+**R-03 — Cobertura limitada é normal, mas precisa ficar explícita.** Produção publica histórico por ordem por 24 meses; Gel, ordens de 150 dias; Paradas, lista recente limitada a 90 dias e quantidade. Totais por ordem podem ter alcance diferente da lista. Ficha, reunião e relatórios devem informar essa diferença; não transformar falta de detalhe em inexistência do fato. Waste ainda usa dados internos da Produção em fallback fora de janelas, limitação reconhecida no registro § U/E4.
+
+**R-04 — Falha de backup rotineiro continua pouco visível.** O Portal já registra isso como decisão pendente. Nas duas páginas novas, backupDiario captura e registra erro no console. A ação principal pode continuar conforme a política atual, mas convém exibir última cópia confirmada e última falha. Isso é diferente do backup crítico de substituição, já corrigido em Ordens. Ainda falta um caminho simples e homologado de restauração das bases novas; copiar backup não basta sem procedimento de recuperação.
+
+**6. Lacunas nos testes e na distribuição**
+
+- **Excel:** trelatorios.js:78 usa `ok(!!fx || true, ...)`: o aceite sempre passa mesmo sem download. Portanto, as 111 checagens não comprovam exportação Excel do Paradas. Criar um estado separado de “dependência ausente” ou verificar arquivo e conteúdo quando a biblioteca estiver instalada.
+- **Telas novas:** tvisual.js:7 ainda considera Iniciativas e Equipamentos como construção; seu modo exemplo não é ativado nessas páginas. A varredura de cabeçalho/tema continua útil, mas parte das checagens pula os dados reais delas. Os testes específicos têm exemplos/celular, e acrescentei uma varredura das abas/detalhes/formulários com dados fictícios. Atualizar a suíte comum para refletir a situação atual.
+- **XLSX offline:** a carga falhou em Portal, Waste, Paradas e Produção ao bloquear a internet e usar apenas o checkout limpo. E3b continua necessária. Isso não prova que o arquivo esteja ausente na pasta real; ela não foi acessada.
+- **Reprodutibilidade:** package.json/lock e automação continuam como decisão de manutenção. Os testes atuais são úteis; um comando agregado com dependências documentadas e resultado que distingue falha/ausência pode evitar interpretações erradas. Não é pré-condição para corrigir os bugs.
+
+**7. Avaliação por página**
+
+| Página e versão | Já atende bem | Deficiência/limite atual | Próxima evolução útil |
+|---|---|---|---|
+| Portal 1.9.0 | Entrada comum, cadastro, fila, reunião, relatórios e ficha | AT-06/07/09/10; calendário comum pendente; responsabilidade de outras páginas ainda parcial | Saúde das fontes/cobertura e relatório por responsável; corrigir os números/contexto primeiro |
+| Produção 2.4.15 | Lançamento, hora a hora, indicadores, plano, ordens e ficha | Sem regra de atribuição de OEE por ordem; eventos manuais detalhados para conciliação ainda pendentes | Continuidade do turno e projeção de ritmo por turno, como evolução E10c |
+| Waste 1.8.21 | Diagnóstico por ordem/competência, causas/ações e relatório | Fallback interno reconhecido, resumo repetido e agenda de ações local separada do Planner por decisão | Melhor pauta de perdas e comparação com Gel/BOM sem duplicar custo |
+| Gel 2.09 | FIFO, estoque/consumo, LPs, monitoramento da pasta e ficha | Catálogos/equipamentos centrais e produção/calendário OEE → Gel ainda pendentes | Cobertura de estoque com programação, validade/bloqueio e premissas visíveis |
+| Paradas 1.0.20 | Análise, recorrência, relatório, ação Planner e OS | AT-09; conciliação MES/manual e ID de evento entre fontes ainda pendentes | Fechar o ciclo evidência → ação → OS → resultado, mantendo os donos |
+| Iniciativas 1.0.1 | Quadro/lista/responsável, histórico/tempos, KAS e vínculos | AT-01/02/03/04/11/12; OSM é manual e 5S é estrutura futura | Importação OSM segura; eficácia das ações e indicadores por responsável |
+| Equipamentos 1.0.1 | Ficha por ativo, histórico, OS, TAGs por vigência e anomalias | AT-01/02/03/04/05; sem MES e execução de checklist AM | Agenda de OS, AM versionada e semântica das TAGs conforme padrões/regras |
+| Projetos 0.1.4 | Entrada e indicação de construção coerentes | Sem base/fluxo de projeto implementado | Aguardar escopo E15; não ocupar espaço de operação antes disso |
+
+**8. Interface: o que manter e o que melhorar**
+
+Cabeçalho, abas, cores de estado e cartões estão consistentes. A ficha do equipamento separa histórico de falhas de estado atual, o que evita uma conclusão indevida sem MES. Planner oferece botões de mudança de estado além do arraste; isso ajuda toque e teclado. Essas escolhas fazem sentido para a linha.
+
+No celular, a reunião empilha seis cartões antes da pauta, e o Planner mostra detalhe extenso antes do quadro. É legível, mas há bastante deslocamento para agir. Eu priorizaria um resumo compacto, atalhos para pauta/pendências e Lista ou Minhas como apresentação inicial no celular. O Quadro pode continuar disponível com indicação de deslocamento horizontal. A faixa de atualização pode ficar recolhida após leitura, preservando o aviso quando relevante.
+
+Resumo/Detalhado já existe na ficha. A jornada por perfil no restante do sistema continua parcial. Uma proposta para validar com a equipe é: operador no lançamento/pendências do turno; liderança na visão geral/fila/reunião; PCP no plano/ordens/cobertura de Gel; qualidade no scrap/causas/evidências; manutenção em OS/anomalias/equipamento; administração em cadastros/saúde/recuperação. Isso é hipótese de navegação, não regra de permissão aprovada.
+
+Ainda vale revisar foco de teclado, retorno ao item após fechar detalhe, mensagens de gravação e confirmação de ações de recuperação. Não foi feita uma certificação formal de acessibilidade; as medições de contraste/rolagem dos testes não equivalem a ela.
+
+**9. Ideias que ainda têm bom retorno**
+
+| Proposta | Motivo | Prioridade / dependência |
+|---|---|---|
+| Saúde dos dados no Portal | Exibir última leitura, última publicação, cobertura, pendências e última cópia confirmada evita decisão com fonte antiga | P2; ampliar Versões/Diagnóstico existente |
+| Relatório por responsável/equipe | O Planner já mede tempo por histórico; falta uma saída consolidada para liderança | P2; definir recorte/coortes e identidade estável, sem SLA inventado |
+| Verificação de eficácia após concluir | Ação concluída não demonstra que a perda/falha caiu; registrar evidência posterior fecha o ciclo OEE/KAS | P2/P3; método de benefício e período precisam ser acordados |
+| Reunião com Ao vivo/Fotografia salva | Hoje a foto guarda KPIs formatados; relatório usa o modelo atual. Escolha explícita permite reproduzir o que foi discutido | P2; guardar fontes/revisões/recorte e não sobrescrever a fotografia sem intenção |
+| Agenda de manutenção | OS já tem programação; agenda e carga por responsável ajudam execução antes do MES | P2; calendário básico pode usar datas existentes; preventiva recorrente depende dos padrões |
+| Continuidade de turno | Pendência não deve morrer na passagem; ciência/encaminhamento complementam a passagem já existente | E10c; validar rotina com operador e liderança |
+| Monitoramento por fonte | Gel já é referência; outros módulos precisam de pacote estável, idempotência e retomada | E9; estação coletora e importador manual validado |
+| Previsão de Gel com programação | Cobertura por consumo médio não explica troca de catálogo, validade ou bloqueio | E14/RAS-04/GEL-01; integrar as fontes sem transformar simulação em plano aprovado |
+
+Não transformaria todas essas ideias em entregas imediatas. As duas primeiras frentes são estabilização e homologação. Depois, a maior fonte de valor novo tende a ser OSM importada com acompanhamento local, conforme o pedido original.
+
+**10. O que ainda falta e não deve ser confundido com bug novo**
+
+Permanecem válidas as sete dependências informadas pelo responsável: SheetJS local; amostra OSM; estação coletora; jornadas por perfil; amostras/regras MES; padrões AM/TPM/5S; escopo Projetos. O plano de correções lista material e aceite para cada uma.
+
+Além delas, há pendências antigas que podem avançar sem esses materiais: calendário da Produção consultável no Portal, Gel lendo cadastros centrais, integração produção/calendário → Gel, redução de totais repetidos no Waste, relatórios por responsável e melhoria de recuperação/diagnóstico. Portanto, “todo o restante aguarda material” é uma simplificação: parte da manutenção e da integração ainda é independente.
+
+**Conferência final de completude:** foram considerados os oito módulos, bases novas, contratos, gravação/recuperação, datas, vínculos, relatórios, dois temas/celular, os três reparos do PR #16, dependências externas e o plano anterior. Permanecem fora do alcance desta execução as bases reais e a homologação física. O sistema está bom o suficiente como MVP para aprender com uso assistido; estabilizar os pontos acima é a condição para recomendar ampliação com confiança.
