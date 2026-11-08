@@ -179,3 +179,11 @@ A recorrência do relatório usa o mesmo recorte da tela (equipamento, turno, cl
 - **Formato:** conferido no `findBase`, então vale tanto para ler quanto para gravar.
 - **Regravação:** o id da operação entra na auditoria (aditivo), o que permite a regravação em 24 h.
 
+## Paradas 1.0.22 (08/11/2026) · C3 e C6
+
+- **`exports.eventosCobertura`** = `{ de, ate, cortado }` (aditivo, AT-06):
+  - é o período em que a lista `eventos` está completa;
+  - os eventos ficam em ordem de dia, e o corte de 3000 guarda os mais recentes;
+  - fora desse período, o Portal mostra "sem dado de paradas" em vez de 0.
+- **Rota do Pareto (AT-09):** `#pareto=de|ate|eq|turno|cls|grupo|dim|k`. A ação aberta do Pareto leva esse link, que reabre o mesmo filtro, a mesma dimensão e a mesma barra. Se o período saiu da base, a página avisa; a fotografia guardada na ação continua valendo.
+

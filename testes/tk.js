@@ -1,5 +1,5 @@
 const RAIZ=require('path').resolve(__dirname,'..')+'/';
-const {chromium}=require('playwright');const SS=require('path').resolve(__dirname,'..')+'/';
+const {chromium}=require('playwright');const SS=require('path').resolve(__dirname,'saida')+'/';require('fs').mkdirSync(SS,{recursive:true});   /* prints em testes/saida/ (fora do git), não na raiz */
 (async()=>{const b=await chromium.launch();const ctx=await b.newContext({viewport:{width:1440,height:900}});
 const pg0=await ctx.newPage();await pg0.goto('file://'+RAIZ+'paginas/Portal.html');
 await pg0.evaluate(()=>{const P=(v)=>Object.fromEntries(['portal','oee','perdas','gel','paradas','equip','inic','projetos'].map(m=>[m,{ver:v.includes(m),lancar:false}]));

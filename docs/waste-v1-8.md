@@ -125,3 +125,7 @@ No relatório mensal, o Pareto de componentes diz "20 maiores de N (todos no Exc
 
 Trava da 2ª aba: se outra aba do Waste tem alteração não gravada na pasta, esta não altera e avisa. Nada é descartado.
 
+## Waste 1.8.23 (08/11/2026)
+
+Só o kit: ficha por pasta (AT-08) e contagem da fila durável para o Portal.
+

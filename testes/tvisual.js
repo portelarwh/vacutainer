@@ -4,14 +4,14 @@
 // Sai com código 1 se alguma checagem falhar.
 const SP=require('path').resolve(__dirname,'..')+'/';const S='file://'+SP+'paginas/';const fs=require('fs');
 const {chromium}=require('playwright');const PRINT=!process.argv.includes('--sem-print');
-const CONSTR=new Set(['Equipamentos','Iniciativas','Projetos']);   /* em construção: sem dados, sem ações de base, sem gráficos */
+const CONSTR=new Set(['Projetos']);   /* em construção: sem dados, sem ações de base, sem gráficos. Iniciativas e Equipamentos saíram do gerador na 1.0.0 (C4) */
 const PAGS=[['Portal','Portal.html'],['Produção','OEE-Vacutainer.html'],['Waste','Perdas-Ordem.html'],['Gel','Gestão-Gel-Vacutainer.html'],['Paradas','Paradas.html'],
-  /* páginas em construção (fontes/modelo/gerar_paginas.py) */['Equipamentos','Equipamentos.html'],['Iniciativas','Iniciativas.html'],['Projetos','Projetos.html']];
+  ['Equipamentos','Equipamentos.html'],['Iniciativas','Iniciativas.html'],/* em construção (fontes/modelo/gerar_paginas.py) */['Projetos','Projetos.html']];
 const LARG=[1920,1440,1024,768,390];
 const errs=[];const ok=(c,m)=>{console.log((c?'ok   ':'FALHA ')+m);if(!c)errs.push(m)};
 // entra no exemplo/teste de cada página (dados fictícios), fecha janelas iniciais
 // entra no exemplo/teste de cada página (dados fictícios), fecha janelas iniciais. Sem try/catch: se a entrada falhar, a página registra erro.
-const EXEMPLO={Equipamentos:()=>{},Iniciativas:()=>{},Projetos:()=>{},Portal:()=>{enterTest()},Waste:()=>{enterTest()},Paradas:()=>{modoTeste()},
+const EXEMPLO={Equipamentos:()=>{enterTest()},Iniciativas:()=>{enterTest()},Projetos:()=>{},Portal:()=>{enterTest()},Waste:()=>{enterTest()},Paradas:()=>{modoTeste()},
   Gel:()=>{enterDemo();render()},
   'Produção':()=>{document.querySelectorAll('.overlay').forEach(o=>o.remove());Demo.enterExample();
     // o exemplo marca os dias como demonstração (fora dos indicadores); em memória, tira a marca para a tela ficar preenchida (como na auditoria)
@@ -32,7 +32,7 @@ const MEDIR=()=>{const q=s=>document.querySelector(s),r=e=>e?e.getBoundingClient
     scrollX:document.documentElement.scrollWidth>innerWidth+1,theme:document.documentElement.getAttribute('data-theme'),bg:cs(document.body).backgroundColor,
     baixos,dateScheme:[...new Set(dd)],
     cab:(()=>{const vis=e=>{if(!e)return false;const r=e.getBoundingClientRect();return r.width>0&&r.height>0&&r.left>=-1&&r.right<=innerWidth+1&&getComputedStyle(e).visibility!=='hidden'};const acts=[...document.querySelectorAll('.vpage .vacts > button, .vpage .vacts > .tvmenu > button, .vpage .vacts > details > summary')].filter(b=>!b.hidden&&getComputedStyle(b).display!=='none');const st=document.querySelector('#stBase');return{acoes:acts.length,acoesVisiveis:acts.filter(vis).length,status:st&&st.children.length?vis(st):true,h:Math.round(document.querySelector('.vpage').getBoundingClientRect().height)}})(),
-    kpis:document.querySelectorAll('.kpi, .mk > div').length,graficos:document.querySelectorAll('main svg, #main svg, .tab.on svg, section.mod svg, #app svg').length,
+    kpis:document.querySelectorAll('.kpi, .mk > div').length,itens:document.querySelectorAll('.ac[data-ac], .eqi').length,graficos:document.querySelectorAll('main svg, #main svg, .tab.on svg, section.mod svg, #app svg').length,
     testeParadas:!!(document.querySelector('#testBar')&&!document.querySelector('#testBar').hidden),
     abaAtiva:(()=>{const e=document.querySelector('nav.vtabs #nav .on:not(.ngrp), nav.vtabs #nav [aria-selected="true"], nav.vtabs .ngrp.on>.tab');if(!e)return null;const s=cs(e);const m=s.borderBottomColor.replace(/^color\(srgb/,'').match(/[\d.]+/g)||[];const al=/\//.test(s.borderBottomColor)?+m[3]:(m.length>=4?+m[3]:1);return{txt:e.textContent.trim().slice(0,20),w:parseFloat(s.borderBottomWidth),visivel:al>0.5&&s.borderBottomStyle!=='none'}})(),
     svgMin:(()=>{let m=null;for(const tx of document.querySelectorAll('section.mod svg text')){const sv=tx.ownerSVGElement,vb=sv.viewBox&&sv.viewBox.baseVal;if(!vb||!vb.width||!sv.getBoundingClientRect().width)continue;const px=parseFloat(tx.getAttribute('font-size')||cs(tx).fontSize)*sv.getBoundingClientRect().width/vb.width;m=m==null?px:Math.min(m,px)}return m&&+m.toFixed(1)})()}};
@@ -81,7 +81,10 @@ const MEDIR=()=>{const q=s=>document.querySelector(s),r=e=>e?e.getBoundingClient
  for(const [n] of PAGS.filter(([n])=>!CONSTR.has(n)))for(const w of [768,390]){const x=res[n+'|light|'+w].ex.cab;ok(x.acoes>0&&x.acoesVisiveis===x.acoes&&x.status,`${n} ${w}px: cabeçalho com status e ${x.acoesVisiveis}/${x.acoes} ações visíveis (faixa de ${x.h}px)`)}
  // ---- revisão c341f8e: telas preenchidas, aba ativa marcada, gráficos, modo de teste do Paradas
  const MINKPI={Portal:4,'Produção':4,Waste:4,Gel:4,Paradas:3};
+ /* C4 · Iniciativas (quadro) e Equipamentos (lista e ficha) abrem sem indicadores nem gráficos, como nos esboços aprovados: a tela cheia é medida pelos cartões e itens */
+ const LISTA={Iniciativas:3,Equipamentos:3};
  for(const [n] of PAGS)for(const tema of ['light','dark']){const x=res[n+'|'+tema+'|1440'].ex;if(CONSTR.has(n)){ok(x.abaAtiva&&x.abaAtiva.visivel&&x.abaAtiva.w>=2.5,`${n} ${tema}: aba ativa com a marca colorida (em construção)`);continue}
+  if(LISTA[n]){ok(x.itens>=LISTA[n],`${n} ${tema}: tela do teste preenchida (${x.itens} cartões/itens)`);ok(x.abaAtiva&&x.abaAtiva.visivel&&x.abaAtiva.w>=2.5,`${n} ${tema}: aba ativa com a marca colorida (${x.abaAtiva&&x.abaAtiva.txt})`);continue}
   ok(x.kpis>=MINKPI[n],`${n} ${tema}: tela do exemplo preenchida (${x.kpis} indicadores)`);
   ok(x.abaAtiva&&x.abaAtiva.visivel&&x.abaAtiva.w>=2.5,`${n} ${tema}: aba ativa com a marca colorida (${x.abaAtiva&&x.abaAtiva.txt}: ${x.abaAtiva&&x.abaAtiva.w}px, visível ${x.abaAtiva&&x.abaAtiva.visivel})`);
   ok(x.graficos>=1,`${n} ${tema}: gráficos presentes na tela inicial do exemplo (${x.graficos} svg)`)}

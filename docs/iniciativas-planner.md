@@ -124,3 +124,10 @@ O `exports` é gerado de novo quando é de outro dia (ao gravar ou ao abrir a p�
 - **Regravação:** as confirmadas e sobrescritas voltam em até 24 h.
 - Teste: `tpendencias.js`.
 
+## 1.0.3 (08/11/2026) · C2
+
+- **Virada do dia:** ao voltar para a aba, se o resumo (`exports`) é de outro dia, a página grava de novo (AT-04).
+- **`#ordem=<n>`:** filtra pelo vínculo de ordem, com a mesma regra da ficha: sem os zeros à esquerda, só para comparar (AT-12).
+  - A ordem citada só na descrição não entra, nem uma ordem parecida.
+  - Uma pílula "Ordem … ✕" tira o filtro.
+

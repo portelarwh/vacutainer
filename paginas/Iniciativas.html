@@ -557,7 +557,11 @@ const vacFila = (() => {
       try { await tx('ops', 'readwrite', s => { for (const o of L) s.put(reg(o)); }); for (const o of L) F.meus.add(pagina + '|' + o.qid); renomear && renomear(); return true; } catch (e) { falhou(e); return false; } });
     return F;
   }
-  return pagina => filas[pagina] || (filas[pagina] = cria(pagina));
+  const fn = pagina => filas[pagina] || (filas[pagina] = cria(pagina));
+  /* C5 · só leitura, para o Portal › Versões: alterações ainda não gravadas na pasta, por página, neste navegador. Não cria aba nem sinal de vida.
+     Volta { pagina: n } ou null se o IndexedDB falhar. */
+  fn.contar = async () => { try { const L = await tx('ops', 'readonly', s => req(s.getAll())); const R = {}; for (const r of L) R[r.pagina] = (R[r.pagina] || 0) + 1; return R; } catch (e) { return null; } };
+  return fn;
 })();
 /* AT-03 · formato da própria base: schema da página (base antiga sem schema é aceita como versão 1) e schemaVersion até a conhecida.
    Volta '' (pode ler e gravar) ou o motivo (só leitura: a página não grava por cima de formato que não conhece). */
@@ -613,7 +617,7 @@ addEventListener('error', e => { if (e.error && e.error.name === 'VacAbaBloquead
 <main class="wrap" id="main"></main>
 <div class="toasts" id="toasts"></div>
 <script>
-const PAGE={id:"inic",titulo:"Iniciativas · Ações · KAS · OSM · 5S",tituloCurto:"Iniciativas",subtitulo:"Ações (Planner) · KAS · OSM · 5S",versao:"1.0.2",baseFile:"iniciativas-base.json",backupDir:"00. Backups/Iniciativas",estado:"atualizacao",estadoNota:"Primeira versão: Ações (Planner) e KAS. OSM e 5S chegam nas próximas etapas."};
+const PAGE={id:"inic",titulo:"Iniciativas · Ações · KAS · OSM · 5S",tituloCurto:"Iniciativas",subtitulo:"Ações (Planner) · KAS · OSM · 5S",versao:"1.0.3",baseFile:"iniciativas-base.json",backupDir:"00. Backups/Iniciativas",estado:"atualizacao",estadoNota:"Primeira versão: Ações (Planner) e KAS. OSM e 5S chegam nas próximas etapas."};
 const APP_VERSION=PAGE.versao;
 /* ---------- vac-cabecalho v2 · JS (igual em todas as páginas) ---------- */
 const VAC_CAB_VERSAO=2;
@@ -966,6 +970,10 @@ const vacFicha = (() => {
     if (S.carregando) return S.carregando;
     S.carregando = (async () => {
       const dir = pasta();
+      /* AT-08 · trocou de pasta na mesma aba: o que a ficha tem em memória e o índice da busca são da pasta anterior; relê tudo.
+         A cópia do IndexedDB guarda o nome da pasta e só serve para a mesma pasta. */
+      if (dir) { let mesma = false; try { mesma = !!S.pasta && await dir.isSameEntry(S.pasta); } catch (e) { } if (S.pasta && !mesma) { S.dados = {}; S.idx = null; } S.pasta = dir; }
+      const nomeP = dir ? String(dir.name || '') : '';
       for (const f of FONTES) {
         const atual = S.dados[f.id];
         try {
@@ -975,10 +983,10 @@ const vacFicha = (() => {
           if (!forcar && atual && atual.estado === 'pasta' && atual.mod === arq.lastModified && atual.tam === arq.size) continue;
           const j = JSON.parse(await arq.text()), ex = j && j.exports, v = typeof vacExportsOk === 'function' ? vacExportsOk(ex) : { ok: !!ex };
           if (!v.ok) { S.dados[f.id] = { estado: ex ? 'versao' : 'semexports', motivo: v.motivo || 'a base ainda não publica o resumo (exports)' }; continue; }
-          const x = { estado: 'pasta', mod: arq.lastModified, tam: arq.size, lidoEm: new Date().toISOString(), geradoEm: ex.geradoEm || null, d: f.pega(ex) };
+          const x = { estado: 'pasta', mod: arq.lastModified, tam: arq.size, lidoEm: new Date().toISOString(), geradoEm: ex.geradoEm || null, pasta: nomeP, d: f.pega(ex) };
           S.dados[f.id] = x; try { await idbSet(f.id, x); } catch (e) { }
         } catch (e) {
-          let c = atual && atual.d ? atual : null; if (!c) { try { c = await idbGet(f.id); } catch (x) { } }
+          let c = atual && atual.d ? atual : null; if (!c) { try { c = await idbGet(f.id); } catch (x) { } } if (c && nomeP && c.pasta && c.pasta !== nomeP) c = null;   // cópia de outra pasta não vale para esta
           const motivo = e && e.semPasta ? 'pasta da rede não conectada nesta página' : `não consegui ler ${f.base} (${(e && (e.name || e.message)) || e})`;
           S.dados[f.id] = c && c.d ? { ...c, estado: 'cache', motivo } : { estado: e && e.semPasta ? 'sempasta' : 'erro', motivo };
         }
@@ -1320,7 +1328,8 @@ function bkNome(t){const d=new Date(),p=n=>String(n).padStart(2,'0');return`inic
 /* E5 · pasta conectada para a ficha comum (kit) */
 function vacPastaAtual(){return Store.perm&&!Store.test?Store.dir:null}
 /* ao voltar para a página (outra aba/janela): relê o que outra estação gravou */
-function vacAoVoltar(){if(Store.test||!Store.perm)return;Store.reload().then(()=>render())}
+/* AT-04 · aba aberta na virada do dia: ao voltar, relê e, se o resumo (exports) é de outro dia, grava de novo (mesma regra do init) */
+function vacAoVoltar(){if(Store.test||!Store.perm)return;Store.reload().then(()=>{const S=Store;if(!S.sumiu&&!S.saving&&S.baseFound&&!S.readErr&&(S.queue.length||diaLocal((S.data.exports||{}).geradoEm)!==hoje()))S.save();render()})}
 
 /* ---------- exports (lido pelo Portal: cartão, pendências, Minha fila, Reunião diária; pela ficha da ordem) ---------- */
 function calcExports(D){const h=hoje(),A=D.acoes||[],ab=A.filter(aberta),fim=addDias(h,-365);
@@ -1340,7 +1349,7 @@ function calcExports(D){const h=hoje(),A=D.acoes||[],ab=A.filter(aberta),fim=add
 
 /* ---------- interface ---------- */
 const ABAS=[['acoes','Ações'],['kas','KAS'],['osm','OSM'],['s5','5S'],['config','Configuração']];
-const App={tab:'acoes',vis:LS.get('inic.vis','quadro'),sel:null,f:{origem:'',resp:'',equip:'',q:'',fechadas:false},kasSel:null};
+const App={tab:'acoes',vis:LS.get('inic.vis','quadro'),sel:null,f:{origem:'',resp:'',equip:'',q:'',ordem:'',fechadas:false},kasSel:null};
 function topo(){const el=$('#stBase');if(!el)return;const S=Store,n=S.queue.length;let h='';
  if(S.test)h='<span class="pill" style="--tc:var(--hold)">modo de teste · nada é gravado</span>';
  else if(!S.dir)h='<span class="pill warn">só neste navegador</span> <button class="b sm" id="tConn">Conectar pasta</button>';
@@ -1357,11 +1366,14 @@ document.addEventListener('click',e=>{const b=e.target.closest('#nav [data-t]');
 function pessoas(){const s=new Set();const c=typeof vacCad==='function'?vacCad():null;for(const u of(c&&c.usuarios)||[])if(u.ativo!==false&&u.nome)s.add(u.nome);
  for(const a of Store.data.acoes){if(a.responsavel)s.add(a.responsavel);(a.apoios||[]).forEach(x=>x&&s.add(x))}if(user())s.add(user());return[...s].sort((a,b)=>a.localeCompare(b,'pt-BR'))}
 function equipamentos(){const c=typeof vacCad==='function'?vacCad():null;return((c&&c.equipamentos)||[]).filter(e=>e.ativo!==false).map(e=>({codigo:String(e.codigo),nome:e.nome||''}))}
+/* AT-12 · mesma comparação da ficha: ordem numérica sem os zeros à esquerda; não numérica como veio (o código continua guardado como texto) */
+const ordemChave=c=>{const t=String(c??'').trim();return/^\d+$/.test(t)?(t.replace(/^0+/,'')||'0'):t.toUpperCase()};
 function filtradas(){const f=App.f,q=norm(f.q);return Store.data.acoes.filter(a=>{
  if(!f.fechadas&&!aberta(a)&&App.vis!=='quadro')return false;
  if(f.origem&&((a.origem||{}).tipo||'manual')!==f.origem)return false;
  if(f.resp==='(sem)'&&a.responsavel)return false;if(f.resp&&f.resp!=='(sem)'&&!doUsuario(a,f.resp))return false;
  if(f.equip&&!(a.vinculos||[]).some(v=>v.tipo==='equipamento'&&String(v.cod)===f.equip))return false;
+ if(f.ordem&&!(a.vinculos||[]).some(v=>v.tipo==='ordem'&&ordemChave(v.cod)===ordemChave(f.ordem)))return false;
  if(q&&!norm([a.id,a.titulo,a.descricao,a.responsavel,(a.apoios||[]).join(' '),(a.vinculos||[]).map(v=>v.cod).join(' '),(a.origem||{}).resumo].join(' ')).includes(q))return false;
  return true})}
 const vincHtml=a=>(a.vinculos||[]).map(v=>v.tipo==='ordem'?`<a href="#" class="code" data-vac-ordem="${esc(v.cod)}" title="Ficha da ordem">${esc(v.cod)}</a>`:v.tipo==='lote'?`<a href="#" class="code" data-vac-lote="${esc(v.cod)}">${esc(v.cod)}</a>`:`<span class="code">${esc(v.cod)}</span>`).join(' ');
@@ -1385,6 +1397,7 @@ function viewAcoes(){const L=filtradas(),u=user();let corpo='';
   <select id="fRs" title="Responsável"><option value="">Responsável: todos</option><option value="(sem)"${App.f.resp==='(sem)'?' selected':''}>(sem responsável)</option>${pss.map(p=>`<option${App.f.resp===p?' selected':''}>${esc(p)}</option>`).join('')}</select>
   <select id="fEq" title="Equipamento"><option value="">Equipamento: todos</option>${eqs.map(e=>`<option value="${esc(e.codigo)}"${App.f.equip===e.codigo?' selected':''}>${esc(e.codigo)} · ${esc(e.nome)}</option>`).join('')}</select>
   <input id="fQ" placeholder="Buscar (texto, ordem, ID…)" value="${esc(App.f.q)}" style="min-width:180px">
+  ${App.f.ordem?`<span class="pill" id="fOrdem">Ordem ${esc(App.f.ordem)} <button class="b sm" id="fOrdemX" title="Tirar o filtro da ordem" aria-label="Tirar o filtro da ordem">✕</button></span>`:''}
   <label class="small"><input type="checkbox" id="fFe"${App.f.fechadas?' checked':''}> concluídas e canceladas</label>
   <span class="sp"></span><span class="small muted">${ab.length} aberta(s) · ${at} atrasada(s)</span></div>
  <div class="lay${sel?' comdet':''}"><div class="corpo">${corpo}</div>${sel?`<aside class="card det" id="det">${detalheHtml(sel)}</aside>`:''}</div>`}
@@ -1485,7 +1498,7 @@ function render(){$('#nav').innerHTML=navHtml();topo();const v={acoes:viewAcoes,
 function ligar(){const A=id=>Store.data.acoes.find(a=>a.id===id);
  $$('[data-vis]').forEach(b=>b.onclick=()=>{App.vis=b.dataset.vis;LS.set('inic.vis',App.vis);render()});
  const fo=$('#fOr');if(fo){fo.onchange=()=>{App.f.origem=fo.value;render()};$('#fRs').onchange=e=>{App.f.resp=e.target.value;render()};$('#fEq').onchange=e=>{App.f.equip=e.target.value;render()};
-  const q=$('#fQ');q.oninput=()=>{App.f.q=q.value;clearTimeout(q._t);q._t=setTimeout(()=>{render();const q2=$('#fQ');q2.focus();q2.setSelectionRange(q2.value.length,q2.value.length)},250)};$('#fFe').onchange=e=>{App.f.fechadas=e.target.checked;render()}}
+  const q=$('#fQ');q.oninput=()=>{App.f.q=q.value;clearTimeout(q._t);q._t=setTimeout(()=>{render();const q2=$('#fQ');q2.focus();q2.setSelectionRange(q2.value.length,q2.value.length)},250)};$('#fFe').onchange=e=>{App.f.fechadas=e.target.checked;render()};const fx=$('#fOrdemX');if(fx)fx.onclick=()=>{App.f.ordem='';render()}}
  $$('[data-ac]').forEach(el=>el.onclick=e=>{if(e.target.closest('[data-vac-ordem],[data-vac-lote]'))return;App.sel=App.sel===el.dataset.ac?null:el.dataset.ac;render()});
  $$('.col').forEach(c=>{c.ondragover=e=>{e.preventDefault();c.classList.add('alvo')};c.ondragleave=()=>c.classList.remove('alvo');c.ondrop=e=>{e.preventDefault();c.classList.remove('alvo');const a=A(e.dataTransfer.getData('text/plain'));if(a)mudaStatus(a,c.dataset.col)}});
  $$('.ac[draggable]').forEach(x=>x.ondragstart=e=>e.dataTransfer.setData('text/plain',x.dataset.ac));
@@ -1524,7 +1537,7 @@ function rota(){let h=location.hash.slice(1);if(!h)return;let k,v;const i=h.inde
  if(k==='teste')return enterTest();
  if(k==='aba'&&ABAS.some(a=>a[0]===v)){App.tab=v;return render()}
  if(k==='acao'&&v){App.tab='acoes';App.sel=v;App.f.fechadas=true;render();return}
- if(k==='ordem'&&v){App.tab='acoes';App.f.q=v;App.f.fechadas=true;App.vis='lista';history.replaceState(history.state,'','#aba=acoes');return render()}
+ if(k==='ordem'&&v){App.tab='acoes';App.f.ordem=v;App.f.q='';App.f.fechadas=true;App.vis='lista';history.replaceState(history.state,'','#aba=acoes');return render()}
  if(k==='nova'){let p={};try{p=v?JSON.parse(v):{}}catch(e){toast('Link de nova ação inválido',1)}if(!p||typeof p!=='object')p={};if(p.origem&&p.origem.link&&!vacLinkSeguro(p.origem.link)){delete p.origem.link;toast('O link de origem recebido não é um endereço seguro e foi descartado.',1)}history.replaceState(history.state,'','#aba=acoes');App.tab='acoes';render();formAcao(null,p)}}
 window.addEventListener('hashchange',rota);
 PAGE.busca=q=>{const k=norm(q);const R=[];for(const a of Store.data.acoes)if(norm(a.id+' '+a.titulo+' '+(a.responsavel||'')).includes(k))R.push({tipo:'Ação',txt:a.titulo,sub:`${a.id} · ${stNome(a.status)} · ${a.responsavel||'sem responsável'}`,go:()=>{App.sel=a.id;App.f.fechadas=true;ir('acoes')}});

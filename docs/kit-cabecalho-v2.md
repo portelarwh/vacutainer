@@ -192,3 +192,8 @@ Cada aba só grava e apaga as próprias alterações, porque reaplicar operaçõ
 - **`vacLinkSeguro(url)`:** `http(s):`, `file:`, `\\servidor\…`, `Nome.html#…` e `#…`; qualquer outro vira `''`.
 - **`vacGuardaAba(pagina, minhaPendente)`:** lança `VacAbaBloqueada` (sem erro no console) e avisa, se outra aba viva da página tem pendência. Usado pelo Portal (`Store.commit`) e pelo Waste (`commit`).
 
+## C5 e C6 (08/11/2026)
+
+- **`vacFila.contar()`** (`kit_bases.js`): só leitura. Devolve `{ pagina: n }` com as alterações deste navegador que ainda não foram gravadas na pasta. Não cria aba nem sinal de vida. Quem usa é o Portal › Versões.
+- **Ficha por pasta (AT-08, `kit_v21.js`):** ao trocar de pasta na mesma aba, a ficha limpa os dados em memória e o índice da busca. A cópia no IndexedDB guarda o nome da pasta e só é usada para essa mesma pasta.
+

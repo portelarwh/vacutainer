@@ -98,3 +98,9 @@ A gravação é igual à de Iniciativas (`docs/iniciativas-planner.md`):
 
 Mesmas proteções de Iniciativas 1.0.2: fila durável, base que some, confirmação para criar a base, formato, link de origem seguro (`#novaOS=` descarta link inseguro) e regravação em 24 h.
 
+## 1.0.3 (08/11/2026) · C2 e C4
+
+- **Virada do dia:** ao voltar para a aba, se o resumo (`exports`) é de outro dia, a página grava de novo (AT-04).
+- **Link da anomalia sem OS (AT-05):** é `aba=equip&eq=<código codificado>`. `#aba=equip&eq=` seleciona a máquina também ao abrir a página.
+- **"+ Nova OS" no cabeçalho**, como o "+ Nova ação" de Iniciativas. Na ficha de um equipamento, a OS já vem com a máquina.
+
