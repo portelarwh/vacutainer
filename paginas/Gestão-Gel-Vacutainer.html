@@ -593,6 +593,8 @@ nav.vtabs .tabs{margin-top:0;border-bottom:0}
 .vpage #stBase .dot{margin:0}
 .vpage .vacts .tvmenu{position:relative}
 .vsuite .vuser a{text-decoration:none}.vsuite .vuser a:hover{text-decoration:underline}
+/* E3 · campo numérico com valor inválido */
+input.num-inval{border-color:var(--crit)!important;box-shadow:0 0 0 2px color-mix(in srgb,var(--crit) 25%,transparent)}
 </style>
 
 <style id="vac-visual">
@@ -932,6 +934,18 @@ function parseNum(v){
   else if(lc>-1){ const parts=s.split(','); s=(parts.length===2)?s.replace(',','.'):s.replace(/,/g,''); }
   const n=parseFloat(s);return isNaN(n)?0:n;
 }
+/* E3 (08/11/2026) · número digitado só é aceito inteiro: "12a" não vira 12. Campo inválido fica marcado em vermelho, a prévia diz
+   "valor inválido" e os botões de ação do mesmo cartão/janela não executam (Cancelar/Fechar continuam). parseNum não muda:
+   as importações do SAP já tratam o formato brasileiro antes (num, abaixo). Regra do ponto sozinho = decimal (1.234 = 1,234), como sempre foi aqui. */
+const NUM_IDS=new Set(['pcUsd','pcFx','hmCm','ctTol','ctG','ctBomKg','cStaleH','cRemTol','cKcm','cDrumH','bRem','bHi','bHf','mkKg','lhHi','fmTara','eqTara','ebKg','cRem','shOee']);
+const ehNumCampo=el=>!!el&&el.tagName==='INPUT'&&!/^(checkbox|radio|date|time|month|file|button|submit)$/.test(el.type)&&(NUM_IDS.has(el.id)||/^(decimal|numeric)$/.test(el.getAttribute('inputmode')||'')||el.dataset.sup!=null||el.dataset.num!=null);
+const numInvalido=el=>{const t=String(el.value||'').trim();if(!t||el.type==='number')return false;return Number.isNaN(typeof vacNumero==='function'?vacNumero(t,{ponto:'decimal'}):NaN)};
+function numMarca(el){const bad=numInvalido(el);el.classList.toggle('num-inval',bad);if(bad){el.setAttribute('aria-invalid','true');el.title='Valor inválido: use só números (ex.: 12,5 ou 1.234,5).'}else if(el.getAttribute('aria-invalid')){el.removeAttribute('aria-invalid');el.title=''}return bad}
+document.addEventListener('input',e=>{if(ehNumCampo(e.target))numMarca(e.target)},true);
+document.addEventListener('change',e=>{if(ehNumCampo(e.target)&&numMarca(e.target)){e.stopImmediatePropagation();toast('Valor inválido: "'+e.target.value+'". Use só números (ex.: 12,5).')}},true);
+document.addEventListener('click',e=>{const b=e.target&&e.target.closest&&e.target.closest('button');if(!b||b.hasAttribute('data-close')||/^(cancelar|fechar|voltar|sair|✕|×)$/i.test(b.textContent.trim()))return;
+  const box=b.closest('.card,form,.dlg,#ov');if(!box)return;const bad=[...box.querySelectorAll('input')].filter(i=>ehNumCampo(i)&&i.offsetParent!==null&&numMarca(i));
+  if(bad.length){e.preventDefault();e.stopImmediatePropagation();bad[0].focus();toast('Valor inválido: "'+bad[0].value+'". Corrija o campo marcado (use só números, ex.: 12,5).')}},true);
 // dayFirst: true = dd/mm, false = mm/dd (relatório SAP vem em mm/dd com AM/PM)
 function parseDateCell(v,dayFirst){
   if(v==null||v==='')return '';
@@ -1269,7 +1283,7 @@ const fileBackend={kind:'file',async commit(ch){applyLocal(ch);FS.pending.push(c
 async function fsRefresh(){if(S.mode!=='file'||FS.busy||ui.demo)return;try{const cur=await fsReadBase(fsKnown());if(cur&&!cur.same){FS.mod=cur.mod;FS.rev=cur.rev;FS.revBy=cur.by;loadData(cur.data);FS.pending.forEach(applyLocal);localBackend.save();render()}}catch(e){}}
 /* ================= V1.89 · integração com as outras páginas (Portal, OEE, Perdas) ================= */
 // versão da página (topo, Guia e base gravada)
-const APP_VERSION='2.05';   /* 2.05 · E2: a versão da tela vem desta constante (o rótulo estava fixo em v2.01); kit com data local e meta do mês ponderada */   /* 2.04 · revisão 065fe6f: restauração por arquivo confirma e não segue sem a cópia anterior; CSV sem fórmulas; índice por dia no Painel */
+const APP_VERSION='2.06';   /* 2.06 · E3: número digitado só aceito inteiro; E4: cobertura das ordens no exports */   /* 2.05 · E2: a versão da tela vem desta constante (o rótulo estava fixo em v2.01); kit com data local e meta do mês ponderada */   /* 2.04 · revisão 065fe6f: restauração por arquivo confirma e não segue sem a cópia anterior; CSV sem fórmulas; índice por dia no Painel */
 /* 2.03 · situação "em atualização" (kit: selo, pílula e faixa; docs/paginas-construcao.md) */
 /* 2.02 · relatório montado: todas as linhas no PDF, comentário, aviso de corte no texto; Painel em 1º; aba inicial do perfil; impressão e PDF no tema claro */
 /* 1.99 · menu Mais do cabeçalho (vac-visual v1): fecha ao escolher uma ação, ao clicar fora e com Esc */
@@ -1335,6 +1349,7 @@ function gelExports(){derive();const c=S.config;const act=D.act;const live=act.f
       porLocal:Object.values(live.reduce((m,l)=>{const k=String(l.location||'');const o=m[k]||(m[k]={local:k,kg:0,barris:0});o.kg+=+l._remain||0;o.barris++;return m},{})).map(o=>({...o,kg:+o.kg.toFixed(2)}))},
     vencendo:near.map(l=>({lp:String(l.lp),lote:String(l.batch||''),validade:(l.expiry||'').slice(0,10),local:String(l.location||''),dias:l._exp,kg:+(+l._remain||0).toFixed(2)})),
     ordens:ords,
+    ordensCobertura:{desde:sinceDays(150),dias:150,fontes:['PCP','Ordens × lotes','histórico SAP']},   /* E4 · ordem fora da janela não aparece aqui (não é zero) */
     pendencias:P,
     kpis:[['Disponível',kgt(availKg),`${avail.length} ${avail.length===1?'barril liberado':'barris liberados'}${rate?' · ~'+nf0.format(availKg/rate)+' dias':''}`,''],
       ['Na linha',String(onLine.length),'barris em uso',''],
@@ -4120,7 +4135,7 @@ function openConfig(sec){
     if(s==='equip')bindEquipCfg(saveCfg);
     if(s==='motivos')bindMotCfg(saveCfg);
     if(s==='preco'){
-      const pcCalc=()=>{const u=parseNum($('#pcUsd').value),fx=parseNum($('#pcFx').value);$('#pcBrl').textContent=u>0&&fx>0?`R$ ${nf2.format(u*fx)} por kg`:'—'};['pcUsd','pcFx'].forEach(id=>$('#'+id).addEventListener('input',pcCalc));
+      const pcCalc=()=>{const u=parseNum($('#pcUsd').value),fx=parseNum($('#pcFx').value);$('#pcBrl').textContent=['pcUsd','pcFx'].some(id=>numInvalido($('#'+id)))?'valor inválido':u>0&&fx>0?`R$ ${nf2.format(u*fx)} por kg`:'—'};['pcUsd','pcFx'].forEach(id=>$('#'+id).addEventListener('input',pcCalc));
       /* cotação do cadastro geral na data da vigência: preenchida e travada (muda no Portal) */
       const pcFx=()=>{const d=$('#pcFrom').value||todayISO(),fc=fxCad(d),i=$('#pcFx'),src=$('#pcFxSrc');const port=(typeof systems==='function'?systems():[]).find(x=>x.id==='portal')||{html:'Portal.html'};
         if(fc){i.value=new Intl.NumberFormat('pt-BR',{maximumFractionDigits:4}).format(fc);i.readOnly=true;i.title='Cotação do cadastro geral (Portal › Câmbio) vigente em '+fmtD(d)+'. Para mudar, crie uma vigência nova no Portal.';src.innerHTML=`do cadastro geral · <a href="${sysHref(port,'cadastros/cambio/USD')}" target="_blank">alterar no Portal</a>`}
@@ -7424,5 +7439,33 @@ function vacEstadoDe(id) {
    Recebe um prefixo ' (o Excel mostra o texto como está). Número escrito como texto (-1.234 · -12,5 · -3%) não é mexido, e
    valores number continuam número. Usado por Waste, Gel e Produção (cada página mantém o próprio formato de número e aspas). */
 function vacCsvTexto(v) { const s = String(v ?? ''); return /^[=+\-@\t\r]/.test(s) && !/^[+-]?[\d.,\s]+%?$/.test(s) ? "'" + s : s; }
+/* kit v2.1 · E3 (08/11/2026): número de texto, estrito (o texto inteiro precisa ser número; "12a" não vira 12).
+   Volta number, null (vazio) ou NaN (inválido). Regras por campo/fonte:
+   · vírgula sozinha = decimal (1,5); várias vírgulas = milhar em grupos de 3; com vírgula e ponto, o último é o decimal (1.234,5 · 1,234.5);
+   · ponto sozinho: ponto:'decimal' (padrão; 1.234 = 1,234) ou ponto:'milhar' (1.234 = 1234 quando tem 3 dígitos depois; 1.5 = 1,5);
+   · sinal no fim (15-, negativo do SAP) só com sap:true; espaços entre dígitos são ignorados (4 500,0).
+   Códigos nunca passam por aqui (regra 4). */
+function vacNumero(v, { ponto = 'decimal', sap = false } = {}) {
+  if (v == null) return null; if (typeof v === 'number') return Number.isFinite(v) ? v : NaN;
+  let s = String(v).replace(/\u2212/g, '-').replace(/[\s\u00a0\u202f]+/g, ''); if (!s) return null;
+  let neg = false; if (sap && /^\d[\d.,]*-$/.test(s)) { neg = true; s = s.slice(0, -1); }
+  if (/^[+-]/.test(s)) { if (s[0] === '-') neg = !neg; s = s.slice(1); }
+  if (!/^[\d.,]+$/.test(s) || !/\d/.test(s)) return NaN;
+  const g3 = (t, sep) => t.split(sep).slice(1).every(x => x.length === 3) && t.split(sep)[0].length > 0;
+  const lc = s.lastIndexOf(','), ld = s.lastIndexOf('.');
+  if (lc >= 0 && ld >= 0) { const dec = lc > ld ? ',' : '.', mil = dec === ',' ? '.' : ','; const p = s.split(dec); if (p.length !== 2 || p[1].includes(mil) || !g3(p[0], mil)) return NaN; s = p[0].split(mil).join('') + '.' + p[1]; }
+  else if (lc >= 0) { const p = s.split(','); if (p.length === 2) s = p[0] + '.' + p[1]; else if (g3(s, ',')) s = p.join(''); else return NaN; }
+  else if (ld >= 0) { const p = s.split('.'); if (p.length === 2 && !(ponto === 'milhar' && p[1].length === 3)) { /* decimal */ } else if (g3(s, '.')) s = p.join(''); else return NaN; }
+  if (!/^(\d+\.?\d*|\.\d+)$/.test(s)) return NaN; const n = parseFloat(s); return Number.isFinite(n) ? (neg ? -n : n) : NaN;
+}
+/* kit v2.1 · E4 (08/11/2026): quem lê o exports de outra página confere a versão antes de usar (regra 1). Sem número (base antiga)
+   ou até a versão conhecida → usa; versão mais nova → não usa e avisa (não alimenta números com estrutura desconhecida).
+   Campos novos opcionais entram na mesma versão (regra 6) e quem não conhece ignora. */
+function vacExportsOk(ex, conhecida = 1) {
+  if (!ex || typeof ex !== 'object') return { ok: false, versao: null, motivo: 'a base não tem o bloco exports' };
+  const v = ex.exportsVersion; if (v == null || +v <= conhecida) return { ok: true, versao: v == null ? null : +v, motivo: '' };
+  return { ok: false, versao: +v, motivo: `exports na versão ${v}; esta página só conhece até a ${conhecida}: atualize esta página` };
+}
+
 
 </script>

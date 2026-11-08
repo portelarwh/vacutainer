@@ -9,7 +9,7 @@ def R(a,b,cnt=1):
     c=s.count(a)
     if c!=cnt: raise SystemExit(f'ERRO ({c}x): {a[:90]!r}')
     s=s.replace(a,b)
-R("const APP_VERSION = '2.0.1';","const APP_VERSION = '2.4.11';")
+R("const APP_VERSION = '2.0.1';","const APP_VERSION = '2.4.12';")
 # 2.4.11 · E1: FolderBackend tinha duas chaves readBackup; a segunda (sem o local antigo) vencia e os backups soltos em 00. Backups/ não eram lidos
 R("    async readBackup(name) { const bd = await this.backupDir(); const fh = await bd.getFileHandle(name); return (await fh.getFile()).text(); }\n  };","  };")
 # 2.4.10 · sair da TV redesenha a tela de baixo: a TV limpa o registro dos gráficos (Charts.reset) e a dica e o clique da tela paravam até trocar de aba
@@ -61,6 +61,24 @@ R("    async readSibling(name) { try { const fh = await dir.getFileHandle(name);
   "    async readSibling(name) { try { const fh = await dir.getFileHandle(name); return await (await fh.getFile()).text(); } catch (e) { return null; } },\n    // 2.1 · outra base da mesma pasta (ordens-base.json) e backup em 00. Backups/<sub>\n    async writeSibling(name, text) { const fh = await dir.getFileHandle(name, { create: true }); const w = await fh.createWritable(); await w.write(text); await w.close(); },\n    async backupSub(sub, name, text) { const r = await this.backupRoot(); const d = await r.getDirectoryHandle(sub, { create: true }); const fh = await d.getFileHandle(name, { create: true }); const w = await fh.createWritable(); await w.write(text); await w.close(); return name; },")
 # 2.4.11 · E1: leitura estrita do arquivo de ordens (null só quando não existe; erro de rede/permissão sobe e nada é gravado por cima)
 R("    async writeSibling(name, text) {","    async readSiblingStrict(name) { try { const fh = await dir.getFileHandle(name); return await (await fh.getFile()).text(); } catch (e) { if (typeof vacNaoAchou === 'function' ? vacNaoAchou(e) : (e && (e.name === 'NotFoundError' || e.name === 'TypeMismatchError'))) return null; throw e; } },\n    async writeSibling(name, text) {")
+# 2.4.12 · E4: exports.porOrdem com histórico (até 24 meses) e os dias de cada lote (chave "dia|lote" do servidor), com a cobertura declarada.
+# O bloco "ordens" (mês atual e anterior) continua igual para quem já lê
+R("    // lotes do servidor (últimos 150 dias): retrabalho, situação e observação, para Perdas e Gel\n",
+  "    // 2.4.12 · E4: ordens dos planos dos últimos 24 meses (ficha da ordem e Waste), com os dias de cada lote no servidor\n"
+  "    const diasPorLote = new Map(); for (const [k, v] of Object.entries((db.server || {}).dayLot || {})) { const i = k.indexOf('|'); if (i < 0) continue; const lot = k.slice(i + 1).trim(); if (!lot) continue; let a = diasPorLote.get(lot); if (!a) diasPorLote.set(lot, a = []); a.push({ dia: k.slice(0, i), tipo: (v && v.kind) || null }); }\n"
+  "    const porOrdem = [], mIni = shiftMonth(today, -23);\n"
+  "    for (let i = 23; i >= 0; i--) {\n"
+  "      const m = shiftMonth(today, -i), p = Engine.planFor(db, m, LINE); if (!p || !(p.orders || []).length) continue;\n"
+  "      const G = Engine.orderProgress(db, p).byOrder;\n"
+  "      for (const o of p.orders) {\n"
+  "        const g = G.get(o.id) || {}, c = (db.catalogs || []).find(x => x.id === o.catalogId), lot = o.lot ? String(o.lot).trim() : '', dl = lot ? (diasPorLote.get(lot) || []) : [];\n"
+  "        porOrdem.push({ mes: m, ordem: String(o.order), lote: lot || null, catalogo: c ? c.code : (o.code || null), qtd: n0(o.qty), qtdReal: o.qtyReal == null ? null : n0(o.qtyReal), inicio: o.start || null, fim: o.end || null, inicioReal: o.startReal || g.firstAt || null, fimReal: o.endReal || g.doneAt || null, produzido: n0(g.produced || 0),\n"
+  "          diasLote: dl.map(x => x.dia).sort(), retrabalhoDias: dl.filter(x => x.tipo === 'retrabalho').map(x => x.dia).sort() });\n"
+  "      }\n"
+  "    }\n"
+  "    const porOrdemCobertura = { de: mIni, ate: mk, meses: 24, ordens: porOrdem.length, fonte: 'Plano do mês (PCP) e servidor (dias do lote)' };\n"
+  "    // lotes do servidor (últimos 150 dias): retrabalho, situação e observação, para Perdas e Gel\n")
+R("planoMes, ordens, lotes, pendencias, kpis };","planoMes, ordens, porOrdem, porOrdemCobertura, lotes, pendencias, kpis };")
 svc=open('ordens_servico.js',encoding='utf-8').read().replace("if (typeof module !== 'undefined') module.exports = OrdensSAP;\n","")
 tela=open('ordens_tela.js',encoding='utf-8').read()
 css="""<style>

@@ -152,3 +152,9 @@ Só o kit: `vacCsvTexto` (regra comum do CSV) entrou no `kit_v21.js`. O Paradas 
 ## Paradas 1.0.14 (08/11/2026)
 
 Só o kit da E2 do plano único (`vacHoje`, `vacMetaAreaMes`); sem mudança de comportamento no Paradas.
+
+## Paradas 1.0.15 (08/11/2026) · E3 e E4 do plano único
+
+- **Importação do Forms:** minutos e vezes estritos (`vacNumero`, ponto com 3 dígitos = milhar, como antes). Linha com "12a" ou "15-" vai para os erros, com o motivo; antes virava 12 ou 15.
+- **`exports.porOrdem`:** eventos, minutos, equipamentos, primeiro e último dia, por ordem.
+- **Leitura da Produção:** o `exports` só é usado se a versão for conhecida.

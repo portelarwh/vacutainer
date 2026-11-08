@@ -217,3 +217,7 @@ Restaurar a base do Portal a partir de uma cópia: se a cópia `_antes-restaurar
 ## Portal 1.8.14 (08/11/2026) · kit da E2
 
 Só o kit: `vacHoje()` (dia local nos leitores sem data) e `vacMetaAreaMes` (meta do mês ponderada pelos dias). Registro § U.
+
+## Portal 1.8.15 (08/11/2026) · kit da E3 e da E4
+
+Só o kit (`vacNumero`, `vacExportsOk`). Os campos novos do `exports` (`porOrdem`, coberturas) são aditivos na versão 1; o Portal os ignora até a ficha da ordem (E5). Registro § U.

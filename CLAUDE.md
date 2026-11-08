@@ -6,11 +6,11 @@ Plataforma de páginas HTML de arquivo único que trabalham juntas numa **pasta 
 
 | Página | Arquivo | Base | Versão | Como editar |
 |---|---|---|---|---|
-| Portal (cadastro geral, Administração) | `Portal.html` | `portal-base.json` + `vacutainer-cadastros.json` | 1.8.14 | direto no HTML |
-| Produção (OEE, plano, ordens SAP) | `OEE-Vacutainer.html` | `oee-vacutainer-base.json` (+ `ordens-base.json`) | 2.4.11 | **NÃO editar o HTML**: editar `fontes/producao/` e rodar o build |
-| Waste (perdas por ordem, KKBC) | `Perdas-Ordem.html` | `perdas-base.json` | 1.8.17 | direto no HTML |
-| Gestão de Gel | `Gestão-Gel-Vacutainer.html` | `fifo-base.json` | 2.05 · **em atualização** | direto no HTML |
-| Paradas | `Paradas.html` | `paradas-base.json` | 1.0.14 · **em atualização** | direto no HTML |
+| Portal (cadastro geral, Administração) | `Portal.html` | `portal-base.json` + `vacutainer-cadastros.json` | 1.8.15 | direto no HTML |
+| Produção (OEE, plano, ordens SAP) | `OEE-Vacutainer.html` | `oee-vacutainer-base.json` (+ `ordens-base.json`) | 2.4.12 | **NÃO editar o HTML**: editar `fontes/producao/` e rodar o build |
+| Waste (perdas por ordem, KKBC) | `Perdas-Ordem.html` | `perdas-base.json` | 1.8.18 | direto no HTML |
+| Gestão de Gel | `Gestão-Gel-Vacutainer.html` | `fifo-base.json` | 2.06 · **em atualização** | direto no HTML |
+| Paradas | `Paradas.html` | `paradas-base.json` | 1.0.15 · **em atualização** | direto no HTML |
 | Equipamentos (com manutenção) | `Equipamentos.html` | (`equipamentos-base.json`, ainda não existe) | 0.1.1 · **em construção** | **gerada**: `fontes/modelo/gerar_paginas.py` |
 | Iniciativas (5S · OSM · KAS) | `Iniciativas.html` | (`iniciativas-base.json`, ainda não existe) | 0.1.1 · **em construção** | **gerada**: `fontes/modelo/gerar_paginas.py` |
 | Projetos | `Projetos.html` | (`projetos-base.json`, ainda não existe) | 0.1.1 · **em construção** | **gerada**: `fontes/modelo/gerar_paginas.py` |
@@ -36,6 +36,8 @@ node testes/tconstrucao.js             # situação das páginas: selos, faixa, 
 node testes/tseguranca.js             # revisão 065fe6f: botões do Waste com valores importados, restauração sem cópia (Portal/Gel), CSV sem fórmulas, URLs de download, TV da Produção, índice do Gel, scripts em duas fases; código 1 se falhar
 node testes/tordens.js                # E1 do plano único: Produção › Ordens com leitura estrita, pendência recuperável (Gravar de novo), releitura por revId, backup obrigatório antes de substituir, backups do local antigo (OPFS + HTTP local); código 1 se falhar
 node testes/tvigencias.js             # E2 do plano único: versão igual em tela/código/base/Portal nas 8 páginas, "hoje" no dia local (22h30 de Brasília), meta WASTE-MES por mês ponderada pelos dias; código 1 se falhar
+node testes/tnumeros.js               # E3: vacNumero (decimal, milhar, SAP) nas páginas, preço do Gel com "12a" não grava, minutos/vezes do Forms no Paradas; código 1 se falhar
+node testes/tcontratos.js             # E4: exports por ordem (Produção 24 meses e dias do lote, Paradas, Gel), versão conferida pelos leitores, Waste com ordem em várias competências e dias do lote; código 1 se falhar
 ```
 
 - O build usa substituições exatas (`R(antes, depois)`) sobre a base 2.0: se um trecho não for achado exatamente 1 vez, para com `ERRO`. Mudança na Produção = nova regra `R(...)` no `build.py` ou mudança nos `.js` de `fontes/producao/`.
@@ -57,7 +59,7 @@ node testes/tvigencias.js             # E2 do plano único: versão igual em tel
 
 ## Leitores comuns do kit v2.1 (`fontes/kit/kit_v21.js`)
 
-`vacCambio(data, moeda)` · `vacVig(vigencias, data)` · `vacParam(chave)` · `vacTurnosEm(data)` · `vacPrecoEm(material, data)` · `vacMetaArea(codigo, data)` · `vacMetaAreaMes(codigo, 'AAAA-MM')` (meta do mês pela vigência de cada dia; duas vigências no mês = ponderada pelos dias) · `vacHoje()` (dia local; padrão dos leitores sem data) · `vacPortalHref(hash)` · botão ← Voltar (abas entram no histórico; `vacNavAtual()` opcional) · `vacAoVoltar()` chamado ao voltar para a página (reler sem F5) · `vacCsvTexto(v)` (texto seguro para CSV) · `vacTemaClaro(on)` (impressão e PDF sempre claros; `beforeprint`/`afterprint`) · `vacAbaInicial(pagina)` (aba inicial do perfil; lista `VAC_INICIAL_ALVO` em `kit_bases.js`).
+`vacCambio(data, moeda)` · `vacVig(vigencias, data)` · `vacParam(chave)` · `vacTurnosEm(data)` · `vacPrecoEm(material, data)` · `vacMetaArea(codigo, data)` · `vacMetaAreaMes(codigo, 'AAAA-MM')` (meta do mês pela vigência de cada dia; duas vigências no mês = ponderada pelos dias) · `vacHoje()` (dia local; padrão dos leitores sem data) · `vacPortalHref(hash)` · botão ← Voltar (abas entram no histórico; `vacNavAtual()` opcional) · `vacAoVoltar()` chamado ao voltar para a página (reler sem F5) · `vacCsvTexto(v)` (texto seguro para CSV) · `vacNumero(texto, {ponto, sap})` (número estrito por regra de campo: vazio null, inválido NaN) · `vacExportsOk(exports)` (confere a versão antes de usar o exports de outra página) · `vacTemaClaro(on)` (impressão e PDF sempre claros; `beforeprint`/`afterprint`) · `vacAbaInicial(pagina)` (aba inicial do perfil; lista `VAC_INICIAL_ALVO` em `kit_bases.js`).
 
 ## Centralização no Portal (Portal 1.8/1.8.1)
 
@@ -86,7 +88,7 @@ Lista única do que ficou para depois. O motivo e o gatilho de cada item estão 
 - Calendário de produção no Portal.
 - Gel lendo catálogos e equipamentos do Portal; produção OEE → Gel (registro § 1).
 - `eventoId` comum OEE × Paradas, que evita contagem dupla, quando o OEE publicar `paradasEventos` (ver `docs/paradas-arquitetura.md`; registro F07/A10).
-- Waste ainda lê da base da Produção `monthPlans` (ordens antigas) e `server.dayLot` (dias do lote). Sai quando a Produção publicar isso no `exports` (registro § 1).
+- Waste ainda cai na base da Produção (`monthPlans`, `server.lotClass/lotNotes`) para ordens fora dos 24 meses do `exports.porOrdem` e lotes fora dos 150 dias do `exports.lotes` (registro § U, E4).
 
 **Layout (auditoria visual; registro § L)**
 - Juntar Resumo e indicadores do Waste (hoje há totais repetidos).

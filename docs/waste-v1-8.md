@@ -114,3 +114,9 @@ No relatório mensal, o Pareto de componentes diz "20 maiores de N (todos no Exc
   - tendência (painel, TV, relatório): um traço de meta por barra quando os meses têm metas diferentes; uma linha quando são iguais;
   - relatório mensal e TV: "meta R$ x (ponderada pelos dias: R$ a × d + R$ b × d)".
 - **Versão única:** `PAGE.versao = APP_VER`; título sem número. Antes havia 1.8.13, 1.8.15 e 1.8.16 em lugares diferentes, e o Portal › Versões mostrava um aviso falso.
+
+## Waste 1.8.18 (08/11/2026) · E4 do plano único (registro § U)
+
+- **Versão do `exports` conferida:** os da Produção e das Ordens só são usados se a versão for conhecida (`vacExportsOk`); se não, a página avisa o motivo.
+- **Ordem em várias competências (Ordens SAP):** o índice junta todas. O tipo do COOIS vem da competência mais recente que o tem; antes, a última do arquivo apagava as outras.
+- **Dias do lote:** lidos pela chave "dia|lote" do servidor (antes, a página procurava no valor e não achava). Com a Produção 2.4.12, os dias também chegam pelo `exports.porOrdem`.
