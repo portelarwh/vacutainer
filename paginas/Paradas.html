@@ -760,7 +760,8 @@ function parseHora(v){if(v==null||v==='')return null;if(v instanceof Date)return
  const s=String(v).trim().toLowerCase();let m=s.match(/^(\d{1,2})\s*[:h.]\s*(\d{2})/)||s.match(/^(\d{1,2})(\d{2})$/)||s.match(/^(\d{1,2})\s*h?$/);if(!m)return null;const h=+m[1],mi=+(m[2]||0);if(h>29||mi>59)return null;return`${String(h).padStart(2,'0')}:${String(mi).padStart(2,'0')}`}
 const somaHora=(h,min)=>{if(!h)return null;const[a,b]=h.split(':').map(Number);const t=a*60+b+Math.round(min||0);return`${String(Math.floor(t/60)%24).padStart(2,'0')}:${String(t%60).padStart(2,'0')}`};
 function parseTurno(v){const s=norm(v);let m=s.match(/t\s*([123])/)||s.match(/([123])\s*[ºo°]?\s*turno/)||s.match(/^([123])$/);return m?'T'+m[1]:(v?String(v):null)}
-function parseNum(v){if(v==null||v==='')return null;if(typeof v==='number')return v;const s=String(v).replace(/\s|min/gi,'').replace(/\.(?=\d{3}\b)/g,'').replace(',','.');const n=parseFloat(s);return isNaN(n)?null:n}
+/* E3 (08/11/2026) · número estrito: "12a" e "15-" não viram 12 e 15 (antes parseFloat lia só o começo). Vazio = null; inválido = NaN. "min" no fim é aceito ("15 min"); ponto com 3 dígitos depois = milhar, como antes */
+function parseNum(v){if(v==null||v==='')return null;if(typeof v==='number')return Number.isFinite(v)?v:NaN;const s=String(v).replace(/\s*min(utos?)?\.?\s*$/i,'').trim();if(!s)return null;return vacNumero(s,{ponto:'milhar'})}
 function parseCodigo(v){if(!v)return null;const s=String(v).trim();let m=s.match(/^(\d{3})\s*[·\-–| ]\s*([A-Z0-9]{2,4})\b/);if(m)return Cad.code(m[2])?m[2]:Cad.byNum.get(m[1])?.codigo||m[2];
  if((m=s.match(/^(\d{3})\b/)))return Cad.byNum.get(m[1])?.codigo||null;if((m=s.match(/^([A-Z0-9]{3,4})\b/))&&Cad.code(m[1]))return m[1];return null}
 function parseSimNao(v){const s=norm(v);if(!s)return null;if(/^s(im)?\b|^yes/.test(s))return true;if(/^n(ao|o)?\b(?!.*sei)/.test(s)&&!/sei/.test(s))return false;return null}
@@ -794,12 +795,12 @@ function montarImport(rows,fonte){const H=rows.length?Object.keys(rows[0]):[];co
  if(!layout)return{erros:[{l:0,t:'Não achei a coluna do código (Código…) nem "Tipo de parada". Títulos lidos: '+H.join(', ')}],ev,layout,C};
  const dep=D.config.deparaMaquina||{};const prefix=fonte==='html-antigo'?'FA':layout==='novo'?'FN':'FA';
  rows.forEach((r,i)=>{const L=i+2;const g=k=>C[k]?r[C[k]]:null;const dia=parseDia(g('dia'));if(!dia){erros.push({l:L,t:'sem data da parada'});return}
-  const min=parseNum(g('minutos'));if(!(min>0)){erros.push({l:L,t:'duração vazia ou zero'});return}
+  const min=parseNum(g('minutos'));if(Number.isNaN(min)){erros.push({l:L,t:`duração inválida ("${g('minutos')}")`});return}if(!(min>0)){erros.push({l:L,t:'duração vazia ou zero'});return}
   const mq=parseMaquina(g('maquina'),dep);let codigo=null,codigoOrig=null,sug=null,tp=null;
   if(layout==='novo'){const raw=C.codigos.map(c=>r[c]).find(v=>v!=null&&String(v).trim()!=='');codigoOrig=raw?String(raw):'';codigo=parseCodigo(raw);if(!codigo){erros.push({l:L,t:'código não reconhecido: '+(raw||'vazio')});return}tp=parseSimNao(g('trocou'))}
   else{codigoOrig=String(g('tipo')||'').trim();sug=sugerirAntigo(codigoOrig,g('descricao'),g('obs'),mq.nome);const k=codigoOrig+'→'+sug.codigo;codigo=(D.config.deparaTipo||{})[k]||sug.codigo;tp=sug.trocou}
   const fid=g('id');const id=fid!=null&&fid!==''?`${prefix}-${fid}`:`${prefix}-h${hash([dia,g('turno'),mq.nome,min,g('descricao')].join('|'))}`;
-  const ini=parseHora(g('inicio'));const n=Math.max(1,Math.round(parseNum(g('vezes'))||1));
+  const ini=parseHora(g('inicio'));const vz=parseNum(g('vezes'));if(Number.isNaN(vz)){erros.push({l:L,t:`quantidade de vezes inválida ("${g('vezes')}")`});return}const n=Math.max(1,Math.round(vz||1));
   ev.push({id,origem:fonte==='html-antigo'?'html-antigo':layout==='novo'?'forms':'forms-antigo',dia,turno:parseTurno(g('turno')),inicio:ini,fim:ini&&n===1?somaHora(ini,min):null,minutos:min,ocorrencias:n,
    equipamento:mq.eq||'X:?',maquinaOrig:mq.nome,codigo,codigoOrig,grupoImport:sug?codigoOrig+'→'+sug.codigo:null,regra:sug?.regra||null,trocouPeca:tp,
    descricao:String(g('descricao')||'').trim(),obs:String(g('obs')||'').trim(),peca:String(g('peca')||'').trim(),tecnicoForms:String(g('tecnico')||'').trim(),ordem:g('ordem')!=null?String(g('ordem')).trim():'',
@@ -1619,6 +1620,26 @@ function vacEstadoDe(id) {
    Recebe um prefixo ' (o Excel mostra o texto como está). Número escrito como texto (-1.234 · -12,5 · -3%) não é mexido, e
    valores number continuam número. Usado por Waste, Gel e Produção (cada página mantém o próprio formato de número e aspas). */
 function vacCsvTexto(v) { const s = String(v ?? ''); return /^[=+\-@\t\r]/.test(s) && !/^[+-]?[\d.,\s]+%?$/.test(s) ? "'" + s : s; }
+/* kit v2.1 · E3 (08/11/2026): número de texto, estrito (o texto inteiro precisa ser número; "12a" não vira 12).
+   Volta number, null (vazio) ou NaN (inválido). Regras por campo/fonte:
+   · vírgula sozinha = decimal (1,5); várias vírgulas = milhar em grupos de 3; com vírgula e ponto, o último é o decimal (1.234,5 · 1,234.5);
+   · ponto sozinho: ponto:'decimal' (padrão; 1.234 = 1,234) ou ponto:'milhar' (1.234 = 1234 quando tem 3 dígitos depois; 1.5 = 1,5);
+   · sinal no fim (15-, negativo do SAP) só com sap:true; espaços entre dígitos são ignorados (4 500,0).
+   Códigos nunca passam por aqui (regra 4). */
+function vacNumero(v, { ponto = 'decimal', sap = false } = {}) {
+  if (v == null) return null; if (typeof v === 'number') return Number.isFinite(v) ? v : NaN;
+  let s = String(v).replace(/\u2212/g, '-').replace(/[\s\u00a0\u202f]+/g, ''); if (!s) return null;
+  let neg = false; if (sap && /^\d[\d.,]*-$/.test(s)) { neg = true; s = s.slice(0, -1); }
+  if (/^[+-]/.test(s)) { if (s[0] === '-') neg = !neg; s = s.slice(1); }
+  if (!/^[\d.,]+$/.test(s) || !/\d/.test(s)) return NaN;
+  const g3 = (t, sep) => t.split(sep).slice(1).every(x => x.length === 3) && t.split(sep)[0].length > 0;
+  const lc = s.lastIndexOf(','), ld = s.lastIndexOf('.');
+  if (lc >= 0 && ld >= 0) { const dec = lc > ld ? ',' : '.', mil = dec === ',' ? '.' : ','; const p = s.split(dec); if (p.length !== 2 || p[1].includes(mil) || !g3(p[0], mil)) return NaN; s = p[0].split(mil).join('') + '.' + p[1]; }
+  else if (lc >= 0) { const p = s.split(','); if (p.length === 2) s = p[0] + '.' + p[1]; else if (g3(s, ',')) s = p.join(''); else return NaN; }
+  else if (ld >= 0) { const p = s.split('.'); if (p.length === 2 && !(ponto === 'milhar' && p[1].length === 3)) { /* decimal */ } else if (g3(s, '.')) s = p.join(''); else return NaN; }
+  if (!/^(\d+\.?\d*|\.\d+)$/.test(s)) return NaN; const n = parseFloat(s); return Number.isFinite(n) ? (neg ? -n : n) : NaN;
+}
+
 
 </script>
 </body></html>
