@@ -18,7 +18,7 @@ Este arquivo responde às auditorias externas da plataforma e registra, para cad
 | Relatórios, saídas e aba Painel | 07/11/2026 | `c341f8e` | Portal 1.8.11, Produção 2.4.8, Waste 1.8.14, Gel 2.02, Paradas 1.0.11 (§ P) |
 | Achados do Codex (segurança, dados, TV, scripts, desempenho) com revisão independente | 07/11/2026 | `065fe6f` | Portal 1.8.13, Produção 2.4.10, Waste 1.8.16, Gel 2.04, Paradas 1.0.13, páginas em construção 0.1.1 (§ C) |
 | Plano único (diagnósticos de 08/11 do Claude e do Codex), etapas E1 a E4 (Ordens e backups; versões, datas e metas; números; contratos por ordem) | 08/11/2026 | `e043513` / `9af2d3e` | Produção 2.4.12, Waste 1.8.18, Gel 2.06, Portal 1.8.15, Paradas 1.0.15 (§ U) |
-| Plano único, blocos A e B (E5 ficha da ordem e Ctrl K; E6/E8 Iniciativas, Planner, KAS e ações de OEE; …) | 08/11/2026 | `8ecec91` | Portal 1.8.17, Produção 2.4.14, Waste 1.8.20, Gel 2.08, Paradas 1.0.17, Iniciativas 1.0.0 (§ U) |
+| Plano único, blocos A e B (E5 ficha da ordem e Ctrl K; E6/E8 Iniciativas, Planner, KAS e ações de OEE; E10a/b Minha fila e Reunião diária; E10d relatório do Paradas; E11 Equipamentos) | 08/11/2026 | `8ecec91` | Portal 1.9.0, Produção 2.4.15, Waste 1.8.21, Gel 2.09, Paradas 1.0.19, Iniciativas 1.0.0, Equipamentos 1.0.0 (§ U) |
 
 Status usados: **corrigido** · **corrigido em parte** · **recusado** · **adiado** · **já existia**.
 
@@ -123,6 +123,47 @@ Teste novo: **`testes/tplanner.js`**. Documentação: `docs/iniciativas-planner.
 **Achado durante o teste:** duas estações gravando no mesmo instante. A segunda pode gravar por cima depois que a primeira já confirmou pela releitura: a releitura não é transação. Agora as operações confirmadas nos últimos 30 minutos ficam guardadas no navegador. Na leitura seguinte (gravação, volta para a página, F5), se o id delas não está na auditoria da base, elas voltam para a fila e são gravadas de novo. O teste reproduz o caso e confere que nada se perde.
 
 **Fora desta etapa (decisões registradas):** SLA, dias úteis e regras de prioridade (PLA-04, PLA-07); eficácia da ação de OEE (OEE-04) e ganho validado do KAS (KAS-02), que pedem método; OSM (E7, falta a amostra) e 5S (E13).
+
+### E10a e E10b · Portal: Minha fila e Reunião diária · **feito** (Portal 1.9.0)
+
+Teste novo: **`testes/tfila.js`**.
+
+| ID | O que ficou |
+|---|---|
+| FIL-01 | As pendências passam a levar `responsavel`, `apoios`, `prazo` e `id` quando a página publica (aditivo). Iniciativas e Equipamentos já publicam; as outras páginas, quando passarem a publicar |
+| FIL-02 / RAS-05 | Aba **Minha fila**: ações abertas de Iniciativas e pendências de todas as páginas, em Atrasadas · Hoje e próximos 7 dias · Mais adiante · Sem prazo. Filtros **Minhas** (responsável ou apoio), **Minha equipe** (mesma área no cadastro: campo novo `usuarios.area`, com ⓘ) e **Sem responsável**. Só leitura: cada item abre na página dona. Contador de itens atrasados na aba |
+| REU-01/02 | Aba **Reunião diária**, por **dia** ou **turno** (os turnos vêm do cadastro): OEE e produzido (dia ou turno), paradas (dia ou turno, com as maiores), Gel (agora), Waste (competência, com a meta do mês ponderada) e ações (hoje). Cada número leva o rótulo da granularidade. Pauta e decisões ficam no `portal-base.json` (`reunioes`, por dia e recorte), com quem e quando. "Fotografar números" guarda os números junto da pauta. "Encaminhar ao Planner" e "+ Ação" na maior parada abrem Iniciativas preenchida. Relatório pelo Report do Portal (PDF, Excel, texto, Outlook) |
+
+**Limite:** o Paradas publica a lista de eventos dos últimos 90 dias; uma reunião sobre um dia mais antigo mostra o aviso no lugar dos números de parada.
+
+### E10d · Relatório do Paradas · **feito** (Paradas 1.0.19)
+
+Paradas ganhou o botão **Relatório**: o mesmo `Report` do Portal e do Waste (prévia, PDF em paisagem, Excel, texto, Outlook com o gráfico como imagem, impressão), com os filtros da tela. Tem indicadores, o gráfico e a tabela do Pareto por código, os equipamentos (MTBF, MTTR, disponibilidade) e a recorrência dos 30 dias. O código foi copiado com adaptadores mínimos; a unificação dos geradores no kit continua pendente (§ P). Teste: `trelatorios.js` › Paradas.
+
+### E11 · Equipamentos 1.0 · **feito** (Equipamentos 1.0.0; Paradas 1.0.19; kit)
+
+Teste novo: **`testes/tequip.js`**. Documentação: `docs/equipamentos-v1.md`.
+
+| ID | O que ficou |
+|---|---|
+| — | Equipamentos virou página de verdade (saiu do gerador). Base `equipamentos-base.json` em `00. Bases`, com a mesma gravação de Iniciativas |
+| Ficha | Cadastro do Portal (nome, apelidos, link para editar lá); falhas lidas do `exports` do Paradas e rotuladas como **histórico** (7/30/90 dias, MTBF/MTTR por mês, componentes); OS, TAGs, anomalias e padrões. Sem estado atual nem gargalo (sem MES) |
+| OS | Situações aprovadas nos esboços; nota/OS do SAP PM opcional; apontamentos e histórico. A OS aberta de um evento do Paradas guarda só a referência (sem cópia). O Paradas mostra "OS-… aberta" no evento, lendo `exports.porEvento`, e tem "+ Abrir OS" |
+| TAG-01/04 | TAG com propósito, nome no MES, tipo e unidade por vigência. Nova vigência não apaga a anterior; corrigir = desativar com motivo e criar outra (regra 3) |
+| TPM-01/02/06 | Estrutura do ponto AM/TPM (tipo, ponto, periodicidade, faixa, habilitação, referência) **sem conteúdo inventado**; anomalia registrada vira OS ligada |
+| Ctrl K | Equipamento na busca abre a ficha em Equipamentos (antes, o cadastro no Portal) |
+
+### Não feito nesta rodada (aguarda decisão ou material)
+
+| Etapa | O que falta |
+|---|---|
+| E10c · telas por perfil | lista de jornadas por perfil, validada com operador e liderança (§ 6 do plano). A aba inicial por perfil já existe (`vacAbaInicial`) |
+| E3b · XLSX local | o arquivo SheetJS 0.20.3 da pasta da linha |
+| E7 · OSM | amostra descaracterizada da planilha da plataforma |
+| E9 · importação por pasta | decisão IMP-05 (estação coletora) |
+| E12 · MES | amostras SQL, regras de impacto, ponto oficial de medição |
+| E13 · AM/TPM e 5S | padrões técnicos da manutenção |
+| E15 · Projetos | escopo |
 
 ---
 

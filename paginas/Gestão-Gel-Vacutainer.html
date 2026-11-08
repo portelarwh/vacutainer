@@ -1327,7 +1327,7 @@ const fileBackend={kind:'file',async commit(ch){applyLocal(ch);FS.pending.push(c
 async function fsRefresh(){if(S.mode!=='file'||FS.busy||ui.demo)return;try{const cur=await fsReadBase(fsKnown());if(cur&&!cur.same){FS.mod=cur.mod;FS.rev=cur.rev;FS.revBy=cur.by;loadData(cur.data);FS.pending.forEach(applyLocal);localBackend.save();render()}}catch(e){}}
 /* ================= V1.89 · integração com as outras páginas (Portal, OEE, Perdas) ================= */
 // versão da página (topo, Guia e base gravada)
-const APP_VERSION='2.08';   /* 2.08 · E8: kit com "+ Abrir ação" na ficha da ordem */   /* 2.07 · E5: ficha da ordem comum (botão na ordem) e busca por ordem, lote e LP */   /* 2.06 · E3: número digitado só aceito inteiro; E4: cobertura das ordens no exports */   /* 2.05 · E2: a versão da tela vem desta constante (o rótulo estava fixo em v2.01); kit com data local e meta do mês ponderada */   /* 2.04 · revisão 065fe6f: restauração por arquivo confirma e não segue sem a cópia anterior; CSV sem fórmulas; índice por dia no Painel */
+const APP_VERSION='2.09';   /* 2.09 · E11: busca do kit leva o equipamento à ficha em Equipamentos */   /* 2.08 · E8: kit com "+ Abrir ação" na ficha da ordem */   /* 2.07 · E5: ficha da ordem comum (botão na ordem) e busca por ordem, lote e LP */   /* 2.06 · E3: número digitado só aceito inteiro; E4: cobertura das ordens no exports */   /* 2.05 · E2: a versão da tela vem desta constante (o rótulo estava fixo em v2.01); kit com data local e meta do mês ponderada */   /* 2.04 · revisão 065fe6f: restauração por arquivo confirma e não segue sem a cópia anterior; CSV sem fórmulas; índice por dia no Painel */
 /* 2.03 · situação "em atualização" (kit: selo, pílula e faixa; docs/paginas-construcao.md) */
 /* 2.02 · relatório montado: todas as linhas no PDF, comentário, aviso de corte no texto; Painel em 1º; aba inicial do perfil; impressão e PDF no tema claro */
 /* 1.99 · menu Mais do cabeçalho (vac-visual v1): fecha ao escolher uma ação, ao clicar fora e com Esc */
@@ -1481,7 +1481,7 @@ const DEFAULT_SYSTEMS=[
  {id:'perdas',nome:'Waste',html:'Perdas-Ordem.html',base:'perdas-base.json'},
  {id:'gel',nome:'Gestão de Gel',html:'Gestão-Gel-Vacutainer.html',alt:['Gestao-Gel-Vacutainer.html','controle-fifo-gel.html'],base:'fifo-base.json',estado:'atualizacao'},
  {id:'paradas',nome:'Paradas',html:'Paradas.html',base:'paradas-base.json',estado:'atualizacao'},
- {id:'equip',nome:'Equipamentos',html:'Equipamentos.html',base:'equipamentos-base.json',futuro:true,estado:'construcao'},
+ {id:'equip',nome:'Equipamentos',html:'Equipamentos.html',base:'equipamentos-base.json',sub:'Ficha · OS · TAGs · AM/TPM',estado:'atualizacao'},
  {id:'inic',nome:'Iniciativas',html:'Iniciativas.html',base:'iniciativas-base.json',sub:'Ações · KAS · OSM · 5S',estado:'atualizacao'},
  {id:'projetos',nome:'Projetos',html:'Projetos.html',base:'projetos-base.json',futuro:true,estado:'construcao'}];
 function systems(){try{const s=JSON.parse(localStorage.getItem('vac.sistemas')||'null');if(Array.isArray(s)&&s.length){const ids=new Set(s.map(x=>x.id));return s.concat(DEFAULT_SYSTEMS.filter(d=>!ids.has(d.id)))}}catch(e){}return DEFAULT_SYSTEMS.map(x=>({...x}))}
@@ -7597,7 +7597,7 @@ const vacFicha = (() => {
       for (const c of (C.catalogos || []).filter(c => c.ativo !== false && (nk(c.codigo).includes(k) || semAc(c.nome).includes(ks))).slice(0, 5)) R.push({ tipo: 'Catálogo', txt: tx(c.codigo) + (c.nome ? ' · ' + c.nome : ''), sub: 'cadastro do Portal', href: href('cadastros/catalogos/' + encodeURIComponent(c.codigo)), r: nk(c.codigo) === k ? 0 : 2 });
       for (const e of (C.equipamentos || []).filter(e => e.ativo !== false && (nk(e.codigo).includes(k) || semAc(e.nome).includes(ks) || (e.apelidos || []).some(a => semAc(a).includes(ks)))).slice(0, 5)) {
         const ap = (e.apelidos || []).find(a => semAc(a).includes(ks));
-        R.push({ tipo: 'Equipamento', txt: tx(e.codigo) + (e.nome ? ' · ' + e.nome : ''), sub: (ap ? `apelido “${ap}” · ` : '') + 'cadastro do Portal', href: typeof vacEquipHref === 'function' ? vacEquipHref(e.codigo) : href('cadastros/equipamentos/' + encodeURIComponent(e.codigo)), r: nk(e.codigo) === k ? 0 : 2 });
+        R.push({ tipo: 'Equipamento', txt: tx(e.codigo) + (e.nome ? ' · ' + e.nome : ''), sub: (ap ? `apelido “${ap}” · ` : '') + 'ficha do equipamento', href: typeof vacEquipHref === 'function' ? vacEquipHref(e.codigo) : (() => { const s = (typeof systems === 'function' ? systems() : []).find(x => x.id === 'equip'); return s && !s.futuro && (typeof vacEstadoDe !== 'function' || (vacEstadoDe('equip') || {}).estado !== 'construcao') && typeof sysHref === 'function' ? sysHref(s, 'eq=' + encodeURIComponent(e.codigo)) : href('cadastros/equipamentos/' + encodeURIComponent(e.codigo)); })(), r: nk(e.codigo) === k ? 0 : 2 });
       }
     }
     return R.sort((a, b) => a.r - b.r);

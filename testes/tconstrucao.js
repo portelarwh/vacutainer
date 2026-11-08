@@ -1,10 +1,10 @@
-/* Páginas em construção e em atualização (docs/paginas-construcao.md). Iniciativas saiu da construção na 1.0.0 (E6, 08/11/2026): testes/tplanner.js
+/* Páginas em construção e em atualização (docs/paginas-construcao.md). Iniciativas e Equipamentos saíram da construção na 1.0.0 (E6 e E11, 08/11/2026): testes/tplanner.js e testes/tequip.js
    node testes/tconstrucao.js  → sai com código 1 se alguma checagem falhar. Prints em testes/saida/construcao/. */
 const RAIZ = require('path').resolve(__dirname, '..') + '/', fs = require('fs');
 const { chromium } = require('playwright');
 const S = 'file://' + RAIZ + 'paginas/', OUT = RAIZ + 'testes/saida/construcao/'; fs.mkdirSync(OUT, { recursive: true });
 const errs = []; const ok = (c, m) => { console.log((c ? 'ok    ' : 'FALHA ') + m); if (!c) errs.push(m); };
-const NOVAS = [['Equipamentos', 'Equipamentos.html', 'equip', ['maquina', 'preventiva', 'tpm']], ['Projetos', 'Projetos.html', 'projetos', ['lista', 'cronograma']]];
+const NOVAS = [['Projetos', 'Projetos.html', 'projetos', ['lista', 'cronograma']]];
 (async () => {
   const b = await chromium.launch();
   const nova = async (vp = { width: 1440, height: 950 }) => { const ctx = await b.newContext({ viewport: vp }); const p = await ctx.newPage(); const E = [];
@@ -16,7 +16,7 @@ const NOVAS = [['Equipamentos', 'Equipamentos.html', 'equip', ['maquina', 'preve
     await p.goto(S + 'Portal.html#geral'); await p.evaluate(() => { localStorage.setItem('vac.sistemas', JSON.stringify([{ id: 'portal', nome: 'Portal', html: 'Portal.html' }, { id: 'gel', nome: 'Gel', html: 'Gestão-Gel-Vacutainer.html', base: 'fifo-base.json' }, { id: 'paradas', nome: 'Paradas', html: 'Paradas.html', base: 'paradas-base.json' }])); });
     await p.reload(); await p.waitForTimeout(700); await p.evaluate(() => enterTest()); await p.waitForTimeout(500);
     const st = await p.evaluate(() => ['gel', 'paradas', 'equip', 'inic', 'projetos', 'oee', 'perdas'].map(id => id + ':' + ((vacEstadoDe(id) || {}).estado || 'estável')).join(' '));
-    ok(st === 'gel:atualizacao paradas:atualizacao equip:construcao inic:atualizacao projetos:construcao oee:estável perdas:estável', 'Portal · situação vinda do catálogo com vac.sistemas antigo: ' + st);
+    ok(st === 'gel:atualizacao paradas:atualizacao equip:atualizacao inic:atualizacao projetos:construcao oee:estável perdas:estável', 'Portal · situação vinda do catálogo com vac.sistemas antigo: ' + st);
     ok(await p.evaluate(() => !!document.querySelector('#sysNav a .vest[data-e="atualizacao"]')), 'Portal · selo "em atualização" na barra');
     /* cartão de página em construção e Versões sem "base não encontrada" */
     const card = await p.evaluate(() => { const s = { id: 'inic', nome: 'Iniciativas', html: 'Iniciativas.html' }; MOD.data.inic = { sys: s, construcao: true, planejado: JSON.parse('{"nota":"x","abas":[{"aba":"OSM","subabas":[{"nome":"Planner"}]},{"aba":"5S"}]}'), versaoHtml: '0.1', pend: [], kpis: [] }; const h = card(s); delete MOD.data.inic; return h; });

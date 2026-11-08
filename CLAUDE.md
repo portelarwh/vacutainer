@@ -6,14 +6,14 @@ Plataforma de páginas HTML de arquivo único que trabalham juntas numa **pasta 
 
 | Página | Arquivo | Base | Versão | Como editar |
 |---|---|---|---|---|
-| Portal (cadastro geral, Administração) | `Portal.html` | `portal-base.json` + `vacutainer-cadastros.json` | 1.8.17 | direto no HTML |
-| Produção (OEE, plano, ordens SAP) | `OEE-Vacutainer.html` | `oee-vacutainer-base.json` (+ `ordens-base.json`) | 2.4.14 | **NÃO editar o HTML**: editar `fontes/producao/` e rodar o build |
-| Waste (perdas por ordem, KKBC) | `Perdas-Ordem.html` | `perdas-base.json` | 1.8.20 | direto no HTML |
-| Gestão de Gel | `Gestão-Gel-Vacutainer.html` | `fifo-base.json` | 2.08 · **em atualização** | direto no HTML |
-| Paradas | `Paradas.html` | `paradas-base.json` | 1.0.17 · **em atualização** | direto no HTML |
-| Equipamentos (com manutenção) | `Equipamentos.html` | (`equipamentos-base.json`, ainda não existe) | 0.1.3 · **em construção** | **gerada**: `fontes/modelo/gerar_paginas.py` |
+| Portal (cadastro geral, Administração) | `Portal.html` | `portal-base.json` + `vacutainer-cadastros.json` | 1.9.0 | direto no HTML |
+| Produção (OEE, plano, ordens SAP) | `OEE-Vacutainer.html` | `oee-vacutainer-base.json` (+ `ordens-base.json`) | 2.4.15 | **NÃO editar o HTML**: editar `fontes/producao/` e rodar o build |
+| Waste (perdas por ordem, KKBC) | `Perdas-Ordem.html` | `perdas-base.json` | 1.8.21 | direto no HTML |
+| Gestão de Gel | `Gestão-Gel-Vacutainer.html` | `fifo-base.json` | 2.09 · **em atualização** | direto no HTML |
+| Paradas | `Paradas.html` | `paradas-base.json` | 1.0.19 · **em atualização** | direto no HTML |
+| Equipamentos (com manutenção) | `Equipamentos.html` | `equipamentos-base.json` | 1.0.0 · **em atualização** | direto no HTML (saiu do gerador na 1.0.0; `docs/equipamentos-v1.md`) |
 | Iniciativas (Ações/Planner · KAS · OSM · 5S) | `Iniciativas.html` | `iniciativas-base.json` | 1.0.0 · **em atualização** | direto no HTML (saiu do gerador na 1.0.0; `docs/iniciativas-planner.md`) |
-| Projetos | `Projetos.html` | (`projetos-base.json`, ainda não existe) | 0.1.3 · **em construção** | **gerada**: `fontes/modelo/gerar_paginas.py` |
+| Projetos | `Projetos.html` | (`projetos-base.json`, ainda não existe) | 0.1.4 · **em construção** | **gerada**: `fontes/modelo/gerar_paginas.py` |
 
 Divisão final (Portal 1.7): Portal · Produção · Waste · Gestão de Gel · Paradas · **Equipamentos** (inclui manutenção; não há página Manutenção) · **Iniciativas** (uma página: Ações/Planner · KAS · OSM · 5S; não há OSM.html) · **Projetos** · Outros ▾ · ⚙ Administração.
 Situação de cada página (em construção / em atualização / estável): `PAGE.estado` + `sistemas.js`, trocável no Portal › Configuração › Módulos; ver `docs/paginas-construcao.md`. Páginas em construção são **geradas** (não editar o HTML; editar `fontes/modelo/` e rodar o gerador). Quando uma delas começar de verdade (v1.0), tirar da lista do gerador e passar a editar direto. Arquitetura: `docs/plano-evolucao-plataforma.md`, `docs/osm-arquitetura.md` (aba OSM de Iniciativas). `docs/paginas-novas.md` é histórico (lista antiga Máquinas/Manutenção).
@@ -23,7 +23,7 @@ Situação de cada página (em construção / em atualização / estável): `PAG
 ```bash
 python fontes/producao/build.py        # monta paginas/OEE-Vacutainer.html a partir de OEE-base-2.0.html + ordens_servico.js + ordens_tela.js + cad_sync.js + kit_v21.js
 python fontes/kit/aplicar_kit21.py     # recopia fontes/kit/kit_v21.js, o catálogo fontes/kit/sistemas.js, o padrão visual fontes/kit/kit_visual.css e as bases em 00. Bases fontes/kit/kit_bases.js nas outras páginas (Portal, Waste, Paradas, Gel e as 3 em construção)
-python fontes/modelo/gerar_paginas.py  # gera Equipamentos.html e Projetos.html (em construção) a partir de fontes/modelo/pagina-em-construcao.html e roda o aplicar_kit21.py
+python fontes/modelo/gerar_paginas.py  # gera Projetos.html (em construção) a partir de fontes/modelo/pagina-em-construcao.html e roda o aplicar_kit21.py
 node testes/tpg.js                     # testes Playwright (abrem paginas/ em modo teste/exemplo; imprimem "sem erros")
 node testes/tintegra.js                # Portal × exports: números iguais aos das páginas, urgência, gravação pendente com conflito
 node testes/tdiag.js                   # cenários das auditorias de 06/11/2026 (F01–F08, M01–M04: colisão e falha de leitura na gravação, CadSync, SAP, Gel, Paradas, versões); tintegra e tdiag saem com código 1 se falhar
@@ -39,6 +39,8 @@ node testes/tvigencias.js             # E2 do plano único: versão igual em tel
 node testes/tnumeros.js               # E3: vacNumero (decimal, milhar, SAP) nas páginas, preço do Gel com "12a" não grava, minutos/vezes do Forms no Paradas; código 1 se falhar
 node testes/tficha.js                 # E5: ficha da ordem/lote/LP (mesmos números dos exports nas 5 páginas), Ctrl K por índice (LX1 antes de LX10), cópia sem pasta, versão 2 recusada, #ficha=, ← Voltar; código 1 se falhar
 node testes/tplanner.js               # E6/E8: Iniciativas › Ações (base em 00. Bases, operações, duas estações, erro de leitura, tempos com transferência/espera/reabertura, exports, #nova= com aviso de ação parecida, KAS, links das outras páginas); código 1 se falhar
+node testes/tfila.js                  # E10: Portal › Minha fila (Minhas, Minha equipe pela área do cadastro, Sem responsável) e Reunião diária (dia/turno, granularidade, pauta, decisão, fotografia, encaminhar); código 1 se falhar
+node testes/tequip.js                 # E11: Equipamentos (ficha, OS do evento do Paradas sem cópia, TAG com vigência, anomalia → OS, Paradas mostra a OS); código 1 se falhar
 node testes/tcontratos.js             # E4: exports por ordem (Produção 24 meses e dias do lote, Paradas, Gel), versão conferida pelos leitores, Waste com ordem em várias competências e dias do lote; código 1 se falhar
 ```
 
@@ -88,6 +90,8 @@ Lista única do que ficou para depois. O motivo e o gatilho de cada item estão 
 
 **Funcionalidade e integração**
 - Calendário de produção no Portal.
+- Telas por perfil (E10c): Resumo/Detalhado, o que fica em "Mais", passagem de turno e alerta de ritmo; espera a lista de jornadas por perfil validada com operador e liderança (registro § U).
+- OSM (E7, falta a amostra da planilha), importação por pasta (E9, falta decidir a estação coletora), MES (E12, faltam amostras e regras), conteúdo AM/TPM e 5S (E13, faltam os padrões), Projetos (E15, falta o escopo) e XLSX local (E3b, falta o arquivo): registro § U.
 - Gel lendo catálogos e equipamentos do Portal; produção OEE → Gel (registro § 1).
 - `eventoId` comum OEE × Paradas, que evita contagem dupla, quando o OEE publicar `paradasEventos` (ver `docs/paradas-arquitetura.md`; registro F07/A10).
 - Waste ainda cai na base da Produção (`monthPlans`, `server.lotClass/lotNotes`) para ordens fora dos 24 meses do `exports.porOrdem` e lotes fora dos 150 dias do `exports.lotes` (registro § U, E4).
@@ -116,5 +120,4 @@ Lista única do que ficou para depois. O motivo e o gatilho de cada item estão 
 - URLs de download sem revogação no Paradas, Produção e Portal (revisar caso a caso).
 
 **Relatórios (registro § P)**
-- Paradas sem relatório próprio (PDF, Excel, cópia da análise); só Ctrl+P na aba.
 - Três geradores de PDF (Portal/Waste, Produção, Gel): unificar no kit se for preciso.

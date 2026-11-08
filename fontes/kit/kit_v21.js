@@ -306,7 +306,7 @@ const vacFicha = (() => {
       for (const c of (C.catalogos || []).filter(c => c.ativo !== false && (nk(c.codigo).includes(k) || semAc(c.nome).includes(ks))).slice(0, 5)) R.push({ tipo: 'Catálogo', txt: tx(c.codigo) + (c.nome ? ' · ' + c.nome : ''), sub: 'cadastro do Portal', href: href('cadastros/catalogos/' + encodeURIComponent(c.codigo)), r: nk(c.codigo) === k ? 0 : 2 });
       for (const e of (C.equipamentos || []).filter(e => e.ativo !== false && (nk(e.codigo).includes(k) || semAc(e.nome).includes(ks) || (e.apelidos || []).some(a => semAc(a).includes(ks)))).slice(0, 5)) {
         const ap = (e.apelidos || []).find(a => semAc(a).includes(ks));
-        R.push({ tipo: 'Equipamento', txt: tx(e.codigo) + (e.nome ? ' · ' + e.nome : ''), sub: (ap ? `apelido “${ap}” · ` : '') + 'cadastro do Portal', href: typeof vacEquipHref === 'function' ? vacEquipHref(e.codigo) : href('cadastros/equipamentos/' + encodeURIComponent(e.codigo)), r: nk(e.codigo) === k ? 0 : 2 });
+        R.push({ tipo: 'Equipamento', txt: tx(e.codigo) + (e.nome ? ' · ' + e.nome : ''), sub: (ap ? `apelido “${ap}” · ` : '') + 'ficha do equipamento', href: typeof vacEquipHref === 'function' ? vacEquipHref(e.codigo) : (() => { const s = (typeof systems === 'function' ? systems() : []).find(x => x.id === 'equip'); return s && !s.futuro && (typeof vacEstadoDe !== 'function' || (vacEstadoDe('equip') || {}).estado !== 'construcao') && typeof sysHref === 'function' ? sysHref(s, 'eq=' + encodeURIComponent(e.codigo)) : href('cadastros/equipamentos/' + encodeURIComponent(e.codigo)); })(), r: nk(e.codigo) === k ? 0 : 2 });
       }
     }
     return R.sort((a, b) => a.r - b.r);

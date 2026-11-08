@@ -121,6 +121,15 @@ td.n,th.n{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
 .fp .foot{display:flex;justify-content:space-between;margin-top:5px;font-size:8px;color:#444}.fp .sig{border-top:1px solid #333;width:30%;padding-top:2px;text-align:center}
 .fprev{overflow-x:auto;background:#fff;color:#111;padding:14px;border:1px solid var(--line);border-radius:var(--r);max-width:820px}
 @media(max-width:600px){.kpi .v{font-size:23px}.gcode{grid-template-columns:48px 44px minmax(0,1fr)}}
+.rep{background:#fff;color:#15222f;border:1px solid var(--line);border-radius:var(--r);padding:20px 24px;font-family:var(--f-body)}
+.rep h1{font-family:var(--f-display);text-transform:uppercase;font-size:24px;margin:0}
+.rep h2{font-family:var(--f-display);text-transform:uppercase;font-size:17px;margin:16px 0 6px;letter-spacing:.04em}
+.rep .rk{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px}.rep .rk div{border:1px solid #d3dae2;border-radius:6px;padding:8px 10px}
+.rep .rk b{display:block;font-family:var(--f-display);font-size:22px}.rep .rk b.bad{color:#c22a2a}.rep .rk b.good{color:#1d8048}.rep .rk span{font-family:var(--f-display);text-transform:uppercase;font-size:12px;color:#5b6979;letter-spacing:.05em}
+.rep table{width:100%;border-collapse:collapse}.rep table th{background:#f6f8fa;color:#5b6979;position:static;text-align:left;padding:4px 6px;font-size:11px;text-transform:uppercase}.rep table td,.rep table th{color:#15222f;border-bottom:1px solid #d3dae2;padding:4px 6px}
+.rep .cm{border-left:4px solid #1d4b73;background:#e3ecf5;padding:8px 12px;margin:10px 0;white-space:pre-wrap}.rep svg{max-width:100%;height:auto}.rep svg text{fill:#15222f}
+.repbar{display:flex;flex-wrap:wrap;gap:6px;margin:6px 0 10px}
+@media print{body:has(.mod-bg .rep)>*:not(.mod-bg){display:none!important}body:has(.mod-bg .rep) .mod-bg{position:static;background:none;padding:0}body:has(.mod-bg .rep) .mod{border:0;box-shadow:none;width:100%}body:has(.mod-bg .rep) .mod .mh,.repbar,label:has(#repCm){display:none!important}}
 </style>
 <style>
 /* ===== vac-cabecalho v2 · barra do sistema + cabeçalho da página (igual em todas as páginas; não editar só numa) ===== */
@@ -513,7 +522,7 @@ function vacAbaInicial(pagina) {
 <div class="vpage"><div class="wrap">
   <h1 id="vacTitulo">Paradas</h1><span class="rule" id="vacSub"></span><span class="ver" id="appVer" title="Versões das páginas"></span>
   <span id="stBase"></span><span class="sp"></span>
-  <span class="vacts"><button class="b sm" id="btnSync" title="Gravar pendências e reler a base">↻ Sincronizar</button><button class="b sm" id="btnBackup" title="Criar backup agora">⛁ Backup</button><button class="b sm" id="btnTV" title="Modo TV">▣ TV</button></span>
+  <span class="vacts"><button class="b sm" id="btnSync" title="Gravar pendências e reler a base">↻ Sincronizar</button><button class="b sm" id="btnBackup" title="Criar backup agora">⛁ Backup</button><button class="b sm" id="btnRel" title="Relatório das paradas (PDF, Excel, texto, Outlook, impressão) com os filtros da tela">⎙ Relatório</button><button class="b sm" id="btnTV" title="Modo TV">▣ TV</button></span>
 </div></div>
 <nav class="vtabs" aria-label="Abas da página"><div class="wrap"><div class="tabs" id="nav">
   <span class="grp">Operação</span><button data-t="geral">Visão geral</button><button data-t="eventos">Eventos</button><button data-t="fila">Fila técnica</button><button data-t="valid">Validação</button>
@@ -532,7 +541,7 @@ const MATRIZ_PROPOSTA={"OUT": ["Tullip A", "Tullip B", "Packout", "Metro", "Cap 
    PARADAS · núcleo (pasta, base, fila de gravação, backups, cadastro, utilidades)
    ===================================================================================== */
 const PAGE={id:'paradas',titulo:'Paradas · Análise de falhas e paradas de máquina',tituloCurto:'Paradas',subtitulo:'Análise de falhas e paradas de máquina',
-  versao:'1.0.17',estado:'atualizacao',estadoNota:'Matriz, componentes e limite de microparada passam a vir só do Portal; eventos da Produção entram como sugestão.',baseFile:'paradas-base.json',backupDir:'00. Backups/Paradas',busca:q=>buscaPagina(q)};
+  versao:'1.0.19',estado:'atualizacao',estadoNota:'Matriz, componentes e limite de microparada passam a vir só do Portal; eventos da Produção entram como sugestão.',baseFile:'paradas-base.json',backupDir:'00. Backups/Paradas',busca:q=>buscaPagina(q)};
 const APP_VERSION=PAGE.versao;
 const CAD_FILE='vacutainer-cadastros.json',OEE_FILE='oee-vacutainer-base.json';
 const $=(s,r=document)=>r.querySelector(s),$$=(s,r=document)=>[...r.querySelectorAll(s)];
@@ -676,6 +685,7 @@ const Ext={cad:null,cadFonte:'nenhum',cadRev:null,cadAt:null,oee:null,oeeOk:fals
  async load(){if(Store.dir&&Store.perm&&!Store.test){
    try{const r=await Store.readJSON(CAD_FILE);if(r){this.cad=r.obj;this.cadFonte='pasta';this.cadRev=r.obj.rev;this.cadAt=r.file.lastModified;const c=clone(r.obj);delete c.auditoria;delete c.seguranca;c.copiaEm=new Date().toISOString();LS.set('vac.cadastros',c)}}catch(e){console.warn(e)}
    try{const r=await Store.readJSON(OEE_FILE);const ex=r?.obj?.exports||null,vk=typeof vacExportsOk==='function'?vacExportsOk(ex):{ok:!!ex};this.oee=vk.ok?ex:null;this.oeeErr=ex&&!vk.ok?vk.motivo:'';this.oeeOk=!!this.oee}catch(e){this.oeeOk=false}   /* E4 · versão do exports conferida */
+   try{const r=await Store.readJSON('equipamentos-base.json');const ex=r?.obj?.exports||null,vk=typeof vacExportsOk==='function'?vacExportsOk(ex):{ok:!!ex};this.equip=vk.ok?ex:null}catch(e){this.equip=null}   /* E11 · OS por evento (Equipamentos) */
    try{const f=await(await Store.fh('Logo.png')).getFile();if(this.logoUrl)URL.revokeObjectURL(this.logoUrl);this.logoUrl=URL.createObjectURL(f)}catch(e){}}
   if(!this.cad){const c=LS.get('vac.cadastros',null);if(c){this.cad=c;this.cadFonte='cópia local';this.cadRev=c.rev}}
   Cad.build();Logo.apply()}};
@@ -997,7 +1007,7 @@ const DEFAULT_SYSTEMS=[
  {id:'perdas',nome:'Waste',html:'Perdas-Ordem.html',base:'perdas-base.json'},
  {id:'gel',nome:'Gestão de Gel',html:'Gestão-Gel-Vacutainer.html',alt:['Gestao-Gel-Vacutainer.html','controle-fifo-gel.html'],base:'fifo-base.json',estado:'atualizacao'},
  {id:'paradas',nome:'Paradas',html:'Paradas.html',base:'paradas-base.json',estado:'atualizacao'},
- {id:'equip',nome:'Equipamentos',html:'Equipamentos.html',base:'equipamentos-base.json',futuro:true,estado:'construcao'},
+ {id:'equip',nome:'Equipamentos',html:'Equipamentos.html',base:'equipamentos-base.json',sub:'Ficha · OS · TAGs · AM/TPM',estado:'atualizacao'},
  {id:'inic',nome:'Iniciativas',html:'Iniciativas.html',base:'iniciativas-base.json',sub:'Ações · KAS · OSM · 5S',estado:'atualizacao'},
  {id:'projetos',nome:'Projetos',html:'Projetos.html',base:'projetos-base.json',futuro:true,estado:'construcao'}];
 function systems(){let L;try{const s=JSON.parse(localStorage.getItem('vac.sistemas')||'null');if(Array.isArray(s)&&s.length){const ids=new Set(s.map(x=>x.id));L=s.concat(DEFAULT_SYSTEMS.filter(d=>!ids.has(d.id)))}}catch(e){}
@@ -1094,7 +1104,7 @@ function abrirEvento(id){const e=eventosTodos().find(x=>x.id===id);if(!e)return 
  const sug=filaTecnica([e])[0];
  const body=`<div class="grid g2"><div class="card"><div class="row"><b style="font-size:16px">${esc(Cad.eqNome(e.equipamento))}</b><span class="code muted">${esc(e.equipamento)}</span><span class="sp"></span>${grpChip(codigoEf(e))}<span class="pill" style="--tc:${CLASSE[classe(e)][1]}">${CLASSE[classe(e)][0]}</span></div>
   <p style="margin:8px 0"><span class="num">${esc(codLabel(codigoEf(e)))}</span> · ${esc(c?.nome||'código fora do catálogo')}${t.codigoValidado?` <span class="pill info">reclassificado (apontado: ${esc(codLabel(e.codigo))})</span>`:''}</p>
-  <table class="t"><tr><td class="muted">Data / turno</td><td>${br(e.dia)} · ${esc(e.turno||'—')}</td></tr>${typeof vacNovaAcaoBotao==='function'?`<tr><td class="muted">Planner</td><td>${vacNovaAcaoBotao(acaoPlanner('evento',null,e.id,Cad.eqNome(e.equipamento)+' · '+(c?.nome||codigoEf(e))+' · '+br(e.dia),[e],{eq:e.equipamento,cod:codigoEf(e),ordem:e.ordem}),'+ Ação no Planner')}</td></tr>`:''}${e.ordem?`<tr><td class="muted">Ordem</td><td><span class="code">${esc(e.ordem)}</span> ${typeof vacFichaBotao==='function'?vacFichaBotao(e.ordem):''}</td></tr>`:''}<tr><td class="muted">Início · fim</td><td>${esc(e.inicio||'—')} · ${esc(e.fim||'—')}</td></tr>
+  <table class="t"><tr><td class="muted">Data / turno</td><td>${br(e.dia)} · ${esc(e.turno||'—')}</td></tr>${(()=>{const L=(Ext.equip?.porEvento||{})[e.id]||[],s=(typeof systems==='function'?systems():[]).find(x=>x.id==='equip'),h=x=>s?sysHref(s,x):'Equipamentos.html#'+x;if(!s||s.futuro)return'';return`<tr><td class="muted">OS (Equipamentos)</td><td>${L.map(o=>`<a href="${esc(h('os='+o.id))}" class="code">${esc(o.id)}</a> <span class="pill${['concluída','cancelada'].includes(o.status)?'':' warn'}">${esc(o.status)}</span> `).join('')}<a class="b sm" target="_blank" rel="noopener" href="${esc(h('novaOS='+encodeURIComponent(JSON.stringify({equipamento:e.equipamento,titulo:(c?.nome||codigoEf(e))+(e.descricao?': '+String(e.descricao).slice(0,80):''),descricao:e.descricao||'',origem:{tipo:'paradas',ref:e.id,resumo:`Parada de ${br(e.dia)} ${e.turno||''} · ${n0(e.minutos)} min`,link:vacAquiHref('evento='+e.id)}}))))}">+ Abrir OS</a></td></tr>`})()}${typeof vacNovaAcaoBotao==='function'?`<tr><td class="muted">Planner</td><td>${vacNovaAcaoBotao(acaoPlanner('evento',null,e.id,Cad.eqNome(e.equipamento)+' · '+(c?.nome||codigoEf(e))+' · '+br(e.dia),[e],{eq:e.equipamento,cod:codigoEf(e),ordem:e.ordem}),'+ Ação no Planner')}</td></tr>`:''}${e.ordem?`<tr><td class="muted">Ordem</td><td><span class="code">${esc(e.ordem)}</span> ${typeof vacFichaBotao==='function'?vacFichaBotao(e.ordem):''}</td></tr>`:''}<tr><td class="muted">Início · fim</td><td>${esc(e.inicio||'—')} · ${esc(e.fim||'—')}</td></tr>
   <tr><td class="muted">Duração</td><td>${n0(e.minutos)} min${(e.ocorrencias||1)>1?` · ${e.ocorrencias} ocorrências`:''}</td></tr><tr><td class="muted">O que aconteceu</td><td>${esc(e.descricao||'—')}</td></tr>
   ${e.obs?`<tr><td class="muted">Observação</td><td>${esc(e.obs)}</td></tr>`:''}<tr><td class="muted">Apontado por</td><td>${esc(e.por||'—')} · ${esc(e.origem)}</td></tr>
   ${e.codigoOrig?`<tr><td class="muted">No Forms</td><td>${esc(e.codigoOrig)}${e.regra?` <span class="muted small">(${esc(e.regra)})</span>`:''}</td></tr>`:''}${e.ordem?`<tr><td class="muted">Ordem/lote</td><td>${esc(e.ordem)}</td></tr>`:''}</table>
@@ -1454,6 +1464,92 @@ function modoTeste(){Store.test=true;$('#testBar').hidden=false;const nomes=['Tu
  Cad.build();F.init();App.render();toast('Modo de teste: dados fictícios, nada é gravado')}
 
 /* ---------- início ---------- */
+/* E10d · relatório do Paradas (08/11/2026): o mesmo Report do Portal e do Waste (prévia, PDF, Excel, texto, Outlook, impressão),
+   copiado com adaptadores mínimos (janela, bibliotecas, logo e comentário salvos no padrão do Paradas). Unificar no kit fica no registro (§ P). */
+const RepLibs={xlsx:()=>loadXLSX(),
+ pdf(){const L=srcs=>srcs.reduce((p,src)=>p.catch(()=>new Promise((ok,ko)=>{const s=document.createElement('script');s.src=src;s.onload=ok;s.onerror=()=>{s.remove();ko()};document.head.appendChild(s)})),Promise.reject());
+  if(window.jspdf&&window.jspdf.jsPDF&&window.jspdf.jsPDF.API.autoTable)return Promise.resolve(window.jspdf.jsPDF);
+  return L(['lib/jspdf.umd.min.js','https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js']).then(()=>L(['lib/jspdf.plugin.autotable.min.js','https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js'])).then(()=>window.jspdf.jsPDF).catch(()=>{throw new Error('Não consegui carregar o gerador de PDF (lib/jspdf.umd.min.js e lib/jspdf.plugin.autotable.min.js).')})}};
+const RepModal={open(html){const m=modal({title:'Relatório',body:html,wide:true});return m.el.querySelector('.mb')}};
+const repDT=iso=>{const d=new Date(iso),p=n=>String(n).padStart(2,'0');return`${p(d.getDate())}/${p(d.getMonth()+1)}/${d.getFullYear()} ${p(d.getHours())}:${p(d.getMinutes())}`};
+function repLogo(){const im=$('#brandLogo');const s=im&&!im.hidden&&im.src;if(!s)return Promise.resolve(null);if(s.startsWith('data:'))return Promise.resolve(s);return new Promise(ok=>{const i=new Image();i.onload=()=>{const c=document.createElement('canvas');c.width=i.width;c.height=i.height;c.getContext('2d').drawImage(i,0,0);try{ok(c.toDataURL('image/png'))}catch(e){ok(null)}};i.onerror=()=>ok(null);i.src=s})}
+/* ---------- relatórios: mesma prévia para PDF, Excel, texto, Outlook e impressão ----------
+   doc = { titulo, subtitulo, periodo, arquivo, blocos:[ {tipo:'kpis', itens:[[rótulo, valor, sub, 'bad'|'good']]},
+          {tipo:'tabela', titulo, cab:[...], linhas:[[...]], num:[índices numéricos], destaque:[ 'hl1'|'hl2'|'hl3'|'' por linha ]},
+          {tipo:'texto', titulo, texto}, {tipo:'svg', titulo, svg} ], comentario } */
+const Report={
+ html(doc,{inline=false}={}){const S=inline?{t:'border-collapse:collapse;width:100%;font:13px Arial,sans-serif',th:'background:#f6f8fa;color:#5b6979;text-align:left;padding:4px 6px;border-bottom:1px solid #d3dae2;font-size:11px;text-transform:uppercase',td:'padding:4px 6px;border-bottom:1px solid #d3dae2'}:{t:'',th:'',td:''};
+  const hl={hl1:'color:#c22a2a',hl2:'color:#c22a2a;font-weight:bold',hl3:'background:#8f1515;color:#fff;font-weight:bold'};
+  let h=`<div class="rep" ${inline?'style="font-family:Arial,sans-serif;color:#15222f"':''}><div style="display:flex;align-items:center;gap:12px">${doc._logo?`<img src="${doc._logo}" style="height:40px">`:''}<div><h1 ${inline?'style="margin:0;font-size:22px;text-transform:uppercase"':''}>${esc(doc.titulo)}</h1><div style="color:#5b6979">${esc(doc.subtitulo||'')}${doc.periodo?' · '+esc(doc.periodo):''} · gerado em ${repDT(new Date().toISOString())}${user()?' por '+esc(user()):''}</div></div></div>`;
+  if(doc.comentario)h+=`<div class="cm" ${inline?'style="border-left:4px solid #1d4b73;background:#e3ecf5;padding:8px 12px;margin:10px 0;white-space:pre-wrap"':''}>${esc(doc.comentario)}</div>`;
+  for(const b of doc.blocos||[]){if(b.titulo)h+=`<h2 ${inline?'style="font-size:15px;text-transform:uppercase;margin:16px 0 6px"':''}>${esc(b.titulo)}</h2>`;
+   if(b.tipo==='kpis')h+=inline?`<table style="${S.t}"><tr>${b.itens.map(k=>`<td style="border:1px solid #d3dae2;padding:6px 8px;vertical-align:top"><div style="font-size:11px;color:#5b6979;text-transform:uppercase">${esc(k[0])}</div><div style="font-size:18px;font-weight:bold;color:${k[3]==='bad'?'#c22a2a':k[3]==='good'?'#1d8048':'#15222f'}">${esc(k[1])}</div><div style="font-size:11px;color:#5b6979">${esc(k[2]||'')}</div></td>`).join('')}</tr></table>`
+     :`<div class="rk">${b.itens.map(k=>`<div><span>${esc(k[0])}</span><b class="${k[3]||''}">${esc(k[1])}</b><small class="muted">${esc(k[2]||'')}</small></div>`).join('')}</div>`;
+   else if(b.tipo==='tabela')h+=`<table style="${S.t}"><tr>${b.cab.map((c,i)=>`<th style="${S.th}${(b.num||[]).includes(i)?';text-align:right':''}" class="${(b.num||[]).includes(i)?'n':''}">${esc(c)}</th>`).join('')}</tr>${b.linhas.map((r,j)=>`<tr class="${!inline&&b.destaque?b.destaque[j]||'':''}">${r.map((c,i)=>`<td style="${S.td}${(b.num||[]).includes(i)?';text-align:right':''};${inline&&b.destaque?hl[b.destaque[j]]||'':''}" class="${(b.num||[]).includes(i)?'n':''}">${esc(c)}</td>`).join('')}</tr>`).join('')}</table>`;
+   else if(b.tipo==='texto')h+=`<p style="white-space:pre-wrap">${esc(b.texto)}</p>`;
+   else if(b.tipo==='svg'){if(!inline)h+=`<div>${b.svg}</div>`;else if(b._png)h+=`<img src="${b._png}" width="760" alt="${esc(b.titulo||'Gráfico')}" style="display:block;border:0;max-width:100%">`;else h+=`<p style="color:#5b6979;font-size:12px">(gráfico no PDF)</p>`}}
+  return h+'</div>'},
+ texto(doc){const L=[doc.titulo.toUpperCase(),[doc.subtitulo,doc.periodo].filter(Boolean).join(' · ')];if(doc.comentario)L.push('',doc.comentario);
+  for(const b of doc.blocos||[]){if(b.titulo)L.push('','*'+b.titulo+'*');if(b.tipo==='kpis')b.itens.forEach(k=>L.push(`• ${k[0]}: ${k[1]}${k[2]?' ('+k[2]+')':''}`));
+   else if(b.tipo==='tabela'){b.linhas.slice(0,15).forEach(r=>L.push('• '+r.filter(x=>x!==''&&x!=null).join(' · ')));if(b.linhas.length>15)L.push(`… e mais ${b.linhas.length-15} linha(s): veja o PDF ou o Excel`)}else if(b.tipo==='texto')L.push(b.texto)}return L.join('\n')},
+ async open(doc,{notaKey}={}){doc._logo=await repLogo();
+  const nota=notaKey&&Store.data.config.notas?Store.data.config.notas[notaKey]:null;if(nota&&doc.comentario==null)doc.comentario=nota.texto;
+  const mb=RepModal.open(`<h2>${esc(doc.titulo)}</h2><div class="repbar"><button class="b pri" data-r="pdf">⇩ PDF</button><button class="b" data-r="xlsx">⇩ Excel</button><button class="b" data-r="txt">Copiar texto</button><button class="b" data-r="mail">Copiar para Outlook</button><button class="b" data-r="print">Imprimir</button><label class="small muted" style="display:inline-flex;align-items:center;gap:4px;margin-left:6px" title="Na cópia para o Outlook, os gráficos vão como imagem (o e-mail fica maior). Desmarcado: o lugar do gráfico diz &quot;gráfico no PDF&quot;."><input type="checkbox" id="repImg" ${Report.comImg()?'checked':''}> gráficos como imagem no Outlook</label></div>
+   <label class="small muted" style="display:block;margin-bottom:8px">Comentário / análise ${notaKey?'(fica salvo com este relatório)':''}<textarea id="repCm" rows="3" style="font-family:var(--f-body);font-size:13px">${esc(doc.comentario||'')}</textarea></label>${nota?`<div class="small muted">Comentário salvo por ${esc(nota.u)} em ${repDT(nota.t)}</div>`:''}
+   <div id="repPrev">${this.html(doc)}</div>`);
+  const upd=()=>{doc.comentario=$('#repCm').value.trim();$('#repPrev').innerHTML=this.html(doc)};$('#repCm').oninput=upd;
+  $('#repImg').onchange=e=>{try{localStorage.setItem(PAGE.id+'.repImg',e.target.checked?'1':'0')}catch(x){}};
+  $('#repCm').onchange=()=>{if(notaKey&&!Store.test)Store.commit({k:'cfg',key:'notas',v:{...(Store.data.config.notas||{}),[notaKey]:{texto:doc.comentario,u:user(),t:new Date().toISOString()}},aud:'Comentário de relatório'})};
+  mb.querySelectorAll('[data-r]').forEach(b=>b.onclick=async()=>{upd();try{await this[b.dataset.r](doc)}catch(e){console.error(e);toast(e.message||String(e),6000,true)}})},
+ comImg(){try{return localStorage.getItem(PAGE.id+'.repImg')!=='0'}catch(e){return true}},
+ /* texto em várias páginas: linhas que cabem até o rodapé; o resto continua na página seguinte */
+ pdfLinhas(pdf,L,y,x,{fundo}={}){const lh=4.6;while(L.length){let n=Math.max(1,Math.floor((196-5-y)/lh)+1);if(y>185){pdf.addPage();y=14;continue}const P=L.slice(0,n);L=L.slice(n);const h=P.length*lh+(fundo?5:1);
+   if(fundo){pdf.setFillColor(227,236,245);pdf.rect(12,y,pdf.internal.pageSize.getWidth()-24,h,'F');pdf.setFillColor(29,75,115);pdf.rect(12,y,1.2,h,'F')}pdf.text(P,x,y+(fundo?5:3),{lineHeightFactor:lh/(pdf.getFontSize()*0.3528)});y+=h+(fundo?4:3);if(L.length){pdf.addPage();y=14}}return y},
+ async pdf(doc){const jsPDF=await RepLibs.pdf();const pdf=new jsPDF({orientation:'landscape',unit:'mm',format:'a4'});const W=pdf.internal.pageSize.getWidth();let y=12;
+  if(doc._logo){try{const im=new Image();im.src=doc._logo;await im.decode();const h=12,w=im.width*h/im.height;pdf.addImage(doc._logo,'PNG',12,y-2,w,h);}catch(e){}}
+  const x0=doc._logo?50:12;pdf.setFont('helvetica','bold');pdf.setFontSize(16);pdf.text(doc.titulo.toUpperCase(),x0,y+4);pdf.setFont('helvetica','normal');pdf.setFontSize(9);pdf.setTextColor(91,105,121);
+  pdf.text(`${[doc.subtitulo,doc.periodo].filter(Boolean).join(' · ')} · gerado em ${repDT(new Date().toISOString())}${user()?' por '+user():''}`,x0,y+9);pdf.setTextColor(21,34,47);y+=16;
+  if(doc.comentario){pdf.setFontSize(10);y=this.pdfLinhas(pdf,pdf.splitTextToSize(doc.comentario,W-30),y,16,{fundo:true})+1}
+  for(const b of doc.blocos||[]){if(y>180||(b.tipo==='svg'&&y>110)||(b.tipo==='tabela'&&y>160)){pdf.addPage();y=14}
+   if(b.titulo){pdf.setFont('helvetica','bold');pdf.setFontSize(11);pdf.text(b.titulo.toUpperCase(),12,y+3);pdf.setFont('helvetica','normal');y+=6}
+   if(b.tipo==='kpis'){const per=Math.min(6,b.itens.length),cw=(W-24)/per;
+     /* rótulo e detalhe em até 2 linhas (antes: rótulo sem limite de largura e detalhe só com a 1ª linha); altura igual para o bloco todo */
+     const lin=b.itens.map(k=>{pdf.setFontSize(7.5);const lb=pdf.splitTextToSize(String(k[0]).toUpperCase(),cw-5).slice(0,2);pdf.setFontSize(7);const sb=k[2]?pdf.splitTextToSize(String(k[2]),cw-5).slice(0,2):[];return{lb,sb}});
+     const nl=Math.max(...lin.map(z=>z.lb.length)),ns=Math.max(...lin.map(z=>z.sb.length)),ch=11+nl*3+ns*2.8;
+     b.itens.forEach((k,i)=>{const cx=12+(i%per)*cw,cy=y+Math.floor(i/per)*(ch+2),{lb,sb}=lin[i];pdf.setDrawColor(211,218,226);pdf.rect(cx,cy,cw-2,ch);pdf.setFontSize(7.5);pdf.setTextColor(91,105,121);pdf.text(lb,cx+2,cy+4.5,{lineHeightFactor:1.15});
+     const yv=cy+4.5+(nl-1)*3+6.5;pdf.setFontSize(13);pdf.setTextColor(...(k[3]==='bad'?[194,42,42]:k[3]==='good'?[29,128,72]:[21,34,47]));pdf.text(String(k[1]),cx+2,yv);pdf.setFontSize(7);pdf.setTextColor(91,105,121);if(sb.length)pdf.text(sb,cx+2,yv+4.5,{lineHeightFactor:1.15});pdf.setTextColor(21,34,47)});y+=Math.ceil(b.itens.length/per)*(ch+2)+4}
+   else if(b.tipo==='tabela'){pdf.autoTable({startY:y,head:[b.cab],body:b.linhas.map(r=>r.map(c=>c==null?'':String(c))),theme:'grid',styles:{fontSize:8,cellPadding:1.4,lineColor:[211,218,226],textColor:[21,34,47]},headStyles:{fillColor:[29,75,115],textColor:255,fontStyle:'bold'},
+     columnStyles:Object.fromEntries((b.num||[]).map(i=>[i,{halign:'right'}])),margin:{left:12,right:12},
+     didParseCell:d=>{if(d.section!=='body'||!b.destaque)return;const k=b.destaque[d.row.index];if(k==='hl3'){d.cell.styles.fillColor=[143,21,21];d.cell.styles.textColor=255;d.cell.styles.fontStyle='bold'}else if(k==='hl2'){d.cell.styles.textColor=[194,42,42];d.cell.styles.fontStyle='bold'}else if(k==='hl1')d.cell.styles.textColor=[194,42,42]}});y=pdf.lastAutoTable.finalY+6}
+   else if(b.tipo==='texto'){pdf.setFontSize(10);y=this.pdfLinhas(pdf,pdf.splitTextToSize(b.texto,W-24),y,12)+1}
+   else if(b.tipo==='svg'){try{const png=await svgToPng(b.svg,1400);const im=new Image();im.src=png;await im.decode();const w=W-24,h=Math.min(90,w*im.height/im.width);if(y+h>195){pdf.addPage();y=14}pdf.addImage(png,'PNG',12,y,h*im.width/im.height,h);y+=h+6}catch(e){console.warn(e)}}}
+  const n=pdf.getNumberOfPages();for(let i=1;i<=n;i++){pdf.setPage(i);pdf.setFontSize(8);pdf.setTextColor(91,105,121);pdf.text(`${PAGE.titulo} · página ${i} de ${n}`,W-12,205,{align:'right'})}
+  pdf.save((doc.arquivo||doc.titulo).replace(/[\\/:*?"<>|]/g,'_')+'.pdf');toast('PDF gerado.')},
+ async xlsx(doc){const X=await RepLibs.xlsx();const wb=X.utils.book_new();const res=[[doc.titulo],[[doc.subtitulo,doc.periodo].filter(Boolean).join(' · ')],[]];if(doc.comentario)res.push(['Comentário',doc.comentario],[]);
+  for(const b of doc.blocos||[])if(b.tipo==='kpis'){if(b.titulo)res.push([b.titulo]);b.itens.forEach(k=>res.push([k[0],k[1],k[2]||'']));res.push([])}else if(b.tipo==='texto')res.push([b.titulo||'',b.texto],[]);
+  X.utils.book_append_sheet(wb,X.utils.aoa_to_sheet(res),'Resumo');let n=0;
+  for(const b of doc.blocos||[])if(b.tipo==='tabela'){n++;const rows=[b.cab,...(b.bruto||b.linhas)];X.utils.book_append_sheet(wb,X.utils.aoa_to_sheet(rows),String(b.titulo||'Tabela '+n).replace(/[\\/?*\[\]:]/g,' ').slice(0,30)||('Tabela '+n))}
+  X.writeFile(wb,(doc.arquivo||doc.titulo).replace(/[\\/:*?"<>|]/g,'_')+'.xlsx');toast('Excel gerado.')},
+ async txt(doc){await navigator.clipboard.writeText(this.texto(doc));toast('Texto copiado. Cole no WhatsApp ou no Teams.')},
+ async mail(doc){const img=$('#repImg')?$('#repImg').checked:this.comImg();for(const b of doc.blocos||[])if(b.tipo==='svg'){b._png=null;if(img){try{b._png=await svgToPng(b.svg,1400)}catch(e){console.warn(e)}}}
+  const h=this.html(doc,{inline:true});for(const b of doc.blocos||[])delete b._png;try{await navigator.clipboard.write([new ClipboardItem({'text/html':new Blob([h],{type:'text/html'}),'text/plain':new Blob([this.texto(doc)],{type:'text/plain'})})]);toast(`Relatório copiado (${Math.max(1,Math.round(h.length/1024))} KB${img?', gráficos como imagem':''}). Cole no corpo do e-mail do Outlook.`)}catch(e){await navigator.clipboard.writeText(this.texto(doc));toast('Seu navegador só permitiu copiar como texto.')}},
+ async print(doc){const w=window.open('','_blank');if(!w)return toast('Libere as janelas pop-up para imprimir.');const css=[...document.querySelectorAll('style')].map(s=>s.textContent).join('\n');
+  w.document.write(`<!doctype html><html data-theme="light"><head><meta charset="utf-8"><title>${esc(doc.titulo)}</title><style>${css}body{background:#fff}.rep{border:0}@page{size:A4 landscape;margin:10mm}.rep table{width:100%!important;max-width:100%;table-layout:auto}.rep th,.rep td{white-space:normal!important;overflow-wrap:anywhere;font-size:11px}.rep svg{max-width:100%;height:auto}</style></head><body>${this.html(doc)}</body></html>`);w.document.close();setTimeout(()=>w.print(),400)}};
+function svgToPng(svg,width=1400){return new Promise((ok,ko)=>{const el=document.createElement('div');el.innerHTML=svg;const s=el.querySelector('svg');if(!s)return ko(new Error('svg'));
+ const rt=document.documentElement,t0=rt.getAttribute('data-theme');rt.setAttribute('data-theme','light');const cs=getComputedStyle(rt);let txt;try{txt=new XMLSerializer().serializeToString(s).replace(/var\((--[\w-]+)\)/g,(m,v)=>cs.getPropertyValue(v).trim()||'#888')}finally{if(t0==null)rt.removeAttribute('data-theme');else rt.setAttribute('data-theme',t0)}if(!/xmlns=/.test(txt))txt=txt.replace('<svg','<svg xmlns="http://www.w3.org/2000/svg"');txt=txt.replace(/<svg([^>]*)>/,'<svg$1><style>text{font-family:Arial,Helvetica,sans-serif}</style>');
+ const vb=(s.getAttribute('viewBox')||'0 0 800 300').split(/\s+/).map(Number);const h=Math.round(width*vb[3]/vb[2]);const im=new Image();im.onload=()=>{const c=document.createElement('canvas');c.width=width;c.height=h;const g=c.getContext('2d');g.fillStyle='#fff';g.fillRect(0,0,width,h);g.drawImage(im,0,0,width,h);ok(c.toDataURL('image/png'))};im.onerror=ko;im.src='data:image/svg+xml;charset=utf-8,'+encodeURIComponent(txt)})}
+
+/* conteúdo do relatório: mesmos filtros (período, equipamento, turno, classe) da tela */
+function relParadas(){const L=F.apply(eventosTodos()).filter(e=>!NAO_PERDA.has(classe(e)));const per=`${F.de?br(F.de):'início'} a ${F.ate?br(F.ate):'hoje'}`;
+ const min=L.reduce((s,e)=>s+e.minutos,0),n=L.reduce((s,e)=>s+(e.ocorrencias||1),0),S=statsEquip(L,F.de,F.ate),nQ=S.reduce((s,x)=>s+x.nQ,0),mQ=S.reduce((s,x)=>s+x.mQ,0);
+ const G=agg(L,e=>codigoEf(e)).sort((a,b)=>b.min-a.min);const all=eventosTodos(),ate=F.ate||all.reduce((m,e)=>e.dia>m?e.dia:m,'');const Rc=recorrencias(F.eq?all.filter(e=>e.equipamento===F.eq):all,ate).slice(0,30);
+ const filt=[F.eq?'equipamento '+Cad.eqNome(F.eq):'',F.turno?'turno '+F.turno:'',F.cls?'classe '+(CLASSE[F.cls]||[F.cls])[0]:''].filter(Boolean).join(' · ');
+ return{titulo:'Paradas da linha',subtitulo:'Paradas'+(filt?' · '+filt:''),periodo:per,arquivo:'Paradas_'+(F.de||'')+'_'+(F.ate||todayISO()),blocos:[
+  {tipo:'kpis',itens:[['Tempo de parada',fmtMin(min),n0(n)+' ocorrências',''],['Quebras',n0(nQ),fmtMin(mQ)+' de quebra',nQ?'bad':'good'],['MTTR',nQ?n0(mQ/nQ)+' min':'—','reparo médio por quebra',''],['Máquina crítica',S[0]?.nome||'—',S[0]?fmtMin(S[0].min):'','']]},
+  {tipo:'svg',titulo:'Pareto por código (minutos)',svg:hbars(G.slice(0,12).map(g=>({k:g.k,label:codLabel(g.k)+' '+(Cad.code(g.k)?.nome||''),v:g.min,n:g.n})),{pareto:1,w:900,lw:330,fmt:fmtMin})},
+  {tipo:'tabela',titulo:'Pareto por código',cab:['Código','Nome','Minutos','Ocorrências','% do tempo'],num:[2,3,4],linhas:G.slice(0,25).map(g=>[codLabel(g.k),Cad.code(g.k)?.nome||'',n0(g.min),n0(g.n),min?pct(g.min/min):'—'])},
+  {tipo:'tabela',titulo:'Equipamentos',cab:['Equipamento','Parada','Ocorrências','Quebras','MTBF (h)','MTTR (min)','Disponibilidade'],num:[1,2,3,4,5,6],linhas:S.map(s=>[s.nome,fmtMin(s.min),n0(s.n),n0(s.nQ),n1(s.mtbf),n0(s.mttr),pct(s.disp)])},
+  {tipo:'tabela',titulo:'Recorrência (30 dias até '+br(ate)+')',cab:['Equipamento','Código','Componente','30 dias','Meses seguidos','Última'],linhas:Rc.map(r=>[Cad.eqNome(r.eq),codLabel(r.cod)+' '+(Cad.code(r.cod)?.nome||''),r.comp||'—',`${n0(r.n30)} · ${n0(r.min30)} min`,String(r.meses),br(r.ult)]),destaque:Rc.map(r=>r.n30>=6?'hl3':r.meses>=3?'hl2':'')}]}}
 /* E8 · ação no Planner (Iniciativas) com a fotografia do que motivou e o link para reconsultar; o Paradas não grava lá */
 function acaoPlanner(onde,dim,k,rot,L,x={}){const min=L.reduce((s,e)=>s+(+e.minutos||0),0),n=L.reduce((s,e)=>s+(e.ocorrencias||1),0),dias=L.map(e=>e.dia).sort();
  let eq=x.eq,cod=x.cod;if(onde==='pareto'){if(dim==='equip')eq=k;if(dim==='codigo')cod=k;if(dim==='eqcod'){[eq,cod]=String(k).split('|')}}
@@ -1468,7 +1564,7 @@ function rota(){const h=decodeURIComponent(location.hash.slice(1));if(!h)return;
  if(k==='ordem'&&v){F.q=v;F.de=null;F.ate=null;return App.go('eventos')}
  if(k==='tv')return TV.abrir();if(k==='teste')return modoTeste();if(k==='aba'&&VIEWS[v])return App.go(v);if(k==='equipamento'&&v)return abrirEquip(v);if(k==='evento'&&v)return abrirEvento(v);
  if(k==='codigo'&&v){App.sel.guiaCod=v;return App.go('guia')}if(k==='formulario'&&v){App.go('forms');return imprimirForms([v])}if(VIEWS[k])App.go(k)}
-async function iniciar(){applyTheme();wireCabecalho();$('#btnTheme').onclick=cycleTheme;$('#btnTV').onclick=()=>TV.abrir();$('#btnBackup').onclick=()=>Store.backupAgora();
+async function iniciar(){applyTheme();wireCabecalho();$('#btnTheme').onclick=cycleTheme;$('#btnTV').onclick=()=>TV.abrir();$('#btnRel').onclick=()=>Report.open(relParadas(),{notaKey:'rel:'+(F.de||'')+'|'+(F.ate||'')});$('#btnBackup').onclick=()=>Store.backupAgora();
  $('#btnSync').onclick=async()=>{if(!Store.dir)return Store.pick();if(!Store.perm)return Store.reconnect();await Store.save();await Store.reload();App.render();toast('Sincronizado · rev '+Store.data.rev)};
  $('#sairTeste').onclick=e=>{e.preventDefault();location.hash='';location.reload()};
  $$('#nav [data-t]').forEach(b=>b.onclick=()=>App.go(b.dataset.t));
@@ -1789,7 +1885,7 @@ const vacFicha = (() => {
       for (const c of (C.catalogos || []).filter(c => c.ativo !== false && (nk(c.codigo).includes(k) || semAc(c.nome).includes(ks))).slice(0, 5)) R.push({ tipo: 'Catálogo', txt: tx(c.codigo) + (c.nome ? ' · ' + c.nome : ''), sub: 'cadastro do Portal', href: href('cadastros/catalogos/' + encodeURIComponent(c.codigo)), r: nk(c.codigo) === k ? 0 : 2 });
       for (const e of (C.equipamentos || []).filter(e => e.ativo !== false && (nk(e.codigo).includes(k) || semAc(e.nome).includes(ks) || (e.apelidos || []).some(a => semAc(a).includes(ks)))).slice(0, 5)) {
         const ap = (e.apelidos || []).find(a => semAc(a).includes(ks));
-        R.push({ tipo: 'Equipamento', txt: tx(e.codigo) + (e.nome ? ' · ' + e.nome : ''), sub: (ap ? `apelido “${ap}” · ` : '') + 'cadastro do Portal', href: typeof vacEquipHref === 'function' ? vacEquipHref(e.codigo) : href('cadastros/equipamentos/' + encodeURIComponent(e.codigo)), r: nk(e.codigo) === k ? 0 : 2 });
+        R.push({ tipo: 'Equipamento', txt: tx(e.codigo) + (e.nome ? ' · ' + e.nome : ''), sub: (ap ? `apelido “${ap}” · ` : '') + 'ficha do equipamento', href: typeof vacEquipHref === 'function' ? vacEquipHref(e.codigo) : (() => { const s = (typeof systems === 'function' ? systems() : []).find(x => x.id === 'equip'); return s && !s.futuro && (typeof vacEstadoDe !== 'function' || (vacEstadoDe('equip') || {}).estado !== 'construcao') && typeof sysHref === 'function' ? sysHref(s, 'eq=' + encodeURIComponent(e.codigo)) : href('cadastros/equipamentos/' + encodeURIComponent(e.codigo)); })(), r: nk(e.codigo) === k ? 0 : 2 });
       }
     }
     return R.sort((a, b) => a.r - b.r);

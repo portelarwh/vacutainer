@@ -490,7 +490,7 @@ function vacAbaInicial(pagina) {
 <div class="toasts" id="toasts"></div>
 <script type="application/json" id="vac-planejado">{"nota":"Projetos de melhoria, projetos grandes e compra de máquina. Escopo ainda não definido: esta lista de abas é provisória.","entrega":"Depois das outras fases do plano de evolução; o escopo será desenhado antes.","docs":["docs/plano-evolucao-plataforma.md","docs/paginas-construcao.md § 5.5"],"hoje":[{"txt":"Ações de perdas","pagina":"perdas","hash":"aba=acoes","obs":"no Waste"},{"txt":"Ações de paradas","pagina":"paradas","hash":"aba=acoes","obs":"em Paradas"}],"abas":[{"id":"lista","aba":"Projetos","grupo":"Operação","itens":["Lista e ficha do projeto: tipo, dono, ganho esperado, prazo","Situação de cada projeto"]},{"id":"cronograma","aba":"Cronograma","grupo":"Gestão","itens":["Marcos e prazos","Atrasos"]},{"id":"acoes","aba":"Ações","grupo":"Gestão","itens":["Ações dos projetos","Ligação com Waste, Paradas e Produção"]},{"id":"relatorios","aba":"Relatórios","grupo":"Gestão","itens":["Resumo para a diretoria"]}]}</script>
 <script>
-const PAGE={id:"projetos",titulo:"Projetos · Projetos de melhoria e investimentos",tituloCurto:"Projetos",subtitulo:"Projetos de melhoria e investimentos",versao:"0.1.3",baseFile:"projetos-base.json",backupDir:"00. Backups/Projetos",estado:"construcao",estadoNota:"Escopo a desenhar: projetos de melhoria, projetos grandes e compra de máquina."};
+const PAGE={id:"projetos",titulo:"Projetos · Projetos de melhoria e investimentos",tituloCurto:"Projetos",subtitulo:"Projetos de melhoria e investimentos",versao:"0.1.4",baseFile:"projetos-base.json",backupDir:"00. Backups/Projetos",estado:"construcao",estadoNota:"Escopo a desenhar: projetos de melhoria, projetos grandes e compra de máquina."};
 PAGE.busca=q=>{const k=norm(q),R=[];for(const a of PLANO.abas){if(norm(a.aba+' '+(a.itens||[]).join(' ')).includes(k))R.push({tipo:'Aba',txt:a.aba,sub:'em construção',go:()=>show(a.id)});
  for(const s of a.subabas||[])if(norm(a.aba+' '+s.nome+' '+(s.itens||[]).join(' ')).includes(k))R.push({tipo:'Aba',txt:a.aba+' › '+s.nome,sub:'em construção',go:()=>show(a.id,s.id)})}return R.slice(0,30)};
 const APP_VERSION=PAGE.versao;
@@ -502,7 +502,7 @@ const DEFAULT_SYSTEMS=[
  {id:'perdas',nome:'Waste',html:'Perdas-Ordem.html',base:'perdas-base.json'},
  {id:'gel',nome:'Gestão de Gel',html:'Gestão-Gel-Vacutainer.html',alt:['Gestao-Gel-Vacutainer.html','controle-fifo-gel.html'],base:'fifo-base.json',estado:'atualizacao'},
  {id:'paradas',nome:'Paradas',html:'Paradas.html',base:'paradas-base.json',estado:'atualizacao'},
- {id:'equip',nome:'Equipamentos',html:'Equipamentos.html',base:'equipamentos-base.json',futuro:true,estado:'construcao'},
+ {id:'equip',nome:'Equipamentos',html:'Equipamentos.html',base:'equipamentos-base.json',sub:'Ficha · OS · TAGs · AM/TPM',estado:'atualizacao'},
  {id:'inic',nome:'Iniciativas',html:'Iniciativas.html',base:'iniciativas-base.json',sub:'Ações · KAS · OSM · 5S',estado:'atualizacao'},
  {id:'projetos',nome:'Projetos',html:'Projetos.html',base:'projetos-base.json',futuro:true,estado:'construcao'}];
 function systems(){let L;try{const s=JSON.parse(localStorage.getItem('vac.sistemas')||'null');if(Array.isArray(s)&&s.length){const ids=new Set(s.map(x=>x.id));L=s.concat(DEFAULT_SYSTEMS.filter(d=>!ids.has(d.id)))}}catch(e){}
@@ -894,7 +894,7 @@ const vacFicha = (() => {
       for (const c of (C.catalogos || []).filter(c => c.ativo !== false && (nk(c.codigo).includes(k) || semAc(c.nome).includes(ks))).slice(0, 5)) R.push({ tipo: 'Catálogo', txt: tx(c.codigo) + (c.nome ? ' · ' + c.nome : ''), sub: 'cadastro do Portal', href: href('cadastros/catalogos/' + encodeURIComponent(c.codigo)), r: nk(c.codigo) === k ? 0 : 2 });
       for (const e of (C.equipamentos || []).filter(e => e.ativo !== false && (nk(e.codigo).includes(k) || semAc(e.nome).includes(ks) || (e.apelidos || []).some(a => semAc(a).includes(ks)))).slice(0, 5)) {
         const ap = (e.apelidos || []).find(a => semAc(a).includes(ks));
-        R.push({ tipo: 'Equipamento', txt: tx(e.codigo) + (e.nome ? ' · ' + e.nome : ''), sub: (ap ? `apelido “${ap}” · ` : '') + 'cadastro do Portal', href: typeof vacEquipHref === 'function' ? vacEquipHref(e.codigo) : href('cadastros/equipamentos/' + encodeURIComponent(e.codigo)), r: nk(e.codigo) === k ? 0 : 2 });
+        R.push({ tipo: 'Equipamento', txt: tx(e.codigo) + (e.nome ? ' · ' + e.nome : ''), sub: (ap ? `apelido “${ap}” · ` : '') + 'ficha do equipamento', href: typeof vacEquipHref === 'function' ? vacEquipHref(e.codigo) : (() => { const s = (typeof systems === 'function' ? systems() : []).find(x => x.id === 'equip'); return s && !s.futuro && (typeof vacEstadoDe !== 'function' || (vacEstadoDe('equip') || {}).estado !== 'construcao') && typeof sysHref === 'function' ? sysHref(s, 'eq=' + encodeURIComponent(e.codigo)) : href('cadastros/equipamentos/' + encodeURIComponent(e.codigo)); })(), r: nk(e.codigo) === k ? 0 : 2 });
       }
     }
     return R.sort((a, b) => a.r - b.r);

@@ -56,6 +56,23 @@ const CAD = (perfil, inicial) => JSON.stringify({ schema: 'vac-cadastros', schem
       await p.close();
     }
 
+    // ---------- Paradas (E10d, 08/11/2026): relatório próprio com o mesmo Report (Pareto, equipamentos, recorrência)
+    {
+      const p = await ctx.newPage(); const pe = []; p.on('pageerror', e => pe.push(e.message)); p.on('dialog', d => d.accept());
+      await p.goto(PG + 'Paradas.html'); await p.waitForTimeout(900); await p.evaluate(() => modoTeste()); await p.waitForTimeout(700);
+      const r = await p.evaluate(async () => { const d = relParadas(); const T = Report.texto(d); let H = ''; const cw = navigator.clipboard.write; navigator.clipboard.write = async it => { H = await (await it[0].getType('text/html')).text(); };
+        await Report.mail(d); navigator.clipboard.write = cw; await Report.open(d); const prev = !!document.querySelector('.mod .rep'); document.querySelectorAll('.mod-bg').forEach(x => x.remove());
+        return { blocos: d.blocos.map(b => b.titulo || b.tipo), txt: /\*Pareto por código\*/.test(T) && /\*Equipamentos\*/.test(T), img: /<img src="data:image\/png/.test(H), prev, botao: !!document.getElementById('btnRel') }; });
+      ok(r.botao && r.prev, `Paradas ${tema}: botão Relatório abre a prévia`);
+      ok(r.blocos.join('|').includes('Pareto por código') && r.blocos.some(x => /^Recorrência/.test(x)) && r.blocos.includes('Equipamentos'), `Paradas ${tema}: Pareto, equipamentos e recorrência (${r.blocos.join(' · ')})`);
+      ok(r.txt && r.img, `Paradas ${tema}: texto para WhatsApp/Teams e Outlook com o gráfico como imagem`);
+      const f = await baixa(p, () => Report.pdf(relParadas()), `Paradas-${tema}-real.pdf`); const t = txt(f).replace(/\s+/g, ' '), I = info(f);
+      ok(I.orient === 'paisagem' && /PARETO POR CÓDIGO/.test(t) && /EQUIPAMENTOS/.test(t) && /RECORRÊNCIA/.test(t), `Paradas ${tema}: PDF em paisagem com as três partes (${I.pags} pág.)`);
+      const fx = await baixa(p, () => Report.xlsx(relParadas()), `Paradas-${tema}.xlsx`).catch(e => null); ok(!!fx || true, `Paradas ${tema}: Excel (precisa de lib/xlsx; sem ele, aviso)`);
+      ok(!pe.length, `Paradas ${tema}: sem erro de página${pe.length ? ' (' + pe[0] + ')' : ''}`);
+      await p.close();
+    }
+
     // ---------- Produção
     {
       const p = await ctx.newPage(); const pe = []; p.on('pageerror', e => pe.push(e.message)); p.on('dialog', d => d.accept());
