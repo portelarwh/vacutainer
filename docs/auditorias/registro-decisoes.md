@@ -17,8 +17,49 @@ Este arquivo responde às auditorias externas da plataforma e registra, para cad
 | Revisão da migração, do layout e do guia (B01–B07 e visuais) | 06/11/2026 | `c341f8e` | Portal 1.8.10, Produção 2.4.7, Waste 1.8.13, Gel 2.01, Paradas 1.0.10 (§ R) |
 | Relatórios, saídas e aba Painel | 07/11/2026 | `c341f8e` | Portal 1.8.11, Produção 2.4.8, Waste 1.8.14, Gel 2.02, Paradas 1.0.11 (§ P) |
 | Achados do Codex (segurança, dados, TV, scripts, desempenho) com revisão independente | 07/11/2026 | `065fe6f` | Portal 1.8.13, Produção 2.4.10, Waste 1.8.16, Gel 2.04, Paradas 1.0.13, páginas em construção 0.1.1 (§ C) |
+| Plano único (diagnósticos de 08/11 do Claude e do Codex), etapas E1 (Ordens e backups) e E2 (versões, datas e metas) | 08/11/2026 | `e043513` | Produção 2.4.11, Waste 1.8.17, Gel 2.05, Portal 1.8.14, Paradas 1.0.14 (§ U) |
 
 Status usados: **corrigido** · **corrigido em parte** · **recusado** · **adiado** · **já existia**.
+
+---
+
+## U. Plano único de implementação (08/11/2026)
+
+**Origem.**
+- Análise do Claude em `c3ae4b0` (`docs/auditorias/diagnostico-2026-11-08/`).
+- Revisão consolidada do Codex em `e3dc973`, branch `codex/revisao-consolidada-2026-11-08`.
+- Parecer comparativo e plano em 15 etapas (E1–E15): `docs/auditorias/plano-unico-2026-11-08/plano-unico.md`. Esse arquivo tem o backlog rastreável aos IDs F/ARQ/IMP/RAS/PLA/OSM/KAS/OEE/TAG/MES/TPM/UX/REL/REF/FIL/REU do Codex e aos B/C do Claude.
+
+**Aprovação.** O responsável aprovou a primeira etapa (E1) em 08/11/2026. As demais aguardam aprovação.
+
+### E1 · Produção › Ordens: gravação e backups confiáveis · **corrigido** (Produção 2.4.11)
+
+O teste novo **`testes/tordens.js`** simula a pasta no sistema de arquivos do navegador e injeta as falhas no próprio acesso ao arquivo. Rodado sobre `e043513`, ele reproduz a **perda real**: com a leitura falhando, a página gravou só a competência nova e apagou a que outra estação tinha gravado. Falha em 9 checagens e para na 10ª, por causa da competência apagada. Depois da correção, passa nas 15.
+
+| ID | Problema | Correção |
+|---|---|---|
+| F01 (B1) | `readSibling` devolvia "vazio" para qualquer erro; `Ord.gravar` gravava por cima e `Ord.carregar` usava o cache sem avisar | Leitura estrita `readSiblingStrict`: só "não existe" é ausência. Erro de leitura: o `carregar` mostra a cópia deste navegador identificada ("Nada será gravado na pasta…") e o `gravar` não escreve. O `readSibling` antigo continua para o cadastro do Portal, onde "ausente" mantém a última cópia e é o comportamento seguro |
+| F02 (B6) | Sem releitura depois de gravar | Relê e confere o `revId`. Se divergir ou a releitura falhar, a gravação não é dada como feita |
+| — | Alteração perdida quando a gravação falhava (a tela mostrava a competência como salva) | **Pendência recuperável:** antes de gravar, a cópia e a lista de competências pendentes vão para o navegador (IDB `ordens.pend`). A tela mostra "Alteração pendente… Gravar de novo". Ao carregar de novo, a pendência é reaplicada sobre a versão da pasta. A auditoria não se repete no reenvio |
+| F03 | Substituição de competência seguia sem backup; nomes podiam colidir no mesmo minuto | Backup obrigatório antes de substituir: se falhar, nada é gravado. Nome com segundos e um sufixo aleatório. O backup diário continua rotina e não bloqueia |
+| F04 | `FolderBackend` tinha duas chaves `readBackup`; a segunda ignorava o local antigo `00. Backups/` | Fica uma só, a que trata o local antigo e o do módulo (regra `R` no `build.py`) |
+
+**Limites:** a pasta é simulada no navegador. Duas estações reais na rede (HOM-01) continuam como homologação pendente. A releitura confere a gravação, mas não é uma transação: uma gravação de outra estação logo depois é tratada no próximo carregamento, com a mesclagem por competência.
+
+### E2 · Versões, datas e metas · **corrigido** (Waste 1.8.17, Gel 2.05, Portal 1.8.14, Paradas 1.0.14 e kit)
+
+**Decisão do responsável (08/11/2026):**
+- o waste permitido já está na BOM;
+- a meta da linha (WASTE-MES) é um valor só e segue a regra dos itens com vigência;
+- duas vigências no mesmo mês → média ponderada.
+
+O teste novo é o **`testes/tvigencias.js`**. Sobre `e043513`, ele falha nas versões do Waste e do Gel e para na função de data, que ainda não existia.
+
+| ID | Problema | Correção |
+|---|---|---|
+| F05 (B2) | A meta WASTE-MES era lida pela data de hoje para qualquer mês | Função comum `vacMetaAreaMes(codigo, 'AAAA-MM')` no kit: vigência de cada dia do mês e média ponderada pelos dias cobertos. O Waste usa a meta de cada mês no painel (período = soma das metas dos meses), na tabela por mês, na tendência (um traço de meta por barra quando os meses têm metas diferentes; uma linha quando são iguais), na TV e no relatório mensal (com a nota "ponderada pelos dias: R$ a × d + R$ b × d"). Mês sem vigência no Portal: vale a meta local da página |
+| F12 (B4) | `vacVig`/`vacCambio` sem data usavam o dia em UTC (às 22h de Brasília já era amanhã) | `vacHoje()` no kit, com o dia local. A data explícita continua valendo. Nenhum consumidor atual chamava sem data, então era um risco latente |
+| F10 (B3) | Waste com três versões (título 1.8.13, tela/base/`exports` 1.8.15, código 1.8.16); Gel com o rótulo fixo em v2.01 e o código em 2.04 | Uma constante por página: `PAGE.versao = APP_VER` no Waste; no Gel o rótulo vem de `APP_VERSION`. Título sem número. O teste confere tela, código, constante, base e Portal › Versões nas 8 páginas |
 
 ---
 

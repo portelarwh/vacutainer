@@ -105,3 +105,12 @@ No relatório mensal, o Pareto de componentes diz "20 maiores de N (todos no Exc
 - **Botões do detalhe da ordem e das listas:** valores passam por `jsArg` (JSON + escape do atributo), nos 21 pontos. Um componente ou ordem importados com aspa executavam código no clique; um código com apóstrofo legítimo quebrava o botão.
 - **CSV:** texto que viraria fórmula no Excel ganha o prefixo `'` (`vacCsvTexto`, kit). Números iguais.
 - **Downloads** (CSV, JSON, backup) pelo `downloadBlob`, que libera a URL.
+
+## Waste 1.8.17 (08/11/2026) · E2 do plano único (registro § U)
+
+- **Meta do mês pela vigência do próprio mês** (regra 3): WASTE-MES do Portal, com duas vigências no mesmo mês = média ponderada pelos dias (`vacMetaAreaMes`, kit). Mês sem vigência no Portal: a meta local da Configuração. Antes, todos os meses usavam a meta de hoje.
+  - painel: meta do período = soma das metas de cada mês;
+  - tabela por mês: "acima/dentro" pela meta do mês;
+  - tendência (painel, TV, relatório): um traço de meta por barra quando os meses têm metas diferentes; uma linha quando são iguais;
+  - relatório mensal e TV: "meta R$ x (ponderada pelos dias: R$ a × d + R$ b × d)".
+- **Versão única:** `PAGE.versao = APP_VER`; título sem número. Antes havia 1.8.13, 1.8.15 e 1.8.16 em lugares diferentes, e o Portal › Versões mostrava um aviso falso.

@@ -9,7 +9,9 @@ def R(a,b,cnt=1):
     c=s.count(a)
     if c!=cnt: raise SystemExit(f'ERRO ({c}x): {a[:90]!r}')
     s=s.replace(a,b)
-R("const APP_VERSION = '2.0.1';","const APP_VERSION = '2.4.10';")
+R("const APP_VERSION = '2.0.1';","const APP_VERSION = '2.4.11';")
+# 2.4.11 · E1: FolderBackend tinha duas chaves readBackup; a segunda (sem o local antigo) vencia e os backups soltos em 00. Backups/ não eram lidos
+R("    async readBackup(name) { const bd = await this.backupDir(); const fh = await bd.getFileHandle(name); return (await fh.getFile()).text(); }\n  };","  };")
 # 2.4.10 · sair da TV redesenha a tela de baixo: a TV limpa o registro dos gráficos (Charts.reset) e a dica e o clique da tela paravam até trocar de aba
 R("    if (this.prevTheme) document.documentElement.setAttribute('data-theme', this.prevTheme); else applyTheme();\n    try { if (document.fullscreenElement) document.exitFullscreen(); } catch (e) { }\n  },",
   "    if (this.prevTheme) document.documentElement.setAttribute('data-theme', this.prevTheme); else applyTheme();\n    try { if (document.fullscreenElement) document.exitFullscreen(); } catch (e) { }\n    { const y = window.scrollY; try { renderNow(); } catch (e) { console.warn(e); } window.scrollTo(0, y); }   // 2.4.10 · gráficos voltam a responder\n  },")
@@ -57,6 +59,8 @@ R("    <span title=\"${esc(S.mode === 'pasta' ? 'Pasta ' + (S.backend && S.backe
 R("const PAGE = { id: 'oee', titulo: 'OEE · Linha Vacutainer', tituloCurto: 'OEE', subtitulo: 'Produção e OEE',","const PAGE = { id: 'oee', titulo: 'Produção · Linha Vacutainer', tituloCurto: 'Produção', subtitulo: 'Plano, ordens, apontamento e OEE',")
 R("    async readSibling(name) { try { const fh = await dir.getFileHandle(name); return await (await fh.getFile()).text(); } catch (e) { return null; } },",
   "    async readSibling(name) { try { const fh = await dir.getFileHandle(name); return await (await fh.getFile()).text(); } catch (e) { return null; } },\n    // 2.1 · outra base da mesma pasta (ordens-base.json) e backup em 00. Backups/<sub>\n    async writeSibling(name, text) { const fh = await dir.getFileHandle(name, { create: true }); const w = await fh.createWritable(); await w.write(text); await w.close(); },\n    async backupSub(sub, name, text) { const r = await this.backupRoot(); const d = await r.getDirectoryHandle(sub, { create: true }); const fh = await d.getFileHandle(name, { create: true }); const w = await fh.createWritable(); await w.write(text); await w.close(); return name; },")
+# 2.4.11 · E1: leitura estrita do arquivo de ordens (null só quando não existe; erro de rede/permissão sobe e nada é gravado por cima)
+R("    async writeSibling(name, text) {","    async readSiblingStrict(name) { try { const fh = await dir.getFileHandle(name); return await (await fh.getFile()).text(); } catch (e) { if (typeof vacNaoAchou === 'function' ? vacNaoAchou(e) : (e && (e.name === 'NotFoundError' || e.name === 'TypeMismatchError'))) return null; throw e; } },\n    async writeSibling(name, text) {")
 svc=open('ordens_servico.js',encoding='utf-8').read().replace("if (typeof module !== 'undefined') module.exports = OrdensSAP;\n","")
 tela=open('ordens_tela.js',encoding='utf-8').read()
 css="""<style>

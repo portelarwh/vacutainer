@@ -148,3 +148,7 @@ O Excel de respostas (ID, Hora de início, Hora de conclusão, Email, Nome, as p
 ## Paradas 1.0.13 (07/11/2026)
 
 Só o kit: `vacCsvTexto` (regra comum do CSV) entrou no `kit_v21.js`. O Paradas não exporta CSV; sem mudança de comportamento.
+
+## Paradas 1.0.14 (08/11/2026)
+
+Só o kit da E2 do plano único (`vacHoje`, `vacMetaAreaMes`); sem mudança de comportamento no Paradas.

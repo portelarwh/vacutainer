@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Gestão de Gel · Linha Vacutainer · V2.04</title>
+<title>Gestão de Gel · Linha Vacutainer</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600&family=Barlow+Condensed:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
@@ -877,7 +877,7 @@ function vacAbaInicial(pagina) {
   <button type="button" class="vic" id="btnTheme" title="Tema claro, escuro ou automático" aria-label="Alternar tema">◐</button>
 </div></header>
 <div class="vpage"><div class="wrap">
-  <h1 id="vacTitulo">Gel</h1><span class="rule" id="vacSub">FIFO, consumo, scrap e saving</span><span class="ver" id="appVer" title="Versões das páginas">v2.01</span>
+  <h1 id="vacTitulo">Gel</h1><span class="rule" id="vacSub">FIFO, consumo, scrap e saving</span><span class="ver" id="appVer" title="Versões das páginas"></span>
   <span id="stBase"></span><span class="sp"></span>
   <span class="vacts"><button class="btn sm primary" id="btnImport">Importar relatório</button><button class="btn sm" id="btnSync" title="Gravar pendências e reler a base">↻ Sincronizar</button><button class="btn sm" id="btnBackup" title="Criar backup agora">⛁ Backup</button><span class="tvmenu" id="tvMenu"><button class="btn sm" id="btnTV" title="Modo TV" aria-haspopup="true" aria-expanded="false">▣ TV ▾</button><span class="tvdrop" role="menu">
         <button type="button" role="menuitem" data-tvkind="linha"><b>Linha · Liderança</b><small>Resumo, produção × plano, OEE, PCP, índice de uso, scrap e hoje</small></button>
@@ -1269,7 +1269,7 @@ const fileBackend={kind:'file',async commit(ch){applyLocal(ch);FS.pending.push(c
 async function fsRefresh(){if(S.mode!=='file'||FS.busy||ui.demo)return;try{const cur=await fsReadBase(fsKnown());if(cur&&!cur.same){FS.mod=cur.mod;FS.rev=cur.rev;FS.revBy=cur.by;loadData(cur.data);FS.pending.forEach(applyLocal);localBackend.save();render()}}catch(e){}}
 /* ================= V1.89 · integração com as outras páginas (Portal, OEE, Perdas) ================= */
 // versão da página (topo, Guia e base gravada)
-const APP_VERSION='2.04';   /* 2.04 · revisão 065fe6f: restauração por arquivo confirma e não segue sem a cópia anterior; CSV sem fórmulas; índice por dia no Painel */
+const APP_VERSION='2.05';   /* 2.05 · E2: a versão da tela vem desta constante (o rótulo estava fixo em v2.01); kit com data local e meta do mês ponderada */   /* 2.04 · revisão 065fe6f: restauração por arquivo confirma e não segue sem a cópia anterior; CSV sem fórmulas; índice por dia no Painel */
 /* 2.03 · situação "em atualização" (kit: selo, pílula e faixa; docs/paginas-construcao.md) */
 /* 2.02 · relatório montado: todas as linhas no PDF, comentário, aviso de corte no texto; Painel em 1º; aba inicial do perfil; impressão e PDF no tema claro */
 /* 1.99 · menu Mais do cabeçalho (vac-visual v1): fecha ao escolher uma ação, ao clicar fora e com Esc */
@@ -1478,7 +1478,7 @@ const Busca={el:null,i:0,R:[],
  marca(){this.el.querySelectorAll('#vbL li').forEach((li,j)=>{li.classList.toggle('on',j===this.i);if(j===this.i)li.scrollIntoView({block:'nearest'})})},
  ir(x){if(!x)return;this.fechar();if(x.go)x.go();else if(x.href){if(x.href.startsWith('#')){if(location.hash===x.href)window.dispatchEvent(new HashChangeEvent('hashchange'));else location.hash=x.href}else location.href=x.href}}};
 document.addEventListener('keydown',e=>{if((e.ctrlKey||e.metaKey)&&(e.key==='k'||e.key==='K')){e.preventDefault();Busca.el?Busca.fechar():Busca.abrir()}});
-function wireCabecalho(){const b=$('#vacBusca');if(b)b.onclick=()=>Busca.abrir();const v=$('#appVer');if(v&&!v.onclick){const port=systems().find(s=>s.id==='portal')||{html:'Portal.html'};v.onclick=()=>{if(PAGE.id==='portal')irVersoes();else location.href=sysHref(port,'versoes')}}}
+function wireCabecalho(){const b=$('#vacBusca');if(b)b.onclick=()=>Busca.abrir();const v=$('#appVer');if(v)v.textContent='v'+APP_VERSION;if(v&&!v.onclick){const port=systems().find(s=>s.id==='portal')||{html:'Portal.html'};v.onclick=()=>{if(PAGE.id==='portal')irVersoes();else location.href=sysHref(port,'versoes')}}}
 /* ----- vac-cabecalho v2 · acréscimos de 05/11/2026 (iguais em todas as páginas; não editar só numa) -----
    Menu "Outros ▾" (vac.sistemas com grupo:'outros' + links de vac.links), ⚙ Administração (Portal.html#admin),
    nomes exibidos novos (Produção, Waste, Gestão de Gel), entrar pelo ID (usuários do cadastro: cópia vac.cadastros),
@@ -7280,14 +7280,17 @@ setInterval(()=>{if(S.mode==='file'&&FS.pending.length&&!FS.busy&&!ui.demo)fsFlu
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', vacVoltarRender); else setTimeout(vacVoltarRender, 0);
 })();
 /* kit v2.1 · câmbio do cadastro geral (Portal › Câmbio): cotação vigente numa data, em R$ por 1 unidade da moeda. null = sem cadastro. */
+/* kit v2.1 · E2 (08/11/2026): "hoje" no dia local do computador (antes, sem data, valia o dia em UTC: às 22h de Brasília já era amanhã).
+   Os leitores abaixo usam a data do fato quando recebem uma; vacHoje() é só o padrão quando não recebem. */
+function vacHoje() { const d = new Date(); return new Date(d - d.getTimezoneOffset() * 6e4).toISOString().slice(0, 10); }
 function vacCambio(data, moeda = 'USD') {
   const c = typeof vacCad === 'function' ? vacCad() : null, m = c && (c.cambio || []).find(x => String(x.codigo).toUpperCase() === moeda && x.ativo !== false); if (!m) return null;
-  const d = String(data || '').slice(0, 10) || new Date().toISOString().slice(0, 10);
+  const d = String(data || '').slice(0, 10) || vacHoje();
   const v = (m.vigencias || []).filter(x => x.de <= d && (!x.ate || x.ate >= d)).sort((a, b) => a.de < b.de ? 1 : -1)[0];
   return v && +v.cotacao > 0 ? { cotacao: +v.cotacao, de: v.de, ate: v.ate || null } : null;
 }
 /* kit v2.1 · leituras do cadastro geral (cópia vac.cadastros), iguais em todas as páginas */
-const vacVig = (vs, data) => { const d = String(data || '').slice(0, 10) || new Date().toISOString().slice(0, 10); return (vs || []).filter(v => v.de <= d && (!v.ate || v.ate >= d)).sort((a, b) => a.de < b.de ? 1 : -1)[0] || null; };
+const vacVig = (vs, data) => { const d = String(data || '').slice(0, 10) || vacHoje(); return (vs || []).filter(v => v.de <= d && (!v.ate || v.ate >= d)).sort((a, b) => a.de < b.de ? 1 : -1)[0] || null; };
 function vacParam(k) { const c = typeof vacCad === 'function' ? vacCad() : null; return c && c.parametros ? c.parametros[k] ?? null : null; }
 /* turnos vigentes numa data: [{codigo, nome, inicio, fim, dias, ativo, pausas}] (fim em 24 h+) */
 function vacTurnosEm(data) { const c = typeof vacCad === 'function' ? vacCad() : null; return (c && c.turnos || []).filter(t => t.ativo !== false).map(t => { const v = vacVig(t.vigencias, data); return v ? { codigo: t.codigo, nome: t.nome, ...v } : null; }).filter(Boolean); }
@@ -7295,6 +7298,20 @@ function vacTurnosEm(data) { const c = typeof vacCad === 'function' ? vacCad() :
 function vacPrecoEm(material, data) { const c = typeof vacCad === 'function' ? vacCad() : null; const it = c && (c.precos || []).find(p => String(p.material) === String(material)); const v = it ? vacVig(it.vigencias, data) : null; return v && +v.preco > 0 ? { preco: +v.preco, moeda: v.moeda || 'USD', porUnidade: v.porUnidade || 'kg', de: v.de } : null; }
 /* meta da área vigente: {valor, alerta, unidade, sentido, periodo, de} */
 function vacMetaArea(codigo, data) { const c = typeof vacCad === 'function' ? vacCad() : null; const it = c && (c.metasArea || []).find(m => m.codigo === codigo && m.ativo !== false); const v = it ? vacVig(it.vigencias, data) : null; return v && v.valor != null ? { valor: +v.valor, alerta: v.alerta != null ? +v.alerta : null, unidade: it.unidade, sentido: it.sentido, periodo: it.periodo, de: v.de } : null; }
+/* kit v2.1 · E2 (08/11/2026): meta da área de um mês (AAAA-MM), pela vigência de cada dia (regra 3). Duas vigências no mesmo mês =
+   média ponderada pelos dias de cada uma (só os dias cobertos por vigência). null se nenhum dia do mês tem vigência.
+   Volta {valor, ponderada, partes:[{de, valor, dias}], diasCobertos, diasMes, unidade, sentido, periodo}. */
+function vacMetaAreaMes(codigo, per) {
+  const c = typeof vacCad === 'function' ? vacCad() : null; const it = c && (c.metasArea || []).find(m => m.codigo === codigo && m.ativo !== false);
+  if (!it || !/^\d{4}-\d{2}$/.test(String(per || ''))) return null;
+  const [y, mo] = String(per).split('-').map(Number), n = new Date(y, mo, 0).getDate(), partes = new Map(); let soma = 0, dias = 0;
+  for (let d = 1; d <= n; d++) {
+    const v = vacVig(it.vigencias, per + '-' + String(d).padStart(2, '0')); if (!v || v.valor == null || v.valor === '' || !isFinite(+v.valor)) continue;
+    soma += +v.valor; dias++; let p = partes.get(v.de); if (!p) partes.set(v.de, p = { de: v.de, valor: +v.valor, dias: 0 }); p.dias++;
+  }
+  if (!dias) return null; const P = [...partes.values()];
+  return { valor: soma / dias, ponderada: P.length > 1, partes: P, diasCobertos: dias, diasMes: n, unidade: it.unidade, sentido: it.sentido, periodo: it.periodo };
+}
 /* link para uma tela do Portal (Administração) */
 function vacPortalHref(h) { const port = (typeof systems === 'function' ? systems() : []).find(s => s.id === 'portal') || { id: 'portal', html: 'Portal.html' }; return typeof sysHref === 'function' ? sysHref(port, h) : 'Portal.html#' + h; }
 /* kit v2.1 · vac-visual v1 (06/11/2026): abas numa linha só. Quando não cabem, a faixa rola na horizontal, com sombra e seta ‹ › na borda
