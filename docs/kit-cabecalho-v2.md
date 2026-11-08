@@ -153,3 +153,20 @@ Gestão de Gel 2.05 (08/11/2026): o rótulo de versão do cabeçalho vem de `APP
 Gestão de Gel 2.06 (08/11/2026):
 - campos numéricos digitados validados: marcação em vermelho, prévia "valor inválido" e ações do cartão bloqueadas;
 - `exports.ordensCobertura`.
+
+## E5 do plano único (08/11/2026) · ficha comum e busca por índice
+
+- **`vacFicha.abrir(tipo, código)`** (`'ordem'`, `'lote'` ou `'lp'`) abre o painel lateral comum; `vacFicha.fechar()`, `vacFicha.carregar(forçar)` (relê as bases que mudaram), `vacFicha.buscar(q)` (itens do índice) e `vacFicha.indice()`.
+- **Abre também por:** clique em elemento com `data-vac-ordem`, `data-vac-lote` ou `data-vac-lp`; `vacFichaBotao(ordem)` (botão "Ficha" pronto); o link `<página>#ficha=ordem/<n>`; Enter num resultado da busca (Ctrl K).
+- **A página informa** a pasta conectada em `vacPastaAtual()` (pasta ou `null`). Sem isso, a ficha usa só a cópia deste computador.
+- **Fontes:** `exports` de Produção (`porOrdem`, `porOrdemCobertura`, `lotes`), Produção › Ordens (`porOrdem`), Waste (`porOrdem`), Gel (`ordens`, `ordensCobertura`), Paradas (`porOrdem`, `eventos` com ordem) e Iniciativas (`acoes`). Versão conferida com `vacExportsOk`. Cópia de cada base no IndexedDB `vac-ficha`, com a hora da leitura.
+- **Busca:** a ficha estende o `Busca` do cabeçalho (sem editar o bloco v2 de cada página): ordem, lote, LP, catálogo e equipamento entram antes das abas e páginas. Comparação de códigos sem zeros à esquerda (só para comparar).
+- CSS em `kit_visual.css` (`.vficha*`). Teste: `node testes/tficha.js`.
+
+## E6 e E8 do plano único (08/11/2026)
+
+- **`VAC_BASES`** (kit vac-bases) passou a ter 9 bases: + `iniciativas-base.json` e `equipamentos-base.json`. Página nova que grava base precisa entrar nessa lista, senão `vacRaiz` grava na raiz da pasta.
+- **`vacNovaAcaoHref(d)` / `vacNovaAcaoBotao(d, rótulo, classe)`:** link para Iniciativas com a ação preenchida (`#nova=<JSON>`). `d = {titulo, descricao, origem:{tipo, ref, resumo, link, foto}, vinculos:[{tipo, cod}]}`. A página de origem não grava nada. Iniciativas mostra as ações abertas parecidas e só cria depois da confirmação. Mande referências, não listas.
+- **`vacAquiHref(hash)`:** endereço desta página com uma rota (link de reconsulta).
+- A ficha da ordem ganhou "+ Abrir ação" (origem `ficha`, vínculo da ordem) e o bloco "Ações ligadas", que lê `iniciativas-base.json`.
+

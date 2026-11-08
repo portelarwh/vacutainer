@@ -1,7 +1,7 @@
 /* ===== vac-bases v2 · 06/11/2026 · bases .json na subpasta "00. Bases" da pasta principal (igual em todas as páginas; não editar só numa) =====
    Arquivo-fonte: fontes/kit/kit_bases.js. Vai num <script id="vac-bases"> no topo de cada página (aplicar_kit21.py e build da Produção),
    antes do código da página. Na raiz da pasta principal ficam só os HTML, lib\, Logo.png e as pastas.
-   - vacRaiz(pasta): a pasta principal "com bases". Para as 7 bases, grava em 00. Bases; para ler, procura em 00. Bases e, se a base
+   - vacRaiz(pasta): a pasta principal "com bases". Para as bases da lista VAC_BASES, grava em 00. Bases; para ler, procura em 00. Bases e, se a base
      ainda não foi movida (ou se lá só existe um arquivo vazio de uma cópia interrompida), na raiz. O resto continua na raiz.
      A pasta original (do seletor) é a que vai para o IndexedDB; vacRaiz só envolve, nunca é gravada.
    - vacMoverBases(pasta, [[nome, pastaBackup], …]): cada página move SÓ as próprias bases, ao conectar. Regras (v2, revisão c341f8e):
@@ -14,7 +14,8 @@
        uma gravação de último instante fica guardada no backup e a página avisa (B01); assim o backup existe também ao retomar (B07);
      · raiz mais nova que 00. Bases (página antiga gravando na raiz): não mexe em nada, avisa; Portal › Versões mostra as duas cópias. */
 const VAC_BASES_DIR = '00. Bases';
-const VAC_BASES = ['portal-base.json', 'vacutainer-cadastros.json', 'oee-vacutainer-base.json', 'ordens-base.json', 'perdas-base.json', 'fifo-base.json', 'paradas-base.json'];
+/* 08/11/2026 · E6/E11: + iniciativas-base.json e equipamentos-base.json (páginas que passaram a gravar) */
+const VAC_BASES = ['portal-base.json', 'vacutainer-cadastros.json', 'oee-vacutainer-base.json', 'ordens-base.json', 'perdas-base.json', 'fifo-base.json', 'paradas-base.json', 'iniciativas-base.json', 'equipamentos-base.json'];
 function vacEhBase(nome) { return VAC_BASES.includes(String(nome)); }
 const vacNaoAchou = e => !!e && (e.name === 'NotFoundError' || e.name === 'TypeMismatchError');
 function vacRaiz(raiz) {

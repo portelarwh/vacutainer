@@ -221,3 +221,17 @@ Só o kit: `vacHoje()` (dia local nos leitores sem data) e `vacMetaAreaMes` (met
 ## Portal 1.8.15 (08/11/2026) · kit da E3 e da E4
 
 Só o kit (`vacNumero`, `vacExportsOk`). Os campos novos do `exports` (`porOrdem`, coberturas) são aditivos na versão 1; o Portal os ignora até a ficha da ordem (E5). Registro § U.
+
+## Portal 1.9.0 (08/11/2026) · Minha fila e Reunião diária (E10a e E10b do plano único)
+
+- **Minha fila:**
+  - ações abertas de Iniciativas e pendências de todas as páginas, por prazo;
+  - filtros Minhas, Minha equipe (mesma área no cadastro) e Sem responsável;
+  - só leitura; cada item abre na página dona.
+- **Reunião diária:**
+  - recorte por dia ou por turno, cada número com a granularidade dele;
+  - pauta, decisões e fotografia dos números, guardadas em `portal-base.json › reunioes['AAAA-MM-DD|dia|T1…']`;
+  - encaminhamento ao Planner por link; relatório pelo Report.
+- **Cadastro de usuários:** campo novo `area`, opcional, com ⓘ.
+- **Pendências das páginas:** passam a carregar `responsavel`, `apoios`, `prazo` e `id` quando a página publica (aditivo).
+

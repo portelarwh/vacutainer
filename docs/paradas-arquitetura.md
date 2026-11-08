@@ -158,3 +158,14 @@ Só o kit da E2 do plano único (`vacHoje`, `vacMetaAreaMes`); sem mudança de c
 - **Importação do Forms:** minutos e vezes estritos (`vacNumero`, ponto com 3 dígitos = milhar, como antes). Linha com "12a" ou "15-" vai para os erros, com o motivo; antes virava 12 ou 15.
 - **`exports.porOrdem`:** eventos, minutos, equipamentos, primeiro e último dia, por ordem.
 - **Leitura da Produção:** o `exports` só é usado se a versão for conhecida.
+
+## Paradas 1.0.17 a 1.0.19 (08/11/2026) · plano único E5, E8, E10d e E11
+
+- **Ficha e rotas:** botão "Ficha" na ordem do evento; rota `#ordem=` (eventos filtrados pela ordem).
+- **Planner (Iniciativas):** "+ Ação no Planner" no Pareto selecionado, na recorrência e no evento, com a fotografia (período, minutos, paradas) e o link de reconsulta. As ações locais do Paradas continuam.
+- **Relatório:** botão **Relatório**, o mesmo Report do Portal e do Waste (prévia, PDF, Excel, texto, Outlook, impressão), com os filtros da tela.
+- **OS (Equipamentos):**
+  - o evento mostra as OS ligadas, lidas de `equipamentos-base.json › exports.porEvento` com a versão conferida;
+  - tem "+ Abrir OS", que abre Equipamentos com a referência do evento;
+  - o Paradas não grava em Equipamentos.
+

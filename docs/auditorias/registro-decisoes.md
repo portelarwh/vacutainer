@@ -18,6 +18,7 @@ Este arquivo responde às auditorias externas da plataforma e registra, para cad
 | Relatórios, saídas e aba Painel | 07/11/2026 | `c341f8e` | Portal 1.8.11, Produção 2.4.8, Waste 1.8.14, Gel 2.02, Paradas 1.0.11 (§ P) |
 | Achados do Codex (segurança, dados, TV, scripts, desempenho) com revisão independente | 07/11/2026 | `065fe6f` | Portal 1.8.13, Produção 2.4.10, Waste 1.8.16, Gel 2.04, Paradas 1.0.13, páginas em construção 0.1.1 (§ C) |
 | Plano único (diagnósticos de 08/11 do Claude e do Codex), etapas E1 a E4 (Ordens e backups; versões, datas e metas; números; contratos por ordem) | 08/11/2026 | `e043513` / `9af2d3e` | Produção 2.4.12, Waste 1.8.18, Gel 2.06, Portal 1.8.15, Paradas 1.0.15 (§ U) |
+| Plano único, blocos A e B (E5 ficha da ordem e Ctrl K; E6/E8 Iniciativas, Planner, KAS e ações de OEE; E10a/b Minha fila e Reunião diária; E10d relatório do Paradas; E11 Equipamentos) | 08/11/2026 | `8ecec91` | Portal 1.9.0, Produção 2.4.15, Waste 1.8.21, Gel 2.09, Paradas 1.0.19, Iniciativas 1.0.0, Equipamentos 1.0.0 (§ U) |
 
 Status usados: **corrigido** · **corrigido em parte** · **recusado** · **adiado** · **já existia**.
 
@@ -30,7 +31,12 @@ Status usados: **corrigido** · **corrigido em parte** · **recusado** · **adia
 - Revisão consolidada do Codex em `e3dc973`, branch `codex/revisao-consolidada-2026-11-08`.
 - Parecer comparativo e plano em 15 etapas (E1–E15): `docs/auditorias/plano-unico-2026-11-08/plano-unico.md`. Esse arquivo tem o backlog rastreável aos IDs F/ARQ/IMP/RAS/PLA/OSM/KAS/OEE/TAG/MES/TPM/UX/REL/REF/FIL/REU do Codex e aos B/C do Claude.
 
-**Aprovação.** O responsável aprovou a primeira etapa (E1) em 08/11/2026. As demais aguardam aprovação.
+**Aprovação.** O responsável aprovou a E1 em 08/11/2026, depois a E2 a E4. Na mesma data aprovou fazer em sequência os blocos A (fundação: E5 e o modelo único de ação) e B (telas: E6, E8, E10, E10d, E11), depois dos esboços em `docs/auditorias/plano-unico-2026-11-08/esbocos/`, aprovados como estão:
+- ficha com os blocos numa ordem fixa (Produção, Paradas, Waste, Gel, SAP, Ações); "Detalhado" mostra as listas dentro da ficha;
+- quadro do Planner com A fazer · Em andamento · Aguardando · Concluída (+ Cancelada, escondida); o Planner é a 1ª aba de Iniciativas;
+- "Minha equipe" = pessoas da mesma área no cadastro do Portal;
+- Reunião diária por dia e por turno;
+- OS com aberta · programada · em execução · concluída · cancelada, e o número da nota/OS do SAP PM como campo opcional.
 
 ### E1 · Produção › Ordens: gravação e backups confiáveis · **corrigido** (Produção 2.4.11)
 
@@ -83,6 +89,81 @@ Teste novo: **`testes/tcontratos.js`**. Tudo é aditivo na `exportsVersion` 1 (r
 | F08 | O Waste procurava o lote no valor de `dayLot`; o lote está na chave "dia\|lote" | Leitura pela chave (LX1 não pega LX10). A Produção também publica os dias do lote no `porOrdem` |
 
 **Ficou para depois:** o Waste ainda cai na base da Produção (plano do mês, `lotClass`/`lotNotes`) para ordens fora da janela de 24 meses e para a classificação e observação dos lotes mais antigos que os 150 dias do `exports.lotes` (B7). Os eventos manuais com ID estável vão para a E12, junto da conciliação MES.
+
+### E5 · Ficha da ordem, do lote e da LP; Ctrl K; links · **feito** (kit; Portal 1.8.16, Produção 2.4.13, Waste 1.8.19, Gel 2.07, Paradas 1.0.16, páginas em construção 0.1.2)
+
+Teste novo: **`testes/tficha.js`** (pasta simulada com os `exports` das 5 páginas).
+
+| ID | O que era | O que ficou |
+|---|---|---|
+| RAS-01 | Para ver uma ordem inteira era preciso abrir cada página | **Ficha comum** no kit (`vacFicha`), painel lateral igual nas 8 páginas: Produção, Paradas, Waste, Gel, SAP e Ações. Só mostra o `exports` de cada página (regra 1), com a fonte e a hora em cada bloco. Bloco sem dado fica cinza e diz por quê (fora da janela publicada não é zero; base ausente; versão desconhecida do `exports`, que não é usada). Resumo ou Detalhado (listas de eventos, competências, LPs e dias do lote). Ficha do **lote** (ordens do lote e dados do servidor) e da **LP** (ordens que baixaram o barril) |
+| F09 / RAS-01 | Links de outra página caíam no topo | "Abrir em …" leva à página dona já filtrada (`#ordem=`, `#lote=`, `#lp=`). O Paradas ganhou a rota `#ordem=` (eventos filtrados pela ordem). O link da ficha é `<página>#ficha=ordem/<n>` (também `lote/` e `lp/`) e funciona em qualquer página |
+| Ctrl K | A busca de cada página só via os próprios dados e adivinhava pelo número de dígitos | A busca comum ganhou um **índice** do que existe nos `exports` e no cadastro: ordem, lote, LP, catálogo e equipamento (com apelidos). "LX1" mostra o lote LX1 antes do LX10. A ordem do SAP com zeros à esquerda é a mesma ordem (comparação sem mudar o código guardado, regra 4) |
+| Sem pasta | — | Cada base é lida só quando muda (data e tamanho). Sem pasta ou com erro de leitura, a ficha usa a última cópia lida neste computador (IndexedDB `vac-ficha`), com a data e o motivo |
+| ← Voltar | — | A ficha entra no histórico: o voltar do navegador fecha a ficha e mantém a tela e os filtros |
+
+Cada página só informa a pasta conectada (`vacPastaAtual()`) e põe o botão **Ficha** onde mostra uma ordem (Waste › ordem, Gel › ordem, Paradas › evento, Produção › Ordens SAP). A ficha não grava nada.
+
+**Limites:** a Produção não publica OEE por ordem (falta a regra de atribuição); a lista de eventos do Paradas vai até 90 dias (os totais por ordem são de todo o histórico). O bloco "Ações ligadas" aparece quando a base de Iniciativas existir (E6).
+
+### E6 e E8 · Iniciativas: Planner e KAS; ações de OEE a partir das outras páginas · **feito** (Iniciativas 1.0.0; Paradas 1.0.17, Produção 2.4.14, Portal 1.8.17, Waste 1.8.20, Gel 2.08, páginas em construção 0.1.3; kit)
+
+Teste novo: **`testes/tplanner.js`**. Documentação: `docs/iniciativas-planner.md`.
+
+| ID | O que ficou |
+|---|---|
+| PLA-01/02 | Iniciativas virou página de verdade (saiu do gerador). Base `iniciativas-base.json` em `00. Bases`: ação com dono, apoios, prioridade, prazo atual e **original**, origem, vínculos (ordem, lote, equipamento, código, evento), checklist, comentários e evidências (link). Visões Quadro (arrastar ou botão), Lista, Por responsável e Minhas |
+| PLA-03/05 | Histórico de eventos (criação, situação, responsável, prazo com motivo, prioridade). Tempo por situação e por responsável calculado **por intervalo**, com a ação aberta, em dias corridos rotulados. Testado com transferência, espera e reabertura |
+| PLA-06 | Gravação por operações (fila, releitura, reaplicação, `revId`), como o Paradas. Sem leitura não grava (alteração pendente com "Gravar de novo") |
+| PLA-08 | As ações do Waste e do Paradas **não** foram migradas; continuam onde estão |
+| OEE-01/02 | Botão "+ Ação no Planner" no Paradas (Pareto selecionado, recorrência, evento), na Produção › Paradas (eventos filtrados por um item do Pareto) e na ficha da ordem. Abre Iniciativas com a origem, a **fotografia** (período, minutos, ocorrências, hora) e o link de reconsulta. A página de origem não grava nada lá (regra 1). Antes de criar, Iniciativas mostra as ações abertas ligadas ao mesmo equipamento, código, ordem ou referência |
+| KAS-01 | Aba KAS: problema, proposta, linha de base, meta, resultado, dono, área e situação. As ações do KAS entram no mesmo quadro, com origem KAS |
+| — | Base nova na lista `VAC_BASES` do kit (`iniciativas-base.json` e, para a E11, `equipamentos-base.json`): sem isso a base ia para a raiz da pasta |
+
+**Achado durante o teste:** duas estações gravando no mesmo instante. A segunda pode gravar por cima depois que a primeira já confirmou pela releitura: a releitura não é transação. Agora as operações confirmadas nos últimos 30 minutos ficam guardadas no navegador. Na leitura seguinte (gravação, volta para a página, F5), se o id delas não está na auditoria da base, elas voltam para a fila e são gravadas de novo. O teste reproduz o caso e confere que nada se perde.
+
+**Fora desta etapa (decisões registradas):** SLA, dias úteis e regras de prioridade (PLA-04, PLA-07); eficácia da ação de OEE (OEE-04) e ganho validado do KAS (KAS-02), que pedem método; OSM (E7, falta a amostra) e 5S (E13).
+
+### E10a e E10b · Portal: Minha fila e Reunião diária · **feito** (Portal 1.9.0)
+
+Teste novo: **`testes/tfila.js`**.
+
+| ID | O que ficou |
+|---|---|
+| FIL-01 | As pendências passam a levar `responsavel`, `apoios`, `prazo` e `id` quando a página publica (aditivo). Iniciativas e Equipamentos já publicam; as outras páginas, quando passarem a publicar |
+| FIL-02 / RAS-05 | Aba **Minha fila**: ações abertas de Iniciativas e pendências de todas as páginas, em Atrasadas · Hoje e próximos 7 dias · Mais adiante · Sem prazo. Filtros **Minhas** (responsável ou apoio), **Minha equipe** (mesma área no cadastro: campo novo `usuarios.area`, com ⓘ) e **Sem responsável**. Só leitura: cada item abre na página dona. Contador de itens atrasados na aba |
+| REU-01/02 | Aba **Reunião diária**, por **dia** ou **turno** (os turnos vêm do cadastro): OEE e produzido (dia ou turno), paradas (dia ou turno, com as maiores), Gel (agora), Waste (competência, com a meta do mês ponderada) e ações (hoje). Cada número leva o rótulo da granularidade. Pauta e decisões ficam no `portal-base.json` (`reunioes`, por dia e recorte), com quem e quando. "Fotografar números" guarda os números junto da pauta. "Encaminhar ao Planner" e "+ Ação" na maior parada abrem Iniciativas preenchida. Relatório pelo Report do Portal (PDF, Excel, texto, Outlook) |
+
+**Limite:** o Paradas publica a lista de eventos dos últimos 90 dias; uma reunião sobre um dia mais antigo mostra o aviso no lugar dos números de parada.
+
+### E10d · Relatório do Paradas · **feito** (Paradas 1.0.19)
+
+Paradas ganhou o botão **Relatório**: o mesmo `Report` do Portal e do Waste (prévia, PDF em paisagem, Excel, texto, Outlook com o gráfico como imagem, impressão), com os filtros da tela. Tem indicadores, o gráfico e a tabela do Pareto por código, os equipamentos (MTBF, MTTR, disponibilidade) e a recorrência dos 30 dias. O código foi copiado com adaptadores mínimos; a unificação dos geradores no kit continua pendente (§ P). Teste: `trelatorios.js` › Paradas.
+
+### E11 · Equipamentos 1.0 · **feito** (Equipamentos 1.0.0; Paradas 1.0.19; kit)
+
+Teste novo: **`testes/tequip.js`**. Documentação: `docs/equipamentos-v1.md`.
+
+| ID | O que ficou |
+|---|---|
+| — | Equipamentos virou página de verdade (saiu do gerador). Base `equipamentos-base.json` em `00. Bases`, com a mesma gravação de Iniciativas |
+| Ficha | Cadastro do Portal (nome, apelidos, link para editar lá); falhas lidas do `exports` do Paradas e rotuladas como **histórico** (7/30/90 dias, MTBF/MTTR por mês, componentes); OS, TAGs, anomalias e padrões. Sem estado atual nem gargalo (sem MES) |
+| OS | Situações aprovadas nos esboços; nota/OS do SAP PM opcional; apontamentos e histórico. A OS aberta de um evento do Paradas guarda só a referência (sem cópia). O Paradas mostra "OS-… aberta" no evento, lendo `exports.porEvento`, e tem "+ Abrir OS" |
+| TAG-01/04 | TAG com propósito, nome no MES, tipo e unidade por vigência. Nova vigência não apaga a anterior; corrigir = desativar com motivo e criar outra (regra 3) |
+| TPM-01/02/06 | Estrutura do ponto AM/TPM (tipo, ponto, periodicidade, faixa, habilitação, referência) **sem conteúdo inventado**; anomalia registrada vira OS ligada |
+| Ctrl K | Equipamento na busca abre a ficha em Equipamentos (antes, o cadastro no Portal) |
+
+### Não feito nesta rodada (aguarda decisão ou material)
+
+| Etapa | O que falta |
+|---|---|
+| E10c · telas por perfil | lista de jornadas por perfil, validada com operador e liderança (§ 6 do plano). A aba inicial por perfil já existe (`vacAbaInicial`) |
+| E3b · XLSX local | o arquivo SheetJS 0.20.3 da pasta da linha |
+| E7 · OSM | amostra descaracterizada da planilha da plataforma |
+| E9 · importação por pasta | decisão IMP-05 (estação coletora) |
+| E12 · MES | amostras SQL, regras de impacto, ponto oficial de medição |
+| E13 · AM/TPM e 5S | padrões técnicos da manutenção |
+| E15 · Projetos | escopo |
 
 ---
 
