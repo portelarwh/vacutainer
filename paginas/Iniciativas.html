@@ -524,7 +524,7 @@ function vacAbaInicial(pagina) {
 <main class="wrap" id="main"></main>
 <div class="toasts" id="toasts"></div>
 <script>
-const PAGE={id:"inic",titulo:"Iniciativas · Ações · KAS · OSM · 5S",tituloCurto:"Iniciativas",subtitulo:"Ações (Planner) · KAS · OSM · 5S",versao:"1.0.0",baseFile:"iniciativas-base.json",backupDir:"00. Backups/Iniciativas",estado:"atualizacao",estadoNota:"Primeira versão: Ações (Planner) e KAS. OSM e 5S chegam nas próximas etapas."};
+const PAGE={id:"inic",titulo:"Iniciativas · Ações · KAS · OSM · 5S",tituloCurto:"Iniciativas",subtitulo:"Ações (Planner) · KAS · OSM · 5S",versao:"1.0.1",baseFile:"iniciativas-base.json",backupDir:"00. Backups/Iniciativas",estado:"atualizacao",estadoNota:"Primeira versão: Ações (Planner) e KAS. OSM e 5S chegam nas próximas etapas."};
 const APP_VERSION=PAGE.versao;
 /* ---------- vac-cabecalho v2 · JS (igual em todas as páginas) ---------- */
 const VAC_CAB_VERSAO=2;
@@ -1161,7 +1161,7 @@ function tempos(a,D=Store.data,agora=new Date()){
 const Store={dir:null,dirName:'',perm:false,data:completar(vazio()),queue:LS.get('inic.fila',[]),conf:LS.get('inic.conf',[]),saving:false,again:false,lastErr:'',readErr:'',test:false,baseFound:false,lastSaved:null,
  async init(){const c=LS.get('inic.cache',null);if(c){this.data=completar(c);this.queue.forEach(op=>applyOp(this.data,op))}
   try{const h=await IDB.get('pasta');if(h){this.dir=vacRaiz(h);this.dirName=h.name;this.perm=(await h.queryPermission({mode:'readwrite'}))==='granted'}}catch(e){}
-  if(this.perm){await this.reload();if(this.queue.length)this.save()}},
+  if(this.perm){await this.reload();if(this.queue.length||(this.baseFound&&!this.readErr&&diaLocal((this.data.exports||{}).geradoEm)!==hoje()))this.save()}},
  async pick(){if(!window.showDirectoryPicker){toast('Este navegador não permite acesso à pasta (use Chrome ou Edge).',1);return}
   try{const h=await showDirectoryPicker({id:'vac-sistemas',mode:'readwrite'});await this.usar(h);toast('Pasta conectada: '+h.name)}catch(e){if(e.name!=='AbortError')toast('Não foi possível abrir a pasta: '+e.message,1)}},
  async usar(h){this.dir=vacRaiz(h);this.dirName=h.name;this.perm=true;this._bases=false;await IDB.set('pasta',h);await this.reload();if(!this.readErr)await this.save();render()},
@@ -1188,7 +1188,7 @@ const Store={dir:null,dirName:'',perm:false,data:completar(vazio()),queue:LS.get
     let fresh;
     try{fresh=await this.ler()}catch(e){throw new Error('não consegui ler a base antes de gravar ('+(e.message||e.name)+'); nada foi gravado')}
     this.perdidas(fresh);const n=this.queue.length;
-    if(!n&&fresh&&fresh.exports&&fresh.appVersion===APP_VERSION){this.data=completar(fresh);this.baseFound=true;break}
+    if(!n&&fresh&&fresh.exports&&fresh.appVersion===APP_VERSION&&diaLocal(fresh.exports.geradoEm)===hoje()){this.data=completar(fresh);this.baseFound=true;break}
     const D=completar(fresh?clone(fresh):vazio()),revAntes=D.rev||0,ops=this.queue.slice(0,n);ops.forEach(op=>applyOp(D,op));
     ops.forEach(op=>D.auditoria.push({em:op.em,por:op.por,k:op.k,id:op.id,acao:op.a?op.a.id:op.ac||(op.it&&op.it.id)||''}));if(D.auditoria.length>5000)D.auditoria=D.auditoria.slice(-5000);
     if(fresh)await this.backupDiario(fresh);
@@ -1204,6 +1204,8 @@ const Store={dir:null,dirName:'',perm:false,data:completar(vazio()),queue:LS.get
  async backupDiario(obj){try{const d=await this.sub(PAGE.backupDir,true);const nm=bkNome('diario');try{await d.getFileHandle(nm)}catch(e){if(!vacNaoAchou(e))throw e;await this.escrever(obj,d,nm)}}catch(e){console.warn('backup',e)}},
  async backupAgora(){if(this.test)return toast('Modo de teste: sem backup');if(!this.dir||!this.perm)return toast('Conecte a pasta para criar backup',1);
   let r;try{r=await this.ler()}catch(e){return toast('Não consegui ler a base: '+e.message,1)}if(!r)return toast('Ainda não existe base gravada');const d=await this.sub(PAGE.backupDir,true);const nm=bkNome('botao');await this.escrever(r,d,nm);toast('Backup criado: '+PAGE.backupDir+'/'+nm)}};
+/* dia local de um ISO (o exports guarda UTC) */
+const diaLocal=iso=>{const d=new Date(iso||'');return isNaN(d)?'':`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`};
 function bkNome(t){const d=new Date(),p=n=>String(n).padStart(2,'0');return`iniciativas-base_${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())}${t==='diario'?'':'_'+p(d.getHours())+'h'+p(d.getMinutes())+'m'+p(d.getSeconds())+'s_'+t}.json`}
 /* E5 · pasta conectada para a ficha comum (kit) */
 function vacPastaAtual(){return Store.perm&&!Store.test?Store.dir:null}

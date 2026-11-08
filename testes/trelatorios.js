@@ -64,6 +64,13 @@ const CAD = (perfil, inicial) => JSON.stringify({ schema: 'vac-cadastros', schem
         await Report.mail(d); navigator.clipboard.write = cw; await Report.open(d); const prev = !!document.querySelector('.mod .rep'); document.querySelectorAll('.mod-bg').forEach(x => x.remove());
         return { blocos: d.blocos.map(b => b.titulo || b.tipo), txt: /\*Pareto por código\*/.test(T) && /\*Equipamentos\*/.test(T), img: /<img src="data:image\/png/.test(H), prev, botao: !!document.getElementById('btnRel') }; });
       ok(r.botao && r.prev, `Paradas ${tema}: botão Relatório abre a prévia`);
+      const rt = await p.evaluate(() => { const ev = eventosTodos(), tu = ev[0].turno; F.turno = tu; const d = relParadas(); const rec = d.blocos.find(b => /^Recorrência/.test(b.titulo || ''));
+        const n30 = rec.linhas.reduce((s, l) => s + (+String(l[3]).split(' · ')[0].replace(/\D/g, '') || 0), 0); const lim = addDays(ev.reduce((m, e) => e.dia > m ? e.dia : m, ''), -30);
+        const max = ev.filter(e => e.turno === tu && e.dia >= lim).reduce((s, e) => s + (e.ocorrencias || 1), 0); F.turno = ''; return { n30, max, tu }; });
+      ok(rt.n30 <= rt.max, `Paradas ${tema}: recorrência do relatório respeita o turno do filtro (${rt.n30} ocorrências ≤ ${rt.max} do turno ${rt.tu})`);
+      const rd = await p.evaluate(() => { const ev = eventosTodos(), dias = [...new Set(ev.map(e => e.dia))].sort(), ate = dias[Math.floor(dias.length * 0.6)]; F.ate = ate; const d = relParadas(); F.ate = null;
+        const rec = d.blocos.find(b => /^Recorrência/.test(b.titulo || '')); const iso = s => s.split('/').reverse().join('-'); return { ate, ult: rec.linhas.map(l => iso(l[5])).sort().pop() || '', n: rec.linhas.length }; });
+      ok(!rd.ult || rd.ult <= rd.ate, `Paradas ${tema}: recorrência do relatório para na data final do filtro (última ${rd.ult || '—'} ≤ ${rd.ate}; ${rd.n} linhas)`);
       ok(r.blocos.join('|').includes('Pareto por código') && r.blocos.some(x => /^Recorrência/.test(x)) && r.blocos.includes('Equipamentos'), `Paradas ${tema}: Pareto, equipamentos e recorrência (${r.blocos.join(' · ')})`);
       ok(r.txt && r.img, `Paradas ${tema}: texto para WhatsApp/Teams e Outlook com o gráfico como imagem`);
       const f = await baixa(p, () => Report.pdf(relParadas()), `Paradas-${tema}-real.pdf`); const t = txt(f).replace(/\s+/g, ' '), I = info(f);

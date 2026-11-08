@@ -109,3 +109,7 @@ A ficha da ordem (kit) lê `acoes` e mostra "Ações ligadas".
 - `#nova=` com aviso de ação parecida;
 - KAS;
 - tema escuro e 390 px.
+
+## 1.0.1 (08/11/2026) · revisão do Codex no PR #15
+
+O `exports` é gerado de novo quando é de outro dia (ao gravar ou ao abrir a página com a pasta). Antes, sem alteração, ficava o resumo do dia em que foi gravado.

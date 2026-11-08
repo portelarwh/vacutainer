@@ -541,7 +541,7 @@ const MATRIZ_PROPOSTA={"OUT": ["Tullip A", "Tullip B", "Packout", "Metro", "Cap 
    PARADAS · núcleo (pasta, base, fila de gravação, backups, cadastro, utilidades)
    ===================================================================================== */
 const PAGE={id:'paradas',titulo:'Paradas · Análise de falhas e paradas de máquina',tituloCurto:'Paradas',subtitulo:'Análise de falhas e paradas de máquina',
-  versao:'1.0.19',estado:'atualizacao',estadoNota:'Matriz, componentes e limite de microparada passam a vir só do Portal; eventos da Produção entram como sugestão.',baseFile:'paradas-base.json',backupDir:'00. Backups/Paradas',busca:q=>buscaPagina(q)};
+  versao:'1.0.20',estado:'atualizacao',estadoNota:'Matriz, componentes e limite de microparada passam a vir só do Portal; eventos da Produção entram como sugestão.',baseFile:'paradas-base.json',backupDir:'00. Backups/Paradas',busca:q=>buscaPagina(q)};
 const APP_VERSION=PAGE.versao;
 const CAD_FILE='vacutainer-cadastros.json',OEE_FILE='oee-vacutainer-base.json';
 const $=(s,r=document)=>r.querySelector(s),$$=(s,r=document)=>[...r.querySelectorAll(s)];
@@ -1542,7 +1542,7 @@ function svgToPng(svg,width=1400){return new Promise((ok,ko)=>{const el=document
 /* conteúdo do relatório: mesmos filtros (período, equipamento, turno, classe) da tela */
 function relParadas(){const L=F.apply(eventosTodos()).filter(e=>!NAO_PERDA.has(classe(e)));const per=`${F.de?br(F.de):'início'} a ${F.ate?br(F.ate):'hoje'}`;
  const min=L.reduce((s,e)=>s+e.minutos,0),n=L.reduce((s,e)=>s+(e.ocorrencias||1),0),S=statsEquip(L,F.de,F.ate),nQ=S.reduce((s,x)=>s+x.nQ,0),mQ=S.reduce((s,x)=>s+x.mQ,0);
- const G=agg(L,e=>codigoEf(e)).sort((a,b)=>b.min-a.min);const all=eventosTodos(),ate=F.ate||all.reduce((m,e)=>e.dia>m?e.dia:m,'');const Rc=recorrencias(F.eq?all.filter(e=>e.equipamento===F.eq):all,ate).slice(0,30);
+ const G=agg(L,e=>codigoEf(e)).sort((a,b)=>b.min-a.min);const all=eventosTodos(),ate=F.ate||all.reduce((m,e)=>e.dia>m?e.dia:m,'');const Rc=recorrencias(all.filter(e=>(!ate||e.dia<=ate)&&(!F.eq||e.equipamento===F.eq)&&(!F.turno||e.turno===F.turno)&&(!F.cls||classe(e)===F.cls)),ate).slice(0,30);
  const filt=[F.eq?'equipamento '+Cad.eqNome(F.eq):'',F.turno?'turno '+F.turno:'',F.cls?'classe '+(CLASSE[F.cls]||[F.cls])[0]:''].filter(Boolean).join(' · ');
  return{titulo:'Paradas da linha',subtitulo:'Paradas'+(filt?' · '+filt:''),periodo:per,arquivo:'Paradas_'+(F.de||'')+'_'+(F.ate||todayISO()),blocos:[
   {tipo:'kpis',itens:[['Tempo de parada',fmtMin(min),n0(n)+' ocorrências',''],['Quebras',n0(nQ),fmtMin(mQ)+' de quebra',nQ?'bad':'good'],['MTTR',nQ?n0(mQ/nQ)+' min':'—','reparo médio por quebra',''],['Máquina crítica',S[0]?.nome||'—',S[0]?fmtMin(S[0].min):'','']]},

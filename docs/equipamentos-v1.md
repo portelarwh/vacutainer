@@ -87,3 +87,9 @@ A gravação é igual à de Iniciativas (`docs/iniciativas-planner.md`):
 - Paradas mostrando a OS e "+ Abrir OS";
 - Ctrl K levando à ficha;
 - tema escuro e 390 px.
+
+## 1.0.1 (08/11/2026) · revisão do Codex no PR #15
+
+- O `exports` é gerado de novo quando é de outro dia (ao gravar ou ao abrir a página com a pasta).
+- A OS programada publica a pendência de atraso com `aPartirDe` = dia seguinte à data programada.
+- A anomalia é gravada antes do formulário da OS: cancelar a OS não perde a anomalia.
