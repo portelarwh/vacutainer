@@ -253,3 +253,7 @@ Só o kit (`vacNumero`, `vacExportsOk`). Os campos novos do `exports` (`porOrdem
   - período de eventos do Paradas, com "(cortada)";
   - avisos de resumo antigo, lista cortada e alterações que ainda não chegaram à pasta.
 
+
+## 1.9.3 · 08/11/2026
+
+Exclusão mútua entre abas e saúde dos dados com snapshots e reservas. Procedimento, testes e limites em [estabilizacao-nv-01-05.md](estabilizacao-nv-01-05.md).

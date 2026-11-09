@@ -74,7 +74,7 @@ const BASE = (k, rev, n) => { const b = { schema: PG[k].schema, schemaVersion: 1
     await ctx.close();
     const c2 = await b.newContext(); await c2.addInitScript(() => { const o = indexedDB.open.bind(indexedDB); indexedDB.open = (n, v) => { if (n === 'vac-fila') throw new Error('IndexedDB indisponível (simulado)'); return o(n, v); }; });
     const P = await nova(c2, PG.inic.arq); await ev(P, o => Store.commit(o), PG.inic.op('SEM-IDB')); await dorme(400); await ev(P, () => topo());
-    const t = await ev(P, () => ({ pill: /alterações não protegidas/.test(document.getElementById('stBase').innerText), res: JSON.parse(localStorage.getItem('inic.fila.reserva') || '[]').length }));
+    const t = await ev(P, () => ({ pill: /alterações não protegidas/.test(document.getElementById('stBase').innerText), res: JSON.parse(localStorage.getItem('inic.fila.reserva') || '[]').length + Object.keys(localStorage).filter(k => k.startsWith('vac.reserva.inic|')).length }));
     ok(t.pill && t.res === 1, `AT-01 IndexedDB com falha: aviso "alterações não protegidas" e reserva em localStorage (${t.res})`); await c2.close();
   }
 
@@ -83,16 +83,16 @@ const BASE = (k, rev, n) => { const b = { schema: PG[k].schema, schemaVersion: 1
     const ctx = await b.newContext(); await ctx.addInitScript(() => { const o = indexedDB.open.bind(indexedDB); indexedDB.open = (n, v) => { if (n === 'vac-fila' && localStorage.getItem('teste.semidb') === '1') throw new Error('IndexedDB indisponível (simulado)'); return o(n, v); }; });
     const A = await nova(ctx, PG[k].arq); await ev(A, () => localStorage.setItem('teste.semidb', '1')); await A.close();
     const B = await nova(ctx, PG[k].arq); await ev(B, o => Store.commit(o), PG[k].op('RES-1')); await dorme(400);
-    const res = await ev(B, p => JSON.parse(localStorage.getItem(p + '.fila.reserva') || '[]').length, PG[k].ls); await B.close();
+    const res = await ev(B, p => JSON.parse(localStorage.getItem(p + '.fila.reserva') || '[]').length + Object.keys(localStorage).filter(k => k.startsWith('vac.reserva.' + p + '|')).length, PG[k].ls); await B.close();
     // fila antiga com o IndexedDB ainda fora: não pode sumir da fila ativa
     const C0 = await nova(ctx, PG[k].arq); await ev(C0, ([p, op]) => localStorage.setItem(p + '.fila', JSON.stringify([op])), [PG[k].ls, Object.assign(PG[k].op('VELHA-X'), { id: 'opvx', qid: 'opvx' })]); await C0.close();
     const C = await nova(ctx, PG[k].arq); const rC = await ids(C, k); const velha = await ev(C, p => !!localStorage.getItem(p + '.fila'), PG[k].ls); await ev(C, () => localStorage.setItem('teste.semidb', '0')); await C.close();
     ok(res === 1 && rC === 'RES-1,VELHA-X' && velha, `PR #18 ${PG[k].arq}: IndexedDB fora → reserva (${res}) e fila antiga continuam na fila ativa (${rC}); a fila antiga fica no localStorage até migrar`);
     // IndexedDB volta: as duas entram na fila durável, a reserva só sai depois disso, e nada se repete ao reabrir
     const D = await nova(ctx, PG[k].arq); const rD = await ids(D, k); await ev(D, o => Store.commit(o), PG[k].op('DEPOIS')); await dorme(500);
-    const ls = await ev(D, p => ({ res: localStorage.getItem(p + '.fila.reserva'), fila: localStorage.getItem(p + '.fila') }), PG[k].ls); await D.close();
+    const ls = await ev(D, p => ({ res: localStorage.getItem(p + '.fila.reserva'), novas: Object.keys(localStorage).filter(k => k.startsWith('vac.reserva.' + p + '|')).length, fila: localStorage.getItem(p + '.fila') }), PG[k].ls); await D.close();
     const E = await nova(ctx, PG[k].arq); const rE = await ids(E, k);
-    ok(rD === 'RES-1,VELHA-X' && rE === 'DEPOIS,RES-1,VELHA-X' && ls.res === null && ls.fila === null, `PR #18 ${PG[k].arq}: IndexedDB de volta → reserva e fila antiga recuperadas (${rD}); reabrir tem tudo uma vez (${rE}); reserva e fila antiga saem do localStorage`);
+    ok(rD === 'RES-1,VELHA-X' && rE === 'DEPOIS,RES-1,VELHA-X' && ls.res === null && ls.novas === 0 && ls.fila === null, `PR #18 ${PG[k].arq}: IndexedDB de volta → reserva e fila antiga recuperadas (${rD}); reabrir tem tudo uma vez (${rE}); reserva e fila antiga saem do localStorage`);
     await ctx.close();
   }
   {

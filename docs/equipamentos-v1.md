@@ -104,3 +104,7 @@ Mesmas proteções de Iniciativas 1.0.2: fila durável, base que some, confirma�
 - **Link da anomalia sem OS (AT-05):** é `aba=equip&eq=<código codificado>`. `#aba=equip&eq=` seleciona a máquina também ao abrir a página.
 - **"+ Nova OS" no cabeçalho**, como o "+ Nova ação" de Iniciativas. Na ficha de um equipamento, a OS já vem com a máquina.
 
+
+## 1.0.4 · 08/11/2026
+
+Isolamento por pasta e reserva por operação, com cópia de recuperação. Procedimento, testes e limites em [estabilizacao-nv-01-05.md](estabilizacao-nv-01-05.md).

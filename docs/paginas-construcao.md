@@ -193,3 +193,7 @@ O modelo `fontes/modelo/pagina-em-construcao.html` declarava `toast` duas vezes 
 Iniciativas virou página de verdade na **1.0.0** (E6 do plano único). Ela saiu da lista do `gerar_paginas.py` e agora se edita direto no HTML. Detalhes em `docs/iniciativas-planner.md`. Continuam em construção (geradas): Equipamentos e Projetos.
 
 Equipamentos também saiu da construção na **1.0.0** (E11, 08/11/2026): `docs/equipamentos-v1.md`. Em construção (gerada) fica só Projetos.
+
+## 0.1.7 · 08/11/2026
+
+Projetos recebe o kit atualizado e continua em construção. Procedimento, testes e limites em [estabilizacao-nv-01-05.md](estabilizacao-nv-01-05.md).

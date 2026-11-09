@@ -26,6 +26,22 @@ Status usados: **corrigido** · **corrigido em parte** · **recusado** · **adia
 
 ---
 
+## NV. Estabilização após a varredura de 81ea71b (08/11/2026)
+
+A solicitação de realizar as cinco correções foi atendida em branch separada da main. Não representa aprovação de merge ou homologação na pasta real.
+
+| Achado | Tratamento implementado |
+|---|---|
+| NV-01 | Identidade local da pasta por handle/isSameEntry (OPFS por caminho verificável); operações e confirmadas vinculadas à origem; filas de outras origens preservadas; destino de legado pendente exige confirmação |
+| NV-02 | Web Locks durante edição, conexão e sincronização do Portal/Waste; revalidação dentro da trava; snapshot com aba dona; retomada usa a cópia pendente mais recente |
+| NV-03 | Cache da ficha com origem comprovada; nomes iguais não identificam uma pasta; cache legado não é atribuído a uma pasta conectada |
+| NV-04 | Reserva local por operação; limpeza limitada à cópia aceita e à aba dona; reabertura e volta do IndexedDB preservam as alterações |
+| NV-05 | Portal distingue cópia inteira pendente, fila, reserva e estado desconhecido; leitura dos estados locais não escreve nas bases alheias |
+
+Versões: Portal 1.9.3; Produção 2.4.18; Waste 1.8.24; Gel 2.12; Paradas 1.0.23; Equipamentos/Iniciativas 1.0.4; Projetos 0.1.7. Testes e procedimento: [estabilizacao-nv-01-05.md](../estabilizacao-nv-01-05.md).
+
+Limites preservados: retenção de confirmadas por 24 h/2.000 operações, dependência do navegador que fez a alteração, restauração de backup e etapa H. Confirmadas antigas sem origem comprovada não são reaplicadas automaticamente; podem ser baixadas na cópia de recuperação. Perfis não viraram autenticação; nenhuma API/servidor foi introduzida.
+
 ## V. Revisão do Codex sobre `8cad6a6` e contra-análise (08/11/2026)
 
 **Documentos:**

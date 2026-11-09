@@ -131,3 +131,7 @@ O `exports` é gerado de novo quando é de outro dia (ao gravar ou ao abrir a p�
   - A ordem citada só na descrição não entra, nem uma ordem parecida.
   - Uma pílula "Ordem … ✕" tira o filtro.
 
+
+## 1.0.4 · 08/11/2026
+
+Isolamento por pasta e reserva por operação, com cópia de recuperação. Procedimento, testes e limites em [estabilizacao-nv-01-05.md](estabilizacao-nv-01-05.md).

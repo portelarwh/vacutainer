@@ -129,3 +129,7 @@ Trava da 2ª aba: se outra aba do Waste tem alteração não gravada na pasta, e
 
 Só o kit: ficha por pasta (AT-08) e contagem da fila durável para o Portal.
 
+
+## 1.8.24 · 08/11/2026
+
+Exclusão mútua entre abas; retomada preserva o snapshot pendente mais recente. Procedimento, testes e limites em [estabilizacao-nv-01-05.md](estabilizacao-nv-01-05.md).

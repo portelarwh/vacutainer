@@ -514,9 +514,64 @@ function vacAbaInicial(pagina) {
      alterações deste computador que não estão no backup voltariam a ser gravadas; a página avisa quando regrava;
    · falha do IndexedDB: erro visível em F.erro (a página avisa "alteração não protegida"), nunca silêncio.
    As abas vivas ficam em localStorage "vac.aba.<pagina>.<id>" = {t, pend}, renovado a cada 5 s e apagado ao fechar. */
+/* NV-01/NV-03: identidade LOCAL da pasta. Não altera arquivos nem schemas de negócio.
+   OPFS tem caminho relativo verificável; pastas externas usam handle persistido e isSameEntry.
+   Sem identidade comprovável a gravação é recusada, nunca usa o nome da pasta como identidade. */
+async function vacOrigemPasta(pasta) {
+  const h = pasta && pasta.__vacRaiz ? pasta.raiz : pasta;
+  if (!h) return '';
+  try { const raiz = await navigator.storage.getDirectory(), caminho = await raiz.resolve(h); if (caminho) return 'opfs:' + JSON.stringify(caminho); } catch (e) { }
+  if (!navigator.locks) throw new Error('Não foi possível identificar a pasta com segurança neste navegador. Use Chrome ou Edge atualizado.');
+  return navigator.locks.request('vac-origens', async () => {
+    const db = await new Promise((ok, no) => { const r = indexedDB.open('vac-origens', 1); r.onupgradeneeded = () => r.result.createObjectStore('pastas', { keyPath: 'id' }); r.onsuccess = () => ok(r.result); r.onerror = () => no(r.error); });
+    try {
+      const lista = await new Promise((ok, no) => { const r = db.transaction('pastas').objectStore('pastas').getAll(); r.onsuccess = () => ok(r.result); r.onerror = () => no(r.error); });
+      for (const x of lista) { try { if (await h.isSameEntry(x.handle)) return x.id; } catch (e) { } }
+      const id = 'p' + Date.now().toString(36) + Math.random().toString(36).slice(2);
+      await new Promise((ok, no) => { const t = db.transaction('pastas', 'readwrite'); t.objectStore('pastas').put({ id, handle: h }); t.oncomplete = ok; t.onerror = () => no(t.error); t.onabort = () => no(t.error); });
+      return id;
+    } finally { db.close(); }
+  });
+}
+async function vacVincularFila(store, pasta) {
+  const origem = await vacOrigemPasta(pasta);
+  if (!origem) throw new Error('A pasta não foi identificada. As alterações continuam neste navegador.');
+  if (store.origem && store.origem !== origem && store.queue.some(o => o._pasta === store.origem)) throw new Error('Há alterações pendentes de outra pasta. Volte à pasta de origem para gravá-las; nada foi descartado.');
+  const todas = store.queue.concat(store.outrasFilas || []), semOrigem = todas.filter(o => !o._pasta);
+  if (semOrigem.length && !confirm(semOrigem.length + ' alteração(ões) deste navegador ainda não têm pasta de origem identificada. Vincular e gravar na pasta "' + pasta.name + '"? Cancele para manter tudo pendente.')) throw new Error('Alterações sem origem mantidas neste navegador; escolha a pasta e confirme o destino.');
+  semOrigem.forEach(o => o._pasta = origem);
+  store.queue = todas.filter(o => o._pasta === origem); store.outrasFilas = todas.filter(o => o._pasta !== origem);
+  if(store.outrasFilas.length && !store._avisouOutrasFilas){store._avisouOutrasFilas=true;toast(store.outrasFilas.length+' alteração(ões) de outra pasta continuam neste navegador. Conecte a pasta de origem para recuperá-las.');}
+  store.origem = origem;
+  if (store.fila) { store.fila.origem = origem; store.fila.reservar(todas); await store.fila.espelhar(todas); }
+  return origem;
+}
+/* Cópia explícita para recuperação, inclusive de operações antigas sem origem comprovada. */
+function vacRecuperacaoBotao(store) {
+  return !store.test && (store.queue.length || (store.outrasFilas || []).length || store.confirmadasSemOrigem || (store.fila && store.fila.erro))
+    ? '<button class="b sm" data-vac-recuperacao title="Guarda as alterações locais para conferência; não altera nem limpa a fila">Baixar cópia de recuperação</button>' : '';
+}
+function vacDownloadBlob(blob, nome) {
+  const url = URL.createObjectURL(blob), a = document.createElement('a'); a.href = url; a.download = nome;
+  try { a.click(); } finally { setTimeout(() => URL.revokeObjectURL(url), 1000); }
+}
+async function vacBaixarRecuperacao(store) {
+  const d = { pagina: store.fila.pagina, geradoEm: new Date().toISOString(), origem: store.origem || null,
+    pendentes: store.queue.concat(store.outrasFilas || []), confirmadas: await store.fila.confirmadas() };
+  vacDownloadBlob(new Blob([JSON.stringify(d, null, 2)], { type: 'application/json' }), 'recuperacao-' + store.fila.pagina + '-' + Date.now() + '.json');
+}
+document.addEventListener('click', e => { if (e.target.closest && e.target.closest('[data-vac-recuperacao]') && typeof Store !== 'undefined') vacBaixarRecuperacao(Store).catch(x => { if(typeof toast==='function')toast('Não foi possível baixar a cópia: '+x.message); }); });
+/* NV-02: exclusão mútua durante TODO o acesso assíncrono. A trava do navegador é liberada
+   inclusive no fechamento da aba. Sem Web Locks, falha fechada antes de qualquer mutação. */
+function vacEditarBase(pagina, editar, pendente) {
+  if (!navigator.locks) return Promise.reject(new Error('Edição indisponível: este navegador não oferece proteção entre abas. Use Chrome ou Edge atualizado.'));
+  return navigator.locks.request('vac-editar-' + pagina, async () => {
+    try { return await editar(); } finally { vacFila(pagina).marcarPendente(!!pendente()); }
+  });
+}
 const vacFila = (() => {
   let dbP = null; const filas = {}, VIVA = 20000;
-  const abre = () => dbP || (dbP = new Promise((ok, no) => { const r = indexedDB.open('vac-fila', 1); r.onupgradeneeded = () => { const d = r.result; if (!d.objectStoreNames.contains('ops')) d.createObjectStore('ops', { keyPath: 'k' }); if (!d.objectStoreNames.contains('conf')) d.createObjectStore('conf', { keyPath: 'k' }); }; r.onsuccess = () => ok(r.result); r.onerror = () => { dbP = null; no(r.error); }; }));
+  const abre = () => dbP || (dbP = new Promise((ok, no) => { const r = indexedDB.open('vac-fila', 1); r.onupgradeneeded = () => { const d = r.result; if (!d.objectStoreNames.contains('ops')) d.createObjectStore('ops', { keyPath: 'k' }); if (!d.objectStoreNames.contains('conf')) d.createObjectStore('conf', { keyPath: 'k' }); }; r.onsuccess = () => ok(r.result); r.onerror = () => { dbP = null; no(r.error); }; }).catch(e => { dbP = null; throw e; }));
   const tx = async (st, modo, fn) => { const d = await abre(); return new Promise((ok, no) => { const t = d.transaction(st, modo), s = t.objectStore(st); let v; Promise.resolve(fn(s)).then(x => v = x); t.oncomplete = () => ok(v); t.onerror = () => no(t.error); t.onabort = () => no(t.error || new Error('transação abortada')); }); };
   const req = r => new Promise((ok, no) => { r.onsuccess = () => ok(r.result); r.onerror = () => no(r.error); });
   const faixa = p => IDBKeyRange.bound(p + '|', p + '|\uffff');
@@ -525,18 +580,26 @@ const vacFila = (() => {
   function abas(pagina) { const L = []; try { for (let i = 0; i < localStorage.length; i++) { const k = localStorage.key(i); if (!k || !k.startsWith('vac.aba.' + pagina + '.')) continue; let v = null; try { v = JSON.parse(localStorage.getItem(k)); } catch (e) { } if (v && Date.now() - (+v.t || 0) < VIVA) L.push({ id: k.slice(('vac.aba.' + pagina + '.').length), pend: !!v.pend }); } } catch (e) { } return L; }
   function cria(pagina) {
     const aba = 'a' + Math.random().toString(36).slice(2, 10) + Date.now().toString(36), chaveLS = 'vac.aba.' + pagina + '.' + aba;
-    const F = { pagina, aba, erro: '', meus: new Set(), seq: 0, pend: false, _p: Promise.resolve() };
+    const F = { pagina, aba, origem: '', erro: '', meus: new Set(), reservasMinhas: new Set(), seq: 0, pend: false, _p: Promise.resolve() };
     const sinal = () => { try { localStorage.setItem(chaveLS, JSON.stringify({ t: Date.now(), pend: F.pend })); } catch (e) { } };
     sinal(); setInterval(sinal, 5000); addEventListener('pagehide', () => { try { localStorage.removeItem(chaveLS); } catch (e) { } });
     const serie = fn => (F._p = F._p.then(fn, fn));          /* uma operação de cada vez, na ordem pedida */
     const falhou = e => { F.erro = 'alterações pendentes não estão protegidas neste navegador (' + ((e && (e.name || e.message)) || e) + ')'; console.warn('[vacFila]', pagina, e); return null; };
     const q = op => op.qid || (op.qid = uidq());
     const reg = op => ({ k: pagina + '|' + q(op), pagina, qid: op.qid, aba, seq: op._seq || (op._seq = Date.now() * 1000 + (F.seq++ % 1000)), op: JSON.parse(JSON.stringify(op)) });
+    const chaveReserva = id => 'vac.reserva.' + pagina + '|' + id;
+    /* NV-04: uma chave por operação. Nunca apaga uma reserva pertencente a outra aba. */
+    F.reservar = lista => { try { const ks = new Set(); for (const op of lista) { reg(op); const k = chaveReserva(q(op)); localStorage.setItem(k, JSON.stringify({ pagina, aba, op })); ks.add(k); }
+      for (const k of F.reservasMinhas) if (!ks.has(k)) { const x = JSON.parse(localStorage.getItem(k) || 'null'); if (x && x.aba === aba) localStorage.removeItem(k); } F.reservasMinhas = ks;
+    } catch (e) { falhou(e); } };
+    F.reservas = () => { const L = []; try { const vivas = new Set(abas(pagina).map(x => x.id)); for (let i = 0; i < localStorage.length; i++) { const k = localStorage.key(i); if (!k.startsWith('vac.reserva.' + pagina + '|')) continue; const x = JSON.parse(localStorage.getItem(k)); if (x.aba === aba || !vivas.has(x.aba)) { localStorage.setItem(k, JSON.stringify({ ...x, aba })); F.reservasMinhas.add(k); L.push(x.op); } } } catch (e) { falhou(e); } return L; };
     F.vivas = () => abas(pagina).filter(x => x.id !== aba);
     F.marcarPendente = v => { if (F.pend !== !!v) { F.pend = !!v; sinal(); } };
     F.outraComPendencia = () => F.vivas().some(x => x.pend);
-    F.espelhar = lista => serie(async () => { try { const L = (lista || []).filter(Boolean); const ks = new Set(L.map(o => pagina + '|' + q(o)));
-      await tx('ops', 'readwrite', s => { for (const o of L) s.put(reg(o)); for (const k of F.meus) if (!ks.has(k)) s.delete(k); }); F.meus = ks; F.erro = ''; return true; } catch (e) { falhou(e); return false; } });
+    F.espelhar = lista => serie(async () => { try { const L = (lista || []).filter(Boolean), registros = L.map(reg); const ks = new Set(registros.map(r => r.k));
+      await tx('ops', 'readwrite', s => { for (const r of registros) s.put(r); for (const k of F.meus) if (!ks.has(k)) s.delete(k); }); F.meus = ks;
+      for (const r of registros) { const k = chaveReserva(r.qid); try { const x = JSON.parse(localStorage.getItem(k) || 'null'); if (x && x.aba === aba && JSON.stringify(x.op) === JSON.stringify(r.op)) localStorage.removeItem(k); } catch (e) { } }
+      F.erro = ''; return true; } catch (e) { falhou(e); return false; } });
     F.minhas = () => serie(async () => { try {
       const todos = await tx('ops', 'readonly', s => req(s.getAll(faixa(pagina)))); const vivas = new Set(abas(pagina).map(x => x.id));
       const orfas = todos.filter(r => r.aba !== aba && !vivas.has(r.aba));
@@ -561,6 +624,13 @@ const vacFila = (() => {
   /* C5 · só leitura, para o Portal › Versões: alterações ainda não gravadas na pasta, por página, neste navegador. Não cria aba nem sinal de vida.
      Volta { pagina: n } ou null se o IndexedDB falhar. */
   fn.contar = async () => { try { const L = await tx('ops', 'readonly', s => req(s.getAll())); const R = {}; for (const r of L) R[r.pagina] = (R[r.pagina] || 0) + 1; return R; } catch (e) { return null; } };
+  /* NV-05: leitura dos estados locais, inclusive cópias inteiras. Não cria bases nem stores alheios. */
+  fn.saude = async () => {
+    const lerCopia = nome => new Promise(resolve => { let inexistente=false; try { const r = indexedDB.open(nome); r.onupgradeneeded = () => {inexistente=true;r.transaction.abort()}; r.onerror = () => resolve(inexistente ? false : null); r.onblocked = () => resolve(null); r.onsuccess = () => { const db = r.result; if (!db.objectStoreNames.contains('kv')) { db.close(); return resolve(null); } const t = db.transaction('kv'), q = t.objectStore('kv').get('pending'); q.onsuccess = () => resolve(!!(q.result && q.result.p)); q.onerror = () => resolve(null); t.oncomplete = () => db.close(); }; } catch (e) { resolve(null); } });
+    let reservas = {}; try { for (let i = 0; i < localStorage.length; i++) { const k = localStorage.key(i); if (k.startsWith('vac.reserva.')) { const x = JSON.parse(localStorage.getItem(k)); reservas[x.pagina] = (reservas[x.pagina] || 0) + 1; } else if (/^(inic|equip|paradas)\.fila\.reserva$/.test(k)) { const L = JSON.parse(localStorage.getItem(k)); if (L && L.length) reservas[k.split('.')[0]] = (reservas[k.split('.')[0]] || 0) + L.length; } } } catch (e) { reservas = null; }
+    const [portal, perdas] = await Promise.all([lerCopia('vac-portal'), lerCopia('perdas-ordem')]);
+    return { reservas, copias: { portal, perdas } };
+  };
   return fn;
 })();
 /* AT-03 · formato da própria base: schema da página (base antiga sem schema é aceita como versão 1) e schemaVersion até a conhecida.
@@ -586,9 +656,9 @@ function vacLinkSeguro(u) {
    ainda não gravada na pasta, esta aba não altera nada (as duas versões pendentes se sobrescreveriam). Nada é descartado: a pessoa
    grava ou fecha a outra aba. A recusa interrompe quem chamou (erro "VacAbaBloqueada", sem mensagem de "gravado" depois) e não
    aparece como erro no console. A página informa o próprio estado com vacFila(p).marcarPendente(bool). */
-function vacGuardaAba(pagina, minhaPendente) {
-  if (typeof vacFila !== 'function' || minhaPendente) return;
-  let F; try { F = vacFila(pagina); } catch (e) { return; } if (!F.outraComPendencia()) return;
+function vacGuardaAba(pagina, minhaPendente, copia) {
+  if (typeof vacFila !== 'function') return;
+  let F; try { F = vacFila(pagina); } catch (e) { return; } const donoVivo=copia&&copia.p&&copia.aba&&copia.aba!==F.aba&&F.vivas().some(x=>x.id===copia.aba); if (!donoVivo&&(minhaPendente||!F.outraComPendencia())) return;
   const m = 'Outra aba desta página tem alteração ainda não gravada na pasta. Para não perder nenhuma das duas, grave (ou feche) aquela aba antes de alterar aqui. Nada foi descartado.';
   try { if (typeof toast === 'function') toast(m, 9000, true); else alert(m); } catch (x) { }
   const e = new Error(m); e.name = 'VacAbaBloqueada'; throw e;
@@ -617,7 +687,7 @@ addEventListener('error', e => { if (e.error && e.error.name === 'VacAbaBloquead
 <main class="wrap" id="main"></main>
 <div class="toasts" id="toasts"></div>
 <script>
-const PAGE={id:"inic",titulo:"Iniciativas · Ações · KAS · OSM · 5S",tituloCurto:"Iniciativas",subtitulo:"Ações (Planner) · KAS · OSM · 5S",versao:"1.0.3",baseFile:"iniciativas-base.json",backupDir:"00. Backups/Iniciativas",estado:"atualizacao",estadoNota:"Primeira versão: Ações (Planner) e KAS. OSM e 5S chegam nas próximas etapas."};
+const PAGE={id:"inic",titulo:"Iniciativas · Ações · KAS · OSM · 5S",tituloCurto:"Iniciativas",subtitulo:"Ações (Planner) · KAS · OSM · 5S",versao:"1.0.4",baseFile:"iniciativas-base.json",backupDir:"00. Backups/Iniciativas",estado:"atualizacao",estadoNota:"Primeira versão: Ações (Planner) e KAS. OSM e 5S chegam nas próximas etapas."};
 const APP_VERSION=PAGE.versao;
 /* ---------- vac-cabecalho v2 · JS (igual em todas as páginas) ---------- */
 const VAC_CAB_VERSAO=2;
@@ -971,9 +1041,10 @@ const vacFicha = (() => {
     S.carregando = (async () => {
       const dir = pasta();
       /* AT-08 · trocou de pasta na mesma aba: o que a ficha tem em memória e o índice da busca são da pasta anterior; relê tudo.
-         A cópia do IndexedDB guarda o nome da pasta e só serve para a mesma pasta. */
+         NV-03: a cópia do IndexedDB guarda a identidade comprovada da origem, não só o nome final. */
       if (dir) { let mesma = false; try { mesma = !!S.pasta && await dir.isSameEntry(S.pasta); } catch (e) { } if (S.pasta && !mesma) { S.dados = {}; S.idx = null; } S.pasta = dir; }
       const nomeP = dir ? String(dir.name || '') : '';
+      let origem = ''; if(dir) { try { origem = await vacOrigemPasta(dir); } catch(e) { } }
       for (const f of FONTES) {
         const atual = S.dados[f.id];
         try {
@@ -983,10 +1054,10 @@ const vacFicha = (() => {
           if (!forcar && atual && atual.estado === 'pasta' && atual.mod === arq.lastModified && atual.tam === arq.size) continue;
           const j = JSON.parse(await arq.text()), ex = j && j.exports, v = typeof vacExportsOk === 'function' ? vacExportsOk(ex) : { ok: !!ex };
           if (!v.ok) { S.dados[f.id] = { estado: ex ? 'versao' : 'semexports', motivo: v.motivo || 'a base ainda não publica o resumo (exports)' }; continue; }
-          const x = { estado: 'pasta', mod: arq.lastModified, tam: arq.size, lidoEm: new Date().toISOString(), geradoEm: ex.geradoEm || null, pasta: nomeP, d: f.pega(ex) };
+          const x = { estado: 'pasta', mod: arq.lastModified, tam: arq.size, lidoEm: new Date().toISOString(), geradoEm: ex.geradoEm || null, pasta: nomeP, origem, d: f.pega(ex) };
           S.dados[f.id] = x; try { await idbSet(f.id, x); } catch (e) { }
         } catch (e) {
-          let c = atual && atual.d ? atual : null; if (!c) { try { c = await idbGet(f.id); } catch (x) { } } if (c && nomeP && c.pasta && c.pasta !== nomeP) c = null;   // cópia de outra pasta não vale para esta
+          let c = atual && atual.d ? atual : null; if (!c) { try { c = await idbGet(f.id); } catch (x) { } } if (c && dir && (!origem || !c.origem || c.origem !== origem)) c = null;   // cópia de outra pasta não vale para esta
           const motivo = e && e.semPasta ? 'pasta da rede não conectada nesta página' : `não consegui ler ${f.base} (${(e && (e.name || e.message)) || e})`;
           S.dados[f.id] = c && c.d ? { ...c, estado: 'cache', motivo } : { estado: e && e.semPasta ? 'sempasta' : 'erro', motivo };
         }
@@ -1255,10 +1326,10 @@ function tempos(a,D=Store.data,agora=new Date()){
  soma(+agora);return{porSt,porRs:Object.entries(porRs),aberto}}
 
 /* ---------- Store: pasta da rede + cópia local + fila ---------- */
-const Store={dir:null,dirName:'',perm:false,data:completar(vazio()),queue:[],fila:null,sumiu:false,saving:false,again:false,lastErr:'',readErr:'',test:false,baseFound:false,lastSaved:null,
+const Store={origem:'',dir:null,dirName:'',perm:false,data:completar(vazio()),queue:[],fila:null,sumiu:false,saving:false,again:false,lastErr:'',readErr:'',test:false,baseFound:false,lastSaved:null,
  async init(){this.fila=vacFila('inic');const c=LS.get('inic.cache',null);if(c)this.data=completar(c);
   /* C1 · fila durável do kit (um registro por alteração no IndexedDB); se o IndexedDB falhar, a reserva em localStorage */
-  const leg=await this.migrarFila();const m=await this.fila.minhas();/* C1 · revisão do PR #18: a reserva (IndexedDB falhou antes) e a fila antiga que não migrou entram junto, sem repetir; a reserva só sai depois que a fila durável aceitar tudo (cache) */{const vis=new Set();this.queue=[].concat(leg||[],LS.get('inic.fila.reserva',[])||[],m||[]).filter(o=>{if(!o)return false;const k=o.qid||o.id;if(!k)return true;if(vis.has(k))return false;vis.add(k);return true})}this._leg=!!(leg&&leg.length);this.queue.forEach(op=>applyOp(this.data,op));
+  const leg=await this.migrarFila();const m=await this.fila.minhas();this.confirmadasSemOrigem=(await this.fila.confirmadas()).filter(o=>!o._pasta).length;/* C1 · revisão do PR #18: a reserva (IndexedDB falhou antes) e a fila antiga que não migrou entram junto, sem repetir; a reserva só sai depois que a fila durável aceitar tudo (cache) */{const vis=new Set();this.queue=[].concat(leg||[],LS.get('inic.fila.reserva',[])||[],this.fila.reservas(),m||[]).filter(o=>{if(!o)return false;const k=o.qid||o.id;if(!k)return true;if(vis.has(k))return false;vis.add(k);return true})}this._leg=!!(leg&&leg.length);this.queue.forEach(op=>applyOp(this.data,op));
   try{const h=await IDB.get('pasta');if(h){this.dir=vacRaiz(h);this.dirName=h.name;this.perm=(await h.queryPermission({mode:'readwrite'}))==='granted'}}catch(e){}
   if(this.perm){await this.reload();if(!this.sumiu&&(this.queue.length||(this.baseFound&&!this.readErr&&diaLocal((this.data.exports||{}).geradoEm)!==hoje())))this.save()}},
  /* C1 · a fila antiga (localStorage, até a 1.0.1) entra uma vez na fila durável; a original fica em inic.fila.antiga para conferência */
@@ -1266,13 +1337,15 @@ const Store={dir:null,dirName:'',perm:false,data:completar(vazio()),queue:[],fil
   let leg=[];if(Array.isArray(v)){v.forEach(o=>{o.qid=o.qid||o.id});if(!await this.fila.importar(v,()=>{if(v.length)LS.set('inic.fila.antiga',v);LS.del('inic.fila')}))leg=v}
   if(Array.isArray(cf)){if(cf.length&&!await this.fila.confirmar(cf.map(o=>{const{_c,...x}=o;x.qid=x.qid||x.id;return x})))return leg;LS.del('inic.conf')}return leg},
  /* AT-02 · a última base lida nesta estação (por pasta): se ela some, nada é gravado até a pessoa decidir */
- conhecer(b){LS.set('inic.base.conhecida',{rev:b.rev||0,revId:b.revId||'',pasta:this.dirName,em:new Date().toISOString()})},
+ conhecida(){const mapa=LS.get('inic.bases.conhecidas',{}),leg=LS.get('inic.base.conhecida',null);return mapa[this.origem]||((leg&&(!leg.origem?leg.pasta===this.dirName:leg.origem===this.origem))?leg:null)},
+ conhecer(b){const x={rev:b.rev||0,revId:b.revId||'',pasta:this.dirName,origem:this.origem,em:new Date().toISOString()},mapa=LS.get('inic.bases.conhecidas',{});mapa[this.origem]=x;LS.set('inic.bases.conhecidas',mapa);LS.set('inic.base.conhecida',x)},
  async recriar(){if(!this.sumiu)return;const n=Object.values(this.data).filter(Array.isArray).reduce((s,L)=>s+L.length,0);
   if(!confirm(`Recriar ${PAGE.baseFile} em 00. Bases com a cópia deste navegador?\n\nA cópia tem a rev ${this.data.rev||0} (${n} registro(s), histórico incluído) e as alterações pendentes. O que outras estações gravaram depois da última leitura deste computador não está nela.`))return;
   this.dataRecriar=clone(this.data);this.dataRecriar.exports=null;this._recriar=true;this.readErr='';await this.save();render()},
  async pick(){if(!window.showDirectoryPicker){toast('Este navegador não permite acesso à pasta (use Chrome ou Edge).',1);return}
   try{const h=await showDirectoryPicker({id:'vac-sistemas',mode:'readwrite'});await this.usar(h);toast('Pasta conectada: '+h.name)}catch(e){if(e.name!=='AbortError')toast('Não foi possível abrir a pasta: '+e.message,1)}},
- async usar(h){const antes={dir:this.dir,dirName:this.dirName,perm:this.perm};this.dir=vacRaiz(h);this.dirName=h.name;this.perm=true;this._bases=false;this.sumiu=false;await this.reload();
+ async preparar(){if(!this.test&&this.dir)await vacVincularFila(this,this.dir)},
+ async usar(h){await vacVincularFila(this,h);const antes={dir:this.dir,dirName:this.dirName,perm:this.perm};this.dir=vacRaiz(h);this.dirName=h.name;this.perm=true;this._bases=false;this.sumiu=false;await this.reload();
   /* AT-02 · pasta sem a base: só cria com a confirmação (como o Portal); se é a pasta onde a base existia, não oferece criar por cima */
   if(!this.readErr&&!this.baseFound&&!this.sumiu){if(!confirm(`A pasta "${h.name}" não tem 00. Bases/${PAGE.baseFile}.\n\nCriar a base nesta pasta? Só as alterações ainda pendentes deste navegador vão para a base nova.`)){Object.assign(this,antes);toast('Pasta não conectada: nada foi criado.');render();return}}
   await IDB.set('pasta',h);if(!this.readErr&&!this.sumiu)await this.save();render()},
@@ -1283,28 +1356,28 @@ const Store={dir:null,dirName:'',perm:false,data:completar(vazio()),queue:[],fil
  async escrever(obj,dir,nome){const h=await(dir||this.dir).getFileHandle(nome||PAGE.baseFile,{create:true});const w=await h.createWritable();await w.write(JSON.stringify(obj));await w.close()},
  async reload(){if(this.test||!this.dir||!this.perm)return;
   if(!this._bases){this._bases=true;try{vacAvisoBases(await vacMoverBases(this.dir,[[PAGE.baseFile,PAGE.backupDir]]))}catch(e){console.warn('bases',e)}}
-  try{const r=await this.ler();this.readErr='';await this.recarga(r)}
+  try{await this.preparar();const r=await this.ler();this.readErr='';await this.recarga(r)}
   catch(e){this.readErr='Não consegui ler '+PAGE.baseFile+' ('+(e.message||e.name)+'). Nada será gravado até a leitura voltar; as alterações ficam pendentes neste navegador.';toast(this.readErr,1)}},
- async recarga(r){const k=LS.get('inic.base.conhecida',null);
+ async recarga(r){const k=this.conhecida();
   if(r){const n=await this.perdidas(r);if(n){toast(n+' alteração(ões) sua(s) que outra estação gravou por cima voltaram para a fila e serão gravadas de novo.');setTimeout(()=>this.save(),50)}
    this.sumiu=false;this.data=completar(r);this.baseFound=true;this.queue.forEach(op=>applyOp(this.data,op));this.conhecer(r);this.cache()}
-  else{this.baseFound=false;this.sumiu=!!(k&&k.pasta===this.dirName);if(this.sumiu)this.readErr=`${PAGE.baseFile} não está mais em 00. Bases (a última lida neste computador era a rev ${k.rev}, de ${brh(k.em)}). Nada será gravado: recrie a base com a cópia deste navegador ou escolha a pasta certa.`}},
+  else{this.baseFound=false;this.sumiu=!!(k&&(!k.origem||k.origem===this.origem));if(this.sumiu)this.readErr=`${PAGE.baseFile} não está mais em 00. Bases (a última lida neste computador era a rev ${k.rev}, de ${brh(k.em)}). Nada será gravado: recrie a base com a cópia deste navegador ou escolha a pasta certa.`}},
  cache(){if(this.test)return;const c=clone(this.data);c.exports=null;LS.set('inic.cache',c);
-  if(this.fila)this.fila.espelhar(this.queue).then(ok=>{if(ok){LS.del('inic.fila.reserva');if(this._leg){this._leg=false;const v=LS.get('inic.fila',null);if(Array.isArray(v)){if(v.length)LS.set('inic.fila.antiga',v);LS.del('inic.fila')}}}else{LS.set('inic.fila.reserva',this.queue);topo()}})},
+  if(this.fila){this.fila.reservar(this.queue.concat(this.outrasFilas||[]));this.fila.espelhar(this.queue.concat(this.outrasFilas||[])).then(ok=>{if(ok){LS.del('inic.fila.reserva');if(this._leg){this._leg=false;const v=LS.get('inic.fila',null);if(Array.isArray(v)){if(v.length)LS.set('inic.fila.antiga',v);LS.del('inic.fila')}}}else{topo()}})}},
  /* R-01 · operações confirmadas nas últimas 24 h (fila durável do kit) que não estão na auditoria da base: outra estação gravou por
     cima depois da nossa releitura. Voltam para a fila (as operações são idempotentes) e a página avisa. */
- async perdidas(base){if(!base||!this.fila)return 0;const C=await this.fila.confirmadas(864e5);if(!C.length)return 0;const ids=new Set((base.auditoria||[]).map(a=>a.id));
+ async perdidas(base){if(!base||!this.fila)return 0;const todas=await this.fila.confirmadas(864e5);this.confirmadasSemOrigem=todas.filter(o=>!o._pasta).length;const C=todas.filter(o=>o._pasta&&o._pasta===this.origem);if(!C.length)return 0;const ids=new Set((base.auditoria||[]).map(a=>a.id));
   const L=C.filter(o=>!ids.has(o.id));if(!L.length)return 0;await this.fila.esquecer(L.map(o=>o.qid));const naFila=new Set(this.queue.map(o=>o.id));
   this.queue=L.filter(o=>!naFila.has(o.id)).map(({_c,...o})=>o).concat(this.queue);this.cache();return L.length},
- commit(op,{silencio}={}){op.id=op.id||uid('op');op.qid=op.id;op.em=new Date().toISOString();op.por=user()||'';this.queue.push(op);applyOp(this.data,op);this.cache();if(!silencio)render();clearTimeout(this.t);this.t=setTimeout(()=>this.save(),600)},
+ commit(op,{silencio}={}){op._pasta=this.origem||'';op.id=op.id||uid('op');op.qid=op.id;op.em=new Date().toISOString();op.por=user()||'';this.queue.push(op);applyOp(this.data,op);this.cache();if(!silencio)render();clearTimeout(this.t);this.t=setTimeout(()=>this.save(),600)},
  async save(){if(this.test){this.queue=[];topo();return}
   if(!this.dir||!this.perm){topo();return}
   if(this.saving){this.again=true;return}this.saving=true;topo();
   try{for(let volta=0;volta<5;volta++){
     let fresh;
-    try{fresh=await this.ler()}catch(e){throw new Error('não consegui ler a base antes de gravar ('+(e.message||e.name)+'); nada foi gravado')}
+    try{await this.preparar();fresh=await this.ler()}catch(e){throw new Error('não consegui ler a base antes de gravar ('+(e.message||e.name)+'); nada foi gravado')}
     /* AT-02 · base que já existiu nesta pasta e sumiu: nada é gravado (sem recriar vazia) até "Recriar a base" */
-    if(!fresh&&!this._recriar){const k=LS.get('inic.base.conhecida',null);if(this.sumiu||(k&&k.pasta===this.dirName)){this.sumiu=true;throw new Error(PAGE.baseFile+' sumiu da pasta; nada foi gravado (use "Recriar a base" ou escolha a pasta certa)')}}
+    if(!fresh&&!this._recriar){const k=this.conhecida();if(this.sumiu||(k&&(!k.origem||k.origem===this.origem))){this.sumiu=true;throw new Error(PAGE.baseFile+' sumiu da pasta; nada foi gravado (use "Recriar a base" ou escolha a pasta certa)')}}
     if(fresh)await this.perdidas(fresh);const n=this.queue.length;
     if(!n&&fresh&&fresh.exports&&fresh.appVersion===APP_VERSION&&diaLocal(fresh.exports.geradoEm)===hoje()){this.data=completar(fresh);this.baseFound=true;break}
     const D=completar(fresh?clone(fresh):this._recriar&&this.dataRecriar?clone(this.dataRecriar):vazio()),revAntes=D.rev||0,ops=this.queue.slice(0,n);ops.forEach(op=>applyOp(D,op));
@@ -1358,7 +1431,7 @@ function topo(){const el=$('#stBase');if(!el)return;const S=Store,n=S.queue.leng
  if(S.sumiu)h+=` <span class="pill crit" title="${esc(S.readErr)}">base sumiu da pasta</span> <button class="b sm" id="tRecriar">Recriar a base</button> <button class="b sm" id="tOutra">Escolher outra pasta</button>`;
  else if(S.readErr||S.lastErr)h+=` <span class="pill crit" title="${esc(S.readErr||S.lastErr)}">${S.readErr?'erro de leitura':'gravação pendente'}</span> ${S.dir&&S.perm?'<button class="b sm" id="tRetry">Gravar de novo</button>':''}`;
  if(S.fila&&S.fila.erro)h+=` <span class="pill crit" title="${esc(S.fila.erro)}">alterações não protegidas</span>`;
- el.innerHTML=h;const c=$('#tConn');if(c)c.onclick=()=>S.dir?S.reconnect():S.pick();const r=$('#tRetry');if(r)r.onclick=async()=>{await S.reload();await S.save();render()};const rc=$('#tRecriar');if(rc)rc.onclick=()=>S.recriar();const ou=$('#tOutra');if(ou)ou.onclick=()=>S.pick()}
+ h+=vacRecuperacaoBotao(S);el.innerHTML=h;const c=$('#tConn');if(c)c.onclick=()=>S.dir?S.reconnect():S.pick();const r=$('#tRetry');if(r)r.onclick=async()=>{await S.reload();await S.save();render()};const rc=$('#tRecriar');if(rc)rc.onclick=()=>S.recriar();const ou=$('#tOutra');if(ou)ou.onclick=()=>S.pick()}
 function navHtml(){const at=Store.data.acoes.filter(atrasada).length;return ABAS.map(([id,n])=>`<button data-t="${id}" class="${App.tab===id?'on':''}">${esc(n)}${id==='acoes'&&at?` <span class="cnt" title="ações atrasadas">${at}</span>`:''}</button>`).join('')}
 function ir(tab){App.tab=tab;const h='#aba='+tab;if(location.hash!==h)history.replaceState(history.state,'',h);render()}
 document.addEventListener('click',e=>{const b=e.target.closest('#nav [data-t]');if(b)ir(b.dataset.t)});
