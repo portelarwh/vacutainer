@@ -172,3 +172,7 @@ Responde à auditoria de relatórios e painéis (registro § P). Regras `R(...)`
 - O bloco `ordens` (mês atual e anterior) continua igual.
 - Sem OEE por ordem: falta definir a atribuição de tempo e capacidade.
 - **Produção › Ordens:** só usa o `exports` do Waste se a versão for conhecida (`vacExportsOk`).
+
+## 2.4.18 · 08/11/2026
+
+Atualização do kit comum, com cache identificado pela origem da pasta. Procedimento, testes e limites em [estabilizacao-nv-01-05.md](estabilizacao-nv-01-05.md).

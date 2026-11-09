@@ -56,8 +56,10 @@ const fecha = () => document.querySelectorAll('.overlay').forEach(o => o.remove(
     });
     ok(r.txt && r.txt.includes("'=HIPERLINK(\"\"x\"\")") && r.txt.includes(';-12,5') && r.txt.includes('-1.234;3'), 'Waste: CSV exportado com a fórmula como texto e os números iguais');
     ok(r.n === 2 && r.v === 2, `Waste: downloads de CSV e JSON liberam a URL depois (${r.n} criadas, ${r.v} liberadas)`);
-    const fora = []; for (const m of src.matchAll(/createObjectURL/g)) { const ctx = src.slice(Math.max(0, m.index - 120), m.index); if (!/function downloadBlob\(|Logo|this\.url/.test(ctx)) fora.push(src.slice(m.index - 60, m.index + 20)); }
-    ok(!fora.length, `Waste: createObjectURL só no downloadBlob e no logo${fora.length ? ' (sobrou: ' + fora[0] + ')' : ''}`);
+    const comum = await p.evaluate(async () => { let n=0,v=0;const c=URL.createObjectURL,rv=URL.revokeObjectURL;URL.createObjectURL=x=>{n++;return c.call(URL,x)};URL.revokeObjectURL=x=>{v++;return rv.call(URL,x)};try{vacDownloadBlob(new Blob(['teste']),'recuperacao-teste.json');await new Promise(r=>setTimeout(r,1200));return{n,v}}finally{URL.createObjectURL=c;URL.revokeObjectURL=rv} });
+    ok(comum.n===1&&comum.v===1,'Kit: download da recuperação libera a URL');
+    const fora = []; for (const m of src.matchAll(/createObjectURL/g)) { const ctx = src.slice(Math.max(0, m.index - 120), m.index); if (!/function (?:downloadBlob|vacDownloadBlob)\(|Logo|this\.url/.test(ctx)) fora.push(src.slice(m.index - 60, m.index + 20)); }
+    ok(!fora.length, `Waste: createObjectURL só nos helpers de download e no logo${fora.length ? ' (sobrou: ' + fora[0] + ')' : ''}`);
     await p.close();
   }
 

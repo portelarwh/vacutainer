@@ -197,3 +197,7 @@ Cada aba só grava e apaga as próprias alterações, porque reaplicar operaçõ
 - **`vacFila.contar()`** (`kit_bases.js`): só leitura. Devolve `{ pagina: n }` com as alterações deste navegador que ainda não foram gravadas na pasta. Não cria aba nem sinal de vida. Quem usa é o Portal › Versões.
 - **Ficha por pasta (AT-08, `kit_v21.js`):** ao trocar de pasta na mesma aba, a ficha limpa os dados em memória e o índice da busca. A cópia no IndexedDB guarda o nome da pasta e só é usada para essa mesma pasta.
 
+
+## NV-01–NV-05 · 08/11/2026
+
+Identidade local de origem, reserva por operação, Web Locks e leitura de saúde dos dados. Gel 2.12 recebe o kit atualizado. Procedimento, testes e limites em [estabilizacao-nv-01-05.md](estabilizacao-nv-01-05.md).

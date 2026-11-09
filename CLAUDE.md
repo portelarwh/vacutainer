@@ -6,14 +6,14 @@ Plataforma de páginas HTML de arquivo único que trabalham juntas numa **pasta 
 
 | Página | Arquivo | Base | Versão | Como editar |
 |---|---|---|---|---|
-| Portal (cadastro geral, Administração) | `Portal.html` | `portal-base.json` + `vacutainer-cadastros.json` | 1.9.2 | direto no HTML |
-| Produção (OEE, plano, ordens SAP) | `OEE-Vacutainer.html` | `oee-vacutainer-base.json` (+ `ordens-base.json`) | 2.4.17 | **NÃO editar o HTML**: editar `fontes/producao/` e rodar o build |
-| Waste (perdas por ordem, KKBC) | `Perdas-Ordem.html` | `perdas-base.json` | 1.8.23 | direto no HTML |
-| Gestão de Gel | `Gestão-Gel-Vacutainer.html` | `fifo-base.json` | 2.11 · **em atualização** | direto no HTML |
-| Paradas | `Paradas.html` | `paradas-base.json` | 1.0.22 · **em atualização** | direto no HTML |
-| Equipamentos (com manutenção) | `Equipamentos.html` | `equipamentos-base.json` | 1.0.3 · **em atualização** | direto no HTML (saiu do gerador na 1.0.0; `docs/equipamentos-v1.md`) |
-| Iniciativas (Ações/Planner · KAS · OSM · 5S) | `Iniciativas.html` | `iniciativas-base.json` | 1.0.3 · **em atualização** | direto no HTML (saiu do gerador na 1.0.0; `docs/iniciativas-planner.md`) |
-| Projetos | `Projetos.html` | (`projetos-base.json`, ainda não existe) | 0.1.6 · **em construção** | **gerada**: `fontes/modelo/gerar_paginas.py` |
+| Portal (cadastro geral, Administração) | `Portal.html` | `portal-base.json` + `vacutainer-cadastros.json` | 1.9.3 | direto no HTML |
+| Produção (OEE, plano, ordens SAP) | `OEE-Vacutainer.html` | `oee-vacutainer-base.json` (+ `ordens-base.json`) | 2.4.18 | **NÃO editar o HTML**: editar `fontes/producao/` e rodar o build |
+| Waste (perdas por ordem, KKBC) | `Perdas-Ordem.html` | `perdas-base.json` | 1.8.24 | direto no HTML |
+| Gestão de Gel | `Gestão-Gel-Vacutainer.html` | `fifo-base.json` | 2.12 · **em atualização** | direto no HTML |
+| Paradas | `Paradas.html` | `paradas-base.json` | 1.0.23 · **em atualização** | direto no HTML |
+| Equipamentos (com manutenção) | `Equipamentos.html` | `equipamentos-base.json` | 1.0.4 · **em atualização** | direto no HTML (saiu do gerador na 1.0.0; `docs/equipamentos-v1.md`) |
+| Iniciativas (Ações/Planner · KAS · OSM · 5S) | `Iniciativas.html` | `iniciativas-base.json` | 1.0.4 · **em atualização** | direto no HTML (saiu do gerador na 1.0.0; `docs/iniciativas-planner.md`) |
+| Projetos | `Projetos.html` | (`projetos-base.json`, ainda não existe) | 0.1.7 · **em construção** | **gerada**: `fontes/modelo/gerar_paginas.py` |
 
 Divisão final (Portal 1.7): Portal · Produção · Waste · Gestão de Gel · Paradas · **Equipamentos** (inclui manutenção; não há página Manutenção) · **Iniciativas** (uma página: Ações/Planner · KAS · OSM · 5S; não há OSM.html) · **Projetos** · Outros ▾ · ⚙ Administração.
 Situação de cada página (em construção / em atualização / estável): `PAGE.estado` + `sistemas.js`, trocável no Portal › Configuração › Módulos; ver `docs/paginas-construcao.md`. Páginas em construção são **geradas** (não editar o HTML; editar `fontes/modelo/` e rodar o gerador). Quando uma delas começar de verdade (v1.0), tirar da lista do gerador e passar a editar direto. Arquitetura: `docs/plano-evolucao-plataforma.md`, `docs/osm-arquitetura.md` (aba OSM de Iniciativas). `docs/paginas-novas.md` é histórico (lista antiga Máquinas/Manutenção).
@@ -43,6 +43,7 @@ node testes/tfila.js                  # E10: Portal › Minha fila (Minhas, Minh
 node testes/tequip.js                 # E11: Equipamentos (ficha, OS do evento do Paradas sem cópia, TAG com vigência, anomalia → OS, Paradas mostra a OS); código 1 se falhar
 node testes/tpendencias.js            # C1: alterações pendentes sem perda entre abas (fila durável; trava da 2ª aba no Portal/Waste), base que some não vira vazia, formato desconhecido não grava, link de origem seguro, regravação em 24 h; código 1 se falhar
 node testes/tcorrecoes.js             # C2–C6: resumo do dia ao voltar à aba, link da anomalia, troca de usuário, ordem com zeros, sem dado de paradas ≠ 0, ação do grupo com todas as ordens, links da Reunião e do Pareto, saúde dos dados no Portal › Versões, ficha por pasta; código 1 se falhar
+node testes/tnv.js                    # NV-01–NV-05: isolamento por pasta, duas abas, cache homônimo, reserva em falha e saúde dos dados; dados fictícios
 node testes/tudo.js                   # a suíte inteira, uma por vez: passou / falhou / NÃO VERIFICADO (falta biblioteca ou pacote; não conta como aprovado); tz roda de novo uma vez; código 1 se alguma falhar
 node testes/tcontratos.js             # E4: exports por ordem (Produção 24 meses e dias do lote, Paradas, Gel), versão conferida pelos leitores, Waste com ordem em várias competências e dias do lote; código 1 se falhar
 ```
@@ -59,7 +60,8 @@ node testes/tcontratos.js             # E4: exports por ordem (Produção 24 mes
 4. **Chave = código** (catálogo de 6 dígitos, `EQ01`, `FME`, `T1`). Códigos sempre guardados como **texto**, nunca convertidos em número. Material SAP **numérico** é normalizado do mesmo jeito em todas as páginas: sem os zeros à esquerda que o SAP põe até 18 dígitos (`normMat` no Portal/CS12, `cod` no importador MB51/COOIS) — é isso que faz a ordem bater com o cadastro; código não numérico fica como veio. Nada se apaga: `ativo:false`.
 5. **Kit do cabeçalho igual em todas** (`vac-cabecalho v1/v2` + `kit_v21.js` + catálogo `sistemas.js` + padrão visual `kit_visual.css`): não editar só numa página. Mudou o kit → `aplicar_kit21.py` + build da Produção. Estilo comum (contêiner, cabeçalho, abas, contadores, cores de estado, modo exemplo) vai no `kit_visual.css`; a página só define o que é dela. Chaves comuns do `localStorage` (`vac.theme`, `vac.user`, `vac.logo`…) em texto simples. Pasta conectada sempre por `vacRaiz(pasta)` (as bases da lista `VAC_BASES` em `00. Bases`: as 7 de antes + `iniciativas-base.json` e `equipamentos-base.json`); cada página move só as próprias bases (`vacMoverBases`) ao conectar, com trava entre computadores, cópia por temporário e a base da raiz movida (nunca apagada) para o backup; no IndexedDB vai a pasta original. Erro de leitura nunca é "base ausente" (`vacNaoAchou`): não oferecer criar base por cima. **C1 (08/11/2026), em `kit_bases.js`:**
    - alteração pendente vai para a fila durável `vacFila(pagina)`, um registro por alteração no IndexedDB, cada aba com as dela; nunca "a fila inteira" num valor só;
-   - página que guarda a base inteira pendente (Portal, Waste) usa `vacGuardaAba`: a 2ª aba não altera enquanto outra tem pendência;
+   - página que guarda a base inteira pendente (Portal, Waste) usa `vacEditarBase` (Web Locks) durante edição/conexão/sincronização e revalida `vacGuardaAba` dentro da trava; o snapshot identifica a aba dona;
+   - operações de Iniciativas, Equipamentos e Paradas têm origem local verificada (`vacOrigemPasta`), inclusive confirmadas; pendências sem origem exigem confirmação e nunca migram silenciosamente; reserva por operação em localStorage, sem sobrescrever outra aba;
    - base que já existiu e sumiu não é recriada vazia ("Recriar a base" com a cópia local);
    - base nova só com a confirmação;
    - `vacFormatoBase` antes de gravar;
@@ -132,3 +134,7 @@ Lista única do que ficou para depois. O motivo e o gatilho de cada item estão 
 
 **Relatórios (registro § P)**
 - Três geradores de PDF (Portal/Waste, Produção, Gel): unificar no kit se for preciso.
+
+## Estabilização NV-01–NV-05 (08/11/2026)
+
+Implementação e limites: `docs/estabilizacao-nv-01-05.md`. Teste novo `testes/tnv.js`, incluído em `testes/tudo.js`. Nenhum schema de negócio, código ou vigência foi alterado. Identidade de pasta e reservas são locais ao navegador; a homologação com pasta real e duas estações continua pendente.

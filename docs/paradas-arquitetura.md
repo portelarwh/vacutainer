@@ -187,3 +187,7 @@ A recorrência do relatório usa o mesmo recorte da tela (equipamento, turno, cl
   - fora desse período, o Portal mostra "sem dado de paradas" em vez de 0.
 - **Rota do Pareto (AT-09):** `#pareto=de|ate|eq|turno|cls|grupo|dim|k`. A ação aberta do Pareto leva esse link, que reabre o mesmo filtro, a mesma dimensão e a mesma barra. Se o período saiu da base, a página avisa; a fotografia guardada na ação continua valendo.
 
+
+## 1.0.23 · 08/11/2026
+
+Isolamento por pasta e reserva por operação, com cópia de recuperação. Procedimento, testes e limites em [estabilizacao-nv-01-05.md](estabilizacao-nv-01-05.md).
