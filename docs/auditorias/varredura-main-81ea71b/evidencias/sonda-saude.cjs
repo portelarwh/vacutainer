@@ -1,0 +1,5 @@
+const{chromium}=require('playwright'),fs=require('fs'),path=require('path');
+const ROOT=process.env.VAC_AUDIT_ROOT||'/workspace/verificacao-main-81ea71b';
+(async()=>{const browser=await chromium.launch();const ctx=await browser.newContext();const p=await ctx.newPage();p.on('dialog',d=>d.accept());await p.goto('file://'+ROOT+'/paginas/Portal.html');await p.waitForTimeout(900);
+const data=await p.evaluate(async()=>{Store.mode='local';Store.pending=false;await Store.commit('Sonda de saúde',b=>b.config.auditoriaSaude=true);const fila=await vacFila.contar();Vers.dados={fila,em:Date.now(),L:[],libs:[]};const pendentes=Vers.pendentes('portal');return{pendingReal:Store.pending,snapshotPendente:await Store.idb.get('pending'),configPersistida:!!(await Store.idb.get('base')).config.auditoriaSaude,fila,pendentesNoPainel:pendentes,reproduzido:Store.pending&&pendentes===0};});
+const result={commit:'81ea71bb82cc62f08360684c7ce1a5df54697202',cenario:'S05-saude-nao-conta-snapshot-portal',...data};fs.writeFileSync(path.join(__dirname,'saude.json'),JSON.stringify(result,null,2)+'\n');console.log(JSON.stringify(result));await browser.close();})();

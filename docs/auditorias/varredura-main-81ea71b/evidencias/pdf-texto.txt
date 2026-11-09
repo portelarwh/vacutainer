@@ -1,0 +1,406 @@
+ Nova varredura · Vacutainer após os PRs #18 e #19
+
+ 1. Parecer sobre o estado atual
+ Examinei a main no commit `81ea71bb82cc62f08360684c7ce1a5df54697202`, comparei as mudanças
+ posteriores a 8cad6a6, li as decisões e conferi os fluxos com testes no navegador e dados fictícios.
+
+ O sistema evoluiu. Há integração por ordem, busca comum, Planner, Equipamentos com OS, Minha fila e
+ Reunião diária. Os PRs recentes resolveram os cenários básicos dos achados anteriores e tornaram os testes
+ mais honestos sobre o que não foi verificado. O problema principal deixou de ser falta de telas: agora está
+ nos limites da gravação e recuperação local.
+
+ Está bom o suficiente para um piloto acompanhado, com uma pasta de homologação e
+ responsáveis definidos. Ainda não considero concluída a validação para uso simultâneo amplo:
+ reproduzi dois riscos P1 de integridade, além de três problemas P2 mais condicionais. Não encontrei motivo
+ para refazer a plataforma inteira nem para exigir API ou servidor.
+
+ As versões examinadas são Portal 1.9.2, Produção 2.4.17, Waste 1.8.23, Gel 2.11, Paradas 1.0.22,
+ Equipamentos 1.0.3, Iniciativas 1.0.3 e Projetos 0.1.6. Só Projetos permanece em construção; OSM, MES e
+ conteúdo técnico de TPM ainda têm etapas pendentes.
+
+
+ 2. Achados que ainda precisam de tratamento
+ Todos os achados abaixo têm reprodução nesta revisão. P1 indica corrigir antes de ampliar o uso
+ concorrente; P2 indica corrigir em seguida, conforme a exposição ao cenário. Não atribuí P0. Os links de
+ código estão fixados no SHA examinado, para que os números de linha não mudem numa atualização futura.
+
+   ID               Problema                                  Classificação e           Abrangência reproduzida
+                                                              prioridade
+
+   NV-01            Trocar a pasta reaplica operações já      Defeito reproduzido;      Iniciativas, Equipamentos e
+                    confirmadas na outra base                 severidade alta; P1       Paradas
+
+   NV-02            Duas edições podem passar pela guarda     Defeito reproduzido;      Portal e Waste, duas abas do
+                    antes de a primeira leitura terminar      severidade alta; P1       mesmo navegador
+
+   NV-03            Cache persistido da ficha confunde        Defeito reproduzido;      Ficha comum, testada em
+                    pastas de mesmo nome                      severidade média; P2      Iniciativas
+
+   NV-04            Com a fila IndexedDB indisponível, duas   Defeito em contingência   Iniciativas; mesmo padrão
+                    abas sobrescrevem a reserva               reproduzido; severidade   confirmado no código de
+                                                              média; P2                 Equipamentos e Paradas
+
+   NV-05            Saúde dos dados pode mostrar zero         Defeito de indicador      Portal; mesma omissão
+                    com uma cópia inteira pendente            reproduzido; severidade   estrutural para a cópia
+                                                              média; P2                 pendente do Waste
+
+
+
+ NV-01 · Recuperação de operações não distingue a base de origem
+
+ Onde: fontes/kit/kit_bases.js:226, F.confirmar/F.confirmadas; Iniciativas.html:1275, Store.usar, e linha 1296,
+ perdidas; Equipamentos.html:1298; Paradas.html:762.
+
+ Problema e motivo: a fila de confirmadas é separada por módulo e operação, mas não pela pasta/base em
+ que a operação foi gravada. Ao conectar uma segunda pasta, perdidas considera que uma operação ausente
+ da auditoria foi sobrescrita por outra estação. Isso também acontece quando a operação simplesmente
+ pertence à primeira pasta. A rotina a recoloca na fila e a grava na segunda.
+
+ Reprodução: criei duas pastas reais no armazenamento do navegador, A e B, cada uma com uma base
+ válida já existente. Gravei AUD-SO-NA-A em A, confirmei que B estava vazia e conectei B pelo método normal
+ Store.usar. O registro apareceu no arquivo de B, sem erro e com a fila zerada. O resultado se repetiu nos três
+
+
+
+
+Vacutainer · Revisão da main de 08/11/2026 · commit 81ea71b                                                            1
+ módulos. Não dependi de confundir pastas com o mesmo nome. Dados reais de produção não foram
+ utilizados.
+
+ Impacto: dados de homologação, cópias de backup ou outra linha podem receber alterações da pasta
+ anterior. O mecanismo criado para recuperar colisões passa a introduzir registros alheios.
+
+ Como corrigir: associar operações pendentes e confirmadas a uma identidade verificável da pasta/base e
+ consultar somente as operações daquela origem. Usar apenas dir.name é insuficiente. Uma solução pequena
+ pode começar pela identidade do handle, com um identificador local persistido e comparação isSameEntry; a
+ decisão final precisa contemplar restauração de backup e mudança intencional de local. Operações antigas
+ ou feitas sem pasta devem permanecer recuperáveis e exigir atribuição clara antes de serem enviadas a
+ outra base.
+
+ Não basta apagar todas as confirmadas ao trocar a pasta: isso remove a recuperação prometida. Não
+ proponho inserir um identificador em todas as bases sem avaliar a migração e os contratos; o primeiro passo
+ é delimitar corretamente o diário local.
+
+ Aceite: A e B permanecem isoladas nos três módulos, inclusive depois de fechar/reabrir o navegador; pastas
+ homônimas e bases copiadas têm comportamento definido; voltar a A preserva a recuperação das alterações
+ de A; legado e operação criada sem conexão não somem nem migram silenciosamente; nenhuma base de
+ outro módulo recebe escrita.
+
+ Evidência: evidencias/sondas.json, cenários S01-confirmadas-outra-pasta-inic, -equip e -paradas.
+
+ NV-02 · Guarda de segunda aba não reserva a edição antes do acesso assíncrono
+
+ Onde: kit_bases.js:267, vacGuardaAba; Portal.html:974, Store.commit/_commit; Perdas-Ordem.html:1122,
+ commit, e linha 2038, atualização periódica do sinal de pendência.
+
+ Problema e motivo: a guarda consulta se outra aba já tem pendência. As duas podem consultar enquanto
+ ambas ainda estão sem pendência e, em seguida, aguardar a leitura da pasta. A guarda não mantém uma
+ reserva durante a operação. Se a leitura falhar, ambas criam cópias inteiras pendentes no mesmo registro do
+ IndexedDB. A última sobrescreve a primeira. A fila de promessas do Portal organiza apenas chamadas da
+ própria aba.
+
+ Reprodução: duas abas com IndexedDB compartilhado e edições distintas. Usei uma barreira nas leituras
+ para que as duas passassem pela guarda antes de liberar as respostas; injetei NotReadableError e liberei
+ primeiro A, depois B. Ambas concluíram como alteração local pendente. No IndexedDB ficou apenas a marca
+ B; a alteração A deixou de ter cópia recuperável naquele snapshot. Não simulei duas estações SMB: este é
+ um problema reproduzido entre abas do mesmo navegador. A persistência local executada é a da aplicação.
+
+ Impacto: a instrução de bloquear sem descartar não cobre o início simultâneo de edições durante lentidão
+ ou indisponibilidade da pasta. O teste atual, com a primeira pendência já formada antes da segunda edição,
+ passa e continua válido, mas não alcança essa janela.
+
+ Como corrigir: proteger o trecho completo de verificação, reserva, leitura, mutação e persistência local com
+ exclusão mútua entre abas. Se usar Web Locks, verificar seu suporte no navegador e modo de abertura
+ usados na fábrica; se usar reserva no IndexedDB, fazer aquisição atômica e prever falha/abandono. Revalidar
+ dentro da reserva. Bloquear a segunda alteração sem perder os dados já existentes. Essa proteção é local ao
+ navegador e não substitui releitura e detecção de conflitos entre computadores.
+
+ Aceite: duas ou mais abas iniciam ao mesmo tempo, com leitura lenta/falhando e gravação falhando; a
+ segunda bloqueia ou as duas alterações têm recuperação independente demonstrada; não aparece sucesso
+ depois de uma recusa; fechar, travar ou reabrir uma aba não apaga pendências nem deixa uma trava
+ permanente; modo de teste continua isolado. Repetir nos fluxos de cadastro, configuração, notas,
+ comentários, ações e importação do Portal/Waste.
+
+ Evidência: evidencias/sondas.json, S02-guardas-simultaneas-portal e -perdas.
+
+ NV-03 · Cache da ficha identifica a pasta persistida só pelo nome final
+
+ Onde: fontes/kit/kit_v21.js:257, vacFicha.carregar, especialmente o filtro do cache no tratamento de erro.
+
+
+
+
+Vacutainer · Revisão da main de 08/11/2026 · commit 81ea71b                                                     2
+ Problema e motivo: a troca de handle já limpa corretamente a memória da aba. Entretanto, a cópia no
+ IndexedDB guarda pasta: dir.name. RaizA/Linha e RaizB/Linha passam pelo mesmo filtro. Em uma aba nova,
+ se a segunda pasta não puder ser lida, a ficha pode mostrar dados da primeira como cópia disponível para a
+ segunda.
+
+ Reprodução: li um exports com produzido 111 em RaizA/Linha; fechei a aba; conectei RaizB/Linha, cujo
+ arquivo tinha JSON inválido. A ficha retornou estado: cache, pasta: Linha e produzido 111. O motivo de erro
+ de leitura é mostrado, o que reduz o risco em comparação com apresentar o dado como atual. Mesmo assim,
+ a origem da cópia está errada. Uma base apenas ausente segue um ramo diferente; o cenário reproduzido
+ exige falha de leitura/JSON.
+
+ Como corrigir: identificar a origem persistida com o mesmo cuidado do NV-01. Uma cópia sem origem
+ comprovada pode continuar disponível para recuperação explícita, com identificação e data, sem ser
+ atribuída automaticamente à pasta atual. Preservar a melhoria já feita na memória e no índice da busca.
+
+ Aceite: depois de reiniciar a aba/navegador, pastas homônimas não compartilham cache; falha de rede,
+ JSON inválido, ausência e versão desconhecida têm estados claros; a mesma pasta continua oferecendo sua
+ cópia offline. O cache legado sem identidade precisa de tratamento explícito.
+
+ Evidência: evidencias/sondas.json, S03-ficha-pastas-homonimas. É uma correção parcial restante do AT-08.
+
+ NV-04 · Reserva em localStorage volta ao problema de snapshot compartilhado
+
+ Onde: Iniciativas.html:1292, cache, e inicialização na linha 1259; mesmo padrão em
+ Equipamentos.html:1295 e Paradas.html:759.
+
+ Problema e motivo: quando o IndexedDB de vac-fila falha, cada aba escreve a própria lista inteira na
+ mesma chave *.fila.reserva. Duas abas podem, portanto, sobrescrever a reserva uma da outra. A aplicação
+ avisa que as alterações não estão protegidas; não descrevo este caso como perda silenciosa na fila normal.
+
+ Reprodução: bloqueei somente a abertura do IndexedDB vac-fila. Duas abas de Iniciativas criaram A e B. A
+ reserva ficou só com B. Depois de fechar ambas e reabrir, somente B foi recuperada. O aviso de contingência
+ estava presente. Equipamentos e Paradas têm o mesmo padrão no código, mas não foram executados neste
+ cenário adicional.
+
+ Como corrigir: preservar a reserva por operação ou por aba, sem sobrescrever listas alheias;
+ alternativamente, bloquear edição adicional em contingência até garantir uma cópia recuperável. Assegurar
+ que uma aba que volte a conseguir usar IndexedDB não apague a reserva de outra. Manter o aviso e uma
+ forma de exportar os dados ainda em memória.
+
+ Aceite: duas abas com IndexedDB bloqueado/cheio, fechamento e recuperação posterior sem perdas nem
+ duplicações; mistura de uma aba com IndexedDB funcional e outra em falha não apaga reserva alheia. Se
+ também faltar localStorage, não prometer durabilidade: manter o conteúdo em memória e oferecer
+ recuperação explícita.
+
+ Evidência: evidencias/sondas.json, S04-duas-abas-sem-idb. A correção recente de recuperar a reserva
+ quando o IndexedDB volta continua útil; este é outro cenário, com duas abas durante a falha.
+
+ NV-05 · “Pendentes neste navegador” não cobre toda a persistência pendente
+
+ Onde: kit_bases.js:241, vacFila.contar; Portal.html:1470, Vers.pendentes, e tabela na linha 1491.
+
+ Problema e motivo: o painel conta só operações do diário comum vac-fila/ops. O Portal ainda tem uma
+ cópia inteira com Store.pending; o Waste tem outra com ST.pending, fora desse diário. Para Portal, o
+ indicador consulta somente portal-cad, a fila do cadastro. Assim, zero não significa que todas as alterações
+ daquele módulo chegaram à pasta. As reservas de contingência do NV-04 também não entram nessa
+ contagem.
+
+ Reprodução: fiz uma alteração local normal no Portal. O IndexedDB guardou pending: {p:true}, e a cópia
+ continha a alteração; vacFila.contar() retornou {} e Vers.pendentes('portal') retornou 0. O caso está
+ isolado do NV-02: basta uma aba. Para Waste, a omissão está confirmada no código e no resultado da sonda
+ S02, que tinha ST.pending=true com contagem vazia.
+
+
+
+
+Vacutainer · Revisão da main de 08/11/2026 · commit 81ea71b                                                     3
+ Como corrigir: considerar os estados de cópia inteira e de reserva ou apresentar a contagem com escopo
+ explícito. Para uma cópia inteira, mostrar “cópia pendente” é mais fiel do que inventar uma quantidade de
+ operações. Quando a fonte não puder ser consultada, mostrar “não verificado”, preservando a distinção
+ entre zero e desconhecido. O painel permanece limitado a este navegador; não pode observar pendências
+ locais de outra estação.
+
+ Aceite: Portal, cadastro geral, Waste, filas por operação e reservas em falha são distinguíveis no painel e no
+ relatório. Um módulo com cópia local ainda não salva nunca aparece como zero total sem ressalva. A leitura
+ do indicador não grava na base dos outros módulos.
+
+ Evidência: evidencias/saude.json, S05-saude-nao-conta-snapshot-portal, e S02 em sondas.json.
+
+
+ 3. Reavaliação dos achados da revisão anterior
+ A classificação abaixo vale para o cenário original e para o código no SHA desta revisão. “Corrigido” não
+ significa que não exista outro limite em toda a função.
+
+   Item anterior                   Parecer atual              Evidência e ressalva
+
+   AT-01, abas e pendências        Corrigido em parte         Fila normal por operação e bloqueio sequencial passam em
+                                                              tpendencias; faltam NV-02 e a contingência NV-04
+
+   AT-02, base conhecida           Corrigido no cenário       tpendencias, bloqueio de gravação e recuperação explícita;
+   desaparece                      original                   identificação por pasta merece acompanhar NV-01
+
+   AT-03, schema próprio           Corrigido no escopo        vacFormatoBase e tpendencias para Iniciativas,
+   desconhecido                    entregue                   Equipamentos e Paradas; não estender esta conclusão ao
+                                                              schema de todos os módulos
+
+   AT-04, volta no dia             Corrigido                  Retorno com atualização de exports, tcorrecoes
+   seguinte
+
+   AT-05, link da anomalia         Corrigido                  Rota inicial seleciona a máquina; tcorrecoes
+
+   AT-06, sem dado versus          Corrigido                  Cobertura explícita do Paradas; fora dela aparece
+   zero                                                       indisponível, tcorrecoes
+
+   AT-07, grupo com várias         Corrigido                  Vínculo com cada ordem distinta, tcorrecoes
+   ordens
+
+   AT-08, cache entre pastas       Corrigido em parte         Troca em memória e pastas de nomes diferentes tratadas;
+                                                              persistência com nomes iguais ainda falha no NV-03
+
+   AT-09, reconsulta com           Corrigido nos fluxos       Reunião guarda dia/turno e Pareto guarda
+   contexto                        entregues                  filtros/dimensão/barra; tcorrecoes e tplanner. Busca livre
+                                                              F.q continua fora por limite declarado
+
+   AT-10, troca de usuário         Corrigido                  Minha fila redesenhada na troca local e entre abas,
+                                                              tcorrecoes
+
+   AT-11, link executável          Corrigido no cenário       Filtro aplicado ao receber e renderizar origem/evidência,
+                                   original                   tpendencias e tseguranca
+
+   AT-12, ordem com zeros          Corrigido                  Rota do Planner usa a normalização da ficha sem
+                                                              transformar códigos em números, tcorrecoes
+
+
+ Concordo com ampliar a retenção das confirmadas de 30 minutos para 24 horas, conforme a decisão
+ registrada. R-01 continua parcial: há limite de 24 horas, máximo de 2.000 operações e dependência do
+ navegador que fez a gravação. Isso não equivale a uma transação do compartilhamento. Restaurar um
+ backup pode provocar reaplicação de operações recentes; precisa de procedimento, não de uma extensão
+ ilimitada do diário. NV-01 é um defeito adicional de origem, não um pedido de mudar a decisão de retenção.
+
+
+
+
+Vacutainer · Revisão da main de 08/11/2026 · commit 81ea71b                                                                4
+ O problema de reserva ignorada quando o IndexedDB voltava e o problema de migração da fila antiga
+ receberam tratamento no PR #18 e checagens específicas. Não os confundo com o NV-04. Também não
+ reabro decisões recusadas sobre autenticação, arquivos de runtime compartilhados ou reescrita geral da
+ persistência.
+
+
+ 4. Verificação executada e limites da conclusão
+ Executei node testes/tudo.js na cópia isolada: 31 suítes previstas, 29 aprovadas, uma com item não
+ verificado, uma não executada e nenhuma falha reportada. trelatorios passou nas partes
+ executadas, mas não verificou Excel do Paradas nos dois temas, pois falta paginas/lib/xlsx.full.min.js
+ (E3b). tmeta não foi executada porque falta o pacote npm xlsx. Não são aprovações dessas partes. tz passou
+ na primeira tentativa. Há 726 linhas explícitas de ok nos logs; isso não representa a quantidade de casos
+ independentes e não torna completos os testes antigos que apenas imprimem resultados.
+
+ Além da suíte existente, executei oito cenários adicionais: três de troca de pasta, dois de início simultâneo de
+ edição, um de cache em pastas homônimas, um de reserva com IndexedDB indisponível e um de saúde dos
+ dados. Eles reproduziram os cinco problemas acima. Os JSON registram os valores observados; os scripts
+ registram as injeções usadas.
+
+ Os três builds oficiais terminaram com código zero e reproduziram os arquivos existentes: aplicar_kit21.py,
+ fontes/producao/build.py e fontes/modelo/gerar_paginas.py. Comparei os 257 arquivos rastreados antes e
+ depois dos builds em uma cópia. Nenhum mudou. O manifesto também permite conferir que a árvore original
+ examinada permaneceu intacta.
+
+ A verificação visual cobriu as oito páginas, dois temas e cinco larguras, com estado vazio e preenchido. A
+ aparência está coerente para o estágio atual; não proponho outra reforma visual antes de observar o
+ operador usando a plataforma. O teste geométrico não substitui avaliação de legibilidade com usuários,
+ navegação integral por teclado, leitor de tela ou desempenho com anos de histórico. As imagens de Portal e
+ Iniciativas incluídas nas evidências usam apenas dados fictícios.
+
+ Para executar Chromium neste ambiente, os testes originais foram carregados com um adaptador externo
+ que troca URLs file:// por HTTP local dos mesmos arquivos e seleciona o navegador instalado. Não alterei a
+ lógica dos testes nem da aplicação. Onde havia pastas, usei o sistema de arquivos do navegador (OPFS); em
+ NV-01, somente a persistência do handle de pasta foi contornada por limitação do OPFS, preservando a
+ leitura e escrita reais dos arquivos do cenário. Isso não valida o compartilhamento Windows/SMB, permissões
+ corporativas ou duas estações físicas.
+
+
+
+
+Vacutainer · Revisão da main de 08/11/2026 · commit 81ea71b                                                         5
+ 5. O que faria agora em cada parte do sistema
+
+   Página ou área                  Avaliação atual                Próximo trabalho que traz benefício
+
+   Portal                          Minha fila, Reunião diária e   Corrigir NV-02/NV-05 e validar Área, responsáveis e a
+                                   integração já dão uma          reunião com liderança; deixar estado de dado e de
+                                   entrada útil                   sincronização compreensível
+
+   Produção                        Ficha e busca dão acesso       Homologar um dia/turno real e passagem de turno;
+                                   integrado à ordem; builds e    desenhar o Resumo/Detalhado por jornada do operador
+                                   contratos têm cobertura        antes de acrescentar indicadores
+
+   Waste                           Há análise por ordem e         Corrigir NV-02; conferir KKBC e relatórios com amostra real.
+                                   ligação com o contexto da      A unificação de resumos já prevista pode vir depois, se
+                                   plataforma                     eliminar divergência verificável
+
+   Gel                             Continua sendo a               Homologar a pasta e sua rotina de coleta; planejar
+                                   referência de importação       catálogo/equipamentos e calendário comuns conforme o
+                                   por pasta                      backlog existente
+
+   Paradas                         Relatório e ação para          Corrigir NV-01; validar seleção e reconsulta do Pareto,
+                                   Planner têm utilidade          vínculo com OS e um caso real de recorrência
+                                   prática
+
+   Equipamentos                    OS e histórico permitem        Corrigir NV-01; evoluir TAGs/MES e planos AM/TPM quando
+                                   começar a usar                 houver amostras e padrões técnicos aprovados
+
+   Iniciativas                     Planner básico já serve        Corrigir NV-01/NV-04; implementar importação OSM com
+                                   para ações OEE/KAS e           amostra e preservar o acompanhamento local na
+                                   acompanhamento                 reimportação
+
+   Projetos                        Continua em construção, de     Aguardar escopo. Só construir uma página própria se houver
+                                   forma declarada                necessidade distinta de uma ação KAS/OEE ou de um
+                                                                  conjunto de ações
+
+   Kit comum                       Centralização por fontes e     Corrigir identidade de origem e guarda entre abas no lugar
+                                   builds está funcionando        comum; extrair somente o código de fato repetido e
+                                                                  verificável
+
+
+ Não abriria outra página principal agora. A ficha da ordem deve continuar como entrada para todos os
+ registros relacionados; o Planner deve continuar reunindo ações, e Equipamentos deve reunir manutenção. A
+ visualização Resumo/Detalhado precisa alterar a densidade e os caminhos da tarefa, sem criar cálculos
+ concorrentes em cada tela.
+
+
+ 6. O que ainda falta, sem tratar como bug entregue
+ As ideias registradas continuam adequadas ao modelo sem API/servidor. A próxima entrega deve ser
+ pequena, verificável e orientada a um dado real. Não declarar prontas as etapas abaixo só porque há uma
+ aba com o nome correspondente.
+
+  • E3b, biblioteca Excel local: receber e validar a SheetJS 0.20.3 da pasta da linha. O arquivo ausente
+    continua impedindo confirmar a operação offline correspondente. Não substituir silenciosamente por
+    versão antiga ou outra biblioteca.
+
+  • E7, OSM: importar a planilha oficial com prévia, identificação estável, relatório de rejeições e
+    reimportação idempotente. Preservar responsável local, prioridade, histórico e tempos por estado; separar
+    situação oficial da ação acompanhada localmente. Falta amostra.
+
+  • E9, leitura automática por pasta: definir a estação coletora. Reaproveitar a abordagem do Gel nos
+    módulos que recebem arquivos, com origem, horário, último sucesso, motivo de erro e deduplicação. A
+    leitura depende da página aberta, permissão e navegador; não prometer serviço de fundo com a página
+    fechada.
+
+
+
+
+Vacutainer · Revisão da main de 08/11/2026 · commit 81ea71b                                                                      6
+  • E10c, experiência por perfil: validar a lista de tarefas de operador, liderança, PCP, qualidade e
+    manutenção; organizar Resumo/Detalhado e passagem de turno a partir dela. Perfil adapta a interface e
+    não constitui autenticação.
+
+  • E12, TAGs e MES: cadastrar significado, unidade, equipamento, categoria, estado e efeito no OEE;
+    importar extração SQL por arquivo. Antes de conciliar, definir sobreposição, tolerância, relógio, turnos e
+    fontes; preservar origem e impedir dupla contagem. Oferecer linha do tempo e fila de conflitos revisáveis.
+    Faltam amostras e regras.
+
+  • E13, AM/TPM e 5S: versionar planos, checklists CILT/Center Line/lubrificação, execução, evidências e
+    encaminhamento de anomalias por equipamento. Falta conteúdo técnico aprovado. Não inventar
+    frequência, parâmetros ou procedimento de intervenção.
+
+  • E15, Projetos: decidir se haverá fases, marcos, orçamento ou benefício que justifiquem algo além do
+    Planner. Evitar duplicar iniciativas.
+
+ Também permanecem a identidade estável da pessoa quando há nomes livres, o procedimento de
+ restauração de backup, a visibilidade de falha de backup, os calendários independentes e a homologação na
+ pasta real. São itens já registrados: tratá-los pelo backlog existente e acrescentar evidências, sem criar um
+ segundo plano incompatível.
+
+ Minha recomendação é corrigir os cinco achados com foco nos dois P1, executar a homologação H e só então
+ retomar o próximo incremento de produto disponível. O plano e roteiro de homologação especifica os cortes
+ e os critérios.
+
+
+
+
+Vacutainer · Revisão da main de 08/11/2026 · commit 81ea71b                                                      7
+
