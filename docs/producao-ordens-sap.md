@@ -176,3 +176,8 @@ Responde à auditoria de relatórios e painéis (registro § P). Regras `R(...)`
 ## 2.4.18 · 08/11/2026
 
 Atualização do kit comum, com cache identificado pela origem da pasta. Procedimento, testes e limites em [estabilizacao-nv-01-05.md](estabilizacao-nv-01-05.md).
+
+
+## Produção 2.4.20 · 09/11/2026
+
+A aba SQDCP e os registros de acidente/QN por turno estão descritos em [producao-sqdcp.md](producao-sqdcp.md). Reimportações do RELATÓRIO preservam esses registros manuais, inclusive quando um turno deixa de aparecer na nova planilha, sem somar novamente sua produção. MB51/COOIS mantêm seus contratos.

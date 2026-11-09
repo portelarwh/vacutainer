@@ -491,7 +491,7 @@ const NAV_GRUPOS = [
   { g: 'Ordens', itens: [['ordens', 'Importar MB51', 'mb51'], ['ordens', 'Complementar COOIS', 'coois'], ['ordens', 'Ordens produzidas', 'lista'], ['ordens', 'Conciliação', 'conc'], ['ordens', 'Histórico de competências', 'hist']] },
   { g: 'Apontamento', itens: [['launch', 'Lançamento'], ['hourly', 'Hora a hora'], ['lots', 'Lotes (MES)'], ['pend', 'Pendências']] },
   { g: 'Análise', itens: [['stops', 'Paradas'], ['history', 'Histórico'], ['weekly', 'Semanal'], ['monthly', 'Mensal']] },
-  { g: 'Gestão', itens: [['reports', 'Relatórios']] },
+  { g: 'Gestão', itens: [['reports', 'Relatórios'], ['sqdcp', 'SQDCP']] },
   { g: 'Configurações', itens: [['config', 'Configurações']] }];
 function renderNavGrupos() {
   const vis = new Set(visibleRoutes().map(r => r[0])); vis.add('ordens'); vis.add('config');
