@@ -596,3 +596,14 @@ Pedido do responsável: navegar pelo sistema inteiro em demonstração, ou, se i
 - **Preservado:** contratos de exports, propriedade das bases e cadastros, build da Produção e kit comum. Não altera nenhuma base da linha.
 - **Limite explícito:** Projetos continua em construção; a demonstração não implementa as pendências de MES, OSM e procedimentos AM/TPM. Fechar/recarregar o pacote inicia outra sessão.
 - **Validação:** `testes/tdemo.js` e regressão consolidada; evidências e restrições em `docs/auditorias/demonstracao-2026-11-09.md`.
+
+
+## SQ · Quadro SQDCP e segurança/QN por turno (09/11/2026)
+
+Pedido explícito: desenvolver cinco colunas e cinco posições, uma A4 paisagem por indicador, alimentado também por acidente e Quality Notification de cada turno.
+
+- **Implementado:** quadro configurável com três modelos de impressão, fontes existentes por exports e indicadores manuais; Sim/Não houve/Não informado, quantidades e referências em texto; QN identificada sem duplicação; cobertura e contagens provisórias visíveis.
+- **Integração:** passagem de turno, relatórios diário/semanal/mensal, CSV/Excel e `exports.sqdcp`. Reimportação preserva S/Q sem duplicar produção.
+- **Preservado:** propriedade das bases, campos opcionais, vigências e cálculo de OEE, build da Produção por fontes.
+- **Validação:** `testes/tsqdcp.js`, incluindo uma página A4 paisagem, ausência de resposta, gravação/releitura e troca de pasta.
+- **Pendências:** lista ao final de `docs/producao-sqdcp.md`; não presume fonte automática de pessoas/custo diário nem histórico de acidentes anteriores ao sistema.

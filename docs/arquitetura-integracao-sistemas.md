@@ -94,3 +94,8 @@ Vacutainer/
 - **Lote sem ordem em nenhum plano**: fica "a confirmar" até o usuário classificar como retrabalho, produção normal ou ignorar. Enquanto isso não entra na produção sugerida.
 - **Divergências com decisão** (Pendências › Servidor × plano × lançamento): lote sem ordem; lote acima do planejado; lote parado abaixo do planejado (encerrado ou vai voltar); catálogo do MES ≠ plano; início/fim real da ordem ≠ servidor (> 30 min); ordem prevista sem caixas (reprogramada ou cancelada); produção do dia ≠ servidor; caixas fora dos turnos lançados; retrabalho marcado sem RTB. Cada uma fica aberta até uma decisão (algumas corrigem direto, outras pedem motivo); dados novos reabrem; decididas podem ser reabertas.
 - **Aba Lotes** (histórico de todos os lotes do servidor): filtro por situação/mês/busca, dias em que cada lote rodou com check de retrabalho por dia, situação do lote inteiro e observação. A mesma marcação aparece no Lançamento.
+
+
+## SQDCP · Produção 2.4.20 (09/11/2026)
+
+A Produção é dona das respostas de acidente/QN e das definições/medições manuais do quadro. Publica `exports.sqdcp` (120 dias, turnos e consolidação diária com cobertura explícita). O quadro lê somente os exports de Waste, Gel e Iniciativas, com referência de competência/posição atual; não grava nessas bases. Detalhes em [producao-sqdcp.md](producao-sqdcp.md).

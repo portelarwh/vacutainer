@@ -7,7 +7,7 @@ Plataforma de páginas HTML de arquivo único que trabalham juntas numa **pasta 
 | Página | Arquivo | Base | Versão | Como editar |
 |---|---|---|---|---|
 | Portal (cadastro geral, Administração) | `Portal.html` | `portal-base.json` + `vacutainer-cadastros.json` | 1.9.4 | direto no HTML |
-| Produção (OEE, plano, ordens SAP) | `OEE-Vacutainer.html` | `oee-vacutainer-base.json` (+ `ordens-base.json`) | 2.4.19 | **NÃO editar o HTML**: editar `fontes/producao/` e rodar o build |
+| Produção (OEE, plano, ordens SAP) | `OEE-Vacutainer.html` | `oee-vacutainer-base.json` (+ `ordens-base.json`) | 2.4.20 | **NÃO editar o HTML**: editar `fontes/producao/` e rodar o build |
 | Waste (perdas por ordem, KKBC) | `Perdas-Ordem.html` | `perdas-base.json` | 1.8.25 | direto no HTML |
 | Gestão de Gel | `Gestão-Gel-Vacutainer.html` | `fifo-base.json` | 2.13 · **em atualização** | direto no HTML |
 | Paradas | `Paradas.html` | `paradas-base.json` | 1.0.24 · **em atualização** | direto no HTML |
@@ -20,6 +20,8 @@ Situação de cada página (em construção / em atualização / estável): `PAG
 
 Demonstração integrada: botão comum nas oito páginas; `paginas/Demonstracao.html` reúne as páginas reais e mantém os exemplos na memória durante a navegação, sem bases reais. Fontes e limites em `docs/demonstracao-integrada.md`. **Depois de qualquer build/alteração das páginas, rodar `python fontes/demo/gerar_demo.py` por último e copiar o pacote junto com os HTML.**
 
+SQDCP (Produção 2.4.20): quadro de 25 posições, acidente/QN por turno e impressão de uma A4 paisagem. Fontes em `fontes/producao/sqdcp*`; uso, contratos e pendências em `docs/producao-sqdcp.md`. Campos opcionais; ausência de resposta nunca é zero.
+
 ## Comandos
 
 ```bash
@@ -27,6 +29,7 @@ python fontes/producao/build.py        # monta paginas/OEE-Vacutainer.html a par
 python fontes/kit/aplicar_kit21.py     # recopia fontes/kit/kit_v21.js, o catálogo fontes/kit/sistemas.js, o padrão visual fontes/kit/kit_visual.css e as bases em 00. Bases fontes/kit/kit_bases.js nas outras páginas (Portal, Waste, Paradas, Gel e as 3 em construção)
 python fontes/modelo/gerar_paginas.py  # gera Projetos.html (em construção) a partir de fontes/modelo/pagina-em-construcao.html e roda o aplicar_kit21.py
 python fontes/demo/gerar_demo.py       # pacote offline da demonstração; SEMPRE depois dos outros builds
+node testes/tsqdcp.js                 # formulário S/Q, QN única, relatórios, reimportação, persistência e A4
 node testes/tdemo.js                  # navegação nas oito páginas, ação Paradas → Planner → Portal/ficha, reinício/saída e isolamento
 node testes/tpg.js                     # testes Playwright (abrem paginas/ em modo teste/exemplo; imprimem "sem erros")
 node testes/tintegra.js                # Portal × exports: números iguais aos das páginas, urgência, gravação pendente com conflito
