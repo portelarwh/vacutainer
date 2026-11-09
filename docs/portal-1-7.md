@@ -257,3 +257,9 @@ Só o kit (`vacNumero`, `vacExportsOk`). Os campos novos do `exports` (`porOrdem
 ## 1.9.3 · 08/11/2026
 
 Exclusão mútua entre abas e saúde dos dados com snapshots e reservas. Procedimento, testes e limites em [estabilizacao-nv-01-05.md](estabilizacao-nv-01-05.md).
+
+## 1.9.5 · 09/11/2026 · POR-04
+
+- Lista lateral de Cadastros e de ⚙ Administração › Configuração (`.cadside`) rola por dentro (`max-height: calc(100vh - 84px)`, `overflow-y: auto`). Antes, sticky sem limite deixava o fim da lista fora da tela.
+- A posição da rolagem interna é mantida entre cliques (`cadSideTop` em `wireAdminSide`). No celular (≤ 860 px) a lista continua sem limite.
+- Respostas da seção 10 do briefing e proposta da Fase 1: `docs/briefing-2026-11-09-fase0-fase1.md`.

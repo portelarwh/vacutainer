@@ -226,7 +226,8 @@ svg text{font-family:var(--f-body)}
 .cadbar{display:flex;flex-wrap:wrap;gap:8px 10px;align-items:center;margin-bottom:14px;padding:10px 12px;background:var(--surface);border:1px solid var(--line);border-radius:var(--r)}
 .cadbar .sp{flex:1}
 .cadg{display:grid;grid-template-columns:230px minmax(0,1fr);gap:14px;align-items:start}
-.cadside{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:6px;position:sticky;top:72px}
+/* POR-04 (1.9.5): a lista lateral passa da altura da tela; sticky sem limite deixava o fim inalcançável. Rola por dentro. */
+.cadside{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:6px;position:sticky;top:72px;max-height:calc(100vh - 84px);overflow-y:auto;overscroll-behavior:contain}
 .cadside button{display:flex;width:100%;justify-content:space-between;align-items:center;gap:8px;border:0;background:none;padding:7px 10px;border-radius:6px;cursor:pointer;font-family:var(--f-display);font-weight:600;font-size:14px;letter-spacing:.04em;text-transform:uppercase;color:var(--muted);text-align:left}
 .cadside button:hover{background:var(--surface-2);color:var(--ink)}
 .cadside button.on{background:var(--accent-soft);color:var(--accent)}
@@ -250,7 +251,7 @@ svg text{font-family:var(--f-body)}
 .ok-note{border-left:4px solid var(--ok)}
 .cadside .n{font-family:var(--f-mono);font-size:11.5px;font-weight:400;letter-spacing:0}
 .cadside hr{border:0;border-top:1px solid var(--line);margin:6px 4px}
-@media(max-width:860px){.cadg{grid-template-columns:1fr}.cadside{position:static;display:flex;flex-wrap:wrap;gap:2px}.cadside button{width:auto}.cadside hr{display:none}}
+@media(max-width:860px){.cadg{grid-template-columns:1fr}.cadside{position:static;max-height:none;overflow:visible;display:flex;flex-wrap:wrap;gap:2px}.cadside button{width:auto}.cadside hr{display:none}}
 .sw{display:inline-block;width:12px;height:12px;border-radius:3px;vertical-align:-1px;margin-right:5px;border:1px solid rgba(0,0,0,.15)}
 .vig{border:1px solid var(--line);border-radius:var(--r);padding:10px 12px;margin:8px 0;background:var(--surface-3)}
 .vig.cur{border-color:color-mix(in srgb,var(--accent) 55%,var(--line))}
@@ -1365,7 +1366,7 @@ function wireConfigComum(){$('#cPasta').onclick=async()=>{if(await Store.pick())
         entrar pelo ID (autocadastro como Consulta); página inicial por perfil (1x por sessão); vigência gravada não se edita (desativar com motivo); painel de vigências; semáforo central; saída do modo de teste.
    1.1.2: aviso da carga diz qual base foi lida.  1.5: páginas Paradas, Máquinas, Manutenção e Projetos na lista (aparecem quando o HTML chega na pasta).  1.4: lista técnica pela CS12 multinível (itens = nível 1, estrutura = níveis 2+); CS03 sai.  1.3: cabeçalho comum (vac-cabecalho v2: barra do sistema + página + abas), busca Ctrl K, acabamento V1.90, Versões com cabeçalho e último backup.  1.2: Configuração › Versões das páginas (versão e data de cada HTML, gravação das bases, cópias repetidas, histórico).
    ===================================================================== */
-const PAGE={id:'portal',titulo:'Portal · Linha Vacutainer',tituloCurto:'Portal',subtitulo:'Sistemas de gestão da linha',versao:'1.9.4',baseFile:'portal-base.json',idb:'vac-portal',backupDir:'00. Backups/Portal',
+const PAGE={id:'portal',titulo:'Portal · Linha Vacutainer',tituloCurto:'Portal',subtitulo:'Sistemas de gestão da linha',versao:'1.9.5',baseFile:'portal-base.json',idb:'vac-portal',backupDir:'00. Backups/Portal',
  vazio:()=>({schema:'portal-base',rev:0,config:{modulos:{},avisoDias:30,notas:{}},audit:[]}),
  /* itens do Portal para a busca Ctrl K: cadastro, pendências e telas */
  busca:q=>{const R=[],D=Cad.D;if(D)for(const t of CAD_ORD){for(const it of D[t]||[]){const c=String(it[kOf(t)]),nm=t==='bom'?((cadItem('catalogos',it.catalogo)||{}).nome||''):it.nome||'';if(norm(c+' '+nm).includes(q))R.push({tipo:CAD_T[t].um,txt:c+(nm?' · '+nm:''),sub:'Cadastros'+(cadAtivo(t,it,D)?'':' · inativo'),href:'#cadastros/'+t+'/'+encodeURIComponent(c)});if(R.length>30)break}}
@@ -2218,7 +2219,9 @@ function cadSide(sec){const D=Cad.D;const btn=(k,l,n)=>`<button data-sec="${k}" 
   +g('Pessoas')+btn('usuarios','Usuários',cnt('usuarios'))+btn('perfis','Perfis e permissões',cnt('perfis'))
   +g('Regras')+btn('vigencias','Vigências')+btn('parametros','Parâmetros e semáforo'):'')
   +g('Sistema')+(D?btn('importar','Integrações SAP'):'')+btn('config','Configuração do Portal')+btn('versoes','Versões das páginas')+(D?btn('auditoria','Auditoria')+btn('backups','Backups do cadastro')+btn('seguranca','Segurança e senha'):'')}
-function wireAdminSide(){$$('.cadside [data-sec]').forEach(b=>b.onclick=()=>{const s=b.dataset.sec;if(s==='config'){App.show('config');return}if(s==='versoes'){irVersoes();return}Cad.ui.sec=s;Cad.ui.q='';if(App.tab!=='cad')App.show('cad');else{cadHash();App.render()}})}
+/* POR-04: a lista lateral é redesenhada a cada clique; guarda e devolve a posição da rolagem interna */
+let cadSideTop=0;
+function wireAdminSide(){const sd=$('.cadside');if(sd){sd.scrollTop=cadSideTop;sd.addEventListener('scroll',()=>{cadSideTop=sd.scrollTop},{passive:true})}$$('.cadside [data-sec]').forEach(b=>b.onclick=()=>{const s=b.dataset.sec;if(s==='config'){App.show('config');return}if(s==='versoes'){irVersoes();return}Cad.ui.sec=s;Cad.ui.q='';if(App.tab!=='cad')App.show('cad');else{cadHash();App.render()}})}
 function viewAdminConfig(m){m.innerHTML=`<div class="cadg"><aside class="cadside">${cadSide('config')}</aside><section id="admCfg" style="min-width:0"></section></div>`;wireAdminSide();viewConfig($('#admCfg'))}
 function cadSemCadastro(el){
  if(Store.mode!=='pasta'&&Store.mode!=='teste'){el.innerHTML=`<div class="card"><h3>Cadastro base</h3><p>Conecte o Portal à pasta da rede em <a href="#config">Configuração</a> para ler ou criar o <span class="mono">${CAD_FILE}</span>.</p></div>`;return}
