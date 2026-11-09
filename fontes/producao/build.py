@@ -1,4 +1,5 @@
 import sys
+import json
 import os
 AQUI=os.path.dirname(os.path.abspath(__file__)); RAIZ=os.path.normpath(os.path.join(AQUI,'..','..'))
 os.chdir(AQUI)
@@ -9,7 +10,20 @@ def R(a,b,cnt=1):
     c=s.count(a)
     if c!=cnt: raise SystemExit(f'ERRO ({c}x): {a[:90]!r}')
     s=s.replace(a,b)
-R("const APP_VERSION = '2.0.1';","const APP_VERSION = '2.4.18';")
+# Demonstração integrada: antes de ler preferências, handles e caches da operação real.
+R("async function boot() {\n  await loadPrefs(); applyTheme();", """async function boot() {
+  if(vacDemo.ativo){await loadPrefs();applyTheme();bindGlobal();Charts.bind();Store.S.user='Pessoa de demonstração';Store.enterExample(vacDemo.ler('oee'));
+    vacDemo.registrar('oee',()=>({...db(),exports:Exports.build(db())}),d=>{Store.S.db=Model.ensure(d);Engine.bumpConfig()},()=>renderNow());Store.on(e=>{if(e==='data')vacDemo.publicar('oee')});
+    App.sel.lineId='line_vac';App.filters.lineId='line_vac';App.filters.from=U.today();App.filters.to=U.today();App.op=location.hash==='#turno';if(App.op)App.route='shift';else applyHash();vacDemo.publicar('oee');renderNow();return}
+  await loadPrefs(); applyTheme();""")
+R("const i = root.querySelector('#exIn'); if (i) i.onclick = () => run(() => Demo.enterExample());", "const i = root.querySelector('#exIn'); if (i) i.onclick = () => vacDemo.entrar();")
+R("else if (act === 'exitex') { Store.exitExample();", "else if (act === 'exitex') { if(vacDemo.ativo)return vacDemo.sair();Store.exitExample();")
+R("else location.href=x.href", "else vacDemo.ir(x.href)")
+R("location.href=sysHref(port,'versoes')", "vacDemo.ir(sysHref(port,'versoes'))")
+R('<button class="btn primary" id="uOk">Usar este nome</button>', '<button class="btn primary" id="uOk">Usar este nome</button><button class="btn" data-vdemo-entrar onclick="vacDemo.entrar()">Demonstração do sistema</button>')
+R('<button class="btn ghost" id="wLocal">Começar só neste navegador</button>', '<button class="btn ghost" id="wLocal">Começar só neste navegador</button><button class="btn" data-vdemo-entrar onclick="vacDemo.entrar()">Demonstração do sistema</button>')
+R('Abre uma <b>cópia em memória</b> da base com cerca de 3 semanas de dados fictícios (hora a hora, paradas, scrap, dias fechados e abertos), para treinar ou demonstrar. Nada é gravado na pasta da rede nem no navegador: ao sair, tudo volta exatamente como estava.', 'Abre a <b>demonstração integrada do sistema</b>, com produção, perdas, gel, paradas, equipamentos e ações fictícias relacionadas. Você pode editar o exemplo e navegar entre as páginas. As bases reais ficam preservadas; fechar ou recarregar a demonstração descarta as alterações fictícias.')
+R("const APP_VERSION = '2.0.1';","const APP_VERSION = '2.4.19';")
 # 2.4.17 · C2–C6: kit com a ficha por pasta (AT-08) e a contagem da fila durável para o Portal (C5)
 # 2.4.16 · C1: kit com a fila durável (vacFila), formato da base (vacFormatoBase), link seguro (vacLinkSeguro) e trava da 2ª aba
 # 2.4.15 · E11: kit (busca leva o equipamento à ficha em Equipamentos; bases de Iniciativas e Equipamentos em 00. Bases)
@@ -142,7 +156,10 @@ s=_pad.sub(lambda m:_sis,s)
 # padrão visual comum (fontes/kit/kit_visual.css): último <style> do <head>, igual nas 5 páginas
 _vis=open(os.path.join(RAIZ,'fontes','kit','kit_visual.css'),encoding='utf-8').read().strip()
 if s.count('\n</head>\n')!=1: raise SystemExit('ERRO: </head> (linha própria) não achado exatamente 1 vez')
-_bas=open(os.path.join(RAIZ,'fontes','kit','kit_bases.js'),encoding='utf-8').read().strip()   # bases em 00. Bases (antes do código da página)
+_bas=open(os.path.join(RAIZ,'fontes','kit','kit_bases.js'),encoding='utf-8').read().strip()
+_demo=open(os.path.join(RAIZ,'fontes','kit','kit_demo.js'),encoding='utf-8').read()
+_cenario=json.load(open(os.path.join(RAIZ,'fontes','kit','demo_cenario.json'),encoding='utf-8'))
+_bas=_demo.replace('@@VAC_DEMO_CENARIO@@',json.dumps(_cenario,ensure_ascii=False,separators=(',',':')).replace('</','<\\/'))+'\n'+_bas   # bases em 00. Bases (antes do código da página)
 s=s.replace('\n</head>\n','\n<style id="vac-visual">\n'+_vis+'\n</style>\n<script id="vac-bases">\n'+_bas+'\n</script>\n</head>\n')
 sync=open(os.path.join(AQUI,'cad_sync.js'),encoding='utf-8').read()
 R("S.cadastro = c && c.schema === 'vac-cadastros' ? { rev: c.rev, revAt: c.revAt, revBy: c.revBy } : null; }","S.cadastro = c && c.schema === 'vac-cadastros' ? { rev: c.rev, revAt: c.revAt, revBy: c.revBy } : null; S.cadDoc = S.cadastro ? c : null; S.cadDocAusente = false; if (S.cadDoc && typeof CadSync !== 'undefined') setTimeout(() => CadSync.talvez(), 0); }")

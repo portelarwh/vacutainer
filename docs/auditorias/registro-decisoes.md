@@ -586,3 +586,13 @@ node testes/tpg.js
 ```
 
 **Limites:** os testes de gravação usam pastas simuladas em memória. Eles reproduzem a ordem dos acontecimentos, mas **não** substituem um teste com duas estações gravando na pasta de rede real. A conferência na pasta real continua pendente (`CLAUDE.md` › Pendências conhecidas).
+
+
+## DEM · Demonstração integrada (09/11/2026)
+
+Pedido do responsável: navegar pelo sistema inteiro em demonstração, ou, se inviável, ter um exemplo em cada página. Implementada a primeira opção em um pacote HTML offline, reaproveitando as oito páginas e seus modos de memória. Antes, sete exemplos locais não compartilhavam navegação/cenário; Projetos era somente o esqueleto.
+
+- **Implementado:** entrada comum, cenário fictício relacionado, ficha/Ctrl K, encaminhamento entre páginas, memória da sessão, reiniciar e sair; `docs/demonstracao-integrada.md`.
+- **Preservado:** contratos de exports, propriedade das bases e cadastros, build da Produção e kit comum. Não altera nenhuma base da linha.
+- **Limite explícito:** Projetos continua em construção; a demonstração não implementa as pendências de MES, OSM e procedimentos AM/TPM. Fechar/recarregar o pacote inicia outra sessão.
+- **Validação:** `testes/tdemo.js` e regressão consolidada; evidências e restrições em `docs/auditorias/demonstracao-2026-11-09.md`.

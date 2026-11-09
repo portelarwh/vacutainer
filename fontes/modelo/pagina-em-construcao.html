@@ -215,9 +215,9 @@ const Busca={el:null,i:0,R:[],
  lista(q){this.R=this.itens(q);const ul=this.el.querySelector('#vbL');ul.innerHTML=this.R.length?this.R.map((x,j)=>`<li data-j="${j}" class="${j===this.i?'on':''}"><span class="tp">${esc(x.tipo)}</span><span class="tx">${esc(x.txt)}${x.sub?`<div class="sb">${esc(x.sub)}</div>`:''}</span></li>`).join(''):'<div class="vz">Nada encontrado.</div>';
   ul.onclick=e=>{const li=e.target.closest('li');if(li)this.ir(this.R[+li.dataset.j])}},
  marca(){this.el.querySelectorAll('#vbL li').forEach((li,j)=>{li.classList.toggle('on',j===this.i);if(j===this.i)li.scrollIntoView({block:'nearest'})})},
- ir(x){if(!x)return;this.fechar();if(x.go)x.go();else if(x.href){if(x.href.startsWith('#')){if(location.hash===x.href)window.dispatchEvent(new HashChangeEvent('hashchange'));else location.hash=x.href}else location.href=x.href}}};
+ ir(x){if(!x)return;this.fechar();if(x.go)x.go();else if(x.href){if(x.href.startsWith('#')){if(location.hash===x.href)window.dispatchEvent(new HashChangeEvent('hashchange'));else location.hash=x.href}else vacDemo.ir(x.href)}}};
 document.addEventListener('keydown',e=>{if((e.ctrlKey||e.metaKey)&&(e.key==='k'||e.key==='K')){e.preventDefault();Busca.el?Busca.fechar():Busca.abrir()}});
-function wireCabecalho(){const b=$('#vacBusca');if(b)b.onclick=()=>Busca.abrir();const v=$('#appVer');if(v&&!v.onclick){const port=systems().find(s=>s.id==='portal')||{html:'Portal.html'};v.onclick=()=>{location.href=sysHref(port,'versoes')}}}
+function wireCabecalho(){const b=$('#vacBusca');if(b)b.onclick=()=>Busca.abrir();const v=$('#appVer');if(v&&!v.onclick){const port=systems().find(s=>s.id==='portal')||{html:'Portal.html'};v.onclick=()=>{vacDemo.ir(sysHref(port,'versoes'))}}}
 /* ----- vac-cabecalho v2 · acréscimos de 05/11/2026 (iguais em todas as páginas; não editar só numa) -----
    Menu "Outros ▾" (vac.sistemas com grupo:'outros' + links de vac.links), ⚙ Administração (Portal.html#admin),
    nomes exibidos novos (Produção, Waste, Gestão de Gel), entrar pelo ID (usuários do cadastro: cópia vac.cadastros),
@@ -314,8 +314,8 @@ function cardAba(a,sub){const S=sub&&(a.subabas||[]).find(x=>x.id===sub);const i
 function viewGeral(){const grupos=[...new Set(PLANO.abas.map(a=>a.grupo))];
  const cont=(PLANO.contagens||[]).map(c=>({...c,n:cadCount(c)})).filter(c=>c.n!=null);
  const hoje=(PLANO.hoje||[]).map(x=>({...x,href:linkDe(x)}));
- return`<div class="card aviso"><div class="row"><h2 class="ttl">Esta página está em construção</h2><span class="pill none">v${esc(PAGE.versao)}</span></div>
-  <p>${esc(PLANO.nota||'')}</p><p class="small muted">Ainda não grava nada nem pede a pasta. As abas abaixo mostram o que cada tela vai ter; elas mudam conforme o desenho for fechado.</p>
+ return`<div class="card aviso"><div class="row"><h2 class="ttl">${vacDemo.ativo?'Projetos · demonstração de navegação':'Esta página está em construção'}</h2><span class="pill none">v${esc(PAGE.versao)}</span></div>
+  <p>${esc(PLANO.nota||'')}</p><p class="small muted">${vacDemo.ativo?'Você pode explorar as abas planejadas e continuar a demonstração nas outras páginas. Projetos ainda está em construção.':'Ainda não grava nada nem pede a pasta.'} As abas abaixo mostram o que cada tela vai ter; elas mudam conforme o desenho for fechado.</p>
   ${cont.length?`<div class="cont">${cont.map(c=>`<div class="kpi"><div class="l">${esc(c.rot)}</div><div class="v">${c.n}</div><div class="s"><a href="${esc(vacPortalHref('cadastros/'+c.tipo))}">ver no Portal ↗</a></div></div>`).join('')}</div>`:''}</div>
  ${grupos.map(g=>`${g?`<h3 class="grpT">${esc(g)}</h3>`:'<div style="height:14px"></div>'}<div class="grid g3">${PLANO.abas.filter(a=>a.grupo===g).map(a=>`<a class="card abaC" href="#aba=${esc(a.id)}" data-ir="${esc(a.id)}"><div class="row"><b>${esc(a.aba)}</b>${a.status?`<span class="pill info">${esc(a.status)}</span>`:''}</div>
   <ul class="lst small">${(a.itens||[]).slice(0,4).map(t=>`<li>${esc(t)}</li>`).join('')}</ul>${(a.subabas||[]).length?`<div class="small muted">Subabas: ${a.subabas.map(s=>esc(s.nome)).join(' · ')}</div>`:''}</a>`).join('')}</div>`).join('')}

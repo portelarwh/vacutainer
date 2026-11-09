@@ -443,7 +443,7 @@ document.addEventListener('click', async e => {
   const ords = b.dataset.okkbc === '*' ? (Ord._kkbcLista || []) : [b.dataset.okkbc]; if (!ords.length) return toast('Nenhuma ordem sem KKBC.');
   const ok = await ordCopiar(ords.join('\n')); const W = (typeof systems === 'function' ? systems() : []).find(x => x.id === 'perdas') || { id: 'perdas', html: 'Perdas-Ordem.html' };
   toast((ok ? (ords.length > 1 ? ords.length + ' ordens copiadas' : 'Ordem ' + ords[0] + ' copiada') : 'Não consegui copiar; as ordens aparecem no Waste') + '. Abrindo a importação do Waste…');
-  setTimeout(() => { location.href = sysHref(W, 'aba=importar&kkbc=' + encodeURIComponent(ords.slice(0, 200).join(','))); }, 450);
+  setTimeout(() => { vacDemo.ir(sysHref(W, 'aba=importar&kkbc=' + encodeURIComponent(ords.slice(0, 200).join(',')))); }, 450);
 }, true);
 /* ficha da ordem (2.1: dados de ordens; abas de produção, waste, gel e paradas entram na 2.3) */
 function ordFicha(ordem, comp) {

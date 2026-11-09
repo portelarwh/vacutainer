@@ -256,6 +256,7 @@ const vacFicha = (() => {
   function carregar(forcar) {
     if (S.carregando) return S.carregando;
     S.carregando = (async () => {
+      if(vacDemo.ativo){for(const f of FONTES){const ex=vacDemo.exports(f.id);S.dados[f.id]=ex?{estado:'pasta',pasta:'Demonstração',geradoEm:ex.geradoEm,d:f.pega(ex)}:{estado:'ausente'}}S.idx=null;return}
       const dir = pasta();
       /* AT-08 · trocou de pasta na mesma aba: o que a ficha tem em memória e o índice da busca são da pasta anterior; relê tudo.
          NV-03: a cópia do IndexedDB guarda a identidade comprovada da origem, não só o nome final. */
@@ -415,7 +416,7 @@ const vacFicha = (() => {
     if (op.hist !== false && history.state && history.state.vacFicha) { try { history.back(); } catch (e) { } }
   }
   function esc(e) { if (e.key === 'Escape' && S.aberto && !document.querySelector('.vbusca')) { e.stopPropagation(); fechar(); } }
-  const link = (tipo, cod) => location.href.split('#')[0] + '#ficha=' + tipo + '/' + encodeURIComponent(cod);
+  const link = (tipo, cod) => vacDemo.atualHref('ficha=' + tipo + '/' + encodeURIComponent(cod));
   function avisa(m) { try { if (typeof toast === 'function') return toast(m); } catch (e) { } console.info(m); }
   document.addEventListener('click', e => {
     const t = e.target.closest && e.target.closest('[data-vac-ordem],[data-vac-lote],[data-vac-lp],[data-vf-modo],[data-vf-link],[data-vf-fechar],[data-vf-ir]'); if (!t) return;
@@ -456,4 +457,4 @@ function vacNovaAcaoHref(d) {
 }
 function vacNovaAcaoBotao(d, rot = '+ Ação no Planner', cls = 'b sm') { const e = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); return `<a class="${e(cls)}" href="${e(vacNovaAcaoHref(d))}" target="_blank" rel="noopener" title="Abre Iniciativas com a ação preenchida (você confere antes de criar)">${e(rot)}</a>`; }
 /* endereço desta página com uma rota (para o "reconsultar" da ação) */
-function vacAquiHref(hash) { return location.href.split('#')[0].split('/').pop() + (hash ? '#' + hash : ''); }
+function vacAquiHref(hash) { return vacDemo.ativo ? vacDemo.paginas[PAGE.id] + (hash ? '#' + hash : '') : location.href.split('#')[0].split('/').pop() + (hash ? '#' + hash : ''); }

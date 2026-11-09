@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="pt-BR">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Demonstração · Linha Vacutainer</title>
+<style>html,body{margin:0;height:100%;background:#eef1f4;font:16px/1.5 system-ui,sans-serif;color:#15222f}iframe{display:block;border:0;width:100%;height:100dvh}#aviso{padding:24px;max-width:720px;margin:auto}button{font:inherit;padding:8px 14px}</style>
+</head><body><div id="aviso" role="status">Preparando a demonstração com dados fictícios…</div>
+<script>
+const MODULOS=@@VAC_DEMO_PAGINAS@@;
+const arquivos={portal:'Portal.html',oee:'OEE-Vacutainer.html',perdas:'Perdas-Ordem.html',gel:'Gestão-Gel-Vacutainer.html',paradas:'Paradas.html',equip:'Equipamentos.html',inic:'Iniciativas.html',projetos:'Projetos.html'};
+const dados=new Map(),textos=new Map(),inicio=new URL(location.href),base=new URL('.',location.href).href;
+const storage={get length(){return dados.size},key(i){return[...dados.keys()][i]??null},getItem(k){return dados.get(String(k))??null},setItem(k,v){dados.set(String(k),String(v))},removeItem(k){dados.delete(String(k))}};
+let pedido=0,frame=null;const novoId=()=>typeof crypto.randomUUID==='function'?crypto.randomUUID():Date.now().toString(36)+Math.random().toString(36).slice(2);
+function link(mod,rota){const u=new URL(location.href);u.searchParams.set('pagina',mod);u.searchParams.set('rota',rota||'');return u.href}
+async function mostrar(mod,rota){const n=++pedido;document.title='Demonstração · '+(({portal:'Portal',oee:'Produção',perdas:'Waste',gel:'Gestão de Gel',paradas:'Paradas',equip:'Equipamentos',inic:'Iniciativas',projetos:'Projetos'})[mod]||mod);
+ if(!textos.has(mod)){const bytes=Uint8Array.from(atob(MODULOS[mod]),c=>c.charCodeAt(0)),stream=new Blob([bytes]).stream().pipeThrough(new DecompressionStream('gzip'));textos.set(mod,await new Response(stream).text())}if(n!==pedido)return;
+ let html=textos.get(mod);const prefixo='<base href="'+base.replaceAll('&','&amp;').replaceAll('"','&quot;')+'"><script>location.hash='+JSON.stringify(rota||'').replaceAll('<','\\u003c')+';<\/script>';
+ if(/<head(?:\s[^>]*)?>/i.test(html.slice(0,600)))html=html.replace(/<head(?:\s[^>]*)?>/i,m=>m+prefixo);else html=html.replace(/<html(?:\s[^>]*)?>/i,m=>m+prefixo);
+ const f=document.createElement('iframe');f.title='Sistema Vacutainer em demonstração';f.srcdoc=html;const anterior=frame;frame=f;document.getElementById('aviso').hidden=true;document.body.appendChild(f);if(anterior)anterior.remove();
+}
+function navegar(mod,rota){if(!arquivos[mod])return;history.pushState(null,'',link(mod,rota));mostrar(mod,rota).catch(falhou)}
+function falhou(e){const a=document.getElementById('aviso');a.hidden=false;a.textContent='Não foi possível abrir a demonstração. Use Chrome ou Edge atualizado. '+(e.message||e)}
+window.vacDemoHost={id:novoId(),storage,base,link,navegar,sair(){const nome=inicio.searchParams.get('origem');location.assign(new URL(Object.values(arquivos).includes(nome)?nome:'Portal.html',base).href)},reiniciar(){if(!confirm('Reiniciar os dados fictícios de todas as páginas desta demonstração?'))return;dados.clear();this.id=novoId();const u=new URL(location.href);mostrar(arquivos[u.searchParams.get('pagina')]?u.searchParams.get('pagina'):'portal',u.searchParams.get('rota')||'').catch(falhou)}};
+window.addEventListener('popstate',()=>{const u=new URL(location.href);mostrar(arquivos[u.searchParams.get('pagina')]?u.searchParams.get('pagina'):'portal',u.searchParams.get('rota')||'').catch(falhou)});
+mostrar(arquivos[inicio.searchParams.get('pagina')]?inicio.searchParams.get('pagina'):'portal',inicio.searchParams.get('rota')||'').catch(falhou);
+</script></body></html>
