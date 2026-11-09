@@ -1257,7 +1257,7 @@ const U = (() => {
 
 /* ---- 02-model.js ---- */
 /* ================= modelo de dados, valores iniciais e integridade ================= */
-const APP_VERSION = '2.4.20';
+const APP_VERSION = '2.4.21';
 const SCHEMA_VERSION = 1;
 const BASE_FILE = 'oee-vacutainer-base.json';
 const BACKUP_DIR = '00. Backups';
@@ -5453,9 +5453,9 @@ function eventModal(day, evId, ivId, opts = {}) {
      <label class="f"><span>Tipo da parada</span><select id="eCode" required>${!ev ? '<option value="">Escolha…</option>' : ''}${cats.map(cat => `<optgroup label="${esc(cat)}">${codes.filter(c => c.category === cat).map(c => `<option value="${c.id}" ${ev && ev.codeId === c.id ? 'selected' : ''}>${esc(c.code + ' · ' + c.name)}</option>`).join('')}</optgroup>`).join('')}</select></label>
      <div class="kv"><span class="l">Categoria</span><span class="v" id="eCat">—</span></div>
      <label class="f"><span>Só o tempo (min)</span><input type="number" id="eM" min="0" step="1" value="${ev && ev.start == null ? Engine.eventMinutes(ev) : ''}"></label>
-     <label class="f"><span>ou Início</span><input type="time" id="eS" value="${ev && ev.start != null ? U.hhmm(ev.start) : ''}"></label>
+     <label class="f"><span>Início</span><input type="time" id="eS" value="${ev && ev.start != null ? U.hhmm(ev.start) : ''}"></label>
      <label class="f"><span>Fim</span><input type="time" id="eE" value="${ev && ev.end != null ? U.hhmm(ev.end) : ''}"></label>
-     <div class="f"><span>&nbsp;</span><button type="button" class="btn sm ghost" id="eClr">Limpar e destravar</button></div>
+     <div class="f"><span>&nbsp;</span><button type="button" class="btn sm ghost" id="eClr">Limpar tempos</button></div>
      <p class="small muted wide" id="eHint" style="margin:-4px 0 0"></p>
      <label class="f" data-m><span>Intervalo da parada</span><select id="eIv">${ivs.map(i => `<option value="${i.id}" ${(ev ? ev.intervalId : ivId) === i.id ? 'selected' : ''}>${U.range(i.start, i.end)}</option>`).join('')}</select></label>
      <label class="f"><span>Equipamento</span><select id="eEq"><option value="">—</option>${equip.map(m => `<option value="${m.id}" ${ev && ev.equipmentId === m.id ? 'selected' : ''}>${esc(m.name)}</option>`).join('')}</select></label>
@@ -5467,7 +5467,7 @@ function eventModal(day, evId, ivId, opts = {}) {
      <div class="wide" id="eErr"></div></div>`,
     `${ev && !lk ? '<button class="btn danger" id="eDel">Excluir</button>' : ''}<span class="spacer"></span><button class="btn" data-close>Cancelar</button>${lk ? '' : '<button class="btn primary" id="eOk">Salvar parada</button>'}`, (el, close) => {
       let mode = timed ? 't' : 'm';
-      const getPair = lockPair(el, { dur: '#eM', start: '#eS', end: '#eE', hint: '#eHint', clear: '#eClr', onMode: m => { mode = m || 'm'; el.querySelectorAll('[data-m]').forEach(x => x.hidden = m === 't'); } });
+      const getPair = lockPair(el, { dur: '#eM', start: '#eS', end: '#eE', hint: '#eHint', clear: '#eClr', requiresTimes: () => { const c = d.downtimeCodes.find(x => x.id === el.querySelector('#eCode').value); return c && (c.requiresTimes || !c.allowsManualDuration); }, onMode: m => { mode = m || 'm'; el.querySelectorAll('[data-m]').forEach(x => x.hidden = m === 't'); } });
       const base = ivs[0] ? ivs[0].start : 0;
       const tm = v => dayTimeIn(day, v);
       const code = () => d.downtimeCodes.find(c => c.id === el.querySelector('#eCode').value);
@@ -5478,8 +5478,7 @@ function eventModal(day, evId, ivId, opts = {}) {
         el.querySelector('#eNoteReq').hidden = !(c && c.requiresNote);
         el.querySelector('[data-cat=prev]').hidden = !(c && (c.requiresPrevCatalog || c.requiresNextCatalog));
         el.querySelector('[data-cat=next]').hidden = !(c && (c.requiresPrevCatalog || c.requiresNextCatalog));
-        const needT = c && (c.requiresTimes || !c.allowsManualDuration);
-        el.querySelector('#eM').closest('label').hidden = !!needT;
+        getPair.sync();
       };
       el.querySelector('#eCode').addEventListener('change', sync);
       if (opts.pause && !ev) { const pc = d.downtimeCodes.find(c => c.deductsPlanned && c.active !== false); if (pc) el.querySelector('#eCode').value = pc.id; }
@@ -6983,22 +6982,31 @@ const hm24 = m => m == null ? '' : String(Math.floor(m / 60)).padStart(2, '0') +
 function lockPair(root, sel) {
   const d = root.querySelector(sel.dur), s = root.querySelector(sel.start), e = root.querySelector(sel.end);
   const hint = sel.hint ? root.querySelector(sel.hint) : null;
+  let lastMode = '';
   const sync = () => {
+    const required = !!(sel.requiresTimes && sel.requiresTimes());
+    if (sel.requiresTimes && !(s.value || e.value) && (required || lastMode === 't')) d.value = '';
     const hasT = !!(s.value || e.value), hasD = !!String(d.value).trim();
     const mode = hasT ? 't' : hasD ? 'm' : '';
-    d.disabled = mode === 't'; s.disabled = e.disabled = mode === 'm';
+    d.disabled = !sel.requiresTimes && mode === 't';
+    d.readOnly = !!sel.requiresTimes && (required || mode === 't');
+    s.disabled = e.disabled = mode === 'm';
     [d, s, e].forEach(x => x.classList.toggle('locked', x.disabled));
     if (mode === 't') { const a = timeIn(s.value), b0 = timeIn(e.value); let b = b0; if (a != null && b != null && b <= a) b += 1440; d.value = a != null && b != null ? b - a : ''; }
-    if (hint) hint.textContent = mode === 't' ? 'Pelo horário: a duração é calculada.' : mode === 'm' ? 'Só o tempo: início e fim ficam bloqueados.' : 'Preencha a duração OU o início e o fim.';
+    if (sel.requiresTimes) d.closest('label').querySelector('span').textContent = required || mode === 't' ? 'Duração calculada (min)' : 'Duração (min)';
+    if (hint) hint.textContent = required ? 'Este tipo de parada exige início e fim. A duração é calculada pelos horários.' : mode === 't' ? 'Pelo horário: a duração é calculada.' : mode === 'm' ? 'Só o tempo: início e fim ficam bloqueados.' : 'Preencha a duração OU o início e o fim.';
+    lastMode = mode;
     if (sel.onMode) sel.onMode(mode);
   };
   d.addEventListener('input', () => { if (s.disabled || !d.disabled) sync(); });
   [s, e].forEach(x => x.addEventListener('input', sync));
   [d, s, e].forEach(x => x.addEventListener('change', sync));
   // botão para limpar e destravar
-  if (sel.clear) { const c = root.querySelector(sel.clear); if (c) c.onclick = () => { d.value = ''; s.value = ''; e.value = ''; d.disabled = s.disabled = e.disabled = false; sync(); d.focus(); }; }
+  if (sel.clear) { const c = root.querySelector(sel.clear); if (c) c.onclick = () => { d.value = ''; s.value = ''; e.value = ''; d.disabled = s.disabled = e.disabled = false; sync(); (sel.requiresTimes && sel.requiresTimes() ? s : d).focus(); }; }
   sync();
-  return () => ({ mode: s.value || e.value ? 't' : String(d.value).trim() ? 'm' : '', dur: +String(d.value).replace(',', '.'), start: s.value, end: e.value });
+  const read = () => ({ mode: s.value || e.value ? 't' : String(d.value).trim() ? 'm' : '', dur: +String(d.value).replace(',', '.'), start: s.value, end: e.value });
+  read.sync = sync;
+  return read;
 }
 
 /* ---------- abono ---------- */
