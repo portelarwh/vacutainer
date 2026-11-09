@@ -11,7 +11,7 @@ DOCS_PLANO = 'docs/plano-evolucao-plataforma.md'
 PAGINAS = [
  {'arquivo': 'Projetos.html',
   'page': {'id': 'projetos', 'titulo': 'Projetos · Projetos de melhoria e investimentos', 'tituloCurto': 'Projetos',
-           'subtitulo': 'Projetos de melhoria e investimentos', 'versao': '0.1.7', 'baseFile': 'projetos-base.json',
+           'subtitulo': 'Projetos de melhoria e investimentos', 'versao': '0.1.8', 'baseFile': 'projetos-base.json',
            'backupDir': '00. Backups/Projetos', 'estado': 'construcao',
            'estadoNota': 'Escopo a desenhar: projetos de melhoria, projetos grandes e compra de máquina.'},
   'plano': {

@@ -4,7 +4,7 @@ const DEFAULT_SYSTEMS=[...]) o padrão visual comum (fontes/kit/kit_visual.css, 
 nas páginas que não são montadas por build (inclusive as páginas em construção geradas por fontes/modelo/gerar_paginas.py).
 Uso (na raiz do projeto): python fontes/kit/aplicar_kit21.py
 A Produção pega o kit_v21.js ao rodar fontes/producao/build.py."""
-import os,re
+import os,re,json
 RAIZ=os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)),'..','..'))
 k=open(os.path.join(RAIZ,'fontes','kit','kit_v21.js'),encoding='utf-8').read()
 sis=open(os.path.join(RAIZ,'fontes','kit','sistemas.js'),encoding='utf-8').read().strip()
@@ -12,6 +12,9 @@ PAD=re.compile(r'const DEFAULT_SYSTEMS=\[.*?\];',re.S)
 vis=open(os.path.join(RAIZ,'fontes','kit','kit_visual.css'),encoding='utf-8').read().strip()
 VIS=re.compile(r'<style id="vac-visual">.*?</style>\n?',re.S)
 bas=open(os.path.join(RAIZ,'fontes','kit','kit_bases.js'),encoding='utf-8').read().strip()
+_demo=open(os.path.join(RAIZ,'fontes','kit','kit_demo.js'),encoding='utf-8').read()
+_cenario=json.load(open(os.path.join(RAIZ,'fontes','kit','demo_cenario.json'),encoding='utf-8'))
+bas=_demo.replace('@@VAC_DEMO_CENARIO@@',json.dumps(_cenario,ensure_ascii=False,separators=(',',':')).replace('</','<\\/'))+'\n'+bas
 BAS=re.compile(r'<script id="vac-bases">.*?</script>\n?',re.S)
 def visual(s,nome):
     # padrão visual comum: último <style> do <head>, para valer sobre o CSS da página
