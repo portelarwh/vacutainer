@@ -609,3 +609,7 @@ Pedido do usuário, só na página Produção.
   - o gráfico "Atendimento hora a hora" tem rótulo em todas as colunas (inclinado quando não cabe) e mostra também as horas do C com caixas, sem meta;
   - saíram os textos fixos "Produção boa em mil ou no número completo…", "Pausas e intervalos padrão do turno ›" e "Para editar um intervalo deste dia use ⋯". Os atalhos de teclado estão no guia F1.
 - Teste: `node testes/toeereal.js` (parte 2.4.38).
+
+## 17. Iniciativas / Ações sumida ou com o nome antigo na barra (kit, 10/11/2026)
+
+A barra de páginas lê a lista guardada no navegador (`vac.sistemas`, gravada pelo Portal). Uma lista gravada antes da 1.1.0 tinha o nome "Iniciativas" e, se foi gravada antes de a página existir, a marca `futuro`, que esconde o item. O kit agora corrige isso sozinho uma vez e redesenha a barra: o nome fica "Iniciativas / Ações" e a marca `futuro` sai de Iniciativas e Equipamentos. Continuam valendo o "ocultar" de Portal › Configuração › Módulos e a permissão de "ver" do perfil da pessoa. Versões: Portal 1.9.18 · Produção 2.4.39 · Waste 1.8.31 · Gel 2.23 · Paradas 1.0.28 · Iniciativas 1.1.2 · Equipamentos 1.0.7.

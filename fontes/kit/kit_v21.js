@@ -4,6 +4,21 @@
       A página pode definir vacNavAtual() → {attr,val,sub} quando a aba atual não é o botão marcado (ex.: Produção).
    2) Ao voltar para a página (troca de aba/janela, ← Voltar, página restaurada), chama vacAoVoltar() se a página definir,
       para reler o que outras páginas gravaram sem precisar de F5. */
+/* kit v2.1 · 10/11/2026: a lista de páginas guardada neste navegador (vac.sistemas, gravada pelo Portal) pode ter o nome antigo
+   ("Iniciativas", antes da 1.1.0) ou a marca "futuro" de quando Equipamentos e Iniciativas ainda não existiam: aí o item some da barra
+   ou aparece com o nome velho. Corrige uma vez e redesenha a barra. Ocultar em Portal › Módulos e a permissão do perfil continuam valendo. */
+(() => {
+  try {
+    const L = JSON.parse(localStorage.getItem('vac.sistemas') || 'null'); if (!Array.isArray(L)) return;
+    let mudou = false;
+    for (const x of L) {
+      if (!x || typeof x !== 'object') continue;
+      if (x.id === 'inic' && (!x.nome || x.nome === 'Iniciativas')) { x.nome = 'Iniciativas / Ações'; mudou = true; }
+      if ((x.id === 'inic' || x.id === 'equip') && x.futuro) { x.futuro = false; mudou = true; }
+    }
+    if (mudou) { localStorage.setItem('vac.sistemas', JSON.stringify(L)); setTimeout(() => { try { if (typeof renderSysNav === 'function') renderSysNav(); } catch (e) { } }, 0); }
+  } catch (e) { }
+})();
 (() => {
   if (window.__vacV21) return; window.__vacV21 = 1;
   const SEL = '#nav [data-route],#nav [data-t],#nav [data-tab],[role=tab][data-tab]';

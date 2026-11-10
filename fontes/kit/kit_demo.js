@@ -49,7 +49,7 @@ const vacDemo = (() => {
   if(ativo){
     if(!host){url.searchParams.set('demo',id);history.replaceState(history.state,'',url.href);}
     // As preferências/cadastros usados pela página são do cenário. Não altera chaves reais.
-    const padrao = {'vac.user':'Pessoa de demonstração','vac.userId':'9001','vac.sistemas':JSON.stringify(Object.entries(paginas).map(([id,html])=>({id,html,nome:({oee:'Produção',perdas:'Waste',gel:'Gestão de Gel',equip:'Equipamentos',inic:'Iniciativas'})[id]||id[0].toUpperCase()+id.slice(1),futuro:false,estado:id==='projetos'?'construcao':undefined})))};
+    const padrao = {'vac.user':'Pessoa de demonstração','vac.userId':'9001','vac.sistemas':JSON.stringify(Object.entries(paginas).map(([id,html])=>({id,html,nome:({oee:'Produção',perdas:'Waste',gel:'Gestão de Gel',equip:'Equipamentos',inic:'Iniciativas / Ações'})[id]||id[0].toUpperCase()+id.slice(1),futuro:false,estado:id==='projetos'?'construcao':undefined})))};
     const prefsPrefixo=prefixo+'pref.';
     const chaves=()=>{const s=new Set(Object.keys(padrao));try{for(let i=0;real&&i<real.length;i++){const k=real.key(i);if(k.startsWith(prefsPrefixo))s.add(k.slice(prefsPrefixo.length));}}catch(e){}for(const k of memoria.keys())if(k.startsWith(prefsPrefixo))s.add(k.slice(prefsPrefixo.length));return[...s]};
     const metodos={getItem(k){k=String(k);if(k==='vac.cadastros')return JSON.stringify(ler('cad'));return lerTexto(prefsPrefixo+k)??padrao[k]??null},setItem(k,v){k=String(k);v=String(v);gravarTexto(prefsPrefixo+k,v)},removeItem(k){apagar(prefsPrefixo+String(k))},clear(){for(const k of chaves())apagar(prefsPrefixo+k)},key(i){return chaves()[i]??null}};
