@@ -35,7 +35,7 @@ const { chromium } = require('playwright');
     document.querySelector('[data-hhsel=""]').click(); await w(); R.todos = document.querySelectorAll('table.hh tr.grp').length;
     R.psNome = ps.snap.name; return R;
   });
-  ok(r.ver === '2.4.34', 'Produção 2.4.34');
+  ok(r.ver >= '2.4.34', 'Produção (2.4.34+)');
   ok(!r.respDia && r.respTurno === r.nTurnos && r.nTurnos >= 2, `PRD-05: sem "Responsável" do dia; um por turno (${r.respTurno}/${r.nTurnos})`);
   ok(r.respRep, 'PRD-05: com scrap "Total diário" aparece "Responsável pelo reporte"');
   ok(r.psResp === 'P. Costa', 'PRD-05: responsável do turno gravado no turno');
@@ -44,21 +44,56 @@ const { chromium } = require('playwright');
   ok(r.seg[0] === 'Todos' && r.seg.length === r.nTurnos + 1 && /\d+\/\d+/.test(r.seg[1]) && r.todos === r.nTurnos, `PRD-06: troca entre turnos com preenchimento x/y e "Todos" (${r.seg.join(' · ')})`);
   ok(r.ib.length === 4, `UX-01: ⓘ em ${r.ib.join(', ')}`);
 
+  /* 2.4.35 · CSV do MES: catálogo e lote registrados antes da 1ª caixa pertencem a ela; caixa 0 (contador zerado) não conta */
+  const ms = await o.evaluate(() => {
+    const csv = `Time,VAEB01_MES_Catalogo_Atual,VAEB01_MES_Lote_Atual,VAEB01_MES_Caixa_Atual
+11/9/2026 2:00:00.000 AM,,6299900.000,0.0
+11/9/2026 2:00:05.000 AM,360060.000,,
+11/9/2026 2:30:00.000 AM,,,1.0
+11/9/2026 2:31:00.000 AM,,,2.0
+11/9/2026 3:10:00.000 AM,,6299948.000,0.0
+11/9/2026 3:10:06.032 AM,360057.000,,
+11/9/2026 4:53:06.325 AM,,,1.0
+11/9/2026 4:53:31.484 AM,,,2.0
+11/9/2026 4:54:10.000 AM,,,3.0`;
+    const an = ServerData.analyze(ServerData.parseCsv(csv), { gapMin: 10 });
+    return { seg: an.segments.map(s => [s.lot, s.cat, s.b0, s.b1, s.t0.slice(11)].join('|')), gaps: an.gaps.length, zeros: an.zeros, boxes: an.boxes, mes: an.mes.map(e => e.k + '@' + e.t.slice(11)).join(' ') };
+  });
+  ok(JSON.stringify(ms.seg) === JSON.stringify(['6299900|360060|1|2|02:30:00', '6299948|360057|1|3|04:53:06']), `MES: cada lote com o catálogo registrado acima da 1ª caixa e início na 1ª caixa (${ms.seg.join(' ; ')})`);
+  ok(ms.zeros === 2 && ms.boxes === 5 && ms.gaps === 0, `MES: caixa 0 não conta nem abre lacuna (caixas ${ms.boxes}, zeros ${ms.zeros}, lacunas ${ms.gaps})`);
+  ok(ms.mes === 'lot@02:00:00 cat@02:00:05 lot@03:10:00 cat@03:10:06', `MES: horário do registro guardado como evento (${ms.mes})`);
+
+  /* UX-02: guia por aba (kit vacGuia + conteúdo da página) */
+  const gp = await o.evaluate(async () => {
+    const w = t => new Promise(r => setTimeout(r, t)); go('launch'); await w(150);
+    localStorage.setItem('vac.guiaMostrar', '1'); window.dispatchEvent(new KeyboardEvent('keydown', { key: 'F1' })); await w(150);
+    const R = { btn: !!document.getElementById('vacGuiaBtn'), h1: (document.querySelector('#vacGuia h2') || {}).textContent, marcas: [...document.querySelectorAll('.vg-marca')].filter(m => m.style.display !== 'none').length };
+    go('hourly'); await w(700); R.h2 = (document.querySelector('#vacGuia h2') || {}).textContent;
+    go('stops'); await w(700); R.h3 = (document.querySelector('#vacGuia') || {}).innerText || '';
+    vacGuia.fechar(); await w(50); R.fechou = !document.getElementById('vacGuia') && !document.querySelector('.vg-marca'); return R;
+  });
+  ok(gp.btn && /Lançamento do dia/.test(gp.h1) && gp.marcas >= 3, `UX-02: "?"/F1 abre o guia da aba aberta, com os campos numerados na tela (${gp.h1}, ${gp.marcas} marcas)`);
+  ok(/Hora a hora/.test(gp.h2) && /em preparação/.test(gp.h3) && gp.fechou, 'UX-02: o guia acompanha a troca de aba; aba sem guia avisa "em preparação"; fechar tira as marcas');
+
   /* UX-04: pílula comum, "desatualizada" quando outra página já leu uma rev mais nova */
   const u = await o.evaluate(() => { localStorage.setItem('vac.cadastros', JSON.stringify({ schema: 'vac-cadastros', rev: 9 })); return [vacCadPilula(7, { fonte: 'pasta' }), vacCadPilula(9, { fonte: 'pasta' }), vacCadPilula(7, { fonte: 'pasta', portal: true }), vacCadPilula(9, { fonte: 'copia' }), vacCadPilula(null)]; });
   ok(/desatualizada/.test(u[0]) && /pill warn/.test(u[0]) && !/desatualizada/.test(u[1]) && /pill info/.test(u[1]) && !/desatualizada/.test(u[2]), 'UX-04: rev atrás da mais nova lida neste computador = "desatualizada"; igual = normal; no Portal nunca');
   ok(/cópia local/.test(u[3]) && /não lido/.test(u[4]) && /Revisão do cadastro geral do Portal/.test(u[1]), 'UX-04: cópia local e "não lido" sinalizados; ⓘ explica o número');
   await o.close();
 
+  for (const [arq, id, abas] of [['Portal.html', 'portal', 7], ['Paradas.html', 'paradas', 10], ['Perdas-Ordem.html', 'perdas', 8], ['Gestão-Gel-Vacutainer.html', 'gel', 8], ['Iniciativas.html', 'inic', 6], ['Equipamentos.html', 'equip', 5]]) {
+    const pg = await nova(arq); const r = await pg.evaluate(id => { vacGuia.abrir(); return { n: Object.keys((window.VAC_GUIA || {})[id] || {}).length, a: vacGuia.aba(), h: (document.querySelector('#vacGuia h2') || {}).textContent }; }, id);
+    ok(r.n >= abas && /^Guia · /.test(r.h || ''), `UX-02: ${arq} com guia em ${r.n} aba(s); aberto na aba "${r.a}" (${r.h})`); await pg.close();
+  }
   /* UX-03 Waste e Gel; UX-04 Paradas e Portal; ⓘ no Portal */
   const w = await nova('Perdas-Ordem.html');
-  ok(await w.evaluate(() => document.querySelector('[data-t="painel"]').textContent.trim() === 'Visão Geral' && APP_VER === '1.8.29'), 'UX-03 (WST-01): Waste 1.8.29 com a aba Visão Geral');
+  ok(await w.evaluate(() => document.querySelector('[data-t="painel"]').textContent.trim() === 'Visão Geral' && APP_VER >= '1.8.29'), 'UX-03 (WST-01): Waste 1.8.29 com a aba Visão Geral');
   await w.close();
   const g = await nova('Gestão-Gel-Vacutainer.html');
-  ok(await g.evaluate(() => TABS[0][0] === 'painel' && TABS[0][1] === 'Visão Geral' && APP_VERSION === '2.21' && !!VAC_INICIAL_ALVO['Gestão de Gel › Visão Geral'] && !!VAC_INICIAL_ALVO['Gestão de Gel › Painel']), 'UX-03 (GEL-01): Gel 2.21 com a aba Visão Geral (id painel; página inicial antiga continua valendo)');
+  ok(await g.evaluate(() => TABS[0][0] === 'painel' && TABS[0][1] === 'Visão Geral' && APP_VERSION >= '2.21' && !!VAC_INICIAL_ALVO['Gestão de Gel › Visão Geral'] && !!VAC_INICIAL_ALVO['Gestão de Gel › Painel']), 'UX-03 (GEL-01): Gel 2.21 com a aba Visão Geral (id painel; página inicial antiga continua valendo)');
   await g.close();
   const pa = await nova('Paradas.html');
-  ok(await pa.evaluate(() => { return PAGE.versao === '1.0.26' && typeof vacCadPilula === 'function'; }), 'Paradas 1.0.26 usa a pílula comum');
+  ok(await pa.evaluate(() => { return PAGE.versao >= '1.0.26' && typeof vacCadPilula === 'function'; }), 'Paradas 1.0.26 usa a pílula comum');
   await pa.close();
   const po = await nova('Portal.html');
   const pr = await po.evaluate(() => ({ v: PAGE.versao, aj: /como a peça falhou/.test(CAT_AJUDA.modosFalha) && /por que a linha parou/.test(CAT_AJUDA.paradas) }));

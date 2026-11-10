@@ -532,3 +532,86 @@ const vacGel = (() => {
   }
   return { FMT_DEF, PROC_DEF, COMPS, SCAT, fmtAt, procAt, sobraAt, taraP, vigList, vigAt, gelPorTubo, bomVals, bom, pesagem, teorico, ctx };
 })();
+
+/* ===== kit v2.1 · UX-02 (briefing 09/11/2026): guia por aba =====
+   Botão "?" no cabeçalho (ao lado do tema) e F1 abrem um painel com o guia DA ABA ABERTA: para que serve, cada campo (o que é,
+   como preencher, exemplo), o passo a passo das tarefas e as dúvidas comuns. "Mostrar na tela" numera os campos na própria tela
+   (①②③ ligados aos itens do guia): fica visual sem depender de prints, que envelhecem a cada mudança de layout.
+   Conteúdo: cada página define window.VAC_GUIA[PAGE.id][<aba>] = { titulo, para, campos:[{sel, nome, o, como, ex}],
+   passos:[[título, [passo, …]]], duvidas:[[pergunta, resposta]] }. A aba atual vem de vacGuiaAba() (se a página definir) ou do
+   botão marcado nas abas (#nav). Aba sem guia mostra "em preparação" e lembra do ⓘ dos campos. Nada é gravado. */
+const vacGuia = (() => {
+  const S = { aberto: false, mostrar: false, aba: null, marcas: [], t: null };
+  const e = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  const pag = () => (typeof PAGE !== 'undefined' && PAGE.id) || '';
+  function aba() {
+    if (typeof vacGuiaAba === 'function') { try { const v = vacGuiaAba(); if (v) return String(v); } catch (x) { } }
+    const on = document.querySelector('#nav .on[data-t],#nav .on[data-tab],#nav .on[data-route],#nav [data-t][aria-current=page],#nav [aria-selected=true][data-tab],[role=tab][aria-selected=true]');
+    return on ? (on.getAttribute('data-t') || on.getAttribute('data-tab') || on.getAttribute('data-route') || '') : '';
+  }
+  const guia = a => { const G = (window.VAC_GUIA || {})[pag()] || {}; return G[a] || null; };
+  function css() {
+    if (document.getElementById('vacGuiaCss')) return;
+    const st = document.createElement('style'); st.id = 'vacGuiaCss';
+    st.textContent = `#vacGuia{position:fixed;top:0;right:0;bottom:0;width:min(420px,100vw);z-index:900;background:var(--surface,#fff);color:var(--ink,#1c2430);border-left:1px solid var(--line,#ccd);box-shadow:-8px 0 24px rgba(0,0,0,.18);display:flex;flex-direction:column;font:14px/1.45 var(--f-body,system-ui,sans-serif)}
+#vacGuia header{display:flex;gap:8px;align-items:center;padding:12px 14px;border-bottom:1px solid var(--line,#ccd)}#vacGuia header h2{margin:0;font-size:16px;flex:1;font-family:var(--f-display,inherit)}
+#vacGuia .vg-b{border:1px solid var(--line,#ccd);background:var(--surface-2,transparent);color:inherit;border-radius:8px;padding:4px 10px;cursor:pointer;font:inherit;font-size:13px}#vacGuia .vg-b[aria-pressed=true]{background:var(--accent,#235f91);color:var(--on-fill,#fff);border-color:var(--accent,#235f91)}
+#vacGuia .vg-c{overflow:auto;padding:12px 14px 40px;flex:1}#vacGuia h3{font-size:12.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted,#667);margin:16px 0 6px}
+#vacGuia .vg-para{background:var(--accent-soft,rgba(35,95,145,.1));border-radius:8px;padding:8px 10px}#vacGuia ol.vg-cp{list-style:none;margin:0;padding:0}#vacGuia ol.vg-cp li{display:grid;grid-template-columns:26px 1fr;gap:8px;padding:8px 6px;border-bottom:1px solid var(--line,#ccd);border-radius:6px;cursor:pointer}
+#vacGuia ol.vg-cp li:hover,#vacGuia ol.vg-cp li.vg-on{background:var(--surface-2,rgba(0,0,0,.04))}#vacGuia .vg-n,.vg-marca{display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:50%;background:var(--accent,#235f91);color:var(--on-fill,#fff);font:700 12px/1 var(--f-body,system-ui)}
+#vacGuia .vg-n.off{background:var(--muted,#889)}#vacGuia .vg-k{font-size:12px;color:var(--muted,#667)}#vacGuia .vg-ex{font-size:12.5px;margin-top:2px}#vacGuia .vg-ex b{font-weight:600}#vacGuia ol.vg-ps{margin:4px 0 8px;padding-left:20px}#vacGuia ol.vg-ps li{margin:3px 0}
+#vacGuia details{border:1px solid var(--line,#ccd);border-radius:8px;padding:6px 10px;margin:6px 0}#vacGuia summary{cursor:pointer;font-weight:600}
+.vg-marca{position:fixed;z-index:899;box-shadow:0 0 0 2px var(--surface,#fff);cursor:pointer;transform:translate(-40%,-40%)}.vg-alvo{outline:3px solid var(--accent,#235f91)!important;outline-offset:2px;transition:outline-color .3s}
+@media print{#vacGuia,.vg-marca,#vacGuiaBtn{display:none!important}}`;
+    document.head.appendChild(st);
+  }
+  function botao() {
+    if (document.getElementById('vacGuiaBtn')) return; const t = document.getElementById('btnTheme'); if (!t) return;
+    t.insertAdjacentHTML('beforebegin', '<button type="button" class="vic" id="vacGuiaBtn" title="Guia desta aba: para que serve, cada campo e o passo a passo (F1)" aria-label="Guia desta aba">?</button>');
+    document.getElementById('vacGuiaBtn').onclick = () => alternar();
+  }
+  const visivel = el => !!(el && (el.offsetWidth || el.offsetHeight || el.getClientRects().length) && getComputedStyle(el).visibility !== 'hidden');
+  const alvo = c => { if (!c.sel) return null; try { return [...document.querySelectorAll(c.sel)].find(visivel) || null; } catch (x) { return null; } };
+  function limparMarcas() { S.marcas.forEach(m => m.remove()); S.marcas = []; }
+  function posicionar() {
+    const g = guia(S.aba); if (!S.aberto || !S.mostrar || !g) { limparMarcas(); return; }
+    const C = g.campos || []; if (S.marcas.length !== C.length) { limparMarcas(); C.forEach((c, i) => { const m = document.createElement('span'); m.className = 'vg-marca'; m.textContent = i + 1; m.title = c.nome; m.onclick = () => focar(i, false); document.body.appendChild(m); S.marcas.push(m); }); }
+    C.forEach((c, i) => { const el = alvo(c), m = S.marcas[i]; if (!el) { m.style.display = 'none'; return; } const r = el.getBoundingClientRect(); const fora = r.bottom < 0 || r.top > innerHeight || r.left > innerWidth - Math.min(420, innerWidth); m.style.display = fora ? 'none' : ''; m.style.left = Math.max(8, r.left) + 'px'; m.style.top = Math.max(8, r.top) + 'px'; });
+    const P = document.getElementById('vacGuia'); if (P) P.querySelectorAll('.vg-n[data-i]').forEach(n => { const c = C[+n.dataset.i]; n.classList.toggle('off', !!(c && c.sel) && !alvo(c)); n.title = c && c.sel && !alvo(c) ? 'Não aparece nesta tela agora (depende do dia, do filtro ou do que já foi lançado)' : ''; });
+  }
+  function focar(i, rolarTela) {
+    const g = guia(S.aba); if (!g) return; const c = (g.campos || [])[i]; const P = document.getElementById('vacGuia');
+    if (P) { P.querySelectorAll('li[data-i]').forEach(l => l.classList.toggle('vg-on', +l.dataset.i === i)); const li = P.querySelector(`li[data-i="${i}"]`); if (li) li.scrollIntoView({ block: 'nearest' }); }
+    const el = c && alvo(c); if (!el) return; if (rolarTela) el.scrollIntoView({ block: 'center', behavior: 'smooth' });
+    el.classList.add('vg-alvo'); setTimeout(() => el.classList.remove('vg-alvo'), 1600);
+  }
+  function html(a, g) {
+    const nome = (typeof PAGE !== 'undefined' && (PAGE.tituloCurto || PAGE.titulo)) || '';
+    if (!g) return `<header><h2>Guia · ${e(nome)}</h2><button type="button" class="vg-b" data-vgx aria-label="Fechar">✕</button></header><div class="vg-c"><p class="vg-para">O guia desta aba ainda está em preparação.</p><p>Enquanto isso, o <b>ⓘ</b> ao lado de cada campo e título explica o que ele é, com um exemplo.</p>${Object.keys((window.VAC_GUIA || {})[pag()] || {}).length ? `<h3>Abas com guia nesta página</h3><ul>${Object.entries(window.VAC_GUIA[pag()]).map(([k, x]) => `<li>${e(x.titulo || k)}</li>`).join('')}</ul>` : ''}</div>`;
+    const C = g.campos || [];
+    return `<header><h2>Guia · ${e(g.titulo || a)}</h2>${C.some(c => c.sel) ? `<button type="button" class="vg-b" data-vgm aria-pressed="${S.mostrar}" title="Numera os campos na tela">Mostrar na tela</button>` : ''}<button type="button" class="vg-b" data-vgx aria-label="Fechar">✕</button></header>
+<div class="vg-c">${g.para ? `<p class="vg-para">${g.para}</p>` : ''}
+${C.length ? `<h3>Campos e botões</h3><ol class="vg-cp">${C.map((c, i) => `<li data-i="${i}" title="${c.sel ? 'Clique para ver na tela' : ''}"><span class="vg-n" data-i="${i}">${i + 1}</span><div><b>${e(c.nome)}</b><div>${c.o || ''}</div>${c.como ? `<div class="vg-ex"><b>Como preencher:</b> ${c.como}</div>` : ''}${c.ex ? `<div class="vg-ex"><b>Exemplo:</b> ${c.ex}</div>` : ''}</div></li>`).join('')}</ol>` : ''}
+${(g.passos || []).length ? `<h3>Passo a passo</h3>${g.passos.map(([t, L]) => `<details open><summary>${e(t)}</summary><ol class="vg-ps">${L.map(p => `<li>${p}</li>`).join('')}</ol></details>`).join('')}` : ''}
+${(g.duvidas || []).length ? `<h3>Dúvidas comuns</h3>${g.duvidas.map(([q, r]) => `<details><summary>${e(q)}</summary><p>${r}</p></details>`).join('')}` : ''}
+<p class="vg-k" style="margin-top:18px">F1 abre e fecha este guia. Os números ① ② ③ aparecem na tela com "Mostrar na tela".</p></div>`;
+  }
+  function render() {
+    css(); let P = document.getElementById('vacGuia'); if (!S.aberto) { if (P) P.remove(); limparMarcas(); return; }
+    S.aba = aba(); const g = guia(S.aba);
+    if (!P) { P = document.createElement('aside'); P.id = 'vacGuia'; P.setAttribute('role', 'complementary'); P.setAttribute('aria-label', 'Guia desta aba'); document.body.appendChild(P); }
+    P.innerHTML = html(S.aba, g); limparMarcas();
+    P.querySelector('[data-vgx]').onclick = () => fechar();
+    const m = P.querySelector('[data-vgm]'); if (m) m.onclick = () => { S.mostrar = !S.mostrar; try { localStorage.setItem('vac.guiaMostrar', S.mostrar ? '1' : ''); } catch (x) { } m.setAttribute('aria-pressed', S.mostrar); posicionar(); };
+    P.querySelectorAll('li[data-i]').forEach(l => l.onclick = () => focar(+l.dataset.i, true));
+    posicionar();
+  }
+  function abrir() { S.aberto = true; try { S.mostrar = localStorage.getItem('vac.guiaMostrar') === '1'; } catch (x) { } render(); clearInterval(S.t); S.t = setInterval(() => { if (!S.aberto) return; if (aba() !== S.aba) render(); else posicionar(); }, 500); }
+  function fechar() { S.aberto = false; clearInterval(S.t); render(); const b = document.getElementById('vacGuiaBtn'); if (b) b.focus(); }
+  function alternar() { S.aberto ? fechar() : abrir(); }
+  addEventListener('keydown', ev => { if (ev.key === 'F1') { ev.preventDefault(); alternar(); } else if (ev.key === 'Escape' && S.aberto && !document.querySelector('.modal.on,.mod-bg,[role=dialog]:not(#vacGuia)')) fechar(); });
+  addEventListener('scroll', () => { if (S.aberto && S.mostrar) posicionar(); }, true); addEventListener('resize', () => { if (S.aberto && S.mostrar) posicionar(); });
+  const ini = () => { botao(); setTimeout(botao, 800); };
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', ini); else ini();
+  return { abrir, fechar, alternar, aba, guia: () => guia(aba()), _S: S };
+})();

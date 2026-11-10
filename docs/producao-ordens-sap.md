@@ -197,3 +197,7 @@ Junção da `main` (2.4.21: duração visível no registro de paradas, PR #24) c
 ## Produção 2.4.26 · 10/11/2026 · Fase 3 do briefing
 
 Ordens abre em Ordens produzidas (PRD-02); MB51 e COOIS viraram o item Importar (PRD-03: 1 · MB51, 2 · COOIS), que leva ao Portal › Importação › Produção (IMP-06). Endereços diretos: `#aba=ordens&sub=mb51|coois|lista|conc|hist` e `#aba=config&sec=importacao`. `exports.importacoes` na base do OEE (MES com o período, plano do PCP, históricos) e na de Ordens (MB51/COOIS por competência). Detalhes: [briefing-2026-11-09-fase0-fase1.md](briefing-2026-11-09-fase0-fase1.md) § 7.
+
+## 2.4.35 · CSV do servidor (MES): registro do lote na preparação (10/11/2026)
+
+O MES grava o lote e o catálogo quando a linha é preparada (ex.: 00:00, lote com caixa 0) e a 1ª caixa passa horas depois (04:53). Antes, a linha "lote · caixa 0" abria o trecho às 00:00 com a caixa 0 contada (1 caixa a mais, no turno errado) e, quando o catálogo vinha na linha seguinte, o trecho ficava sem catálogo/lote. Agora: **catálogo e lote registrados acima da 1ª caixa pertencem a ela**; o trecho começa no horário da 1ª caixa; **caixa 0 não conta** (nem abre lacuna); o horário do registro continua como evento do MES (a troca mostra última caixa → registro → 1ª caixa). A prévia da importação avisa quantos registros com contador 0 houve. Dias já importados com esse caso: **importar o período de novo**. Regras em `fontes/producao/mes_build.py`; teste em `testes/tfase7.js`.
