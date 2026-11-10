@@ -1257,7 +1257,7 @@ const U = (() => {
 
 /* ---- 02-model.js ---- */
 /* ================= modelo de dados, valores iniciais e integridade ================= */
-const APP_VERSION = '2.4.30';
+const APP_VERSION = '2.4.31';
 const SCHEMA_VERSION = 1;
 const BASE_FILE = 'oee-vacutainer-base.json';
 const BACKUP_DIR = '00. Backups';
@@ -4673,6 +4673,7 @@ function renderNow() {
   const keepScroll = window.scrollY;
   renderTop();
   Charts.reset();
+  if (App.route === 'panel') { App.route = 'overview'; try { localStorage.setItem('oee-route', 'overview'); } catch (e) { } if (VisaoGeral.naPadrao()) Panel.st().view = 'mine'; }   /* 2.4.31 · PRD-01: o Painel abre na Visão Geral */
   const v = App.views[App.route];
   const main = $('#main');
   const ts = tabState(App.route);
@@ -4845,7 +4846,7 @@ function filterBar(opts = {}) {
   return `<form class="filters" id="gFilters" onsubmit="return false">
     <label class="f"><span>De</span><input type="date" name="from" value="${f.from}" data-fk="f-from"></label>
     <label class="f"><span>Até</span><input type="date" name="to" value="${f.to}" data-fk="f-to"></label>
-    <div class="f"><span>Período rápido</span><div class="seg">${[['wk', 'Semana atual'], ['pwk', 'Semana anterior'], ['7', '7 dias'], ['30', '30 dias'], ['mtd', 'Mês atual'], ['pm', 'Mês anterior'], ['fy', 'Ano fiscal']].map(([k, l]) => `<button type="button" data-qp="${k}">${l}</button>`).join('')}</div></div>
+    <div class="f"><span>Período rápido</span><div class="seg">${[['d0', 'Hoje'], ['d1', 'Ontem'], ['wk', 'Semana'], ['mtd', 'Mês'], ['pwk', 'Semana anterior'], ['pm', 'Mês anterior'], ['7', '7 dias'], ['30', '30 dias'], ['fy', 'Ano fiscal']].map(([k, l]) => `<button type="button" data-qp="${k}">${l}</button>`).join('')}</div></div>
     <label class="f"><span>Linha</span><select name="lineId" data-fk="f-line">${lines.map(l => `<option value="${l.id}" ${f.lineId === l.id ? 'selected' : ''}>${esc(l.name)}</option>`).join('')}</select></label>
     <label class="f"><span>Máquina</span><select name="machineId"><option value="">Todas</option>${d.machines.filter(m => m.role === 'oee').map(m => `<option value="${m.id}" ${f.machineId === m.id ? 'selected' : ''}>${esc(m.name)}</option>`).join('')}</select></label>
     <label class="f"><span>Catálogo</span><select name="catalogId"><option value="">Todos</option>${d.catalogs.map(c => `<option value="${c.id}" ${f.catalogId === c.id ? 'selected' : ''}>${esc(catLabel(c))}</option>`).join('')}</select></label>
@@ -4859,6 +4860,8 @@ function bindFilters(root, onChange) {
   form.addEventListener('change', e => { const t = e.target; if (!t.name || !(t.name in App.filters)) return; App.filters[t.name] = t.type === 'checkbox' ? t.checked : t.value; if (App.filters.from > App.filters.to) { App.filters.to = App.filters.from; } (onChange || render)(); });
   form.querySelectorAll('[data-qp]').forEach(b => b.addEventListener('click', () => {
     const t = U.today(), k = b.dataset.qp;
+    if (k === 'd0') { App.filters.from = t; App.filters.to = t; }
+    if (k === 'd1') { App.filters.from = U.addDays(t, -1); App.filters.to = U.addDays(t, -1); }
     if (k === '7') { App.filters.from = U.addDays(t, -6); App.filters.to = t; }
     if (k === '30') { App.filters.from = U.addDays(t, -29); App.filters.to = t; }
     if (k === 'mtd') { App.filters.from = U.monthStart(t); App.filters.to = t; }
@@ -7743,7 +7746,7 @@ function planModal(month, preset) {
 /* ================= Painel montável: indicadores e blocos escolhidos, visões compartilhadas e modelo "Diretoria mensal" =================
    "Meu painel" fica neste navegador (preferência pessoal). Visões compartilhadas ficam na base (panelViews):
    qualquer pessoa edita e fica registrado quem salvou por último, como no Gestão de Gel. */
-const PN_PRES = [['mtd', 'Mês atual'], ['pm', 'Mês anterior'], ['wk', 'Semana atual'], ['pwk', 'Semana anterior'], ['30', '30 dias'], ['fy', 'Ano fiscal'], ['custom', 'Personalizado']];
+const PN_PRES = [['d0', 'Hoje'], ['d1', 'Ontem'], ['wk', 'Semana'], ['mtd', 'Mês'], ['pm', 'Mês anterior'], ['pwk', 'Semana anterior'], ['30', '30 dias'], ['fy', 'Ano fiscal'], ['custom', 'Personalizado']];
 const PN_TPL = {
   dir: {
     name: 'Diretoria mensal', pre: 'pm',
@@ -7757,7 +7760,7 @@ const PN_MINE = () => ({ kpis: ['oee', 'gap', 'prod', 'attain', 'lossH', 'scrap'
 
 const Panel = {
   edit: null,  // { target, layout } enquanto personaliza
-  st() { const p = App.prefs.panel = App.prefs.panel || {}; if (!p.view) p.view = 'mine'; if (!p.pre) p.pre = 'mtd'; if (p.cmp == null) p.cmp = true; if (!p.grp) p.grp = 'auto'; return p; },
+  st() { const p = App.prefs.panel = App.prefs.panel || {}; if (!p.view) p.view = 'padrao'; if (!p.pre) p.pre = 'mtd'; if (p.cmp == null) p.cmp = true; if (!p.grp) p.grp = 'auto'; return p; },
   views() { return (db().panelViews || []).filter(v => !v.deleted).sort((a, b) => a.name.localeCompare(b.name)); },
   viewOptions() {
     const vs = this.views(), out = [['mine', 'Meu painel']];
@@ -7774,6 +7777,8 @@ const Panel = {
   range(st) {
     const t = U.today(), k = st.pre;
     if (k === 'custom') return [st.from || U.addDays(t, -29), st.to || t];
+    if (k === 'd0') return [t, t];
+    if (k === 'd1') return [U.addDays(t, -1), U.addDays(t, -1)];
     if (k === '30') return [U.addDays(t, -29), t];
     if (k === 'mtd') return [U.monthStart(t), t];
     if (k === 'pm') { const p = U.addDays(U.monthStart(t), -1); return [U.monthStart(p), p]; }
@@ -9157,6 +9162,48 @@ HELP.gelTeoReal = ['Gel · teórico × real do dia', [['Quando aparece?', 'Só q
 HELP.gelBaixado = ['Gel baixado', [['O que é?', 'Os barris baixados como consumidos na Gestão de Gel neste dia (kg líquidos). Vem do exports do Gel: aparece depois que o Gel grava a base.']]];
 HELP.gelScrap = ['Scrap de gel do turno', [['O que é?', 'As pesagens de scrap de gel do turno (Registrar scrap): equipamento, descarte, catálogo e peso da balança. A conta tira a embalagem e divide pelo peso da composição, igual à Gestão de Gel.'], ['Onde fica?', 'No turno da Produção. A Gestão de Gel lê daqui (a partir da data de corte do Portal) para o resumo do dia, o índice e o saving.'], ['De onde vêm os equipamentos e os pesos?', 'Do Portal: equipamentos da categoria Equipamento – Gel (descartes) e Parâmetros › Gestão de Gel (formatos, perdas e motivos).']]];
 
+/* ===== Produção 2.4.31 · Fase 5 · 5b do briefing (PRD-01, D9): Painel e Visão Geral numa aba só, Visão Geral =====
+   - A montagem atual da Visão Geral é a visão "Visão Geral · padrão" (sempre existe, só leitura).
+   - O seletor de visão traz também Meu painel, as visões compartilhadas e os modelos (ex.: Diretoria mensal): escolhida uma delas,
+     a tela é a do Painel (Personalizar, Imprimir, Apresentar), sem outra aba.
+   - O endereço antigo do Painel (#aba=panel, go('panel'), aba inicial "Produção › Painel") continua valendo: abre a Visão Geral
+     na visão do Painel (Meu painel, se estava na padrão).
+   - Período: Hoje e Ontem entram nos períodos rápidos (com Semana, Mês e as datas livres), aqui e no Painel.
+   Entra no script principal pelo build.py (antes do boot). */
+const VisaoGeral = {
+  PADRAO: 'padrao',
+  opcoes() { return [[this.PADRAO, 'Visão Geral · padrão']].concat(Panel.viewOptions()); },
+  naPadrao() { const st = Panel.st(); return !st.view || st.view === this.PADRAO; },
+  barra() {
+    const st = Panel.st();
+    return `<div class="filters pn-bar vg-bar"><div class="row">
+      <label class="f"><span>Visão ${ib('visaoGeral')}</span><select id="vgView">${this.opcoes().map(([k, l]) => `<option value="${esc(k)}" ${(st.view || this.PADRAO) === k ? 'selected' : ''}>${esc(l)}</option>`).join('')}</select></label>
+      <span class="spacer"></span>
+      <button class="btn sm" id="vgPers" title="Abre Meu painel para montar os indicadores e blocos">${I.edit} Personalizar</button><button class="btn sm" id="vgPrint">${I.print} Imprimir</button><button class="btn sm primary" id="vgTv">${I.tv} Apresentar</button></div></div>`;
+  },
+  wire(root) {
+    const s = root.querySelector('#vgView'); if (s) s.onchange = () => { Panel.st().view = s.value; savePrefs(); render(); };
+    const p = root.querySelector('#vgPers'); if (p) p.onclick = () => { Panel.st().view = 'mine'; savePrefs(); render(); setTimeout(() => { const b = document.querySelector('#pnEdit'); if (b) b.click(); }, 120); };
+    const r = root.querySelector('#vgPrint'); if (r) r.onclick = () => window.print();
+    const t = root.querySelector('#vgTv'); if (t) t.onclick = () => TV.open();
+  }
+};
+(() => {
+  const O = App.views.overview, P = App.views.panel;
+  /* Painel: o seletor de visão dele também volta para a padrão */
+  App.views.overview = {
+    render() { if (!VisaoGeral.naPadrao()) { const st = Panel.st(); if (!Panel.viewOptions().some(o => o[0] === st.view)) st.view = VisaoGeral.PADRAO; } return VisaoGeral.naPadrao() ? VisaoGeral.barra() + O.render() : P.render(); },
+    mount(root) {
+      if (VisaoGeral.naPadrao()) { if (O.mount) O.mount(root); VisaoGeral.wire(root); return; }
+      if (P.mount) P.mount(root);
+      const sel = root.querySelector('#pnView');   // acrescenta a padrão no seletor do Painel
+      if (sel && !sel.querySelector(`option[value="${VisaoGeral.PADRAO}"]`)) { const o = document.createElement('option'); o.value = VisaoGeral.PADRAO; o.textContent = 'Visão Geral · padrão'; sel.insertBefore(o, sel.firstChild); }
+    }
+  };
+  App.views.panel = { render() { return App.views.overview.render(); }, mount(root) { return App.views.overview.mount(root); } };
+})();
+HELP.visaoGeral = ['Visão Geral', [['O que é?', 'A tela de resumo da Produção. "Visão Geral · padrão" é a montagem fixa; as outras visões são as do antigo Painel (Meu painel, visões compartilhadas e modelos como Diretoria mensal), com indicadores e blocos montados por você.'], ['Como personalizo?', '"Personalizar" abre Meu painel em edição: escolha os indicadores do topo e os blocos, a ordem e a largura. Para que todos vejam, salve como visão compartilhada.'], ['E o Painel?', 'Virou parte da Visão Geral (briefing PRD-01). Links e páginas iniciais antigas do Painel abrem aqui.']]];
+
 async function boot() {
   if(vacDemo.ativo){await loadPrefs();applyTheme();bindGlobal();Charts.bind();Store.S.user='Pessoa de demonstração';Store.enterExample(vacDemo.ler('oee'));
     vacDemo.registrar('oee',()=>({...db(),exports:Exports.build(db())}),d=>{Store.S.db=Model.ensure(d);Engine.bumpConfig()},()=>renderNow());Store.on(e=>{if(e==='data')vacDemo.publicar('oee')});
@@ -10497,8 +10544,7 @@ window.vacNavAtual = () => ({ attr: 'data-route', val: App.route, sub: App.route
    Plano → Ordens → Apontamento → Análise → Gestão → Configurações. Menus abrem ao passar o mouse (ou tocar).
    ===================================================================== */
 const NAV_GRUPOS = [
-  { g: 'Visão geral', itens: [['overview', 'Visão geral']] },   // 2.4.8 · Visão geral em 1º e Painel em 2º (a aba que abre vem do perfil)
-  { g: 'Painel', itens: [['panel', 'Painel']] },
+  { g: 'Visão Geral', itens: [['overview', 'Visão Geral']] },   // 2.4.31 · PRD-01: Painel e Visão Geral numa aba só (visões do Painel dentro dela)
   { g: 'Plano', itens: [['plan', 'Plano do mês']] },
   { g: 'Ordens', itens: [['ordens', 'Ordens produzidas', 'lista'], ['plan', 'Ordens (plano do mês)'], ['ordens', 'Conciliação', 'conc'], ['ordens', 'Histórico de competências', 'hist'], ['ordens', 'Importar ↗', 'portal']] },   // 2.4.26 · PRD-02/03, IMP-06
   { g: 'Apontamento', itens: [['launch', 'Lançamento'], ['hourly', 'Hora a hora'], ['lots', 'Lotes (MES)'], ['pend', 'Pendências']] },

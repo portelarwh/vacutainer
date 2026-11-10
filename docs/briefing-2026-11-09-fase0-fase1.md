@@ -473,3 +473,12 @@ Próximo: 4e (Teórico × Real na página do dia da Produção, só quando o cat
   - Quando o período sai do que a página publica, o selo avisa: Produção 120 dias, Paradas 90 dias, Gel 60 dias.
 - **Relatório (POR-08):** o mesmo seletor, com a opção **1 turno** (dia + turno). Nesse caso, a Produção usa `porDiaTurno` e o Paradas usa só os eventos do turno. O Resumo da linha sai com o período no título, os números de cada página e os gráficos por dia.
 - **TV (POR-09):** usa o mesmo período, e cada tela diz qual é. Os meses não se misturam mais. Na TV da própria Produção, as telas de janela móvel (7 dias e 8 semanas) seguem como estão e são tratadas no 5b.
+
+### Passo 5b · Painel e Visão Geral numa aba só (PRD-01, D9) · Produção 2.4.31
+
+- O menu tem só **Visão Geral**; a aba Painel saiu.
+- **Visão Geral · padrão** é a montagem que já existia. O seletor **Visão** traz também Meu painel, as visões compartilhadas e os modelos (ex.: Diretoria mensal). Escolhida uma delas, a própria Visão Geral vira o Painel, com Personalizar, agrupamento, comparação, Imprimir e Apresentar. O seletor do Painel volta para a padrão.
+- Na padrão também há **Personalizar** (abre Meu painel em edição), **Imprimir** e **Apresentar** (TV).
+- **Período:** os períodos rápidos começam por **Hoje · Ontem · Semana · Mês**. Depois vêm Semana anterior, Mês anterior, 7 e 30 dias, Ano fiscal e as datas livres. É assim na Visão Geral, no Painel e nas demais telas que usam a mesma barra de filtros.
+- **Compatibilidade:** os links e as páginas iniciais antigas do Painel (`#aba=panel`, perfil "Produção › Painel", `go('panel')`) abrem a Visão Geral em Meu painel. Visões compartilhadas e o botão TV não mudam.
+- Testes ajustados à nova ordem do menu: `tz.js` e `trelatorios.js`.

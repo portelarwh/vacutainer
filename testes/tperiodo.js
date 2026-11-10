@@ -42,6 +42,27 @@ const { chromium } = require('playwright');
   ok(await po.evaluate(() => !!document.querySelector('.per-bar [data-per="turno"]') && /Resumo da linha/.test(document.querySelector('#main').innerText)), 'POR-08: Relatórios com o seletor de período (inclui 1 turno)');
   await po.evaluate(() => localStorage.removeItem('portal.periodo'));
 
+  /* ---------- 5b (PRD-01, D9): Painel e Visão Geral numa aba só, com Hoje/Ontem ---------- */
+  const o2 = await nova('OEE-Vacutainer.html', 'Produção 5b');
+  const v5 = await o2.evaluate(async () => { document.querySelectorAll('.overlay').forEach(x => x.remove()); Demo.enterExample(); await new Promise(r => setTimeout(r, 300));
+    const espera = () => new Promise(r => setTimeout(r, 350)); const out = {};
+    out.menu = (NAV_GRUPOS || []).map(g => g.g); go('overview'); await espera();
+    const sel = document.querySelector('#vgView'); out.padrao = !!sel && sel.value === 'padrao' && [...sel.options].some(o => o.value === 'mine') && [...sel.options].some(o => /Diretoria/i.test(o.text));
+    out.botoes = ['#vgPers', '#vgPrint', '#vgTv'].every(q => document.querySelector(q));
+    const qp = [...document.querySelectorAll('[data-qp]')].map(b => b.textContent.trim()); out.qp = qp.slice(0, 4).join('|');
+    document.querySelector('[data-qp="d1"]').click(); await espera(); const t = U.today(); out.ontem = App.filters.from === U.addDays(t, -1) && App.filters.to === U.addDays(t, -1);
+    sel.value = 'mine'; sel.dispatchEvent(new Event('change')); await espera(); out.painel = App.route === 'overview' && !!document.querySelector('#pnView') && !!document.querySelector('#pnEdit') && !!document.querySelector('#pnView option[value="padrao"]');
+    out.pnHoje = [...document.querySelectorAll('[data-pnpre]')].slice(0, 2).map(b => b.textContent.trim()).join('|');
+    const pv = document.querySelector('#pnView'); pv.value = 'padrao'; pv.dispatchEvent(new Event('change')); await espera(); out.volta = !!document.querySelector('#vgView') && !document.querySelector('#pnEdit');
+    go('panel'); await espera(); out.legado = App.route === 'overview' && Panel.st().view === 'mine' && !!document.querySelector('#pnView');
+    return out; });
+  ok(!v5.menu.includes('Painel') && v5.menu[0] === 'Visão Geral', 'PRD-01: o menu tem só Visão Geral (sem a aba Painel)');
+  ok(v5.padrao && v5.botoes, 'PRD-01: Visão Geral abre na visão padrão, com o seletor (Meu painel, modelos como Diretoria mensal), Personalizar, Imprimir e Apresentar');
+  ok(v5.qp === 'Hoje|Ontem|Semana|Mês' && v5.ontem, 'D9: períodos rápidos começam por Hoje · Ontem · Semana · Mês (Ontem filtra o dia anterior)');
+  ok(v5.painel && v5.pnHoje === 'Hoje|Ontem', 'PRD-01: escolhendo uma visão do Painel, a própria Visão Geral vira o Painel (com Hoje e Ontem e a volta para a padrão)');
+  ok(v5.volta, 'PRD-01: o seletor do Painel volta para a Visão Geral padrão');
+  ok(v5.legado, 'PRD-01: o endereço antigo do Painel (go/aba panel) abre a Visão Geral em Meu painel');
+
   await b.close();
   if (errs.length) { console.log('\n' + errs.join('\n')); process.exit(1); } else console.log('\nsem erros');
 })();

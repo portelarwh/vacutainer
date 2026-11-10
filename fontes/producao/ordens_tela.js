@@ -495,8 +495,7 @@ window.vacNavAtual = () => ({ attr: 'data-route', val: App.route, sub: App.route
    Plano → Ordens → Apontamento → Análise → Gestão → Configurações. Menus abrem ao passar o mouse (ou tocar).
    ===================================================================== */
 const NAV_GRUPOS = [
-  { g: 'Visão geral', itens: [['overview', 'Visão geral']] },   // 2.4.8 · Visão geral em 1º e Painel em 2º (a aba que abre vem do perfil)
-  { g: 'Painel', itens: [['panel', 'Painel']] },
+  { g: 'Visão Geral', itens: [['overview', 'Visão Geral']] },   // 2.4.31 · PRD-01: Painel e Visão Geral numa aba só (visões do Painel dentro dela)
   { g: 'Plano', itens: [['plan', 'Plano do mês']] },
   { g: 'Ordens', itens: [['ordens', 'Ordens produzidas', 'lista'], ['plan', 'Ordens (plano do mês)'], ['ordens', 'Conciliação', 'conc'], ['ordens', 'Histórico de competências', 'hist'], ['ordens', 'Importar ↗', 'portal']] },   // 2.4.26 · PRD-02/03, IMP-06
   { g: 'Apontamento', itens: [['launch', 'Lançamento'], ['hourly', 'Hora a hora'], ['lots', 'Lotes (MES)'], ['pend', 'Pendências']] },
