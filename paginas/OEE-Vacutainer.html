@@ -1257,7 +1257,7 @@ const U = (() => {
 
 /* ---- 02-model.js ---- */
 /* ================= modelo de dados, valores iniciais e integridade ================= */
-const APP_VERSION = '2.4.21';
+const APP_VERSION = '2.4.25';
 const SCHEMA_VERSION = 1;
 const BASE_FILE = 'oee-vacutainer-base.json';
 const BACKUP_DIR = '00. Backups';
@@ -1479,9 +1479,10 @@ const Engine = (() => {
     return (shift.versions || []).find(v => v.active !== false && !v.deleted && between(date, v.validFrom, v.validTo) && (v.weekdays || []).includes(w)) || null;
   }
   // wd: usar os turnos de outro dia da semana (dia extra, ex.: domingo trabalhado com os turnos de segunda)
-  function activeShiftsAt(db, date, lineId, wd) {
+  /* 2.4.24 · TUR-01: vigência não produtiva (productive:false) fica fora, a não ser com incluirNP */
+  function activeShiftsAt(db, date, lineId, wd, incluirNP) {
     return db.shifts.filter(s => !s.deleted && s.status !== 'inativo' && (!lineId || !s.lineId || s.lineId === lineId))
-      .map(s => ({ shift: s, v: shiftVersionAt(s, date, wd) })).filter(x => x.v)
+      .map(s => ({ shift: s, v: shiftVersionAt(s, date, wd) })).filter(x => x.v && (incluirNP || x.v.productive !== false))
       .sort((a, b) => toMin(a.v.start) - toMin(b.v.start));
   }
   // quebra o turno em horas cheias; pedaço final curto (≤ tailMergeMax) é somado ao anterior
@@ -1663,7 +1664,7 @@ const Engine = (() => {
 
   function computeDayRaw(db, day) {
     const st = db.settings;
-    const ru = +st.roundingUnit || 1;
+    const ru = roundAt(st, day.date);
     const msgs = [];
     const M = (level, msg, ref) => msgs.push({ level, msg, ref: ref || null });
     const shifts = (day.shifts || []).filter(s => !s.deleted).sort((a, b) => (toMin(a.snap && a.snap.start) || 0) - (toMin(b.snap && b.snap.start) || 0));
@@ -1812,6 +1813,9 @@ const Engine = (() => {
       shiftRes.push({ ps, agg: a, off: !!ps.off && !npOff(ps), npOff: npOff(ps) });
       addAgg(dayAgg, a);
     }
+    /* 2.4.24 · TUR-01/04, POR-10: produção fora dos turnos reatribuída (OEE reportado); o real fica em foraTurno */
+    const ft = ForaTurno.aplicar(db, day, shiftRes, dayAgg);
+    if (ft && ft.pecas) M('info', `${U.fmt(ft.pecas)} peça(s) produzida(s) fora dos turnos produtivos contam neste dia (OEE reportado). Veja o quadro "Turnos não produtivos e produção fora de turno".`);
     if (day.scrapMode === 'day') { dayAgg.scrap = +day.scrapDay || 0; dayAgg.scrapKnown = day.scrapDay != null; dayAgg.scrapMin = dayAgg.cap > 0 ? dayAgg.scrap * dayAgg.netMin / dayAgg.cap : 0; }
     if (dayManual.n) {
       dayAgg.aMin += dayManual.a; dayAgg.pMin += dayManual.p; dayAgg.infoMin += dayManual.info;
@@ -1863,7 +1867,8 @@ const Engine = (() => {
     if (day.scrapMode === 'day' && day.scrapDay == null && dayAgg.good > 0) M('alerta', 'Scrap diário não informado.');
     if (dayR.cascade && !dayR.cascade.ok && dayR.cascade.check != null) M('alerta', `A cascata não fecha: diferença de ${U.fmt(dayR.cascade.check)} unidades.`);
     for (const m of dayR.qa.msgs) if (dayR.qa.status !== 'adequado') M('alerta', m);
-    return { day, flat, shifts: shiftRes, r: dayR, agg: dayAgg, officialDaily, comp, msgs, events: evRes };
+    if (ft) { ft.real = ft.realDia ? finalize(ft.realDia, st) : null; }
+    return { day, flat, shifts: shiftRes, r: dayR, agg: dayAgg, officialDaily, comp, msgs, events: evRes, foraTurno: ft };
   }
 
   /* ---------- geração do dia ---------- */
@@ -1887,7 +1892,7 @@ const Engine = (() => {
     const st = db.settings;
     const day = { id: U.uid('day'), date, lineId, machineId, status: 'não iniciado', responsible: by, note: '', scrapMode: 'shift', scrapDay: null, gapJustification: '', shifts: [], events: [], origin: 'manual', ...Model.meta(by) };
     day.status = 'não iniciado';
-    for (const { shift, v } of activeShiftsAt(db, date, opts.shiftLineId || lineId, opts.asWeekday)) {
+    for (const { shift, v } of activeShiftsAt(db, date, opts.shiftLineId || lineId, opts.asWeekday, !!opts.only).filter(x => !opts.only || x.shift.id === opts.only)) {   /* 2.4.24 · TUR-02: opts.only monta só um turno (habilitar no dia) */
       const ps = { id: U.uid('ps'), shiftId: shift.id, shiftVersionId: v.id, snap: { code: shift.code, name: shift.name, start: v.start, end: v.end, color: v.color }, initialCatalogId: null, status: 'em lançamento', note: '', scrap: null, intervals: [], summary: null };
       for (const [s, e] of intervalsFor(v, st)) ps.intervals.push({ id: U.uid('iv'), start: s, end: e, catalogId: null, good: null, note: '', kind: 'padrão' });
       // pausas configuradas no turno viram paradas descontadas automáticas
@@ -1910,7 +1915,7 @@ const Engine = (() => {
   }
   // meta diária oficial de um dia-padrão (para projeções), sem descontos
   function standardDayMeta(db, date, catalogId, lineId, machineId) {
-    const st = db.settings, ru = +st.roundingUnit || 1;
+    const st = db.settings, ru = roundAt(st, date);
     let dec = 0, cap = 0, ok = false;
     for (const { v } of activeShiftsAt(db, date, lineId)) {
       const rt = resolveTarget(db, date, catalogId, machineId, lineId);
@@ -3797,6 +3802,12 @@ const Importers = (() => {
    Formato atual (export do historiador): Time, <tag catálogo>, <tag lote>, <tag caixa>. Cada linha traz só o sinal que mudou.
    O nº da caixa é a contagem dentro do lote: volta a 1 no lote novo e continua de onde parou quando o lote é retomado.
    Guardamos por trecho de lote só o minuto de cada caixa (compactado), as trocas registradas no MES e as paradas sem caixa. */
+/* 2.4.22 · ARQ-06 · arredondamento da meta na data (vigências do Portal em settings.roundingVig) */
+function roundAt(st, date) {
+  const L = Array.isArray(st && st.roundingVig) ? st.roundingVig : null;
+  if (L && L.length && date) { const v = L.filter(x => x && x.de && x.de <= date && +x.valor > 0).sort((a, b) => a.de < b.de ? 1 : -1)[0]; if (v) return +v.valor; }
+  return +(st && st.roundingUnit) || 1;
+}
 const ServerData = (() => {
   const pad = n => String(n).padStart(2, '0');
   // 'AAAA-MM-DDTHH:MM:SS' (hora local, sem fuso) <-> minutos absolutos (fracionários)
@@ -4506,10 +4517,11 @@ const esc = U.esc;
 /* ---------- formatação de unidades e semáforo ---------- */
 const UNIT = () => (db() && +db().settings.entryUnit) || 1;
 // exibição: em milheiros (61 mil, padrão) ou número completo (61.000), preferência de cada pessoa
-const DISP = () => App.prefs.qtyDisplay === 'abs' ? 1 : UNIT();
+const vacQtd = () => { try { const v = localStorage.getItem('vac.qtd'); if (v === 'abs' || v === 'unit') return v; } catch (e) { } return App.prefs.qtyDisplay; };
+const DISP = () => vacQtd() === 'abs' ? 1 : UNIT();
 const fq = (v, d) => { if (v == null || !isFinite(v)) return '—'; const x = (v / DISP()) || 0; return U.fmt(x, d != null ? d : (Math.abs(x - Math.round(x)) > 1e-6 ? 1 : 0)); };
 const fqs = v => (v == null || !isFinite(v)) ? '—' : (v > 0 ? '+' : v < 0 ? '−' : '') + fq(Math.abs(v));
-const unitLbl = () => App.prefs.qtyDisplay === 'abs' ? 'un' : (db() && db().settings.unitLabel) || 'un';
+const unitLbl = () => vacQtd() === 'abs' ? 'un' : (db() && db().settings.unitLabel) || 'un';
 // digitação esperta: valor abaixo do limite é lido em milheiros (61 = 61.000); a partir dele, em peças (61000 ou 61.000 = 61.000).
 // big = campos de plano e ordens (limite 1.000.000, porque 12.000 mil é um valor normal ali)
 function parseQ(s, big) { if (s == null) return null; const t = String(s).trim(); if (t === '') return null; const n = +t.replace(/\s/g, '').replace(/\.(?=\d{3}(\D|$))/g, '').replace(',', '.'); if (!isFinite(n)) return NaN; const u = UNIT(); const lim = big ? 1e6 : 1e4; return Math.round((u > 1 && Math.abs(n) >= lim ? n : n * u) * 1000) / 1000; }
@@ -4673,7 +4685,7 @@ function renderNow() {
 }
 const BASE_ST = {
   'conectado': ['ok', 'Base conectada'], 'salvo': ['ok', 'Base conectada · salvo'], 'cache': ['info', 'Cache local'], 'pendente': ['pend', 'Alteração pendente'], 'salvando': ['info', 'Salvando…'],
-  'conflito': ['crit', 'Conflito de versão'], 'erro': ['crit', 'Erro ao salvar'], 'somente-leitura': ['rule', 'Somente leitura'], 'reconectar': ['warn', 'Reconectar pasta'], 'arquivo': ['warn', 'Arquivo sem pasta'], 'iniciando': ['none', 'Abrindo…'], 'exemplo': ['rule', 'Modo exemplo']
+  'conflito': ['crit', 'Conflito de versão'], 'erro': ['crit', 'Erro ao salvar'], 'somente-leitura': ['rule', 'Somente leitura'], 'reconectar': ['warn', 'Reconectar pasta'], 'arquivo': ['warn', 'Arquivo sem pasta'], 'iniciando': ['none', 'Abrindo…'], 'exemplo': ['rule', 'Demonstração']
 };
 function renderTop() {
   const S = Store.S, d = db();
@@ -4700,7 +4712,7 @@ function renderTop() {
 function openBadge() { const n = db().productionDays.filter(d => !d.deleted && !d.demo && d.status !== 'fechado' && d.date <= U.today() && !Engine.isOffDay(db(), d)).length; return n ? `<span class="cnt" data-goto="pend-open" role="link" title="${n} lançamento(s) em aberto (não fechados). Clique para ver o que falta em Pendências.">${n}</span>` : ''; }
 function renderBanner() {
   const S = Store.S; let h = '';
-  if (S.mode === 'exemplo') h += `<div class="banner demo" role="status"><p><b>Modo exemplo.</b> Você está numa cópia com dados fictícios. Nada é gravado na base da pasta; ao sair, tudo volta como estava.</p><button class="btn sm primary" data-act="exitex">Sair do modo exemplo</button></div>`;
+  if (S.mode === 'exemplo') h += `<div class="banner demo" role="status"><p><b>Demonstração.</b> Você está numa cópia com dados fictícios. Nada é gravado na base da pasta; ao sair, tudo volta como estava.</p><button class="btn sm primary" data-act="exitex">Sair da demonstração</button></div>`;
   else if (S.status === 'conflito') h += `<div class="banner crit" role="alert"><p><b>A base externa foi alterada depois da última leitura.</b> ${S.conflict ? `Versão ${S.conflict.externalVersion} gravada por ${esc(S.conflict.externalBy || '—')} em ${U.brDT(S.conflict.externalAt)}. Sua cópia partiu da versão ${S.conflict.localVersion}.` : ''} Nada foi sobrescrito.</p><button class="btn primary sm" data-act="conflict">Resolver</button></div>`;
   else if (S.status === 'erro') h += `<div class="banner crit" role="alert"><p><b>Erro ao salvar:</b> ${esc(S.error || '')} As alterações continuam guardadas neste navegador.</p><button class="btn sm" data-act="retry">Tentar de novo</button></div>`;
   else if (S.status === 'reconectar') h += `<div class="banner warn"><p>O navegador precisa da sua autorização para acessar a pasta da base de novo.</p><button class="btn primary sm" data-act="reconnect">${I.folder} Reconectar pasta</button></div>`;
@@ -4790,7 +4802,7 @@ function bindGlobal() {
     else if (act === 'reconnect') { const h = await IDB.get('dirHandle'); if (h) run(() => connectFolder(h, true)); else { const d = await run(pickFolder); if (d) run(() => connectFolder(d, true)); } }
     else if (act === 'connect') { const d = await run(pickFolder); if (d) run(() => connectFolder(d, true)); }
     else if (act === 'rmdemo') Demo.remove();
-    else if (act === 'exitex') { if(vacDemo.ativo)return vacDemo.sair();Store.exitExample(); App.filters.lineId = 'line_vac'; toast('Você saiu do modo exemplo.'); render(); }
+    else if (act === 'exitex') { if(vacDemo.ativo)return vacDemo.sair();Store.exitExample(); App.filters.lineId = 'line_vac'; toast('Você saiu da demonstração.'); render(); }
     else if (act === 'vdemo') { App.filters.lineId = 'line_demo'; App.filters.from = U.addDays(U.today(), -21); App.filters.to = U.today(); go('overview'); }
     else if (act === 'fullsys') { App.op = false; try { history.replaceState(null, '', location.pathname + location.search); } catch (e) { } go('launch'); }
     else if (act === 'dlbase') { download(BASE_FILE, Store.downloadText()); await Store.markDownloaded(); render(); toast('Base baixada. Substitua o arquivo na pasta da rede.'); }
@@ -5198,6 +5210,7 @@ App.views.launch = {
       ${kpi('Meta diária oficial', fq(res.officialDaily), unitLbl(), res.comp ? (res.comp.applied ? `ajuste última hora ${fqs(res.comp.adjust)}` : '<span class="ferr">compensação inválida</span>') : '')}
     </div>`;
     h += SrvUI.dayCard(day, res);
+    h += ForaTurnoUI.card(day, res);   /* 2.4.24 · TUR-02/03/04 */
     // turnos
     h += `<div class="section grid g2">${res.shifts.map(sr => shiftBlock(day, sr)).join('')}</div>`;
     h += `<section class="card section"><header><h3>Validação</h3>${errs ? semB('crit', errs + ' erro(s)') : semB('ok', 'sem erros')} ${alerts ? semB('warn', alerts + ' alerta(s)') : ''}</header>${msgList(res.msgs)}</section>`;
@@ -5208,7 +5221,7 @@ App.views.launch = {
     { const mb = root.querySelector('#dayMetas'); if (mb) mb.onclick = () => metasModal(); }
     bindDayBar(root); bindNoDay(root);
     const day = curDay(); if (!day || Engine.isOffDay(db(), day)) return;
-    SrvUI.bindDay(root, day);
+    SrvUI.bindDay(root, day); ForaTurnoUI.mount(root, day);
     root.querySelectorAll('[data-dayf]').forEach(el => el.addEventListener('change', () => run(() => Actions.setDayField(day.id, el.dataset.dayf, el.value.trim()))));
     root.querySelectorAll('[data-scrapmode]').forEach(b => b.addEventListener('click', async () => {
       const m = b.dataset.scrapmode; if (m === day.scrapMode) return;
@@ -5906,7 +5919,7 @@ function projection(days, ff, from, to) {
 
 /* ---- 11-ui-config.js ---- */
 /* ================= Configurações ================= */
-const CFG_SECS = [['base', 'Base de dados'], ['usuario', 'Usuário'], ['estrutura', 'Estrutura'], ['turnos', 'Turnos'], ['catalogos', 'Catálogos'], ['metas', 'Metas e capacidades'], ['paradas', 'Tipos de parada'], ['parametros', 'Parâmetros de cálculo'], ['abas', 'Abas'], ['importacao', 'Importação'], ['exportacao', 'Exportação'], ['auditoria', 'Auditoria'], ['demo', 'Modo exemplo'], ['ajuda', 'Ajuda e aceite']];
+const CFG_SECS = [['base', 'Base de dados'], ['usuario', 'Usuário'], ['estrutura', 'Estrutura'], ['turnos', 'Turnos'], ['catalogos', 'Catálogos'], ['metas', 'Metas e capacidades'], ['paradas', 'Tipos de parada'], ['parametros', 'Parâmetros de cálculo'], ['abas', 'Abas'], ['importacao', 'Importação'], ['exportacao', 'Exportação'], ['auditoria', 'Auditoria'], ['ajuda', 'Ajuda e aceite']];
 const Cfg = {};
 App.views.config = {
   render() {
@@ -6799,7 +6812,7 @@ const Demo = {
     Store.enterExample(clone);
     try { Actions.loadDemo('line_vac'); } catch (e) { Store.exitExample(); throw e; }
     App.sel.lineId = 'line_vac'; App.filters.lineId = 'line_vac'; App.filters.from = U.addDays(U.today(), -21); App.filters.to = U.today();
-    toast('Modo exemplo: nada do que você fizer será gravado.'); go('overview');
+    toast('Demonstração: nada do que você fizer será gravado.'); go('overview');
   },
   present() { const d = db(); return !!d && (d.productionDays.some(x => x.demo) || d.targets.some(t => t.demo) || d.lines.some(l => l.demo) || !!d.settings.demo); },
   async remove() {
@@ -6949,7 +6962,7 @@ function metasRows(month) {
     const rt = Engine.resolveTarget(d, wk, cat.id, 'mac_line', 'line_vac');
     if (!rt) { out.push({ f, none: true }); continue; }
     const sim = date => { try { const day = Engine.buildDay(d, date, 'line_vac', 'mac_line', 'x'); day.shifts.forEach(p => p.initialCatalogId = cat.id); day._rev = Math.random(); const res = Engine.computeDayRaw(d, day); return { shifts: res.shifts.map(sr => ({ name: sr.ps.snap.name, code: sr.ps.snap.code, range: U.range(U.toMin(sr.ps.snap.start), U.toMin(sr.ps.snap.end)), meta: sr.agg.metaOp })), day: res.officialDaily }; } catch (e) { return null; } };
-    out.push({ f, cat, rt, perHour: U.ceilTo(rt.pph * rt.oee, +d.settings.roundingUnit || 1), wk: sim(wk), sat: sat <= end ? sim(sat) : null });
+    out.push({ f, cat, rt, perHour: U.ceilTo(rt.pph * rt.oee, roundAt(d.settings, wk)), wk: sim(wk), sat: sat <= end ? sim(sat) : null });
   }
   return out;
 }
@@ -8848,6 +8861,170 @@ const SrvDiv = (() => {
 
 /* ---- 99-boot.js ---- */
 /* ================= inicialização ================= */
+/* ===== Produção 2.4.24 · Fase 2 do briefing de 09/11/2026: turno produtivo, habilitação no dia e produção fora dos turnos =====
+   TUR-01 · turno ativo e NÃO produtivo (Portal › Turnos › vigência "Turno não produtivo"): não entra no dia (nem no plano).
+   TUR-02 · "Habilitar turno X" no lançamento do dia: o turno entra no dia como produtivo (só naquele dia); o tempo dele vira planejado (D4).
+   TUR-01 / POR-10 · caixas do servidor (MES) fora de qualquer turno do dia (janela do turno não produtivo, ou horário sem turno, como a
+     madrugada antes das 06:00 quando o turno C não existe no dia) são REATRIBUÍDAS, só para apuração: o registro horário não muda.
+     Regra (D1): a janela é dividida em trechos contínuos (intervalo sem caixa até o limite de continuidade, padrão = "Parada sem caixa");
+       - trecho emendado com o fim do turno produtivo anterior (a linha não parou na troca) → vai para esse turno;
+       - senão → vai para o próximo turno produtivo (ex.: produção da madrugada sem continuidade com o B → A do dia seguinte).
+     Só vale para dias a partir de settings.foraTurnoDesde (Portal › Parâmetros › Produção; padrão = 1ª vigência não produtiva):
+     dias anteriores (inclusive os fechados) não mudam.
+   TUR-04 · OEE reportado = com a reatribuição (é o resultado oficial do dia e dos turnos; Performance acima de 100% é aceita, D2);
+     OEE real = sem a reatribuição, e cada trecho fora de turno com o próprio OEE: tempo planejado = 1ª à última caixa (D3).
+   TUR-03 · o quadro do dia mostra quanto foi produzido fora dos turnos, para onde foi e o peso no OEE.
+   Este trecho entra no script principal (antes do ServerData) pelo build.py. */
+const ForaTurno = (() => {
+  const SD = () => ServerData;
+  /* início do dia operacional (06:00): o menor início de turno ativo do cadastro, como o ServerData */
+  function opOff(db) { let m = 1440; for (const sh of db.shifts || []) if (!sh.deleted) for (const v of sh.versions || []) if (!v.deleted && v.active !== false && v.start) m = Math.min(m, U.toMin(v.start)); return m === 1440 ? 360 : m; }
+  const desde = db => { const d = (db.settings || {}).foraTurnoDesde; return d ? String(d) : null; };
+  const vale = (db, date) => { const d = desde(db); return !!d && date >= d; };
+  const limite = db => { const st = db.settings || {}; return +st.continuityMin > 0 ? +st.continuityMin : (+st.serverGapMin > 0 ? +st.serverGapMin : 10); };
+  const diaDe = (db, date, lineId) => (db.productionDays || []).find(d => !d.deleted && d.date === date && d.lineId === lineId) || null;
+  /* turnos do dia: o lançamento (se existe: respeita habilitação e "sem produção"); senão, o cadastro */
+  function turnosDoDia(db, date, lineId) {
+    if (Engine.dayMark(db, date, lineId) && Engine.dayMark(db, date, lineId).kind === 'off') return [];
+    const day = diaDe(db, date, lineId);
+    const fix = (s, e) => { if (e != null && s != null && e <= s) e += 1440; return [s, e]; };
+    if (day) return day.shifts.filter(p => !p.deleted).map(p => {
+      const iv = p.intervals.filter(i => !i.deleted); let [s, e] = iv.length ? [Math.min(...iv.map(i => i.start)), Math.max(...iv.map(i => i.end))] : fix(U.toMin(p.snap.start), U.toMin(p.snap.end));
+      return { date, code: p.snap.code, name: p.snap.name, s, e, prod: !p.off || p.offType === 'np' };
+    }).filter(x => x.s != null && x.e != null).sort((a, b) => a.s - b.s);
+    return Engine.activeShiftsAt(db, date, lineId).map(({ shift, v }) => { const [s, e] = fix(U.toMin(v.start), U.toMin(v.end)); return { date, code: shift.code, name: shift.name, s, e, prod: true }; }).filter(x => x.s != null && x.e != null).sort((a, b) => a.s - b.s);
+  }
+  /* turno não produtivo do cadastro que cobre a janela (para o rótulo) */
+  function rotulo(db, date, lineId, a, b) {
+    for (const { shift, v } of Engine.activeShiftsAt(db, date, lineId, undefined, true)) { if (v.productive !== false) continue; let s = U.toMin(v.start), e = U.toMin(v.end); if (e <= s) e += 1440; if (s < b && e > a) return 'janela do ' + shift.name + ' (não produtivo)'; }
+    return 'fora dos turnos do dia';
+  }
+  /* janelas do dia operacional sem turno, com os turnos produtivos vizinhos (podem ser do dia anterior ou do seguinte) */
+  function janelas(db, date, lineId) {
+    const off = opOff(db), T = turnosDoDia(db, date, lineId); const W = []; let cur = off;
+    for (const x of T) { if (x.s > cur) W.push([cur, x.s]); cur = Math.max(cur, x.e); }
+    if (cur < off + 1440) W.push([cur, off + 1440]);
+    const P = T.filter(x => x.prod);
+    const ant = () => { const L = turnosDoDia(db, U.addDays(date, -1), lineId).filter(x => x.prod); return L.length ? L[L.length - 1] : null; };
+    const seg = () => { const L = turnosDoDia(db, U.addDays(date, 1), lineId).filter(x => x.prod); return L.length ? L[0] : null; };
+    return W.filter(([a, b]) => b > a).map(([a, b]) => ({ a, b, prev: P.filter(x => x.e <= a).pop() || (a <= off ? ant() : null), next: P.find(x => x.s >= b) || (b >= off + 1440 ? seg() : null), rotulo: rotulo(db, date, lineId, a, b) }));
+  }
+  /* caixas "normais" do servidor entre A e B (minutos absolutos) */
+  function caixas(db, lineId, A, B, date) {
+    const S = SD(), byLot = S.orderByLot(db, lineId), out = [];
+    for (const s of S.segsOf(db, lineId)) { if (S.tm(s.t1) < A - 1 || S.tm(s.t0) >= B) continue; if (S.lotKind(db, lineId, s.lot, byLot, date) !== 'normal') continue; for (const m of S.dec(s)) if (m >= A && m < B) out.push({ m, cat: s.cat, lot: s.lot }); }
+    return out.sort((x, y) => x.m - y.m);
+  }
+  const pphDe = (db, date, code, lineId, machineId) => { const c = (db.catalogs || []).find(x => !x.deleted && String(x.code) === String(code) && Engine.catalogValid(x, date)) || (db.catalogs || []).find(x => !x.deleted && String(x.code) === String(code)); const rt = c ? Engine.resolveTarget(db, date, c.id, machineId || 'mac_line', lineId) : null; return rt && rt.pph ? rt.pph : (c && +c.pph) || 0; };
+  /* trechos fora de turno do dia operacional "date", cada um com o turno que recebe */
+  function doDia(db, date, lineId) {
+    if (!vale(db, date) || !(db.server && (db.server.segments || []).length)) return [];
+    const base = SD().dayStartMin(date), lim = limite(db), qty = +(db.settings || {}).serverBoxQty || 1000, out = [];
+    for (const w of janelas(db, date, lineId)) {
+      const A = base + w.a, B = base + w.b, bx = caixas(db, lineId, A - lim - 1, B + lim + 1, date); if (!bx.length) continue;
+      const runs = []; let r = null; for (const x of bx) { if (!r || x.m - r[r.length - 1].m > lim) { r = []; runs.push(r); } r.push(x); }
+      for (const run of runs) {
+        const ins = run.filter(x => x.m >= A && x.m < B); if (!ins.length) continue;
+        const contPrev = run[0].m < A && !!w.prev, contNext = run[run.length - 1].m >= B && !!w.next;
+        const alvo = contPrev ? w.prev : (w.next || w.prev);
+        const porCat = new Map(); for (const x of ins) porCat.set(x.cat, (porCat.get(x.cat) || 0) + 1);
+        let pecas = 0, cap1h = 0; for (const [cat, n] of porCat) { const p = n * qty, pph = pphDe(db, date, cat, lineId); pecas += p; cap1h += pph ? p / pph : 0; }
+        const t0 = ins[0].m - base, t1 = ins[ins.length - 1].m - base, planMin = Math.max(1, t1 - t0 + 1);
+        const pphMed = cap1h > 0 ? pecas / cap1h : 0;   /* PPH ponderado pelos catálogos do trecho */
+        out.push({ data: date, a: w.a, b: w.b, rotulo: w.rotulo, t0, t1, caixas: ins.length, pecas, goodMin: cap1h * 60, cats: [...porCat.keys()], planMin,
+          oeeReal: pphMed > 0 ? pecas / (pphMed * planMin / 60) : null,
+          alvo: alvo ? { date: alvo.date, code: alvo.code, name: alvo.name } : null,
+          regra: !alvo ? 'sem turno produtivo para receber' : contPrev ? 'continua o ' + alvo.name + ' (sem parada na troca)' : contNext ? 'emenda com o ' + alvo.name : 'sem continuidade com o ' + (w.prev ? w.prev.name : 'turno anterior') + ' → ' + alvo.name });
+      }
+    }
+    return out;
+  }
+  /* para o cálculo do dia: o que este dia recebe (de qualquer janela) e o que sai da janela dele */
+  function paraDia(db, day) {
+    if (!day || day.deleted) return null;
+    const d0 = U.addDays(day.date, -1), d1 = U.addDays(day.date, 1);
+    const todos = [...doDia(db, d0, day.lineId), ...doDia(db, day.date, day.lineId), ...doDia(db, d1, day.lineId)];
+    const recebe = todos.filter(i => i.alvo && i.alvo.date === day.date), janela = todos.filter(i => i.data === day.date);
+    return recebe.length || janela.length ? { recebe, janela, limite: limite(db), desde: desde(db) } : null;
+  }
+  /* aplica no cálculo do dia (chamado pelo computeDayRaw antes de fechar os resultados) */
+  function aplicar(db, day, shiftRes, dayAgg) {
+    let ft = null; try { ft = paraDia(db, day); } catch (e) { console.warn('ForaTurno', e); }
+    if (!ft) return null;
+    ft.realDia = Object.assign({}, dayAgg); ft.realTurnos = new Map(shiftRes.map(sr => [sr.ps.id, Object.assign({}, sr.agg)]));
+    ft.semAlvo = [];
+    for (const it of ft.recebe) {
+      const sr = shiftRes.find(x => x.ps.snap.code === it.alvo.code && !x.off);
+      if (!sr) { ft.semAlvo.push(it); continue; }
+      sr.agg.good += it.pecas; sr.agg.goodMin += it.goodMin; dayAgg.good += it.pecas; dayAgg.goodMin += it.goodMin;
+      sr.foraTurno = (sr.foraTurno || 0) + it.pecas;
+    }
+    ft.pecas = U.sum(ft.recebe.filter(i => !ft.semAlvo.includes(i)), i => i.pecas);
+    return ft;
+  }
+  return { opOff, janelas, doDia, paraDia, aplicar, limite, vale };
+})();
+
+/* ---------- TUR-02 · habilitar / desabilitar um turno não produtivo no dia ---------- */
+const TurnoNP = {
+  /* turnos não produtivos do cadastro nesta data, que ainda não estão no dia */
+  doDia(day) {
+    const d = db(); if (!day) return [];
+    const ja = new Set(day.shifts.filter(p => !p.deleted).map(p => p.shiftId));
+    const hab = day.shifts.filter(p => !p.deleted && p.enabledNP);
+    const L = Engine.activeShiftsAt(d, day.date, day.lineId, undefined, true).filter(x => x.v.productive === false && !ja.has(x.shift.id)).map(x => ({ shift: x.shift, v: x.v, on: false }));
+    return L.concat(hab.map(p => ({ shift: (d.shifts || []).find(s => s.id === p.shiftId) || { id: p.shiftId, name: p.snap.name, code: p.snap.code }, v: { start: p.snap.start, end: p.snap.end }, on: true, ps: p })));
+  },
+  habilitar(dayId, shiftId, on) {
+    Store.mutate((d, audit) => {
+      const day = d.productionDays.find(x => x.id === dayId && !x.deleted); if (!day) throw new Error('Lançamento não encontrado.');
+      if (day.status === 'fechado') throw new Error('O dia está fechado. Reabra para habilitar ou desabilitar um turno.');
+      const by = Store.S.user || '—';
+      if (on) {
+        if (day.shifts.some(p => !p.deleted && p.shiftId === shiftId)) return;
+        const tmp = Engine.buildDay(d, day.date, day.lineId, day.machineId, by, { only: shiftId });
+        const ps = tmp.shifts[0]; if (!ps) throw new Error('Este turno não tem vigência ativa nesta data.');
+        ps.enabledNP = true; day.shifts.push(ps); for (const ev of tmp.events) day.events.push(ev);
+        audit({ action: 'edição', entity: 'turno', entityId: ps.id, field: 'habilitado no dia', before: 'não produtivo', after: 'produtivo neste dia', reason: 'TUR-02' });
+      } else {
+        const ps = day.shifts.find(p => !p.deleted && p.shiftId === shiftId && p.enabledNP); if (!ps) return;
+        const temProd = ps.intervals.some(i => !i.deleted && +i.good > 0) || ps.scrap != null || (day.events || []).some(e => !e.deleted && !e.auto && (e.productionShiftId === ps.id || ps.intervals.some(i => e.intervalId === i.id) || (e.start != null && ps.intervals.some(i => !i.deleted && e.start < i.end && e.end > i.start))));
+        if (temProd) throw new Error('Este turno já tem produção, scrap ou parada lançada no dia. Zere os lançamentos antes de desabilitar.');
+        ps.deleted = true; for (const ev of day.events || []) if (ev.auto && ev.productionShiftId === ps.id) ev.deleted = true;
+        audit({ action: 'edição', entity: 'turno', entityId: ps.id, field: 'habilitado no dia', before: 'produtivo neste dia', after: 'não produtivo', reason: 'TUR-02' });
+      }
+      day._rev = (day._rev || 0) + 1; day.updatedAt = U.nowIso(); day.updatedBy = by;
+    });
+  }
+};
+
+/* ---------- quadro do dia (Lançamento): habilitar turno, produção fora de turno, OEE reportado × real ---------- */
+const ForaTurnoUI = {
+  card(day, res) {
+    const np = TurnoNP.doDia(day), ft = res.foraTurno, d = db();
+    if (!np.length && !ft) return '';
+    const pct = v => v == null ? '—' : U.pct(v);
+    const linha = it => `<tr><td>${esc(it.rotulo)}${it.data !== day.date ? ` <span class="small muted">(${U.brDate(it.data)})</span>` : ''}</td><td class="mono">${U.hhmm(it.t0)}–${U.hhmm(it.t1)}</td><td class="n">${U.fmt(it.caixas)}</td><td class="n">${fq(it.pecas)}</td><td class="n">${pct(it.oeeReal)}</td><td>${it.alvo ? esc(it.alvo.name) + (it.alvo.date !== day.date ? ` <span class="small muted">${U.brDate(it.alvo.date)}</span>` : '') : '<span class="ferr">—</span>'}<br><span class="small muted">${esc(it.regra)}</span></td></tr>`;
+    const itens = ft ? [...new Map([...ft.janela, ...ft.recebe].map(i => [i.data + '|' + i.t0 + '|' + i.t1, i])).values()].sort((a, b) => a.data < b.data ? -1 : a.data > b.data ? 1 : a.t0 - b.t0) : [];
+    const real = ft && ft.realDia ? Engine.finalize(ft.realDia, d.settings) : null, rep = res.r;
+    const peso = ft && rep.good > 0 ? ft.pecas / rep.good : null;
+    const lk = day.status === 'fechado';
+    return `<section class="card section" id="ftCard"><header><h3>Turnos não produtivos e produção fora de turno ${ib('foraTurno')}</h3></header>
+      ${np.length ? `<div class="row" style="gap:6px 14px;flex-wrap:wrap">${np.map(x => `<label class="chk"><input type="checkbox" data-turnonp="${esc(x.shift.id)}" ${x.on ? 'checked' : ''} ${lk ? 'disabled' : ''}> Habilitar ${esc(x.shift.name)} neste dia <span class="small muted">${esc(x.v.start || '')}–${esc(U.hhmm(U.toMin(x.v.end)))}</span></label>`).join('')}</div>
+        <p class="small muted" style="margin:4px 0 8px">Turno cadastrado como não produtivo no Portal. Habilitado, ele entra neste dia como produtivo: o tempo dele vira planejado e a produção da janela conta nele. Só vale para este dia.</p>` : ''}
+      ${itens.length ? `<div class="kpis" style="margin-bottom:8px">${kpi('OEE reportado', pct(rep.oee), '', 'com a reatribuição (oficial)')}${kpi('OEE real', pct(real ? real.oee : null), '', 'pelo horário real, sem a produção fora de turno')}${kpi('Fora de turno', fq(ft.pecas), unitLbl(), peso != null ? U.pct(peso, 1) + ' da produção boa reportada' : '')}</div>
+        <div class="tw"><table><thead><tr><th>Janela</th><th>Caixas (1ª–última)</th><th class="n">Caixas</th><th class="n">Produção (${esc(unitLbl())})</th><th class="n">OEE real ${ib('foraTurnoOee')}</th><th>Contou em</th></tr></thead><tbody>${itens.map(linha).join('')}</tbody></table></div>
+        ${ft.semAlvo && ft.semAlvo.length ? `<p class="small ferr">${ft.semAlvo.length} trecho(s) sem turno lançado para receber neste dia: crie o lançamento do turno ou habilite o turno.</p>` : ''}
+        <p class="small muted">O registro de cada caixa continua na hora real. Regra: trecho emendado com o fim do turno anterior (sem parada maior que ${U.fmt(ft.limite)} min) conta nele; sem continuidade, conta no próximo turno produtivo. Vale desde ${U.brDate(ft.desde)}.</p>` : (np.length ? '' : '')}
+    </section>`;
+  },
+  mount(root, day) {
+    root.querySelectorAll('[data-turnonp]').forEach(c => c.onchange = () => run(() => TurnoNP.habilitar(day.id, c.dataset.turnonp, c.checked), c.checked ? 'Turno habilitado neste dia.' : 'Turno voltou a não produtivo neste dia.').then(() => render()).catch(() => render()));
+  }
+};
+HELP.foraTurno = ['Turno não produtivo e produção fora de turno', [['O que é turno não produtivo?', 'Turno que existe no cadastro, mas cuja produção não conta para ele mesmo (Portal › Turnos › vigência "Turno não produtivo"). Ele não entra no dia nem no plano.'], ['E a produção feita nessa janela?', 'As caixas do servidor (MES) continuam gravadas na hora real. Para apuração, cada trecho contínuo vai para um turno produtivo: se emenda com o fim do turno anterior (a linha não parou na troca), conta nele; senão, conta no próximo turno produtivo (ex.: madrugada → turno A do dia seguinte).'], ['Habilitar no dia', 'Torna o turno produtivo só naquele dia: o tempo dele vira planejado e a produção conta nele.'], ['OEE reportado × real', 'Reportado = com a reatribuição (o oficial; a Performance pode passar de 100%). Real = pelo horário real, sem essa produção; o OEE real do trecho usa como tempo planejado da 1ª à última caixa.']]];
+HELP.foraTurnoOee = ['OEE real do trecho', [['Como é calculado?', 'Produção do trecho ÷ (PPH do catálogo × tempo da 1ª à última caixa). Mostra o quanto a linha rendeu enquanto produziu fora do turno.']]];
+
 async function boot() {
   if(vacDemo.ativo){await loadPrefs();applyTheme();bindGlobal();Charts.bind();Store.S.user='Pessoa de demonstração';Store.enterExample(vacDemo.ler('oee'));
     vacDemo.registrar('oee',()=>({...db(),exports:Exports.build(db())}),d=>{Store.S.db=Model.ensure(d);Engine.bumpConfig()},()=>renderNow());Store.on(e=>{if(e==='data')vacDemo.publicar('oee')});
@@ -10267,7 +10444,7 @@ function oeeAcaoPlanner(dim, pick, evs) {
     link: typeof vacAquiHref === 'function' ? vacAquiHref('aba=stops') : '', foto: { período: per, minutos: Math.round(min), eventos: evs.length, em: new Date().toISOString() } }, vinculos: [] };
 }
 
-/* ===== Produção 2.4.1 (2.4.3: desativações do Portal propagadas; 2.4.4: identidade das vigências de catálogo) · cadastro geral do Portal (vacutainer-cadastros.json) =====
+/* ===== Produção 2.4.1 (2.4.3: desativações do Portal propagadas; 2.4.4: identidade das vigências de catálogo; 2.4.23: fonte única ARQ-01..04 e PRD-04) · cadastro geral do Portal (vacutainer-cadastros.json) =====
    O Portal é o dono de: linhas, famílias, máquinas (equipamentos), catálogos (tubos), turnos (pausas, intervalos do Hora a Hora),
    tipos de parada, metas de OEE e parâmetros comuns (parada longa, semáforo, motivos de abono e de "sem produção").
    Quando a revisão do cadastro muda, a Produção copia esses dados para a própria base numa alteração só (com auditoria),
@@ -10277,11 +10454,26 @@ const CadSync = (() => {
   const SEC_PORTAL = { estrutura: 'linhas', turnos: 'turnos', catalogos: 'catalogos', metas: 'metasOee', paradas: 'paradas' };
   const doc = () => Store.S.cadDoc || null;
   const tem = t => { const d = doc(); return !!(d && Array.isArray(d[t]) && d[t].length); };
-  /* domínios que vêm do Portal nesta base */
+  /* domínios que vêm do Portal nesta base.
+     2.4.23 · ARQ-01 a ARQ-04 (D0): o Portal é a fonte única. Com o cadastro do Portal (ou na pasta da rede, ou na Demonstração) as cinco
+     seções ficam só para consulta, mesmo com o domínio vazio no Portal: antes, domínio vazio deixava editar aqui (cadastro paralelo).
+     O que já estava na base continua valendo (lançamentos antigos), só não se edita mais aqui. Sem pasta e sem Portal (modo local, testes),
+     fica como antes. */
+  const fonteUnica = () => !!doc() || Store.S.mode === 'pasta' || (typeof vacDemo !== 'undefined' && vacDemo.ativo);
   function dominios() {
-    const d = doc(); if (!d) return {};
-    return { estrutura: tem('linhas') || tem('equipamentos') || tem('familias'), turnos: tem('turnos'), catalogos: tem('catalogos'), metas: tem('metasOee'), paradas: tem('paradas'), parametros: !!d.parametros };
+    const d = doc(); if (!fonteUnica()) return {};
+    return { estrutura: true, turnos: true, catalogos: true, metas: true, paradas: true, parametros: !!(d && d.parametros) };
   }
+  /* o Portal tem esse domínio preenchido? (vazio: a Produção segue com o que já tinha, só consulta) */
+  const NOMES = { estrutura: 'linhas, famílias e máquinas', turnos: 'turnos', catalogos: 'catálogos', metas: 'metas de OEE', paradas: 'tipos de parada' };
+  /* códigos que só existem aqui (turnos, catálogos, tipos de parada): o aviso mostra e o Portal oferece trazer */
+  function soLocal(sec) {
+    const d = doc(), b = Store.S.db; if (!d || !b) return [];
+    const M = { turnos: ['shifts', 'turnos'], catalogos: ['catalogs', 'catalogos'], paradas: ['downtimeCodes', 'paradas'] }[sec]; if (!M || !tem(M[1])) return [];
+    const P = new Set(d[M[1]].map(x => String(x.codigo)));
+    return [...new Set((b[M[0]] || []).filter(x => !x.deleted && !x.demo && x.code != null && !P.has(String(x.code))).map(x => String(x.code)))];
+  }
+  const temNoPortal = sec => sec === 'estrutura' ? tem('linhas') || tem('equipamentos') || tem('familias') : tem(SEC_PORTAL[sec]);
   const stampOf = d => d ? `${d.rev}|${d.revId || ''}` : '';
   const pend = () => { const d = doc(); if (!d) return false; const s = (db().settings || {}).cadSync; return !s || s.stamp !== stampOf(d); };
   const vigHoje = vs => { const h = U.today(); return (vs || []).filter(v => v.de <= h && (!v.ate || v.ate >= h)).sort((a, b) => a.de < b.de ? 1 : -1)[0] || (vs || []).slice().sort((a, b) => a.de < b.de ? 1 : -1)[0] || null; };
@@ -10296,26 +10488,29 @@ const CadSync = (() => {
     const add = (arr, o, entity, cont) => { arr.push(o); audit({ action: 'sincronização do Portal', entity, entityId: o.id, field: null, before: null, after: o.code || o.id, reason }); R[cont]++; return o; };
     const live = arr => (arr || []).filter(x => !x.deleted);
     const slug = s => String(s).toLowerCase().replace(/[^a-z0-9]+/g, '_');
+    /* 2.4.23 · PRD-04: a Produção desativa linha e turno pelo campo status (e não por active). A sincronização só mexia em active,
+       então um turno desativado aqui antes do Portal assumir continuava inativo com o Portal dizendo ativo. Agora o status segue o Portal. */
+    const stOf = a => a !== false ? 'ativo' : 'inativo';
     for (const k of ['lines', 'families', 'machines', 'catalogs', 'shifts', 'downtimeCodes', 'targets']) d[k] = d[k] || [];
 
     /* linhas */
     const linhas = (C.linhas || []).filter(l => l && l.codigo);
     if (linhas.length) for (const l of linhas) {
       let o = live(d.lines).find(x => x.code === l.codigo); if (!o && linhas.length === 1 && live(d.lines).length === 1) o = live(d.lines)[0];
-      const p = { code: l.codigo, name: l.nome || l.codigo, unit: l.unidade || null, sector: l.setor || null };
-      if (o) upd(o, p, 'linha', 'linhas'); else add(d.lines, { id: 'line_' + slug(l.codigo), ...p, ...novo() }, 'linha', 'linhas');
+      const p = { code: l.codigo, name: l.nome || l.codigo, unit: l.unidade || null, sector: l.setor || null, status: stOf(l.ativo) };
+      if (o) upd(o, p, 'linha', 'linhas'); else add(d.lines, { id: 'line_' + slug(l.codigo), ...novo(), ...p }, 'linha', 'linhas');
     }
     const lineId = cod => { const o = live(d.lines).find(x => x.code === cod) || (live(d.lines).length === 1 ? live(d.lines)[0] : null); return o ? o.id : (live(d.lines)[0] || {}).id || null; };
     /* famílias */
     for (const f of (C.familias || []).filter(x => x && x.codigo)) {
-      const o = live(d.families).find(x => x.code === f.codigo), p = { code: f.codigo, name: f.nome || f.codigo, color: f.cor || (o && o.color) || '#2f6db5', active: f.ativo !== false };
-      if (o) upd(o, p, 'família', 'familias'); else add(d.families, { id: 'fam_' + slug(f.codigo), ...p, ...novo() }, 'família', 'familias');
+      const o = live(d.families).find(x => x.code === f.codigo), p = { code: f.codigo, name: f.nome || f.codigo, color: f.cor || (o && o.color) || '#2f6db5', active: f.ativo !== false, status: stOf(f.ativo) };
+      if (o) upd(o, p, 'família', 'familias'); else add(d.families, { id: 'fam_' + slug(f.codigo), ...novo(), ...p }, 'família', 'familias');
     }
     const famId = cod => cod ? (live(d.families).find(x => x.code === cod) || {}).id || null : null;
     /* máquinas */
     for (const e of (C.equipamentos || []).filter(x => x && x.codigo)) {
-      const o = live(d.machines).find(x => x.code === e.codigo), p = { code: e.codigo, name: e.nome || e.codigo, lineId: lineId(e.linha), role: e.papel === 'oee' ? 'oee' : 'equipamento', active: e.ativo !== false };
-      if (o) upd(o, p, 'máquina', 'maquinas'); else add(d.machines, { id: 'mac_' + slug(e.codigo), description: '', ...p, ...novo() }, 'máquina', 'maquinas');
+      const o = live(d.machines).find(x => x.code === e.codigo), p = { code: e.codigo, name: e.nome || e.codigo, lineId: lineId(e.linha), role: e.papel === 'oee' ? 'oee' : 'equipamento', active: e.ativo !== false, status: stOf(e.ativo) };
+      if (o) upd(o, p, 'máquina', 'maquinas'); else add(d.machines, { id: 'mac_' + slug(e.codigo), description: '', ...novo(), ...p }, 'máquina', 'maquinas');
     }
     const macId = cod => cod ? (live(d.machines).find(x => x.code === cod) || {}).id || null : null;
     /* catálogos (só tubos: preparação de aditivo não tem OEE da linha) */
@@ -10327,8 +10522,8 @@ const CadSync = (() => {
            não criado pelo Portal e com data que não é de vigência desativada). Antes, uma vigência antiga podia virar a nova (mesmo id,
            outra data e PPH) e as referências históricas passavam a apontar para outros parâmetros */
         let o = ex.find(x => x.validFrom === v.de && !usados.has(x.id)) || ex.find(x => !usados.has(x.id) && !vs.some(w => w.de === x.validFrom) && !x.portalDe && x.createdBy !== 'Portal' && !desat.has(x.validFrom));
-        const p = { code: c.codigo, name: c.nome || c.codigo, familyId: famId(c.familia), lineId: lineId(c.linha), pph: v.pphNominal != null ? +v.pphNominal : (o ? o.pph : null), color: c.cor || (o && o.color) || null, validFrom: v.de, validTo: v.ate || null, portalDe: v.de, active: c.ativo !== false };
-        if (o) { usados.add(o.id); upd(o, p, 'catálogo', 'catalogos'); } else { const id = 'cat_' + c.codigo + (k && ex.some(x => x.id === 'cat_' + c.codigo) ? '_' + v.de : ''); const id2 = d.catalogs.some(x => x.id === id) ? U.uid('cat') : id; usados.add(id2); /* 2.4.4 · marca o id que o registro recebe de fato */ add(d.catalogs, { id: id2, machineId: null, note: 'Origem: cadastro do Portal', ...p, ...novo() }, 'catálogo', 'catalogos'); }
+        const p = { code: c.codigo, name: c.nome || c.codigo, familyId: famId(c.familia), lineId: lineId(c.linha), pph: v.pphNominal != null ? +v.pphNominal : (o ? o.pph : null), color: c.cor || (o && o.color) || null, validFrom: v.de, validTo: v.ate || null, portalDe: v.de, active: c.ativo !== false, status: stOf(c.ativo) };
+        if (o) { usados.add(o.id); upd(o, p, 'catálogo', 'catalogos'); } else { const id = 'cat_' + c.codigo + (k && ex.some(x => x.id === 'cat_' + c.codigo) ? '_' + v.de : ''); const id2 = d.catalogs.some(x => x.id === id) ? U.uid('cat') : id; usados.add(id2); /* 2.4.4 · marca o id que o registro recebe de fato */ add(d.catalogs, { id: id2, machineId: null, note: 'Origem: cadastro do Portal', ...novo(), ...p }, 'catálogo', 'catalogos'); }
       });
       /* 2.4.3 · vigência desativada no Portal (não está mais nas vigências válidas): fica inativa aqui. Não é apagada:
          os registros antigos continuam achando o catálogo pelo id. Só quando o Portal tem vigências (válidas ou desativadas) */
@@ -10340,8 +10535,8 @@ const CadSync = (() => {
       const o = live(d.downtimeCodes).find(x => x.code === p0.codigo);
       const p = { code: p0.codigo, name: p0.nome || p0.codigo, description: (p0.guia && p0.guia.descricao) || (o && o.description) || '', category: p0.categoria || null, subcategory: p0.subcategoria || null, color: p0.cor || (o && o.color) || '#888888',
         planned: !!p0.planejada, deductsPlanned: !!p0.descontaPlanejado, affectsA: !!p0.afetaD, affectsP: !!p0.afetaP, affectsQ: !!p0.afetaQ, inReport: p0.relatorio !== false, inPareto: p0.pareto !== false,
-        requiresNote: !!p0.exigeObservacao, requiresTimes: !!p0.exigeHorario, allowsManualDuration: !!p0.duracaoManual, requiresPrevCatalog: !!p0.exigeCatalogoAnterior, requiresNextCatalog: !!p0.exigeCatalogoSeguinte, active: p0.ativo !== false };
-      if (o) upd(o, p, 'código de parada', 'paradas'); else add(d.downtimeCodes, { id: 'dc_' + slug(p0.codigo), validFrom: '2025-01-01', validTo: null, ...p, ...novo() }, 'código de parada', 'paradas');
+        requiresNote: !!p0.exigeObservacao, requiresTimes: !!p0.exigeHorario, allowsManualDuration: !!p0.duracaoManual, requiresPrevCatalog: !!p0.exigeCatalogoAnterior, requiresNextCatalog: !!p0.exigeCatalogoSeguinte, active: p0.ativo !== false, status: stOf(p0.ativo) };
+      if (o) upd(o, p, 'código de parada', 'paradas'); else add(d.downtimeCodes, { id: 'dc_' + slug(p0.codigo), validFrom: '2025-01-01', validTo: null, ...novo(), ...p }, 'código de parada', 'paradas');
     }
     const dcId = cod => cod ? (live(d.downtimeCodes).find(x => x.code === cod) || {}).id || null : null;
     /* turnos: horário, dias, pausas (código de parada), regra do pedaço final e intervalos do Hora a Hora */
@@ -10349,11 +10544,12 @@ const CadSync = (() => {
       let o = live(d.shifts).find(x => x.code === t.codigo);
       const versoes = (t.vigencias || []).slice().sort((a, b) => a.de < b.de ? -1 : 1).map(v => ({ v, p: {
         validFrom: v.de, validTo: v.ate || null, start: v.inicio, end: v.fim, weekdays: (v.dias || []).slice(), color: t.cor || null, active: v.ativo !== false && t.ativo !== false,   /* 2.4.3 · turno inativo no Portal = vigências inativas */
+        productive: v.naoProdutivo ? false : true,   /* 2.4.24 · TUR-01: ativo e não produtivo */
         breaks: (v.pausas || []).map(x => ({ label: x.nome || (x.codigo || 'Pausa'), start: x.inicio || '', end: x.fim || '', minutes: x.inicio && x.fim ? null : (+x.duracaoMin || null), weekdays: (x.dias || []).slice(), deducts: x.desconta !== false, codeId: dcId(x.codigo) })),
         tailMergeMax: v.regraPedacoFinal != null && v.regraPedacoFinal !== '' ? +v.regraPedacoFinal : null,
         template: (v.intervalos || []).length ? v.intervalos.map(x => ({ start: x.inicio, end: x.fim })) : null } }));
-      if (!o) { o = add(d.shifts, { id: 'sh_' + slug(t.codigo), code: t.codigo, name: t.nome || t.codigo, lineId: lineId(t.linha), versions: [], ...novo() }, 'turno', 'turnos'); }
-      else upd(o, { name: t.nome || t.codigo, lineId: lineId(t.linha) }, 'turno', 'turnos');
+      if (!o) { o = add(d.shifts, { id: 'sh_' + slug(t.codigo), code: t.codigo, name: t.nome || t.codigo, lineId: lineId(t.linha), versions: [], ...novo(), status: stOf(t.ativo) }, 'turno', 'turnos'); }
+      else upd(o, { name: t.nome || t.codigo, lineId: lineId(t.linha), status: stOf(t.ativo) }, 'turno', 'turnos');
       const usados = new Set(); let n = 0;
       for (const { v, p } of versoes) {
         let ver = (o.versions || []).find(x => !x.deleted && x.validFrom === v.de);
@@ -10362,6 +10558,14 @@ const CadSync = (() => {
       }
       for (const ver of o.versions || []) if (!ver.deleted && !usados.has(ver.id)) { ver.deleted = true; audit({ action: 'sincronização do Portal', entity: 'turno', entityId: o.id, field: 'vigência ' + ver.validFrom, before: 'ativa', after: 'removida (não está no Portal)', reason }); n++; }
       if (n) { o.updatedAt = now; o.updatedBy = by; R.turnos++; }
+    }
+    /* 2.4.23 · PRD-04 / ARQ-01: com turnos no Portal, turno que só existe aqui (outro código, ex.: TC × T3) fica inativo: senão os dois
+       entram nos dias novos (turno em dobro). Os dias já lançados guardam o próprio turno e não mudam. Para trazer ao Portal:
+       Portal › Cadastros › Início › Trazer configurações. */
+    const codT = new Set((C.turnos || []).filter(x => x && x.codigo).map(x => String(x.codigo)));
+    if (codT.size) for (const o of live(d.shifts)) if (!o.demo && !codT.has(String(o.code)) && o.status !== 'inativo') {
+      audit({ action: 'sincronização do Portal', entity: 'turno', entityId: o.id, field: 'status', before: o.status || 'ativo', after: 'inativo', reason: reason + ' · não está nos turnos do Portal' });
+      o.status = 'inativo'; o.updatedAt = now; o.updatedBy = by; o.revision = (o.revision || 1) + 1; R.turnos++; R.soLocal = (R.soLocal || 0) + 1;
     }
     /* metas de OEE: o Portal manda quando tem pelo menos uma */
     /* 2.4.3 · o Portal manda quando tem metas cadastradas, mesmo todas inativas (antes, desativar a última mantinha a cópia local) */
@@ -10373,7 +10577,7 @@ const CadSync = (() => {
         const pct = x => x == null || x === '' ? null : +x / 100;
         const p = { ...sc, validFrom: v.de, validTo: v.ate || null, pph: v.pph ? +v.pph : null, oee: pct(v.oeeMetaPct), dailyTarget: v.metaDiaria ? +v.metaDiaria : null, semGreen: pct(v.semaforoVerdePct), semYellow: pct(v.semaforoAmareloPct), coverageMin: pct(v.coberturaMinPct), divergenceMax: pct(v.divergenciaMaxPct), note: m.observacao || null, intervalBoard: Array.isArray(v.quadro) && v.quadro.length ? v.quadro : null, rounding: 'teto + compensação na última hora', portalCode: m.codigo };
         let o = live(d.targets).find(t => !t.demo && t.validFrom === v.de && (t.lineId || null) === sc.lineId && (t.machineId || null) === sc.machineId && (t.familyId || null) === sc.familyId && (t.catalogId || null) === sc.catalogId);
-        if (o) { toq.add(o.id); upd(o, p, 'meta', 'metas'); } else { o = add(d.targets, { id: U.uid('tg'), ...p, ...novo() }, 'meta', 'metas'); toq.add(o.id); }
+        if (o) { toq.add(o.id); upd(o, p, 'meta', 'metas'); } else { o = add(d.targets, { id: U.uid('tg'), ...novo(), ...p }, 'meta', 'metas'); toq.add(o.id); }
       }
       for (const t of live(d.targets)) if (!t.demo && !toq.has(t.id)) { t.deleted = true; audit({ action: 'sincronização do Portal', entity: 'meta', entityId: t.id, field: 'situação', before: 'ativa', after: 'removida (não está nas Metas de OEE do Portal)', reason }); R.removidas++; }
     }
@@ -10385,6 +10589,17 @@ const CadSync = (() => {
     if ((P.motivosAbono || []).length) sp('abMotivos', P.motivosAbono.slice());
     if ((P.motivosSemProducaoProg || []).length) sp('offMotivosProg', P.motivosSemProducaoProg.slice());
     if ((P.motivosSemProducaoNP || []).length) sp('offMotivosNP', P.motivosSemProducaoNP.slice());
+    /* 2.4.22 · ARQ-06: parâmetros da Produção (Portal › Parâmetros › Produção). O arredondamento tem vigência (D7):
+       a lista inteira vai para settings.roundingVig (cada dia usa a da própria data, roundAt); roundingUnit fica com a vigente hoje */
+    const PP = P.producao || {};
+    if (+PP.unidadeLancamento > 0) sp('entryUnit', +PP.unidadeLancamento);
+    if (PP.rotuloUnidade) sp('unitLabel', String(PP.rotuloUnidade));
+    /* 2.4.24 · TUR-01/POR-10: continuidade e data de início da reatribuição. Sem data no Portal, vale a 1ª vigência não produtiva */
+    if (+PP.continuidadeMin > 0) sp('continuityMin', +PP.continuidadeMin);
+    const npDe = (C.turnos || []).flatMap(t => (t.vigencias || []).filter(v => v && v.naoProdutivo).map(v => v.de)).filter(Boolean).sort()[0] || null;
+    const desde = PP.foraTurnoDesde || npDe; if (desde) sp('foraTurnoDesde', String(desde));
+    const AR = (Array.isArray(PP.arredondamentoMeta) ? PP.arredondamentoMeta : []).filter(v => v && v.de && +v.valor > 0).map(v => ({ de: v.de, valor: +v.valor })).sort((a, b) => a.de < b.de ? -1 : 1);
+    if (AR.length) { sp('roundingVig', AR); const h = U.today(), vg = AR.filter(v => v.de <= h).slice(-1)[0] || AR[0]; sp('roundingUnit', vg.valor); }
     st.cadSync = { stamp: stampOf(C), rev: C.rev, revAt: C.revAt || null, em: now, resumo: R };
     return R;
   }
@@ -10398,8 +10613,8 @@ const CadSync = (() => {
       rodando = true;
       let R; Store.mutate((d, audit) => { R = aplicar(d, C, audit); }, { flush: true });
       try { Engine.bumpConfig(); } catch (e) { }
-      const n = Object.entries(R).filter(([k, v]) => v && k !== 'removidas').map(([k, v]) => `${v} ${k}`).join(', ');
-      if (n || R.removidas) toast(`Cadastro do Portal (rev ${C.rev}) aplicado: ${n || 'nada mudou'}${R.removidas ? ` · ${R.removidas} meta(s) antiga(s) substituída(s)` : ''}.`);
+      const n = Object.entries(R).filter(([k, v]) => v && k !== 'removidas' && k !== 'soLocal').map(([k, v]) => `${v} ${k}`).join(', ');
+      if (n || R.removidas) toast(`Cadastro do Portal (rev ${C.rev}) aplicado: ${n || 'nada mudou'}${R.removidas ? ` · ${R.removidas} meta(s) antiga(s) substituída(s)` : ''}${R.soLocal ? ` · ${R.soLocal} turno(s) que não está(ão) no Portal ficou(aram) inativo(s)` : ''}.`);
       render();
     } catch (e) { console.warn('CadSync', e); toast('Não consegui aplicar o cadastro do Portal: ' + (e.message || e), true); }
     finally { rodando = false; }
@@ -10407,8 +10622,11 @@ const CadSync = (() => {
   function portalHref(h) { const port = (typeof systems === 'function' ? systems() : []).find(s => s.id === 'portal') || { id: 'portal', html: 'Portal.html' }; return typeof sysHref === 'function' ? sysHref(port, h) : 'Portal.html#' + h; }
   function banner(sec) {
     const D = dominios(), C = doc(), s = (db().settings || {}).cadSync; if (!D[sec]) return '';
+    if (!C) return `<div class="banner info" style="margin-bottom:10px"><p><b>Cadastrado no Portal</b> ${ib('cadPortal')} · ${typeof vacDemo !== 'undefined' && vacDemo.ativo ? 'na Demonstração, ' : ''}o cadastro do Portal (vacutainer-cadastros.json) ainda não foi lido${Store.S.mode === 'pasta' ? ' nesta pasta: abra o Portal para criá-lo' : ''}. Aqui fica só para consulta. <a class="btn sm primary" href="${esc(portalHref('cadastros/' + SEC_PORTAL[sec]))}" data-keep="1">Abrir no Portal ↗</a></p></div>`;
+    const sl = soLocal(sec), soL = sl.length ? `<br><span class="small"><b>Só na Produção (não estão no Portal):</b> ${sl.slice(0, 12).map(esc).join(', ')}${sl.length > 12 ? '…' : ''}. ${sec === 'turnos' ? 'Ficam inativos para os dias novos' : 'Continuam como estavam'}; para levar ao Portal com o mesmo código: Portal › Cadastros › Início › <i>Trazer configurações</i>.</span>` : '';
+    const vazio = !temNoPortal(sec) ? `<br><span class="small"><b>O Portal ainda não tem ${NOMES[sec]}.</b> A Produção segue com os que já estavam aqui até você cadastrar lá (ou levar estes para o Portal em Cadastros › Início › <i>Trazer configurações</i>).</span>` : '';
     return `<div class="banner info" style="margin-bottom:10px"><p><b>Vem do cadastro do Portal</b> ${ib('cadPortal')} · rev ${esc(C.rev)}${Store.S.cadDocAusente ? ' · <b class="bad">o vacutainer-cadastros.json não foi achado na última leitura da pasta: vale a última cópia lida</b>' : ''}${s && s.em ? ` · aplicado em ${U.brDT(s.em)}` : ''}. Aqui fica só para consulta.
-      <a class="btn sm primary" href="${esc(portalHref('cadastros/' + SEC_PORTAL[sec]))}" data-keep="1">Editar no Portal ↗</a>${sec === 'metas' ? `<br><span class="small">A Meta OEE FY27 (planilha OEE-Vacutainer_v2.xlsm) é importada no Portal: <a href="${esc(portalHref('cadastros/importar/metaoee'))}" data-keep="1">Cadastros › Importar › Meta OEE FY27 ↗</a>. As metas e o quadro hora a hora chegam aqui pelo cadastro.</span>` : ''}${pend() ? ' <button class="btn sm" data-keep="1" id="csNow">Aplicar a revisão nova agora</button>' : ''}</p></div>`;
+      <a class="btn sm primary" href="${esc(portalHref('cadastros/' + SEC_PORTAL[sec]))}" data-keep="1">Editar no Portal ↗</a>${sec === 'metas' ? `<br><span class="small">A Meta OEE FY27 (planilha OEE-Vacutainer_v2.xlsm) é importada no Portal: <a href="${esc(portalHref('cadastros/importar/metaoee'))}" data-keep="1">Cadastros › Importar › Meta OEE FY27 ↗</a>. As metas e o quadro hora a hora chegam aqui pelo cadastro.</span>` : ''}${pend() ? ' <button class="btn sm" data-keep="1" id="csNow">Aplicar a revisão nova agora</button>' : ''}${vazio}${soL}</p></div>`;
   }
   /* trava a edição da seção que vem do Portal (botões de criar/editar/salvar e campos de formulário) */
   function travar(root, sec) {
@@ -10419,7 +10637,7 @@ const CadSync = (() => {
     });
     const b = root.querySelector('#csNow'); if (b) b.onclick = () => talvez();
   }
-  return { aplicar, talvez, dominios, banner, travar, pend, portalHref, SEC_PORTAL };
+  return { aplicar, talvez, dominios, banner, travar, pend, portalHref, SEC_PORTAL, soLocal };
 })();
 
 /* Configurações: seções que vêm do Portal ficam só para consulta */
@@ -10435,8 +10653,14 @@ const CadSync = (() => {
   const P = Cfg.parametros;
   if (P && !P._portal) {
     P._portal = 1; const r0 = P.render, m0 = P.mount;
-    P.render = function () { const D = CadSync.dominios(); return (D.parametros ? `<div class="banner info" style="margin-bottom:10px"><p><b>Parada longa e semáforo comum vêm do Portal</b> (Parâmetros e semáforo) e ficam travados aqui. <a class="btn sm" href="${esc(CadSync.portalHref('cadastros/parametros'))}">Editar no Portal ↗</a></p></div>` : '') + r0.apply(this, arguments); };
-    P.mount = function (root) { if (m0) m0.apply(this, arguments); if (!CadSync.dominios().parametros) return; for (const k of ['longStopMin', 'semGreen', 'semYellow']) { const el = root.querySelector(`[data-k="${k}"]`); if (el) { el.disabled = true; el.title = 'Vem do Portal (Parâmetros e semáforo)'; } } };
+    P.render = function () { const D = CadSync.dominios(), pp = !!(Store.S.cadDoc && (Store.S.cadDoc.parametros || {}).producao); return (D.parametros ? `<div class="banner info" style="margin-bottom:10px"><p><b>Parada longa e semáforo comum${pp ? ', unidade de lançamento, rótulo e arredondamento da meta' : ''} vêm do Portal</b> (Parâmetros) e ficam travados aqui. <a class="btn sm" href="${esc(CadSync.portalHref('cadastros/parametros'))}">Editar no Portal ↗</a></p></div>` : '') + r0.apply(this, arguments); };
+    P.mount = function (root) { if (m0) m0.apply(this, arguments); if (!CadSync.dominios().parametros) return; for (const k of ['longStopMin', 'semGreen', 'semYellow']) { const el = root.querySelector(`[data-k="${k}"]`); if (el) { el.disabled = true; el.title = 'Vem do Portal (Parâmetros e semáforo)'; } }
+      /* 2.4.22 · ARQ-06: unidade, rótulo e arredondamento, quando o Portal tem o grupo Produção */
+      const d = Store.S.cadDoc, pp = d && d.parametros && d.parametros.producao; if (!pp) return;
+      for (const k of ['entryUnit', 'unitLabel', 'roundingUnit']) { const el = root.querySelector(`[data-k="${k}"]`); if (el) { el.disabled = true; el.title = 'Vem do Portal (Parâmetros › Produção)'; } }
+      const vg = (db().settings || {}).roundingVig; const el = root.querySelector('[data-k="roundingUnit"]');
+      if (el && Array.isArray(vg) && vg.length > 1) { const n = document.createElement('div'); n.className = 'small muted'; n.textContent = 'Vigências do Portal: ' + vg.map(v => U.brDate(v.de) + ' → ' + U.fmt(v.valor)).join(' · ') + '. Cada dia usa a da própria data.'; (el.closest('label') || el.parentNode).appendChild(n); }
+    };
   }
   /* 2.4.1 · Importação: com as metas vindo do Portal, a Meta OEE FY27 é importada lá (importar aqui gravaria metas que a sincronização tira) */
   const Im = Cfg.importacao;
@@ -10453,7 +10677,10 @@ const CadSync = (() => {
   /* Usuário: o nome vem do "Entrar" pelo ID (cabeçalho comum) */
   const Uu = Cfg.usuario;
   if (Uu && !Uu._portal) {
-    Uu._portal = 1; const r0 = Uu.render;
+    Uu._portal = 1; const r0 = Uu.render, m0 = Uu.mount;
+    /* 2.4.22 · ARQ-06: a exibição das quantidades é do computador (vac.qtd) e se escolhe no Portal › Parâmetros › Neste computador */
+    Uu.mount = function (root) { if (m0) m0.apply(this, arguments); const q = vacQtd(); root.querySelectorAll('[data-qd]').forEach(b => { b.setAttribute('aria-pressed', String(b.dataset.qd === q)); b.disabled = true; b.title = 'Escolha no Portal › Parâmetros › Neste computador'; });
+      const g = root.querySelector('[data-qd]'), sec = g && g.closest('section'); if (sec && !sec.querySelector('[data-qdportal]')) { const a = document.createElement('p'); a.className = 'small'; a.setAttribute('data-qdportal', '1'); a.innerHTML = `Vale para todas as páginas deste computador. <a class="btn sm" data-keep="1" href="${esc(CadSync.portalHref('cadastros/parametros'))}">Mudar no Portal ↗</a>`; sec.appendChild(a); } };
     Uu.render = function () { return `<div class="banner info" style="margin-bottom:10px"><p>Quem está usando vem do <b>Entrar</b> do cabeçalho (ID do cadastro de Usuários do Portal). <button class="btn sm" type="button" onclick="VacEntrar.abrir()">Entrar / trocar</button></p></div>` + r0.apply(this, arguments); };
   }
 })();

@@ -226,7 +226,8 @@ svg text{font-family:var(--f-body)}
 .cadbar{display:flex;flex-wrap:wrap;gap:8px 10px;align-items:center;margin-bottom:14px;padding:10px 12px;background:var(--surface);border:1px solid var(--line);border-radius:var(--r)}
 .cadbar .sp{flex:1}
 .cadg{display:grid;grid-template-columns:230px minmax(0,1fr);gap:14px;align-items:start}
-.cadside{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:6px;position:sticky;top:72px}
+/* POR-04 (1.9.5): a lista lateral passa da altura da tela; sticky sem limite deixava o fim inalcançável. Rola por dentro. */
+.cadside{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:6px;position:sticky;top:72px;max-height:calc(100vh - 84px);overflow-y:auto;overscroll-behavior:contain}
 .cadside button{display:flex;width:100%;justify-content:space-between;align-items:center;gap:8px;border:0;background:none;padding:7px 10px;border-radius:6px;cursor:pointer;font-family:var(--f-display);font-weight:600;font-size:14px;letter-spacing:.04em;text-transform:uppercase;color:var(--muted);text-align:left}
 .cadside button:hover{background:var(--surface-2);color:var(--ink)}
 .cadside button.on{background:var(--accent-soft);color:var(--accent)}
@@ -250,7 +251,7 @@ svg text{font-family:var(--f-body)}
 .ok-note{border-left:4px solid var(--ok)}
 .cadside .n{font-family:var(--f-mono);font-size:11.5px;font-weight:400;letter-spacing:0}
 .cadside hr{border:0;border-top:1px solid var(--line);margin:6px 4px}
-@media(max-width:860px){.cadg{grid-template-columns:1fr}.cadside{position:static;display:flex;flex-wrap:wrap;gap:2px}.cadside button{width:auto}.cadside hr{display:none}}
+@media(max-width:860px){.cadg{grid-template-columns:1fr}.cadside{position:static;max-height:none;overflow:visible;display:flex;flex-wrap:wrap;gap:2px}.cadside button{width:auto}.cadside hr{display:none}}
 .sw{display:inline-block;width:12px;height:12px;border-radius:3px;vertical-align:-1px;margin-right:5px;border:1px solid rgba(0,0,0,.15)}
 .vig{border:1px solid var(--line);border-radius:var(--r);padding:10px 12px;margin:8px 0;background:var(--surface-3)}
 .vig.cur{border-color:color-mix(in srgb,var(--accent) 55%,var(--line))}
@@ -1365,12 +1366,12 @@ function wireConfigComum(){$('#cPasta').onclick=async()=>{if(await Store.pick())
         entrar pelo ID (autocadastro como Consulta); página inicial por perfil (1x por sessão); vigência gravada não se edita (desativar com motivo); painel de vigências; semáforo central; saída do modo de teste.
    1.1.2: aviso da carga diz qual base foi lida.  1.5: páginas Paradas, Máquinas, Manutenção e Projetos na lista (aparecem quando o HTML chega na pasta).  1.4: lista técnica pela CS12 multinível (itens = nível 1, estrutura = níveis 2+); CS03 sai.  1.3: cabeçalho comum (vac-cabecalho v2: barra do sistema + página + abas), busca Ctrl K, acabamento V1.90, Versões com cabeçalho e último backup.  1.2: Configuração › Versões das páginas (versão e data de cada HTML, gravação das bases, cópias repetidas, histórico).
    ===================================================================== */
-const PAGE={id:'portal',titulo:'Portal · Linha Vacutainer',tituloCurto:'Portal',subtitulo:'Sistemas de gestão da linha',versao:'1.9.4',baseFile:'portal-base.json',idb:'vac-portal',backupDir:'00. Backups/Portal',
+const PAGE={id:'portal',titulo:'Portal · Linha Vacutainer',tituloCurto:'Portal',subtitulo:'Sistemas de gestão da linha',versao:'1.9.10',baseFile:'portal-base.json',idb:'vac-portal',backupDir:'00. Backups/Portal',
  vazio:()=>({schema:'portal-base',rev:0,config:{modulos:{},avisoDias:30,notas:{}},audit:[]}),
  /* itens do Portal para a busca Ctrl K: cadastro, pendências e telas */
  busca:q=>{const R=[],D=Cad.D;if(D)for(const t of CAD_ORD){for(const it of D[t]||[]){const c=String(it[kOf(t)]),nm=t==='bom'?((cadItem('catalogos',it.catalogo)||{}).nome||''):it.nome||'';if(norm(c+' '+nm).includes(q))R.push({tipo:CAD_T[t].um,txt:c+(nm?' · '+nm:''),sub:'Cadastros'+(cadAtivo(t,it,D)?'':' · inativo'),href:'#cadastros/'+t+'/'+encodeURIComponent(c)});if(R.length>30)break}}
   allPend().filter(p=>norm(p.txt).includes(q)).slice(0,8).forEach(p=>{const sy=sysOf(p.mod);R.push({tipo:'Pendência',txt:p.txt,sub:sy.nome,href:p.mod==='portal'?'#'+(p.link||'pend'):sysHref(sy,p.link||'')})});
-  [['Visão geral','geral'],['Pendências','pend'],['Relatórios','rel'],['Configuração do Portal','config'],['Usuários','cadastros/usuarios'],['Perfis e permissões','cadastros/perfis'],['Vigências','cadastros/vigencias'],['Parâmetros e semáforo','cadastros/parametros'],['Pasta única','config'],['Importar do SAP (BOM, materiais)','cadastros/importar'],['Auditoria do cadastro','cadastros/auditoria'],['Backups do cadastro','cadastros/backups'],['Segurança e senha do cadastro','cadastros/seguranca']].forEach(([t,h])=>{if(norm(t).includes(q))R.push({tipo:'Portal',txt:t,href:'#'+h})});return R},
+  [['Visão geral','geral'],['Pendências','pend'],['Relatórios','rel'],['Configuração do Portal','config'],['Usuários','cadastros/usuarios'],['Perfis e permissões','cadastros/perfis'],['Vigências','cadastros/vigencias'],['Parâmetros','cadastros/parametros'],['Pasta única','config'],['Importar do SAP (BOM, materiais)','cadastros/importar'],['Auditoria do cadastro','cadastros/auditoria'],['Backups do cadastro','cadastros/backups'],['Segurança e senha do cadastro','cadastros/seguranca']].forEach(([t,h])=>{if(norm(t).includes(q))R.push({tipo:'Portal',txt:t,href:'#'+h})});return R},
  exports:b=>({exportsVersion:1,geradoEm:nowISO(),resumo:Object.fromEntries(Object.entries(MOD.data).map(([k,v])=>[k,v&&v.kpis?v.kpis.map(x=>({rotulo:x[0],valor:x[1]})):null]))})};
 
 /* ---------- leitura das bases dos módulos ---------- */
@@ -1553,7 +1554,7 @@ function viewRel(m){m.innerHTML=`<div class="card"><h3>Relatórios ${ib('Relató
  $('#rResumo').onclick=()=>Report.open(relDoc(),{notaKey:'resumo:'+todayISO()});
  $('#rPend').onclick=()=>{const P=allPend();Report.open({titulo:'Pendências da linha',subtitulo:'Portal',periodo:fmtD(todayISO()),arquivo:'Pendencias_'+todayISO(),blocos:[{tipo:'tabela',cab:['Módulo','Pendência','Urgência'],linhas:P.map(p=>[sysOf(p.mod).nome,p.txt,p.sev>=2?'urgente':'atenção']),destaque:P.map(p=>p.sev>=2?'hl2':'hl1')}]},{notaKey:'pend:'+todayISO()})}}
 function viewConfig(m){const list=systems();
- m.innerHTML=`<div class="row">${configComum()}<div class="card"><h3>Modo de teste</h3><p class="small muted">Permite navegar por todas as páginas com dados fictícios relacionados.</p>${Store.mode==='teste'?'<button class="b p" onclick="exitTest()">Sair do modo de teste</button>':'<button class="b" onclick="vacDemo.entrar()">Iniciar demonstração do sistema</button>'}</div></div>
+ m.innerHTML=`<div class="row">${configComum()}<div class="card"><h3>Demonstração ${ib('Demonstração','Abre as oito páginas com dados fictícios relacionados, só na memória deste navegador. Nada é gravado nas bases da pasta. É a única forma de ver a plataforma com dados de exemplo (o antigo "Modo exemplo" de cada página saiu na 1.9.6, ARQ-09).')}</h3><p class="small muted">Navega por todas as páginas com dados fictícios relacionados. Nada é gravado.</p>${Store.mode==='teste'?'<button class="b p" onclick="exitTest()">Sair do modo de teste</button>':'<button class="b" onclick="vacDemo.entrar()">Iniciar demonstração do sistema</button>'}</div></div>
  ${cardVersoes()}
  ${cardPastaUnica()}
  <div class="card form"><h3>Módulos ${ib('Módulos','O Portal procura a base de cada módulo na pasta principal e, por um tempo, também nas subpastas (local antigo, ex.: FIFO - GEL), avisando. O caminho do HTML é usado nos links de todas as páginas (lista vac.sistemas, com caminhos simples quando o módulo está na pasta principal). Se um módulo estiver numa pasta fora desta, escolha a pasta do módulo.')}</h3>
@@ -1724,9 +1725,9 @@ const CAD_T={
   vcampos:[['pphNominal','PPH nominal (peças/h)','int'],['tubosPorCaixa','Tubos por caixa','int'],['caixasPorLote','Caixas por lote','int']]},
  materiais:{nome:'Materiais',um:'material',campos:[['codigo','Código SAP','cod'],['nome','Descrição','txt',null,{w:2}],['unidade','Unidade','sel',UNIDS],['tipo','Tipo','sel',['gel','rolha','tubo','etiqueta','caixa','aditivo','outro']],['tipoSAP','Tipo SAP (ROH, HALB…)','txt']]},
  bom:{nome:'BOM',um:'BOM',key:'catalogo',vig:true,campos:[['catalogo','Catálogo','refcod','catalogos']]},
- equipamentos:{nome:'Equipamentos',um:'equipamento',campos:[['codigo','Código','cod'],['nome','Nome','txt'],['linha','Linha','ref','linhas'],['posicao','Posição na linha','int'],['tipo','Tipo','sel',['equipamento','linha'],{up:1}],['papel','Papel','sel',['oee','equipamento'],{up:1}],['fabricante','Fabricante','txt'],['modelo','Modelo','txt'],['numeroSerie','Nº de série','txt'],['ano','Ano','int'],['apelidos','Outros nomes (de-para)','txt',null,{w:2}]]},
+ equipamentos:{nome:'Equipamentos',um:'equipamento',campos:[['codigo','Código','cod'],['nome','Nome','txt'],['linha','Linha','ref','linhas'],['posicao','Posição na linha','int'],['tipo','Tipo','sel',['equipamento','linha'],{up:1}],['papel','Papel','sel',['oee','equipamento'],{up:1}],['fabricante','Fabricante','txt'],['modelo','Modelo','txt'],['numeroSerie','Nº de série','txt'],['ano','Ano','int'],['apelidos','Outros nomes (de-para)','txt',null,{w:2}],['categoria','Categoria','sel',['linha','gel'],{lab:{linha:'Equipamento da linha',gel:'Equipamento – Gel'}}]]},
  turnos:{nome:'Turnos',um:'turno',vig:true,campos:[['codigo','Código','cod'],['nome','Nome','txt'],['linha','Linha','ref','linhas'],['cor','Cor','cor']],
-  vcampos:[['inicio','Início (HH:MM)','hora'],['fim','Fim (24 h+, ex.: 30:00)','hora'],['dias','Dias','dias'],['ativo','Turno ativo nesta vigência','bool'],['regraPedacoFinal','Somar pedaço final de até (min)','int']]},
+  vcampos:[['inicio','Início (HH:MM)','hora'],['fim','Fim (24 h+, ex.: 30:00)','hora'],['dias','Dias','dias'],['ativo','Turno ativo nesta vigência','bool'],['naoProdutivo','Turno não produtivo','bool'],['regraPedacoFinal','Somar pedaço final de até (min)','int']]},
  paradas:{nome:'Códigos de parada',um:'código de parada',campos:[['codigo','Código','cod'],['numero','Nº (3 dígitos)','num3'],['nome','Nome','txt',null,{w:2}],['categoria','Categoria','txt'],['subcategoria','Subcategoria','txt'],['cor','Cor','cor'],
   ['macro','Macro (BD)','txt'],['pilar','Pilar','sel',['U','D','P','Q','P ou D']],['classe','Classe','sel',['fixa','porDuracao','calculada','emPecas']],['ondeAponta','Onde se aponta','sel',['Máquina','Linha','Linha + máquina','Liderança','Manutenção']],
   ['planejada','Planejada','bool'],['descontaPlanejado','Desconta do tempo planejado','bool'],['afetaD','Afeta disponibilidade','bool'],['afetaP','Afeta performance','bool'],['afetaQ','Afeta qualidade','bool'],['pareto','Entra no Pareto','bool'],
@@ -1818,6 +1819,7 @@ const AJUDA_CAMPO={
  'usuarios.turno':'Turno da pessoa (filtros e relatórios por turno).','usuarios.especialidade':'Ex.: mecânica, elétrica, qualidade, processos.','usuarios.area':'Área ou equipe da pessoa (ex.: Produção, Manutenção, Qualidade, PCP). Na Minha fila do Portal, "Minha equipe" mostra o que é das pessoas da mesma área.','usuarios.email':'E-mail corporativo (relatórios e avisos no futuro).',
  'usuarios.paginaInicial':'Página e aba que abrem para a pessoa (ex.: "Produção › Painel"). Vale ao abrir pelo Portal e ao abrir a própria página direto (1ª vez na sessão; link com # tem prioridade). "(do perfil)" = usa a do perfil.',
  /* ---- 1.8: campos novos (com exemplo) ---- */
+ 'equipamentos.categoria':'Para que página o equipamento existe. "Equipamento – Gel" aparece primeiro na Gestão de Gel (Configuração › Equipamentos da linha), que lê nome e situação daqui e guarda só a embalagem e os descartes. Vazio = equipamento da linha. Ex.: Dosadora de gel 1 → Equipamento – Gel.',
  'equipamentos.apelidos':'Outros nomes com que este equipamento aparece em formulários antigos, no Forms ou em planilhas, separados por ponto e vírgula. A Paradas usa para ligar o nome ao código (de-para). Ex.: "Tullip B; Tulip B; Rotuladora 2".',
  'paradas.duracaoManual':'Permite lançar só a duração (minutos), sem horário de início e fim. Ex.: RTB (retrabalho) ou abono de almoço.',
  'paradas.relatorio':'Aparece nos relatórios de paradas da Produção. Desmarque para códigos internos que não devem sair no relatório (ex.: troca de turno sem parada).',
@@ -1851,6 +1853,7 @@ const AJUDA_CAMPO={
  'metasOsm.linha':'Linha (vazio = todas).','metasOsm.turno':'Turno (vazio = todos). Ex.: T3 com meta diferente.',
  'metasOsm.quantidade':'Número de OSM (observações de segurança) no período. Ex.: 4 por operador por mês.',
  'metasOsm.tema':'Opcional: tema que precisa aparecer no período. Ex.: "Ergonomia" no mês de campanha.',
+ 'turnos.naoProdutivo':'TUR-01: o turno existe (ativo), mas a produção da janela dele não conta para ele. Não entra no dia nem no plano da Produção; as caixas do servidor feitas nessa janela vão para o turno produtivo vizinho (emendado com o fim do anterior → anterior; sem continuidade → o próximo). No lançamento do dia dá para "Habilitar" o turno só naquele dia. Ex.: Turno C 22:47–06:00 não produtivo.',
  'turnos.regraPedacoFinal':'Como o Hora a Hora corta o turno: horas cheias a partir do início; se o último pedaço tiver até este número de minutos, ele é somado à hora anterior. Ex.: com 30, o turno 06:00–14:20 fica 06–07 … 13:00–14:20 (os 20 min finais somam na última hora).',
  'turnos.intervalos':'As linhas do Hora a Hora que cada dia novo recebe neste turno. Vazio = gerados pela regra (horas cheias + pedaço final). Personalizado: você define cada intervalo, cobrindo o turno inteiro sem lacuna. Ex.: 06:00–07:00, 07:00–08:00 … Vale para os dias criados depois; dias já lançados não mudam.',
  'intervalos.inicio':'Início do intervalo (HH:MM; 24 h+ depois da meia-noite). Ex.: 13:00.','intervalos.fim':'Fim do intervalo. O primeiro começa no início do turno e o último termina no fim. Ex.: 14:20.',
@@ -1883,6 +1886,18 @@ const AJUDA_CAMPO={
  'trazer.Metas da área':'Meta mensal de perda líquida da Configuração do Waste.','trazer.Parâmetros':'Parada longa (Produção) e fila técnica (Paradas) viram um parâmetro único.',
  'trazer.Outros nomes das máquinas':'De-para da Paradas: nome do Forms → equipamento. Vira "Outros nomes" no equipamento.',
  'parametros.fusoHorario':'Fuso usado para datas e horas em todas as páginas. Ex.: America/Sao_Paulo.',
+ /* 1.9.7 · ARQ-06: parâmetros que são de uma página ficam aqui, agrupados por página */
+ 'parametros.producao.unidadeLancamento':'Quantas peças vale cada número digitado na produção da hora. Ex.: 1000 = digitar 61 grava 61.000 tubos. A base guarda sempre em peças.',
+ 'parametros.producao.rotuloUnidade':'Texto ao lado dos números de produção e meta. Só exibição. Ex.: mil.',
+ 'parametros.producao.continuidadeMin':'Intervalo máximo sem caixa (servidor/MES) para a produção ser considerada contínua na troca de turno. Até ele, a produção da janela do turno não produtivo continua o turno anterior; acima, vai para o próximo. Vazio = o "Parada sem caixa" da Produção (10 min). Ex.: 10.',
+ 'parametros.producao.foraTurnoDesde':'A partir de que dia a produção feita fora dos turnos produtivos (turno não produtivo, ou horário sem turno, como a madrugada antes das 06:00) é reatribuída ao turno vizinho. Dias antes da data não mudam. Vazio = a 1ª vigência marcada como Turno não produtivo. Ex.: 01/12/2026.',
+ 'parametros.producao.arredondamentoMeta':'Múltiplo para o qual a meta de cada intervalo do Hora a Hora é arredondada para cima, por vigência (a partir de uma data). Ex.: 1000 → meta de 62.100 aparece como 63 mil. Vale para os dias a partir da data; dias anteriores continuam com o valor da época.',
+ 'trazer.Só no Gel · catálogos':'Catálogos que só a Gestão de Gel tem. Vêm com o mesmo número; o Gel continua com os dados do gel (BOM de gel, gramas por tubo) e passa a ler nome, cor, formato e situação daqui.',
+ 'trazer.Só no Gel · equipamentos':'Equipamentos da linha da Gestão de Gel que o Portal não tem. Entram com o próximo código EQ e a categoria Equipamento – Gel; o Gel liga pelo nome.',
+ 'trazer.Só na Produção · turnos':'Turnos que a Produção tem e o Portal não (outro código). Trazer cria o turno no Portal com as vigências, pausas e intervalos da Produção. Se for o mesmo turno de outro código do Portal, não traga: a Produção o deixa inativo.',
+ 'trazer.Só na Produção · catálogos':'Catálogos que só a Produção tem. Vêm com o mesmo código e o PPH de cada vigência; o resto da ficha (formato, aditivo, SAP) se completa depois.',
+ 'trazer.Só na Produção · tipos de parada':'Tipos de parada que só a Produção tem. Vêm com o mesmo código e as regras de apontamento; pilar e classe se completam na ficha.',
+ 'computador.qtd':'Como esta pessoa vê as quantidades nas páginas, neste computador. Não muda a base. Ex.: "61 mil" ou "61.000".',
  'parametros.unidade':'Unidade fabril que aparece nos relatórios. Ex.: BD Curitiba.','parametros.setor':'Setor que aparece nos relatórios. Ex.: Vacutainer.',
  'parametros.paradaLongaMin':'A partir de quantos minutos uma parada é "longa" e pede análise: a Produção lista à parte (Paradas acima do limite) e a Paradas coloca na fila técnica pedindo ação (paradas operacionais). Ex.: 30.',
  'parametros.semaforoVerdePct':'Verde quando o resultado atinge esta % da meta. Ex.: 100 (bateu a meta).','parametros.semaforoAmareloPct':'Amarelo da % até o verde; abaixo dela, vermelho. Ex.: 90 (até 10 % abaixo da meta é atenção).',
@@ -2216,9 +2231,11 @@ function cadSide(sec){const D=Cad.D;const btn=(k,l,n)=>`<button data-sec="${k}" 
  return btn('inicio','Resumo')+(D?g('Cadastros')+CAD_ORD.filter(t=>!CAD_PESSOAS.includes(t)&&!CAD_METAS.includes(t)).map(t=>btn(t,esc(CAD_T[t].nome),cnt(t))).join('')+btn('matriz','Matriz de paradas')
   +g('Metas')+CAD_METAS.map(t=>btn(t,esc(CAD_T[t].nome),cnt(t))).join('')
   +g('Pessoas')+btn('usuarios','Usuários',cnt('usuarios'))+btn('perfis','Perfis e permissões',cnt('perfis'))
-  +g('Regras')+btn('vigencias','Vigências')+btn('parametros','Parâmetros e semáforo'):'')
+  +g('Regras')+btn('vigencias','Vigências')+btn('parametros','Parâmetros'):'')
   +g('Sistema')+(D?btn('importar','Integrações SAP'):'')+btn('config','Configuração do Portal')+btn('versoes','Versões das páginas')+(D?btn('auditoria','Auditoria')+btn('backups','Backups do cadastro')+btn('seguranca','Segurança e senha'):'')}
-function wireAdminSide(){$$('.cadside [data-sec]').forEach(b=>b.onclick=()=>{const s=b.dataset.sec;if(s==='config'){App.show('config');return}if(s==='versoes'){irVersoes();return}Cad.ui.sec=s;Cad.ui.q='';if(App.tab!=='cad')App.show('cad');else{cadHash();App.render()}})}
+/* POR-04: a lista lateral é redesenhada a cada clique; guarda e devolve a posição da rolagem interna */
+let cadSideTop=0;
+function wireAdminSide(){const sd=$('.cadside');if(sd){sd.scrollTop=cadSideTop;sd.addEventListener('scroll',()=>{cadSideTop=sd.scrollTop},{passive:true})}$$('.cadside [data-sec]').forEach(b=>b.onclick=()=>{const s=b.dataset.sec;if(s==='config'){App.show('config');return}if(s==='versoes'){irVersoes();return}Cad.ui.sec=s;Cad.ui.q='';if(App.tab!=='cad')App.show('cad');else{cadHash();App.render()}})}
 function viewAdminConfig(m){m.innerHTML=`<div class="cadg"><aside class="cadside">${cadSide('config')}</aside><section id="admCfg" style="min-width:0"></section></div>`;wireAdminSide();viewConfig($('#admCfg'))}
 function cadSemCadastro(el){
  if(Store.mode!=='pasta'&&Store.mode!=='teste'){el.innerHTML=`<div class="card"><h3>Cadastro base</h3><p>Conecte o Portal à pasta da rede em <a href="#config">Configuração</a> para ler ou criar o <span class="mono">${CAD_FILE}</span>.</p></div>`;return}
@@ -2299,7 +2316,7 @@ function cadModelo(t){const h=todayISO(),D=Cad.D,L0=(D.linhas.find(l=>l.ativo!==
   catalogos:{codigo:'',tipoItem:'tubo',unidade:'UN',nome:'',familia:null,linha:L0,formato:null,volumeMl:null,aditivo:null,cor:null,codigoSAP:null,ativo:true,vigencias:[{de:h,ate:null,pphNominal:null,tubosPorCaixa:1000,caixasPorLote:null}]},
   materiais:{codigo:'',nome:'',unidade:'un',tipo:'outro',ativo:true},
   bom:{catalogo:'',vigencias:[{de:h,ate:null,origem:'cadastro manual',itens:[]}]},
-  equipamentos:{codigo:'',nome:'',linha:L0,posicao:(Math.max(0,...D.equipamentos.map(e=>+e.posicao||0))+1),tipo:'equipamento',papel:'equipamento',fabricante:null,modelo:null,numeroSerie:null,ano:null,dados:{},foto:null,documentos:[],ativo:true},
+  equipamentos:{codigo:'',nome:'',linha:L0,posicao:(Math.max(0,...D.equipamentos.map(e=>+e.posicao||0))+1),tipo:'equipamento',papel:'equipamento',categoria:'linha',fabricante:null,modelo:null,numeroSerie:null,ano:null,dados:{},foto:null,documentos:[],ativo:true},
   turnos:{codigo:'',nome:'',linha:L0,cor:null,ativo:true,vigencias:[{de:h,ate:null,inicio:'06:00',fim:'14:30',dias:[1,2,3,4,5,6],ativo:true,pausas:[],regraPedacoFinal:30,intervalos:[]}]},
   componentes:{codigo:'',equipamento:null,nome:'',sistema:'mecânico',criticidade:'B',materialSAP:null,ativo:true},
   modosFalha:{codigo:'',nome:'',ativo:true},
@@ -2425,7 +2442,7 @@ const Ficha={t:null,cod:null,orig:null,W:null,novo:false,edit:false,dirty:false,
   ${e?`<div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap"><label class="b sm">Enviar foto<input type="file" id="fFotoUp" accept="image/*" hidden></label><label class="b sm">Anexar documento<input type="file" id="fDocUp" hidden></label></div>`:''}</div></div>`},
  uso(){const U=cadUsos(this.t,this.cod);let h='';const lk=(t,c,txt)=>`<a class="b sm" href="#cadastros/${t}/${encodeURIComponent(c)}">${esc(txt)}</a>`;
   const extra=[];if(this.t==='catalogos'){const f=this.W.familia;if(f)extra.push(lk('familias',f,'Família '+f))}if(this.t==='bom')extra.push(lk('catalogos',this.W.catalogo,'Catálogo '+this.W.catalogo));
-  if(U.length||extra.length)h=`<h3 style="margin-top:14px">Onde é usado / ligações</h3><div style="display:flex;gap:6px;flex-wrap:wrap">${extra.join('')}${U.slice(0,60).map(u=>lk(u.t,u.cod,`${u.t==='bom'?'BOM':cap1(CAD_T[u.t].um)} ${u.cod}${u.ativo?'':' (inativo)'}`)).join('')}</div>`;
+  if(U.length||extra.length)h=`<h3 style="margin-top:14px">Onde é usado / ligações ${ib('Onde é usado / ligações','Registros do cadastro que usam este código (ex.: no equipamento, os componentes dele e os códigos de parada que aparecem no formulário dele; no catálogo, a BOM). Clique para abrir. Não inclui lançamentos das páginas (paradas apontadas, ordens, gel). Confira aqui antes de desativar ou mudar.')}</h3><div style="display:flex;gap:6px;flex-wrap:wrap">${extra.join('')}${U.slice(0,60).map(u=>lk(u.t,u.cod,`${u.t==='bom'?'BOM':cap1(CAD_T[u.t].um)} ${u.cod}${u.ativo?'':' (inativo)'}`)).join('')}</div>`;
   return h},
  audit(){const A=(Cad.D.auditoria||[]).filter(a=>a.tipo===this.t&&String(a.codigo)===this.cod).slice(-40).reverse();const F=Cad.fila.filter(o=>o.tipo===this.t&&String(o.codigo)===this.cod);
   return`<h3 style="margin-top:14px">Histórico ${ib('Histórico','Linhas da auditoria deste item: quem, quando, campo, antes, depois e motivo. Alterações ainda na fila aparecem como "não gravada".')}</h3>
@@ -3298,6 +3315,28 @@ const TrazCfg={B:{},lidos:[],avisos:[],P:[],
  montar(){const D=Cad.D,P=[],O=this.B.oee,G=this.B.gel,W=this.B.perdas,R=this.B.paradas;const L0=(D.linhas.find(l=>l.ativo!==false)||{}).codigo||null;
   const add=(grupo,titulo,detalhe,fn,marcado=true)=>P.push({id:'p'+P.length,grupo,titulo,detalhe,fn,marcado});
   const byId=(arr,id)=>(arr||[]).find(x=>x.id===id)||null;
+  /* 0. 1.9.8 · ARQ-01/02/04: turnos, catálogos e tipos de parada que só existem na Produção (código que o Portal não tem).
+     Vêm com o mesmo código, para os lançamentos antigos continuarem ligados. Turno: desmarcado se o Portal já tem turnos
+     (provável o mesmo turno com outro código, ex.: TC × T3: aí não traga; a Produção o deixa inativo). */
+  if(O){const vivo=x=>x&&!x.deleted&&!x.demo&&x.code!=null&&String(x.code).trim()!=='';
+   const linCod=id=>{const c=(byId(O.lines,id)||{}).code;return c&&cadItem('linhas',c,D)?c:L0};
+   const dcCod=id=>{const c=(byId(O.downtimeCodes,id)||{}).code;return c||null};
+   const temT=(D.turnos||[]).length>0;
+   for(const sh of (O.shifts||[]).filter(vivo)){const cod=String(sh.code);if(cadItem('turnos',cod,D))continue;
+    const vs=(sh.versions||[]).filter(v=>v&&!v.deleted&&v.start&&v.end).slice().sort((a,b)=>String(a.validFrom)<String(b.validFrom)?-1:1).map(v=>({de:v.validFrom||'2025-01-01',ate:v.validTo||null,inicio:v.start,fim:v.end,dias:Array.isArray(v.weekdays)?v.weekdays.slice():[],ativo:v.active!==false,naoProdutivo:v.productive===false?true:undefined,
+     pausas:(v.breaks||[]).map(b=>({codigo:dcCod(b.codeId)&&cadItem('paradas',dcCod(b.codeId),D)?dcCod(b.codeId):null,nome:b.label||'Pausa',inicio:b.start&&b.end?b.start:'',fim:b.start&&b.end?b.end:'',duracaoMin:b.start&&b.end?null:(+b.minutes||null),dias:Array.isArray(b.weekdays)?b.weekdays.slice():[],desconta:b.deducts!==false})),
+     regraPedacoFinal:v.tailMergeMax!=null&&v.tailMergeMax!==''?+v.tailMergeMax:null,intervalos:(v.template||[]).map(x=>({inicio:x.start,fim:x.end}))}));
+    if(!vs.length)continue;const it={codigo:cod,nome:sh.name||cod,linha:linCod(sh.lineId),cor:sh.color||null,ativo:sh.status!=='inativo',vigencias:vs};
+    add('Só na Produção · turnos',`Turno ${cod} · ${it.nome}${it.ativo?'':' (inativo)'}: ${vs.length} vigência(s)`,`${vs.map(v=>`desde ${fmtD(v.de)} ${v.inicio}–${v.fim}`).join(' · ')}. ${temT?'O Portal já tem turnos: se este for o mesmo turno com outro código, deixe desmarcado (a Produção o deixa inativo).':'O Portal ainda não tem turnos.'}`,W2=>{W2.turnos.push(clone(it))},!temT)}
+   for(const c of (O.catalogs||[]).filter(vivo)){const cod=String(c.code);if(cadItem('catalogos',cod,D)||P.some(x=>x.cat===cod))continue;
+    const vs=(O.catalogs||[]).filter(x=>vivo(x)&&String(x.code)===cod).sort((a,b)=>String(a.validFrom)<String(b.validFrom)?-1:1).map(x=>({de:x.validFrom||'2025-01-01',ate:x.validTo||null,pphNominal:x.pph!=null?+x.pph:null,tubosPorCaixa:1000,caixasPorLote:null}));
+    const fam=(byId(O.families,c.familyId)||{}).code||null;
+    const it={codigo:cod,tipoItem:'tubo',unidade:'UN',nome:c.name||cod,familia:fam&&cadItem('familias',fam,D)?fam:null,linha:linCod(c.lineId),formato:null,volumeMl:null,aditivo:null,cor:c.color||null,codigoSAP:null,ativo:c.active!==false&&c.status!=='inativo',vigencias:vs};
+    const pr={id:'p'+P.length,grupo:'Só na Produção · catálogos',titulo:`Catálogo ${cod} · ${it.nome}: ${vs.length} vigência(s)`,detalhe:`PPH ${vs.map(v=>v.pphNominal!=null?fmtN(v.pphNominal):'?').join(' → ')}${fam&&!it.familia?` · família ${fam} não está no cadastro`:''}. Confira os campos do catálogo na ficha depois (formato, aditivo, código SAP).`,fn:W2=>{W2.catalogos.push(clone(it))},marcado:true,cat:cod};P.push(pr)}
+   for(const c of (O.downtimeCodes||[]).filter(vivo)){const cod=String(c.code);if(cadItem('paradas',cod,D))continue;
+    const it={codigo:cod,numero:null,nome:c.name||cod,categoria:c.category||null,subcategoria:c.subcategory||null,cor:c.color||null,planejada:!!c.planned,descontaPlanejado:!!c.deductsPlanned,afetaD:!!c.affectsA,afetaP:!!c.affectsP,afetaQ:!!c.affectsQ,pareto:c.inPareto!==false,relatorio:c.inReport!==false,
+     exigeObservacao:!!c.requiresNote,exigeHorario:!!c.requiresTimes,duracaoManual:!!c.allowsManualDuration,exigeCatalogoAnterior:!!c.requiresPrevCatalog,exigeCatalogoSeguinte:!!c.requiresNextCatalog,equipamentos:null,ativo:c.active!==false&&c.status!=='inativo'};
+    add('Só na Produção · tipos de parada',`${cod} · ${it.nome}${it.ativo?'':' (inativo)'}`,`Pilar e classe não existem na Produção: preencha na ficha depois. Afeta ${['D','P','Q'].filter((x,i)=>[it.afetaD,it.afetaP,it.afetaQ][i]).join('/')||'—'}${it.planejada?' · planejada':''}.`,W2=>{W2.paradas.push(clone(it))})}}
   /* 1. pausas da Produção */
   if(O){const codeOf=id=>{const c=byId(O.downtimeCodes,id);return c&&c.code&&cadItem('paradas',c.code,D)?c.code:null};
    for(const t of D.turnos||[]){const sh=(O.shifts||[]).find(x=>String(x.code)===String(t.codigo)&&!x.deleted);if(!sh)continue;
@@ -3308,6 +3347,17 @@ const TrazCfg={B:{},lidos:[],avisos:[],P:[],
      const ps=br.map(b=>({codigo:codeOf(b.codeId),nome:b.label||'Pausa',inicio:b.start&&b.end?b.start:'',fim:b.start&&b.end?b.end:'',duracaoMin:b.start&&b.end?null:(+b.minutes||null),dias:Array.isArray(b.weekdays)?b.weekdays.slice():[],desconta:b.deducts!==false}));
      add('Pausas e abonos',`Turno ${t.codigo} (vigência desde ${fmtD(v.de)}): ${ps.length} pausa(s) da Produção`,ps.map(p=>`${p.nome} ${p.inicio?p.inicio+'–'+p.fim:p.duracaoMin+' min'}${p.dias.length?' ('+p.dias.map(d=>DIAS[d]).join(', ')+')':''}${p.codigo?' · '+p.codigo:''}`).join('; '),
       W2=>{const it=W2.turnos.find(x=>x.codigo===t.codigo);const vv=it.vigencias[i];vv.pausas=(vv.pausas||[]).concat(clone(ps))})})}}
+  /* 2a. 1.9.9 · ARQ-05/ARQ-07: catálogos e equipamentos que só existem na Gestão de Gel. O Gel liga sozinho pelo número do catálogo
+     e pelo nome do equipamento (ou "Outros nomes"); os dados do gel (BOM de gel, descartes) continuam lá. */
+  if(G){const gcats=((G.catalogs&&G.catalogs.items)||[]).filter(c=>c&&c.num!=null&&String(c.num).trim()!==''),geqs=((G.config&&G.config.equips)||[]).filter(e=>e&&e.name);
+   for(const c of gcats){const cod=String(c.num).trim();if(cadItem('catalogos',cod,D)||P.some(x=>x.cat===cod))continue;
+    const it={codigo:cod,tipoItem:'tubo',unidade:'UN',nome:c.desc||('Catálogo '+cod),familia:null,linha:L0,formato:c.fmt?String(c.fmt):null,volumeMl:null,aditivo:'SST',cor:c.color||null,codigoSAP:null,ativo:c.active!==false,vigencias:[{de:'2025-01-01',ate:null,pphNominal:+c.rateH>0?Math.round(+c.rateH):null,tubosPorCaixa:1000,caixasPorLote:+c.lotSize>0?Math.round(+c.lotSize/1000):null}]};
+    P.push({id:'p'+P.length,grupo:'Só no Gel · catálogos',titulo:`Catálogo ${cod} · ${it.nome}`,detalhe:`Formato ${it.formato||'—'}${it.vigencias[0].pphNominal?' · '+fmtN(it.vigencias[0].pphNominal)+' tubos/h':''}. Aditivo SST (usa gel): confira família e código SAP na ficha depois.`,fn:W2=>{W2.catalogos.push(clone(it))},marcado:true,cat:cod})}
+   const norm=x=>String(x||'').trim().toLowerCase();const achou=n=>(D.equipamentos||[]).some(e=>norm(e.nome)===norm(n)||String(e.apelidos||'').split(';').some(a=>norm(a)===norm(n)));
+   let prox=Math.max(0,...(D.equipamentos||[]).map(e=>+(String(e.codigo).match(/^EQ(\d+)$/)||[])[1]||0));const pos0=Math.max(0,...(D.equipamentos||[]).map(e=>+e.posicao||0));
+   for(const e of geqs){if(e.portal&&cadItem('equipamentos',e.portal,D))continue;if(achou(e.name))continue;const cod='EQ'+String(++prox).padStart(2,'0');
+    const it={codigo:cod,nome:e.name,linha:L0,posicao:pos0+prox,tipo:'equipamento',papel:'equipamento',categoria:'gel',fabricante:null,modelo:null,numeroSerie:null,ano:null,dados:{},foto:null,documentos:[],ativo:e.active!==false};
+    add('Só no Gel · equipamentos',`${cod} · ${e.name} (Equipamento – Gel)`,`Equipamento da linha da Gestão de Gel. O Gel liga pelo nome; a embalagem e os descartes continuam lá. Se já existe no Portal com outro nome, não traga: ponha "${e.name}" em Outros nomes daquele equipamento.`,W2=>{W2.equipamentos.push(clone(it))})}}
   /* 2. pausa fixa e abono do Gel */
   if(G&&G.config){const c=G.config,sh=(c.shifts||[]).slice().sort((a,b)=>a.from<b.from?1:-1)[0];
    if(sh)for(const tu of sh.turns||[])if(+tu.p>0){const t=cadItem('turnos',tu.n,D);if(!t)continue;add('Pausas e abonos',`Turno ${tu.n}: pausa fixa de ${tu.p} min (Gestão de Gel)`,'Todos os dias do turno, desconta do planejado. Confira se a Produção já não tem a mesma pausa.',W2=>{const it=W2.turnos.find(x=>x.codigo===tu.n);const vv=vigEm(it.vigencias,todayISO())||it.vigencias[it.vigencias.length-1];if(vv)vv.pausas=(vv.pausas||[]).concat([{codigo:null,nome:'Pausa fixa',inicio:'',fim:'',duracaoMin:+tu.p,dias:[],desconta:true}])},false)}
@@ -3339,6 +3389,10 @@ const TrazCfg={B:{},lidos:[],avisos:[],P:[],
   /* 7. meta do Waste */
   if(W&&W.config&&W.config.meta!=null&&W.config.meta!==''&&!cadItem('metasArea','WASTE-MES',D)){const pers=(W.rows||[]).map(r=>r.per).filter(Boolean).sort();const de=(pers[0]||todayISO().slice(0,7)).slice(0,7)+'-01';
    add('Metas da área',`WASTE-MES: perda líquida até R$ ${fmtN(+W.config.meta,0)} por mês`,`Meta da Configuração do Waste, vigente desde ${fmtD(de)} (primeira competência importada).`,W2=>{W2.metasArea.push({codigo:'WASTE-MES',nome:'Perda líquida do Waste',pagina:'Waste',unidade:'R$',sentido:'menor',periodo:'mês',linha:L0,ativo:true,vigencias:[{de,ate:null,valor:+W.config.meta,alerta:null}]})})}
+  /* 7a. 1.9.7 · ARQ-06: unidade, rótulo e arredondamento da Produção (só se o Portal ainda não tem) */
+  if(O&&O.settings&&!(D.parametros||{}).producao){const st=O.settings,q={};if(+st.entryUnit>0)q.unidadeLancamento=+st.entryUnit;if(st.unitLabel)q.rotuloUnidade=String(st.unitLabel);
+   const pri=((O.productionDays||[]).map(d=>d.date).filter(Boolean).sort()[0])||'2025-01-01';if(+st.roundingUnit>0)q.arredondamentoMeta=[{de:pri,valor:+st.roundingUnit,origem:'Produção (Configurações)'}];
+   if(Object.keys(q).length)add('Parâmetros',`Produção: lançamento em ${fmtN(q.unidadeLancamento||1)} peça(s)${q.rotuloUnidade?' ("'+q.rotuloUnidade+'")':''}${q.arredondamentoMeta?' · meta arredondada a '+fmtN(q.arredondamentoMeta[0].valor):''}`,`Valores da Configuração da Produção. O arredondamento entra como vigência desde ${fmtD(pri)} (primeiro dia lançado), para não mudar a meta de nenhum dia já lançado.`,W2=>{W2.parametros=W2.parametros||{};W2.parametros.producao=q})}
   /* 7b. motivos de abono e de "sem produção" */
   if(O&&O.settings){const P0=D.parametros||{};for(const[k,ok2,lab]of[['motivosAbono','abMotivos','Motivos de abono'],['motivosSemProducaoProg','offMotivosProg','Motivos de "sem produção" programado'],['motivosSemProducaoNP','offMotivosNP','Motivos de "sem produção" não programado']]){const L=O.settings[ok2];if(Array.isArray(L)&&L.length&&!(P0[k]||[]).length)add('Parâmetros',`${lab}: ${L.length}`,L.join(' · '),W2=>{W2.parametros=W2.parametros||{};W2.parametros[k]=L.slice()})}}
   /* 8. parada longa */
@@ -3378,10 +3432,50 @@ function cadParametros(el){const D=Cad.D,pe=Cad.podeEditar(true),P=D.parametros|
   <div class="fg"><label>Verde a partir de (% da meta) ${ib('Verde',AJUDA_CAMPO['parametros.semaforoVerdePct'])}<input type="number" step="0.1" min="1" data-par="semaforoVerdePct" data-num="1" value="${vd}"${dis}></label><label>Amarelo a partir de (% da meta) ${ib('Amarelo',AJUDA_CAMPO['parametros.semaforoAmareloPct'])}<input type="number" step="0.1" min="1" data-par="semaforoAmareloPct" data-num="1" value="${am}"${dis}></label></div>
   <div style="display:flex;gap:6px;flex-wrap:wrap;margin:8px 0"><span class="pill ok">verde ≥ ${fmtN(vd,1)}%</span><span class="pill warn">amarelo ${fmtN(am,1)}% a ${fmtN(vd,1)}%</span><span class="pill crit">vermelho &lt; ${fmtN(am,1)}%</span><span class="pill none">cinza · sem meta ou sem dado</span></div>
   <p class="small muted">Significado fixo das cores em todas as páginas: <b style="color:var(--ok)">verde</b> bom · <b style="color:var(--warn)">amarelo</b> atenção · <b style="color:var(--crit)">vermelho</b> ruim · <b style="color:var(--none)">cinza</b> sem dados ou inativo · <b style="color:var(--info)">azul</b> informação · <b style="color:var(--rule)">roxo</b> regra/configuração · <b style="color:var(--pend)">laranja</b> pendência/revisão. Onde menor é melhor (scrap, waste, tempo parado), a régua é invertida.</p></div></div>
- ${pe?'<button class="b p" id="sParOk">Salvar parâmetros</button>':'<p class="small muted">Desbloqueie a edição (senha) para mudar.</p>'}`;
+ ${pe?'<button class="b p" id="sParOk">Salvar parâmetros</button>':'<p class="small muted">Desbloqueie a edição (senha) para mudar.</p>'}
+ ${parProducaoHtml(P,pe)}${parComputadorHtml()}`;
+ wireParProducao(P,pe);wireParComputador();
  const ok=$('#sParOk');if(ok)ok.onclick=()=>{if(!Cad.podeEditar())return;const mud={};$$('#cadMain [data-par]').forEach(i=>{const k=i.dataset.par;let v=i.value.trim()||null;if(i.dataset.num&&v!=null){v=parseFloat(v.replace(',','.'));if(!isFinite(v)||v<=0)v=null}if(i.dataset.lista){v=[...new Set(i.value.split('\n').map(x=>x.trim()).filter(Boolean))];if(!v.length)v=null}if(!deq(P[k],v))mud[k]={antes:P[k]??null,depois:v}});
   const nv=k=>mud[k]?mud[k].depois:P[k];const V=nv('semaforoVerdePct')??100,A=nv('semaforoAmareloPct')??90;if(A>=V)return toast('O amarelo precisa começar abaixo do verde.',5000,true);
   if(!Object.keys(mud).length)return toast('Nada mudou.');Cad.op({acao:'edição',tipo:'parametros',codigo:null,mudancas:mud,motivo:null});toast('Parâmetros salvos.')}}
+/* ---------- 1.9.7 · ARQ-06: parâmetros por página e "Neste computador" ----------
+   parametros.producao = {unidadeLancamento, rotuloUnidade, arredondamentoMeta:[{de, valor}]}.
+   O arredondamento muda a meta: vale por vigência (D7). Só se acrescenta vigência a partir de hoje; as gravadas não mudam (regra 3).
+   A Produção aplica pelo CadSync e trava os campos na Configuração dela. */
+function parArredEm(L,data){return(L||[]).filter(v=>v&&v.de&&v.de<=data).sort((a,b)=>a.de<b.de?1:-1)[0]||null}
+function parProducaoHtml(P,pe){const Q=P.producao||{},L=(Q.arredondamentoMeta||[]).slice().sort((a,b)=>a.de<b.de?-1:1),h=todayISO(),vig=parArredEm(L,h),dis=pe?'':' disabled';
+ return`<div class="card form" id="parProd" style="margin-top:14px"><h3>Produção ${ib('Parâmetros da Produção','Valores que só a Produção usa, mas que ficam aqui para valerem iguais em todos os computadores. A Produção recebe na próxima revisão do cadastro e trava esses campos na Configuração dela.')}</h3>
+ <div class="fg"><label>Unidade de lançamento (peças) ${ib('Unidade de lançamento',AJUDA_CAMPO['parametros.producao.unidadeLancamento'])}<input type="number" step="1" min="1" data-pprod="unidadeLancamento" value="${esc(Q.unidadeLancamento??'')}" placeholder="1000"${dis}></label>
+ <label>Rótulo da unidade ${ib('Rótulo da unidade',AJUDA_CAMPO['parametros.producao.rotuloUnidade'])}<input data-pprod="rotuloUnidade" value="${esc(Q.rotuloUnidade??'')}" placeholder="mil"${dis}></label></div>
+ <div class="fg"><label>Continuidade entre caixas (min) ${ib('Continuidade',AJUDA_CAMPO['parametros.producao.continuidadeMin'])}<input type="number" step="1" min="1" data-pprod="continuidadeMin" value="${esc(Q.continuidadeMin??'')}" placeholder="10"${dis}></label>
+ <label>Produção fora de turno vale a partir de ${ib('Fora de turno · a partir de',AJUDA_CAMPO['parametros.producao.foraTurnoDesde'])}<input type="date" data-pprod="foraTurnoDesde" value="${esc(Q.foraTurnoDesde||'')}"${dis}></label></div>
+ <h4 style="margin:12px 0 4px">Arredondamento da meta ${ib('Arredondamento da meta',AJUDA_CAMPO['parametros.producao.arredondamentoMeta'])}</h4>
+ <div class="tw"><table class="cadst"><tr><th>A partir de</th><th class="n">Múltiplo (peças)</th><th></th></tr>${L.map(v=>`<tr><td>${fmtD(v.de)}</td><td class="n">${fmtN(v.valor)}</td><td>${vig&&v.de===vig.de?'<span class="pill ok">vigente</span>':v.de>h?'<span class="pill info">futura</span>':''}</td></tr>`).join('')||'<tr><td colspan="3" class="small muted">Nenhuma vigência: a Produção usa o valor da própria base até a primeira.</td></tr>'}</table></div>
+ ${pe?`<div class="fg" style="margin-top:6px"><label>Nova vigência a partir de<input type="date" id="ppArDe" min="${h}" value="${h}"></label><label>Múltiplo (peças)<input type="number" step="1" min="1" id="ppArV" placeholder="1000"></label></div>`:''}
+ ${pe?'<button class="b p" id="ppOk" style="margin-top:8px">Salvar parâmetros da Produção</button>':''}</div>`}
+function wireParProducao(P,pe){const ok=$('#ppOk');if(!ok||!pe)return;ok.onclick=()=>{if(!Cad.podeEditar())return;
+ const Q0=P.producao||{},Q=clone(Q0),h=todayISO();
+ const un=$('[data-pprod="unidadeLancamento"]').value.trim(),rt=$('[data-pprod="rotuloUnidade"]').value.trim();
+ if(un){const n=vacNumero(un);if(!(n>0)||Math.round(n)!==n)return toast('Unidade de lançamento: número inteiro maior que zero.',5000,true);Q.unidadeLancamento=n}else delete Q.unidadeLancamento;
+ if(rt)Q.rotuloUnidade=rt;else delete Q.rotuloUnidade;
+ const ct=$('[data-pprod="continuidadeMin"]').value.trim(),fd=$('[data-pprod="foraTurnoDesde"]').value;
+ if(ct){const n=vacNumero(ct);if(!(n>0))return toast('Continuidade: minutos maiores que zero.',5000,true);Q.continuidadeMin=n}else delete Q.continuidadeMin;
+ if(fd){if(Q0.foraTurnoDesde!==fd&&fd<h&&!confirm('A data está no passado: os dias desde '+fmtD(fd)+' passam a contar a produção fora de turno (o OEE desses dias muda, inclusive dos fechados). Continuar?'))return;Q.foraTurnoDesde=fd}else delete Q.foraTurnoDesde;
+ const de=$('#ppArDe').value,vt=$('#ppArV').value.trim();
+ if(vt){const v=vacNumero(vt);if(!(v>0)||Math.round(v)!==v)return toast('Arredondamento: número inteiro maior que zero.',5000,true);if(!de||de<h)return toast('A vigência nova começa hoje ou depois: as gravadas não mudam.',5000,true);
+  const L=(Q.arredondamentoMeta||[]).filter(x=>x.de!==de||x.de<h);if((Q.arredondamentoMeta||[]).some(x=>x.de===de&&x.de<h))return toast('Já existe vigência nessa data.',5000,true);
+  L.push({de,valor:v,criadoPor:user()||null,criadoEm:isoLocal()});Q.arredondamentoMeta=L.sort((a,b)=>a.de<b.de?-1:1)}
+ if(deq(Q0,Q))return toast('Nada mudou.');
+ Cad.op({acao:'edição',tipo:'parametros',codigo:null,mudancas:{producao:{antes:P.producao?clone(P.producao):null,depois:Q}},motivo:null});toast('Parâmetros da Produção salvos.')}}
+/* "Neste computador": não é cadastro (cada computador tem o seu); fica aqui para estar num lugar só */
+function vacQtdModo(){try{const v=localStorage.getItem('vac.qtd');return v==='abs'?'abs':'unit'}catch(e){return'unit'}}
+function parComputadorHtml(){const u=user(),q=vacQtdModo();
+ return`<div class="card form" id="parPc" style="margin-top:14px"><h3>Neste computador ${ib('Neste computador','Preferências deste navegador, sem senha e sem revisão do cadastro: valem para todas as páginas abertas aqui. Não mudam as bases nem os outros computadores.')}</h3>
+ <div class="kv"><span class="l">Usuário atual</span><span class="v"><b>${esc(u||'—')}</b> <button class="b sm" id="pcUser">Entrar / trocar</button></span></div>
+ <p class="small muted">O nome registrado em cada alteração, em todas as páginas. Não é autenticação.</p>
+ <div style="margin-top:10px"><b>Exibição das quantidades</b> ${ib('Exibição das quantidades',AJUDA_CAMPO['computador.qtd'])}<div class="seg" role="group" aria-label="Exibição das quantidades" style="margin-top:4px"><button type="button" data-pcq="unit" class="${q==='unit'?'on':''}" aria-pressed="${q==='unit'}">Em milheiros (61 mil)</button><button type="button" data-pcq="abs" class="${q==='abs'?'on':''}" aria-pressed="${q==='abs'}">Número completo (61.000)</button></div></div></div>`}
+function wireParComputador(){const b=$('#pcUser');if(b)b.onclick=()=>{if(typeof Entrar!=='undefined'&&Entrar.abrir)Entrar.abrir();else if(typeof VacEntrar!=='undefined')VacEntrar.abrir()};
+ $$('[data-pcq]').forEach(x=>x.onclick=()=>{try{localStorage.setItem('vac.qtd',x.dataset.pcq)}catch(e){}toast(x.dataset.pcq==='abs'?'Quantidades no número completo, neste computador.':'Quantidades em milheiros, neste computador.');App.render()})}
 /* ---------- 1.7 · quem está usando: entrar pelo ID, autocadastro, perfil e página inicial ---------- */
 const uidAtual=()=>localStorage.getItem('vac.userId')||'';
 function usuarioAtual(D=Cad.D){const id=uidAtual();return id&&D?cadItem('usuarios',id,D):null}

@@ -189,3 +189,7 @@ No formulário Registrar/Editar parada, a duração permanece visível. Para có
 Códigos que permitem minutos continuam aceitando duração manual. Ao trocar de duração manual para um código que exige horários, o tempo anterior é limpo e os horários são liberados. Apagar ambos os horários também limpa o cálculo, evitando convertê-lo em duração manual por engano. Nenhuma regra do cadastro, base real ou contrato de dados foi alterado.
 
 Validação: `node testes/tparada_tempo.js` (incluído em `testes/tudo.js`): opções do Portal, troca de código, limpeza, cálculo, gravação/reabertura, virada do dia e regressão do abono.
+
+## Produção 2.4.25 · 10/11/2026
+
+Junção da `main` (2.4.21: duração visível no registro de paradas, PR #24) com o branch do briefing de 09/11/2026 (2.4.21–2.4.24: ARQ-09, ARQ-06, fonte única/PRD-04, turnos não produtivos). As duas linhas de versão correram em paralelo; a 2.4.25 tem as duas. Detalhes do briefing: [briefing-2026-11-09-fase0-fase1.md](briefing-2026-11-09-fase0-fase1.md).

@@ -6,10 +6,10 @@ Plataforma de páginas HTML de arquivo único que trabalham juntas numa **pasta 
 
 | Página | Arquivo | Base | Versão | Como editar |
 |---|---|---|---|---|
-| Portal (cadastro geral, Administração) | `Portal.html` | `portal-base.json` + `vacutainer-cadastros.json` | 1.9.4 | direto no HTML |
-| Produção (OEE, plano, ordens SAP) | `OEE-Vacutainer.html` | `oee-vacutainer-base.json` (+ `ordens-base.json`) | 2.4.21 | **NÃO editar o HTML**: editar `fontes/producao/` e rodar o build |
-| Waste (perdas por ordem, KKBC) | `Perdas-Ordem.html` | `perdas-base.json` | 1.8.25 | direto no HTML |
-| Gestão de Gel | `Gestão-Gel-Vacutainer.html` | `fifo-base.json` | 2.13 · **em atualização** | direto no HTML |
+| Portal (cadastro geral, Administração) | `Portal.html` | `portal-base.json` + `vacutainer-cadastros.json` | 1.9.10 | direto no HTML |
+| Produção (OEE, plano, ordens SAP) | `OEE-Vacutainer.html` | `oee-vacutainer-base.json` (+ `ordens-base.json`) | 2.4.25 | **NÃO editar o HTML**: editar `fontes/producao/` e rodar o build |
+| Waste (perdas por ordem, KKBC) | `Perdas-Ordem.html` | `perdas-base.json` | 1.8.26 | direto no HTML |
+| Gestão de Gel | `Gestão-Gel-Vacutainer.html` | `fifo-base.json` | 2.15 · **em atualização** | direto no HTML |
 | Paradas | `Paradas.html` | `paradas-base.json` | 1.0.24 · **em atualização** | direto no HTML |
 | Equipamentos (com manutenção) | `Equipamentos.html` | `equipamentos-base.json` | 1.0.5 · **em atualização** | direto no HTML (saiu do gerador na 1.0.0; `docs/equipamentos-v1.md`) |
 | Iniciativas (Ações/Planner · KAS · OSM · 5S) | `Iniciativas.html` | `iniciativas-base.json` | 1.0.5 · **em atualização** | direto no HTML (saiu do gerador na 1.0.0; `docs/iniciativas-planner.md`) |
@@ -25,7 +25,7 @@ SQDCP (Produção 2.4.20): quadro de 25 posições, acidente/QN por turno e impr
 ## Comandos
 
 ```bash
-python fontes/producao/build.py        # monta paginas/OEE-Vacutainer.html a partir de OEE-base-2.0.html + ordens_servico.js + ordens_tela.js + cad_sync.js + kit_v21.js
+python fontes/producao/build.py        # monta paginas/OEE-Vacutainer.html a partir de OEE-base-2.0.html + ordens_servico.js + ordens_tela.js + cad_sync.js + turnos_np.js + kit_v21.js
 python fontes/kit/aplicar_kit21.py     # recopia fontes/kit/kit_v21.js, o catálogo fontes/kit/sistemas.js, o padrão visual fontes/kit/kit_visual.css e as bases em 00. Bases fontes/kit/kit_bases.js nas outras páginas (Portal, Waste, Paradas, Gel e as 3 em construção)
 python fontes/modelo/gerar_paginas.py  # gera Projetos.html (em construção) a partir de fontes/modelo/pagina-em-construcao.html e roda o aplicar_kit21.py
 python fontes/demo/gerar_demo.py       # pacote offline da demonstração; SEMPRE depois dos outros builds
@@ -53,6 +53,8 @@ node testes/tpendencias.js            # C1: alterações pendentes sem perda ent
 node testes/tcorrecoes.js             # C2–C6: resumo do dia ao voltar à aba, link da anomalia, troca de usuário, ordem com zeros, sem dado de paradas ≠ 0, ação do grupo com todas as ordens, links da Reunião e do Pareto, saúde dos dados no Portal › Versões, ficha por pasta; código 1 se falhar
 node testes/tnv.js                    # NV-01–NV-05: isolamento por pasta, duas abas, cache homônimo, reserva em falha e saúde dos dados; dados fictícios
 node testes/tudo.js                   # a suíte inteira, uma por vez: passou / falhou / NÃO VERIFICADO (falta biblioteca ou pacote; não conta como aprovado); tz roda de novo uma vez; código 1 se alguma falhar
+node testes/tportalfonte.js           # Fase 1 do briefing (09/11/2026): Parâmetros (Produção, Neste computador, arredondamento com vigência), Configurações da Produção só consulta, PRD-04, Trazer configurações (Produção e Gel), Gel ligado ao Portal com contas iguais; código 1 se falhar
+node testes/tturnos.js                # Fase 2 do briefing: turno não produtivo, habilitar no dia, produção fora de turno (continuidade D1), OEE reportado × real, a partir da data, POR-10; código 1 se falhar
 node testes/tcontratos.js             # E4: exports por ordem (Produção 24 meses e dias do lote, Paradas, Gel), versão conferida pelos leitores, Waste com ordem em várias competências e dias do lote; código 1 se falhar
 ```
 
@@ -88,6 +90,8 @@ node testes/tcontratos.js             # E4: exports por ordem (Produção 24 mes
 
 Tipos no cadastro: `linhas, familias, catalogos, materiais (tipo, tipoSAP), bom (CS12; itens = nível 1, estrutura = níveis 2+), equipamentos (apelidos), componentes, turnos (vigências com pausas {codigo,…,desconta}, intervalos[], regraPedacoFinal), paradas (numero, pilar, classe, ondeAponta, equipamentos = matriz, guia, duracaoManual, relatorio), modosFalha, precos, metasOee, metasArea, metasOsm, cambio, parametros (paradaLongaMin, limiteMicroMin, motivosAbono, motivosSemProducaoProg/NP, acoesPadrao…)`.
 Produção aplica o cadastro na base do OEE pelo `CadSync` (`fontes/producao/cad_sync.js`) quando muda a `rev`, e trava as abas de configuração com o aviso "vem do Portal". Detalhes: `docs/centralizacao-configuracoes.md`.
+**Fonte única (briefing 09/11/2026, D0, Produção 2.4.23 / Gel 2.15):** o Portal é o único lugar de editar turnos, catálogos, metas, tipos de parada, equipamentos e parâmetros; as páginas guardam cópia só de leitura ligada pelo código. Com cadastro (ou pasta), as Configurações da Produção ficam só consulta mesmo com o domínio vazio no Portal; o `status` local segue o Portal; turno só da Produção fica inativo. `parametros.producao` (arredondamento da meta por vigência, `roundAt`) e `vac.qtd` (exibição, por computador). Gel: `GelCad` (catálogo pelo número, equipamento por `portal`/nome; `equipamentos.categoria` = `gel`). Migração: Cadastros › Início › Trazer configurações.
+**Turno não produtivo (Fase 2, Produção 2.4.24, `fontes/producao/turnos_np.js`):** vigência `naoProdutivo` no Portal → `productive:false` (fora do dia e do plano); caixas do MES fora dos turnos do dia são reatribuídas (trecho emendado com o fim do turno anterior → ele; senão → o próximo) só a partir de `foraTurnoDesde`; `ForaTurno.aplicar` no `computeDayRaw` (resultado oficial = reportado; `res.foraTurno.real` = real); "Habilitar turno" no dia (`TurnoNP`, `ps.enabledNP`). Detalhes: `docs/briefing-2026-11-09-fase0-fase1.md` § 6.
 
 ## Documentação (`docs/`)
 
@@ -95,6 +99,7 @@ Produção aplica o cadastro na base do OEE pelo `CadSync` (`fontes/producao/cad
 - Cadastro: `cadastro-base-contrato.md`, `cs12-importacao-bom.md`
 - Kit: `kit-cabecalho-e-backups.md` (v1), `kit-cabecalho-v2.md` (v2/v2.1)
 - Páginas novas: `paginas-construcao.md` (construção/atualização)
+- Briefing de 09/11/2026 (respostas da seção 10, POR-04/09 e proposta da Fase 1 para aprovação): `briefing-2026-11-09-fase0-fase1.md`
 - Páginas: `portal-1-7.md` (Portal 1.7–1.8.12), `producao-ordens-sap.md`, `waste-v1-8.md`, `perdas-ordem-v1.md`, `paradas-arquitetura.md`, `portal-pedido-paradas.md`, `paginas-novas.md`, `osm-arquitetura.md`
 
 Ao terminar uma entrega, atualizar o doc da página (seção nova com a versão e a data) e o `CLAUDE.md` se mudar regra, versão ou comando. Se mudar a instalação, a estrutura da pasta ou as telas de entrar/conectar, editar `fontes/guia/guia_modelo.html` e rodar `node fontes/guia/gerar_guia.js` (nunca editar o `Guia de instalação.html` gerado).
@@ -111,7 +116,7 @@ Lista única do que ficou para depois. O motivo e o gatilho de cada item estão 
 - Calendário de produção no Portal.
 - Telas por perfil (E10c): Resumo/Detalhado, o que fica em "Mais", passagem de turno e alerta de ritmo; espera a lista de jornadas por perfil validada com operador e liderança (registro § U).
 - OSM (E7, falta a amostra da planilha), importação por pasta (E9, falta decidir a estação coletora), MES (E12, faltam amostras e regras), conteúdo AM/TPM e 5S (E13, faltam os padrões), Projetos (E15, falta o escopo) e XLSX local (E3b, falta o arquivo): registro § U.
-- Gel lendo catálogos e equipamentos do Portal; produção OEE → Gel (registro § 1).
+- Produção OEE → Gel (registro § 1; Fase 4 do briefing). Parâmetros só do gel (BOM de gel, formatos, locais, motivos, processo) para `parametros.gel` no Portal: D10 em `docs/briefing-2026-11-09-fase0-fase1.md`.
 - `eventoId` comum OEE × Paradas, que evita contagem dupla, quando o OEE publicar `paradasEventos` (ver `docs/paradas-arquitetura.md`; registro F07/A10).
 - Homologação da C1 na pasta real (etapa H): duas abas, base renomeada, duas estações (registro § V).
 - R-02, identificador estável da pessoa (responsável guardado pelo nome): falta decidir o que fazer com nomes digitados à mão (registro § V).

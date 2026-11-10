@@ -99,7 +99,7 @@ const CAD = (perfil, inicial) => JSON.stringify({ schema: 'vac-cadastros', schem
       await p.fill('#rpNote', 'curto'); await p.dispatchEvent('#rpNote', 'input');
       await p.evaluate(() => document.body.classList.add('printing-report')); const fp = await imprime(p, `Producao-${tema}-impressao-relatorio.pdf`); await p.evaluate(() => document.body.classList.remove('printing-report'));
       const tp = txt(fp), Ip = info(fp);
-      ok(Ip.orient === 'paisagem' && !/Sair do modo exemplo/.test(tp) && !/PLANO, ORDENS, APONTAMENTO/i.test(tp) && /RELATÓRIO/i.test(tp), `Produção ${tema}: impressão do relatório só com o relatório, em paisagem (${Ip.pags} pág.)`);
+      ok(Ip.orient === 'paisagem' && !/Sair (do modo exemplo|da demonstração)/.test(tp) && !/PLANO, ORDENS, APONTAMENTO/i.test(tp) && /RELATÓRIO/i.test(tp), `Produção ${tema}: impressão do relatório só com o relatório, em paisagem (${Ip.pags} pág.)`);
       if (tema === 'dark') { execSync(`pdftoppm -png -r 40 -f 1 -l 1 "${fp}" "${OUT}Producao-dark-impressao"`); }
       ok(!pe.length, `Produção ${tema}: sem erro de página${pe.length ? ' (' + pe[0] + ')' : ''}`);
       await p.close();

@@ -138,6 +138,10 @@
    "Corrigir" e "Excluir" mandam a linha antiga para Desativadas, que guarda a auditoria.
 
 
+## 8. Fonte única (briefing de 09/11/2026 · Portal 1.9.9, Produção 2.4.23, Gel 2.15)
+
+O "domínio vazio no Portal → a página usa o cadastro local" acabou: com o cadastro do Portal (ou na pasta), as Configurações da Produção ficam só consulta. O Gel liga catálogos (número) e equipamentos (código/nome) ao Portal. Migração por Trazer configurações (grupos "Só na Produção" e "Só no Gel"). Detalhes, PRD-04 e o que ainda fica no Gel (D10): [briefing-2026-11-09-fase0-fase1.md](briefing-2026-11-09-fase0-fase1.md) § 5.
+
 ## 7. Andamento (05/11/2026, fim do dia)
 
 | Fase | Página | Situação |

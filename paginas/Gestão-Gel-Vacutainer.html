@@ -1587,7 +1587,7 @@ const fileBackend={kind:'file',async commit(ch){applyLocal(ch);FS.pending.push(c
 async function fsRefresh(){if(S.mode!=='file'||FS.busy||ui.demo)return;try{const cur=await fsReadBase(fsKnown());if(cur&&!cur.same){FS.mod=cur.mod;FS.rev=cur.rev;FS.revBy=cur.by;loadData(cur.data);FS.pending.forEach(applyLocal);localBackend.save();render()}}catch(e){}}
 /* ================= V1.89 · integração com as outras páginas (Portal, OEE, Perdas) ================= */
 // versão da página (topo, Guia e base gravada)
-const APP_VERSION='2.13';   /* 2.11 · C2–C6: kit com a ficha por pasta (AT-08) e a contagem da fila durável (Portal › Versões) */   /* 2.10 · C1: alterações pendentes na fila durável do kit (sem perda entre abas) */   /* 2.09 · E11: busca do kit leva o equipamento à ficha em Equipamentos */   /* 2.08 · E8: kit com "+ Abrir ação" na ficha da ordem */   /* 2.07 · E5: ficha da ordem comum (botão na ordem) e busca por ordem, lote e LP */   /* 2.06 · E3: número digitado só aceito inteiro; E4: cobertura das ordens no exports */   /* 2.05 · E2: a versão da tela vem desta constante (o rótulo estava fixo em v2.01); kit com data local e meta do mês ponderada */   /* 2.04 · revisão 065fe6f: restauração por arquivo confirma e não segue sem a cópia anterior; CSV sem fórmulas; índice por dia no Painel */
+const APP_VERSION='2.15';   /* 2.15 · ARQ-05/ARQ-07: catálogos e equipamentos do Portal (GelCad); contas do gel iguais */   /* 2.14 · ARQ-09: sem entrada própria de "Modo exemplo" */   /* 2.11 · C2–C6: kit com a ficha por pasta (AT-08) e a contagem da fila durável (Portal › Versões) */   /* 2.10 · C1: alterações pendentes na fila durável do kit (sem perda entre abas) */   /* 2.09 · E11: busca do kit leva o equipamento à ficha em Equipamentos */   /* 2.08 · E8: kit com "+ Abrir ação" na ficha da ordem */   /* 2.07 · E5: ficha da ordem comum (botão na ordem) e busca por ordem, lote e LP */   /* 2.06 · E3: número digitado só aceito inteiro; E4: cobertura das ordens no exports */   /* 2.05 · E2: a versão da tela vem desta constante (o rótulo estava fixo em v2.01); kit com data local e meta do mês ponderada */   /* 2.04 · revisão 065fe6f: restauração por arquivo confirma e não segue sem a cópia anterior; CSV sem fórmulas; índice por dia no Painel */
 /* 2.03 · situação "em atualização" (kit: selo, pílula e faixa; docs/paginas-construcao.md) */
 /* 2.02 · relatório montado: todas as linhas no PDF, comentário, aviso de corte no texto; Painel em 1º; aba inicial do perfil; impressão e PDF no tema claro */
 /* 1.99 · menu Mais do cabeçalho (vac-visual v1): fecha ao escolher uma ação, ao clicar fora e com Esc */
@@ -1627,7 +1627,7 @@ function openOrder(wo){const o=gelOrder(wo);if(!o){toast(`Ordem ${wo} sem regist
    `<button class="btn" data-close>Fechar</button>${u?`<a class="btn primary" href="${esc(u)}" target="_blank" rel="noopener">Abrir no Perdas</a>`:''}`,()=>{document.querySelectorAll('[data-ordlp]').forEach(b=>b.addEventListener('click',()=>{closeModal();openDetail(b.dataset.ordlp)}))})}
 
 /* ---- bloco exports do fifo-base.json (lido pelo Portal e pelo Perdas; nunca é lido de volta aqui) ---- */
-function gelExports(){derive();const c=S.config;const act=D.act;const live=act.filter(l=>!l._pend);
+function gelExports(){try{GelCad.aplicar()}catch(e){}derive();const c=S.config;const act=D.act;const live=act.filter(l=>!l._pend);
   const avail=act.filter(l=>l._elig);const availKg=avail.reduce((s,l)=>s+l._remain,0);const onLine=act.filter(l=>l.inUse);
   const near=live.filter(l=>l._exp!=null&&l._exp<=c.warnDays).sort((a,b)=>(a.expiry||'')<(b.expiry||'')?-1:1);const crit=near.filter(l=>l._exp<=c.critDays);const venc=near.filter(l=>l._exp<0);
   let rate=null;try{rate=rateFor(null)}catch(e){}
@@ -1862,7 +1862,7 @@ async function fsBackupCopy(tipo){const name=bkNome(tipo);const cur=await (await
   const bf=await dir.getFileHandle(name,{create:true});const w=await bf.createWritable();await w.write(await cur.text());await w.close();fsLog('Backup criado: '+PAGE.backupDir+'/'+name);return PAGE.backupDir+'/'+name}
 async function backupNow(){
   if(S.mode==='file'&&FS.base){try{if(FS.pending.length)await fsFlush();const w=await fsBackupCopy('manual');toast('Backup criado: '+w)}catch(e){toast('Não consegui criar o backup: '+(e.message||e))}return}
-  if(ui.demo){toast('Modo exemplo: nada é gravado.');return}
+  if(ui.demo){toast('Demonstração: nada é gravado.');return}
   offerFile(bkNome('manual'),JSON.stringify(snapshotData()));toast('Sem pasta conectada: o backup foi oferecido para baixar.')}
 // lista: backups da pasta do módulo e os antigos soltos em 00. Backups (selo "local antigo")
 async function fsBackupList(){const out=[];const base=PAGE.baseFile.replace(/\.json$/i,'');const ok=n=>/\.json$/i.test(n)&&(n.startsWith(base+'_')||n.startsWith(base+'-'));
@@ -2266,14 +2266,14 @@ function enterDemo(){
   const keep={logo:S.config.logo,pageName:S.config.pageName};
   try{buildDemo()}catch(e){console.error(e)}
   Object.assign(S.config,keep);
-  render();window.scrollTo({top:0});toast('Modo exemplo ativado. Nada do que for feito aqui é gravado.');
+  render();window.scrollTo({top:0});toast('Demonstração ativada. Nada do que for feito aqui é gravado.');
 }
 function exitDemo(silent){
   if(vacDemo.ativo)return vacDemo.sair();
   if(!ui.demo)return;ui.demo=false;ui.round=ui._realRound||null;ui._realRound=null;ui.rgDraft=null;ui.tsort={};resetState();
   if(dbRef&&liveCache&&applyLive){applyLive()}
   else{backend=localBackend;S.mode='local';if(!localBackend.load())resetState();if(FS.on&&FS.base){fsUse(FS.base).catch(()=>{})}render()}
-  if(!silent)toast('Modo exemplo encerrado. Voltando aos dados reais.');
+  if(!silent)toast('Demonstração encerrada. Voltando aos dados reais.');
 }
 // limpa a base (dados), com opção de manter as configurações
 async function clearDatabase(keepCfg){
@@ -2560,15 +2560,15 @@ function renderMeta(){
   const pb=S.mode==='demo'?0:[...S.lps.values()].filter(pendTotal).length;
   const sap=last?`<span class="stp" title="${esc('Arquivo: '+(last.fileName||'colado'))}">SAP ${fmtD(last.at).slice(0,5)} ${fmtDT(last.at).slice(11)} · ${nf0.format(last.rows)} LPs</span>`:'<span class="stp w">Nenhum relatório SAP</span>';
   const bx=pb?`<button type="button" class="stp w" data-tab="pend" title="Baixas registradas aqui que ainda não apareceram no relatório SAP">${pb} baixa(s) pendente(s)</button>`:'';
-  if(S.mode==='demo'){$('#stBase').innerHTML=`<span class="stp vex" title="Nada do que for feito aqui é gravado"><b style="color:inherit">Dados de exemplo</b></span><button class="btn sm" data-act="exitDemo">Sair do exemplo</button>${sap}`}
+  if(S.mode==='demo'){$('#stBase').innerHTML=`<span class="stp vex" title="Nada do que for feito aqui é gravado"><b style="color:inherit">Demonstração</b></span><button class="btn sm" data-act="exitDemo">Sair da demonstração</button>${sap}`}
   else{
   const np=S.mode==='file'?FS.pending.length:0;const md=S.mode==='file'?[FS.err||np?'':'db',`Base na pasta ${FS.base?FS.base.name:''}`,FS.err?'Última gravação na pasta falhou: '+FS.err+'. As alterações estão guardadas neste computador e o sistema tenta gravar de novo a cada 30 segundos.':'Todos que abrem a página por esta pasta veem os mesmos dados']:S.mode==='db'?['db','Base compartilhada','Todos com acesso à página veem e registram os mesmos dados']:S.mode==='local'?['','Salvo neste navegador','Os dados ficam só neste computador; exporte o backup com frequência']:['demo','Dados de exemplo','Importe o relatório para começar'];
   const lbl=S.mode==='file'?`Base na pasta${FS.rev?' · rev '+FS.rev:''}`:md[1];
   $('#stBase').innerHTML=`<span class="stp${FS.err?' c':''}" title="${esc((S.mode==='file'&&FS.base?'Pasta '+FS.base.name+'. ':'')+md[2])}"><span class="dot ${md[0]}"></span>${lbl}</span>${np?`<span class="stp w" title="${esc(md[2])}">${np} gravação(ões) pendente(s)</span>`:''}${S.mode==='local'&&FS_OK()?'<button class="btn sm" data-act="fsConnect" title="Usar a base de dados da pasta da rede">Conectar à pasta</button>':''}${sap}${bx}`;}
   let b='';
-  if(S.mode==='demo')b=`<div class="banner demo"><p><b>Modo exemplo.</b> Os dados são simulados para apresentar a plataforma. Você pode navegar, registrar baixas e simular à vontade: nada é gravado na base real.</p><button class="btn" data-act="exitDemo">Sair do exemplo</button></div>`;
+  if(S.mode==='demo')b=`<div class="banner demo"><p><b>Demonstração.</b> Os dados são simulados para apresentar a plataforma. Você pode navegar, registrar baixas e simular à vontade: nada é gravado na base real.</p><button class="btn" data-act="exitDemo">Sair da demonstração</button></div>`;
   else if(FS.newFile&&S.mode==='file'&&!fsFileDone(FS.newFile.name,FS.newFile.mod))b=`<div class="banner"><p><b>Arquivo novo na pasta do SAP:</b> <span class="mono">${esc(FS.newFile.name)}</span>, salvo em ${fmtDT(isoDT(new Date(FS.newFile.mod)))}. Pode ser o relatório de estoque (a fila FIFO ainda usa o anterior) ou o histórico de transações de LP: a página reconhece ao abrir.</p><button class="btn primary" data-act="fsNewImport">Atualizar agora</button></div>`;
-  else if(!last&&!S.lps.size)b=`<div class="banner"><p><b>Nenhum relatório importado.</b> Importe o relatório de estoque de LPs do SAP (Excel ou colado do Excel) para começar, ou abra o exemplo para ver a plataforma preenchida.</p><button class="btn" data-act="enterDemo">Ver exemplo</button><button class="btn primary" data-act="import">Importar relatório</button></div>`;
+  else if(!last&&!S.lps.size)b=`<div class="banner"><p><b>Nenhum relatório importado.</b> Importe o relatório de estoque de LPs do SAP (Excel ou colado do Excel) para começar.</p><button class="btn primary" data-act="import">Importar relatório</button></div>`;
   else if(last&&daysBetween(last.at,todayISO())>7)b=`<div class="banner"><p>O último relatório tem <b>${daysBetween(last.at,todayISO())} dias</b>. Importe uma versão nova para manter a fila FIFO confiável.</p><button class="btn" data-act="import">Importar relatório</button></div>`;
   $('#banner').innerHTML=b;
 }
@@ -3720,7 +3720,7 @@ function evText0(e){
 }
 
 /* ================= render ================= */
-function render(){memoClear();
+function render(){memoClear();try{GelCad.aplicar()}catch(e){console.warn('GelCad',e)}
   applyLogo();applyName();applyTheme();if(!ui.sysDone){ui.sysDone=true;try{renderSysNav();renderUser();wireCabecalho()}catch(e){console.warn(e)}}if(ui.hashGo)setTimeout(hashTry,0);
   if(!visibleTabs().some(t=>t[0]===ui.tab))ui.tab=visibleTabs()[0][0];
   derive();renderMeta();renderKpis();renderTabs();
@@ -4154,7 +4154,7 @@ function txPreview(list,name,mod){const T=txSummary(list);pendingTx={list,name,m
 async function doTxImport(){const P=pendingTx;if(!P)return;const go=$('#iGo');go.disabled=true;go.textContent='Importando…';
   try{const T=await txImport(P.list,P.name,P.mod);pendingTx=null;closeModal();toast(`Histórico SAP: ${nf0.format(T.novos.length)} transações novas importadas.`,5000);render()}catch(e){go.disabled=false;go.textContent='Importar histórico'}}
 function openImport(){
-  if(ui.demo&&!vacDemo.ativo){exitDemo(true);toast('Modo exemplo encerrado para importar o relatório real.')}
+  if(ui.demo&&!vacDemo.ativo){exitDemo(true);toast('Demonstração encerrada para importar o relatório real.')}
   pendingImport=null;pendingTx=null;
   modal('Importar relatório',`
    <div class="drop" id="drop"><p style="margin:0 0 8px">Arraste o arquivo Excel (.xlsx, .xls, .csv) aqui</p><label class="btn primary" style="display:inline-block">Escolher arquivo<input type="file" id="iFile" accept=".xlsx,.xls,.xlsm,.csv,.txt" hidden></label>${S.mode==='file'?' <button class="btn" type="button" id="iFolder">Buscar o mais recente na pasta</button>':''}</div>
@@ -4281,15 +4281,15 @@ function openConfig(sec){
      <label class="f"><span>Bomba: kg por cm de altura</span><input type="text" inputmode="decimal" id="cKcm" value="${nf3(kgPerCm())}"><small style="color:var(--muted)">1 cm = ${nf3(kgPerCm())} kg · 1 kg = ${nf3(1/kgPerCm())} cm</small></label><label class="f"><span>Medição desatualizada após (h de produção)</span><input type="text" inputmode="decimal" id="cStaleH" value="${nf3(+S.config.measStaleH>0?+S.config.measStaleH:4)}"><small style="color:var(--muted)">sem medição da bomba nesse tempo, o barril mostra "estimativa desatualizada"</small></label><label class="f"><span>Altura útil do barril (cm)</span><input type="text" inputmode="decimal" id="cDrumH" value="${nf3(drumH())}"><small style="color:var(--muted)">capacidade = ${nf3(drumH())} × ${nf3(kgPerCm())} = ${kg1(drumCap())} kg (todos os barris iguais)</small></label></div></div>
     <div><button class="btn primary" id="cfgSave">Salvar</button></div>`;
   if(s==='cat'){
-    const e=ui.catEdit?catById(ui.catEdit):null;
+    const e=ui.catEdit?catById(ui.catEdit):null;const cdoc=GelCad.doc(),cp=e&&e.portal?GelCad.cat(e.portal):null,dI=cp?' disabled title="Vem do Portal"':'';
     const col=(e&&e.color)||PALETA[S.catalogs.length%PALETA.length];
-    body=`<div class="catform"><h3 style="margin:0">${e?'Editar catálogo '+esc(e.num):'Novo catálogo'}</h3>
-     <div class="fg"><label class="f"><span>Número *</span><input type="text" id="ctNum" value="${esc(e?e.num:'')}" placeholder="360060" inputmode="numeric"></label>
-     <label class="f"><span>Descrição (opcional)</span><input type="text" id="ctDesc" value="${esc(e?e.desc||'':'')}" placeholder="Ex.: SST 5 mL"></label>
+    body=`${cdoc?portalBannerGel('Catálogos (número, nome, formato, cor e situação)','cadastros/catalogos')+`<p class="sub" style="margin:0 0 8px">Aqui ficam só os dados do gel de cada catálogo (BOM de gel, tolerância, gramas por tubo, lote e velocidade). Catálogo do Portal que usa gel na BOM entra sozinho.${(()=>{const L=GelCad.catLivres();return L.length?` Para trazer outro: <select id="ctPortal"><option value="">catálogo do Portal…</option>${L.map(x=>`<option value="${esc(x.codigo)}">${esc(x.codigo)} · ${esc(x.nome||'')}</option>`).join('')}</select>`:''})()}</p>`:''}<div class="catform"${cdoc&&!e?' hidden':''}><h3 style="margin:0">${e?'Editar catálogo '+esc(e.num):'Novo catálogo'}${cp?' <span class="pill p-ok" title="Ligado ao cadastro do Portal">Portal</span>':''}</h3>
+     <div class="fg"><label class="f"><span>Número *</span><input type="text" id="ctNum" value="${esc(e?e.num:'')}" placeholder="360060" inputmode="numeric"${e&&cdoc?' disabled title="O número é o código do Portal"':''}></label>
+     <label class="f"><span>Descrição (opcional)</span><input type="text" id="ctDesc" value="${esc(e?e.desc||'':'')}" placeholder="Ex.: SST 5 mL"${dI}></label>
      <label class="f"><span>Tamanho padrão do lote (tubos)</span><input type="text" id="ctLot" inputmode="numeric" value="${e&&e.lotSize?nf0.format(e.lotSize):''}" placeholder="ex.: 900.000"></label>
      <label class="f"><span>Velocidade (tubos por hora) · opcional</span><input type="text" id="ctRate" inputmode="numeric" value="${e&&e.rateH?nf0.format(e.rateH):''}" placeholder="usada até haver histórico"></label>
-     <label class="f"><span>Formato do tubo</span><select id="ctFmt">${['100','75'].map(f=>`<option value="${f}" ${((e&&e.fmt)||'100')===f?'selected':''}>Tubo ${f}</option>`).join('')}</select></label>
-     <label class="f"><span>Situação</span><label><input type="checkbox" id="ctAct" ${!e||e.active!==false?'checked':''}> Ativo</label></label></div>
+     <label class="f"><span>Formato do tubo</span><select id="ctFmt"${cp&&GelCad.fmt(cp)?' disabled title="Vem do Portal"':''}>${['100','75'].map(f=>`<option value="${f}" ${((e&&e.fmt)||'100')===f?'selected':''}>Tubo ${f}</option>`).join('')}</select></label>
+     <label class="f"><span>Situação</span><label><input type="checkbox" id="ctAct" ${!e||e.active!==false?'checked':''}${dI}> Ativo</label></label></div>
      ${(()=>{const v=e?catVig(e.id,todayISO()):{};const L=e?catVigList(e).slice().reverse():[];return `<div class="catform" style="background:var(--surface)"><h3 style="margin:0;font-size:14px">Gel e BOM · com vigência</h3>
       ${(()=>{const fg=fmtGel(e&&e.id,todayISO(),(e&&e.fmt)||'100');const fl=`Tubo ${esc((e&&e.fmt)||'100')}`;const bv=bomVals(v);return `<div class="fg">
        <label class="f"><span>BOM do SAP · kg de gel (já com a tolerância)</span><input type="text" inputmode="decimal" id="ctBomKg" value="${bv.kg!=null?nf3(bv.kg):''}" placeholder="ex.: 8,840"></label>
@@ -4366,14 +4366,14 @@ function openConfig(sec){
   if(s==='fmts')body=fmtCfgHtml();
   if(s==='equip')body=equipCfgHtml();
   if(s==='motivos')body=motCfgHtml();
-  if(s==='backup')body=`<div class="catform"><h3 style="margin:0">Modo exemplo</h3><p class="sub" style="margin:0">Preenche a plataforma com dados simulados para apresentar como ela funciona. Os dados reais continuam guardados e nada do que for feito no exemplo é gravado.</p>
-     <div>${ui.demo?'<button class="btn primary" data-act="exitDemo">Sair do exemplo</button>':'<button class="btn primary" data-act="enterDemo">Abrir exemplo</button>'}</div></div>
+  /* 2.14 · ARQ-09: sem "Modo exemplo" próprio; para apresentar, a Demonstração integrada do topo */
+  if(s==='backup')body=`${ui.demo?'<div class="catform"><h3 style="margin:0">Demonstração</h3><p class="sub" style="margin:0">Dados simulados; nada é gravado na base real.</p><div><button class="btn primary" data-act="exitDemo">Sair da demonstração</button></div></div>':''}
    ${ui.demo?'':`<div class="catform" style="border-color:color-mix(in srgb,var(--crit) 45%,var(--line))"><h3 style="margin:0;color:var(--crit)">Limpar base de dados</h3>
      <p class="sub" style="margin:0">Apaga ${S.mode==='db'?'da base compartilhada, para todos os usuários,':'deste navegador'} os LPs, baixas, histórico, relatórios importados, programação e registros de produção. Não dá para desfazer: exporte o backup antes.</p>
      <label><input type="checkbox" id="clKeep" checked> Manter as configurações (catálogos, parâmetros de processo, preço, zonas, cabeçotes)</label>
      <label class="f"><span>Para confirmar, digite LIMPAR</span><input type="text" id="clTxt" autocomplete="off" style="max-width:200px"></label>
      <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn" id="clBk">Exportar backup antes</button><button class="btn danger" id="clGo" disabled>Limpar base de dados</button></div><div id="clMsg"></div></div>`}
-   <div class="info">${ui.demo?'Modo exemplo ativo: o backup exporta os dados de exemplo.':S.mode==='db'?'Os dados ficam numa base compartilhada desta página: quem tem acesso vê e registra as mesmas informações. O backup é uma cópia de segurança extra.':S.mode==='local'?'Os dados estão salvos só neste navegador. Exporte o backup com frequência.':'Exemplo ativo: nada é gravado.'}</div>
+   <div class="info">${ui.demo?'Demonstração ativa: o backup exporta os dados simulados.':S.mode==='db'?'Os dados ficam numa base compartilhada desta página: quem tem acesso vê e registra as mesmas informações. O backup é uma cópia de segurança extra.':S.mode==='local'?'Os dados estão salvos só neste navegador. Exporte o backup com frequência.':'Exemplo ativo: nada é gravado.'}</div>
    <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn" id="bkE">Exportar backup (JSON)</button><label class="btn">Restaurar backup<input type="file" id="bkI" accept=".json" hidden></label><button class="btn" data-act="exportFifo">Fila FIFO (CSV)</button><button class="btn" data-act="exportHist">Histórico (CSV)</button></div><div id="bkMsg"></div><div id="bkList"></div>`;
   modal('Configuração',nav+`<div class="cfgbody">${body}</div>`,'',()=>{
     {const d=$('#ov .dlg');if(d)d.style.width='min(1280px,97vw)'}
@@ -4403,6 +4403,9 @@ function openConfig(sec){
       document.querySelectorAll('[data-sw]').forEach(b=>b.addEventListener('click',()=>{col=b.dataset.sw;$('#ctCol').value=col;prev()}));
       $('#ctCol').addEventListener('input',e=>{col=e.target.value;prev()});$('#ctNum').addEventListener('input',prev);
       const ne=$('#ctNew');ne&&ne.addEventListener('click',()=>{ui.catEdit=null;openConfig('cat')});
+      const cpo=$('#ctPortal');cpo&&cpo.addEventListener('change',async()=>{const p=GelCad.cat(cpo.value);if(!p)return;const id='cat-'+p.codigo;const v=(p.vigencias||[]).slice().sort((a,b)=>a.de<b.de?1:-1)[0]||{};
+        const ch=newCh();ch.catalogs=S.catalogs.filter(x=>x.id!==id).concat({id,num:String(p.codigo),desc:p.nome||'',color:p.cor||PALETA[S.catalogs.length%PALETA.length],active:p.ativo!==false,fmt:GelCad.fmt(p)||'100',lotSize:v.caixasPorLote&&v.tubosPorCaixa?+v.caixasPorLote*+v.tubosPorCaixa:null,rateH:v.pphNominal?+v.pphNominal:null,portal:String(p.codigo),origem:'Portal'});
+        try{await backend.commit(ch)}catch(e){return}ui.catEdit=id;toast('Catálogo '+p.codigo+' ligado ao Portal. Complete os dados do gel.');render();openConfig('cat')});
       $('#ctSave').addEventListener('click',async()=>{
         const num=$('#ctNum').value.trim();if(!num){$('#ctErr').innerHTML='<div class="alert">Informe o número do catálogo.</div>';return}
         if(S.catalogs.some(x=>String(x.num)===num&&x.id!==ui.catEdit)){$('#ctErr').innerHTML='<div class="alert">Já existe um catálogo com esse número.</div>';return}
@@ -4567,6 +4570,37 @@ function cadTurnosGel(date){if(typeof vacTurnosEm!=='function')return null;const
  return turns.length?{from:date,days:[...days].sort(),turns,portal:true}:null}
 function gelMaterialPortal(){const c=typeof vacCad==='function'?vacCad():null;return c?(c.materiais||[]).find(m=>m.tipo==='gel'&&m.ativo!==false&&(c.precos||[]).some(p=>String(p.material)===String(m.codigo)))||null:null}
 function precoGelPortal(date){const m=gelMaterialPortal();return m&&typeof vacPrecoEm==='function'?vacPrecoEm(m.codigo,date):null}
+/* ===== 2.15 · ARQ-05 / ARQ-07 (briefing 09/11/2026, D0): o Portal é a fonte única de catálogos e equipamentos =====
+   Vínculo por código, com a cópia na base do Gel só de leitura (como a Produção faz com o CadSync):
+   - catálogo do Gel = catálogo do Portal com o mesmo número: nome, cor, situação e formato vêm do Portal;
+     o que é só do gel (BOM de gel, tolerância, g/tubo e as vigências) continua aqui, sem mudar nenhuma conta (GEL-06);
+   - catálogo do Portal que usa gel (BOM com material do tipo gel) e ainda não está no Gel entra sozinho;
+   - equipamento do Gel = equipamento do Portal (código em e.portal; na 1ª vez, pelo nome ou pelos "outros nomes");
+     nome e situação vêm do Portal; embalagem e descartes continuam aqui.
+   Sem cadastro do Portal no navegador, tudo fica como antes. */
+const GelCad={
+ doc(){const c=typeof vacCad==='function'?vacCad():null;return c&&(Array.isArray(c.catalogos)||Array.isArray(c.equipamentos))?c:null},
+ norm(x){return String(x==null?'':x).trim().toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/\s+/g,' ')},
+ cat(num,c=this.doc()){return c?(c.catalogos||[]).find(x=>x&&String(x.codigo)===String(num)&&x.tipoItem!=='preparacao')||null:null},
+ eq(e,c=this.doc()){if(!c)return null;const L=(c.equipamentos||[]).filter(Boolean);if(e.portal)return L.find(x=>String(x.codigo)===String(e.portal))||null;const n=this.norm(e.name);if(!n)return null;
+  return L.find(x=>this.norm(x.nome)===n)||L.find(x=>String(x.apelidos||'').split(';').some(a=>this.norm(a)===n))||null},
+ fmt(p){const f=String(p&&p.formato||'');return /75/.test(f)?'75':/100/.test(f)?'100':null},
+ usaGel(cod,c){const gel=new Set((c.materiais||[]).filter(m=>m&&m.tipo==='gel').map(m=>String(m.codigo)));if(!gel.size)return false;const b=(c.bom||[]).find(x=>x&&String(x.catalogo)===String(cod));
+  return !!b&&(b.vigencias||[]).some(v=>(v.itens||[]).concat(v.estrutura||[]).some(i=>gel.has(String(i.material))))},
+ /* aplica na memória (idempotente); devolve se mudou algo que entra na conta (formato/situação) */
+ aplicar(){const c=this.doc();if(!c)return false;let conta=false;
+  for(const k of S.catalogs||[]){const p=this.cat(k.num,c);if(!p){if(k.portal)delete k.portal;continue}k.portal=String(p.codigo);if(p.nome&&k.desc!==p.nome)k.desc=p.nome;if(p.cor&&k.color!==p.cor)k.color=p.cor;
+   const at=p.ativo!==false;if(k.active!==at){k.active=at;conta=true}const f=this.fmt(p);if(f&&(k.fmt||'100')!==f){k.fmt=f;conta=true}}
+  for(const p of (c.catalogos||[]).filter(x=>x&&x.codigo&&x.tipoItem!=='preparacao'&&x.ativo!==false)){if((S.catalogs||[]).some(k=>String(k.num)===String(p.codigo))||!this.usaGel(p.codigo,c))continue;
+   const v=(p.vigencias||[]).slice().sort((a,b)=>a.de<b.de?1:-1)[0]||{};
+   S.catalogs.push({id:'cat-'+p.codigo,num:String(p.codigo),desc:p.nome||'',color:p.cor||PALETA[S.catalogs.length%PALETA.length],active:true,fmt:this.fmt(p)||'100',lotSize:v.caixasPorLote&&v.tubosPorCaixa?+v.caixasPorLote*+v.tubosPorCaixa:null,rateH:v.pphNominal?+v.pphNominal:null,portal:String(p.codigo),origem:'Portal'});conta=true}
+  for(const e of (S.config&&S.config.equips)||[]){const p=this.eq(e,c);if(!p)continue;e.portal=String(p.codigo);if(p.nome&&e.name!==p.nome)e.name=p.nome;const at=p.ativo!==false;if((e.active!==false)!==at){e.active=at;conta=true}}
+  if(conta&&typeof memoClear==='function')memoClear();return conta},
+ /* equipamentos do Portal que ainda não estão no Gel (categoria gel primeiro) */
+ eqLivres(){const c=this.doc();if(!c)return[];const usados=new Set(((S.config&&S.config.equips)||[]).map(e=>e.portal).filter(Boolean));
+  return (c.equipamentos||[]).filter(x=>x&&x.codigo&&x.ativo!==false&&!usados.has(String(x.codigo))).sort((a,b)=>(a.categoria==='gel'?0:1)-(b.categoria==='gel'?0:1)||String(a.codigo).localeCompare(String(b.codigo)))},
+ catLivres(){const c=this.doc();if(!c)return[];return (c.catalogos||[]).filter(x=>x&&x.codigo&&x.tipoItem!=='preparacao'&&x.ativo!==false&&!(S.catalogs||[]).some(k=>String(k.num)===String(x.codigo)))}
+};
 function portalBannerGel(txt,h){return`<div class="info" style="margin-bottom:10px"><b>${txt}</b>: cadastro geral do Portal, só para consulta aqui. <a class="btn" href="${typeof vacPortalHref==='function'?vacPortalHref(h):'Portal.html#'+h}" target="_blank">Editar no Portal ↗</a></div>`}
 const shiftAtRaw=date=>{const pt=cadTurnosGel(date);if(pt)return pt;const L=shiftList();let v=L[0];for(const x of L)if(x.from<=date)v=x;return v};
 // só os turnos ativos (turno desmarcado não aparece no registro nem conta horas)
@@ -5102,18 +5136,22 @@ function bindFmtCfg(saveCfg){
 /* ---- configuração: equipamentos da linha ---- */
 function equipCfgHtml(){
   const L=S.config.equips||[];const ed=ui.eqEdit?JSON.parse(JSON.stringify(L.find(e=>e.id===ui.eqEdit)||{})):null;const v=ui.eqDraft||ed||{name:'',tara:'',active:true,descs:[{id:'d-'+uid(),comp:'tubogel',cat:'T'}]};ui.eqDraft=v;
+  /* 2.15 · ARQ-07: com o cadastro do Portal, o equipamento é escolhido de lá (nome e situação vêm do Portal) */
+  const edoc=GelCad.doc(),ep=v.portal?GelCad.eq({portal:v.portal}):null,livres=edoc?GelCad.eqLivres():[],dE=edoc?' disabled title="Vem do Portal"':'';
   return `<div class="catform"><h3 style="margin:0">Indicador relativo de scrap</h3><div class="fg"><label class="f"><span>Mostrar o scrap em kg a cada (mil tubos)</span><input type="number" id="rbK" min="1" value="${relK()}"></label></div><p class="sub" style="margin:0">Ex.: 100 = kg descartados a cada 100 mil tubos bons. Usado nos relatórios e no registro do dia.</p><div><button class="btn primary" id="rbSave">Salvar</button></div></div>
    <p class="sub" style="margin:0;color:var(--muted)">Cadastre os equipamentos da linha e os descartes que podem acontecer em cada um. Cada descarte diz como o peso da balança é contabilizado (a composição) e em qual categoria de scrap de gel ele entra.</p>
    <div class="catform"><h3 style="margin:0">${ui.eqEdit?'Editar equipamento':'Novo equipamento'}</h3>
-    <div class="fg"><label class="f"><span>Nome *</span><input type="text" id="eqName" value="${esc(v.name)}" placeholder="ex.: Máquina de gel"></label><label class="f"><span>Peso da embalagem própria (g) · opcional</span><input type="text" id="eqTara" inputmode="decimal" value="${esc(v.tara??'')}" placeholder="usa a embalagem padrão"></label><label class="f"><span>Situação</span><label><input type="checkbox" id="eqAct" ${v.active!==false?'checked':''}> Ativo</label></label></div>
+    ${edoc?`<div class="fg"><label class="f"><span>Equipamento do Portal *</span>${ep?`<input type="text" value="${esc(ep.codigo+' · '+(ep.nome||''))}" disabled>`:`<select id="eqPortal"><option value="">escolha…</option>${livres.map(x=>`<option value="${esc(x.codigo)}" ${String(v.portal||'')===String(x.codigo)?'selected':''}>${esc(x.codigo)} · ${esc(x.nome||'')}${x.categoria==='gel'?' (Gel)':''}</option>`).join('')}</select>`}</label></div><p class="sub" style="margin:0">Nome e situação vêm do Portal (Cadastros › Equipamentos; categoria "Equipamento – Gel"). Aqui ficam a embalagem e os descartes. <a href="${typeof vacPortalHref==='function'?vacPortalHref('cadastros/equipamentos'):'Portal.html#cadastros/equipamentos'}" target="_blank">Abrir no Portal ↗</a></p>`:''}
+    <div class="fg"><label class="f"${edoc?' hidden':''}><span>Nome *</span><input type="text" id="eqName" value="${esc(v.name)}" placeholder="ex.: Máquina de gel"${dE}></label><label class="f"><span>Peso da embalagem própria (g) · opcional</span><input type="text" id="eqTara" inputmode="decimal" value="${esc(v.tara??'')}" placeholder="usa a embalagem padrão"></label><label class="f"${edoc?' hidden':''}><span>Situação</span><label><input type="checkbox" id="eqAct" ${v.active!==false?'checked':''}${dE}> Ativo</label></label></div>
     <div class="tw"><table><thead><tr><th>Descarte: como é contabilizado</th><th>Categoria do scrap de gel</th><th>Motivos que aparecem (opcional)</th><th></th></tr></thead><tbody>${v.descs.map((d,i)=>`<tr><td><select data-eqd="comp" data-i="${i}">${Object.entries(COMPS).map(([k,c])=>`<option value="${k}" ${d.comp===k?'selected':''}>${c.l} (${c.d})</option>`).join('')}</select></td><td><select data-eqd="cat" data-i="${i}">${Object.entries(SCAT).map(([k,l])=>`<option value="${k}" ${d.cat===k?'selected':''}>${l}</option>`).join('')}</select></td><td>${(()=>{const ms=motList().filter(m=>m.active!==false&&(!(m.comps&&m.comps.length)||m.comps.includes(d.comp)));if(!ms.length)return '<span class="sub" style="margin:0">nenhum motivo para este tipo</span>';const sel=d.mots||[];
       return `<details><summary class="sub" style="margin:0;cursor:pointer">${sel.length?sel.length+' selecionado(s)':'todos os motivos do tipo'}</summary><div style="display:flex;flex-direction:column;gap:2px;margin-top:4px">${ms.map(m=>`<label><input type="checkbox" data-eqdm="${i}|${esc(m.id)}" ${sel.includes(m.id)?'checked':''}> ${esc(m.name)}</label>`).join('')}<span class="sub" style="margin:0">nenhum marcado = todos</span></div></details>`})()}</td><td><button class="btn sm ghost" data-eqdrm="${i}" aria-label="Remover descarte">✕</button></td></tr>`).join('')}</tbody></table></div>
     <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn" id="eqAddD">+ Descarte</button><button class="btn primary" id="eqSave">${ui.eqEdit?'Salvar alterações':'Cadastrar equipamento'}</button>${ui.eqEdit?'<button class="btn" id="eqCancel">Cancelar edição</button>':''}</div><div id="eqErr"></div></div>
-   <p class="sub" style="margin:10px 0 0">Arraste ⠿ (ou use ↑ ↓) para definir a ordem em que os equipamentos aparecem no Registrar scrap de cada turno.</p><div class="tw" style="margin-top:6px"><table><thead><tr><th></th><th>Equipamento</th><th>Descartes</th><th class="n">Embalagem</th><th>Situação</th><th></th></tr></thead><tbody id="eqSort">${L.map(e=>`<tr draggable="true" data-sortid="${esc(e.id)}"><td class="grip" title="Arraste para mudar a ordem">⠿</td><td><b>${esc(e.name)}</b></td><td>${(e.descs||[]).map(d=>`${SCAT[d.cat]}: ${COMPS[d.comp].l}${d.mots&&d.mots.length?` <span class="sub" style="margin:0">· ${d.mots.length} motivo(s)</span>`:''}`).join('<br>')}</td><td class="n">${e.tara!=null&&e.tara!==''?nf3(e.tara)+' g':'padrão'}</td><td>${e.active!==false?'Ativo':'<span style="color:var(--muted)">Inativo</span>'}</td><td class="rbtn"><button class="btn sm ghost" data-eqmv="${esc(e.id)}|-1" aria-label="Subir">↑</button><button class="btn sm ghost" data-eqmv="${esc(e.id)}|1" aria-label="Descer">↓</button> <button class="btn sm" data-eqedit="${esc(e.id)}">Editar</button> <button class="btn sm danger" data-eqdel="${esc(e.id)}">Excluir</button></td></tr>`).join('')||'<tr><td colspan="6" class="empty-r">Nenhum equipamento cadastrado.</td></tr>'}</tbody></table></div>`;
+   <p class="sub" style="margin:10px 0 0">Arraste ⠿ (ou use ↑ ↓) para definir a ordem em que os equipamentos aparecem no Registrar scrap de cada turno.</p><div class="tw" style="margin-top:6px"><table><thead><tr><th></th><th>Equipamento</th><th>Descartes</th><th class="n">Embalagem</th><th>Situação</th><th></th></tr></thead><tbody id="eqSort">${L.map(e=>`<tr draggable="true" data-sortid="${esc(e.id)}"><td class="grip" title="Arraste para mudar a ordem">⠿</td><td><b>${esc(e.name)}</b>${e.portal?` <span class="sub" style="margin:0">${esc(e.portal)}</span>`:GelCad.doc()?' <span class="pill p-warn" title="Sem vínculo com o cadastro do Portal: cadastre lá com este nome (ou ponha o nome em Outros nomes) ou use Portal › Trazer configurações">sem vínculo</span>':''}</td><td>${(e.descs||[]).map(d=>`${SCAT[d.cat]}: ${COMPS[d.comp].l}${d.mots&&d.mots.length?` <span class="sub" style="margin:0">· ${d.mots.length} motivo(s)</span>`:''}`).join('<br>')}</td><td class="n">${e.tara!=null&&e.tara!==''?nf3(e.tara)+' g':'padrão'}</td><td>${e.active!==false?'Ativo':'<span style="color:var(--muted)">Inativo</span>'}</td><td class="rbtn"><button class="btn sm ghost" data-eqmv="${esc(e.id)}|-1" aria-label="Subir">↑</button><button class="btn sm ghost" data-eqmv="${esc(e.id)}|1" aria-label="Descer">↓</button> <button class="btn sm" data-eqedit="${esc(e.id)}">Editar</button> <button class="btn sm danger" data-eqdel="${esc(e.id)}">Excluir</button></td></tr>`).join('')||'<tr><td colspan="6" class="empty-r">Nenhum equipamento cadastrado.</td></tr>'}</tbody></table></div>`;
 }
 function bindEquipCfg(saveCfg){
   $('#rbSave').addEventListener('click',async()=>{await saveCfg({scrapBase:Math.max(1,+$('#rbK').value||100)},'Indicador salvo.');openConfig('equip')});
-  const v=ui.eqDraft;const sync=()=>{v.name=$('#eqName').value.trim();v.tara=$('#eqTara').value.trim()===''?'':parseNum($('#eqTara').value);v.active=$('#eqAct').checked;document.querySelectorAll('[data-eqd]').forEach(x=>v.descs[+x.dataset.i][x.dataset.eqd]=x.value);
+  const v=ui.eqDraft;const eqp=$('#eqPortal');eqp&&eqp.addEventListener('change',()=>{const p=GelCad.eq({portal:eqp.value});v.portal=p?String(p.codigo):null;if(p){$('#eqName').value=p.nome||p.codigo;$('#eqAct').checked=p.ativo!==false}});
+  const sync=()=>{if(eqp&&eqp.value){const p=GelCad.eq({portal:eqp.value});if(p){v.portal=String(p.codigo);$('#eqName').value=p.nome||p.codigo}}v.name=$('#eqName').value.trim();v.tara=$('#eqTara').value.trim()===''?'':parseNum($('#eqTara').value);v.active=$('#eqAct').checked;document.querySelectorAll('[data-eqd]').forEach(x=>v.descs[+x.dataset.i][x.dataset.eqd]=x.value);
     v.descs.forEach((d,i)=>{const cbs=[...document.querySelectorAll('[data-eqdm]')].filter(c=>c.dataset.eqdm.split('|')[0]===String(i));if(cbs.length)d.mots=cbs.filter(c=>c.checked).map(c=>c.dataset.eqdm.split('|')[1])})};
   document.querySelectorAll('[data-eqd="comp"]').forEach(x=>x.addEventListener('change',()=>{sync();v.descs.forEach(d=>{if(d.comp==='barril')d.cat='B'});openConfig('equip')}));
   $('#eqAddD').addEventListener('click',()=>{sync();v.descs.push({id:'d-'+uid(),comp:'gel',cat:'P'});openConfig('equip')});
@@ -5124,7 +5162,8 @@ function bindEquipCfg(saveCfg){
   document.querySelectorAll('[data-eqmv]').forEach(b=>b.addEventListener('click',async()=>{const [id,dir]=b.dataset.eqmv.split('|');const L=(S.config.equips||[]).slice();const i=L.findIndex(e=>e.id===id),j=i+(+dir);if(i<0||j<0||j>=L.length)return;[L[i],L[j]]=[L[j],L[i]];await saveCfg({equips:L},'Ordem salva.');openConfig('equip')}));
   document.querySelectorAll('[data-eqdel]').forEach(b=>b.addEventListener('click',async()=>{await saveCfg({equips:(S.config.equips||[]).filter(e=>e.id!==b.dataset.eqdel)},'Equipamento excluído. Os registros antigos continuam no histórico.');openConfig('equip')}));
   $('#eqSave').addEventListener('click',async()=>{sync();if(!v.name||!v.descs.length){$('#eqErr').innerHTML='<div class="alert">Informe o nome e ao menos um descarte.</div>';return}
-    const item={id:ui.eqEdit||('eq-'+uid()),name:v.name,tara:v.tara,active:v.active,descs:v.descs};const L=(S.config.equips||[]).filter(e=>e.id!==item.id);
+    if(GelCad.doc()&&!v.portal){$('#eqErr').innerHTML='<div class="alert">Escolha o equipamento do Portal.</div>';return}
+    const item={id:ui.eqEdit||('eq-'+uid()),name:v.name,tara:v.tara,active:v.active,descs:v.descs,...(v.portal?{portal:v.portal}:{})};const L=(S.config.equips||[]).filter(e=>e.id!==item.id);
     const old=(S.config.equips||[]).findIndex(e=>e.id===item.id);if(old>=0)L.splice(old,0,item);else L.push(item);ui.eqEdit=null;ui.eqDraft=null;await saveCfg({equips:L},'Equipamento salvo.');openConfig('equip')});
 }
 /* ---- motivos de descarte ---- */
@@ -7419,7 +7458,7 @@ document.addEventListener('keydown',e=>{if(e.key!=='Enter'||e.target.id!=='q2'||
 let qT;
 document.addEventListener('input',e=>{if(e.target.id!=='q2')return;clearTimeout(qT);const v=e.target.value,pos=e.target.selectionStart;if(ui.tab!=='op'){ui.qs[ui.tab]=v;applyTabFilter(true);return}qT=setTimeout(()=>{ui.q=v;render();const el=$('#q2');if(el){el.focus();try{el.setSelectionRange(pos,pos)}catch(_){}}},200)});
 $('#btnImport').addEventListener('click',openImport);
-$('#btnSync').addEventListener('click',async()=>{if(ui.demo){toast('Modo exemplo: nada é gravado.');return}
+$('#btnSync').addEventListener('click',async()=>{if(ui.demo){toast('Demonstração: nada é gravado.');return}
   if(S.mode==='file'){try{if(FS.pending.length)await fsFlush();await fsRefresh();renderMeta();toast(FS.err?'A pasta não respondeu: as alterações continuam guardadas neste computador.':`Sincronizado com a pasta · rev ${FS.rev||0}.`)}catch(e){toast('Não consegui sincronizar: '+(e.message||e))}}
   else if(S.mode==='db'){render();toast('Base compartilhada atualizada.')}else toast(FS_OK()?'Sem pasta conectada: use Conectar à pasta.':'Dados salvos só neste navegador.')});
 $('#btnBackup').addEventListener('click',backupNow);
