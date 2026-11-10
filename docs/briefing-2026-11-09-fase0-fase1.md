@@ -437,3 +437,19 @@ Próximo: 4d (o Gel lê da Produção a partir da data de corte; Registro do dia
   - o Resumo do dia aparece só para leitura.
 
 Próximo: 4e (Teórico × Real na página do dia da Produção, só quando o catálogo usa gel).
+
+### Passo 4e · Teórico × Real no dia da Produção (GEL-04) · Produção 2.4.29, Gel 2.20, kit
+
+- No **Lançamento** do dia, o quadro **"Gel · teórico × real do dia"** só aparece quando algum catálogo produzido no dia usa gel. Se nenhum usa, o quadro nem aparece. O quadro mostra:
+  - **Teórico**, calculado na Produção pela conta comum: tubos bons dos catálogos com gel × g/tubo, dividido pelas perdas em Tubos, Barril e Purga.
+  - **Scrap pesado** nos turnos (Registrar scrap).
+  - **Índice de uso**: (gel nos tubos + scrap) ÷ meta da BOM.
+  - **Baixado × teórico**: os barris baixados (G4) vêm do `exports` do Gel (`porDiaGel`, 60 dias), com a hora da leitura.
+- O **Relatório de gel** continua na Gestão de Gel (GEL-05).
+- **Limite (defasagem):** as baixas do dia aparecem na Produção depois que o Gel grava a base. Isso acontece a cada baixa, importação ou alteração no Gel.
+
+**Fase 4 concluída** (GEL-02 a GEL-06, PRD-10). Homologar na pasta real nesta ordem:
+1. Portal › Cadastros › Início › Trazer configurações › "Só no Gel · parâmetros do gel".
+2. Portal › Parâmetros › Gestão de Gel › "Gel lido da Produção a partir de" (a data de corte).
+3. Registrar scrap num turno da Produção.
+4. Conferir o Resumo do dia no Gel e o Teórico × Real na Produção.

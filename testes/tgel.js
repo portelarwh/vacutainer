@@ -152,6 +152,33 @@ const { chromium } = require('playwright');
   ok(r4d.fs && r4d.salvar && r4d.txt && r4d.aba === 'Resumo do dia', 'GEL-05: Registro do dia vira Resumo do dia (só leitura, com o aviso de que vem da Produção)');
   await g4d.evaluate(() => localStorage.removeItem('vac.cadastros'));
 
+  /* ---------- 4e (GEL-04): Teórico × Real na Produção, só com catálogo que usa gel ---------- */
+  const eg = await g4d.evaluate(() => { const ex = gelExports(), L = ex.porDiaGel || [], x = L[L.length - 1]; if (!x) return null; const c = prodCalc(x.dia, S.prodlog[x.dia]); return { n: L.length, ok: Math.abs(x.teoKg - Math.round(c.teo * 1000) / 1000) < 1e-9 && x.baixadoKg === Math.round(c.baixKg * 1000) / 1000 }; });
+  ok(eg && eg.n > 0 && eg.ok, 'GEL-04: o exports do Gel publica o teórico × real de cada dia (porDiaGel), com as baixas de barril (G4)');
+  const o5 = await nova('OEE-Vacutainer.html', 'Produção 4e');
+  const r4e = await o5.evaluate(async () => { document.querySelectorAll('.overlay').forEach(x => x.remove()); Demo.enterExample(); await new Promise(r => setTimeout(r, 300));
+    const day = Store.S.db.productionDays.filter(x => !x.deleted && x.status !== 'fechado').sort((a, b) => a.date < b.date ? 1 : -1)[0];
+    const res0 = Engine.computeDay(db(), day), ps = day.shifts.find(p => res0.flat.some(f => f.ps === p && f.cat));
+    const catId = res0.flat.find(f => f.ps === ps && f.cat).cat, code = ((db().catalogs || []).find(c => c.id === catId) || {}).code;
+    const cad = gel => ({ schema: 'vac-cadastros', rev: 13, parametros: { gel: { formatos: [{ from: '2000-01-01', tara: 70, taraP: 4, sobra: 1.3, f: { '100': { tubo: 4.8, gel: 0.83, adit: 0.02, tr: 2.31 }, '75': { tubo: 3.55, gel: 0.82, adit: 0.015, tr: 2.29 } } }], processo: [{ from: '2000-01-01', g: 0.97, pT: 2.1, pB: 0.71, pP: 0.5 }] } },
+      equipamentos: [{ codigo: 'EQ90', nome: 'Máquina de gel', ativo: true, categoria: 'gel', gel: { tara: 80, descs: [{ id: 'd1', comp: 'tubogel', cat: 'T' }] } }],
+      catalogos: [{ codigo: code, tipoItem: 'tubo', nome: 'Tubo', ativo: true, ...(gel ? { gel: { fmt: '100', vig: [{ from: '2000-01-01', gTubo: 0.85, bomKg: 8.84, bomBase: 10000, tol: 6 }] } } : {}) }], materiais: [], bom: [] });
+    // sem gel no catálogo: o quadro não aparece
+    localStorage.setItem('vac.cadastros', JSON.stringify(cad(false))); App.sel.dayId = day.id; App.sel.date = day.date; go('launch'); await new Promise(r => setTimeout(r, 300)); const semGel = !document.querySelector('#gelDia');
+    localStorage.setItem('vac.cadastros', JSON.stringify(cad(true)));
+    GelTurno.salvar(day.id, ps.id, { none: false, eq: [{ e: 'EQ90', d: 'd1', cat: code, kg: 2.345, nb: 0, mots: [] }] });
+    GelDia.gel = { geradoEm: day.date + 'T23:00', d: { porDiaGel: [{ dia: day.date, baixadoKg: 900, barris: 5 }] } }; GelDia.lidoEm = Date.now();
+    render(); await new Promise(r => setTimeout(r, 300));
+    const card = document.querySelector('#gelDia'); const res = Engine.computeDay(db(), Store.S.db.productionDays.find(x => x.id === day.id)), x = GelDia.calc(Store.S.db.productionDays.find(x => x.id === day.id), res);
+    const tub = res.flat.filter(f => f.cat === catId && f.good > 0).reduce((a, f) => a + f.good, 0);
+    const C = vacGel.ctx(), teo = vacGel.teorico({ tubosPorCat: { [code]: tub }, date: day.date, cg: c => C.cat(c), fmts: C.fmts, params: C.params });
+    return { semGel, card: !!card, txt: card ? card.innerText : '', tubos: x.tubos, tub, teo: x.teo.teo, teoK: teo.teo, desvio: x.desvio, idx: x.idx, sT: x.sc.T };
+  });
+  ok(r4e.semGel, 'GEL-04: sem catálogo com gel no dia, o quadro de Teórico × Real nem aparece');
+  ok(r4e.card && r4e.tubos === r4e.tub && Math.abs(r4e.teo - r4e.teoK) < 1e-9, 'GEL-04: com catálogo de gel, o dia da Produção mostra o Teórico × Real (tubos bons da Produção, teórico pela conta comum)');
+  ok(Math.abs(r4e.desvio - (900 / r4e.teo - 1)) < 1e-9 && r4e.sT > 0 && r4e.idx > 0, 'GEL-04/G4: o real usa as baixas de barril do Gel (baixado × teórico) e o scrap pesado nos turnos (índice de uso)');
+  await o5.evaluate(() => localStorage.removeItem('vac.cadastros'));
+
   await b.close();
   if (errs.length) { console.log('\n' + errs.join('\n')); process.exit(1); } else console.log('\nsem erros');
 })();

@@ -1257,7 +1257,7 @@ const U = (() => {
 
 /* ---- 02-model.js ---- */
 /* ================= modelo de dados, valores iniciais e integridade ================= */
-const APP_VERSION = '2.4.28';
+const APP_VERSION = '2.4.29';
 const SCHEMA_VERSION = 1;
 const BASE_FILE = 'oee-vacutainer-base.json';
 const BACKUP_DIR = '00. Backups';
@@ -5218,6 +5218,7 @@ App.views.launch = {
     </div>`;
     h += SrvUI.dayCard(day, res);
     h += ForaTurnoUI.card(day, res);   /* 2.4.24 · TUR-02/03/04 */
+    h += GelDia.card(day, res);   /* 2.4.29 · GEL-04 */
     // turnos
     h += `<div class="section grid g2">${res.shifts.map(sr => shiftBlock(day, sr, res)).join('')}</div>`;
     h += `<section class="card section"><header><h3>Validação</h3>${errs ? semB('crit', errs + ' erro(s)') : semB('ok', 'sem erros')} ${alerts ? semB('warn', alerts + ' alerta(s)') : ''}</header>${msgList(res.msgs)}</section>`;
@@ -9116,6 +9117,44 @@ const GelTurno = {
   },
   mount(root, day, res) { root.querySelectorAll('[data-gelscrap]').forEach(b => b.onclick = () => this.abrir(day, b.dataset.gelscrap, res)); }
 };
+
+/* ---------- 2.4.29 · Fase 4 · 4e (GEL-04): Teórico × Real do gel no dia, só quando algum catálogo produzido usa gel ----------
+   Teórico, gel nos tubos bons, índice (BOM do Portal) e o scrap pesado nos turnos: calculados aqui pela conta comum (vacGel).
+   Barris baixados (o real, G4): da Gestão de Gel, pelo exports (porDiaGel), com a data em que foi lido. */
+const GelDia = {
+  gel: null, lendo: false, lidoEm: 0,
+  ler() { if (this.lendo || typeof vacFicha === 'undefined') return Promise.resolve(); this.lendo = true;
+    return vacFicha.carregar().then(() => { const x = vacFicha.dados('gel'); this.gel = x && x.d ? x : null; this.lidoEm = Date.now(); }).catch(e => console.warn('GelDia', e)).finally(() => { this.lendo = false; }); },
+  calc(day, res) {
+    const C = GelTurno.ctx(); if (!C) return null; const d = db(), tub = {};
+    for (const f of res.flat || []) { if (!f.cat || !(f.good > 0)) continue; const code = ((d.catalogs || []).find(c => c.id === f.cat) || {}).code; if (code && C.usaGel(code)) tub[code] = (tub[code] || 0) + f.good; }
+    if (!Object.keys(tub).length) return null;
+    const cg = code => C.cat(code) || { fmt: '100' }, teo = vacGel.teorico({ tubosPorCat: tub, date: day.date, cg, fmts: C.fmts, params: C.params });
+    let meta = 0, allowed = 0; for (const [code, t] of Object.entries(tub)) { const b = vacGel.bom(cg(code), day.date, C.fmts, C.params); meta += t * b.meta / 1000; allowed += t * b.allowed / 1000; }
+    const sc = { T: 0, B: 0, P: 0 }; let pesou = false; for (const sr of res.shifts) { const k = GelTurno.soma(sr.ps.gelScrap, day.date, C); if (sr.ps.gelScrap) pesou = true; sc.T += k.T; sc.B += k.B; sc.P += k.P; }
+    const scrap = sc.T + sc.B + sc.P, real = teo.gelBons + scrap;
+    const g = this.gel && this.gel.d ? (this.gel.d.porDiaGel || []).find(x => x.dia === day.date) : null;
+    return { tub, tubos: Object.values(tub).reduce((a, b) => a + b, 0), teo, sc, pesou, meta, allowed, real, idx: meta > 0 && pesou ? real / meta * 100 : null, saving: pesou ? allowed - real : null, g, desvio: g && g.baixadoKg && teo.teo > 0 ? g.baixadoKg / teo.teo - 1 : null };
+  },
+  card(day, res) {
+    const x = this.calc(day, res); if (!x) return '';
+    if (!this.gel && !this.lendo && Date.now() - this.lidoEm > 60000) this.ler().then(() => { if (this.gel) render(); });
+    const f3 = v => v == null ? '—' : U.fmt(v, 3), pc = v => v == null ? '—' : (v >= 0 ? '+' : '') + U.fmt(v * 100, 1) + '%';
+    const linha = (l, t, r, aj) => `<tr><td>${l}${aj ? ' ' + ib(aj) : ''}</td><td class="n">${t}</td><td class="n">${r}</td></tr>`;
+    return `<section class="card section" id="gelDia"><header><h3>Gel · teórico × real do dia ${ib('gelTeoReal')}</h3><span class="small muted">${Object.keys(x.tub).map(esc).join(', ')}</span></header>
+      <div class="kpis" style="margin-bottom:8px">${kpi('Gel teórico', f3(x.teo.teo), 'kg', 'tubos bons × g/tubo ÷ (1 − perdas)')}${kpi('Índice de uso', x.idx == null ? '—' : U.fmt(x.idx, 2), '', x.idx == null ? 'falta o scrap pesado dos turnos' : `meta 100 · BOM ${U.fmt(100 + ((x.allowed / x.meta - 1) * 100 || 0), 0)}`)}${kpi('Baixado × teórico', pc(x.desvio), '', x.g ? `${U.fmt(x.g.barris)} barril(is) · ${f3(x.g.baixadoKg)} kg` : 'sem baixa do Gel neste dia')}</div>
+      <div class="tw"><table><thead><tr><th></th><th class="n">Teórico (kg)</th><th class="n">Real (kg)</th></tr></thead><tbody>
+      ${linha('Tubos bons (catálogos com gel)', U.fmt(x.tubos), U.fmt(x.tubos))}
+      ${linha('Gel nos tubos bons', f3(x.teo.gelBons), '—')}
+      ${linha('Scrap de gel · Tubos', f3(x.teo.sTeo.T), x.pesou ? f3(x.sc.T) : '—')}
+      ${linha('Scrap de gel · Barril', f3(x.teo.sTeo.B), x.pesou ? f3(x.sc.B) : '—')}
+      ${linha('Scrap de gel · Purga', f3(x.teo.sTeo.P), x.pesou ? f3(x.sc.P) : '—')}
+      ${linha('<b>Total de gel</b>', '<b>' + f3(x.teo.teo) + '</b>', x.g ? `<b>${f3(x.g.baixadoKg)}</b> <span class="small muted">baixado</span>` : '—', 'gelBaixado')}</tbody></table></div>
+      <p class="small muted">Teórico, índice e scrap pela mesma conta da Gestão de Gel (parâmetros do Portal). As baixas de barril são da Gestão de Gel${this.gel ? ` (lidas de ${esc(this.gel.geradoEm ? U.brDT(this.gel.geradoEm) : '—')})` : ': ainda não lidas (conecte a pasta)'}. O relatório de gel continua na Gestão de Gel.</p></section>`;
+  }
+};
+HELP.gelTeoReal = ['Gel · teórico × real do dia', [['Quando aparece?', 'Só quando algum catálogo produzido no dia usa gel (BOM do Portal com material de gel, ou o bloco Gel do catálogo).'], ['Teórico', 'Gel nos tubos bons (tubos × gramas de gel por tubo do catálogo, com vigência) ÷ (1 − perdas teóricas), dividido em Tubos, Barril e Purga.'], ['Real', 'O scrap pesado nos turnos (Registrar scrap) e os barris baixados na Gestão de Gel.'], ['Índice de uso', '(Gel nos tubos bons + scrap pesado) ÷ meta da BOM × 100. Abaixo de 100 é melhor que a meta; acima da BOM (ex.: 106) passa o permitido.']]];
+HELP.gelBaixado = ['Gel baixado', [['O que é?', 'Os barris baixados como consumidos na Gestão de Gel neste dia (kg líquidos). Vem do exports do Gel: aparece depois que o Gel grava a base.']]];
 HELP.gelScrap = ['Scrap de gel do turno', [['O que é?', 'As pesagens de scrap de gel do turno (Registrar scrap): equipamento, descarte, catálogo e peso da balança. A conta tira a embalagem e divide pelo peso da composição, igual à Gestão de Gel.'], ['Onde fica?', 'No turno da Produção. A Gestão de Gel lê daqui (a partir da data de corte do Portal) para o resumo do dia, o índice e o saving.'], ['De onde vêm os equipamentos e os pesos?', 'Do Portal: equipamentos da categoria Equipamento – Gel (descartes) e Parâmetros › Gestão de Gel (formatos, perdas e motivos).']]];
 
 async function boot() {
@@ -11035,7 +11074,7 @@ const vacFicha = (() => {
     { id: 'oee', nome: 'Produção', base: 'oee-vacutainer-base.json', pega: ex => ({ porOrdem: ex.porOrdem || [], cob: ex.porOrdemCobertura || null, lotes: ex.lotes || [], porDiaTurno: ex.porDiaTurno || [], porDiaCatalogo: ex.porDiaCatalogo || [] }) },   /* Fase 4 · 4d: o Gel lê os turnos da Produção */
     { id: 'ordens', nome: 'SAP (Produção › Ordens)', sis: 'oee', base: 'ordens-base.json', pega: ex => ({ porOrdem: ex.porOrdem || [] }) },
     { id: 'perdas', nome: 'Waste', base: 'perdas-base.json', pega: ex => ({ porOrdem: ex.porOrdem || [] }) },
-    { id: 'gel', nome: 'Gestão de Gel', base: 'fifo-base.json', pega: ex => ({ ordens: ex.ordens || [], cob: ex.ordensCobertura || null }) },
+    { id: 'gel', nome: 'Gestão de Gel', base: 'fifo-base.json', pega: ex => ({ ordens: ex.ordens || [], cob: ex.ordensCobertura || null, porDiaGel: ex.porDiaGel || [] }) },   /* Fase 4 · 4e */
     { id: 'paradas', nome: 'Paradas', base: 'paradas-base.json', pega: ex => ({ porOrdem: ex.porOrdem || [], eventos: (ex.eventos || []).filter(e => e && e.ordem) }) },
     { id: 'inic', nome: 'Iniciativas', base: 'iniciativas-base.json', pega: ex => ({ acoes: ex.acoes || [] }) }];
   const S = { dados: {}, idx: null, carregando: null, aberto: null, empilhado: false };
