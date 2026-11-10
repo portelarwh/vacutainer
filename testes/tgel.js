@@ -111,6 +111,7 @@ const { chromium } = require('playwright');
     m.querySelector('#gOk').click(); await new Promise(r => setTimeout(r, 500));
     const d2 = Store.S.db.productionDays.find(x => x.id === day.id), ps2 = d2.shifts.find(p => p.id === ps.id), gs = ps2.gelScrap;
     const esperado = vacGel.pesagem({ desc: { comp: 'tubogel', cat: 'T' }, taraEq: 80, kg: 2.345, cg: { fmt: '100', vig: [{ from: '2000-01-01', gTubo: 0.85 }] }, date: day.date, fmts: C.parametros.gel.formatos, params: C.parametros.gel.processo });
+    d2.demo = false;   // o exports ignora dias de demonstração; aqui o dia faz papel de dia real
     const ex = Exports.build(db()), linha = (ex.porDiaTurno || []).find(x => x.dia === day.date && x.turno === (ps.snap.code || ps.snap.name));
     // tela do turno (operador)
     App.op = true; App.opSel = { date: day.date, shiftId: ps.shiftId }; go('shift'); await new Promise(r => setTimeout(r, 400)); const naTelaTurno = !!document.querySelector(`[data-gelscrap="${ps.id}"]`); App.op = false;

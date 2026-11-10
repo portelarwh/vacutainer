@@ -399,3 +399,21 @@ Próximo: 4b (a conta do gel num módulo comum do kit, usado pelo Gel e pela Pro
   - O teórico do kit é igual ao `prodCalc` do Gel em todos os dias registrados.
 
 Próximo: 4c (Registrar scrap no turno da Produção).
+
+### Passo 4c · Registrar scrap de gel no turno da Produção (GEL-03, PRD-10) · Produção 2.4.28
+
+- **Onde fica o botão:** **Registrar scrap** em cada turno do **Lançamento** do dia e também na **tela do turno**, a do operador. O botão só aparece quando algum catálogo produzido no turno usa gel (BOM do Portal com material de gel, ou bloco Gel no catálogo) e existe equipamento da categoria Equipamento – Gel no Portal. Também aparece quando o turno já tem registro.
+- **Campos (os mesmos do Gel):**
+  - equipamento, que vem do Portal;
+  - descarte, com a composição e a categoria Tubos, Barril ou Purga;
+  - catálogo, entre os produzidos no turno;
+  - peso bruto da balança;
+  - número de barris, quando a composição é barril;
+  - motivos, com peso opcional por motivo;
+  - "Sem scrap de gel neste turno".
+- **Antes de gravar:** cada pesagem mostra o gel calculado. A conta é a comum, `vacGel.pesagem`, com os parâmetros do Portal. No barril sem "sobra" cadastrada, aparece o aviso.
+- **Onde é gravado (G1):** no turno do dia da Produção (`ps.gelScrap`), com quem registrou, quando e auditoria. Turno fechado não aceita registro.
+- **Exports:** `porDiaTurno[].gel` traz as pesagens como foram registradas e o gel por categoria. `porDiaTurno[].extraMin` traz a hora extra do turno (para o G5). A Gestão de Gel vai ler daqui no 4d.
+- **Fica para depois:** o scrap do dia todo sem turno (o "Dia (sem turno)" do Gel). Na Produção, o registro é sempre por turno.
+
+Próximo: 4d (o Gel lê da Produção a partir da data de corte; Registro do dia → Resumo do dia).

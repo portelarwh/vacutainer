@@ -28,7 +28,7 @@ R("location.href=sysHref(port,'versoes')", "vacDemo.ir(sysHref(port,'versoes'))"
 R('<button class="btn primary" id="uOk">Usar este nome</button>', '<button class="btn primary" id="uOk">Usar este nome</button><button class="btn" data-vdemo-entrar onclick="vacDemo.entrar()">Demonstração do sistema</button>')
 R('<button class="btn ghost" id="wLocal">Começar só neste navegador</button>', '<button class="btn ghost" id="wLocal">Começar só neste navegador</button><button class="btn" data-vdemo-entrar onclick="vacDemo.entrar()">Demonstração do sistema</button>')
 R('Abre uma <b>cópia em memória</b> da base com cerca de 3 semanas de dados fictícios (hora a hora, paradas, scrap, dias fechados e abertos), para treinar ou demonstrar. Nada é gravado na pasta da rede nem no navegador: ao sair, tudo volta exatamente como estava.', 'Abre a <b>demonstração integrada do sistema</b>, com produção, perdas, gel, paradas, equipamentos e ações fictícias relacionadas. Você pode editar o exemplo e navegar entre as páginas. As bases reais ficam preservadas; fechar ou recarregar a demonstração descarta as alterações fictícias.')
-R("const APP_VERSION = '2.0.1';","const APP_VERSION = '2.4.27';")
+R("const APP_VERSION = '2.0.1';","const APP_VERSION = '2.4.28';")
 # 2.4.25 · junção com a main: a correção da duração da parada (PR #24, parada_tempo_build.py) saiu lá como 2.4.21;
 #          a numeração desta linha (2.4.21–2.4.24) seguiu em paralelo. A 2.4.25 tem as duas.
 # 2.4.21 · ARQ-09 (briefing 09/11/2026, opção a): sem "Modo exemplo" próprio nas Configurações; para apresentar, a Demonstração integrada
@@ -63,8 +63,16 @@ R("    if (day.scrapMode === 'day') { dayAgg.scrap = +day.scrapDay || 0;",
 R("    return { day, flat, shifts: shiftRes, r: dayR, agg: dayAgg, officialDaily, comp, msgs, events: evRes };",
   "    if (ft) { ft.real = ft.realDia ? finalize(ft.realDia, st) : null; }\n    return { day, flat, shifts: shiftRes, r: dayR, agg: dayAgg, officialDaily, comp, msgs, events: evRes, foraTurno: ft };")
 R("    h += SrvUI.dayCard(day, res);\n", "    h += SrvUI.dayCard(day, res);\n    h += ForaTurnoUI.card(day, res);   /* 2.4.24 · TUR-02/03/04 */\n")
-R("metasModal(); }\n    bindDayBar(root); bindNoDay(root);\n    const day = curDay(); if (!day || Engine.isOffDay(db(), day)) return;\n    SrvUI.bindDay(root, day);", "metasModal(); }\n    bindDayBar(root); bindNoDay(root);\n    const day = curDay(); if (!day || Engine.isOffDay(db(), day)) return;\n    SrvUI.bindDay(root, day); ForaTurnoUI.mount(root, day);")
+R("metasModal(); }\n    bindDayBar(root); bindNoDay(root);\n    const day = curDay(); if (!day || Engine.isOffDay(db(), day)) return;\n    SrvUI.bindDay(root, day);", "metasModal(); }\n    bindDayBar(root); bindNoDay(root);\n    const day = curDay(); if (!day || Engine.isOffDay(db(), day)) return;\n    SrvUI.bindDay(root, day); ForaTurnoUI.mount(root, day); GelTurno.mount(root, day, Engine.computeDay(db(), day));")
 R("async function boot() {\n", open(os.path.join(AQUI,'turnos_np.js'),encoding='utf-8').read() + "\nasync function boot() {\n")
+# 2.4.28 · Fase 4 · 4c (GEL-03 / PRD-10, G1): Registrar scrap de gel no turno (Lançamento e tela do turno); gravado em ps.gelScrap; exports porDiaTurno[].gel
+R("async function boot() {\n", open(os.path.join(AQUI,'gel_turno.js'),encoding='utf-8').read() + "\nasync function boot() {\n")
+R("    h += `<div class=\"section grid g2\">${res.shifts.map(sr => shiftBlock(day, sr)).join('')}</div>`;", "    h += `<div class=\"section grid g2\">${res.shifts.map(sr => shiftBlock(day, sr, res)).join('')}</div>`;")
+R("function shiftBlock(day, sr) {", "function shiftBlock(day, sr, res) {")
+R("      <label class=\"kvrow\"><input type=\"checkbox\" data-shoff=\"${ps.id}\"", "      ${res ? GelTurno.bloco(day, sr, res) : ''}\n      <label class=\"kvrow\"><input type=\"checkbox\" data-shoff=\"${ps.id}\"")
+R("        <label class=\"f chk wide\"><input type=\"checkbox\" data-shoff=\"${ps.id}\"", "        ${GelTurno.bloco(day, sr, res)}\n        <label class=\"f chk wide\"><input type=\"checkbox\" data-shoff=\"${ps.id}\"")
+R("    const ps = day.shifts.find(p => p.shiftId === O.shiftId); if (!ps) return;\n    const cat = root.querySelector('#opCat');", "    const ps = day.shifts.find(p => p.shiftId === O.shiftId); if (!ps) return;\n    GelTurno.mount(root, day, Engine.computeDay(d, day));\n    const cat = root.querySelector('#opCat');")
+R("motivo: sr.ps.off ? (sr.ps.offReason || '') : undefined, status: sr.ps.status });", "motivo: sr.ps.off ? (sr.ps.offReason || '') : undefined, status: sr.ps.status, extraMin: n0(sr.agg.extraMin || 0), gel: GelTurno.exp(sr.ps, d.date) });")
 # 2.4.26 · Fase 3 do briefing (IMP-04): o exports publica as importações (o que, quando, período coberto) para o Portal › Importação
 # 2.4.26 · IMP-05/06: o Portal abre a tela certa: #aba=ordens&sub=mb51|coois|lista|conc|hist e #aba=config&sec=importacao
 R("  const [k, v] = h.split('='); if (!v) return false;\n  const d = db();",

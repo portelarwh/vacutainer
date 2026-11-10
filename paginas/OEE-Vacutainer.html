@@ -1257,7 +1257,7 @@ const U = (() => {
 
 /* ---- 02-model.js ---- */
 /* ================= modelo de dados, valores iniciais e integridade ================= */
-const APP_VERSION = '2.4.27';
+const APP_VERSION = '2.4.28';
 const SCHEMA_VERSION = 1;
 const BASE_FILE = 'oee-vacutainer-base.json';
 const BACKUP_DIR = '00. Backups';
@@ -4388,7 +4388,7 @@ const Exports = (() => {
         const byCat = {};
         for (const f of res.flat) { if (!f.cat) continue; const c = (db.catalogs || []).find(x => x.id === f.cat); const k = (c ? c.code : f.cat) + '|' + (f.ps.snap.code || f.ps.snap.name); const o = byCat[k] || (byCat[k] = { dia: d.date, turno: f.ps.snap.code || f.ps.snap.name, catalogo: c ? c.code : null, boa: 0, cap: 0, meta: 0, min: 0 }); o.boa += f.good || 0; o.cap += f.capDec || 0; o.meta += f.metaOp || 0; o.min += f.min; }
         for (const o of Object.values(byCat)) porDiaCatalogo.push({ dia: o.dia, turno: o.turno, catalogo: o.catalogo, boa: n0(o.boa), metaOp: n0(o.meta), oee: r4(o.cap ? o.boa / o.cap : null), minutos: n0(o.min) });
-        for (const sr of res.shifts) porDiaTurno.push({ dia: d.date, turno: sr.ps.snap.code || sr.ps.snap.name, oee: r4(sr.r.oee), boa: n0(sr.r.good), scrap: n0(sr.r.scrap), abonoMin: n0(abByPs[sr.ps.id] || 0), descontoMin: n0(sr.r.deductMin), semProducao: sr.ps.off ? (sr.ps.offType === 'np' ? 'não programado' : 'programado') : null, motivo: sr.ps.off ? (sr.ps.offReason || '') : undefined, status: sr.ps.status });
+        for (const sr of res.shifts) porDiaTurno.push({ dia: d.date, turno: sr.ps.snap.code || sr.ps.snap.name, oee: r4(sr.r.oee), boa: n0(sr.r.good), scrap: n0(sr.r.scrap), abonoMin: n0(abByPs[sr.ps.id] || 0), descontoMin: n0(sr.r.deductMin), semProducao: sr.ps.off ? (sr.ps.offType === 'np' ? 'não programado' : 'programado') : null, motivo: sr.ps.off ? (sr.ps.offReason || '') : undefined, status: sr.ps.status, extraMin: n0(sr.agg.extraMin || 0), gel: GelTurno.exp(sr.ps, d.date) });
       }
     }
     const paradas = {}, d90 = U.addDays(today, -89);
@@ -5219,7 +5219,7 @@ App.views.launch = {
     h += SrvUI.dayCard(day, res);
     h += ForaTurnoUI.card(day, res);   /* 2.4.24 · TUR-02/03/04 */
     // turnos
-    h += `<div class="section grid g2">${res.shifts.map(sr => shiftBlock(day, sr)).join('')}</div>`;
+    h += `<div class="section grid g2">${res.shifts.map(sr => shiftBlock(day, sr, res)).join('')}</div>`;
     h += `<section class="card section"><header><h3>Validação</h3>${errs ? semB('crit', errs + ' erro(s)') : semB('ok', 'sem erros')} ${alerts ? semB('warn', alerts + ' alerta(s)') : ''}</header>${msgList(res.msgs)}</section>`;
     h += `<div class="section">${oeePanel(r, 'Cascata de perdas do dia')}</div><div class="section">${qaPanel(r)}</div>`;
     return h;
@@ -5228,7 +5228,7 @@ App.views.launch = {
     { const mb = root.querySelector('#dayMetas'); if (mb) mb.onclick = () => metasModal(); }
     bindDayBar(root); bindNoDay(root);
     const day = curDay(); if (!day || Engine.isOffDay(db(), day)) return;
-    SrvUI.bindDay(root, day); ForaTurnoUI.mount(root, day);
+    SrvUI.bindDay(root, day); ForaTurnoUI.mount(root, day); GelTurno.mount(root, day, Engine.computeDay(db(), day));
     root.querySelectorAll('[data-dayf]').forEach(el => el.addEventListener('change', () => run(() => Actions.setDayField(day.id, el.dataset.dayf, el.value.trim()))));
     root.querySelectorAll('[data-scrapmode]').forEach(b => b.addEventListener('click', async () => {
       const m = b.dataset.scrapmode; if (m === day.scrapMode) return;
@@ -5259,7 +5259,7 @@ App.views.launch = {
 };
 const KPI_HELP = { 'Confiabilidade do OEE': 'oeeReliab', 'Perda não explicada': 'unexplained', 'OEE do período': 'oee', 'Atendimento à meta': 'attain', 'Atendimento ao plano inicial': 'plan', 'Realizado × plano do mês': 'plan', 'Plano do mês': 'plan', 'Realizado no mês': 'plan', 'Ritmo do plano': 'plan', 'Necessidade por dia': 'plan', 'Projeção do mês': 'plan', 'Dias': 'planCal', 'Produção boa': 'production', 'OEE realizado': 'oee', 'OEE': 'oee', 'OEE meta (ponderada)': 'oeeTarget', 'Meta ponderada': 'oeeTarget', 'Disponibilidade': 'D', 'Performance': 'P', 'Qualidade': 'Q', 'Capacidade planejada': 'capacity', 'Capacidade': 'capacity', 'Meta diária oficial': 'metaDaily', 'Atendimento ao plano': 'attain', 'Atendimento': 'attain', 'Scrap': 'scrap', 'Cobertura do apontamento': 'coverage', 'Perdas': 'coverage', 'Perda total apurada': 'coverage', 'Cobertura': 'coverage', 'Divergência': 'divergenceMax' };
 function kpi(l, v, unit, s, extra = '') { const kd = kpiDeco(l, s); return `<div class="kpi ${kd.cls}" ${extra}>${kd.icon}<span class="l">${esc(l)}${ib(KPI_HELP[l])}</span><span class="v${belowMeta(s) ? ' below' : ''}">${v}${unit ? `<small>${esc(unit)}</small>` : ''}</span><span class="s">${s || ''}</span></div>`; }
-function shiftBlock(day, sr) {
+function shiftBlock(day, sr, res) {
   const ps = sr.ps, r = sr.r, lk = locked(day, ps);
   const cats = db().catalogs.filter(c => c.active !== false && Engine.catalogValid(c, day.date));
   return `<section class="shift"><header><span class="sw" style="background:${esc(ps.snap.color || 'var(--s1)')}"></span><h3>${esc(ps.snap.name)} <span class="muted small">${ps.snap.start || ''}–${ps.snap.end ? U.hhmm(U.toMin(ps.snap.end)) : ''}</span></h3>${stPill(ps.status)}
@@ -5276,6 +5276,7 @@ function shiftBlock(day, sr) {
       <div class="kv"><span class="l">D · P · Q ${ib('P')}</span><span class="v">${U.pct(r.D, 0)} · ${U.pct(r.P, 0)} · ${r.Q == null ? '—' : U.pct(r.Q, 1)}</span>${sr.scrapAllocated ? '<span class="small muted">Q do dia (scrap diário)</span>' : ''}</div>
       <div class="kv"><span class="l">Minutos de parada</span><span class="v">${U.fmt(r.aMin + r.pMin)} min</span><span class="small muted">${r.events} evento(s)</span></div>
       ${ps.summary ? '' : `<div class="kv" style="grid-column:1/-1"><span class="l">Abonos ${ib('breaks')}</span><div class="row">${abonoChips(day, ps, lk)}</div></div>
+      ${res ? GelTurno.bloco(day, sr, res) : ''}
       <label class="kvrow"><input type="checkbox" data-shoff="${ps.id}" ${ps.off ? 'checked' : ''} ${lk ? 'disabled' : ''}> <span>Turno sem produção</span>${ps.off ? `<span class="small muted">· ${offTxt(ps)}</span> <button type="button" class="btn xs" data-shoffed="${ps.id}">alterar</button>` : ''}</label>`}
       ${Sqdcp.formularioTurno(day, ps)}
       <label class="kv" style="grid-column:1/-1"><span class="l">Observações do turno</span><textarea data-psf="${ps.id}|note" maxlength="1500" data-fk="ps-note-${ps.id}">${esc(ps.note || '')}</textarea></label>
@@ -6898,6 +6899,7 @@ App.views.shift = {
       <section class="card section"><header><h3>Fechamento do turno</h3></header><div class="form">
         ${day.scrapMode === 'day' ? `<div class="kv"><span class="l">Scrap ${ib('scrap')}</span><span class="v">lançado como total do dia</span><span class="small muted">a liderança informa na tela Lançamento</span></div>` : `<label class="f"><span>Scrap do turno (peças) ${ib('scrap')}</span><input type="text" inputmode="numeric" class="n" id="opScrap" value="${ps.scrap == null ? '' : ps.scrap}" placeholder="ex.: 2500" ${lk ? 'disabled' : ''} data-fk="op-scrap" style="font-size:16px"></label>`}
         <div class="f wide"><span>Abonos do turno ${ib('breaks')}</span><div class="row">${abonoChips(day, ps, lk)}</div></div>
+        ${GelTurno.bloco(day, sr, res)}
         <label class="f chk wide"><input type="checkbox" data-shoff="${ps.id}" ${ps.off ? 'checked' : ''} ${lk ? 'disabled' : ''}> Turno sem produção ${ps.off ? `<span class="small muted">· ${offTxt(ps)}</span> <button type="button" class="btn xs" data-shoffed="${ps.id}">alterar</button>` : ''}</label>
         <label class="f wide"><span>Observações do turno</span><textarea id="opNote" maxlength="1500" ${lk ? 'disabled' : ''} data-fk="op-note" placeholder="Ocorrências, trocas, ajustes, o que a próxima equipe precisa saber">${esc(ps.note || '')}</textarea></label></div>
         <div class="row" style="margin-top:12px">${lk ? '' : `<button class="btn primary" id="opDone" style="font-size:16px;padding:10px 20px">${I.check} Concluir turno</button> ${ib('operatorConclude')}`}<span class="small muted">A liderança confere e fecha o turno na tela Lançamento.</span></div></section></div>`;
@@ -6915,6 +6917,7 @@ App.views.shift = {
     const stb = root.querySelector('#opStart'); if (stb) stb.onclick = () => run(() => Actions.createDay(O.date, 'line_vac', 'mac_line'), 'Lançamento iniciado.');
     if (!day || Engine.isOffDay(d, day)) return;
     const ps = day.shifts.find(p => p.shiftId === O.shiftId); if (!ps) return;
+    GelTurno.mount(root, day, Engine.computeDay(d, day));
     const cat = root.querySelector('#opCat'); if (cat) cat.onchange = () => run(() => Actions.setShiftField(day.id, ps.id, 'initialCatalogId', cat.value || null));
     root.querySelectorAll('[data-ivcat]').forEach(s => s.onchange = () => run(() => Actions.setIv(day.id, s.dataset.ivcat, 'catalogId', s.value || null)));
     const sc = root.querySelector('#opScrap'); if (sc) sc.onchange = () => { const v = sc.value.trim() === '' ? null : +sc.value.replace(/\./g, '').replace(',', '.'); if (v != null && (!isFinite(v) || v < 0)) { toast('Scrap inválido: informe peças.', true); return; } run(() => Actions.setShiftField(day.id, ps.id, 'scrap', v)); };
@@ -9031,6 +9034,89 @@ const ForaTurnoUI = {
 };
 HELP.foraTurno = ['Turno não produtivo e produção fora de turno', [['O que é turno não produtivo?', 'Turno que existe no cadastro, mas cuja produção não conta para ele mesmo (Portal › Turnos › vigência "Turno não produtivo"). Ele não entra no dia nem no plano.'], ['E a produção feita nessa janela?', 'As caixas do servidor (MES) continuam gravadas na hora real. Para apuração, cada trecho contínuo vai para um turno produtivo: se emenda com o fim do turno anterior (a linha não parou na troca), conta nele; senão, conta no próximo turno produtivo (ex.: madrugada → turno A do dia seguinte).'], ['Habilitar no dia', 'Torna o turno produtivo só naquele dia: o tempo dele vira planejado e a produção conta nele.'], ['OEE reportado × real', 'Reportado = com a reatribuição (o oficial; a Performance pode passar de 100%). Real = pelo horário real, sem essa produção; o OEE real do trecho usa como tempo planejado da 1ª à última caixa.']]];
 HELP.foraTurnoOee = ['OEE real do trecho', [['Como é calculado?', 'Produção do trecho ÷ (PPH do catálogo × tempo da 1ª à última caixa). Mostra o quanto a linha rendeu enquanto produziu fora do turno.']]];
+
+/* ===== Produção 2.4.28 · Fase 4 · 4c do briefing (GEL-03 / PRD-10): Registrar scrap de gel na página de cada turno =====
+   G1: o scrap de gel registrado aqui fica na base da Produção (no turno do dia: ps.gelScrap) e vai para o exports
+   (porDiaTurno[].gel); a Gestão de Gel lê de lá (passo 4d). Mesmos campos e regras do Gel: equipamento (Portal, categoria
+   Equipamento – Gel), descarte (composição e categoria Tubos/Barril/Purga), catálogo, peso bruto da balança, nº de barris
+   (composição barril) e motivos (com kg opcional por motivo); "sem scrap de gel neste turno".
+   A conta é a comum do kit (vacGel.pesagem) com os parâmetros do Portal (vacGel.ctx): o mesmo número que o Gel calcula.
+   Entra no script principal pelo build.py (antes do boot). */
+const GelTurno = {
+  ctx() { try { return vacGel.ctx(); } catch (e) { return null; } },
+  /* códigos (Portal) dos catálogos produzidos no turno */
+  catsDoTurno(res, ps) { const d = db(); const ids = [...new Set((res.flat || []).filter(f => f.ps === ps && f.cat).map(f => f.cat))]; return ids.map(id => ((d.catalogs || []).find(c => c.id === id) || {}).code).filter(Boolean); },
+  /* o turno mostra o gel? há equipamento de gel no Portal e algum catálogo do turno usa gel (ou já tem registro) */
+  mostra(res, ps, C) { if (ps.gelScrap) return true; if (!C || !C.equips().length) return false; return this.catsDoTurno(res, ps).some(c => C.usaGel(c)); },
+  /* conta de uma pesagem (mesma da Gestão de Gel) */
+  calc(en, date, C) { const eq = C && C.eq(en.e); if (!eq) return null; const desc = (eq.descs || []).find(x => x.id === en.d); if (!desc) return null;
+    const kg = typeof en.kg === 'string' ? (vacNumero(en.kg) || 0) : (+en.kg || 0);
+    return vacGel.pesagem({ desc, taraEq: eq.tara, kg, nb: en.nb, cg: C.cat(en.cat) || { fmt: '100' }, date, fmts: C.fmts, params: C.params }); },
+  soma(gs, date, C) { const o = { T: 0, B: 0, P: 0, n: 0 }; if (!gs || gs.none) return o; for (const en of gs.eq || []) { const c = this.calc(en, date, C); if (!c) continue; o[c.scat] += c.gel; o.n++; } return o; },
+  /* para o exports (porDiaTurno[].gel): as pesagens como foram registradas e o gel por categoria */
+  exp(ps, date) { const gs = ps.gelScrap; if (!gs) return undefined; const C = this.ctx(), k = this.soma(gs, date, C), r3 = v => Math.round(v * 1000) / 1000;
+    return { none: !!gs.none, pesagens: (gs.none ? [] : gs.eq || []).map(e => ({ e: e.e, d: e.d, cat: e.cat || null, kg: +e.kg || 0, nb: +e.nb || 0, mots: (e.mots || []).map(m => ({ m: m.m, kg: +m.kg || 0 })) })), kg: { T: r3(k.T), B: r3(k.B), P: r3(k.P) }, em: gs.em || null, por: gs.por || null }; },
+  salvar(dayId, psId, gs) {
+    Store.mutate((d, audit) => {
+      const day = d.productionDays.find(x => x.id === dayId && !x.deleted); const ps = day && day.shifts.find(p => p.id === psId && !p.deleted); if (!ps) throw new Error('Turno não encontrado.');
+      if (day.status === 'fechado' || ps.status === 'fechado') throw new Error('O turno está fechado. Reabra para registrar o scrap de gel.');
+      const by = Store.S.user || '—', antes = ps.gelScrap ? JSON.stringify(ps.gelScrap.none ? 'sem scrap' : (ps.gelScrap.eq || []).length + ' pesagem(ns)') : null;
+      ps.gelScrap = { none: !!gs.none, eq: gs.none ? [] : (gs.eq || []).map(e => ({ e: String(e.e), d: String(e.d), cat: e.cat ? String(e.cat) : null, kg: +e.kg || 0, nb: +e.nb || 0, mots: (e.mots || []).filter(m => m.m).map(m => ({ m: String(m.m), kg: +m.kg || 0 })) })), em: U.nowIso(), por: by };
+      audit({ action: 'edição', entity: 'turno', entityId: ps.id, field: 'scrap de gel', before: antes, after: ps.gelScrap.none ? 'sem scrap' : ps.gelScrap.eq.length + ' pesagem(ns)', reason: 'GEL-03' });
+      day._rev = (day._rev || 0) + 1; day.updatedAt = U.nowIso(); day.updatedBy = by;
+    });
+  },
+  /* bloco no turno (Lançamento) */
+  bloco(day, sr, res) {
+    const ps = sr.ps, C = this.ctx(); if (!this.mostra(res, ps, C)) return '';
+    const gs = ps.gelScrap, k = this.soma(gs, day.date, C), lk = day.status === 'fechado' || ps.status === 'fechado', f3 = v => U.fmt(v, 3);
+    const txt = !gs ? '<span class="muted">sem registro</span>' : gs.none ? 'sem scrap de gel neste turno' : `${k.n} pesagem(ns) · gel Tubos ${f3(k.T)} kg · Barril ${f3(k.B)} kg · Purga ${f3(k.P)} kg`;
+    return `<div class="kv" style="grid-column:1/-1"><span class="l">Scrap de gel ${ib('gelScrap')}</span><span class="v small">${txt}</span><button type="button" class="btn sm" data-gelscrap="${ps.id}" ${lk ? 'disabled' : ''}>Registrar scrap</button></div>`;
+  },
+  /* formulário (mesmos campos do Registrar scrap da Gestão de Gel) */
+  abrir(day, psId, res) {
+    const ps = day.shifts.find(p => p.id === psId), C = this.ctx(); if (!ps || !C) return;
+    const cats = this.catsDoTurno(res, ps).filter(c => C.usaGel(c)); const eqs = C.equips();
+    const W = { none: !!(ps.gelScrap && ps.gelScrap.none), eq: JSON.parse(JSON.stringify((ps.gelScrap && ps.gelScrap.eq) || [])) };
+    const novo = () => { const e = eqs[0]; return { e: e ? e.codigo : '', d: e && e.descs[0] ? e.descs[0].id : '', cat: cats[0] || '', kg: '', nb: 0, mots: [] }; };
+    if (!W.eq.length && !W.none) W.eq.push(novo());
+    const motsDe = en => { const e = C.eq(en.e), dsc = e && (e.descs || []).find(x => x.id === en.d); if (!dsc) return []; return (C.motivos || []).filter(m => m.active !== false && (!(m.comps || []).length || m.comps.includes(dsc.comp)) && (!(dsc.mots || []).length || dsc.mots.includes(m.id))); };
+    const linha = (en, i) => { const e = C.eq(en.e), dsc = e && (e.descs || []).find(x => x.id === en.d), c = this.calc(en, day.date, C);
+      return `<tr data-gi="${i}"><td><select data-gf="e">${eqs.map(x => `<option value="${esc(x.codigo)}" ${x.codigo === en.e ? 'selected' : ''}>${esc(x.codigo)} · ${esc(x.nome || '')}</option>`).join('')}</select></td>
+        <td><select data-gf="d">${(e ? e.descs : []).map(x => `<option value="${esc(x.id)}" ${x.id === en.d ? 'selected' : ''}>${esc((vacGel.COMPS[x.comp] || {}).l || x.comp)} → ${esc(vacGel.SCAT[x.cat] || x.cat)}</option>`).join('')}</select></td>
+        <td><select data-gf="cat"><option value="">—</option>${[...new Set(cats.concat(en.cat ? [en.cat] : []))].map(x => `<option value="${esc(x)}" ${x === en.cat ? 'selected' : ''}>${esc(x)}</option>`).join('')}</select></td>
+        <td><input data-gf="kg" inputmode="decimal" value="${esc(en.kg === 0 ? '' : String(en.kg).replace('.', ','))}" style="width:90px" placeholder="kg"></td>
+        <td>${dsc && dsc.comp === 'barril' ? `<input data-gf="nb" type="number" min="0" step="1" value="${esc(en.nb || '')}" style="width:70px">` : ''}</td>
+        <td class="small">${motsDe(en).map(m => { const x = (en.mots || []).find(y => y.m === m.id); return `<label style="margin-right:8px"><input type="checkbox" data-gm="${esc(m.id)}" ${x ? 'checked' : ''}> ${esc(m.name)}${x ? ` <input data-gmk="${esc(m.id)}" inputmode="decimal" value="${esc(x.kg ? String(x.kg).replace('.', ',') : '')}" placeholder="kg" style="width:60px">` : ''}</label>`; }).join('') || '<span class="muted">—</span>'}</td>
+        <td class="small n">${c ? (c.comp === 'barril' && c.est && vacGel.sobraAt(C.fmts, day.date) == null ? '<span class="ferr">sobra do barril não cadastrada no Portal</span>' : `gel <b>${U.fmt(c.gel, 3)}</b> kg${c.n ? ` · ${U.fmt(c.n)} tubos` : ''}`) : '—'}</td><td><button type="button" class="btn xs" data-gdel="${i}">✕</button></td></tr>`; };
+    const html = () => `<p class="small muted">Mesmos campos e a mesma conta da Gestão de Gel. Fica neste turno da Produção e a Gestão de Gel lê daqui. Equipamentos, descartes, formatos e motivos vêm do Portal.</p>
+      <label class="chk"><input type="checkbox" id="gNone" ${W.none ? 'checked' : ''}> Sem scrap de gel neste turno</label>
+      ${W.none ? '' : `<div class="tw"><table><thead><tr><th>Equipamento</th><th>Descarte → categoria</th><th>Catálogo</th><th>Peso bruto</th><th>Barris</th><th>Motivos</th><th class="n">Gel</th><th></th></tr></thead><tbody>${W.eq.map(linha).join('')}</tbody></table></div>
+      <button type="button" class="btn sm" id="gAdd">+ Pesagem</button>`}
+      ${!eqs.length ? '<p class="ferr small">Nenhum equipamento da categoria Equipamento – Gel com descartes no Portal.</p>' : ''}`;
+    modal(`Registrar scrap de gel · ${ps.snap.name} · ${U.brDate(day.date)}`, `<div id="gBox">${html()}</div>`, `<button class="btn" data-close>Cancelar</button><button class="btn primary" id="gOk">Gravar</button>`, (el, close) => {
+      const box = el.querySelector('#gBox'), draw = () => { box.innerHTML = html(); };
+      box.addEventListener('change', e => { const t = e.target, tr = t.closest('[data-gi]');
+        if (t.id === 'gNone') { W.none = t.checked; if (!W.none && !W.eq.length) W.eq.push(novo()); return draw(); }
+        if (!tr) return; const en = W.eq[+tr.dataset.gi];
+        if (t.dataset.gf === 'e') { en.e = t.value; const x = C.eq(en.e); en.d = x && x.descs[0] ? x.descs[0].id : ''; en.mots = []; }
+        else if (t.dataset.gf === 'd') { en.d = t.value; en.mots = []; }
+        else if (t.dataset.gf) en[t.dataset.gf] = t.dataset.gf === 'nb' ? (+t.value || 0) : t.value;
+        else if (t.dataset.gm) { en.mots = en.mots || []; if (t.checked) en.mots.push({ m: t.dataset.gm, kg: 0 }); else en.mots = en.mots.filter(m => m.m !== t.dataset.gm); }
+        else if (t.dataset.gmk) { const m = (en.mots || []).find(x => x.m === t.dataset.gmk); if (m) m.kg = vacNumero(t.value) || 0; }
+        draw(); });
+      box.addEventListener('click', e => { const a = e.target.closest('#gAdd'), x = e.target.closest('[data-gdel]'); if (a) { W.eq.push(novo()); draw(); } if (x) { W.eq.splice(+x.dataset.gdel, 1); draw(); } });
+      el.querySelector('#gOk').onclick = () => {
+        const eq = W.none ? [] : W.eq.map(en => ({ ...en, kg: typeof en.kg === 'string' ? (en.kg.trim() === '' ? 0 : vacNumero(en.kg)) : +en.kg || 0 }));
+        if (eq.some(en => !isFinite(en.kg) || en.kg < 0)) return toast('Peso inválido: use número (ex.: 2,345).', true);
+        if (eq.some(en => !(en.kg > 0) && !(en.nb > 0))) return toast('Cada pesagem precisa do peso (ou do nº de barris, no barril).', true);
+        run(() => this.salvar(day.id, ps.id, { none: W.none, eq }), 'Scrap de gel gravado.').then(() => { close(); render(); });
+      };
+    }, { wide: true });
+  },
+  mount(root, day, res) { root.querySelectorAll('[data-gelscrap]').forEach(b => b.onclick = () => this.abrir(day, b.dataset.gelscrap, res)); }
+};
+HELP.gelScrap = ['Scrap de gel do turno', [['O que é?', 'As pesagens de scrap de gel do turno (Registrar scrap): equipamento, descarte, catálogo e peso da balança. A conta tira a embalagem e divide pelo peso da composição, igual à Gestão de Gel.'], ['Onde fica?', 'No turno da Produção. A Gestão de Gel lê daqui (a partir da data de corte do Portal) para o resumo do dia, o índice e o saving.'], ['De onde vêm os equipamentos e os pesos?', 'Do Portal: equipamentos da categoria Equipamento – Gel (descartes) e Parâmetros › Gestão de Gel (formatos, perdas e motivos).']]];
 
 async function boot() {
   if(vacDemo.ativo){await loadPrefs();applyTheme();bindGlobal();Charts.bind();Store.S.user='Pessoa de demonstração';Store.enterExample(vacDemo.ler('oee'));
