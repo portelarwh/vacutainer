@@ -36,11 +36,30 @@ const { chromium } = require('playwright');
   const mud = await g.evaluate(() => { const C = JSON.parse(localStorage.getItem('vac.cadastros')); const h = todayISO(); const antes = paramsAt(h).pT;
     C.parametros.gel.processo.push({ from: addDays(h, -1), g: 0.96, pT: 3.5, pB: 0.7, pP: 0.48 }); localStorage.setItem('vac.cadastros', JSON.stringify(C)); render(); return [antes, paramsAt(h).pT, paramsAt(addDays(h, -3)).pT]; });
   ok(mud[0] === 2.0 && mud[1] === 3.5 && mud[2] === 2.0, '4a: vigência nova de perdas no Portal vale da data dela em diante (dias anteriores ficam com a anterior)');
+  const cruz = await g.evaluate(() => Object.keys(S.prodlog || {}).map(d => { const rec = S.prodlog[d], pc = prodCalc(d, rec); const t = {}; recOrdersEff(rec).forEach(o => t[o.cat] = (t[o.cat] || 0) + (+o.t || 0));
+    const k = vacGel.teorico({ tubosPorCat: t, date: d, cg: id => ({ fmt: catFmt(id), vig: catVigList(catById(id)) }), fmts: S.config.fmts, params: S.config.params }); return [d, pc.teo, k.teo, pc.gelBons, k.gelBons]; }).filter(x => Math.abs(x[1] - x[2]) > 1e-9 || Math.abs(x[3] - x[4]) > 1e-9));
+  ok(!cruz.length, '4b: teórico do kit (vacGel.teorico) igual ao prodCalc do Gel em todos os dias registrados' + (cruz.length ? ' · ' + JSON.stringify(cruz[0]) : ''));
   const trav = await g.evaluate(async () => { const r = {}; for (const sec of ['proc', 'fmts', 'motivos', 'equip']) { openConfig(sec); await new Promise(x => setTimeout(x, 60)); const b = document.querySelector('#ov .cfgbody');
       r[sec] = { banner: /cadastro geral do Portal/.test(b.innerText), livres: [...b.querySelectorAll('input,select,textarea,button')].filter(el => !el.disabled && !el.closest('a') && el.id !== 'ctPortal').length }; }
     document.querySelectorAll('.overlay').forEach(o => o.remove()); return r; });
   for (const [sec, r] of Object.entries(trav)) ok(r.banner && r.livres === 0, `4a: Gel › Configuração › ${sec} só consulta, com "Editar no Portal" (livres: ${r.livres})`);
   await g.evaluate(() => localStorage.removeItem('vac.cadastros'));
+
+  /* ---------- 4b: a pesagem do Gel é a do kit (vacGel), com os mesmos resultados de antes ---------- */
+  const ref = require('./bases/gel-pesagens.json');
+  const g4b = await nova('Gestão-Gel-Vacutainer.html', 'Gel 4b');
+  const dif = await g4b.evaluate(ref => { document.querySelectorAll('.overlay').forEach(o => o.remove()); localStorage.removeItem('vac.cadastros'); enterDemo();
+    S.config.params = [{ from: '2000-01-01', g: 0.97, pT: 2.1, pB: 0.71, pP: 0.5 }, { from: '2026-06-01', g: 0.95, pT: 2, pB: 0.7, pP: 0.48 }];
+    S.config.fmts = [{ from: '2000-01-01', tara: 70, taraP: 4, sobra: 1.3, f: { '100': { tubo: 4.8, gel: 0.83, adit: 0.02, tr: 2.31 }, '75': { tubo: 3.55, gel: 0.82, adit: 0.015, tr: 2.29 } } }, { from: '2026-06-01', tara: 72, taraP: 5, f: { '100': { tubo: 4.81, gel: 0.84, adit: 0.021, tr: 2.3 }, '75': { tubo: 3.56, gel: 0.83, adit: 0.016, tr: 2.3 } } }];
+    const comps = ['completo', 'tubogel', 'spray', 'gel', 'barril'], cats = ['T', 'B', 'P'];
+    S.config.equips = [{ id: 'eqA', name: 'A', tara: '', active: true, descs: [] }, { id: 'eqB', name: 'B', tara: 90, active: true, descs: [] }];
+    for (const e of S.config.equips) comps.forEach(c => cats.forEach(k => e.descs.push({ id: c + '-' + k, comp: c, cat: k })));
+    S.catalogs = [{ id: 'c1', num: '111111', fmt: '100', vig: [{ from: '2000-01-01', gTubo: 0.85, bomKg: 8.8, bomBase: 10000, tol: 6 }, { from: '2026-07-01', gTubo: 0.87, bomKg: 8.9, bomBase: 10000, tol: 6 }] }, { id: 'c2', num: '222222', fmt: '75' }, { id: 'c3', num: '333333', fmt: '100', gTubo: 0.9 }];
+    const eqv = (a, b) => JSON.stringify(a, (k, v) => typeof v === 'number' ? +v.toFixed(9) : v) === JSON.stringify(b, (k, v) => typeof v === 'number' ? +v.toFixed(9) : v);
+    return ref.filter(c => !eqv(scrapCalc(c.ent, c.date), c.r)).slice(0, 3).map(c => [c, scrapCalc(c.ent, c.date)]); }, ref);
+  ok(ref.length === 1440 && dif.length === 0, `4b: pesagem do Gel pela conta comum (vacGel) igual à anterior nos ${ref.length} casos (5 composições × 3 categorias × 2 formatos × vigências × embalagem)${dif.length ? ' · diferença: ' + JSON.stringify(dif[0]).slice(0, 300) : ''}`);
+  const kt = await g4b.evaluate(() => { const r = vacGel.teorico({ tubosPorCat: { a: 1000000 }, date: '2026-03-10', cg: () => ({ fmt: '100', vig: [{ from: '2000-01-01', gTubo: 0.85 }] }), fmts: [], params: [{ from: '2000-01-01', g: 0.97, pT: 2, pB: 1, pP: 1 }] }); return r; });
+  ok(Math.abs(kt.gelBons - 850) < 1e-9 && Math.abs(kt.teo - 850 / 0.96) < 1e-9 && Math.abs(kt.sTeo.T - kt.teo * 0.02) < 1e-9, '4b: vacGel.teorico = gel nos tubos bons ÷ (1 − perdas), com a parte de cada categoria');
 
   /* ---------- Portal: Parâmetros › Gestão de Gel, fichas e migração ---------- */
   const po = await nova('Portal.html', 'Portal', '#geral');

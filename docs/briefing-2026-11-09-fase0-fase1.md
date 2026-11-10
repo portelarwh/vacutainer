@@ -384,3 +384,18 @@ Com G1 a G5 respondidas, começo pelo 4a. É a maior das fases até aqui; entreg
 - Fica no Gel: os **locais** de estoque (só o Gel usa) e as preferências de tela.
 
 Próximo: 4b (a conta do gel num módulo comum do kit, usado pelo Gel e pela Produção).
+
+### Passo 4b · conta do gel comum no kit (`vacGel`) · Gel 2.18, kit
+
+- `vacGel`, em `fontes/kit/kit_v21.js` (em todas as páginas), tem a conta do gel em **funções puras**:
+  - `pesagem`: peso da balança → gel líquido, tubos e materiais, pela composição e pela categoria;
+  - `teorico`: gel nos tubos bons ÷ (1 − perdas), com a parte de cada categoria;
+  - `bom` e `gelPorTubo`;
+  - as leituras com vigência `fmtAt`, `procAt` e `sobraAt`;
+  - `ctx()`, que monta tudo a partir do cadastro do Portal para a Produção usar.
+- A Gestão de Gel passa a calcular a pesagem pelo kit (`scrapCalc` → `vacGel.pesagem`).
+- **Conferido:**
+  - 1.440 pesagens têm o mesmo resultado de antes. As referências foram geradas com a conta antiga e guardadas em `testes/bases/gel-pesagens.json`. Os casos combinam as 5 composições, 3 categorias e 2 formatos, embalagem própria ou padrão, barril estimado ou pesado e duas vigências.
+  - O teórico do kit é igual ao `prodCalc` do Gel em todos os dias registrados.
+
+Próximo: 4c (Registrar scrap no turno da Produção).
