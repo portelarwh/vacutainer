@@ -218,24 +218,40 @@ const Sqdcp = (() => {
   const rotEstado = r => ({ sem: 'Não informado', parcial: 'Dados parciais', info: 'Sem meta cadastrada', ok: 'Na meta', crit: 'Fora da meta' })[r.estado] + (r.estado === 'crit' && r.parcial ? ' · parcial' : '');
   /* PRD-09 (Fase 5 · 5d): barras por dia, verdes quando atingem a meta e vermelhas quando não (pelo sentido do indicador);
      âmbar = parcial, azul = sem meta. Linha só para a meta (tracejada) e para a tendência (a partir de 4 valores). */
+  /* 2.4.41 · homologação (PRD-23): mesmo padrão dos gráficos da Visão Geral, para ler a distância na A4 — valor em cada barra, dia em cada
+     coluna, meta com o valor, legenda dentro do gráfico e fontes grandes (viewBox 1000×250 na mesma proporção da área da folha: rótulos de 20–26 unidades ≈ 15–19 pt). */
   function grafico(r) {
     if (r.c.fonte) return '<div class="sq-sem-serie">' + e(r.nota) + '</div>';
     const valores = r.serie.map(p => p.valor).filter(v => v != null);
     if (!valores.length) return '<div class="sq-sem-serie">Sem valores informados para desenhar a evolução.</div>';
-    const min = Math.min(0, ...valores, r.meta || 0), max = Math.max(1, ...valores, r.meta || 0) * 1.1, n = r.serie.length;
-    const passo = 880 / Math.max(1, n), larg = Math.max(3, passo * 0.7), x = i => 50 + passo * i + passo / 2, y = v => 205 - (v - min) / (max - min) * 175, y0 = y(0);
+    const n = r.serie.length, X0 = 78, X1 = 935, Y0 = 168, Y1 = 64;
+    const min = Math.min(0, ...valores, r.meta || 0), max = Math.max(1e-9, ...valores, r.meta || 0) * 1.04;
+    const passo = (X1 - X0) / Math.max(1, n), larg = Math.max(4, passo * 0.72), x = i => X0 + passo * i + passo / 2, y = v => Y0 - (v - min) / ((max - min) || 1) * (Y0 - Y1), y0 = y(0);
     const cor = p => { if (p.parcial) return '#9b6600'; if (r.meta == null) return '#235f91'; const ruim = r.sentido === 'menor' ? p.valor > r.meta : p.valor < r.meta; return ruim ? '#c62828' : '#2e7d32'; };
-    const barras = r.serie.map((p, i) => p.valor == null ? '' : '<rect x="' + (x(i) - larg / 2).toFixed(1) + '" y="' + Math.min(y(p.valor), y0).toFixed(1) + '" width="' + larg.toFixed(1) + '" height="' + Math.max(1, Math.abs(y0 - y(p.valor))).toFixed(1) + '" fill="' + cor(p) + '" rx="2"><title>' + e(p.dia.split('-').reverse().join('/') + ': ' + fmt(p.valor) + (p.parcial ? ' (parcial)' : '')) + '</title></rect>').join('');
-    // tendência: reta dos mínimos quadrados sobre os dias com valor
+    const curto = v => { const a = Math.abs(v); if (a >= 1e6) return (v / 1e6).toLocaleString('pt-BR', { maximumFractionDigits: 1 }) + ' mi'; if (a >= 1e4) return (v / 1e3).toLocaleString('pt-BR', { maximumFractionDigits: 0 }) + ' mil'; return v.toLocaleString('pt-BR', { maximumFractionDigits: a < 10 ? 1 : 0 }); };
+    const fv = Math.max(14, Math.min(26, passo * 0.8)), vert = n > 12, fd = Math.max(14, Math.min(24, passo * 0.85)), cadaDia = passo >= fd * 1.15 ? 1 : 2;
+    const barras = r.serie.map((p, i) => {
+      if (p.valor == null) return '';
+      const yt = Math.min(y(p.valor), y0), h = Math.max(1, Math.abs(y0 - y(p.valor))), t = curto(p.valor), cx = x(i);
+      const rect = '<rect x="' + (cx - larg / 2).toFixed(1) + '" y="' + yt.toFixed(1) + '" width="' + larg.toFixed(1) + '" height="' + h.toFixed(1) + '" fill="' + cor(p) + '" rx="2"><title>' + e(p.dia.split('-').reverse().join('/') + ': ' + fmt(p.valor) + (p.parcial ? ' (parcial)' : '')) + '</title></rect>';
+      const comp = t.length * fv * 0.6 + 8, dentro = vert && h > comp;
+      const lbl = vert
+        ? '<text transform="translate(' + (cx + fv * 0.35).toFixed(1) + ',' + (dentro ? yt + 6 : yt - 6).toFixed(1) + ') rotate(-90)" text-anchor="' + (dentro ? 'end' : 'start') + '" font-size="' + fv.toFixed(0) + '" font-weight="700" fill="' + (dentro ? '#ffffff' : '#1b2733') + '">' + e(t) + '</text>'
+        : '<text x="' + cx.toFixed(1) + '" y="' + (yt - 8).toFixed(1) + '" text-anchor="middle" font-size="' + fv.toFixed(0) + '" font-weight="700" fill="#1b2733">' + e(t) + '</text>';
+      return rect + lbl;
+    }).join('');
     const pts = r.serie.map((p, i) => [i, p.valor]).filter(q => q[1] != null); let tend = '';
     if (pts.length >= 4) { const k = pts.length, sx = pts.reduce((a, q) => a + q[0], 0), sy = pts.reduce((a, q) => a + q[1], 0), sxx = pts.reduce((a, q) => a + q[0] * q[0], 0), sxy = pts.reduce((a, q) => a + q[0] * q[1], 0), den = k * sxx - sx * sx;
-      if (den) { const b = (k * sxy - sx * sy) / den, a = (sy - b * sx) / k, i0 = pts[0][0], i1 = pts[k - 1][0]; tend = '<line x1="' + x(i0) + '" y1="' + y(a + b * i0) + '" x2="' + x(i1) + '" y2="' + y(a + b * i1) + '" stroke="#5f6b7a" stroke-width="2" stroke-dasharray="3 5"/><text x="' + (x(i0) + 4) + '" y="' + (y(a + b * i0) - 8) + '" font-size="13" fill="#5f6b7a">Tendência</text>'; } }
-    return '<svg class="sq-grafico" role="img" aria-label="Valores por dia no mês: verde atingiu a meta, vermelho não atingiu" viewBox="0 0 1000 250">' +
-      '<line x1="50" y1="' + y0 + '" x2="940" y2="' + y0 + '" stroke="#b8c0cc"/>' + barras + tend +
-      (r.meta != null ? '<line x1="50" x2="940" y1="' + y(r.meta) + '" y2="' + y(r.meta) + '" stroke="#785300" stroke-width="2" stroke-dasharray="8 6"/><text x="950" y="' + (y(r.meta) + 5) + '" font-size="14">Meta</text>' : '') +
-      r.serie.map((p, i) => (i % 4 === 0 || i === n - 1 ? '<text x="' + x(i) + '" y="232" text-anchor="middle" font-size="15">' + p.dia.slice(-2) + '</text>' : '')).join('') +
-      '<text x="44" y="27" font-size="15" text-anchor="end">' + e(fmt(max)) + '</text><text x="44" y="209" font-size="15" text-anchor="end">' + e(fmt(min)) + '</text></svg>' +
-      '<p class="sq-nota">Barras: verde atingiu a meta · vermelho não atingiu · âmbar parcial · azul sem meta. Linhas: meta (tracejada) e tendência.</p>';
+      if (den) { const b = (k * sxy - sx * sy) / den, a = (sy - b * sx) / k, i0 = pts[0][0], i1 = pts[k - 1][0]; tend = '<line x1="' + x(i0) + '" y1="' + y(a + b * i0) + '" x2="' + x(i1) + '" y2="' + y(a + b * i1) + '" stroke="#4a5868" stroke-width="3" stroke-dasharray="4 7"/>'; } }
+    const meta = r.meta != null ? '<line x1="' + X0 + '" x2="' + X1 + '" y1="' + y(r.meta) + '" y2="' + y(r.meta) + '" stroke="#785300" stroke-width="3" stroke-dasharray="12 8"/><text x="' + (X1 + 4) + '" y="' + (y(r.meta) - 6) + '" font-size="22" font-weight="700" fill="#785300">Meta</text><text x="' + (X1 + 4) + '" y="' + (y(r.meta) + 20) + '" font-size="22" font-weight="700" fill="#785300">' + e(curto(r.meta)) + '</text>' : '';
+    const dias = r.serie.map((p, i) => (i % cadaDia === 0 || i === n - 1 ? '<text x="' + x(i).toFixed(1) + '" y="' + (Y0 + 26) + '" text-anchor="middle" font-size="' + fd.toFixed(0) + '" fill="#1b2733">' + p.dia.slice(-2) + '</text>' : '')).join('');
+    const topo = Math.max(...valores, r.meta || 0), eixo = '<text x="' + (X0 - 8) + '" y="' + (y(topo) + 7) + '" font-size="20" text-anchor="end" fill="#4a5868">' + e(curto(topo)) + '</text><text x="' + (X0 - 8) + '" y="' + (Y0 + 7) + '" font-size="20" text-anchor="end" fill="#4a5868">' + e(curto(min)) + '</text>';
+    const leg = [['#2e7d32', 'Atingiu a meta'], ['#c62828', 'Não atingiu'], ['#9b6600', 'Parcial'], ...(r.meta == null ? [['#235f91', 'Sem meta']] : [])];
+    let lx = X0; const legenda = leg.map(([c, t]) => { const s = '<rect x="' + lx + '" y="' + (Y0 + 46) + '" width="20" height="20" rx="3" fill="' + c + '"/><text x="' + (lx + 30) + '" y="' + (Y0 + 63) + '" font-size="20" fill="#1b2733">' + t + '</text>'; lx += 36 + t.length * 11.5; return s; }).join('')
+      + (r.meta != null ? '<line x1="' + lx + '" x2="' + (lx + 36) + '" y1="' + (Y0 + 56) + '" y2="' + (Y0 + 56) + '" stroke="#785300" stroke-width="3" stroke-dasharray="12 8"/><text x="' + (lx + 44) + '" y="' + (Y0 + 63) + '" font-size="20" fill="#1b2733">Meta</text>' : '')
+      + (tend ? '<line x1="' + (lx + 120) + '" x2="' + (lx + 156) + '" y1="' + (Y0 + 56) + '" y2="' + (Y0 + 56) + '" stroke="#4a5868" stroke-width="3" stroke-dasharray="4 7"/><text x="' + (lx + 164) + '" y="' + (Y0 + 63) + '" font-size="20" fill="#1b2733">Tendência</text>' : '');
+    return '<svg class="sq-grafico" role="img" aria-label="Valores por dia no mês: verde atingiu a meta, vermelho não atingiu" viewBox="0 0 1000 250" font-family="Arial, Helvetica, sans-serif">' +
+      '<line x1="' + X0 + '" y1="' + y0 + '" x2="' + X1 + '" y2="' + y0 + '" stroke="#9aa5b1" stroke-width="2"/>' + barras + tend + meta + dias + eixo + legenda + '</svg>';
   }
   function calendario(r) {
     const first = UI.dia.slice(0, 7) + '-01', n = +U.monthEnd(first).slice(-2), offset = (new Date(first + 'T12:00:00').getDay() + 6) % 7;

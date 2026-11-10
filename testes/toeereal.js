@@ -36,6 +36,22 @@ const { chromium } = require('playwright');
     out.kpis = kl; out.ib = ['oeeRep', 'oeeReal', 'foraTurnoKpi'].every(k => document.querySelector(`.section.kpis [data-help="${k}"]`));
     const tx = s => s.textContent.replace(/\s+/g, ' '); out.cartoes = document.querySelectorAll('section.shift').length;
     out.B = [...document.querySelectorAll('section.shift:not(.np)')].map(tx).find(t => /Turno B/.test(t)) || ''; out.C = [...document.querySelectorAll('section.shift.np')].map(tx).join(' ');
+    // 2.4.41 · cartão do turno (PRD-10) e popup de scrap (PRD-13)
+    out.cardB = out.B; out.temProcessada = /Produção processada/i.test(document.querySelector('section.shift:not(.np)').textContent);
+    const psB = dd.productionDays.find(x => x.date === X).shifts.find(p => p.snap.code === 'T2');
+    document.querySelector(`[data-scrapturno="${psB.id}"]`).click(); await w(200);
+    let ov = document.querySelector('.overlay'); out.scModal = !!ov && !!ov.querySelector('#scSo') && ov.querySelectorAll('[data-scm]').length > 2;
+    out.scDesab = [...ov.querySelectorAll('[data-scm]')].every(i => i.disabled);
+    ov.querySelector('#scSo').click(); await w(50);
+    const ins = [...ov.querySelectorAll('[data-scm]')]; ins[0].value = '400'; ins[0].dispatchEvent(new Event('input')); ins[1].value = '850'; ins[1].dispatchEvent(new Event('input')); await w(50);
+    out.scSoma = ov.querySelector('#scSoma').textContent; ov.querySelector('#scOk').click(); await w(400);
+    const psB2 = db().productionDays.find(x => x.date === X).shifts.find(p => p.snap.code === 'T2'); out.scGrav = [psB2.scrap, JSON.stringify(psB2.scrapMaq)];
+    document.querySelector(`[data-scrapturno="${psB.id}"]`).click(); await w(200); ov = document.querySelector('.overlay');
+    ov.querySelector('#scSo').click(); await w(50); ov.querySelector('#scTot').value = '1.000'; ov.querySelector('#scOk').click(); await w(400);
+    const psB3 = db().productionDays.find(x => x.date === X).shifts.find(p => p.snap.code === 'T2'); out.scTot = [psB3.scrap, psB3.scrapMaq == null];
+    out.scTxt = (document.querySelector(`[data-scrapturno="${psB.id}"]`).closest('.kv') || {}).textContent || '';
+    // Painel: indicadores novos
+    out.pnK = ['oeeRep', 'oeeReal', 'fora', 'caixas'].every(k => PN_K[k]) && PN_MINE().kpis.includes('oeeReal');
     // Editar cards
     document.getElementById('kcEdit').click(); await w(100);
     const cb = [...document.querySelectorAll('[data-kc]')]; out.edit = cb.map(c => c.dataset.kc);
@@ -87,6 +103,10 @@ const { chromium } = require('playwright');
   ok(R.rotulos >= R.colunas + 3, `gráfico do hora a hora com rótulo em todas as colunas, mais as horas do C com caixas (${R.rotulos} rótulos, ${R.colunas} intervalos)`);
   ok(['Último catálogo do período', 'Produção boa', 'OEE realizado', 'Disponibilidade', 'Performance', 'Qualidade', 'Capacidade planejada', 'Meta oficial do período', 'OEE reportado', 'OEE real', 'Fora de turno', 'Caixas do MES'].every(k => R.vgCards.includes(k)), `Visão Geral com os cartões do Lançamento (${R.vgCards.join(' · ')})`);
   ok(R.vgFoldBtns >= 5 && R.vgDobrou && R.maisInd, `Visão Geral: ${R.vgFoldBtns} blocos recolhíveis (lembrado neste computador); Mais indicadores continua`);
+  ok(/Produção dentro do turno/i.test(R.cardB) && /Produção fora do turno/i.test(R.cardB) && /54 caixa/.test(R.cardB) && /22:47–23:40/.test(R.cardB) && /Produção total considerada/i.test(R.cardB) && /OEE reportado/i.test(R.cardB) && /OEE real/i.test(R.cardB) && !/OEE realizado/i.test(R.cardB) && !R.temProcessada, 'PRD-10: cartão do turno com produção dentro / fora (caixas e horário) / total considerada, OEE reportado e OEE real; sem "Produção processada"');
+  ok(R.scModal && R.scDesab && R.scSoma === '1.250' && R.scGrav[0] === 1250 && /EQ01":400/.test(R.scGrav[1]), `PRD-13: popup de scrap por máquina (máquinas desabilitadas em "só o total"; soma ${R.scSoma}; gravado ${R.scGrav.join(' ')})`);
+  ok(R.scTot[0] === 1000 && R.scTot[1] && /1\.000 peças · só o total/.test(R.scTxt), 'PRD-13: "Reportar só o total" grava o total e limpa o por máquina; o cartão mostra o total');
+  ok(R.pnK, 'PRD-08: OEE reportado, OEE real, Fora de turno e Caixas do MES no catálogo do Painel; Meu painel com OEE real');
   ok(!pe.length, 'sem erros de página' + (pe.length ? ': ' + pe.slice(0, 3).join(' | ') : ''));
   await b.close(); console.log(errs.length ? `\n${errs.length} falha(s)` : '\nsem erros'); process.exit(errs.length ? 1 : 0);
 })().catch(e => { console.error(e); process.exit(1); });

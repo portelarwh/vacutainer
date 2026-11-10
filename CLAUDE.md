@@ -7,12 +7,12 @@ Plataforma de páginas HTML de arquivo único que trabalham juntas numa **pasta 
 | Página | Arquivo | Base | Versão | Como editar |
 |---|---|---|---|---|
 | Portal (cadastro geral, Administração) | `Portal.html` | `portal-base.json` + `vacutainer-cadastros.json` | 1.9.18 | direto no HTML |
-| Produção (OEE, plano, ordens SAP) | `OEE-Vacutainer.html` | `oee-vacutainer-base.json` (+ `ordens-base.json`) | 2.4.40 | **NÃO editar o HTML**: editar `fontes/producao/` e rodar o build |
-| Waste (perdas por ordem, KKBC) | `Perdas-Ordem.html` | `perdas-base.json` | 1.8.31 | direto no HTML |
+| Produção (OEE, plano, ordens SAP) | `OEE-Vacutainer.html` | `oee-vacutainer-base.json` (+ `ordens-base.json`) | 2.4.41 | **NÃO editar o HTML**: editar `fontes/producao/` e rodar o build |
+| Waste (perdas por ordem, KKBC) | `Perdas-Ordem.html` | `perdas-base.json` | 1.8.32 | direto no HTML |
 | Gestão de Gel | `Gestão-Gel-Vacutainer.html` | `fifo-base.json` | 2.23 · **em atualização** | direto no HTML |
 | Paradas | `Paradas.html` | `paradas-base.json` | 1.0.28 · **em atualização** | direto no HTML |
 | Equipamentos (com manutenção) | `Equipamentos.html` | `equipamentos-base.json` | 1.0.7 · **em atualização** | direto no HTML (saiu do gerador na 1.0.0; `docs/equipamentos-v1.md`) |
-| Iniciativas / Ações (Ações/Planner · KAS · OSM · 5S · programas) | `Iniciativas.html` | `iniciativas-base.json` | 1.1.2 · **em atualização** | direto no HTML (saiu do gerador na 1.0.0; `docs/iniciativas-planner.md`) |
+| Iniciativas / Ações (Ações/Planner · KAS · OSM · 5S · programas) | `Iniciativas.html` | `iniciativas-base.json` | 1.1.3 · **em atualização** | direto no HTML (saiu do gerador na 1.0.0; `docs/iniciativas-planner.md`) |
 | Projetos | `Projetos.html` | (`projetos-base.json`, ainda não existe) | 0.1.8 · **em construção** | **gerada**: `fontes/modelo/gerar_paginas.py` |
 
 Divisão final (Portal 1.7): Portal · Produção · Waste · Gestão de Gel · Paradas · **Equipamentos** (inclui manutenção; não há página Manutenção) · **Iniciativas** (uma página: Ações/Planner · KAS · OSM · 5S; não há OSM.html) · **Projetos** · Outros ▾ · ⚙ Administração.
@@ -25,7 +25,7 @@ SQDCP (Produção 2.4.20; gráficos em barras verde/vermelho com linha só para 
 ## Comandos
 
 ```bash
-python fontes/producao/build.py        # monta paginas/OEE-Vacutainer.html a partir de OEE-base-2.0.html + ordens_servico.js + ordens_tela.js + cad_sync.js + turnos_np.js + gel_turno.js + visao_geral.js + relatorio_sq.js + fase7.js + guia.js + oee_real.js + vg_hh.js + kit_v21.js
+python fontes/producao/build.py        # monta paginas/OEE-Vacutainer.html a partir de OEE-base-2.0.html + ordens_servico.js + ordens_tela.js + cad_sync.js + turnos_np.js + gel_turno.js + visao_geral.js + relatorio_sq.js + fase7.js + guia.js + oee_real.js + vg_hh.js + turno_card.js + kit_v21.js
 python fontes/kit/aplicar_kit21.py     # recopia fontes/kit/kit_v21.js, o catálogo fontes/kit/sistemas.js, o padrão visual fontes/kit/kit_visual.css e as bases em 00. Bases fontes/kit/kit_bases.js nas outras páginas (Portal, Waste, Paradas, Gel e as 3 em construção)
 python fontes/modelo/gerar_paginas.py  # gera Projetos.html (em construção) a partir de fontes/modelo/pagina-em-construcao.html e roda o aplicar_kit21.py
 python fontes/demo/gerar_demo.py       # pacote offline da demonstração; SEMPRE depois dos outros builds
@@ -105,6 +105,7 @@ Produção aplica o cadastro na base do OEE pelo `CadSync` (`fontes/producao/cad
 **CSV do MES (Produção 2.4.35, `fontes/producao/mes_build.py`):** catálogo e lote registrados antes da 1ª caixa (preparação) pertencem a ela; o trecho começa no horário da 1ª caixa; caixa 0 (contador zerado) não conta nem abre lacuna; o horário do registro fica em `server.mes`. Dias importados antes: reimportar o período.
 **OEE real (Produção 2.4.37, `fontes/producao/oee_real.js` + `oee_build.py`, regra do usuário em 10/11/2026):** mesma produção do reportado; tempo planejado = o dos turnos + o tempo **fora** do turno em que a linha produziu: início = menor entre o início do 1º turno produtivo e a 1ª caixa (atraso de partida é perda), fim = maior entre o fim do último turno e a última caixa; justificativa = o que já desconta do planejado. Calculado na hora (não muda oficial, fechamento nem exports). OEE reportado / OEE real / Fora de turno na faixa do Lançamento (com "Editar cards", `App.prefs.kcOff`, por computador) e na Visão Geral; cartões dos turnos com 1ª/última caixa do MES e trocas de lote; cartão só leitura do turno não produtivo com caixas.
 **Visão Geral e Hora a hora (Produção 2.4.38, `fontes/producao/vg_hh.js` + `vg_build.py`):** Visão Geral com os cartões do Lançamento no período (`VGC`, mesma escolha do Editar cards) e blocos recolhíveis (`Dobra`, `App.prefs.vgFold`); cartão "Caixas do MES" (1ª/última caixa, trocas; `MesDia`); Hora a hora com o turno não produtivo só leitura por hora (`HHPs.npHtml`), turnos recolhíveis (`App.prefs.hhFold`), gráfico com rótulo em todas as horas (`Charts.combo` `allLabels`) e sem os textos fixos de ajuda.
+**Cartão do turno e scrap (Produção 2.4.41, `fontes/producao/turno_card.js` + `card_build.py`, homologação de 10/11/2026):** produção dentro / fora do turno (caixas e horário) / total considerada, OEE reportado e OEE real por turno, sem "Produção processada"; scrap no popup "Lançar scrap" (por máquina `ps.scrapMaq` opcional ou só o total `ps.scrap`; gel pela pesagem dali; `exports.porDiaTurno[].scrapMaq`); OEE real e afins no catálogo do Painel (`PN_K`). SQDCP com valor em cada barra e legenda grande. Iniciativas: "Eficácia/Confirmação de Processo" (campo `eficacia`). Detalhes: `docs/briefing-2026-11-09-fase0-fase1.md` § 19.
 **Turno não produtivo (Fase 2, Produção 2.4.24, `fontes/producao/turnos_np.js`):** vigência `naoProdutivo` no Portal → `productive:false` (fora do dia e do plano); caixas do MES fora dos turnos do dia são reatribuídas (trecho emendado com o fim do turno anterior → ele; senão → o próximo) só a partir de `foraTurnoDesde`; `ForaTurno.aplicar` no `computeDayRaw` (resultado oficial = reportado; `res.foraTurno.real` = real); "Habilitar turno" no dia (`TurnoNP`, `ps.enabledNP`). Detalhes: `docs/briefing-2026-11-09-fase0-fase1.md` § 6.
 
 ## Documentação (`docs/`)

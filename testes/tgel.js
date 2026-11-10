@@ -103,7 +103,10 @@ const { chromium } = require('playwright');
       catalogos: [{ codigo: catCode, tipoItem: 'tubo', nome: 'Tubo', ativo: true, formato: '13x100', gel: { fmt: '100', vig: [{ from: '2000-01-01', gTubo: 0.85, bomKg: 8.84, bomBase: 10000, tol: 6 }] } }], materiais: [], bom: [] };
     localStorage.setItem('vac.cadastros', JSON.stringify(C)); Engine.bumpConfig();
     App.sel.dayId = day.id; App.sel.date = day.date; go('launch'); await new Promise(r => setTimeout(r, 400));
-    const btn = document.querySelector(`[data-gelscrap="${ps.id}"]`); if (!btn) return { semBotao: true };
+    /* 2.4.41 (PRD-13): o gel fica no popup "Lançar scrap" do turno → "Registrar scrap de gel (pesagem)" */
+    const sb = document.querySelector(`[data-scrapturno="${ps.id}"]`); if (!sb) return { semBotao: true };
+    sb.click(); await new Promise(r => setTimeout(r, 300));
+    const btn = document.querySelector('.overlay #scGel'); if (!btn) return { semBotao: true };
     btn.click(); await new Promise(r => setTimeout(r, 300));
     const m = document.querySelector('.overlay'); const kg = m.querySelector('[data-gf="kg"]'); kg.value = '2,345'; kg.dispatchEvent(new Event('change', { bubbles: true })); await new Promise(r => setTimeout(r, 100));
     const mot = m.querySelector('[data-gm="m1"]'); if (mot) { mot.checked = true; mot.dispatchEvent(new Event('change', { bubbles: true })); await new Promise(r => setTimeout(r, 100)); }
