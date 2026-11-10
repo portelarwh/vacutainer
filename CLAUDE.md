@@ -7,7 +7,7 @@ Plataforma de páginas HTML de arquivo único que trabalham juntas numa **pasta 
 | Página | Arquivo | Base | Versão | Como editar |
 |---|---|---|---|---|
 | Portal (cadastro geral, Administração) | `Portal.html` | `portal-base.json` + `vacutainer-cadastros.json` | 1.9.10 | direto no HTML |
-| Produção (OEE, plano, ordens SAP) | `OEE-Vacutainer.html` | `oee-vacutainer-base.json` (+ `ordens-base.json`) | 2.4.24 | **NÃO editar o HTML**: editar `fontes/producao/` e rodar o build |
+| Produção (OEE, plano, ordens SAP) | `OEE-Vacutainer.html` | `oee-vacutainer-base.json` (+ `ordens-base.json`) | 2.4.25 | **NÃO editar o HTML**: editar `fontes/producao/` e rodar o build |
 | Waste (perdas por ordem, KKBC) | `Perdas-Ordem.html` | `perdas-base.json` | 1.8.26 | direto no HTML |
 | Gestão de Gel | `Gestão-Gel-Vacutainer.html` | `fifo-base.json` | 2.15 · **em atualização** | direto no HTML |
 | Paradas | `Paradas.html` | `paradas-base.json` | 1.0.24 · **em atualização** | direto no HTML |
@@ -29,6 +29,7 @@ python fontes/producao/build.py        # monta paginas/OEE-Vacutainer.html a par
 python fontes/kit/aplicar_kit21.py     # recopia fontes/kit/kit_v21.js, o catálogo fontes/kit/sistemas.js, o padrão visual fontes/kit/kit_visual.css e as bases em 00. Bases fontes/kit/kit_bases.js nas outras páginas (Portal, Waste, Paradas, Gel e as 3 em construção)
 python fontes/modelo/gerar_paginas.py  # gera Projetos.html (em construção) a partir de fontes/modelo/pagina-em-construcao.html e roda o aplicar_kit21.py
 python fontes/demo/gerar_demo.py       # pacote offline da demonstração; SEMPRE depois dos outros builds
+node testes/tparada_tempo.js           # duração visível, regras do Portal, troca de código, gravação e abono
 node testes/tsqdcp.js                 # formulário S/Q, QN única, relatórios, reimportação, persistência e A4
 node testes/tdemo.js                  # navegação nas oito páginas, ação Paradas → Planner → Portal/ficha, reinício/saída e isolamento
 node testes/tpg.js                     # testes Playwright (abrem paginas/ em modo teste/exemplo; imprimem "sem erros")
