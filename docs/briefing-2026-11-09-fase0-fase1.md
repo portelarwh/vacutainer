@@ -636,3 +636,27 @@ Itens marcados como problema na página de homologação.
 - **PRD-23 (SQDCP):** o gráfico segue o padrão da Visão Geral, com valor em cada barra, dia em cada coluna, a meta com o valor, legenda dentro do gráfico e fontes de cerca de 15 a 19 pt na A4 paisagem.
 - **INI-02:** o campo passa a se chamar **Eficácia/Confirmação de Processo** (detalhe, histórico, migração do Waste e o rótulo no Waste). O campo gravado continua `eficacia`.
 - Testes: `testes/toeereal.js` (cartão, popup de scrap, Painel) e `testes/tgel.js` (o gel abre pelo popup do scrap).
+
+## 20. Homologação rodada 2 (Produção 2.4.42, kit de datas; 10/11/2026)
+
+- **Plano do mês (1.039 × 1.058):** o realizado do plano somava só a produção lançada nos intervalos dos turnos. A produção fora de turno (no exemplo, 19 mil na janela do C, somada ao B no OEE reportado) ficava de fora. Agora ela entra no realizado do mês (por catálogo e família) e no produzido das ordens.
+- **Aba Ordens e "Ordens do mês":**
+  - as tabelas ordenam pelo título da coluna (▲ ▼);
+  - "Ordens do mês" ganhou filtros de busca (ordem, lote, catálogo), situação (abertas, em produção, atrasadas, concluídas) e período (hoje, ontem, esta semana, semana passada, um dia).
+- **Datas DD/MM/AAAA (kit `vacDatas`):** todo campo de data das páginas mostra e aceita DD/MM/AAAA, independente do idioma do Windows/Chrome. O valor interno e o que se importa (CSV, SAP, Forms) não mudam. A Produção já tinha o mesmo comportamento (`DateFields`).
+- **Relatórios › Tabelas** (pedido do usuário): relatório só de tabela, sem gráfico.
+  - **10 modelos:** por turno, por dia, por semana, por mês, por dia da semana, por catálogo, por família, hora a hora, lista de paradas e lotes do MES.
+  - **Filtros:** período, dias da semana (ex.: só sábados), turno, família e catálogo.
+  - OEE com 2 casas, calculado como Σ boa ÷ Σ capacidade.
+  - Sai em Excel (todas as linhas), PDF, texto e Outlook.
+- Testes: `testes/toeereal.js` (Plano com fora de turno, Tabelas) e `testes/tgel.js` (campo de data do kit).
+
+## 21. Decisões da rodada 2 (Produção 2.4.43–2.4.44, Portal 1.9.20–1.9.21, Iniciativas 1.1.5; 10/11/2026)
+
+Respostas do usuário (todas na opção recomendada):
+
+- **Lote → ordem (Produção 2.4.43, `OrdLote` em `plano_ui.js`):** ordem com lote que aparece no CSV do MES recebe exatamente as caixas desse lote (caixas × quantidade por caixa), com 1ª/última caixa e "lote encerrado" quando outro lote começa depois. Essa produção sai da fila por sequência; ordens sem lote continuam pela regra antiga. A coluna "Qtde real" sugere "✓ usar X (MES)" (`acceptOrderApurado` com `qtyReal`, origem em `qtySrc`); editar à mão apaga a origem.
+- **Decimais (Produção 2.4.43, Portal 1.9.20):** OEE e percentuais da Produção com 2 casas por padrão. Portal › Parâmetros › Produção › `casasPct` (0 a 3; vazio = 2). Produção continua em "mil".
+- **SQDCP com blocos do Painel (Produção 2.4.44, `sqdcp.js`):** indicador "Blocos do Painel" numa posição, com até 3 blocos do Painel (`PN_B`), cada um com período (dia de referência, últimos 7 dias, mês até a referência). Mesmo cálculo do Painel (`Panel.ctx` + `PN_B[b].r`), linha Vacutainer e todos os turnos. Padrão sugerido (só onde a posição ainda não foi configurada): **Q4** Scrap % dia e semana · **D4** Hora a hora do dia de referência (ontem) e Plano do mês acumulado · **C3** Velocímetro do OEE e OEE × meta na semana e no mês. A folha A4 leva os estilos da página no tema claro. Posição gravada: `{indicador:'painel', formato:'painel', blocos:[{b, periodo}]}` (campo novo, opcional).
+- **Pauta automática (Portal 1.9.21, Iniciativas 1.1.5, kit):** cada item da pauta aceita várias ações (o quê, responsável, prazo), gravadas na reunião (`reunioes[k].itens[].acoes[]`). O Portal publica `exports.acoesReuniao` (180 dias; `ref = reuniao|dia|recorte|item|ação`). Iniciativas lê pela ficha comum (`vacFicha` fonte `portal`) ao abrir e ao voltar para a página e cria `AC-R-<id>` (origem `reuniao`, sem duplicar, regra 1: cada página grava só a sua base). A reunião mostra a situação de cada ação lida do `exports` de Iniciativas ("aguardando Iniciativas" enquanto não foi criada) e o relatório da reunião traz a tabela "Ações da pauta".
+- Testes: `testes/toeereal.js` (lote → ordem), `testes/tsqdcp.js` (blocos), `testes/tfila.js` (pauta automática).

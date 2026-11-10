@@ -68,7 +68,7 @@ const ForaTurno = (() => {
         let pecas = 0, cap1h = 0; for (const [cat, n] of porCat) { const p = n * qty, pph = pphDe(db, date, cat, lineId); pecas += p; cap1h += pph ? p / pph : 0; }
         const t0 = ins[0].m - base, t1 = ins[ins.length - 1].m - base, planMin = Math.max(1, t1 - t0 + 1);
         const pphMed = cap1h > 0 ? pecas / cap1h : 0;   /* PPH ponderado pelos catálogos do trecho */
-        out.push({ data: date, a: w.a, b: w.b, rotulo: w.rotulo, t0, t1, caixas: ins.length, pecas, goodMin: cap1h * 60, cats: [...porCat.keys()], planMin,
+        out.push({ data: date, a: w.a, b: w.b, rotulo: w.rotulo, t0, t1, caixas: ins.length, pecas, goodMin: cap1h * 60, cats: [...porCat.keys()], porCat: Object.fromEntries([...porCat].map(([c, n]) => [c, n * qty])), planMin,
           oeeReal: pphMed > 0 ? pecas / (pphMed * planMin / 60) : null,
           alvo: alvo ? { date: alvo.date, code: alvo.code, name: alvo.name } : null,
           regra: !alvo ? 'sem turno produtivo para receber' : contPrev ? 'continua o ' + alvo.name + ' (sem parada na troca)' : contNext ? 'emenda com o ' + alvo.name : 'sem continuidade com o ' + (w.prev ? w.prev.name : 'turno anterior') + ' → ' + alvo.name });

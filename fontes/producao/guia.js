@@ -76,6 +76,7 @@ window.VAC_GUIA.oee = {
       { sel: '#plEdit', nome: 'Editar / Revisar plano', o: 'Muda as quantidades. Depois de o mês começar, cada mudança vira uma revisão (v2, v3…) e o plano inicial fica guardado.', ex: 'PCP aumentou 360057 em 500 mil no dia 15 → revisão v2.' },
       { sel: '#plNew', nome: 'Cadastrar plano', o: 'Cria o plano do mês (quando ainda não existe).', como: 'Quantidade por catálogo, ou só por família quando o PCP planeja assim.' },
       { sel: '#plCopy', nome: 'Copiar do mês anterior', o: 'Começa o plano com as quantidades do mês anterior, para ajustar.' },
+      { sel: '.ordf', nome: 'Filtros das ordens', o: 'Busca (ordem, lote, catálogo), situação e período (hoje, ontem, semana, um dia). Clique no título de uma coluna para ordenar.' },
       { sel: '.kpis', nome: 'Indicadores do plano', o: '<b>Ritmo</b>: realizado ÷ o que o plano previa até hoje. <b>Necessidade por dia</b>: quanto falta ÷ dias restantes. <b>Projeção</b>: realizado + média recente × dias restantes.', ex: 'Ritmo 96% e necessidade 1,9 mi/dia → é preciso acelerar.' }
     ],
     passos: [['Começar o mês', ['Importe a planilha do PCP (aba CALC) em Portal › Importação, ou clique em Cadastrar plano.', 'Confira a tabela por família e catálogo.', 'Dias sem produção prevista (feriados) ficam no calendário do plano.']]],
@@ -112,6 +113,17 @@ window.VAC_GUIA.oee = {
     passos: [['Importação do mês', ['MB51: escolha a competência, cole e clique em Ler colagem.', 'Confira a prévia e grave.', 'COOIS: cole as ordens listadas e grave.', 'Use "Importar a próxima" para outra competência.']]]
   },
   'ordens-hist': { titulo: 'Histórico de competências', para: 'Cada competência importada, com quem, quando, o arquivo e as versões substituídas.' },
+  reports: {
+    titulo: 'Relatórios',
+    para: 'Relatórios prontos (passagem de turno, dia, semana, mês, paradas, plano, montado) e o tipo <b>Tabelas</b>, só com tabela e filtros. O que aparece na prévia é o que sai no PDF, no Excel, no texto e no Outlook.',
+    campos: [
+      { sel: '[data-rpt="tables"]', nome: 'Tabelas', o: 'Relatório só de tabela: por turno, dia, semana, mês, dia da semana, catálogo, família, hora a hora, paradas ou lotes do MES.', ex: 'Todos os sábados de outubro do catálogo 360057.' },
+      { sel: '#rtMod', nome: 'Modelo', o: 'Escolhe o que cada linha da tabela é (um turno, um dia, um catálogo…).' },
+      { sel: '[data-rtwd]', nome: 'Dias da semana', o: 'Marque só os dias que quer (nenhum marcado = todos).', ex: 'Só Sáb para a produção dos sábados.' },
+      { sel: '#rtTurno', nome: 'Turno · Família · Catálogo', o: 'Filtros da tabela. O OEE do recorte é Σ produção boa ÷ Σ capacidade.' },
+      { sel: '#rpXls', nome: 'Excel', o: 'Todas as linhas da tabela, prontas para filtrar no Excel.' }
+    ]
+  },
   overview: {
     titulo: 'Visão Geral',
     para: 'Resumo da produção no período: OEE, produção, paradas e tendências. "Visão Geral · padrão" é a montagem fixa; as outras visões (Meu painel, compartilhadas, Diretoria mensal) são montadas por você.',

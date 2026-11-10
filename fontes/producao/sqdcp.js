@@ -8,6 +8,7 @@ Object.assign(HELP, {
   sqSentido: ['Sentido da meta', [['O que é?', 'Define qual lado da meta é favorável.'], ['Exemplo', 'Acidentes: menor é melhor. Atendimento ao plano: maior é melhor.']]],
   sqUnidade: ['Unidade', [['O que é?', 'Rótulo ao lado do número, sem converter o valor. Vazio usa o padrão do indicador.'], ['Exemplo', 'pessoas, peças, kg ou %.']]],
   sqObservacao: ['Observação da folha', [['O que é?', 'Nota curta que acompanha as impressões desta posição até ser alterada.'], ['Exemplo', 'Conferir a causa do aumento de scrap na reunião.']]],
+  sqBlocos: ['Blocos do Painel', [['O que é?', 'Gráficos do Painel da Produção impressos nesta folha (até 3), cada um com o seu período contado a partir da data de referência. Linha Vacutainer, todos os turnos.'], ['Exemplo', 'Scrap % no dia e Scrap % na semana; Hora a hora do dia de referência (ontem) e Plano do mês acumulado.']]],
   sqManual: ['Indicador manual', [['O que é?', 'Valor informado nesta linha, data, turno e posição. Vazio é Não informado; zero é uma medição válida.'], ['Exemplo', 'Presença: 12 pessoas. O relatório não soma pessoas entre dias.']]],
   sqAcidente: ['Acidente no turno', [['O que é?', 'Registre apenas as novas ocorrências deste turno. Sem resposta não significa ausência de acidente.'], ['Exemplo', 'Não houve: zero confirmado. Sim: informe a quantidade e, se houver, a referência.']]],
   sqQN: ['Quality Notification', [['O que é?', 'Notificações de qualidade reportadas no turno. Números ficam como texto.'], ['Exemplo', '00001234 é preservado. O mesmo número em dois turnos conta uma vez no período; sem número a contagem é provisória.']]],
@@ -35,7 +36,8 @@ const Sqdcp = (() => {
     { id: 'gel', p: 'C', nome: 'Gel disponível — posição atual', unidade: 'kg', fonte: 'gel' },
     { id: 'acoes', p: 'SP', nome: 'Ações abertas — posição atual', unidade: 'ações', fonte: 'inic' },
     { id: 'atrasadas', p: 'SP', nome: 'Ações atrasadas — posição atual', unidade: 'ações', fonte: 'inic', sentido: 'menor', meta: 0 },
-    { id: 'manual', p: 'SQDCP', nome: 'Indicador manual', unidade: '', sentido: 'maior' }
+    { id: 'manual', p: 'SQDCP', nome: 'Indicador manual', unidade: '', sentido: 'maior' },
+    { id: 'painel', p: 'SQDCP', nome: 'Blocos do Painel (gráficos da Produção)', unidade: '', painel: true }
   ];
   const info = id => catalogo.find(c => c.id === id);
   const fmt = v => v == null || !Number.isFinite(v) ? '—' : Math.abs(v) > 1e15 ? v.toExponential(3).replace('.', ',') : new Intl.NumberFormat('pt-BR', { maximumFractionDigits: 2 }).format(v);
@@ -68,7 +70,17 @@ const Sqdcp = (() => {
     return shifts.filter(s => !s.ps.off && !s.ps.summary).flatMap(s => ['acidente', 'qn'].filter(k => !M.lerEvento((s.ps.sqdcp || {})[k])).map(k =>
       ({ level: 'alerta', msg: s.ps.snap.name + ': ' + (k === 'acidente' ? 'acidente' : 'QN') + ' não informado.', ref: { ps: s.ps.id } })));
   }
+  // Padrão sugerido das posições com blocos do Painel (homologação de 10/11/2026); cada posição pode ser trocada em Configurar.
+  const PADRAO_PAINEL = {
+    Q3: { titulo: 'Scrap % · dia e semana', blocos: [{ b: 'scrapDay', periodo: 'dia' }, { b: 'scrapDay', periodo: 'semana' }] },
+    D3: { titulo: 'Produção × meta · hora a hora e plano do mês', blocos: [{ b: 'hourly', periodo: 'dia' }, { b: 'planMonth', periodo: 'mes' }] },
+    C2: { titulo: 'OEE · velocímetro, semana e mês', blocos: [{ b: 'gaugeOee', periodo: 'dia' }, { b: 'oeeDay', periodo: 'semana' }, { b: 'oeeDay', periodo: 'mes' }] }
+  };
+  const ROT_PER = { dia: 'Dia de referência', semana: 'Últimos 7 dias', mes: 'Mês até a referência' };
+  const blocosPainel = () => typeof PN_B === 'undefined' ? [] : Object.keys(PN_B).map(k => [k, PN_B[k].l + (PN_B[k].g ? ' · ' + PN_B[k].g : '')]);
   function padrao(key) {
+    if (PADRAO_PAINEL[key]) return { indicador: 'painel', formato: 'painel', periodo: 'dia', titulo: PADRAO_PAINEL[key].titulo, unidade: '', meta: null, sentido: '', observacao: '',
+      blocos: PADRAO_PAINEL[key].blocos.map(b => ({ ...b })) };
     const defs = { S: ['acidentes', 'diasSeguros', 'coberturaS'], Q: ['qn', 'scrapPct', 'qualidade'], D: ['boa', 'atendimento', 'oee'],
       C: ['waste', 'gel'], P: ['acoes', 'atrasadas'] };
     return { indicador: (defs[key[0]] || [])[+key.slice(1)] || '', formato: key === 'S0' || key === 'Q0' ? 'calendario' : 'evolucao',
@@ -80,6 +92,17 @@ const Sqdcp = (() => {
     if (!/^[SQDCP][0-4]$/.test(key)) throw new Error('Vaga inválida.');
     const c = v.indicador ? info(v.indicador) : null;
     if (v.indicador && (!c || !c.p.includes(key[0]))) throw new Error('Indicador inválido para esta coluna.');
+    if (v.indicador === 'painel') {
+      const ok = new Set(blocosPainel().map(a => a[0]));
+      const blocos = (Array.isArray(v.blocos) ? v.blocos : []).filter(b => b && b.b).slice(0, 3).map(b => {
+        if (ok.size && !ok.has(b.b)) throw new Error('Bloco do Painel inválido: ' + b.b + '.');
+        if (!['dia', 'semana', 'mes'].includes(b.periodo)) throw new Error('Período do bloco inválido.');
+        return { b: String(b.b), periodo: b.periodo };
+      });
+      if (!blocos.length) throw new Error('Escolha ao menos um bloco do Painel.');
+      return { indicador: 'painel', formato: 'painel', periodo: 'dia', titulo: String(v.titulo || '').trim().slice(0, 80), unidade: '', meta: null, sentido: 'maior',
+        observacao: String(v.observacao || '').trim().slice(0, 300), blocos };
+    }
     if (!['evolucao', 'calendario', 'desvios'].includes(v.formato) || !['dia', 'semana', 'mes'].includes(v.periodo)) throw new Error('Formato ou período inválido.');
     if (v.meta != null && (!Number.isFinite(v.meta) || Math.abs(v.meta) > 1e15)) throw new Error('Meta inválida.');
     return { indicador: v.indicador, formato: v.formato, periodo: v.periodo, titulo: String(v.titulo || '').trim().slice(0, 80),
@@ -204,6 +227,12 @@ const Sqdcp = (() => {
   function relatorio(key) {
     const cfg = vaga(key), c = info(cfg.indicador);
     if (!c) return null;
+    if (c.painel) {
+      const blocos = cfg.blocos || [], de = blocos.reduce((m, b) => { const a = intervalo(b, UI.dia)[0]; return a < m ? a : m; }, UI.dia);
+      return { cfg, c, key, valor: null, parcial: false, itens: [], serie: [], rows: [], de, ate: UI.dia, meta: null, sentido: 'maior', estado: 'info', unidade: '',
+        titulo: cfg.titulo || c.nome, fonte: 'Painel da Produção', painel: true,
+        nota: blocos.map(b => (typeof PN_B !== 'undefined' && PN_B[b.b] ? PN_B[b.b].l : b.b) + ' (' + (ROT_PER[b.periodo] || b.periodo).toLowerCase() + ')').join(' · ') + ' · Linha Vacutainer, todos os turnos.' };
+    }
     const [de, ate] = intervalo(cfg, UI.dia), d = dados(c, cfg, de, ate, key);
     const meta = cfg.meta != null ? cfg.meta : d.metaNativa != null ? d.metaNativa : c.meta;
     const sentido = cfg.sentido || c.sentido || 'maior';
@@ -277,8 +306,32 @@ const Sqdcp = (() => {
       '</tbody></table><p class="sq-nota">Síntese: até 5 itens, com até 100 caracteres por campo. Consulte a base ou o CSV para o detalhamento completo.' +
       (itens.length > 5 ? ' Total: ' + itens.length + ' itens.' : '') + '</p>';
   }
+  // Blocos do Painel na folha: mesmo cálculo do Painel (Panel.ctx + PN_B), período contado a partir da data de referência.
+  function blocosHtml(r) {
+    if (typeof PN_B === 'undefined' || typeof Panel === 'undefined') return '<div class="sq-sem-serie">Painel indisponível nesta página.</div>';
+    const bl = r.cfg.blocos || [], n = bl.length || 1, larg = bl.some(b => b.b === 'gaugeOee') && n > 1 ? null : Math.floor(1000 / n);
+    const cel = bl.map(b => {
+      const B = PN_B[b.b]; if (!B) return '<div class="sq-blk"><h5>' + e(b.b) + '</h5><div class="sq-sem-serie">Bloco não existe mais no Painel.</div></div>';
+      const [de, ate] = intervalo(b, UI.dia);
+      let h; Charts.setWidth(b.b === 'gaugeOee' ? 320 : larg || Math.floor(1000 / (n - 0.5)));
+      try { const x = Panel.ctx({ pre: 'custom', from: de, to: ate, cmp: false, grp: 'day' });
+        h = x.days.length || ['external', 'trend12', 'planMonth', 'planTable'].includes(b.b) ? B.r(x) : '<div class="sq-sem-serie">Sem lançamentos no período.</div>'; }
+      catch (err) { console.error(err); h = '<div class="sq-sem-serie">Não foi possível montar este bloco.</div>'; }
+      Charts.setWidth(720);
+      return '<div class="sq-blk' + (b.b === 'gaugeOee' ? ' sq-blk-g' : '') + '"><h5>' + e(B.l) + ' · ' + e(de === ate ? U.brDate(de) : U.brDate(de) + ' a ' + U.brDate(ate)) + '</h5>' + h + '</div>';
+    }).join('');
+    return '<div class="sq-blocos">' + cel + '</div>';
+  }
   function folha(key) {
     const r = relatorio(key); if (!r) return '';
+    if (r.painel) {
+      const letra = key[0], pilar = { S: 'Segurança', Q: 'Qualidade', D: 'Entrega', C: 'Custo', P: quadro().p === 'produtividade' ? 'Produtividade' : 'Pessoas' }[letra];
+      return '<article class="sq-folha sq-folha-painel"><header class="sq-fhead"><b class="sq-letra">' + letra + '</b><div><h1>' + e(r.titulo) + '</h1><p>' + e(pilar + ' · Linha Vacutainer') +
+        '</p></div><div class="sq-ref"><b>' + e(U.brDate(UI.dia)) + '</b><span>Todos os turnos</span><span>Blocos do Painel</span></div></header>' +
+        '<section class="sq-conteudo">' + blocosHtml(r) + '</section>' +
+        '<div class="sq-comentario"><b>Observação / ação</b><p>' + e(r.cfg.observacao || '') + '</p><span>Responsável: __________________________ Prazo: ______________</span></div>' +
+        '<footer>Painel da Produção · Gerado em ' + e(U.brDT(U.nowIso())) + ' · ' + e(vacDemo.ativo ? 'DEMONSTRAÇÃO — DADOS FICTÍCIOS' : 'SQDCP · Produção') + '</footer></article>';
+    }
     const valorFormatado = fmt(r.valor), tamanho = valorFormatado.length > 16 ? '25pt' : valorFormatado.length > 10 ? '34pt' : '44pt';
     const letra = key[0], pilar = { S: 'Segurança', Q: 'Qualidade', D: 'Entrega', C: 'Custo', P: quadro().p === 'produtividade' ? 'Produtividade' : 'Pessoas' }[letra];
     return '<article class="sq-folha"><header class="sq-fhead"><b class="sq-letra">' + letra + '</b><div><h1>' + e(r.titulo) + '</h1><p>' + e(pilar + ' · ' + nomeLinha()) +
@@ -289,8 +342,9 @@ const Sqdcp = (() => {
       '<footer>' + e(r.fonte) + ' · Gerado em ' + e(U.brDT(U.nowIso())) + ' · ' + e(vacDemo.ativo ? 'DEMONSTRAÇÃO — DADOS FICTÍCIOS' : 'SQDCP · Produção') + '</footer></article>';
   }
   function htmlImpressao(key) {
-    return '<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><title>SQDCP · ' + e((relatorio(key) || {}).titulo || '') +
-      '</title><style>' + IMPRESSAO_CSS + '</style></head><body>' + folha(key) + '</body></html>';
+    const r = relatorio(key) || {}, estilos = r.painel ? [...document.querySelectorAll('style')].map(s => s.textContent).join('\n') : '';
+    return '<!doctype html><html lang="pt-BR"' + (r.painel ? ' data-theme="light"' : '') + '><head><meta charset="utf-8"><title>SQDCP · ' + e(r.titulo || '') +
+      '</title><style>' + estilos + '\n' + IMPRESSAO_CSS + '</style></head><body class="sq-print">' + folha(key) + '</body></html>';
   }
   function imprimir(key) {
     if (!pode('exportar')) return toast('Seu perfil não permite exportar relatórios.', true);
@@ -312,6 +366,9 @@ const Sqdcp = (() => {
     UI.editando = key; const v = vaga(key), c = info(v.indicador), atual = (((db().sqdcp || {}).manuais || {})[UI.linha] || {})[key + '|' + UI.dia + '|' + UI.turno];
     modal('Configurar posição ' + key[0] + ' · ' + (+key.slice(1) + 1), '<div class="form sq-form"><label class="f wide">Indicador ' + ib('sqIndicador') + '<select id="sqIndicador">' +
       sel([['', 'Vaga livre'], ...catalogo.filter(c => c.p.includes(key[0])).map(c => [c.id, c.nome])], v.indicador) + '</select></label>' +
+      '<div id="sqBlocos" class="f wide"><b>Blocos do Painel ' + ib('sqBlocos') + '</b>' + [0, 1, 2].map(i => { const b = (v.blocos || [])[i] || {};
+        return '<div class="sq-blrow"><select data-sqbl="' + i + '"><option value="">' + (i ? '(nenhum)' : 'Escolha o bloco') + '</option>' + sel(blocosPainel(), b.b || '') + '</select><select data-sqblp="' + i + '">' +
+          sel(Object.entries(ROT_PER), b.periodo || 'dia') + '</select></div>'; }).join('') + '</div>' +
       '<label class="f wide">Título personalizado ' + ib('sqTitulo') + ' <input id="sqTitulo" maxlength="80" value="' + e(v.titulo) + '" placeholder="Usar o nome do indicador"></label>' +
       '<label class="f">Período do resultado ' + ib('sqPeriodo') + '<select id="sqPeriodo">' + sel([['dia', 'Dia de referência'], ['semana', 'Últimos 7 dias'], ['mes', 'Mês até a referência']], v.periodo) + '</select></label>' +
       '<label class="f">Modelo da folha ' + ib('sqFormato') + '<select id="sqFormato">' + sel([['evolucao', 'Resultado e evolução'], ['calendario', 'Calendário mensal'], ['desvios', 'Desvios e ações']], v.formato) + '</select></label>' +
@@ -321,13 +378,16 @@ const Sqdcp = (() => {
       '<label class="f wide">Observação para a folha ' + ib('sqObservacao') + '<textarea id="sqObs" maxlength="300">' + e(v.observacao) + '</textarea></label></div>' +
       '<div id="sqManual"><h4>Valor manual na referência ' + e(U.brDate(UI.dia)) + ' ' + ib('sqManual') + '</h4><p class="small">Usado somente para indicador manual; vazio permanece não informado. É uma fotografia nesta data, sem soma automática entre dias.</p><label>Valor <input id="sqValorManual" inputmode="decimal" value="' + e(atual && atual.valor != null ? String(atual.valor) : '') + '"></label><label>Nota da medição <input id="sqNotaManual" maxlength="300" value="' + e(atual ? atual.nota : '') + '"></label></div>',
       '<button class="btn" data-close>Cancelar</button><button class="btn primary" id="sqGravar">Salvar posição</button>', (el, fechar) => {
-        const tipo = el.querySelector('#sqIndicador'), toggle = () => { el.querySelector('#sqManual').hidden = tipo.value !== 'manual'; }; tipo.onchange = toggle; toggle();
+        const tipo = el.querySelector('#sqIndicador'), toggle = () => { el.querySelector('#sqManual').hidden = tipo.value !== 'manual'; const pn = tipo.value === 'painel';
+          el.querySelector('#sqBlocos').hidden = !pn; for (const id of ['#sqPeriodo', '#sqFormato', '#sqMeta', '#sqSentido', '#sqUnidade']) el.querySelector(id).closest('label').hidden = pn; };
+        tipo.onchange = toggle; toggle();
         el.querySelector('#sqGravar').onclick = () => {
           try {
             const num = id => { const t = el.querySelector(id).value.trim(); if (!t) return null; const n = vacNumero(t, { ponto: 'decimal' }); if (!Number.isFinite(n)) throw new Error('Valor numérico inválido.'); return n; };
             const cfg = validarVaga(key, { indicador: tipo.value, titulo: el.querySelector('#sqTitulo').value, periodo: el.querySelector('#sqPeriodo').value,
               formato: el.querySelector('#sqFormato').value, meta: num('#sqMeta'), sentido: el.querySelector('#sqSentido').value,
-              unidade: el.querySelector('#sqUnidade').value, observacao: el.querySelector('#sqObs').value });
+              unidade: el.querySelector('#sqUnidade').value, observacao: el.querySelector('#sqObs').value,
+              blocos: [0, 1, 2].map(i => ({ b: el.querySelector('[data-sqbl="' + i + '"]').value, periodo: el.querySelector('[data-sqblp="' + i + '"]').value })) });
             const manual = cfg.indicador === 'manual' ? { valor: num('#sqValorManual'), nota: el.querySelector('#sqNotaManual').value.trim().slice(0, 300) } : undefined;
             Actions.setSQDCPVaga(UI.linha, key, cfg, UI.dia, UI.turno, manual); fechar(); render();
           } catch (err) { toast(err.message, true); }
@@ -360,6 +420,8 @@ const Sqdcp = (() => {
       '<div class="sq-quadro">' + letras.map((l, i) => '<section class="sq-coluna sq-col-' + l + '"><h3><b>' + l + '</b><span>' + nomes[i] + '</span></h3>' +
         Array.from({ length: 5 }, (_, n) => {
           const key = l + n, r = relatorio(key);
+          if (r && r.painel) return '<article class="sq-vaga sq-vaga-painel"><span class="sq-pos">Posição ' + (n + 1) + '</span><h4>' + e(r.titulo) + '</h4><span class="sq-tag info">Blocos do Painel</span><small>' + e(r.nota) +
+            '</small><button class="btn primary" data-sq-previa="' + key + '"' + (!pode('exportar') ? ' disabled' : '') + '>Prévia / imprimir</button><button class="btn ghost" data-sq-editar="' + key + '"' + (!pode('configurar') ? ' disabled' : '') + '>Configurar posição</button></article>';
           return '<article class="sq-vaga"><span class="sq-pos">Posição ' + (n + 1) + '</span>' + (r ? '<h4>' + e(r.titulo) + '</h4><strong class="sq-v">' + e(fmt(r.valor)) + '</strong><span>' + e(r.unidade) +
             '</span><span class="sq-tag ' + r.estado + '">' + e(rotEstado(r)) + '</span><small>' + e(r.nota) + '</small><button class="btn primary" data-sq-previa="' + key + '"' + (!pode('exportar') ? ' disabled' : '') + '>Prévia / imprimir</button>' +
             (r.c.id === 'manual' && pode('lancar') ? '<button class="btn" data-sq-manual="' + key + '">Registrar valor</button>' : '') : '<h4>Vaga livre</h4><p class="small muted">Escolha o indicador desta posição.</p>') +
