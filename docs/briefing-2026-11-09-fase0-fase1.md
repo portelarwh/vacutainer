@@ -325,3 +325,40 @@ Ficou assim: **o Portal › Importação é a porta única** (lista, ordem, stat
 **Limite conhecido:** em PRD-03 o MB51 e o COOIS ficam como dois passos (1 · 2) na mesma tela, não um embaixo do outro numa rolagem só: as duas telas usam os mesmos campos (colar, prévia, gravar) e juntá-las numa página exige reescrever a importação das ordens, que tem leitura estrita e backup obrigatório (E1). Se você preferir a rolagem única, entra como item próprio.
 
 **Respostas do usuário (10/11/2026):** D11 confirmado. PRD-02: "Ordens" é o **Plano do mês**, e entrou como "Ordens (plano do mês)" entre Ordens produzidas e Conciliação, na sub-aba e no menu, levando à aba Plano do mês (Produção 2.4.27). PRD-03: os dois passos MB51 e COOIS na mesma tela servem.
+
+---
+
+## 8. Proposta · Fase 4: Gel dentro da Produção (GEL-02 a GEL-06, PRD-10) · aguardando aprovação
+
+### Como é hoje (levantamento de 10/11/2026)
+
+- O Gel **não lê nada da Produção**: tubos bons por turno/catálogo, hora extra, "sem produção" e abono são **digitados de novo** no Gel (`S.prodlog[data].turns[turno]`).
+- O **Registrar scrap** é um bloco dentro de cada turno do Registro de produção. Cada pesagem tem equipamento, descarte (composição: completo, tubo+gel, spray, gel, barril), peso bruto, nº de barris, catálogo e motivos. A conta (`scrapCalc`) tira a tara, divide pelo peso da composição e chega a kg de gel por categoria (Tubos, Barril, Purga). Para isso ela usa os **formatos** (pesos dos componentes, tara, sobra do barril), que só existem no Gel.
+- **Teórico × Real** (`prodCalc`/`bomDay`): o teórico vem dos tubos bons × g/tubo do catálogo (com vigência) ÷ (1 − perdas teóricas). O real vem dos **barris baixados** (FIFO do Gel) e do scrap pesado. Índice, BOM e saving saem daí.
+- O `exports` do Gel publica estoque, vencimentos e o scrap estimado **por ordem**. Não publica scrap por dia/turno nem o Teórico × Real.
+
+### O problema de arquitetura
+
+O GEL-03 pede o scrap registrado **na página de cada turno da Produção**. Pela regra 1, o que a Produção registra é gravado na **base da Produção**, e então o Gel passa a ler o scrap dali, e não o contrário. O GEL-04 pede o Teórico × Real **na Produção**, mas o "real" depende dos barris baixados, que são do Gel. Então os dados passam a ir nos dois sentidos, cada um pelo `exports` do outro (com a defasagem de uma gravação).
+
+### Proposta, em 5 passos (cada um com teste e entrega própria)
+
+| Passo | O que | Quem grava |
+|---|---|---|
+| 4a · D10 | Os **parâmetros do gel** vão para o Portal: g/tubo e BOM de gel por catálogo (com vigências) → `catalogos[].gel`; formatos, perdas teóricas e motivos de descarte → `parametros.gel`; embalagem e descartes de cada equipamento → `equipamentos[].gel`. O Gel lê do Portal (telas de consulta), com um teste de que **as contas do gel não mudam** (igual ao GEL-06 da Fase 1). Sem isso a Produção não tem como calcular o scrap nem o teórico. | Portal |
+| 4b | A conta do gel (pesagem → kg de gel por categoria; teórico do dia) vira um **módulo comum do kit** (`kit_gel.js`), usado pelo Gel e pela Produção: **a mesma conta nas duas páginas**, sem cópia divergente. | — |
+| 4c · GEL-03 / PRD-10 | **Registrar scrap** na página de cada turno da Produção, com os mesmos campos e regras de hoje (equipamento, descarte, peso, barris, catálogo, motivos, "sem scrap no turno"). Fica gravado no turno do dia da Produção e é publicado no `exports` da Produção (`gel.porDia`: pesagens e kg por categoria e turno). | Produção |
+| 4d · GEL-02 / GEL-05 | O Gel passa a **ler da Produção** os tubos bons por turno/catálogo, a hora extra, o "sem produção" e o scrap. Saem os campos manuais (tubos bons, hora extra, sem produção, pesagens), e **Registro do dia vira Resumo do dia** (só leitura). O Relatório de gel continua no Gel. | — |
+| 4e · GEL-04 | **Teórico × Real** na página do dia/turno da Produção, **só quando algum catálogo produzido usa gel** (BOM do Portal com material do tipo gel). O teórico e o scrap são calculados ali; o real (barris baixados) vem do `exports` do Gel, que passa a publicar o Teórico × Real e as baixas por dia. | Gel (baixas) |
+
+### Decisões que preciso de você
+
+| # | Pergunta | Recomendação |
+|---|---|---|
+| G1 | O scrap de gel registrado na Produção fica **gravado na base da Produção** e o Gel lê de lá (regra 1)? | Sim |
+| G2 | Fazer primeiro o D10 (parâmetros do gel no Portal), que é o pré-requisito? | Sim |
+| G3 | **Data de corte**: a partir de que dia o Gel deixa de aceitar o registro manual e passa a ler da Produção? Os dias anteriores continuam com o registro do Gel, que não é apagado (histórico intacto). | Um parâmetro no Portal; padrão = o dia da instalação |
+| G4 | Os **barris baixados** (o "real") continuam no Gel (FIFO) e a Produção só mostra? Até o Gel gravar de novo, a Produção pode mostrar o real da última gravação. | Sim |
+| G5 | A **hora extra** e o "sem produção" do Gel passam a vir dos intervalos extras e dos turnos "sem produção" da Produção? | Sim |
+
+Com G1 a G5 respondidas, começo pelo 4a. É a maior das fases até aqui; entrego passo a passo, com a suíte rodando a cada passo.
