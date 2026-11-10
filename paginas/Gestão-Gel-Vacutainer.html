@@ -1587,7 +1587,7 @@ const fileBackend={kind:'file',async commit(ch){applyLocal(ch);FS.pending.push(c
 async function fsRefresh(){if(S.mode!=='file'||FS.busy||ui.demo)return;try{const cur=await fsReadBase(fsKnown());if(cur&&!cur.same){FS.mod=cur.mod;FS.rev=cur.rev;FS.revBy=cur.by;loadData(cur.data);FS.pending.forEach(applyLocal);localBackend.save();render()}}catch(e){}}
 /* ================= V1.89 · integração com as outras páginas (Portal, OEE, Perdas) ================= */
 // versão da página (topo, Guia e base gravada)
-const APP_VERSION='2.15';   /* 2.15 · ARQ-05/ARQ-07: catálogos e equipamentos do Portal (GelCad); contas do gel iguais */   /* 2.14 · ARQ-09: sem entrada própria de "Modo exemplo" */   /* 2.11 · C2–C6: kit com a ficha por pasta (AT-08) e a contagem da fila durável (Portal › Versões) */   /* 2.10 · C1: alterações pendentes na fila durável do kit (sem perda entre abas) */   /* 2.09 · E11: busca do kit leva o equipamento à ficha em Equipamentos */   /* 2.08 · E8: kit com "+ Abrir ação" na ficha da ordem */   /* 2.07 · E5: ficha da ordem comum (botão na ordem) e busca por ordem, lote e LP */   /* 2.06 · E3: número digitado só aceito inteiro; E4: cobertura das ordens no exports */   /* 2.05 · E2: a versão da tela vem desta constante (o rótulo estava fixo em v2.01); kit com data local e meta do mês ponderada */   /* 2.04 · revisão 065fe6f: restauração por arquivo confirma e não segue sem a cópia anterior; CSV sem fórmulas; índice por dia no Painel */
+const APP_VERSION='2.16';   /* 2.16 · Fase 3 (IMP-04): importações no exports; #importar abre a importação */   /* 2.15 · ARQ-05/ARQ-07: catálogos e equipamentos do Portal (GelCad); contas do gel iguais */   /* 2.14 · ARQ-09: sem entrada própria de "Modo exemplo" */   /* 2.11 · C2–C6: kit com a ficha por pasta (AT-08) e a contagem da fila durável (Portal › Versões) */   /* 2.10 · C1: alterações pendentes na fila durável do kit (sem perda entre abas) */   /* 2.09 · E11: busca do kit leva o equipamento à ficha em Equipamentos */   /* 2.08 · E8: kit com "+ Abrir ação" na ficha da ordem */   /* 2.07 · E5: ficha da ordem comum (botão na ordem) e busca por ordem, lote e LP */   /* 2.06 · E3: número digitado só aceito inteiro; E4: cobertura das ordens no exports */   /* 2.05 · E2: a versão da tela vem desta constante (o rótulo estava fixo em v2.01); kit com data local e meta do mês ponderada */   /* 2.04 · revisão 065fe6f: restauração por arquivo confirma e não segue sem a cópia anterior; CSV sem fórmulas; índice por dia no Painel */
 /* 2.03 · situação "em atualização" (kit: selo, pílula e faixa; docs/paginas-construcao.md) */
 /* 2.02 · relatório montado: todas as linhas no PDF, comentário, aviso de corte no texto; Painel em 1º; aba inicial do perfil; impressão e PDF no tema claro */
 /* 1.99 · menu Mais do cabeçalho (vac-visual v1): fecha ao escolher uma ação, ao clicar fora e com Esc */
@@ -1648,6 +1648,8 @@ function gelExports(){try{GelCad.aplicar()}catch(e){}derive();const c=S.config;c
   if(age==null)P.push({sev:2,txt:'Nenhum relatório SAP importado',link:''});else if(age>2)P.push({sev:age>7?1:2,txt:`Relatório SAP de estoque com ${age} dias`,link:''});
   const ords=gelOrders().map(({L,...o})=>({...o,consumoKg:o.consumoKg!=null?+o.consumoKg.toFixed(3):null,scrapKg:o.scrapKg!=null?+o.scrapKg.toFixed(3):null,gPorTubo:o.gPorTubo!=null?+o.gPorTubo.toFixed(4):null,indice:o.indice!=null?+o.indice.toFixed(2):null}));
   return {exportsVersion:1,geradoEm:nowDT(),modulo:'gel',appVersion:APP_VERSION,
+    /* 2.16 · IMP-04: relatórios de estoque de LPs do SAP (foto no instante "em"), para o Portal › Importação */
+    importacoes:(S.imports||[]).filter(i=>i&&i.at).map(i=>({tipo:'ESTOQUE_LP',em:i.at,arquivo:i.fileName||null,auto:!!i.auto,linhas:i.rows||null})).sort((a,b)=>a.em<b.em?1:-1).slice(0,200),
     estoque:{kg:+live.reduce((s,l)=>s+(l._remain||0),0).toFixed(2),barris:live.length,naLinha:onLine.length,disponivelKg:+availKg.toFixed(2),disponiveis:avail.length,coberturaDias:rate?Math.round(availKg/rate):null,
       /* 1.96 · saldo por local (já descontadas as retiradas parciais), para o gráfico do Portal */
       porLocal:Object.values(live.reduce((m,l)=>{const k=String(l.location||'');const o=m[k]||(m[k]={local:k,kg:0,barris:0});o.kg+=+l._remain||0;o.barris++;return m},{})).map(o=>({...o,kg:+o.kg.toFixed(2)}))},
@@ -7579,7 +7581,7 @@ function buildDemo(){
 /* ================= boot ================= */
 loadPrefsLocal();if(ui.prefs.home)ui.tab=ui.prefs.home;
 /* 2.02 · aba por link (#aba=painel) ou aba inicial do perfil (Portal › Perfis/Usuários): vale sobre a página inicial pessoal, só na 1ª abertura da sessão */
-try{const h=(location.hash||'').replace(/^#/,'');const ai=/^aba=/.test(h)?h:(typeof vacAbaInicial==='function'?vacAbaInicial('gel'):null);const m=ai&&/^aba=(\w+)$/.exec(ai);if(m&&TABS.some(t=>t[0]===m[1])){ui.tab=m[1];ui.homeApplied=true;if(h)history.replaceState(null,'',location.pathname+location.search)}}catch(e){}
+try{const h=(location.hash||'').replace(/^#/,'');const ai=/^aba=/.test(h)?h:(typeof vacAbaInicial==='function'?vacAbaInicial('gel'):null);const m=ai&&/^aba=(\w+)$/.exec(ai);/* 2.16 · IMP-05/06: #aba=importar (botão do Portal › Importação) abre a importação do relatório do SAP */if(m&&m[1]==='importar'){history.replaceState(null,'',location.pathname+location.search);setTimeout(()=>{try{openImport()}catch(e){console.warn(e)}},900)}if(m&&TABS.some(t=>t[0]===m[1])){ui.tab=m[1];ui.homeApplied=true;if(h)history.replaceState(null,'',location.pathname+location.search)}}catch(e){}
 resetState();S.mode='local';backend=localBackend;
 try{render()}catch(e){console.error(e)}
 ui.hashGo=hashParse();if(ui.hashGo)setTimeout(hashTry,0);
@@ -7676,6 +7678,9 @@ function vacMetaAreaMes(codigo, per) {
 }
 /* link para uma tela do Portal (Administração) */
 function vacPortalHref(h) { const port = (typeof systems === 'function' ? systems() : []).find(s => s.id === 'portal') || { id: 'portal', html: 'Portal.html' }; return typeof sysHref === 'function' ? sysHref(port, h) : 'Portal.html#' + h; }
+/* Fase 3 do briefing (IMP-06): Portal › Importação é o lugar único das importações; as abas "Importar" das páginas levam para a subseção da página */
+function vacImportacaoHref(sec) { return vacPortalHref('importacao' + (sec ? '/' + sec : '')); }
+function vacIrImportacao(sec) { const h = vacImportacaoHref(sec); if (typeof vacDemo !== 'undefined' && vacDemo.ativo && vacDemo.ir) vacDemo.ir(h); else location.href = h; }
 /* kit v2.1 · vac-visual v1 (06/11/2026): abas numa linha só. Quando não cabem, a faixa rola na horizontal, com sombra e seta ‹ › na borda
    que tem mais abas, e a aba ativa fica à vista. A Produção (abas agrupadas com menus, nav.vtabs.nav) não rola. CSS em fontes/kit/kit_visual.css. */
 (function () {

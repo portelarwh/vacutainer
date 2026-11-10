@@ -294,3 +294,32 @@ Versões: Produção 2.4.24 · Portal 1.9.10. Código novo: `fontes/producao/tur
 - O quadro está no **Lançamento**. Na **Visão Geral do período** e no **Relatório**, ele entra na Fase 5 (POR-06/08). Os números já chegam nos dois pelo resultado oficial do dia.
 
 **Homologação:** em Portal › Turnos, marcar o C como "Turno não produtivo" a partir de uma data. Conferir em Parâmetros › Produção a continuidade e a data. Depois importar o CSV do MES de uma noite com produção após 22:47 e conferir o quadro do dia: o trecho emendado deve aparecer no B, e o que veio depois de uma parada, no A do dia seguinte.
+
+---
+
+## 7. Entrega · Fase 3: importação centralizada (10/11/2026)
+
+Versões: Portal 1.9.11 · Produção 2.4.26 · Waste 1.8.27 · Gel 2.16 · Paradas 1.0.25 · kit com `vacImportacaoHref`/`vacIrImportacao`. Teste: `node testes/timportacao.js` (na suíte `tudo.js`).
+
+### D11 · decisão de arquitetura tomada (confirme)
+
+O IMP-05 pede para "mover toda a tratativa de importação da Produção para o Portal". Pela **regra 1**, cada página só grava na própria base: a do MB51/COOIS é a da Produção (`ordens-base.json`), com trava entre computadores, backup obrigatório, fila durável e validação próprias. Se o Portal gravasse ali, essas proteções seriam contornadas.
+
+Ficou assim: **o Portal › Importação é a porta única** (lista, ordem, status do dia), e **o botão "Importar" abre a tela da página dona**, que grava na própria base. As abas "Importar" das páginas levam ao Portal (IMP-06). Se você quiser mesmo que a tela de colar/prévia fique fisicamente dentro do Portal, dá para fazer, mas exige que o Portal passe a escrever nas bases das outras páginas: é uma mudança de regra da plataforma e precisa ser decidida antes.
+
+### O que mudou, por ID
+
+| ID | O que mudou |
+|---|---|
+| IMP-01 | Nova aba **Portal › Importação** (entre Relatórios e Administração; `#importacao`). |
+| IMP-02 | Subdividida **por página**: Produção (CSV do MES, MB51, COOIS, plano do PCP, RELATÓRIO e PARADAS históricos), Paradas (Forms), Gestão de Gel (estoque de LPs), Waste (KKBC_ORD), Portal (Meta OEE FY27, CS12/materiais/componentes) e Iniciativas/Ações (ainda sem importação: entra com o INI-03, Fase 6). Cada uma tem o que é, a frequência, **o que alimenta** e a última importação. `#importacao/<página>` abre e destaca a subseção. |
+| IMP-03 | **Sequência recomendada**: 1 MES → 2 Forms → 3 LPs → 4 MB51 → 5 COOIS (usa as ordens do MB51) → 6 KKBC_ORD (fechamento do mês, usa as ordens) → 7 plano do PCP (início do mês). |
+| IMP-04 | **Status por dia** (dia operacional 06:00–06:00, com ‹ ›): verde cobre o dia; amarelo parcial/desatualizado; vermelho falta; cinza mensal. As **diárias** (MES, Forms, LPs, MB51, COOIS) decidem: "**Dia X 100% atualizado**" ou "faltam N de 5". Regras: MES cobre 06:00→06:00; Forms com o dia entre `de` e `ate`; LPs com foto no dia ou depois; MB51/COOIS da competência importados depois do fim do dia (COOIS não pode ser anterior ao último MB51); KKBC pela competência. Para isso cada página publica `exports.importacoes` (campo novo e opcional; `exportsVersion` continua 1). |
+| IMP-05 | Ver D11. Cada "Importar" abre direto a tela certa: `OEE-Vacutainer.html#aba=ordens&sub=mb51` (ou `sub=coois`), `#aba=config&sec=importacao` (MES, PCP, históricos), `Perdas-Ordem.html#aba=importar`, `Paradas.html#aba=importar`, `Gestão-Gel-Vacutainer.html#aba=importar` (abre a importação do relatório do SAP). A Meta e o CS12 continuam em Portal › Cadastros › Importar. |
+| IMP-06 / WST-02 | Waste › Importar, Paradas › Importar e Produção › Ordens › Importar **levam ao Portal › Importação › <página>**. As telas de importação ganharam o atalho "Portal › Importação ↗"; Produção › Configurações › Importação também. |
+| PRD-02 | Ordens abre em **Ordens produzidas**; ordem: Ordens produzidas · Conciliação · Histórico de competências · Importar. |
+| PRD-03 | MB51 e COOIS viraram **um item só** (Importar), no menu e nas sub-abas. Na tela: **1 · MB51 (oficial)** e **2 · COOIS (complementa o MB51)** lado a lado no topo, com o atalho ao Portal. |
+
+**Pergunta (PRD-02):** a lista pedida tem "Ordens" entre "Ordens produzidas" e "Conciliação", mas não existe essa sub-aba (as atuais eram Importar MB51, Complementar COOIS, Ordens produzidas, Conciliação e Histórico). É o **Plano do mês** (ordens do PCP) ou outra lista? Fica fora até a resposta.
+
+**Limite conhecido:** em PRD-03 o MB51 e o COOIS ficam como dois passos (1 · 2) na mesma tela, não um embaixo do outro numa rolagem só: as duas telas usam os mesmos campos (colar, prévia, gravar) e juntá-las numa página exige reescrever a importação das ordens, que tem leitura estrita e backup obrigatório (E1). Se você preferir a rolagem única, entra como item próprio.

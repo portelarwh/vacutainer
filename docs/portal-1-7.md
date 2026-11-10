@@ -271,4 +271,5 @@ Exclusão mútua entre abas e saúde dos dados com snapshots e reservas. Procedi
 - 1.9.8 · ARQ-01/02/04: Trazer configurações › "Só na Produção" (turnos, catálogos, tipos de parada, mesmo código).
 - 1.9.9 · ARQ-05/07: `equipamentos.categoria` (Equipamento – Gel); Trazer › "Só no Gel"; POR-01: ⓘ em "Onde é usado / ligações".
 - 1.9.10 · TUR-01: vigência do turno com "Turno não produtivo"; Parâmetros › Produção com continuidade (min) e "Produção fora de turno vale a partir de" (data no passado pede confirmação).
-- Detalhes: `docs/briefing-2026-11-09-fase0-fase1.md` § 5 e § 6.
+- 1.9.11 · Fase 3: aba Importação (IMP-01..04, 06), com sequência recomendada, status por dia e subseções por página; lê `ordens-base.json` (só o exports) junto com a Produção.
+- Detalhes: `docs/briefing-2026-11-09-fase0-fase1.md` § 5 a § 7.

@@ -799,7 +799,7 @@ const MATRIZ_PROPOSTA={"OUT": ["Tullip A", "Tullip B", "Packout", "Metro", "Cap 
    PARADAS · núcleo (pasta, base, fila de gravação, backups, cadastro, utilidades)
    ===================================================================================== */
 const PAGE={id:'paradas',titulo:'Paradas · Análise de falhas e paradas de máquina',tituloCurto:'Paradas',subtitulo:'Análise de falhas e paradas de máquina',
-  versao:'1.0.24',estado:'atualizacao',estadoNota:'Matriz, componentes e limite de microparada passam a vir só do Portal; eventos da Produção entram como sugestão.',baseFile:'paradas-base.json',backupDir:'00. Backups/Paradas',busca:q=>buscaPagina(q)};
+  versao:'1.0.25',estado:'atualizacao',estadoNota:'Matriz, componentes e limite de microparada passam a vir só do Portal; eventos da Produção entram como sugestão.',baseFile:'paradas-base.json',backupDir:'00. Backups/Paradas',busca:q=>buscaPagina(q)};
 const APP_VERSION=PAGE.versao;
 const CAD_FILE='vacutainer-cadastros.json',OEE_FILE='oee-vacutainer-base.json';
 const $=(s,r=document)=>r.querySelector(s),$$=(s,r=document)=>[...r.querySelectorAll(s)];
@@ -1216,6 +1216,8 @@ function calcExports(D){const old=Store.data;Store.data=D;try{
  const mesA=ate.slice(0,7),Lm=all.filter(e=>e.dia.slice(0,7)===mesA);const sM=statsEquip(Lm,mesA+'-01',mesA+'-31');const nQ=sM.reduce((s,x)=>s+x.nQ,0),mQ=sM.reduce((s,x)=>s+x.mQ,0);
  const perda=Lm.filter(e=>!NAO_PERDA.has(classe(e))).reduce((s,e)=>s+e.minutos,0);const pend=pendencias();
  return{exportsVersion:1,geradoEm:new Date().toISOString(),modulo:'paradas',appVersion:APP_VERSION,limiteMicroMin:Cad.limite,
+  /* 1.0.25 · IMP-04: importações do Forms com os dias cobertos, para o Portal › Importação */
+  importacoes:(D.importacoes||[]).filter(i=>i&&i.em).map(i=>({tipo:'FORMS',em:i.em,por:i.por||null,arquivo:i.arquivo||null,de:i.de||null,ate:i.ate||null,novas:i.novas||0})).sort((a,b)=>a.em<b.em?1:-1).slice(0,200),
   kpis:[['Parada no mês',fmtMin(perda),brM(mesA),''],['Quebras no mês',n0(nQ),nQ?'MTTR '+n0(mQ/nQ)+' min':'sem quebras',nQ>0?'bad':'good'],
    ['Máquina crítica',sM[0]?.nome||'—',sM[0]?fmtMin(sM[0].min):'',''],['Pendências',n0(pend.length),pend.filter(p=>p.sev===1).length+' críticas',pend.some(p=>p.sev===1)?'bad':'']],
   pendencias:pend.map(p=>({sev:p.sev,txt:p.txt,link:p.link})),
@@ -1656,7 +1658,7 @@ async function excelModeloForms(){const eqs=Cad.eqs.filter(e=>e.ativo&&e.tipo!==
 
 /* ---------- Importar ---------- */
 VIEWS.importar={html(){const I=Store.data.importacoes.slice().reverse();this.I=I;
- return`${secH('up','Importar','Excel de respostas do Microsoft Forms (novo ou antigo), CSV ou o HTML de análise antigo · sempre com prévia antes de gravar')}
+ return`${secH('up','Importar','Excel de respostas do Microsoft Forms (novo ou antigo), CSV ou o HTML de análise antigo · sempre com prévia antes de gravar')}<p class="small muted">Ordem recomendada e status de cada dia de todas as importações: <a href="#" onclick="if(typeof vacIrImportacao==='function'){vacIrImportacao('paradas')};return false">Portal › Importação ↗</a>. O Forms continua sendo gravado aqui, na base do Paradas.</p>
  <div class="card" id="drop" style="border:2px dashed var(--line);text-align:center;padding:28px"><p style="margin:0 0 10px"><b>Arraste o arquivo aqui</b> ou</p><label class="b pri">Escolher arquivo<input type="file" id="impF" accept=".xlsx,.xls,.csv,.txt,.html,.htm" hidden></label>
  <p class="muted small" style="margin-top:12px">Forms novo: colunas "Máquina" + "Código – …" (ver Formulários). Forms antigo: "Máquina", "Tipo de parada", "Tempo de parada (min)". HTML antigo: o "Dashboard de Paradas" com os dados embutidos.<br>Reimportar o mesmo arquivo atualiza as respostas pelo ID, sem duplicar. A parte técnica já preenchida é mantida.</p></div>
  <div class="card mt">${secH('list','Importações','desfazer tira da base as paradas daquela importação (a parte técnica fica guardada se a parada voltar)')}
@@ -1860,7 +1862,8 @@ function rota(){let h=location.hash.slice(1);try{h=decodeURIComponent(h)}catch(e
 async function iniciar(){applyTheme();wireCabecalho();$('#btnTheme').onclick=cycleTheme;$('#btnTV').onclick=()=>TV.abrir();$('#btnRel').onclick=()=>Report.open(relParadas(),{notaKey:'rel:'+(F.de||'')+'|'+(F.ate||'')});$('#btnBackup').onclick=()=>Store.backupAgora();
  $('#btnSync').onclick=async()=>{if(!Store.dir)return Store.pick();if(!Store.perm)return Store.reconnect();await Store.save();await Store.reload();App.render();toast('Sincronizado · rev '+Store.data.rev)};
  $('#sairTeste').onclick=e=>{e.preventDefault();location.hash='';location.reload()};
- $$('#nav [data-t]').forEach(b=>b.onclick=()=>App.go(b.dataset.t));
+ /* 1.0.25 · IMP-06: a aba Importar leva ao Portal › Importação › Paradas; a tela abre direto por #aba=importar (o botão do Portal) */
+$$('#nav [data-t]').forEach(b=>b.onclick=()=>b.dataset.t==='importar'&&typeof vacIrImportacao==='function'?vacIrImportacao('paradas'):App.go(b.dataset.t));
  if(vacDemo.ativo){Store.test=true;vacDemo.registrar('paradas',()=>({...Store.data,exports:calcExports(Store.data)}),d=>{Store.data=completar(d)},()=>{Ext.cad=vacDemo.ler('cad');Ext.cadFonte='teste';Ext.cadRev=Ext.cad.rev;Ext.oee=vacDemo.exports('oee');Ext.oeeOk=!!Ext.oee;Ext.equip=vacDemo.exports('equip');Cad.build();App.render()});vacDemo.publicar('paradas')}else{await Store.init();await Ext.load()}F.init();App.go('geral');
  {const ai=typeof vacAbaInicial==='function'?vacAbaInicial('paradas'):null;if(ai){const[k,v]=ai.split('=');if(k==='aba'&&VIEWS[v])App.go(v)}}   /* 1.0.11 · aba inicial do perfil */
  rota();window.addEventListener('hashchange',rota);
@@ -1956,6 +1959,9 @@ function vacMetaAreaMes(codigo, per) {
 }
 /* link para uma tela do Portal (Administração) */
 function vacPortalHref(h) { const port = (typeof systems === 'function' ? systems() : []).find(s => s.id === 'portal') || { id: 'portal', html: 'Portal.html' }; return typeof sysHref === 'function' ? sysHref(port, h) : 'Portal.html#' + h; }
+/* Fase 3 do briefing (IMP-06): Portal › Importação é o lugar único das importações; as abas "Importar" das páginas levam para a subseção da página */
+function vacImportacaoHref(sec) { return vacPortalHref('importacao' + (sec ? '/' + sec : '')); }
+function vacIrImportacao(sec) { const h = vacImportacaoHref(sec); if (typeof vacDemo !== 'undefined' && vacDemo.ativo && vacDemo.ir) vacDemo.ir(h); else location.href = h; }
 /* kit v2.1 · vac-visual v1 (06/11/2026): abas numa linha só. Quando não cabem, a faixa rola na horizontal, com sombra e seta ‹ › na borda
    que tem mais abas, e a aba ativa fica à vista. A Produção (abas agrupadas com menus, nav.vtabs.nav) não rola. CSS em fontes/kit/kit_visual.css. */
 (function () {

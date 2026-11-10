@@ -957,6 +957,7 @@ addEventListener('error', e => { if (e.error && e.error.name === 'VacAbaBloquead
 
 <!-- ================= IMPORTAR ================= -->
 <section class="tab" id="t-importar">
+  <div class="note" style="margin-bottom:10px">Ordem recomendada e status de cada dia de todas as importações: <a href="#" onclick="if(typeof vacIrImportacao==='function'){vacIrImportacao('waste')};return false">Portal › Importação ↗</a>. A KKBC_ORD continua sendo gravada aqui, na base do Waste.</div>
   <div class="card">
     <h3>1 · Dados da KKBC_ORD <i class="i" title="Copie a grade do SAP com os cabeçalhos (Ctrl+C na lista ALV ou 'Planilha' → copiar) e cole abaixo, ou escolha um arquivo .xlsx/.xls/.csv/.txt. As colunas são reconhecidas pelo nome, em qualquer ordem.">i</i></h3>
     <div class="filters">
@@ -1079,7 +1080,7 @@ addEventListener('error', e => { if (e.error && e.error.name === 'VacAbaBloquead
    Base: perdas-base.json na pasta da rede (mesmo padrão OEE / Gel)
    Contrato: bloco "exports" (exportsVersion 1) lido pelas outras páginas
    ===================================================================== */
-const APP_VER='1.8.26',   /* 1.8.26 · ARQ-09: "Ver com dados de teste" vira a Demonstração integrada */   /* 1.8.23 · C2–C6: kit com a ficha por pasta (AT-08) e a contagem da fila durável (Portal › Versões) */   /* 1.8.22 · C1: trava da 2ª aba com alteração pendente (nada é descartado); kit com a fila durável */   /* 1.8.21 · E11: busca do kit leva o equipamento à ficha em Equipamentos */   /* 1.8.20 · E8: kit com "+ Abrir ação" na ficha da ordem (Planner de Iniciativas) */   /* 1.8.19 · E5: ficha da ordem comum (botão Ficha na ordem; busca Ctrl K por ordem, lote e LP) */   /* 1.8.18 · E4: versão do exports conferida (Produção, Ordens), ordem em várias competências, dias do lote pela chave · 1.8.17 · E2: fonte única da versão (tela, base, exports e Portal › Versões) */ BASE_FN='perdas-base.json', DIR_ORIG='00. Originais SAP', DIR_BKP='00. Backups', DIR_IN='00. Entrada KKBC', DIR_DONE='00. Entrada KKBC/Processados';
+const APP_VER='1.8.27',   /* 1.8.27 · Fase 3 (IMP-04/06, WST-02): importações no exports; aba Importar leva ao Portal › Importação */   /* 1.8.26 · ARQ-09: "Ver com dados de teste" vira a Demonstração integrada */   /* 1.8.23 · C2–C6: kit com a ficha por pasta (AT-08) e a contagem da fila durável (Portal › Versões) */   /* 1.8.22 · C1: trava da 2ª aba com alteração pendente (nada é descartado); kit com a fila durável */   /* 1.8.21 · E11: busca do kit leva o equipamento à ficha em Equipamentos */   /* 1.8.20 · E8: kit com "+ Abrir ação" na ficha da ordem (Planner de Iniciativas) */   /* 1.8.19 · E5: ficha da ordem comum (botão Ficha na ordem; busca Ctrl K por ordem, lote e LP) */   /* 1.8.18 · E4: versão do exports conferida (Produção, Ordens), ordem em várias competências, dias do lote pela chave · 1.8.17 · E2: fonte única da versão (tela, base, exports e Portal › Versões) */ BASE_FN='perdas-base.json', DIR_ORIG='00. Originais SAP', DIR_BKP='00. Backups', DIR_IN='00. Entrada KKBC', DIR_DONE='00. Entrada KKBC/Processados';
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 /* página para o núcleo comum, o cabeçalho (vac-cabecalho v2) e o quadro de Versões do Portal */
 const PAGE={id:'perdas',titulo:'Waste · Linha Vacutainer',tituloCurto:'Waste',subtitulo:'Custos e perdas por ordem',versao:APP_VER,baseFile:BASE_FN,backupDir:'00. Backups/Perdas',busca:q=>buscaPerdas(q)};
@@ -1707,7 +1708,9 @@ function buildExports0(){
  for(const o of ords)if(o.lvl>=2&&!causeOf(o.ordem))
   pendencias.push({sev:o.lvl===3?1:2,tipo:'semCausa',txt:`Ordem ${o.ordem} (${o.cat||''}) ${LV[o.lvl]} sem causa · desvio ${fmtR(o.d)}`,link:'ordem='+o.ordem});
  const ultimaImportacao=(B.imports||[]).filter(i=>i.status!=='cancelado').map(i=>i.data).filter(Boolean).sort().pop()||null;
- return{exportsVersion:1,geradoEm:nowISO(),modulo:'perdas',appVersion:APP_VER,pendencias,ultimaImportacao,
+ /* 1.8.27 · IMP-04: importações da KKBC com as competências, para o Portal › Importação */
+ const importacoes=(B.imports||[]).filter(i=>i&&i.status!=='cancelado'&&i.data).map(i=>({tipo:'KKBC_ORD',em:i.data,por:i.usuario||null,arquivo:i.arquivo||null,periodos:(i.periodos||[]).slice(),dataExtracao:i.dataExtracao||null})).sort((a,b)=>a.em<b.em?1:-1).slice(0,200);
+ return{exportsVersion:1,geradoEm:nowISO(),modulo:'perdas',appVersion:APP_VER,pendencias,ultimaImportacao,importacoes,
   ordensExcluidas:[...exclMap().values()].map(e=>({ordem:e.ordem,em:e.em,por:e.por,motivo:e.motivo})),
   porOrdem:ords.map(o=>({ordem:o.ordem,per:o.per,catalogo:o.cat||'',produto:o.prod||'',lote:o.lote||'',status:o.status||'',qtdEntregue:o.qEnt,custoMeta:+o.cTc.toFixed(2),custoReal:+o.cRc.toFixed(2),desvio:+o.d.toFixed(2),perda:+o.perda.toFixed(2),varMaterial:+sum(o.rows.filter(r=>!isDelivery(r)),dEst).toFixed(2),scrap:+sum(o.rows.filter(r=>!isDelivery(r)),scrapOf).toFixed(2),nivel:LV[o.lvl],causa:causeOf(o.ordem),
     comentarios:B.comments.filter(c=>c.ordem===o.ordem&&c.ativo!==false).length,acoesAbertas:B.actions.filter(a=>a.ordem===o.ordem&&!DONE_AC.includes(a.status)).length})),
@@ -2703,7 +2706,8 @@ function moedaSegRender(){const m=moedaVer();$$('[data-moeda]').forEach(b=>b.cla
 function renderAll(){renderMeta();renderTab(curTab());const q=vigRows().length?qualityIssues().filter(x=>x.sev===2).length:0;moedaSegRender();$('#bdQ').hidden=!q;$('#bdQ').textContent=q}
 
 /* ===================== EVENTOS ===================== */
-$('#nav').onclick=e=>{const b=e.target.closest('button');if(b)showTab(b.dataset.t)};
+/* 1.8.27 · IMP-06/WST-02: a aba Importar leva ao Portal › Importação › Waste; a tela abre direto por #aba=importar (o botão do Portal) */
+$('#nav').onclick=e=>{const b=e.target.closest('button');if(b&&b.dataset.t==='importar'&&typeof vacIrImportacao==='function'){vacIrImportacao('waste');return}if(b)showTab(b.dataset.t)};
 $$('[data-close]').forEach(b=>b.onclick=closeModals);
 $$('.modal').forEach(m=>m.onclick=e=>{if(e.target===m){m.classList.remove('on');if(m.id==='mOrd')closeModals()}});
 document.addEventListener('keydown',e=>{if(e.key==='Escape'){if($('#mForm').classList.contains('on'))$('#mForm').classList.remove('on');else closeModals()}});
@@ -2887,6 +2891,9 @@ function vacMetaAreaMes(codigo, per) {
 }
 /* link para uma tela do Portal (Administração) */
 function vacPortalHref(h) { const port = (typeof systems === 'function' ? systems() : []).find(s => s.id === 'portal') || { id: 'portal', html: 'Portal.html' }; return typeof sysHref === 'function' ? sysHref(port, h) : 'Portal.html#' + h; }
+/* Fase 3 do briefing (IMP-06): Portal › Importação é o lugar único das importações; as abas "Importar" das páginas levam para a subseção da página */
+function vacImportacaoHref(sec) { return vacPortalHref('importacao' + (sec ? '/' + sec : '')); }
+function vacIrImportacao(sec) { const h = vacImportacaoHref(sec); if (typeof vacDemo !== 'undefined' && vacDemo.ativo && vacDemo.ir) vacDemo.ir(h); else location.href = h; }
 /* kit v2.1 · vac-visual v1 (06/11/2026): abas numa linha só. Quando não cabem, a faixa rola na horizontal, com sombra e seta ‹ › na borda
    que tem mais abas, e a aba ativa fica à vista. A Produção (abas agrupadas com menus, nav.vtabs.nav) não rola. CSS em fontes/kit/kit_visual.css. */
 (function () {
