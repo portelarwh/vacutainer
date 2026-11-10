@@ -270,3 +270,27 @@ Nada é apagado nas páginas. O que não vai para o Portal continua na base de c
 ### D10 · decisão para depois (não bloqueia)
 
 Ainda ficam **no Gel** os parâmetros que só o gel usa: BOM de gel por catálogo (com vigências), gramas por tubo por **formato**, **locais** de estoque, **motivos de descarte**, **parâmetros de processo** e **aparência** (esta é preferência do computador). Pelo ARQ-06 ("campos específicos de uma página ficam no Portal, agrupados por página"), eles iriam para `parametros.gel` no Portal. Recomendo fazer isso **na Fase 4** (Gel dentro da Produção, GEL-02 a GEL-05), porque a tela de registro do gel muda nessa fase. Outra opção para a BOM de gel: o Gel passa a ler a quantidade de gel da **BOM do CS12** que o Portal já tem, em vez de uma BOM própria. Isso muda a fonte de um número que entra na conta e precisa da sua confirmação.
+
+---
+
+## 6. Entrega · Fase 2: regras de turno (10/11/2026)
+
+Respostas do usuário: **D1** depende da continuidade: produção emendada com o fim do B fica no B; sem continuidade, vai para o A, e vice-versa. **D2** performance acima de 100% é aceita. **D3** o tempo planejado do OEE real vai da 1ª à última caixa (MES). **D4** sim.
+Versões: Produção 2.4.24 · Portal 1.9.10. Código novo: `fontes/producao/turnos_np.js`, que entra no script principal pelo `build.py`. Teste: `node testes/tturnos.js` (na suíte `tudo.js`).
+
+| ID | O que mudou |
+|---|---|
+| TUR-01 | No Portal, a vigência do turno ganha **"Turno não produtivo"** (`naoProdutivo`, com ⓘ; vazio = produtivo). Na Produção, um turno ativo e não produtivo **não entra no dia nem no plano**. As caixas do servidor feitas fora dos turnos do dia (na janela do turno não produtivo, ou em horário sem turno) são **reatribuídas só para a apuração**; o registro de cada caixa continua na hora real. **Regra (D1):** a janela é dividida em trechos contínuos. Um trecho fecha quando há um intervalo sem caixa maior que a **continuidade**, que fica em Portal › Parâmetros › Produção; vazio = "Parada sem caixa", 10 min. Trecho emendado com o fim do turno produtivo anterior conta nele. Sem continuidade, conta no próximo turno produtivo, que pode ser o A do dia seguinte. |
+| TUR-02 | Em **Lançamento**, o quadro "Turnos não produtivos e produção fora de turno" tem **"Habilitar Turno C neste dia"**. Habilitado, o turno entra no dia com os intervalos e as pausas da vigência. O tempo dele vira planejado (D4), a janela deixa de ser reatribuída e o servidor sugere a produção nos intervalos dele, como em qualquer turno. Para desabilitar, o turno não pode ter produção, scrap nem parada lançada. Dia fechado: reabrir antes. |
+| TUR-03 | O mesmo quadro mostra, por trecho: a janela, a 1ª e a última caixa, as caixas, a produção, o OEE real do trecho e **em que turno contou, com o motivo**. Mostra também quanto a produção fora de turno pesa na produção boa reportada. |
+| TUR-04 | **OEE reportado** = com a reatribuição. É o resultado oficial: dia, turnos, exports e Portal. **OEE real** = sem a reatribuição. O OEE real de cada trecho usa como tempo planejado o período da 1ª à última caixa (D3). A performance do turno que recebe pode passar de 100% (D2); o alerta de "acima de 100%" continua, e a mensagem do dia explica a origem. |
+| POR-10 | A causa está na seção 1.5. A madrugada antes das 06:00 de um dia sem turno C deixa de sumir: entra como janela "fora dos turnos do dia" e segue a mesma regra (normalmente vai para o A, quando não emenda com o B). |
+
+**Para não mudar o passado sem querer:** a reatribuição só vale para dias **a partir de uma data** (Portal › Parâmetros › Produção › "Produção fora de turno vale a partir de"). Vazio = a 1ª vigência marcada como não produtiva. Uma data no passado pede confirmação, porque o OEE dos dias desde então muda, inclusive os fechados. Com os três turnos produtivos e sem buracos entre eles, nada muda.
+
+**Limites (para as próximas fases):**
+- A reatribuição usa as caixas do servidor (MES), só de lotes "normais" (retrabalho e lotes ignorados ficam fora, como na sugestão do dia). Sem MES não há o que reatribuir: o lançamento manual só existe em turno do dia.
+- A fatia **por catálogo** (filtro de catálogo nos painéis) ainda não inclui a produção reatribuída; o total do dia e dos turnos inclui.
+- O quadro está no **Lançamento**. Na **Visão Geral do período** e no **Relatório**, ele entra na Fase 5 (POR-06/08). Os números já chegam nos dois pelo resultado oficial do dia.
+
+**Homologação:** em Portal › Turnos, marcar o C como "Turno não produtivo" a partir de uma data. Conferir em Parâmetros › Produção a continuidade e a data. Depois importar o CSV do MES de uma noite com produção após 22:47 e conferir o quadro do dia: o trecho emendado deve aparecer no B, e o que veio depois de uma parada, no A do dia seguinte.

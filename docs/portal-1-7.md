@@ -270,4 +270,5 @@ Exclusão mútua entre abas e saúde dos dados com snapshots e reservas. Procedi
 - 1.9.7 · ARQ-06: Parâmetros com os grupos Produção (`parametros.producao`, arredondamento por vigência) e Neste computador (`vac.qtd`, usuário); Trazer leva os da Produção.
 - 1.9.8 · ARQ-01/02/04: Trazer configurações › "Só na Produção" (turnos, catálogos, tipos de parada, mesmo código).
 - 1.9.9 · ARQ-05/07: `equipamentos.categoria` (Equipamento – Gel); Trazer › "Só no Gel"; POR-01: ⓘ em "Onde é usado / ligações".
-- Detalhes: `docs/briefing-2026-11-09-fase0-fase1.md` § 5.
+- 1.9.10 · TUR-01: vigência do turno com "Turno não produtivo"; Parâmetros › Produção com continuidade (min) e "Produção fora de turno vale a partir de" (data no passado pede confirmação).
+- Detalhes: `docs/briefing-2026-11-09-fase0-fase1.md` § 5 e § 6.

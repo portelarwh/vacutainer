@@ -21,7 +21,7 @@ Este arquivo responde às auditorias externas da plataforma e registra, para cad
 | Plano único, blocos A e B (E5 ficha da ordem e Ctrl K; E6/E8 Iniciativas, Planner, KAS e ações de OEE; E10a/b Minha fila e Reunião diária; E10d relatório do Paradas; E11 Equipamentos) | 08/11/2026 | `8ecec91` | Portal 1.9.0, Produção 2.4.15, Waste 1.8.21, Gel 2.09, Paradas 1.0.19, Iniciativas 1.0.0, Equipamentos 1.0.0 (§ U) |
 
 | Revisão do Codex sobre `8cad6a6` (AT-01–AT-12) com contra-análise; entrega C1 | 08/11/2026 | `8cad6a6` (revisão `64f9794`) | Portal 1.9.1, Produção 2.4.16, Waste 1.8.22, Gel 2.10, Paradas 1.0.21, Iniciativas 1.0.2, Equipamentos 1.0.2 (§ V) |
-| Briefing de alterações (Fases 0 e 1: respostas, POR-04, ARQ-09, Portal como fonte única ARQ-01..07, PRD-04) | 09–10/11/2026 | `1aca521` | Portal 1.9.5–1.9.9, Produção 2.4.21–2.4.23, Waste 1.8.26, Gel 2.14–2.15 ([briefing-2026-11-09-fase0-fase1.md](../briefing-2026-11-09-fase0-fase1.md)) |
+| Briefing de alterações (Fases 0, 1 e 2: respostas, POR-04, ARQ-09, Portal como fonte única ARQ-01..07, PRD-04, turnos TUR-01..04, POR-10) | 09–10/11/2026 | `1aca521` | Portal 1.9.5–1.9.10, Produção 2.4.21–2.4.24, Waste 1.8.26, Gel 2.14–2.15 ([briefing-2026-11-09-fase0-fase1.md](../briefing-2026-11-09-fase0-fase1.md)) |
 
 Status usados: **corrigido** · **corrigido em parte** · **recusado** · **adiado** · **já existia**.
 

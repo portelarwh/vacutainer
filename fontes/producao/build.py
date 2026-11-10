@@ -26,13 +26,14 @@ R("location.href=sysHref(port,'versoes')", "vacDemo.ir(sysHref(port,'versoes'))"
 R('<button class="btn primary" id="uOk">Usar este nome</button>', '<button class="btn primary" id="uOk">Usar este nome</button><button class="btn" data-vdemo-entrar onclick="vacDemo.entrar()">Demonstração do sistema</button>')
 R('<button class="btn ghost" id="wLocal">Começar só neste navegador</button>', '<button class="btn ghost" id="wLocal">Começar só neste navegador</button><button class="btn" data-vdemo-entrar onclick="vacDemo.entrar()">Demonstração do sistema</button>')
 R('Abre uma <b>cópia em memória</b> da base com cerca de 3 semanas de dados fictícios (hora a hora, paradas, scrap, dias fechados e abertos), para treinar ou demonstrar. Nada é gravado na pasta da rede nem no navegador: ao sair, tudo volta exatamente como estava.', 'Abre a <b>demonstração integrada do sistema</b>, com produção, perdas, gel, paradas, equipamentos e ações fictícias relacionadas. Você pode editar o exemplo e navegar entre as páginas. As bases reais ficam preservadas; fechar ou recarregar a demonstração descarta as alterações fictícias.')
-R("const APP_VERSION = '2.0.1';","const APP_VERSION = '2.4.23';")
+R("const APP_VERSION = '2.0.1';","const APP_VERSION = '2.4.24';")
 # 2.4.21 · ARQ-09 (briefing 09/11/2026, opção a): sem "Modo exemplo" próprio nas Configurações; para apresentar, a Demonstração integrada
 #          (botão do topo). Store.enterExample continua: é o que a Demonstração e os testes usam por dentro.
 R("['auditoria', 'Auditoria'], ['demo', 'Modo exemplo'], ['ajuda', 'Ajuda e aceite']","['auditoria', 'Auditoria'], ['ajuda', 'Ajuda e aceite']")
 R("<p><b>Modo exemplo.</b> Você está numa cópia com dados fictícios. Nada é gravado na base da pasta; ao sair, tudo volta como estava.</p><button class=\"btn sm primary\" data-act=\"exitex\">Sair do modo exemplo</button>","<p><b>Demonstração.</b> Você está numa cópia com dados fictícios. Nada é gravado na base da pasta; ao sair, tudo volta como estava.</p><button class=\"btn sm primary\" data-act=\"exitex\">Sair da demonstração</button>")
 R("'exemplo': ['rule', 'Modo exemplo']","'exemplo': ['rule', 'Demonstração']")
 R("toast('Você saiu do modo exemplo.')","toast('Você saiu da demonstração.')")
+R("toast('Modo exemplo: nada do que você fizer será gravado.')","toast('Demonstração: nada do que você fizer será gravado.')")
 # 2.4.22 · ARQ-06 (briefing 09/11/2026): unidade, rótulo e arredondamento da meta vêm do Portal (parametros.producao);
 #          o arredondamento tem vigência (D7): cada dia usa o valor da própria data. Sem vigência, vale settings.roundingUnit (como antes).
 R("const ServerData = (() => {", """/* 2.4.22 · ARQ-06 · arredondamento da meta na data (vigências do Portal em settings.roundingVig) */
@@ -48,6 +49,18 @@ R("perHour: U.ceilTo(rt.pph * rt.oee, +d.settings.roundingUnit || 1)", "perHour:
 # ARQ-06 · exibição das quantidades: preferência comum do computador (vac.qtd, Portal › Parâmetros › Neste computador)
 R("const DISP = () => App.prefs.qtyDisplay === 'abs' ? 1 : UNIT();", "const vacQtd = () => { try { const v = localStorage.getItem('vac.qtd'); if (v === 'abs' || v === 'unit') return v; } catch (e) { } return App.prefs.qtyDisplay; };\nconst DISP = () => vacQtd() === 'abs' ? 1 : UNIT();")
 R("const unitLbl = () => App.prefs.qtyDisplay === 'abs' ? 'un' :", "const unitLbl = () => vacQtd() === 'abs' ? 'un' :")
+# 2.4.24 · Fase 2 do briefing (TUR-01..04, POR-10): turno não produtivo, habilitação no dia e produção fora dos turnos (fontes/producao/turnos_np.js)
+R("  function activeShiftsAt(db, date, lineId, wd) {\n    return db.shifts.filter(s => !s.deleted && s.status !== 'inativo' && (!lineId || !s.lineId || s.lineId === lineId))\n      .map(s => ({ shift: s, v: shiftVersionAt(s, date, wd) })).filter(x => x.v)",
+  "  /* 2.4.24 · TUR-01: vigência não produtiva (productive:false) fica fora, a não ser com incluirNP */\n  function activeShiftsAt(db, date, lineId, wd, incluirNP) {\n    return db.shifts.filter(s => !s.deleted && s.status !== 'inativo' && (!lineId || !s.lineId || s.lineId === lineId))\n      .map(s => ({ shift: s, v: shiftVersionAt(s, date, wd) })).filter(x => x.v && (incluirNP || x.v.productive !== false))")
+R("    for (const { shift, v } of activeShiftsAt(db, date, opts.shiftLineId || lineId, opts.asWeekday)) {",
+  "    for (const { shift, v } of activeShiftsAt(db, date, opts.shiftLineId || lineId, opts.asWeekday, !!opts.only).filter(x => !opts.only || x.shift.id === opts.only)) {   /* 2.4.24 · TUR-02: opts.only monta só um turno (habilitar no dia) */")
+R("    if (day.scrapMode === 'day') { dayAgg.scrap = +day.scrapDay || 0;",
+  "    /* 2.4.24 · TUR-01/04, POR-10: produção fora dos turnos reatribuída (OEE reportado); o real fica em foraTurno */\n    const ft = ForaTurno.aplicar(db, day, shiftRes, dayAgg);\n    if (ft && ft.pecas) M('info', `${U.fmt(ft.pecas)} peça(s) produzida(s) fora dos turnos produtivos contam neste dia (OEE reportado). Veja o quadro \"Turnos não produtivos e produção fora de turno\".`);\n    if (day.scrapMode === 'day') { dayAgg.scrap = +day.scrapDay || 0;")
+R("    return { day, flat, shifts: shiftRes, r: dayR, agg: dayAgg, officialDaily, comp, msgs, events: evRes };",
+  "    if (ft) { ft.real = ft.realDia ? finalize(ft.realDia, st) : null; }\n    return { day, flat, shifts: shiftRes, r: dayR, agg: dayAgg, officialDaily, comp, msgs, events: evRes, foraTurno: ft };")
+R("    h += SrvUI.dayCard(day, res);\n", "    h += SrvUI.dayCard(day, res);\n    h += ForaTurnoUI.card(day, res);   /* 2.4.24 · TUR-02/03/04 */\n")
+R("metasModal(); }\n    bindDayBar(root); bindNoDay(root);\n    const day = curDay(); if (!day || Engine.isOffDay(db(), day)) return;\n    SrvUI.bindDay(root, day);", "metasModal(); }\n    bindDayBar(root); bindNoDay(root);\n    const day = curDay(); if (!day || Engine.isOffDay(db(), day)) return;\n    SrvUI.bindDay(root, day); ForaTurnoUI.mount(root, day);")
+R("async function boot() {\n", open(os.path.join(AQUI,'turnos_np.js'),encoding='utf-8').read() + "\nasync function boot() {\n")
 # 2.4.17 · C2–C6: kit com a ficha por pasta (AT-08) e a contagem da fila durável para o Portal (C5)
 # 2.4.16 · C1: kit com a fila durável (vacFila), formato da base (vacFormatoBase), link seguro (vacLinkSeguro) e trava da 2ª aba
 # 2.4.15 · E11: kit (busca leva o equipamento à ficha em Equipamentos; bases de Iniciativas e Equipamentos em 00. Bases)

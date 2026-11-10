@@ -98,6 +98,7 @@ const CadSync = (() => {
       let o = live(d.shifts).find(x => x.code === t.codigo);
       const versoes = (t.vigencias || []).slice().sort((a, b) => a.de < b.de ? -1 : 1).map(v => ({ v, p: {
         validFrom: v.de, validTo: v.ate || null, start: v.inicio, end: v.fim, weekdays: (v.dias || []).slice(), color: t.cor || null, active: v.ativo !== false && t.ativo !== false,   /* 2.4.3 · turno inativo no Portal = vigências inativas */
+        productive: v.naoProdutivo ? false : true,   /* 2.4.24 · TUR-01: ativo e não produtivo */
         breaks: (v.pausas || []).map(x => ({ label: x.nome || (x.codigo || 'Pausa'), start: x.inicio || '', end: x.fim || '', minutes: x.inicio && x.fim ? null : (+x.duracaoMin || null), weekdays: (x.dias || []).slice(), deducts: x.desconta !== false, codeId: dcId(x.codigo) })),
         tailMergeMax: v.regraPedacoFinal != null && v.regraPedacoFinal !== '' ? +v.regraPedacoFinal : null,
         template: (v.intervalos || []).length ? v.intervalos.map(x => ({ start: x.inicio, end: x.fim })) : null } }));
@@ -147,6 +148,10 @@ const CadSync = (() => {
     const PP = P.producao || {};
     if (+PP.unidadeLancamento > 0) sp('entryUnit', +PP.unidadeLancamento);
     if (PP.rotuloUnidade) sp('unitLabel', String(PP.rotuloUnidade));
+    /* 2.4.24 · TUR-01/POR-10: continuidade e data de início da reatribuição. Sem data no Portal, vale a 1ª vigência não produtiva */
+    if (+PP.continuidadeMin > 0) sp('continuityMin', +PP.continuidadeMin);
+    const npDe = (C.turnos || []).flatMap(t => (t.vigencias || []).filter(v => v && v.naoProdutivo).map(v => v.de)).filter(Boolean).sort()[0] || null;
+    const desde = PP.foraTurnoDesde || npDe; if (desde) sp('foraTurnoDesde', String(desde));
     const AR = (Array.isArray(PP.arredondamentoMeta) ? PP.arredondamentoMeta : []).filter(v => v && v.de && +v.valor > 0).map(v => ({ de: v.de, valor: +v.valor })).sort((a, b) => a.de < b.de ? -1 : 1);
     if (AR.length) { sp('roundingVig', AR); const h = U.today(), vg = AR.filter(v => v.de <= h).slice(-1)[0] || AR[0]; sp('roundingUnit', vg.valor); }
     st.cadSync = { stamp: stampOf(C), rev: C.rev, revAt: C.revAt || null, em: now, resumo: R };
