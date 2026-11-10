@@ -92,6 +92,37 @@ const { chromium } = require('playwright');
     return { n: L.length, pg: W2.parametros.gel, eq: W2.equipamentos[1].gel, cat: W2.catalogos[0].gel, catg: W2.equipamentos[1].categoria }; });
   ok(mig.n === 5 && mig.pg.processo[0].pT === 2.1 && mig.pg.formatos[0].sobra === 1.3 && mig.pg.motivos[0].id === 'm9' && mig.eq.descs[0].cat === 'P' && mig.catg === 'gel' && mig.cat.fmt === '75' && mig.cat.vig[0].bomKg === 8.84, '4a migração: Trazer configurações leva processo, formatos, motivos, descartes (Equipamento – Gel) e o gel do catálogo, com a mesma estrutura');
 
+  /* ---------- 4c (GEL-03 / PRD-10): Registrar scrap de gel no turno da Produção ---------- */
+  const o = await nova('OEE-Vacutainer.html', 'Produção 4c');
+  const p4c = await o.evaluate(async () => { document.querySelectorAll('.overlay').forEach(x => x.remove()); Demo.enterExample(); await new Promise(r => setTimeout(r, 300));
+    const day = Store.S.db.productionDays.filter(x => !x.deleted && x.status !== 'fechado' && x.shifts.some(p => !p.deleted && p.status !== 'fechado')).sort((a, b) => a.date < b.date ? 1 : -1)[0];
+    const res = Engine.computeDay(db(), day), ps = day.shifts.find(p => !p.deleted && p.status !== 'fechado' && res.flat.some(f => f.ps === p && f.cat));
+    const catCode = ((db().catalogs || []).find(c => c.id === res.flat.find(f => f.ps === ps && f.cat).cat) || {}).code;
+    const C = { schema: 'vac-cadastros', rev: 11, parametros: { gel: { formatos: [{ from: '2000-01-01', tara: 70, taraP: 4, sobra: 1.3, f: { '100': { tubo: 4.8, gel: 0.83, adit: 0.02, tr: 2.31 }, '75': { tubo: 3.55, gel: 0.82, adit: 0.015, tr: 2.29 } } }], processo: [{ from: '2000-01-01', g: 0.97, pT: 2.1, pB: 0.71, pP: 0.5 }], motivos: [{ id: 'm1', name: 'Gel com bolha', comps: [], active: true }] } },
+      equipamentos: [{ codigo: 'EQ90', nome: 'Máquina de gel', ativo: true, categoria: 'gel', gel: { tara: 80, descs: [{ id: 'd1', comp: 'tubogel', cat: 'T', mots: [] }, { id: 'd2', comp: 'barril', cat: 'B' }] } }],
+      catalogos: [{ codigo: catCode, tipoItem: 'tubo', nome: 'Tubo', ativo: true, formato: '13x100', gel: { fmt: '100', vig: [{ from: '2000-01-01', gTubo: 0.85, bomKg: 8.84, bomBase: 10000, tol: 6 }] } }], materiais: [], bom: [] };
+    localStorage.setItem('vac.cadastros', JSON.stringify(C)); Engine.bumpConfig();
+    App.sel.dayId = day.id; App.sel.date = day.date; go('launch'); await new Promise(r => setTimeout(r, 400));
+    const btn = document.querySelector(`[data-gelscrap="${ps.id}"]`); if (!btn) return { semBotao: true };
+    btn.click(); await new Promise(r => setTimeout(r, 300));
+    const m = document.querySelector('.overlay'); const kg = m.querySelector('[data-gf="kg"]'); kg.value = '2,345'; kg.dispatchEvent(new Event('change', { bubbles: true })); await new Promise(r => setTimeout(r, 100));
+    const mot = m.querySelector('[data-gm="m1"]'); if (mot) { mot.checked = true; mot.dispatchEvent(new Event('change', { bubbles: true })); await new Promise(r => setTimeout(r, 100)); }
+    const prev = m.querySelector('[data-gi="0"] td:nth-last-child(2)').innerText;
+    m.querySelector('#gOk').click(); await new Promise(r => setTimeout(r, 500));
+    const d2 = Store.S.db.productionDays.find(x => x.id === day.id), ps2 = d2.shifts.find(p => p.id === ps.id), gs = ps2.gelScrap;
+    const esperado = vacGel.pesagem({ desc: { comp: 'tubogel', cat: 'T' }, taraEq: 80, kg: 2.345, cg: { fmt: '100', vig: [{ from: '2000-01-01', gTubo: 0.85 }] }, date: day.date, fmts: C.parametros.gel.formatos, params: C.parametros.gel.processo });
+    const ex = Exports.build(db()), linha = (ex.porDiaTurno || []).find(x => x.dia === day.date && x.turno === (ps.snap.code || ps.snap.name));
+    // tela do turno (operador)
+    App.op = true; App.opSel = { date: day.date, shiftId: ps.shiftId }; go('shift'); await new Promise(r => setTimeout(r, 400)); const naTelaTurno = !!document.querySelector(`[data-gelscrap="${ps.id}"]`); App.op = false;
+    return { gs, prev, esperado, linha: linha ? { gel: linha.gel, extraMin: linha.extraMin } : null, naTelaTurno, catCode };
+  });
+  ok(!p4c.semBotao, 'GEL-03 / PRD-10: o turno da Produção tem o botão Registrar scrap (catálogo do turno usa gel e há equipamento de gel no Portal)');
+  ok(p4c.gs && p4c.gs.eq.length === 1 && p4c.gs.eq[0].e === 'EQ90' && p4c.gs.eq[0].kg === 2.345 && p4c.gs.eq[0].cat === p4c.catCode && (p4c.gs.eq[0].mots || [])[0].m === 'm1' && p4c.gs.por, 'G1: a pesagem fica gravada no turno da Produção (equipamento do Portal, descarte, catálogo, peso, motivo, quem)');
+  ok(p4c.linha && p4c.linha.gel && Math.abs(p4c.linha.gel.kg.T - Math.round(p4c.esperado.gel * 1000) / 1000) < 1e-9 && p4c.linha.gel.pesagens.length === 1 && p4c.linha.extraMin != null, 'GEL-03: exports porDiaTurno[].gel com as pesagens e o gel por categoria pela conta comum (vacGel), e a hora extra do turno');
+  ok(/gel/.test(p4c.prev) && p4c.prev.includes(String(p4c.esperado.gel.toFixed(3)).replace('.', ',')), 'GEL-03: o formulário mostra o gel calculado de cada pesagem antes de gravar');
+  ok(p4c.naTelaTurno, 'PRD-10: o Registrar scrap também está na tela do turno (operador)');
+  await o.evaluate(() => localStorage.removeItem('vac.cadastros'));
+
   await b.close();
   if (errs.length) { console.log('\n' + errs.join('\n')); process.exit(1); } else console.log('\nsem erros');
 })();
