@@ -301,7 +301,7 @@ Versões: Produção 2.4.24 · Portal 1.9.10. Código novo: `fontes/producao/tur
 
 Versões: Portal 1.9.11 · Produção 2.4.26 · Waste 1.8.27 · Gel 2.16 · Paradas 1.0.25 · kit com `vacImportacaoHref`/`vacIrImportacao`. Teste: `node testes/timportacao.js` (na suíte `tudo.js`).
 
-### D11 · decisão de arquitetura tomada (confirme)
+### D11 · decisão de arquitetura (confirmada pelo usuário em 10/11/2026)
 
 O IMP-05 pede para "mover toda a tratativa de importação da Produção para o Portal". Pela **regra 1**, cada página só grava na própria base: a do MB51/COOIS é a da Produção (`ordens-base.json`), com trava entre computadores, backup obrigatório, fila durável e validação próprias. Se o Portal gravasse ali, essas proteções seriam contornadas.
 
@@ -323,3 +323,5 @@ Ficou assim: **o Portal › Importação é a porta única** (lista, ordem, stat
 **Pergunta (PRD-02):** a lista pedida tem "Ordens" entre "Ordens produzidas" e "Conciliação", mas não existe essa sub-aba (as atuais eram Importar MB51, Complementar COOIS, Ordens produzidas, Conciliação e Histórico). É o **Plano do mês** (ordens do PCP) ou outra lista? Fica fora até a resposta.
 
 **Limite conhecido:** em PRD-03 o MB51 e o COOIS ficam como dois passos (1 · 2) na mesma tela, não um embaixo do outro numa rolagem só: as duas telas usam os mesmos campos (colar, prévia, gravar) e juntá-las numa página exige reescrever a importação das ordens, que tem leitura estrita e backup obrigatório (E1). Se você preferir a rolagem única, entra como item próprio.
+
+**Respostas do usuário (10/11/2026):** D11 confirmado. PRD-02: "Ordens" é o **Plano do mês**, e entrou como "Ordens (plano do mês)" entre Ordens produzidas e Conciliação, na sub-aba e no menu, levando à aba Plano do mês (Produção 2.4.27). PRD-03: os dois passos MB51 e COOIS na mesma tela servem.
