@@ -499,3 +499,24 @@ Próximo: 4e (Teórico × Real na página do dia da Produção, só quando o cat
 - Calendário e tabela de desvios (os outros formatos de folha) não mudam.
 
 **Fase 5 concluída:** POR-05, POR-06, POR-08, POR-09, PRD-01, PRD-07 e PRD-09. Teste: `node testes/tperiodo.js`.
+
+---
+
+## 11. Fase 6 · Iniciativas / Ações (10/11/2026)
+
+**Levantamento:**
+- **Programas:** estão fixos no código (abas Ações, KAS, OSM, 5S). Só o KAS tem dados próprios; OSM e 5S são ações com essa origem.
+- **Importação:** não há nenhuma em Iniciativas.
+- **Kanban:** sem cor por status.
+- **Waste:** tem um plano de ações paralelo (`B.actions`, 11 status), sem ligação com Iniciativas.
+
+**Respostas do usuário:**
+- **I1 (WST-03):**
+  - "+ Ação" no Waste abre Iniciativas com a ação preenchida (origem Waste, vínculo com a ordem).
+  - O Waste mostra as ações de Iniciativas ligadas à ordem, pelo `exports`.
+  - As ações antigas do Waste migram uma vez, com o histórico, por "Trazer ações do Waste". Depois disso, a lista antiga fica só para consulta.
+- **I2:** Iniciativas ganha o campo **eficácia** na ação concluída (em acompanhamento, eficaz, sem eficácia). Os demais status do Waste viram os 5 de Iniciativas:
+  - aberta, em análise e planejada → a fazer;
+  - aguardando recurso e aguardando validação → aguardando.
+- **I3 (INI-02):** os programas são **cadastrados no Portal** (tipo `programas`). Iniciativas mostra uma aba por programa ativo, e o "+" abre o cadastro no Portal.
+- **I4 (INI-03):** **Importar dados** em cada programa, com uma importação comum de ações (colar do Excel/CSV, com prévia), registrada em Portal › Importação › Iniciativas. Os formatos próprios de OSM e 5S entram quando chegarem as amostras.
