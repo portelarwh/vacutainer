@@ -30,6 +30,10 @@ const { chromium } = require('playwright');
     const oX = OeeReal.dia(dd, dd.productionDays.find(x => x.date === X), rX), oX1 = OeeReal.dia(dd, dd.productionDays.find(x => x.date === X1), rX1);
     out.X = { antes: oX.antes, depois: oX.depois, rep: oX.rep, real: oX.real, fora: oX.fora, oficial: rX.r.oee };
     out.X1 = { antes: oX1.antes, depois: oX1.depois, rep: oX1.rep, real: oX1.real, fora: oX1.fora };
+    // 2.4.42 · Plano do mês: realizado igual à soma da produção dos dias (inclui fora de turno)
+    try { const plan = { id: 'pl_t', month: '2026-03', lineId: LINE, versions: [{ n: 1, items: [{ catalogId: cat.id, qty: 30000000 }] }], exc: [], orders: [{ id: 'o1', order: '100', lot: 'L-2', catalogId: cat.id, qty: 100000000, start: X }] };
+      const PR = Engine.monthPlanResult(dd, plan, X1), gX = rX.r.good + rX1.r.good; out.plano = { real: PR.real, dias: gX, ord: Engine.orderProgress(dd, plan).byOrder.get('o1').produced };
+    } catch (e) { out.plano = { erro: String(e) }; }
     // Lançamento do dia X
     App.prefs.kcOff = []; App.sel.date = X; App.sel.lineId = LINE; go('launch'); await w(300);
     const kl = [...document.querySelectorAll('.section.kpis .kpi .l')].map(l => l.childNodes[0].textContent.trim());
@@ -75,6 +79,14 @@ const { chromium } = require('playwright');
     out.soNP = !document.querySelector('tr[data-hhg]') && !!document.querySelector('section.hh-np');
     if (window.__print) await window.__print('hh');
     HHPs.sel = null;
+    // 2.4.42 · Relatórios › Tabelas
+    { const RS = rpState(); RS.type = 'tables'; RS.tab = { mod: 'dia', from: X, to: X1, wd: [], turno: '', fam: '', cat: '' }; go('reports'); await w(400);
+      const lin = () => [...document.querySelectorAll('#rpDoc table.rt-t tbody tr:not(.total)')].map(t => t.textContent.replace(/\s+/g, ' ').trim());
+      out.tab = { tipo: !!document.querySelector('[data-rpt="tables"]'), mods: document.querySelectorAll('#rtMod option').length, dia: lin() };
+      document.querySelector('[data-rtwd="2"]').click(); await w(300); out.tab.ter = lin();
+      RS.tab.wd = []; RS.tab.mod = 'turno'; render(); await w(300); out.tab.turno = lin();
+      RS.tab.mod = 'lotes'; render(); await w(300); out.tab.lotes = lin();
+      RS.tab.mod = 'diasemana'; render(); await w(300); out.tab.ds = lin(); out.tab.titulo = (document.querySelector('#rpDoc') || {}).textContent.slice(0, 80); }
     // Visão Geral do período X..X1
     App.filters.from = X; App.filters.to = X1; App.filters.lineId = LINE; Panel.st().view = 'padrao'; go('overview'); await w(400);
     out.vg = [...document.querySelectorAll('.kpi .l')].map(l => l.childNodes[0].textContent.trim()).filter(t => /^(OEE reportado|OEE real|Fora de turno)$/.test(t));
@@ -107,6 +119,9 @@ const { chromium } = require('playwright');
   ok(R.scModal && R.scDesab && R.scSoma === '1.250' && R.scGrav[0] === 1250 && /EQ01":400/.test(R.scGrav[1]), `PRD-13: popup de scrap por máquina (máquinas desabilitadas em "só o total"; soma ${R.scSoma}; gravado ${R.scGrav.join(' ')})`);
   ok(R.scTot[0] === 1000 && R.scTot[1] && /1\.000 peças · só o total/.test(R.scTxt), 'PRD-13: "Reportar só o total" grava o total e limpa o por máquina; o cartão mostra o total');
   ok(R.pnK, 'PRD-08: OEE reportado, OEE real, Fora de turno e Caixas do MES no catálogo do Painel; Meu painel com OEE real');
+  ok(R.plano && R.plano.real === R.plano.dias && R.plano.ord === R.plano.dias, `Plano do mês: realizado = soma da produção dos dias, com a fora de turno (plano ${R.plano && R.plano.real}, dias ${R.plano && R.plano.dias}, ordem ${R.plano && R.plano.ord}${R.plano && R.plano.erro ? ' · ' + R.plano.erro : ''})`);
+  ok(R.tab.tipo && R.tab.mods === 10 && R.tab.dia.length === 2 && R.tab.ter.length === 1 && /Ter/.test(R.tab.ter[0]), `Relatórios › Tabelas: 10 modelos; por dia (2 linhas) e só terças (1 linha: ${(R.tab.ter[0] || '').slice(0, 60)})`);
+  ok(R.tab.turno.length === 4 && R.tab.lotes.length === 2 && /L-1/.test(R.tab.lotes[0]) && /L-2/.test(R.tab.lotes[1]) && R.tab.ds.length === 2, `Tabelas: por turno (${R.tab.turno.length} linhas), lotes do MES (${R.tab.lotes.map(x => x.slice(0, 30)).join(' | ')}), por dia da semana (${R.tab.ds.length})`);
   ok(!pe.length, 'sem erros de página' + (pe.length ? ': ' + pe.slice(0, 3).join(' | ') : ''));
   await b.close(); console.log(errs.length ? `\n${errs.length} falha(s)` : '\nsem erros'); process.exit(errs.length ? 1 : 0);
 })().catch(e => { console.error(e); process.exit(1); });

@@ -68,7 +68,7 @@ const { chromium } = require('playwright');
   ok(await po.evaluate(() => !!document.querySelector('#parGel') && !document.querySelector('#pgOk')), '4a Portal: Parâmetros tem o grupo Gestão de Gel (só consulta sem a senha)');
   await po.evaluate(() => { Lock.on(Cad.D.seguranca.senhaHash); App.render(); }); await po.waitForTimeout(300);
   await po.click('#parGel [data-pgadd="processo"]'); await po.waitForTimeout(200);
-  await po.fill('#parGel [data-pg="processo.0.pT"]', '2.5'); await po.fill('#parGel [data-pg="registroPelaProducaoDesde"]', '2026-12-01');
+  await po.fill('#parGel [data-pg="processo.0.pT"]', '2.5'); await po.evaluate(() => { const i = document.querySelector('#parGel [data-pg="registroPelaProducaoDesde"]'); i.value = '2026-12-01'; i.dispatchEvent(new Event('input', { bubbles: true })); i.dispatchEvent(new Event('change', { bubbles: true })); });   /* kit: o campo de data visível é o texto DD/MM/AAAA */
   await po.click('#parGel [data-pgadd="motivos"]'); await po.waitForTimeout(200); await po.fill('#parGel [data-pg="motivos.0.name"]', 'Gel com bolha');
   await po.click('#pgOk'); await po.waitForTimeout(600);
   const pg = await po.evaluate(() => (Cad.D.parametros || {}).gel || null), hoje = await po.evaluate(() => todayISO());

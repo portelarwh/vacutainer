@@ -3469,6 +3469,57 @@ ${(g.duvidas || []).length ? `<h3>Dúvidas comuns</h3>${g.duvidas.map(([q, r]) =
   return { abrir, fechar, alternar, aba, guia: () => guia(aba()), _S: S };
 })();
 
+/* ===== kit v2.1 · datas sempre em DD/MM/AAAA (homologação de 10/11/2026) =====
+   O campo de data nativo do navegador mostra a data no idioma do Windows/Chrome (em inglês: MM/DD/YYYY). Em todas as páginas, cada
+   <input type="date"> e "datetime-local" ganha um campo de texto DD/MM/AAAA (com hh:mm no datetime) e o botão do calendário; o campo
+   original fica escondido e continua com o valor no formato interno (AAAA-MM-DD), então o código da página não muda: lê .value, recebe
+   "input" e "change" e pode mudar .value por código (o texto acompanha). A Produção tem o mesmo componente próprio (DateFields).
+   O que se importa (CSV, SAP, Forms) continua lido pelo formato do arquivo; isto é só a tela. */
+const vacDatas = (() => {
+  if (typeof DateFields !== 'undefined') return { aplicar() { } };   // Produção: já tem o DateFields
+  const P2 = n => String(n).padStart(2, '0');
+  const toTxt = (iso, dt) => { if (!iso) return ''; const [d, t] = String(iso).split('T'); const [y, m, dd] = d.split('-'); if (!dd) return ''; return `${dd}/${m}/${y}${dt ? ' ' + (t || '00:00').slice(0, 5) : ''}`; };
+  const parse = (txt, dt) => {
+    const s = String(txt || '').trim(); if (!s) return '';
+    let m = /^(\d{4})-(\d{2})-(\d{2})(?:[T ](\d{2}):(\d{2}))?/.exec(s), d, mo, y, h = null, mi = null;
+    if (m) { y = +m[1]; mo = +m[2]; d = +m[3]; h = m[4]; mi = m[5]; }
+    else { const parts = s.split(/\s+/), ds = parts[0], ts = parts.slice(1).join(''); const g = ds.includes('/') ? ds.split('/') : [ds.slice(0, 2), ds.slice(2, 4), ds.slice(4, 8)];
+      d = +g[0]; mo = +g[1]; y = g[2] ? +g[2] : new Date().getFullYear(); if (y < 100) y += 2000;
+      let tt = ts; if (!tt && !ds.includes('/') && ds.length > 8) tt = ds.slice(8); if (tt) { const tm = /^(\d{1,2}):?(\d{2})$/.exec(tt); if (tm) { h = tm[1]; mi = tm[2]; } } }
+    const o = new Date(y, mo - 1, d); if (!(d >= 1 && mo >= 1 && mo <= 12 && y > 1999 && y < 2100) || o.getMonth() !== mo - 1 || o.getDate() !== d) return null;
+    const iso = `${y}-${P2(mo)}-${P2(d)}`; if (!dt) return iso;
+    const hh = h == null ? 0 : +h, mm = mi == null ? 0 : +mi; if (hh > 23 || mm > 59) return null; return `${iso}T${P2(hh)}:${P2(mm)}`;
+  };
+  const mask = (v, dt) => { const n = v.replace(/\D/g, '').slice(0, dt ? 12 : 8); let o = n.slice(0, 2); if (n.length > 2) o += '/' + n.slice(2, 4); if (n.length > 4) o += '/' + n.slice(4, 8); if (dt && n.length > 8) o += ' ' + n.slice(8, 10) + (n.length > 10 ? ':' + n.slice(10, 12) : ''); return o; };
+  const desc = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value');
+  function css() { if (document.getElementById('vacDatasCss')) return; const st = document.createElement('style'); st.id = 'vacDatasCss';
+    st.textContent = '.vdf{position:relative;display:inline-flex;align-items:center;max-width:100%;vertical-align:middle}.vdf .vdf-t{width:9.2em;font:inherit;font-variant-numeric:tabular-nums;padding-right:28px}.vdf.dt .vdf-t{width:12.4em}.vdf .vdf-t.bad{border-color:var(--crit,#c62828);outline:1px solid var(--crit,#c62828)}.vdf .vdf-b{position:absolute;right:4px;top:50%;transform:translateY(-50%);border:0;background:transparent;color:var(--muted,#667);padding:3px;cursor:pointer;display:flex}.vdf .vdf-s{position:absolute;right:0;bottom:0;width:1px;height:1px;opacity:0;border:0;padding:0;pointer-events:none}';
+    document.head.appendChild(st); }
+  function um(src) {
+    if (src.dataset.vdf || src.dataset.dfx || src.closest('.vdf')) return; const dt = src.type === 'datetime-local'; src.dataset.vdf = '1'; css();
+    const wrap = document.createElement('span'); wrap.className = 'vdf' + (dt ? ' dt' : '');
+    const txt = document.createElement('input'); txt.type = 'text'; txt.dataset.vdfTexto = '1'; txt.className = 'vdf-t ' + (src.className || ''); txt.placeholder = dt ? 'dd/mm/aaaa hh:mm' : 'dd/mm/aaaa'; txt.value = toTxt(src.value, dt); txt.disabled = src.disabled;
+    if (src.getAttribute('style')) txt.setAttribute('style', src.getAttribute('style'));
+    txt.setAttribute('aria-label', src.getAttribute('aria-label') || src.title || 'Data (dd/mm/aaaa)'); if (src.title) txt.title = src.title;
+    const btn = document.createElement('button'); btn.type = 'button'; btn.className = 'vdf-b'; btn.tabIndex = -1; btn.setAttribute('aria-label', 'Abrir calendário'); btn.innerHTML = '<svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"><rect x="1.5" y="3" width="13" height="11.5" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.4"/><path d="M1.5 6.5h13M5 1.5v3M11 1.5v3" stroke="currentColor" stroke-width="1.4"/></svg>';
+    src.parentNode.insertBefore(wrap, src); wrap.appendChild(txt); wrap.appendChild(btn); wrap.appendChild(src); src.classList.add('vdf-s'); src.tabIndex = -1;
+    let last = desc.get.call(src);
+    try { Object.defineProperty(src, 'value', { configurable: true, get() { return desc.get.call(this); }, set(v) { desc.set.call(this, v); last = desc.get.call(this); txt.value = toTxt(last, dt); } }); } catch (e) { }
+    const commit = () => { const iso = parse(txt.value, dt); if (iso === null) { txt.classList.add('bad'); txt.title = 'Data inválida: use dd/mm/aaaa' + (dt ? ' hh:mm' : ''); return; } txt.classList.remove('bad'); txt.value = toTxt(iso, dt);
+      if (iso !== last) { last = iso; desc.set.call(src, iso); src.dispatchEvent(new Event('input', { bubbles: true })); src.dispatchEvent(new Event('change', { bubbles: true })); } };
+    txt.addEventListener('input', e => { if (e.inputType && e.inputType.startsWith('delete')) return; txt.value = mask(txt.value, dt); });
+    txt.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); commit(); } });
+    txt.addEventListener('blur', commit);
+    src.addEventListener('change', () => { const v = desc.get.call(src); if (v !== last) { last = v; txt.value = toTxt(v, dt); } });
+    btn.onclick = () => { try { src.showPicker(); } catch (e) { src.focus(); } };
+    new MutationObserver(() => { txt.disabled = src.disabled; }).observe(src, { attributes: true, attributeFilter: ['disabled'] });
+  }
+  function aplicar(root) { (root || document).querySelectorAll('input[type=date],input[type=datetime-local]').forEach(um); }
+  const ini = () => { aplicar(document); new MutationObserver(ms => { for (const m of ms) for (const n of m.addedNodes) if (n.nodeType === 1) { if (n.matches && n.matches('input[type=date],input[type=datetime-local]')) um(n); else if (n.querySelectorAll) aplicar(n); } }).observe(document.body, { childList: true, subtree: true }); };
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', ini); else ini();
+  return { aplicar, toTxt, parse };
+})();
+
 </script>
 <script>
 /* ===== UX-02 · guia por aba (briefing 09/11/2026): conteúdo do painel "?" do kit (vacGuia). Editar aqui quando a tela mudar. ===== */

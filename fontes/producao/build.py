@@ -28,7 +28,7 @@ R("location.href=sysHref(port,'versoes')", "vacDemo.ir(sysHref(port,'versoes'))"
 R('<button class="btn primary" id="uOk">Usar este nome</button>', '<button class="btn primary" id="uOk">Usar este nome</button><button class="btn" data-vdemo-entrar onclick="vacDemo.entrar()">Demonstração do sistema</button>')
 R('<button class="btn ghost" id="wLocal">Começar só neste navegador</button>', '<button class="btn ghost" id="wLocal">Começar só neste navegador</button><button class="btn" data-vdemo-entrar onclick="vacDemo.entrar()">Demonstração do sistema</button>')
 R('Abre uma <b>cópia em memória</b> da base com cerca de 3 semanas de dados fictícios (hora a hora, paradas, scrap, dias fechados e abertos), para treinar ou demonstrar. Nada é gravado na pasta da rede nem no navegador: ao sair, tudo volta exatamente como estava.', 'Abre a <b>demonstração integrada do sistema</b>, com produção, perdas, gel, paradas, equipamentos e ações fictícias relacionadas. Você pode editar o exemplo e navegar entre as páginas. As bases reais ficam preservadas; fechar ou recarregar a demonstração descarta as alterações fictícias.')
-R("const APP_VERSION = '2.0.1';","const APP_VERSION = '2.4.41';")
+R("const APP_VERSION = '2.0.1';","const APP_VERSION = '2.4.42';")
 # 2.4.30 · Fase 5 · 5a (D6): porDia e porDiaTurno com a capacidade (cap) e a meta decimal (metaDec): o Portal soma qualquer período sem média de médias
 R("porDia.push({ dia: d.date, oee: r4(r.oee), oeeMeta: r4(r.oeeTarget), boa: n0(r.good), scrap: n0(r.scrap), metaOp: n0(r.metaOp),", "porDia.push({ dia: d.date, oee: r4(r.oee), oeeMeta: r4(r.oeeTarget), boa: n0(r.good), scrap: n0(r.scrap), metaOp: n0(r.metaOp), cap: n0(r.cap), metaDec: n0(r.metaDec),")
 R("porDiaTurno.push({ dia: d.date, turno: sr.ps.snap.code || sr.ps.snap.name, oee: r4(sr.r.oee), boa: n0(sr.r.good), scrap: n0(sr.r.scrap),", "porDiaTurno.push({ dia: d.date, turno: sr.ps.snap.code || sr.ps.snap.name, oee: r4(sr.r.oee), oeeMeta: r4(sr.r.oeeTarget), boa: n0(sr.r.good), scrap: n0(sr.r.scrap), cap: n0(sr.r.cap), metaDec: n0(sr.r.metaDec), metaOp: n0(sr.r.metaOp),")
@@ -255,4 +255,6 @@ from vg_build import aplicar as aplicar_vg   # 2.4.38 · Visão Geral e Hora a h
 aplicar_vg(R)
 from card_build import aplicar as aplicar_card   # 2.4.41 · cartão do turno, scrap por máquina, OEE real no Painel (fontes/producao/turno_card.js)
 aplicar_card(R)
+from plano_build import aplicar as aplicar_plano   # 2.4.42 · Plano do mês com fora de turno, ordenação das tabelas de ordens
+aplicar_plano(R)
 open(out,'w',encoding='utf-8',newline='\n').write(s);print('ok')   # newline: no Windows o padrão gravaria CRLF

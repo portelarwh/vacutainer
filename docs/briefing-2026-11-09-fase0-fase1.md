@@ -636,3 +636,17 @@ Itens marcados como problema na página de homologação.
 - **PRD-23 (SQDCP):** o gráfico segue o padrão da Visão Geral, com valor em cada barra, dia em cada coluna, a meta com o valor, legenda dentro do gráfico e fontes de cerca de 15 a 19 pt na A4 paisagem.
 - **INI-02:** o campo passa a se chamar **Eficácia/Confirmação de Processo** (detalhe, histórico, migração do Waste e o rótulo no Waste). O campo gravado continua `eficacia`.
 - Testes: `testes/toeereal.js` (cartão, popup de scrap, Painel) e `testes/tgel.js` (o gel abre pelo popup do scrap).
+
+## 20. Homologação rodada 2 (Produção 2.4.42, kit de datas; 10/11/2026)
+
+- **Plano do mês (1.039 × 1.058):** o realizado do plano somava só a produção lançada nos intervalos dos turnos. A produção fora de turno (no exemplo, 19 mil na janela do C, somada ao B no OEE reportado) ficava de fora. Agora ela entra no realizado do mês (por catálogo e família) e no produzido das ordens.
+- **Aba Ordens e "Ordens do mês":**
+  - as tabelas ordenam pelo título da coluna (▲ ▼);
+  - "Ordens do mês" ganhou filtros de busca (ordem, lote, catálogo), situação (abertas, em produção, atrasadas, concluídas) e período (hoje, ontem, esta semana, semana passada, um dia).
+- **Datas DD/MM/AAAA (kit `vacDatas`):** todo campo de data das páginas mostra e aceita DD/MM/AAAA, independente do idioma do Windows/Chrome. O valor interno e o que se importa (CSV, SAP, Forms) não mudam. A Produção já tinha o mesmo comportamento (`DateFields`).
+- **Relatórios › Tabelas** (pedido do usuário): relatório só de tabela, sem gráfico.
+  - **10 modelos:** por turno, por dia, por semana, por mês, por dia da semana, por catálogo, por família, hora a hora, lista de paradas e lotes do MES.
+  - **Filtros:** período, dias da semana (ex.: só sábados), turno, família e catálogo.
+  - OEE com 2 casas, calculado como Σ boa ÷ Σ capacidade.
+  - Sai em Excel (todas as linhas), PDF, texto e Outlook.
+- Testes: `testes/toeereal.js` (Plano com fora de turno, Tabelas) e `testes/tgel.js` (campo de data do kit).
