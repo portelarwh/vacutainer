@@ -573,3 +573,21 @@ Era o único item do briefing que tinha ficado sem entrega (além do UX-02, adia
 - **Portal (pedido do usuário):** o período saiu de dentro de cada cartão da Visão Geral, porque a barra já mostra (ex.: "semana · 09/11/2026 a 10/11/2026"). Só fica a pílula "agora" no cartão que **não** segue o período (página sem série por dia).
 - Teste: `node testes/tfase7.js` (parte UX-02) e `testes/tperiodo.js` (período só na barra).
 - **Homologar:** em cada página, F1 na aba mais usada e "Mostrar na tela"; conferir com operador e liderança se o texto está claro e o que falta.
+
+## 15. OEE real pela linha do tempo e cartões do Lançamento (Produção 2.4.37; 10/11/2026)
+
+Pedido do usuário, com a regra confirmada (início e fim espelhados; a justificativa é o que já desconta do planejado; a escolha dos cartões vale por computador).
+- **OEE real:** a mesma produção do OEE reportado, com o tempo planejado contado pela linha do tempo real.
+  - O tempo planejado é o dos turnos mais o tempo **fora do turno** em que a linha produziu.
+  - **Início:** o menor entre o início do 1º turno produtivo e a 1ª caixa. Começou antes (na janela do C) conta da 1ª caixa; partida atrasada sem justificativa é perda.
+  - **Fim:** o maior entre o fim do último turno produtivo e a última caixa. Parou antes do fim sem justificativa conta até o fim do turno; passou do horário conta até a última caixa.
+  - A capacidade extra usa o PPH dos catálogos do trecho.
+  - É calculado na hora: o OEE oficial (reportado), o fechamento e os exports não mudam, e dias antigos passam a mostrar o real pela regra nova.
+- **OEE reportado · OEE real · Fora de turno** passam para a faixa de indicadores do Lançamento e para a **Visão Geral** da Produção (somados no período, sem média de médias), cada um com ⓘ. O quadro de fora de turno ficou só com a tabela dos trechos, cuja coluna agora se chama "OEE do trecho".
+- **Editar cards** (cabeçalho do dia): liga e desliga cada indicador da faixa de cima. A escolha fica neste computador (`App.prefs.kcOff`).
+- **Cartões dos turnos:**
+  - 1ª e última caixa do MES na janela;
+  - cada troca de lote ou catálogo (fim do anterior → início do novo · duração, contada no turno em que o novo lote começou);
+  - o total de troca do turno.
+- **Turno não produtivo com caixas** (ex.: C): ganha um cartão só de leitura com as caixas, para onde a produção foi, o OEE do trecho e as trocas. Para lançar nele como turno, use "Habilitar turno".
+- O guia F1 do Lançamento foi atualizado. Teste: `node testes/toeereal.js` (na suíte).

@@ -1,0 +1,61 @@
+// Produção 2.4.37 (10/11/2026): OEE real pela linha do tempo (início e fim espelhados), OEE reportado / OEE real / Fora de turno no dia e na
+// Visão Geral, caixas do MES e trocas de lote por turno, cartão do turno não produtivo com caixas, "Editar cards" (preferência do computador).
+// node testes/toeereal.js → "sem erros"; código 1 se falhar
+const SP = require('path').resolve(__dirname, '..') + '/'; const S = 'file://' + SP + 'paginas/';
+const { chromium } = require('playwright');
+(async () => {
+  const b = await chromium.launch(); const ctx = await b.newContext({ viewport: { width: 1440, height: 1000 } }); const errs = [], pe = [];
+  const ok = (c, msg) => { console.log((c ? 'ok   ' : 'FALHA ') + msg); if (!c) errs.push(msg); };
+  const o = await ctx.newPage(); o.on('pageerror', e => pe.push(e.message)); o.on('dialog', d => d.accept());
+  await o.goto(S + 'OEE-Vacutainer.html'); await o.waitForTimeout(1500);
+  await o.evaluate(() => { document.querySelectorAll('.overlay').forEach(x => x.remove()); Demo.enterExample(); }); await o.waitForTimeout(800);
+  const R = await o.evaluate(async () => {
+    const w = t => new Promise(r => setTimeout(r, t)), out = {};
+    const d = JSON.parse(Store.serialize(Store.S.db)), SD = ServerData, X = '2026-03-10', X1 = '2026-03-11', LINE = 'line_vac';
+    const mkShift = (code, name, start, end) => ({ id: 'sh_' + code.toLowerCase(), code, name, lineId: LINE, status: 'ativo', versions: [{ id: 'v_' + code, validFrom: '2000-01-01', validTo: null, start, end, weekdays: [0, 1, 2, 3, 4, 5, 6], active: true, breaks: [], template: null }] });
+    d.shifts = [mkShift('T1', 'Turno A', '06:00', '14:30'), mkShift('T2', 'Turno B', '14:30', '22:47'), mkShift('T3', 'Turno C', '22:47', '30:00')];
+    d.shifts[2].versions[0].productive = false;
+    d.calendar = []; d.productionDays = d.productionDays.filter(x => x.date !== X && x.date !== X1);
+    const cat = d.catalogs.find(c => !c.deleted && c.active !== false && Engine.resolveTarget(d, X, c.id, 'mac_line', LINE));
+    Object.assign(d.settings, { foraTurnoDesde: '2026-01-01', continuityMin: 10, serverBoxQty: 1000 });
+    const dia = date => { const day = Engine.buildDay(d, date, LINE, 'mac_line', 'teste'); day.demo = false; day.shifts.forEach(p => { p.initialCatalogId = cat.id; p.intervals.forEach(i => i.good = 60000); p.scrap = 0; }); d.productionDays.push(day); return day; };
+    const dX = dia(X), dX1 = dia(X1);
+    const base = SD.dayStartMin(X), rng = (a, z) => { const L = []; for (let m = a; m <= z; m++) L.push(base + m); return L; };
+    const seg = (id, lot, ms, b0) => { const e = SD.enc(ms); return { id, lineId: LINE, lot, cat: cat.code, b0, b1: b0 + ms.length - 1, t0: SD.fromMin(ms[0]), t1: SD.fromMin(ms[ms.length - 1]), n: ms.length, base: e.base, m: e.m }; };
+    d.server = SD.ensureStore(d);
+    d.server.segments = [seg('s0', 'L-1', rng(20 * 60, 20 * 60 + 10), 1), seg('s1', 'L-2', rng(22 * 60 + 30, 23 * 60 + 40), 1), seg('s2', 'L-2', rng(26 * 60, 26 * 60 + 30), 500)];
+    d.server.lotClass = { 'L-1': { kind: 'normal' }, 'L-2': { kind: 'normal' } };
+    Store.S.db = Model.ensure(d); Engine.bumpConfig();
+    const dd = db(), rX = Engine.computeDay(dd, dd.productionDays.find(x => x.date === X)), rX1 = Engine.computeDay(dd, dd.productionDays.find(x => x.date === X1));
+    const oX = OeeReal.dia(dd, dd.productionDays.find(x => x.date === X), rX), oX1 = OeeReal.dia(dd, dd.productionDays.find(x => x.date === X1), rX1);
+    out.X = { antes: oX.antes, depois: oX.depois, rep: oX.rep, real: oX.real, fora: oX.fora, oficial: rX.r.oee };
+    out.X1 = { antes: oX1.antes, depois: oX1.depois, rep: oX1.rep, real: oX1.real, fora: oX1.fora };
+    // Lançamento do dia X
+    App.prefs.kcOff = []; App.sel.date = X; App.sel.lineId = LINE; go('launch'); await w(300);
+    const kl = [...document.querySelectorAll('.section.kpis .kpi .l')].map(l => l.childNodes[0].textContent.trim());
+    out.kpis = kl; out.ib = ['oeeRep', 'oeeReal', 'foraTurnoKpi'].every(k => document.querySelector(`.section.kpis [data-help="${k}"]`));
+    const tx = s => s.textContent.replace(/\s+/g, ' '); out.cartoes = document.querySelectorAll('section.shift').length;
+    out.B = [...document.querySelectorAll('section.shift:not(.np)')].map(tx).find(t => /Turno B/.test(t)) || ''; out.C = [...document.querySelectorAll('section.shift.np')].map(tx).join(' ');
+    // Editar cards
+    document.getElementById('kcEdit').click(); await w(100);
+    const cb = [...document.querySelectorAll('[data-kc]')]; out.edit = cb.map(c => c.dataset.kc);
+    const fora = cb.find(c => c.dataset.kc === 'Fora de turno'); fora.checked = false; fora.onchange(); await w(150);
+    out.semFora = ![...document.querySelectorAll('.section.kpis .kpi .l')].some(l => /Fora de turno/.test(l.textContent)); out.pref = JSON.stringify(App.prefs.kcOff);
+    document.querySelectorAll('.overlay').forEach(x => x.remove()); App.prefs.kcOff = []; render(); await w(100);
+    // Visão Geral do período X..X1
+    App.filters.from = X; App.filters.to = X1; App.filters.lineId = LINE; Panel.st().view = 'padrao'; go('overview'); await w(400);
+    out.vg = [...document.querySelectorAll('.kpi .l')].map(l => l.childNodes[0].textContent.trim()).filter(t => /^(OEE reportado|OEE real|Fora de turno)$/.test(t));
+    out.vgReal = OeeReal.periodo([X, X1].map(x => dd.productionDays.find(y => y.date === x)));
+    return out;
+  });
+  ok(R.X.antes === 0 && R.X.depois === 54, `fim espelhado: o B passou do horário até 23:40 → +54 min no tempo planejado do OEE real (antes ${R.X.antes}, depois ${R.X.depois})`);
+  ok(R.X.rep === R.X.oficial && R.X.real < R.X.rep && R.X.fora === 54000, `OEE reportado = oficial (${(R.X.rep * 100).toFixed(1)}%); OEE real menor (${(R.X.real * 100).toFixed(1)}%); fora de turno 54 mil`);
+  ok(R.X1.antes === 240 && R.X1.depois === 0 && R.X1.real < R.X1.rep, `início espelhado: produção da madrugada (02:00) sem continuidade vai para o A e o real conta da 1ª caixa (+${R.X1.antes} min)`);
+  ok(['OEE reportado', 'OEE real', 'Fora de turno'].every(k => R.kpis.includes(k)) && R.ib, `os 3 indicadores na faixa do dia, com ⓘ (${R.kpis.join(' · ')})`);
+  ok(/Caixas do MES/.test(R.B) && /1ª 20:00 · última 22:46/.test(R.B) && /L-1 terminou 20:10 → L-2 começou 22:30 · 2h20/.test(R.B) && /Total de troca no turno: 2h20/.test(R.B), 'cartão do B: 1ª e última caixa, troca de lote (fim, início, duração) e total de troca');
+  ok(R.cartoes === 3 && /não produtivo/.test(R.C) && /Turno B/.test(R.C) && /Turno A de 11\/03\/2026/.test(R.C) && /Só leitura/.test(R.C), `cartão do turno C (não produtivo) com as caixas e para onde foram (${R.C.slice(0, 160)})`);
+  ok(R.edit.includes('Fora de turno') && R.edit.includes('Produção boa') && R.semFora && R.pref === '["Fora de turno"]', 'Editar cards: desmarcar esconde o indicador e fica na preferência do computador');
+  ok(R.vg.length === 3 && R.vgReal.real < R.vgReal.rep && R.vgReal.fora === 85000, `Visão Geral com os 3 no período (fora de turno ${R.vgReal.fora})`);
+  ok(!pe.length, 'sem erros de página' + (pe.length ? ': ' + pe.slice(0, 3).join(' | ') : ''));
+  await b.close(); console.log(errs.length ? `\n${errs.length} falha(s)` : '\nsem erros'); process.exit(errs.length ? 1 : 0);
+})().catch(e => { console.error(e); process.exit(1); });

@@ -28,7 +28,7 @@ R("location.href=sysHref(port,'versoes')", "vacDemo.ir(sysHref(port,'versoes'))"
 R('<button class="btn primary" id="uOk">Usar este nome</button>', '<button class="btn primary" id="uOk">Usar este nome</button><button class="btn" data-vdemo-entrar onclick="vacDemo.entrar()">Demonstração do sistema</button>')
 R('<button class="btn ghost" id="wLocal">Começar só neste navegador</button>', '<button class="btn ghost" id="wLocal">Começar só neste navegador</button><button class="btn" data-vdemo-entrar onclick="vacDemo.entrar()">Demonstração do sistema</button>')
 R('Abre uma <b>cópia em memória</b> da base com cerca de 3 semanas de dados fictícios (hora a hora, paradas, scrap, dias fechados e abertos), para treinar ou demonstrar. Nada é gravado na pasta da rede nem no navegador: ao sair, tudo volta exatamente como estava.', 'Abre a <b>demonstração integrada do sistema</b>, com produção, perdas, gel, paradas, equipamentos e ações fictícias relacionadas. Você pode editar o exemplo e navegar entre as páginas. As bases reais ficam preservadas; fechar ou recarregar a demonstração descarta as alterações fictícias.')
-R("const APP_VERSION = '2.0.1';","const APP_VERSION = '2.4.36';")
+R("const APP_VERSION = '2.0.1';","const APP_VERSION = '2.4.37';")
 # 2.4.30 · Fase 5 · 5a (D6): porDia e porDiaTurno com a capacidade (cap) e a meta decimal (metaDec): o Portal soma qualquer período sem média de médias
 R("porDia.push({ dia: d.date, oee: r4(r.oee), oeeMeta: r4(r.oeeTarget), boa: n0(r.good), scrap: n0(r.scrap), metaOp: n0(r.metaOp),", "porDia.push({ dia: d.date, oee: r4(r.oee), oeeMeta: r4(r.oeeTarget), boa: n0(r.good), scrap: n0(r.scrap), metaOp: n0(r.metaOp), cap: n0(r.cap), metaDec: n0(r.metaDec),")
 R("porDiaTurno.push({ dia: d.date, turno: sr.ps.snap.code || sr.ps.snap.name, oee: r4(sr.r.oee), boa: n0(sr.r.good), scrap: n0(sr.r.scrap),", "porDiaTurno.push({ dia: d.date, turno: sr.ps.snap.code || sr.ps.snap.name, oee: r4(sr.r.oee), oeeMeta: r4(sr.r.oeeTarget), boa: n0(sr.r.good), scrap: n0(sr.r.scrap), cap: n0(sr.r.cap), metaDec: n0(sr.r.metaDec), metaOp: n0(sr.r.metaOp),")
@@ -240,6 +240,8 @@ R("// cadastro base do Portal na mesma pasta: só a revisão, para a pílula do 
 R("</script>\n</body>","</script>\n"+css+"<script>\n'use strict';\n"+svc+"\n"+tela+"\n"+sync+"\n</script>\n<script>\n"+kit21+"\n</script>\n</body>")
 R('<th class="n">Diferença</th><th>Situação</th></tr></thead>','<th class="n">Diferença</th><th>Situação</th><th title="O que o MB51/COOIS (oficial) diz desta ordem: data principal, saldo, lote, tipo, KKBC no Waste">SAP</th></tr></thead>')
 R("data-accrow=\"${o.id}\">✓ Aceitar apurado</button>` : ''}</td></tr>`; }).join('')}</tbody>","data-accrow=\"${o.id}\">✓ Aceitar apurado</button>` : ''}</td><td>${typeof ordSapCel === 'function' ? ordSapCel(o) : ''}</td></tr>`; }).join('')}</tbody>")
+# 2.4.37 · OEE real (início e fim espelhados), 3 indicadores no dia e na Visão Geral, caixas e trocas por turno, Editar cards (fontes/producao/oee_build.py)
+from oee_build import aplicar as aplicar_oee
 # 2.4.36 · UX-02: guia por aba (componente vacGuia do kit; conteúdo em fontes/producao/guia.js)
 R("async function boot() {\n", open(os.path.join(AQUI,'guia.js'),encoding='utf-8').read() + "\nasync function boot() {\n")
 # 2.4.35 · CSV do MES: catálogo e lote registrados antes da 1ª caixa pertencem a ela; caixa 0 não conta (fontes/producao/mes_build.py)
@@ -248,4 +250,5 @@ aplicar_mes(R)
 # 2.4.34 · Fase 7 do briefing: PRD-05, PRD-06, UX-01, UX-04 (fontes/producao/fase7.js, fase7_build.py)
 from fase7_build import aplicar as aplicar_fase7
 aplicar_fase7(R)
+aplicar_oee(R)
 open(out,'w',encoding='utf-8',newline='\n').write(s);print('ok')   # newline: no Windows o padrão gravaria CRLF

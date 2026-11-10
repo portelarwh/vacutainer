@@ -99,7 +99,7 @@ const ForaTurno = (() => {
     ft.pecas = U.sum(ft.recebe.filter(i => !ft.semAlvo.includes(i)), i => i.pecas);
     return ft;
   }
-  return { opOff, janelas, doDia, paraDia, aplicar, limite, vale };
+  return { opOff, janelas, doDia, paraDia, aplicar, limite, vale, turnosDoDia, caixas };   /* 2.4.37: turnosDoDia e caixas para o OEE real e os cartões dos turnos (oee_real.js) */
 })();
 
 /* ---------- TUR-02 · habilitar / desabilitar um turno não produtivo no dia ---------- */
@@ -149,8 +149,8 @@ const ForaTurnoUI = {
     return `<section class="card section" id="ftCard"><header><h3>Turnos não produtivos e produção fora de turno ${ib('foraTurno')}</h3></header>
       ${np.length ? `<div class="row" style="gap:6px 14px;flex-wrap:wrap">${np.map(x => `<label class="chk"><input type="checkbox" data-turnonp="${esc(x.shift.id)}" ${x.on ? 'checked' : ''} ${lk ? 'disabled' : ''}> Habilitar ${esc(x.shift.name)} neste dia <span class="small muted">${esc(x.v.start || '')}–${esc(U.hhmm(U.toMin(x.v.end)))}</span></label>`).join('')}</div>
         <p class="small muted" style="margin:4px 0 8px">Turno cadastrado como não produtivo no Portal. Habilitado, ele entra neste dia como produtivo: o tempo dele vira planejado e a produção da janela conta nele. Só vale para este dia.</p>` : ''}
-      ${itens.length ? `<div class="kpis" style="margin-bottom:8px">${kpi('OEE reportado', pct(rep.oee), '', 'com a reatribuição (oficial)')}${kpi('OEE real', pct(real ? real.oee : null), '', 'pelo horário real, sem a produção fora de turno')}${kpi('Fora de turno', fq(ft.pecas), unitLbl(), peso != null ? U.pct(peso, 1) + ' da produção boa reportada' : '')}</div>
-        <div class="tw"><table><thead><tr><th>Janela</th><th>Caixas (1ª–última)</th><th class="n">Caixas</th><th class="n">Produção (${esc(unitLbl())})</th><th class="n">OEE real ${ib('foraTurnoOee')}</th><th>Contou em</th></tr></thead><tbody>${itens.map(linha).join('')}</tbody></table></div>
+      ${itens.length ? `<p class="small muted" style="margin:0 0 6px">OEE reportado, OEE real e Fora de turno estão na faixa de indicadores do topo (2.4.37).</p>
+        <div class="tw"><table><thead><tr><th>Janela</th><th>Caixas (1ª–última)</th><th class="n">Caixas</th><th class="n">Produção (${esc(unitLbl())})</th><th class="n">OEE do trecho ${ib('foraTurnoOee')}</th><th>Contou em</th></tr></thead><tbody>${itens.map(linha).join('')}</tbody></table></div>
         ${ft.semAlvo && ft.semAlvo.length ? `<p class="small ferr">${ft.semAlvo.length} trecho(s) sem turno lançado para receber neste dia: crie o lançamento do turno ou habilite o turno.</p>` : ''}
         <p class="small muted">O registro de cada caixa continua na hora real. Regra: trecho emendado com o fim do turno anterior (sem parada maior que ${U.fmt(ft.limite)} min) conta nele; sem continuidade, conta no próximo turno produtivo. Vale desde ${U.brDate(ft.desde)}.</p>` : (np.length ? '' : '')}
     </section>`;
