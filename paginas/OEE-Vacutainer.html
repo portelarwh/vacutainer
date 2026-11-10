@@ -1257,7 +1257,7 @@ const U = (() => {
 
 /* ---- 02-model.js ---- */
 /* ================= modelo de dados, valores iniciais e integridade ================= */
-const APP_VERSION = '2.4.26';
+const APP_VERSION = '2.4.27';
 const SCHEMA_VERSION = 1;
 const BASE_FILE = 'oee-vacutainer-base.json';
 const BACKUP_DIR = '00. Backups';
@@ -10086,7 +10086,8 @@ App.views.ordens = {
     if (!Ord.carregado) { Ord.carregar().then(() => render()); return '<section class="card section"><p class="muted">Lendo ordens…</p></section>'; }
     const c = Ord.cur(), R = c && c.resultado, X = c && c.coois ? c.coois.cruz : null;
     /* 2.4.26 · PRD-02/03: Ordens produzidas · Conciliação · Histórico · Importar (MB51 e COOIS num item só; a aba leva ao Portal › Importação, IMP-06) */
-    const sub = [['lista', 'Ordens produzidas'], ['conc', 'Conciliação'], ['hist', 'Histórico de competências'], ['importar', 'Importar']];
+    /* 2.4.27 · PRD-02: "Ordens" = as ordens do PCP no Plano do mês (resposta do usuário em 10/11/2026); o botão leva à aba Plano do mês */
+    const sub = [['lista', 'Ordens produzidas'], ['plano', 'Ordens (plano do mês)'], ['conc', 'Conciliação'], ['hist', 'Histórico de competências'], ['importar', 'Importar']];
     const naImp = Ord.sub === 'mb51' || Ord.sub === 'coois';
     const porPer = Ord.sub === 'lista' || Ord.sub === 'conc';
     const top = `<section class="card section ord-top"><div class="ord-bar">
@@ -10095,7 +10096,7 @@ App.views.ordens = {
       <div class="ord-st">${porPer ? '' : c && c.mb51 ? ordPill('MB51 · ' + c.mb51.arquivo + ' · ' + new Date(c.mb51.em).toLocaleDateString('pt-BR') + ' · ' + c.mb51.por, 'ok') : ordPill('MB51 não importado', 'warn')} ${porPer ? '' : c && c.coois ? ordPill('COOIS · cobertura ' + fmtPct(X.cobertura), X.cobertura < 1 ? 'warn' : 'ok') : R ? ordPill('COOIS pendente', 'pend') : ''} ${R && !porPer ? ordPill(R.kpi.ordensProduzidas + ' ordens produzidas', 'info') : ''} ${R && !porPer && Ord.waste && !Ord.waste.erro ? (n => n ? `<button class="pill crit" data-ofilt="sem KKBC" title="Ordens produzidas (MB51) sem KKBC_ORD lançada no Waste">${n} sem KKBC no Waste</button>` : ordPill('KKBC: todas lançadas', 'ok'))(R.ordens.filter(o => o.produzida && Ord.kkbc(o.ordem) === 'pendente').length) : ''} ${Ord.modo() === 'pasta' ? ordPill(ORD_FILE + ' · rev ' + (Ord.B.rev || 0), 'none') : ordPill(Ord.modo() === 'exemplo' ? 'modo exemplo: só na memória' : 'sem pasta: só neste navegador', 'warn')}</div></div>
       ${Ord.err ? `<div class="note e">${esc(Ord.err)}</div>` : ''}
       ${Ord.pend ? `<div class="note w" id="oPend"><b>Alteração pendente</b> desde ${new Date(Ord.pend.em).toLocaleString('pt-BR')}: ${esc(Ord.pend.comps.map(compTxt).join(', '))} ainda não foi confirmada na pasta. <button type="button" class="btn sm primary" id="oPendGo">Gravar de novo</button></div>` : ''}
-      <div class="seg ord-sub" role="tablist">${sub.map(([k, l]) => k === 'importar' ? `<button type="button" data-oimp-portal="1" aria-pressed="${naImp}" title="Abre o Portal › Importação › Produção: ordem recomendada e status de cada dia">${l} ↗</button>` : `<button type="button" data-osub="${k}" aria-pressed="${Ord.sub === k}">${l}</button>`).join('')}</div>${porPer ? ordPerBar() : ''}</section>
+      <div class="seg ord-sub" role="tablist">${sub.map(([k, l]) => k === 'plano' ? `<button type="button" data-oplano="1" title="Ordens do PCP do mês (Plano do mês): quantidade, janela prevista e pontuação">${l}</button>` : k === 'importar' ? `<button type="button" data-oimp-portal="1" aria-pressed="${naImp}" title="Abre o Portal › Importação › Produção: ordem recomendada e status de cada dia">${l} ↗</button>` : `<button type="button" data-osub="${k}" aria-pressed="${Ord.sub === k}">${l}</button>`).join('')}</div>${porPer ? ordPerBar() : ''}</section>
       ${naImp ? `<section class="card section ord-imp"><div class="row" style="gap:8px;align-items:center;flex-wrap:wrap"><b>Importar</b><div class="seg" role="tablist"><button type="button" data-osub="mb51" aria-pressed="${Ord.sub === 'mb51'}">1 · MB51 (movimentos, oficial)</button><button type="button" data-osub="coois" aria-pressed="${Ord.sub === 'coois'}">2 · COOIS (complementa o MB51)</button></div><span class="sp" style="flex:1"></span><a class="btn sm" href="${esc(ordPortalImpHref())}" data-oimp-portal="1">Ordem e status: Portal › Importação ↗</a></div></section>` : ''}`;
     const body = { mb51: () => this.vMB51(c), coois: () => this.vCOOIS(c), lista: () => this.vLista(c), conc: () => this.vConc(c), hist: () => this.vHist() }[Ord.sub]();
     return top + body;
@@ -10211,6 +10212,7 @@ App.views.ordens = {
     const on = (s, ev, f) => { const x = root.querySelector(s); if (x) x[ev] = f; };
     root.querySelectorAll('[data-osub]').forEach(b => b.onclick = e => { e.preventDefault(); Ord.sub = b.dataset.osub; render(); });
     root.querySelectorAll('[data-oimp-portal]').forEach(b => b.onclick = e => { e.preventDefault(); ordIrPortalImp(); });
+    root.querySelectorAll('[data-oplano]').forEach(b => b.onclick = e => { e.preventDefault(); go('plan'); });
     on('#oComp', 'onchange', e => { if (!/^\d{4}-\d{2}$/.test(e.target.value)) return; Ord.comp = e.target.value; Ord.per = { de: Ord.comp, ate: Ord.comp, fy: '', q: '' }; Ord.prevMB = Ord.prevCO = null; const c = Ord.cur(); if (c && c.planta) Ord.planta = c.planta; render(); });
     on('#oPlanta', 'onchange', e => { Ord.planta = e.target.value.trim(); if (Ord.prevMB) { Ord.prevMB.R = OrdensSAP.processarMB51(Ord.prevMB.lido, { comp: Ord.comp, planta: Ord.planta }); ordMultiPrep(); } render(); });
     root.querySelectorAll('[data-oplanta]').forEach(b => b.onclick = () => { Ord.planta = b.dataset.oplanta; Ord.prevMB.R = OrdensSAP.processarMB51(Ord.prevMB.lido, { comp: Ord.comp, planta: Ord.planta }); ordMultiPrep(); render(); });
@@ -10373,7 +10375,7 @@ const NAV_GRUPOS = [
   { g: 'Visão geral', itens: [['overview', 'Visão geral']] },   // 2.4.8 · Visão geral em 1º e Painel em 2º (a aba que abre vem do perfil)
   { g: 'Painel', itens: [['panel', 'Painel']] },
   { g: 'Plano', itens: [['plan', 'Plano do mês']] },
-  { g: 'Ordens', itens: [['ordens', 'Ordens produzidas', 'lista'], ['ordens', 'Conciliação', 'conc'], ['ordens', 'Histórico de competências', 'hist'], ['ordens', 'Importar ↗', 'portal']] },   // 2.4.26 · PRD-02/03, IMP-06
+  { g: 'Ordens', itens: [['ordens', 'Ordens produzidas', 'lista'], ['plan', 'Ordens (plano do mês)'], ['ordens', 'Conciliação', 'conc'], ['ordens', 'Histórico de competências', 'hist'], ['ordens', 'Importar ↗', 'portal']] },   // 2.4.26 · PRD-02/03, IMP-06
   { g: 'Apontamento', itens: [['launch', 'Lançamento'], ['hourly', 'Hora a hora'], ['lots', 'Lotes (MES)'], ['pend', 'Pendências']] },
   { g: 'Análise', itens: [['stops', 'Paradas'], ['history', 'Histórico'], ['weekly', 'Semanal'], ['monthly', 'Mensal']] },
   { g: 'Gestão', itens: [['reports', 'Relatórios'], ['sqdcp', 'SQDCP']] },
