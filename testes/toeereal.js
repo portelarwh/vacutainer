@@ -31,8 +31,8 @@ const { chromium } = require('playwright');
     out.X = { antes: oX.antes, depois: oX.depois, rep: oX.rep, real: oX.real, fora: oX.fora, oficial: rX.r.oee };
     out.X1 = { antes: oX1.antes, depois: oX1.depois, rep: oX1.rep, real: oX1.real, fora: oX1.fora };
     // 2.4.42 · Plano do mês: realizado igual à soma da produção dos dias (inclui fora de turno)
-    try { const plan = { id: 'pl_t', month: '2026-03', lineId: LINE, versions: [{ n: 1, items: [{ catalogId: cat.id, qty: 30000000 }] }], exc: [], orders: [{ id: 'o1', order: '100', lot: 'L-2', catalogId: cat.id, qty: 100000000, start: X }] };
-      const PR = Engine.monthPlanResult(dd, plan, X1), gX = rX.r.good + rX1.r.good; out.plano = { real: PR.real, dias: gX, ord: Engine.orderProgress(dd, plan).byOrder.get('o1').produced };
+    try { const plan = { id: 'pl_t', month: '2026-03', lineId: LINE, versions: [{ n: 1, items: [{ catalogId: cat.id, qty: 30000000 }] }], exc: [], orders: [{ id: 'o1', order: '100', lot: 'L-2', catalogId: cat.id, qty: 100000000, start: X }, { id: 'o2', order: '200', lot: '', catalogId: cat.id, qty: 100000000, start: X }] };
+      const PR = Engine.monthPlanResult(dd, plan, X1), gX = rX.r.good + rX1.r.good; const OP = Engine.orderProgress(dd, plan).byOrder, g1 = OP.get('o1'), g2 = OP.get('o2'); out.plano = { real: PR.real, dias: gX, ord: g1.produced, mes: g1.mes, ini: g1.firstAt, fim: g1.lastAt, done: g1.doneAt, o2: g2.produced };
     } catch (e) { out.plano = { erro: String(e) }; }
     // Lançamento do dia X
     App.prefs.kcOff = []; App.sel.date = X; App.sel.lineId = LINE; go('launch'); await w(300);
@@ -119,7 +119,7 @@ const { chromium } = require('playwright');
   ok(R.scModal && R.scDesab && R.scSoma === '1.250' && R.scGrav[0] === 1250 && /EQ01":400/.test(R.scGrav[1]), `PRD-13: popup de scrap por máquina (máquinas desabilitadas em "só o total"; soma ${R.scSoma}; gravado ${R.scGrav.join(' ')})`);
   ok(R.scTot[0] === 1000 && R.scTot[1] && /1\.000 peças · só o total/.test(R.scTxt), 'PRD-13: "Reportar só o total" grava o total e limpa o por máquina; o cartão mostra o total');
   ok(R.pnK, 'PRD-08: OEE reportado, OEE real, Fora de turno e Caixas do MES no catálogo do Painel; Meu painel com OEE real');
-  ok(R.plano && R.plano.real === R.plano.dias && R.plano.ord === R.plano.dias, `Plano do mês: realizado = soma da produção dos dias, com a fora de turno (plano ${R.plano && R.plano.real}, dias ${R.plano && R.plano.dias}, ordem ${R.plano && R.plano.ord}${R.plano && R.plano.erro ? ' · ' + R.plano.erro : ''})`);
+  ok(R.plano && R.plano.real === R.plano.dias && R.plano.ord === 102000 && R.plano.mes && R.plano.mes.caixas === 102 && R.plano.ini === '2026-03-10T22:30' && R.plano.fim === '2026-03-11T02:30' && R.plano.o2 === R.plano.dias - 102000, `Plano: realizado = soma dos dias (com fora de turno); ordem do lote L-2 = 102 caixas do MES, 1ª e última caixa; ordem sem lote recebe o resto (plano ${R.plano && R.plano.real}, ordem L-2 ${R.plano && R.plano.ord}, outra ${R.plano && R.plano.o2}, ${R.plano && R.plano.ini}–${R.plano && R.plano.fim}${R.plano && R.plano.erro ? ' · ' + R.plano.erro : ''})`);
   ok(R.tab.tipo && R.tab.mods === 10 && R.tab.dia.length === 2 && R.tab.ter.length === 1 && /Ter/.test(R.tab.ter[0]), `Relatórios › Tabelas: 10 modelos; por dia (2 linhas) e só terças (1 linha: ${(R.tab.ter[0] || '').slice(0, 60)})`);
   ok(R.tab.turno.length === 4 && R.tab.lotes.length === 2 && /L-1/.test(R.tab.lotes[0]) && /L-2/.test(R.tab.lotes[1]) && R.tab.ds.length === 2, `Tabelas: por turno (${R.tab.turno.length} linhas), lotes do MES (${R.tab.lotes.map(x => x.slice(0, 30)).join(' | ')}), por dia da semana (${R.tab.ds.length})`);
   ok(!pe.length, 'sem erros de página' + (pe.length ? ': ' + pe.slice(0, 3).join(' | ') : ''));

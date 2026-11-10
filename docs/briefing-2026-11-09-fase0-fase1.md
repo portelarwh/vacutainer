@@ -650,3 +650,13 @@ Itens marcados como problema na página de homologação.
   - OEE com 2 casas, calculado como Σ boa ÷ Σ capacidade.
   - Sai em Excel (todas as linhas), PDF, texto e Outlook.
 - Testes: `testes/toeereal.js` (Plano com fora de turno, Tabelas) e `testes/tgel.js` (campo de data do kit).
+
+## 21. Decisões da rodada 2 (Produção 2.4.43–2.4.44, Portal 1.9.20–1.9.21, Iniciativas 1.1.5; 10/11/2026)
+
+Respostas do usuário (todas na opção recomendada):
+
+- **Lote → ordem (Produção 2.4.43, `OrdLote` em `plano_ui.js`):** ordem com lote que aparece no CSV do MES recebe exatamente as caixas desse lote (caixas × quantidade por caixa), com 1ª/última caixa e "lote encerrado" quando outro lote começa depois. Essa produção sai da fila por sequência; ordens sem lote continuam pela regra antiga. A coluna "Qtde real" sugere "✓ usar X (MES)" (`acceptOrderApurado` com `qtyReal`, origem em `qtySrc`); editar à mão apaga a origem.
+- **Decimais (Produção 2.4.43, Portal 1.9.20):** OEE e percentuais da Produção com 2 casas por padrão. Portal › Parâmetros › Produção › `casasPct` (0 a 3; vazio = 2). Produção continua em "mil".
+- **SQDCP com blocos do Painel (Produção 2.4.44, `sqdcp.js`):** indicador "Blocos do Painel" numa posição, com até 3 blocos do Painel (`PN_B`), cada um com período (dia de referência, últimos 7 dias, mês até a referência). Mesmo cálculo do Painel (`Panel.ctx` + `PN_B[b].r`), linha Vacutainer e todos os turnos. Padrão sugerido (só onde a posição ainda não foi configurada): **Q4** Scrap % dia e semana · **D4** Hora a hora do dia de referência (ontem) e Plano do mês acumulado · **C3** Velocímetro do OEE e OEE × meta na semana e no mês. A folha A4 leva os estilos da página no tema claro. Posição gravada: `{indicador:'painel', formato:'painel', blocos:[{b, periodo}]}` (campo novo, opcional).
+- **Pauta automática (Portal 1.9.21, Iniciativas 1.1.5, kit):** cada item da pauta aceita várias ações (o quê, responsável, prazo), gravadas na reunião (`reunioes[k].itens[].acoes[]`). O Portal publica `exports.acoesReuniao` (180 dias; `ref = reuniao|dia|recorte|item|ação`). Iniciativas lê pela ficha comum (`vacFicha` fonte `portal`) ao abrir e ao voltar para a página e cria `AC-R-<id>` (origem `reuniao`, sem duplicar, regra 1: cada página grava só a sua base). A reunião mostra a situação de cada ação lida do `exports` de Iniciativas ("aguardando Iniciativas" enquanto não foi criada) e o relatório da reunião traz a tabela "Ações da pauta".
+- Testes: `testes/toeereal.js` (lote → ordem), `testes/tsqdcp.js` (blocos), `testes/tfila.js` (pauta automática).

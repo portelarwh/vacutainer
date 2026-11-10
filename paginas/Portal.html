@@ -352,6 +352,9 @@ h3.fl-g{display:flex;gap:8px;align-items:center;margin:16px 0 6px;font-family:va
 .reu-par>div{display:grid;grid-template-columns:minmax(0,1fr) 70px 34px auto;gap:8px;align-items:center;padding:5px 0;border-bottom:1px solid var(--line)}
 .reu-par .reu-b{display:block;height:7px;border-radius:4px;background:var(--accent);margin-top:3px}.reu-par .n{text-align:right;font-variant-numeric:tabular-nums}
 .reu-pauta{display:grid;gap:8px;margin:8px 0}.reu-it{border:1px solid var(--line);border-radius:8px;padding:8px 10px}.reu-it .t{font-weight:600;margin-bottom:4px}.reu-it .row{display:flex;gap:6px;flex-wrap:wrap}.reu-it .reu-dec{flex:1;min-width:140px}
+.reu-ac{display:grid;grid-template-columns:minmax(0,2fr) minmax(0,1.2fr) minmax(0,2fr);gap:8px;align-items:center;border-top:1px dashed var(--line);padding:4px 0;font-size:13px}.reu-st.bad,.reu-st.bad a{color:var(--crit)}.reu-st.warn{color:var(--warn)}.reu-st.good,.reu-st.good a{color:var(--ok)}
+.reu-nac{margin-top:6px}.reu-nac .reu-aq{flex:2;min-width:160px}.reu-nac .reu-ar{flex:1;min-width:120px}
+@media(max-width:640px){.reu-ac{grid-template-columns:1fr}}
 @media(max-width:900px){.fl-i{grid-template-columns:minmax(0,1fr) auto}.fl-i>.pill:first-child,.fl-i>.pill:nth-child(4){display:none}.reu-lay{grid-template-columns:minmax(0,1fr)}}
 </style>
 <style id="vac-visual">
@@ -1368,13 +1371,13 @@ function wireConfigComum(){$('#cPasta').onclick=async()=>{if(await Store.pick())
         entrar pelo ID (autocadastro como Consulta); página inicial por perfil (1x por sessão); vigência gravada não se edita (desativar com motivo); painel de vigências; semáforo central; saída do modo de teste.
    1.1.2: aviso da carga diz qual base foi lida.  1.5: páginas Paradas, Máquinas, Manutenção e Projetos na lista (aparecem quando o HTML chega na pasta).  1.4: lista técnica pela CS12 multinível (itens = nível 1, estrutura = níveis 2+); CS03 sai.  1.3: cabeçalho comum (vac-cabecalho v2: barra do sistema + página + abas), busca Ctrl K, acabamento V1.90, Versões com cabeçalho e último backup.  1.2: Configuração › Versões das páginas (versão e data de cada HTML, gravação das bases, cópias repetidas, histórico).
    ===================================================================== */
-const PAGE={id:'portal',titulo:'Portal · Linha Vacutainer',tituloCurto:'Portal',subtitulo:'Sistemas de gestão da linha',versao:'1.9.19',baseFile:'portal-base.json',idb:'vac-portal',backupDir:'00. Backups/Portal',
+const PAGE={id:'portal',titulo:'Portal · Linha Vacutainer',tituloCurto:'Portal',subtitulo:'Sistemas de gestão da linha',versao:'1.9.21',baseFile:'portal-base.json',idb:'vac-portal',backupDir:'00. Backups/Portal',
  vazio:()=>({schema:'portal-base',rev:0,config:{modulos:{},avisoDias:30,notas:{}},audit:[]}),
  /* itens do Portal para a busca Ctrl K: cadastro, pendências e telas */
  busca:q=>{const R=[],D=Cad.D;if(D)for(const t of CAD_ORD){for(const it of D[t]||[]){const c=String(it[kOf(t)]),nm=t==='bom'?((cadItem('catalogos',it.catalogo)||{}).nome||''):it.nome||'';if(norm(c+' '+nm).includes(q))R.push({tipo:CAD_T[t].um,txt:c+(nm?' · '+nm:''),sub:'Cadastros'+(cadAtivo(t,it,D)?'':' · inativo'),href:'#cadastros/'+t+'/'+encodeURIComponent(c)});if(R.length>30)break}}
   allPend().filter(p=>norm(p.txt).includes(q)).slice(0,8).forEach(p=>{const sy=sysOf(p.mod);R.push({tipo:'Pendência',txt:p.txt,sub:sy.nome,href:p.mod==='portal'?'#'+(p.link||'pend'):sysHref(sy,p.link||'')})});
   [['Visão geral','geral'],['Pendências','pend'],['Relatórios','rel'],['Configuração do Portal','config'],['Usuários','cadastros/usuarios'],['Perfis e permissões','cadastros/perfis'],['Vigências','cadastros/vigencias'],['Parâmetros','cadastros/parametros'],['Pasta única','config'],['Importar do SAP (BOM, materiais)','cadastros/importar'],['Auditoria do cadastro','cadastros/auditoria'],['Backups do cadastro','cadastros/backups'],['Segurança e senha do cadastro','cadastros/seguranca']].forEach(([t,h])=>{if(norm(t).includes(q))R.push({tipo:'Portal',txt:t,href:'#'+h})});return R},
- exports:b=>({exportsVersion:1,geradoEm:nowISO(),resumo:Object.fromEntries(Object.entries(MOD.data).map(([k,v])=>[k,v&&v.kpis?v.kpis.map(x=>({rotulo:x[0],valor:x[1]})):null]))})};
+ exports:b=>({exportsVersion:1,geradoEm:nowISO(),acoesReuniao:reuAcoesExport(b),resumo:Object.fromEntries(Object.entries(MOD.data).map(([k,v])=>[k,v&&v.kpis?v.kpis.map(x=>({rotulo:x[0],valor:x[1]})):null]))})};
 
 /* ---------- leitura das bases dos módulos ---------- */
 const MOD={data:{},files:{},at:0,busy:false,teste:false};
@@ -2021,6 +2024,7 @@ const AJUDA_CAMPO={
  'trazer.Outros nomes das máquinas':'De-para da Paradas: nome do Forms → equipamento. Vira "Outros nomes" no equipamento.',
  'parametros.fusoHorario':'Fuso usado para datas e horas em todas as páginas. Ex.: America/Sao_Paulo.',
  /* 1.9.7 · ARQ-06: parâmetros que são de uma página ficam aqui, agrupados por página */
+ 'parametros.producao.casasPct':'Quantas casas decimais o OEE, a disponibilidade, a performance, a qualidade e os demais percentuais mostram na Produção. Vazio = 2. Ex.: 2 → OEE 71,10%.',
  'parametros.producao.unidadeLancamento':'Quantas peças vale cada número digitado na produção da hora. Ex.: 1000 = digitar 61 grava 61.000 tubos. A base guarda sempre em peças.',
  'parametros.producao.rotuloUnidade':'Texto ao lado dos números de produção e meta. Só exibição. Ex.: mil.',
  'parametros.producao.continuidadeMin':'Intervalo máximo sem caixa (servidor/MES) para a produção ser considerada contínua na troca de turno. Até ele, a produção da janela do turno não produtivo continua o turno anterior; acima, vai para o próximo. Vazio = o "Parada sem caixa" da Produção (10 min). Ex.: 10.',
@@ -3624,7 +3628,7 @@ function cadParametros(el){const D=Cad.D,pe=Cad.podeEditar(true),P=D.parametros|
   const nv=k=>mud[k]?mud[k].depois:P[k];const V=nv('semaforoVerdePct')??100,A=nv('semaforoAmareloPct')??90;if(A>=V)return toast('O amarelo precisa começar abaixo do verde.',5000,true);
   if(!Object.keys(mud).length)return toast('Nada mudou.');Cad.op({acao:'edição',tipo:'parametros',codigo:null,mudancas:mud,motivo:null});toast('Parâmetros salvos.')}}
 /* ---------- 1.9.7 · ARQ-06: parâmetros por página e "Neste computador" ----------
-   parametros.producao = {unidadeLancamento, rotuloUnidade, arredondamentoMeta:[{de, valor}]}.
+   parametros.producao = {unidadeLancamento, rotuloUnidade, arredondamentoMeta:[{de, valor}], casasPct (1.9.20: casas decimais dos percentuais da Produção; vazio = 2)}.
    O arredondamento muda a meta: vale por vigência (D7). Só se acrescenta vigência a partir de hoje; as gravadas não mudam (regra 3).
    A Produção aplica pelo CadSync e trava os campos na Configuração dela. */
 function parArredEm(L,data){return(L||[]).filter(v=>v&&v.de&&v.de<=data).sort((a,b)=>a.de<b.de?1:-1)[0]||null}
@@ -3634,6 +3638,7 @@ function parProducaoHtml(P,pe){const Q=P.producao||{},L=(Q.arredondamentoMeta||[
  <label>Rótulo da unidade ${ib('Rótulo da unidade',AJUDA_CAMPO['parametros.producao.rotuloUnidade'])}<input data-pprod="rotuloUnidade" value="${esc(Q.rotuloUnidade??'')}" placeholder="mil"${dis}></label></div>
  <div class="fg"><label>Continuidade entre caixas (min) ${ib('Continuidade',AJUDA_CAMPO['parametros.producao.continuidadeMin'])}<input type="number" step="1" min="1" data-pprod="continuidadeMin" value="${esc(Q.continuidadeMin??'')}" placeholder="10"${dis}></label>
  <label>Produção fora de turno vale a partir de ${ib('Fora de turno · a partir de',AJUDA_CAMPO['parametros.producao.foraTurnoDesde'])}<input type="date" data-pprod="foraTurnoDesde" value="${esc(Q.foraTurnoDesde||'')}"${dis}></label></div>
+ <div class="fg"><label>Casas decimais de OEE e percentuais ${ib('Casas decimais',AJUDA_CAMPO['parametros.producao.casasPct'])}<input type="number" step="1" min="0" max="3" data-pprod="casasPct" value="${esc(Q.casasPct??'')}" placeholder="2"${dis}></label></div>
  <h4 style="margin:12px 0 4px">Arredondamento da meta ${ib('Arredondamento da meta',AJUDA_CAMPO['parametros.producao.arredondamentoMeta'])}</h4>
  <div class="tw"><table class="cadst"><tr><th>A partir de</th><th class="n">Múltiplo (peças)</th><th></th></tr>${L.map(v=>`<tr><td>${fmtD(v.de)}</td><td class="n">${fmtN(v.valor)}</td><td>${vig&&v.de===vig.de?'<span class="pill ok">vigente</span>':v.de>h?'<span class="pill info">futura</span>':''}</td></tr>`).join('')||'<tr><td colspan="3" class="small muted">Nenhuma vigência: a Produção usa o valor da própria base até a primeira.</td></tr>'}</table></div>
  ${pe?`<div class="fg" style="margin-top:6px"><label>Nova vigência a partir de<input type="date" id="ppArDe" min="${h}" value="${h}"></label><label>Múltiplo (peças)<input type="number" step="1" min="1" id="ppArV" placeholder="1000"></label></div>`:''}
@@ -3645,6 +3650,7 @@ function wireParProducao(P,pe){const ok=$('#ppOk');if(!ok||!pe)return;ok.onclick
  if(rt)Q.rotuloUnidade=rt;else delete Q.rotuloUnidade;
  const ct=$('[data-pprod="continuidadeMin"]').value.trim(),fd=$('[data-pprod="foraTurnoDesde"]').value;
  if(ct){const n=vacNumero(ct);if(!(n>0))return toast('Continuidade: minutos maiores que zero.',5000,true);Q.continuidadeMin=n}else delete Q.continuidadeMin;
+ {const cp=$('[data-pprod="casasPct"]').value.trim();if(cp){const n=vacNumero(cp);if(!(n>=0&&n<=3)||Math.round(n)!==n)return toast('Casas decimais: de 0 a 3.',5000,true);Q.casasPct=n}else delete Q.casasPct}
  if(fd){if(Q0.foraTurnoDesde!==fd&&fd<h&&!confirm('A data está no passado: os dias desde '+fmtD(fd)+' passam a contar a produção fora de turno (o OEE desses dias muda, inclusive dos fechados). Continuar?'))return;Q.foraTurnoDesde=fd}else delete Q.foraTurnoDesde;
  const de=$('#ppArDe').value,vt=$('#ppArV').value.trim();
  if(vt){const v=vacNumero(vt);if(!(v>0)||Math.round(v)!==v)return toast('Arredondamento: número inteiro maior que zero.',5000,true);if(!de||de<h)return toast('A vigência nova começa hoje ou depois: as gravadas não mudam.',5000,true);
@@ -3791,8 +3797,18 @@ function reuDados(dia,rec){const ex=id=>{const x=MOD.data[id];return x&&!x.erro&
  const gel=g&&g.estoque?{kg:g.estoque.disponivelKg,dias:g.estoque.coberturaDias,venc:(g.vencendo||[]).filter(v=>v.dias!=null&&v.dias<=7).length}:null;
  const mes=dia.slice(0,7);let ws=null;if(w&&Array.isArray(w.porMes)){const x=w.porMes.find(y=>y.per===mes),mt=typeof vacMetaAreaMes==='function'?vacMetaAreaMes('WASTE-MES',mes):null;ws={mes,liq:x?x.liquido:null,meta:mt?mt.valor:null,pond:!!(mt&&mt.ponderada)}}
  let ac=null;if(i&&Array.isArray(i.acoes)){const A=i.acoes.filter(a=>FILA_ABERTA.includes(a.status));ac={atr:A.filter(a=>a.prazo&&a.prazo<h).length,hoje:A.filter(a=>a.prazo===h).length,abertas:A.length}}
- return{oee,par,gel,ws,ac}}
+ return{oee,par,gel,ws,ac,iex:i}}
 const reuChave=(dia,rec)=>dia+'|'+rec;
+/* Pauta automática (homologação 10/11/2026): cada item da pauta tem várias ações (o quê, responsável, prazo), gravadas na reunião (portal-base.json).
+   O Portal publica exports.acoesReuniao; Iniciativas cria as ações ao abrir (id AC-R-<id>, sem duplicar) e a reunião mostra a situação lida do exports de Iniciativas. */
+const reuRefAc=(k,itId,acId)=>'reuniao|'+k+'|'+itId+'|'+acId;
+function reuAcoesExport(b){const L=[],lim=addDays(todayISO(),-180);for(const[k,R]of Object.entries((b&&b.reunioes)||{})){const[dia,rec]=k.split('|');if(!dia||dia<lim)continue;
+  for(const it of(R&&R.itens)||[])for(const a of it.acoes||[])L.push({id:a.id,ref:reuRefAc(k,it.id,a.id),titulo:a.oque,responsavel:a.resp||'',prazo:a.prazo||null,por:a.por||'',em:a.em||null,
+   descricao:'Item de pauta: '+it.txt+(it.decisao?'\nDecisão: '+it.decisao:''),resumo:'Reunião diária de '+fmtD(dia)+' ('+(rec==='dia'?'dia':'turno '+rec)+')',
+   link:typeof vacAquiHref==='function'?vacAquiHref('reuniao='+encodeURIComponent(k)):''})}return L}
+function reuAcSit(i,k,itId,a){const L=i&&Array.isArray(i.acoes)?i.acoes:null;if(!L)return{t:'sem dado de Iniciativas',c:''};const ref=reuRefAc(k,itId,a.id),x=L.find(y=>y.id==='AC-R-'+a.id||(y.origem||{}).ref===ref);
+ if(!x)return{t:'aguardando Iniciativas (cria ao abrir a página)',c:'warn'};const ab=FILA_ABERTA.includes(x.status);
+ return{t:x.id+' · '+x.status+(x.responsavel&&x.responsavel!==a.resp?' · '+x.responsavel:'')+(x.prazo?' · prazo '+fmtD(x.prazo):'')+(x.atrasada?' · atrasada':''),c:x.atrasada?'bad':ab?'':'good',href:sysHref(sysOf('inic'),'acao='+x.id)}}
 function reuPauta(){const k=reuChave(Reu.dia,Reu.rec);return((Store.B.reunioes||{})[k])||{itens:[],foto:null}}
 function reuGravar(label,fn){const k=reuChave(Reu.dia,Reu.rec);return Store.commit(label,B=>{B.reunioes=B.reunioes||{};const R=B.reunioes[k]||(B.reunioes[k]={itens:[],foto:null});fn(R)},k)}
 function viewReuniao(m){if(!Reu.dia)Reu.dia=addDays(todayISO(),-1);const D=reuDados(Reu.dia,Reu.rec),P=reuPauta(),tu=reuTurnos(Reu.dia),gr=t=>`<span class="reu-gr">${esc(t)}</span>`,rot=Reu.rec==='dia'?'dia':'turno '+Reu.rec;
@@ -3812,19 +3828,27 @@ function viewReuniao(m){if(!Reu.dia)Reu.dia=addDays(todayISO(),-1);const D=reuDa
   ${P.foto?`<p class="small muted">Fotografia de ${fmtDT(P.foto.em)} por ${esc(P.foto.por||'—')}: ${P.foto.k.map(x=>esc(x[0]+' '+x[1])).join(' · ')}</p>`:''}
   <div class="reu-lay"><div class="card"><h3>Maiores paradas ${gr(rot)}</h3>${D.par&&D.par.top.length?`<div class="reu-par">${D.par.top.map(x=>{const lb=(x.eq||'?')+' · '+(x.cod||'sem código');return`<div><span>${esc(lb)}<span class="reu-b" style="width:${Math.max(4,Math.round(100*x.min/D.par.top[0].min))}%"></span></span><span class="n">${fmtN(x.min)} min</span><span class="small muted">${x.n}×</span>${typeof vacNovaAcaoBotao==='function'?vacNovaAcaoBotao({titulo:'Reunião: '+lb,origem:{tipo:'reuniao',ref:'reuniao|'+reuChave(Reu.dia,Reu.rec)+'|'+x.eq+'|'+x.cod,resumo:`Reunião de ${fmtD(Reu.dia)} (${rot}) · ${lb} · ${fmtN(x.min)} min em ${x.n}×`,link:vacAquiHref('reuniao='+encodeURIComponent(Reu.dia+'|'+Reu.rec)),foto:{dia:Reu.dia,recorte:rot,minutos:x.min,ocorrencias:x.n,em:nowISO()}},vinculos:[x.eq&&{tipo:'equipamento',cod:x.eq},x.cod&&{tipo:'codigo',cod:x.cod},...[...x.ordens].map(o=>({tipo:'ordem',cod:o}))].filter(Boolean)},'+ Ação','b sm'):''}</div>`}).join('')}</div>`:sd(D.par&&D.par.fora?'Sem dado de paradas para esse dia: '+esc(D.par.motivo)+'.':D.par?'Nenhuma parada apontada '+(Reu.rec==='dia'?'no dia':'no turno')+'.':'O Paradas ainda não publicou eventos (ou a pasta não está conectada).')}
    <p class="small muted">Cada página dona tem o detalhe: <a href="${esc(sysHref(sysP,'aba=eventos'))}">Paradas ›</a> · <a href="${esc(sysHref(sysOf('oee'),'dia='+Reu.dia))}">Produção do dia ›</a>. Waste fica na competência (a KKBC é mensal).</p></div>
-  <div class="card"><h3>Pauta e decisões ${ib('Pauta e decisões','Ficam no Portal (portal-base.json), por dia e recorte (dia ou turno). "Encaminhar ao Planner" abre Iniciativas com o item e a decisão; a ação só é criada lá, depois de conferir.')}</h3>
-   <div class="reu-pauta">${it.map(x=>`<div class="reu-it" data-it="${esc(x.id)}"><div class="t">${esc(x.txt)}</div><div class="row"><input class="reu-dec" value="${esc(x.decisao||'')}" placeholder="Decisão"><button class="b sm" data-dec="${esc(x.id)}">Gravar</button>${typeof vacNovaAcaoHref==='function'?`<a class="b sm" target="_blank" rel="noopener" href="${esc(vacNovaAcaoHref({titulo:x.txt,descricao:x.decisao||'',origem:{tipo:'reuniao',ref:'reuniao|'+reuChave(Reu.dia,Reu.rec)+'|'+x.id,resumo:`Reunião de ${fmtD(Reu.dia)} (${rot})`,link:vacAquiHref('reuniao='+encodeURIComponent(Reu.dia+'|'+Reu.rec))},vinculos:[]}))}">Encaminhar ao Planner</a>`:''}</div><div class="small muted">${esc(x.por||'')} · ${fmtDT(x.em)}</div></div>`).join('')||'<p class="small muted">Nenhum item na pauta.</p>'}</div>
+  <div class="card"><h3>Pauta e decisões ${ib('Pauta e decisões','Ficam no Portal (portal-base.json), por dia e recorte (dia ou turno). Cada item aceita várias ações (o quê, responsável e prazo): ficam gravadas na reunião e Iniciativas cria cada uma automaticamente quando é aberta (sem duplicar). Aqui aparece a situação de cada ação lida de Iniciativas. Exemplo: item "Vazamento no EQ03" → ação "Trocar a vedação", Manutenção, prazo 14/11. "Encaminhar ao Planner" continua abrindo o formulário de Iniciativas para conferir antes de criar.')}</h3>
+   <div class="reu-pauta">${it.map(x=>`<div class="reu-it" data-it="${esc(x.id)}"><div class="t">${esc(x.txt)}</div><div class="row"><input class="reu-dec" value="${esc(x.decisao||'')}" placeholder="Decisão"><button class="b sm" data-dec="${esc(x.id)}">Gravar</button>${typeof vacNovaAcaoHref==='function'?`<a class="b sm" target="_blank" rel="noopener" href="${esc(vacNovaAcaoHref({titulo:x.txt,descricao:x.decisao||'',origem:{tipo:'reuniao',ref:'reuniao|'+reuChave(Reu.dia,Reu.rec)+'|'+x.id,resumo:`Reunião de ${fmtD(Reu.dia)} (${rot})`,link:vacAquiHref('reuniao='+encodeURIComponent(Reu.dia+'|'+Reu.rec))},vinculos:[]}))}">Encaminhar ao Planner</a>`:''}</div><div class="small muted">${esc(x.por||'')} · ${fmtDT(x.em)}</div>
+    ${(x.acoes||[]).map(a=>{const S=reuAcSit(D.iex,reuChave(Reu.dia,Reu.rec),x.id,a);return`<div class="reu-ac"><b>${esc(a.oque)}</b><span class="small">${esc(a.resp||'sem responsável')} · ${a.prazo?fmtD(a.prazo):'sem prazo'}</span><span class="reu-st ${S.c}">${S.href?`<a href="${esc(S.href)}">${esc(S.t)}</a>`:esc(S.t)}</span></div>`}).join('')}
+    <div class="row reu-nac"><input class="reu-aq" placeholder="Ação: o que fazer" maxlength="200"><input class="reu-ar" placeholder="Responsável" list="reuPess"><input type="date" class="reu-ap" title="Prazo"><button class="b sm" data-nac="${esc(x.id)}">+ Ação</button></div></div>`).join('')||'<p class="small muted">Nenhum item na pauta.</p>'}</div>
+   <datalist id="reuPess">${((Cad.D&&Cad.D.usuarios)||[]).filter(u=>u.ativo!==false&&u.nome).map(u=>`<option value="${esc(u.nome)}">`).join('')}</datalist>
    <div class="row"><input id="rNovo" placeholder="Novo item de pauta" style="flex:1"><button class="b p sm" id="rAdd">+ Item</button></div></div></div>`;
  const vai=d=>{Reu.dia=d;App.render()};$('#rAnt').onclick=()=>vai(addDays(Reu.dia,-1));$('#rProx').onclick=()=>vai(addDays(Reu.dia,1));$('#rDia').onchange=e=>{if(e.target.value)vai(e.target.value)};
  $$('#rRec [data-rr]').forEach(b=>b.onclick=()=>{Reu.rec=b.dataset.rr;App.render()});
  const add=()=>{const t=$('#rNovo').value.trim();if(!t)return;const it={id:'p'+Date.now().toString(36)+Math.random().toString(36).slice(2,5),txt:t,decisao:'',por:user(),em:nowISO()};reuGravar('Reunião: item de pauta',R=>{R.itens.push(it)}).then(()=>App.render())};
  $('#rAdd').onclick=add;$('#rNovo').onkeydown=e=>{if(e.key==='Enter')add()};
  $$('[data-dec]').forEach(b=>b.onclick=()=>{const id=b.dataset.dec,v=b.parentNode.querySelector('.reu-dec').value.trim();reuGravar('Reunião: decisão',R=>{const x=R.itens.find(y=>y.id===id);if(x){x.decisao=v;x.decEm=nowISO();x.decPor=user()}}).then(()=>{toast('Decisão gravada.');App.render()})});
+ $$('[data-nac]').forEach(b=>b.onclick=()=>{const id=b.dataset.nac,r=b.parentNode,q=r.querySelector('.reu-aq').value.trim(),rs=r.querySelector('.reu-ar').value.trim(),pz=r.querySelector('.reu-ap').value||null;
+  if(!q){toast('Diga o que fazer na ação.',1);return}if(pz&&!/^\d{4}-\d{2}-\d{2}$/.test(pz)){toast('Prazo inválido.',1);return}
+  const a={id:'r'+Date.now().toString(36)+Math.random().toString(36).slice(2,6),oque:q.slice(0,200),resp:rs.slice(0,80),prazo:pz,por:user(),em:nowISO()};
+  reuGravar('Reunião: ação',R=>{const x=R.itens.find(y=>y.id===id);if(x){x.acoes=x.acoes||[];x.acoes.push(a)}}).then(()=>{toast('Ação gravada na reunião; Iniciativas cria ao abrir.');App.render()})});
  $('#rFoto').onclick=()=>{const k=K.map(x=>[x[0]+' ('+x[2]+')',x[1]]);reuGravar('Reunião: fotografia',R=>{R.foto={em:nowISO(),por:user(),k}}).then(()=>{toast('Números fotografados com a pauta.');App.render()})};
  $('#rRel').onclick=()=>Report.open({titulo:'Reunião diária · '+fmtD(Reu.dia)+(Reu.rec==='dia'?'':' · '+Reu.rec),subtitulo:'Portal',periodo:fmtD(Reu.dia),arquivo:'Reuniao_'+Reu.dia+(Reu.rec==='dia'?'':'_'+Reu.rec),
   blocos:[{tipo:'kpis',titulo:'Números (cada um com a sua granularidade)',itens:K.map(([l,v,g,s,c])=>[l+' · '+g,v,s,c])},
    {tipo:'tabela',titulo:'Maiores paradas',cab:['Equipamento · código','Minutos','Ocorrências'],linhas:D.par&&D.par.fora?[['Sem dado de paradas para esse dia ('+D.par.motivo+')','—','—']]:(D.par?D.par.top:[]).map(x=>[(x.eq||'?')+' · '+(x.cod||'sem código'),fmtN(x.min),String(x.n)])},
-   {tipo:'tabela',titulo:'Pauta e decisões',cab:['Item','Decisão','Por'],linhas:it.map(x=>[x.txt,x.decisao||'—',x.por||''])}]},{notaKey:'reuniao:'+reuChave(Reu.dia,Reu.rec)})}
+   {tipo:'tabela',titulo:'Pauta e decisões',cab:['Item','Decisão','Por'],linhas:it.map(x=>[x.txt,x.decisao||'—',x.por||''])},
+   {tipo:'tabela',titulo:'Ações da pauta',cab:['Item','Ação','Responsável','Prazo','Situação'],linhas:it.flatMap(x=>(x.acoes||[]).map(a=>[x.txt,a.oque,a.resp||'—',a.prazo?fmtD(a.prazo):'—',reuAcSit(D.iex,reuChave(Reu.dia,Reu.rec),x.id,a).t]))}]},{notaKey:'reuniao:'+reuChave(Reu.dia,Reu.rec)})}
 
 function iniciarDemoPortal(){Store.idb=makeIDB(PAGE.idb);Store.mode='teste';MOD.teste=true;Cad.base=cadFix(vacDemo.ler('cad'));Cad.fila=[];Cad.fonte='teste';Cad.status='salvo';Cad.recompute();Lock.on(Cad.D.seguranca.senhaHash);
  vacDemo.registrar('portal',()=>Store.B,d=>{Store.B=Store.fix(d)},()=>{for(const sy of systems()){if(sy.id==='portal')continue;const ex=vacDemo.exports(sy.id);MOD.data[sy.id]=sy.id==='projetos'?{sys:sy,construcao:true,planejado:{abas:[]},kpis:[],pend:[]}:adapt(sy,{exports:ex},Date.now())}try{MOD.ordensEx=vacDemo.exports('ordens')||null}catch(e){}App.render()});
@@ -4134,7 +4158,8 @@ const vacFicha = (() => {
     { id: 'perdas', nome: 'Waste', base: 'perdas-base.json', pega: ex => ({ porOrdem: ex.porOrdem || [], acoesLegado: ex.acoesLegado || null }) },   /* Fase 6: Iniciativas traz as ações antigas */
     { id: 'gel', nome: 'Gestão de Gel', base: 'fifo-base.json', pega: ex => ({ ordens: ex.ordens || [], cob: ex.ordensCobertura || null, porDiaGel: ex.porDiaGel || [] }) },   /* Fase 4 · 4e */
     { id: 'paradas', nome: 'Paradas', base: 'paradas-base.json', pega: ex => ({ porOrdem: ex.porOrdem || [], eventos: (ex.eventos || []).filter(e => e && e.ordem) }) },
-    { id: 'inic', nome: 'Iniciativas / Ações', base: 'iniciativas-base.json', pega: ex => ({ acoes: ex.acoes || [] }) }];
+    { id: 'inic', nome: 'Iniciativas / Ações', base: 'iniciativas-base.json', pega: ex => ({ acoes: ex.acoes || [] }) },
+    { id: 'portal', nome: 'Portal', base: 'portal-base.json', pega: ex => ({ acoesReuniao: ex.acoesReuniao || [] }) }];   /* pauta automática: Iniciativas cria as ações da Reunião diária */
   const S = { dados: {}, idx: null, carregando: null, aberto: null, empilhado: false };
   const e2 = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   const tx = v => String(v ?? '').trim();

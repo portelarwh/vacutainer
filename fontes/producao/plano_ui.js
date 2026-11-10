@@ -47,3 +47,37 @@ const OrdF = { q: '', st: '', per: '', dia: '',
   }
 };
 (() => { const P = App.views.plan; App.views.plan = { ...P, render() { return P.render.apply(P, arguments); }, mount(root) { if (P.mount) P.mount.call(P, root); OrdF.ligar(root); } }; })();
+
+/* ===== Produção 2.4.43 · ordem pelo lote do MES (aprovado pelo usuário em 10/11/2026) =====
+   Cada lote tem uma ordem: quando o CSV do servidor (MES) traz o lote de uma ordem do plano, a ordem recebe exatamente as caixas dele
+   (produzido = caixas × peças por caixa), com início e fim = 1ª e última caixa do lote, e fica concluída quando o lote termina (começou
+   outro lote depois) ou quando atinge a quantidade. Essa produção sai da distribuição por sequência (a de sempre, que continua para
+   as ordens sem lote no MES). A Qtde real ganha "✓ usar (MES)", aceito como os horários apurados (qtySrc = 'apurado'). */
+const OrdLote = {
+  nk(v) { const s = String(v ?? '').trim(); return /^\d+$/.test(s) ? s.replace(/^0+(?=\d)/, '') : s.toUpperCase(); },
+  aplicar(db, plan, orders, P, chunks) {
+    const out = new Set(); if (typeof ServerData === 'undefined' || !(db.server && (db.server.segments || []).length)) return out;
+    let segs = []; try { segs = ServerData.segsOf(db, plan.lineId); } catch (e) { return out; } if (!segs.length) return out;
+    const qty = +(db.settings || {}).serverBoxQty || 1000, byLot = new Map();
+    for (const s of segs) { if (!s.lot) continue; const k = this.nk(s.lot); if (!byLot.has(k)) byLot.set(k, []); byLot.get(k).push(s); }
+    for (const o of orders) {
+      if (!o.lot) continue; const L = byLot.get(this.nk(o.lot)); if (!L || !L.length) continue;
+      const n = L.reduce((a, s) => a + (s.n || 0), 0); if (!n) continue;
+      const t0 = L.map(s => s.t0).sort()[0].slice(0, 16), t1 = L.map(s => s.t1).sort().pop().slice(0, 16);
+      const terminou = segs.some(s => s.lot && this.nk(s.lot) !== this.nk(o.lot) && s.t0.slice(0, 16) > t1);
+      const p = P.get(o.id); if (!p) continue;
+      p.produced = n * qty; p.firstAt = t0; p.lastAt = t1; p.mes = { caixas: n, lote: o.lot, terminou };
+      p.doneAt = terminou || p.produced >= p.target ? t1 : null; out.add(o.id);
+      let r = p.produced;   // a produção lançada desse catálogo no intervalo do lote não vai para outra ordem
+      for (const c of chunks) { if (r <= 0) break; if (c.cat !== o.catalogId || c.e <= t0 || c.s > t1 || !(c.good > 0)) continue; const t = Math.min(c.good, r); c.good -= t; r -= t; }
+    }
+    return out;
+  },
+  sugQ(o, g) {
+    if (!g || !g.mes) return '';
+    const ap = g.produced, v = o.qtyReal;
+    if (v == null) return `<br><button type="button" class="btn xs acc" data-acc="${o.id}|qtyReal" title="Caixas do lote ${esc(g.mes.lote)} no MES × peças por caixa">✓ usar ${fq(ap)} (MES)</button>`;
+    if (o.qtySrc === 'apurado') return v === ap ? '<br><span class="small muted">MES aceito</span>' : `<br><button type="button" class="btn xs acc warnb" data-acc="${o.id}|qtyReal|1">MES mudou: ${fq(ap)} · atualizar</button>`;
+    return v !== ap ? `<br><span class="small muted" title="Valor digitado; o MES diz outro">MES: ${fq(ap)}</span>` : '';
+  }
+};

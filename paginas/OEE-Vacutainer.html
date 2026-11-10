@@ -1234,8 +1234,9 @@ const U = (() => {
   const nf = (d = 0) => new Intl.NumberFormat('pt-BR', { minimumFractionDigits: d, maximumFractionDigits: d });
   const NF = [nf(0), nf(1), nf(2), nf(3)];
   const fmt = (v, d = 0) => (v == null || !isFinite(v)) ? '—' : NF[d].format(v);
-  const pct = (v, d = 1) => (v == null || !isFinite(v)) ? '—' : NF[d].format(v * 100) + '%';
-  const pp = (v, d = 1) => (v == null || !isFinite(v)) ? '—' : (v > 0 ? '+' : '') + NF[d].format(v * 100) + ' p.p.';
+  const PCT_D = (() => { let t = 0, v = 2; return () => { const n = Date.now(); if (n - t > 5000) { t = n; try { const c = JSON.parse(localStorage.getItem('vac.cadastros') || 'null'), k = c && c.parametros && c.parametros.producao ? c.parametros.producao.casasPct : null; v = k === 0 || (k >= 1 && k <= 3) ? +k : 2; } catch (e) { v = 2; } } return v; }; })();   /* 2.4.43 */
+  const pct = (v, d) => (v == null || !isFinite(v)) ? '—' : NF[d == null ? PCT_D() : d].format(v * 100) + '%';
+  const pp = (v, d) => (v == null || !isFinite(v)) ? '—' : (v > 0 ? '+' : '') + NF[d == null ? PCT_D() : d].format(v * 100) + ' p.p.';
   const signed = (v, d = 0) => (v == null || !isFinite(v)) ? '—' : (v > 0 ? '+' : '') + NF[d].format(v);
   const overlap = (a1, a2, b1, b2) => Math.max(0, Math.min(a2, b2) - Math.max(a1, b1));
   const between = (d, a, b) => (!a || d >= a) && (!b || d <= b);
@@ -1257,7 +1258,7 @@ const U = (() => {
 
 /* ---- 02-model.js ---- */
 /* ================= modelo de dados, valores iniciais e integridade ================= */
-const APP_VERSION = '2.4.42';
+const APP_VERSION = '2.4.44';
 const SCHEMA_VERSION = 1;
 const BASE_FILE = 'oee-vacutainer-base.json';
 const BACKUP_DIR = '00. Backups';
@@ -2100,11 +2101,12 @@ const Engine = (() => {
     chunks.sort((a, b) => a.s.localeCompare(b.s));
     const orders = (plan.orders || []).filter(o => o.catalogId).slice().sort((a, b) => String(a.start || '9').localeCompare(String(b.start || '9')) || String(a.order).localeCompare(String(b.order)));
     const P = new Map(orders.map(o => [o.id, { target: o.qtyReal != null ? o.qtyReal : (o.qty || 0), produced: 0, firstAt: null, lastAt: null, doneAt: null, shiftLevel: false }]));
+    const viaLote = typeof OrdLote !== 'undefined' ? OrdLote.aplicar(db, plan, orders, P, chunks) : new Set(), ordersH = orders.filter(o => !viaLote.has(o.id));   /* 2.4.43 */
     const unplanned = {};
     for (const c of chunks) {
       let q = c.good;
       while (q > 0) {
-        const o = pickOrder(orders, P, c, famOf);
+        const o = pickOrder(ordersH, P, c, famOf);
         if (!o) { const k = c.cat || 'fam:' + c.fam; unplanned[k] = (unplanned[k] || 0) + q; break; }
         const p = P.get(o.id), take = Math.min(q, p.target - p.produced);
         p.produced += take; if (!p.firstAt) p.firstAt = c.s; p.lastAt = c.e; if (c.shiftLevel) p.shiftLevel = true;
@@ -3079,8 +3081,8 @@ const Actions = (() => {
       for (const o of plan.orders || []) {
         if (orderId && o.id !== orderId) continue;
         const g = G.get(o.id); if (!g) continue;
-        for (const f of fields || ['startReal', 'endReal']) {
-          const ap = f === 'startReal' ? g.firstAt : g.doneAt, src = f === 'startReal' ? 'startSrc' : 'endSrc';
+        for (const f of fields || ['startReal', 'endReal', 'qtyReal']) {
+          const ap = f === 'qtyReal' ? (g.mes ? g.produced : null) : f === 'startReal' ? g.firstAt : g.doneAt, src = f === 'qtyReal' ? 'qtySrc' : f === 'startReal' ? 'startSrc' : 'endSrc';
           if (!ap) continue;
           if (o[f] && !(force && o[src] === 'apurado')) continue;
           if (o[f] === ap) continue;
@@ -3100,7 +3102,7 @@ const Actions = (() => {
         if (!['startReal', 'endReal', 'qtyReal'].includes(k)) continue;
         const nv = v === '' ? null : v; if (o[k] === nv) continue;
         if ((k === 'startReal' || k === 'endReal') && nv && !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(nv)) throw new Error('Data e hora inválidas.');
-        const b = o[k]; o[k] = nv; if (k === 'startReal') delete o.startSrc; if (k === 'endReal') delete o.endSrc; audit({ action: 'pontuação de ordem', entity: 'ordem', entityId: o.id, field: k, before: b, after: nv, coalesce: true });
+        const b = o[k]; o[k] = nv; if (k === 'startReal') delete o.startSrc; if (k === 'endReal') delete o.endSrc; if (k === 'qtyReal') delete o.qtySrc; audit({ action: 'pontuação de ordem', entity: 'ordem', entityId: o.id, field: k, before: b, after: nv, coalesce: true });
       }
       if (o.startReal && o.endReal && o.endReal < o.startReal) throw new Error('O fim real é anterior ao início real.');
       o.by = by(); o.at = nowIso(); touch(plan);
@@ -7564,7 +7566,7 @@ App.views.plan = {
     const unp = Object.entries(G.unplanned).filter(([, q]) => q >= UNIT());
     return `<section class="card section"><header><h3>Ordens do mês</h3><span class="small muted">${done}/${L.length} concluída(s)${plan.lastMerge ? ` · última colagem ${U.brDT(plan.lastMerge.at)} por ${esc(plan.lastMerge.by || '')}: ${plan.lastMerge.added} incluída(s), ${plan.lastMerge.changed} alterada(s), ${plan.lastMerge.removed} removida(s)` : ''}</span>${pend ? `<button class="btn sm primary" id="ordFill">✓ Aceitar todos os apurados (${pend})</button>` : ''}${ib('planOrders')}</header>
       <p class="q">O produzido de cada ordem é apurado da produção lançada (hora a hora e dias importados): para cada catálogo, a produção do mês preenche as ordens na sequência do plano. Embaixo de cada campo, "✓ usar" aceita o horário apurado; "Aceitar apurado" faz a ordem inteira e "Aceitar todos" o mês. O que você pontuar à mão sempre prevalece. Qtde real: só se a ordem foi interrompida ou o lote não foi feito. Inclusões e alterações do PCP: cole o plano atualizado; ordens novas aparecem como "incluída", e as que mudaram mostram o valor anterior.</p>
-      <div class="tw"><table data-sortok="1" class="ord-t"><thead><tr><th>Ordem</th><th>Lote</th><th>Catálogo</th><th class="n">Qtde</th><th class="n">Produzido</th><th>Início prev.</th><th>Fim prev.</th><th>Início real</th><th>Fim real</th><th class="n">Qtde real (${esc(unitLbl())})</th><th class="n">Diferença</th><th>Situação</th><th title="O que o MB51/COOIS (oficial) diz desta ordem: data principal, saldo, lote, tipo, KKBC no Waste">SAP</th></tr></thead><tbody>${L.map(o => { const g = G.byOrder.get(o.id), [c, t] = st(o, g); return `<tr id="ord-${o.id}"${o.outOfPlan ? ' class="muted"' : ''}><td class="mono">${o.order ? `<a href="${esc(sysUrl('perdas', 'Perdas-Ordem.html'))}#ordem=${encodeURIComponent(o.order)}" target="_blank" rel="noopener" title="Abrir a análise da ordem na página de Perdas">${esc(o.order)}</a>` : '—'}${o.addedAt ? `<br><span class="flag on" title="Incluída no plano em ${U.brDT(o.addedAt)}">incluída ${U.brDate(o.addedAt.slice(0, 10)).slice(0, 5)}</span>` : ''}${o.changes && o.changes.length ? (() => { const c = o.changes[o.changes.length - 1], b = c.before; const t = [b.qty != null ? 'qtde ' + fq(b.qty) : '', b.start !== undefined ? 'início ' + dt(b.start) : '', b.end !== undefined ? 'fim ' + dt(b.end) : '', b.catalogId !== undefined ? 'catálogo ' + catName(b.catalogId) : ''].filter(Boolean).join(', '); return `<br><span class="flag" title="Alterada em ${U.brDT(c.at)} por ${esc(c.by || '')}">alterada · era ${esc(t)}</span>`; })() : ''}</td><td class="mono">${esc(o.lot || '—')}</td><td>${o.catalogId ? catPill(o.catalogId) : esc(o.code)} <span class="small muted">${esc((o.desc || '').slice(0, 30))}</span></td><td class="n">${fq(o.qty)}</td><td class="n">${g ? fq(g.produced) : '—'}${g && g.shiftLevel ? '<br><span class="small muted">por turno</span>' : ''}</td><td>${dt(o.start)}</td><td>${dt(o.end)}</td><td><input type="datetime-local" data-ord="${o.id}" data-f="startReal" value="${esc(o.startReal && o.startReal.length > 10 ? o.startReal : o.startReal ? o.startReal + 'T00:00' : '')}" aria-label="Início real da ordem ${esc(o.order)}">${sug(o, 'startReal', g && g.firstAt)}</td><td><input type="datetime-local" data-ord="${o.id}" data-f="endReal" value="${esc(o.endReal && o.endReal.length > 10 ? o.endReal : o.endReal ? o.endReal + 'T00:00' : '')}" aria-label="Fim real da ordem ${esc(o.order)}">${sug(o, 'endReal', g && g.doneAt)}</td><td class="n"><input type="text" inputmode="decimal" class="num" data-ord="${o.id}" data-f="qtyReal" value="${o.qtyReal == null ? '' : fq(o.qtyReal)}" aria-label="Quantidade real"></td><td class="n">${o.qtyReal == null ? '<span class="muted">—</span>' : `<span class="${o.qtyReal < o.qty ? 'delta-down' : o.qtyReal > o.qty ? 'delta-up' : ''}">${fqs(o.qtyReal - o.qty)}</span>`}</td><td>${semB(c === 'none' ? 'sem' : c, t)}${o.outOfPlan ? ' <span class="small muted">fora do último plano</span>' : ''}${g && ((!o.startReal && g.firstAt) || (!o.endReal && g.doneAt)) ? `<br><button type="button" class="btn xs" data-accrow="${o.id}">✓ Aceitar apurado</button>` : ''}</td><td>${typeof ordSapCel === 'function' ? ordSapCel(o) : ''}</td></tr>`; }).join('')}</tbody>${(() => { const prev = U.sum(L, o => o.qty || 0), adj = U.sum(L, o => o.qtyReal != null ? o.qtyReal : (o.qty || 0)), prod = U.sum(L, o => (G.byOrder.get(o.id) || {}).produced || 0), cut = prev - adj; return `<tfoot><tr class="total"><td colspan="3">Total das ordens</td><td class="n">${fq(prev)}</td><td class="n">${fq(prod)}</td><td colspan="4"></td><td class="n">${fq(adj)}</td><td class="n">${cut ? fqs(-cut) : '—'}</td><td class="small">${cut > 0 ? 'não feito (interrompida / lote cancelado)' : ''}</td></tr></tfoot>`; })()}</table></div>
+      <div class="tw"><table data-sortok="1" class="ord-t"><thead><tr><th>Ordem</th><th>Lote</th><th>Catálogo</th><th class="n">Qtde</th><th class="n">Produzido</th><th>Início prev.</th><th>Fim prev.</th><th>Início real</th><th>Fim real</th><th class="n">Qtde real (${esc(unitLbl())})</th><th class="n">Diferença</th><th>Situação</th><th title="O que o MB51/COOIS (oficial) diz desta ordem: data principal, saldo, lote, tipo, KKBC no Waste">SAP</th></tr></thead><tbody>${L.map(o => { const g = G.byOrder.get(o.id), [c, t] = st(o, g); return `<tr id="ord-${o.id}"${o.outOfPlan ? ' class="muted"' : ''}><td class="mono">${o.order ? `<a href="${esc(sysUrl('perdas', 'Perdas-Ordem.html'))}#ordem=${encodeURIComponent(o.order)}" target="_blank" rel="noopener" title="Abrir a análise da ordem na página de Perdas">${esc(o.order)}</a>` : '—'}${o.addedAt ? `<br><span class="flag on" title="Incluída no plano em ${U.brDT(o.addedAt)}">incluída ${U.brDate(o.addedAt.slice(0, 10)).slice(0, 5)}</span>` : ''}${o.changes && o.changes.length ? (() => { const c = o.changes[o.changes.length - 1], b = c.before; const t = [b.qty != null ? 'qtde ' + fq(b.qty) : '', b.start !== undefined ? 'início ' + dt(b.start) : '', b.end !== undefined ? 'fim ' + dt(b.end) : '', b.catalogId !== undefined ? 'catálogo ' + catName(b.catalogId) : ''].filter(Boolean).join(', '); return `<br><span class="flag" title="Alterada em ${U.brDT(c.at)} por ${esc(c.by || '')}">alterada · era ${esc(t)}</span>`; })() : ''}</td><td class="mono">${esc(o.lot || '—')}</td><td>${o.catalogId ? catPill(o.catalogId) : esc(o.code)} <span class="small muted">${esc((o.desc || '').slice(0, 30))}</span></td><td class="n">${fq(o.qty)}</td><td class="n">${g ? fq(g.produced) : '—'}${g && g.shiftLevel ? '<br><span class="small muted">por turno</span>' : ''}${g && g.mes ? `<br><span class="small muted" title="Caixas do lote no MES">MES · ${U.fmt(g.mes.caixas)} cx${g.mes.terminou ? ' · lote encerrado' : ''}</span>` : ''}</td><td>${dt(o.start)}</td><td>${dt(o.end)}</td><td><input type="datetime-local" data-ord="${o.id}" data-f="startReal" value="${esc(o.startReal && o.startReal.length > 10 ? o.startReal : o.startReal ? o.startReal + 'T00:00' : '')}" aria-label="Início real da ordem ${esc(o.order)}">${sug(o, 'startReal', g && g.firstAt)}</td><td><input type="datetime-local" data-ord="${o.id}" data-f="endReal" value="${esc(o.endReal && o.endReal.length > 10 ? o.endReal : o.endReal ? o.endReal + 'T00:00' : '')}" aria-label="Fim real da ordem ${esc(o.order)}">${sug(o, 'endReal', g && g.doneAt)}</td><td class="n"><input type="text" inputmode="decimal" class="num" data-ord="${o.id}" data-f="qtyReal" value="${o.qtyReal == null ? '' : fq(o.qtyReal)}" aria-label="Quantidade real">${typeof OrdLote !== 'undefined' ? OrdLote.sugQ(o, g) : ''}</td><td class="n">${o.qtyReal == null ? '<span class="muted">—</span>' : `<span class="${o.qtyReal < o.qty ? 'delta-down' : o.qtyReal > o.qty ? 'delta-up' : ''}">${fqs(o.qtyReal - o.qty)}</span>`}</td><td>${semB(c === 'none' ? 'sem' : c, t)}${o.outOfPlan ? ' <span class="small muted">fora do último plano</span>' : ''}${g && ((!o.startReal && g.firstAt) || (!o.endReal && g.doneAt)) ? `<br><button type="button" class="btn xs" data-accrow="${o.id}">✓ Aceitar apurado</button>` : ''}</td><td>${typeof ordSapCel === 'function' ? ordSapCel(o) : ''}</td></tr>`; }).join('')}</tbody>${(() => { const prev = U.sum(L, o => o.qty || 0), adj = U.sum(L, o => o.qtyReal != null ? o.qtyReal : (o.qty || 0)), prod = U.sum(L, o => (G.byOrder.get(o.id) || {}).produced || 0), cut = prev - adj; return `<tfoot><tr class="total"><td colspan="3">Total das ordens</td><td class="n">${fq(prev)}</td><td class="n">${fq(prod)}</td><td colspan="4"></td><td class="n">${fq(adj)}</td><td class="n">${cut ? fqs(-cut) : '—'}</td><td class="small">${cut > 0 ? 'não feito (interrompida / lote cancelado)' : ''}</td></tr></tfoot>`; })()}</table></div>
       ${unp.length ? `<p class="small" style="margin-top:6px"><b>Produção fora das ordens:</b> ${unp.map(([k, q]) => `${k.startsWith('fam:') ? esc(((db().families.find(f => f.id === k.slice(4)) || {}).code || '?') + ' (sem catálogo)') : catPill(k)} ${fq(q)} ${esc(unitLbl())}`).join(' · ')}. É produção de catálogo sem ordem no plano, ou acima da quantidade das ordens.</p>` : ''}
       ${(() => { const adj = U.sum(L, o => o.qtyReal != null ? o.qtyReal : (o.qty || 0)), cur = U.sum(plan.versions[plan.versions.length - 1].items, i => i.qty); return Math.abs(adj - cur) >= UNIT() ? `<p class="small muted" style="margin-top:6px">Pelas ordens (com a quantidade real onde foi informada), o mês fica em <b>${fq(adj)} ${esc(unitLbl())}</b>; o plano atual é ${fq(cur)}. Se o plano mudou de fato, registre em "Revisar plano" com o motivo.</p>` : ''; })()}</section>`;
   },
@@ -9864,6 +9866,40 @@ const OrdF = { q: '', st: '', per: '', dia: '',
 };
 (() => { const P = App.views.plan; App.views.plan = { ...P, render() { return P.render.apply(P, arguments); }, mount(root) { if (P.mount) P.mount.call(P, root); OrdF.ligar(root); } }; })();
 
+/* ===== Produção 2.4.43 · ordem pelo lote do MES (aprovado pelo usuário em 10/11/2026) =====
+   Cada lote tem uma ordem: quando o CSV do servidor (MES) traz o lote de uma ordem do plano, a ordem recebe exatamente as caixas dele
+   (produzido = caixas × peças por caixa), com início e fim = 1ª e última caixa do lote, e fica concluída quando o lote termina (começou
+   outro lote depois) ou quando atinge a quantidade. Essa produção sai da distribuição por sequência (a de sempre, que continua para
+   as ordens sem lote no MES). A Qtde real ganha "✓ usar (MES)", aceito como os horários apurados (qtySrc = 'apurado'). */
+const OrdLote = {
+  nk(v) { const s = String(v ?? '').trim(); return /^\d+$/.test(s) ? s.replace(/^0+(?=\d)/, '') : s.toUpperCase(); },
+  aplicar(db, plan, orders, P, chunks) {
+    const out = new Set(); if (typeof ServerData === 'undefined' || !(db.server && (db.server.segments || []).length)) return out;
+    let segs = []; try { segs = ServerData.segsOf(db, plan.lineId); } catch (e) { return out; } if (!segs.length) return out;
+    const qty = +(db.settings || {}).serverBoxQty || 1000, byLot = new Map();
+    for (const s of segs) { if (!s.lot) continue; const k = this.nk(s.lot); if (!byLot.has(k)) byLot.set(k, []); byLot.get(k).push(s); }
+    for (const o of orders) {
+      if (!o.lot) continue; const L = byLot.get(this.nk(o.lot)); if (!L || !L.length) continue;
+      const n = L.reduce((a, s) => a + (s.n || 0), 0); if (!n) continue;
+      const t0 = L.map(s => s.t0).sort()[0].slice(0, 16), t1 = L.map(s => s.t1).sort().pop().slice(0, 16);
+      const terminou = segs.some(s => s.lot && this.nk(s.lot) !== this.nk(o.lot) && s.t0.slice(0, 16) > t1);
+      const p = P.get(o.id); if (!p) continue;
+      p.produced = n * qty; p.firstAt = t0; p.lastAt = t1; p.mes = { caixas: n, lote: o.lot, terminou };
+      p.doneAt = terminou || p.produced >= p.target ? t1 : null; out.add(o.id);
+      let r = p.produced;   // a produção lançada desse catálogo no intervalo do lote não vai para outra ordem
+      for (const c of chunks) { if (r <= 0) break; if (c.cat !== o.catalogId || c.e <= t0 || c.s > t1 || !(c.good > 0)) continue; const t = Math.min(c.good, r); c.good -= t; r -= t; }
+    }
+    return out;
+  },
+  sugQ(o, g) {
+    if (!g || !g.mes) return '';
+    const ap = g.produced, v = o.qtyReal;
+    if (v == null) return `<br><button type="button" class="btn xs acc" data-acc="${o.id}|qtyReal" title="Caixas do lote ${esc(g.mes.lote)} no MES × peças por caixa">✓ usar ${fq(ap)} (MES)</button>`;
+    if (o.qtySrc === 'apurado') return v === ap ? '<br><span class="small muted">MES aceito</span>' : `<br><button type="button" class="btn xs acc warnb" data-acc="${o.id}|qtyReal|1">MES mudou: ${fq(ap)} · atualizar</button>`;
+    return v !== ap ? `<br><span class="small muted" title="Valor digitado; o MES diz outro">MES: ${fq(ap)}</span>` : '';
+  }
+};
+
 /* ===== Produção 2.4.42 · Relatórios › Tabelas (pedido do usuário, 10/11/2026) =====
    Relatório só de tabela, sem gráfico, com filtros: período, dias da semana (ex.: só sábados), turno, família e catálogo.
    Modelos prontos: por turno, por dia, por semana, por mês, por dia da semana, por catálogo, por família, hora a hora, paradas e lotes
@@ -10047,6 +10083,10 @@ document.addEventListener('DOMContentLoaded', () => { boot().catch(e => { consol
 @media(max-width:1100px){.sq-quadro{gap:8px}.sq-vaga{padding:9px}.sq-coluna>h3{gap:5px}.sq-coluna>h3 span{font-size:13px}}
 @media(max-width:760px){.sq-quadro{grid-template-columns:1fr;grid-template-rows:none}.sq-coluna{display:grid;grid-template-columns:1fr 1fr;grid-template-rows:none;grid-row:auto;gap:8px}.sq-coluna>h3{grid-column:1/-1}.sq-vaga{margin:0;min-height:200px}.sq-oc-grid{grid-template-columns:1fr}.sq-filtros label{max-width:100%}}
 @media(max-width:420px){.sq-coluna{grid-template-columns:1fr}.sq-filtros{align-items:stretch}.sq-filtros>*{flex:1 1 130px}}
+
+#sqBlocos .sq-blrow{display:flex;gap:8px;margin-top:6px}
+#sqBlocos .sq-blrow select:first-child{flex:1}
+.sq-vaga-painel small{display:block}
 </style>
 <script>
 /* SQDCP: funções puras. Ausência de resposta permanece desconhecida, inclusive em bases antigas. */
@@ -10145,7 +10185,7 @@ const SQDCPModelo = (() => {
   return { copiar, dataValida, lerEvento, validarTurno, linhas, resumo, exportar, tabela, preservarImportacao };
 })();
 
-const IMPRESSAO_CSS="@page{size:A4 landscape;margin:10mm}\n*{box-sizing:border-box}\nhtml,body{margin:0;padding:0;background:white;color:#152333;font:12px/1.35 Arial,Helvetica,sans-serif;-webkit-print-color-adjust:exact;print-color-adjust:exact}\n.sq-folha{width:277mm;height:189mm;display:flex;flex-direction:column;gap:2mm;break-inside:avoid;page-break-inside:avoid;overflow-wrap:anywhere}\n.sq-fhead{display:flex;align-items:center;gap:5mm;border-bottom:1mm solid #1b354d;padding-bottom:3mm;flex:none;min-height:21mm}\n.sq-letra{font-size:40pt;line-height:1;color:#203f5c}\n.sq-fhead>div:nth-child(2){flex:1;min-width:0}.sq-fhead h1{font-size:22pt;line-height:1.1;margin:0}.sq-fhead p{margin:1mm 0 0;font-size:11pt;color:#455568}\n.sq-ref{font-size:10pt;display:flex;flex-direction:column;text-align:right;max-width:65mm}.sq-ref b{font-size:16pt}\n.sq-resultado{display:flex;justify-content:space-between;align-items:center;gap:8mm;flex:none;min-height:25mm}\n.sq-resultado>div:first-child{display:flex;align-items:baseline;gap:3mm;min-width:0;flex:1}.sq-resultado strong{font-size:44pt;line-height:1.1}.sq-resultado>div:last-child{display:flex;flex-direction:column;align-items:flex-end;min-width:50mm}\n.sq-resultado b{font-size:13pt}.sq-situacao{border:1px solid;padding:1mm 3mm;border-radius:2mm;margin-top:1mm}.ok{color:#17633c;background:#e7f3eb}.crit{color:#a22020;background:#fbe9e9}.parcial{color:#805000;background:#fff3d8}.sem,.info{color:#4b596a;background:#f0f2f5}\n.sq-nota{font-size:9pt;line-height:1.3;margin:0;color:#455568;flex:none}\n.sq-conteudo{flex:1;min-height:0;display:flex;flex-direction:column;justify-content:center}\n.sq-grafico{display:block;width:100%;height:64mm;max-height:100%}.sq-sem-serie{padding:12mm 4mm;text-align:center;background:#f5f7fa;color:#4a5b6c}\n.sq-cal{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:1.3mm;align-content:center}.sq-cal>b{font-size:9pt;text-align:center}\n.sq-dia{border:1px solid #aab5c1;min-height:10mm;padding:1mm 2mm;display:flex;gap:2mm;align-items:center}.sq-dia strong{font-size:13pt;min-width:6mm}.sq-dia span{font-size:8pt;line-height:1.2}\n.sq-itens{border-collapse:collapse;width:100%;font-size:9pt;line-height:1.2;table-layout:fixed}.sq-itens th,.sq-itens td{border-bottom:1px solid #c8d0d9;padding:1.5mm;text-align:left;vertical-align:top;overflow-wrap:anywhere}.sq-itens th{background:#eef2f6}\n.sq-comentario{border-top:1px solid #aab5c1;flex:none;padding-top:2mm;font-size:10pt;min-height:19mm}.sq-comentario p{margin:1mm 0;min-height:4mm}.sq-comentario span{display:block;color:#536276;font-size:9pt}\nfooter{flex:none;border-top:1px solid #c8d0d9;padding-top:1mm;color:#536276;font-size:8pt}\n@media screen{body{padding:10mm;background:#e8edf2}.sq-folha{background:white;outline:1px solid #b2bdc8}}\n";
+const IMPRESSAO_CSS="@page{size:A4 landscape;margin:10mm}\n*{box-sizing:border-box}\nhtml,body{margin:0;padding:0;background:white;color:#152333;font:12px/1.35 Arial,Helvetica,sans-serif;-webkit-print-color-adjust:exact;print-color-adjust:exact}\n.sq-folha{width:277mm;height:189mm;display:flex;flex-direction:column;gap:2mm;break-inside:avoid;page-break-inside:avoid;overflow-wrap:anywhere}\n.sq-fhead{display:flex;align-items:center;gap:5mm;border-bottom:1mm solid #1b354d;padding-bottom:3mm;flex:none;min-height:21mm}\n.sq-letra{font-size:40pt;line-height:1;color:#203f5c}\n.sq-fhead>div:nth-child(2){flex:1;min-width:0}.sq-fhead h1{font-size:22pt;line-height:1.1;margin:0}.sq-fhead p{margin:1mm 0 0;font-size:11pt;color:#455568}\n.sq-ref{font-size:10pt;display:flex;flex-direction:column;text-align:right;max-width:65mm}.sq-ref b{font-size:16pt}\n.sq-resultado{display:flex;justify-content:space-between;align-items:center;gap:8mm;flex:none;min-height:25mm}\n.sq-resultado>div:first-child{display:flex;align-items:baseline;gap:3mm;min-width:0;flex:1}.sq-resultado strong{font-size:44pt;line-height:1.1}.sq-resultado>div:last-child{display:flex;flex-direction:column;align-items:flex-end;min-width:50mm}\n.sq-resultado b{font-size:13pt}.sq-situacao{border:1px solid;padding:1mm 3mm;border-radius:2mm;margin-top:1mm}.ok{color:#17633c;background:#e7f3eb}.crit{color:#a22020;background:#fbe9e9}.parcial{color:#805000;background:#fff3d8}.sem,.info{color:#4b596a;background:#f0f2f5}\n.sq-nota{font-size:9pt;line-height:1.3;margin:0;color:#455568;flex:none}\n.sq-conteudo{flex:1;min-height:0;display:flex;flex-direction:column;justify-content:center}\n.sq-grafico{display:block;width:100%;height:64mm;max-height:100%}.sq-sem-serie{padding:12mm 4mm;text-align:center;background:#f5f7fa;color:#4a5b6c}\n.sq-cal{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:1.3mm;align-content:center}.sq-cal>b{font-size:9pt;text-align:center}\n.sq-dia{border:1px solid #aab5c1;min-height:10mm;padding:1mm 2mm;display:flex;gap:2mm;align-items:center}.sq-dia strong{font-size:13pt;min-width:6mm}.sq-dia span{font-size:8pt;line-height:1.2}\n.sq-itens{border-collapse:collapse;width:100%;font-size:9pt;line-height:1.2;table-layout:fixed}.sq-itens th,.sq-itens td{border-bottom:1px solid #c8d0d9;padding:1.5mm;text-align:left;vertical-align:top;overflow-wrap:anywhere}.sq-itens th{background:#eef2f6}\n.sq-comentario{border-top:1px solid #aab5c1;flex:none;padding-top:2mm;font-size:10pt;min-height:19mm}.sq-comentario p{margin:1mm 0;min-height:4mm}.sq-comentario span{display:block;color:#536276;font-size:9pt}\nfooter{flex:none;border-top:1px solid #c8d0d9;padding-top:1mm;color:#536276;font-size:8pt}\n@media screen{body{padding:10mm;background:#e8edf2}.sq-folha{background:white;outline:1px solid #b2bdc8}}\n\n/* Blocos do Painel na folha (formato painel) */\n.sq-print{margin:0;background:#fff;color:#1b2733}\n.sq-blocos{display:flex;gap:4mm;align-items:stretch;height:100%;min-height:0}\n.sq-blk{flex:1 1 0;min-width:0;display:flex;flex-direction:column;border:1px solid #c9d2db;border-radius:2mm;padding:2mm;overflow:hidden}\n.sq-blk-g{flex:0 0 70mm}\n.sq-blk h5{margin:0 0 1mm;font-size:11pt}\n.sq-blk svg{max-width:100%;height:auto;max-height:100%}\n.sq-blk .chart-legend,.sq-blk .lg{font-size:9pt}\n.sq-blk details{display:none}\n";
 /* Quadro SQDCP e relatórios A4. Incorporado pelo build; não requer servidor ou biblioteca externa. */
 Object.assign(HELP, {
   sqIndicador: ['Indicador da posição', [['O que é?', 'A medida que ocupa esta folha do quadro.'], ['Exemplo', 'Q1 pode mostrar as QNs do dia; uma vaga livre não imprime indicador.']]],
@@ -10156,6 +10196,7 @@ Object.assign(HELP, {
   sqSentido: ['Sentido da meta', [['O que é?', 'Define qual lado da meta é favorável.'], ['Exemplo', 'Acidentes: menor é melhor. Atendimento ao plano: maior é melhor.']]],
   sqUnidade: ['Unidade', [['O que é?', 'Rótulo ao lado do número, sem converter o valor. Vazio usa o padrão do indicador.'], ['Exemplo', 'pessoas, peças, kg ou %.']]],
   sqObservacao: ['Observação da folha', [['O que é?', 'Nota curta que acompanha as impressões desta posição até ser alterada.'], ['Exemplo', 'Conferir a causa do aumento de scrap na reunião.']]],
+  sqBlocos: ['Blocos do Painel', [['O que é?', 'Gráficos do Painel da Produção impressos nesta folha (até 3), cada um com o seu período contado a partir da data de referência. Linha Vacutainer, todos os turnos.'], ['Exemplo', 'Scrap % no dia e Scrap % na semana; Hora a hora do dia de referência (ontem) e Plano do mês acumulado.']]],
   sqManual: ['Indicador manual', [['O que é?', 'Valor informado nesta linha, data, turno e posição. Vazio é Não informado; zero é uma medição válida.'], ['Exemplo', 'Presença: 12 pessoas. O relatório não soma pessoas entre dias.']]],
   sqAcidente: ['Acidente no turno', [['O que é?', 'Registre apenas as novas ocorrências deste turno. Sem resposta não significa ausência de acidente.'], ['Exemplo', 'Não houve: zero confirmado. Sim: informe a quantidade e, se houver, a referência.']]],
   sqQN: ['Quality Notification', [['O que é?', 'Notificações de qualidade reportadas no turno. Números ficam como texto.'], ['Exemplo', '00001234 é preservado. O mesmo número em dois turnos conta uma vez no período; sem número a contagem é provisória.']]],
@@ -10183,7 +10224,8 @@ const Sqdcp = (() => {
     { id: 'gel', p: 'C', nome: 'Gel disponível — posição atual', unidade: 'kg', fonte: 'gel' },
     { id: 'acoes', p: 'SP', nome: 'Ações abertas — posição atual', unidade: 'ações', fonte: 'inic' },
     { id: 'atrasadas', p: 'SP', nome: 'Ações atrasadas — posição atual', unidade: 'ações', fonte: 'inic', sentido: 'menor', meta: 0 },
-    { id: 'manual', p: 'SQDCP', nome: 'Indicador manual', unidade: '', sentido: 'maior' }
+    { id: 'manual', p: 'SQDCP', nome: 'Indicador manual', unidade: '', sentido: 'maior' },
+    { id: 'painel', p: 'SQDCP', nome: 'Blocos do Painel (gráficos da Produção)', unidade: '', painel: true }
   ];
   const info = id => catalogo.find(c => c.id === id);
   const fmt = v => v == null || !Number.isFinite(v) ? '—' : Math.abs(v) > 1e15 ? v.toExponential(3).replace('.', ',') : new Intl.NumberFormat('pt-BR', { maximumFractionDigits: 2 }).format(v);
@@ -10216,7 +10258,17 @@ const Sqdcp = (() => {
     return shifts.filter(s => !s.ps.off && !s.ps.summary).flatMap(s => ['acidente', 'qn'].filter(k => !M.lerEvento((s.ps.sqdcp || {})[k])).map(k =>
       ({ level: 'alerta', msg: s.ps.snap.name + ': ' + (k === 'acidente' ? 'acidente' : 'QN') + ' não informado.', ref: { ps: s.ps.id } })));
   }
+  // Padrão sugerido das posições com blocos do Painel (homologação de 10/11/2026); cada posição pode ser trocada em Configurar.
+  const PADRAO_PAINEL = {
+    Q3: { titulo: 'Scrap % · dia e semana', blocos: [{ b: 'scrapDay', periodo: 'dia' }, { b: 'scrapDay', periodo: 'semana' }] },
+    D3: { titulo: 'Produção × meta · hora a hora e plano do mês', blocos: [{ b: 'hourly', periodo: 'dia' }, { b: 'planMonth', periodo: 'mes' }] },
+    C2: { titulo: 'OEE · velocímetro, semana e mês', blocos: [{ b: 'gaugeOee', periodo: 'dia' }, { b: 'oeeDay', periodo: 'semana' }, { b: 'oeeDay', periodo: 'mes' }] }
+  };
+  const ROT_PER = { dia: 'Dia de referência', semana: 'Últimos 7 dias', mes: 'Mês até a referência' };
+  const blocosPainel = () => typeof PN_B === 'undefined' ? [] : Object.keys(PN_B).map(k => [k, PN_B[k].l + (PN_B[k].g ? ' · ' + PN_B[k].g : '')]);
   function padrao(key) {
+    if (PADRAO_PAINEL[key]) return { indicador: 'painel', formato: 'painel', periodo: 'dia', titulo: PADRAO_PAINEL[key].titulo, unidade: '', meta: null, sentido: '', observacao: '',
+      blocos: PADRAO_PAINEL[key].blocos.map(b => ({ ...b })) };
     const defs = { S: ['acidentes', 'diasSeguros', 'coberturaS'], Q: ['qn', 'scrapPct', 'qualidade'], D: ['boa', 'atendimento', 'oee'],
       C: ['waste', 'gel'], P: ['acoes', 'atrasadas'] };
     return { indicador: (defs[key[0]] || [])[+key.slice(1)] || '', formato: key === 'S0' || key === 'Q0' ? 'calendario' : 'evolucao',
@@ -10228,6 +10280,17 @@ const Sqdcp = (() => {
     if (!/^[SQDCP][0-4]$/.test(key)) throw new Error('Vaga inválida.');
     const c = v.indicador ? info(v.indicador) : null;
     if (v.indicador && (!c || !c.p.includes(key[0]))) throw new Error('Indicador inválido para esta coluna.');
+    if (v.indicador === 'painel') {
+      const ok = new Set(blocosPainel().map(a => a[0]));
+      const blocos = (Array.isArray(v.blocos) ? v.blocos : []).filter(b => b && b.b).slice(0, 3).map(b => {
+        if (ok.size && !ok.has(b.b)) throw new Error('Bloco do Painel inválido: ' + b.b + '.');
+        if (!['dia', 'semana', 'mes'].includes(b.periodo)) throw new Error('Período do bloco inválido.');
+        return { b: String(b.b), periodo: b.periodo };
+      });
+      if (!blocos.length) throw new Error('Escolha ao menos um bloco do Painel.');
+      return { indicador: 'painel', formato: 'painel', periodo: 'dia', titulo: String(v.titulo || '').trim().slice(0, 80), unidade: '', meta: null, sentido: 'maior',
+        observacao: String(v.observacao || '').trim().slice(0, 300), blocos };
+    }
     if (!['evolucao', 'calendario', 'desvios'].includes(v.formato) || !['dia', 'semana', 'mes'].includes(v.periodo)) throw new Error('Formato ou período inválido.');
     if (v.meta != null && (!Number.isFinite(v.meta) || Math.abs(v.meta) > 1e15)) throw new Error('Meta inválida.');
     return { indicador: v.indicador, formato: v.formato, periodo: v.periodo, titulo: String(v.titulo || '').trim().slice(0, 80),
@@ -10352,6 +10415,12 @@ const Sqdcp = (() => {
   function relatorio(key) {
     const cfg = vaga(key), c = info(cfg.indicador);
     if (!c) return null;
+    if (c.painel) {
+      const blocos = cfg.blocos || [], de = blocos.reduce((m, b) => { const a = intervalo(b, UI.dia)[0]; return a < m ? a : m; }, UI.dia);
+      return { cfg, c, key, valor: null, parcial: false, itens: [], serie: [], rows: [], de, ate: UI.dia, meta: null, sentido: 'maior', estado: 'info', unidade: '',
+        titulo: cfg.titulo || c.nome, fonte: 'Painel da Produção', painel: true,
+        nota: blocos.map(b => (typeof PN_B !== 'undefined' && PN_B[b.b] ? PN_B[b.b].l : b.b) + ' (' + (ROT_PER[b.periodo] || b.periodo).toLowerCase() + ')').join(' · ') + ' · Linha Vacutainer, todos os turnos.' };
+    }
     const [de, ate] = intervalo(cfg, UI.dia), d = dados(c, cfg, de, ate, key);
     const meta = cfg.meta != null ? cfg.meta : d.metaNativa != null ? d.metaNativa : c.meta;
     const sentido = cfg.sentido || c.sentido || 'maior';
@@ -10425,8 +10494,32 @@ const Sqdcp = (() => {
       '</tbody></table><p class="sq-nota">Síntese: até 5 itens, com até 100 caracteres por campo. Consulte a base ou o CSV para o detalhamento completo.' +
       (itens.length > 5 ? ' Total: ' + itens.length + ' itens.' : '') + '</p>';
   }
+  // Blocos do Painel na folha: mesmo cálculo do Painel (Panel.ctx + PN_B), período contado a partir da data de referência.
+  function blocosHtml(r) {
+    if (typeof PN_B === 'undefined' || typeof Panel === 'undefined') return '<div class="sq-sem-serie">Painel indisponível nesta página.</div>';
+    const bl = r.cfg.blocos || [], n = bl.length || 1, larg = bl.some(b => b.b === 'gaugeOee') && n > 1 ? null : Math.floor(1000 / n);
+    const cel = bl.map(b => {
+      const B = PN_B[b.b]; if (!B) return '<div class="sq-blk"><h5>' + e(b.b) + '</h5><div class="sq-sem-serie">Bloco não existe mais no Painel.</div></div>';
+      const [de, ate] = intervalo(b, UI.dia);
+      let h; Charts.setWidth(b.b === 'gaugeOee' ? 320 : larg || Math.floor(1000 / (n - 0.5)));
+      try { const x = Panel.ctx({ pre: 'custom', from: de, to: ate, cmp: false, grp: 'day' });
+        h = x.days.length || ['external', 'trend12', 'planMonth', 'planTable'].includes(b.b) ? B.r(x) : '<div class="sq-sem-serie">Sem lançamentos no período.</div>'; }
+      catch (err) { console.error(err); h = '<div class="sq-sem-serie">Não foi possível montar este bloco.</div>'; }
+      Charts.setWidth(720);
+      return '<div class="sq-blk' + (b.b === 'gaugeOee' ? ' sq-blk-g' : '') + '"><h5>' + e(B.l) + ' · ' + e(de === ate ? U.brDate(de) : U.brDate(de) + ' a ' + U.brDate(ate)) + '</h5>' + h + '</div>';
+    }).join('');
+    return '<div class="sq-blocos">' + cel + '</div>';
+  }
   function folha(key) {
     const r = relatorio(key); if (!r) return '';
+    if (r.painel) {
+      const letra = key[0], pilar = { S: 'Segurança', Q: 'Qualidade', D: 'Entrega', C: 'Custo', P: quadro().p === 'produtividade' ? 'Produtividade' : 'Pessoas' }[letra];
+      return '<article class="sq-folha sq-folha-painel"><header class="sq-fhead"><b class="sq-letra">' + letra + '</b><div><h1>' + e(r.titulo) + '</h1><p>' + e(pilar + ' · Linha Vacutainer') +
+        '</p></div><div class="sq-ref"><b>' + e(U.brDate(UI.dia)) + '</b><span>Todos os turnos</span><span>Blocos do Painel</span></div></header>' +
+        '<section class="sq-conteudo">' + blocosHtml(r) + '</section>' +
+        '<div class="sq-comentario"><b>Observação / ação</b><p>' + e(r.cfg.observacao || '') + '</p><span>Responsável: __________________________ Prazo: ______________</span></div>' +
+        '<footer>Painel da Produção · Gerado em ' + e(U.brDT(U.nowIso())) + ' · ' + e(vacDemo.ativo ? 'DEMONSTRAÇÃO — DADOS FICTÍCIOS' : 'SQDCP · Produção') + '</footer></article>';
+    }
     const valorFormatado = fmt(r.valor), tamanho = valorFormatado.length > 16 ? '25pt' : valorFormatado.length > 10 ? '34pt' : '44pt';
     const letra = key[0], pilar = { S: 'Segurança', Q: 'Qualidade', D: 'Entrega', C: 'Custo', P: quadro().p === 'produtividade' ? 'Produtividade' : 'Pessoas' }[letra];
     return '<article class="sq-folha"><header class="sq-fhead"><b class="sq-letra">' + letra + '</b><div><h1>' + e(r.titulo) + '</h1><p>' + e(pilar + ' · ' + nomeLinha()) +
@@ -10437,8 +10530,9 @@ const Sqdcp = (() => {
       '<footer>' + e(r.fonte) + ' · Gerado em ' + e(U.brDT(U.nowIso())) + ' · ' + e(vacDemo.ativo ? 'DEMONSTRAÇÃO — DADOS FICTÍCIOS' : 'SQDCP · Produção') + '</footer></article>';
   }
   function htmlImpressao(key) {
-    return '<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><title>SQDCP · ' + e((relatorio(key) || {}).titulo || '') +
-      '</title><style>' + IMPRESSAO_CSS + '</style></head><body>' + folha(key) + '</body></html>';
+    const r = relatorio(key) || {}, estilos = r.painel ? [...document.querySelectorAll('style')].map(s => s.textContent).join('\n') : '';
+    return '<!doctype html><html lang="pt-BR"' + (r.painel ? ' data-theme="light"' : '') + '><head><meta charset="utf-8"><title>SQDCP · ' + e(r.titulo || '') +
+      '</title><style>' + estilos + '\n' + IMPRESSAO_CSS + '</style></head><body class="sq-print">' + folha(key) + '</body></html>';
   }
   function imprimir(key) {
     if (!pode('exportar')) return toast('Seu perfil não permite exportar relatórios.', true);
@@ -10460,6 +10554,9 @@ const Sqdcp = (() => {
     UI.editando = key; const v = vaga(key), c = info(v.indicador), atual = (((db().sqdcp || {}).manuais || {})[UI.linha] || {})[key + '|' + UI.dia + '|' + UI.turno];
     modal('Configurar posição ' + key[0] + ' · ' + (+key.slice(1) + 1), '<div class="form sq-form"><label class="f wide">Indicador ' + ib('sqIndicador') + '<select id="sqIndicador">' +
       sel([['', 'Vaga livre'], ...catalogo.filter(c => c.p.includes(key[0])).map(c => [c.id, c.nome])], v.indicador) + '</select></label>' +
+      '<div id="sqBlocos" class="f wide"><b>Blocos do Painel ' + ib('sqBlocos') + '</b>' + [0, 1, 2].map(i => { const b = (v.blocos || [])[i] || {};
+        return '<div class="sq-blrow"><select data-sqbl="' + i + '"><option value="">' + (i ? '(nenhum)' : 'Escolha o bloco') + '</option>' + sel(blocosPainel(), b.b || '') + '</select><select data-sqblp="' + i + '">' +
+          sel(Object.entries(ROT_PER), b.periodo || 'dia') + '</select></div>'; }).join('') + '</div>' +
       '<label class="f wide">Título personalizado ' + ib('sqTitulo') + ' <input id="sqTitulo" maxlength="80" value="' + e(v.titulo) + '" placeholder="Usar o nome do indicador"></label>' +
       '<label class="f">Período do resultado ' + ib('sqPeriodo') + '<select id="sqPeriodo">' + sel([['dia', 'Dia de referência'], ['semana', 'Últimos 7 dias'], ['mes', 'Mês até a referência']], v.periodo) + '</select></label>' +
       '<label class="f">Modelo da folha ' + ib('sqFormato') + '<select id="sqFormato">' + sel([['evolucao', 'Resultado e evolução'], ['calendario', 'Calendário mensal'], ['desvios', 'Desvios e ações']], v.formato) + '</select></label>' +
@@ -10469,13 +10566,16 @@ const Sqdcp = (() => {
       '<label class="f wide">Observação para a folha ' + ib('sqObservacao') + '<textarea id="sqObs" maxlength="300">' + e(v.observacao) + '</textarea></label></div>' +
       '<div id="sqManual"><h4>Valor manual na referência ' + e(U.brDate(UI.dia)) + ' ' + ib('sqManual') + '</h4><p class="small">Usado somente para indicador manual; vazio permanece não informado. É uma fotografia nesta data, sem soma automática entre dias.</p><label>Valor <input id="sqValorManual" inputmode="decimal" value="' + e(atual && atual.valor != null ? String(atual.valor) : '') + '"></label><label>Nota da medição <input id="sqNotaManual" maxlength="300" value="' + e(atual ? atual.nota : '') + '"></label></div>',
       '<button class="btn" data-close>Cancelar</button><button class="btn primary" id="sqGravar">Salvar posição</button>', (el, fechar) => {
-        const tipo = el.querySelector('#sqIndicador'), toggle = () => { el.querySelector('#sqManual').hidden = tipo.value !== 'manual'; }; tipo.onchange = toggle; toggle();
+        const tipo = el.querySelector('#sqIndicador'), toggle = () => { el.querySelector('#sqManual').hidden = tipo.value !== 'manual'; const pn = tipo.value === 'painel';
+          el.querySelector('#sqBlocos').hidden = !pn; for (const id of ['#sqPeriodo', '#sqFormato', '#sqMeta', '#sqSentido', '#sqUnidade']) el.querySelector(id).closest('label').hidden = pn; };
+        tipo.onchange = toggle; toggle();
         el.querySelector('#sqGravar').onclick = () => {
           try {
             const num = id => { const t = el.querySelector(id).value.trim(); if (!t) return null; const n = vacNumero(t, { ponto: 'decimal' }); if (!Number.isFinite(n)) throw new Error('Valor numérico inválido.'); return n; };
             const cfg = validarVaga(key, { indicador: tipo.value, titulo: el.querySelector('#sqTitulo').value, periodo: el.querySelector('#sqPeriodo').value,
               formato: el.querySelector('#sqFormato').value, meta: num('#sqMeta'), sentido: el.querySelector('#sqSentido').value,
-              unidade: el.querySelector('#sqUnidade').value, observacao: el.querySelector('#sqObs').value });
+              unidade: el.querySelector('#sqUnidade').value, observacao: el.querySelector('#sqObs').value,
+              blocos: [0, 1, 2].map(i => ({ b: el.querySelector('[data-sqbl="' + i + '"]').value, periodo: el.querySelector('[data-sqblp="' + i + '"]').value })) });
             const manual = cfg.indicador === 'manual' ? { valor: num('#sqValorManual'), nota: el.querySelector('#sqNotaManual').value.trim().slice(0, 300) } : undefined;
             Actions.setSQDCPVaga(UI.linha, key, cfg, UI.dia, UI.turno, manual); fechar(); render();
           } catch (err) { toast(err.message, true); }
@@ -10508,6 +10608,8 @@ const Sqdcp = (() => {
       '<div class="sq-quadro">' + letras.map((l, i) => '<section class="sq-coluna sq-col-' + l + '"><h3><b>' + l + '</b><span>' + nomes[i] + '</span></h3>' +
         Array.from({ length: 5 }, (_, n) => {
           const key = l + n, r = relatorio(key);
+          if (r && r.painel) return '<article class="sq-vaga sq-vaga-painel"><span class="sq-pos">Posição ' + (n + 1) + '</span><h4>' + e(r.titulo) + '</h4><span class="sq-tag info">Blocos do Painel</span><small>' + e(r.nota) +
+            '</small><button class="btn primary" data-sq-previa="' + key + '"' + (!pode('exportar') ? ' disabled' : '') + '>Prévia / imprimir</button><button class="btn ghost" data-sq-editar="' + key + '"' + (!pode('configurar') ? ' disabled' : '') + '>Configurar posição</button></article>';
           return '<article class="sq-vaga"><span class="sq-pos">Posição ' + (n + 1) + '</span>' + (r ? '<h4>' + e(r.titulo) + '</h4><strong class="sq-v">' + e(fmt(r.valor)) + '</strong><span>' + e(r.unidade) +
             '</span><span class="sq-tag ' + r.estado + '">' + e(rotEstado(r)) + '</span><small>' + e(r.nota) + '</small><button class="btn primary" data-sq-previa="' + key + '"' + (!pode('exportar') ? ' disabled' : '') + '>Prévia / imprimir</button>' +
             (r.c.id === 'manual' && pode('lancar') ? '<button class="btn" data-sq-manual="' + key + '">Registrar valor</button>' : '') : '<h4>Vaga livre</h4><p class="small muted">Escolha o indicador desta posição.</p>') +
@@ -11956,7 +12058,8 @@ const vacFicha = (() => {
     { id: 'perdas', nome: 'Waste', base: 'perdas-base.json', pega: ex => ({ porOrdem: ex.porOrdem || [], acoesLegado: ex.acoesLegado || null }) },   /* Fase 6: Iniciativas traz as ações antigas */
     { id: 'gel', nome: 'Gestão de Gel', base: 'fifo-base.json', pega: ex => ({ ordens: ex.ordens || [], cob: ex.ordensCobertura || null, porDiaGel: ex.porDiaGel || [] }) },   /* Fase 4 · 4e */
     { id: 'paradas', nome: 'Paradas', base: 'paradas-base.json', pega: ex => ({ porOrdem: ex.porOrdem || [], eventos: (ex.eventos || []).filter(e => e && e.ordem) }) },
-    { id: 'inic', nome: 'Iniciativas / Ações', base: 'iniciativas-base.json', pega: ex => ({ acoes: ex.acoes || [] }) }];
+    { id: 'inic', nome: 'Iniciativas / Ações', base: 'iniciativas-base.json', pega: ex => ({ acoes: ex.acoes || [] }) },
+    { id: 'portal', nome: 'Portal', base: 'portal-base.json', pega: ex => ({ acoesReuniao: ex.acoesReuniao || [] }) }];   /* pauta automática: Iniciativas cria as ações da Reunião diária */
   const S = { dados: {}, idx: null, carregando: null, aberto: null, empilhado: false };
   const e2 = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   const tx = v => String(v ?? '').trim();

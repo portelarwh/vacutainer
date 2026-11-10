@@ -790,7 +790,7 @@ addEventListener('error', e => { if (e.error && e.error.name === 'VacAbaBloquead
 <main class="wrap" id="main"></main>
 <div class="toasts" id="toasts"></div>
 <script>
-const PAGE={id:"inic",titulo:"Iniciativas / Ações · KAS · OSM · 5S",tituloCurto:"Iniciativas / Ações",subtitulo:"Ações (Planner) · KAS · OSM · 5S",versao:"1.1.4",baseFile:"iniciativas-base.json",backupDir:"00. Backups/Iniciativas",estado:"atualizacao",estadoNota:"Primeira versão: Ações (Planner) e KAS. OSM e 5S chegam nas próximas etapas."};
+const PAGE={id:"inic",titulo:"Iniciativas / Ações · KAS · OSM · 5S",tituloCurto:"Iniciativas / Ações",subtitulo:"Ações (Planner) · KAS · OSM · 5S",versao:"1.1.5",baseFile:"iniciativas-base.json",backupDir:"00. Backups/Iniciativas",estado:"atualizacao",estadoNota:"Primeira versão: Ações (Planner) e KAS. OSM e 5S chegam nas próximas etapas."};
 const APP_VERSION=PAGE.versao;
 /* ---------- vac-cabecalho v2 · JS (igual em todas as páginas) ---------- */
 const VAC_CAB_VERSAO=2;
@@ -1154,7 +1154,8 @@ const vacFicha = (() => {
     { id: 'perdas', nome: 'Waste', base: 'perdas-base.json', pega: ex => ({ porOrdem: ex.porOrdem || [], acoesLegado: ex.acoesLegado || null }) },   /* Fase 6: Iniciativas traz as ações antigas */
     { id: 'gel', nome: 'Gestão de Gel', base: 'fifo-base.json', pega: ex => ({ ordens: ex.ordens || [], cob: ex.ordensCobertura || null, porDiaGel: ex.porDiaGel || [] }) },   /* Fase 4 · 4e */
     { id: 'paradas', nome: 'Paradas', base: 'paradas-base.json', pega: ex => ({ porOrdem: ex.porOrdem || [], eventos: (ex.eventos || []).filter(e => e && e.ordem) }) },
-    { id: 'inic', nome: 'Iniciativas / Ações', base: 'iniciativas-base.json', pega: ex => ({ acoes: ex.acoes || [] }) }];
+    { id: 'inic', nome: 'Iniciativas / Ações', base: 'iniciativas-base.json', pega: ex => ({ acoes: ex.acoes || [] }) },
+    { id: 'portal', nome: 'Portal', base: 'portal-base.json', pega: ex => ({ acoesReuniao: ex.acoesReuniao || [] }) }];   /* pauta automática: Iniciativas cria as ações da Reunião diária */
   const S = { dados: {}, idx: null, carregando: null, aberto: null, empilhado: false };
   const e2 = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   const tx = v => String(v ?? '').trim();
@@ -1732,7 +1733,7 @@ function bkNome(t){const d=new Date(),p=n=>String(n).padStart(2,'0');return`inic
 function vacPastaAtual(){return Store.perm&&!Store.test?Store.dir:null}
 /* ao voltar para a página (outra aba/janela): relê o que outra estação gravou */
 /* AT-04 · aba aberta na virada do dia: ao voltar, relê e, se o resumo (exports) é de outro dia, grava de novo (mesma regra do init) */
-function vacAoVoltar(){if(Store.test||!Store.perm)return;Store.reload().then(()=>{const S=Store;if(!S.sumiu&&!S.saving&&S.baseFound&&!S.readErr&&(S.queue.length||diaLocal((S.data.exports||{}).geradoEm)!==hoje()))S.save();render()})}
+function vacAoVoltar(){if(Store.test||!Store.perm)return;Store.reload().then(()=>{ImpReuniao.rodar();const S=Store;if(!S.sumiu&&!S.saving&&S.baseFound&&!S.readErr&&(S.queue.length||diaLocal((S.data.exports||{}).geradoEm)!==hoje()))S.save();render()})}
 
 /* ---------- exports (lido pelo Portal: cartão, pendências, Minha fila, Reunião diária; pela ficha da ordem) ---------- */
 function calcExports(D){const h=hoje(),A=D.acoes||[],ab=A.filter(aberta),fim=addDias(h,-365);
@@ -1968,6 +1969,18 @@ const MigWaste={
    ${nov.length?`<div class="tw" style="max-height:260px"><table class="t"><tr><th>Ordem</th><th>Ação</th><th>Status no Waste</th><th>Fica aqui</th><th>Responsável</th><th>Prazo</th></tr>${nov.map(w=>{const c=this.converter(w,'');return`<tr><td class="code">${esc(w.ordem||'—')}</td><td>${esc(c.titulo)}</td><td>${esc(w.status||'')}</td><td>${esc(stNome(c.status))}${c.eficacia?' · eficácia/confirmação de processo: '+esc(efNome(c.eficacia)):''}</td><td>${esc(c.responsavel||'—')}</td><td>${c.prazo?br(c.prazo):'—'}</td></tr>`}).join('')}</table></div>`:''}`,
    acao:()=>{if(!nov.length)return true;const em=new Date().toISOString();for(const w of nov){if(this.ja(w.id))continue;Store.commit({k:'nova',a:this.converter(w,em)},{silencio:true})}
     Store.commit({k:'imp',it:{id:'MIGW-'+em,em,por:user()||'',programa:'waste',nome:'Ações do Waste (migração)',linhas:nov.length}});toast(`${nov.length} ação(ões) trazida(s) do Waste.`);render();return true}})}};
+/* Pauta automática (Portal 1.9.21 / Iniciativas 1.1.5): ações registradas na Reunião diária do Portal (exports.acoesReuniao)
+   viram ações aqui ao abrir a página. Id fixo AC-R-<id> e ref da origem: abrir de novo (ou em outra estação) não duplica. */
+const ImpReuniao={
+ ja(r){return Store.data.acoes.some(a=>a.id==='AC-R-'+r.id||(a.origem||{}).ref===r.ref)},
+ conv(r,em){const z=/^\d{4}-\d{2}-\d{2}$/.test(String(r.prazo||''))?r.prazo:null,lk=vacLinkSeguro(r.link);
+  return{id:'AC-R-'+r.id,titulo:String(r.titulo||'(sem descrição)').slice(0,200),descricao:String(r.descricao||''),status:'a fazer',prioridade:'media',responsavel:String(r.responsavel||''),apoios:[],
+   prazo:z,prazoOriginal:z,criadaEm:r.em||em,criadaPor:r.por||'',origem:{tipo:'reuniao',ref:r.ref,resumo:r.resumo||'Reunião diária',...(lk?{link:lk}:{})},vinculos:[],checklist:[],comentarios:[],evidencias:[]}},
+ async rodar(){try{if(!(Store.test||vacDemo.ativo||(Store.dir&&Store.perm&&Store.baseFound&&!Store.readErr&&!Store.sumiu)))return;if(typeof vacFicha==='undefined')return;
+  await vacFicha.carregar();const x=vacFicha.dados('portal'),L=x&&x.d&&Array.isArray(x.d.acoesReuniao)?x.d.acoesReuniao:[];
+  const nov=L.filter(r=>r&&r.id&&r.ref&&/^[\w-]{1,40}$/.test(String(r.id))&&!this.ja(r));if(!nov.length)return;const em=new Date().toISOString();
+  for(const r of nov){if(this.ja(r))continue;Store.commit({k:'nova',a:this.conv(r,em)},{silencio:true})}
+  toast(nov.length+' ação(ões) da Reunião diária (Portal) criada(s) aqui.');render()}catch(e){console.warn('ImpReuniao',e)}}};
 function viewConfig(){const S=Store,D=S.data;return`<div class="grid g2"><div class="card"><h2 class="ttl">Pasta e base</h2>
  <p class="small">${S.test?'Modo de teste: nada é gravado.':S.dir?`Pasta <b>${esc(S.dirName)}</b> · ${S.perm?'com permissão':'sem permissão'} · base ${S.baseFound?'encontrada':'ainda não gravada'} em 00. Bases/${esc(PAGE.baseFile)}`:'Sem pasta: os dados ficam só neste navegador até conectar.'}</p>
  <p class="small">Revisão ${D.rev||0}${D.revBy?` · gravada por ${esc(D.revBy)} em ${brh(D.revAt)}`:''} · ${D.acoes.length} ação(ões) · ${(D.kas||[]).length} KAS · ${S.queue.length} alteração(ões) pendente(s)</p>
@@ -2035,7 +2048,7 @@ function vacAoTrocarUsuario(){render()}
  const va=document.createElement('span');va.className='vacts';va.innerHTML='<button class="b pri" id="btNova">+ Nova ação</button>';$('.vpage .wrap').appendChild(va);$('#btNova').onclick=()=>formAcao(null);
  window.addEventListener('storage',e=>{if(e.key==='vac.theme')applyTheme();if(e.key==='vac.cadastros')render()});
  const h0=location.hash;if(/^#aba=/.test(h0)){const t=h0.slice(5);if(ABAS.some(a=>a[0]===t))App.tab=t}else if(!h0&&typeof vacAbaInicial==='function'){const ai=vacAbaInicial('inic');const m=ai&&/^aba=(\w+)$/.exec(ai);if(m&&ABAS.some(a=>a[0]===m[1]))App.tab=m[1]}
- render();if(vacDemo.ativo){Store.test=true;vacDemo.registrar('inic',()=>({...Store.data,exports:calcExports(Store.data)}),d=>{Store.data=completar(d)},()=>{render()});vacDemo.publicar('inic');rota();return}if(h0==='#teste')return enterTest();await Store.init();render();if(h0&&!/^#aba=/.test(h0))rota()})();
+ render();if(vacDemo.ativo){Store.test=true;vacDemo.registrar('inic',()=>({...Store.data,exports:calcExports(Store.data)}),d=>{Store.data=completar(d)},()=>{render()});vacDemo.publicar('inic');rota();ImpReuniao.rodar();return}if(h0==='#teste')return enterTest();await Store.init();render();if(h0&&!/^#aba=/.test(h0))rota();ImpReuniao.rodar()})();
 </script>
 <script>
 /* ===== UX-02 · guia por aba (briefing 09/11/2026): conteúdo do painel "?" do kit (vacGuia). Editar aqui quando a tela mudar. ===== */

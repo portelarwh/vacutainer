@@ -206,6 +206,18 @@ const srv = http.createServer((q, r) => {
       return a === 123 && imediato === null && depois === null;
     });
     ok(isolado, 'troca de pasta limpa a fonte anterior antes de desenhar os indicadores');
+    // Produção 2.4.44 · posições com blocos do Painel (padrão sugerido Q3, D3, C2), editáveis e impressas em A4
+    const blocos = await p.evaluate(() => {
+      const pad = ['Q3', 'D3', 'C2'].map(k => Sqdcp.relatorio(k)).map(r => r && r.painel ? r.cfg.blocos.map(b => b.b + ':' + b.periodo).join(',') : '');
+      const h = Sqdcp.htmlImpressao('C2'), n = (h.match(/class="sq-blk/g) || []).length;
+      let erro = ''; try { Sqdcp.validarVaga('Q3', { indicador: 'painel', blocos: [{ b: 'naoExiste', periodo: 'dia' }] }); } catch (e) { erro = e.message; }
+      let vazio = ''; try { Sqdcp.validarVaga('Q3', { indicador: 'painel', blocos: [] }); } catch (e) { vazio = e.message; }
+      return { pad, n, tema: /data-theme="light"/.test(h), svg: /<svg/.test(h), erro, vazio };
+    });
+    ok(blocos.pad[0] === 'scrapDay:dia,scrapDay:semana' && blocos.pad[1] === 'hourly:dia,planMonth:mes' && blocos.pad[2] === 'gaugeOee:dia,oeeDay:semana,oeeDay:mes',
+      'padrão sugerido: Q scrap % dia e semana · D hora a hora e plano do mês · C velocímetro e OEE semana/mês (' + blocos.pad.join(' | ') + ')');
+    ok(blocos.n === 3 && blocos.svg && blocos.tema, 'folha A4 com os 3 blocos do Painel, gráficos e tema claro na impressão');
+    ok(/inválido/.test(blocos.erro) && /ao menos um bloco/.test(blocos.vazio), 'bloco inexistente ou posição sem bloco é recusado');
     ok(!erros.length, 'sem erros JavaScript: ' + erros.join('\n'));
     console.log('SQDCP: sem erros');
   } finally { if (browser) await browser.close(); srv.close(); }

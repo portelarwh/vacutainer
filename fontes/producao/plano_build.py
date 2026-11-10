@@ -23,3 +23,20 @@ def aplicar(R):
     R("async function boot() {\n", open(os.path.join(AQUI, 'rp_tabelas.js'), encoding='utf-8').read() + "\nasync function boot() {\n")
     R("    const M = rpModel(R); App.rep.model = M;", "    if (R.type === 'tables') par += RpTab.params(R);   /* 2.4.42 */\n    const M = rpModel(R); App.rep.model = M;")
     R("    bind('#rpDate', 'date'); bind('#rpPs', 'psId');", "    if (R.type === 'tables') RpTab.ligar(root, R, re);   /* 2.4.42 */\n    bind('#rpDate', 'date'); bind('#rpPs', 'psId');")
+    # 2.4.43 · ordem pelo lote do MES (OrdLote em plano_ui.js) e Qtde real apurada com "usar (MES)"
+    R("    const P = new Map(orders.map(o => [o.id, { target: o.qtyReal != null ? o.qtyReal : (o.qty || 0), produced: 0, firstAt: null, lastAt: null, doneAt: null, shiftLevel: false }]));\n",
+      "    const P = new Map(orders.map(o => [o.id, { target: o.qtyReal != null ? o.qtyReal : (o.qty || 0), produced: 0, firstAt: null, lastAt: null, doneAt: null, shiftLevel: false }]));\n    const viaLote = typeof OrdLote !== 'undefined' ? OrdLote.aplicar(db, plan, orders, P, chunks) : new Set(), ordersH = orders.filter(o => !viaLote.has(o.id));   /* 2.4.43 */\n")
+    R("        const o = pickOrder(orders, P, c, famOf);", "        const o = pickOrder(ordersH, P, c, famOf);")
+    R("const ap = f === 'startReal' ? g.firstAt : g.doneAt, src = f === 'startReal' ? 'startSrc' : 'endSrc';",
+      "const ap = f === 'qtyReal' ? (g.mes ? g.produced : null) : f === 'startReal' ? g.firstAt : g.doneAt, src = f === 'qtyReal' ? 'qtySrc' : f === 'startReal' ? 'startSrc' : 'endSrc';")
+    R("for (const f of fields || ['startReal', 'endReal']) {", "for (const f of fields || ['startReal', 'endReal', 'qtyReal']) {")
+    R("if (k === 'startReal') delete o.startSrc; if (k === 'endReal') delete o.endSrc;", "if (k === 'startReal') delete o.startSrc; if (k === 'endReal') delete o.endSrc; if (k === 'qtyReal') delete o.qtySrc;")
+    R("""<td class="n">${g ? fq(g.produced) : '—'}${g && g.shiftLevel ? '<br><span class="small muted">por turno</span>' : ''}</td>""",
+      """<td class="n">${g ? fq(g.produced) : '—'}${g && g.shiftLevel ? '<br><span class="small muted">por turno</span>' : ''}${g && g.mes ? `<br><span class="small muted" title="Caixas do lote no MES">MES · ${U.fmt(g.mes.caixas)} cx${g.mes.terminou ? ' · lote encerrado' : ''}</span>` : ''}</td>""")
+    R("""data-f="qtyReal" value="${o.qtyReal == null ? '' : fq(o.qtyReal)}" aria-label="Quantidade real"></td>""",
+      """data-f="qtyReal" value="${o.qtyReal == null ? '' : fq(o.qtyReal)}" aria-label="Quantidade real">${typeof OrdLote !== 'undefined' ? OrdLote.sugQ(o, g) : ''}</td>""")
+    # 2.4.43 · OEE e percentuais com as casas do Portal › Parâmetros › Produção (casasPct; padrão 2). Chamadas com casas explícitas não mudam.
+    R("  const pct = (v, d = 1) => (v == null || !isFinite(v)) ? '—' : NF[d].format(v * 100) + '%';",
+      "  const PCT_D = (() => { let t = 0, v = 2; return () => { const n = Date.now(); if (n - t > 5000) { t = n; try { const c = JSON.parse(localStorage.getItem('vac.cadastros') || 'null'), k = c && c.parametros && c.parametros.producao ? c.parametros.producao.casasPct : null; v = k === 0 || (k >= 1 && k <= 3) ? +k : 2; } catch (e) { v = 2; } } return v; }; })();   /* 2.4.43 */\n  const pct = (v, d) => (v == null || !isFinite(v)) ? '—' : NF[d == null ? PCT_D() : d].format(v * 100) + '%';")
+    R("  const pp = (v, d = 1) => (v == null || !isFinite(v)) ? '—' : (v > 0 ? '+' : '') + NF[d].format(v * 100) + ' p.p.';",
+      "  const pp = (v, d) => (v == null || !isFinite(v)) ? '—' : (v > 0 ? '+' : '') + NF[d == null ? PCT_D() : d].format(v * 100) + ' p.p.';")
