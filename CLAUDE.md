@@ -7,7 +7,7 @@ Plataforma de páginas HTML de arquivo único que trabalham juntas numa **pasta 
 | Página | Arquivo | Base | Versão | Como editar |
 |---|---|---|---|---|
 | Portal (cadastro geral, Administração) | `Portal.html` | `portal-base.json` + `vacutainer-cadastros.json` | 1.9.13 | direto no HTML |
-| Produção (OEE, plano, ordens SAP) | `OEE-Vacutainer.html` | `oee-vacutainer-base.json` (+ `ordens-base.json`) | 2.4.32 | **NÃO editar o HTML**: editar `fontes/producao/` e rodar o build |
+| Produção (OEE, plano, ordens SAP) | `OEE-Vacutainer.html` | `oee-vacutainer-base.json` (+ `ordens-base.json`) | 2.4.33 | **NÃO editar o HTML**: editar `fontes/producao/` e rodar o build |
 | Waste (perdas por ordem, KKBC) | `Perdas-Ordem.html` | `perdas-base.json` | 1.8.27 | direto no HTML |
 | Gestão de Gel | `Gestão-Gel-Vacutainer.html` | `fifo-base.json` | 2.20 · **em atualização** | direto no HTML |
 | Paradas | `Paradas.html` | `paradas-base.json` | 1.0.25 · **em atualização** | direto no HTML |
@@ -20,7 +20,7 @@ Situação de cada página (em construção / em atualização / estável): `PAG
 
 Demonstração integrada: botão comum nas oito páginas; `paginas/Demonstracao.html` reúne as páginas reais e mantém os exemplos na memória durante a navegação, sem bases reais. Fontes e limites em `docs/demonstracao-integrada.md`. **Depois de qualquer build/alteração das páginas, rodar `python fontes/demo/gerar_demo.py` por último e copiar o pacote junto com os HTML.**
 
-SQDCP (Produção 2.4.20): quadro de 25 posições, acidente/QN por turno e impressão de uma A4 paisagem. Fontes em `fontes/producao/sqdcp*`; uso, contratos e pendências em `docs/producao-sqdcp.md`. Campos opcionais; ausência de resposta nunca é zero.
+SQDCP (Produção 2.4.20; gráficos em barras verde/vermelho com linha só para meta e tendência na 2.4.33, PRD-09): quadro de 25 posições, acidente/QN por turno e impressão de uma A4 paisagem. Fontes em `fontes/producao/sqdcp*`; uso, contratos e pendências em `docs/producao-sqdcp.md`. Campos opcionais; ausência de resposta nunca é zero.
 
 ## Comandos
 
@@ -57,7 +57,7 @@ node testes/tportalfonte.js           # Fase 1 do briefing (09/11/2026): Parâme
 node testes/tturnos.js                # Fase 2 do briefing: turno não produtivo, habilitar no dia, produção fora de turno (continuidade D1), OEE reportado × real, a partir da data, POR-10; código 1 se falhar
 node testes/timportacao.js            # Fase 3 do briefing: Portal › Importação (sequência, status por dia, subseções), exports.importacoes, abas Importar → Portal, endereços diretos, Ordens reorganizadas; código 1 se falhar
 node testes/tgel.js                   # Fase 4 do briefing (Gel na Produção): 4a parâmetros do gel no Portal com as contas do gel iguais (GEL-06), telas do Gel só consulta, fichas e Trazer configurações; 4b pesagem pelo vacGel igual à anterior (1.440 casos em testes/bases/gel-pesagens.json) e teórico igual ao do Gel; 4c Registrar scrap no turno da Produção (gravado no turno, exports porDiaTurno[].gel, tela do operador); 4d Gel lê da Produção a partir do corte (tubos, hora extra, sem produção, scrap) e Resumo do dia; 4e Teórico × Real no dia da Produção (só com gel; exports porDiaGel do Gel); código 1 se falhar
-node testes/tperiodo.js               # Fase 5 do briefing: período no Portal (Visão Geral, Relatório com 1 turno, TV) somando as séries por dia das páginas, títulos dos cartões levando à página; Produção com Painel e Visão Geral numa aba só (Hoje/Ontem); Segurança e Qualidade no relatório do dia/turno com opção só performance; código 1 se falhar
+node testes/tperiodo.js               # Fase 5 do briefing: período no Portal (Visão Geral, Relatório com 1 turno, TV) somando as séries por dia das páginas, títulos dos cartões levando à página; Produção com Painel e Visão Geral numa aba só (Hoje/Ontem); Segurança e Qualidade no relatório do dia/turno com opção só performance; SQDCP em barras verde/vermelho; código 1 se falhar
 node testes/tcontratos.js             # E4: exports por ordem (Produção 24 meses e dias do lote, Paradas, Gel), versão conferida pelos leitores, Waste com ordem em várias competências e dias do lote; código 1 se falhar
 ```
 

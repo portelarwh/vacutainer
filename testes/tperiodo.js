@@ -82,6 +82,12 @@ const { chromium } = require('playwright');
   ok(/Segurança e Qualidade/i.test(r5c.turno) && /00001234/.test(r5c.turno), 'PRD-07: a passagem de turno também traz Segurança e Qualidade do turno');
   ok(r5c.semana, 'PRD-07: a opção só aparece nos relatórios do dia e do turno');
 
+  /* ---------- 5d (PRD-09): SQDCP em barras verde/vermelho, linha só para meta e tendência ---------- */
+  const r5d = await o3.evaluate(async () => { go('sqdcp'); await new Promise(r => setTimeout(r, 600)); const ks = [...document.querySelectorAll('[data-sq-previa]')].map(b => b.dataset.sqPrevia);
+    const hs = ks.map(k => Sqdcp.htmlImpressao(k) || '').filter(h => /sq-grafico/.test(h) && /<rect/.test(h));
+    return { n: hs.length, linhaValores: hs.some(h => /<path d="/.test(h)), legenda: hs.every(h => /verde atingiu a meta/.test(h)), cores: hs.some(h => /#2e7d32|#c62828|#9b6600|#235f91/.test(h)) }; });
+  ok(r5d.n > 0 && !r5d.linhaValores && r5d.legenda && r5d.cores, `PRD-09: gráficos do SQDCP em barras (verde atingiu, vermelho não atingiu, âmbar parcial), sem linha de valores; ${r5d.n} folha(s) conferida(s)`);
+
   await b.close();
   if (errs.length) { console.log('\n' + errs.join('\n')); process.exit(1); } else console.log('\nsem erros');
 })();

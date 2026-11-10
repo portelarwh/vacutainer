@@ -488,3 +488,14 @@ Próximo: 4e (Teórico × Real na página do dia da Produção, só quando o cat
 - Os relatórios **Dia** e **Passagem de turno** (Produção › Gestão › Relatórios) ganham o bloco **Segurança e Qualidade**: acidentes e QNs de cada turno, com os números e as referências, vindos do registro de Segurança e Qualidade de cada turno (SQDCP). O resumo automático ganha uma linha ("Segurança: sem acidente. Qualidade: 2 QN(s).").
 - Sem resposta aparece **"não informado"**, nunca zero (regra do SQDCP).
 - A opção **"incluir Segurança e Qualidade"** fica na barra do relatório, só nesses dois tipos, e vale para PDF, Excel, texto e Outlook. Desmarcada, o relatório sai **só de performance**. A escolha fica guardada neste computador.
+
+### Passo 5d · gráficos do SQDCP em barras (PRD-09) · Produção 2.4.33
+
+- A evolução do mês de cada folha do SQDCP passou de linha para **barras por dia**, como os gráficos da Visão Geral.
+  - **verde** quando o dia atingiu a meta e **vermelha** quando não atingiu, respeitando o sentido do indicador (maior ou menor é melhor);
+  - **âmbar** quando o dado é parcial e **azul** quando não há meta;
+  - dia sem resposta fica sem barra: não informado não é zero.
+- **Linhas** só para a **meta** (tracejada) e para a **tendência** (reta dos mínimos quadrados, a partir de 4 valores). A legenda vai na própria folha A4.
+- Calendário e tabela de desvios (os outros formatos de folha) não mudam.
+
+**Fase 5 concluída:** POR-05, POR-06, POR-08, POR-09, PRD-01, PRD-07 e PRD-09. Teste: `node testes/tperiodo.js`.
