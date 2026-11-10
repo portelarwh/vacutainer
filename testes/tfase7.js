@@ -63,21 +63,37 @@ const { chromium } = require('playwright');
   ok(ms.zeros === 2 && ms.boxes === 5 && ms.gaps === 0, `MES: caixa 0 não conta nem abre lacuna (caixas ${ms.boxes}, zeros ${ms.zeros}, lacunas ${ms.gaps})`);
   ok(ms.mes === 'lot@02:00:00 cat@02:00:05 lot@03:10:00 cat@03:10:06', `MES: horário do registro guardado como evento (${ms.mes})`);
 
+  /* UX-02: guia por aba (kit vacGuia + conteúdo da página) */
+  const gp = await o.evaluate(async () => {
+    const w = t => new Promise(r => setTimeout(r, t)); go('launch'); await w(150);
+    localStorage.setItem('vac.guiaMostrar', '1'); window.dispatchEvent(new KeyboardEvent('keydown', { key: 'F1' })); await w(150);
+    const R = { btn: !!document.getElementById('vacGuiaBtn'), h1: (document.querySelector('#vacGuia h2') || {}).textContent, marcas: [...document.querySelectorAll('.vg-marca')].filter(m => m.style.display !== 'none').length };
+    go('hourly'); await w(700); R.h2 = (document.querySelector('#vacGuia h2') || {}).textContent;
+    go('stops'); await w(700); R.h3 = (document.querySelector('#vacGuia') || {}).innerText || '';
+    vacGuia.fechar(); await w(50); R.fechou = !document.getElementById('vacGuia') && !document.querySelector('.vg-marca'); return R;
+  });
+  ok(gp.btn && /Lançamento do dia/.test(gp.h1) && gp.marcas >= 3, `UX-02: "?"/F1 abre o guia da aba aberta, com os campos numerados na tela (${gp.h1}, ${gp.marcas} marcas)`);
+  ok(/Hora a hora/.test(gp.h2) && /em preparação/.test(gp.h3) && gp.fechou, 'UX-02: o guia acompanha a troca de aba; aba sem guia avisa "em preparação"; fechar tira as marcas');
+
   /* UX-04: pílula comum, "desatualizada" quando outra página já leu uma rev mais nova */
   const u = await o.evaluate(() => { localStorage.setItem('vac.cadastros', JSON.stringify({ schema: 'vac-cadastros', rev: 9 })); return [vacCadPilula(7, { fonte: 'pasta' }), vacCadPilula(9, { fonte: 'pasta' }), vacCadPilula(7, { fonte: 'pasta', portal: true }), vacCadPilula(9, { fonte: 'copia' }), vacCadPilula(null)]; });
   ok(/desatualizada/.test(u[0]) && /pill warn/.test(u[0]) && !/desatualizada/.test(u[1]) && /pill info/.test(u[1]) && !/desatualizada/.test(u[2]), 'UX-04: rev atrás da mais nova lida neste computador = "desatualizada"; igual = normal; no Portal nunca');
   ok(/cópia local/.test(u[3]) && /não lido/.test(u[4]) && /Revisão do cadastro geral do Portal/.test(u[1]), 'UX-04: cópia local e "não lido" sinalizados; ⓘ explica o número');
   await o.close();
 
+  for (const [arq, id, abas] of [['Portal.html', 'portal', 7], ['Paradas.html', 'paradas', 10], ['Perdas-Ordem.html', 'perdas', 8], ['Gestão-Gel-Vacutainer.html', 'gel', 8], ['Iniciativas.html', 'inic', 6], ['Equipamentos.html', 'equip', 5]]) {
+    const pg = await nova(arq); const r = await pg.evaluate(id => { vacGuia.abrir(); return { n: Object.keys((window.VAC_GUIA || {})[id] || {}).length, a: vacGuia.aba(), h: (document.querySelector('#vacGuia h2') || {}).textContent }; }, id);
+    ok(r.n >= abas && /^Guia · /.test(r.h || ''), `UX-02: ${arq} com guia em ${r.n} aba(s); aberto na aba "${r.a}" (${r.h})`); await pg.close();
+  }
   /* UX-03 Waste e Gel; UX-04 Paradas e Portal; ⓘ no Portal */
   const w = await nova('Perdas-Ordem.html');
-  ok(await w.evaluate(() => document.querySelector('[data-t="painel"]').textContent.trim() === 'Visão Geral' && APP_VER === '1.8.29'), 'UX-03 (WST-01): Waste 1.8.29 com a aba Visão Geral');
+  ok(await w.evaluate(() => document.querySelector('[data-t="painel"]').textContent.trim() === 'Visão Geral' && APP_VER >= '1.8.29'), 'UX-03 (WST-01): Waste 1.8.29 com a aba Visão Geral');
   await w.close();
   const g = await nova('Gestão-Gel-Vacutainer.html');
-  ok(await g.evaluate(() => TABS[0][0] === 'painel' && TABS[0][1] === 'Visão Geral' && APP_VERSION === '2.21' && !!VAC_INICIAL_ALVO['Gestão de Gel › Visão Geral'] && !!VAC_INICIAL_ALVO['Gestão de Gel › Painel']), 'UX-03 (GEL-01): Gel 2.21 com a aba Visão Geral (id painel; página inicial antiga continua valendo)');
+  ok(await g.evaluate(() => TABS[0][0] === 'painel' && TABS[0][1] === 'Visão Geral' && APP_VERSION >= '2.21' && !!VAC_INICIAL_ALVO['Gestão de Gel › Visão Geral'] && !!VAC_INICIAL_ALVO['Gestão de Gel › Painel']), 'UX-03 (GEL-01): Gel 2.21 com a aba Visão Geral (id painel; página inicial antiga continua valendo)');
   await g.close();
   const pa = await nova('Paradas.html');
-  ok(await pa.evaluate(() => { return PAGE.versao === '1.0.26' && typeof vacCadPilula === 'function'; }), 'Paradas 1.0.26 usa a pílula comum');
+  ok(await pa.evaluate(() => { return PAGE.versao >= '1.0.26' && typeof vacCadPilula === 'function'; }), 'Paradas 1.0.26 usa a pílula comum');
   await pa.close();
   const po = await nova('Portal.html');
   const pr = await po.evaluate(() => ({ v: PAGE.versao, aj: /como a peça falhou/.test(CAT_AJUDA.modosFalha) && /por que a linha parou/.test(CAT_AJUDA.paradas) }));

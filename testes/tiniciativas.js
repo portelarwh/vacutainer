@@ -28,7 +28,7 @@ const LEG = [
     const r = await p.evaluate(() => ({ ver: PAGE.versao, tit: PAGE.titulo, curto: PAGE.tituloCurto, nav: (systems().find(s => s.id === 'inic') || {}).nome,
       cls: [...document.querySelectorAll('.ac')].map(e => [...e.classList].find(c => c.startsWith('st-')) || ''),
       abas: ABAS.map(a => a[0]), orig: ORIGENS.map(o => o[0]), mais: !!document.querySelector('[data-novoprog]') }));
-    ok(r.ver === '1.1.0' && /^Iniciativas \/ Ações/.test(r.tit) && r.curto === 'Iniciativas / Ações' && r.nav === 'Iniciativas / Ações', `INI-00: "${r.curto}" (página e catálogo do cabeçalho), versão ${r.ver}`);
+    ok(r.ver >= '1.1.0' && /^Iniciativas \/ Ações/.test(r.tit) && r.curto === 'Iniciativas / Ações' && r.nav === 'Iniciativas / Ações', `INI-00: "${r.curto}" (página e catálogo do cabeçalho), versão ${r.ver}`);
     ok(r.cls.length && r.cls.every(Boolean) && r.cls.includes('st-afazer') && r.cls.includes('st-concluida') && r.cls.includes('st-atrasada'), `INI-01: todo card com fundo do status (${[...new Set(r.cls)].join(', ')})`);
     const bg = await p.evaluate(() => { const g = s => getComputedStyle(document.querySelector('.ac.' + s)).backgroundColor; return [g('st-afazer'), g('st-concluida')]; });
     ok(bg[0] !== bg[1], `INI-01: cores diferentes por status (${bg.join(' × ')})`);

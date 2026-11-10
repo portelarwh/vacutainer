@@ -24,7 +24,7 @@ const espera = p => p.waitForFunction(() => !Store.saving && !Store.queue.length
     const p = await abre('#teste'); await p.waitForTimeout(300);
     const r = await p.evaluate(() => ({ cols: [...document.querySelectorAll('.col')].map(c => c.dataset.col + ':' + c.querySelectorAll('.ac').length), ver: document.getElementById('appVer').textContent, tit: document.title }));
     ok(r.cols.join() === 'a fazer:3,em andamento:2,aguardando:1,concluída:1', `quadro com 4 colunas (${r.cols.join(' · ')})`);
-    ok(r.ver === 'v1.1.0' && /^Iniciativas/.test(r.tit), `versão ${r.ver}; página de verdade (saiu do gerador)`);
+    ok(r.ver >= 'v1.1.0' && /^Iniciativas/.test(r.tit), `versão ${r.ver}; página de verdade (saiu do gerador)`);
     await p.click('[data-ac="AC-T-0147"]'); await p.waitForTimeout(200);
     const d = await p.evaluate(() => document.getElementById('det').innerText.replace(/\s+/g, ' '));
     ok(/com P\. Costa 2,0 d → com J\. Lima 5,0 d/.test(d) && /A fazer 2,0 d · Em andamento 5,0 d/.test(d), 'tempos do exemplo: 2 d com P. Costa, 5 d com J. Lima; A fazer 2 d, Em andamento 5 d');
@@ -64,7 +64,7 @@ const espera = p => p.waitForFunction(() => !Store.saving && !Store.queue.length
   const p1 = await abre(); await p1.evaluate(LIMPA, CAD); await p1.reload(); await p1.waitForTimeout(600);
   await p1.evaluate(CONECTA); await espera(p1); 
   let B = await p1.evaluate(LER);
-  ok(B && B.schema === 'vac-iniciativas' && B.rev === 1 && B.appVersion === '1.1.0' && B.exports && B.exports.exportsVersion === 1, `conectar: cria 00. Bases/iniciativas-base.json (rev ${B && B.rev})`);
+  ok(B && B.schema === 'vac-iniciativas' && B.rev === 1 && B.appVersion >= '1.1.0' && B.exports && B.exports.exportsVersion === 1, `conectar: cria 00. Bases/iniciativas-base.json (rev ${B && B.rev})`);
   await p1.evaluate(() => { const ontem = addDias(hoje(), -1);
     Store.commit({ k: 'nova', a: { id: 'AC-1', titulo: 'Ajustar guia EQ03', status: 'a fazer', prioridade: 'alta', responsavel: 'J. Lima', apoios: ['R. Nunes'], prazo: ontem, prazoOriginal: ontem, criadaEm: new Date().toISOString(), origem: { tipo: 'paradas', ref: 'pareto|EQ03|FAL', resumo: 'Pareto · EQ03' }, vinculos: [{ tipo: 'equipamento', cod: 'EQ03' }, { tipo: 'ordem', cod: '100234567' }], checklist: [], comentarios: [], evidencias: [] } });
     Store.commit({ k: 'nova', a: { id: 'AC-2', titulo: 'Sem dono', status: 'a fazer', responsavel: '', prazo: null, criadaEm: new Date().toISOString(), origem: { tipo: 'manual' }, vinculos: [] } }); });

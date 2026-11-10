@@ -1368,7 +1368,7 @@ function wireConfigComum(){$('#cPasta').onclick=async()=>{if(await Store.pick())
         entrar pelo ID (autocadastro como Consulta); página inicial por perfil (1x por sessão); vigência gravada não se edita (desativar com motivo); painel de vigências; semáforo central; saída do modo de teste.
    1.1.2: aviso da carga diz qual base foi lida.  1.5: páginas Paradas, Máquinas, Manutenção e Projetos na lista (aparecem quando o HTML chega na pasta).  1.4: lista técnica pela CS12 multinível (itens = nível 1, estrutura = níveis 2+); CS03 sai.  1.3: cabeçalho comum (vac-cabecalho v2: barra do sistema + página + abas), busca Ctrl K, acabamento V1.90, Versões com cabeçalho e último backup.  1.2: Configuração › Versões das páginas (versão e data de cada HTML, gravação das bases, cópias repetidas, histórico).
    ===================================================================== */
-const PAGE={id:'portal',titulo:'Portal · Linha Vacutainer',tituloCurto:'Portal',subtitulo:'Sistemas de gestão da linha',versao:'1.9.16',baseFile:'portal-base.json',idb:'vac-portal',backupDir:'00. Backups/Portal',
+const PAGE={id:'portal',titulo:'Portal · Linha Vacutainer',tituloCurto:'Portal',subtitulo:'Sistemas de gestão da linha',versao:'1.9.17',baseFile:'portal-base.json',idb:'vac-portal',backupDir:'00. Backups/Portal',
  vazio:()=>({schema:'portal-base',rev:0,config:{modulos:{},avisoDias:30,notas:{}},audit:[]}),
  /* itens do Portal para a busca Ctrl K: cadastro, pendências e telas */
  busca:q=>{const R=[],D=Cad.D;if(D)for(const t of CAD_ORD){for(const it of D[t]||[]){const c=String(it[kOf(t)]),nm=t==='bom'?((cadItem('catalogos',it.catalogo)||{}).nome||''):it.nome||'';if(norm(c+' '+nm).includes(q))R.push({tipo:CAD_T[t].um,txt:c+(nm?' · '+nm:''),sub:'Cadastros'+(cadAtivo(t,it,D)?'':' · inativo'),href:'#cadastros/'+t+'/'+encodeURIComponent(c)});if(R.length>30)break}}
@@ -1508,6 +1508,7 @@ function adaptParadas(d){const r=adaptGeneric(d);const ex=d.exports;if(ex&&ex.se
 
 
 /* =====================================================================
+   1.9.17 · UX-02 (guia por aba); o período sai de dentro de cada cartão da Visão Geral (já está na barra; fica só o "agora" de quem não segue o período).
    1.9.16 · POR-02: ordenar por coluna em todas as tabelas do cadastro (clique no título) e filtros na tabela de códigos de parada (pilar, classe, onde se aponta, grupo, afeta).
    1.9.15 · Fase 7 (UX-01, UX-04): pílula única do cadastro (kit vacCadPilula); ⓘ em Fotografar números e nos códigos de parada × modos de falha.
    1.9.14 · Fase 6 (INI-02, INI-03): Cadastros › Programas (abas de Iniciativas) e Importação › Iniciativas (ações de um programa).
@@ -1582,7 +1583,7 @@ const pillEstado=s=>{const e=vacEstadoDe(s.id);return e&&e.estado==='atualizacao
 function card(s){const x0=MOD.data[s.id];const href=sysHref(s);if(x0&&x0.construcao)return cardConstrucao(s,x0);
  /* 1.9.13 · 5a: números do período escolhido (ou os da página, marcados "agora"); POR-05: o título leva à página */
  const kp=x0&&!x0.erro?kpisPer(s.id):null,x=kp?{...x0,kpis:kp.kpis,serie:kp.serie,serieTit:kp.serieTit||x0.serieTit,serieFmt:kp.serieFmt||x0.serieFmt}:x0;
- const chip=x0&&!x0.erro?`<span class="pill ${kp?'info':'none'}" title="${esc(kp?(kp.nota||'Somado no período escolhido'):'Esta página não publica série por dia: números de agora')}">${esc(kp?Per.rotulo():'agora')}</span>`:'';
+ const chip=x0&&!x0.erro&&!kp?`<span class="pill none" title="Esta página não publica série por dia: números de agora, não do período da barra">agora</span>`:'';   /* 1.9.17: o período já está na barra; o cartão só avisa quando NÃO segue o período */
  if(!x||x.erro)return`<section class="mod off"><header><h2>${s.futuro?esc(s.nome):`<a href="${esc(href)}" class="modlink">${esc(s.nome)}</a>`}</h2><span class="pill none">${s.futuro?'em construção':'sem dados'}</span></header>${pillEstado(s)}<p class="muted small">${esc(x?x.erro:(Store.mode==='pasta'?'Lendo…':'Conecte a pasta da rede em Configuração para ver os números.'))}</p>${s.futuro?'':`<footer><a class="b sm" href="${esc(href)}">Abrir ${esc(s.nome)}</a></footer>`}</section>`;
  return`<section class="mod"><header><h2><a href="${esc(href)}" class="modlink" title="Abrir ${esc(s.nome)}">${esc(s.nome)} ↗</a></h2>${chip}${x.antigo?`<span class="pill warn" title="Base lida em ${esc(x.pasta)}/. Pasta única: mova o HTML e a base para a pasta principal (Configuração › Pasta única).">local antigo</span>`:''}${x.temExports&&!x.bruto?'':`<span class="pill none" title="${x.temExports?'O resumo (exports) deste módulo está numa versão que o Portal não conhece':'Este módulo ainda não publica o resumo (exports)'}; o Portal soma os dados brutos e os números podem diferir do módulo.">dados brutos</span>`}</header>${x.updatedAt?`<div class="small muted" style="margin-top:-6px">gravado em ${fmtDT(x.updatedAt)}${x.updatedBy?' por '+esc(x.updatedBy):''}</div>`:''}
  ${pillEstado(s)}<div class="mk">${x.kpis.map(k=>`<div><div class="l">${esc(k[0])}</div><div class="v ${k[3]||''}">${esc(k[1])}</div><div class="s">${esc(k[2]||'')}</div></div>`).join('')}</div>
@@ -4398,6 +4399,152 @@ const vacGel = (() => {
   return { FMT_DEF, PROC_DEF, COMPS, SCAT, fmtAt, procAt, sobraAt, taraP, vigList, vigAt, gelPorTubo, bomVals, bom, pesagem, teorico, ctx };
 })();
 
+/* ===== kit v2.1 · UX-02 (briefing 09/11/2026): guia por aba =====
+   Botão "?" no cabeçalho (ao lado do tema) e F1 abrem um painel com o guia DA ABA ABERTA: para que serve, cada campo (o que é,
+   como preencher, exemplo), o passo a passo das tarefas e as dúvidas comuns. "Mostrar na tela" numera os campos na própria tela
+   (①②③ ligados aos itens do guia): fica visual sem depender de prints, que envelhecem a cada mudança de layout.
+   Conteúdo: cada página define window.VAC_GUIA[PAGE.id][<aba>] = { titulo, para, campos:[{sel, nome, o, como, ex}],
+   passos:[[título, [passo, …]]], duvidas:[[pergunta, resposta]] }. A aba atual vem de vacGuiaAba() (se a página definir) ou do
+   botão marcado nas abas (#nav). Aba sem guia mostra "em preparação" e lembra do ⓘ dos campos. Nada é gravado. */
+const vacGuia = (() => {
+  const S = { aberto: false, mostrar: false, aba: null, marcas: [], t: null };
+  const e = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  const pag = () => (typeof PAGE !== 'undefined' && PAGE.id) || '';
+  function aba() {
+    if (typeof vacGuiaAba === 'function') { try { const v = vacGuiaAba(); if (v) return String(v); } catch (x) { } }
+    const on = document.querySelector('#nav .on[data-t],#nav .on[data-tab],#nav .on[data-route],#nav [data-t][aria-current=page],#nav [aria-selected=true][data-tab],[role=tab][aria-selected=true]');
+    return on ? (on.getAttribute('data-t') || on.getAttribute('data-tab') || on.getAttribute('data-route') || '') : '';
+  }
+  const guia = a => { const G = (window.VAC_GUIA || {})[pag()] || {}; return G[a] || null; };
+  function css() {
+    if (document.getElementById('vacGuiaCss')) return;
+    const st = document.createElement('style'); st.id = 'vacGuiaCss';
+    st.textContent = `#vacGuia{position:fixed;top:0;right:0;bottom:0;width:min(420px,100vw);z-index:900;background:var(--surface,#fff);color:var(--ink,#1c2430);border-left:1px solid var(--line,#ccd);box-shadow:-8px 0 24px rgba(0,0,0,.18);display:flex;flex-direction:column;font:14px/1.45 var(--f-body,system-ui,sans-serif)}
+#vacGuia header{display:flex;gap:8px;align-items:center;padding:12px 14px;border-bottom:1px solid var(--line,#ccd)}#vacGuia header h2{margin:0;font-size:16px;flex:1;font-family:var(--f-display,inherit)}
+#vacGuia .vg-b{border:1px solid var(--line,#ccd);background:var(--surface-2,transparent);color:inherit;border-radius:8px;padding:4px 10px;cursor:pointer;font:inherit;font-size:13px}#vacGuia .vg-b[aria-pressed=true]{background:var(--accent,#235f91);color:var(--on-fill,#fff);border-color:var(--accent,#235f91)}
+#vacGuia .vg-c{overflow:auto;padding:12px 14px 40px;flex:1}#vacGuia h3{font-size:12.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted,#667);margin:16px 0 6px}
+#vacGuia .vg-para{background:var(--accent-soft,rgba(35,95,145,.1));border-radius:8px;padding:8px 10px}#vacGuia ol.vg-cp{list-style:none;margin:0;padding:0}#vacGuia ol.vg-cp li{display:grid;grid-template-columns:26px 1fr;gap:8px;padding:8px 6px;border-bottom:1px solid var(--line,#ccd);border-radius:6px;cursor:pointer}
+#vacGuia ol.vg-cp li:hover,#vacGuia ol.vg-cp li.vg-on{background:var(--surface-2,rgba(0,0,0,.04))}#vacGuia .vg-n,.vg-marca{display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:50%;background:var(--accent,#235f91);color:var(--on-fill,#fff);font:700 12px/1 var(--f-body,system-ui)}
+#vacGuia .vg-n.off{background:var(--muted,#889)}#vacGuia .vg-k{font-size:12px;color:var(--muted,#667)}#vacGuia .vg-ex{font-size:12.5px;margin-top:2px}#vacGuia .vg-ex b{font-weight:600}#vacGuia ol.vg-ps{margin:4px 0 8px;padding-left:20px}#vacGuia ol.vg-ps li{margin:3px 0}
+#vacGuia details{border:1px solid var(--line,#ccd);border-radius:8px;padding:6px 10px;margin:6px 0}#vacGuia summary{cursor:pointer;font-weight:600}
+.vg-marca{position:fixed;z-index:899;box-shadow:0 0 0 2px var(--surface,#fff);cursor:pointer;transform:translate(-40%,-40%)}.vg-alvo{outline:3px solid var(--accent,#235f91)!important;outline-offset:2px;transition:outline-color .3s}
+@media print{#vacGuia,.vg-marca,#vacGuiaBtn{display:none!important}}`;
+    document.head.appendChild(st);
+  }
+  function botao() {
+    if (document.getElementById('vacGuiaBtn')) return; const t = document.getElementById('btnTheme'); if (!t) return;
+    t.insertAdjacentHTML('beforebegin', '<button type="button" class="vic" id="vacGuiaBtn" title="Guia desta aba: para que serve, cada campo e o passo a passo (F1)" aria-label="Guia desta aba">?</button>');
+    document.getElementById('vacGuiaBtn').onclick = () => alternar();
+  }
+  const visivel = el => !!(el && (el.offsetWidth || el.offsetHeight || el.getClientRects().length) && getComputedStyle(el).visibility !== 'hidden');
+  const alvo = c => { if (!c.sel) return null; try { return [...document.querySelectorAll(c.sel)].find(visivel) || null; } catch (x) { return null; } };
+  function limparMarcas() { S.marcas.forEach(m => m.remove()); S.marcas = []; }
+  function posicionar() {
+    const g = guia(S.aba); if (!S.aberto || !S.mostrar || !g) { limparMarcas(); return; }
+    const C = g.campos || []; if (S.marcas.length !== C.length) { limparMarcas(); C.forEach((c, i) => { const m = document.createElement('span'); m.className = 'vg-marca'; m.textContent = i + 1; m.title = c.nome; m.onclick = () => focar(i, false); document.body.appendChild(m); S.marcas.push(m); }); }
+    C.forEach((c, i) => { const el = alvo(c), m = S.marcas[i]; if (!el) { m.style.display = 'none'; return; } const r = el.getBoundingClientRect(); const fora = r.bottom < 0 || r.top > innerHeight || r.left > innerWidth - Math.min(420, innerWidth); m.style.display = fora ? 'none' : ''; m.style.left = Math.max(8, r.left) + 'px'; m.style.top = Math.max(8, r.top) + 'px'; });
+    const P = document.getElementById('vacGuia'); if (P) P.querySelectorAll('.vg-n[data-i]').forEach(n => { const c = C[+n.dataset.i]; n.classList.toggle('off', !!(c && c.sel) && !alvo(c)); n.title = c && c.sel && !alvo(c) ? 'Não aparece nesta tela agora (depende do dia, do filtro ou do que já foi lançado)' : ''; });
+  }
+  function focar(i, rolarTela) {
+    const g = guia(S.aba); if (!g) return; const c = (g.campos || [])[i]; const P = document.getElementById('vacGuia');
+    if (P) { P.querySelectorAll('li[data-i]').forEach(l => l.classList.toggle('vg-on', +l.dataset.i === i)); const li = P.querySelector(`li[data-i="${i}"]`); if (li) li.scrollIntoView({ block: 'nearest' }); }
+    const el = c && alvo(c); if (!el) return; if (rolarTela) el.scrollIntoView({ block: 'center', behavior: 'smooth' });
+    el.classList.add('vg-alvo'); setTimeout(() => el.classList.remove('vg-alvo'), 1600);
+  }
+  function html(a, g) {
+    const nome = (typeof PAGE !== 'undefined' && (PAGE.tituloCurto || PAGE.titulo)) || '';
+    if (!g) return `<header><h2>Guia · ${e(nome)}</h2><button type="button" class="vg-b" data-vgx aria-label="Fechar">✕</button></header><div class="vg-c"><p class="vg-para">O guia desta aba ainda está em preparação.</p><p>Enquanto isso, o <b>ⓘ</b> ao lado de cada campo e título explica o que ele é, com um exemplo.</p>${Object.keys((window.VAC_GUIA || {})[pag()] || {}).length ? `<h3>Abas com guia nesta página</h3><ul>${Object.entries(window.VAC_GUIA[pag()]).map(([k, x]) => `<li>${e(x.titulo || k)}</li>`).join('')}</ul>` : ''}</div>`;
+    const C = g.campos || [];
+    return `<header><h2>Guia · ${e(g.titulo || a)}</h2>${C.some(c => c.sel) ? `<button type="button" class="vg-b" data-vgm aria-pressed="${S.mostrar}" title="Numera os campos na tela">Mostrar na tela</button>` : ''}<button type="button" class="vg-b" data-vgx aria-label="Fechar">✕</button></header>
+<div class="vg-c">${g.para ? `<p class="vg-para">${g.para}</p>` : ''}
+${C.length ? `<h3>Campos e botões</h3><ol class="vg-cp">${C.map((c, i) => `<li data-i="${i}" title="${c.sel ? 'Clique para ver na tela' : ''}"><span class="vg-n" data-i="${i}">${i + 1}</span><div><b>${e(c.nome)}</b><div>${c.o || ''}</div>${c.como ? `<div class="vg-ex"><b>Como preencher:</b> ${c.como}</div>` : ''}${c.ex ? `<div class="vg-ex"><b>Exemplo:</b> ${c.ex}</div>` : ''}</div></li>`).join('')}</ol>` : ''}
+${(g.passos || []).length ? `<h3>Passo a passo</h3>${g.passos.map(([t, L]) => `<details open><summary>${e(t)}</summary><ol class="vg-ps">${L.map(p => `<li>${p}</li>`).join('')}</ol></details>`).join('')}` : ''}
+${(g.duvidas || []).length ? `<h3>Dúvidas comuns</h3>${g.duvidas.map(([q, r]) => `<details><summary>${e(q)}</summary><p>${r}</p></details>`).join('')}` : ''}
+<p class="vg-k" style="margin-top:18px">F1 abre e fecha este guia. Os números ① ② ③ aparecem na tela com "Mostrar na tela".</p></div>`;
+  }
+  function render() {
+    css(); let P = document.getElementById('vacGuia'); if (!S.aberto) { if (P) P.remove(); limparMarcas(); return; }
+    S.aba = aba(); const g = guia(S.aba);
+    if (!P) { P = document.createElement('aside'); P.id = 'vacGuia'; P.setAttribute('role', 'complementary'); P.setAttribute('aria-label', 'Guia desta aba'); document.body.appendChild(P); }
+    P.innerHTML = html(S.aba, g); limparMarcas();
+    P.querySelector('[data-vgx]').onclick = () => fechar();
+    const m = P.querySelector('[data-vgm]'); if (m) m.onclick = () => { S.mostrar = !S.mostrar; try { localStorage.setItem('vac.guiaMostrar', S.mostrar ? '1' : ''); } catch (x) { } m.setAttribute('aria-pressed', S.mostrar); posicionar(); };
+    P.querySelectorAll('li[data-i]').forEach(l => l.onclick = () => focar(+l.dataset.i, true));
+    posicionar();
+  }
+  function abrir() { S.aberto = true; try { S.mostrar = localStorage.getItem('vac.guiaMostrar') === '1'; } catch (x) { } render(); clearInterval(S.t); S.t = setInterval(() => { if (!S.aberto) return; if (aba() !== S.aba) render(); else posicionar(); }, 500); }
+  function fechar() { S.aberto = false; clearInterval(S.t); render(); const b = document.getElementById('vacGuiaBtn'); if (b) b.focus(); }
+  function alternar() { S.aberto ? fechar() : abrir(); }
+  addEventListener('keydown', ev => { if (ev.key === 'F1') { ev.preventDefault(); alternar(); } else if (ev.key === 'Escape' && S.aberto && !document.querySelector('.modal.on,.mod-bg,[role=dialog]:not(#vacGuia)')) fechar(); });
+  addEventListener('scroll', () => { if (S.aberto && S.mostrar) posicionar(); }, true); addEventListener('resize', () => { if (S.aberto && S.mostrar) posicionar(); });
+  const ini = () => { botao(); setTimeout(botao, 800); };
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', ini); else ini();
+  return { abrir, fechar, alternar, aba, guia: () => guia(aba()), _S: S };
+})();
+
+</script>
+<script>
+/* ===== UX-02 · guia por aba (briefing 09/11/2026): conteúdo do painel "?" do kit (vacGuia). Editar aqui quando a tela mudar. ===== */
+'use strict';
+window.VAC_GUIA = window.VAC_GUIA || {};
+window.VAC_GUIA.portal = {
+  geral: {
+    titulo: 'Visão Geral do Portal',
+    para: 'O resumo da linha num só lugar: um cartão por página (Produção, Waste, Gel, Paradas, Equipamentos, Iniciativas) com os números que cada uma publica, e as pendências da linha. O Portal não recalcula nada: mostra o que cada página gravou.',
+    campos: [
+      { sel: '.per-bar,[data-per]', nome: 'Período', o: 'Hoje, Ontem, Semana, Mês ou Personalizado. Os cartões somam as séries por dia que cada página publica.', ex: 'Ontem, para a reunião da manhã.' },
+      { sel: 'a.modlink', nome: 'Título do cartão', o: 'Abre a página correspondente.' },
+      { nome: 'Pendências da linha', o: 'O que está esperando alguém em cada página (turno para conferir, ação vencida, gel vencendo…). Vermelho = urgente, amarelo = atenção.' }
+    ],
+    duvidas: [['Um cartão mostra "dados brutos"', 'A página ainda não publicou o resumo (exports). Abra a página e grave uma vez.'], ['O número difere da página', 'A página pode ter gravado depois da última leitura do Portal: recarregue (F5). Confira também o período escolhido.']]
+  },
+  fila: {
+    titulo: 'Minha fila',
+    para: 'Tudo o que está com você (ou com a sua equipe) em todas as páginas: ações, pendências e itens sem responsável, por prazo.',
+    campos: [{ sel: '#flPag', nome: 'Página', o: 'Filtra a fila por página de origem.' }],
+    duvidas: [['Não aparece nada meu', 'Confira se você entrou com o seu ID (Entrar, no topo). O responsável é ligado pelo nome do cadastro de usuários.']]
+  },
+  reuniao: {
+    titulo: 'Reunião diária',
+    para: 'A pauta da reunião do dia (ou de um turno): números do dia, maiores paradas, pauta com decisões e encaminhamentos.',
+    campos: [
+      { sel: '#rDia', nome: 'Dia', o: 'Dia da reunião; ‹ › andam um dia.', ex: 'Na reunião das 08:00, o dia de ontem.' },
+      { sel: '#rRec', nome: 'Recorte', o: 'Dia inteiro ou um turno.' },
+      { sel: '#rFoto', nome: 'Fotografar números', o: 'Grava os números de agora junto com a pauta, para saber com que números a decisão foi tomada. Não altera nenhuma base.' },
+      { sel: '#rAdd,#rNovo', nome: 'Item de pauta', o: 'Assunto discutido, com decisão, responsável e prazo. Pode virar ação em Iniciativas (encaminhar).' },
+      { sel: '#rRel', nome: 'PDF · Outlook · texto', o: 'Gera a ata para enviar.' }
+    ],
+    passos: [['Conduzir a reunião', ['Escolha o dia e o recorte.', 'Repasse os números e as maiores paradas.', 'Para cada assunto: + Item, decisão e responsável; encaminhe para Iniciativas quando for ação.', 'Clique em Fotografar números.', 'Envie a ata (PDF · Outlook · texto).']]]
+  },
+  pend: { titulo: 'Pendências', para: 'Lista completa das pendências de todas as páginas, por página e urgência. O link de cada uma abre a tela onde ela se resolve.' },
+  rel: { titulo: 'Relatórios', para: 'Relatórios consolidados da linha (resumo do período, pendências) em PDF, texto ou e-mail.', campos: [{ sel: '#rResumo', nome: 'Resumo', o: 'Números do período de todas as páginas.' }, { sel: '#rPend', nome: 'Pendências', o: 'Pendências em aberto por página.' }] },
+  imp: {
+    titulo: 'Importação',
+    para: 'Tudo o que se importa na plataforma, por página, com a sequência recomendada e a situação do dia escolhido. O botão de cada item abre a tela da página dona, que grava na própria base.',
+    campos: [
+      { sel: '#iDia', nome: 'Dia conferido', o: 'Dia para o qual a situação é mostrada (verde = coberto, amarelo = parcial, vermelho = falta).' },
+      { nome: 'Sequência recomendada', o: '1 MES · 2 Forms de paradas · 3 Estoque de LPs · 4 MB51 · 5 COOIS · 6 KKBC_ORD (mensal) · 7 Plano do PCP.' }
+    ],
+    passos: [['Rotina da manhã', ['Escolha o dia de ontem.', 'Siga a sequência: cada item em vermelho abre a tela de importação da página.', 'Volte aqui e confira que ficou verde.']]],
+    duvidas: [['Por que o MES ficou "parcial"?', 'O CSV não cobre o dia inteiro (06:00 a 06:00). Exporte o período completo do historiador.']]
+  },
+  cad: {
+    titulo: 'Cadastros',
+    para: 'O cadastro geral da linha (fonte única): linhas, catálogos, materiais, BOM, equipamentos, turnos, códigos de parada, metas, programas, usuários e parâmetros. Só o Portal grava; as páginas leem.',
+    campos: [
+      { sel: '#cadUnlock', nome: 'Desbloquear edição', o: 'Pede a senha do cadastro. Sem desbloquear, tudo é só consulta.' },
+      { sel: '.cadside', nome: 'Tipos de cadastro', o: 'Lista lateral com cada tipo. O ⓘ do título explica o tipo com exemplo.' },
+      { sel: '#cadQ', nome: 'Buscar', o: 'Procura em qualquer campo do item.' },
+      { sel: '#cadSit', nome: 'Ativos / Inativos / Todos', o: 'Nada se apaga: item desativado fica como inativo.' },
+      { sel: 'th[data-ci]', nome: 'Ordenar', o: 'Clique no título da coluna: ▲, ▼ e de novo volta à ordem padrão.' },
+      { sel: '[data-fp]', nome: 'Filtros (códigos de parada)', o: 'Pilar, classe, onde se aponta, grupo e afeta.' },
+      { sel: '#cadNovo', nome: '+ Novo', o: 'Cria um item. O código é a chave e não muda depois de gravado.' },
+      { sel: '#cadTrazerCfg', nome: 'Trazer configurações das páginas', o: 'Migração: propõe trazer para o cadastro o que ainda está só nas páginas.' }
+    ],
+    passos: [['Mudar uma meta ou um turno a partir de uma data', ['Desbloqueie a edição.', 'Abra o item e crie uma vigência nova com a data de início.', 'A vigência antiga não é editada: é desativada. As páginas usam a vigência da data de cada fato.', 'Grave; as páginas mostram a nova "Cadastro rev".']]],
+    duvidas: [['Código de parada × modo de falha', 'Código: por que a linha parou (operador, toda parada, define o pilar do OEE). Modo de falha: como a peça falhou (técnico, só em quebra).']]
+  }
+};
 </script>
 </body>
 </html>

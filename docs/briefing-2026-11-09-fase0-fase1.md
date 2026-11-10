@@ -555,3 +555,21 @@ Era o único item do briefing que tinha ficado sem entrega (além do UX-02, adia
 - **Todas as tabelas do cadastro** ordenam pela coluna clicada (▲ crescente, ▼ decrescente; o terceiro clique volta à ordem padrão). Números em ordem numérica e vazios no fim.
 - **Códigos de parada:** filtros por Pilar, Classe, Onde se aponta, Grupo (1º dígito do Nº) e Afeta (D, P, Q), com os valores que existem no cadastro, "Limpar filtros" e ⓘ. Filtros e ordem valem também para o ⇩ Excel. Nada muda na base: só a tela.
 - Teste: `node testes/tfase7.js` (parte POR-02).
+
+## 14. UX-02 · guia por aba (Produção 2.4.36, Portal 1.9.17, Waste 1.8.30, Gel 2.22, Paradas 1.0.27, Iniciativas 1.1.1, Equipamentos 1.0.6; 10/11/2026)
+
+- **Botão "?"** no cabeçalho comum (ao lado do tema) e **F1** abrem um painel lateral com o guia **da aba aberta**: para que serve, cada campo e botão (o que é, como preencher, exemplo), o passo a passo das tarefas e as dúvidas comuns. Esc ou ✕ fecham. O guia acompanha a troca de aba.
+- **Mostrar na tela:** numera os campos na própria tela (① ② ③), ligados aos itens do guia. Clicar num item rola até o campo e o destaca. Número em cinza = o campo não aparece agora (depende do dia, do filtro ou do que foi lançado). Visual sem prints, então não envelhece com o layout.
+- **Componente** no kit (`vacGuia`, igual em todas). **Conteúdo** em cada página: `window.VAC_GUIA[PAGE.id][aba]`. Produção em `fontes/producao/guia.js`; as outras no bloco "UX-02 · guia por aba" no fim do HTML.
+- **Abas com guia:**
+  - Produção: Lançamento, Hora a hora, Plano do mês, Ordens (produzidas, conciliação, importar, histórico) e Visão Geral.
+  - Portal: Visão Geral, Minha fila, Reunião diária, Pendências, Relatórios, Importação e Cadastros.
+  - Paradas: todas as abas.
+  - Waste: todas as abas.
+  - Gel: Visão Geral, Operação, Programação, Registro de produção, Validade, Consumo, Aderência e Pendências.
+  - Iniciativas: Ações, KAS, OSM, 5S, programas e Configuração.
+  - Equipamentos: todas as abas.
+  - As demais (ex.: Produção › Paradas, Histórico, SQDCP; Projetos) mostram "em preparação" e lembram do ⓘ.
+- **Portal (pedido do usuário):** o período saiu de dentro de cada cartão da Visão Geral, porque a barra já mostra (ex.: "semana · 09/11/2026 a 10/11/2026"). Só fica a pílula "agora" no cartão que **não** segue o período (página sem série por dia).
+- Teste: `node testes/tfase7.js` (parte UX-02) e `testes/tperiodo.js` (período só na barra).
+- **Homologar:** em cada página, F1 na aba mais usada e "Mostrar na tela"; conferir com operador e liderança se o texto está claro e o que falta.
