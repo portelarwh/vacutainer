@@ -35,7 +35,7 @@ const { chromium } = require('playwright');
     document.querySelector('[data-hhsel=""]').click(); await w(); R.todos = document.querySelectorAll('table.hh tr.grp').length;
     R.psNome = ps.snap.name; return R;
   });
-  ok(r.ver === '2.4.34', 'Produção 2.4.34');
+  ok(r.ver >= '2.4.34', 'Produção (2.4.34+)');
   ok(!r.respDia && r.respTurno === r.nTurnos && r.nTurnos >= 2, `PRD-05: sem "Responsável" do dia; um por turno (${r.respTurno}/${r.nTurnos})`);
   ok(r.respRep, 'PRD-05: com scrap "Total diário" aparece "Responsável pelo reporte"');
   ok(r.psResp === 'P. Costa', 'PRD-05: responsável do turno gravado no turno');
@@ -43,6 +43,25 @@ const { chromium } = require('playwright');
   ok(r.rota === 'hourly' && r.grp.length === 1 && r.grp[0].includes(r.psNome) && r.sel, `PRD-06: abre só o turno escolhido (${r.grp.join(' | ')})`);
   ok(r.seg[0] === 'Todos' && r.seg.length === r.nTurnos + 1 && /\d+\/\d+/.test(r.seg[1]) && r.todos === r.nTurnos, `PRD-06: troca entre turnos com preenchimento x/y e "Todos" (${r.seg.join(' · ')})`);
   ok(r.ib.length === 4, `UX-01: ⓘ em ${r.ib.join(', ')}`);
+
+  /* 2.4.35 · CSV do MES: catálogo e lote registrados antes da 1ª caixa pertencem a ela; caixa 0 (contador zerado) não conta */
+  const ms = await o.evaluate(() => {
+    const csv = `Time,VAEB01_MES_Catalogo_Atual,VAEB01_MES_Lote_Atual,VAEB01_MES_Caixa_Atual
+11/9/2026 2:00:00.000 AM,,6299900.000,0.0
+11/9/2026 2:00:05.000 AM,360060.000,,
+11/9/2026 2:30:00.000 AM,,,1.0
+11/9/2026 2:31:00.000 AM,,,2.0
+11/9/2026 3:10:00.000 AM,,6299948.000,0.0
+11/9/2026 3:10:06.032 AM,360057.000,,
+11/9/2026 4:53:06.325 AM,,,1.0
+11/9/2026 4:53:31.484 AM,,,2.0
+11/9/2026 4:54:10.000 AM,,,3.0`;
+    const an = ServerData.analyze(ServerData.parseCsv(csv), { gapMin: 10 });
+    return { seg: an.segments.map(s => [s.lot, s.cat, s.b0, s.b1, s.t0.slice(11)].join('|')), gaps: an.gaps.length, zeros: an.zeros, boxes: an.boxes, mes: an.mes.map(e => e.k + '@' + e.t.slice(11)).join(' ') };
+  });
+  ok(JSON.stringify(ms.seg) === JSON.stringify(['6299900|360060|1|2|02:30:00', '6299948|360057|1|3|04:53:06']), `MES: cada lote com o catálogo registrado acima da 1ª caixa e início na 1ª caixa (${ms.seg.join(' ; ')})`);
+  ok(ms.zeros === 2 && ms.boxes === 5 && ms.gaps === 0, `MES: caixa 0 não conta nem abre lacuna (caixas ${ms.boxes}, zeros ${ms.zeros}, lacunas ${ms.gaps})`);
+  ok(ms.mes === 'lot@02:00:00 cat@02:00:05 lot@03:10:00 cat@03:10:06', `MES: horário do registro guardado como evento (${ms.mes})`);
 
   /* UX-04: pílula comum, "desatualizada" quando outra página já leu uma rev mais nova */
   const u = await o.evaluate(() => { localStorage.setItem('vac.cadastros', JSON.stringify({ schema: 'vac-cadastros', rev: 9 })); return [vacCadPilula(7, { fonte: 'pasta' }), vacCadPilula(9, { fonte: 'pasta' }), vacCadPilula(7, { fonte: 'pasta', portal: true }), vacCadPilula(9, { fonte: 'copia' }), vacCadPilula(null)]; });

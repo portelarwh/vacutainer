@@ -7,7 +7,7 @@ Plataforma de páginas HTML de arquivo único que trabalham juntas numa **pasta 
 | Página | Arquivo | Base | Versão | Como editar |
 |---|---|---|---|---|
 | Portal (cadastro geral, Administração) | `Portal.html` | `portal-base.json` + `vacutainer-cadastros.json` | 1.9.16 | direto no HTML |
-| Produção (OEE, plano, ordens SAP) | `OEE-Vacutainer.html` | `oee-vacutainer-base.json` (+ `ordens-base.json`) | 2.4.34 | **NÃO editar o HTML**: editar `fontes/producao/` e rodar o build |
+| Produção (OEE, plano, ordens SAP) | `OEE-Vacutainer.html` | `oee-vacutainer-base.json` (+ `ordens-base.json`) | 2.4.35 | **NÃO editar o HTML**: editar `fontes/producao/` e rodar o build |
 | Waste (perdas por ordem, KKBC) | `Perdas-Ordem.html` | `perdas-base.json` | 1.8.29 | direto no HTML |
 | Gestão de Gel | `Gestão-Gel-Vacutainer.html` | `fifo-base.json` | 2.21 · **em atualização** | direto no HTML |
 | Paradas | `Paradas.html` | `paradas-base.json` | 1.0.26 · **em atualização** | direto no HTML |
@@ -101,6 +101,7 @@ Produção aplica o cadastro na base do OEE pelo `CadSync` (`fontes/producao/cad
 **Gel dentro da Produção (Fase 4, Produção 2.4.28–2.4.29 / Gel 2.18–2.20, `fontes/producao/gel_turno.js`):** conta comum `vacGel` no kit; Registrar scrap no turno (`ps.gelScrap`, exports `porDiaTurno[].gel`); o Gel lê da Produção a partir de `parametros.gel.registroPelaProducaoDesde` (`GelProd`, Resumo do dia) e publica `porDiaGel`; Teórico × Real no dia da Produção (`GelDia`). Detalhes: `docs/briefing-2026-11-09-fase0-fase1.md` § 9.
 **Iniciativas / Ações (Fase 6, Iniciativas 1.1.0 / Waste 1.8.28 / Portal 1.9.14):** programas no Portal (`programas`) viram abas; Importar dados (exports.importacoes tipo `ACOES`); campo `eficacia`; as ações do Waste ficam em Iniciativas (Waste lê `exports.acoes` pela ficha comum; antigas migram uma vez pelo `exports.acoesLegado`, ref `waste|<id>`). Detalhes: `docs/briefing-2026-11-09-fase0-fase1.md` § 11.
 **Fase 7 (Produção 2.4.34, `fontes/producao/fase7.js`; Portal 1.9.15, Waste 1.8.29, Gel 2.21, Paradas 1.0.26):** responsável por turno (`ps.responsible`; `day.responsible` só como "Responsável pelo reporte" no Total diário), Hora a hora por turno (`HHPs`), ⓘ nos botões do dia, Painel → Visão Geral no Waste e no Gel (id `painel` mantido), pílula única do cadastro. UX-02 (ajuda por aba) ficou para depois. Detalhes: `docs/briefing-2026-11-09-fase0-fase1.md` § 12.
+**CSV do MES (Produção 2.4.35, `fontes/producao/mes_build.py`):** catálogo e lote registrados antes da 1ª caixa (preparação) pertencem a ela; o trecho começa no horário da 1ª caixa; caixa 0 (contador zerado) não conta nem abre lacuna; o horário do registro fica em `server.mes`. Dias importados antes: reimportar o período.
 **Turno não produtivo (Fase 2, Produção 2.4.24, `fontes/producao/turnos_np.js`):** vigência `naoProdutivo` no Portal → `productive:false` (fora do dia e do plano); caixas do MES fora dos turnos do dia são reatribuídas (trecho emendado com o fim do turno anterior → ele; senão → o próximo) só a partir de `foraTurnoDesde`; `ForaTurno.aplicar` no `computeDayRaw` (resultado oficial = reportado; `res.foraTurno.real` = real); "Habilitar turno" no dia (`TurnoNP`, `ps.enabledNP`). Detalhes: `docs/briefing-2026-11-09-fase0-fase1.md` § 6.
 
 ## Documentação (`docs/`)
