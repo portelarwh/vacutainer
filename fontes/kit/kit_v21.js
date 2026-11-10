@@ -224,6 +224,21 @@ function vacExportsOk(ex, conhecida = 1) {
   const v = ex.exportsVersion; if (v == null || +v <= conhecida) return { ok: true, versao: v == null ? null : +v, motivo: '' };
   return { ok: false, versao: +v, motivo: `exports na versão ${v}; esta página só conhece até a ${conhecida}: atualize esta página` };
 }
+/* kit v2.1 · UX-04 (Fase 7 do briefing, D8): pílula única "Cadastro rev N", sempre visível, igual em todas as páginas.
+   rev = revisão do cadastro geral do Portal (vacutainer-cadastros.json) que esta página está usando. Compara com a cópia mais
+   nova que alguma página já leu neste computador (localStorage 'vac.cadastros'): se esta estiver atrás, mostra "desatualizada"
+   (a página foi aberta antes da última gravação no Portal). o = { fonte: 'pasta'|'copia'|'teste'|…, revAt, revBy, portal:true }. */
+function vacCadPilula(rev, o = {}) {
+  const e = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  const AJ = 'Revisão do cadastro geral do Portal (vacutainer-cadastros.json) que esta página está usando. Cada gravação no Portal soma 1. Todas as páginas devem mostrar o mesmo número; se esta estiver atrás, ela foi aberta antes da última mudança no Portal: clique em ↻ Sincronizar ou recarregue (F5). Não é a revisão da base da própria página.';
+  if (rev == null) return `<span class="pill none" data-vac-cadrev="" title="${e('Cadastro do Portal ainda não lido nesta página (pasta sem vacutainer-cadastros.json ou não conectada). ' + AJ)}">Cadastro: não lido</span>`;
+  let ult = null; try { const c = JSON.parse(localStorage.getItem('vac.cadastros') || 'null'); if (c && c.rev != null && isFinite(+c.rev)) ult = +c.rev; } catch (x) { }
+  const atras = !o.portal && ult != null && +rev < ult, copia = o.fonte && o.fonte !== 'pasta' && o.fonte !== 'teste';
+  const cls = atras ? 'warn' : copia ? 'warn' : o.portal ? 'ok' : 'info';
+  const quando = o.revAt ? ` Gravada em ${String(o.revAt).slice(8, 10)}/${String(o.revAt).slice(5, 7)} ${String(o.revAt).slice(11, 16)}${o.revBy ? ' por ' + o.revBy : ''}.` : '';
+  const tit = (atras ? `Desatualizada: já existe a rev ${ult} neste computador. ` : '') + (copia ? 'Lida da cópia local (a pasta não respondeu). ' : '') + AJ + quando;
+  return `<span class="pill ${cls}" data-vac-cadrev="${e(rev)}" title="${e(tit)}">Cadastro rev ${e(rev)}${atras ? ' · desatualizada' : ''}${copia ? ' · cópia local' : ''} <span class="vac-ib" aria-hidden="true">ⓘ</span></span>`;
+}
 
 /* kit v2.1 · E5 (08/11/2026): ficha da ordem, do lote e da LP · índice da busca (Ctrl K) · link #ficha=ordem/<n>.
    A ficha SÓ mostra o que cada página publica no exports (regra 1: não recalcula, não lê a estrutura interna).
@@ -235,10 +250,10 @@ const vacFicha = (() => {
   const FONTES = [
     { id: 'oee', nome: 'Produção', base: 'oee-vacutainer-base.json', pega: ex => ({ porOrdem: ex.porOrdem || [], cob: ex.porOrdemCobertura || null, lotes: ex.lotes || [], porDiaTurno: ex.porDiaTurno || [], porDiaCatalogo: ex.porDiaCatalogo || [] }) },   /* Fase 4 · 4d: o Gel lê os turnos da Produção */
     { id: 'ordens', nome: 'SAP (Produção › Ordens)', sis: 'oee', base: 'ordens-base.json', pega: ex => ({ porOrdem: ex.porOrdem || [] }) },
-    { id: 'perdas', nome: 'Waste', base: 'perdas-base.json', pega: ex => ({ porOrdem: ex.porOrdem || [] }) },
+    { id: 'perdas', nome: 'Waste', base: 'perdas-base.json', pega: ex => ({ porOrdem: ex.porOrdem || [], acoesLegado: ex.acoesLegado || null }) },   /* Fase 6: Iniciativas traz as ações antigas */
     { id: 'gel', nome: 'Gestão de Gel', base: 'fifo-base.json', pega: ex => ({ ordens: ex.ordens || [], cob: ex.ordensCobertura || null, porDiaGel: ex.porDiaGel || [] }) },   /* Fase 4 · 4e */
     { id: 'paradas', nome: 'Paradas', base: 'paradas-base.json', pega: ex => ({ porOrdem: ex.porOrdem || [], eventos: (ex.eventos || []).filter(e => e && e.ordem) }) },
-    { id: 'inic', nome: 'Iniciativas', base: 'iniciativas-base.json', pega: ex => ({ acoes: ex.acoes || [] }) }];
+    { id: 'inic', nome: 'Iniciativas / Ações', base: 'iniciativas-base.json', pega: ex => ({ acoes: ex.acoes || [] }) }];
   const S = { dados: {}, idx: null, carregando: null, aberto: null, empilhado: false };
   const e2 = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   const tx = v => String(v ?? '').trim();
