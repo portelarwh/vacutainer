@@ -1257,7 +1257,7 @@ const U = (() => {
 
 /* ---- 02-model.js ---- */
 /* ================= modelo de dados, valores iniciais e integridade ================= */
-const APP_VERSION = '2.4.29';
+const APP_VERSION = '2.4.30';
 const SCHEMA_VERSION = 1;
 const BASE_FILE = 'oee-vacutainer-base.json';
 const BACKUP_DIR = '00. Backups';
@@ -4379,7 +4379,7 @@ const Exports = (() => {
     const porDia = [], porDiaTurno = [], porDiaCatalogo = [], d120 = U.addDays(today, -119), d60 = U.addDays(today, -59);
     for (const d of days.filter(x => x.date >= d120 && x.date <= today).sort((a, b) => a.date.localeCompare(b.date))) {
       const res = Engine.computeDay(db, d), r = res.r;
-      porDia.push({ dia: d.date, oee: r4(r.oee), oeeMeta: r4(r.oeeTarget), boa: n0(r.good), scrap: n0(r.scrap), metaOp: n0(r.metaOp), status: d.status || 'não iniciado', origem: d.origin === 'importação' ? 'importado' : 'lançado' });
+      porDia.push({ dia: d.date, oee: r4(r.oee), oeeMeta: r4(r.oeeTarget), boa: n0(r.good), scrap: n0(r.scrap), metaOp: n0(r.metaOp), cap: n0(r.cap), metaDec: n0(r.metaDec), status: d.status || 'não iniciado', origem: d.origin === 'importação' ? 'importado' : 'lançado' });
       if (d.date >= d60) {
         // abono do turno (só eventos marcados como abono; refeição e outras pausas ficam em descontoMin)
         const abByPs = {};
@@ -4388,7 +4388,7 @@ const Exports = (() => {
         const byCat = {};
         for (const f of res.flat) { if (!f.cat) continue; const c = (db.catalogs || []).find(x => x.id === f.cat); const k = (c ? c.code : f.cat) + '|' + (f.ps.snap.code || f.ps.snap.name); const o = byCat[k] || (byCat[k] = { dia: d.date, turno: f.ps.snap.code || f.ps.snap.name, catalogo: c ? c.code : null, boa: 0, cap: 0, meta: 0, min: 0 }); o.boa += f.good || 0; o.cap += f.capDec || 0; o.meta += f.metaOp || 0; o.min += f.min; }
         for (const o of Object.values(byCat)) porDiaCatalogo.push({ dia: o.dia, turno: o.turno, catalogo: o.catalogo, boa: n0(o.boa), metaOp: n0(o.meta), oee: r4(o.cap ? o.boa / o.cap : null), minutos: n0(o.min) });
-        for (const sr of res.shifts) porDiaTurno.push({ dia: d.date, turno: sr.ps.snap.code || sr.ps.snap.name, oee: r4(sr.r.oee), boa: n0(sr.r.good), scrap: n0(sr.r.scrap), abonoMin: n0(abByPs[sr.ps.id] || 0), descontoMin: n0(sr.r.deductMin), semProducao: sr.ps.off ? (sr.ps.offType === 'np' ? 'não programado' : 'programado') : null, motivo: sr.ps.off ? (sr.ps.offReason || '') : undefined, status: sr.ps.status, extraMin: n0(sr.agg.extraMin || 0), gel: GelTurno.exp(sr.ps, d.date) });
+        for (const sr of res.shifts) porDiaTurno.push({ dia: d.date, turno: sr.ps.snap.code || sr.ps.snap.name, oee: r4(sr.r.oee), oeeMeta: r4(sr.r.oeeTarget), boa: n0(sr.r.good), scrap: n0(sr.r.scrap), cap: n0(sr.r.cap), metaDec: n0(sr.r.metaDec), metaOp: n0(sr.r.metaOp), abonoMin: n0(abByPs[sr.ps.id] || 0), descontoMin: n0(sr.r.deductMin), semProducao: sr.ps.off ? (sr.ps.offType === 'np' ? 'não programado' : 'programado') : null, motivo: sr.ps.off ? (sr.ps.offReason || '') : undefined, status: sr.ps.status, extraMin: n0(sr.agg.extraMin || 0), gel: GelTurno.exp(sr.ps, d.date) });
       }
     }
     const paradas = {}, d90 = U.addDays(today, -89);

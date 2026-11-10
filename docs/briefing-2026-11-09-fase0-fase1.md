@@ -453,3 +453,23 @@ Próximo: 4e (Teórico × Real na página do dia da Produção, só quando o cat
 2. Portal › Parâmetros › Gestão de Gel › "Gel lido da Produção a partir de" (a data de corte).
 3. Registrar scrap num turno da Produção.
 4. Conferir o Resumo do dia no Gel e o Teórico × Real na Produção.
+
+---
+
+## 10. Fase 5 · relatórios e Visão Geral (10/11/2026)
+
+**Respostas do usuário:** D6 séries por dia (o Portal soma o período escolhido) · D9 unificar Painel e Visão Geral na Produção, já com o seletor de período.
+
+### Passo 5a · período no Portal (POR-05, POR-06, POR-08, POR-09) · Portal 1.9.13, Produção 2.4.30
+
+- **Visão Geral (POR-06):** seletor **Hoje · Ontem · Semana · Mês · Personalizado** no topo. O período fica guardado neste computador.
+  - O título de cada cartão é um link para a página (**POR-05**).
+  - Cada cartão mostra o selo do período. O que não tem série por dia aparece com o selo **"agora"**: estoque de gel, ações em aberto, Equipamentos e Iniciativas.
+- **Como o Portal soma (regra 1: soma o que as páginas publicam, sem recalcular):**
+  - **Produção:** os dias do período. OEE = Σ boa ÷ Σ capacidade e meta = Σ meta ÷ Σ capacidade, sem média de médias. Para isso a Produção passou a publicar `cap` e `metaDec` por dia e por turno.
+  - **Paradas:** os eventos do período (minutos, ocorrências, quebras e MTTR).
+  - **Gel:** os dias registrados: baixado, baixado × teórico e tubos bons. O estoque continua "agora".
+  - **Waste:** as competências que o período toca (a KKBC é mensal), com a etiqueta "competência" e o aviso de competência em aberto.
+  - Quando o período sai do que a página publica, o selo avisa: Produção 120 dias, Paradas 90 dias, Gel 60 dias.
+- **Relatório (POR-08):** o mesmo seletor, com a opção **1 turno** (dia + turno). Nesse caso, a Produção usa `porDiaTurno` e o Paradas usa só os eventos do turno. O Resumo da linha sai com o período no título, os números de cada página e os gráficos por dia.
+- **TV (POR-09):** usa o mesmo período, e cada tela diz qual é. Os meses não se misturam mais. Na TV da própria Produção, as telas de janela móvel (7 dias e 8 semanas) seguem como estão e são tratadas no 5b.

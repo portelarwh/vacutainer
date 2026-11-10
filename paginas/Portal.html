@@ -226,6 +226,7 @@ svg text{font-family:var(--f-body)}
 .cadbar{display:flex;flex-wrap:wrap;gap:8px 10px;align-items:center;margin-bottom:14px;padding:10px 12px;background:var(--surface);border:1px solid var(--line);border-radius:var(--r)}
 .cadbar .sp{flex:1}
 .cadg{display:grid;grid-template-columns:230px minmax(0,1fr);gap:14px;align-items:start}
+.modlink{color:inherit;text-decoration:none}.modlink:hover{text-decoration:underline}.per-bar{margin-bottom:12px;flex-wrap:wrap}.per-bar .seg{flex-wrap:wrap;max-width:100%}.per-bar .seg button{flex:1 1 auto}
 .imp-pag{scroll-margin-top:80px}.imp-pag.imp-on{outline:2px solid var(--accent);outline-offset:2px}
 /* POR-04 (1.9.5): a lista lateral passa da altura da tela; sticky sem limite deixava o fim inalcançável. Rola por dentro. */
 .cadside{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:6px;position:sticky;top:72px;max-height:calc(100vh - 84px);overflow-y:auto;overscroll-behavior:contain}
@@ -1367,7 +1368,7 @@ function wireConfigComum(){$('#cPasta').onclick=async()=>{if(await Store.pick())
         entrar pelo ID (autocadastro como Consulta); página inicial por perfil (1x por sessão); vigência gravada não se edita (desativar com motivo); painel de vigências; semáforo central; saída do modo de teste.
    1.1.2: aviso da carga diz qual base foi lida.  1.5: páginas Paradas, Máquinas, Manutenção e Projetos na lista (aparecem quando o HTML chega na pasta).  1.4: lista técnica pela CS12 multinível (itens = nível 1, estrutura = níveis 2+); CS03 sai.  1.3: cabeçalho comum (vac-cabecalho v2: barra do sistema + página + abas), busca Ctrl K, acabamento V1.90, Versões com cabeçalho e último backup.  1.2: Configuração › Versões das páginas (versão e data de cada HTML, gravação das bases, cópias repetidas, histórico).
    ===================================================================== */
-const PAGE={id:'portal',titulo:'Portal · Linha Vacutainer',tituloCurto:'Portal',subtitulo:'Sistemas de gestão da linha',versao:'1.9.12',baseFile:'portal-base.json',idb:'vac-portal',backupDir:'00. Backups/Portal',
+const PAGE={id:'portal',titulo:'Portal · Linha Vacutainer',tituloCurto:'Portal',subtitulo:'Sistemas de gestão da linha',versao:'1.9.13',baseFile:'portal-base.json',idb:'vac-portal',backupDir:'00. Backups/Portal',
  vazio:()=>({schema:'portal-base',rev:0,config:{modulos:{},avisoDias:30,notas:{}},audit:[]}),
  /* itens do Portal para a busca Ctrl K: cadastro, pendências e telas */
  busca:q=>{const R=[],D=Cad.D;if(D)for(const t of CAD_ORD){for(const it of D[t]||[]){const c=String(it[kOf(t)]),nm=t==='bom'?((cadItem('catalogos',it.catalogo)||{}).nome||''):it.nome||'';if(norm(c+' '+nm).includes(q))R.push({tipo:CAD_T[t].um,txt:c+(nm?' · '+nm:''),sub:'Cadastros'+(cadAtivo(t,it,D)?'':' · inativo'),href:'#cadastros/'+t+'/'+encodeURIComponent(c)});if(R.length>30)break}}
@@ -1505,6 +1506,55 @@ function serieDoModulo(s){if(Array.isArray(s))return s;if(s&&Array.isArray(s.pon
 function adaptGeneric(d){const ex=d.exports,ok=exV1(ex);return{kpis:ok&&ex.kpis?ex.kpis:[['Base','lida',fmtDT(d.updatedAt||d.revAt),'']],pend:ok?pendDoModulo(ex,undefined):[],serie:ok?serieDoModulo(ex.serie):[],bruto:!!ex&&!ok}}
 function adaptParadas(d){const r=adaptGeneric(d);const ex=d.exports;if(ex&&ex.serie&&!Array.isArray(ex.serie)){r.serieFmt=v=>fmtN(v)+' min';r.serieTit=(ex.serie.rotulo||'Minutos de parada por mês')+' (min)'}return r}
 
+
+/* =====================================================================
+   1.9.13 · Fase 5 · 5a (POR-06, POR-08, POR-09; D6): período escolhido (Hoje, Ontem, Semana, Mês, Personalizado; no Relatório também 1 turno).
+   O Portal soma as séries por dia que cada página publica (Produção porDia/porDiaTurno, Paradas eventos, Gel porDiaGel, Waste porMes por
+   competência), sem recalcular nada da página (regra 1). O que não tem série (estoque de gel, ações) fica marcado "agora".
+   A Visão Geral, o Relatório e a TV usam o mesmo período, e cada número mostra o período dele.
+   ===================================================================== */
+const Per={sel:'mes',de:null,ate:null,turno:null,dia:null,
+ load(){try{const x=JSON.parse(localStorage.getItem('portal.periodo')||'null');if(x&&typeof x==='object'){this.sel=x.sel||'mes';this.de=x.de||null;this.ate=x.ate||null}}catch(e){}},
+ save(){try{localStorage.setItem('portal.periodo',JSON.stringify({sel:this.sel,de:this.de,ate:this.ate}))}catch(e){}},
+ range(){const h=todayISO();switch(this.sel){case'hoje':return[h,h];case'ontem':{const y=addDays(h,-1);return[y,y]}
+  case'semana':{const wd=(new Date(h+'T12:00').getDay()+6)%7;return[addDays(h,-wd),h]}case'turno':{const d=this.dia||addDays(h,-1);return[d,d]}
+  case'custom':{const a=this.de||h,b=this.ate||a;return a<=b?[a,b]:[b,a]}default:return[h.slice(0,7)+'-01',h]}},
+ rotulo(){const[a,b]=this.range();if(this.sel==='turno')return'turno '+(this.turno||'?')+' de '+fmtD(a);const L={hoje:'hoje',ontem:'ontem',semana:'semana',mes:'mês'}[this.sel];return(L?L+' · ':'')+(a===b?fmtD(a):fmtD(a)+' a '+fmtD(b))}};
+Per.load();
+const PER_OPC=[['hoje','Hoje'],['ontem','Ontem'],['semana','Semana'],['mes','Mês'],['custom','Personalizado']];
+function perBar(comTurno){const[a,b]=Per.range(),L=comTurno?PER_OPC.concat([['turno','1 turno']]):PER_OPC;
+ const tus=comTurno&&Per.sel==='turno'?perTurnos(Per.dia||addDays(todayISO(),-1)):[];
+ return`<div class="reu-bar per-bar"><span class="small muted">Período ${ib('Período','Os números de cada página somados no período escolhido. A Produção soma os dias (OEE = produção boa ÷ capacidade do período), o Paradas soma os eventos, o Gel soma os dias registrados e o Waste usa as competências do período (a KKBC é mensal). O que não tem período (estoque de gel, ações em aberto) aparece como "agora". Vale para a Visão Geral, o Relatório e a TV.')}</span>
+ <span class="seg">${L.map(([k,l])=>`<button data-per="${k}" class="${Per.sel===k?'on':''}">${l}</button>`).join('')}</span>
+ ${Per.sel==='custom'?`<input type="date" id="perDe" value="${esc(a)}"> <span class="small">a</span> <input type="date" id="perAte" value="${esc(b)}">`:''}
+ ${Per.sel==='turno'?`<input type="date" id="perDia" value="${esc(a)}"> <select id="perTurno">${tus.map(t=>`<option ${t===Per.turno?'selected':''}>${esc(t)}</option>`).join('')||'<option value="">sem turno publicado</option>'}</select>`:''}
+ <span class="pill info">${esc(Per.rotulo())}</span></div>`}
+function wirePerBar(){$$('[data-per]').forEach(b=>b.onclick=()=>{Per.sel=b.dataset.per;if(Per.sel==='turno'){Per.dia=Per.dia||addDays(todayISO(),-1);const t=perTurnos(Per.dia);if(!t.includes(Per.turno))Per.turno=t[0]||null}else Per.save();App.render()});
+ const d1=$('#perDe'),d2=$('#perAte');if(d1)d1.onchange=()=>{Per.de=d1.value;Per.save();App.render()};if(d2)d2.onchange=()=>{Per.ate=d2.value;Per.save();App.render()};
+ const pd=$('#perDia'),pt=$('#perTurno');if(pd)pd.onchange=()=>{Per.dia=pd.value;const t=perTurnos(Per.dia);if(!t.includes(Per.turno))Per.turno=t[0]||null;App.render()};if(pt)pt.onchange=()=>{Per.turno=pt.value;App.render()}}
+function perTurnos(dia){const ex=(MOD.data.oee||{}).ex;return[...new Set(((ex&&ex.porDiaTurno)||[]).filter(t=>t.dia===dia).map(t=>t.turno))]}
+const perPct=v=>v==null||!isFinite(v)?'–':fmtN(100*v,1)+'%';
+/* números do período, por página: {kpis, serie, nota} ou null (a página não tem série: usa os números dela, marcados "agora") */
+function kpisPer(id){const x=MOD.data[id],ex=x&&x.ex;if(!ex)return null;const[a,b]=Per.range(),dentro=d=>d&&d>=a&&d<=b;
+ const serieDias=(L,val)=>{const m=new Map();L.forEach(r=>m.set(r.dia,(m.get(r.dia)||0)+(+val(r)||0)));const ds=[...m.keys()].sort();return ds.length>1&&ds.length<=62?ds.map(d=>({label:d.slice(8,10)+'/'+d.slice(5,7),value:m.get(d),key:d})):[]};
+ if(id==='oee'){if(Per.sel==='turno'){const L=(ex.porDiaTurno||[]).filter(t=>t.dia===a&&t.turno===Per.turno);if(!L.length)return{kpis:[['Turno '+(Per.turno||''),'–',fmtD(a),'']],serie:[],nota:'sem dado do turno (a Produção publica 60 dias por turno)'};const t=L[0],oee=t.cap?t.boa/t.cap:t.oee,meta=t.cap&&t.metaDec?t.metaDec/t.cap:t.oeeMeta;
+   return{kpis:[['OEE',perPct(oee),meta!=null?'meta '+perPct(meta):'',oee!=null&&meta!=null?(oee>=meta?'good':'bad'):''],['Produção boa',fmtN(t.boa),t.metaOp?'meta '+fmtN(t.metaOp):'',t.metaOp?(t.boa>=t.metaOp?'good':'bad'):''],['Scrap',fmtN(t.scrap),'peças','']],serie:[]}}
+  const L=(ex.porDia||[]).filter(r=>dentro(r.dia)),cob=(ex.porDia||[]).reduce((m,r)=>!m||r.dia<m?r.dia:m,null);
+  if(!L.length)return{kpis:[['OEE','–','sem dia lançado no período',''],['Produção boa','–','','']],serie:[],nota:cob&&a<cob?'a Produção publica os últimos 120 dias':''};
+  const s=k=>L.reduce((t,r)=>t+(+r[k]||0),0),cap=s('cap'),boa=s('boa'),metaOp=s('metaOp'),scrap=s('scrap');
+  const oee=cap>0?boa/cap:(boa>0?L.reduce((t,r)=>t+(+r.oee||0)*(+r.boa||0),0)/boa:null),meta=cap>0&&s('metaDec')>0?s('metaDec')/cap:(boa>0?L.reduce((t,r)=>t+(+r.oeeMeta||0)*(+r.boa||0),0)/boa:null);
+  return{kpis:[['OEE',perPct(oee),meta!=null?'meta '+perPct(meta)+(cap>0?'':' (aprox.)'):'',oee!=null&&meta!=null?(oee>=meta?'good':'bad'):''],['Produção boa',fmtN(boa),metaOp?'meta '+fmtN(metaOp)+' · '+perPct(boa/metaOp):'',metaOp?(boa>=metaOp?'good':'bad'):''],['Scrap',fmtN(scrap),boa+scrap>0?perPct(scrap/(boa+scrap)):'',''],['Dias lançados',String(L.length),'','']],
+   serie:serieDias(L,r=>r.boa),serieTit:'Produção boa por dia (peças)',nota:cob&&a<cob?'a Produção publica os últimos 120 dias':''}}
+ if(id==='paradas'&&Array.isArray(ex.eventos)){const L=ex.eventos.filter(e=>dentro(e.dia)&&(Per.sel!=='turno'||String(e.turno||'')===String(Per.turno||''))),c=ex.eventosCobertura||{};
+  const min=L.reduce((t,e)=>t+(+e.minutos||0),0),oc=L.reduce((t,e)=>t+(+e.ocorrencias||1),0),q=L.filter(e=>e.classe==='quebra'),mq=q.reduce((t,e)=>t+(+e.minutos||0),0);
+  return{kpis:[['Paradas',fmtN(min)+' min',fmtN(oc)+' ocorrência(s)',''],['Quebras',fmtN(q.length),q.length?'MTTR '+fmtN(mq/q.length)+' min':'sem quebras',q.length?'bad':'good']],serie:serieDias(L,e=>e.minutos),serieTit:'Minutos de parada por dia',serieFmt:v=>fmtN(v)+' min',nota:c.de&&a<c.de?'o Paradas publica os eventos desde '+fmtD(c.de):''}}
+ if(id==='gel'&&Array.isArray(ex.porDiaGel)){const L=ex.porDiaGel.filter(r=>dentro(r.dia)),s=k=>L.reduce((t,r)=>t+(+r[k]||0),0),teo=s('teoKg'),bx=s('baixadoKg'),tub=s('tubos');
+  const ag=(x.kpis||[]).slice(0,1).map(k=>[k[0]+' (agora)',k[1],k[2],k[3]]);
+  return{kpis:[['Gel baixado',fmtN(bx,0)+' kg',L.length+' dia(s) registrado(s)',''],['Baixado × teórico',teo>0&&bx>0?(bx/teo-1>=0?'+':'')+fmtN(100*(bx/teo-1),1)+'%':'–',teo>0?'teórico '+fmtN(teo,0)+' kg':'',teo>0&&bx>0?(bx<=teo?'good':'bad'):''],['Tubos bons',fmtN(tub),'','']].concat(ag),serie:serieDias(L,r=>r.baixadoKg),serieTit:'Gel baixado por dia (kg)',serieFmt:v=>fmtN(v)+' kg',nota:'o Gel publica os últimos 60 dias'}}
+ if(id==='perdas'&&Array.isArray(ex.porMes)){const ms=new Set();for(let d=a.slice(0,7);d<=b.slice(0,7);d=addDays(d+'-01',32).slice(0,7))ms.add(d);const L=ex.porMes.filter(m=>ms.has(m.per)),s=k=>L.reduce((t,m)=>t+(+m[k]||0),0);
+  return{kpis:[['Desvio líquido',L.length?fmtR(s('liquido')):'–','competência '+[...ms].map(m=>m.split('-').reverse().join('/')).join(', '),L.length?(s('liquido')<=0?'good':'bad'):''],['Perdas',L.length?fmtR(s('perda')):'–','',''],['Ganhos',L.length?fmtR(s('ganho')):'–','','']],serie:[],nota:'por competência: a KKBC é mensal'+(L.some(m=>!m.fechado)?' · competência em aberto':'')}}
+ return null}
+
 /* ---------- telas ---------- */
 const App={tab:'geral',
  show(t,{keepHash=false}={}){this.tab=t;$$('#nav button').forEach(b=>b.classList.toggle('on',b.dataset.t===t||(t==='config'&&b.dataset.t==='cad')));localStorage.setItem('portal.tab',t);
@@ -1526,9 +1576,12 @@ function cardConstrucao(s,x){const e=vacEstadoDe(s.id)||{},P=x.planejado||{},G=P
  ${G.length?`<div class="small"><b>Vai ter:</b> ${G.map(a=>esc(a.aba)+(a.subabas&&a.subabas.length?` <span class="muted">(${a.subabas.map(x=>esc(x&&x.nome||x)).join(' · ')})</span>`:'')).join(' · ')}</div>`:''}
  <footer><a class="b sm" href="${esc(sysHref(s))}">Abrir ${esc(s.nome)}</a></footer></section>`}
 const pillEstado=s=>{const e=vacEstadoDe(s.id);return e&&e.estado==='atualizacao'?`<div class="small" style="margin:-4px 0 8px"><span class="pill info" title="${esc(e.nota||'Funciona normalmente; algumas telas ainda vão mudar.')}">em atualização</span></div>`:''};
-function card(s){const x=MOD.data[s.id];const href=sysHref(s);if(x&&x.construcao)return cardConstrucao(s,x);
- if(!x||x.erro)return`<section class="mod off"><header><h2>${esc(s.nome)}</h2><span class="pill none">${s.futuro?'em construção':'sem dados'}</span></header>${pillEstado(s)}<p class="muted small">${esc(x?x.erro:(Store.mode==='pasta'?'Lendo…':'Conecte a pasta da rede em Configuração para ver os números.'))}</p>${s.futuro?'':`<footer><a class="b sm" href="${esc(href)}">Abrir ${esc(s.nome)}</a></footer>`}</section>`;
- return`<section class="mod"><header><h2>${esc(s.nome)}</h2>${x.antigo?`<span class="pill warn" title="Base lida em ${esc(x.pasta)}/. Pasta única: mova o HTML e a base para a pasta principal (Configuração › Pasta única).">local antigo</span>`:''}${x.temExports&&!x.bruto?'':`<span class="pill none" title="${x.temExports?'O resumo (exports) deste módulo está numa versão que o Portal não conhece':'Este módulo ainda não publica o resumo (exports)'}; o Portal soma os dados brutos e os números podem diferir do módulo.">dados brutos</span>`}</header>${x.updatedAt?`<div class="small muted" style="margin-top:-6px">gravado em ${fmtDT(x.updatedAt)}${x.updatedBy?' por '+esc(x.updatedBy):''}</div>`:''}
+function card(s){const x0=MOD.data[s.id];const href=sysHref(s);if(x0&&x0.construcao)return cardConstrucao(s,x0);
+ /* 1.9.13 · 5a: números do período escolhido (ou os da página, marcados "agora"); POR-05: o título leva à página */
+ const kp=x0&&!x0.erro?kpisPer(s.id):null,x=kp?{...x0,kpis:kp.kpis,serie:kp.serie,serieTit:kp.serieTit||x0.serieTit,serieFmt:kp.serieFmt||x0.serieFmt}:x0;
+ const chip=x0&&!x0.erro?`<span class="pill ${kp?'info':'none'}" title="${esc(kp?(kp.nota||'Somado no período escolhido'):'Esta página não publica série por dia: números de agora')}">${esc(kp?Per.rotulo():'agora')}</span>`:'';
+ if(!x||x.erro)return`<section class="mod off"><header><h2>${s.futuro?esc(s.nome):`<a href="${esc(href)}" class="modlink">${esc(s.nome)}</a>`}</h2><span class="pill none">${s.futuro?'em construção':'sem dados'}</span></header>${pillEstado(s)}<p class="muted small">${esc(x?x.erro:(Store.mode==='pasta'?'Lendo…':'Conecte a pasta da rede em Configuração para ver os números.'))}</p>${s.futuro?'':`<footer><a class="b sm" href="${esc(href)}">Abrir ${esc(s.nome)}</a></footer>`}</section>`;
+ return`<section class="mod"><header><h2><a href="${esc(href)}" class="modlink" title="Abrir ${esc(s.nome)}">${esc(s.nome)} ↗</a></h2>${chip}${x.antigo?`<span class="pill warn" title="Base lida em ${esc(x.pasta)}/. Pasta única: mova o HTML e a base para a pasta principal (Configuração › Pasta única).">local antigo</span>`:''}${x.temExports&&!x.bruto?'':`<span class="pill none" title="${x.temExports?'O resumo (exports) deste módulo está numa versão que o Portal não conhece':'Este módulo ainda não publica o resumo (exports)'}; o Portal soma os dados brutos e os números podem diferir do módulo.">dados brutos</span>`}</header>${x.updatedAt?`<div class="small muted" style="margin-top:-6px">gravado em ${fmtDT(x.updatedAt)}${x.updatedBy?' por '+esc(x.updatedBy):''}</div>`:''}
  ${pillEstado(s)}<div class="mk">${x.kpis.map(k=>`<div><div class="l">${esc(k[0])}</div><div class="v ${k[3]||''}">${esc(k[1])}</div><div class="s">${esc(k[2]||'')}</div></div>`).join('')}</div>
  ${x.serie&&x.serie.length?miniChart(x.serie,{fmt:x.serieFmt||fmtK,tit:x.serieTit||''}):''}
  ${s.id==='oee'&&x.extra&&x.extra.emProd.length?`<div class="small"><b>Em produção:</b> ${x.extra.emProd.map(esc).join(' · ')}</div>`:''}
@@ -1538,23 +1591,21 @@ function viewGeral(m){
  const sem=Store.mode!=='pasta'&&!MOD.teste;
  const _u=usuarioAtual(),_al=_u&&alvoInicial(_u);
  m.innerHTML=`${!user()?`<div class="note">Você ainda não entrou neste navegador. <button class="b sm p" onclick="Entrar.abrir()">Entrar com o ID</button> <span class="small muted">(fica registrado quem altera cada informação)</span></div>`:_al?`<div class="small" style="margin:0 0 8px;text-align:right"><a class="b sm" href="${esc(_al)}">Ir para minha página inicial · ${esc(paginaInicialDe(_u))}</a></div>`:''}${sem?`<div class="note w">Conecte o Portal à pasta da rede (a pasta que tem os sistemas da linha) em <a href="#" onclick="App.show('config');return false">Configuração</a>. Ele procura as bases na pasta e nas subpastas. ${Store.waiting?'<button class="b sm" onclick="Store.reconnect().then(ok=>ok&&App.onConnect())">Reconectar à pasta</button>':''} <button class="b sm" onclick="vacDemo.entrar()">Ver com dados de teste</button></div>`:''}
- <div class="mods">${list.map(card).join('')}</div>
+ ${perBar(false)}<div class="mods">${list.map(card).join('')}</div>
  ${fut.length?`<p class="small muted" style="margin-top:10px">Em construção: ${fut.map(s=>esc(s.nome)).join(' · ')}. Cada página aparece na barra e aqui quando o HTML dela estiver na pasta. Para esconder, use ⚙ Administração › Configuração do Portal › Módulos.</p>`:''}
- <div class="card" style="margin-top:14px"><h3>Pendências da linha ${ib('Pendências','Tudo o que está esperando alguém em cada módulo: turnos para conferir, lançamentos abertos, gel vencendo, ordens críticas sem causa, ações vencidas. Clique para abrir no módulo.')} <span class="muted small">${P.length}</span> <button class="b sm" onclick="App.show('pend')">Ver todas</button></h3>${pendList(P.slice(0,8))}</div>`}
+ <div class="card" style="margin-top:14px"><h3>Pendências da linha ${ib('Pendências','Tudo o que está esperando alguém em cada módulo: turnos para conferir, lançamentos abertos, gel vencendo, ordens críticas sem causa, ações vencidas. Clique para abrir no módulo.')} <span class="muted small">${P.length}</span> <button class="b sm" onclick="App.show('pend')">Ver todas</button></h3>${pendList(P.slice(0,8))}</div>`;wirePerBar()}
 function pendList(P){if(!P.length)return'<p class="good small">Nenhuma pendência.</p>';
  return`<ul class="pl">${P.map(p=>{const s=sysOf(p.mod);return`<li><span class="pill ${p.sev>=2?'crit':'warn'}">${esc(s.nome)}</span><span class="t">${esc(p.txt)}</span><a class="b sm" href="${esc(sysHref(s,p.link||''))}">Abrir</a></li>`}).join('')}</ul>`}
 function viewPend(m){const P=allPend();const by={};P.forEach(p=>(by[p.mod]=by[p.mod]||[]).push(p));
  m.innerHTML=`<div class="kpis">${systems().filter(s=>s.id!=='portal'&&!s.futuro&&!emConstr(s)).map(s=>`<div class="kpi"><div class="l">${esc(s.nome)}</div><div class="v ${(by[s.id]||[]).length?'bad':'good'}">${(by[s.id]||[]).length}</div><div class="s">${(by[s.id]||[]).filter(p=>p.sev>=2).length} urgentes</div></div>`).join('')}</div>
  ${Object.keys(by).length?Object.entries(by).map(([k,ps])=>`<div class="card"><h3>${esc(sysOf(k).nome)} <span class="muted small">${ps.length}</span></h3>${pendList(ps)}</div>`).join(''):'<div class="card"><p class="good">Nenhuma pendência em nenhum módulo.</p></div>'}`}
-function relDoc(){const blocos=[];for(const s of systems().filter(s=>s.id!=='portal'&&!s.futuro)){const x=MOD.data[s.id];if(!x||x.erro||x.construcao)continue;blocos.push({tipo:'kpis',titulo:s.nome,itens:x.kpis})}
+function relDoc(){const blocos=[];for(const s of systems().filter(s=>s.id!=='portal'&&!s.futuro)){const x=MOD.data[s.id];if(!x||x.erro||x.construcao)continue;const kp=kpisPer(s.id);blocos.push({tipo:'kpis',titulo:s.nome+' · '+(kp?Per.rotulo():'agora')+(kp&&kp.nota?' ('+kp.nota+')':''),itens:kp?kp.kpis:x.kpis});if(kp&&kp.serie&&kp.serie.length)blocos.push({tipo:'svg',titulo:s.nome+' · '+(kp.serieTit||''),svg:barChart(kp.serie,{h:200,fmt:kp.serieFmt||fmtK})})}
  const P=allPend();if(P.length)blocos.push({tipo:'tabela',titulo:'Pendências',cab:['Módulo','Pendência','Urgência'],linhas:P.map(p=>[sysOf(p.mod).nome,p.txt,p.sev>=2?'urgente':'atenção']),destaque:P.map(p=>p.sev>=2?'hl2':'hl1')});
- const sOEE=MOD.data.oee&&MOD.data.oee.serie;if(sOEE&&sOEE.length)blocos.push({tipo:'svg',titulo:'Produção boa por dia (OEE)',svg:barChart(sOEE,{h:200})});
- const sP=MOD.data.perdas&&MOD.data.perdas.serie;if(sP&&sP.length)blocos.push({tipo:'svg',titulo:'Perdas: desvio líquido por mês',svg:barChart(sP,{h:200,fmt:fmtR})});
- return{titulo:'Resumo da Linha Vacutainer',subtitulo:'Portal',periodo:fmtD(todayISO()),arquivo:'Resumo_linha_'+todayISO(),blocos}}
-function viewRel(m){m.innerHTML=`<div class="card"><h3>Relatórios ${ib('Relatórios','Mesmo molde dos relatórios do OEE: prévia na tela e saída em PDF (A4 deitado, com logo e número de página), Excel, texto para WhatsApp/Teams, corpo de e-mail do Outlook ou impressão. O comentário fica salvo com o relatório.')}</h3>
- <ul class="pl"><li><span class="t"><b>Resumo da linha</b><br><span class="small muted">Números de cada módulo, pendências e gráficos do OEE e de Perdas.</span></span><button class="b p sm" id="rResumo">Abrir</button></li>
+ return{titulo:'Resumo da Linha Vacutainer',subtitulo:'Portal',periodo:Per.rotulo(),arquivo:'Resumo_linha_'+Per.range().join('_'),blocos}}
+function viewRel(m){m.innerHTML=`${perBar(true)}<div class="card"><h3>Relatórios ${ib('Relatórios','Mesmo molde dos relatórios do OEE: prévia na tela e saída em PDF (A4 deitado, com logo e número de página), Excel, texto para WhatsApp/Teams, corpo de e-mail do Outlook ou impressão. O comentário fica salvo com o relatório.')}</h3>
+ <ul class="pl"><li><span class="t"><b>Resumo da linha</b> · ${esc(Per.rotulo())}<br><span class="small muted">Números de cada página no período escolhido acima (1 turno, ontem, semana, mês ou personalizado), pendências e gráficos por dia.</span></span><button class="b p sm" id="rResumo">Abrir</button></li>
  <li><span class="t"><b>Pendências da linha</b><br><span class="small muted">Lista para a reunião diária.</span></span><button class="b sm" id="rPend">Abrir</button></li></ul></div>`;
- $('#rResumo').onclick=()=>Report.open(relDoc(),{notaKey:'resumo:'+todayISO()});
+ wirePerBar();$('#rResumo').onclick=()=>Report.open(relDoc(),{notaKey:'resumo:'+Per.range().join('_')+(Per.sel==='turno'?'_'+Per.turno:'')});
  $('#rPend').onclick=()=>{const P=allPend();Report.open({titulo:'Pendências da linha',subtitulo:'Portal',periodo:fmtD(todayISO()),arquivo:'Pendencias_'+todayISO(),blocos:[{tipo:'tabela',cab:['Módulo','Pendência','Urgência'],linhas:P.map(p=>[sysOf(p.mod).nome,p.txt,p.sev>=2?'urgente':'atenção']),destaque:P.map(p=>p.sev>=2?'hl2':'hl1')}]},{notaKey:'pend:'+todayISO()})}}
 
 /* =====================================================================
@@ -1744,10 +1795,10 @@ function wireVersoes(){const s=$('#vScan');if(s)s.onclick=async()=>{s.disabled=t
 function irVersoes(){App.show('config');setTimeout(()=>{const c=$('#cardVers');if(c)c.scrollIntoView({behavior:'smooth',block:'start'})},60)}
 /* ---------- TV geral ---------- */
 function tvSlides(){const s=[];const mods=systems().filter(x=>x.id!=='portal'&&!x.futuro&&!x.oculto&&!emConstr(x));
- const top=mods.map(x=>{const d=MOD.data[x.id];if(!d||d.erro)return'';return d.kpis.slice(0,2).map(k=>`<div class="bk"><div class="l">${esc(x.nome)} · ${esc(k[0])}</div><div class="v sm ${k[3]||''}">${esc(k[1])}</div><div class="s">${esc(k[2]||'')}</div></div>`).join('')}).join('');
- s.push({titulo:'Visão geral',html:`<div class="big">${top}</div><div class="card"><h3>Pendências</h3>${pendList(allPend().slice(0,8))}</div>`});
- for(const x of mods){const d=MOD.data[x.id];if(!d||d.erro)continue;
-  s.push({titulo:x.nome,html:`<div class="big">${d.kpis.map(k=>`<div class="bk"><div class="l">${esc(k[0])}</div><div class="v sm ${k[3]||''}">${esc(k[1])}</div><div class="s">${esc(k[2]||'')}</div></div>`).join('')}</div>${d.serie&&d.serie.length?`<div class="card">${barChart(d.serie,{h:300,fmt:d.serieFmt||fmtK})}</div>`:''}`})}
+ const top=mods.map(x=>{const d0=MOD.data[x.id];if(!d0||d0.erro)return'';const kp=kpisPer(x.id),d=kp?{kpis:kp.kpis}:d0;return d.kpis.slice(0,2).map(k=>`<div class="bk"><div class="l">${esc(x.nome)} · ${esc(k[0])}</div><div class="v sm ${k[3]||''}">${esc(k[1])}</div><div class="s">${esc(k[2]||'')}</div></div>`).join('')}).join('');
+ s.push({titulo:'Visão geral · '+Per.rotulo(),html:`<div class="big">${top}</div><div class="card"><h3>Pendências</h3>${pendList(allPend().slice(0,8))}</div>`});
+ for(const x of mods){const d0=MOD.data[x.id];if(!d0||d0.erro)continue;const kp=kpisPer(x.id),d=kp?{...d0,kpis:kp.kpis,serie:kp.serie,serieFmt:kp.serieFmt||d0.serieFmt}:d0;
+  s.push({titulo:x.nome+' · '+(kp?Per.rotulo():'agora'),html:`<div class="big">${d.kpis.map(k=>`<div class="bk"><div class="l">${esc(k[0])}</div><div class="v sm ${k[3]||''}">${esc(k[1])}</div><div class="s">${esc(k[2]||'')}</div></div>`).join('')}</div>${d.serie&&d.serie.length?`<div class="card">${barChart(d.serie,{h:300,fmt:d.serieFmt||fmtK})}</div>`:''}`})}
  return s}
 
 /* =====================================================================
