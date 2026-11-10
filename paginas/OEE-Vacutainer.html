@@ -1257,7 +1257,7 @@ const U = (() => {
 
 /* ---- 02-model.js ---- */
 /* ================= modelo de dados, valores iniciais e integridade ================= */
-const APP_VERSION = '2.4.36';
+const APP_VERSION = '2.4.37';
 const SCHEMA_VERSION = 1;
 const BASE_FILE = 'oee-vacutainer-base.json';
 const BACKUP_DIR = '00. Backups';
@@ -5185,7 +5185,7 @@ App.views.launch = {
     let h = dayBar('launch');
     if (day.demo) h += `<div class="banner demo"><p><b>Dados de demonstração.</b> Este dia não faz parte da base real.</p></div>`;
     if (day.origin === 'importação') h += `<div class="banner info"><p>Dia importado do RELATÓRIO (resumo por turno, sem hora a hora). Os valores mostram o que a planilha registrou.</p></div>`;
-    h += `<section class="card"><header><h3>Cabeçalho do dia</h3>${stPill(day.status)}<span class="small muted">Última alteração ${U.brDT(day.updatedAt)} · ${esc(day.updatedBy || '')}</span><button class="btn xs" id="dayMetas">Metas dos próximos meses</button></header>
+    h += `<section class="card"><header><h3>Cabeçalho do dia</h3>${stPill(day.status)}<span class="small muted">Última alteração ${U.brDT(day.updatedAt)} · ${esc(day.updatedBy || '')}</span><button class="btn xs" id="dayMetas">Metas dos próximos meses</button><button class="btn xs" id="kcEdit" title="Liga e desliga os indicadores do topo (vale neste computador)">Editar cards</button></header>
       <div class="form">
         <div class="kv"><span class="l">Data</span><span class="v">${U.brDate(day.date)} (${U.WD[U.weekday(day.date)]})</span></div>
         <div class="kv"><span class="l">Linha · máquina</span><span class="v">${esc(lineName(day.lineId))} · ${esc(mac ? mac.name : '—')}</span></div>
@@ -5210,7 +5210,7 @@ App.views.launch = {
     const fNow = (() => { const nm = opNowMin(day.date); const fl = res.flat; return (nm != null && fl.find(f => nm >= f.iv.start && nm < f.iv.end)) || fl.filter(f => f.good != null).pop() || fl[0] || null; })();
     const curCat = fNow ? fNow.cat : null, curOrd = fNow ? orderAt(day.date, curCat, fNow.iv.start) : null;
     const catsDay = [...new Set(res.flat.filter(f => f.cat).map(f => f.cat))];
-    h += `<div class="section kpis">
+    h += KC.filtrar(`<div class="section kpis">
       <div class="kpi kpi-cat">${kpiDeco('catálogo').icon}<span class="l">${opNowMin(day.date) != null && fNow && opNowMin(day.date) < fNow.iv.end ? 'Catálogo em produção' : 'Último catálogo do dia'}${ib('initialCatalog')}</span><span class="v">${catPill(curCat, true)}</span><span class="s">${curOrd ? `Lote <b>${esc(curOrd.lot || '—')}</b> · OP ${esc(curOrd.order || '—')}` : '<span class="muted">lote: sem ordem do PCP no plano</span>'}</span>${catsDay.length > 1 ? `<span class="s">no dia: ${catsDay.map(c => catPill(c)).join(' ')}</span>` : ''}</div>
       ${kpi('Produção boa', fq(r.good), unitLbl(), `meta ${fq(r.metaOp)} · ${semB(r.semAttain, U.pct(r.attain, 0))}`)}
       ${kpi('OEE realizado', U.pct(r.oee), '', `meta ${U.pct(r.oeeTarget)} · ${semB(r.semOee, U.pp(r.oeeGap))}`)}
@@ -5219,18 +5219,19 @@ App.views.launch = {
       ${kpi('Qualidade', r.Q == null ? '—' : U.pct(r.Q, 2), '', `scrap ${U.fmt(r.scrap)} un · ${U.pct(r.scrapPct, 2)}`)}
       ${kpi('Capacidade planejada', fq(r.cap), unitLbl(), `${U.fmt(r.netMin)} min líquidos`)}
       ${kpi('Meta diária oficial', fq(res.officialDaily), unitLbl(), res.comp ? (res.comp.applied ? `ajuste última hora ${fqs(res.comp.adjust)}` : '<span class="ferr">compensação inválida</span>') : '')}
-    </div>`;
+      ${OeeReal.kpis(day, res)}
+    </div>`);
     h += SrvUI.dayCard(day, res);
     h += ForaTurnoUI.card(day, res);   /* 2.4.24 · TUR-02/03/04 */
     h += GelDia.card(day, res);   /* 2.4.29 · GEL-04 */
     // turnos
-    h += `<div class="section grid g2">${res.shifts.map(sr => shiftBlock(day, sr, res)).join('')}</div>`;
+    h += `<div class="section grid g2">${res.shifts.map(sr => shiftBlock(day, sr, res)).join('')}${OeeReal.cardsNP(day, res)}</div>`;
     h += `<section class="card section"><header><h3>Validação</h3>${errs ? semB('crit', errs + ' erro(s)') : semB('ok', 'sem erros')} ${alerts ? semB('warn', alerts + ' alerta(s)') : ''}</header>${msgList(res.msgs)}</section>`;
     h += `<div class="section">${oeePanel(r, 'Cascata de perdas do dia')}</div><div class="section">${qaPanel(r)}</div>`;
     return h;
   },
   mount(root) {
-    { const mb = root.querySelector('#dayMetas'); if (mb) mb.onclick = () => metasModal(); }
+    { const mb = root.querySelector('#dayMetas'); if (mb) mb.onclick = () => metasModal(); const kc = root.querySelector('#kcEdit'); if (kc) kc.onclick = () => KC.editar(); }
     bindDayBar(root); bindNoDay(root);
     const day = curDay(); if (!day || Engine.isOffDay(db(), day)) return;
     SrvUI.bindDay(root, day); ForaTurnoUI.mount(root, day); GelTurno.mount(root, day, Engine.computeDay(db(), day));
@@ -5277,6 +5278,7 @@ function shiftBlock(day, sr, res) {
       <div class="kv"><span class="l">Tempo planejado ${ib('plannedTime')}</span><span class="v">${U.fmt(r.netMin)} min</span><span class="small muted">bruto ${U.fmt(r.grossMin)} − desc. ${U.fmt(r.deductMin)}${r.extraMin ? ` · extra ${U.fmt(r.extraMin)}` : ''}</span></div>
       <div class="kv"><span class="l">Produção boa</span><span class="v">${fq(r.good)} ${unitLbl()}</span><span class="small">${semB(r.semAttain, 'meta ' + fq(r.metaOp))}</span></div>
       <label class="kv"><span class="l">Scrap (peças) ${ib('scrap')}</span>${day.scrapMode === 'day' ? `<span class="v">${U.fmt(r.scrap)}</span><span class="small muted">rateado do total diário</span>` : `<input type="text" inputmode="numeric" class="n" data-psf="${ps.id}|scrap" value="${ps.scrap == null ? '' : ps.scrap}" ${lk || ps.summary ? 'disabled' : ''} data-fk="ps-scrap-${ps.id}" placeholder="não informado">`}</label>
+      ${OeeReal.turno(day, ps)}
       <div class="kv"><span class="l">Produção processada</span><span class="v">${fq(r.processed)} ${unitLbl()}</span></div>
       <div class="kv"><span class="l">Capacidade planejada ${ib('capacity')}</span><span class="v">${fq(r.cap)} ${unitLbl()}</span></div>
       <div class="kv"><span class="l">OEE realizado ${ib('oee')}</span><span class="v">${U.pct(r.oee)}</span><span class="small">${semB(r.semOee, 'meta ' + U.pct(r.oeeTarget))}</span></div>
@@ -5612,6 +5614,7 @@ App.views.overview = {
       ${A.kpiCmp('Atendimento ao plano', r.attain, v => U.pct(v), { pct: true, prev: pr && pr.attain, series: ser('attain'), sub: `${fq(r.good)} de ${fq(r.metaOp)} ${esc(unitLbl())} ${semB(r.semAttain, '')}` })}
       ${A.kpiCmp('Confiabilidade do OEE', 1, () => rel.level, { semState: rel.sem, sub: esc(rel.txt), click: 'rel' })}
     </div>
+    ${OeeReal.overview(days, pd)}
     <details class="more-kpi"${App.prefs.moreKpi ? ' open' : ''}><summary>Mais indicadores</summary><div class="kpis">
       ${A.kpiCmp('Produção boa', r.good, v => fq(v), { unit: unitLbl(), meta: r.metaOp, semState: r.semAttain, prev: pr && pr.good, series: ser('good'), best: bG, worst: wG })}
       ${A.kpiCmp('Capacidade planejada', r.cap, v => fq(v), { unit: unitLbl(), prev: pr && pr.cap })}
@@ -8985,7 +8988,7 @@ const ForaTurno = (() => {
     ft.pecas = U.sum(ft.recebe.filter(i => !ft.semAlvo.includes(i)), i => i.pecas);
     return ft;
   }
-  return { opOff, janelas, doDia, paraDia, aplicar, limite, vale };
+  return { opOff, janelas, doDia, paraDia, aplicar, limite, vale, turnosDoDia, caixas };   /* 2.4.37: turnosDoDia e caixas para o OEE real e os cartões dos turnos (oee_real.js) */
 })();
 
 /* ---------- TUR-02 · habilitar / desabilitar um turno não produtivo no dia ---------- */
@@ -9035,8 +9038,8 @@ const ForaTurnoUI = {
     return `<section class="card section" id="ftCard"><header><h3>Turnos não produtivos e produção fora de turno ${ib('foraTurno')}</h3></header>
       ${np.length ? `<div class="row" style="gap:6px 14px;flex-wrap:wrap">${np.map(x => `<label class="chk"><input type="checkbox" data-turnonp="${esc(x.shift.id)}" ${x.on ? 'checked' : ''} ${lk ? 'disabled' : ''}> Habilitar ${esc(x.shift.name)} neste dia <span class="small muted">${esc(x.v.start || '')}–${esc(U.hhmm(U.toMin(x.v.end)))}</span></label>`).join('')}</div>
         <p class="small muted" style="margin:4px 0 8px">Turno cadastrado como não produtivo no Portal. Habilitado, ele entra neste dia como produtivo: o tempo dele vira planejado e a produção da janela conta nele. Só vale para este dia.</p>` : ''}
-      ${itens.length ? `<div class="kpis" style="margin-bottom:8px">${kpi('OEE reportado', pct(rep.oee), '', 'com a reatribuição (oficial)')}${kpi('OEE real', pct(real ? real.oee : null), '', 'pelo horário real, sem a produção fora de turno')}${kpi('Fora de turno', fq(ft.pecas), unitLbl(), peso != null ? U.pct(peso, 1) + ' da produção boa reportada' : '')}</div>
-        <div class="tw"><table><thead><tr><th>Janela</th><th>Caixas (1ª–última)</th><th class="n">Caixas</th><th class="n">Produção (${esc(unitLbl())})</th><th class="n">OEE real ${ib('foraTurnoOee')}</th><th>Contou em</th></tr></thead><tbody>${itens.map(linha).join('')}</tbody></table></div>
+      ${itens.length ? `<p class="small muted" style="margin:0 0 6px">OEE reportado, OEE real e Fora de turno estão na faixa de indicadores do topo (2.4.37).</p>
+        <div class="tw"><table><thead><tr><th>Janela</th><th>Caixas (1ª–última)</th><th class="n">Caixas</th><th class="n">Produção (${esc(unitLbl())})</th><th class="n">OEE do trecho ${ib('foraTurnoOee')}</th><th>Contou em</th></tr></thead><tbody>${itens.map(linha).join('')}</tbody></table></div>
         ${ft.semAlvo && ft.semAlvo.length ? `<p class="small ferr">${ft.semAlvo.length} trecho(s) sem turno lançado para receber neste dia: crie o lançamento do turno ou habilite o turno.</p>` : ''}
         <p class="small muted">O registro de cada caixa continua na hora real. Regra: trecho emendado com o fim do turno anterior (sem parada maior que ${U.fmt(ft.limite)} min) conta nele; sem continuidade, conta no próximo turno produtivo. Vale desde ${U.brDate(ft.desde)}.</p>` : (np.length ? '' : '')}
     </section>`;
@@ -9246,7 +9249,7 @@ const RelSQ = {
   };
 })();
 
-/* ===== Produção 2.4.36 · UX-02 (briefing 09/11/2026): guia por aba (componente vacGuia do kit) =====
+/* ===== Produção 2.4.36 (2.4.37: cards novos) · UX-02 (briefing 09/11/2026): guia por aba (componente vacGuia do kit) =====
    Etapa 1: Lançamento, Hora a hora, Plano do mês, Ordens (produzidas, conciliação, importar) e Visão Geral.
    Cada item com "sel" ganha o número na tela em "Mostrar na tela". Entra no script principal pelo build.py (antes do boot). */
 function vacGuiaAba() {
@@ -9261,12 +9264,16 @@ window.VAC_GUIA.oee = {
     para: 'Onde o dia de produção é apontado e fechado: cabeçalho do dia, um cartão por turno (catálogo, responsável, scrap, abonos, gel) e a validação. Os números de produção vêm do <b>Hora a hora</b> (digitado ou sugerido pelo MES); aqui você confere, completa e fecha.',
     campos: [
       { sel: '#selDate', nome: 'Data do dia', o: 'Dia operacional. O turno da madrugada pertence ao dia em que começou (o C de 31/10 vai até 06:00 de 01/11).', como: 'Escolha no calendário ou use ‹ › para andar um dia.', ex: 'Para lançar o C que terminou hoje às 06:00, abra a data de ontem.' },
+      { sel: '#kcEdit', nome: 'Editar cards', o: 'Liga e desliga os indicadores da faixa de cima (vale só neste computador; os números não mudam).', ex: 'Esconder "OEE reportado" quando já olha o "OEE realizado", que é o mesmo número oficial.' },
+      { sel: '.section.kpis [data-help="oeeReal"]', nome: 'OEE reportado · OEE real · Fora de turno', o: '<b>Reportado</b>: o oficial, com a produção fora de turno somada ao turno que a recebe. <b>Real</b>: a mesma produção, com o tempo fora do turno em que a linha produziu somado ao planejado (início = menor entre o 1º turno e a 1ª caixa; fim = maior entre o fim do último turno e a última caixa). <b>Fora de turno</b>: quanto foi produzido fora dos turnos.', ex: 'B passou até 23:40: reportado 71,1%, real 67,5%, fora de turno 54 mil.' },
       { sel: '[data-scrapmode]', nome: 'Scrap: Por turno ou Total diário', o: 'Como o scrap do dia é informado. Por turno: cada turno informa o seu. Total diário: um único número para o dia, rateado entre os turnos.', como: 'Use Total diário só quando a contagem de refugo é feita uma vez por dia.', ex: 'A Qualidade conta o refugo de todos os turnos às 07:00 → Total diário.' },
       { sel: '[data-dayf="responsible"]', nome: 'Responsável pelo reporte', o: 'Aparece só no Total diário: quem responde pelo número único do dia. Nos outros casos o responsável é de cada turno.', como: 'Nome de quem fechou o total.', ex: 'J. Lima.' },
       { sel: '[data-dayf="note"]', nome: 'Observação geral', o: 'Fatos do dia que valem para todos os turnos e entram no relatório.', como: 'Texto curto, com o que aconteceu e o efeito.', ex: '"Falta de rolha das 10h às 11h; linha parada para limpeza no fim do dia".' },
       { sel: '[data-hhps=""]', nome: 'Hora a hora (todos os turnos)', o: 'Abre a grade de produção por intervalo de todos os turnos do dia.' },
       { sel: 'section.shift [data-psf$="|initialCatalogId"]', nome: 'Catálogo inicial do turno', o: 'Catálogo que a linha estava rodando no início do turno. As trocas durante o turno são feitas no Hora a hora.', como: 'Deixe "segue o turno anterior" quando não houve troca na passagem.', ex: '360057 no A, segue no B.' },
       { sel: 'section.shift [data-psf$="|responsible"]', nome: 'Responsável do turno', o: 'Líder ou operador que responde pelo lançamento do turno. Pode ser corrigido mesmo com o turno fechado.', como: 'Nome. Vazio mostra em cinza quem fechou o turno.', ex: 'P. Costa.' },
+      { sel: 'section.shift [data-help="mesTurno"]', nome: 'Caixas do MES no turno', o: '1ª e última caixa do servidor no turno e cada troca de lote ou catálogo: quando terminou o lote anterior, quando começou o novo e quanto durou, com o total de troca do turno.', ex: 'L-1 terminou 20:10 → L-2 começou 22:30 · 2h20.' },
+      { sel: 'section.shift.np', nome: 'Cartão do turno não produtivo', o: 'Aparece quando passaram caixas na janela de um turno não produtivo (ex.: C): mostra as caixas, para qual turno a produção foi e o OEE do trecho. Só leitura.' },
       { sel: 'section.shift [data-psf$="|scrap"]', nome: 'Scrap do turno (peças)', o: 'Peças refugadas no turno. Entra na Qualidade (Q) do OEE.', como: 'Número inteiro de peças, não caixas.', ex: '1.250.' },
       { sel: 'section.shift [data-hhps]:not([data-hhps=""])', nome: 'Hora a hora do turno', o: 'Abre o Hora a hora só deste turno. O número (ex.: 6/9) é quantos intervalos já têm produção lançada.' },
       { sel: '[data-abonoadd]', nome: 'Abonos', o: 'Tempo que não conta como perda (treinamento, reunião, ginástica laboral…), com os motivos do Portal.', como: 'Clique em + abono, escolha o motivo e os minutos.', ex: 'Reunião de segurança, 15 min.' },
@@ -9402,6 +9409,137 @@ Object.assign(HELP, {
   moverDia: ['Mover para outro dia', [['O que faz?', 'Copia tudo deste dia (turnos, hora a hora, paradas, scrap, observações) para a data certa e deixa este dia vazio.'], ['E os dados?', 'As metas são recalculadas para a data nova (vigência da data do fato). O original fica no histórico/auditoria; nada é apagado de verdade. Dia fechado precisa ser reaberto antes.'], ['Quando usar?', 'Lançou no dia errado (ex.: o C de domingo lançado na segunda).']]],
   diaSemProd: ['Marcar dia sem produção', [['O que faz?', 'Registra que a linha não rodou no dia por decisão (feriado, inventário, sem programação): o dia sai do tempo programado do OEE.'], ['E se rodou e parou?', 'Não é "sem produção": marque os turnos como não programados ou aponte as paradas (falta de material, quebra), que entram no OEE.']]]
 });
+
+/* ===== Produção 2.4.37 · OEE real pela linha do tempo, cartões dos turnos com as caixas do MES e editor de cartões (10/11/2026) =====
+   OEE real (regra do usuário, espelhada no início e no fim): tempo planejado do dia = o dos turnos produtivos + o tempo FORA dos turnos
+   em que a linha produziu.
+     - início = o menor entre o início do 1º turno produtivo e a 1ª caixa (começou antes, na janela do turno não produtivo → conta da
+       1ª caixa; começou atrasado → conta do início do turno e o atraso é perda);
+     - fim = o maior entre o fim do último turno produtivo e a última caixa (parou antes do fim sem justificativa → conta até o fim do
+       turno; passou do horário → conta até a última caixa);
+     - justificativa = o que já sai do tempo planejado no OEE (parada que desconta do planejado, abono, turno sem produção programado);
+     - trecho fora de turno entre dois turnos produtivos (buraco no meio do dia) soma o próprio tempo (1ª à última caixa).
+     Produção = a mesma do OEE reportado (todas as caixas, inclusive as reatribuídas). Capacidade extra = PPH dos catálogos do trecho ×
+     minutos fora do turno. O OEE reportado (oficial), o fechamento e os exports não mudam; o real é calculado na hora.
+   Cartões dos turnos: 1ª e última caixa do MES na janela do turno, trocas de lote (fim do lote anterior → início do novo, duração; a
+   troca conta no turno em que o novo lote começou) e o total de troca. Turno não produtivo com caixas na janela ganha um cartão só de
+   leitura (caixas, produção, para onde foi, OEE do trecho, trocas).
+   Editor de cartões: "Editar cards" no cabeçalho do dia liga e desliga cada indicador da faixa de cima (preferência deste computador).
+   Entra no script principal pelo build.py (antes do boot). */
+const OeeReal = {
+  /* ---------- cálculo ---------- */
+  dia(d, day, res) {
+    if (!day || !res || !res.agg) return null;
+    const a = res.agg, ft = res.foraTurno, out = { good: a.good || 0, cap: a.cap || 0, capExtra: 0, antes: 0, depois: 0, meio: 0, fora: ft ? ft.pecas || 0 : 0 };
+    out.rep = a.cap > 0 ? a.good / a.cap : null;
+    const its = ft ? (ft.recebe || []).filter(i => !(ft.semAlvo || []).includes(i)) : [];
+    if (its.length) {
+      let T = []; try { T = ForaTurno.turnosDoDia(d, day.date, day.lineId).filter(x => x.prod); } catch (e) { }
+      const s0 = T.length ? Math.min(...T.map(x => x.s)) : null, e0 = T.length ? Math.max(...T.map(x => x.e)) : null;
+      const dd = it => Math.round((Date.UTC(+it.data.slice(0, 4), +it.data.slice(5, 7) - 1, +it.data.slice(8, 10)) - Date.UTC(+day.date.slice(0, 4), +day.date.slice(5, 7) - 1, +day.date.slice(8, 10))) / 864e5) * 1440;
+      const pph = L => { const p = U.sum(L, i => i.pecas), h = U.sum(L, i => i.goodMin) / 60; return h > 0 ? p / h : 0; };
+      const A = [], D = [], M = []; let ini = s0, fim = e0;
+      for (const it of its) {
+        const x0 = it.t0 + dd(it), x1 = it.t1 + dd(it) + 1;
+        if (s0 == null) { M.push(it); out.meio += it.planMin || 0; continue; }
+        if (x0 < s0) { A.push(it); ini = Math.min(ini, x0); } else if (x1 > e0) { D.push(it); fim = Math.max(fim, x1); } else { M.push(it); out.meio += it.planMin || 0; }
+      }
+      if (s0 != null) { out.antes = Math.max(0, s0 - ini); out.depois = Math.max(0, fim - e0); }
+      out.capExtra = pph(A) * out.antes / 60 + pph(D) * out.depois / 60 + pph(M) * out.meio / 60;
+    }
+    out.extraMin = out.antes + out.depois + out.meio;
+    out.real = out.cap + out.capExtra > 0 ? out.good / (out.cap + out.capExtra) : null;
+    return out;
+  },
+  periodo(days) {
+    const d = db(), s = { good: 0, cap: 0, capExtra: 0, fora: 0, extraMin: 0, n: 0 };
+    for (const day of days || []) { if (!day || day.deleted || (day.shifts || []).every(p => p.summary)) continue; let res; try { res = Engine.computeDay(d, day); } catch (e) { continue; }
+      const x = this.dia(d, day, res); if (!x) continue; s.good += x.good; s.cap += x.cap; s.capExtra += x.capExtra; s.fora += x.fora; s.extraMin += x.extraMin; s.n++; }
+    s.rep = s.cap > 0 ? s.good / s.cap : null; s.real = s.cap + s.capExtra > 0 ? s.good / (s.cap + s.capExtra) : null; s.foraPct = s.good > 0 ? s.fora / s.good : null;
+    return s;
+  },
+  /* ---------- indicadores (Lançamento e Visão Geral) ---------- */
+  kpis(day, res) {
+    const x = this.dia(db(), day, res); if (!x) return '';
+    return `${kpi('OEE reportado', U.pct(x.rep), '', x.fora ? 'com a reatribuição (oficial)' : 'oficial · sem produção fora de turno')}`
+      + `${kpi('OEE real', U.pct(x.real), '', x.extraMin ? `+${U.fmt(x.extraMin)} min fora do turno no tempo planejado` : 'igual ao reportado (sem produção fora de turno)')}`
+      + `${kpi('Fora de turno', fq(x.fora), unitLbl(), x.good ? `${U.pct(x.fora / x.good, 1)} da produção boa reportada` : '')}`;
+  },
+  overview(days, pdays) {
+    const s = this.periodo(days), p = pdays && pdays.length ? this.periodo(pdays) : null;
+    return `<div class="kpis section">${A.kpiCmp('OEE reportado', s.rep, v => U.pct(v), { pct: true, prev: p && p.rep, sub: 'oficial: produção fora de turno somada ao turno que a recebe' })}`
+      + `${A.kpiCmp('OEE real', s.real, v => U.pct(v), { pct: true, prev: p && p.real, sub: s.extraMin ? `+${U.fmt(s.extraMin)} min fora do turno no tempo planejado` : 'igual ao reportado no período' })}`
+      + `${A.kpiCmp('Fora de turno', s.fora, v => fq(v), { unit: unitLbl(), prev: p && p.fora, higher: false, sub: s.foraPct != null ? `${U.pct(s.foraPct, 1)} da produção boa reportada` : '' })}</div>`;
+  },
+  /* ---------- caixas do MES por turno ---------- */
+  hhmm(m, base) { const x = ((Math.round(m - base) % 1440) + 1440) % 1440; return String(Math.floor(x / 60)).padStart(2, '0') + ':' + String(x % 60).padStart(2, '0'); },
+  dur(min) { min = Math.round(min); return min >= 60 ? `${Math.floor(min / 60)}h${String(min % 60).padStart(2, '0')}` : `${min} min`; },
+  janelaPs(ps) { const iv = (ps.intervals || []).filter(i => !i.deleted); if (iv.length) return [Math.min(...iv.map(i => i.start)), Math.max(...iv.map(i => i.end))]; let s = U.toMin(ps.snap.start), e = U.toMin(ps.snap.end); if (s == null || e == null) return null; if (e <= s) e += 1440; return [s, e]; },
+  mes(d, day, a, b) {
+    const S = ServerData; if (!(d.server && (d.server.segments || []).length)) return null;
+    const base = S.dayStartMin(day.date), A0 = base + a, B0 = base + b;
+    let bx = []; try { bx = ForaTurno.caixas(d, day.lineId, A0, B0, day.date); } catch (e) { return null; }
+    let ch = []; try { ch = S.changes(d, day.lineId).filter(c => { const f = S.tm(c.first); return f >= A0 && f < B0; }); } catch (e) { }
+    if (!bx.length && !ch.length) return { base, n: 0, trocas: [] };
+    return { base, n: bx.length, m0: bx.length ? bx[0].m : null, m1: bx.length ? bx[bx.length - 1].m : null,
+      trocas: ch.map(c => ({ de: c.fromLot, para: c.toLot, deCat: c.fromCat, paraCat: c.toCat, fim: S.tm(c.last), ini: S.tm(c.first), min: c.min, kind: c.kind })) };
+  },
+  mesHtml(x) {
+    if (!x) return '';
+    if (!x.n && !x.trocas.length) return `<div class="kv" style="grid-column:1/-1"><span class="l">Caixas do MES ${ib('mesTurno')}</span><span class="v muted small">nenhuma caixa nesta janela</span></div>`;
+    const tot = U.sum(x.trocas, t => t.min);
+    return `<div class="kv" style="grid-column:1/-1"><span class="l">Caixas do MES ${ib('mesTurno')}</span><span class="v">${x.n ? `1ª ${this.hhmm(x.m0, x.base)} · última ${this.hhmm(x.m1, x.base)}` : '—'} <span class="small muted">· ${U.fmt(x.n)} caixa(s)</span></span>
+      ${x.trocas.length ? `<div class="small" style="margin-top:4px">${x.trocas.map(t => `<div>Troca de ${t.kind === 'catalogo' ? 'catálogo' : 'lote'}: <b>${esc(t.de || '?')}</b>${t.kind === 'catalogo' ? ` (${esc(t.deCat || '')})` : ''} terminou ${this.hhmm(t.fim, x.base)} → <b>${esc(t.para || '?')}</b>${t.kind === 'catalogo' ? ` (${esc(t.paraCat || '')})` : ''} começou ${this.hhmm(t.ini, x.base)} · <b>${this.dur(t.min)}</b></div>`).join('')}<div class="muted">Total de troca no turno: <b>${this.dur(tot)}</b></div></div>` : ''}</div>`;
+  },
+  turno(day, ps) { if (ps.summary) return ''; const w = this.janelaPs(ps); if (!w) return ''; return this.mesHtml(this.mes(db(), day, w[0], w[1])); },
+  /* cartões dos turnos não produtivos com caixas na janela (só leitura) */
+  cardsNP(day, res) {
+    const ft = res && res.foraTurno; if (!ft) return '';
+    const J = (ft.janela || []).filter(i => i.data === day.date); if (!J.length) return '';
+    const G = new Map(); for (const it of J) { const k = it.a + '|' + it.b; if (!G.has(k)) G.set(k, []); G.get(k).push(it); }
+    return [...G.values()].map(L => {
+      const w = L[0], pecas = U.sum(L, i => i.pecas), cx = U.sum(L, i => i.caixas), x = this.mes(db(), day, w.a, w.b);
+      const pl = U.sum(L, i => i.planMin), gm = U.sum(L, i => i.goodMin), oee = pl > 0 ? gm / pl : null;
+      const nome = String(w.rotulo || 'fora dos turnos').replace(/^janela do /, '').replace(/ \(não produtivo\)$/, '');
+      return `<section class="shift np" style="opacity:.92"><header><span class="sw" style="background:var(--muted)"></span><h3>${esc(nome.charAt(0).toUpperCase() + nome.slice(1))} <span class="muted small">${this.hhmm(w.a, 0)}–${this.hhmm(w.b, 0)}</span></h3><span class="pill none" title="Turno não produtivo: as caixas desta janela foram somadas ao turno indicado (OEE reportado)">não produtivo</span></header>
+        <div class="body"><div class="kv"><span class="l">Produção na janela ${ib('turnoNPCard')}</span><span class="v">${fq(pecas)} ${unitLbl()}</span><span class="small muted">${U.fmt(cx)} caixa(s)</span></div>
+        <div class="kv"><span class="l">Contou em</span><span class="v">${L.map(i => i.alvo ? esc(i.alvo.name) + (i.alvo.date !== day.date ? ' de ' + U.brDate(i.alvo.date) : '') : '<span class="ferr">sem turno para receber</span>').filter((v, i, a) => a.indexOf(v) === i).join(' · ')}</span><span class="small muted">${esc(L[0].regra || '')}</span></div>
+        <div class="kv"><span class="l">OEE do trecho ${ib('foraTurnoOee')}</span><span class="v">${U.pct(oee)}</span><span class="small muted">1ª à última caixa</span></div>
+        ${this.mesHtml(x)}
+        <p class="small muted" style="grid-column:1/-1">Só leitura. Para lançar neste turno como produtivo, use "Habilitar turno" no quadro do dia.</p></div></section>`;
+    }).join('');
+  }
+};
+/* ---------- editor de cartões (faixa de indicadores do Lançamento; preferência deste computador) ---------- */
+const KC = {
+  chave(el) { if (el.classList.contains('kpi-cat')) return 'Catálogo'; const l = el.querySelector('.l'); if (!l) return ''; const c = l.cloneNode(true); c.querySelectorAll('.ib,button').forEach(b => b.remove()); return c.textContent.trim(); },
+  off() { const L = App.prefs.kcOff; return Array.isArray(L) ? L : []; },
+  filtrar(html) {
+    const t = document.createElement('template'); t.innerHTML = html; const box = t.content.querySelector('.kpis'); if (!box) return html;
+    const off = new Set(this.off()), todos = [];
+    [...box.children].forEach(el => { if (!el.classList.contains('kpi')) return; const k = this.chave(el); if (!k) return; todos.push(k); if (off.has(k)) el.remove(); });
+    KC.ultimos = todos; return t.innerHTML;
+  },
+  editar() {
+    const L = KC.ultimos || [], off = new Set(this.off());
+    modal('Editar cards', `<p class="small muted">Escolha os indicadores que aparecem no topo do Lançamento. Vale só neste computador; os números não mudam.</p>
+      <div class="form">${L.map(k => `<label class="f chk"><input type="checkbox" data-kc="${esc(k)}" ${off.has(k) ? '' : 'checked'}> ${esc(k)}</label>`).join('')}</div>`,
+      `<button class="btn ghost" id="kcTodos">Mostrar todos</button><span class="spacer"></span><button class="btn primary" data-close>Pronto</button>`,
+      el => {
+        const salvar = () => { App.prefs.kcOff = [...el.querySelectorAll('[data-kc]')].filter(c => !c.checked).map(c => c.dataset.kc); savePrefs(); render(); };
+        el.querySelectorAll('[data-kc]').forEach(c => c.onchange = salvar);
+        el.querySelector('#kcTodos').onclick = () => { el.querySelectorAll('[data-kc]').forEach(c => { c.checked = true; }); salvar(); };
+      });
+  }
+};
+Object.assign(HELP, {
+  oeeRep: ['OEE reportado', [['O que é?', 'O OEE oficial do dia: a produção feita fora dos turnos (janela de turno não produtivo) é somada ao turno que a recebe, e o tempo planejado é só o dos turnos. É o que vai para o fechamento, o relatório e o Portal.'], ['Exemplo', 'O B emendou 1h na janela do C: as caixas contam no B, mas o tempo continua o do B. Por isso a performance pode passar de 100%.']]],
+  oeeReal: ['OEE real', [['O que é?', 'O OEE pela linha do tempo real: mesma produção, mas o tempo planejado inclui o tempo fora do turno em que a linha produziu.'], ['Como conta o tempo?', 'Início: o menor entre o início do 1º turno e a 1ª caixa (começou atrasado = perda; começou antes = conta da 1ª caixa). Fim: o maior entre o fim do último turno e a última caixa (parou antes sem justificativa = conta até o fim do turno; passou do horário = conta até a última caixa). Justificativa = parada que desconta do planejado, abono ou turno sem produção programado.'], ['Exemplo', 'B termina 22:47 e a última caixa saiu 23:40: o tempo planejado ganha 53 min e o OEE real fica abaixo do reportado.']]],
+  foraTurnoKpi: ['Fora de turno', [['O que é?', 'Produção boa feita fora dos turnos produtivos (janela do turno não produtivo ou madrugada sem turno) e somada a um turno pela regra de continuidade.'], ['Exemplo', '19 mil = 19 caixas de 1.000 feitas depois das 22:47 e contadas no B.']]],
+  mesTurno: ['Caixas do MES no turno', [['O que é?', 'Hora da 1ª e da última caixa do servidor (MES) dentro da janela do turno e as trocas de lote ou de catálogo: quando terminou o lote anterior, quando começou o novo e quanto tempo durou. A troca conta no turno em que o novo lote começou.'], ['Exemplo', 'Lote 6299948 terminou 10:42 → 6299950 começou 11:15 · 33 min.']]],
+  turnoNPCard: ['Turno não produtivo com produção', [['O que é?', 'A janela de um turno marcado como não produtivo no Portal em que passaram caixas. A produção não fica nele: vai para o turno anterior (se emendou) ou para o seguinte, e entra no OEE reportado desse turno.']]]
+});
+Object.assign(KPI_HELP, { 'OEE reportado': 'oeeRep', 'OEE real': 'oeeReal', 'Fora de turno': 'foraTurnoKpi' });
 
 async function boot() {
   if(vacDemo.ativo){await loadPrefs();applyTheme();bindGlobal();Charts.bind();Store.S.user='Pessoa de demonstração';Store.enterExample(vacDemo.ler('oee'));
