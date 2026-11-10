@@ -1257,7 +1257,7 @@ const U = (() => {
 
 /* ---- 02-model.js ---- */
 /* ================= modelo de dados, valores iniciais e integridade ================= */
-const APP_VERSION = '2.4.25';
+const APP_VERSION = '2.4.33';
 const SCHEMA_VERSION = 1;
 const BASE_FILE = 'oee-vacutainer-base.json';
 const BACKUP_DIR = '00. Backups';
@@ -4379,7 +4379,7 @@ const Exports = (() => {
     const porDia = [], porDiaTurno = [], porDiaCatalogo = [], d120 = U.addDays(today, -119), d60 = U.addDays(today, -59);
     for (const d of days.filter(x => x.date >= d120 && x.date <= today).sort((a, b) => a.date.localeCompare(b.date))) {
       const res = Engine.computeDay(db, d), r = res.r;
-      porDia.push({ dia: d.date, oee: r4(r.oee), oeeMeta: r4(r.oeeTarget), boa: n0(r.good), scrap: n0(r.scrap), metaOp: n0(r.metaOp), status: d.status || 'não iniciado', origem: d.origin === 'importação' ? 'importado' : 'lançado' });
+      porDia.push({ dia: d.date, oee: r4(r.oee), oeeMeta: r4(r.oeeTarget), boa: n0(r.good), scrap: n0(r.scrap), metaOp: n0(r.metaOp), cap: n0(r.cap), metaDec: n0(r.metaDec), status: d.status || 'não iniciado', origem: d.origin === 'importação' ? 'importado' : 'lançado' });
       if (d.date >= d60) {
         // abono do turno (só eventos marcados como abono; refeição e outras pausas ficam em descontoMin)
         const abByPs = {};
@@ -4388,7 +4388,7 @@ const Exports = (() => {
         const byCat = {};
         for (const f of res.flat) { if (!f.cat) continue; const c = (db.catalogs || []).find(x => x.id === f.cat); const k = (c ? c.code : f.cat) + '|' + (f.ps.snap.code || f.ps.snap.name); const o = byCat[k] || (byCat[k] = { dia: d.date, turno: f.ps.snap.code || f.ps.snap.name, catalogo: c ? c.code : null, boa: 0, cap: 0, meta: 0, min: 0 }); o.boa += f.good || 0; o.cap += f.capDec || 0; o.meta += f.metaOp || 0; o.min += f.min; }
         for (const o of Object.values(byCat)) porDiaCatalogo.push({ dia: o.dia, turno: o.turno, catalogo: o.catalogo, boa: n0(o.boa), metaOp: n0(o.meta), oee: r4(o.cap ? o.boa / o.cap : null), minutos: n0(o.min) });
-        for (const sr of res.shifts) porDiaTurno.push({ dia: d.date, turno: sr.ps.snap.code || sr.ps.snap.name, oee: r4(sr.r.oee), boa: n0(sr.r.good), scrap: n0(sr.r.scrap), abonoMin: n0(abByPs[sr.ps.id] || 0), descontoMin: n0(sr.r.deductMin), semProducao: sr.ps.off ? (sr.ps.offType === 'np' ? 'não programado' : 'programado') : null, motivo: sr.ps.off ? (sr.ps.offReason || '') : undefined, status: sr.ps.status });
+        for (const sr of res.shifts) porDiaTurno.push({ dia: d.date, turno: sr.ps.snap.code || sr.ps.snap.name, oee: r4(sr.r.oee), oeeMeta: r4(sr.r.oeeTarget), boa: n0(sr.r.good), scrap: n0(sr.r.scrap), cap: n0(sr.r.cap), metaDec: n0(sr.r.metaDec), metaOp: n0(sr.r.metaOp), abonoMin: n0(abByPs[sr.ps.id] || 0), descontoMin: n0(sr.r.deductMin), semProducao: sr.ps.off ? (sr.ps.offType === 'np' ? 'não programado' : 'programado') : null, motivo: sr.ps.off ? (sr.ps.offReason || '') : undefined, status: sr.ps.status, extraMin: n0(sr.agg.extraMin || 0), gel: GelTurno.exp(sr.ps, d.date) });
       }
     }
     const paradas = {}, d90 = U.addDays(today, -89);
@@ -4451,7 +4451,10 @@ const Exports = (() => {
       ['Ritmo do plano', planoMes && planoMes.ritmo != null ? U.pct(planoMes.ritmo, 0) : '—', planoMes ? `saldo ${planoMes.saldo == null ? '—' : U.fmt(Math.round(planoMes.saldo / 1000)) + ' mil'}` : 'sem plano', planoMes && planoMes.ritmo != null ? (planoMes.ritmo >= 1 ? 'good' : 'bad') : ''],
       ['Pendências', String(pendencias.length), `${pendencias.filter(p => p.sev === 1).length} urgente(s)`, pendencias.length ? 'bad' : 'good']];
     const cad = cadastros(db);
-    return { exportsVersion: 1, geradoEm: U.nowIso(), cadastros: cad, modulo: 'oee', appVersion: typeof APP_VERSION !== 'undefined' ? APP_VERSION : null, linha: LINE,
+    const TIPO_IMP = { metas: 'META_OEE', 'histórico': 'RELATORIO', paradas: 'PARADAS_XLSM', planos: 'PLANOS_PCP' };
+    const importacoes = [...(db.imports || []).filter(i => i && !i.period && TIPO_IMP[i.kind]).map(i => ({ tipo: TIPO_IMP[i.kind], em: i.at, por: i.by || null, arquivo: i.source || null })),
+      ...((db.server || {}).imports || []).map(i => ({ tipo: 'MES', em: i.at, por: i.by || null, arquivo: i.file || null, de: i.from || null, ate: i.to || null }))].sort((a, b) => a.em < b.em ? 1 : -1).slice(0, 400);
+    return { exportsVersion: 1, geradoEm: U.nowIso(), cadastros: cad, modulo: 'oee', importacoes, appVersion: typeof APP_VERSION !== 'undefined' ? APP_VERSION : null, linha: LINE,
       sqdcp: SQDCPModelo.exportar(db, today, Engine, U), porMes, porDia, porDiaTurno, porDiaCatalogo, paradasEquipamento, calendario, planoMes, ordens, porOrdem, porOrdemCobertura, lotes, pendencias, kpis };
   }
   // cadastro mestre da linha: o OEE é o dono; as outras páginas leem por código (nunca pelo id interno) e complementam localmente
@@ -4670,6 +4673,7 @@ function renderNow() {
   const keepScroll = window.scrollY;
   renderTop();
   Charts.reset();
+  if (App.route === 'panel') { App.route = 'overview'; try { localStorage.setItem('oee-route', 'overview'); } catch (e) { } if (VisaoGeral.naPadrao()) Panel.st().view = 'mine'; }   /* 2.4.31 · PRD-01: o Painel abre na Visão Geral */
   const v = App.views[App.route];
   const main = $('#main');
   const ts = tabState(App.route);
@@ -4842,7 +4846,7 @@ function filterBar(opts = {}) {
   return `<form class="filters" id="gFilters" onsubmit="return false">
     <label class="f"><span>De</span><input type="date" name="from" value="${f.from}" data-fk="f-from"></label>
     <label class="f"><span>Até</span><input type="date" name="to" value="${f.to}" data-fk="f-to"></label>
-    <div class="f"><span>Período rápido</span><div class="seg">${[['wk', 'Semana atual'], ['pwk', 'Semana anterior'], ['7', '7 dias'], ['30', '30 dias'], ['mtd', 'Mês atual'], ['pm', 'Mês anterior'], ['fy', 'Ano fiscal']].map(([k, l]) => `<button type="button" data-qp="${k}">${l}</button>`).join('')}</div></div>
+    <div class="f"><span>Período rápido</span><div class="seg">${[['d0', 'Hoje'], ['d1', 'Ontem'], ['wk', 'Semana'], ['mtd', 'Mês'], ['pwk', 'Semana anterior'], ['pm', 'Mês anterior'], ['7', '7 dias'], ['30', '30 dias'], ['fy', 'Ano fiscal']].map(([k, l]) => `<button type="button" data-qp="${k}">${l}</button>`).join('')}</div></div>
     <label class="f"><span>Linha</span><select name="lineId" data-fk="f-line">${lines.map(l => `<option value="${l.id}" ${f.lineId === l.id ? 'selected' : ''}>${esc(l.name)}</option>`).join('')}</select></label>
     <label class="f"><span>Máquina</span><select name="machineId"><option value="">Todas</option>${d.machines.filter(m => m.role === 'oee').map(m => `<option value="${m.id}" ${f.machineId === m.id ? 'selected' : ''}>${esc(m.name)}</option>`).join('')}</select></label>
     <label class="f"><span>Catálogo</span><select name="catalogId"><option value="">Todos</option>${d.catalogs.map(c => `<option value="${c.id}" ${f.catalogId === c.id ? 'selected' : ''}>${esc(catLabel(c))}</option>`).join('')}</select></label>
@@ -4856,6 +4860,8 @@ function bindFilters(root, onChange) {
   form.addEventListener('change', e => { const t = e.target; if (!t.name || !(t.name in App.filters)) return; App.filters[t.name] = t.type === 'checkbox' ? t.checked : t.value; if (App.filters.from > App.filters.to) { App.filters.to = App.filters.from; } (onChange || render)(); });
   form.querySelectorAll('[data-qp]').forEach(b => b.addEventListener('click', () => {
     const t = U.today(), k = b.dataset.qp;
+    if (k === 'd0') { App.filters.from = t; App.filters.to = t; }
+    if (k === 'd1') { App.filters.from = U.addDays(t, -1); App.filters.to = U.addDays(t, -1); }
     if (k === '7') { App.filters.from = U.addDays(t, -6); App.filters.to = t; }
     if (k === '30') { App.filters.from = U.addDays(t, -29); App.filters.to = t; }
     if (k === 'mtd') { App.filters.from = U.monthStart(t); App.filters.to = t; }
@@ -4875,6 +4881,10 @@ const aggF = (days, f = App.filters) => Engine.periodResult(db(), days, { shiftI
 /* ---------- links pelo endereço (contrato comum): #dia=AAAA-MM-DD · #ordem=N · #lote=N · #plano=AAAA-MM · #pend=servidor · #turno ---------- */
 function applyHash() {
   const h = decodeURIComponent((location.hash || '').replace(/^#/, '')); if (!h || h === 'turno') return false;
+  if (h.includes('&')) { const q = new URLSearchParams(h), ab = q.get('aba'); if (ab && ROUTES.some(r => r[0] === ab)) { App.route = ab; const sb = q.get('sub'), sc = q.get('sec');
+    if (ab === 'ordens' && sb && typeof Ord !== 'undefined' && ['mb51', 'coois', 'lista', 'conc', 'hist'].includes(sb)) Ord.sub = sb;
+    if (ab === 'config' && sc && typeof CFG_SECS !== 'undefined' && CFG_SECS.some(x => x[0] === sc)) App.cfgSec = sc;
+    try { history.replaceState(null, '', location.pathname + location.search); } catch (e) { } return true; } }
   const [k, v] = h.split('='); if (!v) return false;
   const d = db();
   if (k === 'dia' && /^\d{4}-\d{2}-\d{2}$/.test(v)) { App.sel.date = v; App.sel.lineId = 'line_vac'; App.route = 'launch'; return true; }
@@ -5211,8 +5221,9 @@ App.views.launch = {
     </div>`;
     h += SrvUI.dayCard(day, res);
     h += ForaTurnoUI.card(day, res);   /* 2.4.24 · TUR-02/03/04 */
+    h += GelDia.card(day, res);   /* 2.4.29 · GEL-04 */
     // turnos
-    h += `<div class="section grid g2">${res.shifts.map(sr => shiftBlock(day, sr)).join('')}</div>`;
+    h += `<div class="section grid g2">${res.shifts.map(sr => shiftBlock(day, sr, res)).join('')}</div>`;
     h += `<section class="card section"><header><h3>Validação</h3>${errs ? semB('crit', errs + ' erro(s)') : semB('ok', 'sem erros')} ${alerts ? semB('warn', alerts + ' alerta(s)') : ''}</header>${msgList(res.msgs)}</section>`;
     h += `<div class="section">${oeePanel(r, 'Cascata de perdas do dia')}</div><div class="section">${qaPanel(r)}</div>`;
     return h;
@@ -5221,7 +5232,7 @@ App.views.launch = {
     { const mb = root.querySelector('#dayMetas'); if (mb) mb.onclick = () => metasModal(); }
     bindDayBar(root); bindNoDay(root);
     const day = curDay(); if (!day || Engine.isOffDay(db(), day)) return;
-    SrvUI.bindDay(root, day); ForaTurnoUI.mount(root, day);
+    SrvUI.bindDay(root, day); ForaTurnoUI.mount(root, day); GelTurno.mount(root, day, Engine.computeDay(db(), day));
     root.querySelectorAll('[data-dayf]').forEach(el => el.addEventListener('change', () => run(() => Actions.setDayField(day.id, el.dataset.dayf, el.value.trim()))));
     root.querySelectorAll('[data-scrapmode]').forEach(b => b.addEventListener('click', async () => {
       const m = b.dataset.scrapmode; if (m === day.scrapMode) return;
@@ -5252,7 +5263,7 @@ App.views.launch = {
 };
 const KPI_HELP = { 'Confiabilidade do OEE': 'oeeReliab', 'Perda não explicada': 'unexplained', 'OEE do período': 'oee', 'Atendimento à meta': 'attain', 'Atendimento ao plano inicial': 'plan', 'Realizado × plano do mês': 'plan', 'Plano do mês': 'plan', 'Realizado no mês': 'plan', 'Ritmo do plano': 'plan', 'Necessidade por dia': 'plan', 'Projeção do mês': 'plan', 'Dias': 'planCal', 'Produção boa': 'production', 'OEE realizado': 'oee', 'OEE': 'oee', 'OEE meta (ponderada)': 'oeeTarget', 'Meta ponderada': 'oeeTarget', 'Disponibilidade': 'D', 'Performance': 'P', 'Qualidade': 'Q', 'Capacidade planejada': 'capacity', 'Capacidade': 'capacity', 'Meta diária oficial': 'metaDaily', 'Atendimento ao plano': 'attain', 'Atendimento': 'attain', 'Scrap': 'scrap', 'Cobertura do apontamento': 'coverage', 'Perdas': 'coverage', 'Perda total apurada': 'coverage', 'Cobertura': 'coverage', 'Divergência': 'divergenceMax' };
 function kpi(l, v, unit, s, extra = '') { const kd = kpiDeco(l, s); return `<div class="kpi ${kd.cls}" ${extra}>${kd.icon}<span class="l">${esc(l)}${ib(KPI_HELP[l])}</span><span class="v${belowMeta(s) ? ' below' : ''}">${v}${unit ? `<small>${esc(unit)}</small>` : ''}</span><span class="s">${s || ''}</span></div>`; }
-function shiftBlock(day, sr) {
+function shiftBlock(day, sr, res) {
   const ps = sr.ps, r = sr.r, lk = locked(day, ps);
   const cats = db().catalogs.filter(c => c.active !== false && Engine.catalogValid(c, day.date));
   return `<section class="shift"><header><span class="sw" style="background:${esc(ps.snap.color || 'var(--s1)')}"></span><h3>${esc(ps.snap.name)} <span class="muted small">${ps.snap.start || ''}–${ps.snap.end ? U.hhmm(U.toMin(ps.snap.end)) : ''}</span></h3>${stPill(ps.status)}
@@ -5269,6 +5280,7 @@ function shiftBlock(day, sr) {
       <div class="kv"><span class="l">D · P · Q ${ib('P')}</span><span class="v">${U.pct(r.D, 0)} · ${U.pct(r.P, 0)} · ${r.Q == null ? '—' : U.pct(r.Q, 1)}</span>${sr.scrapAllocated ? '<span class="small muted">Q do dia (scrap diário)</span>' : ''}</div>
       <div class="kv"><span class="l">Minutos de parada</span><span class="v">${U.fmt(r.aMin + r.pMin)} min</span><span class="small muted">${r.events} evento(s)</span></div>
       ${ps.summary ? '' : `<div class="kv" style="grid-column:1/-1"><span class="l">Abonos ${ib('breaks')}</span><div class="row">${abonoChips(day, ps, lk)}</div></div>
+      ${res ? GelTurno.bloco(day, sr, res) : ''}
       <label class="kvrow"><input type="checkbox" data-shoff="${ps.id}" ${ps.off ? 'checked' : ''} ${lk ? 'disabled' : ''}> <span>Turno sem produção</span>${ps.off ? `<span class="small muted">· ${offTxt(ps)}</span> <button type="button" class="btn xs" data-shoffed="${ps.id}">alterar</button>` : ''}</label>`}
       ${Sqdcp.formularioTurno(day, ps)}
       <label class="kv" style="grid-column:1/-1"><span class="l">Observações do turno</span><textarea data-psf="${ps.id}|note" maxlength="1500" data-fk="ps-note-${ps.id}">${esc(ps.note || '')}</textarea></label>
@@ -6891,6 +6903,7 @@ App.views.shift = {
       <section class="card section"><header><h3>Fechamento do turno</h3></header><div class="form">
         ${day.scrapMode === 'day' ? `<div class="kv"><span class="l">Scrap ${ib('scrap')}</span><span class="v">lançado como total do dia</span><span class="small muted">a liderança informa na tela Lançamento</span></div>` : `<label class="f"><span>Scrap do turno (peças) ${ib('scrap')}</span><input type="text" inputmode="numeric" class="n" id="opScrap" value="${ps.scrap == null ? '' : ps.scrap}" placeholder="ex.: 2500" ${lk ? 'disabled' : ''} data-fk="op-scrap" style="font-size:16px"></label>`}
         <div class="f wide"><span>Abonos do turno ${ib('breaks')}</span><div class="row">${abonoChips(day, ps, lk)}</div></div>
+        ${GelTurno.bloco(day, sr, res)}
         <label class="f chk wide"><input type="checkbox" data-shoff="${ps.id}" ${ps.off ? 'checked' : ''} ${lk ? 'disabled' : ''}> Turno sem produção ${ps.off ? `<span class="small muted">· ${offTxt(ps)}</span> <button type="button" class="btn xs" data-shoffed="${ps.id}">alterar</button>` : ''}</label>
         <label class="f wide"><span>Observações do turno</span><textarea id="opNote" maxlength="1500" ${lk ? 'disabled' : ''} data-fk="op-note" placeholder="Ocorrências, trocas, ajustes, o que a próxima equipe precisa saber">${esc(ps.note || '')}</textarea></label></div>
         <div class="row" style="margin-top:12px">${lk ? '' : `<button class="btn primary" id="opDone" style="font-size:16px;padding:10px 20px">${I.check} Concluir turno</button> ${ib('operatorConclude')}`}<span class="small muted">A liderança confere e fecha o turno na tela Lançamento.</span></div></section></div>`;
@@ -6908,6 +6921,7 @@ App.views.shift = {
     const stb = root.querySelector('#opStart'); if (stb) stb.onclick = () => run(() => Actions.createDay(O.date, 'line_vac', 'mac_line'), 'Lançamento iniciado.');
     if (!day || Engine.isOffDay(d, day)) return;
     const ps = day.shifts.find(p => p.shiftId === O.shiftId); if (!ps) return;
+    GelTurno.mount(root, day, Engine.computeDay(d, day));
     const cat = root.querySelector('#opCat'); if (cat) cat.onchange = () => run(() => Actions.setShiftField(day.id, ps.id, 'initialCatalogId', cat.value || null));
     root.querySelectorAll('[data-ivcat]').forEach(s => s.onchange = () => run(() => Actions.setIv(day.id, s.dataset.ivcat, 'catalogId', s.value || null)));
     const sc = root.querySelector('#opScrap'); if (sc) sc.onchange = () => { const v = sc.value.trim() === '' ? null : +sc.value.replace(/\./g, '').replace(',', '.'); if (v != null && (!isFinite(v) || v < 0)) { toast('Scrap inválido: informe peças.', true); return; } run(() => Actions.setShiftField(day.id, ps.id, 'scrap', v)); };
@@ -7732,7 +7746,7 @@ function planModal(month, preset) {
 /* ================= Painel montável: indicadores e blocos escolhidos, visões compartilhadas e modelo "Diretoria mensal" =================
    "Meu painel" fica neste navegador (preferência pessoal). Visões compartilhadas ficam na base (panelViews):
    qualquer pessoa edita e fica registrado quem salvou por último, como no Gestão de Gel. */
-const PN_PRES = [['mtd', 'Mês atual'], ['pm', 'Mês anterior'], ['wk', 'Semana atual'], ['pwk', 'Semana anterior'], ['30', '30 dias'], ['fy', 'Ano fiscal'], ['custom', 'Personalizado']];
+const PN_PRES = [['d0', 'Hoje'], ['d1', 'Ontem'], ['wk', 'Semana'], ['mtd', 'Mês'], ['pm', 'Mês anterior'], ['pwk', 'Semana anterior'], ['30', '30 dias'], ['fy', 'Ano fiscal'], ['custom', 'Personalizado']];
 const PN_TPL = {
   dir: {
     name: 'Diretoria mensal', pre: 'pm',
@@ -7746,7 +7760,7 @@ const PN_MINE = () => ({ kpis: ['oee', 'gap', 'prod', 'attain', 'lossH', 'scrap'
 
 const Panel = {
   edit: null,  // { target, layout } enquanto personaliza
-  st() { const p = App.prefs.panel = App.prefs.panel || {}; if (!p.view) p.view = 'mine'; if (!p.pre) p.pre = 'mtd'; if (p.cmp == null) p.cmp = true; if (!p.grp) p.grp = 'auto'; return p; },
+  st() { const p = App.prefs.panel = App.prefs.panel || {}; if (!p.view) p.view = 'padrao'; if (!p.pre) p.pre = 'mtd'; if (p.cmp == null) p.cmp = true; if (!p.grp) p.grp = 'auto'; return p; },
   views() { return (db().panelViews || []).filter(v => !v.deleted).sort((a, b) => a.name.localeCompare(b.name)); },
   viewOptions() {
     const vs = this.views(), out = [['mine', 'Meu painel']];
@@ -7763,6 +7777,8 @@ const Panel = {
   range(st) {
     const t = U.today(), k = st.pre;
     if (k === 'custom') return [st.from || U.addDays(t, -29), st.to || t];
+    if (k === 'd0') return [t, t];
+    if (k === 'd1') return [U.addDays(t, -1), U.addDays(t, -1)];
     if (k === '30') return [U.addDays(t, -29), t];
     if (k === 'mtd') return [U.monthStart(t), t];
     if (k === 'pm') { const p = U.addDays(U.monthStart(t), -1); return [U.monthStart(p), p]; }
@@ -8147,7 +8163,7 @@ App.views.reports = {
     let h = `<div class="rp-types" role="tablist">${RP_TYPES.map(([k, l, q]) => `<button type="button" class="rp-type" role="tab" aria-selected="${R.type === k}" data-rpt="${k}"><b>${esc(l)}</b><span>${esc(q)}</span></button>`).join('')}</div>`;
     h += `<div class="filters rp-bar"><div class="row">${par}<span class="spacer"></span>${ib('reports')}
       <button class="btn sm primary" id="rpPdf">${I.down} PDF</button><button class="btn sm" id="rpXls">${I.down} Excel</button><button class="btn sm" id="rpTxt">Copiar texto</button><button class="btn sm" id="rpOut">Copiar para Outlook</button><button class="btn sm" id="rpPrint">${I.print} Imprimir</button></div>
-      <div class="row small" style="margin-top:6px"><label class="chk"><input type="checkbox" id="rpImg" ${App.prefs.rpImg === false ? '' : 'checked'}> gráficos como imagem no e-mail</label><span class="muted">O que está na prévia é o que sai no PDF, no Excel e no e-mail.</span></div></div>`;
+      <div class="row small" style="margin-top:6px"><label class="chk"><input type="checkbox" id="rpImg" ${App.prefs.rpImg === false ? '' : 'checked'}> gráficos como imagem no e-mail</label>${R.type === 'day' || R.type === 'shift' ? `<label class="chk" title="Desmarcado: relatório só de performance"><input type="checkbox" id="rpSQ" ${RelSQ.incluir() ? 'checked' : ''}> incluir Segurança e Qualidade</label>` : ''}<span class="muted">O que está na prévia é o que sai no PDF, no Excel e no e-mail.</span></div></div>`;
     h += `<div class="grid g2 section" style="align-items:start"><section class="card"><header><h3>Resumo</h3><button class="btn xs" id="rpReset" ${R.summary == null ? 'disabled' : ''}>Refazer automático</button></header><p class="q">Gerado dos números do relatório. Pode editar à vontade antes de enviar.</p><textarea id="rpSum" rows="8" class="rp-ta">${esc(R.summary == null ? M.auto : R.summary)}</textarea></section>
       <section class="card"><header><h3>Comentário / análise</h3>${note ? `<span class="small muted">salvo por ${esc(note.by)} em ${U.brDT(note.at)}</span>` : ''}</header><p class="q">Fica guardado na base junto deste relatório (tipo e período) e entra no PDF e no e-mail.</p><textarea id="rpNote" rows="6" class="rp-ta" placeholder="ex.: Queda de Performance na semana 42 pela troca de catálogo; ação: ...">${esc(note ? note.text : '')}</textarea><div class="row" style="margin-top:6px"><button class="btn sm" id="rpNoteSave">Salvar comentário</button></div></section></div>`;
     h += `<article class="rp-doc section" id="rpDoc">${rpDocHtml(M, R.summary == null ? M.auto : R.summary, note ? note.text : '')}</article>`;
@@ -8165,6 +8181,7 @@ App.views.reports = {
     const note = q('#rpNote'); note.oninput = () => { const p = q('#rpDoc .rp-note'); if (p) { p.innerHTML = rpParas(note.value); p.hidden = !note.value.trim(); } };
     q('#rpNoteSave').onclick = () => run(() => { Actions.saveReportNote(App.rep.model.key, note.value); re(); }, 'Comentário salvo.');
     q('#rpImg').onchange = e => { App.prefs.rpImg = e.target.checked; savePrefs(); };
+    { const sq = q('#rpSQ'); if (sq) sq.onchange = e => { App.prefs.rpSQ = e.target.checked; savePrefs(); R.summary = null; re(); }; }
     const cur = () => ({ M: App.rep.model, sum: sum.value, note: note.value, doc: q('#rpDoc') });
     q('#rpPdf').onclick = () => run(async () => { const c = cur(); await rpPdf(c); Actions.logExport(`Relatório PDF: ${c.M.title} (${c.M.a} a ${c.M.b})`); }, 'PDF gerado.');
     q('#rpXls').onclick = () => run(async () => { const c = cur(); await rpXlsx(c); Actions.logExport(`Relatório Excel: ${c.M.title} (${c.M.a} a ${c.M.b})`); }, 'Excel gerado.');
@@ -9025,6 +9042,204 @@ const ForaTurnoUI = {
 HELP.foraTurno = ['Turno não produtivo e produção fora de turno', [['O que é turno não produtivo?', 'Turno que existe no cadastro, mas cuja produção não conta para ele mesmo (Portal › Turnos › vigência "Turno não produtivo"). Ele não entra no dia nem no plano.'], ['E a produção feita nessa janela?', 'As caixas do servidor (MES) continuam gravadas na hora real. Para apuração, cada trecho contínuo vai para um turno produtivo: se emenda com o fim do turno anterior (a linha não parou na troca), conta nele; senão, conta no próximo turno produtivo (ex.: madrugada → turno A do dia seguinte).'], ['Habilitar no dia', 'Torna o turno produtivo só naquele dia: o tempo dele vira planejado e a produção conta nele.'], ['OEE reportado × real', 'Reportado = com a reatribuição (o oficial; a Performance pode passar de 100%). Real = pelo horário real, sem essa produção; o OEE real do trecho usa como tempo planejado da 1ª à última caixa.']]];
 HELP.foraTurnoOee = ['OEE real do trecho', [['Como é calculado?', 'Produção do trecho ÷ (PPH do catálogo × tempo da 1ª à última caixa). Mostra o quanto a linha rendeu enquanto produziu fora do turno.']]];
 
+/* ===== Produção 2.4.28 · Fase 4 · 4c do briefing (GEL-03 / PRD-10): Registrar scrap de gel na página de cada turno =====
+   G1: o scrap de gel registrado aqui fica na base da Produção (no turno do dia: ps.gelScrap) e vai para o exports
+   (porDiaTurno[].gel); a Gestão de Gel lê de lá (passo 4d). Mesmos campos e regras do Gel: equipamento (Portal, categoria
+   Equipamento – Gel), descarte (composição e categoria Tubos/Barril/Purga), catálogo, peso bruto da balança, nº de barris
+   (composição barril) e motivos (com kg opcional por motivo); "sem scrap de gel neste turno".
+   A conta é a comum do kit (vacGel.pesagem) com os parâmetros do Portal (vacGel.ctx): o mesmo número que o Gel calcula.
+   Entra no script principal pelo build.py (antes do boot). */
+const GelTurno = {
+  ctx() { try { return vacGel.ctx(); } catch (e) { return null; } },
+  /* códigos (Portal) dos catálogos produzidos no turno */
+  catsDoTurno(res, ps) { const d = db(); const ids = [...new Set((res.flat || []).filter(f => f.ps === ps && f.cat).map(f => f.cat))]; return ids.map(id => ((d.catalogs || []).find(c => c.id === id) || {}).code).filter(Boolean); },
+  /* o turno mostra o gel? há equipamento de gel no Portal e algum catálogo do turno usa gel (ou já tem registro) */
+  mostra(res, ps, C) { if (ps.gelScrap) return true; if (!C || !C.equips().length) return false; return this.catsDoTurno(res, ps).some(c => C.usaGel(c)); },
+  /* conta de uma pesagem (mesma da Gestão de Gel) */
+  calc(en, date, C) { const eq = C && C.eq(en.e); if (!eq) return null; const desc = (eq.descs || []).find(x => x.id === en.d); if (!desc) return null;
+    const kg = typeof en.kg === 'string' ? (vacNumero(en.kg) || 0) : (+en.kg || 0);
+    return vacGel.pesagem({ desc, taraEq: eq.tara, kg, nb: en.nb, cg: C.cat(en.cat) || { fmt: '100' }, date, fmts: C.fmts, params: C.params }); },
+  soma(gs, date, C) { const o = { T: 0, B: 0, P: 0, n: 0 }; if (!gs || gs.none) return o; for (const en of gs.eq || []) { const c = this.calc(en, date, C); if (!c) continue; o[c.scat] += c.gel; o.n++; } return o; },
+  /* para o exports (porDiaTurno[].gel): as pesagens como foram registradas e o gel por categoria */
+  exp(ps, date) { const gs = ps.gelScrap; if (!gs) return undefined; const C = this.ctx(), k = this.soma(gs, date, C), r3 = v => Math.round(v * 1000) / 1000;
+    return { none: !!gs.none, pesagens: (gs.none ? [] : gs.eq || []).map(e => ({ e: e.e, d: e.d, cat: e.cat || null, kg: +e.kg || 0, nb: +e.nb || 0, mots: (e.mots || []).map(m => ({ m: m.m, kg: +m.kg || 0 })) })), kg: { T: r3(k.T), B: r3(k.B), P: r3(k.P) }, em: gs.em || null, por: gs.por || null }; },
+  salvar(dayId, psId, gs) {
+    Store.mutate((d, audit) => {
+      const day = d.productionDays.find(x => x.id === dayId && !x.deleted); const ps = day && day.shifts.find(p => p.id === psId && !p.deleted); if (!ps) throw new Error('Turno não encontrado.');
+      if (day.status === 'fechado' || ps.status === 'fechado') throw new Error('O turno está fechado. Reabra para registrar o scrap de gel.');
+      const by = Store.S.user || '—', antes = ps.gelScrap ? JSON.stringify(ps.gelScrap.none ? 'sem scrap' : (ps.gelScrap.eq || []).length + ' pesagem(ns)') : null;
+      ps.gelScrap = { none: !!gs.none, eq: gs.none ? [] : (gs.eq || []).map(e => ({ e: String(e.e), d: String(e.d), cat: e.cat ? String(e.cat) : null, kg: +e.kg || 0, nb: +e.nb || 0, mots: (e.mots || []).filter(m => m.m).map(m => ({ m: String(m.m), kg: +m.kg || 0 })) })), em: U.nowIso(), por: by };
+      audit({ action: 'edição', entity: 'turno', entityId: ps.id, field: 'scrap de gel', before: antes, after: ps.gelScrap.none ? 'sem scrap' : ps.gelScrap.eq.length + ' pesagem(ns)', reason: 'GEL-03' });
+      day._rev = (day._rev || 0) + 1; day.updatedAt = U.nowIso(); day.updatedBy = by;
+    });
+  },
+  /* bloco no turno (Lançamento) */
+  bloco(day, sr, res) {
+    const ps = sr.ps, C = this.ctx(); if (!this.mostra(res, ps, C)) return '';
+    const gs = ps.gelScrap, k = this.soma(gs, day.date, C), lk = day.status === 'fechado' || ps.status === 'fechado', f3 = v => U.fmt(v, 3);
+    const txt = !gs ? '<span class="muted">sem registro</span>' : gs.none ? 'sem scrap de gel neste turno' : `${k.n} pesagem(ns) · gel Tubos ${f3(k.T)} kg · Barril ${f3(k.B)} kg · Purga ${f3(k.P)} kg`;
+    return `<div class="kv" style="grid-column:1/-1"><span class="l">Scrap de gel ${ib('gelScrap')}</span><span class="v small">${txt}</span><button type="button" class="btn sm" data-gelscrap="${ps.id}" ${lk ? 'disabled' : ''}>Registrar scrap</button></div>`;
+  },
+  /* formulário (mesmos campos do Registrar scrap da Gestão de Gel) */
+  abrir(day, psId, res) {
+    const ps = day.shifts.find(p => p.id === psId), C = this.ctx(); if (!ps || !C) return;
+    const cats = this.catsDoTurno(res, ps).filter(c => C.usaGel(c)); const eqs = C.equips();
+    const W = { none: !!(ps.gelScrap && ps.gelScrap.none), eq: JSON.parse(JSON.stringify((ps.gelScrap && ps.gelScrap.eq) || [])) };
+    const novo = () => { const e = eqs[0]; return { e: e ? e.codigo : '', d: e && e.descs[0] ? e.descs[0].id : '', cat: cats[0] || '', kg: '', nb: 0, mots: [] }; };
+    if (!W.eq.length && !W.none) W.eq.push(novo());
+    const motsDe = en => { const e = C.eq(en.e), dsc = e && (e.descs || []).find(x => x.id === en.d); if (!dsc) return []; return (C.motivos || []).filter(m => m.active !== false && (!(m.comps || []).length || m.comps.includes(dsc.comp)) && (!(dsc.mots || []).length || dsc.mots.includes(m.id))); };
+    const linha = (en, i) => { const e = C.eq(en.e), dsc = e && (e.descs || []).find(x => x.id === en.d), c = this.calc(en, day.date, C);
+      return `<tr data-gi="${i}"><td><select data-gf="e">${eqs.map(x => `<option value="${esc(x.codigo)}" ${x.codigo === en.e ? 'selected' : ''}>${esc(x.codigo)} · ${esc(x.nome || '')}</option>`).join('')}</select></td>
+        <td><select data-gf="d">${(e ? e.descs : []).map(x => `<option value="${esc(x.id)}" ${x.id === en.d ? 'selected' : ''}>${esc((vacGel.COMPS[x.comp] || {}).l || x.comp)} → ${esc(vacGel.SCAT[x.cat] || x.cat)}</option>`).join('')}</select></td>
+        <td><select data-gf="cat"><option value="">—</option>${[...new Set(cats.concat(en.cat ? [en.cat] : []))].map(x => `<option value="${esc(x)}" ${x === en.cat ? 'selected' : ''}>${esc(x)}</option>`).join('')}</select></td>
+        <td><input data-gf="kg" inputmode="decimal" value="${esc(en.kg === 0 ? '' : String(en.kg).replace('.', ','))}" style="width:90px" placeholder="kg"></td>
+        <td>${dsc && dsc.comp === 'barril' ? `<input data-gf="nb" type="number" min="0" step="1" value="${esc(en.nb || '')}" style="width:70px">` : ''}</td>
+        <td class="small">${motsDe(en).map(m => { const x = (en.mots || []).find(y => y.m === m.id); return `<label style="margin-right:8px"><input type="checkbox" data-gm="${esc(m.id)}" ${x ? 'checked' : ''}> ${esc(m.name)}${x ? ` <input data-gmk="${esc(m.id)}" inputmode="decimal" value="${esc(x.kg ? String(x.kg).replace('.', ',') : '')}" placeholder="kg" style="width:60px">` : ''}</label>`; }).join('') || '<span class="muted">—</span>'}</td>
+        <td class="small n">${c ? (c.comp === 'barril' && c.est && vacGel.sobraAt(C.fmts, day.date) == null ? '<span class="ferr">sobra do barril não cadastrada no Portal</span>' : `gel <b>${U.fmt(c.gel, 3)}</b> kg${c.n ? ` · ${U.fmt(c.n)} tubos` : ''}`) : '—'}</td><td><button type="button" class="btn xs" data-gdel="${i}">✕</button></td></tr>`; };
+    const html = () => `<p class="small muted">Mesmos campos e a mesma conta da Gestão de Gel. Fica neste turno da Produção e a Gestão de Gel lê daqui. Equipamentos, descartes, formatos e motivos vêm do Portal.</p>
+      <label class="chk"><input type="checkbox" id="gNone" ${W.none ? 'checked' : ''}> Sem scrap de gel neste turno</label>
+      ${W.none ? '' : `<div class="tw"><table><thead><tr><th>Equipamento</th><th>Descarte → categoria</th><th>Catálogo</th><th>Peso bruto</th><th>Barris</th><th>Motivos</th><th class="n">Gel</th><th></th></tr></thead><tbody>${W.eq.map(linha).join('')}</tbody></table></div>
+      <button type="button" class="btn sm" id="gAdd">+ Pesagem</button>`}
+      ${!eqs.length ? '<p class="ferr small">Nenhum equipamento da categoria Equipamento – Gel com descartes no Portal.</p>' : ''}`;
+    modal(`Registrar scrap de gel · ${ps.snap.name} · ${U.brDate(day.date)}`, `<div id="gBox">${html()}</div>`, `<button class="btn" data-close>Cancelar</button><button class="btn primary" id="gOk">Gravar</button>`, (el, close) => {
+      const box = el.querySelector('#gBox'), draw = () => { box.innerHTML = html(); };
+      box.addEventListener('change', e => { const t = e.target, tr = t.closest('[data-gi]');
+        if (t.id === 'gNone') { W.none = t.checked; if (!W.none && !W.eq.length) W.eq.push(novo()); return draw(); }
+        if (!tr) return; const en = W.eq[+tr.dataset.gi];
+        if (t.dataset.gf === 'e') { en.e = t.value; const x = C.eq(en.e); en.d = x && x.descs[0] ? x.descs[0].id : ''; en.mots = []; }
+        else if (t.dataset.gf === 'd') { en.d = t.value; en.mots = []; }
+        else if (t.dataset.gf) en[t.dataset.gf] = t.dataset.gf === 'nb' ? (+t.value || 0) : t.value;
+        else if (t.dataset.gm) { en.mots = en.mots || []; if (t.checked) en.mots.push({ m: t.dataset.gm, kg: 0 }); else en.mots = en.mots.filter(m => m.m !== t.dataset.gm); }
+        else if (t.dataset.gmk) { const m = (en.mots || []).find(x => x.m === t.dataset.gmk); if (m) m.kg = vacNumero(t.value) || 0; }
+        draw(); });
+      box.addEventListener('click', e => { const a = e.target.closest('#gAdd'), x = e.target.closest('[data-gdel]'); if (a) { W.eq.push(novo()); draw(); } if (x) { W.eq.splice(+x.dataset.gdel, 1); draw(); } });
+      el.querySelector('#gOk').onclick = () => {
+        const eq = W.none ? [] : W.eq.map(en => ({ ...en, kg: typeof en.kg === 'string' ? (en.kg.trim() === '' ? 0 : vacNumero(en.kg)) : +en.kg || 0 }));
+        if (eq.some(en => !isFinite(en.kg) || en.kg < 0)) return toast('Peso inválido: use número (ex.: 2,345).', true);
+        if (eq.some(en => !(en.kg > 0) && !(en.nb > 0))) return toast('Cada pesagem precisa do peso (ou do nº de barris, no barril).', true);
+        run(() => this.salvar(day.id, ps.id, { none: W.none, eq }), 'Scrap de gel gravado.').then(() => { close(); render(); });
+      };
+    }, { wide: true });
+  },
+  mount(root, day, res) { root.querySelectorAll('[data-gelscrap]').forEach(b => b.onclick = () => this.abrir(day, b.dataset.gelscrap, res)); }
+};
+
+/* ---------- 2.4.29 · Fase 4 · 4e (GEL-04): Teórico × Real do gel no dia, só quando algum catálogo produzido usa gel ----------
+   Teórico, gel nos tubos bons, índice (BOM do Portal) e o scrap pesado nos turnos: calculados aqui pela conta comum (vacGel).
+   Barris baixados (o real, G4): da Gestão de Gel, pelo exports (porDiaGel), com a data em que foi lido. */
+const GelDia = {
+  gel: null, lendo: false, lidoEm: 0,
+  ler() { if (this.lendo || typeof vacFicha === 'undefined') return Promise.resolve(); this.lendo = true;
+    return vacFicha.carregar().then(() => { const x = vacFicha.dados('gel'); this.gel = x && x.d ? x : null; this.lidoEm = Date.now(); }).catch(e => console.warn('GelDia', e)).finally(() => { this.lendo = false; }); },
+  calc(day, res) {
+    const C = GelTurno.ctx(); if (!C) return null; const d = db(), tub = {};
+    for (const f of res.flat || []) { if (!f.cat || !(f.good > 0)) continue; const code = ((d.catalogs || []).find(c => c.id === f.cat) || {}).code; if (code && C.usaGel(code)) tub[code] = (tub[code] || 0) + f.good; }
+    if (!Object.keys(tub).length) return null;
+    const cg = code => C.cat(code) || { fmt: '100' }, teo = vacGel.teorico({ tubosPorCat: tub, date: day.date, cg, fmts: C.fmts, params: C.params });
+    let meta = 0, allowed = 0; for (const [code, t] of Object.entries(tub)) { const b = vacGel.bom(cg(code), day.date, C.fmts, C.params); meta += t * b.meta / 1000; allowed += t * b.allowed / 1000; }
+    const sc = { T: 0, B: 0, P: 0 }; let pesou = false; for (const sr of res.shifts) { const k = GelTurno.soma(sr.ps.gelScrap, day.date, C); if (sr.ps.gelScrap) pesou = true; sc.T += k.T; sc.B += k.B; sc.P += k.P; }
+    const scrap = sc.T + sc.B + sc.P, real = teo.gelBons + scrap;
+    const g = this.gel && this.gel.d ? (this.gel.d.porDiaGel || []).find(x => x.dia === day.date) : null;
+    return { tub, tubos: Object.values(tub).reduce((a, b) => a + b, 0), teo, sc, pesou, meta, allowed, real, idx: meta > 0 && pesou ? real / meta * 100 : null, saving: pesou ? allowed - real : null, g, desvio: g && g.baixadoKg && teo.teo > 0 ? g.baixadoKg / teo.teo - 1 : null };
+  },
+  card(day, res) {
+    const x = this.calc(day, res); if (!x) return '';
+    if (!this.gel && !this.lendo && Date.now() - this.lidoEm > 60000) this.ler().then(() => { if (this.gel) render(); });
+    const f3 = v => v == null ? '—' : U.fmt(v, 3), pc = v => v == null ? '—' : (v >= 0 ? '+' : '') + U.fmt(v * 100, 1) + '%';
+    const linha = (l, t, r, aj) => `<tr><td>${l}${aj ? ' ' + ib(aj) : ''}</td><td class="n">${t}</td><td class="n">${r}</td></tr>`;
+    return `<section class="card section" id="gelDia"><header><h3>Gel · teórico × real do dia ${ib('gelTeoReal')}</h3><span class="small muted">${Object.keys(x.tub).map(esc).join(', ')}</span></header>
+      <div class="kpis" style="margin-bottom:8px">${kpi('Gel teórico', f3(x.teo.teo), 'kg', 'tubos bons × g/tubo ÷ (1 − perdas)')}${kpi('Índice de uso', x.idx == null ? '—' : U.fmt(x.idx, 2), '', x.idx == null ? 'falta o scrap pesado dos turnos' : `meta 100 · BOM ${U.fmt(100 + ((x.allowed / x.meta - 1) * 100 || 0), 0)}`)}${kpi('Baixado × teórico', pc(x.desvio), '', x.g ? `${U.fmt(x.g.barris)} barril(is) · ${f3(x.g.baixadoKg)} kg` : 'sem baixa do Gel neste dia')}</div>
+      <div class="tw"><table><thead><tr><th></th><th class="n">Teórico (kg)</th><th class="n">Real (kg)</th></tr></thead><tbody>
+      ${linha('Tubos bons (catálogos com gel)', U.fmt(x.tubos), U.fmt(x.tubos))}
+      ${linha('Gel nos tubos bons', f3(x.teo.gelBons), '—')}
+      ${linha('Scrap de gel · Tubos', f3(x.teo.sTeo.T), x.pesou ? f3(x.sc.T) : '—')}
+      ${linha('Scrap de gel · Barril', f3(x.teo.sTeo.B), x.pesou ? f3(x.sc.B) : '—')}
+      ${linha('Scrap de gel · Purga', f3(x.teo.sTeo.P), x.pesou ? f3(x.sc.P) : '—')}
+      ${linha('<b>Total de gel</b>', '<b>' + f3(x.teo.teo) + '</b>', x.g ? `<b>${f3(x.g.baixadoKg)}</b> <span class="small muted">baixado</span>` : '—', 'gelBaixado')}</tbody></table></div>
+      <p class="small muted">Teórico, índice e scrap pela mesma conta da Gestão de Gel (parâmetros do Portal). As baixas de barril são da Gestão de Gel${this.gel ? ` (lidas de ${esc(this.gel.geradoEm ? U.brDT(this.gel.geradoEm) : '—')})` : ': ainda não lidas (conecte a pasta)'}. O relatório de gel continua na Gestão de Gel.</p></section>`;
+  }
+};
+HELP.gelTeoReal = ['Gel · teórico × real do dia', [['Quando aparece?', 'Só quando algum catálogo produzido no dia usa gel (BOM do Portal com material de gel, ou o bloco Gel do catálogo).'], ['Teórico', 'Gel nos tubos bons (tubos × gramas de gel por tubo do catálogo, com vigência) ÷ (1 − perdas teóricas), dividido em Tubos, Barril e Purga.'], ['Real', 'O scrap pesado nos turnos (Registrar scrap) e os barris baixados na Gestão de Gel.'], ['Índice de uso', '(Gel nos tubos bons + scrap pesado) ÷ meta da BOM × 100. Abaixo de 100 é melhor que a meta; acima da BOM (ex.: 106) passa o permitido.']]];
+HELP.gelBaixado = ['Gel baixado', [['O que é?', 'Os barris baixados como consumidos na Gestão de Gel neste dia (kg líquidos). Vem do exports do Gel: aparece depois que o Gel grava a base.']]];
+HELP.gelScrap = ['Scrap de gel do turno', [['O que é?', 'As pesagens de scrap de gel do turno (Registrar scrap): equipamento, descarte, catálogo e peso da balança. A conta tira a embalagem e divide pelo peso da composição, igual à Gestão de Gel.'], ['Onde fica?', 'No turno da Produção. A Gestão de Gel lê daqui (a partir da data de corte do Portal) para o resumo do dia, o índice e o saving.'], ['De onde vêm os equipamentos e os pesos?', 'Do Portal: equipamentos da categoria Equipamento – Gel (descartes) e Parâmetros › Gestão de Gel (formatos, perdas e motivos).']]];
+
+/* ===== Produção 2.4.31 · Fase 5 · 5b do briefing (PRD-01, D9): Painel e Visão Geral numa aba só, Visão Geral =====
+   - A montagem atual da Visão Geral é a visão "Visão Geral · padrão" (sempre existe, só leitura).
+   - O seletor de visão traz também Meu painel, as visões compartilhadas e os modelos (ex.: Diretoria mensal): escolhida uma delas,
+     a tela é a do Painel (Personalizar, Imprimir, Apresentar), sem outra aba.
+   - O endereço antigo do Painel (#aba=panel, go('panel'), aba inicial "Produção › Painel") continua valendo: abre a Visão Geral
+     na visão do Painel (Meu painel, se estava na padrão).
+   - Período: Hoje e Ontem entram nos períodos rápidos (com Semana, Mês e as datas livres), aqui e no Painel.
+   Entra no script principal pelo build.py (antes do boot). */
+const VisaoGeral = {
+  PADRAO: 'padrao',
+  opcoes() { return [[this.PADRAO, 'Visão Geral · padrão']].concat(Panel.viewOptions()); },
+  naPadrao() { const st = Panel.st(); return !st.view || st.view === this.PADRAO; },
+  barra() {
+    const st = Panel.st();
+    return `<div class="filters pn-bar vg-bar"><div class="row">
+      <label class="f"><span>Visão ${ib('visaoGeral')}</span><select id="vgView">${this.opcoes().map(([k, l]) => `<option value="${esc(k)}" ${(st.view || this.PADRAO) === k ? 'selected' : ''}>${esc(l)}</option>`).join('')}</select></label>
+      <span class="spacer"></span>
+      <button class="btn sm" id="vgPers" title="Abre Meu painel para montar os indicadores e blocos">${I.edit} Personalizar</button><button class="btn sm" id="vgPrint">${I.print} Imprimir</button><button class="btn sm primary" id="vgTv">${I.tv} Apresentar</button></div></div>`;
+  },
+  wire(root) {
+    const s = root.querySelector('#vgView'); if (s) s.onchange = () => { Panel.st().view = s.value; savePrefs(); render(); };
+    const p = root.querySelector('#vgPers'); if (p) p.onclick = () => { Panel.st().view = 'mine'; savePrefs(); render(); setTimeout(() => { const b = document.querySelector('#pnEdit'); if (b) b.click(); }, 120); };
+    const r = root.querySelector('#vgPrint'); if (r) r.onclick = () => window.print();
+    const t = root.querySelector('#vgTv'); if (t) t.onclick = () => TV.open();
+  }
+};
+(() => {
+  const O = App.views.overview, P = App.views.panel;
+  /* Painel: o seletor de visão dele também volta para a padrão */
+  App.views.overview = {
+    render() { if (!VisaoGeral.naPadrao()) { const st = Panel.st(); if (!Panel.viewOptions().some(o => o[0] === st.view)) st.view = VisaoGeral.PADRAO; } return VisaoGeral.naPadrao() ? VisaoGeral.barra() + O.render() : P.render(); },
+    mount(root) {
+      if (VisaoGeral.naPadrao()) { if (O.mount) O.mount(root); VisaoGeral.wire(root); return; }
+      if (P.mount) P.mount(root);
+      const sel = root.querySelector('#pnView');   // acrescenta a padrão no seletor do Painel
+      if (sel && !sel.querySelector(`option[value="${VisaoGeral.PADRAO}"]`)) { const o = document.createElement('option'); o.value = VisaoGeral.PADRAO; o.textContent = 'Visão Geral · padrão'; sel.insertBefore(o, sel.firstChild); }
+    }
+  };
+  App.views.panel = { render() { return App.views.overview.render(); }, mount(root) { return App.views.overview.mount(root); } };
+})();
+HELP.visaoGeral = ['Visão Geral', [['O que é?', 'A tela de resumo da Produção. "Visão Geral · padrão" é a montagem fixa; as outras visões são as do antigo Painel (Meu painel, visões compartilhadas e modelos como Diretoria mensal), com indicadores e blocos montados por você.'], ['Como personalizo?', '"Personalizar" abre Meu painel em edição: escolha os indicadores do topo e os blocos, a ordem e a largura. Para que todos vejam, salve como visão compartilhada.'], ['E o Painel?', 'Virou parte da Visão Geral (briefing PRD-01). Links e páginas iniciais antigas do Painel abrem aqui.']]];
+
+/* ===== Produção 2.4.32 · Fase 5 · 5c do briefing (PRD-07): Segurança e Qualidade no relatório do dia e na passagem de turno =====
+   Bloco "Segurança e Qualidade" (acidentes e QNs de cada turno, do registro SQDCP do turno) no relatório do dia e no de passagem
+   de turno, e uma linha no resumo automático. Opção "incluir Segurança e Qualidade": desmarcada, o relatório é só de performance.
+   Sem resposta é "não informado" (nunca zero). Entra no script principal pelo build.py (antes do boot). */
+const RelSQ = {
+  incluir() { return App.prefs.rpSQ !== false; },
+  turnos(R) {
+    const d = db(), day = (d.productionDays || []).find(z => !z.deleted && z.lineId === 'line_vac' && z.date === R.date); if (!day) return null;
+    const L = day.shifts.filter(p => !p.deleted && (R.type !== 'shift' || p.id === R.psId)).sort((a, b) => (U.toMin(a.snap.start) || 0) - (U.toMin(b.snap.start) || 0));
+    return L.map(ps => { const s = ps.sqdcp || {}; return { ps, ac: SQDCPModelo.lerEvento(s.acidente), qn: SQDCPModelo.lerEvento(s.qn) }; });
+  },
+  txt(ev) { return !ev ? 'não informado' : ev.resposta === 'nao' ? 'não' : `${ev.quantidade}${ev.numeros.length ? ' (' + ev.numeros.join(', ') + ')' : ''}${ev.resumo ? ' · ' + ev.resumo : ''}`; },
+  bloco(R) {
+    const T = this.turnos(R); if (!T || !T.length) return null;
+    const cls = ev => !ev ? 'muted' : ev.resposta === 'sim' ? 'ferr' : '';
+    const html = `<table><thead><tr><th>Turno</th><th>Acidente</th><th>QN (Quality Notification)</th></tr></thead><tbody>${T.map(t => `<tr><td>${esc(t.ps.snap.name)}${t.ps.off ? ' <span class="small muted">(sem produção)</span>' : ''}</td><td class="${cls(t.ac)}">${esc(this.txt(t.ac))}</td><td class="${cls(t.qn)}">${esc(this.txt(t.qn))}</td></tr>`).join('')}</tbody></table>
+      <p class="small muted">Do registro de Segurança e Qualidade de cada turno (SQDCP). Sem resposta é "não informado", não zero.</p>`;
+    return { id: 'sq', l: 'Segurança e Qualidade', w: 'f', html };
+  },
+  resumo(R) {
+    const T = this.turnos(R); if (!T || !T.length) return '';
+    const soma = k => { const r = T.map(t => t[k]); if (r.some(x => !x)) return null; return r.reduce((s, x) => s + x.quantidade, 0); };
+    const a = soma('ac'), q = soma('qn'), ni = (k, l) => { const n = T.filter(t => !t[k]).length; return n ? `${l} não informado em ${n} turno(s)` : ''; };
+    return [a == null ? ni('ac', 'Segurança:') : `Segurança: ${a ? a + ' acidente(s)' : 'sem acidente'}.`, q == null ? ni('qn', 'Qualidade:') : `Qualidade: ${q ? q + ' QN(s)' : 'sem QN'}.`].filter(Boolean).join(' ');
+  }
+};
+(() => {
+  const m0 = rpModel;
+  rpModel = function (R) {
+    const M = m0(R); if (!(R.type === 'day' || R.type === 'shift') || !RelSQ.incluir()) return M;
+    const b = RelSQ.bloco(R); if (!b) return M;
+    return { ...M, blocks: [b].concat(M.blocks || []), auto: [M.auto, RelSQ.resumo(R)].filter(Boolean).join('\n') };
+  };
+})();
+
 async function boot() {
   if(vacDemo.ativo){await loadPrefs();applyTheme();bindGlobal();Charts.bind();Store.S.user='Pessoa de demonstração';Store.enterExample(vacDemo.ler('oee'));
     vacDemo.registrar('oee',()=>({...db(),exports:Exports.build(db())}),d=>{Store.S.db=Model.ensure(d);Engine.bumpConfig()},()=>renderNow());Store.on(e=>{if(e==='data')vacDemo.publicar('oee')});
@@ -9402,21 +9617,26 @@ const Sqdcp = (() => {
     return { cfg, c, ...d, key, de, ate, meta, sentido, estado, titulo, unidade, serie };
   }
   const rotEstado = r => ({ sem: 'Não informado', parcial: 'Dados parciais', info: 'Sem meta cadastrada', ok: 'Na meta', crit: 'Fora da meta' })[r.estado] + (r.estado === 'crit' && r.parcial ? ' · parcial' : '');
+  /* PRD-09 (Fase 5 · 5d): barras por dia, verdes quando atingem a meta e vermelhas quando não (pelo sentido do indicador);
+     âmbar = parcial, azul = sem meta. Linha só para a meta (tracejada) e para a tendência (a partir de 4 valores). */
   function grafico(r) {
     if (r.c.fonte) return '<div class="sq-sem-serie">' + e(r.nota) + '</div>';
     const valores = r.serie.map(p => p.valor).filter(v => v != null);
     if (!valores.length) return '<div class="sq-sem-serie">Sem valores informados para desenhar a evolução.</div>';
-    const min = Math.min(0, ...valores, r.meta || 0), max = Math.max(1, ...valores, r.meta || 0) * 1.1;
-    const x = i => 50 + i * 880 / Math.max(1, r.serie.length - 1), y = v => 205 - (v - min) / (max - min) * 175;
-    let path = '', ultimo = false;
-    r.serie.forEach((p, i) => { if (p.valor == null) { ultimo = false; return; } path += (ultimo ? ' L' : ' M') + x(i) + ',' + y(p.valor); ultimo = true; });
-    return '<svg class="sq-grafico" role="img" aria-label="Evolução dos valores informados no mês" viewBox="0 0 1000 250">' +
-      '<line x1="50" y1="205" x2="940" y2="205" stroke="#b8c0cc"/>' +
-      (r.meta != null ? '<line x1="50" x2="940" y1="' + y(r.meta) + '" y2="' + y(r.meta) + '" stroke="#785300" stroke-dasharray="8 6"/><text x="950" y="' + (y(r.meta) + 5) + '" font-size="14">Meta</text>' : '') +
-      '<path d="' + path + '" fill="none" stroke="#235f91" stroke-width="3"/>' +
-      r.serie.map((p, i) => (p.valor != null ? '<circle cx="' + x(i) + '" cy="' + y(p.valor) + '" r="4" fill="' + (p.parcial ? '#9b6600' : '#235f91') + '"/>' : '') +
-        (i % 4 === 0 || i === r.serie.length - 1 ? '<text x="' + x(i) + '" y="232" text-anchor="middle" font-size="15">' + p.dia.slice(-2) + '</text>' : '')).join('') +
-      '<text x="44" y="27" font-size="15" text-anchor="end">' + e(fmt(max)) + '</text><text x="44" y="209" font-size="15" text-anchor="end">' + e(fmt(min)) + '</text></svg>';
+    const min = Math.min(0, ...valores, r.meta || 0), max = Math.max(1, ...valores, r.meta || 0) * 1.1, n = r.serie.length;
+    const passo = 880 / Math.max(1, n), larg = Math.max(3, passo * 0.7), x = i => 50 + passo * i + passo / 2, y = v => 205 - (v - min) / (max - min) * 175, y0 = y(0);
+    const cor = p => { if (p.parcial) return '#9b6600'; if (r.meta == null) return '#235f91'; const ruim = r.sentido === 'menor' ? p.valor > r.meta : p.valor < r.meta; return ruim ? '#c62828' : '#2e7d32'; };
+    const barras = r.serie.map((p, i) => p.valor == null ? '' : '<rect x="' + (x(i) - larg / 2).toFixed(1) + '" y="' + Math.min(y(p.valor), y0).toFixed(1) + '" width="' + larg.toFixed(1) + '" height="' + Math.max(1, Math.abs(y0 - y(p.valor))).toFixed(1) + '" fill="' + cor(p) + '" rx="2"><title>' + e(p.dia.split('-').reverse().join('/') + ': ' + fmt(p.valor) + (p.parcial ? ' (parcial)' : '')) + '</title></rect>').join('');
+    // tendência: reta dos mínimos quadrados sobre os dias com valor
+    const pts = r.serie.map((p, i) => [i, p.valor]).filter(q => q[1] != null); let tend = '';
+    if (pts.length >= 4) { const k = pts.length, sx = pts.reduce((a, q) => a + q[0], 0), sy = pts.reduce((a, q) => a + q[1], 0), sxx = pts.reduce((a, q) => a + q[0] * q[0], 0), sxy = pts.reduce((a, q) => a + q[0] * q[1], 0), den = k * sxx - sx * sx;
+      if (den) { const b = (k * sxy - sx * sy) / den, a = (sy - b * sx) / k, i0 = pts[0][0], i1 = pts[k - 1][0]; tend = '<line x1="' + x(i0) + '" y1="' + y(a + b * i0) + '" x2="' + x(i1) + '" y2="' + y(a + b * i1) + '" stroke="#5f6b7a" stroke-width="2" stroke-dasharray="3 5"/><text x="' + (x(i0) + 4) + '" y="' + (y(a + b * i0) - 8) + '" font-size="13" fill="#5f6b7a">Tendência</text>'; } }
+    return '<svg class="sq-grafico" role="img" aria-label="Valores por dia no mês: verde atingiu a meta, vermelho não atingiu" viewBox="0 0 1000 250">' +
+      '<line x1="50" y1="' + y0 + '" x2="940" y2="' + y0 + '" stroke="#b8c0cc"/>' + barras + tend +
+      (r.meta != null ? '<line x1="50" x2="940" y1="' + y(r.meta) + '" y2="' + y(r.meta) + '" stroke="#785300" stroke-width="2" stroke-dasharray="8 6"/><text x="950" y="' + (y(r.meta) + 5) + '" font-size="14">Meta</text>' : '') +
+      r.serie.map((p, i) => (i % 4 === 0 || i === n - 1 ? '<text x="' + x(i) + '" y="232" text-anchor="middle" font-size="15">' + p.dia.slice(-2) + '</text>' : '')).join('') +
+      '<text x="44" y="27" font-size="15" text-anchor="end">' + e(fmt(max)) + '</text><text x="44" y="209" font-size="15" text-anchor="end">' + e(fmt(min)) + '</text></svg>' +
+      '<p class="sq-nota">Barras: verde atingiu a meta · vermelho não atingiu · âmbar parcial · azul sem meta. Linhas: meta (tracejada) e tendência.</p>';
   }
   function calendario(r) {
     const first = UI.dia.slice(0, 7) + '-01', n = +U.monthEnd(first).slice(-2), offset = (new Date(first + 'T12:00:00').getDay() + 6) % 7;
@@ -9880,7 +10100,7 @@ const ordMotivo = e => (e && (e.message || e.name)) || String(e);
 /* junta auditoria sem repetir a mesma entrada (reenvio depois de uma gravação que chegou à pasta mas não foi confirmada) */
 const ordJuntaAud = (base, novas) => { const A = (base || []).slice(), vis = new Set(A.map(a => a.em + '|' + a.acao + '|' + a.por)); for (const a of novas || []) if (!vis.has(a.em + '|' + a.acao + '|' + a.por)) { A.push(a); vis.add(a.em + '|' + a.acao + '|' + a.por); } return A; };
 const Ord = {
-  B: null, carregado: false, sub: 'mb51', comp: null, planta: ORD_PLANTA, prevMB: null, prevCO: null, f: { q: '', st: '', un: '', linha: 'todas' }, fc: { q: '', sit: '' }, per: null, audPend: [], err: '',
+  B: null, carregado: false, sub: 'lista',   /* 2.4.26 · PRD-02: Ordens produzidas no topo */ comp: null, planta: ORD_PLANTA, prevMB: null, prevCO: null, f: { q: '', st: '', un: '', linha: 'todas' }, fc: { q: '', sit: '' }, per: null, audPend: [], err: '',
   vazio() { return { schema: 'vac-ordens', schemaVersion: 1, rev: 0, revBy: '', revAt: null, revId: '', appVersion: '', competencias: {}, auditoria: [], exports: {} }; },
   modo() { return Store.S.mode; },
   /* 2.4.11 · E1 (revisão 08/11/2026): só "arquivo não existe" conta como ausente. Erro de leitura (rede, permissão, JSON) mostra a
@@ -9971,7 +10191,11 @@ const Ord = {
     }
     const ult = Object.keys(this.B.competencias).sort().pop(), C = ult && this.B.competencias[ult];
     const kpis = C && C.resultado ? [['Ordens produzidas', String(C.resultado.kpi.ordensProduzidas), compTxt(ult), ''], ['Cobertura COOIS', C.coois ? fmtPct(C.coois.cruz.cobertura) : '–', '', C.coois && C.coois.cruz.cobertura < 1 ? 'bad' : '']] : [];
-    return { exportsVersion: 1, geradoEm: new Date().toISOString(), modulo: 'ordens', porOrdem, pendencias: pend, kpis };
+    /* 2.4.26 · IMP-04: MB51 e COOIS por competência, para o status por dia do Portal › Importação */
+    const importacoes = [];
+    for (const [comp, c] of Object.entries(this.B.competencias)) for (const [tipo, k] of [['MB51', 'mb51'], ['COOIS', 'coois']]) { const x = c[k]; if (x && x.em) importacoes.push({ tipo, comp, em: x.em, por: x.por || null, arquivo: x.arquivo || null }); }
+    importacoes.sort((a, b) => a.em < b.em ? 1 : -1);
+    return { exportsVersion: 1, geradoEm: new Date().toISOString(), modulo: 'ordens', porOrdem, pendencias: pend, kpis, importacoes };
   },
   cur() { return this.B && this.B.competencias[this.comp] || null; },
   /* ordens já lançadas no Waste (KKBC_ORD) e excluídas lá: lidas do exports de perdas-base.json */
@@ -10074,7 +10298,10 @@ App.views.ordens = {
   render() {
     if (!Ord.carregado) { Ord.carregar().then(() => render()); return '<section class="card section"><p class="muted">Lendo ordens…</p></section>'; }
     const c = Ord.cur(), R = c && c.resultado, X = c && c.coois ? c.coois.cruz : null;
-    const sub = [['mb51', 'Importar MB51'], ['coois', 'Complementar COOIS'], ['lista', 'Ordens produzidas'], ['conc', 'Conciliação'], ['hist', 'Histórico de competências']];
+    /* 2.4.26 · PRD-02/03: Ordens produzidas · Conciliação · Histórico · Importar (MB51 e COOIS num item só; a aba leva ao Portal › Importação, IMP-06) */
+    /* 2.4.27 · PRD-02: "Ordens" = as ordens do PCP no Plano do mês (resposta do usuário em 10/11/2026); o botão leva à aba Plano do mês */
+    const sub = [['lista', 'Ordens produzidas'], ['plano', 'Ordens (plano do mês)'], ['conc', 'Conciliação'], ['hist', 'Histórico de competências'], ['importar', 'Importar']];
+    const naImp = Ord.sub === 'mb51' || Ord.sub === 'coois';
     const porPer = Ord.sub === 'lista' || Ord.sub === 'conc';
     const top = `<section class="card section ord-top"><div class="ord-bar">
       ${porPer ? '' : `<label class="f"><span>Competência ${ordAjuda('Mês civil da Data de lançamento do MB51. Define o período aceito e organiza o histórico. Reimportar a mesma competência substitui (nunca soma).')}</span><input type="month" id="oComp" value="${esc(Ord.comp)}"></label>
@@ -10082,7 +10309,8 @@ App.views.ordens = {
       <div class="ord-st">${porPer ? '' : c && c.mb51 ? ordPill('MB51 · ' + c.mb51.arquivo + ' · ' + new Date(c.mb51.em).toLocaleDateString('pt-BR') + ' · ' + c.mb51.por, 'ok') : ordPill('MB51 não importado', 'warn')} ${porPer ? '' : c && c.coois ? ordPill('COOIS · cobertura ' + fmtPct(X.cobertura), X.cobertura < 1 ? 'warn' : 'ok') : R ? ordPill('COOIS pendente', 'pend') : ''} ${R && !porPer ? ordPill(R.kpi.ordensProduzidas + ' ordens produzidas', 'info') : ''} ${R && !porPer && Ord.waste && !Ord.waste.erro ? (n => n ? `<button class="pill crit" data-ofilt="sem KKBC" title="Ordens produzidas (MB51) sem KKBC_ORD lançada no Waste">${n} sem KKBC no Waste</button>` : ordPill('KKBC: todas lançadas', 'ok'))(R.ordens.filter(o => o.produzida && Ord.kkbc(o.ordem) === 'pendente').length) : ''} ${Ord.modo() === 'pasta' ? ordPill(ORD_FILE + ' · rev ' + (Ord.B.rev || 0), 'none') : ordPill(Ord.modo() === 'exemplo' ? 'modo exemplo: só na memória' : 'sem pasta: só neste navegador', 'warn')}</div></div>
       ${Ord.err ? `<div class="note e">${esc(Ord.err)}</div>` : ''}
       ${Ord.pend ? `<div class="note w" id="oPend"><b>Alteração pendente</b> desde ${new Date(Ord.pend.em).toLocaleString('pt-BR')}: ${esc(Ord.pend.comps.map(compTxt).join(', '))} ainda não foi confirmada na pasta. <button type="button" class="btn sm primary" id="oPendGo">Gravar de novo</button></div>` : ''}
-      <div class="seg ord-sub" role="tablist">${sub.map(([k, l]) => `<button type="button" data-osub="${k}" aria-pressed="${Ord.sub === k}">${l}</button>`).join('')}</div>${porPer ? ordPerBar() : ''}</section>`;
+      <div class="seg ord-sub" role="tablist">${sub.map(([k, l]) => k === 'plano' ? `<button type="button" data-oplano="1" title="Ordens do PCP do mês (Plano do mês): quantidade, janela prevista e pontuação">${l}</button>` : k === 'importar' ? `<button type="button" data-oimp-portal="1" aria-pressed="${naImp}" title="Abre o Portal › Importação › Produção: ordem recomendada e status de cada dia">${l} ↗</button>` : `<button type="button" data-osub="${k}" aria-pressed="${Ord.sub === k}">${l}</button>`).join('')}</div>${porPer ? ordPerBar() : ''}</section>
+      ${naImp ? `<section class="card section ord-imp"><div class="row" style="gap:8px;align-items:center;flex-wrap:wrap"><b>Importar</b><div class="seg" role="tablist"><button type="button" data-osub="mb51" aria-pressed="${Ord.sub === 'mb51'}">1 · MB51 (movimentos, oficial)</button><button type="button" data-osub="coois" aria-pressed="${Ord.sub === 'coois'}">2 · COOIS (complementa o MB51)</button></div><span class="sp" style="flex:1"></span><a class="btn sm" href="${esc(ordPortalImpHref())}" data-oimp-portal="1">Ordem e status: Portal › Importação ↗</a></div></section>` : ''}`;
     const body = { mb51: () => this.vMB51(c), coois: () => this.vCOOIS(c), lista: () => this.vLista(c), conc: () => this.vConc(c), hist: () => this.vHist() }[Ord.sub]();
     return top + body;
   },
@@ -10196,6 +10424,8 @@ App.views.ordens = {
   mount(root) {
     const on = (s, ev, f) => { const x = root.querySelector(s); if (x) x[ev] = f; };
     root.querySelectorAll('[data-osub]').forEach(b => b.onclick = e => { e.preventDefault(); Ord.sub = b.dataset.osub; render(); });
+    root.querySelectorAll('[data-oimp-portal]').forEach(b => b.onclick = e => { e.preventDefault(); ordIrPortalImp(); });
+    root.querySelectorAll('[data-oplano]').forEach(b => b.onclick = e => { e.preventDefault(); go('plan'); });
     on('#oComp', 'onchange', e => { if (!/^\d{4}-\d{2}$/.test(e.target.value)) return; Ord.comp = e.target.value; Ord.per = { de: Ord.comp, ate: Ord.comp, fy: '', q: '' }; Ord.prevMB = Ord.prevCO = null; const c = Ord.cur(); if (c && c.planta) Ord.planta = c.planta; render(); });
     on('#oPlanta', 'onchange', e => { Ord.planta = e.target.value.trim(); if (Ord.prevMB) { Ord.prevMB.R = OrdensSAP.processarMB51(Ord.prevMB.lido, { comp: Ord.comp, planta: Ord.planta }); ordMultiPrep(); } render(); });
     root.querySelectorAll('[data-oplanta]').forEach(b => b.onclick = () => { Ord.planta = b.dataset.oplanta; Ord.prevMB.R = OrdensSAP.processarMB51(Ord.prevMB.lido, { comp: Ord.comp, planta: Ord.planta }); ordMultiPrep(); render(); });
@@ -10355,10 +10585,9 @@ window.vacNavAtual = () => ({ attr: 'data-route', val: App.route, sub: App.route
    Plano → Ordens → Apontamento → Análise → Gestão → Configurações. Menus abrem ao passar o mouse (ou tocar).
    ===================================================================== */
 const NAV_GRUPOS = [
-  { g: 'Visão geral', itens: [['overview', 'Visão geral']] },   // 2.4.8 · Visão geral em 1º e Painel em 2º (a aba que abre vem do perfil)
-  { g: 'Painel', itens: [['panel', 'Painel']] },
+  { g: 'Visão Geral', itens: [['overview', 'Visão Geral']] },   // 2.4.31 · PRD-01: Painel e Visão Geral numa aba só (visões do Painel dentro dela)
   { g: 'Plano', itens: [['plan', 'Plano do mês']] },
-  { g: 'Ordens', itens: [['ordens', 'Importar MB51', 'mb51'], ['ordens', 'Complementar COOIS', 'coois'], ['ordens', 'Ordens produzidas', 'lista'], ['ordens', 'Conciliação', 'conc'], ['ordens', 'Histórico de competências', 'hist']] },
+  { g: 'Ordens', itens: [['ordens', 'Ordens produzidas', 'lista'], ['plan', 'Ordens (plano do mês)'], ['ordens', 'Conciliação', 'conc'], ['ordens', 'Histórico de competências', 'hist'], ['ordens', 'Importar ↗', 'portal']] },   // 2.4.26 · PRD-02/03, IMP-06
   { g: 'Apontamento', itens: [['launch', 'Lançamento'], ['hourly', 'Hora a hora'], ['lots', 'Lotes (MES)'], ['pend', 'Pendências']] },
   { g: 'Análise', itens: [['stops', 'Paradas'], ['history', 'Histórico'], ['weekly', 'Semanal'], ['monthly', 'Mensal']] },
   { g: 'Gestão', itens: [['reports', 'Relatórios'], ['sqdcp', 'SQDCP']] },
@@ -10402,6 +10631,10 @@ function ordBadges() {
     return card + h; };
 })();
 document.addEventListener('click', e => { const a = e.target.closest('[data-oir]'); if (!a) return; e.preventDefault(); const [sb, comp] = a.dataset.oir.split(':'); Ord.comp = comp; Ord.per = { de: comp, ate: comp, fy: '', q: '' }; Ord.prevMB = Ord.prevCO = null; Ord.sub = sb; if (sb === 'conc') Ord.fc.sit = 'sem KKBC'; go('ordens'); });
+/* 2.4.26 · IMP-06: Importar leva ao Portal › Importação › Produção (lá ficam a ordem recomendada e o status do dia; o botão de cada relatório volta para cá) */
+function ordPortalImpHref() { const h = 'importacao/producao'; return typeof vacPortalHref === 'function' ? vacPortalHref(h) : 'Portal.html#' + h; }
+function ordIrPortalImp() { const h = ordPortalImpHref(); if (typeof vacDemo !== 'undefined' && vacDemo.ativo) vacDemo.ir(h); else location.href = h; }
+document.addEventListener('click', e => { const p = e.target.closest('[data-osub2="portal"]'); if (p) { e.preventDefault(); e.stopPropagation(); ordIrPortalImp(); return; } }, true);
 document.addEventListener('click', e => { const x = e.target.closest('[data-osub2]'); if (x) { Ord.sub = x.dataset.osub2; Ord.prevMB = Ord.prevMB && x.dataset.osub2 === 'mb51' ? Ord.prevMB : Ord.prevMB; } const g = e.target.closest('.ngrp'); document.querySelectorAll('.ngrp.abre').forEach(n => { if (n !== g) n.classList.remove('abre'); }); }, true);
 /* =====================================================================
    2.2 · Plano do mês × SAP: cada ordem do plano mostra o que o MB51/COOIS (oficial) diz
@@ -10443,6 +10676,9 @@ function oeeAcaoPlanner(dim, pick, evs) {
   return { titulo: 'Pareto da Produção: ' + pick, origem: { tipo: 'oee', ref: 'oee-pareto|' + dim + '|' + pick, resumo: `Pareto (${dim}) · ${pick} · ${Math.round(min)} min em ${evs.length} evento(s)${per ? ' · ' + per : ''}`,
     link: typeof vacAquiHref === 'function' ? vacAquiHref('aba=stops') : '', foto: { período: per, minutos: Math.round(min), eventos: evs.length, em: new Date().toISOString() } }, vinculos: [] };
 }
+/* 2.4.26 · IMP-06: Configurações › Importação (RELATÓRIO, PARADAS, planos do PCP, CSV do MES) com o atalho para a visão única do Portal */
+(() => { const C = typeof Cfg !== 'undefined' && Cfg.importacao; if (!C || C._imp) return; C._imp = 1; const r0 = C.render;
+  C.render = function () { return `<div class="banner info" style="margin-bottom:10px"><p><b>Todas as importações da plataforma</b> (ordem recomendada e status de cada dia) ficam no Portal › Importação. Daqui, cada relatório continua sendo importado nesta página. <a class="btn sm" href="${esc(ordPortalImpHref())}" data-keep="1">Abrir Portal › Importação ↗</a></p></div>` + r0.apply(this, arguments); }; })();
 
 /* ===== Produção 2.4.1 (2.4.3: desativações do Portal propagadas; 2.4.4: identidade das vigências de catálogo; 2.4.23: fonte única ARQ-01..04 e PRD-04) · cadastro geral do Portal (vacutainer-cadastros.json) =====
    O Portal é o dono de: linhas, famílias, máquinas (equipamentos), catálogos (tubos), turnos (pausas, intervalos do Hora a Hora),
@@ -10773,6 +11009,9 @@ function vacMetaAreaMes(codigo, per) {
 }
 /* link para uma tela do Portal (Administração) */
 function vacPortalHref(h) { const port = (typeof systems === 'function' ? systems() : []).find(s => s.id === 'portal') || { id: 'portal', html: 'Portal.html' }; return typeof sysHref === 'function' ? sysHref(port, h) : 'Portal.html#' + h; }
+/* Fase 3 do briefing (IMP-06): Portal › Importação é o lugar único das importações; as abas "Importar" das páginas levam para a subseção da página */
+function vacImportacaoHref(sec) { return vacPortalHref('importacao' + (sec ? '/' + sec : '')); }
+function vacIrImportacao(sec) { const h = vacImportacaoHref(sec); if (typeof vacDemo !== 'undefined' && vacDemo.ativo && vacDemo.ir) vacDemo.ir(h); else location.href = h; }
 /* kit v2.1 · vac-visual v1 (06/11/2026): abas numa linha só. Quando não cabem, a faixa rola na horizontal, com sombra e seta ‹ › na borda
    que tem mais abas, e a aba ativa fica à vista. A Produção (abas agrupadas com menus, nav.vtabs.nav) não rola. CSS em fontes/kit/kit_visual.css. */
 (function () {
@@ -10919,10 +11158,10 @@ function vacExportsOk(ex, conhecida = 1) {
    ou o link <página>#ficha=ordem/<n> (também lote/<x> e lp/<x>). O ← Voltar do navegador fecha a ficha e mantém a tela. */
 const vacFicha = (() => {
   const FONTES = [
-    { id: 'oee', nome: 'Produção', base: 'oee-vacutainer-base.json', pega: ex => ({ porOrdem: ex.porOrdem || [], cob: ex.porOrdemCobertura || null, lotes: ex.lotes || [] }) },
+    { id: 'oee', nome: 'Produção', base: 'oee-vacutainer-base.json', pega: ex => ({ porOrdem: ex.porOrdem || [], cob: ex.porOrdemCobertura || null, lotes: ex.lotes || [], porDiaTurno: ex.porDiaTurno || [], porDiaCatalogo: ex.porDiaCatalogo || [] }) },   /* Fase 4 · 4d: o Gel lê os turnos da Produção */
     { id: 'ordens', nome: 'SAP (Produção › Ordens)', sis: 'oee', base: 'ordens-base.json', pega: ex => ({ porOrdem: ex.porOrdem || [] }) },
     { id: 'perdas', nome: 'Waste', base: 'perdas-base.json', pega: ex => ({ porOrdem: ex.porOrdem || [] }) },
-    { id: 'gel', nome: 'Gestão de Gel', base: 'fifo-base.json', pega: ex => ({ ordens: ex.ordens || [], cob: ex.ordensCobertura || null }) },
+    { id: 'gel', nome: 'Gestão de Gel', base: 'fifo-base.json', pega: ex => ({ ordens: ex.ordens || [], cob: ex.ordensCobertura || null, porDiaGel: ex.porDiaGel || [] }) },   /* Fase 4 · 4e */
     { id: 'paradas', nome: 'Paradas', base: 'paradas-base.json', pega: ex => ({ porOrdem: ex.porOrdem || [], eventos: (ex.eventos || []).filter(e => e && e.ordem) }) },
     { id: 'inic', nome: 'Iniciativas', base: 'iniciativas-base.json', pega: ex => ({ acoes: ex.acoes || [] }) }];
   const S = { dados: {}, idx: null, carregando: null, aberto: null, empilhado: false };
@@ -11131,7 +11370,9 @@ const vacFicha = (() => {
   };
   const ini = () => { ligaBusca(); rota(); };
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', () => setTimeout(ini, 0)); else setTimeout(ini, 0);
-  return { abrir, fechar, carregar, buscar, indice, _S: S, FONTES };
+  /* Fase 4 · 4d: o que foi lido de uma página (estado, geradoEm, d), para quem precisa do exports de outra (ex.: o Gel lê a Produção) */
+  const dados = id => S.dados[id] || null;
+  return { abrir, fechar, carregar, buscar, indice, dados, _S: S, FONTES };
 })();
 /* botão "Ficha" para as páginas porem ao lado de um número de ordem (abre a ficha comum) */
 function vacFichaBotao(ordem, tipo = 'ordem') { const v = String(ordem ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); return `<button type="button" class="vficha-bt" data-vac-${tipo}="${v}" title="Ficha: tudo sobre ${tipo === 'lp' ? 'o barril' : 'a ' + tipo} ${v} em todas as páginas">Ficha</button>`; }
@@ -11147,6 +11388,60 @@ function vacNovaAcaoHref(d) {
 function vacNovaAcaoBotao(d, rot = '+ Ação no Planner', cls = 'b sm') { const e = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); return `<a class="${e(cls)}" href="${e(vacNovaAcaoHref(d))}" target="_blank" rel="noopener" title="Abre Iniciativas com a ação preenchida (você confere antes de criar)">${e(rot)}</a>`; }
 /* endereço desta página com uma rota (para o "reconsultar" da ação) */
 function vacAquiHref(hash) { return vacDemo.ativo ? vacDemo.paginas[PAGE.id] + (hash ? '#' + hash : '') : location.href.split('#')[0].split('/').pop() + (hash ? '#' + hash : ''); }
+
+/* ===== vacGel · conta do gel comum (Fase 4 · 4b do briefing de 09/11/2026) =====
+   A mesma conta na Gestão de Gel e na Produção (Registrar scrap e Teórico × Real), sem cópia divergente.
+   Funções puras: recebem os parâmetros (formatos, perdas, gel do catálogo, descarte do equipamento) e devolvem números.
+   A Gestão de Gel chama com os dados dela (que desde a 2.17 vêm do Portal); a Produção chama com o cadastro do Portal (vacGel.ctx()).
+   Estruturas iguais às do Gel: formatos [{from,tara,taraP,sobra,f:{'100':{tubo,gel,adit,tr},'75':{…}}}], processo [{from,g,pT,pB,pP}],
+   gel do catálogo {fmt, vig:[{from,gTubo,bomKg,bomBase,tol}]}, equipamento {tara, descs:[{id,comp,cat,mots}]}. */
+const vacGel = (() => {
+  const FMT_DEF = { from: '2000-01-01', tara: 75, taraP: 5, f: { '100': { tubo: 4.779, gel: 0.834, adit: 0.020, tr: 2.30 }, '75': { tubo: 3.560, gel: 0.834, adit: 0.015, tr: 2.30 } } };
+  const PROC_DEF = { from: '', g: 0.98, pT: 2.2406, pB: 0.7352, pP: 0.5252 };
+  const COMPS = { completo: { l: 'Tubo completo', parts: ['tubo', 'tr', 'gel', 'adit'], cap: 1 }, tubogel: { l: 'Tubo + gel', parts: ['tubo', 'gel'] }, spray: { l: 'Tubo + gel + spray', parts: ['tubo', 'gel', 'adit'] }, gel: { l: 'Gel puro', parts: ['gel'] }, barril: { l: 'Barril (sobra)', parts: ['gel'] } };
+  const SCAT = { T: 'Tubos', B: 'Barril', P: 'Purga' };
+  const ord = L => (L || []).slice().sort((a, b) => a.from < b.from ? -1 : a.from > b.from ? 1 : 0);
+  /* vigência dos formatos na data (a 1ª, se a data for anterior a todas) */
+  function fmtAt(fmts, date) { const L = ord(fmts && fmts.length ? fmts : [FMT_DEF]); let v = L[0]; for (const x of L) if (x.from <= date) v = x; return v; }
+  function procAt(params, date) { const L = ord(params).filter(p => p.from <= date); return L.length ? { ...PROC_DEF, ...L[L.length - 1] } : { ...PROC_DEF }; }
+  function sobraAt(fmts, date) { const L = ord(fmts && fmts.length ? fmts : [FMT_DEF]).filter(x => x.from <= date && x.sobra != null && x.sobra !== ''); return L.length ? +L[L.length - 1].sobra : null; }
+  const taraP = FM => FM && FM.taraP != null && FM.taraP !== '' ? +FM.taraP : 5;
+  /* vigências do gel do catálogo (aceita o cadastro antigo: gTubo/bom no próprio catálogo) */
+  function vigList(cg) { if (!cg) return []; const L = cg.vig && cg.vig.length ? cg.vig : (cg.gTubo || cg.bomG || cg.bomKg ? [{ from: '2000-01-01', gTubo: cg.gTubo || null, bomG: cg.bomG || null, bomPct: cg.bomPct || 106, bomKg: cg.bomKg || null, bomBase: cg.bomBase || 10000, tol: cg.tol ?? 6 }] : []); return ord(L); }
+  function vigAt(cg, date) { const L = vigList(cg); if (!L.length) return {}; let v = L[0]; for (const x of L) if (x.from <= date) v = x; return v; }
+  /* gel por tubo: o do catálogo; senão o do formato; senão o de processo */
+  function gelPorTubo(cg, date, fmts, params) { const v = vigAt(cg, date); if (+v.gTubo) return +v.gTubo; const F = fmtAt(fmts, date).f[(cg && cg.fmt) || '100']; return F && +F.gel ? +F.gel : procAt(params, date).g; }
+  function bomVals(v) { if (+v.bomKg) return { kg: +v.bomKg, base: +v.bomBase || 10000, tol: v.tol != null && v.tol !== '' ? +v.tol : 6 }; if (+v.bomG) { const p = +(v.bomPct || 106); return { kg: +v.bomG * p / 100 * 10, base: 10000, tol: p - 100 }; } return { kg: null, base: +v.bomBase || 10000, tol: v.tol != null && v.tol !== '' ? +v.tol : 6 }; }
+  /* BOM do catálogo na data: permitido (com a tolerância) e meta (sem); sem BOM, estimada pelo gel do formato + tolerância */
+  function bom(cg, date, fmts, params) { const b = bomVals(vigAt(cg, date)); let allowed, est = false; if (b.kg) allowed = b.kg * 1000 / b.base; else { const F = fmtAt(fmts, date).f[(cg && cg.fmt) || '100']; allowed = (F && +F.gel ? +F.gel : procAt(params, date).g) * (1 + b.tol / 100); est = true; } return { ...b, allowed, meta: allowed / (1 + b.tol / 100), lim: 100 + b.tol, est }; }
+  /* uma pesagem: peso bruto da balança (kg) → gel líquido, tubos e materiais. desc = {comp, cat}; taraEq = embalagem própria do equipamento */
+  function pesagem({ desc, taraEq, kg, nb, cg, date, fmts, params }) {
+    if (!desc) return null; const FM = fmtAt(fmts, date), F = FM.f[(cg && cg.fmt) || '100'] || FM.f['100'], g = gelPorTubo(cg, date, fmts, params);
+    const tara = desc.cat === 'P' ? taraP(FM) : taraEq != null && taraEq !== '' ? +taraEq : +FM.tara || 0, net = Math.max(0, (+kg || 0) * 1000 - tara);
+    const comp = COMPS[desc.comp] || COMPS.gel;
+    if (desc.comp === 'gel') return { scat: desc.cat, comp: desc.comp, tara, gross: +kg || 0, gel: net / 1000, n: 0, tubo: 0, tamp: 0, rolha: 0, etq: 0, adit: 0 };
+    if (desc.comp === 'barril') { const n0 = +nb || 0, kr = +kg || 0, gel = kr > 0 ? kr : n0 * (sobraAt(fmts, date) || 0); return { scat: desc.cat, comp: desc.comp, gross: gel, gel, nb: n0, est: !(kr > 0), n: 0, tubo: 0, tamp: 0, rolha: 0, etq: 0, adit: 0 }; }
+    const w = { tubo: +F.tubo || 0, gel: g, adit: +F.adit || 0, tr: +F.tr || 0 }, unit = comp.parts.reduce((s, k) => s + w[k], 0) || 1, n = net / unit;
+    return { scat: desc.cat, comp: desc.comp, tara, gross: +kg || 0, unit, n, gel: n * g / 1000, tubo: n * w.tubo / 1000, tamp: comp.cap ? n : 0, rolha: comp.cap ? n : 0, etq: comp.cap ? n : 0, adit: comp.parts.includes('adit') ? n * w.adit / 1000 : 0, trKg: comp.cap ? n * w.tr / 1000 : 0 };
+  }
+  /* teórico de gel de uma produção: tubos bons por catálogo → gel nos tubos ÷ (1 − perdas teóricas); por categoria T/B/P */
+  function teorico({ tubosPorCat, date, cg, fmts, params }) {
+    const P = procAt(params, date); let gelBons = 0; for (const [cat, t] of Object.entries(tubosPorCat || {})) gelBons += (+t || 0) * gelPorTubo(cg(cat), date, fmts, params) / 1000;
+    const perda = ((+P.pT || 0) + (+P.pB || 0) + (+P.pP || 0)) / 100, teo = gelBons / Math.max(.01, 1 - perda);   /* igual ao prodCalc do Gel */
+    return { gelBons, teo, sTeo: { T: teo * (+P.pT || 0) / 100, B: teo * (+P.pB || 0) / 100, P: teo * (+P.pP || 0) / 100 }, perdas: P };
+  }
+  /* contexto a partir do cadastro do Portal (Produção) */
+  function ctx(c) {
+    c = c || (typeof vacCad === 'function' ? vacCad() : null); const G = (c && c.parametros && c.parametros.gel) || {};
+    const cat = cod => { const k = (c && c.catalogos || []).find(x => x && String(x.codigo) === String(cod)); if (!k) return null; const g = k.gel || {}; const f = g.fmt || (/75/.test(k.formato || '') ? '75' : /100/.test(k.formato || '') ? '100' : null); return { ...g, fmt: f || '100' }; };
+    const eq = cod => { const e = (c && c.equipamentos || []).find(x => x && String(x.codigo) === String(cod)); return e && e.gel ? { codigo: e.codigo, nome: e.nome, ativo: e.ativo !== false, tara: e.gel.tara, descs: e.gel.descs || [] } : null; };
+    const equips = () => (c && c.equipamentos || []).filter(e => e && e.gel && e.ativo !== false && (e.gel.descs || []).length).map(e => eq(e.codigo));
+    const gelMats = new Set((c && c.materiais || []).filter(m => m && m.tipo === 'gel').map(m => String(m.codigo)));
+    const usaGel = cod => { const k = cat(cod); if (k && (k.vig || []).length) return true; if (!gelMats.size) return false; const b = (c && c.bom || []).find(x => x && String(x.catalogo) === String(cod)); return !!b && (b.vigencias || []).some(v => (v.itens || []).concat(v.estrutura || []).some(i => gelMats.has(String(i.material)))); };
+    return { fmts: G.formatos || [], params: G.processo || [], motivos: G.motivos || [], corte: G.registroPelaProducaoDesde || null, cat, eq, equips, usaGel };
+  }
+  return { FMT_DEF, PROC_DEF, COMPS, SCAT, fmtAt, procAt, sobraAt, taraP, vigList, vigAt, gelPorTubo, bomVals, bom, pesagem, teorico, ctx };
+})();
 
 </script>
 </body>

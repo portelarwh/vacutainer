@@ -133,3 +133,7 @@ Só o kit: ficha por pasta (AT-08) e contagem da fila durável para o Portal.
 ## 1.8.24 · 08/11/2026
 
 Exclusão mútua entre abas; retomada preserva o snapshot pendente mais recente. Procedimento, testes e limites em [estabilizacao-nv-01-05.md](estabilizacao-nv-01-05.md).
+
+## 1.8.27 · 10/11/2026 · Fase 3 do briefing (WST-02)
+
+A aba Importar leva ao Portal › Importação › Waste; a tela da KKBC_ORD continua aqui e abre direto por `#aba=importar` (botão do Portal). `exports.importacoes` com as competências de cada importação (desfeitas ficam fora). Detalhes: `docs/briefing-2026-11-09-fase0-fase1.md` § 7.

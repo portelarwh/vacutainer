@@ -91,7 +91,7 @@ const CAD = (perfil, inicial) => JSON.stringify({ schema: 'vac-cadastros', schem
       await p.evaluate(() => { document.querySelectorAll('.overlay').forEach(o => o.remove()); Demo.enterExample(); const db = Store.S.db; for (const k of ['productionDays', 'monthPlans', 'calendar']) (db[k] || []).forEach(d => delete d.demo); Engine.bumpConfig(); document.querySelectorAll('.overlay').forEach(o => o.remove()); go('reports'); });
       await p.waitForTimeout(1500);
       const nav = await p.evaluate(() => [...document.querySelectorAll('#nav .ngrp>.tab')].slice(0, 2).map(x => x.textContent.trim().split('\n')[0]));
-      ok(/^Visão geral/.test(nav[0]) && /^Painel/.test(nav[1]), `Produção ${tema}: Visão geral em 1º e Painel em 2º (${nav.join(' · ')})`);
+      ok(/^Visão geral/i.test(nav[0]) && !nav.some(n => /^Painel/i.test(n)), `Produção ${tema}: Visão Geral em 1º e sem a aba Painel (PRD-01: o Painel está dentro da Visão Geral) (${nav.join(' · ')})`);
       await p.fill('#rpNote', LONGO); await p.dispatchEvent('#rpNote', 'input');
       const [d] = await Promise.all([p.waitForEvent('download', { timeout: 60000 }), p.click('#rpPdf')]); const f = OUT + `Producao-${tema}-relatorio.pdf`; await d.saveAs(f); const t = txt(f), I = info(f);
       ok(t.includes('FIM-DO-COMENTARIO') && t.includes('Linha 70 do coment') && I.orient === 'paisagem', `Produção ${tema}: comentário de 70 linhas inteiro no PDF em paisagem (${I.pags} páginas)`);
@@ -160,7 +160,7 @@ const CAD = (perfil, inicial) => JSON.stringify({ schema: 'vac-cadastros', schem
 
   // ---------- aba inicial por perfil (cadastro do Portal: vac.cadastros + vac.userId)
   const casos = [
-    ['Produção', 'OEE-Vacutainer.html', 'LIDER', 'Produção › Painel', () => App.route, 'panel'],
+    ['Produção', 'OEE-Vacutainer.html', 'LIDER', 'Produção › Painel', () => App.route + (Panel.st().view !== 'padrao' ? '+painel' : ''), 'overview+painel'],   // PRD-01: o Painel abre na Visão Geral, na visão do Painel
     ['Produção', 'OEE-Vacutainer.html', 'LIDER', 'Produção › Visão geral', () => App.route, 'overview'],
     ['Gel', 'Gestão-Gel-Vacutainer.html', 'ALMOX', 'Gestão de Gel › Painel', () => ui.tab, 'painel'],
     ['Paradas', 'Paradas.html', 'TEC', 'Paradas › Fila técnica', () => App.tab, 'fila']];

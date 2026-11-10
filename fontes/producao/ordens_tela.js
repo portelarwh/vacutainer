@@ -10,7 +10,7 @@ const ordMotivo = e => (e && (e.message || e.name)) || String(e);
 /* junta auditoria sem repetir a mesma entrada (reenvio depois de uma gravação que chegou à pasta mas não foi confirmada) */
 const ordJuntaAud = (base, novas) => { const A = (base || []).slice(), vis = new Set(A.map(a => a.em + '|' + a.acao + '|' + a.por)); for (const a of novas || []) if (!vis.has(a.em + '|' + a.acao + '|' + a.por)) { A.push(a); vis.add(a.em + '|' + a.acao + '|' + a.por); } return A; };
 const Ord = {
-  B: null, carregado: false, sub: 'mb51', comp: null, planta: ORD_PLANTA, prevMB: null, prevCO: null, f: { q: '', st: '', un: '', linha: 'todas' }, fc: { q: '', sit: '' }, per: null, audPend: [], err: '',
+  B: null, carregado: false, sub: 'lista',   /* 2.4.26 · PRD-02: Ordens produzidas no topo */ comp: null, planta: ORD_PLANTA, prevMB: null, prevCO: null, f: { q: '', st: '', un: '', linha: 'todas' }, fc: { q: '', sit: '' }, per: null, audPend: [], err: '',
   vazio() { return { schema: 'vac-ordens', schemaVersion: 1, rev: 0, revBy: '', revAt: null, revId: '', appVersion: '', competencias: {}, auditoria: [], exports: {} }; },
   modo() { return Store.S.mode; },
   /* 2.4.11 · E1 (revisão 08/11/2026): só "arquivo não existe" conta como ausente. Erro de leitura (rede, permissão, JSON) mostra a
@@ -101,7 +101,11 @@ const Ord = {
     }
     const ult = Object.keys(this.B.competencias).sort().pop(), C = ult && this.B.competencias[ult];
     const kpis = C && C.resultado ? [['Ordens produzidas', String(C.resultado.kpi.ordensProduzidas), compTxt(ult), ''], ['Cobertura COOIS', C.coois ? fmtPct(C.coois.cruz.cobertura) : '–', '', C.coois && C.coois.cruz.cobertura < 1 ? 'bad' : '']] : [];
-    return { exportsVersion: 1, geradoEm: new Date().toISOString(), modulo: 'ordens', porOrdem, pendencias: pend, kpis };
+    /* 2.4.26 · IMP-04: MB51 e COOIS por competência, para o status por dia do Portal › Importação */
+    const importacoes = [];
+    for (const [comp, c] of Object.entries(this.B.competencias)) for (const [tipo, k] of [['MB51', 'mb51'], ['COOIS', 'coois']]) { const x = c[k]; if (x && x.em) importacoes.push({ tipo, comp, em: x.em, por: x.por || null, arquivo: x.arquivo || null }); }
+    importacoes.sort((a, b) => a.em < b.em ? 1 : -1);
+    return { exportsVersion: 1, geradoEm: new Date().toISOString(), modulo: 'ordens', porOrdem, pendencias: pend, kpis, importacoes };
   },
   cur() { return this.B && this.B.competencias[this.comp] || null; },
   /* ordens já lançadas no Waste (KKBC_ORD) e excluídas lá: lidas do exports de perdas-base.json */
@@ -204,7 +208,10 @@ App.views.ordens = {
   render() {
     if (!Ord.carregado) { Ord.carregar().then(() => render()); return '<section class="card section"><p class="muted">Lendo ordens…</p></section>'; }
     const c = Ord.cur(), R = c && c.resultado, X = c && c.coois ? c.coois.cruz : null;
-    const sub = [['mb51', 'Importar MB51'], ['coois', 'Complementar COOIS'], ['lista', 'Ordens produzidas'], ['conc', 'Conciliação'], ['hist', 'Histórico de competências']];
+    /* 2.4.26 · PRD-02/03: Ordens produzidas · Conciliação · Histórico · Importar (MB51 e COOIS num item só; a aba leva ao Portal › Importação, IMP-06) */
+    /* 2.4.27 · PRD-02: "Ordens" = as ordens do PCP no Plano do mês (resposta do usuário em 10/11/2026); o botão leva à aba Plano do mês */
+    const sub = [['lista', 'Ordens produzidas'], ['plano', 'Ordens (plano do mês)'], ['conc', 'Conciliação'], ['hist', 'Histórico de competências'], ['importar', 'Importar']];
+    const naImp = Ord.sub === 'mb51' || Ord.sub === 'coois';
     const porPer = Ord.sub === 'lista' || Ord.sub === 'conc';
     const top = `<section class="card section ord-top"><div class="ord-bar">
       ${porPer ? '' : `<label class="f"><span>Competência ${ordAjuda('Mês civil da Data de lançamento do MB51. Define o período aceito e organiza o histórico. Reimportar a mesma competência substitui (nunca soma).')}</span><input type="month" id="oComp" value="${esc(Ord.comp)}"></label>
@@ -212,7 +219,8 @@ App.views.ordens = {
       <div class="ord-st">${porPer ? '' : c && c.mb51 ? ordPill('MB51 · ' + c.mb51.arquivo + ' · ' + new Date(c.mb51.em).toLocaleDateString('pt-BR') + ' · ' + c.mb51.por, 'ok') : ordPill('MB51 não importado', 'warn')} ${porPer ? '' : c && c.coois ? ordPill('COOIS · cobertura ' + fmtPct(X.cobertura), X.cobertura < 1 ? 'warn' : 'ok') : R ? ordPill('COOIS pendente', 'pend') : ''} ${R && !porPer ? ordPill(R.kpi.ordensProduzidas + ' ordens produzidas', 'info') : ''} ${R && !porPer && Ord.waste && !Ord.waste.erro ? (n => n ? `<button class="pill crit" data-ofilt="sem KKBC" title="Ordens produzidas (MB51) sem KKBC_ORD lançada no Waste">${n} sem KKBC no Waste</button>` : ordPill('KKBC: todas lançadas', 'ok'))(R.ordens.filter(o => o.produzida && Ord.kkbc(o.ordem) === 'pendente').length) : ''} ${Ord.modo() === 'pasta' ? ordPill(ORD_FILE + ' · rev ' + (Ord.B.rev || 0), 'none') : ordPill(Ord.modo() === 'exemplo' ? 'modo exemplo: só na memória' : 'sem pasta: só neste navegador', 'warn')}</div></div>
       ${Ord.err ? `<div class="note e">${esc(Ord.err)}</div>` : ''}
       ${Ord.pend ? `<div class="note w" id="oPend"><b>Alteração pendente</b> desde ${new Date(Ord.pend.em).toLocaleString('pt-BR')}: ${esc(Ord.pend.comps.map(compTxt).join(', '))} ainda não foi confirmada na pasta. <button type="button" class="btn sm primary" id="oPendGo">Gravar de novo</button></div>` : ''}
-      <div class="seg ord-sub" role="tablist">${sub.map(([k, l]) => `<button type="button" data-osub="${k}" aria-pressed="${Ord.sub === k}">${l}</button>`).join('')}</div>${porPer ? ordPerBar() : ''}</section>`;
+      <div class="seg ord-sub" role="tablist">${sub.map(([k, l]) => k === 'plano' ? `<button type="button" data-oplano="1" title="Ordens do PCP do mês (Plano do mês): quantidade, janela prevista e pontuação">${l}</button>` : k === 'importar' ? `<button type="button" data-oimp-portal="1" aria-pressed="${naImp}" title="Abre o Portal › Importação › Produção: ordem recomendada e status de cada dia">${l} ↗</button>` : `<button type="button" data-osub="${k}" aria-pressed="${Ord.sub === k}">${l}</button>`).join('')}</div>${porPer ? ordPerBar() : ''}</section>
+      ${naImp ? `<section class="card section ord-imp"><div class="row" style="gap:8px;align-items:center;flex-wrap:wrap"><b>Importar</b><div class="seg" role="tablist"><button type="button" data-osub="mb51" aria-pressed="${Ord.sub === 'mb51'}">1 · MB51 (movimentos, oficial)</button><button type="button" data-osub="coois" aria-pressed="${Ord.sub === 'coois'}">2 · COOIS (complementa o MB51)</button></div><span class="sp" style="flex:1"></span><a class="btn sm" href="${esc(ordPortalImpHref())}" data-oimp-portal="1">Ordem e status: Portal › Importação ↗</a></div></section>` : ''}`;
     const body = { mb51: () => this.vMB51(c), coois: () => this.vCOOIS(c), lista: () => this.vLista(c), conc: () => this.vConc(c), hist: () => this.vHist() }[Ord.sub]();
     return top + body;
   },
@@ -326,6 +334,8 @@ App.views.ordens = {
   mount(root) {
     const on = (s, ev, f) => { const x = root.querySelector(s); if (x) x[ev] = f; };
     root.querySelectorAll('[data-osub]').forEach(b => b.onclick = e => { e.preventDefault(); Ord.sub = b.dataset.osub; render(); });
+    root.querySelectorAll('[data-oimp-portal]').forEach(b => b.onclick = e => { e.preventDefault(); ordIrPortalImp(); });
+    root.querySelectorAll('[data-oplano]').forEach(b => b.onclick = e => { e.preventDefault(); go('plan'); });
     on('#oComp', 'onchange', e => { if (!/^\d{4}-\d{2}$/.test(e.target.value)) return; Ord.comp = e.target.value; Ord.per = { de: Ord.comp, ate: Ord.comp, fy: '', q: '' }; Ord.prevMB = Ord.prevCO = null; const c = Ord.cur(); if (c && c.planta) Ord.planta = c.planta; render(); });
     on('#oPlanta', 'onchange', e => { Ord.planta = e.target.value.trim(); if (Ord.prevMB) { Ord.prevMB.R = OrdensSAP.processarMB51(Ord.prevMB.lido, { comp: Ord.comp, planta: Ord.planta }); ordMultiPrep(); } render(); });
     root.querySelectorAll('[data-oplanta]').forEach(b => b.onclick = () => { Ord.planta = b.dataset.oplanta; Ord.prevMB.R = OrdensSAP.processarMB51(Ord.prevMB.lido, { comp: Ord.comp, planta: Ord.planta }); ordMultiPrep(); render(); });
@@ -485,10 +495,9 @@ window.vacNavAtual = () => ({ attr: 'data-route', val: App.route, sub: App.route
    Plano → Ordens → Apontamento → Análise → Gestão → Configurações. Menus abrem ao passar o mouse (ou tocar).
    ===================================================================== */
 const NAV_GRUPOS = [
-  { g: 'Visão geral', itens: [['overview', 'Visão geral']] },   // 2.4.8 · Visão geral em 1º e Painel em 2º (a aba que abre vem do perfil)
-  { g: 'Painel', itens: [['panel', 'Painel']] },
+  { g: 'Visão Geral', itens: [['overview', 'Visão Geral']] },   // 2.4.31 · PRD-01: Painel e Visão Geral numa aba só (visões do Painel dentro dela)
   { g: 'Plano', itens: [['plan', 'Plano do mês']] },
-  { g: 'Ordens', itens: [['ordens', 'Importar MB51', 'mb51'], ['ordens', 'Complementar COOIS', 'coois'], ['ordens', 'Ordens produzidas', 'lista'], ['ordens', 'Conciliação', 'conc'], ['ordens', 'Histórico de competências', 'hist']] },
+  { g: 'Ordens', itens: [['ordens', 'Ordens produzidas', 'lista'], ['plan', 'Ordens (plano do mês)'], ['ordens', 'Conciliação', 'conc'], ['ordens', 'Histórico de competências', 'hist'], ['ordens', 'Importar ↗', 'portal']] },   // 2.4.26 · PRD-02/03, IMP-06
   { g: 'Apontamento', itens: [['launch', 'Lançamento'], ['hourly', 'Hora a hora'], ['lots', 'Lotes (MES)'], ['pend', 'Pendências']] },
   { g: 'Análise', itens: [['stops', 'Paradas'], ['history', 'Histórico'], ['weekly', 'Semanal'], ['monthly', 'Mensal']] },
   { g: 'Gestão', itens: [['reports', 'Relatórios'], ['sqdcp', 'SQDCP']] },
@@ -532,6 +541,10 @@ function ordBadges() {
     return card + h; };
 })();
 document.addEventListener('click', e => { const a = e.target.closest('[data-oir]'); if (!a) return; e.preventDefault(); const [sb, comp] = a.dataset.oir.split(':'); Ord.comp = comp; Ord.per = { de: comp, ate: comp, fy: '', q: '' }; Ord.prevMB = Ord.prevCO = null; Ord.sub = sb; if (sb === 'conc') Ord.fc.sit = 'sem KKBC'; go('ordens'); });
+/* 2.4.26 · IMP-06: Importar leva ao Portal › Importação › Produção (lá ficam a ordem recomendada e o status do dia; o botão de cada relatório volta para cá) */
+function ordPortalImpHref() { const h = 'importacao/producao'; return typeof vacPortalHref === 'function' ? vacPortalHref(h) : 'Portal.html#' + h; }
+function ordIrPortalImp() { const h = ordPortalImpHref(); if (typeof vacDemo !== 'undefined' && vacDemo.ativo) vacDemo.ir(h); else location.href = h; }
+document.addEventListener('click', e => { const p = e.target.closest('[data-osub2="portal"]'); if (p) { e.preventDefault(); e.stopPropagation(); ordIrPortalImp(); return; } }, true);
 document.addEventListener('click', e => { const x = e.target.closest('[data-osub2]'); if (x) { Ord.sub = x.dataset.osub2; Ord.prevMB = Ord.prevMB && x.dataset.osub2 === 'mb51' ? Ord.prevMB : Ord.prevMB; } const g = e.target.closest('.ngrp'); document.querySelectorAll('.ngrp.abre').forEach(n => { if (n !== g) n.classList.remove('abre'); }); }, true);
 /* =====================================================================
    2.2 · Plano do mês × SAP: cada ordem do plano mostra o que o MB51/COOIS (oficial) diz
@@ -573,3 +586,6 @@ function oeeAcaoPlanner(dim, pick, evs) {
   return { titulo: 'Pareto da Produção: ' + pick, origem: { tipo: 'oee', ref: 'oee-pareto|' + dim + '|' + pick, resumo: `Pareto (${dim}) · ${pick} · ${Math.round(min)} min em ${evs.length} evento(s)${per ? ' · ' + per : ''}`,
     link: typeof vacAquiHref === 'function' ? vacAquiHref('aba=stops') : '', foto: { período: per, minutos: Math.round(min), eventos: evs.length, em: new Date().toISOString() } }, vinculos: [] };
 }
+/* 2.4.26 · IMP-06: Configurações › Importação (RELATÓRIO, PARADAS, planos do PCP, CSV do MES) com o atalho para a visão única do Portal */
+(() => { const C = typeof Cfg !== 'undefined' && Cfg.importacao; if (!C || C._imp) return; C._imp = 1; const r0 = C.render;
+  C.render = function () { return `<div class="banner info" style="margin-bottom:10px"><p><b>Todas as importações da plataforma</b> (ordem recomendada e status de cada dia) ficam no Portal › Importação. Daqui, cada relatório continua sendo importado nesta página. <a class="btn sm" href="${esc(ordPortalImpHref())}" data-keep="1">Abrir Portal › Importação ↗</a></p></div>` + r0.apply(this, arguments); }; })();

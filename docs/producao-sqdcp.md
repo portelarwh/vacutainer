@@ -82,3 +82,7 @@ Reconstrua a demonstração por último. Respostas sintéticas são geradas some
 - [ ] Definir histórico oficial para contador corporativo de dias sem acidente e categorias, se necessários.
 - [ ] Ampliar scrap por máquina na Produção e conciliar com pesagens do Gel sem dupla contagem.
 - [ ] Homologar na estação/impressora da linha e com duas estações na pasta real. Testes usam dados fictícios e pasta simulada.
+
+## Produção 2.4.33 · 10/11/2026 · PRD-09
+
+Gráfico da folha em barras por dia (verde atingiu a meta, vermelho não atingiu, âmbar parcial, azul sem meta), com linha só para a meta e a tendência. Detalhes: `docs/briefing-2026-11-09-fase0-fase1.md` § 10.

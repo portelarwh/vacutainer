@@ -191,3 +191,7 @@ A recorrência do relatório usa o mesmo recorte da tela (equipamento, turno, cl
 ## 1.0.23 · 08/11/2026
 
 Isolamento por pasta e reserva por operação, com cópia de recuperação. Procedimento, testes e limites em [estabilizacao-nv-01-05.md](estabilizacao-nv-01-05.md).
+
+## 1.0.25 · 10/11/2026 · Fase 3 do briefing
+
+A aba Importar leva ao Portal › Importação › Paradas; a tela do Forms abre direto por `#aba=importar`. `exports.importacoes` com os dias cobertos (`de`/`ate`). Detalhes: `docs/briefing-2026-11-09-fase0-fase1.md` § 7.

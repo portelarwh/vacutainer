@@ -84,6 +84,9 @@ function vacMetaAreaMes(codigo, per) {
 }
 /* link para uma tela do Portal (Administração) */
 function vacPortalHref(h) { const port = (typeof systems === 'function' ? systems() : []).find(s => s.id === 'portal') || { id: 'portal', html: 'Portal.html' }; return typeof sysHref === 'function' ? sysHref(port, h) : 'Portal.html#' + h; }
+/* Fase 3 do briefing (IMP-06): Portal › Importação é o lugar único das importações; as abas "Importar" das páginas levam para a subseção da página */
+function vacImportacaoHref(sec) { return vacPortalHref('importacao' + (sec ? '/' + sec : '')); }
+function vacIrImportacao(sec) { const h = vacImportacaoHref(sec); if (typeof vacDemo !== 'undefined' && vacDemo.ativo && vacDemo.ir) vacDemo.ir(h); else location.href = h; }
 /* kit v2.1 · vac-visual v1 (06/11/2026): abas numa linha só. Quando não cabem, a faixa rola na horizontal, com sombra e seta ‹ › na borda
    que tem mais abas, e a aba ativa fica à vista. A Produção (abas agrupadas com menus, nav.vtabs.nav) não rola. CSS em fontes/kit/kit_visual.css. */
 (function () {
@@ -230,10 +233,10 @@ function vacExportsOk(ex, conhecida = 1) {
    ou o link <página>#ficha=ordem/<n> (também lote/<x> e lp/<x>). O ← Voltar do navegador fecha a ficha e mantém a tela. */
 const vacFicha = (() => {
   const FONTES = [
-    { id: 'oee', nome: 'Produção', base: 'oee-vacutainer-base.json', pega: ex => ({ porOrdem: ex.porOrdem || [], cob: ex.porOrdemCobertura || null, lotes: ex.lotes || [] }) },
+    { id: 'oee', nome: 'Produção', base: 'oee-vacutainer-base.json', pega: ex => ({ porOrdem: ex.porOrdem || [], cob: ex.porOrdemCobertura || null, lotes: ex.lotes || [], porDiaTurno: ex.porDiaTurno || [], porDiaCatalogo: ex.porDiaCatalogo || [] }) },   /* Fase 4 · 4d: o Gel lê os turnos da Produção */
     { id: 'ordens', nome: 'SAP (Produção › Ordens)', sis: 'oee', base: 'ordens-base.json', pega: ex => ({ porOrdem: ex.porOrdem || [] }) },
     { id: 'perdas', nome: 'Waste', base: 'perdas-base.json', pega: ex => ({ porOrdem: ex.porOrdem || [] }) },
-    { id: 'gel', nome: 'Gestão de Gel', base: 'fifo-base.json', pega: ex => ({ ordens: ex.ordens || [], cob: ex.ordensCobertura || null }) },
+    { id: 'gel', nome: 'Gestão de Gel', base: 'fifo-base.json', pega: ex => ({ ordens: ex.ordens || [], cob: ex.ordensCobertura || null, porDiaGel: ex.porDiaGel || [] }) },   /* Fase 4 · 4e */
     { id: 'paradas', nome: 'Paradas', base: 'paradas-base.json', pega: ex => ({ porOrdem: ex.porOrdem || [], eventos: (ex.eventos || []).filter(e => e && e.ordem) }) },
     { id: 'inic', nome: 'Iniciativas', base: 'iniciativas-base.json', pega: ex => ({ acoes: ex.acoes || [] }) }];
   const S = { dados: {}, idx: null, carregando: null, aberto: null, empilhado: false };
@@ -442,7 +445,9 @@ const vacFicha = (() => {
   };
   const ini = () => { ligaBusca(); rota(); };
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', () => setTimeout(ini, 0)); else setTimeout(ini, 0);
-  return { abrir, fechar, carregar, buscar, indice, _S: S, FONTES };
+  /* Fase 4 · 4d: o que foi lido de uma página (estado, geradoEm, d), para quem precisa do exports de outra (ex.: o Gel lê a Produção) */
+  const dados = id => S.dados[id] || null;
+  return { abrir, fechar, carregar, buscar, indice, dados, _S: S, FONTES };
 })();
 /* botão "Ficha" para as páginas porem ao lado de um número de ordem (abre a ficha comum) */
 function vacFichaBotao(ordem, tipo = 'ordem') { const v = String(ordem ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); return `<button type="button" class="vficha-bt" data-vac-${tipo}="${v}" title="Ficha: tudo sobre ${tipo === 'lp' ? 'o barril' : 'a ' + tipo} ${v} em todas as páginas">Ficha</button>`; }
@@ -458,3 +463,57 @@ function vacNovaAcaoHref(d) {
 function vacNovaAcaoBotao(d, rot = '+ Ação no Planner', cls = 'b sm') { const e = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); return `<a class="${e(cls)}" href="${e(vacNovaAcaoHref(d))}" target="_blank" rel="noopener" title="Abre Iniciativas com a ação preenchida (você confere antes de criar)">${e(rot)}</a>`; }
 /* endereço desta página com uma rota (para o "reconsultar" da ação) */
 function vacAquiHref(hash) { return vacDemo.ativo ? vacDemo.paginas[PAGE.id] + (hash ? '#' + hash : '') : location.href.split('#')[0].split('/').pop() + (hash ? '#' + hash : ''); }
+
+/* ===== vacGel · conta do gel comum (Fase 4 · 4b do briefing de 09/11/2026) =====
+   A mesma conta na Gestão de Gel e na Produção (Registrar scrap e Teórico × Real), sem cópia divergente.
+   Funções puras: recebem os parâmetros (formatos, perdas, gel do catálogo, descarte do equipamento) e devolvem números.
+   A Gestão de Gel chama com os dados dela (que desde a 2.17 vêm do Portal); a Produção chama com o cadastro do Portal (vacGel.ctx()).
+   Estruturas iguais às do Gel: formatos [{from,tara,taraP,sobra,f:{'100':{tubo,gel,adit,tr},'75':{…}}}], processo [{from,g,pT,pB,pP}],
+   gel do catálogo {fmt, vig:[{from,gTubo,bomKg,bomBase,tol}]}, equipamento {tara, descs:[{id,comp,cat,mots}]}. */
+const vacGel = (() => {
+  const FMT_DEF = { from: '2000-01-01', tara: 75, taraP: 5, f: { '100': { tubo: 4.779, gel: 0.834, adit: 0.020, tr: 2.30 }, '75': { tubo: 3.560, gel: 0.834, adit: 0.015, tr: 2.30 } } };
+  const PROC_DEF = { from: '', g: 0.98, pT: 2.2406, pB: 0.7352, pP: 0.5252 };
+  const COMPS = { completo: { l: 'Tubo completo', parts: ['tubo', 'tr', 'gel', 'adit'], cap: 1 }, tubogel: { l: 'Tubo + gel', parts: ['tubo', 'gel'] }, spray: { l: 'Tubo + gel + spray', parts: ['tubo', 'gel', 'adit'] }, gel: { l: 'Gel puro', parts: ['gel'] }, barril: { l: 'Barril (sobra)', parts: ['gel'] } };
+  const SCAT = { T: 'Tubos', B: 'Barril', P: 'Purga' };
+  const ord = L => (L || []).slice().sort((a, b) => a.from < b.from ? -1 : a.from > b.from ? 1 : 0);
+  /* vigência dos formatos na data (a 1ª, se a data for anterior a todas) */
+  function fmtAt(fmts, date) { const L = ord(fmts && fmts.length ? fmts : [FMT_DEF]); let v = L[0]; for (const x of L) if (x.from <= date) v = x; return v; }
+  function procAt(params, date) { const L = ord(params).filter(p => p.from <= date); return L.length ? { ...PROC_DEF, ...L[L.length - 1] } : { ...PROC_DEF }; }
+  function sobraAt(fmts, date) { const L = ord(fmts && fmts.length ? fmts : [FMT_DEF]).filter(x => x.from <= date && x.sobra != null && x.sobra !== ''); return L.length ? +L[L.length - 1].sobra : null; }
+  const taraP = FM => FM && FM.taraP != null && FM.taraP !== '' ? +FM.taraP : 5;
+  /* vigências do gel do catálogo (aceita o cadastro antigo: gTubo/bom no próprio catálogo) */
+  function vigList(cg) { if (!cg) return []; const L = cg.vig && cg.vig.length ? cg.vig : (cg.gTubo || cg.bomG || cg.bomKg ? [{ from: '2000-01-01', gTubo: cg.gTubo || null, bomG: cg.bomG || null, bomPct: cg.bomPct || 106, bomKg: cg.bomKg || null, bomBase: cg.bomBase || 10000, tol: cg.tol ?? 6 }] : []); return ord(L); }
+  function vigAt(cg, date) { const L = vigList(cg); if (!L.length) return {}; let v = L[0]; for (const x of L) if (x.from <= date) v = x; return v; }
+  /* gel por tubo: o do catálogo; senão o do formato; senão o de processo */
+  function gelPorTubo(cg, date, fmts, params) { const v = vigAt(cg, date); if (+v.gTubo) return +v.gTubo; const F = fmtAt(fmts, date).f[(cg && cg.fmt) || '100']; return F && +F.gel ? +F.gel : procAt(params, date).g; }
+  function bomVals(v) { if (+v.bomKg) return { kg: +v.bomKg, base: +v.bomBase || 10000, tol: v.tol != null && v.tol !== '' ? +v.tol : 6 }; if (+v.bomG) { const p = +(v.bomPct || 106); return { kg: +v.bomG * p / 100 * 10, base: 10000, tol: p - 100 }; } return { kg: null, base: +v.bomBase || 10000, tol: v.tol != null && v.tol !== '' ? +v.tol : 6 }; }
+  /* BOM do catálogo na data: permitido (com a tolerância) e meta (sem); sem BOM, estimada pelo gel do formato + tolerância */
+  function bom(cg, date, fmts, params) { const b = bomVals(vigAt(cg, date)); let allowed, est = false; if (b.kg) allowed = b.kg * 1000 / b.base; else { const F = fmtAt(fmts, date).f[(cg && cg.fmt) || '100']; allowed = (F && +F.gel ? +F.gel : procAt(params, date).g) * (1 + b.tol / 100); est = true; } return { ...b, allowed, meta: allowed / (1 + b.tol / 100), lim: 100 + b.tol, est }; }
+  /* uma pesagem: peso bruto da balança (kg) → gel líquido, tubos e materiais. desc = {comp, cat}; taraEq = embalagem própria do equipamento */
+  function pesagem({ desc, taraEq, kg, nb, cg, date, fmts, params }) {
+    if (!desc) return null; const FM = fmtAt(fmts, date), F = FM.f[(cg && cg.fmt) || '100'] || FM.f['100'], g = gelPorTubo(cg, date, fmts, params);
+    const tara = desc.cat === 'P' ? taraP(FM) : taraEq != null && taraEq !== '' ? +taraEq : +FM.tara || 0, net = Math.max(0, (+kg || 0) * 1000 - tara);
+    const comp = COMPS[desc.comp] || COMPS.gel;
+    if (desc.comp === 'gel') return { scat: desc.cat, comp: desc.comp, tara, gross: +kg || 0, gel: net / 1000, n: 0, tubo: 0, tamp: 0, rolha: 0, etq: 0, adit: 0 };
+    if (desc.comp === 'barril') { const n0 = +nb || 0, kr = +kg || 0, gel = kr > 0 ? kr : n0 * (sobraAt(fmts, date) || 0); return { scat: desc.cat, comp: desc.comp, gross: gel, gel, nb: n0, est: !(kr > 0), n: 0, tubo: 0, tamp: 0, rolha: 0, etq: 0, adit: 0 }; }
+    const w = { tubo: +F.tubo || 0, gel: g, adit: +F.adit || 0, tr: +F.tr || 0 }, unit = comp.parts.reduce((s, k) => s + w[k], 0) || 1, n = net / unit;
+    return { scat: desc.cat, comp: desc.comp, tara, gross: +kg || 0, unit, n, gel: n * g / 1000, tubo: n * w.tubo / 1000, tamp: comp.cap ? n : 0, rolha: comp.cap ? n : 0, etq: comp.cap ? n : 0, adit: comp.parts.includes('adit') ? n * w.adit / 1000 : 0, trKg: comp.cap ? n * w.tr / 1000 : 0 };
+  }
+  /* teórico de gel de uma produção: tubos bons por catálogo → gel nos tubos ÷ (1 − perdas teóricas); por categoria T/B/P */
+  function teorico({ tubosPorCat, date, cg, fmts, params }) {
+    const P = procAt(params, date); let gelBons = 0; for (const [cat, t] of Object.entries(tubosPorCat || {})) gelBons += (+t || 0) * gelPorTubo(cg(cat), date, fmts, params) / 1000;
+    const perda = ((+P.pT || 0) + (+P.pB || 0) + (+P.pP || 0)) / 100, teo = gelBons / Math.max(.01, 1 - perda);   /* igual ao prodCalc do Gel */
+    return { gelBons, teo, sTeo: { T: teo * (+P.pT || 0) / 100, B: teo * (+P.pB || 0) / 100, P: teo * (+P.pP || 0) / 100 }, perdas: P };
+  }
+  /* contexto a partir do cadastro do Portal (Produção) */
+  function ctx(c) {
+    c = c || (typeof vacCad === 'function' ? vacCad() : null); const G = (c && c.parametros && c.parametros.gel) || {};
+    const cat = cod => { const k = (c && c.catalogos || []).find(x => x && String(x.codigo) === String(cod)); if (!k) return null; const g = k.gel || {}; const f = g.fmt || (/75/.test(k.formato || '') ? '75' : /100/.test(k.formato || '') ? '100' : null); return { ...g, fmt: f || '100' }; };
+    const eq = cod => { const e = (c && c.equipamentos || []).find(x => x && String(x.codigo) === String(cod)); return e && e.gel ? { codigo: e.codigo, nome: e.nome, ativo: e.ativo !== false, tara: e.gel.tara, descs: e.gel.descs || [] } : null; };
+    const equips = () => (c && c.equipamentos || []).filter(e => e && e.gel && e.ativo !== false && (e.gel.descs || []).length).map(e => eq(e.codigo));
+    const gelMats = new Set((c && c.materiais || []).filter(m => m && m.tipo === 'gel').map(m => String(m.codigo)));
+    const usaGel = cod => { const k = cat(cod); if (k && (k.vig || []).length) return true; if (!gelMats.size) return false; const b = (c && c.bom || []).find(x => x && String(x.catalogo) === String(cod)); return !!b && (b.vigencias || []).some(v => (v.itens || []).concat(v.estrutura || []).some(i => gelMats.has(String(i.material)))); };
+    return { fmts: G.formatos || [], params: G.processo || [], motivos: G.motivos || [], corte: G.registroPelaProducaoDesde || null, cat, eq, equips, usaGel };
+  }
+  return { FMT_DEF, PROC_DEF, COMPS, SCAT, fmtAt, procAt, sobraAt, taraP, vigList, vigAt, gelPorTubo, bomVals, bom, pesagem, teorico, ctx };
+})();

@@ -193,3 +193,7 @@ Validação: `node testes/tparada_tempo.js` (incluído em `testes/tudo.js`): op�
 ## Produção 2.4.25 · 10/11/2026
 
 Junção da `main` (2.4.21: duração visível no registro de paradas, PR #24) com o branch do briefing de 09/11/2026 (2.4.21–2.4.24: ARQ-09, ARQ-06, fonte única/PRD-04, turnos não produtivos). As duas linhas de versão correram em paralelo; a 2.4.25 tem as duas. Detalhes do briefing: [briefing-2026-11-09-fase0-fase1.md](briefing-2026-11-09-fase0-fase1.md).
+
+## Produção 2.4.26 · 10/11/2026 · Fase 3 do briefing
+
+Ordens abre em Ordens produzidas (PRD-02); MB51 e COOIS viraram o item Importar (PRD-03: 1 · MB51, 2 · COOIS), que leva ao Portal › Importação › Produção (IMP-06). Endereços diretos: `#aba=ordens&sub=mb51|coois|lista|conc|hist` e `#aba=config&sec=importacao`. `exports.importacoes` na base do OEE (MES com o período, plano do PCP, históricos) e na de Ordens (MB51/COOIS por competência). Detalhes: [briefing-2026-11-09-fase0-fase1.md](briefing-2026-11-09-fase0-fase1.md) § 7.

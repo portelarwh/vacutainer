@@ -294,3 +294,229 @@ Versões: Produção 2.4.24 · Portal 1.9.10. Código novo: `fontes/producao/tur
 - O quadro está no **Lançamento**. Na **Visão Geral do período** e no **Relatório**, ele entra na Fase 5 (POR-06/08). Os números já chegam nos dois pelo resultado oficial do dia.
 
 **Homologação:** em Portal › Turnos, marcar o C como "Turno não produtivo" a partir de uma data. Conferir em Parâmetros › Produção a continuidade e a data. Depois importar o CSV do MES de uma noite com produção após 22:47 e conferir o quadro do dia: o trecho emendado deve aparecer no B, e o que veio depois de uma parada, no A do dia seguinte.
+
+---
+
+## 7. Entrega · Fase 3: importação centralizada (10/11/2026)
+
+Versões: Portal 1.9.11 · Produção 2.4.26 · Waste 1.8.27 · Gel 2.16 · Paradas 1.0.25 · kit com `vacImportacaoHref`/`vacIrImportacao`. Teste: `node testes/timportacao.js` (na suíte `tudo.js`).
+
+### D11 · decisão de arquitetura (confirmada pelo usuário em 10/11/2026)
+
+O IMP-05 pede para "mover toda a tratativa de importação da Produção para o Portal". Pela **regra 1**, cada página só grava na própria base: a do MB51/COOIS é a da Produção (`ordens-base.json`), com trava entre computadores, backup obrigatório, fila durável e validação próprias. Se o Portal gravasse ali, essas proteções seriam contornadas.
+
+Ficou assim: **o Portal › Importação é a porta única** (lista, ordem, status do dia), e **o botão "Importar" abre a tela da página dona**, que grava na própria base. As abas "Importar" das páginas levam ao Portal (IMP-06). Se você quiser mesmo que a tela de colar/prévia fique fisicamente dentro do Portal, dá para fazer, mas exige que o Portal passe a escrever nas bases das outras páginas: é uma mudança de regra da plataforma e precisa ser decidida antes.
+
+### O que mudou, por ID
+
+| ID | O que mudou |
+|---|---|
+| IMP-01 | Nova aba **Portal › Importação** (entre Relatórios e Administração; `#importacao`). |
+| IMP-02 | Subdividida **por página**: Produção (CSV do MES, MB51, COOIS, plano do PCP, RELATÓRIO e PARADAS históricos), Paradas (Forms), Gestão de Gel (estoque de LPs), Waste (KKBC_ORD), Portal (Meta OEE FY27, CS12/materiais/componentes) e Iniciativas/Ações (ainda sem importação: entra com o INI-03, Fase 6). Cada uma tem o que é, a frequência, **o que alimenta** e a última importação. `#importacao/<página>` abre e destaca a subseção. |
+| IMP-03 | **Sequência recomendada**: 1 MES → 2 Forms → 3 LPs → 4 MB51 → 5 COOIS (usa as ordens do MB51) → 6 KKBC_ORD (fechamento do mês, usa as ordens) → 7 plano do PCP (início do mês). |
+| IMP-04 | **Status por dia** (dia operacional 06:00–06:00, com ‹ ›): verde cobre o dia; amarelo parcial/desatualizado; vermelho falta; cinza mensal. As **diárias** (MES, Forms, LPs, MB51, COOIS) decidem: "**Dia X 100% atualizado**" ou "faltam N de 5". Regras: MES cobre 06:00→06:00; Forms com o dia entre `de` e `ate`; LPs com foto no dia ou depois; MB51/COOIS da competência importados depois do fim do dia (COOIS não pode ser anterior ao último MB51); KKBC pela competência. Para isso cada página publica `exports.importacoes` (campo novo e opcional; `exportsVersion` continua 1). |
+| IMP-05 | Ver D11. Cada "Importar" abre direto a tela certa: `OEE-Vacutainer.html#aba=ordens&sub=mb51` (ou `sub=coois`), `#aba=config&sec=importacao` (MES, PCP, históricos), `Perdas-Ordem.html#aba=importar`, `Paradas.html#aba=importar`, `Gestão-Gel-Vacutainer.html#aba=importar` (abre a importação do relatório do SAP). A Meta e o CS12 continuam em Portal › Cadastros › Importar. |
+| IMP-06 / WST-02 | Waste › Importar, Paradas › Importar e Produção › Ordens › Importar **levam ao Portal › Importação › <página>**. As telas de importação ganharam o atalho "Portal › Importação ↗"; Produção › Configurações › Importação também. |
+| PRD-02 | Ordens abre em **Ordens produzidas**; ordem: Ordens produzidas · Conciliação · Histórico de competências · Importar. |
+| PRD-03 | MB51 e COOIS viraram **um item só** (Importar), no menu e nas sub-abas. Na tela: **1 · MB51 (oficial)** e **2 · COOIS (complementa o MB51)** lado a lado no topo, com o atalho ao Portal. |
+
+**Pergunta (PRD-02):** a lista pedida tem "Ordens" entre "Ordens produzidas" e "Conciliação", mas não existe essa sub-aba (as atuais eram Importar MB51, Complementar COOIS, Ordens produzidas, Conciliação e Histórico). É o **Plano do mês** (ordens do PCP) ou outra lista? Fica fora até a resposta.
+
+**Limite conhecido:** em PRD-03 o MB51 e o COOIS ficam como dois passos (1 · 2) na mesma tela, não um embaixo do outro numa rolagem só: as duas telas usam os mesmos campos (colar, prévia, gravar) e juntá-las numa página exige reescrever a importação das ordens, que tem leitura estrita e backup obrigatório (E1). Se você preferir a rolagem única, entra como item próprio.
+
+**Respostas do usuário (10/11/2026):** D11 confirmado. PRD-02: "Ordens" é o **Plano do mês**, e entrou como "Ordens (plano do mês)" entre Ordens produzidas e Conciliação, na sub-aba e no menu, levando à aba Plano do mês (Produção 2.4.27). PRD-03: os dois passos MB51 e COOIS na mesma tela servem.
+
+---
+
+## 8. Proposta · Fase 4: Gel dentro da Produção (GEL-02 a GEL-06, PRD-10) · aguardando aprovação
+
+### Como é hoje (levantamento de 10/11/2026)
+
+- O Gel **não lê nada da Produção**: tubos bons por turno/catálogo, hora extra, "sem produção" e abono são **digitados de novo** no Gel (`S.prodlog[data].turns[turno]`).
+- O **Registrar scrap** é um bloco dentro de cada turno do Registro de produção. Cada pesagem tem equipamento, descarte (composição: completo, tubo+gel, spray, gel, barril), peso bruto, nº de barris, catálogo e motivos. A conta (`scrapCalc`) tira a tara, divide pelo peso da composição e chega a kg de gel por categoria (Tubos, Barril, Purga). Para isso ela usa os **formatos** (pesos dos componentes, tara, sobra do barril), que só existem no Gel.
+- **Teórico × Real** (`prodCalc`/`bomDay`): o teórico vem dos tubos bons × g/tubo do catálogo (com vigência) ÷ (1 − perdas teóricas). O real vem dos **barris baixados** (FIFO do Gel) e do scrap pesado. Índice, BOM e saving saem daí.
+- O `exports` do Gel publica estoque, vencimentos e o scrap estimado **por ordem**. Não publica scrap por dia/turno nem o Teórico × Real.
+
+### O problema de arquitetura
+
+O GEL-03 pede o scrap registrado **na página de cada turno da Produção**. Pela regra 1, o que a Produção registra é gravado na **base da Produção**, e então o Gel passa a ler o scrap dali, e não o contrário. O GEL-04 pede o Teórico × Real **na Produção**, mas o "real" depende dos barris baixados, que são do Gel. Então os dados passam a ir nos dois sentidos, cada um pelo `exports` do outro (com a defasagem de uma gravação).
+
+### Proposta, em 5 passos (cada um com teste e entrega própria)
+
+| Passo | O que | Quem grava |
+|---|---|---|
+| 4a · D10 | Os **parâmetros do gel** vão para o Portal: g/tubo e BOM de gel por catálogo (com vigências) → `catalogos[].gel`; formatos, perdas teóricas e motivos de descarte → `parametros.gel`; embalagem e descartes de cada equipamento → `equipamentos[].gel`. O Gel lê do Portal (telas de consulta), com um teste de que **as contas do gel não mudam** (igual ao GEL-06 da Fase 1). Sem isso a Produção não tem como calcular o scrap nem o teórico. | Portal |
+| 4b | A conta do gel (pesagem → kg de gel por categoria; teórico do dia) vira um **módulo comum do kit** (`kit_gel.js`), usado pelo Gel e pela Produção: **a mesma conta nas duas páginas**, sem cópia divergente. | — |
+| 4c · GEL-03 / PRD-10 | **Registrar scrap** na página de cada turno da Produção, com os mesmos campos e regras de hoje (equipamento, descarte, peso, barris, catálogo, motivos, "sem scrap no turno"). Fica gravado no turno do dia da Produção e é publicado no `exports` da Produção (`gel.porDia`: pesagens e kg por categoria e turno). | Produção |
+| 4d · GEL-02 / GEL-05 | O Gel passa a **ler da Produção** os tubos bons por turno/catálogo, a hora extra, o "sem produção" e o scrap. Saem os campos manuais (tubos bons, hora extra, sem produção, pesagens), e **Registro do dia vira Resumo do dia** (só leitura). O Relatório de gel continua no Gel. | — |
+| 4e · GEL-04 | **Teórico × Real** na página do dia/turno da Produção, **só quando algum catálogo produzido usa gel** (BOM do Portal com material do tipo gel). O teórico e o scrap são calculados ali; o real (barris baixados) vem do `exports` do Gel, que passa a publicar o Teórico × Real e as baixas por dia. | Gel (baixas) |
+
+### Decisões que preciso de você
+
+| # | Pergunta | Recomendação |
+|---|---|---|
+| G1 | O scrap de gel registrado na Produção fica **gravado na base da Produção** e o Gel lê de lá (regra 1)? | Sim |
+| G2 | Fazer primeiro o D10 (parâmetros do gel no Portal), que é o pré-requisito? | Sim |
+| G3 | **Data de corte**: a partir de que dia o Gel deixa de aceitar o registro manual e passa a ler da Produção? Os dias anteriores continuam com o registro do Gel, que não é apagado (histórico intacto). | Um parâmetro no Portal; padrão = o dia da instalação |
+| G4 | Os **barris baixados** (o "real") continuam no Gel (FIFO) e a Produção só mostra? Até o Gel gravar de novo, a Produção pode mostrar o real da última gravação. | Sim |
+| G5 | A **hora extra** e o "sem produção" do Gel passam a vir dos intervalos extras e dos turnos "sem produção" da Produção? | Sim |
+
+Com G1 a G5 respondidas, começo pelo 4a. É a maior das fases até aqui; entrego passo a passo, com a suíte rodando a cada passo.
+
+---
+
+## 9. Fase 4 · respostas e passo 4a (10/11/2026)
+
+**Respostas do usuário:** G1 sim (o scrap registrado na Produção fica na base da Produção; o Gel lê de lá) · G2 sim (primeiro os parâmetros do gel no Portal) · G3 data de corte no Portal · G4 sim (barris baixados continuam no Gel) · G5 sim (hora extra e "sem produção" vêm da Produção).
+
+### Passo 4a · parâmetros do gel no Portal (D10) · Portal 1.9.12, Gel 2.17
+
+| Onde, no Portal | O que guarda (mesma estrutura do Gel) |
+|---|---|
+| Cadastros › Regras › Parâmetros › **Gestão de Gel** | `parametros.gel`: data de corte (G3, `registroPelaProducaoDesde`), **perdas teóricas e gel padrão** por vigência (`processo`), **formatos de tubo** por vigência (saco, folha da purga, sobra do barril, pesos do Tubo 100 e 75) e **motivos de descarte** (com as composições em que valem) |
+| Ficha do equipamento com a categoria **Equipamento – Gel** | `equipamentos[].gel`: embalagem própria e **descartes** (composição, categoria Tubos/Barril/Purga, motivos) |
+| Ficha do catálogo › bloco **Gel** | `catalogos[].gel`: formato do tubo, lote padrão, velocidade de referência e as vigências de **gel aplicado por tubo e BOM de gel** |
+
+- Vigência gravada não muda (regra 3): só se acrescenta a partir de hoje, e uma data no passado é recusada. A vigência de hoje em diante pode ser corrigida antes de valer.
+- O **Gel lê tudo isso do Portal** (`GelCad.aplicarGel`) e as telas correspondentes da Configuração do Gel ficam **só para consulta**, com "Editar no Portal". Na tela de catálogos, isso vale para o catálogo que tem o bloco Gel no Portal.
+- **GEL-06:** o teste `tgel.js` zera a cópia do Gel e põe os mesmos parâmetros no Portal. Exports, gel aplicado, BOM, perdas, formatos, sobra e o cálculo de cada dia registrado (`prodCalc`) dão **os mesmos números**. Uma vigência nova de perdas vale da data dela em diante.
+- **Migração:** Cadastros › Início › Trazer configurações › **"Só no Gel · parâmetros do gel"** leva processo, formatos, motivos, os descartes de cada equipamento (que passa à categoria Equipamento – Gel) e o gel de cada catálogo, com as vigências como estão. Na pasta real: rodar o Trazer **antes** de usar a Produção com o gel (passos 4c a 4e).
+- Fica no Gel: os **locais** de estoque (só o Gel usa) e as preferências de tela.
+
+Próximo: 4b (a conta do gel num módulo comum do kit, usado pelo Gel e pela Produção).
+
+### Passo 4b · conta do gel comum no kit (`vacGel`) · Gel 2.18, kit
+
+- `vacGel`, em `fontes/kit/kit_v21.js` (em todas as páginas), tem a conta do gel em **funções puras**:
+  - `pesagem`: peso da balança → gel líquido, tubos e materiais, pela composição e pela categoria;
+  - `teorico`: gel nos tubos bons ÷ (1 − perdas), com a parte de cada categoria;
+  - `bom` e `gelPorTubo`;
+  - as leituras com vigência `fmtAt`, `procAt` e `sobraAt`;
+  - `ctx()`, que monta tudo a partir do cadastro do Portal para a Produção usar.
+- A Gestão de Gel passa a calcular a pesagem pelo kit (`scrapCalc` → `vacGel.pesagem`).
+- **Conferido:**
+  - 1.440 pesagens têm o mesmo resultado de antes. As referências foram geradas com a conta antiga e guardadas em `testes/bases/gel-pesagens.json`. Os casos combinam as 5 composições, 3 categorias e 2 formatos, embalagem própria ou padrão, barril estimado ou pesado e duas vigências.
+  - O teórico do kit é igual ao `prodCalc` do Gel em todos os dias registrados.
+
+Próximo: 4c (Registrar scrap no turno da Produção).
+
+### Passo 4c · Registrar scrap de gel no turno da Produção (GEL-03, PRD-10) · Produção 2.4.28
+
+- **Onde fica o botão:** **Registrar scrap** em cada turno do **Lançamento** do dia e também na **tela do turno**, a do operador. O botão só aparece quando algum catálogo produzido no turno usa gel (BOM do Portal com material de gel, ou bloco Gel no catálogo) e existe equipamento da categoria Equipamento – Gel no Portal. Também aparece quando o turno já tem registro.
+- **Campos (os mesmos do Gel):**
+  - equipamento, que vem do Portal;
+  - descarte, com a composição e a categoria Tubos, Barril ou Purga;
+  - catálogo, entre os produzidos no turno;
+  - peso bruto da balança;
+  - número de barris, quando a composição é barril;
+  - motivos, com peso opcional por motivo;
+  - "Sem scrap de gel neste turno".
+- **Antes de gravar:** cada pesagem mostra o gel calculado. A conta é a comum, `vacGel.pesagem`, com os parâmetros do Portal. No barril sem "sobra" cadastrada, aparece o aviso.
+- **Onde é gravado (G1):** no turno do dia da Produção (`ps.gelScrap`), com quem registrou, quando e auditoria. Turno fechado não aceita registro.
+- **Exports:** `porDiaTurno[].gel` traz as pesagens como foram registradas e o gel por categoria. `porDiaTurno[].extraMin` traz a hora extra do turno (para o G5). A Gestão de Gel vai ler daqui no 4d.
+- **Fica para depois:** o scrap do dia todo sem turno (o "Dia (sem turno)" do Gel). Na Produção, o registro é sempre por turno.
+
+Próximo: 4d (o Gel lê da Produção a partir da data de corte; Registro do dia → Resumo do dia).
+
+### Passo 4d · o Gel lê da Produção (GEL-02, GEL-05, G3, G5) · Gel 2.19, kit
+
+- **Data de corte:** a partir do dia de Portal › Parâmetros › Gestão de Gel › "Gel lido da Produção a partir de" (G3), cada dia com dados da Produção vira, na memória do Gel, um registro montado com o `exports` da Produção (`GelProd`). Ele traz:
+  - tubos bons por catálogo (`porDiaCatalogo`, somando os turnos);
+  - hora extra e "sem produção" de cada turno (G5);
+  - as pesagens do Registrar scrap e "sem scrap no turno" (`porDiaTurno[].gel`).
+- **As contas não mudam:** teórico, índice, BOM, saving e relatório seguem iguais e passam a usar esses números. O scrap do dia sai da mesma conta comum (`vacGel`).
+- **Como o Gel lê a Produção:** pelo leitor de `exports` do kit (`vacFicha`, o mesmo da ficha da ordem), com cache local e conferência de versão. A leitura se repete a cada minuto e a tela se redesenha quando chegam dados novos.
+- **GEL-05:** a aba "Registro de produção" passa a se chamar **Resumo do dia** quando o corte está definido. Nos dias da Produção, o formulário fica **só para leitura**, com o aviso de onde vêm os dados e de quando foram lidos, e os campos manuais (tubos bons, hora extra, sem produção, pesagens) não são mais editáveis.
+- **O que continua editável:** as **baixas de barril** (o "real", G4) continuam no Gel. Os **dias anteriores ao corte** continuam com o registro do Gel, que não é apagado nem substituído.
+- **Conferido no `tgel.js`:**
+  - os tubos bons do dia vêm da soma dos turnos;
+  - hora extra e "sem scrap" vêm da Produção;
+  - o scrap é igual ao da pesagem pela conta comum;
+  - o teórico do Gel é igual ao do kit;
+  - o dia anterior ao corte fica intacto;
+  - o Resumo do dia aparece só para leitura.
+
+Próximo: 4e (Teórico × Real na página do dia da Produção, só quando o catálogo usa gel).
+
+### Passo 4e · Teórico × Real no dia da Produção (GEL-04) · Produção 2.4.29, Gel 2.20, kit
+
+- No **Lançamento** do dia, o quadro **"Gel · teórico × real do dia"** só aparece quando algum catálogo produzido no dia usa gel. Se nenhum usa, o quadro nem aparece. O quadro mostra:
+  - **Teórico**, calculado na Produção pela conta comum: tubos bons dos catálogos com gel × g/tubo, dividido pelas perdas em Tubos, Barril e Purga.
+  - **Scrap pesado** nos turnos (Registrar scrap).
+  - **Índice de uso**: (gel nos tubos + scrap) ÷ meta da BOM.
+  - **Baixado × teórico**: os barris baixados (G4) vêm do `exports` do Gel (`porDiaGel`, 60 dias), com a hora da leitura.
+- O **Relatório de gel** continua na Gestão de Gel (GEL-05).
+- **Limite (defasagem):** as baixas do dia aparecem na Produção depois que o Gel grava a base. Isso acontece a cada baixa, importação ou alteração no Gel.
+
+**Fase 4 concluída** (GEL-02 a GEL-06, PRD-10). Homologar na pasta real nesta ordem:
+1. Portal › Cadastros › Início › Trazer configurações › "Só no Gel · parâmetros do gel".
+2. Portal › Parâmetros › Gestão de Gel › "Gel lido da Produção a partir de" (a data de corte).
+3. Registrar scrap num turno da Produção.
+4. Conferir o Resumo do dia no Gel e o Teórico × Real na Produção.
+
+---
+
+## 10. Fase 5 · relatórios e Visão Geral (10/11/2026)
+
+**Respostas do usuário:** D6 séries por dia (o Portal soma o período escolhido) · D9 unificar Painel e Visão Geral na Produção, já com o seletor de período.
+
+### Passo 5a · período no Portal (POR-05, POR-06, POR-08, POR-09) · Portal 1.9.13, Produção 2.4.30
+
+- **Visão Geral (POR-06):** seletor **Hoje · Ontem · Semana · Mês · Personalizado** no topo. O período fica guardado neste computador.
+  - O título de cada cartão é um link para a página (**POR-05**).
+  - Cada cartão mostra o selo do período. O que não tem série por dia aparece com o selo **"agora"**: estoque de gel, ações em aberto, Equipamentos e Iniciativas.
+- **Como o Portal soma (regra 1: soma o que as páginas publicam, sem recalcular):**
+  - **Produção:** os dias do período. OEE = Σ boa ÷ Σ capacidade e meta = Σ meta ÷ Σ capacidade, sem média de médias. Para isso a Produção passou a publicar `cap` e `metaDec` por dia e por turno.
+  - **Paradas:** os eventos do período (minutos, ocorrências, quebras e MTTR).
+  - **Gel:** os dias registrados: baixado, baixado × teórico e tubos bons. O estoque continua "agora".
+  - **Waste:** as competências que o período toca (a KKBC é mensal), com a etiqueta "competência" e o aviso de competência em aberto.
+  - Quando o período sai do que a página publica, o selo avisa: Produção 120 dias, Paradas 90 dias, Gel 60 dias.
+- **Relatório (POR-08):** o mesmo seletor, com a opção **1 turno** (dia + turno). Nesse caso, a Produção usa `porDiaTurno` e o Paradas usa só os eventos do turno. O Resumo da linha sai com o período no título, os números de cada página e os gráficos por dia.
+- **TV (POR-09):** usa o mesmo período, e cada tela diz qual é. Os meses não se misturam mais. Na TV da própria Produção, as telas de janela móvel (7 dias e 8 semanas) seguem como estão e são tratadas no 5b.
+
+### Passo 5b · Painel e Visão Geral numa aba só (PRD-01, D9) · Produção 2.4.31
+
+- O menu tem só **Visão Geral**; a aba Painel saiu.
+- **Visão Geral · padrão** é a montagem que já existia. O seletor **Visão** traz também Meu painel, as visões compartilhadas e os modelos (ex.: Diretoria mensal). Escolhida uma delas, a própria Visão Geral vira o Painel, com Personalizar, agrupamento, comparação, Imprimir e Apresentar. O seletor do Painel volta para a padrão.
+- Na padrão também há **Personalizar** (abre Meu painel em edição), **Imprimir** e **Apresentar** (TV).
+- **Período:** os períodos rápidos começam por **Hoje · Ontem · Semana · Mês**. Depois vêm Semana anterior, Mês anterior, 7 e 30 dias, Ano fiscal e as datas livres. É assim na Visão Geral, no Painel e nas demais telas que usam a mesma barra de filtros.
+- **Compatibilidade:** os links e as páginas iniciais antigas do Painel (`#aba=panel`, perfil "Produção › Painel", `go('panel')`) abrem a Visão Geral em Meu painel. Visões compartilhadas e o botão TV não mudam.
+- Testes ajustados à nova ordem do menu: `tz.js` e `trelatorios.js`.
+
+### Passo 5c · Segurança e Qualidade no relatório do dia e do turno (PRD-07) · Produção 2.4.32
+
+- Os relatórios **Dia** e **Passagem de turno** (Produção › Gestão › Relatórios) ganham o bloco **Segurança e Qualidade**: acidentes e QNs de cada turno, com os números e as referências, vindos do registro de Segurança e Qualidade de cada turno (SQDCP). O resumo automático ganha uma linha ("Segurança: sem acidente. Qualidade: 2 QN(s).").
+- Sem resposta aparece **"não informado"**, nunca zero (regra do SQDCP).
+- A opção **"incluir Segurança e Qualidade"** fica na barra do relatório, só nesses dois tipos, e vale para PDF, Excel, texto e Outlook. Desmarcada, o relatório sai **só de performance**. A escolha fica guardada neste computador.
+
+### Passo 5d · gráficos do SQDCP em barras (PRD-09) · Produção 2.4.33
+
+- A evolução do mês de cada folha do SQDCP passou de linha para **barras por dia**, como os gráficos da Visão Geral.
+  - **verde** quando o dia atingiu a meta e **vermelha** quando não atingiu, respeitando o sentido do indicador (maior ou menor é melhor);
+  - **âmbar** quando o dado é parcial e **azul** quando não há meta;
+  - dia sem resposta fica sem barra: não informado não é zero.
+- **Linhas** só para a **meta** (tracejada) e para a **tendência** (reta dos mínimos quadrados, a partir de 4 valores). A legenda vai na própria folha A4.
+- Calendário e tabela de desvios (os outros formatos de folha) não mudam.
+
+**Fase 5 concluída:** POR-05, POR-06, POR-08, POR-09, PRD-01, PRD-07 e PRD-09. Teste: `node testes/tperiodo.js`.
+
+---
+
+## 11. Fase 6 · Iniciativas / Ações (10/11/2026)
+
+**Levantamento:**
+- **Programas:** estão fixos no código (abas Ações, KAS, OSM, 5S). Só o KAS tem dados próprios; OSM e 5S são ações com essa origem.
+- **Importação:** não há nenhuma em Iniciativas.
+- **Kanban:** sem cor por status.
+- **Waste:** tem um plano de ações paralelo (`B.actions`, 11 status), sem ligação com Iniciativas.
+
+**Respostas do usuário:**
+- **I1 (WST-03):**
+  - "+ Ação" no Waste abre Iniciativas com a ação preenchida (origem Waste, vínculo com a ordem).
+  - O Waste mostra as ações de Iniciativas ligadas à ordem, pelo `exports`.
+  - As ações antigas do Waste migram uma vez, com o histórico, por "Trazer ações do Waste". Depois disso, a lista antiga fica só para consulta.
+- **I2:** Iniciativas ganha o campo **eficácia** na ação concluída (em acompanhamento, eficaz, sem eficácia). Os demais status do Waste viram os 5 de Iniciativas:
+  - aberta, em análise e planejada → a fazer;
+  - aguardando recurso e aguardando validação → aguardando.
+- **I3 (INI-02):** os programas são **cadastrados no Portal** (tipo `programas`). Iniciativas mostra uma aba por programa ativo, e o "+" abre o cadastro no Portal.
+- **I4 (INI-03):** **Importar dados** em cada programa, com uma importação comum de ações (colar do Excel/CSV, com prévia), registrada em Portal › Importação › Iniciativas. Os formatos próprios de OSM e 5S entram quando chegarem as amostras.

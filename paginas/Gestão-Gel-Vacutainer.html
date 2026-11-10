@@ -1587,7 +1587,7 @@ const fileBackend={kind:'file',async commit(ch){applyLocal(ch);FS.pending.push(c
 async function fsRefresh(){if(S.mode!=='file'||FS.busy||ui.demo)return;try{const cur=await fsReadBase(fsKnown());if(cur&&!cur.same){FS.mod=cur.mod;FS.rev=cur.rev;FS.revBy=cur.by;loadData(cur.data);FS.pending.forEach(applyLocal);localBackend.save();render()}}catch(e){}}
 /* ================= V1.89 · integração com as outras páginas (Portal, OEE, Perdas) ================= */
 // versão da página (topo, Guia e base gravada)
-const APP_VERSION='2.15';   /* 2.15 · ARQ-05/ARQ-07: catálogos e equipamentos do Portal (GelCad); contas do gel iguais */   /* 2.14 · ARQ-09: sem entrada própria de "Modo exemplo" */   /* 2.11 · C2–C6: kit com a ficha por pasta (AT-08) e a contagem da fila durável (Portal › Versões) */   /* 2.10 · C1: alterações pendentes na fila durável do kit (sem perda entre abas) */   /* 2.09 · E11: busca do kit leva o equipamento à ficha em Equipamentos */   /* 2.08 · E8: kit com "+ Abrir ação" na ficha da ordem */   /* 2.07 · E5: ficha da ordem comum (botão na ordem) e busca por ordem, lote e LP */   /* 2.06 · E3: número digitado só aceito inteiro; E4: cobertura das ordens no exports */   /* 2.05 · E2: a versão da tela vem desta constante (o rótulo estava fixo em v2.01); kit com data local e meta do mês ponderada */   /* 2.04 · revisão 065fe6f: restauração por arquivo confirma e não segue sem a cópia anterior; CSV sem fórmulas; índice por dia no Painel */
+const APP_VERSION='2.20';   /* 2.20 · Fase 4 · 4e: exports porDiaGel (teórico × real por dia) */   /* 2.19 · Fase 4 · 4d: lê da Produção a partir do corte (GelProd); Resumo do dia */   /* 2.18 · Fase 4 · 4b: pesagem pela conta comum do kit (vacGel) */   /* 2.17 · Fase 4 · 4a: parâmetros do gel do Portal (processo, formatos, motivos, descartes, gel do catálogo) */   /* 2.16 · Fase 3 (IMP-04): importações no exports; #importar abre a importação */   /* 2.15 · ARQ-05/ARQ-07: catálogos e equipamentos do Portal (GelCad); contas do gel iguais */   /* 2.14 · ARQ-09: sem entrada própria de "Modo exemplo" */   /* 2.11 · C2–C6: kit com a ficha por pasta (AT-08) e a contagem da fila durável (Portal › Versões) */   /* 2.10 · C1: alterações pendentes na fila durável do kit (sem perda entre abas) */   /* 2.09 · E11: busca do kit leva o equipamento à ficha em Equipamentos */   /* 2.08 · E8: kit com "+ Abrir ação" na ficha da ordem */   /* 2.07 · E5: ficha da ordem comum (botão na ordem) e busca por ordem, lote e LP */   /* 2.06 · E3: número digitado só aceito inteiro; E4: cobertura das ordens no exports */   /* 2.05 · E2: a versão da tela vem desta constante (o rótulo estava fixo em v2.01); kit com data local e meta do mês ponderada */   /* 2.04 · revisão 065fe6f: restauração por arquivo confirma e não segue sem a cópia anterior; CSV sem fórmulas; índice por dia no Painel */
 /* 2.03 · situação "em atualização" (kit: selo, pílula e faixa; docs/paginas-construcao.md) */
 /* 2.02 · relatório montado: todas as linhas no PDF, comentário, aviso de corte no texto; Painel em 1º; aba inicial do perfil; impressão e PDF no tema claro */
 /* 1.99 · menu Mais do cabeçalho (vac-visual v1): fecha ao escolher uma ação, ao clicar fora e com Esc */
@@ -1647,7 +1647,12 @@ function gelExports(){try{GelCad.aplicar()}catch(e){}derive();const c=S.config;c
   if(pd.sapN)P.push({sev:2,txt:`${pd.sapN} conferência(s) do histórico SAP`,link:''});
   if(age==null)P.push({sev:2,txt:'Nenhum relatório SAP importado',link:''});else if(age>2)P.push({sev:age>7?1:2,txt:`Relatório SAP de estoque com ${age} dias`,link:''});
   const ords=gelOrders().map(({L,...o})=>({...o,consumoKg:o.consumoKg!=null?+o.consumoKg.toFixed(3):null,scrapKg:o.scrapKg!=null?+o.scrapKg.toFixed(3):null,gPorTubo:o.gPorTubo!=null?+o.gPorTubo.toFixed(4):null,indice:o.indice!=null?+o.indice.toFixed(2):null}));
-  return {exportsVersion:1,geradoEm:nowDT(),modulo:'gel',appVersion:APP_VERSION,
+  /* 2.20 · Fase 4 · 4e (GEL-04): teórico × real por dia (60 dias), para a Produção mostrar no dia; o real (barris baixados, G4) é do Gel */
+  const r3=v=>v==null||!isFinite(v)?null:Math.round(v*1000)/1000,d60=addDays(todayISO(),-59);
+  const porDiaGel=Object.keys(S.prodlog||{}).filter(k=>k>=d60).sort().map(k=>{try{const c=prodCalc(k,S.prodlog[k]),b=c.bom||{};return{dia:k,tubos:Math.round(c.tubes||0),gelBonsKg:r3(c.gelBons),teoKg:r3(c.teo),baixadoKg:r3(c.baixKg),barris:c.nBx||0,scrapKg:{T:r3(c.sReal.T??0),B:r3(c.sReal.B??0),P:r3(c.sReal.P??0)},desvio:r3(c.dev),indice:r3(b.idx),savingKg:r3(b.saving),fonte:S.prodlog[k].fromProd?'Produção':'Gel'}}catch(e){return null}}).filter(Boolean);
+  return {exportsVersion:1,geradoEm:nowDT(),modulo:'gel',appVersion:APP_VERSION,porDiaGel,
+    /* 2.16 · IMP-04: relatórios de estoque de LPs do SAP (foto no instante "em"), para o Portal › Importação */
+    importacoes:(S.imports||[]).filter(i=>i&&i.at).map(i=>({tipo:'ESTOQUE_LP',em:i.at,arquivo:i.fileName||null,auto:!!i.auto,linhas:i.rows||null})).sort((a,b)=>a.em<b.em?1:-1).slice(0,200),
     estoque:{kg:+live.reduce((s,l)=>s+(l._remain||0),0).toFixed(2),barris:live.length,naLinha:onLine.length,disponivelKg:+availKg.toFixed(2),disponiveis:avail.length,coberturaDias:rate?Math.round(availKg/rate):null,
       /* 1.96 · saldo por local (já descontadas as retiradas parciais), para o gráfico do Portal */
       porLocal:Object.values(live.reduce((m,l)=>{const k=String(l.location||'');const o=m[k]||(m[k]={local:k,kg:0,barris:0});o.kg+=+l._remain||0;o.barris++;return m},{})).map(o=>({...o,kg:+o.kg.toFixed(2)}))},
@@ -3720,7 +3725,7 @@ function evText0(e){
 }
 
 /* ================= render ================= */
-function render(){memoClear();try{GelCad.aplicar()}catch(e){console.warn('GelCad',e)}
+function render(){memoClear();try{GelCad.aplicar()}catch(e){console.warn('GelCad',e)}try{GelProd.aplicar();GelProd.talvez();const tp=TABS.find(t=>t[0]==='prod');if(tp)tp[1]=GelProd.corte()?'Resumo do dia':'Registro de produção'}catch(e){console.warn('GelProd',e)}
   applyLogo();applyName();applyTheme();if(!ui.sysDone){ui.sysDone=true;try{renderSysNav();renderUser();wireCabecalho()}catch(e){console.warn(e)}}if(ui.hashGo)setTimeout(hashTry,0);
   if(!visibleTabs().some(t=>t[0]===ui.tab))ui.tab=visibleTabs()[0][0];
   derive();renderMeta();renderKpis();renderTabs();
@@ -4377,6 +4382,7 @@ function openConfig(sec){
    <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn" id="bkE">Exportar backup (JSON)</button><label class="btn">Restaurar backup<input type="file" id="bkI" accept=".json" hidden></label><button class="btn" data-act="exportFifo">Fila FIFO (CSV)</button><button class="btn" data-act="exportHist">Histórico (CSV)</button></div><div id="bkMsg"></div><div id="bkList"></div>`;
   modal('Configuração',nav+`<div class="cfgbody">${body}</div>`,'',()=>{
     {const d=$('#ov .dlg');if(d)d.style.width='min(1280px,97vw)'}
+    setTimeout(()=>{try{GelCad.travarCfg(s)}catch(e){console.warn(e)}},0);   /* 2.17 · 4a: o que vem do Portal fica só para consulta */
     document.querySelectorAll('[data-cfgsec]').forEach(b=>b.addEventListener('click',()=>{ui.catEdit=null;openConfig(b.dataset.cfgsec)}));
     const saveCfg=async(patch,msg)=>{const ch=newCh();ch.config=patch;try{await backend.commit(ch)}catch(e){return}toast(msg||'Configuração salva.');render()};
     const sv=$('#cfgSave');
@@ -4588,6 +4594,31 @@ const GelCad={
  usaGel(cod,c){const gel=new Set((c.materiais||[]).filter(m=>m&&m.tipo==='gel').map(m=>String(m.codigo)));if(!gel.size)return false;const b=(c.bom||[]).find(x=>x&&String(x.catalogo)===String(cod));
   return !!b&&(b.vigencias||[]).some(v=>(v.itens||[]).concat(v.estrutura||[]).some(i=>gel.has(String(i.material))))},
  /* aplica na memória (idempotente); devolve se mudou algo que entra na conta (formato/situação) */
+ /* 2.17 · Fase 4 · 4a (D10): parâmetros do gel do Portal (parametros.gel, equipamentos[].gel, catalogos[].gel), mesma estrutura do Gel */
+ pg(c=this.doc()){return c&&c.parametros&&c.parametros.gel||null},
+ troca(o,k,v){const a=JSON.stringify(o[k]??null),b=JSON.stringify(v??null);if(a===b)return false;o[k]=v==null?v:JSON.parse(b);return true},
+ aplicarGel(c){let m=false;const G=this.pg(c)||{};S.config=S.config||{};
+  if((G.processo||[]).length)m=this.troca(S.config,'params',G.processo)||m;
+  if((G.formatos||[]).length)m=this.troca(S.config,'fmts',G.formatos)||m;
+  if((G.motivos||[]).length)m=this.troca(S.config,'motivos',G.motivos)||m;
+  for(const e of S.config.equips||[]){if(!e.portal)continue;const p=(c.equipamentos||[]).find(x=>String(x.codigo)===String(e.portal));if(!p||!p.gel)continue;
+   m=this.troca(e,'tara',p.gel.tara??'')||m;if(Array.isArray(p.gel.descs))m=this.troca(e,'descs',p.gel.descs)||m}
+  for(const k of S.catalogs||[]){const p=k.portal?this.cat(k.portal,c):null;if(!p||!p.gel)continue;const g=p.gel;
+   if(Array.isArray(g.vig)&&g.vig.length)m=this.troca(k,'vig',g.vig)||m;if(g.fmt)m=this.troca(k,'fmt',g.fmt)||m;
+   if(g.lotSize!=null)m=this.troca(k,'lotSize',g.lotSize)||m;if(g.rateH!=null)m=this.troca(k,'rateH',g.rateH)||m}
+  return m},
+ /* seção da Configuração que vem do Portal (fica só para consulta) */
+ donoPortal(sec){const c=this.doc(),G=this.pg(c)||{};if(!c)return null;
+  if(sec==='proc'&&(G.processo||[]).length)return['Perdas teóricas e gel padrão','cadastros/parametros'];
+  if(sec==='fmts'&&(G.formatos||[]).length)return['Formatos de tubo','cadastros/parametros'];
+  if(sec==='motivos'&&(G.motivos||[]).length)return['Motivos de descarte','cadastros/parametros'];
+  if(sec==='equip'&&(c.equipamentos||[]).some(x=>x&&x.gel))return['Embalagem e descartes dos equipamentos','cadastros/equipamentos'];
+  if(sec==='cat'&&ui.catEdit){const k=catById(ui.catEdit),p=k&&k.portal?this.cat(k.portal,c):null;if(p&&p.gel)return['Gel deste catálogo (BOM de gel, gramas por tubo, lote e velocidade)','cadastros/catalogos/'+encodeURIComponent(p.codigo)]}
+  return null},
+ travarCfg(sec){const d=this.donoPortal(sec);if(!d)return;const b=document.querySelector('#ov .cfgbody');if(!b)return;
+  b.querySelectorAll('input,select,textarea,button').forEach(el=>{if(el.closest('a')||el.id==='ctPortal')return;el.disabled=true;el.title='Vem do Portal: edite lá'});
+  b.querySelectorAll('[draggable]').forEach(el=>el.setAttribute('draggable','false'));
+  b.insertAdjacentHTML('afterbegin',portalBannerGel(d[0],d[1]))},
  aplicar(){const c=this.doc();if(!c)return false;let conta=false;
   for(const k of S.catalogs||[]){const p=this.cat(k.num,c);if(!p){if(k.portal)delete k.portal;continue}k.portal=String(p.codigo);if(p.nome&&k.desc!==p.nome)k.desc=p.nome;if(p.cor&&k.color!==p.cor)k.color=p.cor;
    const at=p.ativo!==false;if(k.active!==at){k.active=at;conta=true}const f=this.fmt(p);if(f&&(k.fmt||'100')!==f){k.fmt=f;conta=true}}
@@ -4595,12 +4626,42 @@ const GelCad={
    const v=(p.vigencias||[]).slice().sort((a,b)=>a.de<b.de?1:-1)[0]||{};
    S.catalogs.push({id:'cat-'+p.codigo,num:String(p.codigo),desc:p.nome||'',color:p.cor||PALETA[S.catalogs.length%PALETA.length],active:true,fmt:this.fmt(p)||'100',lotSize:v.caixasPorLote&&v.tubosPorCaixa?+v.caixasPorLote*+v.tubosPorCaixa:null,rateH:v.pphNominal?+v.pphNominal:null,portal:String(p.codigo),origem:'Portal'});conta=true}
   for(const e of (S.config&&S.config.equips)||[]){const p=this.eq(e,c);if(!p)continue;e.portal=String(p.codigo);if(p.nome&&e.name!==p.nome)e.name=p.nome;const at=p.ativo!==false;if((e.active!==false)!==at){e.active=at;conta=true}}
+  try{conta=this.aplicarGel(c)||conta}catch(e){console.warn('GelCad.gel',e)}   /* por último: o gel do catálogo manda no formato */
   if(conta&&typeof memoClear==='function')memoClear();return conta},
  /* equipamentos do Portal que ainda não estão no Gel (categoria gel primeiro) */
  eqLivres(){const c=this.doc();if(!c)return[];const usados=new Set(((S.config&&S.config.equips)||[]).map(e=>e.portal).filter(Boolean));
   return (c.equipamentos||[]).filter(x=>x&&x.codigo&&x.ativo!==false&&!usados.has(String(x.codigo))).sort((a,b)=>(a.categoria==='gel'?0:1)-(b.categoria==='gel'?0:1)||String(a.codigo).localeCompare(String(b.codigo)))},
  catLivres(){const c=this.doc();if(!c)return[];return (c.catalogos||[]).filter(x=>x&&x.codigo&&x.tipoItem!=='preparacao'&&x.ativo!==false&&!(S.catalogs||[]).some(k=>String(k.num)===String(x.codigo)))}
 };
+
+/* ===== 2.19 · Fase 4 · 4d do briefing (GEL-02 / GEL-05, G3 / G5): o Gel lê da Produção a partir da data de corte =====
+   A partir de Portal › Parâmetros › Gestão de Gel › "Gel lido da Produção a partir de", cada dia com dados da Produção vira,
+   na memória, um registro do Gel montado com o exports da Produção (lido pelo vacFicha, com cache e conferência de versão):
+   tubos bons por catálogo (porDiaCatalogo), hora extra e "sem produção" de cada turno e as pesagens do Registrar scrap (porDiaTurno).
+   As contas do Gel (teórico, índice, BOM, saving, relatório) ficam iguais e usam esses números. Os campos manuais somem nesses dias
+   (Resumo do dia, só leitura). Dias anteriores ao corte continuam com o registro do Gel. */
+const GelProd={oee:null,lendo:false,lidoEm:0,
+ corte(){const G=GelCad.pg();return G&&G.registroPelaProducaoDesde||null},
+ resumo(date){const c=this.corte();return !!c&&!!date&&date>=c},
+ ler(){if(this.lendo||typeof vacFicha==='undefined')return Promise.resolve();this.lendo=true;
+  return vacFicha.carregar().then(()=>{const x=vacFicha.dados('oee');this.oee=x&&x.d?x:null;this.lidoEm=Date.now()}).catch(e=>console.warn('GelProd',e)).finally(()=>{this.lendo=false})},
+ /* chamado no render: lê de novo depois de 1 min e redesenha quando chega */
+ talvez(){if(!this.corte())return;if(!this.lendo&&Date.now()-this.lidoEm>60000)this.ler().then(()=>{if(this.oee)render()})},
+ rec(dia,x){const catId=code=>{const k=(S.catalogs||[]).find(c=>String(c.num)===String(code));return k?k.id:null};
+  const eqId=code=>{const e=(S.config.equips||[]).find(e=>String(e.portal||'')===String(code));return e?e.id:null};
+  const turns={};let anyGel=false;
+  for(const t of x.turnos){const g=t.gel||null,tt={t:+t.boa||0,x:t.extraMin?+(t.extraMin/60).toFixed(4):0,off:t.semProducao==='programado'};
+   if(g){anyGel=true;if(g.none)tt.none=true;else{tt.eq=(g.pesagens||[]).map(p=>({e:eqId(p.e),d:p.d,kg:+p.kg||0,nb:+p.nb||0,cat:catId(p.cat)||'',mots:(p.mots||[]).slice()})).filter(p=>p.e)}}
+   turns[t.turno]=tt}
+  const M={};for(const k of x.cats){const id=catId(k.catalogo);if(!id)continue;M[id]=(M[id]||0)+(+k.boa||0)}
+  const rec={date:dia,turns,orders:Object.entries(M).map(([cat,t])=>({cat,t})),sT:'',sB:'',sP:'',resp:'Produção',obs:'',fromProd:true,prodGeradoEm:this.oee.geradoEm||null,savedAt:this.oee.geradoEm||null};
+  if(anyGel){const es=recEquipScrap(rec,dia);rec.sT=+es.T.toFixed(3);rec.sB=+es.B.toFixed(3);rec.sP=+es.P.toFixed(3);rec.eqScrap=es.any}
+  return rec},
+ aplicar(){const c=this.corte();if(!c||!this.oee||!this.oee.d)return false;const D=this.oee.d,porDia={};let m=false;
+  for(const t of D.porDiaTurno||[])if(t&&t.dia>=c)(porDia[t.dia]=porDia[t.dia]||{turnos:[],cats:[]}).turnos.push(t);
+  for(const k of D.porDiaCatalogo||[])if(k&&k.dia>=c)(porDia[k.dia]=porDia[k.dia]||{turnos:[],cats:[]}).cats.push(k);
+  for(const [dia,x] of Object.entries(porDia)){const r=this.rec(dia,x);if(JSON.stringify(S.prodlog[dia]||null)!==JSON.stringify(r)){S.prodlog[dia]=r;m=true}}
+  if(m&&typeof memoClear==='function')memoClear();return m}};
 function portalBannerGel(txt,h){return`<div class="info" style="margin-bottom:10px"><b>${txt}</b>: cadastro geral do Portal, só para consulta aqui. <a class="btn" href="${typeof vacPortalHref==='function'?vacPortalHref(h):'Portal.html#'+h}" target="_blank">Editar no Portal ↗</a></div>`}
 const shiftAtRaw=date=>{const pt=cadTurnosGel(date);if(pt)return pt;const L=shiftList();let v=L[0];for(const x of L)if(x.from<=date)v=x;return v};
 // só os turnos ativos (turno desmarcado não aparece no registro nem conta horas)
@@ -5090,15 +5151,10 @@ const equipById=id=>(S.config.equips||[]).find(e=>e.id===id);
 // ordens com tubos; no rascunho, se só os turnos foram preenchidos e há uma ordem, ela recebe a soma dos turnos
 function recOrdersEff(rec){const o=(rec&&rec.orders||[]);const f=o.filter(x=>+x.t>0);if(f.length||o.length!==1)return f;const ts=Object.values((rec&&rec.turns)||{}).reduce((a,x)=>a+(+x.t||0),0);return ts>0?[{...o[0],t:ts}]:[]}
 const kgOf=v=>v==null||v===''?0:typeof v==='string'?(parseNum(v)||0):(+v||0);
+/* 2.18 · Fase 4 · 4b: a conta da pesagem é a do kit (vacGel.pesagem), a mesma que a Produção usa no Registrar scrap */
 function scrapCalc(ent,date){
   const e=equipById(ent.e);const d=e&&(e.descs||[]).find(x=>x.id===ent.d);if(!e||!d)return null;
-  const FM=fmtAt(date);const F=FM.f[catFmt(ent.cat)]||FM.f['100'];const g=gelReal(ent.cat,date);
-  const tara=d.cat==='P'?taraPAt(FM):e.tara!=null&&e.tara!==''?+e.tara:+FM.tara||0;const net=Math.max(0,kgOf(ent.kg)*1000-tara);
-  const comp=COMPS[d.comp]||COMPS.gel;
-  if(d.comp==='gel')return {scat:d.cat,comp:d.comp,tara,gross:kgOf(ent.kg),gel:net/1000,n:0,tubo:0,tamp:0,rolha:0,etq:0,adit:0};
-  if(d.comp==='barril'){const nb=+ent.nb||0,kr=kgOf(ent.kg);const gel=kr>0?kr:nb*(sobraAt(date)||0);return {scat:d.cat,comp:d.comp,gross:gel,gel,nb,est:!(kr>0),n:0,tubo:0,tamp:0,rolha:0,etq:0,adit:0}}
-  const w={tubo:+F.tubo||0,gel:g,adit:+F.adit||0,tr:+F.tr||0};const unit=comp.parts.reduce((s,k)=>s+w[k],0)||1;const n=net/unit;
-  return {scat:d.cat,comp:d.comp,tara,gross:kgOf(ent.kg),unit,n,gel:n*g/1000,tubo:n*w.tubo/1000,tamp:comp.cap?n:0,rolha:comp.cap?n:0,etq:comp.cap?n:0,adit:comp.parts.includes('adit')?n*w.adit/1000:0,trKg:comp.cap?n*w.tr/1000:0};
+  return vacGel.pesagem({desc:d,taraEq:e.tara,kg:kgOf(ent.kg),nb:ent.nb,cg:{fmt:catFmt(ent.cat),vig:catVigList(catById(ent.cat))},date,fmts:S.config.fmts,params:S.config.params});
 }
 // scrap do turno por categoria (gel líquido, kg) a partir dos equipamentos
 function turnScrap(rec,date,tn){const t=rec&&rec.turns&&rec.turns[tn];const out={T:0,B:0,P:0,any:false,ents:[]};if(!t||!t.eq||t.none)return out;
@@ -5718,9 +5774,10 @@ function renderProd(){
     <label>Ver período <select id="rgDays2">${[['7','Última semana'],['30','Último mês'],['all','Total'],['14','14 dias'],['60','60 dias']].map(([v,l])=>`<option value="${v}" ${String(ui.rgDays||14)===v?'selected':''}>${l}</option>`).join('')}</select></label>
     ${recent.length?`<span class="sub" style="color:var(--muted);font-size:12.5px">Registrados:</span>${recent.map(k=>`<button class="btn sm ${k===ui.rgDate?'primary':''}" data-rgday="${k}">${fmtD(k).slice(0,5)}</button>`).join('')}`:''}</div>
   <div class="grid2">
-   <div class="card"><h3>Registro de ${dayLabel(d.date)}${d.exists?' <span class="pill p-ok">registrado</span>':''}</h3>
-    <p class="sub">${dp?`Programado: ${dp.unit==='tubos'?nf0.format(dp.tubes)+' tubos':dp.barrels+' barris'}. `:''}Informe os tubos bons produzidos por catálogo. Os barris consumidos vêm das baixas, feitas aqui ou na Operação.</p>
-    <div class="rgform">
+   <div class="card"><h3>${GelProd.resumo(d.date)?'Resumo de ':'Registro de '}${dayLabel(d.date)}${GelProd.resumo(d.date)?' <span class="pill p-ok">da Produção</span>':d.exists?' <span class="pill p-ok">registrado</span>':''}</h3>
+    ${GelProd.resumo(d.date)?`<div class="info" style="margin-bottom:8px">Tubos bons, hora extra, "sem produção" e scrap deste dia vêm da <b>Produção</b> (Registrar scrap de cada turno)${GelProd.oee?` · lidos de ${fmtDT(GelProd.oee.geradoEm||'')}`:' · <b>ainda não lidos</b>: conecte a pasta ou abra a Produção'}. Aqui é só consulta; o Gel lê da Produção a partir de ${fmtD(GelProd.corte())} (Portal › Parâmetros › Gestão de Gel).</div>`:''}
+    <p class="sub">${dp?`Programado: ${dp.unit==='tubos'?nf0.format(dp.tubes)+' tubos':dp.barrels+' barris'}. `:''}${GelProd.resumo(d.date)?'Os barris consumidos vêm das baixas, feitas aqui ou na Operação.':'Informe os tubos bons produzidos por catálogo. Os barris consumidos vêm das baixas, feitas aqui ou na Operação.'}</p>
+    ${GelProd.resumo(d.date)?'<fieldset disabled style="border:0;padding:0;margin:0;min-width:0">':''}<div class="rgform">
      <div class="f"><span>Produção (tubos bons)</span>
       <div class="orders">${d.orders.map((o,i)=>`<div class="rgo"><div class="orow">${useCat?`<select data-rg="cat" data-i="${i}" aria-label="Catálogo">${catOptions(o.cat)}</select>`:'<span></span>'}<input type="text" inputmode="numeric" data-rg="t" data-i="${i}" value="${o.t?nf0.format(o.t):''}" placeholder="tubos bons" aria-label="Tubos bons"><span>tubos</span>${d.orders.length>1?`<button class="btn sm ghost" data-act="rgRm" data-i="${i}" aria-label="Remover">✕</button>`:'<span></span>'}</div></div>`).join('')}</div>
       <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:6px"><button class="btn sm" data-act="rgAdd">+ Catálogo</button>${dp&&dp.unit==='tubos'?'<button class="btn sm" data-act="rgCopy">Copiar da programação</button>':''}</div>
@@ -5732,7 +5789,7 @@ function renderProd(){
      <div class="fg"><label class="f"><span>Responsável *</span><input type="text" data-rg="resp" value="${esc(d.resp)}"></label><label class="f"><span>Observação</span><input type="text" data-rg="obs" value="${esc(d.obs)}"></label></div>
      <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn primary" data-act="rgSave">${d.exists?'Salvar alterações':'Registrar produção'}</button>${d.exists?'<button class="btn danger" data-act="rgDel">Excluir registro</button>':''}</div>
     </div>
-    ${rgBarrelsHtml(d.date)}
+    ${GelProd.resumo(d.date)?'</fieldset>':''}${rgBarrelsHtml(d.date)}
    </div>
    <div class="card"><h3>Teórico × real do dia</h3><div id="rgResult">${rgResultHtml(c)}</div></div>
   </div>`;
@@ -7579,7 +7636,7 @@ function buildDemo(){
 /* ================= boot ================= */
 loadPrefsLocal();if(ui.prefs.home)ui.tab=ui.prefs.home;
 /* 2.02 · aba por link (#aba=painel) ou aba inicial do perfil (Portal › Perfis/Usuários): vale sobre a página inicial pessoal, só na 1ª abertura da sessão */
-try{const h=(location.hash||'').replace(/^#/,'');const ai=/^aba=/.test(h)?h:(typeof vacAbaInicial==='function'?vacAbaInicial('gel'):null);const m=ai&&/^aba=(\w+)$/.exec(ai);if(m&&TABS.some(t=>t[0]===m[1])){ui.tab=m[1];ui.homeApplied=true;if(h)history.replaceState(null,'',location.pathname+location.search)}}catch(e){}
+try{const h=(location.hash||'').replace(/^#/,'');const ai=/^aba=/.test(h)?h:(typeof vacAbaInicial==='function'?vacAbaInicial('gel'):null);const m=ai&&/^aba=(\w+)$/.exec(ai);/* 2.16 · IMP-05/06: #aba=importar (botão do Portal › Importação) abre a importação do relatório do SAP */if(m&&m[1]==='importar'){history.replaceState(null,'',location.pathname+location.search);setTimeout(()=>{try{openImport()}catch(e){console.warn(e)}},900)}if(m&&TABS.some(t=>t[0]===m[1])){ui.tab=m[1];ui.homeApplied=true;if(h)history.replaceState(null,'',location.pathname+location.search)}}catch(e){}
 resetState();S.mode='local';backend=localBackend;
 try{render()}catch(e){console.error(e)}
 ui.hashGo=hashParse();if(ui.hashGo)setTimeout(hashTry,0);
@@ -7676,6 +7733,9 @@ function vacMetaAreaMes(codigo, per) {
 }
 /* link para uma tela do Portal (Administração) */
 function vacPortalHref(h) { const port = (typeof systems === 'function' ? systems() : []).find(s => s.id === 'portal') || { id: 'portal', html: 'Portal.html' }; return typeof sysHref === 'function' ? sysHref(port, h) : 'Portal.html#' + h; }
+/* Fase 3 do briefing (IMP-06): Portal › Importação é o lugar único das importações; as abas "Importar" das páginas levam para a subseção da página */
+function vacImportacaoHref(sec) { return vacPortalHref('importacao' + (sec ? '/' + sec : '')); }
+function vacIrImportacao(sec) { const h = vacImportacaoHref(sec); if (typeof vacDemo !== 'undefined' && vacDemo.ativo && vacDemo.ir) vacDemo.ir(h); else location.href = h; }
 /* kit v2.1 · vac-visual v1 (06/11/2026): abas numa linha só. Quando não cabem, a faixa rola na horizontal, com sombra e seta ‹ › na borda
    que tem mais abas, e a aba ativa fica à vista. A Produção (abas agrupadas com menus, nav.vtabs.nav) não rola. CSS em fontes/kit/kit_visual.css. */
 (function () {
@@ -7822,10 +7882,10 @@ function vacExportsOk(ex, conhecida = 1) {
    ou o link <página>#ficha=ordem/<n> (também lote/<x> e lp/<x>). O ← Voltar do navegador fecha a ficha e mantém a tela. */
 const vacFicha = (() => {
   const FONTES = [
-    { id: 'oee', nome: 'Produção', base: 'oee-vacutainer-base.json', pega: ex => ({ porOrdem: ex.porOrdem || [], cob: ex.porOrdemCobertura || null, lotes: ex.lotes || [] }) },
+    { id: 'oee', nome: 'Produção', base: 'oee-vacutainer-base.json', pega: ex => ({ porOrdem: ex.porOrdem || [], cob: ex.porOrdemCobertura || null, lotes: ex.lotes || [], porDiaTurno: ex.porDiaTurno || [], porDiaCatalogo: ex.porDiaCatalogo || [] }) },   /* Fase 4 · 4d: o Gel lê os turnos da Produção */
     { id: 'ordens', nome: 'SAP (Produção › Ordens)', sis: 'oee', base: 'ordens-base.json', pega: ex => ({ porOrdem: ex.porOrdem || [] }) },
     { id: 'perdas', nome: 'Waste', base: 'perdas-base.json', pega: ex => ({ porOrdem: ex.porOrdem || [] }) },
-    { id: 'gel', nome: 'Gestão de Gel', base: 'fifo-base.json', pega: ex => ({ ordens: ex.ordens || [], cob: ex.ordensCobertura || null }) },
+    { id: 'gel', nome: 'Gestão de Gel', base: 'fifo-base.json', pega: ex => ({ ordens: ex.ordens || [], cob: ex.ordensCobertura || null, porDiaGel: ex.porDiaGel || [] }) },   /* Fase 4 · 4e */
     { id: 'paradas', nome: 'Paradas', base: 'paradas-base.json', pega: ex => ({ porOrdem: ex.porOrdem || [], eventos: (ex.eventos || []).filter(e => e && e.ordem) }) },
     { id: 'inic', nome: 'Iniciativas', base: 'iniciativas-base.json', pega: ex => ({ acoes: ex.acoes || [] }) }];
   const S = { dados: {}, idx: null, carregando: null, aberto: null, empilhado: false };
@@ -8034,7 +8094,9 @@ const vacFicha = (() => {
   };
   const ini = () => { ligaBusca(); rota(); };
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', () => setTimeout(ini, 0)); else setTimeout(ini, 0);
-  return { abrir, fechar, carregar, buscar, indice, _S: S, FONTES };
+  /* Fase 4 · 4d: o que foi lido de uma página (estado, geradoEm, d), para quem precisa do exports de outra (ex.: o Gel lê a Produção) */
+  const dados = id => S.dados[id] || null;
+  return { abrir, fechar, carregar, buscar, indice, dados, _S: S, FONTES };
 })();
 /* botão "Ficha" para as páginas porem ao lado de um número de ordem (abre a ficha comum) */
 function vacFichaBotao(ordem, tipo = 'ordem') { const v = String(ordem ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); return `<button type="button" class="vficha-bt" data-vac-${tipo}="${v}" title="Ficha: tudo sobre ${tipo === 'lp' ? 'o barril' : 'a ' + tipo} ${v} em todas as páginas">Ficha</button>`; }
@@ -8050,5 +8112,59 @@ function vacNovaAcaoHref(d) {
 function vacNovaAcaoBotao(d, rot = '+ Ação no Planner', cls = 'b sm') { const e = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); return `<a class="${e(cls)}" href="${e(vacNovaAcaoHref(d))}" target="_blank" rel="noopener" title="Abre Iniciativas com a ação preenchida (você confere antes de criar)">${e(rot)}</a>`; }
 /* endereço desta página com uma rota (para o "reconsultar" da ação) */
 function vacAquiHref(hash) { return vacDemo.ativo ? vacDemo.paginas[PAGE.id] + (hash ? '#' + hash : '') : location.href.split('#')[0].split('/').pop() + (hash ? '#' + hash : ''); }
+
+/* ===== vacGel · conta do gel comum (Fase 4 · 4b do briefing de 09/11/2026) =====
+   A mesma conta na Gestão de Gel e na Produção (Registrar scrap e Teórico × Real), sem cópia divergente.
+   Funções puras: recebem os parâmetros (formatos, perdas, gel do catálogo, descarte do equipamento) e devolvem números.
+   A Gestão de Gel chama com os dados dela (que desde a 2.17 vêm do Portal); a Produção chama com o cadastro do Portal (vacGel.ctx()).
+   Estruturas iguais às do Gel: formatos [{from,tara,taraP,sobra,f:{'100':{tubo,gel,adit,tr},'75':{…}}}], processo [{from,g,pT,pB,pP}],
+   gel do catálogo {fmt, vig:[{from,gTubo,bomKg,bomBase,tol}]}, equipamento {tara, descs:[{id,comp,cat,mots}]}. */
+const vacGel = (() => {
+  const FMT_DEF = { from: '2000-01-01', tara: 75, taraP: 5, f: { '100': { tubo: 4.779, gel: 0.834, adit: 0.020, tr: 2.30 }, '75': { tubo: 3.560, gel: 0.834, adit: 0.015, tr: 2.30 } } };
+  const PROC_DEF = { from: '', g: 0.98, pT: 2.2406, pB: 0.7352, pP: 0.5252 };
+  const COMPS = { completo: { l: 'Tubo completo', parts: ['tubo', 'tr', 'gel', 'adit'], cap: 1 }, tubogel: { l: 'Tubo + gel', parts: ['tubo', 'gel'] }, spray: { l: 'Tubo + gel + spray', parts: ['tubo', 'gel', 'adit'] }, gel: { l: 'Gel puro', parts: ['gel'] }, barril: { l: 'Barril (sobra)', parts: ['gel'] } };
+  const SCAT = { T: 'Tubos', B: 'Barril', P: 'Purga' };
+  const ord = L => (L || []).slice().sort((a, b) => a.from < b.from ? -1 : a.from > b.from ? 1 : 0);
+  /* vigência dos formatos na data (a 1ª, se a data for anterior a todas) */
+  function fmtAt(fmts, date) { const L = ord(fmts && fmts.length ? fmts : [FMT_DEF]); let v = L[0]; for (const x of L) if (x.from <= date) v = x; return v; }
+  function procAt(params, date) { const L = ord(params).filter(p => p.from <= date); return L.length ? { ...PROC_DEF, ...L[L.length - 1] } : { ...PROC_DEF }; }
+  function sobraAt(fmts, date) { const L = ord(fmts && fmts.length ? fmts : [FMT_DEF]).filter(x => x.from <= date && x.sobra != null && x.sobra !== ''); return L.length ? +L[L.length - 1].sobra : null; }
+  const taraP = FM => FM && FM.taraP != null && FM.taraP !== '' ? +FM.taraP : 5;
+  /* vigências do gel do catálogo (aceita o cadastro antigo: gTubo/bom no próprio catálogo) */
+  function vigList(cg) { if (!cg) return []; const L = cg.vig && cg.vig.length ? cg.vig : (cg.gTubo || cg.bomG || cg.bomKg ? [{ from: '2000-01-01', gTubo: cg.gTubo || null, bomG: cg.bomG || null, bomPct: cg.bomPct || 106, bomKg: cg.bomKg || null, bomBase: cg.bomBase || 10000, tol: cg.tol ?? 6 }] : []); return ord(L); }
+  function vigAt(cg, date) { const L = vigList(cg); if (!L.length) return {}; let v = L[0]; for (const x of L) if (x.from <= date) v = x; return v; }
+  /* gel por tubo: o do catálogo; senão o do formato; senão o de processo */
+  function gelPorTubo(cg, date, fmts, params) { const v = vigAt(cg, date); if (+v.gTubo) return +v.gTubo; const F = fmtAt(fmts, date).f[(cg && cg.fmt) || '100']; return F && +F.gel ? +F.gel : procAt(params, date).g; }
+  function bomVals(v) { if (+v.bomKg) return { kg: +v.bomKg, base: +v.bomBase || 10000, tol: v.tol != null && v.tol !== '' ? +v.tol : 6 }; if (+v.bomG) { const p = +(v.bomPct || 106); return { kg: +v.bomG * p / 100 * 10, base: 10000, tol: p - 100 }; } return { kg: null, base: +v.bomBase || 10000, tol: v.tol != null && v.tol !== '' ? +v.tol : 6 }; }
+  /* BOM do catálogo na data: permitido (com a tolerância) e meta (sem); sem BOM, estimada pelo gel do formato + tolerância */
+  function bom(cg, date, fmts, params) { const b = bomVals(vigAt(cg, date)); let allowed, est = false; if (b.kg) allowed = b.kg * 1000 / b.base; else { const F = fmtAt(fmts, date).f[(cg && cg.fmt) || '100']; allowed = (F && +F.gel ? +F.gel : procAt(params, date).g) * (1 + b.tol / 100); est = true; } return { ...b, allowed, meta: allowed / (1 + b.tol / 100), lim: 100 + b.tol, est }; }
+  /* uma pesagem: peso bruto da balança (kg) → gel líquido, tubos e materiais. desc = {comp, cat}; taraEq = embalagem própria do equipamento */
+  function pesagem({ desc, taraEq, kg, nb, cg, date, fmts, params }) {
+    if (!desc) return null; const FM = fmtAt(fmts, date), F = FM.f[(cg && cg.fmt) || '100'] || FM.f['100'], g = gelPorTubo(cg, date, fmts, params);
+    const tara = desc.cat === 'P' ? taraP(FM) : taraEq != null && taraEq !== '' ? +taraEq : +FM.tara || 0, net = Math.max(0, (+kg || 0) * 1000 - tara);
+    const comp = COMPS[desc.comp] || COMPS.gel;
+    if (desc.comp === 'gel') return { scat: desc.cat, comp: desc.comp, tara, gross: +kg || 0, gel: net / 1000, n: 0, tubo: 0, tamp: 0, rolha: 0, etq: 0, adit: 0 };
+    if (desc.comp === 'barril') { const n0 = +nb || 0, kr = +kg || 0, gel = kr > 0 ? kr : n0 * (sobraAt(fmts, date) || 0); return { scat: desc.cat, comp: desc.comp, gross: gel, gel, nb: n0, est: !(kr > 0), n: 0, tubo: 0, tamp: 0, rolha: 0, etq: 0, adit: 0 }; }
+    const w = { tubo: +F.tubo || 0, gel: g, adit: +F.adit || 0, tr: +F.tr || 0 }, unit = comp.parts.reduce((s, k) => s + w[k], 0) || 1, n = net / unit;
+    return { scat: desc.cat, comp: desc.comp, tara, gross: +kg || 0, unit, n, gel: n * g / 1000, tubo: n * w.tubo / 1000, tamp: comp.cap ? n : 0, rolha: comp.cap ? n : 0, etq: comp.cap ? n : 0, adit: comp.parts.includes('adit') ? n * w.adit / 1000 : 0, trKg: comp.cap ? n * w.tr / 1000 : 0 };
+  }
+  /* teórico de gel de uma produção: tubos bons por catálogo → gel nos tubos ÷ (1 − perdas teóricas); por categoria T/B/P */
+  function teorico({ tubosPorCat, date, cg, fmts, params }) {
+    const P = procAt(params, date); let gelBons = 0; for (const [cat, t] of Object.entries(tubosPorCat || {})) gelBons += (+t || 0) * gelPorTubo(cg(cat), date, fmts, params) / 1000;
+    const perda = ((+P.pT || 0) + (+P.pB || 0) + (+P.pP || 0)) / 100, teo = gelBons / Math.max(.01, 1 - perda);   /* igual ao prodCalc do Gel */
+    return { gelBons, teo, sTeo: { T: teo * (+P.pT || 0) / 100, B: teo * (+P.pB || 0) / 100, P: teo * (+P.pP || 0) / 100 }, perdas: P };
+  }
+  /* contexto a partir do cadastro do Portal (Produção) */
+  function ctx(c) {
+    c = c || (typeof vacCad === 'function' ? vacCad() : null); const G = (c && c.parametros && c.parametros.gel) || {};
+    const cat = cod => { const k = (c && c.catalogos || []).find(x => x && String(x.codigo) === String(cod)); if (!k) return null; const g = k.gel || {}; const f = g.fmt || (/75/.test(k.formato || '') ? '75' : /100/.test(k.formato || '') ? '100' : null); return { ...g, fmt: f || '100' }; };
+    const eq = cod => { const e = (c && c.equipamentos || []).find(x => x && String(x.codigo) === String(cod)); return e && e.gel ? { codigo: e.codigo, nome: e.nome, ativo: e.ativo !== false, tara: e.gel.tara, descs: e.gel.descs || [] } : null; };
+    const equips = () => (c && c.equipamentos || []).filter(e => e && e.gel && e.ativo !== false && (e.gel.descs || []).length).map(e => eq(e.codigo));
+    const gelMats = new Set((c && c.materiais || []).filter(m => m && m.tipo === 'gel').map(m => String(m.codigo)));
+    const usaGel = cod => { const k = cat(cod); if (k && (k.vig || []).length) return true; if (!gelMats.size) return false; const b = (c && c.bom || []).find(x => x && String(x.catalogo) === String(cod)); return !!b && (b.vigencias || []).some(v => (v.itens || []).concat(v.estrutura || []).some(i => gelMats.has(String(i.material)))); };
+    return { fmts: G.formatos || [], params: G.processo || [], motivos: G.motivos || [], corte: G.registroPelaProducaoDesde || null, cat, eq, equips, usaGel };
+  }
+  return { FMT_DEF, PROC_DEF, COMPS, SCAT, fmtAt, procAt, sobraAt, taraP, vigList, vigAt, gelPorTubo, bomVals, bom, pesagem, teorico, ctx };
+})();
 
 </script>
