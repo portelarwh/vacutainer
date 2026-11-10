@@ -1257,7 +1257,7 @@ const U = (() => {
 
 /* ---- 02-model.js ---- */
 /* ================= modelo de dados, valores iniciais e integridade ================= */
-const APP_VERSION = '2.4.21';
+const APP_VERSION = '2.4.22';
 const SCHEMA_VERSION = 1;
 const BASE_FILE = 'oee-vacutainer-base.json';
 const BACKUP_DIR = '00. Backups';
@@ -1663,7 +1663,7 @@ const Engine = (() => {
 
   function computeDayRaw(db, day) {
     const st = db.settings;
-    const ru = +st.roundingUnit || 1;
+    const ru = roundAt(st, day.date);
     const msgs = [];
     const M = (level, msg, ref) => msgs.push({ level, msg, ref: ref || null });
     const shifts = (day.shifts || []).filter(s => !s.deleted).sort((a, b) => (toMin(a.snap && a.snap.start) || 0) - (toMin(b.snap && b.snap.start) || 0));
@@ -1910,7 +1910,7 @@ const Engine = (() => {
   }
   // meta diária oficial de um dia-padrão (para projeções), sem descontos
   function standardDayMeta(db, date, catalogId, lineId, machineId) {
-    const st = db.settings, ru = +st.roundingUnit || 1;
+    const st = db.settings, ru = roundAt(st, date);
     let dec = 0, cap = 0, ok = false;
     for (const { v } of activeShiftsAt(db, date, lineId)) {
       const rt = resolveTarget(db, date, catalogId, machineId, lineId);
@@ -3797,6 +3797,12 @@ const Importers = (() => {
    Formato atual (export do historiador): Time, <tag catálogo>, <tag lote>, <tag caixa>. Cada linha traz só o sinal que mudou.
    O nº da caixa é a contagem dentro do lote: volta a 1 no lote novo e continua de onde parou quando o lote é retomado.
    Guardamos por trecho de lote só o minuto de cada caixa (compactado), as trocas registradas no MES e as paradas sem caixa. */
+/* 2.4.22 · ARQ-06 · arredondamento da meta na data (vigências do Portal em settings.roundingVig) */
+function roundAt(st, date) {
+  const L = Array.isArray(st && st.roundingVig) ? st.roundingVig : null;
+  if (L && L.length && date) { const v = L.filter(x => x && x.de && x.de <= date && +x.valor > 0).sort((a, b) => a.de < b.de ? 1 : -1)[0]; if (v) return +v.valor; }
+  return +(st && st.roundingUnit) || 1;
+}
 const ServerData = (() => {
   const pad = n => String(n).padStart(2, '0');
   // 'AAAA-MM-DDTHH:MM:SS' (hora local, sem fuso) <-> minutos absolutos (fracionários)
@@ -4506,10 +4512,11 @@ const esc = U.esc;
 /* ---------- formatação de unidades e semáforo ---------- */
 const UNIT = () => (db() && +db().settings.entryUnit) || 1;
 // exibição: em milheiros (61 mil, padrão) ou número completo (61.000), preferência de cada pessoa
-const DISP = () => App.prefs.qtyDisplay === 'abs' ? 1 : UNIT();
+const vacQtd = () => { try { const v = localStorage.getItem('vac.qtd'); if (v === 'abs' || v === 'unit') return v; } catch (e) { } return App.prefs.qtyDisplay; };
+const DISP = () => vacQtd() === 'abs' ? 1 : UNIT();
 const fq = (v, d) => { if (v == null || !isFinite(v)) return '—'; const x = (v / DISP()) || 0; return U.fmt(x, d != null ? d : (Math.abs(x - Math.round(x)) > 1e-6 ? 1 : 0)); };
 const fqs = v => (v == null || !isFinite(v)) ? '—' : (v > 0 ? '+' : v < 0 ? '−' : '') + fq(Math.abs(v));
-const unitLbl = () => App.prefs.qtyDisplay === 'abs' ? 'un' : (db() && db().settings.unitLabel) || 'un';
+const unitLbl = () => vacQtd() === 'abs' ? 'un' : (db() && db().settings.unitLabel) || 'un';
 // digitação esperta: valor abaixo do limite é lido em milheiros (61 = 61.000); a partir dele, em peças (61000 ou 61.000 = 61.000).
 // big = campos de plano e ordens (limite 1.000.000, porque 12.000 mil é um valor normal ali)
 function parseQ(s, big) { if (s == null) return null; const t = String(s).trim(); if (t === '') return null; const n = +t.replace(/\s/g, '').replace(/\.(?=\d{3}(\D|$))/g, '').replace(',', '.'); if (!isFinite(n)) return NaN; const u = UNIT(); const lim = big ? 1e6 : 1e4; return Math.round((u > 1 && Math.abs(n) >= lim ? n : n * u) * 1000) / 1000; }
@@ -6950,7 +6957,7 @@ function metasRows(month) {
     const rt = Engine.resolveTarget(d, wk, cat.id, 'mac_line', 'line_vac');
     if (!rt) { out.push({ f, none: true }); continue; }
     const sim = date => { try { const day = Engine.buildDay(d, date, 'line_vac', 'mac_line', 'x'); day.shifts.forEach(p => p.initialCatalogId = cat.id); day._rev = Math.random(); const res = Engine.computeDayRaw(d, day); return { shifts: res.shifts.map(sr => ({ name: sr.ps.snap.name, code: sr.ps.snap.code, range: U.range(U.toMin(sr.ps.snap.start), U.toMin(sr.ps.snap.end)), meta: sr.agg.metaOp })), day: res.officialDaily }; } catch (e) { return null; } };
-    out.push({ f, cat, rt, perHour: U.ceilTo(rt.pph * rt.oee, +d.settings.roundingUnit || 1), wk: sim(wk), sat: sat <= end ? sim(sat) : null });
+    out.push({ f, cat, rt, perHour: U.ceilTo(rt.pph * rt.oee, roundAt(d.settings, wk)), wk: sim(wk), sat: sat <= end ? sim(sat) : null });
   }
   return out;
 }
@@ -10377,6 +10384,13 @@ const CadSync = (() => {
     if ((P.motivosAbono || []).length) sp('abMotivos', P.motivosAbono.slice());
     if ((P.motivosSemProducaoProg || []).length) sp('offMotivosProg', P.motivosSemProducaoProg.slice());
     if ((P.motivosSemProducaoNP || []).length) sp('offMotivosNP', P.motivosSemProducaoNP.slice());
+    /* 2.4.22 · ARQ-06: parâmetros da Produção (Portal › Parâmetros › Produção). O arredondamento tem vigência (D7):
+       a lista inteira vai para settings.roundingVig (cada dia usa a da própria data, roundAt); roundingUnit fica com a vigente hoje */
+    const PP = P.producao || {};
+    if (+PP.unidadeLancamento > 0) sp('entryUnit', +PP.unidadeLancamento);
+    if (PP.rotuloUnidade) sp('unitLabel', String(PP.rotuloUnidade));
+    const AR = (Array.isArray(PP.arredondamentoMeta) ? PP.arredondamentoMeta : []).filter(v => v && v.de && +v.valor > 0).map(v => ({ de: v.de, valor: +v.valor })).sort((a, b) => a.de < b.de ? -1 : 1);
+    if (AR.length) { sp('roundingVig', AR); const h = U.today(), vg = AR.filter(v => v.de <= h).slice(-1)[0] || AR[0]; sp('roundingUnit', vg.valor); }
     st.cadSync = { stamp: stampOf(C), rev: C.rev, revAt: C.revAt || null, em: now, resumo: R };
     return R;
   }
@@ -10427,8 +10441,14 @@ const CadSync = (() => {
   const P = Cfg.parametros;
   if (P && !P._portal) {
     P._portal = 1; const r0 = P.render, m0 = P.mount;
-    P.render = function () { const D = CadSync.dominios(); return (D.parametros ? `<div class="banner info" style="margin-bottom:10px"><p><b>Parada longa e semáforo comum vêm do Portal</b> (Parâmetros e semáforo) e ficam travados aqui. <a class="btn sm" href="${esc(CadSync.portalHref('cadastros/parametros'))}">Editar no Portal ↗</a></p></div>` : '') + r0.apply(this, arguments); };
-    P.mount = function (root) { if (m0) m0.apply(this, arguments); if (!CadSync.dominios().parametros) return; for (const k of ['longStopMin', 'semGreen', 'semYellow']) { const el = root.querySelector(`[data-k="${k}"]`); if (el) { el.disabled = true; el.title = 'Vem do Portal (Parâmetros e semáforo)'; } } };
+    P.render = function () { const D = CadSync.dominios(), pp = !!(Store.S.cadDoc && (Store.S.cadDoc.parametros || {}).producao); return (D.parametros ? `<div class="banner info" style="margin-bottom:10px"><p><b>Parada longa e semáforo comum${pp ? ', unidade de lançamento, rótulo e arredondamento da meta' : ''} vêm do Portal</b> (Parâmetros) e ficam travados aqui. <a class="btn sm" href="${esc(CadSync.portalHref('cadastros/parametros'))}">Editar no Portal ↗</a></p></div>` : '') + r0.apply(this, arguments); };
+    P.mount = function (root) { if (m0) m0.apply(this, arguments); if (!CadSync.dominios().parametros) return; for (const k of ['longStopMin', 'semGreen', 'semYellow']) { const el = root.querySelector(`[data-k="${k}"]`); if (el) { el.disabled = true; el.title = 'Vem do Portal (Parâmetros e semáforo)'; } }
+      /* 2.4.22 · ARQ-06: unidade, rótulo e arredondamento, quando o Portal tem o grupo Produção */
+      const d = Store.S.cadDoc, pp = d && d.parametros && d.parametros.producao; if (!pp) return;
+      for (const k of ['entryUnit', 'unitLabel', 'roundingUnit']) { const el = root.querySelector(`[data-k="${k}"]`); if (el) { el.disabled = true; el.title = 'Vem do Portal (Parâmetros › Produção)'; } }
+      const vg = (db().settings || {}).roundingVig; const el = root.querySelector('[data-k="roundingUnit"]');
+      if (el && Array.isArray(vg) && vg.length > 1) { const n = document.createElement('div'); n.className = 'small muted'; n.textContent = 'Vigências do Portal: ' + vg.map(v => U.brDate(v.de) + ' → ' + U.fmt(v.valor)).join(' · ') + '. Cada dia usa a da própria data.'; (el.closest('label') || el.parentNode).appendChild(n); }
+    };
   }
   /* 2.4.1 · Importação: com as metas vindo do Portal, a Meta OEE FY27 é importada lá (importar aqui gravaria metas que a sincronização tira) */
   const Im = Cfg.importacao;
@@ -10445,7 +10465,10 @@ const CadSync = (() => {
   /* Usuário: o nome vem do "Entrar" pelo ID (cabeçalho comum) */
   const Uu = Cfg.usuario;
   if (Uu && !Uu._portal) {
-    Uu._portal = 1; const r0 = Uu.render;
+    Uu._portal = 1; const r0 = Uu.render, m0 = Uu.mount;
+    /* 2.4.22 · ARQ-06: a exibição das quantidades é do computador (vac.qtd) e se escolhe no Portal › Parâmetros › Neste computador */
+    Uu.mount = function (root) { if (m0) m0.apply(this, arguments); const q = vacQtd(); root.querySelectorAll('[data-qd]').forEach(b => { b.setAttribute('aria-pressed', String(b.dataset.qd === q)); b.disabled = true; b.title = 'Escolha no Portal › Parâmetros › Neste computador'; });
+      const g = root.querySelector('[data-qd]'), sec = g && g.closest('section'); if (sec && !sec.querySelector('[data-qdportal]')) { const a = document.createElement('p'); a.className = 'small'; a.setAttribute('data-qdportal', '1'); a.innerHTML = `Vale para todas as páginas deste computador. <a class="btn sm" data-keep="1" href="${esc(CadSync.portalHref('cadastros/parametros'))}">Mudar no Portal ↗</a>`; sec.appendChild(a); } };
     Uu.render = function () { return `<div class="banner info" style="margin-bottom:10px"><p>Quem está usando vem do <b>Entrar</b> do cabeçalho (ID do cadastro de Usuários do Portal). <button class="btn sm" type="button" onclick="VacEntrar.abrir()">Entrar / trocar</button></p></div>` + r0.apply(this, arguments); };
   }
 })();

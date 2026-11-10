@@ -116,6 +116,13 @@ const CadSync = (() => {
     if ((P.motivosAbono || []).length) sp('abMotivos', P.motivosAbono.slice());
     if ((P.motivosSemProducaoProg || []).length) sp('offMotivosProg', P.motivosSemProducaoProg.slice());
     if ((P.motivosSemProducaoNP || []).length) sp('offMotivosNP', P.motivosSemProducaoNP.slice());
+    /* 2.4.22 · ARQ-06: parâmetros da Produção (Portal › Parâmetros › Produção). O arredondamento tem vigência (D7):
+       a lista inteira vai para settings.roundingVig (cada dia usa a da própria data, roundAt); roundingUnit fica com a vigente hoje */
+    const PP = P.producao || {};
+    if (+PP.unidadeLancamento > 0) sp('entryUnit', +PP.unidadeLancamento);
+    if (PP.rotuloUnidade) sp('unitLabel', String(PP.rotuloUnidade));
+    const AR = (Array.isArray(PP.arredondamentoMeta) ? PP.arredondamentoMeta : []).filter(v => v && v.de && +v.valor > 0).map(v => ({ de: v.de, valor: +v.valor })).sort((a, b) => a.de < b.de ? -1 : 1);
+    if (AR.length) { sp('roundingVig', AR); const h = U.today(), vg = AR.filter(v => v.de <= h).slice(-1)[0] || AR[0]; sp('roundingUnit', vg.valor); }
     st.cadSync = { stamp: stampOf(C), rev: C.rev, revAt: C.revAt || null, em: now, resumo: R };
     return R;
   }
@@ -166,8 +173,14 @@ const CadSync = (() => {
   const P = Cfg.parametros;
   if (P && !P._portal) {
     P._portal = 1; const r0 = P.render, m0 = P.mount;
-    P.render = function () { const D = CadSync.dominios(); return (D.parametros ? `<div class="banner info" style="margin-bottom:10px"><p><b>Parada longa e semáforo comum vêm do Portal</b> (Parâmetros e semáforo) e ficam travados aqui. <a class="btn sm" href="${esc(CadSync.portalHref('cadastros/parametros'))}">Editar no Portal ↗</a></p></div>` : '') + r0.apply(this, arguments); };
-    P.mount = function (root) { if (m0) m0.apply(this, arguments); if (!CadSync.dominios().parametros) return; for (const k of ['longStopMin', 'semGreen', 'semYellow']) { const el = root.querySelector(`[data-k="${k}"]`); if (el) { el.disabled = true; el.title = 'Vem do Portal (Parâmetros e semáforo)'; } } };
+    P.render = function () { const D = CadSync.dominios(), pp = !!(Store.S.cadDoc && (Store.S.cadDoc.parametros || {}).producao); return (D.parametros ? `<div class="banner info" style="margin-bottom:10px"><p><b>Parada longa e semáforo comum${pp ? ', unidade de lançamento, rótulo e arredondamento da meta' : ''} vêm do Portal</b> (Parâmetros) e ficam travados aqui. <a class="btn sm" href="${esc(CadSync.portalHref('cadastros/parametros'))}">Editar no Portal ↗</a></p></div>` : '') + r0.apply(this, arguments); };
+    P.mount = function (root) { if (m0) m0.apply(this, arguments); if (!CadSync.dominios().parametros) return; for (const k of ['longStopMin', 'semGreen', 'semYellow']) { const el = root.querySelector(`[data-k="${k}"]`); if (el) { el.disabled = true; el.title = 'Vem do Portal (Parâmetros e semáforo)'; } }
+      /* 2.4.22 · ARQ-06: unidade, rótulo e arredondamento, quando o Portal tem o grupo Produção */
+      const d = Store.S.cadDoc, pp = d && d.parametros && d.parametros.producao; if (!pp) return;
+      for (const k of ['entryUnit', 'unitLabel', 'roundingUnit']) { const el = root.querySelector(`[data-k="${k}"]`); if (el) { el.disabled = true; el.title = 'Vem do Portal (Parâmetros › Produção)'; } }
+      const vg = (db().settings || {}).roundingVig; const el = root.querySelector('[data-k="roundingUnit"]');
+      if (el && Array.isArray(vg) && vg.length > 1) { const n = document.createElement('div'); n.className = 'small muted'; n.textContent = 'Vigências do Portal: ' + vg.map(v => U.brDate(v.de) + ' → ' + U.fmt(v.valor)).join(' · ') + '. Cada dia usa a da própria data.'; (el.closest('label') || el.parentNode).appendChild(n); }
+    };
   }
   /* 2.4.1 · Importação: com as metas vindo do Portal, a Meta OEE FY27 é importada lá (importar aqui gravaria metas que a sincronização tira) */
   const Im = Cfg.importacao;
@@ -184,7 +197,10 @@ const CadSync = (() => {
   /* Usuário: o nome vem do "Entrar" pelo ID (cabeçalho comum) */
   const Uu = Cfg.usuario;
   if (Uu && !Uu._portal) {
-    Uu._portal = 1; const r0 = Uu.render;
+    Uu._portal = 1; const r0 = Uu.render, m0 = Uu.mount;
+    /* 2.4.22 · ARQ-06: a exibição das quantidades é do computador (vac.qtd) e se escolhe no Portal › Parâmetros › Neste computador */
+    Uu.mount = function (root) { if (m0) m0.apply(this, arguments); const q = vacQtd(); root.querySelectorAll('[data-qd]').forEach(b => { b.setAttribute('aria-pressed', String(b.dataset.qd === q)); b.disabled = true; b.title = 'Escolha no Portal › Parâmetros › Neste computador'; });
+      const g = root.querySelector('[data-qd]'), sec = g && g.closest('section'); if (sec && !sec.querySelector('[data-qdportal]')) { const a = document.createElement('p'); a.className = 'small'; a.setAttribute('data-qdportal', '1'); a.innerHTML = `Vale para todas as páginas deste computador. <a class="btn sm" data-keep="1" href="${esc(CadSync.portalHref('cadastros/parametros'))}">Mudar no Portal ↗</a>`; sec.appendChild(a); } };
     Uu.render = function () { return `<div class="banner info" style="margin-bottom:10px"><p>Quem está usando vem do <b>Entrar</b> do cabeçalho (ID do cadastro de Usuários do Portal). <button class="btn sm" type="button" onclick="VacEntrar.abrir()">Entrar / trocar</button></p></div>` + r0.apply(this, arguments); };
   }
 })();
