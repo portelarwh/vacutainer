@@ -1257,7 +1257,7 @@ const U = (() => {
 
 /* ---- 02-model.js ---- */
 /* ================= modelo de dados, valores iniciais e integridade ================= */
-const APP_VERSION = '2.4.31';
+const APP_VERSION = '2.4.32';
 const SCHEMA_VERSION = 1;
 const BASE_FILE = 'oee-vacutainer-base.json';
 const BACKUP_DIR = '00. Backups';
@@ -8163,7 +8163,7 @@ App.views.reports = {
     let h = `<div class="rp-types" role="tablist">${RP_TYPES.map(([k, l, q]) => `<button type="button" class="rp-type" role="tab" aria-selected="${R.type === k}" data-rpt="${k}"><b>${esc(l)}</b><span>${esc(q)}</span></button>`).join('')}</div>`;
     h += `<div class="filters rp-bar"><div class="row">${par}<span class="spacer"></span>${ib('reports')}
       <button class="btn sm primary" id="rpPdf">${I.down} PDF</button><button class="btn sm" id="rpXls">${I.down} Excel</button><button class="btn sm" id="rpTxt">Copiar texto</button><button class="btn sm" id="rpOut">Copiar para Outlook</button><button class="btn sm" id="rpPrint">${I.print} Imprimir</button></div>
-      <div class="row small" style="margin-top:6px"><label class="chk"><input type="checkbox" id="rpImg" ${App.prefs.rpImg === false ? '' : 'checked'}> gráficos como imagem no e-mail</label><span class="muted">O que está na prévia é o que sai no PDF, no Excel e no e-mail.</span></div></div>`;
+      <div class="row small" style="margin-top:6px"><label class="chk"><input type="checkbox" id="rpImg" ${App.prefs.rpImg === false ? '' : 'checked'}> gráficos como imagem no e-mail</label>${R.type === 'day' || R.type === 'shift' ? `<label class="chk" title="Desmarcado: relatório só de performance"><input type="checkbox" id="rpSQ" ${RelSQ.incluir() ? 'checked' : ''}> incluir Segurança e Qualidade</label>` : ''}<span class="muted">O que está na prévia é o que sai no PDF, no Excel e no e-mail.</span></div></div>`;
     h += `<div class="grid g2 section" style="align-items:start"><section class="card"><header><h3>Resumo</h3><button class="btn xs" id="rpReset" ${R.summary == null ? 'disabled' : ''}>Refazer automático</button></header><p class="q">Gerado dos números do relatório. Pode editar à vontade antes de enviar.</p><textarea id="rpSum" rows="8" class="rp-ta">${esc(R.summary == null ? M.auto : R.summary)}</textarea></section>
       <section class="card"><header><h3>Comentário / análise</h3>${note ? `<span class="small muted">salvo por ${esc(note.by)} em ${U.brDT(note.at)}</span>` : ''}</header><p class="q">Fica guardado na base junto deste relatório (tipo e período) e entra no PDF e no e-mail.</p><textarea id="rpNote" rows="6" class="rp-ta" placeholder="ex.: Queda de Performance na semana 42 pela troca de catálogo; ação: ...">${esc(note ? note.text : '')}</textarea><div class="row" style="margin-top:6px"><button class="btn sm" id="rpNoteSave">Salvar comentário</button></div></section></div>`;
     h += `<article class="rp-doc section" id="rpDoc">${rpDocHtml(M, R.summary == null ? M.auto : R.summary, note ? note.text : '')}</article>`;
@@ -8181,6 +8181,7 @@ App.views.reports = {
     const note = q('#rpNote'); note.oninput = () => { const p = q('#rpDoc .rp-note'); if (p) { p.innerHTML = rpParas(note.value); p.hidden = !note.value.trim(); } };
     q('#rpNoteSave').onclick = () => run(() => { Actions.saveReportNote(App.rep.model.key, note.value); re(); }, 'Comentário salvo.');
     q('#rpImg').onchange = e => { App.prefs.rpImg = e.target.checked; savePrefs(); };
+    { const sq = q('#rpSQ'); if (sq) sq.onchange = e => { App.prefs.rpSQ = e.target.checked; savePrefs(); R.summary = null; re(); }; }
     const cur = () => ({ M: App.rep.model, sum: sum.value, note: note.value, doc: q('#rpDoc') });
     q('#rpPdf').onclick = () => run(async () => { const c = cur(); await rpPdf(c); Actions.logExport(`Relatório PDF: ${c.M.title} (${c.M.a} a ${c.M.b})`); }, 'PDF gerado.');
     q('#rpXls').onclick = () => run(async () => { const c = cur(); await rpXlsx(c); Actions.logExport(`Relatório Excel: ${c.M.title} (${c.M.a} a ${c.M.b})`); }, 'Excel gerado.');
@@ -9203,6 +9204,41 @@ const VisaoGeral = {
   App.views.panel = { render() { return App.views.overview.render(); }, mount(root) { return App.views.overview.mount(root); } };
 })();
 HELP.visaoGeral = ['Visão Geral', [['O que é?', 'A tela de resumo da Produção. "Visão Geral · padrão" é a montagem fixa; as outras visões são as do antigo Painel (Meu painel, visões compartilhadas e modelos como Diretoria mensal), com indicadores e blocos montados por você.'], ['Como personalizo?', '"Personalizar" abre Meu painel em edição: escolha os indicadores do topo e os blocos, a ordem e a largura. Para que todos vejam, salve como visão compartilhada.'], ['E o Painel?', 'Virou parte da Visão Geral (briefing PRD-01). Links e páginas iniciais antigas do Painel abrem aqui.']]];
+
+/* ===== Produção 2.4.32 · Fase 5 · 5c do briefing (PRD-07): Segurança e Qualidade no relatório do dia e na passagem de turno =====
+   Bloco "Segurança e Qualidade" (acidentes e QNs de cada turno, do registro SQDCP do turno) no relatório do dia e no de passagem
+   de turno, e uma linha no resumo automático. Opção "incluir Segurança e Qualidade": desmarcada, o relatório é só de performance.
+   Sem resposta é "não informado" (nunca zero). Entra no script principal pelo build.py (antes do boot). */
+const RelSQ = {
+  incluir() { return App.prefs.rpSQ !== false; },
+  turnos(R) {
+    const d = db(), day = (d.productionDays || []).find(z => !z.deleted && z.lineId === 'line_vac' && z.date === R.date); if (!day) return null;
+    const L = day.shifts.filter(p => !p.deleted && (R.type !== 'shift' || p.id === R.psId)).sort((a, b) => (U.toMin(a.snap.start) || 0) - (U.toMin(b.snap.start) || 0));
+    return L.map(ps => { const s = ps.sqdcp || {}; return { ps, ac: SQDCPModelo.lerEvento(s.acidente), qn: SQDCPModelo.lerEvento(s.qn) }; });
+  },
+  txt(ev) { return !ev ? 'não informado' : ev.resposta === 'nao' ? 'não' : `${ev.quantidade}${ev.numeros.length ? ' (' + ev.numeros.join(', ') + ')' : ''}${ev.resumo ? ' · ' + ev.resumo : ''}`; },
+  bloco(R) {
+    const T = this.turnos(R); if (!T || !T.length) return null;
+    const cls = ev => !ev ? 'muted' : ev.resposta === 'sim' ? 'ferr' : '';
+    const html = `<table><thead><tr><th>Turno</th><th>Acidente</th><th>QN (Quality Notification)</th></tr></thead><tbody>${T.map(t => `<tr><td>${esc(t.ps.snap.name)}${t.ps.off ? ' <span class="small muted">(sem produção)</span>' : ''}</td><td class="${cls(t.ac)}">${esc(this.txt(t.ac))}</td><td class="${cls(t.qn)}">${esc(this.txt(t.qn))}</td></tr>`).join('')}</tbody></table>
+      <p class="small muted">Do registro de Segurança e Qualidade de cada turno (SQDCP). Sem resposta é "não informado", não zero.</p>`;
+    return { id: 'sq', l: 'Segurança e Qualidade', w: 'f', html };
+  },
+  resumo(R) {
+    const T = this.turnos(R); if (!T || !T.length) return '';
+    const soma = k => { const r = T.map(t => t[k]); if (r.some(x => !x)) return null; return r.reduce((s, x) => s + x.quantidade, 0); };
+    const a = soma('ac'), q = soma('qn'), ni = (k, l) => { const n = T.filter(t => !t[k]).length; return n ? `${l} não informado em ${n} turno(s)` : ''; };
+    return [a == null ? ni('ac', 'Segurança:') : `Segurança: ${a ? a + ' acidente(s)' : 'sem acidente'}.`, q == null ? ni('qn', 'Qualidade:') : `Qualidade: ${q ? q + ' QN(s)' : 'sem QN'}.`].filter(Boolean).join(' ');
+  }
+};
+(() => {
+  const m0 = rpModel;
+  rpModel = function (R) {
+    const M = m0(R); if (!(R.type === 'day' || R.type === 'shift') || !RelSQ.incluir()) return M;
+    const b = RelSQ.bloco(R); if (!b) return M;
+    return { ...M, blocks: [b].concat(M.blocks || []), auto: [M.auto, RelSQ.resumo(R)].filter(Boolean).join('\n') };
+  };
+})();
 
 async function boot() {
   if(vacDemo.ativo){await loadPrefs();applyTheme();bindGlobal();Charts.bind();Store.S.user='Pessoa de demonstração';Store.enterExample(vacDemo.ler('oee'));

@@ -63,6 +63,25 @@ const { chromium } = require('playwright');
   ok(v5.volta, 'PRD-01: o seletor do Painel volta para a Visão Geral padrão');
   ok(v5.legado, 'PRD-01: o endereço antigo do Painel (go/aba panel) abre a Visão Geral em Meu painel');
 
+  /* ---------- 5c (PRD-07): Segurança e Qualidade no relatório do dia/turno, com opção só performance ---------- */
+  const o3 = await nova('OEE-Vacutainer.html', 'Produção 5c');
+  const r5c = await o3.evaluate(async () => { document.querySelectorAll('.overlay').forEach(x => x.remove()); Demo.enterExample(); await new Promise(r => setTimeout(r, 300));
+    const espera = () => new Promise(r => setTimeout(r, 400)), out = {};
+    const day = Store.S.db.productionDays.filter(x => !x.deleted && x.shifts.filter(p => !p.deleted).length >= 2).sort((a, b) => a.date < b.date ? 1 : -1)[0];
+    const [s1, s2] = day.shifts.filter(p => !p.deleted); s1.sqdcp = { acidente: { resposta: 'nao' }, qn: { resposta: 'sim', quantidade: 2, numeros: ['00001234'], resumo: '' } }; delete s2.sqdcp; day._rev = (day._rev || 0) + 1; Engine.bumpConfig();
+    App.prefs.rpSQ = true; const R = rpState(); R.type = 'day'; R.date = day.date; R.summary = null; go('reports'); await espera();
+    const doc = () => document.querySelector('#rpDoc').innerText;
+    out.dia = doc(); out.check = !!document.querySelector('#rpSQ');
+    document.querySelector('#rpSQ').click(); await espera(); out.semSQ = doc();
+    document.querySelector('#rpSQ').click(); await espera();
+    R.type = 'shift'; R.psId = s1.id; R.summary = null; render(); await espera(); out.turno = doc();
+    R.type = 'week'; render(); await espera(); out.semana = !document.querySelector('#rpSQ');
+    return out; });
+  ok(/Segurança e Qualidade/i.test(r5c.dia) && /00001234/.test(r5c.dia) && /não informado/.test(r5c.dia) && /Qualidade: QN não informado em 1 turno|Qualidade:/.test(r5c.dia), 'PRD-07: relatório do dia com Segurança e Qualidade por turno (QN 00001234; "não informado" não vira zero) e a linha no resumo');
+  ok(r5c.check && !/Segurança e Qualidade/i.test(r5c.semSQ), 'PRD-07: desmarcando "incluir Segurança e Qualidade", o relatório sai só de performance');
+  ok(/Segurança e Qualidade/i.test(r5c.turno) && /00001234/.test(r5c.turno), 'PRD-07: a passagem de turno também traz Segurança e Qualidade do turno');
+  ok(r5c.semana, 'PRD-07: a opção só aparece nos relatórios do dia e do turno');
+
   await b.close();
   if (errs.length) { console.log('\n' + errs.join('\n')); process.exit(1); } else console.log('\nsem erros');
 })();

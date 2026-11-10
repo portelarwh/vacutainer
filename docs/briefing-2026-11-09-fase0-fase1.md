@@ -482,3 +482,9 @@ Próximo: 4e (Teórico × Real na página do dia da Produção, só quando o cat
 - **Período:** os períodos rápidos começam por **Hoje · Ontem · Semana · Mês**. Depois vêm Semana anterior, Mês anterior, 7 e 30 dias, Ano fiscal e as datas livres. É assim na Visão Geral, no Painel e nas demais telas que usam a mesma barra de filtros.
 - **Compatibilidade:** os links e as páginas iniciais antigas do Painel (`#aba=panel`, perfil "Produção › Painel", `go('panel')`) abrem a Visão Geral em Meu painel. Visões compartilhadas e o botão TV não mudam.
 - Testes ajustados à nova ordem do menu: `tz.js` e `trelatorios.js`.
+
+### Passo 5c · Segurança e Qualidade no relatório do dia e do turno (PRD-07) · Produção 2.4.32
+
+- Os relatórios **Dia** e **Passagem de turno** (Produção › Gestão › Relatórios) ganham o bloco **Segurança e Qualidade**: acidentes e QNs de cada turno, com os números e as referências, vindos do registro de Segurança e Qualidade de cada turno (SQDCP). O resumo automático ganha uma linha ("Segurança: sem acidente. Qualidade: 2 QN(s).").
+- Sem resposta aparece **"não informado"**, nunca zero (regra do SQDCP).
+- A opção **"incluir Segurança e Qualidade"** fica na barra do relatório, só nesses dois tipos, e vale para PDF, Excel, texto e Outlook. Desmarcada, o relatório sai **só de performance**. A escolha fica guardada neste computador.

@@ -7,7 +7,7 @@ Plataforma de páginas HTML de arquivo único que trabalham juntas numa **pasta 
 | Página | Arquivo | Base | Versão | Como editar |
 |---|---|---|---|---|
 | Portal (cadastro geral, Administração) | `Portal.html` | `portal-base.json` + `vacutainer-cadastros.json` | 1.9.13 | direto no HTML |
-| Produção (OEE, plano, ordens SAP) | `OEE-Vacutainer.html` | `oee-vacutainer-base.json` (+ `ordens-base.json`) | 2.4.31 | **NÃO editar o HTML**: editar `fontes/producao/` e rodar o build |
+| Produção (OEE, plano, ordens SAP) | `OEE-Vacutainer.html` | `oee-vacutainer-base.json` (+ `ordens-base.json`) | 2.4.32 | **NÃO editar o HTML**: editar `fontes/producao/` e rodar o build |
 | Waste (perdas por ordem, KKBC) | `Perdas-Ordem.html` | `perdas-base.json` | 1.8.27 | direto no HTML |
 | Gestão de Gel | `Gestão-Gel-Vacutainer.html` | `fifo-base.json` | 2.20 · **em atualização** | direto no HTML |
 | Paradas | `Paradas.html` | `paradas-base.json` | 1.0.25 · **em atualização** | direto no HTML |
@@ -25,7 +25,7 @@ SQDCP (Produção 2.4.20): quadro de 25 posições, acidente/QN por turno e impr
 ## Comandos
 
 ```bash
-python fontes/producao/build.py        # monta paginas/OEE-Vacutainer.html a partir de OEE-base-2.0.html + ordens_servico.js + ordens_tela.js + cad_sync.js + turnos_np.js + gel_turno.js + visao_geral.js + kit_v21.js
+python fontes/producao/build.py        # monta paginas/OEE-Vacutainer.html a partir de OEE-base-2.0.html + ordens_servico.js + ordens_tela.js + cad_sync.js + turnos_np.js + gel_turno.js + visao_geral.js + relatorio_sq.js + kit_v21.js
 python fontes/kit/aplicar_kit21.py     # recopia fontes/kit/kit_v21.js, o catálogo fontes/kit/sistemas.js, o padrão visual fontes/kit/kit_visual.css e as bases em 00. Bases fontes/kit/kit_bases.js nas outras páginas (Portal, Waste, Paradas, Gel e as 3 em construção)
 python fontes/modelo/gerar_paginas.py  # gera Projetos.html (em construção) a partir de fontes/modelo/pagina-em-construcao.html e roda o aplicar_kit21.py
 python fontes/demo/gerar_demo.py       # pacote offline da demonstração; SEMPRE depois dos outros builds
@@ -57,7 +57,7 @@ node testes/tportalfonte.js           # Fase 1 do briefing (09/11/2026): Parâme
 node testes/tturnos.js                # Fase 2 do briefing: turno não produtivo, habilitar no dia, produção fora de turno (continuidade D1), OEE reportado × real, a partir da data, POR-10; código 1 se falhar
 node testes/timportacao.js            # Fase 3 do briefing: Portal › Importação (sequência, status por dia, subseções), exports.importacoes, abas Importar → Portal, endereços diretos, Ordens reorganizadas; código 1 se falhar
 node testes/tgel.js                   # Fase 4 do briefing (Gel na Produção): 4a parâmetros do gel no Portal com as contas do gel iguais (GEL-06), telas do Gel só consulta, fichas e Trazer configurações; 4b pesagem pelo vacGel igual à anterior (1.440 casos em testes/bases/gel-pesagens.json) e teórico igual ao do Gel; 4c Registrar scrap no turno da Produção (gravado no turno, exports porDiaTurno[].gel, tela do operador); 4d Gel lê da Produção a partir do corte (tubos, hora extra, sem produção, scrap) e Resumo do dia; 4e Teórico × Real no dia da Produção (só com gel; exports porDiaGel do Gel); código 1 se falhar
-node testes/tperiodo.js               # Fase 5 do briefing: período no Portal (Visão Geral, Relatório com 1 turno, TV) somando as séries por dia das páginas, títulos dos cartões levando à página; Produção com Painel e Visão Geral numa aba só (Hoje/Ontem); código 1 se falhar
+node testes/tperiodo.js               # Fase 5 do briefing: período no Portal (Visão Geral, Relatório com 1 turno, TV) somando as séries por dia das páginas, títulos dos cartões levando à página; Produção com Painel e Visão Geral numa aba só (Hoje/Ontem); Segurança e Qualidade no relatório do dia/turno com opção só performance; código 1 se falhar
 node testes/tcontratos.js             # E4: exports por ordem (Produção 24 meses e dias do lote, Paradas, Gel), versão conferida pelos leitores, Waste com ordem em várias competências e dias do lote; código 1 se falhar
 ```
 
