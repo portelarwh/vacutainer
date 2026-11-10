@@ -263,3 +263,11 @@ Exclusão mútua entre abas e saúde dos dados com snapshots e reservas. Procedi
 - Lista lateral de Cadastros e de ⚙ Administração › Configuração (`.cadside`) rola por dentro (`max-height: calc(100vh - 84px)`, `overflow-y: auto`). Antes, sticky sem limite deixava o fim da lista fora da tela.
 - A posição da rolagem interna é mantida entre cliques (`cadSideTop` em `wireAdminSide`). No celular (≤ 860 px) a lista continua sem limite.
 - Respostas da seção 10 do briefing e proposta da Fase 1: `docs/briefing-2026-11-09-fase0-fase1.md`.
+
+## 1.9.6 a 1.9.9 · 10/11/2026 · Fase 1 do briefing
+
+- 1.9.6 · ARQ-09: card "Demonstração" (ⓘ) no lugar de "Modo de teste".
+- 1.9.7 · ARQ-06: Parâmetros com os grupos Produção (`parametros.producao`, arredondamento por vigência) e Neste computador (`vac.qtd`, usuário); Trazer leva os da Produção.
+- 1.9.8 · ARQ-01/02/04: Trazer configurações › "Só na Produção" (turnos, catálogos, tipos de parada, mesmo código).
+- 1.9.9 · ARQ-05/07: `equipamentos.categoria` (Equipamento – Gel); Trazer › "Só no Gel"; POR-01: ⓘ em "Onde é usado / ligações".
+- Detalhes: `docs/briefing-2026-11-09-fase0-fase1.md` § 5.

@@ -230,3 +230,43 @@ Testes novos: `testes/tportalfonte.js` cobre mudar turno, catálogo, meta, parad
 | D9 | PRD-01 | A Visão Geral unificada já nasce com o seletor Hoje/Ontem/Semana/Mês? | sim, junto com POR-06 na Fase 5 |
 
 Com D0, D5 e D7 respondidas, começo a Fase 1. D1 a D4 são necessárias para a Fase 2 (regras de turno e POR-10).
+
+---
+
+## 5. Entrega · Fase 0 (resto) e Fase 1 (10/11/2026)
+
+Decisões do usuário: **D0** ok (vínculo por código + cópia só de leitura) · **D5** opção (a) · **D7** arredondamento com vigência.
+Versões: Portal 1.9.9 · Produção 2.4.23 · Waste 1.8.26 · Gel 2.15. Teste novo: `node testes/tportalfonte.js` (na suíte `tudo.js`).
+
+### O que mudou, por ID
+
+| ID | O que mudou |
+|---|---|
+| ARQ-09 | Sai a seção **Configurações › Modo exemplo** da Produção, o card "Modo exemplo" do Gel (Backup) e o "Ver exemplo" da base vazia do Gel. No Waste, "Ver com dados de teste" agora abre a Demonstração integrada, e no Portal o card ficou "Demonstração" com ⓘ. Os textos "Modo exemplo" viraram "Demonstração". Por dentro continuam `Store.enterExample`, `enterDemo` e `enterTest`, que a Demonstração e os testes usam. |
+| ARQ-06 | **Portal › Cadastros › Regras › Parâmetros** (antes "Parâmetros e semáforo") ganha dois grupos. **Produção** (`parametros.producao`): unidade de lançamento, rótulo e **arredondamento da meta por vigência**. Só se acrescenta vigência de hoje em diante; data no passado é recusada (regra 3). **Neste computador**: usuário atual (Entrar/trocar) e exibição das quantidades (`vac.qtd`), sem senha e sem revisão do cadastro. Na Produção, o CadSync aplica e trava os três campos, cada dia usa o arredondamento da própria data (`roundAt`), e a exibição segue `vac.qtd`. |
+| ARQ-01..04 | Com o cadastro do Portal (ou na pasta da rede, ou na Demonstração), **Produção › Configurações › Estrutura, Turnos, Catálogos, Metas e Tipos de parada ficam só consulta, mesmo com o domínio vazio no Portal**. Antes, domínio vazio deixava editar ali, e isso era um cadastro paralelo. O aviso mostra o que o Portal ainda não tem e o que **só existe na Produção**. Sem pasta e sem Portal (modo local dos testes), fica como antes. |
+| PRD-04 | **Causa encontrada:** a Produção desativa turno e linha pelo campo `status`, mas a sincronização só mexia em `active`. Um turno desativado na Produção antes de o Portal assumir continuava inativo, mesmo o Portal dizendo ativo. Agora o `status` de linhas, famílias, máquinas, catálogos, tipos de parada e turnos segue o Portal. Outro caso também foi resolvido: um **turno que só existe na Produção** (outro código, ex.: `TC` × `T3`) fica inativo para os dias novos, para não haver turno em dobro. Os dias já lançados não mudam. |
+| ARQ-05 | Gel (`GelCad`): o catálogo do Gel é o do Portal com o mesmo número. **Nome, cor, situação e formato vêm do Portal.** Um catálogo do Portal com gel na BOM entra sozinho no Gel. Gel › Configuração › Catálogos não cadastra catálogo novo quando há Portal (dá para "trazer" um do Portal). Ficam no Gel só os dados do gel: BOM de gel, tolerância, g/tubo, lote e velocidade. Turnos e preço do gel já vinham do Portal. |
+| ARQ-07 | Portal › Equipamentos ganha a **Categoria** ("Equipamento da linha" / "Equipamento – Gel", com ⓘ). No Gel, o equipamento é **escolhido do Portal** (seleção, não texto livre). O vínculo é por código e, na primeira vez, pelo nome ou pelos "Outros nomes". Nome e situação vêm do Portal; embalagem e descartes continuam no Gel. Equipamento sem vínculo aparece com a pílula "sem vínculo". |
+| GEL-06 | Teste de invariância: com catálogos e equipamentos ligados ao Portal, `gelExports()`, gel aplicado, BOM e meta de cada catálogo (hoje e 30 dias atrás) saem **idênticos** aos de antes. |
+| POR-01 | ⓘ no título "Onde é usado / ligações" com o texto do item 1.1. |
+
+### Migração (sem perda de histórico)
+
+**Portal › Cadastros › Início › Trazer configurações** (prévia, marcar e incluir; vira operações normais do cadastro, com auditoria e backup) ganha estes grupos:
+
+- **Só na Produção · turnos / catálogos / tipos de parada**: o que a Produção tem e o Portal não, **com o mesmo código**. Vêm as vigências, pausas, intervalos, PPH e regras de apontamento. O turno vem **desmarcado** quando o Portal já tem turnos, porque provavelmente é o mesmo turno com outro código.
+- **Só no Gel · catálogos / equipamentos**: catálogos com o mesmo número; equipamentos com o próximo `EQnn` e categoria "Equipamento – Gel". O Gel liga sozinho pelo nome.
+- **Parâmetros**: unidade, rótulo e arredondamento da Produção. O arredondamento entra como vigência **desde o primeiro dia lançado**, para não mudar a meta de nenhum dia passado.
+
+Nada é apagado nas páginas. O que não vai para o Portal continua na base de cada página como histórico (só consulta).
+
+### Decisão manual na pasta real (homologação)
+
+1. Abrir **Trazer configurações** e conferir os grupos "Só na Produção" e "Só no Gel". Em especial, **o turno inativo do PRD-04**: se for o mesmo turno de um código do Portal, deixar desmarcado; se for outro turno de verdade, trazer.
+2. Depois da próxima revisão do cadastro, conferir na Produção (Configurações › Turnos) se os 3 turnos aparecem ativos.
+3. No Gel, conferir a pílula "sem vínculo" em Equipamentos da linha: ligar pelo nome no Portal (Outros nomes) ou trazer.
+
+### D10 · decisão para depois (não bloqueia)
+
+Ainda ficam **no Gel** os parâmetros que só o gel usa: BOM de gel por catálogo (com vigências), gramas por tubo por **formato**, **locais** de estoque, **motivos de descarte**, **parâmetros de processo** e **aparência** (esta é preferência do computador). Pelo ARQ-06 ("campos específicos de uma página ficam no Portal, agrupados por página"), eles iriam para `parametros.gel` no Portal. Recomendo fazer isso **na Fase 4** (Gel dentro da Produção, GEL-02 a GEL-05), porque a tela de registro do gel muda nessa fase. Outra opção para a BOM de gel: o Gel passa a ler a quantidade de gel da **BOM do CS12** que o Portal já tem, em vez de uma BOM própria. Isso muda a fonte de um número que entra na conta e precisa da sua confirmação.
