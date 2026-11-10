@@ -162,6 +162,14 @@ nav .tabs .cnt{display:inline-block;min-width:18px;padding:0 5px;border-radius:9
 .seg button.on{background:var(--accent);color:var(--accent-ink)}
 .lay{display:grid;grid-template-columns:minmax(0,1fr);gap:14px;align-items:start}
 .lay.comdet{grid-template-columns:minmax(0,1fr) 420px}
+/* 1.1.0 · INI-01: fundo pastel por status, com a borda esquerda mais forte (vale nos dois temas) */
+.ac.st-afazer{background:color-mix(in srgb,var(--info) 12%,var(--surface));border-left:4px solid var(--info)}
+.ac.st-andamento{background:color-mix(in srgb,var(--warn) 14%,var(--surface));border-left:4px solid var(--warn)}
+.ac.st-aguardando{background:color-mix(in srgb,var(--warn) 8%,var(--surface));border-left:4px dashed var(--warn)}
+.ac.st-concluida{background:color-mix(in srgb,var(--ok) 13%,var(--surface));border-left:4px solid var(--ok)}
+.ac.st-atrasada{background:color-mix(in srgb,var(--crit) 14%,var(--surface));border-left:4px solid var(--crit)}
+.ac .ef{font-size:11.5px}
+.prog-h{display:flex;gap:10px;align-items:center;flex-wrap:wrap}.prog-h .sw{width:14px;height:14px;border-radius:4px;display:inline-block}
 .quadro{display:grid;grid-template-columns:repeat(4,minmax(200px,1fr));gap:10px;overflow-x:auto;padding-bottom:4px}
 .col{background:var(--surface-2);border-radius:var(--r);padding:8px;min-height:340px;transition:outline .1s}
 .col.alvo{outline:2px dashed var(--accent)}
@@ -575,9 +583,9 @@ const VAC_INICIAL_ALVO = {
   'Produção': ['oee', ''], 'Produção › Visão geral': ['oee', 'aba=overview'], 'Produção › Painel': ['oee', 'aba=panel'],
   'Produção › Lançamento': ['oee', 'aba=launch'], 'Produção › Plano do mês': ['oee', 'aba=plan'], 'Produção › Tela do operador': ['oee', 'turno'],
   'Waste': ['perdas', ''],
-  'Gestão de Gel': ['gel', ''], 'Gestão de Gel › Painel': ['gel', 'aba=painel'], 'Gestão de Gel › Operação': ['gel', 'aba=op'],
+  'Gestão de Gel': ['gel', ''], 'Gestão de Gel › Painel': ['gel', 'aba=painel'], 'Gestão de Gel › Visão Geral': ['gel', 'aba=painel'], 'Gestão de Gel › Operação': ['gel', 'aba=op'],
   'Paradas': ['paradas', ''], 'Paradas › Visão geral': ['paradas', 'aba=geral'], 'Paradas › Fila técnica': ['paradas', 'aba=fila'],
-  'Equipamentos': ['equip', ''], 'Iniciativas': ['inic', ''], 'Projetos': ['projetos', '']
+  'Equipamentos': ['equip', ''], 'Iniciativas': ['inic', ''], 'Iniciativas / Ações': ['inic', ''], 'Projetos': ['projetos', '']
 };
 /* página inicial de quem entrou (vac.userId): a do usuário, senão a do perfil; lê a cópia do cadastro (vac.cadastros) */
 function vacPaginaInicial() {
@@ -782,7 +790,7 @@ addEventListener('error', e => { if (e.error && e.error.name === 'VacAbaBloquead
 <main class="wrap" id="main"></main>
 <div class="toasts" id="toasts"></div>
 <script>
-const PAGE={id:"inic",titulo:"Iniciativas · Ações · KAS · OSM · 5S",tituloCurto:"Iniciativas",subtitulo:"Ações (Planner) · KAS · OSM · 5S",versao:"1.0.5",baseFile:"iniciativas-base.json",backupDir:"00. Backups/Iniciativas",estado:"atualizacao",estadoNota:"Primeira versão: Ações (Planner) e KAS. OSM e 5S chegam nas próximas etapas."};
+const PAGE={id:"inic",titulo:"Iniciativas / Ações · KAS · OSM · 5S",tituloCurto:"Iniciativas / Ações",subtitulo:"Ações (Planner) · KAS · OSM · 5S",versao:"1.1.0",baseFile:"iniciativas-base.json",backupDir:"00. Backups/Iniciativas",estado:"atualizacao",estadoNota:"Primeira versão: Ações (Planner) e KAS. OSM e 5S chegam nas próximas etapas."};
 const APP_VERSION=PAGE.versao;
 /* ---------- vac-cabecalho v2 · JS (igual em todas as páginas) ---------- */
 const VAC_CAB_VERSAO=2;
@@ -793,7 +801,7 @@ const DEFAULT_SYSTEMS=[
  {id:'gel',nome:'Gestão de Gel',html:'Gestão-Gel-Vacutainer.html',alt:['Gestao-Gel-Vacutainer.html','controle-fifo-gel.html'],base:'fifo-base.json',estado:'atualizacao'},
  {id:'paradas',nome:'Paradas',html:'Paradas.html',base:'paradas-base.json',estado:'atualizacao'},
  {id:'equip',nome:'Equipamentos',html:'Equipamentos.html',base:'equipamentos-base.json',sub:'Ficha · OS · TAGs · AM/TPM',estado:'atualizacao'},
- {id:'inic',nome:'Iniciativas',html:'Iniciativas.html',base:'iniciativas-base.json',sub:'Ações · KAS · OSM · 5S',estado:'atualizacao'},
+ {id:'inic',nome:'Iniciativas / Ações',html:'Iniciativas.html',base:'iniciativas-base.json',sub:'Ações · KAS · OSM · 5S',estado:'atualizacao'},
  {id:'projetos',nome:'Projetos',html:'Projetos.html',base:'projetos-base.json',futuro:true,estado:'construcao'}];
 function systems(){let L;try{const s=JSON.parse(localStorage.getItem('vac.sistemas')||'null');if(Array.isArray(s)&&s.length){const ids=new Set(s.map(x=>x.id));L=s.concat(DEFAULT_SYSTEMS.filter(d=>!ids.has(d.id)))}}catch(e){}
  L=L||DEFAULT_SYSTEMS.map(x=>({...x}));/* esta página existe (está aberta) mesmo que o Portal ainda a marque como futura */return L.map(x=>x.id===PAGE.id?{...x,futuro:false,oculto:false}:x)}
@@ -1102,6 +1110,21 @@ function vacExportsOk(ex, conhecida = 1) {
   const v = ex.exportsVersion; if (v == null || +v <= conhecida) return { ok: true, versao: v == null ? null : +v, motivo: '' };
   return { ok: false, versao: +v, motivo: `exports na versão ${v}; esta página só conhece até a ${conhecida}: atualize esta página` };
 }
+/* kit v2.1 · UX-04 (Fase 7 do briefing, D8): pílula única "Cadastro rev N", sempre visível, igual em todas as páginas.
+   rev = revisão do cadastro geral do Portal (vacutainer-cadastros.json) que esta página está usando. Compara com a cópia mais
+   nova que alguma página já leu neste computador (localStorage 'vac.cadastros'): se esta estiver atrás, mostra "desatualizada"
+   (a página foi aberta antes da última gravação no Portal). o = { fonte: 'pasta'|'copia'|'teste'|…, revAt, revBy, portal:true }. */
+function vacCadPilula(rev, o = {}) {
+  const e = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  const AJ = 'Revisão do cadastro geral do Portal (vacutainer-cadastros.json) que esta página está usando. Cada gravação no Portal soma 1. Todas as páginas devem mostrar o mesmo número; se esta estiver atrás, ela foi aberta antes da última mudança no Portal: clique em ↻ Sincronizar ou recarregue (F5). Não é a revisão da base da própria página.';
+  if (rev == null) return `<span class="pill none" data-vac-cadrev="" title="${e('Cadastro do Portal ainda não lido nesta página (pasta sem vacutainer-cadastros.json ou não conectada). ' + AJ)}">Cadastro: não lido</span>`;
+  let ult = null; try { const c = JSON.parse(localStorage.getItem('vac.cadastros') || 'null'); if (c && c.rev != null && isFinite(+c.rev)) ult = +c.rev; } catch (x) { }
+  const atras = !o.portal && ult != null && +rev < ult, copia = o.fonte && o.fonte !== 'pasta' && o.fonte !== 'teste';
+  const cls = atras ? 'warn' : copia ? 'warn' : o.portal ? 'ok' : 'info';
+  const quando = o.revAt ? ` Gravada em ${String(o.revAt).slice(8, 10)}/${String(o.revAt).slice(5, 7)} ${String(o.revAt).slice(11, 16)}${o.revBy ? ' por ' + o.revBy : ''}.` : '';
+  const tit = (atras ? `Desatualizada: já existe a rev ${ult} neste computador. ` : '') + (copia ? 'Lida da cópia local (a pasta não respondeu). ' : '') + AJ + quando;
+  return `<span class="pill ${cls}" data-vac-cadrev="${e(rev)}" title="${e(tit)}">Cadastro rev ${e(rev)}${atras ? ' · desatualizada' : ''}${copia ? ' · cópia local' : ''} <span class="vac-ib" aria-hidden="true">ⓘ</span></span>`;
+}
 
 /* kit v2.1 · E5 (08/11/2026): ficha da ordem, do lote e da LP · índice da busca (Ctrl K) · link #ficha=ordem/<n>.
    A ficha SÓ mostra o que cada página publica no exports (regra 1: não recalcula, não lê a estrutura interna).
@@ -1113,10 +1136,10 @@ const vacFicha = (() => {
   const FONTES = [
     { id: 'oee', nome: 'Produção', base: 'oee-vacutainer-base.json', pega: ex => ({ porOrdem: ex.porOrdem || [], cob: ex.porOrdemCobertura || null, lotes: ex.lotes || [], porDiaTurno: ex.porDiaTurno || [], porDiaCatalogo: ex.porDiaCatalogo || [] }) },   /* Fase 4 · 4d: o Gel lê os turnos da Produção */
     { id: 'ordens', nome: 'SAP (Produção › Ordens)', sis: 'oee', base: 'ordens-base.json', pega: ex => ({ porOrdem: ex.porOrdem || [] }) },
-    { id: 'perdas', nome: 'Waste', base: 'perdas-base.json', pega: ex => ({ porOrdem: ex.porOrdem || [] }) },
+    { id: 'perdas', nome: 'Waste', base: 'perdas-base.json', pega: ex => ({ porOrdem: ex.porOrdem || [], acoesLegado: ex.acoesLegado || null }) },   /* Fase 6: Iniciativas traz as ações antigas */
     { id: 'gel', nome: 'Gestão de Gel', base: 'fifo-base.json', pega: ex => ({ ordens: ex.ordens || [], cob: ex.ordensCobertura || null, porDiaGel: ex.porDiaGel || [] }) },   /* Fase 4 · 4e */
     { id: 'paradas', nome: 'Paradas', base: 'paradas-base.json', pega: ex => ({ porOrdem: ex.porOrdem || [], eventos: (ex.eventos || []).filter(e => e && e.ordem) }) },
-    { id: 'inic', nome: 'Iniciativas', base: 'iniciativas-base.json', pega: ex => ({ acoes: ex.acoes || [] }) }];
+    { id: 'inic', nome: 'Iniciativas / Ações', base: 'iniciativas-base.json', pega: ex => ({ acoes: ex.acoes || [] }) }];
   const S = { dados: {}, idx: null, carregando: null, aberto: null, empilhado: false };
   const e2 = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   const tx = v => String(v ?? '').trim();
@@ -1442,6 +1465,8 @@ const orNome=t=>(ORIGENS.find(x=>x[0]===t)||[t,t||'Manual'])[1];
 const orCls=t=>({oee:'info',paradas:'info',osm:'warn',kas:'ok','5s':'ok',waste:'crit',reuniao:'info'})[t]||'';
 const VINC=[['ordem','Ordem'],['lote','Lote'],['equipamento','Equipamento'],['codigo','Código de parada'],['catalogo','Catálogo'],['evento','Evento do Paradas']];
 const viNome=t=>(VINC.find(x=>x[0]===t)||[t,t])[1];
+/* 1.1.0 · I2: eficácia da ação concluída (veio do plano do Waste: eficácia em acompanhamento / encerrada eficaz / sem eficácia) */
+const EFIC=[['acompanhamento','Em acompanhamento'],['eficaz','Eficaz'],['sem','Sem eficácia']];const efNome=e=>(EFIC.find(x=>x[0]===e)||[e,''])[1];const efCls=e=>({acompanhamento:'info',eficaz:'ok',sem:'crit'})[e]||'';
 const KAS_ST=[['ideia','Ideia'],['em avaliação','Em avaliação'],['aprovada','Aprovada'],['em implantação','Em implantação'],['implantada','Implantada'],['cancelada','Cancelada']];
 const aberta=a=>ABERTOS.includes(a.status);
 const atrasada=a=>aberta(a)&&a.prazo&&a.prazo<hoje();
@@ -1468,6 +1493,7 @@ function applyOp(D,op){
  if(op.k==='nova'){if(!A.some(a=>a.id===op.a.id)){A.push(clone(op.a));ev({acao:op.a.id,tipo:'criação',para:op.a.status,resp:op.a.responsavel||''})}}
  else if(op.k==='campos'){const a=A.find(x=>x.id===op.ac);if(!a)return D;for(const[k,v]of Object.entries(op.f))a[k]=v;a.atualizadaEm=op.em;if(op.ev)ev({acao:op.ac,...op.ev})}
  else if(op.k==='item'){const a=A.find(x=>x.id===op.ac);if(!a)return D;const L=a[op.lista]||(a[op.lista]=[]);const i=L.findIndex(x=>x.id===op.it.id);if(i>=0)L[i]={...L[i],...op.it};else L.push(clone(op.it));a.atualizadaEm=op.em}
+ else if(op.k==='imp'){const I=D.importacoes||(D.importacoes=[]);if(!I.some(x=>x.id===op.it.id))I.push(clone(op.it))}
  else if(op.k==='kas'){const K=D.kas||(D.kas=[]);const i=K.findIndex(x=>x.id===op.it.id);if(i>=0)K[i]={...K[i],...op.it,atualizadoEm:op.em};else K.push({...clone(op.it),criadoEm:op.em,criadoPor:op.por})}
  return D}
 
@@ -1570,13 +1596,26 @@ function calcExports(D){const h=hoje(),A=D.acoes||[],ab=A.filter(aberta),fim=add
   acoes:A.filter(a=>aberta(a)||String(a.atualizadaEm||a.criadaEm||'').slice(0,10)>=fim).map(a=>({id:a.id,titulo:a.titulo,status:a.status,prioridade:a.prioridade||null,responsavel:a.responsavel||'',apoios:a.apoios||[],
    prazo:a.prazo||null,prazoOriginal:a.prazoOriginal||null,criadaEm:a.criadaEm||null,concluidaEm:a.concluidaEm||null,atrasada:!!(aberta(a)&&a.prazo&&a.prazo<h),
    origem:{tipo:(a.origem||{}).tipo||'manual',ref:(a.origem||{}).ref||null,resumo:(a.origem||{}).resumo||null},vinculos:(a.vinculos||[]).map(v=>({tipo:v.tipo,cod:String(v.cod)})),
-   checklist:[(a.checklist||[]).filter(i=>i.feito).length,(a.checklist||[]).length]})),
+   checklist:[(a.checklist||[]).filter(i=>i.feito).length,(a.checklist||[]).length],eficacia:a.eficacia||null,descricao:a.descricao||''})),
   kas:(D.kas||[]).map(k=>({id:k.id,titulo:k.titulo,status:k.status,dono:k.dono||'',area:k.area||'',acoes:A.filter(a=>(a.origem||{}).tipo==='kas'&&(a.origem||{}).ref===k.id).length})),
   pendencias:pend.sort((a,b)=>a.sev-b.sev),
+  /* 1.1.0 · INI-03: Portal › Importação › Iniciativas (tipo ACOES) */
+  importacoes:(D.importacoes||[]).filter(i=>i&&i.em).map(i=>({tipo:'ACOES',em:i.em,por:i.por||null,programa:i.programa||null,nome:i.nome||null,novas:i.linhas||0})).sort((a,b)=>a.em<b.em?1:-1).slice(0,200),
   kpis:[['Ações abertas',String(ab.length),`${atr} atrasada(s)`,atr?'bad':'good'],['Vencem em 7 dias',String(sete),'abertas com prazo',sete?'warn':''],['Concluídas no mês',String(concl),mes.split('-').reverse().join('/'),''],['Sem responsável',String(sem),'abertas',sem?'bad':'good']]}}
 
 /* ---------- interface ---------- */
 const ABAS=[['acoes','Ações'],['kas','KAS'],['osm','OSM'],['s5','5S'],['config','Configuração']];
+/* 1.1.0 · INI-02: programas cadastrados no Portal (Cadastros › Programas). KAS, OSM e 5S têm aba própria; os outros ganham uma aba
+   com as ações dele (origem prog:<código>) e o Importar dados. O "+" leva ao cadastro do Portal. */
+const PROG_FIXOS={KAS:'kas',OSM:'osm','5S':'s5'};
+function programas(){const c=typeof vacCad==='function'?vacCad():null;return((c&&c.programas)||[]).filter(p=>p&&p.codigo&&p.ativo!==false&&!PROG_FIXOS[String(p.codigo).toUpperCase()])}
+function progDe(tab){return programas().find(p=>'prog-'+p.codigo===tab)||null}
+function sincProgramas(){const P=programas();for(let i=ABAS.length-1;i>=0;i--)if(/^prog-/.test(ABAS[i][0]))ABAS.splice(i,1);for(let i=ORIGENS.length-1;i>=0;i--)if(/^prog:/.test(ORIGENS[i][0]))ORIGENS.splice(i,1);
+ const ic=ABAS.findIndex(a=>a[0]==='config');P.forEach((p,j)=>{ABAS.splice(ic+j,0,['prog-'+p.codigo,p.sigla||p.nome||p.codigo]);ORIGENS.push(['prog:'+p.codigo,p.nome||p.codigo])})}
+function viewPrograma(){const p=progDe(App.tab);if(!p)return viewAcoes();const t='prog:'+p.codigo,L=Store.data.acoes.filter(a=>(a.origem||{}).tipo===t).sort((a,b)=>(aberta(b)-aberta(a))||(a.prazo||'9999').localeCompare(b.prazo||'9999'));
+ return`<div class="card"><div class="prog-h">${p.cor?`<span class="sw" style="background:${esc(p.cor)}"></span>`:''}<h2 class="ttl" style="margin:0">${esc(p.nome||p.codigo)}</h2>${p.sigla?`<span class="pill">${esc(p.sigla)}</span>`:''}<span class="sp"></span><button class="b pri" id="pgNova">+ Ação</button><button class="b" data-importar="${esc(App.tab)}">Importar dados</button><a class="b sm" href="${esc(typeof vacPortalHref==='function'?vacPortalHref('cadastros/programas/'+encodeURIComponent(p.codigo)):'Portal.html')}" target="_blank" rel="noopener">Cadastro no Portal ↗</a></div>
+ ${p.descricao?`<p class="small">${esc(p.descricao)}</p>`:''}<p class="small muted">Responsável: ${esc(p.responsavel||'—')} · ${L.filter(aberta).length} ação(ões) aberta(s) de ${L.length}.</p>
+ <div class="cards" style="margin-top:10px">${L.map(cardHtml).join('')||'<div class="vz">Nenhuma ação deste programa ainda.</div>'}</div></div>`}
 const App={tab:'acoes',vis:LS.get('inic.vis','quadro'),sel:null,f:{origem:'',resp:'',equip:'',q:'',ordem:'',fechadas:false},kasSel:null};
 function topo(){const el=$('#stBase');if(!el)return;const S=Store,n=S.queue.length;let h='';
  if(S.test)h='<span class="pill" style="--tc:var(--hold)">modo de teste · nada é gravado</span>';
@@ -1587,7 +1626,7 @@ function topo(){const el=$('#stBase');if(!el)return;const S=Store,n=S.queue.leng
  else if(S.readErr||S.lastErr)h+=` <span class="pill crit" title="${esc(S.readErr||S.lastErr)}">${S.readErr?'erro de leitura':'gravação pendente'}</span> ${S.dir&&S.perm?'<button class="b sm" id="tRetry">Gravar de novo</button>':''}`;
  if(S.fila&&S.fila.erro)h+=` <span class="pill crit" title="${esc(S.fila.erro)}">alterações não protegidas</span>`;
  h+=vacRecuperacaoBotao(S);el.innerHTML=h;const c=$('#tConn');if(c)c.onclick=()=>S.dir?S.reconnect():S.pick();const r=$('#tRetry');if(r)r.onclick=async()=>{await S.reload();await S.save();render()};const rc=$('#tRecriar');if(rc)rc.onclick=()=>S.recriar();const ou=$('#tOutra');if(ou)ou.onclick=()=>S.pick()}
-function navHtml(){const at=Store.data.acoes.filter(atrasada).length;return ABAS.map(([id,n])=>`<button data-t="${id}" class="${App.tab===id?'on':''}">${esc(n)}${id==='acoes'&&at?` <span class="cnt" title="ações atrasadas">${at}</span>`:''}</button>`).join('')}
+function navHtml(){sincProgramas();const at=Store.data.acoes.filter(atrasada).length;return ABAS.map(([id,n])=>`<button data-t="${id}" class="${App.tab===id?'on':''}">${esc(n)}${id==='acoes'&&at?` <span class="cnt" title="ações atrasadas">${at}</span>`:''}</button>`).join('')}
 function ir(tab){App.tab=tab;const h='#aba='+tab;if(location.hash!==h)history.replaceState(history.state,'',h);render()}
 document.addEventListener('click',e=>{const b=e.target.closest('#nav [data-t]');if(b)ir(b.dataset.t)});
 
@@ -1605,8 +1644,9 @@ function filtradas(){const f=App.f,q=norm(f.q);return Store.data.acoes.filter(a=
  if(q&&!norm([a.id,a.titulo,a.descricao,a.responsavel,(a.apoios||[]).join(' '),(a.vinculos||[]).map(v=>v.cod).join(' '),(a.origem||{}).resumo].join(' ')).includes(q))return false;
  return true})}
 const vincHtml=a=>(a.vinculos||[]).map(v=>v.tipo==='ordem'?`<a href="#" class="code" data-vac-ordem="${esc(v.cod)}" title="Ficha da ordem">${esc(v.cod)}</a>`:v.tipo==='lote'?`<a href="#" class="code" data-vac-lote="${esc(v.cod)}">${esc(v.cod)}</a>`:`<span class="code">${esc(v.cod)}</span>`).join(' ');
+const stCard=a=>atrasada(a)?'st-atrasada':({'a fazer':'st-afazer','em andamento':'st-andamento','aguardando':'st-aguardando','concluída':'st-concluida'})[a.status]||'';
 function cardHtml(a){const ck=a.checklist||[],cf=ck.filter(i=>i.feito).length;
- return`<div class="ac${App.sel===a.id?' sel':''}" draggable="true" data-ac="${esc(a.id)}"><div class="m"><span class="pill ${orCls((a.origem||{}).tipo)}">${esc(orNome((a.origem||{}).tipo))}</span>${vincHtml(a)}${a.prioridade==='alta'?'<span class="pill crit">alta</span>':''}</div>
+ return`<div class="ac ${stCard(a)}${App.sel===a.id?' sel':''}" draggable="true" data-ac="${esc(a.id)}"><div class="m"><span class="pill ${orCls((a.origem||{}).tipo)}">${esc(orNome((a.origem||{}).tipo))}</span>${vincHtml(a)}${a.prioridade==='alta'?'<span class="pill crit">alta</span>':''}</div>
  <div class="t">${esc(a.titulo)}</div><div class="m">${esc(a.responsavel||'sem responsável')}${(a.apoios||[]).length?` (+${a.apoios.length})`:''} · ${a.status==='concluída'?'concluída '+brc(a.concluidaEm):atrasada(a)?`<span class="atr">atrasada ${Math.round((Date.parse(hoje())-Date.parse(a.prazo))/864e5)} d</span>`:a.prazo?'vence '+brc(a.prazo):'sem prazo'}${ck.length?` · ☑ ${cf}/${ck.length}`:''}</div></div>`}
 function viewAcoes(){const L=filtradas(),u=user();let corpo='';
  const ate14=addDias(hoje(),-14);
@@ -1633,10 +1673,11 @@ function viewAcoes(){const L=filtradas(),u=user();let corpo='';
 function detalheHtml(a){const T=tempos(a),ev=(Store.data.eventos||[]).filter(e=>e.acao===a.id).sort((x,y)=>String(y.em).localeCompare(String(x.em))),o=a.origem||{},ab=aberta(a);
  const evTxt=e=>e.tipo==='criação'?`criada${o.tipo&&o.tipo!=='manual'?' a partir de '+esc(orNome(o.tipo)):''}${e.resp?' · responsável '+esc(e.resp):''}`:e.tipo==='status'?`${esc(stNome(e.de))} → <b>${esc(stNome(e.para))}</b>`:e.tipo==='responsável'?`transferida de ${esc(e.de||'(ninguém)')} para <b>${esc(e.para||'(ninguém)')}</b>`:e.tipo==='prazo'?`prazo ${br(e.de)} → <b>${br(e.para)}</b>`:e.tipo==='prioridade'?`prioridade ${esc(prNome(e.de))} → ${esc(prNome(e.para))}`:esc(e.tipo)+(e.para?': '+esc(e.para):'');
  const foto=o.foto&&Object.keys(o.foto).length?`<div class="small muted">Fotografia de ${brh(o.foto.em||a.criadaEm)}: ${Object.entries(o.foto).filter(([k])=>k!=='em').map(([k,v])=>`${esc(k)} ${esc(v)}`).join(' · ')}</div>`:'';
- return`<div class="row"><span class="pill ${orCls(o.tipo)}">${esc(orNome(o.tipo))}</span><span class="pill ${stCls(a.status)}">${esc(stNome(a.status))}</span>${atrasada(a)?'<span class="pill crit">atrasada</span>':''}<span class="sp"></span><span class="code small muted">${esc(a.id)}</span><button class="b sm" data-fx title="Fechar o detalhe">✕</button></div>
+ return`<div class="row"><span class="pill ${orCls(o.tipo)}">${esc(orNome(o.tipo))}</span><span class="pill ${stCls(a.status)}">${esc(stNome(a.status))}</span>${a.eficacia?`<span class="pill ${efCls(a.eficacia)}">eficácia: ${esc(efNome(a.eficacia))}</span>`:''}${atrasada(a)?'<span class="pill crit">atrasada</span>':''}<span class="sp"></span><span class="code small muted">${esc(a.id)}</span><button class="b sm" data-fx title="Fechar o detalhe">✕</button></div>
  <h2 class="dt">${esc(a.titulo)}</h2>${a.descricao?`<p class="small">${esc(a.descricao)}</p>`:''}
  <div class="row btns">${ab?`${a.status!=='em andamento'?'<button class="b sm" data-st="em andamento">▶ Em andamento</button>':''}${a.status!=='aguardando'?'<button class="b sm" data-st="aguardando">⏸ Aguardando</button>':''}<button class="b sm pri" data-st="concluída">✓ Concluir</button><button class="b sm" data-tr>Transferir</button><button class="b sm" data-pz>${a.prazo?'Adiar prazo':'Pôr prazo'}</button>`:'<button class="b sm" data-st="em andamento">Reabrir</button>'}<button class="b sm" data-ed>Editar</button>${ab?'<button class="b sm crit" data-st="cancelada">Cancelar</button>':''}</div>
- <div class="sec2"><h4>Origem e vínculos</h4><div class="small">${esc(orNome(o.tipo))}${o.resumo?' · '+esc(o.resumo):''}${vacLinkSeguro(o.link)?` · <a href="${esc(vacLinkSeguro(o.link))}">reconsultar ↗</a>`:''}</div>${foto}${(a.vinculos||[]).length?`<div class="small" style="margin-top:4px">${(a.vinculos||[]).map(v=>`${esc(viNome(v.tipo))} ${v.tipo==='ordem'?`<a href="#" class="code" data-vac-ordem="${esc(v.cod)}">${esc(v.cod)}</a>`:v.tipo==='lote'?`<a href="#" class="code" data-vac-lote="${esc(v.cod)}">${esc(v.cod)}</a>`:`<span class="code">${esc(v.cod)}</span>`}`).join(' · ')}</div>`:''}</div>
+ <div class="sec2"><h4>Origem e vínculos</h4><div class="small">${esc(orNome(o.tipo))}${o.resumo?' · '+esc(o.resumo):''}${vacLinkSeguro(o.link)?` · <a href="${esc(vacLinkSeguro(o.link))}">reconsultar ↗</a>`:''}</div>${foto}${MigWaste.legadoHtml(a)}${(a.vinculos||[]).length?`<div class="small" style="margin-top:4px">${(a.vinculos||[]).map(v=>`${esc(viNome(v.tipo))} ${v.tipo==='ordem'?`<a href="#" class="code" data-vac-ordem="${esc(v.cod)}">${esc(v.cod)}</a>`:v.tipo==='lote'?`<a href="#" class="code" data-vac-lote="${esc(v.cod)}">${esc(v.cod)}</a>`:`<span class="code">${esc(v.cod)}</span>`}`).join(' · ')}</div>`:''}</div>
+ ${a.status==='concluída'?`<div class="sec2"><h4>Eficácia ${help('Depois de concluída, a ação fica em acompanhamento até confirmar se resolveu (eficaz) ou não (sem eficácia). Sem eficácia, abra uma nova ação.')}</h4><div class="row"><select id="efSel"><option value="">— não avaliada</option>${EFIC.map(([k,n])=>`<option value="${k}"${a.eficacia===k?' selected':''}>${n}</option>`).join('')}</select></div></div>`:''}
  <div class="sec2"><h4>Responsável e prazo</h4><div class="small">${esc(a.responsavel||'sem responsável')}${(a.apoios||[]).length?' · apoio '+esc(a.apoios.join(', ')):''} · prioridade ${esc(prNome(a.prioridade))}<br>Prazo ${a.prazoOriginal&&a.prazoOriginal!==a.prazo?`original ${br(a.prazoOriginal)} · atual <b>${br(a.prazo)}</b> (adiado ${ev.filter(e=>e.tipo==='prazo').length}×)`:br(a.prazo)}${a.concluidaEm?' · concluída '+br(a.concluidaEm):''}</div></div>
  <div class="sec2"><h4>Checklist</h4><div class="ck">${(a.checklist||[]).map(i=>`<label><input type="checkbox" data-ck="${esc(i.id)}"${i.feito?' checked':''}> ${esc(i.txt)}</label>`).join('')}</div><div class="row"><input id="ckNovo" placeholder="Novo item" style="flex:1"><button class="b sm" id="ckAdd">+</button></div></div>
  <div class="sec2"><h4>Tempo (dias corridos) ${help('Calculado pelo histórico: quanto tempo a ação ficou em cada situação e com cada responsável (só enquanto aberta). Dias corridos, sem desconto de fim de semana; dias úteis e prazos por prioridade ficam para depois.')}</h4><div class="small">${T.porRs.length?T.porRs.map(([r,d])=>`com ${esc(r)} ${dias(d)}`).join(' → '):'—'}<br>${Object.entries(T.porSt).filter(([s])=>ABERTOS.includes(s)).map(([s,d])=>`${esc(stNome(s))} ${dias(d)}`).join(' · ')}${T.aberto!=null?` · aberta no total ${dias(T.aberto)}`:''}</div></div>
@@ -1691,10 +1732,41 @@ function formAcao(a0,p={}){const ed=!!a0,a=a0||{titulo:p.titulo||'',descricao:p.
    Store.commit({k:'nova',a:nova});App.sel=id;App.tab='acoes';toast('Ação criada: '+id);render()},
   aoAbrir:bg=>{bg.querySelectorAll('[data-ir-acao]').forEach(x=>x.onclick=e=>{e.preventDefault();bg.remove();App.sel=x.dataset.irAcao;ir('acoes')})}})}
 
+/* 1.1.0 · INI-03: Importar dados em cada programa (KAS, OSM, 5S, programas do Portal e Ações): importação comum de AÇÕES colando
+   do Excel ou CSV, com prévia. Colunas pelo nome: título (obrigatório), responsável, prazo, status, prioridade, descrição.
+   Cada importação fica registrada (D.importacoes) e vai para o exports (Portal › Importação › Iniciativas). Reimportar a mesma
+   linha não duplica: a referência é programa + título + prazo. Formatos próprios (OSM, 5S) entram quando houver as amostras. */
+const ImpAcoes={
+ tipoDe(tab){return tab==='kas'?'kas':tab==='osm'?'osm':tab==='s5'?'5s':/^prog-/.test(tab)?'prog:'+tab.slice(5):'manual'},
+ nomeDe(tab){return(ABAS.find(a=>a[0]===tab)||[tab,'Ações'])[1]},
+ ler(txt,tipo){const L=String(txt||'').replace(/\r/g,'').split('\n').filter(x=>x.trim());if(L.length<2)return{erro:'Cole o cabeçalho e ao menos uma linha.'};
+  const sep=L[0].includes('\t')?'\t':(L[0].split(';').length>L[0].split(',').length?';':',');const cab=L[0].split(sep).map(x=>norm(x));
+  const col=re=>cab.findIndex(c=>re.test(c));const C={t:col(/^(titulo|acao|o que|descricao da acao)/),r:col(/^respons/),p:col(/^(prazo|data limite|vencimento|quando)/),s:col(/^(status|situacao)/),pr:col(/^prior/),d:col(/^(descricao|detalhe|observ)/)};
+  if(C.t<0)return{erro:'Não achei a coluna do título (Título, Ação ou O que). Cabeçalho lido: '+L[0]};
+  const dt=v=>{v=String(v||'').trim();let m=/^(\d{4})-(\d{2})-(\d{2})/.exec(v);if(m)return v.slice(0,10);m=/^(\d{1,2})\/(\d{1,2})\/(\d{2,4})$/.exec(v);if(m){const a=m[3].length===2?'20'+m[3]:m[3];return`${a}-${String(m[2]).padStart(2,'0')}-${String(m[1]).padStart(2,'0')}`}return v?null:''};
+  const st=v=>{const x=norm(v);if(!x)return'a fazer';if(/conclu|encerr|feit/.test(x))return'concluída';if(/cancel/.test(x))return'cancelada';if(/aguard/.test(x))return'aguardando';if(/andamento|execu/.test(x))return'em andamento';return'a fazer'};
+  const pr=v=>{const x=norm(v);return/alta|urg/.test(x)?'alta':/baix/.test(x)?'baixa':'media'};
+  const R=[];L.slice(1).forEach((ln,i)=>{const c=ln.split(sep).map(x=>x.trim().replace(/^"|"$/g,''));const t=c[C.t]||'';if(!t)return;const p=C.p>=0?dt(c[C.p]):'';
+   const ref='imp|'+tipo+'|'+norm(t)+'|'+(p||'');const ja=Store.data.acoes.some(a=>(a.origem||{}).ref===ref);
+   R.push({n:i+2,titulo:t.slice(0,200),responsavel:C.r>=0?c[C.r]:'',prazo:p,status:C.s>=0?st(c[C.s]):'a fazer',prioridade:C.pr>=0?pr(c[C.pr]):'media',descricao:C.d>=0?c[C.d]:'',ref,ja,erro:p===null?'prazo inválido: '+c[C.p]:''})});
+  return{R}},
+ abrir(tab){const tipo=this.tipoDe(tab),nome=this.nomeDe(tab);
+  janela({titulo:'Importar dados · '+nome,ok:'Importar',corpo:`<p class="small">Cole as linhas do Excel (com o cabeçalho) ou de um CSV. Colunas reconhecidas pelo nome: <b>Título</b> (ou Ação), Responsável, Prazo, Status, Prioridade, Descrição. Cada linha vira uma ação de <b>${esc(nome)}</b>. A mesma linha importada de novo não duplica.</p>
+   <textarea id="iaTxt" rows="7" style="width:100%;font-family:var(--f-mono,monospace);font-size:12px" placeholder="Título	Responsável	Prazo	Status"></textarea><div class="row"><button class="b sm" id="iaPrev">Ver prévia</button><span class="small muted" id="iaRes"></span></div><div id="iaTab"></div>`,
+   aoAbrir:bg=>{const prev=()=>{const x=this.ler($('#iaTxt',bg).value,tipo);const T=$('#iaTab',bg),Rs=$('#iaRes',bg);if(x.erro){T.innerHTML='';Rs.textContent=x.erro;return null}
+     const nov=x.R.filter(r=>!r.ja&&!r.erro);Rs.textContent=`${x.R.length} linha(s): ${nov.length} nova(s), ${x.R.filter(r=>r.ja).length} já importada(s), ${x.R.filter(r=>r.erro).length} com erro.`;
+     T.innerHTML=`<div class="tw" style="max-height:260px"><table class="t"><tr><th>Linha</th><th>Título</th><th>Responsável</th><th>Prazo</th><th>Status</th><th>Prioridade</th><th></th></tr>${x.R.map(r=>`<tr><td>${r.n}</td><td>${esc(r.titulo)}</td><td>${esc(r.responsavel)}</td><td>${r.prazo?br(r.prazo):'—'}</td><td>${esc(stNome(r.status))}</td><td>${esc(prNome(r.prioridade))}</td><td>${r.erro?`<span class="pill crit">${esc(r.erro)}</span>`:r.ja?'<span class="pill">já importada</span>':'<span class="pill ok">nova</span>'}</td></tr>`).join('')}</table></div>`;return x};
+    $('#iaPrev',bg).onclick=prev;bg._prev=prev},
+   acao:bg=>{const x=bg._prev();if(!x)return false;const nov=x.R.filter(r=>!r.ja&&!r.erro);if(!nov.length){toast('Nada novo para importar.',1);return false}
+    const em=new Date().toISOString(),impId='IMP-'+em.slice(0,10).replace(/-/g,'')+'-'+Math.random().toString(36).slice(2,6).toUpperCase();
+    nov.forEach((r,i)=>{const id=`AC-${em.slice(0,10).replace(/-/g,'')}-${Math.random().toString(36).slice(2,6).toUpperCase()}${i}`;
+     Store.commit({k:'nova',a:{id,titulo:r.titulo,descricao:r.descricao,status:r.status,prioridade:r.prioridade,responsavel:r.responsavel,apoios:[],prazo:r.prazo||null,prazoOriginal:r.prazo||null,criadaEm:em,criadaPor:user()||'',concluidaEm:r.status==='concluída'?em:null,
+      origem:{tipo,ref:r.ref,resumo:'Importada em '+brh(em)+' ('+impId+')'},vinculos:[],checklist:[],comentarios:[],evidencias:[]}})});
+    Store.commit({k:'imp',it:{id:impId,em,por:user()||'',programa:tipo,nome,linhas:nov.length}});toast(`${nov.length} ação(ões) importada(s) em ${nome}.`);render()}})}};
 /* KAS (E8): kaizen com problema, proposta, linha de base, ações ligadas e resultado */
 function viewKas(){const K=(Store.data.kas||[]).slice().sort((a,b)=>String(b.criadoEm||'').localeCompare(String(a.criadoEm||'')));const sel=App.kasSel&&K.find(k=>k.id===App.kasSel);
  const nAc=k=>Store.data.acoes.filter(a=>(a.origem||{}).tipo==='kas'&&(a.origem||{}).ref===k.id);
- return`<div class="row barra"><span class="small muted">${K.length} KAS · ${K.filter(k=>k.status==='implantada').length} implantado(s)</span><span class="sp"></span><button class="b pri" id="kNovo">+ Novo KAS</button></div>
+ return`<div class="row barra"><span class="small muted">${K.length} KAS · ${K.filter(k=>k.status==='implantada').length} implantado(s)</span><span class="sp"></span><button class="b" data-importar="kas">Importar dados</button><button class="b pri" id="kNovo">+ Novo KAS</button></div>
  <div class="lay${sel?' comdet':''}"><div class="corpo">${K.length?`<div class="tw"><table class="t"><tr><th>KAS</th><th>Título</th><th>Situação</th><th>Dono</th><th>Área</th><th class="n">Ações</th><th>Linha de base → resultado</th></tr>${K.map(k=>{const A=nAc(k);return`<tr class="clk${App.kasSel===k.id?' on':''}" data-kas="${esc(k.id)}"><td class="code">${esc(k.id)}</td><td>${esc(k.titulo)}</td><td><span class="pill ${k.status==='implantada'?'ok':k.status==='cancelada'?'':'info'}">${esc((KAS_ST.find(x=>x[0]===k.status)||[0,k.status])[1])}</span></td><td>${esc(k.dono||'—')}</td><td>${esc(k.area||'—')}</td><td class="n">${A.filter(aberta).length}/${A.length}</td><td class="small">${esc(k.baseline||'—')} → ${esc(k.resultado||'—')}</td></tr>`}).join('')}</table></div>`:'<div class="card empty">Nenhum KAS ainda. Registre a ideia ou o kaizen com o problema, a proposta e a linha de base; as ações dele aparecem no quadro de Ações com a origem KAS.</div>'}</div>
  ${sel?`<aside class="card det"><div class="row"><span class="pill ok">KAS</span><span class="code small muted">${esc(sel.id)}</span><span class="sp"></span><button class="b sm" data-kx>✕</button></div><h2 class="dt">${esc(sel.titulo)}</h2>
   <div class="row btns"><button class="b sm" data-ked>Editar</button><button class="b sm pri" data-kac>+ Ação deste KAS</button></div>
@@ -1711,26 +1783,63 @@ function formKas(k0){const k=k0||{titulo:'',status:'ideia',dono:user()||'',area:
    const it={id:k0?k0.id:'KAS-'+new Date().getFullYear()+'-'+Math.random().toString(36).slice(2,6).toUpperCase(),titulo:t,status:g('kS'),dono:g('kD'),area:g('kA'),problema:g('kP'),proposta:g('kPr'),baseline:g('kB'),meta:g('kM'),resultado:g('kR')};
    Store.commit({k:'kas',it});App.kasSel=it.id;render()}})}
 function viewOsm(){return`<div class="card"><h2 class="ttl">OSM</h2><p>A importação das observações da plataforma oficial (E7) entra quando houver uma <b>amostra descaracterizada da planilha</b> (colunas, ID, status e datas). Sem a amostra não dá para garantir que a reimportação não duplica nem perde ações.</p>
- <p class="small muted">Enquanto isso, ações de OSM podem ser criadas em Ações com a origem "OSM" (e o número da OSM no título): elas já entram no quadro, na Minha fila do Portal e nos tempos.</p><button class="b" id="osmNova">+ Ação de OSM</button></div>`}
+ <p class="small muted">Enquanto isso, ações de OSM podem ser criadas em Ações com a origem "OSM" (e o número da OSM no título): elas já entram no quadro, na Minha fila do Portal e nos tempos.</p><button class="b" id="osmNova">+ Ação de OSM</button> <button class="b" data-importar="osm">Importar dados</button></div>`}
 function viewS5(){return`<div class="card"><h2 class="ttl">5S</h2><p>As auditorias 5S entram junto com o motor de checklist de AM/TPM (E13), quando os padrões técnicos chegarem. Nenhum critério é inventado aqui.</p>
- <p class="small muted">Ações de 5S podem ser criadas em Ações com a origem "5S".</p><button class="b" id="s5Nova">+ Ação de 5S</button></div>`}
+ <p class="small muted">Ações de 5S podem ser criadas em Ações com a origem "5S".</p><button class="b" id="s5Nova">+ Ação de 5S</button> <button class="b" data-importar="s5">Importar dados</button></div>`}
+/* 1.1.0 · WST-03 / INI-04 (Fase 6, I1/I2): as ações do Waste passam a ser criadas aqui (+ Ação do Waste abre o formulário com a
+   ordem). As antigas vêm UMA vez, pelo exports do Waste (acoesLegado), com o histórico: id AC-W-<id do Waste> e ref waste|<id>, então
+   trazer de novo (ou em duas estações) não duplica. Status: aberta/em análise/planejada → a fazer; aguardando recurso/validação →
+   aguardando; eficácia em acompanhamento / encerrada eficaz / sem eficácia → concluída com o campo eficácia (I2). No Waste, a ação
+   trazida fica só leitura e leva para cá. */
+const MigWaste={
+ ST:{'aberta':'a fazer','em análise':'a fazer','planejada':'a fazer','em andamento':'em andamento','aguardando recurso':'aguardando','aguardando validação':'aguardando',
+  'concluída':'concluída','eficácia em acompanhamento':'concluída','encerrada eficaz':'concluída','encerrada sem eficácia':'concluída','cancelada':'cancelada'},
+ EF:{'eficácia em acompanhamento':'acompanhamento','encerrada eficaz':'eficaz','encerrada sem eficácia':'sem'},
+ PR:{'baixa':'baixa','média':'media','media':'media','alta':'alta'},
+ ja(id){return Store.data.acoes.some(a=>a.id==='AC-W-'+id||(a.origem||{}).ref==='waste|'+id)},
+ converter(w,em){const st=this.ST[w.status]||'a fazer',dt=d=>/^\d{4}-\d{2}-\d{2}/.test(String(d||''))?String(d).slice(0,10):null;
+  const ab=dt(w.abertura),cc=dt(w.conclusao);
+  const det=[w.causa?'Causa: '+w.causa:'',w.comp?'Componente: '+w.comp:'',w.area?'Área: '+w.area:'',w.econ!=null?'Economia estimada: R$ '+nf(w.econ)+'/mês':'',w.obs?'Evidência / observação: '+w.obs:''].filter(Boolean).join('\n');
+  return{id:'AC-W-'+w.id,titulo:String(w.desc||'(sem descrição)').slice(0,200),descricao:det,status:st,prioridade:this.PR[w.pri]||'media',responsavel:w.resp||'',apoios:[],
+   prazo:dt(w.prazo),prazoOriginal:dt(((w.hist||[]).find(h=>h&&h.prazo)||{}).prazo)||dt(w.prazo),criadaEm:ab?ab+'T12:00:00':em,criadaPor:w.user||'',
+   concluidaEm:st==='concluída'?(cc?cc+'T12:00:00':em):null,eficacia:this.EF[w.status]||null,
+   origem:{tipo:'waste',ref:'waste|'+w.id,resumo:`Trazida do Waste em ${brh(em)}${w.ordem?' · ordem '+w.ordem:''} · status lá: ${w.status||'—'}`},
+   vinculos:w.ordem?[{tipo:'ordem',cod:String(w.ordem)}]:[],checklist:[],comentarios:[],evidencias:[],
+   legado:{pagina:'Waste',id:w.id,status:w.status||null,causa:w.causa||null,comp:w.comp||null,area:w.area||null,econ:w.econ??null,abertura:ab,conclusao:cc,
+    hist:(w.hist||[]).filter(h=>h&&typeof h==='object').map(h=>({data:h.data||null,user:h.user||null,status:h.status||null,prazo:h.prazo||null}))}}},
+ legadoHtml(a){const L=a.legado;if(!L)return'';const H=L.hist||[];
+  return`<div class="small muted" style="margin-top:4px">Do Waste (id ${esc(L.id)}): status lá <b>${esc(L.status||'—')}</b>${L.abertura?' · aberta em '+br(L.abertura):''}${L.conclusao?' · conclusão '+br(L.conclusao):''}${H.length?' · histórico: '+H.map(h=>`${brh(h.data)} ${esc(h.user||'')} (${esc(h.status||'')}${h.prazo?', prazo '+br(h.prazo):''})`).join('; '):''}</div>`},
+ cartao(){return`<div class="card"><h2 class="ttl">Ações do Waste</h2><p class="small">Desde a 1.1.0 as ações do Waste são criadas aqui (o "+ Ação" do Waste abre o formulário com a ordem). As ações antigas do Waste vêm uma vez, com o histórico; depois ficam só leitura lá. Trazer de novo não duplica.</p>
+  <div class="row"><button class="b" id="mwTrazer">Trazer ações do Waste</button><span class="small muted">${Store.data.acoes.filter(a=>(a.origem||{}).tipo==='waste'&&a.legado).length} já trazida(s)</span></div></div>`},
+ async abrir(){let x=null;try{if(typeof vacFicha!=='undefined'){await vacFicha.carregar();x=vacFicha.dados('perdas')}}catch(e){console.warn(e)}
+  const L=x&&x.d&&Array.isArray(x.d.acoesLegado)?x.d.acoesLegado:null;
+  if(!L){janela({titulo:'Trazer ações do Waste',ok:'Fechar',corpo:`<p class="small">Não consegui ler as ações do Waste (${esc(x&&x.motivo||'pasta não conectada ou base do Waste sem o resumo das ações: abra o Waste 1.8.28 ou mais novo e grave uma vez')}).</p>`,acao:()=>true});return}
+  const nov=L.filter(w=>w&&w.id&&!this.ja(w.id)),j=L.length-nov.length;
+  janela({titulo:'Trazer ações do Waste',ok:nov.length?`Trazer ${nov.length} ação(ões)`:'Fechar',corpo:`<p class="small">${L.length} ação(ões) no Waste (lido ${x.geradoEm?'em '+brh(x.geradoEm):''}${x.estado==='cache'?', cópia local':''}): <b>${nov.length} nova(s)</b>, ${j} já trazida(s).</p>
+   ${nov.length?`<div class="tw" style="max-height:260px"><table class="t"><tr><th>Ordem</th><th>Ação</th><th>Status no Waste</th><th>Fica aqui</th><th>Responsável</th><th>Prazo</th></tr>${nov.map(w=>{const c=this.converter(w,'');return`<tr><td class="code">${esc(w.ordem||'—')}</td><td>${esc(c.titulo)}</td><td>${esc(w.status||'')}</td><td>${esc(stNome(c.status))}${c.eficacia?' · eficácia: '+esc(efNome(c.eficacia)):''}</td><td>${esc(c.responsavel||'—')}</td><td>${c.prazo?br(c.prazo):'—'}</td></tr>`}).join('')}</table></div>`:''}`,
+   acao:()=>{if(!nov.length)return true;const em=new Date().toISOString();for(const w of nov){if(this.ja(w.id))continue;Store.commit({k:'nova',a:this.converter(w,em)},{silencio:true})}
+    Store.commit({k:'imp',it:{id:'MIGW-'+em,em,por:user()||'',programa:'waste',nome:'Ações do Waste (migração)',linhas:nov.length}});toast(`${nov.length} ação(ões) trazida(s) do Waste.`);render();return true}})}};
 function viewConfig(){const S=Store,D=S.data;return`<div class="grid g2"><div class="card"><h2 class="ttl">Pasta e base</h2>
  <p class="small">${S.test?'Modo de teste: nada é gravado.':S.dir?`Pasta <b>${esc(S.dirName)}</b> · ${S.perm?'com permissão':'sem permissão'} · base ${S.baseFound?'encontrada':'ainda não gravada'} em 00. Bases/${esc(PAGE.baseFile)}`:'Sem pasta: os dados ficam só neste navegador até conectar.'}</p>
  <p class="small">Revisão ${D.rev||0}${D.revBy?` · gravada por ${esc(D.revBy)} em ${brh(D.revAt)}`:''} · ${D.acoes.length} ação(ões) · ${(D.kas||[]).length} KAS · ${S.queue.length} alteração(ões) pendente(s)</p>
  ${S.readErr?`<p class="small" style="color:var(--crit)">${esc(S.readErr)}</p>`:''}${S.lastErr?`<p class="small" style="color:var(--crit)">${esc(S.lastErr)}</p>`:''}
  <div class="row">${S.test?'<button class="b" id="cSairT">Sair do modo de teste</button>':`<button class="b pri" id="cConn">${S.dir?S.perm?'Trocar pasta':'Reconectar':'Conectar pasta'}</button><button class="b" id="cSave"${S.dir&&S.perm?'':' disabled'}>Gravar agora</button><button class="b" id="cBk"${S.dir&&S.perm?'':' disabled'}>Backup agora</button><button class="b" id="cTeste">Ver com dados de teste</button>`}</div></div>
- <div class="card"><h2 class="ttl">Como funciona</h2><ul class="lst small"><li>Cada ação tem dono, prazo (o original fica guardado), situação, checklist, comentários, evidências (link) e histórico.</li><li>Ações abertas a partir do Paradas, da Produção ou da ficha da ordem trazem a fotografia do que motivou e o link para reconsultar.</li><li>O Portal lê o resumo (exports): cartão, pendências e Minha fila. As outras páginas não gravam aqui.</li><li>Tempos em dias corridos, pelo histórico; dias úteis, SLA e regras de prioridade ficam para depois (PLA-04, PLA-07).</li></ul></div></div>`}
+ <div class="card"><h2 class="ttl">Como funciona</h2><ul class="lst small"><li>Cada ação tem dono, prazo (o original fica guardado), situação, checklist, comentários, evidências (link) e histórico.</li><li>Ações abertas a partir do Paradas, da Produção ou da ficha da ordem trazem a fotografia do que motivou e o link para reconsultar.</li><li>O Portal lê o resumo (exports): cartão, pendências e Minha fila. As outras páginas não gravam aqui.</li><li>Tempos em dias corridos, pelo histórico; dias úteis, SLA e regras de prioridade ficam para depois (PLA-04, PLA-07).</li></ul></div>${MigWaste.cartao()}</div>`}
 
-function render(){$('#nav').innerHTML=navHtml();topo();const v={acoes:viewAcoes,kas:viewKas,osm:viewOsm,s5:viewS5,config:viewConfig}[App.tab]||viewAcoes;
+function render(){$('#nav').innerHTML=navHtml()+`<button class="novo-prog" title="Novo programa (cadastro no Portal › Programas)" data-novoprog>+</button>`;topo();const v={acoes:viewAcoes,kas:viewKas,osm:viewOsm,s5:viewS5,config:viewConfig}[App.tab]||(/^prog-/.test(App.tab)?viewPrograma:viewAcoes);
  const det=$('#det'),rol=det?det.scrollTop:0;$('#main').innerHTML=v();const d2=$('#det');if(d2)d2.scrollTop=rol;ligar()}
 function ligar(){const A=id=>Store.data.acoes.find(a=>a.id===id);
+ $$('[data-importar]').forEach(b=>b.onclick=()=>ImpAcoes.abrir(b.dataset.importar));
+ {const pn=$('#pgNova');if(pn)pn.onclick=()=>formAcao(null,{origem:{tipo:'prog:'+App.tab.slice(5)}})}
+ {const np=document.querySelector('[data-novoprog]');if(np)np.onclick=()=>{const h=typeof vacPortalHref==='function'?vacPortalHref('cadastros/programas'):'Portal.html#cadastros/programas';if(typeof vacDemo!=='undefined'&&vacDemo.ativo&&vacDemo.ir)vacDemo.ir(h);else window.open(h,'_blank','noopener')}}
+ {const ef=$('#efSel');if(ef)ef.onchange=()=>{const a=A(App.sel);if(!a)return;const v=ef.value||null;if((a.eficacia||null)===v)return;Store.commit({k:'campos',ac:a.id,f:{eficacia:v},ev:{tipo:'eficácia',de:a.eficacia||'',para:v||''}});toast('Eficácia: '+(v?efNome(v):'não avaliada'));render()}}
  $$('[data-vis]').forEach(b=>b.onclick=()=>{App.vis=b.dataset.vis;LS.set('inic.vis',App.vis);render()});
  const fo=$('#fOr');if(fo){fo.onchange=()=>{App.f.origem=fo.value;render()};$('#fRs').onchange=e=>{App.f.resp=e.target.value;render()};$('#fEq').onchange=e=>{App.f.equip=e.target.value;render()};
   const q=$('#fQ');q.oninput=()=>{App.f.q=q.value;clearTimeout(q._t);q._t=setTimeout(()=>{render();const q2=$('#fQ');q2.focus();q2.setSelectionRange(q2.value.length,q2.value.length)},250)};$('#fFe').onchange=e=>{App.f.fechadas=e.target.checked;render()};const fx=$('#fOrdemX');if(fx)fx.onclick=()=>{App.f.ordem='';render()}}
  $$('[data-ac]').forEach(el=>el.onclick=e=>{if(e.target.closest('[data-vac-ordem],[data-vac-lote]'))return;App.sel=App.sel===el.dataset.ac?null:el.dataset.ac;render()});
  $$('.col').forEach(c=>{c.ondragover=e=>{e.preventDefault();c.classList.add('alvo')};c.ondragleave=()=>c.classList.remove('alvo');c.ondrop=e=>{e.preventDefault();c.classList.remove('alvo');const a=A(e.dataTransfer.getData('text/plain'));if(a)mudaStatus(a,c.dataset.col)}});
  $$('.ac[draggable]').forEach(x=>x.ondragstart=e=>e.dataTransfer.setData('text/plain',x.dataset.ac));
- const a=App.sel&&A(App.sel);if(a){$$('#det [data-st]').forEach(b=>b.onclick=()=>mudaStatus(a,b.dataset.st));const q=s=>$('#det '+s);
+ const a=App.sel&&$('#det')&&A(App.sel);if(a){$$('#det [data-st]').forEach(b=>b.onclick=()=>mudaStatus(a,b.dataset.st));const q=s=>$('#det '+s);
   q('[data-fx]').onclick=()=>{App.sel=null;render()};const tr=q('[data-tr]');if(tr)tr.onclick=()=>transferir(a);const pz=q('[data-pz]');if(pz)pz.onclick=()=>adiar(a);q('[data-ed]').onclick=()=>formAcao(a);
   $$('#det [data-ck]').forEach(c=>c.onchange=()=>{const it=(a.checklist||[]).find(i=>i.id===c.dataset.ck);Store.commit({k:'item',ac:a.id,lista:'checklist',it:{...it,feito:c.checked,por:user(),em:new Date().toISOString()}})});
   const ad=()=>{const i=$('#ckNovo'),t=i.value.trim();if(t)Store.commit({k:'item',ac:a.id,lista:'checklist',it:{id:uid('c'),txt:t,feito:false}})};q('#ckAdd').onclick=ad;$('#ckNovo').onkeydown=e=>{if(e.key==='Enter')ad()};
@@ -1742,7 +1851,7 @@ function ligar(){const A=id=>Store.data.acoes.find(a=>a.id===id);
  $$('[data-ir-acao]').forEach(x=>x.onclick=e=>{e.preventDefault();App.sel=x.dataset.irAcao;App.f.fechadas=true;ir('acoes')});
  const on=$('#osmNova');if(on)on.onclick=()=>formAcao(null,{origem:{tipo:'osm'}});const sn=$('#s5Nova');if(sn)sn.onclick=()=>formAcao(null,{origem:{tipo:'5s'}});
  const cc=$('#cConn');if(cc)cc.onclick=()=>Store.dir&&!Store.perm?Store.reconnect():Store.pick();const cs=$('#cSave');if(cs)cs.onclick=async()=>{await Store.reload();await Store.save();render();toast(Store.lastErr?'Gravação pendente':'Gravado · rev '+Store.data.rev)};
- const cb=$('#cBk');if(cb)cb.onclick=()=>Store.backupAgora();const ct=$('#cTeste');if(ct)ct.onclick=()=>vacDemo.entrar();const cx=$('#cSairT');if(cx)cx.onclick=()=>{location.hash='';location.reload()}}
+ const cb=$('#cBk');if(cb)cb.onclick=()=>Store.backupAgora();const ct=$('#cTeste');if(ct)ct.onclick=()=>vacDemo.entrar();const mw=$('#mwTrazer');if(mw)mw.onclick=()=>MigWaste.abrir();const cx=$('#cSairT');if(cx)cx.onclick=()=>{location.hash='';location.reload()}}
 
 /* ---------- modo de teste (dados fictícios; nada é gravado) ---------- */
 function enterTest(){Store.test=true;Store.queue=[];const h=hoje(),D=completar(vazio()),ag=Date.now(),iso=d=>new Date(ag-d*864e5).toISOString();
@@ -1763,7 +1872,8 @@ function enterTest(){Store.test=true;Store.queue=[];const h=hoje(),D=completar(v
 /* ---------- rotas: #aba=, #acao=, #ordem=, #nova=<json> (E8: ação aberta de outra página, da ficha ou da reunião) ---------- */
 function rota(){let h=location.hash.slice(1);if(!h)return;let k,v;const i=h.indexOf('=');if(i<0){k=h;v=''}else{k=h.slice(0,i);v=h.slice(i+1)}try{v=decodeURIComponent(v)}catch(e){}
  if(k==='teste')return enterTest();
- if(k==='aba'&&ABAS.some(a=>a[0]===v)){App.tab=v;return render()}
+ sincProgramas();if(k==='aba'&&ABAS.some(a=>a[0]===v)){App.tab=v;return render()}
+ if(k==='importar'&&ABAS.some(a=>a[0]===v)){App.tab=v;render();return ImpAcoes.abrir(v)}   /* INI-03: botão do Portal › Importação */
  if(k==='acao'&&v){App.tab='acoes';App.sel=v;App.f.fechadas=true;render();return}
  if(k==='ordem'&&v){App.tab='acoes';App.f.ordem=v;App.f.q='';App.f.fechadas=true;App.vis='lista';history.replaceState(history.state,'','#aba=acoes');return render()}
  if(k==='nova'){let p={};try{p=v?JSON.parse(v):{}}catch(e){toast('Link de nova ação inválido',1)}if(!p||typeof p!=='object')p={};if(p.origem&&p.origem.link&&!vacLinkSeguro(p.origem.link)){delete p.origem.link;toast('O link de origem recebido não é um endereço seguro e foi descartado.',1)}history.replaceState(history.state,'','#aba=acoes');App.tab='acoes';render();formAcao(null,p)}}

@@ -970,9 +970,9 @@ const VAC_INICIAL_ALVO = {
   'Produção': ['oee', ''], 'Produção › Visão geral': ['oee', 'aba=overview'], 'Produção › Painel': ['oee', 'aba=panel'],
   'Produção › Lançamento': ['oee', 'aba=launch'], 'Produção › Plano do mês': ['oee', 'aba=plan'], 'Produção › Tela do operador': ['oee', 'turno'],
   'Waste': ['perdas', ''],
-  'Gestão de Gel': ['gel', ''], 'Gestão de Gel › Painel': ['gel', 'aba=painel'], 'Gestão de Gel › Operação': ['gel', 'aba=op'],
+  'Gestão de Gel': ['gel', ''], 'Gestão de Gel › Painel': ['gel', 'aba=painel'], 'Gestão de Gel › Visão Geral': ['gel', 'aba=painel'], 'Gestão de Gel › Operação': ['gel', 'aba=op'],
   'Paradas': ['paradas', ''], 'Paradas › Visão geral': ['paradas', 'aba=geral'], 'Paradas › Fila técnica': ['paradas', 'aba=fila'],
-  'Equipamentos': ['equip', ''], 'Iniciativas': ['inic', ''], 'Projetos': ['projetos', '']
+  'Equipamentos': ['equip', ''], 'Iniciativas': ['inic', ''], 'Iniciativas / Ações': ['inic', ''], 'Projetos': ['projetos', '']
 };
 /* página inicial de quem entrou (vac.userId): a do usuário, senão a do perfil; lê a cópia do cadastro (vac.cadastros) */
 function vacPaginaInicial() {
@@ -1257,7 +1257,7 @@ const U = (() => {
 
 /* ---- 02-model.js ---- */
 /* ================= modelo de dados, valores iniciais e integridade ================= */
-const APP_VERSION = '2.4.33';
+const APP_VERSION = '2.4.34';
 const SCHEMA_VERSION = 1;
 const BASE_FILE = 'oee-vacutainer-base.json';
 const BACKUP_DIR = '00. Backups';
@@ -2570,7 +2570,7 @@ const Actions = (() => {
   function setShiftField(dayId, psId, field, value) {
     Store.mutate((db, audit) => {
       const d = dayById(db, dayId); const ps = d.shifts.find(s => s.id === psId);
-      if (field !== 'note') assertEditable(d, ps);
+      if (field !== 'note' && field !== 'responsible') assertEditable(d, ps);   /* 2.4.34 · PRD-05: responsável como a observação */
       if (field === 'scrap' && d.scrapMode === 'day') throw new Error('O scrap deste dia é lançado como total diário. Mude o modo para "por turno" para lançar por turno.');
       const before = ps[field];
       if (field === 'initialCatalogId') { const first = ps.intervals.filter(i => !i.deleted).sort((x, y) => x.start - y.start)[0]; if (first && first.catalogId) { delete first.catalogId; ps.intervals.forEach(i => { delete i.tgt; }); } else if (before === value) return; }
@@ -4698,7 +4698,7 @@ function renderTop() {
   const cad = S.cadastro, srvEnd = d && d.server && d.server.segments && d.server.segments.length ? d.server.segments.reduce((m, x) => x.t1 > m ? x.t1 : m, '') : null;
   $('#stBase').innerHTML = `<button class="pill ${cls}" id="stPill" title="${esc(S.error || 'Situação da base · clique para detalhes')}"><span class="dot"></span>${esc(txt)}${S.mode === 'pasta' && d ? ` · rev ${d.databaseVersion}` : ''}</button>
     ${S.dirty && S.mode === 'pasta' ? `<span class="pill pend" title="Pendente desde ${U.brDT(S.pendingSince)}">gravação pendente</span>` : ''}
-    <span class="pill ${cad ? 'info' : 'none'}" title="${cad ? `vacutainer-cadastros.json · gravado em ${U.brDT(cad.revAt)} por ${esc(cad.revBy || '—')}` : 'O cadastro base do Portal ainda não existe na pasta: o OEE usa os próprios cadastros'}">${cad ? `Cadastro rev ${cad.rev}` : 'Cadastro próprio do OEE'}</span>
+    ${cad && typeof vacCadPilula === 'function' ? vacCadPilula(cad.rev, { fonte: 'pasta', revAt: cad.revAt, revBy: cad.revBy }) : `<span class="pill none" title="O cadastro base do Portal ainda não existe na pasta: o OEE usa os próprios cadastros">Cadastro próprio do OEE</span>`}
     ${srvEnd ? `<span class="pill none" title="Dados do servidor (MES) importados">Servidor até ${ServerData.br(srvEnd)}</span>` : ''}
     <span class="pill none" title="${esc((S.mode === 'pasta' ? 'Pasta ' + (S.backend && S.backend.name) : S.mode === 'arquivo' ? 'Arquivo ' + (S.fileName || '') : 'Somente neste navegador') + (d ? ' · última gravação ' + U.brDT(d.lastModifiedAt) + ' por ' + (d.lastModifiedBy || '—') : ''))}">${d ? U.brDT(d.lastModifiedAt).slice(0, 5) + ' ' + U.brDT(d.lastModifiedAt).slice(-5) : '—'}</span>`;
   vacUserRender();
@@ -4930,7 +4930,7 @@ const DEFAULT_SYSTEMS=[
  {id:'gel',nome:'Gestão de Gel',html:'Gestão-Gel-Vacutainer.html',alt:['Gestao-Gel-Vacutainer.html','controle-fifo-gel.html'],base:'fifo-base.json',estado:'atualizacao'},
  {id:'paradas',nome:'Paradas',html:'Paradas.html',base:'paradas-base.json',estado:'atualizacao'},
  {id:'equip',nome:'Equipamentos',html:'Equipamentos.html',base:'equipamentos-base.json',sub:'Ficha · OS · TAGs · AM/TPM',estado:'atualizacao'},
- {id:'inic',nome:'Iniciativas',html:'Iniciativas.html',base:'iniciativas-base.json',sub:'Ações · KAS · OSM · 5S',estado:'atualizacao'},
+ {id:'inic',nome:'Iniciativas / Ações',html:'Iniciativas.html',base:'iniciativas-base.json',sub:'Ações · KAS · OSM · 5S',estado:'atualizacao'},
  {id:'projetos',nome:'Projetos',html:'Projetos.html',base:'projetos-base.json',futuro:true,estado:'construcao'}];
 function systems(){try{const s=JSON.parse(localStorage.getItem('vac.sistemas')||'null');if(Array.isArray(s)&&s.length){const ids=new Set(s.map(x=>x.id));return s.concat(DEFAULT_SYSTEMS.filter(d=>!ids.has(d.id)))}}catch(e){}return DEFAULT_SYSTEMS.map(x=>({...x}))}
 /* pasta única: todas as páginas na mesma pasta, então o link é só o nome do arquivo */
@@ -5189,18 +5189,18 @@ App.views.launch = {
         <div class="kv"><span class="l">Data</span><span class="v">${U.brDate(day.date)} (${U.WD[U.weekday(day.date)]})</span></div>
         <div class="kv"><span class="l">Linha · máquina</span><span class="v">${esc(lineName(day.lineId))} · ${esc(mac ? mac.name : '—')}</span></div>
         <div class="kv"><span class="l">Calendário</span><span class="v">${esc(st.calendar)}</span></div>
-        <label class="f"><span>Responsável ${ib('responsible')}</span><input type="text" data-dayf="responsible" value="${esc(day.responsible || '')}" maxlength="60" data-fk="d-resp"></label>
+        ${day.scrapMode === 'day' ? `<label class="f"><span>Responsável pelo reporte ${ib('responsible')}</span><input type="text" data-dayf="responsible" value="${esc(day.responsible || '')}" maxlength="60" data-fk="d-resp"></label>` : ''}
         <div class="f"><span>Scrap ${ib('scrapMode')}</span><div class="row"><div class="seg">${[['shift', 'Por turno'], ['day', 'Total diário']].map(([k, l]) => `<button type="button" data-scrapmode="${k}" aria-pressed="${day.scrapMode === k}" ${lk ? 'disabled' : ''}>${l}</button>`).join('')}</div>
           ${day.scrapMode === 'day' ? `<input type="text" inputmode="decimal" class="n" style="width:110px" data-dayscrap value="${day.scrapDay == null ? '' : day.scrapDay}" placeholder="peças" aria-label="Scrap diário (peças)" ${lk ? 'disabled' : ''} data-fk="d-scrap">` : ''}</div></div>
         <label class="f wide"><span>Observação geral</span><textarea data-dayf="note" maxlength="2000" data-fk="d-note">${esc(day.note || '')}</textarea></label>
         ${gaps.length || day.gapJustification ? `<label class="f wide"><span>Justificativa da lacuna entre intervalos ${ib('gap')} ${gaps.length && !day.gapJustification ? '<b class="ferr">(obrigatória para fechar)</b>' : ''}</span><input type="text" data-dayf="gapJustification" value="${esc(day.gapJustification || '')}" maxlength="300" data-fk="d-gap"></label>` : ''}
       </div>
       <div class="row" style="margin-top:12px">
-        <button class="btn primary" data-route="hourly">Hora a hora ${I.chevR}</button>
+        <button class="btn primary" data-hhps="" title="Hora a hora de todos os turnos do dia">Hora a hora ${I.chevR}</button>
         ${lk ? `<button class="btn" id="dReopen">Reabrir dia</button>` : `<button class="btn primary" id="dClose">${I.lock} Fechar dia</button>${day.status !== 'pendente de conferência' ? `<button class="btn" id="dPend">Marcar como pendente de conferência</button>` : ''}`}
         <span class="spacer"></span>
-        ${!lk && !day.shifts.some(p => p.summary) ? `<button class="btn sm ghost" id="dRestore">Restaurar intervalos padrão</button><button class="btn sm ghost" id="dReapply" title="Usa as metas vigentes na data no lugar das metas congeladas no fechamento">Reaplicar metas vigentes</button>` : ''}
-        ${!lk ? `<button class="btn sm ghost" id="dOff">Marcar dia sem produção</button><button class="btn sm ghost" id="dMove">Mover para outro dia</button>` : ''}
+        ${!lk && !day.shifts.some(p => p.summary) ? `<button class="btn sm ghost" id="dRestore">Restaurar intervalos padrão</button>${ib('restaurarIv')}<button class="btn sm ghost" id="dReapply" title="Usa as metas vigentes na data no lugar das metas congeladas no fechamento">Reaplicar metas vigentes</button>${ib('reaplicarMetas')}` : ''}
+        ${!lk ? `<button class="btn sm ghost" id="dOff">Marcar dia sem produção</button>${ib('diaSemProd')}<button class="btn sm ghost" id="dMove">Mover para outro dia</button>${ib('moverDia')}` : ''}
         <button class="btn sm ghost" id="dHist">Histórico de alterações</button>
         ${!lk ? `<button class="btn sm danger" id="dDel">Excluir lançamento</button>` : ''}
       </div></section>`;
@@ -5250,6 +5250,7 @@ App.views.launch = {
     root.querySelectorAll('[data-closeps]').forEach(b => b.onclick = () => closeFlow(day, b.dataset.closeps));
     bindAbonos(root, day);
     root.querySelectorAll('[data-reopenps]').forEach(b => b.onclick = async () => { const r = await askReason('Reabrir turno', 'A reabertura fica registrada no histórico com o estado anterior.'); if (r) run(() => Actions.reopen(day.id, b.dataset.reopenps, r), 'Turno reaberto.'); });
+    HHPs.ligar(root, day);   /* 2.4.34 · PRD-06 */
     const c = root.querySelector('#dClose'); if (c) c.onclick = () => closeFlow(day, null);
     const ro = root.querySelector('#dReopen'); if (ro) ro.onclick = async () => { const r = await askReason('Reabrir dia', 'Todos os turnos do dia serão reabertos. A ação fica registrada no histórico.'); if (r) run(() => Actions.reopen(day.id, null, r), 'Dia reaberto.'); };
     const pe = root.querySelector('#dPend'); if (pe) pe.onclick = () => run(() => Actions.setDayStatus(day.id, 'pendente de conferência'));
@@ -5267,10 +5268,11 @@ function shiftBlock(day, sr, res) {
   const ps = sr.ps, r = sr.r, lk = locked(day, ps);
   const cats = db().catalogs.filter(c => c.active !== false && Engine.catalogValid(c, day.date));
   return `<section class="shift"><header><span class="sw" style="background:${esc(ps.snap.color || 'var(--s1)')}"></span><h3>${esc(ps.snap.name)} <span class="muted small">${ps.snap.start || ''}–${ps.snap.end ? U.hhmm(U.toMin(ps.snap.end)) : ''}</span></h3>${stPill(ps.status)}
-      ${lk ? `<button class="btn sm" data-reopenps="${ps.id}">Reabrir turno</button>` : `<button class="btn sm primary" data-closeps="${ps.id}">${I.lock} Fechar turno</button>`}</header>
+      ${lk ? `<button class="btn sm" data-reopenps="${ps.id}">Reabrir turno</button>` : `<button class="btn sm primary" data-closeps="${ps.id}">${I.lock} Fechar turno</button>`}${HHPs.botao(ps)}</header>
     <div class="body">
       ${ps.summary ? `<div class="kv"><span class="l">Família / catálogo</span><span class="v">${ps.summary.segments.map(s => s.catalogId ? catPill(s.catalogId) : `<span class="catpill" style="--cc:${esc((db().families.find(f => f.id === s.familyId) || {}).color || '#768290')}">${esc((db().families.find(f => f.id === s.familyId) || {}).code || '?')}<small>sem catálogo</small></span>`).join(' ')}</span></div>` :
       `<label class="kv"><span class="l">Catálogo inicial ${ib('initialCatalog')}</span><select data-psf="${ps.id}|initialCatalogId" ${lk ? 'disabled' : ''} data-fk="ps-cat-${ps.id}"><option value="">(segue o turno anterior)</option>${cats.map(c => `<option value="${c.id}" ${ps.initialCatalogId === c.id ? 'selected' : ''}>${esc(catLabel(c))}</option>`).join('')}</select>${(() => { const fl = Engine.computeDay(db(), day).flat.filter(f => f.ps === ps && f.cat); const seq = fl.map(f => f.cat).filter((c, i, a) => i === 0 || a[i - 1] !== c); return seq.length ? `<span class="small">${seq.length > 1 ? 'no turno: ' : 'produzindo: '}${seq.map(c => catPill(c)).join(' → ')}</span>` : ''; })()}</label>`}
+      <label class="kv"><span class="l">Responsável do turno ${ib('shiftResponsible')}</span><input type="text" data-psf="${ps.id}|responsible" value="${esc(ps.responsible || '')}" maxlength="60" placeholder="${esc(ps.closing ? ps.closing.by || '' : '')}" data-fk="ps-resp-${ps.id}"></label>
       <div class="kv"><span class="l">Tempo planejado ${ib('plannedTime')}</span><span class="v">${U.fmt(r.netMin)} min</span><span class="small muted">bruto ${U.fmt(r.grossMin)} − desc. ${U.fmt(r.deductMin)}${r.extraMin ? ` · extra ${U.fmt(r.extraMin)}` : ''}</span></div>
       <div class="kv"><span class="l">Produção boa</span><span class="v">${fq(r.good)} ${unitLbl()}</span><span class="small">${semB(r.semAttain, 'meta ' + fq(r.metaOp))}</span></div>
       <label class="kv"><span class="l">Scrap (peças) ${ib('scrap')}</span>${day.scrapMode === 'day' ? `<span class="v">${U.fmt(r.scrap)}</span><span class="small muted">rateado do total diário</span>` : `<input type="text" inputmode="numeric" class="n" data-psf="${ps.id}|scrap" value="${ps.scrap == null ? '' : ps.scrap}" ${lk || ps.summary ? 'disabled' : ''} data-fk="ps-scrap-${ps.id}" placeholder="não informado">`}</label>
@@ -5326,10 +5328,11 @@ App.views.hourly = {
       <button class="btn sm" data-route="launch">Lançamento ${I.chevR}</button></div>`;
     const pauses = (day.events || []).filter(e => !e.deleted && e.impact && e.impact.deducts);
     h += `<div class="row small" style="margin:-4px 0 10px"><span class="muted">Pausas planejadas do dia ${ib('breaks')}:</span>${pauses.length ? pauses.map(e => evChip(db(), e, res)).join('') : '<span class="muted">nenhuma</span>'}${!lkDay ? `<button class="btn xs" id="hhPause">${I.plus} Pausa neste dia</button>` : ''}<button class="btn xs ghost" id="hhPauseCfg">Pausas e intervalos padrão do turno ›</button><span class="muted">· Para editar um intervalo deste dia use ⋯ no fim da linha.</span></div>`;
+    h += HHPs.barra(day, res);   /* 2.4.34 · PRD-06 */
     h += SrvUI.hourlyBanner(day, res);
     if (errs.length) h += `<div class="banner crit" style="margin:0 0 10px"><p>${errs.length} erro(s): ${esc(errs.slice(0, 3).map(m => m.msg).join(' · '))}${errs.length > 3 ? '…' : ''}</p></div>`;
     h += `<div class="tw"><table class="hh"><thead><tr><th>Intervalo</th><th class="n">Min</th><th>Catálogo ${ib('initialCatalog')}</th>${showM ? '<th class="n">PPH</th><th class="n">OEE meta</th><th class="n">Meta orig.</th><th class="n">Desc. min</th>' : ''}<th class="n">Meta ${ib('meta')}</th><th class="n">Produção ${ib('production')}</th><th class="n">Acum. ${ib('cum')}</th><th class="n">Meta acum.</th><th class="n">Desvio ${ib('dev')}</th><th class="n">Desvio acum.</th><th class="n">Atend. ${ib('attain')}</th><th>Paradas ${ib('stops')}</th><th>Obs.</th><th></th></tr></thead><tbody>`;
-    for (const sr of res.shifts) {
+    for (const sr of res.shifts.filter(sr => HHPs.mostra(day, sr.ps))) {
       const ps = sr.ps, lk = locked(day, ps), fs = res.flat.filter(f => f.ps === ps);
       const sm = U.sum(fs, f => f.metaOp), sg = U.sum(fs, f => f.good || 0);
       h += `<tr class="grp"><td colspan="${showM ? 17 : 13}"><span class="swatch" style="background:${esc(ps.snap.color || 'var(--s1)')}"></span> ${esc(ps.snap.name)} · ${ps.snap.start}–${U.hhmm(U.toMin(ps.snap.end))} · meta ${fq(sm)} · produção ${fq(sg)} · ${semB(Engine.sem(sm ? sg / sm : null, st.semaphore), U.pct(sm ? sg / sm : null, 0))} ${ps.status === 'fechado' ? I.lock + ' fechado' : ''}${ps.off ? ` · <b>sem produção</b> (${esc(ps.offReason || '')}) — desmarque em Lançamento para lançar` : ''}</td></tr>`;
@@ -5354,7 +5357,7 @@ App.views.hourly = {
       }
     }
     const r = res.r;
-    h += `<tr class="total"><td>Total do dia</td><td class="n">${U.fmt(r.grossMin)}</td><td></td>${showM ? `<td></td><td></td><td class="n">${fq(U.sum(res.flat, f => f.metaOrigOp))}</td><td class="n">${U.fmt(r.deductMin)}</td>` : ''}<td class="n" title="Meta diária oficial">${fq(res.officialDaily)}</td><td class="n">${fq(r.good)}</td><td></td><td></td><td></td><td class="n">${fqs(r.good - res.officialDaily)}</td><td class="n">${semB(Engine.sem(res.officialDaily ? r.good / res.officialDaily : null, st.semaphore), U.pct(res.officialDaily ? r.good / res.officialDaily : null, 0))}</td><td colspan="3">${U.fmt(r.aMin + r.pMin)} min de parada</td></tr>`;
+    h += `<tr class="total"><td>Total do dia${HHPs.id(day) ? ' (todos os turnos)' : ''}</td><td class="n">${U.fmt(r.grossMin)}</td><td></td>${showM ? `<td></td><td></td><td class="n">${fq(U.sum(res.flat, f => f.metaOrigOp))}</td><td class="n">${U.fmt(r.deductMin)}</td>` : ''}<td class="n" title="Meta diária oficial">${fq(res.officialDaily)}</td><td class="n">${fq(r.good)}</td><td></td><td></td><td></td><td class="n">${fqs(r.good - res.officialDaily)}</td><td class="n">${semB(Engine.sem(res.officialDaily ? r.good / res.officialDaily : null, st.semaphore), U.pct(res.officialDaily ? r.good / res.officialDaily : null, 0))}</td><td colspan="3">${U.fmt(r.aMin + r.pMin)} min de parada</td></tr>`;
     h += `</tbody></table></div>`;
     if (res.comp) h += `<p class="small muted" style="margin-top:6px">* ${esc(res.comp.reason)} Metas exibidas arredondadas para cima em ${esc(unitLbl())}; os decimais ficam guardados (passe o mouse sobre a meta).</p>`;
     // mini gráfico de atendimento hora a hora
@@ -5366,6 +5369,7 @@ App.views.hourly = {
     bindDayBar(root); bindNoDay(root);
     const day = curDay(); if (!day || Engine.isOffDay(db(), day)) return;
     SrvUI.bindDay(root, day);
+    HHPs.ligar(root, day);
     const hm = root.querySelector('#hhMeta'); if (hm) hm.onchange = () => { App.prefs.showMetaCols = hm.checked; savePrefs(); render(); };
     const inputs = () => $$('input[data-good]', root).filter(i => !i.disabled);
     const commit = (inp, focusNext) => {
@@ -9240,6 +9244,42 @@ const RelSQ = {
   };
 })();
 
+/* ===== Produção 2.4.34 · Fase 7 do briefing (09/11/2026): apontamento e ajuda =====
+   - PRD-05: o responsável é por turno (ps.responsible, no cartão de cada turno). O "Responsável" do dia sai do cabeçalho; só com o
+     scrap em "Total diário" aparece "Responsável pelo reporte" (o mesmo campo day.responsible de antes, nada se perde).
+   - PRD-06: na visão de turnos lado a lado, cada turno tem o seu "Hora a hora" (com quantos intervalos já têm produção); o Hora a
+     hora abre só aquele turno, com a troca para os outros ou para todos.
+   - UX-01: ⓘ em Restaurar intervalos padrão, Reaplicar metas vigentes, Mover para outro dia e Marcar dia sem produção.
+   Entra no script principal pelo build.py (antes do boot). */
+const HHPs = {
+  sel: null,   // { date, id }: turno escolhido no Lançamento; vale só para aquele dia
+  id(day) { const s = this.sel; return s && day && s.date === day.date && (day.shifts || []).some(p => p.id === s.id && !p.deleted) ? s.id : null; },
+  mostra(day, ps) { const i = this.id(day); return !i || ps.id === i; },
+  fill(ps) { const L = (ps.intervals || []).filter(i => !i.deleted); return [L.filter(i => i.good != null).length, L.length]; },
+  /* botão do cartão do turno (Lançamento) */
+  botao(ps) { if (ps.summary) return ''; const [f, n] = this.fill(ps); return `<button type="button" class="btn sm" data-hhps="${esc(ps.id)}" title="Abre o hora a hora só deste turno (${f} de ${n} intervalo(s) com produção lançada)">Hora a hora <span class="small ${f && f === n ? '' : 'muted'}">${f}/${n}</span> ${I.chevR}</button>`; },
+  /* barra no Hora a hora: Todos · turno A (x/y) · … */
+  barra(day, res) {
+    const L = res.shifts.map(sr => sr.ps).filter(ps => !ps.summary); if (L.length < 2) return '';
+    const i = this.id(day), ch = (id, txt, on) => `<button type="button" data-hhsel="${esc(id)}" aria-pressed="${on}">${txt}</button>`;
+    return `<div class="row" style="margin:-4px 0 10px"><span class="small muted">Turno ${ib('hhTurno')}</span><div class="seg">${ch('', 'Todos', !i)}${L.map(ps => { const [f, n] = this.fill(ps); return ch(ps.id, `${esc(ps.snap.name)} <span class="small muted">${f}/${n}</span>`, i === ps.id); }).join('')}</div></div>`;
+  },
+  ir(day, id) { this.sel = id ? { date: day.date, id } : null; go('hourly'); },
+  ligar(root, day) {
+    root.querySelectorAll('[data-hhps]').forEach(b => b.onclick = () => this.ir(day, b.dataset.hhps));
+    root.querySelectorAll('[data-hhsel]').forEach(b => b.onclick = () => { this.sel = b.dataset.hhsel ? { date: day.date, id: b.dataset.hhsel } : null; render(); });
+  }
+};
+Object.assign(HELP, {
+  responsible: ['Responsável pelo reporte', [['O que é?', 'Quem responde pelo número único do dia quando o scrap é lançado como "Total diário". Nos outros dias o responsável é de cada turno (campo no cartão do turno).'], ['Exemplo', 'J. Lima (líder do turno A), que fechou o total diário de scrap.']]],
+  shiftResponsible: ['Responsável do turno', [['O que é?', 'Quem responde pelo lançamento deste turno (líder ou operador). Vale para o relatório e a passagem de turno; a auditoria continua registrando cada alteração com o nome de quem fez.'], ['Exemplo', 'P. Costa (turno B). Vazio: aparece em cinza quem fechou o turno.']]],
+  hhTurno: ['Turno no hora a hora', [['O que é?', 'Mostra só o turno escolhido (o botão "Hora a hora" de cada turno, no Lançamento, já abre assim) ou todos. O número é quantos intervalos já têm produção lançada.'], ['Exemplo', 'A 8/8 e B 3/9: o turno A está completo; o B tem 6 intervalos sem produção.']]],
+  restaurarIv: ['Restaurar intervalos padrão', [['O que faz?', 'Volta os intervalos de todos os turnos do dia para o padrão do turno vigente na data (Portal › Turnos): horários, pausas e catálogo inicial da grade.'], ['E os dados?', 'Só funciona sem produção lançada (com produção, pede para zerar antes, para não apagar nada). Paradas e observações continuam. Fica no histórico.'], ['Quando usar?', 'O turno mudou de horário no Portal depois de o dia ser aberto, ou os intervalos foram editados por engano.']]],
+  reaplicarMetas: ['Reaplicar metas vigentes', [['O que faz?', 'Troca as metas congeladas no último fechamento (PPH, OEE meta, meta por intervalo) pelas metas vigentes hoje para a data deste dia (Portal › Metas de OEE).'], ['E os dados?', 'Produção, paradas e scrap não mudam; mudam a meta e os indicadores contra a meta (atingimento, semáforo). Fica no histórico.'], ['Quando usar?', 'Uma meta foi corrigida no Portal com vigência que pega este dia.']]],
+  moverDia: ['Mover para outro dia', [['O que faz?', 'Copia tudo deste dia (turnos, hora a hora, paradas, scrap, observações) para a data certa e deixa este dia vazio.'], ['E os dados?', 'As metas são recalculadas para a data nova (vigência da data do fato). O original fica no histórico/auditoria; nada é apagado de verdade. Dia fechado precisa ser reaberto antes.'], ['Quando usar?', 'Lançou no dia errado (ex.: o C de domingo lançado na segunda).']]],
+  diaSemProd: ['Marcar dia sem produção', [['O que faz?', 'Registra que a linha não rodou no dia por decisão (feriado, inventário, sem programação): o dia sai do tempo programado do OEE.'], ['E se rodou e parou?', 'Não é "sem produção": marque os turnos como não programados ou aponte as paradas (falta de material, quebra), que entram no OEE.']]]
+});
+
 async function boot() {
   if(vacDemo.ativo){await loadPrefs();applyTheme();bindGlobal();Charts.bind();Store.S.user='Pessoa de demonstração';Store.enterExample(vacDemo.ler('oee'));
     vacDemo.registrar('oee',()=>({...db(),exports:Exports.build(db())}),d=>{Store.S.db=Model.ensure(d);Engine.bumpConfig()},()=>renderNow());Store.on(e=>{if(e==='data')vacDemo.publicar('oee')});
@@ -11149,6 +11189,21 @@ function vacExportsOk(ex, conhecida = 1) {
   const v = ex.exportsVersion; if (v == null || +v <= conhecida) return { ok: true, versao: v == null ? null : +v, motivo: '' };
   return { ok: false, versao: +v, motivo: `exports na versão ${v}; esta página só conhece até a ${conhecida}: atualize esta página` };
 }
+/* kit v2.1 · UX-04 (Fase 7 do briefing, D8): pílula única "Cadastro rev N", sempre visível, igual em todas as páginas.
+   rev = revisão do cadastro geral do Portal (vacutainer-cadastros.json) que esta página está usando. Compara com a cópia mais
+   nova que alguma página já leu neste computador (localStorage 'vac.cadastros'): se esta estiver atrás, mostra "desatualizada"
+   (a página foi aberta antes da última gravação no Portal). o = { fonte: 'pasta'|'copia'|'teste'|…, revAt, revBy, portal:true }. */
+function vacCadPilula(rev, o = {}) {
+  const e = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  const AJ = 'Revisão do cadastro geral do Portal (vacutainer-cadastros.json) que esta página está usando. Cada gravação no Portal soma 1. Todas as páginas devem mostrar o mesmo número; se esta estiver atrás, ela foi aberta antes da última mudança no Portal: clique em ↻ Sincronizar ou recarregue (F5). Não é a revisão da base da própria página.';
+  if (rev == null) return `<span class="pill none" data-vac-cadrev="" title="${e('Cadastro do Portal ainda não lido nesta página (pasta sem vacutainer-cadastros.json ou não conectada). ' + AJ)}">Cadastro: não lido</span>`;
+  let ult = null; try { const c = JSON.parse(localStorage.getItem('vac.cadastros') || 'null'); if (c && c.rev != null && isFinite(+c.rev)) ult = +c.rev; } catch (x) { }
+  const atras = !o.portal && ult != null && +rev < ult, copia = o.fonte && o.fonte !== 'pasta' && o.fonte !== 'teste';
+  const cls = atras ? 'warn' : copia ? 'warn' : o.portal ? 'ok' : 'info';
+  const quando = o.revAt ? ` Gravada em ${String(o.revAt).slice(8, 10)}/${String(o.revAt).slice(5, 7)} ${String(o.revAt).slice(11, 16)}${o.revBy ? ' por ' + o.revBy : ''}.` : '';
+  const tit = (atras ? `Desatualizada: já existe a rev ${ult} neste computador. ` : '') + (copia ? 'Lida da cópia local (a pasta não respondeu). ' : '') + AJ + quando;
+  return `<span class="pill ${cls}" data-vac-cadrev="${e(rev)}" title="${e(tit)}">Cadastro rev ${e(rev)}${atras ? ' · desatualizada' : ''}${copia ? ' · cópia local' : ''} <span class="vac-ib" aria-hidden="true">ⓘ</span></span>`;
+}
 
 /* kit v2.1 · E5 (08/11/2026): ficha da ordem, do lote e da LP · índice da busca (Ctrl K) · link #ficha=ordem/<n>.
    A ficha SÓ mostra o que cada página publica no exports (regra 1: não recalcula, não lê a estrutura interna).
@@ -11160,10 +11215,10 @@ const vacFicha = (() => {
   const FONTES = [
     { id: 'oee', nome: 'Produção', base: 'oee-vacutainer-base.json', pega: ex => ({ porOrdem: ex.porOrdem || [], cob: ex.porOrdemCobertura || null, lotes: ex.lotes || [], porDiaTurno: ex.porDiaTurno || [], porDiaCatalogo: ex.porDiaCatalogo || [] }) },   /* Fase 4 · 4d: o Gel lê os turnos da Produção */
     { id: 'ordens', nome: 'SAP (Produção › Ordens)', sis: 'oee', base: 'ordens-base.json', pega: ex => ({ porOrdem: ex.porOrdem || [] }) },
-    { id: 'perdas', nome: 'Waste', base: 'perdas-base.json', pega: ex => ({ porOrdem: ex.porOrdem || [] }) },
+    { id: 'perdas', nome: 'Waste', base: 'perdas-base.json', pega: ex => ({ porOrdem: ex.porOrdem || [], acoesLegado: ex.acoesLegado || null }) },   /* Fase 6: Iniciativas traz as ações antigas */
     { id: 'gel', nome: 'Gestão de Gel', base: 'fifo-base.json', pega: ex => ({ ordens: ex.ordens || [], cob: ex.ordensCobertura || null, porDiaGel: ex.porDiaGel || [] }) },   /* Fase 4 · 4e */
     { id: 'paradas', nome: 'Paradas', base: 'paradas-base.json', pega: ex => ({ porOrdem: ex.porOrdem || [], eventos: (ex.eventos || []).filter(e => e && e.ordem) }) },
-    { id: 'inic', nome: 'Iniciativas', base: 'iniciativas-base.json', pega: ex => ({ acoes: ex.acoes || [] }) }];
+    { id: 'inic', nome: 'Iniciativas / Ações', base: 'iniciativas-base.json', pega: ex => ({ acoes: ex.acoes || [] }) }];
   const S = { dados: {}, idx: null, carregando: null, aberto: null, empilhado: false };
   const e2 = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   const tx = v => String(v ?? '').trim();

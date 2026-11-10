@@ -520,3 +520,31 @@ Próximo: 4e (Teórico × Real na página do dia da Produção, só quando o cat
   - aguardando recurso e aguardando validação → aguardando.
 - **I3 (INI-02):** os programas são **cadastrados no Portal** (tipo `programas`). Iniciativas mostra uma aba por programa ativo, e o "+" abre o cadastro no Portal.
 - **I4 (INI-03):** **Importar dados** em cada programa, com uma importação comum de ações (colar do Excel/CSV, com prévia), registrada em Portal › Importação › Iniciativas. Os formatos próprios de OSM e 5S entram quando chegarem as amostras.
+
+### 11.1 Entrega da Fase 6 (Iniciativas / Ações 1.1.0, Waste 1.8.28, Portal 1.9.14; 10/11/2026)
+
+- **INI-00:** a página passa a se chamar **Iniciativas / Ações** (título, cabeçalho, catálogo `sistemas.js`, ficha comum). O nome antigo continua valendo como página inicial do perfil (`VAC_INICIAL_ALVO`).
+- **INI-01:** os cards do quadro têm fundo pastel e borda pela situação (a fazer, em andamento, aguardando, concluída; atrasada por cima), nos dois temas (`color-mix` com as cores do kit).
+- **I2:** campo `eficacia` (`acompanhamento`, `eficaz`, `sem`) na ação concluída: escolhido no detalhe, vai para o histórico (evento `eficácia`) e para o `exports.acoes[].eficacia`.
+- **INI-02 (I3):** Portal › Cadastros › **Programas** (`programas`: código, nome, sigla, responsável, cor, descrição; ⓘ em todos). Iniciativas abre uma aba por programa ativo (KAS, OSM e 5S já têm a deles), com as ações de origem `prog:<código>`, o "+ Ação" e o Importar dados. O "+" ao lado das abas abre o cadastro no Portal.
+- **INI-03 (I4):** **Importar dados** em KAS, OSM, 5S e em cada programa: colar do Excel ou CSV (Título/Ação, Responsável, Prazo dd/mm/aaaa ou aaaa-mm-dd, Status, Prioridade, Descrição), prévia com nova / já importada / erro; a mesma linha de novo não duplica (`origem.ref = imp|tipo|título|prazo`). Cada importação fica em `importacoes` e no `exports.importacoes` (tipo `ACOES`), que o Portal › Importação › Iniciativas mostra (o botão abre `#importar=acoes`).
+- **WST-03 / INI-04 (I1):**
+  - Waste "+ Ação" (aba Ações e ordem) abre Iniciativas com a ação preenchida (`origem {tipo:'waste', ref:'ordem|<n>'}`, vínculo com a ordem, link para reconsultar). Nada é gravado no Waste.
+  - O Waste lê as ações de Iniciativas pelo `exports` (ficha comum, `vacFicha 'inic'`): as de origem Waste e as ligadas a uma ordem entram nas listas, na prioridade da ordem, no `porOrdem[].acoesAbertas` e no relatório, só leitura (o clique abre lá).
+  - As antigas (`B.actions`) continuam editáveis no Waste até Iniciativas › Configuração › **Trazer ações do Waste**: uma vez, pelo `exports.acoesLegado` do Waste, com id `AC-W-<id>` e `ref waste|<id>` (trazer de novo, ou em duas estações, não duplica), status pelo de-para do I2, prioridade, prazo original do histórico, causa/componente/área/economia na descrição e o histórico guardado em `legado`.
+  - Pendência "ação vencida": a antiga já trazida sai do Waste (Iniciativas publica a dela), sem contagem dupla no Portal.
+- **Correção:** com uma ação selecionada, trocar para KAS, um programa ou a Configuração dava erro (o detalhe não existe nessas abas).
+- Teste: `node testes/tiniciativas.js` (na suíte `tudo.js`).
+- **Homologar na pasta real:** cadastrar um programa no Portal e ver a aba; importar uma lista de ações; abrir o Waste 1.8.28 e gravar uma vez (para o `acoesLegado`), depois Iniciativas › Configuração › Trazer ações do Waste; conferir no Waste que as antigas viraram "Iniciativas" e no Portal que a pendência não aparece duas vezes.
+
+## 12. Entrega · Fase 7 (Produção 2.4.34, Portal 1.9.15, Waste 1.8.29, Gel 2.21, Paradas 1.0.26; 10/11/2026)
+
+UX-02 (ajuda visual por aba) ficou para depois, a pedido do usuário.
+
+- **PRD-05:** o "Responsável" saiu do cabeçalho do dia. Cada turno tem **Responsável do turno** (`ps.responsible`, editável mesmo com o turno fechado, como a observação; vazio mostra em cinza quem fechou). Com o scrap em **Total diário**, o cabeçalho mostra **Responsável pelo reporte** (o mesmo `day.responsible` de antes: nada se perde).
+- **PRD-06:** cada turno da visão lado a lado tem o seu **Hora a hora** com o preenchimento (`x/y` intervalos com produção). O Hora a hora abre só aquele turno, com a troca para os outros e "Todos"; o botão do dia continua abrindo todos. O total do dia avisa "(todos os turnos)" quando há um turno escolhido.
+- **UX-01:** ⓘ em Restaurar intervalos padrão, Reaplicar metas vigentes, Mover para outro dia e Marcar dia sem produção (o que faz, o que acontece com os dados, quando usar); no Portal, em Fotografar números (§ 1.4) e nas categorias Códigos de parada × Modos de falha (§ 1.2).
+- **UX-03 (WST-01, GEL-01):** a aba Painel do Waste e do Gel passa a se chamar **Visão Geral** (o id `painel` continua, então endereços e páginas iniciais antigas valem; "Gestão de Gel › Visão Geral" entra na lista de páginas iniciais).
+- **UX-04 (D8):** pílula única do kit, `vacCadPilula`, na Produção, no Paradas e no Portal: "Cadastro rev N", sempre visível, com ⓘ explicando o número. Mostra **desatualizada** quando outra página já leu uma revisão mais nova neste computador (a página foi aberta antes da última gravação no Portal: ↻ Sincronizar ou F5) e **cópia local** quando a pasta não respondeu. No Portal (dono do cadastro) nunca fica desatualizada.
+- Teste: `node testes/tfase7.js` (na suíte).
+- **Homologar:** lançar um dia com dois turnos e conferir o responsável de cada um e o Hora a hora por turno; mudar para Total diário e ver o "Responsável pelo reporte"; gravar algo no Portal com uma página aberta e ver a pílula dela ficar "desatualizada" até sincronizar.

@@ -741,9 +741,9 @@ const VAC_INICIAL_ALVO = {
   'Produção': ['oee', ''], 'Produção › Visão geral': ['oee', 'aba=overview'], 'Produção › Painel': ['oee', 'aba=panel'],
   'Produção › Lançamento': ['oee', 'aba=launch'], 'Produção › Plano do mês': ['oee', 'aba=plan'], 'Produção › Tela do operador': ['oee', 'turno'],
   'Waste': ['perdas', ''],
-  'Gestão de Gel': ['gel', ''], 'Gestão de Gel › Painel': ['gel', 'aba=painel'], 'Gestão de Gel › Operação': ['gel', 'aba=op'],
+  'Gestão de Gel': ['gel', ''], 'Gestão de Gel › Painel': ['gel', 'aba=painel'], 'Gestão de Gel › Visão Geral': ['gel', 'aba=painel'], 'Gestão de Gel › Operação': ['gel', 'aba=op'],
   'Paradas': ['paradas', ''], 'Paradas › Visão geral': ['paradas', 'aba=geral'], 'Paradas › Fila técnica': ['paradas', 'aba=fila'],
-  'Equipamentos': ['equip', ''], 'Iniciativas': ['inic', ''], 'Projetos': ['projetos', '']
+  'Equipamentos': ['equip', ''], 'Iniciativas': ['inic', ''], 'Iniciativas / Ações': ['inic', ''], 'Projetos': ['projetos', '']
 };
 /* página inicial de quem entrou (vac.userId): a do usuário, senão a do perfil; lê a cópia do cadastro (vac.cadastros) */
 function vacPaginaInicial() {
@@ -993,7 +993,7 @@ const DEFAULT_SYSTEMS=[
  {id:'gel',nome:'Gestão de Gel',html:'Gestão-Gel-Vacutainer.html',alt:['Gestao-Gel-Vacutainer.html','controle-fifo-gel.html'],base:'fifo-base.json',estado:'atualizacao'},
  {id:'paradas',nome:'Paradas',html:'Paradas.html',base:'paradas-base.json',estado:'atualizacao'},
  {id:'equip',nome:'Equipamentos',html:'Equipamentos.html',base:'equipamentos-base.json',sub:'Ficha · OS · TAGs · AM/TPM',estado:'atualizacao'},
- {id:'inic',nome:'Iniciativas',html:'Iniciativas.html',base:'iniciativas-base.json',sub:'Ações · KAS · OSM · 5S',estado:'atualizacao'},
+ {id:'inic',nome:'Iniciativas / Ações',html:'Iniciativas.html',base:'iniciativas-base.json',sub:'Ações · KAS · OSM · 5S',estado:'atualizacao'},
  {id:'projetos',nome:'Projetos',html:'Projetos.html',base:'projetos-base.json',futuro:true,estado:'construcao'}];
 /* 1.7 · nomes exibidos novos (arquivos, bases e ids não mudam); Máquinas e Manutenção saem (manutenção fica em Equipamentos).
    grupo:'outros' = aparece no menu "Outros ▾" da barra, não como item principal. */
@@ -1368,7 +1368,7 @@ function wireConfigComum(){$('#cPasta').onclick=async()=>{if(await Store.pick())
         entrar pelo ID (autocadastro como Consulta); página inicial por perfil (1x por sessão); vigência gravada não se edita (desativar com motivo); painel de vigências; semáforo central; saída do modo de teste.
    1.1.2: aviso da carga diz qual base foi lida.  1.5: páginas Paradas, Máquinas, Manutenção e Projetos na lista (aparecem quando o HTML chega na pasta).  1.4: lista técnica pela CS12 multinível (itens = nível 1, estrutura = níveis 2+); CS03 sai.  1.3: cabeçalho comum (vac-cabecalho v2: barra do sistema + página + abas), busca Ctrl K, acabamento V1.90, Versões com cabeçalho e último backup.  1.2: Configuração › Versões das páginas (versão e data de cada HTML, gravação das bases, cópias repetidas, histórico).
    ===================================================================== */
-const PAGE={id:'portal',titulo:'Portal · Linha Vacutainer',tituloCurto:'Portal',subtitulo:'Sistemas de gestão da linha',versao:'1.9.13',baseFile:'portal-base.json',idb:'vac-portal',backupDir:'00. Backups/Portal',
+const PAGE={id:'portal',titulo:'Portal · Linha Vacutainer',tituloCurto:'Portal',subtitulo:'Sistemas de gestão da linha',versao:'1.9.15',baseFile:'portal-base.json',idb:'vac-portal',backupDir:'00. Backups/Portal',
  vazio:()=>({schema:'portal-base',rev:0,config:{modulos:{},avisoDias:30,notas:{}},audit:[]}),
  /* itens do Portal para a busca Ctrl K: cadastro, pendências e telas */
  busca:q=>{const R=[],D=Cad.D;if(D)for(const t of CAD_ORD){for(const it of D[t]||[]){const c=String(it[kOf(t)]),nm=t==='bom'?((cadItem('catalogos',it.catalogo)||{}).nome||''):it.nome||'';if(norm(c+' '+nm).includes(q))R.push({tipo:CAD_T[t].um,txt:c+(nm?' · '+nm:''),sub:'Cadastros'+(cadAtivo(t,it,D)?'':' · inativo'),href:'#cadastros/'+t+'/'+encodeURIComponent(c)});if(R.length>30)break}}
@@ -1508,6 +1508,8 @@ function adaptParadas(d){const r=adaptGeneric(d);const ex=d.exports;if(ex&&ex.se
 
 
 /* =====================================================================
+   1.9.15 · Fase 7 (UX-01, UX-04): pílula única do cadastro (kit vacCadPilula); ⓘ em Fotografar números e nos códigos de parada × modos de falha.
+   1.9.14 · Fase 6 (INI-02, INI-03): Cadastros › Programas (abas de Iniciativas) e Importação › Iniciativas (ações de um programa).
    1.9.13 · Fase 5 · 5a (POR-06, POR-08, POR-09; D6): período escolhido (Hoje, Ontem, Semana, Mês, Personalizado; no Relatório também 1 turno).
    O Portal soma as séries por dia que cada página publica (Produção porDia/porDiaTurno, Paradas eventos, Gel porDiaGel, Waste porMes por
    competência), sem recalcular nada da página (regra 1). O que não tem série (estoque de gel, ações) fica marcado "agora".
@@ -1564,7 +1566,7 @@ const App={tab:'geral',
  afterChange(){this.render()},
  async onConnect(){await Promise.all([Logo.load(),readModules(true),Cad.ler()]);this.render();Vers.scan().then(()=>{if(!emEdicao()&&!$('.modal.on'))this.render()})},
  async onSync(force){await Promise.all([readModules(force),Cad.ler(),Vers.scan()]);if(Cad.fila.length&&Cad.status!=='conflito')Cad.gravar();this.render()},
- topExtra(){const cad=Cad.base?`<span class="pill ${Cad.fonte==='pasta'||Cad.fonte==='teste'?'ok':'warn'}" title="vacutainer-cadastros.json">Cadastro rev ${Cad.base.rev}</span>`:'';if(Store.mode!=='pasta'&&!MOD.teste)return cad?' '+cad:'';return' '+systems().filter(s=>s.id!=='portal'&&!s.futuro&&!emConstr(s)).map(s=>{const x=MOD.data[s.id];return`<span class="pill ${x&&!x.erro?(x.antigo?'warn':'ok'):'none'}" title="${esc(x?x.erro||s.base+(x.antigo?' lido no local antigo ('+x.pasta+'/)':' lido'):'não lido')}">${esc(s.nome)}</span>`}).join(' ')+' '+cad},
+ topExtra(){const cad=Cad.base?vacCadPilula(Cad.base.rev,{fonte:Cad.fonte==='teste'?'teste':Cad.fonte==='pasta'?'pasta':'copia',revAt:Cad.base.revAt,revBy:Cad.base.revBy,portal:true}):'';if(Store.mode!=='pasta'&&!MOD.teste)return cad?' '+cad:'';return' '+systems().filter(s=>s.id!=='portal'&&!s.futuro&&!emConstr(s)).map(s=>{const x=MOD.data[s.id];return`<span class="pill ${x&&!x.erro?(x.antigo?'warn':'ok'):'none'}" title="${esc(x?x.erro||s.base+(x.antigo?' lido no local antigo ('+x.pasta+'/)':' lido'):'não lido')}">${esc(s.nome)}</span>`}).join(' ')+' '+cad},
  tv(){location.hash='tv';TV.start(tvSlides,{titulo:'Linha Vacutainer',seg:20})},
  async tvRefresh(){await readModules(false)}};
 const sysOf=id=>systems().find(s=>s.id===id)||{nome:id,html:''};
@@ -1637,7 +1639,9 @@ const IMP_CAT=[
  {id:'RELATORIO',pag:'producao',sis:'oee',nome:'Histórico RELATÓRIO (planilha)',freq:'carga histórica (uma vez)',hash:'aba=config&sec=importacao',
   fonte:'Planilha antiga, aba RELATÓRIO.',alimenta:'Produção: dias anteriores à plataforma.'},
  {id:'PARADAS_XLSM',pag:'producao',sis:'oee',nome:'Aba PARADAS da planilha',freq:'carga histórica (uma vez)',hash:'aba=config&sec=importacao',
-  fonte:'Planilha antiga, aba PARADAS.',alimenta:'Produção: paradas dos dias históricos.'}];
+  fonte:'Planilha antiga, aba PARADAS.',alimenta:'Produção: paradas dos dias históricos.'},
+ {id:'ACOES',pag:'iniciativas',sis:'inic',nome:'Ações de um programa (Excel/CSV)',freq:'quando houver lista de ações',hash:'importar=acoes',
+  fonte:'Lista colada do Excel ou CSV (título, responsável, prazo, status, prioridade, descrição), com prévia.',alimenta:'Iniciativas / Ações: ações do KAS, OSM, 5S ou de um programa cadastrado.'}];
 const IMP_PAG=[['producao','Produção'],['paradas','Paradas'],['gel','Gestão de Gel'],['waste','Waste'],['portal','Portal (cadastro)'],['iniciativas','Iniciativas / Ações']];
 const Imp={sec:null,dia:null};
 function impLista(id){const c=IMP_CAT.find(x=>x.id===id);if(!c)return null;
@@ -1860,6 +1864,8 @@ const CAD_T={
   ['exigeObservacao','Exige observação','bool'],['exigeHorario','Exige horário','bool'],['duracaoManual','Permite duração manual','bool'],['exigeCatalogoAnterior','Exige catálogo anterior','bool'],['exigeCatalogoSeguinte','Exige catálogo seguinte','bool'],['relatorio','Aparece no relatório','bool']]}};
 CAD_T.componentes={nome:'Componentes',um:'componente',campos:[['codigo','Código (<EQ>-Cnn)','cod'],['equipamento','Equipamento','refcod','equipamentos'],['nome','Nome','txt',null,{w:2}],['sistema','Sistema','sel',['mecânico','elétrico','pneumático','hidráulico','automação','visão','ferramental','outro']],['criticidade','Criticidade','sel',['A','B','C']],['materialSAP','Material SAP','txt']]};
 CAD_T.modosFalha={nome:'Modos de falha',um:'modo de falha',campos:[['codigo','Código','cod'],['nome','Nome','txt',null,{w:2}]]};
+/* 1.9.14 · INI-02 (Fase 6): programas de melhoria (KAS, OSM, 5S e outros); Iniciativas / Ações abre uma aba para cada um */
+CAD_T.programas={nome:'Programas',um:'programa',campos:[['codigo','Código','cod'],['nome','Nome','txt',null,{w:2}],['sigla','Sigla (nome da aba)','txt'],['responsavel','Responsável','txt'],['cor','Cor','cor'],['descricao','Descrição','txt',null,{w:2}]]};
 /* 1.7 · pessoas: usuários (entram pelo ID) e perfis (página inicial e permissões por página) */
 /* 1.8.11 · página e aba inicial: lista comum no kit (vac-inicial em kit_bases.js), lida também pelas outras páginas quando abertas direto */
 const INICIAL_ALVO=VAC_INICIAL_ALVO;
@@ -1880,7 +1886,7 @@ const DEFAULT_PERFIS=[
  {codigo:'ALMOX',nome:'Almoxarifado',paginaInicial:'Gestão de Gel',descricao:'Gel: estoque, FIFO e validade',permissoes:permJunta(permDe(['ver'],['portal','oee','gel']),permDe(['lancar','importar','exportar'],['gel']))},
  {codigo:'CONSULTA',nome:'Consulta',paginaInicial:'Portal',descricao:'Só consulta e exporta (perfil de quem se cadastra sozinho até o administrador mudar)',permissoes:permDe(['ver','exportar'])},
  {codigo:'TV',nome:'TV',paginaInicial:'Portal',descricao:'Telas de TV',permissoes:permDe(['ver'])}].map(p=>({...p,ativo:true}));
-const CAD_ORD=['linhas','familias','catalogos','materiais','bom','equipamentos','componentes','turnos','paradas','modosFalha','cambio','precos','metasOee','metasArea','metasOsm','usuarios','perfis'];
+const CAD_ORD=['linhas','familias','catalogos','materiais','bom','equipamentos','componentes','turnos','paradas','modosFalha','programas','cambio','precos','metasOee','metasArea','metasOsm','usuarios','perfis'];
 /* 1.7.7 · câmbio: cotação com vigência (R$ por 1 unidade da moeda). Fonte única do dólar para Waste (BRL/USD) e Gestão de Gel (preço do gel). */
 CAD_T.precos={nome:'Preços de material',um:'preço de material',key:'material',vig:true,campos:[['material','Material','refcod','materiais']],
  vcampos:[['preco','Preço','num'],['moeda','Moeda','sel',['USD','BRL']],['porUnidade','Por','sel',['kg','L','UN','mil UN']]]};
@@ -1938,6 +1944,7 @@ const AJUDA_CAMPO={
  'paradas.pareto':'Aparece no Pareto de paradas.','paradas.exigeTrocaPeca':'Quebra: exige informar a peça trocada ou consertada (base do MTBF).','paradas.exigeComponente':'Exige escolher o componente do equipamento.',
  'paradas.temporario':'Código provisório (OUT, NDI): exige comentário e revisão posterior.','paradas.exigeObservacao':'Exige observação ao apontar.','paradas.exigeHorario':'Exige horário de início e fim.',
  'paradas.exigeCatalogoAnterior':'Troca de catálogo: exige o catálogo que saiu.','paradas.exigeCatalogoSeguinte':'Troca de catálogo: exige o catálogo que entrou.',
+ 'programas.codigo':'Código do programa (ex.: KAS, OSM, 5S, TPM). KAS, OSM e 5S já têm aba própria em Iniciativas; outro código cria uma aba nova lá.','programas.nome':'Nome do programa (ex.: Manutenção Autônoma).','programas.sigla':'Texto curto da aba em Iniciativas (ex.: AM). Vazio usa o nome.','programas.responsavel':'Dono do programa (ex.: Eng. de Processos).','programas.descricao':'Para que serve o programa; aparece no topo da aba.',
  'modosFalha.codigo':'Código do modo de falha (MF01…).','modosFalha.nome':'Como a peça falhou (desgaste, ruptura, folga…). Usado no Paradas.',
  'usuarios.codigo':'ID ou matrícula: é o que a pessoa digita em "Entrar". Único e imutável.','usuarios.nome':'Nome registrado em tudo o que a pessoa altera, em todas as páginas.',
  'usuarios.perfil':'Perfil de acesso: define a página inicial e o que a pessoa pode ver e lançar. Quem se cadastra sozinho entra como Consulta.',
@@ -2049,8 +2056,9 @@ const CAT_AJUDA={
  equipamentos:'Máquinas da linha, com posição e papel (OEE ou equipamento) e outros nomes para o de-para. Ex.: EQ05 · Tullip.',
  componentes:'Peças e conjuntos de cada equipamento usados nas quebras (MTBF). Ex.: EQ02-C07.',
  turnos:'Horário de cada turno por vigência, com as pausas e abonos que descontam do tempo planejado. A Produção, a Gestão de Gel e a Paradas usam estes horários.',
- paradas:'Códigos de parada com a classificação do OEE (D, P, Q), as regras de apontamento e o guia do formulário.',
- modosFalha:'Como a peça falhou (desgaste, ruptura…), usado nas quebras da Paradas.',
+ paradas:'Códigos de parada com a classificação do OEE (D, P, Q), as regras de apontamento e o guia do formulário. Responde "por que a linha parou?": o operador aponta em toda parada, e o código define o pilar do OEE. Não confundir com o modo de falha (como a peça falhou), que o técnico informa depois, só em quebra. Ex.: FME (falha mecânica, pilar D).',
+ modosFalha:'Responde "como a peça falhou?" (desgaste, ruptura, folga…). O técnico informa na parte técnica da parada, só em quebra, junto com o componente e a ação. Não entra no OEE (quem define o pilar é o código de parada); serve para confiabilidade: MTBF, Pareto de falhas e plano de manutenção. Ex.: FME → rolamento do cabeçote → desgaste → troca.',
+ programas:'Programas de melhoria (ex.: KAS, OSM, 5S, AM). Em Iniciativas / Ações cada programa tem a sua aba, com as ações e o Importar dados.',
  cambio:'Cotação do dólar em reais, com vigência. Usada no Waste (BRL/USD) e no preço do gel.',
  precos:'Preço de materiais com vigência. Ex.: gel separador em US$/kg; a Gestão de Gel só consulta daqui.',
  metasOee:'Meta de OEE (%) e PPH por linha, máquina, família ou catálogo, com vigência. A Produção usa a mais específica. Ex.: OEE-LINHA 72 %.',
@@ -2337,7 +2345,7 @@ function cadRota(){const raw=location.hash.slice(1);if(/^reuniao=/.test(raw)){le
 
 /* ---------- aba Cadastros ---------- */
 function cadBarra(){const D=Cad.D,b=Cad.base,lk=Lock.ok();const dm=x=>{const s=fmtDT(x);return s?s.slice(0,5)+' '+s.slice(11):''};
- const selo=b?`<span class="pill ${Cad.fonte==='pasta'||Cad.fonte==='teste'?'ok':'warn'}"><span class="dot"></span>Cadastro rev ${b.rev}${b.revAt?' · '+dm(b.revAt):''}</span>${Cad.fonte==='copia'||Cad.fonte==='sumiu'?' <span class="pill warn">cadastro da cópia local</span>':''}${b.revBy?`<span class="small muted">gravado por ${esc(b.revBy)}</span>`:''}`
+ const selo=b?`${vacCadPilula(b.rev,{fonte:Cad.fonte==='teste'?'teste':Cad.fonte==='pasta'?'pasta':'copia',revAt:b.revAt,revBy:b.revBy,portal:true})}${b.revAt?' <span class="small muted">'+dm(b.revAt)+'</span>':''}${Cad.fonte==='copia'||Cad.fonte==='sumiu'?' <span class="pill warn">cadastro da cópia local</span>':''}${b.revBy?`<span class="small muted">gravado por ${esc(b.revBy)}</span>`:''}`
   :D?'<span class="pill warn"><span class="dot"></span>Cadastro ainda não gravado</span>':'<span class="pill"><span class="dot"></span>Sem cadastro</span>';
  const nf=Cad.fila.length;const st=Cad.status==='gravando'||Cad.gravando?'<span class="pill"><span class="dot"></span>Gravando…</span>':Cad.status==='conflito'?'<span class="pill crit"><span class="dot"></span>Conflito ao gravar</span> <button class="b sm p" id="cadConf">Resolver</button>':nf?`<span class="pill crit"><span class="dot"></span>${nf} alteração(ões) não gravada(s)</span> <button class="b sm" id="cadGravar">Gravar agora</button>`:b?'<span class="pill ok">salvo</span>':'';
  const lock=!D?'':lk&&Lock.porPerfil()?`<span class="pill ok">🔓 Edição liberada</span><span class="small muted">perfil ${esc((perfilAtual(D)||{}).nome||'')} edita sem senha</span>`:lk?`<span class="pill ok">🔓 Edição liberada</span><span class="small muted">vale para todas as abas · bloqueia sozinha com 30 min sem uso</span><button class="b sm" id="cadLock">Bloquear</button>`:`<span class="pill">🔒 Só consulta</span><button class="b sm p" id="cadUnlock">Desbloquear edição</button>`;
@@ -2411,6 +2419,7 @@ function cadCols(t,D){const fam=c=>{if(!c)return'';const f=cadItem('familias',c,
   turnos:[['Horas (vigência de hoje)',it=>{const v=vigHoje(it);return v&&v.inicio?esc(turnoResumo(v)):''}],['Código',it=>`${safeCor(it.cor)?`<i class="sw" style="background:${safeCor(it.cor)}"></i>`:''}<b class="mono">${esc(it.codigo)}</b>`],['Nome',it=>esc(it.nome)],['Horário',it=>{const v=vigHoje(it);return v.inicio?`${esc(v.inicio)}–${esc(v.fim)}${v.ativo===false?' <span class="muted">(desligado)</span>':''}`:'<span class="warn">sem vigência hoje</span>'}],['Dias',it=>diasTxt(vigHoje(it).dias)],['Pausas',it=>esc((vigHoje(it).pausas||[]).map(p=>p.inicio+'–'+p.fim).join(', '))],['Vigente desde',it=>fmtD(vigHoje(it).de)]],
   componentes:[['Código',cod],['Equipamento',it=>{const q=cadItem('equipamentos',it.equipamento,D);return`<span class="mono">${esc(it.equipamento||'')}</span>${q?' · '+esc(q.nome):''}`}],['Nome',it=>esc(it.nome)],['Sistema',it=>esc(it.sistema||'')],['Crit.',it=>esc(it.criticidade||'')],['Material SAP',it=>`<span class="mono">${esc(it.materialSAP||'')}</span>`]],
   modosFalha:[['Código',cod],['Nome',it=>esc(it.nome)]],
+  programas:[['Código',cod],['Nome',it=>esc(it.nome)],['Sigla',it=>esc(it.sigla||'')],['Responsável',it=>esc(it.responsavel||'')]],
   precos:[['Material',cod],['Descrição',it=>esc((cadItem('materiais',it.material,D)||{}).nome||'')],['Preço vigente',it=>{const v=vigEm(it.vigencias||[],todayISO());return v&&v.preco!=null?esc((v.moeda==='BRL'?'R$ ':'US$ ')+fmtN(v.preco,4)+' / '+(v.porUnidade||'')):'<span class="warn small">sem vigência hoje</span>'},'n'],['Desde',it=>{const v=vigEm(it.vigencias||[],todayISO());return v?fmtD(v.de):''}]],
   metasOee:[['Código',cod],['Nome',it=>esc(it.nome)],['Escopo',it=>esc(metaEscopo(it))],['OEE meta',it=>{const v=vigEm(it.vigencias||[],todayISO());return v&&v.oeeMetaPct!=null?fmtN(v.oeeMetaPct,1)+'%':'<span class="warn small">sem vigência hoje</span>'},'n'],['PPH',it=>{const v=vigEm(it.vigencias||[],todayISO());return v&&v.pph?fmtN(v.pph):'<span class="muted small">do catálogo</span>'},'n'],['PPM',it=>{const v=vigEm(it.vigencias||[],todayISO());return v&&v.pph?fmtN(v.pph/60,1):''},'n'],['Quadro hora a hora',it=>{const v=vigEm(it.vigencias||[],todayISO());return v&&(v.quadro||[]).length?`<span class="pill info">${v.quadro.length} intervalos</span>`:''}],['Desde',it=>{const v=vigEm(it.vigencias||[],todayISO());return v?fmtD(v.de):''}]],
   metasArea:[['Código',cod],['Indicador',it=>esc(it.nome)],['Página',it=>esc(it.pagina||'')],['Meta',it=>{const v=vigEm(it.vigencias||[],todayISO());return v&&v.valor!=null?esc(metaValTxt(it,v.valor)):'<span class="warn small">sem vigência hoje</span>'},'n'],['Melhor quando',it=>esc(it.sentido||'')],['Desde',it=>{const v=vigEm(it.vigencias||[],todayISO());return v?fmtD(v.de):''}]],
@@ -2452,6 +2461,7 @@ function cadModelo(t){const h=todayISO(),D=Cad.D,L0=(D.linhas.find(l=>l.ativo!==
   turnos:{codigo:'',nome:'',linha:L0,cor:null,ativo:true,vigencias:[{de:h,ate:null,inicio:'06:00',fim:'14:30',dias:[1,2,3,4,5,6],ativo:true,pausas:[],regraPedacoFinal:30,intervalos:[]}]},
   componentes:{codigo:'',equipamento:null,nome:'',sistema:'mecânico',criticidade:'B',materialSAP:null,ativo:true},
   modosFalha:{codigo:'',nome:'',ativo:true},
+  programas:{codigo:'',nome:'',sigla:null,responsavel:null,cor:null,descricao:null,ativo:true},
   cambio:{codigo:'USD',nome:'Dólar americano',ativo:true,vigencias:[{de:h,ate:null,cotacao:null}]},
   precos:{material:'',vigencias:[{de:h,ate:null,preco:null,moeda:'USD',porUnidade:'kg'}]},
   metasOee:{codigo:'',nome:'',linha:L0,equipamento:null,familia:null,catalogo:null,observacao:null,ativo:true,vigencias:[{de:h,ate:null,oeeMetaPct:null,pph:null,metaDiaria:null,semaforoVerdePct:null,semaforoAmareloPct:null,coberturaMinPct:null,divergenciaMaxPct:null}]},
@@ -3782,7 +3792,7 @@ function viewReuniao(m){if(!Reu.dia)Reu.dia=addDays(todayISO(),-1);const D=reuDa
  const sysP=sysOf('paradas'),sysI=sysOf('inic'),it=P.itens||[];
  m.innerHTML=`<div class="reu-bar"><button class="b sm" id="rAnt" title="Dia anterior">‹</button><input type="date" id="rDia" value="${esc(Reu.dia)}"><button class="b sm" id="rProx" title="Dia seguinte">›</button>
   <span class="seg" id="rRec">${['dia'].concat(tu).map(r=>`<button data-rr="${esc(r)}" class="${Reu.rec===r?'on':''}">${r==='dia'?'Dia':esc(r)}</button>`).join('')}</span><span class="sp"></span>
-  <button class="b sm" id="rFoto" title="Guarda os números de agora junto com a pauta">Fotografar números</button><button class="b sm" id="rRel">PDF · Outlook · texto</button></div>
+  <button class="b sm" id="rFoto" title="Guarda os números de agora junto com a pauta">Fotografar números</button>${ib('Fotografar números','Grava os seis números da tela neste instante (OEE, produzido, paradas, gel, waste e ações), com data, hora e quem gravou, junto da pauta deste dia e recorte. Serve para saber com que números a decisão foi tomada, já que os das páginas mudam depois (lançamento atrasado, reimportação do SAP). Não altera nenhuma base; tirar de novo substitui a anterior desta pauta.')}<button class="b sm" id="rRel">PDF · Outlook · texto</button></div>
   <div class="kpis reu-k">${K.map(([l,v,g,s,c])=>`<div class="kpi ${c}"><div class="l">${esc(l)} ${gr(g)}</div><div class="v">${esc(v)}</div><div class="s">${esc(s)}</div></div>`).join('')}</div>
   ${P.foto?`<p class="small muted">Fotografia de ${fmtDT(P.foto.em)} por ${esc(P.foto.por||'—')}: ${P.foto.k.map(x=>esc(x[0]+' '+x[1])).join(' · ')}</p>`:''}
   <div class="reu-lay"><div class="card"><h3>Maiores paradas ${gr(rot)}</h3>${D.par&&D.par.top.length?`<div class="reu-par">${D.par.top.map(x=>{const lb=(x.eq||'?')+' · '+(x.cod||'sem código');return`<div><span>${esc(lb)}<span class="reu-b" style="width:${Math.max(4,Math.round(100*x.min/D.par.top[0].min))}%"></span></span><span class="n">${fmtN(x.min)} min</span><span class="small muted">${x.n}×</span>${typeof vacNovaAcaoBotao==='function'?vacNovaAcaoBotao({titulo:'Reunião: '+lb,origem:{tipo:'reuniao',ref:'reuniao|'+reuChave(Reu.dia,Reu.rec)+'|'+x.eq+'|'+x.cod,resumo:`Reunião de ${fmtD(Reu.dia)} (${rot}) · ${lb} · ${fmtN(x.min)} min em ${x.n}×`,link:vacAquiHref('reuniao='+encodeURIComponent(Reu.dia+'|'+Reu.rec)),foto:{dia:Reu.dia,recorte:rot,minutos:x.min,ocorrencias:x.n,em:nowISO()}},vinculos:[x.eq&&{tipo:'equipamento',cod:x.eq},x.cod&&{tipo:'codigo',cod:x.cod},...[...x.ordens].map(o=>({tipo:'ordem',cod:o}))].filter(Boolean)},'+ Ação','b sm'):''}</div>`}).join('')}</div>`:sd(D.par&&D.par.fora?'Sem dado de paradas para esse dia: '+esc(D.par.motivo)+'.':D.par?'Nenhuma parada apontada '+(Reu.rec==='dia'?'no dia':'no turno')+'.':'O Paradas ainda não publicou eventos (ou a pasta não está conectada).')}
@@ -4065,6 +4075,21 @@ function vacExportsOk(ex, conhecida = 1) {
   const v = ex.exportsVersion; if (v == null || +v <= conhecida) return { ok: true, versao: v == null ? null : +v, motivo: '' };
   return { ok: false, versao: +v, motivo: `exports na versão ${v}; esta página só conhece até a ${conhecida}: atualize esta página` };
 }
+/* kit v2.1 · UX-04 (Fase 7 do briefing, D8): pílula única "Cadastro rev N", sempre visível, igual em todas as páginas.
+   rev = revisão do cadastro geral do Portal (vacutainer-cadastros.json) que esta página está usando. Compara com a cópia mais
+   nova que alguma página já leu neste computador (localStorage 'vac.cadastros'): se esta estiver atrás, mostra "desatualizada"
+   (a página foi aberta antes da última gravação no Portal). o = { fonte: 'pasta'|'copia'|'teste'|…, revAt, revBy, portal:true }. */
+function vacCadPilula(rev, o = {}) {
+  const e = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  const AJ = 'Revisão do cadastro geral do Portal (vacutainer-cadastros.json) que esta página está usando. Cada gravação no Portal soma 1. Todas as páginas devem mostrar o mesmo número; se esta estiver atrás, ela foi aberta antes da última mudança no Portal: clique em ↻ Sincronizar ou recarregue (F5). Não é a revisão da base da própria página.';
+  if (rev == null) return `<span class="pill none" data-vac-cadrev="" title="${e('Cadastro do Portal ainda não lido nesta página (pasta sem vacutainer-cadastros.json ou não conectada). ' + AJ)}">Cadastro: não lido</span>`;
+  let ult = null; try { const c = JSON.parse(localStorage.getItem('vac.cadastros') || 'null'); if (c && c.rev != null && isFinite(+c.rev)) ult = +c.rev; } catch (x) { }
+  const atras = !o.portal && ult != null && +rev < ult, copia = o.fonte && o.fonte !== 'pasta' && o.fonte !== 'teste';
+  const cls = atras ? 'warn' : copia ? 'warn' : o.portal ? 'ok' : 'info';
+  const quando = o.revAt ? ` Gravada em ${String(o.revAt).slice(8, 10)}/${String(o.revAt).slice(5, 7)} ${String(o.revAt).slice(11, 16)}${o.revBy ? ' por ' + o.revBy : ''}.` : '';
+  const tit = (atras ? `Desatualizada: já existe a rev ${ult} neste computador. ` : '') + (copia ? 'Lida da cópia local (a pasta não respondeu). ' : '') + AJ + quando;
+  return `<span class="pill ${cls}" data-vac-cadrev="${e(rev)}" title="${e(tit)}">Cadastro rev ${e(rev)}${atras ? ' · desatualizada' : ''}${copia ? ' · cópia local' : ''} <span class="vac-ib" aria-hidden="true">ⓘ</span></span>`;
+}
 
 /* kit v2.1 · E5 (08/11/2026): ficha da ordem, do lote e da LP · índice da busca (Ctrl K) · link #ficha=ordem/<n>.
    A ficha SÓ mostra o que cada página publica no exports (regra 1: não recalcula, não lê a estrutura interna).
@@ -4076,10 +4101,10 @@ const vacFicha = (() => {
   const FONTES = [
     { id: 'oee', nome: 'Produção', base: 'oee-vacutainer-base.json', pega: ex => ({ porOrdem: ex.porOrdem || [], cob: ex.porOrdemCobertura || null, lotes: ex.lotes || [], porDiaTurno: ex.porDiaTurno || [], porDiaCatalogo: ex.porDiaCatalogo || [] }) },   /* Fase 4 · 4d: o Gel lê os turnos da Produção */
     { id: 'ordens', nome: 'SAP (Produção › Ordens)', sis: 'oee', base: 'ordens-base.json', pega: ex => ({ porOrdem: ex.porOrdem || [] }) },
-    { id: 'perdas', nome: 'Waste', base: 'perdas-base.json', pega: ex => ({ porOrdem: ex.porOrdem || [] }) },
+    { id: 'perdas', nome: 'Waste', base: 'perdas-base.json', pega: ex => ({ porOrdem: ex.porOrdem || [], acoesLegado: ex.acoesLegado || null }) },   /* Fase 6: Iniciativas traz as ações antigas */
     { id: 'gel', nome: 'Gestão de Gel', base: 'fifo-base.json', pega: ex => ({ ordens: ex.ordens || [], cob: ex.ordensCobertura || null, porDiaGel: ex.porDiaGel || [] }) },   /* Fase 4 · 4e */
     { id: 'paradas', nome: 'Paradas', base: 'paradas-base.json', pega: ex => ({ porOrdem: ex.porOrdem || [], eventos: (ex.eventos || []).filter(e => e && e.ordem) }) },
-    { id: 'inic', nome: 'Iniciativas', base: 'iniciativas-base.json', pega: ex => ({ acoes: ex.acoes || [] }) }];
+    { id: 'inic', nome: 'Iniciativas / Ações', base: 'iniciativas-base.json', pega: ex => ({ acoes: ex.acoes || [] }) }];
   const S = { dados: {}, idx: null, carregando: null, aberto: null, empilhado: false };
   const e2 = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   const tx = v => String(v ?? '').trim();

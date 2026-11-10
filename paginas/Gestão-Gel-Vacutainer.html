@@ -984,9 +984,9 @@ const VAC_INICIAL_ALVO = {
   'Produção': ['oee', ''], 'Produção › Visão geral': ['oee', 'aba=overview'], 'Produção › Painel': ['oee', 'aba=panel'],
   'Produção › Lançamento': ['oee', 'aba=launch'], 'Produção › Plano do mês': ['oee', 'aba=plan'], 'Produção › Tela do operador': ['oee', 'turno'],
   'Waste': ['perdas', ''],
-  'Gestão de Gel': ['gel', ''], 'Gestão de Gel › Painel': ['gel', 'aba=painel'], 'Gestão de Gel › Operação': ['gel', 'aba=op'],
+  'Gestão de Gel': ['gel', ''], 'Gestão de Gel › Painel': ['gel', 'aba=painel'], 'Gestão de Gel › Visão Geral': ['gel', 'aba=painel'], 'Gestão de Gel › Operação': ['gel', 'aba=op'],
   'Paradas': ['paradas', ''], 'Paradas › Visão geral': ['paradas', 'aba=geral'], 'Paradas › Fila técnica': ['paradas', 'aba=fila'],
-  'Equipamentos': ['equip', ''], 'Iniciativas': ['inic', ''], 'Projetos': ['projetos', '']
+  'Equipamentos': ['equip', ''], 'Iniciativas': ['inic', ''], 'Iniciativas / Ações': ['inic', ''], 'Projetos': ['projetos', '']
 };
 /* página inicial de quem entrou (vac.userId): a do usuário, senão a do perfil; lê a cópia do cadastro (vac.cadastros) */
 function vacPaginaInicial() {
@@ -1587,7 +1587,7 @@ const fileBackend={kind:'file',async commit(ch){applyLocal(ch);FS.pending.push(c
 async function fsRefresh(){if(S.mode!=='file'||FS.busy||ui.demo)return;try{const cur=await fsReadBase(fsKnown());if(cur&&!cur.same){FS.mod=cur.mod;FS.rev=cur.rev;FS.revBy=cur.by;loadData(cur.data);FS.pending.forEach(applyLocal);localBackend.save();render()}}catch(e){}}
 /* ================= V1.89 · integração com as outras páginas (Portal, OEE, Perdas) ================= */
 // versão da página (topo, Guia e base gravada)
-const APP_VERSION='2.20';   /* 2.20 · Fase 4 · 4e: exports porDiaGel (teórico × real por dia) */   /* 2.19 · Fase 4 · 4d: lê da Produção a partir do corte (GelProd); Resumo do dia */   /* 2.18 · Fase 4 · 4b: pesagem pela conta comum do kit (vacGel) */   /* 2.17 · Fase 4 · 4a: parâmetros do gel do Portal (processo, formatos, motivos, descartes, gel do catálogo) */   /* 2.16 · Fase 3 (IMP-04): importações no exports; #importar abre a importação */   /* 2.15 · ARQ-05/ARQ-07: catálogos e equipamentos do Portal (GelCad); contas do gel iguais */   /* 2.14 · ARQ-09: sem entrada própria de "Modo exemplo" */   /* 2.11 · C2–C6: kit com a ficha por pasta (AT-08) e a contagem da fila durável (Portal › Versões) */   /* 2.10 · C1: alterações pendentes na fila durável do kit (sem perda entre abas) */   /* 2.09 · E11: busca do kit leva o equipamento à ficha em Equipamentos */   /* 2.08 · E8: kit com "+ Abrir ação" na ficha da ordem */   /* 2.07 · E5: ficha da ordem comum (botão na ordem) e busca por ordem, lote e LP */   /* 2.06 · E3: número digitado só aceito inteiro; E4: cobertura das ordens no exports */   /* 2.05 · E2: a versão da tela vem desta constante (o rótulo estava fixo em v2.01); kit com data local e meta do mês ponderada */   /* 2.04 · revisão 065fe6f: restauração por arquivo confirma e não segue sem a cópia anterior; CSV sem fórmulas; índice por dia no Painel */
+const APP_VERSION='2.21';   /* 2.21 · Fase 7 (UX-03, GEL-01): Painel → Visão Geral */   /* 2.20 · Fase 4 · 4e: exports porDiaGel (teórico × real por dia) */   /* 2.19 · Fase 4 · 4d: lê da Produção a partir do corte (GelProd); Resumo do dia */   /* 2.18 · Fase 4 · 4b: pesagem pela conta comum do kit (vacGel) */   /* 2.17 · Fase 4 · 4a: parâmetros do gel do Portal (processo, formatos, motivos, descartes, gel do catálogo) */   /* 2.16 · Fase 3 (IMP-04): importações no exports; #importar abre a importação */   /* 2.15 · ARQ-05/ARQ-07: catálogos e equipamentos do Portal (GelCad); contas do gel iguais */   /* 2.14 · ARQ-09: sem entrada própria de "Modo exemplo" */   /* 2.11 · C2–C6: kit com a ficha por pasta (AT-08) e a contagem da fila durável (Portal › Versões) */   /* 2.10 · C1: alterações pendentes na fila durável do kit (sem perda entre abas) */   /* 2.09 · E11: busca do kit leva o equipamento à ficha em Equipamentos */   /* 2.08 · E8: kit com "+ Abrir ação" na ficha da ordem */   /* 2.07 · E5: ficha da ordem comum (botão na ordem) e busca por ordem, lote e LP */   /* 2.06 · E3: número digitado só aceito inteiro; E4: cobertura das ordens no exports */   /* 2.05 · E2: a versão da tela vem desta constante (o rótulo estava fixo em v2.01); kit com data local e meta do mês ponderada */   /* 2.04 · revisão 065fe6f: restauração por arquivo confirma e não segue sem a cópia anterior; CSV sem fórmulas; índice por dia no Painel */
 /* 2.03 · situação "em atualização" (kit: selo, pílula e faixa; docs/paginas-construcao.md) */
 /* 2.02 · relatório montado: todas as linhas no PDF, comentário, aviso de corte no texto; Painel em 1º; aba inicial do perfil; impressão e PDF no tema claro */
 /* 1.99 · menu Mais do cabeçalho (vac-visual v1): fecha ao escolher uma ação, ao clicar fora e com Esc */
@@ -1747,7 +1747,7 @@ const DEFAULT_SYSTEMS=[
  {id:'gel',nome:'Gestão de Gel',html:'Gestão-Gel-Vacutainer.html',alt:['Gestao-Gel-Vacutainer.html','controle-fifo-gel.html'],base:'fifo-base.json',estado:'atualizacao'},
  {id:'paradas',nome:'Paradas',html:'Paradas.html',base:'paradas-base.json',estado:'atualizacao'},
  {id:'equip',nome:'Equipamentos',html:'Equipamentos.html',base:'equipamentos-base.json',sub:'Ficha · OS · TAGs · AM/TPM',estado:'atualizacao'},
- {id:'inic',nome:'Iniciativas',html:'Iniciativas.html',base:'iniciativas-base.json',sub:'Ações · KAS · OSM · 5S',estado:'atualizacao'},
+ {id:'inic',nome:'Iniciativas / Ações',html:'Iniciativas.html',base:'iniciativas-base.json',sub:'Ações · KAS · OSM · 5S',estado:'atualizacao'},
  {id:'projetos',nome:'Projetos',html:'Projetos.html',base:'projetos-base.json',futuro:true,estado:'construcao'}];
 function systems(){try{const s=JSON.parse(localStorage.getItem('vac.sistemas')||'null');if(Array.isArray(s)&&s.length){const ids=new Set(s.map(x=>x.id));return s.concat(DEFAULT_SYSTEMS.filter(d=>!ids.has(d.id)))}}catch(e){}return DEFAULT_SYSTEMS.map(x=>({...x}))}
 function sysHref(s,hash=''){return String(s.html||s.url||'').split('/').pop()+(hash?'#'+hash:'')}
@@ -2100,16 +2100,16 @@ const GUIA=[
    <li>A programação diária do PCP alimenta o simulador de gel e o "Consumir hoje". Um dia editado à mão no calendário continua valendo.</li>
    <li><b>Editar plano</b>: cada <b>+ Plano total</b> vira um plano na tabela abaixo dos lotes. Em <b>Editar plano</b> mude o total, o tamanho do lote ou o número de lotes (ex.: de 5 para 10): os lotes novos entram no fim do plano. Ao reduzir, só saem lotes que ainda não começaram e estão sem número.</li>
   </ul>`],
- ['painel','Painel e apresentação',`<ul>
-   <li><b>Painel</b> (aba): abre na semana de produção em aberto (segunda até hoje; no domingo, segunda a sábado). Filtros no topo valem para todos os gráficos: período, comparação, dia/semana/mês, catálogo, turno, área, equipamento, motivo e a medida do scrap (gel líquido, peso bruto ou kg/100 mil tubos).</li>
+ ['painel','Visão Geral e apresentação',`<ul>
+   <li><b>Visão Geral</b> (aba): abre na semana de produção em aberto (segunda até hoje; no domingo, segunda a sábado). Filtros no topo valem para todos os gráficos: período, comparação, dia/semana/mês, catálogo, turno, área, equipamento, motivo e a medida do scrap (gel líquido, peso bruto ou kg/100 mil tubos).</li>
    <li><b>Interação</b>: passe o mouse para ver os valores; clique numa barra do Pareto, num turno ou numa célula do mapa de calor para filtrar o painel (o filtro aparece como etiqueta no topo, ✕ remove); clique num dia para ver o detalhe e abrir no Registro; clique numa semana ou mês para aproximar; arraste sobre um gráfico de tempo para escolher o trecho; ↶ Voltar desfaz. A legenda liga e desliga séries. ⤓ CSV salva os dados de cada gráfico.</li>
-   <li><b>Apresentação · Dashboard da linha</b> (TV da liderança): botão ▶ Apresentação no Painel, ou o endereço do arquivo terminado em <span class="mono">#linha</span> para a TV abrir direto nela. O Modo TV do almox continua separado (<span class="mono">#tv</span>). Telas e tempo em Configuração › Modo TV e apresentação.</li>
+   <li><b>Apresentação · Dashboard da linha</b> (TV da liderança): botão ▶ Apresentação na Visão Geral, ou o endereço do arquivo terminado em <span class="mono">#linha</span> para a TV abrir direto nela. O Modo TV do almox continua separado (<span class="mono">#tv</span>). Telas e tempo em Configuração › Modo TV e apresentação.</li>
   </ul>`],
- ['montar','Painel montável e relatórios',`<ul>
-   <li><b>Personalizar painel</b> (aba Painel): arraste ⠿ para mudar a ordem dos blocos, use ½/inteira para a largura, ✕ para tirar, <b>+ Adicionar bloco</b> para incluir (Produção, Gel e BOM, Scrap, Contagens, Projeção, Estoque e FIFO) e <b>Indicadores do topo</b> para escolher os números de cima. <b>Salvar</b> grava o seu painel.</li>
+ ['montar','Visão Geral montável e relatórios',`<ul>
+   <li><b>Personalizar painel</b> (aba Visão Geral): arraste ⠿ para mudar a ordem dos blocos, use ½/inteira para a largura, ✕ para tirar, <b>+ Adicionar bloco</b> para incluir (Produção, Gel e BOM, Scrap, Contagens, Projeção, Estoque e FIFO) e <b>Indicadores do topo</b> para escolher os números de cima. <b>Salvar</b> grava o seu painel.</li>
    <li><b>Visões compartilhadas</b>: em Personalizar, "Salvar como visão compartilhada…" cria uma visão (ex.: Liderança) que aparece para todos no seletor <b>Visão</b>. Em Configuração › Modo TV e apresentação, a Apresentação pode seguir uma dessas visões.</li>
    <li><b>Projeção</b>: os blocos "Saving projetado × realizado", "Consumo estimado × real" e "Previsão de fechamento do ano" usam a projeção do ano fiscal salva na Calculadora (cada mês distribuído pelos dias de produção do mês).</li>
-   <li><b>Relatórios</b> (botão no Painel): monte modelos com os blocos e indicadores que quiser, com período padrão. Cada modelo gera PDF com gráficos e tabelas, CSV e um texto para colar no e-mail. "Novo a partir do painel atual" copia o seu layout.</li>
+   <li><b>Relatórios</b> (botão na Visão Geral): monte modelos com os blocos e indicadores que quiser, com período padrão. Cada modelo gera PDF com gráficos e tabelas, CSV e um texto para colar no e-mail. "Novo a partir do painel atual" copia o seu layout.</li>
   </ul>`],
  ['abas','Abas e ordem',`<ul>
    <li>Configuração › Abas: arraste ⠿ (ou use ↑ ↓) para mudar a ordem das abas, marque as visíveis e escolha <b>Destacar</b> com uma cor para a aba aparecer como pílula. Vale para você (cada pessoa escolhe as suas). Por padrão o Painel fica no fim.</li>
@@ -2696,7 +2696,7 @@ function evOk(e){
   if(r._exp===undefined)r._exp=r.expiry?daysBetween(todayISO(),r.expiry):null;
   return filtOk(r);
 }
-const TABS=[['painel','Painel'],['op','Operação'],['sim','Programação e simulador'],['prod','Registro de produção'],['val','Idade e validade'],['cons','Consumo'],['adh','Aderência FIFO'],['pend','Pendências Almox'],['aud','Auditoria'],['lotes','Lotes e LPs'],['hist','Histórico']];
+const TABS=[['painel','Visão Geral'],['op','Operação'],['sim','Programação e simulador'],['prod','Registro de produção'],['val','Idade e validade'],['cons','Consumo'],['adh','Aderência FIFO'],['pend','Pendências Almox'],['aud','Auditoria'],['lotes','Lotes e LPs'],['hist','Histórico']];
 function renderTabs(){
   const pc=pendencias().total;
   const hl=ui.prefs.tabHl||{};
@@ -7873,6 +7873,21 @@ function vacExportsOk(ex, conhecida = 1) {
   const v = ex.exportsVersion; if (v == null || +v <= conhecida) return { ok: true, versao: v == null ? null : +v, motivo: '' };
   return { ok: false, versao: +v, motivo: `exports na versão ${v}; esta página só conhece até a ${conhecida}: atualize esta página` };
 }
+/* kit v2.1 · UX-04 (Fase 7 do briefing, D8): pílula única "Cadastro rev N", sempre visível, igual em todas as páginas.
+   rev = revisão do cadastro geral do Portal (vacutainer-cadastros.json) que esta página está usando. Compara com a cópia mais
+   nova que alguma página já leu neste computador (localStorage 'vac.cadastros'): se esta estiver atrás, mostra "desatualizada"
+   (a página foi aberta antes da última gravação no Portal). o = { fonte: 'pasta'|'copia'|'teste'|…, revAt, revBy, portal:true }. */
+function vacCadPilula(rev, o = {}) {
+  const e = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  const AJ = 'Revisão do cadastro geral do Portal (vacutainer-cadastros.json) que esta página está usando. Cada gravação no Portal soma 1. Todas as páginas devem mostrar o mesmo número; se esta estiver atrás, ela foi aberta antes da última mudança no Portal: clique em ↻ Sincronizar ou recarregue (F5). Não é a revisão da base da própria página.';
+  if (rev == null) return `<span class="pill none" data-vac-cadrev="" title="${e('Cadastro do Portal ainda não lido nesta página (pasta sem vacutainer-cadastros.json ou não conectada). ' + AJ)}">Cadastro: não lido</span>`;
+  let ult = null; try { const c = JSON.parse(localStorage.getItem('vac.cadastros') || 'null'); if (c && c.rev != null && isFinite(+c.rev)) ult = +c.rev; } catch (x) { }
+  const atras = !o.portal && ult != null && +rev < ult, copia = o.fonte && o.fonte !== 'pasta' && o.fonte !== 'teste';
+  const cls = atras ? 'warn' : copia ? 'warn' : o.portal ? 'ok' : 'info';
+  const quando = o.revAt ? ` Gravada em ${String(o.revAt).slice(8, 10)}/${String(o.revAt).slice(5, 7)} ${String(o.revAt).slice(11, 16)}${o.revBy ? ' por ' + o.revBy : ''}.` : '';
+  const tit = (atras ? `Desatualizada: já existe a rev ${ult} neste computador. ` : '') + (copia ? 'Lida da cópia local (a pasta não respondeu). ' : '') + AJ + quando;
+  return `<span class="pill ${cls}" data-vac-cadrev="${e(rev)}" title="${e(tit)}">Cadastro rev ${e(rev)}${atras ? ' · desatualizada' : ''}${copia ? ' · cópia local' : ''} <span class="vac-ib" aria-hidden="true">ⓘ</span></span>`;
+}
 
 /* kit v2.1 · E5 (08/11/2026): ficha da ordem, do lote e da LP · índice da busca (Ctrl K) · link #ficha=ordem/<n>.
    A ficha SÓ mostra o que cada página publica no exports (regra 1: não recalcula, não lê a estrutura interna).
@@ -7884,10 +7899,10 @@ const vacFicha = (() => {
   const FONTES = [
     { id: 'oee', nome: 'Produção', base: 'oee-vacutainer-base.json', pega: ex => ({ porOrdem: ex.porOrdem || [], cob: ex.porOrdemCobertura || null, lotes: ex.lotes || [], porDiaTurno: ex.porDiaTurno || [], porDiaCatalogo: ex.porDiaCatalogo || [] }) },   /* Fase 4 · 4d: o Gel lê os turnos da Produção */
     { id: 'ordens', nome: 'SAP (Produção › Ordens)', sis: 'oee', base: 'ordens-base.json', pega: ex => ({ porOrdem: ex.porOrdem || [] }) },
-    { id: 'perdas', nome: 'Waste', base: 'perdas-base.json', pega: ex => ({ porOrdem: ex.porOrdem || [] }) },
+    { id: 'perdas', nome: 'Waste', base: 'perdas-base.json', pega: ex => ({ porOrdem: ex.porOrdem || [], acoesLegado: ex.acoesLegado || null }) },   /* Fase 6: Iniciativas traz as ações antigas */
     { id: 'gel', nome: 'Gestão de Gel', base: 'fifo-base.json', pega: ex => ({ ordens: ex.ordens || [], cob: ex.ordensCobertura || null, porDiaGel: ex.porDiaGel || [] }) },   /* Fase 4 · 4e */
     { id: 'paradas', nome: 'Paradas', base: 'paradas-base.json', pega: ex => ({ porOrdem: ex.porOrdem || [], eventos: (ex.eventos || []).filter(e => e && e.ordem) }) },
-    { id: 'inic', nome: 'Iniciativas', base: 'iniciativas-base.json', pega: ex => ({ acoes: ex.acoes || [] }) }];
+    { id: 'inic', nome: 'Iniciativas / Ações', base: 'iniciativas-base.json', pega: ex => ({ acoes: ex.acoes || [] }) }];
   const S = { dados: {}, idx: null, carregando: null, aberto: null, empilhado: false };
   const e2 = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   const tx = v => String(v ?? '').trim();

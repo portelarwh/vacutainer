@@ -672,9 +672,9 @@ const VAC_INICIAL_ALVO = {
   'Produção': ['oee', ''], 'Produção › Visão geral': ['oee', 'aba=overview'], 'Produção › Painel': ['oee', 'aba=panel'],
   'Produção › Lançamento': ['oee', 'aba=launch'], 'Produção › Plano do mês': ['oee', 'aba=plan'], 'Produção › Tela do operador': ['oee', 'turno'],
   'Waste': ['perdas', ''],
-  'Gestão de Gel': ['gel', ''], 'Gestão de Gel › Painel': ['gel', 'aba=painel'], 'Gestão de Gel › Operação': ['gel', 'aba=op'],
+  'Gestão de Gel': ['gel', ''], 'Gestão de Gel › Painel': ['gel', 'aba=painel'], 'Gestão de Gel › Visão Geral': ['gel', 'aba=painel'], 'Gestão de Gel › Operação': ['gel', 'aba=op'],
   'Paradas': ['paradas', ''], 'Paradas › Visão geral': ['paradas', 'aba=geral'], 'Paradas › Fila técnica': ['paradas', 'aba=fila'],
-  'Equipamentos': ['equip', ''], 'Iniciativas': ['inic', ''], 'Projetos': ['projetos', '']
+  'Equipamentos': ['equip', ''], 'Iniciativas': ['inic', ''], 'Iniciativas / Ações': ['inic', ''], 'Projetos': ['projetos', '']
 };
 /* página inicial de quem entrou (vac.userId): a do usuário, senão a do perfil; lê a cópia do cadastro (vac.cadastros) */
 function vacPaginaInicial() {
@@ -877,7 +877,7 @@ addEventListener('error', e => { if (e.error && e.error.name === 'VacAbaBloquead
   <span class="vacts"><button class="b sm" id="btnSync" title="Gravar pendências e reler a base, o OEE e o Gel">↻ Sincronizar</button><button class="b sm" id="btnBackup" title="Criar backup agora">⛁ Backup</button><button class="b sm" id="btnTV" title="Modo TV">▣ TV</button></span>
 </div></div>
 <nav class="vtabs" aria-label="Abas da página"><div class="wrap"><div class="tabs" id="nav">
-  <button data-t="painel" class="on">Painel</button>
+  <button data-t="painel" class="on">Visão Geral</button>
   <button data-t="comp">Comparativos</button>
   <button data-t="importar">Importar</button>
   <button data-t="historico">Histórico</button>
@@ -984,8 +984,9 @@ addEventListener('error', e => { if (e.error && e.error.name === 'VacAbaBloquead
 
 <!-- ================= AÇÕES ================= -->
 <section class="tab" id="t-acoes">
-  <div class="card"><h3>Plano de ações <button class="b sm" id="btnNovaAcao">+ Nova ação</button>
+  <div class="card"><h3>Plano de ações <button class="b sm" id="btnNovaAcao" title="Abre Iniciativas / Ações (as ações do Waste ficam lá)">+ Nova ação ↗</button>
     <label class="small muted" style="margin-left:auto"><input type="checkbox" id="acTodas"> mostrar encerradas</label></h3>
+    <p class="small muted" style="margin:0 0 6px">Desde a 1.8.28 as ações ficam em <b>Iniciativas / Ações</b> (origem Waste, ligadas à ordem); aqui aparecem só para consulta e o clique abre lá. As antigas continuam editáveis aqui até serem trazidas (Iniciativas › Configuração › Trazer ações do Waste).</p>
     <div class="tw" id="tblAcoes"></div></div>
 </section>
 
@@ -1022,7 +1023,7 @@ addEventListener('error', e => { if (e.error && e.error.name === 'VacAbaBloquead
       <label>Seu nome (fica registrado nas importações, comentários e ações)<input id="cfgUser"></label>
       <label>Valores em R$ nos cards <i class="i" title="Vale só para você (fica neste navegador). Tabelas e gráficos não mudam.">i</i>
         <select id="cfgCents"><option value="1">Com centavos (R$ 4.817,72)</option><option value="0">Sem centavos (R$ 4.818)</option></select></label>
-      <label>Valores em R$ nas tabelas e listas <i class="i" title="Vale para todas as tabelas (Painel, Componentes, Prioridades, Comparativos, Pareto, Histórico, Fechamento, relatórios). Também muda pelo botão R$ ,00 em cima das tabelas. Vale só para você.">i</i>
+      <label>Valores em R$ nas tabelas e listas <i class="i" title="Vale para todas as tabelas (Visão Geral, Componentes, Prioridades, Comparativos, Pareto, Histórico, Fechamento, relatórios). Também muda pelo botão R$ ,00 em cima das tabelas. Vale só para você.">i</i>
         <select id="cfgCentsTab"><option value="0">Sem centavos (R$ 4.818)</option><option value="1">Com centavos (R$ 4.817,72)</option></select></label>
       <h3 style="margin-top:16px">Ambiente de teste</h3>
       <p class="small muted">Abre a página com dados fictícios, só na memória. Nada é gravado na pasta.</p>
@@ -1080,7 +1081,7 @@ addEventListener('error', e => { if (e.error && e.error.name === 'VacAbaBloquead
    Base: perdas-base.json na pasta da rede (mesmo padrão OEE / Gel)
    Contrato: bloco "exports" (exportsVersion 1) lido pelas outras páginas
    ===================================================================== */
-const APP_VER='1.8.27',   /* 1.8.27 · Fase 3 (IMP-04/06, WST-02): importações no exports; aba Importar leva ao Portal › Importação */   /* 1.8.26 · ARQ-09: "Ver com dados de teste" vira a Demonstração integrada */   /* 1.8.23 · C2–C6: kit com a ficha por pasta (AT-08) e a contagem da fila durável (Portal › Versões) */   /* 1.8.22 · C1: trava da 2ª aba com alteração pendente (nada é descartado); kit com a fila durável */   /* 1.8.21 · E11: busca do kit leva o equipamento à ficha em Equipamentos */   /* 1.8.20 · E8: kit com "+ Abrir ação" na ficha da ordem (Planner de Iniciativas) */   /* 1.8.19 · E5: ficha da ordem comum (botão Ficha na ordem; busca Ctrl K por ordem, lote e LP) */   /* 1.8.18 · E4: versão do exports conferida (Produção, Ordens), ordem em várias competências, dias do lote pela chave · 1.8.17 · E2: fonte única da versão (tela, base, exports e Portal › Versões) */ BASE_FN='perdas-base.json', DIR_ORIG='00. Originais SAP', DIR_BKP='00. Backups', DIR_IN='00. Entrada KKBC', DIR_DONE='00. Entrada KKBC/Processados';
+const APP_VER='1.8.29',   /* 1.8.29 · Fase 7 (UX-03, WST-01): Painel → Visão Geral */   /* 1.8.28 · Fase 6 (WST-03, INI-04): ações em Iniciativas / Ações; antigas até a migração, depois só leitura */   /* 1.8.27 · Fase 3 (IMP-04/06, WST-02): importações no exports; aba Importar leva ao Portal › Importação */   /* 1.8.26 · ARQ-09: "Ver com dados de teste" vira a Demonstração integrada */   /* 1.8.23 · C2–C6: kit com a ficha por pasta (AT-08) e a contagem da fila durável (Portal › Versões) */   /* 1.8.22 · C1: trava da 2ª aba com alteração pendente (nada é descartado); kit com a fila durável */   /* 1.8.21 · E11: busca do kit leva o equipamento à ficha em Equipamentos */   /* 1.8.20 · E8: kit com "+ Abrir ação" na ficha da ordem (Planner de Iniciativas) */   /* 1.8.19 · E5: ficha da ordem comum (botão Ficha na ordem; busca Ctrl K por ordem, lote e LP) */   /* 1.8.18 · E4: versão do exports conferida (Produção, Ordens), ordem em várias competências, dias do lote pela chave · 1.8.17 · E2: fonte única da versão (tela, base, exports e Portal › Versões) */ BASE_FN='perdas-base.json', DIR_ORIG='00. Originais SAP', DIR_BKP='00. Backups', DIR_IN='00. Entrada KKBC', DIR_DONE='00. Entrada KKBC/Processados';
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 /* página para o núcleo comum, o cabeçalho (vac-cabecalho v2) e o quadro de Versões do Portal */
 const PAGE={id:'perdas',titulo:'Waste · Linha Vacutainer',tituloCurto:'Waste',subtitulo:'Custos e perdas por ordem',versao:APP_VER,baseFile:BASE_FN,backupDir:'00. Backups/Perdas',busca:q=>buscaPerdas(q)};
@@ -1513,7 +1514,7 @@ async function doImport(){
  /* 1.8.2: fica na importação (não volta ao Painel); mostra o resultado e já deixa pronto para a próxima */
  const ordsImp=[...new Set(rows.map(r=>r.ordem))];
  $('#impPrev').innerHTML=`<div class="card" id="impOk" style="border-left:4px solid var(--good,#15803d)"><h3>✓ Importadas ${rows.length} linhas de ${ordsImp.length} ordem(ns)</h3><p class="small">${ordsImp.slice(0,40).map(o=>`<span class="mono">${esc(o)}</span>`).join(' · ')}${ordsImp.length>40?' …':''} · ${pers.map(fmtM).join(', ')}</p>
-  <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="b p" id="impProx">Importar a próxima</button><button class="b" id="impVerPainel">Ver no Painel</button></div></div>`;
+  <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="b p" id="impProx">Importar a próxima</button><button class="b" id="impVerPainel">Ver na Visão Geral</button></div></div>`;
  $('#impProx').onclick=()=>{$('#impPrev').innerHTML='';$('#t-importar').scrollIntoView({block:'start'});$('#impTxt').focus()};
  $('#impVerPainel').onclick=()=>showTab('painel');
  F.de=F.ate='';renderAll();renderEntrada();kkbcPedRender();
@@ -1682,6 +1683,33 @@ function statLevel(r){if(!STAT||isDelivery(r))return 0;const x=STAT.g.get(compKe
  if(x.mad){const z=.6745*(v-x.med)/x.mad;l=Math.max(l,z>5?3:z>3.5?2:z>2.5?1:0)}return l}
 function causeOf(ordem,comp){const cs=B.comments.filter(c=>c.ativo!==false&&c.ordem===ordem&&c.causa&&(comp==null||c.comp===comp||!c.comp));const conf=cs.filter(c=>c.tipo==='causa confirmada');return(conf[conf.length-1]||cs[cs.length-1])?.causa||''}
 const DONE_AC=['concluída','encerrada eficaz','encerrada sem eficácia','cancelada'];
+/* 1.8.28 · WST-03 / INI-04 (Fase 6, I1): as ações do Waste vivem em Iniciativas / Ações (regra 1: o Waste não grava lá).
+   - "+ Ação" abre Iniciativas com o formulário preenchido (origem waste, vínculo com a ordem).
+   - O Waste lê o exports de Iniciativas (ficha comum, vacFicha 'inic'): ações com origem waste ou ligadas a uma ordem.
+   - As ações antigas (B.actions) continuam aqui até Iniciativas › Configuração › "Trazer ações do Waste" (uma vez, com o
+     histórico; ref waste|<id>). Trazida, a antiga some das listas e da pendência do Waste e aparece a de Iniciativas, só leitura
+     aqui (o clique abre lá). O exports publica acoesLegado para essa migração. */
+const WAc={x:null,lendo:false,lidoEm:0,
+ ler(){if(this.lendo||typeof vacFicha==='undefined')return Promise.resolve();this.lendo=true;
+  return vacFicha.carregar().then(()=>{const x=vacFicha.dados('inic');this.x=x&&x.d?x:null;this.lidoEm=Date.now()}).catch(e=>console.warn('WAc',e)).finally(()=>{this.lendo=false})},
+ talvez(){if(!this.lendo&&Date.now()-this.lidoEm>60000)this.ler().then(()=>{if(this.x&&typeof renderAll==='function')try{renderAll()}catch(e){}})},
+ brutas(){const x=this.x||(typeof vacFicha!=='undefined'&&vacFicha.dados?vacFicha.dados('inic'):null);return x&&x.d&&Array.isArray(x.d.acoes)?x.d.acoes:[]},
+ ordemDe(a){const v=(a.vinculos||[]).find(v=>v&&v.tipo==='ordem'&&v.cod);if(v)return String(v.cod);const r=/^ordem\|(.+)$/.exec((a.origem||{}).ref||'');return r?r[1]:''},
+ /* ações de Iniciativas no formato das do Waste (status de Iniciativas: a fazer, em andamento, aguardando, concluída, cancelada) */
+ inic(){const PR={media:'média',alta:'alta',baixa:'baixa'};return this.brutas().filter(a=>a&&a.id&&((a.origem||{}).tipo==='waste'||this.ordemDe(a))).map(a=>({id:'inic:'+a.id,inicId:a.id,inic:true,ordem:this.ordemDe(a),
+  desc:a.titulo||'',status:a.status||'',resp:a.responsavel||'',prazo:a.prazo||'',abertura:String(a.criadaEm||'').slice(0,10),conclusao:String(a.concluidaEm||'').slice(0,10),
+  pri:PR[a.prioridade]||'média',eficacia:a.eficacia||null,comp:'',causa:'',area:'',econ:null,obs:''}))},
+ migradas(){const S=new Set();for(const a of this.brutas()){const r=/^waste\|(.+)$/.exec((a&&a.origem||{}).ref||'');if(r)S.add(r[1])}return S},
+ legado(){const M=this.migradas();return B.actions.filter(a=>!M.has(a.id))},
+ todas(){return this.legado().concat(this.inic())},
+ href(h){if(typeof PAGE!=='undefined'&&PAGE.id==='inic')return'#'+h;let s=null;try{s=(typeof systems==='function'?systems():[]).find(x=>x.id==='inic')}catch(e){}return s&&typeof sysHref==='function'?sysHref(s,h):'Iniciativas.html#'+h},
+ nova(ordem){const o=ordem?cleanOrd(ordem)||ordem:'';const d={titulo:'',descricao:'',origem:{tipo:'waste',ref:o?'ordem|'+o:'waste',resumo:o?'Waste · ordem '+o:'Waste',link:typeof vacAquiHref==='function'?vacAquiHref(o?'ordem='+o:'aba=acoes'):''},vinculos:o?[{tipo:'ordem',cod:String(o)}]:[]};
+  window.open(typeof vacNovaAcaoHref==='function'?vacNovaAcaoHref(d):this.href('nova='+encodeURIComponent(JSON.stringify(d))),'_blank','noopener')},
+ abrir(inicId){window.open(this.href('acao='+encodeURIComponent(inicId)),'_blank','noopener')},
+ /* desvia o formulário antigo: nova → Iniciativas; de Iniciativas → abre lá; antiga já trazida → abre a de lá */
+ desvia(id,ordem){if(!id){this.nova(ordem);return true}const s=String(id);if(s.startsWith('inic:')){this.abrir(s.slice(5));return true}
+  if(this.migradas().has(s)){this.abrir('AC-W-'+s);return true}return false},
+ statusTxt(a){return a.inic?`${a.status}${a.eficacia?' · eficácia: '+({acompanhamento:'em acompanhamento',eficaz:'eficaz',sem:'sem eficácia'}[a.eficacia]||a.eficacia):''} · Iniciativas`:a.status}};
 function acVencida(a){return a.prazo&&a.prazo<todayISO()&&!DONE_AC.includes(a.status)&&a.status!=='eficácia em acompanhamento'}
 function priority(o){const t=CFG().thr;let s=0;
  s+=Math.min(1,Math.max(0,o.d)/t.finCrit)*35;
@@ -1689,7 +1717,7 @@ function priority(o){const t=CFG().thr;let s=0;
  if(o.rows.some(r=>STAT.recSet.has(compKey(r))&&dev(r)>0))s+=15;
  s+=Math.max(0,...o.rows.map(statLevel))/3*15;
  const hasC=!!causeOf(o.ordem);if(!hasC&&o.d>0)s+=10;
- const acs=B.actions.filter(a=>a.ordem===o.ordem&&a.status!=='cancelada');
+ const acs=WAc.todas().filter(a=>a.ordem===o.ordem&&a.status!=='cancelada');
  if(o.lvl>=2&&!acs.length)s+=10;if(acs.some(acVencida))s+=10;
  return Math.round(Math.min(100,s))}
 
@@ -1703,7 +1731,7 @@ function buildExports0(){
     o Portal só mostra a partir dessa data, então a ação vence no Portal mesmo sem nova gravação aqui */
  const diaSeg=iso=>{const d=new Date(iso.slice(0,10)+'T12:00:00Z');d.setUTCDate(d.getUTCDate()+1);return d.toISOString().slice(0,10)};
  const pendencias=[];
- for(const a of B.actions)if(a.prazo&&!DONE_AC.includes(a.status)&&a.status!=='eficácia em acompanhamento')
+ for(const a of WAc.legado())if(a.prazo&&!DONE_AC.includes(a.status)&&a.status!=='eficácia em acompanhamento')   /* as de Iniciativas: pendência publicada lá */
   pendencias.push({sev:1,tipo:'acaoVencida',aPartirDe:diaSeg(a.prazo),quando:a.prazo,txt:`Ação vencida em ${fmtD(a.prazo)}: ${a.desc}${a.resp?' · '+a.resp:''}`,link:a.ordem?'ordem='+a.ordem:'aba=acoes'});
  for(const o of ords)if(o.lvl>=2&&!causeOf(o.ordem))
   pendencias.push({sev:o.lvl===3?1:2,tipo:'semCausa',txt:`Ordem ${o.ordem} (${o.cat||''}) ${LV[o.lvl]} sem causa · desvio ${fmtR(o.d)}`,link:'ordem='+o.ordem});
@@ -1713,9 +1741,11 @@ function buildExports0(){
  return{exportsVersion:1,geradoEm:nowISO(),modulo:'perdas',appVersion:APP_VER,pendencias,ultimaImportacao,importacoes,
   ordensExcluidas:[...exclMap().values()].map(e=>({ordem:e.ordem,em:e.em,por:e.por,motivo:e.motivo})),
   porOrdem:ords.map(o=>({ordem:o.ordem,per:o.per,catalogo:o.cat||'',produto:o.prod||'',lote:o.lote||'',status:o.status||'',qtdEntregue:o.qEnt,custoMeta:+o.cTc.toFixed(2),custoReal:+o.cRc.toFixed(2),desvio:+o.d.toFixed(2),perda:+o.perda.toFixed(2),varMaterial:+sum(o.rows.filter(r=>!isDelivery(r)),dEst).toFixed(2),scrap:+sum(o.rows.filter(r=>!isDelivery(r)),scrapOf).toFixed(2),nivel:LV[o.lvl],causa:causeOf(o.ordem),
-    comentarios:B.comments.filter(c=>c.ordem===o.ordem&&c.ativo!==false).length,acoesAbertas:B.actions.filter(a=>a.ordem===o.ordem&&!DONE_AC.includes(a.status)).length})),
+    comentarios:B.comments.filter(c=>c.ordem===o.ordem&&c.ativo!==false).length,acoesAbertas:WAc.todas().filter(a=>a.ordem===o.ordem&&!DONE_AC.includes(a.status)).length})),
   porMes:Object.values(pm).sort((a,b)=>a.per<b.per?-1:1).map(p=>({...p,perda:+p.perda.toFixed(2),ganho:+p.ganho.toFixed(2),liquido:+p.liquido.toFixed(2),custoMeta:+p.custoMeta.toFixed(2),custoReal:+p.custoReal.toFixed(2),fechado:closedPers().has(p.per)})),
-  porComponenteMes:Object.values(cm).map(c=>({...c,ordens:c.ordens.size,desvio:+c.desvio.toFixed(2)}))}}
+  porComponenteMes:Object.values(cm).map(c=>({...c,ordens:c.ordens.size,desvio:+c.desvio.toFixed(2)})),
+  /* 1.8.28 · WST-03: ações antigas do Waste, para Iniciativas › Trazer ações do Waste (uma vez) */
+  acoesLegado:B.actions.map(a=>({id:a.id,ordem:a.ordem||'',comp:a.comp||'',desc:a.desc||'',causa:a.causa||'',status:a.status||'',resp:a.resp||'',area:a.area||'',prazo:a.prazo||'',conclusao:a.conclusao||'',econ:a.econ??null,pri:a.pri||'',obs:a.obs||'',abertura:a.abertura||'',user:a.user||'',hist:(a.hist||[]).map(h=>({data:h.data||null,user:h.user||null,status:h.status||null,prazo:h.prazo||null}))}))}}
 
 /* ===================== FILTROS / PAINEL ===================== */
 const F={de:'',ate:'',fy:'',prod:'',tipoItem:'',tipoOrd:'',comp:'',nivel:'',st:'',busca:'',view:'ordens',sort:{k:'d',dir:-1},lim:200};
@@ -1743,7 +1773,7 @@ const normB=x=>String(x??'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toL
 function ordemTexto(o){const r0=o.rows||[];const parts=[o.ordem,o.lote,o.prod,o.prodDesc,o.cat,o.status,o.centro,o.per,fmtM(o.per),o.per?fmtML(o.per):'',o.per?fyOf(o.per)+' P'+fpOf(o.per):'',LV[o.lvl||0],o.aberta===true?'aberta':o.aberta===false?'encerrada':'sem status',causeOf(o.ordem)];
  for(const r of r0){parts.push(r.comp,r.compDesc,r.el,r.elDesc,r.un,r.grupo,r.tipo);if(r.x)for(const k in r.x)parts.push(r.x[k])}
  for(const c of B.comments)if(c.ordem===o.ordem&&c.ativo!==false)parts.push(c.texto,c.causa,c.sub,c.user,c.tipo);
- for(const a of B.actions)if(a.ordem===o.ordem)parts.push(a.desc,a.resp,a.status,a.causa,a.area);
+ for(const a of WAc.todas())if(a.ordem===o.ordem)parts.push(a.desc,a.resp,a.status,a.causa,a.area);
  return normB(parts.filter(v=>v!=null&&v!=='').join(' | '))}
 function buscaOk(o,q){const t=ordemTexto(o);return normB(q).split(/\s+/).filter(Boolean).every(w=>t.includes(w))}
 /* atalhos de competência (mês de referência da KKBC_ORD) */
@@ -1776,7 +1806,7 @@ function renderPainel(){
  const t=CFG().thr;
  const perda=sum(ords,o=>o.perda),ganho=sum(ords,o=>o.ganho),liq=sum(ords,o=>o.d),cT=sum(ords,o=>o.cT),cR=sum(ords,o=>o.cR),base=sum(ords,o=>o.base);
  const qE=sum(ords,o=>o.qEnt||0);const crit=ords.filter(o=>o.lvl===3).length,alta=ords.filter(o=>o.lvl===2).length;
- const semC=ords.filter(o=>o.lvl>=2&&!causeOf(o.ordem)).length;const venc=B.actions.filter(acVencida).length;
+ const semC=ords.filter(o=>o.lvl>=2&&!causeOf(o.ordem)).length;const venc=WAc.todas().filter(acVencida).length;
  const pers=[...new Set(ords.map(o=>o.per))];const _mp=pers.map(metaPer).filter(v=>v!=null);const metaP=_mp.length?_mp.reduce((a,b)=>a+b,0):null;   /* 1.8.17 · soma das metas de cada mês */
  const fyAc=(()=>{const last=F.ate||allPers().slice(-1)[0];if(!last)return null;const fy=fyOf(last);return sum(aggOrders(vigRows().filter(r=>fyOf(r.per)===fy&&r.per<=last)),o=>o.d)})();
  const mat=rows.filter(r=>!isDelivery(r));const vMat=sum(mat,dEst),vScr=sum(mat,scrapOf);const semEstr=mat.length&&!mat.some(r=>r.dEstr!=null);
@@ -1833,13 +1863,13 @@ function renderTable(ords,rows){
    cols=[['ordem','Ordem'],['per','Competência'],['cat','Catálogo'],['prodDesc','Descrição'],['d','Desvio','n'],['exEm','Excluída em'],['exPor','Por'],['exMot','Justificativa'],['rest','']];
  }else if(F.view==='ordens'){
    cols=[['ordem','Ordem'],['per','Competência'],['cat','Catálogo'],['prodDesc','Descrição'],['lote','Lote'],['status','Status'],['qEnt','Qtd entregue','n'],['cTc','Custo meta','n'],['cRc','Custo real','n'],['d','Desvio','n'],['pct','Desvio %','n'],['pm','R$/milhão','n'],['lvl','Nível'],['causa','Causa'],['ac','Ações']];
-   data=ords.map(o=>({...o,causa:causeOf(o.ordem),ac:B.actions.filter(a=>a.ordem===o.ordem&&!DONE_AC.includes(a.status)).length}));
+   data=ords.map(o=>({...o,causa:causeOf(o.ordem),ac:WAc.todas().filter(a=>a.ordem===o.ordem&&!DONE_AC.includes(a.status)).length}));
  }else if(F.view==='comps'){
    const m=new Map();for(const r of (F._compRows||rows)){if(isDelivery(r))continue;const k=compKey(r)+'|'+(r.un||'');let x=m.get(k);if(!x)m.set(k,x={comp:compKey(r),desc:compName(r),un:r.un||'',qT:0,qR:0,cT:0,d:0,ords:new Set(),pers:new Set(),out:0});x.qT+=r.qT||0;x.qR+=r.qR||0;x.cT+=r.cT||0;x.d+=dev(r);const sp_=split(r);x.eq=(x.eq||0)+sp_.eq;x.ep=(x.ep||0)+sp_.ep;x.ords.add(r.ordem);x.pers.add(r.per);if(statLevel(r)>=2)x.out++}
    data=[...m.values()].map(x=>({...x,lvl:level(x.d,x.cT),n:x.ords.size,dq:x.qR-x.qT,pq:x.qT?(x.qR-x.qT)/x.qT:null,rec:STAT.recSet.has(x.comp),ords:undefined}));
    cols=[['comp','Componente'],['desc','Descrição'],['un','Un'],['n','Ordens','n'],['qT','Qtd meta','n'],['qR','Qtd real','n'],['dq','Desvio qtd','n'],['pq','Desvio qtd %','n'],['d','Desvio R$','n'],['eq','Efeito qtd','n'],['ep','Efeito preço','n'],['lvl','Nível'],['out','Outliers','n'],['rec','Recorrente']];
  }else{
-   data=ords.filter(o=>o.d>0).map(o=>({...o,score:priority(o),causa:causeOf(o.ordem),stat:Math.max(0,...o.rows.map(statLevel)),rec:o.rows.some(r=>STAT.recSet.has(compKey(r))&&dev(r)>0),ac:B.actions.filter(a=>a.ordem===o.ordem&&!DONE_AC.includes(a.status)).length}));
+   data=ords.filter(o=>o.d>0).map(o=>({...o,score:priority(o),causa:causeOf(o.ordem),stat:Math.max(0,...o.rows.map(statLevel)),rec:o.rows.some(r=>STAT.recSet.has(compKey(r))&&dev(r)>0),ac:WAc.todas().filter(a=>a.ordem===o.ordem&&!DONE_AC.includes(a.status)).length}));
    cols=[['score','Prioridade','n'],['ordem','Ordem'],['per','Competência'],['cat','Catálogo'],['d','Desvio','n'],['pct','Desvio %','n'],['lvl','Nível'],['stat','Estatística'],['rec','Recorrente'],['causa','Causa'],['ac','Ações']];
    if(F.sort.k==='d'&&!F._ps){F.sort={k:'score',dir:-1};F._ps=1}
  }
@@ -1991,7 +2021,7 @@ const DEFAULT_SYSTEMS=[
  {id:'gel',nome:'Gestão de Gel',html:'Gestão-Gel-Vacutainer.html',alt:['Gestao-Gel-Vacutainer.html','controle-fifo-gel.html'],base:'fifo-base.json',estado:'atualizacao'},
  {id:'paradas',nome:'Paradas',html:'Paradas.html',base:'paradas-base.json',estado:'atualizacao'},
  {id:'equip',nome:'Equipamentos',html:'Equipamentos.html',base:'equipamentos-base.json',sub:'Ficha · OS · TAGs · AM/TPM',estado:'atualizacao'},
- {id:'inic',nome:'Iniciativas',html:'Iniciativas.html',base:'iniciativas-base.json',sub:'Ações · KAS · OSM · 5S',estado:'atualizacao'},
+ {id:'inic',nome:'Iniciativas / Ações',html:'Iniciativas.html',base:'iniciativas-base.json',sub:'Ações · KAS · OSM · 5S',estado:'atualizacao'},
  {id:'projetos',nome:'Projetos',html:'Projetos.html',base:'projetos-base.json',futuro:true,estado:'construcao'}];
 function systems(){const ren=l=>l.map(x=>x&&x.id==='perdas'&&(!x.nome||x.nome==='Perdas')?{...x,nome:'Waste'}:x);try{const s=JSON.parse(localStorage.getItem('vac.sistemas')||'null');if(Array.isArray(s)&&s.length){const ids=new Set(s.map(x=>x.id));return ren(s.concat(DEFAULT_SYSTEMS.filter(d=>!ids.has(d.id))))}}catch(e){}return ren(DEFAULT_SYSTEMS.map(x=>({...x})))}
 /* pasta única: todas as páginas na mesma pasta, então o link é só o nome do arquivo */
@@ -2132,7 +2162,7 @@ function openOrder(ordem){
  const versions=[...new Set(all.map(r=>r.imp))].map(id=>{const rs=all.filter(r=>r.imp===id);return{imp:imps.get(id),d:sum(rs,dev),vig:rs.some(r=>!r.sup)&&imps.get(id)?.status!=='cancelado',per:[...new Set(rs.map(r=>r.per))]}}).sort((a,b)=>(a.imp?.data||'')<(b.imp?.data||'')?1:-1);
  const comps=[...o.rows||[]].sort((a,b)=>dev(b)-dev(a));const sq=sum(comps.filter(r=>!isDelivery(r)),r=>split(r).eq),sp=sum(comps.filter(r=>!isDelivery(r)),r=>split(r).ep);
  const coms=B.comments.filter(c=>c.ordem===ordem&&c.ativo!==false).sort((a,b)=>a.data<b.data?1:-1);
- const acs=B.actions.filter(a=>a.ordem===ordem);
+ const acs=WAc.todas().filter(a=>a.ordem===ordem);WAc.talvez();
  let h=`<h2 style="margin:0 0 4px">Ordem ${esc(ordem)} ${typeof vacFichaBotao==='function'?vacFichaBotao(ordem):''} ${lvTag(o.lvl||0)} ${o.aberta?'<span class="tag o">aberta · valores provisórios</span>':''}${EXo?' <span class="tag r">excluída</span>':''}</h2>
  ${EXo?`<div class="note e"><b>Ordem excluída</b> em ${fmtDT(EXo.em)} por ${esc(EXo.por||'—')} · justificativa: ${esc(EXo.motivo)}. Está fora de todos os totais, painéis e relatórios; os dados continuam guardados. <button class="b sm" onclick="restaurarOrdem(${jsArg(ordem)})">Restaurar ordem</button></div>`:''}
  <div class="dnav small"><a href="#" data-go="dResumo">Resumo</a><a href="#" data-go="dProd">Produção (OEE)</a><a href="#" data-go="dGel">Gel</a><a href="#" data-go="dComps">Componentes</a><a href="#" data-go="dComent">Comentários e ações</a><a href="#" data-go="dVers">Versões</a><a href="#" data-go="dSap">Dados de origem (SAP)</a><a href="#" data-go="dHist">Histórico</a></div>
@@ -2168,8 +2198,8 @@ function openOrder(ordem){
  <div><h3>Comentários e causas <button class="b sm" onclick="commentForm(${jsArg(ordem)},'')">+ Comentário</button></h3>
   ${coms.length?coms.map(c=>`<div class="hist"><div class="h">${fmtDT(c.data)} · ${esc(c.user||'—')} · ${esc(c.tipo)}${c.comp?' · componente '+esc(c.comp):''}${c.alteradoEm?' · editado':''}</div>${c.causa?`<b>${esc(c.causa)}${c.sub?' › '+esc(c.sub):''}</b><br>`:''}${esc(c.texto)}
    <div><button class="b sm" onclick="commentForm(${jsArg(ordem)},${jsArg(c.comp||'')},${jsArg(c.id)})">Editar</button> <button class="b sm d" onclick="delComment(${jsArg(c.id)})">Excluir</button></div></div>`).join(''):'<p class="muted small">Sem comentários.</p>'}</div>
- <div><h3>Ações <button class="b sm" onclick="actionForm(null,${jsArg(ordem)})">+ Ação</button></h3>
-  ${acs.length?acs.map(a=>`<div class="hist"><div class="h">${esc(a.status)} · resp. ${esc(a.resp||'—')} · prazo ${fmtD(a.prazo)||'—'}${acVencida(a)?' · <b class="bad">vencida</b>':''}</div>${esc(a.desc)}${a.comp?' <span class="tag">'+esc(a.comp)+'</span>':''} <button class="b sm" onclick="actionForm(${jsArg(a.id)})">Editar</button></div>`).join(''):'<p class="muted small">Sem ações.</p>'}
+ <div><h3>Ações <button class="b sm" onclick="actionForm(null,${jsArg(ordem)})" title="Abre Iniciativas / Ações com a ordem preenchida">+ Ação ↗</button></h3>
+  ${acs.length?acs.map(a=>`<div class="hist"><div class="h">${esc(WAc.statusTxt(a))} · resp. ${esc(a.resp||'—')} · prazo ${fmtD(a.prazo)||'—'}${acVencida(a)?' · <b class="bad">vencida</b>':''}</div>${esc(a.desc)}${a.comp?' <span class="tag">'+esc(a.comp)+'</span>':''} <button class="b sm" onclick="actionForm(${jsArg(a.id)})">${a.inic?'Abrir ↗':'Editar'}</button></div>`).join(''):'<p class="muted small">Sem ações.</p>'}
   <h3 id="dVers" style="margin-top:12px">Versões importadas</h3>
   <table class="small"><tr><th>Importação</th><th>Mês</th><th class="n">Desvio</th><th></th></tr>${versions.map(v=>`<tr><td>${fmtDT(v.imp?.data)} · ${esc(v.imp?.usuario||'')}<div class="muted">${esc(v.imp?.arquivo||'')}</div></td><td>${v.per.map(fmtM).join(', ')}</td><td class="n">${fmtR(v.d)}</td><td>${v.vig?'<span class="tag b">vigente</span>':v.imp?.status==='cancelado'?'<span class="tag">desfeita</span>':'<span class="tag">substituída</span>'}</td></tr>`).join('')}</table></div></div>`;
  h+=dadosOrigem(ordem,all,imps)+historicoOrdem(ordem);
@@ -2201,7 +2231,7 @@ function justForm(titulo,txt,btn,cb){$('#mFormBody').innerHTML=`<h3>${esc(titulo
   $('#mForm').classList.remove('on');await cb(m)}}
 function excluirOrdem(ordem){justForm('Excluir ordem '+ordem,'A ordem sai de todos os totais, painéis, relatórios e do que as outras páginas leem. Nada é apagado: custos, comentários, ações e importações continuam guardados, e a ordem pode ser restaurada na aba <b>Excluídas</b> do Painel.','Excluir ordem',async m=>{
   await commit('Ordem excluída',b=>{b.exclusoes=b.exclusoes||[];b.exclusoes.push({id:uid(),ordem,em:nowISO(),por:user(),motivo:m,ativo:true})},`ordem ${ordem} · ${m}`);
-  toast('Ordem '+ordem+' excluída. Restaure em Painel › Excluídas.',5000);openOrder(ordem)})}
+  toast('Ordem '+ordem+' excluída. Restaure em Visão Geral › Excluídas.',5000);openOrder(ordem)})}
 function restaurarOrdem(ordem){justForm('Restaurar ordem '+ordem,'A ordem volta a contar em todos os totais, painéis e relatórios.','Restaurar',async m=>{
   await commit('Ordem restaurada',b=>{for(const e of b.exclusoes||[])if(e.ordem===ordem&&e.ativo!==false){e.ativo=false;e.restauradoEm=nowISO();e.restauradoPor=user();e.motivoRestauro=m}},`ordem ${ordem} · ${m}`);
   toast('Ordem '+ordem+' restaurada.');if(CUR_ORD===ordem)openOrder(ordem)})}
@@ -2234,6 +2264,7 @@ async function delComment(id){const c=B.comments.find(x=>x.id===id);if(!c||!conf
  await commit('Comentário excluído',b=>{const x=b.comments.find(y=>y.id===id);if(x){x.ativo=false;x.excluidoEm=nowISO();x.excluidoPor=user()}},`ordem ${c.ordem}`);openOrder(c.ordem)}
 const ST_AC=['aberta','em análise','planejada','em andamento','aguardando recurso','aguardando validação','concluída','eficácia em acompanhamento','encerrada eficaz','encerrada sem eficácia','cancelada'];
 function actionForm(id,ordem){
+ if(WAc.desvia(id,ordem))return;   /* 1.8.28 · WST-03 */
  const a=id?B.actions.find(x=>x.id===id):null;ordem=a?.ordem??ordem??'';const co=causaOpts(a?.causa);
  /* listas para escolher: ordens, componentes (da ordem escolhida ou todos), responsáveis e áreas já usados */
  const ordsL=aggOrders(vigRows()).sort((x,y)=>x.per<y.per?1:x.per>y.per?-1:y.d-x.d);
@@ -2521,7 +2552,7 @@ function docPorTipo(de,ate){const T=porTipoOrdem(de,ate),per=de===ate?fmtML(de):
   ...TIPOS_ORD.map(([k,nome])=>tabOrd(k,nome)).filter(Boolean),
   ...(T.G.sem.ords.length?[{tipo:'texto',titulo:'Sem classificação',texto:'Ordens cujo catálogo não está no cadastro do Portal e que não são só em L/G/KG no MB51. Cadastre o catálogo (Portal › Catálogos › Tipo de item) para que entrem em produção ou preparação.'}]:[])]}}
 function docMensal(per){const R=resumoPeriodo(per,per);const meta=metaPer(per);const done=['concluída','encerrada eficaz','encerrada sem eficácia','cancelada'];
- const acs=B.actions.filter(a=>!done.includes(a.status));
+ const acs=WAc.todas().filter(a=>!done.includes(a.status));
  return{titulo:'Waste por ordem · '+fmtML(per),subtitulo:'KKBC_ORD · Materials · '+seloTexto({de:per,ate:per}),periodo:fmtML(per)+' ('+fyOf(per)+' P'+fpOf(per)+')',arquivo:'Waste_'+per,blocos:[
   {tipo:'kpis',titulo:'Resumo',itens:[['Var. material',fmtC(R.vMat),'desvio de estrutura',R.vMat>0?'bad':'good'],['Scrap',fmtC(R.vScr),'desvio total − estrutura',R.vScr>0?'bad':'good'],['Total',fmtC(R.liq),meta!=null?'meta '+fmtR(meta)+metaNota(per):'real − meta',R.liq>0?'bad':'good'],
    ['Perdas',fmtC(R.perda),'desvios positivos','bad'],['Ganhos',fmtC(R.ganho),'consumo abaixo da meta','good'],['Desvio %',fmtP(R.base?R.liq/R.base:null),'sobre o custo meta',''],['Por milhão de tubos',R.qE?fmtR(R.liq/R.qE*1e6,2):'–','',''],['Ordens',String(R.ords.length),`${R.ords.filter(o=>o.lvl===3).length} críticas · ${R.ords.filter(o=>o.lvl===2).length} altas`,'']]},
@@ -2533,7 +2564,7 @@ function docMensal(per){const R=resumoPeriodo(per,per);const meta=metaPer(per);c
   {tipo:'tabela',titulo:'Ordens altas e críticas',cab:['Ordem','Catálogo','Descrição','Desvio','Desvio %','Nível','Causa'],num:[3,4],linhas:R.crit.map(o=>[o.ordem,o.cat||'',o.prodDesc||'',fmtR(o.d),fmtP(o.pct),LV[o.lvl],causeOf(o.ordem)||'sem causa']),destaque:R.crit.map(o=>hl(o.lvl)),bruto:R.crit.map(o=>[o.ordem,o.cat||'',o.prodDesc||'',+o.d.toFixed(2),o.pct,LV[o.lvl],causeOf(o.ordem)||''])},
   ...(acs.length?[{tipo:'tabela',titulo:'Ações abertas',cab:['Ação','Ordem','Responsável','Prazo','Status'],linhas:acs.map(a=>[a.desc,a.ordem||'',a.resp||'',fmtD(a.prazo),a.status+(acVencida(a)?' (vencida)':'')]),destaque:acs.map(a=>acVencida(a)?'hl2':'')}]:[])]}}
 function docOrdem(ordem){const os=aggOrders(vigRows().filter(r=>r.ordem===ordem));const o=os[os.length-1];if(!o)return null;const comps=o.rows.filter(r=>!isDelivery(r)).sort((a,b)=>dev(b)-dev(a));
- const coms=B.comments.filter(c=>c.ordem===ordem&&c.ativo!==false);const acs=B.actions.filter(a=>a.ordem===ordem);
+ const coms=B.comments.filter(c=>c.ordem===ordem&&c.ativo!==false);const acs=WAc.todas().filter(a=>a.ordem===ordem);
  return{titulo:'Ordem '+ordem,subtitulo:`${o.cat||''} ${o.prodDesc||''}${o.lote?' · lote '+o.lote:''}`,periodo:fmtML(o.per),arquivo:'Waste_ordem_'+ordem,blocos:[
   {tipo:'kpis',itens:[['Custo meta',fmtC(o.cTc),'',''],['Custo real',fmtC(o.cRc),'',''],['Desvio',fmtC(o.d),LV[o.lvl],o.d>0?'bad':'good'],['Var. material',fmtC(sum(comps,dEst)),'',''],['Scrap',fmtC(sum(comps,scrapOf)),'',''],['Qtd entregue',fmtQ(o.qEnt),'',''],['R$ por milhão',o.pm!=null?fmtR(o.pm,2):'–','','']]},
   {tipo:'tabela',titulo:'Componentes',cab:['Componente','Descrição','Qtd meta','Qtd real','Custo meta','Custo real','Desvio','Efeito qtd','Efeito preço','Causa'],num:[2,3,4,5,6,7,8],
@@ -2569,7 +2600,7 @@ function buscaPerdas(k){const n=x=>String(x??'').normalize('NFD').replace(/[̀-�
  let nc=0;for(const[c,x]of cats){if(nc>=6)break;if(n(c+' '+x.d).includes(k)){nc++;R.push({tipo:'Catálogo',txt:c,sub:`${x.d} · ${x.n} ordens · desvio ${fmtR(x.dv)}`,go:()=>{Object.assign(F,{prod:c,comp:'',busca:''});showTab('painel')}})}}
  for(const o of ords){if(R.length>=24)break;if(ordemTexto(o).includes(k))R.push({tipo:'Ordem',txt:`${o.ordem} · ${o.cat||''}`,sub:`${o.prodDesc||''} · ${fmtML(o.per)} · desvio ${fmtR(o.d)} · ${LV[o.lvl]}`,go:()=>openOrder(o.ordem)})}
  {const EX=exclMap();if(EX.size)for(const o of aggOrders(vigRowsAll().filter(r=>EX.has(r.ordem)))){if(R.length>=26)break;if(ordemTexto(o).includes(k))R.push({tipo:'Ordem excluída',txt:o.ordem+' · '+(o.cat||''),sub:'justificativa: '+(EX.get(o.ordem).motivo||''),go:()=>openOrder(o.ordem)})}}
- let na=0;for(const a of B.actions){if(na>=6)break;if(n([a.desc,a.resp,a.ordem,a.causa,a.status].join(' ')).includes(k)){na++;R.push({tipo:'Ação',txt:a.desc,sub:`${a.status}${a.resp?' · '+a.resp:''}${a.prazo?' · prazo '+fmtD(a.prazo):''}${a.ordem?' · ordem '+a.ordem:''}`,go:()=>{showTab('acoes');actionForm(a.id)}})}}
+ let na=0;for(const a of WAc.todas()){if(na>=6)break;if(n([a.desc,a.resp,a.ordem,a.causa,a.status].join(' ')).includes(k)){na++;R.push({tipo:'Ação',txt:a.desc,sub:`${a.status}${a.resp?' · '+a.resp:''}${a.prazo?' · prazo '+fmtD(a.prazo):''}${a.ordem?' · ordem '+a.ordem:''}`,go:()=>{showTab('acoes');actionForm(a.id)}})}}
  return R.slice(0,30)}
 
 /* ===================== OUTRAS ABAS ===================== */
@@ -2588,9 +2619,9 @@ async function undoImport(id){const i=B.imports.find(x=>x.id===id);const pers=(i
   const restored=new Set();for(const r of b.rows)if(r.sup===id){delete r.sup;restored.add(r.imp)}
   for(const iid of restored){const y=b.imports.find(z=>z.id===iid);if(y&&y.status==='substituído por versão posterior')y.status='importado'}},`${i.arquivo}${mot?' · '+mot:''}`)}
 function renderAcoes(){
- const all=$('#acTodas').checked;const acs=B.actions.filter(a=>all||!DONE_AC.includes(a.status)).sort((a,b)=>(a.prazo||'9')<(b.prazo||'9')?-1:1);
+ WAc.talvez();const all=$('#acTodas').checked;const acs=WAc.todas().filter(a=>all||!DONE_AC.includes(a.status)).sort((a,b)=>(a.prazo||'9')<(b.prazo||'9')?-1:1);
  $('#tblAcoes').innerHTML=`<table><tr><th>Ação</th><th>Ordem</th><th>Componente</th><th>Causa</th><th>Responsável</th><th>Abertura</th><th>Prazo</th><th class="n">Atraso</th><th>Status</th><th class="n">Econ. estimada</th></tr>
- ${acs.map(a=>{const late=acVencida(a)?Math.round((new Date(todayISO())-new Date(a.prazo))/864e5):0;return`<tr class="click" data-id="${a.id}"><td>${esc(a.desc)}</td><td>${a.ordem?`<a href="#" onclick="event.stopPropagation();openOrder(${jsArg(a.ordem)});return false">${esc(a.ordem)}</a>`:''}</td><td>${esc(a.comp||'')}</td><td>${esc(a.causa||'')}</td><td>${esc(a.resp||'')}</td><td>${fmtD(a.abertura)}</td><td>${fmtD(a.prazo)}</td><td class="n ${late?'bad':''}">${late?late+' d':''}</td><td>${esc(a.status)}</td><td class="n">${a.econ!=null?fmtR(a.econ):''}</td></tr>`}).join('')||'<tr><td colspan="10" class="muted">Nenhuma ação.</td></tr>'}</table>`;
+ ${acs.map(a=>{const late=acVencida(a)?Math.round((new Date(todayISO())-new Date(a.prazo))/864e5):0;return`<tr class="click" data-id="${a.id}"><td>${esc(a.desc)}</td><td>${a.ordem?`<a href="#" onclick="event.stopPropagation();openOrder(${jsArg(a.ordem)});return false">${esc(a.ordem)}</a>`:''}</td><td>${esc(a.comp||'')}</td><td>${esc(a.causa||'')}</td><td>${esc(a.resp||'')}</td><td>${fmtD(a.abertura)}</td><td>${fmtD(a.prazo)}</td><td class="n ${late?'bad':''}">${late?late+' d':''}</td><td>${esc(WAc.statusTxt(a))}</td><td class="n">${a.econ!=null?fmtR(a.econ):''}</td></tr>`}).join('')||'<tr><td colspan="10" class="muted">Nenhuma ação.</td></tr>'}</table>`;
  $$('#tblAcoes tr.click').forEach(tr=>tr.onclick=()=>actionForm(tr.dataset.id));
 }
 function qualityIssues(){
@@ -2698,7 +2729,7 @@ function renderMeta(){
  const rc=$('#btnReconn');if(rc)rc.onclick=async()=>{const h=await IDB.get('dir');if(await connectDir(h,{ask:true})){ST.handleWaiting=false;renderAll();renderEntrada();toast('Conectado à pasta.')}};
  vacUserRender();
  $('#appVer').textContent='v'+APP_VER;Logo.apply();renderSysNav();syncCentsBtns();
- const v=B.actions.filter(acVencida).length;$('#bdAc').hidden=!v;$('#bdAc').textContent=v;
+ const v=WAc.todas().filter(acVencida).length;$('#bdAc').hidden=!v;$('#bdAc').textContent=v;
 }
 function moedaSegRender(){const m=moedaVer();$$('[data-moeda]').forEach(b=>b.classList.toggle('p',b.dataset.moeda===m));let n=$('#moedaAviso');const lst=[...MOEDA_FALTA];
  if(!lst.length){if(n)n.remove();return}if(!n){n=document.createElement('div');n.id='moedaAviso';n.className='note w small';const c=$('#chips');c.parentNode.insertBefore(n,c)}
@@ -3031,6 +3062,21 @@ function vacExportsOk(ex, conhecida = 1) {
   const v = ex.exportsVersion; if (v == null || +v <= conhecida) return { ok: true, versao: v == null ? null : +v, motivo: '' };
   return { ok: false, versao: +v, motivo: `exports na versão ${v}; esta página só conhece até a ${conhecida}: atualize esta página` };
 }
+/* kit v2.1 · UX-04 (Fase 7 do briefing, D8): pílula única "Cadastro rev N", sempre visível, igual em todas as páginas.
+   rev = revisão do cadastro geral do Portal (vacutainer-cadastros.json) que esta página está usando. Compara com a cópia mais
+   nova que alguma página já leu neste computador (localStorage 'vac.cadastros'): se esta estiver atrás, mostra "desatualizada"
+   (a página foi aberta antes da última gravação no Portal). o = { fonte: 'pasta'|'copia'|'teste'|…, revAt, revBy, portal:true }. */
+function vacCadPilula(rev, o = {}) {
+  const e = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  const AJ = 'Revisão do cadastro geral do Portal (vacutainer-cadastros.json) que esta página está usando. Cada gravação no Portal soma 1. Todas as páginas devem mostrar o mesmo número; se esta estiver atrás, ela foi aberta antes da última mudança no Portal: clique em ↻ Sincronizar ou recarregue (F5). Não é a revisão da base da própria página.';
+  if (rev == null) return `<span class="pill none" data-vac-cadrev="" title="${e('Cadastro do Portal ainda não lido nesta página (pasta sem vacutainer-cadastros.json ou não conectada). ' + AJ)}">Cadastro: não lido</span>`;
+  let ult = null; try { const c = JSON.parse(localStorage.getItem('vac.cadastros') || 'null'); if (c && c.rev != null && isFinite(+c.rev)) ult = +c.rev; } catch (x) { }
+  const atras = !o.portal && ult != null && +rev < ult, copia = o.fonte && o.fonte !== 'pasta' && o.fonte !== 'teste';
+  const cls = atras ? 'warn' : copia ? 'warn' : o.portal ? 'ok' : 'info';
+  const quando = o.revAt ? ` Gravada em ${String(o.revAt).slice(8, 10)}/${String(o.revAt).slice(5, 7)} ${String(o.revAt).slice(11, 16)}${o.revBy ? ' por ' + o.revBy : ''}.` : '';
+  const tit = (atras ? `Desatualizada: já existe a rev ${ult} neste computador. ` : '') + (copia ? 'Lida da cópia local (a pasta não respondeu). ' : '') + AJ + quando;
+  return `<span class="pill ${cls}" data-vac-cadrev="${e(rev)}" title="${e(tit)}">Cadastro rev ${e(rev)}${atras ? ' · desatualizada' : ''}${copia ? ' · cópia local' : ''} <span class="vac-ib" aria-hidden="true">ⓘ</span></span>`;
+}
 
 /* kit v2.1 · E5 (08/11/2026): ficha da ordem, do lote e da LP · índice da busca (Ctrl K) · link #ficha=ordem/<n>.
    A ficha SÓ mostra o que cada página publica no exports (regra 1: não recalcula, não lê a estrutura interna).
@@ -3042,10 +3088,10 @@ const vacFicha = (() => {
   const FONTES = [
     { id: 'oee', nome: 'Produção', base: 'oee-vacutainer-base.json', pega: ex => ({ porOrdem: ex.porOrdem || [], cob: ex.porOrdemCobertura || null, lotes: ex.lotes || [], porDiaTurno: ex.porDiaTurno || [], porDiaCatalogo: ex.porDiaCatalogo || [] }) },   /* Fase 4 · 4d: o Gel lê os turnos da Produção */
     { id: 'ordens', nome: 'SAP (Produção › Ordens)', sis: 'oee', base: 'ordens-base.json', pega: ex => ({ porOrdem: ex.porOrdem || [] }) },
-    { id: 'perdas', nome: 'Waste', base: 'perdas-base.json', pega: ex => ({ porOrdem: ex.porOrdem || [] }) },
+    { id: 'perdas', nome: 'Waste', base: 'perdas-base.json', pega: ex => ({ porOrdem: ex.porOrdem || [], acoesLegado: ex.acoesLegado || null }) },   /* Fase 6: Iniciativas traz as ações antigas */
     { id: 'gel', nome: 'Gestão de Gel', base: 'fifo-base.json', pega: ex => ({ ordens: ex.ordens || [], cob: ex.ordensCobertura || null, porDiaGel: ex.porDiaGel || [] }) },   /* Fase 4 · 4e */
     { id: 'paradas', nome: 'Paradas', base: 'paradas-base.json', pega: ex => ({ porOrdem: ex.porOrdem || [], eventos: (ex.eventos || []).filter(e => e && e.ordem) }) },
-    { id: 'inic', nome: 'Iniciativas', base: 'iniciativas-base.json', pega: ex => ({ acoes: ex.acoes || [] }) }];
+    { id: 'inic', nome: 'Iniciativas / Ações', base: 'iniciativas-base.json', pega: ex => ({ acoes: ex.acoes || [] }) }];
   const S = { dados: {}, idx: null, carregando: null, aberto: null, empilhado: false };
   const e2 = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   const tx = v => String(v ?? '').trim();

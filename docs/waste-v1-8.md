@@ -137,3 +137,7 @@ Exclusão mútua entre abas; retomada preserva o snapshot pendente mais recente.
 ## 1.8.27 · 10/11/2026 · Fase 3 do briefing (WST-02)
 
 A aba Importar leva ao Portal › Importação › Waste; a tela da KKBC_ORD continua aqui e abre direto por `#aba=importar` (botão do Portal). `exports.importacoes` com as competências de cada importação (desfeitas ficam fora). Detalhes: `docs/briefing-2026-11-09-fase0-fase1.md` § 7.
+
+## 1.8.28 · Ações em Iniciativas / Ações (Fase 6 do briefing, WST-03; 10/11/2026)
+
+"+ Ação" abre Iniciativas com a ação preenchida (origem Waste, vínculo com a ordem). O Waste lê as ações de lá pelo `exports` (ficha comum) e as mostra só para consulta. As ações antigas continuam editáveis aqui até Iniciativas › Configuração › Trazer ações do Waste (uma vez, com o histórico, pelo novo `exports.acoesLegado`); trazidas, saem das listas e da pendência daqui. Detalhes: `docs/briefing-2026-11-09-fase0-fase1.md` § 11.1.
