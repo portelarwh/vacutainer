@@ -1587,7 +1587,7 @@ const fileBackend={kind:'file',async commit(ch){applyLocal(ch);FS.pending.push(c
 async function fsRefresh(){if(S.mode!=='file'||FS.busy||ui.demo)return;try{const cur=await fsReadBase(fsKnown());if(cur&&!cur.same){FS.mod=cur.mod;FS.rev=cur.rev;FS.revBy=cur.by;loadData(cur.data);FS.pending.forEach(applyLocal);localBackend.save();render()}}catch(e){}}
 /* ================= V1.89 · integração com as outras páginas (Portal, OEE, Perdas) ================= */
 // versão da página (topo, Guia e base gravada)
-const APP_VERSION='2.13';   /* 2.11 · C2–C6: kit com a ficha por pasta (AT-08) e a contagem da fila durável (Portal › Versões) */   /* 2.10 · C1: alterações pendentes na fila durável do kit (sem perda entre abas) */   /* 2.09 · E11: busca do kit leva o equipamento à ficha em Equipamentos */   /* 2.08 · E8: kit com "+ Abrir ação" na ficha da ordem */   /* 2.07 · E5: ficha da ordem comum (botão na ordem) e busca por ordem, lote e LP */   /* 2.06 · E3: número digitado só aceito inteiro; E4: cobertura das ordens no exports */   /* 2.05 · E2: a versão da tela vem desta constante (o rótulo estava fixo em v2.01); kit com data local e meta do mês ponderada */   /* 2.04 · revisão 065fe6f: restauração por arquivo confirma e não segue sem a cópia anterior; CSV sem fórmulas; índice por dia no Painel */
+const APP_VERSION='2.14';   /* 2.14 · ARQ-09: sem entrada própria de "Modo exemplo" */   /* 2.11 · C2–C6: kit com a ficha por pasta (AT-08) e a contagem da fila durável (Portal › Versões) */   /* 2.10 · C1: alterações pendentes na fila durável do kit (sem perda entre abas) */   /* 2.09 · E11: busca do kit leva o equipamento à ficha em Equipamentos */   /* 2.08 · E8: kit com "+ Abrir ação" na ficha da ordem */   /* 2.07 · E5: ficha da ordem comum (botão na ordem) e busca por ordem, lote e LP */   /* 2.06 · E3: número digitado só aceito inteiro; E4: cobertura das ordens no exports */   /* 2.05 · E2: a versão da tela vem desta constante (o rótulo estava fixo em v2.01); kit com data local e meta do mês ponderada */   /* 2.04 · revisão 065fe6f: restauração por arquivo confirma e não segue sem a cópia anterior; CSV sem fórmulas; índice por dia no Painel */
 /* 2.03 · situação "em atualização" (kit: selo, pílula e faixa; docs/paginas-construcao.md) */
 /* 2.02 · relatório montado: todas as linhas no PDF, comentário, aviso de corte no texto; Painel em 1º; aba inicial do perfil; impressão e PDF no tema claro */
 /* 1.99 · menu Mais do cabeçalho (vac-visual v1): fecha ao escolher uma ação, ao clicar fora e com Esc */
@@ -1862,7 +1862,7 @@ async function fsBackupCopy(tipo){const name=bkNome(tipo);const cur=await (await
   const bf=await dir.getFileHandle(name,{create:true});const w=await bf.createWritable();await w.write(await cur.text());await w.close();fsLog('Backup criado: '+PAGE.backupDir+'/'+name);return PAGE.backupDir+'/'+name}
 async function backupNow(){
   if(S.mode==='file'&&FS.base){try{if(FS.pending.length)await fsFlush();const w=await fsBackupCopy('manual');toast('Backup criado: '+w)}catch(e){toast('Não consegui criar o backup: '+(e.message||e))}return}
-  if(ui.demo){toast('Modo exemplo: nada é gravado.');return}
+  if(ui.demo){toast('Demonstração: nada é gravado.');return}
   offerFile(bkNome('manual'),JSON.stringify(snapshotData()));toast('Sem pasta conectada: o backup foi oferecido para baixar.')}
 // lista: backups da pasta do módulo e os antigos soltos em 00. Backups (selo "local antigo")
 async function fsBackupList(){const out=[];const base=PAGE.baseFile.replace(/\.json$/i,'');const ok=n=>/\.json$/i.test(n)&&(n.startsWith(base+'_')||n.startsWith(base+'-'));
@@ -2266,14 +2266,14 @@ function enterDemo(){
   const keep={logo:S.config.logo,pageName:S.config.pageName};
   try{buildDemo()}catch(e){console.error(e)}
   Object.assign(S.config,keep);
-  render();window.scrollTo({top:0});toast('Modo exemplo ativado. Nada do que for feito aqui é gravado.');
+  render();window.scrollTo({top:0});toast('Demonstração ativada. Nada do que for feito aqui é gravado.');
 }
 function exitDemo(silent){
   if(vacDemo.ativo)return vacDemo.sair();
   if(!ui.demo)return;ui.demo=false;ui.round=ui._realRound||null;ui._realRound=null;ui.rgDraft=null;ui.tsort={};resetState();
   if(dbRef&&liveCache&&applyLive){applyLive()}
   else{backend=localBackend;S.mode='local';if(!localBackend.load())resetState();if(FS.on&&FS.base){fsUse(FS.base).catch(()=>{})}render()}
-  if(!silent)toast('Modo exemplo encerrado. Voltando aos dados reais.');
+  if(!silent)toast('Demonstração encerrada. Voltando aos dados reais.');
 }
 // limpa a base (dados), com opção de manter as configurações
 async function clearDatabase(keepCfg){
@@ -2560,15 +2560,15 @@ function renderMeta(){
   const pb=S.mode==='demo'?0:[...S.lps.values()].filter(pendTotal).length;
   const sap=last?`<span class="stp" title="${esc('Arquivo: '+(last.fileName||'colado'))}">SAP ${fmtD(last.at).slice(0,5)} ${fmtDT(last.at).slice(11)} · ${nf0.format(last.rows)} LPs</span>`:'<span class="stp w">Nenhum relatório SAP</span>';
   const bx=pb?`<button type="button" class="stp w" data-tab="pend" title="Baixas registradas aqui que ainda não apareceram no relatório SAP">${pb} baixa(s) pendente(s)</button>`:'';
-  if(S.mode==='demo'){$('#stBase').innerHTML=`<span class="stp vex" title="Nada do que for feito aqui é gravado"><b style="color:inherit">Dados de exemplo</b></span><button class="btn sm" data-act="exitDemo">Sair do exemplo</button>${sap}`}
+  if(S.mode==='demo'){$('#stBase').innerHTML=`<span class="stp vex" title="Nada do que for feito aqui é gravado"><b style="color:inherit">Demonstração</b></span><button class="btn sm" data-act="exitDemo">Sair da demonstração</button>${sap}`}
   else{
   const np=S.mode==='file'?FS.pending.length:0;const md=S.mode==='file'?[FS.err||np?'':'db',`Base na pasta ${FS.base?FS.base.name:''}`,FS.err?'Última gravação na pasta falhou: '+FS.err+'. As alterações estão guardadas neste computador e o sistema tenta gravar de novo a cada 30 segundos.':'Todos que abrem a página por esta pasta veem os mesmos dados']:S.mode==='db'?['db','Base compartilhada','Todos com acesso à página veem e registram os mesmos dados']:S.mode==='local'?['','Salvo neste navegador','Os dados ficam só neste computador; exporte o backup com frequência']:['demo','Dados de exemplo','Importe o relatório para começar'];
   const lbl=S.mode==='file'?`Base na pasta${FS.rev?' · rev '+FS.rev:''}`:md[1];
   $('#stBase').innerHTML=`<span class="stp${FS.err?' c':''}" title="${esc((S.mode==='file'&&FS.base?'Pasta '+FS.base.name+'. ':'')+md[2])}"><span class="dot ${md[0]}"></span>${lbl}</span>${np?`<span class="stp w" title="${esc(md[2])}">${np} gravação(ões) pendente(s)</span>`:''}${S.mode==='local'&&FS_OK()?'<button class="btn sm" data-act="fsConnect" title="Usar a base de dados da pasta da rede">Conectar à pasta</button>':''}${sap}${bx}`;}
   let b='';
-  if(S.mode==='demo')b=`<div class="banner demo"><p><b>Modo exemplo.</b> Os dados são simulados para apresentar a plataforma. Você pode navegar, registrar baixas e simular à vontade: nada é gravado na base real.</p><button class="btn" data-act="exitDemo">Sair do exemplo</button></div>`;
+  if(S.mode==='demo')b=`<div class="banner demo"><p><b>Demonstração.</b> Os dados são simulados para apresentar a plataforma. Você pode navegar, registrar baixas e simular à vontade: nada é gravado na base real.</p><button class="btn" data-act="exitDemo">Sair da demonstração</button></div>`;
   else if(FS.newFile&&S.mode==='file'&&!fsFileDone(FS.newFile.name,FS.newFile.mod))b=`<div class="banner"><p><b>Arquivo novo na pasta do SAP:</b> <span class="mono">${esc(FS.newFile.name)}</span>, salvo em ${fmtDT(isoDT(new Date(FS.newFile.mod)))}. Pode ser o relatório de estoque (a fila FIFO ainda usa o anterior) ou o histórico de transações de LP: a página reconhece ao abrir.</p><button class="btn primary" data-act="fsNewImport">Atualizar agora</button></div>`;
-  else if(!last&&!S.lps.size)b=`<div class="banner"><p><b>Nenhum relatório importado.</b> Importe o relatório de estoque de LPs do SAP (Excel ou colado do Excel) para começar, ou abra o exemplo para ver a plataforma preenchida.</p><button class="btn" data-act="enterDemo">Ver exemplo</button><button class="btn primary" data-act="import">Importar relatório</button></div>`;
+  else if(!last&&!S.lps.size)b=`<div class="banner"><p><b>Nenhum relatório importado.</b> Importe o relatório de estoque de LPs do SAP (Excel ou colado do Excel) para começar.</p><button class="btn primary" data-act="import">Importar relatório</button></div>`;
   else if(last&&daysBetween(last.at,todayISO())>7)b=`<div class="banner"><p>O último relatório tem <b>${daysBetween(last.at,todayISO())} dias</b>. Importe uma versão nova para manter a fila FIFO confiável.</p><button class="btn" data-act="import">Importar relatório</button></div>`;
   $('#banner').innerHTML=b;
 }
@@ -4154,7 +4154,7 @@ function txPreview(list,name,mod){const T=txSummary(list);pendingTx={list,name,m
 async function doTxImport(){const P=pendingTx;if(!P)return;const go=$('#iGo');go.disabled=true;go.textContent='Importando…';
   try{const T=await txImport(P.list,P.name,P.mod);pendingTx=null;closeModal();toast(`Histórico SAP: ${nf0.format(T.novos.length)} transações novas importadas.`,5000);render()}catch(e){go.disabled=false;go.textContent='Importar histórico'}}
 function openImport(){
-  if(ui.demo&&!vacDemo.ativo){exitDemo(true);toast('Modo exemplo encerrado para importar o relatório real.')}
+  if(ui.demo&&!vacDemo.ativo){exitDemo(true);toast('Demonstração encerrada para importar o relatório real.')}
   pendingImport=null;pendingTx=null;
   modal('Importar relatório',`
    <div class="drop" id="drop"><p style="margin:0 0 8px">Arraste o arquivo Excel (.xlsx, .xls, .csv) aqui</p><label class="btn primary" style="display:inline-block">Escolher arquivo<input type="file" id="iFile" accept=".xlsx,.xls,.xlsm,.csv,.txt" hidden></label>${S.mode==='file'?' <button class="btn" type="button" id="iFolder">Buscar o mais recente na pasta</button>':''}</div>
@@ -4366,14 +4366,14 @@ function openConfig(sec){
   if(s==='fmts')body=fmtCfgHtml();
   if(s==='equip')body=equipCfgHtml();
   if(s==='motivos')body=motCfgHtml();
-  if(s==='backup')body=`<div class="catform"><h3 style="margin:0">Modo exemplo</h3><p class="sub" style="margin:0">Preenche a plataforma com dados simulados para apresentar como ela funciona. Os dados reais continuam guardados e nada do que for feito no exemplo é gravado.</p>
-     <div>${ui.demo?'<button class="btn primary" data-act="exitDemo">Sair do exemplo</button>':'<button class="btn primary" data-act="enterDemo">Abrir exemplo</button>'}</div></div>
+  /* 2.14 · ARQ-09: sem "Modo exemplo" próprio; para apresentar, a Demonstração integrada do topo */
+  if(s==='backup')body=`${ui.demo?'<div class="catform"><h3 style="margin:0">Demonstração</h3><p class="sub" style="margin:0">Dados simulados; nada é gravado na base real.</p><div><button class="btn primary" data-act="exitDemo">Sair da demonstração</button></div></div>':''}
    ${ui.demo?'':`<div class="catform" style="border-color:color-mix(in srgb,var(--crit) 45%,var(--line))"><h3 style="margin:0;color:var(--crit)">Limpar base de dados</h3>
      <p class="sub" style="margin:0">Apaga ${S.mode==='db'?'da base compartilhada, para todos os usuários,':'deste navegador'} os LPs, baixas, histórico, relatórios importados, programação e registros de produção. Não dá para desfazer: exporte o backup antes.</p>
      <label><input type="checkbox" id="clKeep" checked> Manter as configurações (catálogos, parâmetros de processo, preço, zonas, cabeçotes)</label>
      <label class="f"><span>Para confirmar, digite LIMPAR</span><input type="text" id="clTxt" autocomplete="off" style="max-width:200px"></label>
      <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn" id="clBk">Exportar backup antes</button><button class="btn danger" id="clGo" disabled>Limpar base de dados</button></div><div id="clMsg"></div></div>`}
-   <div class="info">${ui.demo?'Modo exemplo ativo: o backup exporta os dados de exemplo.':S.mode==='db'?'Os dados ficam numa base compartilhada desta página: quem tem acesso vê e registra as mesmas informações. O backup é uma cópia de segurança extra.':S.mode==='local'?'Os dados estão salvos só neste navegador. Exporte o backup com frequência.':'Exemplo ativo: nada é gravado.'}</div>
+   <div class="info">${ui.demo?'Demonstração ativa: o backup exporta os dados simulados.':S.mode==='db'?'Os dados ficam numa base compartilhada desta página: quem tem acesso vê e registra as mesmas informações. O backup é uma cópia de segurança extra.':S.mode==='local'?'Os dados estão salvos só neste navegador. Exporte o backup com frequência.':'Exemplo ativo: nada é gravado.'}</div>
    <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn" id="bkE">Exportar backup (JSON)</button><label class="btn">Restaurar backup<input type="file" id="bkI" accept=".json" hidden></label><button class="btn" data-act="exportFifo">Fila FIFO (CSV)</button><button class="btn" data-act="exportHist">Histórico (CSV)</button></div><div id="bkMsg"></div><div id="bkList"></div>`;
   modal('Configuração',nav+`<div class="cfgbody">${body}</div>`,'',()=>{
     {const d=$('#ov .dlg');if(d)d.style.width='min(1280px,97vw)'}
@@ -7419,7 +7419,7 @@ document.addEventListener('keydown',e=>{if(e.key!=='Enter'||e.target.id!=='q2'||
 let qT;
 document.addEventListener('input',e=>{if(e.target.id!=='q2')return;clearTimeout(qT);const v=e.target.value,pos=e.target.selectionStart;if(ui.tab!=='op'){ui.qs[ui.tab]=v;applyTabFilter(true);return}qT=setTimeout(()=>{ui.q=v;render();const el=$('#q2');if(el){el.focus();try{el.setSelectionRange(pos,pos)}catch(_){}}},200)});
 $('#btnImport').addEventListener('click',openImport);
-$('#btnSync').addEventListener('click',async()=>{if(ui.demo){toast('Modo exemplo: nada é gravado.');return}
+$('#btnSync').addEventListener('click',async()=>{if(ui.demo){toast('Demonstração: nada é gravado.');return}
   if(S.mode==='file'){try{if(FS.pending.length)await fsFlush();await fsRefresh();renderMeta();toast(FS.err?'A pasta não respondeu: as alterações continuam guardadas neste computador.':`Sincronizado com a pasta · rev ${FS.rev||0}.`)}catch(e){toast('Não consegui sincronizar: '+(e.message||e))}}
   else if(S.mode==='db'){render();toast('Base compartilhada atualizada.')}else toast(FS_OK()?'Sem pasta conectada: use Conectar à pasta.':'Dados salvos só neste navegador.')});
 $('#btnBackup').addEventListener('click',backupNow);

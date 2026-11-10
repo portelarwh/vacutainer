@@ -26,7 +26,13 @@ R("location.href=sysHref(port,'versoes')", "vacDemo.ir(sysHref(port,'versoes'))"
 R('<button class="btn primary" id="uOk">Usar este nome</button>', '<button class="btn primary" id="uOk">Usar este nome</button><button class="btn" data-vdemo-entrar onclick="vacDemo.entrar()">Demonstração do sistema</button>')
 R('<button class="btn ghost" id="wLocal">Começar só neste navegador</button>', '<button class="btn ghost" id="wLocal">Começar só neste navegador</button><button class="btn" data-vdemo-entrar onclick="vacDemo.entrar()">Demonstração do sistema</button>')
 R('Abre uma <b>cópia em memória</b> da base com cerca de 3 semanas de dados fictícios (hora a hora, paradas, scrap, dias fechados e abertos), para treinar ou demonstrar. Nada é gravado na pasta da rede nem no navegador: ao sair, tudo volta exatamente como estava.', 'Abre a <b>demonstração integrada do sistema</b>, com produção, perdas, gel, paradas, equipamentos e ações fictícias relacionadas. Você pode editar o exemplo e navegar entre as páginas. As bases reais ficam preservadas; fechar ou recarregar a demonstração descarta as alterações fictícias.')
-R("const APP_VERSION = '2.0.1';","const APP_VERSION = '2.4.20';")
+R("const APP_VERSION = '2.0.1';","const APP_VERSION = '2.4.21';")
+# 2.4.21 · ARQ-09 (briefing 09/11/2026, opção a): sem "Modo exemplo" próprio nas Configurações; para apresentar, a Demonstração integrada
+#          (botão do topo). Store.enterExample continua: é o que a Demonstração e os testes usam por dentro.
+R("['auditoria', 'Auditoria'], ['demo', 'Modo exemplo'], ['ajuda', 'Ajuda e aceite']","['auditoria', 'Auditoria'], ['ajuda', 'Ajuda e aceite']")
+R("<p><b>Modo exemplo.</b> Você está numa cópia com dados fictícios. Nada é gravado na base da pasta; ao sair, tudo volta como estava.</p><button class=\"btn sm primary\" data-act=\"exitex\">Sair do modo exemplo</button>","<p><b>Demonstração.</b> Você está numa cópia com dados fictícios. Nada é gravado na base da pasta; ao sair, tudo volta como estava.</p><button class=\"btn sm primary\" data-act=\"exitex\">Sair da demonstração</button>")
+R("'exemplo': ['rule', 'Modo exemplo']","'exemplo': ['rule', 'Demonstração']")
+R("toast('Você saiu do modo exemplo.')","toast('Você saiu da demonstração.')")
 # 2.4.17 · C2–C6: kit com a ficha por pasta (AT-08) e a contagem da fila durável para o Portal (C5)
 # 2.4.16 · C1: kit com a fila durável (vacFila), formato da base (vacFormatoBase), link seguro (vacLinkSeguro) e trava da 2ª aba
 # 2.4.15 · E11: kit (busca leva o equipamento à ficha em Equipamentos; bases de Iniciativas e Equipamentos em 00. Bases)

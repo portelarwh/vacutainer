@@ -1257,7 +1257,7 @@ const U = (() => {
 
 /* ---- 02-model.js ---- */
 /* ================= modelo de dados, valores iniciais e integridade ================= */
-const APP_VERSION = '2.4.20';
+const APP_VERSION = '2.4.21';
 const SCHEMA_VERSION = 1;
 const BASE_FILE = 'oee-vacutainer-base.json';
 const BACKUP_DIR = '00. Backups';
@@ -4673,7 +4673,7 @@ function renderNow() {
 }
 const BASE_ST = {
   'conectado': ['ok', 'Base conectada'], 'salvo': ['ok', 'Base conectada · salvo'], 'cache': ['info', 'Cache local'], 'pendente': ['pend', 'Alteração pendente'], 'salvando': ['info', 'Salvando…'],
-  'conflito': ['crit', 'Conflito de versão'], 'erro': ['crit', 'Erro ao salvar'], 'somente-leitura': ['rule', 'Somente leitura'], 'reconectar': ['warn', 'Reconectar pasta'], 'arquivo': ['warn', 'Arquivo sem pasta'], 'iniciando': ['none', 'Abrindo…'], 'exemplo': ['rule', 'Modo exemplo']
+  'conflito': ['crit', 'Conflito de versão'], 'erro': ['crit', 'Erro ao salvar'], 'somente-leitura': ['rule', 'Somente leitura'], 'reconectar': ['warn', 'Reconectar pasta'], 'arquivo': ['warn', 'Arquivo sem pasta'], 'iniciando': ['none', 'Abrindo…'], 'exemplo': ['rule', 'Demonstração']
 };
 function renderTop() {
   const S = Store.S, d = db();
@@ -4700,7 +4700,7 @@ function renderTop() {
 function openBadge() { const n = db().productionDays.filter(d => !d.deleted && !d.demo && d.status !== 'fechado' && d.date <= U.today() && !Engine.isOffDay(db(), d)).length; return n ? `<span class="cnt" data-goto="pend-open" role="link" title="${n} lançamento(s) em aberto (não fechados). Clique para ver o que falta em Pendências.">${n}</span>` : ''; }
 function renderBanner() {
   const S = Store.S; let h = '';
-  if (S.mode === 'exemplo') h += `<div class="banner demo" role="status"><p><b>Modo exemplo.</b> Você está numa cópia com dados fictícios. Nada é gravado na base da pasta; ao sair, tudo volta como estava.</p><button class="btn sm primary" data-act="exitex">Sair do modo exemplo</button></div>`;
+  if (S.mode === 'exemplo') h += `<div class="banner demo" role="status"><p><b>Demonstração.</b> Você está numa cópia com dados fictícios. Nada é gravado na base da pasta; ao sair, tudo volta como estava.</p><button class="btn sm primary" data-act="exitex">Sair da demonstração</button></div>`;
   else if (S.status === 'conflito') h += `<div class="banner crit" role="alert"><p><b>A base externa foi alterada depois da última leitura.</b> ${S.conflict ? `Versão ${S.conflict.externalVersion} gravada por ${esc(S.conflict.externalBy || '—')} em ${U.brDT(S.conflict.externalAt)}. Sua cópia partiu da versão ${S.conflict.localVersion}.` : ''} Nada foi sobrescrito.</p><button class="btn primary sm" data-act="conflict">Resolver</button></div>`;
   else if (S.status === 'erro') h += `<div class="banner crit" role="alert"><p><b>Erro ao salvar:</b> ${esc(S.error || '')} As alterações continuam guardadas neste navegador.</p><button class="btn sm" data-act="retry">Tentar de novo</button></div>`;
   else if (S.status === 'reconectar') h += `<div class="banner warn"><p>O navegador precisa da sua autorização para acessar a pasta da base de novo.</p><button class="btn primary sm" data-act="reconnect">${I.folder} Reconectar pasta</button></div>`;
@@ -4790,7 +4790,7 @@ function bindGlobal() {
     else if (act === 'reconnect') { const h = await IDB.get('dirHandle'); if (h) run(() => connectFolder(h, true)); else { const d = await run(pickFolder); if (d) run(() => connectFolder(d, true)); } }
     else if (act === 'connect') { const d = await run(pickFolder); if (d) run(() => connectFolder(d, true)); }
     else if (act === 'rmdemo') Demo.remove();
-    else if (act === 'exitex') { if(vacDemo.ativo)return vacDemo.sair();Store.exitExample(); App.filters.lineId = 'line_vac'; toast('Você saiu do modo exemplo.'); render(); }
+    else if (act === 'exitex') { if(vacDemo.ativo)return vacDemo.sair();Store.exitExample(); App.filters.lineId = 'line_vac'; toast('Você saiu da demonstração.'); render(); }
     else if (act === 'vdemo') { App.filters.lineId = 'line_demo'; App.filters.from = U.addDays(U.today(), -21); App.filters.to = U.today(); go('overview'); }
     else if (act === 'fullsys') { App.op = false; try { history.replaceState(null, '', location.pathname + location.search); } catch (e) { } go('launch'); }
     else if (act === 'dlbase') { download(BASE_FILE, Store.downloadText()); await Store.markDownloaded(); render(); toast('Base baixada. Substitua o arquivo na pasta da rede.'); }
@@ -5907,7 +5907,7 @@ function projection(days, ff, from, to) {
 
 /* ---- 11-ui-config.js ---- */
 /* ================= Configurações ================= */
-const CFG_SECS = [['base', 'Base de dados'], ['usuario', 'Usuário'], ['estrutura', 'Estrutura'], ['turnos', 'Turnos'], ['catalogos', 'Catálogos'], ['metas', 'Metas e capacidades'], ['paradas', 'Tipos de parada'], ['parametros', 'Parâmetros de cálculo'], ['abas', 'Abas'], ['importacao', 'Importação'], ['exportacao', 'Exportação'], ['auditoria', 'Auditoria'], ['demo', 'Modo exemplo'], ['ajuda', 'Ajuda e aceite']];
+const CFG_SECS = [['base', 'Base de dados'], ['usuario', 'Usuário'], ['estrutura', 'Estrutura'], ['turnos', 'Turnos'], ['catalogos', 'Catálogos'], ['metas', 'Metas e capacidades'], ['paradas', 'Tipos de parada'], ['parametros', 'Parâmetros de cálculo'], ['abas', 'Abas'], ['importacao', 'Importação'], ['exportacao', 'Exportação'], ['auditoria', 'Auditoria'], ['ajuda', 'Ajuda e aceite']];
 const Cfg = {};
 App.views.config = {
   render() {
