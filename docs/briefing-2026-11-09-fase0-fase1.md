@@ -613,3 +613,7 @@ Pedido do usuário, só na página Produção.
 ## 17. Iniciativas / Ações sumida ou com o nome antigo na barra (kit, 10/11/2026)
 
 A barra de páginas lê a lista guardada no navegador (`vac.sistemas`, gravada pelo Portal). Uma lista gravada antes da 1.1.0 tinha o nome "Iniciativas" e, se foi gravada antes de a página existir, a marca `futuro`, que esconde o item. O kit agora corrige isso sozinho uma vez e redesenha a barra: o nome fica "Iniciativas / Ações" e a marca `futuro` sai de Iniciativas e Equipamentos. Continuam valendo o "ocultar" de Portal › Configuração › Módulos e a permissão de "ver" do perfil da pessoa. Versões: Portal 1.9.18 · Produção 2.4.39 · Waste 1.8.31 · Gel 2.23 · Paradas 1.0.28 · Iniciativas 1.1.2 · Equipamentos 1.0.7.
+
+## 18. Cabeçalho da Produção mais limpo (Produção 2.4.40; 10/11/2026)
+
+Pedido do usuário: saem do cabeçalho da Produção a pílula "Servidor até dd/mm/aaaa hh:mm" e a hora da última gravação. A cobertura do MES aparece em Portal › Importação ("coberto até…"); a versão e a última gravação de cada página, em Portal › Configuração › Versões. Continuam no cabeçalho a situação da base (com o detalhe ao clicar), "gravação pendente" quando houver e a pílula do cadastro.
