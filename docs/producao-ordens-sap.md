@@ -181,3 +181,11 @@ Atualização do kit comum, com cache identificado pela origem da pasta. Procedi
 ## Produção 2.4.20 · 09/11/2026
 
 A aba SQDCP e os registros de acidente/QN por turno estão descritos em [producao-sqdcp.md](producao-sqdcp.md). Reimportações do RELATÓRIO preservam esses registros manuais, inclusive quando um turno deixa de aparecer na nova planilha, sem somar novamente sua produção. MB51/COOIS mantêm seus contratos.
+
+## Produção 2.4.21 · 09/11/2026
+
+No formulário Registrar/Editar parada, a duração permanece visível. Para códigos que exigem horários ou não permitem duração manual, ela fica somente para leitura e é calculada a partir de início e fim. A mensagem explica a exigência; o botão passa a se chamar **Limpar tempos** e retorna o foco ao início quando os horários são obrigatórios.
+
+Códigos que permitem minutos continuam aceitando duração manual. Ao trocar de duração manual para um código que exige horários, o tempo anterior é limpo e os horários são liberados. Apagar ambos os horários também limpa o cálculo, evitando convertê-lo em duração manual por engano. Nenhuma regra do cadastro, base real ou contrato de dados foi alterado.
+
+Validação: `node testes/tparada_tempo.js` (incluído em `testes/tudo.js`): opções do Portal, troca de código, limpeza, cálculo, gravação/reabertura, virada do dia e regressão do abono.
