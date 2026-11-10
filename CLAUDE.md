@@ -6,10 +6,10 @@ Plataforma de páginas HTML de arquivo único que trabalham juntas numa **pasta 
 
 | Página | Arquivo | Base | Versão | Como editar |
 |---|---|---|---|---|
-| Portal (cadastro geral, Administração) | `Portal.html` | `portal-base.json` + `vacutainer-cadastros.json` | 1.9.11 | direto no HTML |
+| Portal (cadastro geral, Administração) | `Portal.html` | `portal-base.json` + `vacutainer-cadastros.json` | 1.9.12 | direto no HTML |
 | Produção (OEE, plano, ordens SAP) | `OEE-Vacutainer.html` | `oee-vacutainer-base.json` (+ `ordens-base.json`) | 2.4.27 | **NÃO editar o HTML**: editar `fontes/producao/` e rodar o build |
 | Waste (perdas por ordem, KKBC) | `Perdas-Ordem.html` | `perdas-base.json` | 1.8.27 | direto no HTML |
-| Gestão de Gel | `Gestão-Gel-Vacutainer.html` | `fifo-base.json` | 2.16 · **em atualização** | direto no HTML |
+| Gestão de Gel | `Gestão-Gel-Vacutainer.html` | `fifo-base.json` | 2.17 · **em atualização** | direto no HTML |
 | Paradas | `Paradas.html` | `paradas-base.json` | 1.0.25 · **em atualização** | direto no HTML |
 | Equipamentos (com manutenção) | `Equipamentos.html` | `equipamentos-base.json` | 1.0.5 · **em atualização** | direto no HTML (saiu do gerador na 1.0.0; `docs/equipamentos-v1.md`) |
 | Iniciativas (Ações/Planner · KAS · OSM · 5S) | `Iniciativas.html` | `iniciativas-base.json` | 1.0.5 · **em atualização** | direto no HTML (saiu do gerador na 1.0.0; `docs/iniciativas-planner.md`) |
@@ -56,6 +56,7 @@ node testes/tudo.js                   # a suíte inteira, uma por vez: passou / 
 node testes/tportalfonte.js           # Fase 1 do briefing (09/11/2026): Parâmetros (Produção, Neste computador, arredondamento com vigência), Configurações da Produção só consulta, PRD-04, Trazer configurações (Produção e Gel), Gel ligado ao Portal com contas iguais; código 1 se falhar
 node testes/tturnos.js                # Fase 2 do briefing: turno não produtivo, habilitar no dia, produção fora de turno (continuidade D1), OEE reportado × real, a partir da data, POR-10; código 1 se falhar
 node testes/timportacao.js            # Fase 3 do briefing: Portal › Importação (sequência, status por dia, subseções), exports.importacoes, abas Importar → Portal, endereços diretos, Ordens reorganizadas; código 1 se falhar
+node testes/tgel.js                   # Fase 4 do briefing (Gel na Produção): 4a parâmetros do gel no Portal com as contas do gel iguais (GEL-06), telas do Gel só consulta, fichas e Trazer configurações; código 1 se falhar
 node testes/tcontratos.js             # E4: exports por ordem (Produção 24 meses e dias do lote, Paradas, Gel), versão conferida pelos leitores, Waste com ordem em várias competências e dias do lote; código 1 se falhar
 ```
 
@@ -93,6 +94,7 @@ Tipos no cadastro: `linhas, familias, catalogos, materiais (tipo, tipoSAP), bom 
 Produção aplica o cadastro na base do OEE pelo `CadSync` (`fontes/producao/cad_sync.js`) quando muda a `rev`, e trava as abas de configuração com o aviso "vem do Portal". Detalhes: `docs/centralizacao-configuracoes.md`.
 **Fonte única (briefing 09/11/2026, D0, Produção 2.4.23 / Gel 2.15):** o Portal é o único lugar de editar turnos, catálogos, metas, tipos de parada, equipamentos e parâmetros; as páginas guardam cópia só de leitura ligada pelo código. Com cadastro (ou pasta), as Configurações da Produção ficam só consulta mesmo com o domínio vazio no Portal; o `status` local segue o Portal; turno só da Produção fica inativo. `parametros.producao` (arredondamento da meta por vigência, `roundAt`) e `vac.qtd` (exibição, por computador). Gel: `GelCad` (catálogo pelo número, equipamento por `portal`/nome; `equipamentos.categoria` = `gel`). Migração: Cadastros › Início › Trazer configurações.
 **Importação centralizada (Fase 3, Portal 1.9.11):** Portal › Importação lista tudo o que se importa (por página, sequência recomendada, status do dia pelo `exports.importacoes` de cada página); o botão abre a tela da página dona, que grava na própria base (regra 1; D11); as abas Importar das páginas levam ao Portal. Detalhes: `docs/briefing-2026-11-09-fase0-fase1.md` § 7.
+**Parâmetros do gel no Portal (Fase 4 · 4a, Portal 1.9.12 / Gel 2.17):** `parametros.gel` (processo, formatos, motivos, `registroPelaProducaoDesde`), `equipamentos[].gel` (tara, descs) e `catalogos[].gel` (fmt, lotSize, rateH, vig) com a **mesma estrutura do Gel**; o Gel lê pelo `GelCad.aplicarGel` e trava as telas correspondentes. Detalhes: `docs/briefing-2026-11-09-fase0-fase1.md` § 9.
 **Turno não produtivo (Fase 2, Produção 2.4.24, `fontes/producao/turnos_np.js`):** vigência `naoProdutivo` no Portal → `productive:false` (fora do dia e do plano); caixas do MES fora dos turnos do dia são reatribuídas (trecho emendado com o fim do turno anterior → ele; senão → o próximo) só a partir de `foraTurnoDesde`; `ForaTurno.aplicar` no `computeDayRaw` (resultado oficial = reportado; `res.foraTurno.real` = real); "Habilitar turno" no dia (`TurnoNP`, `ps.enabledNP`). Detalhes: `docs/briefing-2026-11-09-fase0-fase1.md` § 6.
 
 ## Documentação (`docs/`)
@@ -118,7 +120,7 @@ Lista única do que ficou para depois. O motivo e o gatilho de cada item estão 
 - Calendário de produção no Portal.
 - Telas por perfil (E10c): Resumo/Detalhado, o que fica em "Mais", passagem de turno e alerta de ritmo; espera a lista de jornadas por perfil validada com operador e liderança (registro § U).
 - OSM (E7, falta a amostra da planilha), importação por pasta (E9, falta decidir a estação coletora), MES (E12, faltam amostras e regras), conteúdo AM/TPM e 5S (E13, faltam os padrões), Projetos (E15, falta o escopo) e XLSX local (E3b, falta o arquivo): registro § U.
-- Produção OEE → Gel (registro § 1; Fase 4 do briefing). Parâmetros só do gel (BOM de gel, formatos, locais, motivos, processo) para `parametros.gel` no Portal: D10 em `docs/briefing-2026-11-09-fase0-fase1.md`.
+- Produção OEE → Gel (registro § 1; Fase 4 do briefing, passos 4b a 4e). Parâmetros do gel no Portal: feito (4a); só os **locais** de estoque continuam no Gel.
 - `eventoId` comum OEE × Paradas, que evita contagem dupla, quando o OEE publicar `paradasEventos` (ver `docs/paradas-arquitetura.md`; registro F07/A10).
 - Homologação da C1 na pasta real (etapa H): duas abas, base renomeada, duas estações (registro § V).
 - R-02, identificador estável da pessoa (responsável guardado pelo nome): falta decidir o que fazer com nomes digitados à mão (registro § V).

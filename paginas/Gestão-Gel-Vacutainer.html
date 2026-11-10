@@ -1587,7 +1587,7 @@ const fileBackend={kind:'file',async commit(ch){applyLocal(ch);FS.pending.push(c
 async function fsRefresh(){if(S.mode!=='file'||FS.busy||ui.demo)return;try{const cur=await fsReadBase(fsKnown());if(cur&&!cur.same){FS.mod=cur.mod;FS.rev=cur.rev;FS.revBy=cur.by;loadData(cur.data);FS.pending.forEach(applyLocal);localBackend.save();render()}}catch(e){}}
 /* ================= V1.89 · integração com as outras páginas (Portal, OEE, Perdas) ================= */
 // versão da página (topo, Guia e base gravada)
-const APP_VERSION='2.16';   /* 2.16 · Fase 3 (IMP-04): importações no exports; #importar abre a importação */   /* 2.15 · ARQ-05/ARQ-07: catálogos e equipamentos do Portal (GelCad); contas do gel iguais */   /* 2.14 · ARQ-09: sem entrada própria de "Modo exemplo" */   /* 2.11 · C2–C6: kit com a ficha por pasta (AT-08) e a contagem da fila durável (Portal › Versões) */   /* 2.10 · C1: alterações pendentes na fila durável do kit (sem perda entre abas) */   /* 2.09 · E11: busca do kit leva o equipamento à ficha em Equipamentos */   /* 2.08 · E8: kit com "+ Abrir ação" na ficha da ordem */   /* 2.07 · E5: ficha da ordem comum (botão na ordem) e busca por ordem, lote e LP */   /* 2.06 · E3: número digitado só aceito inteiro; E4: cobertura das ordens no exports */   /* 2.05 · E2: a versão da tela vem desta constante (o rótulo estava fixo em v2.01); kit com data local e meta do mês ponderada */   /* 2.04 · revisão 065fe6f: restauração por arquivo confirma e não segue sem a cópia anterior; CSV sem fórmulas; índice por dia no Painel */
+const APP_VERSION='2.17';   /* 2.17 · Fase 4 · 4a: parâmetros do gel do Portal (processo, formatos, motivos, descartes, gel do catálogo) */   /* 2.16 · Fase 3 (IMP-04): importações no exports; #importar abre a importação */   /* 2.15 · ARQ-05/ARQ-07: catálogos e equipamentos do Portal (GelCad); contas do gel iguais */   /* 2.14 · ARQ-09: sem entrada própria de "Modo exemplo" */   /* 2.11 · C2–C6: kit com a ficha por pasta (AT-08) e a contagem da fila durável (Portal › Versões) */   /* 2.10 · C1: alterações pendentes na fila durável do kit (sem perda entre abas) */   /* 2.09 · E11: busca do kit leva o equipamento à ficha em Equipamentos */   /* 2.08 · E8: kit com "+ Abrir ação" na ficha da ordem */   /* 2.07 · E5: ficha da ordem comum (botão na ordem) e busca por ordem, lote e LP */   /* 2.06 · E3: número digitado só aceito inteiro; E4: cobertura das ordens no exports */   /* 2.05 · E2: a versão da tela vem desta constante (o rótulo estava fixo em v2.01); kit com data local e meta do mês ponderada */   /* 2.04 · revisão 065fe6f: restauração por arquivo confirma e não segue sem a cópia anterior; CSV sem fórmulas; índice por dia no Painel */
 /* 2.03 · situação "em atualização" (kit: selo, pílula e faixa; docs/paginas-construcao.md) */
 /* 2.02 · relatório montado: todas as linhas no PDF, comentário, aviso de corte no texto; Painel em 1º; aba inicial do perfil; impressão e PDF no tema claro */
 /* 1.99 · menu Mais do cabeçalho (vac-visual v1): fecha ao escolher uma ação, ao clicar fora e com Esc */
@@ -4379,6 +4379,7 @@ function openConfig(sec){
    <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn" id="bkE">Exportar backup (JSON)</button><label class="btn">Restaurar backup<input type="file" id="bkI" accept=".json" hidden></label><button class="btn" data-act="exportFifo">Fila FIFO (CSV)</button><button class="btn" data-act="exportHist">Histórico (CSV)</button></div><div id="bkMsg"></div><div id="bkList"></div>`;
   modal('Configuração',nav+`<div class="cfgbody">${body}</div>`,'',()=>{
     {const d=$('#ov .dlg');if(d)d.style.width='min(1280px,97vw)'}
+    setTimeout(()=>{try{GelCad.travarCfg(s)}catch(e){console.warn(e)}},0);   /* 2.17 · 4a: o que vem do Portal fica só para consulta */
     document.querySelectorAll('[data-cfgsec]').forEach(b=>b.addEventListener('click',()=>{ui.catEdit=null;openConfig(b.dataset.cfgsec)}));
     const saveCfg=async(patch,msg)=>{const ch=newCh();ch.config=patch;try{await backend.commit(ch)}catch(e){return}toast(msg||'Configuração salva.');render()};
     const sv=$('#cfgSave');
@@ -4590,6 +4591,31 @@ const GelCad={
  usaGel(cod,c){const gel=new Set((c.materiais||[]).filter(m=>m&&m.tipo==='gel').map(m=>String(m.codigo)));if(!gel.size)return false;const b=(c.bom||[]).find(x=>x&&String(x.catalogo)===String(cod));
   return !!b&&(b.vigencias||[]).some(v=>(v.itens||[]).concat(v.estrutura||[]).some(i=>gel.has(String(i.material))))},
  /* aplica na memória (idempotente); devolve se mudou algo que entra na conta (formato/situação) */
+ /* 2.17 · Fase 4 · 4a (D10): parâmetros do gel do Portal (parametros.gel, equipamentos[].gel, catalogos[].gel), mesma estrutura do Gel */
+ pg(c=this.doc()){return c&&c.parametros&&c.parametros.gel||null},
+ troca(o,k,v){const a=JSON.stringify(o[k]??null),b=JSON.stringify(v??null);if(a===b)return false;o[k]=v==null?v:JSON.parse(b);return true},
+ aplicarGel(c){let m=false;const G=this.pg(c)||{};S.config=S.config||{};
+  if((G.processo||[]).length)m=this.troca(S.config,'params',G.processo)||m;
+  if((G.formatos||[]).length)m=this.troca(S.config,'fmts',G.formatos)||m;
+  if((G.motivos||[]).length)m=this.troca(S.config,'motivos',G.motivos)||m;
+  for(const e of S.config.equips||[]){if(!e.portal)continue;const p=(c.equipamentos||[]).find(x=>String(x.codigo)===String(e.portal));if(!p||!p.gel)continue;
+   m=this.troca(e,'tara',p.gel.tara??'')||m;if(Array.isArray(p.gel.descs))m=this.troca(e,'descs',p.gel.descs)||m}
+  for(const k of S.catalogs||[]){const p=k.portal?this.cat(k.portal,c):null;if(!p||!p.gel)continue;const g=p.gel;
+   if(Array.isArray(g.vig)&&g.vig.length)m=this.troca(k,'vig',g.vig)||m;if(g.fmt)m=this.troca(k,'fmt',g.fmt)||m;
+   if(g.lotSize!=null)m=this.troca(k,'lotSize',g.lotSize)||m;if(g.rateH!=null)m=this.troca(k,'rateH',g.rateH)||m}
+  return m},
+ /* seção da Configuração que vem do Portal (fica só para consulta) */
+ donoPortal(sec){const c=this.doc(),G=this.pg(c)||{};if(!c)return null;
+  if(sec==='proc'&&(G.processo||[]).length)return['Perdas teóricas e gel padrão','cadastros/parametros'];
+  if(sec==='fmts'&&(G.formatos||[]).length)return['Formatos de tubo','cadastros/parametros'];
+  if(sec==='motivos'&&(G.motivos||[]).length)return['Motivos de descarte','cadastros/parametros'];
+  if(sec==='equip'&&(c.equipamentos||[]).some(x=>x&&x.gel))return['Embalagem e descartes dos equipamentos','cadastros/equipamentos'];
+  if(sec==='cat'&&ui.catEdit){const k=catById(ui.catEdit),p=k&&k.portal?this.cat(k.portal,c):null;if(p&&p.gel)return['Gel deste catálogo (BOM de gel, gramas por tubo, lote e velocidade)','cadastros/catalogos/'+encodeURIComponent(p.codigo)]}
+  return null},
+ travarCfg(sec){const d=this.donoPortal(sec);if(!d)return;const b=document.querySelector('#ov .cfgbody');if(!b)return;
+  b.querySelectorAll('input,select,textarea,button').forEach(el=>{if(el.closest('a')||el.id==='ctPortal')return;el.disabled=true;el.title='Vem do Portal: edite lá'});
+  b.querySelectorAll('[draggable]').forEach(el=>el.setAttribute('draggable','false'));
+  b.insertAdjacentHTML('afterbegin',portalBannerGel(d[0],d[1]))},
  aplicar(){const c=this.doc();if(!c)return false;let conta=false;
   for(const k of S.catalogs||[]){const p=this.cat(k.num,c);if(!p){if(k.portal)delete k.portal;continue}k.portal=String(p.codigo);if(p.nome&&k.desc!==p.nome)k.desc=p.nome;if(p.cor&&k.color!==p.cor)k.color=p.cor;
    const at=p.ativo!==false;if(k.active!==at){k.active=at;conta=true}const f=this.fmt(p);if(f&&(k.fmt||'100')!==f){k.fmt=f;conta=true}}
@@ -4597,6 +4623,7 @@ const GelCad={
    const v=(p.vigencias||[]).slice().sort((a,b)=>a.de<b.de?1:-1)[0]||{};
    S.catalogs.push({id:'cat-'+p.codigo,num:String(p.codigo),desc:p.nome||'',color:p.cor||PALETA[S.catalogs.length%PALETA.length],active:true,fmt:this.fmt(p)||'100',lotSize:v.caixasPorLote&&v.tubosPorCaixa?+v.caixasPorLote*+v.tubosPorCaixa:null,rateH:v.pphNominal?+v.pphNominal:null,portal:String(p.codigo),origem:'Portal'});conta=true}
   for(const e of (S.config&&S.config.equips)||[]){const p=this.eq(e,c);if(!p)continue;e.portal=String(p.codigo);if(p.nome&&e.name!==p.nome)e.name=p.nome;const at=p.ativo!==false;if((e.active!==false)!==at){e.active=at;conta=true}}
+  try{conta=this.aplicarGel(c)||conta}catch(e){console.warn('GelCad.gel',e)}   /* por último: o gel do catálogo manda no formato */
   if(conta&&typeof memoClear==='function')memoClear();return conta},
  /* equipamentos do Portal que ainda não estão no Gel (categoria gel primeiro) */
  eqLivres(){const c=this.doc();if(!c)return[];const usados=new Set(((S.config&&S.config.equips)||[]).map(e=>e.portal).filter(Boolean));

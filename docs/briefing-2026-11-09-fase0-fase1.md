@@ -362,3 +362,25 @@ O GEL-03 pede o scrap registrado **na página de cada turno da Produção**. Pel
 | G5 | A **hora extra** e o "sem produção" do Gel passam a vir dos intervalos extras e dos turnos "sem produção" da Produção? | Sim |
 
 Com G1 a G5 respondidas, começo pelo 4a. É a maior das fases até aqui; entrego passo a passo, com a suíte rodando a cada passo.
+
+---
+
+## 9. Fase 4 · respostas e passo 4a (10/11/2026)
+
+**Respostas do usuário:** G1 sim (o scrap registrado na Produção fica na base da Produção; o Gel lê de lá) · G2 sim (primeiro os parâmetros do gel no Portal) · G3 data de corte no Portal · G4 sim (barris baixados continuam no Gel) · G5 sim (hora extra e "sem produção" vêm da Produção).
+
+### Passo 4a · parâmetros do gel no Portal (D10) · Portal 1.9.12, Gel 2.17
+
+| Onde, no Portal | O que guarda (mesma estrutura do Gel) |
+|---|---|
+| Cadastros › Regras › Parâmetros › **Gestão de Gel** | `parametros.gel`: data de corte (G3, `registroPelaProducaoDesde`), **perdas teóricas e gel padrão** por vigência (`processo`), **formatos de tubo** por vigência (saco, folha da purga, sobra do barril, pesos do Tubo 100 e 75) e **motivos de descarte** (com as composições em que valem) |
+| Ficha do equipamento com a categoria **Equipamento – Gel** | `equipamentos[].gel`: embalagem própria e **descartes** (composição, categoria Tubos/Barril/Purga, motivos) |
+| Ficha do catálogo › bloco **Gel** | `catalogos[].gel`: formato do tubo, lote padrão, velocidade de referência e as vigências de **gel aplicado por tubo e BOM de gel** |
+
+- Vigência gravada não muda (regra 3): só se acrescenta a partir de hoje, e uma data no passado é recusada. A vigência de hoje em diante pode ser corrigida antes de valer.
+- O **Gel lê tudo isso do Portal** (`GelCad.aplicarGel`) e as telas correspondentes da Configuração do Gel ficam **só para consulta**, com "Editar no Portal". Na tela de catálogos, isso vale para o catálogo que tem o bloco Gel no Portal.
+- **GEL-06:** o teste `tgel.js` zera a cópia do Gel e põe os mesmos parâmetros no Portal. Exports, gel aplicado, BOM, perdas, formatos, sobra e o cálculo de cada dia registrado (`prodCalc`) dão **os mesmos números**. Uma vigência nova de perdas vale da data dela em diante.
+- **Migração:** Cadastros › Início › Trazer configurações › **"Só no Gel · parâmetros do gel"** leva processo, formatos, motivos, os descartes de cada equipamento (que passa à categoria Equipamento – Gel) e o gel de cada catálogo, com as vigências como estão. Na pasta real: rodar o Trazer **antes** de usar a Produção com o gel (passos 4c a 4e).
+- Fica no Gel: os **locais** de estoque (só o Gel usa) e as preferências de tela.
+
+Próximo: 4b (a conta do gel num módulo comum do kit, usado pelo Gel e pela Produção).
