@@ -54,7 +54,7 @@ const LEG = [
     const efi = await p.evaluate(async () => { App.tab = 'acoes'; const a = Store.data.acoes.find(x => x.status === 'concluída'); App.sel = a.id; render(); await new Promise(r => setTimeout(r, 50));
       const s = document.getElementById('efSel'); if (!s) return { erro: 'sem #efSel' }; s.value = 'eficaz'; s.onchange(); await new Promise(r => setTimeout(r, 50));
       const x = calcExports(Store.data).acoes.find(y => y.id === a.id); const ev = Store.data.eventos.filter(e => e.acao === a.id && e.tipo === 'eficácia');
-      return { ef: Store.data.acoes.find(y => y.id === a.id).eficacia, ex: x && x.eficacia, ev: ev.length, pill: /eficácia: Eficaz/i.test(document.getElementById('det').innerText) }; });
+      return { ef: Store.data.acoes.find(y => y.id === a.id).eficacia, ex: x && x.eficacia, ev: ev.length, pill: /Confirmação de Processo: Eficaz/i.test(document.getElementById('det').innerText) }; });
     ok(efi.ef === 'eficaz' && efi.ex === 'eficaz' && efi.ev === 1 && efi.pill, `I2: eficácia "eficaz" gravada, no histórico, no detalhe e no exports (${JSON.stringify(efi)})`);
 
     // 4. WST-03/INI-04: trazer as ações antigas do Waste (uma vez, com histórico)

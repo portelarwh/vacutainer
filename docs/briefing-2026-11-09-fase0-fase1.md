@@ -617,3 +617,22 @@ A barra de páginas lê a lista guardada no navegador (`vac.sistemas`, gravada p
 ## 18. Cabeçalho da Produção mais limpo (Produção 2.4.40; 10/11/2026)
 
 Pedido do usuário: saem do cabeçalho da Produção a pílula "Servidor até dd/mm/aaaa hh:mm" e a hora da última gravação. A cobertura do MES aparece em Portal › Importação ("coberto até…"); a versão e a última gravação de cada página, em Portal › Configuração › Versões. Continuam no cabeçalho a situação da base (com o detalhe ao clicar), "gravação pendente" quando houver e a pílula do cadastro.
+
+## 19. Correções da homologação de 10/11/2026 (Produção 2.4.41, Iniciativas 1.1.3, Waste 1.8.32)
+
+Itens marcados como problema na página de homologação.
+- **PRD-08 (OEE real na Visão Geral):** OEE reportado, OEE real, Fora de turno e Caixas do MES entram no catálogo de indicadores do Painel. "Meu painel" e o modelo "Diretoria mensal" já vêm com o OEE real, e quem tinha um "Meu painel" salvo ganha o OEE real uma vez (dá para tirar em Personalizar). Visões compartilhadas: incluir por Personalizar. Na "Visão Geral · padrão" ele já estava no bloco Indicadores do período.
+- **PRD-10 (cartão do turno):**
+  - "Produção boa" vira **Produção dentro do turno**;
+  - **Produção fora do turno**: caixas e horário da 1ª à última caixa de cada trecho, quando o turno não produtivo não foi habilitado;
+  - **Produção total considerada** (turno + janela extra) é a que entra no OEE e na meta;
+  - sai "Produção processada";
+  - "OEE realizado" vira **OEE reportado**, e entra o **OEE real** do turno (o tempo fora do turno em que a linha produziu soma ao planejado do turno que recebeu).
+- **PRD-13 (scrap):** o campo vira o botão **Lançar scrap**, que abre um popup:
+  - scrap por máquina (equipamentos da linha) ou **Reportar só o total**, que desabilita as máquinas;
+  - com catálogo de gel, a pesagem do gel abre dali.
+  - `ps.scrap` continua sendo o total (OEE e exports); `ps.scrapMaq` (opcional) guarda o por máquina e vai para `exports.porDiaTurno[].scrapMaq`.
+  - No Total diário, o turno mostra o rateio como antes.
+- **PRD-23 (SQDCP):** o gráfico segue o padrão da Visão Geral, com valor em cada barra, dia em cada coluna, a meta com o valor, legenda dentro do gráfico e fontes de cerca de 15 a 19 pt na A4 paisagem.
+- **INI-02:** o campo passa a se chamar **Eficácia/Confirmação de Processo** (detalhe, histórico, migração do Waste e o rótulo no Waste). O campo gravado continua `eficacia`.
+- Testes: `testes/toeereal.js` (cartão, popup de scrap, Painel) e `testes/tgel.js` (o gel abre pelo popup do scrap).
