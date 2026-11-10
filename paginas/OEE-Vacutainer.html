@@ -1257,7 +1257,7 @@ const U = (() => {
 
 /* ---- 02-model.js ---- */
 /* ================= modelo de dados, valores iniciais e integridade ================= */
-const APP_VERSION = '2.4.37';
+const APP_VERSION = '2.4.38';
 const SCHEMA_VERSION = 1;
 const BASE_FILE = 'oee-vacutainer-base.json';
 const BACKUP_DIR = '00. Backups';
@@ -4175,7 +4175,7 @@ const Charts = (() => {
     const H = Math.max(o.height || 240, narrow ? 220 : 0), padL = 52, padR = 12, padT = 14;
     const n = o.x.length;
     if (!n) return `<div class="empty">${esc(o.empty || 'Sem dados no período.')}</div>`;
-    const hasMark = !!(o.mark && o.mark.some(m => m && m.length)), padB = 34 + (hasMark ? 9 : 0);
+    const hasMark = !!(o.mark && o.mark.some(m => m && m.length)), rotL = !!o.allLabels && (W - 64) / n < 40, padB = 34 + (hasMark ? 9 : 0) + (rotL ? 18 : 0);
     const vals = [];
     (o.bars || []).forEach(s => s.values.forEach(v => v != null && vals.push(v)));
     (o.lines || []).forEach(s => s.values.forEach(v => v != null && vals.push(v)));
@@ -4189,7 +4189,7 @@ const Charts = (() => {
     s += `<g class="ax">${sc.ticks.map(t => `<line class="gl" x1="${padL}" x2="${W - padR}" y1="${y(t)}" y2="${y(t)}"/><text x="${padL - 6}" y="${y(t) + 4}" text-anchor="end">${esc(fmtY(t))}</text>`).join('')}</g>`;
     const maxL = o.maxLabels || Math.max(3, Math.floor(iw / (narrow ? 42 : 48)));
     const every = Math.max(1, Math.ceil(n / maxL));
-    s += `<g class="ax">${o.x.map((l, i) => i % every === 0 ? `<text x="${xc(i)}" y="${H - padB + 16}" text-anchor="middle">${esc(l)}</text>` : '').join('')}</g>`;
+    s += `<g class="ax">${o.x.map((l, i) => o.allLabels || i % every === 0 ? (rotL ? `<text transform="translate(${xc(i)},${H - padB + 12}) rotate(-50)" text-anchor="end" style="font-size:10px">${esc(l)}</text>` : `<text x="${xc(i)}" y="${H - padB + 16}" text-anchor="middle">${esc(l)}</text>`) : '').join('')}</g>`;
     const nb = (o.bars || []).length, y0 = y(Math.max(sc.lo, 0));
     const labelsOn = o.labels !== false;
     (o.bars || []).forEach((b, k) => {
@@ -5219,7 +5219,7 @@ App.views.launch = {
       ${kpi('Qualidade', r.Q == null ? '—' : U.pct(r.Q, 2), '', `scrap ${U.fmt(r.scrap)} un · ${U.pct(r.scrapPct, 2)}`)}
       ${kpi('Capacidade planejada', fq(r.cap), unitLbl(), `${U.fmt(r.netMin)} min líquidos`)}
       ${kpi('Meta diária oficial', fq(res.officialDaily), unitLbl(), res.comp ? (res.comp.applied ? `ajuste última hora ${fqs(res.comp.adjust)}` : '<span class="ferr">compensação inválida</span>') : '')}
-      ${OeeReal.kpis(day, res)}
+      ${OeeReal.kpis(day, res)}${MesDia.kpiDia(day)}
     </div>`);
     h += SrvUI.dayCard(day, res);
     h += ForaTurnoUI.card(day, res);   /* 2.4.24 · TUR-02/03/04 */
@@ -5324,13 +5324,12 @@ App.views.hourly = {
     let h = dayBar('hourly');
     h += `<div class="row" style="margin-bottom:10px">
       <span id="hhSt" class="pill ${(BASE_ST[Store.S.status] || ['none'])[0]}" aria-live="polite"><span class="dot"></span>${esc((BASE_ST[Store.S.status] || [, Store.S.status])[1])}</span>
-      <span class="small muted">Produção boa em <b>${esc(UNIT() > 1 ? 'mil' : unitLbl())}</b> ou no número completo (61 ou 61.000) (${U.fmt(st.entryUnit)} un). Enter grava e desce · ↑↓ navegam · Esc desfaz · Alt+P parada · Alt+O observação</span>
       <span class="spacer"></span>
       <label class="small"><input type="checkbox" id="hhMeta" ${showM ? 'checked' : ''}> Detalhes da meta</label>
       ${!lkDay ? `<button class="btn sm" id="hhExtra">${I.plus} Hora extra / intervalo</button>` : ''}
       <button class="btn sm" data-route="launch">Lançamento ${I.chevR}</button></div>`;
     const pauses = (day.events || []).filter(e => !e.deleted && e.impact && e.impact.deducts);
-    h += `<div class="row small" style="margin:-4px 0 10px"><span class="muted">Pausas planejadas do dia ${ib('breaks')}:</span>${pauses.length ? pauses.map(e => evChip(db(), e, res)).join('') : '<span class="muted">nenhuma</span>'}${!lkDay ? `<button class="btn xs" id="hhPause">${I.plus} Pausa neste dia</button>` : ''}<button class="btn xs ghost" id="hhPauseCfg">Pausas e intervalos padrão do turno ›</button><span class="muted">· Para editar um intervalo deste dia use ⋯ no fim da linha.</span></div>`;
+    h += `<div class="row small" style="margin:-4px 0 10px"><span class="muted">Pausas planejadas do dia ${ib('breaks')}:</span>${pauses.length ? pauses.map(e => evChip(db(), e, res)).join('') : '<span class="muted">nenhuma</span>'}${!lkDay ? `<button class="btn xs" id="hhPause">${I.plus} Pausa neste dia</button>` : ''}</div>`;
     h += HHPs.barra(day, res);   /* 2.4.34 · PRD-06 */
     h += SrvUI.hourlyBanner(day, res);
     if (errs.length) h += `<div class="banner crit" style="margin:0 0 10px"><p>${errs.length} erro(s): ${esc(errs.slice(0, 3).map(m => m.msg).join(' · '))}${errs.length > 3 ? '…' : ''}</p></div>`;
@@ -5338,12 +5337,12 @@ App.views.hourly = {
     for (const sr of res.shifts.filter(sr => HHPs.mostra(day, sr.ps))) {
       const ps = sr.ps, lk = locked(day, ps), fs = res.flat.filter(f => f.ps === ps);
       const sm = U.sum(fs, f => f.metaOp), sg = U.sum(fs, f => f.good || 0);
-      h += `<tr class="grp"><td colspan="${showM ? 17 : 13}"><span class="swatch" style="background:${esc(ps.snap.color || 'var(--s1)')}"></span> ${esc(ps.snap.name)} · ${ps.snap.start}–${U.hhmm(U.toMin(ps.snap.end))} · meta ${fq(sm)} · produção ${fq(sg)} · ${semB(Engine.sem(sm ? sg / sm : null, st.semaphore), U.pct(sm ? sg / sm : null, 0))} ${ps.status === 'fechado' ? I.lock + ' fechado' : ''}${ps.off ? ` · <b>sem produção</b> (${esc(ps.offReason || '')}) — desmarque em Lançamento para lançar` : ''}</td></tr>`;
+      h += `<tr class="grp" data-hhgrp="${esc(ps.snap.code || ps.id)}" title="Recolher / expandir o turno"><td colspan="${showM ? 17 : 13}">${HHPs.seta(ps.snap.code || ps.id)} <span class="swatch" style="background:${esc(ps.snap.color || 'var(--s1)')}"></span> ${esc(ps.snap.name)} · ${ps.snap.start}–${U.hhmm(U.toMin(ps.snap.end))} · meta ${fq(sm)} · produção ${fq(sg)} · ${semB(Engine.sem(sm ? sg / sm : null, st.semaphore), U.pct(sm ? sg / sm : null, 0))} ${ps.status === 'fechado' ? I.lock + ' fechado' : ''}${ps.off ? ` · <b>sem produção</b> (${esc(ps.offReason || '')}) — desmarque em Lançamento para lançar` : ''}</td></tr>`;
       for (const f of fs) {
         const iv = f.iv;
         const evs = (day.events || []).filter(e => !e.deleted && f.evIds.includes(e.id));
         const cur = nowMin != null && nowMin >= iv.start && nowMin < iv.end;
-        h += `<tr class="${iv.kind === 'extra' ? 'extra ' : ''}${f.errs.length ? 'has-err ' : ''}${cur ? 'sel' : ''}" data-iv="${iv.id}">
+        h += `<tr class="${iv.kind === 'extra' ? 'extra ' : ''}${f.errs.length ? 'has-err ' : ''}${cur ? 'sel' : ''}" data-iv="${iv.id}" data-hhg="${esc(ps.snap.code || ps.id)}"${HHPs.dobrado(ps.snap.code || ps.id) ? ' hidden' : ''}>
           <td class="ivt" title="${esc(f.errs.join(' ') || (iv.kind === 'extra' ? 'Hora extra' : iv.kind))}">${U.range(iv.start, iv.end)}${iv.kind === 'extra' ? ' <span class="flag on">extra</span>' : ''}${f.errs.length ? ' <span class="sem crit">' + I.x + '</span>' : ''}</td>
           <td class="n">${f.min}</td>
           <td>${lk ? esc(f.cat ? catName(f.cat) : '—') : `<select data-ivcat="${iv.id}" aria-label="Catálogo ${U.range(iv.start, iv.end)}" data-fk="c-${iv.id}"><option value="">${f.cat ? '↳ ' + esc(catName(f.cat)) : '—'}</option>${cats.map(c => `<option value="${c.id}" ${iv.catalogId === c.id ? 'selected' : ''}>${esc(catLabel(c))}</option>`).join('')}</select>`}</td>
@@ -5362,17 +5361,18 @@ App.views.hourly = {
     const r = res.r;
     h += `<tr class="total"><td>Total do dia${HHPs.id(day) ? ' (todos os turnos)' : ''}</td><td class="n">${U.fmt(r.grossMin)}</td><td></td>${showM ? `<td></td><td></td><td class="n">${fq(U.sum(res.flat, f => f.metaOrigOp))}</td><td class="n">${U.fmt(r.deductMin)}</td>` : ''}<td class="n" title="Meta diária oficial">${fq(res.officialDaily)}</td><td class="n">${fq(r.good)}</td><td></td><td></td><td></td><td class="n">${fqs(r.good - res.officialDaily)}</td><td class="n">${semB(Engine.sem(res.officialDaily ? r.good / res.officialDaily : null, st.semaphore), U.pct(res.officialDaily ? r.good / res.officialDaily : null, 0))}</td><td colspan="3">${U.fmt(r.aMin + r.pMin)} min de parada</td></tr>`;
     h += `</tbody></table></div>`;
+    h += HHPs.npHtml(day, res);   /* 2.4.38 */
     if (res.comp) h += `<p class="small muted" style="margin-top:6px">* ${esc(res.comp.reason)} Metas exibidas arredondadas para cima em ${esc(unitLbl())}; os decimais ficam guardados (passe o mouse sobre a meta).</p>`;
     // mini gráfico de atendimento hora a hora
     const fl = res.flat;
-    h += `<section class="card section"><header><h3>Atendimento hora a hora</h3></header><p class="q">Cada hora entregou a meta?</p>${Charts.combo(hhChartOpts(fl, 200))}</section>`;
+    h += `<section class="card section"><header><h3>Atendimento hora a hora</h3></header><p class="q">Cada hora entregou a meta?</p>${Charts.combo(HHPs.chart(hhChartOpts(fl, 200), day, res))}</section>`;
     return h;
   },
   mount(root) {
     bindDayBar(root); bindNoDay(root);
     const day = curDay(); if (!day || Engine.isOffDay(db(), day)) return;
     SrvUI.bindDay(root, day);
-    HHPs.ligar(root, day);
+    HHPs.ligar(root, day); HHPs.ligarDobra(root);
     const hm = root.querySelector('#hhMeta'); if (hm) hm.onchange = () => { App.prefs.showMetaCols = hm.checked; savePrefs(); render(); };
     const inputs = () => $$('input[data-good]', root).filter(i => !i.disabled);
     const commit = (inp, focusNext) => {
@@ -5606,15 +5606,7 @@ App.views.overview = {
     const [bG, wG] = A.extremes(rows, 'good');
     const rel = oeeReliability(days);
     h += Decide.html();
-    h += `<div class="kpis">
-      ${A.kpiCmp('OEE realizado', r.oee, v => U.pct(v), { pct: true, meta: r.oeeTarget, semState: r.semOee, prev: pr && pr.oee, series: ser('oee'), best: bOee, worst: wOee, sub: r.oeeGap == null ? '' : `${r.oeeGap >= 0 ? '+' : ''}${U.pp(r.oeeGap)} contra a meta` })}
-      ${A.kpiCmp('Disponibilidade', r.D, v => U.pct(v), { pct: true, prev: pr && pr.D, series: ser('D'), sub: 'medida pelas paradas apontadas' })}
-      ${A.kpiCmp('Performance', r.P, v => U.pct(v), { pct: true, prev: pr && pr.P, series: ser('P'), sub: r.perfAlert ? semB('warn', 'acima de 100%') : 'calculada: OEE ÷ (D × Q)' })}
-      ${A.kpiCmp('Qualidade', r.Q, v => U.pct(v, 2), { pct: true, prev: pr && pr.Q, series: ser('Q') })}
-      ${A.kpiCmp('Atendimento ao plano', r.attain, v => U.pct(v), { pct: true, prev: pr && pr.attain, series: ser('attain'), sub: `${fq(r.good)} de ${fq(r.metaOp)} ${esc(unitLbl())} ${semB(r.semAttain, '')}` })}
-      ${A.kpiCmp('Confiabilidade do OEE', 1, () => rel.level, { semState: rel.sem, sub: esc(rel.txt), click: 'rel' })}
-    </div>
-    ${OeeReal.overview(days, pd)}
+    h += `${VGC.html(days, pd, r, pr, ser, bOee, wOee, bG, wG, rel)}   <!-- 2.4.38: os cartões do Lançamento no período -->
     <details class="more-kpi"${App.prefs.moreKpi ? ' open' : ''}><summary>Mais indicadores</summary><div class="kpis">
       ${A.kpiCmp('Produção boa', r.good, v => fq(v), { unit: unitLbl(), meta: r.metaOp, semState: r.semAttain, prev: pr && pr.good, series: ser('good'), best: bG, worst: wG })}
       ${A.kpiCmp('Capacidade planejada', r.cap, v => fq(v), { unit: unitLbl(), prev: pr && pr.cap })}
@@ -9298,7 +9290,9 @@ window.VAC_GUIA.oee = {
     titulo: 'Hora a hora',
     para: 'A grade de produção por intervalo de cada turno: meta, produção boa, diferença, catálogo e paradas. É a fonte dos números do dia. Com o CSV do servidor (MES) importado, a produção vem sugerida pelas caixas.',
     campos: [
-      { sel: '[data-hhsel]', nome: 'Turno', o: 'Mostra só um turno ou todos. O número é quantos intervalos já têm produção lançada.', ex: 'A 8/8 · B 3/9: faltam 6 intervalos do B.' },
+      { sel: '[data-hhsel]', nome: 'Turno', o: 'Mostra só um turno ou todos. O número é quantos intervalos já têm produção lançada. O turno não produtivo (ex.: C) aparece com as caixas do MES.', ex: 'A 8/8 · B 3/9: faltam 6 intervalos do B.' },
+      { sel: 'tr[data-hhgrp]', nome: 'Linha do turno', o: 'Clique para recolher ou expandir os intervalos do turno (fica lembrado neste computador).' },
+      { sel: 'section.hh-np', nome: 'Turno não produtivo (só leitura)', o: 'As caixas do MES por hora na janela do turno não produtivo: catálogo, lote, caixas, produção e 1ª–última caixa. A produção conta no turno indicado em "contou em". Para lançar nele, use "Habilitar turno" no Lançamento.' },
       { sel: '[data-good]', nome: 'Produção boa do intervalo', o: 'Peças boas no intervalo, na unidade indicada no topo (mil ou número completo).', como: 'Digite e Enter (grava e desce). ↑↓ navegam, Esc desfaz.', ex: '61 (= 61.000 peças em "mil").' },
       { sel: '[data-ivcat]', nome: 'Catálogo do intervalo', o: 'Troca de catálogo a partir deste intervalo. A meta muda junto (PPH do catálogo).', como: 'Escolha só no intervalo em que a troca aconteceu; os seguintes herdam.' },
       { sel: '[data-addev]', nome: 'Apontar parada', o: 'Abre o formulário de parada do intervalo (código, duração, equipamento, observação).', como: 'Atalho Alt+P na linha selecionada.', ex: 'FME · 25 min · Tampadora · "troca de rolamento".' },
@@ -9365,6 +9359,9 @@ window.VAC_GUIA.oee = {
     para: 'Resumo da produção no período: OEE, produção, paradas e tendências. "Visão Geral · padrão" é a montagem fixa; as outras visões (Meu painel, compartilhadas, Diretoria mensal) são montadas por você.',
     campos: [
       { sel: '#vgView', nome: 'Visão', o: 'Escolhe a montagem da tela.', ex: 'Diretoria mensal para a reunião do mês.' },
+      { sel: 'section.vg-ind', nome: 'Indicadores do período', o: 'Os mesmos cartões do Lançamento somados no período (produção, OEE, D·P·Q, capacidade, meta, OEE reportado e real, fora de turno, caixas do MES), com a comparação com o período anterior.' },
+      { sel: '#kcEditVg', nome: 'Editar cards', o: 'Liga e desliga os indicadores; a mesma escolha vale no Lançamento (neste computador).' },
+      { sel: 'section.card > header .dobra', nome: 'Recolher / expandir', o: 'O ▾ no título de cada bloco recolhe o bloco (fica lembrado neste computador).' },
       { sel: '.filters .seg', nome: 'Período', o: 'Hoje, Ontem, Semana, Mês e os outros períodos rápidos, ou datas livres.' },
       { sel: '#vgPers', nome: 'Personalizar', o: 'Abre Meu painel em edição: indicadores do topo, blocos, ordem e largura. Para todos verem, salve como visão compartilhada.' },
       { sel: '#vgPrint', nome: 'Imprimir', o: 'Imprime a visão atual (sempre no tema claro).' },
@@ -9540,6 +9537,165 @@ Object.assign(HELP, {
   turnoNPCard: ['Turno não produtivo com produção', [['O que é?', 'A janela de um turno marcado como não produtivo no Portal em que passaram caixas. A produção não fica nele: vai para o turno anterior (se emendou) ou para o seguinte, e entra no OEE reportado desse turno.']]]
 });
 Object.assign(KPI_HELP, { 'OEE reportado': 'oeeRep', 'OEE real': 'oeeReal', 'Fora de turno': 'foraTurnoKpi' });
+
+/* ===== Produção 2.4.38 · Visão Geral e Hora a hora (pedido do usuário, 10/11/2026) =====
+   Hora a hora:
+     - o turno não produtivo do dia (ex.: C) entra no seletor de turno e ganha a grade dele, SÓ LEITURA, por hora, com as caixas do MES
+       (catálogo, lote, caixas, produção, acumulado, 1ª–última caixa). Aparece mesmo sem caixas;
+     - cada turno (produtivo ou não) recolhe e expande pela linha do turno (lembrado neste computador, App.prefs.hhFold, pelo código);
+     - o gráfico "Atendimento hora a hora" mostra todas as horas registradas (rótulo em cada coluna) e as horas do turno não produtivo
+       que tiveram caixas (sem meta).
+   Visão Geral (padrão): os mesmos cartões do Lançamento somados no período (com "Editar cards", mesma preferência), mais
+     Atendimento ao plano e Confiabilidade; cada bloco recolhe e expande (App.prefs.vgFold, pelo título).
+   Cartão "Caixas do MES": 1ª e última caixa do dia (ou do período), caixas e trocas de lote com o tempo total de troca.
+   Entra no script principal pelo build.py (antes do boot). */
+const MesDia = {
+  /* caixas do dia operacional (06:00 a 06:00) e trocas com a 1ª caixa do novo lote no dia */
+  dia(d, day) {
+    const S = ServerData; if (!day || !(d.server && (d.server.segments || []).length)) return null;
+    let off = 360; try { off = ForaTurno.opOff(d); } catch (e) { }
+    const base = S.dayStartMin(day.date), A0 = base + off, B0 = A0 + 1440;
+    let bx = []; try { bx = ForaTurno.caixas(d, day.lineId, A0, B0, day.date); } catch (e) { return null; }
+    let ch = []; try { ch = S.changes(d, day.lineId).filter(c => { const f = S.tm(c.first); return f >= A0 && f < B0; }); } catch (e) { }
+    return { date: day.date, base, n: bx.length, m0: bx.length ? bx[0].m : null, m1: bx.length ? bx[bx.length - 1].m : null, trocas: ch.length, trocaMin: U.sum(ch, c => c.min || 0) };
+  },
+  periodo(days) {
+    const d = db(), L = (days || []).filter(x => x && !x.deleted).map(x => this.dia(d, x)).filter(x => x && x.n);
+    if (!L.length) return null; L.sort((a, b) => a.m0 - b.m0);
+    return { n: U.sum(L, x => x.n), primeiro: L[0], ultimo: L.reduce((a, b) => (b.m1 > a.m1 ? b : a)), trocas: U.sum(L, x => x.trocas), trocaMin: U.sum(L, x => x.trocaMin), dias: L.length };
+  },
+  hh(m, base) { return OeeReal.hhmm(m, base); },
+  kpiDia(day) {
+    const x = this.dia(db(), day);
+    if (!x) return kpi('Caixas do MES', '—', '', 'sem dados do servidor (MES) importados');
+    if (!x.n) return kpi('Caixas do MES', '—', '', 'nenhuma caixa no dia');
+    return kpi('Caixas do MES', `<span class="kv-sm">${this.hh(x.m0, x.base)} – ${this.hh(x.m1, x.base)}</span>`, '', `1ª e última caixa · ${U.fmt(x.n)} cx${x.trocas ? ` · ${x.trocas} troca(s) · ${OeeReal.dur(x.trocaMin)}` : ' · sem troca de lote'}`);
+  },
+  kpiPeriodo(days) {
+    const p = this.periodo(days);
+    if (!p) return kpi('Caixas do MES', '—', '', 'sem caixas do servidor (MES) no período');
+    const dm = x => U.brDate(x.date).slice(0, 5);
+    const val = p.dias === 1 ? `${this.hh(p.primeiro.m0, p.primeiro.base)} – ${this.hh(p.ultimo.m1, p.ultimo.base)}` : `${this.hh(p.primeiro.m0, p.primeiro.base)} – ${this.hh(p.ultimo.m1, p.ultimo.base)}`;
+    return kpi('Caixas do MES', `<span class="kv-sm">${val}</span>`, '', `${p.dias === 1 ? '1ª e última caixa' : `1ª em ${dm(p.primeiro)} · última em ${dm(p.ultimo)}`} · ${U.fmt(p.n)} cx${p.trocas ? ` · ${p.trocas} troca(s) · ${OeeReal.dur(p.trocaMin)}` : ''}`);
+  }
+};
+/* ---------- Hora a hora: turno não produtivo e recolher turnos ---------- */
+Object.assign(HHPs, {
+  /* turnos não produtivos do dia (não habilitados), com a janela em minutos do dia */
+  nps(day) {
+    let L = []; try { L = TurnoNP.doDia(day).filter(x => !x.on); } catch (e) { return []; }
+    return L.map(x => { let a = U.toMin(x.v.start), b = U.toMin(x.v.end); if (a == null || b == null) return null; if (b <= a) b += 1440; return { id: 'np:' + x.shift.id, code: x.shift.code || x.shift.id, name: x.shift.name, a, b }; }).filter(Boolean);
+  },
+  id(day) {
+    const s = this.sel; if (!s || !day || s.date !== day.date) return null;
+    if (String(s.id).startsWith('np:')) return this.nps(day).some(w => w.id === s.id) ? s.id : null;
+    return (day.shifts || []).some(p => p.id === s.id && !p.deleted) ? s.id : null;
+  },
+  mostra(day, ps) { const i = this.id(day); return !i || ps.id === i; },
+  fold() { const F = App.prefs.hhFold; return F && typeof F === 'object' ? F : (App.prefs.hhFold = {}); },
+  dobrado(code) { return !!this.fold()[code]; },
+  seta(code) { return `<span class="hh-seta" aria-hidden="true">${this.dobrado(code) ? '▸' : '▾'}</span>`; },
+  /* grade por hora do turno não produtivo (só leitura) */
+  npGrade(day, w) {
+    const d = db(), S = ServerData, base = S.dayStartMin(day.date), qty = +(d.settings || {}).serverBoxQty || 1000;
+    let bx = []; try { bx = ForaTurno.caixas(d, day.lineId, base + w.a, base + w.b, day.date); } catch (e) { }
+    const L = []; let t = w.a; while (t < w.b) { const n = Math.min(w.b, Math.floor(t / 60) * 60 + 60); L.push([t, n]); t = n; }
+    let acc = 0;
+    const rows = L.map(([x, y]) => { const B = bx.filter(c => c.m >= base + x && c.m < base + y); acc += B.length * qty;
+      const cats = [...new Set(B.map(c => c.cat))], lots = [...new Set(B.map(c => c.lot))];
+      return { x, y, n: B.length, pecas: B.length * qty, acc, cats, lots, m0: B.length ? B[0].m : null, m1: B.length ? B[B.length - 1].m : null }; });
+    return { base, rows, n: bx.length, pecas: bx.length * qty };
+  },
+  npHtml(day, res) {
+    const sel = this.id(day), W = this.nps(day).filter(w => !sel || sel === w.id); if (!W.length) return '';
+    const ft = res && res.foraTurno, alvo = w => { const J = ft ? (ft.janela || []).filter(i => i.data === day.date && i.a === w.a) : []; const N = [...new Set(J.map(i => i.alvo ? i.alvo.name + (i.alvo.date !== day.date ? ' de ' + U.brDate(i.alvo.date) : '') : 'sem turno para receber'))]; return N.join(' · '); };
+    return W.map(w => {
+      const g = this.npGrade(day, w), dob = this.dobrado(w.code), cat = c => { const k = (db().catalogs || []).find(z => String(z.code) === String(c)); return k ? catName(k.id) : c; };
+      return `<section class="card section hh-np" data-hhnp="${esc(w.code)}"><header style="cursor:pointer" title="Recolher / expandir"><h3>${this.seta(w.code)} ${esc(w.name)} <span class="muted small">${U.hhmm(w.a)}–${U.hhmm(w.b)}</span></h3><span class="pill none" title="Turno não produtivo: só leitura; a produção desta janela conta no turno indicado (OEE reportado)">não produtivo · só leitura</span>
+        <span class="small muted">${U.fmt(g.n)} caixa(s) · ${fq(g.pecas)} ${esc(unitLbl())}${g.n ? ' · contou em ' + esc(alvo(w) || '—') : ''}</span>${ib('hhNP')}</header>
+        <div class="tw" ${dob ? 'hidden' : ''}><table class="hh"><thead><tr><th>Intervalo</th><th class="n">Min</th><th>Catálogo</th><th>Lote</th><th class="n">Caixas</th><th class="n">Produção</th><th class="n">Acumulado</th><th>1ª – última caixa</th></tr></thead><tbody>
+        ${g.rows.map(r => `<tr${r.n ? '' : ' class="muted"'}><td class="ivt">${U.range(r.x, r.y)}</td><td class="n">${r.y - r.x}</td><td>${esc(r.cats.map(cat).join(', ') || '—')}</td><td class="mono">${esc(r.lots.join(', ') || '—')}</td><td class="n">${r.n || ''}</td><td class="n">${r.n ? fq(r.pecas) : ''}</td><td class="n">${r.acc ? fq(r.acc) : ''}</td><td class="mono">${r.n ? OeeReal.hhmm(r.m0, g.base) + ' – ' + OeeReal.hhmm(r.m1, g.base) : ''}</td></tr>`).join('')}
+        </tbody></table></div></section>`;
+    }).join('');
+  },
+  barra(day, res) {
+    const L = res.shifts.map(sr => sr.ps).filter(ps => !ps.summary), N = this.nps(day); if (L.length + N.length < 2) return '';
+    const i = this.id(day), ch = (id, txt, on) => `<button type="button" data-hhsel="${esc(id)}" aria-pressed="${on}">${txt}</button>`;
+    const nCx = w => { try { return this.npGrade(day, w).n; } catch (e) { return 0; } };
+    return `<div class="row" style="margin:-4px 0 10px"><span class="small muted">Turno ${ib('hhTurno')}</span><div class="seg">${ch('', 'Todos', !i)}${L.map(ps => { const [f, n] = this.fill(ps); return ch(ps.id, `${esc(ps.snap.name)} <span class="small muted">${f}/${n}</span>`, i === ps.id); }).join('')}${N.map(w => ch(w.id, `${esc(w.name)} <span class="small muted">não produtivo · ${nCx(w)} cx</span>`, i === w.id)).join('')}</div></div>`;
+  },
+  /* gráfico: rótulo em todas as colunas e as horas do turno não produtivo com caixas */
+  chart(o, day, res) {
+    o.allLabels = true;
+    try {
+      for (const w of this.nps(day)) for (const r of this.npGrade(day, w).rows.filter(r => r.n)) {
+        o.x.push(U.hhmm(r.x)); if (o.xFull) o.xFull.push(`${U.range(r.x, r.y)} · ${w.name} (não produtivo)`);
+        (o.bars || []).forEach((b, k) => { b.values.push(k === 0 ? r.pecas : null); if (b.meta) b.meta.push(null); });
+        (o.lines || []).forEach(l => l.values.push(null));
+        if (o.mark) o.mark.push([]);
+      }
+      const tr = o.tipRows, n0 = res.flat.length; if (tr) o.tipRows = i => i < n0 ? tr(i) : [['Turno não produtivo', 'só leitura · conta no turno que recebe']];
+    } catch (e) { console.warn('HHPs.chart', e); }
+    return o;
+  },
+  ligarDobra(root) {
+    if (this.sel && String(this.sel.id).startsWith('np:')) { const t = root.querySelector('table.hh tr.total'); if (t && t.closest('.tw')) t.closest('.tw').hidden = true; }   /* só o turno não produtivo escolhido */
+    root.querySelectorAll('tr[data-hhgrp]').forEach(tr => tr.onclick = e => { if (e.target.closest('input,select,button,a')) return; const c = tr.dataset.hhgrp, F = this.fold(); F[c] = !F[c]; if (!F[c]) delete F[c]; savePrefs();
+      root.querySelectorAll(`tr[data-hhg="${CSS.escape(c)}"]`).forEach(r => { r.hidden = !!F[c]; }); const s = tr.querySelector('.hh-seta'); if (s) s.textContent = F[c] ? '▸' : '▾'; });
+    root.querySelectorAll('section.hh-np > header').forEach(h => h.onclick = e => { if (e.target.closest('.ib,button,a')) return; const c = h.parentElement.dataset.hhnp, F = this.fold(); F[c] = !F[c]; if (!F[c]) delete F[c]; savePrefs();
+      const t = h.parentElement.querySelector('.tw'); if (t) t.hidden = !!F[c]; const s = h.querySelector('.hh-seta'); if (s) s.textContent = F[c] ? '▸' : '▾'; });
+  }
+});
+/* ---------- Visão Geral: os cartões do Lançamento no período ---------- */
+const VGC = {
+  html(days, pdays, r, pr, ser, bOee, wOee, bG, wG, rel) {
+    const d = db(), oe = OeeReal.periodo(days), op = pdays && pdays.length ? OeeReal.periodo(pdays) : null;
+    let ult = null, meta = 0, nMeta = 0;
+    for (const day of [...days].sort((a, b) => a.date < b.date ? -1 : 1)) { let res; try { res = Engine.computeDay(d, day); } catch (e) { continue; }
+      if (res.officialDaily != null) { meta += res.officialDaily; nMeta++; } const f = res.flat.filter(x => x.cat && x.good).pop(); if (f) ult = f.cat; }
+    const cat = `<div class="kpi kpi-cat">${kpiDeco('catálogo').icon}<span class="l">Último catálogo do período${ib('initialCatalog')}</span><span class="v">${ult ? catPill(ult, true) : '—'}</span><span class="s">o último que produziu no período</span></div>`;
+    const inner = `<div class="kpis">${cat}
+      ${A.kpiCmp('Produção boa', r.good, v => fq(v), { unit: unitLbl(), meta: r.metaOp, semState: r.semAttain, prev: pr && pr.good, series: ser('good'), best: bG, worst: wG })}
+      ${A.kpiCmp('OEE realizado', r.oee, v => U.pct(v), { pct: true, meta: r.oeeTarget, semState: r.semOee, prev: pr && pr.oee, series: ser('oee'), best: bOee, worst: wOee, sub: r.oeeGap == null ? '' : `${U.pp(r.oeeGap)} contra a meta` })}
+      ${A.kpiCmp('Disponibilidade', r.D, v => U.pct(v), { pct: true, prev: pr && pr.D, series: ser('D'), sub: `${U.fmt(r.aMin)} min de parada` })}
+      ${A.kpiCmp('Performance', r.P, v => U.pct(v), { pct: true, prev: pr && pr.P, series: ser('P'), sub: r.perfAlert ? semB('warn', 'acima de 100%') : 'calculada: OEE ÷ (D × Q)' })}
+      ${A.kpiCmp('Qualidade', r.Q, v => U.pct(v, 2), { pct: true, prev: pr && pr.Q, series: ser('Q'), sub: `scrap ${U.fmt(r.scrap)} un · ${U.pct(r.scrapPct, 2)}` })}
+      ${A.kpiCmp('Capacidade planejada', r.cap, v => fq(v), { unit: unitLbl(), prev: pr && pr.cap, sub: `${U.fmt(r.netMin)} min líquidos` })}
+      ${A.kpiCmp('Meta oficial do período', nMeta ? meta : null, v => fq(v), { unit: unitLbl(), sub: `soma das metas diárias oficiais de ${nMeta} dia(s)` })}
+      ${A.kpiCmp('OEE reportado', oe.rep, v => U.pct(v), { pct: true, prev: op && op.rep, sub: oe.fora ? 'oficial: produção fora de turno somada ao turno que a recebe' : 'oficial · sem produção fora de turno' })}
+      ${A.kpiCmp('OEE real', oe.real, v => U.pct(v), { pct: true, prev: op && op.real, sub: oe.extraMin ? `+${U.fmt(oe.extraMin)} min fora do turno no tempo planejado` : 'igual ao reportado no período' })}
+      ${A.kpiCmp('Fora de turno', oe.fora, v => fq(v), { unit: unitLbl(), prev: op && op.fora, higher: false, sub: oe.foraPct != null ? `${U.pct(oe.foraPct, 1)} da produção boa reportada` : '' })}
+      ${MesDia.kpiPeriodo(days)}
+      ${A.kpiCmp('Atendimento ao plano', r.attain, v => U.pct(v), { pct: true, prev: pr && pr.attain, series: ser('attain'), sub: `${fq(r.good)} de ${fq(r.metaOp)} ${esc(unitLbl())} ${semB(r.semAttain, '')}` })}
+      ${A.kpiCmp('Confiabilidade do OEE', 1, () => rel.level, { semState: rel.sem, sub: esc(rel.txt), click: 'rel' })}</div>`;
+    return `<section class="card section vg-ind"><header><h3>Indicadores do período</h3><span class="spacer"></span><button class="btn xs" id="kcEditVg" title="Liga e desliga os indicadores (vale neste computador; a mesma escolha do Lançamento)">Editar cards</button></header>${KC.filtrar(inner)}</section>`;
+  }
+};
+/* ---------- recolher e expandir os blocos da Visão Geral ---------- */
+const Dobra = {
+  F() { const F = App.prefs.vgFold; return F && typeof F === 'object' ? F : (App.prefs.vgFold = {}); },
+  ligar(root) {
+    root.querySelectorAll('section.card > header').forEach(h => {
+      const sec = h.parentElement, t = (h.querySelector('h3,h2') || {}).textContent; if (!t || h.querySelector('.dobra')) return;
+      const k = t.replace(/[▾▸]/g, '').trim().slice(0, 80), F = this.F();
+      const b = document.createElement('button'); b.type = 'button'; b.className = 'btn xs ghost dobra'; b.title = 'Recolher / expandir este bloco'; b.setAttribute('aria-expanded', F[k] ? 'false' : 'true'); b.textContent = F[k] ? '▸' : '▾';
+      h.insertBefore(b, h.firstChild); if (F[k]) sec.classList.add('dobrado');
+      b.onclick = e => { e.stopPropagation(); const G = this.F(); G[k] = !G[k]; if (!G[k]) delete G[k]; savePrefs(); sec.classList.toggle('dobrado', !!G[k]); b.textContent = G[k] ? '▸' : '▾'; b.setAttribute('aria-expanded', G[k] ? 'false' : 'true'); };
+    });
+  }
+};
+(() => {
+  const st = document.createElement('style');
+  st.textContent = 'section.card.dobrado>:not(header){display:none!important}section.card>header .dobra{margin-right:6px;min-width:26px}tr.grp[data-hhgrp]{cursor:pointer}.hh-seta{display:inline-block;width:14px;color:var(--muted)}section.hh-np header{flex-wrap:wrap;gap:8px}.kpi .v .kv-sm{font-size:.62em;white-space:nowrap}[data-hhsel][aria-pressed=true] .muted{color:inherit;opacity:.85}';
+  document.head.appendChild(st);
+  const O = App.views.overview;
+  App.views.overview = { render() { return O.render(); }, mount(root) { if (O.mount) O.mount(root); Dobra.ligar(root); const k = root.querySelector('#kcEditVg'); if (k) k.onclick = () => KC.editar(); } };
+})();
+Object.assign(HELP, {
+  caixasDia: ['Caixas do MES', [['O que é?', 'Hora da 1ª e da última caixa do servidor (MES) no dia operacional (06:00 a 06:00), quantas caixas passaram e as trocas de lote com o tempo total de troca. No período, a 1ª caixa do primeiro dia e a última do último.'], ['Exemplo', '06:04 – 23:40 · 1.058 cx · 2 troca(s) · 1h05.']]],
+  hhNP: ['Turno não produtivo no hora a hora', [['O que é?', 'A janela de um turno marcado como não produtivo no Portal, por hora, com as caixas do MES. É só leitura: a produção desta janela conta no turno indicado (anterior, se emendou; senão, o seguinte) e entra no OEE reportado dele.'], ['Quero lançar nele', 'Use "Habilitar turno" no Lançamento: o turno vira produtivo só naquele dia.']]]
+});
+Object.assign(KPI_HELP, { 'Caixas do MES': 'caixasDia', 'Meta oficial do período': 'metaDaily', 'Último catálogo do período': 'initialCatalog' });
 
 async function boot() {
   if(vacDemo.ativo){await loadPrefs();applyTheme();bindGlobal();Charts.bind();Store.S.user='Pessoa de demonstração';Store.enterExample(vacDemo.ler('oee'));

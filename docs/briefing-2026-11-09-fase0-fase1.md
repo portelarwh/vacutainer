@@ -591,3 +591,21 @@ Pedido do usuário, com a regra confirmada (início e fim espelhados; a justific
   - o total de troca do turno.
 - **Turno não produtivo com caixas** (ex.: C): ganha um cartão só de leitura com as caixas, para onde a produção foi, o OEE do trecho e as trocas. Para lançar nele como turno, use "Habilitar turno".
 - O guia F1 do Lançamento foi atualizado. Teste: `node testes/toeereal.js` (na suíte).
+
+## 16. Visão Geral e Hora a hora (Produção 2.4.38; 10/11/2026)
+
+Pedido do usuário, só na página Produção.
+- **Visão Geral:** o bloco "Indicadores do período" tem os mesmos cartões do Lançamento, somados no período:
+  - último catálogo, produção boa, OEE realizado, D, P, Q;
+  - capacidade, meta oficial do período;
+  - OEE reportado, OEE real, Fora de turno, Caixas do MES;
+  - Atendimento ao plano e Confiabilidade, com a comparação com o período anterior.
+
+  "Editar cards" usa a mesma escolha do Lançamento. Cada bloco recolhe e expande pelo ▾ do título, e a escolha fica lembrada neste computador. "Mais indicadores" continua.
+- **Cartão "Caixas do MES"** (Lançamento e Visão Geral): 1ª e última caixa do dia operacional (06:00 a 06:00), quantidade de caixas e trocas de lote com o tempo total. No período, a 1ª caixa do primeiro dia e a última do último.
+- **Hora a hora:**
+  - o turno não produtivo do dia (ex.: C) entra no seletor de turno ("Turno C · não produtivo · 85 cx") e ganha a grade dele, só leitura, por hora: catálogo, lote, caixas, produção, acumulado e 1ª–última caixa. Aparece mesmo sem caixas;
+  - cada turno recolhe e expande pela linha do turno (lembrado neste computador);
+  - o gráfico "Atendimento hora a hora" tem rótulo em todas as colunas (inclinado quando não cabe) e mostra também as horas do C com caixas, sem meta;
+  - saíram os textos fixos "Produção boa em mil ou no número completo…", "Pausas e intervalos padrão do turno ›" e "Para editar um intervalo deste dia use ⋯". Os atalhos de teclado estão no guia F1.
+- Teste: `node testes/toeereal.js` (parte 2.4.38).

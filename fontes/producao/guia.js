@@ -47,7 +47,9 @@ window.VAC_GUIA.oee = {
     titulo: 'Hora a hora',
     para: 'A grade de produção por intervalo de cada turno: meta, produção boa, diferença, catálogo e paradas. É a fonte dos números do dia. Com o CSV do servidor (MES) importado, a produção vem sugerida pelas caixas.',
     campos: [
-      { sel: '[data-hhsel]', nome: 'Turno', o: 'Mostra só um turno ou todos. O número é quantos intervalos já têm produção lançada.', ex: 'A 8/8 · B 3/9: faltam 6 intervalos do B.' },
+      { sel: '[data-hhsel]', nome: 'Turno', o: 'Mostra só um turno ou todos. O número é quantos intervalos já têm produção lançada. O turno não produtivo (ex.: C) aparece com as caixas do MES.', ex: 'A 8/8 · B 3/9: faltam 6 intervalos do B.' },
+      { sel: 'tr[data-hhgrp]', nome: 'Linha do turno', o: 'Clique para recolher ou expandir os intervalos do turno (fica lembrado neste computador).' },
+      { sel: 'section.hh-np', nome: 'Turno não produtivo (só leitura)', o: 'As caixas do MES por hora na janela do turno não produtivo: catálogo, lote, caixas, produção e 1ª–última caixa. A produção conta no turno indicado em "contou em". Para lançar nele, use "Habilitar turno" no Lançamento.' },
       { sel: '[data-good]', nome: 'Produção boa do intervalo', o: 'Peças boas no intervalo, na unidade indicada no topo (mil ou número completo).', como: 'Digite e Enter (grava e desce). ↑↓ navegam, Esc desfaz.', ex: '61 (= 61.000 peças em "mil").' },
       { sel: '[data-ivcat]', nome: 'Catálogo do intervalo', o: 'Troca de catálogo a partir deste intervalo. A meta muda junto (PPH do catálogo).', como: 'Escolha só no intervalo em que a troca aconteceu; os seguintes herdam.' },
       { sel: '[data-addev]', nome: 'Apontar parada', o: 'Abre o formulário de parada do intervalo (código, duração, equipamento, observação).', como: 'Atalho Alt+P na linha selecionada.', ex: 'FME · 25 min · Tampadora · "troca de rolamento".' },
@@ -114,6 +116,9 @@ window.VAC_GUIA.oee = {
     para: 'Resumo da produção no período: OEE, produção, paradas e tendências. "Visão Geral · padrão" é a montagem fixa; as outras visões (Meu painel, compartilhadas, Diretoria mensal) são montadas por você.',
     campos: [
       { sel: '#vgView', nome: 'Visão', o: 'Escolhe a montagem da tela.', ex: 'Diretoria mensal para a reunião do mês.' },
+      { sel: 'section.vg-ind', nome: 'Indicadores do período', o: 'Os mesmos cartões do Lançamento somados no período (produção, OEE, D·P·Q, capacidade, meta, OEE reportado e real, fora de turno, caixas do MES), com a comparação com o período anterior.' },
+      { sel: '#kcEditVg', nome: 'Editar cards', o: 'Liga e desliga os indicadores; a mesma escolha vale no Lançamento (neste computador).' },
+      { sel: 'section.card > header .dobra', nome: 'Recolher / expandir', o: 'O ▾ no título de cada bloco recolhe o bloco (fica lembrado neste computador).' },
       { sel: '.filters .seg', nome: 'Período', o: 'Hoje, Ontem, Semana, Mês e os outros períodos rápidos, ou datas livres.' },
       { sel: '#vgPers', nome: 'Personalizar', o: 'Abre Meu painel em edição: indicadores do topo, blocos, ordem e largura. Para todos verem, salve como visão compartilhada.' },
       { sel: '#vgPrint', nome: 'Imprimir', o: 'Imprime a visão atual (sempre no tema claro).' },
