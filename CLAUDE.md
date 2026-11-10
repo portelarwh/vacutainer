@@ -6,7 +6,7 @@ Plataforma de páginas HTML de arquivo único que trabalham juntas numa **pasta 
 
 | Página | Arquivo | Base | Versão | Como editar |
 |---|---|---|---|---|
-| Portal (cadastro geral, Administração) | `Portal.html` | `portal-base.json` + `vacutainer-cadastros.json` | 1.9.15 | direto no HTML |
+| Portal (cadastro geral, Administração) | `Portal.html` | `portal-base.json` + `vacutainer-cadastros.json` | 1.9.16 | direto no HTML |
 | Produção (OEE, plano, ordens SAP) | `OEE-Vacutainer.html` | `oee-vacutainer-base.json` (+ `ordens-base.json`) | 2.4.34 | **NÃO editar o HTML**: editar `fontes/producao/` e rodar o build |
 | Waste (perdas por ordem, KKBC) | `Perdas-Ordem.html` | `perdas-base.json` | 1.8.29 | direto no HTML |
 | Gestão de Gel | `Gestão-Gel-Vacutainer.html` | `fifo-base.json` | 2.21 · **em atualização** | direto no HTML |
@@ -59,7 +59,7 @@ node testes/timportacao.js            # Fase 3 do briefing: Portal › Importaç
 node testes/tgel.js                   # Fase 4 do briefing (Gel na Produção): 4a parâmetros do gel no Portal com as contas do gel iguais (GEL-06), telas do Gel só consulta, fichas e Trazer configurações; 4b pesagem pelo vacGel igual à anterior (1.440 casos em testes/bases/gel-pesagens.json) e teórico igual ao do Gel; 4c Registrar scrap no turno da Produção (gravado no turno, exports porDiaTurno[].gel, tela do operador); 4d Gel lê da Produção a partir do corte (tubos, hora extra, sem produção, scrap) e Resumo do dia; 4e Teórico × Real no dia da Produção (só com gel; exports porDiaGel do Gel); código 1 se falhar
 node testes/tperiodo.js               # Fase 5 do briefing: período no Portal (Visão Geral, Relatório com 1 turno, TV) somando as séries por dia das páginas, títulos dos cartões levando à página; Produção com Painel e Visão Geral numa aba só (Hoje/Ontem); Segurança e Qualidade no relatório do dia/turno com opção só performance; SQDCP em barras verde/vermelho; código 1 se falhar
 node testes/tiniciativas.js           # Fase 6 do briefing: Iniciativas / Ações (nome, cards por status, eficácia, programas do Portal, Importar dados com prévia sem duplicar), Waste com ações em Iniciativas (+ Ação abre lá, leitura do exports, Trazer ações do Waste uma vez com histórico, pendência sem contagem dupla), Portal › Programas e Importação › Iniciativas; código 1 se falhar
-node testes/tfase7.js                 # Fase 7 do briefing: responsável por turno (e "pelo reporte" só no Total diário), Hora a hora de cada turno, ⓘ dos botões do dia, Painel → Visão Geral no Waste/Gel, pílula única do cadastro (vacCadPilula, "desatualizada"); código 1 se falhar
+node testes/tfase7.js                 # Fase 7 do briefing: responsável por turno (e "pelo reporte" só no Total diário), Hora a hora de cada turno, ⓘ dos botões do dia, Painel → Visão Geral no Waste/Gel, pílula única do cadastro (vacCadPilula, "desatualizada"), POR-02 (filtros e ordenação dos códigos de parada no Portal); código 1 se falhar
 node testes/tcontratos.js             # E4: exports por ordem (Produção 24 meses e dias do lote, Paradas, Gel), versão conferida pelos leitores, Waste com ordem em várias competências e dias do lote; código 1 se falhar
 ```
 

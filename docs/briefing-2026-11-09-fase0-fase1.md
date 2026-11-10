@@ -548,3 +548,10 @@ UX-02 (ajuda visual por aba) ficou para depois, a pedido do usuário.
 - **UX-04 (D8):** pílula única do kit, `vacCadPilula`, na Produção, no Paradas e no Portal: "Cadastro rev N", sempre visível, com ⓘ explicando o número. Mostra **desatualizada** quando outra página já leu uma revisão mais nova neste computador (a página foi aberta antes da última gravação no Portal: ↻ Sincronizar ou F5) e **cópia local** quando a pasta não respondeu. No Portal (dono do cadastro) nunca fica desatualizada.
 - Teste: `node testes/tfase7.js` (na suíte).
 - **Homologar:** lançar um dia com dois turnos e conferir o responsável de cada um e o Hora a hora por turno; mudar para Total diário e ver o "Responsável pelo reporte"; gravar algo no Portal com uma página aberta e ver a pílula dela ficar "desatualizada" até sincronizar.
+
+## 13. POR-02 · ordenar e filtrar os códigos de parada (Portal 1.9.16; 10/11/2026)
+
+Era o único item do briefing que tinha ficado sem entrega (além do UX-02, adiado).
+- **Todas as tabelas do cadastro** ordenam pela coluna clicada (▲ crescente, ▼ decrescente; o terceiro clique volta à ordem padrão). Números em ordem numérica e vazios no fim.
+- **Códigos de parada:** filtros por Pilar, Classe, Onde se aponta, Grupo (1º dígito do Nº) e Afeta (D, P, Q), com os valores que existem no cadastro, "Limpar filtros" e ⓘ. Filtros e ordem valem também para o ⇩ Excel. Nada muda na base: só a tela.
+- Teste: `node testes/tfase7.js` (parte POR-02).

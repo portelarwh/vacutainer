@@ -62,7 +62,36 @@ const { chromium } = require('playwright');
   await pa.close();
   const po = await nova('Portal.html');
   const pr = await po.evaluate(() => ({ v: PAGE.versao, aj: /como a peça falhou/.test(CAT_AJUDA.modosFalha) && /por que a linha parou/.test(CAT_AJUDA.paradas) }));
-  ok(pr.v === '1.9.15' && pr.aj, 'Portal 1.9.15: ⓘ das categorias explica código de parada × modo de falha');
+  ok(pr.v >= '1.9.15' && pr.aj, 'Portal (1.9.15+): ⓘ das categorias explica código de parada × modo de falha');
+  /* POR-02 (Portal 1.9.16): códigos de parada com filtros e ordenação por coluna */
+  await po.evaluate(() => enterTest()); await po.waitForTimeout(400);
+  await po.evaluate(() => { const P = (c, n, nome, pilar, classe, onde, af) => ({ codigo: c, numero: n, nome, pilar, classe, ondeAponta: onde, afetaD: af.includes('D'), afetaP: af.includes('P'), afetaQ: af.includes('Q'), ativo: true });
+    Cad.D.paradas = [P('FME', '801', 'Falha mecânica', 'D', 'porDuracao', 'Máquina', 'D'), P('TRC', '501', 'Troca de catálogo', 'D', 'fixa', 'Linha', 'D'), P('RTB', '901', 'Retrabalho', 'Q', 'emPecas', 'Linha', 'Q'),
+      P('MIC', '702', 'Microparada', 'P', 'calculada', '', 'P'), P('ALM', '401', 'Almoço', 'U', 'fixa', 'Liderança', '')]; });
+  await po.evaluate(() => { location.hash = '#cadastros/paradas'; }); await po.waitForTimeout(600);
+  const lin = () => po.evaluate(() => [...document.querySelectorAll('tr[data-cod]')].map(r => ({ c: r.dataset.cod, t: [...r.children].map(td => td.textContent.trim()) })));
+  const hd = await po.evaluate(() => [...document.querySelectorAll('th[data-ci]')].map(h => h.textContent.trim()));
+  const iP = hd.indexOf('Pilar'), iN = hd.indexOf('Nome'), iO = hd.indexOf('Onde');
+  const L0 = await lin();
+  const sel = await po.evaluate(() => [...document.querySelectorAll('[data-fp]')].map(s => s.dataset.fp + ':' + (s.options.length - 1)));
+  ok(L0.length > 3 && sel.length === 5 && sel.every(x => +x.split(':')[1] >= 1), `POR-02: filtros pilar, classe, onde, grupo, afeta com os valores do cadastro (${sel.join(' ')})`);
+  const pil = L0.map(r => r.t[iP]).find(Boolean);
+  await po.selectOption('[data-fp="pilar"]', pil); await po.waitForTimeout(150);
+  const L1 = await lin();
+  ok(L1.length > 0 && L1.length < L0.length && L1.every(r => r.t[iP] === pil), `POR-02: filtro Pilar ${pil} deixa ${L1.length} de ${L0.length}`);
+  await po.click('#cadFpX'); await po.waitForTimeout(150);
+  ok((await lin()).length === L0.length, 'POR-02: Limpar filtros volta tudo');
+  await po.click(`th[data-ci="${iN}"]`); await po.waitForTimeout(150);
+  const n1 = (await lin()).map(r => r.t[iN]); const ord = n1.slice().sort((a, b) => a.localeCompare(b, 'pt-BR', { numeric: true, sensitivity: 'base' }));
+  ok(JSON.stringify(n1) === JSON.stringify(ord), 'POR-02: clique em Nome ordena A→Z');
+  await po.click(`th[data-ci="${iN}"]`); await po.waitForTimeout(150);
+  const n2 = (await lin()).map(r => r.t[iN]);
+  ok(JSON.stringify(n2) === JSON.stringify(ord.slice().reverse()) && /▼/.test(await po.textContent(`th[data-ci="${iN}"]`)), 'POR-02: segundo clique inverte (▼)');
+  await po.click(`th[data-ci="${iN}"]`); await po.waitForTimeout(150);
+  ok(JSON.stringify((await lin()).map(r => r.c)) === JSON.stringify(L0.map(r => r.c)), 'POR-02: terceiro clique volta à ordem padrão (pelo Nº)');
+  await po.click(`th[data-ci="${iO}"]`); await po.waitForTimeout(150);
+  const o1 = (await lin()).map(r => r.t[iO]); const vazio = o1.indexOf('');
+  ok(vazio < 0 || o1.slice(vazio).every(x => !x), 'POR-02: vazios ficam no fim');
   await po.close();
 
   ok(!pe.length, 'sem erros de página' + (pe.length ? ': ' + pe.slice(0, 3).join(' | ') : ''));
