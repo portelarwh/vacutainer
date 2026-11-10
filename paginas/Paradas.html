@@ -383,7 +383,7 @@ const vacDemo = (() => {
   if(ativo){
     if(!host){url.searchParams.set('demo',id);history.replaceState(history.state,'',url.href);}
     // As preferências/cadastros usados pela página são do cenário. Não altera chaves reais.
-    const padrao = {'vac.user':'Pessoa de demonstração','vac.userId':'9001','vac.sistemas':JSON.stringify(Object.entries(paginas).map(([id,html])=>({id,html,nome:({oee:'Produção',perdas:'Waste',gel:'Gestão de Gel',equip:'Equipamentos',inic:'Iniciativas'})[id]||id[0].toUpperCase()+id.slice(1),futuro:false,estado:id==='projetos'?'construcao':undefined})))};
+    const padrao = {'vac.user':'Pessoa de demonstração','vac.userId':'9001','vac.sistemas':JSON.stringify(Object.entries(paginas).map(([id,html])=>({id,html,nome:({oee:'Produção',perdas:'Waste',gel:'Gestão de Gel',equip:'Equipamentos',inic:'Iniciativas / Ações'})[id]||id[0].toUpperCase()+id.slice(1),futuro:false,estado:id==='projetos'?'construcao':undefined})))};
     const prefsPrefixo=prefixo+'pref.';
     const chaves=()=>{const s=new Set(Object.keys(padrao));try{for(let i=0;real&&i<real.length;i++){const k=real.key(i);if(k.startsWith(prefsPrefixo))s.add(k.slice(prefsPrefixo.length));}}catch(e){}for(const k of memoria.keys())if(k.startsWith(prefsPrefixo))s.add(k.slice(prefsPrefixo.length));return[...s]};
     const metodos={getItem(k){k=String(k);if(k==='vac.cadastros')return JSON.stringify(ler('cad'));return lerTexto(prefsPrefixo+k)??padrao[k]??null},setItem(k,v){k=String(k);v=String(v);gravarTexto(prefsPrefixo+k,v)},removeItem(k){apagar(prefsPrefixo+String(k))},clear(){for(const k of chaves())apagar(prefsPrefixo+k)},key(i){return chaves()[i]??null}};
@@ -799,7 +799,7 @@ const MATRIZ_PROPOSTA={"OUT": ["Tullip A", "Tullip B", "Packout", "Metro", "Cap 
    PARADAS · núcleo (pasta, base, fila de gravação, backups, cadastro, utilidades)
    ===================================================================================== */
 const PAGE={id:'paradas',titulo:'Paradas · Análise de falhas e paradas de máquina',tituloCurto:'Paradas',subtitulo:'Análise de falhas e paradas de máquina',
-  versao:'1.0.27',estado:'atualizacao',estadoNota:'Matriz, componentes e limite de microparada passam a vir só do Portal; eventos da Produção entram como sugestão.',baseFile:'paradas-base.json',backupDir:'00. Backups/Paradas',busca:q=>buscaPagina(q)};
+  versao:'1.0.28',estado:'atualizacao',estadoNota:'Matriz, componentes e limite de microparada passam a vir só do Portal; eventos da Produção entram como sugestão.',baseFile:'paradas-base.json',backupDir:'00. Backups/Paradas',busca:q=>buscaPagina(q)};
 const APP_VERSION=PAGE.versao;
 const CAD_FILE='vacutainer-cadastros.json',OEE_FILE='oee-vacutainer-base.json';
 const $=(s,r=document)=>r.querySelector(s),$$=(s,r=document)=>[...r.querySelectorAll(s)];
@@ -1879,6 +1879,21 @@ iniciar();
       A página pode definir vacNavAtual() → {attr,val,sub} quando a aba atual não é o botão marcado (ex.: Produção).
    2) Ao voltar para a página (troca de aba/janela, ← Voltar, página restaurada), chama vacAoVoltar() se a página definir,
       para reler o que outras páginas gravaram sem precisar de F5. */
+/* kit v2.1 · 10/11/2026: a lista de páginas guardada neste navegador (vac.sistemas, gravada pelo Portal) pode ter o nome antigo
+   ("Iniciativas", antes da 1.1.0) ou a marca "futuro" de quando Equipamentos e Iniciativas ainda não existiam: aí o item some da barra
+   ou aparece com o nome velho. Corrige uma vez e redesenha a barra. Ocultar em Portal › Módulos e a permissão do perfil continuam valendo. */
+(() => {
+  try {
+    const L = JSON.parse(localStorage.getItem('vac.sistemas') || 'null'); if (!Array.isArray(L)) return;
+    let mudou = false;
+    for (const x of L) {
+      if (!x || typeof x !== 'object') continue;
+      if (x.id === 'inic' && (!x.nome || x.nome === 'Iniciativas')) { x.nome = 'Iniciativas / Ações'; mudou = true; }
+      if ((x.id === 'inic' || x.id === 'equip') && x.futuro) { x.futuro = false; mudou = true; }
+    }
+    if (mudou) { localStorage.setItem('vac.sistemas', JSON.stringify(L)); setTimeout(() => { try { if (typeof renderSysNav === 'function') renderSysNav(); } catch (e) { } }, 0); }
+  } catch (e) { }
+})();
 (() => {
   if (window.__vacV21) return; window.__vacV21 = 1;
   const SEL = '#nav [data-route],#nav [data-t],#nav [data-tab],[role=tab][data-tab]';

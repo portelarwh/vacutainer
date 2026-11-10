@@ -775,7 +775,7 @@ const vacDemo = (() => {
   if(ativo){
     if(!host){url.searchParams.set('demo',id);history.replaceState(history.state,'',url.href);}
     // As preferências/cadastros usados pela página são do cenário. Não altera chaves reais.
-    const padrao = {'vac.user':'Pessoa de demonstração','vac.userId':'9001','vac.sistemas':JSON.stringify(Object.entries(paginas).map(([id,html])=>({id,html,nome:({oee:'Produção',perdas:'Waste',gel:'Gestão de Gel',equip:'Equipamentos',inic:'Iniciativas'})[id]||id[0].toUpperCase()+id.slice(1),futuro:false,estado:id==='projetos'?'construcao':undefined})))};
+    const padrao = {'vac.user':'Pessoa de demonstração','vac.userId':'9001','vac.sistemas':JSON.stringify(Object.entries(paginas).map(([id,html])=>({id,html,nome:({oee:'Produção',perdas:'Waste',gel:'Gestão de Gel',equip:'Equipamentos',inic:'Iniciativas / Ações'})[id]||id[0].toUpperCase()+id.slice(1),futuro:false,estado:id==='projetos'?'construcao':undefined})))};
     const prefsPrefixo=prefixo+'pref.';
     const chaves=()=>{const s=new Set(Object.keys(padrao));try{for(let i=0;real&&i<real.length;i++){const k=real.key(i);if(k.startsWith(prefsPrefixo))s.add(k.slice(prefsPrefixo.length));}}catch(e){}for(const k of memoria.keys())if(k.startsWith(prefsPrefixo))s.add(k.slice(prefsPrefixo.length));return[...s]};
     const metodos={getItem(k){k=String(k);if(k==='vac.cadastros')return JSON.stringify(ler('cad'));return lerTexto(prefsPrefixo+k)??padrao[k]??null},setItem(k,v){k=String(k);v=String(v);gravarTexto(prefsPrefixo+k,v)},removeItem(k){apagar(prefsPrefixo+String(k))},clear(){for(const k of chaves())apagar(prefsPrefixo+k)},key(i){return chaves()[i]??null}};
@@ -1257,7 +1257,7 @@ const U = (() => {
 
 /* ---- 02-model.js ---- */
 /* ================= modelo de dados, valores iniciais e integridade ================= */
-const APP_VERSION = '2.4.38';
+const APP_VERSION = '2.4.40';
 const SCHEMA_VERSION = 1;
 const BASE_FILE = 'oee-vacutainer-base.json';
 const BACKUP_DIR = '00. Backups';
@@ -4700,8 +4700,7 @@ function renderTop() {
   $('#stBase').innerHTML = `<button class="pill ${cls}" id="stPill" title="${esc(S.error || 'Situação da base · clique para detalhes')}"><span class="dot"></span>${esc(txt)}${S.mode === 'pasta' && d ? ` · rev ${d.databaseVersion}` : ''}</button>
     ${S.dirty && S.mode === 'pasta' ? `<span class="pill pend" title="Pendente desde ${U.brDT(S.pendingSince)}">gravação pendente</span>` : ''}
     ${cad && typeof vacCadPilula === 'function' ? vacCadPilula(cad.rev, { fonte: 'pasta', revAt: cad.revAt, revBy: cad.revBy }) : `<span class="pill none" title="O cadastro base do Portal ainda não existe na pasta: o OEE usa os próprios cadastros">Cadastro próprio do OEE</span>`}
-    ${srvEnd ? `<span class="pill none" title="Dados do servidor (MES) importados">Servidor até ${ServerData.br(srvEnd)}</span>` : ''}
-    <span class="pill none" title="${esc((S.mode === 'pasta' ? 'Pasta ' + (S.backend && S.backend.name) : S.mode === 'arquivo' ? 'Arquivo ' + (S.fileName || '') : 'Somente neste navegador') + (d ? ' · última gravação ' + U.brDT(d.lastModifiedAt) + ' por ' + (d.lastModifiedBy || '—') : ''))}">${d ? U.brDT(d.lastModifiedAt).slice(0, 5) + ' ' + U.brDT(d.lastModifiedAt).slice(-5) : '—'}</span>`;
+`;
   vacUserRender();
   $('#appVer').textContent = 'v' + PAGE.versao;
   renderSysNav();
@@ -11386,6 +11385,21 @@ const CadSync = (() => {
       A página pode definir vacNavAtual() → {attr,val,sub} quando a aba atual não é o botão marcado (ex.: Produção).
    2) Ao voltar para a página (troca de aba/janela, ← Voltar, página restaurada), chama vacAoVoltar() se a página definir,
       para reler o que outras páginas gravaram sem precisar de F5. */
+/* kit v2.1 · 10/11/2026: a lista de páginas guardada neste navegador (vac.sistemas, gravada pelo Portal) pode ter o nome antigo
+   ("Iniciativas", antes da 1.1.0) ou a marca "futuro" de quando Equipamentos e Iniciativas ainda não existiam: aí o item some da barra
+   ou aparece com o nome velho. Corrige uma vez e redesenha a barra. Ocultar em Portal › Módulos e a permissão do perfil continuam valendo. */
+(() => {
+  try {
+    const L = JSON.parse(localStorage.getItem('vac.sistemas') || 'null'); if (!Array.isArray(L)) return;
+    let mudou = false;
+    for (const x of L) {
+      if (!x || typeof x !== 'object') continue;
+      if (x.id === 'inic' && (!x.nome || x.nome === 'Iniciativas')) { x.nome = 'Iniciativas / Ações'; mudou = true; }
+      if ((x.id === 'inic' || x.id === 'equip') && x.futuro) { x.futuro = false; mudou = true; }
+    }
+    if (mudou) { localStorage.setItem('vac.sistemas', JSON.stringify(L)); setTimeout(() => { try { if (typeof renderSysNav === 'function') renderSysNav(); } catch (e) { } }, 0); }
+  } catch (e) { }
+})();
 (() => {
   if (window.__vacV21) return; window.__vacV21 = 1;
   const SEL = '#nav [data-route],#nav [data-t],#nav [data-tab],[role=tab][data-tab]';
