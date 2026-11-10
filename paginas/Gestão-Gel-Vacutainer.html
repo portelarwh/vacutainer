@@ -1587,7 +1587,7 @@ const fileBackend={kind:'file',async commit(ch){applyLocal(ch);FS.pending.push(c
 async function fsRefresh(){if(S.mode!=='file'||FS.busy||ui.demo)return;try{const cur=await fsReadBase(fsKnown());if(cur&&!cur.same){FS.mod=cur.mod;FS.rev=cur.rev;FS.revBy=cur.by;loadData(cur.data);FS.pending.forEach(applyLocal);localBackend.save();render()}}catch(e){}}
 /* ================= V1.89 · integração com as outras páginas (Portal, OEE, Perdas) ================= */
 // versão da página (topo, Guia e base gravada)
-const APP_VERSION='2.18';   /* 2.18 · Fase 4 · 4b: pesagem pela conta comum do kit (vacGel) */   /* 2.17 · Fase 4 · 4a: parâmetros do gel do Portal (processo, formatos, motivos, descartes, gel do catálogo) */   /* 2.16 · Fase 3 (IMP-04): importações no exports; #importar abre a importação */   /* 2.15 · ARQ-05/ARQ-07: catálogos e equipamentos do Portal (GelCad); contas do gel iguais */   /* 2.14 · ARQ-09: sem entrada própria de "Modo exemplo" */   /* 2.11 · C2–C6: kit com a ficha por pasta (AT-08) e a contagem da fila durável (Portal › Versões) */   /* 2.10 · C1: alterações pendentes na fila durável do kit (sem perda entre abas) */   /* 2.09 · E11: busca do kit leva o equipamento à ficha em Equipamentos */   /* 2.08 · E8: kit com "+ Abrir ação" na ficha da ordem */   /* 2.07 · E5: ficha da ordem comum (botão na ordem) e busca por ordem, lote e LP */   /* 2.06 · E3: número digitado só aceito inteiro; E4: cobertura das ordens no exports */   /* 2.05 · E2: a versão da tela vem desta constante (o rótulo estava fixo em v2.01); kit com data local e meta do mês ponderada */   /* 2.04 · revisão 065fe6f: restauração por arquivo confirma e não segue sem a cópia anterior; CSV sem fórmulas; índice por dia no Painel */
+const APP_VERSION='2.19';   /* 2.19 · Fase 4 · 4d: lê da Produção a partir do corte (GelProd); Resumo do dia */   /* 2.18 · Fase 4 · 4b: pesagem pela conta comum do kit (vacGel) */   /* 2.17 · Fase 4 · 4a: parâmetros do gel do Portal (processo, formatos, motivos, descartes, gel do catálogo) */   /* 2.16 · Fase 3 (IMP-04): importações no exports; #importar abre a importação */   /* 2.15 · ARQ-05/ARQ-07: catálogos e equipamentos do Portal (GelCad); contas do gel iguais */   /* 2.14 · ARQ-09: sem entrada própria de "Modo exemplo" */   /* 2.11 · C2–C6: kit com a ficha por pasta (AT-08) e a contagem da fila durável (Portal › Versões) */   /* 2.10 · C1: alterações pendentes na fila durável do kit (sem perda entre abas) */   /* 2.09 · E11: busca do kit leva o equipamento à ficha em Equipamentos */   /* 2.08 · E8: kit com "+ Abrir ação" na ficha da ordem */   /* 2.07 · E5: ficha da ordem comum (botão na ordem) e busca por ordem, lote e LP */   /* 2.06 · E3: número digitado só aceito inteiro; E4: cobertura das ordens no exports */   /* 2.05 · E2: a versão da tela vem desta constante (o rótulo estava fixo em v2.01); kit com data local e meta do mês ponderada */   /* 2.04 · revisão 065fe6f: restauração por arquivo confirma e não segue sem a cópia anterior; CSV sem fórmulas; índice por dia no Painel */
 /* 2.03 · situação "em atualização" (kit: selo, pílula e faixa; docs/paginas-construcao.md) */
 /* 2.02 · relatório montado: todas as linhas no PDF, comentário, aviso de corte no texto; Painel em 1º; aba inicial do perfil; impressão e PDF no tema claro */
 /* 1.99 · menu Mais do cabeçalho (vac-visual v1): fecha ao escolher uma ação, ao clicar fora e com Esc */
@@ -3722,7 +3722,7 @@ function evText0(e){
 }
 
 /* ================= render ================= */
-function render(){memoClear();try{GelCad.aplicar()}catch(e){console.warn('GelCad',e)}
+function render(){memoClear();try{GelCad.aplicar()}catch(e){console.warn('GelCad',e)}try{GelProd.aplicar();GelProd.talvez();const tp=TABS.find(t=>t[0]==='prod');if(tp)tp[1]=GelProd.corte()?'Resumo do dia':'Registro de produção'}catch(e){console.warn('GelProd',e)}
   applyLogo();applyName();applyTheme();if(!ui.sysDone){ui.sysDone=true;try{renderSysNav();renderUser();wireCabecalho()}catch(e){console.warn(e)}}if(ui.hashGo)setTimeout(hashTry,0);
   if(!visibleTabs().some(t=>t[0]===ui.tab))ui.tab=visibleTabs()[0][0];
   derive();renderMeta();renderKpis();renderTabs();
@@ -4630,6 +4630,35 @@ const GelCad={
   return (c.equipamentos||[]).filter(x=>x&&x.codigo&&x.ativo!==false&&!usados.has(String(x.codigo))).sort((a,b)=>(a.categoria==='gel'?0:1)-(b.categoria==='gel'?0:1)||String(a.codigo).localeCompare(String(b.codigo)))},
  catLivres(){const c=this.doc();if(!c)return[];return (c.catalogos||[]).filter(x=>x&&x.codigo&&x.tipoItem!=='preparacao'&&x.ativo!==false&&!(S.catalogs||[]).some(k=>String(k.num)===String(x.codigo)))}
 };
+
+/* ===== 2.19 · Fase 4 · 4d do briefing (GEL-02 / GEL-05, G3 / G5): o Gel lê da Produção a partir da data de corte =====
+   A partir de Portal › Parâmetros › Gestão de Gel › "Gel lido da Produção a partir de", cada dia com dados da Produção vira,
+   na memória, um registro do Gel montado com o exports da Produção (lido pelo vacFicha, com cache e conferência de versão):
+   tubos bons por catálogo (porDiaCatalogo), hora extra e "sem produção" de cada turno e as pesagens do Registrar scrap (porDiaTurno).
+   As contas do Gel (teórico, índice, BOM, saving, relatório) ficam iguais e usam esses números. Os campos manuais somem nesses dias
+   (Resumo do dia, só leitura). Dias anteriores ao corte continuam com o registro do Gel. */
+const GelProd={oee:null,lendo:false,lidoEm:0,
+ corte(){const G=GelCad.pg();return G&&G.registroPelaProducaoDesde||null},
+ resumo(date){const c=this.corte();return !!c&&!!date&&date>=c},
+ ler(){if(this.lendo||typeof vacFicha==='undefined')return Promise.resolve();this.lendo=true;
+  return vacFicha.carregar().then(()=>{const x=vacFicha.dados('oee');this.oee=x&&x.d?x:null;this.lidoEm=Date.now()}).catch(e=>console.warn('GelProd',e)).finally(()=>{this.lendo=false})},
+ /* chamado no render: lê de novo depois de 1 min e redesenha quando chega */
+ talvez(){if(!this.corte())return;if(!this.lendo&&Date.now()-this.lidoEm>60000)this.ler().then(()=>{if(this.oee)render()})},
+ rec(dia,x){const catId=code=>{const k=(S.catalogs||[]).find(c=>String(c.num)===String(code));return k?k.id:null};
+  const eqId=code=>{const e=(S.config.equips||[]).find(e=>String(e.portal||'')===String(code));return e?e.id:null};
+  const turns={};let anyGel=false;
+  for(const t of x.turnos){const g=t.gel||null,tt={t:+t.boa||0,x:t.extraMin?+(t.extraMin/60).toFixed(4):0,off:t.semProducao==='programado'};
+   if(g){anyGel=true;if(g.none)tt.none=true;else{tt.eq=(g.pesagens||[]).map(p=>({e:eqId(p.e),d:p.d,kg:+p.kg||0,nb:+p.nb||0,cat:catId(p.cat)||'',mots:(p.mots||[]).slice()})).filter(p=>p.e)}}
+   turns[t.turno]=tt}
+  const M={};for(const k of x.cats){const id=catId(k.catalogo);if(!id)continue;M[id]=(M[id]||0)+(+k.boa||0)}
+  const rec={date:dia,turns,orders:Object.entries(M).map(([cat,t])=>({cat,t})),sT:'',sB:'',sP:'',resp:'Produção',obs:'',fromProd:true,prodGeradoEm:this.oee.geradoEm||null,savedAt:this.oee.geradoEm||null};
+  if(anyGel){const es=recEquipScrap(rec,dia);rec.sT=+es.T.toFixed(3);rec.sB=+es.B.toFixed(3);rec.sP=+es.P.toFixed(3);rec.eqScrap=es.any}
+  return rec},
+ aplicar(){const c=this.corte();if(!c||!this.oee||!this.oee.d)return false;const D=this.oee.d,porDia={};let m=false;
+  for(const t of D.porDiaTurno||[])if(t&&t.dia>=c)(porDia[t.dia]=porDia[t.dia]||{turnos:[],cats:[]}).turnos.push(t);
+  for(const k of D.porDiaCatalogo||[])if(k&&k.dia>=c)(porDia[k.dia]=porDia[k.dia]||{turnos:[],cats:[]}).cats.push(k);
+  for(const [dia,x] of Object.entries(porDia)){const r=this.rec(dia,x);if(JSON.stringify(S.prodlog[dia]||null)!==JSON.stringify(r)){S.prodlog[dia]=r;m=true}}
+  if(m&&typeof memoClear==='function')memoClear();return m}};
 function portalBannerGel(txt,h){return`<div class="info" style="margin-bottom:10px"><b>${txt}</b>: cadastro geral do Portal, só para consulta aqui. <a class="btn" href="${typeof vacPortalHref==='function'?vacPortalHref(h):'Portal.html#'+h}" target="_blank">Editar no Portal ↗</a></div>`}
 const shiftAtRaw=date=>{const pt=cadTurnosGel(date);if(pt)return pt;const L=shiftList();let v=L[0];for(const x of L)if(x.from<=date)v=x;return v};
 // só os turnos ativos (turno desmarcado não aparece no registro nem conta horas)
@@ -5742,9 +5771,10 @@ function renderProd(){
     <label>Ver período <select id="rgDays2">${[['7','Última semana'],['30','Último mês'],['all','Total'],['14','14 dias'],['60','60 dias']].map(([v,l])=>`<option value="${v}" ${String(ui.rgDays||14)===v?'selected':''}>${l}</option>`).join('')}</select></label>
     ${recent.length?`<span class="sub" style="color:var(--muted);font-size:12.5px">Registrados:</span>${recent.map(k=>`<button class="btn sm ${k===ui.rgDate?'primary':''}" data-rgday="${k}">${fmtD(k).slice(0,5)}</button>`).join('')}`:''}</div>
   <div class="grid2">
-   <div class="card"><h3>Registro de ${dayLabel(d.date)}${d.exists?' <span class="pill p-ok">registrado</span>':''}</h3>
-    <p class="sub">${dp?`Programado: ${dp.unit==='tubos'?nf0.format(dp.tubes)+' tubos':dp.barrels+' barris'}. `:''}Informe os tubos bons produzidos por catálogo. Os barris consumidos vêm das baixas, feitas aqui ou na Operação.</p>
-    <div class="rgform">
+   <div class="card"><h3>${GelProd.resumo(d.date)?'Resumo de ':'Registro de '}${dayLabel(d.date)}${GelProd.resumo(d.date)?' <span class="pill p-ok">da Produção</span>':d.exists?' <span class="pill p-ok">registrado</span>':''}</h3>
+    ${GelProd.resumo(d.date)?`<div class="info" style="margin-bottom:8px">Tubos bons, hora extra, "sem produção" e scrap deste dia vêm da <b>Produção</b> (Registrar scrap de cada turno)${GelProd.oee?` · lidos de ${fmtDT(GelProd.oee.geradoEm||'')}`:' · <b>ainda não lidos</b>: conecte a pasta ou abra a Produção'}. Aqui é só consulta; o Gel lê da Produção a partir de ${fmtD(GelProd.corte())} (Portal › Parâmetros › Gestão de Gel).</div>`:''}
+    <p class="sub">${dp?`Programado: ${dp.unit==='tubos'?nf0.format(dp.tubes)+' tubos':dp.barrels+' barris'}. `:''}${GelProd.resumo(d.date)?'Os barris consumidos vêm das baixas, feitas aqui ou na Operação.':'Informe os tubos bons produzidos por catálogo. Os barris consumidos vêm das baixas, feitas aqui ou na Operação.'}</p>
+    ${GelProd.resumo(d.date)?'<fieldset disabled style="border:0;padding:0;margin:0;min-width:0">':''}<div class="rgform">
      <div class="f"><span>Produção (tubos bons)</span>
       <div class="orders">${d.orders.map((o,i)=>`<div class="rgo"><div class="orow">${useCat?`<select data-rg="cat" data-i="${i}" aria-label="Catálogo">${catOptions(o.cat)}</select>`:'<span></span>'}<input type="text" inputmode="numeric" data-rg="t" data-i="${i}" value="${o.t?nf0.format(o.t):''}" placeholder="tubos bons" aria-label="Tubos bons"><span>tubos</span>${d.orders.length>1?`<button class="btn sm ghost" data-act="rgRm" data-i="${i}" aria-label="Remover">✕</button>`:'<span></span>'}</div></div>`).join('')}</div>
       <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:6px"><button class="btn sm" data-act="rgAdd">+ Catálogo</button>${dp&&dp.unit==='tubos'?'<button class="btn sm" data-act="rgCopy">Copiar da programação</button>':''}</div>
@@ -5756,7 +5786,7 @@ function renderProd(){
      <div class="fg"><label class="f"><span>Responsável *</span><input type="text" data-rg="resp" value="${esc(d.resp)}"></label><label class="f"><span>Observação</span><input type="text" data-rg="obs" value="${esc(d.obs)}"></label></div>
      <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn primary" data-act="rgSave">${d.exists?'Salvar alterações':'Registrar produção'}</button>${d.exists?'<button class="btn danger" data-act="rgDel">Excluir registro</button>':''}</div>
     </div>
-    ${rgBarrelsHtml(d.date)}
+    ${GelProd.resumo(d.date)?'</fieldset>':''}${rgBarrelsHtml(d.date)}
    </div>
    <div class="card"><h3>Teórico × real do dia</h3><div id="rgResult">${rgResultHtml(c)}</div></div>
   </div>`;
@@ -7849,7 +7879,7 @@ function vacExportsOk(ex, conhecida = 1) {
    ou o link <página>#ficha=ordem/<n> (também lote/<x> e lp/<x>). O ← Voltar do navegador fecha a ficha e mantém a tela. */
 const vacFicha = (() => {
   const FONTES = [
-    { id: 'oee', nome: 'Produção', base: 'oee-vacutainer-base.json', pega: ex => ({ porOrdem: ex.porOrdem || [], cob: ex.porOrdemCobertura || null, lotes: ex.lotes || [] }) },
+    { id: 'oee', nome: 'Produção', base: 'oee-vacutainer-base.json', pega: ex => ({ porOrdem: ex.porOrdem || [], cob: ex.porOrdemCobertura || null, lotes: ex.lotes || [], porDiaTurno: ex.porDiaTurno || [], porDiaCatalogo: ex.porDiaCatalogo || [] }) },   /* Fase 4 · 4d: o Gel lê os turnos da Produção */
     { id: 'ordens', nome: 'SAP (Produção › Ordens)', sis: 'oee', base: 'ordens-base.json', pega: ex => ({ porOrdem: ex.porOrdem || [] }) },
     { id: 'perdas', nome: 'Waste', base: 'perdas-base.json', pega: ex => ({ porOrdem: ex.porOrdem || [] }) },
     { id: 'gel', nome: 'Gestão de Gel', base: 'fifo-base.json', pega: ex => ({ ordens: ex.ordens || [], cob: ex.ordensCobertura || null }) },
@@ -8061,7 +8091,9 @@ const vacFicha = (() => {
   };
   const ini = () => { ligaBusca(); rota(); };
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', () => setTimeout(ini, 0)); else setTimeout(ini, 0);
-  return { abrir, fechar, carregar, buscar, indice, _S: S, FONTES };
+  /* Fase 4 · 4d: o que foi lido de uma página (estado, geradoEm, d), para quem precisa do exports de outra (ex.: o Gel lê a Produção) */
+  const dados = id => S.dados[id] || null;
+  return { abrir, fechar, carregar, buscar, indice, dados, _S: S, FONTES };
 })();
 /* botão "Ficha" para as páginas porem ao lado de um número de ordem (abre a ficha comum) */
 function vacFichaBotao(ordem, tipo = 'ordem') { const v = String(ordem ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); return `<button type="button" class="vficha-bt" data-vac-${tipo}="${v}" title="Ficha: tudo sobre ${tipo === 'lp' ? 'o barril' : 'a ' + tipo} ${v} em todas as páginas">Ficha</button>`; }

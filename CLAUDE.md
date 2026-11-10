@@ -9,7 +9,7 @@ Plataforma de páginas HTML de arquivo único que trabalham juntas numa **pasta 
 | Portal (cadastro geral, Administração) | `Portal.html` | `portal-base.json` + `vacutainer-cadastros.json` | 1.9.12 | direto no HTML |
 | Produção (OEE, plano, ordens SAP) | `OEE-Vacutainer.html` | `oee-vacutainer-base.json` (+ `ordens-base.json`) | 2.4.28 | **NÃO editar o HTML**: editar `fontes/producao/` e rodar o build |
 | Waste (perdas por ordem, KKBC) | `Perdas-Ordem.html` | `perdas-base.json` | 1.8.27 | direto no HTML |
-| Gestão de Gel | `Gestão-Gel-Vacutainer.html` | `fifo-base.json` | 2.18 · **em atualização** | direto no HTML |
+| Gestão de Gel | `Gestão-Gel-Vacutainer.html` | `fifo-base.json` | 2.19 · **em atualização** | direto no HTML |
 | Paradas | `Paradas.html` | `paradas-base.json` | 1.0.25 · **em atualização** | direto no HTML |
 | Equipamentos (com manutenção) | `Equipamentos.html` | `equipamentos-base.json` | 1.0.5 · **em atualização** | direto no HTML (saiu do gerador na 1.0.0; `docs/equipamentos-v1.md`) |
 | Iniciativas (Ações/Planner · KAS · OSM · 5S) | `Iniciativas.html` | `iniciativas-base.json` | 1.0.5 · **em atualização** | direto no HTML (saiu do gerador na 1.0.0; `docs/iniciativas-planner.md`) |
@@ -56,7 +56,7 @@ node testes/tudo.js                   # a suíte inteira, uma por vez: passou / 
 node testes/tportalfonte.js           # Fase 1 do briefing (09/11/2026): Parâmetros (Produção, Neste computador, arredondamento com vigência), Configurações da Produção só consulta, PRD-04, Trazer configurações (Produção e Gel), Gel ligado ao Portal com contas iguais; código 1 se falhar
 node testes/tturnos.js                # Fase 2 do briefing: turno não produtivo, habilitar no dia, produção fora de turno (continuidade D1), OEE reportado × real, a partir da data, POR-10; código 1 se falhar
 node testes/timportacao.js            # Fase 3 do briefing: Portal › Importação (sequência, status por dia, subseções), exports.importacoes, abas Importar → Portal, endereços diretos, Ordens reorganizadas; código 1 se falhar
-node testes/tgel.js                   # Fase 4 do briefing (Gel na Produção): 4a parâmetros do gel no Portal com as contas do gel iguais (GEL-06), telas do Gel só consulta, fichas e Trazer configurações; 4b pesagem pelo vacGel igual à anterior (1.440 casos em testes/bases/gel-pesagens.json) e teórico igual ao do Gel; 4c Registrar scrap no turno da Produção (gravado no turno, exports porDiaTurno[].gel, tela do operador); código 1 se falhar
+node testes/tgel.js                   # Fase 4 do briefing (Gel na Produção): 4a parâmetros do gel no Portal com as contas do gel iguais (GEL-06), telas do Gel só consulta, fichas e Trazer configurações; 4b pesagem pelo vacGel igual à anterior (1.440 casos em testes/bases/gel-pesagens.json) e teórico igual ao do Gel; 4c Registrar scrap no turno da Produção (gravado no turno, exports porDiaTurno[].gel, tela do operador); 4d Gel lê da Produção a partir do corte (tubos, hora extra, sem produção, scrap) e Resumo do dia; código 1 se falhar
 node testes/tcontratos.js             # E4: exports por ordem (Produção 24 meses e dias do lote, Paradas, Gel), versão conferida pelos leitores, Waste com ordem em várias competências e dias do lote; código 1 se falhar
 ```
 
@@ -120,7 +120,7 @@ Lista única do que ficou para depois. O motivo e o gatilho de cada item estão 
 - Calendário de produção no Portal.
 - Telas por perfil (E10c): Resumo/Detalhado, o que fica em "Mais", passagem de turno e alerta de ritmo; espera a lista de jornadas por perfil validada com operador e liderança (registro § U).
 - OSM (E7, falta a amostra da planilha), importação por pasta (E9, falta decidir a estação coletora), MES (E12, faltam amostras e regras), conteúdo AM/TPM e 5S (E13, faltam os padrões), Projetos (E15, falta o escopo) e XLSX local (E3b, falta o arquivo): registro § U.
-- Produção OEE → Gel (registro § 1; Fase 4 do briefing, passos 4b a 4e). Parâmetros do gel no Portal: feito (4a); só os **locais** de estoque continuam no Gel.
+- Fase 4 do briefing, passo 4e (Teórico × Real na Produção). Feitos: 4a (parâmetros do gel no Portal; só os **locais** de estoque continuam no Gel), 4b (`vacGel`), 4c (Registrar scrap no turno), 4d (Gel lê da Produção a partir do corte).
 - `eventoId` comum OEE × Paradas, que evita contagem dupla, quando o OEE publicar `paradasEventos` (ver `docs/paradas-arquitetura.md`; registro F07/A10).
 - Homologação da C1 na pasta real (etapa H): duas abas, base renomeada, duas estações (registro § V).
 - R-02, identificador estável da pessoa (responsável guardado pelo nome): falta decidir o que fazer com nomes digitados à mão (registro § V).

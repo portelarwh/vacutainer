@@ -417,3 +417,23 @@ Próximo: 4c (Registrar scrap no turno da Produção).
 - **Fica para depois:** o scrap do dia todo sem turno (o "Dia (sem turno)" do Gel). Na Produção, o registro é sempre por turno.
 
 Próximo: 4d (o Gel lê da Produção a partir da data de corte; Registro do dia → Resumo do dia).
+
+### Passo 4d · o Gel lê da Produção (GEL-02, GEL-05, G3, G5) · Gel 2.19, kit
+
+- **Data de corte:** a partir do dia de Portal › Parâmetros › Gestão de Gel › "Gel lido da Produção a partir de" (G3), cada dia com dados da Produção vira, na memória do Gel, um registro montado com o `exports` da Produção (`GelProd`). Ele traz:
+  - tubos bons por catálogo (`porDiaCatalogo`, somando os turnos);
+  - hora extra e "sem produção" de cada turno (G5);
+  - as pesagens do Registrar scrap e "sem scrap no turno" (`porDiaTurno[].gel`).
+- **As contas não mudam:** teórico, índice, BOM, saving e relatório seguem iguais e passam a usar esses números. O scrap do dia sai da mesma conta comum (`vacGel`).
+- **Como o Gel lê a Produção:** pelo leitor de `exports` do kit (`vacFicha`, o mesmo da ficha da ordem), com cache local e conferência de versão. A leitura se repete a cada minuto e a tela se redesenha quando chegam dados novos.
+- **GEL-05:** a aba "Registro de produção" passa a se chamar **Resumo do dia** quando o corte está definido. Nos dias da Produção, o formulário fica **só para leitura**, com o aviso de onde vêm os dados e de quando foram lidos, e os campos manuais (tubos bons, hora extra, sem produção, pesagens) não são mais editáveis.
+- **O que continua editável:** as **baixas de barril** (o "real", G4) continuam no Gel. Os **dias anteriores ao corte** continuam com o registro do Gel, que não é apagado nem substituído.
+- **Conferido no `tgel.js`:**
+  - os tubos bons do dia vêm da soma dos turnos;
+  - hora extra e "sem scrap" vêm da Produção;
+  - o scrap é igual ao da pesagem pela conta comum;
+  - o teórico do Gel é igual ao do kit;
+  - o dia anterior ao corte fica intacto;
+  - o Resumo do dia aparece só para leitura.
+
+Próximo: 4e (Teórico × Real na página do dia da Produção, só quando o catálogo usa gel).
