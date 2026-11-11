@@ -1,0 +1,351 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Comparar importação v1.1</title>
+<!--
+  Comparar importação · Linha Vacutainer (ferramenta de desenvolvimento, 11/11/2026)
+  Uso: abrir este arquivo no navegador (duplo clique), escolher a tabela, colar a tabela exatamente como vem do SAP/Excel.
+  A ferramenta compara com o formato que a plataforma reconhece HOJE (referência abaixo, em REF), descaracteriza os dados
+  (códigos, nomes e descrições trocados de forma consistente; valores e quantidades multiplicados por um fator que não sai no texto)
+  e gera o prompt para colar no Claude. Nada sai deste computador: sem rede, sem gravação.
+  Manutenção: quando um importador mudar, atualizar o REF da tabela correspondente (nomes aceitos vêm do código das páginas).
+-->
+<style>
+:root{--bg:#11161b;--surface:#182029;--surface-2:#1f2933;--line:#2d3945;--ink:#e6ebf0;--muted:#93a1ae;--accent:#5fa8e8;--ok:#5dbb73;--warn:#e0a63a;--crit:#ef6b6b;color-scheme:dark;
+ --f:"Barlow","Segoe UI",system-ui,sans-serif;--mono:ui-monospace,"Cascadia Mono",Consolas,monospace}
+:root[data-theme="light"]{--bg:#eef1f4;--surface:#fff;--surface-2:#f5f7f9;--line:#d4dbe2;--ink:#17212b;--muted:#5a6876;--accent:#1f63a8;--ok:#2e7d32;--warn:#a86b00;--crit:#c62828;color-scheme:light}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 var(--f)}
+.wrap{max-width:1180px;margin:0 auto;padding:18px 16px 60px}
+h1{font-size:22px;margin:0;letter-spacing:.02em;text-transform:uppercase}h2{font-size:15px;margin:0 0 8px;text-transform:uppercase;letter-spacing:.05em}
+.sub{color:var(--muted);margin:4px 0 0;max-width:80ch}
+.top{display:flex;gap:12px;align-items:flex-start;flex-wrap:wrap}.top .sp{flex:1}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:14px;margin-top:14px}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}@media(max-width:860px){.grid{grid-template-columns:1fr}}
+label.f{display:grid;gap:4px;font-size:13px;color:var(--muted)}
+select,textarea,input{font:inherit;color:var(--ink);background:var(--surface-2);border:1px solid var(--line);border-radius:8px;padding:8px}
+textarea{width:100%;font-family:var(--mono);font-size:12.5px;resize:vertical}
+.row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.btn{font:600 14px var(--f);border:1px solid var(--line);background:var(--surface-2);color:var(--ink);border-radius:8px;padding:8px 14px;cursor:pointer}
+.btn.pri{background:var(--accent);border-color:var(--accent);color:#fff}
+.pill{display:inline-block;font-size:12px;border-radius:999px;padding:1px 8px;border:1px solid var(--line);color:var(--muted)}
+.pill.ok{color:var(--ok);border-color:var(--ok)}.pill.warn{color:var(--warn);border-color:var(--warn)}.pill.crit{color:var(--crit);border-color:var(--crit)}
+table{border-collapse:collapse;width:100%;font-size:13px}th,td{border-bottom:1px solid var(--line);padding:5px 8px;text-align:left;vertical-align:top}th{color:var(--muted);font-weight:600;font-size:12px;text-transform:uppercase}
+.small{font-size:12.5px}.muted{color:var(--muted)}.mono{font-family:var(--mono)}
+.note{border-left:4px solid var(--warn);background:color-mix(in srgb,var(--warn) 10%,var(--surface));padding:8px 12px;border-radius:6px;margin:8px 0}
+.note.ok{border-left-color:var(--ok);background:color-mix(in srgb,var(--ok) 10%,var(--surface))}.note.crit{border-left-color:var(--crit);background:color-mix(in srgb,var(--crit) 10%,var(--surface))}
+.tw{overflow:auto;max-height:360px}
+details summary{cursor:pointer;color:var(--accent)}
+</style>
+</head>
+<body>
+<div class="wrap">
+ <div class="top"><div><h1>Comparar importação <span class="pill" title="Versão desta ferramenta">v1.1</span></h1><p class="sub">Escolha a tabela, cole como ela vem (SAP, Excel, CSV) e copie o prompt. A ferramenta compara com o formato que a plataforma reconhece hoje e troca os dados antes de montar o texto. <b>Nada sai deste computador.</b></p></div><span class="sp"></span><button class="btn" id="tema" type="button">Tema claro</button></div>
+
+ <div class="card">
+  <div class="row" style="align-items:flex-end">
+   <label class="f">1 · Tabela de importação <select id="tipo"></select></label>
+   <label class="f">Linhas de dados na amostra <input id="nAm" type="number" min="5" max="400" value="40" style="width:110px"></label>
+   <label class="f"><span><input type="checkbox" id="keepDesc"> Manter descrições de produto</span></label>
+  </div>
+  <div id="ref" class="small" style="margin-top:10px"></div>
+ </div>
+
+ <div class="grid">
+  <div class="card"><h2>2 · Cole a tabela como ela vem</h2>
+   <textarea id="txt" rows="14" placeholder="Ctrl+V da lista do SAP (com cabeçalho), do Excel ou do CSV"></textarea>
+   <div class="row small" style="margin-top:6px"><label class="btn">Abrir arquivo .txt / .csv<input type="file" id="arq" accept=".txt,.csv,.tsv,text/*" hidden></label><span class="muted" id="arqInfo">Excel (.xlsx): abra no Excel, selecione a aba e cole aqui.</span></div>
+  </div>
+  <div class="card"><h2>3 · O que mudou ou o que você precisa (opcional)</h2>
+   <textarea id="notas" rows="14" placeholder="Ex.: o SAP passou a trazer a coluna Moeda; a data veio em outro formato; quero que a importação leia também a coluna X…"></textarea>
+  </div>
+ </div>
+
+ <div class="card"><h2>4 · Comparação com o formato atual</h2><div id="cmp" class="small muted">Cole a tabela para comparar.</div></div>
+ <div class="card"><h2>5 · Prompt para colar no Claude</h2>
+  <div id="seg"></div>
+  <textarea id="out" rows="18" readonly></textarea>
+  <div class="row" style="margin-top:8px"><button class="btn pri" id="copiar" type="button">Copiar prompt</button><span class="small muted" id="msg" aria-live="polite"></span></div>
+ </div>
+</div>
+<script>
+'use strict';
+/* ===================== referência: o que cada importador reconhece hoje =====================
+   campo: nome interno · rot: rótulo · nomes: títulos aceitos (comparação sem acento, minúsculo, pontuação vira espaço;
+   vale igual ou "começa com") · ob: obrigatória · t: tipo para descaracterizar (id, texto, pessoa, email, valor, qtd, pct, data, hora, codtxt, livre) */
+const C = (campo, rot, nomes, t, ob, extra) => Object.assign({ campo, rot, nomes: nomes.split(';').map(s => s.trim()).filter(Boolean), t, ob: !!ob }, extra || {});
+const REF = {
+ KKBC_ORD: { nome: 'KKBC_ORD (custos por ordem)', pag: 'Waste (Perdas-Ordem.html) › Importar', estr: 'Dois formatos: (a) "Saída dinâmica de lista" do SAP (linhas "Ordem <n> <material>", "Material", "Quantidade planejada/real", tabela entre | com a linha de títulos Origem|… e subtotais "|* Materials Materials"; só o grupo Materials vira linha); (b) grade com cabeçalho (Excel/CSV). Números no padrão BR (1.234,56 e negativo com - no fim). Valores em BRL; coluna Moeda opcional.', sep: 'lista | ou tab',
+  cols: [C('ordem', 'Ordem', 'ordem;ordem de producao;ordem producao;n ordem;no ordem;num ordem;order;production order;work order;ordem prod;aufnr', 'id', 1), C('centro', 'Centro', 'centro;plant;planta;werks', 'id'),
+   C('prod', 'Material produzido', 'material;material produzido;produto;material da ordem;material do cabecalho;catalogo;codigo;header material;matnr', 'id'),
+   C('prodDesc', 'Descrição do material produzido', 'descricao do material;descricao material;texto breve material;texto breve de material;descricao material produzido;material description;denominacao do material;descricao', 'texto'),
+   C('comp', 'Componente / origem', 'componente;material componente;origem;origem material;origin;component;material de origem;objeto origem;recurso origem;origem recurso', 'id', 1),
+   C('compDesc', 'Descrição do componente', 'descricao do componente;descricao componente;material texto;material (texto);texto breve;texto breve componente material;texto origem;denominacao origem;descricao da origem;component description;origin text;denominacao', 'texto'),
+   C('el', 'Elemento de custo', 'elemento de custo;elemento custo;classe de custo;classe custo;tipo de custos;tipo de custo;natureza de custo;cost element', 'id'), C('elDesc', 'Descrição do elemento', 'descricao elemento de custo;denominacao classe de custo;texto classe de custo;texto tipo de custos;cost element name', 'texto'),
+   C('un', 'Unidade', 'unidade;um;ump;unidade de medida;unid;un;unit of measure;uom;umb', 'livre'),
+   C('qT', 'Quantidade meta (teórica)', 'qtd teor;qtd teor tot;quantidade teorica;qtd teorica;qtd meta total;qtd meta tot;quantidade meta;total target quantity;target quantity;qtd meta;qtd planejada componente', 'qtd'),
+   C('qR', 'Quantidade real', 'quantidade real;qtd real total;qtd real tot;qtd real;total actual quantity;actual quantity', 'qtd'),
+   C('cT', 'Custo meta (teórico)', 'cststeorto;csts teor to;csts teor tot;cst teor tot;custo teorico;custos teoricos;custos meta total;cst meta tot;custo meta;custos meta;valor alvo;valor meta;total target costs;target costs', 'valor', 1),
+   C('cR', 'Custo real', 'tot cstsre;tot csts re;tot csts reais;custo real;custos reais;custos reais total;cst reais tot;cst real tot;valor real;total actual costs;actual costs', 'valor', 1),
+   C('dSap', 'Desvio total (SAP)', 'desvio;desvio total;desv tot;desvio meta real;target actual var;variance;total variance', 'valor'), C('dPct', 'Desvio %', 'dvcst c%;dv cst c%;dvcst/c%;desvio %;desvio percentual;desv %;var %;variance %', 'pct'),
+   C('dEstr', 'Desvio de estrutura', 'desv estr;desvio de estrutura;variacao de estrutura;desv estrutura', 'valor'), C('moeda', 'Moeda', 'moeda;currency;moeda transacao;moeda objeto;mda', 'livre'),
+   C('qOrd', 'Quantidade da ordem', 'quantidade da ordem;qtd ordem;order quantity;quantidade planejada;qtd planejada', 'qtd'), C('qEnt', 'Quantidade entregue', 'quantidade entregue;qtd entregue;delivered quantity;qtd fornecida;quantidade produzida;qtd produzida', 'qtd'),
+   C('status', 'Status da ordem', 'status;status da ordem;status do sistema;system status', 'livre'), C('lote', 'Lote', 'lote;batch;lote produzido', 'id'), C('per', 'Período contábil', 'periodo;periodo contabil;period;posting period;mes', 'livre'), C('dFim', 'Data final', 'data final;data fim;fim real;finish date;end date', 'data')],
+  numDesconhecido: 'valor',
+  /* na lista do SAP, estes vêm nas linhas acima da tabela de cada ordem */
+  foraDaTabela: [['ordem', /^\s*(Ordem|Order)\s+\S+/m, 'linha "Ordem <n>"'], ['prod', /^\s*(Ordem|Order)\s+\S+\s+\S+|^\s*Material\s+\S+/m, 'linha "Ordem <n> <material>" ou "Material"'], ['qOrd', /^\s*(Quantidade planejada|Planned quantity|Target quantity)\s+/mi, 'linha "Quantidade planejada"'], ['qEnt', /^\s*(Quantidade real|Actual quantity)\s+/mi, 'linha "Quantidade real"'], ['moeda', /^\s*(Moeda|Currency)\s*:?\s+[A-Z$]{2,4}/mi, 'linha "Moeda"'], ['centro', /^\s*(Centro|Plant)\s+\S+/m, 'linha "Centro"']] },
+ MB51: { nome: 'MB51 (movimentos de material)', pag: 'Produção › Ordens › Importar MB51', estr: 'Grade com cabeçalho na 1ª linha (colado do SAP ou Excel). Datas dd.mm.aaaa, hora hh:mm:ss. Uma linha por movimento (101/102/261/262…).', sep: 'tab',
+  cols: [C('ordem', 'Ordem', 'ordem;order', 'id', 1), C('material', 'Material', 'material', 'id', 1), C('texto', 'Texto breve material', 'texto breve material;texto breve de material;material description', 'texto'), C('planta', 'Planta', 'planta;centro;plant', 'id'), C('deposito', 'Depósito', 'deposito', 'id'),
+   C('tipo', 'Tipo de movimento', 'tipo de movimento;tipo movimento;tmv;movement type', 'livre', 1), C('txtTipo', 'Txt.tipo movimento', 'txt tipo movimento;texto tipo movimento', 'livre'), C('doc', 'Doc.material', 'doc material;documento material;documento de material;material document', 'id'),
+   C('ano', 'Ano doc.material', 'ano doc material;ano documento material;exercicio', 'livre'), C('item', 'Item doc.material', 'item doc material;item documento material', 'livre'), C('dataLanc', 'Data de lançamento', 'data de lancamento;dt lancamento;posting date', 'data', 1),
+   C('dataDoc', 'Data do documento', 'data do documento', 'data'), C('dataEntrada', 'Data de entrada', 'data de entrada;entry date', 'data'), C('hora', 'Hora do registro', 'hora do registro;hora', 'hora'), C('qtd', 'Qtd. UM registro', 'qtd um registro;quantidade um registro;qtd em um registro;qty in unit of entry', 'qtd', 1),
+   C('um', 'UM registro', 'um registro;unidade de registro;unit of entry', 'livre', 1), C('lote', 'Lote', 'lote;batch', 'id'), C('dc', 'Cód.débito/crédito', 'cod debito credito;debito credito', 'livre'), C('usuario', 'Nome do usuário', 'nome do usuario;usuario', 'pessoa'), C('referencia', 'Referência', 'referencia', 'id'), C('quantidade', 'Quantidade', 'quantidade', 'qtd'), C('umb', 'UM básica', 'unid medida basica;um basica', 'livre')] },
+ COOIS: { nome: 'COOIS (ordens)', pag: 'Produção › Ordens › Importar COOIS', estr: 'Grade com cabeçalho na 1ª linha. Datas dd.mm.aaaa; quantidades no padrão do SAP.', sep: 'tab',
+  cols: [C('ordem', 'Ordem', 'ordem', 'id', 1), C('material', 'Nº do material', 'n do material;no do material;numero do material;material', 'id', 1), C('texto', 'Texto breve material', 'texto breve material', 'texto'), C('lote', 'Lote', 'lote', 'id'), C('tipo', 'Tipo de ordem', 'tipo de ordem', 'livre'),
+   C('qtdOrdem', 'Quantidade da ordem', 'quantidade da ordem', 'qtd'), C('um', 'Unidade de medida', 'unidade de medida', 'livre'), C('dBaseIni', 'Data-base início', 'data base inic;data base inicio', 'data'), C('dBaseFim', 'Data de conclusão base', 'data de conclusao base', 'data'), C('dLib', 'Data de liberação real', 'data de liberacao real', 'data'),
+   C('dIni', 'Data início real', 'data inicio real', 'data'), C('dFim', 'Data fim real', 'data fim real', 'data'), C('qConf', 'Qtd.confirmada', 'qtd confirmada', 'qtd'), C('qForn', 'Qtd.fornecida', 'qtd fornecida', 'qtd'), C('qRetr', 'Qtd.retrabalho', 'qtd retrabalho', 'qtd'), C('refugo', 'Refugo confirmado', 'refugo confirmado', 'qtd'), C('status', 'Status do sistema', 'status do sistema', 'livre')] },
+ MES: { nome: 'CSV do servidor (MES)', pag: 'Produção › Configurações › Importação › Dados do servidor', estr: 'CSV com cabeçalho: tempo + catálogo + lote + caixa (os títulos são reconhecidos por "contém": Time…, …Catalogo…, …Lote…, …Caixa…). Data M/D/AAAA h:mm:ss AM/PM (ou D/M quando o dia passa de 12, ou AAAA-MM-DD). Linhas só com o campo que mudou; caixa 0 = contador zerado.', sep: ',',
+  cols: [C('t', 'Tempo', 'time;data;hora;dt ;timestamp;datetime', 'livre', 1), C('cat', 'Catálogo atual', 'catalogo;catalog', 'id', 1, { contem: 1 }), C('lot', 'Lote atual', 'lote;lot', 'id', 1, { contem: 1 }), C('box', 'Caixa atual', 'caixa;box;contador', 'livre', 1, { contem: 1 }), C('line', 'Linha', 'linha;line', 'livre')] },
+ FORMS: { nome: 'Forms de paradas (Excel do Microsoft Forms)', pag: 'Paradas › Importar', estr: 'Excel de respostas do Forms (colar com o cabeçalho). Uma coluna "Código – <máquina>" por máquina; Turno no formato "T1 · 1º turno"; Máquina "EQ02 · Tullip B"; código "801 FME · Falha mecânica".', sep: 'tab',
+  cols: [C('id', 'ID', 'id', 'livre'), C('ini', 'Hora de início (do Forms)', 'hora de inicio', 'livre'), C('fim', 'Hora de conclusão', 'hora de conclusao', 'livre'), C('email', 'Email', 'email', 'email'), C('nome', 'Nome', 'nome', 'pessoa'), C('data', 'Data da parada', 'data da parada', 'data', 1),
+   C('turno', 'Turno', 'turno', 'livre', 1), C('maq', 'Máquina', 'maquina', 'livre', 1), C('cod', 'Código – <máquina>', 'codigo', 'livre', 1, { varias: 1 }), C('inicio', 'Início da parada (hh:mm)', 'inicio da parada', 'hora', 1), C('dur', 'Duração (minutos)', 'duracao', 'qtd0', 1),
+   C('vezes', 'Quantas vezes aconteceu?', 'quantas vezes', 'livre'), C('oque', 'O que aconteceu?', 'o que aconteceu', 'textolivre', 1), C('troca', 'Trocou ou consertou alguma peça?', 'trocou ou consertou', 'livre', 1), C('peca', 'Qual peça foi trocada?', 'qual peca', 'textolivre'), C('tec', 'Técnico que atendeu', 'tecnico', 'pessoa'), C('ordlote', 'Ordem ou lote', 'ordem ou lote', 'id'), C('obs', 'Observação', 'observacao', 'textolivre')] },
+ ESTOQUE_LP: { nome: 'Estoque de LPs (SAP)', pag: 'Gestão de Gel › Importar', estr: 'Grade com cabeçalho em inglês (relatório de estoque de LPs). Datas como vêm (dia/mês detectado quando o dia passa de 12). Quantidade em KG ou G.', sep: 'tab',
+  cols: [C('material', 'Material', 'material', 'id', 1), C('desc', 'Material Description', 'material description', 'texto'), C('batch', 'Batch', 'batch', 'id', 1), C('restricted', 'Batch Restricted', 'batch restricted', 'livre'), C('expiry', 'Batch Expiry Date', 'batch expiry date', 'data', 1), C('warehouse', 'Warehouse', 'warehouse', 'livre'),
+   C('zone', 'Zone', 'zone', 'livre'), C('location', 'Location', 'location', 'livre'), C('mlp', 'MLP', 'mlp', 'id'), C('lp', 'LP', 'lp', 'id', 1), C('lpCount', 'LP Count', 'lp count', 'livre'), C('qty', 'LP Quantity', 'lp quantity', 'qtd', 1), C('uom', 'Unit of Measure', 'unit of measure', 'livre'),
+   C('value', 'LP Inventory Value', 'lp inventory value', 'valor'), C('status', 'LP Status', 'lp status', 'livre'), C('refComment', 'Ref Comment', 'ref comment', 'textolivre'), C('keyword', 'Keyword', 'keyword', 'livre'), C('discard', 'LP Discard Date', 'lp discard date', 'data'), C('machine', 'Machine', 'machine', 'livre'), C('tool', 'Tool', 'tool', 'livre'),
+   C('createdOn', 'LP Created On', 'lp created on', 'data', 1), C('ageRep', 'Age', 'age', 'livre'), C('lastUpdate', 'Last LP Update', 'last lp update', 'data'), C('refId', 'ReferenceID', 'referenceid', 'id')] },
+ GEL_TX: { nome: 'Histórico de transações de LP (SAP/MES)', pag: 'Gestão de Gel › Importar › transações', estr: 'Grade com cabeçalho em inglês, uma linha por transação de LP.', sep: 'tab',
+  cols: [C('id', 'Transaction Number', 'transaction number', 'id', 1), C('at', 'Performed On', 'performed on', 'data', 1), C('kind', 'Transaction Description', 'transaction description', 'livre'), C('grp', 'Transaction Group', 'transaction group', 'livre'), C('emp', 'Employee No', 'employee no', 'pessoa'), C('lp', 'LP', 'lp', 'id', 1),
+   C('st', 'LP Status', 'lp status', 'livre'), C('q', 'LP Transaction Quantity', 'lp transaction quantity', 'qtd'), C('material', 'Material', 'material', 'id'), C('batch', 'Batch', 'batch', 'id'), C('pwo', 'Parent Work Order', 'parent work order', 'id'), C('wo', 'Work Order', 'work order', 'id'), C('q2', 'Quantity', 'quantity', 'qtd'),
+   C('uom', 'Unit of Measure', 'unit of measure', 'livre'), C('src', 'Source Location', 'source location', 'livre'), C('dst', 'Destination Location', 'destination location', 'livre'), C('res', 'Reservation No', 'reservation no', 'id'), C('cmt', 'Ref Comments', 'ref comments', 'textolivre')] },
+ PLANO_ORDENS: { nome: 'Plano do PCP colado (ordens do mês)', pag: 'Produção › Plano › Ordens do mês › Colar plano', estr: 'Plano do PCP colado do Excel, com cabeçalho. A ordem das colunas não importa. Números como vêm do SAP (1,260,000 ou 1.260.000); datas 05-out-26 ou 05/10/2026, com ou sem hora.', sep: 'tab',
+  cols: [C('centro', 'CENTRO', 'centro', 'id'), C('codigo', 'CÓDIGO', 'codigo', 'id', 1), C('desc', 'DESCRIÇÃO', 'descricao', 'texto'), C('ordem', 'ORDEM', 'ordem', 'id', 1), C('lote', 'LOTE', 'lote', 'id'), C('qtde', 'QTDE', 'qtde', 'qtd', 1), C('umb', 'UMB', 'umb', 'livre'),
+   C('real', 'QTDE REAL', 'qtde real', 'qtd'), C('ef', 'EFICIÊNCIA', 'eficiencia', 'pct'), C('ini', 'INICIO', 'inicio', 'data'), C('fim', 'FIM', 'fim', 'data'), C('iniR', 'INÍCIO REAL', 'inicio real', 'data'), C('fimR', 'FIM REAL', 'fim real', 'data')] },
+ PLANOS_CALC: { nome: 'Plano do mês (planilha do PCP, aba CALC)', pag: 'Produção › Configurações › Importação › Planos do mês', estr: 'Aba CALC: linha de títulos com GERAL (mês 1–12), EXC, PRIMEIRO PLANO, ULTIMO PLANO; "LISTA ANO" acima com o ano. Lê os 12 meses abaixo do cabeçalho.', sep: 'tab',
+  cols: [C('geral', 'GERAL (mês)', 'geral', 'livre'), C('exc', 'EXC', 'exc', 'qtd'), C('first', 'PRIMEIRO PLANO', 'primeiro plano', 'qtd', 1), C('last', 'ULTIMO PLANO', 'ultimo plano', 'qtd', 1)] },
+ META_OEE: { nome: 'Meta OEE FY27 (planilha)', pag: 'Portal › Cadastros › Importar › Meta OEE', estr: 'Aba "Meta OEE FY27": quadro mensal com a célula "Mês", horários à direita e a família acima; PPH nominal na aba BASE DE DADOS (bloco FY27). Formato de planilha (não é uma grade simples): cole a área do quadro como está.', sep: 'tab', cols: [C('mes', 'Mês', 'mes', 'livre', 1)] },
+ CS12: { nome: 'CS12 (BOM, explosão multinível)', pag: 'Portal › Cadastros › Importar › CS12', estr: 'Lista do SAP: cabeçalho fora da tabela (data, "Material", "Cent./Util./Alt:", "Denominação", "Qtd.base (UN)", "Qtd.requer.") e tabela entre | com a linha de títulos (Nível, Item, Componente/ID objeto, Texto breve, Qtd, UM…). Números BR.', sep: 'lista |',
+  cols: [C('nivel', 'Nível', 'ni;nivel;nv;niv;nvl', 'livre', 1), C('item', 'Item', 'item;n item;no item', 'livre'), C('componente', 'Componente', 'id objeto;n componente;no componente;componente;objeto;obj;id obj;material componente', 'id', 1), C('descricao', 'Texto breve objeto', 'texto breve objeto;texto breve;denominacao;descricao', 'texto'),
+   C('deposito', 'Depósito', 'dep;deposito', 'id'), C('tipoMaterial', 'Tipo material', 'tmat;tipo material', 'livre'), C('statusMaterial', 'Status material', 'sm;status material', 'livre'), C('umb', 'UMB', 'umb;um basica;um bas', 'livre'), C('qtd', 'Qtd componente', 'qtd umc;qtd componente;qtd compon;quantidade componente;qtd;quantidade;qtde', 'qtd', 1),
+   C('um', 'UM componente', 'um;um compon;um componente;umc', 'livre'), C('refugoPct', 'Refugo componente %', 'itrefco;refugo comp;refugo componente;ref comp;refugo;refcomp', 'pct'), C('prob', 'Probabilidade', 'probempr;probabilidade;prob;pro', 'pct'), C('relCalculo', 'Relevante cálculo', 'rel p calc;rel calc;relevante calculo', 'livre'), C('grupoAlt', 'Grupo alternativo', 'grupo de item;grupo alt;grp alt;altit;grupo alternativo', 'livre')],
+  foraDaTabela: [] },
+ RELATORIO: { nome: 'Histórico RELATÓRIO (planilha antiga)', pag: 'Produção › Configurações › Importação › Histórico', estr: 'Aba RELATÓRIO: cabeçalho com Data e Turno nas primeiras 30 linhas.', sep: 'tab',
+  cols: [C('week', 'Week/Semana', 'week;semana', 'livre'), C('sector', 'Setor', 'setor', 'livre'), C('date', 'Data', 'data', 'data', 1), C('day', 'Dia #', 'dia #;dia', 'livre'), C('month', 'Mês', 'mes', 'livre'), C('year', 'Ano', 'ano', 'livre'), C('machine', 'Máquina', 'maquina', 'livre', 1), C('catalog', 'Catálogo', 'catalogo', 'id'),
+   C('shift', 'Turno', 'turno', 'livre', 1), C('oeeShift', 'OEE turno', 'oee turno', 'pct'), C('good', 'Produção', 'producao', 'qtd', 1), C('extra', 'Extra', 'extra', 'qtd'), C('abono', 'Revezamento/abono', 'revezamento abono;revezamento', 'qtd'), C('scrap', 'Perdas em peças', 'perdas em pecas', 'qtd'), C('scrapPct', 'Scrap (%)', 'scrap (%);scrap %;scrap', 'pct'),
+   C('oeeTarget', 'OEE meta', 'oee meta', 'pct'), C('planned', 'Produção planejada', 'producao planejada', 'qtd'), C('plannedMin', 'Tempo planejado (min)', 'tempo planejado (min);tempo planejado', 'qtd0'), C('opMin', 'Tempo de operação (min)', 'tempo de operacao (min);tempo de operacao', 'qtd0'), C('pphReal', 'PPH (real)', 'pph (real);pph real', 'qtd'), C('lossMin', 'Perdas minutos', 'perdas minutos;perdas em minutos', 'qtd0'), C('pphTarget', 'PPH (target)', 'pph (target);pph target', 'qtd')] },
+ PARADAS_XLSM: { nome: 'Aba PARADAS da planilha antiga', pag: 'Produção › Configurações › Importação › Paradas', estr: 'Aba PARADAS: cabeçalho com Data e Minutos; "Motivo" = equipamento, "Observação" = causa.', sep: 'tab',
+  cols: [C('date', 'Data', 'data', 'data', 1), C('line', 'Linha', 'linha', 'livre'), C('shift', 'Turno', 'turno', 'livre'), C('code', 'Código', 'codigo', 'livre'), C('equip', 'Motivo (equipamento)', 'motivo', 'livre'), C('min', 'Minutos', 'minutos', 'qtd0', 1), C('obs', 'Observação', 'observacao', 'textolivre')] },
+ ACOES: { nome: 'Ações de um programa (Excel/CSV)', pag: 'Iniciativas › <programa> › Importar dados', estr: 'Linhas do Excel com cabeçalho (tab) ou CSV (; ou ,). Prazo AAAA-MM-DD ou DD/MM/AAAA.', sep: 'tab ; ,',
+  cols: [C('t', 'Título', 'titulo;acao;o que;descricao da acao', 'textolivre', 1), C('r', 'Responsável', 'respons', 'pessoa'), C('p', 'Prazo', 'prazo;data limite;vencimento;quando', 'data'), C('s', 'Status', 'status;situacao', 'livre'), C('pr', 'Prioridade', 'prior', 'livre'), C('d', 'Descrição', 'descricao;detalhe;observ', 'textolivre')] }
+};
+const ORDEM_TIPOS = ['KKBC_ORD', 'MB51', 'COOIS', 'MES', 'FORMS', 'ESTOQUE_LP', 'GEL_TX', 'PLANO_ORDENS', 'PLANOS_CALC', 'META_OEE', 'CS12', 'RELATORIO', 'PARADAS_XLSM', 'ACOES'];
+
+/* ===================== utilidades ===================== */
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const norm = s => String(s ?? '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[º°ª]/g, ' ').replace(/[^a-z0-9%#]+/g, ' ').replace(/\s+/g, ' ').trim();
+/* gerador pseudoaleatório com semente da sessão: mesmo valor → mesmo substituto dentro da página aberta */
+const SEMENTE = (crypto.getRandomValues(new Uint32Array(1))[0] || 1) >>> 0;
+function hash(s) { let h = 2166136261 ^ SEMENTE; for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); } return h >>> 0; }
+function rng(seed) { let x = seed || 1; return () => { x ^= x << 13; x >>>= 0; x ^= x >> 17; x ^= x << 5; x >>>= 0; return x / 4294967296; }; }
+const FATOR_VALOR = +(0.55 + rng(hash('valor'))() * 0.9).toFixed(4), FATOR_QTD = +(0.6 + rng(hash('qtd'))() * 0.8).toFixed(4);
+
+/* ===================== leitura da tabela colada ===================== */
+function detectar(txt) {
+ const linhas = String(txt).replace(/\r/g, '').split('\n');
+ const naoVazias = linhas.filter(l => l.trim());
+ const pipes = naoVazias.filter(l => /^\s*\|/.test(l)).length, tabs = naoVazias.filter(l => l.includes('\t')).length;
+ let sep = '\t', fmt = 'grade (tab)';
+ if (pipes >= 2 && pipes >= tabs) {   /* lista do SAP: linhas que começam com | (mesmo com poucas linhas de dados) */ sep = '|'; fmt = 'lista do SAP (colunas entre |)'; }
+ else if (tabs < naoVazias.length * 0.3) { const sc = naoVazias.slice(0, 20).reduce((a, l) => a + (l.split(';').length - 1), 0), cm = naoVazias.slice(0, 20).reduce((a, l) => a + (l.split(',').length - 1), 0); sep = sc > cm ? ';' : ','; fmt = 'CSV (' + sep + ')'; }
+ return { linhas, sep, fmt };
+}
+function celulas(l, sep) {
+ if (sep === '|') { const c = l.split('|'); c.shift(); if (c.length && !c[c.length - 1].trim()) c.pop(); return c; }
+ if (sep === ',' && l.includes('"')) { const out = []; let cur = '', q = false; for (const ch of l) { if (ch === '"') { q = !q; cur += ch; } else if (ch === ',' && !q) { out.push(cur); cur = ''; } else cur += ch; } out.push(cur); return out; }
+ return l.split(sep);
+}
+function casaNome(h, col) { const n = norm(h); if (!n) return 0; for (const a0 of col.nomes) { const a = norm(a0); if (!a) continue; if (n === a) return 3; if (n.startsWith(a + ' ') || (a.length >= 4 && n.startsWith(a))) return 2; if (col.contem && n.includes(a)) return 2; } return 0; }
+function mapear(cab, ref) {
+ const usados = new Set(), map = new Array(cab.length).fill(null);
+ for (const nivel of [3, 2]) for (const col of ref.cols) {
+  if (!col.varias && [...usados].includes(col.campo)) continue;
+  cab.forEach((h, j) => { if (map[j] || (!col.varias && usados.has(col.campo))) return; if (casaNome(h, col) === nivel) { map[j] = col; usados.add(col.campo); } });
+ }
+ return map;
+}
+function acharCabecalho(L, sep, ref) {
+ let best = null;
+ for (let i = 0; i < Math.min(L.length, 60); i++) {
+  const l = L[i]; if (!l.trim() || (sep === '|' && !/^\s*\|/.test(l))) continue;
+  const cab = celulas(l, sep).map(x => x.trim()); if (cab.filter(Boolean).length < 2) continue;
+  const m = mapear(cab, ref), hits = m.filter(Boolean).length, txt = cab.filter(x => x && !/^[\d.,\-\s:\/]+$/.test(x)).length;
+  const sc = hits * 10 + txt; if (!best || sc > best.sc) best = { i, cab, map: m, hits, sc };
+ }
+ return best;
+}
+/* tipo de um valor de amostra */
+function tipoValor(v) {
+ const s = String(v ?? '').trim(); if (!s) return 'vazio';
+ if (/^\d{1,2}[.\/-]\d{1,2}[.\/-]\d{2,4}([ T]\d{1,2}:\d{2}(:\d{2})?(\.\d+)?\s*([AaPp][Mm])?)?$/.test(s)) return /\d:\d/.test(s) ? 'data e hora (' + s.replace(/\d/g, '9') + ')' : 'data (' + s.replace(/\d/g, '9') + ')';
+ if (/^\d{4}-\d{2}-\d{2}/.test(s)) return 'data ISO';
+ if (/^\d{1,2}-[a-z]{3}-\d{2,4}/i.test(s)) return 'data (dd-mmm-aa)';
+ if (/^\d{1,2}:\d{2}(:\d{2})?(\s*[AaPp][Mm])?$/.test(s)) return 'hora';
+ if (/^-?\d{1,3}(\.\d{3})+(,\d+)?-?$/.test(s) || /^-?\d+,\d+-?$/.test(s)) return 'número BR' + (/-$/.test(s) ? ' (negativo com - no fim)' : '');
+ if (/^-?\d{1,3}(,\d{3})+(\.\d+)?$/.test(s) || /^-?\d+\.\d+$/.test(s)) return 'número US';
+ if (/^-?\d+-?$/.test(s)) return s.replace(/-/g, '').length >= 6 ? 'código numérico (' + s.replace(/-/g, '').length + ' dígitos)' : 'inteiro';
+ if (/^[A-Z0-9]{4,}$/i.test(s) && /\d/.test(s)) return 'código alfanumérico';
+ if (/%$/.test(s)) return 'percentual';
+ return 'texto';
+}
+
+/* ===================== descaracterização ===================== */
+const MAPA = new Map();
+const PALAVRAS = ['tubo', 'tampa', 'rolha', 'etiqueta', 'rotulo', 'gel', 'solucao', 'edta', 'citrato', 'heparina', 'fluoreto', 'ativador', 'aditivo', 'hemogard', 'pet', 'vidro', 'caixa', 'bandeja', 'folheto', 'ifu', 'filme', 'tinta', 'cola', 'ml', 'mm'];
+function trocaCodigo(s) {
+ { const m = /^(\d+)([.,]0+)$/.exec(s); if (m) return trocaCodigo(m[1]) + m[2]; }   /* 360057.0000: só a parte inteira muda (o importador tira o .0000) */
+ const k = 'c|' + s; if (MAPA.has(k)) return MAPA.get(k);
+ const r = rng(hash(s)); let out = '';
+ for (let i = 0; i < s.length; i++) { const ch = s[i]; if (/\d/.test(ch)) out += i === 0 && ch !== '0' ? String(1 + Math.floor(r() * 9)) : String(Math.floor(r() * 10)); else if (/[A-Z]/.test(ch)) out += String.fromCharCode(65 + Math.floor(r() * 26)); else if (/[a-z]/.test(ch)) out += String.fromCharCode(97 + Math.floor(r() * 26)); else out += ch; }
+ MAPA.set(k, out); return out;
+}
+const seq = {}; function rotulo(tipo, s, prefixo) { const k = tipo + '|' + norm(s); if (MAPA.has(k)) return MAPA.get(k); seq[tipo] = (seq[tipo] || 0) + 1; const v = prefixo + ' ' + String(seq[tipo]).padStart(2, '0'); MAPA.set(k, v); return v; }
+function trocaTexto(s, manter) {
+ if (!s.trim()) return s; if (manter) return s;
+ const n = norm(s), kw = PALAVRAS.filter(p => n.split(' ').includes(p)).slice(0, 3);
+ return rotulo('txt', s, (kw.length ? kw.join(' ').toUpperCase() : 'ITEM'));
+}
+function trocaLivre(s) { return s.trim() ? rotulo('livre', s, 'texto') : s; }
+function trocaPessoa(s) { return s.trim() ? rotulo('pessoa', s, 'Pessoa') : s; }
+function trocaEmail(s) { if (!s.trim()) return s; const p = trocaPessoa(s.replace(/@.*/, '')); return p.toLowerCase().replace(/\s+/g, '') + '@exemplo.com'; }
+/* número: multiplica mantendo o formato (separadores, casas, sinal no fim) */
+function trocaNumero(s, f, inteiro) {
+ const t = s.trim(); if (!t) return s;
+ const negFim = /-$/.test(t), negIni = /^-/.test(t); let core = t.replace(/^-|-$/g, '');
+ let dec = null, mil = null;
+ if (/^\d{1,3}(\.\d{3})+(,\d+)?$/.test(core) || /^\d+,\d+$/.test(core)) { dec = ','; mil = '.'; }
+ else if (/^\d{1,3}(,\d{3})+(\.\d+)?$/.test(core) || /^\d+\.\d+$/.test(core)) { dec = '.'; mil = ','; }
+ else if (!/^\d+$/.test(core)) return s;
+ const casas = dec && core.includes(dec) ? core.split(dec)[1].length : 0, temMil = mil && core.includes(mil);
+ const num = +core.split(mil || '§').join('').replace(dec || '§', '.');
+ let v = num * f; if (inteiro || !casas) v = Math.round(v);
+ let [a, b] = Math.abs(v).toFixed(casas).split('.');
+ if (temMil) a = a.replace(/\B(?=(\d{3})+(?!\d))/g, mil);
+ const out = (negIni ? '-' : '') + a + (casas ? dec + b : '') + (negFim ? '-' : '');
+ return pad(out, s);
+}
+function pad(novo, velho) { if (novo.length >= velho.length) return novo; const ld = velho.length - velho.trimStart().length, td = velho.length - velho.trimEnd().length; return velho.slice(0, ld) + (/^[-\d.,]+-?$/.test(novo) ? novo.padStart(velho.trim().length) : novo.padEnd(velho.trim().length)) + velho.slice(velho.length - td); }
+function trocaCelula(v, t, manter) {
+ const s = String(v ?? ''), core = s.trim(); if (!core) return s;
+ switch (t) {
+  case 'id': return pad(core.split(/(\s+)/).map(p => /\S/.test(p) && /\d/.test(p) ? trocaCodigo(p) : p).join(''), s);
+  case 'texto': return pad(trocaTexto(core, manter), s);
+  case 'textolivre': return pad(trocaLivre(core), s);
+  case 'pessoa': return pad(trocaPessoa(core), s);
+  case 'email': return pad(trocaEmail(core), s);
+  case 'valor': return trocaNumero(s, FATOR_VALOR);
+  case 'qtd': return trocaNumero(s, FATOR_QTD);
+  case 'qtd0': return trocaNumero(s, FATOR_QTD, true);
+  default: return s;   /* data, hora, pct, livre (unidade, status, códigos de tipo) ficam como estão */
+ }
+}
+/* coluna não reconhecida: tipo pelo conteúdo */
+function tipoPorConteudo(vals) {
+ const T = vals.map(tipoValor).filter(x => x !== 'vazio'); if (!T.length) return 'livre';
+ const c = k => T.filter(x => x.startsWith(k)).length / T.length;
+ if (c('código') > 0.6) return 'id'; if (c('número') > 0.6) return 'qtd'; if (c('data') > 0.6 || c('hora') > 0.6) return 'livre';
+ if (c('inteiro') > 0.6) return 'livre'; if (c('texto') > 0.5) { const longos = vals.filter(v => String(v).trim().length > 12).length; return longos ? 'textolivre' : 'livre'; }
+ return 'livre';
+}
+/* linhas fora da tabela (cabeçalho das listas do SAP) */
+function trocaLinhaSolta(l, manter) {
+ let m;
+ if ((m = l.match(/^(\s*(?:Ordem|Order)\s+)(\S+)(\s+)(\S+)?(.*)$/))) return m[1] + trocaCodigo(m[2]) + m[3] + (m[4] ? trocaCodigo(m[4]) : '') + (m[5] || '');
+ if ((m = l.match(/^(\s*(?:Material)\s*:?\s+)(\S+)(\s*)(.*)$/i))) return m[1] + trocaCodigo(m[2]) + m[3] + (m[4] ? trocaTexto(m[4], manter) : '');
+ if ((m = l.match(/^(\s*(?:Denomina[cç][aã]o|Texto breve)\s*:?\s+)(.+)$/i))) return m[1] + trocaTexto(m[2], manter);
+ if ((m = l.match(/^(\s*(?:Quantidade planejada|Quantidade real|Planned quantity|Actual quantity|Target quantity|Qtd\.?\s*base[^:]*:?|Qtd\.?\s*requer[^:]*:?)\s+)([\d.,]+-?)(.*)$/i))) return m[1] + trocaNumero(m[2], FATOR_QTD) + m[3];
+ if ((m = l.match(/^(\s*(?:Usu[aá]rio|User|Nome|Name|Criado por|Created by)\s*:?\s+)(.+)$/i))) return m[1] + trocaPessoa(m[2]);
+ /* demais: números longos viram outros (mesmo formato) */
+ return l.replace(/\b(?=[A-Z0-9]*\d)[A-Z0-9]{5,}\b/g, d => /^\d{1,2}$/.test(d) ? d : trocaCodigo(d));
+}
+
+/* ===================== análise e prompt ===================== */
+function analisar() {
+ const tipo = $('#tipo').value, ref = REF[tipo], txt = $('#txt').value, manter = $('#keepDesc').checked, nAm = Math.max(5, Math.min(400, +$('#nAm').value || 40));
+ MAPA.clear(); for (const k in seq) delete seq[k];
+ if (!txt.trim()) { $('#cmp').innerHTML = 'Cole a tabela para comparar.'; $('#out').value = ''; $('#seg').innerHTML = ''; return; }
+ const D = detectar(txt), L = D.linhas, H = acharCabecalho(L, D.sep, ref);
+ const out = { fmt: D.fmt, sep: D.sep, total: L.filter(l => l.trim()).length };
+ let cab = [], map = [], dados = [], iCab = -1;
+ if (H) { iCab = H.i; cab = H.cab; map = H.map; dados = L.slice(iCab + 1).map((l, k) => ({ k: iCab + 1 + k, l })).filter(x => x.l.trim() && (D.sep !== '|' || /^\s*\|/.test(x.l)) && !/^[-=|+_\s]+$/.test(x.l.trim())); }
+ const valsDe = j => dados.slice(0, 200).map(x => (celulas(x.l, D.sep)[j] || '').trim()).filter(v => v && !/^\*/.test(v));
+ const colunas = cab.map((h, j) => { const vals = valsDe(j), tipos = [...new Set(vals.map(tipoValor))].filter(t => t !== 'vazio'); const col = map[j]; let t = col ? col.t : tipoPorConteudo(vals); if (!col && t === 'qtd' && ref.numDesconhecido) t = ref.numDesconhecido; return { j, h, col, vals, tipos, t }; });
+ const usados = new Set(colunas.filter(c => c.col).map(c => c.col.campo)), foraTab = {};
+ if (D.sep === '|') for (const [campo, re, onde] of ref.foraDaTabela || []) if (!usados.has(campo) && re.test(txt)) { usados.add(campo); foraTab[campo] = onde; }
+ const faltam = ref.cols.filter(c => !usados.has(c.campo)), faltamOb = faltam.filter(c => c.ob), novas = colunas.filter(c => c.h && !c.col);
+ /* amostra descaracterizada: tudo o que vem antes do cabeçalho + cabeçalho + N linhas de dados (e as linhas soltas no meio, para listas) */
+ const am = []; let nDados = 0;
+ L.forEach((l, i) => {
+  if (!l.trim()) { if (am.length && am[am.length - 1] !== '') am.push(''); return; }
+  const ehTab = D.sep !== '|' || /^\s*\|/.test(l);
+  if (i < iCab || iCab < 0) { am.push(iCab < 0 && ehTab ? celulas(l, D.sep).map(v => trocaCelula(v, tipoPorConteudo([v]), manter)).join(D.sep === '|' ? '|' : D.sep) : trocaLinhaSolta(l, manter)); return; }   /* nada passa sem troca */
+  if (i === iCab) { am.push(l); return; }
+  if (!ehTab) { if (nDados < nAm) am.push(trocaLinhaSolta(l, manter)); return; }
+  if (/^[-=|+_\s]+$/.test(l.trim())) { if (nDados < nAm) am.push(l); return; }
+  if (nDados >= nAm) return; nDados++;
+  const c = celulas(l, D.sep), novo = c.map((v, j) => /^\s*\*/.test(v) ? v : trocaCelula(v, (colunas[j] || {}).t || tipoPorConteudo([v]), manter));
+  am.push(D.sep === '|' ? '|' + novo.join('|') + '|' : novo.join(D.sep));
+ });
+ while (am.length && am[am.length - 1] === '') am.pop();
+ /* conferência: números longos do original que ainda aparecem na amostra */
+ const origIds = new Set((txt.match(/\b(?=[A-Z0-9]*\d)(?=[A-Z0-9]*[A-Z]?)[A-Z0-9]{6,}\b/g) || []).filter(x => !/^\d{1,2}[.\/]/.test(x))), amTxt = am.join('\n'), sobra = [...origIds].filter(x => new RegExp('\\b' + x + '\\b').test(amTxt));
+ const totDados = dados.length;
+ /* tela */
+ const pill = (t, k) => `<span class="pill ${k || ''}">${esc(t)}</span>`;
+ $('#cmp').innerHTML = !H ? `<div class="note crit">Não achei a linha de títulos (cabeçalho). O prompt vai com a amostra e o aviso; confira se colou com os títulos.</div>` :
+  `<p>${pill(D.fmt)} ${pill(out.total + ' linha(s)')} ${pill('cabeçalho na linha ' + (iCab + 1))} ${pill(totDados + ' linha(s) de dados')} ${faltamOb.length ? pill(faltamOb.length + ' obrigatória(s) faltando: ' + faltamOb.map(c => c.rot).join(', '), 'crit') : pill('obrigatórias presentes', 'ok')} ${novas.length ? pill(novas.length + ' coluna(s) nova(s)', 'warn') : pill('sem coluna nova', 'ok')}</p>
+  ${faltamOb.length ? `<div class="note crit"><b>Obrigatórias que não vieram</b> (sem elas a importação não lê a tabela). Confira se a coluna veio com outro título:<ul style="margin:6px 0 0;padding-left:18px">${faltamOb.map(c => `<li><b>${esc(c.rot)}</b> · títulos aceitos hoje: ${esc(c.nomes.join(' · '))}</li>`).join('')}</ul>${novas.length ? `<p style="margin:6px 0 0">Colunas que vieram e não foram reconhecidas (candidatas): ${novas.map(c => '<b>' + esc(c.h) + '</b>').join(', ')}</p>` : ''}</div>` : ''}
+  <div class="tw"><table><thead><tr><th>Coluna colada</th><th>Reconhecida hoje como</th><th>Formato dos valores</th><th>Na amostra</th></tr></thead><tbody>
+  ${colunas.filter(c => c.h).map(c => `<tr><td>${esc(c.h)}</td><td>${c.col ? esc(c.col.rot) + (c.col.ob ? ' <span class="pill">obrigatória</span>' : '') : '<span class="pill warn">nova (não reconhecida)</span>'}</td><td class="small">${esc(c.tipos.join(' · ') || '—')}</td><td class="small muted">${esc(({ id: 'código trocado', texto: manter ? 'mantida' : 'descrição trocada', textolivre: 'texto trocado', pessoa: 'nome trocado', email: 'e-mail trocado', valor: 'valor × fator', qtd: 'quantidade × fator', qtd0: 'quantidade × fator' })[c.t] || 'como veio')}</td></tr>`).join('')}
+  </tbody></table></div>
+  ${Object.keys(foraTab).length ? `<p class="small"><b>Lidos fora da tabela (cabeçalho de cada ordem):</b> ${Object.entries(foraTab).map(([k, onde]) => esc((ref.cols.find(c => c.campo === k) || {}).rot || k) + ' (' + esc(onde) + ')').join(' · ')}</p>` : ''}
+  ${faltam.filter(c => !c.ob).length ? `<p class="small"><b>Opcionais que não vieram:</b> ${faltam.filter(c => !c.ob).map(c => esc(c.rot)).join(' · ')}</p>` : ''}`;
+ $('#seg').innerHTML = sobra.length ? `<div class="note crit">${sobra.length} código(s) do original ainda aparecem na amostra (${esc(sobra.slice(0, 5).join(', '))}${sobra.length > 5 ? '…' : ''}). Confira antes de enviar.</div>` : `<div class="note ok">Conferência: nenhum código de 6+ caracteres do original (números ou letras e números) aparece na amostra.</div>`;
+ /* prompt */
+ const linhasCols = colunas.filter(c => c.h).map(c => `- "${c.h}" → ${c.col ? c.col.rot + ' (' + c.col.campo + ')' : 'NOVA, não reconhecida hoje'} · valores: ${c.tipos.join(', ') || 'vazio'}`);
+ const P = [];
+ P.push(`## Atualizar a importação: ${ref.nome}`);
+ P.push(`Página: ${ref.pag}. Tabela colada como vem da origem e descaracterizada pela ferramenta "Comparar importação" (códigos, lotes, ordens e nomes trocados de forma consistente; ${manter ? 'descrições mantidas' : 'descrições trocadas, com as palavras-chave do produto'}; valores e quantidades multiplicados por fatores; datas, horas, unidades, status e percentuais como vieram).`);
+ P.push('', '### Formato que a plataforma reconhece hoje', ref.estr, 'Colunas reconhecidas (nomes aceitos, sem acento e sem diferença de maiúsculas):');
+ ref.cols.forEach(c => P.push(`- ${c.rot}${c.ob ? ' (obrigatória)' : ''}: ${c.nomes.slice(0, 6).join(' / ')}${c.nomes.length > 6 ? ' …' : ''}`));
+ P.push('', '### O que veio agora', `Formato: ${D.fmt} · ${out.total} linha(s) não vazias · ${H ? 'cabeçalho na linha ' + (iCab + 1) + ' · ' + totDados + ' linha(s) de dados' : 'cabeçalho NÃO encontrado'}.`);
+ if (H) { P.push('Colunas (na ordem em que vieram):', ...linhasCols); }
+ if (Object.keys(foraTab).length) P.push('Lidos fora da tabela: ' + Object.entries(foraTab).map(([k, onde]) => ((ref.cols.find(c => c.campo === k) || {}).rot || k) + ' (' + onde + ')').join('; ') + '.');
+ P.push('', '### Diferenças em relação ao formato atual');
+ const dif = [];
+ if (!H) dif.push('- A linha de títulos não foi reconhecida com os nomes atuais.');
+ if (faltamOb.length) dif.push('- Obrigatórias que NÃO vieram: ' + faltamOb.map(c => c.rot + ' (títulos aceitos hoje: ' + c.nomes.slice(0, 6).join(' / ') + (c.nomes.length > 6 ? ' …' : '') + ')').join('; '));
+ if (faltam.filter(c => !c.ob).length) dif.push('- Opcionais que não vieram: ' + faltam.filter(c => !c.ob).map(c => c.rot).join(', '));
+ if (novas.length) dif.push('- Colunas novas (não reconhecidas hoje): ' + novas.map(c => `"${c.h}"`).join(', '));
+ if (ref.sep && !ref.sep.split(' ').some(s => (s === 'tab' && D.sep === '\t') || (s.includes('|') && D.sep === '|') || s === D.sep)) dif.push(`- Separador: veio ${D.fmt}; o importador espera ${ref.sep}.`);
+ P.push(...(dif.length ? dif : ['- Nenhuma diferença de colunas encontrada; se o problema é nos valores, veja a amostra e as notas.']));
+ P.push('', '### O que mudou / o que preciso', $('#notas').value.trim() || '(sem notas)');
+ P.push('', `### Amostra descaracterizada (${Math.min(nAm, totDados)} de ${totDados} linha(s) de dados${H ? '' : '; cabeçalho não encontrado'})`, '```', am.join('\n'), '```');
+ P.push('', `Pedido: comparar com o importador atual de "${ref.nome}" e ajustar para aceitar este formato, sem deixar de aceitar o anterior; mostrar na prévia da importação o que mudou; teste com esta amostra.`);
+ $('#out').value = P.join('\n');
+}
+
+/* ===================== tela ===================== */
+$('#tipo').innerHTML = ORDEM_TIPOS.map(k => `<option value="${k}">${esc(REF[k].nome)}</option>`).join('');
+function mostrarRef() { const r = REF[$('#tipo').value]; $('#ref').innerHTML = `<details><summary>Formato reconhecido hoje · ${esc(r.pag)}</summary><p>${esc(r.estr)}</p><div class="tw"><table><thead><tr><th>Campo</th><th>Títulos aceitos</th></tr></thead><tbody>${r.cols.map(c => `<tr><td>${esc(c.rot)}${c.ob ? ' <span class="pill">obrigatória</span>' : ''}</td><td class="small muted">${esc(c.nomes.join(' · '))}</td></tr>`).join('')}</tbody></table></div></details>`; }
+['#tipo', '#keepDesc', '#nAm'].forEach(s => $(s).addEventListener('change', () => { mostrarRef(); analisar(); }));
+let tm = null; ['#txt', '#notas'].forEach(s => $(s).addEventListener('input', () => { clearTimeout(tm); tm = setTimeout(analisar, 250); }));
+$('#arq').addEventListener('change', async e => { const f = e.target.files[0]; if (!f) return; let t = await f.text(); if (/\uFFFD/.test(t)) { try { t = new TextDecoder('windows-1252').decode(await f.arrayBuffer()); } catch (er) { } } $('#txt').value = t; $('#arqInfo').textContent = f.name + ' · ' + Math.round(f.size / 1024) + ' KB'; analisar(); });
+$('#copiar').addEventListener('click', async () => { const m = $('#msg'); try { await navigator.clipboard.writeText($('#out').value); m.textContent = 'Copiado. Cole na conversa.'; } catch (e) { $('#out').select(); m.textContent = 'Texto selecionado: use Ctrl+C.'; } });
+$('#tema').addEventListener('click', () => { const r = document.documentElement, l = r.dataset.theme === 'light'; r.dataset.theme = l ? '' : 'light'; $('#tema').textContent = l ? 'Tema claro' : 'Tema escuro'; });
+mostrarRef();
+</script>
+</body>
+</html>

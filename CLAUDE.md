@@ -68,6 +68,7 @@ node testes/twaste_vg.js              # Waste › Visão Geral no padrão comum:
 node testes/tparadas_vg.js            # Paradas › Visão geral no padrão comum: mesmos números da referência (indicadores, ação prioritária, decisões, 4 gráficos, filtros) com data fixa, seções, grupos, atalhos, impressão, 3 larguras × 2 temas; código 1 se falhar
 node testes/tgel_vg.js                # Gestão de Gel › Visão Geral no padrão comum: mesmos números da referência (8 indicadores, 36 blocos do painel, resumo do período) com data fixa, seções, filtro da maior perda, atalho das pendências, 3 larguras × 2 temas; código 1 se falhar
 node testes/thh24.js                  # Produção 2.4.52: produção fora do turno nas linhas do turno que a recebe (caso 04:00 com só A e B produtivos), Dia (24 h) com meta/apontado iguais à grade, Caixas do MES e Lotes do dia pelo dia de trabalho (2.4.53), Ordens produzidas sem MB51 com os lotes do MES "não conciliado"; código 1 se falhar
+node testes/tcomparar.js              # ferramenta ferramentas/Comparar-importacao.html: reconhece as colunas como os importadores, aponta novas/faltando, descaracteriza (nenhum código original sobra) e monta o prompt; código 1 se falhar
 node testes/tportal_vg.js             # Portal › Visão geral no padrão comum: mesmos cartões das páginas, pendências e barra de período da referência (data fixa), seções, diagnóstico e atalhos, 3 larguras × 2 temas; código 1 se falhar
 ```
 
@@ -127,6 +128,7 @@ Produção aplica o cadastro na base do OEE pelo `CadSync` (`fontes/producao/cad
 - Plataforma: `arquitetura-integracao-sistemas.md`, `portal-e-padrao-comum.md`, `plano-evolucao-plataforma.md`, `centralizacao-configuracoes.md`
 - Cadastro: `cadastro-base-contrato.md`, `cs12-importacao-bom.md`
 - Kit: `kit-cabecalho-e-backups.md` (v1), `kit-cabecalho-v2.md` (v2/v2.1)
+- Ferramenta "Comparar importação" (`ferramentas/Comparar-importacao.html`, fora da pasta da rede): colar a tabela como vem, comparar com o formato reconhecido hoje e gerar o prompt com os dados descaracterizados; ao mudar um importador, atualizar o `REF` dela: `ferramenta-comparar-importacao.md`
 - Gráficos (título, "Valores em …", legenda, eixo sem rótulo repetido; feito nas 5 páginas em 11/11/2026, gráfico novo segue a regra): `graficos-padrao.md`
 - Páginas novas: `paginas-construcao.md` (construção/atualização)
 - Briefing de 09/11/2026 (respostas da seção 10, POR-04/09 e proposta da Fase 1 para aprovação): `briefing-2026-11-09-fase0-fase1.md`
