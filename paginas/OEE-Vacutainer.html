@@ -1258,7 +1258,7 @@ const U = (() => {
 
 /* ---- 02-model.js ---- */
 /* ================= modelo de dados, valores iniciais e integridade ================= */
-const APP_VERSION = '2.4.47';
+const APP_VERSION = '2.4.48';
 const SCHEMA_VERSION = 1;
 const BASE_FILE = 'oee-vacutainer-base.json';
 const BACKUP_DIR = '00. Backups';
@@ -5189,7 +5189,7 @@ App.views.launch = {
     let h = dayBar('launch');
     if (day.demo) h += `<div class="banner demo"><p><b>Dados de demonstração.</b> Este dia não faz parte da base real.</p></div>`;
     if (day.origin === 'importação') h += `<div class="banner info"><p>Dia importado do RELATÓRIO (resumo por turno, sem hora a hora). Os valores mostram o que a planilha registrou.</p></div>`;
-    h += `<section class="card"><header><h3>Cabeçalho do dia</h3>${stPill(day.status)}<span class="small muted">Última alteração ${U.brDT(day.updatedAt)} · ${esc(day.updatedBy || '')}</span><button class="btn xs" id="dayMetas">Metas dos próximos meses</button><button class="btn xs" id="kcEdit" title="Liga e desliga os indicadores do topo (vale neste computador)">Editar cards</button></header>
+    h += `<section class="card${App.prefs.cabFold ? ' cab-fold' : ''}" id="cabDia"><header><button type="button" class="btn xs ghost cab-tg" id="cabTg" aria-expanded="${!App.prefs.cabFold}" aria-controls="cabDia" title="${App.prefs.cabFold ? 'Mostrar' : 'Recolher'} o cabeçalho do dia (vale neste computador)">${App.prefs.cabFold ? '▸ Mostrar' : '▾ Recolher'}</button><h3>Cabeçalho do dia</h3>${stPill(day.status)}<span class="small muted">Última alteração ${U.brDT(day.updatedAt)} · ${esc(day.updatedBy || '')}</span><button class="btn xs" id="dayMetas">Metas dos próximos meses</button><button class="btn xs" id="kcEdit" title="Liga e desliga os indicadores do topo (vale neste computador)">Editar cards</button></header>
       <div class="form">
         <div class="kv"><span class="l">Data</span><span class="v">${U.brDate(day.date)} (${U.WD[U.weekday(day.date)]})</span></div>
         <div class="kv"><span class="l">Linha · máquina</span><span class="v">${esc(lineName(day.lineId))} · ${esc(mac ? mac.name : '—')}</span></div>
@@ -5234,6 +5234,7 @@ App.views.launch = {
     return h;
   },
   mount(root) {
+    { const cf = root.querySelector('#cabTg'); if (cf) cf.onclick = () => { App.prefs.cabFold = !App.prefs.cabFold; savePrefs(); render(); }; }
     { const mb = root.querySelector('#dayMetas'); if (mb) mb.onclick = () => metasModal(); const kc = root.querySelector('#kcEdit'); if (kc) kc.onclick = () => KC.editar(); }
     bindDayBar(root); bindNoDay(root);
     const day = curDay(); if (!day || Engine.isOffDay(db(), day)) return;
@@ -10279,7 +10280,9 @@ const LancUI = (() => {
 #main[data-rota="launch"] .kpi .l{font-family:var(--f-body);text-transform:none;letter-spacing:0;font-size:13px;font-weight:500;color:var(--ink);white-space:normal;overflow:visible;text-overflow:clip;padding-right:34px;line-height:1.3}
 #main[data-rota="launch"] .kpi .s{font-size:12.5px}
 #main[data-rota="launch"] .kv .l,#main[data-rota="launch"] .dh-l,#main[data-rota="launch"] .card .lbl{text-transform:none;letter-spacing:0;font-family:var(--f-body)}
-#main[data-rota="launch"] .btn{border-radius:8px}`;
+#main[data-rota="launch"] .btn{border-radius:8px}
+#cabDia.cab-fold>:not(header){display:none}
+#cabDia .cab-tg{min-height:32px;font-weight:600}`;
   const P = {
     db: '<ellipse cx="12" cy="5" rx="8" ry="3"/><path d="M4 5v6c0 1.7 3.6 3 8 3s8-1.3 8-3V5M4 11v6c0 1.7 3.6 3 8 3s8-1.3 8-3v-6"/>', box: '<path d="M3 7l9-4 9 4-9 4-9-4z"/><path d="M3 7v10l9 4 9-4V7M12 11v10"/>',
     swap: '<path d="M4 8h14l-3-3M20 16H6l3 3"/>', check: '<path d="M5 12.5l4.5 4.5L19 7.5"/>', alert: '<path d="M12 3l10 18H2z"/><path d="M12 10v5M12 18v.5"/>',

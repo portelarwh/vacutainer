@@ -31,3 +31,4 @@ Fonte: `fontes/producao/lanc_layout.js` (`LancUI.bloco`, no lugar de `SrvUI.dayC
 - **Produção fora do turno**: resumo (caixas · produção, período, OEE do período ponderado pela duração dos trechos), tabela (Período registrado, Horário das caixas, Caixas, Produção, OEE do período, Contabilizado em) e "Como a produção fora do turno é contabilizada?" (continuidade sem parada maior que o limite, regra vigente desde a data do parâmetro).
 - O resto do Lançamento segue a mesma lógica (`#main[data-rota="launch"]`): cartões com cantos de 12 px, títulos e rótulos em texto normal (sem caixa alta).
 - Mesmos dados e `data-*` (`#srvRev`, `#srvCls`, `data-rw`, `data-rwapply`, `data-turnonp`, `data-route="lots"`); `SrvUI.bindDay` e `ForaTurnoUI.mount` continuam ligando os botões.
+- **Cabeçalho do dia recolhível** (2.4.48): botão ▾ Recolher / ▸ Mostrar no título; a escolha fica neste computador (`App.prefs.cabFold`). Recolhido, mostra só o título com a situação do dia.

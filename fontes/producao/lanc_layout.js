@@ -87,7 +87,9 @@ const LancUI = (() => {
 #main[data-rota="launch"] .kpi .l{font-family:var(--f-body);text-transform:none;letter-spacing:0;font-size:13px;font-weight:500;color:var(--ink);white-space:normal;overflow:visible;text-overflow:clip;padding-right:34px;line-height:1.3}
 #main[data-rota="launch"] .kpi .s{font-size:12.5px}
 #main[data-rota="launch"] .kv .l,#main[data-rota="launch"] .dh-l,#main[data-rota="launch"] .card .lbl{text-transform:none;letter-spacing:0;font-family:var(--f-body)}
-#main[data-rota="launch"] .btn{border-radius:8px}`;
+#main[data-rota="launch"] .btn{border-radius:8px}
+#cabDia.cab-fold>:not(header){display:none}
+#cabDia .cab-tg{min-height:32px;font-weight:600}`;
   const P = {
     db: '<ellipse cx="12" cy="5" rx="8" ry="3"/><path d="M4 5v6c0 1.7 3.6 3 8 3s8-1.3 8-3V5M4 11v6c0 1.7 3.6 3 8 3s8-1.3 8-3v-6"/>', box: '<path d="M3 7l9-4 9 4-9 4-9-4z"/><path d="M3 7v10l9 4 9-4V7M12 11v10"/>',
     swap: '<path d="M4 8h14l-3-3M20 16H6l3 3"/>', check: '<path d="M5 12.5l4.5 4.5L19 7.5"/>', alert: '<path d="M12 3l10 18H2z"/><path d="M12 10v5M12 18v.5"/>',
