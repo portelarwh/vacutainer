@@ -28,7 +28,7 @@ R("location.href=sysHref(port,'versoes')", "vacDemo.ir(sysHref(port,'versoes'))"
 R('<button class="btn primary" id="uOk">Usar este nome</button>', '<button class="btn primary" id="uOk">Usar este nome</button><button class="btn" data-vdemo-entrar onclick="vacDemo.entrar()">Demonstração do sistema</button>')
 R('<button class="btn ghost" id="wLocal">Começar só neste navegador</button>', '<button class="btn ghost" id="wLocal">Começar só neste navegador</button><button class="btn" data-vdemo-entrar onclick="vacDemo.entrar()">Demonstração do sistema</button>')
 R('Abre uma <b>cópia em memória</b> da base com cerca de 3 semanas de dados fictícios (hora a hora, paradas, scrap, dias fechados e abertos), para treinar ou demonstrar. Nada é gravado na pasta da rede nem no navegador: ao sair, tudo volta exatamente como estava.', 'Abre a <b>demonstração integrada do sistema</b>, com produção, perdas, gel, paradas, equipamentos e ações fictícias relacionadas. Você pode editar o exemplo e navegar entre as páginas. As bases reais ficam preservadas; fechar ou recarregar a demonstração descarta as alterações fictícias.')
-R("const APP_VERSION = '2.0.1';","const APP_VERSION = '2.4.55';")
+R("const APP_VERSION = '2.0.1';","const APP_VERSION = '2.4.56';")
 # 2.4.45 · login comum do kit (vacLogin): o "Quem está usando?" só aparece quando o login não vale (demonstração, teste, TV)
 R("function askUser(first) {\n  const known","function askUser(first) {\n  if (typeof vacLogin !== 'undefined' && !vacLogin.dispensado()) return vacLogin.abrir({ trocar: !!vacLogin.sessao() });\n  const known")
 R("  if (!Store.S.user) askUser({ then: () => { if (!dir && !cache) welcome(); } });",
@@ -296,4 +296,8 @@ R("<p class=\"small muted\">Mostrando 600; use os filtros.</p>' : ''}</section>`
 R("""    return `<div class="banner info" style="margin:0 0 10px"><p>O servidor tem dados deste dia (o valor "srv" ao lado de cada hora). ${n ? `${n} sugestão(ões) para conferir.` : 'O lançamento confere com o servidor.'} ${n ? '<button type="button" class="btn xs primary" id="srvRev">Revisar sugestões</button>' : ''}</p></div>`;""",
   """    if (!n) return '';
     return `<div class="banner info" style="margin:0 0 10px"><p>${n} sugestão(ões) do servidor para conferir. <button type="button" class="btn xs primary" id="srvRev">Revisar sugestões</button></p></div>`;""")
+# 2.4.56 · Lançamento no layout novo (proposta visual do usuário; fontes/producao/lanc_v2.js)
+R("async function boot() {\n", open(os.path.join(AQUI,'lanc_v2.js'),encoding='utf-8').read() + "\nasync function boot() {\n")
+R("    SrvUI.bindDay(root, day); ForaTurnoUI.mount(root, day); GelTurno.mount(root, day, Engine.computeDay(db(), day)); TurnoCard.ligar(root, day);",
+  "    SrvUI.bindDay(root, day); ForaTurnoUI.mount(root, day); GelTurno.mount(root, day, Engine.computeDay(db(), day)); TurnoCard.ligar(root, day); LancV2.montar(root, day);")
 open(out,'w',encoding='utf-8',newline='\n').write(s);print('ok')   # newline: no Windows o padrão gravaria CRLF

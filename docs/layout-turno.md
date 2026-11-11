@@ -118,3 +118,36 @@ Pedidos do usuário na homologação com o CSV real da semana.
   - a coluna "Conta no";
   - setas e ícones em todos os blocos;
   - o turno recolhido e lembrado.
+
+## 2.4.56 · Lançamento no layout novo (proposta visual do usuário, 11/11/2026)
+
+Reproduz a proposta "painel de gestão industrial" (`fontes/producao/lanc_v2.js`, chamado no mount do Lançamento). É **só apresentação**:
+- os nós, ids, `data-*` e números continuam os de antes;
+- nenhum indicador ou função saiu;
+- nenhuma fórmula mudou.
+
+**Cabeçalho do dia**
+- Recolhe por uma **seta em círculo**.
+- Data, Linha·máquina, Calendário e Scrap aparecem com ícone e separador.
+- A observação ganhou o texto de exemplo "Digite uma observação para o dia..." e um contador de caracteres. O limite continua 2000.
+- **Ações principais:** Hora a hora (em destaque), Fechar dia e Marcar como pendente de conferência (com contorno).
+- **Ações secundárias com ícone:** Restaurar intervalos, Reaplicar metas, Marcar dia sem produção e Mover para outro dia. O ⓘ de cada uma continua.
+- **Linha de baixo:** Histórico de alterações e **Excluir lançamento**, este com contorno vermelho por ser ação crítica.
+
+**Cartões**
+- Grade de 7 colunas; 4 colunas até 1280 px e 2 no celular.
+- Ícone ao lado do título; o ⓘ fica no canto do cartão.
+- A borda e o fundo mostram a situação: na meta (verde), atenção (amarelo) ou abaixo da meta (vermelho, com fundo claro).
+- **Disponibilidade, Performance e Qualidade** com medidor em meia-lua. O número continua no cartão, visualmente escondido, para leitura de tela e testes.
+- **"OEE do dia (evolução por hora)"**, novo e com largura de 2 colunas.
+  - O OEE de cada intervalo é produção boa ÷ (PPH × minutos ÷ 60), a mesma conta do OEE oficial.
+  - A linha tracejada é a OEE meta do dia.
+  - Sem produção lançada, aparece um aviso.
+
+**Setas Mostrar/Recolher**
+- Em todos os blocos e turnos, a seta é um **círculo**, como na proposta.
+- O texto "Recolher"/"Mostrar" continua para leitor de tela e aparece como dica ao passar o mouse.
+
+**Não mudou nesta versão**
+- **Cabeçalho geral do kit** (navegação entre páginas, título e abas): é comum às 8 páginas e não foi alterado. O título da página com ícone e as abas sem caixa alta, como na proposta, entram numa mudança do kit, em todas as páginas juntas.
+- **"Editar cards"** continua por computador. Salvar a escolha **por perfil** ou para todos depende de guardar a escolha no Portal; é a próxima etapa sugerida.
