@@ -1258,7 +1258,7 @@ const U = (() => {
 
 /* ---- 02-model.js ---- */
 /* ================= modelo de dados, valores iniciais e integridade ================= */
-const APP_VERSION = '2.4.45';
+const APP_VERSION = '2.4.48';
 const SCHEMA_VERSION = 1;
 const BASE_FILE = 'oee-vacutainer-base.json';
 const BACKUP_DIR = '00. Backups';
@@ -4680,7 +4680,7 @@ function renderNow() {
   Charts.reset();
   if (App.route === 'panel') { App.route = 'overview'; try { localStorage.setItem('oee-route', 'overview'); } catch (e) { } if (VisaoGeral.naPadrao()) Panel.st().view = 'mine'; }   /* 2.4.31 · PRD-01: o Painel abre na Visão Geral */
   const v = App.views[App.route];
-  const main = $('#main');
+  const main = $('#main'); main.dataset.rota = App.route;   /* 2.4.47 · estilo do layout novo só no Lançamento (lanc_layout.js) */
   const ts = tabState(App.route);
   try {
     if (App.route !== 'config' && App.route !== 'shift' && ts.state === 'construção') main.innerHTML = constructionPage(App.route, (ROUTES.find(r => r[0] === App.route) || [, ''])[1]);
@@ -5189,7 +5189,7 @@ App.views.launch = {
     let h = dayBar('launch');
     if (day.demo) h += `<div class="banner demo"><p><b>Dados de demonstração.</b> Este dia não faz parte da base real.</p></div>`;
     if (day.origin === 'importação') h += `<div class="banner info"><p>Dia importado do RELATÓRIO (resumo por turno, sem hora a hora). Os valores mostram o que a planilha registrou.</p></div>`;
-    h += `<section class="card"><header><h3>Cabeçalho do dia</h3>${stPill(day.status)}<span class="small muted">Última alteração ${U.brDT(day.updatedAt)} · ${esc(day.updatedBy || '')}</span><button class="btn xs" id="dayMetas">Metas dos próximos meses</button><button class="btn xs" id="kcEdit" title="Liga e desliga os indicadores do topo (vale neste computador)">Editar cards</button></header>
+    h += `<section class="card${App.prefs.cabFold ? ' cab-fold' : ''}" id="cabDia"><header><button type="button" class="btn xs ghost cab-tg" id="cabTg" aria-expanded="${!App.prefs.cabFold}" aria-controls="cabDia" title="${App.prefs.cabFold ? 'Mostrar' : 'Recolher'} o cabeçalho do dia (vale neste computador)">${App.prefs.cabFold ? '▸ Mostrar' : '▾ Recolher'}</button><h3>Cabeçalho do dia</h3>${stPill(day.status)}<span class="small muted">Última alteração ${U.brDT(day.updatedAt)} · ${esc(day.updatedBy || '')}</span><button class="btn xs" id="dayMetas">Metas dos próximos meses</button><button class="btn xs" id="kcEdit" title="Liga e desliga os indicadores do topo (vale neste computador)">Editar cards</button></header>
       <div class="form">
         <div class="kv"><span class="l">Data</span><span class="v">${U.brDate(day.date)} (${U.WD[U.weekday(day.date)]})</span></div>
         <div class="kv"><span class="l">Linha · máquina</span><span class="v">${esc(lineName(day.lineId))} · ${esc(mac ? mac.name : '—')}</span></div>
@@ -5225,16 +5225,16 @@ App.views.launch = {
       ${kpi('Meta diária oficial', fq(res.officialDaily), unitLbl(), res.comp ? (res.comp.applied ? `ajuste última hora ${fqs(res.comp.adjust)}` : '<span class="ferr">compensação inválida</span>') : '')}
       ${OeeReal.kpis(day, res)}${MesDia.kpiDia(day)}
     </div>`);
-    h += SrvUI.dayCard(day, res);
-    h += ForaTurnoUI.card(day, res);   /* 2.4.24 · TUR-02/03/04 */
+    h += LancUI.bloco(day, res);   /* 2.4.47 · layout novo (antes: SrvUI.dayCard + ForaTurnoUI.card) */
     h += GelDia.card(day, res);   /* 2.4.29 · GEL-04 */
     // turnos
-    h += `<div class="section grid g2">${res.shifts.map(sr => shiftBlock(day, sr, res)).join('')}${OeeReal.cardsNP(day, res)}</div>`;
+    { const np = OeeReal.cardsNP(day, res); h += `<div class="section tl-list">${res.shifts.map(sr => TurnoUI.bloco(day, sr, res)).join('')}${np ? `<div class="grid g2">${np}</div>` : ''}</div>`; }
     h += `<section class="card section"><header><h3>Validação</h3>${errs ? semB('crit', errs + ' erro(s)') : semB('ok', 'sem erros')} ${alerts ? semB('warn', alerts + ' alerta(s)') : ''}</header>${msgList(res.msgs)}</section>`;
     h += `<div class="section">${oeePanel(r, 'Cascata de perdas do dia')}</div><div class="section">${qaPanel(r)}</div>`;
     return h;
   },
   mount(root) {
+    { const cf = root.querySelector('#cabTg'); if (cf) cf.onclick = () => { App.prefs.cabFold = !App.prefs.cabFold; savePrefs(); render(); }; }
     { const mb = root.querySelector('#dayMetas'); if (mb) mb.onclick = () => metasModal(); const kc = root.querySelector('#kcEdit'); if (kc) kc.onclick = () => KC.editar(); }
     bindDayBar(root); bindNoDay(root);
     const day = curDay(); if (!day || Engine.isOffDay(db(), day)) return;
@@ -9267,14 +9267,14 @@ window.VAC_GUIA.oee = {
       { sel: '[data-dayf="responsible"]', nome: 'Responsável pelo reporte', o: 'Aparece só no Total diário: quem responde pelo número único do dia. Nos outros casos o responsável é de cada turno.', como: 'Nome de quem fechou o total.', ex: 'J. Lima.' },
       { sel: '[data-dayf="note"]', nome: 'Observação geral', o: 'Fatos do dia que valem para todos os turnos e entram no relatório.', como: 'Texto curto, com o que aconteceu e o efeito.', ex: '"Falta de rolha das 10h às 11h; linha parada para limpeza no fim do dia".' },
       { sel: '[data-hhps=""]', nome: 'Hora a hora (todos os turnos)', o: 'Abre a grade de produção por intervalo de todos os turnos do dia.' },
-      { sel: 'section.shift [data-psf$="|initialCatalogId"]', nome: 'Catálogo inicial do turno', o: 'Catálogo que a linha estava rodando no início do turno. As trocas durante o turno são feitas no Hora a hora.', como: 'Deixe "segue o turno anterior" quando não houve troca na passagem.', ex: '360057 no A, segue no B.' },
-      { sel: 'section.shift [data-psf$="|responsible"]', nome: 'Responsável do turno', o: 'Líder ou operador que responde pelo lançamento do turno. Pode ser corrigido mesmo com o turno fechado.', como: 'Nome. Vazio mostra em cinza quem fechou o turno.', ex: 'P. Costa.' },
-      { sel: 'section.shift [data-help="mesTurno"]', nome: 'Caixas do MES no turno', o: '1ª e última caixa do servidor no turno e cada troca de lote ou catálogo: quando terminou o lote anterior, quando começou o novo e quanto durou, com o total de troca do turno.', ex: 'L-1 terminou 20:10 → L-2 começou 22:30 · 2h20.' },
+      { sel: 'section.tl [data-psf$="|initialCatalogId"]', nome: 'Catálogo inicial do turno', o: 'Catálogo que a linha estava rodando no início do turno. As trocas durante o turno são feitas no Hora a hora.', como: 'Deixe "segue o turno anterior" quando não houve troca na passagem.', ex: '360057 no A, segue no B.' },
+      { sel: 'section.tl [data-psf$="|responsible"]', nome: 'Responsável do turno', o: 'Líder ou operador que responde pelo lançamento do turno. Pode ser corrigido mesmo com o turno fechado.', como: 'Nome. Vazio mostra em cinza quem fechou o turno.', ex: 'P. Costa.' },
+      { sel: 'section.tl [data-help="mesTurno"]', nome: 'Caixas do MES no turno', o: '1ª e última caixa do servidor no turno e cada troca de lote ou catálogo: quando terminou o lote anterior, quando começou o novo e quanto durou, com o total de troca do turno.', ex: 'L-1 terminou 20:10 → L-2 começou 22:30 · 2h20.' },
       { sel: 'section.shift.np', nome: 'Cartão do turno não produtivo', o: 'Aparece quando passaram caixas na janela de um turno não produtivo (ex.: C): mostra as caixas, para qual turno a produção foi e o OEE do trecho. Só leitura.' },
       { sel: '[data-scrapturno]', nome: 'Scrap do turno (botão Lançar scrap)', o: 'Abre o popup do scrap: por máquina ou "Reportar só o total" (desabilita as máquinas). Com catálogo de gel, o popup também leva à pesagem do gel. O total entra na Qualidade (Q) do OEE.', como: 'Peças inteiras, não caixas. Sem informar fica "não informado" (não é zero).', ex: 'Só o total: 1.250 peças. Por máquina: Cap Placer 400 + Etiquetagem 850.' },
-      { sel: 'section.shift [data-help="prodDentro"]', nome: 'Produção dentro do turno · fora do turno · total considerada', o: '<b>Dentro</b>: lançada nos intervalos do turno. <b>Fora</b>: caixas da janela do turno não produtivo somadas a este turno (com horário). <b>Total considerada</b>: dentro + fora, é a que entra no OEE reportado.' },
-      { sel: 'section.shift [data-help="oeeReal"]', nome: 'OEE reportado e OEE real do turno', o: '<b>Reportado</b>: o oficial do turno. <b>Real</b>: soma ao planejado o tempo fora do turno em que a linha produziu para este turno.' },
-      { sel: 'section.shift [data-hhps]:not([data-hhps=""])', nome: 'Hora a hora do turno', o: 'Abre o Hora a hora só deste turno. O número (ex.: 6/9) é quantos intervalos já têm produção lançada.' },
+      { sel: 'section.tl [data-help="prodDentro"]', nome: 'Produção dentro do turno · fora do turno · total considerada', o: '<b>Dentro</b>: lançada nos intervalos do turno. <b>Fora</b>: caixas da janela do turno não produtivo somadas a este turno (com horário). <b>Total considerada</b>: dentro + fora, é a que entra no OEE reportado.' },
+      { sel: 'section.tl [data-help="oeeReal"]', nome: 'OEE reportado e OEE real do turno', o: '<b>Reportado</b>: o oficial do turno. <b>Real</b>: soma ao planejado o tempo fora do turno em que a linha produziu para este turno.' },
+      { sel: 'section.tl [data-hhps]:not([data-hhps=""])', nome: 'Hora a hora do turno', o: 'Abre o Hora a hora só deste turno. O número (ex.: 6/9) é quantos intervalos já têm produção lançada.' },
       { sel: '[data-abonoadd]', nome: 'Abonos', o: 'Tempo que não conta como perda (treinamento, reunião, ginástica laboral…), com os motivos do Portal.', como: 'Clique em + abono, escolha o motivo e os minutos.', ex: 'Reunião de segurança, 15 min.' },
       { sel: '[data-shoff]', nome: 'Turno sem produção', o: 'O turno estava previsto mas a linha não rodou por decisão (programado) ou por problema (não programado), com o motivo.', como: 'Marque e escolha o tipo e o motivo.', ex: 'Sem programação do PCP → programado: sai do tempo do OEE. Falta de material → não programado: conta como perda.' },
       { sel: '[data-turnonp]', nome: 'Habilitar turno não produtivo', o: 'Inclui neste dia um turno que o Portal marca como não produtivo (ex.: C em escala reduzida), quando ele rodou.', como: 'Use só no dia em que o turno trabalhou; o tempo inteiro dele vira planejado.' },
@@ -10023,6 +10023,361 @@ const byIdCat = id => (db().catalogs || []).find(c => c.id === id);
 RP_TYPES.push(['tables', 'Tabelas', 'Só tabela, sem gráfico: produção por turno, dia, semana, mês, dia da semana, catálogo, família, hora a hora, paradas e lotes, com filtros (ex.: só sábados).']);
 (() => { const m0 = rpModel; rpModel = function (R) { return R.type === 'tables' ? RpTab.model(R) : m0(R); }; })();
 HELP.rpTabelas = ['Relatório em tabela', [['O que é?', 'Relatório só com tabela, sem gráfico. Escolha o modelo (por turno, dia, semana, mês, dia da semana, catálogo, família, hora a hora, paradas ou lotes do MES) e filtre por período, dias da semana, turno, família e catálogo. Sai em Excel com todas as linhas, PDF, texto ou Outlook.'], ['Exemplo', 'Produção de todos os sábados de outubro do catálogo 360057: modelo "Produção por dia", De 01/10 Até 31/10, marque só Sáb e escolha o catálogo.']]];
+
+/* ===== Produção 2.4.46 · layout novo do turno no Lançamento (mockup aprovado em 11/11/2026) =====
+   Sete faixas por turno: cabeçalho (nome, horário, situação, Fechar/Reabrir, Hora a hora) · catálogo, responsável, tempo planejado e meta ·
+   progresso da produção dentro do turno com retorno (meta atingida / quanto falta e ritmo) · fora do turno, Caixas do MES, paradas e scrap ·
+   capacidade, OEE reportado, OEE real e D · P · Q · abonos e turno sem produção · segurança e qualidade (formulário do SQDCP).
+   Só a tela muda: os números vêm do mesmo Engine.computeDay, TurnoCard.real e OeeReal.mes; os campos mantêm os data-* de antes
+   (data-psf, data-closeps, data-reopenps, data-scrapturno, data-shoff, data-hhps, formulário data-sq-*), então o mount continua igual.
+   Turno importado como resumo (ps.summary) usa o cartão antigo. Tema: segue o da página (claro/escuro). */
+const TurnoUI = (() => {
+  const SV = {
+    sun: '<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>',
+    moon: '<path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z"/>',
+    box: '<path d="M3 7l9-4 9 4-9 4-9-4z"/><path d="M3 7v10l9 4 9-4V7M12 11v10"/>', user: '<circle cx="12" cy="8" r="4"/><path d="M4 21c0-4.4 3.6-7 8-7s8 2.6 8 7"/>',
+    clock: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>', fab: '<path d="M3 21V10l5 3v-3l5 3V6h3V3h3v18z"/>',
+    bars: '<path d="M5 20v-7M12 20V8M19 20V4"/>', pause: '<path d="M8 5v14M16 5v14"/>', trash: '<path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/>',
+    target: '<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1"/>', trend: '<path d="M3 17l6-6 4 4 8-8M15 7h6v6"/>',
+    gear: '<circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M4.2 4.2l2.1 2.1M17.7 17.7l2.1 2.1M2 12h3M19 12h3M4.2 19.8l2.1-2.1M17.7 6.3l2.1-2.1"/>',
+    trophy: '<path d="M7 3h10v6a5 5 0 0 1-10 0zM5 4H3v2a4 4 0 0 0 4 4M19 4h2v2a4 4 0 0 1-4 4M12 14v4M8 21h8"/>', check: '<path d="M5 12.5l4.5 4.5L19 7.5"/>',
+    person: '<circle cx="12" cy="7" r="4"/><path d="M4 21c1-4 4-6 8-6s7 2 8 6"/>', lock: '<rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/>',
+    unlock: '<rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 7.5-2"/>'
+  };
+  const ic = (k, n = 20) => `<svg class="tl-svg" width="${n}" height="${n}" viewBox="0 0 24 24" aria-hidden="true">${SV[k] || ''}</svg>`;
+  const css = `
+.tl-list{display:grid;gap:18px;grid-template-columns:minmax(0,1fr)}
+.tl{--t-card:var(--surface);--t-ink:var(--ink);--t-mute:var(--muted);--t-line:var(--line);--t-soft:var(--surface-2);--t-blue:#1565A8;--t-blue-soft:#E7F0FA;--t-pri:#0D4778;--t-pri-ink:#fff;
+  --t-ok:#159451;--t-ok-ink:#11743F;--t-ok-soft:#ECF8F0;--t-ok-line:#BFE6CD;--t-warn:#C97A16;--t-warn-ink:#8A4F06;--t-warn-soft:#FEF4E6;--t-pur:#7A45C5;--t-pur-soft:#F1EAFB;--t-grey-soft:#EEF1F5;
+  display:grid;gap:12px;padding:14px;border-radius:14px;background:var(--surface-3,var(--bg));border:1px solid var(--t-line)}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]) .tl{--t-blue:#5AA2EC;--t-blue-soft:#1A2F45;--t-pri:#2F6FB0;--t-pri-ink:#FFFFFF;--t-ok:#3FC07A;--t-ok-ink:#6FD89D;--t-ok-soft:#132B20;--t-ok-line:#24553A;--t-warn:#F2AC55;--t-warn-ink:#F5BE78;--t-warn-soft:#2E2414;--t-pur:#B08CEB;--t-pur-soft:#2A2140;--t-grey-soft:#1F2A36}}
+:root[data-theme="dark"] .tl{--t-blue:#5AA2EC;--t-blue-soft:#1A2F45;--t-pri:#2F6FB0;--t-pri-ink:#FFFFFF;--t-ok:#3FC07A;--t-ok-ink:#6FD89D;--t-ok-soft:#132B20;--t-ok-line:#24553A;--t-warn:#F2AC55;--t-warn-ink:#F5BE78;--t-warn-soft:#2E2414;--t-pur:#B08CEB;--t-pur-soft:#2A2140;--t-grey-soft:#1F2A36}
+.tl .tl-c{background:var(--t-card);border:1px solid var(--t-line);border-radius:12px;box-shadow:0 1px 2px rgba(16,42,86,.05)}
+.tl-svg{fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;flex:none}
+.tl .tl-g4{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
+@media (max-width:1180px){.tl .tl-g4{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media (max-width:620px){.tl .tl-g4{grid-template-columns:1fr}}
+.tl .tl-head{display:flex;align-items:center;gap:14px;flex-wrap:wrap;padding:12px 16px;min-height:68px}
+.tl .tl-hic{width:44px;height:44px;border-radius:10px;background:var(--t-blue);color:var(--t-card);display:grid;place-items:center;flex:none}
+.tl .tl-head h3{margin:0;font-family:var(--f-display);font-size:30px;font-weight:700;letter-spacing:.02em;line-height:1;text-transform:uppercase}
+.tl .tl-hr{font-size:20px;font-weight:600;font-variant-numeric:tabular-nums}
+.tl .tl-badge{display:inline-flex;align-items:center;gap:8px;padding:5px 12px;border-radius:999px;font-weight:700;font-size:12.5px;letter-spacing:.04em;text-transform:uppercase;background:var(--t-blue-soft);color:var(--t-blue)}
+.tl .tl-badge i{width:8px;height:8px;border-radius:50%;background:currentColor}
+.tl .tl-badge.fe{background:var(--t-ok-soft);color:var(--t-ok-ink)}.tl .tl-badge.pe{background:var(--t-warn-soft);color:var(--t-warn-ink)}
+.tl .tl-sp{flex:1}
+.tl .tl-acts{display:flex;gap:10px;flex-wrap:wrap}
+.tl .tl-acts .btn{min-height:44px;padding:0 16px;border-radius:10px;font-weight:600}
+.tl .tl-pri{background:var(--t-pri)!important;border-color:var(--t-pri)!important;color:var(--t-pri-ink)!important;font-size:15px}
+.tl .tl-k{padding:18px 20px;display:flex;gap:14px;align-items:flex-start;min-width:0}
+.tl .tl-ico{width:40px;height:40px;border-radius:50%;display:grid;place-items:center;flex:none;background:var(--t-blue-soft);color:var(--t-blue)}
+.tl .tl-ico.p{background:var(--t-pur-soft);color:var(--t-pur)}.tl .tl-ico.o{background:var(--t-warn-soft);color:var(--t-warn)}.tl .tl-ico.g{background:var(--t-grey-soft);color:var(--t-mute)}
+.tl .tl-b{min-width:0;flex:1;display:grid;gap:4px}
+.tl .tl-l{display:flex;align-items:center;gap:6px;font-size:14px;font-weight:500;color:var(--t-ink)}
+.tl .tl-v{font-size:24px;font-weight:700;font-variant-numeric:tabular-nums;line-height:1.2;overflow-wrap:anywhere}
+.tl .tl-v.sm{font-size:20px}.tl .tl-v small{font-size:15px;font-weight:600;color:var(--t-mute);margin-left:3px}
+.tl .tl-dpq span{white-space:nowrap}
+.tl .tl-a{font-size:13px;color:var(--t-mute);font-variant-numeric:tabular-nums}
+.tl .tl-okt{color:var(--t-ok-ink);font-weight:600;font-size:13.5px;display:inline-flex;gap:4px;align-items:center}
+.tl .tl-bad{color:var(--crit);font-weight:600;font-size:13.5px}
+.tl .tl-pend{display:inline-flex;align-items:center;gap:6px;padding:2px 10px;border-radius:999px;background:var(--t-warn-soft);color:var(--t-warn-ink);font-weight:600;font-size:13px;width:max-content}
+.tl select,.tl .tl-in{min-height:42px;border-radius:8px}
+.tl .tl-b select,.tl .tl-b .tl-in{width:100%;font-weight:600;font-size:15px}
+.tl .tl-tags{display:flex;gap:6px;flex-wrap:wrap;align-items:center;font-size:13px;color:var(--t-mute)}
+.tl .tl-prog{display:grid;grid-template-columns:minmax(0,2.1fr) minmax(250px,1fr);gap:20px;padding:20px 22px}
+@media (max-width:900px){.tl .tl-prog{grid-template-columns:1fr}}
+.tl .tl-big{font-size:40px;font-weight:800;font-variant-numeric:tabular-nums;line-height:1.1;color:var(--t-ink)}.tl .tl-big.ok{color:var(--t-ok-ink)}
+.tl .tl-bar{display:flex;align-items:center;gap:16px;margin-top:12px}
+.tl .tl-tr{flex:1;height:14px;border-radius:999px;background:var(--t-soft);overflow:hidden}.tl .tl-tr i{display:block;height:100%;border-radius:999px;background:var(--t-blue)}.tl .tl-tr i.ok{background:var(--t-ok)}
+.tl .tl-pct{font-size:24px;font-weight:800;min-width:72px;text-align:right;font-variant-numeric:tabular-nums;color:var(--t-blue)}.tl .tl-pct.ok{color:var(--t-ok-ink)}
+.tl .tl-pinfo{display:flex;gap:36px;flex-wrap:wrap;margin-top:14px}.tl .tl-pinfo .tl-v{font-size:20px}
+.tl .tl-fb{border-radius:10px;display:grid;place-items:center;text-align:center;padding:18px;gap:6px;align-content:center;background:var(--t-blue-soft);color:var(--t-blue)}
+.tl .tl-fb.ok{background:var(--t-ok-soft);color:var(--t-ok-ink);border:1px solid var(--t-ok-line)}.tl .tl-fb.n{background:var(--t-grey-soft);color:var(--t-mute)}
+.tl .tl-fb b{font-size:20px}.tl .tl-fb p{margin:0}
+.tl .tl-ab{display:flex;align-items:center;gap:14px;padding:12px 20px;flex-wrap:wrap}
+.tl .tl-vd{width:1px;align-self:stretch;background:var(--t-line);min-height:32px}
+.tl .tl-ab .kvrow{display:inline-flex;align-items:center;gap:8px;min-height:44px;margin:0}.tl .tl-ab .kvrow input{width:20px;height:20px}
+.tl .sq-ocorrencias{background:var(--t-card);border:1px solid var(--t-line);border-left:4px solid var(--t-blue);border-radius:12px;padding:16px 20px;margin:0;display:grid;grid-template-columns:minmax(0,1fr) minmax(250px,320px);gap:6px 20px;align-items:start}
+.tl .sq-ocorrencias>h4{grid-column:1/-1;margin:0;font-size:17px;font-family:var(--f-body);text-transform:none;letter-spacing:0;color:var(--t-ink)}.tl .sq-ocorrencias>p{grid-column:1/-1;margin:0 0 6px}
+.tl .sq-ocorrencias .sq-oc-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.tl .sq-ocorrencias fieldset{border:1px solid var(--t-line);border-radius:10px;padding:10px 14px;margin:0;min-width:0}
+.tl .sq-ocorrencias legend{font-weight:600;padding:0 4px;font-family:var(--f-body);text-transform:none;letter-spacing:0;font-size:14px;color:var(--t-ink)}.tl .sq-ocorrencias select{width:100%}
+.tl .sq-ocorrencias>.row{display:grid;gap:8px;align-content:center;border-left:1px solid var(--t-line);padding-left:20px;align-self:stretch}
+.tl .sq-ocorrencias>.row .btn{min-height:52px;width:100%;background:var(--t-pri)!important;border-color:var(--t-pri)!important;color:var(--t-pri-ink)!important;font-size:15px}
+@media (max-width:1000px){.tl .sq-ocorrencias{grid-template-columns:1fr}.tl .sq-ocorrencias>.row{border-left:0;padding-left:0}}
+@media (max-width:620px){.tl .sq-ocorrencias .sq-oc-grid{grid-template-columns:1fr}.tl .tl-head h3{font-size:25px}.tl .tl-big{font-size:34px}.tl .tl-acts{width:100%;display:grid;grid-template-columns:1fr 1fr}}
+.tl .tl-obs{padding:12px 20px}.tl .tl-obs summary{cursor:pointer;font-weight:600;min-height:28px}.tl .tl-obs textarea{width:100%;min-height:70px;margin-top:8px}
+@media (prefers-reduced-motion:reduce){.tl *{transition:none!important}}`;
+  function estilo() { if (document.getElementById('tlCss')) return; const s = document.createElement('style'); s.id = 'tlCss'; s.textContent = css; document.head.appendChild(s); }
+  const tip = k => typeof ib === 'function' ? ib(k) : '';
+  const badge = st => { const c = st === 'fechado' ? 'fe' : /pendente/.test(st || '') ? 'pe' : ''; return `<span class="tl-badge ${c}">${st === 'fechado' ? ic('lock', 13) : '<i></i>'}${esc(st || '—')}</span>`; };
+  const noite = ps => { const m = U.toMin(ps.snap.start); return m != null && (m >= 18 * 60 || m < 5 * 60); };
+  const card = (ico, cls, rot, corpo) => `<div class="tl-c tl-k"><span class="tl-ico ${cls}">${ic(ico)}</span><div class="tl-b"><span class="tl-l">${rot}</span>${corpo}</div></div>`;
+  const pct2 = v => v == null || !isFinite(v) ? '—' : U.pct(v, 2);
+  function catsDoTurno(res, ps) { const L = (res.flat || []).filter(f => f.ps === ps && f.cat), vistos = []; for (const f of L) if (!vistos.includes(f.cat)) vistos.push(f.cat); return vistos; }
+  /* falta e ritmo: quanto falta para a meta e peças/h nas horas que restam do turno (só com o turno em andamento hoje) */
+  function retorno(day, ps, dentro, meta) {
+    if (!(meta > 0)) return { cls: 'n', ico: 'target', t: 'Sem meta para este turno', p: 'A meta vem dos intervalos e do catálogo do turno.' };
+    if (dentro >= meta) return { cls: 'ok', ico: 'trophy', t: 'Meta do turno atingida!', p: `Você já alcançou ${U.pct(dentro / meta, 0)} da meta.` };
+    const falta = meta - dentro, w = OeeReal.janelaPs(ps); let p = ps.status === 'fechado' ? 'O turno foi fechado abaixo da meta.' : 'Faltam peças boas para a meta do turno.';
+    if (w && ps.status !== 'fechado' && day.date === U.today()) { const agora = typeof opNowMin === 'function' ? opNowMin(day.date) : null; if (agora != null && agora >= w[0] && agora < w[1]) { const h = (w[1] - agora) / 60; if (h > 0) p = `Ritmo necessário: ${fq(falta / h)} ${unitLbl()}/h nas ${U.fmt(Math.ceil(h * 10) / 10, 1)} h restantes.`; } }
+    return { cls: '', ico: 'trend', t: `${ps.status === 'fechado' ? 'Faltaram' : 'Faltam'} ${fq(falta)} ${unitLbl()}`, p };
+  }
+  function bloco(day, sr, res) {
+    const ps = sr.ps; if (ps.summary) return shiftBlock(day, sr, res);
+    estilo();
+    const r = sr.r, lk = locked(day, ps), x = TurnoCard.real(day, sr, res), dentro = r.good - x.fora, meta = r.metaOp;
+    const cats = db().catalogs.filter(c => c.active !== false && Engine.catalogValid(c, day.date)), prod = catsDoTurno(res, ps);
+    const w = OeeReal.janelaPs(ps), mx = w ? OeeReal.mes(db(), day, w[0], w[1]) : null, fb = retorno(day, ps, dentro, meta);
+    const okP = meta > 0 && dentro >= meta, pc = meta > 0 ? dentro / meta : null;
+    const hh = it => `${U.hhmm(it.t0 % 1440)} – ${U.hhmm(it.t1 % 1440)}${it.data !== day.date ? ' de ' + U.brDate(it.data).slice(0, 5) : ''}`;
+    const scr = day.scrapMode === 'day' ? `<span class="tl-v sm">${U.fmt(r.scrap)} <small>peças</small></span><span class="tl-a">rateado do total diário</span>`
+      : `${ps.scrap == null ? '<span class="tl-pend">● Não informado</span>' : `<span class="tl-v sm">${U.fmt(ps.scrap)} <small>peças</small></span><span class="tl-a">${U.pct(r.scrapPct, 2)} · ${ps.scrapMaq ? 'por máquina' : 'só o total'}${TurnoCard.gelTxt(day, sr, res)}</span>`}
+        <button type="button" class="btn" data-scrapturno="${ps.id}" style="margin-top:6px;min-height:42px">${lk ? 'Ver scrap' : ps.scrap == null ? 'Lançar scrap' : 'Editar scrap'}</button>`;
+    const trocas = mx && mx.trocas && mx.trocas.length ? `<div class="tl-a" style="display:grid;gap:2px;margin-top:4px">${mx.trocas.map(t => `<div>Troca de ${t.kind === 'catalogo' ? 'catálogo' : 'lote'}: <b>${esc(t.de || '?')}</b>${t.kind === 'catalogo' ? ` (${esc(t.deCat || '')})` : ''} terminou ${OeeReal.hhmm(t.fim, mx.base)} → <b>${esc(t.para || '?')}</b>${t.kind === 'catalogo' ? ` (${esc(t.paraCat || '')})` : ''} começou ${OeeReal.hhmm(t.ini, mx.base)} · <b>${OeeReal.dur(t.min)}</b></div>`).join('')}<div>Total de troca no turno: <b>${OeeReal.dur(U.sum(mx.trocas, t => t.min))}</b></div></div>` : '';
+    return `<section class="tl" data-tl="${ps.id}" aria-label="${esc(ps.snap.name)}">
+  <header class="tl-c tl-head">
+    <span class="tl-hic">${ic(noite(ps) ? 'moon' : 'sun', 24)}</span><h3>${esc(ps.snap.name)}</h3>
+    <span class="tl-hr">${ps.snap.start || ''} – ${ps.snap.end ? U.hhmm(U.toMin(ps.snap.end)) : ''}</span>${badge(ps.status)}
+    <span class="tl-sp"></span><div class="tl-acts">${lk ? `<button class="btn" data-reopenps="${ps.id}">${ic('unlock', 18)} Reabrir turno</button>` : `<button class="btn tl-pri" data-closeps="${ps.id}">${ic('lock', 18)} Fechar turno</button>`}${HHPs.botao(ps)}</div>
+  </header>
+  <div class="tl-g4">
+    ${card('box', '', `Catálogo em produção ${tip('initialCatalog')}`, `<select data-psf="${ps.id}|initialCatalogId" ${lk ? 'disabled' : ''} data-fk="ps-cat-${ps.id}" aria-label="Catálogo inicial do turno"><option value="">(segue o turno anterior)</option>${cats.map(c => `<option value="${c.id}" ${ps.initialCatalogId === c.id ? 'selected' : ''}>${esc(c.code)} - ${esc(c.name || '')}</option>`).join('')}</select>
+      <span class="tl-tags">Produzindo: ${prod.length ? prod.map(id => catPill(id)).join('') : '<span class="muted">—</span>'}</span>`)}
+    ${card('user', '', `Responsável do turno ${tip('shiftResponsible')}`, `<input type="text" class="tl-in" data-psf="${ps.id}|responsible" value="${esc(ps.responsible || '')}" maxlength="60" placeholder="${esc(ps.closing ? ps.closing.by || 'Quem responde pelo turno' : 'Quem responde pelo turno')}" data-fk="ps-resp-${ps.id}" aria-label="Responsável do turno">`)}
+    ${card('clock', '', `Tempo planejado ${tip('plannedTime')}`, `<span class="tl-v">${U.fmt(r.netMin)} <small>min</small></span><span class="tl-a">Bruto ${U.fmt(r.grossMin)} · Descontos ${U.fmt(r.deductMin)}${r.extraMin ? ` · extra ${U.fmt(r.extraMin)}` : ''}</span>`)}
+    ${card('fab', '', `Meta de produção (dentro do turno) ${tip('metaOp')}`, `<span class="tl-v">${fq(meta)} <small>${unitLbl()}</small></span>`)}
+  </div>
+  <div class="tl-c tl-prog">
+    <div>
+      <span class="tl-l">Produção dentro do turno ${tip('prodDentro')}</span>
+      <div class="tl-big${okP ? ' ok' : ''}">${fq(dentro)} <small style="font-size:24px">${unitLbl()}</small></div>
+      <div class="tl-bar" role="progressbar" aria-label="Produção dentro do turno em relação à meta" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${pc == null ? 0 : Math.round(Math.min(1, pc) * 100)}"><span class="tl-tr"><i class="${okP ? 'ok' : ''}" style="width:${pc == null ? 0 : Math.min(100, pc * 100).toFixed(1)}%"></i></span><b class="tl-pct${okP ? ' ok' : ''}">${pc == null ? '—' : U.pct(pc, 0)}</b></div>
+      <div class="tl-pinfo">
+        <div><div class="tl-v">${fq(r.good)} <small>${unitLbl()}</small></div><div class="tl-a">Produção total considerada ${tip('prodTotal')}</div></div>
+        <div>${meta > 0 ? (r.good >= meta ? `<span class="tl-okt">${ic('check', 16)} Meta ${fq(meta)} ${unitLbl()}</span>` : `<span class="tl-bad">Meta ${fq(meta)} ${unitLbl()} · ${U.pct(r.attain, 0)}</span>`) : '<span class="tl-a">Sem meta</span>'}<div class="tl-a">${x.fora ? 'Turno + janela fora do turno' : 'Só o turno'}</div></div>
+      </div>
+    </div>
+    <div class="tl-fb ${fb.cls}" role="status">${ic(fb.ico, 38)}<b>${fb.t}</b><p>${fb.p}</p></div>
+  </div>
+  <div class="tl-g4">
+    ${card('bars', '', `Produção fora do turno ${tip('prodFora')}`, x.its.length ? `<span class="tl-v">${fq(x.fora)} <small>${unitLbl()}</small></span><span class="tl-a">${U.fmt(x.caixas)} caixa(s) · ${x.its.map(hh).join(' · ')}</span>` : `<span class="tl-v sm">—</span><span class="tl-a">Nenhuma caixa fora do turno</span>`)}
+    ${card('box', 'p', `Caixas do MES ${tip('mesTurno')}`, !mx ? '<span class="tl-v sm">—</span><span class="tl-a">Sem CSV do MES importado</span>' : mx.n ? `<span class="tl-v sm">1ª ${OeeReal.hhmm(mx.m0, mx.base)} · última ${OeeReal.hhmm(mx.m1, mx.base)}</span><span class="tl-a">${U.fmt(mx.n)} caixa(s)</span>${trocas}` : `<span class="tl-v sm">—</span><span class="tl-a">Nenhuma caixa nesta janela</span>${trocas}`)}
+    ${card('pause', 'o', `Minutos de parada ${tip('stopsTurno')}`, `<span class="tl-v">${U.fmt(r.aMin + r.pMin)} <small>min</small></span><span class="tl-a">${U.fmt(r.events)} evento(s)</span>`)}
+    ${card('trash', 'g', `Scrap ${tip('scrapTurno')}`, scr)}
+  </div>
+  <div class="tl-g4">
+    ${card('target', '', `Capacidade planejada ${tip('capacity')}`, `<span class="tl-v">${fq(r.cap)} <small>${unitLbl()}</small></span>`)}
+    ${card('trend', '', `OEE reportado ${tip('oeeRep')}`, `<span class="tl-v">${pct2(r.oee)}</span>${r.oeeTarget == null ? '<span class="tl-a">sem meta</span>' : r.oee != null && r.oee >= r.oeeTarget ? `<span class="tl-okt">${ic('check', 15)} Meta ${pct2(r.oeeTarget)}</span>` : `<span class="tl-bad">Meta ${pct2(r.oeeTarget)}</span>`}`)}
+    ${card('bars', '', `OEE real ${tip('oeeReal')}`, `<span class="tl-v">${pct2(x.real)}</span><span class="tl-a">${x.extraMin ? `+${U.fmt(x.extraMin)} min fora do turno` : 'igual ao reportado'}</span>`)}
+    ${card('gear', '', `D · P · Q ${tip('dpq')}`, `<span class="tl-v sm tl-dpq"><span>${pct2(r.D)}</span> · <span>${pct2(r.P)}</span> · <span>${r.Q == null ? '—' : pct2(r.Q)}</span></span>${sr.scrapAllocated ? '<span class="tl-a">Q do dia (scrap diário)</span>' : ''}`)}
+  </div>
+  <div class="tl-c tl-ab">
+    <span class="tl-ico g" style="width:36px;height:36px">${ic('person', 18)}</span><span class="tl-l" style="font-weight:600">Abonos ${tip('breaks')}</span>
+    <div class="row" style="flex-wrap:wrap;gap:8px">${abonoChips(day, ps, lk)}</div>
+    <span class="tl-vd" aria-hidden="true"></span>
+    <label class="kvrow"><input type="checkbox" data-shoff="${ps.id}" ${ps.off ? 'checked' : ''} ${lk ? 'disabled' : ''}> <span>Turno sem produção</span>${ps.off ? `<span class="small muted">· ${offTxt(ps)}</span> <button type="button" class="btn xs" data-shoffed="${ps.id}">alterar</button>` : ''}</label>
+  </div>
+  ${Sqdcp.formularioTurno(day, ps)}
+  <details class="tl-c tl-obs"${ps.note ? ' open' : ''}><summary>Observações do turno${ps.note ? '' : ' <span class="small muted">(nenhuma)</span>'}</summary><textarea data-psf="${ps.id}|note" maxlength="1500" data-fk="ps-note-${ps.id}" aria-label="Observações do turno">${esc(ps.note || '')}</textarea>
+    ${ps.closing ? `<div class="small muted" style="margin-top:6px">Fechado por ${esc(ps.closing.by)} em ${U.brDT(ps.closing.at)} · OEE no fechamento ${pct2(ps.closing.snapshot.oee)}</div>` : ''}
+    ${(ps.reopenHistory || []).slice(-2).map(h => `<div class="small" style="color:var(--warn)">Reaberto por ${esc(h.by)} em ${U.brDT(h.at)}: ${esc(h.reason)}</div>`).join('')}</details>
+</section>`;
+  }
+  return { bloco, retorno, catsDoTurno };
+})();
+Object.assign(HELP, {
+  metaOp: ['Meta de produção do turno', [['O que é?', 'Soma da meta operacional de todos os intervalos do turno, pelo catálogo de cada hora e pelo arredondamento do Portal.'], ['Exemplo', '8 horas de 69.750 peças = 558.000 un.']]],
+  stopsTurno: ['Minutos de parada', [['O que é?', 'Paradas apontadas no turno (disponibilidade + performance), em minutos, e quantos eventos.'], ['Exemplo', '4 min em 1 evento: uma microparada no EQ03.']]],
+  dpq: ['D · P · Q', [['O que é?', 'Disponibilidade · Performance · Qualidade do turno. O OEE é o produto dos três.'], ['Exemplo', '99,22% × 76,01% × 100,00% = 75,42%.']]]
+});
+
+/* ===== Produção 2.4.47 · Lançamento: servidor, lotes do dia, 3º turno e produção fora do turno no layout novo (11/11/2026) =====
+   Mesma lógica visual do turno (turno_layout.js): cartões brancos, cabeçalho com indicadores, decisões em destaque e textos longos
+   em blocos recolhíveis.
+   - "Produção registrada no servidor": produção do dia, trocas e validação (Dados conferidos ou Revisar sugestões) + linha do tempo
+     com barras por lote na cor do catálogo (lote e caixas dentro), marcador de troca com dica (horário, catálogo e lote anterior e novo)
+     e a legenda em "Entenda as marcações".
+   - "Lotes do dia": um cartão por lote (catálogo, produto, lote, caixas, Marcar como retrabalho) e "Ver histórico de lotes".
+   - Turno não produtivo (ex.: 3º turno): seção própria com o switch "Habilitar … neste dia" e o que muda.
+   - "Produção fora do turno": resumo (caixas, produção, período, OEE do período), tabela e "Como a produção fora do turno é contabilizada?".
+   Só a tela muda: dados de SrvUI.sug (sugestões do servidor), TurnoNP.doDia e res.foraTurno; ids e data-* de antes (#srvRev, #srvCls,
+   data-rw, data-rwapply, data-turnonp, data-route="lots"), então SrvUI.bindDay e ForaTurnoUI.mount continuam ligando os botões. */
+const LancUI = (() => {
+  const css = `
+.lc{display:grid;gap:16px;margin-bottom:16px}
+.lc .lc-c{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:18px 20px;box-shadow:0 1px 2px rgba(16,42,86,.05);min-width:0}
+.lc{--l-blue:#1565A8;--l-blue-soft:#E7F0FA;--l-pri:#0D4778;--l-ok:#159451;--l-ok-ink:#11743F;--l-ok-soft:#ECF8F0;--l-warn:#C97A16;--l-warn-ink:#8A4F06;--l-warn-soft:#FEF4E6;--l-pur:#7A45C5;--l-pur-soft:#F1EAFB}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]) .lc{--l-blue:#5AA2EC;--l-blue-soft:#1A2F45;--l-pri:#2F6FB0;--l-ok:#3FC07A;--l-ok-ink:#6FD89D;--l-ok-soft:#132B20;--l-warn:#F2AC55;--l-warn-ink:#F5BE78;--l-warn-soft:#2E2414;--l-pur:#B08CEB;--l-pur-soft:#2A2140}}
+:root[data-theme="dark"] .lc{--l-blue:#5AA2EC;--l-blue-soft:#1A2F45;--l-pri:#2F6FB0;--l-ok:#3FC07A;--l-ok-ink:#6FD89D;--l-ok-soft:#132B20;--l-warn:#F2AC55;--l-warn-ink:#F5BE78;--l-warn-soft:#2E2414;--l-pur:#B08CEB;--l-pur-soft:#2A2140}
+.lc .lc-svg{fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;flex:none}
+.lc .lc-hd{display:flex;gap:14px;align-items:flex-start;flex-wrap:wrap}
+.lc .lc-hic{width:40px;height:40px;border-radius:10px;background:var(--l-blue);color:var(--surface);display:grid;place-items:center;flex:none}
+.lc h3.lc-t{margin:0;font-family:var(--f-body);font-size:20px;font-weight:700;text-transform:none;letter-spacing:0;color:var(--ink)}
+.lc .lc-s{margin:2px 0 0;color:var(--muted);font-size:13.5px}
+.lc .lc-sp{flex:1}
+.lc .lc-ks{display:flex;gap:12px;flex-wrap:wrap}
+.lc .lc-k{display:flex;gap:12px;align-items:center;border:1px solid var(--line);border-radius:10px;padding:10px 14px;min-height:60px;background:var(--surface)}
+.lc .lc-k .ki{width:34px;height:34px;border-radius:8px;display:grid;place-items:center;background:var(--l-blue-soft);color:var(--l-blue);flex:none}
+.lc .lc-k .kl{font-size:12.5px;color:var(--muted)}.lc .lc-k .kv{font-size:18px;font-weight:700;font-variant-numeric:tabular-nums;line-height:1.2}
+.lc .lc-k.ok .ki{background:var(--l-ok);color:#fff}.lc .lc-k.ok .kv{color:var(--l-ok-ink)}
+.lc .lc-k.warn .ki{background:var(--l-warn-soft);color:var(--l-warn)}.lc .lc-k.warn .kv{color:var(--l-warn-ink)}
+.lc .lc-k .btn{min-height:40px}
+.lc .lc-tl{position:relative;margin-top:16px;padding-top:22px}
+.lc .lc-ticks{position:relative;height:18px;font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums}
+.lc .lc-ticks span{position:absolute;transform:translateX(-50%);white-space:nowrap}.lc .lc-ticks span::after{content:"";position:absolute;left:50%;top:18px;height:58px;border-left:1px dashed var(--line)}
+.lc .lc-track{position:relative;height:50px;border-radius:10px;background:var(--surface-2);border:1px solid var(--line);margin-top:4px}
+.lc .lc-seg{position:absolute;top:6px;bottom:6px;border-radius:6px;background:var(--cc);color:#fff;font-size:13px;font-weight:600;display:flex;align-items:center;padding:0 10px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;min-width:3px;cursor:default}
+.lc .lc-seg span{overflow:hidden;text-overflow:ellipsis}
+.lc .lc-seg.retrabalho,.lc .lc-seg.pendente{background-image:repeating-linear-gradient(135deg,rgba(255,255,255,.35) 0 6px,transparent 6px 12px)}
+.lc .lc-ev{position:absolute;top:-4px;bottom:-4px;z-index:2;padding:0;border:0;background:none;cursor:help;transform:translateX(-50%);width:14px}
+.lc .lc-ev i{display:block;width:8px;height:100%;margin:0 auto;border-radius:4px;background:#F2B233;box-shadow:0 0 0 2px var(--surface)}
+.lc .lc-ev.lote i{width:6px;background:#D9A86C}
+.lc .lc-gap{position:absolute;top:6px;bottom:6px;z-index:1;border-radius:4px;background:repeating-linear-gradient(135deg,var(--muted) 0 2px,transparent 2px 7px);opacity:.55}
+.lc .lc-tip{display:none;position:absolute;bottom:calc(100% + 8px);left:50%;transform:translateX(-50%);background:var(--ink);color:var(--surface);border-radius:8px;padding:8px 10px;font-size:12.5px;font-weight:400;line-height:1.45;width:max-content;max-width:260px;text-align:left;z-index:5;white-space:normal}
+.lc .lc-ev:hover .lc-tip,.lc .lc-ev:focus-visible .lc-tip,.lc .lc-seg:hover .lc-tip{display:block}
+.lc .lc-leg{margin-top:12px;border:1px solid var(--line);border-radius:10px;padding:8px 14px}
+.lc .lc-leg summary,.lc .lc-how summary{cursor:pointer;font-weight:600;color:var(--l-blue);min-height:28px;display:flex;align-items:center;gap:8px}
+.lc .lc-leg .row{gap:18px;flex-wrap:wrap;margin-top:8px;font-size:13px;color:var(--muted)}
+.lc .lc-sw{display:inline-block;width:14px;height:14px;border-radius:3px;vertical-align:-2px;margin-right:6px}
+.lc .lc-row2{display:grid;grid-template-columns:minmax(0,2fr) minmax(300px,1fr);gap:16px}
+@media (max-width:1000px){.lc .lc-row2{grid-template-columns:1fr}}
+.lc .lc-lots{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:12px;margin-top:14px}
+.lc .lc-lot{border:1px solid var(--line);border-radius:10px;padding:12px 14px;display:grid;gap:4px;background:var(--surface)}
+.lc .lc-lot.rw{border-color:var(--l-warn);background:var(--l-warn-soft)}
+.lc .lc-lot .tags{display:flex;gap:6px;flex-wrap:wrap}
+.lc .lc-tag{display:inline-block;padding:2px 9px;border-radius:6px;background:var(--l-pur-soft);color:var(--l-pur);font-weight:600;font-size:12.5px}
+.lc .lc-lot .lt{font-size:15px}.lc .lc-lot .cx{font-size:20px;font-weight:700;font-variant-numeric:tabular-nums}
+.lc .lc-lot label{display:inline-flex;align-items:center;gap:8px;min-height:36px;cursor:pointer;font-size:14px}.lc .lc-lot input[type=checkbox]{width:18px;height:18px}
+.lc .lc-link{color:var(--l-blue);font-weight:600;background:none;border:0;cursor:pointer;min-height:40px;padding:0 4px}
+.lc .lc-np{display:grid;gap:12px;align-content:start}
+.lc .lc-swt{display:flex;align-items:center;gap:14px;cursor:pointer;min-height:44px}
+.lc .lc-swt input{appearance:none;width:52px;height:30px;border-radius:999px;background:var(--line);position:relative;cursor:pointer;flex:none;transition:background .2s;margin:0}
+.lc .lc-swt input::after{content:"";position:absolute;top:3px;left:3px;width:24px;height:24px;border-radius:50%;background:#fff;box-shadow:0 1px 2px rgba(0,0,0,.3);transition:left .2s}
+.lc .lc-swt input:checked{background:var(--l-blue)}.lc .lc-swt input:checked::after{left:25px}
+.lc .lc-swt input:focus-visible{outline:2px solid var(--l-blue);outline-offset:2px}.lc .lc-swt input:disabled{opacity:.5}
+.lc .lc-swt b{font-size:16px;display:block}
+.lc .lc-info{border-radius:10px;background:var(--l-blue-soft);padding:12px 14px;font-size:13.5px;display:flex;gap:10px;color:var(--ink)}
+.lc .lc-info .lc-svg{color:var(--l-blue);margin-top:1px}
+.lc .lc-sum{display:flex;gap:24px;align-items:center;flex-wrap:wrap;border-radius:10px;background:var(--l-blue-soft);padding:14px 18px;margin-top:14px}
+.lc .lc-sum .big{font-size:22px;font-weight:700;font-variant-numeric:tabular-nums}
+.lc .lc-sum .vd{width:1px;align-self:stretch;background:color-mix(in srgb,var(--l-blue) 30%,transparent)}
+.lc .lc-sum .it{display:flex;gap:8px;align-items:center;font-size:14.5px}.lc .lc-sum .it b{font-variant-numeric:tabular-nums}
+.lc .lc-tw{margin-top:14px;border:1px solid var(--line);border-radius:10px;overflow-x:auto}
+.lc .lc-tw table{width:100%;border-collapse:collapse;font-size:14px;font-variant-numeric:tabular-nums}
+.lc .lc-tw th{text-align:left;font-weight:600;font-size:13px;color:var(--muted);background:var(--surface-2);padding:10px 14px;text-transform:none;letter-spacing:0;font-family:var(--f-body)}
+.lc .lc-tw td{padding:12px 14px;border-top:1px solid var(--line);vertical-align:top}
+.lc .lc-how{margin-top:14px;border:1px solid var(--line);border-radius:10px;padding:10px 16px}
+.lc .lc-how ul{margin:8px 0;padding-left:20px;display:grid;gap:4px}.lc .lc-how p{margin:6px 0}
+.lc .lc-banner{border-radius:10px;background:var(--l-warn-soft);color:var(--l-warn-ink);padding:12px 14px;margin-top:14px;display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+@media (max-width:620px){.lc .lc-ticks span:nth-child(even){display:none}.lc .lc-c{padding:16px}.lc .lc-ks{width:100%}.lc .lc-k{flex:1 1 100%}.lc .lc-sum .vd{display:none}}
+@media (prefers-reduced-motion:reduce){.lc *{transition:none!important}}
+/* resto do Lançamento na mesma lógica: cartões arredondados, títulos e rótulos em texto normal (sem caixa alta), números em destaque */
+#main[data-rota="launch"] .card{border-radius:12px}
+#main[data-rota="launch"] .card.section{padding:18px 20px}
+#main[data-rota="launch"] .card>header h3,#main[data-rota="launch"] section.card h3{font-family:var(--f-body);text-transform:none;letter-spacing:0;font-size:19px;font-weight:700}
+#main[data-rota="launch"] .kpis{gap:12px}
+#main[data-rota="launch"] .kpi{border-radius:12px;padding:16px 18px}
+#main[data-rota="launch"] .kpi .l{font-family:var(--f-body);text-transform:none;letter-spacing:0;font-size:13px;font-weight:500;color:var(--ink);white-space:normal;overflow:visible;text-overflow:clip;padding-right:34px;line-height:1.3}
+#main[data-rota="launch"] .kpi .s{font-size:12.5px}
+#main[data-rota="launch"] .kv .l,#main[data-rota="launch"] .dh-l,#main[data-rota="launch"] .card .lbl{text-transform:none;letter-spacing:0;font-family:var(--f-body)}
+#main[data-rota="launch"] .btn{border-radius:8px}
+#cabDia.cab-fold>:not(header){display:none}
+#cabDia .cab-tg{min-height:32px;font-weight:600}`;
+  const P = {
+    db: '<ellipse cx="12" cy="5" rx="8" ry="3"/><path d="M4 5v6c0 1.7 3.6 3 8 3s8-1.3 8-3V5M4 11v6c0 1.7 3.6 3 8 3s8-1.3 8-3v-6"/>', box: '<path d="M3 7l9-4 9 4-9 4-9-4z"/><path d="M3 7v10l9 4 9-4V7M12 11v10"/>',
+    swap: '<path d="M4 8h14l-3-3M20 16H6l3 3"/>', check: '<path d="M5 12.5l4.5 4.5L19 7.5"/>', alert: '<path d="M12 3l10 18H2z"/><path d="M12 10v5M12 18v.5"/>',
+    moon: '<path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z"/>', info: '<circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7.5v.5"/>', bars: '<path d="M5 20v-7M12 20V8M19 20V4"/>',
+    clock: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>', cal: '<rect x="4" y="5" width="16" height="15" rx="2"/><path d="M4 10h16M9 3v4M15 3v4"/>', trend: '<path d="M3 17l6-6 4 4 8-8M15 7h6v6"/>',
+    book: '<path d="M4 5a2 2 0 0 1 2-2h5v17H6a2 2 0 0 0-2 2zM20 5a2 2 0 0 0-2-2h-5v17h5a2 2 0 0 1 2 2z"/>', arrow: '<path d="M5 12h14M13 6l6 6-6 6"/>'
+  };
+  const ic = (k, n = 20) => `<svg class="lc-svg" width="${n}" height="${n}" viewBox="0 0 24 24" aria-hidden="true">${P[k]}</svg>`;
+  function estilo() { if (document.getElementById('lcCss')) return; const s = document.createElement('style'); s.id = 'lcCss'; s.textContent = css; document.head.appendChild(s); }
+  const tip = k => typeof ib === 'function' ? ib(k) : '';
+  const L = 'line_vac';
+  const catBy = code => (db().catalogs || []).find(c => !c.deleted && String(c.code) === String(code)) || null;
+  const cor = code => { const c = catBy(code); if (!c) return '#768290'; const f = (db().families || []).find(x => x.id === c.familyId); return c.color || (f && f.color) || '#7A45C5'; };
+  const famCode = code => { const c = catBy(code); const f = c && (db().families || []).find(x => x.id === c.familyId); return f ? f.code : ''; };
+  const cx = n => `${U.fmt(n)} caixa${n === 1 ? '' : 's'}`;
+  const hm = t => String(t || '').slice(11, 16);
+  function pend(S) {
+    const goods = S.ivs.filter(x => !x.off && (x.st === 'vazio' && x.n.normal > 0 || x.st === 'diverge')), cats = S.ivs.filter(x => x.catSug), evs = S.events.filter(e => !e.dup);
+    return goods.length + cats.length + evs.length;
+  }
+  /* ---------- servidor ---------- */
+  function servidor(day, res) {
+    let S = null; try { S = SrvUI.sug(day, res); } catch (e) { return ''; }
+    if (!S || !S.has) return '';
+    const q = S.qty, tot = k => U.sum(S.lots.filter(x => x.kind === k), x => x.n), n = pend(S);
+    const pends = S.lots.filter(x => x.kind === 'pendente'), chg = S.events.filter(e => e.type === 'catalogo' || e.type === 'lote');
+    const nCat = chg.filter(e => e.type === 'catalogo').length, nLote = chg.length - nCat;
+    const span = S.w1 - S.w0, pct = m => Math.max(0, Math.min(100, (m - S.w0) / span * 100));
+    const kind = lot => ServerData.lotKind(db(), L, lot, null, S.date);
+    const ticks = []; for (let m = Math.ceil(S.w0 / 120) * 120; m <= S.w1; m += 120) ticks.push(m);
+    const segs = S.segs.map(s => { const a = pct(ServerData.tm(s.t0) - S.base), b = pct(ServerData.tm(s.t1) - S.base), k = kind(s.lot), nb = Math.max(0, (+s.b1 || 0) - (+s.b0 || 0) + 1);
+      const t = `Lote ${s.lot} · ${cx(nb)}`;
+      return `<div class="lc-seg ${k}" style="left:${a}%;width:${Math.max(0.4, b - a)}%;--cc:${esc(cor(s.cat))}" role="img" aria-label="${esc(`${t} · catálogo ${s.cat} · ${hm(s.t0)} a ${hm(s.t1)}${k !== 'normal' ? ' · ' + Srv.KIND[k] : ''}`)}"><span>${esc(t)}</span><span class="lc-tip"><b>Lote ${esc(s.lot)}</b><br>Catálogo ${esc(s.cat)}${famCode(s.cat) ? ' · ' + esc(famCode(s.cat)) : ''}<br>${hm(s.t0)} – ${hm(s.t1)} · ${cx(nb)}${k !== 'normal' ? '<br>' + esc(Srv.KIND[k]) : ''}</span></div>`; }).join('');
+    const marks = chg.map(e => { const c = e.info || {}; const t = e.type === 'catalogo' ? 'Troca de catálogo' : 'Troca de lote';
+      return `<button type="button" class="lc-ev ${e.type}" style="left:${pct((e.start + e.end) / 2)}%" aria-label="${esc(`${t} ${hm(c.first) || U.hhmm(e.start)}: ${c.fromCat || ''} lote ${c.fromLot || ''} para ${c.toCat || ''} lote ${c.toLot || ''}`)}"><i></i><span class="lc-tip"><b>${t} · ${hm(c.first) || U.hhmm(e.start)}</b><br>Catálogo: ${esc(c.fromCat || '?')} → ${esc(c.toCat || '?')}<br>Lote: ${esc(c.fromLot || '?')} → ${esc(c.toLot || '?')}<br>Última caixa ${hm(c.last)} · 1ª caixa ${hm(c.first)} (${U.fmt(e.end - e.start)} min)</span></button>`; }).join('');
+    const gaps = S.events.filter(e => e.type === 'parada').map(e => `<div class="lc-gap" style="left:${pct(e.start)}%;width:${Math.max(0.3, pct(e.end) - pct(e.start))}%" title="${esc(`${U.range(e.start, e.end)} · ${e.note}`)}"></div>`).join('');
+    const valid = n ? `<div class="lc-k warn"><span class="ki">${ic('alert', 18)}</span><div><div class="kl">Validação</div><div class="kv">${n} sugest${n === 1 ? 'ão' : 'ões'} para revisar</div></div><button class="btn primary" id="srvRev">Revisar</button></div>`
+      : `<div class="lc-k ok"><span class="ki">${ic('check', 18)}</span><div><div class="kl">Validação</div><div class="kv">Dados conferidos</div><div class="kl">Lançamento confere com o servidor</div></div></div>`;
+    const lotes = S.lots.map(x => { const rw = x.kind === 'retrabalho', has = (day.events || []).some(e => !e.deleted && e.srvRework === x.lot), nt = (((db().server || {}).lotNotes || {})[x.lot] || {}).text, c = catBy(x.cat);
+      return `<div class="lc-lot${rw ? ' rw' : ''}"><div class="tags"><span class="lc-tag">${esc(x.cat)}</span>${famCode(x.cat) ? `<span class="lc-tag">${esc(famCode(x.cat))}</span>` : ''}${x.kind === 'pendente' ? '<span class="lc-tag" style="background:var(--l-warn-soft);color:var(--l-warn-ink)">a confirmar</span>' : ''}</div>
+        ${c && c.name ? `<div class="small muted" style="overflow-wrap:anywhere">${esc(c.name)}</div>` : ''}<div class="lt">Lote <span class="mono">${esc(x.lot)}</span></div><div class="cx">${cx(x.n)}</div>
+        <label title="${esc(nt || '')}"><input type="checkbox" data-rw="${esc(x.lot)}" ${rw ? 'checked' : ''} ${day.status === 'fechado' ? 'disabled' : ''}> Marcar como retrabalho</label>
+        ${rw && !has ? `<button type="button" class="btn xs warnb" data-rwapply="${esc(x.lot)}" title="O lote está marcado como retrabalho, mas o tempo ainda não foi descontado neste dia">Descontar o tempo do retrabalho</button>` : ''}${rw && has ? '<span class="small muted">Fora do OEE neste dia</span>' : ''}${nt ? `<span class="small muted">${esc(nt.slice(0, 60))}</span>` : ''}</div>`; }).join('');
+    return {
+      topo: `<section class="lc-c" id="srvCard" aria-labelledby="lcSrvT">
+      <div class="lc-hd"><span class="lc-hic">${ic('db', 22)}</span><div><h3 class="lc-t" id="lcSrvT">Produção registrada no servidor ${tip('serverData')}</h3><p class="lc-s">Linha do tempo da produção do dia (horário do servidor MES)</p></div><span class="lc-sp"></span>
+        <div class="lc-ks"><div class="lc-k"><span class="ki">${ic('box', 18)}</span><div><div class="kl">Produção do dia</div><div class="kv">${cx(tot('normal'))} · ${fq(tot('normal') * q)} ${esc(unitLbl())}</div>${tot('retrabalho') || tot('pendente') ? `<div class="kl">${tot('retrabalho') ? 'retrabalho ' + cx(tot('retrabalho')) : ''}${tot('retrabalho') && tot('pendente') ? ' · ' : ''}${tot('pendente') ? 'a confirmar ' + cx(tot('pendente')) : ''}</div>` : ''}</div></div>
+          <div class="lc-k"><span class="ki">${ic('swap', 18)}</span><div><div class="kl">Trocas</div><div class="kv">${chg.length} troca${chg.length === 1 ? '' : 's'}</div>${chg.length ? `<div class="kl">${nCat} de catálogo · ${nLote} de lote</div>` : ''}</div></div>${valid}</div></div>
+      ${pends.length ? `<div class="lc-banner">${ic('alert', 18)}<span><b>${pends.length === 1 ? 'Um lote rodou' : pends.length + ' lotes rodaram'} sem ordem no plano:</b> ${pends.map(x => `${esc(x.lot)} (${esc(x.cat)}, ${cx(x.n)})`).join(', ')}. É retrabalho?</span><button type="button" class="btn sm" id="srvCls">Confirmar lotes</button></div>` : ''}
+      <div class="lc-tl"><div class="lc-ticks">${ticks.map(m => `<span style="left:${pct(m)}%">${U.hhmm(m)}</span>`).join('')}</div><div class="lc-track">${gaps}${segs}${marks}</div></div>
+      <details class="lc-leg"><summary>Entenda as marcações</summary><div class="row">
+        <span><span class="lc-sw" style="background:#7A45C5"></span>Trecho de lote (cor do catálogo)</span><span><span class="lc-sw" style="background:#F2B233"></span>Troca de catálogo</span><span><span class="lc-sw" style="background:#D9A86C"></span>Troca de lote</span>
+        <span><span class="lc-sw" style="background:repeating-linear-gradient(135deg,var(--muted) 0 2px,transparent 2px 6px)"></span>Sem caixa por mais de ${U.fmt(db().settings.serverGapMin || 10)} min</span><span><span class="lc-sw" style="background:repeating-linear-gradient(135deg,#7A45C5 0 4px,#c9b2ea 4px 8px)"></span>Retrabalho ou lote a confirmar</span></div>
+        <p class="small muted" style="margin:8px 0 0">Passe o mouse (ou toque) numa barra ou num marcador para ver horário, catálogo e lote.</p></details>
+    </section>`,
+      lotes: `<section class="lc-c" aria-labelledby="lcLotT"><div class="lc-hd"><span class="lc-hic">${ic('box', 22)}</span><div><h3 class="lc-t" id="lcLotT">Lotes do dia ${tip('serverRework')}</h3><p class="lc-s">Lotes produzidos neste dia, conforme o servidor.</p></div><span class="lc-sp"></span><button type="button" class="lc-link" data-route="lots">Ver histórico de lotes ${ic('arrow', 16)}</button></div>
+      <div class="lc-lots">${lotes || '<p class="small muted">Nenhum lote.</p>'}</div></section>`
+    };
+  }
+  /* ---------- turno não produtivo e produção fora do turno ---------- */
+  function npCards(day) {
+    let np = []; try { np = TurnoNP.doDia(day); } catch (e) { }
+    const lk = day.status === 'fechado';
+    return np.map(x => `<section class="lc-c lc-np" aria-label="${esc(x.shift.name)}"><div class="lc-hd"><span class="lc-hic" style="background:var(--l-blue-soft);color:var(--l-blue)">${ic('moon', 22)}</span><div><h3 class="lc-t">${esc(x.shift.name)} ${tip('foraTurno')}</h3><p class="lc-s">Cadastrado como não produtivo no Portal</p></div></div>
+      <label class="lc-swt"><input type="checkbox" role="switch" data-turnonp="${esc(x.shift.id)}" ${x.on ? 'checked' : ''} ${lk ? 'disabled' : ''} aria-label="Habilitar ${esc(x.shift.name)} neste dia"><span><b>Habilitar ${esc(x.shift.name)} neste dia</b><span class="small muted">Horário: ${esc(x.v.start || '')} – ${esc(U.hhmm(U.toMin(x.v.end)))}</span></span></label>
+      <div class="lc-info">${ic('info', 18)}<div>Habilitado, o ${esc(x.shift.name)} entra neste dia como produtivo: o tempo dele vira <b>tempo planejado</b>, a produção da janela conta nele e os indicadores (OEE, meta) passam a incluí-lo. Vale só para este dia.</div></div></section>`).join('');
+  }
+  function fora(day, res) {
+    const ft = res.foraTurno; if (!ft) return '';
+    const itens = [...new Map([...(ft.janela || []), ...(ft.recebe || [])].map(i => [i.data + '|' + i.t0 + '|' + i.t1, i])).values()].sort((a, b) => a.data < b.data ? -1 : a.data > b.data ? 1 : a.t0 - b.t0);
+    if (!itens.length) return '';
+    const caixas = U.sum(itens, i => i.caixas), pecas = U.sum(itens, i => i.pecas);
+    const dur = i => Math.max(1, i.t1 - i.t0 + 1), oeeP = (() => { const L2 = itens.filter(i => i.oeeReal != null); const w = U.sum(L2, dur); return w > 0 ? U.sum(L2, i => i.oeeReal * dur(i)) / w : null; })();
+    const per = itens.length === 1 ? `${U.hhmm(itens[0].t0)} – ${U.hhmm(itens[0].t1)}` : `${itens.length} trechos`;
+    const pct = v => v == null ? '—' : U.pct(v, 2);
+    const linha = it => `<tr><td>${esc(String(it.rotulo || '').replace(/^./, c => c.toUpperCase()))} · ${U.brDate(it.data)}</td><td>${U.hhmm(it.t0)} – ${U.hhmm(it.t1)}</td><td>${U.fmt(it.caixas)}</td><td>${fq(it.pecas)} ${esc(unitLbl())}</td><td>${pct(it.oeeReal)}</td><td>${it.alvo ? esc(it.alvo.name) + (it.alvo.date !== day.date ? ` <span class="small muted">${U.brDate(it.alvo.date)}</span>` : '') : '<span class="ferr">sem turno para receber</span>'}<div class="small muted">${esc(it.regra || '')}</div></td></tr>`;
+    return `<section class="lc-c" id="ftCard" aria-labelledby="lcFtT"><div class="lc-hd"><span class="lc-hic">${ic('bars', 22)}</span><div><h3 class="lc-t" id="lcFtT">Produção fora do turno ${tip('foraTurno')}</h3><p class="lc-s">Caixas registradas antes do início ou depois do fim dos turnos produtivos.</p></div></div>
+      <div class="lc-sum"><span class="it">${ic('clock', 22)}<span><span class="big">${cx(caixas)} · ${fq(pecas)} ${esc(unitLbl())}</span><br><span class="small muted">registradas fora do horário do turno</span></span></span><span class="lc-sp"></span>
+        <span class="it">${ic('cal', 20)} Período: <b>${per}</b></span><span class="vd"></span><span class="it">${ic('trend', 20)} OEE do período ${tip('foraTurnoOee')}: <b>${pct(oeeP)}</b></span></div>
+      <div class="lc-tw"><table data-nosort="1"><thead><tr><th>Período registrado</th><th>Horário das caixas</th><th>Caixas</th><th>Produção</th><th>OEE do período</th><th>Contabilizado em</th></tr></thead><tbody>${itens.map(linha).join('')}</tbody></table></div>
+      ${ft.semAlvo && ft.semAlvo.length ? `<div class="lc-banner">${ic('alert', 18)}<span>${ft.semAlvo.length} trecho(s) sem turno lançado para receber neste dia: crie o lançamento do turno ou habilite o turno.</span></div>` : ''}
+      <details class="lc-how"><summary>${ic('book', 18)} Como a produção fora do turno é contabilizada?</summary>
+        <p>Cada caixa continua registrada no horário real em que passou no servidor.</p>
+        <ul><li>Se a produção continuar depois do fim de um turno, sem parada maior que ${U.fmt(ft.limite)} minutos, ela conta no turno anterior.</li><li>Se não houver essa continuidade, ela conta no próximo turno produtivo.</li><li>O OEE reportado do turno não muda; o tempo fora do turno entra no OEE real.</li></ul>
+        <p class="small muted">Regra vigente desde ${U.brDate(ft.desde)}.</p></details></section>`;
+  }
+  function bloco(day, res) {
+    estilo();
+    const sv = servidor(day, res), np = npCards(day), ft = fora(day, res);
+    if (!sv && !np && !ft) return '';
+    const segunda = sv && np ? `<div class="lc-row2">${sv.lotes}<div class="lc" style="margin:0">${np}</div></div>` : (sv ? sv.lotes : '') + np;
+    return `<div class="lc section">${sv ? sv.topo : ''}${segunda}${ft}</div>`;
+  }
+  return { bloco, servidor, fora, npCards };
+})();
 
 async function boot() {
   if(vacDemo.ativo){await loadPrefs();applyTheme();bindGlobal();Charts.bind();Store.S.user='Pessoa de demonstração';Store.enterExample(vacDemo.ler('oee'));
