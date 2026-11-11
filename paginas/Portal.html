@@ -3759,6 +3759,7 @@ const Entrar={
  entrar(u,primeiro){setUser(u.nome);localStorage.setItem('vac.userId',u.codigo);localStorage.setItem('vac.perfil',u.perfil||'');renderTop();
   const p=cadItem('perfis',u.perfil)||DEFAULT_PERFIS.find(x=>x.codigo===u.perfil);const P=(p&&p.permissoes)||{};const pg=paginaInicialDe(u),alvo=alvoInicial(u);
   const lista=f=>PERM_MODS.filter(m=>P[m]&&P[m][f]).map(m=>esc(sysOf(m).nome||m)).join(' · ')||'–';
+  if(!$('#enBox')){App.render();return}   /* 1.9.22: a janela é o login do kit; aqui só troca a pessoa */
   $('#enBox').innerHTML=`<div class="note ok-note"><b>${primeiro?'Cadastro feito. ':''}Olá, ${esc(u.nome)}.</b></div>
   <table class="small" style="margin-top:8px"><tr><th>Nome reconhecido</th><td>${esc(u.nome)} · ID <span class="mono">${esc(u.codigo)}</span></td></tr><tr><th>Perfil</th><td>${esc(p?p.nome:u.perfil||'—')}${p&&p.descricao?' · <span class="muted">'+esc(p.descricao)+'</span>':''}</td></tr>
   <tr><th>Página inicial</th><td>${esc(pg)}</td></tr><tr><th>Pode ver</th><td>${p?lista('ver'):'todas'}</td></tr><tr><th>Pode lançar</th><td>${lista('lancar')}</td></tr></table>
