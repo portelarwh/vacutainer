@@ -379,6 +379,7 @@ nav.vtabs .badge[hidden]{display:none}
 /* filtros: no celular, os marcados com vk-opt ficam em "Mais filtros" (botão .vk-mais) */
 .vk-mais{display:none}
 @media (max-width:700px){.vk-mais{display:inline-flex}.filters:not(.vk-aberto) .vk-opt{display:none!important}}
+.vk-estilo .card .sh h2{font-family:var(--f-body,system-ui,sans-serif);text-transform:none;letter-spacing:0;font-size:17px;font-weight:700}
 </style>
 <script id="vac-bases">
 /* Demonstração integrada, incorporada em cada HTML pelos builds. Nenhuma dependência de servidor.
@@ -837,7 +838,7 @@ addEventListener('error', e => { if (e.error && e.error.name === 'VacAbaBloquead
   <span class="grp">Gestão</span><button data-t="acoes">Ações</button><button data-t="guia">Guia</button><button data-t="forms">Formulários</button><button data-t="importar">Importar</button><button data-t="config">Configuração</button>
 </div></div></nav>
 <!-- fim vac-cabecalho v2 -->
-<main class="wrap" id="main"></main>
+<main class="wrap vk-estilo" id="main"></main>
 <div class="toasts" id="toasts"></div>
 <div id="printArea"></div>
 <script>
@@ -848,7 +849,7 @@ const MATRIZ_PROPOSTA={"OUT": ["Tullip A", "Tullip B", "Packout", "Metro", "Cap 
    PARADAS · núcleo (pasta, base, fila de gravação, backups, cadastro, utilidades)
    ===================================================================================== */
 const PAGE={id:'paradas',titulo:'Paradas · Análise de falhas e paradas de máquina',tituloCurto:'Paradas',subtitulo:'Análise de falhas e paradas de máquina',
-  versao:'1.0.31',estado:'atualizacao',estadoNota:'Matriz, componentes e limite de microparada passam a vir só do Portal; eventos da Produção entram como sugestão.',baseFile:'paradas-base.json',backupDir:'00. Backups/Paradas',busca:q=>buscaPagina(q)};
+  versao:'1.0.32',estado:'atualizacao',estadoNota:'Matriz, componentes e limite de microparada passam a vir só do Portal; eventos da Produção entram como sugestão.',baseFile:'paradas-base.json',backupDir:'00. Backups/Paradas',busca:q=>buscaPagina(q)};
 const APP_VERSION=PAGE.versao;
 const CAD_FILE='vacutainer-cadastros.json',OEE_FILE='oee-vacutainer-base.json';
 const $=(s,r=document)=>r.querySelector(s),$$=(s,r=document)=>[...r.querySelectorAll(s)];
@@ -1512,20 +1513,39 @@ VIEWS.geral={html(){const all=eventosTodos();if(!all.length)return inicioVazio()
  const P=programado(L,F.de,F.ate);const op=Math.max(0,P.min-min);const nMic=perda.filter(e=>classe(e)==='micro').reduce((s,e)=>s+(e.ocorrencias||1),0);const tmp=perda.filter(e=>/^(OUT|NDI)$/.test(codigoEf(e))).length;
  const s1=pend.filter(p=>p.sev===1);const ac=s1[0]||pend[0];
  const meses=[...new Set(L.map(e=>e.dia.slice(0,7)))].sort();const cls=['quebra','operacional','micro','setup','consumivel','organizacao','planejada','partida','outros'];
- return`<div class="prio"><div class="acao tint ${s1.length?'vm':pend.length?'am':''}"><span class="t">Ação prioritária</span><span class="f">${esc(ac?ac.txt:'Nada urgente. Classificação em dia.')}</span>${ac?`<div><button class="b pri" data-go="${ac.go}">Resolver</button></div>`:''}</div>
- <div class="card decis"><div class="row"><b>Próximas decisões</b><span class="sp"></span><span class="muted small">${pend.length} pendência(s)</span></div><ol>${pend.slice(0,3).map((p,i)=>`<li data-go="${p.go}"><span class="k tint s${p.sev}">${i+1}</span><span>${esc(p.txt)}</span></li>`).join('')||'<li class="muted">Nenhuma.</li>'}</ol>${pend.length>3?`<a href="#" id="verTodas" class="small">Ver todas (${pend.length})</a>`:''}</div></div>
+ return`<div class="vk-hd"><div><h2>Visão geral das paradas</h2><p>Tempo parado, quebras e confiabilidade da linha</p></div></div>
  ${filtrosHTML({info:`${n0(L.length)} registros · tempo de operação ${P.fonte==='OEE'?'do OEE':'estimado ('+n0(P.dias)+' dias × '+n0(Store.data.config.horasDia)+' h)'}`})}
+ ${vacLayout.sec('01','Situação do período','Como estamos e onde atuar agora')}<div class="vk-sit">${parSit(L,perda,min,P,SE)}<div class="vk-side"><div class="prio"><div class="acao tint ${s1.length?'vm':pend.length?'am':''}"><span class="t">Ação prioritária</span><span class="f">${esc(ac?ac.txt:'Nada urgente. Classificação em dia.')}</span>${ac?`<div><button class="b pri" data-go="${ac.go}">Resolver</button></div>`:''}</div>
+ <div class="card decis"><div class="row"><b>Próximas decisões</b><span class="sp"></span><span class="muted small">${pend.length} pendência(s)</span></div><ol>${pend.slice(0,3).map((p,i)=>`<li data-go="${p.go}"><span class="k tint s${p.sev}">${i+1}</span><span>${esc(p.txt)}</span></li>`).join('')||'<li class="muted">Nenhuma.</li>'}</ol>${pend.length>3?`<a href="#" id="verTodas" class="small">Ver todas (${pend.length})</a>`:''}</div></div>${parTop(perda,SE)}</div></div>
+ ${vacLayout.sec('02','Números do período','Indicadores com os filtros acima')}
  <div class="kpis">${kpi('Tempo de parada',fmtMin(min),n0(perda.reduce((s,e)=>s+(e.ocorrencias||1),0))+' ocorrências','','clock')}${kpi('Quebras',n0(nQ),fmtMin(mQ)+' · '+(min?pct(mQ/min):'—')+' do tempo',nQ?'bad':'good','wrench')}
  ${kpi('MTBF da linha',nQ?n1(op/nQ/60)+' h':'—','entre quebras · '+(P.fonte==='OEE'?'OEE':'estimado'),'','gauge')}${kpi('MTTR',nQ?n0(mQ/nQ)+' min':'—','reparo médio por quebra','','clock')}
  ${kpi('Microparadas',n0(nMic),'abaixo de '+Cad.limite+' min',nMic?'':'warn','repeat')}${kpi('Máquina crítica',SE[0]?.nome||'—',SE[0]?fmtMin(SE[0].min):'','','machine')}${kpi('Código temporário',n0(tmp),'OUT / NDI a classificar',tmp?'warn':'good','flag')}</div>
  ${nMic<perda.length*0.05&&perda.length>50?`<div class="tint small" style="--tc:var(--warn);padding:8px 12px;border-radius:8px;margin-bottom:14px">Quase não há microparadas registradas (${n0(nMic)} de ${n0(perda.length)}). No Forms novo, use o campo <b>Quantas vezes aconteceu?</b> para contar as paradas curtas.</div>`:''}
- <div class="grid g2"><div class="card">${secH('bar','Tempo por mês','por classe de perda · uma unidade na escala (h ou min) · clique num mês para filtrar')}<div id="chMes">${vbars(meses.map(m=>({k:m,label:brM(m)})),cls.map(c=>({nome:CLASSE[c][0],cor:CLASSE[c][1],v:meses.map(m=>perda.filter(e=>e.dia.slice(0,7)===m&&classe(e)===c).reduce((s,e)=>s+e.minutos,0))})),{fmt:fmtMin})}</div></div>
- <div class="card">${secH('machine','Pareto de equipamentos','minutos de parada · clique para filtrar')}<div id="chEq">${hbars(SE.slice(0,14).map(s=>({k:s.eq,label:s.nome,v:s.min,n:s.n})),{pareto:1,sel:F.eq,onClick:1})}</div></div>
- <div class="card">${secH('list','Por classe','como o tempo se divide')}<div id="chCl">${hbars(agg(perda,e=>classe(e)).sort((a,b)=>b.min-a.min).map(o=>({k:o.k,label:CLASSE[o.k][0],v:o.min,n:o.n,color:CLASSE[o.k][1]})),{pareto:1,sel:F.cls,onClick:1})}</div></div>
- <div class="card">${secH('clock','Por turno','minutos e ocorrências')}<div id="chTu">${hbars(agg(perda,e=>e.turno||'?').sort((a,b)=>a.k.localeCompare(b.k)).map(o=>({k:o.k,label:o.k,v:o.min,n:o.n})),{sel:F.turno,onClick:1})}</div></div></div>`},
- wire(){$$('[data-go]').forEach(b=>b.onclick=()=>App.go(b.dataset.go));const vt=$('#verTodas');if(vt)vt.onclick=e=>{e.preventDefault();verPendencias()};
+ ${vacLayout.sec('03','Diagnóstico rápido','Pior e melhor mês, e o que falta classificar')}${parDiag(perda,meses,tmp)}
+ ${vacLayout.sec('04','Análises','Clique num grupo para recolher ou abrir')}
+ ${vacLayout.grupo('paradas','A','Evolução','O tempo parado aumentou ou caiu mês a mês?',`<div class="card">${secH('bar','Tempo por mês','por classe de perda · uma unidade na escala (h ou min) · clique num mês para filtrar')}<div id="chMes">${vbars(meses.map(m=>({k:m,label:brM(m)})),cls.map(c=>({nome:CLASSE[c][0],cor:CLASSE[c][1],v:meses.map(m=>perda.filter(e=>e.dia.slice(0,7)===m&&classe(e)===c).reduce((s,e)=>s+e.minutos,0))})),{fmt:fmtMin})}</div></div>`)}
+ ${vacLayout.grupo('paradas','B','Onde e como parou','Quais equipamentos e classes de perda concentram o tempo?',`<div class="grid g2"><div class="card">${secH('machine','Pareto de equipamentos','minutos de parada · clique para filtrar')}<div id="chEq">${hbars(SE.slice(0,14).map(s=>({k:s.eq,label:s.nome,v:s.min,n:s.n})),{pareto:1,sel:F.eq,onClick:1})}</div></div><div class="card">${secH('list','Por classe','como o tempo se divide')}<div id="chCl">${hbars(agg(perda,e=>classe(e)).sort((a,b)=>b.min-a.min).map(o=>({k:o.k,label:CLASSE[o.k][0],v:o.min,n:o.n,color:CLASSE[o.k][1]})),{pareto:1,sel:F.cls,onClick:1})}</div></div></div>`)}
+ ${vacLayout.grupo('paradas','C','Turnos','Algum turno destoa?',`<div class="card">${secH('clock','Por turno','minutos e ocorrências')}<div id="chTu">${hbars(agg(perda,e=>e.turno||'?').sort((a,b)=>a.k.localeCompare(b.k)).map(o=>({k:o.k,label:o.k,v:o.min,n:o.n})),{sel:F.turno,onClick:1})}</div></div>`)}
+ ${vacLayout.sec('05','Explorar dados','Registros e análises das outras abas')}<section class="vk-card"><div class="row" style="gap:8px;flex-wrap:wrap">${[['eventos','Eventos'],['pareto','Pareto'],['recor','Recorrência'],['fila','Fila técnica'],['valid','Validação'],['acoes','Ações']].map(([t,n])=>`<button type="button" class="b" data-vk-go="${t}">${n}</button>`).join('')}</div></section>`},
+ wire(){$$('[data-go]').forEach(b=>b.onclick=()=>App.go(b.dataset.go));vacLayout.ligar($('#main'),'paradas');$$('#main [data-vk-go]').forEach(b=>b.onclick=()=>App.go(b.dataset.vkGo));
+  $$('#main [data-vk-f]').forEach(b=>b.onclick=()=>{const[k,v]=b.dataset.vkF.split('|');if(k==='mes'){F.de=v+'-01';F.ate=v+'-31'}else F[k]=F[k]===v?'':v;App.render()});const vt=$('#verTodas');if(vt)vt.onclick=e=>{e.preventDefault();verPendencias()};
   bindChart($('#chEq'),k=>{F.eq=F.eq===k?'':k;App.render()});bindChart($('#chCl'),k=>{F.cls=F.cls===k?'':k;App.render()});bindChart($('#chTu'),k=>{F.turno=F.turno===k?'':k;App.render()});
   bindChart($('#chMes'),k=>{if(F.de===k+'-01'){F.init()}else{F.de=k+'-01';F.ate=k+'-31'}App.render()});wireInicio()}};
+/* 1.0.32 · Visão geral no padrão comum (vacLayout do kit): só apresentação dos números já calculados na tela */
+function parSit(L,perda,min,P,SE){const oc=perda.reduce((s,e)=>s+(e.ocorrencias||1),0),pc=P.min>0?min/P.min:null;
+ return`<section class="vk-card vk-main" aria-label="Tempo de parada no período"><span class="l">Tempo de parada no período</span>
+ <div class="row1"><span class="vk-big">${fmtMin(min)}</span><span class="vk-mt"><span>Ocorrências</span><b>${n0(oc)}</b></span><span class="vk-mt"><span>Do tempo de operação</span><b>${pc==null?'—':pct(pc)}</b></span></div>
+ ${pc==null?'':`<div class="vk-bar" role="progressbar" aria-label="Tempo parado em relação ao tempo de operação" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${Math.round(Math.min(1,pc)*100)}"><i class="${pc>0.2?'crit':''}" style="width:${(Math.min(1,pc)*100).toFixed(1)}%"></i></div>`}
+ ${vacLayout.estado('none','Sem meta cadastrada para paradas')}<span class="small muted">Tempo de operação ${P.fonte==='OEE'?'do OEE':'estimado ('+n0(P.dias)+' dias × '+n0(Store.data.config.horasDia)+' h)'} · ${n0(L.length)} registros</span></section>`}
+function parTop(perda,SE){const C=agg(perda,e=>classe(e)).sort((a,b)=>b.min-a.min)[0],li=[];
+ if(SE[0])li.push(`<li><span>Equipamento: <b>${esc(SE[0].nome)}</b></span><span class="sp"></span><span class="v">${fmtMin(SE[0].min)}</span><button type="button" class="b sm" data-vk-f="eq|${esc(SE[0].eq)}">Filtrar</button></li>`);
+ if(C)li.push(`<li><span>Classe: <b>${esc(CLASSE[C.k][0])}</b></span><span class="sp"></span><span class="v">${fmtMin(C.min)}</span><button type="button" class="b sm" data-vk-f="cls|${esc(C.k)}">Filtrar</button></li>`);
+ return`<section class="vk-card"><h4>Maior perda do período</h4>${li.length?`<ul class="vk-list">${li.join('')}</ul><span class="small muted">Os mesmos números do Pareto de equipamentos e da divisão por classe.</span>`:'<p class="small muted" style="margin:0">Sem parada com perda no período.</p>'}</section>`}
+function parDiag(perda,meses,tmp){const T=meses.map(m=>({m,v:perda.filter(e=>e.dia.slice(0,7)===m).reduce((s,e)=>s+e.minutos,0)})),pior=T.length?T.reduce((a,b)=>b.v>a.v?b:a):null,melhor=T.length?T.reduce((a,b)=>b.v<a.v?b:a):null,um=T.length===1;
+ const dc=(t,rot)=>t?`<button type="button" class="vk-dc" data-vk-f="mes|${t.m}"><span class="l">${rot}</span><span class="v">${fmtMin(t.v)}</span><span class="s">${esc(brM(t.m))} · filtrar o mês</span></button>`:`<button type="button" class="vk-dc" disabled><span class="l">${rot}</span><span class="v">—</span><span class="s">Sem mês no período</span></button>`;
+ return`<div class="vk-dg">${dc(pior,um?'Único mês':'Mês com mais parada')}${um?'<button type="button" class="vk-dc" disabled><span class="l">Mês com menos parada</span><span class="v">—</span><span class="s">Só 1 mês no período</span></button>':dc(melhor,'Mês com menos parada')}
+ <button type="button" class="vk-dc" data-vk-go="valid"><span class="l">Código temporário (OUT / NDI)</span><span class="v">${n0(tmp)}</span><span class="s">a classificar · abrir a validação</span></button></div>`}
 const kpi=(l,v,s,st,ic)=>`<div class="kpi ${st||''}"><span class="ic">${ico(ic,30)}</span><div class="l">${esc(l)}</div><div class="v${st==='bad'?' bad':st==='good'?' good':''}">${esc(v)}</div><div class="s">${esc(s||'')}</div></div>`;
 function verPendencias(){const P=pendencias();modal({title:'Pendências',body:`<div class="decis"><ol>${P.map((p,i)=>`<li data-go="${p.go}"><span class="k tint s${p.sev}">${i+1}</span><span>${esc(p.txt)}</span></li>`).join('')}</ol></div>`,onOpen:bg=>bg.querySelectorAll('[data-go]').forEach(l=>l.onclick=()=>{bg.remove();App.go(l.dataset.go)})})}
 function inicioVazio(){return`<div class="card" style="max-width:820px">${secH('up','Comece por aqui','a base de paradas está vazia')}
@@ -2898,7 +2918,12 @@ window.VAC_GUIA = window.VAC_GUIA || {};
     { sel: '#fTu', nome: 'Turno', o: 'Filtra por turno.' },
     { sel: '#fCl', nome: 'Classe', o: 'Quebra, parada operacional, microparada…' }];
   window.VAC_GUIA.paradas = {
-    geral: { titulo: 'Visão geral das paradas', para: 'Tempo de parada por mês e classe, Pareto de equipamentos, divisão por classe e por turno. Clique num mês ou numa barra para filtrar.', campos: FILTROS },
+    geral: { titulo: 'Visão geral das paradas', para: 'Na ordem de leitura: 01 Situação (tempo parado, ação prioritária, próximas decisões e maior perda), 02 Números, 03 Diagnóstico rápido, 04 Análises em grupos que recolhem (evolução, onde e como parou, turnos) e 05 Explorar dados. Clique num mês ou numa barra para filtrar.',
+      campos: FILTROS.concat([
+        { sel: '#main .vk-main', nome: 'Situação do período', o: 'Tempo de parada com perda, ocorrências e quanto isso é do tempo de operação (do OEE ou estimado).', ex: '407,7 h · 37,5% do tempo de operação.' },
+        { sel: '#main .vk-side', nome: 'Ação prioritária, decisões e maior perda', o: 'A pendência mais urgente com Resolver, as próximas decisões e o equipamento e a classe com mais tempo parado (Filtrar aplica o mesmo filtro do gráfico).' },
+        { sel: '#main .vk-dg', nome: 'Diagnóstico rápido', o: 'Mês com mais e com menos parada (clique filtra o mês) e os códigos temporários a classificar.' },
+        { sel: '#main .vk-grp .vk-gh', nome: 'Grupos de análise', o: 'Clique no título para recolher ou abrir; fica lembrado neste computador e na impressão sai aberto.' }]) },
     eventos: {
       titulo: 'Eventos de parada',
       para: 'Todas as paradas apontadas (Forms, papel ou Produção). Clique numa parada para abrir a ficha e completar a parte técnica: componente, modo de falha e ação executada.',

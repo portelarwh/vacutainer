@@ -21,7 +21,7 @@ const LER = () => {
 };
 (async () => {
   const b = await chromium.launch(); const pe = [];
-  const nova = async (w, h, tema) => { const c = await b.newContext({ viewport: { width: w, height: h }, colorScheme: tema }); const o = await c.newPage(); o.on('pageerror', e => pe.push(e.message)); o.on('dialog', d => d.accept());
+  const nova = async (w, h, tema) => { const c = await b.newContext({ viewport: { width: w, height: h }, colorScheme: tema }); await c.clock.setFixedTime(new Date('2026-11-11T12:00:00')); const o = await c.newPage();   /* data fixa: a referência vale em qualquer dia */ o.on('pageerror', e => pe.push(e.message)); o.on('dialog', d => d.accept());
     await o.goto('file://' + RAIZ + 'paginas/Perdas-Ordem.html'); await o.waitForTimeout(900);
     await o.evaluate(() => { document.querySelectorAll('.overlay').forEach(x => x.remove()); enterTest(); }); await o.waitForTimeout(1200);
     await o.evaluate(() => { try { localStorage.removeItem('vac.grupos.perdas'); } catch (e) { } showTab('painel'); }); await o.waitForTimeout(600); return { c, o }; };

@@ -4,7 +4,7 @@
 // Código de saída 1 se alguma falhar. "Não verificado" (falta biblioteca ou pacote) não conta como aprovado nem como falha.
 const { spawnSync } = require('child_process'); const path = require('path'), fs = require('fs');
 const AQUI = __dirname;
-const SUITE = ['tlogin', 'tvisaogeral', 'twaste_vg', 'tportalfonte', 'tturnos', 'timportacao', 'tgel', 'tperiodo', 'tiniciativas', 'tfase7', 'toeereal', 'tparada_tempo', 'tsqdcp', 'tdemo', 'tnv', 'tpendencias', 'tcorrecoes', 'tfila', 'tequip', 'tplanner', 'tficha', 'tordens', 'tvigencias', 'tnumeros', 'tcontratos', 'tbases', 'tdiag', 'tintegra',
+const SUITE = ['tlogin', 'tvisaogeral', 'twaste_vg', 'tparadas_vg', 'tportalfonte', 'tturnos', 'timportacao', 'tgel', 'tperiodo', 'tiniciativas', 'tfase7', 'toeereal', 'tparada_tempo', 'tsqdcp', 'tdemo', 'tnv', 'tpendencias', 'tcorrecoes', 'tfila', 'tequip', 'tplanner', 'tficha', 'tordens', 'tvigencias', 'tnumeros', 'tcontratos', 'tbases', 'tdiag', 'tintegra',
   'tpg', 'tseguranca', 'trelatorios', 'tconstrucao', 'tvisual', 't18', 't18c', 't18d', 't18e', 'tc', 'tdin', 'tg', 'tk', 'tq', 'tr', 'ts1', 'tz', 'tmeta'];
 // instáveis conhecidas (CLAUDE.md › Pendências): rodam de novo uma vez antes de contar como falha
 const INSTAVEL = new Set(['tz']);
