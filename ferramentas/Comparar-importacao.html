@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Comparar importação v1.1</title>
+<title>Comparar importação v1.2</title>
 <!--
   Comparar importação · Linha Vacutainer (ferramenta de desenvolvimento, 11/11/2026)
   Uso: abrir este arquivo no navegador (duplo clique), escolher a tabela, colar a tabela exatamente como vem do SAP/Excel.
@@ -41,7 +41,7 @@ details summary{cursor:pointer;color:var(--accent)}
 </head>
 <body>
 <div class="wrap">
- <div class="top"><div><h1>Comparar importação <span class="pill" title="Versão desta ferramenta">v1.1</span></h1><p class="sub">Escolha a tabela, cole como ela vem (SAP, Excel, CSV) e copie o prompt. A ferramenta compara com o formato que a plataforma reconhece hoje e troca os dados antes de montar o texto. <b>Nada sai deste computador.</b></p></div><span class="sp"></span><button class="btn" id="tema" type="button">Tema claro</button></div>
+ <div class="top"><div><h1>Comparar importação <span class="pill" title="Versão desta ferramenta">v1.2</span></h1><p class="sub">Escolha a tabela, cole como ela vem (SAP, Excel, CSV) e copie o prompt. A ferramenta compara com o formato que a plataforma reconhece hoje e troca os dados antes de montar o texto. <b>Nada sai deste computador.</b></p></div><span class="sp"></span><button class="btn" id="tema" type="button">Tema claro</button></div>
 
  <div class="card">
   <div class="row" style="align-items:flex-end">
@@ -76,20 +76,20 @@ details summary{cursor:pointer;color:var(--accent)}
    vale igual ou "começa com") · ob: obrigatória · t: tipo para descaracterizar (id, texto, pessoa, email, valor, qtd, pct, data, hora, codtxt, livre) */
 const C = (campo, rot, nomes, t, ob, extra) => Object.assign({ campo, rot, nomes: nomes.split(';').map(s => s.trim()).filter(Boolean), t, ob: !!ob }, extra || {});
 const REF = {
- KKBC_ORD: { nome: 'KKBC_ORD (custos por ordem)', pag: 'Waste (Perdas-Ordem.html) › Importar', estr: 'Dois formatos: (a) "Saída dinâmica de lista" do SAP (linhas "Ordem <n> <material>", "Material", "Quantidade planejada/real", tabela entre | com a linha de títulos Origem|… e subtotais "|* Materials Materials"; só o grupo Materials vira linha); (b) grade com cabeçalho (Excel/CSV). Números no padrão BR (1.234,56 e negativo com - no fim). Valores em BRL; coluna Moeda opcional.', sep: 'lista | ou tab',
+ KKBC_ORD: { nome: 'KKBC_ORD (custos por ordem)', pag: 'Waste (Perdas-Ordem.html) › Importar', estr: 'Três formatos: (c) grade da controladoria, uma ordem por arquivo (Planta, Ordem vazia + campo Ordem na tela ou no nome do arquivo, Origem, Material = componente, Custos teór.totais, Total custos reais, Desvio de estrutura, Desvio de qtd.empregada, Desvio de preço de input, Desvio teórico/real, quantidades, Grupo de elementos (Texto); linhas "Elemento de custo (Texto) …" são subtotais; só o grupo Materials vira linha; MUV = estrutura + empregado); (a) "Saída dinâmica de lista" do SAP (linhas "Ordem <n> <material>", "Material", "Quantidade planejada/real", tabela entre | com a linha de títulos Origem|… e subtotais "|* Materials Materials"; só o grupo Materials vira linha); (b) grade com cabeçalho (Excel/CSV). Números no padrão BR (1.234,56 e negativo com - no fim). Valores em BRL; coluna Moeda opcional.', sep: 'lista | ou tab',
   cols: [C('ordem', 'Ordem', 'ordem;ordem de producao;ordem producao;n ordem;no ordem;num ordem;order;production order;work order;ordem prod;aufnr', 'id', 1), C('centro', 'Centro', 'centro;plant;planta;werks', 'id'),
    C('prod', 'Material produzido', 'material;material produzido;produto;material da ordem;material do cabecalho;catalogo;codigo;header material;matnr', 'id'),
    C('prodDesc', 'Descrição do material produzido', 'descricao do material;descricao material;texto breve material;texto breve de material;descricao material produzido;material description;denominacao do material;descricao', 'texto'),
    C('comp', 'Componente / origem', 'componente;material componente;origem;origem material;origin;component;material de origem;objeto origem;recurso origem;origem recurso', 'id', 1),
    C('compDesc', 'Descrição do componente', 'descricao do componente;descricao componente;material texto;material (texto);texto breve;texto breve componente material;texto origem;denominacao origem;descricao da origem;component description;origin text;denominacao', 'texto'),
    C('el', 'Elemento de custo', 'elemento de custo;elemento custo;classe de custo;classe custo;tipo de custos;tipo de custo;natureza de custo;cost element', 'id'), C('elDesc', 'Descrição do elemento', 'descricao elemento de custo;denominacao classe de custo;texto classe de custo;texto tipo de custos;cost element name', 'texto'),
-   C('un', 'Unidade', 'unidade;um;ump;unidade de medida;unid;un;unit of measure;uom;umb', 'livre'),
+   C('un', 'Unidade', 'unid de medida da qtd produz;unidade;um;ump;unidade de medida;unid;un;unit of measure;uom;umb', 'livre'),
    C('qT', 'Quantidade meta (teórica)', 'qtd teor;qtd teor tot;quantidade teorica;qtd teorica;qtd meta total;qtd meta tot;quantidade meta;total target quantity;target quantity;qtd meta;qtd planejada componente', 'qtd'),
    C('qR', 'Quantidade real', 'quantidade real;qtd real total;qtd real tot;qtd real;total actual quantity;actual quantity', 'qtd'),
-   C('cT', 'Custo meta (teórico)', 'cststeorto;csts teor to;csts teor tot;cst teor tot;custo teorico;custos teoricos;custos meta total;cst meta tot;custo meta;custos meta;valor alvo;valor meta;total target costs;target costs', 'valor', 1),
-   C('cR', 'Custo real', 'tot cstsre;tot csts re;tot csts reais;custo real;custos reais;custos reais total;cst reais tot;cst real tot;valor real;total actual costs;actual costs', 'valor', 1),
-   C('dSap', 'Desvio total (SAP)', 'desvio;desvio total;desv tot;desvio meta real;target actual var;variance;total variance', 'valor'), C('dPct', 'Desvio %', 'dvcst c%;dv cst c%;dvcst/c%;desvio %;desvio percentual;desv %;var %;variance %', 'pct'),
-   C('dEstr', 'Desvio de estrutura', 'desv estr;desvio de estrutura;variacao de estrutura;desv estrutura', 'valor'), C('moeda', 'Moeda', 'moeda;currency;moeda transacao;moeda objeto;mda', 'livre'),
+   C('cT', 'Custo meta (teórico)', 'custos teor totais;custos teoricos totais;cststeorto;csts teor to;csts teor tot;cst teor tot;custo teorico;custos teoricos;custos meta total;cst meta tot;custo meta;custos meta;valor alvo;valor meta;total target costs;target costs', 'valor', 1),
+   C('cR', 'Custo real', 'total custos reais;tot cstsre;tot csts re;tot csts reais;custo real;custos reais;custos reais total;cst reais tot;cst real tot;valor real;total actual costs;actual costs', 'valor', 1),
+   C('dSap', 'Desvio total (SAP) / teórico×real', 'desvio teorico real;desvio;desvio total;desv tot;desvio meta real;target actual var;variance;total variance', 'valor'), C('dPct', 'Desvio %', 'dvcst c%;dv cst c%;dvcst/c%;desvio %;desvio percentual;desv %;var %;variance %', 'pct'),
+   C('dEstr', 'Desvio de estrutura', 'desv estr;desvio de estrutura;variacao de estrutura;desv estrutura', 'valor'), C('dEmp', 'Desvio de qtd. empregada', 'desvio de qtd empregada;desvio qtd empregada;desv empregado;desvio empregado', 'valor'), C('dPreco', 'Desvio de preço de input', 'desvio de preco de input;desvio preco input', 'valor'), C('dQtd', 'Desvio de quantidade', 'desvio qtd teorico real;desvio qtde;desv qtde', 'qtd'), C('grupo', 'Grupo de elementos (texto)', 'grupo de elementos texto', 'livre'), C('grupoCod', 'Grupo de elementos', 'grupo de elementos', 'livre'), C('plantaTxt', 'Planta (texto)', 'planta texto', 'livre'), C('moeda', 'Moeda', 'moeda;currency;moeda transacao;moeda objeto;mda', 'livre'),
    C('qOrd', 'Quantidade da ordem', 'quantidade da ordem;qtd ordem;order quantity;quantidade planejada;qtd planejada', 'qtd'), C('qEnt', 'Quantidade entregue', 'quantidade entregue;qtd entregue;delivered quantity;qtd fornecida;quantidade produzida;qtd produzida', 'qtd'),
    C('status', 'Status da ordem', 'status;status da ordem;status do sistema;system status', 'livre'), C('lote', 'Lote', 'lote;batch;lote produzido', 'id'), C('per', 'Período contábil', 'periodo;periodo contabil;period;posting period;mes', 'livre'), C('dFim', 'Data final', 'data final;data fim;fim real;finish date;end date', 'data')],
   numDesconhecido: 'valor',

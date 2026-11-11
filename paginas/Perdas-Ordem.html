@@ -1027,6 +1027,7 @@ addEventListener('error', e => { if (e.error && e.error.name === 'VacAbaBloquead
     <div class="filters">
       <label>Relatório <select id="impTipo"><option value="KKBC_ORD">KKBC_ORD</option></select></label>
       <label>Mês de referência <input type="month" id="impPer"></label>
+      <label title="Na grade da KKBC_ORD com uma ordem por arquivo a coluna Ordem vem vazia: informe aqui (ou deixe o número da ordem no nome do arquivo)">Ordem (arquivo de uma ordem) <input type="text" id="impOrd" inputmode="numeric" placeholder="ex.: 900814702" style="width:130px"></label>
       <label>Arquivo <input type="file" id="impFile" accept=".xlsx,.xls,.xlsm,.csv,.txt"></label>
       <span id="entradaBox"></span>
     </div>
@@ -1037,6 +1038,7 @@ addEventListener('error', e => { if (e.error && e.error.name === 'VacAbaBloquead
       <span class="muted small" id="impSrc"></span>
     </div>
   </div>
+  <div id="reimpBox"></div>
   <div id="impPrev"></div>
 </section>
 
@@ -1145,7 +1147,7 @@ addEventListener('error', e => { if (e.error && e.error.name === 'VacAbaBloquead
    Base: perdas-base.json na pasta da rede (mesmo padrão OEE / Gel)
    Contrato: bloco "exports" (exportsVersion 1) lido pelas outras páginas
    ===================================================================== */
-const APP_VER='1.8.36',   /* 1.8.36 · gráficos: "Valores em …" (moeda), eixo sem rótulos repetidos, medida do Comparativo no gráfico do relatório (docs/graficos-padrao.md) */   /* 1.8.35 · Visão Geral no padrão comum (vacLayout): situação, números, diagnóstico, análises em grupos */   /* 1.8.34 · kit: login com ID e senha */   /* 1.8.33 · kit: datas DD/MM/AAAA */   /* 1.8.32 · nome Eficácia/Confirmação de Processo */   /* 1.8.31 · kit: nome e presença de Iniciativas / Ações na barra */   /* 1.8.30 · UX-02: guia por aba */   /* 1.8.29 · Fase 7 (UX-03, WST-01): Painel → Visão Geral */   /* 1.8.28 · Fase 6 (WST-03, INI-04): ações em Iniciativas / Ações; antigas até a migração, depois só leitura */   /* 1.8.27 · Fase 3 (IMP-04/06, WST-02): importações no exports; aba Importar leva ao Portal › Importação */   /* 1.8.26 · ARQ-09: "Ver com dados de teste" vira a Demonstração integrada */   /* 1.8.23 · C2–C6: kit com a ficha por pasta (AT-08) e a contagem da fila durável (Portal › Versões) */   /* 1.8.22 · C1: trava da 2ª aba com alteração pendente (nada é descartado); kit com a fila durável */   /* 1.8.21 · E11: busca do kit leva o equipamento à ficha em Equipamentos */   /* 1.8.20 · E8: kit com "+ Abrir ação" na ficha da ordem (Planner de Iniciativas) */   /* 1.8.19 · E5: ficha da ordem comum (botão Ficha na ordem; busca Ctrl K por ordem, lote e LP) */   /* 1.8.18 · E4: versão do exports conferida (Produção, Ordens), ordem em várias competências, dias do lote pela chave · 1.8.17 · E2: fonte única da versão (tela, base, exports e Portal › Versões) */ BASE_FN='perdas-base.json', DIR_ORIG='00. Originais SAP', DIR_BKP='00. Backups', DIR_IN='00. Entrada KKBC', DIR_DONE='00. Entrada KKBC/Processados';
+const APP_VER='1.9.0',   /* 1.9.0 · KKBC_ORD em grade (layout da controladoria, uma ordem por arquivo): Desv. Empregado, Desv. preço de input e Desv. qtde guardados; aviso das ordens no formato antigo (reimportar) */   /* 1.8.36 · gráficos: "Valores em …" (moeda), eixo sem rótulos repetidos, medida do Comparativo no gráfico do relatório (docs/graficos-padrao.md) */   /* 1.8.35 · Visão Geral no padrão comum (vacLayout): situação, números, diagnóstico, análises em grupos */   /* 1.8.34 · kit: login com ID e senha */   /* 1.8.33 · kit: datas DD/MM/AAAA */   /* 1.8.32 · nome Eficácia/Confirmação de Processo */   /* 1.8.31 · kit: nome e presença de Iniciativas / Ações na barra */   /* 1.8.30 · UX-02: guia por aba */   /* 1.8.29 · Fase 7 (UX-03, WST-01): Painel → Visão Geral */   /* 1.8.28 · Fase 6 (WST-03, INI-04): ações em Iniciativas / Ações; antigas até a migração, depois só leitura */   /* 1.8.27 · Fase 3 (IMP-04/06, WST-02): importações no exports; aba Importar leva ao Portal › Importação */   /* 1.8.26 · ARQ-09: "Ver com dados de teste" vira a Demonstração integrada */   /* 1.8.23 · C2–C6: kit com a ficha por pasta (AT-08) e a contagem da fila durável (Portal › Versões) */   /* 1.8.22 · C1: trava da 2ª aba com alteração pendente (nada é descartado); kit com a fila durável */   /* 1.8.21 · E11: busca do kit leva o equipamento à ficha em Equipamentos */   /* 1.8.20 · E8: kit com "+ Abrir ação" na ficha da ordem (Planner de Iniciativas) */   /* 1.8.19 · E5: ficha da ordem comum (botão Ficha na ordem; busca Ctrl K por ordem, lote e LP) */   /* 1.8.18 · E4: versão do exports conferida (Produção, Ordens), ordem em várias competências, dias do lote pela chave · 1.8.17 · E2: fonte única da versão (tela, base, exports e Portal › Versões) */ BASE_FN='perdas-base.json', DIR_ORIG='00. Originais SAP', DIR_BKP='00. Backups', DIR_IN='00. Entrada KKBC', DIR_DONE='00. Entrada KKBC/Processados';
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 /* página para o núcleo comum, o cabeçalho (vac-cabecalho v2) e o quadro de Versões do Portal */
 const PAGE={id:'perdas',titulo:'Waste · Linha Vacutainer',tituloCurto:'Waste',subtitulo:'Custos e perdas por ordem',versao:APP_VER,baseFile:BASE_FN,backupDir:'00. Backups/Perdas',busca:q=>buscaPerdas(q)};
@@ -1214,7 +1216,11 @@ const FIELDS=[
  {k:'per',l:'Período contábil',t:'txt'},
  {k:'exer',l:'Exercício',t:'txt'},
  {k:'dFim',l:'Data final',t:'txt'},
- {k:'dEstr',l:'Desvio de estrutura',t:'num'}
+ {k:'dEstr',l:'Desvio de estrutura',t:'num'},
+ {k:'dEmp',l:'Desvio de qtd. empregada',t:'num'},   /* 1.9.0 · MUV = Desv. estrutura + Desv. empregado (controladoria) */
+ {k:'dPreco',l:'Desvio de preço de input',t:'num'},
+ {k:'dQtd',l:'Desvio de quantidade (teórico/real)',t:'num'},
+ {k:'grupo',l:'Grupo de elementos (texto)',t:'txt'}
 ];
 const FK=Object.fromEntries(FIELDS.map(f=>[f.k,f]));
 const DEFAULT_ALIAS={
@@ -1226,12 +1232,12 @@ const DEFAULT_ALIAS={
  compDesc:'descricao do componente; descricao componente; material texto; material (texto); texto breve; texto breve componente material; texto origem; denominacao origem; descricao da origem; texto breve componente; component description; origin text; denominacao',
  el:'elemento de custo; elemento custo; classe de custo; classe custo; tipo de custos; tipo de custo; natureza de custo; cost element; cost elem',
  elDesc:'descricao elemento de custo; descricao do elemento de custo; denominacao classe de custo; texto classe de custo; texto tipo de custos; cost element name; cost element descr',
- un:'unidade; um; ump; unidade de medida; unid; un; unit of measure; uom; unidade componente; unidade de medida basica; umb',
+ un:'unid de medida da qtd produz; unidade; um; ump; unidade de medida; unid; un; unit of measure; uom; unidade componente; unidade de medida basica; umb',
  qT:'qtd teor; qtd teor tot; quantidade teorica; qtd teorica; qtd meta total; qtd meta tot; quantidade meta; quantidade meta total; total target quantity; target quantity; tgt qty; qtd meta; qtd planejada componente',
  qR:'quantidade real; qtd real total; qtd real tot; qtd real; quantidade real total; total actual quantity; actual quantity; act qty',
- cT:'cststeorto; csts teor to; csts teor tot; cst teor tot; custo teorico; custos teoricos; custos meta total; custos meta tot; cst meta tot; cst meta total; custo meta; custos meta; valor alvo; valor meta; total target costs; target costs; total target cost; tgt costs',
- cR:'tot cstsre; tot csts re; tot csts reais; custo real; custos reais; custos reais total; custos reais tot; cst reais tot; cst real tot; valor real; total actual costs; actual costs; total actual cost; act costs',
- dSap:'desvio; desvio total; desv tot; desvio; desvio meta real; desv meta real; target actual var; target actual variance; target/actual var; variance; total variance; desvio total meta real',
+ cT:'custos teor totais; custos teoricos totais; cststeorto; csts teor to; csts teor tot; cst teor tot; custo teorico; custos teoricos; custos meta total; custos meta tot; cst meta tot; cst meta total; custo meta; custos meta; valor alvo; valor meta; total target costs; target costs; total target cost; tgt costs',
+ cR:'total custos reais; tot cstsre; tot csts re; tot csts reais; custo real; custos reais; custos reais total; custos reais tot; cst reais tot; cst real tot; valor real; total actual costs; actual costs; total actual cost; act costs',
+ dSap:'desvio teorico real; desvio; desvio total; desv tot; desvio; desvio meta real; desv meta real; target actual var; target actual variance; target/actual var; variance; total variance; desvio total meta real',
  dPct:'dvcst c%; dv cst c%; dvcst/c%; desvio %; desvio percentual; desv %; var %; variance %; p var; desvio pct; %',
  moeda:'moeda; currency; moeda transacao; moeda objeto; mda',
  qOrd:'quantidade da ordem; qtd ordem; qtd da ordem; order quantity; quantidade planejada; qtd planejada; qtd total ordem',
@@ -1241,6 +1247,10 @@ const DEFAULT_ALIAS={
  per:'periodo; periodo contabil; period; posting period; per; mes',
  exer:'exercicio; exercicio fiscal; ano; fiscal year; year',
  dEstr:'desv estr; desvio de estrutura; variacao de estrutura; desv estrutura',
+ dEmp:'desvio de qtd empregada; desvio qtd empregada; desv qtd empregada; desv empregado; desvio empregado; desv qtde empregada',
+ dPreco:'desvio de preco de input; desvio preco de input; desvio preco input; desv preco input',
+ dQtd:'desvio qtd teorico real; desvio qtde; desv qtde; desvio de quantidade',
+ grupo:'grupo de elementos texto; grupo elementos texto',
  dFim:'data final; data fim; data de fim; fim real; data real fim; finish date; end date; data fim real'
 };
 const DEFAULT_TIPOS=`Rolha: rolha
@@ -1431,7 +1441,9 @@ function loadXLSX(){if(window.XLSX)return Promise.resolve(window.XLSX);
  return tryLoad('lib/xlsx.full.min.js').catch(()=>tryLoad('https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js')).catch(()=>{throw new Error('Não consegui carregar a biblioteca de Excel (lib/xlsx.full.min.js). Salve o arquivo como CSV ou cole os dados.')})}
 
 /* ---------- cabeçalho e mapeamento ---------- */
-function aliasIndex(){const idx={};const a=CFG().alias;for(const k in a)for(const n of String(a[k]).split(';')){const h=normHp(n);if(h&&!(h in idx))idx[h]=k}return idx}
+function aliasIndex(){const idx={};const a=CFG().alias;for(const k in a)for(const n of String(a[k]).split(';')){const h=normHp(n);if(h&&!(h in idx))idx[h]=k}
+ for(const k in DEFAULT_ALIAS)for(const n of String(DEFAULT_ALIAS[k]).split(';')){const h=normHp(n);if(h&&!(h in idx))idx[h]=k}   /* 1.9.0: nomes novos do padrão valem também em base antiga */
+ return idx}
 function guessField(h,idx){const n=normHp(h);if(CFG().layouts[n]!==undefined)return CFG().layouts[n];return idx[n]||''}
 function findHeader(rows){const idx=aliasIndex();let best=-1,bs=0;
  for(let i=0;i<Math.min(rows.length,40);i++){const s=rows[i].filter(c=>c&&guessField(c,idx)).length;if(s>bs){bs=s;best=i}}
@@ -1569,7 +1581,7 @@ async function doImport(){
    b.imports.push({id:impId,tipo:'KKBC_ORD',arquivo:meta.arquivo,hash:meta.hash,tamanho:meta.size||null,data:nowISO(),usuario:user(),periodos:pers,
      lidas:R.recs.length+R.rej.length,importadas:rows.length,rejeitadas:R.rej.length,duplicadas:R.dupI,subtotais:R.subt,ordens:[...keys].length,substituidas:sup,
      granularidade:R.gran,colunas:IMP.headers.filter(Boolean),mapa:IMP.list?null:Object.fromEntries(IMP.headers.map((h,i)=>[h,IMP.map[i]]).filter(x=>x[0])),
-     extras:R.extra,outrosGrupos:R.outros||null,dataExtracao:R.dataExtr||null,formato:IMP.list?'lista KKBC_ORD':'grade',moedas:(IMP._moeda||moedaResumo(R.recs)).cont,status:R.rej.length?'importado com alertas':'importado',motivo:mot?mot.value.trim():'',original:saved,rejeicoes:R.rej.slice(0,200)});
+     extras:R.extra,outrosGrupos:R.outros||null,dataExtracao:R.dataExtr||null,formato:IMP.R&&IMP.R.grade?'grade KKBC_ORD (controladoria)':IMP.list?'lista KKBC_ORD':'grade',moedas:(IMP._moeda||moedaResumo(R.recs)).cont,status:R.rej.length?'importado com alertas':'importado',motivo:mot?mot.value.trim():'',original:saved,rejeicoes:R.rej.slice(0,200)});
    for(const i of supImps){const imp=imps.get(i);if(imp&&!b.rows.some(r=>r.imp===i&&!r.sup))imp.status='substituído por versão posterior'}
  },`${meta.arquivo} · ${rows.length} linhas · ${pers.map(fmtM).join(', ')}`);
  if(meta.entrada&&ST.mode==='pasta'){try{const inD=await subDir(DIR_IN);const done=await subDir(DIR_DONE);await writeFile(done,meta.arquivo,meta.raw);await inD.removeEntry(meta.arquivo)}catch(e){console.warn(e)}}
@@ -1646,6 +1658,48 @@ function parseKKBCList(txt,meta){
  return{recs,rej,subt,dupI,carried:0,warnN:0,gran:'ordem × material (grupo '+[...want].join(', ')+')',extra:[],orders,outros,dataExtr,
    headers:cols?Object.keys(cols):[],noCols:!cols,semGrupo:orders.filter(x=>x.semGrupo).length};
 }
+/* ===================== 1.9.0 · KKBC_ORD em grade (layout da controladoria) =====================
+   Colunas: Planta | Planta (Texto) | Ordem | Origem | Material | Material (Texto) | Custos teór.totais | Total custos reais |
+   Desvio de estrutura | Desvio de qtd.empregada | Desvio de preço de input | Desvio teórico/real | Qtd.teór.total | Qtd.real total |
+   Qtd.total planejada | Desvio qtd.teórico/real | Unid.de medida… | Moeda | Grupo de elementos | Grupo de elementos (Texto) | Desvio refugo…
+   - uma ordem por arquivo: a coluna Ordem vem vazia → campo "Ordem" da tela ou número no nome do arquivo;
+   - linha do produto (sem grupo, quantidade negativa = entrega) dá o material produzido e a quantidade entregue;
+   - itens com o grupo; só os grupos configurados (padrão Materials) viram linhas, os outros ficam no resumo da ordem;
+   - linhas "Elemento de custo (Texto) …" são subtotais; linhas sem Origem são totais/continuações (outras unidades). */
+function isKKBCGrade(rows){if(!Array.isArray(rows))return false;const hi=findHeaderSafe(rows);if(hi<0)return false;const h=rows[hi].map(c=>normH(c));return h.includes('grupo de elementos texto')||(h.includes('origem')&&h.some(x=>/^desvio de qtd empregada/.test(x)))}
+function ordemDaGrade(meta){const v=cleanOrd(($('#impOrd')||{}).value||'');if(v)return v;const m=String(meta.arquivo||'').match(/(?:^|\D)(\d{8,12})(?:\D|$)/);return m?m[1]:''}
+function parseKKBCGrade(rows,meta){
+ const P=v=>{if(typeof v==='number')return v;const n=parseNum(v,'br');return Number.isNaN(n)?null:n};
+ const hi=findHeaderSafe(rows),H=rows[hi].map(c=>String(c??'').trim()),N=H.map(normH),idx=aliasIndex(),col={},extra=[];
+ N.forEach((n,j)=>{let k=n==='material'?'comp':n==='material texto'?'compDesc':n==='origem'?'origem':n==='planta texto'?'_plantaTxt':n==='grupo de elementos'?'_grupoCod':guessField(H[j],idx);
+  if(k==='prod'||k==='prodDesc')k='';if(k&&col[k]==null)col[k]=j;else if(H[j])extra.push(H[j])});
+ const want=new Set(String(CFG().grupos||'Materials').split(';').map(x=>normH(x)).filter(Boolean));
+ const ordInf=ordemDaGrade(meta),recs=[],rej=[],ords=new Map(),sigs=new Set();let subt=0,dupI=0,lastOrd='';
+ const g=(row,k)=>col[k]!=null?row[col[k]]:undefined,t=(row,k)=>String(g(row,k)??'').trim();
+ const ordem=o=>{if(!ords.has(o))ords.set(o,{ordem:o,prod:'',prodDesc:'',qOrd:null,qEnt:null,un:'',centro:'',tipo:'',n:0,cT:0,cR:0,grupos:{}});return ords.get(o)};
+ for(let r=hi+1;r<rows.length;r++){const row=rows[r]||[];const cells=row.map(c=>String(c??'').trim());
+  const first=cells.find(Boolean)||'';if(!first)continue;
+  if(/^elemento de custo/.test(normH(first))||/^\*/.test(first)){subt++;continue}
+  const origem=t(row,'origem');if(!origem)continue;
+  let ord=cleanOrd(t(row,'ordem'))||lastOrd||ordInf;if(!ord){rej.push({ln:r+1,why:'sem ordem: informe a ordem no campo "Ordem" (arquivo de uma ordem)'});continue}lastOrd=cleanOrd(t(row,'ordem'))?ord:lastOrd;
+  const o=ordem(ord);if(!o.centro)o.centro=t(row,'centro');
+  const v={};for(const k of['cT','cR','dEstr','dEmp','dPreco','dSap','qT','qR','dQtd']){const x=g(row,k);if(x===undefined||x==='')continue;const n=P(x);if(n==null){if(k==='cT'||k==='cR'){rej.push({ln:r+1,why:`${FK[k].l}: "${x}" não é número`});v._err=1}continue}v[k]=n}
+  if(v._err)continue;
+  const grupo=t(row,'grupo'),mat=t(row,'comp');
+  if(!grupo&&((v.qR!=null&&v.qR<0)||(v.cT!=null&&v.cT<0))){o.prod=cleanMat(mat||origem.split('/').pop());o.prodDesc=t(row,'compDesc');o.qEnt=v.qR!=null?Math.abs(v.qR):null;o.un=t(row,'un');continue}   /* linha do produto (entrega) */
+  const gk=grupo||'(sem grupo)',gv=o.grupos[gk]||(o.grupos[gk]={cT:0,cR:0,itens:0});gv.cT+=v.cT||0;gv.cR+=v.cR||0;gv.itens++;
+  if(!want.has(normH(grupo)))continue;
+  const rec={ln:r+1,raw:cells.join('\t').slice(0,600),ordem:ord,centro:o.centro,comp:cleanMat(mat||origem.split('/').pop()),compDesc:t(row,'compDesc'),un:t(row,'un'),grupo,...v};
+  {const mo=t(row,'moeda');if(mo)rec.moeda=mo.toUpperCase()}
+  const sig=[ord,rec.comp,rec.cT,rec.cR,rec.qT,rec.qR].join('|');if(sigs.has(sig)){dupI++;continue}sigs.add(sig);
+  recs.push(rec);o.n++;o.cT+=v.cT||0;o.cR+=v.cR||0}
+ for(const r of recs){const o=ords.get(r.ordem);r.prod=o.prod;r.prodDesc=o.prodDesc;r.qEnt=o.qEnt;r.per=meta.per;r.cat=catOf(r.prod);r.tipo=''}
+ const orders=[...ords.values()],outros={};for(const x of orders)outros[x.ordem]=Object.fromEntries(Object.entries(x.grupos).filter(([gg])=>gg&&!want.has(normH(gg))).map(([gg,vv])=>[gg,{cT:+vv.cT.toFixed(2),cR:+vv.cR.toFixed(2)}]));
+ return{recs,rej,subt,dupI,carried:0,warnN:0,gran:'ordem × material (grupo '+[...want].join(', ')+') · grade da controladoria',extra,orders,outros,dataExtr:'',headers:Object.keys(col).filter(k=>FK[k]),noCols:false,semGrupo:0,grade:true,ordInf}}
+function interpretGrade(rows,meta){
+ const R=parseKKBCGrade(rows,meta);
+ if(!R.orders.length)return{err:R.rej.length?R.rej[0].why:'Não encontrei linhas de itens na grade da KKBC_ORD.'};
+ IMP={meta,list:true,R,headers:R.headers.map(k=>FK[k]?.l||k),map:R.headers,rows:[],hi:0};buildPreviewList();return null}
 function interpretList(txt,meta){
  const R=parseKKBCList(txt,meta);
  if(!R.orders.length)return{err:'Não encontrei o cabeçalho "Ordem" na lista copiada.'};
@@ -1701,7 +1755,7 @@ function vigRowsAll(){const base=vigRowsAll0(),para=moedaVer();if(!base.some(r=>
  MOEDA_FALTA.clear();const cache=new Map();
  const out=base.map(r=>{const de=moedaRow(r);if(de===para)return r;if(!['BRL','USD'].includes(de)){MOEDA_FALTA.add(de+' (moeda não convertida)');return r}
   let f=cache.get(r.per);if(f===undefined){const q=cotUSD(r.per);f=q?(para==='USD'?1/q:q):null;cache.set(r.per,f)}
-  if(f==null){MOEDA_FALTA.add(r.per);return r}const x={...r,_moedaOrig:de,_fator:f};for(const c of['cT','cR','dSap','dEstr'])if(x[c]!=null)x[c]=x[c]*f;return x});
+  if(f==null){MOEDA_FALTA.add(r.per);return r}const x={...r,_moedaOrig:de,_fator:f};for(const c of['cT','cR','dSap','dEstr','dEmp','dPreco'])if(x[c]!=null)x[c]=x[c]*f;return x});
  _cv={k,v:out};return out}
 function vigRows(){const ex=exclMap();const rs=vigRowsAll();return ex.size?rs.filter(r=>!ex.has(r.ordem)):rs}
 function closedPers(){return new Set(B.closings.filter(c=>c.status==='fechado').map(c=>c.per))}
@@ -2775,14 +2829,14 @@ async function readFile(file,entrada=false){
   if(/\.(xlsx|xls|xlsm)$/i.test(file.name)){const X=await loadXLSX();const wb=X.read(await file.arrayBuffer(),{type:'array',cellDates:true});
     let best=null;for(const n of wb.SheetNames){const r=X.utils.sheet_to_json(wb.Sheets[n],{header:1,raw:true,defval:''});if(findHeaderSafe(r)>=0){best=r;break}if(!best)best=r}rows=best.map(r=>r.map(c=>c instanceof Date?c.toISOString().slice(0,10):c))}
   else{const t=await file.text();if(isKKBCList(t))rows={list:t};else rows=parseText(t)}
-  if(Array.isArray(rows)){const lt=rowsToListText(rows);if(isKKBCList(lt))rows={list:lt}}
+  if(Array.isArray(rows)&&!isKKBCGrade(rows)){const lt=rowsToListText(rows);if(isKKBCList(lt))rows={list:lt}}
   const meta={arquivo:file.name,size:file.size,hash:hash(file.name+file.size+file.lastModified),per:$('#impPer').value,raw,entrada};
-  $('#impSrc').textContent='Arquivo: '+file.name;IMP=null;const r=rows.list!=null?interpretList(rows.list,meta):interpret(rows,meta);if(r&&r.err)$('#impPrev').innerHTML=`<div class="note e">${esc(r.err)}</div>`;
+  $('#impSrc').textContent='Arquivo: '+file.name;IMP=null;const r=rows.list!=null?interpretList(rows.list,meta):isKKBCGrade(rows)?interpretGrade(rows,meta):interpret(rows,meta);if(r&&r.err)$('#impPrev').innerHTML=`<div class="note e">${esc(r.err)}</div>`;
  }catch(e){console.error(e);$('#impPrev').innerHTML=`<div class="note e">${esc(e.message||e)}</div>`}}
 function findHeaderSafe(r){try{return findHeader(r.map(x=>x.map(c=>String(c??''))))}catch(e){return-1}}
 function interpretPaste(){const t=$('#impTxt').value;if(!t.trim()){toast('Cole os dados ou escolha um arquivo.');return}
  const meta={arquivo:'Colagem '+fmtDT(nowISO()),hash:hash(t),per:$('#impPer').value,raw:t,size:t.length};
- const r=isKKBCList(t)?interpretList(t,meta):interpret(parseText(t),meta);if(r&&r.err)$('#impPrev').innerHTML=`<div class="note e">${esc(r.err)}</div>`;$('#impSrc').textContent='Fonte: texto colado'}
+ const pt=isKKBCList(t)?null:parseText(t);const r=isKKBCList(t)?interpretList(t,meta):isKKBCGrade(pt)?interpretGrade(pt,meta):interpret(pt,meta);if(r&&r.err)$('#impPrev').innerHTML=`<div class="note e">${esc(r.err)}</div>`;$('#impSrc').textContent='Fonte: texto colado'}
 
 /* ===================== EXPORTAÇÃO ===================== */
 function tableAOA(){const{cols,data}=F._lastData||{cols:[],data:[]};return[cols.map(c=>c[1]),...data.map(r=>cols.map(([c])=>{const v=r[c];if(c==='lvl')return LV[v];if(c==='rec')return v?'sim':'';if(c==='per')return fmtM(v);if(typeof v==='number')return+v.toFixed(c==='pct'||c==='pq'?4:2);return v??''}))]}
@@ -2831,7 +2885,18 @@ function renderMeta(){
 function moedaSegRender(){const m=moedaVer();$$('[data-moeda]').forEach(b=>b.classList.toggle('p',b.dataset.moeda===m));let n=$('#moedaAviso');const lst=[...MOEDA_FALTA];
  if(!lst.length){if(n)n.remove();return}if(!n){n=document.createElement('div');n.id='moedaAviso';n.className='note w small';const c=$('#chips');c.parentNode.insertBefore(n,c)}
  n.innerHTML=`Sem cotação do dólar para ${lst.map(x=>/^\d{4}-\d{2}$/.test(x)?fmtM(x):esc(x)).join(', ')}: esses valores ficaram na moeda original. Cadastre a cotação no Portal › Administração › Câmbio (USD).`}
-function renderAll(){renderMeta();renderTab(curTab());const q=vigRows().length?qualityIssues().filter(x=>x.sev===2).length:0;moedaSegRender();$('#bdQ').hidden=!q;$('#bdQ').textContent=q}
+/* 1.9.0 · ordens vigentes importadas sem o Desv. de qtd. empregada (formato antigo): o MUV (estrutura + empregado) precisa delas
+   reimportadas no layout da controladoria. A reimportação substitui a ordem (versão vigente por ordem), sem somar duas vezes. */
+function semEmpregado(){const by=new Map();for(const r of vigRows()){const o=by.get(r.ordem)||{ordem:r.ordem,per:r.per,tem:false};if(r.dEmp!=null)o.tem=true;if(r.per>o.per)o.per=r.per;by.set(r.ordem,o)}
+ const L=[...by.values()],sem=L.filter(o=>!o.tem),porPer={};for(const o of sem)porPer[o.per]=(porPer[o.per]||0)+1;return{total:L.length,sem:sem.length,porPer,ordens:sem.map(o=>o.ordem)}}
+function reimpRender(){const el=$('#reimpBox');if(!el)return;const S=vigRows().length?semEmpregado():null;
+ if(!S||!S.sem){el.innerHTML=S&&S.total?`<div class="note small" style="border-left:4px solid var(--good,#15803d)">✓ Todas as ${fmtN(S.total)} ordens vigentes têm o <b>Desv. de qtd. empregada</b> (layout da controladoria).</div>`:'';return}
+ const pers=Object.entries(S.porPer).sort((a,b)=>a[0]<b[0]?1:-1);
+ el.innerHTML=`<div class="note w small"><b>${fmtN(S.sem)} de ${fmtN(S.total)} ordens no formato antigo</b> (sem o Desv. de qtd. empregada, necessário para o MUV = estrutura + empregado). Reimporte essas ordens no layout da controladoria: a ordem é substituída, sem somar duas vezes.
+  <div style="margin-top:4px">${pers.map(([p,n])=>`<span class="tag">${esc(fmtML(p))}: ${fmtN(n)}</span>`).join(' ')}</div>
+  <details style="margin-top:4px"><summary>Ver as ordens</summary><div class="mono" style="max-height:160px;overflow:auto">${S.ordens.slice(0,800).map(esc).join(' · ')}${S.ordens.length>800?' …':''}</div><button class="b sm" id="reimpCp" type="button">Copiar as ordens (uma por linha)</button></details></div>`;
+ const b=$('#reimpCp');if(b)b.onclick=()=>{navigator.clipboard.writeText(S.ordens.join('\n')).then(()=>toast('Ordens copiadas.'),()=>toast('Não foi possível copiar.'))}}
+function renderAll(){renderMeta();renderTab(curTab());try{reimpRender()}catch(e){console.warn(e)}const q=vigRows().length?qualityIssues().filter(x=>x.sev===2).length:0;moedaSegRender();$('#bdQ').hidden=!q;$('#bdQ').textContent=q}
 
 /* ===================== EVENTOS ===================== */
 /* 1.8.27 · IMP-06/WST-02: a aba Importar leva ao Portal › Importação › Waste; a tela abre direto por #aba=importar (o botão do Portal) */
