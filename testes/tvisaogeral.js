@@ -76,6 +76,55 @@ const LER = () => {
   console.log('     cliques:', JSON.stringify(cliq));
   ok(cliq.temClique && cliq.pareto, 'gráficos com áreas clicáveis (dia e Pareto)');
   await o.screenshot({ path: SAI + ROTULO + '-1440-claro.png', fullPage: true });
+  if (!GRAVAR) {
+    // comportamento do layout novo (2.4.49)
+    const L = await o.evaluate(async () => { const w = t => new Promise(r => setTimeout(r, t)), out = {}, m = document.getElementById('main'), q = s => m.querySelector(s), qa = s => [...m.querySelectorAll(s)];
+      out.secoes = qa('.vgl-sec h3').map(x => x.textContent);
+      out.grupos = qa('.vgl-grp').map(g => g.dataset.vglGrupo + ':' + g.querySelectorAll('section.card').length);
+      out.imprimir = qa('button').filter(b => /Imprimir/.test(b.textContent)).length;
+      out.exportar = !!q('.vg-bar #ovExp');
+      out.situacao = (q('.vgl-oee') || {}).textContent || ''; out.perda = (q('.vgl-perda') || {}).textContent || ''; out.decide = !!q('.vgl-acao .decide');
+      out.diag = qa('.vgl-dc').length;
+      out.maisDup = qa('details.more-kpi .kpi .l').map(l => [...l.childNodes].filter(x => x.nodeType === 3).map(x => x.textContent).join('').trim()).filter(t => ['Produção boa', 'Capacidade planejada'].includes(t)).length;
+      out.avisoSem = /tendência aparece com 2 semanas/.test((qa('.vgl-grp[data-vgl-grupo="F"] .vgl-est')[0] || {}).textContent || '');
+      // recolher o grupo C: lembra em vgGrupo, não mexe em vgFold
+      q('[data-vgl-grupo="C"] .vgl-gh').click(); await w(50);
+      out.fechouC = q('[data-vgl-grupo="C"]').classList.contains('fechado') && App.prefs.vgGrupo.C === 1 && !Object.keys(App.prefs.vgFold || {}).length;
+      render(); await w(400); out.lembrou = document.querySelector('#main [data-vgl-grupo="C"]').classList.contains('fechado');
+      // Editar cards: desligar Produção boa na grade → ela volta em Mais indicadores
+      App.prefs.kcOff = ['Produção boa']; render(); await w(400);
+      const g2 = [...document.querySelectorAll('#main section.vg-ind .kpi .l')].map(l => [...l.childNodes].filter(x => x.nodeType === 3).map(x => x.textContent).join('').trim());
+      out.desligada = !g2.includes('Produção boa') && [...document.querySelectorAll('#main details.more-kpi .kpi .l')].some(l => /Produção boa/.test(l.textContent));
+      App.prefs.kcOff = []; render(); await w(400);
+      // Limpar: Máquina/Catálogo/Turno/Status em Todos e período do mês atual
+      App.filters.status = 'aberto'; App.filters.shiftId = 'sh_t1'; render(); await w(400);
+      document.querySelector('#vglLimpar').click(); await w(500);
+      out.limpar = App.filters.status === '' && App.filters.shiftId === '' && App.filters.to >= U.today().slice(0, 8) + '01' && App.filters.lineId === 'line_vac';
+      // 1 dia no período: aviso nos gráficos por dia, sem tendência inventada
+      App.filters.from = '2026-03-10'; App.filters.to = '2026-03-10'; App.filters.status = ''; render(); await w(500);
+      out.umDia = [...document.querySelectorAll('#main .vgl-est')].filter(x => /1 dia no período/.test(x.textContent)).length;
+      out.umDiaPior = /Só 1 dia/.test((document.querySelector('#main .vgl-dg') || {}).textContent || '');
+      App.filters.from = '2026-03-09'; App.filters.to = '2026-03-11'; App.prefs.vgGrupo = {}; render(); await w(500);
+      // Meu painel não recebe a organização da visão padrão
+      Panel.st().view = 'mine'; render(); await w(500); out.painelSemVgl = !document.querySelector('#main .vgl-sec, #main .vgl-grp');
+      Panel.st().view = 'padrao'; render(); await w(500);
+      return out; });
+    console.log('     layout:', JSON.stringify({ ...L, situacao: L.situacao.slice(0, 80), perda: L.perda.slice(0, 80) }));
+    ok(L.secoes.join('|') === 'Situação do período|Números do período|Diagnóstico rápido|Análises de desempenho|Explorar dados', 'cinco seções na ordem: Situação, Números, Diagnóstico, Análises, Explorar');
+    ok(L.grupos.join(' ') === 'A:2 B:3 C:3 D:1 E:2 F:2', `13 gráficos em 6 grupos (${L.grupos.join(' ')})`);
+    ok(L.imprimir === 1 && L.exportar, 'um botão Imprimir só; Exportar junto das ações da visão');
+    ok(/OEE do período/.test(L.situacao) && /Meta vigente/.test(L.situacao) && /Abaixo da meta|Na meta/.test(L.situacao) && /Período anterior|Sem dados no período anterior/.test(L.situacao), 'Situação: OEE, meta, desvio, estado em texto e período anterior');
+    ok(L.decide && /Maior etapa da cascata/.test(L.perda) && /Parada que mais tirou tempo: TRC/.test(L.perda), 'Ação prioritária mantida e maior perda (cascata e Pareto) ao lado');
+    ok(L.diag === 3 && L.maisDup === 0 && L.desligada, 'Diagnóstico com 3 cartões; Mais indicadores sem repetir os ligados na grade (e com eles quando desligados)');
+    ok(L.avisoSem && L.umDia >= 6 && L.umDiaPior, 'avisos honestos: tendência curta e período de 1 dia');
+    ok(L.fechouC && L.lembrou, 'grupo recolhido lembra a escolha (vgGrupo) sem mexer nas dobras dos blocos');
+    ok(L.limpar, 'Limpar volta para o mês e Todos (a Linha continua)');
+    ok(L.painelSemVgl, 'Meu painel sem a organização da visão padrão');
+    // impressão: grupos abertos
+    await o.evaluate(() => { const g = document.querySelector('#main [data-vgl-grupo="B"] .vgl-gh'); g.click(); }); await o.emulateMedia({ media: 'print' });
+    const imp = await o.evaluate(() => getComputedStyle(document.querySelector('#main [data-vgl-grupo="B"] .vgl-gb')).display);
+    await o.emulateMedia({ media: 'screen' }); ok(imp !== 'none', `impressão com os grupos abertos (${imp})`);
+  }
   await c.close();
   for (const [w, h, tema] of [[1440, 900, 'dark'], [768, 1024, 'light'], [390, 844, 'light'], [390, 844, 'dark']]) {
     const x = await nova(w, h, tema); const sx = await x.o.evaluate(() => document.documentElement.scrollWidth - innerWidth);

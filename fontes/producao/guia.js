@@ -134,9 +134,17 @@ window.VAC_GUIA.oee = {
       { sel: 'section.card > header .dobra', nome: 'Recolher / expandir', o: 'O ▾ no título de cada bloco recolhe o bloco (fica lembrado neste computador).' },
       { sel: '.filters .seg', nome: 'Período', o: 'Hoje, Ontem, Semana, Mês e os outros períodos rápidos, ou datas livres.' },
       { sel: '#vgPers', nome: 'Personalizar', o: 'Abre Meu painel em edição: indicadores do topo, blocos, ordem e largura. Para todos verem, salve como visão compartilhada.' },
-      { sel: '#vgPrint', nome: 'Imprimir', o: 'Imprime a visão atual (sempre no tema claro).' },
-      { sel: '#vgTv', nome: 'Apresentar', o: 'Modo TV, para a tela da linha.' }
+      { sel: '#vgPrint', nome: 'Imprimir', o: 'Imprime a visão atual (sempre no tema claro, com todos os grupos abertos).' },
+      { sel: '#vgTv', nome: 'Apresentar', o: 'Modo TV, para a tela da linha.' },
+      { sel: '#vglLimpar', nome: 'Limpar', o: 'Volta o período para o mês atual e Máquina, Catálogo, Turno e Status para Todos. A Linha continua.' },
+      { sel: '.vgl-oee', nome: 'Situação do período', o: 'OEE do período, meta vigente, desvio em pontos percentuais, estado em texto (Na meta, Abaixo da meta) e comparação com o período anterior.', ex: '61,50% · meta 70,00% · −8,50 p.p. · Abaixo da meta.' },
+      { sel: '.vgl-perda', nome: 'Maior perda do período', o: 'A maior etapa da cascata de perdas e a parada que mais tirou tempo no Pareto, com atalho para investigar. Não deduz causa: a causa é confirmada nos eventos.' },
+      { sel: '.vgl-dg', nome: 'Diagnóstico rápido', o: 'Melhor e pior dia pelo OEE (clique abre o dia) e a confiabilidade do apontamento (clique abre as pendências).' },
+      { sel: '.vgl-grp .vgl-gh', nome: 'Grupos de análise', o: 'Os 13 gráficos agrupados por assunto (A a F). Clique no título do grupo para recolher ou abrir; fica lembrado neste computador. Na impressão saem todos abertos.' },
+      { sel: '.vgl-exp', nome: 'Explorar dados', o: 'Atalhos para o último dia, Paradas, Pendências, Plano e ordens, Histórico e Relatórios.' }
     ],
-    duvidas: [['O OEE do período é a média dos dias?', 'Não: é a soma dos tempos e das peças do período (sem média de médias).']]
+    duvidas: [['O OEE do período é a média dos dias?', 'Não: é a soma dos tempos e das peças do período (sem média de médias).'],
+      ['Por que aparece "1 dia no período" num gráfico?', 'Com um dia só não há tendência: o gráfico mostra o valor do dia contra a meta. Escolha um período maior para ver a evolução.'],
+      ['Sumiu Produção boa de "Mais indicadores"?', 'Ela já está na grade de cima. Se você desligar o cartão em Editar cards, ela volta a aparecer em "Mais indicadores".']]
   }
 };

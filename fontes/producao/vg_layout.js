@@ -142,7 +142,7 @@ const VGL = (() => {
       const mais = el('<button type="button" class="btn sm vgl-mais" id="vglMais" aria-expanded="false">Mais filtros ▾</button>');
       if (sp) { sp.before(mais); sp.before(lim); } else { fil.append(mais, lim); }
     }
-    const D = dados(); if (!D) return;
+    const D = dados(); if (!D) { ligar(root, null); return; }   /* sem dias no período: Limpar e Mais filtros continuam funcionando */
     /* 01 · situação */
     const dec = root.querySelector('.decide');
     if (dec && !root.querySelector('.vgl-sit')) {
@@ -169,8 +169,12 @@ const VGL = (() => {
     ligar(root, D);
   }
   function ligar(root, D) {
-    const lim = root.querySelector('#vglLimpar'); if (lim) lim.onclick = () => { Object.assign(App.filters, { machineId: '', catalogId: '', shiftId: '', status: '' }); const b = root.querySelector('[data-qp="mtd"]'); if (b) b.click(); else render(); };
+    const lim = root.querySelector('#vglLimpar'); if (lim) lim.onclick = () => {
+      Object.assign(App.filters, { machineId: '', catalogId: '', shiftId: '', status: '' });
+      const fm = root.querySelector('#gFilters'); if (fm) for (const n of ['machineId', 'catalogId', 'shiftId', 'status']) { const x = fm.querySelector(`[name="${n}"]`); if (x) x.value = ''; }   /* o filtro relê o formulário */
+      const b = root.querySelector('[data-qp="mtd"]'); if (b) b.click(); else render(); };
     const ma = root.querySelector('#vglMais'), fil = root.querySelector('#gFilters'); if (ma && fil) ma.onclick = () => { const o = fil.classList.toggle('vgl-aberto'); ma.setAttribute('aria-expanded', o); ma.textContent = o ? 'Menos filtros ▴' : 'Mais filtros ▾'; };
+    if (!D) return;
     root.querySelectorAll('.vgl-gh').forEach(b => b.onclick = () => { const g = b.closest('.vgl-grp'), k = g.dataset.vglGrupo, f = F(), fe = !g.classList.contains('fechado');
       g.classList.toggle('fechado', fe); b.setAttribute('aria-expanded', !fe); b.querySelector('.seta').textContent = fe ? '▸' : '▾'; if (fe) f[k] = 1; else delete f[k]; savePrefs(); if (!fe) Charts.fit(g); });
     root.querySelectorAll('[data-vgl-dia]').forEach(b => b.onclick = () => { const d = D.days.find(x => x.id === b.dataset.vglDia); if (d) openDayDrawer(d); });
