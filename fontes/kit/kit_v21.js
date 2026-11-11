@@ -935,3 +935,28 @@ const vacLogin = (() => {
 })();
 /* o "Entrar" antigo do cabeçalho abre o login (trocar usuário, trocar senha, sair) */
 try { if (typeof VacEntrar !== 'undefined') VacEntrar.abrir = () => vacLogin.abrir({ trocar: true }); } catch (e) { }
+
+/* ----- kit v2.1 · vacLayout: padrão da Visão Geral (11/11/2026; igual em todas as páginas; não editar só numa) -----
+   Peças comuns para montar a tela inicial de cada página na mesma ordem de leitura da Produção (2.4.49):
+   sec(n, título, subtítulo) · grupo(chave, nome, pergunta, conteúdo) · estado(classe, texto) · ligar(raiz, página).
+   Os estilos estão no kit_visual.css (vk-*). Grupos recolhidos ficam em localStorage vac.grupos.<página> ({chave: 1}); na impressão saem abertos.
+   Só apresentação: a página continua calculando os próprios números. */
+const vacLayout = (() => {
+  const e = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  const F = p => { try { const x = JSON.parse(localStorage.getItem('vac.grupos.' + p) || '{}'); return x && typeof x === 'object' ? x : {}; } catch (x) { return {}; } };
+  const G = (p, f) => { try { localStorage.setItem('vac.grupos.' + p, JSON.stringify(f)); } catch (x) { } };
+  const sec = (n, t, s) => `<div class="vk-sec"><b>${e(n)}</b><h3>${e(t)}</h3>${s ? `<span>${e(s)}</span>` : ''}</div>`;
+  const estado = (c, t) => `<span class="vk-st ${e(c)}">${e(t)}</span>`;
+  /* html do grupo; o corpo é colocado pela página (string) ou depois, movendo nós para .vk-gb */
+  const grupo = (p, k, nome, q, corpo, n) => { const fe = !!F(p)[k], id = 'vkg-' + p + '-' + k;
+    return `<section class="vk-grp${fe ? ' fechado' : ''}" data-vk-grupo="${e(k)}"><button type="button" class="vk-gh" aria-expanded="${!fe}" aria-controls="${id}"><span class="seta" aria-hidden="true">${fe ? '▸' : '▾'}</span><span><span class="t">${e(k)} · ${e(nome)}</span><br><span class="q">${e(q || '')}</span></span>${n != null ? `<span class="n">${e(n)}</span>` : ''}</button><div class="vk-gb" id="${id}">${corpo || ''}</div></section>`; };
+  function ligar(root, p) {
+    (root || document).querySelectorAll('.vk-grp').forEach(g => { const b = g.querySelector(':scope > .vk-gh'); if (!b || b._vk) return; b._vk = 1;
+      b.addEventListener('click', () => { const k = g.dataset.vkGrupo, f = F(p), fe = !g.classList.contains('fechado'); g.classList.toggle('fechado', fe); b.setAttribute('aria-expanded', !fe);
+        const s = b.querySelector('.seta'); if (s) s.textContent = fe ? '▸' : '▾'; if (fe) f[k] = 1; else delete f[k]; G(p, f); window.dispatchEvent(new CustomEvent('vac:grupo', { detail: { pagina: p, grupo: k, aberto: !fe } })); }); });
+  }
+  const fechado = (p, k) => !!F(p)[k];
+  return { sec, estado, grupo, ligar, fechado };
+})();
+/* "Mais filtros" no celular: botão .vk-mais dentro de .filters abre e fecha os campos .vk-opt (vacLayout, 11/11/2026) */
+document.addEventListener('click', ev => { const b = ev.target.closest('.vk-mais'); if (!b) return; const f = b.closest('.filters'); if (!f) return; const o = f.classList.toggle('vk-aberto'); b.setAttribute('aria-expanded', o); b.textContent = o ? 'Menos filtros ▴' : 'Mais filtros ▾'; });

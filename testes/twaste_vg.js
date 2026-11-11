@@ -1,0 +1,71 @@
+// Waste › Visão Geral no padrão visual comum (vacLayout do kit, 11/11/2026): os números não mudam com o layout.
+// Lê, no modo de teste (dados fictícios), todos os indicadores, os totais do Resumo, o quadro por competência, os 4 gráficos e a tabela
+// e compara com testes/bases/waste-vg-referencia.json (gravada antes da mudança).
+//   node testes/twaste_vg.js --gravar   grava a referência (só antes de mudar a tela)
+//   node testes/twaste_vg.js            confere; também tira prints em testes/saida/waste-vg/ (claro/escuro, 390/768/1440)
+// Código 1 se falhar.
+const path = require('path'), fs = require('fs'); const RAIZ = path.resolve(__dirname, '..') + '/';
+const { chromium } = require('playwright');
+const REF = RAIZ + 'testes/bases/waste-vg-referencia.json', SAI = RAIZ + 'testes/saida/waste-vg/'; fs.mkdirSync(SAI, { recursive: true });
+const GRAVAR = process.argv.includes('--gravar'), ROTULO = (process.argv.find(a => a.startsWith('--prints=')) || '--prints=depois').slice(9);
+const errs = []; const ok = (c, m) => { console.log((c ? 'ok   ' : 'FALHA ') + m); if (!c) errs.push(m); };
+const LER = () => {
+  const n = s => String(s || '').replace(/\s+/g, ' ').trim(), t = document.getElementById('t-painel');
+  const kpis = {};
+  t.querySelectorAll('.kpi').forEach(k => { const l = n((k.querySelector('.l') || {}).textContent).replace(/\s*i$/, ''); if (!l) return; kpis[l.toUpperCase()] = n((k.querySelector('.v') || {}).textContent) + ' | ' + n((k.querySelector('.s') || {}).textContent); });
+  // totais do antigo Resumo (VAR. MATERIAL, SCRAP, TOTAL): no layout novo estão nos indicadores; aqui só os valores
+  const resumo = {}; const rs = document.getElementById('resumo');
+  if (rs && rs.style.display !== 'none') rs.querySelectorAll('.big').forEach(b => { const l = n(b.previousElementSibling && b.previousElementSibling.textContent); resumo[l.toUpperCase()] = n(b.textContent); });
+  const g = id => n((document.getElementById(id) || {}).textContent);
+  return { kpis, resumo, trend: g('chTrend'), comp: g('chComp'), prod: g('chProd'), causa: g('chCausa'), porComp: g('porComp'), tabela: g('tblMain').slice(0, 4000), info: g('tblInfo') };
+};
+(async () => {
+  const b = await chromium.launch(); const pe = [];
+  const nova = async (w, h, tema) => { const c = await b.newContext({ viewport: { width: w, height: h }, colorScheme: tema }); const o = await c.newPage(); o.on('pageerror', e => pe.push(e.message)); o.on('dialog', d => d.accept());
+    await o.goto('file://' + RAIZ + 'paginas/Perdas-Ordem.html'); await o.waitForTimeout(900);
+    await o.evaluate(() => { document.querySelectorAll('.overlay').forEach(x => x.remove()); enterTest(); }); await o.waitForTimeout(1200);
+    await o.evaluate(() => { try { localStorage.removeItem('vac.grupos.perdas'); } catch (e) { } showTab('painel'); }); await o.waitForTimeout(600); return { c, o }; };
+  const { c, o } = await nova(1440, 900, 'light');
+  const atual = await o.evaluate(LER);
+  ok(Object.keys(atual.kpis).length >= 9 && atual.trend && atual.comp && atual.tabela, `indicadores (${Object.keys(atual.kpis).length}), gráficos e tabela lidos`);
+  if (GRAVAR) { fs.writeFileSync(REF, JSON.stringify(atual, null, 1)); console.log('referência gravada em ' + path.relative(RAIZ, REF)); }
+  else {
+    const ref = JSON.parse(fs.readFileSync(REF, 'utf8'));
+    const difK = Object.keys(ref.kpis).filter(k => ref.kpis[k] !== atual.kpis[k]);
+    ok(!difK.length, 'mesmos valores em todos os indicadores da referência' + (difK.length ? ': ' + difK.map(k => `${k} [${ref.kpis[k]}] → [${atual.kpis[k] || 'ausente'}]`).join(' ; ') : ` (${Object.keys(ref.kpis).length})`));
+    // Resumo juntado aos indicadores (pendência do registro § L): VAR. MATERIAL e SCRAP viram indicadores; TOTAL é o Desvio líquido
+    const v = k => (atual.kpis[k] || '').split(' | ')[0];
+    ok(ref.resumo['VAR. MATERIAL'] === v('VAR. MATERIAL') && ref.resumo['SCRAP'] === v('SCRAP') && ref.resumo['TOTAL'] === v('DESVIO LÍQUIDO'), `totais do Resumo iguais nos indicadores (material ${v('VAR. MATERIAL')}, scrap ${v('SCRAP')}, total = desvio líquido ${v('DESVIO LÍQUIDO')})`);
+    for (const k of ['trend', 'comp', 'prod', 'causa', 'porComp', 'tabela', 'info']) ok(ref[k] === atual[k], `mesmo conteúdo: ${k}`);
+  }
+  await o.screenshot({ path: SAI + ROTULO + '-1440-claro.png', fullPage: true });
+  if (!GRAVAR) {
+    const L = await o.evaluate(async () => { const w = t => new Promise(r => setTimeout(r, t)), out = {}, T = document.getElementById('t-painel');
+      out.secoes = [...T.querySelectorAll('.vk-sec h3')].map(x => x.textContent);
+      out.grupos = [...T.querySelectorAll('.vk-grp')].map(g => g.dataset.vkGrupo + ':' + g.querySelectorAll('.card').length);
+      out.sit = (T.querySelector('.vk-sit') || {}).textContent || ''; out.diag = T.querySelectorAll('.vk-dc').length;
+      out.resumoOculto = getComputedStyle(document.getElementById('resumo')).display === 'none';
+      T.querySelector('[data-vk-grupo="B"] .vk-gh').click(); await w(50);
+      out.fechou = T.querySelector('[data-vk-grupo="B"]').classList.contains('fechado') && JSON.parse(localStorage.getItem('vac.grupos.perdas') || '{}').B === 1;
+      renderPainel(); await w(200); out.lembrou = document.querySelector('#t-painel [data-vk-grupo="B"]').classList.contains('fechado');
+      document.querySelector('#t-painel [data-vk-grupo="B"] .vk-gh').click(); await w(50);
+      return out; });
+    console.log('     layout:', JSON.stringify({ ...L, sit: L.sit.replace(/\s+/g, ' ').slice(0, 120) }));
+    ok(L.secoes.join('|') === 'Situação do período|Números do período|Diagnóstico rápido|Análises|Ordens e componentes', 'cinco seções na ordem: Situação, Números, Diagnóstico, Análises, Ordens');
+    ok(L.grupos.join(' ') === 'A:2 B:2 C:1', `gráficos e quadro em 3 grupos (${L.grupos.join(' ')})`);
+    ok(/Desvio líquido/.test(L.sit) && /meta|Sem meta/i.test(L.sit) && /(Acima|Dentro) da meta|Sem meta/.test(L.sit), 'Situação: desvio líquido × meta com estado em texto');
+    ok(L.diag === 3 && L.resumoOculto, 'Diagnóstico com 3 cartões; Resumo antigo junto dos indicadores (sem totais repetidos)');
+    ok(L.fechou && L.lembrou, 'grupo recolhido lembra a escolha (vac.grupos.perdas)');
+    await o.emulateMedia({ media: 'print' }); await o.evaluate(() => document.querySelector('#t-painel [data-vk-grupo="A"] .vk-gh').click());
+    const imp = await o.evaluate(() => getComputedStyle(document.querySelector('#t-painel [data-vk-grupo="A"] .vk-gb')).display); await o.emulateMedia({ media: 'screen' });
+    ok(imp !== 'none', `impressão com os grupos abertos (${imp})`);
+  }
+  await c.close();
+  for (const [w, h, tema] of [[1440, 900, 'dark'], [768, 1024, 'light'], [390, 844, 'light'], [390, 844, 'dark']]) {
+    const x = await nova(w, h, tema); const sx = await x.o.evaluate(() => document.documentElement.scrollWidth - innerWidth);
+    ok(sx <= 1, `${w} px ${tema === 'dark' ? 'escuro' : 'claro'}: sem rolagem lateral (${sx}px)`);
+    await x.o.screenshot({ path: SAI + ROTULO + '-' + w + '-' + (tema === 'dark' ? 'escuro' : 'claro') + '.png', fullPage: true }); await x.c.close();
+  }
+  ok(!pe.length, 'sem erro de página' + (pe.length ? ': ' + pe.slice(0, 3).join(' | ') : ''));
+  await b.close(); console.log(errs.length ? `\n${errs.length} falha(s)` : '\nsem erros'); process.exit(errs.length ? 1 : 0);
+})().catch(e => { console.error('FALHA ' + e.stack); process.exit(1); });
