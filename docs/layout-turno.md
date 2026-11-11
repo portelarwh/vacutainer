@@ -93,3 +93,4 @@ Pedidos do usuário na homologação com o CSV real da semana.
   - o Dia das 00:00 às 24:00 com 04:00 e 05:00 antes das 06:00;
   - a ausência do aviso;
   - os blocos recolhíveis e lembrados.
+- **Botão do scrap:** "Lançar scrap" / "Editar scrap" com fundo vermelho pastel (#e06c6c) e texto branco em negrito, nos dois temas (pedido do usuário). O hover fica um pouco mais escuro.
