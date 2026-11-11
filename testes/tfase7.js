@@ -16,8 +16,8 @@ const { chromium } = require('playwright');
     App.sel.date = d.date; App.sel.lineId = d.lineId; go('launch'); await w();
     const m = document.getElementById('main') || document.body, R = { ver: APP_VERSION, date: d.date };
     R.respDia = !!m.querySelector('[data-dayf="responsible"]');
-    R.respTurno = m.querySelectorAll('[data-psf$="|responsible"]').length; R.nTurnos = m.querySelectorAll('section.shift').length;
-    R.hhBtn = m.querySelectorAll('section.shift [data-hhps]').length;
+    R.respTurno = m.querySelectorAll('[data-psf$="|responsible"]').length; R.nTurnos = m.querySelectorAll('section.tl, section.shift').length;
+    R.hhBtn = m.querySelectorAll('section.tl [data-hhps], section.shift [data-hhps]').length;
     R.ib = ['restaurarIv', 'reaplicarMetas', 'moverDia', 'diaSemProd'].filter(k => m.querySelector(`[data-help="${k}"]`));
     R.pill = (document.querySelector('[data-vac-cadrev]') || {}).outerHTML || '';
     // Total diário → Responsável pelo reporte
@@ -28,7 +28,7 @@ const { chromium } = require('playwright');
     const ps = d.shifts.filter(p => !p.deleted && !p.summary)[1]; Actions.setShiftField(d.id, ps.id, 'responsible', 'P. Costa'); await w();
     R.psResp = db().productionDays.find(x => x.id === d.id).shifts.find(p => p.id === ps.id).responsible;
     // PRD-06: hora a hora só do turno
-    render(); await w(); document.querySelector(`section.shift [data-hhps="${ps.id}"]`).click(); await w();
+    render(); await w(); document.querySelector(`section.tl [data-hhps="${ps.id}"]`).click(); await w();
     R.rota = App.route; R.grp = [...document.querySelectorAll('table.hh tr.grp')].map(t => t.textContent.trim().slice(0, 30));
     R.seg = [...document.querySelectorAll('[data-hhsel]')].map(x => x.textContent.trim());
     R.sel = (document.querySelector('[data-hhsel][aria-pressed="true"]') || {}).dataset?.hhsel;

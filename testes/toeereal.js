@@ -38,10 +38,10 @@ const { chromium } = require('playwright');
     App.prefs.kcOff = []; App.sel.date = X; App.sel.lineId = LINE; go('launch'); await w(300);
     const kl = [...document.querySelectorAll('.section.kpis .kpi .l')].map(l => l.childNodes[0].textContent.trim());
     out.kpis = kl; out.ib = ['oeeRep', 'oeeReal', 'foraTurnoKpi'].every(k => document.querySelector(`.section.kpis [data-help="${k}"]`));
-    const tx = s => s.textContent.replace(/\s+/g, ' '); out.cartoes = document.querySelectorAll('section.shift').length;
-    out.B = [...document.querySelectorAll('section.shift:not(.np)')].map(tx).find(t => /Turno B/.test(t)) || ''; out.C = [...document.querySelectorAll('section.shift.np')].map(tx).join(' ');
+    const tx = s => s.textContent.replace(/\s+/g, ' '); out.cartoes = document.querySelectorAll('section.tl, section.shift').length;
+    out.B = [...document.querySelectorAll('section.tl, section.shift:not(.np)')].map(tx).find(t => /Turno B/.test(t)) || ''; out.C = [...document.querySelectorAll('section.shift.np')].map(tx).join(' ');
     // 2.4.41 · cartão do turno (PRD-10) e popup de scrap (PRD-13)
-    out.cardB = out.B; out.temProcessada = /Produção processada/i.test(document.querySelector('section.shift:not(.np)').textContent);
+    out.cardB = out.B; out.temProcessada = /Produção processada/i.test(document.querySelector('section.tl, section.shift:not(.np)').textContent);
     const psB = dd.productionDays.find(x => x.date === X).shifts.find(p => p.snap.code === 'T2');
     document.querySelector(`[data-scrapturno="${psB.id}"]`).click(); await w(200);
     let ov = document.querySelector('.overlay'); out.scModal = !!ov && !!ov.querySelector('#scSo') && ov.querySelectorAll('[data-scm]').length > 2;
@@ -53,7 +53,7 @@ const { chromium } = require('playwright');
     document.querySelector(`[data-scrapturno="${psB.id}"]`).click(); await w(200); ov = document.querySelector('.overlay');
     ov.querySelector('#scSo').click(); await w(50); ov.querySelector('#scTot').value = '1.000'; ov.querySelector('#scOk').click(); await w(400);
     const psB3 = db().productionDays.find(x => x.date === X).shifts.find(p => p.snap.code === 'T2'); out.scTot = [psB3.scrap, psB3.scrapMaq == null];
-    out.scTxt = (document.querySelector(`[data-scrapturno="${psB.id}"]`).closest('.kv') || {}).textContent || '';
+    out.scTxt = (document.querySelector(`[data-scrapturno="${psB.id}"]`).closest('.kv, .tl-k') || {}).textContent || '';
     // Painel: indicadores novos
     out.pnK = ['oeeRep', 'oeeReal', 'fora', 'caixas'].every(k => PN_K[k]) && PN_MINE().kpis.includes('oeeReal');
     // Editar cards
@@ -115,9 +115,9 @@ const { chromium } = require('playwright');
   ok(R.rotulos >= R.colunas + 3, `gráfico do hora a hora com rótulo em todas as colunas, mais as horas do C com caixas (${R.rotulos} rótulos, ${R.colunas} intervalos)`);
   ok(['Último catálogo do período', 'Produção boa', 'OEE realizado', 'Disponibilidade', 'Performance', 'Qualidade', 'Capacidade planejada', 'Meta oficial do período', 'OEE reportado', 'OEE real', 'Fora de turno', 'Caixas do MES'].every(k => R.vgCards.includes(k)), `Visão Geral com os cartões do Lançamento (${R.vgCards.join(' · ')})`);
   ok(R.vgFoldBtns >= 5 && R.vgDobrou && R.maisInd, `Visão Geral: ${R.vgFoldBtns} blocos recolhíveis (lembrado neste computador); Mais indicadores continua`);
-  ok(/Produção dentro do turno/i.test(R.cardB) && /Produção fora do turno/i.test(R.cardB) && /54 caixa/.test(R.cardB) && /22:47–23:40/.test(R.cardB) && /Produção total considerada/i.test(R.cardB) && /OEE reportado/i.test(R.cardB) && /OEE real/i.test(R.cardB) && !/OEE realizado/i.test(R.cardB) && !R.temProcessada, 'PRD-10: cartão do turno com produção dentro / fora (caixas e horário) / total considerada, OEE reportado e OEE real; sem "Produção processada"');
+  ok(/Produção dentro do turno/i.test(R.cardB) && /Produção fora do turno/i.test(R.cardB) && /54 caixa/.test(R.cardB) && /22:47\s?–\s?23:40/.test(R.cardB) && /Produção total considerada/i.test(R.cardB) && /OEE reportado/i.test(R.cardB) && /OEE real/i.test(R.cardB) && !/OEE realizado/i.test(R.cardB) && !R.temProcessada, 'PRD-10: cartão do turno com produção dentro / fora (caixas e horário) / total considerada, OEE reportado e OEE real; sem "Produção processada"');
   ok(R.scModal && R.scDesab && R.scSoma === '1.250' && R.scGrav[0] === 1250 && /EQ01":400/.test(R.scGrav[1]), `PRD-13: popup de scrap por máquina (máquinas desabilitadas em "só o total"; soma ${R.scSoma}; gravado ${R.scGrav.join(' ')})`);
-  ok(R.scTot[0] === 1000 && R.scTot[1] && /1\.000 peças · só o total/.test(R.scTxt), 'PRD-13: "Reportar só o total" grava o total e limpa o por máquina; o cartão mostra o total');
+  ok(R.scTot[0] === 1000 && R.scTot[1] && /1\.000\s*peças/.test(R.scTxt) && /só o total/.test(R.scTxt), 'PRD-13: "Reportar só o total" grava o total e limpa o por máquina; o cartão mostra o total');
   ok(R.pnK, 'PRD-08: OEE reportado, OEE real, Fora de turno e Caixas do MES no catálogo do Painel; Meu painel com OEE real');
   ok(R.plano && R.plano.real === R.plano.dias && R.plano.ord === 102000 && R.plano.mes && R.plano.mes.caixas === 102 && R.plano.ini === '2026-03-10T22:30' && R.plano.fim === '2026-03-11T02:30' && R.plano.o2 === R.plano.dias - 102000, `Plano: realizado = soma dos dias (com fora de turno); ordem do lote L-2 = 102 caixas do MES, 1ª e última caixa; ordem sem lote recebe o resto (plano ${R.plano && R.plano.real}, ordem L-2 ${R.plano && R.plano.ord}, outra ${R.plano && R.plano.o2}, ${R.plano && R.plano.ini}–${R.plano && R.plano.fim}${R.plano && R.plano.erro ? ' · ' + R.plano.erro : ''})`);
   ok(R.tab.tipo && R.tab.mods === 10 && R.tab.dia.length === 2 && R.tab.ter.length === 1 && /Ter/.test(R.tab.ter[0]), `Relatórios › Tabelas: 10 modelos; por dia (2 linhas) e só terças (1 linha: ${(R.tab.ter[0] || '').slice(0, 60)})`);
