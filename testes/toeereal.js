@@ -108,7 +108,7 @@ const { chromium } = require('playwright');
   ok(R.edit.includes('Fora de turno') && R.edit.includes('Produção boa') && R.semFora && R.pref === '["Fora de turno"]', 'Editar cards: desmarcar esconde o indicador e fica na preferência do computador');
   ok(R.vg.length === 3 && R.vgReal.real < R.vgReal.rep && R.vgReal.fora === 85000, `Visão Geral com os 3 no período (fora de turno ${R.vgReal.fora})`);
   ok(/Caixas do MES/.test(R.kpiCx) && /20:00 – 23:40/.test(R.kpiCx) && /54 fora do turno/.test(R.kpiCx) && /1 troca/.test(R.kpiCx), `cartão "Caixas do MES" no Lançamento com 1ª e última caixa do dia de trabalho (2.4.53: 02:00–02:30 conta no A do dia seguinte, não aqui) e trocas (${R.kpiCx.replace(/\s+/g, ' ').slice(0, 120)})`);
-  ok(R.hhSel.some(t => /Turno C não produtivo · 85 cx/.test(t)) && /só leitura/i.test(R.hhNP) && R.hhNPlinhas === 8, `Hora a hora: turno C no seletor e na grade só leitura por hora (${R.hhSel.join(' | ')}; ${R.hhNPlinhas} horas)`);
+  ok(R.hhSel.some(t => /Turno C não produtivo · 54 cx/.test(t))   /* 2.4.55: pelo dia do calendário (00:00–06:00 e 22:47–24:00); as 31 caixas das 02:00 de amanhã ficam no dia seguinte */ && /só leitura/i.test(R.hhNP) && R.hhNPlinhas === 8, `Hora a hora: turno C no seletor e na grade só leitura por hora (${R.hhSel.join(' | ')}; ${R.hhNPlinhas} horas)`);
   ok(R.soNP, 'Hora a hora: escolhendo o C, mostra só a grade dele');
   ok(R.dobrou && R.lembra, 'Hora a hora: cada turno recolhe e expande pela linha do turno, e a escolha fica lembrada');
   ok(!R.textos, 'Hora a hora sem os textos fixos (número completo, pausas e intervalos padrão, ⋯ no fim da linha)');

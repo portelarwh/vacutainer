@@ -94,3 +94,67 @@ Pedidos do usuário na homologação com o CSV real da semana.
   - a ausência do aviso;
   - os blocos recolhíveis e lembrados.
 - **Botão do scrap:** "Lançar scrap" / "Editar scrap" com fundo vermelho pastel (#e06c6c) e texto branco em negrito, nos dois temas (pedido do usuário). O hover fica um pouco mais escuro.
+
+## 2.4.55 · Hora a hora por turno, Dia 00–24 h com barras e setas Mostrar/Recolher (11/11/2026)
+
+- **Gráfico do Hora a hora com o turno escolhido** (`HHPs.chart` em `hh24.js`):
+  - **1º turno:** mostra as horas dele e as horas fora do turno que contam nele (ex.: 04:00 e 05:00);
+  - **2º turno:** mostra só as horas dele;
+  - **3º turno não produtivo:** mostra as horas da janela dele que tiveram caixas, cada uma dizendo em qual turno conta;
+  - **Todos:** mostra tudo o que conta no dia, em ordem de horário.
+- **Turno não produtivo pelo dia do calendário:** a grade, a contagem no seletor e o gráfico usam as horas deste dia que caem na janela do turno (00:00–06:00 e 22:47–24:00), não mais a janela que entra no dia seguinte (`HHPs.npGrade`, `trechosNP`).
+  - A grade ganhou a coluna **"Conta no"**.
+  - O cabeçalho da grade diz em que turno a produção conta.
+- **Dia (24 h):** as horas fora do turno que contam neste dia agora têm **barra** (produção do MES), não só a linha.
+- **Seta "▾ Recolher / ▸ Mostrar" ao lado do ícone** (`LcFold` em `lanc_layout.js`, `App.prefs.lcFold`):
+  - aparece em todos os blocos do Lançamento (servidor, lotes, fora do turno, turno não produtivo), em **cada turno** e nos cartões com título (Validação, Cascata, Disponibilidade…);
+  - os cartões sem ícone ganharam um, escolhido pelo título;
+  - o clique na seta ou no título recolhe e abre, e a escolha fica lembrada neste computador;
+  - na impressão, tudo sai aberto;
+  - no celular, aparece só a seta;
+  - o Cabeçalho do dia mantém o botão próprio.
+- **Teste:** `thh24.js` confere:
+  - o gráfico por turno (A, B e o não produtivo);
+  - a coluna "Conta no";
+  - setas e ícones em todos os blocos;
+  - o turno recolhido e lembrado.
+
+## 2.4.56 · Lançamento no layout novo (proposta visual do usuário, 11/11/2026)
+
+Reproduz a proposta "painel de gestão industrial" (`fontes/producao/lanc_v2.js`, chamado no mount do Lançamento). É **só apresentação**:
+- os nós, ids, `data-*` e números continuam os de antes;
+- nenhum indicador ou função saiu;
+- nenhuma fórmula mudou.
+
+**Cabeçalho do dia**
+- Recolhe por uma **seta em círculo**.
+- Data, Linha·máquina, Calendário e Scrap aparecem com ícone e separador.
+- A observação ganhou o texto de exemplo "Digite uma observação para o dia..." e um contador de caracteres. O limite continua 2000.
+- **Ações principais:** Hora a hora (em destaque), Fechar dia e Marcar como pendente de conferência (com contorno).
+- **Ações secundárias com ícone:** Restaurar intervalos, Reaplicar metas, Marcar dia sem produção e Mover para outro dia. O ⓘ de cada uma continua.
+- **Linha de baixo:** Histórico de alterações e **Excluir lançamento**, este com contorno vermelho por ser ação crítica.
+
+**Cartões**
+- Grade de 7 colunas; 4 colunas até 1280 px e 2 no celular.
+- Ícone ao lado do título, que fica **numa linha só** (o número de colunas diminui em telas menores: 7 a partir de 1600 px, 5, 4, 3 e 2 no celular, onde o título pode ir para a 2ª linha).
+- **Sem ⓘ, explicação no próprio título do cartão** (Produção inteira, todas as abas, `palavras()` em `lanc_v2.js` com MutationObserver no `#main`):
+  - o título com explicação tem sublinhado pontilhado; clicar nele (ou Enter/Espaço) abre a mesma ajuda de antes;
+  - o ⓘ que existia vira o próprio título; cartão que não tinha ⓘ ganha a explicação pelo título (`KPI_HELP` da página + `AJUDA_NOVA`: OEE do dia por hora, Paradas apontadas, Sem explicação, Consistência da cascata, Validação, Segurança e qualidade, Observação geral, Diferença contra a meta, Scrap %, PPH real e nominal);
+  - título de gráfico: a explicação é a pergunta que ele responde e a linha "Valores em …";
+  - cabeçalho de tabela: só o texto abre a explicação, o resto continua ordenando;
+  - num bloco recolhível, o título abre a explicação e a seta (ou o resto do cabeçalho) recolhe.
+- Nos botões de ação (Restaurar intervalos, Reaplicar metas, Marcar dia sem produção, Mover para outro dia) o clique continua sendo a ação: a explicação aparece como dica ao passar o mouse.
+- A borda e o fundo mostram a situação: na meta (verde), atenção (amarelo) ou abaixo da meta (vermelho, com fundo claro).
+- **Disponibilidade, Performance e Qualidade** com medidor em meia-lua. O número continua no cartão, visualmente escondido, para leitura de tela e testes.
+- **"OEE do dia (evolução por hora)"**, novo e com largura de 2 colunas.
+  - O OEE de cada intervalo é produção boa ÷ (PPH × minutos ÷ 60), a mesma conta do OEE oficial.
+  - A linha tracejada é a OEE meta do dia.
+  - Sem produção lançada, aparece um aviso.
+
+**Setas Mostrar/Recolher**
+- Em todos os blocos e turnos, a seta é um **círculo**, como na proposta.
+- O texto "Recolher"/"Mostrar" continua para leitor de tela e aparece como dica ao passar o mouse.
+
+**Não mudou nesta versão**
+- **Cabeçalho geral do kit** (navegação entre páginas, título e abas): é comum às 8 páginas e não foi alterado. O título da página com ícone e as abas sem caixa alta, como na proposta, entram numa mudança do kit, em todas as páginas juntas.
+- **"Editar cards"** continua por computador. Salvar a escolha **por perfil** ou para todos depende de guardar a escolha no Portal; é a próxima etapa sugerida.

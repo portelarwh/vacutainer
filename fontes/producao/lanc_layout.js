@@ -18,9 +18,14 @@ const LancUI = (() => {
 :root[data-theme="dark"] .lc{--l-blue:#5AA2EC;--l-blue-soft:#1A2F45;--l-pri:#2F6FB0;--l-ok:#3FC07A;--l-ok-ink:#6FD89D;--l-ok-soft:#132B20;--l-warn:#F2AC55;--l-warn-ink:#F5BE78;--l-warn-soft:#2E2414;--l-pur:#B08CEB;--l-pur-soft:#2A2140}
 .lc .lc-svg{fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;flex:none}
 .lc .lc-hd{display:flex;gap:14px;align-items:flex-start;flex-wrap:wrap}
-.lc .lc-c>.lc-hd{cursor:pointer}.lc .lc-c>.lc-hd::after{content:'▾ Recolher';margin-left:auto;font-size:12px;color:var(--muted);white-space:nowrap;align-self:center}
-.lc .lc-c.lc-fold>.lc-hd::after{content:'▸ Mostrar'}.lc .lc-c.lc-fold{align-self:start}.lc .lc-c.lc-fold>:not(.lc-hd){display:none!important}
-@media print{.lc .lc-c.lc-fold>:not(.lc-hd){display:revert!important}.lc .lc-c>.lc-hd::after{display:none}}
+.lf>.lc-hd,.lf>.tl-head,section.card.lf>header{cursor:pointer}
+.lf-tg{display:inline-flex;align-items:center;gap:4px;align-self:center;border:1px solid var(--line,#d5dbe2);background:transparent;color:var(--muted);border-radius:8px;padding:3px 8px;font:600 12px var(--f-body,inherit);cursor:pointer;white-space:nowrap;flex:none}
+.lf-tg:hover{color:var(--ink);border-color:var(--muted)}.lf-tg:focus-visible{outline:2px solid var(--accent,#2563eb);outline-offset:2px}
+.lf-ic{display:inline-flex;align-items:center;justify-content:center;width:30px;height:30px;border-radius:8px;background:color-mix(in srgb,var(--accent,#2563eb) 14%,transparent);color:var(--accent,#2563eb);margin-right:8px;flex:none}
+section.card.lf>header{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.lc .lc-c.lf-fold>:not(.lc-hd),section.tl.lf-fold>:not(.tl-head),section.card.lf-fold>:not(header){display:none!important}.lf-fold{align-self:start}
+@media (max-width:600px){.lf-tg .lf-tx{display:none}}
+@media print{.lf-fold>*{display:revert!important}.lf-tg{display:none!important}}
 .lc .lc-hic{width:40px;height:40px;border-radius:10px;background:var(--l-blue);color:var(--surface);display:grid;place-items:center;flex:none}
 .lc h3.lc-t{margin:0;font-family:var(--f-body);font-size:20px;font-weight:700;text-transform:none;letter-spacing:0;color:var(--ink)}
 .lc .lc-s{margin:2px 0 0;color:var(--muted);font-size:13.5px}
@@ -191,17 +196,36 @@ const LancUI = (() => {
     const segunda = sv && np ? `<div class="lc-row2">${sv.lotes}<div class="lc" style="margin:0">${np}</div></div>` : (sv ? sv.lotes : '') + np;
     return `<div class="lc section">${sv ? sv.topo : ''}${segunda}${ft}</div>`;
   }
-  return { bloco, servidor, fora, npCards };
+  return { bloco, servidor, fora, npCards, ic };
 })();
-/* 2.4.54 · blocos do Lançamento recolhíveis (Produção registrada no servidor, Lotes do dia, Produção fora do turno, turno não
-   produtivo): clique no título; a escolha fica neste computador (App.prefs.lcFold, pela identificação do bloco) */
+/* 2.4.55 · todos os blocos do Lançamento recolhíveis, com a seta ao lado do ícone (pedido do usuário):
+   blocos do servidor/lotes/fora do turno/turno não produtivo (.lc-c), cada turno (section.tl) e os cartões (section.card com título).
+   Seta "▾ Recolher" / "▸ Mostrar" antes do ícone; clique na seta ou no título; lembrado neste computador (App.prefs.lcFold).
+   Cartões sem ícone ganham um pelo título. O Cabeçalho do dia mantém o botão próprio (App.prefs.cabFold). Impressão: tudo aberto. */
 const LcFold = {
   F() { const F = App.prefs.lcFold; return F && typeof F === 'object' ? F : (App.prefs.lcFold = {}); },
-  chave(s) { return s.id || s.getAttribute('aria-labelledby') || s.getAttribute('aria-label') || ''; },
-  aplicar(raiz) { (raiz || document).querySelectorAll('.lc .lc-c').forEach(s => { const k = this.chave(s); if (!k) return; const f = !!this.F()[k]; s.classList.toggle('lc-fold', f);
-    const h = s.querySelector(':scope > .lc-hd'); if (h) { h.setAttribute('role', 'button'); h.setAttribute('tabindex', '0'); h.setAttribute('aria-expanded', String(!f)); h.title = f ? 'Mostrar o bloco' : 'Recolher o bloco'; } }); },
-  alternar(s) { const k = this.chave(s); if (!k) return; const F = this.F(); F[k] = !F[k]; if (!F[k]) delete F[k]; try { savePrefs(); } catch (e) { } this.aplicar(s.parentElement); }
+  alvos(raiz) {
+    const out = [];
+    raiz.querySelectorAll('.lc .lc-c').forEach(s => { const h = s.querySelector(':scope > .lc-hd'); if (h) out.push({ s, h, k: s.id || s.getAttribute('aria-labelledby') || s.getAttribute('aria-label') || '' }); });
+    raiz.querySelectorAll('section.tl').forEach(s => { const h = s.querySelector(':scope > .tl-head'); if (h) out.push({ s, h, k: 'tl:' + (s.getAttribute('aria-label') || s.dataset.tl) }); });
+    raiz.querySelectorAll('section.card').forEach(s => { if (s.closest('.lc,.tl') || s.querySelector('#cabTg')) return; const h = s.querySelector(':scope > header'), t = h && h.querySelector('h3'); if (!t) return;
+      out.push({ s, h, k: 'card:' + t.textContent.replace(/[▾▸]/g, '').replace(/\s+/g, ' ').trim().slice(0, 60), card: true }); });
+    return out.filter(x => x.k);
+  },
+  iconeDe(t) { const n = String(t).toLowerCase(); const k = /valida/.test(n) ? 'alert' : /cascata|perdas/.test(n) ? 'bars' : /disponib|performance|oee|indicador/.test(n) ? 'trend' : /qualidade|apontamento/.test(n) ? 'check' : /parad|hora/.test(n) ? 'clock' : /observ|nota/.test(n) ? 'book' : /lote|caixa|produ/.test(n) ? 'box' : 'info';
+    try { return LancUI.ic(k, 20); } catch (e) { return ''; } },
+  aplicar(raiz) {
+    const m = raiz || document.getElementById('main'); if (!m || m.dataset.rota !== 'launch') return;
+    m.querySelectorAll('.lc .lc-c, section.tl, section.card').forEach(x => { x.dataset.lfchk = '1'; });   /* vistos: o observador não volta neles */
+    for (const x of this.alvos(m)) {
+      const f = !!this.F()[x.k]; x.s.classList.add('lf'); x.s.classList.toggle('lf-fold', f); x.s.dataset.lfk = x.k;
+      if (x.card && !x.h.querySelector('.lf-ic,svg')) { const t = x.h.querySelector('h3'); const sp = document.createElement('span'); sp.className = 'lf-ic'; sp.innerHTML = this.iconeDe(t.textContent); t.before(sp); }
+      let b = x.h.querySelector(':scope > .lf-tg'); if (!b) { b = document.createElement('button'); b.type = 'button'; b.className = 'lf-tg'; x.h.prepend(b); }
+      const html = `<span aria-hidden="true">${f ? '▸' : '▾'}</span><span class="lf-tx">${f ? 'Mostrar' : 'Recolher'}</span>`; if (b.innerHTML !== html) { b.setAttribute('aria-expanded', String(!f)); b.title = f ? 'Mostrar o bloco' : 'Recolher o bloco'; b.innerHTML = html; }
+    }
+  },
+  alternar(s) { if (!s) return; const k = s.dataset.lfk; if (!k) return; const F = this.F(); F[k] = !F[k]; if (!F[k]) delete F[k]; try { savePrefs(); } catch (e) { } this.aplicar(); }
 };
-document.addEventListener('click', e => { const h = e.target.closest('.lc .lc-c > .lc-hd'); if (!h || e.target.closest('button,a,input,select,label,.lc-tip,.ib,i.i')) return; LcFold.alternar(h.parentElement); });
-document.addEventListener('keydown', e => { if (e.key !== 'Enter' && e.key !== ' ') return; const h = e.target.closest && e.target.closest('.lc .lc-c > .lc-hd'); if (!h || e.target !== h) return; e.preventDefault(); LcFold.alternar(h.parentElement); });
-new MutationObserver(() => { const m = document.getElementById('main'); if (m && m.querySelector('.lc .lc-c:not([data-lcf])')) { m.querySelectorAll('.lc .lc-c:not([data-lcf])').forEach(s => s.dataset.lcf = '1'); LcFold.aplicar(m); } }).observe(document.documentElement, { childList: true, subtree: true });
+document.addEventListener('click', e => { const b = e.target.closest('#main .lf-tg'); if (b) { e.preventDefault(); LcFold.alternar(b.closest('.lf')); return; }
+  const h = e.target.closest('#main .lf > .lc-hd, #main .lf > .tl-head, #main section.card.lf > header'); if (!h || e.target.closest('button,a,input,select,textarea,label,.lc-tip,.ib,i.i,.tl-acts')) return; LcFold.alternar(h.parentElement); });
+new MutationObserver(() => { const m = document.getElementById('main'); if (!m || m.dataset.rota !== 'launch') return; if (m.querySelector('.lc .lc-c:not([data-lfchk]), section.tl:not([data-lfchk]), section.card:not([data-lfchk])')) LcFold.aplicar(m); }).observe(document.documentElement, { childList: true, subtree: true });
