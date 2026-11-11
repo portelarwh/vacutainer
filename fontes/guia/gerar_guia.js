@@ -28,17 +28,23 @@ const FECHA=()=>document.querySelectorAll('.overlay,#toast,.toast').forEach(o=>{
 
  // ---- Portal: Entrar, ID, Escolher pasta
  const P=await nova('Portal.html');await P.evaluate(FECHA);versoes.Portal=await P.evaluate(()=>PAGE.versao);
- await foto(P,'portal-entrar','Portal · canto superior direito: clique em Entrar',[['#askUser',1]],{x:0,y:0,width:1280,height:100});
- await P.evaluate(()=>{try{Entrar.abrir()}catch(e){}});await P.waitForTimeout(400);await P.fill('#enId','1234').catch(()=>{});
- {const r=await P.evaluate(()=>{const m=document.querySelector('#enId').closest('.modal').querySelector('.mb').parentElement.getBoundingClientRect();return{x:m.left,y:m.top,width:m.width,height:m.height}});
-  await foto(P,'portal-id','Janela Entrar: digite o seu ID do cadastro e clique em Entrar',[['#enId',2],['#enOk',3]],{x:Math.max(0,r.x-16),y:Math.max(0,r.y-16),width:Math.min(1280,r.width+32),height:Math.min(800,r.height+32)})}
- await P.evaluate(()=>{try{Modal.close()}catch(e){}document.querySelectorAll('.modal.on').forEach(m=>m.classList.remove('on'))});await P.evaluate(()=>App.show('config'));await P.waitForTimeout(500);
-  {const r=await P.evaluate(()=>{const c=document.querySelector('#cPasta').closest('.card');const x=c.getBoundingClientRect();return{x:x.left,y:x.top,width:x.width,height:Math.min(x.height,150)}});await foto(P,'portal-pasta','⚙ Administração › Configuração do Portal › quadro Pasta da rede: clique em Escolher pasta',[['#cPasta',1]],{x:Math.max(0,r.x-12),y:Math.max(0,r.y-12),width:Math.min(1280,r.width+24),height:r.height+24})}
+ // login (kit vacLogin): num computador sem cadastro pede para conectar a pasta; depois ID e senha (o teste automático só vê o pop-up com vac.login.forcar)
+ await P.evaluate(()=>{localStorage.setItem('vac.login.forcar','1');vacLogin.fechar();vacLogin.checar()});await P.waitForTimeout(300);
+ const caixa=async()=>{const r=await P.evaluate(()=>{const x=document.querySelector('.vlog .vl-d').getBoundingClientRect();return{x:x.left,y:x.top,width:x.width,height:x.height}});return{x:Math.max(0,r.x-60),y:Math.max(0,r.y-30),width:Math.min(1280,r.width+120),height:Math.min(800,r.height+60)}};
+ await foto(P,'portal-login-pasta','Computador novo: a janela de entrada pede para conectar a pasta da rede',[['#vlCon',1]],await caixa());
+ await P.evaluate(()=>{localStorage.removeItem('vac.login.forcar');vacLogin.fechar()});await P.evaluate(()=>App.show('config'));await P.waitForTimeout(500);
+ {const r=await P.evaluate(()=>{const c=document.querySelector('#cPasta').closest('.card');const x=c.getBoundingClientRect();return{x:x.left,y:x.top,width:x.width,height:Math.min(x.height,150)}});await foto(P,'portal-pasta','⚙ Administração › Configuração do Portal: clique em Escolher pasta',[['#cPasta',1]],{x:Math.max(0,r.x-14),y:Math.max(0,r.y-14),width:Math.min(1280,r.width+28),height:r.height+28})}
+ await P.evaluate(()=>{localStorage.setItem('vac.login.forcar','1');enterTest()});await P.waitForTimeout(1400);
+ await P.evaluate(()=>{vacLogin.fechar();vacLogin.checar()});await P.waitForTimeout(300);await P.fill('#vlId','1001');
+ await foto(P,'portal-login-id','Digite o seu ID e clique em Continuar',[['#vlId',1],['#vlOk',2]],await caixa());
+ await P.click('#vlOk');await P.waitForTimeout(300);
+ for(const id of ['#vlP1','#vlP2']){const L=await P.$$(id+' input');for(let i=0;i<6;i++)await L[i].fill('482913'[i])}
+ await foto(P,'portal-login-senha','Primeiro acesso: aparecem nome, função e perfil; crie a senha de 6 números e repita',[['#vlP1',1],['#vlP2',2],['#vlOk',3]],await caixa());
+ await P.evaluate(()=>{localStorage.removeItem('vac.login.forcar');vacLogin.fechar()});
 
  // ---- Produção: Quem está usando? e Primeira configuração
  const O=await nova('OEE-Vacutainer.html');versoes['Produção']=await O.evaluate(()=>APP_VERSION);
  await O.fill('.overlay input','Ana Silva');
- await foto(O,'producao-nome','Produção · primeira abertura: digite o seu nome e clique em Usar este nome',[['.overlay input',1],['#uOk',2]],'.overlay .modal, .overlay > div',16).catch(async e=>{const r=await O.evaluate(()=>{const m=document.querySelector('.overlay').firstElementChild.getBoundingClientRect();return{x:m.left,y:m.top,width:m.width,height:m.height}});await foto(O,'producao-nome','Produção · primeira abertura: digite o seu nome e clique em Usar este nome',[['.overlay input',1],['#uOk',2]],{x:r.x-16,y:r.y-16,width:r.width+32,height:r.height+32})});
  await O.click('#uOk');await O.waitForTimeout(700);
  {const r=await O.evaluate(()=>{const m=document.querySelector('.overlay').firstElementChild.getBoundingClientRect();return{x:m.left,y:m.top,width:m.width,height:m.height}});
   await foto(O,'producao-pasta','Produção · Primeira configuração: clique em Escolher pasta da base',[['#wFolder',1]],{x:Math.max(0,r.x-16),y:Math.max(0,r.y-16),width:Math.min(1280,r.width+32),height:Math.min(800,r.height+32)})}
