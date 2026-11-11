@@ -87,7 +87,7 @@ const { chromium } = require('playwright');
   }
   /* UX-03 Waste e Gel; UX-04 Paradas e Portal; ⓘ no Portal */
   const w = await nova('Perdas-Ordem.html');
-  ok(await w.evaluate(() => document.querySelector('[data-t="painel"]').textContent.trim() === 'Visão Geral' && APP_VER >= '1.8.29'), 'UX-03 (WST-01): Waste 1.8.29 com a aba Visão Geral');
+  ok(await w.evaluate(() => document.querySelector('[data-t="painel"]').textContent.trim() === 'Visão Geral' && APP_VER.split('.').map(Number).reduce((t, n) => t * 1000 + n, 0) >= 1008029), 'UX-03 (WST-01): Waste 1.8.29 com a aba Visão Geral');
   await w.close();
   const g = await nova('Gestão-Gel-Vacutainer.html');
   ok(await g.evaluate(() => TABS[0][0] === 'painel' && TABS[0][1] === 'Visão Geral' && APP_VERSION >= '2.21' && !!VAC_INICIAL_ALVO['Gestão de Gel › Visão Geral'] && !!VAC_INICIAL_ALVO['Gestão de Gel › Painel']), 'UX-03 (GEL-01): Gel 2.21 com a aba Visão Geral (id painel; página inicial antiga continua valendo)');

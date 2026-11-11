@@ -955,6 +955,8 @@ addEventListener('error', e => { if (e.error && e.error.name === 'VacAbaBloquead
     <label>Família / catálogo <input id="fProd" list="dlProd" placeholder="todos" size="14"></label>
     <label class="vk-opt" title="Tubo = produto acabado; Preparação = solução/gel de aditivo (catálogo do Portal › Tipo de item; sem cadastro, pela unidade da ordem no MB51: L/G/KG)">Tipo de item <select id="fTipoItem"><option value="">todos</option><option value="tubo">Tubo</option><option value="preparacao">Preparação (aditivo)</option><option value="sem">Sem cadastro</option></select></label>
     <label class="vk-opt" title="Tipo de ordem do COOIS (ZP02 = normal, ZPRW = retrabalho), lido das Ordens da Produção (ordens-base.json)">Tipo de ordem <select id="fTipoOrd"><option value="">todos</option></select></label>
+    <label class="vk-opt" title="Linha do catálogo da ordem, pelo cadastro do Portal (Catálogos › Linha). Com uma linha escolhida, a meta é o target MUV dessa linha.">Linha <select id="fLinha"><option value="">todas</option></select></label>
+    <label class="vk-opt" title="Semana em que a ordem começou a produzir, pela Produção (1ª caixa ou 1º apontamento da ordem). A KKBC é mensal: a semana só filtra as ordens.">Semana <select id="fSem"><option value="">todas</option></select></label>
     <label class="vk-opt">Componente <input id="fComp" list="dlComp" placeholder="todos" size="14"></label>
     <label class="vk-opt">Nível <select id="fNivel"><option value="">todos</option><option value="1">atenção ou mais</option><option value="2">alta ou mais</option><option value="3">crítica</option></select></label>
     <label class="vk-opt">Status <select id="fSt"><option value="">todos</option><option value="aberta">abertas</option><option value="encerrada">encerradas</option><option value="sem">sem status</option></select></label>
@@ -978,6 +980,7 @@ addEventListener('error', e => { if (e.error && e.error.name === 'VacAbaBloquead
   <div class="vk-sec vk-dados"><b>04</b><h3>Análises</h3><span>Clique num grupo para recolher ou abrir</span></div>
   <section class="vk-grp vk-dados" data-vk-grupo="A"><button type="button" class="vk-gh" aria-expanded="true" aria-controls="vkg-perdas-A"><span class="seta" aria-hidden="true">▾</span><span><span class="t">A · Evolução por competência</span><br><span class="q">O MUV está dentro da meta mês a mês?</span></span></button><div class="vk-gb" id="vkg-perdas-A">
     <div class="card"><h3>Tendência mensal do MUV <i class="i" title="MUV (Desv. estrutura + Desv. empregado) por mês. Vermelho = acima da meta (ou desfavorável, sem meta). Clique numa barra para filtrar o mês.">i</i></h3><div id="chTrend"></div></div>
+    <div class="card"><h3>MUV × target acumulado no FY <i class="i" title="Barras: MUV acumulado do ano fiscal até cada mês (com os filtros). Traço: target acumulado (soma das metas de cada mês; com uma linha escolhida, o target dessa linha). Vermelho = acumulado acima do target. Clique numa barra para filtrar o mês.">i</i></h3><div id="chAcum"></div></div>
     <div class="card" id="porComp" style="display:none"></div>
   </div></section>
   <section class="vk-grp vk-dados" data-vk-grupo="B"><button type="button" class="vk-gh" aria-expanded="true" aria-controls="vkg-perdas-B"><span class="seta" aria-hidden="true">▾</span><span><span class="t">B · Onde está a perda</span><br><span class="q">Quais linhas, SKUs e componentes concentram o MUV?</span></span></button><div class="vk-gb" id="vkg-perdas-B">
@@ -1150,7 +1153,7 @@ addEventListener('error', e => { if (e.error && e.error.name === 'VacAbaBloquead
    Base: perdas-base.json na pasta da rede (mesmo padrão OEE / Gel)
    Contrato: bloco "exports" (exportsVersion 1) lido pelas outras páginas
    ===================================================================== */
-const APP_VER='1.10.0',   /* 1.10.0 · MUV oficial (Desv. estrutura + Desv. empregado, como a controladoria): meta, situação, criticidade, exports e relatórios; Pareto do MUV por Linha/SKU/Componente × métrica, favorável/desfavorável e Top N */   /* 1.9.0 · KKBC_ORD em grade (layout da controladoria, uma ordem por arquivo): Desv. Empregado, Desv. preço de input e Desv. qtde guardados; aviso das ordens no formato antigo (reimportar) */   /* 1.8.36 · gráficos: "Valores em …" (moeda), eixo sem rótulos repetidos, medida do Comparativo no gráfico do relatório (docs/graficos-padrao.md) */   /* 1.8.35 · Visão Geral no padrão comum (vacLayout): situação, números, diagnóstico, análises em grupos */   /* 1.8.34 · kit: login com ID e senha */   /* 1.8.33 · kit: datas DD/MM/AAAA */   /* 1.8.32 · nome Eficácia/Confirmação de Processo */   /* 1.8.31 · kit: nome e presença de Iniciativas / Ações na barra */   /* 1.8.30 · UX-02: guia por aba */   /* 1.8.29 · Fase 7 (UX-03, WST-01): Painel → Visão Geral */   /* 1.8.28 · Fase 6 (WST-03, INI-04): ações em Iniciativas / Ações; antigas até a migração, depois só leitura */   /* 1.8.27 · Fase 3 (IMP-04/06, WST-02): importações no exports; aba Importar leva ao Portal › Importação */   /* 1.8.26 · ARQ-09: "Ver com dados de teste" vira a Demonstração integrada */   /* 1.8.23 · C2–C6: kit com a ficha por pasta (AT-08) e a contagem da fila durável (Portal › Versões) */   /* 1.8.22 · C1: trava da 2ª aba com alteração pendente (nada é descartado); kit com a fila durável */   /* 1.8.21 · E11: busca do kit leva o equipamento à ficha em Equipamentos */   /* 1.8.20 · E8: kit com "+ Abrir ação" na ficha da ordem (Planner de Iniciativas) */   /* 1.8.19 · E5: ficha da ordem comum (botão Ficha na ordem; busca Ctrl K por ordem, lote e LP) */   /* 1.8.18 · E4: versão do exports conferida (Produção, Ordens), ordem em várias competências, dias do lote pela chave · 1.8.17 · E2: fonte única da versão (tela, base, exports e Portal › Versões) */ BASE_FN='perdas-base.json', DIR_ORIG='00. Originais SAP', DIR_BKP='00. Backups', DIR_IN='00. Entrada KKBC', DIR_DONE='00. Entrada KKBC/Processados';
+const APP_VER='1.11.0',   /* 1.11.0 · target MUV da linha (Portal › Metas da área WASTE-MUV…, vigência, R$/US$ pelo câmbio do Portal), MUV × target acumulado no FY, filtros Linha e Semana */   /* 1.10.0 · MUV oficial (Desv. estrutura + Desv. empregado, como a controladoria): meta, situação, criticidade, exports e relatórios; Pareto do MUV por Linha/SKU/Componente × métrica, favorável/desfavorável e Top N */   /* 1.9.0 · KKBC_ORD em grade (layout da controladoria, uma ordem por arquivo): Desv. Empregado, Desv. preço de input e Desv. qtde guardados; aviso das ordens no formato antigo (reimportar) */   /* 1.8.36 · gráficos: "Valores em …" (moeda), eixo sem rótulos repetidos, medida do Comparativo no gráfico do relatório (docs/graficos-padrao.md) */   /* 1.8.35 · Visão Geral no padrão comum (vacLayout): situação, números, diagnóstico, análises em grupos */   /* 1.8.34 · kit: login com ID e senha */   /* 1.8.33 · kit: datas DD/MM/AAAA */   /* 1.8.32 · nome Eficácia/Confirmação de Processo */   /* 1.8.31 · kit: nome e presença de Iniciativas / Ações na barra */   /* 1.8.30 · UX-02: guia por aba */   /* 1.8.29 · Fase 7 (UX-03, WST-01): Painel → Visão Geral */   /* 1.8.28 · Fase 6 (WST-03, INI-04): ações em Iniciativas / Ações; antigas até a migração, depois só leitura */   /* 1.8.27 · Fase 3 (IMP-04/06, WST-02): importações no exports; aba Importar leva ao Portal › Importação */   /* 1.8.26 · ARQ-09: "Ver com dados de teste" vira a Demonstração integrada */   /* 1.8.23 · C2–C6: kit com a ficha por pasta (AT-08) e a contagem da fila durável (Portal › Versões) */   /* 1.8.22 · C1: trava da 2ª aba com alteração pendente (nada é descartado); kit com a fila durável */   /* 1.8.21 · E11: busca do kit leva o equipamento à ficha em Equipamentos */   /* 1.8.20 · E8: kit com "+ Abrir ação" na ficha da ordem (Planner de Iniciativas) */   /* 1.8.19 · E5: ficha da ordem comum (botão Ficha na ordem; busca Ctrl K por ordem, lote e LP) */   /* 1.8.18 · E4: versão do exports conferida (Produção, Ordens), ordem em várias competências, dias do lote pela chave · 1.8.17 · E2: fonte única da versão (tela, base, exports e Portal › Versões) */ BASE_FN='perdas-base.json', DIR_ORIG='00. Originais SAP', DIR_BKP='00. Backups', DIR_IN='00. Entrada KKBC', DIR_DONE='00. Entrada KKBC/Processados';
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 /* página para o núcleo comum, o cabeçalho (vac-cabecalho v2) e o quadro de Versões do Portal */
 const PAGE={id:'perdas',titulo:'Waste · Linha Vacutainer',tituloCurto:'Waste',subtitulo:'Custos e perdas por ordem',versao:APP_VER,baseFile:BASE_FN,backupDir:'00. Backups/Perdas',busca:q=>buscaPerdas(q)};
@@ -1310,12 +1313,36 @@ const CFG=()=>{const c=B.config,P=portalCad(),mv=P.meta?P.meta.valor:null;if(mv=
    média ponderada pelos dias de cada uma (vacMetaAreaMes, kit). Mês sem vigência no Portal: a meta local da página (Configuração), se houver.
    Antes, todos os meses usavam a meta de hoje. */
 const _metaMes=new Map();
-function metaMesInfo(per){if(!per)return null;const P=portalCad(),k=per+'|'+P.t;if(_metaMes.has(k))return _metaMes.get(k);
- let r=null;const m=typeof vacMetaAreaMes==='function'?vacMetaAreaMes('WASTE-MES',per):null;
- if(m&&m.valor!=null)r={valor:m.valor,ponderada:m.ponderada,partes:m.partes,fonte:'portal'};else{const c=B.config.meta;if(c!=null&&c!=='')r={valor:+c,ponderada:false,partes:null,fonte:'local'}}
+/* 1.11.0 · target MUV da linha (etapa 3): Portal › Metas da área, itens ativos com código WASTE-MUV… (ex.: WASTE-MUV-VAC), campo Linha,
+   vigência (vacMetaAreaMes: duas vigências no mês = ponderada pelos dias), Período (mês; ano ÷ 12; trimestre ÷ 3; semana e dia pelos dias do mês)
+   e Unidade R$ ou US$ (convertida pela cotação do Portal no fim do mês, a mesma dos valores). Meta do mês = soma dos targets das linhas
+   (ou só da linha escolhida no filtro). Sem nenhum WASTE-MUV no Portal: a meta WASTE-MES de antes (área inteira; com filtro de linha, sem meta). */
+function metasMuv(){let c=null;try{c=typeof vacCad==='function'?vacCad():null}catch(e){}return((c&&c.metasArea)||[]).filter(m=>m&&m.ativo!==false&&/^WASTE-MUV/i.test(String(m.codigo||'')))}
+function metaConv(v,un,per){if(v==null)return null;const de=/US|USD|U\$/i.test(String(un||''))?'USD':'BRL',para=moedaVer();if(de===para)return v;const q=cotUSD(per);if(!q)return null;return de==='USD'?v*q:v/q}
+function metaNoMes(valor,periodo,per){const[y,m]=per.split('-').map(Number),dias=new Date(y,m,0).getDate();const p=String(periodo||'mês');return p==='ano'?valor/12:p==='trimestre'?valor/3:p==='semana'?valor*dias/7:p==='dia'?valor*dias:valor}
+function metaMesInfo(per){if(!per)return null;const P=portalCad(),ln=F.linha||'',k=per+'|'+P.t+'|'+ln+'|'+moedaVer();if(_metaMes.has(k))return _metaMes.get(k);
+ let r=null;const MS=metasMuv();
+ if(MS.length&&typeof vacMetaAreaMes==='function'){const sel=ln?MS.filter(m=>String(m.linha||'-')===ln):MS;let tot=0,ok=false,pond=false,falta=false;const linhas=[];
+  for(const it of sel){const m=vacMetaAreaMes(it.codigo,per);if(!m||m.valor==null)continue;const v=metaConv(metaNoMes(+m.valor,it.periodo,per),it.unidade,per);if(v==null){falta=true;continue}
+   tot+=v;ok=true;pond=pond||!!m.ponderada;linhas.push({linha:String(it.linha||''),codigo:it.codigo,valor:v,periodo:it.periodo||'mês',unidade:it.unidade||'R$'})}
+  if(ok)r={valor:tot,ponderada:pond,partes:null,linhas,fonte:'portal-muv',semCambio:falta}}
+ else if(!ln){const m=typeof vacMetaAreaMes==='function'?vacMetaAreaMes('WASTE-MES',per):null;
+  if(m&&m.valor!=null){let un='R$';try{const c=vacCad();const it=c&&(c.metasArea||[]).find(x=>x.codigo==='WASTE-MES');if(it)un=it.unidade||'R$'}catch(e){}
+   const v=metaConv(m.valor,un,per);if(v!=null)r={valor:v,ponderada:m.ponderada,partes:m.partes,fonte:'portal'}}
+  else{const c=B.config.meta;if(c!=null&&c!=='')r={valor:metaConv(+c,'R$',per),ponderada:false,partes:null,fonte:'local'};if(r&&r.valor==null)r=null}}
  if(_metaMes.size>500)_metaMes.clear();_metaMes.set(k,r);return r}
+/* linhas e semanas para os filtros */
+function linhaNome(cod){if(!cod||cod==='-')return'Sem linha no cadastro';let c=null;try{c=vacCad()}catch(e){}const l=((c&&c.linhas)||[]).find(x=>String(x.codigo)===String(cod));return l?(l.nome||l.codigo):String(cod)}
+function linhasOpc(){const m=new Map();for(const r of vigRows()){const l=linhaDe({cat:r.cat||r.prod});m.set(l.cod||'-',l.cod?l.nome:'Sem linha no cadastro')}return[...m].sort((a,b)=>a[0]==='-'?1:b[0]==='-'?-1:a[1].localeCompare(b[1]))}
+function semanaDe(ordem){const q=oeeQuick(ordem);const d=q&&(q.ini||q.fim);if(!d)return'';const t=new Date(String(d).slice(0,10)+'T12:00:00Z');if(isNaN(t))return'';
+ const w=new Date(t);w.setUTCDate(w.getUTCDate()+4-(w.getUTCDay()||7));const y0=new Date(Date.UTC(w.getUTCFullYear(),0,1));return w.getUTCFullYear()+'-S'+String(Math.ceil(((w-y0)/864e5+1)/7)).padStart(2,'0')}
+const semanaTxt=w=>w?'semana '+w.slice(6)+'/'+w.slice(0,4):'';
+function semanasOpc(){const s=new Set();for(const o of new Set(vigRows().map(r=>r.ordem))){const w=semanaDe(o);if(w)s.add(w)}return[...s].sort().reverse()}
+/* MUV × target acumulado no ano fiscal (a partir da série mensal da tendência, com os filtros) */
+function acumFY(trend){if(!trend.length)return[];const fy=fyOf(trend[trend.length-1].key);let a=0,t=0,tem=false;
+ return trend.filter(x=>fyOf(x.key)===fy).map(x=>{a+=x.value||0;const m=metaPer(x.key);if(m!=null){t+=m;tem=true}return{label:x.label,key:x.key,fy,value:a,meta:tem?t:null,color:tem?(a>t?'var(--bad)':'var(--good)'):(a>0?'var(--bad)':'var(--good)')}})}
 const metaPer=per=>{const m=metaMesInfo(per);return m?m.valor:null};
-const metaNota=per=>{const m=metaMesInfo(per);return m&&m.ponderada?' (ponderada pelos dias: '+m.partes.map(x=>fmtR(x.valor)+' × '+x.dias+' d').join(' + ')+')':''};
+const metaNota=per=>{const m=metaMesInfo(per);if(!m)return'';if(m.linhas)return' (target MUV'+(m.linhas.length>1?' das linhas: '+m.linhas.map(x=>linhaNome(x.linha)+' '+fmtR(x.valor)).join(' + '):' · '+linhaNome(m.linhas[0].linha))+(m.ponderada?'; vigência ponderada pelos dias':'')+(m.semCambio?'; sem cotação para converter uma das metas':'')+')';return m.ponderada&&m.partes?' (ponderada pelos dias: '+m.partes.map(x=>fmtR(x.valor)+' × '+x.dias+' d').join(' + ')+')':''};
 const user=()=>localStorage.getItem('vac.user')||localStorage.getItem('perdas.user')||'';
 
 /* ---------- IndexedDB (cache local + handle da pasta) ---------- */
@@ -1854,7 +1881,7 @@ function priority(o){const t=CFG().thr;let s=0;
  return Math.round(Math.min(100,s))}
 
 /* ===================== EXPORTS (contrato com OEE / Gel / Portal) ===================== */
-function buildExports(){const a=MOEDA_FORCAR;MOEDA_FORCAR='BRL';try{return buildExports0()}finally{MOEDA_FORCAR=a}}
+function buildExports(){const a=MOEDA_FORCAR,l=F.linha,sm=F.sem;MOEDA_FORCAR='BRL';F.linha='';F.sem='';_metaMes.clear();try{return buildExports0()}finally{MOEDA_FORCAR=a;F.linha=l;F.sem=sm;_metaMes.clear()}}
 function buildExports0(){
  const rows=vigRows();const ords=aggOrders(rows);const pm={};
  for(const o of ords){const p=pm[o.per]||(pm[o.per]={per:o.per,fy:fyOf(o.per),perda:0,ganho:0,liquido:0,custoMeta:0,custoReal:0,ordens:0,criticas:0,muv:0,estrutura:0,empregado:0,precoInput:0,muvDesfavoravel:0,muvFavoravel:0,ordensAprox:0});p.perda+=o.perda;p.ganho+=o.ganho;p.liquido+=o.d;p.custoMeta+=o.cTc;p.custoReal+=o.cRc;p.ordens++;if(o.lvl===3)p.criticas++;
@@ -1875,13 +1902,13 @@ function buildExports0(){
   ordensExcluidas:[...exclMap().values()].map(e=>({ordem:e.ordem,em:e.em,por:e.por,motivo:e.motivo})),
   porOrdem:ords.map(o=>({ordem:o.ordem,per:o.per,catalogo:o.cat||'',produto:o.prod||'',lote:o.lote||'',status:o.status||'',qtdEntregue:o.qEnt,custoMeta:+o.cTc.toFixed(2),custoReal:+o.cRc.toFixed(2),desvio:+o.d.toFixed(2),perda:+o.perda.toFixed(2),varMaterial:+sum(o.rows.filter(r=>!isDelivery(r)),dEst).toFixed(2),scrap:+sum(o.rows.filter(r=>!isDelivery(r)),scrapOf).toFixed(2),muv:+o.muv.toFixed(2),estrutura:+o.estr.toFixed(2),empregado:+o.emp.toFixed(2),precoInput:+o.preco.toFixed(2),muvAprox:!!o.aprox,nivel:LV[o.lvl],causa:causeOf(o.ordem),
     comentarios:B.comments.filter(c=>c.ordem===o.ordem&&c.ativo!==false).length,acoesAbertas:WAc.todas().filter(a=>a.ordem===o.ordem&&!DONE_AC.includes(a.status)).length})),
-  porMes:Object.values(pm).sort((a,b)=>a.per<b.per?-1:1).map(p=>({...p,muv:+p.muv.toFixed(2),estrutura:+p.estrutura.toFixed(2),empregado:+p.empregado.toFixed(2),precoInput:+p.precoInput.toFixed(2),muvDesfavoravel:+p.muvDesfavoravel.toFixed(2),muvFavoravel:+p.muvFavoravel.toFixed(2),meta:metaPer(p.per),perda:+p.perda.toFixed(2),ganho:+p.ganho.toFixed(2),liquido:+p.liquido.toFixed(2),custoMeta:+p.custoMeta.toFixed(2),custoReal:+p.custoReal.toFixed(2),fechado:closedPers().has(p.per)})),
+  porMes:Object.values(pm).sort((a,b)=>a.per<b.per?-1:1).map(p=>({...p,metaFonte:(metaMesInfo(p.per)||{}).fonte||null,muv:+p.muv.toFixed(2),estrutura:+p.estrutura.toFixed(2),empregado:+p.empregado.toFixed(2),precoInput:+p.precoInput.toFixed(2),muvDesfavoravel:+p.muvDesfavoravel.toFixed(2),muvFavoravel:+p.muvFavoravel.toFixed(2),meta:metaPer(p.per),perda:+p.perda.toFixed(2),ganho:+p.ganho.toFixed(2),liquido:+p.liquido.toFixed(2),custoMeta:+p.custoMeta.toFixed(2),custoReal:+p.custoReal.toFixed(2),fechado:closedPers().has(p.per)})),
   porComponenteMes:Object.values(cm).map(c=>({...c,ordens:c.ordens.size,desvio:+c.desvio.toFixed(2),muv:c.muv==null?null:+c.muv.toFixed(2),estrutura:c.estrutura==null?null:+c.estrutura.toFixed(2),empregado:c.empregado==null?null:+c.empregado.toFixed(2)})),
   /* 1.8.28 · WST-03: ações antigas do Waste, para Iniciativas › Trazer ações do Waste (uma vez) */
   acoesLegado:B.actions.map(a=>({id:a.id,ordem:a.ordem||'',comp:a.comp||'',desc:a.desc||'',causa:a.causa||'',status:a.status||'',resp:a.resp||'',area:a.area||'',prazo:a.prazo||'',conclusao:a.conclusao||'',econ:a.econ??null,pri:a.pri||'',obs:a.obs||'',abertura:a.abertura||'',user:a.user||'',hist:(a.hist||[]).map(h=>({data:h.data||null,user:h.user||null,status:h.status||null,prazo:h.prazo||null}))}))}}
 
 /* ===================== FILTROS / PAINEL ===================== */
-const F={de:'',ate:'',fy:'',prod:'',tipoItem:'',tipoOrd:'',comp:'',nivel:'',st:'',busca:'',view:'ordens',sort:{k:'muv',dir:-1},lim:200};
+const F={de:'',ate:'',fy:'',prod:'',tipoItem:'',tipoOrd:'',linha:'',sem:'',comp:'',nivel:'',st:'',busca:'',view:'ordens',sort:{k:'muv',dir:-1},lim:200};
 function allPers(){return[...new Set(vigRows().map(r=>r.per))].sort()}
 function filtered(){
  STAT=compStats();
@@ -1891,6 +1918,8 @@ function filtered(){
  if(F.prod){const q=F.prod.toLowerCase();rows=rows.filter(r=>(r.cat||'').toLowerCase().includes(q)||(r.prod||'').toLowerCase().includes(q)||(r.prodDesc||'').toLowerCase().includes(q))}
  if(F.tipoItem)rows=rows.filter(r=>tipoItemDe(r)===F.tipoItem);
  if(F.tipoOrd)rows=rows.filter(r=>tipoOrdDe(r.ordem)===F.tipoOrd);
+ if(F.linha)rows=rows.filter(r=>(linhaDe({cat:r.cat||r.prod}).cod||'-')===F.linha);   /* 1.11.0 */
+ if(F.sem)rows=rows.filter(r=>semanaDe(r.ordem)===F.sem);
  let ords=aggOrders(rows);
  if(F.comp){const q=F.comp.toLowerCase();const ok=new Set(rows.filter(r=>compKey(r).toLowerCase()===q||compName(r).toLowerCase().includes(q)||compKey(r).toLowerCase().includes(q)).map(r=>r.ordem));ords=ords.filter(o=>ok.has(o.ordem))}
  if(F.busca)ords=ords.filter(o=>buscaOk(o,F.busca));
@@ -1925,12 +1954,14 @@ function fillFilters(){
  const rows=vigRows();
  $('#dlProd').innerHTML=[...new Set(rows.map(r=>r.cat).filter(Boolean))].sort().map(v=>`<option value="${esc(v)}">`).join('');
  const cm=new Map();rows.forEach(r=>{if(!cm.has(compKey(r)))cm.set(compKey(r),compName(r))});$('#dlComp').innerHTML=[...cm].map(([k,d])=>`<option value="${esc(k)}">${esc(d)}</option>`).join('');
- $('#fNivel').value=F.nivel;$('#fSt').value=F.st;$('#fTipoItem').value=F.tipoItem;{const so=$('#fTipoOrd'),ts=tiposOrdem();so.innerHTML='<option value="">todos</option>'+ts.map(t=>`<option ${t===F.tipoOrd?'selected':''}>${esc(t)}</option>`).join('');so.disabled=!ORDX.idx;so.title=ORDX.idx?'Tipo de ordem do COOIS (ZP02 = normal, ZPRW = retrabalho)':(ORDX.err||'Ordens da Produção (ordens-base.json) ainda não lidas')}$('#fProd').value=F.prod;$('#fComp').value=F.comp;if(document.activeElement!==$('#fBusca'))$('#fBusca').value=F.busca;
+ $('#fNivel').value=F.nivel;$('#fSt').value=F.st;$('#fTipoItem').value=F.tipoItem;{const so=$('#fTipoOrd'),ts=tiposOrdem();so.innerHTML='<option value="">todos</option>'+ts.map(t=>`<option ${t===F.tipoOrd?'selected':''}>${esc(t)}</option>`).join('');so.disabled=!ORDX.idx;so.title=ORDX.idx?'Tipo de ordem do COOIS (ZP02 = normal, ZPRW = retrabalho)':(ORDX.err||'Ordens da Produção (ordens-base.json) ainda não lidas')}
+ {const sl=$('#fLinha');if(sl){const L=linhasOpc();if(F.linha&&!L.some(x=>x[0]===F.linha))L.push([F.linha,linhaNome(F.linha)]);sl.innerHTML='<option value="">todas</option>'+L.map(([c,n])=>`<option value="${esc(c)}" ${c===F.linha?'selected':''}>${esc(n)}</option>`).join('')}
+  const ss=$('#fSem');if(ss){const S=semanasOpc();if(F.sem&&!S.includes(F.sem))S.unshift(F.sem);ss.innerHTML='<option value="">todas</option>'+S.map(w=>`<option value="${esc(w)}" ${w===F.sem?'selected':''}>${esc(semanaTxt(w))}</option>`).join('');ss.disabled=!S.length;ss.title=S.length?'Semana em que a ordem começou a produzir (Produção)':'Sem as datas das ordens na Produção (oee-vacutainer-base.json)'}}$('#fProd').value=F.prod;$('#fComp').value=F.comp;if(document.activeElement!==$('#fBusca'))$('#fBusca').value=F.busca;
 }
 function renderChips(){const c=[];
- if(F.de||F.ate)c.push(['per',`Competência: ${F.de?fmtM(F.de):'início'} → ${F.ate?fmtM(F.ate):'última'}`]);if(F.st)c.push(['st','Status: '+F.st]);if(F.fy)c.push(['fy',F.fy]);if(F.prod)c.push(['prod','Catálogo: '+F.prod]);if(F.tipoItem)c.push(['tipoItem','Tipo de item: '+({tubo:'Tubo',preparacao:'Preparação',sem:'Sem cadastro'}[F.tipoItem]||F.tipoItem)]);if(F.tipoOrd)c.push(['tipoOrd','Tipo de ordem: '+F.tipoOrd]);if(F.comp)c.push(['comp','Componente: '+F.comp]);if(F.nivel)c.push(['nivel','Nível ≥ '+LV[F.nivel]]);if(F.busca)c.push(['busca','Busca: '+F.busca]);
+ if(F.de||F.ate)c.push(['per',`Competência: ${F.de?fmtM(F.de):'início'} → ${F.ate?fmtM(F.ate):'última'}`]);if(F.st)c.push(['st','Status: '+F.st]);if(F.fy)c.push(['fy',F.fy]);if(F.prod)c.push(['prod','Catálogo: '+F.prod]);if(F.tipoItem)c.push(['tipoItem','Tipo de item: '+({tubo:'Tubo',preparacao:'Preparação',sem:'Sem cadastro'}[F.tipoItem]||F.tipoItem)]);if(F.tipoOrd)c.push(['tipoOrd','Tipo de ordem: '+F.tipoOrd]);if(F.linha)c.push(['linha','Linha: '+linhaNome(F.linha)]);if(F.sem)c.push(['sem','Semana: '+semanaTxt(F.sem)]);if(F.comp)c.push(['comp','Componente: '+F.comp]);if(F.nivel)c.push(['nivel','Nível ≥ '+LV[F.nivel]]);if(F.busca)c.push(['busca','Busca: '+F.busca]);
  $('#chips').innerHTML=c.map(([k,t])=>`<span class="chip" data-k="${k}">${esc(t)}</span>`).join('');
- $$('#chips .chip').forEach(e=>e.onclick=()=>{const k=e.dataset.k;if(k==='per'){F.de=F.ate=''}else F[k]='';renderPainel()})}
+ $$('#chips .chip').forEach(e=>e.onclick=()=>{const k=e.dataset.k;if(k==='per'){F.de=F.ate=''}else F[k]='';if(k==='linha')_metaMes.clear();renderPainel()})}
 function renderPainel(){
  fillFilters();renderChips();
  const has=vigRows().length;
@@ -1977,6 +2008,7 @@ function renderPainel(){
  const pm={};for(const o of ords){pm[o.per]=(pm[o.per]||0)+o.muv}
  const trend=Object.keys(pm).sort().map(p=>({label:fmtM(p),value:pm[p],key:p,meta:metaPer(p),color:metaPer(p)!=null?(pm[p]>metaPer(p)?'var(--bad)':'var(--good)'):(pm[p]>0?'var(--bad)':'var(--good)')}));
  $('#chTrend').innerHTML=has?barChart(trend,{h:220,click:'per',unit:msim()}):'';
+ {const el=$('#chAcum');if(el){const ac=acumFY(trend);el.innerHTML=has?(ac.length?barChart(ac,{h:220,click:'per',unit:msim()})+`<p class="small muted" style="margin:4px 0 0">${esc(ac[0].fy)} · ${ac.some(x=>x.meta!=null)?'target pelo Portal (Metas da área)':'sem target cadastrado no Portal'}</p>`:'<p class="muted small">Sem competência no período.</p>'):''}}   /* 1.11.0 */
  const cr=(F._compRows||rows).filter(r=>!isDelivery(r));const cmap=new Map();for(const r of cr){const k=compKey(r);const x=cmap.get(k)||{v:0,d:compName(r)};x.v+=muvOf(r);cmap.set(k,x)}
  const par=[...cmap].map(([k,x])=>({label:k,sub:x.d,value:x.v,key:k})).filter(x=>x.value>0).sort((a,b)=>b.value-a.value).slice(0,10);
  $('#chComp').innerHTML=has?paretoChart(par,'comp'):'';
@@ -2952,10 +2984,10 @@ $$('[data-close]').forEach(b=>b.onclick=closeModals);
 $$('.modal').forEach(m=>m.onclick=e=>{if(e.target===m){m.classList.remove('on');if(m.id==='mOrd')closeModals()}});
 document.addEventListener('keydown',e=>{if(e.key==='Escape'){if($('#mForm').classList.contains('on'))$('#mForm').classList.remove('on');else closeModals()}});
 $('#fDe').onchange=e=>{F.de=e.target.value;renderPainel()};$('#fAte').onchange=e=>{F.ate=e.target.value;renderPainel()};
-$('#fFy').onchange=e=>{F.fy=e.target.value;renderPainel()};$('#fNivel').onchange=e=>{F.nivel=e.target.value;renderPainel()};$$('[data-moeda]').forEach(b=>b.onclick=()=>{try{localStorage.setItem('perdas.moeda',b.dataset.moeda)}catch(e){}_cv.k=null;renderAll();moedaSegRender()});$('#fTipoItem').onchange=e=>{F.tipoItem=e.target.value;renderPainel()};$('#fTipoOrd').onchange=e=>{F.tipoOrd=e.target.value;renderPainel()};
+$('#fFy').onchange=e=>{F.fy=e.target.value;renderPainel()};$('#fNivel').onchange=e=>{F.nivel=e.target.value;renderPainel()};$$('[data-moeda]').forEach(b=>b.onclick=()=>{try{localStorage.setItem('perdas.moeda',b.dataset.moeda)}catch(e){}_cv.k=null;renderAll();moedaSegRender()});$('#fTipoItem').onchange=e=>{F.tipoItem=e.target.value;renderPainel()};$('#fTipoOrd').onchange=e=>{F.tipoOrd=e.target.value;renderPainel()};$('#fLinha').onchange=e=>{F.linha=e.target.value;_metaMes.clear();renderPainel()};$('#fSem').onchange=e=>{F.sem=e.target.value;renderPainel()};
 $('#fSt').onchange=e=>{F.st=e.target.value;renderPainel()};$$('[data-cq]').forEach(b=>b.onclick=()=>setComp(b.dataset.cq));
 for(const id of['fProd','fComp','fBusca']){let t;$('#'+id).oninput=e=>{clearTimeout(t);t=setTimeout(()=>{F[id.slice(1).toLowerCase()]=e.target.value.trim();F.lim=200;renderPainel();$('#'+id).focus()},id==='fBusca'?200:350)}}
-$('#fLimpar').onclick=()=>{Object.assign(F,{de:'',ate:'',fy:'',prod:'',tipoItem:'',tipoOrd:'',comp:'',nivel:'',st:'',busca:''});$('#fBusca').value='';renderPainel()};
+$('#fLimpar').onclick=()=>{Object.assign(F,{de:'',ate:'',fy:'',prod:'',tipoItem:'',tipoOrd:'',linha:'',sem:'',comp:'',nivel:'',st:'',busca:''});$('#fBusca').value='';renderPainel()};
 $('#segView').onclick=e=>{const b=e.target.closest('button');if(!b)return;F.view=b.dataset.v;F.lim=200;F._ps=0;F.sort={k:F.view==='prior'?'score':'d',dir:-1};renderPainel()};
 $('#btnMore').onclick=()=>{F.lim+=300;renderPainel()};
 {let t;$('#tBusca').oninput=e=>{clearTimeout(t);t=setTimeout(()=>{F.tq=e.target.value.trim();F.lim=200;renderTable(F._ords||[],F._rows||[])},180)}}
@@ -4016,20 +4048,24 @@ window.VAC_GUIA = window.VAC_GUIA || {};
 window.VAC_GUIA.perdas = {
   painel: {
     titulo: 'Visão Geral do Waste',
-    para: 'Perdas de material por ordem (KKBC_ORD): desvio entre o custo real e o custo meta, por competência, componente, catálogo e causa. Positivo = perda, negativo = ganho.',
+    para: 'Perdas de material por ordem (KKBC_ORD), como a controladoria: MUV = Desv. estrutura + Desv. empregado (oficial, contra o target), por competência, linha, SKU, componente e causa. Positivo = desfavorável, negativo = favorável. O desvio de preço de input fica fora do MUV.',
     campos: [
       { sel: '#fDe', nome: 'Competência de / até', o: 'Meses de fechamento (a KKBC é mensal).' },
       { sel: '#fFy', nome: 'Ano fiscal', o: 'Atalho para o FY inteiro.' },
       { sel: '#fProd', nome: 'Família / catálogo', o: 'Filtra as ordens do produto.' },
       { sel: '#fTipoItem', nome: 'Tipo de item', o: 'Tubo (produção) ou preparação (aditivo).' },
+      { sel: '#fLinha', nome: 'Linha', o: 'Linha do catálogo da ordem (cadastro do Portal). Com uma linha escolhida, a meta é o target MUV dessa linha.', ex: 'Linha Vacutainer.' },
+      { sel: '#fSem', nome: 'Semana', o: 'Semana em que a ordem começou a produzir, pela Produção. A KKBC é mensal: a semana só escolhe as ordens.' },
       { sel: '#fComp', nome: 'Componente', o: 'Um material da estrutura (rolha, etiqueta, gel…).' },
       { sel: '#fNivel', nome: 'Nível', o: 'Criticidade pelo desvio em R$ e em % (limites na Configuração).', ex: 'Alta ou mais, para a reunião.' },
       { sel: '#fBusca', nome: 'Busca livre', o: 'Ordem, lote, material, status.' },
       { sel: '#segView', nome: 'Ordens · Componentes · Prioridades · Excluídas', o: 'Visões da tabela. Prioridades ordena pela nota (desvio, %, recorrência, sem causa, sem ação).' },
       { sel: '#btnExpXlsx', nome: 'Excel / CSV', o: 'Exporta o que está na tela.' },
-      { sel: '#vkSit .vk-main', nome: 'Situação do período', o: 'Desvio líquido das ordens filtradas contra a meta do período (soma das metas de cada mês), com o estado em texto e o acumulado do ano fiscal.', ex: 'R$ 92.350,83 · meta R$ 80.000 · Acima da meta.' },
+      { sel: '#vkSit .vk-main', nome: 'Situação do período', o: 'MUV das ordens filtradas contra a meta do período: soma do target MUV de cada mês (Portal › Metas da área, WASTE-MUV-<linha>; sem ele, WASTE-MES), com o estado em texto e o acumulado do ano fiscal.', ex: 'R$ 92.350,83 · meta R$ 80.000 · Acima da meta.' },
       { sel: '#vkSit .vk-side', nome: 'Ação prioritária e maior perda', o: 'Ordens críticas/altas sem causa e ações vencidas, com atalho; o componente e o catálogo com maior perda (os mesmos números dos Paretos), com Filtrar.' },
       { sel: '#vkDiag', nome: 'Diagnóstico rápido', o: 'Pior e melhor competência (clique filtra o mês) e as críticas/altas sem causa (clique abre Prioridades).' },
+      { sel: '#chAcum', nome: 'MUV × target acumulado no FY', o: 'MUV acumulado do ano fiscal até cada mês contra o target acumulado (soma das metas dos meses). Vermelho = acumulado acima do target.' },
+      { sel: '#pzCtl', nome: 'Pareto do MUV', o: 'Escolha dimensão (Linha, SKU, Componente), métrica (MUV, estrutura, empregado), sentido (desfavorável/favorável) e Top N.' },
       { sel: '#t-painel .vk-grp .vk-gh', nome: 'Grupos de análise', o: 'Evolução, onde está a perda e causas. Clique no título para recolher ou abrir (fica lembrado neste computador; na impressão saem abertos).' }
     ],
     passos: [['Analisar o mês', ['Escolha a competência.', 'Veja o Pareto por componente e por catálogo.', 'Em Prioridades, abra as ordens do topo: comente a causa e, se preciso, + Ação (abre Iniciativas).']]],

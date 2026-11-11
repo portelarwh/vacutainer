@@ -69,7 +69,7 @@ const LER = () => {
     console.log('     layout:', JSON.stringify({ ...L, sit: L.sit.replace(/\s+/g, ' ').slice(0, 120) }));
     ok(L.secoes.join('|') === 'Situação do período|Números do período|Diagnóstico rápido|Análises|Ordens e componentes', 'cinco seções na ordem: Situação, Números, Diagnóstico, Análises, Ordens');
     ok(L.pz && L.pz.comp === 9 && L.pz.top5 === 5 && L.pz.sku === 4 && /por SKU/.test(L.pz.skuTxt) && L.pz.estr && /^MUV favorável/.test(L.pz.fav) && L.pz.lembra, `Pareto do MUV: componente ${L.pz && L.pz.comp}, Top 5 = ${L.pz && L.pz.top5}, SKU ${L.pz && L.pz.sku}, estrutura sem desfavorável, favorável, escolha lembrada`);
-    ok(L.grupos.join(' ') === 'A:2 B:3 C:1', `gráficos e quadro em 3 grupos (${L.grupos.join(' ')})`);
+    ok(L.grupos.join(' ') === 'A:3 B:3 C:1', `gráficos e quadro em 3 grupos (${L.grupos.join(' ')})`);
     ok(/MUV do período/.test(L.sit) && /meta|Sem meta/i.test(L.sit) && /(Acima|Dentro) da meta|Sem meta/.test(L.sit), 'Situação: MUV × meta com estado em texto');
     ok(L.diag === 3 && L.resumoOculto, 'Diagnóstico com 3 cartões; Resumo antigo junto dos indicadores (sem totais repetidos)');
     ok(L.fechou && L.lembrou, 'grupo recolhido lembra a escolha (vac.grupos.perdas)');

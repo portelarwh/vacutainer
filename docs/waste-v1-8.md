@@ -263,3 +263,56 @@ O número oficial do Waste passa a ser o **MUV = Desv. estrutura + Desv. emprega
 - Target MUV da linha no Portal (vigência, acumulado ou mensal, câmbio do Portal) e gráfico MUV × target.
 - Filtros por tipo de ordem (COOIS), semana e linha.
 
+## 1.11.0 · Target MUV da linha, MUV × target e filtros (11/11/2026, etapa 3 de 3)
+
+### Target no Portal (sem tipo novo no cadastro)
+- **Onde cadastrar:** Portal › Cadastros › Metas da área, um item por linha com o código **`WASTE-MUV-<linha>`** (ex.: `WASTE-MUV-VAC`), página Waste e o campo **Linha** preenchido. Valem as regras de sempre: vigência imutável e desativação.
+- **Período:**
+  - mês: o valor do mês;
+  - ano: ÷ 12 (target anual vira 1/12 por mês; o acumulado do FY soma os meses);
+  - trimestre: ÷ 3;
+  - semana e dia: pelos dias do mês.
+- **Duas vigências no mês:** média ponderada pelos dias (`vacMetaAreaMes`).
+- **Unidade R$ ou US$:** convertida para a moeda da tela pela **cotação do Portal no fim do mês** (`cotUSD`), a mesma dos valores.
+  - Sem cotação, a meta daquela linha fica de fora e a nota avisa.
+- **Meta do mês** (`metaMesInfo`):
+  - soma dos targets das linhas;
+  - com o filtro de uma linha, só o target dela;
+  - sem nenhum `WASTE-MUV` no Portal, vale a `WASTE-MES` de antes (área inteira; com uma linha escolhida, fica sem meta).
+  - A nota da meta lista as linhas.
+
+### Telas
+- **Filtros novos:**
+  - **Linha**: catálogo → linha do cadastro (`linhaDe`; "Sem linha no cadastro" quando falta);
+  - **Semana**: semana ISO em que a ordem começou a produzir, pela Produção (`oeeQuick(ordem).ini`). A KKBC é mensal: a semana só escolhe as ordens. Sem as datas da Produção, o seletor fica desligado.
+  - O **Tipo de ordem** (COOIS) já existia.
+  - Cada filtro aparece como pílula, e o Limpar tira todos.
+- **"MUV × target acumulado no FY" (grupo A):**
+  - barras com o MUV acumulado do ano fiscal até cada mês (com os filtros);
+  - traço com o target acumulado;
+  - vermelho = acumulado acima do target;
+  - clicar na barra filtra o mês.
+- **Situação, quadro por competência, tendência e relatórios:** usam a mesma meta (target MUV).
+- **Guia da aba (UX-02):** ganhou Linha, Semana, MUV × target e Pareto do MUV.
+
+### Exports
+- **`porMes[].meta`:** sempre o target **total** em R$, sem o filtro de linha nem de semana da tela, com `metaFonte` (`portal-muv`, `portal` ou `local`).
+- **Portal 1.9.27:**
+  - o cartão do Waste mostra "target R$ …" e colore pelo target;
+  - a Reunião diária usa a meta do `exports` (regra 1), com a `WASTE-MES` como reserva;
+  - a ajuda dos campos da meta explica o `WASTE-MUV-<linha>`, o US$ e o período anual.
+
+### Teste
+`testes/twaste_target.js` confere:
+- duas linhas, uma em R$/mês e outra em US$/ano com cotação 5: meta = 20.000 + 120.000 ÷ 12 × 5 = 70.000;
+- com o filtro de uma linha, só o target dela; vendo em US$, 14.000;
+- o filtro de linha separa as ordens e o MUV soma;
+- o gráfico do acumulado;
+- o `exports` com a meta total e o filtro da tela preservado;
+- a volta para a `WASTE-MES`;
+- a semana ISO (inclusive a virada do ano);
+- o filtro de semana.
+
+### Atenção na implantação
+Cadastrar o target de cada linha no Portal. Se a `WASTE-MES` continuar ativa, ela deixa de valer assim que existir um `WASTE-MUV`: desativar para não confundir.
+
