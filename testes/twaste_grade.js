@@ -63,6 +63,13 @@ const GRADE = [T(CAB),
     return { n: rs.length, emp: rs.every(r => r.dEmp != null), fmt: imp.formato, temNaLista: S.ordens.includes('900814702'), sem: S.sem, total: S.total }; });
   ok(D.n === 4 && D.emp && /grade KKBC_ORD/.test(D.fmt), `importada: 4 linhas com o Desv. empregado; formato "${D.fmt}"`);
   ok(!D.temNaLista && D.sem === D.total - 1, `aviso de formato antigo sem a ordem reimportada (${D.sem} de ${D.total})`);
+  // 1.10.0 · MUV oficial da ordem importada: ficha, criticidade e exports com MUV = estrutura + empregado (sem o preço de input)
+  const M = await o.evaluate(() => { const ord = aggOrders(vigRows().filter(r => r.ordem === '900814702'))[0]; const e = buildExports(); const po = e.porOrdem.find(x => x.ordem === '900814702'), pm = e.porMes.find(x => x.per === ord.per);
+    return { muv: +ord.muv.toFixed(2), estr: +ord.estr.toFixed(2), emp: +ord.emp.toFixed(2), preco: +ord.preco.toFixed(2), aprox: ord.aprox, d: +ord.d.toFixed(2), po, oficial: e.oficial, pmMuv: pm && pm.muv, pmTem: !!(pm && 'muvDesfavoravel' in pm && 'estrutura' in pm) }; });
+  ok(M.muv === -4723.2 && M.estr === 137.11 && M.emp === -4860.31 && !M.aprox, `MUV da ordem importada = ${M.muv} (estrutura ${M.estr} + empregado ${M.emp}), sem "aprox."`);
+  ok(M.po && M.po.muv === -4723.2 && M.po.estrutura === 137.11 && M.po.empregado === -4860.31 && M.po.muvAprox === false && M.oficial === 'muv', `exports.porOrdem com muv/estrutura/empregado e oficial = "muv" (${M.po && M.po.muv})`);
+  ok(M.pmTem && M.pmMuv != null, `exports.porMes com muv, estrutura, desfavorável/favorável (${M.pmMuv})`);
+  ok(M.preco !== 0 && Math.abs(M.d - M.muv) > 1, `preço de input fora do MUV: desvio total ${M.d} ≠ MUV ${M.muv} (preço ${M.preco})`);
   ok(!pe.length, 'sem erro de página' + (pe.length ? ': ' + pe.slice(0, 3).join(' | ') : ''));
   await b.close();
   console.log(errs.length ? `\n${errs.length} falha(s)` : '\nsem erros'); process.exit(errs.length ? 1 : 0);

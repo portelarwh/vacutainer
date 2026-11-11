@@ -46,9 +46,9 @@ const PAGS = ['Portal.html', 'OEE-Vacutainer.html', 'Perdas-Ordem.html', 'Gestã
       cad([{ de: '2020-01-01', ate: L + '-14', valor: 10000 }, { de: L + '-15', valor: 20000 }]);
       const esperado = (10000 * 14 + 20000 * (n - 14)) / n;
       const mL = metaPer(L), mA = metaPer(A), nota = metaNota(L);
-      const d = docMensal(L); const total = d.blocos[0].itens.find(k => k[0] === 'Total');
+      const d = docMensal(L); const total = d.blocos[0].itens.find(k => k[0] === 'MUV');
       const serie = trendSerie(L); const svg = barChart(serie); const tracos = (svg.match(/<title>meta /g) || []).length;
-      F.de = A; F.ate = L; renderPainel(); const kpi = [...document.querySelectorAll('#kpis .kpi, #kpis > div')].map(e => e.textContent).find(t => /Desvio líquido/.test(t)) || '';
+      F.de = A; F.ate = L; renderPainel(); const kpi = [...document.querySelectorAll('#kpis .kpi, #kpis > div')].map(e => e.textContent).find(t => /^\s*MUV/.test(t)) || '';
       // mês sem vigência no Portal: vale a meta local da página
       cad([{ de: L + '-01', valor: 30000 }]); B.config.meta = 5000; const semVig = metaPer(A), comVig = metaPer(L);
       // uma vigência só para todos os meses: comportamento de antes (uma linha de meta)
