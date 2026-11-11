@@ -50,3 +50,26 @@ Pedido do usuário: "mesmo com 3 turnos eu reporto o dia de produção (24 h); n
   - **Com MB51:** a lista continua igual, e embaixo aparecem os lotes do MES ainda não conciliados.
   - **Ficha:** o botão Ficha abre a ficha comum do lote.
 - **Teste:** `testes/thh24.js` (caso das 04:00, Dia 24 h, Ordens sem MB51). O `tfase7` passou a ignorar o botão "Dia (24 h)" na contagem de turnos.
+
+## 2.4.53 · Caixas do MES e Lotes do dia pelo dia de trabalho (11/11/2026)
+
+Correção pedida pelo usuário, conferida com o CSV real da semana de 08 a 11/11. Antes, cada cartão contava as caixas de um jeito:
+- "Caixas do MES" usava a janela 06:00→06:00. Em 09/11 deu 1.062 caixas: entravam as 23 de 10/11 (04:59–05:29), que contam no A do dia 10, e ficavam de fora as 19 de 09/11 (04:53–05:35), que contam no A do dia 09.
+- "Lotes do dia" só olhava o horário dos turnos. Deu 1.039: as 19 da madrugada ficavam de fora.
+
+Agora os dois usam o **dia de trabalho** (`CaixasDia` em `fontes/producao/hh24.js`): as caixas nos intervalos dos turnos do dia mais as caixas fora do turno que contam neste dia (`ForaTurno`, o mesmo conjunto do OEE reportado). Com o CSV real:
+
+| Dia | Caixas do dia de trabalho | Caixas fora do turno |
+|---|---|---|
+| 09/11 | 1.058 | 19 |
+| 10/11 | 1.131 | 23 |
+| 11/11 (até 12:07) | 379 | 20 |
+
+Lote 6299948 em 09/11: 950 caixas (19 fora do turno).
+
+- **Cartão "Caixas do MES" (Lançamento, Visão Geral e Painel):** 1ª e última caixa do dia de trabalho, total de caixas, quantas fora do turno e trocas entre a 1ª e a última.
+- **"Lotes do dia" e "Produção do dia":** caixas de cada lote que contam no dia, com a linha "N caixas fora do turno". A linha do tempo se estende até as caixas fora do turno.
+- **Várias caixas no mesmo minuto:** o MES registra assim e todas contam. Isso foi corrigido durante o desenvolvimento.
+- **Testes:**
+  - `thh24.js` confere o dia de trabalho com duas caixas no mesmo minuto;
+  - `toeereal.js` foi atualizado: o cartão termina às 23:40, porque o trecho das 02:00–02:30 conta no A do dia seguinte.

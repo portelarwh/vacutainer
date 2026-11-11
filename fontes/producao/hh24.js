@@ -133,3 +133,48 @@ document.addEventListener('click', e => { const b = e.target.closest('[data-oflo
 Object.assign(HELP, {
   ordMes: ['Lotes do MES e conciliação', [['O que é?', 'Os lotes que a linha produziu (CSV do MES), com a ordem do plano do mês. "Conciliado" = a ordem está num MB51 importado; "não conciliado" = ainda sem MB51 (ou sem ordem no plano).'], ['Para que serve?', 'Ver tudo o que foi produzido antes de importar o MB51, e saber o que falta conciliar.'], ['Exemplo', 'Lote 6275187, catálogo 367986, ordem 100234567, 120 caixas: "não conciliado · sem MB51" até o MB51 de novembro ser importado.']]]
 });
+
+/* ===== Produção 2.4.53 · caixas do dia de trabalho (pedido do usuário, 11/11/2026) =====
+   "Caixas do MES" pegava a janela 06:00→06:00 e "Lotes do dia" só o horário dos turnos: os dois davam número diferente do dia.
+   Dia de trabalho = caixas dentro dos intervalos dos turnos do dia + caixas fora do turno que contam neste dia (ForaTurno: emendadas
+   com o turno anterior, ou que vão para o próximo; inclui as da madrugada antes do 1º turno). Caixas de fora do turno que contam em
+   outro dia ficam lá. É o mesmo conjunto que o OEE reportado já soma; aqui só a apresentação (cartão, Visão Geral, Lotes do dia). */
+const CaixasDia = {
+  _memo: new Map(),
+  /* [{m, cat, lot, kind, fora}] em minutos absolutos, em ordem */
+  lista(d, day, res) {
+    if (!day || !(d.server && (d.server.segments || []).length)) return null;
+    const S = ServerData, k = day.id + '|' + day._rev + '|' + (d.server.segments || []).length + '|' + ((d.server.imports || []).length) + '|' + JSON.stringify(d.server.lotClass || {}).length;
+    if (this._memo.has(k)) return this._memo.get(k);
+    if (!res) { try { res = Engine.computeDay(d, day); } catch (e) { return null; } }
+    const base = S.dayStartMin(day.date), byLot = S.orderByLot(d, day.lineId), out = [];   /* várias caixas no mesmo minuto: lista, sem juntar por minuto */
+    const ivs = (day.shifts || []).filter(p => !p.deleted).flatMap(p => (p.intervals || []).filter(i => !i.deleted));
+    for (const s of S.segsOf(d, day.lineId)) {
+      const t0 = S.tm(s.t0), t1 = S.tm(s.t1); if (!ivs.some(i => t1 >= base + i.start && t0 < base + i.end)) continue;
+      const kind = S.lotKind(d, day.lineId, s.lot, byLot, day.date);
+      for (const m of S.dec(s)) if (ivs.some(i => m >= base + i.start && m < base + i.end)) out.push({ m, cat: s.cat, lot: s.lot, kind, fora: false });
+    }
+    const ft = res && res.foraTurno;
+    for (const it of (ft && ft.recebe) || []) {
+      if ((ft.semAlvo || []).includes(it) || !it.alvo || it.alvo.date !== day.date) continue;
+      const b0 = S.dayStartMin(it.data); let bx = []; try { bx = ForaTurno.caixas(d, day.lineId, b0 + it.t0, b0 + it.t1 + 1, it.data); } catch (e) { }
+      for (const c of bx) out.push({ m: c.m, cat: c.cat, lot: c.lot, kind: 'normal', fora: true });   /* a janela fora do turno não cruza os intervalos do dia */
+    }
+    const L = out.sort((a, b) => a.m - b.m);
+    if (this._memo.size > 60) this._memo.clear(); this._memo.set(k, L); return L;
+  },
+  /* por lote: {lot, cat, n, kind, fora} na ordem da 1ª caixa */
+  lotes(d, day, res) {
+    const L = this.lista(d, day, res); if (!L) return null; const M = new Map();
+    for (const c of L) { const x = M.get(c.lot) || { lot: c.lot, cat: c.cat, n: 0, kind: c.kind, fora: 0, m0: c.m, m1: c.m }; x.n++; if (c.fora) x.fora++; x.m1 = c.m; M.set(c.lot, x); }
+    return [...M.values()];
+  }
+};
+/* cartão "Caixas do MES" (dia e período) pelo dia de trabalho */
+MesDia.dia = function (d, day) {
+  const S = ServerData; if (!day || !(d.server && (d.server.segments || []).length)) return null;
+  const L = CaixasDia.lista(d, day); if (!L) return null;
+  const base = S.dayStartMin(day.date), bx = L.filter(c => c.kind === 'normal');
+  let ch = []; try { ch = bx.length ? S.changes(d, day.lineId).filter(c => { const f = S.tm(c.first); return f > bx[0].m && f <= bx[bx.length - 1].m; }) : []; } catch (e) { }
+  return { date: day.date, base, n: bx.length, m0: bx.length ? bx[0].m : null, m1: bx.length ? bx[bx.length - 1].m : null, trocas: ch.length, trocaMin: U.sum(ch, c => c.min || 0), fora: bx.filter(c => c.fora).length };
+};

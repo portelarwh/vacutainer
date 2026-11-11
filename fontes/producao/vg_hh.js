@@ -29,7 +29,7 @@ const MesDia = {
     const x = this.dia(db(), day);
     if (!x) return kpi('Caixas do MES', '—', '', 'sem dados do servidor (MES) importados');
     if (!x.n) return kpi('Caixas do MES', '—', '', 'nenhuma caixa no dia');
-    return kpi('Caixas do MES', `<span class="kv-sm">${this.hh(x.m0, x.base)} – ${this.hh(x.m1, x.base)}</span>`, '', `1ª e última caixa · ${U.fmt(x.n)} cx${x.trocas ? ` · ${x.trocas} troca(s) · ${OeeReal.dur(x.trocaMin)}` : ' · sem troca de lote'}`);
+    return kpi('Caixas do MES', `<span class="kv-sm">${this.hh(x.m0, x.base)} – ${this.hh(x.m1, x.base)}</span>`, '', `1ª e última caixa do dia de trabalho · ${U.fmt(x.n)} cx${x.fora ? ` (${U.fmt(x.fora)} fora do turno)` : ''}${x.trocas ? ` · ${x.trocas} troca(s) · ${OeeReal.dur(x.trocaMin)}` : ' · sem troca de lote'}`);
   },
   kpiPeriodo(days) {
     const p = this.periodo(days);

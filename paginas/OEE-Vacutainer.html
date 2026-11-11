@@ -1311,7 +1311,7 @@ const U = (() => {
 
 /* ---- 02-model.js ---- */
 /* ================= modelo de dados, valores iniciais e integridade ================= */
-const APP_VERSION = '2.4.52';
+const APP_VERSION = '2.4.53';
 const SCHEMA_VERSION = 1;
 const BASE_FILE = 'oee-vacutainer-base.json';
 const BACKUP_DIR = '00. Backups';
@@ -9659,7 +9659,7 @@ const MesDia = {
     const x = this.dia(db(), day);
     if (!x) return kpi('Caixas do MES', '—', '', 'sem dados do servidor (MES) importados');
     if (!x.n) return kpi('Caixas do MES', '—', '', 'nenhuma caixa no dia');
-    return kpi('Caixas do MES', `<span class="kv-sm">${this.hh(x.m0, x.base)} – ${this.hh(x.m1, x.base)}</span>`, '', `1ª e última caixa · ${U.fmt(x.n)} cx${x.trocas ? ` · ${x.trocas} troca(s) · ${OeeReal.dur(x.trocaMin)}` : ' · sem troca de lote'}`);
+    return kpi('Caixas do MES', `<span class="kv-sm">${this.hh(x.m0, x.base)} – ${this.hh(x.m1, x.base)}</span>`, '', `1ª e última caixa do dia de trabalho · ${U.fmt(x.n)} cx${x.fora ? ` (${U.fmt(x.fora)} fora do turno)` : ''}${x.trocas ? ` · ${x.trocas} troca(s) · ${OeeReal.dur(x.trocaMin)}` : ' · sem troca de lote'}`);
   },
   kpiPeriodo(days) {
     const p = this.periodo(days);
@@ -10379,6 +10379,11 @@ const LancUI = (() => {
   function servidor(day, res) {
     let S = null; try { S = SrvUI.sug(day, res); } catch (e) { return ''; }
     if (!S || !S.has) return '';
+    /* 2.4.53 · lotes e produção pelo dia de trabalho (CaixasDia): as caixas fora do turno que contam neste dia entram (ex.: 04:53–05:35
+       no turno A) e as que contam em outro dia saem; a linha do tempo se estende até elas */
+    let LT = null; try { LT = typeof CaixasDia !== 'undefined' ? CaixasDia.lotes(db(), day, res) : null; } catch (e) { }
+    if (LT) { const all = CaixasDia.lista(db(), day, res) || []; if (all.length) { const a = Math.min(S.w0, all[0].m - S.base), b = Math.max(S.w1, all[all.length - 1].m - S.base + 1);
+      if (a < S.w0 || b > S.w1) S = { ...S, w0: a, w1: b, segs: ServerData.segsOf(db(), L).filter(s => ServerData.tm(s.t1) >= S.base + a && ServerData.tm(s.t0) < S.base + b) }; } S = { ...S, lots: LT }; }
     const q = S.qty, tot = k => U.sum(S.lots.filter(x => x.kind === k), x => x.n), n = pend(S);
     const pends = S.lots.filter(x => x.kind === 'pendente'), chg = S.events.filter(e => e.type === 'catalogo' || e.type === 'lote');
     const nCat = chg.filter(e => e.type === 'catalogo').length, nLote = chg.length - nCat;
@@ -10395,7 +10400,7 @@ const LancUI = (() => {
       : `<div class="lc-k ok"><span class="ki">${ic('check', 18)}</span><div><div class="kl">Validação</div><div class="kv">Dados conferidos</div><div class="kl">Lançamento confere com o servidor</div></div></div>`;
     const lotes = S.lots.map(x => { const rw = x.kind === 'retrabalho', has = (day.events || []).some(e => !e.deleted && e.srvRework === x.lot), nt = (((db().server || {}).lotNotes || {})[x.lot] || {}).text, c = catBy(x.cat);
       return `<div class="lc-lot${rw ? ' rw' : ''}"><div class="tags"><span class="lc-tag">${esc(x.cat)}</span>${famCode(x.cat) ? `<span class="lc-tag">${esc(famCode(x.cat))}</span>` : ''}${x.kind === 'pendente' ? '<span class="lc-tag" style="background:var(--l-warn-soft);color:var(--l-warn-ink)">a confirmar</span>' : ''}</div>
-        ${c && c.name ? `<div class="small muted" style="overflow-wrap:anywhere">${esc(c.name)}</div>` : ''}<div class="lt">Lote <span class="mono">${esc(x.lot)}</span></div><div class="cx">${cx(x.n)}</div>
+        ${c && c.name ? `<div class="small muted" style="overflow-wrap:anywhere">${esc(c.name)}</div>` : ''}<div class="lt">Lote <span class="mono">${esc(x.lot)}</span></div><div class="cx">${cx(x.n)}</div>${x.fora ? `<div class="small muted" title="Caixas fora do horário dos turnos que contam neste dia (OEE reportado)">${cx(x.fora)} fora do turno</div>` : ''}
         <label title="${esc(nt || '')}"><input type="checkbox" data-rw="${esc(x.lot)}" ${rw ? 'checked' : ''} ${day.status === 'fechado' ? 'disabled' : ''}> Marcar como retrabalho</label>
         ${rw && !has ? `<button type="button" class="btn xs warnb" data-rwapply="${esc(x.lot)}" title="O lote está marcado como retrabalho, mas o tempo ainda não foi descontado neste dia">Descontar o tempo do retrabalho</button>` : ''}${rw && has ? '<span class="small muted">Fora do OEE neste dia</span>' : ''}${nt ? `<span class="small muted">${esc(nt.slice(0, 60))}</span>` : ''}</div>`; }).join('');
     return {
@@ -10410,7 +10415,7 @@ const LancUI = (() => {
         <span><span class="lc-sw" style="background:repeating-linear-gradient(135deg,var(--muted) 0 2px,transparent 2px 6px)"></span>Sem caixa por mais de ${U.fmt(db().settings.serverGapMin || 10)} min</span><span><span class="lc-sw" style="background:repeating-linear-gradient(135deg,#7A45C5 0 4px,#c9b2ea 4px 8px)"></span>Retrabalho ou lote a confirmar</span></div>
         <p class="small muted" style="margin:8px 0 0">Passe o mouse (ou toque) numa barra ou num marcador para ver horário, catálogo e lote.</p></details>
     </section>`,
-      lotes: `<section class="lc-c" aria-labelledby="lcLotT"><div class="lc-hd"><span class="lc-hic">${ic('box', 22)}</span><div><h3 class="lc-t" id="lcLotT">Lotes do dia ${tip('serverRework')}</h3><p class="lc-s">Lotes produzidos neste dia, conforme o servidor.</p></div><span class="lc-sp"></span><button type="button" class="lc-link" data-route="lots">Ver histórico de lotes ${ic('arrow', 16)}</button></div>
+      lotes: `<section class="lc-c" aria-labelledby="lcLotT"><div class="lc-hd"><span class="lc-hic">${ic('box', 22)}</span><div><h3 class="lc-t" id="lcLotT">Lotes do dia ${tip('serverRework')}</h3><p class="lc-s">Caixas de cada lote que contam neste dia de trabalho (turnos + fora do turno), conforme o servidor.</p></div><span class="lc-sp"></span><button type="button" class="lc-link" data-route="lots">Ver histórico de lotes ${ic('arrow', 16)}</button></div>
       <div class="lc-lots">${lotes || '<p class="small muted">Nenhum lote.</p>'}</div></section>`
     };
   }
@@ -10781,6 +10786,51 @@ document.addEventListener('click', e => { const b = e.target.closest('[data-oflo
 Object.assign(HELP, {
   ordMes: ['Lotes do MES e conciliação', [['O que é?', 'Os lotes que a linha produziu (CSV do MES), com a ordem do plano do mês. "Conciliado" = a ordem está num MB51 importado; "não conciliado" = ainda sem MB51 (ou sem ordem no plano).'], ['Para que serve?', 'Ver tudo o que foi produzido antes de importar o MB51, e saber o que falta conciliar.'], ['Exemplo', 'Lote 6275187, catálogo 367986, ordem 100234567, 120 caixas: "não conciliado · sem MB51" até o MB51 de novembro ser importado.']]]
 });
+
+/* ===== Produção 2.4.53 · caixas do dia de trabalho (pedido do usuário, 11/11/2026) =====
+   "Caixas do MES" pegava a janela 06:00→06:00 e "Lotes do dia" só o horário dos turnos: os dois davam número diferente do dia.
+   Dia de trabalho = caixas dentro dos intervalos dos turnos do dia + caixas fora do turno que contam neste dia (ForaTurno: emendadas
+   com o turno anterior, ou que vão para o próximo; inclui as da madrugada antes do 1º turno). Caixas de fora do turno que contam em
+   outro dia ficam lá. É o mesmo conjunto que o OEE reportado já soma; aqui só a apresentação (cartão, Visão Geral, Lotes do dia). */
+const CaixasDia = {
+  _memo: new Map(),
+  /* [{m, cat, lot, kind, fora}] em minutos absolutos, em ordem */
+  lista(d, day, res) {
+    if (!day || !(d.server && (d.server.segments || []).length)) return null;
+    const S = ServerData, k = day.id + '|' + day._rev + '|' + (d.server.segments || []).length + '|' + ((d.server.imports || []).length) + '|' + JSON.stringify(d.server.lotClass || {}).length;
+    if (this._memo.has(k)) return this._memo.get(k);
+    if (!res) { try { res = Engine.computeDay(d, day); } catch (e) { return null; } }
+    const base = S.dayStartMin(day.date), byLot = S.orderByLot(d, day.lineId), out = [];   /* várias caixas no mesmo minuto: lista, sem juntar por minuto */
+    const ivs = (day.shifts || []).filter(p => !p.deleted).flatMap(p => (p.intervals || []).filter(i => !i.deleted));
+    for (const s of S.segsOf(d, day.lineId)) {
+      const t0 = S.tm(s.t0), t1 = S.tm(s.t1); if (!ivs.some(i => t1 >= base + i.start && t0 < base + i.end)) continue;
+      const kind = S.lotKind(d, day.lineId, s.lot, byLot, day.date);
+      for (const m of S.dec(s)) if (ivs.some(i => m >= base + i.start && m < base + i.end)) out.push({ m, cat: s.cat, lot: s.lot, kind, fora: false });
+    }
+    const ft = res && res.foraTurno;
+    for (const it of (ft && ft.recebe) || []) {
+      if ((ft.semAlvo || []).includes(it) || !it.alvo || it.alvo.date !== day.date) continue;
+      const b0 = S.dayStartMin(it.data); let bx = []; try { bx = ForaTurno.caixas(d, day.lineId, b0 + it.t0, b0 + it.t1 + 1, it.data); } catch (e) { }
+      for (const c of bx) out.push({ m: c.m, cat: c.cat, lot: c.lot, kind: 'normal', fora: true });   /* a janela fora do turno não cruza os intervalos do dia */
+    }
+    const L = out.sort((a, b) => a.m - b.m);
+    if (this._memo.size > 60) this._memo.clear(); this._memo.set(k, L); return L;
+  },
+  /* por lote: {lot, cat, n, kind, fora} na ordem da 1ª caixa */
+  lotes(d, day, res) {
+    const L = this.lista(d, day, res); if (!L) return null; const M = new Map();
+    for (const c of L) { const x = M.get(c.lot) || { lot: c.lot, cat: c.cat, n: 0, kind: c.kind, fora: 0, m0: c.m, m1: c.m }; x.n++; if (c.fora) x.fora++; x.m1 = c.m; M.set(c.lot, x); }
+    return [...M.values()];
+  }
+};
+/* cartão "Caixas do MES" (dia e período) pelo dia de trabalho */
+MesDia.dia = function (d, day) {
+  const S = ServerData; if (!day || !(d.server && (d.server.segments || []).length)) return null;
+  const L = CaixasDia.lista(d, day); if (!L) return null;
+  const base = S.dayStartMin(day.date), bx = L.filter(c => c.kind === 'normal');
+  let ch = []; try { ch = bx.length ? S.changes(d, day.lineId).filter(c => { const f = S.tm(c.first); return f > bx[0].m && f <= bx[bx.length - 1].m; }) : []; } catch (e) { }
+  return { date: day.date, base, n: bx.length, m0: bx.length ? bx[0].m : null, m1: bx.length ? bx[bx.length - 1].m : null, trocas: ch.length, trocaMin: U.sum(ch, c => c.min || 0), fora: bx.filter(c => c.fora).length };
+};
 
 async function boot() {
   if(vacDemo.ativo){await loadPrefs();applyTheme();bindGlobal();Charts.bind();Store.S.user='Pessoa de demonstração';Store.enterExample(vacDemo.ler('oee'));

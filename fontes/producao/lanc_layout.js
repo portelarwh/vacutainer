@@ -114,6 +114,11 @@ const LancUI = (() => {
   function servidor(day, res) {
     let S = null; try { S = SrvUI.sug(day, res); } catch (e) { return ''; }
     if (!S || !S.has) return '';
+    /* 2.4.53 · lotes e produção pelo dia de trabalho (CaixasDia): as caixas fora do turno que contam neste dia entram (ex.: 04:53–05:35
+       no turno A) e as que contam em outro dia saem; a linha do tempo se estende até elas */
+    let LT = null; try { LT = typeof CaixasDia !== 'undefined' ? CaixasDia.lotes(db(), day, res) : null; } catch (e) { }
+    if (LT) { const all = CaixasDia.lista(db(), day, res) || []; if (all.length) { const a = Math.min(S.w0, all[0].m - S.base), b = Math.max(S.w1, all[all.length - 1].m - S.base + 1);
+      if (a < S.w0 || b > S.w1) S = { ...S, w0: a, w1: b, segs: ServerData.segsOf(db(), L).filter(s => ServerData.tm(s.t1) >= S.base + a && ServerData.tm(s.t0) < S.base + b) }; } S = { ...S, lots: LT }; }
     const q = S.qty, tot = k => U.sum(S.lots.filter(x => x.kind === k), x => x.n), n = pend(S);
     const pends = S.lots.filter(x => x.kind === 'pendente'), chg = S.events.filter(e => e.type === 'catalogo' || e.type === 'lote');
     const nCat = chg.filter(e => e.type === 'catalogo').length, nLote = chg.length - nCat;
@@ -130,7 +135,7 @@ const LancUI = (() => {
       : `<div class="lc-k ok"><span class="ki">${ic('check', 18)}</span><div><div class="kl">Validação</div><div class="kv">Dados conferidos</div><div class="kl">Lançamento confere com o servidor</div></div></div>`;
     const lotes = S.lots.map(x => { const rw = x.kind === 'retrabalho', has = (day.events || []).some(e => !e.deleted && e.srvRework === x.lot), nt = (((db().server || {}).lotNotes || {})[x.lot] || {}).text, c = catBy(x.cat);
       return `<div class="lc-lot${rw ? ' rw' : ''}"><div class="tags"><span class="lc-tag">${esc(x.cat)}</span>${famCode(x.cat) ? `<span class="lc-tag">${esc(famCode(x.cat))}</span>` : ''}${x.kind === 'pendente' ? '<span class="lc-tag" style="background:var(--l-warn-soft);color:var(--l-warn-ink)">a confirmar</span>' : ''}</div>
-        ${c && c.name ? `<div class="small muted" style="overflow-wrap:anywhere">${esc(c.name)}</div>` : ''}<div class="lt">Lote <span class="mono">${esc(x.lot)}</span></div><div class="cx">${cx(x.n)}</div>
+        ${c && c.name ? `<div class="small muted" style="overflow-wrap:anywhere">${esc(c.name)}</div>` : ''}<div class="lt">Lote <span class="mono">${esc(x.lot)}</span></div><div class="cx">${cx(x.n)}</div>${x.fora ? `<div class="small muted" title="Caixas fora do horário dos turnos que contam neste dia (OEE reportado)">${cx(x.fora)} fora do turno</div>` : ''}
         <label title="${esc(nt || '')}"><input type="checkbox" data-rw="${esc(x.lot)}" ${rw ? 'checked' : ''} ${day.status === 'fechado' ? 'disabled' : ''}> Marcar como retrabalho</label>
         ${rw && !has ? `<button type="button" class="btn xs warnb" data-rwapply="${esc(x.lot)}" title="O lote está marcado como retrabalho, mas o tempo ainda não foi descontado neste dia">Descontar o tempo do retrabalho</button>` : ''}${rw && has ? '<span class="small muted">Fora do OEE neste dia</span>' : ''}${nt ? `<span class="small muted">${esc(nt.slice(0, 60))}</span>` : ''}</div>`; }).join('');
     return {
@@ -145,7 +150,7 @@ const LancUI = (() => {
         <span><span class="lc-sw" style="background:repeating-linear-gradient(135deg,var(--muted) 0 2px,transparent 2px 6px)"></span>Sem caixa por mais de ${U.fmt(db().settings.serverGapMin || 10)} min</span><span><span class="lc-sw" style="background:repeating-linear-gradient(135deg,#7A45C5 0 4px,#c9b2ea 4px 8px)"></span>Retrabalho ou lote a confirmar</span></div>
         <p class="small muted" style="margin:8px 0 0">Passe o mouse (ou toque) numa barra ou num marcador para ver horário, catálogo e lote.</p></details>
     </section>`,
-      lotes: `<section class="lc-c" aria-labelledby="lcLotT"><div class="lc-hd"><span class="lc-hic">${ic('box', 22)}</span><div><h3 class="lc-t" id="lcLotT">Lotes do dia ${tip('serverRework')}</h3><p class="lc-s">Lotes produzidos neste dia, conforme o servidor.</p></div><span class="lc-sp"></span><button type="button" class="lc-link" data-route="lots">Ver histórico de lotes ${ic('arrow', 16)}</button></div>
+      lotes: `<section class="lc-c" aria-labelledby="lcLotT"><div class="lc-hd"><span class="lc-hic">${ic('box', 22)}</span><div><h3 class="lc-t" id="lcLotT">Lotes do dia ${tip('serverRework')}</h3><p class="lc-s">Caixas de cada lote que contam neste dia de trabalho (turnos + fora do turno), conforme o servidor.</p></div><span class="lc-sp"></span><button type="button" class="lc-link" data-route="lots">Ver histórico de lotes ${ic('arrow', 16)}</button></div>
       <div class="lc-lots">${lotes || '<p class="small muted">Nenhum lote.</p>'}</div></section>`
     };
   }
