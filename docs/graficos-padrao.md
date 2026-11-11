@@ -47,3 +47,16 @@ A linha `.c-un` ("Valores em …") está no `fontes/kit/kit_visual.css` desde a 
   - "Valores em R$";
   - a troca para US$ nas medidas e na unidade;
   - o eixo sem repetição.
+
+## Paradas 1.0.33 (11/11/2026)
+
+O Paradas já trazia a unidade em cada rótulo desde a 1.0.8/1.0.10: uma unidade para a escala inteira, em h ou min. Esta versão só completa o padrão:
+- **Pareto (`hbars`):** o percentual ao lado da barra passa a dizer **"% acum."**. Antes era só "%", e parecia a participação daquela barra.
+- **Pareto › Ocorrências:** mostra "Valores em ocorrências", porque o número da barra não diz a unidade. Em Minutos, a barra já traz h ou min.
+- **Eixo do Tempo por mês (`vbars`):** sem rótulos repetidos em escala pequena; antes 0 · 1 · 2 · 2 · 3 min, agora 0,0 · 0,8 · 1,5 · 2,3 · 3,0 min.
+- **Subtítulos:** diziam "minutos" quando a escala pode estar em h, e "Por turno" prometia "minutos e ocorrências" mas a barra mostra só o tempo. Agora: "tempo de parada (h ou min)", e as ocorrências ficam na dica.
+- **Relatório:** o título passou a "Pareto por código (tempo de parada e % acumulado)".
+- **Teste:** `tparadas_vg.js` usa os mesmos números da referência; "% acum." e a linha da unidade são só rótulo e ficam fora da comparação. O teste confere três coisas:
+  - "% acum." no Pareto;
+  - a unidade em Ocorrências;
+  - o eixo sem repetição.

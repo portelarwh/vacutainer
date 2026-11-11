@@ -10,7 +10,7 @@ Plataforma de páginas HTML de arquivo único que trabalham juntas numa **pasta 
 | Produção (OEE, plano, ordens SAP) | `OEE-Vacutainer.html` | `oee-vacutainer-base.json` (+ `ordens-base.json`) | 2.4.51 | **NÃO editar o HTML**: editar `fontes/producao/` e rodar o build |
 | Waste (perdas por ordem, KKBC) | `Perdas-Ordem.html` | `perdas-base.json` | 1.8.36 | direto no HTML |
 | Gestão de Gel | `Gestão-Gel-Vacutainer.html` | `fifo-base.json` | 2.27 · **em atualização** | direto no HTML |
-| Paradas | `Paradas.html` | `paradas-base.json` | 1.0.32 · **em atualização** | direto no HTML |
+| Paradas | `Paradas.html` | `paradas-base.json` | 1.0.33 · **em atualização** | direto no HTML |
 | Equipamentos (com manutenção) | `Equipamentos.html` | `equipamentos-base.json` | 1.0.10 · **em atualização** | direto no HTML (saiu do gerador na 1.0.0; `docs/equipamentos-v1.md`) |
 | Iniciativas / Ações (Ações/Planner · KAS · OSM · 5S · programas) | `Iniciativas.html` | `iniciativas-base.json` | 1.1.7 · **em atualização** | direto no HTML (saiu do gerador na 1.0.0; `docs/iniciativas-planner.md`) |
 | Projetos | `Projetos.html` | (`projetos-base.json`, ainda não existe) | 0.1.10 · **em construção** | **gerada**: `fontes/modelo/gerar_paginas.py` |
@@ -153,7 +153,7 @@ Lista única do que ficou para depois. O motivo e o gatilho de cada item estão 
 - Waste ainda cai na base da Produção (`monthPlans`, `server.lotClass/lotNotes`) para ordens fora dos 24 meses do `exports.porOrdem` e lotes fora dos 150 dias do `exports.lotes` (registro § U, E4).
 
 **Layout (auditoria visual; registro § L)**
-- Revisar títulos, unidades e legendas dos gráficos internos de cada página (padrão em `docs/graficos-padrao.md`, uma PR por página: Produção → Waste → Paradas → Gel → Portal). Já feito: cards do Portal, gráfico mensal do Paradas, Produção 2.4.51 e Waste 1.8.36.
+- Revisar títulos, unidades e legendas dos gráficos internos de cada página (padrão em `docs/graficos-padrao.md`, uma PR por página: Produção → Waste → Paradas → Gel → Portal). Já feito: cards do Portal, Produção 2.4.51, Waste 1.8.36 e Paradas 1.0.33.
 - Exemplos visuais dos componentes (cards, pílulas, abas) nos dois temas.
 
 **Homologação e testes**

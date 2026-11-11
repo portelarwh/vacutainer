@@ -12,7 +12,7 @@ const errs = []; const ok = (c, m) => { console.log((c ? 'ok   ' : 'FALHA ') + m
 const LER = () => {
   const n = s => String(s || '').replace(/\s+/g, ' ').trim(), m = document.getElementById('main');
   const kpis = {}; m.querySelectorAll('.kpi').forEach(k => { const l = n((k.querySelector('.l') || {}).textContent); if (l) kpis[l] = n((k.querySelector('.v') || {}).textContent) + ' | ' + n((k.querySelector('.s') || {}).textContent); });
-  const g = id => n((document.getElementById(id) || {}).textContent);
+  const g = id => { const e = document.getElementById(id); if (!e) return ''; const c = e.cloneNode(true); c.querySelectorAll('.c-un').forEach(x => x.remove()); return n(c.textContent).replace(/% acum\./g, '%'); };   // 1.0.33: "% acum." e "Valores em …" são só rótulo
   return { kpis, acao: n((m.querySelector('.acao .f') || {}).textContent), decis: [...m.querySelectorAll('.decis li')].map(l => n(l.textContent)), mes: g('chMes'), eq: g('chEq'), cl: g('chCl'), tu: g('chTu'), info: n((m.querySelector('.filters .info, .finfo, .filters .muted') || {}).textContent) };
 };
 (async () => {
@@ -30,6 +30,16 @@ const LER = () => {
     ok(!difK.length, 'mesmos valores em todos os indicadores da referência' + (difK.length ? ': ' + difK.map(k => `${k} [${ref.kpis[k]}] → [${atual.kpis[k] || 'ausente'}]`).join(' ; ') : ` (${Object.keys(ref.kpis).length})`));
     for (const k of ['acao', 'decis', 'mes', 'eq', 'cl', 'tu', 'info']) ok(JSON.stringify(ref[k]) === JSON.stringify(atual[k]), `mesmo conteúdo: ${k}`);
   }
+  // 1.0.33 · gráficos (docs/graficos-padrao.md): "% acum." no Pareto, unidade em Ocorrências, eixo sem rótulos repetidos
+  const gr = await o.evaluate(async () => { const r = {}; r.acum = /% acum\./.test(document.getElementById('chEq').textContent);
+    const d = document.createElement('div'); d.innerHTML = vbars([{ k: 'a', label: 'a' }, { k: 'b', label: 'b' }], [{ nome: 'x', cor: '#888', v: [1, 3] }], { fmt: fmtMin });
+    const tk = [...d.querySelectorAll('svg > text[text-anchor="end"]')].map(x => x.textContent); r.tk = tk.join('|'); r.rep = new Set(tk).size < tk.length;
+    VIEWS.pareto.med = 'n'; App.go('pareto'); await new Promise(z => setTimeout(z, 400)); r.unN = ((document.querySelector('#pCh .c-un') || {}).textContent || '').trim();
+    VIEWS.pareto.med = 'min'; App.go('pareto'); await new Promise(z => setTimeout(z, 400)); r.unMin = !!document.querySelector('#pCh .c-un');
+    App.go('geral'); await new Promise(z => setTimeout(z, 400)); return r; });
+  ok(gr.acum, 'Pareto com "% acum." (não só "%")');
+  ok(gr.unN === 'Valores em ocorrências' && !gr.unMin, `Pareto em Ocorrências diz a unidade; em Minutos a barra já traz h/min (${gr.unN})`);
+  ok(!gr.rep, `eixo sem rótulos repetidos (escala pequena: ${gr.tk})`);
   await o.screenshot({ path: SAI + ROTULO + '-1440-claro.png', fullPage: true });
   if (!GRAVAR) {
     const L = await o.evaluate(async () => { const w = t => new Promise(r => setTimeout(r, t)), out = {}, M = document.getElementById('main');
