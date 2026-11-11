@@ -1241,7 +1241,7 @@ addEventListener('error', e => { if (e.error && e.error.name === 'VacAbaBloquead
 <nav class="vtabs" aria-label="Abas da página"><div class="wrap"><div class="tabs" role="tablist" id="nav"></div></div></nav>
 <!-- fim vac-cabecalho v2 -->
 
-<main class="wrap">
+<main class="wrap vk-estilo">
   <div id="banner"></div>
   <section class="kpis" id="kpis" aria-label="Indicadores principais"></section>
   <div id="fnote"></div>
@@ -1637,7 +1637,7 @@ const fileBackend={kind:'file',async commit(ch){applyLocal(ch);FS.pending.push(c
 async function fsRefresh(){if(S.mode!=='file'||FS.busy||ui.demo)return;try{const cur=await fsReadBase(fsKnown());if(cur&&!cur.same){FS.mod=cur.mod;FS.rev=cur.rev;FS.revBy=cur.by;loadData(cur.data);FS.pending.forEach(applyLocal);localBackend.save();render()}}catch(e){}}
 /* ================= V1.89 · integração com as outras páginas (Portal, OEE, Perdas) ================= */
 // versão da página (topo, Guia e base gravada)
-const APP_VERSION='2.26';   /* 2.26 · kit: padrão visual comum (vacLayout) */   /* 2.25 · kit: login com ID e senha */   /* 2.22 · UX-02: guia por aba */   /* 2.21 · Fase 7 (UX-03, GEL-01): Painel → Visão Geral */   /* 2.20 · Fase 4 · 4e: exports porDiaGel (teórico × real por dia) */   /* 2.19 · Fase 4 · 4d: lê da Produção a partir do corte (GelProd); Resumo do dia */   /* 2.18 · Fase 4 · 4b: pesagem pela conta comum do kit (vacGel) */   /* 2.17 · Fase 4 · 4a: parâmetros do gel do Portal (processo, formatos, motivos, descartes, gel do catálogo) */   /* 2.16 · Fase 3 (IMP-04): importações no exports; #importar abre a importação */   /* 2.15 · ARQ-05/ARQ-07: catálogos e equipamentos do Portal (GelCad); contas do gel iguais */   /* 2.14 · ARQ-09: sem entrada própria de "Modo exemplo" */   /* 2.11 · C2–C6: kit com a ficha por pasta (AT-08) e a contagem da fila durável (Portal › Versões) */   /* 2.10 · C1: alterações pendentes na fila durável do kit (sem perda entre abas) */   /* 2.09 · E11: busca do kit leva o equipamento à ficha em Equipamentos */   /* 2.08 · E8: kit com "+ Abrir ação" na ficha da ordem */   /* 2.07 · E5: ficha da ordem comum (botão na ordem) e busca por ordem, lote e LP */   /* 2.06 · E3: número digitado só aceito inteiro; E4: cobertura das ordens no exports */   /* 2.05 · E2: a versão da tela vem desta constante (o rótulo estava fixo em v2.01); kit com data local e meta do mês ponderada */   /* 2.04 · revisão 065fe6f: restauração por arquivo confirma e não segue sem a cópia anterior; CSV sem fórmulas; índice por dia no Painel */
+const APP_VERSION='2.27';   /* 2.27 · Visão Geral no padrão comum (vacLayout): situação, números, diagnóstico, análises do painel, explorar */   /* 2.26 · kit: padrão visual comum (vacLayout) */   /* 2.25 · kit: login com ID e senha */   /* 2.22 · UX-02: guia por aba */   /* 2.21 · Fase 7 (UX-03, GEL-01): Painel → Visão Geral */   /* 2.20 · Fase 4 · 4e: exports porDiaGel (teórico × real por dia) */   /* 2.19 · Fase 4 · 4d: lê da Produção a partir do corte (GelProd); Resumo do dia */   /* 2.18 · Fase 4 · 4b: pesagem pela conta comum do kit (vacGel) */   /* 2.17 · Fase 4 · 4a: parâmetros do gel do Portal (processo, formatos, motivos, descartes, gel do catálogo) */   /* 2.16 · Fase 3 (IMP-04): importações no exports; #importar abre a importação */   /* 2.15 · ARQ-05/ARQ-07: catálogos e equipamentos do Portal (GelCad); contas do gel iguais */   /* 2.14 · ARQ-09: sem entrada própria de "Modo exemplo" */   /* 2.11 · C2–C6: kit com a ficha por pasta (AT-08) e a contagem da fila durável (Portal › Versões) */   /* 2.10 · C1: alterações pendentes na fila durável do kit (sem perda entre abas) */   /* 2.09 · E11: busca do kit leva o equipamento à ficha em Equipamentos */   /* 2.08 · E8: kit com "+ Abrir ação" na ficha da ordem */   /* 2.07 · E5: ficha da ordem comum (botão na ordem) e busca por ordem, lote e LP */   /* 2.06 · E3: número digitado só aceito inteiro; E4: cobertura das ordens no exports */   /* 2.05 · E2: a versão da tela vem desta constante (o rótulo estava fixo em v2.01); kit com data local e meta do mês ponderada */   /* 2.04 · revisão 065fe6f: restauração por arquivo confirma e não segue sem a cópia anterior; CSV sem fórmulas; índice por dia no Painel */
 /* 2.03 · situação "em atualização" (kit: selo, pílula e faixa; docs/paginas-construcao.md) */
 /* 2.02 · relatório montado: todas as linhas no PDF, comentário, aviso de corte no texto; Painel em 1º; aba inicial do perfil; impressão e PDF no tema claro */
 /* 1.99 · menu Mais do cabeçalho (vac-visual v1): fecha ao escolher uma ação, ao clicar fora e com Esc */
@@ -6935,7 +6935,7 @@ function renderDash(){
   const catOpts=`<option value="">Todos</option>${S.catalogs.map(c=>`<option value="${esc(c.id)}" ${f.cat===c.id?'selected':''}>${esc(c.num)}</option>`).join('')}`;
   const sel=(k,opts)=>`<select data-dbfs="${k}">${opts}</select>`;
   const chips=[f.cat&&['cat','Catálogo '+((catById(f.cat)||{}).num||'')],f.turn&&['turn','Turno '+f.turn],f.area&&['area','Área '+SCAT[f.area]],f.eq&&['eq',f.eq==='_manual'?'Sem equipamento':((equipById(f.eq)||{}).name||'(excluído)')],f.mot&&['mot','Motivo: '+motName(f.mot==='_'?'':f.mot)]].filter(Boolean);
-  let h=`<div class="dbbar card">
+  let h=(edit?'':gelVkHd())+`<div class="dbbar card">
    <div class="dbrow"><label>Visão <select data-dbfs="view"><option value="mine" ${curView==='mine'?'selected':''}>Meu painel</option>${views.map(v=>`<option value="${esc(v.id)}" ${curView===v.id?'selected':''}>${esc(v.name)} (compartilhada)</option>`).join('')}</select></label>
     ${edit?'':'<button type="button" class="btn sm" data-dbedit="1">✎ Personalizar painel</button>'}
     <span style="flex:1"></span><button type="button" class="btn sm" data-dbreps="1">Relatórios</button><button type="button" class="btn sm" data-dbcalc="1">Calculadora</button><button type="button" class="btn sm primary" data-dbpres="1">▶ Apresentação</button></div>
@@ -6955,13 +6955,41 @@ function renderDash(){
     <span class="seg" title="Medida do scrap">${[['gel','Gel líquido'],['gross','Peso bruto'],['rel',relLbl()]].map(([k,l])=>`<button type="button" data-dbmeas="${k}" aria-pressed="${o.meas===k}">${l}</button>`).join('')}</span></div>
    ${chips.length?`<div class="dbrow">${chips.map(([k,l])=>`<button type="button" class="dbchip" data-dbchip="${k}">${esc(l)} ✕</button>`).join('')}<button type="button" class="btn sm ghost" data-dbchip="*">Limpar filtros</button></div>`:''}
    <p class="sub" style="margin:0">${fmtD(a)} a ${fmtD(b)} · ${T.nDays} dia(s) com produção registrada${o.cmp==='prev'?` · comparação com ${fmtD(ca)} a ${fmtD(cb)}`:''}. Passe o mouse para ver os valores, clique numa barra para filtrar ou abrir o dia, arraste sobre um gráfico de tempo para aproximar o período.</p></div>`;
+  if(!edit)h+=gelVkSit(x)+vacLayout.sec('02','Números do período','Indicadores do topo do painel');
   h+=dbKpiHtml(x,lay.kpis||DBK_DEF);
+  if(!edit)h+=gelVkDiag(x)+vacLayout.sec('04','Análises do seu painel','Blocos e ordem escolhidos em Personalizar painel');
   h+=dbBlocksHtml(x,lay,edit);
+  if(!edit)h+=gelVkExp();
   if(!lay.blocks.length)h+='<div class="card"><div class="info">Nenhum bloco no painel. Clique em ✎ Personalizar painel › + Adicionar bloco.</div></div>';
   ui._dbcsv=x.csv;
   if(edit)setTimeout(()=>makeSortable($('#dbGrid'),ids=>{const M=new Map(ui.dbEdit.blocks.map(z=>[z.id,z]));ui.dbEdit.blocks=ids.map(i=>M.get(i)).filter(Boolean)}),0);
   return h;
 }
+/* ---- 2.27 · Visão Geral no padrão comum (vacLayout do kit): só apresentação dos números do painel ----
+   01 Situação (índice de uso × meta 100 e BOM; ação prioritária das Pendências; maior perda por motivo e por equipamento, com Filtrar = filtro do painel)
+   02 Números (indicadores do topo, como antes) · 03 Diagnóstico (pior e melhor período do índice; pendências) · 04 os blocos do painel na ordem
+   escolhida em Personalizar (não são reagrupados: a personalização continua valendo) · 05 Explorar (abas). Em Personalizar, só o painel aparece. */
+const gelVkHd=()=>'<div class="vk-hd"><div><h2>Visão geral do gel</h2><p>Uso do gel frente à BOM, scrap e pendências do almoxarifado</p></div></div>';
+function gelVkSit(x){const T=x.T,G=x.G,i=T.idx,lim=T.lim,L=vacLayout;
+  const st=i==null?['none','Sem índice no período']:i<=100.05?['ok',i<99.95?'Abaixo da meta':'Na meta']:i<=(lim||106)?['warn','Acima da meta, dentro da BOM']:['crit','Acima da BOM'];
+  let P=null;try{P=pendencias()}catch(e){}
+  const it=P?[[P.notConf.length,'baixa(s) do SAP sem conferência'],[P.sumiu.length,'barril(is) baixado(s) sem fim registrado'],[P.hold.length,'barril(is) bloqueado(s) há muito tempo'],[P.zona.length,'evento(s) de zona em aberto'],[P.sapc.length,'divergência(s) críticas com o SAP'],[P.badLoc.length+P.noLoc.length,'barril(is) com local errado ou sem local'],[P.audDiv.length,'divergência(s) de auditoria'],[P.sapN,'conferência(s) com o SAP']].filter(z=>z[0]):[];
+  const mot=(G.byMot||[]).filter(z=>z.v>0)[0],eq=(G.byEq||[]).filter(z=>z.v>0)[0],li=[];
+  if(mot)li.push(`<li><span>Motivo: <b>${esc(mot.l||'Não informado')}</b></span><span class="sp"></span><span class="v">${x.mfmt(mot.v)} ${esc(x.mU)}</span><button type="button" class="btn sm" data-vk-f="mot|${esc(mot.k)}">Filtrar</button></li>`);
+  if(eq)li.push(`<li><span>Equipamento: <b>${esc(eq.l||'Sem equipamento')}</b></span><span class="sp"></span><span class="v">${x.mfmt(eq.v)} ${esc(x.mU)}</span>${eq.k?`<button type="button" class="btn sm" data-vk-f="eq|${esc(eq.k)}">Filtrar</button>`:''}</li>`);
+  return L.sec('01','Situação do período','Como estamos e onde atuar agora')+`<div class="vk-sit"><section class="vk-card vk-main" aria-label="Índice de uso do gel"><span class="l">Índice de uso do gel</span>
+   <div class="row1"><span class="vk-big" style="color:${idxColor(i,lim)}">${i!=null?nf2.format(i):'—'}</span><span class="vk-mt"><span>Meta</span><b>100</b></span><span class="vk-mt"><span>BOM</span><b>${lim!=null?nf2.format(lim):'—'}</b></span><span class="vk-mt"><span>Ganho sobre a BOM</span><b>${T.ganho!=null?(T.ganho>=0?'+':'')+kg1(T.ganho)+' kg':'—'}</b></span></div>
+   ${L.estado(st[0],st[1])}<span class="small muted">Scrap ${kg1(T.scr)} kg (${esc(x.mL)}) · ${nf0.format(T.tubes)} tubos bons · ${fmtD(x.a)} a ${fmtD(x.b)}</span></section>
+   <div class="vk-side"><section class="vk-card"><h4>Ação prioritária</h4>${it.length?`<ul class="vk-list">${it.slice(0,3).map(z=>`<li><span><b>${nf0.format(z[0])}</b> ${esc(z[1])}</span></li>`).join('')}</ul><div style="margin-top:8px"><button type="button" class="btn sm" data-vk-go="pend">Ver pendências (${nf0.format(P.total)})</button></div>`:'<p class="small muted" style="margin:0">Nada urgente: baixas conferidas e nenhum barril parado ou sem local.</p>'}</section>
+    <section class="vk-card"><h4>Maior perda do período</h4>${li.length?`<ul class="vk-list">${li.join('')}</ul><span class="small muted">Os mesmos números dos blocos de scrap por motivo e por equipamento.</span>`:'<p class="small muted" style="margin:0">Sem scrap no período.</p>'}</section></div></div>`}
+function gelVkDiag(x){const B=(x.G.B||[]).filter(b=>b.s&&b.s.idx!=null),um=B.length===1;const pior=B.length?B.reduce((a,b)=>b.s.idx>a.s.idx?b:a):null,melhor=B.length?B.reduce((a,b)=>b.s.idx<a.s.idx?b:a):null;
+  let P=null;try{P=pendencias()}catch(e){}
+  const dc=(b,rot)=>b?`<div class="vk-dc"><span class="l">${rot}</span><span class="v" style="color:${idxColor(b.s.idx,x.T.lim)}">${nf2.format(b.s.idx)}</span><span class="s">${esc(b.lbl)} · ${esc(idxTxt(b.s.idx,x.T.lim))}</span></div>`:`<div class="vk-dc"><span class="l">${rot}</span><span class="v">—</span><span class="s">Sem índice no período</span></div>`;
+  return vacLayout.sec('03','Diagnóstico rápido','Pior e melhor período do índice, e pendências do almoxarifado')+`<div class="vk-dg">${dc(pior,um?'Único período com índice':'Pior período (maior índice)')}${um?'<div class="vk-dc"><span class="l">Melhor período</span><span class="v">—</span><span class="s">Só 1 período com índice</span></div>':dc(melhor,'Melhor período (menor índice)')}
+   <button type="button" class="vk-dc" data-vk-go="pend"><span class="l">Pendências do almoxarifado</span><span class="v">${P?nf0.format(P.total):'—'}</span><span class="s">abrir a aba Pendências</span></button></div>`}
+function gelVkExp(){const V=visibleTabs().filter(t=>t[0]!=='painel');return vacLayout.sec('05','Explorar dados','As outras abas da página')+`<section class="vk-card"><div style="display:flex;gap:8px;flex-wrap:wrap">${V.map(([id,n])=>`<button type="button" class="btn" data-vk-go="${esc(id)}">${esc(n)}</button>`).join('')}</div></section>`}
+document.addEventListener('click',ev=>{const g=ev.target.closest('#panel [data-vk-go]');if(g){ui.tab=g.dataset.vkGo;render();scrollTo(0,0);return}
+  const f=ev.target.closest('#panel [data-vk-f]');if(f){const[k,v]=f.dataset.vkF.split('|');const s2=document.querySelector(`#panel [data-dbfs="${k}"]`);if(s2){s2.value=v;s2.dispatchEvent(new Event('change',{bubbles:true}))}}});
 /* ---- edição do painel ---- */
 const dbClone=v=>JSON.parse(JSON.stringify(v));
 async function dbSaveLayout(){const o=dbState();const lay=ui.dbEdit;if(o.view&&o.view!=='mine'){const L=dbViews().map(v=>v.id===o.view?{...v,layout:lay,by:lastResp()||myName||'',at:nowDT()}:v);const ch=newCh();ch.config={dbViews:L};try{await backend.commit(ch)}catch(e){return}toast('Visão salva para todos.')}else{savePrefs({dbLayout:lay});toast('Seu painel foi salvo.')}ui.dbEdit=null;render()}
@@ -8666,7 +8694,12 @@ document.addEventListener('click', ev => { const b = ev.target.closest('.vk-mais
 'use strict';
 window.VAC_GUIA = window.VAC_GUIA || {};
 window.VAC_GUIA.gel = {
-  painel: { titulo: 'Visão Geral do Gel', para: 'Produção × plano, uso do gel (índice e ganho sobre a BOM), scrap por área, equipamento e motivo, e o resumo de hoje. Filtros no topo valem para todos os gráficos; ▾ recolhe um bloco.', duvidas: [['O que é o índice de uso?', 'Gel real gasto ÷ gel teórico da BOM. Abaixo de 100% = ganho.']] },
+  painel: { titulo: 'Visão Geral do Gel', para: 'Na ordem de leitura: 01 Situação (índice de uso × meta 100 e BOM, ação prioritária das Pendências, maior perda por motivo e por equipamento), 02 Números (indicadores do topo), 03 Diagnóstico rápido, 04 os blocos do seu painel (escolhidos e ordenados em Personalizar painel) e 05 Explorar. Filtros no topo valem para tudo; ▾ recolhe um bloco.',
+    campos: [{ sel: '#panel .vk-main', nome: 'Situação do período', o: 'Índice de uso do gel contra a meta (100) e a BOM, com o estado em texto, o ganho sobre a BOM e o scrap do período.', ex: '102,35 · acima da meta, dentro da BOM.' },
+      { sel: '#panel .vk-side', nome: 'Ação prioritária e maior perda', o: 'As pendências do almoxarifado mais urgentes (Ver pendências) e o motivo e o equipamento com mais scrap (Filtrar aplica o filtro do painel).' },
+      { sel: '#panel .vk-dg', nome: 'Diagnóstico rápido', o: 'Pior e melhor período do índice (dia, semana ou mês, conforme o agrupamento) e o total de pendências.' },
+      { sel: '[data-dbedit]', nome: 'Personalizar painel', o: 'Escolhe os indicadores do topo e os blocos da seção 04, a ordem e a largura. Visões compartilhadas continuam iguais.' }],
+    duvidas: [['O que é o índice de uso?', 'Gel real gasto ÷ gel teórico da BOM. Abaixo de 100% = ganho.'], ['Por que os blocos da seção 04 não estão em grupos?', 'Porque são os do seu painel, na ordem que você escolheu em Personalizar. Agrupar mudaria a sua montagem.']] },
   op: {
     titulo: 'Operação (FIFO)',
     para: 'O que fazer agora com os barris: consumir (na ordem FIFO), próximos, bloqueados e finalizados, e o que está nos cabeçotes.',
