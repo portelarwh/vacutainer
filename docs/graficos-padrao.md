@@ -60,3 +60,26 @@ O Paradas já trazia a unidade em cada rótulo desde a 1.0.8/1.0.10: uma unidade
   - "% acum." no Pareto;
   - a unidade em Ocorrências;
   - o eixo sem repetição.
+
+## Gestão de Gel 2.28 (11/11/2026)
+
+O motor (`vbars`, `tsChart`, `dbTime`) ganhou `un` / `unit`, que gera a linha "Valores em …" (`unTag`). Em `vbars` e `tsChart`, a unidade padrão é **kg** quando o formato é o `kg()`, que escreve o número sem unidade.
+
+- **Painel:**
+  - Produção × plano e Curva acumulada em **tubos**;
+  - Índice de uso em **índice (meta 100)**;
+  - Gel: teórico × barris baixados em **kg**;
+  - Scrap no tempo por área na medida escolhida (kg ou kg/mil tubos);
+  - Scrap relativo em kg/mil tubos.
+  - OEE (%) e Ganho sobre a BOM (kg no eixo) não mudam.
+- **Abas:**
+  - Validade: idade do estoque e horizonte em kg, idade média em **dias**;
+  - Consumo: saídas e estoque em kg, ritmo diário em **kg/dia**;
+  - Simulação: **barris** e **tubos**;
+  - Teórico × baixado e Saving acumulado em kg;
+  - Índice semanal em índice.
+- **TV:** os dois gráficos que já trazem "(kg)" no título não repetem a linha.
+- **Teste:** `tgel_vg.js` confere:
+  - os mesmos números da referência, com a linha da unidade fora da comparação;
+  - todo gráfico do painel com unidade no eixo ou "Valores em …";
+  - produção em tubos e gel em kg.
