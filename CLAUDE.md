@@ -7,7 +7,7 @@ Plataforma de páginas HTML de arquivo único que trabalham juntas numa **pasta 
 | Página | Arquivo | Base | Versão | Como editar |
 |---|---|---|---|---|
 | Portal (cadastro geral, Administração) | `Portal.html` | `portal-base.json` + `vacutainer-cadastros.json` | 1.9.25 | direto no HTML |
-| Produção (OEE, plano, ordens SAP) | `OEE-Vacutainer.html` | `oee-vacutainer-base.json` (+ `ordens-base.json`) | 2.4.51 | **NÃO editar o HTML**: editar `fontes/producao/` e rodar o build |
+| Produção (OEE, plano, ordens SAP) | `OEE-Vacutainer.html` | `oee-vacutainer-base.json` (+ `ordens-base.json`) | 2.4.52 | **NÃO editar o HTML**: editar `fontes/producao/` e rodar o build |
 | Waste (perdas por ordem, KKBC) | `Perdas-Ordem.html` | `perdas-base.json` | 1.8.36 | direto no HTML |
 | Gestão de Gel | `Gestão-Gel-Vacutainer.html` | `fifo-base.json` | 2.28 · **em atualização** | direto no HTML |
 | Paradas | `Paradas.html` | `paradas-base.json` | 1.0.33 · **em atualização** | direto no HTML |
@@ -25,7 +25,7 @@ SQDCP (Produção 2.4.20; gráficos em barras verde/vermelho com linha só para 
 ## Comandos
 
 ```bash
-python fontes/producao/build.py        # monta paginas/OEE-Vacutainer.html a partir de OEE-base-2.0.html + ordens_servico.js + ordens_tela.js + cad_sync.js + turnos_np.js + gel_turno.js + visao_geral.js + relatorio_sq.js + fase7.js + guia.js + oee_real.js + vg_hh.js + turno_card.js + plano_ui.js + rp_tabelas.js + turno_layout.js + lanc_layout.js + vg_layout.js + kit_v21.js
+python fontes/producao/build.py        # monta paginas/OEE-Vacutainer.html a partir de OEE-base-2.0.html + ordens_servico.js + ordens_tela.js + cad_sync.js + turnos_np.js + gel_turno.js + visao_geral.js + relatorio_sq.js + fase7.js + guia.js + oee_real.js + vg_hh.js + turno_card.js + plano_ui.js + rp_tabelas.js + turno_layout.js + lanc_layout.js + vg_layout.js + hh24.js + kit_v21.js
 python fontes/kit/aplicar_kit21.py     # recopia fontes/kit/kit_v21.js, o catálogo fontes/kit/sistemas.js, o padrão visual fontes/kit/kit_visual.css e as bases em 00. Bases fontes/kit/kit_bases.js nas outras páginas (Portal, Waste, Paradas, Gel e as 3 em construção)
 python fontes/modelo/gerar_paginas.py  # gera Projetos.html (em construção) a partir de fontes/modelo/pagina-em-construcao.html e roda o aplicar_kit21.py
 python fontes/demo/gerar_demo.py       # pacote offline da demonstração; SEMPRE depois dos outros builds
@@ -67,6 +67,7 @@ node testes/tvisaogeral.js            # Visão Geral (2.4.49): mesmos números d
 node testes/twaste_vg.js              # Waste › Visão Geral no padrão comum: mesmos números da referência gravada antes (indicadores, Resumo nos indicadores, 4 gráficos, quadro por competência, tabela), seções, grupos, impressão, 3 larguras × 2 temas; --gravar só antes de mudar a tela; código 1 se falhar
 node testes/tparadas_vg.js            # Paradas › Visão geral no padrão comum: mesmos números da referência (indicadores, ação prioritária, decisões, 4 gráficos, filtros) com data fixa, seções, grupos, atalhos, impressão, 3 larguras × 2 temas; código 1 se falhar
 node testes/tgel_vg.js                # Gestão de Gel › Visão Geral no padrão comum: mesmos números da referência (8 indicadores, 36 blocos do painel, resumo do período) com data fixa, seções, filtro da maior perda, atalho das pendências, 3 larguras × 2 temas; código 1 se falhar
+node testes/thh24.js                  # Produção 2.4.52: produção fora do turno nas linhas do turno que a recebe (caso 04:00 com só A e B produtivos), Dia (24 h) com meta/apontado iguais à grade, Ordens produzidas sem MB51 com os lotes do MES "não conciliado"; código 1 se falhar
 node testes/tportal_vg.js             # Portal › Visão geral no padrão comum: mesmos cartões das páginas, pendências e barra de período da referência (data fixa), seções, diagnóstico e atalhos, 3 larguras × 2 temas; código 1 se falhar
 ```
 
@@ -118,6 +119,7 @@ Produção aplica o cadastro na base do OEE pelo `CadSync` (`fontes/producao/cad
 **Padrão visual nas outras páginas (kit `vacLayout`, 11/11/2026):** a mesma ordem da Visão Geral da Produção (01 Situação · 02 Números · 03 Diagnóstico · 04 Análises em grupos · 05 Explorar/tabela) montada com as peças comuns do kit, uma página por PR (ordem: Waste → Paradas → Gel → Portal), sempre com referência dos números gravada antes. Waste 1.8.35 (o Resumo foi para os indicadores), Paradas 1.0.32, Gel 2.27 (blocos do painel personalizável não são reagrupados) e Portal 1.9.24: feitos (as quatro páginas da sequência). Detalhes: `docs/layout-visao-geral.md`.
 **Login com ID e senha (11/11/2026, kit `vacLogin`; Portal 1.9.22):** pop-up "Sistema de gestão Vacutainer" em todas as páginas sem sessão; senha de 6 números em `usuarios[].senha` (PBKDF2, só o Portal grava; histórico `(oculto)`); a pessoa cria a senha no 1º acesso, autocadastro como Consulta, provisória e zerar na ficha do usuário; sessão até o fim do turno (`vac.sessao`), 5 erros bloqueiam 5 min no computador; TV, demonstração, teste e `navigator.webdriver` sem pop-up (`vac.login.forcar` liga no teste). Identifica, não é cofre. Detalhes: `docs/login.md`.
 **Rodada 2 da homologação (Produção 2.4.43–2.4.44, Portal 1.9.20–1.9.21, Iniciativas 1.1.5):** ordem com lote do MES recebe as caixas do lote (`OrdLote`, "usar (MES)" na Qtde real); percentuais com 2 casas (`parametros.producao.casasPct`); SQDCP com posição "Blocos do Painel" (`blocos:[{b,periodo}]`, padrão Q4/D4/C3); pauta da Reunião com ações (`reunioes[k].itens[].acoes`), `exports.acoesReuniao` do Portal e Iniciativas criando `AC-R-<id>` ao abrir (fonte `portal` no `vacFicha`). Detalhes: `docs/briefing-2026-11-09-fase0-fase1.md` § 21.
+**Hora a hora 24 h e Ordens sem MB51 (Produção 2.4.52, `fontes/producao/hh24.js`, 11/11/2026):** cada turno mostra, só leitura, as horas do MES fora do horário dele que contam nele (linhas "fora do turno"); seletor com "Dia (24 h)" (o dia de produção hora por hora, com turno, meta, apontado, caixas do MES e onde conta; a produção recebida de antes do início do dia no topo); Ordens › Ordens produzidas sem MB51 mostra os lotes do MES com a ordem do plano e "não conciliado" (com MB51, os ainda não conciliados embaixo). Detalhes: `docs/layout-turno.md`.
 **Turno não produtivo (Fase 2, Produção 2.4.24, `fontes/producao/turnos_np.js`):** vigência `naoProdutivo` no Portal → `productive:false` (fora do dia e do plano); caixas do MES fora dos turnos do dia são reatribuídas (trecho emendado com o fim do turno anterior → ele; senão → o próximo) só a partir de `foraTurnoDesde`; `ForaTurno.aplicar` no `computeDayRaw` (resultado oficial = reportado; `res.foraTurno.real` = real); "Habilitar turno" no dia (`TurnoNP`, `ps.enabledNP`). Detalhes: `docs/briefing-2026-11-09-fase0-fase1.md` § 6.
 
 ## Documentação (`docs/`)

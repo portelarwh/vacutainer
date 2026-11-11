@@ -32,3 +32,21 @@ Fonte: `fontes/producao/lanc_layout.js` (`LancUI.bloco`, no lugar de `SrvUI.dayC
 - O resto do Lançamento segue a mesma lógica (`#main[data-rota="launch"]`): cartões com cantos de 12 px, títulos e rótulos em texto normal (sem caixa alta).
 - Mesmos dados e `data-*` (`#srvRev`, `#srvCls`, `data-rw`, `data-rwapply`, `data-turnonp`, `data-route="lots"`); `SrvUI.bindDay` e `ForaTurnoUI.mount` continuam ligando os botões.
 - **Cabeçalho do dia recolhível** (2.4.48): botão ▾ Recolher / ▸ Mostrar no título; a escolha fica neste computador (`App.prefs.cabFold`). Recolhido, mostra só o título com a situação do dia.
+
+## 2.4.52 · Hora a hora com as 24 h e Ordens sem MB51 (11/11/2026)
+
+Pedido do usuário: "mesmo com 3 turnos eu reporto o dia de produção (24 h); no hora a hora preciso ver as 24 h, por turno ou por dia". Exemplo dado: a produção começou às 04:00 e só o 1º e o 2º turnos são produtivos. A produção das 04:00 às 06:00 já contava no 1º turno (`ForaTurno`, OEE reportado), mas não aparecia no hora a hora. As três mudanças estão em `fontes/producao/hh24.js`; nenhum cálculo mudou.
+
+- **Linhas "fora do turno" (só leitura):** cada turno mostra as horas do MES fora do horário dele que contam nele (`res.foraTurno.recebe`), antes ou depois das próprias linhas. Cada linha traz horário, catálogo, lote, caixas, produção e a regra de continuidade.
+- **Dia (24 h):** novo botão no seletor de turno. Mostra o dia de produção inteiro, do início do 1º turno até o mesmo horário do dia seguinte, hora por hora:
+  - o turno da hora, ou "não produtivo" / "sem turno";
+  - a meta e o apontado, repartidos pelos minutos de cada intervalo; a soma é igual à da grade;
+  - caixas e produção do MES;
+  - em qual turno conta a produção das horas sem turno.
+
+  A produção recebida de antes do início do dia aparece no topo. A tela tem gráfico e é só leitura: a produção continua sendo lançada na grade de cada turno.
+- **Ordens › Ordens produzidas:**
+  - **Sem MB51 no período:** em vez de só "Nenhum MB51 importado", aparece a tabela de lotes produzidos (MES, via `App.views.lots.rows()`). Cada lote traz a ordem do plano do mês e a situação "não conciliado · sem MB51" ou "não conciliado · sem ordem no plano".
+  - **Com MB51:** a lista continua igual, e embaixo aparecem os lotes do MES ainda não conciliados.
+  - **Ficha:** o botão Ficha abre a ficha comum do lote.
+- **Teste:** `testes/thh24.js` (caso das 04:00, Dia 24 h, Ordens sem MB51). O `tfase7` passou a ignorar o botão "Dia (24 h)" na contagem de turnos.

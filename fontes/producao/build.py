@@ -28,7 +28,7 @@ R("location.href=sysHref(port,'versoes')", "vacDemo.ir(sysHref(port,'versoes'))"
 R('<button class="btn primary" id="uOk">Usar este nome</button>', '<button class="btn primary" id="uOk">Usar este nome</button><button class="btn" data-vdemo-entrar onclick="vacDemo.entrar()">Demonstração do sistema</button>')
 R('<button class="btn ghost" id="wLocal">Começar só neste navegador</button>', '<button class="btn ghost" id="wLocal">Começar só neste navegador</button><button class="btn" data-vdemo-entrar onclick="vacDemo.entrar()">Demonstração do sistema</button>')
 R('Abre uma <b>cópia em memória</b> da base com cerca de 3 semanas de dados fictícios (hora a hora, paradas, scrap, dias fechados e abertos), para treinar ou demonstrar. Nada é gravado na pasta da rede nem no navegador: ao sair, tudo volta exatamente como estava.', 'Abre a <b>demonstração integrada do sistema</b>, com produção, perdas, gel, paradas, equipamentos e ações fictícias relacionadas. Você pode editar o exemplo e navegar entre as páginas. As bases reais ficam preservadas; fechar ou recarregar a demonstração descarta as alterações fictícias.')
-R("const APP_VERSION = '2.0.1';","const APP_VERSION = '2.4.51';")
+R("const APP_VERSION = '2.0.1';","const APP_VERSION = '2.4.52';")
 # 2.4.45 · login comum do kit (vacLogin): o "Quem está usando?" só aparece quando o login não vale (demonstração, teste, TV)
 R("function askUser(first) {\n  const known","function askUser(first) {\n  if (typeof vacLogin !== 'undefined' && !vacLogin.dispensado()) return vacLogin.abrir({ trocar: !!vacLogin.sessao() });\n  const known")
 R("  if (!Store.S.user) askUser({ then: () => { if (!dir && !cache) welcome(); } });",
@@ -280,4 +280,16 @@ R("async function boot() {\n", open(os.path.join(AQUI,'vg_layout.js'),encoding='
 # 2.4.51 · unidade em todos os gráficos ("Valores em …") e eixo em % sem rótulos repetidos (fontes/producao/graf_build.py)
 from graf_build import aplicar as aplicar_graf
 aplicar_graf(R)
+# 2.4.52 · Hora a hora com a produção fora do turno no turno que a recebe e "Dia (24 h)"; Ordens produzidas sem MB51 (fontes/producao/hh24.js)
+R("async function boot() {\n", open(os.path.join(AQUI,'hh24.js'),encoding='utf-8').read() + "\nasync function boot() {\n")
+R("      for (const f of fs) {\n        const iv = f.iv;\n", "      const _fr = HHPs.fora(day, res, ps); h += _fr.antes;   /* 2.4.52: produção fora do turno que conta neste turno */\n      for (const f of fs) {\n        const iv = f.iv;\n")
+R("</tr>`;\n      }\n    }\n    const r = res.r;\n", "</tr>`;\n      }\n      h += _fr.depois;\n    }\n    const r = res.r;\n")
+R("    h += `<div class=\"tw\"><table class=\"hh\"><thead>", "    if (HHPs.id(day) === 'dia') h += HHPs.dia24(day, res); else {   /* 2.4.52: Dia (24 h) */\n    h += `<div class=\"tw\"><table class=\"hh\"><thead>")
+R("    h += HHPs.npHtml(day, res);   /* 2.4.38 */\n", "    h += HHPs.npHtml(day, res);   /* 2.4.38 */\n    }\n")
+R("    h += `<section class=\"card section\"><header><h3>Atendimento hora a hora</h3>", "    if (HHPs.id(day) !== 'dia') h += `<section class=\"card section\"><header><h3>Atendimento hora a hora</h3>")
+# Ordens produzidas: sem MB51, os lotes do MES (não conciliados); com MB51, os lotes que ainda não estão nele
+R("    const cs = ordPer(); if (!cs.length) return `<section class=\"card section\"><p>Nenhum MB51 importado em ${esc(ordPerTxt(cs))}.</p><button class=\"btn primary\" data-osub=\"mb51\">Importar MB51</button></section>`;",
+  "    const cs = ordPer(); if (!cs.length) return `<section class=\"card section\"><p>Nenhum MB51 importado em ${esc(ordPerTxt(cs))}: abaixo, os lotes produzidos (MES) com a ordem do plano, ainda <b>não conciliados</b>.</p><button class=\"btn primary\" data-osub=\"mb51\">Importar MB51</button></section>` + OrdMes.html('Lotes produzidos · ' + ordPerTxt(cs), false);   /* 2.4.52 */")
+R("<p class=\"small muted\">Mostrando 600; use os filtros.</p>' : ''}</section>`;\n  },\n  vConc(c) {",
+  "<p class=\"small muted\">Mostrando 600; use os filtros.</p>' : ''}</section>` + OrdMes.html('Lotes do MES ainda não conciliados', true);   /* 2.4.52 */\n  },\n  vConc(c) {")
 open(out,'w',encoding='utf-8',newline='\n').write(s);print('ok')   # newline: no Windows o padrão gravaria CRLF
