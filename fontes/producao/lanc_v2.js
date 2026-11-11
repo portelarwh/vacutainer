@@ -68,8 +68,11 @@ const LancV2 = (() => {
 #main[data-rota="launch"] .v2-kpis .kpi .kic{position:static;grid-column:1;grid-row:1;width:24px;height:24px;background:none;border-radius:0;color:color-mix(in srgb,var(--kc,var(--accent)) 85%,var(--ink))}
 #main[data-rota="launch"] .v2-kpis .kpi .kic svg{width:20px;height:20px}
 #main[data-rota="launch"] .v2-kpis .kpi .l{grid-column:2;grid-row:1;align-self:center;text-transform:none;letter-spacing:0;font-size:13.5px;font-weight:600;color:var(--ink);font-family:var(--f-body);display:block;line-height:1.3}
-#main[data-rota="launch"] .v2-kpis .kpi{position:relative}#main[data-rota="launch"] .v2-kpis .kpi .l{padding-right:20px}
-#main[data-rota="launch"] .v2-kpis .kpi .l .ib{position:absolute;top:13px;right:12px;margin:0}
+#main[data-rota="launch"] .v2-kpis .kpi .l{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+@media (min-width:1281px){#main[data-rota="launch"] .v2-kpis .kpi{padding:12px 10px;column-gap:6px}#main[data-rota="launch"] .v2-kpis .kpi .kic{width:20px}#main[data-rota="launch"] .v2-kpis .kpi .kic svg{width:18px;height:18px}#main[data-rota="launch"] .v2-kpis .kpi .l{font-size:12.5px;letter-spacing:-.1px}}
+#main[data-rota="launch"] .v2-help{cursor:help;text-decoration:underline dotted color-mix(in srgb,var(--muted) 70%,transparent);text-underline-offset:3px;text-decoration-thickness:1px}
+#main[data-rota="launch"] .v2-help:hover,#main[data-rota="launch"] .v2-help:focus-visible{text-decoration-color:var(--accent);outline:none}
+#main[data-rota="launch"] .v2-ibh{display:none!important}
 #main[data-rota="launch"] .v2-kpis .kpi .v{font-size:28px;margin-top:4px}
 #main[data-rota="launch"] .v2-kpis .kpi.k-ok{border-left:4px solid var(--ok)}
 #main[data-rota="launch"] .v2-kpis .kpi.k-warn{border-left:4px solid var(--warn)}
@@ -86,7 +89,11 @@ const LancV2 = (() => {
 #main[data-rota="launch"] .v2-kpis .v2-oeeh svg{width:100%;height:auto;display:block}
 #main[data-rota="launch"] .v2-kpis .v2-oeeh svg text{font-size:10px;fill:var(--muted)}
 .v2-sr2{position:absolute!important;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+@media (max-width:1599px){#main[data-rota="launch"] .v2-kpis{grid-template-columns:repeat(5,minmax(0,1fr))}}
 @media (max-width:1280px){#main[data-rota="launch"] .v2-kpis{grid-template-columns:repeat(4,minmax(0,1fr))}}
+@media (max-width:1050px){#main[data-rota="launch"] .v2-kpis{grid-template-columns:repeat(3,minmax(0,1fr))}}
+/* no celular o título pode ir para a 2ª linha (melhor que cortar a palavra) */
+@media (max-width:760px){#main[data-rota="launch"] .v2-kpis .kpi .l{white-space:normal}}
 @media (max-width:760px){#main[data-rota="launch"] .v2-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}#cabDia.v2-cab .v2-f{border-left:0;padding:2px 10px 2px 4px;flex-basis:50%}#cabDia.v2-cab .v2-sep{display:none}}
 /* setas Mostrar/Recolher em círculo (blocos e turnos) */
 #main[data-rota="launch"] .lf-tg{width:30px;height:30px;border-radius:50%;padding:0;justify-content:center;background:var(--surface);color:var(--ink)}
@@ -167,9 +174,24 @@ const LancV2 = (() => {
         <div class="leg"><span><i></i>OEE (%)</span>${meta ? `<span><i class="m"></i>Meta (${esc(U.pct(meta, 0))})</span>` : ''}</div>${grafOee(res)}</div>`);
     }
   }
+  /* o ⓘ vira a própria palavra: clicar no título/rótulo abre a explicação (o popup de ajuda lê [data-help]); nos botões de ação o clique
+     continua sendo a ação, então a explicação vai para a dica do botão (o ⓘ fica escondido, mantido para quem procura por ele) */
+  const resumo = k => { const h = (typeof HELP !== 'undefined' && HELP[k]) || null; if (!h) return ''; const a = (h[1] || [])[0]; return h[0] + (a ? ': ' + a[1] : ''); };
+  function palavras(root) {
+    for (const ib of [...root.querySelectorAll('.ib[data-help]')]) {
+      if (ib.classList.contains('v2-ibh')) continue;
+      const k = ib.dataset.help, prev = ib.previousElementSibling, pai = ib.parentElement;
+      if ((prev && prev.matches('button,.btn,a')) || !pai || pai.matches('button,.btn,a,th,td') || pai.closest('table')) { if (prev && prev.matches('button,.btn')) prev.title = resumo(k) || prev.title; ib.classList.add('v2-ibh'); continue; }
+      const alvo = pai.matches('label') ? (pai.querySelector(':scope > span') || pai) : pai;
+      if (alvo.dataset.help) { ib.classList.add('v2-ibh'); continue; }
+      alvo.dataset.help = k; alvo.classList.add('v2-help'); alvo.setAttribute('role', 'button'); alvo.tabIndex = 0; alvo.title = resumo(k) || 'Clique para ver a explicação';
+      ib.remove();
+    }
+  }
+  document.addEventListener('keydown', e => { if ((e.key === 'Enter' || e.key === ' ') && e.target.classList && e.target.classList.contains('v2-help')) { e.preventDefault(); e.target.click(); } });
   return {
     montar(root, day) {
-      try { estilo(); const res = Engine.computeDay(db(), day); cabecalho(root); kpis(root, res); } catch (e) { console.warn('LancV2', e); }
+      try { estilo(); const res = Engine.computeDay(db(), day); cabecalho(root); kpis(root, res); palavras(root); } catch (e) { console.warn('LancV2', e); }
     },
     oeeHoras
   };

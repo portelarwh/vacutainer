@@ -136,7 +136,9 @@ Reproduz a proposta "painel de gestão industrial" (`fontes/producao/lanc_v2.js`
 
 **Cartões**
 - Grade de 7 colunas; 4 colunas até 1280 px e 2 no celular.
-- Ícone ao lado do título; o ⓘ fica no canto do cartão.
+- Ícone ao lado do título, que fica **numa linha só** (o número de colunas diminui em telas menores: 7 a partir de 1600 px, 5, 4, 3 e 2 no celular, onde o título pode ir para a 2ª linha).
+- **Sem ⓘ**: a explicação está na própria palavra. Clicar no título (sublinhado pontilhado) abre a mesma ajuda de antes; Enter/Espaço também abrem. Isso vale para os cartões, os campos do cabeçalho e os títulos dos turnos e blocos.
+- Nos botões de ação (Restaurar intervalos, Reaplicar metas, Marcar dia sem produção, Mover para outro dia) o clique continua sendo a ação: a explicação aparece como dica ao passar o mouse.
 - A borda e o fundo mostram a situação: na meta (verde), atenção (amarelo) ou abaixo da meta (vermelho, com fundo claro).
 - **Disponibilidade, Performance e Qualidade** com medidor em meia-lua. O número continua no cartão, visualmente escondido, para leitura de tela e testes.
 - **"OEE do dia (evolução por hora)"**, novo e com largura de 2 colunas.
