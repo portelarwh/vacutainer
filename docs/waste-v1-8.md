@@ -141,3 +141,10 @@ A aba Importar leva ao Portal › Importação › Waste; a tela da KKBC_ORD con
 ## 1.8.28 · Ações em Iniciativas / Ações (Fase 6 do briefing, WST-03; 10/11/2026)
 
 "+ Ação" abre Iniciativas com a ação preenchida (origem Waste, vínculo com a ordem). O Waste lê as ações de lá pelo `exports` (ficha comum) e as mostra só para consulta. As ações antigas continuam editáveis aqui até Iniciativas › Configuração › Trazer ações do Waste (uma vez, com o histórico, pelo novo `exports.acoesLegado`); trazidas, saem das listas e da pendência daqui. Detalhes: `docs/briefing-2026-11-09-fase0-fase1.md` § 11.1.
+
+## 1.8.36 · Gráficos: unidade e moeda (11/11/2026)
+
+- **Unidade e moeda:** a Tendência mensal (Visão Geral e TV) mostra "Valores em R$" ou "US$", conforme a moeda vista. As medidas do Comparativo e o cabeçalho "Desvio" das tabelas também acompanham a moeda; antes diziam "R$" fixo.
+- **Eixo:** sem rótulos repetidos.
+- **Relatórios:** a unidade vai no título do gráfico. O gráfico do Comparativo em "desvio qtd" sai em %.
+- **Números:** nenhum muda. Padrão comum em `docs/graficos-padrao.md`.

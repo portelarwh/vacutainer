@@ -16,7 +16,7 @@ const LER = () => {
   // totais do antigo Resumo (VAR. MATERIAL, SCRAP, TOTAL): no layout novo estão nos indicadores; aqui só os valores
   const resumo = {}; const rs = document.getElementById('resumo');
   if (rs && rs.style.display !== 'none') rs.querySelectorAll('.big').forEach(b => { const l = n(b.previousElementSibling && b.previousElementSibling.textContent); resumo[l.toUpperCase()] = n(b.textContent); });
-  const g = id => n((document.getElementById(id) || {}).textContent);
+  const g = id => { const e = document.getElementById(id); if (!e) return ''; const c = e.cloneNode(true); c.querySelectorAll('.c-un').forEach(x => x.remove()); return n(c.textContent); };   // 1.8.36: a linha "Valores em …" fica fora da comparação
   return { kpis, resumo, trend: g('chTrend'), comp: g('chComp'), prod: g('chProd'), causa: g('chCausa'), porComp: g('porComp'), tabela: g('tblMain').slice(0, 4000), info: g('tblInfo') };
 };
 (async () => {
@@ -38,6 +38,15 @@ const LER = () => {
     ok(ref.resumo['VAR. MATERIAL'] === v('VAR. MATERIAL') && ref.resumo['SCRAP'] === v('SCRAP') && ref.resumo['TOTAL'] === v('DESVIO LÍQUIDO'), `totais do Resumo iguais nos indicadores (material ${v('VAR. MATERIAL')}, scrap ${v('SCRAP')}, total = desvio líquido ${v('DESVIO LÍQUIDO')})`);
     for (const k of ['trend', 'comp', 'prod', 'causa', 'porComp', 'tabela', 'info']) ok(ref[k] === atual[k], `mesmo conteúdo: ${k}`);
   }
+  // 1.8.36 · gráficos (docs/graficos-padrao.md): unidade na Tendência, moeda que acompanha a escolha, eixo sem rótulos repetidos
+  const gr = await o.evaluate(() => { const t = document.getElementById('chTrend'), u = t.querySelector('.c-un'), ax = [...t.querySelectorAll('svg > text[text-anchor="end"]')].map(x => x.textContent);
+    const r = { un: u ? u.textContent.trim() : '', rep: new Set(ax).size < ax.length, met: MET.d.l };
+    MOEDA_FORCAR = 'USD'; r.usd = MET.d.l + ' | ' + MET.pm.l; const h = barChart([{ label: 'a', value: 0.4 }, { label: 'b', value: 2.6 }], { unit: msim() }); MOEDA_FORCAR = null;
+    const d = document.createElement('div'); d.innerHTML = h; const tk = [...d.querySelectorAll('svg > text[text-anchor="end"]')].map(x => x.textContent);
+    r.peq = tk.join('|'); r.peqRep = new Set(tk).size < tk.length; r.peqUn = (d.querySelector('.c-un') || {}).textContent; return r; });
+  ok(gr.un === 'Valores em R$' && gr.met === 'R$', `Tendência mensal com "Valores em R$" (${gr.un})`);
+  ok(gr.usd === 'US$ | US$/milhão' && gr.peqUn === 'Valores em US$', `em US$, medidas e unidade acompanham a moeda (${gr.usd})`);
+  ok(!gr.rep && !gr.peqRep, `eixo sem rótulos repetidos (valores pequenos: ${gr.peq})`);
   await o.screenshot({ path: SAI + ROTULO + '-1440-claro.png', fullPage: true });
   if (!GRAVAR) {
     const L = await o.evaluate(async () => { const w = t => new Promise(r => setTimeout(r, t)), out = {}, T = document.getElementById('t-painel');
