@@ -40,7 +40,7 @@ const LER = () => {
     const v = n((k.querySelector('.v') || {}).textContent), s = n((k.querySelector('.s') || {}).textContent); (kpis[key] = kpis[key] || []).push(v + ' | ' + s); });
   for (const k in kpis) kpis[k].sort();
   const graf = {}; m.querySelectorAll('section.card').forEach(sc => { const h = sc.querySelector(':scope > header h3'); if (!h) return; const t = n(h.textContent).replace(/^[▾▸]\s*/, '');
-    const c = sc.cloneNode(true); c.querySelectorAll('header, button, .vgl-est').forEach(x => x.remove()); graf[t] = n(c.textContent); });
+    const c = sc.cloneNode(true); c.querySelectorAll('header, button, .vgl-est, .c-un').forEach(x => x.remove()); c.querySelectorAll('svg').forEach(v => { const g = v.querySelector('g.ax'); if (g && g.querySelector('line.gl')) g.remove(); });   /* 2.4.51: a linha da unidade e os rótulos do eixo Y (só escala) ficam fora da comparação; os valores das barras e da tabela continuam */ graf[t] = n(c.textContent); });
   return { kpis, graf };
 };
 (async () => {
@@ -56,6 +56,15 @@ const LER = () => {
   atual.meuPainel = await o.evaluate(() => document.getElementById('main').querySelectorAll('.kpi, section.card').length + ' blocos · ' + [...document.querySelectorAll('#main .kpi .v, #main section.card h3')].map(x => x.textContent.replace(/\s+/g, ' ').trim()).join(' | '));
   await o.evaluate(() => { Panel.st().view = 'padrao'; render(); }); await o.waitForTimeout(500);
   ok(GRAFICOS.every(t => atual.graf[t]), `os 13 gráficos na Visão Geral padrão (${Object.keys(atual.graf).filter(t => GRAFICOS.includes(t)).length}/13)`);
+  // 2.4.51 · unidade em todo gráfico cujo eixo não a traz; eixo em % sem rótulos repetidos
+  const un = await o.evaluate(() => { const r = {}; document.querySelectorAll('#main section.card').forEach(sc => { const h = sc.querySelector(':scope > header h3'), ch = sc.querySelector('.chart'); if (!h || !ch) return;
+    const t = h.textContent.replace(/[▾▸]/g, '').replace(/\s+/g, ' ').trim(), u = sc.querySelector('.c-un'), ax = ch.querySelector('svg g.ax'), L = ax && ax.querySelector('line.gl') ? [...ax.querySelectorAll('text')].map(x => x.textContent) : [];
+    r[t] = { u: u ? u.textContent.trim() : '', pct: L.length > 0 && L.every(l => /%$/.test(l)), rep: new Set(L).size < L.length }; }); return r; });
+  const semUn = GRAFICOS.filter(t => un[t] && !un[t].pct && !un[t].u);
+  ok(!semUn.length, 'todo gráfico sem % no eixo diz a unidade ("Valores em …")' + (semUn.length ? ': ' + semUn.join(', ') : ''));
+  ok(un['Produção boa × meta e capacidade'].u === 'Valores em mil tubos' && un['PPH real × nominal'].u === 'Valores em mil tubos/h' && un['Pareto de paradas'].u === 'Valores em min', 'unidades: produção em mil tubos, PPH em mil tubos/h, paradas em min');
+  const rep = GRAFICOS.filter(t => un[t] && un[t].rep);
+  ok(!rep.length, 'nenhum eixo com rótulos repetidos' + (rep.length ? ': ' + rep.join(', ') : ''));
   ok(Object.keys(atual.kpis).length >= 20, `cartões lidos: ${Object.keys(atual.kpis).length}`);
   if (GRAVAR) { fs.writeFileSync(REF, JSON.stringify(atual, null, 1)); console.log('referência gravada em ' + path.relative(RAIZ, REF)); }
   else {
