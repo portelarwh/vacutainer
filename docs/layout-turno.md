@@ -137,7 +137,12 @@ Reproduz a proposta "painel de gestão industrial" (`fontes/producao/lanc_v2.js`
 **Cartões**
 - Grade de 7 colunas; 4 colunas até 1280 px e 2 no celular.
 - Ícone ao lado do título, que fica **numa linha só** (o número de colunas diminui em telas menores: 7 a partir de 1600 px, 5, 4, 3 e 2 no celular, onde o título pode ir para a 2ª linha).
-- **Sem ⓘ**: a explicação está na própria palavra. Clicar no título (sublinhado pontilhado) abre a mesma ajuda de antes; Enter/Espaço também abrem. Isso vale para os cartões, os campos do cabeçalho e os títulos dos turnos e blocos.
+- **Sem ⓘ, explicação no próprio título do cartão** (Produção inteira, todas as abas, `palavras()` em `lanc_v2.js` com MutationObserver no `#main`):
+  - o título com explicação tem sublinhado pontilhado; clicar nele (ou Enter/Espaço) abre a mesma ajuda de antes;
+  - o ⓘ que existia vira o próprio título; cartão que não tinha ⓘ ganha a explicação pelo título (`KPI_HELP` da página + `AJUDA_NOVA`: OEE do dia por hora, Paradas apontadas, Sem explicação, Consistência da cascata, Validação, Segurança e qualidade, Observação geral, Diferença contra a meta, Scrap %, PPH real e nominal);
+  - título de gráfico: a explicação é a pergunta que ele responde e a linha "Valores em …";
+  - cabeçalho de tabela: só o texto abre a explicação, o resto continua ordenando;
+  - num bloco recolhível, o título abre a explicação e a seta (ou o resto do cabeçalho) recolhe.
 - Nos botões de ação (Restaurar intervalos, Reaplicar metas, Marcar dia sem produção, Mover para outro dia) o clique continua sendo a ação: a explicação aparece como dica ao passar o mouse.
 - A borda e o fundo mostram a situação: na meta (verde), atenção (amarelo) ou abaixo da meta (vermelho, com fundo claro).
 - **Disponibilidade, Performance e Qualidade** com medidor em meia-lua. O número continua no cartão, visualmente escondido, para leitura de tela e testes.

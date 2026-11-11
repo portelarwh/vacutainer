@@ -68,11 +68,11 @@ const LancV2 = (() => {
 #main[data-rota="launch"] .v2-kpis .kpi .kic{position:static;grid-column:1;grid-row:1;width:24px;height:24px;background:none;border-radius:0;color:color-mix(in srgb,var(--kc,var(--accent)) 85%,var(--ink))}
 #main[data-rota="launch"] .v2-kpis .kpi .kic svg{width:20px;height:20px}
 #main[data-rota="launch"] .v2-kpis .kpi .l{grid-column:2;grid-row:1;align-self:center;text-transform:none;letter-spacing:0;font-size:13.5px;font-weight:600;color:var(--ink);font-family:var(--f-body);display:block;line-height:1.3}
-#main[data-rota="launch"] .v2-kpis .kpi .l{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#main[data-rota="launch"] .v2-kpis .kpi .l{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;justify-self:start;max-width:100%}
 @media (min-width:1281px){#main[data-rota="launch"] .v2-kpis .kpi{padding:12px 10px;column-gap:6px}#main[data-rota="launch"] .v2-kpis .kpi .kic{width:20px}#main[data-rota="launch"] .v2-kpis .kpi .kic svg{width:18px;height:18px}#main[data-rota="launch"] .v2-kpis .kpi .l{font-size:12.5px;letter-spacing:-.1px}}
-#main[data-rota="launch"] .v2-help{cursor:help;text-decoration:underline dotted color-mix(in srgb,var(--muted) 70%,transparent);text-underline-offset:3px;text-decoration-thickness:1px}
-#main[data-rota="launch"] .v2-help:hover,#main[data-rota="launch"] .v2-help:focus-visible{text-decoration-color:var(--accent);outline:none}
-#main[data-rota="launch"] .v2-ibh{display:none!important}
+#main .v2-help{cursor:help;text-decoration:underline dotted color-mix(in srgb,var(--muted) 70%,transparent);text-underline-offset:3px;text-decoration-thickness:1px}
+#main .v2-help:hover,#main .v2-help:focus-visible{text-decoration-color:var(--accent);outline:none}
+#main .v2-ibh{display:none!important}
 #main[data-rota="launch"] .v2-kpis .kpi .v{font-size:28px;margin-top:4px}
 #main[data-rota="launch"] .v2-kpis .kpi.k-ok{border-left:4px solid var(--ok)}
 #main[data-rota="launch"] .v2-kpis .kpi.k-warn{border-left:4px solid var(--warn)}
@@ -83,7 +83,7 @@ const LancV2 = (() => {
 #main[data-rota="launch"] .v2-kpis .kpi.v2-gk .s{justify-content:center;text-align:center}
 #main[data-rota="launch"] .v2-kpis .v2-oeeh{grid-column:span 2}
 #main[data-rota="launch"] .v2-kpis .v2-oeeh .l small{font-weight:400;color:var(--muted);margin-left:4px}
-#main[data-rota="launch"] .v2-kpis .v2-oeeh .leg{display:flex;gap:12px;font-size:11.5px;color:var(--muted);justify-content:flex-end;margin-top:-22px}
+#main[data-rota="launch"] .v2-kpis .v2-oeeh .leg{display:flex;gap:12px;font-size:11.5px;color:var(--muted);justify-content:flex-end;margin-top:-22px;pointer-events:none}
 #main[data-rota="launch"] .v2-kpis .v2-oeeh .leg i{display:inline-block;width:9px;height:9px;border-radius:50%;background:#1e6fd9;margin-right:4px;vertical-align:middle}
 #main[data-rota="launch"] .v2-kpis .v2-oeeh .leg i.m{width:14px;height:0;border-radius:0;background:none;border-top:2px dashed var(--ok)}
 #main[data-rota="launch"] .v2-kpis .v2-oeeh svg{width:100%;height:auto;display:block}
@@ -174,21 +174,84 @@ const LancV2 = (() => {
         <div class="leg"><span><i></i>OEE (%)</span>${meta ? `<span><i class="m"></i>Meta (${esc(U.pct(meta, 0))})</span>` : ''}</div>${grafOee(res)}</div>`);
     }
   }
-  /* o ⓘ vira a própria palavra: clicar no título/rótulo abre a explicação (o popup de ajuda lê [data-help]); nos botões de ação o clique
-     continua sendo a ação, então a explicação vai para a dica do botão (o ⓘ fica escondido, mantido para quem procura por ele) */
+  /* Explicação no próprio título (Produção inteira, todas as abas):
+     - o ⓘ sai e o título/rótulo ao lado dele passa a abrir a explicação (o popup de ajuda lê [data-help]);
+     - cartão sem ⓘ ganha a explicação pelo título (KPI_HELP da página + PALAVRA_AJUDA abaixo);
+     - cabeçalho de tabela: o texto vira a palavra clicável (o resto do cabeçalho continua ordenando);
+     - botão de ação: o clique continua sendo a ação; a explicação vai para a dica do mouse. */
+  const AJUDA_NOVA = {
+    oeeHoras: ['OEE do dia (evolução por hora)', [['O que mostra?', 'O OEE de cada intervalo do dia: produção boa ÷ (PPH × minutos ÷ 60), a mesma conta do OEE oficial.'], ['E a linha tracejada?', 'A OEE meta do dia. Barra abaixo dela = hora abaixo da meta.']]],
+    paradasApont: ['Paradas apontadas', [['O que é?', 'Minutos de parada apontados no dia (Hora a hora e Paradas).'], ['Para que serve?', 'Comparado com a perda total, mostra quanto da perda tem causa conhecida.']]],
+    semExplic: ['Sem explicação', [['O que é?', 'Perda de Disponibilidade e Performance que nenhum apontamento cobre: perda de D+P − minutos apontados.'], ['O que fazer?', 'Apontar as paradas que faltam no Hora a hora.']]],
+    cascata: ['Consistência da cascata', [['O que é?', 'Confere se capacidade − perdas de D, P e Q chega na produção boa.'], ['"Não fecha"?', 'Há diferença entre os números lançados; a diferença em unidades aparece embaixo.']]],
+    validacao: ['Validação', [['O que é?', 'Erros e alertas do lançamento do dia.'], ['Erro x alerta', 'Erro (vermelho) impede fechar o turno; alerta (amarelo) é para conferir.']]],
+    segQual: ['Segurança e qualidade do turno', [['O que é?', 'Acidente e QN do turno, que alimentam o SQDCP.'], ['Respostas', 'Sim, Não houve ou Não informado. Ausência de resposta nunca é zero.']]],
+    obsDia: ['Observação geral', [['O que é?', 'Fatos do dia que valem para todos os turnos e entram no relatório.'], ['Exemplo', 'Falta de rolha das 10h às 11h; linha parada para limpeza no fim do dia.']]],
+    dataDia: ['Data', [['O que é?', 'O dia de produção que está sendo lançado.'], ['Turno que passa da meia-noite', 'Conta no dia em que começou.']]],
+    linhaMaq: ['Linha · máquina', [['O que é?', 'Linha e máquina deste lançamento, pelo cadastro do Portal.']]],
+    difMeta: ['Diferença contra a meta', [['Como calcula?', 'Produção boa − meta do período.'], ['Sinal', 'Positivo = acima da meta; negativo = faltou produzir.']]],
+    scrapPct: ['Scrap %', [['Como calcula?', 'Scrap ÷ (produção boa + scrap).'], ['Onde entra?', 'É a perda de Qualidade do OEE.']]],
+    pphReal: ['PPH real', [['Como calcula?', 'Produção boa ÷ horas líquidas trabalhadas no período.'], ['Comparar com', 'O PPH nominal: a diferença é perda de ritmo, paradas e scrap.']]],
+    pphNom: ['PPH nominal', [['O que é?', 'Peças por hora do catálogo (cadastro do Portal), ponderada pelo tempo de cada catálogo no período.'], ['Para que serve?', 'É a velocidade de referência da capacidade.']]],
+    cabDia: ['Cabeçalho do dia', [['O que é?', 'Dados e ações que valem para o dia inteiro: data, calendário, scrap, observação, fechar o dia.']]]
+  };
+  const PALAVRA_AJUDA = { 'OEE do dia': 'oeeHoras', 'Paradas apontadas': 'paradasApont', 'Sem explicação': 'semExplic', 'Consistência da cascata': 'cascata', 'Validação': 'validacao', 'Segurança e qualidade do turno': 'segQual', 'Observação geral': 'obsDia', 'Data': 'dataDia', 'Linha': 'linhaMaq', 'Linha · máquina': 'linhaMaq', 'Cabeçalho do dia': 'cabDia', 'Diferença contra a meta': 'difMeta', 'Scrap %': 'scrapPct', 'PPH real': 'pphReal', 'PPH nominal': 'pphNom' };
+  const SO_CAB = { dataDia: 1, linhaMaq: 1, cabDia: 1 }; // palavras genéricas: só no cabeçalho do dia
   const resumo = k => { const h = (typeof HELP !== 'undefined' && HELP[k]) || null; if (!h) return ''; const a = (h[1] || [])[0]; return h[0] + (a ? ': ' + a[1] : ''); };
+  const chaveDo = t => { t = String(t || '').replace(/\s+/g, ' ').trim(); const m = (typeof KPI_HELP !== 'undefined' && KPI_HELP) || {}; return m[t] || PALAVRA_AJUDA[t] || PALAVRA_AJUDA[t.replace(/\s*\(.*\)$/, '')] || ''; };
+  function marcar(alvo, k) { alvo.dataset.help = k; alvo.classList.add('v2-help'); alvo.setAttribute('role', 'button'); alvo.tabIndex = 0; alvo.title = resumo(k) || 'Clique para ver a explicação'; }
+  function textoClicavel(cel, k) { // th/td: só o texto vira palavra, o resto da célula continua com a ação dela (ordenar)
+    const tn = [...cel.childNodes].find(n => n.nodeType === 3 && n.textContent.trim());
+    if (!tn) return false; const sp = document.createElement('span'); sp.textContent = tn.textContent.trim(); tn.replaceWith(sp, ' '); marcar(sp, k); return true;
+  }
   function palavras(root) {
+    if (typeof HELP !== 'undefined') for (const k in AJUDA_NOVA) if (!HELP[k]) HELP[k] = AJUDA_NOVA[k];
     for (const ib of [...root.querySelectorAll('.ib[data-help]')]) {
-      if (ib.classList.contains('v2-ibh')) continue;
+      if (ib.classList.contains('v2-ibh') || !ib.isConnected) continue;
       const k = ib.dataset.help, prev = ib.previousElementSibling, pai = ib.parentElement;
-      if ((prev && prev.matches('button,.btn,a')) || !pai || pai.matches('button,.btn,a,th,td') || pai.closest('table')) { if (prev && prev.matches('button,.btn')) prev.title = resumo(k) || prev.title; ib.classList.add('v2-ibh'); continue; }
-      const alvo = pai.matches('label') ? (pai.querySelector(':scope > span') || pai) : pai;
-      if (alvo.dataset.help) { ib.classList.add('v2-ibh'); continue; }
-      alvo.dataset.help = k; alvo.classList.add('v2-help'); alvo.setAttribute('role', 'button'); alvo.tabIndex = 0; alvo.title = resumo(k) || 'Clique para ver a explicação';
-      ib.remove();
+      if (!pai) continue;
+      if (prev && prev.matches('button,.btn,a')) { prev.title = resumo(k) || prev.title; ib.classList.add('v2-ibh'); continue; }
+      if (pai.matches('button,.btn,a')) { pai.title = resumo(k) || pai.title; ib.classList.add('v2-ibh'); continue; }
+      if (pai.matches('th,td')) { if (textoClicavel(pai, k)) ib.remove(); else ib.classList.add('v2-ibh'); continue; }
+      // a palavra é só o texto ao lado do ⓘ: nunca um contêiner com botões/campos (senão o clique neles abriria a ajuda)
+      const CTRL = 'button,input,select,textarea,a,.btn,canvas,svg.chart,table';
+      const curto = el => el && !el.querySelector(CTRL) && el.textContent.replace(/\s+/g, ' ').trim().length > 0 && el.textContent.trim().length <= 70;
+      let alvo = null;
+      if (pai.matches('label')) { const sp = pai.querySelector(':scope > span'); if (curto(sp)) alvo = sp; }
+      else if (curto(pai) || (!pai.querySelector(CTRL) && pai.matches('h1,h2,h3,h4,h5,legend,.l,.kl,.lbl,.tl-l,span,b,strong'))) alvo = pai;
+      if (!alvo && prev && curto(prev) && !prev.matches(CTRL)) alvo = prev;
+      if (!alvo) { const tn = ib.previousSibling; if (tn && tn.nodeType === 3 && tn.textContent.trim()) { const sp = document.createElement('span'); sp.textContent = tn.textContent.replace(/\s+$/, ''); tn.replaceWith(sp); alvo = sp; } }
+      if (!alvo) continue;   // sem palavra ao lado: o ⓘ fica como está
+      if (alvo.dataset.help || alvo.closest('[data-help]')) { ib.classList.add('v2-ibh'); continue; }
+      marcar(alvo, k); ib.remove();
+    }
+    // títulos de cartão e de bloco sem ⓘ: a explicação pelo próprio título
+    for (const t of root.querySelectorAll('.kpi .l, .kpi > span:first-child, .card > header h3, h3, h4, label.f > span:first-child, .kv > .l')) {
+      if (t.dataset.help || t.closest('[data-help]') || t.querySelector('[data-help]') || t.closest('button,a,.ipop') || t.querySelector('button,input,select,textarea,a')) continue;
+      const txt = (t.firstChild && t.firstChild.nodeType === 3 ? t.firstChild.textContent : t.textContent);
+      let k = chaveDo(txt) || chaveDo(t.textContent);
+      if (k && SO_CAB[k] && !t.closest('#cabDia')) k = '';
+      // título de gráfico/bloco: a explicação é a pergunta que ele responde e a unidade (sem repetir texto na tela)
+      if (!k && typeof HELP !== 'undefined' && t.matches('section.card > header h3')) {
+        const sec = t.closest('section.card'), q = sec.querySelector(':scope > p.q, :scope > header + p'), un = sec.querySelector('.c-un');
+        const tit = t.textContent.trim(), itens = [];
+        if (q && q.textContent.trim()) itens.push(['Pergunta que responde', q.textContent.trim()]);
+        if (un && un.textContent.trim()) itens.push(['Como ler', un.textContent.trim()]);
+        if (sec.querySelector('.chart, svg')) itens.push(['Detalhe', 'Passe o mouse sobre as barras ou pontos para ver os valores; clique para abrir o detalhe quando houver.']);
+        if (itens.length) { k = 'titulo:' + tit; HELP[k] = [tit, itens]; }
+      }
+      if (k && typeof HELP !== 'undefined' && HELP[k]) marcar(t, k);
     }
   }
+  let pend = 0;
+  function observar() {
+    const m = document.getElementById('main'); if (!m || m.dataset.v2pal) return; m.dataset.v2pal = '1';
+    const rodar = () => { pend = 0; try { palavras(m); } catch (e) { console.warn('palavras', e); } };
+    new MutationObserver(() => { if (!pend) pend = requestAnimationFrame(rodar); }).observe(m, { childList: true, subtree: true });
+    rodar();
+  }
   document.addEventListener('keydown', e => { if ((e.key === 'Enter' || e.key === ' ') && e.target.classList && e.target.classList.contains('v2-help')) { e.preventDefault(); e.target.click(); } });
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', () => { estilo(); observar(); }); else setTimeout(() => { estilo(); observar(); }, 0);
   return {
     montar(root, day) {
       try { estilo(); const res = Engine.computeDay(db(), day); cabecalho(root); kpis(root, res); palavras(root); } catch (e) { console.warn('LancV2', e); }
