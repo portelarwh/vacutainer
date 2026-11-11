@@ -195,3 +195,10 @@ Isolamento por pasta e reserva por operação, com cópia de recuperação. Proc
 ## 1.0.25 · 10/11/2026 · Fase 3 do briefing
 
 A aba Importar leva ao Portal › Importação › Paradas; a tela do Forms abre direto por `#aba=importar`. `exports.importacoes` com os dias cobertos (`de`/`ate`). Detalhes: `docs/briefing-2026-11-09-fase0-fase1.md` § 7.
+
+## 1.0.33 · Gráficos (11/11/2026)
+
+- **Pareto:** o percentual sai como "% acum.". Em Ocorrências, aparece a linha "Valores em ocorrências".
+- **Tempo por mês:** o eixo deixou de repetir rótulos.
+- **Subtítulos:** dizem "tempo de parada (h ou min)".
+- **Números:** nenhum muda. Padrão em `docs/graficos-padrao.md`.

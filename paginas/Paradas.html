@@ -852,7 +852,7 @@ const MATRIZ_PROPOSTA={"OUT": ["Tullip A", "Tullip B", "Packout", "Metro", "Cap 
    PARADAS · núcleo (pasta, base, fila de gravação, backups, cadastro, utilidades)
    ===================================================================================== */
 const PAGE={id:'paradas',titulo:'Paradas · Análise de falhas e paradas de máquina',tituloCurto:'Paradas',subtitulo:'Análise de falhas e paradas de máquina',
-  versao:'1.0.32',estado:'atualizacao',estadoNota:'Matriz, componentes e limite de microparada passam a vir só do Portal; eventos da Produção entram como sugestão.',baseFile:'paradas-base.json',backupDir:'00. Backups/Paradas',busca:q=>buscaPagina(q)};
+  versao:'1.0.33',estado:'atualizacao',estadoNota:'Matriz, componentes e limite de microparada passam a vir só do Portal; eventos da Produção entram como sugestão.',baseFile:'paradas-base.json',backupDir:'00. Backups/Paradas',busca:q=>buscaPagina(q)};
 const APP_VERSION=PAGE.versao;
 const CAD_FILE='vacutainer-cadastros.json',OEE_FILE='oee-vacutainer-base.json';
 const $=(s,r=document)=>r.querySelector(s),$$=(s,r=document)=>[...r.querySelectorAll(s)];
@@ -1294,20 +1294,22 @@ function cadastrosProposta(){const eqs=Cad.eqs.filter(e=>e.cad&&e.tipo!=='linha'
    PARADAS · telas
    ===================================================================================== */
 /* ---------- gráficos SVG ---------- */
-function hbars(items,{fmt=fmtMin,max,pareto,onClick,sel,w=560,lw=170,color}={}){if(!items.length)return'<div class="empty">Sem dados no período.</div>';
+function hbars(items,{fmt=fmtMin,max,pareto,onClick,sel,w=560,lw=170,color,unit}={}){if(!items.length)return'<div class="empty">Sem dados no período.</div>';   /* 1.0.33 · unit = linha "Valores em …" (docs/graficos-padrao.md) */
  const rh=24,h=items.length*rh+6,M=max||Math.max(...items.map(x=>x.v))||1,tot=items.reduce((s,x)=>s+x.v,0);let acc=0;const bw=w-lw-110;
  /* 1.0.10 · uma unidade para o gráfico inteiro (antes as barras grandes em h e as pequenas em min); a dica mantém o valor exato */
  const fA=fmt===fmtMin?(Math.max(...items.map(x=>x.v))>=600?v=>n1(v/60)+' h':v=>n0(v)+' min'):fmt;
- return`<svg class="chart" viewBox="0 0 ${w} ${h}" style="max-height:${h}px">${items.map((x,i)=>{acc+=x.v;const y=i*rh+3,bl=Math.max(2,x.v/M*bw);const on=sel&&sel===x.k;
+ return`${unit?`<div class="c-un">Valores em <b>${esc(unit)}</b></div>`:''}<svg class="chart" viewBox="0 0 ${w} ${h}" style="max-height:${h}px">${items.map((x,i)=>{acc+=x.v;const y=i*rh+3,bl=Math.max(2,x.v/M*bw);const on=sel&&sel===x.k;
   return`<g data-k="${esc(x.k)}" style="cursor:${onClick?'pointer':'default'}"><title>${esc(x.label)}: ${esc(fmt(x.v))}${x.n!=null?' · '+n0(x.n)+' ocorr.':''}</title>
   <text x="${lw-6}" y="${y+15}" text-anchor="end" class="lbl" style="font-weight:${on?700:400}">${esc(String(x.label).slice(0,28))}</text>
   <rect x="${lw}" y="${y+3}" width="${bl}" height="${rh-8}" rx="3" fill="${x.color||color||'var(--accent)'}" opacity="${sel&&!on?.35:1}"/>
-  <text x="${lw+bl+5}" y="${y+15}">${esc(fA(x.v))}${pareto?` · ${n0(acc/tot*100)}%`:''}</text></g>`}).join('')}</svg>`}
+  <text x="${lw+bl+5}" y="${y+15}">${esc(fA(x.v))}${pareto?` · ${n0(acc/tot*100)}% acum.`:''}</text></g>`}).join('')}</svg>`}
 function vbars(cats,series,{h=230,fmt=v=>n0(v),onClick,sel}={}){if(!cats.length)return'<div class="empty">Sem dados no período.</div>';
  const w=Math.max(420,cats.length*46),pb=24,pt=10,ch=h-pb-pt;const tot=cats.map((c,i)=>series.reduce((s,S)=>s+(S.v[i]||0),0));const M=Math.max(...tot)||1;
  /* 1.0.8 · vac-visual: uma unidade só para a escala inteira (antes o eixo misturava "300 min" e "12,5 h"); a dica mantém o valor exato */
  const fA=fmt===fmtMin?(M>=600?v=>n1(v/60)+' h':v=>n0(v)+' min'):fmt;const bw=Math.min(34,(w-40)/cats.length-8);
- let g='';for(let k=0;k<=4;k++){const y=pt+ch-ch*k/4;g+=`<line x1="36" x2="${w}" y1="${y}" y2="${y}" stroke="var(--line)"/><text x="32" y="${y+4}" text-anchor="end">${esc(fA(M*k/4))}</text>`}
+ let fT=fA;if(new Set([0,1,2,3,4].map(k=>fA(M*k/4))).size<5){const u=fmt===fmtMin?(M>=600?[60,' h']:[1,' min']):null;   /* 1.0.33: eixo sem rótulos repetidos */
+  if(u)fT=v=>(v/u[0]).toLocaleString('pt-BR',{minimumFractionDigits:1,maximumFractionDigits:1})+u[1]}
+ let g='';for(let k=0;k<=4;k++){const y=pt+ch-ch*k/4;g+=`<line x1="36" x2="${w}" y1="${y}" y2="${y}" stroke="var(--line)"/><text x="32" y="${y+4}" text-anchor="end">${esc(fT(M*k/4))}</text>`}
  cats.forEach((c,i)=>{const x=40+i*((w-40)/cats.length)+((w-40)/cats.length-bw)/2;let y=pt+ch;const on=sel&&sel===c.k;
   g+=`<g data-k="${esc(c.k)}" style="cursor:${onClick?'pointer':'default'}" opacity="${sel&&!on?.4:1}"><title>${esc(c.label)}: ${esc(fmt(tot[i]))}\n${series.filter(S=>S.v[i]).map(S=>S.nome+': '+fmt(S.v[i])).join('\n')}</title>`;
   for(const S of series){const v=S.v[i]||0;if(!v)continue;const hh=v/M*ch;y-=hh;g+=`<rect x="${x}" y="${y}" width="${bw}" height="${hh}" fill="${S.cor}"/>`}
@@ -1528,8 +1530,8 @@ VIEWS.geral={html(){const all=eventosTodos();if(!all.length)return inicioVazio()
  ${vacLayout.sec('03','Diagnóstico rápido','Pior e melhor mês, e o que falta classificar')}${parDiag(perda,meses,tmp)}
  ${vacLayout.sec('04','Análises','Clique num grupo para recolher ou abrir')}
  ${vacLayout.grupo('paradas','A','Evolução','O tempo parado aumentou ou caiu mês a mês?',`<div class="card">${secH('bar','Tempo por mês','por classe de perda · uma unidade na escala (h ou min) · clique num mês para filtrar')}<div id="chMes">${vbars(meses.map(m=>({k:m,label:brM(m)})),cls.map(c=>({nome:CLASSE[c][0],cor:CLASSE[c][1],v:meses.map(m=>perda.filter(e=>e.dia.slice(0,7)===m&&classe(e)===c).reduce((s,e)=>s+e.minutos,0))})),{fmt:fmtMin})}</div></div>`)}
- ${vacLayout.grupo('paradas','B','Onde e como parou','Quais equipamentos e classes de perda concentram o tempo?',`<div class="grid g2"><div class="card">${secH('machine','Pareto de equipamentos','minutos de parada · clique para filtrar')}<div id="chEq">${hbars(SE.slice(0,14).map(s=>({k:s.eq,label:s.nome,v:s.min,n:s.n})),{pareto:1,sel:F.eq,onClick:1})}</div></div><div class="card">${secH('list','Por classe','como o tempo se divide')}<div id="chCl">${hbars(agg(perda,e=>classe(e)).sort((a,b)=>b.min-a.min).map(o=>({k:o.k,label:CLASSE[o.k][0],v:o.min,n:o.n,color:CLASSE[o.k][1]})),{pareto:1,sel:F.cls,onClick:1})}</div></div></div>`)}
- ${vacLayout.grupo('paradas','C','Turnos','Algum turno destoa?',`<div class="card">${secH('clock','Por turno','minutos e ocorrências')}<div id="chTu">${hbars(agg(perda,e=>e.turno||'?').sort((a,b)=>a.k.localeCompare(b.k)).map(o=>({k:o.k,label:o.k,v:o.min,n:o.n})),{sel:F.turno,onClick:1})}</div></div>`)}
+ ${vacLayout.grupo('paradas','B','Onde e como parou','Quais equipamentos e classes de perda concentram o tempo?',`<div class="grid g2"><div class="card">${secH('machine','Pareto de equipamentos','tempo de parada (h ou min) e % acumulado · clique para filtrar')}<div id="chEq">${hbars(SE.slice(0,14).map(s=>({k:s.eq,label:s.nome,v:s.min,n:s.n})),{pareto:1,sel:F.eq,onClick:1})}</div></div><div class="card">${secH('list','Por classe','tempo de parada (h ou min) e % acumulado')}<div id="chCl">${hbars(agg(perda,e=>classe(e)).sort((a,b)=>b.min-a.min).map(o=>({k:o.k,label:CLASSE[o.k][0],v:o.min,n:o.n,color:CLASSE[o.k][1]})),{pareto:1,sel:F.cls,onClick:1})}</div></div></div>`)}
+ ${vacLayout.grupo('paradas','C','Turnos','Algum turno destoa?',`<div class="card">${secH('clock','Por turno','tempo de parada (h ou min) · ocorrências na dica de cada barra')}<div id="chTu">${hbars(agg(perda,e=>e.turno||'?').sort((a,b)=>a.k.localeCompare(b.k)).map(o=>({k:o.k,label:o.k,v:o.min,n:o.n})),{sel:F.turno,onClick:1})}</div></div>`)}
  ${vacLayout.sec('05','Explorar dados','Registros e análises das outras abas')}<section class="vk-card"><div class="row" style="gap:8px;flex-wrap:wrap">${[['eventos','Eventos'],['pareto','Pareto'],['recor','Recorrência'],['fila','Fila técnica'],['valid','Validação'],['acoes','Ações']].map(([t,n])=>`<button type="button" class="b" data-vk-go="${t}">${n}</button>`).join('')}</div></section>`},
  wire(){$$('[data-go]').forEach(b=>b.onclick=()=>App.go(b.dataset.go));vacLayout.ligar($('#main'),'paradas');$$('#main [data-vk-go]').forEach(b=>b.onclick=()=>App.go(b.dataset.vkGo));
   $$('#main [data-vk-f]').forEach(b=>b.onclick=()=>{const[k,v]=b.dataset.vkF.split('|');if(k==='mes'){F.de=v+'-01';F.ate=v+'-31'}else F[k]=F[k]===v?'':v;App.render()});const vt=$('#verTodas');if(vt)vt.onclick=e=>{e.preventDefault();verPendencias()};
@@ -1588,7 +1590,7 @@ VIEWS.pareto={dim:'codigo',med:'min',html(){const all=F.apply(eventosTodos()).fi
  const[nm,kf,lf,cf]=K[this.dim];const G=agg(all,kf).sort((a,b)=>this.med==='min'?b.min-a.min:b.n-a.n);this.G=G;const sel=App.sel.par;const L=sel?(G.find(g=>g.k===sel)?.ev||[]):[];this.L=L;
  return`${secH('bar','Pareto','tempo ou ocorrências por qualquer dimensão · clique numa barra para ver as paradas')}${filtrosHTML({info:`${n0(all.length)} paradas`})}
  <div class="row" style="margin-bottom:10px"><div class="seg" id="pDim">${Object.entries(K).map(([k,v])=>`<button data-d="${k}" class="${this.dim===k?'on':''}">${v[0]}</button>`).join('')}</div><span class="sp"></span><div class="seg" id="pMed"><button data-m="min" class="${this.med==='min'?'on':''}">Minutos</button><button data-m="n" class="${this.med==='n'?'on':''}">Ocorrências</button></div></div>
- <div class="card" id="pCh">${hbars(G.slice(0,25).map(g=>({k:g.k,label:lf(g.k),v:this.med==='min'?g.min:g.n,n:g.n,color:cf?cf(g.k):undefined})),{pareto:1,onClick:1,sel,w:900,lw:330,fmt:this.med==='min'?fmtMin:n0})}</div>
+ <div class="card" id="pCh">${hbars(G.slice(0,25).map(g=>({k:g.k,label:lf(g.k),v:this.med==='min'?g.min:g.n,n:g.n,color:cf?cf(g.k):undefined})),{pareto:1,onClick:1,sel,w:900,lw:330,fmt:this.med==='min'?fmtMin:n0,unit:this.med==='min'?null:'ocorrências'})}</div>
  ${sel?`<div class="row mt"><b>${esc(lf(sel))}</b><span class="muted">${n0(L.length)} paradas · ${fmtMin(L.reduce((s,e)=>s+e.minutos,0))}</span><span class="sp"></span><button class="b sm" id="pAcao">+ Ação</button>${typeof vacNovaAcaoBotao==='function'?vacNovaAcaoBotao(acaoPlanner('pareto',this.dim,sel,lf(sel),L)):''}<button class="b sm" id="pClr">limpar seleção</button></div><div class="mt">${tabela(colsEv(),L,{id:'pTab',clk:1,max:300})}</div>`:''}`},
  wire(){$$('#pDim button').forEach(b=>b.onclick=()=>{this.dim=b.dataset.d;App.sel.par=null;App.render()});$$('#pMed button').forEach(b=>b.onclick=()=>{this.med=b.dataset.m;App.render()});
   bindChart($('#pCh'),k=>{App.sel.par=App.sel.par===k?null:k;App.render()});const c=$('#pClr');if(c)c.onclick=()=>{App.sel.par=null;App.render()};bindRows('#pTab',this.L,e=>abrirEvento(e.id));
@@ -1906,7 +1908,7 @@ function relParadas(){const L=F.apply(eventosTodos()).filter(e=>!NAO_PERDA.has(c
  const filt=[F.eq?'equipamento '+Cad.eqNome(F.eq):'',F.turno?'turno '+F.turno:'',F.cls?'classe '+(CLASSE[F.cls]||[F.cls])[0]:''].filter(Boolean).join(' · ');
  return{titulo:'Paradas da linha',subtitulo:'Paradas'+(filt?' · '+filt:''),periodo:per,arquivo:'Paradas_'+(F.de||'')+'_'+(F.ate||todayISO()),blocos:[
   {tipo:'kpis',itens:[['Tempo de parada',fmtMin(min),n0(n)+' ocorrências',''],['Quebras',n0(nQ),fmtMin(mQ)+' de quebra',nQ?'bad':'good'],['MTTR',nQ?n0(mQ/nQ)+' min':'—','reparo médio por quebra',''],['Máquina crítica',S[0]?.nome||'—',S[0]?fmtMin(S[0].min):'','']]},
-  {tipo:'svg',titulo:'Pareto por código (minutos)',svg:hbars(G.slice(0,12).map(g=>({k:g.k,label:codLabel(g.k)+' '+(Cad.code(g.k)?.nome||''),v:g.min,n:g.n})),{pareto:1,w:900,lw:330,fmt:fmtMin})},
+  {tipo:'svg',titulo:'Pareto por código (tempo de parada e % acumulado)',svg:hbars(G.slice(0,12).map(g=>({k:g.k,label:codLabel(g.k)+' '+(Cad.code(g.k)?.nome||''),v:g.min,n:g.n})),{pareto:1,w:900,lw:330,fmt:fmtMin})},
   {tipo:'tabela',titulo:'Pareto por código',cab:['Código','Nome','Minutos','Ocorrências','% do tempo'],num:[2,3,4],linhas:G.slice(0,25).map(g=>[codLabel(g.k),Cad.code(g.k)?.nome||'',n0(g.min),n0(g.n),min?pct(g.min/min):'—'])},
   {tipo:'tabela',titulo:'Equipamentos',cab:['Equipamento','Parada','Ocorrências','Quebras','MTBF (h)','MTTR (min)','Disponibilidade'],num:[1,2,3,4,5,6],linhas:S.map(s=>[s.nome,fmtMin(s.min),n0(s.n),n0(s.nQ),n1(s.mtbf),n0(s.mttr),pct(s.disp)])},
   {tipo:'tabela',titulo:'Recorrência (30 dias até '+br(ate)+')',cab:['Equipamento','Código','Componente','30 dias','Meses seguidos','Última'],linhas:Rc.map(r=>[Cad.eqNome(r.eq),codLabel(r.cod)+' '+(Cad.code(r.cod)?.nome||''),r.comp||'—',`${n0(r.n30)} · ${n0(r.min30)} min`,String(r.meses),br(r.ult)]),destaque:Rc.map(r=>r.n30>=6?'hl3':r.meses>=3?'hl2':'')}]}}
