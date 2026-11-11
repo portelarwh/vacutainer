@@ -60,7 +60,9 @@ const LER = () => {
   if (GRAVAR) { fs.writeFileSync(REF, JSON.stringify(atual, null, 1)); console.log('referência gravada em ' + path.relative(RAIZ, REF)); }
   else {
     const ref = JSON.parse(fs.readFileSync(REF, 'utf8'));
-    const difK = Object.keys(ref.kpis).filter(k => JSON.stringify(ref.kpis[k]) !== JSON.stringify(atual.kpis[k]));
+    // "Mais indicadores" deixa de repetir Produção boa e Capacidade planejada quando já estão na grade (decisão de 11/11/2026): compara os valores sem repetição
+    const uniq = L => L ? [...new Set(L)] : L;
+    const difK = Object.keys(ref.kpis).filter(k => JSON.stringify(uniq(ref.kpis[k])) !== JSON.stringify(uniq(atual.kpis[k])));
     ok(!difK.length, 'mesmos valores em todos os cartões da referência' + (difK.length ? ': ' + difK.map(k => `${k} [${ref.kpis[k]}] → [${atual.kpis[k] || 'ausente'}]`).join(' ; ') : ` (${Object.keys(ref.kpis).length})`));
     const difG = GRAFICOS.filter(t => ref.graf[t] !== atual.graf[t]);
     ok(!difG.length, 'mesmo texto (valores, rótulos, legendas) nos 13 gráficos' + (difG.length ? ': ' + difG.join(', ') : ''));
