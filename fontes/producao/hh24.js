@@ -52,25 +52,31 @@ Object.assign(HHPs, {
     }
     return out;
   },
-  /* ---------- Dia (24 h) ---------- */
+  /* ---------- Dia (24 h) ----------
+     2.4.54 (pedido do usuário): "são as 24 h das 00 às 24 h". Janela = dia do calendário (00:00–24:00) quando nenhum turno produtivo
+     passa da meia-noite (1 ou 2 turnos); com o 3º turno produtivo atravessando a meia-noite, a janela é a do dia de produção
+     (início do 1º turno → mesmo horário do dia seguinte). Horas sem turno dizem em qual turno a produção conta (ForaTurno). */
   dia24Dados(day, res) {
     const d = db(), S = ServerData, base = S.dayStartMin(day.date), qty = +(d.settings || {}).serverBoxQty || 1000;
     let off = 360; try { off = ForaTurno.opOff(d); } catch (e) { }
     const temMes = !!(d.server && (d.server.segments || []).some(s => s.lineId === day.lineId));
     const turnos = res.shifts.filter(sr => !sr.ps.summary).map(sr => { const iv = sr.ps.intervals.filter(i => !i.deleted); let a = iv.length ? Math.min(...iv.map(i => i.start)) : U.toMin(sr.ps.snap.start), b = iv.length ? Math.max(...iv.map(i => i.end)) : U.toMin(sr.ps.snap.end); if (b <= a) b += 1440; return { ps: sr.ps, a, b, off: !!sr.ps.off }; });
-    const nps = this.nps(day), ft = res.foraTurno, jan = ft ? (ft.janela || []).filter(i => i.data === day.date) : [];
-    const H = []; for (let h = off; h < off + 1440; h += 60) {
-      const m = h + 30, t = turnos.find(x => m >= x.a && m < x.b), w = !t && nps.find(x => m >= x.a && m < x.b);
+    const fim = Math.max(0, ...turnos.filter(t => !t.off).map(t => t.b)), w0 = fim <= 1440 ? 0 : off, w1 = w0 + 1440, cal = w0 === 0;
+    const nps = this.nps(day), npAt = m => nps.find(x => m >= x.a && m < x.b) || nps.find(x => m + 1440 >= x.a && m + 1440 < x.b);
+    /* trechos fora de turno (do dia anterior, deste e do seguinte) em minutos absolutos, com o turno que recebe */
+    let itens = []; try { itens = [-1, 0, 1].flatMap(k => { const dt = U.addDays(day.date, k), b0 = S.dayStartMin(dt); return ForaTurno.doDia(d, dt, day.lineId).map(i => ({ A: b0 + i.t0, Z: b0 + i.t1, alvo: i.alvo })); }); } catch (e) { }
+    const contaEm = (A, B) => { const j = itens.find(i => i.A < B && i.Z >= A); if (!j) return ''; return j.alvo ? j.alvo.name + (j.alvo.date !== day.date ? ' de ' + U.brDate(j.alvo.date).slice(0, 5) : '') : 'sem turno para receber'; };
+    const H = []; for (let h = w0; h < w1; h += 60) {
+      const m = h + 30, t = turnos.find(x => m >= x.a && m < x.b), w = !t && npAt(m);
       let meta = 0, apont = 0, temAp = false;
       for (const f of res.flat) { const a = Math.max(f.iv.start, h), b = Math.min(f.iv.end, h + 60); if (b <= a || !f.min) continue; const k = (b - a) / f.min; meta += (f.metaOp || 0) * k; if (f.good != null) { apont += f.good * k; temAp = true; } }
       let n = 0; if (temMes) { try { n = ForaTurno.caixas(d, day.lineId, base + h, base + h + 60, day.date).length; } catch (e) { } }
-      const j = jan.find(i => i.t0 < h + 60 && i.t1 >= h);
-      H.push({ h, turno: t ? t.ps.snap.name + (t.off ? ' (sem produção)' : '') : w ? w.name + ' (não produtivo)' : 'sem turno', dentro: !!t, cor: t ? t.ps.snap.color : null, meta: t ? meta : null, apont: temAp ? apont : null, n, mes: n * qty, conta: !t && j ? (j.alvo ? j.alvo.name + (j.alvo.date !== day.date ? ' de ' + U.brDate(j.alvo.date).slice(0, 5) : '') : 'sem turno para receber') : '' });
+      H.push({ h, turno: t ? t.ps.snap.name + (t.off ? ' (sem produção)' : '') : w ? w.name + ' (não produtivo)' : 'sem turno', dentro: !!t, cor: t ? t.ps.snap.color : null, meta: t ? meta : null, apont: temAp ? apont : null, n, mes: n * qty, conta: !t && n ? contaEm(base + h, base + h + 60) : '' });
     }
-    /* horas recebidas de antes do início do dia (outro dia operacional) */
-    const ant = ft ? (ft.recebe || []).filter(i => i.alvo && i.alvo.date === day.date && i.data !== day.date) : [];
-    const R = []; for (const it of ant) for (const r of this.porHora(day, it)) R.push({ ...r, conta: it.alvo.name });
-    return { off, H, R, temMes, qty };
+    /* produção que conta neste dia mas cai fora da janela (raro: ex. 3º turno emendado depois do fim da janela) */
+    const ft = res.foraTurno, R = [];
+    for (const it of (ft && ft.recebe) || []) { if (!it.alvo || it.alvo.date !== day.date) continue; for (const r of this.porHora(day, it)) if (r.h < w0 || r.h >= w1) R.push({ ...r, conta: it.alvo.name }); }
+    return { off, w0, w1, cal, H, R, temMes, qty };
   },
   dia24(day, res) {
     const D = this.dia24Dados(day, res), sem = D.temMes ? '' : '<span class="muted small">sem MES</span>';
@@ -78,22 +84,45 @@ Object.assign(HHPs, {
     const row = x => `<tr class="${x.dentro ? '' : 'hh-fora'}"><td class="ivt">${this.hm(x.h)}–${this.hm(x.h + 60)}</td><td>${x.cor ? `<span class="swatch" style="background:${esc(x.cor)}"></span> ` : ''}${esc(x.turno)}</td>
       <td class="n">${x.meta == null ? '<span class="muted">—</span>' : fq(x.meta)}</td><td class="n">${x.apont == null ? '' : fq(x.apont)}</td>
       <td class="n">${D.temMes ? (x.n ? U.fmt(x.n) : '') : ''}</td><td class="n">${D.temMes ? (x.n ? fq(x.mes) : '') : sem}</td>
-      <td class="small">${x.conta ? `conta no ${esc(x.conta)}` : !x.dentro && x.n ? '' : ''}</td></tr>`;
-    const rec = D.R.length ? `<tr class="grp"><td colspan="7">Antes do início do dia (${this.hm(D.off)}): produção que conta neste dia</td></tr>` + D.R.map(r => `<tr class="hh-fora"><td class="ivt">${this.hm(r.h)}–${this.hm(r.h + 60)}</td><td class="small">fora dos turnos</td><td class="n"><span class="muted">—</span></td><td class="n"></td><td class="n">${U.fmt(r.n)}</td><td class="n">${fq(r.pecas)}</td><td class="small">conta no ${esc(r.conta)} · lote ${esc(r.lots.join(', '))}</td></tr>`).join('') + `<tr class="grp"><td colspan="7">Dia de produção: ${this.hm(D.off)} de ${U.brDate(day.date).slice(0, 5)} às ${this.hm(D.off)} de ${U.brDate(U.addDays(day.date, 1)).slice(0, 5)}</td></tr>` : '';
+      <td class="small">${x.conta ? `conta no ${esc(x.conta)}` : ''}</td></tr>`;
+    const janela = D.cal ? `00:00 às 24:00 de ${U.brDate(day.date).slice(0, 5)}` : `${this.hm(D.w0)} de ${U.brDate(day.date).slice(0, 5)} às ${this.hm(D.w1)} de ${U.brDate(U.addDays(day.date, 1)).slice(0, 5)} (3º turno passa da meia-noite)`;
+    const rec = D.R.length ? `<tr class="grp"><td colspan="7">Fora desta janela, mas conta neste dia</td></tr>` + D.R.map(r => `<tr class="hh-fora"><td class="ivt">${this.hm(r.h)}–${this.hm(r.h + 60)}</td><td class="small">fora dos turnos</td><td class="n"><span class="muted">—</span></td><td class="n"></td><td class="n">${U.fmt(r.n)}</td><td class="n">${fq(r.pecas)}</td><td class="small">conta no ${esc(r.conta)} · lote ${esc(r.lots.join(', '))}</td></tr>`).join('') : '';
     const ch = Charts.combo({ x: D.H.map(x => this.hm(x.h)), xFull: D.H.map(x => `${this.hm(x.h)}–${this.hm(x.h + 60)} · ${x.turno}`), xName: 'Hora', allLabels: true, unit: qUn,
       bars: [{ name: 'Produção apontada', values: D.H.map(x => x.apont), color: 'var(--s1)', meta: D.H.map(x => x.meta) }],
       lines: [{ name: 'Meta da hora', values: D.H.map(x => x.meta), color: 'var(--ink)', dash: true, dots: false }].concat(D.temMes ? [{ name: 'Produção do MES (caixas)', values: D.H.map(x => x.n ? x.mes : null), color: 'var(--s2)', width: 1.5 }] : []),
       fmtY: v => fq(v), forceLegend: true, height: 220 });
     return `<section class="card section hh-dia"><header><h3>Dia de produção · 24 h</h3>${ib('hhDia')}<span class="spacer"></span><span class="small muted">só leitura · a produção é lançada na grade de cada turno</span></header>
-      <p class="q">Cada hora do dia de produção, com e sem turno. A produção fora dos turnos conta no turno indicado (OEE reportado).</p>
+      <p class="q">Cada hora de ${janela}, com e sem turno. A produção fora dos turnos conta no turno indicado (OEE reportado).</p>
       <div class="tw"><table class="hh"><thead><tr><th>Hora</th><th>Turno</th><th class="n">Meta</th><th class="n">Apontado</th><th class="n">Caixas MES</th><th class="n">Produção MES</th><th>Onde conta</th></tr></thead><tbody>
-      ${rec}${D.H.map(row).join('')}
+      ${D.H.map(row).join('')}${rec}
       <tr class="total"><td>Total</td><td></td><td class="n">${fq(tot.meta)}</td><td class="n">${fq(tot.apont)}</td><td class="n">${D.temMes ? U.fmt(tot.n) : ''}</td><td class="n">${D.temMes ? fq(tot.n * D.qty) : ''}</td><td class="small">${tot.fora ? `${fq(tot.fora)} fora dos turnos · ` : ''}considerada no dia: <b>${fq(res.r.good)}</b> ${esc(unitLbl())}</td></tr>
       </tbody></table></div>${ch}</section>`;
   }
 });
+/* 2.4.54 · gráfico "Atendimento hora a hora": as horas do MES fora do turno que contam neste dia entram na ordem do relógio
+   (ex.: 04:00 e 05:00 antes das 06:00), e só elas (antes: as horas do turno não produtivo iam no fim, mesmo contando em outro dia) */
+HHPs.chart = function (o, day, res) {
+  o.allLabels = true;
+  try {
+    const sel = this.id(day), ps = sel && !String(sel).startsWith('np:') && sel !== 'dia' ? (day.shifts || []).find(p => p.id === sel) : null;
+    const ft = res && res.foraTurno, its = ((ft && ft.recebe) || []).filter(i => i.alvo && i.alvo.date === day.date && !(ft.semAlvo || []).includes(i) && (!ps || i.alvo.code === ps.snap.code));   /* com um turno escolhido, só o que conta nele */
+    const n0 = o.x.length, todos = n0 === res.flat.length, fl = todos ? res.flat : res.flat.filter(f => !ps || f.ps === ps), base = [];
+    for (let i = 0; i < n0; i++) base.push({ k: 'iv', i, s: fl[i] ? fl[i].iv.start : i * 60 });
+    for (const it of its) for (const r of this.porHora(day, it)) base.push({ k: 'f', r, it, s: r.h });
+    if (base.length === n0) return o;
+    base.sort((a, b) => a.s - b.s || (a.k === 'iv' ? -1 : 1));
+    const pick = (arr, f) => base.map(e => e.k === 'iv' ? arr[e.i] : f(e));
+    const X = o.x, XF = o.xFull, B = (o.bars || []).map(b => ({ v: b.values, m: b.meta })), Lv = (o.lines || []).map(l => l.values), M = o.mark, TR = o.tipRows;
+    o.x = pick(X, e => this.hm(e.r.h)); if (XF) o.xFull = pick(XF, e => `${this.hm(e.r.h)}–${this.hm(e.r.h + 60)} · fora do turno · conta no ${e.it.alvo.name}`);
+    (o.bars || []).forEach((b, k) => { b.values = pick(B[k].v, e => k === 0 ? e.r.pecas : null); if (b.meta) b.meta = pick(B[k].m, () => null); });
+    (o.lines || []).forEach((l, k) => { l.values = pick(Lv[k], () => null); });
+    if (M) o.mark = pick(M, () => []);
+    if (TR) o.tipRows = i => { const e = base[i]; return e.k === 'iv' ? TR(e.i) : [['Fora do turno', `${U.fmt(e.r.n)} caixa(s) do MES · lote ${e.r.lots.join(', ')}`], ['Conta no', e.it.alvo.name + ' (OEE reportado)']]; };
+  } catch (e) { console.warn('HHPs.chart', e); }
+  return o;
+};
 Object.assign(HELP, {
-  hhDia: ['Dia de produção (24 h)', [['O que é?', 'As 24 horas do dia de produção, do início do 1º turno até o mesmo horário do dia seguinte: em cada hora, o turno (ou "não produtivo"/"sem turno"), a meta, a produção apontada e as caixas do MES.'], ['E a produção fora do turno?', 'As horas sem turno com caixas mostram em qual turno a produção conta (OEE reportado). A produção recebida de antes do início do dia (ex.: 04:00–06:00, que conta no turno A) aparece no topo.'], ['Exemplo', 'A linha começou às 04:00 e só os turnos A (06:00) e B são produtivos: 04:00–06:00 aparece no topo como "conta no Turno A", e a linha do turno A no Hora a hora mostra essas horas como "fora do turno".']]]
+  hhDia: ['Dia de produção (24 h)', [['O que é?', 'As 24 horas do dia, das 00:00 às 24:00 (com o 3º turno passando da meia-noite, do início do 1º turno até o mesmo horário do dia seguinte): em cada hora, o turno (ou "não produtivo"/"sem turno"), a meta, a produção apontada e as caixas do MES.'], ['E a produção fora do turno?', 'As horas sem turno com caixas mostram em qual turno a produção conta (OEE reportado). A produção recebida de antes do início do dia (ex.: 04:00–06:00, que conta no turno A) aparece no topo.'], ['Exemplo', 'A linha começou às 04:00 e só os turnos A (06:00) e B são produtivos: 04:00–06:00 aparece no topo como "conta no Turno A", e a linha do turno A no Hora a hora mostra essas horas como "fora do turno".']]]
 });
 
 /* ---------- Ordens › Ordens produzidas: lotes do MES sem MB51 ---------- */

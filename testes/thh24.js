@@ -49,10 +49,23 @@ const PREP = () => {
   ok(A.antes, 'as horas fora do turno vêm antes das linhas do turno A');
   ok(A.rec === 120000 && A.foraTurno === 120000 && /60\.000|60,0|60/.test(A.rows[0]), `produção recebida pelo turno A = 120 caixas (${A.rec}) e as linhas mostram as caixas`);
   ok(A.chips.some(t => /Dia \(24 h\)/.test(t)), 'seletor com "Dia (24 h)"');
+  // 2.4.54 · gráfico "Atendimento hora a hora" em ordem de horário e sem o aviso "o lançamento confere com o servidor"
+  const G = await o.evaluate(() => { const sec = [...document.querySelectorAll('#main section.card')].find(x => /Atendimento hora a hora/.test(x.textContent)); const xs = sec ? [...sec.querySelectorAll('svg text')].map(t => t.textContent).filter(t => /^\d\d:\d\d$/.test(t)) : [];
+    return { xs: xs.slice(0, 4).join(' '), banner: /confere com o servidor|O servidor tem dados deste dia/.test(document.getElementById('main').textContent) }; });
+  ok(/^04:00 05:00 06:00/.test(G.xs), `gráfico do hora a hora: 04:00 e 05:00 antes das 06:00 (${G.xs})`);
+  ok(!G.banner, 'sem o aviso "O servidor tem dados deste dia… confere com o servidor"');
   // 2.4.53 · Caixas do MES e Lotes do dia pelo dia de trabalho: turnos + fora do turno que conta no dia (não 06:00→06:00)
   const W = await o.evaluate(() => { const day = curDay(), res = Engine.computeDay(db(), day), md = MesDia.dia(db(), day), LT = CaixasDia.lotes(db(), day, res), S = ServerData;
     return { n: md.n, fora: md.fora, de: S.fromMin(md.m0).slice(11, 16), lotes: U.sum(LT, x => x.n), lFora: U.sum(LT, x => x.fora) }; });
   ok(W.n === 151 && W.fora === 120 && W.de === '04:00' && W.lotes === 151 && W.lFora === 120, `Caixas do MES e Lotes do dia = 151 caixas do dia de trabalho, 120 fora do turno, 1ª às 04:00, com 2 caixas no mesmo minuto (${JSON.stringify(W)})`);
+  // 2.4.54 · blocos do Lançamento recolhíveis (lembrado neste computador)
+  const Lf = await o.evaluate(async () => { const w = t => new Promise(r => setTimeout(r, t)); go('launch'); await w(500);
+    const sec = [...document.querySelectorAll('#main .lc .lc-c')], h = sec.length && sec[0].querySelector(':scope > .lc-hd'); if (!h) return { n: 0 };
+    h.click(); await w(200); const k = LcFold.chave(sec[0]), dob = sec[0].classList.contains('lc-fold'), esc = [...sec[0].children].filter(x => !x.classList.contains('lc-hd')).every(x => getComputedStyle(x).display === 'none');
+    render(); await w(400); const s2 = document.getElementById(sec[0].id) || [...document.querySelectorAll('#main .lc .lc-c')].find(x => LcFold.chave(x) === k), lembra = !!(s2 && s2.classList.contains('lc-fold'));
+    s2.querySelector(':scope > .lc-hd').click(); await w(200); const abriu = !s2.classList.contains('lc-fold'); go('hourly'); await w(400);
+    return { n: sec.length, dob, esc, lembra, abriu }; });
+  ok(Lf.n >= 2 && Lf.dob && Lf.esc && Lf.lembra && Lf.abriu, `Lançamento: blocos recolhem pelo título, ficam recolhidos depois de redesenhar e abrem de novo (${JSON.stringify(Lf)})`);
   // 2) Dia (24 h)
   await o.evaluate(() => { document.querySelector('[data-hhsel="dia"]').click(); }); await o.waitForTimeout(500);
   const D = await o.evaluate(() => {
@@ -60,12 +73,13 @@ const PREP = () => {
     const rows = [...t.querySelectorAll('tbody tr')].map(tr => [...tr.cells].map(c => c.textContent.replace(/\s+/g, ' ').trim()));
     const horas = rows.filter(r => /^\d\d:\d\d–\d\d:\d\d$/.test(r[0]));
     const dados = HHPs.dia24Dados(day, res);
-    return { n: dados.H.length, rec: dados.R.length, recTxt: rows.filter(r => /conta no Turno A/.test(r[6] || '')).length, metaH: U.sum(dados.H, x => x.meta || 0), metaD: U.sum(res.flat, f => f.metaOp || 0),
+    const ix = t => horas.findIndex(r => r[0] === t);
+    return { ordem: ix('04:00–05:00') >= 0 && ix('04:00–05:00') < ix('05:00–06:00') && ix('05:00–06:00') < ix('06:00–07:00'), cal: dados.cal, conta4: (horas[ix('04:00–05:00')] || [])[6] || '', n: dados.H.length, rec: dados.R.length, recTxt: rows.filter(r => /conta no Turno A/.test(r[6] || '')).length, metaH: U.sum(dados.H, x => x.meta || 0), metaD: U.sum(res.flat, f => f.metaOp || 0),
       apH: U.sum(dados.H, x => x.apont || 0), apD: U.sum(res.flat, f => f.good || 0), first: horas[0] && horas[0][0], semGrade: !document.querySelector('#main table.hh tr[data-iv]'), chart: !!document.querySelector('#main section.hh-dia svg'),
       turnoC: horas.filter(r => /não produtivo/.test(r[1])).length };
   });
   ok(D.n === 24, `Dia (24 h): 24 horas (${D.n})`);
-  ok(D.rec === 2 && D.recTxt >= 2, `as horas 04:00–06:00 aparecem no topo como "conta no Turno A" (${D.rec})`);
+  ok(D.cal && D.first === '00:00–01:00' && D.ordem && /conta no Turno A/.test(D.conta4) && D.rec === 0, `Dia (24 h) das 00:00 às 24:00: 04:00 e 05:00 antes das 06:00, "conta no Turno A" (1ª hora ${D.first}; ${D.conta4})`);
   ok(Math.abs(D.metaH - D.metaD) < 1 && Math.abs(D.apH - D.apD) < 1, `meta e apontado das 24 h iguais à grade dos turnos (${Math.round(D.metaH)} × ${Math.round(D.metaD)}; ${Math.round(D.apH)} × ${Math.round(D.apD)})`);
   ok(D.turnoC >= 7 && D.semGrade && D.chart, `horas do turno C como "não produtivo" (${D.turnoC}); só leitura, com gráfico`);
   // 3) Ordens sem MB51

@@ -18,6 +18,9 @@ const LancUI = (() => {
 :root[data-theme="dark"] .lc{--l-blue:#5AA2EC;--l-blue-soft:#1A2F45;--l-pri:#2F6FB0;--l-ok:#3FC07A;--l-ok-ink:#6FD89D;--l-ok-soft:#132B20;--l-warn:#F2AC55;--l-warn-ink:#F5BE78;--l-warn-soft:#2E2414;--l-pur:#B08CEB;--l-pur-soft:#2A2140}
 .lc .lc-svg{fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;flex:none}
 .lc .lc-hd{display:flex;gap:14px;align-items:flex-start;flex-wrap:wrap}
+.lc .lc-c>.lc-hd{cursor:pointer}.lc .lc-c>.lc-hd::after{content:'▾ Recolher';margin-left:auto;font-size:12px;color:var(--muted);white-space:nowrap;align-self:center}
+.lc .lc-c.lc-fold>.lc-hd::after{content:'▸ Mostrar'}.lc .lc-c.lc-fold{align-self:start}.lc .lc-c.lc-fold>:not(.lc-hd){display:none!important}
+@media print{.lc .lc-c.lc-fold>:not(.lc-hd){display:revert!important}.lc .lc-c>.lc-hd::after{display:none}}
 .lc .lc-hic{width:40px;height:40px;border-radius:10px;background:var(--l-blue);color:var(--surface);display:grid;place-items:center;flex:none}
 .lc h3.lc-t{margin:0;font-family:var(--f-body);font-size:20px;font-weight:700;text-transform:none;letter-spacing:0;color:var(--ink)}
 .lc .lc-s{margin:2px 0 0;color:var(--muted);font-size:13.5px}
@@ -142,7 +145,7 @@ const LancUI = (() => {
       topo: `<section class="lc-c" id="srvCard" aria-labelledby="lcSrvT">
       <div class="lc-hd"><span class="lc-hic">${ic('db', 22)}</span><div><h3 class="lc-t" id="lcSrvT">Produção registrada no servidor ${tip('serverData')}</h3><p class="lc-s">Linha do tempo da produção do dia (horário do servidor MES)</p></div><span class="lc-sp"></span>
         <div class="lc-ks"><div class="lc-k"><span class="ki">${ic('box', 18)}</span><div><div class="kl">Produção do dia</div><div class="kv">${cx(tot('normal'))} · ${fq(tot('normal') * q)} ${esc(unitLbl())}</div>${tot('retrabalho') || tot('pendente') ? `<div class="kl">${tot('retrabalho') ? 'retrabalho ' + cx(tot('retrabalho')) : ''}${tot('retrabalho') && tot('pendente') ? ' · ' : ''}${tot('pendente') ? 'a confirmar ' + cx(tot('pendente')) : ''}</div>` : ''}</div></div>
-          <div class="lc-k"><span class="ki">${ic('swap', 18)}</span><div><div class="kl">Trocas</div><div class="kv">${chg.length} troca${chg.length === 1 ? '' : 's'}</div>${chg.length ? `<div class="kl">${nCat} de catálogo · ${nLote} de lote</div>` : ''}</div></div>${valid}</div></div>
+          <div class="lc-k"><span class="ki">${ic('swap', 18)}</span><div><div class="kl">Trocas</div><div class="kv">${chg.length} troca${chg.length === 1 ? '' : 's'}</div>${chg.length ? `<div class="kl">${nCat} de catálogo · ${nLote} de lote</div><div class="kl" title="Soma, em cada troca, do tempo entre a última caixa do lote anterior e a 1ª caixa do lote novo (servidor MES)">tempo de troca: <b>${OeeReal.dur(U.sum(chg, e => { const c = e.info || {}; return c.last && c.first ? Math.max(0, ServerData.tm(c.first) - ServerData.tm(c.last)) : 0; }))}</b> (última → 1ª caixa)</div>` : ''}</div></div>${valid}</div></div>
       ${pends.length ? `<div class="lc-banner">${ic('alert', 18)}<span><b>${pends.length === 1 ? 'Um lote rodou' : pends.length + ' lotes rodaram'} sem ordem no plano:</b> ${pends.map(x => `${esc(x.lot)} (${esc(x.cat)}, ${cx(x.n)})`).join(', ')}. É retrabalho?</span><button type="button" class="btn sm" id="srvCls">Confirmar lotes</button></div>` : ''}
       <div class="lc-tl"><div class="lc-ticks">${ticks.map(m => `<span style="left:${pct(m)}%">${U.hhmm(m)}</span>`).join('')}</div><div class="lc-track">${gaps}${segs}${marks}</div></div>
       <details class="lc-leg"><summary>Entenda as marcações</summary><div class="row">
@@ -190,3 +193,15 @@ const LancUI = (() => {
   }
   return { bloco, servidor, fora, npCards };
 })();
+/* 2.4.54 · blocos do Lançamento recolhíveis (Produção registrada no servidor, Lotes do dia, Produção fora do turno, turno não
+   produtivo): clique no título; a escolha fica neste computador (App.prefs.lcFold, pela identificação do bloco) */
+const LcFold = {
+  F() { const F = App.prefs.lcFold; return F && typeof F === 'object' ? F : (App.prefs.lcFold = {}); },
+  chave(s) { return s.id || s.getAttribute('aria-labelledby') || s.getAttribute('aria-label') || ''; },
+  aplicar(raiz) { (raiz || document).querySelectorAll('.lc .lc-c').forEach(s => { const k = this.chave(s); if (!k) return; const f = !!this.F()[k]; s.classList.toggle('lc-fold', f);
+    const h = s.querySelector(':scope > .lc-hd'); if (h) { h.setAttribute('role', 'button'); h.setAttribute('tabindex', '0'); h.setAttribute('aria-expanded', String(!f)); h.title = f ? 'Mostrar o bloco' : 'Recolher o bloco'; } }); },
+  alternar(s) { const k = this.chave(s); if (!k) return; const F = this.F(); F[k] = !F[k]; if (!F[k]) delete F[k]; try { savePrefs(); } catch (e) { } this.aplicar(s.parentElement); }
+};
+document.addEventListener('click', e => { const h = e.target.closest('.lc .lc-c > .lc-hd'); if (!h || e.target.closest('button,a,input,select,label,.lc-tip,.ib,i.i')) return; LcFold.alternar(h.parentElement); });
+document.addEventListener('keydown', e => { if (e.key !== 'Enter' && e.key !== ' ') return; const h = e.target.closest && e.target.closest('.lc .lc-c > .lc-hd'); if (!h || e.target !== h) return; e.preventDefault(); LcFold.alternar(h.parentElement); });
+new MutationObserver(() => { const m = document.getElementById('main'); if (m && m.querySelector('.lc .lc-c:not([data-lcf])')) { m.querySelectorAll('.lc .lc-c:not([data-lcf])').forEach(s => s.dataset.lcf = '1'); LcFold.aplicar(m); } }).observe(document.documentElement, { childList: true, subtree: true });
