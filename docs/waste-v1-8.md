@@ -148,3 +148,48 @@ A aba Importar leva ao Portal › Importação › Waste; a tela da KKBC_ORD con
 - **Eixo:** sem rótulos repetidos.
 - **Relatórios:** a unidade vai no título do gráfico. O gráfico do Comparativo em "desvio qtd" sai em %.
 - **Números:** nenhum muda. Padrão comum em `docs/graficos-padrao.md`.
+
+## 1.9.0 · KKBC_ORD em grade (layout da controladoria) e Desv. empregado (11/11/2026)
+
+Etapa 1 de 3 do alinhamento com a análise da controladoria (Waste Report / Dashboard Scrap FY27). Decisões do usuário:
+- uma ordem por arquivo;
+- **MUV = Desv. estrutura + Desv. empregado** vira o número oficial do Waste (etapa 2);
+- target MUV da linha no Portal (etapa 3);
+- linha, tipo de ordem e semana vêm das outras páginas.
+
+Ponto de atenção: o "Scrap" atual (desvio total − estrutura) inclui o **desvio de preço de input**; o MUV da controladoria não inclui. Por isso a base precisa ser reimportada no layout novo. A reimportação substitui a ordem (versão vigente por ordem) e não soma duas vezes.
+
+### O que mudou
+
+**Importação da grade nova** (`isKKBCGrade`, `parseKKBCGrade`, `interpretGrade`). A grade é reconhecida pelas colunas "Grupo de elementos (Texto)" ou "Origem" + "Desvio de qtd.empregada".
+- **Ordem:**
+  - a coluna Ordem vem vazia; a ordem vem do campo novo **"Ordem (arquivo de uma ordem)"** ou do número no nome do arquivo;
+  - sem nenhum dos dois, a prévia pede a ordem.
+- **Produto:** a linha sem grupo e com quantidade negativa (entrega) dá o material produzido e a quantidade entregue.
+- **Componentes:** vêm da coluna **Material**; a coluna Origem é planta/material.
+- **Grupos:** só o grupo Materials vira linha. Labor, Mfg Overhead e Allocated Fixed ficam no resumo da ordem, como na lista do SAP.
+- **Linhas descartadas:** as linhas "Elemento de custo (Texto) …" são subtotais; as linhas sem Origem são totais ou continuações em outras unidades.
+
+**Campos novos (opcionais)**, com aliases no `DEFAULT_ALIAS`:
+- `dEmp`: Desvio de qtd.empregada;
+- `dPreco`: Desvio de preço de input;
+- `dQtd`: Desvio qtd.teórico/real;
+- `grupo`.
+
+Títulos novos aceitos:
+- "Custos teór.totais" → custo meta;
+- "Total custos reais" → custo real;
+- "Desvio teórico/real" → desvio total;
+- "Unid.de medida da qtd.produz." → unidade.
+
+**Outros ajustes**
+- `aliasIndex` passa a somar os nomes do padrão. Uma base que guardou a lista de nomes antes desta versão reconhece os títulos novos.
+- A conversão de moeda (`vigRowsAll`) inclui `dEmp` e `dPreco`.
+- **Aviso na aba Importar:** "N de M ordens no formato antigo (sem o Desv. de qtd. empregada)". Mostra a quantidade por competência, a lista das ordens e o botão para copiar. Some à medida que as ordens são reimportadas.
+
+### Próximas etapas
+
+- **Etapa 2:** MUV oficial (meta, situação, exports e Portal); indicadores e Paretos do dashboard da controladoria (Linha, SKU, Componente × MUV, Estrutura, Empregado; favorável/desfavorável; Top N).
+- **Etapa 3:** target MUV da linha no Portal (vigência, acumulado ou mensal, câmbio do Portal); gráfico MUV × target; filtros por tipo de ordem (COOIS), semana e linha.
+
+**Teste:** `testes/twaste_grade.js`, montado com a estrutura da amostra real descaracterizada.
