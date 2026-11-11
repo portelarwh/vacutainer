@@ -1311,7 +1311,7 @@ const U = (() => {
 
 /* ---- 02-model.js ---- */
 /* ================= modelo de dados, valores iniciais e integridade ================= */
-const APP_VERSION = '2.4.56';
+const APP_VERSION = '2.4.57';
 const SCHEMA_VERSION = 1;
 const BASE_FILE = 'oee-vacutainer-base.json';
 const BACKUP_DIR = '00. Backups';
@@ -11172,6 +11172,13 @@ const LancV2 = (() => {
   }
   function palavras(root) {
     if (typeof HELP !== 'undefined') for (const k in AJUDA_NOVA) if (!HELP[k]) HELP[k] = AJUDA_NOVA[k];
+    // ⓘ só com dica (title, sem data-help): vira uma explicação comum, com a palavra ao lado como título
+    for (const ib of [...root.querySelectorAll('.ib:not([data-help])[title]')]) {
+      const tt = ib.title.trim(); if (!tt || tt === 'Ajuda' || typeof HELP === 'undefined') continue;
+      const pai = ib.parentElement, pal = pai ? [...pai.childNodes].filter(n => n !== ib).map(n => n.textContent).join(' ').replace(/\s+/g, ' ').trim() : '';
+      const k = 'dica:' + tt.slice(0, 60); if (!HELP[k]) HELP[k] = [pal || 'Ajuda', [['O que é?', tt]]];
+      ib.removeAttribute('onclick'); ib.dataset.help = k;
+    }
     for (const ib of [...root.querySelectorAll('.ib[data-help]')]) {
       if (ib.classList.contains('v2-ibh') || !ib.isConnected) continue;
       const k = ib.dataset.help, prev = ib.previousElementSibling, pai = ib.parentElement;
@@ -11187,7 +11194,9 @@ const LancV2 = (() => {
       else if (curto(pai) || (!pai.querySelector(CTRL) && pai.matches('h1,h2,h3,h4,h5,legend,.l,.kl,.lbl,.tl-l,span,b,strong'))) alvo = pai;
       if (!alvo && prev && curto(prev) && !prev.matches(CTRL)) alvo = prev;
       if (!alvo) { const tn = ib.previousSibling; if (tn && tn.nodeType === 3 && tn.textContent.trim()) { const sp = document.createElement('span'); sp.textContent = tn.textContent.replace(/\s+$/, ''); tn.replaceWith(sp); alvo = sp; } }
-      if (!alvo) continue;   // sem palavra ao lado: o ⓘ fica como está
+      // ⓘ solto, sem palavra ao lado (ajuda da tela inteira, ex.: Plano do mês, Relatórios): a explicação vai para o título da tela
+      if (!alvo) { const h = root.querySelector('h1, h2'); if (h && !h.dataset.help && !h.closest('[data-help]') && !h.querySelector('button,input,select,a')) alvo = h; }
+      if (!alvo) continue;
       if (alvo.dataset.help || alvo.closest('[data-help]')) { ib.classList.add('v2-ibh'); continue; }
       marcar(alvo, k); ib.remove();
     }

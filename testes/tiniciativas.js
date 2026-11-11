@@ -5,6 +5,7 @@
 // node testes/tiniciativas.js → "sem erros"; código 1 se falhar. Prints em testes/saida/iniciativas/
 const path = require('path'), fs = require('fs'), http = require('http'); const RAIZ = path.resolve(__dirname, '..');
 const { chromium } = require('playwright');
+const verN = v => String(v || '').split(/[^\d]+/).filter(Boolean).slice(0, 4).map(Number).reduce((t, n, i) => t + n * Math.pow(1000, 3 - i), 0);   // versão como número (1.10 > 1.9; texto comparava errado)
 const srv = http.createServer((q, r) => { const f = path.join(RAIZ, decodeURIComponent(q.url.split('?')[0])); if (!f.startsWith(RAIZ) || !fs.existsSync(f) || fs.statSync(f).isDirectory()) { r.writeHead(404); return r.end(); } r.writeHead(200, { 'content-type': f.endsWith('.html') ? 'text/html; charset=utf-8' : 'application/octet-stream' }); fs.createReadStream(f).pipe(r); });
 const errs = []; const ok = (c, m) => { console.log((c ? 'ok   ' : 'FALHA ') + m); if (!c) errs.push(m); };
 const SAI = path.join(RAIZ, 'testes', 'saida', 'iniciativas'); fs.mkdirSync(SAI, { recursive: true });
@@ -28,7 +29,7 @@ const LEG = [
     const r = await p.evaluate(() => ({ ver: PAGE.versao, tit: PAGE.titulo, curto: PAGE.tituloCurto, nav: (systems().find(s => s.id === 'inic') || {}).nome,
       cls: [...document.querySelectorAll('.ac')].map(e => [...e.classList].find(c => c.startsWith('st-')) || ''),
       abas: ABAS.map(a => a[0]), orig: ORIGENS.map(o => o[0]), mais: !!document.querySelector('[data-novoprog]') }));
-    ok(r.ver >= '1.1.0' && /^Iniciativas \/ Ações/.test(r.tit) && r.curto === 'Iniciativas / Ações' && r.nav === 'Iniciativas / Ações', `INI-00: "${r.curto}" (página e catálogo do cabeçalho), versão ${r.ver}`);
+    ok(verN(r.ver) >= verN('1.1.0') && /^Iniciativas \/ Ações/.test(r.tit) && r.curto === 'Iniciativas / Ações' && r.nav === 'Iniciativas / Ações', `INI-00: "${r.curto}" (página e catálogo do cabeçalho), versão ${r.ver}`);
     ok(r.cls.length && r.cls.every(Boolean) && r.cls.includes('st-afazer') && r.cls.includes('st-concluida') && r.cls.includes('st-atrasada'), `INI-01: todo card com fundo do status (${[...new Set(r.cls)].join(', ')})`);
     const bg = await p.evaluate(() => { const g = s => getComputedStyle(document.querySelector('.ac.' + s)).backgroundColor; return [g('st-afazer'), g('st-concluida')]; });
     ok(bg[0] !== bg[1], `INI-01: cores diferentes por status (${bg.join(' × ')})`);
@@ -108,7 +109,7 @@ const LEG = [
   {
     const p = await abre('Portal.html');
     const r = await p.evaluate(() => ({ t: !!CAD_T.programas, ord: CAD_ORD.includes('programas'), aj: !!AJUDA_CAMPO['programas.codigo'] && !!CAT_AJUDA.programas, imp: IMP_CAT.find(c => c.id === 'ACOES'), ver: PAGE.versao }));
-    ok(r.t && r.ord && r.aj && r.ver >= '1.9.14', 'Portal (1.9.14+): Cadastros › Programas com ⓘ nos campos e na categoria');
+    ok(r.t && r.ord && r.aj && verN(r.ver) >= verN('1.9.14'), 'Portal (1.9.14+): Cadastros › Programas com ⓘ nos campos e na categoria');
     ok(r.imp && r.imp.pag === 'iniciativas' && r.imp.sis === 'inic' && r.imp.hash === 'importar=acoes', 'Portal › Importação › Iniciativas: ações de um programa (abre Iniciativas com o Importar)');
     await p.close();
   }

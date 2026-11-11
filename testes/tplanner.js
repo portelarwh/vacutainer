@@ -4,6 +4,7 @@
 // node testes/tplanner.js → "sem erros"; código 1 se falhar. Prints em testes/saida/planner/
 const path = require('path'), fs = require('fs'), http = require('http'); const RAIZ = path.resolve(__dirname, '..');
 const { chromium } = require('playwright');
+const verN = v => String(v || '').split(/[^\d]+/).filter(Boolean).slice(0, 4).map(Number).reduce((t, n, i) => t + n * Math.pow(1000, 3 - i), 0);   // versão como número (1.10 > 1.9; texto comparava errado)
 const srv = http.createServer((q, r) => { const f = path.join(RAIZ, decodeURIComponent(q.url.split('?')[0])); if (!f.startsWith(RAIZ) || !fs.existsSync(f) || fs.statSync(f).isDirectory()) { r.writeHead(404); return r.end(); } r.writeHead(200, { 'content-type': f.endsWith('.html') ? 'text/html; charset=utf-8' : 'application/octet-stream' }); fs.createReadStream(f).pipe(r); });
 const errs = []; const ok = (c, m) => { console.log((c ? 'ok   ' : 'FALHA ') + m); if (!c) errs.push(m); };
 const SAI = path.join(RAIZ, 'testes', 'saida', 'planner'); fs.mkdirSync(SAI, { recursive: true });
@@ -64,7 +65,7 @@ const espera = p => p.waitForFunction(() => !Store.saving && !Store.queue.length
   const p1 = await abre(); await p1.evaluate(LIMPA, CAD); await p1.reload(); await p1.waitForTimeout(600);
   await p1.evaluate(CONECTA); await espera(p1); 
   let B = await p1.evaluate(LER);
-  ok(B && B.schema === 'vac-iniciativas' && B.rev === 1 && B.appVersion >= '1.1.0' && B.exports && B.exports.exportsVersion === 1, `conectar: cria 00. Bases/iniciativas-base.json (rev ${B && B.rev})`);
+  ok(B && B.schema === 'vac-iniciativas' && B.rev === 1 && verN(B.appVersion) >= verN('1.1.0') && B.exports && B.exports.exportsVersion === 1, `conectar: cria 00. Bases/iniciativas-base.json (rev ${B && B.rev})`);
   await p1.evaluate(() => { const ontem = addDias(hoje(), -1);
     Store.commit({ k: 'nova', a: { id: 'AC-1', titulo: 'Ajustar guia EQ03', status: 'a fazer', prioridade: 'alta', responsavel: 'J. Lima', apoios: ['R. Nunes'], prazo: ontem, prazoOriginal: ontem, criadaEm: new Date().toISOString(), origem: { tipo: 'paradas', ref: 'pareto|EQ03|FAL', resumo: 'Pareto · EQ03' }, vinculos: [{ tipo: 'equipamento', cod: 'EQ03' }, { tipo: 'ordem', cod: '100234567' }], checklist: [], comentarios: [], evidencias: [] } });
     Store.commit({ k: 'nova', a: { id: 'AC-2', titulo: 'Sem dono', status: 'a fazer', responsavel: '', prazo: null, criadaEm: new Date().toISOString(), origem: { tipo: 'manual' }, vinculos: [] } }); });

@@ -158,3 +158,12 @@ Reproduz a proposta "painel de gestão industrial" (`fontes/producao/lanc_v2.js`
 **Não mudou nesta versão**
 - **Cabeçalho geral do kit** (navegação entre páginas, título e abas): é comum às 8 páginas e não foi alterado. O título da página com ícone e as abas sem caixa alta, como na proposta, entram numa mudança do kit, em todas as páginas juntas.
 - **"Editar cards"** continua por computador. Salvar a escolha **por perfil** ou para todos depende de guardar a escolha no Portal; é a próxima etapa sugerida.
+
+## 2.4.57 · Nenhum ⓘ na Produção (11/11/2026)
+
+- **Os dois ⓘ soltos** (canto da barra do Plano do mês e dos Relatórios) explicavam a tela inteira. A explicação foi para o **título da tela**, que fica sublinhado e abre a ajuda ao clicar.
+- **Os ⓘ que só tinham dica do mouse** (ex.: "Ano fiscal" nas Ordens) viraram uma explicação comum, aberta pela palavra ao lado.
+- **Resultado:** nenhum ⓘ visível nas 14 abas (conferido aba por aba).
+- **Onde está:** `palavras()` em `lanc_v2.js`. Nada mudou nos números.
+- **Testes:** as comparações de versão em `tfase7`, `tiniciativas` e `tplanner` passaram a ser numéricas (`verN`). Como texto, `'1.10.0' >= '1.9.15'` dá falso.
+

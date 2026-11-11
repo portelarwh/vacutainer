@@ -3,6 +3,7 @@
 // node testes/tfase7.js → "sem erros"; código 1 se falhar.
 const SP = require('path').resolve(__dirname, '..') + '/'; const S = 'file://' + SP + 'paginas/';
 const { chromium } = require('playwright');
+const verN = v => String(v || '').split(/[^\d]+/).filter(Boolean).slice(0, 4).map(Number).reduce((t, n, i) => t + n * Math.pow(1000, 3 - i), 0);   // versão como número (1.10 > 1.9; texto comparava errado)
 (async () => {
   const b = await chromium.launch(); const ctx = await b.newContext({ viewport: { width: 1440, height: 1000 } }); const errs = [], pe = [];
   const ok = (c, msg) => { console.log((c ? 'ok   ' : 'FALHA ') + msg); if (!c) errs.push(msg); };
@@ -35,7 +36,7 @@ const { chromium } = require('playwright');
     document.querySelector('[data-hhsel=""]').click(); await w(); R.todos = document.querySelectorAll('table.hh tr.grp').length;
     R.psNome = ps.snap.name; return R;
   });
-  ok(r.ver >= '2.4.34', 'Produção (2.4.34+)');
+  ok(verN(r.ver) >= verN('2.4.34'), 'Produção (2.4.34+)');
   ok(!r.respDia && r.respTurno === r.nTurnos && r.nTurnos >= 2, `PRD-05: sem "Responsável" do dia; um por turno (${r.respTurno}/${r.nTurnos})`);
   ok(r.respRep, 'PRD-05: com scrap "Total diário" aparece "Responsável pelo reporte"');
   ok(r.psResp === 'P. Costa', 'PRD-05: responsável do turno gravado no turno');
@@ -87,17 +88,17 @@ const { chromium } = require('playwright');
   }
   /* UX-03 Waste e Gel; UX-04 Paradas e Portal; ⓘ no Portal */
   const w = await nova('Perdas-Ordem.html');
-  ok(await w.evaluate(() => document.querySelector('[data-t="painel"]').textContent.trim() === 'Visão Geral' && APP_VER.split('.').map(Number).reduce((t, n) => t * 1000 + n, 0) >= 1008029), 'UX-03 (WST-01): Waste 1.8.29 com a aba Visão Geral');
+  ok(await w.evaluate(() => document.querySelector('[data-t="painel"]').textContent.trim() === 'Visão Geral' && String(APP_VER).split(/[^\d]+/).filter(Boolean).slice(0, 4).map(Number).reduce((t, n, i) => t + n * Math.pow(1000, 3 - i), 0) >= 1008029000), 'UX-03 (WST-01): Waste 1.8.29 com a aba Visão Geral');
   await w.close();
   const g = await nova('Gestão-Gel-Vacutainer.html');
-  ok(await g.evaluate(() => TABS[0][0] === 'painel' && TABS[0][1] === 'Visão Geral' && APP_VERSION >= '2.21' && !!VAC_INICIAL_ALVO['Gestão de Gel › Visão Geral'] && !!VAC_INICIAL_ALVO['Gestão de Gel › Painel']), 'UX-03 (GEL-01): Gel 2.21 com a aba Visão Geral (id painel; página inicial antiga continua valendo)');
+  ok(await g.evaluate(() => TABS[0][0] === 'painel' && TABS[0][1] === 'Visão Geral' && String(APP_VERSION).split(/[^\d]+/).filter(Boolean).slice(0, 4).map(Number).reduce((t, n, i) => t + n * Math.pow(1000, 3 - i), 0) >= 2021000000 && !!VAC_INICIAL_ALVO['Gestão de Gel › Visão Geral'] && !!VAC_INICIAL_ALVO['Gestão de Gel › Painel']), 'UX-03 (GEL-01): Gel 2.21 com a aba Visão Geral (id painel; página inicial antiga continua valendo)');
   await g.close();
   const pa = await nova('Paradas.html');
-  ok(await pa.evaluate(() => { return PAGE.versao >= '1.0.26' && typeof vacCadPilula === 'function'; }), 'Paradas 1.0.26 usa a pílula comum');
+  ok(await pa.evaluate(() => { return String(PAGE.versao).split(/[^\d]+/).filter(Boolean).slice(0, 4).map(Number).reduce((t, n, i) => t + n * Math.pow(1000, 3 - i), 0) >= 1000026000 && typeof vacCadPilula === 'function'; }), 'Paradas 1.0.26 usa a pílula comum');
   await pa.close();
   const po = await nova('Portal.html');
   const pr = await po.evaluate(() => ({ v: PAGE.versao, aj: /como a peça falhou/.test(CAT_AJUDA.modosFalha) && /por que a linha parou/.test(CAT_AJUDA.paradas) }));
-  ok(pr.v >= '1.9.15' && pr.aj, 'Portal (1.9.15+): ⓘ das categorias explica código de parada × modo de falha');
+  ok(verN(pr.v) >= verN('1.9.15') && pr.aj, 'Portal (1.9.15+): ⓘ das categorias explica código de parada × modo de falha');
   /* POR-02 (Portal 1.9.16): códigos de parada com filtros e ordenação por coluna */
   await po.evaluate(() => enterTest()); await po.waitForTimeout(400);
   await po.evaluate(() => { const P = (c, n, nome, pilar, classe, onde, af) => ({ codigo: c, numero: n, nome, pilar, classe, ondeAponta: onde, afetaD: af.includes('D'), afetaP: af.includes('P'), afetaQ: af.includes('Q'), ativo: true });
