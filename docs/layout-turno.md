@@ -73,3 +73,23 @@ Lote 6299948 em 09/11: 950 caixas (19 fora do turno).
 - **Testes:**
   - `thh24.js` confere o dia de trabalho com duas caixas no mesmo minuto;
   - `toeereal.js` foi atualizado: o cartão termina às 23:40, porque o trecho das 02:00–02:30 conta no A do dia seguinte.
+
+## 2.4.54 · Hora a hora em ordem de horário, Dia 00–24 h, tempo de troca e blocos recolhíveis (11/11/2026)
+
+Pedidos do usuário na homologação com o CSV real da semana.
+
+- **Gráfico "Atendimento hora a hora":** as horas do MES fora do turno que contam neste dia entram na ordem do relógio. Ex.: 04:00 e 05:00 antes das 06:00 (`HHPs.chart` em `hh24.js`).
+  - Antes, as horas da janela do turno não produtivo entravam no fim, mesmo as que contam no dia seguinte.
+  - Com um turno escolhido, só entra o que conta nele.
+- **Dia (24 h):**
+  - Com 1 ou 2 turnos (nenhum passa da meia-noite), a janela vai das **00:00 às 24:00**: "são as 24 h das 00 às 24 h".
+  - Com o 3º turno produtivo atravessando a meia-noite, a janela continua sendo o início do 1º turno → o mesmo horário do dia seguinte.
+  - Nas horas sem turno aparece em qual turno a produção conta, inclusive do dia anterior ou seguinte (`ForaTurno.doDia` de D−1, D e D+1).
+- **Aviso retirado:** "O servidor tem dados deste dia (o valor "srv"…). O lançamento confere com o servidor." saiu do Hora a hora. Só aparece quando há sugestão para revisar ("N sugestão(ões) do servidor para conferir").
+- **Cartão "Trocas"** (Produção registrada no servidor): passa a mostrar o **tempo de troca**, somado da última caixa do lote anterior até a 1ª caixa do lote novo. Com o CSV real, 09/11 deu 11 min.
+- **Blocos recolhíveis no Lançamento:** "Produção registrada no servidor", "Lotes do dia", "Produção fora do turno" e o turno não produtivo recolhem pelo título (▾ Recolher / ▸ Mostrar), com o mouse ou o teclado. A escolha fica neste computador (`App.prefs.lcFold`, `LcFold` em `lanc_layout.js`). Na impressão, tudo sai aberto.
+- **Teste:** `thh24.js` confere:
+  - a ordem do gráfico;
+  - o Dia das 00:00 às 24:00 com 04:00 e 05:00 antes das 06:00;
+  - a ausência do aviso;
+  - os blocos recolhíveis e lembrados.
