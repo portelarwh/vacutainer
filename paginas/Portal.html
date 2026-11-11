@@ -1347,7 +1347,9 @@ function miniChart(d,{fmt=fmtK,tit=''}={}){if(!d.length)return'';
 function barChart(d,{h=220,meta=null,fmt=fmtK,click=null,minW=560}={}){if(!d.length)return'<p class="muted small">Sem dados.</p>';
  const W=Math.max(minW,d.length*(minW<560?34:60)),pl=62,pb=26,pt=14;const vals=d.map(x=>x.value).concat(meta!=null?[meta]:[]);let mx=Math.max(0,...vals),mn=Math.min(0,...vals);if(mx===mn)mx=mn+1;const pad=(mx-mn)*.08;mx+=pad;if(mn<0)mn-=pad;
  const y=v=>pt+(mx-v)/(mx-mn)*(h-pt-pb),bw=(W-pl-10)/d.length;let s=`<svg viewBox="0 0 ${W} ${h}" width="100%" style="max-height:${h}px">`;
- for(let i=0;i<=4;i++){const v=mn+(mx-mn)*i/4;s+=`<line x1="${pl}" x2="${W}" y1="${y(v)}" y2="${y(v)}" stroke="var(--grid)"/><text x="${pl-6}" y="${y(v)+4}" font-size="10" text-anchor="end" fill="var(--muted)">${esc(fmt(v))}</text>`}
+ const tv=[0,1,2,3,4].map(i=>mn+(mx-mn)*i/4);let ft=fmt;   /* 1.9.25: eixo sem rótulos repetidos (só com o fmtK; os outros formatos trazem a unidade) */
+ if(fmt===fmtK&&new Set(tv.map(fmtK)).size<5){const fd=k=>v=>{const a=Math.abs(v),o={minimumFractionDigits:k,maximumFractionDigits:k};return a>=1e6?(v/1e6).toLocaleString('pt-BR',o)+' mi':a>=1e3?(v/1e3).toLocaleString('pt-BR',o)+' mil':v.toLocaleString('pt-BR',o)};ft=[1,2,3].map(fd).find(f=>new Set(tv.map(f)).size===5)||fd(3)}
+ tv.forEach(v=>{s+=`<line x1="${pl}" x2="${W}" y1="${y(v)}" y2="${y(v)}" stroke="var(--grid)"/><text x="${pl-6}" y="${y(v)+4}" font-size="10" text-anchor="end" fill="var(--muted)">${esc(ft(v))}</text>`});
  s+=`<line x1="${pl}" x2="${W}" y1="${y(0)}" y2="${y(0)}" stroke="var(--axis)"/>`;
  d.forEach((x,i)=>{const X=pl+i*bw+bw*.15,w=bw*.7,y0=y(0),y1=y(x.value);s+=`<g ${click?`data-${click}="${esc(x.key)}" style="cursor:pointer"`:''}><title>${esc(x.label)}: ${esc(fmt(x.value))}</title><rect x="${X}" y="${Math.min(y0,y1)}" width="${w}" height="${Math.max(1,Math.abs(y1-y0))}" fill="${x.color||'var(--accent)'}" rx="2"/><text x="${X+w/2}" y="${x.value>=0?y1-4:y1+12}" font-size="10" text-anchor="middle" fill="var(--ink)">${esc(fmt(x.value))}</text><text x="${X+w/2}" y="${h-8}" font-size="11" text-anchor="middle" fill="var(--muted)">${esc(x.label)}</text></g>`});
  if(meta!=null)s+=`<line x1="${pl}" x2="${W}" y1="${y(meta)}" y2="${y(meta)}" stroke="var(--ink)" stroke-dasharray="5 4"/><text x="${W-4}" y="${y(meta)-4}" font-size="10" text-anchor="end" fill="var(--ink)">meta ${esc(fmt(meta))}</text>`;return s+'</svg>'}
@@ -1424,7 +1426,7 @@ function wireConfigComum(){$('#cPasta').onclick=async()=>{if(await Store.pick())
         entrar pelo ID (autocadastro como Consulta); página inicial por perfil (1x por sessão); vigência gravada não se edita (desativar com motivo); painel de vigências; semáforo central; saída do modo de teste.
    1.1.2: aviso da carga diz qual base foi lida.  1.5: páginas Paradas, Máquinas, Manutenção e Projetos na lista (aparecem quando o HTML chega na pasta).  1.4: lista técnica pela CS12 multinível (itens = nível 1, estrutura = níveis 2+); CS03 sai.  1.3: cabeçalho comum (vac-cabecalho v2: barra do sistema + página + abas), busca Ctrl K, acabamento V1.90, Versões com cabeçalho e último backup.  1.2: Configuração › Versões das páginas (versão e data de cada HTML, gravação das bases, cópias repetidas, histórico).
    ===================================================================== */
-const PAGE={id:'portal',titulo:'Portal · Linha Vacutainer',tituloCurto:'Portal',subtitulo:'Sistemas de gestão da linha',versao:'1.9.24',baseFile:'portal-base.json',idb:'vac-portal',backupDir:'00. Backups/Portal',
+const PAGE={id:'portal',titulo:'Portal · Linha Vacutainer',tituloCurto:'Portal',subtitulo:'Sistemas de gestão da linha',versao:'1.9.25',baseFile:'portal-base.json',idb:'vac-portal',backupDir:'00. Backups/Portal',
  vazio:()=>({schema:'portal-base',rev:0,config:{modulos:{},avisoDias:30,notas:{}},audit:[]}),
  /* itens do Portal para a busca Ctrl K: cadastro, pendências e telas */
  busca:q=>{const R=[],D=Cad.D;if(D)for(const t of CAD_ORD){for(const it of D[t]||[]){const c=String(it[kOf(t)]),nm=t==='bom'?((cadItem('catalogos',it.catalogo)||{}).nome||''):it.nome||'';if(norm(c+' '+nm).includes(q))R.push({tipo:CAD_T[t].um,txt:c+(nm?' · '+nm:''),sub:'Cadastros'+(cadAtivo(t,it,D)?'':' · inativo'),href:'#cadastros/'+t+'/'+encodeURIComponent(c)});if(R.length>30)break}}
@@ -1490,7 +1492,7 @@ function adaptOEE(d){const ex=d.exports;
  if(exV1(ex)&&Array.isArray(ex.porMes)&&Array.isArray(ex.kpis)){const hoje=todayISO(),mes=curM(),m=ex.porMes.find(p=>p.mes===mes)||null;
   const serie=(ex.porDia||[]).filter(x=>x.dia>=addDays(hoje,-20)&&x.dia<=hoje).sort((a,b)=>a.dia<b.dia?-1:1).map(x=>({label:x.dia.slice(8,10)+'/'+x.dia.slice(5,7),value:+x.boa||0,key:x.dia}));
   const emProd=(ex.ordens||[]).filter(o=>o.mes===mes&&o.inicioReal&&!o.fimReal).map(o=>`${o.ordem} · lote ${o.lote||'–'}`);
-  return{kpis:ex.kpis,pend:pendDoModulo(ex,'oee'),serie,serieTit:'Produção boa por dia · últimos 21 dias (peças)',extra:{emProd},oeePct:m?m.oee:null}}
+  return{kpis:ex.kpis,pend:pendDoModulo(ex,'oee'),serie,serieTit:'Produção boa por dia · últimos 21 dias (tubos)',extra:{emProd},oeePct:m?m.oee:null}}
  return adaptOEEBruto(d)}
 function adaptOEEBruto(d){
  const hoje=todayISO(),mes=curM();
@@ -1513,7 +1515,7 @@ function adaptOEEBruto(d){
   [oeeMes!=null?'OEE do mês':'Último dia lançado',oeeMes!=null?fmtP(oeeMes):ult?fmtK(byDate[ult].g):'–',oeeMes!=null?(oeeMeta!=null?'meta '+fmtP(oeeMeta):''):ult?fmtD(ult):'nenhum',oeeMes!=null&&oeeMeta!=null?(oeeMes>=oeeMeta?'good':'bad'):''],
   ['Scrap no mês',fmtK(mesS),fmtP(mesG+mesS?mesS/(mesG+mesS):null,2)+' do processado',''],
   ['Pendências',String(pend.length),pend.length?'turnos e lançamentos':'nada pendente',pend.length?'bad':'good']];
- return{kpis,pend,serie,serieTit:'Produção boa por dia · últimos 21 dias (peças)',extra:{plan:!!plan,planTot,mesG,ordens:ords.length,emProd:emProd.map(o=>`${o.order} · lote ${o.lot||'–'}`),ult},oeePct:oeeMes,bruto:true};
+ return{kpis,pend,serie,serieTit:'Produção boa por dia · últimos 21 dias (tubos)',extra:{plan:!!plan,planTot,mesG,ordens:ords.length,emProd:emProd.map(o=>`${o.order} · lote ${o.lot||'–'}`),ult},oeePct:oeeMes,bruto:true};
 }
 /* ----- Gel: saldo (já descontadas as retiradas parciais), validade e pendências vêm do exports do Gel; sem exports, dados brutos ----- */
 function adaptGel(d){const ex=d.exports;
@@ -1604,10 +1606,10 @@ function kpisPer(id){const x=MOD.data[id],ex=x&&x.ex;if(!ex)return null;const[a,
   const s=k=>L.reduce((t,r)=>t+(+r[k]||0),0),cap=s('cap'),boa=s('boa'),metaOp=s('metaOp'),scrap=s('scrap');
   const oee=cap>0?boa/cap:(boa>0?L.reduce((t,r)=>t+(+r.oee||0)*(+r.boa||0),0)/boa:null),meta=cap>0&&s('metaDec')>0?s('metaDec')/cap:(boa>0?L.reduce((t,r)=>t+(+r.oeeMeta||0)*(+r.boa||0),0)/boa:null);
   return{kpis:[['OEE',perPct(oee),meta!=null?'meta '+perPct(meta)+(cap>0?'':' (aprox.)'):'',oee!=null&&meta!=null?(oee>=meta?'good':'bad'):''],['Produção boa',fmtN(boa),metaOp?'meta '+fmtN(metaOp)+' · '+perPct(boa/metaOp):'',metaOp?(boa>=metaOp?'good':'bad'):''],['Scrap',fmtN(scrap),boa+scrap>0?perPct(scrap/(boa+scrap)):'',''],['Dias lançados',String(L.length),'','']],
-   serie:serieDias(L,r=>r.boa),serieTit:'Produção boa por dia (peças)',nota:cob&&a<cob?'a Produção publica os últimos 120 dias':''}}
+   serie:serieDias(L,r=>r.boa),serieTit:'Produção boa por dia (tubos)',nota:cob&&a<cob?'a Produção publica os últimos 120 dias':''}}
  if(id==='paradas'&&Array.isArray(ex.eventos)){const L=ex.eventos.filter(e=>dentro(e.dia)&&(Per.sel!=='turno'||String(e.turno||'')===String(Per.turno||''))),c=ex.eventosCobertura||{};
   const min=L.reduce((t,e)=>t+(+e.minutos||0),0),oc=L.reduce((t,e)=>t+(+e.ocorrencias||1),0),q=L.filter(e=>e.classe==='quebra'),mq=q.reduce((t,e)=>t+(+e.minutos||0),0);
-  return{kpis:[['Paradas',fmtN(min)+' min',fmtN(oc)+' ocorrência(s)',''],['Quebras',fmtN(q.length),q.length?'MTTR '+fmtN(mq/q.length)+' min':'sem quebras',q.length?'bad':'good']],serie:serieDias(L,e=>e.minutos),serieTit:'Minutos de parada por dia',serieFmt:v=>fmtN(v)+' min',nota:c.de&&a<c.de?'o Paradas publica os eventos desde '+fmtD(c.de):''}}
+  return{kpis:[['Paradas',fmtN(min)+' min',fmtN(oc)+' ocorrência(s)',''],['Quebras',fmtN(q.length),q.length?'MTTR '+fmtN(mq/q.length)+' min':'sem quebras',q.length?'bad':'good']],serie:serieDias(L,e=>e.minutos),serieTit:'Paradas por dia (min)',serieFmt:v=>fmtN(v)+' min',nota:c.de&&a<c.de?'o Paradas publica os eventos desde '+fmtD(c.de):''}}
  if(id==='gel'&&Array.isArray(ex.porDiaGel)){const L=ex.porDiaGel.filter(r=>dentro(r.dia)),s=k=>L.reduce((t,r)=>t+(+r[k]||0),0),teo=s('teoKg'),bx=s('baixadoKg'),tub=s('tubos');
   const ag=(x.kpis||[]).slice(0,1).map(k=>[k[0]+' (agora)',k[1],k[2],k[3]]);
   return{kpis:[['Gel baixado',fmtN(bx,0)+' kg',L.length+' dia(s) registrado(s)',''],['Baixado × teórico',teo>0&&bx>0?(bx/teo-1>=0?'+':'')+fmtN(100*(bx/teo-1),1)+'%':'–',teo>0?'teórico '+fmtN(teo,0)+' kg':'',teo>0&&bx>0?(bx<=teo?'good':'bad'):''],['Tubos bons',fmtN(tub),'','']].concat(ag),serie:serieDias(L,r=>r.baixadoKg),serieTit:'Gel baixado por dia (kg)',serieFmt:v=>fmtN(v)+' kg',nota:'o Gel publica os últimos 60 dias'}}
@@ -1879,8 +1881,8 @@ function irVersoes(){App.show('config');setTimeout(()=>{const c=$('#cardVers');i
 function tvSlides(){const s=[];const mods=systems().filter(x=>x.id!=='portal'&&!x.futuro&&!x.oculto&&!emConstr(x));
  const top=mods.map(x=>{const d0=MOD.data[x.id];if(!d0||d0.erro)return'';const kp=kpisPer(x.id),d=kp?{kpis:kp.kpis}:d0;return d.kpis.slice(0,2).map(k=>`<div class="bk"><div class="l">${esc(x.nome)} · ${esc(k[0])}</div><div class="v sm ${k[3]||''}">${esc(k[1])}</div><div class="s">${esc(k[2]||'')}</div></div>`).join('')}).join('');
  s.push({titulo:'Visão geral · '+Per.rotulo(),html:`<div class="big">${top}</div><div class="card"><h3>Pendências</h3>${pendList(allPend().slice(0,8))}</div>`});
- for(const x of mods){const d0=MOD.data[x.id];if(!d0||d0.erro)continue;const kp=kpisPer(x.id),d=kp?{...d0,kpis:kp.kpis,serie:kp.serie,serieFmt:kp.serieFmt||d0.serieFmt}:d0;
-  s.push({titulo:x.nome+' · '+(kp?Per.rotulo():'agora'),html:`<div class="big">${d.kpis.map(k=>`<div class="bk"><div class="l">${esc(k[0])}</div><div class="v sm ${k[3]||''}">${esc(k[1])}</div><div class="s">${esc(k[2]||'')}</div></div>`).join('')}</div>${d.serie&&d.serie.length?`<div class="card">${barChart(d.serie,{h:300,fmt:d.serieFmt||fmtK})}</div>`:''}`})}
+ for(const x of mods){const d0=MOD.data[x.id];if(!d0||d0.erro)continue;const kp=kpisPer(x.id),d=kp?{...d0,kpis:kp.kpis,serie:kp.serie,serieFmt:kp.serieFmt||d0.serieFmt,serieTit:kp.serieTit||d0.serieTit}:d0;   /* 1.9.25: título (com a unidade) no gráfico da TV */
+  s.push({titulo:x.nome+' · '+(kp?Per.rotulo():'agora'),html:`<div class="big">${d.kpis.map(k=>`<div class="bk"><div class="l">${esc(k[0])}</div><div class="v sm ${k[3]||''}">${esc(k[1])}</div><div class="s">${esc(k[2]||'')}</div></div>`).join('')}</div>${d.serie&&d.serie.length?`<div class="card">${d.serieTit?`<h3>${esc(d.serieTit)}</h3>`:''}${barChart(d.serie,{h:300,fmt:d.serieFmt||fmtK})}</div>`:''}`})}
  return s}
 
 /* =====================================================================
