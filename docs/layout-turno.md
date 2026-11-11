@@ -20,3 +20,14 @@ Regras:
 - Correções do texto da proposta: "Caixas do MES" (não "do mês"), "D · P · Q" (não "D - P - O"), a meta com a janela fora do turno nunca é menor que a do turno.
 
 Testes: `toeereal` e `tfase7` (cartão do turno), `tturnos`, `tgel`, `tsqdcp`, `tperiodo`.
+
+## Servidor, lotes, turno não produtivo e produção fora do turno (Produção 2.4.47 · 11/11/2026)
+
+Fonte: `fontes/producao/lanc_layout.js` (`LancUI.bloco`, no lugar de `SrvUI.dayCard` + `ForaTurnoUI.card` no Lançamento).
+
+- **Produção registrada no servidor**: cabeçalho com Produção do dia (caixas · unidades; retrabalho e a confirmar abaixo), Trocas (de catálogo e de lote) e Validação (verde "Dados conferidos" ou âmbar "N sugestões para revisar" com o botão Revisar). Lotes sem ordem no plano aparecem em faixa âmbar com "Confirmar lotes". Linha do tempo com barras por lote na cor do catálogo ("Lote X · N caixas" dentro), marcador amarelo de troca de catálogo e marrom de troca de lote com dica (horário, catálogo e lote anterior e novo, última e 1ª caixa), hachura para "sem caixa" e retrabalho; legenda em "Entenda as marcações".
+- **Lotes do dia**: cartão por lote (catálogo, família, produto, lote, caixas, Marcar como retrabalho, Descontar o tempo do retrabalho) e "Ver histórico de lotes".
+- **Turno não produtivo** (ex.: 3º turno): seção própria ao lado dos lotes, com switch "Habilitar … neste dia", horário e o que muda (tempo planejado, produção da janela, indicadores; só neste dia).
+- **Produção fora do turno**: resumo (caixas · produção, período, OEE do período ponderado pela duração dos trechos), tabela (Período registrado, Horário das caixas, Caixas, Produção, OEE do período, Contabilizado em) e "Como a produção fora do turno é contabilizada?" (continuidade sem parada maior que o limite, regra vigente desde a data do parâmetro).
+- O resto do Lançamento segue a mesma lógica (`#main[data-rota="launch"]`): cartões com cantos de 12 px, títulos e rótulos em texto normal (sem caixa alta).
+- Mesmos dados e `data-*` (`#srvRev`, `#srvCls`, `data-rw`, `data-rwapply`, `data-turnonp`, `data-route="lots"`); `SrvUI.bindDay` e `ForaTurnoUI.mount` continuam ligando os botões.

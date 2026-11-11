@@ -28,7 +28,7 @@ R("location.href=sysHref(port,'versoes')", "vacDemo.ir(sysHref(port,'versoes'))"
 R('<button class="btn primary" id="uOk">Usar este nome</button>', '<button class="btn primary" id="uOk">Usar este nome</button><button class="btn" data-vdemo-entrar onclick="vacDemo.entrar()">Demonstração do sistema</button>')
 R('<button class="btn ghost" id="wLocal">Começar só neste navegador</button>', '<button class="btn ghost" id="wLocal">Começar só neste navegador</button><button class="btn" data-vdemo-entrar onclick="vacDemo.entrar()">Demonstração do sistema</button>')
 R('Abre uma <b>cópia em memória</b> da base com cerca de 3 semanas de dados fictícios (hora a hora, paradas, scrap, dias fechados e abertos), para treinar ou demonstrar. Nada é gravado na pasta da rede nem no navegador: ao sair, tudo volta exatamente como estava.', 'Abre a <b>demonstração integrada do sistema</b>, com produção, perdas, gel, paradas, equipamentos e ações fictícias relacionadas. Você pode editar o exemplo e navegar entre as páginas. As bases reais ficam preservadas; fechar ou recarregar a demonstração descarta as alterações fictícias.')
-R("const APP_VERSION = '2.0.1';","const APP_VERSION = '2.4.46';")
+R("const APP_VERSION = '2.0.1';","const APP_VERSION = '2.4.47';")
 # 2.4.45 · login comum do kit (vacLogin): o "Quem está usando?" só aparece quando o login não vale (demonstração, teste, TV)
 R("function askUser(first) {\n  const known","function askUser(first) {\n  if (typeof vacLogin !== 'undefined' && !vacLogin.dispensado()) return vacLogin.abrir({ trocar: !!vacLogin.sessao() });\n  const known")
 R("  if (!Store.S.user) askUser({ then: () => { if (!dir && !cache) welcome(); } });",
@@ -265,4 +265,9 @@ aplicar_plano(R)
 R("async function boot() {\n", open(os.path.join(AQUI,'turno_layout.js'),encoding='utf-8').read() + "\nasync function boot() {\n")
 R("    h += `<div class=\"section grid g2\">${res.shifts.map(sr => shiftBlock(day, sr, res)).join('')}${OeeReal.cardsNP(day, res)}</div>`;",
   "    { const np = OeeReal.cardsNP(day, res); h += `<div class=\"section tl-list\">${res.shifts.map(sr => TurnoUI.bloco(day, sr, res)).join('')}${np ? `<div class=\"grid g2\">${np}</div>` : ''}</div>`; }")
+# 2.4.47 · Lançamento: servidor, lotes do dia, turno não produtivo e produção fora do turno no layout novo (fontes/producao/lanc_layout.js)
+R("async function boot() {\n", open(os.path.join(AQUI,'lanc_layout.js'),encoding='utf-8').read() + "\nasync function boot() {\n")
+R("    h += SrvUI.dayCard(day, res);\n    h += ForaTurnoUI.card(day, res);   /* 2.4.24 · TUR-02/03/04 */\n",
+  "    h += LancUI.bloco(day, res);   /* 2.4.47 · layout novo (antes: SrvUI.dayCard + ForaTurnoUI.card) */\n")
+R("  const main = $('#main');\n  const ts = tabState(App.route);", "  const main = $('#main'); main.dataset.rota = App.route;   /* 2.4.47 · estilo do layout novo só no Lançamento (lanc_layout.js) */\n  const ts = tabState(App.route);")
 open(out,'w',encoding='utf-8',newline='\n').write(s);print('ok')   # newline: no Windows o padrão gravaria CRLF
