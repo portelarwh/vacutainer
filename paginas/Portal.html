@@ -1426,7 +1426,7 @@ function wireConfigComum(){$('#cPasta').onclick=async()=>{if(await Store.pick())
         entrar pelo ID (autocadastro como Consulta); página inicial por perfil (1x por sessão); vigência gravada não se edita (desativar com motivo); painel de vigências; semáforo central; saída do modo de teste.
    1.1.2: aviso da carga diz qual base foi lida.  1.5: páginas Paradas, Máquinas, Manutenção e Projetos na lista (aparecem quando o HTML chega na pasta).  1.4: lista técnica pela CS12 multinível (itens = nível 1, estrutura = níveis 2+); CS03 sai.  1.3: cabeçalho comum (vac-cabecalho v2: barra do sistema + página + abas), busca Ctrl K, acabamento V1.90, Versões com cabeçalho e último backup.  1.2: Configuração › Versões das páginas (versão e data de cada HTML, gravação das bases, cópias repetidas, histórico).
    ===================================================================== */
-const PAGE={id:'portal',titulo:'Portal · Linha Vacutainer',tituloCurto:'Portal',subtitulo:'Sistemas de gestão da linha',versao:'1.9.25',baseFile:'portal-base.json',idb:'vac-portal',backupDir:'00. Backups/Portal',
+const PAGE={id:'portal',titulo:'Portal · Linha Vacutainer',tituloCurto:'Portal',subtitulo:'Sistemas de gestão da linha',versao:'1.9.26',baseFile:'portal-base.json',idb:'vac-portal',backupDir:'00. Backups/Portal',
  vazio:()=>({schema:'portal-base',rev:0,config:{modulos:{},avisoDias:30,notas:{}},audit:[]}),
  /* itens do Portal para a busca Ctrl K: cadastro, pendências e telas */
  busca:q=>{const R=[],D=Cad.D;if(D)for(const t of CAD_ORD){for(const it of D[t]||[]){const c=String(it[kOf(t)]),nm=t==='bom'?((cadItem('catalogos',it.catalogo)||{}).nome||''):it.nome||'';if(norm(c+' '+nm).includes(q))R.push({tipo:CAD_T[t].um,txt:c+(nm?' · '+nm:''),sub:'Cadastros'+(cadAtivo(t,it,D)?'':' · inativo'),href:'#cadastros/'+t+'/'+encodeURIComponent(c)});if(R.length>30)break}}
@@ -1549,15 +1549,17 @@ function adaptPerdas(d){
   const semCausa=(ex.porOrdem||[]).filter(o=>(o.nivel==='alta'||o.nivel==='crítica')&&!o.causa);
   imp=(d.imports||[]).filter(i=>i.status!=='cancelado').map(i=>i.data).sort().pop();
   pend=[];venc.forEach(a=>pend.push({sev:2,mod:'perdas',txt:`Ação vencida em ${fmtD(a.prazo)}: ${a.desc}${a.resp?' · '+a.resp:''}`,link:a.ordem?'ordem='+a.ordem:'aba=acoes',quando:a.prazo}));
-  semCausa.slice(0,15).forEach(o=>pend.push({sev:o.nivel==='crítica'?2:1,mod:'perdas',txt:`Ordem ${o.ordem} (${o.catalogo||''}) ${o.nivel} sem causa · desvio ${fmtR(o.desvio)}`,link:'ordem='+o.ordem}));
+  semCausa.slice(0,15).forEach(o=>pend.push({sev:o.nivel==='crítica'?2:1,mod:'perdas',txt:`Ordem ${o.ordem} (${o.catalogo||''}) ${o.nivel} sem causa · ${o.muv!=null?'MUV '+fmtR(o.muv):'desvio '+fmtR(o.desvio)}`,link:'ordem='+o.ordem}));
   nVenc=venc.length;nSem=semCausa.length}
  const vm=m?m.varMaterial??null:null;
- const kpis=[[m?'Desvio líquido · '+fmtM(m.per):'Desvio líquido',m?fmtR(m.liquido):'–',m?`${m.ordens} ordens · ${m.criticas} críticas · ${m.fechado?'mês fechado':'provisório'}`:'sem dados',m?(m.liquido>0?'bad':'good'):''],
-  ['Perdas (desvios +)',m?fmtR(m.perda):'–',m?'ganhos '+fmtR(m.ganho):'',''],
+ /* 1.9.26 · Waste 1.10.0: o número oficial é o MUV (Desv. estrutura + Desv. empregado); exports sem muv (Waste antigo) = desvio líquido */
+ const wv=x=>x?(x.muv!=null?x.muv:x.liquido):null,wr=pm.some(x=>x.muv!=null)?'MUV':'Desvio líquido';
+ const kpis=[[m?wr+' · '+fmtM(m.per):wr,m?fmtR(wv(m)):'–',m?`${m.ordens} ordens · ${m.criticas} críticas · ${m.fechado?'mês fechado':'provisório'}${m.ordensAprox?' · '+m.ordensAprox+' aprox.':''}`:'sem dados',m?(wv(m)>0?'bad':'good'):''],
+  m&&m.muv!=null?['Desfavorável (MUV +)',fmtR(m.muvDesfavoravel),'favorável '+fmtR(m.muvFavoravel)+' · estrutura '+fmtR(m.estrutura)+' · empregado '+fmtR(m.empregado),'']:['Perdas (desvios +)',m?fmtR(m.perda):'–',m?'ganhos '+fmtR(m.ganho):'',''],
   ['Críticas/altas sem causa',String(nSem),'comentar no detalhe da ordem',nSem?'bad':'good'],
   ['Ações vencidas',String(nVenc),imp?'última KKBC '+fmtD(imp.slice(0,10)):'nenhuma importação',nVenc?'bad':'good']];
- const serie=pm.slice(-6).map(p=>({label:fmtM(p.per)+(p.fechado===false?' (aberto)':''),value:p.liquido,key:p.per,color:p.liquido>0?'var(--crit)':'var(--ok)'}));
- return{kpis,pend,serie,serieTit:'Desvio líquido por mês (R$) · vermelho = perda, verde = ganho',serieFmt:v=>fmtR(v),bruto:!doExports};
+ const serie=pm.slice(-6).map(p=>({label:fmtM(p.per)+(p.fechado===false?' (aberto)':''),value:wv(p),key:p.per,color:wv(p)>0?'var(--crit)':'var(--ok)'}));
+ return{kpis,pend,serie,serieTit:wr+' por mês (R$) · vermelho = desfavorável, verde = favorável',serieFmt:v=>fmtR(v),bruto:!doExports};
 }
 /* série no exports: lista [{label,value,key}] ou {rotulo, pontos:[{x,y}]} (Paradas); x = 'AAAA-MM' vira mês */
 function serieDoModulo(s){if(Array.isArray(s))return s;if(s&&Array.isArray(s.pontos))return s.pontos.map(p=>({label:/^\d{4}-\d{2}$/.test(String(p.x))?fmtM(p.x):String(p.x),value:+p.y||0,key:String(p.x)}));return[]}
@@ -1613,8 +1615,8 @@ function kpisPer(id){const x=MOD.data[id],ex=x&&x.ex;if(!ex)return null;const[a,
  if(id==='gel'&&Array.isArray(ex.porDiaGel)){const L=ex.porDiaGel.filter(r=>dentro(r.dia)),s=k=>L.reduce((t,r)=>t+(+r[k]||0),0),teo=s('teoKg'),bx=s('baixadoKg'),tub=s('tubos');
   const ag=(x.kpis||[]).slice(0,1).map(k=>[k[0]+' (agora)',k[1],k[2],k[3]]);
   return{kpis:[['Gel baixado',fmtN(bx,0)+' kg',L.length+' dia(s) registrado(s)',''],['Baixado × teórico',teo>0&&bx>0?(bx/teo-1>=0?'+':'')+fmtN(100*(bx/teo-1),1)+'%':'–',teo>0?'teórico '+fmtN(teo,0)+' kg':'',teo>0&&bx>0?(bx<=teo?'good':'bad'):''],['Tubos bons',fmtN(tub),'','']].concat(ag),serie:serieDias(L,r=>r.baixadoKg),serieTit:'Gel baixado por dia (kg)',serieFmt:v=>fmtN(v)+' kg',nota:'o Gel publica os últimos 60 dias'}}
- if(id==='perdas'&&Array.isArray(ex.porMes)){const ms=new Set();for(let d=a.slice(0,7);d<=b.slice(0,7);d=addDays(d+'-01',32).slice(0,7))ms.add(d);const L=ex.porMes.filter(m=>ms.has(m.per)),s=k=>L.reduce((t,m)=>t+(+m[k]||0),0);
-  return{kpis:[['Desvio líquido',L.length?fmtR(s('liquido')):'–','competência '+[...ms].map(m=>m.split('-').reverse().join('/')).join(', '),L.length?(s('liquido')<=0?'good':'bad'):''],['Perdas',L.length?fmtR(s('perda')):'–','',''],['Ganhos',L.length?fmtR(s('ganho')):'–','','']],serie:[],nota:'por competência: a KKBC é mensal'+(L.some(m=>!m.fechado)?' · competência em aberto':'')}}
+ if(id==='perdas'&&Array.isArray(ex.porMes)){const ms=new Set();for(let d=a.slice(0,7);d<=b.slice(0,7);d=addDays(d+'-01',32).slice(0,7))ms.add(d);const L=ex.porMes.filter(m=>ms.has(m.per)),s=k=>L.reduce((t,m)=>t+(+m[k]||0),0),mu=L.some(m=>m.muv!=null),kv=mu?'muv':'liquido';   /* 1.9.26 · MUV oficial (Waste 1.10.0) */
+  return{kpis:[[mu?'MUV':'Desvio líquido',L.length?fmtR(s(kv)):'–','competência '+[...ms].map(m=>m.split('-').reverse().join('/')).join(', '),L.length?(s(kv)<=0?'good':'bad'):''],[mu?'Desfavorável':'Perdas',L.length?fmtR(s(mu?'muvDesfavoravel':'perda')):'–','',''],[mu?'Favorável':'Ganhos',L.length?fmtR(s(mu?'muvFavoravel':'ganho')):'–','','']],serie:[],nota:'por competência: a KKBC é mensal'+(L.some(m=>!m.fechado)?' · competência em aberto':'')}}
  return null}
 
 /* ---------- telas ---------- */
@@ -3894,7 +3896,7 @@ function reuDados(dia,rec){const ex=id=>{const x=MOD.data[id];return x&&!x.erro&
   par=fora?{min:null,n:null,semCod:0,top:[],fora:true,motivo:cb?(cb.cortado&&dia<cb.de?`o Paradas publicou só os últimos eventos (a partir de ${fmtD(cb.de)})`:dia>cb.ate?`o Paradas tem eventos só até ${fmtD(cb.ate)}`:`o Paradas publica de ${fmtD(cb.de)} a ${fmtD(cb.ate)}`):'fora dos 90 dias publicados'}
    :{min:E.reduce((s,e)=>s+(+e.minutos||0),0),n:E.reduce((s,e)=>s+(e.ocorrencias||1),0),semCod:E.filter(e=>!e.codigo||/^(OUT|NDI)$/.test(e.codigo)).length,top:[...A.values()].sort((a,b)=>b.min-a.min).slice(0,5),fora:false}}
  const gel=g&&g.estoque?{kg:g.estoque.disponivelKg,dias:g.estoque.coberturaDias,venc:(g.vencendo||[]).filter(v=>v.dias!=null&&v.dias<=7).length}:null;
- const mes=dia.slice(0,7);let ws=null;if(w&&Array.isArray(w.porMes)){const x=w.porMes.find(y=>y.per===mes),mt=typeof vacMetaAreaMes==='function'?vacMetaAreaMes('WASTE-MES',mes):null;ws={mes,liq:x?x.liquido:null,meta:mt?mt.valor:null,pond:!!(mt&&mt.ponderada)}}
+ const mes=dia.slice(0,7);let ws=null;if(w&&Array.isArray(w.porMes)){const x=w.porMes.find(y=>y.per===mes),mt=typeof vacMetaAreaMes==='function'?vacMetaAreaMes('WASTE-MES',mes):null;ws={mes,liq:x?(x.muv!=null?x.muv:x.liquido):null,muv:!!(x&&x.muv!=null),meta:mt?mt.valor:null,pond:!!(mt&&mt.ponderada)}}
  let ac=null;if(i&&Array.isArray(i.acoes)){const A=i.acoes.filter(a=>FILA_ABERTA.includes(a.status));ac={atr:A.filter(a=>a.prazo&&a.prazo<h).length,hoje:A.filter(a=>a.prazo===h).length,abertas:A.length}}
  return{oee,par,gel,ws,ac,iex:i}}
 const reuChave=(dia,rec)=>dia+'|'+rec;
@@ -3917,7 +3919,7 @@ function viewReuniao(m){if(!Reu.dia)Reu.dia=addDays(todayISO(),-1);const D=reuDa
   ['Produzido (boas)',D.oee&&D.oee.boa!=null?fmtN(D.oee.boa):'–',rot,D.oee&&D.oee.metaOp?'meta '+fmtN(D.oee.metaOp):'',''],
   ['Paradas',D.par&&!D.par.fora?fmtN(D.par.min)+' min':'–',rot,D.par?(D.par.fora?'sem dado de paradas para esse dia ('+D.par.motivo+')':`${fmtN(D.par.n)} ocorrência(s) · ${D.par.semCod} sem código`):'sem dado do Paradas',D.par&&D.par.semCod?'warn':''],
   ['Gel disponível',D.gel?fmtN(D.gel.kg,0)+' kg':'–','agora',D.gel?`${D.gel.dias!=null?D.gel.dias+' dia(s) de cobertura · ':''}${D.gel.venc} barril(is) vencem em 7 d`:'sem dado do Gel',D.gel&&D.gel.venc?'warn':''],
-  ['Waste',D.ws&&D.ws.liq!=null?fmtR(D.ws.liq):'–','competência '+(D.ws?D.ws.mes.split('-').reverse().join('/'):Reu.dia.slice(0,7)),D.ws?(D.ws.meta!=null?'meta '+fmtR(D.ws.meta)+(D.ws.pond?' (ponderada)':''):'sem meta'):'sem dado do Waste',D.ws&&D.ws.meta!=null&&D.ws.liq!=null?(D.ws.liq<=D.ws.meta?'good':'bad'):''],
+  [D.ws&&D.ws.muv?'Waste · MUV':'Waste',D.ws&&D.ws.liq!=null?fmtR(D.ws.liq):'–','competência '+(D.ws?D.ws.mes.split('-').reverse().join('/'):Reu.dia.slice(0,7)),D.ws?(D.ws.meta!=null?'meta '+fmtR(D.ws.meta)+(D.ws.pond?' (ponderada)':''):'sem meta'):'sem dado do Waste',D.ws&&D.ws.meta!=null&&D.ws.liq!=null?(D.ws.liq<=D.ws.meta?'good':'bad'):''],
   ['Ações',D.ac?`${D.ac.atr} · ${D.ac.hoje}`:'–','hoje',D.ac?`atrasadas · vencem hoje (${D.ac.abertas} abertas)`:'sem dado de Iniciativas',D.ac&&D.ac.atr?'bad':'']];
  const sysP=sysOf('paradas'),sysI=sysOf('inic'),it=P.itens||[];
  m.innerHTML=`<div class="reu-bar"><button class="b sm" id="rAnt" title="Dia anterior">‹</button><input type="date" id="rDia" value="${esc(Reu.dia)}"><button class="b sm" id="rProx" title="Dia seguinte">›</button>

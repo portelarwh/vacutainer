@@ -193,3 +193,73 @@ Títulos novos aceitos:
 - **Etapa 3:** target MUV da linha no Portal (vigência, acumulado ou mensal, câmbio do Portal); gráfico MUV × target; filtros por tipo de ordem (COOIS), semana e linha.
 
 **Teste:** `testes/twaste_grade.js`, montado com a estrutura da amostra real descaracterizada.
+
+## 1.10.0 · MUV oficial e Pareto do MUV (11/11/2026, etapa 2 de 3)
+
+O número oficial do Waste passa a ser o **MUV = Desv. estrutura + Desv. empregado**, como na análise da controladoria. O desvio de preço de input fica fora do MUV e aparece à parte. Portal 1.9.26 e o SQDCP da Produção leem o MUV do `exports`.
+
+### Conta
+- Por linha da KKBC (sem a linha de entrega): `muvOf(r) = dEst(r) + dEmpOf(r)`. O sinal segue a mesma regra do desvio (`sapInv`).
+- **Ordem no formato antigo** (sem `dEmp`): o MUV usa o desvio total da linha, que inclui o preço de input.
+  - A ordem fica marcada **"aprox."** no quadro por competência, na ficha e nos indicadores até ser reimportada no layout novo.
+  - O aviso da 1.9.0 (aba Importar) lista essas ordens.
+- **Ordem** (`aggOrders`): ganha `muv`, `estr`, `emp`, `preco`, `mDesf` (MUV positivo), `mFav` (MUV negativo) e `aprox`.
+  - **Criticidade** (`level`), **MUV %**, **R$/milhão** e **prioridade** passam a usar o MUV.
+  - `o.d` continua sendo o desvio total (custo real − teórico), mostrado como **"Desv. real × teórico"**.
+
+### Telas
+- **Visão Geral › Situação:** "MUV do período" × meta (WASTE-MES do Portal); a pior e a melhor competência são pelo MUV.
+- **Indicadores** (nenhum foi retirado; os nomes seguem a controladoria):
+  - MUV × meta;
+  - Desv. estrutura (o antigo "Var. material");
+  - Desv. empregado;
+  - Desv. preço de input (fora do MUV);
+  - Desv. real × teórico (o antigo "Desvio líquido");
+  - Custo teórico e Custo real;
+  - MUV % e MUV por milhão;
+  - Desfavorável e Favorável (o antigo "Perdas/Ganhos", agora pelo MUV);
+  - Ordens, Críticas/altas sem causa, Acumulado no FY (MUV) e Ações vencidas.
+  - O antigo "Scrap" (desvio total − estrutura) incluía o preço de input. Ele virou Desv. empregado + Desv. preço de input.
+- **Quadro por competência:** Desv. estrutura, Desv. empregado, MUV, Desv. preço input, Desv. real × teórico, MUV %, MUV R$/milhão e meta (pelo MUV).
+- **Tendência mensal do MUV** e **Paretos** por componente, catálogo e causa: pelo MUV.
+- **Pareto do MUV (novo, grupo B):**
+  - dimensão: Linha (catálogo → linha do cadastro do Portal), SKU (catálogo) ou Componente;
+  - métrica: MUV, Desv. estrutura ou Desv. empregado;
+  - sentido: Desfavorável (positivo) ou Favorável (negativo; barras verdes);
+  - Top 5, 10 ou 20;
+  - o total e o % acumulado são do sentido escolhido;
+  - clicar em SKU ou Componente filtra;
+  - a escolha fica neste computador (`vac.waste.pareto`).
+- **Tabelas:**
+  - Ordens: Custo teórico, Custo real, Desv. estrutura, Desv. empregado, MUV, Desv. real × teórico, MUV % e MUV R$/milhão;
+  - Componentes: Desv. qtde, Desv. estrutura, Desv. empregado, MUV e Desv. real × teórico;
+  - Prioridades: só ordens com MUV desfavorável.
+- **Ficha da ordem:** MUV (estrutura + empregado), Desv. preço de input, Custo teórico, Desv. real × teórico e MUV %.
+- **Relatórios** (mensal, por tipo de ordem, TV): MUV, estrutura, empregado, preço de input e desvio total. A tendência e as tabelas são pelo MUV.
+- **Modo de teste:** os dados fictícios vêm no formato da grade (`dEstr` 0, `dEmp` = desvio). O MUV e o desvio total ficam iguais, e por isso a referência da Visão Geral confere os mesmos números com os nomes novos.
+
+### Exports (aditivo, `exportsVersion` 1)
+- **`oficial: 'muv'`.**
+- **`porMes[]`:** ganha `muv`, `estrutura`, `empregado`, `precoInput`, `muvDesfavoravel`, `muvFavoravel`, `ordensAprox` e `meta`. Os campos antigos (`liquido`, `perda`, `ganho`…) continuam.
+- **`porOrdem[]`:** ganha `muv`, `estrutura`, `empregado`, `precoInput` e `muvAprox`.
+- **`porComponenteMes[]`:** ganha `muv`, `estrutura` e `empregado`.
+- **Pendência "sem causa":** mostra o MUV.
+
+### Quem lê
+- **Portal 1.9.26:**
+  - o cartão do Waste, o período e a Reunião diária mostram o **MUV** quando o `exports` tem `muv`; com o exports de um Waste antigo, mostram o Desvio líquido;
+  - Desfavorável/Favorável no lugar de Perdas/Ganhos.
+- **SQDCP (Produção 2.4.56):** posição "Waste — MUV da competência", que lê `muv` (ou `liquido` num exports antigo).
+
+### Atenção na implantação
+- **A meta WASTE-MES do Portal** era comparada com o desvio total e agora é comparada com o MUV. Se a meta foi definida sobre o desvio total, revisar o valor no Portal (Metas da área).
+- **Reimportar as ordens no formato antigo** (lista na aba Importar) para que o MUV delas deixe de ser aproximado.
+
+### Testes
+- **`twaste_vg.js`:** MUV = estrutura + empregado; Desv. real × teórico igual ao Desvio líquido de antes; Pareto do MUV (dimensão, Top N, métrica, favorável, escolha lembrada). A referência foi gravada de novo com os nomes novos.
+- **`twaste_grade.js`:** a ordem da grade real descaracterizada dá MUV = −4.723,20 (estrutura 137,11 + empregado −4.860,31). `exports.porOrdem` e `porMes` trazem o MUV, e o preço de input fica fora.
+
+### Próxima etapa (3)
+- Target MUV da linha no Portal (vigência, acumulado ou mensal, câmbio do Portal) e gráfico MUV × target.
+- Filtros por tipo de ordem (COOIS), semana e linha.
+

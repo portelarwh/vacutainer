@@ -284,6 +284,8 @@ button.b,label.b,a.b{border-radius:8px}
 /* 1.8.11 · vac-visual: borda na mesma cor do valor também na atenção (antes valor âmbar com borda azul); valor de 28 px como nas outras páginas */
 .kpi:has(.v.warn){border-left-color:var(--warn)}
 .kpis:not(.compacto)>.kpi>.v:not([style]){font-size:28px}.kpis{grid-template-columns:repeat(auto-fill,minmax(200px,1fr))}
+/* 1.10.0 · Pareto do MUV: botões de dimensão, métrica, sentido e Top N */
+.pz-ctl{display:flex;flex-wrap:wrap;gap:6px 12px;margin:2px 0 4px}.pz-g{display:inline-flex;flex-wrap:wrap;gap:4px}
 </style>
 <style id="vac-visual">
 /* ===== vac-visual v1 · padrão visual comum (fontes/kit/kit_visual.css; igual em todas as páginas; não editar só numa) =====
@@ -974,14 +976,15 @@ addEventListener('error', e => { if (e.error && e.error.name === 'VacAbaBloquead
   <div class="kpis" id="kpis"></div>
   <div id="vkDiag" class="vk-dados"></div>
   <div class="vk-sec vk-dados"><b>04</b><h3>Análises</h3><span>Clique num grupo para recolher ou abrir</span></div>
-  <section class="vk-grp vk-dados" data-vk-grupo="A"><button type="button" class="vk-gh" aria-expanded="true" aria-controls="vkg-perdas-A"><span class="seta" aria-hidden="true">▾</span><span><span class="t">A · Evolução por competência</span><br><span class="q">O desvio está dentro da meta mês a mês?</span></span></button><div class="vk-gb" id="vkg-perdas-A">
-    <div class="card"><h3>Tendência mensal <i class="i" title="Desvio líquido (real − meta) por mês. Vermelho = acima da meta (ou perda, sem meta). Clique numa barra para filtrar o mês.">i</i></h3><div id="chTrend"></div></div>
+  <section class="vk-grp vk-dados" data-vk-grupo="A"><button type="button" class="vk-gh" aria-expanded="true" aria-controls="vkg-perdas-A"><span class="seta" aria-hidden="true">▾</span><span><span class="t">A · Evolução por competência</span><br><span class="q">O MUV está dentro da meta mês a mês?</span></span></button><div class="vk-gb" id="vkg-perdas-A">
+    <div class="card"><h3>Tendência mensal do MUV <i class="i" title="MUV (Desv. estrutura + Desv. empregado) por mês. Vermelho = acima da meta (ou desfavorável, sem meta). Clique numa barra para filtrar o mês.">i</i></h3><div id="chTrend"></div></div>
     <div class="card" id="porComp" style="display:none"></div>
   </div></section>
-  <section class="vk-grp vk-dados" data-vk-grupo="B"><button type="button" class="vk-gh" aria-expanded="true" aria-controls="vkg-perdas-B"><span class="seta" aria-hidden="true">▾</span><span><span class="t">B · Onde está a perda</span><br><span class="q">Quais componentes e catálogos concentram o desvio?</span></span></button><div class="vk-gb" id="vkg-perdas-B">
+  <section class="vk-grp vk-dados" data-vk-grupo="B"><button type="button" class="vk-gh" aria-expanded="true" aria-controls="vkg-perdas-B"><span class="seta" aria-hidden="true">▾</span><span><span class="t">B · Onde está a perda</span><br><span class="q">Quais linhas, SKUs e componentes concentram o MUV?</span></span></button><div class="vk-gb" id="vkg-perdas-B">
+    <div class="card"><h3>Pareto do MUV <i class="i" title="Escolha a dimensão (Linha, SKU = catálogo, Componente), a métrica (MUV, Desv. estrutura, Desv. empregado), o sentido (desfavorável = positivo, favorável = negativo) e quantos itens mostrar. Clique num item de SKU ou Componente para filtrar.">i</i></h3><div id="pzCtl" class="pz-ctl"></div><div id="chPz"></div></div>
     <div class="row">
-    <div class="card"><h3>Pareto por componente <i class="i" title="Componentes com maior perda (desvio positivo). Linha = % acumulado. Clique para filtrar.">i</i></h3><div id="chComp"></div></div>
-    <div class="card"><h3>Pareto por catálogo <i class="i" title="Produto produzido pela ordem. Clique para filtrar.">i</i></h3><div id="chProd"></div></div>
+    <div class="card"><h3>Pareto por componente <i class="i" title="Componentes com maior MUV desfavorável. Coluna da direita = % acumulado. Clique para filtrar.">i</i></h3><div id="chComp"></div></div>
+    <div class="card"><h3>Pareto por catálogo <i class="i" title="MUV desfavorável por produto produzido pela ordem. Clique para filtrar.">i</i></h3><div id="chProd"></div></div>
     </div>
   </div></section>
   <section class="vk-grp vk-dados" data-vk-grupo="C"><button type="button" class="vk-gh" aria-expanded="true" aria-controls="vkg-perdas-C"><span class="seta" aria-hidden="true">▾</span><span><span class="t">C · Causas</span><br><span class="q">O que já foi explicado e o que falta analisar?</span></span></button><div class="vk-gb" id="vkg-perdas-C">
@@ -1147,7 +1150,7 @@ addEventListener('error', e => { if (e.error && e.error.name === 'VacAbaBloquead
    Base: perdas-base.json na pasta da rede (mesmo padrão OEE / Gel)
    Contrato: bloco "exports" (exportsVersion 1) lido pelas outras páginas
    ===================================================================== */
-const APP_VER='1.9.0',   /* 1.9.0 · KKBC_ORD em grade (layout da controladoria, uma ordem por arquivo): Desv. Empregado, Desv. preço de input e Desv. qtde guardados; aviso das ordens no formato antigo (reimportar) */   /* 1.8.36 · gráficos: "Valores em …" (moeda), eixo sem rótulos repetidos, medida do Comparativo no gráfico do relatório (docs/graficos-padrao.md) */   /* 1.8.35 · Visão Geral no padrão comum (vacLayout): situação, números, diagnóstico, análises em grupos */   /* 1.8.34 · kit: login com ID e senha */   /* 1.8.33 · kit: datas DD/MM/AAAA */   /* 1.8.32 · nome Eficácia/Confirmação de Processo */   /* 1.8.31 · kit: nome e presença de Iniciativas / Ações na barra */   /* 1.8.30 · UX-02: guia por aba */   /* 1.8.29 · Fase 7 (UX-03, WST-01): Painel → Visão Geral */   /* 1.8.28 · Fase 6 (WST-03, INI-04): ações em Iniciativas / Ações; antigas até a migração, depois só leitura */   /* 1.8.27 · Fase 3 (IMP-04/06, WST-02): importações no exports; aba Importar leva ao Portal › Importação */   /* 1.8.26 · ARQ-09: "Ver com dados de teste" vira a Demonstração integrada */   /* 1.8.23 · C2–C6: kit com a ficha por pasta (AT-08) e a contagem da fila durável (Portal › Versões) */   /* 1.8.22 · C1: trava da 2ª aba com alteração pendente (nada é descartado); kit com a fila durável */   /* 1.8.21 · E11: busca do kit leva o equipamento à ficha em Equipamentos */   /* 1.8.20 · E8: kit com "+ Abrir ação" na ficha da ordem (Planner de Iniciativas) */   /* 1.8.19 · E5: ficha da ordem comum (botão Ficha na ordem; busca Ctrl K por ordem, lote e LP) */   /* 1.8.18 · E4: versão do exports conferida (Produção, Ordens), ordem em várias competências, dias do lote pela chave · 1.8.17 · E2: fonte única da versão (tela, base, exports e Portal › Versões) */ BASE_FN='perdas-base.json', DIR_ORIG='00. Originais SAP', DIR_BKP='00. Backups', DIR_IN='00. Entrada KKBC', DIR_DONE='00. Entrada KKBC/Processados';
+const APP_VER='1.10.0',   /* 1.10.0 · MUV oficial (Desv. estrutura + Desv. empregado, como a controladoria): meta, situação, criticidade, exports e relatórios; Pareto do MUV por Linha/SKU/Componente × métrica, favorável/desfavorável e Top N */   /* 1.9.0 · KKBC_ORD em grade (layout da controladoria, uma ordem por arquivo): Desv. Empregado, Desv. preço de input e Desv. qtde guardados; aviso das ordens no formato antigo (reimportar) */   /* 1.8.36 · gráficos: "Valores em …" (moeda), eixo sem rótulos repetidos, medida do Comparativo no gráfico do relatório (docs/graficos-padrao.md) */   /* 1.8.35 · Visão Geral no padrão comum (vacLayout): situação, números, diagnóstico, análises em grupos */   /* 1.8.34 · kit: login com ID e senha */   /* 1.8.33 · kit: datas DD/MM/AAAA */   /* 1.8.32 · nome Eficácia/Confirmação de Processo */   /* 1.8.31 · kit: nome e presença de Iniciativas / Ações na barra */   /* 1.8.30 · UX-02: guia por aba */   /* 1.8.29 · Fase 7 (UX-03, WST-01): Painel → Visão Geral */   /* 1.8.28 · Fase 6 (WST-03, INI-04): ações em Iniciativas / Ações; antigas até a migração, depois só leitura */   /* 1.8.27 · Fase 3 (IMP-04/06, WST-02): importações no exports; aba Importar leva ao Portal › Importação */   /* 1.8.26 · ARQ-09: "Ver com dados de teste" vira a Demonstração integrada */   /* 1.8.23 · C2–C6: kit com a ficha por pasta (AT-08) e a contagem da fila durável (Portal › Versões) */   /* 1.8.22 · C1: trava da 2ª aba com alteração pendente (nada é descartado); kit com a fila durável */   /* 1.8.21 · E11: busca do kit leva o equipamento à ficha em Equipamentos */   /* 1.8.20 · E8: kit com "+ Abrir ação" na ficha da ordem (Planner de Iniciativas) */   /* 1.8.19 · E5: ficha da ordem comum (botão Ficha na ordem; busca Ctrl K por ordem, lote e LP) */   /* 1.8.18 · E4: versão do exports conferida (Produção, Ordens), ordem em várias competências, dias do lote pela chave · 1.8.17 · E2: fonte única da versão (tela, base, exports e Portal › Versões) */ BASE_FN='perdas-base.json', DIR_ORIG='00. Originais SAP', DIR_BKP='00. Backups', DIR_IN='00. Entrada KKBC', DIR_DONE='00. Entrada KKBC/Processados';
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 /* página para o núcleo comum, o cabeçalho (vac-cabecalho v2) e o quadro de Versões do Portal */
 const PAGE={id:'perdas',titulo:'Waste · Linha Vacutainer',tituloCurto:'Waste',subtitulo:'Custos e perdas por ordem',versao:APP_VER,baseFile:BASE_FN,backupDir:'00. Backups/Perdas',busca:q=>buscaPerdas(q)};
@@ -1768,17 +1771,28 @@ function split(r){const d=dev(r);if(r.qT&&r.cT!=null&&r.qR!=null){const eq=(r.qR
 /* Resumo: VAR. MATERIAL = desvio de estrutura do SAP (Desv.estr.); SCRAP = desvio total − desvio de estrutura */
 const dEst=r=>r.dEstr==null?0:r.dEstr*(CFG().sapInv?-1:1);
 const scrapOf=r=>dev(r)-dEst(r);
+/* 1.10.0 · MUV oficial (análise da controladoria): MUV = Desv. estrutura + Desv. empregado; o desvio de preço de input fica fora.
+   Linha no formato antigo (sem Desv. empregado): o MUV usa o desvio total da linha (com o preço) e a ordem fica "aprox." até ser reimportada. */
+const dEmpOf=r=>r.dEmp==null?null:r.dEmp*(CFG().sapInv?-1:1);
+const dPrecoOf=r=>r.dPreco==null?null:r.dPreco*(CFG().sapInv?-1:1);
+const muvOf=r=>{const e=dEmpOf(r);return e==null?dev(r):dEst(r)+e};
+const muvAprox=r=>r.dEmp==null;
+/* linha de produção da ordem: catálogo → Portal (catalogos[].linha → linhas[].nome) */
+let _lnC={t:0,m:null};function linhaDe(o){const n=Date.now();if(!_lnC.m||n-_lnC.t>10000){const m=new Map();let c=null;try{c=typeof vacCad==='function'?vacCad():null}catch(e){}
+  const nl=new Map(((c&&c.linhas)||[]).map(l=>[String(l.codigo),l.nome||l.codigo]));for(const x of(c&&c.catalogos)||[])if(x.linha)m.set(String(x.codigo),{cod:String(x.linha),nome:nl.get(String(x.linha))||String(x.linha)});_lnC={t:n,m}}
+ const x=o&&o.cat?_lnC.m.get(String(o.cat)):null;return x||{cod:'',nome:'Sem linha no cadastro'}}
 const compKey=r=>r.comp||r.el||'(sem componente)';
 const compName=r=>r.comp?(r.compDesc||''):(r.elDesc||r.compDesc||'');
 function isDelivery(r){return r.comp&&r.prod&&r.comp===r.prod}
 function aggOrders(rows){const m=new Map();
  for(const r of rows){const k=CFG().ver==='ordem'?r.ordem:r.ordem+'|'+r.per;let o=m.get(k);
-   if(!o)m.set(k,o={key:k,ordem:r.ordem,per:r.per,prod:r.prod,cat:r.cat,prodDesc:r.prodDesc,lote:r.lote,status:r.status,centro:r.centro,qOrd:null,qEnt:null,cT:0,cR:0,cTc:0,cRc:0,d:0,base:0,perda:0,ganho:0,rows:[]});
+   if(!o)m.set(k,o={key:k,ordem:r.ordem,per:r.per,prod:r.prod,cat:r.cat,prodDesc:r.prodDesc,lote:r.lote,status:r.status,centro:r.centro,qOrd:null,qEnt:null,cT:0,cR:0,cTc:0,cRc:0,d:0,base:0,perda:0,ganho:0,muv:0,estr:0,emp:0,preco:0,mDesf:0,mFav:0,aprox:0,rows:[]});
    const d=dev(r);o.rows.push(r);o.cT+=r.cT||0;o.cR+=r.cR||0;if(!isDelivery(r)){o.cTc+=r.cT||0;o.cRc+=r.cR||0}o.d+=d;if(d>0)o.perda+=d;else o.ganho+=d;
    if(!isDelivery(r)&&(r.cT||0)>0)o.base+=r.cT;
+   if(!isDelivery(r)){const mv=muvOf(r);o.muv+=mv;if(mv>0)o.mDesf+=mv;else o.mFav+=mv;o.estr+=dEst(r);o.emp+=dEmpOf(r)||0;o.preco+=dPrecoOf(r)||0;if(muvAprox(r))o.aprox++}
    if(r.qEnt!=null)o.qEnt=Math.max(o.qEnt||0,Math.abs(r.qEnt));if(r.qOrd!=null)o.qOrd=Math.max(o.qOrd||0,Math.abs(r.qOrd));
    if(isDelivery(r)&&r.qR!=null&&o.qEnt==null)o.qEnt=Math.abs(r.qR);}
- for(const o of m.values()){if(OEE.src&&(!o.cat||!o.lote)){const q=oeeQuick(o.ordem);if(q){if(!o.cat&&q.cat)o.cat=q.cat;if(!o.lote&&q.lote)o.lote=q.lote;o.oee=true}}o.lvl=level(o.d,o.base);o.pct=o.base?o.d/o.base:null;o.pm=o.qEnt?o.d/o.qEnt*1e6:null;o.aberta=isOpen(o.status)}
+ for(const o of m.values()){if(OEE.src&&(!o.cat||!o.lote)){const q=oeeQuick(o.ordem);if(q){if(!o.cat&&q.cat)o.cat=q.cat;if(!o.lote&&q.lote)o.lote=q.lote;o.oee=true}}o.lvl=level(o.muv,o.base);o.pct=o.base?o.muv/o.base:null;o.pm=o.qEnt?o.muv/o.qEnt*1e6:null;o.pctD=o.base?o.d/o.base:null;   /* 1.10.0 · situação pelo MUV */o.aberta=isOpen(o.status)}
  return[...m.values()]}
 function isOpen(st){const s=String(st||'').toUpperCase();if(!s)return null;if(/TECO|CLSD|ENTE|ENCE|DLFL/.test(s))return false;return /REL|LIB|CRTD|ABER|PCNF|CNF|PDLV|DLV/.test(s)?true:null}
 /* estatística por componente (todas as ordens vigentes, histórico inteiro) */
@@ -1830,11 +1844,11 @@ const WAc={x:null,lendo:false,lidoEm:0,
  statusTxt(a){return a.inic?`${a.status}${a.eficacia?' · Eficácia/Confirmação de Processo: '+({acompanhamento:'em acompanhamento',eficaz:'eficaz',sem:'sem eficácia'}[a.eficacia]||a.eficacia):''} · Iniciativas`:a.status}};
 function acVencida(a){return a.prazo&&a.prazo<todayISO()&&!DONE_AC.includes(a.status)&&a.status!=='eficácia em acompanhamento'}
 function priority(o){const t=CFG().thr;let s=0;
- s+=Math.min(1,Math.max(0,o.d)/t.finCrit)*35;
+ s+=Math.min(1,Math.max(0,o.muv)/t.finCrit)*35;
  if(o.pct!=null)s+=Math.min(1,Math.max(0,o.pct*100)/(t.pctCrit*1.5))*15;
  if(o.rows.some(r=>STAT.recSet.has(compKey(r))&&dev(r)>0))s+=15;
  s+=Math.max(0,...o.rows.map(statLevel))/3*15;
- const hasC=!!causeOf(o.ordem);if(!hasC&&o.d>0)s+=10;
+ const hasC=!!causeOf(o.ordem);if(!hasC&&o.muv>0)s+=10;
  const acs=WAc.todas().filter(a=>a.ordem===o.ordem&&a.status!=='cancelada');
  if(o.lvl>=2&&!acs.length)s+=10;if(acs.some(acVencida))s+=10;
  return Math.round(Math.min(100,s))}
@@ -1843,8 +1857,9 @@ function priority(o){const t=CFG().thr;let s=0;
 function buildExports(){const a=MOEDA_FORCAR;MOEDA_FORCAR='BRL';try{return buildExports0()}finally{MOEDA_FORCAR=a}}
 function buildExports0(){
  const rows=vigRows();const ords=aggOrders(rows);const pm={};
- for(const o of ords){const p=pm[o.per]||(pm[o.per]={per:o.per,fy:fyOf(o.per),perda:0,ganho:0,liquido:0,custoMeta:0,custoReal:0,ordens:0,criticas:0});p.perda+=o.perda;p.ganho+=o.ganho;p.liquido+=o.d;p.custoMeta+=o.cTc;p.custoReal+=o.cRc;p.ordens++;if(o.lvl===3)p.criticas++}
- const cm={};for(const r of rows){const k=r.per+'|'+compKey(r)+'|'+(r.un||'');const c=cm[k]||(cm[k]={per:r.per,componente:compKey(r),descricao:compName(r),un:r.un||'',qtdMeta:0,qtdReal:0,desvio:0,ordens:new Set()});c.qtdMeta+=r.qT||0;c.qtdReal+=r.qR||0;c.desvio+=dev(r);c.ordens.add(r.ordem)}
+ for(const o of ords){const p=pm[o.per]||(pm[o.per]={per:o.per,fy:fyOf(o.per),perda:0,ganho:0,liquido:0,custoMeta:0,custoReal:0,ordens:0,criticas:0,muv:0,estrutura:0,empregado:0,precoInput:0,muvDesfavoravel:0,muvFavoravel:0,ordensAprox:0});p.perda+=o.perda;p.ganho+=o.ganho;p.liquido+=o.d;p.custoMeta+=o.cTc;p.custoReal+=o.cRc;p.ordens++;if(o.lvl===3)p.criticas++;
+   p.muv+=o.muv;p.estrutura+=o.estr;p.empregado+=o.emp;p.precoInput+=o.preco;p.muvDesfavoravel+=o.mDesf;p.muvFavoravel+=o.mFav;if(o.aprox)p.ordensAprox++}   /* 1.10.0 · MUV oficial (aditivo) */
+ const cm={};for(const r of rows){const k=r.per+'|'+compKey(r)+'|'+(r.un||'');const c=cm[k]||(cm[k]={per:r.per,componente:compKey(r),descricao:compName(r),un:r.un||'',qtdMeta:0,qtdReal:0,desvio:0,ordens:new Set()});c.qtdMeta+=r.qT||0;c.qtdReal+=r.qR||0;c.desvio+=dev(r);if(!isDelivery(r)){c.muv=(c.muv||0)+muvOf(r);c.estrutura=(c.estrutura||0)+dEst(r);c.empregado=(c.empregado||0)+(dEmpOf(r)||0)}c.ordens.add(r.ordem)}
  /* 1.8.8 · pendências para o Portal (sev 1 = urgente, 2 = atenção). Ação com prazo entra com aPartirDe = dia seguinte ao prazo:
     o Portal só mostra a partir dessa data, então a ação vence no Portal mesmo sem nova gravação aqui */
  const diaSeg=iso=>{const d=new Date(iso.slice(0,10)+'T12:00:00Z');d.setUTCDate(d.getUTCDate()+1);return d.toISOString().slice(0,10)};
@@ -1852,21 +1867,21 @@ function buildExports0(){
  for(const a of WAc.legado())if(a.prazo&&!DONE_AC.includes(a.status)&&a.status!=='eficácia em acompanhamento')   /* as de Iniciativas: pendência publicada lá */
   pendencias.push({sev:1,tipo:'acaoVencida',aPartirDe:diaSeg(a.prazo),quando:a.prazo,txt:`Ação vencida em ${fmtD(a.prazo)}: ${a.desc}${a.resp?' · '+a.resp:''}`,link:a.ordem?'ordem='+a.ordem:'aba=acoes'});
  for(const o of ords)if(o.lvl>=2&&!causeOf(o.ordem))
-  pendencias.push({sev:o.lvl===3?1:2,tipo:'semCausa',txt:`Ordem ${o.ordem} (${o.cat||''}) ${LV[o.lvl]} sem causa · desvio ${fmtR(o.d)}`,link:'ordem='+o.ordem});
+  pendencias.push({sev:o.lvl===3?1:2,tipo:'semCausa',txt:`Ordem ${o.ordem} (${o.cat||''}) ${LV[o.lvl]} sem causa · MUV ${fmtR(o.muv)}`,link:'ordem='+o.ordem});
  const ultimaImportacao=(B.imports||[]).filter(i=>i.status!=='cancelado').map(i=>i.data).filter(Boolean).sort().pop()||null;
  /* 1.8.27 · IMP-04: importações da KKBC com as competências, para o Portal › Importação */
  const importacoes=(B.imports||[]).filter(i=>i&&i.status!=='cancelado'&&i.data).map(i=>({tipo:'KKBC_ORD',em:i.data,por:i.usuario||null,arquivo:i.arquivo||null,periodos:(i.periodos||[]).slice(),dataExtracao:i.dataExtracao||null})).sort((a,b)=>a.em<b.em?1:-1).slice(0,200);
- return{exportsVersion:1,geradoEm:nowISO(),modulo:'perdas',appVersion:APP_VER,pendencias,ultimaImportacao,importacoes,
+ return{exportsVersion:1,geradoEm:nowISO(),modulo:'perdas',appVersion:APP_VER,oficial:'muv',pendencias,ultimaImportacao,importacoes,
   ordensExcluidas:[...exclMap().values()].map(e=>({ordem:e.ordem,em:e.em,por:e.por,motivo:e.motivo})),
-  porOrdem:ords.map(o=>({ordem:o.ordem,per:o.per,catalogo:o.cat||'',produto:o.prod||'',lote:o.lote||'',status:o.status||'',qtdEntregue:o.qEnt,custoMeta:+o.cTc.toFixed(2),custoReal:+o.cRc.toFixed(2),desvio:+o.d.toFixed(2),perda:+o.perda.toFixed(2),varMaterial:+sum(o.rows.filter(r=>!isDelivery(r)),dEst).toFixed(2),scrap:+sum(o.rows.filter(r=>!isDelivery(r)),scrapOf).toFixed(2),nivel:LV[o.lvl],causa:causeOf(o.ordem),
+  porOrdem:ords.map(o=>({ordem:o.ordem,per:o.per,catalogo:o.cat||'',produto:o.prod||'',lote:o.lote||'',status:o.status||'',qtdEntregue:o.qEnt,custoMeta:+o.cTc.toFixed(2),custoReal:+o.cRc.toFixed(2),desvio:+o.d.toFixed(2),perda:+o.perda.toFixed(2),varMaterial:+sum(o.rows.filter(r=>!isDelivery(r)),dEst).toFixed(2),scrap:+sum(o.rows.filter(r=>!isDelivery(r)),scrapOf).toFixed(2),muv:+o.muv.toFixed(2),estrutura:+o.estr.toFixed(2),empregado:+o.emp.toFixed(2),precoInput:+o.preco.toFixed(2),muvAprox:!!o.aprox,nivel:LV[o.lvl],causa:causeOf(o.ordem),
     comentarios:B.comments.filter(c=>c.ordem===o.ordem&&c.ativo!==false).length,acoesAbertas:WAc.todas().filter(a=>a.ordem===o.ordem&&!DONE_AC.includes(a.status)).length})),
-  porMes:Object.values(pm).sort((a,b)=>a.per<b.per?-1:1).map(p=>({...p,perda:+p.perda.toFixed(2),ganho:+p.ganho.toFixed(2),liquido:+p.liquido.toFixed(2),custoMeta:+p.custoMeta.toFixed(2),custoReal:+p.custoReal.toFixed(2),fechado:closedPers().has(p.per)})),
-  porComponenteMes:Object.values(cm).map(c=>({...c,ordens:c.ordens.size,desvio:+c.desvio.toFixed(2)})),
+  porMes:Object.values(pm).sort((a,b)=>a.per<b.per?-1:1).map(p=>({...p,muv:+p.muv.toFixed(2),estrutura:+p.estrutura.toFixed(2),empregado:+p.empregado.toFixed(2),precoInput:+p.precoInput.toFixed(2),muvDesfavoravel:+p.muvDesfavoravel.toFixed(2),muvFavoravel:+p.muvFavoravel.toFixed(2),meta:metaPer(p.per),perda:+p.perda.toFixed(2),ganho:+p.ganho.toFixed(2),liquido:+p.liquido.toFixed(2),custoMeta:+p.custoMeta.toFixed(2),custoReal:+p.custoReal.toFixed(2),fechado:closedPers().has(p.per)})),
+  porComponenteMes:Object.values(cm).map(c=>({...c,ordens:c.ordens.size,desvio:+c.desvio.toFixed(2),muv:c.muv==null?null:+c.muv.toFixed(2),estrutura:c.estrutura==null?null:+c.estrutura.toFixed(2),empregado:c.empregado==null?null:+c.empregado.toFixed(2)})),
   /* 1.8.28 · WST-03: ações antigas do Waste, para Iniciativas › Trazer ações do Waste (uma vez) */
   acoesLegado:B.actions.map(a=>({id:a.id,ordem:a.ordem||'',comp:a.comp||'',desc:a.desc||'',causa:a.causa||'',status:a.status||'',resp:a.resp||'',area:a.area||'',prazo:a.prazo||'',conclusao:a.conclusao||'',econ:a.econ??null,pri:a.pri||'',obs:a.obs||'',abertura:a.abertura||'',user:a.user||'',hist:(a.hist||[]).map(h=>({data:h.data||null,user:h.user||null,status:h.status||null,prazo:h.prazo||null}))}))}}
 
 /* ===================== FILTROS / PAINEL ===================== */
-const F={de:'',ate:'',fy:'',prod:'',tipoItem:'',tipoOrd:'',comp:'',nivel:'',st:'',busca:'',view:'ordens',sort:{k:'d',dir:-1},lim:200};
+const F={de:'',ate:'',fy:'',prod:'',tipoItem:'',tipoOrd:'',comp:'',nivel:'',st:'',busca:'',view:'ordens',sort:{k:'muv',dir:-1},lim:200};
 function allPers(){return[...new Set(vigRows().map(r=>r.per))].sort()}
 function filtered(){
  STAT=compStats();
@@ -1923,10 +1938,12 @@ function renderPainel(){
  const{rows,ords}=filtered();
  const t=CFG().thr;
  const perda=sum(ords,o=>o.perda),ganho=sum(ords,o=>o.ganho),liq=sum(ords,o=>o.d),cT=sum(ords,o=>o.cT),cR=sum(ords,o=>o.cR),base=sum(ords,o=>o.base);
+ /* 1.10.0 · MUV oficial */
+ const muv=sum(ords,o=>o.muv),estr=sum(ords,o=>o.estr),emp=sum(ords,o=>o.emp),preco=sum(ords,o=>o.preco),mDesf=sum(ords,o=>o.mDesf),mFav=sum(ords,o=>o.mFav),cTc=sum(ords,o=>o.cTc),cRc=sum(ords,o=>o.cRc),nAprox=ords.filter(o=>o.aprox).length;
  const qE=sum(ords,o=>o.qEnt||0);const crit=ords.filter(o=>o.lvl===3).length,alta=ords.filter(o=>o.lvl===2).length;
  const semC=ords.filter(o=>o.lvl>=2&&!causeOf(o.ordem)).length;const venc=WAc.todas().filter(acVencida).length;
  const pers=[...new Set(ords.map(o=>o.per))];const _mp=pers.map(metaPer).filter(v=>v!=null);const metaP=_mp.length?_mp.reduce((a,b)=>a+b,0):null;   /* 1.8.17 · soma das metas de cada mês */
- const fyAc=(()=>{const last=F.ate||allPers().slice(-1)[0];if(!last)return null;const fy=fyOf(last);return sum(aggOrders(vigRows().filter(r=>fyOf(r.per)===fy&&r.per<=last)),o=>o.d)})();
+ const fyAc=(()=>{const last=F.ate||allPers().slice(-1)[0];if(!last)return null;const fy=fyOf(last);return sum(aggOrders(vigRows().filter(r=>fyOf(r.per)===fy&&r.per<=last)),o=>o.muv)})();
  const mat=rows.filter(r=>!isDelivery(r));const vMat=sum(mat,dEst),vScr=sum(mat,scrapOf);const semEstr=mat.length&&!mat.some(r=>r.dEstr!=null);
  $('#selo').innerHTML=has?`${esc(seloTexto())} · ${fmtN(ords.length)} ordens · ${fmtN(rows.length)} linhas${exclMap().size?` · <a href="#" onclick="F.view='excl';renderPainel();return false">${exclMap().size} ordem(ns) excluída(s) fora dos totais</a>`:''}`:'';
  const rs=$('#resumo');rs.style.display='none';rs.innerHTML='';   /* 1.8.35: o Resumo (material, scrap, total) está nos indicadores; o total é o Desvio líquido */
@@ -1937,31 +1954,38 @@ function renderPainel(){
    <div><div class="small muted">SCRAP</div><div class="big ${vScr>0?'bad':'good'}">${fmtC(vScr)}</div><div class="small muted">desvio total − estrutura</div></div>
    <div><div class="small muted">TOTAL</div><div class="big ${liq>0?'bad':'good'}">${fmtC(liq)}</div><div class="small muted">desvio real − meta</div></div></div>`:'';
  renderPorComp(ords);
+ /* 1.10.0 · indicadores da controladoria: MUV (oficial, × meta), Desv. estrutura, Desv. empregado; preço de input e desvio total à parte */
+ const apx=nAprox?` · <span class="warn" title="Ordens no formato antigo (sem Desv. empregado): o MUV delas usa o desvio total até serem reimportadas">${nAprox} ordem(ns) aprox.</span>`:'';
  $('#kpis').innerHTML=has?[
-  ['Desvio líquido',fmtC(liq),liq>0?'bad':'good',metaP!=null?`meta ${fmtC(metaP)} · ${liq>metaP?'acima':'dentro'} (${fmtC(liq-metaP)})`:`real − meta · ${pers.length} ${pers.length===1?'mês':'meses'}`],
-  ['Var. material',fmtC(vMat),vMat>0?'bad':'good',`desvio de estrutura${semEstr?' · <span class="warn">sem a coluna Desv.estr.</span>':''}`],
-  ['Scrap',fmtC(vScr),vScr>0?'bad':'good','desvio total − estrutura'],
-  ['Perdas',fmtC(perda),'bad','soma dos desvios positivos'],
-  ['Ganhos',fmtC(ganho),'good','consumo abaixo da meta'],
-  ['Desvio %',fmtP(base?liq/base:null),liq>0?'bad':'good','sobre o custo meta dos componentes'],
-  ['Perda por milhão',qE?fmtC(liq/qE*1e6):'–','',qE?'por milhão de tubos entregues':'sem quantidade entregue'],
+  ['MUV',fmtC(muv),muv>0?'bad':'good',(metaP!=null?`meta ${fmtC(metaP)} · ${muv>metaP?'acima':'dentro'} (${fmtC(muv-metaP)})`:`estrutura + empregado · ${pers.length} ${pers.length===1?'mês':'meses'}`)+apx],
+  ['Desv. estrutura',fmtC(estr),estr>0?'bad':'good',`material fora da estrutura${semEstr?' · <span class="warn">sem a coluna Desv.estr.</span>':''}`],
+  ['Desv. empregado',fmtC(emp),emp>0?'bad':'good','quantidade empregada × teórica'],
+  ['Desv. preço de input',fmtC(preco),preco>0?'bad':'good','fora do MUV'],
+  ['Desv. real × teórico',fmtC(liq),liq>0?'bad':'good','custo real − custo teórico (todos os desvios)'],
+  ['Custo teórico',fmtC(cTc),'','componentes das ordens'],
+  ['Custo real',fmtC(cRc),'','componentes das ordens'],
+  ['MUV %',fmtP(base?muv/base:null),muv>0?'bad':'good','sobre o custo teórico dos componentes'],
+  ['MUV por milhão',qE?fmtC(muv/qE*1e6):'–','',qE?'por milhão de tubos entregues':'sem quantidade entregue'],
+  ['Desfavorável',fmtC(mDesf),'bad','soma do MUV positivo (perdas)'],
+  ['Favorável',fmtC(mFav),'good','soma do MUV negativo (ganhos)'],
   ['Ordens',fmtN(ords.length),'',`${crit} críticas · ${alta} altas`],
   ['Críticas/altas sem causa',fmtN(semC),semC?'warn':'good','comentar causa no detalhe'],
-  ['Acumulado no FY',fyAc!=null?fmtC(fyAc):'–',fyAc>0?'bad':'good',(F.ate||allPers().slice(-1)[0])?fyOf(F.ate||allPers().slice(-1)[0])+' até '+fmtM(F.ate||allPers().slice(-1)[0]):''],
+  ['Acumulado no FY (MUV)',fyAc!=null?fmtC(fyAc):'–',fyAc>0?'bad':'good',(F.ate||allPers().slice(-1)[0])?fyOf(F.ate||allPers().slice(-1)[0])+' até '+fmtM(F.ate||allPers().slice(-1)[0]):''],
   ['Ações vencidas',fmtN(venc),venc?'bad':'good','em todo o plano']
  ].map(([l,v,c,s])=>`<div class="kpi"><div class="l">${l}</div><div class="v ${c}">${v}</div><div class="s">${s}</div></div>`).join(''):'';
  // gráficos
- const pm={};for(const o of ords){pm[o.per]=(pm[o.per]||0)+o.d}
+ const pm={};for(const o of ords){pm[o.per]=(pm[o.per]||0)+o.muv}
  const trend=Object.keys(pm).sort().map(p=>({label:fmtM(p),value:pm[p],key:p,meta:metaPer(p),color:metaPer(p)!=null?(pm[p]>metaPer(p)?'var(--bad)':'var(--good)'):(pm[p]>0?'var(--bad)':'var(--good)')}));
  $('#chTrend').innerHTML=has?barChart(trend,{h:220,click:'per',unit:msim()}):'';
- const cr=(F._compRows||rows).filter(r=>!isDelivery(r));const cmap=new Map();for(const r of cr){const k=compKey(r);const x=cmap.get(k)||{v:0,d:compName(r)};x.v+=dev(r);cmap.set(k,x)}
+ const cr=(F._compRows||rows).filter(r=>!isDelivery(r));const cmap=new Map();for(const r of cr){const k=compKey(r);const x=cmap.get(k)||{v:0,d:compName(r)};x.v+=muvOf(r);cmap.set(k,x)}
  const par=[...cmap].map(([k,x])=>({label:k,sub:x.d,value:x.v,key:k})).filter(x=>x.value>0).sort((a,b)=>b.value-a.value).slice(0,10);
  $('#chComp').innerHTML=has?paretoChart(par,'comp'):'';
- const pmap=new Map();for(const o of ords){const k=o.cat||o.prod||'?';const x=pmap.get(k)||{v:0,d:o.prodDesc};x.v+=o.d;pmap.set(k,x)}
+ const pmap=new Map();for(const o of ords){const k=o.cat||o.prod||'?';const x=pmap.get(k)||{v:0,d:o.prodDesc};x.v+=o.muv;pmap.set(k,x)}
  $('#chProd').innerHTML=has?paretoChart([...pmap].map(([k,x])=>({label:k,sub:x.d,value:x.v,key:k})).filter(x=>x.value>0).sort((a,b)=>b.value-a.value).slice(0,10),'prod'):'';
- const cau=new Map();for(const o of ords){if(o.perda<=0)continue;for(const r of o.rows){const d=dev(r);if(d<=0)continue;const c=causeOf(o.ordem,r.comp)||'Sem causa registrada';cau.set(c,(cau.get(c)||0)+d)}}
+ const cau=new Map();for(const o of ords){if(o.mDesf<=0)continue;for(const r of o.rows){if(isDelivery(r))continue;const d=muvOf(r);if(d<=0)continue;const c=causeOf(o.ordem,r.comp)||'Sem causa registrada';cau.set(c,(cau.get(c)||0)+d)}}
  $('#chCausa').innerHTML=has?paretoChart([...cau].map(([k,v])=>({label:k,value:v,key:k})).sort((a,b)=>b.value-a.value).slice(0,10),null):'';
- wasteVK({has,liq,metaP,fyAc,ords,pers,semC,venc,crit,alta,trend,par,prodPar:[...pmap].map(([k,x])=>({label:k,sub:x.d,value:x.v,key:k})).filter(x=>x.value>0).sort((a,b)=>b.value-a.value)});   /* 1.8.35 */
+ renderParetoMuv(ords,cr);   /* 1.10.0 */
+ wasteVK({has,liq:muv,metaP,fyAc,ords,pers,semC,venc,crit,alta,trend,par,prodPar:[...pmap].map(([k,x])=>({label:k,sub:x.d,value:x.v,key:k})).filter(x=>x.value>0).sort((a,b)=>b.value-a.value)});   /* 1.8.35 */
  $$('[data-fk]').forEach(e=>e.onclick=()=>{const k=e.dataset.fk,v=e.dataset.fv;if(k==='per'){F.de=F.ate=v}else F[k]=v;renderPainel()});
  F._ords=ords;F._rows=rows;renderTable(ords,rows);
 }
@@ -1974,7 +1998,7 @@ function wasteVK(x){if(typeof vacLayout==='undefined'){if(!wasteVK._esp){wasteVK
  if(x.venc)prior.push(`<li><span><b>${fmtN(x.venc)}</b> ação(ões) vencida(s)</span><span class="sp"></span><button type="button" class="b sm" data-vk-acoes="1">Abrir ações</button></li>`);
  const top=[];if(x.par[0])top.push(`<li><span>Componente: <b>${esc(x.par[0].label)}</b> ${x.par[0].sub?'<span class="muted small">'+esc(x.par[0].sub)+'</span>':''}</span><span class="sp"></span><span class="v">${fmtC(x.par[0].value)}</span><button type="button" class="b sm" data-fk="comp" data-fv="${esc(x.par[0].key)}">Filtrar</button></li>`);
  if(x.prodPar[0])top.push(`<li><span>Catálogo: <b>${esc(x.prodPar[0].label)}</b> ${x.prodPar[0].sub?'<span class="muted small">'+esc(x.prodPar[0].sub)+'</span>':''}</span><span class="sp"></span><span class="v">${fmtC(x.prodPar[0].value)}</span><button type="button" class="b sm" data-fk="prod" data-fv="${esc(x.prodPar[0].key)}">Filtrar</button></li>`);
- $('#vkSit').innerHTML=L.sec('01','Situação do período','Como estamos e onde atuar agora')+`<div class="vk-sit"><section class="vk-card vk-main" aria-label="Desvio líquido do período"><span class="l">Desvio líquido do período <i class="i" title="Real − meta dos componentes, somado nas ordens filtradas. Positivo = perda.">i</i></span>
+ $('#vkSit').innerHTML=L.sec('01','Situação do período','Como estamos e onde atuar agora')+`<div class="vk-sit"><section class="vk-card vk-main" aria-label="MUV do período"><span class="l">MUV do período <i class="i" title="MUV = Desv. estrutura + Desv. empregado (como na análise da controladoria), somado nas ordens filtradas. Positivo = desfavorável. O desvio de preço de input não entra.">i</i></span>
   <div class="row1"><span class="vk-big ${x.liq>0?'bad':'good'}">${fmtC(x.liq)}</span><span class="vk-mt"><span>Meta do período</span><b>${x.metaP==null?'—':fmtC(x.metaP)}</b></span><span class="vk-mt"><span>Diferença</span><b>${x.metaP==null?'—':fmtC(x.liq-x.metaP)}</b></span></div>
   ${pc==null?'':`<div class="vk-bar" role="progressbar" aria-label="Desvio em relação à meta" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${Math.round(pc)}"><i class="${st[0]}" style="width:${pc.toFixed(1)}%"></i></div>`}
   ${L.estado(st[0],st[1])}<span class="small muted">${fmtN(x.ords.length)} ordens · ${x.pers.length} competência(s)${x.fyAc!=null&&cmp?` · acumulado ${fyOf(cmp)} até ${fmtM(cmp)}: ${fmtC(x.fyAc)}`:''}</span></section>
@@ -1982,7 +2006,7 @@ function wasteVK(x){if(typeof vacLayout==='undefined'){if(!wasteVK._esp){wasteVK
    <section class="vk-card"><h4>Maior perda do período</h4>${top.length?`<ul class="vk-list">${top.join('')}</ul><span class="small muted">Os mesmos números dos Paretos abaixo.</span>`:'<p class="small muted" style="margin:0">Sem perda (desvio positivo) no período.</p>'}</section></div></div>`;
  const tr=x.trend.filter(t=>t.value!=null),pior=tr.length?tr.reduce((a,b)=>b.value>a.value?b:a):null,melhor=tr.length?tr.reduce((a,b)=>b.value<a.value?b:a):null,um=tr.length===1;
  const dc=(t,rot,sub)=>t?`<button type="button" class="vk-dc" data-fk="per" data-fv="${esc(t.key)}"><span class="l">${rot}</span><span class="v">${fmtC(t.value)}</span><span class="s">${esc(t.label)}${t.meta!=null?' · meta '+fmtC(t.meta):''} · ${sub}</span></button>`:`<button type="button" class="vk-dc" disabled><span class="l">${rot}</span><span class="v">—</span><span class="s">Sem competência no período</span></button>`;
- $('#vkDiag').innerHTML=L.sec('03','Diagnóstico rápido','Pior e melhor competência, e o que falta analisar')+`<div class="vk-dg">${dc(pior,um?'Única competência':'Pior competência (maior desvio)','filtrar o mês')}${um?'<button type="button" class="vk-dc" disabled><span class="l">Melhor competência</span><span class="v">—</span><span class="s">Só 1 competência no período</span></button>':dc(melhor,'Melhor competência (menor desvio)','filtrar o mês')}
+ $('#vkDiag').innerHTML=L.sec('03','Diagnóstico rápido','Pior e melhor competência, e o que falta analisar')+`<div class="vk-dg">${dc(pior,um?'Única competência':'Pior competência (maior MUV)','filtrar o mês')}${um?'<button type="button" class="vk-dc" disabled><span class="l">Melhor competência</span><span class="v">—</span><span class="s">Só 1 competência no período</span></button>':dc(melhor,'Melhor competência (menor MUV)','filtrar o mês')}
   <button type="button" class="vk-dc" data-vk-prior="1"><span class="l">Críticas e altas sem causa</span><span class="v">${fmtN(x.semC)}</span><span class="s">${fmtN(x.crit)} críticas · ${fmtN(x.alta)} altas · ver prioridades</span></button></div>`;
  T.querySelectorAll('.vk-grp').forEach(g=>{const fe=L.fechado('perdas',g.dataset.vkGrupo),b=g.querySelector('.vk-gh');g.classList.toggle('fechado',fe);b.setAttribute('aria-expanded',!fe);b.querySelector('.seta').textContent=fe?'▸':'▾'});
  L.ligar(T,'perdas');
@@ -1990,13 +2014,34 @@ function wasteVK(x){if(typeof vacLayout==='undefined'){if(!wasteVK._esp){wasteVK
  T.querySelectorAll('[data-vk-acoes]').forEach(b=>b.onclick=()=>showTab('acoes'));
 }
 /* V1.8 · quadro por competência (respeita os filtros; clique filtra a competência) */
+/* 1.10.0 · Pareto do MUV como no dashboard da controladoria: dimensão (Linha, SKU, Componente) × métrica (MUV, Desv. estrutura, Desv. empregado),
+   sentido (desfavorável = positivo, favorável = negativo) e Top N. A escolha fica neste computador (vac.waste.pareto). */
+const PZ_DIM={linha:'Linha',sku:'SKU (catálogo)',comp:'Componente'},PZ_MET={muv:'MUV',estr:'Desv. estrutura',emp:'Desv. empregado'},PZ_SEN={desf:'Desfavorável',fav:'Favorável'},PZ_TOP=[5,10,20];
+function pzSt(){if(!F.pz){let v=null;try{v=JSON.parse(localStorage.getItem('vac.waste.pareto')||'null')}catch(e){}F.pz=Object.assign({dim:'comp',met:'muv',sen:'desf',top:10},v&&typeof v==='object'?v:{})}return F.pz}
+function pzItens(ords,rows,st){
+ const m=new Map(),vr=r=>st.met==='estr'?dEst(r):st.met==='emp'?(dEmpOf(r)||0):muvOf(r),vo=o=>st.met==='estr'?o.estr:st.met==='emp'?o.emp:o.muv;
+ const add=(k,lab,sub,v,fk)=>{const x=m.get(k)||{label:lab,sub,value:0,key:k,fk};x.value+=v;m.set(k,x)};
+ if(st.dim==='comp')for(const r of rows){if(isDelivery(r))continue;const k=compKey(r);add(k,k,compName(r),vr(r),'comp')}
+ else for(const o of ords){if(st.dim==='sku'){const k=o.cat||o.prod||'?';add(k,k,o.prodDesc||'',vo(o),'prod')}else{const l=linhaDe(o);add(l.cod||'?',l.nome,l.cod?'linha '+l.cod:'',vo(o),null)}}
+ const sg=st.sen==='fav'?-1:1;
+ return[...m.values()].filter(x=>x.value*sg>0).map(x=>({...x,orig:x.value,value:Math.abs(x.value)})).sort((a,b)=>b.value-a.value)}
+function renderParetoMuv(ords,rows){const ctl=$('#pzCtl'),ch=$('#chPz');if(!ctl||!ch)return;const st=pzSt();
+ const grp=(k,obj)=>`<span class="pz-g" role="group" aria-label="${k}">${Object.entries(obj).map(([v,t])=>`<button type="button" class="b sm${String(st[k])===String(v)?' p':''}" data-pz="${k}" data-pv="${v}" aria-pressed="${String(st[k])===String(v)}">${t}</button>`).join('')}</span>`;
+ ctl.innerHTML=grp('dim',PZ_DIM)+grp('met',PZ_MET)+grp('sen',PZ_SEN)+grp('top',Object.fromEntries(PZ_TOP.map(n=>[n,'Top '+n])));
+ const all=pzItens(ords,rows,st),tot=sum(all,x=>x.value),it=all.slice(0,+st.top||10),fk=it[0]&&it[0].fk;
+ ch.innerHTML=`<p class="small muted" style="margin:6px 0">${PZ_MET[st.met]} ${st.sen==='fav'?'favorável':'desfavorável'} por ${({linha:'linha',sku:'SKU',comp:'componente'})[st.dim]} · ${all.length} item(ns) · total ${fmtC(st.sen==='fav'?-tot:tot)}${all.length>it.length?` · mostrando ${it.length}`:''} · Valores em ${msim()}</p>`
+  +paretoChart(it,fk||null,{cor:st.sen==='fav'?'var(--good)':'var(--bad)',vazio:st.sen==='fav'?'Nada favorável neste recorte.':'Nada desfavorável neste recorte.'});
+ ctl.querySelectorAll('[data-pz]').forEach(b=>b.onclick=()=>{st[b.dataset.pz]=b.dataset.pz==='top'?+b.dataset.pv:b.dataset.pv;try{localStorage.setItem('vac.waste.pareto',JSON.stringify(st))}catch(e){}renderParetoMuv(ords,rows)});
+ ch.querySelectorAll('[data-fk]').forEach(e=>e.onclick=()=>{F[e.dataset.fk]=e.dataset.fv;renderPainel()})}
 function renderPorComp(ords){const el=$('#porComp');if(!el)return;if(!ords.length){el.style.display='none';return}el.style.display='';
- const m=new Map();for(const o of ords){let x=m.get(o.per);if(!x)m.set(o.per,x={per:o.per,n:0,vm:0,sc:0,d:0,pe:0,ga:0,base:0,qE:0,crit:0,alta:0});const mr=o.rows.filter(r=>!isDelivery(r));x.n++;x.vm+=sum(mr,dEst);x.sc+=sum(mr,scrapOf);x.d+=o.d;x.pe+=o.perda;x.ga+=o.ganho;x.base+=o.base;x.qE+=o.qEnt||0;if(o.lvl===3)x.crit++;if(o.lvl===2)x.alta++}
- const L=[...m.values()].sort((a,b)=>a.per<b.per?1:-1);const T=L.reduce((t,x)=>{for(const k of['n','vm','sc','d','pe','ga','base','qE','crit','alta'])t[k]+=x[k];return t},{n:0,vm:0,sc:0,d:0,pe:0,ga:0,base:0,qE:0,crit:0,alta:0});
+ /* 1.10.0 · colunas da controladoria: Desv. estrutura + Desv. empregado = MUV (oficial, comparado com a meta); preço de input e desvio total à parte */
+ const Z=()=>({n:0,es:0,em:0,mu:0,pr:0,d:0,base:0,qE:0,crit:0,alta:0,ap:0});
+ const m=new Map();for(const o of ords){let x=m.get(o.per);if(!x)m.set(o.per,x={per:o.per,...Z()});x.n++;x.es+=o.estr;x.em+=o.emp;x.mu+=o.muv;x.pr+=o.preco;x.d+=o.d;x.base+=o.base;x.qE+=o.qEnt||0;if(o.aprox)x.ap++;if(o.lvl===3)x.crit++;if(o.lvl===2)x.alta++}
+ const L=[...m.values()].sort((a,b)=>a.per<b.per?1:-1);const T=L.reduce((t,x)=>{for(const k of Object.keys(Z()))t[k]+=x[k];return t},Z());
  const cl=v=>v>0?'bad':'good';const fechado=closedPers();
- const tr=(x,tot)=>`<tr class="${tot?'tot':'click'}" ${tot?'':`data-per="${x.per}"`}><td>${tot?'<b>Total</b>':fmtM(x.per)+' <span class="muted small">'+fyOf(x.per)+' P'+fpOf(x.per)+'</span>'+(fechado.has(x.per)?' <span class="tag b">fechado</span>':'')}</td><td class="n">${fmtN(x.n)}</td><td class="n ${cl(x.vm)}">${fmtR(x.vm)}</td><td class="n ${cl(x.sc)}">${fmtR(x.sc)}</td><td class="n ${cl(x.d)}"><b>${fmtR(x.d)}</b></td><td class="n">${fmtP(x.base?x.d/x.base:null)}</td><td class="n">${x.qE?fmtR(x.d/x.qE*1e6):'–'}</td><td class="n">${!tot&&metaPer(x.per)!=null?`<span class="${x.d>metaPer(x.per)?'bad':'good'}" title="meta ${esc(fmtR(metaPer(x.per))+metaNota(x.per))}">${x.d>metaPer(x.per)?'acima':'dentro'}</span>`:''}</td><td class="n">${x.crit?`<span class="tag r">${x.crit}</span>`:''} ${x.alta?`<span class="tag o">${x.alta}</span>`:''}</td></tr>`;
- el.innerHTML=`<h3>Por competência <i class="i" title="Uma linha por competência (mês de referência da KKBC_ORD), com os filtros atuais. VAR. MATERIAL = desvio de estrutura; SCRAP = desvio total − estrutura; TOTAL = real − meta. Clique numa linha para filtrar a competência.">i</i> <span class="muted small">${L.length} competência(s)</span></h3>
- <div class="tw"><table><tr><th>Competência</th><th class="n">Ordens</th><th class="n">Var. material</th><th class="n">Scrap</th><th class="n">Total</th><th class="n">Desvio %</th><th class="n">R$/milhão</th><th class="n">Meta</th><th class="n">Críticas · altas</th></tr>${L.map(x=>tr(x)).join('')}${L.length>1?tr(T,true):''}</table></div>`;
+ const tr=(x,tot)=>`<tr class="${tot?'tot':'click'}" ${tot?'':`data-per="${x.per}"`}><td>${tot?'<b>Total</b>':fmtM(x.per)+' <span class="muted small">'+fyOf(x.per)+' P'+fpOf(x.per)+'</span>'+(fechado.has(x.per)?' <span class="tag b">fechado</span>':'')+(x.ap?` <span class="tag o" title="${x.ap} ordem(ns) no formato antigo: MUV aproximado (com o preço de input) até reimportar">aprox.</span>`:'')}</td><td class="n">${fmtN(x.n)}</td><td class="n ${cl(x.es)}">${fmtR(x.es)}</td><td class="n ${cl(x.em)}">${fmtR(x.em)}</td><td class="n ${cl(x.mu)}"><b>${fmtR(x.mu)}</b></td><td class="n ${cl(x.pr)}">${fmtR(x.pr)}</td><td class="n ${cl(x.d)}">${fmtR(x.d)}</td><td class="n">${fmtP(x.base?x.mu/x.base:null)}</td><td class="n">${x.qE?fmtR(x.mu/x.qE*1e6):'–'}</td><td class="n">${!tot&&metaPer(x.per)!=null?`<span class="${x.mu>metaPer(x.per)?'bad':'good'}" title="meta ${esc(fmtR(metaPer(x.per))+metaNota(x.per))}">${x.mu>metaPer(x.per)?'acima':'dentro'}</span>`:''}</td><td class="n">${x.crit?`<span class="tag r">${x.crit}</span>`:''} ${x.alta?`<span class="tag o">${x.alta}</span>`:''}</td></tr>`;
+ el.innerHTML=`<h3>Por competência <i class="i" title="Uma linha por competência (mês de referência da KKBC_ORD), com os filtros atuais. MUV = Desv. estrutura + Desv. empregado (número oficial, comparado com a meta). O desvio de preço de input fica fora do MUV. Desv. real × teórico = custo real − custo teórico (todos os desvios). Clique numa linha para filtrar a competência.">i</i> <span class="muted small">${L.length} competência(s)</span></h3>
+ <div class="tw"><table><tr><th>Competência</th><th class="n">Ordens</th><th class="n">Desv. estrutura</th><th class="n">Desv. empregado</th><th class="n">MUV</th><th class="n">Desv. preço input</th><th class="n">Desv. real × teórico</th><th class="n">MUV %</th><th class="n">MUV R$/milhão</th><th class="n">Meta</th><th class="n">Críticas · altas</th></tr>${L.map(x=>tr(x)).join('')}${L.length>1?tr(T,true):''}</table></div>`;
  $$('#porComp tr[data-per]').forEach(t=>t.onclick=()=>{F.de=F.ate=t.dataset.per;F.fy='';renderPainel()})}
 function renderTable(ords,rows){
  $$('#segView button').forEach(b=>b.classList.toggle('on',b.dataset.v===F.view));
@@ -2008,22 +2053,22 @@ function renderTable(ords,rows){
    for(const[o,e]of EX)if(!data.some(x=>x.ordem===o)&&!all.some(x=>x.ordem===o))data.push({ordem:o,exEm:e.em,exPor:e.por,exMot:e.motivo,lvl:0});
    cols=[['ordem','Ordem'],['per','Competência'],['cat','Catálogo'],['prodDesc','Descrição'],['d','Desvio','n'],['exEm','Excluída em'],['exPor','Por'],['exMot','Justificativa'],['rest','']];
  }else if(F.view==='ordens'){
-   cols=[['ordem','Ordem'],['per','Competência'],['cat','Catálogo'],['prodDesc','Descrição'],['lote','Lote'],['status','Status'],['qEnt','Qtd entregue','n'],['cTc','Custo meta','n'],['cRc','Custo real','n'],['d','Desvio','n'],['pct','Desvio %','n'],['pm','R$/milhão','n'],['lvl','Nível'],['causa','Causa'],['ac','Ações']];
+   cols=[['ordem','Ordem'],['per','Competência'],['cat','Catálogo'],['prodDesc','Descrição'],['lote','Lote'],['status','Status'],['qEnt','Qtd entregue','n'],['cTc','Custo teórico','n'],['cRc','Custo real','n'],['estr','Desv. estrutura','n'],['emp','Desv. empregado','n'],['muv','MUV','n'],['d','Desv. real × teórico','n'],['pct','MUV %','n'],['pm','MUV R$/milhão','n'],['lvl','Nível'],['causa','Causa'],['ac','Ações']];
    data=ords.map(o=>({...o,causa:causeOf(o.ordem),ac:WAc.todas().filter(a=>a.ordem===o.ordem&&!DONE_AC.includes(a.status)).length}));
  }else if(F.view==='comps'){
-   const m=new Map();for(const r of (F._compRows||rows)){if(isDelivery(r))continue;const k=compKey(r)+'|'+(r.un||'');let x=m.get(k);if(!x)m.set(k,x={comp:compKey(r),desc:compName(r),un:r.un||'',qT:0,qR:0,cT:0,d:0,ords:new Set(),pers:new Set(),out:0});x.qT+=r.qT||0;x.qR+=r.qR||0;x.cT+=r.cT||0;x.d+=dev(r);const sp_=split(r);x.eq=(x.eq||0)+sp_.eq;x.ep=(x.ep||0)+sp_.ep;x.ords.add(r.ordem);x.pers.add(r.per);if(statLevel(r)>=2)x.out++}
-   data=[...m.values()].map(x=>({...x,lvl:level(x.d,x.cT),n:x.ords.size,dq:x.qR-x.qT,pq:x.qT?(x.qR-x.qT)/x.qT:null,rec:STAT.recSet.has(x.comp),ords:undefined}));
-   cols=[['comp','Componente'],['desc','Descrição'],['un','Un'],['n','Ordens','n'],['qT','Qtd meta','n'],['qR','Qtd real','n'],['dq','Desvio qtd','n'],['pq','Desvio qtd %','n'],['d','Desvio R$','n'],['eq','Efeito qtd','n'],['ep','Efeito preço','n'],['lvl','Nível'],['out','Outliers','n'],['rec','Recorrente']];
+   const m=new Map();for(const r of (F._compRows||rows)){if(isDelivery(r))continue;const k=compKey(r)+'|'+(r.un||'');let x=m.get(k);if(!x)m.set(k,x={comp:compKey(r),desc:compName(r),un:r.un||'',qT:0,qR:0,cT:0,d:0,muv:0,es:0,em:0,ords:new Set(),pers:new Set(),out:0});x.qT+=r.qT||0;x.qR+=r.qR||0;x.cT+=r.cT||0;x.d+=dev(r);x.muv+=muvOf(r);x.es+=dEst(r);x.em+=dEmpOf(r)||0;const sp_=split(r);x.eq=(x.eq||0)+sp_.eq;x.ep=(x.ep||0)+sp_.ep;x.ords.add(r.ordem);x.pers.add(r.per);if(statLevel(r)>=2)x.out++}
+   data=[...m.values()].map(x=>({...x,lvl:level(x.muv,x.cT),n:x.ords.size,dq:x.qR-x.qT,pq:x.qT?(x.qR-x.qT)/x.qT:null,rec:STAT.recSet.has(x.comp),ords:undefined}));
+   cols=[['comp','Componente'],['desc','Descrição'],['un','Un'],['n','Ordens','n'],['qT','Qtd meta','n'],['qR','Qtd real','n'],['dq','Desv. qtde','n'],['pq','Desv. qtde %','n'],['es','Desv. estrutura','n'],['em','Desv. empregado','n'],['muv','MUV','n'],['d','Desv. real × teórico','n'],['eq','Efeito qtd','n'],['ep','Efeito preço','n'],['lvl','Nível'],['out','Outliers','n'],['rec','Recorrente']];
  }else{
-   data=ords.filter(o=>o.d>0).map(o=>({...o,score:priority(o),causa:causeOf(o.ordem),stat:Math.max(0,...o.rows.map(statLevel)),rec:o.rows.some(r=>STAT.recSet.has(compKey(r))&&dev(r)>0),ac:WAc.todas().filter(a=>a.ordem===o.ordem&&!DONE_AC.includes(a.status)).length}));
-   cols=[['score','Prioridade','n'],['ordem','Ordem'],['per','Competência'],['cat','Catálogo'],['d','Desvio','n'],['pct','Desvio %','n'],['lvl','Nível'],['stat','Estatística'],['rec','Recorrente'],['causa','Causa'],['ac','Ações']];
-   if(F.sort.k==='d'&&!F._ps){F.sort={k:'score',dir:-1};F._ps=1}
+   data=ords.filter(o=>o.muv>0).map(o=>({...o,score:priority(o),causa:causeOf(o.ordem),stat:Math.max(0,...o.rows.map(statLevel)),rec:o.rows.some(r=>STAT.recSet.has(compKey(r))&&dev(r)>0),ac:WAc.todas().filter(a=>a.ordem===o.ordem&&!DONE_AC.includes(a.status)).length}));
+   cols=[['score','Prioridade','n'],['ordem','Ordem'],['per','Competência'],['cat','Catálogo'],['muv','MUV','n'],['pct','MUV %','n'],['lvl','Nível'],['stat','Estatística'],['rec','Recorrente'],['causa','Causa'],['ac','Ações']];
+   if((F.sort.k==='d'||F.sort.k==='muv')&&!F._ps){F.sort={k:'score',dir:-1};F._ps=1}
  }
  if(F.tq){const toks=normB(F.tq).split(/\s+/).filter(Boolean);data=data.filter(r=>{const t=(r.rows&&r.ordem?ordemTexto(r):'')+' '+normB(cols.map(([c])=>{const v=r[c];return v==null?'':c==='per'?v+' '+fmtM(v):c==='lvl'?LV[v]||'':String(v)}).concat([r.comp,r.desc,r.un,r.exMot]).join(' '));return toks.every(w=>t.includes(w))})}
  const{k,dir}=F.sort;if(cols.some(c=>c[0]===k))data.sort((a,b)=>{const x=a[k],y=b[k];if(x==null&&y==null)return 0;if(x==null)return 1;if(y==null)return-1;return(x>y?1:x<y?-1:0)*dir});
  const fmt=(c,r)=>{const v=r[c];switch(c){
    case 'per':return fmtM(v);case 'qEnt':case 'qT':case 'qR':case 'dq':return fmtQ(v);
-   case 'cT':case 'cR':case 'cTc':case 'cRc':case 'eq':case 'ep':return fmtR(v);case 'd':return `<span class="${v>0?'bad':'good'}">${fmtR(v)}</span>`;
+   case 'cT':case 'cR':case 'cTc':case 'cRc':case 'eq':case 'ep':return fmtR(v);case 'd':case 'muv':case 'estr':case 'emp':case 'es':case 'em':return `<span class="${v>0?'bad':'good'}">${fmtR(v)}</span>`;
    case 'pct':case 'pq':return fmtP(v);case 'pm':return v==null?'–':fmtR(v);case 'lvl':return lvTag(v);
    case 'stat':return v>=2?'<span class="tag r">outlier</span>':v===1?'<span class="tag o">atenção</span>':'';
    case 'rec':return v?'<span class="tag r">recorrente</span>':'';case 'ac':return v?`<span class="tag b">${v} aberta${v>1?'s':''}</span>`:'';
@@ -2065,11 +2110,11 @@ function barChart(d,{h=200,meta=null,click=null,minW=560,unit=null,fmt=null}={})
  if(meta!=null)s+=`<line x1="${pl}" x2="${W}" y1="${y(meta)}" y2="${y(meta)}" stroke="var(--ink)" stroke-dasharray="5 4"/><text x="${W-4}" y="${y(meta)-4}" font-size="10" text-anchor="end" fill="var(--ink)">meta ${fk(meta)}</text>`;
  return(unit?`<div class="c-un">Valores em <b>${esc(unit)}</b></div>`:'')+s+'</svg>'}
 function fmtK(v){const a=Math.abs(v);return(a>=1e6?(v/1e6).toLocaleString('pt-BR',{maximumFractionDigits:1})+' mi':a>=1e3?(v/1e3).toLocaleString('pt-BR',{maximumFractionDigits:1})+' mil':v.toLocaleString('pt-BR',{maximumFractionDigits:0}))}
-function paretoChart(d,fk){
- if(!d.length)return'<p class="muted small">Sem perdas neste recorte.</p>';
+function paretoChart(d,fk,o={}){
+ if(!d.length)return`<p class="muted small">${o.vazio||'Sem perdas neste recorte.'}</p>`;
  const tot=sum(d,x=>x.value);const mx=d[0].value;let acc=0;
  return`<table class="small">${d.map(x=>{acc+=x.value;return`<tr ${fk?`data-fk="${fk}" data-fv="${esc(x.key)}" class="click"`:''}><td style="width:34%"><b>${esc(x.label)}</b><div class="muted" style="font-size:11px">${esc(x.sub||'')}</div></td>
- <td style="width:40%"><div style="background:var(--bad);opacity:.85;height:14px;border-radius:2px;width:${Math.max(2,x.value/mx*100)}%"></div></td><td class="n">${fmtR(x.value)}</td><td class="n muted">${fmtP(acc/tot)}</td></tr>`}).join('')}</table>`}
+ <td style="width:40%"><div style="background:${o.cor||'var(--bad)'};opacity:.85;height:14px;border-radius:2px;width:${Math.max(2,x.value/mx*100)}%"></div></td><td class="n">${fmtR(x.value)}</td><td class="n muted">${fmtP(acc/tot)}</td></tr>`}).join('')}</table>`}
 
 
 /* ===================== OEE (somente leitura) =====================
@@ -2319,12 +2364,14 @@ function openOrder(ordem){
  <div id="dResumo"></div>
  <div class="muted">${esc(o.cat||'')} ${esc(o.prodDesc||'')} ${o.lote?'· lote '+esc(o.lote):''} ${o.status?'· status '+esc(o.status):''} · ${fmtM(o.per)} (${o.per?fyOf(o.per)+' P'+fpOf(o.per):''})</div>
  <div class="kpis" style="margin-top:10px">
-  <div class="kpi"><div class="l">Custo meta</div><div class="v">${fmtC(o.cTc)}</div><div class="s">consumo de componentes</div></div>
+  <div class="kpi"><div class="l">MUV</div><div class="v ${o.muv>0?'bad':'good'}">${fmtC(o.muv)}</div><div class="s">estrutura ${fmtC(o.estr)} + empregado ${fmtC(o.emp)}${o.aprox?'<br><span class="warn">formato antigo: aproximado (com o preço de input) até reimportar</span>':''}</div></div>
+  <div class="kpi"><div class="l">Desv. preço de input</div><div class="v">${fmtC(o.preco)}</div><div class="s">fora do MUV</div></div>
+  <div class="kpi"><div class="l">Custo teórico</div><div class="v">${fmtC(o.cTc)}</div><div class="s">consumo de componentes</div></div>
   <div class="kpi"><div class="l">Custo real</div><div class="v">${fmtC(o.cRc)}</div><div class="s">consumo de componentes</div></div>
-  <div class="kpi"><div class="l">Desvio</div><div class="v ${o.d>0?'bad':'good'}">${fmtC(o.d)}</div><div class="s">perdas ${fmtC(o.perda)} · ganhos ${fmtC(o.ganho)}<br>var. material ${fmtC(sum(comps.filter(r=>!isDelivery(r)),dEst))} · scrap ${fmtC(sum(comps.filter(r=>!isDelivery(r)),scrapOf))}<br>por quantidade ${fmtC(sq)} · por preço ${fmtC(sp)}</div></div>
-  <div class="kpi"><div class="l">Desvio %</div><div class="v">${fmtP(o.pct)}</div></div>
+  <div class="kpi"><div class="l">Desv. real × teórico</div><div class="v ${o.d>0?'bad':'good'}">${fmtC(o.d)}</div><div class="s">perdas ${fmtC(o.perda)} · ganhos ${fmtC(o.ganho)}<br>var. material ${fmtC(sum(comps.filter(r=>!isDelivery(r)),dEst))} · scrap ${fmtC(sum(comps.filter(r=>!isDelivery(r)),scrapOf))}<br>por quantidade ${fmtC(sq)} · por preço ${fmtC(sp)}</div></div>
+  <div class="kpi"><div class="l">MUV %</div><div class="v">${fmtP(o.pct)}</div><div class="s">desvio total ${fmtP(o.pctD)}</div></div>
   <div class="kpi"><div class="l">Qtd entregue</div><div class="v">${fmtQ(o.qEnt)}</div><div class="s">${o.qOrd?'ordem: '+fmtQ(o.qOrd):''}</div></div>
-  <div class="kpi"><div class="l">R$ por milhão</div><div class="v">${o.pm!=null?fmtC(o.pm):'–'}</div></div>
+  <div class="kpi"><div class="l">MUV por milhão</div><div class="v">${o.pm!=null?fmtC(o.pm):'–'}</div></div>
   <div class="kpi"><div class="l">Prioridade</div><div class="v">${o.d>0?priority(o):'–'}</div><div class="s">0 a 100</div></div></div>
  <div style="margin-bottom:8px;display:flex;gap:6px;flex-wrap:wrap">
   <a class="b" href="${esc(sysLink('oee'))}#${(()=>{const q=oeeQuick(ordem);const d=String(q?.ini||'').match(/\d{4}-\d{2}-\d{2}/);return d?'dia='+d[0]:'ordem='+encodeURIComponent(ordem)})()}" target="_blank">Abrir no OEE</a>
@@ -2658,20 +2705,20 @@ function resumoPeriodo(de,ate){
  let rows=vigRows();if(de)rows=rows.filter(r=>r.per>=de);if(ate)rows=rows.filter(r=>r.per<=ate);
  const ords=aggOrders(rows),mat=rows.filter(r=>!isDelivery(r));
  const liq=sum(ords,o=>o.d),base=sum(ords,o=>o.base),qE=sum(ords,o=>o.qEnt||0);
- const cm=new Map();for(const r of mat){const k=compKey(r);const x=cm.get(k)||{comp:k,desc:compName(r),d:0,eq:0,ep:0,ords:new Set()};const sp=split(r);x.d+=dev(r);x.eq+=sp.eq;x.ep+=sp.ep;x.ords.add(r.ordem);cm.set(k,x)}
- const comps=[...cm.values()].sort((a,b)=>b.d-a.d);
- const cat=new Map();for(const o of ords){const k=o.cat||'?';const x=cat.get(k)||{cat:k,desc:o.prodDesc||'',n:0,tubos:0,d:0};x.n++;x.tubos+=o.qEnt||0;x.d+=o.d;cat.set(k,x)}
- const cats=[...cat.values()].map(x=>({...x,pm:x.tubos?x.d/x.tubos*1e6:null})).sort((a,b)=>(b.pm??-1e18)-(a.pm??-1e18));
- return{rows,ords,mat,liq,base,qE,vMat:sum(mat,dEst),vScr:sum(mat,scrapOf),perda:sum(ords,o=>o.perda),ganho:sum(ords,o=>o.ganho),comps,cats,
-  crit:ords.filter(o=>o.lvl>=2).sort((a,b)=>b.d-a.d)}}
-function trendSerie(ate,n=12){const pm={};for(const o of aggOrders(vigRows()))pm[o.per]=(pm[o.per]||0)+o.d;
+ const cm=new Map();for(const r of mat){const k=compKey(r);const x=cm.get(k)||{comp:k,desc:compName(r),d:0,eq:0,ep:0,muv:0,es:0,em:0,ords:new Set()};const sp=split(r);x.d+=dev(r);x.muv+=muvOf(r);x.es+=dEst(r);x.em+=dEmpOf(r)||0;x.eq+=sp.eq;x.ep+=sp.ep;x.ords.add(r.ordem);cm.set(k,x)}
+ const comps=[...cm.values()].sort((a,b)=>b.muv-a.muv);
+ const cat=new Map();for(const o of ords){const k=o.cat||'?';const x=cat.get(k)||{cat:k,desc:o.prodDesc||'',n:0,tubos:0,d:0,muv:0};x.n++;x.tubos+=o.qEnt||0;x.d+=o.d;x.muv+=o.muv;cat.set(k,x)}
+ const cats=[...cat.values()].map(x=>({...x,pm:x.tubos?x.muv/x.tubos*1e6:null})).sort((a,b)=>(b.pm??-1e18)-(a.pm??-1e18));
+ return{rows,ords,mat,liq,base,qE,vMat:sum(mat,dEst),vScr:sum(mat,scrapOf),muv:sum(ords,o=>o.muv),estr:sum(ords,o=>o.estr),emp:sum(ords,o=>o.emp),preco:sum(ords,o=>o.preco),mDesf:sum(ords,o=>o.mDesf),mFav:sum(ords,o=>o.mFav),aprox:ords.filter(o=>o.aprox).length,perda:sum(ords,o=>o.perda),ganho:sum(ords,o=>o.ganho),comps,cats,
+  crit:ords.filter(o=>o.lvl>=2).sort((a,b)=>b.muv-a.muv)}}
+function trendSerie(ate,n=12){const pm={};for(const o of aggOrders(vigRows()))pm[o.per]=(pm[o.per]||0)+o.muv;   /* 1.10.0 · MUV */
  return Object.keys(pm).sort().filter(p=>!ate||p<=ate).slice(-n).map(p=>({label:fmtM(p),value:pm[p],key:p,meta:metaPer(p),color:metaPer(p)!=null?(pm[p]>metaPer(p)?'var(--crit)':'var(--ok)'):(pm[p]>0?'var(--crit)':'var(--ok)')}))}
 /* ---------- TV ---------- */
 function tvSlides(){const ult=allPers().slice(-1)[0];if(!ult)return[{titulo:'Sem dados',html:'<div class="card"><p>Nenhuma KKBC importada ainda.</p></div>'}];
  const R=resumoPeriodo(ult,ult);const bk=(l,v,sub,c)=>`<div class="bk"><div class="l">${esc(l)}</div><div class="v sm ${c||''}">${esc(v)}</div><div class="s">${esc(sub||'')}</div></div>`;
  const meta=metaPer(ult);const S=[];
- S.push({titulo:'Resumo · '+fmtML(ult),html:`<div class="big">${bk('Var. material',fmtC(R.vMat),'desvio de estrutura',R.vMat>0?'bad':'good')}${bk('Scrap',fmtC(R.vScr),'desvio total − estrutura',R.vScr>0?'bad':'good')}${bk('Total',fmtC(R.liq),meta!=null?'meta '+fmtR(meta)+metaNota(ult):'real − meta',R.liq>(meta!=null?meta:0)?'bad':'good')}${bk('Por milhão de tubos',R.qE?fmtR(R.liq/R.qE*1e6,2):'–',R.ords.length+' ordens','')}</div>
-  <div class="card"><h3>Tendência mensal</h3>${barChart(trendSerie(ult),{h:440,minW:1300,unit:msim()})}</div>`});
+ S.push({titulo:'Resumo · '+fmtML(ult),html:`<div class="big">${bk('Desv. estrutura',fmtC(R.estr),'material fora da estrutura',R.estr>0?'bad':'good')}${bk('Desv. empregado',fmtC(R.emp),'quantidade empregada',R.emp>0?'bad':'good')}${bk('MUV',fmtC(R.muv),meta!=null?'meta '+fmtR(meta)+metaNota(ult):'estrutura + empregado',R.muv>(meta!=null?meta:0)?'bad':'good')}${bk('MUV por milhão de tubos',R.qE?fmtR(R.muv/R.qE*1e6,2):'–',R.ords.length+' ordens','')}</div>
+  <div class="card"><h3>Tendência mensal do MUV</h3>${barChart(trendSerie(ult),{h:440,minW:1300,unit:msim()})}</div>`});
  S.push({titulo:'Componentes com mais perda · '+fmtML(ult),html:`<div class="card">${paretoChart(R.comps.filter(c=>c.d>0).slice(0,10).map(c=>({label:c.comp,sub:c.desc,value:c.d,key:c.comp})),null)}</div>`});
  S.push({titulo:'Catálogos · R$ por milhão de tubos · '+fmtML(ult),html:`<div class="card"><table><tr><th>Catálogo</th><th>Descrição</th><th class="n">Ordens</th><th class="n">Tubos</th><th class="n">Desvio</th><th class="n">R$/milhão</th></tr>${R.cats.map(c=>`<tr><td><b>${esc(c.cat)}</b></td><td>${esc(c.desc)}</td><td class="n">${c.n}</td><td class="n">${fmtK(c.tubos)}</td><td class="n">${fmtR(c.d)}</td><td class="n"><b>${c.pm==null?'–':fmtR(c.pm,2)}</b></td></tr>`).join('')}</table></div>`});
  if(R.crit.length)S.push({titulo:'Ordens altas e críticas · '+fmtML(ult),html:`<div class="card"><table><tr><th>Ordem</th><th>Catálogo</th><th>Descrição</th><th class="n">Desvio</th><th class="n">%</th><th>Nível</th><th>Causa</th></tr>${R.crit.slice(0,12).map(o=>`<tr class="${hl(o.lvl)}"><td>${esc(o.ordem)}</td><td>${esc(o.cat||'')}</td><td>${esc(o.prodDesc||'')}</td><td class="n">${fmtR(o.d)}</td><td class="n">${fmtP(o.pct)}</td><td>${LV[o.lvl]}</td><td>${esc(causeOf(o.ordem)||'sem causa')}</td></tr>`).join('')}</table></div>`});
@@ -2684,35 +2731,35 @@ const TIPOS_ORD=[['tubo','Ordens de produção (tubos)'],['preparacao','Ordens d
 function porTipoOrdem(de,ate){const R=resumoPeriodo(de,ate);const G={};for(const[k]of TIPOS_ORD)G[k]={ords:[],mat:[]};
  const tipoO=new Map();for(const o of R.ords){const t=tipoItemDe(o.rows&&o.rows[0]||{ordem:o.ordem,cat:o.cat});tipoO.set(o.ordem,t);(G[t]||G.sem).ords.push(o)}
  for(const r of R.mat){const t=tipoO.get(r.ordem)||'sem';(G[t]||G.sem).mat.push(r)}
- const lin=(nome,ords,mat)=>{const base=sum(ords,o=>o.base),liq=sum(ords,o=>o.d),qE=sum(ords,o=>o.qEnt||0);return{nome,n:ords.length,cT:sum(ords,o=>o.cTc),cR:sum(ords,o=>o.cRc),perda:sum(ords,o=>o.perda),ganho:sum(ords,o=>o.ganho),liq,pct:base?liq/base:null,vMat:sum(mat,dEst),vScr:sum(mat,scrapOf),crit:ords.filter(o=>o.lvl===3).length,qE}};
+ const lin=(nome,ords,mat)=>{const base=sum(ords,o=>o.base),liq=sum(ords,o=>o.d),qE=sum(ords,o=>o.qEnt||0);return{nome,n:ords.length,cT:sum(ords,o=>o.cTc),cR:sum(ords,o=>o.cRc),perda:sum(ords,o=>o.perda),ganho:sum(ords,o=>o.ganho),liq,pct:base?liq/base:null,vMat:sum(mat,dEst),vScr:sum(mat,scrapOf),muv:sum(ords,o=>o.muv),estr:sum(ords,o=>o.estr),emp:sum(ords,o=>o.emp),pctM:base?sum(ords,o=>o.muv)/base:null,crit:ords.filter(o=>o.lvl===3).length,qE}};
  const L=TIPOS_ORD.map(([k,nome])=>({k,...lin(nome,G[k].ords,G[k].mat)})).filter(x=>x.n||x.k!=='sem');
  return{R,G,L,tot:lin('Total',R.ords,R.mat)}}
 function docPorTipo(de,ate){const T=porTipoOrdem(de,ate),per=de===ate?fmtML(de):(fmtML(de)+' a '+fmtML(ate));
- const cab=['Tipo','Ordens','Custo meta','Custo real','Perdas','Ganhos','Total (desvio)','Desvio %','Var. material','Scrap','Críticas'];
- const row=x=>[x.nome,x.n,fmtR(x.cT),fmtR(x.cR),fmtR(x.perda),fmtR(x.ganho),fmtR(x.liq),fmtP(x.pct),fmtR(x.vMat),fmtR(x.vScr),x.crit];
- const raw=x=>[x.nome,x.n,+x.cT.toFixed(2),+x.cR.toFixed(2),+x.perda.toFixed(2),+x.ganho.toFixed(2),+x.liq.toFixed(2),x.pct==null?null:+x.pct.toFixed(4),+x.vMat.toFixed(2),+x.vScr.toFixed(2),x.crit];
- const tabOrd=(k,nome)=>{const os=T.G[k].ords.slice().sort((a,b)=>b.d-a.d);if(!os.length)return null;const t=lin2(os);
-  return{tipo:'tabela',titulo:nome+' · '+os.length,cab:['Ordem','Mês','Catálogo','Descrição','Custo meta','Custo real','Desvio','Desvio %','Nível','Causa'],num:[4,5,6,7],
-   linhas:os.map(o=>[o.ordem,fmtM(o.per),o.cat||'',o.prodDesc||'',fmtR(o.cTc),fmtR(o.cRc),fmtR(o.d),fmtP(o.pct),LV[o.lvl],causeOf(o.ordem)||'']).concat([['Total','','','',fmtR(t.cT),fmtR(t.cR),fmtR(t.d),fmtP(t.pct),'','']]),
-   bruto:os.map(o=>[o.ordem,o.per,o.cat||'',o.prodDesc||'',+o.cTc.toFixed(2),+o.cRc.toFixed(2),+o.d.toFixed(2),o.pct==null?null:+o.pct.toFixed(4),LV[o.lvl],causeOf(o.ordem)||''])}};
- function lin2(os){const cT=sum(os,o=>o.cTc),cR=sum(os,o=>o.cRc),d=sum(os,o=>o.d),b=sum(os,o=>o.base);return{cT,cR,d,pct:b?d/b:null}}
- const kp=[...T.L.map(x=>[x.nome.replace(/^Ordens de /,'').replace(/^./,c=>c.toUpperCase()),fmtC(x.liq),`${x.n} ordens · ${fmtP(x.pct)}`,x.liq>0?'bad':'good']),['Total',fmtC(T.tot.liq),`${T.tot.n} ordens · ${fmtP(T.tot.pct)}`,T.tot.liq>0?'bad':'good']];
+ const cab=['Tipo','Ordens','Custo teórico','Custo real','Desv. estrutura','Desv. empregado','MUV','MUV %','Desv. real × teórico','Críticas'];
+ const row=x=>[x.nome,x.n,fmtR(x.cT),fmtR(x.cR),fmtR(x.estr),fmtR(x.emp),fmtR(x.muv),fmtP(x.pctM),fmtR(x.liq),x.crit];
+ const raw=x=>[x.nome,x.n,+x.cT.toFixed(2),+x.cR.toFixed(2),+x.estr.toFixed(2),+x.emp.toFixed(2),+x.muv.toFixed(2),x.pctM==null?null:+x.pctM.toFixed(4),+x.liq.toFixed(2),x.crit];
+ const tabOrd=(k,nome)=>{const os=T.G[k].ords.slice().sort((a,b)=>b.muv-a.muv);if(!os.length)return null;const t=lin2(os);
+  return{tipo:'tabela',titulo:nome+' · '+os.length,cab:['Ordem','Mês','Catálogo','Descrição','Custo teórico','Custo real','MUV','MUV %','Nível','Causa'],num:[4,5,6,7],
+   linhas:os.map(o=>[o.ordem,fmtM(o.per),o.cat||'',o.prodDesc||'',fmtR(o.cTc),fmtR(o.cRc),fmtR(o.muv),fmtP(o.pct),LV[o.lvl],causeOf(o.ordem)||'']).concat([['Total','','','',fmtR(t.cT),fmtR(t.cR),fmtR(t.d),fmtP(t.pct),'','']]),
+   bruto:os.map(o=>[o.ordem,o.per,o.cat||'',o.prodDesc||'',+o.cTc.toFixed(2),+o.cRc.toFixed(2),+o.muv.toFixed(2),o.pct==null?null:+o.pct.toFixed(4),LV[o.lvl],causeOf(o.ordem)||''])}};
+ function lin2(os){const cT=sum(os,o=>o.cTc),cR=sum(os,o=>o.cRc),d=sum(os,o=>o.muv),b=sum(os,o=>o.base);return{cT,cR,d,pct:b?d/b:null}}
+ const kp=[...T.L.map(x=>[x.nome.replace(/^Ordens de /,'').replace(/^./,c=>c.toUpperCase())+' · MUV',fmtC(x.muv),`${x.n} ordens · ${fmtP(x.pctM)}`,x.muv>0?'bad':'good']),['Total · MUV',fmtC(T.tot.muv),`${T.tot.n} ordens · ${fmtP(T.tot.pctM)}`,T.tot.muv>0?'bad':'good']];
  return{titulo:'Waste por tipo de ordem · '+per,subtitulo:'Produção × preparação de aditivo · KKBC_ORD · '+seloTexto({de,ate}),periodo:per,arquivo:'Waste_tipo_ordem_'+de+(de!==ate?'_'+ate:''),blocos:[
   {tipo:'kpis',titulo:'Resumo',itens:kp},
-  {tipo:'tabela',titulo:'Produção × preparação',cab,num:[1,2,3,4,5,6,7,8,9,10],linhas:T.L.map(row).concat([row(T.tot)]),destaque:T.L.map(()=>'').concat(['hl1']),bruto:T.L.map(raw).concat([raw(T.tot)])},
+  {tipo:'tabela',titulo:'Produção × preparação',cab,num:[1,2,3,4,5,6,7,8,9],linhas:T.L.map(row).concat([row(T.tot)]),destaque:T.L.map(()=>'').concat(['hl1']),bruto:T.L.map(raw).concat([raw(T.tot)])},
   ...TIPOS_ORD.map(([k,nome])=>tabOrd(k,nome)).filter(Boolean),
   ...(T.G.sem.ords.length?[{tipo:'texto',titulo:'Sem classificação',texto:'Ordens cujo catálogo não está no cadastro do Portal e que não são só em L/G/KG no MB51. Cadastre o catálogo (Portal › Catálogos › Tipo de item) para que entrem em produção ou preparação.'}]:[])]}}
 function docMensal(per){const R=resumoPeriodo(per,per);const meta=metaPer(per);const done=['concluída','encerrada eficaz','encerrada sem eficácia','cancelada'];
  const acs=WAc.todas().filter(a=>!done.includes(a.status));
  return{titulo:'Waste por ordem · '+fmtML(per),subtitulo:'KKBC_ORD · Materials · '+seloTexto({de:per,ate:per}),periodo:fmtML(per)+' ('+fyOf(per)+' P'+fpOf(per)+')',arquivo:'Waste_'+per,blocos:[
-  {tipo:'kpis',titulo:'Resumo',itens:[['Var. material',fmtC(R.vMat),'desvio de estrutura',R.vMat>0?'bad':'good'],['Scrap',fmtC(R.vScr),'desvio total − estrutura',R.vScr>0?'bad':'good'],['Total',fmtC(R.liq),meta!=null?'meta '+fmtR(meta)+metaNota(per):'real − meta',R.liq>0?'bad':'good'],
-   ['Perdas',fmtC(R.perda),'desvios positivos','bad'],['Ganhos',fmtC(R.ganho),'consumo abaixo da meta','good'],['Desvio %',fmtP(R.base?R.liq/R.base:null),'sobre o custo meta',''],['Por milhão de tubos',R.qE?fmtR(R.liq/R.qE*1e6,2):'–','',''],['Ordens',String(R.ords.length),`${R.ords.filter(o=>o.lvl===3).length} críticas · ${R.ords.filter(o=>o.lvl===2).length} altas`,'']]},
-  (()=>{const T=porTipoOrdem(per,per);return{tipo:'tabela',titulo:'Produção × preparação',cab:['Tipo','Ordens','Custo meta','Custo real','Total (desvio)','Desvio %','Var. material','Scrap'],num:[1,2,3,4,5,6,7],
-   linhas:T.L.concat([T.tot]).map(x=>[x.nome,x.n,fmtR(x.cT),fmtR(x.cR),fmtR(x.liq),fmtP(x.pct),fmtR(x.vMat),fmtR(x.vScr)]),destaque:T.L.map(()=>'').concat(['hl1'])}})(),
-  {tipo:'svg',titulo:'Tendência mensal (desvio líquido, '+msim()+')',svg:barChart(trendSerie(per))},
-  {tipo:'tabela',titulo:'Componentes (Pareto)'+(R.comps.length>20?` · 20 maiores de ${R.comps.length} (todos no Excel)`:''),cab:['Componente','Descrição','Ordens','Desvio','Efeito qtd','Efeito preço'],num:[2,3,4,5],linhas:R.comps.slice(0,20).map(c=>[c.comp,c.desc,c.ords.size,fmtR(c.d,2),fmtR(c.eq,2),fmtR(c.ep,2)]),bruto:R.comps.map(c=>[c.comp,c.desc,c.ords.size,+c.d.toFixed(2),+c.eq.toFixed(2),+c.ep.toFixed(2)])},
-  {tipo:'tabela',titulo:'Por catálogo',cab:['Catálogo','Descrição','Ordens','Tubos','Desvio','R$/milhão'],num:[2,3,4,5],linhas:R.cats.map(c=>[c.cat,c.desc,c.n,fmtN(c.tubos),fmtR(c.d),c.pm==null?'–':fmtR(c.pm,2)]),bruto:R.cats.map(c=>[c.cat,c.desc,c.n,c.tubos,+c.d.toFixed(2),c.pm==null?null:+c.pm.toFixed(2)])},
-  {tipo:'tabela',titulo:'Ordens altas e críticas',cab:['Ordem','Catálogo','Descrição','Desvio','Desvio %','Nível','Causa'],num:[3,4],linhas:R.crit.map(o=>[o.ordem,o.cat||'',o.prodDesc||'',fmtR(o.d),fmtP(o.pct),LV[o.lvl],causeOf(o.ordem)||'sem causa']),destaque:R.crit.map(o=>hl(o.lvl)),bruto:R.crit.map(o=>[o.ordem,o.cat||'',o.prodDesc||'',+o.d.toFixed(2),o.pct,LV[o.lvl],causeOf(o.ordem)||''])},
+  {tipo:'kpis',titulo:'Resumo',itens:[['MUV',fmtC(R.muv),(meta!=null?'meta '+fmtR(meta)+metaNota(per):'estrutura + empregado')+(R.aprox?` · ${R.aprox} ordem(ns) aprox.`:''),R.muv>(meta!=null?meta:0)?'bad':'good'],['Desv. estrutura',fmtC(R.estr),'material fora da estrutura',R.estr>0?'bad':'good'],['Desv. empregado',fmtC(R.emp),'quantidade empregada × teórica',R.emp>0?'bad':'good'],
+   ['Desv. preço de input',fmtC(R.preco),'fora do MUV',R.preco>0?'bad':'good'],['Desv. real × teórico',fmtC(R.liq),'todos os desvios',R.liq>0?'bad':'good'],['Desfavorável',fmtC(R.mDesf),'MUV positivo','bad'],['Favorável',fmtC(R.mFav),'MUV negativo','good'],['MUV %',fmtP(R.base?R.muv/R.base:null),'sobre o custo teórico',''],['MUV por milhão de tubos',R.qE?fmtR(R.muv/R.qE*1e6,2):'–','',''],['Ordens',String(R.ords.length),`${R.ords.filter(o=>o.lvl===3).length} críticas · ${R.ords.filter(o=>o.lvl===2).length} altas`,'']]},
+  (()=>{const T=porTipoOrdem(per,per);return{tipo:'tabela',titulo:'Produção × preparação',cab:['Tipo','Ordens','Custo teórico','Custo real','Desv. estrutura','Desv. empregado','MUV','MUV %'],num:[1,2,3,4,5,6,7],
+   linhas:T.L.concat([T.tot]).map(x=>[x.nome,x.n,fmtR(x.cT),fmtR(x.cR),fmtR(x.estr),fmtR(x.emp),fmtR(x.muv),fmtP(x.pctM)]),destaque:T.L.map(()=>'').concat(['hl1'])}})(),
+  {tipo:'svg',titulo:'Tendência mensal do MUV ('+msim()+')',svg:barChart(trendSerie(per))},
+  {tipo:'tabela',titulo:'Componentes (Pareto)'+(R.comps.length>20?` · 20 maiores de ${R.comps.length} (todos no Excel)`:''),cab:['Componente','Descrição','Ordens','Desv. estrutura','Desv. empregado','MUV','Desv. real × teórico'],num:[2,3,4,5,6],linhas:R.comps.slice(0,20).map(c=>[c.comp,c.desc,c.ords.size,fmtR(c.es,2),fmtR(c.em,2),fmtR(c.muv,2),fmtR(c.d,2)]),bruto:R.comps.map(c=>[c.comp,c.desc,c.ords.size,+c.es.toFixed(2),+c.em.toFixed(2),+c.muv.toFixed(2),+c.d.toFixed(2)])},
+  {tipo:'tabela',titulo:'Por catálogo',cab:['Catálogo','Descrição','Ordens','Tubos','MUV','MUV R$/milhão'],num:[2,3,4,5],linhas:R.cats.map(c=>[c.cat,c.desc,c.n,fmtN(c.tubos),fmtR(c.muv),c.pm==null?'–':fmtR(c.pm,2)]),bruto:R.cats.map(c=>[c.cat,c.desc,c.n,c.tubos,+c.muv.toFixed(2),c.pm==null?null:+c.pm.toFixed(2)])},
+  {tipo:'tabela',titulo:'Ordens altas e críticas',cab:['Ordem','Catálogo','Descrição','MUV','MUV %','Nível','Causa'],num:[3,4],linhas:R.crit.map(o=>[o.ordem,o.cat||'',o.prodDesc||'',fmtR(o.muv),fmtP(o.pct),LV[o.lvl],causeOf(o.ordem)||'sem causa']),destaque:R.crit.map(o=>hl(o.lvl)),bruto:R.crit.map(o=>[o.ordem,o.cat||'',o.prodDesc||'',+o.muv.toFixed(2),o.pct,LV[o.lvl],causeOf(o.ordem)||''])},
   ...(acs.length?[{tipo:'tabela',titulo:'Ações abertas',cab:['Ação','Ordem','Responsável','Prazo','Status'],linhas:acs.map(a=>[a.desc,a.ordem||'',a.resp||'',fmtD(a.prazo),a.status+(acVencida(a)?' (vencida)':'')]),destaque:acs.map(a=>acVencida(a)?'hl2':'')}]:[])]}}
 function docOrdem(ordem){const os=aggOrders(vigRows().filter(r=>r.ordem===ordem));const o=os[os.length-1];if(!o)return null;const comps=o.rows.filter(r=>!isDelivery(r)).sort((a,b)=>dev(b)-dev(a));
  const coms=B.comments.filter(c=>c.ordem===ordem&&c.ativo!==false);const acs=WAc.todas().filter(a=>a.ordem===ordem);
@@ -2858,7 +2905,7 @@ function enterTest(){
    const use=p[2]==='EDTA'?comps.filter(c=>!/ouro|Gel|Ativador/.test(c[1])):comps.filter(c=>!/roxa|EDTA sol/.test(c[1]));
    for(const c of use){const per1000=c[2]==='UN'?(/Bandeja/.test(c[1])?1/100:/Caixa/.test(c[1])?1/1200:1):(c[2]==='KG'?0.00098:0.00002);const qT=qty*per1000*1.02;
     let f=1+(rnd()-0.55)*0.03;if(rnd()<0.06)f+=0.05+rnd()*0.12;if(/Etiqueta/.test(c[1])&&m>=2)f+=0.03;
-    const qR=qT*f;rows.push({id:uid(),imp:id,ln:0,per,ordem:String(ord),centro:'4017',prod:p[0],cat:p[0],prodDesc:p[1],comp:c[0],compDesc:c[1],un:c[2],qT:+qT.toFixed(3),qR:+qR.toFixed(3),cT:+(qT*c[3]).toFixed(2),cR:+(qR*c[3]).toFixed(2),dSap:+((qR-qT)*c[3]).toFixed(2),qEnt:Math.round(qty),qOrd:p[0]==='360060'?900000:1260000,status:m<3?'TECO':'LIB',lote:String(6279000+ord%1000)})}}
+    const qR=qT*f;rows.push({id:uid(),imp:id,ln:0,per,ordem:String(ord),centro:'4017',prod:p[0],cat:p[0],prodDesc:p[1],comp:c[0],compDesc:c[1],un:c[2],qT:+qT.toFixed(3),qR:+qR.toFixed(3),cT:+(qT*c[3]).toFixed(2),cR:+(qR*c[3]).toFixed(2),dSap:+((qR-qT)*c[3]).toFixed(2),dEstr:0,dEmp:+((qR-qT)*c[3]).toFixed(2),dPreco:0,qEnt:Math.round(qty),qOrd:p[0]==='360060'?900000:1260000,status:m<3?'TECO':'LIB',lote:String(6279000+ord%1000)})}}
   B.imports.push({id,tipo:'KKBC_ORD',arquivo:`TESTE_KKBC_${per}.xlsx`,hash:'t'+m,data:new Date(Date.now()-(4-m)*20*864e5).toISOString(),usuario:'teste',periodos:[per],importadas:rows.filter(r=>r.imp===id).length,ordens:n,rejeitadas:0,status:'importado',granularidade:'ordem × componente',teste:true})}
  B.rows=rows;const o1=rows.find(r=>r.per===addM(per0,3)).ordem;
  B.comments.push({id:uid(),ordem:o1,comp:'1034567',tipo:'causa provável',causa:'Embalagem',sub:'etiqueta',texto:'Rolo de etiqueta com emenda fora do padrão (TESTE).',user:'teste',data:nowISO(),ativo:true});

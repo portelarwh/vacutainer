@@ -32,7 +32,7 @@ const Sqdcp = (() => {
     { id: 'atendimento', p: 'DP', nome: 'Produção × meta operacional', unidade: '%', campo: 'attain', fator: 100, sentido: 'maior', meta: 100 },
     { id: 'oee', p: 'DP', nome: 'OEE', unidade: '%', campo: 'oee', fator: 100, sentido: 'maior' },
     { id: 'paradas', p: 'DP', nome: 'Paradas apontadas', unidade: 'min', campo: 'apontMin', sentido: 'menor' },
-    { id: 'waste', p: 'C', nome: 'Waste — desvio da competência', unidade: 'R$', fonte: 'perdas', sentido: 'menor' },
+    { id: 'waste', p: 'C', nome: 'Waste — MUV da competência', unidade: 'R$', fonte: 'perdas', sentido: 'menor' },
     { id: 'gel', p: 'C', nome: 'Gel disponível — posição atual', unidade: 'kg', fonte: 'gel' },
     { id: 'acoes', p: 'SP', nome: 'Ações abertas — posição atual', unidade: 'ações', fonte: 'inic' },
     { id: 'atrasadas', p: 'SP', nome: 'Ações atrasadas — posição atual', unidade: 'ações', fonte: 'inic', sentido: 'menor', meta: 0 },
@@ -174,7 +174,7 @@ const Sqdcp = (() => {
       const ex = x.ex;
       if (c.id === 'waste') {
         const p = (ex.porMes || []).filter(p => p.per <= ate.slice(0, 7)).sort((a, b) => b.per.localeCompare(a.per))[0];
-        if (p) { ret.valor = Number.isFinite(p.liquido) ? p.liquido : null; ret.nota = 'Competência ' + p.per + ' · ' + (p.fechado ? 'fechada' : 'em aberto') + ' · não representa custo diário ou do turno.'; }
+        if (p) { ret.valor = Number.isFinite(p.muv) ? p.muv : Number.isFinite(p.liquido) ? p.liquido : null; ret.nota = (Number.isFinite(p.muv) ? 'MUV (estrutura + empregado) · ' : '') + 'Competência ' + p.per + ' · ' + (p.fechado ? 'fechada' : 'em aberto') + ' · não representa custo diário ou do turno.'; }
         else ret.nota = 'Sem competência publicada até esta referência.';
       } else if (c.id === 'gel') {
         ret.valor = ex.estoque && Number.isFinite(ex.estoque.disponivelKg) ? ex.estoque.disponivelKg : null;

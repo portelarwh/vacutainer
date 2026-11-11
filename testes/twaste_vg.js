@@ -33,9 +33,10 @@ const LER = () => {
     const ref = JSON.parse(fs.readFileSync(REF, 'utf8'));
     const difK = Object.keys(ref.kpis).filter(k => ref.kpis[k] !== atual.kpis[k]);
     ok(!difK.length, 'mesmos valores em todos os indicadores da referência' + (difK.length ? ': ' + difK.map(k => `${k} [${ref.kpis[k]}] → [${atual.kpis[k] || 'ausente'}]`).join(' ; ') : ` (${Object.keys(ref.kpis).length})`));
-    // Resumo juntado aos indicadores (pendência do registro § L): VAR. MATERIAL e SCRAP viram indicadores; TOTAL é o Desvio líquido
-    const v = k => (atual.kpis[k] || '').split(' | ')[0];
-    ok(ref.resumo['VAR. MATERIAL'] === v('VAR. MATERIAL') && ref.resumo['SCRAP'] === v('SCRAP') && ref.resumo['TOTAL'] === v('DESVIO LÍQUIDO'), `totais do Resumo iguais nos indicadores (material ${v('VAR. MATERIAL')}, scrap ${v('SCRAP')}, total = desvio líquido ${v('DESVIO LÍQUIDO')})`);
+    // 1.10.0 · MUV oficial: MUV = Desv. estrutura + Desv. empregado; o Desv. real × teórico é o antigo Desvio líquido (R$ 92.350,83 antes da 1.10.0)
+    const v = k => (atual.kpis[k] || '').split(' | ')[0], num = t => +String(t).replace(/[^\d,-]/g, '').replace(',', '.');
+    ok(Math.abs(num(v('MUV')) - (num(v('DESV. ESTRUTURA')) + num(v('DESV. EMPREGADO')))) < 0.02, `MUV = estrutura + empregado (${v('MUV')} = ${v('DESV. ESTRUTURA')} + ${v('DESV. EMPREGADO')})`);
+    ok(v('DESV. REAL × TEÓRICO') === 'R$ 92.350,83', `Desv. real × teórico igual ao Desvio líquido de antes da 1.10.0 (${v('DESV. REAL × TEÓRICO')})`);
     for (const k of ['trend', 'comp', 'prod', 'causa', 'porComp', 'tabela', 'info']) ok(ref[k] === atual[k], `mesmo conteúdo: ${k}`);
   }
   // 1.8.36 · gráficos (docs/graficos-padrao.md): unidade na Tendência, moeda que acompanha a escolha, eixo sem rótulos repetidos
@@ -58,11 +59,18 @@ const LER = () => {
       out.fechou = T.querySelector('[data-vk-grupo="B"]').classList.contains('fechado') && JSON.parse(localStorage.getItem('vac.grupos.perdas') || '{}').B === 1;
       renderPainel(); await w(200); out.lembrou = document.querySelector('#t-painel [data-vk-grupo="B"]').classList.contains('fechado');
       document.querySelector('#t-painel [data-vk-grupo="B"] .vk-gh').click(); await w(50);
+      // 1.10.0 · Pareto do MUV: dimensão × métrica × sentido × Top N
+      const pzN = () => document.querySelectorAll('#chPz tr').length, pzC = (k, v) => { document.querySelector(`#pzCtl [data-pz="${k}"][data-pv="${v}"]`).click(); };
+      out.pz = { comp: pzN() }; pzC('top', '5'); await w(30); out.pz.top5 = pzN(); pzC('dim', 'sku'); await w(30); out.pz.sku = pzN(); out.pz.skuTxt = document.getElementById('chPz').textContent.slice(0, 60);
+      pzC('met', 'estr'); await w(30); out.pz.estr = document.getElementById('chPz').textContent.includes('Nada desfavorável'); pzC('sen', 'fav'); pzC('met', 'muv'); await w(30); out.pz.fav = document.getElementById('chPz').textContent.slice(0, 40);
+      out.pz.lembra = JSON.parse(localStorage.getItem('vac.waste.pareto') || '{}').dim === 'sku';
+      pzC('dim', 'comp'); pzC('sen', 'desf'); pzC('top', '10'); try { localStorage.removeItem('vac.waste.pareto'); } catch (e) { }
       return out; });
     console.log('     layout:', JSON.stringify({ ...L, sit: L.sit.replace(/\s+/g, ' ').slice(0, 120) }));
     ok(L.secoes.join('|') === 'Situação do período|Números do período|Diagnóstico rápido|Análises|Ordens e componentes', 'cinco seções na ordem: Situação, Números, Diagnóstico, Análises, Ordens');
-    ok(L.grupos.join(' ') === 'A:2 B:2 C:1', `gráficos e quadro em 3 grupos (${L.grupos.join(' ')})`);
-    ok(/Desvio líquido/.test(L.sit) && /meta|Sem meta/i.test(L.sit) && /(Acima|Dentro) da meta|Sem meta/.test(L.sit), 'Situação: desvio líquido × meta com estado em texto');
+    ok(L.pz && L.pz.comp === 9 && L.pz.top5 === 5 && L.pz.sku === 4 && /por SKU/.test(L.pz.skuTxt) && L.pz.estr && /^MUV favorável/.test(L.pz.fav) && L.pz.lembra, `Pareto do MUV: componente ${L.pz && L.pz.comp}, Top 5 = ${L.pz && L.pz.top5}, SKU ${L.pz && L.pz.sku}, estrutura sem desfavorável, favorável, escolha lembrada`);
+    ok(L.grupos.join(' ') === 'A:2 B:3 C:1', `gráficos e quadro em 3 grupos (${L.grupos.join(' ')})`);
+    ok(/MUV do período/.test(L.sit) && /meta|Sem meta/i.test(L.sit) && /(Acima|Dentro) da meta|Sem meta/.test(L.sit), 'Situação: MUV × meta com estado em texto');
     ok(L.diag === 3 && L.resumoOculto, 'Diagnóstico com 3 cartões; Resumo antigo junto dos indicadores (sem totais repetidos)');
     ok(L.fechou && L.lembrou, 'grupo recolhido lembra a escolha (vac.grupos.perdas)');
     await o.emulateMedia({ media: 'print' }); await o.evaluate(() => document.querySelector('#t-painel [data-vk-grupo="A"] .vk-gh').click());
