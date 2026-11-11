@@ -32,3 +32,11 @@ Cada etapa é um commit (E1 referência; E2–E4 layout; E5 testes, guia e docs)
 - A reorganização acontece no mount: se a base mudar o título de um gráfico, ele cai em "Outros" (nunca some).
 - Estados "Conectando", "Base desatualizada" e "Gravação pendente" continuam na faixa da página (não foram duplicados aqui).
 - Validar com operador e liderança na pasta real (densidade e ordem dos grupos).
+
+## Padrão comum no kit e Waste 1.8.35 (11/11/2026)
+
+Decisões do responsável: ordem Waste → Paradas → Gel → Portal; Visão geral completa e estilo nas outras abas; uma PR por página.
+
+**Kit** (`fontes/kit/kit_visual.css` + `kit_v21.js`, iguais nas 8 páginas): estilos `vk-*` (cabeçalho da visão, seções numeradas, situação, estado em texto, barra até a meta, cartões de diagnóstico, grupos recolhíveis, aviso) e `vacLayout` (`sec`, `grupo`, `estado`, `ligar(raiz, página)`, `fechado`); grupos recolhidos em `localStorage vac.grupos.<página>`; impressão com grupos abertos. `vk-estilo` no contêiner da página deixa cartões e títulos das outras abas no mesmo estilo (sem caixa alta). Filtros: `.vk-mais` + `.vk-opt` = "Mais filtros" no celular. A Produção continua com o `vg_layout.js` (mesmo visual).
+
+**Waste 1.8.35** (`paginas/Perdas-Ordem.html`, `wasteVK`): "Visão geral do Waste" com 01 Situação (desvio líquido × meta do período, estado em texto, acumulado do FY; Ação prioritária: críticas/altas sem causa e ações vencidas; Maior perda: componente e catálogo do topo dos Paretos, com Filtrar) · 02 Números (o antigo Resumo foi para os indicadores: Var. material e Scrap viraram cartões e o Total é o Desvio líquido, sem repetir; pendência do registro § L) · 03 Diagnóstico (pior e melhor competência, críticas/altas sem causa) · 04 Análises (A Evolução: tendência e quadro por competência; B Onde está a perda: Paretos de componente e catálogo; C Causas) · 05 Ordens e componentes (a tabela). Nenhum cálculo mudou. Teste: `testes/twaste_vg.js` (referência `testes/bases/waste-vg-referencia.json` gravada antes).
