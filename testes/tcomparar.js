@@ -41,6 +41,11 @@ const ACOES = 'Ação\tResponsável\tPrazo\tStatus\n"Trocar sensor"\tJoão da Si
   ok(/1 coluna\(s\) nova\(s\)/.test(R.cmp) && /Colunas novas \(não reconhecidas hoje\): "Coluna Nova"/.test(R.out), 'KKBC_ORD: aponta a coluna nova');
   ok(!/900000123|1034567|1034568/.test(R.out) && /\|\* Materials\|/.test(R.out) && /-\|BRL/.test(R.out), 'KKBC_ORD: ordem e componentes trocados; subtotal "* Materials" e sinal no fim mantidos');
   ok(!/1\.000,00\|  1\.200,00/.test(R.out) && /O SAP passou a trazer/.test(R.out), 'KKBC_ORD: valores multiplicados por fator; notas no prompt');
+  ok(!/Ordem \(obrigatória\)|faltando: Ordem/.test(R.cmp) && /Lidos fora da tabela/.test(R.cmp), 'KKBC_ORD em lista: a Ordem da linha "Ordem <n>" conta como presente');
+  R = await rodar('KKBC_ORD', 'Ordem      900000123  360060\n|Origem   |Material (Texto)  |Valor plan|Valor real|\n|1034567  |TAMPA HEMOGARD    |  1.000,00|  1.200,00|\n|* Materials|                |  1.500,00|  1.650,00|');
+  ok(/faltando: Custo meta \(teórico\)/.test(R.cmp) && /candidatas\): Valor plan/.test(R.cmp), 'KKBC_ORD: custo meta faltando, com "Valor plan" como candidata');
+  { const m = R.out.match(/\|\d{7}\s*\|ITEM[^|]*\|\s*([\d.,]+)\|\s*([\d.,]+)\|/) || R.out.match(/\|\d{7}\s*\|[^|]*\|\s*([\d.,]+)\|\s*([\d.,]+)\|/); const n = x => +x.replace(/\./g, '').replace(',', '.');
+    ok(m && Math.abs(n(m[2]) / n(m[1]) - 1.2) < 0.001, 'KKBC_ORD: coluna de valor não reconhecida usa o mesmo fator dos custos (real ÷ meta = 1,2 mantido)'); }
   // MES (CSV)
   R = await rodar('MES', MES);
   ok(/CSV \(,\)/.test(R.cmp) && /obrigatórias presentes/.test(R.cmp) && !/6299948|360057/.test(R.out) && /11\/9\/2026 4:53:06/.test(R.out) && /,\d{6}\.0000,\d{7},0\.0/.test(R.out), 'MES: CSV reconhecido; catálogo e lote trocados (o .0000 fica); horário mantido');
@@ -49,7 +54,7 @@ const ACOES = 'Ação\tResponsável\tPrazo\tStatus\n"Trocar sensor"\tJoão da Si
   ok(!/João da Silva|Maria Souza/.test(R.out) && /Pessoa 0/.test(R.out), 'Ações: responsáveis trocados por "Pessoa NN"');
   // obrigatória faltando
   R = await rodar('MB51', 'Ordem\tMaterial\tLote\n900814702\t800041210\t7368012');
-  ok(/obrigatória\(s\) faltando/.test(R.cmp) && /Obrigatórias que NÃO vieram: Tipo de movimento/.test(R.out), 'MB51 incompleto: aponta as obrigatórias faltando');
+  ok(/obrigatória\(s\) faltando: Tipo de movimento, Data de lançamento/.test(R.cmp) && /Obrigatórias que não vieram/.test(R.cmp) && /títulos aceitos hoje: tipo de movimento/.test(R.cmp) && /Obrigatórias que NÃO vieram: Tipo de movimento \(títulos aceitos hoje/.test(R.out), 'MB51 incompleto: mostra quais obrigatórias faltam, com os títulos aceitos (tela e prompt)');
   ok(!pe.length, 'sem erro de página' + (pe.length ? ': ' + pe.join(' | ') : ''));
   await b.close();
   console.log(errs.length ? `\n${errs.length} falha(s)` : '\nsem erros'); process.exit(errs.length ? 1 : 0);

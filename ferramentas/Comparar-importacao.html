@@ -91,7 +91,10 @@ const REF = {
    C('dSap', 'Desvio total (SAP)', 'desvio;desvio total;desv tot;desvio meta real;target actual var;variance;total variance', 'valor'), C('dPct', 'Desvio %', 'dvcst c%;dv cst c%;dvcst/c%;desvio %;desvio percentual;desv %;var %;variance %', 'pct'),
    C('dEstr', 'Desvio de estrutura', 'desv estr;desvio de estrutura;variacao de estrutura;desv estrutura', 'valor'), C('moeda', 'Moeda', 'moeda;currency;moeda transacao;moeda objeto;mda', 'livre'),
    C('qOrd', 'Quantidade da ordem', 'quantidade da ordem;qtd ordem;order quantity;quantidade planejada;qtd planejada', 'qtd'), C('qEnt', 'Quantidade entregue', 'quantidade entregue;qtd entregue;delivered quantity;qtd fornecida;quantidade produzida;qtd produzida', 'qtd'),
-   C('status', 'Status da ordem', 'status;status da ordem;status do sistema;system status', 'livre'), C('lote', 'Lote', 'lote;batch;lote produzido', 'id'), C('per', 'Período contábil', 'periodo;periodo contabil;period;posting period;mes', 'livre'), C('dFim', 'Data final', 'data final;data fim;fim real;finish date;end date', 'data')] },
+   C('status', 'Status da ordem', 'status;status da ordem;status do sistema;system status', 'livre'), C('lote', 'Lote', 'lote;batch;lote produzido', 'id'), C('per', 'Período contábil', 'periodo;periodo contabil;period;posting period;mes', 'livre'), C('dFim', 'Data final', 'data final;data fim;fim real;finish date;end date', 'data')],
+  numDesconhecido: 'valor',
+  /* na lista do SAP, estes vêm nas linhas acima da tabela de cada ordem */
+  foraDaTabela: [['ordem', /^\s*(Ordem|Order)\s+\S+/m, 'linha "Ordem <n>"'], ['prod', /^\s*(Ordem|Order)\s+\S+\s+\S+|^\s*Material\s+\S+/m, 'linha "Ordem <n> <material>" ou "Material"'], ['qOrd', /^\s*(Quantidade planejada|Planned quantity|Target quantity)\s+/mi, 'linha "Quantidade planejada"'], ['qEnt', /^\s*(Quantidade real|Actual quantity)\s+/mi, 'linha "Quantidade real"'], ['moeda', /^\s*(Moeda|Currency)\s*:?\s+[A-Z$]{2,4}/mi, 'linha "Moeda"'], ['centro', /^\s*(Centro|Plant)\s+\S+/m, 'linha "Centro"']] },
  MB51: { nome: 'MB51 (movimentos de material)', pag: 'Produção › Ordens › Importar MB51', estr: 'Grade com cabeçalho na 1ª linha (colado do SAP ou Excel). Datas dd.mm.aaaa, hora hh:mm:ss. Uma linha por movimento (101/102/261/262…).', sep: 'tab',
   cols: [C('ordem', 'Ordem', 'ordem;order', 'id', 1), C('material', 'Material', 'material', 'id', 1), C('texto', 'Texto breve material', 'texto breve material;texto breve de material;material description', 'texto'), C('planta', 'Planta', 'planta;centro;plant', 'id'), C('deposito', 'Depósito', 'deposito', 'id'),
    C('tipo', 'Tipo de movimento', 'tipo de movimento;tipo movimento;tmv;movement type', 'livre', 1), C('txtTipo', 'Txt.tipo movimento', 'txt tipo movimento;texto tipo movimento', 'livre'), C('doc', 'Doc.material', 'doc material;documento material;documento de material;material document', 'id'),
@@ -126,7 +129,8 @@ const REF = {
  CS12: { nome: 'CS12 (BOM, explosão multinível)', pag: 'Portal › Cadastros › Importar › CS12', estr: 'Lista do SAP: cabeçalho fora da tabela (data, "Material", "Cent./Util./Alt:", "Denominação", "Qtd.base (UN)", "Qtd.requer.") e tabela entre | com a linha de títulos (Nível, Item, Componente/ID objeto, Texto breve, Qtd, UM…). Números BR.', sep: 'lista |',
   cols: [C('nivel', 'Nível', 'ni;nivel;nv;niv;nvl', 'livre', 1), C('item', 'Item', 'item;n item;no item', 'livre'), C('componente', 'Componente', 'id objeto;n componente;no componente;componente;objeto;obj;id obj;material componente', 'id', 1), C('descricao', 'Texto breve objeto', 'texto breve objeto;texto breve;denominacao;descricao', 'texto'),
    C('deposito', 'Depósito', 'dep;deposito', 'id'), C('tipoMaterial', 'Tipo material', 'tmat;tipo material', 'livre'), C('statusMaterial', 'Status material', 'sm;status material', 'livre'), C('umb', 'UMB', 'umb;um basica;um bas', 'livre'), C('qtd', 'Qtd componente', 'qtd umc;qtd componente;qtd compon;quantidade componente;qtd;quantidade;qtde', 'qtd', 1),
-   C('um', 'UM componente', 'um;um compon;um componente;umc', 'livre'), C('refugoPct', 'Refugo componente %', 'itrefco;refugo comp;refugo componente;ref comp;refugo;refcomp', 'pct'), C('prob', 'Probabilidade', 'probempr;probabilidade;prob;pro', 'pct'), C('relCalculo', 'Relevante cálculo', 'rel p calc;rel calc;relevante calculo', 'livre'), C('grupoAlt', 'Grupo alternativo', 'grupo de item;grupo alt;grp alt;altit;grupo alternativo', 'livre')] },
+   C('um', 'UM componente', 'um;um compon;um componente;umc', 'livre'), C('refugoPct', 'Refugo componente %', 'itrefco;refugo comp;refugo componente;ref comp;refugo;refcomp', 'pct'), C('prob', 'Probabilidade', 'probempr;probabilidade;prob;pro', 'pct'), C('relCalculo', 'Relevante cálculo', 'rel p calc;rel calc;relevante calculo', 'livre'), C('grupoAlt', 'Grupo alternativo', 'grupo de item;grupo alt;grp alt;altit;grupo alternativo', 'livre')],
+  foraDaTabela: [] },
  RELATORIO: { nome: 'Histórico RELATÓRIO (planilha antiga)', pag: 'Produção › Configurações › Importação › Histórico', estr: 'Aba RELATÓRIO: cabeçalho com Data e Turno nas primeiras 30 linhas.', sep: 'tab',
   cols: [C('week', 'Week/Semana', 'week;semana', 'livre'), C('sector', 'Setor', 'setor', 'livre'), C('date', 'Data', 'data', 'data', 1), C('day', 'Dia #', 'dia #;dia', 'livre'), C('month', 'Mês', 'mes', 'livre'), C('year', 'Ano', 'ano', 'livre'), C('machine', 'Máquina', 'maquina', 'livre', 1), C('catalog', 'Catálogo', 'catalogo', 'id'),
    C('shift', 'Turno', 'turno', 'livre', 1), C('oeeShift', 'OEE turno', 'oee turno', 'pct'), C('good', 'Produção', 'producao', 'qtd', 1), C('extra', 'Extra', 'extra', 'qtd'), C('abono', 'Revezamento/abono', 'revezamento abono;revezamento', 'qtd'), C('scrap', 'Perdas em peças', 'perdas em pecas', 'qtd'), C('scrapPct', 'Scrap (%)', 'scrap (%);scrap %;scrap', 'pct'),
@@ -277,8 +281,9 @@ function analisar() {
  let cab = [], map = [], dados = [], iCab = -1;
  if (H) { iCab = H.i; cab = H.cab; map = H.map; dados = L.slice(iCab + 1).map((l, k) => ({ k: iCab + 1 + k, l })).filter(x => x.l.trim() && (D.sep !== '|' || /^\s*\|/.test(x.l)) && !/^[-=|+_\s]+$/.test(x.l.trim())); }
  const valsDe = j => dados.slice(0, 200).map(x => (celulas(x.l, D.sep)[j] || '').trim()).filter(v => v && !/^\*/.test(v));
- const colunas = cab.map((h, j) => { const vals = valsDe(j), tipos = [...new Set(vals.map(tipoValor))].filter(t => t !== 'vazio'); const col = map[j]; return { j, h, col, vals, tipos, t: col ? col.t : tipoPorConteudo(vals) }; });
- const usados = new Set(colunas.filter(c => c.col).map(c => c.col.campo));
+ const colunas = cab.map((h, j) => { const vals = valsDe(j), tipos = [...new Set(vals.map(tipoValor))].filter(t => t !== 'vazio'); const col = map[j]; let t = col ? col.t : tipoPorConteudo(vals); if (!col && t === 'qtd' && ref.numDesconhecido) t = ref.numDesconhecido; return { j, h, col, vals, tipos, t }; });
+ const usados = new Set(colunas.filter(c => c.col).map(c => c.col.campo)), foraTab = {};
+ if (D.sep === '|') for (const [campo, re, onde] of ref.foraDaTabela || []) if (!usados.has(campo) && re.test(txt)) { usados.add(campo); foraTab[campo] = onde; }
  const faltam = ref.cols.filter(c => !usados.has(c.campo)), faltamOb = faltam.filter(c => c.ob), novas = colunas.filter(c => c.h && !c.col);
  /* amostra descaracterizada: tudo o que vem antes do cabeçalho + cabeçalho + N linhas de dados (e as linhas soltas no meio, para listas) */
  const am = []; let nDados = 0;
@@ -300,11 +305,13 @@ function analisar() {
  /* tela */
  const pill = (t, k) => `<span class="pill ${k || ''}">${esc(t)}</span>`;
  $('#cmp').innerHTML = !H ? `<div class="note crit">Não achei a linha de títulos (cabeçalho). O prompt vai com a amostra e o aviso; confira se colou com os títulos.</div>` :
-  `<p>${pill(D.fmt)} ${pill(out.total + ' linha(s)')} ${pill('cabeçalho na linha ' + (iCab + 1))} ${pill(totDados + ' linha(s) de dados')} ${faltamOb.length ? pill(faltamOb.length + ' obrigatória(s) faltando', 'crit') : pill('obrigatórias presentes', 'ok')} ${novas.length ? pill(novas.length + ' coluna(s) nova(s)', 'warn') : pill('sem coluna nova', 'ok')}</p>
+  `<p>${pill(D.fmt)} ${pill(out.total + ' linha(s)')} ${pill('cabeçalho na linha ' + (iCab + 1))} ${pill(totDados + ' linha(s) de dados')} ${faltamOb.length ? pill(faltamOb.length + ' obrigatória(s) faltando: ' + faltamOb.map(c => c.rot).join(', '), 'crit') : pill('obrigatórias presentes', 'ok')} ${novas.length ? pill(novas.length + ' coluna(s) nova(s)', 'warn') : pill('sem coluna nova', 'ok')}</p>
+  ${faltamOb.length ? `<div class="note crit"><b>Obrigatórias que não vieram</b> (sem elas a importação não lê a tabela). Confira se a coluna veio com outro título:<ul style="margin:6px 0 0;padding-left:18px">${faltamOb.map(c => `<li><b>${esc(c.rot)}</b> · títulos aceitos hoje: ${esc(c.nomes.join(' · '))}</li>`).join('')}</ul>${novas.length ? `<p style="margin:6px 0 0">Colunas que vieram e não foram reconhecidas (candidatas): ${novas.map(c => '<b>' + esc(c.h) + '</b>').join(', ')}</p>` : ''}</div>` : ''}
   <div class="tw"><table><thead><tr><th>Coluna colada</th><th>Reconhecida hoje como</th><th>Formato dos valores</th><th>Na amostra</th></tr></thead><tbody>
   ${colunas.filter(c => c.h).map(c => `<tr><td>${esc(c.h)}</td><td>${c.col ? esc(c.col.rot) + (c.col.ob ? ' <span class="pill">obrigatória</span>' : '') : '<span class="pill warn">nova (não reconhecida)</span>'}</td><td class="small">${esc(c.tipos.join(' · ') || '—')}</td><td class="small muted">${esc(({ id: 'código trocado', texto: manter ? 'mantida' : 'descrição trocada', textolivre: 'texto trocado', pessoa: 'nome trocado', email: 'e-mail trocado', valor: 'valor × fator', qtd: 'quantidade × fator', qtd0: 'quantidade × fator' })[c.t] || 'como veio')}</td></tr>`).join('')}
   </tbody></table></div>
-  ${faltam.length ? `<p class="small"><b>Esperadas que não vieram:</b> ${faltam.map(c => esc(c.rot) + (c.ob ? ' (obrigatória)' : '')).join(' · ')}</p>` : ''}`;
+  ${Object.keys(foraTab).length ? `<p class="small"><b>Lidos fora da tabela (cabeçalho de cada ordem):</b> ${Object.entries(foraTab).map(([k, onde]) => esc((ref.cols.find(c => c.campo === k) || {}).rot || k) + ' (' + esc(onde) + ')').join(' · ')}</p>` : ''}
+  ${faltam.filter(c => !c.ob).length ? `<p class="small"><b>Opcionais que não vieram:</b> ${faltam.filter(c => !c.ob).map(c => esc(c.rot)).join(' · ')}</p>` : ''}`;
  $('#seg').innerHTML = sobra.length ? `<div class="note crit">${sobra.length} código(s) do original ainda aparecem na amostra (${esc(sobra.slice(0, 5).join(', '))}${sobra.length > 5 ? '…' : ''}). Confira antes de enviar.</div>` : `<div class="note ok">Conferência: nenhum código de 6+ caracteres do original (números ou letras e números) aparece na amostra.</div>`;
  /* prompt */
  const linhasCols = colunas.filter(c => c.h).map(c => `- "${c.h}" → ${c.col ? c.col.rot + ' (' + c.col.campo + ')' : 'NOVA, não reconhecida hoje'} · valores: ${c.tipos.join(', ') || 'vazio'}`);
@@ -315,10 +322,11 @@ function analisar() {
  ref.cols.forEach(c => P.push(`- ${c.rot}${c.ob ? ' (obrigatória)' : ''}: ${c.nomes.slice(0, 6).join(' / ')}${c.nomes.length > 6 ? ' …' : ''}`));
  P.push('', '### O que veio agora', `Formato: ${D.fmt} · ${out.total} linha(s) não vazias · ${H ? 'cabeçalho na linha ' + (iCab + 1) + ' · ' + totDados + ' linha(s) de dados' : 'cabeçalho NÃO encontrado'}.`);
  if (H) { P.push('Colunas (na ordem em que vieram):', ...linhasCols); }
+ if (Object.keys(foraTab).length) P.push('Lidos fora da tabela: ' + Object.entries(foraTab).map(([k, onde]) => ((ref.cols.find(c => c.campo === k) || {}).rot || k) + ' (' + onde + ')').join('; ') + '.');
  P.push('', '### Diferenças em relação ao formato atual');
  const dif = [];
  if (!H) dif.push('- A linha de títulos não foi reconhecida com os nomes atuais.');
- if (faltamOb.length) dif.push('- Obrigatórias que NÃO vieram: ' + faltamOb.map(c => c.rot).join(', '));
+ if (faltamOb.length) dif.push('- Obrigatórias que NÃO vieram: ' + faltamOb.map(c => c.rot + ' (títulos aceitos hoje: ' + c.nomes.slice(0, 6).join(' / ') + (c.nomes.length > 6 ? ' …' : '') + ')').join('; '));
  if (faltam.filter(c => !c.ob).length) dif.push('- Opcionais que não vieram: ' + faltam.filter(c => !c.ob).map(c => c.rot).join(', '));
  if (novas.length) dif.push('- Colunas novas (não reconhecidas hoje): ' + novas.map(c => `"${c.h}"`).join(', '));
  if (ref.sep && !ref.sep.split(' ').some(s => (s === 'tab' && D.sep === '\t') || (s.includes('|') && D.sep === '|') || s === D.sep)) dif.push(`- Separador: veio ${D.fmt}; o importador espera ${ref.sep}.`);

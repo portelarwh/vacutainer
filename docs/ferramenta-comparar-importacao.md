@@ -39,6 +39,8 @@
   - Valores e quantidades são multiplicados por fatores sorteados a cada vez que a página abre. O fator não sai no texto.
   - Datas, horas, unidades, status e percentuais ficam como vieram, porque é o formato que o importador precisa ler.
   - Nas listas do SAP, as linhas fora da tabela (Ordem, Material, Denominação, Quantidade, Usuário) também são trocadas.
+- **Obrigatórias faltando:** aparecem em destaque, cada uma com os títulos que o importador aceita hoje e com as colunas não reconhecidas que podem ser ela. O prompt também traz os títulos aceitos.
+- **Listas do SAP (KKBC_ORD):** a ordem, o material, as quantidades e a moeda que vêm nas linhas acima da tabela ("Ordem <n> <material>", "Material", "Quantidade planejada/real", "Moeda") contam como presentes. Coluna de número não reconhecida na KKBC usa o mesmo fator dos custos, para não distorcer meta × real.
 - **Conferência:** antes de copiar, a ferramenta avisa se algum código de 6 ou mais caracteres do original ainda aparece na amostra.
 
 ## Manutenção
