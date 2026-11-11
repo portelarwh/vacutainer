@@ -58,14 +58,27 @@ const PREP = () => {
   const W = await o.evaluate(() => { const day = curDay(), res = Engine.computeDay(db(), day), md = MesDia.dia(db(), day), LT = CaixasDia.lotes(db(), day, res), S = ServerData;
     return { n: md.n, fora: md.fora, de: S.fromMin(md.m0).slice(11, 16), lotes: U.sum(LT, x => x.n), lFora: U.sum(LT, x => x.fora) }; });
   ok(W.n === 151 && W.fora === 120 && W.de === '04:00' && W.lotes === 151 && W.lFora === 120, `Caixas do MES e Lotes do dia = 151 caixas do dia de trabalho, 120 fora do turno, 1ª às 04:00, com 2 caixas no mesmo minuto (${JSON.stringify(W)})`);
-  // 2.4.54 · blocos do Lançamento recolhíveis (lembrado neste computador)
-  const Lf = await o.evaluate(async () => { const w = t => new Promise(r => setTimeout(r, t)); go('launch'); await w(500);
-    const sec = [...document.querySelectorAll('#main .lc .lc-c')], h = sec.length && sec[0].querySelector(':scope > .lc-hd'); if (!h) return { n: 0 };
-    h.click(); await w(200); const k = LcFold.chave(sec[0]), dob = sec[0].classList.contains('lc-fold'), esc = [...sec[0].children].filter(x => !x.classList.contains('lc-hd')).every(x => getComputedStyle(x).display === 'none');
-    render(); await w(400); const s2 = document.getElementById(sec[0].id) || [...document.querySelectorAll('#main .lc .lc-c')].find(x => LcFold.chave(x) === k), lembra = !!(s2 && s2.classList.contains('lc-fold'));
-    s2.querySelector(':scope > .lc-hd').click(); await w(200); const abriu = !s2.classList.contains('lc-fold'); go('hourly'); await w(400);
-    return { n: sec.length, dob, esc, lembra, abriu }; });
-  ok(Lf.n >= 2 && Lf.dob && Lf.esc && Lf.lembra && Lf.abriu, `Lançamento: blocos recolhem pelo título, ficam recolhidos depois de redesenhar e abrem de novo (${JSON.stringify(Lf)})`);
+  // 2.4.55 · todos os blocos e turnos do Lançamento recolhíveis pela seta ao lado do ícone (lembrado neste computador); cartões sem ícone ganham um
+  const Lf = await o.evaluate(async () => { const w = t => new Promise(r => setTimeout(r, t)); go('launch'); await w(600);
+    const all = [...document.querySelectorAll('#main .lf')], turnos = all.filter(x => x.matches('section.tl')), cards = all.filter(x => x.matches('section.card'));
+    const semSeta = all.filter(x => !x.querySelector('.lf-tg')).length, semIcone = cards.filter(x => !x.querySelector(':scope > header svg')).length;
+    const t = turnos[0], k = t && t.dataset.lfk; if (!t) return { n: all.length };
+    t.querySelector('.lf-tg').click(); await w(200); const dob = t.classList.contains('lf-fold'), txt = t.querySelector('.lf-tg').textContent.trim(), esc = [...t.children].filter(x => !x.classList.contains('tl-head')).every(x => getComputedStyle(x).display === 'none');
+    render(); await w(500); const t2 = document.querySelector(`#main [data-lfk="${CSS.escape(k)}"]`), lembra = !!(t2 && t2.classList.contains('lf-fold'));
+    t2.querySelector('.lf-tg').click(); await w(200); const abriu = !t2.classList.contains('lf-fold'), txt2 = t2.querySelector('.lf-tg').textContent.trim(); go('hourly'); await w(400);
+    return { n: all.length, turnos: turnos.length, cards: cards.length, semSeta, semIcone, dob, txt, esc, lembra, abriu, txt2 }; });
+  ok(Lf.turnos >= 2 && Lf.cards >= 2 && !Lf.semSeta && !Lf.semIcone, `Lançamento: seta Mostrar/Recolher em ${Lf.n} bloco(s) (${Lf.turnos} turnos, ${Lf.cards} cartões), todos com ícone`);
+  ok(Lf.dob && Lf.esc && /Mostrar/.test(Lf.txt) && Lf.lembra && Lf.abriu && /Recolher/.test(Lf.txt2), `turno recolhe pela seta ("${Lf.txt}"), fica recolhido depois de redesenhar e abre de novo ("${Lf.txt2}")`);
+  // 2.4.55 · gráfico do hora a hora respeita o turno escolhido
+  const GT = await o.evaluate(async () => { const w = t => new Promise(r => setTimeout(r, t)), day = curDay(), xs = () => { const sec = [...document.querySelectorAll('#main section.card')].find(x => /Atendimento hora a hora/.test(x.textContent)); return sec ? [...sec.querySelectorAll('svg text')].map(t => t.textContent).filter(t => /^\d\d:\d\d$/.test(t)) : []; };
+    const A = day.shifts.find(p => p.snap.code === 'T1'), Bs = day.shifts.find(p => p.snap.code === 'T2'), np = HHPs.nps(day)[0], out = {};
+    HHPs.sel = { date: day.date, id: A.id }; render(); await w(400); out.A = xs();
+    HHPs.sel = { date: day.date, id: Bs.id }; render(); await w(400); out.B = xs();
+    if (np) { HHPs.sel = { date: day.date, id: np.id }; render(); await w(400); out.C = xs(); out.Ctab = [...document.querySelectorAll('#main section.hh-np tbody tr')].filter(r => /Turno A/.test(r.textContent)).map(r => r.cells[0].textContent.trim()); }
+    HHPs.sel = null; render(); await w(300); return out; });
+  ok(GT.A[0] === '04:00' && GT.A[1] === '05:00' && GT.A[2] === '06:00' && !GT.A.includes('15:00'), `turno A: 04:00 e 05:00 (contam nele) e só as horas do A (${GT.A.slice(0, 4).join(' ')} … ${GT.A.slice(-1)})`);
+  ok(!GT.B.includes('04:00') && !GT.B.includes('06:00') && GT.B.includes('15:00'), `turno B: só as horas dele (${GT.B[0]} … ${GT.B.slice(-1)})`);
+  ok(GT.C && GT.C.join(' ') === '04:00 05:00' && GT.Ctab.length === 2, `3º turno não produtivo: as horas da janela com caixas (${GT.C && GT.C.join(' ')}), cada uma "conta no Turno A" (${GT.Ctab && GT.Ctab.join(', ')})`);
   // 2) Dia (24 h)
   await o.evaluate(() => { document.querySelector('[data-hhsel="dia"]').click(); }); await o.waitForTimeout(500);
   const D = await o.evaluate(() => {

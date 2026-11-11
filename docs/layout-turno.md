@@ -94,3 +94,27 @@ Pedidos do usuário na homologação com o CSV real da semana.
   - a ausência do aviso;
   - os blocos recolhíveis e lembrados.
 - **Botão do scrap:** "Lançar scrap" / "Editar scrap" com fundo vermelho pastel (#e06c6c) e texto branco em negrito, nos dois temas (pedido do usuário). O hover fica um pouco mais escuro.
+
+## 2.4.55 · Hora a hora por turno, Dia 00–24 h com barras e setas Mostrar/Recolher (11/11/2026)
+
+- **Gráfico do Hora a hora com o turno escolhido** (`HHPs.chart` em `hh24.js`):
+  - **1º turno:** mostra as horas dele e as horas fora do turno que contam nele (ex.: 04:00 e 05:00);
+  - **2º turno:** mostra só as horas dele;
+  - **3º turno não produtivo:** mostra as horas da janela dele que tiveram caixas, cada uma dizendo em qual turno conta;
+  - **Todos:** mostra tudo o que conta no dia, em ordem de horário.
+- **Turno não produtivo pelo dia do calendário:** a grade, a contagem no seletor e o gráfico usam as horas deste dia que caem na janela do turno (00:00–06:00 e 22:47–24:00), não mais a janela que entra no dia seguinte (`HHPs.npGrade`, `trechosNP`).
+  - A grade ganhou a coluna **"Conta no"**.
+  - O cabeçalho da grade diz em que turno a produção conta.
+- **Dia (24 h):** as horas fora do turno que contam neste dia agora têm **barra** (produção do MES), não só a linha.
+- **Seta "▾ Recolher / ▸ Mostrar" ao lado do ícone** (`LcFold` em `lanc_layout.js`, `App.prefs.lcFold`):
+  - aparece em todos os blocos do Lançamento (servidor, lotes, fora do turno, turno não produtivo), em **cada turno** e nos cartões com título (Validação, Cascata, Disponibilidade…);
+  - os cartões sem ícone ganharam um, escolhido pelo título;
+  - o clique na seta ou no título recolhe e abre, e a escolha fica lembrada neste computador;
+  - na impressão, tudo sai aberto;
+  - no celular, aparece só a seta;
+  - o Cabeçalho do dia mantém o botão próprio.
+- **Teste:** `thh24.js` confere:
+  - o gráfico por turno (A, B e o não produtivo);
+  - a coluna "Conta no";
+  - setas e ícones em todos os blocos;
+  - o turno recolhido e lembrado.

@@ -68,13 +68,13 @@ Object.assign(HHPs, {
   },
   npHtml(day, res) {
     const sel = this.id(day), W = this.nps(day).filter(w => !sel || sel === w.id); if (!W.length) return '';
-    const ft = res && res.foraTurno, alvo = w => { const J = ft ? (ft.janela || []).filter(i => i.data === day.date && i.a === w.a) : []; const N = [...new Set(J.map(i => i.alvo ? i.alvo.name + (i.alvo.date !== day.date ? ' de ' + U.brDate(i.alvo.date) : '') : 'sem turno para receber'))]; return N.join(' · '); };
+    const ft = res && res.foraTurno, alvo0 = w => { const J = ft ? (ft.janela || []).filter(i => i.data === day.date && i.a === w.a) : []; const N = [...new Set(J.map(i => i.alvo ? i.alvo.name + (i.alvo.date !== day.date ? ' de ' + U.brDate(i.alvo.date) : '') : 'sem turno para receber'))]; return N.join(' · '); };
     return W.map(w => {
       const g = this.npGrade(day, w), dob = this.dobrado(w.code), cat = c => { const k = (db().catalogs || []).find(z => String(z.code) === String(c)); return k ? catName(k.id) : c; };
       return `<section class="card section hh-np" data-hhnp="${esc(w.code)}"><header style="cursor:pointer" title="Recolher / expandir"><h3>${this.seta(w.code)} ${esc(w.name)} <span class="muted small">${U.hhmm(w.a)}–${U.hhmm(w.b)}</span></h3><span class="pill none" title="Turno não produtivo: só leitura; a produção desta janela conta no turno indicado (OEE reportado)">não produtivo · só leitura</span>
-        <span class="small muted">${U.fmt(g.n)} caixa(s) · ${fq(g.pecas)} ${esc(unitLbl())}${g.n ? ' · contou em ' + esc(alvo(w) || '—') : ''}</span>${ib('hhNP')}</header>
-        <div class="tw" ${dob ? 'hidden' : ''}><table class="hh"><thead><tr><th>Intervalo</th><th class="n">Min</th><th>Catálogo</th><th>Lote</th><th class="n">Caixas</th><th class="n">Produção</th><th class="n">Acumulado</th><th>1ª – última caixa</th></tr></thead><tbody>
-        ${g.rows.map(r => `<tr${r.n ? '' : ' class="muted"'}><td class="ivt">${U.range(r.x, r.y)}</td><td class="n">${r.y - r.x}</td><td>${esc(r.cats.map(cat).join(', ') || '—')}</td><td class="mono">${esc(r.lots.join(', ') || '—')}</td><td class="n">${r.n || ''}</td><td class="n">${r.n ? fq(r.pecas) : ''}</td><td class="n">${r.acc ? fq(r.acc) : ''}</td><td class="mono">${r.n ? OeeReal.hhmm(r.m0, g.base) + ' – ' + OeeReal.hhmm(r.m1, g.base) : ''}</td></tr>`).join('')}
+        <span class="small muted">${U.fmt(g.n)} caixa(s) · ${fq(g.pecas)} ${esc(unitLbl())}${g.n ? ' · conta em ' + esc([...new Set(g.rows.filter(r => r.n && r.conta).map(r => r.conta))].join(' · ') || alvo0(w) || '—') : ''}</span>${ib('hhNP')}</header>
+        <div class="tw" ${dob ? 'hidden' : ''}><table class="hh"><thead><tr><th>Intervalo</th><th class="n">Min</th><th>Catálogo</th><th>Lote</th><th class="n">Caixas</th><th class="n">Produção</th><th class="n">Acumulado</th><th>1ª – última caixa</th><th>Conta no</th></tr></thead><tbody>
+        ${g.rows.map(r => `<tr${r.n ? '' : ' class="muted"'}><td class="ivt">${U.range(r.x, r.y)}</td><td class="n">${r.y - r.x}</td><td>${esc(r.cats.map(cat).join(', ') || '—')}</td><td class="mono">${esc(r.lots.join(', ') || '—')}</td><td class="n">${r.n || ''}</td><td class="n">${r.n ? fq(r.pecas) : ''}</td><td class="n">${r.acc ? fq(r.acc) : ''}</td><td class="mono">${r.n ? OeeReal.hhmm(r.m0, g.base) + ' – ' + OeeReal.hhmm(r.m1, g.base) : ''}</td><td class="small">${r.n ? esc(r.conta || '—') : ''}</td></tr>`).join('')}
         </tbody></table></div></section>`;
     }).join('');
   },

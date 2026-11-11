@@ -88,7 +88,7 @@ Object.assign(HHPs, {
     const janela = D.cal ? `00:00 às 24:00 de ${U.brDate(day.date).slice(0, 5)}` : `${this.hm(D.w0)} de ${U.brDate(day.date).slice(0, 5)} às ${this.hm(D.w1)} de ${U.brDate(U.addDays(day.date, 1)).slice(0, 5)} (3º turno passa da meia-noite)`;
     const rec = D.R.length ? `<tr class="grp"><td colspan="7">Fora desta janela, mas conta neste dia</td></tr>` + D.R.map(r => `<tr class="hh-fora"><td class="ivt">${this.hm(r.h)}–${this.hm(r.h + 60)}</td><td class="small">fora dos turnos</td><td class="n"><span class="muted">—</span></td><td class="n"></td><td class="n">${U.fmt(r.n)}</td><td class="n">${fq(r.pecas)}</td><td class="small">conta no ${esc(r.conta)} · lote ${esc(r.lots.join(', '))}</td></tr>`).join('') : '';
     const ch = Charts.combo({ x: D.H.map(x => this.hm(x.h)), xFull: D.H.map(x => `${this.hm(x.h)}–${this.hm(x.h + 60)} · ${x.turno}`), xName: 'Hora', allLabels: true, unit: qUn,
-      bars: [{ name: 'Produção apontada', values: D.H.map(x => x.apont), color: 'var(--s1)', meta: D.H.map(x => x.meta) }],
+      bars: [{ name: 'Produção apontada (fora do turno: do MES)', values: D.H.map(x => x.dentro ? x.apont : x.contaHoje ? x.mes : null), color: 'var(--s1)', meta: D.H.map(x => x.meta) }],
       lines: [{ name: 'Meta da hora', values: D.H.map(x => x.meta), color: 'var(--ink)', dash: true, dots: false }].concat(D.temMes ? [{ name: 'Produção do MES (caixas)', values: D.H.map(x => x.n ? x.mes : null), color: 'var(--s2)', width: 1.5 }] : []),
       fmtY: v => fq(v), forceLegend: true, height: 220 });
     return `<section class="card section hh-dia"><header><h3>Dia de produção · 24 h</h3>${ib('hhDia')}<span class="spacer"></span><span class="small muted">só leitura · a produção é lançada na grade de cada turno</span></header>
@@ -207,3 +207,64 @@ MesDia.dia = function (d, day) {
   let ch = []; try { ch = bx.length ? S.changes(d, day.lineId).filter(c => { const f = S.tm(c.first); return f > bx[0].m && f <= bx[bx.length - 1].m; }) : []; } catch (e) { }
   return { date: day.date, base, n: bx.length, m0: bx.length ? bx[0].m : null, m1: bx.length ? bx[bx.length - 1].m : null, trocas: ch.length, trocaMin: U.sum(ch, c => c.min || 0), fora: bx.filter(c => c.fora).length };
 };
+
+/* ===== Produção 2.4.55 · hora a hora pelo dia do calendário e por turno (pedido do usuário, 11/11/2026) =====
+   - janela do dia: 00:00–24:00 quando nenhum turno produtivo passa da meia-noite; senão o dia de produção (06→06);
+   - turno não produtivo (ex.: 3º): a grade, a contagem do seletor e o gráfico usam as horas DESTE dia do calendário que caem na janela
+     dele (00:00–06:00 e 22:47–24:00), cada uma com o turno em que conta (ex.: 04:00–06:00 contam no 1º turno);
+   - gráfico do hora a hora respeita o turno escolhido: 1º turno = as horas dele + as fora do turno que contam nele; 3º turno não
+     produtivo = as horas da janela com caixas; Todos = tudo o que conta no dia, em ordem de horário;
+   - Dia (24 h): as horas fora do turno que contam neste dia ganham barra (produção do MES), não só a linha. */
+Object.assign(HHPs, {
+  calendario(day) { let fim = 0; for (const p of (day.shifts || []).filter(p => !p.deleted && !p.off)) for (const i of (p.intervals || []).filter(i => !i.deleted)) fim = Math.max(fim, i.end); return fim <= 1440; },
+  _itens: { k: '', v: [] },
+  itensFora(day) {
+    const d = db(), S = ServerData, k = day.id + '|' + day._rev + '|' + ((d.server || {}).segments || []).length;
+    if (this._itens.k === k) return this._itens.v;
+    let v = []; try { v = [-1, 0, 1].flatMap(j => { const dt = U.addDays(day.date, j), b0 = S.dayStartMin(dt); return ForaTurno.doDia(d, dt, day.lineId).map(i => ({ A: b0 + i.t0, Z: b0 + i.t1, alvo: i.alvo })); }); } catch (e) { }
+    this._itens = { k, v }; return v;
+  },
+  /* em qual turno conta a produção das caixas entre A e B (minutos absolutos) */
+  contaEm(day, A, B) { const j = this.itensFora(day).find(i => i.A < B && i.Z >= A); if (!j) return { txt: '', hoje: false };
+    return { txt: j.alvo ? j.alvo.name + (j.alvo.date !== day.date ? ' de ' + U.brDate(j.alvo.date).slice(0, 5) : '') : 'sem turno para receber', hoje: !!(j.alvo && j.alvo.date === day.date), code: j.alvo && j.alvo.code }; },
+  /* trechos da janela do turno não produtivo dentro do dia do calendário */
+  trechosNP(day, w) { if (!this.calendario(day)) return [[w.a, w.b]]; return [[Math.max(0, w.a - 1440), Math.min(1440, w.b - 1440)], [Math.max(0, w.a), Math.min(1440, w.b)]].filter(([a, b]) => b > a); },
+  npGrade(day, w) {
+    const d = db(), S = ServerData, base = S.dayStartMin(day.date), qty = +(d.settings || {}).serverBoxQty || 1000;
+    const L = []; for (const [a, b] of this.trechosNP(day, w)) { let t = a; while (t < b) { const n = Math.min(b, Math.floor(t / 60) * 60 + 60); L.push([t, n]); t = n; } }
+    let acc = 0, tot = 0;
+    const rows = L.map(([x, y]) => { let B = []; try { B = ForaTurno.caixas(d, day.lineId, base + x, base + y, day.date); } catch (e) { } acc += B.length * qty; tot += B.length;
+      const c = B.length ? this.contaEm(day, base + x, base + y) : { txt: '', hoje: false };
+      return { x, y, n: B.length, pecas: B.length * qty, acc, cats: [...new Set(B.map(z => z.cat))], lots: [...new Set(B.map(z => z.lot))], m0: B.length ? B[0].m : null, m1: B.length ? B[B.length - 1].m : null, conta: c.txt, hoje: c.hoje, code: c.code }; });
+    return { base, rows, n: tot, pecas: tot * qty };
+  }
+});
+/* gráfico do hora a hora por turno escolhido */
+HHPs.chart = function (o, day, res) {
+  o.allLabels = true;
+  try {
+    const sel = this.id(day), np = sel && String(sel).startsWith('np:') ? this.nps(day).find(w => w.id === sel) : null;
+    const ps = sel && !np && sel !== 'dia' ? (day.shifts || []).find(p => p.id === sel) : null;
+    const n0 = o.x.length, todos = n0 === res.flat.length, base = [];
+    if (!np) for (let i = 0; i < n0; i++) { const f = todos ? res.flat[i] : null; if (ps && f && f.ps !== ps) continue; base.push({ k: 'iv', i, s: f ? f.iv.start : i * 60 }); }
+    const ft = res && res.foraTurno;
+    if (np) for (const r of this.npGrade(day, np).rows.filter(r => r.n)) base.push({ k: 'np', r, s: r.x });
+    else for (const it of ((ft && ft.recebe) || []).filter(i => i.alvo && i.alvo.date === day.date && !(ft.semAlvo || []).includes(i) && (!ps || i.alvo.code === ps.snap.code)))
+      for (const r of this.porHora(day, it)) base.push({ k: 'f', r, it, s: r.h });
+    base.sort((a, b) => a.s - b.s || (a.k === 'iv' ? -1 : 1));
+    const pick = (arr, f) => base.map(e => e.k === 'iv' ? arr[e.i] : f(e));
+    const X = o.x, XF = o.xFull, B = (o.bars || []).map(b => ({ v: b.values, m: b.meta })), Lv = (o.lines || []).map(l => l.values), M = o.mark, TR = o.tipRows;
+    const h0 = e => e.k === 'np' ? e.r.x : e.r.h, h1 = e => e.k === 'np' ? e.r.y : e.r.h + 60, onde = e => e.k === 'np' ? (e.r.conta || 'sem turno para receber') : e.it.alvo.name;
+    o.x = pick(X, e => this.hm(h0(e))); if (XF) o.xFull = pick(XF, e => `${this.hm(h0(e))}–${this.hm(h1(e))} · fora do turno · conta no ${onde(e)}`);
+    (o.bars || []).forEach((b, k) => { b.values = pick(B[k].v, e => k === 0 ? e.r.pecas : null); if (b.meta) b.meta = pick(B[k].m, () => null); });
+    (o.lines || []).forEach((l, k) => { l.values = pick(Lv[k], () => null); });
+    if (M) o.mark = pick(M, () => []);
+    o.tipRows = i => { const e = base[i]; return e.k === 'iv' ? (TR ? TR(e.i) : []) : [['Fora do turno', `${U.fmt(e.r.n)} caixa(s) do MES · lote ${e.r.lots.join(', ')}`], ['Conta no', onde(e) + ' (OEE reportado)']]; };
+    if (!base.length) { o.x = []; }
+  } catch (e) { console.warn('HHPs.chart', e); }
+  return o;
+};
+/* Dia (24 h): barra também nas horas fora do turno que contam neste dia */
+{ const d24 = HHPs.dia24Dados;
+  HHPs.dia24Dados = function (day, res) { const D = d24.call(this, day, res), base = ServerData.dayStartMin(day.date);
+    for (const x of D.H) if (!x.dentro && x.n) { const c = this.contaEm(day, base + x.h, base + x.h + 60); x.contaHoje = c.hoje; } return D; }; }
