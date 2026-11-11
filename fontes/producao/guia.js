@@ -49,6 +49,8 @@ window.VAC_GUIA.oee = {
     para: 'A grade de produção por intervalo de cada turno: meta, produção boa, diferença, catálogo e paradas. É a fonte dos números do dia. Com o CSV do servidor (MES) importado, a produção vem sugerida pelas caixas.',
     campos: [
       { sel: '[data-hhsel]', nome: 'Turno', o: 'Mostra só um turno ou todos. O número é quantos intervalos já têm produção lançada. O turno não produtivo (ex.: C) aparece com as caixas do MES.', ex: 'A 8/8 · B 3/9: faltam 6 intervalos do B.' },
+      { sel: '[data-hhsel="dia"]', nome: 'Dia (24 h)', o: 'O dia de produção inteiro, hora por hora (do início do 1º turno até o mesmo horário do dia seguinte): turno, meta, apontado e caixas do MES. Horas sem turno mostram em qual turno a produção conta; a recebida de antes do início do dia aparece no topo. Só leitura.', ex: 'A linha começou às 04:00: 04:00–06:00 no topo, "conta no Turno A".' },
+      { sel: 'tr.hh-fora', nome: 'Fora do turno (só leitura)', o: 'Horas do MES fora do horário do turno que contam nele (OEE reportado), antes ou depois das linhas do turno: catálogo, lote, caixas e produção.', ex: '04:00–05:00 fora do turno · 60 cx no Turno A (06:00–14:30).' },
       { sel: 'tr[data-hhgrp]', nome: 'Linha do turno', o: 'Clique para recolher ou expandir os intervalos do turno (fica lembrado neste computador).' },
       { sel: 'section.hh-np', nome: 'Turno não produtivo (só leitura)', o: 'As caixas do MES por hora na janela do turno não produtivo: catálogo, lote, caixas, produção e 1ª–última caixa. A produção conta no turno indicado em "contou em". Para lançar nele, use "Habilitar turno" no Lançamento.' },
       { sel: '[data-good]', nome: 'Produção boa do intervalo', o: 'Peças boas no intervalo, na unidade indicada no topo (mil ou número completo).', como: 'Digite e Enter (grava e desce). ↑↓ navegam, Esc desfaz.', ex: '61 (= 61.000 peças em "mil").' },
@@ -65,7 +67,8 @@ window.VAC_GUIA.oee = {
     ],
     duvidas: [
       ['A primeira caixa do lote aparece antes do horário certo', 'Desde a 2.4.35, o catálogo e o lote registrados na preparação valem a partir da 1ª caixa. Dias importados antes: importe o período de novo.'],
-      ['Performance acima de 100%', 'Pode acontecer quando o turno recebe a produção de um turno não produtivo (regra de continuidade). O alerta aparece no KPI.']
+      ['Performance acima de 100%', 'Pode acontecer quando o turno recebe a produção de um turno não produtivo (regra de continuidade). O alerta aparece no KPI.'],
+      ['A linha produziu antes do 1º turno e não aparece', 'Desde a 2.4.52, essas horas aparecem no turno que recebe a produção (linhas "fora do turno") e no Dia (24 h). A regra de qual turno recebe vem de Configurações › Fora de turno (continuidade).']
     ]
   },
   plan: {
@@ -90,7 +93,7 @@ window.VAC_GUIA.oee = {
       { sel: '#oQ', nome: 'Buscar', o: 'Filtra por ordem, catálogo, lote ou material.', ex: '100234567 ou 360057.' },
       { sel: '#oXls', nome: 'Excel', o: 'Exporta a lista filtrada.' }
     ],
-    duvidas: [['A ordem não aparece', 'Ela só entra depois de importar o MB51 da competência em que foi lançada. Reimportar a mesma competência substitui (nunca soma).'], ['Ficha da ordem', 'O botão de ficha (ou Ctrl K) mostra a ordem em todas as páginas: Produção, Waste, Gel, Paradas e ações.']]
+    duvidas: [['A ordem não aparece', 'A lista do MB51 só tem as ordens do MB51 importado. Desde a 2.4.52, os lotes produzidos (MES) aparecem embaixo, com a ordem do plano e "não conciliado" até o MB51 da competência ser importado. Reimportar a mesma competência substitui (nunca soma).'], ['Ficha da ordem', 'O botão de ficha (ou Ctrl K) mostra a ordem em todas as páginas: Produção, Waste, Gel, Paradas e ações.']]
   },
   'ordens-conc': {
     titulo: 'Conciliação SAP × apontado',

@@ -30,7 +30,7 @@ const { chromium } = require('playwright');
     // PRD-06: hora a hora só do turno
     render(); await w(); document.querySelector(`section.tl [data-hhps="${ps.id}"]`).click(); await w();
     R.rota = App.route; R.grp = [...document.querySelectorAll('table.hh tr.grp')].map(t => t.textContent.trim().slice(0, 30));
-    R.seg = [...document.querySelectorAll('[data-hhsel]')].map(x => x.textContent.trim());
+    R.seg = [...document.querySelectorAll('[data-hhsel]:not([data-hhsel="dia"])')].map(x => x.textContent.trim());   // 2.4.52: "Dia (24 h)" é a visão do dia, não um turno
     R.sel = (document.querySelector('[data-hhsel][aria-pressed="true"]') || {}).dataset?.hhsel;
     document.querySelector('[data-hhsel=""]').click(); await w(); R.todos = document.querySelectorAll('table.hh tr.grp').length;
     R.psNome = ps.snap.name; return R;
