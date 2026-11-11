@@ -83,3 +83,17 @@ O motor (`vbars`, `tsChart`, `dbTime`) ganhou `un` / `unit`, que gera a linha "V
   - os mesmos números da referência, com a linha da unidade fora da comparação;
   - todo gráfico do painel com unidade no eixo ou "Valores em …";
   - produção em tubos e gel em kg.
+
+## Portal 1.9.25 (11/11/2026): fim da sequência
+
+Os cartões já traziam o título com a unidade (V06). Esta versão completa o padrão:
+- **TV:** o gráfico de cada página ganhou o título, que traz a unidade. Antes saía sem título.
+- **`barChart`:** o eixo não repete rótulos em escala pequena com o `fmtK` (antes 0 · 1 · 2 · 2 · 3, agora 0,0 · 0,7 · 1,4 · 2,1 · 2,8).
+- **Unidade igual à da Produção:** "Produção boa por dia (tubos)" no lugar de "(peças)".
+- **Unidade em parênteses:** "Paradas por dia (min)" no lugar de "Minutos de parada por dia".
+- **Teste:** `tportal_vg.js` confere:
+  - na TV, todo gráfico com título;
+  - o eixo sem repetição.
+- **Referência:** só o título do cartão da Produção mudou ("peças" → "tubos"); os números ficaram iguais.
+
+**Pendência § L (V06) resolvida** nas cinco páginas: Produção 2.4.51, Waste 1.8.36, Paradas 1.0.33, Gel 2.28 e Portal 1.9.25. Gráfico novo segue a regra do início deste documento.

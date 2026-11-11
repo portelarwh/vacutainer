@@ -32,6 +32,13 @@ const LER = () => {
     ok(JSON.stringify(ref.pend) === JSON.stringify(atual.pend), `mesmas pendências da linha (${atual.pend.length})`);
     ok(ref.per === atual.per, 'mesma barra de período');
   }
+  // 1.9.25 · gráficos (docs/graficos-padrao.md): na TV, o gráfico de cada página com o título (que traz a unidade); eixo sem rótulos repetidos
+  const gr = await o.evaluate(() => { const S = tvSlides(), d = document.createElement('div'); const r = { comGraf: 0, comTit: 0 };
+    S.forEach(x => { d.innerHTML = x.html; d.querySelectorAll('.card').forEach(c => { if (c.querySelector('svg')) { r.comGraf++; if (c.querySelector('h3')) r.comTit++; } }); });
+    d.innerHTML = barChart([{ label: 'a', value: 0.4 }, { label: 'b', value: 2.6 }]); const tk = [...d.querySelectorAll('svg > text[text-anchor="end"]')].map(x => x.textContent);
+    r.tk = tk.join('|'); r.rep = new Set(tk).size < tk.length; return r; });
+  ok(gr.comGraf > 0 && gr.comTit === gr.comGraf, `TV: gráfico de cada página com título e unidade (${gr.comTit}/${gr.comGraf})`);
+  ok(!gr.rep, `eixo sem rótulos repetidos (valores pequenos: ${gr.tk})`);
   await o.screenshot({ path: SAI + ROTULO + '-1440-claro.png', fullPage: true });
   if (!GRAVAR) {
     const L = await o.evaluate(async () => { const w = t => new Promise(r => setTimeout(r, t)), out = {}, M = document.getElementById('main');

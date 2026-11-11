@@ -6,7 +6,7 @@ Plataforma de páginas HTML de arquivo único que trabalham juntas numa **pasta 
 
 | Página | Arquivo | Base | Versão | Como editar |
 |---|---|---|---|---|
-| Portal (cadastro geral, Administração) | `Portal.html` | `portal-base.json` + `vacutainer-cadastros.json` | 1.9.24 | direto no HTML |
+| Portal (cadastro geral, Administração) | `Portal.html` | `portal-base.json` + `vacutainer-cadastros.json` | 1.9.25 | direto no HTML |
 | Produção (OEE, plano, ordens SAP) | `OEE-Vacutainer.html` | `oee-vacutainer-base.json` (+ `ordens-base.json`) | 2.4.51 | **NÃO editar o HTML**: editar `fontes/producao/` e rodar o build |
 | Waste (perdas por ordem, KKBC) | `Perdas-Ordem.html` | `perdas-base.json` | 1.8.36 | direto no HTML |
 | Gestão de Gel | `Gestão-Gel-Vacutainer.html` | `fifo-base.json` | 2.28 · **em atualização** | direto no HTML |
@@ -125,7 +125,7 @@ Produção aplica o cadastro na base do OEE pelo `CadSync` (`fontes/producao/cad
 - Plataforma: `arquitetura-integracao-sistemas.md`, `portal-e-padrao-comum.md`, `plano-evolucao-plataforma.md`, `centralizacao-configuracoes.md`
 - Cadastro: `cadastro-base-contrato.md`, `cs12-importacao-bom.md`
 - Kit: `kit-cabecalho-e-backups.md` (v1), `kit-cabecalho-v2.md` (v2/v2.1)
-- Gráficos (título, "Valores em …", legenda, eixo sem rótulo repetido): `graficos-padrao.md`
+- Gráficos (título, "Valores em …", legenda, eixo sem rótulo repetido; feito nas 5 páginas em 11/11/2026, gráfico novo segue a regra): `graficos-padrao.md`
 - Páginas novas: `paginas-construcao.md` (construção/atualização)
 - Briefing de 09/11/2026 (respostas da seção 10, POR-04/09 e proposta da Fase 1 para aprovação): `briefing-2026-11-09-fase0-fase1.md`
 - Páginas: `portal-1-7.md` (Portal 1.7–1.8.12), `producao-ordens-sap.md`, `waste-v1-8.md`, `perdas-ordem-v1.md`, `paradas-arquitetura.md`, `portal-pedido-paradas.md`, `paginas-novas.md`, `osm-arquitetura.md`
@@ -153,7 +153,6 @@ Lista única do que ficou para depois. O motivo e o gatilho de cada item estão 
 - Waste ainda cai na base da Produção (`monthPlans`, `server.lotClass/lotNotes`) para ordens fora dos 24 meses do `exports.porOrdem` e lotes fora dos 150 dias do `exports.lotes` (registro § U, E4).
 
 **Layout (auditoria visual; registro § L)**
-- Revisar títulos, unidades e legendas dos gráficos internos de cada página (padrão em `docs/graficos-padrao.md`, uma PR por página: Produção → Waste → Paradas → Gel → Portal). Já feito: cards do Portal, Produção 2.4.51, Waste 1.8.36, Paradas 1.0.33 e Gel 2.28; falta o Portal.
 - Exemplos visuais dos componentes (cards, pílulas, abas) nos dois temas.
 
 **Homologação e testes**
