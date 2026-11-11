@@ -475,6 +475,8 @@ nav.vtabs .badge[hidden]{display:none}
 @media (max-width:700px){.vk-mais{display:inline-flex}.filters:not(.vk-aberto) .vk-opt{display:none!important}}
 .vk-estilo .card .sh h2{font-family:var(--f-body,system-ui,sans-serif);text-transform:none;letter-spacing:0;font-size:17px;font-weight:700}
 a.vk-dc,a.vk-dc:hover{text-decoration:none;color:inherit}
+/* Gráficos (docs/graficos-padrao.md): linha "Valores em <unidade>" acima do gráfico cujo eixo não traz a unidade */
+.c-un{margin:0 0 2px;font-size:11.5px;color:var(--muted,#64748b)}.c-un b{font-weight:600;color:var(--ink,inherit)}
 </style>
 <script id="vac-bases">
 /* Demonstração integrada, incorporada em cada HTML pelos builds. Nenhuma dependência de servidor.
@@ -1143,7 +1145,7 @@ addEventListener('error', e => { if (e.error && e.error.name === 'VacAbaBloquead
    Base: perdas-base.json na pasta da rede (mesmo padrão OEE / Gel)
    Contrato: bloco "exports" (exportsVersion 1) lido pelas outras páginas
    ===================================================================== */
-const APP_VER='1.8.35',   /* 1.8.35 · Visão Geral no padrão comum (vacLayout): situação, números, diagnóstico, análises em grupos */   /* 1.8.34 · kit: login com ID e senha */   /* 1.8.33 · kit: datas DD/MM/AAAA */   /* 1.8.32 · nome Eficácia/Confirmação de Processo */   /* 1.8.31 · kit: nome e presença de Iniciativas / Ações na barra */   /* 1.8.30 · UX-02: guia por aba */   /* 1.8.29 · Fase 7 (UX-03, WST-01): Painel → Visão Geral */   /* 1.8.28 · Fase 6 (WST-03, INI-04): ações em Iniciativas / Ações; antigas até a migração, depois só leitura */   /* 1.8.27 · Fase 3 (IMP-04/06, WST-02): importações no exports; aba Importar leva ao Portal › Importação */   /* 1.8.26 · ARQ-09: "Ver com dados de teste" vira a Demonstração integrada */   /* 1.8.23 · C2–C6: kit com a ficha por pasta (AT-08) e a contagem da fila durável (Portal › Versões) */   /* 1.8.22 · C1: trava da 2ª aba com alteração pendente (nada é descartado); kit com a fila durável */   /* 1.8.21 · E11: busca do kit leva o equipamento à ficha em Equipamentos */   /* 1.8.20 · E8: kit com "+ Abrir ação" na ficha da ordem (Planner de Iniciativas) */   /* 1.8.19 · E5: ficha da ordem comum (botão Ficha na ordem; busca Ctrl K por ordem, lote e LP) */   /* 1.8.18 · E4: versão do exports conferida (Produção, Ordens), ordem em várias competências, dias do lote pela chave · 1.8.17 · E2: fonte única da versão (tela, base, exports e Portal › Versões) */ BASE_FN='perdas-base.json', DIR_ORIG='00. Originais SAP', DIR_BKP='00. Backups', DIR_IN='00. Entrada KKBC', DIR_DONE='00. Entrada KKBC/Processados';
+const APP_VER='1.8.36',   /* 1.8.36 · gráficos: "Valores em …" (moeda), eixo sem rótulos repetidos, medida do Comparativo no gráfico do relatório (docs/graficos-padrao.md) */   /* 1.8.35 · Visão Geral no padrão comum (vacLayout): situação, números, diagnóstico, análises em grupos */   /* 1.8.34 · kit: login com ID e senha */   /* 1.8.33 · kit: datas DD/MM/AAAA */   /* 1.8.32 · nome Eficácia/Confirmação de Processo */   /* 1.8.31 · kit: nome e presença de Iniciativas / Ações na barra */   /* 1.8.30 · UX-02: guia por aba */   /* 1.8.29 · Fase 7 (UX-03, WST-01): Painel → Visão Geral */   /* 1.8.28 · Fase 6 (WST-03, INI-04): ações em Iniciativas / Ações; antigas até a migração, depois só leitura */   /* 1.8.27 · Fase 3 (IMP-04/06, WST-02): importações no exports; aba Importar leva ao Portal › Importação */   /* 1.8.26 · ARQ-09: "Ver com dados de teste" vira a Demonstração integrada */   /* 1.8.23 · C2–C6: kit com a ficha por pasta (AT-08) e a contagem da fila durável (Portal › Versões) */   /* 1.8.22 · C1: trava da 2ª aba com alteração pendente (nada é descartado); kit com a fila durável */   /* 1.8.21 · E11: busca do kit leva o equipamento à ficha em Equipamentos */   /* 1.8.20 · E8: kit com "+ Abrir ação" na ficha da ordem (Planner de Iniciativas) */   /* 1.8.19 · E5: ficha da ordem comum (botão Ficha na ordem; busca Ctrl K por ordem, lote e LP) */   /* 1.8.18 · E4: versão do exports conferida (Produção, Ordens), ordem em várias competências, dias do lote pela chave · 1.8.17 · E2: fonte única da versão (tela, base, exports e Portal › Versões) */ BASE_FN='perdas-base.json', DIR_ORIG='00. Originais SAP', DIR_BKP='00. Backups', DIR_IN='00. Entrada KKBC', DIR_DONE='00. Entrada KKBC/Processados';
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 /* página para o núcleo comum, o cabeçalho (vac-cabecalho v2) e o quadro de Versões do Portal */
 const PAGE={id:'perdas',titulo:'Waste · Linha Vacutainer',tituloCurto:'Waste',subtitulo:'Custos e perdas por ordem',versao:APP_VER,baseFile:BASE_FN,backupDir:'00. Backups/Perdas',busca:q=>buscaPerdas(q)};
@@ -1897,7 +1899,7 @@ function renderPainel(){
  // gráficos
  const pm={};for(const o of ords){pm[o.per]=(pm[o.per]||0)+o.d}
  const trend=Object.keys(pm).sort().map(p=>({label:fmtM(p),value:pm[p],key:p,meta:metaPer(p),color:metaPer(p)!=null?(pm[p]>metaPer(p)?'var(--bad)':'var(--good)'):(pm[p]>0?'var(--bad)':'var(--good)')}));
- $('#chTrend').innerHTML=has?barChart(trend,{h:220,click:'per'}):'';
+ $('#chTrend').innerHTML=has?barChart(trend,{h:220,click:'per',unit:msim()}):'';
  const cr=(F._compRows||rows).filter(r=>!isDelivery(r));const cmap=new Map();for(const r of cr){const k=compKey(r);const x=cmap.get(k)||{v:0,d:compName(r)};x.v+=dev(r);cmap.set(k,x)}
  const par=[...cmap].map(([k,x])=>({label:k,sub:x.d,value:x.v,key:k})).filter(x=>x.value>0).sort((a,b)=>b.value-a.value).slice(0,10);
  $('#chComp').innerHTML=has?paretoChart(par,'comp'):'';
@@ -1987,23 +1989,27 @@ function renderTable(ords,rows){
 }
 
 /* ---------- gráficos SVG ---------- */
-function barChart(d,{h=200,meta=null,click=null,minW=560}={}){
+function barChart(d,{h=200,meta=null,click=null,minW=560,unit=null,fmt=null}={}){
  if(!d.length)return'<p class="muted small">Sem dados.</p>';
+ const fk=fmt||fmtK;   /* 1.8.36: fmt passa a valer (Comparativo em % no relatório); unit = linha "Valores em …" */
  /* 1.8.17 · meta por barra (x.meta): igual em todas → uma linha; diferentes → um traço por barra */
  const _ms=d.map(x=>x.meta).filter(v=>v!=null);let porBarra=false;if(meta==null&&_ms.length){if(_ms.every(v=>v===_ms[0])&&_ms.length===d.length)meta=_ms[0];else porBarra=true}
  const W=Math.max(minW,d.length*60),pl=62,pb=26,pt=12,H=h;const vals=d.map(x=>x.value).concat(meta!=null?[meta]:[]).concat(porBarra?_ms:[]);
  let mx=Math.max(0,...vals),mn=Math.min(0,...vals);if(mx===mn)mx=mn+1;const pad=(mx-mn)*.08;mx+=pad;if(mn<0)mn-=pad;
  const y=v=>pt+(mx-v)/(mx-mn)*(H-pt-pb);const bw=(W-pl-10)/d.length;
  let s=`<svg viewBox="0 0 ${W} ${H}" width="100%" style="max-height:${H}px">`;
- for(let i=0;i<=4;i++){const v=mn+(mx-mn)*i/4;s+=`<line x1="${pl}" x2="${W}" y1="${y(v)}" y2="${y(v)}" stroke="var(--grid)"/><text x="${pl-6}" y="${y(v)+4}" font-size="10" text-anchor="end" fill="var(--muted)">${fmtK(v)}</text>`}
+ const tv=[0,1,2,3,4].map(i=>mn+(mx-mn)*i/4);let ft=fk;   /* 1.8.36: eixo sem rótulos repetidos (mais casas só no eixo) */
+ if(!fmt&&new Set(tv.map(v=>fmtK(v))).size<tv.length){const fd=d=>v=>{const a=Math.abs(v),o={minimumFractionDigits:d,maximumFractionDigits:d};return a>=1e6?(v/1e6).toLocaleString('pt-BR',o)+' mi':a>=1e3?(v/1e3).toLocaleString('pt-BR',o)+' mil':v.toLocaleString('pt-BR',o)};
+  ft=[1,2,3].map(fd).find(f=>new Set(tv.map(f)).size===tv.length)||fd(3)}
+ tv.forEach(v=>{s+=`<line x1="${pl}" x2="${W}" y1="${y(v)}" y2="${y(v)}" stroke="var(--grid)"/><text x="${pl-6}" y="${y(v)+4}" font-size="10" text-anchor="end" fill="var(--muted)">${ft(v)}</text>`});
  s+=`<line x1="${pl}" x2="${W}" y1="${y(0)}" y2="${y(0)}" stroke="var(--axis)"/>`;
  d.forEach((x,i)=>{const X=pl+i*bw+bw*.15,w=bw*.7,y0=y(0),y1=y(x.value);
-  s+=`<g ${click?`data-fk="${click}" data-fv="${esc(x.key)}" style="cursor:pointer"`:''}><title>${esc(x.label)}: ${fmtR(x.value)}</title><rect x="${X}" y="${Math.min(y0,y1)}" width="${w}" height="${Math.max(1,Math.abs(y1-y0))}" fill="${x.color||'var(--pri)'}" rx="2"/>
-  <text x="${X+w/2}" y="${x.value>=0?y1-4:y1+12}" font-size="10" text-anchor="middle" fill="var(--ink)">${fmtK(x.value)}</text>
+  s+=`<g ${click?`data-fk="${click}" data-fv="${esc(x.key)}" style="cursor:pointer"`:''}><title>${esc(x.label)}: ${fmt?fmt(x.value):fmtR(x.value)}</title><rect x="${X}" y="${Math.min(y0,y1)}" width="${w}" height="${Math.max(1,Math.abs(y1-y0))}" fill="${x.color||'var(--pri)'}" rx="2"/>
+  <text x="${X+w/2}" y="${x.value>=0?y1-4:y1+12}" font-size="10" text-anchor="middle" fill="var(--ink)">${fk(x.value)}</text>
   <text x="${X+w/2}" y="${H-8}" font-size="11" text-anchor="middle" fill="var(--muted)">${esc(x.label)}</text></g>`});
  if(porBarra)d.forEach((x,i)=>{if(x.meta==null)return;const X=pl+i*bw+bw*.05,w=bw*.9;s+=`<g><title>meta ${esc(x.label)}: ${fmtR(x.meta)}</title><line x1="${X}" x2="${X+w}" y1="${y(x.meta)}" y2="${y(x.meta)}" stroke="var(--ink)" stroke-width="2" stroke-dasharray="5 3"/></g>`});
- if(meta!=null)s+=`<line x1="${pl}" x2="${W}" y1="${y(meta)}" y2="${y(meta)}" stroke="var(--ink)" stroke-dasharray="5 4"/><text x="${W-4}" y="${y(meta)-4}" font-size="10" text-anchor="end" fill="var(--ink)">meta ${fmtK(meta)}</text>`;
- return s+'</svg>'}
+ if(meta!=null)s+=`<line x1="${pl}" x2="${W}" y1="${y(meta)}" y2="${y(meta)}" stroke="var(--ink)" stroke-dasharray="5 4"/><text x="${W-4}" y="${y(meta)-4}" font-size="10" text-anchor="end" fill="var(--ink)">meta ${fk(meta)}</text>`;
+ return(unit?`<div class="c-un">Valores em <b>${esc(unit)}</b></div>`:'')+s+'</svg>'}
 function fmtK(v){const a=Math.abs(v);return(a>=1e6?(v/1e6).toLocaleString('pt-BR',{maximumFractionDigits:1})+' mi':a>=1e3?(v/1e3).toLocaleString('pt-BR',{maximumFractionDigits:1})+' mil':v.toLocaleString('pt-BR',{maximumFractionDigits:0}))}
 function paretoChart(d,fk){
  if(!d.length)return'<p class="muted small">Sem perdas neste recorte.</p>';
@@ -2277,7 +2283,7 @@ function openOrder(ordem){
  <div class="card" id="dGel" style="margin:0 0 12px;padding:10px 12px"><h3 style="margin-bottom:6px">No Gel <i class="i" title="Dados da Gestão de Gel para esta ordem e lote: consumo de gel, scrap de gel e barris (LP). Somente leitura.">i</i></h3><div id="gelBox">${gelBlock(ordem)}</div></div>
  ${(()=>{const v=versions.find(x=>x.vig);const og=v?.imp?.outrosGrupos?.[ordem];if(!og||!Object.keys(og).length)return'';
    return`<div class="note small"><b>Outros grupos da KKBC (fora da análise):</b> ${Object.entries(og).map(([g,x])=>`${esc(g)}: meta ${fmtR(x.cT)} · real ${fmtR(x.cR)} · desvio <span class="${x.cR-x.cT>0?'bad':'good'}">${fmtR(x.cR-x.cT)}</span>`).join(' &nbsp;|&nbsp; ')}</div>`})()}
- <h3 id="dComps">Componentes</h3><div class="tw"><table><tr><th>Componente</th><th>Descrição</th><th>Un</th><th class="n">Qtd meta</th><th class="n">Qtd real</th><th class="n">Desvio qtd</th><th class="n">%</th><th class="n">Custo meta</th><th class="n">Custo real</th><th class="n">Desvio R$</th><th class="n" title="(Qtd real − Qtd meta) × custo unitário da meta">Efeito qtd</th><th class="n" title="Desvio − efeito quantidade: preço, custo ou valorização diferente da meta">Efeito preço</th><th>Sinais</th><th>Causa</th><th></th></tr>
+ <h3 id="dComps">Componentes</h3><div class="tw"><table><tr><th>Componente</th><th>Descrição</th><th>Un</th><th class="n">Qtd meta</th><th class="n">Qtd real</th><th class="n">Desvio qtd</th><th class="n">%</th><th class="n">Custo meta</th><th class="n">Custo real</th><th class="n">Desvio ${msim()}</th><th class="n" title="(Qtd real − Qtd meta) × custo unitário da meta">Efeito qtd</th><th class="n" title="Desvio − efeito quantidade: preço, custo ou valorização diferente da meta">Efeito preço</th><th>Sinais</th><th>Causa</th><th></th></tr>
  ${comps.map(r=>{const d=dev(r),dq=(r.qR??0)-(r.qT??0),l=level(d,r.cT),st=statLevel(r);const cc=coms.filter(c=>c.comp===r.comp).length;
   const sapDiff=r.dSap!=null&&r.cT!=null&&r.cR!=null&&Math.abs(Math.abs(r.dSap)-Math.abs(r.cR-r.cT))>Math.max(1,Math.abs(r.cR-r.cT)*.01);
   return`<tr class="${hl(l)}"><td>${esc(compKey(r))}${isDelivery(r)?' <span class="tag b">entrega</span>':''}</td><td>${esc(compName(r))}</td><td>${esc(r.un||'')}</td><td class="n">${fmtQ(r.qT)}</td><td class="n">${fmtQ(r.qR)}</td><td class="n">${r.qT!=null||r.qR!=null?fmtQ(dq):'–'}</td><td class="n">${r.qT?fmtP(dq/Math.abs(r.qT)):'–'}</td><td class="n">${fmtR(r.cT,2)}</td><td class="n">${fmtR(r.cR,2)}</td><td class="n ${d>0?'bad':'good'}">${fmtR(d,2)}</td><td class="n">${fmtR(split(r).eq,2)}</td><td class="n">${fmtR(split(r).ep,2)}</td>
@@ -2393,7 +2399,8 @@ function orderDate(ordem){const q=OEE.src?oeeQuick(ordem):null;const v=q&&(q.fim
 function isoWeek(iso){const d=new Date(iso+'T12:00:00');const t=new Date(Date.UTC(d.getFullYear(),d.getMonth(),d.getDate()));const day=t.getUTCDay()||7;t.setUTCDate(t.getUTCDate()+4-day);const y0=new Date(Date.UTC(t.getUTCFullYear(),0,1));const w=Math.ceil(((t-y0)/864e5+1)/7);
  const mon=new Date(d);mon.setDate(d.getDate()-((d.getDay()||7)-1));return{key:t.getUTCFullYear()+'-S'+String(w).padStart(2,'0'),label:'S'+w+' · '+fmtD(mon.toISOString().slice(0,10)).slice(0,5)}}
 const C={by:'cat',met:'pm',tipo:'',cat:'',de:'',ate:'',cell:null};
-const MET={pm:{l:'R$/milhão',f:v=>fmtR(v,2)},pq:{l:'desvio qtd',f:v=>fmtP(v)},d:{l:'R$',f:v=>fmtR(v)},pp:{l:'efeito preço R$/milhão',f:v=>fmtR(v,2)}};
+const msim=()=>moedaVer()==='USD'?'US$':'R$';   /* 1.8.36 · símbolo da moeda vista (R$ ou US$) nos rótulos e nos gráficos */
+const MET={pm:{get l(){return msim()+'/milhão'},f:v=>fmtR(v,2)},pq:{l:'desvio qtd',f:v=>fmtP(v)},d:{get l(){return msim()},f:v=>fmtR(v)},pp:{get l(){return 'efeito preço '+msim()+'/milhão'},f:v=>fmtR(v,2)}};
 function metricOf(a){/* a: {d,ep,qT,qR,tubes} */
  if(C.met==='pm')return a.tubes?a.d/a.tubes*1e6:null;if(C.met==='pp')return a.tubes?a.ep/a.tubes*1e6:null;if(C.met==='pq')return a.qT?(a.qR-a.qT)/a.qT:null;return a.d}
 function compObs(){
@@ -2432,7 +2439,7 @@ function renderComp(){
  const mx=Math.max(1e-9,...groups.map(g=>Math.abs(g.v||0)));
  const byL={cat:'catálogo',fam:'família',tipo:'tipo de item',mes:'mês',sem:'semana'}[C.by];
  $('#cTitRank').innerHTML=`Ranking por ${byL} <span class="muted small">· ${M.l}${C.tipo?' · '+esc(C.tipo):''}${C.cat?' · catálogo '+esc(C.cat):''} · conjunto: ${M.f(totV)}</span>`;
- $('#cRank').innerHTML=`<div class="tw" style="max-height:420px"><table><tr><th>${byL}</th><th class="n">Ordens</th><th class="n">Tubos</th><th class="n">Desvio R$</th><th style="width:22%">${M.l}</th><th class="n">Mediana por ordem</th><th class="n">Faixa (P25–P75)</th><th class="n">Ordens fora do ideal</th>${sortable?'':'<th class="n" title="Em quantos meses o grupo ficou acima do conjunto">Acima do conjunto</th>'}</tr>
+ $('#cRank').innerHTML=`<div class="tw" style="max-height:420px"><table><tr><th>${byL}</th><th class="n">Ordens</th><th class="n">Tubos</th><th class="n">Desvio ${msim()}</th><th style="width:22%">${M.l}</th><th class="n">Mediana por ordem</th><th class="n">Faixa (P25–P75)</th><th class="n">Ordens fora do ideal</th>${sortable?'':'<th class="n" title="Em quantos meses o grupo ficou acima do conjunto">Acima do conjunto</th>'}</tr>
  ${groups.map(g=>{const rel=totV&&g.v!=null?g.v/totV:null;const cls=g.v==null?'':(C.met==='d'?hl(level(g.d,0)):rel>1.5&&g.v>0?'hl3':rel>1.1&&g.v>0?'hl1':'');
   return`<tr class="click ${cls}" data-k="${esc(g.key)}"><td><b>${esc(g.label)}</b></td><td class="n">${g.n}</td><td class="n">${fmtK(g.tubes)}</td><td class="n">${fmtR(g.d)}</td>
   <td><div style="display:flex;align-items:center;gap:6px"><div style="flex:1;height:10px;background:var(--surface-3);border-radius:2px;position:relative"><div style="position:absolute;${(g.v||0)>=0?'left:0':'right:0'};height:10px;border-radius:2px;width:${Math.abs(g.v||0)/mx*100}%;background:${(g.v||0)>0?'var(--bad)':'var(--good)'}"></div></div><span style="min-width:90px;text-align:right">${g.v==null?'–':M.f(g.v)}</span></div></td>
@@ -2451,7 +2458,7 @@ function renderStrip(groups){
   g.obs.forEach(o=>{const v=metricOf(o);if(v==null||!isFinite(v))return;const c=o.lvl>=3?'var(--crit-strong)':o.lvl>=1?'var(--crit)':v>0?'color-mix(in srgb,var(--crit) 45%,var(--surface))':'var(--ok)';
    s+=`<circle cx="${x(v)}" cy="${y+(Math.random()-.5)*8}" r="4" fill="${c}" fill-opacity=".75" style="cursor:pointer" data-o="${esc(o.ordem)}"><title>Ordem ${esc(o.ordem)} · ${esc(o.cat||'')}${o.tipo?' · '+esc(o.tipo):''} · ${M.f(v)} · ${fmtR(o.d)}</title></circle>`});
   if(g.med!=null)s+=`<line x1="${x(g.med)}" x2="${x(g.med)}" y1="${y-8}" y2="${y+8}" stroke="var(--ink)" stroke-width="2"/>`});
- $('#cStrip').innerHTML=s+'</svg>';$$('#cStrip circle').forEach(c=>c.onclick=()=>openOrder(c.dataset.o));
+ $('#cStrip').innerHTML=(C.met==='pq'?'':`<div class="c-un">Valores em <b>${esc(M.l)}</b></div>`)+s+'</svg>';$$('#cStrip circle').forEach(c=>c.onclick=()=>openOrder(c.dataset.o));
 }
 function renderMatrix(){
  const sv={by:C.by,tipo:C.tipo,cat:C.cat};C.by='tipo';C.tipo='';C.cat='';const{obs}=compObs();Object.assign(C,sv);
@@ -2476,7 +2483,7 @@ function renderCompOrders(obs){
  list=[...list].sort((a,b)=>(metricOf(b)??-1e18)-(metricOf(a)??-1e18));
  const one=!!(C.tipo||(C.cell&&C.cell.t)||(C.by==='tipo'&&C.cell&&C.cell.k!=null));const qh=one?'<th class="n">Qtd teórica</th><th class="n">Qtd real</th>':'';
  $('#cOrdTit').innerHTML=`${tit} <span class="muted small">· ${list.length} · ordenado por ${M.l}</span> ${C.cell?'<button class="b sm" id="cClr">ver todas</button>':''}`;
- $('#cOrd').innerHTML=`<table><tr><th>Ordem</th><th>Mês</th><th>Data (OEE)</th><th>Catálogo</th><th>Descrição</th>${list.some(x=>x.tipo)?'<th>Tipo de item</th>':''}<th class="n">Tubos</th>${qh}<th class="n">Desvio qtd</th><th class="n">Desvio R$</th><th class="n">Efeito preço</th><th class="n">${M.l}</th></tr>
+ $('#cOrd').innerHTML=`<table><tr><th>Ordem</th><th>Mês</th><th>Data (OEE)</th><th>Catálogo</th><th>Descrição</th>${list.some(x=>x.tipo)?'<th>Tipo de item</th>':''}<th class="n">Tubos</th>${qh}<th class="n">Desvio qtd</th><th class="n">Desvio ${msim()}</th><th class="n">Efeito preço</th><th class="n">${M.l}</th></tr>
  ${list.slice(0,400).map(x=>`<tr class="click ${hl(x.lvl)}" data-o="${esc(x.ordem)}"><td>${esc(x.ordem)}</td><td>${fmtM(x.per)}</td><td>${fmtD(x.dt)}</td><td>${esc(x.cat||'')}</td><td class="small">${esc(x.prodDesc||'')}</td>${list.some(y=>y.tipo)?`<td>${esc(x.tipo)}</td>`:''}<td class="n">${fmtQ(x.tubes)}</td>${one?`<td class="n">${fmtQ(x.qT)}</td><td class="n">${fmtQ(x.qR)}</td>`:''}<td class="n">${x.qT?fmtP((x.qR-x.qT)/x.qT):'–'}</td><td class="n">${fmtR(x.d,2)}</td><td class="n">${fmtR(x.ep,2)}</td><td class="n"><b>${(v=>v==null?'–':M.f(v))(metricOf(x))}</b></td></tr>`).join('')}</table>`;
  $$('#cOrd tr.click').forEach(tr=>tr.onclick=()=>openOrder(tr.dataset.o));const b=$('#cClr');if(b)b.onclick=()=>{C.cell=null;renderCompOrders(null)};
 }
@@ -2610,7 +2617,7 @@ function tvSlides(){const ult=allPers().slice(-1)[0];if(!ult)return[{titulo:'Sem
  const R=resumoPeriodo(ult,ult);const bk=(l,v,sub,c)=>`<div class="bk"><div class="l">${esc(l)}</div><div class="v sm ${c||''}">${esc(v)}</div><div class="s">${esc(sub||'')}</div></div>`;
  const meta=metaPer(ult);const S=[];
  S.push({titulo:'Resumo · '+fmtML(ult),html:`<div class="big">${bk('Var. material',fmtC(R.vMat),'desvio de estrutura',R.vMat>0?'bad':'good')}${bk('Scrap',fmtC(R.vScr),'desvio total − estrutura',R.vScr>0?'bad':'good')}${bk('Total',fmtC(R.liq),meta!=null?'meta '+fmtR(meta)+metaNota(ult):'real − meta',R.liq>(meta!=null?meta:0)?'bad':'good')}${bk('Por milhão de tubos',R.qE?fmtR(R.liq/R.qE*1e6,2):'–',R.ords.length+' ordens','')}</div>
-  <div class="card"><h3>Tendência mensal</h3>${barChart(trendSerie(ult),{h:440,minW:1300})}</div>`});
+  <div class="card"><h3>Tendência mensal</h3>${barChart(trendSerie(ult),{h:440,minW:1300,unit:msim()})}</div>`});
  S.push({titulo:'Componentes com mais perda · '+fmtML(ult),html:`<div class="card">${paretoChart(R.comps.filter(c=>c.d>0).slice(0,10).map(c=>({label:c.comp,sub:c.desc,value:c.d,key:c.comp})),null)}</div>`});
  S.push({titulo:'Catálogos · R$ por milhão de tubos · '+fmtML(ult),html:`<div class="card"><table><tr><th>Catálogo</th><th>Descrição</th><th class="n">Ordens</th><th class="n">Tubos</th><th class="n">Desvio</th><th class="n">R$/milhão</th></tr>${R.cats.map(c=>`<tr><td><b>${esc(c.cat)}</b></td><td>${esc(c.desc)}</td><td class="n">${c.n}</td><td class="n">${fmtK(c.tubos)}</td><td class="n">${fmtR(c.d)}</td><td class="n"><b>${c.pm==null?'–':fmtR(c.pm,2)}</b></td></tr>`).join('')}</table></div>`});
  if(R.crit.length)S.push({titulo:'Ordens altas e críticas · '+fmtML(ult),html:`<div class="card"><table><tr><th>Ordem</th><th>Catálogo</th><th>Descrição</th><th class="n">Desvio</th><th class="n">%</th><th>Nível</th><th>Causa</th></tr>${R.crit.slice(0,12).map(o=>`<tr class="${hl(o.lvl)}"><td>${esc(o.ordem)}</td><td>${esc(o.cat||'')}</td><td>${esc(o.prodDesc||'')}</td><td class="n">${fmtR(o.d)}</td><td class="n">${fmtP(o.pct)}</td><td>${LV[o.lvl]}</td><td>${esc(causeOf(o.ordem)||'sem causa')}</td></tr>`).join('')}</table></div>`});
@@ -2648,7 +2655,7 @@ function docMensal(per){const R=resumoPeriodo(per,per);const meta=metaPer(per);c
    ['Perdas',fmtC(R.perda),'desvios positivos','bad'],['Ganhos',fmtC(R.ganho),'consumo abaixo da meta','good'],['Desvio %',fmtP(R.base?R.liq/R.base:null),'sobre o custo meta',''],['Por milhão de tubos',R.qE?fmtR(R.liq/R.qE*1e6,2):'–','',''],['Ordens',String(R.ords.length),`${R.ords.filter(o=>o.lvl===3).length} críticas · ${R.ords.filter(o=>o.lvl===2).length} altas`,'']]},
   (()=>{const T=porTipoOrdem(per,per);return{tipo:'tabela',titulo:'Produção × preparação',cab:['Tipo','Ordens','Custo meta','Custo real','Total (desvio)','Desvio %','Var. material','Scrap'],num:[1,2,3,4,5,6,7],
    linhas:T.L.concat([T.tot]).map(x=>[x.nome,x.n,fmtR(x.cT),fmtR(x.cR),fmtR(x.liq),fmtP(x.pct),fmtR(x.vMat),fmtR(x.vScr)]),destaque:T.L.map(()=>'').concat(['hl1'])}})(),
-  {tipo:'svg',titulo:'Tendência mensal (desvio líquido)',svg:barChart(trendSerie(per))},
+  {tipo:'svg',titulo:'Tendência mensal (desvio líquido, '+msim()+')',svg:barChart(trendSerie(per))},
   {tipo:'tabela',titulo:'Componentes (Pareto)'+(R.comps.length>20?` · 20 maiores de ${R.comps.length} (todos no Excel)`:''),cab:['Componente','Descrição','Ordens','Desvio','Efeito qtd','Efeito preço'],num:[2,3,4,5],linhas:R.comps.slice(0,20).map(c=>[c.comp,c.desc,c.ords.size,fmtR(c.d,2),fmtR(c.eq,2),fmtR(c.ep,2)]),bruto:R.comps.map(c=>[c.comp,c.desc,c.ords.size,+c.d.toFixed(2),+c.eq.toFixed(2),+c.ep.toFixed(2)])},
   {tipo:'tabela',titulo:'Por catálogo',cab:['Catálogo','Descrição','Ordens','Tubos','Desvio','R$/milhão'],num:[2,3,4,5],linhas:R.cats.map(c=>[c.cat,c.desc,c.n,fmtN(c.tubos),fmtR(c.d),c.pm==null?'–':fmtR(c.pm,2)]),bruto:R.cats.map(c=>[c.cat,c.desc,c.n,c.tubos,+c.d.toFixed(2),c.pm==null?null:+c.pm.toFixed(2)])},
   {tipo:'tabela',titulo:'Ordens altas e críticas',cab:['Ordem','Catálogo','Descrição','Desvio','Desvio %','Nível','Causa'],num:[3,4],linhas:R.crit.map(o=>[o.ordem,o.cat||'',o.prodDesc||'',fmtR(o.d),fmtP(o.pct),LV[o.lvl],causeOf(o.ordem)||'sem causa']),destaque:R.crit.map(o=>hl(o.lvl)),bruto:R.crit.map(o=>[o.ordem,o.cat||'',o.prodDesc||'',+o.d.toFixed(2),o.pct,LV[o.lvl],causeOf(o.ordem)||''])},
@@ -2665,7 +2672,7 @@ function docComparativo(){const{obs}=compObs();const M=MET[C.met];const G=new Ma
  const gs=[...G.values()].map(g=>({...g,tubes:sum([...g.ords.values()]),n:g.ords.size})).map(g=>({...g,v:metricOf(g)})).sort((a,b)=>(b.v??-1e18)-(a.v??-1e18));
  const byL={cat:'Catálogo',fam:'Família',tipo:'Tipo de item',mes:'Mês',sem:'Semana'}[C.by];
  return{titulo:'Comparativo por '+byL.toLowerCase(),subtitulo:M.l+(C.tipo?' · '+C.tipo:'')+(C.cat?' · catálogo '+C.cat:''),periodo:(C.de?fmtM(C.de):'início')+' a '+(C.ate?fmtM(C.ate):'hoje'),arquivo:'Comparativo_'+C.by,blocos:[
-  {tipo:'svg',titulo:M.l,svg:barChart(gs.slice(0,15).map(g=>({label:String(g.label).slice(0,10),value:g.v||0,color:(g.v||0)>0?'var(--crit)':'var(--ok)'})),{fmt:C.met==='pq'?(v=>fmtP(v)):fmtK})},
+  {tipo:'svg',titulo:'Por '+byL.toLowerCase()+' ('+M.l+')',svg:barChart(gs.slice(0,15).map(g=>({label:String(g.label).slice(0,10),value:g.v||0,color:(g.v||0)>0?'var(--crit)':'var(--ok)'})),{fmt:C.met==='pq'?(v=>fmtP(v)):fmtK})},
   {tipo:'tabela',titulo:'Ranking',cab:[byL,'Ordens','Tubos','Desvio',M.l],num:[1,2,3,4],linhas:gs.map(g=>[g.label,g.n,fmtK(g.tubes),fmtR(g.d),g.v==null?'–':M.f(g.v)])}]}}
 function renderRelatorios(){const ps=allPers().slice().reverse();const sel=renderRelatorios.per||ps[0]||'';
  $('#relBox').innerHTML=`<div class="card"><h3>Relatórios ${ib('Relatórios','Mesmo molde dos relatórios do OEE e do Portal: prévia na tela e saída em PDF (A4 deitado, com logo e número de página), Excel (uma aba por tabela, números como valores), texto para WhatsApp/Teams, corpo de e-mail do Outlook ou impressão. O comentário fica salvo com o relatório.')}</h3>

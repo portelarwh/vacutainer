@@ -26,3 +26,24 @@ Arquivo: `fontes/producao/graf_build.py` (regras `R(...)` no motor `Charts` e na
   - as unidades são produção = mil tubos, PPH = mil tubos/h e paradas = min;
   - nenhum eixo repete rótulo.
 - **Comparação com a referência:** a linha da unidade e os rótulos do eixo Y (escala) ficam fora da comparação com a referência, que foi regravada a partir da página anterior (2.4.50). A única diferença em relação à referência anterior são os rótulos das barras do Scrap %: 0,032% / 0,054% / 0,081% em vez de 0,0% / 0,1% / 0,1%. Cartões, tabelas e Meu painel ficaram iguais.
+
+## Estilo comum (kit)
+
+A linha `.c-un` ("Valores em …") está no `fontes/kit/kit_visual.css` desde a Waste 1.8.36. A Produção deixou de ter uma cópia própria.
+
+## Waste 1.8.36 (11/11/2026)
+
+- **Tendência mensal:** a Visão Geral e a TV mostram "Valores em R$". Com a moeda em US$ (seletor da página), aparece "US$".
+- **Medidas com a moeda vista:** antes os rótulos diziam "R$" fixo, mesmo vendo em US$.
+  - `MET` (R$/milhão, R$, efeito preço R$/milhão) e o cabeçalho "Desvio R$" das tabelas seguem `msim()`.
+  - Comparativo › Ordem a ordem mostra "Valores em …" quando a medida não é %.
+- **`barChart`:** passa a respeitar `fmt` (antes era ignorado). O gráfico do relatório do Comparativo em "desvio qtd" mostrava a fração sem %; agora mostra %.
+  - Quando o eixo repetiria rótulos (valores pequenos: 0 · 1 · 2 · 2), usa 1 a 3 casas fixas só no eixo.
+- **Relatórios:** no PDF e no Outlook o SVG vira imagem, então a unidade vai no título.
+  - "Tendência mensal (desvio líquido, R$)".
+  - "Por catálogo (R$/milhão)".
+- **Paretos:** são tabelas com o valor já em moeda; não mudam.
+- **Teste:** `twaste_vg.js` (mesmos números, com a linha da unidade fora da comparação) confere:
+  - "Valores em R$";
+  - a troca para US$ nas medidas e na unidade;
+  - o eixo sem repetição.

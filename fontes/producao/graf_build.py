@@ -34,7 +34,7 @@ def aplicar(R):
     s += `<g class="ax">${sc.ticks.map(t => `<line class="gl" x1="${padL}" x2="${W - padR}" y1="${y(t)}" y2="${y(t)}"/><text x="${padL - 6}" y="${y(t) + 4}" text-anchor="end">${esc(fmtT(t))}</text>`).join('')}</g>`;""")
     # rótulos dentro das barras: com as mesmas casas do eixo quando o eixo precisou de mais (Scrap % 0,031% em vez de 0,0%)
     R("      const fl = b.fmtLabel || b.fmt || fmtY;", "      const fl = b.fmtLabel || b.fmt || fmtT;")
-    R(".chart{position:relative;width:100%}", ".chart{position:relative;width:100%}\n.c-un{margin:0 0 2px;font-size:11.5px}.c-un b{font-weight:600;color:var(--ink)}")
+    # estilo .c-un: no kit (kit_visual.css), comum às páginas
     # unidade da quantidade: "mil tubos" (exibição em milheiros) ou "tubos" (número completo); outro rótulo do Portal vem como está
     R("const unitLbl = () => vacQtd() === 'abs' ? 'un' : (db() && db().settings.unitLabel) || 'un';",
       "const unitLbl = () => vacQtd() === 'abs' ? 'un' : (db() && db().settings.unitLabel) || 'un';\n"
