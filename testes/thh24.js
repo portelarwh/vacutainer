@@ -22,7 +22,7 @@ const PREP = () => {
   D.forEach(date => { const day = Engine.buildDay(d, date, LINE, 'mac_line', 'teste'); day.demo = false;
     day.shifts.forEach(p => { p.initialCatalogId = cat.id; p.intervals.forEach(i => i.good = 50000); }); d.productionDays.push(day); });
   /* caixas: 11/03 das 04:00 às 06:20 (uma por minuto, sem parada) → janela do C de 10/03 + começo do A de 11/03 */
-  const base = SD.dayStartMin(D[1]), L = []; for (let m = 4 * 60; m <= 6 * 60 + 20; m++) L.push(base + m);
+  const base = SD.dayStartMin(D[1]), L = []; for (let m = 4 * 60; m <= 6 * 60 + 20; m++) { L.push(base + m); if (m >= 6 * 60 && m < 6 * 60 + 10) L.push(base + m); }   /* 06:00–06:09: 2 caixas por minuto (o MES registra várias no mesmo minuto) */
   const e = SD.enc(L);
   d.server = SD.ensureStore(d); d.server.segments = [{ id: 's0', lineId: LINE, lot: 'L-424', cat: cat.code, b0: 1, b1: L.length, t0: SD.fromMin(L[0]), t1: SD.fromMin(L[L.length - 1]), n: L.length, base: e.base, m: e.m }];
   d.server.lotClass = { 'L-424': { kind: 'normal' } };
@@ -49,6 +49,10 @@ const PREP = () => {
   ok(A.antes, 'as horas fora do turno vêm antes das linhas do turno A');
   ok(A.rec === 120000 && A.foraTurno === 120000 && /60\.000|60,0|60/.test(A.rows[0]), `produção recebida pelo turno A = 120 caixas (${A.rec}) e as linhas mostram as caixas`);
   ok(A.chips.some(t => /Dia \(24 h\)/.test(t)), 'seletor com "Dia (24 h)"');
+  // 2.4.53 · Caixas do MES e Lotes do dia pelo dia de trabalho: turnos + fora do turno que conta no dia (não 06:00→06:00)
+  const W = await o.evaluate(() => { const day = curDay(), res = Engine.computeDay(db(), day), md = MesDia.dia(db(), day), LT = CaixasDia.lotes(db(), day, res), S = ServerData;
+    return { n: md.n, fora: md.fora, de: S.fromMin(md.m0).slice(11, 16), lotes: U.sum(LT, x => x.n), lFora: U.sum(LT, x => x.fora) }; });
+  ok(W.n === 151 && W.fora === 120 && W.de === '04:00' && W.lotes === 151 && W.lFora === 120, `Caixas do MES e Lotes do dia = 151 caixas do dia de trabalho, 120 fora do turno, 1ª às 04:00, com 2 caixas no mesmo minuto (${JSON.stringify(W)})`);
   // 2) Dia (24 h)
   await o.evaluate(() => { document.querySelector('[data-hhsel="dia"]').click(); }); await o.waitForTimeout(500);
   const D = await o.evaluate(() => {
