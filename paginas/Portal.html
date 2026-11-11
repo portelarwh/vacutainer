@@ -1371,7 +1371,7 @@ function wireConfigComum(){$('#cPasta').onclick=async()=>{if(await Store.pick())
         entrar pelo ID (autocadastro como Consulta); página inicial por perfil (1x por sessão); vigência gravada não se edita (desativar com motivo); painel de vigências; semáforo central; saída do modo de teste.
    1.1.2: aviso da carga diz qual base foi lida.  1.5: páginas Paradas, Máquinas, Manutenção e Projetos na lista (aparecem quando o HTML chega na pasta).  1.4: lista técnica pela CS12 multinível (itens = nível 1, estrutura = níveis 2+); CS03 sai.  1.3: cabeçalho comum (vac-cabecalho v2: barra do sistema + página + abas), busca Ctrl K, acabamento V1.90, Versões com cabeçalho e último backup.  1.2: Configuração › Versões das páginas (versão e data de cada HTML, gravação das bases, cópias repetidas, histórico).
    ===================================================================== */
-const PAGE={id:'portal',titulo:'Portal · Linha Vacutainer',tituloCurto:'Portal',subtitulo:'Sistemas de gestão da linha',versao:'1.9.21',baseFile:'portal-base.json',idb:'vac-portal',backupDir:'00. Backups/Portal',
+const PAGE={id:'portal',titulo:'Portal · Linha Vacutainer',tituloCurto:'Portal',subtitulo:'Sistemas de gestão da linha',versao:'1.9.22',baseFile:'portal-base.json',idb:'vac-portal',backupDir:'00. Backups/Portal',
  vazio:()=>({schema:'portal-base',rev:0,config:{modulos:{},avisoDias:30,notas:{}},audit:[]}),
  /* itens do Portal para a busca Ctrl K: cadastro, pendências e telas */
  busca:q=>{const R=[],D=Cad.D;if(D)for(const t of CAD_ORD){for(const it of D[t]||[]){const c=String(it[kOf(t)]),nm=t==='bom'?((cadItem('catalogos',it.catalogo)||{}).nome||''):it.nome||'';if(norm(c+' '+nm).includes(q))R.push({tipo:CAD_T[t].um,txt:c+(nm?' · '+nm:''),sub:'Cadastros'+(cadAtivo(t,it,D)?'':' · inativo'),href:'#cadastros/'+t+'/'+encodeURIComponent(c)});if(R.length>30)break}}
@@ -2167,7 +2167,7 @@ function cadMudaPassado(t,a,b){if(!CAD_T[t].vig||!a)return false;const h=todayIS
 
 /* ---------- aplicar uma operação (na fila local e, ao gravar, sobre a versão mais nova da pasta) ---------- */
 function aplicarOp(D,o,aud){
- const oculto=c=>o.tipo==='seguranca'&&/senha|salt/i.test(c||'');
+ const oculto=c=>(o.tipo==='seguranca'&&/senha|salt/i.test(c||''))||(o.tipo==='usuarios'&&c==='senha');
  const L=(campo,antes,depois,acao=o.acao,tipo=o.tipo,codigo=o.codigo)=>{if(!aud)return;const a={em:o.em,por:o.por,acao,tipo,codigo:codigo??null,campo:campo??null,antes:oculto(campo)?'(oculto)':antes??null,depois:oculto(campo)?'(oculto)':depois??null,motivo:o.motivo||null};if(o.origem)a.origem=o.origem;aud.push(a)};
  if(o.acao==='desbloqueio'){L(null,null,null);return{ok:true}}
  if(o.acao==='restauração'){if(D.rev!==o.baseRev)return{ok:false,tipo:'restauracao',motivo:`o cadastro mudou (agora rev ${D.rev}) depois que a restauração foi pedida sobre a rev ${o.baseRev}`};
@@ -2343,7 +2343,7 @@ function cs12NovoCat(I,g){const c=g.P.cab,nv=I.novo&&normCat(I.novo.codigo)===no
  Object.assign(it,{codigo:g.cat,tipoItem:tipo,unidade:nv?nv.unidade:['UN','L','G','KG'].includes(ub)?ub:tipo==='tubo'?'UN':'L',nome:(nv&&nv.nome)||c.descricao||g.cat,codigoSAP:/^NS/i.test(g.mat)?g.mat:null});
  if(it.vigencias&&it.vigencias[0]){it.vigencias[0].de=g.de;if(tipo==='preparacao')it.vigencias[0].tubosPorCaixa=null}return it}
 function cadHash(cod){const s=Cad.ui.sec||'inicio';const h='#cadastros'+(s!=='inicio'?'/'+s:'')+(cod!=null?'/'+encodeURIComponent(cod):'');if(location.hash!==h)history.replaceState(null,'',h)}
-function cadRota(){const raw=location.hash.slice(1);if(/^reuniao=/.test(raw)){let v=raw.slice(8);try{v=decodeURIComponent(v)}catch(e){}const[d,t]=v.split('|');if(/^\d{4}-\d{2}-\d{2}$/.test(d||''))Reu.dia=d;Reu.rec=/^[\w-]{1,12}$/.test(t||'')?t:'dia';App.show('reuniao',{keepHash:true});return true}if(/^cs12=/.test(raw)){cadNovoCS12(raw);return true}if(/^(geral|fila|reuniao|pend|rel|config)$/.test(raw)){App.show(raw);return true}if(/^importacao(\/|$)/.test(raw)){Imp.sec=(raw.split('/')[1]||'').replace(/[^a-z]/g,'')||null;App.show('imp',{keepHash:true});return true}if(raw==='admin'){App.show('cad');return true}if(raw==='entrar'){App.show('geral',{keepHash:true});setTimeout(()=>Entrar.abrir(),50);return true}if(raw==='versoes'){irVersoes();return true}
+function cadRota(){const raw=location.hash.slice(1);if(/^reuniao=/.test(raw)){let v=raw.slice(8);try{v=decodeURIComponent(v)}catch(e){}const[d,t]=v.split('|');if(/^\d{4}-\d{2}-\d{2}$/.test(d||''))Reu.dia=d;Reu.rec=/^[\w-]{1,12}$/.test(t||'')?t:'dia';App.show('reuniao',{keepHash:true});return true}if(/^cs12=/.test(raw)){cadNovoCS12(raw);return true}if(/^(geral|fila|reuniao|pend|rel|config)$/.test(raw)){App.show(raw);return true}if(/^importacao(\/|$)/.test(raw)){Imp.sec=(raw.split('/')[1]||'').replace(/[^a-z]/g,'')||null;App.show('imp',{keepHash:true});return true}if(raw==='admin'){App.show('cad');return true}if(/^entrar(=\w*)?$/.test(raw)){const vt=(raw.split('=')[1]||'').replace(/\W/g,'');App.show('geral',{keepHash:true});setTimeout(()=>{if(typeof vacLogin!=='undefined')vacLogin.abrir({trocar:!!vacLogin.sessao(),volta:vt||null});else Entrar.abrir()},450);return true}if(raw==='versoes'){irVersoes();return true}
  if(!/^cadastros(\/|$)/.test(raw))return false;const p=raw.split('/').slice(1).map(x=>{try{return decodeURIComponent(x)}catch(e){return x}});
  const sec=p[0]||'inicio';if(sec==='importar'&&/^meta/i.test(p[1]||'')){const I=Cad.ui.imp=Cad.ui.imp||{modo:'cs12',fmt:'auto',de:todayISO(),map:{},soBOM:true,txt:'',prev:null};I.modo='meta'}Cad.ui.sec=CAD_T[sec]||CAD_SECS.includes(sec)?sec:'inicio';App.show('cad',{keepHash:true});
  if(p[1]&&CAD_T[Cad.ui.sec]&&Cad.D&&Cad.ui.sec!=='cambio'){if(cadItem(Cad.ui.sec,p[1]))Ficha.abrir(Cad.ui.sec,p[1]);else{Cad.ui.q=p[1];Cad.ui.sit='todos';App.render();toast(`${cap1(CAD_T[Cad.ui.sec].um)} ${p[1]} não está no cadastro.`,5000,true)}}
@@ -2431,7 +2431,7 @@ function cadCols(t,D){const fam=c=>{if(!c)return'';const f=cadItem('familias',c,
   metasArea:[['Código',cod],['Indicador',it=>esc(it.nome)],['Página',it=>esc(it.pagina||'')],['Meta',it=>{const v=vigEm(it.vigencias||[],todayISO());return v&&v.valor!=null?esc(metaValTxt(it,v.valor)):'<span class="warn small">sem vigência hoje</span>'},'n'],['Melhor quando',it=>esc(it.sentido||'')],['Desde',it=>{const v=vigEm(it.vigencias||[],todayISO());return v?fmtD(v.de):''}]],
   metasOsm:[['Código',cod],['Nome',it=>esc(it.nome)],['Meta',it=>{const v=vigEm(it.vigencias||[],todayISO());return v&&v.quantidade!=null?esc(`${v.quantidade} OSM ${it.publico||''} por ${it.periodo||'mês'}`):'<span class="warn small">sem vigência hoje</span>'}],['Linha / turno',it=>esc([it.linha,it.turno].filter(Boolean).join(' · '))],['Desde',it=>{const v=vigEm(it.vigencias||[],todayISO());return v?fmtD(v.de):''}]],
   cambio:[['Moeda',cod],['Nome',it=>esc(it.nome)],['Cotação vigente',it=>{const v=vigEm(it.vigencias,todayISO());return v&&v.cotacao!=null?'R$ '+Number(v.cotacao).toLocaleString('pt-BR',{minimumFractionDigits:4,maximumFractionDigits:4}):'<span class="warn small">sem vigência hoje</span>'},'n'],['Desde',it=>{const v=vigEm(it.vigencias,todayISO());return v?fmtD(v.de):''}],['Vigências',it=>String((it.vigencias||[]).length),'n']],
-  usuarios:[['ID',cod],['Nome',it=>esc(it.nome)],['Perfil',it=>{const p=cadItem('perfis',it.perfil,D);return it.perfil?`${esc(p?p.nome:it.perfil)}${p?'':' <span class="warn small">(fora do cadastro)</span>'}`:'<span class="muted">–</span>'}],['Turno',it=>esc(it.turno||'')],['Especialidade',it=>esc(it.especialidade||'')],['Página inicial',it=>esc(paginaInicialDe(it,D))],['Origem',it=>it.origem==='autocadastro'?`<span class="pill">1º acesso${it.primeiroAcessoEm?' '+fmtD(String(it.primeiroAcessoEm).slice(0,10)):''}</span>`:'']],
+  usuarios:[['ID',cod],['Nome',it=>esc(it.nome)],['Senha',usuSenhaPill],['Perfil',it=>{const p=cadItem('perfis',it.perfil,D);return it.perfil?`${esc(p?p.nome:it.perfil)}${p?'':' <span class="warn small">(fora do cadastro)</span>'}`:'<span class="muted">–</span>'}],['Turno',it=>esc(it.turno||'')],['Especialidade',it=>esc(it.especialidade||'')],['Página inicial',it=>esc(paginaInicialDe(it,D))],['Origem',it=>it.origem==='autocadastro'?`<span class="pill">1º acesso${it.primeiroAcessoEm?' '+fmtD(String(it.primeiroAcessoEm).slice(0,10)):''}</span>`:'']],
   perfis:[['Código',cod],['Nome',it=>esc(it.nome)],['Página inicial',it=>esc(it.paginaInicial||'Portal')],['Usuários',it=>String((D.usuarios||[]).filter(u=>u.perfil===it.codigo&&u.ativo!==false).length),'n'],['Vê',it=>{const P=it.permissoes||{};return`<span class="small">${PERM_MODS.filter(m=>!P[m]||P[m].ver!==false).map(m=>esc(sysOf(m).nome||m)).join(' · ')}</span>`}],['Lança em',it=>{const P=it.permissoes||{};return`<span class="small">${PERM_MODS.filter(m=>P[m]&&P[m].lancar).map(m=>esc(sysOf(m).nome||m)).join(' · ')}</span>`}]],
   paradas:[['Código',it=>`${safeCor(it.cor)?`<i class="sw" style="background:${safeCor(it.cor)}"></i>`:''}<b class="mono">${esc(it.codigo)}</b>`],['Nº',it=>`<span class="mono">${esc(it.numero||'')}</span>`],['Nome',it=>esc(it.nome)],['Grupo',it=>{const g=parGrupo(it.numero);return g==null?'':`<span class="small">${g} · ${esc(PAR_GRUPOS[g])}</span>`}],['Categoria',it=>esc(it.categoria||'')],['Pilar',it=>esc(it.pilar||'')],['Classe',it=>esc(it.classe||'')],['Onde',it=>esc(it.ondeAponta||'')],['Máquinas',it=>it.equipamentos==null?'<span class="muted">todas</span>':String(it.equipamentos.length),'n'],['Planejada',it=>sim(it.planejada)],['Desconta',it=>sim(it.descontaPlanejado)],['Afeta',it=>['D','P','Q'].filter(x=>it['afeta'+x]).join(' ')],['Pareto',it=>sim(it.pareto)]]};
  return C[t].concat([['Situação',it=>cadAtivo(t,it,D)?'<span class="pill ok">ativo</span>':`<span class="pill">inativo${it.inativadoEm?' desde '+fmtD(it.inativadoEm):''}</span>`]])}
@@ -2465,7 +2465,7 @@ function cadLista(el,t){const D=Cad.D,T=CAD_T[t],cols=cadCols(t,D),k=kOf(t);cons
  el.querySelectorAll('tr[data-cod]').forEach(r=>r.onclick=()=>Ficha.abrir(t,r.dataset.cod));
  const nv=$('#cadNovo');if(nv)nv.onclick=()=>Ficha.abrir(t,null,{novo:true});
  const pp=$('#cadPerfisPad');if(pp)pp.onclick=()=>{if(!Cad.podeEditar())return;const F=DEFAULT_PERFIS.filter(x=>!cadItem('perfis',x.codigo,D));if(!confirm(`Criar ${F.length} perfil(is) padrão: ${F.map(x=>x.nome).join(', ')}?`))return;Cad.ops(F.map(x=>({acao:'criação',tipo:'perfis',codigo:x.codigo,item:clone(x),motivo:'perfis padrão (Portal 1.7)'})));toast(F.length+' perfil(is) criados.')};
- if(t==='usuarios')el.insertAdjacentHTML('afterbegin','<div class="note">Cada pessoa entra pelo <b>ID</b> em <b>Entrar</b> (topo da página). Quem não está aqui se cadastra sozinho no 1º acesso (nome + ID) e entra com o perfil <b>Consulta</b>; o administrador muda o perfil aqui, com a senha.</div>');
+ if(t==='usuarios')el.insertAdjacentHTML('afterbegin','<div class="note">Cada pessoa entra pelo <b>ID</b> e pela <b>senha de 6 números</b> no login que abre em todas as páginas. Quem não está aqui se cadastra sozinho no 1º acesso (nome + ID) e entra com o perfil <b>Consulta</b>; o administrador muda o perfil aqui, com a senha.</div>');
  $('#cadXls').onclick=async()=>{try{const X=await Libs.xlsx();const rows=[cols.map(c=>c[0])].concat(L.map(it=>cols.map(c=>{const s=htmlTxt(c[1](it)??'');if(c[2]==='n'){const v=parseFloat(s.replace(/\./g,'').replace(',','.'));return isFinite(v)?v:s}return s})));
   const wb=X.utils.book_new();X.utils.book_append_sheet(wb,X.utils.aoa_to_sheet(rows),T.nome.slice(0,30));X.writeFile(wb,`Cadastro_${t}_${todayISO()}.xlsx`)}catch(e){toast(e.message,6000,true)}}}
 
@@ -2525,6 +2525,7 @@ const Ficha={t:null,cod:null,orig:null,W:null,novo:false,edit:false,dirty:false,
   if(t==='catalogos'&&W.tipoItem!=='preparacao')h+=this.gelCat();
   if(t==='paradas')h+=this.maqs()+this.guia();
   if(t==='perfis')h+=this.perms();
+  if(t==='usuarios'&&!this.novo)h+=usuSenhaHtml(W);
   if(t==='usuarios'&&!this.novo)h+=`<p class="small muted" style="margin-top:8px">Página inicial efetiva: <b>${esc(paginaInicialDe(W,D))}</b>${W.origem==='autocadastro'?' · cadastrado no 1º acesso'+(W.primeiroAcessoEm?' em '+fmtDT(W.primeiroAcessoEm):''):''}. A pessoa entra digitando o ID no topo da página (Entrar).</p>`;
   if(t==='catalogos'&&W.tipoItem==='preparacao'&&!this.novo){const us=bomsComMaterial(W.codigo),m=(D.materiais||[]).find(x=>prepK(x.codigo)===prepK(W.codigo)),bp=cadItem('bom',W.codigo);
    h+=`<div class="note" style="margin-top:10px"><b>Preparação de aditivo</b> ${ib('Preparação',AJUDA_CAMPO['catalogos.preparacao'])}: produzida em ordem própria${bp?` (<a href="#cadastros/bom/${encodeURIComponent(W.codigo)}">BOM própria</a>)`:' <span class="warn">· sem BOM: importe a CS12 desta preparação</span>'} e consumida como componente${us.length?` na BOM de <b>${us.length}</b> catálogo(s): ${us.slice(0,12).map(r=>`<a class="mono" href="#cadastros/bom/${encodeURIComponent(r.cat)}">${esc(r.cat)}</a> <span class="small muted">${fmtN(r.qtd,3)} ${esc(r.un||'')}/1.000${r.nivel>1?' · nível '+r.nivel:''}</span>`).join(' · ')}${us.length>12?' …':''}`:' <span class="muted">(ainda não aparece em nenhuma BOM de tubo)</span>'}.${m?'':' <span class="warn">O material com este código não está em Materiais: ele entra sozinho quando a BOM de um tubo que usa a preparação for importada pela CS12.</span>'}</div>`}
@@ -3711,8 +3712,30 @@ function perfilAtual(D=Cad.D){const u=usuarioAtual(D);if(!u||!D)return null;retu
 function podeVer(mod){const p=perfilAtual();if(!p||!p.permissoes||!p.permissoes[mod])return true;return p.permissoes[mod].ver!==false}
 function paginaInicialDe(u,D=Cad.D){if(u&&u.paginaInicial&&u.paginaInicial!=='(do perfil)')return u.paginaInicial;const p=u&&(cadItem('perfis',u.perfil,D)||DEFAULT_PERFIS.find(x=>x.codigo===u.perfil));return(p&&p.paginaInicial)||'Portal'}
 function alvoInicial(u){const a=INICIAL_ALVO[paginaInicialDe(u)];if(!a||a[0]==='portal')return null;const s=sysOf(a[0]);if(!s||!s.html||s.futuro||s.oculto)return null;return sysHref(s,a[1])}
+/* ===== Login (1.9.22): senha de 6 números por pessoa (usuarios[].senha, PBKDF2 do kit vacLogin). Só o Portal grava (regra 2):
+   o pop-up do kit chama estes ganchos para criar a senha no 1º acesso, trocar a senha e fazer o autocadastro. ===== */
+function usuSenhaPill(it){const s=it&&it.senha;return!s||!s.hash?'<span class="pill">sem senha</span>':s.provisoria?'<span class="pill warn">provisória</span>':`<span class="pill ok" title="${esc('definida em '+fmtDT(s.em)+(s.por?' por '+s.por:''))}">definida</span>`}
+function usuSenhaHtml(W){const s=W.senha,ok=s&&s.hash;
+ return`<div class="note" style="margin-top:10px"><b>Senha</b> ${ib('Senha','Senha de 6 números que a pessoa digita no login, depois do ID. Fica guardada embaralhada (ninguém consegue ler, nem o administrador). Sem senha: a pessoa cria a dela no 1º acesso. Provisória: o administrador gera 6 números, entrega à pessoa e ela cria a definitiva na primeira entrada. Exemplo: esqueceu a senha → Gerar senha provisória.')}: ${usuSenhaPill(W)}
+ ${ok?`<span class="small muted"> · ${s.provisoria?'gerada':'definida'} em ${fmtDT(s.em)}${s.por?' por '+esc(s.por):''}</span>`:'<span class="small muted"> · a pessoa cria no 1º acesso</span>'}
+ <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px"><button type="button" class="b sm" data-usen="prov" data-cod="${esc(W.codigo)}">Gerar senha provisória</button>${ok?`<button type="button" class="b sm d" data-usen="zerar" data-cod="${esc(W.codigo)}">Zerar senha</button>`:''}</div></div>`}
+function usuSenhaOp(cod,depois,mot){const it=cadItem('usuarios',cod);if(!it)return Promise.reject(new Error('usuário '+cod+' não existe no cadastro'));
+ return Cad.ops([{acao:'edição',tipo:'usuarios',codigo:String(cod),mudancas:{senha:{antes:it.senha?clone(it.senha):null,depois}},motivo:mot,origem:'login'}])}
+document.addEventListener('click',async ev=>{const b=ev.target.closest('[data-usen]');if(!b)return;if(!Cad.podeEditar())return;const cod=b.dataset.cod,u=cadItem('usuarios',cod);if(!u)return;
+ if(b.dataset.usen==='zerar'){if(!confirm('Zerar a senha de '+u.nome+'? A pessoa cria uma nova no próximo login.'))return;await usuSenhaOp(cod,null,'senha zerada pelo administrador');toast('Senha zerada.')}
+ else{const pin=vacLogin.provisoriaNova(),s=await vacLogin.gerar(pin,true,user());await usuSenhaOp(cod,s,'senha provisória gerada pelo administrador');
+  Modal.open(`<h2>Senha provisória</h2><p>Entregue esta senha a <b>${esc(u.nome)}</b> (ID <span class="mono">${esc(u.codigo)}</span>):</p><p class="mono" id="usuProv" style="font-size:30px;letter-spacing:.2em;margin:10px 0">${pin}</p><p class="small muted">Ela vale só para a primeira entrada: a pessoa cria a senha definitiva logo em seguida. Esta tela não volta a mostrar o número.</p><div style="margin-top:10px"><button class="b p" onclick="Modal.close(true)">Entendi</button></div>`,{wide:false})}
+ try{if(typeof Ficha!=='undefined'&&Ficha.aberta&&Ficha.aberta()&&Ficha.t==='usuarios'&&Ficha.cod===cod)Ficha.recarregar()}catch(e){}if(App.tab==='cad')App.render()});
+window.vacLoginPortal={
+ conectar:async()=>{if(await Store.pick()){await App.onConnect()}},
+ turnos:()=>((Cad.D&&Cad.D.turnos)||[]).filter(t=>t.ativo!==false),
+ criarSenha:(u,s,mot)=>usuSenhaOp(u.codigo,s,mot||'senha criada pela pessoa'),
+ autocadastro:(u,s)=>{const D=Cad.D;if(!D)return Promise.reject(new Error('cadastro não carregado'));const ops=[];
+  if(!cadItem('perfis','CONSULTA',D))ops.push({acao:'criação',tipo:'perfis',codigo:'CONSULTA',item:clone(DEFAULT_PERFIS.find(x=>x.codigo==='CONSULTA')),motivo:'perfil padrão criado no 1º acesso de '+u.nome,origem:'autocadastro'});
+  const it={codigo:String(u.codigo),nome:u.nome,perfil:'CONSULTA',turno:u.turno||null,especialidade:u.especialidade||null,email:null,paginaInicial:'(do perfil)',ativo:true,origem:'autocadastro',primeiroAcessoEm:isoLocal(),senha:s};
+  ops.push({acao:'criação',tipo:'usuarios',codigo:it.codigo,item:it,motivo:'1º acesso (autocadastro)',origem:'autocadastro'});return Cad.ops(ops)}};
 const Entrar={
- abrir(){const D=Cad.D;Modal.open(`<h2>Entrar</h2><p class="small muted">Digite seu ID (matrícula). Ele fica guardado neste navegador e o seu nome passa a ser registrado em tudo o que você alterar, em todas as páginas.</p>
+ abrir(){if(typeof vacLogin!=='undefined')return vacLogin.abrir({trocar:!!vacLogin.sessao()});/* 1.9.22: login comum do kit (ID + senha) */const D=Cad.D;Modal.open(`<h2>Entrar</h2><p class="small muted">Digite seu ID (matrícula). Ele fica guardado neste navegador e o seu nome passa a ser registrado em tudo o que você alterar, em todas as páginas.</p>
   <div class="form" id="enBox"><label>ID / matrícula<input id="enId" value="${esc(uidAtual())}" autocomplete="off" inputmode="text" style="max-width:240px"></label>
   <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap"><button class="b p" id="enOk">Entrar</button>${user()?'<button class="b" id="enSair">Sair (esquecer neste navegador)</button>':''}</div>
   ${D?'':'<p class="small warn" style="margin-top:8px">O cadastro de usuários ainda não está disponível (sem a pasta ou sem cadastro): o nome fica só neste navegador.</p>'}<div id="enMsg"></div></div>`,{wide:false});
@@ -3736,6 +3759,7 @@ const Entrar={
  entrar(u,primeiro){setUser(u.nome);localStorage.setItem('vac.userId',u.codigo);localStorage.setItem('vac.perfil',u.perfil||'');renderTop();
   const p=cadItem('perfis',u.perfil)||DEFAULT_PERFIS.find(x=>x.codigo===u.perfil);const P=(p&&p.permissoes)||{};const pg=paginaInicialDe(u),alvo=alvoInicial(u);
   const lista=f=>PERM_MODS.filter(m=>P[m]&&P[m][f]).map(m=>esc(sysOf(m).nome||m)).join(' · ')||'–';
+  if(!$('#enBox')){App.render();return}   /* 1.9.22: a janela é o login do kit; aqui só troca a pessoa */
   $('#enBox').innerHTML=`<div class="note ok-note"><b>${primeiro?'Cadastro feito. ':''}Olá, ${esc(u.nome)}.</b></div>
   <table class="small" style="margin-top:8px"><tr><th>Nome reconhecido</th><td>${esc(u.nome)} · ID <span class="mono">${esc(u.codigo)}</span></td></tr><tr><th>Perfil</th><td>${esc(p?p.nome:u.perfil||'—')}${p&&p.descricao?' · <span class="muted">'+esc(p.descricao)+'</span>':''}</td></tr>
   <tr><th>Página inicial</th><td>${esc(pg)}</td></tr><tr><th>Pode ver</th><td>${p?lista('ver'):'todas'}</td></tr><tr><th>Pode lançar</th><td>${lista('lancar')}</td></tr></table>
@@ -4572,6 +4596,259 @@ const vacDatas = (() => {
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', ini); else ini();
   return { aplicar, toTxt, parse };
 })();
+
+/* ----- kit v2.1 · login com ID e senha de 6 números (11/11/2026; igual em todas as páginas; não editar só numa) -----
+   Pop-up que escurece a página e só fecha com uma entrada válida: ID → nome, função e perfil → senha de 6 números.
+   Senha no cadastro (usuarios[].senha = {alg, iter, sal, hash, provisoria, em, por}), PBKDF2-SHA256; só o Portal grava (regra 2):
+   criar a senha no 1º acesso, autocadastro (ID fora do cadastro, perfil Consulta) e troca acontecem no Portal (hooks window.vacLoginPortal).
+   Sessão neste computador até o fim do turno em que entrou (turnos do Portal; sem turno, 12 h): localStorage vac.sessao.
+   5 senhas erradas bloqueiam o ID neste computador por 5 minutos. Sem pop-up: Demonstração, modo TV, modo de teste e testes automáticos
+   (navigator.webdriver; o teste do login liga com localStorage vac.login.forcar = '1').
+   Identifica quem lança; não é cofre: quem copia o arquivo do cadastro vê a senha embaralhada (ver docs/login.md). */
+const vacLogin = (() => {
+  const ITER = 150000, MAX_ERR = 5, BLOQ_MS = 5 * 60000, DOZE_H = 12 * 3600000;
+  const e = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  const lg = k => { try { return localStorage.getItem(k); } catch (x) { return null; } };
+  const ls = (k, v) => { try { if (v == null) localStorage.removeItem(k); else localStorage.setItem(k, v); } catch (x) { } };
+  const lj = (k, d) => { try { return JSON.parse(lg(k) || 'null') ?? d; } catch (x) { return d; } };
+  const hex = b => [...new Uint8Array(b)].map(x => x.toString(16).padStart(2, '0')).join('');
+  const iso = (d = new Date()) => { const p = n => String(n).padStart(2, '0'); return d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate()) + 'T' + p(d.getHours()) + ':' + p(d.getMinutes()) + ':' + p(d.getSeconds()); };
+  const brh = s => { const m = /^(\d{4})-(\d\d)-(\d\d)T(\d\d):(\d\d)/.exec(String(s || '')); return m ? m[3] + '/' + m[2] + '/' + m[1] + ' ' + m[4] + ':' + m[5] : ''; };
+  const ehPortal = () => typeof PAGE !== 'undefined' && PAGE.id === 'portal';
+  const hook = () => ehPortal() && window.vacLoginPortal ? window.vacLoginPortal : null;
+  const portalHref = h => { try { if (ehPortal()) return '#' + h; const s = (typeof systems === 'function' ? systems() : []).find(x => x.id === 'portal') || { html: 'Portal.html' }; return typeof sysHref === 'function' ? sysHref(s, h) : s.html + '#' + h; } catch (x) { return 'Portal.html#' + h; } };
+  /* ---- senha ---- */
+  async function hash(pin, sal, iter = ITER) {
+    const enc = new TextEncoder(), k = await crypto.subtle.importKey('raw', enc.encode(String(pin)), 'PBKDF2', false, ['deriveBits']);
+    return hex(await crypto.subtle.deriveBits({ name: 'PBKDF2', hash: 'SHA-256', salt: enc.encode(String(sal)), iterations: iter }, k, 256));
+  }
+  async function gerar(pin, provisoria, por) {
+    const sal = hex(crypto.getRandomValues(new Uint8Array(16)));
+    return { alg: 'PBKDF2-SHA256', iter: ITER, sal, hash: await hash(pin, sal, ITER), provisoria: !!provisoria, em: iso(), por: por || '' };
+  }
+  async function confere(u, pin) { const s = u && u.senha; if (!s || !s.hash || !s.sal) return false; try { return (await hash(pin, s.sal, +s.iter || ITER)) === s.hash; } catch (x) { return false; } }
+  /* fraca: não são 6 números, todos iguais ou em sequência */
+  const fraca = p => !/^\d{6}$/.test(p) || /^(\d)\1{5}$/.test(p) || '0123456789'.includes(p) || '9876543210'.includes(p);
+  function provisoriaNova() { for (;;) { const p = String(crypto.getRandomValues(new Uint32Array(1))[0] % 1000000).padStart(6, '0'); if (!fraca(p)) return p; } }
+  /* ---- cadastro ---- */
+  const cad = () => { try { return typeof vacCad === 'function' ? vacCad() : null; } catch (x) { return null; } };
+  const usuario = id => { const c = cad(); return c ? (c.usuarios || []).find(u => String(u.codigo) === String(id)) || null : null; };
+  const perfilDe = u => { const c = cad(); return c && u ? (c.perfis || []).find(p => p.codigo === u.perfil) || null : null; };
+  const funcao = u => [u.especialidade, u.area].filter(Boolean).join(' · ') || (u.turno ? 'Turno ' + u.turno : '');
+  /* ---- sessão: até o fim do turno em que entrou ---- */
+  function fimSessao(agora = new Date()) {
+    const now = agora.getTime(), J = [];
+    const dia = d => { const p = n => String(n).padStart(2, '0'); return d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate()); };
+    for (const k of [-1, 0, 1]) {
+      const d = new Date(agora); d.setHours(0, 0, 0, 0); d.setDate(d.getDate() + k);
+      let T = []; try { T = typeof vacTurnosEm === 'function' ? vacTurnosEm(dia(d)) : []; } catch (x) { }
+      for (const t of T) {
+        if (t.naoProdutivo) continue;
+        const m = s => { const r = /^(\d{1,2}):(\d{2})/.exec(String(s || '')); return r ? +r[1] * 60 + +r[2] : null; }, a = m(t.inicio), f = m(t.fim);
+        if (a == null || f == null) continue;
+        const ini = d.getTime() + a * 60000, fim = d.getTime() + (f > a ? f : f + 1440) * 60000; J.push([ini, fim]);
+      }
+    }
+    const dentro = J.filter(([a, f]) => a <= now && now < f).sort((x, y) => y[1] - x[1])[0];
+    if (dentro) return dentro[1];
+    const prox = J.filter(([a]) => a > now).sort((x, y) => x[0] - y[0])[0];
+    return prox ? Math.min(prox[1], now + DOZE_H) : now + DOZE_H;
+  }
+  function sessao() { const s = lj('vac.sessao', null), id = lg('vac.userId') || ''; return s && s.id && String(s.id) === id && +s.ate > Date.now() ? s : null; }
+  function avisar(nome) {
+    try { if (typeof vacAoTrocarUsuario === 'function') vacAoTrocarUsuario(nome); } catch (x) { console.warn(x); }
+    window.dispatchEvent(new CustomEvent('vac:usuario', { detail: { nome } }));
+    try { if (typeof renderSysNav === 'function') renderSysNav(); if (typeof vacUserRender === 'function') vacUserRender(); } catch (x) { }
+    try { if (ehPortal()) { if (typeof renderTop === 'function') renderTop(); if (typeof App !== 'undefined' && App.render) App.render(); } } catch (x) { }
+  }
+  function abrirSessao(u) {
+    const ult = lg('vac.login.ultimo.' + u.codigo);
+    ls('vac.user', u.nome); ls('vac.userId', String(u.codigo)); ls('vac.perfil', u.perfil || '');
+    ls('vac.sessao', JSON.stringify({ id: String(u.codigo), nome: u.nome, em: iso(), ate: fimSessao(), pagina: typeof PAGE !== 'undefined' ? PAGE.id : '' }));
+    ls('vac.login.ultimo.' + u.codigo, iso()); const E = lj('vac.login.erros', {}); delete E[u.codigo]; ls('vac.login.erros', JSON.stringify(E));
+    avisar(u.nome); return ult;
+  }
+  function sair() { for (const k of ['vac.sessao', 'vac.user', 'vac.userId', 'vac.perfil']) ls(k, null); avisar(''); fechar(); abrir(); }
+  /* ---- quando não aparece ---- */
+  function dispensado() {
+    try { if (typeof vacDemo !== 'undefined' && vacDemo.ativo) return true; } catch (x) { }
+    if (location.hash === '#tv' || document.querySelector('body > .tv, #tvEl, #tv:not([hidden])') || document.body.classList.contains('tv-on')) return true;
+    if (lg('vac.login.forcar') === '1') return false;
+    if (navigator.webdriver) return true;
+    if (location.hash === '#teste') return true;
+    try { if (typeof Store !== 'undefined' && Store && (Store.test === true || Store.mode === 'teste')) return true; } catch (x) { }
+    try { if (typeof MOD !== 'undefined' && MOD && MOD.teste) return true; } catch (x) { }
+    return false;
+  }
+  /* ---- tentativas ---- */
+  const bloqueio = id => { const x = lj('vac.login.erros', {})[id]; return x && x.ate && x.ate > Date.now() ? x.ate : 0; };
+  function errou(id) { const E = lj('vac.login.erros', {}), x = E[id] && E[id].ate && E[id].ate <= Date.now() ? { n: 0 } : (E[id] || { n: 0 }); x.n = (x.n || 0) + 1; if (x.n >= MAX_ERR) x.ate = Date.now() + BLOQ_MS; E[id] = x; ls('vac.login.erros', JSON.stringify(E)); return x; }
+  /* ---- interface ---- */
+  let el = null, modo = {}, inertes = [];
+  function css() {
+    if (document.getElementById('vacLoginCss')) return; const st = document.createElement('style'); st.id = 'vacLoginCss';
+    st.textContent = ':root{--vl-veil:rgba(10,16,22,.62);--vl-bg:#ffffff;--vl-ink:#16202a;--vl-mute:#5a6775;--vl-line:#d3dae1;--vl-in:#f3f5f8;--vl-acc:#1d5fa8;--vl-acc-ink:#fff;--vl-chip:#e9eef3;--vl-crit:#c22a2a;--vl-ok:#19713f;--vl-warn:#8f5a00}' +
+      '@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--vl-veil:rgba(0,0,0,.68);--vl-bg:#17212b;--vl-ink:#e6ecf2;--vl-mute:#9aa8b6;--vl-line:#2b3846;--vl-in:#0e141a;--vl-acc:#5aa2ec;--vl-acc-ink:#0e141a;--vl-chip:#22303d;--vl-crit:#ff7a7a;--vl-ok:#4dc282;--vl-warn:#f0b34a}}' +
+      ':root[data-theme="dark"]{--vl-veil:rgba(0,0,0,.68);--vl-bg:#17212b;--vl-ink:#e6ecf2;--vl-mute:#9aa8b6;--vl-line:#2b3846;--vl-in:#0e141a;--vl-acc:#5aa2ec;--vl-acc-ink:#0e141a;--vl-chip:#22303d;--vl-crit:#ff7a7a;--vl-ok:#4dc282;--vl-warn:#f0b34a}' +
+      '.vlog{position:fixed;inset:0;z-index:9000;background:var(--vl-veil);backdrop-filter:blur(3px);display:grid;place-items:center;padding:16px;overflow:auto;font-family:system-ui,-apple-system,"Segoe UI",sans-serif}' +
+      '.vlog .vl-d{width:min(430px,100%);background:var(--vl-bg);color:var(--vl-ink);border:1px solid var(--vl-line);border-radius:12px;box-shadow:0 18px 48px rgba(0,0,0,.35);overflow:hidden;font-size:14px;line-height:1.45}' +
+      '.vlog .vl-h{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:16px 18px;border-bottom:1px solid var(--vl-line)}.vlog .vl-t{font-weight:700;font-size:17px;line-height:1.25}.vlog .vl-t small{display:block;font-weight:400;font-size:12px;color:var(--vl-mute)}' +
+      '.vlog .vl-logo{flex:none;max-height:40px;max-width:110px;object-fit:contain;background:#fff;border-radius:4px;padding:3px}' +
+      '.vlog .vl-b{padding:18px;display:grid;gap:12px}.vlog label.vl-l{display:grid;gap:5px;font-weight:600;font-size:13px}' +
+      '.vlog input.vl-i,.vlog select.vl-i{font:600 17px ui-monospace,Consolas,monospace;padding:9px 11px;border-radius:6px;border:1px solid var(--vl-line);background:var(--vl-in);color:var(--vl-ink);width:100%}.vlog input.vl-n{font:500 15px system-ui,sans-serif}' +
+      '.vlog .vl-pin{display:grid;grid-template-columns:repeat(6,1fr);gap:8px}.vlog .vl-pin input{font:600 22px ui-monospace,Consolas,monospace;text-align:center;padding:9px 0;border-radius:6px;border:1px solid var(--vl-line);background:var(--vl-in);color:var(--vl-ink);width:100%;-webkit-text-security:disc}' +
+      '.vlog input:focus-visible,.vlog select:focus-visible,.vlog button:focus-visible,.vlog a:focus-visible{outline:2px solid var(--vl-acc);outline-offset:1px}' +
+      '.vlog .vl-who{display:flex;gap:12px;align-items:center;padding:10px 12px;border-radius:8px;background:var(--vl-chip)}.vlog .vl-av{flex:none;width:38px;height:38px;border-radius:50%;background:var(--vl-acc);color:var(--vl-acc-ink);display:grid;place-items:center;font-weight:700}' +
+      '.vlog .vl-who b{display:block}.vlog .vl-who span{font-size:13px;color:var(--vl-mute)}.vlog .vl-msg{font-size:13px;min-height:18px}.vlog .vl-msg.e{color:var(--vl-crit)}.vlog .vl-msg.o{color:var(--vl-ok)}.vlog .vl-msg.w{color:var(--vl-warn)}' +
+      '.vlog .vl-a{display:flex;gap:8px;flex-wrap:wrap;align-items:center}.vlog .vl-btn{font:600 14px system-ui,sans-serif;padding:9px 16px;border-radius:6px;border:1px solid var(--vl-line);background:var(--vl-bg);color:var(--vl-ink);cursor:pointer;text-decoration:none;display:inline-block}' +
+      '.vlog .vl-btn.p{background:var(--vl-acc);border-color:var(--vl-acc);color:var(--vl-acc-ink)}.vlog .vl-btn:disabled{opacity:.45;cursor:not-allowed}.vlog .vl-lk{font:13px system-ui,sans-serif;color:var(--vl-acc);background:none;border:0;padding:0;cursor:pointer;text-decoration:underline}' +
+      '.vlog .vl-f{padding:10px 18px;border-top:1px solid var(--vl-line);font-size:12px;color:var(--vl-mute);display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap}.vlog .vl-s{font-size:12.5px;color:var(--vl-mute)}.vlog .vl-sp{flex:1}';
+    document.head.appendChild(st);
+  }
+  const logoSrc = () => { try { if (typeof Logo !== 'undefined' && Logo.src) { const s = Logo.src(); if (s) return s; } } catch (x) { } return lg('vac.logo') || 'Logo.png'; };
+  const nomePagina = () => { try { const me = (typeof systems === 'function' ? systems() : []).find(s => s.id === PAGE.id); return (me && (typeof vacNomeSis === 'function' ? vacNomeSis(me) : me.nome)) || PAGE.tituloCurto || ''; } catch (x) { return ''; } };
+  const pinHtml = id => '<div class="vl-pin" id="' + id + '">' + [0, 1, 2, 3, 4, 5].map(i => '<input inputmode="numeric" autocomplete="off" maxlength="1" aria-label="Dígito ' + (i + 1) + '">').join('') + '</div>';
+  const pin = id => [...el.querySelectorAll('#' + id + ' input')].map(i => i.value).join('');
+  function ligaPin(id, fim) {
+    const L = [...el.querySelectorAll('#' + id + ' input')];
+    L.forEach((i, k) => {
+      i.addEventListener('input', () => { const d = i.value.replace(/\D/g, ''); if (d.length > 1) { d.slice(0, 6 - k).split('').forEach((c, j) => { L[k + j].value = c; }); (L[Math.min(5, k + d.length)]).focus(); } else { i.value = d; if (d && L[k + 1]) L[k + 1].focus(); } if (pin(id).length === 6 && fim) fim(); });
+      i.addEventListener('keydown', ev => { if (ev.key === 'Backspace' && !i.value && L[k - 1]) { L[k - 1].focus(); L[k - 1].value = ''; } if (ev.key === 'Enter' && fim) fim(); });
+    });
+    return L;
+  }
+  const limpaPin = id => { const L = [...el.querySelectorAll('#' + id + ' input')]; L.forEach(i => i.value = ''); if (L[0]) L[0].focus(); };
+  const quem = u => { const p = perfilDe(u), f = funcao(u); return '<div class="vl-who"><div class="vl-av" aria-hidden="true">' + e(String(u.nome || '?').split(/\s+/).map(x => x[0]).slice(0, 2).join('').toUpperCase()) + '</div><div><b>' + e(u.nome) + '</b><span>' + e([f, p ? 'perfil ' + (p.nome || p.codigo) : u.perfil ? 'perfil ' + u.perfil : ''].filter(Boolean).join(' · ')) + '</span></div></div>'; };
+  const msg = (t, c) => { const m = el && el.querySelector('#vlMsg'); if (m) { m.className = 'vl-msg ' + (c || ''); m.textContent = t; } };
+  function corpo(h) { el.querySelector('.vl-b').innerHTML = h; }
+  function fechar() { if (!el) return; el.remove(); el = null; for (const n of inertes) n.inert = false; inertes = []; }
+  function abrir(op) {
+    modo = op || {}; if (el) fechar(); css();
+    el = document.createElement('div'); el.className = 'vlog'; el.setAttribute('role', 'dialog'); el.setAttribute('aria-modal', 'true'); el.setAttribute('aria-labelledby', 'vlT');
+    el.innerHTML = '<div class="vl-d"><div class="vl-h"><div class="vl-t" id="vlT">Sistema de gestão Vacutainer<small>' + e(nomePagina()) + ' · Linha Vacutainer</small></div><img class="vl-logo" alt="Logo" src="' + e(logoSrc()) + '"></div><div class="vl-b"></div>' +
+      '<div class="vl-f"><span id="vlSes">Sessão até o fim do turno neste computador</span><span>' + e(typeof PAGE !== 'undefined' ? (nomePagina() + ' ' + (PAGE.versao || '')) : '') + '</span></div></div>';
+    const im = el.querySelector('.vl-logo'); im.onerror = () => { im.hidden = true; };
+    for (const n of document.body.children) if (!n.inert) { n.inert = true; inertes.push(n); }
+    document.body.appendChild(el);
+    if (modo.trocar && sessao()) passoConta(); else passoId();
+  }
+  function semCadastro() {
+    const h = hook(); el.dataset.passo = 'semcad';
+    corpo('<p>Este computador ainda não tem o cadastro de usuários. ' + (h ? 'Conecte a pasta da rede da linha para conferir o seu ID.' : 'Abra o Portal pela pasta da rede uma vez para trazer o cadastro.') + '</p><div class="vl-msg" id="vlMsg"></div><div class="vl-a">' +
+      (h && h.conectar ? '<button type="button" class="vl-btn p" id="vlCon">Conectar pasta</button>' : '<a class="vl-btn p" href="' + e(portalHref('entrar=' + (typeof PAGE !== 'undefined' ? PAGE.id : ''))) + '">Abrir o Portal</a>') +
+      '<span class="vl-sp"></span><button type="button" class="vl-lk" id="vlDemo">Ver a demonstração</button></div>');
+    const c = el.querySelector('#vlCon'); if (c) c.onclick = async () => { try { await h.conectar(); } catch (x) { msg(String(x.message || x), 'e'); } if (cad()) passoId(); };
+    el.querySelector('#vlDemo').onclick = () => { try { vacDemo.entrar(); } catch (x) { } };
+  }
+  function passoId(aviso) {
+    if (!cad()) return semCadastro();
+    el.dataset.passo = 'id'; const id0 = modo.trocar ? '' : lg('vac.userId') || '';
+    corpo('<label class="vl-l" for="vlId">ID / matrícula<input class="vl-i" id="vlId" autocomplete="off" value="' + e(id0) + '" placeholder="ex.: 104233"></label><div class="vl-msg" id="vlMsg"></div>' +
+      '<div class="vl-a"><button type="button" class="vl-btn p" id="vlOk">Continuar</button>' + (modo.trocar && sessao() ? '<button type="button" class="vl-btn" id="vlX">Cancelar</button>' : '') + '<span class="vl-sp"></span><button type="button" class="vl-lk" id="vlDemo">Ver a demonstração</button></div>');
+    if (aviso) msg(aviso[0], aviso[1]);
+    const i = el.querySelector('#vlId'); i.focus(); i.select();
+    const ir = () => { const v = i.value.trim(); if (!v) return msg('Digite o seu ID.', 'e'); if (/[\/#]/.test(v) || v.length > 30) return msg('ID inválido.', 'e'); const u = usuario(v);
+      if (u && u.ativo === false) return msg('Este ID está inativo no cadastro. Fale com o administrador.', 'e');
+      if (!u) return naoCadastrado(v);
+      if (!u.senha || !u.senha.hash) return criarSenha(u, false);
+      passoSenha(u); };
+    i.onkeydown = ev => { if (ev.key === 'Enter') ir(); }; el.querySelector('#vlOk').onclick = ir;
+    const x = el.querySelector('#vlX'); if (x) x.onclick = fechar;
+    el.querySelector('#vlDemo').onclick = () => { try { vacDemo.entrar(); } catch (z) { } };
+  }
+  function irPortal(txt, h) { corpo('<p>' + txt + '</p><div class="vl-a"><a class="vl-btn p" href="' + e(portalHref(h)) + '">Ir para o Portal</a><button type="button" class="vl-lk" id="vlVolta">Voltar</button></div>'); el.querySelector('#vlVolta').onclick = () => passoId(); }
+  function naoCadastrado(id) {
+    const h = hook();
+    if (!h) return irPortal('O ID <b>' + e(id) + '</b> não está no cadastro. O primeiro acesso (nome, ID e senha) é feito no Portal.', 'entrar=' + (typeof PAGE !== 'undefined' ? PAGE.id : ''));
+    const T = h.turnos ? h.turnos() : [];
+    corpo('<p><b>Primeiro acesso.</b> O ID <b>' + e(id) + '</b> ainda não está cadastrado. Informe seus dados e crie a senha; você entra com o perfil <b>Consulta</b> e o administrador ajusta depois.</p>' +
+      '<label class="vl-l">Nome completo<input class="vl-i vl-n" id="vlNome" autocomplete="name"></label>' +
+      (T.length ? '<label class="vl-l">Turno<select class="vl-i vl-n" id="vlTurno"><option value="">–</option>' + T.map(t => '<option value="' + e(t.codigo) + '">' + e(t.codigo + ' · ' + (t.nome || '')) + '</option>').join('') + '</select></label>' : '') +
+      '<label class="vl-l">Especialidade ou área (opcional)<input class="vl-i vl-n" id="vlEsp" placeholder="ex.: mecânica, qualidade"></label>' +
+      '<div class="vl-l">Crie a senha (6 números)' + pinHtml('vlP1') + '</div><div class="vl-l">Repita a senha' + pinHtml('vlP2') + '</div><div class="vl-msg" id="vlMsg"></div>' +
+      '<div class="vl-a"><button type="button" class="vl-btn p" id="vlOk">Cadastrar e entrar</button><button type="button" class="vl-lk" id="vlVolta">Voltar</button></div>');
+    ligaPin('vlP1', null); ligaPin('vlP2', null); el.querySelector('#vlNome').focus();
+    el.querySelector('#vlVolta').onclick = () => passoId();
+    el.querySelector('#vlOk').onclick = async () => {
+      const nome = el.querySelector('#vlNome').value.trim().replace(/\s+/g, ' '), a = pin('vlP1'), b = pin('vlP2');
+      if (nome.length < 3) return msg('Informe o seu nome.', 'e');
+      const er = conferirNova(a, b); if (er) return msg(er, 'e');
+      const ok = el.querySelector('#vlOk'); ok.disabled = true;
+      try { const s = await gerar(a, false, nome), tu = el.querySelector('#vlTurno'), u = { codigo: id, nome, perfil: 'CONSULTA', turno: tu && tu.value || null, especialidade: el.querySelector('#vlEsp').value.trim() || null };
+        abrirSessao(u); await h.autocadastro(u, s); entrou(usuario(id) || u, 'Cadastro feito.', null); }
+      catch (x) { ok.disabled = false; msg('Não consegui cadastrar: ' + (x.message || x), 'e'); }
+    };
+  }
+  function conferirNova(a, b) { if (a.length < 6) return 'A senha tem 6 números.'; if (fraca(a)) return 'Evite números repetidos ou em sequência (111111, 123456).'; if (a !== b) return 'As duas senhas não são iguais.'; return ''; }
+  function criarSenha(u, provisoria) {
+    const h = hook();
+    if (!h) return irPortal(provisoria ? 'Você entrou com uma senha provisória. Crie a sua senha definitiva no Portal.' : '<b>' + e(u.nome) + '</b>, a sua senha ainda não foi criada. Crie a senha de 6 números no Portal (uma vez só).', 'entrar=' + (typeof PAGE !== 'undefined' ? PAGE.id : ''));
+    corpo(quem(u) + '<p>' + (provisoria ? 'Você entrou com a senha provisória. Crie agora a sua senha.' : 'Primeiro acesso: crie a sua senha de 6 números.') + '</p><div class="vl-l">Nova senha' + pinHtml('vlP1') + '</div><div class="vl-l">Repita a senha' + pinHtml('vlP2') + '</div><div class="vl-msg" id="vlMsg"></div>' +
+      '<div class="vl-a"><button type="button" class="vl-btn p" id="vlOk">Criar senha e entrar</button><button type="button" class="vl-lk" id="vlVolta">Não sou eu</button></div>');
+    const L1 = ligaPin('vlP1', () => { const L2 = el.querySelectorAll('#vlP2 input'); if (L2[0]) L2[0].focus(); }); ligaPin('vlP2', null); L1[0].focus();
+    el.querySelector('#vlVolta').onclick = () => passoId();
+    el.querySelector('#vlOk').onclick = async () => {
+      const a = pin('vlP1'), er = conferirNova(a, pin('vlP2')); if (er) return msg(er, 'e');
+      const ok = el.querySelector('#vlOk'); ok.disabled = true;
+      try { const s = await gerar(a, false, u.nome); const ult = abrirSessao(u); await h.criarSenha(u, s, provisoria ? 'troca da senha provisória' : '1º acesso: senha criada pela pessoa'); entrou(usuario(u.codigo) || u, 'Senha criada.', ult); }
+      catch (x) { ok.disabled = false; msg('Não consegui gravar a senha: ' + (x.message || x), 'e'); }
+    };
+  }
+  function passoSenha(u) {
+    corpo(quem(u) + '<div class="vl-l">Senha (6 números)' + pinHtml('vlP1') + '</div><div class="vl-msg" id="vlMsg"></div>' +
+      '<div class="vl-a"><button type="button" class="vl-btn p" id="vlOk">Entrar</button><button type="button" class="vl-lk" id="vlVolta">Não sou eu</button><span class="vl-sp"></span><button type="button" class="vl-lk" id="vlEsq">Esqueci a senha</button></div>');
+    const ok = el.querySelector('#vlOk'), trava = () => { const b = bloqueio(u.codigo); if (!b) return false; msg(MAX_ERR + ' senhas erradas. Este ID está bloqueado neste computador até ' + new Date(b).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) + '.', 'e'); ok.disabled = true; el.querySelectorAll('#vlP1 input').forEach(i => i.disabled = true); return true; };
+    let indo = false;
+    const ir = async () => {
+      if (indo || trava()) return; const p = pin('vlP1'); if (p.length < 6) return msg('A senha tem 6 números.', 'e');
+      indo = true; ok.disabled = true; msg('Conferindo…', '');
+      const certo = await confere(u, p); indo = false; ok.disabled = false;
+      if (!certo) { const x = errou(u.codigo); limpaPin('vlP1'); if (!trava()) msg('Senha errada. ' + (MAX_ERR - x.n) + ' tentativa(s) antes de bloquear por 5 minutos neste computador.', 'e'); return; }
+      if (u.senha.provisoria) return criarSenha(u, true);
+      const ult = abrirSessao(u); entrou(u, '', ult);
+    };
+    ligaPin('vlP1', ir)[0].focus(); ok.onclick = ir; trava();
+    el.querySelector('#vlVolta').onclick = () => passoId();
+    el.querySelector('#vlEsq').onclick = () => msg('Peça ao administrador uma senha provisória no Portal › Cadastros › Usuários.', 'w');
+  }
+  function entrou(u, txt, ult) {
+    const s = sessao(); fechar();
+    try { const t = (txt ? txt + ' ' : '') + 'Bem-vindo, ' + String(u.nome).split(' ')[0] + '.' + (ult ? ' Último acesso neste computador: ' + brh(ult) + '.' : '') + (s ? ' Sessão até ' + new Date(s.ate).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) + '.' : '');
+      if (typeof toast === 'function') toast(t); } catch (x) { }
+    try { if (modo.volta) { const v = (typeof systems === 'function' ? systems() : []).find(x => x.id === modo.volta); if (v && v.id !== 'portal' && typeof sysHref === 'function') location.assign(sysHref(v)); } } catch (x) { }
+  }
+  function passoConta() {
+    const u = usuario(lg('vac.userId')) || { nome: lg('vac.user') || '', codigo: lg('vac.userId') || '' }, s = sessao(), h = hook();
+    corpo(quem(u) + '<p class="vl-s">Sessão até ' + e(s ? new Date(s.ate).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : '—') + ' neste computador.</p><div class="vl-msg" id="vlMsg"></div>' +
+      '<div class="vl-a"><button type="button" class="vl-btn" id="vlTroca">Trocar usuário</button>' + (h ? '<button type="button" class="vl-btn" id="vlSenha">Trocar minha senha</button>' : '<a class="vl-btn" href="' + e(portalHref('entrar=' + (typeof PAGE !== 'undefined' ? PAGE.id : ''))) + '">Trocar minha senha (Portal)</a>') +
+      '<button type="button" class="vl-btn" id="vlSair">Sair</button><span class="vl-sp"></span><button type="button" class="vl-btn p" id="vlX">Fechar</button></div>');
+    el.querySelector('#vlTroca').onclick = () => { modo.trocar = true; passoId(); };
+    el.querySelector('#vlSair').onclick = sair; el.querySelector('#vlX').onclick = fechar;
+    const b = el.querySelector('#vlSenha'); if (b) b.onclick = () => trocarSenha(u);
+  }
+  function trocarSenha(u) {
+    const h = hook(); if (!h) return;
+    corpo(quem(u) + '<div class="vl-l">Senha atual' + pinHtml('vlP0') + '</div><div class="vl-l">Nova senha' + pinHtml('vlP1') + '</div><div class="vl-l">Repita a nova senha' + pinHtml('vlP2') + '</div><div class="vl-msg" id="vlMsg"></div>' +
+      '<div class="vl-a"><button type="button" class="vl-btn p" id="vlOk">Trocar senha</button><button type="button" class="vl-lk" id="vlVolta">Voltar</button></div>');
+    ligaPin('vlP0', null)[0].focus(); ligaPin('vlP1', null); ligaPin('vlP2', null);
+    el.querySelector('#vlVolta').onclick = passoConta;
+    el.querySelector('#vlOk').onclick = async () => {
+      if (u.senha && u.senha.hash) { if (bloqueio(u.codigo)) return msg('Bloqueado por senhas erradas. Tente em alguns minutos.', 'e'); if (!(await confere(u, pin('vlP0')))) { errou(u.codigo); limpaPin('vlP0'); return msg('A senha atual não confere.', 'e'); } }
+      const a = pin('vlP1'), er = conferirNova(a, pin('vlP2')); if (er) return msg(er, 'e');
+      try { await h.criarSenha(u, await gerar(a, false, u.nome), 'senha trocada pela pessoa'); msg('Senha trocada.', 'o'); setTimeout(passoConta, 900); } catch (x) { msg('Não consegui gravar: ' + (x.message || x), 'e'); }
+    };
+  }
+  /* ---- ciclo: abre quando falta sessão; fecha sozinho se outra aba entrou ---- */
+  function checar() {
+    if (el) { if (dispensado() || (sessao() && !modo.trocar)) fechar(); else if (el.dataset.passo === 'semcad' && cad()) passoId(); return; }
+    if (!dispensado() && !sessao()) abrir();
+  }
+  function iniciar() { setTimeout(checar, 400); setInterval(checar, 20000); window.addEventListener('storage', ev => { if (['vac.sessao', 'vac.userId', 'vac.cadastros'].includes(ev.key)) setTimeout(checar, 50); }); window.addEventListener('hashchange', () => setTimeout(checar, 50)); }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', iniciar); else iniciar();
+  return { abrir, fechar, sair, sessao, gerar, confere, fraca, provisoriaNova, fimSessao, dispensado, checar, get aberto() { return !!el; } };
+})();
+/* o "Entrar" antigo do cabeçalho abre o login (trocar usuário, trocar senha, sair) */
+try { if (typeof VacEntrar !== 'undefined') VacEntrar.abrir = () => vacLogin.abrir({ trocar: true }); } catch (e) { }
 
 </script>
 <script>
