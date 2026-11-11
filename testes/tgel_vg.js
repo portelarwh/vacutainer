@@ -12,7 +12,7 @@ const errs = []; const ok = (c, m) => { console.log((c ? 'ok   ' : 'FALHA ') + m
 const LER = () => {
   const n = s => String(s || '').replace(/\s+/g, ' ').trim(), m = document.getElementById('panel');
   const kpis = {}; m.querySelectorAll('.dbk').forEach(k => { const c = k.cloneNode(true); c.querySelectorAll('svg').forEach(x => x.remove()); kpis[n((k.querySelector('.l, .dbkl, b, h4') || {}).textContent) || n(c.textContent).slice(0, 30)] = n(c.textContent); });
-  const blocos = {}; m.querySelectorAll('[data-dbb], .dbblk, #dbGrid > *').forEach((b, i) => { const id = b.dataset.dbb || b.id || ('b' + i); blocos[id] = n(b.textContent).slice(0, 3000); });
+  const blocos = {}; m.querySelectorAll('[data-dbb], .dbblk, #dbGrid > *').forEach((b, i) => { const id = b.dataset.dbb || b.id || ('b' + i); const c = b.cloneNode(true); c.querySelectorAll('.c-un').forEach(x => x.remove()); blocos[id] = n(c.textContent).slice(0, 3000); });   // 2.28: a linha "Valores em …" fica fora da comparação
   return { kpis, blocos, sub: n((m.querySelector('.dbbar .sub') || {}).textContent) };
 };
 (async () => {
@@ -32,6 +32,13 @@ const LER = () => {
     ok(!difB.length, 'mesmo conteúdo em todos os blocos do painel' + (difB.length ? ': ' + difB.join(', ') : ` (${Object.keys(ref.blocos).length})`));
     ok(ref.sub === atual.sub, 'mesmo resumo do período');
   }
+  // 2.28 · gráficos (docs/graficos-padrao.md): unidade nos gráficos do painel cujo eixo não a traz
+  const un = await o.evaluate(() => { const r = {}; document.querySelectorAll('#panel .dbchart').forEach(ch => { const blk = ch.parentElement.closest('[data-dbb], .dbblk') || ch.parentElement;
+    const h = (blk.querySelector('h3, h4, .dbbt') || {}).textContent || '?', ax = [...ch.querySelectorAll('svg > text[text-anchor="end"]')].map(x => x.textContent), u = blk.querySelector('.c-un');
+    r[h.replace(/[▾▸]/g, '').trim()] = { u: u ? u.textContent.trim() : '', comUn: ax.length > 0 && ax.every(t => /%|kg/.test(t)) }; }); return r; });
+  const semUn = Object.keys(un).filter(k => !un[k].u && !un[k].comUn);
+  ok(Object.keys(un).length >= 5 && !semUn.length, `gráficos do painel com unidade no eixo ou "Valores em …" (${Object.keys(un).length})` + (semUn.length ? ': faltam ' + semUn.join(', ') : ''));
+  ok((un['Produção × plano'] || {}).u === 'Valores em tubos' && (un['Gel: teórico × barris baixados'] || {}).u === 'Valores em kg', 'produção em tubos e gel em kg');
   await o.screenshot({ path: SAI + ROTULO + '-1440-claro.png', fullPage: true });
   if (!GRAVAR) {
     const L = await o.evaluate(async () => { const w = t => new Promise(r => setTimeout(r, t)), out = {}, M = document.getElementById('panel');
