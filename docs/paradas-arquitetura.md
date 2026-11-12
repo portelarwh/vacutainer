@@ -202,3 +202,54 @@ A aba Importar leva ao Portal › Importação › Paradas; a tela do Forms abre
 - **Tempo por mês:** o eixo deixou de repetir rótulos.
 - **Subtítulos:** dizem "tempo de parada (h ou min)".
 - **Números:** nenhum muda. Padrão em `docs/graficos-padrao.md`.
+
+## Paradas 1.1.0 · Refatoração UX/UI, etapa 1: Visão geral e Pareto (12/11/2026)
+
+A especificação "Refatoração UX/UI — Paradas.html" pede só apresentação, por etapas. Esta é a etapa 1 (Visão geral e Pareto). As próximas são Equipamentos, Recorrência, Eventos/Fila técnica/Validação e o restante da responsividade.
+
+**Não mudou:** `statsEquip`, `programado`, `recorrencias`, `classe`, `codigoEf`, `F.apply`, `Store`, a fila de gravação, os contratos JSON, as permissões, a classificação e os critérios de micro e quebra, as fórmulas de MTBF, MTTR e MTBS, `vbars` e `bindChart`. O kit também não mudou.
+
+### Visão geral (`VIEWS.geral`), em faixas
+1. **Filtros:** os campos de antes e os **ativos em pílulas** (`ativosHTML`): equipamento, turno, classe e grupo, cada um com × para tirar, e "Limpar filtros".
+2. **Indicadores principais:** Tempo de parada, Quebras, MTBF da linha, MTTR e Máquina crítica (com o atalho "Filtrar" do equipamento).
+3. **Secundários:** Microparadas, Código temporário e % do tempo de operação (barra), mais o aviso de microparadas.
+4. **Prioridades:** ação prioritária, próximas decisões ("Ver todas") e atalhos das pendências (Validação, Fila técnica, Ações).
+5. **Análise visual:** tempo por mês, com o mês de mais e o de menos parada logo abaixo, e o Pareto de equipamentos.
+6. **Análises complementares:** grupos que recolhem (B · classe, C · turno) e Explorar dados.
+
+Cada número aparece uma vez:
+- **Situação:** o card grande repetia o tempo e as ocorrências do 1º indicador e saiu.
+- **"Maior perda":** repetia a máquina crítica e o Pareto e saiu; o atalho "Filtrar" ficou no indicador.
+- **"Diagnóstico":** o código temporário já está nos secundários e o pior e o melhor mês foram para baixo do gráfico mensal.
+
+`parSit`, `parTop` e `parDiag` continuam no arquivo, sem uso, para facilitar uma volta.
+
+### Pareto (`VIEWS.pareto`)
+- **Seletores:** agrupados em Dimensão, Medida e Referência. As 9 dimensões quebram linha e, no celular, rolam na horizontal.
+- **Legenda:** distingue a barra e o "% acumulado". O acumulado vai num `tspan` mais claro; o texto continua "· N% acum.".
+- **Linha de 80 %:** opcional e desligada por padrão (`vac.paradas.p80`, neste computador). Marca a barra em que o acumulado passa de 80 %; é só referência, não é meta.
+- **Seleção ativa:** a barra fica com contorno e a faixa "Seleção" mostra quantidade, tempo, + Ação, Planner e Limpar seleção. Sem seleção, uma dica diz para clicar numa barra.
+
+### Gráficos (`hbars`)
+- **O que entrou:** a classe `pux-on` na barra selecionada, `pux-val`/`pux-acum` nos textos e a opção `ref80` (sem `ref80`, o desenho é o de antes).
+- **O que não mudou:** a mesma entrada, o mesmo `data-k` para o clique e a mesma dica (`<title>`).
+
+### CSS
+Classes `pux-*` só desta página (no 1º `<style>`), com os tokens do tema (claro e escuro). Larguras:
+- **até 1280 px:** 3 colunas de indicadores;
+- **até 900 px:** os gráficos empilhados;
+- **até 640 px:** 2 colunas, botões com 40 px de altura e o seletor do Pareto rolando.
+
+Na impressão saem os controles.
+
+### Validação (antes × depois, mesmos dados e filtros)
+**`testes/tparadas_ux.js` (novo):** referência gravada **antes** em `testes/bases/paradas-ux-referencia.json`. Confere iguais:
+- os totais (24.461 min, 1.419 ocorrências) e o tempo programado;
+- `statsEquip` dos 13 equipamentos (MTBF, MTTR, MTBS, disponibilidade, quebras…) e as 58 recorrências;
+- os 18 Paretos (9 dimensões × minutos/ocorrências: ranking, valores e dicas);
+- as dicas dos gráficos da Visão geral e as linhas das tabelas de Equipamentos e Recorrência.
+
+Também confere a tela nova: faixas, pílulas, seleção, Pareto, 80 %, clique, + Ação, 5 larguras × 2 temas e console sem erro.
+
+**`tparadas_vg.js`:** os mesmos números da referência anterior (indicadores, ação, decisões, 4 gráficos, filtros). A estrutura esperada passou a ser a das faixas novas.
+
