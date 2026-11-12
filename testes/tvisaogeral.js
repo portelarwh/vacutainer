@@ -10,7 +10,7 @@ const REF = RAIZ + 'testes/bases/visaogeral-referencia.json', SAI = RAIZ + 'test
 const GRAVAR = process.argv.includes('--gravar'), ROTULO = (process.argv.find(a => a.startsWith('--prints=')) || '--prints=depois').slice(9);
 const errs = []; const ok = (c, m) => { console.log((c ? 'ok   ' : 'FALHA ') + m); if (!c) errs.push(m); };
 const GRAFICOS = ['Produção boa × meta e capacidade', 'OEE × meta', 'Disponibilidade, Performance e Qualidade', 'PPH real × nominal', 'Scrap % por dia', 'Perdas em minutos por dia',
-  'Pareto de paradas', 'Produção por catálogo', 'Resultado por turno', 'Atendimento por hora do dia', 'Cascata de perdas do período', 'Tendência semanal', 'Tendência mensal'];
+  'Pareto de paradas', 'Produção por catálogo', 'Resultado por turno', 'Produção por hora do dia', 'Cascata de perdas do período', 'Tendência semanal', 'Tendência mensal'];
 /* período fixo: 3 dias com produção, scrap, uma parada e caixas do MES (fora de turno) */
 const PREP = () => {
   const d = JSON.parse(Store.serialize(Store.S.db)), SD = ServerData, LINE = 'line_vac', D = ['2026-03-09', '2026-03-10', '2026-03-11'];
@@ -55,6 +55,13 @@ const LER = () => {
   await o.evaluate(() => { Panel.st().view = 'mine'; Panel.st().pre = 'custom'; Panel.st().from = '2026-03-09'; Panel.st().to = '2026-03-11'; render(); }); await o.waitForTimeout(600);
   atual.meuPainel = await o.evaluate(() => document.getElementById('main').querySelectorAll('.kpi, section.card').length + ' blocos · ' + [...document.querySelectorAll('#main .kpi .v, #main section.card h3')].map(x => x.textContent.replace(/\s+/g, ' ').trim()).join(' | '));
   await o.evaluate(() => { Panel.st().view = 'padrao'; render(); }); await o.waitForTimeout(500);
+  /* troca de UM gráfico na referência, quando ele muda de propósito (ex.: 2.4.59, "Atendimento por hora do dia" → "Produção por hora do dia",
+     com as horas fora do turno como no Apontamento); os outros gráficos, os cartões e o Meu painel continuam conferidos contra a referência antiga.
+       node testes/tvisaogeral.js --atualizar-grafico="Produção por hora do dia" --no-lugar-de="Atendimento por hora do dia" */
+  const AG = (process.argv.find(a => a.startsWith('--atualizar-grafico=')) || '').slice(20), NL = (process.argv.find(a => a.startsWith('--no-lugar-de=')) || '').slice(14);
+  if (AG) { const ref0 = JSON.parse(fs.readFileSync(REF, 'utf8')); if (!atual.graf[AG]) { console.log('FALHA gráfico não encontrado: ' + AG); process.exit(1); }
+    const g = {}; for (const [k, v] of Object.entries(ref0.graf)) { if (k === NL) g[AG] = atual.graf[AG]; else if (k !== AG) g[k] = v; } if (!g[AG]) g[AG] = atual.graf[AG]; ref0.graf = g;
+    fs.writeFileSync(REF, JSON.stringify(ref0, null, 1)); console.log('referência: só o gráfico "' + AG + '" foi atualizado' + (NL ? ' (no lugar de "' + NL + '")' : '')); await b.close(); process.exit(0); }
   ok(GRAFICOS.every(t => atual.graf[t]), `os 13 gráficos na Visão Geral padrão (${Object.keys(atual.graf).filter(t => GRAFICOS.includes(t)).length}/13)`);
   // 2.4.51 · unidade em todo gráfico cujo eixo não a traz; eixo em % sem rótulos repetidos
   const un = await o.evaluate(() => { const r = {}; document.querySelectorAll('#main section.card').forEach(sc => { const h = sc.querySelector(':scope > header h3'), ch = sc.querySelector('.chart'); if (!h || !ch) return;

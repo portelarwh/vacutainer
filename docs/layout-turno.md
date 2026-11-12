@@ -167,3 +167,27 @@ Reproduz a proposta "painel de gestão industrial" (`fontes/producao/lanc_v2.js`
 - **Onde está:** `palavras()` em `lanc_v2.js`. Nada mudou nos números.
 - **Testes:** as comparações de versão em `tfase7`, `tiniciativas` e `tplanner` passaram a ser numéricas (`verN`). Como texto, `'1.10.0' >= '1.9.15'` dá falso.
 
+## 2.4.59 · Todos os gráficos hora a hora com a lógica do Apontamento › Hora a hora (12/11/2026)
+
+**Pedido do usuário:** "Todos os gráficos hora hora precisam seguir a mesma base lógica do que está na aba Apontamento - hora hora. As horas iniciais antes e depois dos turnos produtivos aparecem normais."
+
+**Antes:** fora do Apontamento, os gráficos usavam só os intervalos dos turnos (`res.flat`). A produção do MES fora do horário do turno (ex.: das 04:00 às 06:00, que conta no 1º turno) não aparecia.
+
+**Agora:** a base comum é `HHComum`, em `fontes/producao/hh_comum.js` (com `hh_comum_build.py`):
+- **1 dia** (`HHComum.dia(day, res, turno)`): é o próprio `HHPs.chart` do Apontamento, com os intervalos do dia e as horas do MES fora do turno que contam no dia, em ordem de horário. A seleção de turno é passada direto, sem mexer na escolha da tela.
+- **Período** (`HHComum.periodo(rows)`): usa os mesmos pontos de cada dia e soma hora a hora.
+  - As barras mostram a produção média por dia e a linha, a meta média da hora.
+  - A hora fora do turno vem sem meta, com "conta no Turno X" na dica.
+  - O atendimento (produção ÷ meta) vai na dica.
+
+**Onde vale:**
+- **Visão Geral:** "Atendimento por hora do dia" passou a ser **"Produção por hora do dia"**. Um gráfico de atendimento não tem como mostrar uma hora sem meta; o novo segue o mesmo desenho do Apontamento. O grupo no `vg_layout.js` foi atualizado.
+- **Painel › bloco "Hora a hora":** vale para 1 dia e para o período. Também vale para os Blocos do Painel no SQDCP.
+- **TV › Painel do dia.**
+- **Relatórios › Passagem de turno:** o turno mostra as horas fora do turno que contam nele.
+- **Lançamento › "OEE do dia (evolução por hora)":** a hora fora do turno entra na ordem do horário, em barra mais clara. O OEE da hora é a produção do MES ÷ (PPH do turno que recebe × 1 h), a mesma ideia do OEE real. O OEE oficial do dia não muda.
+
+**Testes**
+- **`testes/thh_todos.js` (novo):** cenário do `thh24` (04:00–06:20 contando no turno A, só A e B produtivos). Em todos esses gráficos, 04:00 e 05:00 aparecem antes das 06:00. O turno B não recebe essas horas, e a média do período nas horas do turno é igual ao Apontamento.
+- **`tvisaogeral.js`:** os outros 12 gráficos, os 23 cartões e o Meu painel continuam iguais à referência antiga. Só o gráfico trocado foi atualizado na referência, com a opção nova `--atualizar-grafico="Produção por hora do dia" --no-lugar-de="Atendimento por hora do dia"`.
+
