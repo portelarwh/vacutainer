@@ -28,7 +28,7 @@ R("location.href=sysHref(port,'versoes')", "vacDemo.ir(sysHref(port,'versoes'))"
 R('<button class="btn primary" id="uOk">Usar este nome</button>', '<button class="btn primary" id="uOk">Usar este nome</button><button class="btn" data-vdemo-entrar onclick="vacDemo.entrar()">Demonstração do sistema</button>')
 R('<button class="btn ghost" id="wLocal">Começar só neste navegador</button>', '<button class="btn ghost" id="wLocal">Começar só neste navegador</button><button class="btn" data-vdemo-entrar onclick="vacDemo.entrar()">Demonstração do sistema</button>')
 R('Abre uma <b>cópia em memória</b> da base com cerca de 3 semanas de dados fictícios (hora a hora, paradas, scrap, dias fechados e abertos), para treinar ou demonstrar. Nada é gravado na pasta da rede nem no navegador: ao sair, tudo volta exatamente como estava.', 'Abre a <b>demonstração integrada do sistema</b>, com produção, perdas, gel, paradas, equipamentos e ações fictícias relacionadas. Você pode editar o exemplo e navegar entre as páginas. As bases reais ficam preservadas; fechar ou recarregar a demonstração descarta as alterações fictícias.')
-R("const APP_VERSION = '2.0.1';","const APP_VERSION = '2.4.62';")
+R("const APP_VERSION = '2.0.1';","const APP_VERSION = '2.4.63';")
 # 2.4.45 · login comum do kit (vacLogin): o "Quem está usando?" só aparece quando o login não vale (demonstração, teste, TV)
 R("function askUser(first) {\n  const known","function askUser(first) {\n  if (typeof vacLogin !== 'undefined' && !vacLogin.dispensado()) return vacLogin.abrir({ trocar: !!vacLogin.sessao() });\n  const known")
 R("  if (!Store.S.user) askUser({ then: () => { if (!dir && !cache) welcome(); } });",
@@ -255,6 +255,7 @@ from oee_build import aplicar as aplicar_oee
 # 2.4.36 · UX-02: guia por aba (componente vacGuia do kit; conteúdo em fontes/producao/guia.js)
 R("async function boot() {\n", open(os.path.join(AQUI,'guia.js'),encoding='utf-8').read() + "\nasync function boot() {\n")
 # 2.4.35 · CSV do MES: catálogo e lote registrados antes da 1ª caixa pertencem a ela; caixa 0 não conta (fontes/producao/mes_build.py)
+# 2.4.63 · 1ª linha do relatório diário com caixa > 0 = última caixa do relatório anterior: não conta de novo (mesmo arquivo)
 from mes_build import aplicar as aplicar_mes
 aplicar_mes(R)
 # 2.4.34 · Fase 7 do briefing: PRD-05, PRD-06, UX-01, UX-04 (fontes/producao/fase7.js, fase7_build.py)
