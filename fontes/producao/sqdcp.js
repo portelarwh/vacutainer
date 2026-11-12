@@ -170,7 +170,7 @@ const Sqdcp = (() => {
     } else {
       if (UI.linha !== 'line_vac') { ret.nota = 'Esta fonte publica a linha Vacutainer, sem detalhamento para a linha selecionada.'; return ret; }
       const x = fontes[c.fonte]; ret.fonte = c.fonte === 'perdas' ? 'Waste · exports' : c.fonte === 'gel' ? 'Gel · exports' : 'Iniciativas · exports';
-      if (!x || !x.ex) { ret.nota = x && x.erro || 'Conecte a pasta e atualize as fontes do quadro.'; return ret; }
+      if (!x || !x.ex) { ret.nota = x && x.erro || 'Conecte a pasta e atualize as fontes do quadro.'; if (x && x.erro && !x.semPasta) ret.erroFonte = true; else if (carregando) ret.carregandoFonte = true; return ret; }
       const ex = x.ex;
       if (c.id === 'waste') {
         const p = (ex.porMes || []).filter(p => p.per <= ate.slice(0, 7)).sort((a, b) => b.per.localeCompare(a.per))[0];
@@ -218,13 +218,13 @@ const Sqdcp = (() => {
           if (id === 'perdas' && !Array.isArray(ex.porMes) || id === 'inic' && !Array.isArray(ex.acoes) ||
             id === 'gel' && (!ex.estoque || typeof ex.estoque !== 'object')) throw new Error('Fonte sem os campos esperados para este indicador.');
           resultado = { ex };
-        } catch (err) { resultado = { erro: err && err.name === 'NotFoundError' ? 'Base da fonte não encontrada na pasta conectada.' : String(err.message || err) }; }
+        } catch (err) { resultado = { erro: err && err.name === 'NotFoundError' ? 'Base da fonte não encontrada na pasta conectada.' : String(err.message || err), semPasta: !vacDemo.ativo && (!be || !be.dir) }; }
         if (seq === geracao) fontes[id] = resultado;
       }
     })().finally(() => { if (seq === geracao) { carregando = null; if (App.route === 'sqdcp') render(); } });
     return carregando;
   }
-  function relatorio(key) {
+  function relatorio(key, semSerie) {
     const cfg = vaga(key), c = info(cfg.indicador);
     if (!c) return null;
     if (c.painel) {
@@ -240,7 +240,7 @@ const Sqdcp = (() => {
     const estado = d.valor == null ? 'sem' : ruim ? 'crit' : d.parcial ? 'parcial' : meta == null ? 'info' : 'ok';
     const titulo = cfg.titulo || c.nome, unidade = cfg.unidade || c.unidade;
     const serie = [];
-    for (let dia = UI.dia.slice(0, 7) + '-01'; dia <= UI.dia; dia = U.addDays(dia, 1))
+    if (!semSerie) for (let dia = UI.dia.slice(0, 7) + '-01'; dia <= UI.dia; dia = U.addDays(dia, 1))
       serie.push({ dia, ...dados(c, cfg, dia, dia, key) });
     return { cfg, c, ...d, key, de, ate, meta, sentido, estado, titulo, unidade, serie };
   }
@@ -408,25 +408,108 @@ const Sqdcp = (() => {
         };
       });
   }
+  /* ===== 2.4.58 · SQDCP – Gestão Diária: layout novo (só apresentação) =====
+     Os números vêm de relatorio(key) — a mesma função da folha A4 —, calculados uma vez por desenho (relatorio sem a série do mês,
+     que só a folha usa) e reaproveitados no resumo executivo. Armazenamento, configuração, fontes, CSV e impressão continuam os mesmos. */
+  const PIL = [['S', 'Segurança', '#16803C', 'escudo'], ['Q', 'Qualidade', '#1769D2', 'selo'], ['D', 'Entrega', '#D99A00', 'caminhao'], ['C', 'Custo', '#7935B2', 'moeda'], ['P', 'Pessoas', '#C72D45', 'pessoas']];
+  const SV = {
+    escudo: '<path d="M12 3l7 3v5c0 4.5-3 8.3-7 10-4-1.7-7-5.5-7-10V6z"/><path d="M9 12l2 2 4-4"/>',
+    selo: '<circle cx="12" cy="10" r="6"/><path d="M9.5 10l1.7 1.7 3.3-3.4"/><path d="M8.5 15.5L7 21l5-2 5 2-1.5-5.5"/>',
+    caminhao: '<path d="M3 6h11v10H3z"/><path d="M14 9h4l3 3v4h-7"/><circle cx="7" cy="17.5" r="1.7"/><circle cx="17" cy="17.5" r="1.7"/>',
+    moeda: '<circle cx="12" cy="12" r="8.5"/><path d="M14.8 9.2c-.5-.9-1.6-1.5-2.8-1.5-1.6 0-2.8.9-2.8 2.1 0 2.9 5.8 1.6 5.8 4.4 0 1.2-1.3 2.1-3 2.1-1.3 0-2.5-.6-3-1.6M12 6v1.7M12 16.3V18"/>',
+    pessoas: '<circle cx="9" cy="8" r="3"/><path d="M3.5 19c.6-3.3 2.8-5 5.5-5s4.9 1.7 5.5 5"/><circle cx="17" cy="9" r="2.4"/><path d="M15.5 14.2c2.6-.3 4.6 1.2 5 4.3"/>',
+    alerta: '<path d="M12 3.5l9 16H3z"/><path d="M12 10v4M12 17v.5"/>', cal: '<rect x="3.5" y="5" width="17" height="15" rx="2"/><path d="M3.5 10h17M8 3v4M16 3v4"/>',
+    check: '<circle cx="12" cy="12" r="8.5"/><path d="M8.5 12.2l2.3 2.3 4.7-4.8"/>', lixo: '<path d="M4 7h16M9 7V4.5h6V7M6.5 7l1 13h9l1-13"/>',
+    caixa: '<path d="M3.5 7.5L12 3l8.5 4.5v9L12 21l-8.5-4.5z"/><path d="M3.5 7.5L12 12l8.5-4.5M12 12v9"/>', alvo: '<circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="4.5"/><circle cx="12" cy="12" r="1"/>',
+    medidor: '<path d="M4 16a8 8 0 1 1 16 0"/><path d="M12 16l4-5"/><circle cx="12" cy="16" r="1.2"/>', relogio: '<circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/>',
+    gota: '<path d="M12 3.5c3.5 4.4 6 7.7 6 10.6a6 6 0 1 1-12 0c0-2.9 2.5-6.2 6-10.6z"/>', lista: '<path d="M9 6.5h11M9 12h11M9 17.5h11"/><path d="M4 6.5h.5M4 12h.5M4 17.5h.5"/>',
+    lapis: '<path d="M4 20l1-4.5L16 4.5l3.5 3.5L8.5 19z"/><path d="M14 7l3 3"/>', grafico: '<path d="M4 20V4M4 20h16"/><path d="M8 16v-4M12 16V8M16 16v-6"/>',
+    engr: '<circle cx="12" cy="12" r="3"/><path d="M12 2.8v2.6M12 18.6v2.6M21.2 12h-2.6M5.4 12H2.8M18.5 5.5l-1.8 1.8M7.3 16.7l-1.8 1.8M18.5 18.5l-1.8-1.8M7.3 7.3L5.5 5.5"/>',
+    impr: '<path d="M7 9V3.5h10V9"/><rect x="3.5" y="9" width="17" height="7.5" rx="1.5"/><path d="M7 14h10v6.5H7z"/>', atual: '<path d="M20 12a8 8 0 1 1-2.3-5.7M20 4v4.5h-4.5"/>',
+    baixar: '<path d="M12 3.5v11M7.5 10l4.5 4.5 4.5-4.5M4 20h16"/>', tela: '<rect x="3" y="4" width="18" height="12" rx="1.5"/><path d="M9 20h6M12 16v4"/>', mais: '<path d="M12 5v14M5 12h14"/>',
+    sair: '<path d="M14 4h5.5v16H14M10 8l-4 4 4 4M6 12h10"/>'
+  };
+  const svg = (n, s) => '<svg class="sqdcp-svg" viewBox="0 0 24 24" width="' + (s || 18) + '" height="' + (s || 18) + '" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + (SV[n] || SV.grafico) + '</svg>';
+  const IC_IND = { acidentes: 'escudo', diasSeguros: 'cal', coberturaS: 'check', qn: 'alerta', scrap: 'lixo', scrapPct: 'lixo', qualidade: 'selo', boa: 'caixa', atendimento: 'alvo', oee: 'medidor',
+    paradas: 'relogio', waste: 'moeda', gel: 'gota', acoes: 'lista', atrasadas: 'relogio', manual: 'lapis', painel: 'grafico' };
+  /* estado mostrado na tela: o do cálculo (ok, crit, parcial, info, sem) + erro de leitura da fonte e carregando */
+  const estadoTela = r => r.erroFonte ? 'erro' : r.carregandoFonte ? 'carregando' : r.estado;
+  const ROT_TELA = { ok: 'Dentro da meta', crit: 'Fora da meta', parcial: 'Dados parciais', info: 'Sem meta cadastrada', sem: 'Não informado', erro: 'Erro na fonte', carregando: 'Carregando a fonte…' };
+  const metaTxt = r => r.meta == null ? 'Sem meta' : 'Meta ' + (r.sentido === 'menor' ? '≤ ' : '≥ ') + fmt(r.meta) + (r.unidade ? ' ' + r.unidade : '');
+  const nomeP = () => quadro().p === 'produtividade' ? 'Produtividade' : 'Pessoas';
+  const nomeTurno = () => UI.turno ? ((db().shifts || []).find(s => s.id === UI.turno) || {}).name || UI.turno : 'Todos os turnos';
+  function cardHtml(key, r, n) {
+    const pos = '<span class="sq-pos">' + key[0] + (n + 1) + ' · Posição ' + (n + 1) + '</span>';
+    const gear = '<button type="button" class="sqdcp-gear" data-sq-editar="' + key + '" aria-label="Configurar posição ' + key[0] + ' ' + (n + 1) + '" title="Configurar posição ' + key[0] + (n + 1) + '"' + (!pode('configurar') ? ' disabled' : '') + '>' + svg('engr', 17) + '</button>';
+    if (!r) return '<article class="sq-vaga sqdcp-card sqdcp-card-empty" data-sq-key="' + key + '" data-sq-estado="livre"><div class="sqdcp-card-top">' + pos + '</div>' +
+      '<p class="sqdcp-livre">Posição livre</p><div class="sqdcp-card-actions"><button type="button" class="btn ghost sqdcp-add" data-sq-editar="' + key + '"' + (!pode('configurar') ? ' disabled' : '') + '>' + svg('mais', 15) + ' Escolher indicador</button></div></article>';
+    const est = estadoTela(r), ic = '<span class="sqdcp-ic">' + svg(IC_IND[r.c.id] || 'grafico', 18) + '</span>';
+    const prev = '<button type="button" class="btn primary sqdcp-prev" data-sq-previa="' + key + '"' + (!pode('exportar') ? ' disabled' : '') + '>' + svg('impr', 15) + ' Prévia / Imprimir</button>';
+    if (r.painel) return '<article class="sq-vaga sq-vaga-painel sqdcp-card" data-sq-key="' + key + '" data-sq-estado="info"><div class="sqdcp-card-top">' + pos + ic + '</div><h4>' + e(r.titulo) + '</h4>' +
+      '<strong class="sqdcp-card-value sqdcp-v-txt">Blocos do Painel</strong><span class="sq-tag info">Gráficos da Produção</span><small class="sqdcp-nota" title="' + e(r.nota) + '">' + e(r.nota) + '</small>' +
+      '<div class="sqdcp-card-actions">' + prev + gear + '</div></article>';
+    const v = fmt(r.valor);
+    return '<article class="sq-vaga sqdcp-card sqdcp-st-' + est + '" data-sq-key="' + key + '" data-sq-estado="' + est + '"><div class="sqdcp-card-top">' + pos + ic + '</div><h4>' + e(r.titulo) + '</h4>' +
+      '<div class="sqdcp-vline"><strong class="sqdcp-card-value sq-v' + (v.length > 10 ? ' sqdcp-v-long' : '') + '">' + e(v) + '</strong><span class="sqdcp-un">' + e(r.valor == null ? '' : r.unidade) + '</span></div>' +
+      '<div class="sqdcp-meta"><span>' + e(metaTxt(r)) + '</span><span class="sq-tag ' + est + '">' + e(est === r.estado ? rotEstado(r) : ROT_TELA[est]) + '</span></div>' +
+      '<small class="sqdcp-nota" title="' + e(r.nota) + '">' + e(r.nota) + '</small>' +
+      (est === 'erro' ? '<button type="button" class="btn sqdcp-retry" data-sq-retry="1">' + svg('atual', 15) + ' Tentar novamente</button>' : '') +
+      '<div class="sqdcp-card-actions">' + prev + (r.c.id === 'manual' && pode('lancar') ? '<button type="button" class="btn" data-sq-manual="' + key + '">Registrar valor</button>' : '') + gear + '</div></article>';
+  }
+  /* resumo executivo: a 1ª posição configurada (fora os Blocos do Painel) de cada pilar, com o mesmo resultado do card */
+  function resumoHtml(R) {
+    return '<section class="sqdcp-resumo" aria-label="Resumo executivo por pilar">' + PIL.map(([l, nome, cor, icp]) => {
+      let k = null; for (let n = 0; n < 5; n++) { const r = R[l + n]; if (r && !r.painel) { k = l + n; break; } }
+      const r = k && R[k], est = r ? estadoTela(r) : 'sem', tem = r && r.valor != null;
+      return '<article class="sqdcp-rcard sqdcp-st-' + est + '" data-sq-pilar="' + l + '"' + (k ? ' data-sq-fonte-key="' + k + '"' : '') + ' style="--pillar-color:' + cor + '">' +
+        '<div class="sqdcp-rtop"><span class="sqdcp-rpil">' + svg(icp, 18) + '<b>' + l + '</b> ' + e(l === 'P' ? nomeP() : nome) + '</span>' + (k ? '<span class="sqdcp-rpos">' + k[0] + (+k[1] + 1) + '</span>' : '') + '</div>' +
+        '<div class="sqdcp-rind">' + e(r ? r.titulo : 'Nenhum indicador configurado') + '</div>' +
+        '<div class="sqdcp-vline"><strong class="sqdcp-rv">' + e(tem ? fmt(r.valor) : '—') + '</strong><span class="sqdcp-un">' + e(tem ? r.unidade : '') + '</span></div>' +
+        '<div class="sqdcp-meta"><span>' + e(r ? metaTxt(r) : '') + '</span><span class="sq-tag ' + (tem || !r ? est : est) + '">' + e(!r ? 'Não informado' : est === r.estado ? rotEstado(r) : ROT_TELA[est]) + '</span></div></article>';
+    }).join('') + '</section>';
+  }
   function renderQuadro() {
     conferirOrigem();
-    const q = quadro(), letras = ['S', 'Q', 'D', 'C', 'P'], nomes = ['Segurança', 'Qualidade', 'Entrega', 'Custo', q.p === 'produtividade' ? 'Produtividade' : 'Pessoas'];
-    return '<section class="card"><header><div><h2>SQDCP · Gestão diária</h2><p class="small muted">Cada posição representa uma folha A4 em paisagem. Configure uma vez e atualize a referência para a reunião.</p></div></header><div class="sq-filtros">' +
-      '<label>Data de referência dos indicadores ' + ib('sqReferencia') + '<input type="date" id="sqDia" value="' + e(UI.dia) + '"></label><button class="btn" id="sqOntem">Dia anterior</button>' +
+    const q = quadro(), R = {};
+    for (const [l] of PIL) for (let n = 0; n < 5; n++) R[l + n] = relatorio(l + n, true);
+    const atualizado = Object.values(fontes).map(x => x && x.ex && x.ex.geradoEm).filter(Boolean).sort().pop();
+    UI.atualizadoEm = U.nowIso();
+    const reuniao = !!UI.reuniao;
+    return '<div class="sqdcp-page' + (reuniao ? ' sqdcp-page-reuniao' : '') + '"' + (UI.pilar ? ' data-sq-zoom-ativo="' + UI.pilar + '"' : '') + '>' +
+      '<section class="card sqdcp-head">' +
+      '<div class="sqdcp-hb sqdcp-hb-tit"><div><h2>SQDCP – Gestão Diária</h2><p class="small muted">Segurança, Qualidade, Entrega, Custo e ' + e(nomeP()) + ' da linha. Cada posição vira uma folha A4 em paisagem para o quadro.</p></div>' +
+      '<button type="button" class="btn" id="sqConfigurar"' + (!pode('configurar') ? ' disabled' : '') + '>' + svg('engr', 16) + ' Configurar SQDCP</button></div>' +
+      '<div class="sqdcp-hb sqdcp-filtros sq-filtros">' +
+      '<label>Data de referência ' + ib('sqReferencia') + '<span class="sqdcp-dia"><input type="date" id="sqDia" value="' + e(UI.dia) + '"><button type="button" class="btn" id="sqOntem" title="Dia anterior a hoje">Dia anterior</button></span></label>' +
       '<label>Linha<select id="sqLinha">' + sel((db().lines || []).filter(l => !l.deleted && !l.demo && l.active !== false).map(l => [l.id, l.name]), UI.linha) + '</select></label>' +
       '<label>Turno<select id="sqTurno">' + sel([['', 'Todos'], ...(db().shifts || []).filter(s => !s.deleted && !s.demo).map(s => [s.id, s.name])], UI.turno) + '</select></label>' +
-      '<label>Coluna P<select id="sqP"' + (!pode('configurar') ? ' disabled' : '') + '>' + sel([['pessoas', 'Pessoas'], ['produtividade', 'Produtividade']], q.p || 'pessoas') + '</select></label>' +
-      '<button class="btn" id="sqFontes">Atualizar fontes</button><button class="btn" id="sqCsv"' + (!pode('exportar') ? ' disabled' : '') + '>CSV · Segurança e QN</button></div></section>' +
-      '<div class="sq-quadro">' + letras.map((l, i) => '<section class="sq-coluna sq-col-' + l + '"><h3><b>' + l + '</b><span>' + nomes[i] + '</span></h3>' +
-        Array.from({ length: 5 }, (_, n) => {
-          const key = l + n, r = relatorio(key);
-          if (r && r.painel) return '<article class="sq-vaga sq-vaga-painel"><span class="sq-pos">Posição ' + (n + 1) + '</span><h4>' + e(r.titulo) + '</h4><span class="sq-tag info">Blocos do Painel</span><small>' + e(r.nota) +
-            '</small><button class="btn primary" data-sq-previa="' + key + '"' + (!pode('exportar') ? ' disabled' : '') + '>Prévia / imprimir</button><button class="btn ghost" data-sq-editar="' + key + '"' + (!pode('configurar') ? ' disabled' : '') + '>Configurar posição</button></article>';
-          return '<article class="sq-vaga"><span class="sq-pos">Posição ' + (n + 1) + '</span>' + (r ? '<h4>' + e(r.titulo) + '</h4><strong class="sq-v">' + e(fmt(r.valor)) + '</strong><span>' + e(r.unidade) +
-            '</span><span class="sq-tag ' + r.estado + '">' + e(rotEstado(r)) + '</span><small>' + e(r.nota) + '</small><button class="btn primary" data-sq-previa="' + key + '"' + (!pode('exportar') ? ' disabled' : '') + '>Prévia / imprimir</button>' +
-            (r.c.id === 'manual' && pode('lancar') ? '<button class="btn" data-sq-manual="' + key + '">Registrar valor</button>' : '') : '<h4>Vaga livre</h4><p class="small muted">Escolha o indicador desta posição.</p>') +
-            '<button class="btn ghost" data-sq-editar="' + key + '"' + (!pode('configurar') ? ' disabled' : '') + '>' + (r ? 'Configurar posição' : '+ Escolher indicador') + '</button></article>';
-        }).join('') + '</section>').join('') + '</div>';
+      '<label>Coluna P<select id="sqP"' + (!pode('configurar') ? ' disabled' : '') + '>' + sel([['pessoas', 'Pessoas'], ['produtividade', 'Produtividade']], q.p || 'pessoas') + '</select></label></div>' +
+      '<div class="sqdcp-hb sqdcp-acoes"><button type="button" class="btn" id="sqFontes" title="Lê de novo o Waste, o Gel e Iniciativas (exports)">' + svg('atual', 16) + ' Atualizar fontes</button>' +
+      '<button type="button" class="btn" id="sqCsv" title="Segurança e QN por turno no mês da referência"' + (!pode('exportar') ? ' disabled' : '') + '>' + svg('baixar', 16) + ' Exportar CSV</button>' +
+      '<button type="button" class="btn primary" id="sqReuniao">' + svg('tela', 16) + ' Modo Reunião</button></div></section>' +
+      '<div class="sqdcp-rbar" role="status"><span class="sqdcp-rb-tit">SQDCP – Gestão Diária</span><span>Referência: <b>' + e(U.brDate(UI.dia)) + '</b></span><span>Linha: <b>' + e(nomeLinha()) + '</b></span><span>Turno: <b>' + e(nomeTurno()) + '</b></span>' +
+      '<span>Atualizado ' + e(U.brDT(UI.atualizadoEm)) + (atualizado ? ' · fontes ' + e(U.brDT(atualizado)) : '') + '</span><span class="sqdcp-sp"></span>' +
+      '<span class="sqdcp-zoom" role="group" aria-label="Pilar ampliado"><button type="button" data-sq-zoom=""' + (!UI.pilar ? ' aria-pressed="true"' : '') + '>Todos</button>' +
+      PIL.map(([l]) => '<button type="button" data-sq-zoom="' + l + '"' + (UI.pilar === l ? ' aria-pressed="true"' : '') + '>' + l + '</button>').join('') + '</span>' +
+      '<button type="button" class="btn" id="sqSairReuniao">' + svg('sair', 16) + ' Sair do modo reunião</button></div>' +
+      resumoHtml(R) +
+      '<div class="sq-quadro sqdcp-board">' + PIL.map(([l, nome, cor, icp], i) => '<section class="sq-coluna sq-col-' + l + ' sqdcp-column" data-sq-pilar="' + l + '" style="--pillar-color:' + cor + '"' + (UI.pilar && UI.pilar !== l ? ' hidden' : '') + '>' +
+        '<h3 class="sqdcp-column-header"><b>' + l + '</b><span>' + e(i === 4 ? nomeP() : nome) + '</span>' + svg(icp, 22) + '</h3>' +
+        Array.from({ length: 5 }, (_, n) => cardHtml(l + n, R[l + n], n)).join('') + '</section>').join('') + '</div></div>';
+  }
+  function reuniao(on) {
+    UI.reuniao = !!on; if (!on) UI.pilar = '';
+    document.body.classList.toggle('sqdcp-reuniao', UI.reuniao); render();
+    if (on) { const m = document.getElementById('main'); if (m) m.scrollTop = 0; scrollTo(0, 0); }
+  }
+  function configurarTudo() {
+    modal('Configurar SQDCP · ' + nomeLinha(), '<p class="small">As 25 posições do quadro desta linha. A engrenagem abre a configuração de cada uma (indicador, período, meta, sentido, modelo da folha).</p>' +
+      '<div class="sqdcp-cfg">' + PIL.map(([l, nome, cor]) => '<section style="--pillar-color:' + cor + '"><h4><b>' + l + '</b> ' + e(l === 'P' ? nomeP() : nome) + '</h4><ol>' +
+        Array.from({ length: 5 }, (_, n) => { const k = l + n, v = vaga(k), c = info(v.indicador);
+          return '<li><span>' + l + (n + 1) + '</span><span class="sqdcp-cfg-n">' + e(c ? (v.titulo || c.nome) : 'Posição livre') + '</span><button type="button" class="sqdcp-gear" data-sq-editar="' + k + '" aria-label="Configurar posição ' + l + ' ' + (n + 1) + '" title="Configurar posição ' + l + (n + 1) + '"' + (!pode('configurar') ? ' disabled' : '') + '>' + svg('engr', 16) + '</button></li>'; }).join('') +
+        '</ol></section>').join('') + '</div>', '<button class="btn" data-close>Fechar</button>', (el, fechar) => {
+        el.querySelectorAll('[data-sq-editar]').forEach(b => b.onclick = () => { fechar(); editar(b.dataset.sqEditar); });
+      }, { wide: true });
   }
   function montar(root) {
     const muda = () => { const d = root.querySelector('#sqDia').value; if (!M.dataValida(d)) return toast('Data inválida.', true);
@@ -440,11 +523,20 @@ const Sqdcp = (() => {
       const cfg = { periodo: 'mes' }, [de, ate] = intervalo(cfg, UI.dia);
       Exporter.csv('SQDCP_Seguranca_QN_' + de + '_' + ate + '.csv', M.tabela(linhas(de, ate)));
     };
+    root.querySelector('#sqConfigurar').onclick = () => configurarTudo();
+    root.querySelector('#sqReuniao').onclick = () => reuniao(true);
+    root.querySelector('#sqSairReuniao').onclick = () => reuniao(false);
+    root.querySelectorAll('[data-sq-zoom]').forEach(b => b.onclick = () => { UI.pilar = b.dataset.sqZoom; render(); });
+    root.querySelectorAll('[data-sq-retry]').forEach(b => b.onclick = () => carregarFontes(true));
     root.querySelectorAll('[data-sq-editar]').forEach(b => b.onclick = () => editar(b.dataset.sqEditar));
     root.querySelectorAll('[data-sq-previa]').forEach(b => b.onclick = () => previa(b.dataset.sqPrevia));
     root.querySelectorAll('[data-sq-manual]').forEach(b => b.onclick = () => registrarManual(b.dataset.sqManual));
+    document.body.classList.toggle('sqdcp-reuniao', !!UI.reuniao);
     carregarFontes(false);
   }
+  /* sai do Modo Reunião com Esc ou ao trocar de tela (nada é gravado ao entrar ou sair) */
+  document.addEventListener('keydown', ev => { if (ev.key === 'Escape' && UI.reuniao && !document.querySelector('.overlay')) reuniao(false); });
+  window.addEventListener('hashchange', () => { if (UI.reuniao && App.route !== 'sqdcp') { UI.reuniao = false; UI.pilar = ''; document.body.classList.remove('sqdcp-reuniao'); } });
   function resumoTexto(de, ate, turno) {
     const r = M.resumo(M.linhas(db(), de, ate, 'line_vac', turno || '', Engine, U));
     return 'Segurança: ' + (r.acidente.quantidade == null ? 'não informado' : fmt(r.acidente.quantidade) + ' acidente(s) reportado(s)') +
@@ -498,5 +590,5 @@ const Sqdcp = (() => {
   }, true);
   App.views.sqdcp = { render: renderQuadro, mount: montar };
   return { UI, catalogo, formularioTurno, lerFormulario, avisos, validarVaga, linhas, dados, resumo: M.resumo,
-    relatorio, folha, htmlImpressao, previa, imprimir, carregarFontes, fontes, resumoTexto, blocoRelatorio, demo };
+    relatorio, folha, htmlImpressao, previa, imprimir, carregarFontes, fontes, resumoTexto, blocoRelatorio, demo, reuniao };
 })();

@@ -149,5 +149,22 @@ window.VAC_GUIA.oee = {
     duvidas: [['O OEE do período é a média dos dias?', 'Não: é a soma dos tempos e das peças do período (sem média de médias).'],
       ['Por que aparece "1 dia no período" num gráfico?', 'Com um dia só não há tendência: o gráfico mostra o valor do dia contra a meta. Escolha um período maior para ver a evolução.'],
       ['Sumiu Produção boa de "Mais indicadores"?', 'Ela já está na grade de cima. Se você desligar o cartão em Editar cards, ela volta a aparecer em "Mais indicadores".']]
+  },
+  sqdcp: {
+    titulo: 'SQDCP – Gestão Diária',
+    para: 'Quadro da reunião diária: Segurança, Qualidade, Entrega, Custo e Pessoas (ou Produtividade), 5 posições por pilar. Cada posição vira uma folha A4 em paisagem. Os números vêm da Produção e dos exports do Waste, do Gel e de Iniciativas; nada é calculado à parte.',
+    campos: [
+      { sel: '#sqConfigurar', nome: 'Configurar SQDCP', o: 'Lista as 25 posições da linha; a engrenagem de cada uma abre a configuração (indicador, período, meta, sentido, modelo da folha).' },
+      { sel: '#sqDia', nome: 'Data de referência', o: 'Dia dos indicadores. Período de cada posição (dia, 7 dias, mês) conta até esta data.', ex: 'Ontem, para a reunião da manhã.' },
+      { sel: '#sqTurno', nome: 'Turno', o: 'Todos ou um turno. Fontes mensais (Waste) e posições atuais (Gel, ações) não mudam por turno.' },
+      { sel: '#sqP', nome: 'Coluna P', o: 'Pessoas ou Produtividade (nome da 5ª coluna).' },
+      { sel: '#sqFontes', nome: 'Atualizar fontes', o: 'Lê de novo o Waste, o Gel e Iniciativas. Os filtros escolhidos ficam como estão.' },
+      { sel: '#sqCsv', nome: 'Exportar CSV', o: 'Segurança e QN por turno no mês da referência.' },
+      { sel: '#sqReuniao', nome: 'Modo Reunião', o: 'Só o quadro, em tela cheia, com data, linha, turno e horário; botões S Q D C P ampliam um pilar. Esc ou Sair volta. Nada é gravado.' },
+      { sel: '.sqdcp-resumo', nome: 'Resumo executivo', o: 'Um cartão por pilar com a 1ª posição configurada dele (o mesmo resultado do card). Sem dado: — e Não informado (nunca zero).' },
+      { sel: '.sq-quadro', nome: 'Posições', o: 'Valor, meta e situação pelo sentido do indicador (verde dentro, vermelho fora, âmbar parcial, cinza não informado). Prévia / Imprimir abre a folha A4; a engrenagem configura.' }
+    ],
+    duvidas: [['Por que "Não informado" e não 0?', 'Ausência de resposta nunca é zero: o turno sem a pergunta de acidente/QN respondida ou o dia sem lançamento ficam como não informado.'],
+      ['"Erro na fonte"?', 'A base do Waste, do Gel ou de Iniciativas não pôde ser lida (arquivo com problema ou sem exports). Use Tentar novamente; sem pasta conectada aparece só Não informado.']]
   }
 };
