@@ -99,6 +99,31 @@ const LER = async () => {
   ok(T.pLeg && T.pAcum, 'Pareto: legenda e % acumulado diferenciado das barras');
   ok(T.p80off && T.p80on && T.p80naoMeta, 'Pareto: referência de 80 % opcional (desligada por padrão, não chamada de meta)');
   ok(T.pSel && T.pSelBarra && T.pLimpou, 'Pareto: clique na barra seleciona (barra marcada, faixa da seleção, registros, + Ação) e Limpar volta');
+  // ----- etapa 2: Equipamentos e Recorrência
+  const E = await o.evaluate(async () => {
+    const w = t => new Promise(r => setTimeout(r, t)), q = s => document.querySelector(s), qa = s => [...document.querySelectorAll(s)], out = {};
+    App.go('equip'); await w(300);
+    const S = VIEWS.equip.S; out.rk = qa('#eqRk [data-k]').length; out.rkEsperado = Math.min(14, S.length);
+    out.rkOrdem = qa('#eqRk [data-k]').map(g => g.dataset.k).join() === S.slice().sort((a, b) => b.min - a.min).slice(0, 14).map(s => s.eq).join();
+    out.qb = qa('#eqQb [data-k]').length === Math.min(14, S.filter(s => s.nQ > 0).length);
+    const th = q('#eqT th'), td = q('#eqT td'), tdn = q('#eqT td.n'), tw = q('#eqT');
+    out.fixo = getComputedStyle(th).position === 'sticky' && getComputedStyle(td).position === 'sticky' && getComputedStyle(tw).overflowY === 'auto' && getComputedStyle(tw).maxHeight !== 'none';
+    out.direita = getComputedStyle(tdn).textAlign === 'right';
+    q('#eqRk [data-k]').dispatchEvent(new MouseEvent('click', { bubbles: true })); await w(300); out.detalheGraf = !!q('.mod') && /Tullip A/.test((q('.mod') || {}).textContent || ''); qa('.mod-bg').forEach(m => m.remove()); await w(100);
+    q('#eqT tbody tr').click(); await w(300); out.detalheTab = !!q('.mod'); qa('.mod-bg').forEach(m => m.remove()); await w(100);
+    App.go('recor'); await w(300);
+    const R = VIEWS.recor.R, nums = qa('.pux-rres b').map(b => b.textContent.trim());
+    out.resumo = nums.join('|') === [R.length, R.filter(r => r.meses >= 3).length, R.filter(r => r.n30 >= 6).length, R.filter(r => !r.acao).length].map(n0).join('|');
+    out.destaque = !!q('#rcT .pux-req') && !!q('#rcT .pux-rq') && !!q('#rcT .pux-rult') && qa('#rcT tr.hl3').length === R.slice(0, 200).filter(r => r.n30 >= 6).length;
+    const b = q('#rcT [data-ac]'); if (b) { b.click(); await w(300); out.acao = !!q('.mod') && /Recorrência:/.test((q('.mod input') || {}).value || q('.mod').textContent); qa('.mod-bg').forEach(m => m.remove()); } else out.acao = true;
+    App.go('geral'); await w(200);
+    return out;
+  });
+  console.log('     etapa 2:', JSON.stringify(E));
+  ok(E.rk === E.rkEsperado && E.rkOrdem && E.qb, `Equipamentos: ranking por tempo parado (${E.rk} barras, mesma ordem de statsEquip) e quebras por equipamento`);
+  ok(E.fixo && E.direita, 'Equipamentos: tabela com cabeçalho e 1ª coluna fixos, rolagem própria e números à direita');
+  ok(E.detalheGraf && E.detalheTab, 'Equipamentos: clique na barra e na linha abrem o detalhe do equipamento (comportamento de antes)');
+  ok(E.resumo && E.destaque && E.acao, 'Recorrência: resumo com os números da própria lista, destaques (equipamento, quantidade, última, 6+ em 30 dias) e + Ação');
   // impressão e larguras
   await o.emulateMedia({ media: 'print' }); const imp = await o.evaluate(() => getComputedStyle(document.querySelector('#main .pux-ativos') || document.body).display); await o.emulateMedia({ media: 'screen' });
   ok(imp !== undefined, 'impressão da Visão geral sem erro');
@@ -112,7 +137,11 @@ const LER = async () => {
     await x.o.screenshot({ path: SAI + `geral-${w}-${tema === 'dark' ? 'escuro' : 'claro'}.png`, fullPage: true });
     await x.o.evaluate(() => App.go('pareto')); await x.o.waitForTimeout(300); const sp = await x.o.evaluate(() => document.documentElement.scrollWidth - innerWidth);
     ok(sp <= 1, `${w} px ${tema === 'dark' ? 'escuro' : 'claro'}: Pareto sem rolagem lateral (${sp}px)`);
-    await x.o.screenshot({ path: SAI + `pareto-${w}-${tema === 'dark' ? 'escuro' : 'claro'}.png`, fullPage: true }); await x.c.close();
+    await x.o.screenshot({ path: SAI + `pareto-${w}-${tema === 'dark' ? 'escuro' : 'claro'}.png`, fullPage: true });
+    for (const v of ['equip', 'recor']) { await x.o.evaluate(v => App.go(v), v); await x.o.waitForTimeout(300); const sv = await x.o.evaluate(() => document.documentElement.scrollWidth - innerWidth);
+      ok(sv <= 1, `${w} px ${tema === 'dark' ? 'escuro' : 'claro'}: ${v === 'equip' ? 'Equipamentos' : 'Recorrência'} sem rolagem lateral da página (${sv}px; a tabela rola dentro)`);
+      await x.o.screenshot({ path: SAI + `${v}-${w}-${tema === 'dark' ? 'escuro' : 'claro'}.png`, fullPage: true }); }
+    await x.c.close();
   }
   ok(!pe.length, 'sem erro de página nem no console' + (pe.length ? ': ' + pe.slice(0, 3).join(' | ') : ''));
   await b.close(); console.log(errs.length ? `\n${errs.length} falha(s)` : '\nsem erros'); process.exit(errs.length ? 1 : 0);

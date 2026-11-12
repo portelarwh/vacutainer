@@ -253,3 +253,41 @@ Também confere a tela nova: faixas, pílulas, seleção, Pareto, 80 %, clique, 
 
 **`tparadas_vg.js`:** os mesmos números da referência anterior (indicadores, ação, decisões, 4 gráficos, filtros). A estrutura esperada passou a ser a das faixas novas.
 
+## Paradas 1.1.1 · Refatoração UX/UI, etapa 2: Equipamentos e Recorrência (12/11/2026)
+
+Só apresentação. `statsEquip`, `programado`, `recorrencias` e os critérios de recorrência e falha crônica não mudaram.
+
+### Equipamentos (`VIEWS.equip`)
+- **Área gráfica:** usa os resultados de `statsEquip`, sem conta nova.
+  - **Ranking por tempo parado:** `hbars`, os 14 maiores na mesma ordem.
+  - **Quebras por equipamento:** quantidade de quebras do grupo 8.
+  - O clique nas barras abre o detalhe (`abrirEquip`), como a linha da tabela.
+- **Tabela técnica completa:** as mesmas colunas (MTBF, MTTR, MTBS, disponibilidade, ocorrências, quebras…).
+  - **Cabeçalho fixo** na rolagem (a tabela rola dentro, até 70 % da tela) e **1ª coluna fixa**.
+  - **Números** à direita e em algarismos tabulares.
+  - **Linha sob o cursor** destacada.
+  - **Telas pequenas:** rolagem horizontal dentro da tabela, sem rolar a página.
+
+### Recorrência (`VIEWS.recor`)
+- **Resumo no topo:** falhas recorrentes, crônicas (3+ meses seguidos), 6 ou mais em 30 dias e sem ação vinculada. Os números saem da própria lista.
+- **Destaques na tabela:**
+  - equipamento em negrito;
+  - código com a cor do grupo e o nome em tom secundário;
+  - componente numa pílula;
+  - quantidade em 30 dias num selo;
+  - total em negrito;
+  - data da última ocorrência sem quebra;
+  - ação vinculada (status) ou + Ação / Planner.
+- **Linha de 6 ou mais em 30 dias:** é a mesma regra `hl3` de antes. Passou de vermelho cheio com texto branco, em que o nome do código ficava apagado, para **vermelho claro com barra à esquerda e texto normal**, legível nos dois temas.
+
+### Validação
+**`tparadas_ux.js`:** com a referência gravada antes da etapa 1, continuam iguais:
+- `statsEquip`, as 58 recorrências e as linhas das tabelas de Equipamentos e Recorrência.
+
+Etapa 2 nova no teste:
+- o ranking na ordem de `statsEquip` e as quebras;
+- o cabeçalho e a 1ª coluna fixos, com os números à direita;
+- o clique na barra e na linha abrindo o detalhe;
+- o resumo da Recorrência igual à lista, os destaques e o + Ação;
+- 5 larguras × 2 temas sem rolagem lateral da página.
+
