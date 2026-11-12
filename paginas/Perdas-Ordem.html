@@ -661,6 +661,10 @@ button,input,select,textarea{font-family:var(--f-body)}
 .vg-it.vg-alvo{outline:2px dashed var(--accent);outline-offset:3px}
 @media (hover:none){.vg-barra{opacity:1;pointer-events:auto;position:static;justify-content:flex-end;border:0;box-shadow:none;padding:0 0 4px;background:none}}
 
+/* numeração das páginas impressas (caixas de margem; Chrome e Edge 131 ou mais novos) */
+@page{@bottom-right{content:"Página " counter(page) " de " counter(pages);font:9px "Segoe UI",Arial,sans-serif;color:#5A6E85}}
+/* paisagem só no conteúdo normal da página (main); quem tem página própria (formulários do Paradas em retrato, SQDCP, relatórios em janela) fica como está */
+@page vacpaisagem{size:A4 landscape;margin:10mm 10mm 12mm;@bottom-right{content:"Página " counter(page) " de " counter(pages);font:9px "Segoe UI",Arial,sans-serif;color:#5A6E85}}
 /* --- 9 · impressão e PDF: sem navegação nem controles; cabeçalho e rodapé do relatório --- */
 .vds-imp{display:none}
 @media print{
@@ -669,10 +673,24 @@ button,input,select,textarea{font-family:var(--f-body)}
   .vpage{border:0}.vpage .wrap{padding:0 0 6px}
   .vpage .vds-mod{display:none}
   .card,.vk-card,.kpi,.vk-dc,.vk-grp,.vg-it,.chart-card,.kpi-card{box-shadow:none!important;break-inside:avoid;page-break-inside:avoid}
-  .vds-imp{display:block;font:11px/1.4 "Segoe UI",Arial,sans-serif;color:#102F55}
-  .vds-imp.cab{border-bottom:2px solid #102F55;padding-bottom:5px;margin-bottom:8px}
-  .vds-imp.cab b{font-size:13px}
+  /* faixa de teste, demonstração, avisos, cabeçalho do módulo e painel de filtros não vão para o papel (os filtros aplicados vão escritos no cabeçalho) */
+  .testband,.testbar,#testBar,.exbar,#vacDemoBar,.toasts,.toast,#toasts,.vpage,#vacEstFaixa,.vestfaixa,main .filters,main .l3-chips,.vk-mais,.pop,#vacGuia{display:none!important}
+  main.wrap,main{padding:0!important;max-width:none!important;page:vacpaisagem}
+  .vds-imp{display:block;font:11px/1.45 "Segoe UI",Arial,sans-serif;color:#102F55}
+  .vds-imp.cab{border-bottom:2px solid #102F55;padding-bottom:6px;margin-bottom:10px}
+  .vds-imp .vi-f{display:flex;justify-content:space-between;background:#102333;color:#fff;font-size:9px;font-weight:700;letter-spacing:.06em;padding:4px 8px;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  .vds-imp .vi-f span{font-weight:400;letter-spacing:0}
+  .vds-imp .vi-t{font-size:18px;font-weight:750;margin:6px 0 2px}
+  .vds-imp .vi-l{font-size:10.5px;color:#3F5871}
   .vds-imp.rod{border-top:1px solid #DCE6EF;margin-top:10px;padding-top:4px;color:#5A6E85;font-size:9.5px}
+  /* relatórios que abrem em janela própria (Portal, Waste, Paradas: .rep; Produção: .rp-doc): mesma faixa, cabeçalho de tabela e destaque de linha */
+  .rep::before,.rp-doc::before{content:"BD · SISTEMAS DA LINHA VACUTAINER   —   Uso interno · valores conforme a base disponível na data de geração";display:block;background:#102333;color:#fff;font:700 9px "Segoe UI",Arial,sans-serif;letter-spacing:.05em;padding:4px 8px;margin-bottom:8px;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  .rep th{background:#102F55!important;color:#fff!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  .rep tr.hl1 td,.rep tr.hl2 td,.rep tr.hl3 td{color:inherit!important;font-weight:inherit!important}
+  .rep tr.hl3 td{background:#FDEDED!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  .rep tr.hl1 td:first-child{color:#BF3B3A!important}
+  .rep tr.hl2 td:first-child,.rep tr.hl3 td:first-child{color:#BF3B3A!important;font-weight:700!important;box-shadow:inset 3px 0 0 #C94645}
+  .rep table,.rp-doc table{break-inside:auto}.rep tr,.rp-doc tr{break-inside:avoid}.rep thead,.rp-doc thead{display:table-header-group}
 }
 </style>
 <script id="vac-bases">
@@ -1353,7 +1371,7 @@ addEventListener('error', e => { if (e.error && e.error.name === 'VacAbaBloquead
    Base: perdas-base.json na pasta da rede (mesmo padrão OEE / Gel)
    Contrato: bloco "exports" (exportsVersion 1) lido pelas outras páginas
    ===================================================================== */
-const APP_VER='1.12.1',   /* 1.12.1 · ícones no lugar dos símbolos de texto (kit) */   /* 1.12.0 · Design System (barra lateral), Paretos da controladoria (verticais), aviso ordem × lote */   /* 1.11.0 · target MUV da linha (Portal › Metas da área WASTE-MUV…, vigência, R$/US$ pelo câmbio do Portal), MUV × target acumulado no FY, filtros Linha e Semana */   /* 1.10.0 · MUV oficial (Desv. estrutura + Desv. empregado, como a controladoria): meta, situação, criticidade, exports e relatórios; Pareto do MUV por Linha/SKU/Componente × métrica, favorável/desfavorável e Top N */   /* 1.9.0 · KKBC_ORD em grade (layout da controladoria, uma ordem por arquivo): Desv. Empregado, Desv. preço de input e Desv. qtde guardados; aviso das ordens no formato antigo (reimportar) */   /* 1.8.36 · gráficos: "Valores em …" (moeda), eixo sem rótulos repetidos, medida do Comparativo no gráfico do relatório (docs/graficos-padrao.md) */   /* 1.8.35 · Visão Geral no padrão comum (vacLayout): situação, números, diagnóstico, análises em grupos */   /* 1.8.34 · kit: login com ID e senha */   /* 1.8.33 · kit: datas DD/MM/AAAA */   /* 1.8.32 · nome Eficácia/Confirmação de Processo */   /* 1.8.31 · kit: nome e presença de Iniciativas / Ações na barra */   /* 1.8.30 · UX-02: guia por aba */   /* 1.8.29 · Fase 7 (UX-03, WST-01): Painel → Visão Geral */   /* 1.8.28 · Fase 6 (WST-03, INI-04): ações em Iniciativas / Ações; antigas até a migração, depois só leitura */   /* 1.8.27 · Fase 3 (IMP-04/06, WST-02): importações no exports; aba Importar leva ao Portal › Importação */   /* 1.8.26 · ARQ-09: "Ver com dados de teste" vira a Demonstração integrada */   /* 1.8.23 · C2–C6: kit com a ficha por pasta (AT-08) e a contagem da fila durável (Portal › Versões) */   /* 1.8.22 · C1: trava da 2ª aba com alteração pendente (nada é descartado); kit com a fila durável */   /* 1.8.21 · E11: busca do kit leva o equipamento à ficha em Equipamentos */   /* 1.8.20 · E8: kit com "+ Abrir ação" na ficha da ordem (Planner de Iniciativas) */   /* 1.8.19 · E5: ficha da ordem comum (botão Ficha na ordem; busca Ctrl K por ordem, lote e LP) */   /* 1.8.18 · E4: versão do exports conferida (Produção, Ordens), ordem em várias competências, dias do lote pela chave · 1.8.17 · E2: fonte única da versão (tela, base, exports e Portal › Versões) */ BASE_FN='perdas-base.json', DIR_ORIG='00. Originais SAP', DIR_BKP='00. Backups', DIR_IN='00. Entrada KKBC', DIR_DONE='00. Entrada KKBC/Processados';
+const APP_VER='1.12.2',   /* 1.12.2 · kit: modelo de e-mail (vacEmail) e número da página na impressão */   /* 1.12.1 · ícones no lugar dos símbolos de texto (kit) */   /* 1.12.0 · Design System (barra lateral), Paretos da controladoria (verticais), aviso ordem × lote */   /* 1.11.0 · target MUV da linha (Portal › Metas da área WASTE-MUV…, vigência, R$/US$ pelo câmbio do Portal), MUV × target acumulado no FY, filtros Linha e Semana */   /* 1.10.0 · MUV oficial (Desv. estrutura + Desv. empregado, como a controladoria): meta, situação, criticidade, exports e relatórios; Pareto do MUV por Linha/SKU/Componente × métrica, favorável/desfavorável e Top N */   /* 1.9.0 · KKBC_ORD em grade (layout da controladoria, uma ordem por arquivo): Desv. Empregado, Desv. preço de input e Desv. qtde guardados; aviso das ordens no formato antigo (reimportar) */   /* 1.8.36 · gráficos: "Valores em …" (moeda), eixo sem rótulos repetidos, medida do Comparativo no gráfico do relatório (docs/graficos-padrao.md) */   /* 1.8.35 · Visão Geral no padrão comum (vacLayout): situação, números, diagnóstico, análises em grupos */   /* 1.8.34 · kit: login com ID e senha */   /* 1.8.33 · kit: datas DD/MM/AAAA */   /* 1.8.32 · nome Eficácia/Confirmação de Processo */   /* 1.8.31 · kit: nome e presença de Iniciativas / Ações na barra */   /* 1.8.30 · UX-02: guia por aba */   /* 1.8.29 · Fase 7 (UX-03, WST-01): Painel → Visão Geral */   /* 1.8.28 · Fase 6 (WST-03, INI-04): ações em Iniciativas / Ações; antigas até a migração, depois só leitura */   /* 1.8.27 · Fase 3 (IMP-04/06, WST-02): importações no exports; aba Importar leva ao Portal › Importação */   /* 1.8.26 · ARQ-09: "Ver com dados de teste" vira a Demonstração integrada */   /* 1.8.23 · C2–C6: kit com a ficha por pasta (AT-08) e a contagem da fila durável (Portal › Versões) */   /* 1.8.22 · C1: trava da 2ª aba com alteração pendente (nada é descartado); kit com a fila durável */   /* 1.8.21 · E11: busca do kit leva o equipamento à ficha em Equipamentos */   /* 1.8.20 · E8: kit com "+ Abrir ação" na ficha da ordem (Planner de Iniciativas) */   /* 1.8.19 · E5: ficha da ordem comum (botão Ficha na ordem; busca Ctrl K por ordem, lote e LP) */   /* 1.8.18 · E4: versão do exports conferida (Produção, Ordens), ordem em várias competências, dias do lote pela chave · 1.8.17 · E2: fonte única da versão (tela, base, exports e Portal › Versões) */ BASE_FN='perdas-base.json', DIR_ORIG='00. Originais SAP', DIR_BKP='00. Backups', DIR_IN='00. Entrada KKBC', DIR_DONE='00. Entrada KKBC/Processados';
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 /* página para o núcleo comum, o cabeçalho (vac-cabecalho v2) e o quadro de Versões do Portal */
 const PAGE={id:'perdas',titulo:'Waste · Linha Vacutainer',tituloCurto:'Waste',subtitulo:'Custos e perdas por ordem',versao:APP_VER,baseFile:BASE_FN,backupDir:'00. Backups/Perdas',busca:q=>buscaPerdas(q)};
@@ -2946,7 +2964,7 @@ const Report={
      const yv=cy+4.5+(nl-1)*3+6.5;pdf.setFontSize(13);pdf.setTextColor(...(k[3]==='bad'?[194,42,42]:k[3]==='good'?[29,128,72]:[21,34,47]));pdf.text(String(k[1]),cx+2,yv);pdf.setFontSize(7);pdf.setTextColor(91,105,121);if(sb.length)pdf.text(sb,cx+2,yv+4.5,{lineHeightFactor:1.15});pdf.setTextColor(21,34,47)});y+=Math.ceil(b.itens.length/per)*(ch+2)+4}
    else if(b.tipo==='tabela'){pdf.autoTable({startY:y,head:[b.cab],body:b.linhas.map(r=>r.map(c=>c==null?'':String(c))),theme:'grid',styles:{fontSize:8,cellPadding:1.4,lineColor:[211,218,226],textColor:[21,34,47]},headStyles:{fillColor:[29,75,115],textColor:255,fontStyle:'bold'},
      columnStyles:Object.fromEntries((b.num||[]).map(i=>[i,{halign:'right'}])),margin:{left:12,right:12},
-     didParseCell:d=>{if(d.section!=='body'||!b.destaque)return;const k=b.destaque[d.row.index];if(k==='hl3'){d.cell.styles.fillColor=[143,21,21];d.cell.styles.textColor=255;d.cell.styles.fontStyle='bold'}else if(k==='hl2'){d.cell.styles.textColor=[194,42,42];d.cell.styles.fontStyle='bold'}else if(k==='hl1')d.cell.styles.textColor=[194,42,42]}});y=pdf.lastAutoTable.finalY+6}
+     didParseCell:d=>{if(d.section!=='body'||!b.destaque)return;const k=b.destaque[d.row.index];/* Design System: não pintar a linha inteira; fundo vermelho muito claro só na linha mais grave e o vermelho só na 1ª coluna */if(k==='hl3')d.cell.styles.fillColor=[253,237,237];if(k==='hl1'&&d.column.index===0)d.cell.styles.textColor=[194,42,42];if((k==='hl2'||k==='hl3')&&d.column.index===0){d.cell.styles.textColor=[194,42,42];d.cell.styles.fontStyle='bold'}}});y=pdf.lastAutoTable.finalY+6}
    else if(b.tipo==='texto'){pdf.setFontSize(10);y=this.pdfLinhas(pdf,pdf.splitTextToSize(b.texto,W-24),y,12)+1}
    else if(b.tipo==='svg'){try{const png=await svgToPng(b.svg,1400);const im=new Image();im.src=png;await im.decode();const w=W-24,h=Math.min(90,w*im.height/im.width);if(y+h>195){pdf.addPage();y=14}pdf.addImage(png,'PNG',12,y,h*im.width/im.height,h);y+=h+6}catch(e){console.warn(e)}}}
   const n=pdf.getNumberOfPages();for(let i=1;i<=n;i++){pdf.setPage(i);pdf.setFontSize(8);pdf.setTextColor(91,105,121);pdf.text(`${PAGE.titulo} · página ${i} de ${n}`,W-12,205,{align:'right'})}
@@ -4404,12 +4422,21 @@ const vacShell = (() => {
     window.addEventListener('resize', () => { if (LS.get('vac.sidebarCollapsed') == null) aplicarRec(); });
     window.addEventListener('storage', e => { if (e.key === 'vac.sidebarCollapsed') aplicarRec(); });
   }
-  /* impressão: cabeçalho e rodapé do relatório (some depois de imprimir) */
+  /* impressão direta da página (Ctrl+P): cabeçalho com sistema, relatório (módulo · aba), filtros aplicados, base, data, hora e pessoa; rodapé de uso interno.
+     Os filtros são lidos dos próprios campos visíveis da tela (rótulo: valor); o painel de filtros não é impresso. Some depois de imprimir. */
+  function filtrosTexto() { const L = [], vis = e => !!(e && (e.offsetWidth || e.offsetHeight)), dataBR = v => { const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(v); return m ? m[3] + '/' + m[2] + '/' + m[1] : v; };
+    document.querySelectorAll('main .filters label, main #filtros label, main .filter-panel label').forEach(lb => { if (!vis(lb) || L.length >= 10) return; const c = lb.querySelector('select, input:not([type=checkbox]):not([type=radio]):not([type=hidden])'); if (!c) return;
+      const nome = [...lb.childNodes].filter(n => n.nodeType === 3).map(n => n.textContent).join(' ').replace(/\s+/g, ' ').trim() || c.getAttribute('aria-label') || c.title || ''; if (!nome) return; let v = '';
+      if (c.tagName === 'SELECT') { const o = c.options[c.selectedIndex]; if (!o || c.selectedIndex < 0) return; v = o.textContent.trim(); if (!c.value || /^(todos|todas|todos os|—|-)$/i.test(v)) return; } else { v = String(c.value || '').trim(); if (!v) return; v = dataBR(v); }
+      L.push(nome + ': ' + v); }); return L; }
   function impressao() {
     const por = () => { document.querySelectorAll('.vds-imp').forEach(x => x.remove()); if (window.VAC_IMP_PROPRIA) return; const m = document.querySelector('main') || document.body, t = document.getElementById('vacTitulo'), sb = document.getElementById('stBase');
-      const ag = new Date().toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' }), ab = aba(), base = sb ? sb.textContent.replace(/\s+/g, ' ').trim() : '';
-      const c = document.createElement('div'); c.className = 'vds-imp cab'; c.innerHTML = '<b>BD · Sistemas da Linha Vacutainer</b> — ' + H((t && t.textContent.trim()) || '') + (ab ? ' · ' + H(ab) : '') + '<br>' + (base ? 'Base: ' + H(base) + ' · ' : '') + 'Gerado em: ' + H(ag);
-      const r = document.createElement('div'); r.className = 'vds-imp rod'; r.textContent = 'Documento gerado automaticamente pelo Sistema da Linha Vacutainer · Uso interno · Valores conforme base disponível na data de geração';
+      const ag = new Date().toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' }), ab = aba(), F = filtrosTexto(), quem = typeof vacNomeUsuario === 'function' ? vacNomeUsuario() : '';
+      const base = sb ? ([...sb.children].map(x => x.tagName === 'BUTTON' ? '' : x.textContent.replace(/\s+/g, ' ').trim()).filter(Boolean).join(' · ') || sb.textContent.replace(/\s+/g, ' ').trim()) : '', ver = (document.getElementById('appVer') || {}).textContent || '';
+      const c = document.createElement('div'); c.className = 'vds-imp cab';
+      c.innerHTML = '<div class="vi-f">BD · SISTEMAS DA LINHA VACUTAINER<span>Uso interno</span></div><div class="vi-t">' + H((t && t.textContent.trim()) || '') + (ab ? ' · ' + H(ab) : '') + '</div>'
+        + '<div class="vi-l"><b>Filtros:</b> ' + (F.length ? H(F.join(' · ')) : 'nenhum') + '</div><div class="vi-l">' + (base ? '<b>Base:</b> ' + H(base) + ' &nbsp; ' : '') + '<b>Gerado em:</b> ' + H(ag) + (quem ? ' por ' + H(quem) : '') + (ver ? ' &nbsp; <b>Versão:</b> ' + H(ver) : '') + '</div>';
+      const r = document.createElement('div'); r.className = 'vds-imp rod'; r.textContent = 'Documento gerado automaticamente pelo Sistema da Linha Vacutainer · Uso interno · Valores conforme a base disponível na data de geração';
       m.insertAdjacentElement('afterbegin', c); m.insertAdjacentElement('beforeend', r); };
     window.addEventListener('beforeprint', por); window.addEventListener('afterprint', () => document.querySelectorAll('.vds-imp').forEach(x => x.remove()));
   }
@@ -4431,6 +4458,67 @@ const vacSimbolos = (() => {
   const ini = () => { if (window.VAC_SIMBOLOS_OFF) return; new MutationObserver(agendar).observe(document.body, { childList: true, subtree: true }); agendar(); };
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', () => setTimeout(ini, 200)); else setTimeout(ini, 200);
   return { aplicar };
+})();
+
+/* ----- vacEmail · relatório para o Outlook (12/11/2026; docs/design-system.md). Tabelas HTML, CSS inline, 680 px, sem JavaScript, grid ou flex;
+   gráfico em PNG (svgPng) com texto alternativo, para o e-mail continuar legível com as imagens bloqueadas. No máximo 4 KPIs.
+   d = {area, titulo, linha, periodo, status, resumo:[{rot, txt}], kpis:[{nome, valor, sub, cor}], grafico:{src, alt, frase},
+        ocorrencias:[texto], acoes:[texto], link, base}. Nenhum número é calculado aqui: a página entrega os valores prontos. ----- */
+const vacEmail = (() => {
+  const H = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  const F = 'font-family:Segoe UI,Arial,sans-serif;', COR = { ok: '#14804A', crit: '#C94645', warn: '#D78B11', info: '#0D5E9C', none: '#6F8092' };
+  const corSt = st => /cr[ií]tic/i.test(st) ? COR.crit : /aten/i.test(st) ? COR.warn : /adequad|ok/i.test(st) ? COR.ok : COR.none;
+  const agora = () => new Date().toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' });
+  const assunto = d => [d.area, d.titulo, d.linha || 'Linha Vacutainer', d.periodo, d.status].filter(Boolean).join(' | ');
+  function html(d) {
+    const sec = t => `<tr><td style="padding:18px 24px 6px;${F}font-size:15px;font-weight:bold;color:#102F55">${H(t)}</td></tr>`;
+    const K = (d.kpis || []).slice(0, 4), lista = L => `<tr><td style="padding:0 24px"><table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">${L.map(x => `<tr><td width="14" valign="top" style="${F}font-size:13px;color:#0D5E9C;padding:3px 0">&bull;</td><td style="${F}font-size:13px;line-height:19px;color:#102F55;padding:3px 0">${H(x)}</td></tr>`).join('')}</table></td></tr>`;
+    return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="#F2F7FB" style="background:#F2F7FB"><tr><td align="center" style="padding:16px 8px">
+<table role="presentation" width="680" cellpadding="0" cellspacing="0" border="0" bgcolor="#FFFFFF" style="width:680px;max-width:680px;background:#FFFFFF;border:1px solid #DCE6EF">
+<tr><td bgcolor="#102333" style="background:#102333;padding:16px 24px;${F}color:#FFFFFF"><div style="font-size:11px;letter-spacing:1px;color:#C9D8E5">BD &middot; SISTEMAS DA LINHA VACUTAINER</div><div style="font-size:20px;font-weight:bold;padding-top:4px">${H(d.titulo || '')}</div><div style="font-size:13px;color:#C9D8E5;padding-top:2px">${H([d.area, d.linha, d.periodo].filter(Boolean).join(' · '))}</div></td></tr>
+${d.status ? `<tr><td style="padding:14px 24px 0"><table role="presentation" cellpadding="0" cellspacing="0" border="0"><tr><td bgcolor="${corSt(d.status)}" style="background:${corSt(d.status)};padding:4px 12px;${F}font-size:12px;font-weight:bold;color:#FFFFFF">Situação: ${H(d.status)}</td></tr></table></td></tr>` : ''}
+${(d.resumo || []).length ? sec('Resumo executivo') + `<tr><td style="padding:0 24px"><table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">${d.resumo.map(r => `<tr><td width="96" valign="top" style="${F}font-size:12px;font-weight:bold;color:#64788F;padding:3px 8px 3px 0">${H(r.rot)}</td><td style="${F}font-size:13px;line-height:19px;color:#102F55;padding:3px 0">${H(r.txt)}</td></tr>`).join('')}</table></td></tr>` : ''}
+${K.length ? sec('Indicadores') + `<tr><td style="padding:0 18px"><table role="presentation" width="100%" cellpadding="0" cellspacing="6" border="0"><tr>${K.map(k => `<td width="${Math.floor(100 / K.length)}%" valign="top" style="border:1px solid #DCE6EF;border-left:4px solid ${COR[k.cor] || COR.info};padding:10px 12px;${F}"><div style="font-size:11px;color:#64788F">${H(k.nome)}</div><div style="font-size:20px;font-weight:bold;color:#102F55;padding-top:2px">${H(k.valor)}</div><div style="font-size:11px;color:#64788F;padding-top:2px">${H(k.sub || '')}</div></td>`).join('')}</tr></table></td></tr>` : ''}
+${d.grafico && (d.grafico.src || d.grafico.alt) ? sec(d.grafico.titulo || 'Gráfico principal') + `<tr><td style="padding:0 24px">${d.grafico.src ? `<img src="${H(d.grafico.src)}" width="632" alt="${H(d.grafico.alt || '')}" style="display:block;width:632px;max-width:100%;height:auto;border:1px solid #DCE6EF">` : ''}<div style="${F}font-size:12px;line-height:18px;color:#64788F;padding-top:6px">${H(d.grafico.frase || d.grafico.alt || '')}</div></td></tr>` : ''}
+${(d.ocorrencias || []).length ? sec('Principais ocorrências') + lista(d.ocorrencias.slice(0, 5)) : ''}
+${(d.acoes || []).length ? sec('Ações prioritárias') + lista(d.acoes.slice(0, 5)) : ''}
+${d.link ? `<tr><td style="padding:20px 24px 4px"><table role="presentation" cellpadding="0" cellspacing="0" border="0"><tr><td bgcolor="#0D5E9C" style="background:#0D5E9C;padding:12px 20px"><a href="${H(d.link)}" style="${F}font-size:14px;font-weight:bold;color:#FFFFFF;text-decoration:none">Abrir relatório completo</a></td></tr></table></td></tr>` : ''}
+<tr><td style="padding:18px 24px 16px;${F}font-size:11px;line-height:16px;color:#64788F;border-top:1px solid #DCE6EF">${d.base ? 'Base: ' + H(d.base) + ' · ' : ''}Gerado em ${H(agora())} · Uso interno · Valores conforme a base disponível na data de geração</td></tr>
+</table></td></tr></table>`;
+  }
+  function texto(d) { const L = [assunto(d), '']; for (const r of d.resumo || []) L.push(r.rot + ': ' + r.txt); if ((d.kpis || []).length) { L.push(''); for (const k of d.kpis.slice(0, 4)) L.push(k.nome + ': ' + k.valor + (k.sub ? ' (' + k.sub + ')' : '')); }
+    if (d.grafico && (d.grafico.frase || d.grafico.alt)) L.push('', d.grafico.frase || d.grafico.alt); if ((d.ocorrencias || []).length) { L.push('', 'Principais ocorrências:'); d.ocorrencias.slice(0, 5).forEach(x => L.push('- ' + x)); } if ((d.acoes || []).length) { L.push('', 'Ações prioritárias:'); d.acoes.slice(0, 5).forEach(x => L.push('- ' + x)); } return L.join('\n'); }
+  /* SVG da tela → PNG de fundo branco (1.200 px de largura): as cores vindas de variáveis do tema são fixadas antes de desenhar */
+  async function svgPng(svg, largura = 1200) { if (!svg) return ''; try { const c = svg.cloneNode(true), A = svg.querySelectorAll('*'), B = c.querySelectorAll('*'), claro = typeof vacTemaClaro === 'function'; if (claro) vacTemaClaro(true);
+      try { A.forEach((o, i) => { const st = getComputedStyle(o), n = B[i]; if (!n || /^(title|desc)$/i.test(o.tagName)) return; if (o.hasAttribute('fill') || o.tagName === 'text') n.setAttribute('fill', st.fill); if (o.hasAttribute('stroke')) n.setAttribute('stroke', st.stroke); if (o.tagName === 'text') { n.style.fontFamily = 'Segoe UI, Arial, sans-serif'; n.style.fontSize = st.fontSize; n.style.fontWeight = st.fontWeight; } }); } finally { if (claro) vacTemaClaro(false); }
+      const vb = svg.viewBox.baseVal, w = (vb && vb.width) || svg.clientWidth || 640, h = (vb && vb.height) || svg.clientHeight || 360; c.setAttribute('xmlns', 'http://www.w3.org/2000/svg'); c.setAttribute('width', w); c.setAttribute('height', h);
+      const img = new Image(), url = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(new XMLSerializer().serializeToString(c)); await new Promise((ok, err) => { img.onload = ok; img.onerror = err; img.src = url; });
+      const cv = document.createElement('canvas'); cv.width = largura; cv.height = Math.round(largura * h / w); const g = cv.getContext('2d'); g.fillStyle = '#fff'; g.fillRect(0, 0, cv.width, cv.height); g.drawImage(img, 0, 0, cv.width, cv.height); return cv.toDataURL('image/png'); } catch (e) { console.warn('vacEmail.svgPng', e); return ''; } }
+  async function copiar(d) { const h = html(d), t = texto(d); try { await navigator.clipboard.write([new ClipboardItem({ 'text/html': new Blob([h], { type: 'text/html' }), 'text/plain': new Blob([t], { type: 'text/plain' }) })]); return true; } catch (e) { try { await navigator.clipboard.writeText(t); } catch (x) { } return false; } }
+  return { html, texto, assunto, svgPng, copiar };
+})();
+
+/* ----- vacPdf · padrão único dos PDFs (12/11/2026). Todas as páginas geram PDF com o jsPDF; em vez de mexer em cada gerador, o kit embrulha a
+   biblioteca quando ela carrega: (1) as cores antigas viram as do Design System (texto, traço, preenchimento, cabeçalho de tabela), em qualquer PDF;
+   (2) toda página do PDF ganha, no alto, a faixa "BD · Sistemas da Linha Vacutainer · Uso interno". Título, tabelas, números e rodapé de cada
+   relatório continuam os do gerador. Desligar numa página: window.VAC_PDF_PADRAO = false. ----- */
+const vacPdf = (() => {
+  const MAPA = { '29,75,115': [16, 47, 85], '21,34,47': [16, 47, 85], '20,30,45': [16, 47, 85], '91,105,121': [90, 110, 133], '90,100,110': [90, 110, 133], '80,90,100': [90, 110, 133], '110,120,130': [100, 120, 143], '60,70,80': [63, 88, 113],
+    '211,218,226': [220, 230, 239], '205,212,220': [220, 230, 239], '220,225,230': [220, 230, 239], '226,232,238': [220, 230, 239], '228,233,238': [220, 230, 239], '227,236,245': [234, 244, 252], '247,249,251': [248, 251, 253], '245,247,250': [248, 251, 253],
+    '194,42,42': [201, 70, 69], '29,128,72': [20, 128, 74], '23,128,63': [20, 128, 74], '194,122,0': [215, 139, 17] };
+  const troca = a => { if (a.length >= 3 && a.slice(0, 3).every(x => typeof x === 'number')) { const m = MAPA[a.slice(0, 3).join(',')]; if (m) return m.concat(a.slice(3)); } if (a.length === 1 && Array.isArray(a[0])) { const m = MAPA[a[0].slice(0, 3).join(',')]; if (m) return [m]; } return a; };
+  function faixa(doc) { if (doc.__vacFaixa || window.VAC_PDF_PADRAO === false) return; doc.__vacFaixa = 1; try { const n = doc.getNumberOfPages(), atual = doc.internal.getCurrentPageInfo ? doc.internal.getCurrentPageInfo().pageNumber : n;
+      for (let i = 1; i <= n; i++) { doc.setPage(i); const W = doc.internal.pageSize.getWidth(); doc.setFillColor(16, 35, 51); doc.rect(0, 0, W, 5.4, 'F'); doc.setFont('helvetica', 'bold'); doc.setFontSize(6.5); doc.setTextColor(255, 255, 255); doc.text('BD · SISTEMAS DA LINHA VACUTAINER', 8, 3.7);
+        doc.setFont('helvetica', 'normal'); doc.text('Uso interno · valores conforme a base disponível na data de geração', W - 8, 3.7, { align: 'right' }); }
+      doc.setPage(atual); doc.setTextColor(16, 47, 85); } catch (e) { console.warn('vacPdf', e); } }
+  function vestir(doc) { if (!doc || doc.__vacPdf) return doc; doc.__vacPdf = 1;
+    for (const f of ['setTextColor', 'setFillColor', 'setDrawColor']) { const o = doc[f]; if (typeof o === 'function') doc[f] = function () { return o.apply(this, window.VAC_PDF_PADRAO === false ? arguments : troca([...arguments])); }; }
+    for (const f of ['save', 'output']) { const o = doc[f]; if (typeof o === 'function') doc[f] = function () { faixa(this); return o.apply(this, arguments); }; } return doc; }
+  function instalar() { const J = window.jspdf; if (!J || !J.jsPDF || J.jsPDF.__vac) return !!(J && J.jsPDF && J.jsPDF.__vac); const O = J.jsPDF; const N = function (...a) { return vestir(new O(...a)); }; Object.setPrototypeOf(N, O); N.prototype = O.prototype; N.API = O.API; N.__vac = 1;
+    try { Object.defineProperty(J, 'jsPDF', { value: N, writable: true, configurable: true }); } catch (e) { try { J.jsPDF = N; } catch (x) { return false; } } if (window.jsPDF === O) window.jsPDF = N; return true; }
+  /* a biblioteca é carregada só na hora do primeiro PDF: confere de tempos em tempos e ao carregar qualquer script */
+  const t = setInterval(() => { if (instalar()) clearInterval(t); }, 400); document.addEventListener('load', e => { if (e.target && e.target.tagName === 'SCRIPT') instalar(); }, true);
+  return { instalar, vestir, MAPA };
 })();
 
 /* ----- vacOrdemLote · regra da linha (12/11/2026): cada ordem tem UM lote e cada lote tem UMA ordem. Recebe [{ordem, lote, mes?}] e devolve os

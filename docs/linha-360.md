@@ -1,6 +1,6 @@
 # Linha 360° · planta interativa da linha
 
-Versão 1.0.1, 12/11/2026. Arquivo `paginas/Linha-360.html`, **gerado**: editar `fontes/linha360/` e rodar `python fontes/linha360/build.py`.
+Versão 1.1.0, 12/11/2026. Arquivo `paginas/Linha-360.html`, **gerado**: editar `fontes/linha360/` e rodar `python fontes/linha360/build.py`.
 
 ## Para que serve
 
@@ -46,3 +46,10 @@ Página que não foi lida aparece como "sem dados", nunca como zero. Ação nova
 - **Ação a partir do ponto.** Iniciativas 1.1.9 passou a conhecer a origem `linha360` ("Linha 360°") e o vínculo `ponto`. Antes, a ação aberta na planta seria gravada como "Manual". Com o filtro Ordem · lote ligado, a ação nasce também com os vínculos `ordem` e `lote`.
 - **OS a partir do ponto.** Equipamentos já aceitava a origem; conferido.
 - **Teste.** `testes/tds.js` § 6, na demonstração: cria a ação e a OS a partir de um ponto e confere que as duas voltam para a contagem do ponto na planta.
+
+## 1.1.0 · relatório para o Outlook, filtros em chips e configuração compacta (12/11/2026)
+
+- **Copiar para o Outlook** (botão no cabeçalho): relatório do período com situação, resumo executivo (filtros, resultado, ordem e lote em produção, onde, risco, ação), 4 indicadores, o gráfico "Tempo parado por ponto" em PNG, as 5 maiores paradas e as 5 ações com prazo mais próximo. Usa o `vacEmail` do kit. Só números que já estão na tela; página não lida aparece como "sem dados". O assunto sugerido vem na mensagem de confirmação.
+- **Filtros ativos em chips** abaixo dos filtros (turno, ordem · lote, fluxo, área): um clique tira o filtro; "Limpar filtros" tira todos.
+- **Configuração › Pontos e equipamentos**: cada linha mostra os equipamentos vinculados e abre a lista só ao clicar em "alterar".
+- **Teste:** `testes/tds.js` § 7.

@@ -6,7 +6,7 @@ a página em si está em linha.css, nucleo.js (gravação, igual a Equipamentos/
 import os, re, base64, subprocess, sys
 RAIZ = os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..'))
 AQUI = os.path.dirname(os.path.abspath(__file__))
-VERSAO = '1.0.1'
+VERSAO = '1.1.0'
 ler = lambda *p: open(os.path.join(*p), encoding='utf-8').read()
 def corta(s, a, b, depois=0):
     i = s.find(a, depois); j = s.find(b, i + len(a)) if i >= 0 else -1
