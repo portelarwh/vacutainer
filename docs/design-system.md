@@ -38,11 +38,13 @@ Mudou o Design System: editar `kit_ds.css` ou `kit_ds.js` e rodar os builds na o
 
 **Impressão.** Some barra lateral, cabeçalho, abas, botões e controles; entram um cabeçalho (sistema, módulo, aba, base, data e hora) e um rodapé de uso interno. Página com impressão própria pode desligar com `window.VAC_IMP_PROPRIA = true`.
 
+**Símbolos (`vacSimbolos`).** Troca, na tela, o símbolo de texto do início de um botão pelo ícone correspondente. O texto do botão não muda; botão só com símbolo é trocado apenas se tiver `title` ou `aria-label`. Desligar na página: `window.VAC_SIMBOLOS_OFF = true`.
+
 **Ordem × lote (`vacOrdemLote(lista)`).** Devolve as ordens com mais de um lote e os lotes em mais de uma ordem. Não bloqueia nada. A Produção 2.4.60 publica o resultado em `exports.ordemLote` e cria uma pendência de atenção para cada conflito.
 
 ## 4. O que ainda não segue a especificação
 
-- Símbolos de texto (⚙, ↻, ⇩, ▾…) dentro das telas: só os botões do cabeçalho foram trocados por ícones.
+- Símbolos de texto: os que abrem um botão, link-botão ou aba (⇩, ↻, ✓, ▶, ⛁, ▣, ✎, ⚙…) viram ícone na tela (`vacSimbolos`, 12/11/2026). Continuam em texto as setas de abrir e recolher (▾, ▸), os símbolos no meio de frases e o ⓘ. O código-fonte das páginas ainda tem os símbolos; tela nova usa `vacIcone` direto.
 - Filtros em painel recolhível com "Aplicar" e chips: só onde já existia.
 - Tabelas: cabeçalho claro aplicado pelo kit; primeira coluna fixa, ordenação e paginação continuam como cada página fazia.
 - Estados de carregamento em esqueleto.

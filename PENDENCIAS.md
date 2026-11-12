@@ -19,13 +19,15 @@ Branch `claude/zen-bohr-jnr5d5`, ainda **sem merge no `main`**. Pedido do usuár
 
 Versões desta branch: Portal 1.9.28 · Produção 2.4.60 · Waste 1.12.0 · Gel 2.29 · Paradas 1.2.1 · Equipamentos 1.0.11 · Iniciativas 1.1.8 · Linha 360° 1.0.0 · Projetos 0.1.11.
 
+**Segunda entrega (12/11/2026, depois do merge do PR #61):** fluxo de ação e OS a partir da planta conferido de ponta a ponta (Iniciativas 1.1.9 conhece a origem Linha 360° e o vínculo de ponto); símbolos de texto dos botões trocados por ícones em todas as páginas (`vacSimbolos`); guia de instalação e LEIA-ME com a página nova. Versões: Portal 1.9.29 · Produção 2.4.61 · Waste 1.12.1 · Gel 2.30 · Paradas 1.2.2 · Equipamentos 1.0.12 · Iniciativas 1.1.9 · Linha 360° 1.0.1 · Projetos 0.1.12. O cartão da Linha 360° no Portal já existia (o Portal monta pelo `exports`).
+
 **Decisões do usuário nesta rodada:** tema claro por padrão, com o escuro mantido; Linha 360° com dados reais e base própria; conflito de ordem × lote avisa e lista, não bloqueia; Pareto vertical como no dashboard anexado.
 
 **Implantar:** copiar para a pasta da rede as nove páginas de `paginas/` (inclusive `Linha-360.html`, nova) e o `Demonstracao.html`. Nenhuma base muda de formato. A `linha360-base.json` é criada em `00. Bases` na primeira conexão da Linha 360°, com confirmação.
 
-**O que falta do Design System** (lista completa em `docs/design-system.md` § 4): símbolos de texto dentro das telas, filtros em painel recolhível com chips, esqueleto de carregamento, modelo de e-mail do Outlook em tabelas, "Página X de Y", paleta única nos gráficos da Produção e do Gel.
+**O que falta do Design System** (lista completa em `docs/design-system.md` § 4): filtros em painel recolhível com chips, esqueleto de carregamento, modelo de e-mail do Outlook em tabelas, "Página X de Y", paleta única nos gráficos da Produção e do Gel.
 
-**O que falta da Linha 360°** (`docs/linha-360.md`): conferir posições com a linha, vincular os equipamentos reais, cartão e pendências no Portal, OEE por equipamento (depende do MES).
+**O que falta da Linha 360°** (`docs/linha-360.md`): conferir posições com a linha, vincular os equipamentos reais, OEE por equipamento (depende do MES).
 
 **Conferir na pasta real:** barra lateral nas nove páginas; Modo TV; impressão e PDF dos relatórios com o cabeçalho novo; modais e fichas abrindo por cima da barra; Waste › grupo D com dados reais; pendência de ordem × lote no Portal quando houver conflito no plano.
 

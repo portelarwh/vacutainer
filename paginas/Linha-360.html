@@ -460,7 +460,7 @@ html.vds-rec{--vds-w:72px}
 
 /* --- 2 · ícones (Lucide, traço de 2 px; embutidos pelo kit_ds.js) --- */
 .vi{width:18px;height:18px;flex:none;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;vertical-align:-3px}
-.vi.sm{width:15px;height:15px}.vi.lg{width:22px;height:22px}.vi.xl{width:28px;height:28px}
+.vi.sm{width:15px;height:15px}.vi.in{margin-right:5px;vertical-align:-2.5px}button:has(>.vi.in:only-child){display:inline-flex;align-items:center;justify-content:center}button>.vi.in:only-child{margin-right:0}.vi.lg{width:22px;height:22px}.vi.xl{width:28px;height:28px}
 
 /* --- 3 · estrutura: barra lateral fixa + conteúdo ao lado --- */
 body{padding-left:var(--vds-w);font-family:var(--f-body);transition:padding-left .16s ease}
@@ -1062,7 +1062,7 @@ addEventListener('error', e => { if (e.error && e.error.name === 'VacAbaBloquead
 <main class="wrap" id="main"></main>
 <div class="toasts" id="toasts"></div>
 <script>
-const PAGE={id:"linha",titulo:"Linha 360° · Planta interativa da linha",tituloCurto:"Linha 360°",subtitulo:"Planta interativa: paradas, pessoas e ações em cada ponto da linha",versao:"1.0.0",baseFile:"linha360-base.json",backupDir:"00. Backups/Linha360",estado:"atualizacao",estadoNota:"Primeira versão: planta, pontos, áreas, postos e checklists. MES por equipamento chega depois."};
+const PAGE={id:"linha",titulo:"Linha 360° · Planta interativa da linha",tituloCurto:"Linha 360°",subtitulo:"Planta interativa: paradas, pessoas e ações em cada ponto da linha",versao:"1.0.1",baseFile:"linha360-base.json",backupDir:"00. Backups/Linha360",estado:"atualizacao",estadoNota:"Primeira versão: planta, pontos, áreas, postos e checklists. MES por equipamento chega depois."};
 const APP_VERSION=PAGE.versao;
 /* ---------- vac-cabecalho v2 · JS (igual em todas as páginas) ---------- */
 const VAC_CAB_VERSAO=2;
@@ -2167,6 +2167,10 @@ const VAC_ICONES = {
   camadas: '<path d="m12.83 2.18a2 2 0 0 0-1.66 0L2.6 6.08a1 1 0 0 0 0 1.83l8.58 3.91a2 2 0 0 0 1.66 0l8.58-3.9a1 1 0 0 0 0-1.83Z"/><path d="m22 17.65-9.17 4.16a2 2 0 0 1-1.66 0L2 17.65"/><path d="m22 12.65-9.17 4.16a2 2 0 0 1-1.66 0L2 12.65"/>',
   editar: '<path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z"/><path d="m15 5 4 4"/>',
   mais: '<path d="M5 12h14"/><path d="M12 5v14"/>',
+  check: '<path d="M20 6 9 17l-5-5"/>',
+  play: '<polygon points="6 3 20 12 6 21 6 3"/>',
+  pausa: '<rect x="14" y="4" width="4" height="16" rx="1"/><rect x="6" y="4" width="4" height="16" rx="1"/>',
+  imprimir: '<path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><path d="M6 9V3a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v6"/><rect x="6" y="14" width="12" height="8" rx="1"/>',
   ampliar: '<polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" x2="14" y1="3" y2="10"/><line x1="3" x2="10" y1="21" y2="14"/>'
 };
 function vacIcone(nome, cls) { const p = VAC_ICONES[nome] || VAC_ICONES.info; return '<svg class="vi' + (cls ? ' ' + cls : '') + '" viewBox="0 0 24 24" aria-hidden="true" focusable="false">' + p + '</svg>'; }
@@ -2255,6 +2259,20 @@ const vacShell = (() => {
   const ini = () => { try { montar(); impressao(); } catch (e) { console.warn('vacShell', e); } };
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', ini); else ini();
   return { montar, migalha, aplicarRec };
+})();
+
+/* ----- vacSimbolos · troca o símbolo de texto no início de botões, links-botão e abas pelo ícone Lucide correspondente (12/11/2026).
+   Só apresentação: o texto do botão continua; botão só com o símbolo é trocado apenas se tiver title ou aria-label. Refaz ao redesenhar. ----- */
+const vacSimbolos = (() => {
+  const M = { '⇩': 'baixar', '⤓': 'baixar', '⬇': 'baixar', '↻': 'atualizar', '⟳': 'atualizar', '✓': 'check', '✔': 'check', '▶': 'play', '⛁': 'salvar', '▣': 'tv', '⏸': 'pausa', '✗': 'fechar', '✕': 'fechar', '✖': 'fechar', '↪': 'restaurar', '↶': 'restaurar', '✎': 'editar', '⎙': 'imprimir', '🖨': 'imprimir', '←': 'esquerda', '＋': 'mais', '⚙': 'admin', '⌕': 'busca' };
+  const SEL = 'main button, main a.b, main summary, .vpage button, .vpage summary, nav.vtabs button, .mod button, .modal button, .overlay button';
+  function aplicar() { document.querySelectorAll(SEL).forEach(b => { const n = b.firstChild; if (!n || n.nodeType !== 3) return; const t = n.textContent, m = /^\s*(\S+?)\uFE0F?(\s+|$)/u.exec(t); if (!m) return; const ic = M[[...m[1]][0]]; if (!ic || [...m[1]].length > 1) return;
+    const resto = t.slice(m[0].length); if (!resto.trim() && !b.children.length && !(b.title || b.getAttribute('aria-label'))) return; if (b.closest('.vg-barra, header.vsuite')) return;
+    n.textContent = resto; b.insertAdjacentHTML('afterbegin', vacIcone(ic, 'sm in')); }); }
+  let t = 0; const agendar = () => { clearTimeout(t); t = setTimeout(() => { try { aplicar(); } catch (e) { console.warn('vacSimbolos', e); } }, 120); };
+  const ini = () => { if (window.VAC_SIMBOLOS_OFF) return; new MutationObserver(agendar).observe(document.body, { childList: true, subtree: true }); agendar(); };
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', () => setTimeout(ini, 200)); else setTimeout(ini, 200);
+  return { aplicar };
 })();
 
 /* ----- vacOrdemLote · regra da linha (12/11/2026): cada ordem tem UM lote e cada lote tem UMA ordem. Recebe [{ordem, lote, mes?}] e devolve os
@@ -2591,7 +2609,7 @@ function fichaPonto(N){const p=P(App.sel)||pontos()[0];if(!p)return'';const r=N.
  const oss=((Ext.equip&&Ext.equip.os)||[]).filter(o=>!/conclu|cancel/i.test(o.status||'')&&m[String(o.equipamento)]===p.id).slice(0,5);
  const acs=((Ext.inic&&Ext.inic.acoes)||[]).filter(a=>acAberta(a)&&(a.vinculos||[]).some(v=>(v.tipo==='equipamento'&&m[String(v.cod)]===p.id)||(v.tipo==='ponto'&&String(v.cod)===p.id))).slice(0,5);
  const eq1=E.lista[0]||'',h=(s,hash)=>{const x=(typeof systems==='function'?systems():[]).find(y=>y.id===s);return x&&typeof sysHref==='function'?sysHref(x,hash):'#'};
- const nova={titulo:'',descricao:'',origem:{tipo:'linha360',ref:'ponto|'+p.id,resumo:`Ponto ${p.id} · ${p.nome} · ${nf(r.min)} min parados de ${br(de)} a ${br(ate)}`,link:vacAquiHref('ponto='+p.id)},vinculos:[{tipo:'ponto',cod:p.id}].concat(E.lista.map(c=>({tipo:'equipamento',cod:c})))};
+ const nova={titulo:'',descricao:'',origem:{tipo:'linha360',ref:'ponto|'+p.id,resumo:`Ponto ${p.id} · ${p.nome} · ${nf(r.min)} min parados de ${br(de)} a ${br(ate)}`,link:vacAquiHref('ponto='+p.id)},vinculos:[{tipo:'ponto',cod:p.id}].concat(E.lista.map(c=>({tipo:'equipamento',cod:c}))).concat(App.f.ordem?[{tipo:'ordem',cod:App.f.ordem}].concat((ordensPeriodo().find(o=>o.ordem===App.f.ordem)||{}).lote?[{tipo:'lote',cod:ordensPeriodo().find(o=>o.ordem===App.f.ordem).lote}]:[]):[])};   /* 1.0.1 · com o filtro Ordem · lote ligado, a ação nasce ligada à ordem e ao lote */
  return`<aside class="card l3-fi" id="ficha" aria-label="Ficha do ponto selecionado"><div><div class="eb">Ponto ${esc(p.id)} · fluxo ${esc((FLUXOS[p.fluxo]||['—'])[0])}</div><h3>${esc(p.nome)}</h3>
   <div class="small muted">${E.lista.length?E.lista.map(c=>`<span class="code">${esc(c)}</span> ${esc(eqNome(c))}`).join(' · ')+(E.sugerido?' <span class="pill warn" title="Vínculo sugerido pelo nome; confirme em Configuração">sugerido</span>':''):'Sem equipamento do cadastro vinculado · <a href="#aba=config">vincular</a>'}</div></div>
   <div class="l3-tl"><div class="g"><small>Tempo parado no período</small><b>${dado(Ext.par,nf(r.min)+' min')}</b></div><div><small>Ocorrências</small><b>${dado(Ext.par,nf(r.oc))}</b></div><div><small>Quebras</small><b>${dado(Ext.par,nf(r.queb))}</b></div>

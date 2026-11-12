@@ -28,7 +28,8 @@ const LER = () => {
     const ref = JSON.parse(fs.readFileSync(REF, 'utf8'));
     const difK = Object.keys(ref.kpis).filter(k => ref.kpis[k] !== atual.kpis[k]);
     ok(!difK.length, 'mesmos valores em todos os indicadores da referência' + (difK.length ? ': ' + difK.map(k => `${k} [${ref.kpis[k]}] → [${atual.kpis[k] || 'ausente'}]`).join(' ; ') : ` (${Object.keys(ref.kpis).length})`));
-    const difB = Object.keys(ref.blocos).filter(k => ref.blocos[k] !== atual.blocos[k]);
+    const semSimb = t => String(t || '').replace(/[⇩⤓⬇↻⟳✓✔▶⛁▣⏸✗✕✖↪↶✎⎙←＋⚙⌕]\s?/g, '');   // 12/11/2026: o símbolo do início dos botões virou ícone (vacSimbolos); o texto e os números continuam na comparação
+    const difB = Object.keys(ref.blocos).filter(k => semSimb(ref.blocos[k]) !== semSimb(atual.blocos[k]));
     ok(!difB.length, 'mesmo conteúdo em todos os blocos do painel' + (difB.length ? ': ' + difB.join(', ') : ` (${Object.keys(ref.blocos).length})`));
     ok(ref.sub === atual.sub, 'mesmo resumo do período');
   }

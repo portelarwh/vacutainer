@@ -1,6 +1,6 @@
 # Linha 360° · planta interativa da linha
 
-Versão 1.0.0, 12/11/2026. Arquivo `paginas/Linha-360.html`, **gerado**: editar `fontes/linha360/` e rodar `python fontes/linha360/build.py`.
+Versão 1.0.1, 12/11/2026. Arquivo `paginas/Linha-360.html`, **gerado**: editar `fontes/linha360/` e rodar `python fontes/linha360/build.py`.
 
 ## Para que serve
 
@@ -37,6 +37,12 @@ Página que não foi lida aparece como "sem dados", nunca como zero. Ação nova
 
 - Conferir com a linha a posição dos pontos e dos postos (foram tiradas do PDF e do fluxograma do protótipo) e os trajetos dos fluxos, que são aproximados.
 - Vincular os equipamentos reais do cadastro a cada ponto.
-- Cartão da Linha 360° no Portal › Visão geral e leitura das pendências dela pelo Portal.
 - OEE e contadores por equipamento dependem do MES (E12).
 - Conteúdo dos checklists: vem dos padrões da área (E13).
+
+## 1.0.1 · ação e OS de ponta a ponta (12/11/2026)
+
+- **Portal.** O cartão da Linha 360° e as pendências dela já aparecem na Visão geral: o Portal monta o cartão de qualquer página do catálogo a partir do `exports` (`kpis` e `pendencias`). Nada precisou mudar no Portal.
+- **Ação a partir do ponto.** Iniciativas 1.1.9 passou a conhecer a origem `linha360` ("Linha 360°") e o vínculo `ponto`. Antes, a ação aberta na planta seria gravada como "Manual". Com o filtro Ordem · lote ligado, a ação nasce também com os vínculos `ordem` e `lote`.
+- **OS a partir do ponto.** Equipamentos já aceitava a origem; conferido.
+- **Teste.** `testes/tds.js` § 6, na demonstração: cria a ação e a OS a partir de um ponto e confere que as duas voltam para a contagem do ponto na planta.
