@@ -33,6 +33,8 @@ Versões desta branch: Portal 1.9.28 · Produção 2.4.60 · Waste 1.12.0 · Gel
 
 **Portal 1.9.32 e Produção 2.4.65 (12/11/2026):** Pendências da linha com metade da largura e Ação prioritária ao lado; cartões reorganizáveis (kit `vacGrade`): alça que arrasta no Chrome/Edge, barra também nos cartões sem gráfico da grade, setas apagadas na ponta. Conferir na pasta real, no Edge: arrastar um cartão da Visão geral da Produção pela alça ⠿.
 
+**Produção 2.4.66 (12/11/2026):** e-mail do turno e do dia para o Outlook refeito (medidor do OEE reportado, acumulado do dia no turno, hora a hora alto, sem repetições, "Itens do e-mail" com layout gravado). `docs/producao-ordens-sap.md` § 2.4.66. **Conferir no Outlook da empresa** se os medidores e o gráfico chegam ao colar.
+
 **Decisões do usuário nesta rodada:** tema claro por padrão, com o escuro mantido; Linha 360° com dados reais e base própria; conflito de ordem × lote avisa e lista, não bloqueia; Pareto vertical como no dashboard anexado.
 
 **Implantar:** copiar para a pasta da rede as nove páginas de `paginas/` (inclusive `Linha-360.html`, nova) e o `Demonstracao.html`. Nenhuma base muda de formato. A `linha360-base.json` é criada em `00. Bases` na primeira conexão da Linha 360°, com confirmação.

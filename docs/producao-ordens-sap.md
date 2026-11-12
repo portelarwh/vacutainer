@@ -251,3 +251,36 @@ Só o kit (`vacGrade`, `docs/design-system.md`):
 
 Teste: `testes/tgrade.js`.
 
+## 2.4.66 · E-mail do turno e do dia para o Outlook (12/11/2026)
+
+O operador manda o resumo do turno no fim do turno. Na manhã seguinte, vai para a supervisão o resumo do dia anterior. Os dois saem de Relatórios › Passagem de turno e Relatório do dia, pelo botão "Copiar para Outlook".
+
+**O que mudou** (`fontes/producao/email_dia.js`, ligado pelo `email_build.py`):
+- **Repetições retiradas:**
+  - Segurança e Qualidade aparecia três vezes (duas tabelas e duas linhas no texto) e agora aparece uma;
+  - o texto do topo repetia os números dos cartões e passou a ser um item opcional, desligado no padrão;
+  - "Gap vs meta" repetia o OEE e saiu.
+- **Medidor do OEE reportado**, desenhado em PNG, porque o Outlook não mostra SVG. A marca da meta fica no arco, e a cor segue o semáforo da meta.
+- **No e-mail do turno, o acumulado do dia:** um segundo medidor com o OEE reportado do dia até ali, mais a produção acumulada do dia. Os outros números são só do turno.
+- **Produção boa × meta** com barra de atendimento; D, P, Q, scrap e paradas em cartões.
+- **Hora a hora** com cerca de 250 px de altura no e-mail.
+- **Maiores paradas** em barras (as 5 maiores, com equipamento, minutos e ocorrências).
+- **Resultado por turno**, no e-mail do dia, com OEE e atendimento coloridos pelo semáforo.
+
+**Itens do e-mail:** o botão abre a lista dos blocos, para marcar e ordenar, com a prévia ao lado.
+- O layout fica em `App.prefs.mailLay`, por computador, separado para turno e dia.
+- "Voltar ao padrão" desfaz.
+- Desligados no padrão: tabela hora a hora, lista completa das paradas, cascata (só no dia) e resumo em texto.
+- O comentário escrito na tela vai sempre.
+- O resumo vai sempre que foi editado à mão.
+
+**Formato:** tabelas, CSS inline, 680 px, sem script, SVG, flex ou grid (como o `vacEmail` do kit). Com "gráficos como imagem" desmarcado, o OEE sai em número e o hora a hora em tabela.
+
+**O que não mudou:**
+- os números, que vêm todos de `Engine.computeDay`, como no Lançamento;
+- os outros relatórios (semana, mês, paradas, plano, montado, tabelas), que continuam com o e-mail antigo.
+
+O relatório da tela (e o PDF) do dia e do turno também deixou de repetir o bloco "Segurança e QN por turno".
+
+Teste: `testes/temail.js`. Conferir no Outlook da empresa (desktop e web): colar o e-mail e ver se os medidores e o gráfico chegam.
+

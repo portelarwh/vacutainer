@@ -28,7 +28,7 @@ R("location.href=sysHref(port,'versoes')", "vacDemo.ir(sysHref(port,'versoes'))"
 R('<button class="btn primary" id="uOk">Usar este nome</button>', '<button class="btn primary" id="uOk">Usar este nome</button><button class="btn" data-vdemo-entrar onclick="vacDemo.entrar()">Demonstração do sistema</button>')
 R('<button class="btn ghost" id="wLocal">Começar só neste navegador</button>', '<button class="btn ghost" id="wLocal">Começar só neste navegador</button><button class="btn" data-vdemo-entrar onclick="vacDemo.entrar()">Demonstração do sistema</button>')
 R('Abre uma <b>cópia em memória</b> da base com cerca de 3 semanas de dados fictícios (hora a hora, paradas, scrap, dias fechados e abertos), para treinar ou demonstrar. Nada é gravado na pasta da rede nem no navegador: ao sair, tudo volta exatamente como estava.', 'Abre a <b>demonstração integrada do sistema</b>, com produção, perdas, gel, paradas, equipamentos e ações fictícias relacionadas. Você pode editar o exemplo e navegar entre as páginas. As bases reais ficam preservadas; fechar ou recarregar a demonstração descarta as alterações fictícias.')
-R("const APP_VERSION = '2.0.1';","const APP_VERSION = '2.4.65';")
+R("const APP_VERSION = '2.0.1';","const APP_VERSION = '2.4.66';")
 # 2.4.65 · kit: cartões reorganizáveis (alça que arrasta no Chrome/Edge, barra também nos cartões sem gráfico da grade, setas apagadas na ponta)
 # 2.4.45 · login comum do kit (vacLogin): o "Quem está usando?" só aparece quando o login não vale (demonstração, teste, TV)
 R("function askUser(first) {\n  const known","function askUser(first) {\n  if (typeof vacLogin !== 'undefined' && !vacLogin.dispensado()) return vacLogin.abrir({ trocar: !!vacLogin.sessao() });\n  const known")
@@ -314,4 +314,7 @@ aplicar_hh_comum(R)
 # 2.4.64 · fechar turno e dia com turno desabilitado no dia; botões acesos quando o turno fecha ou o hora a hora fica completo (fontes/producao/fecha_build.py)
 from fecha_build import aplicar as aplicar_fecha
 aplicar_fecha(R)
+# 2.4.66 · e-mail do turno e do dia (medidor do OEE reportado, acumulado do dia, itens escolhidos; fontes/producao/email_dia.js)
+from email_build import aplicar as aplicar_email
+aplicar_email(R)
 open(out,'w',encoding='utf-8',newline='\n').write(s);print('ok')   # newline: no Windows o padrão gravaria CRLF
