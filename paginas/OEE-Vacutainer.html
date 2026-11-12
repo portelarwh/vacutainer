@@ -955,7 +955,7 @@ button,input,select,textarea{font-family:var(--f-body)}
 /* --- 9 · impressão e PDF: sem navegação nem controles; cabeçalho e rodapé do relatório --- */
 .vds-imp{display:none}
 @media print{
-  body{padding-left:0!important;background:#fff!important}
+  body{padding-left:0!important;background:#fff!important;transition:none!important}
   header.vsuite,.vds-top,.vds-fundo,nav.vtabs,.vpage .vacts,.vg-barra,.no-print{display:none!important}
   .vpage{border:0}.vpage .wrap{padding:0 0 6px}
   .vpage .vds-mod{display:none}
@@ -1501,7 +1501,7 @@ const U = (() => {
 
 /* ---- 02-model.js ---- */
 /* ================= modelo de dados, valores iniciais e integridade ================= */
-const APP_VERSION = '2.4.59';
+const APP_VERSION = '2.4.60';
 const SCHEMA_VERSION = 1;
 const BASE_FILE = 'oee-vacutainer-base.json';
 const BACKUP_DIR = '00. Backups';
@@ -4681,6 +4681,10 @@ const Exports = (() => {
       }
     }
     const porOrdemCobertura = { de: mIni, ate: mk, meses: 24, ordens: porOrdem.length, fonte: 'Plano do mês (PCP) e servidor (dias do lote)' };
+    // 2.4.60 · regra da linha: cada ordem tem um lote e cada lote tem uma ordem. Conflito não bloqueia nada: vira pendência (atenção) e vai no exports
+    const ordemLote = typeof vacOrdemLote === 'function' ? vacOrdemLote(porOrdem) : { ordens: [], lotes: [] };
+    for (const x of ordemLote.ordens.slice(0, 20)) pendencias.push({ sev: 2, tipo: 'ordemLote', txt: `Ordem ${x.ordem} aparece com ${x.lotes.length} lotes (${x.lotes.join(', ')}): cada ordem tem um só lote; conferir o plano`, link: 'plano=' + x.mes });
+    for (const x of ordemLote.lotes.slice(0, 20)) pendencias.push({ sev: 2, tipo: 'ordemLote', txt: `Lote ${x.lote} aparece em ${x.ordens.length} ordens (${x.ordens.join(', ')}): cada lote tem uma só ordem; conferir o plano`, link: 'plano=' + x.mes });
     // lotes do servidor (últimos 150 dias): retrabalho, situação e observação, para Perdas e Gel
     const d150 = U.addDays(today, -149), lotes = [];
     for (const x of L.values()) {
@@ -4706,7 +4710,7 @@ const Exports = (() => {
     const importacoes = [...(db.imports || []).filter(i => i && !i.period && TIPO_IMP[i.kind]).map(i => ({ tipo: TIPO_IMP[i.kind], em: i.at, por: i.by || null, arquivo: i.source || null })),
       ...((db.server || {}).imports || []).map(i => ({ tipo: 'MES', em: i.at, por: i.by || null, arquivo: i.file || null, de: i.from || null, ate: i.to || null }))].sort((a, b) => a.em < b.em ? 1 : -1).slice(0, 400);
     return { exportsVersion: 1, geradoEm: U.nowIso(), cadastros: cad, modulo: 'oee', importacoes, appVersion: typeof APP_VERSION !== 'undefined' ? APP_VERSION : null, linha: LINE,
-      sqdcp: SQDCPModelo.exportar(db, today, Engine, U), porMes, porDia, porDiaTurno, porDiaCatalogo, paradasEquipamento, calendario, planoMes, ordens, porOrdem, porOrdemCobertura, lotes, pendencias, kpis };
+      sqdcp: SQDCPModelo.exportar(db, today, Engine, U), porMes, porDia, porDiaTurno, porDiaCatalogo, paradasEquipamento, calendario, planoMes, ordens, porOrdem, porOrdemCobertura, ordemLote, lotes, pendencias, kpis };
   }
   // cadastro mestre da linha: o OEE é o dono; as outras páginas leem por código (nunca pelo id interno) e complementam localmente
   function cadastros(db) {
@@ -14517,6 +14521,16 @@ const vacShell = (() => {
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', ini); else ini();
   return { montar, migalha, aplicarRec };
 })();
+
+/* ----- vacOrdemLote · regra da linha (12/11/2026): cada ordem tem UM lote e cada lote tem UMA ordem. Recebe [{ordem, lote, mes?}] e devolve os
+   conflitos, sem bloquear nada: {ordens:[{ordem, lotes[], mes}], lotes:[{lote, ordens[], mes}]}. Ordem e lote são texto (regra 4); vazio não conta. ----- */
+function vacOrdemLote(lista) {
+  const O = new Map(), L = new Map(), t = v => String(v == null ? '' : v).trim();
+  for (const x of lista || []) { const o = t(x && x.ordem), l = t(x && x.lote); if (!o || !l) continue; const m = (x && x.mes) || '';
+    if (!O.has(o)) O.set(o, { ordem: o, lotes: [], mes: m }); const a = O.get(o); if (!a.lotes.includes(l)) a.lotes.push(l); if (m > a.mes) a.mes = m;
+    if (!L.has(l)) L.set(l, { lote: l, ordens: [], mes: m }); const b = L.get(l); if (!b.ordens.includes(o)) b.ordens.push(o); if (m > b.mes) b.mes = m; }
+  return { ordens: [...O.values()].filter(x => x.lotes.length > 1), lotes: [...L.values()].filter(x => x.ordens.length > 1) };
+}
 
 /* ----- vacGrade · cartões de gráfico reorganizáveis: largura (inteira, metade, um terço) e ordem; preferências por página e por computador ----- */
 const vacGrade = (() => {

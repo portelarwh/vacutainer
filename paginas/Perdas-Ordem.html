@@ -285,7 +285,12 @@ button.b,label.b,a.b{border-radius:8px}
 .kpi:has(.v.warn){border-left-color:var(--warn)}
 .kpis:not(.compacto)>.kpi>.v:not([style]){font-size:28px}.kpis{grid-template-columns:repeat(auto-fill,minmax(200px,1fr))}
 /* 1.10.0 · Pareto do MUV: botões de dimensão, métrica, sentido e Top N */
-.pz-ctl{display:flex;flex-wrap:wrap;gap:6px 12px;margin:2px 0 4px}.pz-g{display:inline-flex;flex-wrap:wrap;gap:4px}
+.pz-ctl{display:flex;flex-wrap:wrap;gap:6px 12px;margin:2px 0 4px}
+/* 1.12.0 · Paretos da controladoria (verticais; favorável e desfavorável no mesmo gráfico) */
+.pv-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}.pv-grid>.pv-w{grid-column:1/-1}
+@media(max-width:900px){.pv-grid{grid-template-columns:minmax(0,1fr)}}
+.pv-grid .card{margin:0}.pv-grid svg{width:100%;height:auto;display:block}.pv-grid svg text{font-size:10.5px;fill:var(--muted)}.pv-grid .pv-bar{cursor:pointer}.pv-grid .pv-bar:hover{opacity:.75}
+.pv-sum{font-size:12.5px;margin:4px 0 0}.pv-leg i{display:inline-block;width:11px;height:11px;border-radius:2px;vertical-align:-1px;margin:0 4px 0 10px}.pz-g{display:inline-flex;flex-wrap:wrap;gap:4px}
 </style>
 <style id="vac-visual">
 /* ===== vac-visual v1 · padrão visual comum (fontes/kit/kit_visual.css; igual em todas as páginas; não editar só numa) =====
@@ -659,7 +664,7 @@ button,input,select,textarea{font-family:var(--f-body)}
 /* --- 9 · impressão e PDF: sem navegação nem controles; cabeçalho e rodapé do relatório --- */
 .vds-imp{display:none}
 @media print{
-  body{padding-left:0!important;background:#fff!important}
+  body{padding-left:0!important;background:#fff!important;transition:none!important}
   header.vsuite,.vds-top,.vds-fundo,nav.vtabs,.vpage .vacts,.vg-barra,.no-print{display:none!important}
   .vpage{border:0}.vpage .wrap{padding:0 0 6px}
   .vpage .vds-mod{display:none}
@@ -1180,6 +1185,11 @@ addEventListener('error', e => { if (e.error && e.error.name === 'VacAbaBloquead
     <div class="card"><h3>Pareto por catálogo <i class="i" title="MUV desfavorável por produto produzido pela ordem. Clique para filtrar.">i</i></h3><div id="chProd"></div></div>
     </div>
   </div></section>
+  <section class="vk-grp vk-dados" data-vk-grupo="D"><button type="button" class="vk-gh" aria-expanded="true" aria-controls="vkg-perdas-D"><span class="seta" aria-hidden="true">▾</span><span><span class="t">D · Paretos da controladoria</span><br><span class="q">MUV, Desv. estrutura e Desv. empregado por linha, SKU e componente, com favoráveis e desfavoráveis no mesmo gráfico</span></span></button><div class="vk-gb" id="vkg-perdas-D">
+    <div id="pvCtl" class="pz-ctl"></div>
+    <p class="small muted pv-leg" id="pvLeg"></p>
+    <div id="pvBox" class="pv-grid"></div>
+  </div></section>
   <section class="vk-grp vk-dados" data-vk-grupo="C"><button type="button" class="vk-gh" aria-expanded="true" aria-controls="vkg-perdas-C"><span class="seta" aria-hidden="true">▾</span><span><span class="t">C · Causas</span><br><span class="q">O que já foi explicado e o que falta analisar?</span></span></button><div class="vk-gb" id="vkg-perdas-C">
     <div class="card"><h3>Pareto por causa <i class="i" title="Perda das ordens/componentes que já têm causa registrada em comentário. 'Sem causa' = ainda não analisado.">i</i></h3><div id="chCausa"></div></div>
   </div></section>
@@ -1343,7 +1353,7 @@ addEventListener('error', e => { if (e.error && e.error.name === 'VacAbaBloquead
    Base: perdas-base.json na pasta da rede (mesmo padrão OEE / Gel)
    Contrato: bloco "exports" (exportsVersion 1) lido pelas outras páginas
    ===================================================================== */
-const APP_VER='1.11.0',   /* 1.11.0 · target MUV da linha (Portal › Metas da área WASTE-MUV…, vigência, R$/US$ pelo câmbio do Portal), MUV × target acumulado no FY, filtros Linha e Semana */   /* 1.10.0 · MUV oficial (Desv. estrutura + Desv. empregado, como a controladoria): meta, situação, criticidade, exports e relatórios; Pareto do MUV por Linha/SKU/Componente × métrica, favorável/desfavorável e Top N */   /* 1.9.0 · KKBC_ORD em grade (layout da controladoria, uma ordem por arquivo): Desv. Empregado, Desv. preço de input e Desv. qtde guardados; aviso das ordens no formato antigo (reimportar) */   /* 1.8.36 · gráficos: "Valores em …" (moeda), eixo sem rótulos repetidos, medida do Comparativo no gráfico do relatório (docs/graficos-padrao.md) */   /* 1.8.35 · Visão Geral no padrão comum (vacLayout): situação, números, diagnóstico, análises em grupos */   /* 1.8.34 · kit: login com ID e senha */   /* 1.8.33 · kit: datas DD/MM/AAAA */   /* 1.8.32 · nome Eficácia/Confirmação de Processo */   /* 1.8.31 · kit: nome e presença de Iniciativas / Ações na barra */   /* 1.8.30 · UX-02: guia por aba */   /* 1.8.29 · Fase 7 (UX-03, WST-01): Painel → Visão Geral */   /* 1.8.28 · Fase 6 (WST-03, INI-04): ações em Iniciativas / Ações; antigas até a migração, depois só leitura */   /* 1.8.27 · Fase 3 (IMP-04/06, WST-02): importações no exports; aba Importar leva ao Portal › Importação */   /* 1.8.26 · ARQ-09: "Ver com dados de teste" vira a Demonstração integrada */   /* 1.8.23 · C2–C6: kit com a ficha por pasta (AT-08) e a contagem da fila durável (Portal › Versões) */   /* 1.8.22 · C1: trava da 2ª aba com alteração pendente (nada é descartado); kit com a fila durável */   /* 1.8.21 · E11: busca do kit leva o equipamento à ficha em Equipamentos */   /* 1.8.20 · E8: kit com "+ Abrir ação" na ficha da ordem (Planner de Iniciativas) */   /* 1.8.19 · E5: ficha da ordem comum (botão Ficha na ordem; busca Ctrl K por ordem, lote e LP) */   /* 1.8.18 · E4: versão do exports conferida (Produção, Ordens), ordem em várias competências, dias do lote pela chave · 1.8.17 · E2: fonte única da versão (tela, base, exports e Portal › Versões) */ BASE_FN='perdas-base.json', DIR_ORIG='00. Originais SAP', DIR_BKP='00. Backups', DIR_IN='00. Entrada KKBC', DIR_DONE='00. Entrada KKBC/Processados';
+const APP_VER='1.12.0',   /* 1.12.0 · Design System (barra lateral), Paretos da controladoria (verticais), aviso ordem × lote */   /* 1.11.0 · target MUV da linha (Portal › Metas da área WASTE-MUV…, vigência, R$/US$ pelo câmbio do Portal), MUV × target acumulado no FY, filtros Linha e Semana */   /* 1.10.0 · MUV oficial (Desv. estrutura + Desv. empregado, como a controladoria): meta, situação, criticidade, exports e relatórios; Pareto do MUV por Linha/SKU/Componente × métrica, favorável/desfavorável e Top N */   /* 1.9.0 · KKBC_ORD em grade (layout da controladoria, uma ordem por arquivo): Desv. Empregado, Desv. preço de input e Desv. qtde guardados; aviso das ordens no formato antigo (reimportar) */   /* 1.8.36 · gráficos: "Valores em …" (moeda), eixo sem rótulos repetidos, medida do Comparativo no gráfico do relatório (docs/graficos-padrao.md) */   /* 1.8.35 · Visão Geral no padrão comum (vacLayout): situação, números, diagnóstico, análises em grupos */   /* 1.8.34 · kit: login com ID e senha */   /* 1.8.33 · kit: datas DD/MM/AAAA */   /* 1.8.32 · nome Eficácia/Confirmação de Processo */   /* 1.8.31 · kit: nome e presença de Iniciativas / Ações na barra */   /* 1.8.30 · UX-02: guia por aba */   /* 1.8.29 · Fase 7 (UX-03, WST-01): Painel → Visão Geral */   /* 1.8.28 · Fase 6 (WST-03, INI-04): ações em Iniciativas / Ações; antigas até a migração, depois só leitura */   /* 1.8.27 · Fase 3 (IMP-04/06, WST-02): importações no exports; aba Importar leva ao Portal › Importação */   /* 1.8.26 · ARQ-09: "Ver com dados de teste" vira a Demonstração integrada */   /* 1.8.23 · C2–C6: kit com a ficha por pasta (AT-08) e a contagem da fila durável (Portal › Versões) */   /* 1.8.22 · C1: trava da 2ª aba com alteração pendente (nada é descartado); kit com a fila durável */   /* 1.8.21 · E11: busca do kit leva o equipamento à ficha em Equipamentos */   /* 1.8.20 · E8: kit com "+ Abrir ação" na ficha da ordem (Planner de Iniciativas) */   /* 1.8.19 · E5: ficha da ordem comum (botão Ficha na ordem; busca Ctrl K por ordem, lote e LP) */   /* 1.8.18 · E4: versão do exports conferida (Produção, Ordens), ordem em várias competências, dias do lote pela chave · 1.8.17 · E2: fonte única da versão (tela, base, exports e Portal › Versões) */ BASE_FN='perdas-base.json', DIR_ORIG='00. Originais SAP', DIR_BKP='00. Backups', DIR_IN='00. Entrada KKBC', DIR_DONE='00. Entrada KKBC/Processados';
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 /* página para o núcleo comum, o cabeçalho (vac-cabecalho v2) e o quadro de Versões do Portal */
 const PAGE={id:'perdas',titulo:'Waste · Linha Vacutainer',tituloCurto:'Waste',subtitulo:'Custos e perdas por ordem',versao:APP_VER,baseFile:BASE_FN,backupDir:'00. Backups/Perdas',busca:q=>buscaPerdas(q)};
@@ -2207,6 +2217,7 @@ function renderPainel(){
  const cau=new Map();for(const o of ords){if(o.mDesf<=0)continue;for(const r of o.rows){if(isDelivery(r))continue;const d=muvOf(r);if(d<=0)continue;const c=causeOf(o.ordem,r.comp)||'Sem causa registrada';cau.set(c,(cau.get(c)||0)+d)}}
  $('#chCausa').innerHTML=has?paretoChart([...cau].map(([k,v])=>({label:k,value:v,key:k})).sort((a,b)=>b.value-a.value).slice(0,10),null):'';
  renderParetoMuv(ords,cr);   /* 1.10.0 */
+ renderParetoV(ords,cr);   /* 1.12.0 */
  wasteVK({has,liq:muv,metaP,fyAc,ords,pers,semC,venc,crit,alta,trend,par,prodPar:[...pmap].map(([k,x])=>({label:k,sub:x.d,value:x.v,key:k})).filter(x=>x.value>0).sort((a,b)=>b.value-a.value)});   /* 1.8.35 */
  $$('[data-fk]').forEach(e=>e.onclick=()=>{const k=e.dataset.fk,v=e.dataset.fv;if(k==='per'){F.de=F.ate=v}else F[k]=v;renderPainel()});
  F._ords=ords;F._rows=rows;renderTable(ords,rows);
@@ -2338,6 +2349,42 @@ function paretoChart(d,fk,o={}){
  return`<table class="small">${d.map(x=>{acc+=x.value;return`<tr ${fk?`data-fk="${fk}" data-fv="${esc(x.key)}" class="click"`:''}><td style="width:34%"><b>${esc(x.label)}</b><div class="muted" style="font-size:11px">${esc(x.sub||'')}</div></td>
  <td style="width:40%"><div style="background:${o.cor||'var(--bad)'};opacity:.85;height:14px;border-radius:2px;width:${Math.max(2,x.value/mx*100)}%"></div></td><td class="n">${fmtR(x.value)}</td><td class="n muted">${fmtP(acc/tot)}</td></tr>`}).join('')}</table>`}
 
+
+/* 1.12.0 · Paretos da controladoria (como no dashboard de desvios): soma LÍQUIDA por item, favorável (negativo, verde) e desfavorável (positivo,
+   vermelho) no mesmo gráfico, ordenados do mais desfavorável ao mais favorável; Top N = maiores impactos absolutos; linha = % acumulado do
+   impacto absoluto; barras mais claras = fora dos itens que somam 80%. Nenhuma conta nova: os mesmos valores do Pareto do MUV (pzItens).
+   Clique numa barra filtra a linha, o SKU ou o componente (segundo clique tira o filtro). Escolhas em vac.waste.paretov, por computador. */
+const PV_MODO={all:'Todos',unf:'Só desfavoráveis',fav:'Só favoráveis'},PV_TOP=[10,15,20,30];
+function pvSt(){if(!F.pv){let v=null;try{v=JSON.parse(localStorage.getItem('vac.waste.paretov')||'null')}catch(e){}F.pv=Object.assign({modo:'all',top:15},v&&typeof v==='object'?v:{})}return F.pv}
+function pvItens(ords,rows,dim,met,modo){const m=new Map(),vr=r=>met==='estr'?dEst(r):met==='emp'?(dEmpOf(r)||0):muvOf(r),vo=o=>met==='estr'?o.estr:met==='emp'?o.emp:o.muv;
+ const add=(k,l,sub,v)=>{const x=m.get(k)||{k,l,sub,v:0};x.v+=(+v||0);m.set(k,x)};
+ if(dim==='comp')for(const r of rows){if(isDelivery(r))continue;const k=compKey(r);add(k,k,compName(r),vr(r))}
+ else for(const o of ords){if(dim==='sku'){const k=o.cat||o.prod||'?';add(k,k,o.prodDesc||'',vo(o))}else{const l=linhaDe(o);add(l.cod||'?',l.nome||l.cod||'?',l.cod?'linha '+l.cod:'',vo(o))}}
+ return[...m.values()].map(x=>(x.v=Math.round(x.v*100)/100,x)).filter(x=>x.v!==0&&(modo==='all'||(modo==='unf'?x.v>0:x.v<0))).sort((a,b)=>Math.abs(b.v)-Math.abs(a.v))}
+function pvSvg(arr,n,o){if(!arr.length)return'<p class="muted small">Sem desvios para os filtros escolhidos.</p>';
+ const absT=sum(arr,x=>Math.abs(x.v)),net=sum(arr,x=>x.v),unf=sum(arr.filter(x=>x.v>0),x=>x.v),fav=sum(arr.filter(x=>x.v<0),x=>x.v);
+ let cc=0;arr.forEach((x,i)=>{cc+=Math.abs(x.v);x.top=(cc-Math.abs(x.v))/absT<.8||i===0});const A=arr.slice(0,n).sort((a,b)=>b.v-a.v);
+ const W=o.wide?1240:620,H=360,L=78,Rm=40,T=20,B=120,w=(W-L-Rm)/A.length,mxP=Math.max(0,...A.map(x=>x.v)),mxN=Math.min(0,...A.map(x=>x.v)),span=(mxP-mxN)||1,ph=H-T-B,Y=v=>T+ph*(mxP-v)/span,y0=Y(0);let c=0,pts=[],g='';
+ const k=v=>Math.abs(v)>=1e6?(v/1e6).toLocaleString('pt-BR',{maximumFractionDigits:1})+' mi':Math.abs(v)>=1e3?(v/1e3).toLocaleString('pt-BR',{maximumFractionDigits:1})+' mil':v.toLocaleString('pt-BR',{maximumFractionDigits:0});
+ for(let i=0;i<=5;i++){const v=mxN+span*i/5,yy=Y(v);g+=`<line x1="${L}" x2="${W-Rm}" y1="${yy}" y2="${yy}" stroke="var(--grid,#E4EBF2)"/><text x="${L-5}" y="${yy+3}" text-anchor="end">${k(v)}</text>`}
+ for(let q=0;q<=4;q++){g+=`<text x="${W-Rm+5}" y="${T+ph*(1-q/4)+3}">${q*25}%</text>`}
+ g+=`<line x1="${L}" x2="${W-Rm}" y1="${y0}" y2="${y0}" stroke="var(--muted,#64788F)"/>`;
+ A.forEach((x,i)=>{c+=Math.abs(x.v);const cp=c/absT,X=L+i*w;pts.push([X+w/2,T+ph*(1-cp)]);const top=Math.min(Y(x.v),y0),h=Math.max(Math.abs(Y(x.v)-y0),1),sel=o.sel&&String(o.sel)===String(x.k),nm=x.sub?`${x.l} – ${x.sub}`:x.l;
+  g+=`<rect class="pv-bar" data-pvk="${esc(x.k)}" x="${X+w/2-Math.min(w*.76,110)/2}" y="${top}" width="${Math.min(w*.76,110)}" height="${h}" rx="2" fill="${x.v>0?'var(--crit-fill,#C94645)':'var(--ok-fill,#14804A)'}" opacity="${x.top?1:.45}" ${sel?'stroke="#D78B11" stroke-width="3"':''} tabindex="0" role="button" aria-label="${esc(nm+': '+fmtR(x.v)+(x.v>0?' desfavorável':' favorável'))}"><title>${esc(nm)}\n${esc(fmtR(x.v))} (${x.v>0?'Desfavorável':'Favorável'})\n% do impacto: ${(Math.abs(x.v)/absT*100).toFixed(1)}%\n% acumulado: ${(cp*100).toFixed(1)}%</title></rect>`;
+  if(A.length<=15)g+=`<text x="${X+w/2}" y="${x.v>0?top-4:top+h+11}" text-anchor="middle" style="font-size:9.5px;font-weight:600;fill:${x.v>0?'var(--crit,#BF3B3A)':'var(--ok,#14804A)'}">${k(x.v)}</text>`;
+  const raw=o.useSub&&x.sub?x.sub:String(x.l),lb=raw.length>24?raw.slice(0,23)+'…':raw;g+=`<text transform="translate(${X+w/2+3},${H-B+12}) rotate(-55)" text-anchor="end">${esc(lb)}</text>`});
+ g+=`<polyline fill="none" stroke="var(--info-fill,#1972AE)" stroke-width="1.8" points="${pts.map(q=>q[0]+','+q[1]).join(' ')}"/>`+pts.map(q=>`<circle cx="${q[0]}" cy="${q[1]}" r="2.6" fill="var(--info-fill,#1972AE)"/>`).join('');
+ const y80=T+ph*.2;g+=`<line x1="${L}" x2="${W-Rm}" y1="${y80}" y2="${y80}" stroke="var(--info-fill,#1972AE)" stroke-dasharray="5 4" opacity=".55"/><text x="${L+4}" y="${y80-4}" style="fill:var(--info,#1466A0)">80%</text>`;
+ const cl=v=>v>0?'pos':v<0?'neg':'',big=arr.filter(x=>x.v>0)[0];
+ return`<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Pareto vertical: barras do mais desfavorável ao mais favorável e linha de percentual acumulado">${g}</svg><p class="pv-sum">Saldo líquido: <b class="${cl(net)}">${fmtR(net)} (${net>0?'Desfavorável':'Favorável'})</b> · Desfavorável: <span class="pos">${fmtR(unf)}</span> · Favorável: <span class="neg">${fmtR(fav)}</span> · ${arr.length} item(ns)${arr.length>A.length?' (top '+A.length+')':''}</p>${big?`<p class="pv-sum muted">Maior impacto desfavorável: ${esc(big.sub?big.l+' – '+big.sub:big.l)}, ${fmtR(big.v)}.</p>`:''}`}
+function renderParetoV(ords,rows){const ctl=$('#pvCtl'),box=$('#pvBox');if(!ctl||!box)return;const st=pvSt();
+ const grp=(kk,obj)=>`<span class="pz-g" role="group" aria-label="${kk}">${Object.entries(obj).map(([v,t])=>`<button type="button" class="b sm${String(st[kk])===String(v)?' p':''}" data-pv="${kk}" data-pvv="${v}" aria-pressed="${String(st[kk])===String(v)}">${t}</button>`).join('')}</span>`;
+ ctl.innerHTML=grp('modo',PV_MODO)+grp('top',Object.fromEntries(PV_TOP.map(n=>[n,'Top '+n])));
+ $('#pvLeg').innerHTML=`Leitura:<i style="background:var(--crit-fill,#C94645)"></i>Desfavorável (valor positivo, perda)<i style="background:var(--ok-fill,#14804A)"></i>Favorável (valor negativo, ganho) · barras mais claras = fora dos itens que somam 80% do impacto · linha azul = % acumulado do impacto absoluto · contorno âmbar = filtro aplicado · Valores em ${msim()}`;
+ const DIM=[['linha','Linha','linha',F.linha],['sku','SKU (catálogo)','prod',F.prod],['comp','Componente','comp',F.comp]],MET=[['muv','MUV (Desv. estrutura + Desv. empregado)',1],['estr','Desv. estrutura',0],['emp','Desv. empregado',0]];
+ box.innerHTML=DIM.map(([d,dn,fk,sel])=>MET.map(([m,mn,wide])=>`<div class="card${wide?' pv-w':''}" id="pv-${d}-${m}" data-pvf="${fk}"><h3>Pareto por ${dn} · ${mn}</h3>${pvSvg(pvItens(ords,rows,d,m,st.modo),+st.top||15,{wide:!!wide,sel,useSub:d==='comp'})}</div>`).join('')).join('');
+ ctl.querySelectorAll('[data-pv]').forEach(b=>b.onclick=()=>{st[b.dataset.pv]=b.dataset.pv==='top'?+b.dataset.pvv:b.dataset.pvv;try{localStorage.setItem('vac.waste.paretov',JSON.stringify(st))}catch(e){}renderParetoV(ords,rows)});
+ box.querySelectorAll('.pv-bar').forEach(b=>{const f=()=>{const fk=b.closest('[data-pvf]').dataset.pvf,v=b.dataset.pvk;F[fk]=String(F[fk]||'')===String(v)?'':v;renderPainel()};b.onclick=f;b.onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();f()}}})}
 
 /* ===================== OEE (somente leitura) =====================
    Lê oee-vacutainer-base.json da mesma pasta. Usa o bloco "exports" (contrato entre páginas) e, se ele
@@ -4365,6 +4412,16 @@ const vacShell = (() => {
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', ini); else ini();
   return { montar, migalha, aplicarRec };
 })();
+
+/* ----- vacOrdemLote · regra da linha (12/11/2026): cada ordem tem UM lote e cada lote tem UMA ordem. Recebe [{ordem, lote, mes?}] e devolve os
+   conflitos, sem bloquear nada: {ordens:[{ordem, lotes[], mes}], lotes:[{lote, ordens[], mes}]}. Ordem e lote são texto (regra 4); vazio não conta. ----- */
+function vacOrdemLote(lista) {
+  const O = new Map(), L = new Map(), t = v => String(v == null ? '' : v).trim();
+  for (const x of lista || []) { const o = t(x && x.ordem), l = t(x && x.lote); if (!o || !l) continue; const m = (x && x.mes) || '';
+    if (!O.has(o)) O.set(o, { ordem: o, lotes: [], mes: m }); const a = O.get(o); if (!a.lotes.includes(l)) a.lotes.push(l); if (m > a.mes) a.mes = m;
+    if (!L.has(l)) L.set(l, { lote: l, ordens: [], mes: m }); const b = L.get(l); if (!b.ordens.includes(o)) b.ordens.push(o); if (m > b.mes) b.mes = m; }
+  return { ordens: [...O.values()].filter(x => x.lotes.length > 1), lotes: [...L.values()].filter(x => x.ordens.length > 1) };
+}
 
 /* ----- vacGrade · cartões de gráfico reorganizáveis: largura (inteira, metade, um terço) e ordem; preferências por página e por computador ----- */
 const vacGrade = (() => {

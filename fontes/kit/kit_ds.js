@@ -135,6 +135,16 @@ const vacShell = (() => {
   return { montar, migalha, aplicarRec };
 })();
 
+/* ----- vacOrdemLote · regra da linha (12/11/2026): cada ordem tem UM lote e cada lote tem UMA ordem. Recebe [{ordem, lote, mes?}] e devolve os
+   conflitos, sem bloquear nada: {ordens:[{ordem, lotes[], mes}], lotes:[{lote, ordens[], mes}]}. Ordem e lote são texto (regra 4); vazio não conta. ----- */
+function vacOrdemLote(lista) {
+  const O = new Map(), L = new Map(), t = v => String(v == null ? '' : v).trim();
+  for (const x of lista || []) { const o = t(x && x.ordem), l = t(x && x.lote); if (!o || !l) continue; const m = (x && x.mes) || '';
+    if (!O.has(o)) O.set(o, { ordem: o, lotes: [], mes: m }); const a = O.get(o); if (!a.lotes.includes(l)) a.lotes.push(l); if (m > a.mes) a.mes = m;
+    if (!L.has(l)) L.set(l, { lote: l, ordens: [], mes: m }); const b = L.get(l); if (!b.ordens.includes(o)) b.ordens.push(o); if (m > b.mes) b.mes = m; }
+  return { ordens: [...O.values()].filter(x => x.lotes.length > 1), lotes: [...L.values()].filter(x => x.ordens.length > 1) };
+}
+
 /* ----- vacGrade · cartões de gráfico reorganizáveis: largura (inteira, metade, um terço) e ordem; preferências por página e por computador ----- */
 const vacGrade = (() => {
   const pid = () => (typeof PAGE !== 'undefined' && PAGE && PAGE.id) || 'pagina';
