@@ -27,7 +27,12 @@ const RelSQ = {
 (() => {
   const m0 = rpModel;
   rpModel = function (R) {
-    const M = m0(R); if (!(R.type === 'day' || R.type === 'shift') || !RelSQ.incluir()) return M;
+    let M = m0(R); if (!(R.type === 'day' || R.type === 'shift')) return M;
+    /* 2.4.66 · no dia e no turno, o bloco "Segurança e QN por turno" do SQDCP repetia este; fica um só (e nenhum com a opção desmarcada) */
+    { const ps = R.type === 'shift' ? ((db().productionDays || []).find(z => !z.deleted && z.lineId === 'line_vac' && z.date === R.date) || { shifts: [] }).shifts.find(p => p.id === R.psId) : null;
+      let dup = ''; try { dup = Sqdcp.resumoTexto(M.a, M.b, ps ? ps.shiftId : undefined); } catch (e) { }
+      M = { ...M, blocks: (M.blocks || []).filter(b => b.id !== 'sqdcp'), auto: String(M.auto || '').split('\n').filter(l => l && l !== dup).join('\n') }; }
+    if (!RelSQ.incluir()) return M;
     const b = RelSQ.bloco(R); if (!b) return M;
     return { ...M, blocks: [b].concat(M.blocks || []), auto: [M.auto, RelSQ.resumo(R)].filter(Boolean).join('\n') };
   };

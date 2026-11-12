@@ -124,7 +124,9 @@ window.VAC_GUIA.oee = {
       { sel: '#rtMod', nome: 'Modelo', o: 'Escolhe o que cada linha da tabela é (um turno, um dia, um catálogo…).' },
       { sel: '[data-rtwd]', nome: 'Dias da semana', o: 'Marque só os dias que quer (nenhum marcado = todos).', ex: 'Só Sáb para a produção dos sábados.' },
       { sel: '#rtTurno', nome: 'Turno · Família · Catálogo', o: 'Filtros da tabela. O OEE do recorte é Σ produção boa ÷ Σ capacidade.' },
-      { sel: '#rpXls', nome: 'Excel', o: 'Todas as linhas da tabela, prontas para filtrar no Excel.' }
+      { sel: '#rpXls', nome: 'Excel', o: 'Todas as linhas da tabela, prontas para filtrar no Excel.' },
+      { sel: '#rpOut', nome: 'Copiar para Outlook', o: 'Copia o e-mail pronto: abra um e-mail novo no Outlook e cole. Na Passagem de turno e no Relatório do dia sai o resumo visual, com o medidor do OEE reportado; no turno, também o acumulado do dia.', ex: 'Fim do turno: Passagem de turno › Copiar para Outlook. De manhã: Relatório do dia de ontem.' },
+      { sel: '#rpItens', nome: 'Itens do e-mail', o: 'Escolhe e ordena o que vai no e-mail do turno e do dia, com a prévia ao lado. Fica gravado neste computador (turno e dia separados).', ex: 'Desmarcar Segurança e Qualidade; ligar a Tabela hora a hora.' }
     ]
   },
   overview: {

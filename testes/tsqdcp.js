@@ -86,10 +86,10 @@ const srv = http.createServer((q, r) => {
       const diario = rpModel({ type: 'day', date: dia.date });
       return { ex: ex.sqdcp.porDia.find(x => x.dia === dia.date && x.linha === dia.lineId),
         csv: T['Segurança e QN'], turno: turno.blocks.find(b => b.id === 'sqdcp').html,
-        diario: diario.blocks.find(b => b.id === 'sqdcp').html, auto: diario.auto };
+        diario: diario.blocks.find(b => b.id === 'sq').html, repetido: diario.blocks.some(b => b.id === 'sqdcp'), auto: diario.auto };   /* 2.4.66: no dia fica um bloco só (Segurança e Qualidade) */
     });
     ok(exp.ex.qn.quantidade === 2 && exp.csv.some(r => String(r[10]).includes('00001')), 'exports e tabela CSV/Excel preservam números de QN como texto');
-    ok(exp.turno.includes('00002') && exp.diario.includes('Segurança') && exp.auto.includes('QN'), 'passagem de turno e relatório do dia incluem segurança e QN');
+    ok(exp.turno.includes('00002') && exp.diario.includes('Segurança') && exp.diario.includes('0000') && !exp.repetido && exp.auto.includes('QN'), 'passagem de turno e relatório do dia incluem segurança e QN (no dia, uma vez só, com os números de QN)');
     const reimportacao = await p.evaluate(() => {
       const t = U.clone(db()), day = t.productionDays[0], ps = day.shifts[0], cat = t.catalogs.find(c => !c.deleted && c.code);
       day.origin = 'importação'; const n = Number((t.shifts.find(s => s.id === ps.shiftId).code || '').replace('T', '')) || 1;
