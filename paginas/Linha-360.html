@@ -223,6 +223,10 @@ a.vic{display:inline-flex;align-items:center;justify-content:center;text-decorat
 .l3-eqs input{accent-color:var(--accent)}
 .l3-ord{display:flex;gap:6px 10px;align-items:center;flex-wrap:wrap}
 table.t tr.on td{background:var(--accent-soft)}
+.l3-chips{display:flex;gap:6px 8px;flex-wrap:wrap;align-items:center;margin:-6px 0 6px}
+.l3-chip{display:inline-flex;align-items:center;gap:6px;min-height:30px;padding:0 10px;border:1px solid color-mix(in srgb,var(--accent) 35%,var(--line));border-radius:999px;background:var(--accent-soft);color:var(--accent);font-size:12.5px;font-weight:600;cursor:pointer}
+.l3-chip:hover{border-color:var(--accent)}
+.l3-ms>summary{cursor:pointer;list-style:none;padding:3px 0}.l3-ms>summary::-webkit-details-marker{display:none}.l3-ms[open]>summary{margin-bottom:6px}
 @media print{.l3-cam,.l3-lk,.filters{display:none!important}.l3-vp{max-height:none;overflow:visible}.l3-fi{position:static;max-height:none}}
 </style>
 <style id="vac-visual">
@@ -594,6 +598,8 @@ button,input,select,textarea{font-family:var(--f-body)}
 .vg-it.vg-alvo{outline:2px dashed var(--accent);outline-offset:3px}
 @media (hover:none){.vg-barra{opacity:1;pointer-events:auto;position:static;justify-content:flex-end;border:0;box-shadow:none;padding:0 0 4px;background:none}}
 
+/* numeração das páginas impressas (caixas de margem; Chrome e Edge 131 ou mais novos) */
+@page{@bottom-right{content:"Página " counter(page) " de " counter(pages);font:9px "Segoe UI",Arial,sans-serif;color:#5A6E85}}
 /* --- 9 · impressão e PDF: sem navegação nem controles; cabeçalho e rodapé do relatório --- */
 .vds-imp{display:none}
 @media print{
@@ -1062,7 +1068,7 @@ addEventListener('error', e => { if (e.error && e.error.name === 'VacAbaBloquead
 <main class="wrap" id="main"></main>
 <div class="toasts" id="toasts"></div>
 <script>
-const PAGE={id:"linha",titulo:"Linha 360° · Planta interativa da linha",tituloCurto:"Linha 360°",subtitulo:"Planta interativa: paradas, pessoas e ações em cada ponto da linha",versao:"1.0.1",baseFile:"linha360-base.json",backupDir:"00. Backups/Linha360",estado:"atualizacao",estadoNota:"Primeira versão: planta, pontos, áreas, postos e checklists. MES por equipamento chega depois."};
+const PAGE={id:"linha",titulo:"Linha 360° · Planta interativa da linha",tituloCurto:"Linha 360°",subtitulo:"Planta interativa: paradas, pessoas e ações em cada ponto da linha",versao:"1.1.0",baseFile:"linha360-base.json",backupDir:"00. Backups/Linha360",estado:"atualizacao",estadoNota:"Primeira versão: planta, pontos, áreas, postos e checklists. MES por equipamento chega depois."};
 const APP_VERSION=PAGE.versao;
 /* ---------- vac-cabecalho v2 · JS (igual em todas as páginas) ---------- */
 const VAC_CAB_VERSAO=2;
@@ -2275,6 +2281,44 @@ const vacSimbolos = (() => {
   return { aplicar };
 })();
 
+/* ----- vacEmail · relatório para o Outlook (12/11/2026; docs/design-system.md). Tabelas HTML, CSS inline, 680 px, sem JavaScript, grid ou flex;
+   gráfico em PNG (svgPng) com texto alternativo, para o e-mail continuar legível com as imagens bloqueadas. No máximo 4 KPIs.
+   d = {area, titulo, linha, periodo, status, resumo:[{rot, txt}], kpis:[{nome, valor, sub, cor}], grafico:{src, alt, frase},
+        ocorrencias:[texto], acoes:[texto], link, base}. Nenhum número é calculado aqui: a página entrega os valores prontos. ----- */
+const vacEmail = (() => {
+  const H = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  const F = 'font-family:Segoe UI,Arial,sans-serif;', COR = { ok: '#14804A', crit: '#C94645', warn: '#D78B11', info: '#0D5E9C', none: '#6F8092' };
+  const corSt = st => /cr[ií]tic/i.test(st) ? COR.crit : /aten/i.test(st) ? COR.warn : /adequad|ok/i.test(st) ? COR.ok : COR.none;
+  const agora = () => new Date().toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' });
+  const assunto = d => [d.area, d.titulo, d.linha || 'Linha Vacutainer', d.periodo, d.status].filter(Boolean).join(' | ');
+  function html(d) {
+    const sec = t => `<tr><td style="padding:18px 24px 6px;${F}font-size:15px;font-weight:bold;color:#102F55">${H(t)}</td></tr>`;
+    const K = (d.kpis || []).slice(0, 4), lista = L => `<tr><td style="padding:0 24px"><table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">${L.map(x => `<tr><td width="14" valign="top" style="${F}font-size:13px;color:#0D5E9C;padding:3px 0">&bull;</td><td style="${F}font-size:13px;line-height:19px;color:#102F55;padding:3px 0">${H(x)}</td></tr>`).join('')}</table></td></tr>`;
+    return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="#F2F7FB" style="background:#F2F7FB"><tr><td align="center" style="padding:16px 8px">
+<table role="presentation" width="680" cellpadding="0" cellspacing="0" border="0" bgcolor="#FFFFFF" style="width:680px;max-width:680px;background:#FFFFFF;border:1px solid #DCE6EF">
+<tr><td bgcolor="#102333" style="background:#102333;padding:16px 24px;${F}color:#FFFFFF"><div style="font-size:11px;letter-spacing:1px;color:#C9D8E5">BD &middot; SISTEMAS DA LINHA VACUTAINER</div><div style="font-size:20px;font-weight:bold;padding-top:4px">${H(d.titulo || '')}</div><div style="font-size:13px;color:#C9D8E5;padding-top:2px">${H([d.area, d.linha, d.periodo].filter(Boolean).join(' · '))}</div></td></tr>
+${d.status ? `<tr><td style="padding:14px 24px 0"><table role="presentation" cellpadding="0" cellspacing="0" border="0"><tr><td bgcolor="${corSt(d.status)}" style="background:${corSt(d.status)};padding:4px 12px;${F}font-size:12px;font-weight:bold;color:#FFFFFF">Situação: ${H(d.status)}</td></tr></table></td></tr>` : ''}
+${(d.resumo || []).length ? sec('Resumo executivo') + `<tr><td style="padding:0 24px"><table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">${d.resumo.map(r => `<tr><td width="96" valign="top" style="${F}font-size:12px;font-weight:bold;color:#64788F;padding:3px 8px 3px 0">${H(r.rot)}</td><td style="${F}font-size:13px;line-height:19px;color:#102F55;padding:3px 0">${H(r.txt)}</td></tr>`).join('')}</table></td></tr>` : ''}
+${K.length ? sec('Indicadores') + `<tr><td style="padding:0 18px"><table role="presentation" width="100%" cellpadding="0" cellspacing="6" border="0"><tr>${K.map(k => `<td width="${Math.floor(100 / K.length)}%" valign="top" style="border:1px solid #DCE6EF;border-left:4px solid ${COR[k.cor] || COR.info};padding:10px 12px;${F}"><div style="font-size:11px;color:#64788F">${H(k.nome)}</div><div style="font-size:20px;font-weight:bold;color:#102F55;padding-top:2px">${H(k.valor)}</div><div style="font-size:11px;color:#64788F;padding-top:2px">${H(k.sub || '')}</div></td>`).join('')}</tr></table></td></tr>` : ''}
+${d.grafico && (d.grafico.src || d.grafico.alt) ? sec(d.grafico.titulo || 'Gráfico principal') + `<tr><td style="padding:0 24px">${d.grafico.src ? `<img src="${H(d.grafico.src)}" width="632" alt="${H(d.grafico.alt || '')}" style="display:block;width:632px;max-width:100%;height:auto;border:1px solid #DCE6EF">` : ''}<div style="${F}font-size:12px;line-height:18px;color:#64788F;padding-top:6px">${H(d.grafico.frase || d.grafico.alt || '')}</div></td></tr>` : ''}
+${(d.ocorrencias || []).length ? sec('Principais ocorrências') + lista(d.ocorrencias.slice(0, 5)) : ''}
+${(d.acoes || []).length ? sec('Ações prioritárias') + lista(d.acoes.slice(0, 5)) : ''}
+${d.link ? `<tr><td style="padding:20px 24px 4px"><table role="presentation" cellpadding="0" cellspacing="0" border="0"><tr><td bgcolor="#0D5E9C" style="background:#0D5E9C;padding:12px 20px"><a href="${H(d.link)}" style="${F}font-size:14px;font-weight:bold;color:#FFFFFF;text-decoration:none">Abrir relatório completo</a></td></tr></table></td></tr>` : ''}
+<tr><td style="padding:18px 24px 16px;${F}font-size:11px;line-height:16px;color:#64788F;border-top:1px solid #DCE6EF">${d.base ? 'Base: ' + H(d.base) + ' · ' : ''}Gerado em ${H(agora())} · Uso interno · Valores conforme a base disponível na data de geração</td></tr>
+</table></td></tr></table>`;
+  }
+  function texto(d) { const L = [assunto(d), '']; for (const r of d.resumo || []) L.push(r.rot + ': ' + r.txt); if ((d.kpis || []).length) { L.push(''); for (const k of d.kpis.slice(0, 4)) L.push(k.nome + ': ' + k.valor + (k.sub ? ' (' + k.sub + ')' : '')); }
+    if (d.grafico && (d.grafico.frase || d.grafico.alt)) L.push('', d.grafico.frase || d.grafico.alt); if ((d.ocorrencias || []).length) { L.push('', 'Principais ocorrências:'); d.ocorrencias.slice(0, 5).forEach(x => L.push('- ' + x)); } if ((d.acoes || []).length) { L.push('', 'Ações prioritárias:'); d.acoes.slice(0, 5).forEach(x => L.push('- ' + x)); } return L.join('\n'); }
+  /* SVG da tela → PNG de fundo branco (1.200 px de largura): as cores vindas de variáveis do tema são fixadas antes de desenhar */
+  async function svgPng(svg, largura = 1200) { if (!svg) return ''; try { const c = svg.cloneNode(true), A = svg.querySelectorAll('*'), B = c.querySelectorAll('*'), claro = typeof vacTemaClaro === 'function'; if (claro) vacTemaClaro(true);
+      try { A.forEach((o, i) => { const st = getComputedStyle(o), n = B[i]; if (!n || /^(title|desc)$/i.test(o.tagName)) return; if (o.hasAttribute('fill') || o.tagName === 'text') n.setAttribute('fill', st.fill); if (o.hasAttribute('stroke')) n.setAttribute('stroke', st.stroke); if (o.tagName === 'text') { n.style.fontFamily = 'Segoe UI, Arial, sans-serif'; n.style.fontSize = st.fontSize; n.style.fontWeight = st.fontWeight; } }); } finally { if (claro) vacTemaClaro(false); }
+      const vb = svg.viewBox.baseVal, w = (vb && vb.width) || svg.clientWidth || 640, h = (vb && vb.height) || svg.clientHeight || 360; c.setAttribute('xmlns', 'http://www.w3.org/2000/svg'); c.setAttribute('width', w); c.setAttribute('height', h);
+      const img = new Image(), url = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(new XMLSerializer().serializeToString(c)); await new Promise((ok, err) => { img.onload = ok; img.onerror = err; img.src = url; });
+      const cv = document.createElement('canvas'); cv.width = largura; cv.height = Math.round(largura * h / w); const g = cv.getContext('2d'); g.fillStyle = '#fff'; g.fillRect(0, 0, cv.width, cv.height); g.drawImage(img, 0, 0, cv.width, cv.height); return cv.toDataURL('image/png'); } catch (e) { console.warn('vacEmail.svgPng', e); return ''; } }
+  async function copiar(d) { const h = html(d), t = texto(d); try { await navigator.clipboard.write([new ClipboardItem({ 'text/html': new Blob([h], { type: 'text/html' }), 'text/plain': new Blob([t], { type: 'text/plain' }) })]); return true; } catch (e) { try { await navigator.clipboard.writeText(t); } catch (x) { } return false; } }
+  return { html, texto, assunto, svgPng, copiar };
+})();
+
 /* ----- vacOrdemLote · regra da linha (12/11/2026): cada ordem tem UM lote e cada lote tem UMA ordem. Recebe [{ordem, lote, mes?}] e devolve os
    conflitos, sem bloquear nada: {ordens:[{ordem, lotes[], mes}], lotes:[{lote, ordens[], mes}]}. Ordem e lote são texto (regra 4); vazio não conta. ----- */
 function vacOrdemLote(lista) {
@@ -2631,6 +2675,26 @@ function barrasV(serie,un){if(!serie.some(s=>s.v))return'<p class="empty">Sem re
  for(let i=0;i<=4;i++){const v=mx*i/4;g+=`<line x1="${L}" x2="${W-8}" y1="${Y(v)}" y2="${Y(v)}" stroke="var(--grid,#E4EBF2)"/><text x="${L-6}" y="${Y(v)+4}" text-anchor="end">${nf(v)}</text>`}
  const passo=Math.ceil(serie.length/12);return`<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Barras por dia">${g}${serie.map((s,i)=>`<rect x="${L+i*w+w*.15}" y="${Y(s.v)}" width="${w*.7}" height="${Math.max(0,H-B-Y(s.v))}" rx="2" fill="#1972AE"><title>${esc(br(s.d)+': '+nf(s.v)+' '+un)}</title></rect>${serie.length<=14&&s.v?`<text class="v" x="${L+i*w+w/2}" y="${Y(s.v)-4}" text-anchor="middle">${nf(s.v)}</text>`:''}${i%passo===0?`<text x="${L+i*w+w/2}" y="${H-10}" text-anchor="middle">${brc(s.d)}</text>`:''}`).join('')}</svg>`}
 
+/* 1.1.0 · filtros ativos em chips (um clique tira o filtro) */
+function chipsAtivos(){const C=[],f=App.f;if(f.turno)C.push(['turno','Turno: '+((turnos().find(t=>t.codigo===f.turno)||{}).nome||f.turno)]);if(f.ordem){const o=ordensPeriodo().find(x=>x.ordem===f.ordem);C.push(['ordem','Ordem '+f.ordem+(o&&o.lote?' · lote '+o.lote:'')])}
+ if(App.fluxo)C.push(['fluxo','Fluxo: '+FLUXOS[App.fluxo][0]]);if(App.zona){const a=areas().find(x=>x.id===App.zona);if(a)C.push(['zona','Área: '+a.nome])}return C}
+function chipsHtml(){const C=chipsAtivos();return C.length?`<div class="l3-chips" role="group" aria-label="Filtros ativos"><span class="small muted">Filtros ativos:</span>${C.map(c=>`<button type="button" class="l3-chip" data-chip="${c[0]}" title="Tirar este filtro">${esc(c[1])} ${ic('fechar','sm')}</button>`).join('')}<button type="button" class="b sm" data-chip="todos">Limpar filtros</button></div>`:''}
+/* 1.1.0 · relatório do período para o Outlook (vacEmail do kit): só os números que já estão na tela */
+async function emailLinha(){const N=numeros(),T=N.tot,[de,ate]=periodo(),per=br(de)+(de!==ate?' a '+br(ate):''),oa=ordemAtual(),m=mapaEq();
+ const top=pontos().map(p=>({p,v:N.R[p.id].min})).filter(x=>x.v).sort((a,b)=>b.v-a.v),tm=T.min+N.fora.min,atr=T.osAtr+T.acAtr;
+ const evs=eventos().slice().sort((a,b)=>(+b.minutos||0)-(+a.minutos||0)).slice(0,5).map(e=>{const p=P(m[String(e.equipamento)]);return`${br(e.dia)} ${e.turno||''} · ${p?p.nome:(e.equipamento||'sem equipamento')} · ${e.descricao||e.codigo||''} · ${nf(e.minutos)} min${e.ordem?' · ordem '+e.ordem:''}`});
+ const acs=((Ext.inic&&Ext.inic.acoes)||[]).filter(acAberta).sort((a,b)=>String(a.prazo||'9').localeCompare(String(b.prazo||'9'))).slice(0,5).map(a=>`${a.id} · ${a.titulo} · ${a.responsavel||'sem responsável'} · prazo ${br(a.prazo)}${a.atrasada||(a.prazo&&a.prazo<hoje())?' (atrasada)':''}`);
+ const resumo=[];if(chipsAtivos().length)resumo.push({rot:'Filtros',txt:chipsAtivos().map(c=>c[1]).join(' · ')+'.'});resumo.push({rot:'Resultado',txt:Ext.par?`${nf(tm)} min de parada em ${nf(T.oc+N.fora.oc)} ocorrência(s), ${nf(T.queb+N.fora.queb)} quebra(s).`:'Paradas não lido: sem dados de tempo parado.'});
+ if(oa)resumo.push({rot:'Ordem',txt:`Em produção: ordem ${oa.ordem}, lote ${oa.lote||'—'}, catálogo ${oa.catalogo||'—'}.`});
+ if(top[0])resumo.push({rot:'Onde',txt:`${top[0].p.id} · ${top[0].p.nome} concentra ${nf(top[0].v)} min (${T.min?(top[0].v/T.min*100).toFixed(0):0}% do tempo localizado na planta)${top[1]?`; em seguida ${top[1].p.nome}, com ${nf(top[1].v)} min`:''}.`});
+ if(Ext.equip||Ext.inic)resumo.push({rot:'Risco',txt:atr?`${T.osAtr} OS e ${T.acAtr} ação(ões) atrasada(s).`:'Nenhuma OS ou ação atrasada nos pontos da planta.'});
+ if(Ext.inic)resumo.push({rot:'Ação',txt:`${T.ac} ação(ões) aberta(s) ligada(s) à linha${Ext.equip?` e ${T.os} OS aberta(s)`:''}.`});
+ const svg=$('#gPonto svg:not(.vi)'),src=await vacEmail.svgPng(svg),fr=($('#gPonto .res')||{}).textContent||'';
+ const d={area:'Linha 360°',titulo:'Relatório da linha',linha:'Linha Vacutainer',periodo:per,status:!Ext.par?'Sem dados':atr?'Atenção':'Adequado',resumo,
+  kpis:[{nome:'Tempo parado',valor:Ext.par?nf(tm)+' min':'sem dados',sub:Ext.par?nf(T.oc+N.fora.oc)+' ocorrência(s)':'',cor:Ext.par?(tm?'crit':'ok'):'none'},{nome:'Quebras',valor:Ext.par?nf(T.queb+N.fora.queb):'sem dados',sub:'',cor:Ext.par?'info':'none'},
+   {nome:'OS abertas',valor:Ext.equip?nf(T.os):'sem dados',sub:Ext.equip?T.osAtr+' atrasada(s)':'',cor:Ext.equip?(T.osAtr?'crit':'ok'):'none'},{nome:'Ações abertas',valor:Ext.inic?nf(T.ac):'sem dados',sub:Ext.inic?T.acAtr+' atrasada(s)':'',cor:Ext.inic?(T.acAtr?'crit':'ok'):'none'}],
+  grafico:{titulo:'Tempo parado por ponto da planta (min)',src,alt:'Gráfico de barras: tempo parado por ponto da planta, em minutos, '+per+'.',frase:fr},ocorrencias:evs,acoes:acs,link:/^https?:/.test(location.href)?location.href.split('#')[0]:'',base:Store.test?'demonstração':(Store.dirName?Store.dirName+' · rev '+(Store.data.rev||0):'')};
+ App.ultimoEmail=d;const okc=await vacEmail.copiar(d);toast(okc?'Relatório copiado. Cole no e-mail do Outlook. Assunto sugerido: '+vacEmail.assunto(d):'Não consegui copiar com formatação; o texto simples foi copiado.',!okc);return d}
 function vMapa(){const N=numeros(),[de,ate]=periodo(),oa=ordemAtual(),T=N.tot,k=App.camada==='fluxo'?'min':App.camada;
  const top=pontos().map(p=>({p,v:N.R[p.id].min})).sort((a,b)=>b.v-a.v)[0];const ords=ordensPeriodo();
  const dias=[];for(let d=de;d<=ate&&dias.length<92;d=addDias(d,1))dias.push({d,v:0});const idx=Object.fromEntries(dias.map((x,i)=>[x.d,i]));for(const e of eventos())if(idx[e.dia]!=null)dias[idx[e.dia]].v+=+e.minutos||0;
@@ -2644,6 +2708,7 @@ function vMapa(){const N=numeros(),[de,ate]=periodo(),oa=ordemAtual(),T=N.tot,k=
   <label title="Ordem de produção (cada ordem tem um lote) em que a parada aconteceu">Ordem · lote <select id="fOrdem"><option value="">Todas</option>${ords.map(o=>`<option value="${esc(o.ordem)}"${App.f.ordem===o.ordem?' selected':''}>${esc(o.ordem+(o.lote?' · lote '+o.lote:''))}</option>`).join('')}</select></label>
   <label>Fluxo <select id="fFluxo"><option value="">Todos</option>${Object.entries(FLUXOS).map(([c,v])=>`<option value="${c}"${App.fluxo===c?' selected':''}>${v[0]}</option>`).join('')}</select></label>
   <span class="sp"></span><span class="small muted">${br(de)}${de!==ate?' a '+br(ate):''}${Ext.par&&Ext.par.eventosCobertura&&Ext.par.eventosCobertura.de>de?` · o Paradas publica eventos desde ${br(Ext.par.eventosCobertura.de)}`:''}</span></div>
+ ${chipsHtml()}
  ${vacLayout.sec('01','Situação da linha','Ordem em produção e o que pede atenção no período')}
  <div class="l3-top">
   <div class="l3-k"><span class="l">${ic('oee','sm')} Ordem em produção</span><span class="v">${oa?esc(oa.ordem):'<span class="muted" style="font-size:16px">sem dados</span>'}</span><span class="s l3-ord">${oa?`lote <b>${esc(oa.lote||'—')}</b> · catálogo ${esc(oa.catalogo||'—')} ${fichaOrd(oa.ordem)}`:'A Produção não publicou ordens'}</span></div>
@@ -2708,7 +2773,7 @@ function vConfig(){const S=Store,E=eqs(),a=areas().find(x=>x.id===App.areaSel)||
  ${E.length?'':`<p class="l3-av">${ic('info','sm')} O cadastro de equipamentos do Portal ainda não foi lido neste computador. <a href="${esc(vacPortalHref('cadastros/equipamentos'))}">Abrir o cadastro no Portal</a></p>`}
  <div class="tw"><table class="t"><thead><tr><th scope="col">Ponto</th><th scope="col">Nome</th><th scope="col">Fluxo</th><th scope="col">Equipamentos do cadastro</th><th scope="col"></th></tr></thead><tbody>${pontos().map(p=>{const q=eqDoPonto(p);return`<tr data-pt="${esc(p.id)}"><td class="code">${esc(p.id)}</td><td><input data-c="nome" maxlength="60" value="${esc(p.nome)}" aria-label="Nome do ponto ${esc(p.id)}"></td>
    <td><select data-c="fluxo" aria-label="Fluxo do ponto ${esc(p.id)}">${Object.entries(FLUXOS).map(([c,v])=>`<option value="${c}"${p.fluxo===c?' selected':''}>${v[0]}</option>`).join('')}</select></td>
-   <td><span class="l3-eqs">${E.map(e=>`<label title="${esc(e.nome)}"><input type="checkbox" data-eq value="${esc(e.codigo)}"${q.lista.includes(e.codigo)?' checked':''}> ${esc(e.codigo)} ${esc(e.nome)}</label>`).join('')||'<span class="muted small">sem cadastro</span>'}</span>${q.sugerido?' <span class="pill warn" title="Sugerido pelo nome; salve para confirmar">sugerido</span>':''}</td>
+   <td><details class="l3-ms"><summary>${q.lista.length?q.lista.map(c=>`<span class="code">${esc(c)}</span> ${esc(eqNome(c))}`).join(' · '):'<span class="muted">nenhum equipamento</span>'}${q.sugerido?' <span class="pill warn" title="Sugerido pelo nome; salve para confirmar">sugerido</span>':''} <span class="small muted">· alterar</span></summary><span class="l3-eqs">${E.map(e=>`<label title="${esc(e.nome)}"><input type="checkbox" data-eq value="${esc(e.codigo)}"${q.lista.includes(e.codigo)?' checked':''}> ${esc(e.codigo)} ${esc(e.nome)}</label>`).join('')||'<span class="muted small">sem cadastro</span>'}</span></details></td>
    <td><button class="b sm" data-ptsalvar>Salvar</button></td></tr>`}).join('')}</tbody></table></div>
  ${vacLayout.sec('03','Pasta e base','Onde a página grava')}
  <div class="card"><p>${S.test?'Modo de teste: nada é gravado.':S.dir?`Pasta <b>${esc(S.dirName)}</b> · base <span class="code">00. Bases/${esc(PAGE.baseFile)}</span> · rev ${S.data.rev||0}`:'Sem pasta conectada: as alterações ficam neste navegador até conectar.'}</p>
@@ -2723,6 +2788,7 @@ function ligar(){const on=(s,ev,f)=>{const e=$(s);if(e)e[ev]=f};const av=$('#avC
  on('#fTurno','onchange',e=>{App.f.turno=e.target.value;render()});on('#fOrdem','onchange',e=>{App.f.ordem=e.target.value;render()});on('#fFluxo','onchange',e=>{App.fluxo=e.target.value;render()});
  $$('[data-cam]').forEach(b=>b.onclick=()=>{App.camada=b.dataset.cam;render()});on('#cZonas','onchange',e=>{App.zonas=e.target.checked;if(!App.zonas)App.zona=null;render()});
  on('#zMais','onclick',()=>{App.zoom=Math.min(2.5,+(App.zoom+.25).toFixed(2));render()});on('#zMenos','onclick',()=>{App.zoom=Math.max(1,+(App.zoom-.25).toFixed(2));render()});on('#zLimpa','onclick',()=>{App.zona=null;render()});
+ $$('[data-chip]').forEach(b=>b.onclick=()=>{const k=b.dataset.chip;if(k==='turno'||k==='todos')App.f.turno='';if(k==='ordem'||k==='todos')App.f.ordem='';if(k==='fluxo'||k==='todos')App.fluxo='';if(k==='zona'||k==='todos')App.zona=null;render()});
  $$('[data-irp]').forEach(a=>a.onclick=e=>{e.preventDefault();App.sel=a.dataset.irp;render()});
  $$('.l3-ch .bar').forEach(b=>b.onclick=()=>{const k=b.dataset.bar;if(b.closest('#gArea')){App.zonas=true;App.zona=App.zona===k?null:k}else App.sel=k;render()});
  $$('.zona').forEach(z=>{const f=()=>{if(App.tab==='config'){App.areaSel=z.dataset.zona}else App.zona=App.zona===z.dataset.zona?null:z.dataset.zona;render()};z.onclick=f;z.onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();f()}}});
@@ -2775,8 +2841,8 @@ PAGE.busca=q=>{const k=norm(q),R=[];for(const p of pontos())if(norm(p.id+' '+p.n
 function vacAoTrocarUsuario(){render()}
 function vacGuiaAba(){return App.tab}
 (async()=>{applyTheme();Logo.apply();wireCabecalho();renderSysNav();$('#btnTheme').onclick=cycleTheme;$('#appVer').textContent='v'+PAGE.versao;
- const va=document.createElement('span');va.className='vacts';va.innerHTML='<button class="b" id="btnSync" title="Reler Paradas, Produção, Equipamentos e Iniciativas e gravar pendências">Sincronizar</button><button class="b" id="btnImp" title="Imprimir ou salvar em PDF">Imprimir</button>';$('.vpage .wrap').appendChild(va);
- $('#btnSync').onclick=async()=>{if(Store.test)return toast('Modo de teste: nada a sincronizar');if(!Store.dir)return Store.pick();if(!Store.perm)return Store.reconnect();await Store.reload();await Store.save();render();toast('Sincronizado')};$('#btnImp').onclick=()=>window.print();
+ const va=document.createElement('span');va.className='vacts';va.innerHTML='<button class="b" id="btnSync" title="Reler Paradas, Produção, Equipamentos e Iniciativas e gravar pendências">Sincronizar</button><button class="b" id="btnMail" title="Copia o relatório do período, com o gráfico, para colar num e-mail do Outlook">Copiar para o Outlook</button><button class="b" id="btnImp" title="Imprimir ou salvar em PDF">Imprimir</button>';$('.vpage .wrap').appendChild(va);
+ $('#btnSync').onclick=async()=>{if(Store.test)return toast('Modo de teste: nada a sincronizar');if(!Store.dir)return Store.pick();if(!Store.perm)return Store.reconnect();await Store.reload();await Store.save();render();toast('Sincronizado')};$('#btnImp').onclick=()=>window.print();$('#btnMail').onclick=()=>{if(App.tab!=='mapa')ir('mapa');setTimeout(emailLinha,60)};
  window.addEventListener('storage',e=>{if(e.key==='vac.theme')applyTheme();if(e.key==='vac.cadastros')render()});
  const h0=location.hash;if(/^#aba=/.test(h0)){const t=h0.slice(5).split('&')[0];if(ABAS.some(a=>a[0]===t))App.tab=t}
  render();if(vacDemo.ativo){Store.test=true;const lerDemo=()=>{Ext.par=vacDemo.exports('paradas');Ext.oee=vacDemo.exports('oee');Ext.equip=vacDemo.exports('equip');Ext.inic=vacDemo.exports('inic');Ext.erros={};render()};

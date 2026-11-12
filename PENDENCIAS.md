@@ -21,11 +21,13 @@ Versões desta branch: Portal 1.9.28 · Produção 2.4.60 · Waste 1.12.0 · Gel
 
 **Segunda entrega (12/11/2026, depois do merge do PR #61):** fluxo de ação e OS a partir da planta conferido de ponta a ponta (Iniciativas 1.1.9 conhece a origem Linha 360° e o vínculo de ponto); símbolos de texto dos botões trocados por ícones em todas as páginas (`vacSimbolos`); guia de instalação e LEIA-ME com a página nova. Versões: Portal 1.9.29 · Produção 2.4.61 · Waste 1.12.1 · Gel 2.30 · Paradas 1.2.2 · Equipamentos 1.0.12 · Iniciativas 1.1.9 · Linha 360° 1.0.1 · Projetos 0.1.12. O cartão da Linha 360° no Portal já existia (o Portal monta pelo `exports`).
 
+**Terceira entrega (12/11/2026, depois do merge do PR #62):** modelo de e-mail para o Outlook no kit (`vacEmail`) e usado na Linha 360° 1.1.0; "Página X de Y" na impressão direta; chips de filtros ativos e configuração compacta na Linha 360°. Versões: Portal 1.9.30 · Produção 2.4.62 · Waste 1.12.2 · Gel 2.31 · Paradas 1.2.3 · Equipamentos 1.0.13 · Iniciativas 1.1.10 · Linha 360° 1.1.0 · Projetos 0.1.13. Falta levar o `vacEmail` aos relatórios das outras páginas e conferir o e-mail colado no Outlook da empresa.
+
 **Decisões do usuário nesta rodada:** tema claro por padrão, com o escuro mantido; Linha 360° com dados reais e base própria; conflito de ordem × lote avisa e lista, não bloqueia; Pareto vertical como no dashboard anexado.
 
 **Implantar:** copiar para a pasta da rede as nove páginas de `paginas/` (inclusive `Linha-360.html`, nova) e o `Demonstracao.html`. Nenhuma base muda de formato. A `linha360-base.json` é criada em `00. Bases` na primeira conexão da Linha 360°, com confirmação.
 
-**O que falta do Design System** (lista completa em `docs/design-system.md` § 4): filtros em painel recolhível com chips, esqueleto de carregamento, modelo de e-mail do Outlook em tabelas, "Página X de Y", paleta única nos gráficos da Produção e do Gel.
+**O que falta do Design System** (lista completa em `docs/design-system.md` § 4): filtros em painel recolhível com chips nas páginas que ainda não têm, esqueleto de carregamento, `vacEmail` nos relatórios das outras páginas, paleta única nos gráficos da Produção e do Gel.
 
 **O que falta da Linha 360°** (`docs/linha-360.md`): conferir posições com a linha, vincular os equipamentos reais, OEE por equipamento (depende do MES).
 

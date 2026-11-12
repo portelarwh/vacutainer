@@ -155,6 +155,44 @@ const vacSimbolos = (() => {
   return { aplicar };
 })();
 
+/* ----- vacEmail · relatório para o Outlook (12/11/2026; docs/design-system.md). Tabelas HTML, CSS inline, 680 px, sem JavaScript, grid ou flex;
+   gráfico em PNG (svgPng) com texto alternativo, para o e-mail continuar legível com as imagens bloqueadas. No máximo 4 KPIs.
+   d = {area, titulo, linha, periodo, status, resumo:[{rot, txt}], kpis:[{nome, valor, sub, cor}], grafico:{src, alt, frase},
+        ocorrencias:[texto], acoes:[texto], link, base}. Nenhum número é calculado aqui: a página entrega os valores prontos. ----- */
+const vacEmail = (() => {
+  const H = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  const F = 'font-family:Segoe UI,Arial,sans-serif;', COR = { ok: '#14804A', crit: '#C94645', warn: '#D78B11', info: '#0D5E9C', none: '#6F8092' };
+  const corSt = st => /cr[ií]tic/i.test(st) ? COR.crit : /aten/i.test(st) ? COR.warn : /adequad|ok/i.test(st) ? COR.ok : COR.none;
+  const agora = () => new Date().toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' });
+  const assunto = d => [d.area, d.titulo, d.linha || 'Linha Vacutainer', d.periodo, d.status].filter(Boolean).join(' | ');
+  function html(d) {
+    const sec = t => `<tr><td style="padding:18px 24px 6px;${F}font-size:15px;font-weight:bold;color:#102F55">${H(t)}</td></tr>`;
+    const K = (d.kpis || []).slice(0, 4), lista = L => `<tr><td style="padding:0 24px"><table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">${L.map(x => `<tr><td width="14" valign="top" style="${F}font-size:13px;color:#0D5E9C;padding:3px 0">&bull;</td><td style="${F}font-size:13px;line-height:19px;color:#102F55;padding:3px 0">${H(x)}</td></tr>`).join('')}</table></td></tr>`;
+    return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="#F2F7FB" style="background:#F2F7FB"><tr><td align="center" style="padding:16px 8px">
+<table role="presentation" width="680" cellpadding="0" cellspacing="0" border="0" bgcolor="#FFFFFF" style="width:680px;max-width:680px;background:#FFFFFF;border:1px solid #DCE6EF">
+<tr><td bgcolor="#102333" style="background:#102333;padding:16px 24px;${F}color:#FFFFFF"><div style="font-size:11px;letter-spacing:1px;color:#C9D8E5">BD &middot; SISTEMAS DA LINHA VACUTAINER</div><div style="font-size:20px;font-weight:bold;padding-top:4px">${H(d.titulo || '')}</div><div style="font-size:13px;color:#C9D8E5;padding-top:2px">${H([d.area, d.linha, d.periodo].filter(Boolean).join(' · '))}</div></td></tr>
+${d.status ? `<tr><td style="padding:14px 24px 0"><table role="presentation" cellpadding="0" cellspacing="0" border="0"><tr><td bgcolor="${corSt(d.status)}" style="background:${corSt(d.status)};padding:4px 12px;${F}font-size:12px;font-weight:bold;color:#FFFFFF">Situação: ${H(d.status)}</td></tr></table></td></tr>` : ''}
+${(d.resumo || []).length ? sec('Resumo executivo') + `<tr><td style="padding:0 24px"><table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">${d.resumo.map(r => `<tr><td width="96" valign="top" style="${F}font-size:12px;font-weight:bold;color:#64788F;padding:3px 8px 3px 0">${H(r.rot)}</td><td style="${F}font-size:13px;line-height:19px;color:#102F55;padding:3px 0">${H(r.txt)}</td></tr>`).join('')}</table></td></tr>` : ''}
+${K.length ? sec('Indicadores') + `<tr><td style="padding:0 18px"><table role="presentation" width="100%" cellpadding="0" cellspacing="6" border="0"><tr>${K.map(k => `<td width="${Math.floor(100 / K.length)}%" valign="top" style="border:1px solid #DCE6EF;border-left:4px solid ${COR[k.cor] || COR.info};padding:10px 12px;${F}"><div style="font-size:11px;color:#64788F">${H(k.nome)}</div><div style="font-size:20px;font-weight:bold;color:#102F55;padding-top:2px">${H(k.valor)}</div><div style="font-size:11px;color:#64788F;padding-top:2px">${H(k.sub || '')}</div></td>`).join('')}</tr></table></td></tr>` : ''}
+${d.grafico && (d.grafico.src || d.grafico.alt) ? sec(d.grafico.titulo || 'Gráfico principal') + `<tr><td style="padding:0 24px">${d.grafico.src ? `<img src="${H(d.grafico.src)}" width="632" alt="${H(d.grafico.alt || '')}" style="display:block;width:632px;max-width:100%;height:auto;border:1px solid #DCE6EF">` : ''}<div style="${F}font-size:12px;line-height:18px;color:#64788F;padding-top:6px">${H(d.grafico.frase || d.grafico.alt || '')}</div></td></tr>` : ''}
+${(d.ocorrencias || []).length ? sec('Principais ocorrências') + lista(d.ocorrencias.slice(0, 5)) : ''}
+${(d.acoes || []).length ? sec('Ações prioritárias') + lista(d.acoes.slice(0, 5)) : ''}
+${d.link ? `<tr><td style="padding:20px 24px 4px"><table role="presentation" cellpadding="0" cellspacing="0" border="0"><tr><td bgcolor="#0D5E9C" style="background:#0D5E9C;padding:12px 20px"><a href="${H(d.link)}" style="${F}font-size:14px;font-weight:bold;color:#FFFFFF;text-decoration:none">Abrir relatório completo</a></td></tr></table></td></tr>` : ''}
+<tr><td style="padding:18px 24px 16px;${F}font-size:11px;line-height:16px;color:#64788F;border-top:1px solid #DCE6EF">${d.base ? 'Base: ' + H(d.base) + ' · ' : ''}Gerado em ${H(agora())} · Uso interno · Valores conforme a base disponível na data de geração</td></tr>
+</table></td></tr></table>`;
+  }
+  function texto(d) { const L = [assunto(d), '']; for (const r of d.resumo || []) L.push(r.rot + ': ' + r.txt); if ((d.kpis || []).length) { L.push(''); for (const k of d.kpis.slice(0, 4)) L.push(k.nome + ': ' + k.valor + (k.sub ? ' (' + k.sub + ')' : '')); }
+    if (d.grafico && (d.grafico.frase || d.grafico.alt)) L.push('', d.grafico.frase || d.grafico.alt); if ((d.ocorrencias || []).length) { L.push('', 'Principais ocorrências:'); d.ocorrencias.slice(0, 5).forEach(x => L.push('- ' + x)); } if ((d.acoes || []).length) { L.push('', 'Ações prioritárias:'); d.acoes.slice(0, 5).forEach(x => L.push('- ' + x)); } return L.join('\n'); }
+  /* SVG da tela → PNG de fundo branco (1.200 px de largura): as cores vindas de variáveis do tema são fixadas antes de desenhar */
+  async function svgPng(svg, largura = 1200) { if (!svg) return ''; try { const c = svg.cloneNode(true), A = svg.querySelectorAll('*'), B = c.querySelectorAll('*'), claro = typeof vacTemaClaro === 'function'; if (claro) vacTemaClaro(true);
+      try { A.forEach((o, i) => { const st = getComputedStyle(o), n = B[i]; if (!n || /^(title|desc)$/i.test(o.tagName)) return; if (o.hasAttribute('fill') || o.tagName === 'text') n.setAttribute('fill', st.fill); if (o.hasAttribute('stroke')) n.setAttribute('stroke', st.stroke); if (o.tagName === 'text') { n.style.fontFamily = 'Segoe UI, Arial, sans-serif'; n.style.fontSize = st.fontSize; n.style.fontWeight = st.fontWeight; } }); } finally { if (claro) vacTemaClaro(false); }
+      const vb = svg.viewBox.baseVal, w = (vb && vb.width) || svg.clientWidth || 640, h = (vb && vb.height) || svg.clientHeight || 360; c.setAttribute('xmlns', 'http://www.w3.org/2000/svg'); c.setAttribute('width', w); c.setAttribute('height', h);
+      const img = new Image(), url = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(new XMLSerializer().serializeToString(c)); await new Promise((ok, err) => { img.onload = ok; img.onerror = err; img.src = url; });
+      const cv = document.createElement('canvas'); cv.width = largura; cv.height = Math.round(largura * h / w); const g = cv.getContext('2d'); g.fillStyle = '#fff'; g.fillRect(0, 0, cv.width, cv.height); g.drawImage(img, 0, 0, cv.width, cv.height); return cv.toDataURL('image/png'); } catch (e) { console.warn('vacEmail.svgPng', e); return ''; } }
+  async function copiar(d) { const h = html(d), t = texto(d); try { await navigator.clipboard.write([new ClipboardItem({ 'text/html': new Blob([h], { type: 'text/html' }), 'text/plain': new Blob([t], { type: 'text/plain' }) })]); return true; } catch (e) { try { await navigator.clipboard.writeText(t); } catch (x) { } return false; } }
+  return { html, texto, assunto, svgPng, copiar };
+})();
+
 /* ----- vacOrdemLote · regra da linha (12/11/2026): cada ordem tem UM lote e cada lote tem UMA ordem. Recebe [{ordem, lote, mes?}] e devolve os
    conflitos, sem bloquear nada: {ordens:[{ordem, lotes[], mes}], lotes:[{lote, ordens[], mes}]}. Ordem e lote são texto (regra 4); vazio não conta. ----- */
 function vacOrdemLote(lista) {

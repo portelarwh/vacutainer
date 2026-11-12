@@ -6,15 +6,15 @@ Plataforma de páginas HTML de arquivo único que trabalham juntas numa **pasta 
 
 | Página | Arquivo | Base | Versão | Como editar |
 |---|---|---|---|---|
-| Portal (cadastro geral, Administração) | `Portal.html` | `portal-base.json` + `vacutainer-cadastros.json` | 1.9.29 | direto no HTML |
-| Produção (OEE, plano, ordens SAP) | `OEE-Vacutainer.html` | `oee-vacutainer-base.json` (+ `ordens-base.json`) | 2.4.61 | **NÃO editar o HTML**: editar `fontes/producao/` e rodar o build |
-| Waste (perdas por ordem, KKBC) | `Perdas-Ordem.html` | `perdas-base.json` | 1.12.1 | direto no HTML |
-| Gestão de Gel | `Gestão-Gel-Vacutainer.html` | `fifo-base.json` | 2.30 · **em atualização** | direto no HTML |
-| Paradas | `Paradas.html` | `paradas-base.json` | 1.2.2 · **em atualização** | direto no HTML |
-| Equipamentos (com manutenção) | `Equipamentos.html` | `equipamentos-base.json` | 1.0.12 · **em atualização** | direto no HTML (saiu do gerador na 1.0.0; `docs/equipamentos-v1.md`) |
-| Iniciativas / Ações (Ações/Planner · KAS · OSM · 5S · programas) | `Iniciativas.html` | `iniciativas-base.json` | 1.1.9 · **em atualização** | direto no HTML (saiu do gerador na 1.0.0; `docs/iniciativas-planner.md`) |
-| Linha 360° (planta interativa: paradas, OS e ações por ponto; postos e checklists) | `Linha-360.html` | `linha360-base.json` | 1.0.1 · **em atualização** | **gerada**: `fontes/linha360/` + `python fontes/linha360/build.py` (`docs/linha-360.md`) |
-| Projetos | `Projetos.html` | (`projetos-base.json`, ainda não existe) | 0.1.12 · **em construção** | **gerada**: `fontes/modelo/gerar_paginas.py` |
+| Portal (cadastro geral, Administração) | `Portal.html` | `portal-base.json` + `vacutainer-cadastros.json` | 1.9.30 | direto no HTML |
+| Produção (OEE, plano, ordens SAP) | `OEE-Vacutainer.html` | `oee-vacutainer-base.json` (+ `ordens-base.json`) | 2.4.62 | **NÃO editar o HTML**: editar `fontes/producao/` e rodar o build |
+| Waste (perdas por ordem, KKBC) | `Perdas-Ordem.html` | `perdas-base.json` | 1.12.2 | direto no HTML |
+| Gestão de Gel | `Gestão-Gel-Vacutainer.html` | `fifo-base.json` | 2.31 · **em atualização** | direto no HTML |
+| Paradas | `Paradas.html` | `paradas-base.json` | 1.2.3 · **em atualização** | direto no HTML |
+| Equipamentos (com manutenção) | `Equipamentos.html` | `equipamentos-base.json` | 1.0.13 · **em atualização** | direto no HTML (saiu do gerador na 1.0.0; `docs/equipamentos-v1.md`) |
+| Iniciativas / Ações (Ações/Planner · KAS · OSM · 5S · programas) | `Iniciativas.html` | `iniciativas-base.json` | 1.1.10 · **em atualização** | direto no HTML (saiu do gerador na 1.0.0; `docs/iniciativas-planner.md`) |
+| Linha 360° (planta interativa: paradas, OS e ações por ponto; postos e checklists) | `Linha-360.html` | `linha360-base.json` | 1.1.0 · **em atualização** | **gerada**: `fontes/linha360/` + `python fontes/linha360/build.py` (`docs/linha-360.md`) |
+| Projetos | `Projetos.html` | (`projetos-base.json`, ainda não existe) | 0.1.13 · **em construção** | **gerada**: `fontes/modelo/gerar_paginas.py` |
 
 Divisão final (Portal 1.7): Portal · Produção · Waste · Gestão de Gel · Paradas · **Equipamentos** (inclui manutenção; não há página Manutenção) · **Iniciativas** (uma página: Ações/Planner · KAS · OSM · 5S; não há OSM.html) · **Projetos** · Outros ▾ · ⚙ Administração.
 Situação de cada página (em construção / em atualização / estável): `PAGE.estado` + `sistemas.js`, trocável no Portal › Configuração › Módulos; ver `docs/paginas-construcao.md`. Páginas em construção são **geradas** (não editar o HTML; editar `fontes/modelo/` e rodar o gerador). Quando uma delas começar de verdade (v1.0), tirar da lista do gerador e passar a editar direto. Arquitetura: `docs/plano-evolucao-plataforma.md`, `docs/osm-arquitetura.md` (aba OSM de Iniciativas). `docs/paginas-novas.md` é histórico (lista antiga Máquinas/Manutenção).
@@ -29,6 +29,7 @@ Padrão visual único das páginas: `docs/design-system.md` (o que existe e o qu
 - barra lateral fixa e recolhível (`vacShell`; os nós do cabeçalho antigo são movidos com os mesmos IDs), cabeçalho de 58 px com "onde estou", tema claro por padrão;
 - ícones Lucide embutidos (`vacIcone`); não usar emoji nem símbolo de texto em tela nova; os símbolos antigos no início de botões (⇩, ↻, ✎, ⚙…) são trocados na tela pelo `vacSimbolos` (o texto do botão continua);
 - todo cartão com gráfico pode mudar de largura (1/1, 1/2, 1/3) e de ordem (`vacGrade`, `vac.grade.<página>`); gráfico novo vai dentro de um `.card` com `id`;
+- e-mail para o Outlook pelo `vacEmail` do kit (tabelas, CSS inline, 680 px, no máximo 4 KPIs, gráfico em PNG com texto alternativo); relatório novo usa esse modelo em vez de montar HTML próprio; impressão direta das páginas com "Página X de Y";
 - cores: azul neutro, verde favorável, vermelho perda, âmbar atenção, cinza sem dados; nunca só a cor;
 - **ordem e lote são a base de tudo**: cada ordem tem um lote e cada lote tem uma ordem (`vacOrdemLote` aponta o conflito sem bloquear; a Produção publica em `exports.ordemLote` e cria pendência). Tela que mostra um fato de produção leva à ficha da ordem (`vacFichaBotao`).
 Layout nunca muda fórmula, regra, ID, evento nem estrutura gravada.

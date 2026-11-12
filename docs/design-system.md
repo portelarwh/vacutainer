@@ -40,15 +40,18 @@ Mudou o Design System: editar `kit_ds.css` ou `kit_ds.js` e rodar os builds na o
 
 **Símbolos (`vacSimbolos`).** Troca, na tela, o símbolo de texto do início de um botão pelo ícone correspondente. O texto do botão não muda; botão só com símbolo é trocado apenas se tiver `title` ou `aria-label`. Desligar na página: `window.VAC_SIMBOLOS_OFF = true`.
 
+**E-mail para o Outlook (`vacEmail`).** `html(d)` monta o relatório em tabelas com CSS inline e 680 px, sem JavaScript, grid ou flex: cabeçalho, situação, resumo executivo, até 4 KPIs, um gráfico em PNG com texto alternativo e frase de conclusão, até 5 ocorrências, até 5 ações, botão "Abrir relatório completo" (só com endereço http) e rodapé com base e horário. `svgPng(svg)` converte o gráfico da tela em PNG de fundo branco com 1.200 px. `copiar(d)` põe HTML e texto simples na área de transferência. `assunto(d)` devolve "Área | Relatório | Linha | Período | Situação". A página entrega os números prontos; o kit não calcula nada.
+
+**Número da página.** A impressão direta de qualquer página traz "Página X de Y" no rodapé (caixas de margem do `@page`; Chrome e Edge 131 ou mais novos; versões antigas só não mostram).
+
 **Ordem × lote (`vacOrdemLote(lista)`).** Devolve as ordens com mais de um lote e os lotes em mais de uma ordem. Não bloqueia nada. A Produção 2.4.60 publica o resultado em `exports.ordemLote` e cria uma pendência de atenção para cada conflito.
 
 ## 4. O que ainda não segue a especificação
 
 - Símbolos de texto: os que abrem um botão, link-botão ou aba (⇩, ↻, ✓, ▶, ⛁, ▣, ✎, ⚙…) viram ícone na tela (`vacSimbolos`, 12/11/2026). Continuam em texto as setas de abrir e recolher (▾, ▸), os símbolos no meio de frases e o ⓘ. O código-fonte das páginas ainda tem os símbolos; tela nova usa `vacIcone` direto.
-- Filtros em painel recolhível com "Aplicar" e chips: só onde já existia.
+- Filtros em painel recolhível com "Aplicar": só onde já existia. Chips de filtros ativos: Waste, Paradas e Linha 360°; faltam Produção, Gel, Iniciativas e Equipamentos.
+- E-mail: o modelo `vacEmail` existe e a Linha 360° usa; os relatórios de Portal, Waste, Produção, Paradas e Gel continuam com o HTML próprio de cada um (conferido pelo `trelatorios.js`) e podem migrar um a um.
+- "Página X de Y" vale para a impressão direta da página; os relatórios que abrem em janela própria (Portal, Waste, Paradas, Produção) têm o CSS deles.
 - Tabelas: cabeçalho claro aplicado pelo kit; primeira coluna fixa, ordenação e paginação continuam como cada página fazia.
 - Estados de carregamento em esqueleto.
-- Modelo de e-mail para o Outlook em tabelas com gráficos em PNG: os relatórios atuais não foram refeitos.
-- "Página X de Y" na impressão.
 - Gráficos da Produção e do Gel com cores próprias fora da paleta de `chartColors`.
-- Linha 360°: a tabela de equipamentos por ponto em Configuração é extensa; trocar por seleção em lista.
