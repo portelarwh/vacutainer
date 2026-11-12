@@ -1311,7 +1311,7 @@ const U = (() => {
 
 /* ---- 02-model.js ---- */
 /* ================= modelo de dados, valores iniciais e integridade ================= */
-const APP_VERSION = '2.4.58';
+const APP_VERSION = '2.4.59';
 const SCHEMA_VERSION = 1;
 const BASE_FILE = 'oee-vacutainer-base.json';
 const BACKUP_DIR = '00. Backups';
@@ -5690,8 +5690,7 @@ App.views.overview = {
     const cats = A.byCatalog(days), shifts = A.byShift(days);
     const weeks = A.byWeek(rows), months = A.byMonth(rows);
     // atendimento médio por hora do dia
-    const hours = new Map(); for (const x2 of rows) for (const fl of x2.res.flat) { if (fl.good == null || !fl.metaOp) continue; const k = U.hhmm(fl.iv.start); const o = hours.get(k) || { g: 0, m: 0, s: fl.iv.start }; o.g += fl.good; o.m += fl.metaOp; hours.set(k, o); }
-    const hk = [...hours.entries()].sort((a, b) => a[1].s - b[1].s);
+    const hhP = HHComum.periodo(rows, 200);   /* 2.4.59 · mesma base do Apontamento › Hora a hora */
     const card = (t, q, body, span) => `<section class="card" ${span ? 'style="grid-column:1/-1"' : ''}><header><h3>${t}</h3></header><p class="q">${q}</p>${body}</section>`;
     h += `<div class="grid g2 section">
       ${card('Produção boa × meta e capacidade', 'A produção diária acompanhou a meta?', Charts.combo({ x, xFull: xf, xName: 'Dia', bars: [{ name: 'Produção boa', values: ser('good'), color: 'var(--s1)', meta: ser('metaOp') }], lines: [{ name: 'Meta', values: ser('metaOp'), color: 'var(--ink)', dash: true, dots: false }, { name: 'Capacidade', values: ser('cap'), color: 'var(--muted)', width: 1.5, dots: false }], unit: qUn, fmtY: v => fq(v), mark, tipRows, click }))}
@@ -5703,7 +5702,7 @@ App.views.overview = {
       ${card('Pareto de paradas', 'Quais paradas mais tiraram tempo? (clique para ver os eventos)', Charts.hbar({ items: par, total: U.sum(par, i => i.value), click: it => { App.stops = { dim: 'codigo', pick: it.label }; go('stops'); } }))}
       ${card('Produção por catálogo', 'Quanto cada catálogo produziu e com que OEE?', Charts.hbar({ items: cats.map(c => ({ label: c.c.code, value: c.r.good, color: c.c.color, tipRows: [['Produção boa', fq(c.r.good) + ' ' + unitLbl()], ['OEE', U.pct(c.r.oee)], ['Meta OEE', U.pct(c.r.oeeTarget)]] })), unit: qUn, fmt: v => fq(v), valueName: 'Produção boa', labelName: 'Catálogo', cumulative: false }))}
       ${card('Resultado por turno', 'Algum turno destoa do outro?', Charts.combo({ x: shifts.map(s => s.s.name), xName: 'Turno', bars: [{ name: 'OEE', values: shifts.map(s => s.r.oee), color: 'var(--s1)', meta: shifts.map(s => s.r.oeeTarget), fmtLabel: v => U.pct(v, 0) }], lines: [{ name: 'Meta OEE', values: shifts.map(s => s.r.oeeTarget), color: 'var(--ink)', dash: true }], fmtY: v => U.pct(v, 0), yMin: 0, height: 200 }))}
-      ${card('Atendimento por hora do dia', 'Em que horários a meta costuma não ser atingida?', Charts.combo({ x: hk.map(([k]) => k), xName: 'Hora', bars: [{ name: 'Atendimento', values: hk.map(([, o]) => o.g / o.m), color: 'var(--s1)', meta: hk.map(() => 1), fmtLabel: v => U.pct(v, 0) }], lines: [{ name: '100% da meta', values: hk.map(() => 1), color: 'var(--ink)', width: 1.5, dots: false, dash: true }], fmtY: v => U.pct(v, 0), yMin: 0, height: 200, empty: 'Sem hora a hora no período (dias importados só têm resumo por turno).' }))}
+      ${card('Produção por hora do dia', 'Em que horários a meta costuma não ser atingida? Média por dia; a produção fora do turno (MES) entra na hora dela, no turno em que conta.', Charts.combo(hhP))}
       ${card('Cascata de perdas do período', 'Da capacidade à produção boa, onde estão as maiores perdas?', Charts.waterfall({ steps: (r.cascade.steps || []).filter(s => s.kind || Math.abs(s.value) > 0.5 || ['a', 'un', 'q'].includes(s.key)), cap: r.cap, unit: qUn, fmtY: v => fq(v) }) + `<p class="small muted">${esc(r.cascade.notes.join(' '))}</p>`)}
       ${card('Tendência semanal', 'O OEE está melhorando semana a semana?', Charts.combo({ x: weeks.map(w => w.label), xFull: weeks.map(w => 'Semana de ' + U.brDate(w.k)), xName: 'Semana', bars: [{ name: 'OEE', values: weeks.map(w => w.r.oee), color: 'var(--s1)', meta: weeks.map(w => w.r.oeeTarget), fmtLabel: v => U.pct(v, 0) }], lines: [{ name: 'Meta OEE', values: weeks.map(w => w.r.oeeTarget), color: 'var(--ink)', width: 1.5, dash: true }], yMin: 0, fmtY: v => U.pct(v, 0), height: 200 }))}
       ${card('Tendência mensal', 'Como cada mês fechou contra a meta?', Charts.combo({ x: months.map(m => m.label), xName: 'Mês', bars: [{ name: 'OEE', values: months.map(m => m.r.oee), color: 'var(--s1)', meta: months.map(m => m.r.oeeTarget), fmtLabel: v => U.pct(v, 0) }], lines: [{ name: 'Meta OEE', values: months.map(m => m.r.oeeTarget), color: 'var(--ink)', dash: true }], fmtY: v => U.pct(v, 0), yMin: 0, height: 200 }), true)}
@@ -6706,7 +6705,7 @@ const TV = {
     const bk = (l, v, s, state, small) => `<div class="bk"><div class="l">${esc(l)}</div><div class="v${small ? ' sm' : ''}${state === 'warn' || state === 'crit' ? ' below' : ''}">${v}</div><div class="s">${s}</div>${state ? `<div class="s">${semB(state)}</div>` : ''}</div>`;
     const evs = Engine.eventsIn(db(), [day]).filter(e => e.bucket !== 'deduct').sort((a, b) => b.minutes - a.minutes).slice(0, 5);
     return `<div class="big">${bk('Produção boa', fq(r.good), `meta até agora ${fq(metaNow)} · dia ${fq(res.officialDaily)} ${esc(unitLbl())}`, Engine.sem(att, st.semaphore))}${bk('OEE', U.pct(r.oee), 'meta ' + U.pct(r.oeeTarget), r.semOee)}${bk('Atendimento', U.pct(att, 0), 'produção ÷ meta acumulada', Engine.sem(att, st.semaphore))}${bk('D · P · Q', `${U.pct(r.D, 0)}<span style="font-size:.5em"> · </span>${U.pct(r.P, 0)}<span style="font-size:.5em"> · </span>${r.Q == null ? '—' : U.pct(r.Q, 0)}`, 'Disponibilidade · Performance · Qualidade', null, true)}</div>
-      <div class="grid g2" style="flex:1;min-height:0"><div class="bk">${Charts.combo({ ...hhChartOpts(res.flat, 300), noTable: true })}</div>
+      <div class="grid g2" style="flex:1;min-height:0"><div class="bk">${Charts.combo({ ...HHComum.dia(day, res, '', 300), noTable: true })}</div>
       <div class="bk"><div class="l">Principais paradas do dia</div>${evs.length ? `<table><tbody>${evs.map(e => `<tr><td><span class="swatch" style="background:${esc(e.code.color)}"></span> ${esc(e.code.name)}</td><td>${esc(e.equipment ? e.equipment.name : '')}</td><td class="n">${U.fmt(e.minutes)} min</td></tr>`).join('')}</tbody></table>` : '<p class="s">Sem paradas registradas.</p>'}</div></div>`;
   },
   hora(day) {
@@ -8098,14 +8097,9 @@ Object.assign(PN_B, {
     const lim = 60;
     return `<div class="tw"><table data-nosort="1"><thead><tr><th>Dia</th><th>Horário</th><th>Turno</th><th>Tipo</th><th>Equipamento</th><th class="n">Min</th><th>Observação</th></tr></thead><tbody>${ev.slice(0, lim).map(e => `<tr><td>${U.brDate(e.day.date)}</td><td class="mono">${e.ev.start != null ? U.range(e.ev.start, e.ev.end) : '—'}</td><td>${esc(e.shifts.join(' + '))}</td><td>${esc(e.code.code + ' · ' + e.code.name)}</td><td>${esc(e.equipment ? e.equipment.name : '—')}</td><td class="n">${U.fmt(e.minutes)}</td><td class="small wrap">${esc(e.ev.note || '')}</td></tr>`).join('')}</tbody></table></div>${ev.length > lim ? `<p class="small muted">Mostrando as ${lim} maiores de ${ev.length} paradas (${U.fmt(U.sum(ev, e => e.minutes))} min no total).</p>` : ''}`;
   } },
-  hourly: { l: 'Hora a hora', g: 'Produção', w: 'f', q: 'Em que horários a meta não foi atingida?', r: x => {
-    if (x.days.length === 1) {
-      const res = Engine.computeDay(db(), x.days[0]), fs = res.flat.filter(f => f.metaOp > 0 || f.good != null);
-      return Charts.combo({ ...hhChartOpts(fs, 220), forceLegend: true });
-    }
-    const hours = new Map(); for (const o of x.rows) for (const fl of o.res.flat) { if (fl.good == null || !fl.metaOp) continue; const k = U.hhmm(fl.iv.start); const h = hours.get(k) || { g: 0, m: 0, s: fl.iv.start }; h.g += fl.good; h.m += fl.metaOp; hours.set(k, h); }
-    const hk = [...hours.entries()].sort((a, b) => a[1].s - b[1].s);
-    return Charts.combo({ x: hk.map(([k]) => k), xName: 'Hora', bars: [{ name: 'Atendimento', values: hk.map(([, o]) => o.g / o.m), color: 'var(--s1)', meta: hk.map(() => 1), fmtLabel: v => U.pct(v, 0) }], lines: [{ name: '100% da meta', values: hk.map(() => 1), color: 'var(--ink)', width: 1.5, dots: false, dash: true }], fmtY: v => U.pct(v, 0), yMin: 0, height: 200, empty: 'Sem hora a hora no período.' });
+  hourly: { l: 'Hora a hora', g: 'Produção', w: 'f', q: 'Em que horários a meta não foi atingida?', r: x => {   /* 2.4.59 · mesma base do Apontamento › Hora a hora */
+    if (x.days.length === 1) { const res = Engine.computeDay(db(), x.days[0]); return Charts.combo({ ...HHComum.dia(x.days[0], res, '', 220), forceLegend: true }); }
+    return Charts.combo(HHComum.periodo(x.rows, 200, 'Sem hora a hora no período.'));
   } },
   planTable: { l: 'Plano por família e catálogo', g: 'Plano do mês', w: 'f', q: 'Quanto falta de cada família e catálogo?', r: x => { const R = Panel.planRes(x); return R ? App.views.plan.table(R).replace(/^<section class="card section">/, '<div>').replace(/<\/section>$/, '</div>') : `<div class="empty">Sem plano cadastrado para ${esc(U.monthName(x.b))}.</div>`; } },
   notes: { l: 'Observações registradas', g: 'Dias', w: 'f', q: 'O que foi anotado nos lançamentos do período.', r: x => {
@@ -8196,7 +8190,7 @@ function rpShiftModel(R) {
   ];
   let cg = 0, cm = 0;
   Charts.setWidth(1440);
-  const chart = Charts.combo({ ...hhChartOpts(fs, 200), forceLegend: true });
+  const chart = Charts.combo({ ...HHComum.dia(day, res, ps.id, 200), forceLegend: true });   /* 2.4.59 · com as horas fora do turno que contam neste turno */
   Charts.setWidth(720);
   const tbl = `<div class="tw"><table data-nosort="1"><thead><tr><th>Horário</th><th>Catálogo</th><th class="n">Meta</th><th class="n">Produção</th><th class="n">Acum. / meta acum.</th><th class="n">Atendimento</th><th class="n">Paradas (min)</th><th>Obs.</th></tr></thead><tbody>${fs.map(f => { cg += f.good || 0; cm += f.metaOp; return `<tr><td class="mono">${U.range(f.iv.start, f.iv.end)}</td><td>${esc(catName(f.cat))}</td><td class="n">${fq(f.metaOp)}</td><td class="n">${f.good == null ? '—' : fq(f.good)}</td><td class="n">${fq(cg)} / ${fq(cm)}</td><td class="n">${f.metaOp === 0 && f.deduct >= f.min ? 'pausa' : f.attain == null ? '—' : U.pct(f.attain, 0)}</td><td class="n">${U.fmt(f.a + f.p)}</td><td class="small wrap">${esc(f.iv.note || '')}</td></tr>`; }).join('')}</tbody></table></div>`;
   const stT = stops.length ? `<div class="tw"><table data-nosort="1"><thead><tr><th>Horário</th><th>Tipo</th><th>Equipamento</th><th class="n">Min</th><th>Observação</th></tr></thead><tbody>${stops.map(e => `<tr><td class="mono">${e.ev.start != null ? U.range(e.ev.start, e.ev.end) : 'sem horário'}</td><td>${esc(e.code.code + ' · ' + e.code.name)}</td><td>${esc(e.equipment ? e.equipment.name : '—')}</td><td class="n">${U.fmt(e.minutes)}</td><td class="small wrap">${esc(e.ev.note || '')}</td></tr>`).join('')}</tbody></table></div>` : '<div class="empty">Nenhuma parada apontada.</div>';
@@ -10528,7 +10522,7 @@ new MutationObserver(() => { const m = document.getElementById('main'); if (!m |
    Meu painel, visões compartilhadas e modelos (Panel) não passam por aqui. Impressão: grupos sempre abertos. */
 const VGL = (() => {
   const GRUPOS = [
-    ['A', 'Produção e plano', 'A produção acompanhou a meta e a capacidade?', ['Produção boa × meta e capacidade', 'Atendimento por hora do dia']],
+    ['A', 'Produção e plano', 'A produção acompanhou a meta e a capacidade?', ['Produção boa × meta e capacidade', 'Produção por hora do dia']],
     ['B', 'Eficiência do OEE', 'Quanto do tempo virou produção boa, e qual componente pesou?', ['OEE × meta', 'Disponibilidade, Performance e Qualidade', 'PPH real × nominal']],
     ['C', 'Perdas e confiabilidade', 'Onde está a maior perda e o que a explica?', ['Cascata de perdas do período', 'Pareto de paradas', 'Perdas em minutos por dia']],
     ['D', 'Qualidade', 'O refugo piorou em algum dia?', ['Scrap % por dia']],
@@ -11124,23 +11118,33 @@ const LancV2 = (() => {
       <text class="gv" x="${cx}" y="${cy - 4}" text-anchor="middle">${esc(rot)}</text></svg>`;
   }
   /* OEE de cada intervalo do dia: produção boa ÷ capacidade do intervalo (PPH × minutos ÷ 60) */
-  function oeeHoras(res) {
-    return (res.flat || []).filter(f => f.good != null && f.pph > 0 && f.min > 0).map(f => ({ h: U.hhmm(f.iv.start), v: f.good / (f.pph * f.min / 60) }));
+  /* 2.4.59 · mesma base do Apontamento › Hora a hora: intervalos dos turnos + horas do MES fora do turno que contam no dia, em ordem de horário.
+     Hora fora do turno: OEE da hora = produção do MES ÷ (PPH do turno que recebe × 1 h), como no OEE real; barra mais clara. O OEE oficial não muda. */
+  function oeeHoras(res, day) {
+    const H = (res.flat || []).filter(f => f.good != null && f.pph > 0 && f.min > 0).map(f => ({ h: U.hhmm(f.iv.start), s: f.iv.start, v: f.good / (f.pph * f.min / 60) }));
+    if (day && typeof HHPs !== 'undefined') try {
+      const ft = res.foraTurno;
+      for (const it of ((ft && ft.recebe) || []).filter(i => i.alvo && i.alvo.date === day.date && !(ft.semAlvo || []).includes(i))) {
+        const f0 = (res.flat || []).find(f => f.ps && f.ps.snap.code === it.alvo.code && f.pph > 0); if (!f0) continue;
+        for (const r of HHPs.porHora(day, it)) H.push({ h: HHPs.hm(r.h), s: r.h, v: r.pecas / f0.pph, fora: it.alvo.name });
+      }
+    } catch (e) { console.warn('oeeHoras', e); }
+    return H.sort((a, b) => a.s - b.s);
   }
-  function grafOee(res) {
-    const H = oeeHoras(res), meta = res.r && res.r.oeeTarget;
+  function grafOee(res, day) {
+    const H = oeeHoras(res, day), meta = res.r && res.r.oeeTarget;
     if (!H.length) return '<p class="small muted" style="margin:14px 0 0">Sem produção lançada no hora a hora deste dia.</p>';
     const W = 380, Ht = 150, L = 34, R = 6, T = 10, B = 20, iw = W - L - R, ih = Ht - T - B, n = H.length, bw = iw / n;
     const mx = Math.max(1, ...H.map(x => x.v), meta || 0), y = v => T + ih - Math.min(v, mx) / mx * ih;
     const ticks = [0, .25, .5, ...(meta && meta < 1 && Math.abs(meta - .5) > .06 && Math.abs(meta - .75) > .06 ? [meta] : [.75]), 1].sort((a, b) => a - b);
     let s = `<svg viewBox="0 0 ${W} ${Ht}" role="img" aria-label="OEE do dia por hora">`;
     for (const t of ticks) s += `<line x1="${L}" x2="${W - R}" y1="${y(t)}" y2="${y(t)}" stroke="var(--line)" stroke-width="1"/><text x="${L - 6}" y="${y(t) + 3}" text-anchor="end">${U.pct(t, 0)}</text>`;
-    H.forEach((x, i) => { const bx = L + i * bw + bw * .18, w = bw * .64, yy = y(x.v); s += `<rect x="${bx.toFixed(1)}" y="${yy.toFixed(1)}" width="${w.toFixed(1)}" height="${Math.max(1, T + ih - yy).toFixed(1)}" rx="2" fill="#1e6fd9"><title>${esc(x.h)} · OEE ${esc(U.pct(x.v, 1))}</title></rect>`;
+    H.forEach((x, i) => { const bx = L + i * bw + bw * .18, w = bw * .64, yy = y(x.v); s += `<rect x="${bx.toFixed(1)}" y="${yy.toFixed(1)}" width="${w.toFixed(1)}" height="${Math.max(1, T + ih - yy).toFixed(1)}" rx="2" fill="#1e6fd9"${x.fora ? ' fill-opacity=".45" class="v2-fora"' : ''}><title>${esc(x.h)} · OEE ${esc(U.pct(x.v, 1))}${x.fora ? ' · fora do turno · conta no ' + esc(x.fora) + ' (pelo PPH do turno)' : ''}</title></rect>`;
       if (n <= 16 || i % Math.ceil(n / 12) === 0) s += `<text x="${(L + i * bw + bw / 2).toFixed(1)}" y="${Ht - 6}" text-anchor="middle">${esc(x.h.slice(0, 2))}h</text>`; });
     if (meta) s += `<line x1="${L}" x2="${W - R}" y1="${y(meta)}" y2="${y(meta)}" stroke="var(--ok)" stroke-width="1.6" stroke-dasharray="5 4"/>`;
     return s + '</svg>';
   }
-  function kpis(root, res) {
+  function kpis(root, res, day) {
     const k = root.querySelector('.section.kpis'); if (!k) return; k.classList.add('v2-kpis');
     const r = res.r || {};
     const G = { disponibilidade: [r.D, '#1e6fd9'], performance: [r.P, '#7d93ad'], qualidade: [r.Q, 'var(--ok)'] };
@@ -11154,7 +11158,7 @@ const LancV2 = (() => {
     if (!k.querySelector('.v2-oeeh')) {
       const meta = r.oeeTarget;
       k.insertAdjacentHTML('beforeend', `<div class="kpi v2-oeeh"><span class="kic">${ic('chart', 20)}</span><span class="l">OEE do dia <small>(evolução por hora)</small></span>
-        <div class="leg"><span><i></i>OEE (%)</span>${meta ? `<span><i class="m"></i>Meta (${esc(U.pct(meta, 0))})</span>` : ''}</div>${grafOee(res)}</div>`);
+        <div class="leg"><span><i></i>OEE (%)</span>${meta ? `<span><i class="m"></i>Meta (${esc(U.pct(meta, 0))})</span>` : ''}</div>${grafOee(res, day)}</div>`);
     }
   }
   /* Explicação no próprio título (Produção inteira, todas as abas):
@@ -11163,7 +11167,7 @@ const LancV2 = (() => {
      - cabeçalho de tabela: o texto vira a palavra clicável (o resto do cabeçalho continua ordenando);
      - botão de ação: o clique continua sendo a ação; a explicação vai para a dica do mouse. */
   const AJUDA_NOVA = {
-    oeeHoras: ['OEE do dia (evolução por hora)', [['O que mostra?', 'O OEE de cada intervalo do dia: produção boa ÷ (PPH × minutos ÷ 60), a mesma conta do OEE oficial.'], ['E a linha tracejada?', 'A OEE meta do dia. Barra abaixo dela = hora abaixo da meta.']]],
+    oeeHoras: ['OEE do dia (evolução por hora)', [['O que mostra?', 'O OEE de cada intervalo do dia: produção boa ÷ (PPH × minutos ÷ 60), a mesma conta do OEE oficial.'], ['E as horas fora do turno?', 'Como no Apontamento › Hora a hora: as horas do MES fora do turno que contam neste dia entram na ordem do horário (ex.: 04:00 e 05:00 antes das 06:00), em barra mais clara, com o PPH do turno que recebe a produção. O OEE oficial do dia não muda.'], ['E a linha tracejada?', 'A OEE meta do dia. Barra abaixo dela = hora abaixo da meta.']]],
     paradasApont: ['Paradas apontadas', [['O que é?', 'Minutos de parada apontados no dia (Hora a hora e Paradas).'], ['Para que serve?', 'Comparado com a perda total, mostra quanto da perda tem causa conhecida.']]],
     semExplic: ['Sem explicação', [['O que é?', 'Perda de Disponibilidade e Performance que nenhum apontamento cobre: perda de D+P − minutos apontados.'], ['O que fazer?', 'Apontar as paradas que faltam no Hora a hora.']]],
     cascata: ['Consistência da cascata', [['O que é?', 'Confere se capacidade − perdas de D, P e Q chega na produção boa.'], ['"Não fecha"?', 'Há diferença entre os números lançados; a diferença em unidades aparece embaixo.']]],
@@ -11246,11 +11250,51 @@ const LancV2 = (() => {
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', () => { estilo(); observar(); }); else setTimeout(() => { estilo(); observar(); }, 0);
   return {
     montar(root, day) {
-      try { estilo(); const res = Engine.computeDay(db(), day); cabecalho(root); kpis(root, res); palavras(root); } catch (e) { console.warn('LancV2', e); }
+      try { estilo(); const res = Engine.computeDay(db(), day); cabecalho(root); kpis(root, res, day); palavras(root); } catch (e) { console.warn('LancV2', e); }
     },
     oeeHoras
   };
 })();
+
+/* ===== Produção 2.4.59 · todos os gráficos hora a hora com a lógica de Apontamento › Hora a hora (pedido do usuário, 12/11/2026) =====
+   Base única: os intervalos dos turnos do dia + as horas do MES FORA do turno que contam neste dia (ForaTurno.recebe → HHPs.porHora),
+   em ordem de horário (ex.: 04:00 e 05:00 antes das 06:00). Nada de conta nova: o dia usa o próprio HHPs.chart do Apontamento
+   (com a seleção de turno passada aqui, sem mexer na escolha da tela) e o período soma, hora a hora, os mesmos pontos de cada dia.
+   Usado por: Visão Geral (Produção por hora do dia), Painel › bloco Hora a hora (1 dia e período), TV › Painel do dia e
+   Relatórios › Passagem de turno. */
+const HHComum = {
+  /* gráfico de 1 dia (todos os turnos, ou só o turno psId com as horas fora do turno que contam nele) — igual ao do Apontamento */
+  dia(day, res, psId, height) {
+    const sel = Object.assign(Object.create(HHPs), { id: () => psId || '' });
+    try { return HHPs.chart.call(sel, hhChartOpts(res.flat, height), day, res); } catch (e) { console.warn('HHComum.dia', e); return hhChartOpts(res.flat, height); }
+  },
+  /* pontos de 1 dia: { k: rótulo da hora, s: minuto no dia de produção (ordem), g: produção, m: meta, fora, conta } */
+  pontos(day, res) {
+    const P = [];
+    for (const f of res.flat) { if (f.good == null && !(f.metaOp > 0)) continue; P.push({ k: U.hhmm(f.iv.start), s: f.iv.start, g: f.good, m: f.metaOp > 0 ? f.metaOp : 0, fora: false }); }
+    const ft = res.foraTurno;
+    for (const it of ((ft && ft.recebe) || []).filter(i => i.alvo && i.alvo.date === day.date && !(ft.semAlvo || []).includes(i)))
+      for (const r of HHPs.porHora(day, it)) P.push({ k: HHPs.hm(r.h), s: r.h, g: r.pecas, m: 0, fora: true, conta: it.alvo.name });
+    return P;
+  },
+  /* período: média por dia de cada hora (produção e meta), na ordem do dia de produção; hora fora do turno sem meta, com "conta no" */
+  periodo(rows, height, vazio) {
+    const H = new Map();
+    for (const x of rows) { let P = []; try { P = this.pontos(x.d || x.day, x.res); } catch (e) { continue; }
+      const vistos = new Set();
+      for (const p of P) { const o = H.get(p.k) || { k: p.k, s: p.s, g: 0, gN: 0, m: 0, dias: 0, fora: 0, dentro: 0, conta: new Set() };
+        if (p.s < o.s) o.s = p.s; if (p.g != null) { o.g += p.g; o.gN++; } o.m += p.m; if (p.fora) { o.fora++; o.conta.add(p.conta); } else o.dentro++;
+        if (!vistos.has(p.k)) { o.dias++; vistos.add(p.k); } H.set(p.k, o); } }
+    const L = [...H.values()].sort((a, b) => a.s - b.s);
+    const media = (v, n) => n ? v / n : null;
+    return { x: L.map(o => o.k), xFull: L.map(o => `${o.k} · ${o.dentro ? (o.fora ? 'turno e fora do turno' : 'no turno') : 'fora do turno · conta no ' + [...o.conta].join(', ')}`), xName: 'Hora', allLabels: true, unit: qUn,
+      bars: [{ name: 'Produção média por dia (fora do turno: do MES)', values: L.map(o => media(o.g, o.dias)), color: 'var(--s1)', meta: L.map(o => o.m > 0 ? media(o.m, o.dias) : null) }],
+      lines: [{ name: 'Meta média da hora', values: L.map(o => o.m > 0 ? media(o.m, o.dias) : null), color: 'var(--ink)', width: 1.5, dash: true, dots: false }],
+      fmtY: v => fq(v), height: height || 200, forceLegend: true,
+      tipRows: i => { const o = L[i], r = [['Dias com produção nesta hora', U.fmt(o.dias)]]; if (o.m > 0) r.push(['Atendimento (produção ÷ meta)', U.pct(o.g / o.m, 0)]); if (o.fora) r.push(['Fora do turno', 'produção do MES · conta no ' + [...o.conta].join(', ') + ' (OEE reportado)']); return r; },
+      empty: vazio || 'Sem hora a hora no período (dias importados só têm resumo por turno).' };
+  }
+};
 
 async function boot() {
   if(vacDemo.ativo){await loadPrefs();applyTheme();bindGlobal();Charts.bind();Store.S.user='Pessoa de demonstração';Store.enterExample(vacDemo.ler('oee'));

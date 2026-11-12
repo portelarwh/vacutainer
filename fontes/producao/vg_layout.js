@@ -11,7 +11,7 @@
    Meu painel, visões compartilhadas e modelos (Panel) não passam por aqui. Impressão: grupos sempre abertos. */
 const VGL = (() => {
   const GRUPOS = [
-    ['A', 'Produção e plano', 'A produção acompanhou a meta e a capacidade?', ['Produção boa × meta e capacidade', 'Atendimento por hora do dia']],
+    ['A', 'Produção e plano', 'A produção acompanhou a meta e a capacidade?', ['Produção boa × meta e capacidade', 'Produção por hora do dia']],
     ['B', 'Eficiência do OEE', 'Quanto do tempo virou produção boa, e qual componente pesou?', ['OEE × meta', 'Disponibilidade, Performance e Qualidade', 'PPH real × nominal']],
     ['C', 'Perdas e confiabilidade', 'Onde está a maior perda e o que a explica?', ['Cascata de perdas do período', 'Pareto de paradas', 'Perdas em minutos por dia']],
     ['D', 'Qualidade', 'O refugo piorou em algum dia?', ['Scrap % por dia']],

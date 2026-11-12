@@ -141,23 +141,33 @@ const LancV2 = (() => {
       <text class="gv" x="${cx}" y="${cy - 4}" text-anchor="middle">${esc(rot)}</text></svg>`;
   }
   /* OEE de cada intervalo do dia: produção boa ÷ capacidade do intervalo (PPH × minutos ÷ 60) */
-  function oeeHoras(res) {
-    return (res.flat || []).filter(f => f.good != null && f.pph > 0 && f.min > 0).map(f => ({ h: U.hhmm(f.iv.start), v: f.good / (f.pph * f.min / 60) }));
+  /* 2.4.59 · mesma base do Apontamento › Hora a hora: intervalos dos turnos + horas do MES fora do turno que contam no dia, em ordem de horário.
+     Hora fora do turno: OEE da hora = produção do MES ÷ (PPH do turno que recebe × 1 h), como no OEE real; barra mais clara. O OEE oficial não muda. */
+  function oeeHoras(res, day) {
+    const H = (res.flat || []).filter(f => f.good != null && f.pph > 0 && f.min > 0).map(f => ({ h: U.hhmm(f.iv.start), s: f.iv.start, v: f.good / (f.pph * f.min / 60) }));
+    if (day && typeof HHPs !== 'undefined') try {
+      const ft = res.foraTurno;
+      for (const it of ((ft && ft.recebe) || []).filter(i => i.alvo && i.alvo.date === day.date && !(ft.semAlvo || []).includes(i))) {
+        const f0 = (res.flat || []).find(f => f.ps && f.ps.snap.code === it.alvo.code && f.pph > 0); if (!f0) continue;
+        for (const r of HHPs.porHora(day, it)) H.push({ h: HHPs.hm(r.h), s: r.h, v: r.pecas / f0.pph, fora: it.alvo.name });
+      }
+    } catch (e) { console.warn('oeeHoras', e); }
+    return H.sort((a, b) => a.s - b.s);
   }
-  function grafOee(res) {
-    const H = oeeHoras(res), meta = res.r && res.r.oeeTarget;
+  function grafOee(res, day) {
+    const H = oeeHoras(res, day), meta = res.r && res.r.oeeTarget;
     if (!H.length) return '<p class="small muted" style="margin:14px 0 0">Sem produção lançada no hora a hora deste dia.</p>';
     const W = 380, Ht = 150, L = 34, R = 6, T = 10, B = 20, iw = W - L - R, ih = Ht - T - B, n = H.length, bw = iw / n;
     const mx = Math.max(1, ...H.map(x => x.v), meta || 0), y = v => T + ih - Math.min(v, mx) / mx * ih;
     const ticks = [0, .25, .5, ...(meta && meta < 1 && Math.abs(meta - .5) > .06 && Math.abs(meta - .75) > .06 ? [meta] : [.75]), 1].sort((a, b) => a - b);
     let s = `<svg viewBox="0 0 ${W} ${Ht}" role="img" aria-label="OEE do dia por hora">`;
     for (const t of ticks) s += `<line x1="${L}" x2="${W - R}" y1="${y(t)}" y2="${y(t)}" stroke="var(--line)" stroke-width="1"/><text x="${L - 6}" y="${y(t) + 3}" text-anchor="end">${U.pct(t, 0)}</text>`;
-    H.forEach((x, i) => { const bx = L + i * bw + bw * .18, w = bw * .64, yy = y(x.v); s += `<rect x="${bx.toFixed(1)}" y="${yy.toFixed(1)}" width="${w.toFixed(1)}" height="${Math.max(1, T + ih - yy).toFixed(1)}" rx="2" fill="#1e6fd9"><title>${esc(x.h)} · OEE ${esc(U.pct(x.v, 1))}</title></rect>`;
+    H.forEach((x, i) => { const bx = L + i * bw + bw * .18, w = bw * .64, yy = y(x.v); s += `<rect x="${bx.toFixed(1)}" y="${yy.toFixed(1)}" width="${w.toFixed(1)}" height="${Math.max(1, T + ih - yy).toFixed(1)}" rx="2" fill="#1e6fd9"${x.fora ? ' fill-opacity=".45" class="v2-fora"' : ''}><title>${esc(x.h)} · OEE ${esc(U.pct(x.v, 1))}${x.fora ? ' · fora do turno · conta no ' + esc(x.fora) + ' (pelo PPH do turno)' : ''}</title></rect>`;
       if (n <= 16 || i % Math.ceil(n / 12) === 0) s += `<text x="${(L + i * bw + bw / 2).toFixed(1)}" y="${Ht - 6}" text-anchor="middle">${esc(x.h.slice(0, 2))}h</text>`; });
     if (meta) s += `<line x1="${L}" x2="${W - R}" y1="${y(meta)}" y2="${y(meta)}" stroke="var(--ok)" stroke-width="1.6" stroke-dasharray="5 4"/>`;
     return s + '</svg>';
   }
-  function kpis(root, res) {
+  function kpis(root, res, day) {
     const k = root.querySelector('.section.kpis'); if (!k) return; k.classList.add('v2-kpis');
     const r = res.r || {};
     const G = { disponibilidade: [r.D, '#1e6fd9'], performance: [r.P, '#7d93ad'], qualidade: [r.Q, 'var(--ok)'] };
@@ -171,7 +181,7 @@ const LancV2 = (() => {
     if (!k.querySelector('.v2-oeeh')) {
       const meta = r.oeeTarget;
       k.insertAdjacentHTML('beforeend', `<div class="kpi v2-oeeh"><span class="kic">${ic('chart', 20)}</span><span class="l">OEE do dia <small>(evolução por hora)</small></span>
-        <div class="leg"><span><i></i>OEE (%)</span>${meta ? `<span><i class="m"></i>Meta (${esc(U.pct(meta, 0))})</span>` : ''}</div>${grafOee(res)}</div>`);
+        <div class="leg"><span><i></i>OEE (%)</span>${meta ? `<span><i class="m"></i>Meta (${esc(U.pct(meta, 0))})</span>` : ''}</div>${grafOee(res, day)}</div>`);
     }
   }
   /* Explicação no próprio título (Produção inteira, todas as abas):
@@ -180,7 +190,7 @@ const LancV2 = (() => {
      - cabeçalho de tabela: o texto vira a palavra clicável (o resto do cabeçalho continua ordenando);
      - botão de ação: o clique continua sendo a ação; a explicação vai para a dica do mouse. */
   const AJUDA_NOVA = {
-    oeeHoras: ['OEE do dia (evolução por hora)', [['O que mostra?', 'O OEE de cada intervalo do dia: produção boa ÷ (PPH × minutos ÷ 60), a mesma conta do OEE oficial.'], ['E a linha tracejada?', 'A OEE meta do dia. Barra abaixo dela = hora abaixo da meta.']]],
+    oeeHoras: ['OEE do dia (evolução por hora)', [['O que mostra?', 'O OEE de cada intervalo do dia: produção boa ÷ (PPH × minutos ÷ 60), a mesma conta do OEE oficial.'], ['E as horas fora do turno?', 'Como no Apontamento › Hora a hora: as horas do MES fora do turno que contam neste dia entram na ordem do horário (ex.: 04:00 e 05:00 antes das 06:00), em barra mais clara, com o PPH do turno que recebe a produção. O OEE oficial do dia não muda.'], ['E a linha tracejada?', 'A OEE meta do dia. Barra abaixo dela = hora abaixo da meta.']]],
     paradasApont: ['Paradas apontadas', [['O que é?', 'Minutos de parada apontados no dia (Hora a hora e Paradas).'], ['Para que serve?', 'Comparado com a perda total, mostra quanto da perda tem causa conhecida.']]],
     semExplic: ['Sem explicação', [['O que é?', 'Perda de Disponibilidade e Performance que nenhum apontamento cobre: perda de D+P − minutos apontados.'], ['O que fazer?', 'Apontar as paradas que faltam no Hora a hora.']]],
     cascata: ['Consistência da cascata', [['O que é?', 'Confere se capacidade − perdas de D, P e Q chega na produção boa.'], ['"Não fecha"?', 'Há diferença entre os números lançados; a diferença em unidades aparece embaixo.']]],
@@ -263,7 +273,7 @@ const LancV2 = (() => {
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', () => { estilo(); observar(); }); else setTimeout(() => { estilo(); observar(); }, 0);
   return {
     montar(root, day) {
-      try { estilo(); const res = Engine.computeDay(db(), day); cabecalho(root); kpis(root, res); palavras(root); } catch (e) { console.warn('LancV2', e); }
+      try { estilo(); const res = Engine.computeDay(db(), day); cabecalho(root); kpis(root, res, day); palavras(root); } catch (e) { console.warn('LancV2', e); }
     },
     oeeHoras
   };
