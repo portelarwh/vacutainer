@@ -959,7 +959,9 @@ button,input,select,textarea{font-family:var(--f-body)}
 .vg-barra button:hover{background:var(--surface-2);color:var(--ink)}
 .vg-barra button[aria-pressed="true"]{background:var(--accent-soft);color:var(--accent)}
 .vg-barra button:focus-visible{outline:2px solid var(--accent)}
-.vg-barra .vg-pega{cursor:grab}
+.vg-barra .vg-pega{cursor:grab;-webkit-user-drag:element;user-select:none;touch-action:none}   /* 12/11/2026: o all:unset do botão desligava o arrasto no Chrome/Edge */
+.vg-barra .vg-pega:active{cursor:grabbing}
+.vg-barra button[aria-disabled="true"]{opacity:.35;cursor:default}.vg-barra button[aria-disabled="true"]:hover{background:none;color:var(--muted)}
 .vg-barra [data-vg="l6"]::before{content:"1/1"}.vg-barra [data-vg="l3"]::before{content:"1/2"}.vg-barra [data-vg="l2"]::before{content:"1/3"}
 .vg-barra i{width:1px;height:18px;background:var(--line);margin:0 2px}
 .vg-it.vg-arrastando{opacity:.45}
@@ -9148,7 +9150,10 @@ const vacGrade = (() => {
   const slug = s => String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 48);
   const chaveItem = (el, i) => el.dataset.vgK || el.id || (() => { const h = el.querySelector('h2,h3,h4,.t,.tit,header'); const s = h ? slug(h.textContent) : ''; return s || 'i' + i; })();
   const chaveGrupo = (p) => { if (p.id) return p.id; let a = p.parentElement, n = 0; while (a && !a.id && n < 6) { a = a.parentElement; n++; } const base = a && a.id ? a.id : 'raiz'; const irm = a ? [...a.querySelectorAll('.vg-grade,[data-vg-g]')] : []; if (!p.dataset.vgG) p.dataset.vgG = base + ':' + (irm.filter(x => x !== p).length); return p.dataset.vgG; };
-  function cartoes() { const S = new Set(); document.querySelectorAll('main svg, main canvas, main [id^="ch"], main .chart').forEach(g => { if (g.id && !/^ch[A-Z0-9]/.test(g.id) && !/svg|canvas/i.test(g.tagName) && !g.classList.contains('chart')) return; if (!ehGrafico(g)) return; const c = g.closest(CARTAO); if (!c || c.closest(FORA) || c.tagName === 'MAIN' || !c.parentElement || c.parentElement.tagName === 'BODY') return; S.add(c); }); /* só o cartão mais interno */ return [...S].filter(c => ![...S].some(o => o !== c && c.contains(o))); }
+  function cartoes() { const S = new Set(); document.querySelectorAll('main svg, main canvas, main [id^="ch"], main .chart').forEach(g => { if (g.id && !/^ch[A-Z0-9]/.test(g.id) && !/svg|canvas/i.test(g.tagName) && !g.classList.contains('chart')) return; if (!ehGrafico(g)) return; const c = g.closest(CARTAO); if (!c || c.closest(FORA) || c.tagName === 'MAIN' || !c.parentElement || c.parentElement.tagName === 'BODY') return; S.add(c); }); /* só o cartão mais interno */ const L = [...S].filter(c => ![...S].some(o => o !== c && c.contains(o)));
+    /* 12/11/2026 · os outros cartões da mesma grade (tabela, lista, sem gráfico) também mudam de lugar e de largura */
+    for (const p of new Set(L.map(c => c.parentElement))) for (const x of p.children) if (!L.includes(x) && x.matches(CARTAO) && !x.matches(FORA) && x.offsetParent && x.getBoundingClientRect().height >= 60) L.push(x);
+    return L; }
   function larguraNatural(el, p) { const pw = p.clientWidth || 1, r = el.getBoundingClientRect().width / pw; return r >= .8 ? 6 : r >= .42 ? 3 : r >= .27 ? 2 : 0; }
   function aplicar() {
     if (aplicar._em) return; aplicar._em = 1;
@@ -9165,18 +9170,24 @@ const vacGrade = (() => {
           const b = document.createElement('div'); b.className = 'vg-barra'; b.setAttribute('role', 'toolbar'); b.setAttribute('aria-label', 'Disposição do gráfico');
           b.innerHTML = '<button type="button" class="vg-pega" draggable="true" data-vg="pega" title="Arrastar para mudar de lugar" aria-label="Arrastar para mudar de lugar">' + vacIcone('pega', 'sm') + '</button><button type="button" data-vg="antes" title="Mover para antes" aria-label="Mover para antes">' + vacIcone('esquerda', 'sm') + '</button><button type="button" data-vg="depois" title="Mover para depois" aria-label="Mover para depois">' + vacIcone('direita', 'sm') + '</button><i></i><button type="button" data-vg="l6" title="Largura inteira" aria-label="Largura inteira"></button><button type="button" data-vg="l3" title="Metade da largura (2 lado a lado)" aria-label="Metade da largura"></button><button type="button" data-vg="l2" title="Um terço da largura (3 lado a lado)" aria-label="Um terço da largura"></button><i></i><button type="button" data-vg="rest" title="Voltar à disposição original deste bloco" aria-label="Voltar à disposição original">' + vacIcone('restaurar', 'sm') + '</button>';
           c.appendChild(b); marcar(c); });
+        marcarGrupo(p);
       });
     } finally { aplicar._em = 0; }
   }
-  function marcar(c) { const l = c.dataset.vgL || '6'; c.querySelectorAll(':scope > .vg-barra [data-vg^="l"]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.vg === 'l' + l))); }
+  function marcar(c) { const l = c.dataset.vgL || '6'; c.querySelectorAll(':scope > .vg-barra [data-vg^="l"]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.vg === 'l' + l)));
+    /* 12/11/2026 · seta sem efeito (cartão na ponta ou sozinho no grupo) fica apagada, com o motivo */
+    const p = c.parentElement; if (!p) return; const L = itens(p), i = L.indexOf(c), so = L.length < 2;
+    for (const [k, off, t] of [['antes', i <= 0, so ? 'Único cartão deste grupo' : 'Já é o primeiro'], ['depois', i < 0 || i >= L.length - 1, so ? 'Único cartão deste grupo' : 'Já é o último']]) { const b = c.querySelector(':scope > .vg-barra [data-vg="' + k + '"]'); if (!b) continue; b.setAttribute('aria-disabled', String(off)); b.title = off ? t : (k === 'antes' ? 'Mover para antes' : 'Mover para depois'); }
+    const g = c.querySelector(':scope > .vg-barra .vg-pega'); if (g) g.title = so ? 'Único cartão deste grupo: não há para onde arrastar' : 'Arrastar para mudar de lugar'; }
+  function marcarGrupo(p) { if (p) itens(p).forEach(x => { if (x.querySelector(':scope > .vg-barra')) marcar(x); }); }
   function itens(p) { return [...p.children].filter(x => x.dataset.vgKey).sort((a, b) => (+a.style.order || 0) - (+b.style.order || 0)); }
-  function salvarOrdem(p, lista) { const prefs = ler(), gk = chaveGrupo(p); prefs[gk] = prefs[gk] || {}; prefs[gk].ordem = lista.map(x => x.dataset.vgKey); gravar(prefs); lista.forEach((x, i) => { x.style.order = String(i); }); }
+  function salvarOrdem(p, lista) { const prefs = ler(), gk = chaveGrupo(p); prefs[gk] = prefs[gk] || {}; prefs[gk].ordem = lista.map(x => x.dataset.vgKey); gravar(prefs); lista.forEach((x, i) => { x.style.order = String(i); }); marcarGrupo(p); }
   function redesenhar() { setTimeout(() => window.dispatchEvent(new Event('resize')), 60); }
   document.addEventListener('click', e => { const b = e.target.closest && e.target.closest('.vg-barra [data-vg]'); if (!b) return; const c = b.closest('.vg-it'), p = c && c.parentElement; if (!p) return; e.preventDefault(); e.stopPropagation();
     const a = b.dataset.vg, prefs = ler(), gk = chaveGrupo(p); prefs[gk] = prefs[gk] || {};
     if (a === 'l6' || a === 'l3' || a === 'l2') { prefs[gk].larg = prefs[gk].larg || {}; prefs[gk].larg[c.dataset.vgKey] = +a.slice(1); gravar(prefs); c.dataset.vgL = a.slice(1); marcar(c); redesenhar(); }
-    else if (a === 'antes' || a === 'depois') { const L = itens(p), i = L.indexOf(c), j = a === 'antes' ? i - 1 : i + 1; if (j < 0 || j >= L.length) return; L.splice(i, 1); L.splice(j, 0, c); salvarOrdem(p, L); b.focus(); }
-    else if (a === 'rest') { delete prefs[gk]; gravar(prefs); [...p.children].forEach((x, i) => { if (x.dataset.vgN) x.dataset.vgL = x.dataset.vgN; x.style.order = ''; }); aplicar(); redesenhar(); } }, true);
+    else if (a === 'antes' || a === 'depois') { const L = itens(p), i = L.indexOf(c), j = a === 'antes' ? i - 1 : i + 1; if (j < 0 || j >= L.length) { marcar(c); return; } L.splice(i, 1); L.splice(j, 0, c); salvarOrdem(p, L); b.focus(); }
+    else if (a === 'rest') { delete prefs[gk]; gravar(prefs); [...p.children].forEach((x, i) => { if (x.dataset.vgN) x.dataset.vgL = x.dataset.vgN; x.style.order = ''; }); aplicar(); marcarGrupo(p); redesenhar(); } }, true);
   let arr = null;
   document.addEventListener('dragstart', e => { const g = e.target.closest && e.target.closest('.vg-pega'); if (!g) return; arr = g.closest('.vg-it'); if (!arr) return; arr.classList.add('vg-arrastando'); try { e.dataTransfer.effectAllowed = 'move'; e.dataTransfer.setData('text/plain', 'vg'); e.dataTransfer.setDragImage(arr, 20, 20); } catch (x) { } });
   document.addEventListener('dragover', e => { if (!arr) return; const t = e.target.closest && e.target.closest('.vg-grade > *'); document.querySelectorAll('.vg-alvo').forEach(x => x.classList.remove('vg-alvo')); if (t && t !== arr && t.parentElement === arr.parentElement && t.dataset.vgKey) { e.preventDefault(); t.classList.add('vg-alvo'); } });

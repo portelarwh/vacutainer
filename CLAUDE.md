@@ -6,8 +6,8 @@ Plataforma de páginas HTML de arquivo único que trabalham juntas numa **pasta 
 
 | Página | Arquivo | Base | Versão | Como editar |
 |---|---|---|---|---|
-| Portal (cadastro geral, Administração) | `Portal.html` | `portal-base.json` + `vacutainer-cadastros.json` | 1.9.31 | direto no HTML |
-| Produção (OEE, plano, ordens SAP) | `OEE-Vacutainer.html` | `oee-vacutainer-base.json` (+ `ordens-base.json`) | 2.4.64 | **NÃO editar o HTML**: editar `fontes/producao/` e rodar o build |
+| Portal (cadastro geral, Administração) | `Portal.html` | `portal-base.json` + `vacutainer-cadastros.json` | 1.9.32 | direto no HTML |
+| Produção (OEE, plano, ordens SAP) | `OEE-Vacutainer.html` | `oee-vacutainer-base.json` (+ `ordens-base.json`) | 2.4.65 | **NÃO editar o HTML**: editar `fontes/producao/` e rodar o build |
 | Waste (perdas por ordem, KKBC) | `Perdas-Ordem.html` | `perdas-base.json` | 1.12.2 | direto no HTML |
 | Gestão de Gel | `Gestão-Gel-Vacutainer.html` | `fifo-base.json` | 2.31 · **em atualização** | direto no HTML |
 | Paradas | `Paradas.html` | `paradas-base.json` | 1.2.3 · **em atualização** | direto no HTML |
@@ -43,6 +43,7 @@ python fontes/kit/aplicar_kit21.py     # recopia fontes/kit/kit_v21.js (+ kit_ds
 python fontes/modelo/gerar_paginas.py  # gera Projetos.html (em construção) a partir de fontes/modelo/pagina-em-construcao.html e roda o aplicar_kit21.py
 python fontes/linha360/build.py        # monta paginas/Linha-360.html (moldura comum de Equipamentos.html + fontes/linha360/) e roda o aplicar_kit21.py; rodar DEPOIS de mexer em Equipamentos.html ou no kit
 python fontes/demo/gerar_demo.py       # pacote offline da demonstração; SEMPRE depois dos outros builds
+node testes/tgrade.js                  # cartões reorganizáveis (kit vacGrade): barra em todo cartão da grade, alça ⠿ arrasta com o mouse, 1/3 por clique, setas apagadas na ponta; Portal › Pendências da linha com metade da largura e Ação prioritária ao lado; código 1 se falhar
 node testes/tfechar.js                 # Produção 2.4.64: fechar turno e dia com turno desabilitado no dia (deleted), reabrir; botões acesos (Fechado · Reabrir, Hora a hora completo, seletor do Hora a hora) nos 2 temas; código 1 se falhar
 node testes/tmes_dia.js                # Produção 2.4.63: relatório diário do MES (1ª linha = última caixa do relatório anterior, não conta de novo; caixa 0; troca de lote; "(null)"; lote destrocado; quatro dias somados = contador); dados fictícios; código 1 se falhar
 node testes/tds.js                     # Design System e Linha 360°: barra lateral nas 9 páginas, recolher, menu sobreposto, modal acima da barra, grade de gráficos, vacOrdemLote, impressão direta (cabeçalho, filtros por escrito, paisagem), faixa e cores nos PDFs, e-mail do Outlook, Paretos verticais do Waste, planta (números = soma dos eventos), postos e checklists; código 1 se falhar

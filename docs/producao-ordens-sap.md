@@ -242,3 +242,12 @@ Agora, como já acontecia no cálculo, o turno excluído não conta. Reabrir o d
 
 Regras em `fontes/producao/fecha_build.py`; botões em `turno_layout.js`, `fase7.js` e `hh24.js`. Teste: `testes/tfechar.js`.
 
+## 2.4.65 · Cartões reorganizáveis na Visão geral (12/11/2026)
+
+Só o kit (`vacGrade`, `docs/design-system.md`):
+- a alça ⠿ volta a arrastar no Chrome e no Edge;
+- "Produção por catálogo" (Visão geral) e "Catálogos produzidos" (Meu painel) ganham a barra;
+- as setas ficam apagadas na ponta e no cartão sozinho do grupo.
+
+Teste: `testes/tgrade.js`.
+

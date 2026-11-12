@@ -277,3 +277,13 @@ Exclusão mútua entre abas e saúde dos dados com snapshots e reservas. Procedi
 ## 1.9.16 · POR-02 (10/11/2026)
 
 Cadastros: ordenação por coluna em todas as tabelas; códigos de parada com filtros por pilar, classe, onde se aponta, grupo e afeta. Detalhes: `docs/briefing-2026-11-09-fase0-fase1.md` § 13.
+
+## Portal 1.9.32 (12/11/2026) · Pendências da linha com metade da largura
+
+Na Visão geral, o cartão "Pendências da linha" ocupa metade da largura. "Ação prioritária" e "Próximas decisões" ficam ao lado, uma embaixo da outra.
+- Dentro do cartão, o total vem em cima e os três quadros embaixo.
+- Abaixo de 980 px, as duas colunas viram uma.
+- Os números não mudaram.
+
+Teste: `testes/tgrade.js`.
+

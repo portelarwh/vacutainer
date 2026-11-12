@@ -36,6 +36,12 @@ Mudou o Design System: editar `kit_ds.css` ou `kit_ds.js` e rodar os builds na o
 
 **Grade de gráficos (`vacGrade`).** Todo cartão que contém um gráfico ganha, ao passar o mouse, uma barra com: arrastar, mover para antes ou depois, largura 1/1, 1/2 ou 1/3 e voltar ao original. Gravado por página e por computador em `vac.grade.<página>`. A ordem usa `order` do CSS: o DOM da página não muda. Um bloco só entra na grade se todos os filhos já ocupavam largura inteira, metade ou um terço. Para deixar um bloco de fora: `data-vg-nao` no cartão. Para desligar na página: `window.VAC_GRADE_OFF = true`.
 
+Correções de 12/11/2026 (`testes/tgrade.js`):
+- **Barra em todos os cartões da grade.** Um cartão sem gráfico (tabela ou lista, ex.: "Produção por catálogo") que está na mesma grade de um gráfico também ganha a barra. Antes ele ficava parado enquanto os outros mudavam de lugar.
+- **A alça ⠿ arrasta de verdade.** O `all:unset` do botão tirava o `-webkit-user-drag`, e o Chrome e o Edge não começavam o arrasto. Agora a alça tem `-webkit-user-drag:element`.
+- **Setas apagadas quando não têm efeito.** Com o cartão na ponta ou sozinho no grupo, a seta fica apagada e o título diz o motivo: "Já é o primeiro", "Único cartão deste grupo".
+- **O que não muda de lugar, de propósito:** os blocos numerados do topo da Visão geral (01 Situação, 02 Números, 03 Diagnóstico, 05 Explorar) ficam presos ao título da seção, e cada cartão só se move dentro do próprio grupo.
+
 **Impressão e PDF (revisão de 12/11/2026).** Antes, cada saída tinha um formato: a impressão direta levava a faixa de teste, o botão voltar, o painel de filtros e os avisos; os PDFs do Portal/Waste/Paradas, da Produção e do Gel tinham cabeçalho, cores e rodapé diferentes; e o Portal pintava linhas inteiras de vermelho. Agora há um padrão só, todo no kit:
 
 | Saída | O que o kit faz | Onde |
