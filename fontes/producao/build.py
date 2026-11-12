@@ -222,6 +222,7 @@ css="""<style>
 </style>
 """
 kit21=open(os.path.join(RAIZ,'fontes','kit','kit_v21.js'),encoding='utf-8').read()
+kit21=kit21.rstrip('\n')+'\n'+open(os.path.join(RAIZ,'fontes','kit','kit_ds.js'),encoding='utf-8').read().strip('\n')   # Design System
 # catálogo de sistemas único (fontes/kit/sistemas.js), igual nas 5 páginas
 import re as _re
 _sis=open(os.path.join(RAIZ,'fontes','kit','sistemas.js'),encoding='utf-8').read().strip()
@@ -230,6 +231,7 @@ if len(_pad.findall(s))!=1: raise SystemExit('ERRO: DEFAULT_SYSTEMS não achado 
 s=_pad.sub(lambda m:_sis,s)
 # padrão visual comum (fontes/kit/kit_visual.css): último <style> do <head>, igual nas 5 páginas
 _vis=open(os.path.join(RAIZ,'fontes','kit','kit_visual.css'),encoding='utf-8').read().strip()
+_vis=_vis+'\n'+open(os.path.join(RAIZ,'fontes','kit','kit_ds.css'),encoding='utf-8').read().strip()   # Design System
 if s.count('\n</head>\n')!=1: raise SystemExit('ERRO: </head> (linha própria) não achado exatamente 1 vez')
 _bas=open(os.path.join(RAIZ,'fontes','kit','kit_bases.js'),encoding='utf-8').read().strip()
 _demo=open(os.path.join(RAIZ,'fontes','kit','kit_demo.js'),encoding='utf-8').read()
