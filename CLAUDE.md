@@ -148,7 +148,7 @@ Ao terminar uma entrega, atualizar o doc da página (seção nova com a versão 
 
 ## Pendências conhecidas
 
-Lista única do que ficou para depois. O motivo e o gatilho de cada item estão no `docs/auditorias/registro-decisoes.md` (seção indicada). Ao resolver um item, tirar daqui e marcar no registro.
+Lista única do que ficou para depois. O motivo e o gatilho de cada item estão no `docs/auditorias/registro-decisoes.md` (seção indicada). Ao resolver um item, tirar daqui e marcar no registro. **Resumo para retomar em outro chat (situação, implantação, homologação e pendências): `PENDENCIAS.md` na raiz.**
 
 **Funcionalidade e integração**
 - UX-02 (guia por aba): feito em todas as páginas menos Projetos (em construção); ao mudar uma tela, atualizar o `VAC_GUIA` dela (Produção: `fontes/producao/guia.js`; as outras: bloco "UX-02 · guia por aba" no fim do HTML).
