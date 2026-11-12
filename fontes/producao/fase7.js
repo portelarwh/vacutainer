@@ -11,12 +11,14 @@ const HHPs = {
   mostra(day, ps) { const i = this.id(day); return !i || ps.id === i; },
   fill(ps) { const L = (ps.intervals || []).filter(i => !i.deleted); return [L.filter(i => i.good != null).length, L.length]; },
   /* botão do cartão do turno (Lançamento) */
-  botao(ps) { if (ps.summary) return ''; const [f, n] = this.fill(ps); return `<button type="button" class="btn sm" data-hhps="${esc(ps.id)}" title="Abre o hora a hora só deste turno (${f} de ${n} intervalo(s) com produção lançada)">Hora a hora <span class="small ${f && f === n ? '' : 'muted'}">${f}/${n}</span> ${I.chevR}</button>`; },
+  /* 2.4.64 · aceso (verde) quando o turno está fechado ou todos os intervalos têm produção lançada */
+  feito(ps) { const [f, n] = this.fill(ps); return ps.status === 'fechado' || (n > 0 && f === n); },
+  botao(ps) { if (ps.summary) return ''; const [f, n] = this.fill(ps); return `<button type="button" class="btn sm${this.feito(ps) ? ' lit' : ''}" data-hhps="${esc(ps.id)}" title="Abre o hora a hora só deste turno (${f} de ${n} intervalo(s) com produção lançada${ps.status === 'fechado' ? '; turno fechado' : ''})">Hora a hora <span class="small ${f && f === n ? '' : 'muted'}">${f}/${n}</span> ${I.chevR}</button>`; },
   /* barra no Hora a hora: Todos · turno A (x/y) · … */
   barra(day, res) {
     const L = res.shifts.map(sr => sr.ps).filter(ps => !ps.summary); if (L.length < 2) return '';
-    const i = this.id(day), ch = (id, txt, on) => `<button type="button" data-hhsel="${esc(id)}" aria-pressed="${on}">${txt}</button>`;
-    return `<div class="row" style="margin:-4px 0 10px"><span class="small muted">Turno ${ib('hhTurno')}</span><div class="seg">${ch('', 'Todos', !i)}${L.map(ps => { const [f, n] = this.fill(ps); return ch(ps.id, `${esc(ps.snap.name)} <span class="small muted">${f}/${n}</span>`, i === ps.id); }).join('')}</div></div>`;
+    const i = this.id(day), ch = (id, txt, on, lit) => `<button type="button" data-hhsel="${esc(id)}" aria-pressed="${on}"${lit ? ' class="lit" title="Turno fechado ou com todos os intervalos lançados"' : ''}>${txt}</button>`;
+    return `<div class="row" style="margin:-4px 0 10px"><span class="small muted">Turno ${ib('hhTurno')}</span><div class="seg">${ch('', 'Todos', !i)}${L.map(ps => { const [f, n] = this.fill(ps); return ch(ps.id, `${esc(ps.snap.name)} <span class="small${this.feito(ps) ? '' : ' muted'}">${ps.status === 'fechado' ? '✓ fechado' : f + '/' + n}</span>`, i === ps.id, this.feito(ps)); }).join('')}</div></div>`;
   },
   ir(day, id) { this.sel = id ? { date: day.date, id } : null; go('hourly'); },
   ligar(root, day) {

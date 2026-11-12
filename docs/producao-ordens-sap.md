@@ -225,3 +225,29 @@ Agora a 1ª linha só fixa catálogo, lote e o ponto de partida. O trecho do dia
 **Dias já importados** com a 1ª linha maior que 0: importar o período de novo. A importação substitui o período do arquivo e tira a caixa repetida das 00:00; a prévia avisa.
 
 Regra em `fontes/producao/mes_build.py`; teste `testes/tmes_dia.js`, com dados fictícios.
+
+## 2.4.64 · Fechar turno e botões acesos (12/11/2026)
+
+**Erro encontrado e corrigido.** O dia pode ter um turno não produtivo que foi habilitado e depois desabilitado (TUR-02). Esse turno fica guardado como excluído (`deleted:true`), mas o fechamento olhava todos os turnos do dia, inclusive ele:
+- "Fechar o dia" parava com o erro `Cannot read properties of undefined (reading 'r')`;
+- fechar os turnos um a um nunca deixava o dia "fechado";
+- o envio para conferência e o aviso de dia atrasado contavam o turno excluído.
+
+Agora, como já acontecia no cálculo, o turno excluído não conta. Reabrir o dia também não mexe nele.
+
+**Botões acesos (pedido do usuário):** usam o verde da pílula "ok", nos dois temas.
+- **Turno fechado:** o botão vira "🔒 Fechado · Reabrir", aceso.
+- **"Hora a hora x/y" no cartão do turno:** acende quando todos os intervalos do turno têm produção lançada, ou quando o turno está fechado.
+- **Seletor de turno do Hora a hora:** acende do mesmo jeito; o turno fechado mostra "✓ fechado".
+
+Regras em `fontes/producao/fecha_build.py`; botões em `turno_layout.js`, `fase7.js` e `hh24.js`. Teste: `testes/tfechar.js`.
+
+## 2.4.65 · Cartões reorganizáveis na Visão geral (12/11/2026)
+
+Só o kit (`vacGrade`, `docs/design-system.md`):
+- a alça ⠿ volta a arrastar no Chrome e no Edge;
+- "Produção por catálogo" (Visão geral) e "Catálogos produzidos" (Meu painel) ganham a barra;
+- as setas ficam apagadas na ponta e no cartão sozinho do grupo.
+
+Teste: `testes/tgrade.js`.
+
