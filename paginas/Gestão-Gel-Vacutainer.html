@@ -7914,7 +7914,7 @@ resetState();S.mode='local';backend=localBackend;
 try{render()}catch(e){console.error(e)}
 ui.hashGo=hashParse();if(ui.hashGo)setTimeout(hashTry,0);
 try{if(location.hash==='#tv')enterTV('almox');else if(location.hash==='#linha'){ui.tab='painel';setTimeout(()=>enterTV('linha'),400)}}catch(e){}
-if(vacDemo.ativo){ui.demo=true;S.mode='demo';backend=memBackend;vacDemo.registrar('gel',()=>({...snapshotData(),exports:gelExports()}),d=>{loadData(d);S.mode='demo'},()=>{/* 2.29 · o kit (vacLayout) carrega depois deste script: se ainda não chegou, desenha no próximo ciclo */if(typeof vacLayout==='undefined'){setTimeout(render,0);return}render()});vacDemo.publicar('gel');if(ui.hashGo)hashTry()}else setTimeout(()=>{connectDb().catch(e=>{console.warn(e);startLocal()})},0);
+if(vacDemo.ativo){ui.demo=true;S.mode='demo';backend=memBackend;vacDemo.registrar('gel',()=>({...snapshotData(),exports:gelExports()}),d=>{loadData(d);S.mode='demo'},()=>{/* 2.29 · o kit (vacLayout) carrega depois deste script: se ainda não chegou, desenha no próximo ciclo */const r=()=>{if(typeof vacLayout==='undefined'){setTimeout(r,30);return}render()};r()});vacDemo.publicar('gel');if(ui.hashGo)hashTry()}else setTimeout(()=>{connectDb().catch(e=>{console.warn(e);startLocal()})},0);
 setTimeout(()=>{needLib('xlsx');needLib('pdf')},1500);
 setInterval(()=>{fsRefresh();if(watchMin()&&Date.now()-(FS.lastWatch||0)>=watchMin()*60000-1000)fsWatch()},60000);window.addEventListener('focus',()=>{if(S.mode==='file'&&FS.pending.length&&!FS.busy)fsFlush();else fsRefresh()});
 setInterval(()=>{if(S.mode==='file'&&FS.pending.length&&!FS.busy&&!ui.demo)fsFlush()},30000);
