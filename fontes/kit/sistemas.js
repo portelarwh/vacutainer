@@ -6,4 +6,5 @@ const DEFAULT_SYSTEMS=[
  {id:'paradas',nome:'Paradas',html:'Paradas.html',base:'paradas-base.json',estado:'atualizacao'},
  {id:'equip',nome:'Equipamentos',html:'Equipamentos.html',base:'equipamentos-base.json',sub:'Ficha · OS · TAGs · AM/TPM',estado:'atualizacao'},
  {id:'inic',nome:'Iniciativas / Ações',html:'Iniciativas.html',base:'iniciativas-base.json',sub:'Ações · KAS · OSM · 5S',estado:'atualizacao'},
+ {id:'linha',nome:'Linha 360°',html:'Linha-360.html',base:'linha360-base.json',sub:'Planta interativa · pessoas · checklists',estado:'atualizacao'},
  {id:'projetos',nome:'Projetos',html:'Projetos.html',base:'projetos-base.json',futuro:true,estado:'construcao'}];

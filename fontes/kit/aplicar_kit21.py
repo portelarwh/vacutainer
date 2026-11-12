@@ -27,7 +27,7 @@ def visual(s,nome):
     if s.count(ancora)!=1: raise SystemExit('ERRO: nem </head> nem o início do vac-cabecalho achados exatamente 1 vez em '+nome+' (nada foi gravado)')
     return s.replace(ancora,bloco+ancora)
 # páginas em construção (geradas por fontes/modelo/gerar_paginas.py) recebem o mesmo kit; entram quando existirem
-NOVAS=[n for n in ['Equipamentos.html','Iniciativas.html','Projetos.html'] if os.path.exists(os.path.join(RAIZ,'paginas',n))]
+NOVAS=[n for n in ['Equipamentos.html','Iniciativas.html','Projetos.html','Linha-360.html'] if os.path.exists(os.path.join(RAIZ,'paginas',n))]
 # duas fases (07/11/2026): monta e confere todas as páginas na memória; só grava se todas passarem (um ERRO não deixa parte regravada).
 # newline='\n': no Windows, o padrão gravaria CRLF e mudaria o arquivo inteiro no diff
 saida=[]
