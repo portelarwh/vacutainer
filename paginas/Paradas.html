@@ -180,6 +180,32 @@ td.n,th.n{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
  #main .pux-pctl{gap:10px}#main .pux-pg{width:100%}#main .pux-seg{display:flex;flex-wrap:nowrap;overflow-x:auto;-webkit-overflow-scrolling:touch}#main .pux-seg button{flex:none}
  #main .pux-chip button{width:30px;height:30px}#main .pux-selbar .b,#main .pux-pctl .b,#main .pux-plinks .b{min-height:40px}}
 @media print{#main .pux-ativos [data-pux-tira],#main .pux-pctl,#main .pux-kpi-act,#main .pux-explorar{display:none!important}}
+/* Paradas 1.1.1 · etapa 2: Equipamentos e Recorrência (pux-*, só desta página) */
+#main .pux-eqg{margin:0 0 14px}
+#main .pux-tbar{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 12px;margin:4px 2px 8px}
+/* tabela técnica: cabeçalho fixo na rolagem, 1ª coluna fixa, números à direita, linha sob o cursor, rolagem horizontal */
+#main .pux-tfix>.tw{max-height:min(70vh,640px);overflow:auto;overscroll-behavior:contain}
+#main .pux-tfix table.t th{position:sticky;top:0;z-index:2}
+#main .pux-tfix table.t th:first-child,#main .pux-tfix table.t td:first-child{position:sticky;left:0;z-index:1;background:var(--surface);box-shadow:1px 0 0 var(--line)}
+#main .pux-tfix table.t th:first-child{z-index:3;background:var(--surface2,var(--surface-2))}
+#main .pux-tfix table.t td.n,#main .pux-tfix table.t th.n{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+#main .pux-tfix table.t tr.clk:hover td,#main .pux-tfix table.t tr.clk:focus-within td{background:var(--accent-soft,color-mix(in srgb,var(--accent) 10%,var(--surface)))}
+#main .pux-tfix table.t tr.hl3 td{background:color-mix(in srgb,var(--crit) 12%,var(--surface));color:var(--ink)}
+#main .pux-tfix table.t tr.hl3:hover td{background:color-mix(in srgb,var(--crit) 18%,var(--surface))}
+#main .pux-tfix table.t tr.hl3 td:first-child{box-shadow:inset 4px 0 0 var(--crit),1px 0 0 var(--line)}
+/* recorrência */
+#main .pux-rres{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin:0 0 12px}
+#main .pux-rres>div{background:var(--surface);border:1px solid var(--line);border-left:4px solid var(--line);border-radius:var(--r,10px);padding:10px 12px;display:flex;flex-direction:column;gap:2px}
+#main .pux-rres span{font-size:12px;color:var(--muted);font-weight:600}#main .pux-rres b{font-size:22px;font-variant-numeric:tabular-nums}
+#main .pux-rres .pux-alto{border-left-color:var(--crit)}#main .pux-rres .pux-sem{border-left-color:var(--warn)}
+#main .pux-rec .pux-req{font-size:13.5px}
+#main .pux-rec .pux-rcn{color:var(--muted)}
+#main .pux-rec .pux-rcomp{display:inline-block;padding:1px 8px;border-radius:999px;background:var(--surface-2);font-size:12px}
+#main .pux-rec .pux-rq{display:inline-block;min-width:26px;text-align:center;padding:1px 7px;border-radius:999px;font-weight:700;background:color-mix(in srgb,var(--warn) 18%,var(--surface))}
+#main .pux-rec tr.hl3 .pux-rq{background:color-mix(in srgb,var(--crit) 20%,var(--surface));color:var(--crit)}
+#main .pux-rec .pux-rult{white-space:nowrap}
+@media(max-width:900px){#main .pux-rres{grid-template-columns:1fr 1fr}}
+@media(max-width:640px){#main .pux-tfix>.tw{max-height:none}#main .pux-tfix table.t td:first-child,#main .pux-tfix table.t th:first-child{max-width:42vw}#main .pux-rres b{font-size:19px}}
 </style>
 <style>
 /* ===== vac-cabecalho v2 · barra do sistema + cabeçalho da página (igual em todas as páginas; não editar só numa) ===== */
@@ -902,7 +928,7 @@ const MATRIZ_PROPOSTA={"OUT": ["Tullip A", "Tullip B", "Packout", "Metro", "Cap 
    PARADAS · núcleo (pasta, base, fila de gravação, backups, cadastro, utilidades)
    ===================================================================================== */
 const PAGE={id:'paradas',titulo:'Paradas · Análise de falhas e paradas de máquina',tituloCurto:'Paradas',subtitulo:'Análise de falhas e paradas de máquina',
-  versao:'1.1.0',estado:'atualizacao',estadoNota:'Matriz, componentes e limite de microparada passam a vir só do Portal; eventos da Produção entram como sugestão.',baseFile:'paradas-base.json',backupDir:'00. Backups/Paradas',busca:q=>buscaPagina(q)};
+  versao:'1.1.1',estado:'atualizacao',estadoNota:'Matriz, componentes e limite de microparada passam a vir só do Portal; eventos da Produção entram como sugestão.',baseFile:'paradas-base.json',backupDir:'00. Backups/Paradas',busca:q=>buscaPagina(q)};
 const APP_VERSION=PAGE.versao;
 const CAD_FILE='vacutainer-cadastros.json',OEE_FILE='oee-vacutainer-base.json';
 const $=(s,r=document)=>r.querySelector(s),$$=(s,r=document)=>[...r.querySelectorAll(s)];
@@ -1676,18 +1702,29 @@ VIEWS.pareto={dim:'codigo',med:'min',html(){const all=F.apply(eventosTodos()).fi
 function p80(){try{return localStorage.getItem('vac.paradas.p80')==='1'}catch(e){return false}}
 const STOP=new Set(['tullip','parada','linha','maquina','troca','falha','sendo','estava','apos','durante','quando','porque','packout','realizado','realizar','necessario','problema']);
 
+/* 1.1.1 · refatoração UX/UI etapa 2 (só apresentação). Equipamentos: ranking gráfico com os resultados de statsEquip (sem conta nova)
+   e a tabela técnica completa com cabeçalho e 1ª coluna fixos; o clique continua abrindo o detalhe (abrirEquip). */
 VIEWS.equip={html(){const L=F.apply(eventosTodos(),{eq:1});const S=statsEquip(L,F.de,F.ate);this.S=S;const P=programado(L,F.de,F.ate);
- return`${secH('machine','Equipamentos','MTBF, MTTR, MTBS e disponibilidade por equipamento · base para Máquinas e Manutenção (TPM)')}${filtrosHTML({info:`tempo de operação ${P.fonte==='OEE'?'do OEE':'estimado'} ${help('MTBF = tempo de operação ÷ nº de quebras. Tempo de operação = tempo programado − paradas da linha − paradas do equipamento. Sem o OEE, o programado é estimado: dias com apontamento × horas por dia (Configuração).\nMTTR = minutos de quebra ÷ nº de quebras. MTBS = tempo de operação ÷ nº de paradas (todas).\nQuebra = grupo 8 (peça trocada ou consertada).')}`})}
- ${tabela([{h:'Equipamento',f:s=>`<b>${esc(s.nome)}</b> <span class="code muted">${esc(s.eq)}</span>${Cad.eq(s.eq)?.prov?' <span class="pill warn">provisório</span>':''}`},{h:'Parada',n:1,f:s=>fmtMin(s.min)},{h:'Ocorr.',n:1,f:s=>n0(s.n)},{h:'Quebras',n:1,f:s=>n0(s.nQ)},{h:'Min quebra',n:1,f:s=>n0(s.mQ)},
-  {h:'Operacional',n:1,f:s=>n0(s.mOp)},{h:'Micro',n:1,f:s=>n0(s.nMicro)},{h:'MTBF h',n:1,f:s=>n1(s.mtbf)},{h:'MTTR min',n:1,f:s=>n0(s.mttr)},{h:'MTBS h',n:1,f:s=>n1(s.mtbs)},{h:'Disp.',n:1,f:s=>pct(s.disp)},{h:'Principal código',f:s=>s.top?`${grpChip(s.top)} ${esc(Cad.code(s.top)?.nome||s.top)}`:''}],S,{id:'eqT',clk:1})}`},
- wire(){bindRows('#eqT',this.S,s=>abrirEquip(s.eq))}};
+ const R=S.slice().sort((a,b)=>b.min-a.min).slice(0,14),Q=S.filter(s=>s.nQ>0).sort((a,b)=>b.nQ-a.nQ||b.mQ-a.mQ).slice(0,14);
+ return`${secH('machine','Equipamentos','MTBF, MTTR, MTBS e disponibilidade por equipamento · base para Máquinas e Manutenção (TPM)')}${filtrosHTML({info:`tempo de operação ${P.fonte==='OEE'?'do OEE':'estimado'} ${help('MTBF = tempo de operação ÷ nº de quebras. Tempo de operação = tempo programado − paradas da linha − paradas do equipamento. Sem o OEE, o programado é estimado: dias com apontamento × horas por dia (Configuração).\nMTTR = minutos de quebra ÷ nº de quebras. MTBS = tempo de operação ÷ nº de paradas (todas).\nQuebra = grupo 8 (peça trocada ou consertada).')}`})}${ativosHTML()}
+ ${S.length?`<div class="pux-visual pux-eqg"><div class="card">${secH('bar','Ranking por tempo parado','tempo de parada (h ou min) · clique para abrir o equipamento')}<div id="eqRk">${hbars(R.map(s=>({k:s.eq,label:s.nome,v:s.min,n:s.n})),{onClick:1,w:620,lw:200})}</div></div>
+ <div class="card">${secH('wrench','Quebras por equipamento','quantidade de quebras (grupo 8) · clique para abrir o equipamento')}<div id="eqQb">${Q.length?hbars(Q.map(s=>({k:s.eq,label:s.nome,v:s.nQ,n:s.nQ,color:'var(--g8)'})),{onClick:1,w:620,lw:200,fmt:n0,unit:'quebras'}):'<div class="empty">Nenhuma quebra no período.</div>'}</div></div></div>`:''}
+ <div class="pux-tbar"><b>Tabela técnica</b><span class="muted small">${n0(S.length)} equipamento(s) · clique numa linha para o detalhe (meses, códigos, componentes e paradas)</span></div>
+ <div class="pux-tfix">${tabela([{h:'Equipamento',f:s=>`<b>${esc(s.nome)}</b> <span class="code muted">${esc(s.eq)}</span>${Cad.eq(s.eq)?.prov?' <span class="pill warn">provisório</span>':''}`},{h:'Parada',n:1,f:s=>fmtMin(s.min)},{h:'Ocorr.',n:1,f:s=>n0(s.n)},{h:'Quebras',n:1,f:s=>n0(s.nQ)},{h:'Min quebra',n:1,f:s=>n0(s.mQ)},
+  {h:'Operacional',n:1,f:s=>n0(s.mOp)},{h:'Micro',n:1,f:s=>n0(s.nMicro)},{h:'MTBF h',n:1,f:s=>n1(s.mtbf)},{h:'MTTR min',n:1,f:s=>n0(s.mttr)},{h:'MTBS h',n:1,f:s=>n1(s.mtbs)},{h:'Disp.',n:1,f:s=>pct(s.disp)},{h:'Principal código',f:s=>s.top?`${grpChip(s.top)} ${esc(Cad.code(s.top)?.nome||s.top)}`:''}],S,{id:'eqT',clk:1})}</div>`},
+ wire(){bindRows('#eqT',this.S,s=>abrirEquip(s.eq));bindChart($('#eqRk'),k=>abrirEquip(k));bindChart($('#eqQb'),k=>abrirEquip(k));wireAtivos()}};
 
+/* Recorrência: mesmos critérios de recorrencias() (3+ em 30 dias ou 3 meses seguidos); a tela destaca equipamento, código, componente,
+   quantidade, tempo, última ocorrência e ação, com um resumo dos números que já estão na lista. */
 VIEWS.recor={html(){const all=eventosTodos();const ate=F.ate||all.reduce((m,e)=>e.dia>m?e.dia:m,'');const R=recorrencias(F.eq?all.filter(e=>e.equipamento===F.eq):all,ate);this.R=R;
- return`${secH('repeat','Recorrência','mesma falha no mesmo equipamento: 3 ou mais vezes em 30 dias, ou presente em 3 meses seguidos (crônica) · candidatas a causa raiz e ao plano de manutenção')}${filtrosHTML({info:'janela de 30 dias até '+br(ate)})}
- ${tabela([{h:'Equipamento',f:r=>esc(Cad.eqNome(r.eq))},{h:'Código',f:r=>`${grpChip(r.cod)} <span class="code">${esc(r.cod)}</span> ${esc(Cad.code(r.cod)?.nome||'')}`},{h:'Componente',f:r=>esc(r.comp||'—')},{h:'30 dias',n:1,f:r=>`${n0(r.n30)} · ${n0(r.min30)} min`},{h:'Total',n:1,f:r=>`${n0(r.n)} · ${fmtMin(r.min)}`},
-  {h:'Meses seguidos',n:1,f:r=>r.meses>=3?`<span class="hl2">${r.meses}</span>`:r.meses},{h:'Última',f:r=>br(r.ult)},{h:'Ação',f:r=>(r.acao?`<span class="pill info">${esc(r.acao.status)}</span>`:`<button class="b sm" data-ac="${esc(r.k)}">+ Ação</button>`)+(typeof vacNovaAcaoBotao==='function'?' '+vacNovaAcaoBotao(acaoPlanner('recor',null,r.k,`${Cad.eqNome(r.eq)} · ${Cad.code(r.cod)?.nome||r.cod}${r.comp?' · '+r.comp:''}`,r.ev,{eq:r.eq,cod:r.cod}),'Planner'):'')}],R,{id:'rcT',clk:1,max:200,cls:r=>r.n30>=6?'hl3':''})}`},
+ const cr=R.filter(r=>r.meses>=3).length,al=R.filter(r=>r.n30>=6).length,sa=R.filter(r=>!r.acao).length;
+ return`${secH('repeat','Recorrência','mesma falha no mesmo equipamento: 3 ou mais vezes em 30 dias, ou presente em 3 meses seguidos (crônica) · candidatas a causa raiz e ao plano de manutenção')}${filtrosHTML({info:'janela de 30 dias até '+br(ate)})}${ativosHTML()}
+ <div class="pux-rres" role="status"><div><span>Falhas recorrentes</span><b>${n0(R.length)}</b></div><div><span>Crônicas (3+ meses seguidos)</span><b>${n0(cr)}</b></div><div class="${al?'pux-alto':''}"><span>6 ou mais em 30 dias</span><b>${n0(al)}</b></div><div class="${sa?'pux-sem':''}"><span>Sem ação vinculada</span><b>${n0(sa)}</b></div></div>
+ ${R.length?'':'<div class="card empty">Nenhuma falha recorrente na janela de 30 dias nem crônica. Com o filtro de equipamento, a lista considera só ele.</div>'}
+ <div class="pux-tfix pux-rec">${tabela([{h:'Equipamento',f:r=>`<b class="pux-req">${esc(Cad.eqNome(r.eq))}</b>`},{h:'Código',f:r=>`${grpChip(r.cod)} <span class="code">${esc(r.cod)}</span> <span class="pux-rcn">${esc(Cad.code(r.cod)?.nome||'')}</span>`},{h:'Componente',f:r=>`<span class="pux-rcomp">${esc(r.comp||'—')}</span>`},{h:'30 dias',n:1,f:r=>`<span class="pux-rq">${n0(r.n30)}</span> · ${n0(r.min30)} min`},{h:'Total',n:1,f:r=>`<b>${n0(r.n)}</b> · ${fmtMin(r.min)}`},
+  {h:'Meses seguidos',n:1,f:r=>r.meses>=3?`<span class="hl2">${r.meses}</span>`:r.meses},{h:'Última',f:r=>`<span class="pux-rult">${br(r.ult)}</span>`},{h:'Ação',f:r=>(r.acao?`<span class="pill info">${esc(r.acao.status)}</span>`:`<button class="b sm" data-ac="${esc(r.k)}">+ Ação</button>`)+(typeof vacNovaAcaoBotao==='function'?' '+vacNovaAcaoBotao(acaoPlanner('recor',null,r.k,`${Cad.eqNome(r.eq)} · ${Cad.code(r.cod)?.nome||r.cod}${r.comp?' · '+r.comp:''}`,r.ev,{eq:r.eq,cod:r.cod}),'Planner'):'')}],R,{id:'rcT',clk:1,max:200,cls:r=>r.n30>=6?'hl3':''})}</div>`},
  wire(){$$('#rcT a[target]').forEach(a=>a.addEventListener('click',ev=>ev.stopPropagation()));$$('[data-ac]').forEach(b=>b.onclick=ev=>{ev.stopPropagation();const r=this.R.find(x=>x.k===b.dataset.ac);abrirAcao(null,{titulo:`Recorrência: ${Cad.eqNome(r.eq)} · ${Cad.code(r.cod)?.nome||r.cod}${r.comp?' · '+r.comp:''}`,equipamento:r.eq,codigo:r.cod,componente:r.comp,chave:r.k,tipo:'Causa raiz (5 porquês)'})});
-  bindRows('#rcT',this.R,r=>{const L=r.ev.slice().sort((a,b)=>b.dia.localeCompare(a.dia));modal({title:'Recorrência',wide:true,body:tabela(colsEv(),L,{id:'rcE',clk:1}),onOpen:()=>bindRows('#rcE',L,e=>abrirEvento(e.id))})})}};
+  bindRows('#rcT',this.R,r=>{const L=r.ev.slice().sort((a,b)=>b.dia.localeCompare(a.dia));modal({title:'Recorrência',wide:true,body:tabela(colsEv(),L,{id:'rcE',clk:1}),onOpen:()=>bindRows('#rcE',L,e=>abrirEvento(e.id))})});wireAtivos()}};
 
 VIEWS.acoes={html(){const A=Store.data.acoes.slice().sort((a,b)=>(a.status==='concluída')-(b.status==='concluída')||String(a.prazo||'9').localeCompare(String(b.prazo||'9')));this.A=A;
  return`${secH('flag','Ações','corretivas, causa raiz e melhorias ligadas às paradas (depois ligam à página Projetos)')}<div class="row" style="margin-bottom:10px"><span class="sp"></span><button class="b sm pri" id="acNova">+ Nova ação</button><button class="b sm" id="acXls">Excel</button></div>
@@ -3017,8 +3054,8 @@ window.VAC_GUIA = window.VAC_GUIA || {};
     fila: { titulo: 'Fila técnica', para: 'O que falta para a análise de falhas valer: quebra sem peça, componente, modo ou ação; paradas longas sem ação; códigos temporários; sugestões de reclassificação.', campos: FILTROS, passos: [['Zerar a fila', ['Comece pelas quebras mais longas.', 'Complete a parte técnica na ficha da parada.', 'Reclassifique quando o código sugerido for mais correto.']]] },
     valid: { titulo: 'Validação diária', para: 'A liderança confere a classificação do dia e fecha: o 1º motivo é o que vale, quebra só com troca de peça, setup até o 1º produto bom.', campos: FILTROS, passos: [['Validar o dia', ['Abra o dia na lista.', 'Confira código e duração de cada parada; corrija o que estiver errado.', 'Clique em Validar. Dá para validar com pendência técnica (ela fica na Fila técnica).']]] },
     pareto: { titulo: 'Pareto', para: 'Tempo ou ocorrências por qualquer dimensão (código, equipamento, turno, componente…). Clique numa barra para ver as paradas: a seleção aparece numa faixa com + Ação e Limpar seleção. "Linha de 80 %" marca onde o % acumulado passa de 80 % (só referência, não é meta; fica lembrada neste computador).', campos: FILTROS },
-    equip: { titulo: 'Equipamentos', para: 'MTBF, MTTR, MTBS e disponibilidade por equipamento: base para a manutenção (TPM).', campos: FILTROS, duvidas: [['MTBF e MTTR', 'MTBF: tempo médio entre falhas (quanto maior, melhor). MTTR: tempo médio para reparar (quanto menor, melhor).']] },
-    recor: { titulo: 'Recorrência', para: 'Mesma falha no mesmo equipamento 3 ou mais vezes em 30 dias, ou em 3 meses seguidos (crônica): candidatas a causa raiz e ao plano de manutenção.', campos: FILTROS },
+    equip: { titulo: 'Equipamentos', para: 'MTBF, MTTR, MTBS e disponibilidade por equipamento: base para a manutenção (TPM). No topo, o ranking por tempo parado e as quebras por equipamento (clique abre o detalhe). A tabela técnica rola com o cabeçalho e o nome do equipamento fixos; clique numa linha para o detalhe.', campos: FILTROS, duvidas: [['MTBF e MTTR', 'MTBF: tempo médio entre falhas (quanto maior, melhor). MTTR: tempo médio para reparar (quanto menor, melhor).']] },
+    recor: { titulo: 'Recorrência', para: 'Mesma falha no mesmo equipamento 3 ou mais vezes em 30 dias, ou em 3 meses seguidos (crônica): candidatas a causa raiz e ao plano de manutenção. O resumo no topo conta a própria lista: recorrentes, crônicas, 6 ou mais em 30 dias (linha destacada em vermelho claro) e sem ação vinculada.', campos: FILTROS },
     acoes: { titulo: 'Ações', para: 'Ações corretivas, de causa raiz e melhorias ligadas às paradas, com responsável e prazo.', campos: [{ sel: '#acNova', nome: '+ Nova ação', o: 'Registra uma ação ligada às paradas.' }, { sel: '#acXls', nome: 'Excel', o: 'Exporta as ações.' }] },
     guia: { titulo: 'Guia de paradas', para: 'Como escolher o código certo (padrão BD de OEE aplicado à linha). Use antes de treinar operadores.' },
     forms: { titulo: 'Formulários', para: 'Como montar o Microsoft Forms do operador, o formulário em papel por máquina e a matriz de códigos por equipamento.', campos: [{ sel: '#cpEq', nome: 'Copiar máquinas', o: 'Lista para colar na pergunta 3 do Forms.' }, { sel: '#cpCod', nome: 'Copiar códigos da máquina', o: 'Códigos para as perguntas de cada máquina.' }, { sel: '#xlsModelo', nome: 'Excel de exemplo', o: 'Modelo de respostas do Forms, para testar a importação.' }, { sel: '#fePrint', nome: 'Imprimir formulários', o: 'Formulário em papel A4 das máquinas marcadas.' }] },
