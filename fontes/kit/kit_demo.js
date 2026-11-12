@@ -2,7 +2,7 @@
    O cenário é fictício; armazenamento e IndexedDB são isolados por sessão de demonstração. */
 const vacDemo = (() => {
   const cenario = @@VAC_DEMO_CENARIO@@;
-  const paginas = {portal:'Portal.html',oee:'OEE-Vacutainer.html',perdas:'Perdas-Ordem.html',gel:'Gestão-Gel-Vacutainer.html',paradas:'Paradas.html',equip:'Equipamentos.html',inic:'Iniciativas.html',projetos:'Projetos.html'};
+  const paginas = {portal:'Portal.html',oee:'OEE-Vacutainer.html',perdas:'Perdas-Ordem.html',gel:'Gestão-Gel-Vacutainer.html',paradas:'Paradas.html',equip:'Equipamentos.html',inic:'Iniciativas.html',linha:'Linha-360.html',projetos:'Projetos.html'};
   const clone = x => JSON.parse(JSON.stringify(x));
   const host = (()=>{try{return parent!==window&&parent.vacDemoHost||null}catch(e){return null}})();
   const url = new URL(location.href), pedido = url.searchParams.get('demo');
@@ -49,7 +49,7 @@ const vacDemo = (() => {
   if(ativo){
     if(!host){url.searchParams.set('demo',id);history.replaceState(history.state,'',url.href);}
     // As preferências/cadastros usados pela página são do cenário. Não altera chaves reais.
-    const padrao = {'vac.user':'Pessoa de demonstração','vac.userId':'9001','vac.sistemas':JSON.stringify(Object.entries(paginas).map(([id,html])=>({id,html,nome:({oee:'Produção',perdas:'Waste',gel:'Gestão de Gel',equip:'Equipamentos',inic:'Iniciativas / Ações'})[id]||id[0].toUpperCase()+id.slice(1),futuro:false,estado:id==='projetos'?'construcao':undefined})))};
+    const padrao = {'vac.user':'Pessoa de demonstração','vac.userId':'9001','vac.sistemas':JSON.stringify(Object.entries(paginas).map(([id,html])=>({id,html,nome:({oee:'Produção',perdas:'Waste',gel:'Gestão de Gel',equip:'Equipamentos',inic:'Iniciativas / Ações',linha:'Linha 360°'})[id]||id[0].toUpperCase()+id.slice(1),futuro:false,estado:id==='projetos'?'construcao':undefined})))};
     const prefsPrefixo=prefixo+'pref.';
     const chaves=()=>{const s=new Set(Object.keys(padrao));try{for(let i=0;real&&i<real.length;i++){const k=real.key(i);if(k.startsWith(prefsPrefixo))s.add(k.slice(prefsPrefixo.length));}}catch(e){}for(const k of memoria.keys())if(k.startsWith(prefsPrefixo))s.add(k.slice(prefsPrefixo.length));return[...s]};
     const metodos={getItem(k){k=String(k);if(k==='vac.cadastros')return JSON.stringify(ler('cad'));return lerTexto(prefsPrefixo+k)??padrao[k]??null},setItem(k,v){k=String(k);v=String(v);gravarTexto(prefsPrefixo+k,v)},removeItem(k){apagar(prefsPrefixo+String(k))},clear(){for(const k of chaves())apagar(prefsPrefixo+k)},key(i){return chaves()[i]??null}};
@@ -62,7 +62,7 @@ const vacDemo = (() => {
     window.showDirectoryPicker=async()=>{if(typeof toast==='function')toast('Saia da demonstração para conectar uma pasta real.');throw new DOMException('Demonstração: pasta real não conectada','AbortError')};
     for(const nome of ['replaceState','pushState']){const f=history[nome].bind(history);history[nome]=(s,t,u)=>{if(host&&u!=null){const txt=String(u),i=txt.indexOf('#');return f(s,t,'about:srcdoc'+(i<0?'':txt.slice(i)))}return f(s,t,u==null?u:href(u))};}
   }
-  const basesPorArquivo={'portal-base.json':'portal','vacutainer-cadastros.json':'cad','oee-vacutainer-base.json':'oee','ordens-base.json':'ordens','perdas-base.json':'perdas','fifo-base.json':'gel','paradas-base.json':'paradas','equipamentos-base.json':'equip','iniciativas-base.json':'inic'};
+  const basesPorArquivo={'portal-base.json':'portal','vacutainer-cadastros.json':'cad','oee-vacutainer-base.json':'oee','ordens-base.json':'ordens','perdas-base.json':'perdas','fifo-base.json':'gel','paradas-base.json':'paradas','equipamentos-base.json':'equip','iniciativas-base.json':'inic','linha360-base.json':'linha'};
   const pasta={name:'Demonstração',kind:'directory',async getFileHandle(nome,op){if(op&&op.create)throw new DOMException('Demonstração somente na memória','NoModificationAllowedError');const mod=basesPorArquivo[nome],d=mod&&ler(mod);if(!d)throw new DOMException('Arquivo fictício ausente','NotFoundError');return{kind:'file',name:nome,async getFile(){return new File([JSON.stringify(mod==='cad'?d:{exports:d.exports||{}})],nome,{type:'application/json',lastModified:Date.now()})}}},async queryPermission(){return'read'},async entries(){return[]}};
   const atualizarExternos=()=>{if(ativo&&!saindo)for(const a of Object.values(adaptadores))if(a.atualizar)a.atualizar()};
   window.addEventListener('storage',e=>{if(ativo&&e.key&&e.key.startsWith(prefixo+'base.'))atualizarExternos()});

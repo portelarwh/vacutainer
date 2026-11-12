@@ -28,7 +28,7 @@ R("location.href=sysHref(port,'versoes')", "vacDemo.ir(sysHref(port,'versoes'))"
 R('<button class="btn primary" id="uOk">Usar este nome</button>', '<button class="btn primary" id="uOk">Usar este nome</button><button class="btn" data-vdemo-entrar onclick="vacDemo.entrar()">Demonstração do sistema</button>')
 R('<button class="btn ghost" id="wLocal">Começar só neste navegador</button>', '<button class="btn ghost" id="wLocal">Começar só neste navegador</button><button class="btn" data-vdemo-entrar onclick="vacDemo.entrar()">Demonstração do sistema</button>')
 R('Abre uma <b>cópia em memória</b> da base com cerca de 3 semanas de dados fictícios (hora a hora, paradas, scrap, dias fechados e abertos), para treinar ou demonstrar. Nada é gravado na pasta da rede nem no navegador: ao sair, tudo volta exatamente como estava.', 'Abre a <b>demonstração integrada do sistema</b>, com produção, perdas, gel, paradas, equipamentos e ações fictícias relacionadas. Você pode editar o exemplo e navegar entre as páginas. As bases reais ficam preservadas; fechar ou recarregar a demonstração descarta as alterações fictícias.')
-R("const APP_VERSION = '2.0.1';","const APP_VERSION = '2.4.59';")
+R("const APP_VERSION = '2.0.1';","const APP_VERSION = '2.4.60';")
 # 2.4.45 · login comum do kit (vacLogin): o "Quem está usando?" só aparece quando o login não vale (demonstração, teste, TV)
 R("function askUser(first) {\n  const known","function askUser(first) {\n  if (typeof vacLogin !== 'undefined' && !vacLogin.dispensado()) return vacLogin.abrir({ trocar: !!vacLogin.sessao() });\n  const known")
 R("  if (!Store.S.user) askUser({ then: () => { if (!dir && !cache) welcome(); } });",
@@ -174,8 +174,12 @@ R("    // lotes do servidor (últimos 150 dias): retrabalho, situação e observ
   "      }\n"
   "    }\n"
   "    const porOrdemCobertura = { de: mIni, ate: mk, meses: 24, ordens: porOrdem.length, fonte: 'Plano do mês (PCP) e servidor (dias do lote)' };\n"
+  "    // 2.4.60 · regra da linha: cada ordem tem um lote e cada lote tem uma ordem. Conflito não bloqueia nada: vira pendência (atenção) e vai no exports\n"
+  "    const ordemLote = typeof vacOrdemLote === 'function' ? vacOrdemLote(porOrdem) : { ordens: [], lotes: [] };\n"
+  "    for (const x of ordemLote.ordens.slice(0, 20)) pendencias.push({ sev: 2, tipo: 'ordemLote', txt: `Ordem ${x.ordem} aparece com ${x.lotes.length} lotes (${x.lotes.join(', ')}): cada ordem tem um só lote; conferir o plano`, link: 'plano=' + x.mes });\n"
+  "    for (const x of ordemLote.lotes.slice(0, 20)) pendencias.push({ sev: 2, tipo: 'ordemLote', txt: `Lote ${x.lote} aparece em ${x.ordens.length} ordens (${x.ordens.join(', ')}): cada lote tem uma só ordem; conferir o plano`, link: 'plano=' + x.mes });\n"
   "    // lotes do servidor (últimos 150 dias): retrabalho, situação e observação, para Perdas e Gel\n")
-R("planoMes, ordens, lotes, pendencias, kpis };","planoMes, ordens, porOrdem, porOrdemCobertura, lotes, pendencias, kpis };")
+R("planoMes, ordens, lotes, pendencias, kpis };","planoMes, ordens, porOrdem, porOrdemCobertura, ordemLote, lotes, pendencias, kpis };")
 svc=open('ordens_servico.js',encoding='utf-8').read().replace("if (typeof module !== 'undefined') module.exports = OrdensSAP;\n","")
 tela=open('ordens_tela.js',encoding='utf-8').read()
 css="""<style>
@@ -222,6 +226,7 @@ css="""<style>
 </style>
 """
 kit21=open(os.path.join(RAIZ,'fontes','kit','kit_v21.js'),encoding='utf-8').read()
+kit21=kit21.rstrip('\n')+'\n'+open(os.path.join(RAIZ,'fontes','kit','kit_ds.js'),encoding='utf-8').read().strip('\n')   # Design System
 # catálogo de sistemas único (fontes/kit/sistemas.js), igual nas 5 páginas
 import re as _re
 _sis=open(os.path.join(RAIZ,'fontes','kit','sistemas.js'),encoding='utf-8').read().strip()
@@ -230,6 +235,7 @@ if len(_pad.findall(s))!=1: raise SystemExit('ERRO: DEFAULT_SYSTEMS não achado 
 s=_pad.sub(lambda m:_sis,s)
 # padrão visual comum (fontes/kit/kit_visual.css): último <style> do <head>, igual nas 5 páginas
 _vis=open(os.path.join(RAIZ,'fontes','kit','kit_visual.css'),encoding='utf-8').read().strip()
+_vis=_vis+'\n'+open(os.path.join(RAIZ,'fontes','kit','kit_ds.css'),encoding='utf-8').read().strip()   # Design System
 if s.count('\n</head>\n')!=1: raise SystemExit('ERRO: </head> (linha própria) não achado exatamente 1 vez')
 _bas=open(os.path.join(RAIZ,'fontes','kit','kit_bases.js'),encoding='utf-8').read().strip()
 _demo=open(os.path.join(RAIZ,'fontes','kit','kit_demo.js'),encoding='utf-8').read()

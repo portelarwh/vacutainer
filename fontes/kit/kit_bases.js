@@ -15,7 +15,7 @@
      · raiz mais nova que 00. Bases (página antiga gravando na raiz): não mexe em nada, avisa; Portal › Versões mostra as duas cópias. */
 const VAC_BASES_DIR = '00. Bases';
 /* 08/11/2026 · E6/E11: + iniciativas-base.json e equipamentos-base.json (páginas que passaram a gravar) */
-const VAC_BASES = ['portal-base.json', 'vacutainer-cadastros.json', 'oee-vacutainer-base.json', 'ordens-base.json', 'perdas-base.json', 'fifo-base.json', 'paradas-base.json', 'iniciativas-base.json', 'equipamentos-base.json'];
+const VAC_BASES = ['portal-base.json', 'vacutainer-cadastros.json', 'oee-vacutainer-base.json', 'ordens-base.json', 'perdas-base.json', 'fifo-base.json', 'paradas-base.json', 'iniciativas-base.json', 'equipamentos-base.json', 'linha360-base.json'];
 function vacEhBase(nome) { return VAC_BASES.includes(String(nome)); }
 const vacNaoAchou = e => !!e && (e.name === 'NotFoundError' || e.name === 'TypeMismatchError');
 function vacRaiz(raiz) {
@@ -160,7 +160,7 @@ const VAC_INICIAL_ALVO = {
   'Waste': ['perdas', ''],
   'Gestão de Gel': ['gel', ''], 'Gestão de Gel › Painel': ['gel', 'aba=painel'], 'Gestão de Gel › Visão Geral': ['gel', 'aba=painel'], 'Gestão de Gel › Operação': ['gel', 'aba=op'],
   'Paradas': ['paradas', ''], 'Paradas › Visão geral': ['paradas', 'aba=geral'], 'Paradas › Fila técnica': ['paradas', 'aba=fila'],
-  'Equipamentos': ['equip', ''], 'Iniciativas': ['inic', ''], 'Iniciativas / Ações': ['inic', ''], 'Projetos': ['projetos', '']
+  'Equipamentos': ['equip', ''], 'Iniciativas': ['inic', ''], 'Iniciativas / Ações': ['inic', ''], 'Projetos': ['projetos', ''], 'Linha 360°': ['linha', '']
 };
 /* página inicial de quem entrou (vac.userId): a do usuário, senão a do perfil; lê a cópia do cadastro (vac.cadastros) */
 function vacPaginaInicial() {

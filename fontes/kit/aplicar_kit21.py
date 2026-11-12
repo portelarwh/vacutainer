@@ -7,9 +7,11 @@ A Produção pega o kit_v21.js ao rodar fontes/producao/build.py."""
 import os,re,json
 RAIZ=os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)),'..','..'))
 k=open(os.path.join(RAIZ,'fontes','kit','kit_v21.js'),encoding='utf-8').read()
+k=k.rstrip('\n')+'\n'+open(os.path.join(RAIZ,'fontes','kit','kit_ds.js'),encoding='utf-8').read().strip('\n')   # Design System (barra lateral, ícones, grade de gráficos)
 sis=open(os.path.join(RAIZ,'fontes','kit','sistemas.js'),encoding='utf-8').read().strip()
 PAD=re.compile(r'const DEFAULT_SYSTEMS=\[.*?\];',re.S)
 vis=open(os.path.join(RAIZ,'fontes','kit','kit_visual.css'),encoding='utf-8').read().strip()
+vis=vis+'\n'+open(os.path.join(RAIZ,'fontes','kit','kit_ds.css'),encoding='utf-8').read().strip()   # Design System: depois do padrão visual
 VIS=re.compile(r'<style id="vac-visual">.*?</style>\n?',re.S)
 bas=open(os.path.join(RAIZ,'fontes','kit','kit_bases.js'),encoding='utf-8').read().strip()
 _demo=open(os.path.join(RAIZ,'fontes','kit','kit_demo.js'),encoding='utf-8').read()
@@ -25,7 +27,7 @@ def visual(s,nome):
     if s.count(ancora)!=1: raise SystemExit('ERRO: nem </head> nem o início do vac-cabecalho achados exatamente 1 vez em '+nome+' (nada foi gravado)')
     return s.replace(ancora,bloco+ancora)
 # páginas em construção (geradas por fontes/modelo/gerar_paginas.py) recebem o mesmo kit; entram quando existirem
-NOVAS=[n for n in ['Equipamentos.html','Iniciativas.html','Projetos.html'] if os.path.exists(os.path.join(RAIZ,'paginas',n))]
+NOVAS=[n for n in ['Equipamentos.html','Iniciativas.html','Projetos.html','Linha-360.html'] if os.path.exists(os.path.join(RAIZ,'paginas',n))]
 # duas fases (07/11/2026): monta e confere todas as páginas na memória; só grava se todas passarem (um ERRO não deixa parte regravada).
 # newline='\n': no Windows, o padrão gravaria CRLF e mudaria o arquivo inteiro no diff
 saida=[]

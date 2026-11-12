@@ -1,0 +1,1258 @@
+A padronização deve funcionar como um Design System único para todas as páginas, sem alterar regras de cálculo, filtros, integrações ou armazenamento. O objetivo é fazer com que módulos antigos e novos pareçam partes do mesmo produto, inclusive em impressões, PDF e conteúdo enviado pelo Outlook.
+
+Especificação técnica de UI/UX
+Design System BD · Sistemas da Linha Vacutainer
+1. Objetivo
+
+Aplicar o mesmo padrão visual e de navegação em todas as páginas:
+
+Portal
+Produção
+Waste
+Gestão de Gel
+Paradas
+Equipamentos
+Iniciativas / Ações
+Projetos
+Relatórios
+Importação
+Administração
+
+O trabalho deve alterar somente:
+
+Estrutura visual.
+Navegação.
+Tipografia.
+Cores.
+Ícones.
+Cards.
+Tabelas.
+Gráficos.
+Filtros.
+Responsividade.
+Impressão.
+Relatórios em HTML enviados pelo Outlook.
+
+Não alterar:
+
+Fórmulas.
+Regras de negócio.
+Cálculos.
+Origem dos dados.
+Chaves dos registros.
+IDs utilizados pelo JavaScript.
+Eventos existentes.
+Importação e exportação.
+Estrutura dos objetos armazenados.
+Lógica de permissões.
+Regras de classificação.
+2. Princípio de navegação
+
+A aplicação deverá ter três níveis visuais claramente separados.
+
+Plain Text
+Nível 1 · Barra lateral
+Indica em qual módulo o usuário está.
+ 
+Nível 2 · Cabeçalho da página
+Indica página, base, período, pesquisa e usuário.
+ 
+Nível 3 · Navegação interna
+Indica a área específica dentro do módulo selecionado.
+
+Exemplo:
+
+Plain Text
+Barra lateral: Waste
+Cabeçalho: Waste › Visão Geral
+Navegação interna: Visão Geral | Comparativos | Histórico | Ações
+3. Barra lateral global
+3.1 Estrutura
+
+Utilizar barra lateral fixa no lado esquerdo.
+
+Larguras
+CSS
+Expandida: 232px
+Recolhida: 72px
+Mobile: menu sobreposto
+Altura
+CSS
+height: 100vh;
+position: fixed;
+top: 0;
+left: 0;
+Cores
+CSS
+--sidebar-bg: #102333;
+--sidebar-bg-bottom: #0D1E2B;
+--sidebar-text: #C9D8E5;
+--sidebar-text-active: #FFFFFF;
+--sidebar-hover: rgba(255, 255, 255, 0.06);
+--sidebar-active: #1972AE;
+--sidebar-active-marker: #57D6B0;
+--sidebar-divider: rgba(255, 255, 255, 0.10);
+Fundo
+CSS
+background: linear-gradient(
+180deg,
+#102333 0%,
+#0D1E2B 100%
+);
+ 
+3.2 Organização dos itens
+Parte superior
+Logotipo BD.
+Texto “Sistemas”.
+Texto secundário “Linha Vacutainer”.
+Botão para recolher a barra.
+Navegação principal
+Portal
+Produção
+Waste
+Gestão de Gel
+Paradas
+Equipamentos
+Iniciativas / Ações
+Projetos
+Navegação administrativa
+
+Separar por uma linha divisória:
+
+Relatórios
+Importação
+Administração
+Parte inferior
+Ajuda
+Modo TV
+Usuário ou identificação da estação
+Botão “Recolher menu”
+3.3 Estado ativo
+
+O módulo ativo deve apresentar:
+
+Fundo azul.
+Texto branco.
+Ícone branco.
+Marcador vertical verde-água no lado esquerdo.
+Cantos arredondados.
+Nenhuma mudança de tamanho que provoque deslocamento dos demais itens.
+CSS
+.sidebar-item.active {
+background: #1972AE;
+color: #FFFFFF;
+border-left: 3px solid #57D6B0;
+border-radius: 8px;
+}
+3.4 Barra recolhida
+
+Quando recolhida:
+
+Mostrar somente ícones.
+Manter o logotipo BD reduzido.
+Largura de 72 px.
+Exibir tooltip ao passar o mouse.
+Preservar visualmente o módulo ativo.
+Salvar a preferência no localStorage.
+JavaScript
+localStorage.setItem("sidebarCollapsed", "true");
+
+O estado deve ser reaplicado quando o usuário abrir outra página.
+
+3.5 Comportamento responsivo
+Desktop acima de 1.200 px
+Barra lateral expandida por padrão.
+Conteúdo ao lado.
+Notebook entre 900 e 1.200 px
+Barra recolhida por padrão.
+Expandida ao clicar.
+Abaixo de 900 px
+Barra escondida.
+Abrir como painel sobreposto.
+Fundo da página deve receber uma camada escura.
+Fechar com botão, clique externo ou tecla Esc.
+4. Cabeçalho superior
+
+Criar uma barra superior fixa ou sticky, posicionada à direita da barra lateral.
+
+CSS
+height: 58px;
+background: #FFFFFF;
+border-bottom: 1px solid #DCE6EF;
+position: sticky;
+top: 0;
+z-index: 20;
+Conteúdo do cabeçalho
+Lado esquerdo
+
+Breadcrumb:
+
+Plain Text
+Waste › Visão Geral
+Produção › Lançamento
+Portal › Minha Fila
+Centro e lado direito
+Status da base.
+Nome da base.
+Revisão.
+Período ativo.
+Campo de pesquisa.
+Notificações.
+Identificação do usuário.
+Menu de perfil.
+4.1 Status da base
+
+Utilizar badge verde:
+
+Plain Text
+● BASE NA PASTA
+● BASE ATUALIZADA
+CSS
+background: #EAF7EF;
+border: 1px solid #C7E8D4;
+color: #14804A;
+
+Estados alternativos:
+
+Estado	Cor
+Atualizada	Verde
+Em atualização	Azul
+Atenção	Âmbar
+Erro	Vermelho
+Sem informação	Cinza
+5. Cabeçalho da página
+
+Abaixo do cabeçalho global, cada módulo deve ter um cabeçalho próprio.
+
+Estrutura
+Plain Text
+[Ícone do módulo] TÍTULO
+Descrição curta da finalidade da página
+ 
+[Ação secundária] [Ação principal]
+
+Exemplo:
+
+Plain Text
+[Ícone Waste] WASTE
+Gestão de perdas e desvios da linha Vacutainer
+ 
+[Exportar] [Sincronizar dados]
+Dimensões
+CSS
+padding: 22px 28px 18px;
+background: #FFFFFF;
+Título
+CSS
+font-size: 26px;
+font-weight: 750;
+color: #102F55;
+Subtítulo
+CSS
+font-size: 13px;
+color: #64788F;
+6. Navegação interna do módulo
+
+As páginas internas do módulo devem permanecer em uma barra horizontal abaixo do cabeçalho.
+
+Exemplo para Waste:
+
+Visão Geral
+Comparativos
+Importar
+Histórico
+Ações
+Qualidade dos Dados
+Fechamento
+Relatórios
+Configuração
+Regras
+Não usar a barra interna para trocar de módulo.
+Manter apenas páginas pertencentes ao módulo atual.
+Item ativo com texto azul e linha inferior de 3 px.
+Permitir rolagem horizontal em telas menores.
+Evitar menus suspensos enquanto houver espaço.
+CSS
+.module-tabs {
+min-height: 46px;
+background: #FFFFFF;
+border-bottom: 1px solid #DCE6EF;
+}
+ 
+.module-tab.active {
+color: #0D5E9C;
+border-bottom: 3px solid #0D5E9C;
+}
+7. Paleta de cores
+7.1 Cores estruturais
+CSS
+:root {
+--color-primary-900: #102333;
+--color-primary-800: #102F55;
+--color-primary-700: #0D4F83;
+--color-primary-600: #0D5E9C;
+--color-primary-500: #1972AE;
+--color-primary-400: #3184C8;
+--color-primary-100: #EAF4FC;
+--color-primary-050: #F4F9FD;
+ 
+--color-background: #F2F7FB;
+--color-surface: #FFFFFF;
+--color-surface-secondary: #F8FBFD;
+ 
+--color-border: #DCE6EF;
+--color-border-light: #EAF0F5;
+ 
+--color-text: #102F55;
+--color-text-secondary: #64788F;
+--color-text-muted: #8292A4;
+}
+7.2 Cores semânticas
+CSS
+--color-success: #14804A;
+--color-success-bg: #EAF7EF;
+ 
+--color-danger: #C94645;
+--color-danger-bg: #FDEDED;
+ 
+--color-warning: #D78B11;
+--color-warning-bg: #FFF5DF;
+ 
+--color-info: #1972AE;
+--color-info-bg: #EAF4FC;
+ 
+--color-neutral: #6F8092;
+--color-neutral-bg: #F0F3F6;
+ 
+--color-purple: #7A45C5;
+--color-purple-bg: #F3ECFC;
+7.3 Regra financeira para Waste
+
+Manter o sinal contábil e o significado visual claramente separados.
+
+Favorável
+Verde.
+Ícone de tendência favorável.
+Nunca depender somente da cor.
+Exibir legenda “Favorável”.
+Desfavorável
+Vermelho.
+Ícone de alerta ou tendência desfavorável.
+Exibir legenda “Desfavorável”.
+Sem meta
+Cor neutra ou âmbar.
+Texto “Meta não cadastrada”.
+Não utilizar vermelho se não houver erro.
+Valor zero
+Cor neutra.
+Não apresentar como sucesso nem como erro.
+8. Tipografia
+Fonte principal
+
+Priorizar:
+
+CSS
+font-family:
+"Segoe UI",
+Inter,
+Arial,
+sans-serif;
+
+Se a aplicação já utilizar Barlow, manter Barlow apenas nos títulos operacionais, desde que isso seja padronizado em todas as páginas.
+
+Escala tipográfica
+Uso	Tamanho	Peso
+Título do módulo	26–28 px	700–800
+Título da seção	17–19 px	700
+Título de card	13–15 px	600–700
+KPI principal	22–30 px	700–800
+Texto normal	13–14 px	400
+Texto auxiliar	11–12 px	400–500
+Label de campo	11–12 px	600
+Tabela	11–13 px	400–600
+
+Não usar fonte condensada em:
+
+Valores financeiros.
+Tabelas.
+Textos explicativos.
+Campos.
+Mensagens de erro.
+
+Fonte condensada pode ser utilizada somente em:
+
+Identificação curta de turno.
+Número de seção.
+Etiquetas operacionais pequenas.
+9. Sistema de ícones
+Biblioteca recomendada
+
+Utilizar apenas uma biblioteca em toda a aplicação:
+
+Lucide Icons, preferencialmente.
+Alternativa: Microsoft Fluent UI System Icons.
+
+Não misturar:
+
+Emojis.
+Caracteres Unicode.
+Ícones preenchidos de bibliotecas diferentes.
+Ícones desenhados manualmente sem padrão.
+Padrão visual
+Plain Text
+Estilo: outline
+Espessura: 1,75 px ou 2 px
+Tamanho comum: 18–20 px
+Cards KPI: 20–24 px
+Cabeçalho de módulo: 26–30 px
+Barra lateral: 19–21 px
+Mapeamento sugerido
+Função	Ícone Lucide
+Portal	LayoutDashboard
+Produção	ChartNoAxesCombined ou Factory
+Waste	Trash2
+Gestão de Gel	Boxes ou PackageCheck
+Paradas	CirclePause
+Equipamentos	MonitorCog
+Iniciativas	ListChecks
+Projetos	FolderKanban
+Relatórios	FileChartColumn
+Importação	CloudUpload
+Administração	Settings
+Atualizar	RefreshCw
+Exportar	Download
+Filtro	SlidersHorizontal
+Pesquisa	Search
+Informação	Info
+Sucesso	CircleCheck
+Alerta	TriangleAlert
+Erro	CircleX
+Período	CalendarDays
+Usuário	CircleUserRound
+Tela cheia	Maximize2
+Abrir detalhe	ChevronRight
+Recolher menu	PanelLeftClose
+Regra
+
+Todo ícone que representa uma ação deve possuir:
+
+HTML
+aria-label
+title
+tooltip
+
+Não utilizar somente o ícone quando a ação puder ser ambígua.
+
+10. Estrutura das páginas
+
+Todas as páginas devem seguir esta sequência sempre que aplicável:
+
+Plain Text
+01 · Filtros e contexto
+02 · Situação ou resumo
+03 · Indicadores principais
+04 · Análises e gráficos
+05 · Detalhamento
+06 · Ações ou pendências
+
+Nem todas as páginas precisam ter todas as seções, mas a ordem lógica deve permanecer.
+
+11. Títulos numerados de seção
+
+Utilizar um marcador azul com número.
+
+Plain Text
+[01] Filtros
+[02] Resumo do período
+[03] Acompanhamento
+[04] Análises
+[05] Detalhamento
+Estilo
+CSS
+.section-number {
+width: 26px;
+height: 26px;
+border-radius: 6px;
+background: #1972AE;
+color: #FFFFFF;
+font-size: 12px;
+font-weight: 700;
+}
+
+Ao lado:
+
+Título da seção.
+Descrição curta.
+Ações da seção alinhadas à direita.
+12. Cards
+12.1 Card base
+CSS
+.card {
+background: #FFFFFF;
+border: 1px solid #DCE6EF;
+border-radius: 12px;
+box-shadow: 0 4px 14px rgba(32, 61, 88, 0.06);
+padding: 16px;
+}
+ 
+Interação
+CSS
+.card-interactive {
+cursor: pointer;
+transition:
+transform 120ms ease,
+box-shadow 120ms ease,
+border-color 120ms ease;
+}
+ 
+.card-interactive:hover {
+transform: translateY(-1px);
+border-color: #AFCBE2;
+box-shadow: 0 7px 18px rgba(32, 61, 88, 0.10);
+}
+ 
+.card-interactive:active {
+transform: translateY(0);
+}
+ 
+.card-interactive:focus-visible {
+outline: 3px solid rgba(25, 114, 174, 0.25);
+outline-offset: 2px;
+}
+
+Não movimentar cards mais que 1 ou 2 px. Movimentos maiores deixam dashboards operacionais visualmente instáveis.
+
+12.2 Card de KPI
+
+Estrutura:
+
+Plain Text
+[Ícone] Nome do indicador [>]
+ 
+Valor principal
+ 
+Explicação, meta ou comparação
+Regras
+Ícone dentro de círculo colorido suave.
+Valor como elemento principal.
+Texto auxiliar com no máximo duas linhas.
+Seta somente se o card abrir detalhe.
+Barra lateral colorida opcional para status.
+Tooltip no título quando o cálculo precisar de explicação.
+Exemplo
+HTML
+<article class="kpi-card status-danger" tabindex="0">
+<div class="kpi-header">
+<span class="kpi-icon">...</span>
+<span class="kpi-title">MUV do período</span>
+<span class="kpi-action">...</span>
+</div>
+ 
+<strong class="kpi-value">-R$ 179.152,93</strong>
+<small class="kpi-description">Sem meta cadastrada</small>
+</article>
+12.3 Card sem dados
+
+Não deixar o card vazio nem mostrar apenas traço.
+
+Usar:
+
+Plain Text
+Sem dados no período
+Última atualização: 10/11/2026 11:24
+[Ver fonte dos dados]
+
+Visual:
+
+Ícone neutro.
+Fundo normal.
+Badge cinza “Sem dados”.
+Não utilizar vermelho.
+13. Filtros
+Estrutura
+
+Os filtros devem ficar em um card próprio e recolhível.
+
+Cabeçalho
+Plain Text
+[01] Filtros
+Selecione os filtros para atualizar os dados.
+ 
+Ocultar filtros
+Organização
+Uma linha principal em telas grandes.
+Duas linhas quando houver muitos campos.
+Duas colunas em tablets.
+Uma coluna no mobile.
+Componentes
+Período.
+Tipo de ordem.
+Linha.
+Semana.
+Componente.
+SKU.
+Busca.
+Exibição.
+Top N.
+Botão aplicar.
+Limpar filtros.
+Botões
+Plain Text
+Aplicar filtros = primário azul
+Limpar filtros = secundário branco
+Comportamento
+Mostrar indicador quando houver filtros ativos.
+Permitir remover filtros por chips.
+Não aplicar filtros silenciosamente em páginas pesadas.
+Exibir um resumo:
+Plain Text
+Filtros ativos: Ontem · Linha 360060 · Top 15
+14. Botões
+Primário
+CSS
+background: #0D5E9C;
+color: #FFFFFF;
+border: 1px solid #0D5E9C;
+
+Uso:
+
+Salvar.
+Aplicar.
+Confirmar.
+Sincronizar.
+Fechar turno.
+Secundário
+CSS
+background: #FFFFFF;
+color: #234766;
+border: 1px solid #D5E1EC;
+
+Uso:
+
+Exportar.
+Limpar.
+Voltar.
+Abrir histórico.
+Perigoso
+CSS
+background: #C94645;
+color: #FFFFFF;
+
+Uso somente para:
+
+Excluir.
+Cancelar definitivamente.
+Reabrir com impacto crítico.
+Descartar alterações.
+Alturas
+Plain Text
+Pequeno: 30–32 px
+Normal: 38–40 px
+Destaque: 44 px
+
+Área mínima de interação: 40 × 40 px.
+
+15. Tabelas
+Estrutura
+Cabeçalho fixo em tabelas longas.
+Primeira coluna fixa quando necessário.
+Rolagem horizontal em notebook.
+Linhas entre 40 e 48 px.
+Sem borda pesada em todas as células.
+Divisórias horizontais suaves.
+Valores numéricos alinhados à direita.
+Textos alinhados à esquerda.
+Status centralizado.
+Cabeçalho
+CSS
+background: #F3F7FB;
+color: #3F5871;
+font-size: 11px;
+font-weight: 700;
+
+Evitar cabeçalho azul-escuro nas tabelas normais. Reservar azul-escuro para:
+
+Relatórios impressos.
+Tabelas-resumo.
+Destaques de fechamento.
+Interação
+Hover suave.
+Linha selecionada com fundo azul-claro.
+Ordenação indicada por seta.
+Filtro de coluna quando necessário.
+Tooltip para valores truncados.
+Ação “Abrir” sempre na última coluna.
+Status
+Plain Text
+CRÍTICA = vermelho
+ALTA = vermelho suave ou laranja escuro
+ATENÇÃO = âmbar
+NORMAL = verde
+SEM DADOS = cinza
+
+Evitar pintar a linha inteira de vermelho. Isso prejudica a leitura de tabelas grandes. Usar:
+
+Badge de status.
+Barra lateral.
+Valor crítico em vermelho.
+Fundo vermelho muito claro somente na célula relevante.
+16. Gráficos
+Biblioteca
+
+Manter a biblioteca atual se os gráficos já estiverem funcionando. Caso seja necessária padronização, utilizar:
+
+Chart.js para gráficos simples.
+Apache ECharts para dashboards interativos mais complexos.
+
+Não trocar a biblioteca apenas por motivo visual. O estilo pode ser aplicado por configuração.
+
+16.1 Paleta dos gráficos
+JavaScript
+const chartColors = {
+blue: "#1972AE",
+darkBlue: "#0D4F83",
+green: "#14804A",
+greenLight: "#57B88A",
+red: "#D94B4B",
+redLight: "#F1A2A2",
+amber: "#E3A22B",
+purple: "#7A45C5",
+gray: "#A8B4C1",
+grid: "#E4EBF2",
+text: "#536A82"
+};
+Regras
+Máximo de 6 cores simultâneas.
+Vermelho somente para perda, falha ou resultado desfavorável.
+Verde somente para resultado favorável ou meta alcançada.
+Azul para valores neutros, produção, target ou série principal.
+Cinza para referência, indisponibilidade ou histórico.
+Não utilizar cores diferentes apenas para decorar.
+16.2 Gráfico de evolução
+
+Para MUV, OEE, produção ou perdas:
+
+Barras para valores mensais.
+Linha para target.
+Linha zero claramente visível.
+Valores positivos e negativos com cores semânticas.
+Tooltip com valor completo.
+Unidade no eixo.
+Título informando período e moeda.
+
+Exemplo:
+
+Plain Text
+MUV mensal
+Barras verdes: favorável
+Barras vermelhas: desfavorável
+Linha azul: target
+16.3 Pareto
+
+O Pareto deve conter:
+
+Barras horizontais.
+Ordenação do maior impacto para o menor.
+Valor financeiro ao final de cada barra.
+Percentual acumulado.
+Linha ou indicação de 80%.
+Top N configurável.
+“Outros” agrupando itens fora do Top N.
+Clique na barra aplicando filtro.
+Barra selecionada com contorno azul ou âmbar.
+Cálculo visual
+
+A ordenação pode usar impacto absoluto, mas o sinal deve permanecer visível:
+
+Plain Text
+Desfavorável: barra vermelha
+Favorável: barra verde
+Tooltip
+Plain Text
+Componente: 360060
+Impacto líquido: R$ 177.114,32
+Classificação: Desfavorável
+Participação: 46,8%
+Acumulado: 46,8%
+16.4 Interação dos gráficos
+Hover mostra tooltip.
+Clique aplica filtro.
+Segundo clique remove o filtro.
+Seleção deve aparecer acima do gráfico como chip.
+Botão “Limpar seleção”.
+Cursor pointer somente em elementos clicáveis.
+Não esconder legenda importante.
+Permitir exportação PNG quando o gráfico for usado em relatórios.
+17. Mensagens e feedback
+Toast
+
+Usar para confirmações rápidas:
+
+Plain Text
+Dados sincronizados.
+Filtros aplicados.
+Relatório exportado.
+Alteração salva.
+
+Duração sugerida: 4 a 6 segundos.
+
+Banner
+
+Usar para estados que permanecem relevantes:
+
+Plain Text
+Base desatualizada.
+Existem 15 críticas sem causa.
+Meta ainda não cadastrada.
+Modal
+
+Usar somente quando:
+
+A ação for irreversível.
+A ação alterar indicadores.
+Houver impacto em outras páginas.
+For necessária confirmação explícita.
+18. Estados obrigatórios
+
+Cada componente deve prever:
+
+Carregando.
+Sem dados.
+Erro.
+Sucesso.
+Dados desatualizados.
+Sem permissão.
+Filtro sem resultado.
+Conteúdo parcial.
+Skeleton
+
+Utilizar skeleton em vez de spinner para:
+
+KPIs.
+Tabelas.
+Cards.
+Gráficos.
+
+Spinner deve ser reservado para botões e ações rápidas.
+
+19. Responsividade
+Breakpoints
+CSS
+--breakpoint-mobile: 680px;
+--breakpoint-tablet: 900px;
+--breakpoint-notebook: 1200px;
+--breakpoint-desktop: 1440px;
+Grid recomendado
+Plain Text
+Acima de 1.440 px: 4 cards
+1.200 a 1.440 px: 3 ou 4 cards
+900 a 1.200 px: 2 cards
+Abaixo de 680 px: 1 card
+Regras
+Não reduzir valores até ficarem ilegíveis.
+Reduzir colunas antes de reduzir tipografia.
+Tabelas usam rolagem horizontal.
+Navegação interna usa rolagem horizontal.
+Barra lateral vira menu sobreposto.
+Botões principais devem permanecer visíveis.
+20. Acessibilidade
+
+Adotar como referência WCAG 2.1 AA.
+
+Requisitos
+Contraste mínimo de 4,5:1 para texto normal.
+Contraste mínimo de 3:1 para texto grande.
+Navegação completa por teclado.
+Foco visível.
+aria-label em botões com ícone.
+aria-expanded em seções recolhíveis.
+aria-current="page" no item ativo.
+Não depender somente de vermelho e verde.
+Tooltips acessíveis por teclado.
+Gráficos acompanhados por resumo textual.
+Tabelas com caption, thead e scope.
+21. Impressão e PDF
+
+A aparência impressa deve ser uma continuação do dashboard, mas sem elementos interativos desnecessários.
+
+21.1 O que remover na impressão
+Barra lateral.
+Campo de pesquisa.
+Notificações.
+Menu do usuário.
+Navegação interna.
+Botões.
+Tooltips.
+Efeitos de hover.
+Campos vazios.
+Elementos recolhidos sem conteúdo.
+Controles de paginação interativos.
+CSS
+@media print {
+.side-nav,
+.topbar,
+.module-tabs,
+.page-actions,
+.filter-actions,
+.no-print {
+display: none !important;
+}
+}
+21.2 Cabeçalho impresso
+
+Toda impressão deve conter:
+
+Plain Text
+BD · Sistemas da Linha Vacutainer
+Nome do relatório
+Módulo
+Período
+Filtros aplicados
+Data e hora de geração
+Base e revisão
+
+Exemplo:
+
+Plain Text
+BD · Sistemas da Linha Vacutainer
+Relatório de Waste · Visão Geral
+ 
+Período: 10/11/2026
+Linha: Todas
+Competência: out/2026
+Base: Vacutainer-TESTE · revisão 83
+Gerado em: 11/11/2026 22:47
+21.3 Rodapé impresso
+Plain Text
+Documento gerado automaticamente pelo Sistema da Linha Vacutainer
+Página X de Y
+
+Se o relatório contiver dados financeiros:
+
+Plain Text
+Uso interno · Valores conforme base disponível na data de geração
+21.4 Formato de página
+Dashboard e SQDCP
+CSS
+@page {
+size: A4 landscape;
+margin: 10mm;
+}
+Relatórios tabulares
+CSS
+@page {
+size: A4 landscape;
+margin: 8mm;
+}
+Relatórios narrativos
+CSS
+@page {
+size: A4 portrait;
+margin: 12mm;
+}
+21.5 Regras para cards impressos
+Remover sombras.
+Manter borda cinza.
+Fundo branco.
+Preservar barra lateral de status.
+Não quebrar o card entre páginas.
+CSS
+@media print {
+.card,
+.kpi-card,
+.chart-card {
+box-shadow: none !important;
+break-inside: avoid;
+page-break-inside: avoid;
+}
+}
+21.6 Regras para gráficos impressos
+Fundo branco.
+Legendas visíveis.
+Fonte mínima de 9 pt.
+Não depender de hover.
+Mostrar valores importantes diretamente.
+Preservar vermelho, verde e azul.
+Adicionar padrões ou símbolos quando impresso em escala de cinza.
+Evitar transparência muito baixa.
+
+Cada gráfico deve ter abaixo uma frase-resumo:
+
+Plain Text
+Maior impacto desfavorável: componente 360060, R$ 177.114,32.
+22. Conteúdo enviado pelo Outlook
+
+O Outlook possui suporte limitado a CSS moderno. Portanto, o relatório enviado por e-mail não deve reutilizar diretamente o layout completo da aplicação.
+
+Criar um template específico para e-mail.
+
+22.1 Regras técnicas
+Utilizar tabelas HTML para estrutura.
+CSS inline.
+Largura máxima de 680 px.
+Fundo geral cinza muito claro.
+Cards em tabelas com borda.
+Evitar grid, flex, position: fixed e JavaScript.
+Não usar SVG complexo inline.
+Converter gráficos em PNG.
+Usar fontes seguras.
+CSS
+font-family: Arial, "Segoe UI", sans-serif;
+22.2 Estrutura do e-mail
+Plain Text
+Logo BD
+Nome do relatório
+Período e filtros
+ 
+Resumo executivo
+4 KPIs principais
+ 
+Gráfico principal em PNG
+ 
+Ações prioritárias
+Tabela resumida
+ 
+Botão “Abrir relatório completo”
+ 
+Rodapé com base, revisão e horário
+22.3 KPIs no Outlook
+
+No máximo quatro KPIs por e-mail:
+
+Indicador	Valor
+MUV do período	-R$ 179.152,93
+Desfavorável	R$ 536.277,85
+Favorável	-R$ 715.430,78
+Ordens críticas	12
+
+No mobile, os cards devem ficar empilhados.
+
+22.4 Gráficos no Outlook
+
+Os gráficos devem ser renderizados como imagem:
+
+Plain Text
+Formato: PNG
+Largura: 1.200 px
+Exibição no e-mail: 640–680 px
+Fundo: branco
+Resolução: aproximadamente 144 dpi
+
+Cada imagem deve conter:
+
+Título.
+Período.
+Unidade.
+Legenda.
+Valores principais.
+Data de geração.
+
+Não enviar gráfico que dependa de tooltip.
+
+22.5 Botão para abrir o sistema
+
+Utilizar botão compatível com Outlook:
+
+Plain Text
+Abrir relatório completo
+
+Estilo:
+
+CSS
+background: #0D5E9C;
+color: #FFFFFF;
+padding: 12px 20px;
+border-radius: 6px;
+font-weight: 700;
+
+O texto do e-mail deve permanecer compreensível mesmo que as imagens sejam bloqueadas.
+
+23. Variáveis CSS centrais
+
+Criar um único arquivo de tokens:
+
+Plain Text
+/design-system/tokens.css
+
+Exemplo:
+
+CSS
+:root {
+--sidebar-width: 232px;
+--sidebar-width-collapsed: 72px;
+--topbar-height: 58px;
+ 
+--color-primary: #0D5E9C;
+--color-primary-hover: #0B4F84;
+--color-primary-light: #EAF4FC;
+ 
+--color-success: #14804A;
+--color-danger: #C94645;
+--color-warning: #D78B11;
+--color-info: #1972AE;
+ 
+--color-bg: #F2F7FB;
+--color-surface: #FFFFFF;
+--color-border: #DCE6EF;
+ 
+--color-text: #102F55;
+--color-text-secondary: #64788F;
+ 
+--radius-sm: 6px;
+--radius-md: 8px;
+--radius-lg: 12px;
+ 
+--shadow-card: 0 4px 14px rgba(32, 61, 88, 0.06);
+--shadow-hover: 0 7px 18px rgba(32, 61, 88, 0.10);
+ 
+--space-1: 4px;
+--space-2: 8px;
+--space-3: 12px;
+--space-4: 16px;
+--space-5: 20px;
+--space-6: 24px;
+--space-7: 28px;
+}
+24. Componentes reutilizáveis
+
+Criar componentes de interface comuns:
+
+Plain Text
+AppShell
+Sidebar
+Topbar
+ModuleHeader
+ModuleTabs
+SectionHeader
+FilterPanel
+KpiCard
+StatusBadge
+InfoBanner
+ChartCard
+DataTable
+EmptyState
+LoadingSkeleton
+Toast
+Modal
+PrintHeader
+PrintFooter
+EmailReport
+
+Cada página deve montar os mesmos componentes, alterando apenas:
+
+Título.
+Ícone.
+Dados.
+Gráficos.
+Tabela.
+Ações específicas.
+25. Estratégia para páginas antigas
+
+Não reescrever todas as páginas de uma vez.
+
+Camada 1 · Design System
+
+Criar:
+
+Plain Text
+tokens.css
+components.css
+layout.css
+print.css
+email-report.css
+icons.js
+app-shell.js
+Camada 2 · Adaptação visual
+
+Envolver o conteúdo existente:
+
+HTML
+<div class="app-shell">
+<aside class="side-nav"></aside>
+ 
+<main class="app-main">
+<header class="topbar"></header>
+<section class="module-header"></section>
+<nav class="module-tabs"></nav>
+ 
+<div class="page-content">
+<!-- conteúdo existente -->
+</div>
+</main>
+</div>
+Camada 3 · Conversão gradual
+
+Aplicar classes padronizadas:
+
+Plain Text
+.card antiga → .card
+.kpi antigo → .kpi-card
+.filtros antigos → .filter-panel
+tabela antiga → .data-table
+mensagem antiga → .info-banner
+Regra crítica
+
+Não renomear ID nem remover atributos usados pelo JavaScript.
+
+Exemplo:
+
+HTML
+<!-- Manter o ID original -->
+<div id="kpis" class="kpi-grid"></div>
+26. Critérios de aceite
+
+A alteração estará concluída quando:
+
+Todas as páginas tiverem a mesma barra lateral.
+O estado ativo estiver correto.
+A preferência expandida/recolhida for preservada.
+Cabeçalhos seguirem o mesmo padrão.
+Cards usarem os mesmos raios, sombras e espaçamentos.
+Ícones vierem de uma única biblioteca.
+Cores semânticas tiverem o mesmo significado.
+Filtros tiverem padrão consistente.
+Tabelas tiverem cabeçalho, alinhamento e status consistentes.
+Gráficos utilizarem a mesma paleta.
+Impressões não mostrarem navegação nem botões.
+Gráficos impressos forem compreensíveis sem hover.
+E-mails do Outlook forem legíveis com imagens bloqueadas.
+O layout funcionar em 1.920, 1.440, 1.366, 1.024 e 768 px.
+Nenhuma regra de cálculo tiver sido alterada.
+Prompt consolidado para aplicar em todas as páginas
+Plain Text
+Atualize exclusivamente o design, layout, navegação e apresentação visual desta página. Não altere fórmulas, cálculos, regras de negócio, fontes de dados, IDs utilizados pelo JavaScript, eventos existentes, estrutura de armazenamento, permissões, importações ou exportações.
+ 
+Aplique o Design System BD – Sistemas da Linha Vacutainer.
+ 
+Use uma barra lateral global fixa e recolhível no lado esquerdo. A barra deve ter 232 px quando expandida e 72 px quando recolhida. Utilize fundo em gradiente de #102333 para #0D1E2B. O item ativo deve ter fundo #1972AE, texto branco e marcador lateral #57D6B0. Inclua Portal, Produção, Waste, Gestão de Gel, Paradas, Equipamentos, Iniciativas / Ações e Projetos. Separe Relatórios, Importação e Administração. Na parte inferior, inclua Ajuda, Modo TV e o controle para recolher a barra.
+ 
+No topo do conteúdo, crie um cabeçalho de 58 px com breadcrumb, status da base, nome e revisão da base, período, pesquisa, notificações e usuário. Abaixo, crie o cabeçalho do módulo com ícone, título, descrição curta e ações principais. Mantenha as páginas internas do módulo em uma barra horizontal secundária com item ativo sublinhado em azul.
+ 
+Utilize fundo geral #F2F7FB, superfícies brancas, bordas #DCE6EF, texto principal #102F55 e texto secundário #64788F. Utilize azul #0D5E9C como cor principal, verde #14804A para sucesso ou resultado favorável, vermelho #C94645 para erro, perda ou resultado desfavorável, âmbar #D78B11 para atenção e cinza para ausência de dados.
+ 
+Use Segoe UI ou Inter como fonte principal. Utilize Lucide Icons em estilo outline, com espessura consistente de aproximadamente 2 px. Não use emojis nem misture bibliotecas de ícones.
+ 
+Organize a página em seções numeradas: Filtros, Resumo, Indicadores, Análises, Detalhamento e Ações, conforme aplicável. Cada seção deve ter número dentro de um quadrado azul, título, descrição curta e ações alinhadas à direita.
+ 
+Cards devem ter fundo branco, borda de 1 px, raio de 12 px, sombra discreta e espaçamento interno de 16 px. Cards clicáveis devem subir no máximo 1 px ao passar o mouse e apresentar borda azul suave. Todos os cards devem possuir estados de foco acessíveis.
+ 
+Cards KPI devem apresentar ícone, nome do indicador, valor principal, descrição e seta somente quando abrirem detalhe. Favorável deve ser verde, desfavorável vermelho, atenção âmbar e ausência de dados cinza. Não depender somente de cor para transmitir status.
+ 
+Filtros devem ficar dentro de um painel recolhível. Organize campos em grid responsivo. Use botão azul para Aplicar filtros e botão branco para Limpar filtros. Mostre filtros ativos como chips.
+ 
+Tabelas devem possuir cabeçalho claro, linhas entre 40 e 48 px, valores numéricos alinhados à direita, textos à esquerda, status em badges e ação na última coluna. Evite pintar linhas inteiras de vermelho. Utilize rolagem horizontal e cabeçalho fixo em tabelas longas.
+ 
+Gráficos devem usar azul para séries neutras e targets, vermelho para resultados desfavoráveis, verde para favoráveis, âmbar para atenção e cinza para referência. Paretos devem utilizar barras horizontais, ordenação por impacto absoluto, valor ao final da barra, percentual acumulado, indicação de 80%, Top N configurável e agrupamento “Outros”. Clique em uma barra deve aplicar filtro e exibir a seleção como chip.
+ 
+Gráficos de evolução devem utilizar barras para valores e linha para target. Mostrar linha zero, unidade, período, legenda e tooltip. Não depender apenas de hover; valores críticos devem permanecer visíveis.
+ 
+Implemente responsividade: quatro cards em desktop amplo, duas colunas em tablet e uma coluna em mobile. Em telas abaixo de 900 px, a barra lateral deve se transformar em menu sobreposto.
+ 
+Crie estilos de impressão. Na impressão ou PDF, esconder barra lateral, cabeçalho interativo, abas, filtros, botões e controles. Adicionar cabeçalho com logotipo, nome do relatório, módulo, período, filtros, base, revisão e horário de geração. Adicionar rodapé com página X de Y e identificação de uso interno. Cards e gráficos não devem ser quebrados entre páginas. Remover sombras e preservar bordas e cores semânticas.
+ 
+Para relatórios enviados pelo Outlook, criar template específico de e-mail com largura máxima de 680 px, estrutura baseada em tabelas HTML, CSS inline e fontes Segoe UI ou Arial. Não utilizar grid, flex, JavaScript ou SVG complexo no e-mail. Converter gráficos em PNG com fundo branco, título, período, unidade e legenda. Incluir no máximo quatro KPIs principais, resumo executivo, gráfico principal, ações prioritárias, tabela resumida e botão “Abrir relatório completo”.
+ 
+Preserve integralmente o motor atual. Qualquer alteração deve ser restrita à apresentação visual, estrutura de navegação, responsividade, acessibilidade, impressão e comunicação por e-mail.
+Próximos passos
+
+Use esse documento como especificação principal e o último bloco como prompt padrão para cada página. A primeira implementação deve criar os componentes globais, principalmente Sidebar, Topbar, ModuleHeader, ModuleTabs, KpiCard, ChartCard, DataTable, PrintHeader e EmailReport. Depois disso, cada página antiga deve apenas consumir os mesmos componentes, sem duplicar estilos.
