@@ -47,6 +47,10 @@ const VAC_ICONES = {
   camadas: '<path d="m12.83 2.18a2 2 0 0 0-1.66 0L2.6 6.08a1 1 0 0 0 0 1.83l8.58 3.91a2 2 0 0 0 1.66 0l8.58-3.9a1 1 0 0 0 0-1.83Z"/><path d="m22 17.65-9.17 4.16a2 2 0 0 1-1.66 0L2 17.65"/><path d="m22 12.65-9.17 4.16a2 2 0 0 1-1.66 0L2 12.65"/>',
   editar: '<path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z"/><path d="m15 5 4 4"/>',
   mais: '<path d="M5 12h14"/><path d="M12 5v14"/>',
+  check: '<path d="M20 6 9 17l-5-5"/>',
+  play: '<polygon points="6 3 20 12 6 21 6 3"/>',
+  pausa: '<rect x="14" y="4" width="4" height="16" rx="1"/><rect x="6" y="4" width="4" height="16" rx="1"/>',
+  imprimir: '<path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><path d="M6 9V3a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v6"/><rect x="6" y="14" width="12" height="8" rx="1"/>',
   ampliar: '<polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" x2="14" y1="3" y2="10"/><line x1="3" x2="10" y1="21" y2="14"/>'
 };
 function vacIcone(nome, cls) { const p = VAC_ICONES[nome] || VAC_ICONES.info; return '<svg class="vi' + (cls ? ' ' + cls : '') + '" viewBox="0 0 24 24" aria-hidden="true" focusable="false">' + p + '</svg>'; }
@@ -135,6 +139,20 @@ const vacShell = (() => {
   const ini = () => { try { montar(); impressao(); } catch (e) { console.warn('vacShell', e); } };
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', ini); else ini();
   return { montar, migalha, aplicarRec };
+})();
+
+/* ----- vacSimbolos · troca o símbolo de texto no início de botões, links-botão e abas pelo ícone Lucide correspondente (12/11/2026).
+   Só apresentação: o texto do botão continua; botão só com o símbolo é trocado apenas se tiver title ou aria-label. Refaz ao redesenhar. ----- */
+const vacSimbolos = (() => {
+  const M = { '⇩': 'baixar', '⤓': 'baixar', '⬇': 'baixar', '↻': 'atualizar', '⟳': 'atualizar', '✓': 'check', '✔': 'check', '▶': 'play', '⛁': 'salvar', '▣': 'tv', '⏸': 'pausa', '✗': 'fechar', '✕': 'fechar', '✖': 'fechar', '↪': 'restaurar', '↶': 'restaurar', '✎': 'editar', '⎙': 'imprimir', '🖨': 'imprimir', '←': 'esquerda', '＋': 'mais', '⚙': 'admin', '⌕': 'busca' };
+  const SEL = 'main button, main a.b, main summary, .vpage button, .vpage summary, nav.vtabs button, .mod button, .modal button, .overlay button';
+  function aplicar() { document.querySelectorAll(SEL).forEach(b => { const n = b.firstChild; if (!n || n.nodeType !== 3) return; const t = n.textContent, m = /^\s*(\S+?)\uFE0F?(\s+|$)/u.exec(t); if (!m) return; const ic = M[[...m[1]][0]]; if (!ic || [...m[1]].length > 1) return;
+    const resto = t.slice(m[0].length); if (!resto.trim() && !b.children.length && !(b.title || b.getAttribute('aria-label'))) return; if (b.closest('.vg-barra, header.vsuite')) return;
+    n.textContent = resto; b.insertAdjacentHTML('afterbegin', vacIcone(ic, 'sm in')); }); }
+  let t = 0; const agendar = () => { clearTimeout(t); t = setTimeout(() => { try { aplicar(); } catch (e) { console.warn('vacSimbolos', e); } }, 120); };
+  const ini = () => { if (window.VAC_SIMBOLOS_OFF) return; new MutationObserver(agendar).observe(document.body, { childList: true, subtree: true }); agendar(); };
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', () => setTimeout(ini, 200)); else setTimeout(ini, 200);
+  return { aplicar };
 })();
 
 /* ----- vacOrdemLote · regra da linha (12/11/2026): cada ordem tem UM lote e cada lote tem UMA ordem. Recebe [{ordem, lote, mes?}] e devolve os

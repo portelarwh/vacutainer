@@ -69,6 +69,25 @@ const PAGS = [['portal', 'Portal.html'], ['oee', 'OEE-Vacutainer.html'], ['perda
     const ex = await p.evaluate(() => { const e = calcExports(Store.data); return { v: e.exportsVersion, p: e.pontos.length, eq: e.pontos.find(x => x.id === '2').equipamentos.join(), pend: e.pendencias.every(x => x.sev && x.txt && x.link) }; });
     ok(ex.v === 1 && ex.p === 17 && ex.eq === 'EQ03' && ex.pend, 'exports da Linha 360°: versão 1, 17 pontos com equipamentos e pendências com link');
     await c.close(); }
+  // 6 · ponta a ponta na demonstração: ação aberta num ponto da planta nasce em Iniciativas (origem Linha 360°, vínculo do ponto) e a OS em Equipamentos; as duas voltam para a planta
+  { const { c, p } = await nova(1440, 900); await p.goto(PG + 'Linha-360.html?demo=1'); await p.waitForTimeout(2500); const demo = new URL(p.url()).searchParams.get('demo');
+    const ini = await p.evaluate(() => { const pt = pontos().find(x => eqDoPonto(x).lista.length), N = numeros(); App.sel = pt.id; render(); return { id: pt.id, eq: eqDoPonto(pt).lista[0], ac: N.R[pt.id].ac, os: N.R[pt.id].os, hA: document.querySelector('#ficha a[href*="nova="]').getAttribute('href'), hO: document.querySelector('#ficha a[href*="novaOS="]').getAttribute('href') }; });
+    const com = h => PG + h.replace(/^([^?#]+)(\?[^#]*)?/, (m, f) => encodeURI(decodeURI(f)) + '?demo=' + demo);
+    await p.goto(com(ini.hA)); await p.waitForTimeout(2500);
+    const fa = await p.evaluate(() => { const m = document.querySelector('.mod'); return m ? { or: m.querySelector('#aO').value, eq: m.querySelector('#vEq').value, txt: m.innerText } : null; });
+    ok(fa && fa.or === 'linha360' && fa.eq === ini.eq && /Linha 360°/.test(fa.txt), `Iniciativas abre a ação do ponto ${ini.id} com origem Linha 360° e o equipamento ${ini.eq}`);
+    await p.fill('.mod #aT', 'Ação criada na planta (teste)'); await p.click('.mod [data-ok]'); await p.waitForTimeout(800);
+    const cri = await p.evaluate(id => { const a = Store.data.acoes.find(x => x.titulo === 'Ação criada na planta (teste)'); return a ? { or: a.origem.tipo, ref: a.origem.ref, pt: (a.vinculos || []).some(v => v.tipo === 'ponto' && v.cod === id), eq: (a.vinculos || []).some(v => v.tipo === 'equipamento') } : null; }, ini.id);
+    ok(cri && cri.or === 'linha360' && cri.ref === 'ponto|' + ini.id && cri.pt && cri.eq, 'ação gravada com origem linha360, referência do ponto e os vínculos de ponto e equipamento');
+    await p.goto(com(ini.hO)); await p.waitForTimeout(2500);
+    const fo = await p.evaluate(() => { const m = document.querySelector('.mod'); return m ? m.querySelector('#oEq').value : null; });
+    ok(fo === ini.eq, `Equipamentos abre a OS já no equipamento ${ini.eq}`);
+    await p.fill('.mod #oT', 'OS criada na planta (teste)'); await p.click('.mod [data-ok]'); await p.waitForTimeout(800);
+    ok(await p.evaluate(() => { const o = Store.data.os.find(x => x.titulo === 'OS criada na planta (teste)'); return !!o && o.origem && o.origem.tipo === 'linha360'; }), 'OS gravada com a origem da Linha 360°');
+    await p.goto(PG + 'Linha-360.html?demo=' + demo); await p.waitForTimeout(2500);
+    const fim = await p.evaluate(id => { const N = numeros(); return { ac: N.R[id].ac, os: N.R[id].os }; }, ini.id);
+    ok(fim.ac === ini.ac + 1 && fim.os === ini.os + 1, `de volta à planta: o ponto ${ini.id} passa de ${ini.ac} para ${fim.ac} ação(ões) e de ${ini.os} para ${fim.os} OS`);
+    await c.close(); }
   ok(!pe.length, 'sem erros de página' + (pe.length ? ': ' + pe.slice(0, 3).join(' | ') : ''));
   await b.close(); console.log(errs.length ? `\n${errs.length} falha(s)` : '\nsem erros'); process.exit(errs.length ? 1 : 0);
 })();
