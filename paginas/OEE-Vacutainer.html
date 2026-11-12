@@ -1519,7 +1519,7 @@ const U = (() => {
 
 /* ---- 02-model.js ---- */
 /* ================= modelo de dados, valores iniciais e integridade ================= */
-const APP_VERSION = '2.4.62';
+const APP_VERSION = '2.4.63';
 const SCHEMA_VERSION = 1;
 const BASE_FILE = 'oee-vacutainer-base.json';
 const BACKUP_DIR = '00. Backups';
@@ -4134,7 +4134,7 @@ const ServerData = (() => {
     const gapMin = opt.gapMin || 10;
     const rows = parsed.rows, boxRows = [];
     rows.forEach((r, i) => { if (r.box != null) boxRows.push(i); });
-    let cat = null, lot = null, cur = null, snaps = 0, dups = 0, zeros = 0;
+    let cat = null, lot = null, cur = null, snaps = 0, dups = 0, zeros = 0, carry = null;
     const segs = [], mes = [], noise = [], jumps = [], lastOf = new Map();
     const newSeg = (r, extra = {}) => { cur = { lot, cat, b0: r.box, b1: r.box, t0: r.t, t1: r.t, n: 1, mins: [tm(r.t)], gaps: [], ...extra }; segs.push(cur); lastOf.set(lot, cur); };
     const ahead = (k, lo, hi) => { for (let j = k + 1; j <= k + 3 && j < boxRows.length; j++) { const b = rows[boxRows[j]].box; if (b >= lo && b <= hi) return true; } return false; };
@@ -4142,6 +4142,8 @@ const ServerData = (() => {
     for (let i = 0; i < rows.length; i++) {
       const r = rows[i], multi = [r.cat, r.lot, r.box].filter(v => v != null).length > 1;
       if (r.box != null) bi++;
+      /* 2.4.63 · 1ª linha com caixa > 0 = situação no início do relatório (última caixa do relatório anterior): não conta, só fixa catálogo, lote e o ponto de partida */
+      if (i === 0 && r.box != null && r.box > 0 && (r.cat != null || r.lot != null)) { if (r.cat != null) cat = r.cat; if (r.lot != null) lot = r.lot; carry = { t: r.t, lot, cat, box: r.box }; lastOf.set(lot, { lot, b1: r.box, t1: r.t, virtual: true }); continue; }
       // releitura completa (todos os sinais na mesma linha): só o que mudou conta
       if (multi && (r.cat == null || r.cat === cat) && (r.lot == null || r.lot === lot) && (r.box == null || (cur && r.box === cur.b1))) { snaps++; continue; }
       if (r.cat != null && r.cat !== cat) { cat = r.cat; mes.push({ t: r.t, k: 'cat', v: cat }); }
@@ -4170,7 +4172,7 @@ const ServerData = (() => {
     const segments = segs.map(s => { const e = enc(s.mins); const o = { id: 'sg_' + s.lot + '_' + s.t0.replace(/\D/g, ''), lot: s.lot, cat: s.cat, b0: s.b0, b1: s.b1, t0: s.t0, t1: s.t1, n: s.n, base: e.base, m: e.m }; if (s.resumed) o.resumed = true; if (s.partial) o.partial = true; return o; });
     const gaps = segs.flatMap(s => s.gaps.map(g => ({ lot: s.lot, cat: s.cat, from: g.from, to: g.to })));
     const range = rows.length ? { from: rows[0].t, to: rows[rows.length - 1].t } : null;
-    return { segments, gaps, mes, range, noise, jumps, snaps, dups, zeros, boxes: U.sum(segments, s => s.n) };
+    return { segments, gaps, mes, range, noise, jumps, snaps, dups, zeros, carry, boxes: U.sum(segments, s => s.n) };
   }
 
   /* ---------- base: substituir o período importado ---------- */
@@ -8821,6 +8823,7 @@ const SrvUI = (() => {
     const warns = [];
     if (an.unknownLot) warns.push('O arquivo começa no meio de um lote sem a linha do lote atual e não há trecho anterior importado que continue a numeração: essas caixas ficam sem lote. Exporte um período que comece antes da troca de lote.');
     if (an.noise.length) warns.push(`${an.noise.length} leitura(s) do contador fora de sequência ignorada(s): ${an.noise.slice(0, 4).map(n => `${br(n.t)} (caixa ${n.b}, esperada ${n.expected})`).join(' · ')}${an.noise.length > 4 ? '…' : ''}.`);
+    if (an.carry) warns.push(`1ª linha do arquivo: o lote ${an.carry.lot} estava na caixa ${an.carry.box} (a última do relatório anterior). Ela não conta de novo e o horário dessa linha é ignorado; a contagem começa na caixa ${an.carry.box + 1}. Dias importados antes da versão 2.4.63: importe o período de novo para tirar a caixa repetida das 00:00.`);
     if (an.zeros) warns.push(`${an.zeros} registro(s) de lote com o contador em 0 (preparação da linha): não contam como caixa; o catálogo e o lote valem a partir da 1ª caixa seguinte. Dias importados antes da versão 2.4.35 com esse caso: importe o período de novo para corrigir.`);
     if (an.jumps.length) warns.push(`${an.jumps.length} salto(s) na numeração das caixas: ${an.jumps.slice(0, 4).map(j => `${br(j.t)} lote ${j.lot} ${j.from ?? '?'} → ${j.to}`).join(' · ')}.`);
     for (const x of lots) {

@@ -201,3 +201,27 @@ Ordens abre em Ordens produzidas (PRD-02); MB51 e COOIS viraram o item Importar 
 ## 2.4.35 · CSV do servidor (MES): registro do lote na preparação (10/11/2026)
 
 O MES grava o lote e o catálogo quando a linha é preparada (ex.: 00:00, lote com caixa 0) e a 1ª caixa passa horas depois (04:53). Antes, a linha "lote · caixa 0" abria o trecho às 00:00 com a caixa 0 contada (1 caixa a mais, no turno errado) e, quando o catálogo vinha na linha seguinte, o trecho ficava sem catálogo/lote. Agora: **catálogo e lote registrados acima da 1ª caixa pertencem a ela**; o trecho começa no horário da 1ª caixa; **caixa 0 não conta** (nem abre lacuna); o horário do registro continua como evento do MES (a troca mostra última caixa → registro → 1ª caixa). A prévia da importação avisa quantos registros com contador 0 houve. Dias já importados com esse caso: **importar o período de novo**. Regras em `fontes/producao/mes_build.py`; teste em `testes/tfase7.js`.
+
+
+## 2.4.63 · CSV do servidor (MES): relatório diário e a 1ª linha (12/11/2026)
+
+O usuário vai enviar todo dia o relatório do MES das últimas 24 h (colunas Time, Catálogo, Lote e Caixa). Regra dele:
+- a **1ª linha** (00:00:01) sempre traz o catálogo, o lote e a caixa da **última linha do relatório anterior**;
+- **caixa 0**: não houve produção antes; catálogo e lote valem para a caixa 1 (regra da 2.4.35);
+- **caixa maior que 0**: é a última caixa do dia anterior; o horário dessa linha é ignorado e a contagem começa na 2ª linha. Se o lote continua, o relatório anterior terminou nesse mesmo número.
+
+**Erro encontrado e corrigido.** Antes, com caixa > 0, a 1ª linha era contada de novo, no horário da exportação. Com os relatórios de 09 a 12/11/2026 isso dava:
+- 3 caixas a mais (3.639 contra 3.636);
+- a 1ª caixa do dia às 00:00, o que puxa o início do dia no OEE real, nas "Caixas do MES" e na produção fora do turno;
+- uma lacuna falsa entre 00:00 e a 1ª caixa de verdade.
+
+Agora a 1ª linha só fixa catálogo, lote e o ponto de partida. O trecho do dia seguinte é marcado como "retomado". Com os quatro relatórios, a soma de cada lote fecha com o contador do MES (6299928: 108 + 1.131 + 20 = 1.259; 6299937: 1.041 + 219 = 1.260).
+
+**Casos que já eram tratados e foram conferidos nos arquivos reais:**
+- troca de lote: linha só com o lote e o contador volta a 1 (o catálogo continua o mesmo quando não vem na linha);
+- linha "(null)" seguida da releitura completa da mesma caixa (11/11, 06:16): não conta em dobro;
+- lote trocado e destrocado sem caixas no meio (11/11, 07:03 e 07:05): a contagem continua no mesmo trecho.
+
+**Dias já importados** com a 1ª linha maior que 0: importar o período de novo. A importação substitui o período do arquivo e tira a caixa repetida das 00:00; a prévia avisa.
+
+Regra em `fontes/producao/mes_build.py`; teste `testes/tmes_dia.js`, com dados fictícios.
