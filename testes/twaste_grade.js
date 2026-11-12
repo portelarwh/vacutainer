@@ -70,6 +70,15 @@ const GRADE = [T(CAB),
   ok(M.po && M.po.muv === -4723.2 && M.po.estrutura === 137.11 && M.po.empregado === -4860.31 && M.po.muvAprox === false && M.oficial === 'muv', `exports.porOrdem com muv/estrutura/empregado e oficial = "muv" (${M.po && M.po.muv})`);
   ok(M.pmTem && M.pmMuv != null, `exports.porMes com muv, estrutura, desfavorável/favorável (${M.pmMuv})`);
   ok(M.preco !== 0 && Math.abs(M.d - M.muv) > 1, `preço de input fora do MUV: desvio total ${M.d} ≠ MUV ${M.muv} (preço ${M.preco})`);
+  // 1.12.3 · lista colada (Saída dinâmica de lista) com Cen. | Planta | Ordem | Origem | Material | Material (Texto) e títulos abreviados
+  { const L = require('fs').readFileSync(RAIZ + 'testes/amostras/kkbc_lista_grupos.txt', 'utf8');
+    await o.fill('#impPer', '2026-11'); await o.fill('#impOrd', ''); await o.fill('#impTxt', L); await o.click('#btnInterp'); await o.waitForTimeout(500);
+    const travado = await o.evaluate(() => { const b = [...document.querySelectorAll('#impPrev button')].find(x => /^Importar/.test(x.textContent)); return !!b && b.disabled; });   /* USD: conferência de moeda obrigatória (regra 9) */
+    await o.check('#moedaOk'); await o.waitForTimeout(200);
+    const r = await o.evaluate(() => { const R = IMP && IMP.R; if (!R) return null; const s = k => +R.recs.reduce((a, x) => a + (x[k] || 0), 0).toFixed(2);
+      return { n: R.recs.length, rej: R.rej.length, ord: R.orders[0] && R.orders[0].ordem, prod: R.orders[0] && R.orders[0].prod, cT: s('cT'), cR: s('cR'), dEmp: R.recs.some(x => x.dEmp != null), dPreco: R.recs.some(x => x.dPreco != null), comp: R.recs.map(x => x.comp), btn: !!document.querySelector('#impPrev button:not([disabled])'), bts: [...document.querySelectorAll('#impPrev button')].map(b => b.textContent.trim() + (b.disabled ? '(d)' : '') + ' ' + (b.title || '')).join(' | ').slice(0, 400) }; });
+    ok(r && r.n === 15 && !r.rej && r.ord === '114562781' && r.prod === 'PR980741' && r.cT === 33648.45 && r.cR === 38661.98 && r.dEmp && r.dPreco && r.comp.includes('17132AAB') && !r.comp.some(c => /\//.test(c)) && r.btn && travado,
+      `lista colada com Cen./Planta/Origem/Material: ${JSON.stringify(r && {btn: r.btn})} ${r && r.n} itens de Materials, custo meta ${r && r.cT} e real ${r && r.cR} = subtotal Materials, Desv.qtd./Desv.preço lidos; importar só depois da conferência de moeda (USD)`); }
   ok(!pe.length, 'sem erro de página' + (pe.length ? ': ' + pe.slice(0, 3).join(' | ') : ''));
   await b.close();
   console.log(errs.length ? `\n${errs.length} falha(s)` : '\nsem erros'); process.exit(errs.length ? 1 : 0);

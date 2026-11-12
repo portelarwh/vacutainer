@@ -8,7 +8,7 @@ Plataforma de páginas HTML de arquivo único que trabalham juntas numa **pasta 
 |---|---|---|---|---|
 | Portal (cadastro geral, Administração) | `Portal.html` | `portal-base.json` + `vacutainer-cadastros.json` | 1.9.32 | direto no HTML |
 | Produção (OEE, plano, ordens SAP) | `OEE-Vacutainer.html` | `oee-vacutainer-base.json` (+ `ordens-base.json`) | 2.4.66 | **NÃO editar o HTML**: editar `fontes/producao/` e rodar o build |
-| Waste (perdas por ordem, KKBC) | `Perdas-Ordem.html` | `perdas-base.json` | 1.12.2 | direto no HTML |
+| Waste (perdas por ordem, KKBC) | `Perdas-Ordem.html` | `perdas-base.json` | 1.12.3 | direto no HTML |
 | Gestão de Gel | `Gestão-Gel-Vacutainer.html` | `fifo-base.json` | 2.31 · **em atualização** | direto no HTML |
 | Paradas | `Paradas.html` | `paradas-base.json` | 1.2.3 · **em atualização** | direto no HTML |
 | Equipamentos (com manutenção) | `Equipamentos.html` | `equipamentos-base.json` | 1.0.13 · **em atualização** | direto no HTML (saiu do gerador na 1.0.0; `docs/equipamentos-v1.md`) |
