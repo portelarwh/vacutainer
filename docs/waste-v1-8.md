@@ -316,3 +316,20 @@ O número oficial do Waste passa a ser o **MUV = Desv. estrutura + Desv. emprega
 ### Atenção na implantação
 Cadastrar o target de cada linha no Portal. Se a `WASTE-MES` continuar ativa, ela deixa de valer assim que existir um `WASTE-MUV`: desativar para não confundir.
 
+## 1.12.0 · Paretos da controladoria e Design System (12/11/2026)
+
+Pedido do usuário: trazer para o Waste os gráficos do dashboard de desvios da controladoria (`Dashboard_Scrap_Demonstracao`).
+
+**O que entrou.** Visão Geral › 04 Análises › grupo **D · Paretos da controladoria**: nove gráficos, Linha, SKU e Componente × MUV, Desv. estrutura e Desv. empregado.
+- Barras verticais com a soma **líquida** de cada item: desfavorável (positivo, vermelho) e favorável (negativo, verde) no mesmo gráfico, do mais desfavorável ao mais favorável.
+- Top N (10, 15, 20, 30) pelos maiores impactos absolutos; linha azul com o % acumulado do impacto absoluto e a marca de 80%; barras mais claras ficam fora dos itens que somam 80%.
+- Exibir: todos, só desfavoráveis ou só favoráveis.
+- Clique na barra filtra a linha, o SKU ou o componente; segundo clique tira o filtro; a barra filtrada ganha contorno âmbar.
+- Abaixo de cada gráfico: saldo líquido, total desfavorável, total favorável e a frase do maior impacto desfavorável (vale para a impressão).
+- Cada gráfico pode mudar de largura e de ordem (grade do Design System).
+
+**Contas.** Nenhuma nova: os valores são os mesmos do "Pareto do MUV" da 1.10.0 (`muvOf`, `dEst`, `dEmpOf` por componente; `muv`, `estr`, `emp` por ordem), só que sem separar o sinal antes de somar. Escolhas em `vac.waste.paretov`, por computador.
+
+**O que já existia e continua.** A evolução mensal do dashboard corresponde aos gráficos "Tendência mensal do MUV" e "MUV × target acumulado no FY" (grupo A, 1.11.0), com o target vindo do Portal. A troca de moeda é a da página (BRL/USD pelo câmbio do Portal), não uma taxa digitada.
+
+**Teste:** `testes/tds.js`.

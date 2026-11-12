@@ -2154,8 +2154,10 @@ const vacShell = (() => {
   function recolhida() { const v = LS.get('vac.sidebarCollapsed'); if (v === 'true') return true; if (v === 'false') return false; return innerWidth < 1200; }
   function aplicarRec() { const r = recolhida(); document.documentElement.classList.toggle('vds-rec', r); const b = document.getElementById('vdsRec'); if (b) { b.innerHTML = vacIcone(r ? 'expandir' : 'recolher') + '<span class="vds-tx">Recolher menu</span>'; b.title = r ? 'Expandir menu' : 'Recolher menu'; b.setAttribute('aria-expanded', String(!r)); } }
   function decorarNav() {
-    document.querySelectorAll('#sysNav a').forEach(a => { if (a.querySelector(':scope > .vi')) return; const id = sisDe(a);
-      const tx = [...a.childNodes].filter(n => n.nodeType === 3).map(n => n.textContent).join('').trim(); [...a.childNodes].forEach(n => { if (n.nodeType === 3) n.remove(); });
+    document.querySelectorAll('#sysNav a').forEach(a => { if (a.querySelector(':scope > .vi')) return;
+      const tx = [...a.childNodes].filter(n => n.nodeType === 3).map(n => n.textContent).join('').trim();
+      /* pelo arquivo do link; na demonstração (links próprios), pelo nome do módulo */
+      const id = sisDe(a) || ((typeof systems === 'function' ? systems() : []).find(s => (typeof vacNomeSis === 'function' ? vacNomeSis(s) : s.nome) === tx) || {}).id || ''; [...a.childNodes].forEach(n => { if (n.nodeType === 3) n.remove(); });
       a.insertAdjacentHTML('afterbegin', vacIcone(VAC_ICONES[id] ? id : 'camadas') + '<span class="vds-tx">' + H(tx) + '</span>'); if (!a.title) a.title = tx; a.dataset.sis = id; });
     const o = document.querySelector('#sysOutros details.vmenu > summary'); if (o && !o.querySelector('.vi')) o.insertAdjacentHTML('afterbegin', vacIcone('camadas'));
   }
@@ -2241,13 +2243,13 @@ const vacGrade = (() => {
   const pid = () => (typeof PAGE !== 'undefined' && PAGE && PAGE.id) || 'pagina';
   const ler = () => { try { const x = JSON.parse(localStorage.getItem('vac.grade.' + pid()) || '{}'); return x && typeof x === 'object' ? x : {}; } catch (e) { return {}; } };
   const gravar = p => { try { localStorage.setItem('vac.grade.' + pid(), JSON.stringify(p)); } catch (e) { } };
-  const CARTAO = '.card,.vk-card,.chart-card,.gcard,.panel,.bloco,.box,.chart,.grafico,.vg-card';
+  const CARTAO = '.card,.vk-card,.chart-card,.gcard,.vg-card';
   const FORA = 'header.vsuite,.vds-top,.vpage,nav,dialog,.modal,.overlay,table,[data-vg-nao],[draggable="true"],.vg-barra,#vacGuia,.tv,.kpi,.vk-dc,button,a';
   const ehGrafico = g => { if (g.closest(FORA)) return false; const r = g.getBoundingClientRect(); return r.width >= 220 && r.height >= 110; };
   const slug = s => String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 48);
   const chaveItem = (el, i) => el.dataset.vgK || el.id || (() => { const h = el.querySelector('h2,h3,h4,.t,.tit,header'); const s = h ? slug(h.textContent) : ''; return s || 'i' + i; })();
   const chaveGrupo = (p) => { if (p.id) return p.id; let a = p.parentElement, n = 0; while (a && !a.id && n < 6) { a = a.parentElement; n++; } const base = a && a.id ? a.id : 'raiz'; const irm = a ? [...a.querySelectorAll('.vg-grade,[data-vg-g]')] : []; if (!p.dataset.vgG) p.dataset.vgG = base + ':' + (irm.filter(x => x !== p).length); return p.dataset.vgG; };
-  function cartoes() { const S = new Set(); document.querySelectorAll('main svg, main canvas').forEach(g => { if (!ehGrafico(g)) return; const c = g.closest(CARTAO); if (!c || c.closest(FORA) || c.tagName === 'MAIN' || !c.parentElement || c.parentElement.tagName === 'BODY') return; S.add(c); }); /* só o cartão mais interno */ return [...S].filter(c => ![...S].some(o => o !== c && c.contains(o))); }
+  function cartoes() { const S = new Set(); document.querySelectorAll('main svg, main canvas, main [id^="ch"], main .chart').forEach(g => { if (g.id && !/^ch[A-Z0-9]/.test(g.id) && !/svg|canvas/i.test(g.tagName) && !g.classList.contains('chart')) return; if (!ehGrafico(g)) return; const c = g.closest(CARTAO); if (!c || c.closest(FORA) || c.tagName === 'MAIN' || !c.parentElement || c.parentElement.tagName === 'BODY') return; S.add(c); }); /* só o cartão mais interno */ return [...S].filter(c => ![...S].some(o => o !== c && c.contains(o))); }
   function larguraNatural(el, p) { const pw = p.clientWidth || 1, r = el.getBoundingClientRect().width / pw; return r >= .8 ? 6 : r >= .42 ? 3 : r >= .27 ? 2 : 0; }
   function aplicar() {
     if (aplicar._em) return; aplicar._em = 1;

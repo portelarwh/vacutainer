@@ -1,0 +1,52 @@
+# Design System BD · Sistemas da Linha Vacutainer
+
+Entrega de 12/11/2026. Especificação do usuário guardada em `docs/ux/padronizacao-design-system.txt` (padrão visual) e `docs/ux/agente-persona.txt` (como pensar a experiência por público). Este arquivo diz **o que foi implementado, onde está e o que falta**.
+
+## 1. Ideias que valem para qualquer tela nova
+
+- **Preservar o motor.** Mudança de layout não altera fórmula, regra, ID usado pelo JavaScript, evento, chave nem estrutura gravada.
+- **Decisão antes de dado.** Ordem de leitura: situação → comparação com a meta → desvio → onde → ação → responsável → prazo → detalhe.
+- **Divulgação progressiva.** Primeiro o essencial; o resto em grupo recolhível, ficha, modal ou clique no gráfico.
+- **Cor com significado fixo.** Azul = navegação, ação e valor neutro. Verde = favorável. Vermelho = perda ou risco. Âmbar = atenção. Cinza = sem dados. Roxo = só auxiliar. Nunca só a cor: sempre texto, ícone ou forma junto.
+- **Três níveis de navegação.** Barra lateral = módulo. Cabeçalho = onde estou, base, busca, usuário. Abas = telas do módulo.
+- **Ordem e lote são a base.** Cada ordem tem um lote e cada lote tem uma ordem; toda tela que mostra um fato de produção leva à ficha da ordem (`vacFichaBotao`).
+- **Sem dados nunca é zero.** Mostrar "sem dados" e de onde viria.
+
+## 2. Onde está o código
+
+| Parte | Arquivo | Observação |
+|---|---|---|
+| Tokens, barra lateral, cabeçalho, abas, cartões, grade, impressão | `fontes/kit/kit_ds.css` | Vai no fim do `<style id="vac-visual">`, depois do `kit_visual.css` |
+| Ícones, casca, grade de gráficos, `vacOrdemLote` | `fontes/kit/kit_ds.js` | Vai no fim do bloco do kit v2.1 |
+| Aplicação nas páginas | `fontes/kit/aplicar_kit21.py`, `fontes/producao/build.py`, `fontes/linha360/build.py` | Os três leem os dois arquivos acima |
+
+Mudou o Design System: editar `kit_ds.css` ou `kit_ds.js` e rodar os builds na ordem do `CLAUDE.md`. Nunca editar o bloco dentro de uma página.
+
+## 3. O que cada peça faz
+
+**Tokens.** Os nomes de variável das páginas continuam (`--bg`, `--surface`, `--ink`, `--accent`, `--ok`, `--crit`…); o kit troca só os valores pela paleta nova, nos dois temas. Há também `--ok-fill`, `--crit-fill`, `--warn-fill`, `--info-fill` para preenchimento; os tokens de texto (`--warn`, `--crit`) são mais escuros para passar de 4,5:1.
+
+**Tema.** Claro é o padrão para quem nunca escolheu. O botão Tema da barra lateral continua alternando automático → claro → escuro. Impressão sempre clara.
+
+**Barra lateral (`vacShell`).** O `header.vsuite` de sempre vira a barra fixa de 232 px (72 px recolhida). Os nós são **movidos**, não recriados: `#sysNav`, `#btnAdmin`, `#btnTheme`, `#vacBusca`, `#stUser` e `#stBase` mantêm ID e eventos. Preferência em `localStorage['vac.sidebarCollapsed']`. Entre 900 e 1.200 px abre recolhida; abaixo de 900 px vira menu sobreposto com fundo escuro, fechado por botão, clique fora ou Esc. Relatórios, Importação e Administração levam às telas do Portal. Ajuda aciona o guia da aba (`vacGuia`); Modo TV aciona o `#btnTV` da página.
+
+**Cabeçalho de 58 px (`#vdsTop`).** "Onde estou" (módulo › aba ativa), situação da base, busca (Ctrl K) e usuário.
+
+**Ícones (`vacIcone(nome, classe)`).** Lucide embutido em `VAC_ICONES`, porque a pasta da rede não tem internet. Ícone novo: acrescentar o desenho ali.
+
+**Grade de gráficos (`vacGrade`).** Todo cartão que contém um gráfico ganha, ao passar o mouse, uma barra com: arrastar, mover para antes ou depois, largura 1/1, 1/2 ou 1/3 e voltar ao original. Gravado por página e por computador em `vac.grade.<página>`. A ordem usa `order` do CSS: o DOM da página não muda. Um bloco só entra na grade se todos os filhos já ocupavam largura inteira, metade ou um terço. Para deixar um bloco de fora: `data-vg-nao` no cartão. Para desligar na página: `window.VAC_GRADE_OFF = true`.
+
+**Impressão.** Some barra lateral, cabeçalho, abas, botões e controles; entram um cabeçalho (sistema, módulo, aba, base, data e hora) e um rodapé de uso interno. Página com impressão própria pode desligar com `window.VAC_IMP_PROPRIA = true`.
+
+**Ordem × lote (`vacOrdemLote(lista)`).** Devolve as ordens com mais de um lote e os lotes em mais de uma ordem. Não bloqueia nada. A Produção 2.4.60 publica o resultado em `exports.ordemLote` e cria uma pendência de atenção para cada conflito.
+
+## 4. O que ainda não segue a especificação
+
+- Símbolos de texto (⚙, ↻, ⇩, ▾…) dentro das telas: só os botões do cabeçalho foram trocados por ícones.
+- Filtros em painel recolhível com "Aplicar" e chips: só onde já existia.
+- Tabelas: cabeçalho claro aplicado pelo kit; primeira coluna fixa, ordenação e paginação continuam como cada página fazia.
+- Estados de carregamento em esqueleto.
+- Modelo de e-mail para o Outlook em tabelas com gráficos em PNG: os relatórios atuais não foram refeitos.
+- "Página X de Y" na impressão.
+- Gráficos da Produção e do Gel com cores próprias fora da paleta de `chartColors`.
+- Linha 360°: a tabela de equipamentos por ponto em Configuração é extensa; trocar por seleção em lista.

@@ -6,14 +6,15 @@ Plataforma de páginas HTML de arquivo único que trabalham juntas numa **pasta 
 
 | Página | Arquivo | Base | Versão | Como editar |
 |---|---|---|---|---|
-| Portal (cadastro geral, Administração) | `Portal.html` | `portal-base.json` + `vacutainer-cadastros.json` | 1.9.27 | direto no HTML |
-| Produção (OEE, plano, ordens SAP) | `OEE-Vacutainer.html` | `oee-vacutainer-base.json` (+ `ordens-base.json`) | 2.4.59 | **NÃO editar o HTML**: editar `fontes/producao/` e rodar o build |
-| Waste (perdas por ordem, KKBC) | `Perdas-Ordem.html` | `perdas-base.json` | 1.11.0 | direto no HTML |
-| Gestão de Gel | `Gestão-Gel-Vacutainer.html` | `fifo-base.json` | 2.28 · **em atualização** | direto no HTML |
-| Paradas | `Paradas.html` | `paradas-base.json` | 1.2.0 · **em atualização** | direto no HTML |
-| Equipamentos (com manutenção) | `Equipamentos.html` | `equipamentos-base.json` | 1.0.10 · **em atualização** | direto no HTML (saiu do gerador na 1.0.0; `docs/equipamentos-v1.md`) |
-| Iniciativas / Ações (Ações/Planner · KAS · OSM · 5S · programas) | `Iniciativas.html` | `iniciativas-base.json` | 1.1.7 · **em atualização** | direto no HTML (saiu do gerador na 1.0.0; `docs/iniciativas-planner.md`) |
-| Projetos | `Projetos.html` | (`projetos-base.json`, ainda não existe) | 0.1.10 · **em construção** | **gerada**: `fontes/modelo/gerar_paginas.py` |
+| Portal (cadastro geral, Administração) | `Portal.html` | `portal-base.json` + `vacutainer-cadastros.json` | 1.9.28 | direto no HTML |
+| Produção (OEE, plano, ordens SAP) | `OEE-Vacutainer.html` | `oee-vacutainer-base.json` (+ `ordens-base.json`) | 2.4.60 | **NÃO editar o HTML**: editar `fontes/producao/` e rodar o build |
+| Waste (perdas por ordem, KKBC) | `Perdas-Ordem.html` | `perdas-base.json` | 1.12.0 | direto no HTML |
+| Gestão de Gel | `Gestão-Gel-Vacutainer.html` | `fifo-base.json` | 2.29 · **em atualização** | direto no HTML |
+| Paradas | `Paradas.html` | `paradas-base.json` | 1.2.1 · **em atualização** | direto no HTML |
+| Equipamentos (com manutenção) | `Equipamentos.html` | `equipamentos-base.json` | 1.0.11 · **em atualização** | direto no HTML (saiu do gerador na 1.0.0; `docs/equipamentos-v1.md`) |
+| Iniciativas / Ações (Ações/Planner · KAS · OSM · 5S · programas) | `Iniciativas.html` | `iniciativas-base.json` | 1.1.8 · **em atualização** | direto no HTML (saiu do gerador na 1.0.0; `docs/iniciativas-planner.md`) |
+| Linha 360° (planta interativa: paradas, OS e ações por ponto; postos e checklists) | `Linha-360.html` | `linha360-base.json` | 1.0.0 · **em atualização** | **gerada**: `fontes/linha360/` + `python fontes/linha360/build.py` (`docs/linha-360.md`) |
+| Projetos | `Projetos.html` | (`projetos-base.json`, ainda não existe) | 0.1.11 · **em construção** | **gerada**: `fontes/modelo/gerar_paginas.py` |
 
 Divisão final (Portal 1.7): Portal · Produção · Waste · Gestão de Gel · Paradas · **Equipamentos** (inclui manutenção; não há página Manutenção) · **Iniciativas** (uma página: Ações/Planner · KAS · OSM · 5S; não há OSM.html) · **Projetos** · Outros ▾ · ⚙ Administração.
 Situação de cada página (em construção / em atualização / estável): `PAGE.estado` + `sistemas.js`, trocável no Portal › Configuração › Módulos; ver `docs/paginas-construcao.md`. Páginas em construção são **geradas** (não editar o HTML; editar `fontes/modelo/` e rodar o gerador). Quando uma delas começar de verdade (v1.0), tirar da lista do gerador e passar a editar direto. Arquitetura: `docs/plano-evolucao-plataforma.md`, `docs/osm-arquitetura.md` (aba OSM de Iniciativas). `docs/paginas-novas.md` é histórico (lista antiga Máquinas/Manutenção).
@@ -22,13 +23,25 @@ Demonstração integrada: botão comum nas oito páginas; `paginas/Demonstracao.
 
 SQDCP (Produção 2.4.20; gráficos em barras verde/vermelho com linha só para meta e tendência na 2.4.33, PRD-09): quadro de 25 posições, acidente/QN por turno e impressão de uma A4 paisagem. Fontes em `fontes/producao/sqdcp*`; uso, contratos e pendências em `docs/producao-sqdcp.md`. Campos opcionais; ausência de resposta nunca é zero. **2.4.58:** layout "SQDCP – Gestão Diária" (cabeçalho em três blocos, resumo executivo por pilar com o mesmo resultado das posições, cards com engrenagem, cores dos pilares × cor da situação, Modo Reunião `body.sqdcp-reuniao`, quadro sem a série do mês); números conferidos pela referência `testes/bases/sqdcp-referencia.json` (`tsqdcp_layout.js`).
 
+## Design System (12/11/2026) · ler antes de mexer em layout
+
+Padrão visual único das páginas: `docs/design-system.md` (o que existe e o que falta), com a especificação do usuário em `docs/ux/padronizacao-design-system.txt` e `docs/ux/agente-persona.txt`. Código só em `fontes/kit/kit_ds.css` e `fontes/kit/kit_ds.js`, aplicados pelos builds em todas as páginas:
+- barra lateral fixa e recolhível (`vacShell`; os nós do cabeçalho antigo são movidos com os mesmos IDs), cabeçalho de 58 px com "onde estou", tema claro por padrão;
+- ícones Lucide embutidos (`vacIcone`); não usar emoji nem símbolo de texto em tela nova;
+- todo cartão com gráfico pode mudar de largura (1/1, 1/2, 1/3) e de ordem (`vacGrade`, `vac.grade.<página>`); gráfico novo vai dentro de um `.card` com `id`;
+- cores: azul neutro, verde favorável, vermelho perda, âmbar atenção, cinza sem dados; nunca só a cor;
+- **ordem e lote são a base de tudo**: cada ordem tem um lote e cada lote tem uma ordem (`vacOrdemLote` aponta o conflito sem bloquear; a Produção publica em `exports.ordemLote` e cria pendência). Tela que mostra um fato de produção leva à ficha da ordem (`vacFichaBotao`).
+Layout nunca muda fórmula, regra, ID, evento nem estrutura gravada.
+
 ## Comandos
 
 ```bash
 python fontes/producao/build.py        # monta paginas/OEE-Vacutainer.html a partir de OEE-base-2.0.html + ordens_servico.js + ordens_tela.js + cad_sync.js + turnos_np.js + gel_turno.js + visao_geral.js + relatorio_sq.js + fase7.js + guia.js + oee_real.js + vg_hh.js + turno_card.js + plano_ui.js + rp_tabelas.js + turno_layout.js + lanc_layout.js + vg_layout.js + hh24.js + lanc_v2.js + hh_comum.js + kit_v21.js
-python fontes/kit/aplicar_kit21.py     # recopia fontes/kit/kit_v21.js, o catálogo fontes/kit/sistemas.js, o padrão visual fontes/kit/kit_visual.css e as bases em 00. Bases fontes/kit/kit_bases.js nas outras páginas (Portal, Waste, Paradas, Gel e as 3 em construção)
+python fontes/kit/aplicar_kit21.py     # recopia fontes/kit/kit_v21.js (+ kit_ds.js), o Design System fontes/kit/kit_ds.css, o catálogo fontes/kit/sistemas.js, o padrão visual fontes/kit/kit_visual.css e as bases em 00. Bases fontes/kit/kit_bases.js nas outras páginas (Portal, Waste, Paradas, Gel e as 3 em construção)
 python fontes/modelo/gerar_paginas.py  # gera Projetos.html (em construção) a partir de fontes/modelo/pagina-em-construcao.html e roda o aplicar_kit21.py
+python fontes/linha360/build.py        # monta paginas/Linha-360.html (moldura comum de Equipamentos.html + fontes/linha360/) e roda o aplicar_kit21.py; rodar DEPOIS de mexer em Equipamentos.html ou no kit
 python fontes/demo/gerar_demo.py       # pacote offline da demonstração; SEMPRE depois dos outros builds
+node testes/tds.js                     # Design System e Linha 360°: barra lateral nas 9 páginas, recolher, menu sobreposto, modal acima da barra, grade de gráficos, vacOrdemLote, impressão, Paretos verticais do Waste, planta (números = soma dos eventos), postos e checklists; código 1 se falhar
 node testes/tparada_tempo.js           # duração visível, regras do Portal, troca de código, gravação e abono
 node testes/tsqdcp.js                 # formulário S/Q, QN única, relatórios, reimportação, persistência e A4
 node testes/tsqdcp_layout.js          # SQDCP 2.4.58: mesmos números das 25 posições da referência, três blocos, resumo, cards, Modo Reunião, erro de fonte, CSV, A4, 3 larguras × 2 temas; --gravar só antes de mudar a tela; código 1 se falhar
@@ -131,6 +144,7 @@ Produção aplica o cadastro na base do OEE pelo `CadSync` (`fontes/producao/cad
 
 ## Documentação (`docs/`)
 
+- Design System e Linha 360°: `design-system.md`, `linha-360.md`, `ux/`
 - Plataforma: `arquitetura-integracao-sistemas.md`, `portal-e-padrao-comum.md`, `plano-evolucao-plataforma.md`, `centralizacao-configuracoes.md`
 - Cadastro: `cadastro-base-contrato.md`, `cs12-importacao-bom.md`
 - Kit: `kit-cabecalho-e-backups.md` (v1), `kit-cabecalho-v2.md` (v2/v2.1)
