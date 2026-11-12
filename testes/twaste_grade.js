@@ -79,6 +79,13 @@ const GRADE = [T(CAB),
       return { n: R.recs.length, rej: R.rej.length, ord: R.orders[0] && R.orders[0].ordem, prod: R.orders[0] && R.orders[0].prod, cT: s('cT'), cR: s('cR'), dEmp: R.recs.some(x => x.dEmp != null), dPreco: R.recs.some(x => x.dPreco != null), comp: R.recs.map(x => x.comp), btn: !!document.querySelector('#impPrev button:not([disabled])'), bts: [...document.querySelectorAll('#impPrev button')].map(b => b.textContent.trim() + (b.disabled ? '(d)' : '') + ' ' + (b.title || '')).join(' | ').slice(0, 400) }; });
     ok(r && r.n === 15 && !r.rej && r.ord === '114562781' && r.prod === 'PR980741' && r.cT === 33648.45 && r.cR === 38661.98 && r.dEmp && r.dPreco && r.comp.includes('17132AAB') && !r.comp.some(c => /\//.test(c)) && r.btn && travado,
       `lista colada com Cen./Planta/Origem/Material: ${JSON.stringify(r && {btn: r.btn})} ${r && r.n} itens de Materials, custo meta ${r && r.cT} e real ${r && r.cR} = subtotal Materials, Desv.qtd./Desv.preço lidos; importar só depois da conferência de moeda (USD)`); }
+  // 1.12.4 · Importar: ordens ainda sem KKBC_ORD (Produção + SAP), incluindo o mês atual
+  { const f = await o.evaluate(() => { const c = curM(), p1 = addM(c, -1), velho = addM(c, -5), feita = B.rows.find(r => !r.sup);
+      OEE.src = { exports: { porOrdem: [{ ordem: '000300000001', mes: c, produzido: 500 }, { ordem: '300000002', mes: p1, inicioReal: p1 + '-03T06:00' }, { ordem: '300000003', mes: c, produzido: 0 }, { ordem: '300000004', mes: velho, produzido: 10 }, { ordem: feita.ordem, mes: c, produzido: 10 }] } };
+      ORDX.idx = new Map([['300000005', { comps: [c], ums: [], mat: [], tipo: '' }]]); renderAll(); const el = document.getElementById('faltaBox'); OEE.src = null; ORDX.idx = null;
+      return { txt: el.innerText, pills: [...el.querySelectorAll('.pill')].map(x => x.textContent), atual: el.innerText.includes('(atual)') }; });
+    ok(f.pills.sort().join(',') === '300000001,300000002,300000005' && f.atual && /3 ordem\(ns\) ainda sem KKBC_ORD/.test(f.txt),
+      `Importar lista as ordens sem KKBC_ORD (mês atual e anteriores; Produção e SAP; sem as já importadas, as não produzidas e as antigas): ${f.pills.join(', ')}`); }
   ok(!pe.length, 'sem erro de página' + (pe.length ? ': ' + pe.slice(0, 3).join(' | ') : ''));
   await b.close();
   console.log(errs.length ? `\n${errs.length} falha(s)` : '\nsem erros'); process.exit(errs.length ? 1 : 0);
