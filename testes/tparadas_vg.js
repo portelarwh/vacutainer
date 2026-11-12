@@ -45,7 +45,7 @@ const LER = () => {
     const L = await o.evaluate(async () => { const w = t => new Promise(r => setTimeout(r, t)), out = {}, M = document.getElementById('main');
       out.secoes = [...M.querySelectorAll('.vk-sec h3')].map(x => x.textContent);
       out.grupos = [...M.querySelectorAll('.vk-grp')].map(g => g.dataset.vkGrupo + ':' + g.querySelectorAll('.card').length);
-      out.sit = (M.querySelector('.vk-sit') || {}).textContent || ''; out.diag = M.querySelectorAll('.vk-dc').length; out.exp = M.querySelectorAll('[data-vk-go]').length;
+      out.sit = [...M.querySelectorAll('.pux-prio, .pux-kpis-main')].map(x => x.textContent).join(' '); out.diag = M.querySelectorAll('.vk-dc').length; out.exp = M.querySelectorAll('[data-vk-go]').length;
       M.querySelector('[data-vk-grupo="B"] .vk-gh').click(); await w(50);
       out.fechou = M.querySelector('[data-vk-grupo="B"]').classList.contains('fechado') && JSON.parse(localStorage.getItem('vac.grupos.paradas') || '{}').B === 1;
       App.render(); await w(200); out.lembrou = document.querySelector('#main [data-vk-grupo="B"]').classList.contains('fechado');
@@ -54,14 +54,14 @@ const LER = () => {
       const f = document.querySelector('#main [data-vk-f^="eq|"]'); if (f) { const k = f.dataset.vkF.split('|')[1]; f.click(); await w(200); out.filtro = F.eq === k; F.eq = ''; App.render(); await w(200); }
       return out; });
     console.log('     layout:', JSON.stringify({ ...L, sit: L.sit.replace(/\s+/g, ' ').slice(0, 140) }));
-    ok(L.secoes.join('|') === 'Situação do período|Números do período|Diagnóstico rápido|Análises|Explorar dados', 'cinco seções na ordem: Situação, Números, Diagnóstico, Análises, Explorar');
-    ok(L.grupos.join(' ') === 'A:1 B:2 C:1', `gráficos em 3 grupos (${L.grupos.join(' ')})`);
-    ok(/Tempo de parada/.test(L.sit) && /Ação prioritária/.test(L.sit) && /Próximas decisões/.test(L.sit) && /Maior perda/.test(L.sit), 'Situação: tempo parado, ação prioritária, decisões e maior perda');
-    ok(L.diag === 3 && L.exp >= 5, 'Diagnóstico com 3 cartões; Explorar com os atalhos das abas');
+    ok(L.secoes.join('|') === 'Indicadores principais|Prioridades|Análise visual|Análises complementares', 'Paradas 1.1.0: seções na ordem Indicadores, Prioridades, Análise visual, Complementares (faixa de filtros no topo)');
+    ok(L.grupos.join(' ') === 'B:1 C:1', `análises complementares em 2 grupos recolhíveis (${L.grupos.join(' ')}); evolução e Pareto de equipamentos na Análise visual`);
+    ok(/Tempo de parada/.test(L.sit) && /Ação prioritária/.test(L.sit) && /Próximas decisões/.test(L.sit) && /Máquina crítica/.test(L.sit), 'Indicadores e prioridades: tempo parado, máquina crítica, ação prioritária e decisões');
+    ok(L.diag === 2 && L.exp >= 5, 'mês com mais e menos parada junto do gráfico mensal; Explorar com os atalhos das abas');
     ok(L.fechou && L.lembrou, 'grupo recolhido lembra a escolha (vac.grupos.paradas)');
-    ok(L.filtro === true, 'atalho da maior perda filtra o equipamento');
-    await o.emulateMedia({ media: 'print' }); await o.evaluate(() => document.querySelector('#main [data-vk-grupo="A"] .vk-gh').click());
-    const imp = await o.evaluate(() => getComputedStyle(document.querySelector('#main [data-vk-grupo="A"] .vk-gb')).display); await o.emulateMedia({ media: 'screen' });
+    ok(L.filtro === true, 'atalho da máquina crítica filtra o equipamento');
+    await o.emulateMedia({ media: 'print' }); await o.evaluate(() => document.querySelector('#main [data-vk-grupo="C"] .vk-gh').click());
+    const imp = await o.evaluate(() => getComputedStyle(document.querySelector('#main [data-vk-grupo="C"] .vk-gb')).display); await o.emulateMedia({ media: 'screen' });
     ok(imp !== 'none', `impressão com os grupos abertos (${imp})`);
   }
   await c.close();

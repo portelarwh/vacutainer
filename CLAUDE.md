@@ -10,7 +10,7 @@ Plataforma de páginas HTML de arquivo único que trabalham juntas numa **pasta 
 | Produção (OEE, plano, ordens SAP) | `OEE-Vacutainer.html` | `oee-vacutainer-base.json` (+ `ordens-base.json`) | 2.4.58 | **NÃO editar o HTML**: editar `fontes/producao/` e rodar o build |
 | Waste (perdas por ordem, KKBC) | `Perdas-Ordem.html` | `perdas-base.json` | 1.11.0 | direto no HTML |
 | Gestão de Gel | `Gestão-Gel-Vacutainer.html` | `fifo-base.json` | 2.28 · **em atualização** | direto no HTML |
-| Paradas | `Paradas.html` | `paradas-base.json` | 1.0.33 · **em atualização** | direto no HTML |
+| Paradas | `Paradas.html` | `paradas-base.json` | 1.1.0 · **em atualização** | direto no HTML |
 | Equipamentos (com manutenção) | `Equipamentos.html` | `equipamentos-base.json` | 1.0.10 · **em atualização** | direto no HTML (saiu do gerador na 1.0.0; `docs/equipamentos-v1.md`) |
 | Iniciativas / Ações (Ações/Planner · KAS · OSM · 5S · programas) | `Iniciativas.html` | `iniciativas-base.json` | 1.1.7 · **em atualização** | direto no HTML (saiu do gerador na 1.0.0; `docs/iniciativas-planner.md`) |
 | Projetos | `Projetos.html` | (`projetos-base.json`, ainda não existe) | 0.1.10 · **em construção** | **gerada**: `fontes/modelo/gerar_paginas.py` |
@@ -66,6 +66,7 @@ node testes/tcontratos.js             # E4: exports por ordem (Produção 24 mes
 node testes/tlogin.js                 # login (vacLogin): pop-up nas páginas, 1º acesso, senha fraca/errada, bloqueio, provisória, autocadastro, sessão compartilhada e até o fim do turno, TV; código 1 se falhar
 node testes/tvisaogeral.js            # Visão Geral (2.4.49): mesmos números da referência gravada antes do layout (23 cartões, 13 gráficos, Meu painel), seções, grupos, Limpar, impressão, 1 dia, 3 larguras × 2 temas; --gravar só antes de mudar a tela; código 1 se falhar
 node testes/twaste_vg.js              # Waste › Visão Geral no padrão comum: mesmos números da referência gravada antes (indicadores, Resumo nos indicadores, 4 gráficos, quadro por competência, tabela), seções, grupos, impressão, 3 larguras × 2 temas; --gravar só antes de mudar a tela; código 1 se falhar
+node testes/tparadas_ux.js            # Paradas 1.1.0 (refatoração UX/UI, etapa 1): mesmos números de antes (totais, statsEquip, recorrências, 18 Paretos, tabelas) + Visão geral em faixas, filtros ativos, Pareto (80 % opcional, seleção, + Ação), 5 larguras × 2 temas; --gravar só antes de mudar a tela; código 1 se falhar
 node testes/tparadas_vg.js            # Paradas › Visão geral no padrão comum: mesmos números da referência (indicadores, ação prioritária, decisões, 4 gráficos, filtros) com data fixa, seções, grupos, atalhos, impressão, 3 larguras × 2 temas; código 1 se falhar
 node testes/tgel_vg.js                # Gestão de Gel › Visão Geral no padrão comum: mesmos números da referência (8 indicadores, 36 blocos do painel, resumo do período) com data fixa, seções, filtro da maior perda, atalho das pendências, 3 larguras × 2 temas; código 1 se falhar
 node testes/thh24.js                  # Produção 2.4.52: produção fora do turno nas linhas do turno que a recebe (caso 04:00 com só A e B produtivos), Dia (24 h) com meta/apontado iguais à grade, Caixas do MES e Lotes do dia pelo dia de trabalho (2.4.53), Ordens produzidas sem MB51 com os lotes do MES "não conciliado"; código 1 se falhar
