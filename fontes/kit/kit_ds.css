@@ -178,6 +178,8 @@ button,input,select,textarea{font-family:var(--f-body)}
 
 /* numeração das páginas impressas (caixas de margem; Chrome e Edge 131 ou mais novos) */
 @page{@bottom-right{content:"Página " counter(page) " de " counter(pages);font:9px "Segoe UI",Arial,sans-serif;color:#5A6E85}}
+/* paisagem só no conteúdo normal da página (main); quem tem página própria (formulários do Paradas em retrato, SQDCP, relatórios em janela) fica como está */
+@page vacpaisagem{size:A4 landscape;margin:10mm 10mm 12mm;@bottom-right{content:"Página " counter(page) " de " counter(pages);font:9px "Segoe UI",Arial,sans-serif;color:#5A6E85}}
 /* --- 9 · impressão e PDF: sem navegação nem controles; cabeçalho e rodapé do relatório --- */
 .vds-imp{display:none}
 @media print{
@@ -186,8 +188,22 @@ button,input,select,textarea{font-family:var(--f-body)}
   .vpage{border:0}.vpage .wrap{padding:0 0 6px}
   .vpage .vds-mod{display:none}
   .card,.vk-card,.kpi,.vk-dc,.vk-grp,.vg-it,.chart-card,.kpi-card{box-shadow:none!important;break-inside:avoid;page-break-inside:avoid}
-  .vds-imp{display:block;font:11px/1.4 "Segoe UI",Arial,sans-serif;color:#102F55}
-  .vds-imp.cab{border-bottom:2px solid #102F55;padding-bottom:5px;margin-bottom:8px}
-  .vds-imp.cab b{font-size:13px}
+  /* faixa de teste, demonstração, avisos, cabeçalho do módulo e painel de filtros não vão para o papel (os filtros aplicados vão escritos no cabeçalho) */
+  .testband,.testbar,#testBar,.exbar,#vacDemoBar,.toasts,.toast,#toasts,.vpage,#vacEstFaixa,.vestfaixa,main .filters,main .l3-chips,.vk-mais,.pop,#vacGuia{display:none!important}
+  main.wrap,main{padding:0!important;max-width:none!important;page:vacpaisagem}
+  .vds-imp{display:block;font:11px/1.45 "Segoe UI",Arial,sans-serif;color:#102F55}
+  .vds-imp.cab{border-bottom:2px solid #102F55;padding-bottom:6px;margin-bottom:10px}
+  .vds-imp .vi-f{display:flex;justify-content:space-between;background:#102333;color:#fff;font-size:9px;font-weight:700;letter-spacing:.06em;padding:4px 8px;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  .vds-imp .vi-f span{font-weight:400;letter-spacing:0}
+  .vds-imp .vi-t{font-size:18px;font-weight:750;margin:6px 0 2px}
+  .vds-imp .vi-l{font-size:10.5px;color:#3F5871}
   .vds-imp.rod{border-top:1px solid #DCE6EF;margin-top:10px;padding-top:4px;color:#5A6E85;font-size:9.5px}
+  /* relatórios que abrem em janela própria (Portal, Waste, Paradas: .rep; Produção: .rp-doc): mesma faixa, cabeçalho de tabela e destaque de linha */
+  .rep::before,.rp-doc::before{content:"BD · SISTEMAS DA LINHA VACUTAINER   —   Uso interno · valores conforme a base disponível na data de geração";display:block;background:#102333;color:#fff;font:700 9px "Segoe UI",Arial,sans-serif;letter-spacing:.05em;padding:4px 8px;margin-bottom:8px;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  .rep th{background:#102F55!important;color:#fff!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  .rep tr.hl1 td,.rep tr.hl2 td,.rep tr.hl3 td{color:inherit!important;font-weight:inherit!important}
+  .rep tr.hl3 td{background:#FDEDED!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  .rep tr.hl1 td:first-child{color:#BF3B3A!important}
+  .rep tr.hl2 td:first-child,.rep tr.hl3 td:first-child{color:#BF3B3A!important;font-weight:700!important;box-shadow:inset 3px 0 0 #C94645}
+  .rep table,.rp-doc table{break-inside:auto}.rep tr,.rp-doc tr{break-inside:avoid}.rep thead,.rp-doc thead{display:table-header-group}
 }

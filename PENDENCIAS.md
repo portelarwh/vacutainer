@@ -23,6 +23,8 @@ Versões desta branch: Portal 1.9.28 · Produção 2.4.60 · Waste 1.12.0 · Gel
 
 **Terceira entrega (12/11/2026, depois do merge do PR #62):** modelo de e-mail para o Outlook no kit (`vacEmail`) e usado na Linha 360° 1.1.0; "Página X de Y" na impressão direta; chips de filtros ativos e configuração compacta na Linha 360°. Versões: Portal 1.9.30 · Produção 2.4.62 · Waste 1.12.2 · Gel 2.31 · Paradas 1.2.3 · Equipamentos 1.0.13 · Iniciativas 1.1.10 · Linha 360° 1.1.0 · Projetos 0.1.13. Falta levar o `vacEmail` aos relatórios das outras páginas e conferir o e-mail colado no Outlook da empresa.
 
+**Revisão da impressão e do PDF (12/11/2026, mesma entrega):** padrão único pelo kit para a impressão direta, os relatórios em janela e todos os PDFs (`docs/design-system.md`, "Impressão e PDF"). Conferir na pasta real: imprimir uma tela de cada página, gerar um PDF de cada página e olhar em papel na impressora da linha.
+
 **Decisões do usuário nesta rodada:** tema claro por padrão, com o escuro mantido; Linha 360° com dados reais e base própria; conflito de ordem × lote avisa e lista, não bloqueia; Pareto vertical como no dashboard anexado.
 
 **Implantar:** copiar para a pasta da rede as nove páginas de `paginas/` (inclusive `Linha-360.html`, nova) e o `Demonstracao.html`. Nenhuma base muda de formato. A `linha360-base.json` é criada em `00. Bases` na primeira conexão da Linha 360°, com confirmação.

@@ -30,6 +30,7 @@ Padrão visual único das páginas: `docs/design-system.md` (o que existe e o qu
 - ícones Lucide embutidos (`vacIcone`); não usar emoji nem símbolo de texto em tela nova; os símbolos antigos no início de botões (⇩, ↻, ✎, ⚙…) são trocados na tela pelo `vacSimbolos` (o texto do botão continua);
 - todo cartão com gráfico pode mudar de largura (1/1, 1/2, 1/3) e de ordem (`vacGrade`, `vac.grade.<página>`); gráfico novo vai dentro de um `.card` com `id`;
 - e-mail para o Outlook pelo `vacEmail` do kit (tabelas, CSS inline, 680 px, no máximo 4 KPIs, gráfico em PNG com texto alternativo); relatório novo usa esse modelo em vez de montar HTML próprio; impressão direta das páginas com "Página X de Y";
+- **impressão e PDF com um padrão só** (`docs/design-system.md` § Impressão e PDF): a impressão direta de qualquer página sai em A4 paisagem, sem navegação, painel de filtros, faixa de teste nem avisos, com cabeçalho (sistema, relatório, filtros por escrito, base, data, hora, pessoa) e rodapé de uso interno; todo PDF gerado pelo jsPDF ganha a faixa do sistema e as cores do Design System pelo `vacPdf` do kit, sem mexer em cada gerador; destaque de linha só na 1ª coluna, nunca a linha inteira em vermelho;
 - cores: azul neutro, verde favorável, vermelho perda, âmbar atenção, cinza sem dados; nunca só a cor;
 - **ordem e lote são a base de tudo**: cada ordem tem um lote e cada lote tem uma ordem (`vacOrdemLote` aponta o conflito sem bloquear; a Produção publica em `exports.ordemLote` e cria pendência). Tela que mostra um fato de produção leva à ficha da ordem (`vacFichaBotao`).
 Layout nunca muda fórmula, regra, ID, evento nem estrutura gravada.
@@ -42,7 +43,7 @@ python fontes/kit/aplicar_kit21.py     # recopia fontes/kit/kit_v21.js (+ kit_ds
 python fontes/modelo/gerar_paginas.py  # gera Projetos.html (em construção) a partir de fontes/modelo/pagina-em-construcao.html e roda o aplicar_kit21.py
 python fontes/linha360/build.py        # monta paginas/Linha-360.html (moldura comum de Equipamentos.html + fontes/linha360/) e roda o aplicar_kit21.py; rodar DEPOIS de mexer em Equipamentos.html ou no kit
 python fontes/demo/gerar_demo.py       # pacote offline da demonstração; SEMPRE depois dos outros builds
-node testes/tds.js                     # Design System e Linha 360°: barra lateral nas 9 páginas, recolher, menu sobreposto, modal acima da barra, grade de gráficos, vacOrdemLote, impressão, Paretos verticais do Waste, planta (números = soma dos eventos), postos e checklists; código 1 se falhar
+node testes/tds.js                     # Design System e Linha 360°: barra lateral nas 9 páginas, recolher, menu sobreposto, modal acima da barra, grade de gráficos, vacOrdemLote, impressão direta (cabeçalho, filtros por escrito, paisagem), faixa e cores nos PDFs, e-mail do Outlook, Paretos verticais do Waste, planta (números = soma dos eventos), postos e checklists; código 1 se falhar
 node testes/tparada_tempo.js           # duração visível, regras do Portal, troca de código, gravação e abono
 node testes/tsqdcp.js                 # formulário S/Q, QN única, relatórios, reimportação, persistência e A4
 node testes/tsqdcp_layout.js          # SQDCP 2.4.58: mesmos números das 25 posições da referência, três blocos, resumo, cards, Modo Reunião, erro de fonte, CSV, A4, 3 larguras × 2 temas; --gravar só antes de mudar a tela; código 1 se falhar

@@ -105,6 +105,30 @@ const PAGS = [['portal', 'Portal.html'], ['oee', 'OEE-Vacutainer.html'], ['perda
     ok(await p.evaluate(() => [...document.styleSheets].some(s => { try { return [...s.cssRules].some(r => r.type === 6 && /counter\(page\)/.test(r.cssText)); } catch (x) { return false; } })), 'impressão: regra de "Página X de Y" presente');
     await p.click('#nav [data-t="config"]'); await p.waitForTimeout(300); ok(await p.evaluate(() => document.querySelectorAll('details.l3-ms').length === 17 && !document.querySelector('details.l3-ms[open]')), 'Configuração: equipamentos de cada ponto recolhidos até clicar em alterar');
     await c.close(); }
+  // 8 · padrão de impressão e PDF (12/11/2026): impressão direta sem painel de filtros, faixa de teste nem avisos, com os filtros escritos no cabeçalho;
+  //     todo PDF (jsPDF) com a faixa do sistema e as cores do Design System; destaque de linha só na 1ª coluna
+  { const c = await b.newContext({ viewport: { width: 1440, height: 900 }, acceptDownloads: true }); const p = await c.newPage(); p.on('pageerror', e => pe.push(e.message)); p.on('dialog', d => d.accept());
+    await p.goto(PG + 'Paradas.html'); await p.waitForTimeout(800); await p.evaluate(() => { modoTeste(); App.go('geral'); }); await p.waitForTimeout(900);
+    await p.evaluate(() => { const s = [...document.querySelectorAll('main .filters select')].find(x => x.options.length > 2); if (s) { s.selectedIndex = 1; s.dispatchEvent(new Event('change', { bubbles: true })); } }); await p.waitForTimeout(600);
+    await p.evaluate(() => window.dispatchEvent(new Event('beforeprint'))); await p.emulateMedia({ media: 'print' }); await p.waitForTimeout(200);
+    const im = await p.evaluate(() => { const v = s => [...document.querySelectorAll(s)].filter(e => getComputedStyle(e).display !== 'none' && e.getClientRects().length).length, cab = document.querySelector('.vds-imp.cab');
+      return { some: ['.vpage', 'main .filters', '#testBar', '.testbar', '.testband', '.toast', 'header.vsuite', '#vdsTop', 'nav.vtabs'].filter(s => v(s)), cab: cab ? cab.textContent.replace(/\s+/g, ' ') : '', rod: !!document.querySelector('.vds-imp.rod'), pg: getComputedStyle(document.querySelector('main')).page }; });
+    ok(!im.some.length, 'impressão direta: sem cabeçalho do módulo, painel de filtros, faixa de teste, avisos e navegação' + (im.some.length ? ' (visível: ' + im.some.join(', ') + ')' : ''));
+    ok(/BD · SISTEMAS DA LINHA VACUTAINER/.test(im.cab) && /Uso interno/.test(im.cab) && /Paradas · Visão geral/i.test(im.cab) && /Filtros: (?!nenhum)\S/.test(im.cab) && /Gerado em:/.test(im.cab) && /Base:/.test(im.cab) && im.rod, 'cabeçalho impresso: sistema, relatório, filtros aplicados por escrito, base, data e hora; rodapé de uso interno');
+    ok(im.pg === 'vacpaisagem', 'conteúdo da página impresso em A4 paisagem (página nomeada; formulários em retrato não mudam)');
+    await p.emulateMedia({ media: 'screen' }); await p.evaluate(() => window.dispatchEvent(new Event('afterprint')));
+    ok(await p.evaluate(() => !document.querySelector('.vds-imp')), 'depois de imprimir, o cabeçalho e o rodapé somem da tela');
+    await c.close();
+    const fs = require('fs'), { execSync } = require('child_process'), SAI = RAIZ + 'testes/saida/ds/'; fs.mkdirSync(SAI, { recursive: true });
+    for (const [nome, arq, entra, gera] of [['Portal', 'Portal.html', () => enterTest(), () => Report.pdf(relDoc())], ['Paradas', 'Paradas.html', () => modoTeste(), () => Report.pdf(relParadas())]]) {
+      const c2 = await b.newContext({ viewport: { width: 1440, height: 900 }, acceptDownloads: true }); const q = await c2.newPage(); q.on('pageerror', e => pe.push(e.message)); q.on('dialog', d => d.accept());
+      await q.goto(PG + arq); await q.waitForTimeout(800); await q.evaluate(entra); await q.waitForTimeout(800);
+      const [d] = await Promise.all([q.waitForEvent('download', { timeout: 60000 }), q.evaluate(gera)]); const f = SAI + nome + '.pdf'; await d.saveAs(f);
+      const t = execSync(`pdftotext -layout "${f}" -`).toString(), n = +(execSync(`pdfinfo "${f}"`).toString().match(/Pages:\s+(\d+)/) || [])[1];
+      ok((t.match(/SISTEMAS DA LINHA VACUTAINER/g) || []).length === n && (t.match(/Uso interno/g) || []).length === n, `${nome}: PDF com a faixa do sistema e "Uso interno" nas ${n} página(s)`);
+      const cor = await q.evaluate(() => { const J = window.jspdf.jsPDF, d = new J(); let v = null; const o = d.internal.write; d.setTextColor(29, 75, 115); return { vac: !!J.__vac, cor: d.getTextColor ? d.getTextColor() : '' }; });
+      ok(cor.vac && /^#102[ef]5[45]$/i.test(cor.cor), `${nome}: cores antigas do PDF convertidas para a paleta do Design System (${cor.cor})`);
+      await c2.close(); } }
   ok(!pe.length, 'sem erros de página' + (pe.length ? ': ' + pe.slice(0, 3).join(' | ') : ''));
   await b.close(); console.log(errs.length ? `\n${errs.length} falha(s)` : '\nsem erros'); process.exit(errs.length ? 1 : 0);
 })();

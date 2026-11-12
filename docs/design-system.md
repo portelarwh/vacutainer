@@ -36,7 +36,18 @@ Mudou o Design System: editar `kit_ds.css` ou `kit_ds.js` e rodar os builds na o
 
 **Grade de gráficos (`vacGrade`).** Todo cartão que contém um gráfico ganha, ao passar o mouse, uma barra com: arrastar, mover para antes ou depois, largura 1/1, 1/2 ou 1/3 e voltar ao original. Gravado por página e por computador em `vac.grade.<página>`. A ordem usa `order` do CSS: o DOM da página não muda. Um bloco só entra na grade se todos os filhos já ocupavam largura inteira, metade ou um terço. Para deixar um bloco de fora: `data-vg-nao` no cartão. Para desligar na página: `window.VAC_GRADE_OFF = true`.
 
-**Impressão.** Some barra lateral, cabeçalho, abas, botões e controles; entram um cabeçalho (sistema, módulo, aba, base, data e hora) e um rodapé de uso interno. Página com impressão própria pode desligar com `window.VAC_IMP_PROPRIA = true`.
+**Impressão e PDF (revisão de 12/11/2026).** Antes, cada saída tinha um formato: a impressão direta levava a faixa de teste, o botão voltar, o painel de filtros e os avisos; os PDFs do Portal/Waste/Paradas, da Produção e do Gel tinham cabeçalho, cores e rodapé diferentes; e o Portal pintava linhas inteiras de vermelho. Agora há um padrão só, todo no kit:
+
+| Saída | O que o kit faz | Onde |
+|---|---|---|
+| Impressão direta da página (Ctrl+P) | A4 paisagem; some navegação, cabeçalho do módulo, painel de filtros, faixa de teste e de demonstração, avisos e controles; entra o cabeçalho com faixa do sistema e "Uso interno", relatório (módulo · aba), **filtros aplicados por escrito**, base, data, hora, pessoa e versão; rodapé de uso interno; "Página X de Y" | `kit_ds.css` § 9 e `vacShell` (`filtrosTexto`, `impressao`) |
+| Relatório em janela própria (Portal, Waste, Paradas `.rep`; Produção `.rp-doc`) | Mesma faixa do sistema no alto; cabeçalho de tabela azul-marinho; cabeçalho da tabela repetido em cada página; linha não quebra entre páginas | `kit_ds.css` § 9 |
+| Qualquer PDF (jsPDF: Portal, Waste, Paradas, Produção, Gel) | Faixa "BD · Sistemas da Linha Vacutainer · Uso interno" no alto de todas as páginas; cores antigas convertidas para a paleta (texto, traço, preenchimento, cabeçalho de tabela, verde, vermelho, âmbar) | `vacPdf` no `kit_ds.js` |
+| Destaque de linha em tabela (Portal, Waste, Paradas) | Vermelho só na 1ª coluna; a linha mais grave ganha fundo vermelho muito claro. Nunca a linha inteira em vermelho | `Report.pdf` das três páginas e `kit_ds.css` |
+
+Como funciona o `vacPdf`: as páginas carregam o jsPDF só na hora do primeiro PDF; o kit embrulha a biblioteca quando ela chega, e cada documento novo passa a converter as cores e a receber a faixa ao salvar. Título, tabelas, números e rodapé ("página X de Y") continuam os de cada gerador. Desligar numa página: `window.VAC_PDF_PADRAO = false`. Página com impressão própria desliga o cabeçalho da impressão direta com `window.VAC_IMP_PROPRIA = true`. Formulários do Paradas (retrato) e SQDCP (uma A4) têm página própria e não mudam de orientação.
+
+Conferido por `testes/tds.js` § 8 e `testes/trelatorios.js`.
 
 **Símbolos (`vacSimbolos`).** Troca, na tela, o símbolo de texto do início de um botão pelo ícone correspondente. O texto do botão não muda; botão só com símbolo é trocado apenas se tiver `title` ou `aria-label`. Desligar na página: `window.VAC_SIMBOLOS_OFF = true`.
 
@@ -51,7 +62,9 @@ Mudou o Design System: editar `kit_ds.css` ou `kit_ds.js` e rodar os builds na o
 - Símbolos de texto: os que abrem um botão, link-botão ou aba (⇩, ↻, ✓, ▶, ⛁, ▣, ✎, ⚙…) viram ícone na tela (`vacSimbolos`, 12/11/2026). Continuam em texto as setas de abrir e recolher (▾, ▸), os símbolos no meio de frases e o ⓘ. O código-fonte das páginas ainda tem os símbolos; tela nova usa `vacIcone` direto.
 - Filtros em painel recolhível com "Aplicar": só onde já existia. Chips de filtros ativos: Waste, Paradas e Linha 360°; faltam Produção, Gel, Iniciativas e Equipamentos.
 - E-mail: o modelo `vacEmail` existe e a Linha 360° usa; os relatórios de Portal, Waste, Produção, Paradas e Gel continuam com o HTML próprio de cada um (conferido pelo `trelatorios.js`) e podem migrar um a um.
-- "Página X de Y" vale para a impressão direta da página; os relatórios que abrem em janela própria (Portal, Waste, Paradas, Produção) têm o CSS deles.
+- PDFs: o cabeçalho de cada relatório (título, período, quem gerou) ainda é desenhado por cada gerador, em posições e tamanhos um pouco diferentes; o kit iguala faixa, cores e tabelas. Unificar os três geradores num só continua pendente (registro § P).
+- Gel: são cerca de dez relatórios em PDF; todos recebem a faixa e as cores, mas só o "relatório montado" foi olhado página a página.
+- Conferir em papel: impressora da linha em preto e branco (o verde e o vermelho viram tons de cinza; o texto "Favorável/Desfavorável" e o sinal continuam).
 - Tabelas: cabeçalho claro aplicado pelo kit; primeira coluna fixa, ordenação e paginação continuam como cada página fazia.
 - Estados de carregamento em esqueleto.
 - Gráficos da Produção e do Gel com cores próprias fora da paleta de `chartColors`.
