@@ -25,6 +25,8 @@ Versões desta branch: Portal 1.9.28 · Produção 2.4.60 · Waste 1.12.0 · Gel
 
 **Revisão da impressão e do PDF (12/11/2026, mesma entrega):** padrão único pelo kit para a impressão direta, os relatórios em janela e todos os PDFs (`docs/design-system.md`, "Impressão e PDF"). Conferir na pasta real: imprimir uma tela de cada página, gerar um PDF de cada página e olhar em papel na impressora da linha.
 
+**Portal 1.9.31 (12/11/2026, depois do merge do PR #63):** cartão "Pendências da linha" da Visão geral refeito pelo modelo visual enviado pelo usuário (`docs/layout-visao-geral.md`).
+
 **Decisões do usuário nesta rodada:** tema claro por padrão, com o escuro mantido; Linha 360° com dados reais e base própria; conflito de ordem × lote avisa e lista, não bloqueia; Pareto vertical como no dashboard anexado.
 
 **Implantar:** copiar para a pasta da rede as nove páginas de `paginas/` (inclusive `Linha-360.html`, nova) e o `Demonstracao.html`. Nenhuma base muda de formato. A `linha360-base.json` é criada em `00. Bases` na primeira conexão da Linha 360°, com confirmação.

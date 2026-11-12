@@ -56,3 +56,19 @@ Decisões do responsável: ordem Waste → Paradas → Gel → Portal; Visão ge
 `paginas/Portal.html` (`viewGeral`, `portalSit`, `portalDiag`): "Visão geral da linha" com a barra de período · 01 Situação da linha (total de pendências, urgentes, atenção e páginas com dados, com o estado em texto; Ação prioritária e Próximas decisões com Abrir na página dona) · 02 Números por página (os cartões de cada página, iguais) · 03 Diagnóstico (página com mais pendências, urgentes → Pendências, páginas sem dados → Versões e saúde dos dados) · 04 Pendências da linha (a lista de sempre) · 05 Explorar (Minha fila, Reunião diária, Pendências, Relatórios, Importação, Administração). O Portal não tem gráficos próprios além dos cartões, por isso não há grupos. Nenhum número é recalculado (regra 1). Teste: `testes/tportal_vg.js`.
 
 Com Waste, Paradas, Gel e Portal, a pendência do registro § L "mesma posição de Ação prioritária, filtros e resumo nas telas equivalentes" está resolvida: em todas, filtros no topo, 01 Situação com a ação prioritária ao lado e o resumo em 02.
+
+## Portal 1.9.31 · cartão "Pendências da linha" no modelo visual do usuário (12/11/2026)
+
+O usuário enviou uma imagem de referência para o cartão da Visão geral do Portal. O cartão passou a ter:
+- cabeçalho com ícone na cor da situação (vermelho com urgentes, âmbar só com atenção, verde sem pendências), título, subtítulo e o botão "Ver todas";
+- total de pendências em destaque, a pílula da situação e a frase ("Requer atenção nesta linha.");
+- três quadros: Urgentes, Atenção e Páginas com dados, cada um com a parte que representa;
+- barra "Distribuição das pendências" com a legenda;
+- nota "Os números de cada página estão em 02."
+
+O cartão ocupa a largura inteira; "Ação prioritária" e "Próximas decisões" ficam lado a lado logo abaixo.
+
+**Números.** Os mesmos de antes (total, urgentes, atenção, páginas com dados). As porcentagens são só a divisão deles. Duas diferenças em relação à imagem, de propósito: a barra enche até 100% quando urgentes + atenção somam o total (na imagem sobra um trecho cinza), e "Outras" é sempre 0, porque o Portal só tem os dois níveis de urgência.
+
+Código em `pendCard` e nos estilos `pd-*` do `paginas/Portal.html`. Conferido por `testes/tportal_vg.js`.
+
