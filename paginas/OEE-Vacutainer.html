@@ -1311,7 +1311,7 @@ const U = (() => {
 
 /* ---- 02-model.js ---- */
 /* ================= modelo de dados, valores iniciais e integridade ================= */
-const APP_VERSION = '2.4.57';
+const APP_VERSION = '2.4.58';
 const SCHEMA_VERSION = 1;
 const BASE_FILE = 'oee-vacutainer-base.json';
 const BACKUP_DIR = '00. Backups';
@@ -9459,6 +9459,23 @@ window.VAC_GUIA.oee = {
     duvidas: [['O OEE do período é a média dos dias?', 'Não: é a soma dos tempos e das peças do período (sem média de médias).'],
       ['Por que aparece "1 dia no período" num gráfico?', 'Com um dia só não há tendência: o gráfico mostra o valor do dia contra a meta. Escolha um período maior para ver a evolução.'],
       ['Sumiu Produção boa de "Mais indicadores"?', 'Ela já está na grade de cima. Se você desligar o cartão em Editar cards, ela volta a aparecer em "Mais indicadores".']]
+  },
+  sqdcp: {
+    titulo: 'SQDCP – Gestão Diária',
+    para: 'Quadro da reunião diária: Segurança, Qualidade, Entrega, Custo e Pessoas (ou Produtividade), 5 posições por pilar. Cada posição vira uma folha A4 em paisagem. Os números vêm da Produção e dos exports do Waste, do Gel e de Iniciativas; nada é calculado à parte.',
+    campos: [
+      { sel: '#sqConfigurar', nome: 'Configurar SQDCP', o: 'Lista as 25 posições da linha; a engrenagem de cada uma abre a configuração (indicador, período, meta, sentido, modelo da folha).' },
+      { sel: '#sqDia', nome: 'Data de referência', o: 'Dia dos indicadores. Período de cada posição (dia, 7 dias, mês) conta até esta data.', ex: 'Ontem, para a reunião da manhã.' },
+      { sel: '#sqTurno', nome: 'Turno', o: 'Todos ou um turno. Fontes mensais (Waste) e posições atuais (Gel, ações) não mudam por turno.' },
+      { sel: '#sqP', nome: 'Coluna P', o: 'Pessoas ou Produtividade (nome da 5ª coluna).' },
+      { sel: '#sqFontes', nome: 'Atualizar fontes', o: 'Lê de novo o Waste, o Gel e Iniciativas. Os filtros escolhidos ficam como estão.' },
+      { sel: '#sqCsv', nome: 'Exportar CSV', o: 'Segurança e QN por turno no mês da referência.' },
+      { sel: '#sqReuniao', nome: 'Modo Reunião', o: 'Só o quadro, em tela cheia, com data, linha, turno e horário; botões S Q D C P ampliam um pilar. Esc ou Sair volta. Nada é gravado.' },
+      { sel: '.sqdcp-resumo', nome: 'Resumo executivo', o: 'Um cartão por pilar com a 1ª posição configurada dele (o mesmo resultado do card). Sem dado: — e Não informado (nunca zero).' },
+      { sel: '.sq-quadro', nome: 'Posições', o: 'Valor, meta e situação pelo sentido do indicador (verde dentro, vermelho fora, âmbar parcial, cinza não informado). Prévia / Imprimir abre a folha A4; a engrenagem configura.' }
+    ],
+    duvidas: [['Por que "Não informado" e não 0?', 'Ausência de resposta nunca é zero: o turno sem a pergunta de acidente/QN respondida ou o dia sem lançamento ficam como não informado.'],
+      ['"Erro na fonte"?', 'A base do Waste, do Gel ou de Iniciativas não pôde ser lida (arquivo com problema ou sem exports). Use Tentar novamente; sem pasta conectada aparece só Não informado.']]
   }
 };
 
@@ -11280,22 +11297,98 @@ document.addEventListener('DOMContentLoaded', () => { boot().catch(e => { consol
 
 </script>
 <style>
-/* SQDCP · tela. A folha usa CSS próprio, incorporado no documento de impressão. */
-.sq-filtros{display:flex;gap:10px;align-items:end;flex-wrap:wrap}.sq-filtros label,.sq-ocorrencias label,.sq-form label,#sqManual label{display:flex;flex-direction:column;gap:4px;font-size:13px}
-.sq-quadro{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));grid-template-rows:auto repeat(5,minmax(245px,auto));gap:12px;margin-top:16px}
-.sq-coluna{min-width:0;display:grid;grid-template-rows:subgrid;grid-row:span 6}.sq-coluna>h3{margin:0;display:flex;align-items:center;gap:10px;border-bottom:4px solid var(--sq-pilar);padding:8px 4px}
-.sq-coluna>h3 b{font-size:36px;line-height:1}.sq-coluna>h3 span{font-size:15px}.sq-col-S{--sq-pilar:#267745}.sq-col-Q{--sq-pilar:#286baf}.sq-col-D{--sq-pilar:#a36b08}.sq-col-C{--sq-pilar:#7251a2}.sq-col-P{--sq-pilar:#a24558}
-.sq-vaga{background:var(--surface);border:1px solid var(--line);border-radius:10px;min-height:245px;padding:14px;display:flex;flex-direction:column;gap:8px;overflow-wrap:anywhere}
-.sq-vaga h4{font-size:16px;line-height:1.3;margin:0}.sq-vaga .sq-v{font-size:30px;line-height:1.2}.sq-pos{font-size:11px;color:var(--muted)}.sq-vaga small{color:var(--muted);font-size:11px;line-height:1.4;flex:1}
-.sq-vaga .btn{white-space:normal;text-align:center}.sq-tag{font-size:12px;border:1px solid currentColor;border-radius:6px;padding:4px 6px;align-self:start}
-.sq-tag.ok{color:var(--ok)}.sq-tag.crit{color:var(--crit)}.sq-tag.parcial{color:var(--warn)}.sq-tag.sem,.sq-tag.info{color:var(--muted)}
+/* SQDCP · tela. A folha usa CSS próprio, incorporado no documento de impressão (sqdcp_impressao.css).
+   2.4.58 · SQDCP – Gestão Diária: layout novo (só apresentação). Classes sqdcp-* próprias desta tela; .sq-quadro/.sq-coluna/.sq-vaga mantidas
+   (testes e atalhos). Tema claro com as cores da especificação; tema escuro pelos tokens da plataforma. Cor do pilar = categoria;
+   cor do estado = resultado × meta (calculado pelo relatorio, com o sentido de cada indicador). */
+.sqdcp-page{--sqdcp-navy:#123b5d;--sqdcp-bg:#f3f6fa;--sqdcp-border:#dce4ed;--sqdcp-card:#fff;--sqdcp-ink:#152333;--sqdcp-muted:#5b6b7d;--sqdcp-soft:#f9fbfd;
+  --st-ok:#16803c;--st-ok-bg:#e8f5ec;--st-crit:#c62828;--st-crit-bg:#fdecec;--st-warn:#a86a00;--st-warn-bg:#fff4dc;--st-sem:#5b6b7d;--st-sem-bg:#eef2f6;--st-info:#1769d2;--st-info-bg:#eaf2fd;
+  background:var(--sqdcp-bg);color:var(--sqdcp-ink);border-radius:12px;padding:14px;display:flex;flex-direction:column;gap:14px}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]) .sqdcp-page{--sqdcp-navy:#8fbdeb;--sqdcp-bg:var(--bg);--sqdcp-border:var(--line);--sqdcp-card:var(--surface);--sqdcp-ink:var(--ink);--sqdcp-muted:var(--muted);--sqdcp-soft:var(--surface-3);
+  --st-ok:#5cc98a;--st-ok-bg:rgba(92,201,138,.13);--st-crit:#ff7b7b;--st-crit-bg:rgba(255,123,123,.13);--st-warn:#f0b54a;--st-warn-bg:rgba(240,181,74,.13);--st-sem:var(--muted);--st-sem-bg:var(--surface-2);--st-info:#7fb3f0;--st-info-bg:rgba(127,179,240,.13)}}
+:root[data-theme="dark"] .sqdcp-page{--sqdcp-navy:#8fbdeb;--sqdcp-bg:var(--bg);--sqdcp-border:var(--line);--sqdcp-card:var(--surface);--sqdcp-ink:var(--ink);--sqdcp-muted:var(--muted);--sqdcp-soft:var(--surface-3);
+  --st-ok:#5cc98a;--st-ok-bg:rgba(92,201,138,.13);--st-crit:#ff7b7b;--st-crit-bg:rgba(255,123,123,.13);--st-warn:#f0b54a;--st-warn-bg:rgba(240,181,74,.13);--st-sem:var(--muted);--st-sem-bg:var(--surface-2);--st-info:#7fb3f0;--st-info-bg:rgba(127,179,240,.13)}
+.sqdcp-svg{flex:none;vertical-align:-3px}
+/* cabeçalho em três blocos */
+.sqdcp-head{display:grid;grid-template-columns:minmax(240px,1.1fr) minmax(0,2fr) auto;gap:14px 20px;align-items:end;margin:0;background:var(--sqdcp-card);border:1px solid var(--sqdcp-border);border-radius:12px;box-shadow:0 2px 6px rgba(15,35,55,.05)}
+.sqdcp-hb-tit{display:flex;flex-direction:column;gap:8px;align-self:stretch;justify-content:space-between}.sqdcp-hb-tit h2{margin:0;color:var(--sqdcp-navy);font-size:21px;letter-spacing:.2px}.sqdcp-hb-tit p{margin:4px 0 0}
+.sqdcp-hb-tit>.btn{align-self:flex-start}
+.sq-filtros{display:flex;gap:10px 12px;align-items:end;flex-wrap:wrap}.sq-filtros label,.sq-ocorrencias label,.sq-form label,#sqManual label{display:flex;flex-direction:column;gap:4px;font-size:13px}
+.sqdcp-filtros label{color:var(--sqdcp-muted);font-weight:600;font-size:12px}.sqdcp-filtros select,.sqdcp-filtros input{min-height:36px}
+.sqdcp-dia{display:flex;gap:6px;align-items:center}
+.sqdcp-acoes{display:flex;flex-wrap:wrap;gap:8px;justify-content:flex-end;align-items:center}
+.sqdcp-page .btn{display:inline-flex;align-items:center;gap:6px;border-radius:10px}
+/* resumo executivo */
+.sqdcp-resumo{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:12px}
+.sqdcp-rcard{min-width:0;background:var(--sqdcp-card);border:1px solid var(--sqdcp-border);border-top:4px solid var(--pillar-color);border-radius:12px;padding:11px 13px;display:flex;flex-direction:column;gap:4px;box-shadow:0 2px 6px rgba(15,35,55,.05)}
+.sqdcp-rtop{display:flex;justify-content:space-between;align-items:center;gap:6px}.sqdcp-rpil{display:inline-flex;align-items:center;gap:6px;font-weight:700;color:var(--pillar-color);font-size:13px;text-transform:uppercase;letter-spacing:.4px}
+.sqdcp-rpil b{font-size:15px}.sqdcp-rpos{font-size:11px;color:var(--sqdcp-muted);border:1px solid var(--sqdcp-border);border-radius:6px;padding:1px 6px}
+.sqdcp-rind{font-size:12.5px;color:var(--sqdcp-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sqdcp-rv{font-size:clamp(20px,1.7vw,26px);font-weight:750;font-variant-numeric:tabular-nums;line-height:1.15}
+/* quadro: 5 colunas × 5 posições, as linhas alinhadas entre os pilares (subgrid) */
+.sq-quadro.sqdcp-board{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));grid-template-rows:auto repeat(5,minmax(190px,auto));gap:12px;margin:0;align-items:stretch}
+.sq-coluna.sqdcp-column{min-width:0;display:grid;grid-template-rows:subgrid;grid-row:span 6}
+.sqdcp-column-header{margin:0;display:flex;align-items:center;gap:10px;padding:12px 14px;border-radius:10px 10px 0 0;background:var(--pillar-color);color:#fff;font-weight:700}
+.sqdcp-column-header b{font-size:26px;line-height:1}.sqdcp-column-header span{font-size:15px;flex:1;min-width:0}.sqdcp-column-header .sqdcp-svg{opacity:.85}
+.sq-vaga.sqdcp-card{display:flex;flex-direction:column;gap:6px;min-width:0;min-height:190px;padding:14px;border:1px solid var(--sqdcp-border);border-left:4px solid var(--sqdcp-border);border-radius:10px;background:var(--sqdcp-card);box-shadow:0 2px 6px rgba(15,35,55,.05);overflow-wrap:anywhere}
+.sqdcp-card-top{display:flex;align-items:center;justify-content:space-between;gap:6px}
+.sq-pos{font-size:11px;font-weight:700;color:var(--sqdcp-muted);letter-spacing:.3px;text-transform:uppercase}
+.sqdcp-ic{display:inline-grid;place-items:center;width:30px;height:30px;border-radius:8px;color:var(--pillar-color);background:color-mix(in srgb,var(--pillar-color) 12%,transparent)}
+.sq-vaga h4,.sqdcp-page .sqdcp-v-txt{font-family:var(--f-body,inherit);text-transform:none;letter-spacing:0;font-size:15px;font-weight:650;line-height:1.3;margin:0;color:var(--sqdcp-ink)}
+.sqdcp-page .sqdcp-hb-tit h2{text-transform:none;font-family:var(--f-body,inherit);font-weight:750}
+.sqdcp-vline{display:flex;align-items:baseline;gap:6px;flex-wrap:wrap}
+.sqdcp-card-value{font-size:clamp(22px,2vw,30px);font-weight:750;line-height:1.15;font-variant-numeric:tabular-nums;color:var(--sqdcp-ink)}.sqdcp-v-long{font-size:clamp(18px,1.5vw,23px)}
+.sqdcp-v-txt{font-size:18px}
+.sqdcp-un{font-size:13px;color:var(--sqdcp-muted)}
+.sqdcp-meta{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:6px;font-size:12px;color:var(--sqdcp-muted)}
+.sq-tag{font-size:11.5px;font-weight:600;border-radius:999px;padding:3px 9px;line-height:1.3;border:0;background:var(--st-sem-bg);color:var(--st-sem)}
+.sq-tag.ok{color:var(--st-ok);background:var(--st-ok-bg)}.sq-tag.crit{color:var(--st-crit);background:var(--st-crit-bg)}.sq-tag.parcial,.sq-tag.carregando{color:var(--st-warn);background:var(--st-warn-bg)}
+.sq-tag.info{color:var(--st-info);background:var(--st-info-bg)}.sq-tag.sem{color:var(--st-sem);background:var(--st-sem-bg)}.sq-tag.erro{color:var(--st-crit);background:var(--st-crit-bg);outline:1px dashed var(--st-crit)}
+.sqdcp-st-ok{border-left-color:var(--st-ok)!important}.sqdcp-st-crit{border-left-color:var(--st-crit)!important}.sqdcp-st-parcial,.sqdcp-st-carregando{border-left-color:var(--st-warn)!important}
+.sqdcp-st-sem{border-left-color:var(--sqdcp-border)!important}.sqdcp-st-sem .sqdcp-card-value,.sqdcp-rcard.sqdcp-st-sem .sqdcp-rv{color:var(--sqdcp-muted)}.sqdcp-st-erro{border-left-color:var(--st-crit)!important;border-left-style:dashed!important}
+.sqdcp-rcard.sqdcp-st-ok .sqdcp-rv{color:var(--st-ok)}.sqdcp-rcard.sqdcp-st-crit .sqdcp-rv{color:var(--st-crit)}
+.sqdcp-nota{font-size:11.5px;line-height:1.4;color:var(--sqdcp-muted);display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+.sqdcp-card-actions{display:flex;gap:8px;margin-top:auto;padding-top:10px;align-items:center}
+.sqdcp-card-actions .sqdcp-prev{flex:1;justify-content:center;white-space:nowrap;min-width:0}
+.sqdcp-gear{flex:none;display:inline-grid;place-items:center;width:36px;height:36px;border-radius:10px;border:1px solid var(--sqdcp-border);background:var(--sqdcp-card);color:var(--sqdcp-muted);cursor:pointer}
+.sqdcp-gear:hover:not(:disabled),.sqdcp-gear:focus-visible{color:var(--sqdcp-navy);border-color:var(--sqdcp-navy);outline:none}.sqdcp-gear:disabled{opacity:.45;cursor:not-allowed}
+.sqdcp-retry{align-self:flex-start;font-size:12px;padding:4px 10px}
+.sq-vaga.sqdcp-card-empty{border-style:dashed;border-left-width:1px;background:var(--sqdcp-soft);box-shadow:none;justify-content:flex-start}
+.sqdcp-livre{margin:auto 0 0;font-size:13px;color:var(--sqdcp-muted)}.sqdcp-add{width:100%;justify-content:center}
+/* Configurar SQDCP (as 25 posições) */
+.sqdcp-cfg{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px}.sqdcp-cfg section{border:1px solid var(--line);border-top:4px solid var(--pillar-color);border-radius:10px;padding:8px 10px}
+.sqdcp-cfg h4{margin:0 0 6px}.sqdcp-cfg ol{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px}.sqdcp-cfg li{display:flex;align-items:center;gap:8px;font-size:13px}
+.sqdcp-cfg li>span:first-child{font-weight:700;width:24px}.sqdcp-cfg-n{flex:1;min-width:0}
+/* Modo Reunião: só o quadro, com a barra de contexto; nada é gravado */
+.sqdcp-rbar{display:none}
+body.sqdcp-reuniao>header.vsuite,body.sqdcp-reuniao>.vpage,body.sqdcp-reuniao>nav.vtabs,body.sqdcp-reuniao>#banner,body.sqdcp-reuniao .sqdcp-head{display:none!important}
+body.sqdcp-reuniao #main{max-width:none!important;padding:8px 12px!important;margin:0!important}
+body.sqdcp-reuniao .sqdcp-rbar{display:flex;flex-wrap:wrap;align-items:center;gap:8px 16px;padding:10px 14px;border-radius:12px;background:#123b5d;border:1px solid rgba(255,255,255,.12);color:#fff;font-size:14px}
+body.sqdcp-reuniao .sqdcp-rbar .btn{background:#fff;color:#123b5d;border-color:#fff}
+.sqdcp-rb-tit{font-weight:750;font-size:16px}.sqdcp-sp{flex:1}
+.sqdcp-zoom{display:inline-flex;border:1px solid rgba(255,255,255,.45);border-radius:10px;overflow:hidden}.sqdcp-zoom button{background:transparent;color:#fff;border:0;padding:6px 11px;font-weight:700;cursor:pointer}
+.sqdcp-zoom button[aria-pressed="true"]{background:#fff;color:#123b5d}
+body.sqdcp-reuniao .sqdcp-page{padding:10px;gap:10px}
+.sqdcp-page[data-sq-zoom-ativo] .sq-quadro.sqdcp-board{grid-template-columns:minmax(0,1fr);grid-template-rows:none}
+.sqdcp-page[data-sq-zoom-ativo] .sq-coluna.sqdcp-column{grid-row:auto;grid-template-rows:none;grid-template-columns:repeat(5,minmax(0,1fr));gap:12px}
+.sqdcp-page[data-sq-zoom-ativo] .sqdcp-column-header{grid-column:1/-1;border-radius:10px}
+.sqdcp-page[data-sq-zoom-ativo] .sqdcp-card-value{font-size:clamp(28px,3vw,44px)}.sqdcp-page[data-sq-zoom-ativo] .sq-vaga h4{font-size:17px}
+.sq-coluna[hidden]{display:none!important}
+/* larguras */
+@media(max-width:1280px){.sqdcp-head{grid-template-columns:1fr 1fr}.sqdcp-acoes{grid-column:1/-1;justify-content:flex-start}}
+@media(max-width:1100px){.sq-quadro.sqdcp-board{grid-template-columns:repeat(3,minmax(0,1fr));grid-template-rows:none}.sq-coluna.sqdcp-column{grid-row:auto;grid-template-rows:none;display:flex;flex-direction:column;gap:10px}
+  .sqdcp-resumo{grid-template-columns:repeat(3,minmax(0,1fr))}.sqdcp-page[data-sq-zoom-ativo] .sq-coluna.sqdcp-column{display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:760px){.sqdcp-head{grid-template-columns:1fr}.sqdcp-acoes{justify-content:stretch}.sqdcp-acoes .btn{flex:1 1 140px;justify-content:center}.sq-oc-grid{grid-template-columns:1fr}.sq-filtros label{max-width:100%}}
+@media(max-width:700px){.sq-quadro.sqdcp-board{grid-template-columns:1fr}.sqdcp-resumo{grid-template-columns:repeat(2,minmax(0,1fr))}.sqdcp-page{padding:8px}
+  .sqdcp-page[data-sq-zoom-ativo] .sq-coluna.sqdcp-column{grid-template-columns:1fr}}
+@media(max-width:420px){.sqdcp-resumo{grid-template-columns:1fr}.sq-filtros{align-items:stretch}.sq-filtros>*{flex:1 1 130px}.sqdcp-dia{flex-wrap:wrap}}
+/* impressão da tela (Ctrl+P no quadro): só o quadro e o resumo, claros, sem botões; a folha A4 de cada posição continua pela Prévia */
+@media print{body>header.vsuite,body>.vpage,body>nav.vtabs,body>#banner,.sqdcp-head,.sqdcp-rbar,.sqdcp-card-actions,.sqdcp-retry{display:none!important}
+  .sqdcp-page{background:#fff!important;padding:0}.sq-quadro.sqdcp-board{grid-template-columns:repeat(5,minmax(0,1fr))!important;gap:6px}.sq-vaga.sqdcp-card{min-height:0;box-shadow:none;break-inside:avoid;padding:8px}
+  .sqdcp-column-header{-webkit-print-color-adjust:exact;print-color-adjust:exact}.sqdcp-nota{-webkit-line-clamp:unset}}
 .sq-ocorrencias{grid-column:1/-1;border:1px solid var(--line);border-left:4px solid var(--info);border-radius:8px;padding:12px;margin-top:10px;min-width:0}
 .sq-ocorrencias h4{margin:0 0 5px}.sq-oc-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:10px 0}.sq-oc-grid fieldset{border:1px solid var(--line);border-radius:6px;min-width:0;padding:10px}.sq-oc-grid legend{padding:0 5px;font-weight:600}
 .sq-oc-grid label{margin-bottom:8px}.sq-oc-grid input,.sq-oc-grid select,.sq-oc-grid textarea{box-sizing:border-box;width:100%;min-width:0}.sq-oc-grid textarea{min-height:60px}.sq-oc-grid [hidden]{display:none!important}
-@media(max-width:1100px){.sq-quadro{gap:8px}.sq-vaga{padding:9px}.sq-coluna>h3{gap:5px}.sq-coluna>h3 span{font-size:13px}}
-@media(max-width:760px){.sq-quadro{grid-template-columns:1fr;grid-template-rows:none}.sq-coluna{display:grid;grid-template-columns:1fr 1fr;grid-template-rows:none;grid-row:auto;gap:8px}.sq-coluna>h3{grid-column:1/-1}.sq-vaga{margin:0;min-height:200px}.sq-oc-grid{grid-template-columns:1fr}.sq-filtros label{max-width:100%}}
-@media(max-width:420px){.sq-coluna{grid-template-columns:1fr}.sq-filtros{align-items:stretch}.sq-filtros>*{flex:1 1 130px}}
-
 #sqBlocos .sq-blrow{display:flex;gap:8px;margin-top:6px}
 #sqBlocos .sq-blrow select:first-child{flex:1}
 .sq-vaga-painel small{display:block}
@@ -11570,7 +11663,7 @@ const Sqdcp = (() => {
     } else {
       if (UI.linha !== 'line_vac') { ret.nota = 'Esta fonte publica a linha Vacutainer, sem detalhamento para a linha selecionada.'; return ret; }
       const x = fontes[c.fonte]; ret.fonte = c.fonte === 'perdas' ? 'Waste · exports' : c.fonte === 'gel' ? 'Gel · exports' : 'Iniciativas · exports';
-      if (!x || !x.ex) { ret.nota = x && x.erro || 'Conecte a pasta e atualize as fontes do quadro.'; return ret; }
+      if (!x || !x.ex) { ret.nota = x && x.erro || 'Conecte a pasta e atualize as fontes do quadro.'; if (x && x.erro && !x.semPasta) ret.erroFonte = true; else if (carregando) ret.carregandoFonte = true; return ret; }
       const ex = x.ex;
       if (c.id === 'waste') {
         const p = (ex.porMes || []).filter(p => p.per <= ate.slice(0, 7)).sort((a, b) => b.per.localeCompare(a.per))[0];
@@ -11618,13 +11711,13 @@ const Sqdcp = (() => {
           if (id === 'perdas' && !Array.isArray(ex.porMes) || id === 'inic' && !Array.isArray(ex.acoes) ||
             id === 'gel' && (!ex.estoque || typeof ex.estoque !== 'object')) throw new Error('Fonte sem os campos esperados para este indicador.');
           resultado = { ex };
-        } catch (err) { resultado = { erro: err && err.name === 'NotFoundError' ? 'Base da fonte não encontrada na pasta conectada.' : String(err.message || err) }; }
+        } catch (err) { resultado = { erro: err && err.name === 'NotFoundError' ? 'Base da fonte não encontrada na pasta conectada.' : String(err.message || err), semPasta: !vacDemo.ativo && (!be || !be.dir) }; }
         if (seq === geracao) fontes[id] = resultado;
       }
     })().finally(() => { if (seq === geracao) { carregando = null; if (App.route === 'sqdcp') render(); } });
     return carregando;
   }
-  function relatorio(key) {
+  function relatorio(key, semSerie) {
     const cfg = vaga(key), c = info(cfg.indicador);
     if (!c) return null;
     if (c.painel) {
@@ -11640,7 +11733,7 @@ const Sqdcp = (() => {
     const estado = d.valor == null ? 'sem' : ruim ? 'crit' : d.parcial ? 'parcial' : meta == null ? 'info' : 'ok';
     const titulo = cfg.titulo || c.nome, unidade = cfg.unidade || c.unidade;
     const serie = [];
-    for (let dia = UI.dia.slice(0, 7) + '-01'; dia <= UI.dia; dia = U.addDays(dia, 1))
+    if (!semSerie) for (let dia = UI.dia.slice(0, 7) + '-01'; dia <= UI.dia; dia = U.addDays(dia, 1))
       serie.push({ dia, ...dados(c, cfg, dia, dia, key) });
     return { cfg, c, ...d, key, de, ate, meta, sentido, estado, titulo, unidade, serie };
   }
@@ -11808,25 +11901,108 @@ const Sqdcp = (() => {
         };
       });
   }
+  /* ===== 2.4.58 · SQDCP – Gestão Diária: layout novo (só apresentação) =====
+     Os números vêm de relatorio(key) — a mesma função da folha A4 —, calculados uma vez por desenho (relatorio sem a série do mês,
+     que só a folha usa) e reaproveitados no resumo executivo. Armazenamento, configuração, fontes, CSV e impressão continuam os mesmos. */
+  const PIL = [['S', 'Segurança', '#16803C', 'escudo'], ['Q', 'Qualidade', '#1769D2', 'selo'], ['D', 'Entrega', '#D99A00', 'caminhao'], ['C', 'Custo', '#7935B2', 'moeda'], ['P', 'Pessoas', '#C72D45', 'pessoas']];
+  const SV = {
+    escudo: '<path d="M12 3l7 3v5c0 4.5-3 8.3-7 10-4-1.7-7-5.5-7-10V6z"/><path d="M9 12l2 2 4-4"/>',
+    selo: '<circle cx="12" cy="10" r="6"/><path d="M9.5 10l1.7 1.7 3.3-3.4"/><path d="M8.5 15.5L7 21l5-2 5 2-1.5-5.5"/>',
+    caminhao: '<path d="M3 6h11v10H3z"/><path d="M14 9h4l3 3v4h-7"/><circle cx="7" cy="17.5" r="1.7"/><circle cx="17" cy="17.5" r="1.7"/>',
+    moeda: '<circle cx="12" cy="12" r="8.5"/><path d="M14.8 9.2c-.5-.9-1.6-1.5-2.8-1.5-1.6 0-2.8.9-2.8 2.1 0 2.9 5.8 1.6 5.8 4.4 0 1.2-1.3 2.1-3 2.1-1.3 0-2.5-.6-3-1.6M12 6v1.7M12 16.3V18"/>',
+    pessoas: '<circle cx="9" cy="8" r="3"/><path d="M3.5 19c.6-3.3 2.8-5 5.5-5s4.9 1.7 5.5 5"/><circle cx="17" cy="9" r="2.4"/><path d="M15.5 14.2c2.6-.3 4.6 1.2 5 4.3"/>',
+    alerta: '<path d="M12 3.5l9 16H3z"/><path d="M12 10v4M12 17v.5"/>', cal: '<rect x="3.5" y="5" width="17" height="15" rx="2"/><path d="M3.5 10h17M8 3v4M16 3v4"/>',
+    check: '<circle cx="12" cy="12" r="8.5"/><path d="M8.5 12.2l2.3 2.3 4.7-4.8"/>', lixo: '<path d="M4 7h16M9 7V4.5h6V7M6.5 7l1 13h9l1-13"/>',
+    caixa: '<path d="M3.5 7.5L12 3l8.5 4.5v9L12 21l-8.5-4.5z"/><path d="M3.5 7.5L12 12l8.5-4.5M12 12v9"/>', alvo: '<circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="4.5"/><circle cx="12" cy="12" r="1"/>',
+    medidor: '<path d="M4 16a8 8 0 1 1 16 0"/><path d="M12 16l4-5"/><circle cx="12" cy="16" r="1.2"/>', relogio: '<circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/>',
+    gota: '<path d="M12 3.5c3.5 4.4 6 7.7 6 10.6a6 6 0 1 1-12 0c0-2.9 2.5-6.2 6-10.6z"/>', lista: '<path d="M9 6.5h11M9 12h11M9 17.5h11"/><path d="M4 6.5h.5M4 12h.5M4 17.5h.5"/>',
+    lapis: '<path d="M4 20l1-4.5L16 4.5l3.5 3.5L8.5 19z"/><path d="M14 7l3 3"/>', grafico: '<path d="M4 20V4M4 20h16"/><path d="M8 16v-4M12 16V8M16 16v-6"/>',
+    engr: '<circle cx="12" cy="12" r="3"/><path d="M12 2.8v2.6M12 18.6v2.6M21.2 12h-2.6M5.4 12H2.8M18.5 5.5l-1.8 1.8M7.3 16.7l-1.8 1.8M18.5 18.5l-1.8-1.8M7.3 7.3L5.5 5.5"/>',
+    impr: '<path d="M7 9V3.5h10V9"/><rect x="3.5" y="9" width="17" height="7.5" rx="1.5"/><path d="M7 14h10v6.5H7z"/>', atual: '<path d="M20 12a8 8 0 1 1-2.3-5.7M20 4v4.5h-4.5"/>',
+    baixar: '<path d="M12 3.5v11M7.5 10l4.5 4.5 4.5-4.5M4 20h16"/>', tela: '<rect x="3" y="4" width="18" height="12" rx="1.5"/><path d="M9 20h6M12 16v4"/>', mais: '<path d="M12 5v14M5 12h14"/>',
+    sair: '<path d="M14 4h5.5v16H14M10 8l-4 4 4 4M6 12h10"/>'
+  };
+  const svg = (n, s) => '<svg class="sqdcp-svg" viewBox="0 0 24 24" width="' + (s || 18) + '" height="' + (s || 18) + '" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + (SV[n] || SV.grafico) + '</svg>';
+  const IC_IND = { acidentes: 'escudo', diasSeguros: 'cal', coberturaS: 'check', qn: 'alerta', scrap: 'lixo', scrapPct: 'lixo', qualidade: 'selo', boa: 'caixa', atendimento: 'alvo', oee: 'medidor',
+    paradas: 'relogio', waste: 'moeda', gel: 'gota', acoes: 'lista', atrasadas: 'relogio', manual: 'lapis', painel: 'grafico' };
+  /* estado mostrado na tela: o do cálculo (ok, crit, parcial, info, sem) + erro de leitura da fonte e carregando */
+  const estadoTela = r => r.erroFonte ? 'erro' : r.carregandoFonte ? 'carregando' : r.estado;
+  const ROT_TELA = { ok: 'Dentro da meta', crit: 'Fora da meta', parcial: 'Dados parciais', info: 'Sem meta cadastrada', sem: 'Não informado', erro: 'Erro na fonte', carregando: 'Carregando a fonte…' };
+  const metaTxt = r => r.meta == null ? 'Sem meta' : 'Meta ' + (r.sentido === 'menor' ? '≤ ' : '≥ ') + fmt(r.meta) + (r.unidade ? ' ' + r.unidade : '');
+  const nomeP = () => quadro().p === 'produtividade' ? 'Produtividade' : 'Pessoas';
+  const nomeTurno = () => UI.turno ? ((db().shifts || []).find(s => s.id === UI.turno) || {}).name || UI.turno : 'Todos os turnos';
+  function cardHtml(key, r, n) {
+    const pos = '<span class="sq-pos">' + key[0] + (n + 1) + ' · Posição ' + (n + 1) + '</span>';
+    const gear = '<button type="button" class="sqdcp-gear" data-sq-editar="' + key + '" aria-label="Configurar posição ' + key[0] + ' ' + (n + 1) + '" title="Configurar posição ' + key[0] + (n + 1) + '"' + (!pode('configurar') ? ' disabled' : '') + '>' + svg('engr', 17) + '</button>';
+    if (!r) return '<article class="sq-vaga sqdcp-card sqdcp-card-empty" data-sq-key="' + key + '" data-sq-estado="livre"><div class="sqdcp-card-top">' + pos + '</div>' +
+      '<p class="sqdcp-livre">Posição livre</p><div class="sqdcp-card-actions"><button type="button" class="btn ghost sqdcp-add" data-sq-editar="' + key + '"' + (!pode('configurar') ? ' disabled' : '') + '>' + svg('mais', 15) + ' Escolher indicador</button></div></article>';
+    const est = estadoTela(r), ic = '<span class="sqdcp-ic">' + svg(IC_IND[r.c.id] || 'grafico', 18) + '</span>';
+    const prev = '<button type="button" class="btn primary sqdcp-prev" data-sq-previa="' + key + '"' + (!pode('exportar') ? ' disabled' : '') + '>' + svg('impr', 15) + ' Prévia / Imprimir</button>';
+    if (r.painel) return '<article class="sq-vaga sq-vaga-painel sqdcp-card" data-sq-key="' + key + '" data-sq-estado="info"><div class="sqdcp-card-top">' + pos + ic + '</div><h4>' + e(r.titulo) + '</h4>' +
+      '<strong class="sqdcp-card-value sqdcp-v-txt">Blocos do Painel</strong><span class="sq-tag info">Gráficos da Produção</span><small class="sqdcp-nota" title="' + e(r.nota) + '">' + e(r.nota) + '</small>' +
+      '<div class="sqdcp-card-actions">' + prev + gear + '</div></article>';
+    const v = fmt(r.valor);
+    return '<article class="sq-vaga sqdcp-card sqdcp-st-' + est + '" data-sq-key="' + key + '" data-sq-estado="' + est + '"><div class="sqdcp-card-top">' + pos + ic + '</div><h4>' + e(r.titulo) + '</h4>' +
+      '<div class="sqdcp-vline"><strong class="sqdcp-card-value sq-v' + (v.length > 10 ? ' sqdcp-v-long' : '') + '">' + e(v) + '</strong><span class="sqdcp-un">' + e(r.valor == null ? '' : r.unidade) + '</span></div>' +
+      '<div class="sqdcp-meta"><span>' + e(metaTxt(r)) + '</span><span class="sq-tag ' + est + '">' + e(est === r.estado ? rotEstado(r) : ROT_TELA[est]) + '</span></div>' +
+      '<small class="sqdcp-nota" title="' + e(r.nota) + '">' + e(r.nota) + '</small>' +
+      (est === 'erro' ? '<button type="button" class="btn sqdcp-retry" data-sq-retry="1">' + svg('atual', 15) + ' Tentar novamente</button>' : '') +
+      '<div class="sqdcp-card-actions">' + prev + (r.c.id === 'manual' && pode('lancar') ? '<button type="button" class="btn" data-sq-manual="' + key + '">Registrar valor</button>' : '') + gear + '</div></article>';
+  }
+  /* resumo executivo: a 1ª posição configurada (fora os Blocos do Painel) de cada pilar, com o mesmo resultado do card */
+  function resumoHtml(R) {
+    return '<section class="sqdcp-resumo" aria-label="Resumo executivo por pilar">' + PIL.map(([l, nome, cor, icp]) => {
+      let k = null; for (let n = 0; n < 5; n++) { const r = R[l + n]; if (r && !r.painel) { k = l + n; break; } }
+      const r = k && R[k], est = r ? estadoTela(r) : 'sem', tem = r && r.valor != null;
+      return '<article class="sqdcp-rcard sqdcp-st-' + est + '" data-sq-pilar="' + l + '"' + (k ? ' data-sq-fonte-key="' + k + '"' : '') + ' style="--pillar-color:' + cor + '">' +
+        '<div class="sqdcp-rtop"><span class="sqdcp-rpil">' + svg(icp, 18) + '<b>' + l + '</b> ' + e(l === 'P' ? nomeP() : nome) + '</span>' + (k ? '<span class="sqdcp-rpos">' + k[0] + (+k[1] + 1) + '</span>' : '') + '</div>' +
+        '<div class="sqdcp-rind">' + e(r ? r.titulo : 'Nenhum indicador configurado') + '</div>' +
+        '<div class="sqdcp-vline"><strong class="sqdcp-rv">' + e(tem ? fmt(r.valor) : '—') + '</strong><span class="sqdcp-un">' + e(tem ? r.unidade : '') + '</span></div>' +
+        '<div class="sqdcp-meta"><span>' + e(r ? metaTxt(r) : '') + '</span><span class="sq-tag ' + (tem || !r ? est : est) + '">' + e(!r ? 'Não informado' : est === r.estado ? rotEstado(r) : ROT_TELA[est]) + '</span></div></article>';
+    }).join('') + '</section>';
+  }
   function renderQuadro() {
     conferirOrigem();
-    const q = quadro(), letras = ['S', 'Q', 'D', 'C', 'P'], nomes = ['Segurança', 'Qualidade', 'Entrega', 'Custo', q.p === 'produtividade' ? 'Produtividade' : 'Pessoas'];
-    return '<section class="card"><header><div><h2>SQDCP · Gestão diária</h2><p class="small muted">Cada posição representa uma folha A4 em paisagem. Configure uma vez e atualize a referência para a reunião.</p></div></header><div class="sq-filtros">' +
-      '<label>Data de referência dos indicadores ' + ib('sqReferencia') + '<input type="date" id="sqDia" value="' + e(UI.dia) + '"></label><button class="btn" id="sqOntem">Dia anterior</button>' +
+    const q = quadro(), R = {};
+    for (const [l] of PIL) for (let n = 0; n < 5; n++) R[l + n] = relatorio(l + n, true);
+    const atualizado = Object.values(fontes).map(x => x && x.ex && x.ex.geradoEm).filter(Boolean).sort().pop();
+    UI.atualizadoEm = U.nowIso();
+    const reuniao = !!UI.reuniao;
+    return '<div class="sqdcp-page' + (reuniao ? ' sqdcp-page-reuniao' : '') + '"' + (UI.pilar ? ' data-sq-zoom-ativo="' + UI.pilar + '"' : '') + '>' +
+      '<section class="card sqdcp-head">' +
+      '<div class="sqdcp-hb sqdcp-hb-tit"><div><h2>SQDCP – Gestão Diária</h2><p class="small muted">Segurança, Qualidade, Entrega, Custo e ' + e(nomeP()) + ' da linha. Cada posição vira uma folha A4 em paisagem para o quadro.</p></div>' +
+      '<button type="button" class="btn" id="sqConfigurar"' + (!pode('configurar') ? ' disabled' : '') + '>' + svg('engr', 16) + ' Configurar SQDCP</button></div>' +
+      '<div class="sqdcp-hb sqdcp-filtros sq-filtros">' +
+      '<label>Data de referência ' + ib('sqReferencia') + '<span class="sqdcp-dia"><input type="date" id="sqDia" value="' + e(UI.dia) + '"><button type="button" class="btn" id="sqOntem" title="Dia anterior a hoje">Dia anterior</button></span></label>' +
       '<label>Linha<select id="sqLinha">' + sel((db().lines || []).filter(l => !l.deleted && !l.demo && l.active !== false).map(l => [l.id, l.name]), UI.linha) + '</select></label>' +
       '<label>Turno<select id="sqTurno">' + sel([['', 'Todos'], ...(db().shifts || []).filter(s => !s.deleted && !s.demo).map(s => [s.id, s.name])], UI.turno) + '</select></label>' +
-      '<label>Coluna P<select id="sqP"' + (!pode('configurar') ? ' disabled' : '') + '>' + sel([['pessoas', 'Pessoas'], ['produtividade', 'Produtividade']], q.p || 'pessoas') + '</select></label>' +
-      '<button class="btn" id="sqFontes">Atualizar fontes</button><button class="btn" id="sqCsv"' + (!pode('exportar') ? ' disabled' : '') + '>CSV · Segurança e QN</button></div></section>' +
-      '<div class="sq-quadro">' + letras.map((l, i) => '<section class="sq-coluna sq-col-' + l + '"><h3><b>' + l + '</b><span>' + nomes[i] + '</span></h3>' +
-        Array.from({ length: 5 }, (_, n) => {
-          const key = l + n, r = relatorio(key);
-          if (r && r.painel) return '<article class="sq-vaga sq-vaga-painel"><span class="sq-pos">Posição ' + (n + 1) + '</span><h4>' + e(r.titulo) + '</h4><span class="sq-tag info">Blocos do Painel</span><small>' + e(r.nota) +
-            '</small><button class="btn primary" data-sq-previa="' + key + '"' + (!pode('exportar') ? ' disabled' : '') + '>Prévia / imprimir</button><button class="btn ghost" data-sq-editar="' + key + '"' + (!pode('configurar') ? ' disabled' : '') + '>Configurar posição</button></article>';
-          return '<article class="sq-vaga"><span class="sq-pos">Posição ' + (n + 1) + '</span>' + (r ? '<h4>' + e(r.titulo) + '</h4><strong class="sq-v">' + e(fmt(r.valor)) + '</strong><span>' + e(r.unidade) +
-            '</span><span class="sq-tag ' + r.estado + '">' + e(rotEstado(r)) + '</span><small>' + e(r.nota) + '</small><button class="btn primary" data-sq-previa="' + key + '"' + (!pode('exportar') ? ' disabled' : '') + '>Prévia / imprimir</button>' +
-            (r.c.id === 'manual' && pode('lancar') ? '<button class="btn" data-sq-manual="' + key + '">Registrar valor</button>' : '') : '<h4>Vaga livre</h4><p class="small muted">Escolha o indicador desta posição.</p>') +
-            '<button class="btn ghost" data-sq-editar="' + key + '"' + (!pode('configurar') ? ' disabled' : '') + '>' + (r ? 'Configurar posição' : '+ Escolher indicador') + '</button></article>';
-        }).join('') + '</section>').join('') + '</div>';
+      '<label>Coluna P<select id="sqP"' + (!pode('configurar') ? ' disabled' : '') + '>' + sel([['pessoas', 'Pessoas'], ['produtividade', 'Produtividade']], q.p || 'pessoas') + '</select></label></div>' +
+      '<div class="sqdcp-hb sqdcp-acoes"><button type="button" class="btn" id="sqFontes" title="Lê de novo o Waste, o Gel e Iniciativas (exports)">' + svg('atual', 16) + ' Atualizar fontes</button>' +
+      '<button type="button" class="btn" id="sqCsv" title="Segurança e QN por turno no mês da referência"' + (!pode('exportar') ? ' disabled' : '') + '>' + svg('baixar', 16) + ' Exportar CSV</button>' +
+      '<button type="button" class="btn primary" id="sqReuniao">' + svg('tela', 16) + ' Modo Reunião</button></div></section>' +
+      '<div class="sqdcp-rbar" role="status"><span class="sqdcp-rb-tit">SQDCP – Gestão Diária</span><span>Referência: <b>' + e(U.brDate(UI.dia)) + '</b></span><span>Linha: <b>' + e(nomeLinha()) + '</b></span><span>Turno: <b>' + e(nomeTurno()) + '</b></span>' +
+      '<span>Atualizado ' + e(U.brDT(UI.atualizadoEm)) + (atualizado ? ' · fontes ' + e(U.brDT(atualizado)) : '') + '</span><span class="sqdcp-sp"></span>' +
+      '<span class="sqdcp-zoom" role="group" aria-label="Pilar ampliado"><button type="button" data-sq-zoom=""' + (!UI.pilar ? ' aria-pressed="true"' : '') + '>Todos</button>' +
+      PIL.map(([l]) => '<button type="button" data-sq-zoom="' + l + '"' + (UI.pilar === l ? ' aria-pressed="true"' : '') + '>' + l + '</button>').join('') + '</span>' +
+      '<button type="button" class="btn" id="sqSairReuniao">' + svg('sair', 16) + ' Sair do modo reunião</button></div>' +
+      resumoHtml(R) +
+      '<div class="sq-quadro sqdcp-board">' + PIL.map(([l, nome, cor, icp], i) => '<section class="sq-coluna sq-col-' + l + ' sqdcp-column" data-sq-pilar="' + l + '" style="--pillar-color:' + cor + '"' + (UI.pilar && UI.pilar !== l ? ' hidden' : '') + '>' +
+        '<h3 class="sqdcp-column-header"><b>' + l + '</b><span>' + e(i === 4 ? nomeP() : nome) + '</span>' + svg(icp, 22) + '</h3>' +
+        Array.from({ length: 5 }, (_, n) => cardHtml(l + n, R[l + n], n)).join('') + '</section>').join('') + '</div></div>';
+  }
+  function reuniao(on) {
+    UI.reuniao = !!on; if (!on) UI.pilar = '';
+    document.body.classList.toggle('sqdcp-reuniao', UI.reuniao); render();
+    if (on) { const m = document.getElementById('main'); if (m) m.scrollTop = 0; scrollTo(0, 0); }
+  }
+  function configurarTudo() {
+    modal('Configurar SQDCP · ' + nomeLinha(), '<p class="small">As 25 posições do quadro desta linha. A engrenagem abre a configuração de cada uma (indicador, período, meta, sentido, modelo da folha).</p>' +
+      '<div class="sqdcp-cfg">' + PIL.map(([l, nome, cor]) => '<section style="--pillar-color:' + cor + '"><h4><b>' + l + '</b> ' + e(l === 'P' ? nomeP() : nome) + '</h4><ol>' +
+        Array.from({ length: 5 }, (_, n) => { const k = l + n, v = vaga(k), c = info(v.indicador);
+          return '<li><span>' + l + (n + 1) + '</span><span class="sqdcp-cfg-n">' + e(c ? (v.titulo || c.nome) : 'Posição livre') + '</span><button type="button" class="sqdcp-gear" data-sq-editar="' + k + '" aria-label="Configurar posição ' + l + ' ' + (n + 1) + '" title="Configurar posição ' + l + (n + 1) + '"' + (!pode('configurar') ? ' disabled' : '') + '>' + svg('engr', 16) + '</button></li>'; }).join('') +
+        '</ol></section>').join('') + '</div>', '<button class="btn" data-close>Fechar</button>', (el, fechar) => {
+        el.querySelectorAll('[data-sq-editar]').forEach(b => b.onclick = () => { fechar(); editar(b.dataset.sqEditar); });
+      }, { wide: true });
   }
   function montar(root) {
     const muda = () => { const d = root.querySelector('#sqDia').value; if (!M.dataValida(d)) return toast('Data inválida.', true);
@@ -11840,11 +12016,20 @@ const Sqdcp = (() => {
       const cfg = { periodo: 'mes' }, [de, ate] = intervalo(cfg, UI.dia);
       Exporter.csv('SQDCP_Seguranca_QN_' + de + '_' + ate + '.csv', M.tabela(linhas(de, ate)));
     };
+    root.querySelector('#sqConfigurar').onclick = () => configurarTudo();
+    root.querySelector('#sqReuniao').onclick = () => reuniao(true);
+    root.querySelector('#sqSairReuniao').onclick = () => reuniao(false);
+    root.querySelectorAll('[data-sq-zoom]').forEach(b => b.onclick = () => { UI.pilar = b.dataset.sqZoom; render(); });
+    root.querySelectorAll('[data-sq-retry]').forEach(b => b.onclick = () => carregarFontes(true));
     root.querySelectorAll('[data-sq-editar]').forEach(b => b.onclick = () => editar(b.dataset.sqEditar));
     root.querySelectorAll('[data-sq-previa]').forEach(b => b.onclick = () => previa(b.dataset.sqPrevia));
     root.querySelectorAll('[data-sq-manual]').forEach(b => b.onclick = () => registrarManual(b.dataset.sqManual));
+    document.body.classList.toggle('sqdcp-reuniao', !!UI.reuniao);
     carregarFontes(false);
   }
+  /* sai do Modo Reunião com Esc ou ao trocar de tela (nada é gravado ao entrar ou sair) */
+  document.addEventListener('keydown', ev => { if (ev.key === 'Escape' && UI.reuniao && !document.querySelector('.overlay')) reuniao(false); });
+  window.addEventListener('hashchange', () => { if (UI.reuniao && App.route !== 'sqdcp') { UI.reuniao = false; UI.pilar = ''; document.body.classList.remove('sqdcp-reuniao'); } });
   function resumoTexto(de, ate, turno) {
     const r = M.resumo(M.linhas(db(), de, ate, 'line_vac', turno || '', Engine, U));
     return 'Segurança: ' + (r.acidente.quantidade == null ? 'não informado' : fmt(r.acidente.quantidade) + ' acidente(s) reportado(s)') +
@@ -11898,7 +12083,7 @@ const Sqdcp = (() => {
   }, true);
   App.views.sqdcp = { render: renderQuadro, mount: montar };
   return { UI, catalogo, formularioTurno, lerFormulario, avisos, validarVaga, linhas, dados, resumo: M.resumo,
-    relatorio, folha, htmlImpressao, previa, imprimir, carregarFontes, fontes, resumoTexto, blocoRelatorio, demo };
+    relatorio, folha, htmlImpressao, previa, imprimir, carregarFontes, fontes, resumoTexto, blocoRelatorio, demo, reuniao };
 })();
 
 </script>

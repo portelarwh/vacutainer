@@ -7,7 +7,7 @@ Plataforma de páginas HTML de arquivo único que trabalham juntas numa **pasta 
 | Página | Arquivo | Base | Versão | Como editar |
 |---|---|---|---|---|
 | Portal (cadastro geral, Administração) | `Portal.html` | `portal-base.json` + `vacutainer-cadastros.json` | 1.9.27 | direto no HTML |
-| Produção (OEE, plano, ordens SAP) | `OEE-Vacutainer.html` | `oee-vacutainer-base.json` (+ `ordens-base.json`) | 2.4.57 | **NÃO editar o HTML**: editar `fontes/producao/` e rodar o build |
+| Produção (OEE, plano, ordens SAP) | `OEE-Vacutainer.html` | `oee-vacutainer-base.json` (+ `ordens-base.json`) | 2.4.58 | **NÃO editar o HTML**: editar `fontes/producao/` e rodar o build |
 | Waste (perdas por ordem, KKBC) | `Perdas-Ordem.html` | `perdas-base.json` | 1.11.0 | direto no HTML |
 | Gestão de Gel | `Gestão-Gel-Vacutainer.html` | `fifo-base.json` | 2.28 · **em atualização** | direto no HTML |
 | Paradas | `Paradas.html` | `paradas-base.json` | 1.0.33 · **em atualização** | direto no HTML |
@@ -20,7 +20,7 @@ Situação de cada página (em construção / em atualização / estável): `PAG
 
 Demonstração integrada: botão comum nas oito páginas; `paginas/Demonstracao.html` reúne as páginas reais e mantém os exemplos na memória durante a navegação, sem bases reais. Fontes e limites em `docs/demonstracao-integrada.md`. **Depois de qualquer build/alteração das páginas, rodar `python fontes/demo/gerar_demo.py` por último e copiar o pacote junto com os HTML.**
 
-SQDCP (Produção 2.4.20; gráficos em barras verde/vermelho com linha só para meta e tendência na 2.4.33, PRD-09): quadro de 25 posições, acidente/QN por turno e impressão de uma A4 paisagem. Fontes em `fontes/producao/sqdcp*`; uso, contratos e pendências em `docs/producao-sqdcp.md`. Campos opcionais; ausência de resposta nunca é zero.
+SQDCP (Produção 2.4.20; gráficos em barras verde/vermelho com linha só para meta e tendência na 2.4.33, PRD-09): quadro de 25 posições, acidente/QN por turno e impressão de uma A4 paisagem. Fontes em `fontes/producao/sqdcp*`; uso, contratos e pendências em `docs/producao-sqdcp.md`. Campos opcionais; ausência de resposta nunca é zero. **2.4.58:** layout "SQDCP – Gestão Diária" (cabeçalho em três blocos, resumo executivo por pilar com o mesmo resultado das posições, cards com engrenagem, cores dos pilares × cor da situação, Modo Reunião `body.sqdcp-reuniao`, quadro sem a série do mês); números conferidos pela referência `testes/bases/sqdcp-referencia.json` (`tsqdcp_layout.js`).
 
 ## Comandos
 
@@ -31,6 +31,7 @@ python fontes/modelo/gerar_paginas.py  # gera Projetos.html (em construção) a 
 python fontes/demo/gerar_demo.py       # pacote offline da demonstração; SEMPRE depois dos outros builds
 node testes/tparada_tempo.js           # duração visível, regras do Portal, troca de código, gravação e abono
 node testes/tsqdcp.js                 # formulário S/Q, QN única, relatórios, reimportação, persistência e A4
+node testes/tsqdcp_layout.js          # SQDCP 2.4.58: mesmos números das 25 posições da referência, três blocos, resumo, cards, Modo Reunião, erro de fonte, CSV, A4, 3 larguras × 2 temas; --gravar só antes de mudar a tela; código 1 se falhar
 node testes/tdemo.js                  # navegação nas oito páginas, ação Paradas → Planner → Portal/ficha, reinício/saída e isolamento
 node testes/tpg.js                     # testes Playwright (abrem paginas/ em modo teste/exemplo; imprimem "sem erros")
 node testes/tintegra.js                # Portal × exports: números iguais aos das páginas, urgência, gravação pendente com conflito
