@@ -124,6 +124,33 @@ const LER = async () => {
   ok(E.fixo && E.direita, 'Equipamentos: tabela com cabeçalho e 1ª coluna fixos, rolagem própria e números à direita');
   ok(E.detalheGraf && E.detalheTab, 'Equipamentos: clique na barra e na linha abrem o detalhe do equipamento (comportamento de antes)');
   ok(E.resumo && E.destaque && E.acao, 'Recorrência: resumo com os números da própria lista, destaques (equipamento, quantidade, última, 6+ em 30 dias) e + Ação');
+  // ----- etapa 3: Eventos, Fila técnica, Validação, Ações, ficha, TV, relatório e Excel
+  const G = await o.evaluate(async () => {
+    const w = t => new Promise(r => setTimeout(r, t)), q = s => document.querySelector(s), qa = s => [...document.querySelectorAll(s)], out = {};
+    App.go('eventos'); await w(300);
+    out.ev = !!q('#main .pux-tfix #evTab') && q('#evNovo').classList.contains('pri') && !!q('#evXls') && getComputedStyle(q('#evTab th')).position === 'sticky';
+    out.evN = qa('#evTab tbody tr').length === Math.min(400, VIEWS.eventos.L.length);
+    F.q = 'zzzz-nada'; App.render(); await w(250); out.evVazio = !!q('#main .pux-vazio') && /Nenhuma parada/.test(q('#main .pux-vazio').textContent); F.q = ''; App.render(); await w(250);
+    q('#evTab tbody tr').click(); await w(300); out.ficha = qa('.mod .pux-fg').length === 3 && ['#tTroca', '#tComp', '#tModo', '#tAcao', '#tOS', '#tTec', '#tEsp', '#tRep', '#tCod', '#tCausa', '#tConf'].every(id => q('.mod ' + id)); qa('.mod-bg').forEach(m => m.remove()); await w(100);
+    App.go('fila'); await w(300); const R = VIEWS.fila.R;
+    out.fila = R.length ? (q('.pux-fres b').textContent.trim() === n0(R.length) && qa('#flTab tr.pux-lpend, #flTab tr.pux-lsug').length === Math.min(400, R.length)) : !!q('#main .pux-vazio.pux-ok');
+    App.go('valid'); await w(300); const D = VIEWS.valid.dias, val = D.filter(d => Store.data.validacao[d.k]).length;
+    out.valid = qa('#main .pux-rres b').map(b => b.textContent.trim()).slice(0, 3).join('|') === [D.length, D.length - val, val].map(n0).join('|') && qa('#vaTab tr.pux-laberto').length === Math.min(200, D.length - val);
+    App.go('acoes'); await w(300); const A = VIEWS.acoes.A, ab = A.filter(a => a.status !== 'concluída' && a.status !== 'cancelada');
+    out.acoes = A.length ? q('#main .pux-rres b').textContent.trim() === n0(ab.length) && q('#acNova').classList.contains('pri') : !!q('#main .pux-vazio');
+    // Modo TV, relatório e Excel continuam abrindo
+    TV.abrir(); await w(300); out.tv = !!q('.tv') && !!q('.tv svg, .tv table'); TV.fechar(); await w(100);
+    q('#btnRel').click(); await w(500); out.rel = !!q('.mod .rep'); qa('.mod-bg').forEach(m => m.remove());
+    let xl = null; const ex0 = window.excel; window.excel = (nome, abas) => { xl = { nome, n: abas[0][1].length }; }; App.go('eventos'); await w(250); q('#evXls').click(); window.excel = ex0;
+    out.excel = !!xl && /^paradas_/.test(xl.nome) && xl.n === VIEWS.eventos.L.length;
+    App.go('geral'); await w(200);
+    return out;
+  });
+  console.log('     etapa 3:', JSON.stringify(G));
+  ok(G.ev && G.evN && G.evVazio, 'Eventos: tabela com cabeçalho fixo, + Lançar parada como botão principal, Excel, lista vazia explicada');
+  ok(G.ficha, 'ficha da parada: parte técnica em 3 grupos (Falha, Execução, Classificação) com os mesmos campos');
+  ok(G.fila && G.valid && G.acoes, 'Fila técnica, Validação e Ações: resumo com os números da própria lista e pendências marcadas na linha');
+  ok(G.tv && G.rel && G.excel, 'Modo TV, Relatório e Excel continuam funcionando');
   // impressão e larguras
   await o.emulateMedia({ media: 'print' }); const imp = await o.evaluate(() => getComputedStyle(document.querySelector('#main .pux-ativos') || document.body).display); await o.emulateMedia({ media: 'screen' });
   ok(imp !== undefined, 'impressão da Visão geral sem erro');
@@ -138,8 +165,10 @@ const LER = async () => {
     await x.o.evaluate(() => App.go('pareto')); await x.o.waitForTimeout(300); const sp = await x.o.evaluate(() => document.documentElement.scrollWidth - innerWidth);
     ok(sp <= 1, `${w} px ${tema === 'dark' ? 'escuro' : 'claro'}: Pareto sem rolagem lateral (${sp}px)`);
     await x.o.screenshot({ path: SAI + `pareto-${w}-${tema === 'dark' ? 'escuro' : 'claro'}.png`, fullPage: true });
-    for (const v of ['equip', 'recor']) { await x.o.evaluate(v => App.go(v), v); await x.o.waitForTimeout(300); const sv = await x.o.evaluate(() => document.documentElement.scrollWidth - innerWidth);
-      ok(sv <= 1, `${w} px ${tema === 'dark' ? 'escuro' : 'claro'}: ${v === 'equip' ? 'Equipamentos' : 'Recorrência'} sem rolagem lateral da página (${sv}px; a tabela rola dentro)`);
+    if (w === 390) { const mf = await x.o.evaluate(async () => { const b = document.querySelector('#main .filters .vk-mais'), t = document.querySelector('#fTu'); const antes = t.offsetParent === null; b.click(); await new Promise(r => setTimeout(r, 100)); const depois = t.offsetParent !== null; b.click(); return antes && depois; });
+      ok(mf, `${w} px ${tema === 'dark' ? 'escuro' : 'claro'}: filtros secundários recolhidos em "Mais filtros" (abre e fecha)`); }
+    for (const v of ['equip', 'recor', 'eventos', 'fila', 'valid', 'acoes']) { await x.o.evaluate(v => App.go(v), v); await x.o.waitForTimeout(300); const sv = await x.o.evaluate(() => document.documentElement.scrollWidth - innerWidth);
+      ok(sv <= 1, `${w} px ${tema === 'dark' ? 'escuro' : 'claro'}: ${v} sem rolagem lateral da página (${sv}px; a tabela rola dentro)`);
       await x.o.screenshot({ path: SAI + `${v}-${w}-${tema === 'dark' ? 'escuro' : 'claro'}.png`, fullPage: true }); }
     await x.c.close();
   }
