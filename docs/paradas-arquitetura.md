@@ -291,3 +291,39 @@ Etapa 2 nova no teste:
 - o resumo da Recorrência igual à lista, os destaques e o + Ação;
 - 5 larguras × 2 temas sem rolagem lateral da página.
 
+## Paradas 1.2.0 · Refatoração UX/UI, etapa 3 e fechamento: Eventos, Fila técnica, Validação, Ações, ficha e celular (12/11/2026)
+
+Só apresentação. Campos, validações, gravações, eventos, filtros e fluxos continuam os mesmos.
+
+### Telas
+- **Eventos:**
+  - filtros ativos em pílulas, incluindo o código e a busca;
+  - **+ Lançar parada** como botão principal e Excel como secundário;
+  - tabela com cabeçalho e 1ª coluna fixos;
+  - lista vazia explicada ("Nenhuma parada com estes filtros…").
+- **Fila técnica:**
+  - resumo com itens na fila, sugestões de reclassificação e "o que falta", contado por tipo a partir de `filaTecnica`;
+  - marca na linha: amarela para pendência, azul para sugestão;
+  - "Aplicar as N sugestões…" como botão principal;
+  - fila vazia mostrada como "Fila técnica em dia".
+- **Validação:** resumo (dias com parada, abertos, validados, % validado); dia aberto marcado na linha; dica de uso.
+- **Ações:** resumo (abertas, vencidas, concluídas, total); ação vencida com fundo vermelho claro; **+ Nova ação** principal; lista vazia explicada.
+- **Ficha da parada:** a parte técnica foi separada em **Falha** (troca de peça, componente, modo), **Execução do reparo** (ação, OS, técnico, espera, reparo) e **Classificação e causa** (reclassificar, causa, confirmada). Os ids dos campos são os mesmos.
+
+### Celular (até 700 px)
+- **Filtros:** Atalho, Turno e Classe ficam em **"Mais filtros"**. É o padrão do kit (`.vk-mais`/`.vk-opt`), sem código novo; De, Até, Equipamento e Busca ficam sempre à vista.
+- **Toque:** botões e campos com 40 px de altura e as ações da barra ocupando a largura.
+- **Tabelas:** rolam dentro.
+
+### Sem mudança
+Guia, Formulários, Importar e Configuração mantêm o layout (só o celular e o "Mais filtros", onde houver filtros). Modo TV, relatório e Excel também não mudaram: são conferidos no teste.
+
+### Validação
+**`tparadas_ux.js`:** a mesma referência gravada antes da etapa 1 continua igual (totais, `statsEquip`, recorrências, 18 Paretos, tabelas). Etapa 3 nova no teste:
+- **Eventos:** cabeçalho fixo, botão principal, Excel e lista vazia.
+- **Ficha:** os 3 grupos com os 11 campos.
+- **Resumos:** os da Fila técnica, da Validação e das Ações iguais às próprias listas, com as marcas nas linhas.
+- **Saídas:** Modo TV, Relatório e Excel (mesma quantidade de linhas da tela).
+- **Celular:** "Mais filtros" abre e fecha.
+- **Larguras:** as 6 abas em 5 larguras × 2 temas, sem rolagem lateral da página.
+
