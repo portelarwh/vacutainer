@@ -22,9 +22,10 @@ Object.assign(HHPs, {
   mostra(day, ps) { const i = this.id(day); return !i || ps.id === i; },
   barra(day, res) {
     const L = res.shifts.map(sr => sr.ps).filter(ps => !ps.summary), N = this.nps(day); if (!L.length) return '';
-    const i = this.id(day), ch = (id, txt, on, t) => `<button type="button" data-hhsel="${esc(id)}" aria-pressed="${on}"${t ? ` title="${esc(t)}"` : ''}>${txt}</button>`;
+    const i = this.id(day), ch = (id, txt, on, t, lit) => `<button type="button" data-hhsel="${esc(id)}" aria-pressed="${on}"${lit ? ' class="lit"' : ''}${t ? ` title="${esc(t)}"` : ''}>${txt}</button>`;
+    const feito = ps => { const [f, n] = this.fill(ps); return ps.status === 'fechado' || (n > 0 && f === n); };   /* 2.4.64 · aceso quando fecha ou fica completo */
     const nCx = w => { try { return this.npGrade(day, w).n; } catch (e) { return 0; } };
-    return `<div class="row" style="margin:-4px 0 10px"><span class="small muted">Turno ${ib('hhTurno')}</span><div class="seg">${ch('', 'Todos', !i)}${L.map(ps => { const [f, n] = this.fill(ps); return ch(ps.id, `${esc(ps.snap.name)} <span class="small muted">${f}/${n}</span>`, i === ps.id); }).join('')}${N.map(w => ch(w.id, `${esc(w.name)} <span class="small muted">não produtivo · ${nCx(w)} cx</span>`, i === w.id)).join('')}${ch('dia', 'Dia (24 h)', i === 'dia', 'O dia de produção inteiro, hora por hora (todos os turnos e as horas sem turno)')}</div></div>`;
+    return `<div class="row" style="margin:-4px 0 10px"><span class="small muted">Turno ${ib('hhTurno')}</span><div class="seg">${ch('', 'Todos', !i)}${L.map(ps => { const [f, n] = this.fill(ps); return ch(ps.id, `${esc(ps.snap.name)} <span class="small${feito(ps) ? '' : ' muted'}">${ps.status === 'fechado' ? '✓ fechado' : f + '/' + n}</span>`, i === ps.id, feito(ps) ? (ps.status === 'fechado' ? 'Turno fechado' : 'Todos os intervalos com produção lançada') : '', feito(ps)); }).join('')}${N.map(w => ch(w.id, `${esc(w.name)} <span class="small muted">não produtivo · ${nCx(w)} cx</span>`, i === w.id)).join('')}${ch('dia', 'Dia (24 h)', i === 'dia', 'O dia de produção inteiro, hora por hora (todos os turnos e as horas sem turno)')}</div></div>`;
   },
   hm(x) { x = ((Math.round(x) % 1440) + 1440) % 1440; return String(Math.floor(x / 60)).padStart(2, '0') + ':' + String(x % 60).padStart(2, '0'); },
   /* caixas de um trecho fora de turno, por hora do relógio, em minutos relativos ao dia "day" */

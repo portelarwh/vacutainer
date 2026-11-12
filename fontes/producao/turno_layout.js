@@ -114,7 +114,7 @@ button[data-scrapturno]{background:#e06c6c;border-color:#e06c6c;color:#fff;font-
   <header class="tl-c tl-head">
     <span class="tl-hic">${ic(noite(ps) ? 'moon' : 'sun', 24)}</span><h3>${esc(ps.snap.name)}</h3>
     <span class="tl-hr">${ps.snap.start || ''} – ${ps.snap.end ? U.hhmm(U.toMin(ps.snap.end)) : ''}</span>${badge(ps.status)}
-    <span class="tl-sp"></span><div class="tl-acts">${lk ? `<button class="btn" data-reopenps="${ps.id}">${ic('unlock', 18)} Reabrir turno</button>` : `<button class="btn tl-pri" data-closeps="${ps.id}">${ic('lock', 18)} Fechar turno</button>`}${HHPs.botao(ps)}</div>
+    <span class="tl-sp"></span><div class="tl-acts">${lk ? `<button class="btn lit" data-reopenps="${ps.id}" title="Turno fechado. Clique para reabrir (com motivo).">${ic('lock', 18)} Fechado · Reabrir</button>` : `<button class="btn tl-pri" data-closeps="${ps.id}">${ic('lock', 18)} Fechar turno</button>`}${HHPs.botao(ps)}</div>
   </header>
   <div class="tl-g4">
     ${card('box', '', `Catálogo em produção ${tip('initialCatalog')}`, `<select data-psf="${ps.id}|initialCatalogId" ${lk ? 'disabled' : ''} data-fk="ps-cat-${ps.id}" aria-label="Catálogo inicial do turno"><option value="">(segue o turno anterior)</option>${cats.map(c => `<option value="${c.id}" ${ps.initialCatalogId === c.id ? 'selected' : ''}>${esc(c.code)} - ${esc(c.name || '')}</option>`).join('')}</select>

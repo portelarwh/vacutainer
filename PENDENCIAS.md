@@ -29,6 +29,8 @@ Versões desta branch: Portal 1.9.28 · Produção 2.4.60 · Waste 1.12.0 · Gel
 
 **Produção 2.4.63 (12/11/2026):** relatório diário do MES. A 1ª linha com caixa > 0 contava em dobro às 00:00; corrigido (`docs/producao-ordens-sap.md` § 2.4.63). **Na pasta real: importar de novo os dias já importados** para tirar a caixa repetida.
 
+**Produção 2.4.64 (12/11/2026):** fechar turno e dia com turno não produtivo desabilitado no dia (dava erro ao fechar o dia; os turnos fechados um a um não fechavam o dia); botões acesos em verde quando o turno fecha ou o hora a hora fica completo (`docs/producao-ordens-sap.md` § 2.4.64). Conferir na pasta real: fechar um turno e o dia, e ver os botões nos dois temas.
+
 **Decisões do usuário nesta rodada:** tema claro por padrão, com o escuro mantido; Linha 360° com dados reais e base própria; conflito de ordem × lote avisa e lista, não bloqueia; Pareto vertical como no dashboard anexado.
 
 **Implantar:** copiar para a pasta da rede as nove páginas de `paginas/` (inclusive `Linha-360.html`, nova) e o `Demonstracao.html`. Nenhuma base muda de formato. A `linha360-base.json` é criada em `00. Bases` na primeira conexão da Linha 360°, com confirmação.
