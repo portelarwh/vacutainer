@@ -18,7 +18,7 @@ const errs = []; const ok = (c, m) => { console.log((c ? 'ok   ' : 'FALHA ') + m
     await new Promise(r => setTimeout(r, 300)); Cad.ui.sec = 'calendario'; App.show('cad'); await new Promise(r => setTimeout(r, 300));
     const lista = (document.querySelector('#cadMain table') || {}).innerText || '';
     return { ruim, bom, n: (Cad.D.calendario || []).length, lista: lista.replace(/\s+/g, ' '), ver: PAGE.versao, ajuda: typeof AJUDA_CAMPO['calendario.tipo'] === 'string' && typeof CAT_AJUDA.calendario === 'string' }; });
-  ok(P.ver === '1.9.35' && P.ruim.length && !P.bom.length, 'Portal 1.9.35: data fora do formato AAAA-MM-DD é recusada; data certa passa');
+  ok(P.ver === '1.9.36' && P.ruim.length && !P.bom.length, 'Portal 1.9.36: data fora do formato AAAA-MM-DD é recusada; data certa passa');
   ok(P.n === 2 && /25\/12\/2026/.test(P.lista) && /Sex/.test(P.lista) && /sem produção/i.test(P.lista) && /dia extra/i.test(P.lista) && /Natal/.test(P.lista) && P.ajuda, 'Portal: Calendário de produção com data, dia da semana, tipo e motivo; ⓘ nos campos e na categoria');
   await p.close();
 
@@ -37,7 +37,7 @@ const errs = []; const ok = (c, m) => { console.log((c ? 'ok   ' : 'FALHA ') + m
     const ex = Exports.build(d, '2026-12-27').calendario.find(x => x.dia === '2026-12-25');
     C.calendario[0].ativo = false; C.rev = 10; const R2 = CadSync.aplicar(d, C, audit);
     return { natal: natal && [natal.kind, natal.reason, natal.origin], extra: extra && [extra.kind, extra.origin], lanc: !!(lanc && lanc.origin === 'portal'), ign: d.settings.calIgnorados, R1, trava, ex, depois: m('2026-12-25'), R2, inicio, domingo: !!domingo, mDom: mDom && [mDom.kind, mDom.origin], aud: aud.filter(x => x.field === 'calendário').length, ver: APP_VERSION }; });
-  ok(R.ver === '2.4.73' && JSON.stringify(R.natal) === '["off","Natal","portal"]' && JSON.stringify(R.extra) === '["extra","portal"]' && R.R1.calendario === 3 && R.aud >= 2, 'Produção 2.4.73: o CadSync aplica o dia sem produção e o dia extra do Portal (origin portal, com auditoria)');
+  ok(R.ver === '2.4.74' && JSON.stringify(R.natal) === '["off","Natal","portal"]' && JSON.stringify(R.extra) === '["extra","portal"]' && R.R1.calendario === 3 && R.aud >= 2, 'Produção 2.4.74: o CadSync aplica o dia sem produção e o dia extra do Portal (origin portal, com auditoria)');
   ok(!R.lanc && Array.isArray(R.ign) && R.ign.length === 1 && R.R1.calendarioIgnorado === 1, 'dia com lançamento não vira "sem produção" (ignorado, com aviso)');
   ok(!R.inicio && R.domingo && JSON.stringify(R.mDom) === '["extra","portal"]', 'iniciar produção num dia extra do Portal (domingo) cria o dia e mantém a marca do Portal (revisão Codex P1)' + (R.inicio ? ': ' + R.inicio : ''));
   ok(/vem do Calendário de produção do Portal/.test(R.trava), 'Plano do mês: o dia que veio do Portal fica travado (' + (R.trava || 'não travou').slice(0, 80) + '…)');

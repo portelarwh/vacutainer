@@ -311,3 +311,7 @@ Teste: `testes/tlote_origem.js`.
 - Calendário de produção do Portal pelo CadSync (`docs/centralizacao-configuracoes.md`).
 - Downloads da lista COOIS e do JSON de ordens liberam o link (`revokeObjectURL`).
 Teste: `testes/tlote_origem.js`, `testes/tcalendario.js`.
+
+## 2.4.74 · Link direto para cada relatório (13/11/2026)
+
+`#aba=reports&rel=<tipo>` (shift, day, week, month, stops, plan, view, tables) abre Relatórios com o tipo escolhido; usado por Portal › Relatórios (`fontes/producao/build.py`, regra no `applyHash`). Teste: `testes/trelcompilado.js`.

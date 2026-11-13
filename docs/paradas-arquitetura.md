@@ -354,3 +354,7 @@ Também na 1.2.9: no tema escuro, o número das células fortes do mapa de calor
 ## 1.2.10 · Downloads liberados (13/11/2026)
 
 O link do logo enviado (depois de ler a imagem) e o do download de backup são liberados (`revokeObjectURL`).
+
+## 1.2.11 · Link do relatório (13/11/2026)
+
+`Paradas.html#relatorio` abre o relatório de paradas (mesmo botão do cabeçalho, com os filtros da página); usado por Portal › Relatórios. Teste: `testes/trelcompilado.js`.

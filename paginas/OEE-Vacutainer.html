@@ -1571,7 +1571,7 @@ const U = (() => {
 
 /* ---- 02-model.js ---- */
 /* ================= modelo de dados, valores iniciais e integridade ================= */
-const APP_VERSION = '2.4.73';
+const APP_VERSION = '2.4.74';
 const SCHEMA_VERSION = 1;
 const BASE_FILE = 'oee-vacutainer-base.json';
 const BACKUP_DIR = '00. Backups';
@@ -5282,6 +5282,7 @@ function applyHash() {
   if (h.includes('&')) { const q = new URLSearchParams(h), ab = q.get('aba'); if (ab && ROUTES.some(r => r[0] === ab)) { App.route = ab; const sb = q.get('sub'), sc = q.get('sec');
     if (ab === 'ordens' && sb && typeof Ord !== 'undefined' && ['mb51', 'coois', 'lista', 'conc', 'hist'].includes(sb)) Ord.sub = sb;
     if (ab === 'config' && sc && typeof CFG_SECS !== 'undefined' && CFG_SECS.some(x => x[0] === sc)) App.cfgSec = sc;
+    if (ab === 'reports' && typeof rpState === 'function' && typeof RP_TYPES !== 'undefined') { const rt = q.get('rel'); if (rt && RP_TYPES.some(r => r[0] === rt)) rpState().type = rt; }   /* 2.4.74 */
     try { history.replaceState(null, '', location.pathname + location.search); } catch (e) { } return true; } }
   const [k, v] = h.split('='); if (!v) return false;
   const d = db();
