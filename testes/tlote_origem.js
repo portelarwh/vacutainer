@@ -29,6 +29,9 @@ const PREP = () => {
   d.monthPlans = [{ id: 'mp_t', month: '2026-03', lineId: LINE, orders: [
     { id: 'o1', order: '100200301', lot: 'L-501', catalogId: cats[0].id, qty: 240000 },
     { id: 'o2', order: '100200302', lot: 'L-502', catalogId: cats[1].id, qty: 300000 }], versions: [] }];
+  // 2.4.73 · histórico: plano de 2023 (fora dos 24 meses) e lote antigo com situação, observação e dia no servidor
+  d.monthPlans.push({ id: 'mp_old', month: '2023-05', lineId: LINE, orders: [{ id: 'oo', order: 'O-OLD', lot: 'L-OLD', catalogId: cats[0].id, qty: 1000, startReal: '2023-05-10T06:00' }], versions: [] });
+  d.server.lotClass['L-OLD'] = { kind: 'retrabalho' }; d.server.lotNotes = { 'L-OLD': { text: 'nota antiga' } }; d.server.dayLot = Object.assign(d.server.dayLot || {}, { '2023-05-10|L-OLD': { kind: 'retrabalho' } });
   Store.S.db = Model.ensure(d); Engine.bumpConfig();
   const x = Exports.build(Store.S.db, DIA);
   return { x, cats: cats.map(c => c.code), eq: eq.code, dc: dc.code };
@@ -52,14 +55,25 @@ const PREP = () => {
   // ordem com dois lotes: vira pendência e o exports continua saindo
   const pend = await o.evaluate(() => { const d = Store.S.db; d.monthPlans[0].orders.push({ id: 'o3', order: '100200301', lot: 'L-509', catalogId: d.monthPlans[0].orders[0].catalogId, qty: 1000 }); try { const x = Exports.build(d, '2026-03-11'); return x.pendencias.filter(p => p.tipo === 'ordemLote').length; } catch (e) { return 'erro: ' + e.message; } finally { d.monthPlans[0].orders.pop(); } });
   ok(pend >= 1, 'Produção: ordem com dois lotes vira pendência sem quebrar o exports (' + pend + ')');
-  ok(await o.evaluate(() => APP_VERSION) === '2.4.72', 'Produção 2.4.72');
+  { const oh = (X.ordensHistorico || []).find(o => o.ordem === 'O-OLD'), lh = (X.lotesHistorico || []).find(l => l.lote === 'L-OLD');
+    ok(oh && oh.lote === 'L-OLD' && oh.mes === '2023-05' && !(X.porOrdem || []).some(o => o.ordem === 'O-OLD') && lh && lh.situacao === 'retrabalho' && lh.obs === 'nota antiga' && lh.dias.join() === '2023-05-10' && lh.retrabalhoDias.join() === '2023-05-10' && !(X.lotesHistorico || []).some(l => l.lote === 'L-501'),
+      'Produção 2.4.73: ordensHistorico (plano fora dos 24 meses) e lotesHistorico (situação, observação e dias de lote antigo), sem repetir os recentes'); }
+  ok(await o.evaluate(() => APP_VERSION) === '2.4.73', 'Produção 2.4.73');
 
   // ---------- Portal 1.9.33: cartão "Agora" com o exports.atual (sem calcular nada)
   const pt = await c.newPage(); pt.on('pageerror', e => pe.push('Portal: ' + e.message));
   await pt.goto('file://' + RAIZ + 'paginas/Portal.html'); await pt.waitForTimeout(900);
   const AG = await pt.evaluate(A => { MOD.data.oee = Object.assign(MOD.data.oee || {}, { extra: { emProd: [], atual: A } }); const h = agoraCard(), d = document.createElement('div'); d.innerHTML = h; return { t: d.innerText.replace(/\s+/g, ' '), v: PAGE.versao }; }, X.atual);
-  ok(AG.v === '1.9.34' && /Lote L-502/.test(AG.t) && /100200302/.test(AG.t) && /60\.28\d peças\/h/.test(AG.t) && /falta 90\.000/.test(AG.t) && /término 11\/03 15:\d\d estimado/.test(AG.t) && /última caixa 11\/03 13:59/.test(AG.t),
+  ok(AG.v === '1.9.35' && /Lote L-502/.test(AG.t) && /100200302/.test(AG.t) && /60\.28\d peças\/h/.test(AG.t) && /falta 90\.000/.test(AG.t) && /término 11\/03 15:\d\d estimado/.test(AG.t) && /última caixa 11\/03 13:59/.test(AG.t),
     'Portal 1.9.33: cartão "Agora" com lote, ordem, ritmo, falta e término estimado do exports da Produção (' + AG.t.slice(0, 140) + '…)');
+
+  // ---------- Waste 1.12.8: ordem antiga pelo exports (ordensHistorico/lotesHistorico), sem guardar planos nem servidor da Produção
+  const ws = await c.newPage(); ws.on('pageerror', e => pe.push('Waste: ' + e.message));
+  await ws.goto('file://' + RAIZ + 'paginas/Perdas-Ordem.html'); await ws.waitForTimeout(900);
+  const WS = await ws.evaluate(async X => { enterTest(); const base = { exports: X, monthPlans: [{ month: '2023-05', orders: [{ order: 'O-OLD' }] }], server: { lotClass: {}, lotNotes: {} } };
+    ST.mode = 'pasta'; ST.dir = { getFileHandle: async () => ({ getFile: async () => ({ lastModified: 42, text: async () => JSON.stringify(base) }) }) }; OEE.at = 0; OEE.mod = 0;
+    await loadOEE(true); const f = oeeFind('O-OLD'); return { mp: OEE.src && OEE.src.monthPlans, sv: OEE.src && OEE.src.server, lote: f && f.lote, fonte: f && f.fonte, lot: f && f.lotHits.map(h => h.path).join(' | '), ver: APP_VER }; }, X);
+  ok(WS.ver === '1.12.8' && WS.mp === null && WS.sv === null && WS.lote === 'L-OLD' && WS.fonte === 'exports' && /lotesHistorico/.test(WS.lot), `Waste 1.12.8: ordem antiga achada no exports (${WS.fonte}; lote ${WS.lote}; ${WS.lot}), sem guardar planos nem servidor da Produção`);
 
   // ---------- Paradas: ordem e catálogo pelo lote ou pelo horário; eventoId
   const p = await c.newPage(); p.on('pageerror', e => pe.push(e.message));
@@ -81,7 +95,7 @@ const PREP = () => {
   ok(R.ex5.eventoId === 'ev_teste1' && R.n === 6 && !R.ids.some(i => /^OEE:/.test(i)), 'Paradas: a mesma parada apontada na Produção ganha o eventoId dela; nenhum evento contado duas vezes');
   ok(/100200301:2/.test(R.porOrdem) && /100200302:1/.test(R.porOrdem), 'Paradas: exports.porOrdem com as ordens vindas do lote e do horário (' + R.porOrdem + ')');
   ok(R.avisos && R.avisos.semOrdem === 1 && R.avisos.soProducao === 0, 'Paradas: avisos de origem (lote não encontrado: 1; paradas só na Produção: 0)');
-  ok(await p.evaluate(() => PAGE.versao) === '1.2.9', 'Paradas 1.2.9');
+  ok(await p.evaluate(() => PAGE.versao) === '1.2.10', 'Paradas 1.2.10');
 
   // ---------- Produção 2.4.71 / kit: clique numa hora do gráfico abre a ficha do trecho (vacFicha 'intervalo') com lotes, ordens, caixas e paradas
   const FI = await o.evaluate(([X, exPar]) => { const S = vacFicha._S, pg = id => vacFicha.FONTES.find(f => f.id === id).pega;

@@ -119,9 +119,7 @@ Também de antes:
 ## 4. Pendências de funcionalidade
 
 **Sem bloqueio, prontas para fazer:**
-- **Calendário de produção no Portal.**
 - **Falha do backup diário em Portal › Versões:** as páginas não registram a falha na pasta (registro § V, C5).
-- **Dependência do Waste na base da Produção:** ele ainda lê a base para ordens além dos 24 meses de `exports.porOrdem` e lotes além dos 150 dias de `exports.lotes` (registro § U, E4).
 - **Padrão das outras páginas:** levar o padrão de layout do Paradas 1.2.0 (faixas, filtros ativos, tabela com cabeçalho e coluna fixos, "Mais filtros" no celular) para Gel, Equipamentos e Iniciativas, se o usuário pedir.
 - **Cor de "atenção" no SQDCP:** a cor âmbar só entra quando houver uma regra de alerta por indicador.
 
@@ -140,9 +138,6 @@ Também de antes:
 
 **Testes instáveis ou de ambiente:**
 - **`testes/tnv.js`:** falha neste ambiente de desenvolvimento com 8 `SecurityError` no armazenamento de arquivos do navegador (OPFS). Falha igual no `main` sem nenhuma mudança, então não é da página. Conferir num Chrome normal.
-- **`testes/tz.js`:** às vezes falha e passa ao rodar de novo.
-- **`testes/tintegra.js` › "ação que vence amanhã":** falha entre 21h e 0h de Brasília (fuso do teste).
-- **`testes/t181.js`:** expira no fim (passo da matriz).
 
 **Testes com referência gravada antes da mudança:**
 - **Lista:** `tvisaogeral`, `twaste_vg`, `tparadas_vg`, `tparadas_ux`, `tgel_vg`, `tportal_vg` e `tsqdcp_layout`.
@@ -154,9 +149,7 @@ Também de antes:
 - **Funções grandes** (`computeDayRaw`, `CadSync.aplicar`, `openConfig` do Gel, `parseMetaFY27`, `cadValidarItem`): começar a próxima mudança por um teste que fixe o comportamento.
 - **Meta FY27:** a leitura está duplicada (Produção e Portal).
 - **Backup diário do Portal:** ignora falha; falta decidir o aviso.
-- **URLs de download sem revogação:** no Paradas, na Produção e no Portal.
 - **Geradores de PDF:** são três (Portal/Waste, Produção, Gel); unificar no kit se precisar.
-- **`package.json`/CI:** ainda não existe.
 
 **Layout:** faltam exemplos visuais dos componentes (cards, pílulas, abas) nos dois temas (registro § L).
 

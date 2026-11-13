@@ -1571,7 +1571,7 @@ const U = (() => {
 
 /* ---- 02-model.js ---- */
 /* ================= modelo de dados, valores iniciais e integridade ================= */
-const APP_VERSION = '2.4.72';
+const APP_VERSION = '2.4.73';
 const SCHEMA_VERSION = 1;
 const BASE_FILE = 'oee-vacutainer-base.json';
 const BACKUP_DIR = '00. Backups';
@@ -3461,6 +3461,7 @@ const Actions = (() => {
       if (d0 && Engine.dayEntries(d0)) { const e = new Error(`O dia ${U.brDate(date)} tem lançamentos e conta para o OEE. Para marcar sem produção, exclua o lançamento ou mova os dados para o dia certo.`); e.code = 'DAY_HAS_DATA'; e.dayId = d0.id; throw e; }
     }
     const cur = db.calendar.find(c => !c.deleted && c.date === date && c.lineId === lineId);
+    if (cur && cur.origin === 'portal' && (extra.origin || 'interface') !== 'portal') { const e = new Error(`O dia ${U.brDate(date)} vem do Calendário de produção do Portal (${cur.kind === 'off' ? 'sem produção' : 'dia extra'}${cur.reason ? ': ' + cur.reason : ''}). Para mudar, edite no Portal › Cadastros › Calendário de produção.`); e.code = 'DAY_PORTAL'; throw e; }   /* 2.4.73 */
     const before = cur ? cur.kind : 'normal';
     if (before === kind && (!cur || (cur.reason || '') === (reason || ''))) return cur;
     if (cur) { cur.deleted = true; touch(cur); }
@@ -4724,7 +4725,7 @@ const Exports = (() => {
       o.minutos += e.minutes || 0; o.ocorrencias++;
     }
     const paradasEquipamento = Object.values(paradas).map(o => ({ ...o, minutos: n0(o.minutos) })).sort((a, b) => a.mes.localeCompare(b.mes) || b.minutos - a.minutos);
-    const calendario = (db.calendar || []).filter(c => !c.deleted && c.lineId === LINE && c.date >= d120).map(c => ({ dia: c.date, tipo: c.kind === 'off' ? 'sem produção' : 'extra', motivo: c.reason || '' })).sort((a, b) => a.dia.localeCompare(b.dia));
+    const calendario = (db.calendar || []).filter(c => !c.deleted && c.lineId === LINE && c.date >= d120).map(c => ({ dia: c.date, tipo: c.kind === 'off' ? 'sem produção' : 'extra', motivo: c.reason || '', origem: c.origin === 'portal' ? 'portal' : 'producao' })).sort((a, b) => a.dia.localeCompare(b.dia));
     // plano do mês atual
     const mk = U.monthKey(today), plan = Engine.planFor(db, mk, LINE);
     let planoMes = null;
@@ -4780,13 +4781,14 @@ const Exports = (() => {
       ['Produção × meta', cur.atendimento == null ? '—' : U.pct(cur.atendimento, 0), cur.boa == null ? '' : `${U.fmt(Math.round(cur.boa / 1000))} mil boas`, cur.atendimento == null ? '' : cur.atendimento >= 1 ? 'good' : 'bad'],
       ['Ritmo do plano', planoMes && planoMes.ritmo != null ? U.pct(planoMes.ritmo, 0) : '—', planoMes ? `saldo ${planoMes.saldo == null ? '—' : U.fmt(Math.round(planoMes.saldo / 1000)) + ' mil'}` : 'sem plano', planoMes && planoMes.ritmo != null ? (planoMes.ritmo >= 1 ? 'good' : 'bad') : ''],
       ['Pendências', String(pendencias.length), `${pendencias.filter(p => p.sev === 1).length} urgente(s)`, pendencias.length ? 'bad' : 'good']];
-    const origem = origemProducao(db, today, porOrdem, pePorDia);   /* 2.4.68 · trechos, atual, trocas, paradasEventos */
+    const origem = origemProducao(db, today, porOrdem, pePorDia), hist = historico(db, mIni, d150);   /* 2.4.68 · trechos, atual, trocas, paradasEventos */
     const cad = cadastros(db);
     const TIPO_IMP = { metas: 'META_OEE', 'histórico': 'RELATORIO', paradas: 'PARADAS_XLSM', planos: 'PLANOS_PCP' };
     const importacoes = [...(db.imports || []).filter(i => i && !i.period && TIPO_IMP[i.kind]).map(i => ({ tipo: TIPO_IMP[i.kind], em: i.at, por: i.by || null, arquivo: i.source || null })),
       ...((db.server || {}).imports || []).map(i => ({ tipo: 'MES', em: i.at, por: i.by || null, arquivo: i.file || null, de: i.from || null, ate: i.to || null }))].sort((a, b) => a.em < b.em ? 1 : -1).slice(0, 400);
     return { exportsVersion: 1, geradoEm: U.nowIso(), cadastros: cad, modulo: 'oee', importacoes, appVersion: typeof APP_VERSION !== 'undefined' ? APP_VERSION : null, linha: LINE,
       sqdcp: SQDCPModelo.exportar(db, today, Engine, U), porMes, porDia, porDiaTurno, porDiaCatalogo, paradasEquipamento, calendario, planoMes, ordens, porOrdem, porOrdemCobertura, ordemLote, lotes, pendencias, kpis,
+      ordensHistorico: hist.ordens, lotesHistorico: hist.lotes,
       trechos: origem.trechos, atual: origem.atual, trocas: origem.trocas, paradasEventos: origem.paradasEventos, paradasEventosCobertura: origem.cob };
   }
   // cadastro mestre da linha: o OEE é o dono; as outras páginas leem por código (nunca pelo id interno) e complementam localmente
@@ -4842,6 +4844,23 @@ const Exports = (() => {
     }
     paradasEventos.sort((a, b) => (a.dia + (a.inicio || '')).localeCompare(b.dia + (b.inicio || '')));
     return { trechos, atual, trocas, paradasEventos, cob: { de: U.addDays(today, -89), ate: today, dias: 90, fonte: 'Apontamento da Produção (paradas do dia)' } };
+  }
+  /* 2.4.73 · histórico: o que o porOrdem (24 meses) e o lotes (150 dias) não cobrem, só com o que está gravado (sem recalcular o progresso) */
+  function historico(db, mIni, d150) {
+    const cat = id => { const c = (db.catalogs || []).find(x => x.id === id); return c ? c.code : null; };
+    const ordens = [];
+    for (const p of db.monthPlans || []) { if (p.deleted || p.lineId !== LINE || !(p.month < mIni)) continue;
+      for (const o of p.orders || []) ordens.push({ mes: p.month, ordem: String(o.order), lote: o.lot ? String(o.lot).trim() : null, catalogo: cat(o.catalogId) || o.code || null, qtd: n0(o.qty), qtdReal: o.qtyReal == null ? null : n0(o.qtyReal), inicio: o.start || null, fim: o.end || null, inicioReal: o.startReal || null, fimReal: o.endReal || null }); }
+    ordens.sort((a, b) => a.mes.localeCompare(b.mes));
+    const S = db.server || {}, dias = new Map();
+    for (const [kk, v] of Object.entries(S.dayLot || {})) { const i = kk.indexOf('|'); if (i < 0) continue; const lot = kk.slice(i + 1).trim(), dia = kk.slice(0, i); if (!lot) continue; let a = dias.get(lot); if (!a) dias.set(lot, a = []); a.push({ dia, tipo: (v && v.kind) || null }); }
+    const recente = new Set(((S.segments || []).filter(x => x.lineId === LINE && x.t1 && x.t1.slice(0, 10) >= d150)).map(x => String(x.lot)));
+    const nomes = new Set([...Object.keys(S.lotClass || {}), ...Object.keys(S.lotNotes || {}), ...dias.keys()]);
+    const lotes = [];
+    for (const lot of nomes) { if (recente.has(lot)) continue; const ds = (dias.get(lot) || []).map(x => x.dia).sort(); if (ds.length && ds[ds.length - 1] >= d150) continue;
+      const c = (S.lotClass || {})[lot], n = (S.lotNotes || {})[lot];
+      lotes.push({ lote: lot, situacao: c ? (typeof c === 'object' ? c.kind || null : String(c)) : null, obs: n ? (typeof n === 'object' ? n.text || '' : String(n)) : '', dias: ds, retrabalhoDias: (dias.get(lot) || []).filter(x => x.tipo === 'retrabalho').map(x => x.dia).sort() }); }
+    return { ordens, lotes };
   }
   function shiftMonth(date, k) { const [y, m] = date.slice(0, 7).split('-').map(Number); const t = y * 12 + (m - 1) + k; return `${Math.floor(t / 12)}-${String(t % 12 + 1).padStart(2, '0')}`; }
   return { build, cadastros, shiftMonth };
@@ -13291,7 +13310,7 @@ App.views.ordens = {
       await Ord.gravar(Ord.comp, 'coois'); Ord.prevCO = null; if (Ord.txtIn) Ord.txtIn.coois = ''; toast('COOIS gravado.'); render(); window.scrollTo(0, 0);
     }));
     root.querySelectorAll('[data-ocp]').forEach(b => b.onclick = async () => { const cc = Ord.cur() || {}, R = cc.resultado || { ordens: [] }, l = cc.resultado ? OrdensSAP.listaCOOIS(R) : [], X = Ord.prevCO ? Ord.prevCO.X : cc.coois && cc.coois.cruz; const t = b.dataset.ocp === 'kkbc' ? (Ord._kkbcLista || R.ordens.filter(o => o.produzida && Ord.kkbc(o.ordem) === 'pendente').map(o => o.ordem)).join('\n') : b.dataset.ocp === 'sep' ? l.join(';') : b.dataset.ocp === 'aus' ? (X ? X.ausentes : []).join('\n') : l.join('\n'); try { await navigator.clipboard.writeText(t); toast('Copiado: ' + t.split(/[\n;]/).filter(Boolean).length + ' ordens.'); } catch (e) { const ta = root.querySelector('#oLista'); if (ta) { ta.select(); document.execCommand('copy'); toast('Copiado.'); } } });
-    on('#oTxtDl', 'onclick', () => { const l = OrdensSAP.listaCOOIS(Ord.cur().resultado); const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([l.join('\r\n')], { type: 'text/plain' })); a.download = `ordens-COOIS_${Ord.comp}.txt`; a.click(); });
+    on('#oTxtDl', 'onclick', () => { const l = OrdensSAP.listaCOOIS(Ord.cur().resultado); const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([l.join('\r\n')], { type: 'text/plain' })); a.download = `ordens-COOIS_${Ord.comp}.txt`; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 1500); });
     const deb = (sel, k, obj) => { const i = root.querySelector(sel); if (!i) return; let t; i.oninput = () => { clearTimeout(t); t = setTimeout(() => { obj[k] = i.value; render(); setTimeout(() => { const n = document.querySelector(sel); if (n) { n.focus(); n.setSelectionRange(n.value.length, n.value.length); } }, 30); }, 220); }; };
     deb('#oQ', 'q', Ord.f); deb('#ocQ', 'q', Ord.fc);
     on('#oSt', 'onchange', e => { Ord.f.st = e.target.value; render(); }); on('#oUn', 'onchange', e => { Ord.f.un = e.target.value; render(); }); on('#oLinha', 'onchange', e => { Ord.f.linha = e.target.value; render(); }); on('#ocSit', 'onchange', e => { Ord.fc.sit = e.target.value; render(); });
@@ -13303,7 +13322,7 @@ App.views.ordens = {
     on('#opDe', 'onchange', perSel); on('#opAte', 'onchange', perSel); on('#opFy', 'onchange', perSel);
     on('#opLimpar', 'onclick', () => { Object.assign(Ord.f, { q: '', st: '', un: '', linha: 'todas' }); Object.assign(Ord.fc, { q: '', sit: '' }); ordSetPer('ult'); render(); });
     root.querySelectorAll('[data-overcomp]').forEach(b => b.onclick = () => { Ord.comp = b.dataset.overcomp; Ord.per = { de: Ord.comp, ate: Ord.comp, fy: '', q: '' }; Ord.sub = 'lista'; render(); });
-    root.querySelectorAll('[data-ojson]').forEach(b => b.onclick = () => { const k = b.dataset.ojson; const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([JSON.stringify(Ord.B.competencias[k], null, 1)], { type: 'application/json' })); a.download = `ordens_${k}.json`; a.click(); });
+    root.querySelectorAll('[data-ojson]').forEach(b => b.onclick = () => { const k = b.dataset.ojson; const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([JSON.stringify(Ord.B.competencias[k], null, 1)], { type: 'application/json' })); a.download = `ordens_${k}.json`; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 1500); });
     on('#oXls', 'onclick', () => run(async () => { const XLSX = await Libs.loadXLSX(), LL = Ord._listaL || [];
       const aoa = [['Competência', 'Ordem', 'Material', 'Descrição', 'Lote', 'Situação', 'Parcial', 'Data principal', 'Primeira 101', 'Última 101', 'UM', 'Saldo líquido', '101', '102', 'Pendências', 'COOIS', 'Tipo', 'Status SAP']];
       for (const { o, comp, l } of LL) for (const c of o.combos) { aoa.push([comp, o.ordem, c.material, c.texto, c.lotes.join(', '), ST_ORD[o.status][0], o.parcial ? 'sim' : '', o.dataPrincipal || '', c.primeira101 || '', c.ultima101 || '', c.um, c.saldo, c.q101, c.q102, o.pend.join('; '), l ? l.situacao : '', l ? l.tipo : '', l ? l.status : '']); }
@@ -13654,6 +13673,26 @@ const CadSync = (() => {
     const desde = PP.foraTurnoDesde || npDe; if (desde) sp('foraTurnoDesde', String(desde));
     const AR = (Array.isArray(PP.arredondamentoMeta) ? PP.arredondamentoMeta : []).filter(v => v && v.de && +v.valor > 0).map(v => ({ de: v.de, valor: +v.valor })).sort((a, b) => a.de < b.de ? -1 : 1);
     if (AR.length) { sp('roundingVig', AR); const h = U.today(), vg = AR.filter(v => v.de <= h).slice(-1)[0] || AR[0]; sp('roundingUnit', vg.valor); }
+    /* 2.4.73 · calendário de produção do Portal (cadastro `calendario`: código = data AAAA-MM-DD, tipo 'sem produção' | 'dia extra', motivo = nome).
+       Vai para db.calendar com origin 'portal' (o Plano do mês trava o dia: "edite no Portal"). Dia fechado ou com lançamento não vira
+       "sem produção" (fica em st.cadSync.calIgnorados e no aviso). Dia inativado no Portal: a marca que veio dele sai; marca local do mesmo dia
+       é substituída pela do Portal (fonte única). */
+    if (Array.isArray(C.calendario)) {
+      d.calendar = d.calendar || []; const LN = 'line_vac', ign = [];
+      for (const x of C.calendario) {
+        const date = String((x && x.codigo) || ''); if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) continue;
+        const cur = d.calendar.find(c => !c.deleted && c.date === date && c.lineId === LN), kind = /extra/i.test(x.tipo || '') ? 'extra' : 'off', motivo = String(x.nome || '').trim();
+        const sai = m => { m.deleted = true; m.updatedAt = now; m.updatedBy = by; };
+        if (x.ativo === false) { if (cur && cur.origin === 'portal') { sai(cur); audit({ action: 'sincronização do Portal', entity: 'dia', entityId: date, field: 'calendário', before: cur.kind, after: 'normal', reason }); R.calendario = (R.calendario || 0) + 1; } continue; }
+        if (cur && cur.origin === 'portal' && cur.kind === kind && (cur.reason || '') === motivo) continue;
+        if (kind === 'off') { const d0 = (d.productionDays || []).find(y => !y.deleted && y.date === date && y.lineId === LN); if (d0 && (d0.status === 'fechado' || Engine.dayEntries(d0))) { ign.push(date); continue; } }
+        if (cur) sai(cur);
+        d.calendar.push({ id: 'calp_' + date + '_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 5), date, lineId: LN, kind, reason: motivo, reasonType: kind === 'off' ? 'prog' : null, origin: 'portal', by, at: now, createdAt: now, createdBy: by, updatedAt: now, updatedBy: by, status: 'ativo', revision: 1 });
+        audit({ action: 'sincronização do Portal', entity: 'dia', entityId: date, field: 'calendário', before: cur ? cur.kind : 'normal', after: kind, reason });
+        R.calendario = (R.calendario || 0) + 1;
+      }
+      if (ign.length) R.calendarioIgnorado = ign.length; st.calIgnorados = ign;
+    }
     st.cadSync = { stamp: stampOf(C), rev: C.rev, revAt: C.revAt || null, em: now, resumo: R };
     return R;
   }

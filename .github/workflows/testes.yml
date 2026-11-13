@@ -1,0 +1,40 @@
+# Testes automáticos (13/11/2026, pendência "package.json/CI" do registro § 1, decidida pelo responsável).
+# 1) as páginas de paginas/ batem com as fontes (rodar os builds não muda nada);
+# 2) a suíte inteira (node testes/tudo.js): passou / falhou / NÃO VERIFICADO (falta biblioteca ou pacote; não conta como aprovado).
+name: Testes
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+jobs:
+  testes:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Dependências (Playwright com Chromium; pdfinfo/pdftotext para os relatórios)
+        run: |
+          npm install --no-audit --no-fund
+          npx playwright install --with-deps chromium
+          sudo apt-get install -y poppler-utils
+      - name: Páginas geradas iguais às fontes
+        run: |
+          npm run build
+          git status --porcelain paginas/
+          git diff --exit-code --stat -- paginas/ || (echo "::error::paginas/ não bate com fontes/: rode os builds (npm run build) e grave as páginas geradas" && exit 1)
+      - name: Suíte de testes
+        run: npm test
+      - name: Saída dos testes que falharam
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: saida-testes
+          path: testes/saida/
+          retention-days: 7

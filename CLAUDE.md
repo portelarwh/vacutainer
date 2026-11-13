@@ -6,11 +6,11 @@ Plataforma de páginas HTML de arquivo único que trabalham juntas numa **pasta 
 
 | Página | Arquivo | Base | Versão | Como editar |
 |---|---|---|---|---|
-| Portal (cadastro geral, Administração) | `Portal.html` | `portal-base.json` + `vacutainer-cadastros.json` | 1.9.34 | direto no HTML |
-| Produção (OEE, plano, ordens SAP) | `OEE-Vacutainer.html` | `oee-vacutainer-base.json` (+ `ordens-base.json`) | 2.4.72 | **NÃO editar o HTML**: editar `fontes/producao/` e rodar o build |
-| Waste (perdas por ordem, KKBC) | `Perdas-Ordem.html` | `perdas-base.json` | 1.12.7 | direto no HTML |
+| Portal (cadastro geral, Administração) | `Portal.html` | `portal-base.json` + `vacutainer-cadastros.json` | 1.9.35 | direto no HTML |
+| Produção (OEE, plano, ordens SAP) | `OEE-Vacutainer.html` | `oee-vacutainer-base.json` (+ `ordens-base.json`) | 2.4.73 | **NÃO editar o HTML**: editar `fontes/producao/` e rodar o build |
+| Waste (perdas por ordem, KKBC) | `Perdas-Ordem.html` | `perdas-base.json` | 1.12.8 | direto no HTML |
 | Gestão de Gel | `Gestão-Gel-Vacutainer.html` | `fifo-base.json` | 2.34 · **em atualização** | direto no HTML |
-| Paradas | `Paradas.html` | `paradas-base.json` | 1.2.9 · **em atualização** | direto no HTML |
+| Paradas | `Paradas.html` | `paradas-base.json` | 1.2.10 · **em atualização** | direto no HTML |
 | Equipamentos (com manutenção) | `Equipamentos.html` | `equipamentos-base.json` | 1.0.16 · **em atualização** | direto no HTML (saiu do gerador na 1.0.0; `docs/equipamentos-v1.md`) |
 | Iniciativas / Ações (Ações/Planner · KAS · OSM · 5S · programas) | `Iniciativas.html` | `iniciativas-base.json` | 1.1.12 · **em atualização** | direto no HTML (saiu do gerador na 1.0.0; `docs/iniciativas-planner.md`) |
 | Linha 360° (planta interativa: paradas, OS e ações por ponto; postos e checklists) | `Linha-360.html` | `linha360-base.json` | 1.1.2 · **em atualização** | **gerada**: `fontes/linha360/` + `python fontes/linha360/build.py` (`docs/linha-360.md`) |
@@ -74,6 +74,7 @@ node testes/tcorrecoes.js             # C2–C6: resumo do dia ao voltar à aba,
 node testes/tlote_origem.js           # Fase 1 ordem/lote: exports.trechos/atual/trocas/paradasEventos da Produção; Paradas com ordem e catálogo pelo lote ou pelo horário, eventoId sem contagem dupla; código 1 se falhar
 node testes/tpermissoes.js            # D6: permissão por ação na tela (vacTravas): Consulta com os botões de gravação desligados em 6 páginas, Liderança lança e não configura, sem usuário nada muda; código 1 se falhar
 node testes/tprefs.js                 # Fase 5: layout da pessoa em 00. Bases/Preferencias/<ID>.json (vacPrefs): grava, outro computador recebe, padrão do perfil, Restaurar meu layout, sem usuário nada; pasta simulada (OPFS + HTTP local); código 1 se falhar
+node testes/tcalendario.js            # calendário de produção: Portal › Calendário de produção (data, tipo, motivo; validação) e a Produção aplicando pelo CadSync (dia travado no Plano do mês, dia com lançamento ignorado, inativar desfaz, exports.calendario com a origem); código 1 se falhar
 node testes/tnv.js                    # NV-01–NV-05: isolamento por pasta, duas abas, cache homônimo, reserva em falha e saúde dos dados; dados fictícios
 node testes/tudo.js                   # a suíte inteira, uma por vez: passou / falhou / NÃO VERIFICADO (falta biblioteca ou pacote; não conta como aprovado); tz roda de novo uma vez; código 1 se alguma falhar
 node testes/tportalfonte.js           # Fase 1 do briefing (09/11/2026): Parâmetros (Produção, Neste computador, arredondamento com vigência), Configurações da Produção só consulta, PRD-04, Trazer configurações (Produção e Gel), Gel ligado ao Portal com contas iguais; código 1 se falhar
@@ -100,8 +101,8 @@ node testes/tportal_vg.js             # Portal › Visão geral no padrão comum
 ```
 
 - O build usa substituições exatas (`R(antes, depois)`) sobre a base 2.0: se um trecho não for achado exatamente 1 vez, para com `ERRO`. Mudança na Produção = nova regra `R(...)` no `build.py` ou mudança nos `.js` de `fontes/producao/`.
+- CI (13/11/2026): `.github/workflows/testes.yml` roda em cada PR e na main: confere que `paginas/` bate com as fontes (`npm run build` não muda nada) e roda `npm test` (`testes/tudo.js`); `package.json` com o Playwright fixo.
 - Playwright e Chromium: `require('playwright')`; os testes usam `enterTest()` (Portal, Waste, Paradas) ou `Demo.enterExample()` (Produção) e bases sintéticas em `testes/bases/`. Amostras do SAP (descaracterizadas) em `testes/amostras/`. Prints vão para `testes/saida/` (fora do git).
-- `testes/t181.js` tem um passo da matriz que expira (timeout) no fim: problema do teste, não da página; ajustar quando mexer na matriz.
 
 ## Regras da plataforma (não quebrar)
 
@@ -151,6 +152,7 @@ Produção aplica o cadastro na base do OEE pelo `CadSync` (`fontes/producao/cad
 **Waste × controladoria (Waste 1.9.0, 11/11/2026, etapa 1 de 3):** importação da KKBC_ORD em grade (layout da controladoria, uma ordem por arquivo) com `dEmp` (Desv. de qtd. empregada), `dPreco` (preço de input) e `dQtd`; aviso das ordens no formato antigo para reimportar. Decidido: **MUV = Desv. estrutura + Desv. empregado** será o número oficial (etapa 2; o "Scrap" atual inclui o preço de input) e o target MUV da linha vai para o Portal (etapa 3). Detalhes: `docs/waste-v1-8.md` § 1.9.0. **Etapa 2 (Waste 1.10.0, Portal 1.9.26):** MUV oficial (meta, criticidade, Visão Geral, relatórios, `exports.oficial = 'muv'` com `muv/estrutura/empregado/precoInput` em `porMes`/`porOrdem`/`porComponenteMes`; Portal e SQDCP leem o `muv`, com `liquido` como reserva); ordem sem `dEmp` = MUV "aprox." (desvio total) até reimportar; Pareto do MUV (Linha/SKU/Componente × MUV/estrutura/empregado, desfavorável/favorável, Top N). A meta WASTE-MES passa a valer sobre o MUV. Detalhes: `docs/waste-v1-8.md` § 1.10.0. **Etapa 3 (Waste 1.11.0, Portal 1.9.27):** target MUV por linha em Portal › Metas da área (`WASTE-MUV-<linha>` com o campo Linha; vigência; período mês/ano/trimestre; R$ ou US$ pela cotação do Portal no fim do mês); meta do mês = soma das linhas (ou da linha filtrada), sem `WASTE-MUV` vale a `WASTE-MES`; filtros Linha e Semana (ISO, pela data da Produção); gráfico MUV × target acumulado no FY; `exports.porMes[].meta` = target total em R$ (`metaFonte`). Detalhes: § 1.11.0.
 **Ordem e lote na origem (Fase 1, 13/11/2026; Produção 2.4.68 `fontes/producao/exp_build.py`, Paradas 1.2.4–1.2.6, Equipamentos 1.0.14):** o Forms tem o campo `lote`; a Produção publica `exports.trechos`, `atual`, `trocas` e `paradasEventos` (id = eventoId); o Paradas calcula na leitura ordem e catálogo pelo lote (ou, sem lote, pelo trecho do MES no horário, "pelo horário") e dá o `eventoId` à mesma parada, sem somar evento só da Produção; a ficha do equipamento mostra as paradas por catálogo e ordem e o Pareto por código (D5). Teste `testes/tlote_origem.js`. Detalhes: `docs/paradas-arquitetura.md` § 1.2.5, `docs/producao-ordens-sap.md` § 2.4.68.
 **Fase 4 (13/11/2026; Produção 2.4.71, Portal 1.9.33):** `exports.atual` com ritmo, quanto falta e término estimado; cartão "Agora" no Portal (só mostra); clique numa hora dos gráficos hora a hora abre a ficha do trecho (`vacFicha` `intervalo`). Detalhes: `docs/producao-ordens-sap.md` § 2.4.71.
+**Calendário de produção e histórico (13/11/2026; Portal 1.9.35, Produção 2.4.73, Waste 1.12.8):** cadastro `calendario` no Portal (código = data, tipo sem produção / dia extra, motivo); a Produção aplica pelo `CadSync` (origin `portal`, dia travado no Plano do mês, dia com lançamento ou fechado ignorado e avisado, inativar desfaz) e publica a origem em `exports.calendario`. A Produção publica `exports.ordensHistorico` (ordens fora dos 24 meses) e `lotesHistorico` (lotes fora dos 150 dias: situação, observação, dias); com eles o Waste não lê mais a estrutura interna da Produção. Detalhes: `docs/centralizacao-configuracoes.md`, `docs/producao-ordens-sap.md` § 2.4.73.
 **E-mail do turno e do dia (Produção 2.4.66, `fontes/producao/email_dia.js` + `email_build.py`, 12/11/2026):** "Copiar para Outlook" na Passagem de turno e no Relatório do dia gera o resumo visual (medidor do OEE reportado em PNG; no turno, também o acumulado do dia; produção × meta; D/P/Q, scrap e paradas; hora a hora alto; paradas em barras; Segurança e Qualidade uma vez). "Itens do e-mail" escolhe e ordena os blocos, com prévia; layout por computador em `App.prefs.mailLay` (turno e dia separados). Os outros relatórios seguem com o e-mail antigo. Nenhum cálculo novo. Detalhes: `docs/producao-ordens-sap.md` § 2.4.66.
 **Turno não produtivo (Fase 2, Produção 2.4.24, `fontes/producao/turnos_np.js`):** vigência `naoProdutivo` no Portal → `productive:false` (fora do dia e do plano); caixas do MES fora dos turnos do dia são reatribuídas (trecho emendado com o fim do turno anterior → ele; senão → o próximo) só a partir de `foraTurnoDesde`; `ForaTurno.aplicar` no `computeDayRaw` (resultado oficial = reportado; `res.foraTurno.real` = real); "Habilitar turno" no dia (`TurnoNP`, `ps.enabledNP`). Detalhes: `docs/briefing-2026-11-09-fase0-fase1.md` § 6.
 
@@ -178,14 +180,12 @@ Lista única do que ficou para depois. O motivo e o gatilho de cada item estão 
 
 **Funcionalidade e integração**
 - UX-02 (guia por aba): feito em todas as páginas menos Projetos (em construção); ao mudar uma tela, atualizar o `VAC_GUIA` dela (Produção: `fontes/producao/guia.js`; as outras: bloco "UX-02 · guia por aba" no fim do HTML).
-- Calendário de produção no Portal.
 - Telas por perfil (E10c): Resumo/Detalhado, o que fica em "Mais", passagem de turno e alerta de ritmo; espera a lista de jornadas por perfil validada com operador e liderança (registro § U).
 - OSM (E7, falta a amostra da planilha), importação por pasta (E9, falta decidir a estação coletora), MES (E12, faltam amostras e regras), conteúdo AM/TPM e 5S (E13, faltam os padrões), Projetos (E15, falta o escopo) e XLSX local (E3b, falta o arquivo): registro § U.
 - Fase 4 do briefing: homologar na pasta real (Trazer configurações › parâmetros do gel, data de corte, Registrar scrap num turno e Resumo do dia no Gel). Os **locais** de estoque continuam no Gel; scrap do dia sem turno ("Dia (sem turno)" do Gel) não existe na Produção.
 - Homologação da C1 na pasta real (etapa H): duas abas, base renomeada, duas estações (registro § V).
 - R-02, identificador estável da pessoa (responsável guardado pelo nome): falta decidir o que fazer com nomes digitados à mão (registro § V).
 - Última falha do backup diário em Portal › Versões: as páginas não registram a falha na pasta (registro § V, C5).
-- Waste ainda cai na base da Produção (`monthPlans`, `server.lotClass/lotNotes`) para ordens fora dos 24 meses do `exports.porOrdem` e lotes fora dos 150 dias do `exports.lotes` (registro § U, E4).
 
 **Layout (auditoria visual; registro § L)**
 - Exemplos visuais dos componentes (cards, pílulas, abas) nos dois temas.
@@ -194,17 +194,12 @@ Lista única do que ficou para depois. O motivo e o gatilho de cada item estão 
 - Conferência com a pasta real: primeira abertura (aviso do CadSync na Produção), duas estações gravando ao mesmo tempo (os testes de gravação usam pasta simulada), uso sem internet, Chrome/Edge, acentos nos caminhos (registro A09), densidade observada com operador e liderança (registro § L).
 - `paginas/lib/xlsx.full.min.js` (SheetJS 0.20.3) ainda não está no repositório (o `trelatorios.js` marca o Excel como NÃO VERIFICADO): o ambiente de desenvolvimento não alcança cdn.sheetjs.com e o npm só tem até 0.18.5. Subir o arquivo que está na pasta da linha. jsPDF e AutoTable já estão em `paginas/lib/`.
 - Volta para versão anterior a `00. Bases`: procedimento manual no guia (item 9), validado no `tbases.js` › B06; não automatizado de propósito (registro § R).
-- `package.json`/CI (registro § 1).
-- `testes/tz.js` falha às vezes e passa ao rodar de novo (instabilidade do teste).
-- `testes/tintegra.js` › "ação que vence amanhã" falha quando roda entre 21h e 0h de Brasília (já em outro dia em UTC); problema de fuso do teste, não da página (visto em 07/11/2026).
-- `testes/t181.js` expira no fim (passo da matriz; problema do teste).
 - Cópia para o Outlook com imagens: conferir no Outlook da empresa (desktop e web) se os gráficos chegam (registro § P).
 
 **Manutenção e escala (registro § C)**
 - Waste: comentários e ações varridos por ordem (índice por ordem quando o Painel passar de 300 ms ou de 2 mil comentários).
 - Funções grandes (`computeDayRaw`, `CadSync.aplicar`, `openConfig` do Gel, `parseMetaFY27`, `cadValidarItem`): começar a próxima mudança por um teste que fixe o comportamento; leitura da Meta FY27 duplicada (Produção e Portal).
 - Backup diário automático do Portal ignora falha (aviso no status depende de decisão).
-- URLs de download sem revogação no Paradas, Produção e Portal (revisar caso a caso).
 
 **Relatórios (registro § P)**
 - Três geradores de PDF (Portal/Waste, Produção, Gel): unificar no kit se for preciso.

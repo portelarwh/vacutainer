@@ -304,3 +304,10 @@ D8 da auditoria (Fase 3, padronização): o `EmailDia` deixou de montar moldura,
 - `exports.atual` ganha `pecasPorCaixa`, `caixasLote`, `produzidoLote`, `qtdOrdem`, `restante`, `ritmoPecasHora`, `metaPecasHora` (pph do catálogo), `previsaoFim` e `base`. Tudo **estimado**: o ritmo é o das caixas da corrida atual do lote no MES (tempo dos trechos, sem as paradas entre eles); produzido = caixas do lote × peças por caixa; previsão = última caixa + restante ÷ ritmo. O Portal só mostra (cartão "Agora", Portal 1.9.33).
 - Gráficos hora a hora (`HHComum.dia`: Visão Geral, Painel, TV, Passagem de turno): clicar numa hora abre `vacFicha.abrir('intervalo', 'AAAA-MM-DDTHH:MM/AAAA-MM-DDTHH:MM')`. A hora vira o intervalo do turno que começa nela (minutos do dia de produção) ou a hora cheia, para a hora fora do turno (`HHComum.trecho`).
 Teste: `testes/tlote_origem.js`.
+
+## 2.4.73 · Histórico no exports, calendário do Portal e downloads (13/11/2026)
+
+- `exports.ordensHistorico` (ordens dos planos antes dos 24 meses do `porOrdem`: mês, ordem, lote, catálogo, qtd, datas gravadas; sem recalcular o progresso) e `exports.lotesHistorico` (lotes do servidor fora dos 150 dias do `lotes`: situação, observação, dias e dias de retrabalho). O Waste 1.12.8 usa esses blocos e deixa de ler `monthPlans`/`server` da base da Produção (registro § U, E4); base antiga sem os blocos: o Waste ainda lê como antes, até a Produção gravar de novo.
+- Calendário de produção do Portal pelo CadSync (`docs/centralizacao-configuracoes.md`).
+- Downloads da lista COOIS e do JSON de ordens liberam o link (`revokeObjectURL`).
+Teste: `testes/tlote_origem.js`, `testes/tcalendario.js`.

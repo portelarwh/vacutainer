@@ -152,3 +152,13 @@ O "domínio vazio no Portal → a página usa o cadastro local" acabou: com o ca
 | D | Waste 1.8.6 · Paradas 1.0.5 | feito: meta WASTE-MES, tipo dos materiais e logo no Waste; parada longa, tempo programado pelos turnos e outros nomes (de-para) na Paradas |
 
 Pendente: importação da **Meta OEE FY27** no Portal (hoje só pelo Trazer, a partir da Produção); calendário de produção; Gel ler catálogos e equipamentos do Portal; nova varredura das páginas depois de o Pedro usar com os dados reais.
+
+## Calendário de produção (13/11/2026, Portal 1.9.35 / Produção 2.4.73)
+
+Feito o item que tinha ficado para depois. Portal › Cadastros › **Calendário de produção** (`calendario`): um registro por dia, código = data `AAAA-MM-DD` (texto), `tipo` `sem produção` | `dia extra`, `nome` = motivo, `ativo`. A Produção aplica pelo `CadSync` (`cad_sync.js`) quando muda a `rev`:
+- o dia vai para `db.calendar` com `origin: 'portal'` (mesma marca que o Plano do mês usa: sai do plano e do OEE, ou entra como dia extra);
+- no Plano do mês esse dia fica travado ("vem do Calendário de produção do Portal… edite no Portal");
+- dia já fechado ou com lançamento não vira "sem produção": fica de fora, contado no aviso da sincronização e em `settings.calIgnorados`;
+- inativar o dia no Portal tira a marca que veio de lá; a marca local do mesmo dia é substituída pela do Portal (fonte única);
+- `exports.calendario[].origem` = `portal` | `producao` (aditivo).
+As marcas feitas na Produção antes continuam valendo (não há "Trazer configurações" do calendário). Teste: `testes/tcalendario.js`.

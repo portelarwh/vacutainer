@@ -616,3 +616,15 @@ Pedido explícito: desenvolver cinco colunas e cinco posições, uma A4 paisagem
 | D1–D6, D10, D11 | **corrigidos** | Fases 1–5 (PRs #70, #71, #72): lote na origem, `trechos`/`atual`/`trocas`/`paradasEventos`, eventoId, ficha do equipamento, permissão por ação na tela, cartão "Agora", ficha do trecho, layout da pessoa em `00. Bases/Preferencias` |
 | D8 · motores repetidos | **corrigido em parte** | E-mail: `vacEmail.pecas` (Produção 2.4.70). Pareto: `vacPareto` no kit (`calc` + `barras`), usado pelo Paradas 1.2.9, Waste 1.12.7 (Pareto do MUV e da Visão Geral; o Pareto vertical da controladoria mantém o desenho homologado e usa o `calc`) e Gel 2.34. Ficam fora: os gráficos que não são Pareto (barras, colunas, linhas) e o `Charts` da Produção (o motor dela, com Pareto próprio na Visão Geral); PDF continua com um gerador por página (registro § P) |
 | D9 · hora a hora só na Produção | **recusado (sem fato)** | Conferido em 13/11/2026: o Portal (inclusive a TV) e o Gel **não desenham** gráfico por hora do dia (o Portal só cita o hora a hora em textos de ajuda do cadastro; o "ritmo por hora" do Gel é uma média em tubos/h). Não há duas bases para unificar. Se um dia o Portal ou o Gel ganharem gráfico por hora, a série sai da Produção pelo `exports` (`HHComum.pontos`), nunca recalculada |
+
+## § Z2 · Pendências sem dependência, resolvidas em 13/11/2026
+
+| Item | Situação | O que foi feito |
+|---|---|---|
+| `package.json`/CI (§ 1) | **feito** (decisão do responsável em 13/11/2026) | `package.json` (Playwright fixo; `npm run build`, `npm test`) e `.github/workflows/testes.yml`: em cada PR e na main, confere que `paginas/` bate com as fontes e roda `testes/tudo.js`; saída dos testes que falharem fica como artefato |
+| `tz.js` instável | **corrigido** | O teste lia o MB51 antes de o formulário terminar de redesenhar (troca da planta); agora espera e confere o texto. 4 em 4 seguidas; saiu da lista de instáveis do `tudo.js` |
+| `tintegra.js` 21h–0h | **corrigido** | O teste montava "amanhã" em UTC (`toISOString`); agora no dia local. Conferido com o relógio às 22h30 de Brasília: antes falhava, agora passa |
+| `t181.js` expira | **corrigido** | O teste desfazia a própria mudança (marcava o grupo) e clicava "Salvar" desligado; agora grava o ✗ da coluna e depois confere o grupo; sai com código 1 se falhar; entrou no `tudo.js` |
+| URLs de download sem revogação (§ C) | **corrigido** | Paradas 1.2.10 (logo, backup), Produção 2.4.73 (COOIS, JSON de ordens), Portal 1.9.35 (arquivo e foto do equipamento) |
+| Waste lendo a base da Produção (§ U, E4) | **corrigido** | Produção 2.4.73 publica `ordensHistorico` e `lotesHistorico`; Waste 1.12.8 só lê o `exports` (base antiga sem os blocos: como antes, até regravar) |
+| Calendário de produção no Portal | **feito** | Portal 1.9.35 (`calendario`) + CadSync da Produção 2.4.73 (`docs/centralizacao-configuracoes.md`) |
