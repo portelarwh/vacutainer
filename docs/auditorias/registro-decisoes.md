@@ -608,3 +608,11 @@ Pedido explícito: desenvolver cinco colunas e cinco posições, uma A4 paisagem
 - **Preservado:** propriedade das bases, campos opcionais, vigências e cálculo de OEE, build da Produção por fontes.
 - **Validação:** `testes/tsqdcp.js`, incluindo uma página A4 paisagem, ausência de resposta, gravação/releitura e troca de pasta.
 - **Pendências:** lista ao final de `docs/producao-sqdcp.md`; não presume fonte automática de pessoas/custo diário nem histórico de acidentes anteriores ao sistema.
+
+## § Z · Auditoria de 13/11/2026 (Fases 1–5 e padronização)
+
+| Item | Situação | Decisão |
+|---|---|---|
+| D1–D6, D10, D11 | **corrigidos** | Fases 1–5 (PRs #70, #71, #72): lote na origem, `trechos`/`atual`/`trocas`/`paradasEventos`, eventoId, ficha do equipamento, permissão por ação na tela, cartão "Agora", ficha do trecho, layout da pessoa em `00. Bases/Preferencias` |
+| D8 · motores repetidos | **corrigido em parte** | E-mail: `vacEmail.pecas` (Produção 2.4.70). Pareto: `vacPareto` no kit (`calc` + `barras`), usado pelo Paradas 1.2.9, Waste 1.12.7 (Pareto do MUV e da Visão Geral; o Pareto vertical da controladoria mantém o desenho homologado e usa o `calc`) e Gel 2.34. Ficam fora: os gráficos que não são Pareto (barras, colunas, linhas) e o `Charts` da Produção (o motor dela, com Pareto próprio na Visão Geral); PDF continua com um gerador por página (registro § P) |
+| D9 · hora a hora só na Produção | **recusado (sem fato)** | Conferido em 13/11/2026: o Portal (inclusive a TV) e o Gel **não desenham** gráfico por hora do dia (o Portal só cita o hora a hora em textos de ajuda do cadastro; o "ritmo por hora" do Gel é uma média em tubos/h). Não há duas bases para unificar. Se um dia o Portal ou o Gel ganharem gráfico por hora, a série sai da Produção pelo `exports` (`HHComum.pontos`), nunca recalculada |

@@ -81,7 +81,7 @@ const PREP = () => {
   ok(R.ex5.eventoId === 'ev_teste1' && R.n === 6 && !R.ids.some(i => /^OEE:/.test(i)), 'Paradas: a mesma parada apontada na Produção ganha o eventoId dela; nenhum evento contado duas vezes');
   ok(/100200301:2/.test(R.porOrdem) && /100200302:1/.test(R.porOrdem), 'Paradas: exports.porOrdem com as ordens vindas do lote e do horário (' + R.porOrdem + ')');
   ok(R.avisos && R.avisos.semOrdem === 1 && R.avisos.soProducao === 0, 'Paradas: avisos de origem (lote não encontrado: 1; paradas só na Produção: 0)');
-  ok(await p.evaluate(() => PAGE.versao) === '1.2.8', 'Paradas 1.2.8');
+  ok(await p.evaluate(() => PAGE.versao) === '1.2.9', 'Paradas 1.2.9');
 
   // ---------- Produção 2.4.71 / kit: clique numa hora do gráfico abre a ficha do trecho (vacFicha 'intervalo') com lotes, ordens, caixas e paradas
   const FI = await o.evaluate(([X, exPar]) => { const S = vacFicha._S, pg = id => vacFicha.FONTES.find(f => f.id === id).pega;

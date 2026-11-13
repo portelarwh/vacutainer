@@ -17,7 +17,13 @@ const LER = () => {
   const resumo = {}; const rs = document.getElementById('resumo');
   if (rs && rs.style.display !== 'none') rs.querySelectorAll('.big').forEach(b => { const l = n(b.previousElementSibling && b.previousElementSibling.textContent); resumo[l.toUpperCase()] = n(b.textContent); });
   const g = id => { const e = document.getElementById(id); if (!e) return ''; const c = e.cloneNode(true); c.querySelectorAll('.c-un').forEach(x => x.remove()); return n(c.textContent); };   // 1.8.36: a linha "Valores em …" fica fora da comparação
-  return { kpis, resumo, trend: g('chTrend'), comp: g('chComp'), prod: g('chProd'), causa: g('chCausa'), porComp: g('porComp'), tabela: g('tblMain').slice(0, 4000), info: g('tblInfo') };
+  /* 1.12.7 (13/11/2026) · D8: Pareto comparado pelos números (rótulo | valor | % acumulado inteiro), na tabela antiga ou no desenho comum do kit (svg.vpar) */
+  const pc = x => Math.round(parseFloat(n(x).replace(/[^\d,.-]/g, '').replace(/\./g, '').replace(',', '.')));
+  const gp = id => { const e = document.getElementById(id); if (!e) return ''; const sv = e.querySelector('svg.vpar'), tb = e.querySelector('table');
+    if (sv) return 'PARETO[' + [...sv.querySelectorAll('g[data-k]')].map(q => [n(q.getAttribute('data-l') || q.querySelector('.lbl').textContent), n(q.querySelector('.pux-val').firstChild.textContent), pc(q.querySelector('.pux-acum').textContent)].join('|')).join('; ') + ']';
+    if (tb) return 'PARETO[' + [...tb.querySelectorAll('tr')].map(r => [n((r.cells[0].querySelector('b') || r.cells[0]).textContent), n(r.cells[2].textContent), pc(r.cells[3].textContent)].join('|')).join('; ') + ']';
+    return g(id); };
+  return { kpis, resumo, trend: g('chTrend'), comp: gp('chComp'), prod: gp('chProd'), causa: gp('chCausa'), porComp: g('porComp'), tabela: g('tblMain').slice(0, 4000), info: g('tblInfo') };
 };
 (async () => {
   const b = await chromium.launch(); const pe = [];
@@ -60,7 +66,7 @@ const LER = () => {
       renderPainel(); await w(200); out.lembrou = document.querySelector('#t-painel [data-vk-grupo="B"]').classList.contains('fechado');
       document.querySelector('#t-painel [data-vk-grupo="B"] .vk-gh').click(); await w(50);
       // 1.10.0 · Pareto do MUV: dimensão × métrica × sentido × Top N
-      const pzN = () => document.querySelectorAll('#chPz tr').length, pzC = (k, v) => { document.querySelector(`#pzCtl [data-pz="${k}"][data-pv="${v}"]`).click(); };
+      const pzN = () => document.querySelectorAll('#chPz tr, #chPz g[data-k]').length, pzC = (k, v) => { document.querySelector(`#pzCtl [data-pz="${k}"][data-pv="${v}"]`).click(); };
       out.pz = { comp: pzN() }; pzC('top', '5'); await w(30); out.pz.top5 = pzN(); pzC('dim', 'sku'); await w(30); out.pz.sku = pzN(); out.pz.skuTxt = document.getElementById('chPz').textContent.slice(0, 60);
       pzC('met', 'estr'); await w(30); out.pz.estr = document.getElementById('chPz').textContent.includes('Nada desfavorável'); pzC('sen', 'fav'); pzC('met', 'muv'); await w(30); out.pz.fav = document.getElementById('chPz').textContent.slice(0, 40);
       out.pz.lembra = JSON.parse(localStorage.getItem('vac.waste.pareto') || '{}').dim === 'sku';

@@ -345,3 +345,7 @@ Ficha da parada: a ordem aparece com o número e o botão da ficha da ordem ao l
 ## 1.2.8 · Mapa de calor (13/11/2026, Fase 6 da auditoria)
 
 Visão geral › 04 Análises complementares › grupo D "Mapa de calor": minutos de parada das classes de perda, com os filtros da tela, pela hora de início × dia da semana (Seg–Dom) e × equipamento (os 10 com mais tempo). Cada célula mostra o número; cor mais forte = mais tempo. Parada sem horário de início fica fora (contada na nota). Nada gravado. Teste: `testes/tparadas_vg.js` (soma do mapa = soma das paradas com horário).
+
+## 1.2.9 · Pareto comum do kit (13/11/2026)
+
+`hbars` passa a desenhar pelo `vacPareto.barras` do kit (mesmo desenho, agora também no Waste e no Gel); a unidade da escala (h ou min) continua daqui. Números iguais (`tparadas_ux`, `tparadas_vg`).
