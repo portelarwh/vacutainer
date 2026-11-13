@@ -45,6 +45,13 @@ const CASOS = [
     ok(JSON.stringify(r.min) === JSON.stringify([15, 15, 1.5, 1234, 'NaN', 'NaN', null]), `Paradas › minutos do Forms: ${JSON.stringify(r.min)} ("12a" e "15-" recusados; antes 12 e 15)`);
     const src = require('fs').readFileSync(RAIZ + 'paginas/Paradas.html', 'utf8');
     ok(/duração inválida/.test(src) && /quantidade de vezes inválida/.test(src), 'Paradas › linha com minutos ou vezes inválidos vai para os erros da importação, com o motivo');
+    // Paradas 1.2.4 · coluna "Lote" do Forms vai para o lote (antes caía na ordem); "Ordem" e "Ordem ou lote" continuam na ordem
+    const lt = await p.evaluate(() => { const C1 = mapCols(['Data da parada', 'Código – Linha', 'Lote']), C2 = mapCols(['Data da parada', 'Código – Linha', 'Ordem ou lote']), C3 = mapCols(['Data da parada', 'Código – Linha', 'Ordem', 'Lote']);
+      const linha = { 'Data da parada': '03/11/2026', 'Turno': 'T1', 'Máquina': 'LINHA', 'Código – Linha': '801', 'Duração (minutos)': '10', 'Lote': '0006299937', 'Ordem': '' };
+      const m = montarImport([linha], 'forms'), e = m.ev[0] || {};
+      return { c1: [C1.lote, C1.ordem], c2: [C2.lote, C2.ordem], c3: [C3.lote, C3.ordem], ev: [e.lote, e.ordem], erros: m.erros.map(x => x.t) }; });
+    ok(lt.c1[0] === 'Lote' && !lt.c1[1] && !lt.c2[0] && lt.c2[1] === 'Ordem ou lote' && lt.c3[0] === 'Lote' && lt.c3[1] === 'Ordem' && lt.ev[0] === '0006299937' && lt.ev[1] === '',
+      `Paradas › coluna Lote do Forms: vai para o lote, como texto (${JSON.stringify(lt.ev)}); "Ordem ou lote" segue na ordem; erros ${JSON.stringify(lt.erros)}`);
     await p.close();
   }
   await b.close();

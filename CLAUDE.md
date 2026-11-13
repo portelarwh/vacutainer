@@ -10,7 +10,7 @@ Plataforma de páginas HTML de arquivo único que trabalham juntas numa **pasta 
 | Produção (OEE, plano, ordens SAP) | `OEE-Vacutainer.html` | `oee-vacutainer-base.json` (+ `ordens-base.json`) | 2.4.66 | **NÃO editar o HTML**: editar `fontes/producao/` e rodar o build |
 | Waste (perdas por ordem, KKBC) | `Perdas-Ordem.html` | `perdas-base.json` | 1.12.4 | direto no HTML |
 | Gestão de Gel | `Gestão-Gel-Vacutainer.html` | `fifo-base.json` | 2.31 · **em atualização** | direto no HTML |
-| Paradas | `Paradas.html` | `paradas-base.json` | 1.2.3 · **em atualização** | direto no HTML |
+| Paradas | `Paradas.html` | `paradas-base.json` | 1.2.4 · **em atualização** | direto no HTML |
 | Equipamentos (com manutenção) | `Equipamentos.html` | `equipamentos-base.json` | 1.0.13 · **em atualização** | direto no HTML (saiu do gerador na 1.0.0; `docs/equipamentos-v1.md`) |
 | Iniciativas / Ações (Ações/Planner · KAS · OSM · 5S · programas) | `Iniciativas.html` | `iniciativas-base.json` | 1.1.10 · **em atualização** | direto no HTML (saiu do gerador na 1.0.0; `docs/iniciativas-planner.md`) |
 | Linha 360° (planta interativa: paradas, OS e ações por ponto; postos e checklists) | `Linha-360.html` | `linha360-base.json` | 1.1.0 · **em atualização** | **gerada**: `fontes/linha360/` + `python fontes/linha360/build.py` (`docs/linha-360.md`) |

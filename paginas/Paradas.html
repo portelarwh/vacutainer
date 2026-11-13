@@ -1160,7 +1160,7 @@ const MATRIZ_PROPOSTA={"OUT": ["Tullip A", "Tullip B", "Packout", "Metro", "Cap 
    PARADAS · núcleo (pasta, base, fila de gravação, backups, cadastro, utilidades)
    ===================================================================================== */
 const PAGE={id:'paradas',titulo:'Paradas · Análise de falhas e paradas de máquina',tituloCurto:'Paradas',subtitulo:'Análise de falhas e paradas de máquina',
-  versao:'1.2.3',estado:'atualizacao',estadoNota:'Matriz, componentes e limite de microparada passam a vir só do Portal; eventos da Produção entram como sugestão.',baseFile:'paradas-base.json',backupDir:'00. Backups/Paradas',busca:q=>buscaPagina(q)};
+  versao:'1.2.4',estado:'atualizacao',estadoNota:'Matriz, componentes e limite de microparada passam a vir só do Portal; eventos da Produção entram como sugestão.',baseFile:'paradas-base.json',backupDir:'00. Backups/Paradas',busca:q=>buscaPagina(q)};
 const APP_VERSION=PAGE.versao;
 const CAD_FILE='vacutainer-cadastros.json',OEE_FILE='oee-vacutainer-base.json';
 const $=(s,r=document)=>r.querySelector(s),$$=(s,r=document)=>[...r.querySelectorAll(s)];
@@ -1448,7 +1448,7 @@ function mapCols(headers){const H=headers.map(h=>[h,norm(h).replace(/[.:?()]/g,'
   inicio:f(n=>!sys(n)&&/inicio da parada|^inicio|hora da parada/.test(n)),
   minutos:f(n=>/^duracao|tempo de parada|minutos/.test(n)),vezes:f(n=>/quantas vezes|ocorrencias/.test(n)),
   descricao:f(n=>/o que aconteceu|descricao/.test(n)),trocou:f(n=>/^trocou|troca de peca\?|consertou/.test(n)),peca:f(n=>/qual peca|componente|^peca/.test(n)),
-  tecnico:f(n=>/tecnico/.test(n)),ordem:f(n=>/ordem|lote/.test(n)),obs:f(n=>/^observ/.test(n))}}
+  tecnico:f(n=>/tecnico/.test(n)),ordem:f(n=>/ordem/.test(n)),lote:f(n=>/lote/.test(n)&&!/ordem/.test(n)),obs:f(n=>/^observ/.test(n))}}   /* 1.2.4 · Lote é campo próprio (antes ia para a ordem) */
 function parseDia(v){if(v==null||v==='')return null;if(v instanceof Date&&!isNaN(v))return isoD(new Date(v.getTime()+12*36e5));
  if(typeof v==='number'){const d=new Date(Math.round((v-25569)*864e5));return isoD(new Date(d.getTime()+d.getTimezoneOffset()*6e4))}
  const s=String(v).trim();let m;if((m=s.match(/^(\d{4})-(\d{2})-(\d{2})/)))return`${m[1]}-${m[2]}-${m[3]}`;
@@ -1501,7 +1501,7 @@ function montarImport(rows,fonte){const H=rows.length?Object.keys(rows[0]):[];co
   const ini=parseHora(g('inicio'));const vz=parseNum(g('vezes'));if(Number.isNaN(vz)){erros.push({l:L,t:`quantidade de vezes inválida ("${g('vezes')}")`});return}const n=Math.max(1,Math.round(vz||1));
   ev.push({id,origem:fonte==='html-antigo'?'html-antigo':layout==='novo'?'forms':'forms-antigo',dia,turno:parseTurno(g('turno')),inicio:ini,fim:ini&&n===1?somaHora(ini,min):null,minutos:min,ocorrencias:n,
    equipamento:mq.eq||'X:?',maquinaOrig:mq.nome,codigo,codigoOrig,grupoImport:sug?codigoOrig+'→'+sug.codigo:null,regra:sug?.regra||null,trocouPeca:tp,
-   descricao:String(g('descricao')||'').trim(),obs:String(g('obs')||'').trim(),peca:String(g('peca')||'').trim(),tecnicoForms:String(g('tecnico')||'').trim(),ordem:g('ordem')!=null?String(g('ordem')).trim():'',
+   descricao:String(g('descricao')||'').trim(),obs:String(g('obs')||'').trim(),peca:String(g('peca')||'').trim(),tecnicoForms:String(g('tecnico')||'').trim(),ordem:g('ordem')!=null?String(g('ordem')).trim():'',lote:g('lote')!=null?String(g('lote')).trim().replace(/\.0+$/,''):'',
    por:String(g('nome')||g('email')||'').trim(),registradoEm:g('fim_form')instanceof Date?g('fim_form').toISOString():g('fim_form')?String(g('fim_form')):null,modificadoEm:g('modif')?String(g('modif')):null})});
  return{ev,erros,layout,C}}
 function hash(s){let h=2166136261;for(let i=0;i<s.length;i++){h^=s.charCodeAt(i);h=Math.imul(h,16777619)}return(h>>>0).toString(36)}
@@ -1570,7 +1570,7 @@ function calcExports(D){const old=Store.data;Store.data=D;try{
  const porComp=agg(ult90.filter(e=>classe(e)==='quebra'),e=>{const t=D.tecnico[e.id]||{};return e.equipamento+'|'+(t.componente||e.peca||'(sem componente)')+'|'+(t.modo||'')}).map(o=>{const[eq,c,mo]=o.k.split('|');return{equipamento:eq,componente:c,modo:mo,ocorrencias:o.n,minutos:o.min,ultima:o.ev.reduce((m,e)=>e.dia>m?e.dia:m,'')}}).sort((a,b)=>b.minutos-a.minutos).slice(0,300);
  const cortado=ult90.length>3000,eventosCobertura={de:cortado?addDays(ult90[ult90.length-3000].dia,1):addDays(ate,-90),ate,cortado};   // AT-06 · o Portal mostra "sem dado" fora disto
  const eventos=ult90.slice(-3000).map(e=>{const t=D.tecnico[e.id]||{};return{id:e.id,dia:e.dia,turno:e.turno,inicio:e.inicio,fim:e.fim,minutos:e.minutos,ocorrencias:e.ocorrencias||1,equipamento:e.equipamento,codigo:codigoEf(e),codigoApontado:e.codigo,classe:classe(e),
-  descricao:e.descricao,trocouPeca:trocou(e),componente:t.componente||e.peca||'',modo:t.modo||'',acao:t.acao||'',os:t.os||'',tecnico:t.tecnico||e.tecnicoForms||'',ordem:e.ordem||'',validado:!!D.validacao[e.dia]}});
+  descricao:e.descricao,trocouPeca:trocou(e),componente:t.componente||e.peca||'',modo:t.modo||'',acao:t.acao||'',os:t.os||'',tecnico:t.tecnico||e.tecnicoForms||'',ordem:e.ordem||'',lote:e.lote||'',validado:!!D.validacao[e.dia]}});
  const rec=recorrencias(all,ate).slice(0,100).map(r=>({chave:r.k,equipamento:r.eq,codigo:r.cod,componente:r.comp,ocorrencias30d:r.n30,minutos30d:r.min30,mesesSeguidos:r.meses,ultima:r.ult,acao:r.acao?.id||null}));
  const recl=filaTecnica(ult90).filter(f=>f.tipo==='reclass').map(f=>({idEvento:f.e.id,dia:f.e.dia,equipamento:f.e.equipamento,de:codigoEf(f.e),para:f.sug,motivo:trocou(f.e)?'trocou peça':'sem troca de peça',status:'sugerida'}));
  const vali=Object.entries(D.tecnico).filter(([id,t])=>t.codigoValidado).map(([id,t])=>({idEvento:id,para:t.codigoValidado,por:t.por||'',em:t.em||''}));
@@ -2024,7 +2024,7 @@ const FORMS_SPEC=[
  {n:9,t:'Trocou ou consertou alguma peça?',tipo:'Escolha com ramificação',ob:1,op:'Sim | Não | Não sei',obs:'Sim → pergunta 10. Não / Não sei → pergunta 11. É o que separa quebra (8xx) de parada sem troca (7xx).'},
  {n:10,t:'Qual peça foi trocada ou consertada?',tipo:'Texto',ob:0,obs:'Ex.: rolo de pressão, sensor de entrada, correia.'},
  {n:11,t:'Técnico que atendeu',tipo:'Texto',ob:0,obs:''},
- {n:12,t:'Ordem ou lote',tipo:'Texto',ob:0,obs:'Se souber.'},
+ {n:12,t:'Lote',tipo:'Texto',ob:0,obs:'Lote em produção na hora da parada (ex.: 6299937). A ordem e o catálogo vêm do lote.'},
  {n:13,t:'Observação',tipo:'Texto longo',ob:0,obs:''}];
 const optCod=c=>`${c.numero} ${c.codigo} · ${c.nome}`;
 const codsMaquina=eq=>Cad.codes.filter(c=>/^\d{3}$/.test(c.numero)&&Cad.aplica(c.codigo,eq));
@@ -2076,13 +2076,13 @@ function wireMatriz(){$$('#mtz [data-mc]').forEach(cb=>cb.onchange=()=>{const eq
   const m={};for(const c of C)m[c.codigo]=eqs.filter(e=>Cad.aplica(c.codigo,e.codigo)).map(e=>e.codigo);const cod=cb.dataset.mc,eq=cb.dataset.me;m[cod]=cb.checked?[...new Set(m[cod].concat(eq))]:m[cod].filter(x=>x!==eq);
   Store.commit({k:'cfg',key:'matriz',v:m,aud:`matriz ${cod} ${cb.checked?'+':'−'} ${eq}`})});const r=$('#mtzReset');if(r)r.onclick=()=>{if(confirm('Voltar a matriz ao rascunho inicial?'))Store.commit({k:'cfg',key:'matriz',v:null,aud:'matriz: rascunho inicial'})}}
 async function excelModeloForms(){const eqs=Cad.eqs.filter(e=>e.ativo&&e.tipo!=='linha'&&(!e.prov||!Cad.eqs.some(x=>x.cad)));eqs.push(Cad.eq('LINHA'));const ex=[eqs.find(e=>/tullip b/i.test(e.nome))||eqs[0],eqs.find(e=>/packout/i.test(e.nome))||eqs[0],Cad.eq('LINHA')];
- const head=['ID','Hora de início','Hora de conclusão','Email','Nome','Data da parada','Turno','Máquina',...eqs.map(e=>'Código – '+e.nome),'Início da parada (hh:mm)','Duração (minutos)','Quantas vezes aconteceu?','O que aconteceu?','Trocou ou consertou alguma peça?','Qual peça foi trocada ou consertada?','Técnico que atendeu','Ordem ou lote','Observação'];
- const rows=[[1,'03/11/2026 08:02:11','03/11/2026 08:03:40','operador1@bd.com','Operador 1','03/11/2026','T1 · 1º turno',optEq(ex[0]),'801','07:15',40,'','Etiqueta dobrando na herma','Sim','Rolo de pressão','Willian','110834720',''],
+ const head=['ID','Hora de início','Hora de conclusão','Email','Nome','Data da parada','Turno','Máquina',...eqs.map(e=>'Código – '+e.nome),'Início da parada (hh:mm)','Duração (minutos)','Quantas vezes aconteceu?','O que aconteceu?','Trocou ou consertou alguma peça?','Qual peça foi trocada ou consertada?','Técnico que atendeu','Lote','Observação'];
+ const rows=[[1,'03/11/2026 08:02:11','03/11/2026 08:03:40','operador1@bd.com','Operador 1','03/11/2026','T1 · 1º turno',optEq(ex[0]),'801','07:15',40,'','Etiqueta dobrando na herma','Sim','Rolo de pressão','Willian','6299937',''],
   [2,'03/11/2026 09:40:02','03/11/2026 09:41:10','operador1@bd.com','Operador 1','03/11/2026','T1 · 1º turno',optEq(ex[0]),'701','08:00',18,9,'Enroscos curtos de etiqueta','Não','','','',''],
   [3,'03/11/2026 11:30:00','03/11/2026 11:31:00','lider@bd.com','Líder T1','03/11/2026','T1 · 1º turno',optEq(ex[2]),'502','09:05',30,'','Troca de lote 6279776 para 6279781','Não','','','6279781','']];
  const codIx=k=>8+eqs.findIndex(e=>e.codigo===k.codigo);
  const out=rows.map(r=>{const o={};const eqv=r[7];const e=eqs.find(x=>optEq(x)===eqv);head.forEach(h=>o[h]='');['ID','Hora de início','Hora de conclusão','Email','Nome','Data da parada','Turno','Máquina'].forEach((h,i)=>o[h]=r[i]);
-  if(e){const c=Cad.byNum.get(r[8]);o['Código – '+e.nome]=c?optCod(c):r[8]}const tail=['Início da parada (hh:mm)','Duração (minutos)','Quantas vezes aconteceu?','O que aconteceu?','Trocou ou consertou alguma peça?','Qual peça foi trocada ou consertada?','Técnico que atendeu','Ordem ou lote','Observação'];tail.forEach((h,i)=>o[h]=r[9+i]);return o});
+  if(e){const c=Cad.byNum.get(r[8]);o['Código – '+e.nome]=c?optCod(c):r[8]}const tail=['Início da parada (hh:mm)','Duração (minutos)','Quantas vezes aconteceu?','O que aconteceu?','Trocou ou consertou alguma peça?','Qual peça foi trocada ou consertada?','Técnico que atendeu','Lote','Observação'];tail.forEach((h,i)=>o[h]=r[9+i]);return o});
  try{const X=await loadXLSX();const ws=X.utils.json_to_sheet(out,{header:head});const wb=X.utils.book_new();X.utils.book_append_sheet(wb,ws,'Form1');X.writeFile(wb,'Forms-Paradas-exemplo.xlsx')}catch(e){toast(e.message,1)}}
 
 /* ---------- Importar ---------- */
