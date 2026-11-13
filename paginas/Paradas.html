@@ -1160,7 +1160,7 @@ const MATRIZ_PROPOSTA={"OUT": ["Tullip A", "Tullip B", "Packout", "Metro", "Cap 
    PARADAS · núcleo (pasta, base, fila de gravação, backups, cadastro, utilidades)
    ===================================================================================== */
 const PAGE={id:'paradas',titulo:'Paradas · Análise de falhas e paradas de máquina',tituloCurto:'Paradas',subtitulo:'Análise de falhas e paradas de máquina',
-  versao:'1.2.4',estado:'atualizacao',estadoNota:'Matriz, componentes e limite de microparada passam a vir só do Portal; eventos da Produção entram como sugestão.',baseFile:'paradas-base.json',backupDir:'00. Backups/Paradas',busca:q=>buscaPagina(q)};
+  versao:'1.2.5',estado:'atualizacao',estadoNota:'Matriz, componentes e limite de microparada passam a vir só do Portal; eventos da Produção entram como sugestão.',baseFile:'paradas-base.json',backupDir:'00. Backups/Paradas',busca:q=>buscaPagina(q)};
 const APP_VERSION=PAGE.versao;
 const CAD_FILE='vacutainer-cadastros.json',OEE_FILE='oee-vacutainer-base.json';
 const $=(s,r=document)=>r.querySelector(s),$$=(s,r=document)=>[...r.querySelectorAll(s)];
@@ -1391,17 +1391,47 @@ function classe(ev){const c=Cad.code(codigoEf(ev));if(!c)return'indef';if(c.grup
  if(c.classe==='porDuracao'){const n=ev.ocorrencias||1;return(ev.minutos/n)<Cad.limite?'micro':'operacional'}
  if(c.classe==='calculada')return'velocidade';if(c.classe==='emPecas')return'qualidade';
  return{0:'outros',1:'utilizacao',2:'planejada',3:'partida',4:'organizacao',5:'setup',6:'consumivel',7:'operacional'}[c.grupo]||'outros'}
+/* 1.2.5 · Fase 1 ordem/lote: a parada do Forms é a que conta (D1). A mesma parada apontada na Produção (exports.paradasEventos) só dá o
+   eventoId dela à parada do Forms (mesmo dia e equipamento, turno igual quando os dois têm, início a até 10 min; sem horário, duração a até 1 min;
+   cada evento da Produção casa com no máximo uma). Evento que só a Produção tem não entra nas análises (nada é contado duas vezes): vira o aviso
+   "N só na Produção". Antes (1.0.7, nunca usado porque a Produção não publicava), o evento da Produção substituía o do Forms. */
+const EVENTO_OEE=new Map();EVENTO_OEE.soProducao=0;
 function eventosTodos(){const D=Store.data;const base=D.eventos.filter(e=>!e.excluido);
- const oe=(Ext.oee?.paradasEventos||[]).map(x=>({...x,id:'OEE:'+x.id,origem:'oee',dia:x.dia,minutos:+x.minutos||0}));
+ const oe=Ext.oee?.paradasEventos||[];EVENTO_OEE.clear();EVENTO_OEE.soProducao=0;
  if(!oe.length)return base;
- /* 1.0.7 · o evento do OEE substitui só o evento que é a mesma parada (D1: dia + turno + equipamento + horário): mesmo dia e equipamento,
-    turno igual (quando os dois têm) e início a até 10 min (sem horário: duração a até 1 min). Cada evento do OEE substitui no máximo um.
-    Antes, qualquer evento do OEE no dia escondia todos os do Forms desse dia, até de outros equipamentos. Contagem de microparadas (tally) não entra. */
  const hm=s=>{const m=/^(\d{1,2}):(\d{2})/.exec(s||'');return m?+m[1]*60+ +m[2]:null};
  const mesma=(e,o)=>e.dia===o.dia&&!!e.equipamento&&String(e.equipamento)===String(o.equipamento||'')&&(!e.turno||!o.turno||String(e.turno)===String(o.turno))
   &&(hm(e.inicio)!=null&&hm(o.inicio)!=null?Math.abs(hm(e.inicio)-hm(o.inicio))<=10:Math.abs((+e.minutos||0)-(+o.minutos||0))<=1);
+ const porDia=new Map();oe.forEach((o,k)=>{if(!o||!o.dia)return;let a=porDia.get(o.dia);if(!a)porDia.set(o.dia,a=[]);a.push(k)});
  const usado=new Set();
- return base.filter(e=>{if(e.origem==='tally')return true;const i=oe.findIndex((o,k)=>!usado.has(k)&&mesma(e,o));if(i<0)return true;usado.add(i);return false}).concat(oe)}
+ for(const e of base){if(e.origem==='tally')continue;const L=porDia.get(e.dia);if(!L)continue;const k=L.find(k=>!usado.has(k)&&mesma(e,oe[k]));if(k==null)continue;usado.add(k);EVENTO_OEE.set(e.id,String(oe[k].id))}
+ EVENTO_OEE.soProducao=oe.length-usado.size;return base}
+/* 1.2.5 · ordem, lote e catálogo da parada, calculados na leitura (a base guarda só o que veio do Forms):
+   ordem digitada → vale ("apontada"); lote digitado → ordem e catálogo pelo lote no exports da Produção (porOrdem, lotes, trechos);
+   sem lote → pelo horário: o trecho do MES (exports.trechos) que contém o início da parada ("horário"). Lote fora da Produção ou em duas
+   ordens fica sem ordem e com aviso. Sem o exports da Produção, nada é calculado. */
+const Origem={_k:null,_ix:null,_c:new Map(),
+ ix(){const X=Ext.oee;if(this._k===X)return this._ix;this._k=X;this._c=new Map();if(!X)return this._ix=null;
+  const nl=v=>{v=String(v==null?'':v).trim();return /^\d+$/.test(v)?v.replace(/^0+(?=\d)/,''):v};
+  const porLote=new Map(),porOrd=new Map(),catLote=new Map();
+  for(const o of X.porOrdem||[]){if(!o)continue;const od=String(o.ordem||'').trim(),l=nl(o.lote);if(od&&!porOrd.has(nl(od)))porOrd.set(nl(od),o);if(!od||!l)continue;let m=porLote.get(l);if(!m)porLote.set(l,m=new Map());if(!m.has(od))m.set(od,o)}
+  for(const x of X.lotes||[])if(x&&x.lote!=null&&!catLote.has(nl(x.lote)))catLote.set(nl(x.lote),x.catalogo==null?'':String(x.catalogo));
+  const tr=(X.trechos||[]).filter(t=>t&&t.ini&&t.fim&&t.lote!=null);for(const t of tr)if(!catLote.has(nl(t.lote)))catLote.set(nl(t.lote),t.catalogo==null?'':String(t.catalogo));
+  return this._ix={nl,porLote,porOrd,catLote,tr}},
+ de(e){const I=this.ix(),k=[e.id,e.ordem,e.lote,e.dia,e.inicio].join('|'),c=this._c.get(k);if(c)return c;const r=this.calc(e,I);this._c.set(k,r);return r},
+ calc(e,I){const ord=String(e.ordem||'').trim(),lot=String(e.lote||'').trim(),vazio={ordem:'',lote:lot,catalogo:'',fonte:'',loteDigitado:!!lot};
+  if(ord){const o=I&&I.porOrd.get(I.nl(ord));return{ordem:ord,lote:lot||(o&&o.lote)||'',catalogo:(o&&o.catalogo)||'',fonte:'apontada',loteDigitado:!!lot}}
+  if(!I)return vazio;
+  if(lot){const l=I.nl(lot),m=I.porLote.get(l),cat=I.catLote.get(l)||'';
+   if(m&&m.size===1){const o=[...m.values()][0];return{ordem:String(o.ordem),lote:lot,catalogo:o.catalogo||cat,fonte:'lote',loteDigitado:true}}
+   if(m&&m.size>1)return{ordem:'',lote:lot,catalogo:cat,fonte:'lote em várias ordens',ordens:[...m.keys()],loteDigitado:true};
+   return{ordem:'',lote:lot,catalogo:cat,fonte:I.catLote.has(l)?'lote sem ordem no plano':'lote não encontrado',loteDigitado:true}}
+  const m=/^(\d{1,2}):(\d{2})/.exec(e.inicio||'');if(!m||!I.tr.length||!e.dia)return vazio;
+  const ts=e.dia+'T'+String(+m[1]).padStart(2,'0')+':'+m[2],t=I.tr.find(t=>t.ini<=ts&&ts<=t.fim);
+  return t?{ordem:t.ordem?String(t.ordem):'',lote:String(t.lote),catalogo:t.catalogo?String(t.catalogo):'',fonte:'horário',loteDigitado:false}:vazio}};
+/* avisos da origem: lote digitado sem ordem e paradas que só a Produção tem */
+function origemAvisos(L){L=L||eventosTodos();return{semOrdem:L.filter(e=>{const o=Origem.de(e);return o.loteDigitado&&!o.ordem&&!!o.fonte}).length,soProducao:EVENTO_OEE.soProducao||0}}
+const ORIGEM_TXT={apontada:'apontada',lote:'pelo lote',horário:'pelo horário (trecho do MES)','lote em várias ordens':'lote em várias ordens: conferir o plano','lote sem ordem no plano':'lote sem ordem no plano da Produção','lote não encontrado':'lote não encontrado na Produção'};
 /* filtro global (período, equipamento, turno, classe) */
 const F={de:null,ate:null,eq:'',turno:'',cls:'',grupo:'',q:'',
  init(){const ev=eventosTodos();const last=ev.reduce((m,e)=>e.dia>m?e.dia:m,'');const ate=last||todayISO();this.ate=ate;this.de=addDays(ate,-90)},
@@ -1570,7 +1600,7 @@ function calcExports(D){const old=Store.data;Store.data=D;try{
  const porComp=agg(ult90.filter(e=>classe(e)==='quebra'),e=>{const t=D.tecnico[e.id]||{};return e.equipamento+'|'+(t.componente||e.peca||'(sem componente)')+'|'+(t.modo||'')}).map(o=>{const[eq,c,mo]=o.k.split('|');return{equipamento:eq,componente:c,modo:mo,ocorrencias:o.n,minutos:o.min,ultima:o.ev.reduce((m,e)=>e.dia>m?e.dia:m,'')}}).sort((a,b)=>b.minutos-a.minutos).slice(0,300);
  const cortado=ult90.length>3000,eventosCobertura={de:cortado?addDays(ult90[ult90.length-3000].dia,1):addDays(ate,-90),ate,cortado};   // AT-06 · o Portal mostra "sem dado" fora disto
  const eventos=ult90.slice(-3000).map(e=>{const t=D.tecnico[e.id]||{};return{id:e.id,dia:e.dia,turno:e.turno,inicio:e.inicio,fim:e.fim,minutos:e.minutos,ocorrencias:e.ocorrencias||1,equipamento:e.equipamento,codigo:codigoEf(e),codigoApontado:e.codigo,classe:classe(e),
-  descricao:e.descricao,trocouPeca:trocou(e),componente:t.componente||e.peca||'',modo:t.modo||'',acao:t.acao||'',os:t.os||'',tecnico:t.tecnico||e.tecnicoForms||'',ordem:e.ordem||'',lote:e.lote||'',validado:!!D.validacao[e.dia]}});
+  descricao:e.descricao,trocouPeca:trocou(e),componente:t.componente||e.peca||'',modo:t.modo||'',acao:t.acao||'',os:t.os||'',tecnico:t.tecnico||e.tecnicoForms||'',...(o=>({ordem:o.ordem||'',lote:o.lote||'',loteDigitado:o.loteDigitado,catalogo:o.catalogo||null,ordemFonte:o.fonte||null}))(Origem.de(e)),eventoId:EVENTO_OEE.get(e.id)||null,validado:!!D.validacao[e.dia]}});   /* 1.2.5 · ordem/lote/catálogo pelo lote ou pelo horário; eventoId da Produção */
  const rec=recorrencias(all,ate).slice(0,100).map(r=>({chave:r.k,equipamento:r.eq,codigo:r.cod,componente:r.comp,ocorrencias30d:r.n30,minutos30d:r.min30,mesesSeguidos:r.meses,ultima:r.ult,acao:r.acao?.id||null}));
  const recl=filaTecnica(ult90).filter(f=>f.tipo==='reclass').map(f=>({idEvento:f.e.id,dia:f.e.dia,equipamento:f.e.equipamento,de:codigoEf(f.e),para:f.sug,motivo:trocou(f.e)?'trocou peça':'sem troca de peça',status:'sugerida'}));
  const vali=Object.entries(D.tecnico).filter(([id,t])=>t.codigoValidado).map(([id,t])=>({idEvento:id,para:t.codigoValidado,por:t.por||'',em:t.em||''}));
@@ -1583,7 +1613,7 @@ function calcExports(D){const old=Store.data;Store.data=D;try{
    ['Máquina crítica',sM[0]?.nome||'—',sM[0]?fmtMin(sM[0].min):'',''],['Pendências',n0(pend.length),pend.filter(p=>p.sev===1).length+' críticas',pend.some(p=>p.sev===1)?'bad':'']],
   pendencias:pend.map(p=>({sev:p.sev,txt:p.txt,link:p.link})),
   /* E4 · resumo por ordem (todos os eventos com ordem), para a ficha da ordem e as outras páginas */
-   porOrdem:(()=>{const m=new Map();for(const e of all){const o=String(e.ordem||'').trim().replace(/^0+(?=\d)/,'');if(!o)continue;let x=m.get(o);if(!x)m.set(o,x={ordem:o,eventos:0,minutos:0,equipamentos:[],de:e.dia,ate:e.dia});x.eventos+=e.ocorrencias||1;x.minutos+=+e.minutos||0;if(e.equipamento&&!x.equipamentos.includes(e.equipamento))x.equipamentos.push(e.equipamento);if(e.dia<x.de)x.de=e.dia;if(e.dia>x.ate)x.ate=e.dia}return[...m.values()].map(x=>({...x,minutos:Math.round(x.minutos*10)/10}))})(),
+   porOrdem:(()=>{const m=new Map();for(const e of all){const o=String(Origem.de(e).ordem||'').trim().replace(/^0+(?=\d)/,'');if(!o)continue;let x=m.get(o);if(!x)m.set(o,x={ordem:o,eventos:0,minutos:0,equipamentos:[],de:e.dia,ate:e.dia});x.eventos+=e.ocorrencias||1;x.minutos+=+e.minutos||0;if(e.equipamento&&!x.equipamentos.includes(e.equipamento))x.equipamentos.push(e.equipamento);if(e.dia<x.de)x.de=e.dia;if(e.dia>x.ate)x.ate=e.dia}return[...m.values()].map(x=>({...x,minutos:Math.round(x.minutos*10)/10}))})(),
   serie:{rotulo:'Minutos de parada por mês',pontos:meses.map(m=>({x:m,y:all.filter(e=>e.dia.slice(0,7)===m&&!NAO_PERDA.has(classe(e))).reduce((s,e)=>s+e.minutos,0)}))},
   porEquipamentoMes:porEq,porComponente:porComp,eventos,eventosCobertura,recorrentes:rec,reclassificacoes:recl,classificacoesValidadas:vali,cadastros:cadastrosProposta()}}finally{Store.data=old}}
 
@@ -1649,6 +1679,9 @@ function renderTop(){renderSysNav();$('#appVer').textContent='v'+PAGE.versao;con
  p.push(Ext.cadFonte==='teste'?'<span class="pill warn">cadastro de teste</span>':Ext.cad?vacCadPilula(Ext.cadRev??Ext.cad.rev,{fonte:Ext.cadFonte,revAt:Ext.cad.revAt,revBy:Ext.cad.revBy})   /* 1.0.26 · UX-04: pílula comum (kit) */:'<span class="pill warn" title="Usando o catálogo proposto embutido na página">sem cadastro · catálogo proposto</span>');
  if(Cad.proposto&&Ext.cad)p.push(`<span class="pill warn" title="Códigos do catálogo proposto ainda não cadastrados no Portal">${Cad.proposto} códigos a cadastrar</span>`);
  p.push(`<span class="pill ${Ext.oeeOk?'ok':''}">${Ext.oeeOk?(Ext.oee.paradasEventos?'OEE: eventos':'OEE lido'):'OEE não lido'}</span>`);
+ { const A=Ext.oeeOk?origemAvisos():null;   /* 1.2.5 */
+  if(A&&A.semOrdem)p.push(`<span class="pill warn" title="Lote digitado no Forms que não está na Produção, ou que aparece em mais de uma ordem">${A.semOrdem} parada(s) com lote sem ordem</span>`);
+  if(A&&A.soProducao)p.push(`<span class="pill" title="Paradas apontadas na Produção sem a mesma parada no Forms (dia, equipamento, turno e horário). Não entram nas análises do Paradas.">${A.soProducao} só na Produção</span>`); }
  const ev=eventosTodos();const ult=ev.reduce((m,e)=>e.dia>m?e.dia:m,'');if(ult){const d=daysBetween(ult,todayISO());p.push(`<span class="pill ${d>3?'crit':'info'}">Última parada ${br(ult)}</span>`)}
  p.push(vacRecuperacaoBotao(S));$('#stBase').innerHTML=p.join('');const pp=$('#pPasta');if(pp)pp.onclick=()=>S.dir?S.reconnect():S.pick();const pr=$('#pRecriar');if(pr)pr.onclick=()=>S.recriar();const po=$('#pOutra');if(po)po.onclick=()=>S.pick()}
 
@@ -1761,7 +1794,9 @@ function abrirEvento(id){const e=eventosTodos().find(x=>x.id===id);if(!e)return 
   <table class="t"><tr><td class="muted">Data / turno</td><td>${br(e.dia)} · ${esc(e.turno||'—')}</td></tr>${(()=>{const L=(Ext.equip?.porEvento||{})[e.id]||[],s=(typeof systems==='function'?systems():[]).find(x=>x.id==='equip'),h=x=>s?sysHref(s,x):'Equipamentos.html#'+x;if(!s||s.futuro)return'';return`<tr><td class="muted">OS (Equipamentos)</td><td>${L.map(o=>`<a href="${esc(h('os='+o.id))}" class="code">${esc(o.id)}</a> <span class="pill${['concluída','cancelada'].includes(o.status)?'':' warn'}">${esc(o.status)}</span> `).join('')}<a class="b sm" target="_blank" rel="noopener" href="${esc(h('novaOS='+encodeURIComponent(JSON.stringify({equipamento:e.equipamento,titulo:(c?.nome||codigoEf(e))+(e.descricao?': '+String(e.descricao).slice(0,80):''),descricao:e.descricao||'',origem:{tipo:'paradas',ref:e.id,resumo:`Parada de ${br(e.dia)} ${e.turno||''} · ${n0(e.minutos)} min`,link:vacAquiHref('evento='+e.id)}}))))}">+ Abrir OS</a></td></tr>`})()}${typeof vacNovaAcaoBotao==='function'?`<tr><td class="muted">Planner</td><td>${vacNovaAcaoBotao(acaoPlanner('evento',null,e.id,Cad.eqNome(e.equipamento)+' · '+(c?.nome||codigoEf(e))+' · '+br(e.dia),[e],{eq:e.equipamento,cod:codigoEf(e),ordem:e.ordem}),'+ Ação no Planner')}</td></tr>`:''}${e.ordem?`<tr><td class="muted">Ordem</td><td><span class="code">${esc(e.ordem)}</span> ${typeof vacFichaBotao==='function'?vacFichaBotao(e.ordem):''}</td></tr>`:''}<tr><td class="muted">Início · fim</td><td>${esc(e.inicio||'—')} · ${esc(e.fim||'—')}</td></tr>
   <tr><td class="muted">Duração</td><td>${n0(e.minutos)} min${(e.ocorrencias||1)>1?` · ${e.ocorrencias} ocorrências`:''}</td></tr><tr><td class="muted">O que aconteceu</td><td>${esc(e.descricao||'—')}</td></tr>
   ${e.obs?`<tr><td class="muted">Observação</td><td>${esc(e.obs)}</td></tr>`:''}<tr><td class="muted">Apontado por</td><td>${esc(e.por||'—')} · ${esc(e.origem)}</td></tr>
-  ${e.codigoOrig?`<tr><td class="muted">No Forms</td><td>${esc(e.codigoOrig)}${e.regra?` <span class="muted small">(${esc(e.regra)})</span>`:''}</td></tr>`:''}${e.ordem?`<tr><td class="muted">Ordem/lote</td><td>${esc(e.ordem)}</td></tr>`:''}</table>
+  ${e.codigoOrig?`<tr><td class="muted">No Forms</td><td>${esc(e.codigoOrig)}${e.regra?` <span class="muted small">(${esc(e.regra)})</span>`:''}</td></tr>`:''}${(()=>{const o=Origem.de(e),id=EVENTO_OEE.get(e.id);let h='';   /* 1.2.5 */
+   if(o.ordem||o.lote||o.fonte)h+=`<tr><td class="muted">Ordem · lote</td><td>${o.ordem?(typeof vacFichaBotao==='function'?vacFichaBotao(o.ordem):esc(o.ordem)):'—'} · ${esc(o.lote||'—')}${o.catalogo?` · catálogo ${esc(o.catalogo)}`:''}${o.fonte?` <span class="muted small">(${esc(ORIGEM_TXT[o.fonte]||o.fonte)}${o.ordens?': '+esc(o.ordens.join(', ')):''})</span>`:''}</td></tr>`;
+   if(id)h+=`<tr><td class="muted">Na Produção</td><td>mesma parada do apontamento <span class="muted small">(${esc(id)})</span></td></tr>`;return h})()}</table>
   ${sug&&sug.tipo==='reclass'?`<div class="tint" style="--tc:var(--warn);padding:8px 10px;border-radius:8px;margin-top:10px">Sugestão: reclassificar para <b>${esc(codLabel(sug.sug))}</b> (${trocou(e)?'houve troca de peça':'não houve troca de peça'}). <button class="b sm" id="aplSug">Aplicar</button></div>`:''}
   ${c?.guia?.descricao?`<p class="small muted mt"><b>Guia:</b> ${esc(c.guia.descricao)}</p>`:''}</div>
   <div class="card"><b>Parte técnica</b> ${help('Preenchida pelo técnico ou engenharia. Fica só no Paradas, presa ao id da parada. Quebra exige peça trocada/reparada; sem troca, a parada é operacional ou microparada.')}

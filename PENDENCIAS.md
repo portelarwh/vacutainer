@@ -120,7 +120,6 @@ Também de antes:
 
 **Sem bloqueio, prontas para fazer:**
 - **Calendário de produção no Portal.**
-- **`eventoId` comum entre Produção e Paradas:** evita contagem dupla quando o OEE publicar `paradasEventos` (`docs/paradas-arquitetura.md`, registro F07/A10).
 - **Falha do backup diário em Portal › Versões:** as páginas não registram a falha na pasta (registro § V, C5).
 - **Dependência do Waste na base da Produção:** ele ainda lê a base para ordens além dos 24 meses de `exports.porOrdem` e lotes além dos 150 dias de `exports.lotes` (registro § U, E4).
 - **Padrão das outras páginas:** levar o padrão de layout do Paradas 1.2.0 (faixas, filtros ativos, tabela com cabeçalho e coluna fixos, "Mais filtros" no celular) para Gel, Equipamentos e Iniciativas, se o usuário pedir.

@@ -284,3 +284,13 @@ O relatório da tela (e o PDF) do dia e do turno também deixou de repetir o blo
 
 Teste: `testes/temail.js`. Conferir no Outlook da empresa (desktop e web): colar o e-mail e ver se os medidores e o gráfico chegam.
 
+
+## 2.4.68 · Origem dos fatos de produção no exports (13/11/2026)
+
+Fase 1 do ordem/lote (`fontes/producao/exp_build.py`). Blocos novos no `exports`, sem mudar cálculo nem gravação (aditivo, `exportsVersion 1`):
+- `trechos` (60 dias): `{ ini, fim, lote, catalogo, ordem, caixas }` dos trechos do MES; ordem = a do plano com o mesmo lote.
+- `atual`: lote em produção (último trecho) `{ lote, catalogo, ordem, desde, ultimaCaixa, caixas }`.
+- `trocas` (60 dias): `{ em, de, para, catalogo, ordem }` entre trechos seguidos de lotes diferentes.
+- `paradasEventos` (90 dias, `paradasEventosCobertura`): `{ id, dia, turno, inicio, fim, ini, fimEm, minutos, equipamento, codigo, descricao, obs, lote, ordem, catalogo, origemLote }`. O `id` é o da parada na base (eventoId comum com o Paradas). Lote/ordem/catálogo = trecho do MES no início da parada (`origemLote: 'trecho'`), ou o último que terminou até 4 h antes (`'estimado'`). Pausas que descontam do planejado ficam fora.
+- Correção: as pendências de ordem × lote (2.4.60) eram empurradas antes da declaração da lista; com um conflito no plano o exports parava com erro.
+Teste: `testes/tlote_origem.js`.

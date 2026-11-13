@@ -327,3 +327,13 @@ Guia, Formulários, Importar e Configuração mantêm o layout (só o celular e 
 - **Celular:** "Mais filtros" abre e fecha.
 - **Larguras:** as 6 abas em 5 larguras × 2 temas, sem rolagem lateral da página.
 
+
+## 1.2.5 · Ordem, lote e catálogo da parada; eventoId da Produção (13/11/2026)
+
+Fase 1 do ordem/lote (1.2.4 criou o campo `lote` do Forms). Calculado na leitura, nada novo na base:
+- **Ordem digitada** vale (`ordemFonte: 'apontada'`).
+- **Lote digitado** → ordem e catálogo pelo `exports` da Produção (`porOrdem`, `lotes`, `trechos`; lote numérico comparado sem zeros à esquerda): `'lote'`. Lote fora da Produção (`'lote não encontrado'`), sem ordem no plano ou em duas ordens (`'lote em várias ordens'`) fica sem ordem, com a pílula "N parada(s) com lote sem ordem".
+- **Sem lote** → o trecho do MES (`exports.trechos`) que contém o início da parada no mesmo dia: ordem, lote e catálogo `'horário'` (`loteDigitado: false`). Fora dos trechos, nada.
+- `exports.eventos` ganha `catalogo`, `ordemFonte`, `loteDigitado` e `eventoId`; `ordem`/`lote` passam a ser os da parada (digitados ou calculados, com a fonte); `exports.porOrdem` usa essa ordem (a ficha da ordem passa a mostrar as paradas do lote).
+- **eventoId (A10):** a parada do Forms continua sendo a que conta (D1). Quando a Produção publica `paradasEventos`, a mesma parada (regra do F07) só recebe o `eventoId` dela. Evento que só a Produção tem **não entra** nas análises (pílula "N só na Produção"). Muda o `eventosTodos` da 1.0.7, que punha o evento da Produção no lugar do Forms e somava os que sobravam (nunca rodou: a Produção não publicava).
+Teste: `testes/tlote_origem.js`.
