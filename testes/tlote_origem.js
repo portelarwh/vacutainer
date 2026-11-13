@@ -59,7 +59,7 @@ const PREP = () => {
     D.eventos = [mk('FN-1', { lote: 'L-502', inicio: '06:10' }), mk('FN-2', { inicio: '08:15' }), mk('FN-3', { lote: 'L-999', inicio: '08:30' }), mk('FN-4', { inicio: '18:00' }),
       mk('FN-5', { equipamento: X.paradasEventos[0].equipamento, inicio: '07:03', minutos: 20 }), mk('FN-6', { ordem: '555', inicio: '09:00' })];
     const T = eventosTodos(), g = id => T.find(e => e.id === id) || {}, ex = calcExports(D), ge = id => (ex.eventos || []).find(e => e.id === id) || {};
-    return { n: T.length, ids: T.map(e => e.id), f1: g('FN-1').origemOrdem, ex1: ge('FN-1'), ex2: ge('FN-2'), ex3: ge('FN-3'), ex4: ge('FN-4'), ex5: ge('FN-5'), ex6: ge('FN-6'),
+    return { exPar: ex, n: T.length, ids: T.map(e => e.id), f1: g('FN-1').origemOrdem, ex1: ge('FN-1'), ex2: ge('FN-2'), ex3: ge('FN-3'), ex4: ge('FN-4'), ex5: ge('FN-5'), ex6: ge('FN-6'),
       porOrdem: (ex.porOrdem || []).map(x => x.ordem + ':' + x.eventos).join(','), lote1: D.eventos[0].lote, ord1: D.eventos[0].ordem, avisos: typeof origemAvisos === 'function' ? origemAvisos(T) : null, pill: document.body.innerText.includes('só na Produção') };
   }, X);
   ok(R.ex1.ordem === '100200302' && R.ex1.catalogo === P.cats[1] && R.ex1.ordemFonte === 'lote' && R.ex1.lote === 'L-502', 'Paradas: com lote, ordem e catálogo vêm do lote (mesmo fora do horário do trecho)');
@@ -71,7 +71,20 @@ const PREP = () => {
   ok(R.ex5.eventoId === 'ev_teste1' && R.n === 6 && !R.ids.some(i => /^OEE:/.test(i)), 'Paradas: a mesma parada apontada na Produção ganha o eventoId dela; nenhum evento contado duas vezes');
   ok(/100200301:2/.test(R.porOrdem) && /100200302:1/.test(R.porOrdem), 'Paradas: exports.porOrdem com as ordens vindas do lote e do horário (' + R.porOrdem + ')');
   ok(R.avisos && R.avisos.semOrdem === 1 && R.avisos.soProducao === 0, 'Paradas: avisos de origem (lote não encontrado: 1; paradas só na Produção: 0)');
-  ok(await p.evaluate(() => PAGE.versao) === '1.2.5', 'Paradas 1.2.5');
+  ok(await p.evaluate(() => PAGE.versao) === '1.2.6', 'Paradas 1.2.6');
+
+  // ---------- Equipamentos 1.0.14 (D5): ficha do equipamento com paradas por catálogo e ordem e Pareto por código
+  const q = await c.newPage(); q.on('pageerror', e => pe.push('Equipamentos: ' + e.message));
+  await q.goto('file://' + RAIZ + 'paginas/Equipamentos.html'); await q.waitForTimeout(900);
+  const EQ = await q.evaluate(ex => { document.querySelectorAll('.overlay,.mod-bg').forEach(x => x.remove()); Store.test = true;
+    const h = hoje(); Ext.par = { ...ex, eventos: ex.eventos.map(e => ({ ...e, dia: h })) }; App.tab = 'equip'; App.eq = 'EQ09'; render();
+    const lin = sel => [...document.querySelectorAll(sel + ' tr')].slice(1).map(r => [...r.cells].map(td => td.innerText.trim().replace(/\s+/g, ' ')));
+    return { cat: lin('[data-eq-cat]'), par: lin('[data-eq-pareto]'), botoes: document.querySelectorAll('[data-eq-cat] .vficha-bt').length, ver: PAGE.versao }; }, R.exPar);
+  const cx = k => (EQ.cat.find(r => r[0] === k) || []);
+  ok(EQ.ver === '1.0.14' && cx(P.cats[0])[1] && /100200301/.test(cx(P.cats[0])[1]) && cx(P.cats[0])[2] === '1' && /100200302/.test(cx(P.cats[1])[1] || '') && /sem catálogo/.test(EQ.cat.map(r => r[0]).join('|')) && EQ.botoes >= 2,
+    'Equipamentos 1.0.14: ficha com paradas por catálogo e ordem (botão da ficha da ordem) e "sem catálogo" para o que não tem origem');
+  const soma = EQ.cat.reduce((s, r) => s + +r[3].replace(/\D/g, ''), 0), somaP = EQ.par.reduce((s, r) => s + +r[2].replace(/\D/g, ''), 0);
+  ok(EQ.par.length && EQ.par[0][0] === 'FME' && soma === 50 && somaP === 50 && /100 %$/.test(EQ.par[EQ.par.length - 1][3]), `Equipamentos: Pareto por código e total por catálogo iguais à soma das paradas do equipamento (${soma} min)`);
   ok(!pe.length, 'sem erro de página' + (pe.length ? ': ' + [...new Set(pe)].slice(0, 3).join(' | ') : ''));
   await b.close(); if (errs.length) { console.log(`\n${errs.length} falha(s)`); process.exit(1); } console.log('\nsem erros');
 })().catch(e => { console.error(e); process.exit(1); });

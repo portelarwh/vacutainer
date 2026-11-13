@@ -337,3 +337,7 @@ Fase 1 do ordem/lote (1.2.4 criou o campo `lote` do Forms). Calculado na leitura
 - `exports.eventos` ganha `catalogo`, `ordemFonte`, `loteDigitado` e `eventoId`; `ordem`/`lote` passam a ser os da parada (digitados ou calculados, com a fonte); `exports.porOrdem` usa essa ordem (a ficha da ordem passa a mostrar as paradas do lote).
 - **eventoId (A10):** a parada do Forms continua sendo a que conta (D1). Quando a Produção publica `paradasEventos`, a mesma parada (regra do F07) só recebe o `eventoId` dela. Evento que só a Produção tem **não entra** nas análises (pílula "N só na Produção"). Muda o `eventosTodos` da 1.0.7, que punha o evento da Produção no lugar do Forms e somava os que sobravam (nunca rodou: a Produção não publicava).
 Teste: `testes/tlote_origem.js`.
+
+## 1.2.6 · 13/11/2026
+
+Ficha da parada: a ordem aparece com o número e o botão da ficha da ordem ao lado (antes só o botão "Ficha").

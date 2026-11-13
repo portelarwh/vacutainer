@@ -108,3 +108,11 @@ Mesmas proteções de Iniciativas 1.0.2: fila durável, base que some, confirma�
 ## 1.0.4 · 08/11/2026
 
 Isolamento por pasta e reserva por operação, com cópia de recuperação. Procedimento, testes e limites em [estabilizacao-nv-01-05.md](estabilizacao-nv-01-05.md).
+
+## 1.0.14 · 13/11/2026
+
+Ficha do equipamento (D5 da auditoria de 13/11/2026). O cartão "Falhas" ganha, nos últimos 90 dias:
+- **Pareto por código:** ocorrências, minutos, % e % acumulado (top 6).
+- **Por catálogo e ordem:** minutos e ocorrências por catálogo, com as ordens (número + botão da ficha da ordem). O catálogo e a ordem vêm do `exports.eventos` do Paradas 1.2.5+, pelo lote digitado no Forms ou pelo trecho do MES no horário. Parada sem nenhum dos dois aparece como "sem catálogo". Paradas mais antigo que a 1.2.5 → aviso.
+
+Só leitura do `exports` do Paradas; nada novo na base. Teste: `testes/tlote_origem.js`.
