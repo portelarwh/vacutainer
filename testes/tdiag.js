@@ -58,8 +58,9 @@ const f07=await pa.evaluate(()=>{const ev0=Store.data.eventos;const ex0=Ext.oee;
   Store.data.eventos=[{id:'F1',origem:'forms',dia:'2026-11-05',turno:'T1',equipamento:'EQ02',inicio:'08:00',minutos:20,codigo:'FME'},
    {id:'F2',origem:'forms',dia:'2026-11-05',turno:'T1',equipamento:'EQ01',inicio:'10:02',minutos:5,codigo:'FME'},{id:'T1',origem:'tally',dia:'2026-11-05',turno:'T1',minutos:3,codigo:'MIC'}];
   Ext.oee={paradasEventos:[{id:'o1',dia:'2026-11-05',turno:'T1',equipamento:'EQ01',inicio:'10:00',minutos:5,codigo:'FME'}]};
-  const L=eventosTodos().map(e=>e.id).sort().join(',');Store.data.eventos=ev0;Ext.oee=ex0;return L});
-ok(f07==='F1,OEE:o1,T1',`F07: Forms do EQ02 continua; o do EQ01 é a mesma parada do OEE e sai; microparadas ficam (${f07})`);
+  const L=eventosTodos().map(e=>e.id).sort().join(',')+' | '+(EVENTO_OEE.get('F2')||'-')+' | '+(EVENTO_OEE.get('F1')||'-')+' | só Produção '+EVENTO_OEE.soProducao;Store.data.eventos=ev0;Ext.oee=ex0;return L});
+/* Paradas 1.2.5 (A10, 13/11/2026): a parada do Forms é a que conta; a mesma parada da Produção só dá o eventoId (antes substituía o Forms) */
+ok(f07==='F1,F2,T1 | o1 | - | só Produção 0',`F07: Forms do EQ02 continua sem eventoId; o do EQ01 é a mesma parada da Produção e recebe o eventoId dela (não some nem soma); microparadas ficam (${f07})`);
 
 // ---- F03, F08 e 5.2 · Portal
 const p=await nova('Portal.html#geral','PO',async p=>{await p.clock.install({time:new Date('2026-11-06T10:00:00')})});
