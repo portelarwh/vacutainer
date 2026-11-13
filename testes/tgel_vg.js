@@ -12,7 +12,11 @@ const errs = []; const ok = (c, m) => { console.log((c ? 'ok   ' : 'FALHA ') + m
 const LER = () => {
   const n = s => String(s || '').replace(/\s+/g, ' ').trim(), m = document.getElementById('panel');
   const kpis = {}; m.querySelectorAll('.dbk').forEach(k => { const c = k.cloneNode(true); c.querySelectorAll('svg').forEach(x => x.remove()); kpis[n((k.querySelector('.l, .dbkl, b, h4') || {}).textContent) || n(c.textContent).slice(0, 30)] = n(c.textContent); });
-  const blocos = {}; m.querySelectorAll('[data-dbb], .dbblk, #dbGrid > *').forEach((b, i) => { const id = b.dataset.dbb || b.id || ('b' + i); const c = b.cloneNode(true); c.querySelectorAll('.c-un').forEach(x => x.remove()); blocos[id] = n(c.textContent).slice(0, 3000); });   // 2.28: a linha "Valores em …" fica fora da comparação
+  /* 2.34 (13/11/2026) · D8: Pareto comparado pelos números (rótulo | valor | % acumulado inteiro), no desenho antigo (.dbpar) ou no comum do kit (svg.vpar) */
+  const pc = t => Math.round(parseFloat(n(t).replace(/[^\d,.-]/g, '').replace(/\./g, '').replace(',', '.')));
+  const par = c => { c.querySelectorAll('.dbpar').forEach(d => d.replaceWith(document.createTextNode(' PARETO[' + [...d.querySelectorAll('.dbpr')].map(b => [n(b.querySelector('.l').textContent), n(b.querySelector('.v').textContent), pc(b.querySelector('.c').textContent)].join('|')).join('; ') + '] ')));
+    c.querySelectorAll('svg.vpar').forEach(sv => sv.replaceWith(document.createTextNode(' PARETO[' + [...sv.querySelectorAll('g[data-k]')].map(g => [n(g.getAttribute('data-l') || g.querySelector('.lbl').textContent), n(g.querySelector('.pux-val').firstChild.textContent), pc(g.querySelector('.pux-acum').textContent)].join('|')).join('; ') + '] '))); };
+  const blocos = {}; m.querySelectorAll('[data-dbb], .dbblk, #dbGrid > *').forEach((b, i) => { const id = b.dataset.dbb || b.id || ('b' + i); const c = b.cloneNode(true); c.querySelectorAll('.c-un').forEach(x => x.remove()); par(c); blocos[id] = n(c.textContent).slice(0, 3000); });   // 2.28: a linha "Valores em …" fica fora da comparação
   return { kpis, blocos, sub: n((m.querySelector('.dbbar .sub') || {}).textContent) };
 };
 (async () => {

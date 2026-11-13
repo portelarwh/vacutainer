@@ -326,3 +326,4 @@ const vacGrade = (() => {
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', () => setTimeout(ini, 300)); else setTimeout(ini, 300);
   return { aplicar, agendar };
 })();
+

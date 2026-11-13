@@ -333,3 +333,7 @@ Pedido do usuário: trazer para o Waste os gráficos do dashboard de desvios da 
 **O que já existia e continua.** A evolução mensal do dashboard corresponde aos gráficos "Tendência mensal do MUV" e "MUV × target acumulado no FY" (grupo A, 1.11.0), com o target vindo do Portal. A troca de moeda é a da página (BRL/USD pelo câmbio do Portal), não uma taxa digitada.
 
 **Teste:** `testes/tds.js`.
+
+## 1.12.7 · Pareto comum do kit (13/11/2026)
+
+O Pareto do MUV e os da Visão Geral (por componente, por catálogo, por causa) passam de tabela com barras para o desenho comum do kit (`vacPareto.barras`): barras horizontais com valor, % acumulado e clique para filtrar (data-fk/data-fv, como antes); o subtítulo do item (descrição) vai para a dica. O Pareto vertical da controladoria mantém o desenho homologado e usa a conta comum (`vacPareto.calc`) para marcar quem soma 80 %. Números iguais à referência gravada antes (`twaste_vg`: rótulo | valor | % acumulado).
