@@ -99,7 +99,7 @@ const CAD = { schema: 'vac-cadastros', schemaVersion: 1, rev: 1, perfis: [{ codi
   // 7) Portal 1.9.34: copiar o layout de um usuário para o perfil
   p = await abre('Portal.html', 'u1');
   r = await p.evaluate(async () => { const F = await vacPrefs.ler('u1'); return { tem: !!F, versao: PAGE.versao, fn: typeof CAD_T.perfis === 'object' }; });
-  ok(r.tem && r.versao === '1.9.34', 'Portal 1.9.34 lê o arquivo de preferências de um usuário (para copiar como padrão do perfil)');
+  ok(r.tem && r.versao === '1.9.35', 'Portal 1.9.35 lê o arquivo de preferências de um usuário (para copiar como padrão do perfil)');
   await p.close();
 
   ok(!pe.length, 'sem erro de página' + (pe.length ? ': ' + [...new Set(pe)].slice(0, 4).join(' | ') : ''));

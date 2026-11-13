@@ -30,6 +30,13 @@ def aplicar(R):
       "ordens, porOrdem, porOrdemCobertura, ordemLote, lotes, pendencias, kpis,\n"
       "      trechos: origem.trechos, atual: origem.atual, trocas: origem.trocas, paradasEventos: origem.paradasEventos, paradasEventosCobertura: origem.cob };")
     R("  function shiftMonth(date, k) {", ORIGEM + "  function shiftMonth(date, k) {")
+    # 2.4.73 · histórico enxuto para o Waste não ler a estrutura interna da Produção (registro § U, E4): ordens dos planos
+    # mais antigas que os 24 meses do porOrdem e lotes (situação, observação, dias) mais antigos que os 150 dias do lotes
+    R("      trechos: origem.trechos, atual: origem.atual, trocas: origem.trocas,",
+      "      ordensHistorico: hist.ordens, lotesHistorico: hist.lotes,\n      trechos: origem.trechos, atual: origem.atual, trocas: origem.trocas,")
+    R("  function shiftMonth(date, k) {", HIST + "  function shiftMonth(date, k) {")
+    R("    const origem = origemProducao(db, today, porOrdem, pePorDia);", "    const origem = origemProducao(db, today, porOrdem, pePorDia), hist = historico(db, mIni, d150);")
+
 
 
 ORIGEM = r"""  /* 2.4.68 · de onde vem cada fato: trecho do MES → lote → ordem do plano; parada → trecho no horário dela */
@@ -70,5 +77,26 @@ ORIGEM = r"""  /* 2.4.68 · de onde vem cada fato: trecho do MES → lote → or
     }
     paradasEventos.sort((a, b) => (a.dia + (a.inicio || '')).localeCompare(b.dia + (b.inicio || '')));
     return { trechos, atual, trocas, paradasEventos, cob: { de: U.addDays(today, -89), ate: today, dias: 90, fonte: 'Apontamento da Produção (paradas do dia)' } };
+  }
+"""
+
+
+HIST = r"""  /* 2.4.73 · histórico: o que o porOrdem (24 meses) e o lotes (150 dias) não cobrem, só com o que está gravado (sem recalcular o progresso) */
+  function historico(db, mIni, d150) {
+    const cat = id => { const c = (db.catalogs || []).find(x => x.id === id); return c ? c.code : null; };
+    const ordens = [];
+    for (const p of db.monthPlans || []) { if (p.deleted || p.lineId !== LINE || !(p.month < mIni)) continue;
+      for (const o of p.orders || []) ordens.push({ mes: p.month, ordem: String(o.order), lote: o.lot ? String(o.lot).trim() : null, catalogo: cat(o.catalogId) || o.code || null, qtd: n0(o.qty), qtdReal: o.qtyReal == null ? null : n0(o.qtyReal), inicio: o.start || null, fim: o.end || null, inicioReal: o.startReal || null, fimReal: o.endReal || null }); }
+    ordens.sort((a, b) => a.mes.localeCompare(b.mes));
+    const S = db.server || {}, dias = new Map();
+    for (const [kk, v] of Object.entries(S.dayLot || {})) { const i = kk.indexOf('|'); if (i < 0) continue; const lot = kk.slice(i + 1).trim(), dia = kk.slice(0, i); if (!lot) continue; let a = dias.get(lot); if (!a) dias.set(lot, a = []); a.push({ dia, tipo: (v && v.kind) || null }); }
+    const recente = new Set(((S.segments || []).filter(x => x.lineId === LINE && x.t1 && x.t1.slice(0, 10) >= d150)).map(x => String(x.lot)));
+    const nomes = new Set([...Object.keys(S.lotClass || {}), ...Object.keys(S.lotNotes || {}), ...dias.keys()]);
+    const lotes = [];
+    /* revisão Codex (PR #74): fica de fora só o lote que já está no exports.lotes (caixas do MES nos 150 dias); classificação de dia recente sem caixas recentes vem aqui */
+    for (const lot of nomes) { if (recente.has(lot)) continue; const ds = (dias.get(lot) || []).map(x => x.dia).sort();
+      const c = (S.lotClass || {})[lot], n = (S.lotNotes || {})[lot];
+      lotes.push({ lote: lot, situacao: c ? (typeof c === 'object' ? c.kind || null : String(c)) : null, obs: n ? (typeof n === 'object' ? n.text || '' : String(n)) : '', dias: ds, retrabalhoDias: (dias.get(lot) || []).filter(x => x.tipo === 'retrabalho').map(x => x.dia).sort() }); }
+    return { ordens, lotes };
   }
 """

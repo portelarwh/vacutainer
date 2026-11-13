@@ -154,6 +154,26 @@ const CadSync = (() => {
     const desde = PP.foraTurnoDesde || npDe; if (desde) sp('foraTurnoDesde', String(desde));
     const AR = (Array.isArray(PP.arredondamentoMeta) ? PP.arredondamentoMeta : []).filter(v => v && v.de && +v.valor > 0).map(v => ({ de: v.de, valor: +v.valor })).sort((a, b) => a.de < b.de ? -1 : 1);
     if (AR.length) { sp('roundingVig', AR); const h = U.today(), vg = AR.filter(v => v.de <= h).slice(-1)[0] || AR[0]; sp('roundingUnit', vg.valor); }
+    /* 2.4.73 · calendário de produção do Portal (cadastro `calendario`: código = data AAAA-MM-DD, tipo 'sem produção' | 'dia extra', motivo = nome).
+       Vai para db.calendar com origin 'portal' (o Plano do mês trava o dia: "edite no Portal"). Dia fechado ou com lançamento não vira
+       "sem produção" (fica em st.cadSync.calIgnorados e no aviso). Dia inativado no Portal: a marca que veio dele sai; marca local do mesmo dia
+       é substituída pela do Portal (fonte única). */
+    if (Array.isArray(C.calendario)) {
+      d.calendar = d.calendar || []; const LN = 'line_vac', ign = [];
+      for (const x of C.calendario) {
+        const date = String((x && x.codigo) || ''); if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) continue;
+        const cur = d.calendar.find(c => !c.deleted && c.date === date && c.lineId === LN), kind = /extra/i.test(x.tipo || '') ? 'extra' : 'off', motivo = String(x.nome || '').trim();
+        const sai = m => { m.deleted = true; m.updatedAt = now; m.updatedBy = by; };
+        if (x.ativo === false) { if (cur && cur.origin === 'portal') { sai(cur); audit({ action: 'sincronização do Portal', entity: 'dia', entityId: date, field: 'calendário', before: cur.kind, after: 'normal', reason }); R.calendario = (R.calendario || 0) + 1; } continue; }
+        if (cur && cur.origin === 'portal' && cur.kind === kind && (cur.reason || '') === motivo) continue;
+        if (kind === 'off') { const d0 = (d.productionDays || []).find(y => !y.deleted && y.date === date && y.lineId === LN); if (d0 && (d0.status === 'fechado' || Engine.dayEntries(d0))) { ign.push(date); continue; } }
+        if (cur) sai(cur);
+        d.calendar.push({ id: 'calp_' + date + '_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 5), date, lineId: LN, kind, reason: motivo, reasonType: kind === 'off' ? 'prog' : null, origin: 'portal', by, at: now, createdAt: now, createdBy: by, updatedAt: now, updatedBy: by, status: 'ativo', revision: 1 });
+        audit({ action: 'sincronização do Portal', entity: 'dia', entityId: date, field: 'calendário', before: cur ? cur.kind : 'normal', after: kind, reason });
+        R.calendario = (R.calendario || 0) + 1;
+      }
+      if (ign.length) R.calendarioIgnorado = ign.length; st.calIgnorados = ign;
+    }
     st.cadSync = { stamp: stampOf(C), rev: C.rev, revAt: C.revAt || null, em: now, resumo: R };
     return R;
   }

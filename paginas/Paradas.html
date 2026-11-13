@@ -1209,7 +1209,7 @@ const MATRIZ_PROPOSTA={"OUT": ["Tullip A", "Tullip B", "Packout", "Metro", "Cap 
    PARADAS · núcleo (pasta, base, fila de gravação, backups, cadastro, utilidades)
    ===================================================================================== */
 const PAGE={id:'paradas',titulo:'Paradas · Análise de falhas e paradas de máquina',tituloCurto:'Paradas',subtitulo:'Análise de falhas e paradas de máquina',
-  versao:'1.2.9',estado:'atualizacao',estadoNota:'Matriz, componentes e limite de microparada passam a vir só do Portal; eventos da Produção entram como sugestão.',baseFile:'paradas-base.json',backupDir:'00. Backups/Paradas',busca:q=>buscaPagina(q)};
+  versao:'1.2.10',estado:'atualizacao',estadoNota:'Matriz, componentes e limite de microparada passam a vir só do Portal; eventos da Produção entram como sugestão.',baseFile:'paradas-base.json',backupDir:'00. Backups/Paradas',busca:q=>buscaPagina(q)};
 const APP_VERSION=PAGE.versao;
 const CAD_FILE='vacutainer-cadastros.json',OEE_FILE='oee-vacutainer-base.json';
 const $=(s,r=document)=>r.querySelector(s),$$=(s,r=document)=>[...r.querySelectorAll(s)];
@@ -2230,7 +2230,8 @@ VIEWS.config={html(){const D=Store.data,c=D.config;const prov=Cad.eqs.filter(e=>
   const num=(id,key,parse=v=>v===''?null:+v)=>{if(!$(id))return;$(id).onchange=e=>Store.commit({k:'cfg',key,v:parse(e.target.value),aud:'config '+key})};num('#cfLim','limiteMicroMin');num('#cfFila','filaMin');num('#cfHoras','horasDia');num('#cfIgn','ignorarAntesDe',v=>v||null);
   $$('[data-dm]').forEach(s=>s.onchange=()=>{const dm={...Store.data.config.deparaMaquina};if(s.value)dm[s.dataset.dm]=s.value;else delete dm[s.dataset.dm];Store.commit({k:'cfg',key:'deparaMaquina',v:dm,aud:'de-para '+s.dataset.dm});
    const ids=Store.data.eventos.filter(e=>e.maquinaOrig===s.dataset.dm);if(ids.length)Store.commit({k:'list',c:'eventos',items:ids.map(e=>({...e,equipamento:s.value||'X:'+e.maquinaOrig})),aud:`re-ligou ${ids.length} paradas de ${s.dataset.dm}`});Cad.build();App.render()});
-  $('#cfLogo').onchange=async e=>{const f=e.target.files[0];if(!f)return;const img=new Image();img.src=URL.createObjectURL(f);await img.decode();const cv=document.createElement('canvas');const s=Math.min(1,240/img.width,80/img.height);cv.width=img.width*s;cv.height=img.height*s;cv.getContext('2d').drawImage(img,0,0,cv.width,cv.height);
+  $('#cfLogo').onchange=async e=>{const f=e.target.files[0];if(!f)return;const img=new Image();img.src=URL.createObjectURL(f);await img.decode();URL.revokeObjectURL(img.src);   /* 1.2.10 · libera o link do arquivo depois de ler a imagem */
+ const cv=document.createElement('canvas');const s=Math.min(1,240/img.width,80/img.height);cv.width=img.width*s;cv.height=img.height*s;cv.getContext('2d').drawImage(img,0,0,cv.width,cv.height);
    Store.commit({k:'cfg',key:'logo',v:cv.toDataURL('image/png'),aud:'logo'});Logo.apply()};
   $('#cfExp').onclick=()=>modal({title:'exports',wide:true,body:`<pre style="max-height:70vh;overflow:auto;font-size:11.5px">${esc(JSON.stringify(calcExports(Store.data),null,1).slice(0,200000))}</pre>`});
   $('#cfWipe').onclick=()=>modal({title:'Limpar base',body:`<p>Vai apagar <b>${n0(Store.data.eventos.length)} paradas</b>, ${n0(Object.keys(Store.data.tecnico).length)} partes técnicas e ${n0(Object.keys(Store.data.validacao).length)} validações${$('#cfWipeAc').checked?` e <b>${Store.data.acoes.length} ações</b>`:''}. Um backup é gravado antes.</p><p>Digite <b>LIMPAR</b> para confirmar:</p><input id="wpTxt" style="width:100%">`,
@@ -2238,7 +2239,7 @@ VIEWS.config={html(){const D=Store.data,c=D.config;const prov=Cad.eqs.filter(e=>
     if(Store.dir&&Store.perm&&!Store.test){try{const r=await Store.findBase();if(r){const d=await Store.sub(PAGE.backupDir,true);await Store.writeJSON(bkNome('antes'),r.obj,d)}}catch(e){toast('Backup falhou, nada foi apagado: '+e.message,1);return false}}
     Store.commit({k:'wipe',what:$('#cfWipeAc').checked?'tudo':'eventos',aud:'limpou a base'});Cad.build();toast('Base limpa (backup gravado)')}}]});
   const bk=$('#cfBk');if(bk&&Store.dir&&Store.perm){const L=await Store.listBackups();bk.innerHTML=L.length?tabela([{h:'Arquivo',f:b=>`<span class="code">${esc(b.nome)}</span>${b.antigo?' <span class="pill warn">local antigo</span>':''}`},{h:'',f:(b)=>`<button class="b sm" data-bd="${esc(b.nome)}">Baixar</button> <button class="b sm crit" data-br="${esc(b.nome)}">Restaurar</button>`}],L.slice(0,60)):'Nenhum backup ainda.';
-   $$('[data-bd]').forEach(b=>b.onclick=async()=>{const x=L.find(y=>y.nome===b.dataset.bd);const f=await x.h.getFile();const a=document.createElement('a');a.href=URL.createObjectURL(f);a.download=x.nome;a.click()});
+   $$('[data-bd]').forEach(b=>b.onclick=async()=>{const x=L.find(y=>y.nome===b.dataset.bd);const f=await x.h.getFile();const a=document.createElement('a');a.href=URL.createObjectURL(f);a.download=x.nome;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1500)});   /* 1.2.10 · libera o link do download */
    $$('[data-br]').forEach(b=>b.onclick=async()=>{const x=L.find(y=>y.nome===b.dataset.br);if(confirm('Restaurar '+x.nome+'? A versão atual vai para um backup _antes-restaurar_.'))await Store.restaurar(x)})}}};
 
 /* ---------- Modo TV ---------- */

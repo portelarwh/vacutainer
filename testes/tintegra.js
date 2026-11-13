@@ -22,7 +22,7 @@ const oee=await o.evaluate(()=>{const db=JSON.parse(JSON.stringify(Store.S.db));
 
 // ---- Waste: dados de teste da página; uma ação com prazo amanhã (não vencida ainda) e uma vencida ontem
 const w=await nova('Perdas-Ordem.html','W');
-const waste=await w.evaluate(()=>{enterTest();const d=n=>{const x=new Date();x.setDate(x.getDate()+n);return x.toISOString().slice(0,10)};
+const waste=await w.evaluate(()=>{enterTest();const d=n=>{const x=new Date();x.setDate(x.getDate()+n);return x.getFullYear()+'-'+String(x.getMonth()+1).padStart(2,'0')+'-'+String(x.getDate()).padStart(2,'0')};   /* 13/11/2026: dia local (antes toISOString = UTC: entre 21h e 0h de Brasília "amanhã" virava depois de amanhã) */
   B.actions.push({id:'tA',desc:'teste amanhã',prazo:d(1),status:'aberta'},{id:'tB',desc:'teste ontem',prazo:d(-1),status:'aberta'});
   const ex=buildExports();return{base:{actions:B.actions,imports:B.imports,exports:ex},venc:B.actions.filter(acVencida).length,
    semCausa:ex.porOrdem.filter(o=>(o.nivel==='alta'||o.nivel==='crítica')&&!o.causa).length,futura:ex.pendencias.some(p=>p.txt.includes('teste amanhã'))}});

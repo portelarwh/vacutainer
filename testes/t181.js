@@ -18,8 +18,10 @@ await p.evaluate(m=>Ficha.abrir('catalogos',m),mat);await p.waitForTimeout(400);
 await p.evaluate(()=>Ficha.abrir('bom',Cad.D.bom[0].catalogo));await p.waitForTimeout(400);console.log('bom badge:',await p.evaluate(()=>[...document.querySelectorAll('#fBox a.pill')].map(a=>a.innerText).join(' | ')));await p.evaluate(()=>Modal.close(true));
 // matriz
 await p.evaluate(()=>{Cad.ui.sec='matriz';App.render()});await p.waitForTimeout(300);await p.check('#mxT');await p.waitForTimeout(300);await p.screenshot({path:SP+'testes/saida/mx1.png'});
-await p.click('[data-mxcol] >> nth=1');await p.waitForTimeout(200);console.log('após ✗ coluna:',await p.evaluate(()=>JSON.stringify(Matriz.pend)));
+await p.click('[data-mxcol] >> nth=1');await p.waitForTimeout(200);const pend1=await p.evaluate(()=>JSON.stringify(Matriz.pend));console.log('após ✗ coluna:',pend1);
+/* 13/11/2026 · antes o teste marcava o grupo (desfazia o ✗) e depois clicava "Salvar" desligado (nada a gravar): expirava. Agora grava o ✗ e só depois confere o grupo */
+await p.click('#mxOk');await p.waitForTimeout(600);const salvo=await p.evaluate(()=>JSON.stringify(Cad.D.paradas.map(x=>x.codigo+':'+JSON.stringify(x.equipamentos??null))));console.log('salvo:',salvo);
+if(pend1==='{}'||!/EQ02/.test(salvo))errs.push('matriz: o ✗ da coluna não foi gravado');
 await p.click('[data-mxv=maq]');await p.waitForTimeout(300);await p.screenshot({path:SP+'testes/saida/mx2.png'});
-await p.click('[data-mxgrp][data-on="1"] >> nth=0');await p.waitForTimeout(200);console.log('após marcar grupo:',await p.evaluate(()=>JSON.stringify(Matriz.pend)));
-await p.click('#mxOk');await p.waitForTimeout(600);console.log('salvo:',await p.evaluate(()=>JSON.stringify(Cad.D.paradas.map(x=>x.codigo+':'+JSON.stringify(x.equipamentos??null)))));
-console.log(errs.join('\n')||'sem erros');await b.close()})();
+await p.click('[data-mxgrp][data-on="1"] >> nth=0');await p.waitForTimeout(200);console.log('após desmarcar grupo:',await p.evaluate(()=>JSON.stringify(Matriz.pend)));
+console.log(errs.join('\n')||'sem erros');await b.close();if(errs.length)process.exit(1)})();

@@ -337,3 +337,7 @@ Pedido do usuário: trazer para o Waste os gráficos do dashboard de desvios da 
 ## 1.12.7 · Pareto comum do kit (13/11/2026)
 
 O Pareto do MUV e os da Visão Geral (por componente, por catálogo, por causa) passam de tabela com barras para o desenho comum do kit (`vacPareto.barras`): barras horizontais com valor, % acumulado e clique para filtrar (data-fk/data-fv, como antes); o subtítulo do item (descrição) vai para a dica. O Pareto vertical da controladoria mantém o desenho homologado e usa a conta comum (`vacPareto.calc`) para marcar quem soma 80 %. Números iguais à referência gravada antes (`twaste_vg`: rótulo | valor | % acumulado).
+
+## 1.12.8 · Ordens e lotes antigos pelo exports da Produção (13/11/2026)
+
+Com `exports.ordensHistorico` e `exports.lotesHistorico` (Produção 2.4.73), o Waste não guarda nem lê mais os planos e o servidor da base da Produção (regra 1; registro § U, E4). Base da Produção ainda sem esses blocos: segue lendo como antes até ela gravar de novo. Teste: `testes/tlote_origem.js`.

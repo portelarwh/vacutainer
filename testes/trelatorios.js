@@ -52,9 +52,11 @@ const CAD = (perfil, inicial) => JSON.stringify({ schema: 'vac-cadastros', schem
       const [w] = await Promise.all([ctx.waitForEvent('page'), p.evaluate(() => { const d = { ...window.__doc, comentario: 'curto', blocos: [...window.__doc.blocos, { tipo: 'tabela', titulo: 'Larga', cab: Array.from({ length: 14 }, (_, i) => 'Coluna larga ' + (i + 1)), linhas: [Array.from({ length: 14 }, (_, i) => 'valor-' + (i + 1) + '-texto')] }] }; return Report.print(d); })]);
       await w.waitForLoadState(); await w.evaluate(() => { window.print = () => { }; });
       const tw = await w.evaluate(() => document.documentElement.getAttribute('data-theme'));
+      /* a 14ª coluna é conferida pela geometria na mídia de impressão: o texto do PDF quebra diferente conforme as fontes da máquina (CI) */
+      await w.emulateMedia({ media: 'print' }); const larga = await w.evaluate(() => { const t = [...document.querySelectorAll('table')].find(x => /Coluna larga 14/.test(x.textContent)); if (!t) return null; const c = t.querySelector('tr:last-child td:last-child, tr:last-child th:last-child'), r = c.getBoundingClientRect(), W = document.documentElement.clientWidth; return { ultima: c.textContent.trim(), cabe: r.right <= W + 1 && r.width > 0 && t.scrollWidth <= t.parentElement.clientWidth + 1 }; }); await w.emulateMedia({ media: 'screen' });
       const fp = await imprime(w, `${nome}-${tema}-impressao.pdf`); const tp = txt(fp), Ip = info(fp); await w.close();
       ok(tw === 'light' && Ip.orient === 'paisagem', `${nome} ${tema}: impressão no tema claro e em paisagem, como o PDF (${tw}, ${Ip.orient})`);
-      ok(/valor-14-/.test(tp) && /LARGA\s*14/i.test(tp.replace(/\s+/g, ' ')) && tp.includes('ULTIMA-LINHA'), `${nome} ${tema}: impressão com a 14ª coluna da tabela larga e a última linha`);
+      ok(larga && larga.ultima === 'valor-14-texto' && larga.cabe && tp.includes('ULTIMA-LINHA'), `${nome} ${tema}: impressão com a 14ª coluna da tabela larga dentro da página e a última linha${larga && !larga.cabe ? ' (não cabe)' : ''}`);
       ok(!pe.length, `${nome} ${tema}: sem erro de página${pe.length ? ' (' + pe[0] + ')' : ''}`);
       await p.close();
     }

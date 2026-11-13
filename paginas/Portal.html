@@ -1727,7 +1727,7 @@ function wireConfigComum(){$('#cPasta').onclick=async()=>{if(await Store.pick())
         entrar pelo ID (autocadastro como Consulta); página inicial por perfil (1x por sessão); vigência gravada não se edita (desativar com motivo); painel de vigências; semáforo central; saída do modo de teste.
    1.1.2: aviso da carga diz qual base foi lida.  1.5: páginas Paradas, Máquinas, Manutenção e Projetos na lista (aparecem quando o HTML chega na pasta).  1.4: lista técnica pela CS12 multinível (itens = nível 1, estrutura = níveis 2+); CS03 sai.  1.3: cabeçalho comum (vac-cabecalho v2: barra do sistema + página + abas), busca Ctrl K, acabamento V1.90, Versões com cabeçalho e último backup.  1.2: Configuração › Versões das páginas (versão e data de cada HTML, gravação das bases, cópias repetidas, histórico).
    ===================================================================== */
-const PAGE={id:'portal',titulo:'Portal · Linha Vacutainer',tituloCurto:'Portal',subtitulo:'Sistemas de gestão da linha',versao:'1.9.34',baseFile:'portal-base.json',idb:'vac-portal',backupDir:'00. Backups/Portal',
+const PAGE={id:'portal',titulo:'Portal · Linha Vacutainer',tituloCurto:'Portal',subtitulo:'Sistemas de gestão da linha',versao:'1.9.35',baseFile:'portal-base.json',idb:'vac-portal',backupDir:'00. Backups/Portal',
  vazio:()=>({schema:'portal-base',rev:0,config:{modulos:{},avisoDias:30,notas:{}},audit:[]}),
  /* itens do Portal para a busca Ctrl K: cadastro, pendências e telas */
  busca:q=>{const R=[],D=Cad.D;if(D)for(const t of CAD_ORD){for(const it of D[t]||[]){const c=String(it[kOf(t)]),nm=t==='bom'?((cadItem('catalogos',it.catalogo)||{}).nome||''):it.nome||'';if(norm(c+' '+nm).includes(q))R.push({tipo:CAD_T[t].um,txt:c+(nm?' · '+nm:''),sub:'Cadastros'+(cadAtivo(t,it,D)?'':' · inativo'),href:'#cadastros/'+t+'/'+encodeURIComponent(c)});if(R.length>30)break}}
@@ -2271,6 +2271,10 @@ const CAD_T={
   ['exigeObservacao','Exige observação','bool'],['exigeHorario','Exige horário','bool'],['duracaoManual','Permite duração manual','bool'],['exigeCatalogoAnterior','Exige catálogo anterior','bool'],['exigeCatalogoSeguinte','Exige catálogo seguinte','bool'],['relatorio','Aparece no relatório','bool']]}};
 CAD_T.componentes={nome:'Componentes',um:'componente',campos:[['codigo','Código (<EQ>-Cnn)','cod'],['equipamento','Equipamento','refcod','equipamentos'],['nome','Nome','txt',null,{w:2}],['sistema','Sistema','sel',['mecânico','elétrico','pneumático','hidráulico','automação','visão','ferramental','outro']],['criticidade','Criticidade','sel',['A','B','C']],['materialSAP','Material SAP','txt']]};
 CAD_T.modosFalha={nome:'Modos de falha',um:'modo de falha',campos:[['codigo','Código','cod'],['nome','Nome','txt',null,{w:2}]]};
+/* 1.9.35 · calendário de produção (pendência da centralização): dias sem produção programada (feriado, parada da planta) e dias extras da linha.
+   Código = a data (AAAA-MM-DD, texto); "Motivo" é o nome. A Produção aplica pelo CadSync (dia com lançamento ou fechado não vira "sem produção").
+   Nada se apaga: para desfazer, inative o dia. */
+CAD_T.calendario={nome:'Calendário de produção',um:'dia do calendário',campos:[['codigo','Data (AAAA-MM-DD)','cod'],['tipo','Tipo','sel',['sem produção','dia extra']],['nome','Motivo','txt',null,{w:2}]]};
 /* 1.9.14 · INI-02 (Fase 6): programas de melhoria (KAS, OSM, 5S e outros); Iniciativas / Ações abre uma aba para cada um */
 CAD_T.programas={nome:'Programas',um:'programa',campos:[['codigo','Código','cod'],['nome','Nome','txt',null,{w:2}],['sigla','Sigla (nome da aba)','txt'],['responsavel','Responsável','txt'],['cor','Cor','cor'],['descricao','Descrição','txt',null,{w:2}]]};
 /* 1.7 · pessoas: usuários (entram pelo ID) e perfis (página inicial e permissões por página) */
@@ -2293,7 +2297,7 @@ const DEFAULT_PERFIS=[
  {codigo:'ALMOX',nome:'Almoxarifado',paginaInicial:'Gestão de Gel',descricao:'Gel: estoque, FIFO e validade',permissoes:permJunta(permDe(['ver'],['portal','oee','gel']),permDe(['lancar','importar','exportar'],['gel']))},
  {codigo:'CONSULTA',nome:'Consulta',paginaInicial:'Portal',descricao:'Só consulta e exporta (perfil de quem se cadastra sozinho até o administrador mudar)',permissoes:permDe(['ver','exportar'])},
  {codigo:'TV',nome:'TV',paginaInicial:'Portal',descricao:'Telas de TV',permissoes:permDe(['ver'])}].map(p=>({...p,ativo:true}));
-const CAD_ORD=['linhas','familias','catalogos','materiais','bom','equipamentos','componentes','turnos','paradas','modosFalha','programas','cambio','precos','metasOee','metasArea','metasOsm','usuarios','perfis'];
+const CAD_ORD=['linhas','familias','catalogos','materiais','bom','equipamentos','componentes','turnos','calendario','paradas','modosFalha','programas','cambio','precos','metasOee','metasArea','metasOsm','usuarios','perfis'];
 /* 1.7.7 · câmbio: cotação com vigência (R$ por 1 unidade da moeda). Fonte única do dólar para Waste (BRL/USD) e Gestão de Gel (preço do gel). */
 CAD_T.precos={nome:'Preços de material',um:'preço de material',key:'material',vig:true,campos:[['material','Material','refcod','materiais']],
  vcampos:[['preco','Preço','num'],['moeda','Moeda','sel',['USD','BRL']],['porUnidade','Por','sel',['kg','L','UN','mil UN']]]};
@@ -2351,6 +2355,7 @@ const AJUDA_CAMPO={
  'paradas.pareto':'Aparece no Pareto de paradas.','paradas.exigeTrocaPeca':'Quebra: exige informar a peça trocada ou consertada (base do MTBF).','paradas.exigeComponente':'Exige escolher o componente do equipamento.',
  'paradas.temporario':'Código provisório (OUT, NDI): exige comentário e revisão posterior.','paradas.exigeObservacao':'Exige observação ao apontar.','paradas.exigeHorario':'Exige horário de início e fim.',
  'paradas.exigeCatalogoAnterior':'Troca de catálogo: exige o catálogo que saiu.','paradas.exigeCatalogoSeguinte':'Troca de catálogo: exige o catálogo que entrou.',
+ 'calendario.codigo':'A data do dia, no formato AAAA-MM-DD (ex.: 2026-12-25). Um registro por dia.','calendario.tipo':'Sem produção = dia sem produção programada (feriado, parada da planta): sai do plano do mês e do OEE. Dia extra = dia de produção fora da escala normal (ex.: sábado trabalhado). Ex.: sem produção.','calendario.nome':'Por que o dia é assim (ex.: Natal; inventário; sábado extra para recuperar o plano).',
  'programas.codigo':'Código do programa (ex.: KAS, OSM, 5S, TPM). KAS, OSM e 5S já têm aba própria em Iniciativas; outro código cria uma aba nova lá.','programas.nome':'Nome do programa (ex.: Manutenção Autônoma).','programas.sigla':'Texto curto da aba em Iniciativas (ex.: AM). Vazio usa o nome.','programas.responsavel':'Dono do programa (ex.: Eng. de Processos).','programas.descricao':'Para que serve o programa; aparece no topo da aba.',
  'modosFalha.codigo':'Código do modo de falha (MF01…).','modosFalha.nome':'Como a peça falhou (desgaste, ruptura, folga…). Usado no Paradas.',
  'usuarios.codigo':'ID ou matrícula: é o que a pessoa digita em "Entrar". Único e imutável.','usuarios.nome':'Nome registrado em tudo o que a pessoa altera, em todas as páginas.',
@@ -2466,6 +2471,7 @@ const CAT_AJUDA={
  turnos:'Horário de cada turno por vigência, com as pausas e abonos que descontam do tempo planejado. A Produção, a Gestão de Gel e a Paradas usam estes horários.',
  paradas:'Códigos de parada com a classificação do OEE (D, P, Q), as regras de apontamento e o guia do formulário. Responde "por que a linha parou?": o operador aponta em toda parada, e o código define o pilar do OEE. Não confundir com o modo de falha (como a peça falhou), que o técnico informa depois, só em quebra. Ex.: FME (falha mecânica, pilar D).',
  modosFalha:'Responde "como a peça falhou?" (desgaste, ruptura, folga…). O técnico informa na parte técnica da parada, só em quebra, junto com o componente e a ação. Não entra no OEE (quem define o pilar é o código de parada); serve para confiabilidade: MTBF, Pareto de falhas e plano de manutenção. Ex.: FME → rolamento do cabeçote → desgaste → troca.',
+ calendario:'Calendário de produção da linha: dias sem produção programada (feriados, paradas da planta) e dias extras. A Produção aplica no Plano do mês e no OEE; lá o dia fica travado com "vem do Portal". Dia com lançamento ou já fechado não vira "sem produção" (a Produção avisa). Para desfazer, inative o dia.',
  programas:'Programas de melhoria (ex.: KAS, OSM, 5S, AM). Em Iniciativas / Ações cada programa tem a sua aba, com as ações e o Importar dados.',
  cambio:'Cotação do dólar em reais, com vigência. Usada no Waste (BRL/USD) e no preço do gel.',
  precos:'Preço de materiais com vigência. Ex.: gel separador em US$/kg; a Gestão de Gel só consulta daqui.',
@@ -2510,6 +2516,7 @@ function cadValida(d){const e=[];if(!d||typeof d!=='object'||Array.isArray(d))re
 function cadValidarItem(t,it,D,{novo=false}={}){const T=CAD_T[t],k=kOf(t),e=[];const cod=String(it[k]??'');
  if(!cod.trim())e.push('informe o '+T.campos[0][1].replace(/ \(.*/,'').toLowerCase());
  else{if(/[\/#]/.test(cod)||cod!==cod.trim())e.push('o código não pode ter "/", "#" nem espaços nas pontas');
+  if(t==='calendario'&&(!/^\d{4}-\d{2}-\d{2}$/.test(cod)||isNaN(new Date(cod+'T12:00:00'))))e.push('a data deve estar no formato AAAA-MM-DD (ex.: 2026-12-25)');
   if(t==='catalogos'&&it.tipoItem!=='preparacao'&&!/^\d{6}$/.test(cod))e.push('catálogo (tubo) deve ter 6 dígitos (ex.: 360060); para preparação de aditivo, escolha o tipo Preparação e use o código SAP');
   if(novo&&(D[t]||[]).some(x=>String(x[k])===cod))e.push(`o código ${cod} já existe em ${T.nome}`)}
  if(t!=='bom'&&t!=='precos'&&!String(it.nome||'').trim())e.push(t==='metasArea'?'informe o indicador':'informe o nome');
@@ -2609,7 +2616,7 @@ setInterval(()=>{const ok=!!(Cad.D&&Lock.ok());if(ok!==Cad._lk){Cad._lk=ok;if(Fi
 const EqFiles={
  async handle(path){const ps=String(path).split('/');let d=Store.dir;for(const p of ps.slice(0,-1))d=await d.getDirectoryHandle(p);return d.getFileHandle(ps[ps.length-1])},
  async url(path){if(Store.mode!=='pasta'||!Store.dir||!path)return null;try{return URL.createObjectURL(await (await this.handle(path)).getFile())}catch(e){return null}},
- async abrir(path){const u=await this.url(path);if(!u)return toast('Não encontrei '+path+' na pasta.',5000,true);const w=window.open(u,'_blank');if(!w){const a=document.createElement('a');a.href=u;a.download=String(path).split('/').pop();a.click()}},
+ async abrir(path){const u=await this.url(path);if(!u)return toast('Não encontrei '+path+' na pasta.',5000,true);const w=window.open(u,'_blank');if(!w){const a=document.createElement('a');a.href=u;a.download=String(path).split('/').pop();a.click()}setTimeout(()=>URL.revokeObjectURL(u),60000)},   /* 1.9.35 · libera o link (1 min: tempo de a aba nova carregar o arquivo) */
  async salvar(cod,file){const pasta='Equipamentos/'+safeName(cod);const d=await Store.sub(pasta,true);let nome=safeName(file.name);const[b,ext]=/^(.*?)(\.[^.]*)?$/.exec(nome).slice(1);
   for(let i=2;i<100;i++){try{await d.getFileHandle(nome);nome=b+'_'+i+(ext||'')}catch(e){break}}
   await Store.writeFile(d,nome,file);return pasta+'/'+nome}};
@@ -2827,6 +2834,7 @@ function cadCols(t,D){const fam=c=>{if(!c)return'';const f=cadItem('familias',c,
   turnos:[['Horas (vigência de hoje)',it=>{const v=vigHoje(it);return v&&v.inicio?esc(turnoResumo(v)):''}],['Código',it=>`${safeCor(it.cor)?`<i class="sw" style="background:${safeCor(it.cor)}"></i>`:''}<b class="mono">${esc(it.codigo)}</b>`],['Nome',it=>esc(it.nome)],['Horário',it=>{const v=vigHoje(it);return v.inicio?`${esc(v.inicio)}–${esc(v.fim)}${v.ativo===false?' <span class="muted">(desligado)</span>':''}`:'<span class="warn">sem vigência hoje</span>'}],['Dias',it=>diasTxt(vigHoje(it).dias)],['Pausas',it=>esc((vigHoje(it).pausas||[]).map(p=>p.inicio+'–'+p.fim).join(', '))],['Vigente desde',it=>fmtD(vigHoje(it).de)]],
   componentes:[['Código',cod],['Equipamento',it=>{const q=cadItem('equipamentos',it.equipamento,D);return`<span class="mono">${esc(it.equipamento||'')}</span>${q?' · '+esc(q.nome):''}`}],['Nome',it=>esc(it.nome)],['Sistema',it=>esc(it.sistema||'')],['Crit.',it=>esc(it.criticidade||'')],['Material SAP',it=>`<span class="mono">${esc(it.materialSAP||'')}</span>`]],
   modosFalha:[['Código',cod],['Nome',it=>esc(it.nome)]],
+  calendario:[['Data',it=>`<b class="mono">${esc(fmtD(it.codigo))}</b>`],['Dia',it=>{const d=new Date(String(it.codigo)+'T12:00:00');return isNaN(d)?'':['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'][d.getDay()]}],['Tipo',it=>it.tipo==='dia extra'?'<span class="pill info">dia extra</span>':'<span class="pill warn">sem produção</span>'],['Motivo',it=>esc(it.nome||'')]],
   programas:[['Código',cod],['Nome',it=>esc(it.nome)],['Sigla',it=>esc(it.sigla||'')],['Responsável',it=>esc(it.responsavel||'')]],
   precos:[['Material',cod],['Descrição',it=>esc((cadItem('materiais',it.material,D)||{}).nome||'')],['Preço vigente',it=>{const v=vigEm(it.vigencias||[],todayISO());return v&&v.preco!=null?esc((v.moeda==='BRL'?'R$ ':'US$ ')+fmtN(v.preco,4)+' / '+(v.porUnidade||'')):'<span class="warn small">sem vigência hoje</span>'},'n'],['Desde',it=>{const v=vigEm(it.vigencias||[],todayISO());return v?fmtD(v.de):''}]],
   metasOee:[['Código',cod],['Nome',it=>esc(it.nome)],['Escopo',it=>esc(metaEscopo(it))],['OEE meta',it=>{const v=vigEm(it.vigencias||[],todayISO());return v&&v.oeeMetaPct!=null?fmtN(v.oeeMetaPct,1)+'%':'<span class="warn small">sem vigência hoje</span>'},'n'],['PPH',it=>{const v=vigEm(it.vigencias||[],todayISO());return v&&v.pph?fmtN(v.pph):'<span class="muted small">do catálogo</span>'},'n'],['PPM',it=>{const v=vigEm(it.vigencias||[],todayISO());return v&&v.pph?fmtN(v.pph/60,1):''},'n'],['Quadro hora a hora',it=>{const v=vigEm(it.vigencias||[],todayISO());return v&&(v.quadro||[]).length?`<span class="pill info">${v.quadro.length} intervalos</span>`:''}],['Desde',it=>{const v=vigEm(it.vigencias||[],todayISO());return v?fmtD(v.de):''}]],
@@ -2882,6 +2890,7 @@ function cadModelo(t){const h=todayISO(),D=Cad.D,L0=(D.linhas.find(l=>l.ativo!==
   turnos:{codigo:'',nome:'',linha:L0,cor:null,ativo:true,vigencias:[{de:h,ate:null,inicio:'06:00',fim:'14:30',dias:[1,2,3,4,5,6],ativo:true,pausas:[],regraPedacoFinal:30,intervalos:[]}]},
   componentes:{codigo:'',equipamento:null,nome:'',sistema:'mecânico',criticidade:'B',materialSAP:null,ativo:true},
   modosFalha:{codigo:'',nome:'',ativo:true},
+  calendario:{codigo:'',tipo:'sem produção',nome:'',ativo:true},
   programas:{codigo:'',nome:'',sigla:null,responsavel:null,cor:null,descricao:null,ativo:true},
   cambio:{codigo:'USD',nome:'Dólar americano',ativo:true,vigencias:[{de:h,ate:null,cotacao:null}]},
   precos:{material:'',vigencias:[{de:h,ate:null,preco:null,moeda:'USD',porUnidade:'kg'}]},
@@ -3050,7 +3059,7 @@ const Ficha={t:null,cod:null,orig:null,W:null,novo:false,edit:false,dirty:false,
   box.querySelectorAll('[data-ivfill]').forEach(bt=>bt.onclick=()=>{const path=bt.dataset.ivfill.replace(/\.$/,''),v=pget(this.W,path);if(!v)return;const f=m=>String(Math.floor(m/60)).padStart(2,'0')+':'+String(m%60).padStart(2,'0');v.intervalos=turnoIntervalosRegra(v).map(([a,c])=>({inicio:f(a),fim:f(c)}));this.dirty=true;this.draw()});
   on('fNovoComp',()=>{const eq=this.cod;if(this.dirty&&!confirm('Descartar as alterações desta ficha?'))return;this.dirty=false;Ficha.abrir('componentes',null,{novo:true,preset:{equipamento:eq,codigo:proxComp(eq)}})});
   const fu=box.querySelector('#fFotoUp');if(fu)fu.onchange=e=>this.upFoto(e.target.files[0]);const du=box.querySelector('#fDocUp');if(du)du.onchange=e=>this.upDoc(e.target.files[0]);
-  if(this.t==='equipamentos'&&this.W.foto)EqFiles.url(this.W.foto).then(u=>{const im=box.querySelector('#fFoto');if(im&&u){im.src=u;im.hidden=false}})},
+  if(this.t==='equipamentos'&&this.W.foto)EqFiles.url(this.W.foto).then(u=>{const im=box.querySelector('#fFoto');if(im&&u){im.onload=im.onerror=()=>URL.revokeObjectURL(u);im.src=u;im.hidden=false}else if(u)URL.revokeObjectURL(u)})},   /* 1.9.35 · libera o link da foto depois de carregar */
  onInput(e){const el=e.target.closest('[data-p]');if(!el||!this.edit)return;const p=el.dataset.p,k=el.dataset.k;let v;
   if(k==='eqtodas'||k==='eq'){if(e.type!=='change')return;const M=parMaquinas().map(m=>m.codigo);
    if(k==='eqtodas')v=el.checked?null:[];else{const s=new Set(this.W.equipamentos==null?M:this.W.equipamentos);el.checked?s.add(el.dataset.eq):s.delete(el.dataset.eq);v=M.every(c=>s.has(c))&&[...s].every(c=>M.includes(c))?null:[...M.filter(c=>s.has(c)),...[...s].filter(c=>!M.includes(c))]}
