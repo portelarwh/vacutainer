@@ -86,3 +86,13 @@ Conferido por `testes/tds.js` § 8 e `testes/trelatorios.js`.
 ## Peças do e-mail no kit (D8, 13/11/2026)
 
 `vacEmail.pecas` = `moldura`, `cabecalho(sistema, título, sub)`, `situacao(txt, cor, nota)`, `nota(rótulo, texto)`, `sec`, `linha`, `tab`/`th`/`td`, `barra(v, cor)`, `marcadores`, `img`, `rodape` e as cores (`INK`, `MUT`, `LIN`, `COR`); `vacEmail.medidor(valor, meta, cor, título, sub, largura, fmt)` desenha o medidor em PNG (canvas). O `vacEmail.html(d)` padrão é montado com as mesmas peças. Relatório que precisa de blocos próprios (o e-mail do turno e do dia da Produção, 2.4.70) monta com essas peças em vez de escrever HTML de e-mail.
+
+## Layout da pessoa em qualquer computador (Fase 5, 13/11/2026)
+
+Decisão do usuário: um arquivo por pessoa, `00. Bases/Preferencias/<ID>.json` (`{schema:'vac-preferencias', schemaVersion:1, usuario, atualizadoEm, chaves:{<chave>:{v, em}}}`), gravado pelo `vacPrefs` do kit em qualquer página e só pela própria pessoa (não é base de página: a regra 1 continua). Vai: `vac.grade.*` (largura e ordem dos cartões), `vac.grupos.*` (grupos recolhidos), modo da ficha, tema, escolhas dos Paretos (Waste, Paradas) e o que a página registrar (Produção 2.4.72: abas, Editar cards, blocos recolhidos, grupos da Visão Geral, Meu painel, colunas de meta, itens do e-mail). Fica no computador: unidade (`vac.qtd`/qtyDisplay) e TV.
+- O mais novo vence por chave (a mesma pessoa em dois computadores); no 1º uso num computador, o que já estava nele não ganha do arquivo. Quando chega layout novo, a página recarrega uma vez.
+- Padrão do perfil: `perfis[].layout = {chaves, de, em}` no cadastro, copiado no Portal 1.9.34 (ficha do perfil › Layout padrão do perfil › Copiar o layout de um usuário). Vale no que a pessoa nunca mudou; não vai para o arquivo dela.
+- "Restaurar meu layout" (menu da pessoa, kit `vacLogin`): apaga as escolhas dela (computador e arquivo) e volta ao padrão do perfil.
+- Sem pasta, sem usuário identificado, no modo de teste e na demonstração: nada é lido nem gravado.
+Versões: Produção 2.4.72, Portal 1.9.34, Waste 1.12.6, Gel 2.33, Equipamentos 1.0.16, Iniciativas 1.1.12, Linha 360° 1.1.2. Teste: `testes/tprefs.js`.
+- Revisão Codex da PR #72 (13/11/2026), corrigida: (P1) a página só compara as chaves que conhece (`pagina:<id>` só onde a página registrou), então abrir o Paradas não apaga as preferências da Produção; (P2) "Restaurar meu layout" grava `herda: true` (não `null`), e os outros computadores voltam ao padrão do perfil; (P2) outra pessoa no mesmo navegador (`vac.prefs.dono`) recebe o layout dela ou o padrão do perfil, sem herdar nem gravar o de quem saiu. No 1º uso num navegador, o layout que já estava lá fica.
