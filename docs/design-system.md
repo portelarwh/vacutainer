@@ -74,3 +74,15 @@ Conferido por `testes/tds.js` § 8 e `testes/trelatorios.js`.
 - Tabelas: cabeçalho claro aplicado pelo kit; primeira coluna fixa, ordenação e paginação continuam como cada página fazia.
 - Estados de carregamento em esqueleto.
 - Gráficos da Produção e do Gel com cores próprias fora da paleta de `chartColors`.
+
+## Permissão por ação na tela (D6, 13/11/2026)
+
+`vacTravas` (kit_v21.js) desliga os botões de gravação que o perfil do usuário identificado não pode usar (Portal › Administração › Perfis: lançar, fechar, importar, excluir, configurar). O mapa fica num ponto só, `VAC_PODE_MAPA[PAGE.id]`, com os seletores de cada página; a Linha 360° segue o módulo Equipamentos. O botão travado fica apagado (`.vac-trava`), com "Seu perfil (X) não permite … nesta página" no título, e o clique é barrado mesmo em elemento que não é botão. Sem usuário identificado, ou perfil sem permissões gravadas, nada muda.
+- **Botão novo de gravação entra no mapa** (senão o perfil Consulta consegue usá-lo).
+- Só na tela, por decisão do usuário (13/11/2026): a gravação não é barrada (a sincronização automática do cadastro passa pela mesma gravação). Identifica, não é cofre (registro 5.4/A07).
+- Portal: o cadastro já pede a senha de edição (perfil `semSenha`); não está no mapa.
+- Versões: Produção 2.4.69, Waste 1.12.5, Gel 2.32, Paradas 1.2.7, Equipamentos 1.0.15, Iniciativas 1.1.11, Linha 360° 1.1.1. Teste: `testes/tpermissoes.js`.
+
+## Peças do e-mail no kit (D8, 13/11/2026)
+
+`vacEmail.pecas` = `moldura`, `cabecalho(sistema, título, sub)`, `situacao(txt, cor, nota)`, `nota(rótulo, texto)`, `sec`, `linha`, `tab`/`th`/`td`, `barra(v, cor)`, `marcadores`, `img`, `rodape` e as cores (`INK`, `MUT`, `LIN`, `COR`); `vacEmail.medidor(valor, meta, cor, título, sub, largura, fmt)` desenha o medidor em PNG (canvas). O `vacEmail.html(d)` padrão é montado com as mesmas peças. Relatório que precisa de blocos próprios (o e-mail do turno e do dia da Produção, 2.4.70) monta com essas peças em vez de escrever HTML de e-mail.

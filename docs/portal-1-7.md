@@ -287,3 +287,7 @@ Na Visão geral, o cartão "Pendências da linha" ocupa metade da largura. "Aç�
 
 Teste: `testes/tgrade.js`.
 
+
+## 1.9.33 · Cartão "Agora" (13/11/2026)
+
+Na Visão geral (01 Situação, ao lado das pendências): lote, ordem (com a ficha) e catálogo em produção, desde quando, caixas, ritmo × meta (peças/h) e, com a quantidade da ordem, quanto falta e o término **estimado**, com a base do cálculo escrita. Tudo do `exports.atual` da Produção 2.4.71 (o Portal não calcula). Some quando a Produção não publica o bloco.
