@@ -35,6 +35,13 @@ const errs = []; const ok = (c, m) => { console.log((c ? 'ok   ' : 'FALHA ') + m
   ok(await w.evaluate(() => !!document.querySelector('#t-relatorios.on #rMensal')), 'Waste: #aba=relatorios abre a aba Relatórios'); await w.close();
   const g = await abre('Gestão-Gel-Vacutainer.html#aba=relatorios');
   ok(await g.evaluate(() => /Fichas e relatórios em PDF/i.test((document.querySelector('#ov') || {}).innerText || '') && APP_VERSION === '2.35'), 'Gel 2.35: #aba=relatorios abre "Fichas e relatórios em PDF"'); await g.close();
+  // revisão Codex (PR #75): com a janela "Abrir a base da pasta" aberta, o link espera ela fechar (não a esconde)
+  const g2 = await c.newPage(); g2.on('pageerror', e => pe.push('Gel: ' + e.message));
+  await g2.addInitScript(() => { window.addEventListener('DOMContentLoaded', () => setTimeout(() => { if (typeof modal === 'function') modal('Abrir a base da pasta', '<p>conexão</p>', '<button class="btn" data-close>Agora não</button>'); }, 300)); });
+  await g2.goto(RAIZ + 'Gestão-Gel-Vacutainer.html#aba=relatorios'); await g2.waitForTimeout(2500);
+  const c1 = await g2.evaluate(() => /Abrir a base da pasta/i.test((document.querySelector('#ov') || {}).innerText || '')); await g2.evaluate(() => closeModal()); await g2.waitForTimeout(1200);
+  const c2 = await g2.evaluate(() => /Fichas e relatórios em PDF/i.test((document.querySelector('#ov') || {}).innerText || ''));
+  ok(c1 && c2, 'Gel: com a janela de conexão aberta, os relatórios esperam ela fechar (a conexão não some)'); await g2.close();
   const r = await abre('Paradas.html#relatorio');
   ok(await r.evaluate(() => { const m = document.querySelector('.modal.on, #repModal, .rep'); return !!m && PAGE.versao === '1.2.11'; }), 'Paradas 1.2.11: #relatorio abre o relatório de paradas'); await r.close();
 
