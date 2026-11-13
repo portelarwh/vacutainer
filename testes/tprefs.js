@@ -62,6 +62,35 @@ const CAD = { schema: 'vac-cadastros', schemaVersion: 1, rev: 1, perfis: [{ codi
   ok(await p.evaluate(() => { vacLogin && vacLogin.abrir && vacLogin.abrir({ conta: true }); return !!document.querySelector('#vlLay') || true; }), 'menu da pessoa com "Restaurar meu layout"');
   await p.close();
 
+  // 5b) revisão Codex P1 (PR #72): abrir outra página não apaga do arquivo as preferências da Produção
+  p = await abre('OEE-Vacutainer.html', 'u1');
+  await p.evaluate(async () => { await new Promise(r => setTimeout(r, 300)); await vacPrefs.sincronizar({ semRecarregar: true }); App.prefs.kcOff = ['oeeReal', 'foraTurno']; savePrefs(); await new Promise(r => setTimeout(r, 400)); await vacPrefs.sincronizar({ semRecarregar: true }); });
+  await p.close();
+  p = await abre('Paradas.html', 'u1');
+  await p.evaluate(async () => { await vacPrefs.sincronizar({ semRecarregar: true }); localStorage.setItem('vac.grupos.paradas', '{"D":1}'); await vacPrefs.sincronizar({ semRecarregar: true }); });
+  F = await arquivo(p); const po2 = F.chaves['pagina:oee'] && F.chaves['pagina:oee'].v ? JSON.parse(F.chaves['pagina:oee'].v) : null;
+  ok(po2 && JSON.stringify(po2.kcOff) === '["oeeReal","foraTurno"]' && F.chaves['vac.grupos.paradas'].v === '{"D":1}', 'abrir e mexer no Paradas não apaga do arquivo as preferências da Produção (revisão Codex P1)');
+  await p.close();
+
+  // 5c) revisão Codex P2: "Restaurar" num computador → o outro computador volta ao padrão do perfil (não ao de fábrica)
+  p = await abre('Paradas.html', 'u1');
+  await p.evaluate(() => { vacPrefs.restaurar(); }); await p.waitForTimeout(1500); await p.close();
+  p = await abre('Paradas.html', 'u1');
+  r = await p.evaluate(async () => { /* "outro computador": valores antigos da pessoa, com hora anterior ao restaurar */
+    localStorage.setItem('vac.grupos.paradas', '{"X":1}'); localStorage.setItem('vac.grade.paradas', '{"velho":1}'); const old = '2026-01-01T00:00:00.000Z';
+    localStorage.setItem('vac.prefs.meta.u1', JSON.stringify({ __snap: { 'vac.grupos.paradas': '{"X":1}', 'vac.grade.paradas': '{"velho":1}' }, 'vac.grupos.paradas': old, 'vac.grade.paradas': old }));
+    await vacPrefs.sincronizar({ semRecarregar: true }); return { gr: localStorage.getItem('vac.grupos.paradas'), g: localStorage.getItem('vac.grade.paradas') }; });
+  ok(r.gr === '{"B":1}' && r.g === '{"perfil":1}', `depois de "Restaurar" em outro computador, este volta ao padrão do perfil (${r.gr} · ${r.g}) (revisão Codex P2)`);
+  await p.close();
+
+  // 5d) revisão Codex P2: outra pessoa entra no mesmo navegador: o layout de quem saiu não vai para o arquivo de quem entrou
+  p = await abre('Paradas.html', 'u1');
+  await p.evaluate(async () => { localStorage.setItem('vac.grupos.paradas', '{"DE_U1":1}'); await vacPrefs.sincronizar({ semRecarregar: true }); });
+  r = await p.evaluate(async () => { localStorage.setItem('vac.userId', 'u2'); await vacPrefs.sincronizar({ semRecarregar: true });
+    return { gr: localStorage.getItem('vac.grupos.paradas'), f2: await vacPrefs.ler('u2') }; });
+  ok(r.gr === '{"B":1}' && !(r.f2 && r.f2.chaves && r.f2.chaves['vac.grupos.paradas'] && /DE_U1/.test(r.f2.chaves['vac.grupos.paradas'].v || '')), `troca de pessoa no navegador: quem entrou recebe o padrão dele (${r.gr}), sem herdar nem gravar o layout de quem saiu (revisão Codex P2)`);
+  await p.close();
+
   // 6) sem usuário: nada lido nem gravado
   p = await abre('Paradas.html', '');
   r = await p.evaluate(async () => vacPrefs.sincronizar({ semRecarregar: true })); ok(!r.feito, 'sem usuário identificado: nada é lido nem gravado');

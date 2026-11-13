@@ -95,3 +95,4 @@ Decisão do usuário: um arquivo por pessoa, `00. Bases/Preferencias/<ID>.json` 
 - "Restaurar meu layout" (menu da pessoa, kit `vacLogin`): apaga as escolhas dela (computador e arquivo) e volta ao padrão do perfil.
 - Sem pasta, sem usuário identificado, no modo de teste e na demonstração: nada é lido nem gravado.
 Versões: Produção 2.4.72, Portal 1.9.34, Waste 1.12.6, Gel 2.33, Equipamentos 1.0.16, Iniciativas 1.1.12, Linha 360° 1.1.2. Teste: `testes/tprefs.js`.
+- Revisão Codex da PR #72 (13/11/2026), corrigida: (P1) a página só compara as chaves que conhece (`pagina:<id>` só onde a página registrou), então abrir o Paradas não apaga as preferências da Produção; (P2) "Restaurar meu layout" grava `herda: true` (não `null`), e os outros computadores voltam ao padrão do perfil; (P2) outra pessoa no mesmo navegador (`vac.prefs.dono`) recebe o layout dela ou o padrão do perfil, sem herdar nem gravar o de quem saiu. No 1º uso num navegador, o layout que já estava lá fica.
