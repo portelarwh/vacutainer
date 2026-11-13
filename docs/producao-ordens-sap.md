@@ -298,3 +298,9 @@ Teste: `testes/tlote_origem.js`.
 ## 2.4.70 · E-mail do turno e do dia com as peças do kit (13/11/2026)
 
 D8 da auditoria (Fase 3, padronização): o `EmailDia` deixou de montar moldura, cabeçalho, faixa de situação, comentário, seções, tabelas, barra de atendimento, rodapé e medidor por conta própria; usa `vacEmail.pecas` e `vacEmail.medidor` do kit. Fica na Produção só a escolha dos blocos e os números (Engine.computeDay). Mesmo resultado: `testes/temail.js` (números, formato, medidores, itens gravados) igual ao da 2.4.66.
+
+## 2.4.71 · Fase 4: ritmo e previsão no exports; clique na hora abre a ficha do trecho (13/11/2026)
+
+- `exports.atual` ganha `pecasPorCaixa`, `caixasLote`, `produzidoLote`, `qtdOrdem`, `restante`, `ritmoPecasHora`, `metaPecasHora` (pph do catálogo), `previsaoFim` e `base`. Tudo **estimado**: o ritmo é o das caixas da corrida atual do lote no MES (tempo dos trechos, sem as paradas entre eles); produzido = caixas do lote × peças por caixa; previsão = última caixa + restante ÷ ritmo. O Portal só mostra (cartão "Agora", Portal 1.9.33).
+- Gráficos hora a hora (`HHComum.dia`: Visão Geral, Painel, TV, Passagem de turno): clicar numa hora abre `vacFicha.abrir('intervalo', 'AAAA-MM-DDTHH:MM/AAAA-MM-DDTHH:MM')`. A hora vira o intervalo do turno que começa nela (minutos do dia de produção) ou a hora cheia, para a hora fora do turno (`HHComum.trecho`).
+Teste: `testes/tlote_origem.js`.

@@ -8,7 +8,18 @@ const HHComum = {
   /* gráfico de 1 dia (todos os turnos, ou só o turno psId com as horas fora do turno que contam nele) — igual ao do Apontamento */
   dia(day, res, psId, height) {
     const sel = Object.assign(Object.create(HHPs), { id: () => psId || '' });
-    try { return HHPs.chart.call(sel, hhChartOpts(res.flat, height), day, res); } catch (e) { console.warn('HHComum.dia', e); return hhChartOpts(res.flat, height); }
+    let o; try { o = HHPs.chart.call(sel, hhChartOpts(res.flat, height), day, res); } catch (e) { console.warn('HHComum.dia', e); o = hhChartOpts(res.flat, height); }
+    /* 2.4.71 · Fase 4: clicar numa hora abre a ficha do trecho (vacFicha 'intervalo': lotes, ordens, caixas, paradas e ações daquela hora) */
+    if (o && !o.click && typeof vacFicha !== 'undefined') o.click = i => { const t = this.trecho(day, res, o, i); if (t) vacFicha.abrir('intervalo', t); };
+    return o;
+  },
+  /* hora do gráfico → 'AAAA-MM-DDTHH:MM/AAAA-MM-DDTHH:MM': o intervalo do turno que começa nessa hora (minutos do dia de produção, que passam de
+     1440 depois da meia-noite) ou, para hora fora do turno, a hora cheia no calendário do dia */
+  trecho(day, res, o, i) {
+    const k = o && o.x && o.x[i], m = /^(\d{1,2}):(\d{2})/.exec(k || ''); if (!m) return null; const hm = +m[1] * 60 + +m[2];
+    const f = (res.flat || []).find(x => ((x.iv.start % 1440) + 1440) % 1440 === hm), a = f ? f.iv.start : hm, b = f ? f.iv.end : hm + 60;
+    const iso = min => new Date(Date.UTC(+day.date.slice(0, 4), +day.date.slice(5, 7) - 1, +day.date.slice(8, 10)) + min * 60000).toISOString().slice(0, 16);
+    return iso(a) + '/' + iso(b);
   },
   /* pontos de 1 dia: { k: rótulo da hora, s: minuto no dia de produção (ordem), g: produção, m: meta, fora, conta } */
   pontos(day, res) {

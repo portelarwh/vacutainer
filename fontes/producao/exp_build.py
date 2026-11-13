@@ -42,7 +42,17 @@ ORIGEM = r"""  /* 2.4.68 · de onde vem cada fato: trecho do MES → lote → or
     for (let i = 1; i < trechos.length; i++) { const a = trechos[i - 1], b = trechos[i]; if (a.lote !== b.lote) trocas.push({ em: b.ini, de: a.lote, para: b.lote, catalogo: b.catalogo, ordem: b.ordem }); }
     let atual = null;
     if (trechos.length) { const u = trechos[trechos.length - 1]; let k = trechos.length - 1; while (k > 0 && trechos[k - 1].lote === u.lote) k--;
-      atual = { lote: u.lote, catalogo: u.catalogo, ordem: u.ordem, desde: trechos[k].ini, ultimaCaixa: u.fim, caixas: trechos.slice(k).reduce((a, t) => a + t.caixas, 0) }; }
+      atual = { lote: u.lote, catalogo: u.catalogo, ordem: u.ordem, desde: trechos[k].ini, ultimaCaixa: u.fim, caixas: trechos.slice(k).reduce((a, t) => a + t.caixas, 0) };
+      /* 2.4.71 · Fase 4 (cartão "Agora" do Portal): ritmo e previsão de término, estimados. Ritmo = caixas ÷ tempo dos trechos da corrida atual
+         (sem as paradas entre trechos); o lote inteiro no MES (todos os trechos guardados) × peças por caixa = produzido; restante = qtd da ordem − produzido;
+         previsão = última caixa + restante ÷ ritmo. Sem ordem com quantidade, sem previsão. */
+      const pc = +((db.settings || {}).serverBoxQty) || 1000, run = trechos.slice(k), minRun = run.reduce((a, t) => a + Math.max(0, (Date.parse(t.fim + ':00Z') - Date.parse(t.ini + ':00Z')) / 60000), 0);
+      const cxLote = ((db.server || {}).segments || []).filter(s => s.lineId === LINE && String(s.lot) === u.lote).reduce((a, s) => a + (s.n || 0), 0);
+      const o = (porOrdem || []).find(x => x.lote && String(x.lote) === u.lote) || null, cat = (db.catalogs || []).find(c => !c.deleted && String(c.code) === String(u.catalogo)) || null;
+      const ritmo = minRun >= 10 ? atual.caixas * pc / (minRun / 60) : null, prod = cxLote * pc, qtd = o && o.qtd ? o.qtd : null, rest = qtd != null ? Math.max(0, qtd - prod) : null;
+      Object.assign(atual, { pecasPorCaixa: pc, caixasLote: cxLote, produzidoLote: prod, qtdOrdem: qtd, restante: rest, ritmoPecasHora: ritmo == null ? null : Math.round(ritmo), metaPecasHora: cat && cat.pph ? +cat.pph : null,
+        previsaoFim: ritmo && rest != null ? (rest === 0 ? u.fim : new Date(Date.parse(u.fim + ':00Z') + rest / ritmo * 3600000).toISOString().slice(0, 16)) : null,
+        base: 'estimado: ritmo da corrida atual do lote no MES (' + Math.round(minRun) + ' min em ' + run.length + ' trecho(s)) e caixas × ' + pc + ' peças' }); }
     // trecho do MES no horário (AAAA-MM-DDTHH:MM): o que contém; senão o último que terminou até 4 h antes (estimado)
     const naHora = ts => { let ant = null; for (const t of trechos) { if (t.ini <= ts && ts <= t.fim) return { t, fonte: 'trecho' }; if (t.fim < ts) ant = t; else break; }
       if (ant) { const dm = (Date.parse(ts + ':00Z') - Date.parse(ant.fim + ':00Z')) / 60000; if (dm <= 240) return { t: ant, fonte: 'estimado' }; } return null; };
