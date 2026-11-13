@@ -3285,9 +3285,10 @@ const vacLogin = (() => {
     const u = usuario(lg('vac.userId')) || { nome: lg('vac.user') || '', codigo: lg('vac.userId') || '' }, s = sessao(), h = hook();
     corpo(quem(u) + '<p class="vl-s">Sessão até ' + e(s ? new Date(s.ate).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : '—') + ' neste computador.</p><div class="vl-msg" id="vlMsg"></div>' +
       '<div class="vl-a"><button type="button" class="vl-btn" id="vlTroca">Trocar usuário</button>' + (h ? '<button type="button" class="vl-btn" id="vlSenha">Trocar minha senha</button>' : '<a class="vl-btn" href="' + e(portalHref('entrar=' + (typeof PAGE !== 'undefined' ? PAGE.id : ''))) + '">Trocar minha senha (Portal)</a>') +
-      '<button type="button" class="vl-btn" id="vlSair">Sair</button><span class="vl-sp"></span><button type="button" class="vl-btn p" id="vlX">Fechar</button></div>');
+      '<button type="button" class="vl-btn" id="vlLay" title="Apaga as suas escolhas de layout (cartões, grupos recolhidos, itens do e-mail…) e volta ao padrão do seu perfil">Restaurar meu layout</button><button type="button" class="vl-btn" id="vlSair">Sair</button><span class="vl-sp"></span><button type="button" class="vl-btn p" id="vlX">Fechar</button></div>');
     el.querySelector('#vlTroca').onclick = () => { modo.trocar = true; passoId(); };
     el.querySelector('#vlSair').onclick = sair; el.querySelector('#vlX').onclick = fechar;
+    { const r = el.querySelector('#vlLay'); if (r) r.onclick = () => { if (confirm('Voltar ao layout padrão do seu perfil? As suas escolhas de cartões, grupos e itens do e-mail serão apagadas (em todos os computadores).') && typeof vacPrefs !== 'undefined') vacPrefs.restaurar(); }; }
     const b = el.querySelector('#vlSenha'); if (b) b.onclick = () => trocarSenha(u);
   }
   function trocarSenha(u) {
@@ -3403,6 +3404,71 @@ const vacTravas = (() => {
     addEventListener('storage', ev => { if (!ev.key || /^vac\.(userId|cadastros|sessao)/.test(ev.key)) agendar(); });
   }
   return { aplicar, agendar, motivo };
+})();
+/* Fase 5 (13/11/2026) · preferências da pessoa (layout), decisão do usuário: um arquivo por pessoa, 00. Bases/Preferencias/<ID>.json, gravado
+   pelo kit em qualquer página (só a própria pessoa grava o dela; não é base de nenhuma página, então a regra 1 continua valendo).
+   Vai no arquivo: largura e ordem dos cartões (vac.grade.*), grupos recolhidos (vac.grupos.*), modo da ficha, tema, as escolhas dos Paretos
+   e o que cada página registrar (Produção: Editar cards, blocos recolhidos, itens do e-mail, Meu painel…). Fica no computador: TV e unidade.
+   Cada chave leva a hora da mudança; o mais novo vence (a mesma pessoa em dois computadores). Sem pasta, sem usuário, em teste ou na
+   demonstração: nada é lido nem gravado (como antes). Padrão do perfil: perfis[].layout no cadastro (o Portal copia de um usuário);
+   vale para o que a pessoa nunca mudou. "Restaurar meu layout" (menu da pessoa) apaga as escolhas dela e volta ao padrão do perfil. */
+const vacPrefs = (() => {
+  const DIR = 'Preferencias', SOLTAS = ['vac.ficha.modo', 'vac.theme', 'vac.waste.pareto', 'vac.waste.paretov', 'vac.paradas.p80'];
+  const CHAVE = k => typeof k === 'string' && (/^vac\.(grade|grupos)\./.test(k) || SOLTAS.includes(k));
+  const fontes = {}; let tmr = 0, quieto = 0, ultimo = null;
+  const L = { get: k => { try { return localStorage.getItem(k); } catch (e) { return null; } }, set: (k, v) => { quieto++; try { if (v == null) localStorage.removeItem(k); else localStorage.setItem(k, v); } catch (e) { } finally { quieto--; } } };
+  const uid = () => L.get('vac.userId') || '';
+  const ativo = () => !!uid() && !(typeof vacDemo !== 'undefined' && vacDemo.ativo) && !(typeof navigator !== 'undefined' && navigator.webdriver && L.get('vac.prefs.forcar') !== '1');
+  const pasta = () => { let d = null; try { d = typeof vacPastaAtual === 'function' ? vacPastaAtual() : null; } catch (e) { } return d && d.__vacRaiz ? d.raiz : d; };
+  const arq = id => String(id).replace(/[^A-Za-z0-9._-]/g, '_') + '.json';
+  const meta = () => { try { return JSON.parse(L.get('vac.prefs.meta.' + uid()) || '{}') || {}; } catch (e) { return {}; } };
+  const metaSet = m => L.set('vac.prefs.meta.' + uid(), JSON.stringify(m));
+  async function dir(criar) { const d = pasta(); if (!d) return null; try { const b = await d.getDirectoryHandle(VAC_BASES_DIR, { create: !!criar }); return await b.getDirectoryHandle(DIR, { create: !!criar }); } catch (e) { if (!criar && vacNaoAchou(e)) return null; throw e; } }
+  async function ler(id) { const d = await dir(false); if (!d) return null; try { const f = await (await d.getFileHandle(arq(id || uid()))).getFile(); const o = JSON.parse(await f.text()); return o && o.schema === 'vac-preferencias' ? o : null; } catch (e) { if (vacNaoAchou(e)) return null; throw e; } }
+  async function gravar(o) { const d = await dir(true), tmp = arq(uid()) + '.tmp'; const w = await (await d.getFileHandle(tmp, { create: true })).createWritable(); await w.write(JSON.stringify(o, null, 1)); await w.close();
+    try { const fh = await d.getFileHandle(tmp); if (fh.move) { await fh.move(arq(uid())); return; } } catch (e) { }
+    const w2 = await (await d.getFileHandle(arq(uid()), { create: true })).createWritable(); await w2.write(JSON.stringify(o, null, 1)); await w2.close(); try { await d.removeEntry(tmp); } catch (e) { } }
+  /* valores atuais deste computador: chaves soltas do localStorage + o que cada página registrou ('pagina:<id>') */
+  function atuais() { const o = {}; try { for (let i = 0; i < localStorage.length; i++) { const k = localStorage.key(i); if (CHAVE(k)) o[k] = localStorage.getItem(k); } } catch (e) { }
+    for (const [p, f] of Object.entries(fontes)) { try { const v = f.ler(); o['pagina:' + p] = v == null ? null : JSON.stringify(v); } catch (e) { } } return o; }
+  function aplicarLocal(k, v) { if (k.startsWith('pagina:')) { const f = fontes[k.slice(7)]; if (f) { try { f.aplicar(v == null ? null : JSON.parse(v)); } catch (e) { console.warn('vacPrefs', k, e); } } } else L.set(k, v); }
+  const perfilLay = () => { try { const p = typeof vacPerfil === 'function' ? vacPerfil() : null; return (p && p.layout && p.layout.chaves) || {}; } catch (e) { return {}; } };
+  /* marca as mudanças locais desde a última vez (hora de cada chave) */
+  function marcar() { const m = meta(), a = atuais(); if (!m.__snap) { m.__snap = a; metaSet(m); return 0; }   /* 1ª vez neste computador: o que já está aqui não ganha do arquivo */
+    const ant = m.__snap; const t = new Date().toISOString(); let n = 0;
+    for (const k of new Set([...Object.keys(a), ...Object.keys(ant)])) if ((a[k] ?? null) !== (ant[k] ?? null)) { m[k] = t; n++; }
+    m.__snap = a; metaSet(m); return n; }
+  async function sincronizar(op = {}) {
+    if (!ativo() || !pasta()) return { feito: false };
+    marcar(); const m = meta(), a = atuais(); let F = null;
+    try { F = await ler(); } catch (e) { console.warn('vacPrefs: leitura', e); return { feito: false, erro: String(e.message || e) }; }
+    const ch = Object.assign({}, (F && F.chaves) || {}); let aplicou = 0, novas = 0;
+    for (const [k, x] of Object.entries(ch)) { const em = m[k] || ''; if (x && x.em > em && (a[k] ?? null) !== (x.v ?? null)) { aplicarLocal(k, x.v ?? null); m[k] = x.em; aplicou++; } }
+    for (const k of Object.keys(m)) { if (k === '__snap') continue; const x = ch[k]; if (!x || m[k] > x.em) { ch[k] = { v: a[k] ?? null, em: m[k] }; novas++; } }
+    // padrão do perfil para o que a pessoa nunca mudou (não vai para o arquivo dela)
+    for (const [k, v] of Object.entries(perfilLay())) if (!ch[k] && !m[k] && (a[k] ?? null) !== (v ?? null)) { aplicarLocal(k, v); aplicou++; }
+    m.__snap = atuais(); metaSet(m);
+    if (novas) { try { await gravar({ schema: 'vac-preferencias', schemaVersion: 1, usuario: uid(), atualizadoEm: new Date().toISOString(), por: (typeof PAGE !== 'undefined' && PAGE.id) || '', chaves: ch }); } catch (e) { console.warn('vacPrefs: gravação', e); return { feito: false, erro: String(e.message || e), aplicou }; } }
+    ultimo = { em: new Date().toISOString(), aplicou, gravou: novas };
+    if (aplicou && !op.semRecarregar) { const f = 'vac.prefs.recarregou.' + uid(); let ja = null; try { ja = sessionStorage.getItem(f); } catch (e) { } if (!ja) { try { sessionStorage.setItem(f, '1'); } catch (e) { } location.reload(); } }
+    return { feito: true, aplicou, gravou: novas };
+  }
+  const mudou = () => { if (quieto || !ativo()) return; clearTimeout(tmr); tmr = setTimeout(() => sincronizar({ semRecarregar: true }), 2500); };
+  /* página registra o que é dela: ler() → objeto; aplicar(objeto|null) (null = padrão de fábrica) */
+  function registrar(pagina, f) { fontes[pagina] = f; }
+  async function restaurar() { if (!uid()) return; const m = meta(), a = atuais(), t = new Date().toISOString();
+    for (const k of Object.keys(a)) { if (k === 'vac.theme') continue; aplicarLocal(k, null); m[k] = t; }
+    m.__snap = atuais(); metaSet(m); for (const [k, v] of Object.entries(perfilLay())) aplicarLocal(k, v);
+    if (pasta()) { try { const F = (await ler()) || { chaves: {} }, ch = F.chaves || {}; for (const k of Object.keys(a)) if (k !== 'vac.theme') ch[k] = { v: null, em: t };
+      await gravar({ schema: 'vac-preferencias', schemaVersion: 1, usuario: uid(), atualizadoEm: t, por: (typeof PAGE !== 'undefined' && PAGE.id) || '', chaves: ch }); } catch (e) { console.warn('vacPrefs: restaurar', e); } }
+    m.__snap = atuais(); metaSet(m); location.reload(); }
+  if (typeof Storage !== 'undefined') { const S = Storage.prototype, si = S.setItem, ri = S.removeItem;
+    S.setItem = function (k, v) { const r = si.apply(this, arguments); if (this === window.localStorage && CHAVE(k)) mudou(); return r; };
+    S.removeItem = function (k) { const r = ri.apply(this, arguments); if (this === window.localStorage && CHAVE(k)) mudou(); return r; }; }
+  /* espera a página conectar a pasta (até 1 min) e sincroniza uma vez; depois, a cada mudança e ao voltar para a aba */
+  if (typeof document !== 'undefined') { let n = 0; const t = setInterval(() => { n++; if (pasta() && ativo()) { clearInterval(t); sincronizar(); } else if (n > 30) clearInterval(t); }, 2000);
+    document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') sincronizar({ semRecarregar: true }); }); }
+  return { sincronizar, mudou, registrar, restaurar, ler, CHAVE, get ultimo() { return ultimo; }, _fontes: fontes };
 })();
 /* ----- vac-ds v1 · Design System BD · Sistemas da Linha Vacutainer (fontes/kit/kit_ds.js; 12/11/2026) -----
    Camada só de apresentação, igual em todas as páginas (vai junto do kit_v21.js; CSS em kit_ds.css; especificação em docs/design-system.md):
