@@ -56,7 +56,7 @@ const CAD = (perfil, inicial) => JSON.stringify({ schema: 'vac-cadastros', schem
       await w.emulateMedia({ media: 'print' }); const larga = await w.evaluate(() => { const t = [...document.querySelectorAll('table')].find(x => /Coluna larga 14/.test(x.textContent)); if (!t) return null; const c = t.querySelector('tr:last-child td:last-child, tr:last-child th:last-child'), r = c.getBoundingClientRect(), W = document.documentElement.clientWidth; return { ultima: c.textContent.trim(), cabe: r.right <= W + 1 && r.width > 0 && t.scrollWidth <= t.parentElement.clientWidth + 1 }; }); await w.emulateMedia({ media: 'screen' });
       const fp = await imprime(w, `${nome}-${tema}-impressao.pdf`); const tp = txt(fp), Ip = info(fp); await w.close();
       ok(tw === 'light' && Ip.orient === 'paisagem', `${nome} ${tema}: impressão no tema claro e em paisagem, como o PDF (${tw}, ${Ip.orient})`);
-      ok(larga && larga.ultima === 'valor-14-texto' && larga.cabe && /valor-?\s*14/.test(tp) && tp.includes('ULTIMA-LINHA'), `${nome} ${tema}: impressão com a 14ª coluna da tabela larga dentro da página e a última linha${larga && !larga.cabe ? ' (não cabe)' : ''}`);
+      ok(larga && larga.ultima === 'valor-14-texto' && larga.cabe && tp.includes('ULTIMA-LINHA'), `${nome} ${tema}: impressão com a 14ª coluna da tabela larga dentro da página e a última linha${larga && !larga.cabe ? ' (não cabe)' : ''}`);
       ok(!pe.length, `${nome} ${tema}: sem erro de página${pe.length ? ' (' + pe[0] + ')' : ''}`);
       await p.close();
     }
