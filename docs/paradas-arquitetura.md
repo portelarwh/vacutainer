@@ -349,3 +349,4 @@ Visão geral › 04 Análises complementares › grupo D "Mapa de calor": minuto
 ## 1.2.9 · Pareto comum do kit (13/11/2026)
 
 `hbars` passa a desenhar pelo `vacPareto.barras` do kit (mesmo desenho, agora também no Waste e no Gel); a unidade da escala (h ou min) continua daqui. Números iguais (`tparadas_ux`, `tparadas_vg`).
+Também na 1.2.9: no tema escuro, o número das células fortes do mapa de calor passa a ser escuro (antes branco sobre o vermelho claro do tema escuro: 2,5:1; o `tvisual` pede 3:1).

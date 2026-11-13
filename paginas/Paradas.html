@@ -229,7 +229,7 @@ td.n,th.n{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
  #main .filters .vk-mais{align-self:flex-end}}
 @media print{#main .pux-acts,#main .vk-mais,#main .pux-dica{display:none!important}#main .pux-tfix>.tw{max-height:none;overflow:visible}}
 /* 1.2.8 · mapa de calor */
-table.hcal{font-size:11.5px}table.hcal td.hc,table.hcal td.hc0{text-align:center;padding:3px 2px;min-width:22px;font-variant-numeric:tabular-nums}table.hcal td.hc0{background:var(--surface-2,transparent)}table.hcal th{padding:3px 2px}
+table.hcal{font-size:11.5px}table.hcal td.hc,table.hcal td.hc0{text-align:center;padding:3px 2px;min-width:22px;font-variant-numeric:tabular-nums}table.hcal td.hc0{background:var(--surface-2,transparent)}table.hcal td.hc{color:var(--ink)}table.hcal td.hc-f{color:#fff}html[data-theme="dark"] table.hcal td.hc-f{color:#14202b}   /* 1.2.9 · contraste: no escuro o vermelho é claro, o texto da célula forte fica escuro */table.hcal th{padding:3px 2px}
 </style>
 <style>
 /* ===== vac-cabecalho v2 · barra do sistema + cabeçalho da página (igual em todas as páginas; não editar só numa) ===== */
@@ -1941,7 +1941,7 @@ function mapaCalor(L,modo){const hm=s=>{const m=/^(\d{1,2}):/.exec(s||'');return
  let lin;if(modo==='dia')lin=DS.map((n,i)=>({k:i,n}));else{const t=new Map();for(const e of com)t.set(e.equipamento||'?',(t.get(e.equipamento||'?')||0)+e.minutos);lin=[...t.entries()].sort((a,b)=>b[1]-a[1]).slice(0,10).map(([k])=>({k,n:Cad.eqNome?Cad.eqNome(k)||k:k}))}
  const chave=e=>modo==='dia'?(new Date(e.dia+'T12:00:00').getDay()+6)%7:(e.equipamento||'?'),M=new Map();for(const e of com){const k=chave(e)+'|'+hm(e.inicio);M.set(k,(M.get(k)||0)+e.minutos)}
  const hs=[...Array(24).keys()],mx=Math.max(1,...M.values()),tot=r=>hs.reduce((s,h)=>s+(M.get(r.k+'|'+h)||0),0);
- const cel=v=>{if(!v)return'<td class="hc0"></td>';const p=Math.round(15+85*v/mx);return`<td class="hc" style="background:color-mix(in srgb,var(--crit) ${p}%,transparent);color:${p>55?'#fff':'var(--ink)'}" title="${esc(fmtMin(v))}">${Math.round(v)}</td>`};
+ const cel=v=>{if(!v)return'<td class="hc0"></td>';const p=Math.round(15+85*v/mx);return`<td class="hc${p>55?' hc-f':''}" style="background:color-mix(in srgb,var(--crit) ${p}%,transparent)" title="${esc(fmtMin(v))}">${Math.round(v)}</td>`};
  return`<div class="tw"><table class="t hcal" data-calor="${modo}"><tr><th>${modo==='dia'?'Dia':'Equipamento'}</th>${hs.map(h=>`<th class="n">${String(h).padStart(2,'0')}</th>`).join('')}<th class="n">Total (min)</th></tr>${lin.map(r=>`<tr><td>${esc(r.n)}</td>${hs.map(h=>cel(M.get(r.k+'|'+h)||0)).join('')}<td class="n"><b>${Math.round(tot(r))}</b></td></tr>`).join('')}</table></div><p class="small muted">Minutos por hora de início da parada; cor mais forte = mais tempo parado.${sem?` ${sem} parada(s) sem horário de início ficaram fora.`:''}</p>`}
 /* pior e melhor mês, logo abaixo do gráfico de onde vêm (antes era a faixa "Diagnóstico rápido") */
 function parMeses(perda,meses){const T=meses.map(m=>({m,v:perda.filter(e=>e.dia.slice(0,7)===m).reduce((s,e)=>s+e.minutos,0)})),pior=T.length?T.reduce((a,b)=>b.v>a.v?b:a):null,melhor=T.length?T.reduce((a,b)=>b.v<a.v?b:a):null;
