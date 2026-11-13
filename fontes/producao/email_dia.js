@@ -8,7 +8,9 @@
    - hora a hora em gráfico alto; maiores paradas em barras; Segurança e Qualidade uma vez só;
    - itens escolhidos e ordenados em "Itens do e-mail", gravados por computador em App.prefs.mailLay (turno e dia separados).
    Nenhum número é calculado aqui: tudo vem de Engine.computeDay (o mesmo do Lançamento e do relatório da tela).
-   Formato de e-mail: tabelas, CSS inline, 680 px, sem flex/grid/JavaScript (como o vacEmail do kit). */
+   Formato de e-mail: tabelas, CSS inline, 680 px, sem flex/grid/JavaScript.
+   D8 (13/11/2026, Produção 2.4.70): moldura, cabeçalho, situação, seções, tabelas, barras, rodapé e medidor são as peças do vacEmail do kit
+   (vacEmail.pecas); aqui fica só o que é do turno e do dia: quais blocos, com que números. */
 const EmailDia = {
   ITENS: {
     shift: [['painel', 'Medidor do OEE do turno, acumulado do dia e produção', 1], ['kpis', 'Disponibilidade, Performance, Qualidade, scrap e paradas', 1], ['hh', 'Gráfico hora a hora', 1], ['paradas', 'Maiores paradas (barras)', 1],
@@ -43,20 +45,8 @@ const EmailDia = {
 
   /* ---------- medidor em PNG (canvas) ---------- */
   COR: { ok: '#14804A', warn: '#D78B11', crit: '#C94645', sem: '#6F8092' },
-  medidor(valor, meta, sem, titulo, sub, W = 440) {
-    const H = Math.round(W * 0.7), cv = document.createElement('canvas'); cv.width = W; cv.height = H; const g = cv.getContext('2d'), cx = W / 2, cy = H * 0.66, R = W * 0.36, lw = W * 0.085;
-    g.fillStyle = '#fff'; g.fillRect(0, 0, W, H); g.lineCap = 'butt';
-    const ang = v => Math.PI + Math.PI * Math.max(0, Math.min(1, v));
-    g.lineWidth = lw; g.strokeStyle = '#E3EAF1'; g.beginPath(); g.arc(cx, cy, R, Math.PI, 2 * Math.PI); g.stroke();
-    if (valor != null && isFinite(valor)) { g.strokeStyle = this.COR[sem] || this.COR.sem; g.beginPath(); g.arc(cx, cy, R, Math.PI, ang(valor)); g.stroke(); }
-    if (meta != null && isFinite(meta) && meta > 0) { const a = ang(meta); g.strokeStyle = '#102F55'; g.lineWidth = Math.max(3, W * 0.009); g.beginPath(); g.moveTo(cx + Math.cos(a) * (R - lw * 0.72), cy + Math.sin(a) * (R - lw * 0.72)); g.lineTo(cx + Math.cos(a) * (R + lw * 0.72), cy + Math.sin(a) * (R + lw * 0.72)); g.stroke();
-      g.fillStyle = '#102F55'; g.font = `600 ${Math.round(W * 0.05)}px Segoe UI, Arial, sans-serif`; g.textAlign = Math.cos(a) > 0.15 ? 'left' : Math.cos(a) < -0.15 ? 'right' : 'center'; g.textBaseline = 'bottom'; g.fillText('meta ' + U.pct(meta, 0), cx + Math.cos(a) * (R + lw * 0.95), cy + Math.sin(a) * (R + lw * 0.95)); }
-    g.textAlign = 'center'; g.textBaseline = 'alphabetic'; g.fillStyle = '#102F55'; g.font = `700 ${Math.round(W * 0.125)}px Segoe UI, Arial, sans-serif`; g.fillText(valor == null || !isFinite(valor) ? '—' : U.pct(valor, 1), cx, cy - R * 0.08);
-    g.fillStyle = '#64788F'; g.font = `600 ${Math.round(W * 0.044)}px Segoe UI, Arial, sans-serif`; g.textAlign = 'left'; g.fillText('0%', cx - R - lw / 2, cy + W * 0.05); g.textAlign = 'right'; g.fillText('100%', cx + R + lw / 2, cy + W * 0.05);
-    g.textAlign = 'center'; g.fillStyle = '#102F55'; g.font = `700 ${Math.round(W * 0.064)}px Segoe UI, Arial, sans-serif`; g.fillText(titulo, cx, cy + W * 0.125);
-    if (sub) { g.fillStyle = '#64788F'; g.font = `${Math.round(W * 0.048)}px Segoe UI, Arial, sans-serif`; g.fillText(sub, cx, cy + W * 0.185); }
-    return cv.toDataURL('image/png');
-  },
+  /* D8 · o medidor é a peça comum do kit (vacEmail.medidor); a cor vem da situação do OEE */
+  medidor(valor, meta, sem, titulo, sub, W = 440) { return vacEmail.medidor(valor, meta, this.COR[sem] || this.COR.sem, titulo, sub, W, (v, c) => U.pct(v, c)); },
   /* gráfico da tela (SVG) → PNG, no tema claro */
   async png(svgHtml, escala = 2) {
     const h = document.createElement('div'); h.style.cssText = 'position:fixed;left:-99999px;top:0;width:900px'; h.innerHTML = svgHtml; document.body.appendChild(h);
@@ -66,21 +56,16 @@ const EmailDia = {
   /* ---------- HTML do e-mail ---------- */
   async html(c, comImagem, layout) {
     const R = App.rep, X = this.dados(R); if (!X) return null;
-    const F = 'font-family:Segoe UI,Arial,sans-serif;', ink = '#102F55', mut = '#64788F', lin = '#DCE6EF', C = this.COR, e = esc;
+    const K_ = vacEmail.pecas, { F, sec, linha, th, td, tab } = K_, ink = K_.INK, mut = K_.MUT, lin = K_.LIN, C = this.COR, e = esc;   /* D8 · peças comuns do kit */
     const { day, res, turno, ps, r, rDia, u } = X, L = (layout || this.lay(R.type)).filter(x => x.on);
-    const sec = t => `<tr><td style="padding:18px 24px 6px;${F}font-size:15px;font-weight:bold;color:${ink}">${e(t)}</td></tr>`;
-    const linha = h => `<tr><td style="padding:0 24px">${h}</td></tr>`;
-    const th = (t, n) => `<th align="${n ? 'right' : 'left'}" style="${F}font-size:11px;color:${mut};font-weight:bold;padding:6px 8px;border-bottom:2px solid ${lin};background:#F5F9FC">${e(t)}</th>`;
-    const td = (t, n, st = '') => `<td align="${n ? 'right' : 'left'}" style="${F}font-size:12.5px;color:${ink};padding:6px 8px;border-bottom:1px solid ${lin};${st}">${t}</td>`;
-    const tab = (cab, rows) => `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse">${cab ? `<tr>${cab.map(([t, n]) => th(t, n)).join('')}</tr>` : ''}${rows.join('')}</table>`;
     const corSem = s => C[s] || C.sem, rot = turno ? ps.snap.name : 'Dia';
     const semTxt = { ok: 'OEE na meta ou acima', warn: 'OEE perto da meta', crit: 'OEE abaixo da meta', sem: 'OEE sem meta' }[r.semOee] || '';
     const P = [];
     /* cabeçalho */
-    P.push(`<tr><td bgcolor="#102333" style="background:#102333;padding:16px 24px;${F}color:#FFFFFF"><div style="font-size:11px;letter-spacing:1px;color:#C9D8E5">BD &middot; SISTEMAS DA LINHA VACUTAINER &middot; PRODUÇÃO</div><div style="font-size:20px;font-weight:bold;padding-top:4px">${e(turno ? 'Passagem de turno · ' + ps.snap.name : 'Resumo do dia')}</div><div style="font-size:13px;color:#C9D8E5;padding-top:2px">${e(U.brDate(day.date) + ' · ' + U.WD[U.weekday(day.date)] + (turno && ps.snap.start ? ' · ' + ps.snap.start + '–' + U.hhmm(U.toMin(ps.snap.end)) : '') + (turno && ps.responsible ? ' · responsável ' + ps.responsible : ''))}</div></td></tr>`);
-    P.push(`<tr><td style="padding:14px 24px 0"><table role="presentation" cellpadding="0" cellspacing="0" border="0"><tr><td bgcolor="${corSem(r.semOee)}" style="background:${corSem(r.semOee)};padding:4px 12px;${F}font-size:12px;font-weight:bold;color:#FFFFFF">${e(semTxt)}</td><td style="padding:4px 10px;${F}font-size:12px;color:${mut}">${e(X.fechado ? (turno ? 'Turno fechado' : 'Dia fechado') : 'Situação: ' + X.st + ' (números parciais)')}</td></tr></table></td></tr>`);
-    if (c.note && c.note.trim()) P.push(linha(`<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-top:12px"><tr><td style="background:#EAF4FC;border-left:4px solid #0D5E9C;padding:10px 12px;${F}font-size:13px;line-height:19px;color:${ink}"><b>Comentário:</b> ${e(c.note.trim()).replace(/\n/g, '<br>')}</td></tr></table>`));
-    const pctBar = (v, cor) => { const w = Math.max(0, Math.min(100, Math.round((v || 0) * 100))); return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-top:6px"><tr>${w ? `<td width="${w}%" height="10" bgcolor="${cor}" style="background:${cor};font-size:1px;line-height:1px">&nbsp;</td>` : ''}${w < 100 ? `<td height="10" bgcolor="#E3EAF1" style="background:#E3EAF1;font-size:1px;line-height:1px">&nbsp;</td>` : ''}</tr></table>`; };
+    P.push(K_.cabecalho('PRODUÇÃO', turno ? 'Passagem de turno · ' + ps.snap.name : 'Resumo do dia', U.brDate(day.date) + ' · ' + U.WD[U.weekday(day.date)] + (turno && ps.snap.start ? ' · ' + ps.snap.start + '–' + U.hhmm(U.toMin(ps.snap.end)) : '') + (turno && ps.responsible ? ' · responsável ' + ps.responsible : '')));
+    P.push(K_.situacao(semTxt, corSem(r.semOee), X.fechado ? (turno ? 'Turno fechado' : 'Dia fechado') : 'Situação: ' + X.st + ' (números parciais)'));
+    if (c.note && c.note.trim()) P.push(K_.nota('Comentário', c.note.trim()));
+    const pctBar = K_.barra;
     const prod = (rr, titulo) => `<div style="${F}font-size:11px;color:${mut};text-transform:uppercase;letter-spacing:.5px">${e(titulo)}</div><div style="${F}font-size:26px;font-weight:bold;color:${ink};padding-top:2px">${e(fq(rr.good))} <span style="font-size:13px;font-weight:normal;color:${mut}">${e(u)}</span></div><div style="${F}font-size:12px;color:${mut}">meta ${e(fq(rr.metaOp))} ${e(u)} &middot; <b style="color:${corSem(rr.semAttain)}">${e(U.pct(rr.attain, 0))}</b> da meta</div>${pctBar(rr.attain, corSem(rr.semAttain))}`;
     const itens = {
       painel: async () => {
@@ -146,9 +131,8 @@ const EmailDia = {
     /* o resumo editado à mão vai mesmo com o item desligado: quem escreveu espera que chegue */
     const ids = L.map(x => x.id); if (R.summary != null && c.sum && c.sum.trim() && !ids.includes('resumo')) ids.push('resumo');
     for (const id of ids) if (itens[id]) { try { P.push(await itens[id]()); } catch (er) { console.error('EmailDia', id, er); } }
-    P.push(`<tr><td style="padding:18px 24px 16px;${F}font-size:11px;line-height:16px;color:${mut};border-top:1px solid ${lin}">Gerado pela Produção (OEE-Vacutainer ${e(APP_VERSION)}) em ${e(U.brDT(U.nowIso()))}${Store.S.user ? ' por ' + e(Store.S.user) : ''} &middot; Uso interno &middot; OEE reportado; números ${X.fechado ? 'do fechamento' : 'parciais, do lançamento em aberto'}</td></tr>`);
-    return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="#F2F7FB" style="background:#F2F7FB"><tr><td align="center" style="padding:16px 8px">
-<table role="presentation" width="680" cellpadding="0" cellspacing="0" border="0" bgcolor="#FFFFFF" style="width:680px;max-width:680px;background:#FFFFFF;border:1px solid ${lin}">${P.filter(Boolean).join('\n')}</table></td></tr></table>`;
+    P.push(K_.rodape(`Gerado pela Produção (OEE-Vacutainer ${e(APP_VERSION)}) em ${e(U.brDT(U.nowIso()))}${Store.S.user ? ' por ' + e(Store.S.user) : ''} &middot; Uso interno &middot; OEE reportado; números ${X.fechado ? 'do fechamento' : 'parciais, do lançamento em aberto'}`));
+    return K_.moldura(P);
   },
   /* texto simples (WhatsApp/Teams e versão sem formatação do e-mail): sem repetir o que já está nos indicadores */
   texto(c) {

@@ -294,3 +294,7 @@ Fase 1 do ordem/lote (`fontes/producao/exp_build.py`). Blocos novos no `exports`
 - `paradasEventos` (90 dias, `paradasEventosCobertura`): `{ id, dia, turno, inicio, fim, ini, fimEm, minutos, equipamento, codigo, descricao, obs, lote, ordem, catalogo, origemLote }`. O `id` é o da parada na base (eventoId comum com o Paradas). Lote/ordem/catálogo = trecho do MES no início da parada (`origemLote: 'trecho'`), ou o último que terminou até 4 h antes (`'estimado'`). Pausas que descontam do planejado ficam fora.
 - Correção: as pendências de ordem × lote (2.4.60) eram empurradas antes da declaração da lista; com um conflito no plano o exports parava com erro.
 Teste: `testes/tlote_origem.js`.
+
+## 2.4.70 · E-mail do turno e do dia com as peças do kit (13/11/2026)
+
+D8 da auditoria (Fase 3, padronização): o `EmailDia` deixou de montar moldura, cabeçalho, faixa de situação, comentário, seções, tabelas, barra de atendimento, rodapé e medidor por conta própria; usa `vacEmail.pecas` e `vacEmail.medidor` do kit. Fica na Produção só a escolha dos blocos e os números (Engine.computeDay). Mesmo resultado: `testes/temail.js` (números, formato, medidores, itens gravados) igual ao da 2.4.66.

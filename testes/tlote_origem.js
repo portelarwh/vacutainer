@@ -49,7 +49,7 @@ const PREP = () => {
   // ordem com dois lotes: vira pendência e o exports continua saindo
   const pend = await o.evaluate(() => { const d = Store.S.db; d.monthPlans[0].orders.push({ id: 'o3', order: '100200301', lot: 'L-509', catalogId: d.monthPlans[0].orders[0].catalogId, qty: 1000 }); try { const x = Exports.build(d, '2026-03-11'); return x.pendencias.filter(p => p.tipo === 'ordemLote').length; } catch (e) { return 'erro: ' + e.message; } finally { d.monthPlans[0].orders.pop(); } });
   ok(pend >= 1, 'Produção: ordem com dois lotes vira pendência sem quebrar o exports (' + pend + ')');
-  ok(await o.evaluate(() => APP_VERSION) === '2.4.69', 'Produção 2.4.69');
+  ok(await o.evaluate(() => APP_VERSION) === '2.4.70', 'Produção 2.4.70');
 
   // ---------- Paradas: ordem e catálogo pelo lote ou pelo horário; eventoId
   const p = await c.newPage(); p.on('pageerror', e => pe.push(e.message));
