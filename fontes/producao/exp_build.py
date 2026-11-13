@@ -93,7 +93,8 @@ HIST = r"""  /* 2.4.73 · histórico: o que o porOrdem (24 meses) e o lotes (150
     const recente = new Set(((S.segments || []).filter(x => x.lineId === LINE && x.t1 && x.t1.slice(0, 10) >= d150)).map(x => String(x.lot)));
     const nomes = new Set([...Object.keys(S.lotClass || {}), ...Object.keys(S.lotNotes || {}), ...dias.keys()]);
     const lotes = [];
-    for (const lot of nomes) { if (recente.has(lot)) continue; const ds = (dias.get(lot) || []).map(x => x.dia).sort(); if (ds.length && ds[ds.length - 1] >= d150) continue;
+    /* revisão Codex (PR #74): fica de fora só o lote que já está no exports.lotes (caixas do MES nos 150 dias); classificação de dia recente sem caixas recentes vem aqui */
+    for (const lot of nomes) { if (recente.has(lot)) continue; const ds = (dias.get(lot) || []).map(x => x.dia).sort();
       const c = (S.lotClass || {})[lot], n = (S.lotNotes || {})[lot];
       lotes.push({ lote: lot, situacao: c ? (typeof c === 'object' ? c.kind || null : String(c)) : null, obs: n ? (typeof n === 'object' ? n.text || '' : String(n)) : '', dias: ds, retrabalhoDias: (dias.get(lot) || []).filter(x => x.tipo === 'retrabalho').map(x => x.dia).sort() }); }
     return { ordens, lotes };

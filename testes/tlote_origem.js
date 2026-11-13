@@ -31,7 +31,7 @@ const PREP = () => {
     { id: 'o2', order: '100200302', lot: 'L-502', catalogId: cats[1].id, qty: 300000 }], versions: [] }];
   // 2.4.73 · histórico: plano de 2023 (fora dos 24 meses) e lote antigo com situação, observação e dia no servidor
   d.monthPlans.push({ id: 'mp_old', month: '2023-05', lineId: LINE, orders: [{ id: 'oo', order: 'O-OLD', lot: 'L-OLD', catalogId: cats[0].id, qty: 1000, startReal: '2023-05-10T06:00' }], versions: [] });
-  d.server.lotClass['L-OLD'] = { kind: 'retrabalho' }; d.server.lotNotes = { 'L-OLD': { text: 'nota antiga' } }; d.server.dayLot = Object.assign(d.server.dayLot || {}, { '2023-05-10|L-OLD': { kind: 'retrabalho' } });
+  d.server.lotClass['L-OLD'] = { kind: 'retrabalho' }; d.server.lotNotes = { 'L-OLD': { text: 'nota antiga' } }; d.server.dayLot = Object.assign(d.server.dayLot || {}, { '2023-05-10|L-OLD': { kind: 'retrabalho' }, '2026-03-10|L-DIA': { kind: 'normal' } }); d.server.lotNotes['L-DIA'] = { text: 'só classificação de dia' };   /* revisão Codex P2: dia recente sem caixas */
   Store.S.db = Model.ensure(d); Engine.bumpConfig();
   const x = Exports.build(Store.S.db, DIA);
   return { x, cats: cats.map(c => c.code), eq: eq.code, dc: dc.code };
@@ -56,6 +56,7 @@ const PREP = () => {
   const pend = await o.evaluate(() => { const d = Store.S.db; d.monthPlans[0].orders.push({ id: 'o3', order: '100200301', lot: 'L-509', catalogId: d.monthPlans[0].orders[0].catalogId, qty: 1000 }); try { const x = Exports.build(d, '2026-03-11'); return x.pendencias.filter(p => p.tipo === 'ordemLote').length; } catch (e) { return 'erro: ' + e.message; } finally { d.monthPlans[0].orders.pop(); } });
   ok(pend >= 1, 'Produção: ordem com dois lotes vira pendência sem quebrar o exports (' + pend + ')');
   { const oh = (X.ordensHistorico || []).find(o => o.ordem === 'O-OLD'), lh = (X.lotesHistorico || []).find(l => l.lote === 'L-OLD');
+    const ld = (X.lotesHistorico || []).find(l => l.lote === 'L-DIA'); ok(ld && ld.obs === 'só classificação de dia' && ld.dias.join() === '2026-03-10' && !(X.lotes || []).some(l => l.lote === 'L-DIA'), 'lote com classificação de dia recente e sem caixas do MES vem no lotesHistorico (não está no lotes) (revisão Codex P2)');
     ok(oh && oh.lote === 'L-OLD' && oh.mes === '2023-05' && !(X.porOrdem || []).some(o => o.ordem === 'O-OLD') && lh && lh.situacao === 'retrabalho' && lh.obs === 'nota antiga' && lh.dias.join() === '2023-05-10' && lh.retrabalhoDias.join() === '2023-05-10' && !(X.lotesHistorico || []).some(l => l.lote === 'L-501'),
       'Produção 2.4.73: ordensHistorico (plano fora dos 24 meses) e lotesHistorico (situação, observação e dias de lote antigo), sem repetir os recentes'); }
   ok(await o.evaluate(() => APP_VERSION) === '2.4.73', 'Produção 2.4.73');

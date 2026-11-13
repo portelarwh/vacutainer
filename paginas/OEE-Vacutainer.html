@@ -3461,7 +3461,7 @@ const Actions = (() => {
       if (d0 && Engine.dayEntries(d0)) { const e = new Error(`O dia ${U.brDate(date)} tem lançamentos e conta para o OEE. Para marcar sem produção, exclua o lançamento ou mova os dados para o dia certo.`); e.code = 'DAY_HAS_DATA'; e.dayId = d0.id; throw e; }
     }
     const cur = db.calendar.find(c => !c.deleted && c.date === date && c.lineId === lineId);
-    if (cur && cur.origin === 'portal' && (extra.origin || 'interface') !== 'portal') { const e = new Error(`O dia ${U.brDate(date)} vem do Calendário de produção do Portal (${cur.kind === 'off' ? 'sem produção' : 'dia extra'}${cur.reason ? ': ' + cur.reason : ''}). Para mudar, edite no Portal › Cadastros › Calendário de produção.`); e.code = 'DAY_PORTAL'; throw e; }   /* 2.4.73 */
+    if (cur && cur.origin === 'portal' && (extra.origin || 'interface') !== 'portal') { if (cur.kind === kind) return cur;   /* revisão Codex (PR #74): mesma marca (ex.: iniciar produção num dia extra do Portal) segue; só mudar o tipo é barrado */ const e = new Error(`O dia ${U.brDate(date)} vem do Calendário de produção do Portal (${cur.kind === 'off' ? 'sem produção' : 'dia extra'}${cur.reason ? ': ' + cur.reason : ''}). Para mudar, edite no Portal › Cadastros › Calendário de produção.`); e.code = 'DAY_PORTAL'; throw e; }   /* 2.4.73 */
     const before = cur ? cur.kind : 'normal';
     if (before === kind && (!cur || (cur.reason || '') === (reason || ''))) return cur;
     if (cur) { cur.deleted = true; touch(cur); }
@@ -4857,7 +4857,8 @@ const Exports = (() => {
     const recente = new Set(((S.segments || []).filter(x => x.lineId === LINE && x.t1 && x.t1.slice(0, 10) >= d150)).map(x => String(x.lot)));
     const nomes = new Set([...Object.keys(S.lotClass || {}), ...Object.keys(S.lotNotes || {}), ...dias.keys()]);
     const lotes = [];
-    for (const lot of nomes) { if (recente.has(lot)) continue; const ds = (dias.get(lot) || []).map(x => x.dia).sort(); if (ds.length && ds[ds.length - 1] >= d150) continue;
+    /* revisão Codex (PR #74): fica de fora só o lote que já está no exports.lotes (caixas do MES nos 150 dias); classificação de dia recente sem caixas recentes vem aqui */
+    for (const lot of nomes) { if (recente.has(lot)) continue; const ds = (dias.get(lot) || []).map(x => x.dia).sort();
       const c = (S.lotClass || {})[lot], n = (S.lotNotes || {})[lot];
       lotes.push({ lote: lot, situacao: c ? (typeof c === 'object' ? c.kind || null : String(c)) : null, obs: n ? (typeof n === 'object' ? n.text || '' : String(n)) : '', dias: ds, retrabalhoDias: (dias.get(lot) || []).filter(x => x.tipo === 'retrabalho').map(x => x.dia).sort() }); }
     return { ordens, lotes };
