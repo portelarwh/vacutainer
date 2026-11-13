@@ -101,7 +101,7 @@ node testes/tportal_vg.js             # Portal › Visão geral no padrão comum
 ```
 
 - O build usa substituições exatas (`R(antes, depois)`) sobre a base 2.0: se um trecho não for achado exatamente 1 vez, para com `ERRO`. Mudança na Produção = nova regra `R(...)` no `build.py` ou mudança nos `.js` de `fontes/producao/`.
-- CI (13/11/2026): `.github/workflows/testes.yml` roda em cada PR e na main: confere que `paginas/` bate com as fontes (`npm run build` não muda nada) e roda `npm test` (`testes/tudo.js`); `package.json` com o Playwright fixo.
+- CI (13/11/2026): `.github/workflows/testes.yml` roda em cada PR e na main: confere que `paginas/` bate com as fontes (`npm run build` não muda nada; a `Demonstracao.html` pelo conteúdo, com `python3 fontes/demo/conferir_demo.py`, porque o gzip muda com a versão do zlib) e roda `npm test` (`testes/tudo.js`); `package.json` com o Playwright fixo.
 - Playwright e Chromium: `require('playwright')`; os testes usam `enterTest()` (Portal, Waste, Paradas) ou `Demo.enterExample()` (Produção) e bases sintéticas em `testes/bases/`. Amostras do SAP (descaracterizadas) em `testes/amostras/`. Prints vão para `testes/saida/` (fora do git).
 
 ## Regras da plataforma (não quebrar)

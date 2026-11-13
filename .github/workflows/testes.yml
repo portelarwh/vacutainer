@@ -26,9 +26,12 @@ jobs:
           sudo apt-get install -y poppler-utils
       - name: Páginas geradas iguais às fontes
         run: |
+          git show HEAD:paginas/Demonstracao.html > "$RUNNER_TEMP/Demonstracao.html"
           npm run build
           git status --porcelain paginas/
-          git diff --exit-code --stat -- paginas/ || (echo "::error::paginas/ não bate com fontes/: rode os builds (npm run build) e grave as páginas geradas" && exit 1)
+          # a demonstração embute as páginas em gzip, e os bytes do gzip mudam com a versão do zlib: ela é conferida pelo conteúdo
+          git diff --exit-code --stat -- paginas/ ':(exclude)paginas/Demonstracao.html' || (echo "::error::paginas/ não bate com fontes/: rode os builds (npm run build) e grave as páginas geradas" && exit 1)
+          python3 fontes/demo/conferir_demo.py "$RUNNER_TEMP/Demonstracao.html"
       - name: Suíte de testes
         run: npm test
       - name: Saída dos testes que falharam
