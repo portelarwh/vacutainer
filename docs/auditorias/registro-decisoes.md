@@ -569,7 +569,7 @@ Três ressalvas para as próximas análises:
 | A07 Segurança no navegador | **recusado** | Mesmo motivo do 5.4 |
 | A08 Tela "Saúde do sistema" | **corrigido em parte** | Em vez de uma tela nova, a tela "Versões das páginas", que já existia, passou a avisar sobre `exports` em versão desconhecida ou mais antigo que a gravação |
 | A09 Funcionar sem internet, navegadores, acentos | **adiado** | Fica para a lista de conferência da homologação na pasta real |
-| A10 Contagem dupla OEE × Paradas | **corrigido em parte** | A regra de deduplicação foi corrigida no F07. O `eventoId` comum entra quando o OEE publicar os eventos |
+| A10 Contagem dupla OEE × Paradas | **corrigido** (13/11/2026) | A regra de deduplicação foi corrigida no F07. Produção 2.4.68 publica `paradasEventos` com o id da parada; Paradas 1.2.5 dá esse `eventoId` à mesma parada do Forms e não soma evento só da Produção (`docs/paradas-arquitetura.md` § 1.2.5) |
 | Contrato `schemaVersion 2` (`series`, `status`) | **recusado** | Renomearia campos que funcionam (`serie` → `series`), contra a regra 6 |
 | Painéis por papel, BI e etapas 0–6 | **recusado** (escopo) | Não corrigem dado. A etapa 0 (versionamento) já existe no git |
 | Waste: mês aberto como provisório | **corrigido** (Portal 1.8.3) | Usa `porMes[].fechado`, que o Waste já publicava |

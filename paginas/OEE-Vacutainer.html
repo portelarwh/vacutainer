@@ -1524,7 +1524,7 @@ const U = (() => {
 
 /* ---- 02-model.js ---- */
 /* ================= modelo de dados, valores iniciais e integridade ================= */
-const APP_VERSION = '2.4.66';
+const APP_VERSION = '2.4.68';
 const SCHEMA_VERSION = 1;
 const BASE_FILE = 'oee-vacutainer-base.json';
 const BACKUP_DIR = '00. Backups';
@@ -4653,9 +4653,11 @@ const Exports = (() => {
     }
     // 120 dias e 60 dias por turno; calendário (sem produção / extra) para quem não lê o plano
     const porDia = [], porDiaTurno = [], porDiaCatalogo = [], d120 = U.addDays(today, -119), d60 = U.addDays(today, -59);
+    const paradasEventos = [], pe90 = U.addDays(today, -89), pePorDia = [];   /* 2.4.68 */
     for (const d of days.filter(x => x.date >= d120 && x.date <= today).sort((a, b) => a.date.localeCompare(b.date))) {
       const res = Engine.computeDay(db, d), r = res.r;
       porDia.push({ dia: d.date, oee: r4(r.oee), oeeMeta: r4(r.oeeTarget), boa: n0(r.good), scrap: n0(r.scrap), metaOp: n0(r.metaOp), cap: n0(r.cap), metaDec: n0(r.metaDec), status: d.status || 'não iniciado', origem: d.origin === 'importação' ? 'importado' : 'lançado' });
+      if (d.date >= pe90) pePorDia.push({ d, res });
       if (d.date >= d60) {
         // abono do turno (só eventos marcados como abono; refeição e outras pausas ficam em descontoMin)
         const abByPs = {};
@@ -4708,8 +4710,9 @@ const Exports = (() => {
     const porOrdemCobertura = { de: mIni, ate: mk, meses: 24, ordens: porOrdem.length, fonte: 'Plano do mês (PCP) e servidor (dias do lote)' };
     // 2.4.60 · regra da linha: cada ordem tem um lote e cada lote tem uma ordem. Conflito não bloqueia nada: vira pendência (atenção) e vai no exports
     const ordemLote = typeof vacOrdemLote === 'function' ? vacOrdemLote(porOrdem) : { ordens: [], lotes: [] };
-    for (const x of ordemLote.ordens.slice(0, 20)) pendencias.push({ sev: 2, tipo: 'ordemLote', txt: `Ordem ${x.ordem} aparece com ${x.lotes.length} lotes (${x.lotes.join(', ')}): cada ordem tem um só lote; conferir o plano`, link: 'plano=' + x.mes });
-    for (const x of ordemLote.lotes.slice(0, 20)) pendencias.push({ sev: 2, tipo: 'ordemLote', txt: `Lote ${x.lote} aparece em ${x.ordens.length} ordens (${x.ordens.join(', ')}): cada lote tem uma só ordem; conferir o plano`, link: 'plano=' + x.mes });
+    const pendOL = [];   /* 2.4.68: a lista de pendências é declarada mais abaixo */
+    for (const x of ordemLote.ordens.slice(0, 20)) pendOL.push({ sev: 2, tipo: 'ordemLote', txt: `Ordem ${x.ordem} aparece com ${x.lotes.length} lotes (${x.lotes.join(', ')}): cada ordem tem um só lote; conferir o plano`, link: 'plano=' + x.mes });
+    for (const x of ordemLote.lotes.slice(0, 20)) pendOL.push({ sev: 2, tipo: 'ordemLote', txt: `Lote ${x.lote} aparece em ${x.ordens.length} ordens (${x.ordens.join(', ')}): cada lote tem uma só ordem; conferir o plano`, link: 'plano=' + x.mes });
     // lotes do servidor (últimos 150 dias): retrabalho, situação e observação, para Perdas e Gel
     const d150 = U.addDays(today, -149), lotes = [];
     for (const x of L.values()) {
@@ -4717,7 +4720,7 @@ const Exports = (() => {
       lotes.push({ lote: x.lot, catalogo: x.cat, caixas: x.n, pecas: x.n * (st.serverBoxQty || 1000), trechos: x.segs.length, inicio: x.t0.slice(0, 16), fim: x.t1.slice(0, 16), situacao: ServerData.lotKind(db, LINE, x.lot), retrabalhoDias: rwDays(x.lot), obs: (((db.server || {}).lotNotes || {})[x.lot] || {}).text || '' });
     }
     // pendências que o Portal consolida
-    const pendencias = [];
+    const pendencias = [...pendOL];
     for (const d of days) for (const ps of d.shifts) if (ps.status === 'pendente de conferência') pendencias.push({ sev: 1, txt: `${U.brDate(d.date)} ${ps.snap.code || ps.snap.name}: turno aguardando conferência`, link: 'dia=' + d.date });
     for (const d of days) if (d.date < today && d.status !== 'fechado' && d.origin !== 'importação') pendencias.push({ sev: 2, txt: `${U.brDate(d.date)}: lançamento em aberto`, link: 'dia=' + d.date });
     let div = []; try { div = ServerData.divergences(db, st).filter(x => !x.decision); } catch (e) { /* sem dados do servidor */ }
@@ -4730,12 +4733,14 @@ const Exports = (() => {
       ['Produção × meta', cur.atendimento == null ? '—' : U.pct(cur.atendimento, 0), cur.boa == null ? '' : `${U.fmt(Math.round(cur.boa / 1000))} mil boas`, cur.atendimento == null ? '' : cur.atendimento >= 1 ? 'good' : 'bad'],
       ['Ritmo do plano', planoMes && planoMes.ritmo != null ? U.pct(planoMes.ritmo, 0) : '—', planoMes ? `saldo ${planoMes.saldo == null ? '—' : U.fmt(Math.round(planoMes.saldo / 1000)) + ' mil'}` : 'sem plano', planoMes && planoMes.ritmo != null ? (planoMes.ritmo >= 1 ? 'good' : 'bad') : ''],
       ['Pendências', String(pendencias.length), `${pendencias.filter(p => p.sev === 1).length} urgente(s)`, pendencias.length ? 'bad' : 'good']];
+    const origem = origemProducao(db, today, porOrdem, pePorDia);   /* 2.4.68 · trechos, atual, trocas, paradasEventos */
     const cad = cadastros(db);
     const TIPO_IMP = { metas: 'META_OEE', 'histórico': 'RELATORIO', paradas: 'PARADAS_XLSM', planos: 'PLANOS_PCP' };
     const importacoes = [...(db.imports || []).filter(i => i && !i.period && TIPO_IMP[i.kind]).map(i => ({ tipo: TIPO_IMP[i.kind], em: i.at, por: i.by || null, arquivo: i.source || null })),
       ...((db.server || {}).imports || []).map(i => ({ tipo: 'MES', em: i.at, por: i.by || null, arquivo: i.file || null, de: i.from || null, ate: i.to || null }))].sort((a, b) => a.em < b.em ? 1 : -1).slice(0, 400);
     return { exportsVersion: 1, geradoEm: U.nowIso(), cadastros: cad, modulo: 'oee', importacoes, appVersion: typeof APP_VERSION !== 'undefined' ? APP_VERSION : null, linha: LINE,
-      sqdcp: SQDCPModelo.exportar(db, today, Engine, U), porMes, porDia, porDiaTurno, porDiaCatalogo, paradasEquipamento, calendario, planoMes, ordens, porOrdem, porOrdemCobertura, ordemLote, lotes, pendencias, kpis };
+      sqdcp: SQDCPModelo.exportar(db, today, Engine, U), porMes, porDia, porDiaTurno, porDiaCatalogo, paradasEquipamento, calendario, planoMes, ordens, porOrdem, porOrdemCobertura, ordemLote, lotes, pendencias, kpis,
+      trechos: origem.trechos, atual: origem.atual, trocas: origem.trocas, paradasEventos: origem.paradasEventos, paradasEventosCobertura: origem.cob };
   }
   // cadastro mestre da linha: o OEE é o dono; as outras páginas leem por código (nunca pelo id interno) e complementam localmente
   function cadastros(db) {
@@ -4751,6 +4756,35 @@ const Exports = (() => {
       equipamentos: (db.machines || []).filter(m => !m.deleted).map(m => ({ codigo: m.code, nome: m.name, papel: m.role || null, ativo: act(m) })),
       paradas: (db.downtimeCodes || []).filter(c => !c.deleted).map(c => ({ codigo: c.code, nome: c.name, categoria: c.category || null, subcategoria: c.subcategory || null, cor: c.color || null, planejada: !!c.planned, descontaPlanejado: !!c.deductsPlanned, afetaD: !!c.affectsA, afetaP: !!c.affectsP, afetaQ: !!c.affectsQ, pareto: c.inPareto !== false, ativo: act(c) }))
     };
+  }
+  /* 2.4.68 · de onde vem cada fato: trecho do MES → lote → ordem do plano; parada → trecho no horário dela */
+  function origemProducao(db, today, porOrdem, pePorDia) {
+    const d60 = U.addDays(today, -59), lim = today + 'T23:59:59';
+    const ordDoLote = new Map(); for (const o of porOrdem || []) if (o.lote && !ordDoLote.has(String(o.lote))) ordDoLote.set(String(o.lote), o.ordem);
+    const segs = ((db.server || {}).segments || []).filter(s => s.lineId === LINE && s.lot != null && s.t1 && s.t1.slice(0, 10) >= d60 && s.t0 <= lim).sort((a, b) => a.t0 < b.t0 ? -1 : a.t0 > b.t0 ? 1 : 0);
+    const trechos = segs.map(s => ({ ini: s.t0.slice(0, 16), fim: s.t1.slice(0, 16), lote: String(s.lot), catalogo: s.cat == null ? null : String(s.cat), ordem: ordDoLote.get(String(s.lot)) || null, caixas: s.n || 0 }));
+    const trocas = [];
+    for (let i = 1; i < trechos.length; i++) { const a = trechos[i - 1], b = trechos[i]; if (a.lote !== b.lote) trocas.push({ em: b.ini, de: a.lote, para: b.lote, catalogo: b.catalogo, ordem: b.ordem }); }
+    let atual = null;
+    if (trechos.length) { const u = trechos[trechos.length - 1]; let k = trechos.length - 1; while (k > 0 && trechos[k - 1].lote === u.lote) k--;
+      atual = { lote: u.lote, catalogo: u.catalogo, ordem: u.ordem, desde: trechos[k].ini, ultimaCaixa: u.fim, caixas: trechos.slice(k).reduce((a, t) => a + t.caixas, 0) }; }
+    // trecho do MES no horário (AAAA-MM-DDTHH:MM): o que contém; senão o último que terminou até 4 h antes (estimado)
+    const naHora = ts => { let ant = null; for (const t of trechos) { if (t.ini <= ts && ts <= t.fim) return { t, fonte: 'trecho' }; if (t.fim < ts) ant = t; else break; }
+      if (ant) { const dm = (Date.parse(ts + ':00Z') - Date.parse(ant.fim + ':00Z')) / 60000; if (dm <= 240) return { t: ant, fonte: 'estimado' }; } return null; };
+    const isoMin = (date, min) => { const d = new Date(Date.UTC(+date.slice(0, 4), +date.slice(5, 7) - 1, +date.slice(8, 10)) + Math.round(min) * 60000); return d.toISOString().slice(0, 16); };
+    const paradasEventos = [];
+    for (const { d, res } of pePorDia || []) for (const er of Object.values(res.events || {})) {
+      if (er.imp && er.imp.deducts) continue;   // pausas planejadas e RTB não são parada de máquina (como em paradasEquipamento)
+      const ev = er.ev || {}, c = (db.downtimeCodes || []).find(x => x.id === ev.codeId) || null, eq = (db.machines || []).find(x => x.id === ev.equipmentId) || null;
+      const tur = er.dayLevel ? null : [...(er.shiftIds || [])].map(id => (res.shifts.find(s => s.ps.id === id) || {}).ps).filter(Boolean).map(ps => ps.snap.code || ps.snap.name);
+      const ini = ev.start != null ? isoMin(d.date, ev.start) : null, fim = ev.end != null ? isoMin(d.date, ev.end) : null, o = ini ? naHora(ini) : null;
+      paradasEventos.push({ id: String(ev.id), dia: d.date, turno: tur && tur.length ? tur[0] : null, turnos: tur && tur.length > 1 ? tur : undefined,
+        inicio: ev.start != null ? U.hhmm(ev.start) : null, fim: ev.end != null ? U.hhmm(ev.end) : null, ini, fimEm: fim, minutos: n0(er.minutes),
+        equipamento: eq ? eq.code : null, codigo: c ? c.code || null : null, descricao: c ? c.name : null, obs: ev.note || '',
+        lote: o ? o.t.lote : null, ordem: o ? o.t.ordem : null, catalogo: o ? o.t.catalogo : null, origemLote: o ? o.fonte : null });
+    }
+    paradasEventos.sort((a, b) => (a.dia + (a.inicio || '')).localeCompare(b.dia + (b.inicio || '')));
+    return { trechos, atual, trocas, paradasEventos, cob: { de: U.addDays(today, -89), ate: today, dias: 90, fonte: 'Apontamento da Produção (paradas do dia)' } };
   }
   function shiftMonth(date, k) { const [y, m] = date.slice(0, 7).split('-').map(Number); const t = y * 12 + (m - 1) + k; return `${Math.floor(t / 12)}-${String(t % 12 + 1).padStart(2, '0')}`; }
   return { build, cadastros, shiftMonth };
@@ -12604,12 +12638,12 @@ const OrdensSAP = (() => {
   const norm = s => String(s == null ? '' : s).normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
   const MB51 = {
     ordem: ['ordem', 'order'], material: ['material'], texto: ['texto breve material', 'texto breve de material', 'material description'],
-    planta: ['planta', 'centro', 'plant'], deposito: ['deposito'], tipo: ['tipo de movimento', 'tipo movimento', 'tmv', 'movement type'],
-    txtTipo: ['txt tipo movimento', 'texto tipo movimento'], doc: ['doc material', 'documento material', 'documento de material', 'material document'],
-    ano: ['ano doc material', 'ano documento material', 'exercicio'], item: ['item doc material', 'item documento material'],
-    dataLanc: ['data de lancamento', 'dt lancamento', 'posting date'], dataDoc: ['data do documento'], dataEntrada: ['data de entrada', 'entry date'],
-    hora: ['hora do registro', 'hora'], qtd: ['qtd um registro', 'quantidade um registro', 'qtd em um registro', 'qty in unit of entry'],
-    um: ['um registro', 'unidade de registro', 'unit of entry'], lote: ['lote', 'batch'], dc: ['cod debito credito', 'debito credito'],
+    planta: ['planta', 'centro', 'plant', 'cen'], deposito: ['deposito', 'dep'], tipo: ['tipo de movimento', 'tipo movimento', 'tmv', 'movement type'],
+    txtTipo: ['txt tipo movimento', 'texto tipo movimento'], doc: ['doc material', 'documento material', 'documento de material', 'material document', 'doc mat'],
+    ano: ['ano doc material', 'ano documento material', 'exercicio', 'anodm'], item: ['item doc material', 'item documento material', 'itm'],
+    dataLanc: ['data de lancamento', 'dt lancamento', 'posting date', 'dt lcto'], dataDoc: ['data do documento', 'data doc'], dataEntrada: ['data de entrada', 'entry date', 'entrado em'],
+    hora: ['hora do registro', 'hora'], qtd: ['qtd um registro', 'quantidade um registro', 'qtd em um registro', 'qty in unit of entry', 'qtd umreg'],
+    um: ['um registro', 'unidade de registro', 'unit of entry', 'umr'], lote: ['lote', 'batch'], dc: ['cod debito credito', 'debito credito', 'd c'],
     usuario: ['nome do usuario', 'usuario'], referencia: ['referencia'], quantidade: ['quantidade'], umb: ['unid medida basica', 'um basica']
   };
   const COOIS = {
