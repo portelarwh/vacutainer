@@ -960,3 +960,69 @@ const vacLayout = (() => {
 })();
 /* "Mais filtros" no celular: botão .vk-mais dentro de .filters abre e fecha os campos .vk-opt (vacLayout, 11/11/2026) */
 document.addEventListener('click', ev => { const b = ev.target.closest('.vk-mais'); if (!b) return; const f = b.closest('.filters'); if (!f) return; const o = f.classList.toggle('vk-aberto'); b.setAttribute('aria-expanded', o); b.textContent = o ? 'Menos filtros ▴' : 'Mais filtros ▾'; });
+/* D6 (13/11/2026) · permissão por ação na tela, num ponto só do kit. Cada página diz aqui quais botões exigem cada função do perfil
+   (Portal › Administração › Perfis: lancar, fechar, importar, excluir, configurar). O que o perfil não pode fica desligado, com o motivo
+   no título; o clique também é barrado. Sem usuário identificado, ou perfil sem permissões gravadas, nada muda (vacPode devolve true).
+   Identifica, não é cofre (registro 5.4/A07): a proteção real é a permissão da pasta. A Linha 360° segue o módulo Equipamentos. */
+const VAC_PODE_MOD = { linha: 'equip' };
+const VAC_PODE_TXT = { lancar: 'lançar ou editar', fechar: 'fechar ou reabrir', importar: 'importar', excluir: 'excluir', configurar: 'configurar' };
+const VAC_PODE_MAPA = {
+  oee: {
+    lancar: '#mkDay,#eOk,#eDel,#eClr,#abOk,#abSave,#abDel,#hhExtra,#hhPause,#iSave,#iDel,#dOff,#offDay,#dfOk,#otOk,#pdOff,#pdStart,#opStartProd,#gAdd,#gOk,#dGo,#dMove,#mvOk,#dRestore,#nOk,#rpNoteSave,#ordFill,#plNew,#pdExtra,#pdNorm,#pPasteGo,#aOk',
+    fechar: '#dClose,#dReopen,#dPend,#clsOk,#enOk,[data-closeps]',
+    importar: '#imMeta,#imPar,#imPlan,#imRel,#imSrv,#ltImp,#mGo,#bImport,#rMap',
+    excluir: '#dDel,#hdDel,#hdMv,#dmDel',
+    configurar: '#cNew,#dcNew,#brAdd,#pSave,#omSave,#lgDel,#pnSaveAs,#pnDel'
+  },
+  perdas: {
+    lancar: '#acSave,#cmSave',
+    importar: '#btnInterp,#btnDoImp,#entGo,#impProx',
+    configurar: '#btnSaveCfg,#btnSaveTipos,#btnSaveAlias,#btnResetAlias,#btnSaveCausas,#logoDel,[data-bkr]'
+  },
+  paradas: {
+    lancar: '#evNovo,#aplSug,#acNova,#pAcao,[data-ac]',
+    importar: '#impF,#impSalva,[data-undo]',
+    configurar: '#cfWipe,#mtzReset,[data-br]'
+  },
+  gel: {
+    lancar: '[data-baixa],[data-hmeas],[data-obs],[data-linedit],[data-unline],[data-online],[data-audit]',
+    importar: '[data-act="import"],[data-act="fsNewImport"]',
+    excluir: '[data-hmdel]',
+    configurar: '[data-bkrs]'
+  },
+  equip: {
+    lancar: '#btNovaOS,#eqOS,#osNova,#eqAn,#apAdd,[data-an2os],[data-st],[data-ed]',
+    configurar: '#eqTag,#tagNova,#padNovo,[data-tagv],[data-des]'
+  },
+  inic: {
+    lancar: '#btNova,#kNovo,#osmNova,#pgNova,#s5Nova,#ckAdd,#coAdd,#evAdd,[data-st],[data-tr],[data-pz],[data-ed],[data-ked],[data-kac]',
+    importar: '[data-importar],#iaPrev,#mwTrazer',
+    configurar: '[data-novoprog]'
+  }
+};
+VAC_PODE_MAPA.linha = VAC_PODE_MAPA.equip;
+function vacPodeAqui(fn) { if (typeof vacPode !== 'function' || typeof PAGE === 'undefined' || !PAGE) return true; try { return vacPode(VAC_PODE_MOD[PAGE.id] || PAGE.id, fn); } catch (e) { return true; } }
+const vacTravas = (() => {
+  let agendado = 0;
+  const motivo = fn => { let p = null; try { p = typeof vacPerfil === 'function' ? vacPerfil() : null; } catch (e) { } return `Seu perfil${p && p.nome ? ' (' + p.nome + ')' : ''} não permite ${VAC_PODE_TXT[fn] || fn} nesta página. Quem muda o perfil é o administrador, no Portal.`; };
+  function aplicar() {
+    agendado = 0; if (typeof PAGE === 'undefined' || !PAGE) return; const M = VAC_PODE_MAPA[PAGE.id]; if (!M) return;
+    for (const [fn, sel] of Object.entries(M)) {
+      const pode = vacPodeAqui(fn);
+      let L = []; try { L = document.querySelectorAll(sel); } catch (e) { continue; }
+      L.forEach(el => {
+        if (!pode) { if (el.dataset.vacTrava) return; el.dataset.vacTrava = fn; el.dataset.vacTravaTit = el.getAttribute('title') || ''; el.dataset.vacTravaDis = el.disabled ? '1' : ''; el.disabled = true; el.setAttribute('aria-disabled', 'true'); el.title = motivo(fn); el.classList.add('vac-trava'); }
+        else if (el.dataset.vacTrava === fn) { el.disabled = el.dataset.vacTravaDis === '1'; el.removeAttribute('aria-disabled'); if (el.dataset.vacTravaTit) el.title = el.dataset.vacTravaTit; else el.removeAttribute('title'); delete el.dataset.vacTrava; delete el.dataset.vacTravaTit; delete el.dataset.vacTravaDis; el.classList.remove('vac-trava'); }
+      });
+    }
+  }
+  const agendar = () => { if (!agendado) agendado = setTimeout(aplicar, 0); };
+  if (typeof document !== 'undefined') {
+    const ligar = () => { aplicar(); try { new MutationObserver(agendar).observe(document.body, { childList: true, subtree: true }); } catch (e) { } };
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', ligar); else ligar();
+    // clique barrado também em elemento que não é botão (link, div) e em cliques já em fila
+    document.addEventListener('click', ev => { const t = ev.target && ev.target.closest && ev.target.closest('.vac-trava'); if (!t) return; ev.preventDefault(); ev.stopImmediatePropagation(); }, true);
+    addEventListener('storage', ev => { if (!ev.key || /^vac\.(userId|cadastros|sessao)/.test(ev.key)) agendar(); });
+  }
+  return { aplicar, agendar, motivo };
+})();

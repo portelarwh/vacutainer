@@ -49,7 +49,7 @@ const PREP = () => {
   // ordem com dois lotes: vira pendência e o exports continua saindo
   const pend = await o.evaluate(() => { const d = Store.S.db; d.monthPlans[0].orders.push({ id: 'o3', order: '100200301', lot: 'L-509', catalogId: d.monthPlans[0].orders[0].catalogId, qty: 1000 }); try { const x = Exports.build(d, '2026-03-11'); return x.pendencias.filter(p => p.tipo === 'ordemLote').length; } catch (e) { return 'erro: ' + e.message; } finally { d.monthPlans[0].orders.pop(); } });
   ok(pend >= 1, 'Produção: ordem com dois lotes vira pendência sem quebrar o exports (' + pend + ')');
-  ok(await o.evaluate(() => APP_VERSION) === '2.4.68', 'Produção 2.4.68');
+  ok(await o.evaluate(() => APP_VERSION) === '2.4.69', 'Produção 2.4.69');
 
   // ---------- Paradas: ordem e catálogo pelo lote ou pelo horário; eventoId
   const p = await c.newPage(); p.on('pageerror', e => pe.push(e.message));
@@ -71,7 +71,7 @@ const PREP = () => {
   ok(R.ex5.eventoId === 'ev_teste1' && R.n === 6 && !R.ids.some(i => /^OEE:/.test(i)), 'Paradas: a mesma parada apontada na Produção ganha o eventoId dela; nenhum evento contado duas vezes');
   ok(/100200301:2/.test(R.porOrdem) && /100200302:1/.test(R.porOrdem), 'Paradas: exports.porOrdem com as ordens vindas do lote e do horário (' + R.porOrdem + ')');
   ok(R.avisos && R.avisos.semOrdem === 1 && R.avisos.soProducao === 0, 'Paradas: avisos de origem (lote não encontrado: 1; paradas só na Produção: 0)');
-  ok(await p.evaluate(() => PAGE.versao) === '1.2.6', 'Paradas 1.2.6');
+  ok(await p.evaluate(() => PAGE.versao) === '1.2.7', 'Paradas 1.2.7');
 
   // ---------- Equipamentos 1.0.14 (D5): ficha do equipamento com paradas por catálogo e ordem e Pareto por código
   const q = await c.newPage(); q.on('pageerror', e => pe.push('Equipamentos: ' + e.message));
@@ -81,7 +81,7 @@ const PREP = () => {
     const lin = sel => [...document.querySelectorAll(sel + ' tr')].slice(1).map(r => [...r.cells].map(td => td.innerText.trim().replace(/\s+/g, ' ')));
     return { cat: lin('[data-eq-cat]'), par: lin('[data-eq-pareto]'), botoes: document.querySelectorAll('[data-eq-cat] .vficha-bt').length, ver: PAGE.versao }; }, R.exPar);
   const cx = k => (EQ.cat.find(r => r[0] === k) || []);
-  ok(EQ.ver === '1.0.14' && cx(P.cats[0])[1] && /100200301/.test(cx(P.cats[0])[1]) && cx(P.cats[0])[2] === '1' && /100200302/.test(cx(P.cats[1])[1] || '') && /sem catálogo/.test(EQ.cat.map(r => r[0]).join('|')) && EQ.botoes >= 2,
+  ok(EQ.ver === '1.0.15' && cx(P.cats[0])[1] && /100200301/.test(cx(P.cats[0])[1]) && cx(P.cats[0])[2] === '1' && /100200302/.test(cx(P.cats[1])[1] || '') && /sem catálogo/.test(EQ.cat.map(r => r[0]).join('|')) && EQ.botoes >= 2,
     'Equipamentos 1.0.14: ficha com paradas por catálogo e ordem (botão da ficha da ordem) e "sem catálogo" para o que não tem origem');
   const soma = EQ.cat.reduce((s, r) => s + +r[3].replace(/\D/g, ''), 0), somaP = EQ.par.reduce((s, r) => s + +r[2].replace(/\D/g, ''), 0);
   ok(EQ.par.length && EQ.par[0][0] === 'FME' && soma === 50 && somaP === 50 && /100 %$/.test(EQ.par[EQ.par.length - 1][3]), `Equipamentos: Pareto por código e total por catálogo iguais à soma das paradas do equipamento (${soma} min)`);
