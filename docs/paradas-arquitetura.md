@@ -341,3 +341,7 @@ Teste: `testes/tlote_origem.js`.
 ## 1.2.6 · 13/11/2026
 
 Ficha da parada: a ordem aparece com o número e o botão da ficha da ordem ao lado (antes só o botão "Ficha").
+
+## 1.2.8 · Mapa de calor (13/11/2026, Fase 6 da auditoria)
+
+Visão geral › 04 Análises complementares › grupo D "Mapa de calor": minutos de parada das classes de perda, com os filtros da tela, pela hora de início × dia da semana (Seg–Dom) e × equipamento (os 10 com mais tempo). Cada célula mostra o número; cor mais forte = mais tempo. Parada sem horário de início fica fora (contada na nota). Nada gravado. Teste: `testes/tparadas_vg.js` (soma do mapa = soma das paradas com horário).

@@ -30,6 +30,11 @@ const LER = () => {
     ok(!difK.length, 'mesmos valores em todos os indicadores da referência' + (difK.length ? ': ' + difK.map(k => `${k} [${ref.kpis[k]}] → [${atual.kpis[k] || 'ausente'}]`).join(' ; ') : ` (${Object.keys(ref.kpis).length})`));
     for (const k of ['acao', 'decis', 'mes', 'eq', 'cl', 'tu', 'info']) ok(JSON.stringify(ref[k]) === JSON.stringify(atual[k]), `mesmo conteúdo: ${k}`);
   }
+  // 1.2.8 · mapa de calor: total das linhas = minutos das paradas de perda com horário (mesmos filtros); equipamento × hora com até 10 linhas
+  const HC = await o.evaluate(() => { const L = F.apply(eventosTodos()).filter(e => !NAO_PERDA.has(classe(e)) && /^\d{1,2}:/.test(e.inicio || '')), soma = Math.round(L.reduce((s, e) => s + e.minutos, 0));
+    const tot = sel => [...document.querySelectorAll(`[data-calor="${sel}"] tr`)].slice(1).map(r => +r.cells[r.cells.length - 1].innerText.replace(/\D/g, ''));
+    const d = tot('dia'), q = tot('eq'); return { soma, dia: d.reduce((a, b) => a + b, 0), linhasDia: d.length, linhasEq: q.length, celulas: document.querySelectorAll('[data-calor] td.hc').length, ver: PAGE.versao }; });
+  ok(HC.ver === '1.2.8' && HC.linhasDia === 7 && HC.linhasEq >= 1 && HC.linhasEq <= 10 && HC.celulas > 0 && Math.abs(HC.dia - HC.soma) <= 7, `mapa de calor: dia × hora soma ${HC.dia} min = ${HC.soma} min das paradas com horário (7 dias, ${HC.linhasEq} equipamento(s), número em cada célula)`);
   // 1.0.33 · gráficos (docs/graficos-padrao.md): "% acum." no Pareto, unidade em Ocorrências, eixo sem rótulos repetidos
   const gr = await o.evaluate(async () => { const r = {}; r.acum = /% acum\./.test(document.getElementById('chEq').textContent);
     const d = document.createElement('div'); d.innerHTML = vbars([{ k: 'a', label: 'a' }, { k: 'b', label: 'b' }], [{ nome: 'x', cor: '#888', v: [1, 3] }], { fmt: fmtMin });
@@ -55,7 +60,7 @@ const LER = () => {
       return out; });
     console.log('     layout:', JSON.stringify({ ...L, sit: L.sit.replace(/\s+/g, ' ').slice(0, 140) }));
     ok(L.secoes.join('|') === 'Indicadores principais|Prioridades|Análise visual|Análises complementares', 'Paradas 1.1.0: seções na ordem Indicadores, Prioridades, Análise visual, Complementares (faixa de filtros no topo)');
-    ok(L.grupos.join(' ') === 'B:1 C:1', `análises complementares em 2 grupos recolhíveis (${L.grupos.join(' ')}); evolução e Pareto de equipamentos na Análise visual`);
+    ok(L.grupos.join(' ') === 'B:1 C:1 D:2', `análises complementares em 3 grupos recolhíveis, com o mapa de calor (Paradas 1.2.8) (${L.grupos.join(' ')}); evolução e Pareto de equipamentos na Análise visual`);
     ok(/Tempo de parada/.test(L.sit) && /Ação prioritária/.test(L.sit) && /Próximas decisões/.test(L.sit) && /Máquina crítica/.test(L.sit), 'Indicadores e prioridades: tempo parado, máquina crítica, ação prioritária e decisões');
     ok(L.diag === 2 && L.exp >= 5, 'mês com mais e menos parada junto do gráfico mensal; Explorar com os atalhos das abas');
     ok(L.fechou && L.lembrou, 'grupo recolhido lembra a escolha (vac.grupos.paradas)');

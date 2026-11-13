@@ -228,6 +228,8 @@ td.n,th.n{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
  #main .pux-acts .b{flex:1 1 140px;justify-content:center}#main .pux-fres{grid-template-columns:1fr 1fr}#main .pux-fres .pux-falta{grid-column:1/-1}
  #main .filters .vk-mais{align-self:flex-end}}
 @media print{#main .pux-acts,#main .vk-mais,#main .pux-dica{display:none!important}#main .pux-tfix>.tw{max-height:none;overflow:visible}}
+/* 1.2.8 · mapa de calor */
+table.hcal{font-size:11.5px}table.hcal td.hc,table.hcal td.hc0{text-align:center;padding:3px 2px;min-width:22px;font-variant-numeric:tabular-nums}table.hcal td.hc0{background:var(--surface-2,transparent)}table.hcal th{padding:3px 2px}
 </style>
 <style>
 /* ===== vac-cabecalho v2 · barra do sistema + cabeçalho da página (igual em todas as páginas; não editar só numa) ===== */
@@ -1162,7 +1164,7 @@ const MATRIZ_PROPOSTA={"OUT": ["Tullip A", "Tullip B", "Packout", "Metro", "Cap 
    PARADAS · núcleo (pasta, base, fila de gravação, backups, cadastro, utilidades)
    ===================================================================================== */
 const PAGE={id:'paradas',titulo:'Paradas · Análise de falhas e paradas de máquina',tituloCurto:'Paradas',subtitulo:'Análise de falhas e paradas de máquina',
-  versao:'1.2.7',estado:'atualizacao',estadoNota:'Matriz, componentes e limite de microparada passam a vir só do Portal; eventos da Produção entram como sugestão.',baseFile:'paradas-base.json',backupDir:'00. Backups/Paradas',busca:q=>buscaPagina(q)};
+  versao:'1.2.8',estado:'atualizacao',estadoNota:'Matriz, componentes e limite de microparada passam a vir só do Portal; eventos da Produção entram como sugestão.',baseFile:'paradas-base.json',backupDir:'00. Backups/Paradas',busca:q=>buscaPagina(q)};
 const APP_VERSION=PAGE.versao;
 const CAD_FILE='vacutainer-cadastros.json',OEE_FILE='oee-vacutainer-base.json';
 const $=(s,r=document)=>r.querySelector(s),$$=(s,r=document)=>[...r.querySelectorAll(s)];
@@ -1891,11 +1893,21 @@ VIEWS.geral={html(){const all=eventosTodos();if(!all.length)return inicioVazio()
  <div class="pux-faixa" data-pux-faixa="complementar">
  ${vacLayout.grupo('paradas','B','Por classe de perda','Quais classes concentram o tempo?',`<div class="card">${secH('list','Por classe','tempo de parada (h ou min) e % acumulado · clique para filtrar')}<div id="chCl">${hbars(agg(perda,e=>classe(e)).sort((a,b)=>b.min-a.min).map(o=>({k:o.k,label:CLASSE[o.k][0],v:o.min,n:o.n,color:CLASSE[o.k][1]})),{pareto:1,sel:F.cls,onClick:1})}</div></div>`)}
  ${vacLayout.grupo('paradas','C','Turnos','Algum turno destoa?',`<div class="card">${secH('clock','Por turno','tempo de parada (h ou min) · ocorrências na dica de cada barra')}<div id="chTu">${hbars(agg(perda,e=>e.turno||'?').sort((a,b)=>a.k.localeCompare(b.k)).map(o=>({k:o.k,label:o.k,v:o.min,n:o.n})),{sel:F.turno,onClick:1})}</div></div>`)}
+ ${vacLayout.grupo('paradas','D','Mapa de calor','Em que hora, dia e equipamento a linha mais para?',`<div class="card" id="cardCalorDia">${secH('clock','Dia da semana × hora','minutos de parada pelo início · mesmos filtros da tela')}${mapaCalor(perda,'dia')}</div><div class="card" id="cardCalorEq">${secH('machine','Equipamento × hora','os 10 equipamentos com mais tempo · minutos pelo início')}${mapaCalor(perda,'eq')}</div>`)}
  <section class="vk-card pux-explorar"><b>Explorar dados</b><div class="row" style="gap:8px;flex-wrap:wrap">${[['eventos','Eventos'],['pareto','Pareto'],['equip','Equipamentos'],['recor','Recorrência'],['fila','Fila técnica'],['valid','Validação'],['acoes','Ações']].map(([t,n])=>`<button type="button" class="b" data-vk-go="${t}">${n}</button>`).join('')}</div></section></div>`},
  wire(){$$('[data-go]').forEach(b=>b.onclick=()=>App.go(b.dataset.go));vacLayout.ligar($('#main'),'paradas');$$('#main [data-vk-go]').forEach(b=>b.onclick=()=>App.go(b.dataset.vkGo));
   $$('#main [data-vk-f]').forEach(b=>b.onclick=()=>{const[k,v]=b.dataset.vkF.split('|');if(k==='mes'){F.de=v+'-01';F.ate=v+'-31'}else F[k]=F[k]===v?'':v;App.render()});const vt=$('#verTodas');if(vt)vt.onclick=e=>{e.preventDefault();verPendencias()};
   bindChart($('#chEq'),k=>{F.eq=F.eq===k?'':k;App.render()});bindChart($('#chCl'),k=>{F.cls=F.cls===k?'':k;App.render()});bindChart($('#chTu'),k=>{F.turno=F.turno===k?'':k;App.render()});
   bindChart($('#chMes'),k=>{if(F.de===k+'-01'){F.init()}else{F.de=k+'-01';F.ate=k+'-31'}App.render()});wireAtivos();wireInicio()}};
+/* 1.2.8 · Fase 6 · mapa de calor (13/11/2026): minutos de parada (classes de perda, mesmos filtros) por hora de início × dia da semana ou × equipamento.
+   Cada célula mostra o número (nunca só a cor); parada sem horário de início fica fora e é contada na nota. Nada é gravado. */
+function mapaCalor(L,modo){const hm=s=>{const m=/^(\d{1,2}):/.exec(s||'');return m?+m[1]:null},DS=['Seg','Ter','Qua','Qui','Sex','Sáb','Dom'];
+ const com=L.filter(e=>hm(e.inicio)!=null),sem=L.length-com.length;if(!com.length)return'<p class="small muted">Nenhuma parada com horário de início no período.</p>';
+ let lin;if(modo==='dia')lin=DS.map((n,i)=>({k:i,n}));else{const t=new Map();for(const e of com)t.set(e.equipamento||'?',(t.get(e.equipamento||'?')||0)+e.minutos);lin=[...t.entries()].sort((a,b)=>b[1]-a[1]).slice(0,10).map(([k])=>({k,n:Cad.eqNome?Cad.eqNome(k)||k:k}))}
+ const chave=e=>modo==='dia'?(new Date(e.dia+'T12:00:00').getDay()+6)%7:(e.equipamento||'?'),M=new Map();for(const e of com){const k=chave(e)+'|'+hm(e.inicio);M.set(k,(M.get(k)||0)+e.minutos)}
+ const hs=[...Array(24).keys()],mx=Math.max(1,...M.values()),tot=r=>hs.reduce((s,h)=>s+(M.get(r.k+'|'+h)||0),0);
+ const cel=v=>{if(!v)return'<td class="hc0"></td>';const p=Math.round(15+85*v/mx);return`<td class="hc" style="background:color-mix(in srgb,var(--crit) ${p}%,transparent);color:${p>55?'#fff':'var(--ink)'}" title="${esc(fmtMin(v))}">${Math.round(v)}</td>`};
+ return`<div class="tw"><table class="t hcal" data-calor="${modo}"><tr><th>${modo==='dia'?'Dia':'Equipamento'}</th>${hs.map(h=>`<th class="n">${String(h).padStart(2,'0')}</th>`).join('')}<th class="n">Total (min)</th></tr>${lin.map(r=>`<tr><td>${esc(r.n)}</td>${hs.map(h=>cel(M.get(r.k+'|'+h)||0)).join('')}<td class="n"><b>${Math.round(tot(r))}</b></td></tr>`).join('')}</table></div><p class="small muted">Minutos por hora de início da parada; cor mais forte = mais tempo parado.${sem?` ${sem} parada(s) sem horário de início ficaram fora.`:''}</p>`}
 /* pior e melhor mês, logo abaixo do gráfico de onde vêm (antes era a faixa "Diagnóstico rápido") */
 function parMeses(perda,meses){const T=meses.map(m=>({m,v:perda.filter(e=>e.dia.slice(0,7)===m).reduce((s,e)=>s+e.minutos,0)})),pior=T.length?T.reduce((a,b)=>b.v>a.v?b:a):null,melhor=T.length?T.reduce((a,b)=>b.v<a.v?b:a):null;
  if(T.length<2)return'';return`<div class="pux-meses"><button type="button" class="vk-dc" data-vk-f="mes|${pior.m}"><span class="l">Mês com mais parada</span><span class="v">${fmtMin(pior.v)}</span><span class="s">${esc(brM(pior.m))} · filtrar o mês</span></button><button type="button" class="vk-dc" data-vk-f="mes|${melhor.m}"><span class="l">Mês com menos parada</span><span class="v">${fmtMin(melhor.v)}</span><span class="s">${esc(brM(melhor.m))} · filtrar o mês</span></button></div>`}
