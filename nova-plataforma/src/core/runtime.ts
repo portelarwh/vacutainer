@@ -45,9 +45,7 @@ export function refreshEngine(id:ModuleId){const w=frames.get(id)?.contentWindow
 export async function connectEngine(id:ModuleId){const w=frames.get(id)?.contentWindow as any;if(!w?.vacPagina)throw new Error('Contrato indisponível.');await w.vacPagina.conectar(await (window as any).vacAppHost.safeFolder(id));}
 export function hasPending(){return[...frames.values()].some(f=>{try{const api=(f.contentWindow as any)?.vacPagina;return !api||api.pendente()}catch{return true}})}
 const embeddedCss=`
-:root{--bg:#f4f6f8!important;--surface:#fff!important;--surface-2:#f4f7f8!important;--ink:#192d35!important;--muted:#667b85!important;--accent:#147c71!important;--line:#dce5e9!important;--r:10px!important;--f-body:Inter,ui-sans-serif,system-ui,sans-serif!important;--f-display:Inter,ui-sans-serif,system-ui,sans-serif!important}
-:root[data-theme=dark]{--bg:#12232c!important;--surface:#1b303a!important;--surface-2:#203a46!important;--ink:#e5eff3!important;--muted:#a4b9c4!important;--line:#36515d!important}
-html,body{margin:0!important;padding:0!important;height:auto!important;min-height:0!important;min-width:0!important;font-family:Inter,ui-sans-serif,system-ui,sans-serif!important;background:var(--bg)!important}
+html,body{margin:0!important;padding:0!important;height:auto!important;min-height:0!important;min-width:0!important;font-family:var(--f-body)!important;background:var(--bg)!important}
 .vsuite,.vpage,nav.vtabs,#vacDemoBar,#sysNav,#vacGuiaBotao,body>.testbar{display:none!important}
 body>header,body>.top,body>.head,body>.sysbar,body>nav,#nav,#vdsTop,#vdsPag{display:none!important}
 body main,#main,main.wrap{max-width:none!important;width:auto!important;min-height:0!important;margin:0!important;padding:16px 20px!important}
