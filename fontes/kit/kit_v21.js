@@ -1236,6 +1236,8 @@ window.vacPagina = (() => {
     }).filter(c => c.label);
   }
   return { pronto, pendente, conectado, conectar, ir: irAba, abas, comandos,
+    descartar: () => window.__vacRuntimeDispose && window.__vacRuntimeDispose(),
+    bibliotecaCarregada: () => { if (typeof vacPdf !== 'undefined') vacPdf.instalar(); },
     comando: chave => { const el = document.getElementById(chave); if (!el) throw new Error('Comando indisponível: ' + chave); el.click(); },
     info: () => ({ versao: PAGE.versao, estado: document.querySelector('#stBase')?.textContent || '' }),
     abrirOrdem: n => vacFicha.abrir('ordem', String(n)),

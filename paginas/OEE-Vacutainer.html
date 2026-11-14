@@ -14942,12 +14942,12 @@ window.vacPagina = (() => {
       if (!pronto()) return true;
       if (rascunho && document.contains(rascunho) && rascunho.getClientRects().length) return true;
       switch (id()) {
-        case 'oee': return !!Store.S.dirty;
-        case 'portal': return !!Store.pending || !!Cad.fila.length;
+        case 'oee': return !!Store.S.dirty || !!Store.S.saving;
+        case 'portal': return !!Store.pending || !!Cad.fila.length || !!Cad.gravando;
         case 'perdas': return !!ST.pending;
-        case 'gel': return !!FS.pending.length;
+        case 'gel': return !!FS.pending.length || !!FS.busy;
         case 'projetos': return false;
-        default: return !!Store.queue.length;
+        default: return !!Store.queue.length || !!Store.saving;
       }
     } catch (e) { return true; } // Falha na consulta nunca libera a troca de pasta.
   }
@@ -15020,6 +15020,8 @@ window.vacPagina = (() => {
     }).filter(c => c.label);
   }
   return { pronto, pendente, conectado, conectar, ir: irAba, abas, comandos,
+    descartar: () => window.__vacRuntimeDispose && window.__vacRuntimeDispose(),
+    bibliotecaCarregada: () => { if (typeof vacPdf !== 'undefined') vacPdf.instalar(); },
     comando: chave => { const el = document.getElementById(chave); if (!el) throw new Error('Comando indisponível: ' + chave); el.click(); },
     info: () => ({ versao: PAGE.versao, estado: document.querySelector('#stBase')?.textContent || '' }),
     abrirOrdem: n => vacFicha.abrir('ordem', String(n)),

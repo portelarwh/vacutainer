@@ -12,7 +12,7 @@ export const frames=new Map<ModuleId,HTMLIFrameElement>();
 let storageListener:((event:StorageEvent)=>void)|null=null;
 let root:Directory|null=null,callbacks:HostCallbacks,session='real',mode=false,cad:Json|null=null;
 export function configureRuntime(demo:boolean,folder:Directory|null,identity:string,c:Json|null,cb:HostCallbacks){mode=demo;root=folder;session=identity;cad=c;callbacks=cb;
- const host={storage:(id:ModuleId,key:string,value:string|null,old:string|null)=>publishStorage(id,key,value,old),resize:(id:ModuleId,height:number)=>{const f=frames.get(id);if(f&&Math.abs(f.clientHeight-height)>1)f.style.height=height+'px'},search:()=>callbacks.search(),styles:embeddedCss,ir:(href:string)=>navigateHref(href),demonstrar:()=>callbacks.demonstrate(),pasta:async()=>{if(!root)throw new DOMException('Conecte a pasta no cabeçalho da plataforma.','AbortError');return root},safeFolder:async(id:ModuleId)=>{if(!root)throw new Error('Conecte a pasta.');const v=manifest.files.find(f=>f.id===id)!.version;const result=await protectFolder(root,FILES[id],v,()=>mayWrite(scopedStorage(),cad,id));if(result.readOnly)callbacks.status(id,{ready:true,pending:false,connected:false,readOnly:true,error:result.reason});policies.set(id,{readOnly:result.readOnly,reason:result.reason});return root},canWrite:(id:ModuleId)=>policies.has(id)&&!policies.get(id)!.readOnly&&mayWrite(scopedStorage(),cad,id),policy:(id:ModuleId)=>policies.get(id),get cadastro(){return cad},get usuario(){return mode?(cad?.usuarios||[]).find((u:Json)=>String(u.codigo)===(localStorage.getItem('vac.platform.demo.user')||'9001'))||null:sessionUser(scopedStorage(),cad)},status:(id:ModuleId,s:EngineStatus)=>callbacks.status(id,{...s,...(policies.get(id)?.readOnly?{readOnly:true,error:policies.get(id)!.reason}:{})}),changed:()=>callbacks.changed(),link:(id:ModuleId,route='')=>appLink(id,route),scope:identity};
+ const host={library:loadLibrary,storage:(id:ModuleId,key:string,value:string|null,old:string|null)=>publishStorage(id,key,value,old),resize:(id:ModuleId,height:number)=>{const f=frames.get(id);if(f&&Math.abs(f.clientHeight-height)>1)f.style.height=height+'px'},search:()=>callbacks.search(),styles:embeddedCss,ir:(href:string)=>navigateHref(href),demonstrar:()=>callbacks.demonstrate(),pasta:async()=>{if(!root)throw new DOMException('Conecte a pasta no cabeçalho da plataforma.','AbortError');return root},safeFolder:async(id:ModuleId)=>{if(!root)throw new Error('Conecte a pasta.');const v=manifest.files.find(f=>f.id===id)!.version;const result=await protectFolder(root,FILES[id],v,()=>mayWrite(scopedStorage(),cad,id));if(result.readOnly)callbacks.status(id,{ready:true,pending:false,connected:false,readOnly:true,error:result.reason});policies.set(id,{readOnly:result.readOnly,reason:result.reason});return root},canWrite:(id:ModuleId)=>policies.has(id)&&!policies.get(id)!.readOnly&&mayWrite(scopedStorage(),cad,id),policy:(id:ModuleId)=>policies.get(id),get cadastro(){return cad},get usuario(){return mode?(cad?.usuarios||[]).find((u:Json)=>String(u.codigo)===(localStorage.getItem('vac.platform.demo.user')||'9001'))||null:sessionUser(scopedStorage(),cad)},status:(id:ModuleId,s:EngineStatus)=>callbacks.status(id,{...s,...(policies.get(id)?.readOnly?{readOnly:true,error:policies.get(id)!.reason}:{})}),changed:()=>callbacks.changed(),link:(id:ModuleId,route='')=>appLink(id,route),scope:identity};
  (window as any).vacAppHost=host;
  if(demo)(window as any).vacDemoHost={id:identity,storage:{get length(){return memory.size},key:(i:number)=>[...memory.keys()][i]??null,getItem:(k:string)=>memory.get(k)??null,setItem:(k:string,v:string)=>{memory.set(k,v);if(k.includes('base.'))queueMicrotask(()=>callbacks.changed())},removeItem:(k:string)=>memory.delete(k)},base:location.href,link:appLink,navegar:(id:ModuleId,route:string)=>callbacks.navigate(id,undefined,route),sair:()=>callbacks.demonstrate(),reiniciar:()=>{if(confirm('Reiniciar o cenário fictício de todos os módulos?')){memory.clear();location.reload()}}};
  else delete(window as any).vacDemoHost;
@@ -36,10 +36,8 @@ function moveScenario(value:any):any{if(Array.isArray(value))return value.map(mo
  if(/^\d{4}-\d{2}$/.test(value)){const n=(+h.slice(0,4)-+ref.slice(0,4))*12+(+h.slice(5,7)-+ref.slice(5,7));const d=new Date(+value.slice(0,4),+value.slice(5,7)-1+n,1);return`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`}return value;
 }
 export async function engineHtml(id:ModuleId,route:string):Promise<string>{if(!mode&&root)await (window as any).vacAppHost.safeFolder(id);if(!textCache.has(id)){const bytes=Uint8Array.from(atob(compressed[id]),c=>c.charCodeAt(0));const stream=new Blob([bytes]).stream().pipeThrough(new DecompressionStream('gzip'));textCache.set(id,await new Response(stream).text())}
- for(const [name,bytes]of Object.entries(shared))if(!libraries[name])libraries[name]=await decode(bytes);
- const libraryScripts='<script>for(const code of '+JSON.stringify(['xlsx','jspdf','autotable'].map(k=>libraries[k])).replace(/</g,'\\u003c')+'){const s=document.createElement("script");s.textContent=code;document.head.appendChild(s)}<\/script>';
  const config={id,route,demo:mode,scope:session};const prelude='<script>('+runtimePrelude.toString()+')('+JSON.stringify(config).replace(/</g,'\\u003c')+');<\/script>';
- return textCache.get(id)!.replace(/<head(?:\s[^>]*)?>/i,m=>m+prelude+libraryScripts).replace('</head>','<style>'+embeddedCss+'</style></head>');
+ return textCache.get(id)!.replace(/<head(?:\s[^>]*)?>/i,m=>m+prelude).replace('</head>','<style>'+embeddedCss+'</style></head>');
 }
 export function routeEngine(id:ModuleId,tab:string,hash?:string,context?:{from:string;to:string;turno:string}){const w=frames.get(id)?.contentWindow as any;return w?.vacPagina?.ir(tab,hash,context)}
 export function openOrder(id:ModuleId,code:string){const w=frames.get(id)?.contentWindow as any;w?.vacPagina?.abrirOrdem(code)}
@@ -61,6 +59,20 @@ body main,#main,main.wrap{max-width:none!important;width:auto!important;min-heig
 // This function is serialized into srcdoc: it must not capture module variables.
 function runtimePrelude(config:{id:string;route:string;demo:boolean;scope:string}){
  const W=window as any,host=(parent as any).vacAppHost;W.__vacEmbedded=true;
+ let disposed=false;const intervals=new Set<number>(),timeouts=new Set<number>(),observers=new Set<any>();
+ const interval=W.setInterval.bind(W),timeout=W.setTimeout.bind(W);
+ W.setInterval=(fn:any,ms?:number,...args:any[])=>{const id=interval(fn,ms,...args);intervals.add(id);return id};
+ W.setTimeout=(fn:any,ms?:number,...args:any[])=>{let id:number;id=timeout((...a:any[])=>{timeouts.delete(id);if(!disposed)fn(...a)},ms,...args);timeouts.add(id);return id};
+ for(const kind of ['MutationObserver','ResizeObserver']){const Original=W[kind];if(Original)W[kind]=class extends Original{constructor(fn:any){super(fn);observers.add(this)}}}
+ W.__vacRuntimeDispose=()=>{disposed=true;for(const id of intervals)clearInterval(id);for(const id of timeouts)clearTimeout(id);for(const observer of observers)observer.disconnect();intervals.clear();timeouts.clear();observers.clear()};
+ const append=Node.prototype.appendChild;
+ Node.prototype.appendChild=function<T extends Node>(node:T):T{
+  const script=node as any,src=script.tagName==='SCRIPT'&&script.getAttribute('src');
+  const name=src&&(/xlsx(?:\.full)?(?:\.min)?\.js/i.test(src)?'xlsx':/autotable/i.test(src)?'autotable':/jspdf/i.test(src)?'jspdf':null);
+  if(name){script.removeAttribute('src');host.library(name).then((code:string)=>{if(disposed)return;script.textContent=code;append.call(this,node);W.vacPagina?.bibliotecaCarregada();script.dispatchEvent(new Event('load'))}).catch(()=>{if(!disposed)script.dispatchEvent(new Event('error'))});return node}
+  return append.call(this,node) as T;
+ };
+
  document.addEventListener('DOMContentLoaded',()=>{const style=document.createElement('style');style.textContent=host.styles;document.head.appendChild(style)},{once:true});
  const rawHistory={replace:history.replaceState.bind(history),push:history.pushState.bind(history)};
  for(const [k,fn] of [['replaceState',rawHistory.replace],['pushState',rawHistory.push]] as const)history[k]=function(state:any,title:string,url?:string|URL|null){const text=String(url??''),n=text.indexOf('#');return fn(state,title,'about:srcdoc'+(n<0?'':text.slice(n)))};
@@ -103,3 +115,6 @@ function publishStorage(origin:ModuleId|null,key:string,value:string|null,old:st
  for(const [id,frame]of frames){if(id===origin)continue;const win=frame.contentWindow;if(win)win.dispatchEvent(new StorageEvent('storage',{key,newValue:value,oldValue:old}));}
  if(['vac.cadastros','vac.sessao','vac.userId'].includes(key))callbacks.changed();
 }
+
+const libraryRequests=new Map<string,Promise<string>>();
+function loadLibrary(name:string){if(!Object.hasOwn(shared,name))return Promise.reject(new Error('Biblioteca não incorporada: '+name));if(!libraryRequests.has(name))libraryRequests.set(name,decode((shared as Record<string,string>)[name]));return libraryRequests.get(name)!}
