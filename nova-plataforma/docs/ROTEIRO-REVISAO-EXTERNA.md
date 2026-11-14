@@ -45,11 +45,9 @@ Build:
 
 Artefato: [dist/Plataforma.html](../dist/Plataforma.html).
 
-Os motores foram incorporados da revisão fixa `0769376e794506a33d1d847ede67b73ea013b59e`, sobre a main `1aca521`. O manifesto registra a origem. A integração na main mais recente não significa que os motores passaram a usar essa main: confira essa diferença e recomende como atualizar a baseline com segurança.
+Os motores agora vêm da árvore atual após o build da raiz, incluindo Linha 360°. Verifique `src/generated/manifest.json`: commit de compilação, último commit das fontes, arquivos sujos, versões e SHA-256. Não aceite o snapshot antigo 0769376 como prova de paridade.
 
-**Comparação obrigatória com a main de publicação:** ela já contém evoluções posteriores e o módulo Linha 360°, que não fazem parte deste snapshot. Identifique as lacunas antes de recomendar substituição do sistema atual.
-
-Quando disponíveis no repositório, leia também `CLAUDE.md`, `docs/cadastro-base-contrato.md`, `docs/centralizacao-configuracoes.md`, `docs/auditorias/registro-decisoes.md`, `docs/design-system.md`, as especificações de `docs/ux/` e `docs/revisao-operacional/PLANO.md`. Este último pode existir somente na revisão anterior ainda não publicada; sua ausência não deve ser interpretada como falha de instalação do projeto novo.
+Leia a correção da revisão em [pr76/ACOMPANHAMENTO.md](pr76/ACOMPANHAMENTO.md) e o [roteiro de corte](CORTE.md). O produto passa a ser a plataforma única; os HTML em paginas/ são fontes e referências dos testes. O corte continua pendente de homologação.
 
 ## 1. Completude funcional
 

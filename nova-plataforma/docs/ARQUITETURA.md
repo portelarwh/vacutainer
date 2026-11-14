@@ -4,7 +4,7 @@
 
 Uma aplicação React compilada com TypeScript/Vite. `vite-plugin-singlefile` incorpora JS e CSS. O verificador do build rejeita referências externas de scripts e folhas de estilo. O resultado é `dist/Plataforma.html`.
 
-A baseline operacional fica comprimida, com SHA-256 por motor no manifesto. As bibliotecas são comprimidas separadamente, sem oito cópias no arquivo. A execução carrega cada área sob demanda, em `srcdoc` com a origem herdada do aplicativo. Não são necessárias páginas HTML externas.
+A árvore atual dos motores fica comprimida, com SHA-256 por motor no manifesto. As bibliotecas são comprimidas separadamente, sem oito cópias no arquivo. A execução carrega cada área sob demanda, em `srcdoc` com a origem herdada do aplicativo. Não são necessárias páginas HTML externas.
 
 O carregador insere bibliotecas como texto de elementos script, evitando problemas de parsing de `</script>` e caracteres de código de páginas do Excel. JSON usado na fronteira HTML é escapado.
 
@@ -18,7 +18,7 @@ Em modo real, painel não conectado mostra ausência, não o cenário de demonst
 
 ## Navegação
 
-O registro em `modules.ts` define módulo, arquivo de origem, nome, grupo e abas. Rotas do aplicativo usam `#/modulo?tab=aba`. Links operacionais são encaminhados para a área correspondente; hashes de ficha, nova ação, reunião, ordem, lote e LP são preservados.
+O registro em `modules.ts` define módulo, arquivo de origem, nome e grupo. As abas e comandos vêm do contrato `vacPagina` do motor, sem lista paralela na casca. Rotas do aplicativo usam `#/modulo?tab=aba`. Links operacionais são encaminhados para a área correspondente; hashes de ficha, nova ação, reunião, ordem, lote e LP são preservados.
 
 As áreas abertas permanecem montadas, evitando descarte automático de rascunho. A barra do aplicativo e as abas principais são únicas. Os comandos operacionais de cabeçalho (nova ação, OS, sincronizar, backup e TV) são preservados no espaço do módulo.
 
@@ -33,3 +33,7 @@ Waste continua mensal. Estoque e fila são posições publicadas; não são tran
 Um novo módulo precisa de registro, contrato de exports, política de gravação e testes. Pode nascer diretamente em componentes React; não precisa de novo HTML de distribuição. A fronteira de compatibilidade permite converter telas antigas gradualmente, retirando seu motor empacotado quando o fluxo tiver paridade de cálculo, importação, persistência e relatórios.
 
 A primeira entrega não altera o modelo de gravação para arquivos por estação. Não declara ausência de conflitos em rede. Alterações em produtividade dos turnos e atribuição de madrugada precisam das decisões de negócio já solicitadas.
+
+## Correções PR76
+
+O build da plataforma primeiro compila a raiz; o empacotador lê os nove HTML atuais, sem transformações textuais e sem fallback de snapshot. A casca usa a sessão vacLogin e as permissões por ação do vacTravas. Antes da conexão, a versão é conferida; a escrita é protegida no realm do motor sem tornar os handles não clonáveis no IndexedDB. Os escopos de todas as pastas são preservados e a troca consulta reservas e fila durável. O plano de corte está em CORTE.md; nenhuma troca foi executada na pasta real.
