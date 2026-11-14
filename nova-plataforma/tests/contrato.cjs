@@ -9,7 +9,7 @@ const server=http.createServer((q,r)=>{r.setHeader('Content-Type','text/html');r
   const frame=await(await page.locator(`iframe[title="Módulo ${name}"]`).elementHandle()).contentFrame();
   await frame.waitForFunction(()=>window.vacPagina?.pronto(),{timeout:30000});
   assert.deepEqual(await frame.evaluate(()=>['pendente','conectado','conectar','ir','abas','abrirOrdem'].filter(k=>typeof vacPagina[k]!=='function')),[]);
-  console.log('ok contrato '+name);
+  const tabs=await frame.evaluate(()=>vacPagina.abas());await page.waitForFunction(()=>document.querySelectorAll('.module-tabs button').length>0||location.hash.includes('projetos'));const shell=await page.locator('.module-tabs button').allTextContents();assert.deepEqual(shell,tabs.map(t=>t.label),name+' abas completas');console.log('ok contrato e abas '+name+' ('+tabs.length+')');
  }
  assert.deepEqual(errors,[]);
 }finally{await browser?.close();server.close()}})().catch(e=>{console.error(e);process.exitCode=1});

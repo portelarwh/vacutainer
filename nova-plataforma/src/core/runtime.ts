@@ -1,8 +1,8 @@
 import {sessionUser,mayWrite} from './auth';
 import {protectFolder} from './compatibility';import manifest from '../generated/manifest.json';import {FILES} from './modules';
 import compressed from '../generated/engines.json';import shared from '../generated/libraries.json';import scenario from '../generated/scenario.json';
-import {moduleOf,type ModuleId} from './modules';import {today,sourceFrom,type Directory,type Json,type Source} from './data';
-export interface EngineStatus{ready:boolean;pending:boolean;connected:boolean;error?:string;readOnly?:boolean}
+import {moduleOf,type ModuleId,type Tab} from './modules';import {today,sourceFrom,type Directory,type Json,type Source} from './data';
+export interface EngineStatus{ready:boolean;pending:boolean;connected:boolean;error?:string;readOnly?:boolean;tabs?:Tab[];commands?:{id:string;label:string;disabled:boolean}[];info?:{versao:string;estado:string}}
 export interface HostCallbacks {navigate:(id:ModuleId,tab?:string,hash?:string)=>void;demonstrate:()=>void;status:(id:ModuleId,status:EngineStatus)=>void;changed:()=>void;search:()=>void}
 const libraries:Record<string,string>={};
 async function decode(encoded:string){const bytes=Uint8Array.from(atob(encoded),c=>c.charCodeAt(0));return new Response(new Blob([bytes]).stream().pipeThrough(new DecompressionStream('gzip'))).text()}
@@ -34,9 +34,10 @@ export async function engineHtml(id:ModuleId,route:string):Promise<string>{if(!t
  const config={id,route,demo:mode,scope:session};const prelude='<script>('+runtimePrelude.toString()+')('+JSON.stringify(config).replace(/</g,'\\u003c')+');<\/script>';
  return textCache.get(id)!.replace(/<head(?:\s[^>]*)?>/i,m=>m+prelude+libraryScripts).replace('</head>','<style>'+embeddedCss+'</style></head>');
 }
-export function routeEngine(id:ModuleId,tab:string,hash?:string,context?:{from:string;to:string;turno:string}){const w=frames.get(id)?.contentWindow as any;return w?.__vacBridge?.route(tab,hash,context)}
-export function openOrder(id:ModuleId,code:string){const w=frames.get(id)?.contentWindow as any;w?.__vacBridge?.order(code)}
-export function refreshEngine(id:ModuleId){const w=frames.get(id)?.contentWindow as any;return w?.__vacBridge?.refresh()}
+export function routeEngine(id:ModuleId,tab:string,hash?:string,context?:{from:string;to:string;turno:string}){const w=frames.get(id)?.contentWindow as any;return w?.vacPagina?.ir(tab,hash,context)}
+export function openOrder(id:ModuleId,code:string){const w=frames.get(id)?.contentWindow as any;w?.vacPagina?.abrirOrdem(code)}
+export function refreshEngine(id:ModuleId){const w=frames.get(id)?.contentWindow as any;return w?.vacPagina?.atualizar()}
+export async function connectEngine(id:ModuleId){const w=frames.get(id)?.contentWindow as any;if(!w?.vacPagina)throw new Error('Contrato indisponível.');await w.vacPagina.conectar(await (window as any).vacAppHost.safeFolder(id));}
 export function hasPending(){return[...frames.values()].some(f=>{try{const api=(f.contentWindow as any)?.vacPagina;return !api||api.pendente()}catch{return true}})}
 const embeddedCss=`
 :root{--bg:#f4f6f8!important;--surface:#fff!important;--surface-2:#f4f7f8!important;--ink:#192d35!important;--muted:#667b85!important;--accent:#147c71!important;--line:#dce5e9!important;--r:10px!important;--f-body:Inter,ui-sans-serif,system-ui,sans-serif!important;--f-display:Inter,ui-sans-serif,system-ui,sans-serif!important}
@@ -72,10 +73,11 @@ function runtimePrelude(config:{id:string;route:string;demo:boolean;scope:string
  document.addEventListener('keydown',e=>{if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='k'){e.preventDefault();e.stopImmediatePropagation();host.search()}},true);
  const nativeOpen=window.open.bind(window);window.open=((url?:string|URL,target?:string,features?:string)=>{if(url&&/\.html(?:[?#]|$)/i.test(String(url))&&!/^blob:|^data:/i.test(String(url))){host.ir(String(url));return null}return nativeOpen(url,target,features)}) as typeof window.open;
  document.addEventListener('click',e=>{const a=(e.target as Element)?.closest?.('a[href]');if(!a||a.hasAttribute('download')||e.ctrlKey||e.metaKey)return;const h=a.getAttribute('href')||'';if(/\.html(?:[?#]|$)/i.test(h)){e.preventDefault();e.stopImmediatePropagation();host.ir(h)}},true);
+ function report(){try{host.status(config.id,{ready:true,pending:pending(),connected:connected(),tabs:api().abas(),commands:api().comandos(),info:api().info()})}catch(e){host.status(config.id,{ready:true,pending:true,connected:false,error:(e as Error).message})}}
  let attempts=0;const timer=setInterval(()=>{if(!ready()){if(++attempts>150){clearInterval(timer);host.status(config.id,{ready:false,pending:false,connected:false,error:'O módulo não concluiu a abertura.'})}return}clearInterval(timer);
   document.documentElement.dataset.theme=(parent.document.documentElement.dataset.theme||'light');
-  route('',config.route||undefined);host.status(config.id,{ready:true,pending:pending(),connected:connected()});
-  setInterval(()=>host.status(config.id,{ready:true,pending:pending(),connected:connected()}),1800);
+  route('',config.route||undefined);report();
+  setInterval(()=>report(),1800);
  },200);
  window.addEventListener('beforeunload',e=>{if(pending()){e.preventDefault();e.returnValue=''}});
 }
