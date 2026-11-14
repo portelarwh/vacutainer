@@ -9,7 +9,7 @@ const SUITE = ['tds', 'tlote_origem', 'tpermissoes', 'tprefs', 'tcalendario', 't
 // instáveis conhecidas (CLAUDE.md › Pendências): rodam de novo uma vez antes de contar como falha
 const INSTAVEL = new Set([]);   /* 13/11/2026: o tz deixou de ser instável (esperava o redesenho do formulário) */
 // precisam de algo que pode faltar no ambiente: sem isso, "não verificado"
-const PRECISA = { tmeta: () => { try { require.resolve('xlsx'); return ''; } catch (e) { return 'falta o pacote npm xlsx'; } } };
+const PRECISA = { tmeta: () => fs.existsSync(path.join(AQUI,'../paginas/lib/xlsx.full.min.js')) ? '' : 'falta a SheetJS local' };
 const pedidas = process.argv.slice(2).map(x => x.replace(/\.js$/, ''));
 const shard = process.env.TEST_SHARD ? process.env.TEST_SHARD.split('/').map(Number) : null;
 if(shard && !(shard.length===2 && shard.every(Number.isInteger) && shard[0]>=1 && shard[0]<=shard[1]))throw new Error('TEST_SHARD deve ser N/T, com 1 <= N <= T');

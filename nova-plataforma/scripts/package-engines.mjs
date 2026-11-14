@@ -19,7 +19,7 @@ for(const [id,file] of Object.entries(files)){
  manifest.files.push({id,path:'paginas/'+file,version,sha256:createHash('sha256').update(bytes).digest('hex'),bytes:bytes.length});
 }
 const shared={};
-for(const [name,file] of Object.entries({xlsx:'nova-plataforma/vendor/xlsx-0.20.3.full.min.js',jspdf:'paginas/lib/jspdf.umd.min.js',autotable:'paginas/lib/jspdf.plugin.autotable.min.js'}))shared[name]=gzipSync(readFileSync(path.join(root,file)),{mtime:0}).toString('base64');
+for(const [name,file] of Object.entries({xlsx:'paginas/lib/xlsx.full.min.js',jspdf:'paginas/lib/jspdf.umd.min.js',autotable:'paginas/lib/jspdf.plugin.autotable.min.js'}))shared[name]=gzipSync(readFileSync(path.join(root,file)),{mtime:0}).toString('base64');
 for(const [file,value]of Object.entries({'libraries.json':shared,'engines.json':data,'manifest.json':manifest}))writeFileSync(path.join(out,file),JSON.stringify(value,null,file==='manifest.json'?2:0)+'\n');
 writeFileSync(path.join(out,'scenario.json'),readFileSync(path.join(root,'fontes/kit/demo_cenario.json')));
 console.log('9 motores da árvore atual · '+manifest.revision.slice(0,7));
