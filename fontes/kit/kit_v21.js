@@ -1027,7 +1027,7 @@ const VAC_PODE_MAPA = {
   }
 };
 VAC_PODE_MAPA.linha = VAC_PODE_MAPA.equip;
-function vacPodeAqui(fn) { if (typeof vacPode !== 'function' || typeof PAGE === 'undefined' || !PAGE) return true; try { return vacPode(VAC_PODE_MOD[PAGE.id] || PAGE.id, fn); } catch (e) { return true; } }
+function vacPodeAqui(fn) { if (window.__vacEmbedded && !['ver','exportar'].includes(fn) && !vacLogin.sessao()) return false; if (typeof vacPode !== 'function' || typeof PAGE === 'undefined' || !PAGE) return true; try { return vacPode(VAC_PODE_MOD[PAGE.id] || PAGE.id, fn); } catch (e) { return true; } }
 const vacTravas = (() => {
   let agendado = 0;
   const motivo = fn => { let p = null; try { p = typeof vacPerfil === 'function' ? vacPerfil() : null; } catch (e) { } return `Seu perfil${p && p.nome ? ' (' + p.nome + ')' : ''} não permite ${VAC_PODE_TXT[fn] || fn} nesta página. Quem muda o perfil é o administrador, no Portal.`; };
@@ -1133,3 +1133,6 @@ const vacPrefs = (() => {
     document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') sincronizar({ semRecarregar: true }); }); }
   return { sincronizar, mudou, registrar, restaurar, ler, CHAVE, get ultimo() { return ultimo; }, _fontes: fontes };
 })();
+
+// API de autenticação da casca: a senha e a sessão continuam pertencendo ao vacLogin.
+window.vacAutenticacao = { abrir: op => vacLogin.abrir(op), sessao: () => vacLogin.sessao(), sair: () => vacLogin.sair() };

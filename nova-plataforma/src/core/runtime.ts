@@ -1,3 +1,4 @@
+import {sessionUser,mayWrite} from './auth';
 import {protectFolder} from './compatibility';import manifest from '../generated/manifest.json';import {FILES} from './modules';
 import compressed from '../generated/engines.json';import shared from '../generated/libraries.json';import scenario from '../generated/scenario.json';
 import {moduleOf,type ModuleId} from './modules';import {today,sourceFrom,type Directory,type Json,type Source} from './data';
@@ -9,7 +10,7 @@ const memory=new Map<string,string>(),textCache=new Map<string,string>();
 export const frames=new Map<ModuleId,HTMLIFrameElement>();
 let root:Directory|null=null,callbacks:HostCallbacks,session='real',mode=false,cad:Json|null=null;
 export function configureRuntime(demo:boolean,folder:Directory|null,identity:string,c:Json|null,cb:HostCallbacks){mode=demo;root=folder;session=identity;cad=c;callbacks=cb;
- const host={search:()=>callbacks.search(),styles:embeddedCss,ir:(href:string)=>navigateHref(href),demonstrar:()=>callbacks.demonstrate(),pasta:async()=>{if(!root)throw new DOMException('Conecte a pasta no cabeçalho da plataforma.','AbortError');return root},safeFolder:async(id:ModuleId)=>{if(!root)throw new Error('Conecte a pasta.');const v=manifest.files.find(f=>f.id===id)!.version;const result=await protectFolder(root,FILES[id],v);if(result.readOnly)callbacks.status(id,{ready:true,pending:false,connected:false,readOnly:true,error:result.reason});return result.folder},get cadastro(){return cad},get usuario(){let id='';try{id=localStorage.getItem(mode?'vac.platform.demo.user':'vac.platform.user')||(mode?'9001':'')}catch{}return(cad?.usuarios||[]).find((u:Json)=>String(u.codigo)===id)||null},status:(id:ModuleId,s:EngineStatus)=>callbacks.status(id,s),changed:()=>callbacks.changed(),link:(id:ModuleId,route='')=>appLink(id,route),scope:identity};
+ const host={search:()=>callbacks.search(),styles:embeddedCss,ir:(href:string)=>navigateHref(href),demonstrar:()=>callbacks.demonstrate(),pasta:async()=>{if(!root)throw new DOMException('Conecte a pasta no cabeçalho da plataforma.','AbortError');return root},safeFolder:async(id:ModuleId)=>{if(!root)throw new Error('Conecte a pasta.');const v=manifest.files.find(f=>f.id===id)!.version;const result=await protectFolder(root,FILES[id],v,()=>mayWrite(scopedStorage(),cad,id));if(result.readOnly)callbacks.status(id,{ready:true,pending:false,connected:false,readOnly:true,error:result.reason});return result.folder},get cadastro(){return cad},get usuario(){return mode?(cad?.usuarios||[]).find((u:Json)=>String(u.codigo)===(localStorage.getItem('vac.platform.demo.user')||'9001'))||null:sessionUser(scopedStorage(),cad)},status:(id:ModuleId,s:EngineStatus)=>callbacks.status(id,s),changed:()=>callbacks.changed(),link:(id:ModuleId,route='')=>appLink(id,route),scope:identity};
  (window as any).vacAppHost=host;
  if(demo)(window as any).vacDemoHost={id:identity,storage:{get length(){return memory.size},key:(i:number)=>[...memory.keys()][i]??null,getItem:(k:string)=>memory.get(k)??null,setItem:(k:string,v:string)=>{memory.set(k,v);if(k.includes('base.'))queueMicrotask(()=>callbacks.changed())},removeItem:(k:string)=>memory.delete(k)},base:location.href,link:appLink,navegar:(id:ModuleId,route:string)=>callbacks.navigate(id,undefined,route),sair:()=>callbacks.demonstrate(),reiniciar:()=>{if(confirm('Reiniciar o cenário fictício de todos os módulos?')){memory.clear();location.reload()}}};
  else delete(window as any).vacDemoHost;
@@ -56,7 +57,7 @@ function runtimePrelude(config:{id:string;route:string;demo:boolean;scope:string
  for(const [k,fn] of [['replaceState',rawHistory.replace],['pushState',rawHistory.push]] as const)history[k]=function(state:any,title:string,url?:string|URL|null){const text=String(url??''),n=text.indexOf('#');return fn(state,title,'about:srcdoc'+(n<0?'':text.slice(n)))};
  if(config.route)location.hash=config.route.startsWith('#')?config.route:'#'+config.route;
  if(!config.demo){
-  const raw=window.localStorage,prefix='vac.app.'+config.scope+'.',methods={getItem(k:string){if(k==='vac.cadastros')return host.cadastro?JSON.stringify(host.cadastro):null;if(k==='vac.user')return host.usuario?.nome||raw.getItem(prefix+k);if(k==='vac.userId')return host.usuario?.codigo||raw.getItem(prefix+k);return raw.getItem(prefix+k)},setItem(k:string,v:string){raw.setItem(prefix+k,String(v))},removeItem(k:string){raw.removeItem(prefix+k)},key(i:number){return Object.keys(raw).filter(k=>k.startsWith(prefix))[i]?.slice(prefix.length)??null}};
+  const raw=window.localStorage,prefix='vac.app.'+config.scope+'.',methods={getItem(k:string){if(k==='vac.cadastros')return host.cadastro?JSON.stringify(host.cadastro):null;return raw.getItem(prefix+k)},setItem(k:string,v:string){raw.setItem(prefix+k,String(v));if(k==='vac.sessao'||k==='vac.userId')host.changed()},removeItem(k:string){raw.removeItem(prefix+k)},key(i:number){return Object.keys(raw).filter(k=>k.startsWith(prefix))[i]?.slice(prefix.length)??null}};
   Object.defineProperty(window,'localStorage',{configurable:true,get:()=>new Proxy(methods,{get:(t,k)=>k==='length'?Object.keys(raw).filter(x=>x.startsWith(prefix)).length:typeof k==='string'&&k in t?(t as any)[k]:methods.getItem(String(k)),set:(_,k,v)=>{methods.setItem(String(k),v);return true}})});
   const op=indexedDB.open.bind(indexedDB),del=indexedDB.deleteDatabase.bind(indexedDB);indexedDB.open=(n:string,v?:number)=>v===undefined?op(prefix+n):op(prefix+n,v);indexedDB.deleteDatabase=(n:string)=>del(prefix+n);
   W.showDirectoryPicker=()=>host.pasta();
@@ -105,3 +106,6 @@ function runtimePrelude(config:{id:string;route:string;demo:boolean;scope:string
  },200);
  window.addEventListener('beforeunload',e=>{if(pending()){e.preventDefault();e.returnValue=''}});
 }
+
+function scopedStorage(){return{getItem:(key:string)=>localStorage.getItem('vac.app.'+session+'.'+key)}}
+export function currentUser(){return mode?(window as any).vacAppHost?.usuario:sessionUser(scopedStorage(),cad)}
