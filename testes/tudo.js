@@ -11,7 +11,9 @@ const INSTAVEL = new Set([]);   /* 13/11/2026: o tz deixou de ser instável (esp
 // precisam de algo que pode faltar no ambiente: sem isso, "não verificado"
 const PRECISA = { tmeta: () => { try { require.resolve('xlsx'); return ''; } catch (e) { return 'falta o pacote npm xlsx'; } } };
 const pedidas = process.argv.slice(2).map(x => x.replace(/\.js$/, ''));
-const lista = pedidas.length ? pedidas : SUITE;
+const shard = process.env.TEST_SHARD ? process.env.TEST_SHARD.split('/').map(Number) : null;
+if(shard && !(shard.length===2 && shard.every(Number.isInteger) && shard[0]>=1 && shard[0]<=shard[1]))throw new Error('TEST_SHARD deve ser N/T, com 1 <= N <= T');
+const lista = (pedidas.length ? pedidas : SUITE).filter((_,i)=>!shard||i%shard[1]===shard[0]-1);
 const R = [];
 const roda = t => { const ini = Date.now(); const r = spawnSync(process.execPath, [path.join(AQUI, t + '.js')], { cwd: path.join(AQUI, '..'), encoding: 'utf8', timeout: 15 * 60e3, maxBuffer: 64 << 20 });
   const out = (r.stdout || '') + (r.stderr || ''); const falhas = out.split('\n').filter(l => /^FALHA/.test(l)); const nv = out.split('\n').filter(l => /^NÃO VERIFICADO/.test(l));

@@ -1158,12 +1158,12 @@ window.vacPagina = (() => {
       if (!pronto()) return true;
       if (rascunho && document.contains(rascunho) && rascunho.getClientRects().length) return true;
       switch (id()) {
-        case 'oee': return !!Store.S.dirty;
-        case 'portal': return !!Store.pending || !!Cad.fila.length;
+        case 'oee': return !!Store.S.dirty || !!Store.S.saving;
+        case 'portal': return !!Store.pending || !!Cad.fila.length || !!Cad.gravando;
         case 'perdas': return !!ST.pending;
-        case 'gel': return !!FS.pending.length;
+        case 'gel': return !!FS.pending.length || !!FS.busy;
         case 'projetos': return false;
-        default: return !!Store.queue.length;
+        default: return !!Store.queue.length || !!Store.saving;
       }
     } catch (e) { return true; } // Falha na consulta nunca libera a troca de pasta.
   }
@@ -1179,11 +1179,12 @@ window.vacPagina = (() => {
   }
   async function conectar(dir) {
     if (!dir) throw new Error('Pasta não informada.');
+    if (window.__vacEmbedded) dir = structuredClone(dir);
     switch (id()) {
       case 'oee': await connectFolder(dir, false); if (conectado()) document.querySelector('#wFolder')?.closest('.overlay')?.remove(); break;
       case 'portal': await Store.connect(dir); await App.onConnect(); break;
       case 'perdas': await connectDir(dir, { ask: false }); break;
-      case 'gel': await fsChooseBase(dir); break;
+      case 'gel': await fsUse(dir, { create: false }); break;
       case 'projetos': return;
       default: await Store.usar(dir);
     }

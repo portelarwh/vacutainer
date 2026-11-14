@@ -15,7 +15,7 @@ export function sourceFrom(id:ModuleId,input:unknown):Source{
  if((expected[id]||[]).some(k=>!z.array(z.record(z.unknown())).safeParse(ex[k]).success))return{id,state:'incompativel',message:'Resumo sem as listas esperadas para este módulo.'};
  return{id,state:'ok',exports:ex,updated:b.updatedAt||b.lastModifiedAt||b.revAt||ex.geradoEm||ex.generatedAt,revision:b.rev??b.databaseVersion};
 }
-export interface Directory {name:string;getDirectoryHandle(name:string,options?:{create?:boolean}):Promise<Directory>;getFileHandle(name:string):Promise<{getFile():Promise<File>}>;queryPermission?(options:{mode:string}):Promise<string>;requestPermission?(options:{mode:string}):Promise<string>}
+export interface Directory {isSameEntry?:(handle:Directory)=>Promise<boolean>;name:string;getDirectoryHandle(name:string,options?:{create?:boolean}):Promise<Directory>;getFileHandle(name:string):Promise<{getFile():Promise<File>}>;queryPermission?(options:{mode:string}):Promise<string>;requestPermission?(options:{mode:string}):Promise<string>}
 export async function readSources(root:Directory):Promise<{sources:Source[];cad:Json|null}>{
  let dir:Directory;try{dir=await root.getDirectoryHandle('00. Bases')}catch(e){if((e as Error).name!=='NotFoundError')throw e;dir=root}
  const sources=await Promise.all(Object.entries(FILES).filter(([id])=>id!=='projetos').map(async([key,file])=>{const id=key as ModuleId;try{const f=await(await dir.getFileHandle(file)).getFile();return sourceFrom(id,JSON.parse(await f.text()))}catch(e){return{id,state:(e as Error).name==='NotFoundError'?'ausente':'erro',message:(e as Error).name==='NotFoundError'?'Base não encontrada.':String((e as Error).message)} as Source}}));

@@ -1782,7 +1782,7 @@ async function readModules(force){
 function saveSysPath(id,html){const list=systems().map(x=>x.id===id?{...x,html}:x);localStorage.setItem('vac.sistemas',JSON.stringify(list))}
 function adapt(s,d,mod){const f={oee:adaptOEE,gel:adaptGel,perdas:adaptPerdas,paradas:adaptParadas}[s.id]||adaptGeneric;const r=f(d);r.ex=exV1(d.exports)?d.exports:null;if(s.id==='paradas'&&exV1(d.exports)&&d.exports.cadastros)r.cadProp=d.exports.cadastros;r.sys=s;(r.pend||[]).forEach(p=>{if(!p.mod)p.mod=s.id});r.mod=mod;r.updatedAt=d.updatedAt||d.savedAt||d.lastSavedAt||d.lastModifiedAt||null;r.updatedBy=d.updatedBy||d.savedBy||d.lastModifiedBy||'';r.temExports=!!d.exports;return r}
 /* ----- severidade: no exports das páginas (exportsVersion 1) sev 1 = urgente, 2 = atenção.
-   Dentro do Portal a escala é 2 = urgente, 1 = atenção: converte aqui, na entrada (Portal 1.8.3). ----- */
+   Dentro do Portal vale a mesma escala: 1 = urgente, 2 = atenção (decisão PR76). ----- */
 const sevDoModulo=s=>+s===1?1:2;
 /* aPartirDe (opcional): a pendência só vale a partir desse dia (ex.: ação do Waste que vence sem nova gravação lá) */
 const pendDoModulo=(ex,mod)=>{const hoje=todayISO();return(ex&&Array.isArray(ex.pendencias)?ex.pendencias:[]).filter(p=>p&&p.txt&&(!p.aPartirDe||p.aPartirDe<=hoje)).map(p=>({sev:sevDoModulo(p.sev),mod,txt:String(p.txt),link:p.link||'',quando:p.quando||'',tipo:p.tipo||'',responsavel:p.responsavel||'',apoios:Array.isArray(p.apoios)?p.apoios:[],prazo:p.prazo||null,id:p.id||null}))};
@@ -5528,11 +5528,12 @@ window.vacPagina = (() => {
   }
   async function conectar(dir) {
     if (!dir) throw new Error('Pasta não informada.');
+    if (window.__vacEmbedded) dir = structuredClone(dir);
     switch (id()) {
       case 'oee': await connectFolder(dir, false); if (conectado()) document.querySelector('#wFolder')?.closest('.overlay')?.remove(); break;
       case 'portal': await Store.connect(dir); await App.onConnect(); break;
       case 'perdas': await connectDir(dir, { ask: false }); break;
-      case 'gel': await fsChooseBase(dir); break;
+      case 'gel': await fsUse(dir, { create: false }); break;
       case 'projetos': return;
       default: await Store.usar(dir);
     }

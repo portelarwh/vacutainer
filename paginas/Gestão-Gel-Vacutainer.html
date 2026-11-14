@@ -9172,11 +9172,12 @@ window.vacPagina = (() => {
   }
   async function conectar(dir) {
     if (!dir) throw new Error('Pasta não informada.');
+    if (window.__vacEmbedded) dir = structuredClone(dir);
     switch (id()) {
       case 'oee': await connectFolder(dir, false); if (conectado()) document.querySelector('#wFolder')?.closest('.overlay')?.remove(); break;
       case 'portal': await Store.connect(dir); await App.onConnect(); break;
       case 'perdas': await connectDir(dir, { ask: false }); break;
-      case 'gel': await fsChooseBase(dir); break;
+      case 'gel': await fsUse(dir, { create: false }); break;
       case 'projetos': return;
       default: await Store.usar(dir);
     }

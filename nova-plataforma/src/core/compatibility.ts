@@ -9,7 +9,7 @@ export async function protectFolder(root:Directory,file:string,version:string,ca
  for(const baseDir of [null,'00. Bases']){try{
   const dir=baseDir?await root.getDirectoryHandle(baseDir):root;
   const base=JSON.parse(await(await(await dir.getFileHandle(file)).getFile()).text());
-  const v=base.appVersion||base.exports?.appVersion;
+  const v=base.appVersion||base.applicationVersion||base.exports?.appVersion;
   if(v&&compareVersions(String(v),version)>0){readOnly=true;newer=String(v)}
  }catch(e){if((e as Error).name!=='NotFoundError')throw e}}
  const reason=readOnly?`Base ${newer} mais nova que o motor ${version}. Somente leitura; atualize a plataforma.`:'';
