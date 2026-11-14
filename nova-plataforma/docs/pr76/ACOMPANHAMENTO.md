@@ -21,3 +21,4 @@ A proteção de escrita no navegador intercepta a API no realm de cada motor. Os
 
 A suíte da raiz foi executada integralmente: 67 suítes, 12 passaram, 54 falharam e uma ficou sem verificação (xlsx ausente). A maioria das falhas é `ERR_BLOCKED_BY_ADMINISTRATOR` na navegação file://. Isso NÃO comprova falha do motor nem aprovação funcional; a alternativa HTTP local é registrada separadamente, sem substituir a homologação de file://.
 | 9 — preparação do corte | `tests/cutover.test.ts`: modelo antigo falhou; guia e roteiro novos passam | Somente documentação e demonstração do produto atualizadas. Corte NÃO EXECUTADO: aguarda conclusão dos testes e homologação autorizada. |
+| A3/A4 — rolagem/filtro | `tests/ux.test.ts`: vermelho com os dois filtros; verde após usar apenas o filtro do motor | Altura do iframe acompanha conteúdo por ResizeObserver. Cabeçalhos duplicados do vacShell foram ocultados; comandos continuam na barra da casca. |
