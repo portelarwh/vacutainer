@@ -1240,6 +1240,7 @@ window.vacPagina = (() => {
     bibliotecaCarregada: () => { if (typeof vacPdf !== 'undefined') vacPdf.instalar(); },
     comando: chave => { const el = document.getElementById(chave); if (!el) throw new Error('Comando indisponível: ' + chave); el.click(); },
     info: () => ({ versao: PAGE.versao, estado: document.querySelector('#stBase')?.textContent || '' }),
+    imprimir: () => { if (!vacPodeAqui('exportar')) throw new Error('Seu perfil não permite imprimir.'); window.print(); },
     abrirOrdem: n => vacFicha.abrir('ordem', String(n)),
     atualizar: () => { if (typeof vacAoVoltar === 'function') return vacAoVoltar(); },
     autenticar: op => vacLogin.abrir(op), sessao: () => vacLogin.sessao()

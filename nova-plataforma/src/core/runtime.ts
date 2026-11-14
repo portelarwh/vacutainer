@@ -92,7 +92,7 @@ function runtimePrelude(config:{id:string;route:string;demo:boolean;scope:string
  function route(tab:string,hash?:string,context?:any){return api().ir(tab,hash,context)}
  async function connect(){if(config.demo)return;return api().conectar(await host.safeFolder(config.id))}
  W.__vacBridge={route,pending,ready,connected,connect,refresh:()=>api().atualizar(),order:(code:string)=>api().abrirOrdem(code)};
- document.addEventListener('keydown',e=>{if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='k'){e.preventDefault();e.stopImmediatePropagation();host.search()}},true);
+ document.addEventListener('keydown',e=>{if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='p'){e.preventDefault();e.stopImmediatePropagation();api().imprimir();return}if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='k'){e.preventDefault();e.stopImmediatePropagation();host.search()}},true);
  const nativeOpen=window.open.bind(window);window.open=((url?:string|URL,target?:string,features?:string)=>{if(url&&/\.html(?:[?#]|$)/i.test(String(url))&&!/^blob:|^data:/i.test(String(url))){host.ir(String(url));return null}return nativeOpen(url,target,features)}) as typeof window.open;
  document.addEventListener('click',e=>{const a=(e.target as Element)?.closest?.('a[href]');if(!a||a.hasAttribute('download')||e.ctrlKey||e.metaKey)return;const h=a.getAttribute('href')||'';if(/\.html(?:[?#]|$)/i.test(h)){e.preventDefault();e.stopImmediatePropagation();host.ir(h)}},true);
  function report(){try{host.status(config.id,{ready:true,pending:pending(),connected:connected(),tabs:api().abas(),commands:api().comandos(),info:api().info()})}catch(e){host.status(config.id,{ready:true,pending:true,connected:false,error:(e as Error).message})}}
@@ -116,3 +116,5 @@ function publishStorage(origin:ModuleId|null,key:string,value:string|null,old:st
 
 const libraryRequests=new Map<string,Promise<string>>();
 function loadLibrary(name:string){if(!Object.hasOwn(shared,name))return Promise.reject(new Error('Biblioteca não incorporada: '+name));if(!libraryRequests.has(name))libraryRequests.set(name,decode((shared as Record<string,string>)[name]));return libraryRequests.get(name)!}
+
+export function printEngine(id:ModuleId){const api=(frames.get(id)?.contentWindow as any)?.vacPagina;if(!api)throw new Error('Aguarde o módulo abrir.');api.imprimir()}
