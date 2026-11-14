@@ -39,3 +39,9 @@ A suíte da raiz foi executada integralmente: 67 suítes, 12 passaram, 54 falhar
 - A SheetJS 0.20.3 usa uma única fonte em paginas/lib, com a mesma licença e hash já verificados; os testes de Meta e Excel da raiz também usam essa versão. O adapter Node do teste configura fs explicitamente.
 
 Contrato detalhado: [CONTRATO-MOTORES.md](../CONTRATO-MOTORES.md).
+
+## Encerramento da validação automatizada
+
+Execução final de `npm run test:all`: código 0; 31 testes unitários aprovados, 75 abas dos nove motores navegadas e testes integrados aprovados. As 67 suítes da raiz têm execução aprovada via HTTP local, com o reteste de Meta após corrigir o adapter Node da SheetJS. Logs sem edição em [evidencias/](evidencias/LEIA-ME.md).
+
+O manifesto final aponta 38b342340fb9e0d2f908b0109a358d0017937546 e informa dirtySources vazio. Resultado e commits em [RESULTADO.md](RESULTADO.md). Corte não executado; os itens de homologação real permanecem NÃO VERIFICADOS.
