@@ -6,7 +6,7 @@ Plataforma de páginas HTML de arquivo único que trabalham juntas numa **pasta 
 
 | Página | Arquivo | Base | Versão | Como editar |
 |---|---|---|---|---|
-| Portal (cadastro geral, Administração) | `Portal.html` | `portal-base.json` + `vacutainer-cadastros.json` | 1.9.36 | direto no HTML |
+| Portal (cadastro geral, Administração) | `Portal.html` | `portal-base.json` + `vacutainer-cadastros.json` | 1.9.37 | direto no HTML |
 | Produção (OEE, plano, ordens SAP) | `OEE-Vacutainer.html` | `oee-vacutainer-base.json` (+ `ordens-base.json`) | 2.4.74 | **NÃO editar o HTML**: editar `fontes/producao/` e rodar o build |
 | Waste (perdas por ordem, KKBC) | `Perdas-Ordem.html` | `perdas-base.json` | 1.12.8 | direto no HTML |
 | Gestão de Gel | `Gestão-Gel-Vacutainer.html` | `fifo-base.json` | 2.35 · **em atualização** | direto no HTML |
@@ -209,3 +209,5 @@ Lista única do que ficou para depois. O motivo e o gatilho de cada item estão 
 ## Estabilização NV-01–NV-05 (08/11/2026)
 
 Implementação e limites: `docs/estabilizacao-nv-01-05.md`. Teste novo `testes/tnv.js`, incluído em `testes/tudo.js`. Nenhum schema de negócio, código ou vigência foi alterado. Identidade de pasta e reservas são locais ao navegador; a homologação com pasta real e duas estações continua pendente.
+
+PR76: a plataforma única é o produto. As fontes atuais de `fontes/` e `paginas/` alimentam os motores incorporados; o único artefato de distribuição será `nova-plataforma/dist/Plataforma.html`, após homologação e corte documentado. `window.vacPagina` é o contrato público da casca. Portal 1.9.37: sev 1 = urgente, sev 2 = atenção também internamente, nos contadores e relatórios (decisão do responsável).

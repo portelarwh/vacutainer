@@ -40,9 +40,9 @@ const r=await p.evaluate(({gel,oee,waste})=>{
   const wr={kE:JSON.stringify(WE.kpis),kB:JSON.stringify(WB.kpis),pE:wTxt(WE),pB:wTxt(WB),brutoE:!!WE.bruto,brutoB:!!WB.bruto,amanha:WE.pend.some(p=>p.txt.includes('teste amanhã')),ontem:WE.pend.some(p=>p.txt.includes('teste ontem')),venc:+WE.kpis[3][1],sem:+WE.kpis[2][1]};
   const gelPendUrg=gel.ex.pendencias.filter(x=>x.sev===1).length,gelPendAt=gel.ex.pendencias.filter(x=>x.sev===2).length;
   return{gKpis:JSON.stringify(G.kpis)===JSON.stringify(gel.ex.kpis),gSerie:G.serie.reduce((s,x)=>s+x.value,0),gBruto:!!G.bruto,gbBruto:!!GB.bruto,
-   gUrg:G.pend.filter(x=>x.sev>=2).length,gAt:G.pend.filter(x=>x.sev<2).length,gelPendUrg,gelPendAt,
+   gUrg:G.pend.filter(x=>x.sev===1).length,gAt:G.pend.filter(x=>x.sev===2).length,gelPendUrg,gelPendAt,
    oKpis:JSON.stringify(O.kpis)===JSON.stringify(oee.exports.kpis),oPend:O.pend.length,oexPend:oee.exports.pendencias.length,
-   oUrg:O.pend.filter(x=>x.sev>=2).length,oexUrg:oee.exports.pendencias.filter(x=>x.sev===1).length,oBruto:!!O.bruto,obBruto:!!OB.bruto,
+   oUrg:O.pend.filter(x=>x.sev===1).length,oexUrg:oee.exports.pendencias.filter(x=>x.sev===1).length,oBruto:!!O.bruto,obBruto:!!OB.bruto,
    oSerie:O.serie.length,
    pa:{serie:PA.serie.map(x=>x.label+'='+x.value).join(','),sev:PA.pend.map(x=>x.sev).join(',')},v2:{bruto:V2.bruto,pend:V2.pend.length},
    w:W.kpis[0][2],wr}},{gel,oee,waste});
@@ -55,7 +55,7 @@ ok(r.oPend===r.oexPend&&r.oUrg===r.oexUrg,`OEE: ${r.oPend} pendências (${r.oUrg
 ok(!r.oBruto&&r.obBruto,'OEE: com exports não é "dados brutos"; sem exports é');
 ok(r.oSerie>0,`OEE: série por dia do exports (${r.oSerie} dias)`);
 ok(r.pa.serie==='set/26=120,out/26=80',`Paradas: série no Portal ${r.pa.serie}`);
-ok(r.pa.sev==='2,1','Paradas: sev 1 → urgente, sev 2 → atenção');
+ok(r.pa.sev==='1,2','Paradas: sev 1 → urgente, sev 2 → atenção');
 ok(r.v2.bruto&&r.v2.pend===0,'exportsVersion desconhecida: não usa o exports e marca "dados brutos"');
 ok(waste.futura,'Waste publica a ação que vence amanhã (com aPartirDe)');
 ok(!r.wr.amanha&&r.wr.ontem,'Portal: ação que vence amanhã ainda não aparece; a de ontem aparece');
