@@ -1,6 +1,7 @@
+import {protectFolder} from './compatibility';import manifest from '../generated/manifest.json';import {FILES} from './modules';
 import compressed from '../generated/engines.json';import shared from '../generated/libraries.json';import scenario from '../generated/scenario.json';
 import {moduleOf,type ModuleId} from './modules';import {today,sourceFrom,type Directory,type Json,type Source} from './data';
-export interface EngineStatus{ready:boolean;pending:boolean;connected:boolean;error?:string}
+export interface EngineStatus{ready:boolean;pending:boolean;connected:boolean;error?:string;readOnly?:boolean}
 export interface HostCallbacks {navigate:(id:ModuleId,tab?:string,hash?:string)=>void;demonstrate:()=>void;status:(id:ModuleId,status:EngineStatus)=>void;changed:()=>void;search:()=>void}
 const libraries:Record<string,string>={};
 async function decode(encoded:string){const bytes=Uint8Array.from(atob(encoded),c=>c.charCodeAt(0));return new Response(new Blob([bytes]).stream().pipeThrough(new DecompressionStream('gzip'))).text()}
@@ -8,7 +9,7 @@ const memory=new Map<string,string>(),textCache=new Map<string,string>();
 export const frames=new Map<ModuleId,HTMLIFrameElement>();
 let root:Directory|null=null,callbacks:HostCallbacks,session='real',mode=false,cad:Json|null=null;
 export function configureRuntime(demo:boolean,folder:Directory|null,identity:string,c:Json|null,cb:HostCallbacks){mode=demo;root=folder;session=identity;cad=c;callbacks=cb;
- const host={search:()=>callbacks.search(),styles:embeddedCss,ir:(href:string)=>navigateHref(href),demonstrar:()=>callbacks.demonstrate(),pasta:async()=>{if(!root)throw new DOMException('Conecte a pasta no cabeçalho da plataforma.','AbortError');return root},get cadastro(){return cad},get usuario(){let id='';try{id=localStorage.getItem(mode?'vac.platform.demo.user':'vac.platform.user')||(mode?'9001':'')}catch{}return(cad?.usuarios||[]).find((u:Json)=>String(u.codigo)===id)||null},status:(id:ModuleId,s:EngineStatus)=>callbacks.status(id,s),changed:()=>callbacks.changed(),link:(id:ModuleId,route='')=>appLink(id,route),scope:identity};
+ const host={search:()=>callbacks.search(),styles:embeddedCss,ir:(href:string)=>navigateHref(href),demonstrar:()=>callbacks.demonstrate(),pasta:async()=>{if(!root)throw new DOMException('Conecte a pasta no cabeçalho da plataforma.','AbortError');return root},safeFolder:async(id:ModuleId)=>{if(!root)throw new Error('Conecte a pasta.');const v=manifest.files.find(f=>f.id===id)!.version;const result=await protectFolder(root,FILES[id],v);if(result.readOnly)callbacks.status(id,{ready:true,pending:false,connected:false,readOnly:true,error:result.reason});return result.folder},get cadastro(){return cad},get usuario(){let id='';try{id=localStorage.getItem(mode?'vac.platform.demo.user':'vac.platform.user')||(mode?'9001':'')}catch{}return(cad?.usuarios||[]).find((u:Json)=>String(u.codigo)===id)||null},status:(id:ModuleId,s:EngineStatus)=>callbacks.status(id,s),changed:()=>callbacks.changed(),link:(id:ModuleId,route='')=>appLink(id,route),scope:identity};
  (window as any).vacAppHost=host;
  if(demo)(window as any).vacDemoHost={id:identity,storage:{get length(){return memory.size},key:(i:number)=>[...memory.keys()][i]??null,getItem:(k:string)=>memory.get(k)??null,setItem:(k:string,v:string)=>{memory.set(k,v);if(k.includes('base.'))queueMicrotask(()=>callbacks.changed())},removeItem:(k:string)=>memory.delete(k)},base:location.href,link:appLink,navegar:(id:ModuleId,route:string)=>callbacks.navigate(id,undefined,route),sair:()=>callbacks.demonstrate(),reiniciar:()=>{if(confirm('Reiniciar o cenário fictício de todos os módulos?')){memory.clear();location.reload()}}};
  else delete(window as any).vacDemoHost;
@@ -82,7 +83,7 @@ function runtimePrelude(config:{id:string;route:string;demo:boolean;scope:string
  let draft:Element|null=null;document.addEventListener('input',ev=>{const el=ev.target as Element;draft=el.closest('.overlay,.mod-bg,.modal.on,#mForm')||draft},true);
  function pending(){if(draft&&document.contains(draft)&&draft.getClientRects().length)return true;try{return !!evaluate(config.id==='oee'?'Store.S.dirty':config.id==='perdas'?'ST.pending':config.id==='gel'?'FS.pending.length':config.id==='portal'?'Store.pending||Cad.fila.length':'Store.queue.length')}catch{return false}}
  function connected(){try{return !!evaluate(config.id==='oee'?"Store.S.mode==='pasta'":config.id==='perdas'?"ST.mode==='pasta'":config.id==='gel'?"FS.base":config.id==='portal'?"Store.mode==='pasta'":'Store.dir&&Store.perm')}catch{return false}}
- async function connect(){if(config.demo)return;const h=await host.pasta();W.__vacRoot=h;try{
+ async function connect(){if(config.demo)return;const h=await host.safeFolder(config.id);W.__vacRoot=h;try{
   if(config.id==='oee'){await evaluate('connectFolder(__vacRoot,false)');if(evaluate("Store.S.mode==='pasta'"))document.querySelector('#wFolder')?.closest('.overlay')?.remove();}
   else if(config.id==='portal'){await evaluate('Store.connect(__vacRoot)');await evaluate('App.onConnect()')}
   else if(config.id==='perdas')await evaluate('connectDir(__vacRoot,{ask:false})');

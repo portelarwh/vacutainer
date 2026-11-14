@@ -9,3 +9,4 @@ Direção: a plataforma é o produto; `fontes/` e `paginas/` são as fontes dos 
 Os commits intermediários corrigem camadas dependentes. A aprovação funcional depende da suíte integrada final, não apenas dos testes unitários de cada camada.
 
 NÃO VERIFICADO nesta máquina: abertura `file://` no Chrome/Edge corporativo, SMB e concorrência entre duas estações. O corte depende desses testes na homologação; não foi autorizado testar nas bases da linha.
+| 2 — versão | `tests/compatibility.test.ts`: leitura de versão maior, comparação numérica e recusa de escrita; três testes passam | A proteção envolve todas as subpastas e reavalia a autorização a cada operação de escrita. Falha de leitura bloqueia conexão. |
