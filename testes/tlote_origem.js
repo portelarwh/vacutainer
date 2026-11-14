@@ -65,7 +65,7 @@ const PREP = () => {
   const pt = await c.newPage(); pt.on('pageerror', e => pe.push('Portal: ' + e.message));
   await pt.goto('file://' + RAIZ + 'paginas/Portal.html'); await pt.waitForTimeout(900);
   const AG = await pt.evaluate(A => { MOD.data.oee = Object.assign(MOD.data.oee || {}, { extra: { emProd: [], atual: A } }); const h = agoraCard(), d = document.createElement('div'); d.innerHTML = h; return { t: d.innerText.replace(/\s+/g, ' '), v: PAGE.versao }; }, X.atual);
-  ok(AG.v === '1.9.36' && /Lote L-502/.test(AG.t) && /100200302/.test(AG.t) && /60\.28\d peças\/h/.test(AG.t) && /falta 90\.000/.test(AG.t) && /término 11\/03 15:\d\d estimado/.test(AG.t) && /última caixa 11\/03 13:59/.test(AG.t),
+  ok(AG.v === '1.9.37' && /Lote L-502/.test(AG.t) && /100200302/.test(AG.t) && /60\.28\d peças\/h/.test(AG.t) && /falta 90\.000/.test(AG.t) && /término 11\/03 15:\d\d estimado/.test(AG.t) && /última caixa 11\/03 13:59/.test(AG.t),
     'Portal 1.9.33: cartão "Agora" com lote, ordem, ritmo, falta e término estimado do exports da Produção (' + AG.t.slice(0, 140) + '…)');
 
   // ---------- Waste 1.12.8: ordem antiga pelo exports (ordensHistorico/lotesHistorico), sem guardar planos nem servidor da Produção

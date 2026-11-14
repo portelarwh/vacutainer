@@ -306,3 +306,13 @@ Portal › Relatórios passa a listar todos os relatórios da plataforma, um blo
 - **Outros**: SQDCP (`#aba=sqdcp` da Produção), Projetos e Iniciativas.
 
 O relatório continua sendo gerado pela página dona (regra 1); o Portal só lista (`REL_CAT`, `REL_OUTROS`). Iniciativas, Equipamentos e Linha 360° não têm relatório próprio (impressão da tela). Relatório novo numa página entra no `REL_CAT`. O botão Relatórios da barra lateral (kit) vai para `#rel` (antes `#relatorios`, que o Portal não reconhecia). Teste: `testes/trelcompilado.js`.
+
+## 1.9.37 · Pendências e Minha fila numa tela só (13/11/2026)
+
+As abas "Minha fila" e "Pendências" viram uma só, **Pendências e ações** (decisões do usuário em 13/11/2026):
+- Visões: **Minhas** (abre sempre aqui), **Minha equipe**, **Sem responsável** e **Linha** (tudo da linha, de qualquer pessoa: a antiga aba Pendências).
+- Itens: as pendências de todas as páginas (as mesmas de antes, `allPend`, inclusive cadastro e versões) e as ações abertas de Iniciativas. Na visão Linha as ações começam só com as atrasadas; "Ver todas as ações (N)" mostra as outras.
+- Contadores por página que acompanham a visão (clicar filtra a página), agrupar por prazo ou por página, urgência escrita em cada pendência, botão "Relatório da linha" (o mesmo "Pendências da linha" de Portal › Relatórios).
+- `#pend` e a aba antiga guardada abrem a visão Linha; o contador de atrasadas continua na aba.
+
+Só leitura, como antes: cada item abre na página dona. Teste: `testes/tfila.js`.

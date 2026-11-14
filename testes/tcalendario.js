@@ -18,7 +18,7 @@ const errs = []; const ok = (c, m) => { console.log((c ? 'ok   ' : 'FALHA ') + m
     await new Promise(r => setTimeout(r, 300)); Cad.ui.sec = 'calendario'; App.show('cad'); await new Promise(r => setTimeout(r, 300));
     const lista = (document.querySelector('#cadMain table') || {}).innerText || '';
     return { ruim, bom, n: (Cad.D.calendario || []).length, lista: lista.replace(/\s+/g, ' '), ver: PAGE.versao, ajuda: typeof AJUDA_CAMPO['calendario.tipo'] === 'string' && typeof CAT_AJUDA.calendario === 'string' }; });
-  ok(P.ver === '1.9.36' && P.ruim.length && !P.bom.length, 'Portal 1.9.36: data fora do formato AAAA-MM-DD é recusada; data certa passa');
+  ok(P.ver === '1.9.37' && P.ruim.length && !P.bom.length, 'Portal 1.9.37: data fora do formato AAAA-MM-DD é recusada; data certa passa');
   ok(P.n === 2 && /25\/12\/2026/.test(P.lista) && /Sex/.test(P.lista) && /sem produção/i.test(P.lista) && /dia extra/i.test(P.lista) && /Natal/.test(P.lista) && P.ajuda, 'Portal: Calendário de produção com data, dia da semana, tipo e motivo; ⓘ nos campos e na categoria');
   await p.close();
 

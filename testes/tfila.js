@@ -48,6 +48,26 @@ const PREP = () => {
   await p.evaluate(() => { localStorage.removeItem('vac.userId'); localStorage.removeItem('vac.user'); Fila.seg = 'minhas'; App.render(); });
   ok(/Entre com o seu ID/.test(await p.evaluate(() => document.getElementById('main').innerText)), 'sem usuário: pede para entrar (item sem responsável nunca aparece em "Minhas")');
   await p.evaluate(() => { localStorage.setItem('vac.user', 'J. Lima'); localStorage.setItem('vac.userId', '1'); });
+  // 1.9.37 · Pendências e Minha fila numa tela só ("Pendências e ações"): abre em Minhas; Linha = tudo da linha, ações de início só as atrasadas
+  const U = await p.evaluate(() => ({ abas: [...document.querySelectorAll('#nav [data-t]')].map(b => b.dataset.t + '=' + b.textContent.trim()), seg0: (() => { App.show('geral'); return Fila.seg; })() }));
+  ok(!U.abas.some(x => /^pend=/.test(x)) && U.abas.some(x => /^fila=Pendências e ações/.test(x)) && U.seg0 === 'minhas', `uma aba só, "Pendências e ações", que abre em Minhas (${U.abas.join(' | ')})`);
+  await p.evaluate(() => App.show('pend')); await p.waitForTimeout(200);
+  const V = await p.evaluate(() => ({ tab: App.tab, seg: Fila.seg, on: (document.querySelector('#flSeg .on') || {}).textContent }));
+  ok(V.tab === 'fila' && V.seg === 'linha' && /^Linha/.test(V.on || ''), `#pend (antiga aba Pendências) abre a visão Linha (${V.on})`);
+  L = await lista();
+  const pillU = await p.evaluate(() => { const i = [...document.querySelectorAll('.fl-i')].find(x => /Classificar 4 eventos/.test(x.innerText)); return i && /atenção/.test(i.innerText); });
+  ok(L.includes('Ajustar guia EQ03') && L.includes('Classificar 4 eventos') && !L.includes('Trocar mola') && !L.includes('Sem dono') && !L.includes('Já feita') && pillU, `Linha: todas as pendências (urgência escrita: "atenção") e só as ações atrasadas (${L.join(' | ')})`);
+  ok(/Ver todas as ações \(4\)/.test(await p.evaluate(() => (document.getElementById('flTodas') || {}).textContent || '')), 'Linha: botão "Ver todas as ações (4)"');
+  await p.click('#flTodas'); await p.waitForTimeout(150); L = await lista();
+  ok(['Ajustar guia EQ03', 'Trocar mola', 'Apoio na limpeza', 'Sem dono'].every(x => L.includes(x)) && !L.includes('Já feita'), 'Ver todas as ações: as 4 abertas, de qualquer pessoa; concluída não entra');
+  await p.click('[data-fa="pagina"]'); await p.waitForTimeout(150);
+  const GP = await p.evaluate(() => [...document.querySelectorAll('h3.fl-g')].map(h => h.childNodes[0].textContent.trim()));
+  ok(GP.includes('Paradas') && GP.some(x => /Iniciativas/.test(x)), `agrupar por página (${GP.join(', ')})`);
+  const C = await p.evaluate(() => [...document.querySelectorAll('#flCont [data-fc]')].map(b => b.dataset.fc + ':' + b.querySelector('b').textContent));
+  ok(C.includes('paradas:1') && C.some(x => /^inic:4$/.test(x)), `contadores por página na visão escolhida (${C.join(' · ')})`);
+  await p.click('#flCont [data-fc="paradas"]'); await p.waitForTimeout(150); L = await lista();
+  ok(L.length === 1 && L[0] === 'Classificar 4 eventos', 'clicar no contador filtra a página');
+  await p.click('#flCont [data-fc="paradas"]'); await p.evaluate(() => { Fila.agr = 'prazo'; Fila.todas = false; Fila.seg = 'minhas'; App.render(); }); await p.waitForTimeout(150);
   // E10b
   await p.evaluate(() => App.show('reuniao')); await p.waitForTimeout(250);
   const k = () => p.evaluate(() => [...document.querySelectorAll('.reu-k .kpi')].map(x => x.querySelector('.l').textContent.replace(/\s+/g, ' ').trim() + '=' + x.querySelector('.v').textContent));

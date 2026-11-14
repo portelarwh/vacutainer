@@ -6,7 +6,7 @@ Plataforma de páginas HTML de arquivo único que trabalham juntas numa **pasta 
 
 | Página | Arquivo | Base | Versão | Como editar |
 |---|---|---|---|---|
-| Portal (cadastro geral, Administração) | `Portal.html` | `portal-base.json` + `vacutainer-cadastros.json` | 1.9.36 | direto no HTML |
+| Portal (cadastro geral, Administração) | `Portal.html` | `portal-base.json` + `vacutainer-cadastros.json` | 1.9.37 | direto no HTML |
 | Produção (OEE, plano, ordens SAP) | `OEE-Vacutainer.html` | `oee-vacutainer-base.json` (+ `ordens-base.json`) | 2.4.74 | **NÃO editar o HTML**: editar `fontes/producao/` e rodar o build |
 | Waste (perdas por ordem, KKBC) | `Perdas-Ordem.html` | `perdas-base.json` | 1.12.8 | direto no HTML |
 | Gestão de Gel | `Gestão-Gel-Vacutainer.html` | `fifo-base.json` | 2.35 · **em atualização** | direto no HTML |
@@ -67,7 +67,7 @@ node testes/tvigencias.js             # E2 do plano único: versão igual em tel
 node testes/tnumeros.js               # E3: vacNumero (decimal, milhar, SAP) nas páginas, preço do Gel com "12a" não grava, minutos/vezes do Forms no Paradas; código 1 se falhar
 node testes/tficha.js                 # E5: ficha da ordem/lote/LP (mesmos números dos exports nas 5 páginas), Ctrl K por índice (LX1 antes de LX10), cópia sem pasta, versão 2 recusada, #ficha=, ← Voltar; código 1 se falhar
 node testes/tplanner.js               # E6/E8: Iniciativas › Ações (base em 00. Bases, operações, duas estações, erro de leitura, tempos com transferência/espera/reabertura, exports, #nova= com aviso de ação parecida, KAS, links das outras páginas); código 1 se falhar
-node testes/tfila.js                  # E10: Portal › Minha fila (Minhas, Minha equipe pela área do cadastro, Sem responsável) e Reunião diária (dia/turno, granularidade, pauta, decisão, fotografia, encaminhar); código 1 se falhar
+node testes/tfila.js                  # E10: Portal › Pendências e ações (1.9.37: antiga Minha fila + Pendências; Minhas, Minha equipe pela área do cadastro, Sem responsável, Linha com só as ações atrasadas e "Ver todas", agrupar por prazo/página, contadores, #pend) e Reunião diária (dia/turno, granularidade, pauta, decisão, fotografia, encaminhar); código 1 se falhar
 node testes/tequip.js                 # E11: Equipamentos (ficha, OS do evento do Paradas sem cópia, TAG com vigência, anomalia → OS, Paradas mostra a OS); código 1 se falhar
 node testes/tpendencias.js            # C1: alterações pendentes sem perda entre abas (fila durável; trava da 2ª aba no Portal/Waste), base que some não vira vazia, formato desconhecido não grava, link de origem seguro, regravação em 24 h; código 1 se falhar
 node testes/tcorrecoes.js             # C2–C6: resumo do dia ao voltar à aba, link da anomalia, troca de usuário, ordem com zeros, sem dado de paradas ≠ 0, ação do grupo com todas as ordens, links da Reunião e do Pareto, saúde dos dados no Portal › Versões, ficha por pasta; código 1 se falhar
@@ -77,7 +77,7 @@ node testes/tprefs.js                 # Fase 5: layout da pessoa em 00. Bases/Pr
 node testes/tcalendario.js            # calendário de produção: Portal › Calendário de produção (data, tipo, motivo; validação) e a Produção aplicando pelo CadSync (dia travado no Plano do mês, dia com lançamento ignorado, inativar desfaz, exports.calendario com a origem); código 1 se falhar
 node testes/trelcompilado.js          # Portal › Relatórios (1.9.36): compilado por página (Portal, Produção, Waste, Gel, Paradas) e Outros (SQDCP, Projetos, Iniciativas); cada link abre a tela do relatório na página dona (#aba=reports&rel=<tipo>, #aba=relatorios, #relatorio); Relatórios da barra lateral leva até lá; código 1 se falhar
 node testes/tnv.js                    # NV-01–NV-05: isolamento por pasta, duas abas, cache homônimo, reserva em falha e saúde dos dados; dados fictícios
-node testes/tudo.js                   # a suíte inteira, uma por vez: passou / falhou / NÃO VERIFICADO (falta biblioteca ou pacote; não conta como aprovado); tz roda de novo uma vez; código 1 se alguma falhar
+node testes/tudo.js                   # a suíte inteira, uma por vez (--parte=N/4 roda só uma parte, como o CI): passou / falhou / NÃO VERIFICADO (falta biblioteca ou pacote; não conta como aprovado); tz roda de novo uma vez; código 1 se alguma falhar
 node testes/tportalfonte.js           # Fase 1 do briefing (09/11/2026): Parâmetros (Produção, Neste computador, arredondamento com vigência), Configurações da Produção só consulta, PRD-04, Trazer configurações (Produção e Gel), Gel ligado ao Portal com contas iguais; código 1 se falhar
 node testes/tturnos.js                # Fase 2 do briefing: turno não produtivo, habilitar no dia, produção fora de turno (continuidade D1), OEE reportado × real, a partir da data, POR-10; código 1 se falhar
 node testes/timportacao.js            # Fase 3 do briefing: Portal › Importação (sequência, status por dia, subseções), exports.importacoes, abas Importar → Portal, endereços diretos, Ordens reorganizadas; código 1 se falhar
@@ -102,7 +102,7 @@ node testes/tportal_vg.js             # Portal › Visão geral no padrão comum
 ```
 
 - O build usa substituições exatas (`R(antes, depois)`) sobre a base 2.0: se um trecho não for achado exatamente 1 vez, para com `ERRO`. Mudança na Produção = nova regra `R(...)` no `build.py` ou mudança nos `.js` de `fontes/producao/`.
-- CI (13/11/2026): `.github/workflows/testes.yml` roda em cada PR e na main: confere que `paginas/` bate com as fontes (`npm run build` não muda nada; a `Demonstracao.html` pelo conteúdo, com `python3 fontes/demo/conferir_demo.py`, porque o gzip muda com a versão do zlib) e roda `npm test` (`testes/tudo.js`); `package.json` com o Playwright fixo.
+- CI (13/11/2026): `.github/workflows/testes.yml` roda em cada PR e na main: confere que `paginas/` bate com as fontes (`npm run build` não muda nada; a `Demonstracao.html` pelo conteúdo, com `python3 fontes/demo/conferir_demo.py`, porque o gzip muda com a versão do zlib) e roda a suíte em 4 partes ao mesmo tempo (`node testes/tudo.js --parte=N/4`, partes montadas pelo `TEMPO` de cada teste no `tudo.js`; `--listar` mostra a parte sem rodar); `package.json` com o Playwright fixo. Teste novo que demore mais de 10 s: pôr o tempo no `TEMPO`.
 - Playwright e Chromium: `require('playwright')`; os testes usam `enterTest()` (Portal, Waste, Paradas) ou `Demo.enterExample()` (Produção) e bases sintéticas em `testes/bases/`. Amostras do SAP (descaracterizadas) em `testes/amostras/`. Prints vão para `testes/saida/` (fora do git).
 
 ## Regras da plataforma (não quebrar)
