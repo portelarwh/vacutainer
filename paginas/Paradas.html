@@ -1209,7 +1209,7 @@ const MATRIZ_PROPOSTA={"OUT": ["Tullip A", "Tullip B", "Packout", "Metro", "Cap 
    PARADAS · núcleo (pasta, base, fila de gravação, backups, cadastro, utilidades)
    ===================================================================================== */
 const PAGE={id:'paradas',titulo:'Paradas · Análise de falhas e paradas de máquina',tituloCurto:'Paradas',subtitulo:'Análise de falhas e paradas de máquina',
-  versao:'1.2.10',estado:'atualizacao',estadoNota:'Matriz, componentes e limite de microparada passam a vir só do Portal; eventos da Produção entram como sugestão.',baseFile:'paradas-base.json',backupDir:'00. Backups/Paradas',busca:q=>buscaPagina(q)};
+  versao:'1.2.11',estado:'atualizacao',estadoNota:'Matriz, componentes e limite de microparada passam a vir só do Portal; eventos da Produção entram como sugestão.',baseFile:'paradas-base.json',backupDir:'00. Backups/Paradas',busca:q=>buscaPagina(q)};
 const APP_VERSION=PAGE.versao;
 const CAD_FILE='vacutainer-cadastros.json',OEE_FILE='oee-vacutainer-base.json';
 const $=(s,r=document)=>r.querySelector(s),$$=(s,r=document)=>[...r.querySelectorAll(s)];
@@ -2375,6 +2375,7 @@ function abrirPareto(v){const p=String(v||'').split('|'),dt=x=>/^\d{4}-\d{2}-\d{
 function vacPastaAtual(){return Store.perm&&!Store.test?Store.dir:null}
 function rota(){let h=location.hash.slice(1);try{h=decodeURIComponent(h)}catch(e){}if(!h)return;if(h.startsWith('pareto='))return abrirPareto(h.slice(7));const[k,v]=h.split('=');
  if(k==='ordem'&&v){F.q=v;F.de=null;F.ate=null;return App.go('eventos')}
+ if(k==='relatorio'){try{history.replaceState(null,'',location.pathname+location.search)}catch(e){}return setTimeout(()=>{const r=$('#btnRel');if(r)r.click()},900)}   /* 1.2.11 · Portal › Relatórios (compilado) */
  if(k==='tv')return TV.abrir();if(k==='teste')return modoTeste();if(k==='aba'&&VIEWS[v])return App.go(v);if(k==='equipamento'&&v)return abrirEquip(v);if(k==='evento'&&v)return abrirEvento(v);
  if(k==='codigo'&&v){App.sel.guiaCod=v;return App.go('guia')}if(k==='formulario'&&v){App.go('forms');return imprimirForms([v])}if(VIEWS[k])App.go(k)}
 async function iniciar(){applyTheme();wireCabecalho();$('#btnTheme').onclick=cycleTheme;$('#btnTV').onclick=()=>TV.abrir();$('#btnRel').onclick=()=>Report.open(relParadas(),{notaKey:'rel:'+(F.de||'')+'|'+(F.ate||'')});$('#btnBackup').onclick=()=>Store.backupAgora();
@@ -3640,7 +3641,7 @@ const vacShell = (() => {
     document.addEventListener('keydown', e => { if (e.key === 'Escape') fechar(); });
     sb.addEventListener('click', e => { if (e.target.closest('a,button') && innerWidth < 900 && !e.target.closest('#vdsRec')) fechar(); });
     $('vdsRec').onclick = () => { if (innerWidth < 900) { fechar(); return; } LS.set('vac.sidebarCollapsed', String(!recolhida())); aplicarRec(); setTimeout(() => window.dispatchEvent(new Event('resize')), 200); };
-    $('vdsRel').onclick = () => ir(typeof vacPortalHref === 'function' ? vacPortalHref('relatorios') : 'Portal.html#relatorios');
+    $('vdsRel').onclick = () => ir(typeof vacPortalHref === 'function' ? vacPortalHref('rel') : 'Portal.html#rel');
     $('vdsImp').onclick = () => ir(typeof vacImportacaoHref === 'function' ? vacImportacaoHref('') : 'Portal.html#importacao');
     $('vdsAjuda').onclick = () => { const g = $('vacGuiaBtn'); if (g) g.click(); else if (typeof vacGuia !== 'undefined' && vacGuia && vacGuia.abrir) vacGuia.abrir(); };
     const tvb = $('vdsTV'); if (tvb) tvb.onclick = () => { const b = $('btnTV'); if (b) b.click(); };

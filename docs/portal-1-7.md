@@ -295,3 +295,14 @@ Na Visão geral (01 Situação, ao lado das pendências): lote, ordem (com a fic
 ## 1.9.35 · Calendário de produção e links (13/11/2026)
 
 Cadastro novo **Calendário de produção** (ver `docs/centralizacao-configuracoes.md`). Os links de abrir arquivo do equipamento (1 min depois) e da foto (ao carregar) são liberados (`revokeObjectURL`).
+
+## 1.9.36 · Relatórios: compilado de todas as páginas (13/11/2026)
+
+Portal › Relatórios passa a listar todos os relatórios da plataforma, um bloco por página, na ordem da barra lateral:
+- **Portal**: Resumo da linha e Pendências da linha (abrem aqui, como antes).
+- **Produção** (8): Passagem de turno, dia, semana, mês (diretoria), Paradas e perdas, Plano do mês, Relatório montado, Tabelas. Link `OEE-Vacutainer.html#aba=reports&rel=<tipo>` (Produção 2.4.74).
+- **Waste** (4) e **Gestão de Gel** (6): link `#aba=relatorios` (Gel 2.35 abre "Fichas e relatórios em PDF").
+- **Paradas**: link `#relatorio` abre o relatório com os filtros da página (Paradas 1.2.11).
+- **Outros**: SQDCP (`#aba=sqdcp` da Produção), Projetos e Iniciativas.
+
+O relatório continua sendo gerado pela página dona (regra 1); o Portal só lista (`REL_CAT`, `REL_OUTROS`). Iniciativas, Equipamentos e Linha 360° não têm relatório próprio (impressão da tela). Relatório novo numa página entra no `REL_CAT`. O botão Relatórios da barra lateral (kit) vai para `#rel` (antes `#relatorios`, que o Portal não reconhecia). Teste: `testes/trelcompilado.js`.

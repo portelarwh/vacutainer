@@ -34,7 +34,7 @@ const LER = () => {
   const HC = await o.evaluate(() => { const L = F.apply(eventosTodos()).filter(e => !NAO_PERDA.has(classe(e)) && /^\d{1,2}:/.test(e.inicio || '')), soma = Math.round(L.reduce((s, e) => s + e.minutos, 0));
     const tot = sel => [...document.querySelectorAll(`[data-calor="${sel}"] tr`)].slice(1).map(r => +r.cells[r.cells.length - 1].innerText.replace(/\D/g, ''));
     const d = tot('dia'), q = tot('eq'); return { soma, dia: d.reduce((a, b) => a + b, 0), linhasDia: d.length, linhasEq: q.length, celulas: document.querySelectorAll('[data-calor] td.hc').length, ver: PAGE.versao }; });
-  ok(HC.ver === '1.2.10' && HC.linhasDia === 7 && HC.linhasEq >= 1 && HC.linhasEq <= 10 && HC.celulas > 0 && Math.abs(HC.dia - HC.soma) <= 7, `mapa de calor: dia × hora soma ${HC.dia} min = ${HC.soma} min das paradas com horário (7 dias, ${HC.linhasEq} equipamento(s), número em cada célula)`);
+  ok(HC.ver === '1.2.11' && HC.linhasDia === 7 && HC.linhasEq >= 1 && HC.linhasEq <= 10 && HC.celulas > 0 && Math.abs(HC.dia - HC.soma) <= 7, `mapa de calor: dia × hora soma ${HC.dia} min = ${HC.soma} min das paradas com horário (7 dias, ${HC.linhasEq} equipamento(s), número em cada célula)`);
   // revisão Codex (PR #73): item do Pareto comum alcançável com Tab e acionado com Enter (o mesmo clique que filtra)
   const TK = await o.evaluate(() => { const g = document.querySelector('#chEq svg.vpar g[role="button"]'); if (!g) return { g: false }; const k = g.dataset.k, antes = F.eq; g.focus(); return { g: true, foco: document.activeElement === g, tab: g.getAttribute('tabindex'), k, antes }; });
   if (TK.g) { await o.keyboard.press('Enter'); await o.waitForTimeout(300); }

@@ -1571,7 +1571,7 @@ const U = (() => {
 
 /* ---- 02-model.js ---- */
 /* ================= modelo de dados, valores iniciais e integridade ================= */
-const APP_VERSION = '2.4.73';
+const APP_VERSION = '2.4.74';
 const SCHEMA_VERSION = 1;
 const BASE_FILE = 'oee-vacutainer-base.json';
 const BACKUP_DIR = '00. Backups';
@@ -5282,6 +5282,7 @@ function applyHash() {
   if (h.includes('&')) { const q = new URLSearchParams(h), ab = q.get('aba'); if (ab && ROUTES.some(r => r[0] === ab)) { App.route = ab; const sb = q.get('sub'), sc = q.get('sec');
     if (ab === 'ordens' && sb && typeof Ord !== 'undefined' && ['mb51', 'coois', 'lista', 'conc', 'hist'].includes(sb)) Ord.sub = sb;
     if (ab === 'config' && sc && typeof CFG_SECS !== 'undefined' && CFG_SECS.some(x => x[0] === sc)) App.cfgSec = sc;
+    if (ab === 'reports' && typeof rpState === 'function' && typeof RP_TYPES !== 'undefined') { const rt = q.get('rel'); if (rt && RP_TYPES.some(r => r[0] === rt)) rpState().type = rt; }   /* 2.4.74 */
     try { history.replaceState(null, '', location.pathname + location.search); } catch (e) { } return true; } }
   const [k, v] = h.split('='); if (!v) return false;
   const d = db();
@@ -15030,7 +15031,7 @@ const vacShell = (() => {
     document.addEventListener('keydown', e => { if (e.key === 'Escape') fechar(); });
     sb.addEventListener('click', e => { if (e.target.closest('a,button') && innerWidth < 900 && !e.target.closest('#vdsRec')) fechar(); });
     $('vdsRec').onclick = () => { if (innerWidth < 900) { fechar(); return; } LS.set('vac.sidebarCollapsed', String(!recolhida())); aplicarRec(); setTimeout(() => window.dispatchEvent(new Event('resize')), 200); };
-    $('vdsRel').onclick = () => ir(typeof vacPortalHref === 'function' ? vacPortalHref('relatorios') : 'Portal.html#relatorios');
+    $('vdsRel').onclick = () => ir(typeof vacPortalHref === 'function' ? vacPortalHref('rel') : 'Portal.html#rel');
     $('vdsImp').onclick = () => ir(typeof vacImportacaoHref === 'function' ? vacImportacaoHref('') : 'Portal.html#importacao');
     $('vdsAjuda').onclick = () => { const g = $('vacGuiaBtn'); if (g) g.click(); else if (typeof vacGuia !== 'undefined' && vacGuia && vacGuia.abrir) vacGuia.abrir(); };
     const tvb = $('vdsTV'); if (tvb) tvb.onclick = () => { const b = $('btnTV'); if (b) b.click(); };
