@@ -1,6 +1,7 @@
 // C4 (08/11/2026): roda a suíte inteira, uma por vez, e diz o que passou, o que falhou e o que não foi verificado.
 // node testes/tudo.js              → todas
 // node testes/tudo.js tfila tequip → só essas
+// node testes/tudo.js --parte=1/4   → só a 1ª de 4 partes (o CI roda as 4 ao mesmo tempo)
 // Código de saída 1 se alguma falhar. "Não verificado" (falta biblioteca ou pacote) não conta como aprovado nem como falha.
 const { spawnSync } = require('child_process'); const path = require('path'), fs = require('fs');
 const AQUI = __dirname;
@@ -10,8 +11,19 @@ const SUITE = ['tds', 'tlote_origem', 'tpermissoes', 'tprefs', 'tcalendario', 't
 const INSTAVEL = new Set([]);   /* 13/11/2026: o tz deixou de ser instável (esperava o redesenho do formulário) */
 // precisam de algo que pode faltar no ambiente: sem isso, "não verificado"
 const PRECISA = { tmeta: () => { try { require.resolve('xlsx'); return ''; } catch (e) { return 'falta o pacote npm xlsx'; } } };
-const pedidas = process.argv.slice(2).map(x => x.replace(/\.js$/, ''));
-const lista = pedidas.length ? pedidas : SUITE;
+/* CI em partes (13/11/2026): node testes/tudo.js --parte=2/4 roda só a 2ª de 4 partes da suíte. As partes são montadas pelo tempo
+   aproximado de cada teste no CI (o mais demorado primeiro, sempre na parte mais leve), para terminarem juntas; teste sem tempo conhecido vale 10 s.
+   Toda suíte cai em exatamente uma parte. Tempos tirados do CI de 13/11/2026; não precisam ser exatos. */
+const TEMPO = { tvisual: 170, tpendencias: 102, trelatorios: 63, tds: 44, tparadas_ux: 41, tseguranca: 39, tnv: 32, tficha: 31, tpermissoes: 30, tgrade: 30, tsqdcp_layout: 29, tlogin: 28, timportacao: 27, tdiag: 25,
+  tcorrecoes: 23, tz: 21, tvisaogeral: 20, tprefs: 20, tfase7: 20, tconstrucao: 19, tgel: 19, tportal_vg: 18, tbases: 18, twaste_vg: 17, tgel_vg: 17, tdemo: 17, tplanner: 16, tvigencias: 16, temail: 15, tequip: 15, tk: 15,
+  tparadas_vg: 14, tperiodo: 13, tportalfonte: 12, tfechar: 11, tcontratos: 11, tfila: 10, tnumeros: 10 };
+function parte(lista, i, n) { const P = Array.from({ length: n }, () => ({ s: 0, l: [] })); const ord = lista.slice().sort((a, b) => (TEMPO[b] || 10) - (TEMPO[a] || 10) || lista.indexOf(a) - lista.indexOf(b));
+  for (const t of ord) { const m = P.reduce((x, y) => y.s < x.s ? y : x); m.s += TEMPO[t] || 10; m.l.push(t); } const minha = new Set(P[i - 1].l); return lista.filter(t => minha.has(t)); }
+const argParte = process.argv.slice(2).find(x => /^--parte=\d+\/\d+$/.test(x));
+const pedidas = process.argv.slice(2).filter(x => !/^--(parte=|listar$)/.test(x)).map(x => x.replace(/\.js$/, ''));
+let lista = pedidas.length ? pedidas : SUITE;
+if (argParte) { const [i, n] = argParte.slice(8).split('/').map(Number); if (!(n >= 1 && i >= 1 && i <= n)) { console.log('parte inválida: ' + argParte); process.exit(1); } lista = parte(lista, i, n); console.log(`parte ${i} de ${n}: ${lista.length} suíte(s) · ${lista.join(', ')}\n`); }
+if (process.argv.includes('--listar')) process.exit(0);   /* só mostra o que a parte rodaria */
 const R = [];
 const roda = t => { const ini = Date.now(); const r = spawnSync(process.execPath, [path.join(AQUI, t + '.js')], { cwd: path.join(AQUI, '..'), encoding: 'utf8', timeout: 15 * 60e3, maxBuffer: 64 << 20 });
   const out = (r.stdout || '') + (r.stderr || ''); const falhas = out.split('\n').filter(l => /^FALHA/.test(l)); const nv = out.split('\n').filter(l => /^NÃO VERIFICADO/.test(l));
