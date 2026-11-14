@@ -1,61 +1,50 @@
-# Validação da entrega · 14/11/2026
+# Validação da revisão PR76 — 14/11/2026
 
-## Verificado
+Esta rodada usa exclusivamente dados fictícios, factories dos motores atuais e pastas OPFS temporárias. Nenhuma base real foi lida ou gravada.
 
-| Verificação | Resultado |
-|---|---|
-| Snapshot independente | Verificado sem o histórico Git original; integridade dos motores conferida por SHA-256 |
-| TypeScript estrito e build Vite | Aprovados; somente `dist/Plataforma.html` na distribuição; reconstrução repetida com o mesmo SHA-256 |
-| Contratos e seletores | 8 testes aprovados: formato desconhecido, números/listas inválidos, ausência versus zero, OEE sem média de taxas, turno, ordem textual, leitura estrita, CSV e datas |
-| Módulos integrados | Oito áreas abertas no mesmo aplicativo |
-| Abas | 59 abas navegadas, sem erro de rota ou JavaScript |
-| Excel offline | Biblioteca oficial SheetJS 0.20.3 carregada dentro do módulo; sem CDN |
-| Navegação e estado | Ação criada pelo formulário real do Planner e preservada ao navegar para outras áreas e voltar |
-| Ordem integrada | Busca Ctrl K → ficha da ordem → links dos módulos |
-| Central, relatórios e saúde | Seis etapas de importação; relatório com dados publicados; sete bases operacionais na consulta de saúde |
-| Layout | 1440 px e 390 px; tema claro/escuro, menu móvel e ausência de rolagem horizontal do aplicativo |
-| Modo real sem conexão | Inicia sem abrir/criar bases ou carregar exemplos automaticamente |
-| Pasta simulada | Produção, Waste, Gel, Paradas, Equipamentos, Iniciativas e Portal conectados à mesma pasta OPFS de teste |
-| Persistência | Observação gravada pelo motor real da Produção e conferida por releitura do JSON na pasta de teste |
-| Rede | Navegador desligado da rede após receber o HTML; navegação, módulos e criação de ação funcionam; nenhuma requisição a serviços externos |
-| Isolamento da demonstração | Dados na sessão; identidade/tema reais do novo aplicativo preservados ao usar a demonstração |
+## Evidências automatizadas
 
-Comandos:
+- Build: TypeScript estrito, Vite, artefato único e verificador dos nove motores descomprimidos; SHA-256, tamanho e dependências externas conferidos.
+- Contrato: nove motores publicam vacPagina; as rotas publicadas são comparadas com os botões da casca. Teste de navegação visita as abas dos nove motores, inclusive Linha 360° e as telas de planejamento de Projetos.
+- Persistência: bases geradas pelas factories/exports atuais de Portal, Produção, Waste, Gel, Paradas, Equipamentos, Iniciativas e Linha 360°. Abrir → gravar → reler preserva todas as chaves publicadas e a versão de cada módulo. Produção preservou as 29 chaves atuais, incluindo os campos citados na revisão.
+- Versão: os oito módulos recusam escrita em base futura. Teste adicional protege arquivos auxiliares do Portal/Produção. Sem sessão, a tentativa de escrita física também é recusada.
+- Login/permissões: as mesmas suítes tlogin e tpermissoes da raiz executam dentro da plataforma: senha inicial/provisória, bloqueio, autocadastro fictício, sessão compartilhada/expirada e Consulta/Liderança.
+- Pasta/fila: A → B → A mantém escopo, preferências e fila. Troca recusada com fila durável e nenhum módulo aberto; erro na consulta do contrato também bloqueia troca.
+- Ciclo de vida: teste confirma descarte dos oito motores ao trocar de pasta. A configuração está em useEffect e o callback ref é estável.
+- Impressão: Ctrl+P e botão encaminham ao módulo ativo; cabeçalho e impressão são produzidos pelo motor.
+- Interface/offline: ação fictícia criada no Planner e mantida durante navegação; Ctrl K, relatórios, nove módulos, temas e tela de 390 px. SheetJS 0.20.3 carrega sob demanda, sem CDN. Nenhuma requisição externa no teste offline.
+
+A suíte da raiz permanece com 67 testes em quatro partes do mesmo CI. A execução por HTTP local aprovou os 67 casos; o teste de Meta foi repetido depois de configurar fs no adapter Node da SheetJS. As referências numéricas de produção, MUV, gel, paradas, turnos e SQDCP continuam nos testes dos motores.
+
+Os registros e resultados finais ficam em [pr76/ACOMPANHAMENTO.md](pr76/ACOMPANHAMENTO.md). Imagens de navegador ficam em testes-saida/ (fora do Git). O manifesto registra commit real de compilação, commit das fontes e alterações locais, sem assumir que um snapshot antigo corresponde à main.
+
+## Reproduzir
 
 ```sh
+npm install
+npm ci --prefix nova-plataforma
+npm run build --prefix nova-plataforma
 npm test
-npm run build
-npm run test:browser
-npm run test:abas
-npm run test:pasta
+npm run test:all --prefix nova-plataforma
 ```
 
-Os testes de navegador usam Playwright e Chromium. Neste ambiente, `/usr/bin/chromium` está disponível. Para outra instalação, defina `CHROMIUM_PATH`; o pacote Playwright está fixado nas dependências de desenvolvimento. Se não houver Chromium instalado, execute `npx playwright install chromium` e configure `CHROMIUM_PATH` para o executável.
+Se file:// for bloqueado neste ambiente, a alternativa explícita para a suíte da raiz é:
 
-Imagens locais em `testes-saida/` (fora do Git): início desktop/móvel, Produção e tema escuro. Os testes não acessam a pasta da linha.
+```sh
+VAC_TEST_HTTP=1 NODE_OPTIONS="--require ./testes/http-local.cjs" npm test
+```
 
-## Não verificado: abertura direta pela pasta Windows
+Isso serve o mesmo conteúdo por HTTP local e não homologa file://. O Chromium pode vir do Playwright, de /usr/bin/chromium ou da variável CHROMIUM_PATH.
 
-O Chromium gerenciado do ambiente retorna **`ERR_BLOCKED_BY_ADMINISTRATOR`** para endereços `file://`. O teste registra **NÃO VERIFICADO** e usa um servidor HTTP local apenas para entregar o mesmo HTML à automação; depois desliga a rede do navegador. O produto distribuído não inclui nem exige esse servidor.
+## NÃO VERIFICADO
 
-Essa é uma restrição do navegador deste ambiente. Não foi contornada por alteração de política. É necessário conferir a abertura direta no Chrome/Edge da estação Windows antes de substituir o uso atual.
+- Abertura direta de Plataforma.html por file:// no Chrome/Edge corporativo. O Chromium gerenciado retorna ERR_BLOCKED_BY_ADMINISTRATOR; a política não foi alterada.
+- Pasta SMB e comportamento de gravação, perda de rede/permissão e recuperação na estação corporativa.
+- Duas estações simultâneas, alterando registros diferentes e depois o mesmo registro.
+- Impressora física, Outlook corporativo e documentos em caminhos da rede.
 
-## Roteiro de homologação na linha
+Esses itens exigem homologação autorizada. **Corte NÃO EXECUTADO.** Roteiro e retorno seguro em [CORTE.md](CORTE.md). Não se recomenda baixar apenas a versão do aplicativo sobre bases já atualizadas.
 
-1. Copiar o HTML para uma pasta de homologação com cópias das bases e backups.
-2. Abrir por duplo clique em Chrome e Edge. Conferir navegação e funcionamento sem internet.
-3. Conectar a raiz; conferir leitura de `00. Bases`, revisão do cadastro e identificação do usuário.
-4. Abrir todos os módulos; conferir a base correta e compará-la à página atual.
-5. Registrar um fato de teste, gravar, reabrir e conferir o arquivo/backup. Testar erro de permissão e perda de conexão.
-6. Duas estações: alterar registros diferentes e depois o mesmo registro; conferir reaplicação, conflito, fila e autoria. A pasta OPFS não representa o comportamento da rede SMB.
-7. Conferir Excel, PDF, impressora A4, Outlook e caminhos com acentos/documentos de equipamentos.
-8. Comparar períodos e turnos, taxas e quantidades. Não aceitar uma taxa calculada com outra janela.
+## Limites de produto
 
-Os formatos das bases foram preservados. Voltar ao aplicativo antigo não exige conversão, mas alterações legítimas feitas nos módulos permanecem nos arquivos; voltar de versão não desfaz esses fatos.
-
-## Limites preservados
-
-- Projetos continua com escopo em definição.
-- Importador oficial de OSM, integração SQL/MES, padrões técnicos AM/TPM/5S e decisões de jornada/madrugada não foram inventados.
-- As telas operacionais usam os motores existentes. Conversão integral dessas telas para componentes React pode avançar por fluxo, com teste de paridade.
-- A gravação conserva o modelo existente. Não há promessa de transações distribuídas ou eliminação de conflitos na pasta da rede.
+Sem conversão de motores para React ou mudança das regras de jornada/madrugada, OSM, MES, AM/TPM e Projetos. A próxima conversão começa por telas que só leem exports; formulários de gravação permanecem nos motores até paridade demonstrada.

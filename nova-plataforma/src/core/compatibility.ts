@@ -3,14 +3,14 @@ export function compareVersions(a:string,b:string){
  const parts=(v:string)=>{if(!/^\d+(\.\d+)*$/.test(v))throw new Error('Versão inválida: '+v);return v.split('.').map(Number)};
  const x=parts(a),y=parts(b);for(let i=0;i<Math.max(x.length,y.length);i++){if((x[i]||0)!==(y[i]||0))return(x[i]||0)>(y[i]||0)?1:-1}return 0;
 }
-export async function protectFolder(root:Directory,file:string,version:string,canWrite:()=>boolean=()=>true){
+export async function protectFolder(root:Directory,files:string|string[],version:string,canWrite:()=>boolean=()=>true){
  let newer='',readOnly=false;
  // Conferir ambas as localizações antes de qualquer migração automática do kit.
- for(const baseDir of [null,'00. Bases']){try{
+ for(const baseDir of [null,'00. Bases'])for(const file of typeof files==='string'?[files]:files){try{
   const dir=baseDir?await root.getDirectoryHandle(baseDir):root;
   const base=JSON.parse(await(await(await dir.getFileHandle(file)).getFile()).text());
   const v=base.appVersion||base.applicationVersion||base.exports?.appVersion;
-  if(v&&compareVersions(String(v),version)>0){readOnly=true;newer=String(v)}
+  if(v&&compareVersions(String(v).replace(/^(Portal|Produção)\s+/,''),version)>0){readOnly=true;newer=String(v)}
  }catch(e){if((e as Error).name!=='NotFoundError')throw e}}
  const reason=readOnly?`Base ${newer} mais nova que o motor ${version}. Somente leitura; atualize a plataforma.`:'';
  const cache=new WeakMap<object,any>();

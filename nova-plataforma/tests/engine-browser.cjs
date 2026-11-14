@@ -4,7 +4,7 @@ const pw=require('playwright'),http=require('http'),fs=require('fs'),path=requir
 const definitions={ 'Portal.html':'portal','OEE-Vacutainer.html':'oee','Perdas-Ordem.html':'perdas','Gestão-Gel-Vacutainer.html':'gel','Paradas.html':'paradas','Equipamentos.html':'equip','Iniciativas.html':'inic','Linha-360.html':'linha','Projetos.html':'projetos'};
 exports.chromium={...pw.chromium,async launch(options={}){
  const html=fs.readFileSync(path.resolve(__dirname,'../dist/Plataforma.html')),server=http.createServer((q,r)=>{r.setHeader('Content-Type','text/html');r.end(html)});await new Promise(r=>server.listen(0,'127.0.0.1',r));server.unref();
- const browser=await pw.chromium.launch({...options,executablePath:process.env.CHROMIUM_PATH||'/usr/bin/chromium',args:[...(options.args||[]),'--no-sandbox']}),base='http://127.0.0.1:'+server.address().port+'/';
+ const browser=await pw.chromium.launch(require('./chromium.cjs')(options)),base='http://127.0.0.1:'+server.address().port+'/';
  function wrap(page){let frame=null,last='';async function attach(){const iframe=page.locator('iframe').first();await iframe.waitFor();frame=await(await iframe.elementHandle()).contentFrame();await frame.waitForFunction(()=>window.vacPagina?.pronto());}
   return new Proxy(page,{get(target,key){
    if(key==='goto')return async url=>{last=url;const parsed=new URL(url),module=definitions[decodeURIComponent(parsed.pathname.split('/').pop())];if(!module)throw new Error('Motor desconhecido: '+url);await page.goto(base+'#/'+module+(parsed.hash?'?rota='+encodeURIComponent(parsed.hash):''));await attach()};

@@ -518,7 +518,7 @@ function vacNovaAcaoHref(d) {
 }
 function vacNovaAcaoBotao(d, rot = '+ Ação no Planner', cls = 'b sm') { const e = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); return `<a class="${e(cls)}" href="${e(vacNovaAcaoHref(d))}" target="_blank" rel="noopener" title="Abre Iniciativas com a ação preenchida (você confere antes de criar)">${e(rot)}</a>`; }
 /* endereço desta página com uma rota (para o "reconsultar" da ação) */
-function vacAquiHref(hash) { return vacDemo.ativo ? vacDemo.paginas[PAGE.id] + (hash ? '#' + hash : '') : location.href.split('#')[0].split('/').pop() + (hash ? '#' + hash : ''); }
+function vacAquiHref(hash) { if (window.__vacEmbedded) return parent.vacAppHost.link(PAGE.id,hash?'#'+hash:''); return vacDemo.ativo ? vacDemo.paginas[PAGE.id] + (hash ? '#' + hash : '') : location.href.split('#')[0].split('/').pop() + (hash ? '#' + hash : ''); }
 
 /* ===== vacGel · conta do gel comum (Fase 4 · 4b do briefing de 09/11/2026) =====
    A mesma conta na Gestão de Gel e na Produção (Registrar scrap e Teórico × Real), sem cópia divergente.
@@ -1027,7 +1027,7 @@ const VAC_PODE_MAPA = {
   }
 };
 VAC_PODE_MAPA.linha = VAC_PODE_MAPA.equip;
-function vacPodeAqui(fn) { if (window.__vacEmbedded && !['ver','exportar'].includes(fn) && !vacLogin.sessao()) return false; if (typeof vacPode !== 'function' || typeof PAGE === 'undefined' || !PAGE) return true; try { return vacPode(VAC_PODE_MOD[PAGE.id] || PAGE.id, fn); } catch (e) { return true; } }
+function vacPodeAqui(fn) { if (window.__vacEmbedded && !(typeof vacDemo !== 'undefined' && vacDemo.ativo) && !['ver','exportar'].includes(fn) && !vacLogin.sessao()) return false; if (typeof vacPode !== 'function' || typeof PAGE === 'undefined' || !PAGE) return true; try { return vacPode(VAC_PODE_MOD[PAGE.id] || PAGE.id, fn); } catch (e) { return true; } }
 const vacTravas = (() => {
   let agendado = 0;
   const motivo = fn => { let p = null; try { p = typeof vacPerfil === 'function' ? vacPerfil() : null; } catch (e) { } return `Seu perfil${p && p.nome ? ' (' + p.nome + ')' : ''} não permite ${VAC_PODE_TXT[fn] || fn} nesta página. Quem muda o perfil é o administrador, no Portal.`; };
@@ -1141,6 +1141,7 @@ window.vacAutenticacao = { abrir: op => vacLogin.abrir(op), sessao: () => vacLog
    Adaptadores ficam junto ao kit aplicado pelos builds; nenhuma fórmula é duplicada. */
 window.vacPagina = (() => {
   const id = () => PAGE.id;
+  let conectando = false;
   let rascunho = null;
   document.addEventListener('input', ev => { const el = ev.target; if (el && el.closest) rascunho = el.closest('.overlay,.mod-bg,.modal.on,#mForm') || rascunho; }, true);
   function pronto() {
@@ -1149,13 +1150,13 @@ window.vacPagina = (() => {
       if (id() === 'portal') return typeof Cad !== 'undefined' && !!Store.B;
       if (id() === 'perdas') return typeof B !== 'undefined' && !!B;
       if (id() === 'gel') return typeof gelExports === 'function' && typeof backend !== 'undefined';
-      if (id() === 'projetos') return true;
+      if (id() === 'projetos') return typeof atual !== 'undefined' && typeof show === 'function';
       return typeof Store !== 'undefined' && !!Store.data;
     } catch (e) { return false; }
   }
   function pendente() {
     try {
-      if (!pronto()) return true;
+      if (!pronto() || conectando) return true;
       if (rascunho && document.contains(rascunho) && rascunho.getClientRects().length) return true;
       switch (id()) {
         case 'oee': return !!Store.S.dirty || !!Store.S.saving;
@@ -1168,6 +1169,7 @@ window.vacPagina = (() => {
     } catch (e) { return true; } // Falha na consulta nunca libera a troca de pasta.
   }
   function conectado() {
+    if (conectando) return false;
     switch (id()) {
       case 'oee': return Store.S.mode === 'pasta';
       case 'portal': return Store.mode === 'pasta';
@@ -1180,14 +1182,15 @@ window.vacPagina = (() => {
   async function conectar(dir) {
     if (!dir) throw new Error('Pasta não informada.');
     if (window.__vacEmbedded) dir = structuredClone(dir);
-    switch (id()) {
-      case 'oee': await connectFolder(dir, false); if (conectado()) document.querySelector('#wFolder')?.closest('.overlay')?.remove(); break;
+    conectando = true;
+    try { switch (id()) {
+      case 'oee': await connectFolder(dir, false); if (Store.S.mode === 'pasta') document.querySelector('#wFolder')?.closest('.overlay')?.remove(); break;
       case 'portal': await Store.connect(dir); await App.onConnect(); break;
       case 'perdas': await connectDir(dir, { ask: false }); break;
       case 'gel': await fsUse(dir, { create: false }); break;
       case 'projetos': return;
       default: await Store.usar(dir);
-    }
+    } } finally { conectando = false; }
   }
   function irAba(aba, hash, contexto) {
     if (hash) {
@@ -1214,7 +1217,7 @@ window.vacPagina = (() => {
       case 'perdas': showTab(aba); break;
       case 'gel': if (aba === 'config') openConfig(); else { ui.tab = aba; render(); } break;
       case 'paradas': if (aba === 'relatorios') document.querySelector('#btnRel')?.click(); else { App.tab = aba; App.render(); } break;
-      case 'projetos': break;
+      case 'projetos': show(aba); break;
       default: ir(aba);
     }
   }
@@ -1239,7 +1242,7 @@ window.vacPagina = (() => {
     descartar: () => window.__vacRuntimeDispose && window.__vacRuntimeDispose(),
     bibliotecaCarregada: () => { if (typeof vacPdf !== 'undefined') vacPdf.instalar(); },
     comando: chave => { const el = document.getElementById(chave); if (!el) throw new Error('Comando indisponível: ' + chave); el.click(); },
-    info: () => ({ versao: PAGE.versao, estado: document.querySelector('#stBase')?.textContent || '' }),
+    info: () => { const el = document.querySelector('#stBase')?.cloneNode(true); if (el) el.querySelectorAll('a,button,.vapps').forEach(n => n.remove()); return { versao: PAGE.versao, estado: el?.textContent.trim() || '', podeImprimir: vacPodeAqui('exportar') }; },
     imprimir: () => { if (!vacPodeAqui('exportar')) throw new Error('Seu perfil não permite imprimir.'); window.print(); },
     abrirOrdem: n => vacFicha.abrir('ordem', String(n)),
     atualizar: () => { if (typeof vacAoVoltar === 'function') return vacAoVoltar(); },

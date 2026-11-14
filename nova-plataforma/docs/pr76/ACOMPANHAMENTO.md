@@ -27,3 +27,15 @@ A suíte da raiz foi executada integralmente: 67 suítes, 12 passaram, 54 falhar
 | M6 — build | `tests/build.test.mjs`: vermelho sem inspeção interna; teste de dependência e hash inválido passam | Verificação descomprime os nove motores e confere SHA-256, tamanho e recursos externos. Fontes remotas redundantes foram removidas das fontes; usa-se o kit local. |
 | I1 — Design System | `tests/design.test.ts`: vermelho antes, verde com importação direta do kit_ds.css | Casca usa os tokens oficiais; a ponte deixa de impor uma paleta diferente aos motores. |
 | M5 — impressão | `tests/print.test.ts`: vermelho antes, verde com encaminhamento ao motor | Ctrl+P no aplicativo e dentro do iframe imprime o módulo ativo. Barra também oferece Imprimir módulo; o motor conserva seu cabeçalho e regras de impressão. |
+
+## Ajustes encontrados na validação final
+
+- Os formulários longos de login precisam usar a altura visível da janela, e não a altura completa do conteúdo do motor. O teste de autocadastro no navegador reproduziu o botão fora da tela; o fluxo completo de login passou após a correção.
+- Os comandos ocultos no cabeçalho original são acionados pela barra da casca. A demonstração admite ações fictícias sem exigir sessão real; o modo real permanece em consulta sem sessão.
+- A conexão só é anunciada depois de concluir a leitura. O teste de round trip flagrou a sinalização anterior à leitura completa.
+- O descarte usa callback ref estável, antes de o iframe perder a referência. O teste de pasta confirmou os oito motores descartados na troca de escopo.
+- O bloqueio de versão inclui cadastro do Portal e ordens da Produção. A regressão do arquivo auxiliar mais novo falhou antes da correção e passa depois.
+- Links internos conservam o módulo de origem. As substituições estruturais agora exigem exatamente uma âncora; o empacotador não faz alterações textuais.
+- A SheetJS 0.20.3 usa uma única fonte em paginas/lib, com a mesma licença e hash já verificados; os testes de Meta e Excel da raiz também usam essa versão. O adapter Node do teste configura fs explicitamente.
+
+Contrato detalhado: [CONTRATO-MOTORES.md](../CONTRATO-MOTORES.md).

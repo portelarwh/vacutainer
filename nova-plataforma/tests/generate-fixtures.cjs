@@ -1,7 +1,7 @@
 // Produz bases exclusivamente fictícias usando factories e exports da árvore atual.
 const {chromium}=require('playwright'),http=require('http'),fs=require('fs'),path=require('path');
 const root=path.resolve(__dirname,'../..'),manifest=require('../src/generated/manifest.json');
-module.exports=async function generate(){const server=http.createServer((q,r)=>{try{const file=path.join(root,decodeURIComponent(new URL(q.url,'http://local').pathname));r.setHeader('Content-Type',file.endsWith('.js')?'application/javascript':'text/html');r.end(fs.readFileSync(file))}catch{r.writeHead(404);r.end()}});let browser;try{await new Promise(r=>server.listen(0,'127.0.0.1',r));browser=await chromium.launch({executablePath:process.env.CHROMIUM_PATH||'/usr/bin/chromium',args:['--no-sandbox']});const context=await browser.newContext(),bases={};
+module.exports=async function generate(){const server=http.createServer((q,r)=>{try{const file=path.join(root,decodeURIComponent(new URL(q.url,'http://local').pathname));r.setHeader('Content-Type',file.endsWith('.js')?'application/javascript':'text/html');r.end(fs.readFileSync(file))}catch{r.writeHead(404);r.end()}});let browser;try{await new Promise(r=>server.listen(0,'127.0.0.1',r));browser=await chromium.launch(require('./chromium.cjs')());const context=await browser.newContext(),bases={};
  for(const file of manifest.files.filter(f=>f.id!=='projetos')){const p=await context.newPage();await p.goto('http://127.0.0.1:'+server.address().port+'/'+file.path);await p.waitForFunction(()=>window.vacPagina?.pronto());bases[file.id]=await p.evaluate(id=>{
   let b;
   if(id==='oee'){Demo.enterExample();b=JSON.parse(JSON.stringify(db()));b.exports=Exports.build(db());b.appVersion=APP_VERSION;b.applicationVersion=APP_VERSION}
