@@ -1136,3 +1136,109 @@ const vacPrefs = (() => {
 
 // API de autenticação da casca: a senha e a sessão continuam pertencendo ao vacLogin.
 window.vacAutenticacao = { abrir: op => vacLogin.abrir(op), sessao: () => vacLogin.sessao(), sair: () => vacLogin.sair() };
+
+/* PR76 · fronteira pública dos motores. A casca não conhece Store, App ou nomes de funções locais.
+   Adaptadores ficam junto ao kit aplicado pelos builds; nenhuma fórmula é duplicada. */
+window.vacPagina = (() => {
+  const id = () => PAGE.id;
+  let rascunho = null;
+  document.addEventListener('input', ev => { const el = ev.target; if (el && el.closest) rascunho = el.closest('.overlay,.mod-bg,.modal.on,#mForm') || rascunho; }, true);
+  function pronto() {
+    try {
+      if (id() === 'oee') return typeof CadSync !== 'undefined' && !!db();
+      if (id() === 'portal') return typeof Cad !== 'undefined' && !!Store.B;
+      if (id() === 'perdas') return typeof B !== 'undefined' && !!B;
+      if (id() === 'gel') return typeof gelExports === 'function' && typeof backend !== 'undefined';
+      if (id() === 'projetos') return true;
+      return typeof Store !== 'undefined' && !!Store.data;
+    } catch (e) { return false; }
+  }
+  function pendente() {
+    try {
+      if (!pronto()) return true;
+      if (rascunho && document.contains(rascunho) && rascunho.getClientRects().length) return true;
+      switch (id()) {
+        case 'oee': return !!Store.S.dirty;
+        case 'portal': return !!Store.pending || !!Cad.fila.length;
+        case 'perdas': return !!ST.pending;
+        case 'gel': return !!FS.pending.length;
+        case 'projetos': return false;
+        default: return !!Store.queue.length;
+      }
+    } catch (e) { return true; } // Falha na consulta nunca libera a troca de pasta.
+  }
+  function conectado() {
+    switch (id()) {
+      case 'oee': return Store.S.mode === 'pasta';
+      case 'portal': return Store.mode === 'pasta';
+      case 'perdas': return ST.mode === 'pasta';
+      case 'gel': return !!FS.base;
+      case 'projetos': return false;
+      default: return !!Store.dir && !!Store.perm;
+    }
+  }
+  async function conectar(dir) {
+    if (!dir) throw new Error('Pasta não informada.');
+    switch (id()) {
+      case 'oee': await connectFolder(dir, false); if (conectado()) document.querySelector('#wFolder')?.closest('.overlay')?.remove(); break;
+      case 'portal': await Store.connect(dir); await App.onConnect(); break;
+      case 'perdas': await connectDir(dir, { ask: false }); break;
+      case 'gel': await fsChooseBase(dir); break;
+      case 'projetos': return;
+      default: await Store.usar(dir);
+    }
+  }
+  function irAba(aba, hash, contexto) {
+    if (hash) {
+      location.hash = hash;
+      if (typeof cadRota === 'function') cadRota();
+      if (typeof applyHash === 'function') { applyHash(); renderNow(); }
+      if (typeof rota === 'function') rota();
+      if (typeof hashTry === 'function') hashTry();
+      if (/^#(?:dia=|plano=|pend=|lote=|ordem=|ficha=|nova=|acao=|reuniao=|cadastros(?:\/|$)|cs12=)/.test(hash)) return;
+      if (hash.startsWith('#aba=')) aba = decodeURIComponent(hash.slice(5).split('&')[0]);
+    }
+    if (!aba) return;
+    switch (id()) {
+      case 'oee':
+        if (aba === 'importar-producao') { App.cfgSec = 'importacao'; App.route = 'config'; }
+        else if (aba === 'importar-ordens') { Ord.sub = 'mb51'; App.route = 'ordens'; }
+        else App.route = aba;
+        if (contexto) { Object.assign(App.filters, { from: contexto.from, to: contexto.to }); App.filters.shiftId = (db().shifts.find(s => s.code === contexto.turno) || {}).id || ''; if (['launch','hourly'].includes(aba)) App.sel.date = contexto.to; }
+        renderNow(); break;
+      case 'portal': {
+        const secoes = { cadastros: 'inicio', usuarios: 'usuarios', parametros: 'parametros', importar: 'importar' };
+        if (aba in secoes) { Cad.ui.sec = secoes[aba]; App.show('cad'); } else App.show(aba); break;
+      }
+      case 'perdas': showTab(aba); break;
+      case 'gel': if (aba === 'config') openConfig(); else { ui.tab = aba; render(); } break;
+      case 'paradas': if (aba === 'relatorios') document.querySelector('#btnRel')?.click(); else { App.tab = aba; App.render(); } break;
+      case 'projetos': break;
+      default: ir(aba);
+    }
+  }
+  function abas() {
+    let lista;
+    if (id() === 'oee') lista = ROUTES;
+    else if (id() === 'gel') lista = TABS.concat([['config','Configuração']]);
+    else if (['equip','inic','linha'].includes(id())) lista = ABAS;
+    else lista = [...document.querySelectorAll('#nav [data-t],#nav [data-tab],#nav [data-route]')].map(el => {
+      const clone = el.cloneNode(true); clone.querySelectorAll('.cnt,.badge,svg').forEach(n => n.remove());
+      return [el.dataset.t || el.dataset.tab || el.dataset.route, clone.textContent.trim()];
+    });
+    return lista.map(([chave, nome]) => ({ id: chave, label: nome, route: chave }));
+  }
+  function comandos() {
+    return [...document.querySelectorAll('.vpage button,.vpage a[href],#vdsPag button,#vdsPag a[href]')].filter(el => !el.closest('#nav')).map((el, i) => {
+      if (!el.id) el.id = 'vac-comando-' + i;
+      return { id: el.id, label: el.textContent.trim() || el.title || el.getAttribute('aria-label'), disabled: !!el.disabled };
+    }).filter(c => c.label);
+  }
+  return { pronto, pendente, conectado, conectar, ir: irAba, abas, comandos,
+    comando: chave => { const el = document.getElementById(chave); if (!el) throw new Error('Comando indisponível: ' + chave); el.click(); },
+    info: () => ({ versao: PAGE.versao, estado: document.querySelector('#stBase')?.textContent || '' }),
+    abrirOrdem: n => vacFicha.abrir('ordem', String(n)),
+    atualizar: () => { if (typeof vacAoVoltar === 'function') return vacAoVoltar(); },
+    autenticar: op => vacLogin.abrir(op), sessao: () => vacLogin.sessao()
+  };
+})();

@@ -37,7 +37,7 @@ export async function engineHtml(id:ModuleId,route:string):Promise<string>{if(!t
 export function routeEngine(id:ModuleId,tab:string,hash?:string,context?:{from:string;to:string;turno:string}){const w=frames.get(id)?.contentWindow as any;return w?.__vacBridge?.route(tab,hash,context)}
 export function openOrder(id:ModuleId,code:string){const w=frames.get(id)?.contentWindow as any;w?.__vacBridge?.order(code)}
 export function refreshEngine(id:ModuleId){const w=frames.get(id)?.contentWindow as any;return w?.__vacBridge?.refresh()}
-export function hasPending(){return[...frames.values()].some(f=>(f.contentWindow as any)?.__vacBridge?.pending())}
+export function hasPending(){return[...frames.values()].some(f=>{try{const api=(f.contentWindow as any)?.vacPagina;return !api||api.pendente()}catch{return true}})}
 const embeddedCss=`
 :root{--bg:#f4f6f8!important;--surface:#fff!important;--surface-2:#f4f7f8!important;--ink:#192d35!important;--muted:#667b85!important;--accent:#147c71!important;--line:#dce5e9!important;--r:10px!important;--f-body:Inter,ui-sans-serif,system-ui,sans-serif!important;--f-display:Inter,ui-sans-serif,system-ui,sans-serif!important}
 :root[data-theme=dark]{--bg:#12232c!important;--surface:#1b303a!important;--surface-2:#203a46!important;--ink:#e5eff3!important;--muted:#a4b9c4!important;--line:#36515d!important}
@@ -62,45 +62,18 @@ function runtimePrelude(config:{id:string;route:string;demo:boolean;scope:string
   const op=indexedDB.open.bind(indexedDB),del=indexedDB.deleteDatabase.bind(indexedDB);indexedDB.open=(n:string,v?:number)=>v===undefined?op(prefix+n):op(prefix+n,v);indexedDB.deleteDatabase=(n:string)=>del(prefix+n);
   W.showDirectoryPicker=()=>host.pasta();
  }
- const evaluate=(s:string)=>W.eval(s);
- function route(tab:string,hash?:string,ctx?:any){try{
-  if(hash){location.hash=hash;evaluate("if(typeof cadRota==='function')cadRota();if(typeof applyHash==='function'){applyHash();renderNow()}if(typeof rota==='function')rota();if(typeof hashTry==='function')hashTry()");}
-  if(hash&&/^#(?:dia=|plano=|pend=|lote=|ordem=|ficha=|nova=|acao=|reuniao=|cadastros(?:\/|$)|cs12=)/.test(hash))return;
-  if(hash?.startsWith('#aba='))tab=decodeURIComponent(hash.slice(5));
-  if(config.id==='oee'){
-   if(!evaluate('!!db()'))return;
-   if(tab==='importar-producao')evaluate("App.cfgSec='importacao';App.route='config';renderNow()");
-   else if(tab==='importar-ordens')evaluate("Ord.sub='mb51';App.route='ordens';renderNow()");
-   else if(tab) evaluate('App.route='+JSON.stringify(tab)+";renderNow()");
-   if(ctx)evaluate('Object.assign(App.filters,'+JSON.stringify({from:ctx.from,to:ctx.to})+');App.filters.shiftId=(db().shifts.find(s=>s.code==='+JSON.stringify(ctx.turno)+')||{}).id||"";'+(tab==='launch'||tab==='hourly'?'App.sel.date='+JSON.stringify(ctx.to)+';':'')+'renderNow()');
-  }else if(config.id==='portal'){
-   const sec:Record<string,string>={cadastros:'inicio',usuarios:'usuarios',parametros:'parametros',importar:'importar'};
-   if(tab in sec)evaluate('Cad.ui.sec='+JSON.stringify(sec[tab])+";App.show('cad')");else if(tab)evaluate('App.show('+JSON.stringify(tab)+')');
-  }else if(config.id==='perdas'){if(tab)evaluate('showTab('+JSON.stringify(tab)+')');}
-  else if(config.id==='gel'){if(tab==='config')evaluate('openConfig()');else if(tab)evaluate('ui.tab='+JSON.stringify(tab)+';render()');}
-  else if(config.id==='inic'||config.id==='equip'){if(tab)evaluate('ir('+JSON.stringify(tab)+')');}
-  else if(config.id==='paradas'&&tab){if(tab==='relatorios')evaluate("document.querySelector('#btnRel').click()");else evaluate('App.tab='+JSON.stringify(tab)+';App.render()');}
- }catch(e){host.status(config.id,{ready:true,pending:pending(),connected:false,error:(e as Error).message})}}
- let draft:Element|null=null;document.addEventListener('input',ev=>{const el=ev.target as Element;draft=el.closest('.overlay,.mod-bg,.modal.on,#mForm')||draft},true);
- function pending(){if(draft&&document.contains(draft)&&draft.getClientRects().length)return true;try{return !!evaluate(config.id==='oee'?'Store.S.dirty':config.id==='perdas'?'ST.pending':config.id==='gel'?'FS.pending.length':config.id==='portal'?'Store.pending||Cad.fila.length':'Store.queue.length')}catch{return false}}
- function connected(){try{return !!evaluate(config.id==='oee'?"Store.S.mode==='pasta'":config.id==='perdas'?"ST.mode==='pasta'":config.id==='gel'?"FS.base":config.id==='portal'?"Store.mode==='pasta'":'Store.dir&&Store.perm')}catch{return false}}
- async function connect(){if(config.demo)return;const h=await host.safeFolder(config.id);W.__vacRoot=h;try{
-  if(config.id==='oee'){await evaluate('connectFolder(__vacRoot,false)');if(evaluate("Store.S.mode==='pasta'"))document.querySelector('#wFolder')?.closest('.overlay')?.remove();}
-  else if(config.id==='portal'){await evaluate('Store.connect(__vacRoot)');await evaluate('App.onConnect()')}
-  else if(config.id==='perdas')await evaluate('connectDir(__vacRoot,{ask:false})');
-  else if(config.id==='gel')await evaluate('fsChooseBase(__vacRoot)');
-  else if(config.id!=='projetos')await evaluate('Store.usar(__vacRoot)');
- }finally{delete W.__vacRoot}}
- function ready(){try{return !!evaluate(config.id==='oee'?"typeof CadSync!=='undefined'":config.id==='portal'?"typeof Cad!=='undefined'&&!!Store.B":config.id==='perdas'?"typeof B!=='undefined'&&!!B":config.id==='gel'?"typeof gelExports==='function'&&typeof backend!=='undefined'":config.id==='projetos'?"typeof PAGE!=='undefined'":"typeof Store!=='undefined'&&!!Store.data")}catch{return false}}
- function userChanged(name:string){try{W.__vacUserName=name;if(config.id==='oee')evaluate("Store.S.user=__vacUserName;IDB.set('user',__vacUserName)");else if(config.id==='gel')evaluate('myName=__vacUserName');}catch{}finally{delete W.__vacUserName}}
- W.__vacBridge={route,pending,ready,connected,connect,userChanged,refresh:()=>{try{evaluate("if(typeof vacAoVoltar==='function')vacAoVoltar()")}catch{}},order:(code:string)=>{try{evaluate("vacFicha.abrir('ordem',"+JSON.stringify(code)+")")}catch{}},help:()=>{try{evaluate("if(typeof Busca!=='undefined')Busca.abrir()")}catch{}}};
+ const api=()=>{const value=W.vacPagina;const required=['pendente','conectado','conectar','ir','abas','abrirOrdem'];if(!value||required.some(k=>typeof value[k]!=='function'))throw new Error('Contrato vacPagina incompleto: '+config.id);return value};
+ function pending(){try{return api().pendente()}catch{return true}}
+ function connected(){try{return api().conectado()}catch{return false}}
+ function ready(){try{return api().pronto()}catch{return false}}
+ function route(tab:string,hash?:string,context?:any){return api().ir(tab,hash,context)}
+ async function connect(){if(config.demo)return;return api().conectar(await host.safeFolder(config.id))}
+ W.__vacBridge={route,pending,ready,connected,connect,refresh:()=>api().atualizar(),order:(code:string)=>api().abrirOrdem(code)};
  document.addEventListener('keydown',e=>{if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='k'){e.preventDefault();e.stopImmediatePropagation();host.search()}},true);
  const nativeOpen=window.open.bind(window);window.open=((url?:string|URL,target?:string,features?:string)=>{if(url&&/\.html(?:[?#]|$)/i.test(String(url))&&!/^blob:|^data:/i.test(String(url))){host.ir(String(url));return null}return nativeOpen(url,target,features)}) as typeof window.open;
  document.addEventListener('click',e=>{const a=(e.target as Element)?.closest?.('a[href]');if(!a||a.hasAttribute('download')||e.ctrlKey||e.metaKey)return;const h=a.getAttribute('href')||'';if(/\.html(?:[?#]|$)/i.test(h)){e.preventDefault();e.stopImmediatePropagation();host.ir(h)}},true);
  let attempts=0;const timer=setInterval(()=>{if(!ready()){if(++attempts>150){clearInterval(timer);host.status(config.id,{ready:false,pending:false,connected:false,error:'O módulo não concluiu a abertura.'})}return}clearInterval(timer);
   document.documentElement.dataset.theme=(parent.document.documentElement.dataset.theme||'light');
-  const actions=document.createElement('div');actions.id='vacEngineActions';document.body.insertBefore(actions,document.querySelector('main'));
-  const moveActions=()=>{document.querySelectorAll('.vpage .vacts').forEach(n=>actions.appendChild(n))};moveActions();new MutationObserver(moveActions).observe(document.body,{childList:true,subtree:true});
   route('',config.route||undefined);host.status(config.id,{ready:true,pending:pending(),connected:connected()});
   setInterval(()=>host.status(config.id,{ready:true,pending:pending(),connected:connected()}),1800);
  },200);

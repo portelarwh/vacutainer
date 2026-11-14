@@ -10,3 +10,5 @@ Os commits intermediários corrigem camadas dependentes. A aprovação funcional
 
 NÃO VERIFICADO nesta máquina: abertura `file://` no Chrome/Edge corporativo, SMB e concorrência entre duas estações. O corte depende desses testes na homologação; não foi autorizado testar nas bases da linha.
 | 2 — versão | `tests/compatibility.test.ts`: leitura de versão maior, comparação numérica e recusa de escrita; três testes passam | A proteção envolve todas as subpastas e reavalia a autorização a cada operação de escrita. Falha de leitura bloqueia conexão. |
+| 3 — identidade | `tests/auth.test.ts`: lista removida; sessão ausente/expirada/ID divergente e Consulta recusam escrita | O login continua no kit; permissões por ação continuam no vacTravas. Testes completos de senha serão exercitados na suíte integrada. |
+| 4 — contrato | `tests/bridge.test.ts`: dois testes vermelhos antes; verdes após remover eval e publicar API | O teste `contrato.cjs` verifica a presença das seis operações nos nove módulos no navegador. Erro/ausência de contrato bloqueia troca de pasta. |

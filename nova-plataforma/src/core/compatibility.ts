@@ -18,7 +18,7 @@ export async function protectFolder(root:Directory,file:string,version:string,ca
   const guard=()=>{if(readOnly||!canWrite())throw new DOMException(reason||'Sessão ou perfil não permite gravar.','NotAllowedError')};
   const proxy=new Proxy(handle,{get(target,key){
    if(key==='createWritable'||key==='removeEntry'||key==='remove'||key==='move')return async(...args:any[])=>{guard();const value=await target[key](...args);if(key!=='createWritable')return value;return new Proxy(value,{get(s,k){const v=s[k];return typeof v==='function'?(...a:any[])=>{guard();return v.apply(s,a)}:v}})};
-   if(key==='getDirectoryHandle'||key==='getFileHandle')return async(name:string,options?:{create?:boolean})=>{if(options?.create)guard();return wrap(await target[key](name,options))};
+   if(key==='getDirectoryHandle'||key==='getFileHandle')return async(name:string,options?:{create?:boolean})=>{if(options?.create&&(readOnly||!canWrite()))return wrap(await target[key](name));return wrap(await target[key](name,options))};
    const value=Reflect.get(target,key,target);return typeof value==='function'?value.bind(target):value;
   }});cache.set(handle,proxy);return proxy;
  }
