@@ -45,3 +45,5 @@ Contrato detalhado: [CONTRATO-MOTORES.md](../CONTRATO-MOTORES.md).
 Execução final de `npm run test:all`: código 0; 31 testes unitários aprovados, 75 abas dos nove motores navegadas e testes integrados aprovados. As 67 suítes da raiz têm execução aprovada via HTTP local, com o reteste de Meta após corrigir o adapter Node da SheetJS. Logs sem edição em [evidencias/](evidencias/LEIA-ME.md).
 
 O manifesto final aponta 38b342340fb9e0d2f908b0109a358d0017937546 e informa dirtySources vazio. Resultado e commits em [RESULTADO.md](RESULTADO.md). Corte não executado; os itens de homologação real permanecem NÃO VERIFICADOS.
+
+A conferência final do CI também ajustou a instalação do Chromium para o diretório da plataforma: a raiz e a plataforma fixam versões distintas de Playwright. A regressão do workflow falhou antes desse ajuste e passou depois; os 31 testes unitários foram repetidos e passaram. O artefato e seus motores continuam exatamente os compilados em 38b3423.
