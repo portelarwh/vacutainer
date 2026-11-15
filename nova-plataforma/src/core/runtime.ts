@@ -45,6 +45,8 @@ export function routeEngine(id:ModuleId,tab:string,hash?:string,context?:{from:s
 export function openOrder(id:ModuleId,code:string){const w=frames.get(id)?.contentWindow as any;w?.vacPagina?.abrirOrdem(code)}
 export function refreshEngine(id:ModuleId){const w=frames.get(id)?.contentWindow as any;return w?.vacPagina?.atualizar()}
 export async function connectEngine(id:ModuleId){const w=frames.get(id)?.contentWindow as any;if(!w?.vacPagina)throw new Error('Contrato indisponível.');await w.vacPagina.conectar(await (window as any).vacAppHost.safeFolder(id));}
+/* Motivo por módulo aberto, para a janela da troca de pasta. Mesma regra do hasPending: na dúvida, conta como pendente. */
+export function pendingDetail(){const out:{id:ModuleId;motivo:string}[]=[];for(const [id,f] of frames){try{const api=(f.contentWindow as any)?.vacPagina;if(!api){out.push({id,motivo:'ainda abrindo'});continue}if(!api.pendente())continue;out.push({id,motivo:!api.pronto()?'ainda abrindo':api.conectado&&!api.conectado()&&root?'conectando à pasta (pode estar esperando uma confirmação na tela do módulo)':'alteração ainda não gravada ou formulário aberto'})}catch{out.push({id,motivo:'não respondeu à consulta'})}}return out}
 export function hasPending(){return[...frames.values()].some(f=>{try{const api=(f.contentWindow as any)?.vacPagina;return !api||api.pendente()}catch{return true}})}
 const embeddedCss=marcaCss+brandCss+`
 html,body{margin:0!important;padding:0!important;height:auto!important;min-height:0!important;min-width:0!important;font-family:var(--f-body)!important;background:var(--bg)!important}

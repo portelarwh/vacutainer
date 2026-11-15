@@ -4,7 +4,7 @@ As regras continuam nas fontes de cada motor. O build da raiz aplica `fontes/kit
 
 | Operação | Contrato |
 |---|---|
-| `pendente()` | Booleano; erro, conexão em andamento e rascunho não concluído bloqueiam troca de pasta. |
+| `pendente()` | Booleano; erro, conexão em andamento e rascunho não concluído contam como pendência na troca de pasta. |
 | `conectado()` | Só retorna verdadeiro depois de concluir a conexão/leitura. |
 | `conectar(dir)` | Usa o handle nativo escolhido pela casca; não escolhe outra pasta. |
 | `ir(aba, hash?, contexto?)` | Delega à navegação existente, preservando ficha/ordem/lote e os filtros do motor. |
@@ -25,3 +25,10 @@ Cada pasta recebe um escopo persistente por isSameEntry. Reservas, cópias pende
 O empacotador não modifica os HTML. A inserção estrutural da ponte usa replaceOnce e falha caso a âncora esteja ausente ou duplicada. O verificador descomprime os motores, confere hash/tamanho e rejeita dependências externas.
 
 Essas proteções são controles do aplicativo, sem substituir permissões de arquivo da rede. Não constituem comprovação de concorrência segura em SMB: essa homologação continua obrigatória antes do corte.
+
+## Troca de pasta com pendência (casca 1.0.2, 15/11/2026)
+
+Antes era só uma mensagem e a troca ficava bloqueada; um módulo parado conectando (por exemplo, esperando confirmação depois de escolher a pasta errada) prendia a pessoa na pasta. Agora a casca abre a janela "Há alterações pendentes nesta pasta", que diz o que está pendente e onde: cada módulo aberto com o motivo (ainda abrindo, conectando à pasta, alteração não gravada ou formulário aberto, não respondeu) e o que está guardado no navegador por módulo (`queueDetail`, em `src/core/scopes.ts`; `pendingDetail`, em `src/core/runtime.ts`). Falha ao consultar a fila aparece na janela e conta como pendência.
+
+"Voltar e conferir" mantém a pasta. "Trocar mesmo assim" troca: o que está guardado no navegador continua no escopo desta pasta e volta quando ela for conectada de novo; só um formulário aberto e não salvo se perde. Testes: `tests/scopes.test.ts` e `tests/integracao.cjs`.
+

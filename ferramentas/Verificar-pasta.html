@@ -35,13 +35,15 @@ td.n{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
 .scroll{overflow-x:auto}
 code{background:#F0F3FC;padding:1px 5px;border-radius:4px}
 #vazio{padding:28px;text-align:center}
+.arvore{margin:8px 0 0;max-height:70vh;overflow:auto;background:#F7F8FC;border:1px solid var(--line);border-radius:8px;padding:10px 12px;font:12px/1.45 Consolas,"Courier New",monospace;white-space:pre}
+summary{cursor:pointer;font-weight:600;color:var(--navy)}
 @media print{header,.bar{display:none}section{break-inside:avoid}}
 </style>
 </head>
 <body>
 <header>
  <h1>Verificar pasta da linha</h1>
- <p>Mapeia a pasta compartilhada e confere se bases, backups e aplicativo estão no lugar certo. Só lê: nada é gravado, movido ou apagado.</p>
+ <p>Mapeia a pasta compartilhada inteira (árvore de arquivos e subpastas) e confere se bases, backups e aplicativo estão no lugar certo. Só lê: nada é gravado, movido ou apagado.</p>
 </header>
 <main>
  <div class="bar">
@@ -75,24 +77,50 @@ const PAGINAS_ANTIGAS = ['Portal.html', 'OEE-Vacutainer.html', 'Perdas-Ordem.htm
 const DIAS_BACKUP = 7;
 
 /* ---------- leitura (só leitura) ---------- */
-// Mapa caminho relativo → { file, lastModified, size }. Lido por handle (Chrome/Edge) ou pelo seletor de arquivos.
+// Mapa caminho relativo → File (pastas vazias como "caminho/" → null). Lê a pasta INTEIRA, com todas as subpastas.
+const LIMITE = 50000; // proteção para pastas enormes: o relatório avisa quando para
 async function lerPorHandle(dir) {
- const mapa = new Map();
- async function andar(d, prefixo, nivel) {
+ const mapa = new Map(); let cortado = false;
+ async function andar(d, prefixo) {
+  let vazia = true;
   for await (const [nome, h] of d.entries()) {
+   vazia = false; if (mapa.size >= LIMITE) { cortado = true; return; }
    const caminho = prefixo + nome;
-   if (h.kind === 'file') { const f = await h.getFile(); mapa.set(caminho, f); }
-   else if (nivel < 3) await andar(h, caminho + '/', nivel + 1); // raiz, 00. Bases/Preferencias, 00. Backups/<módulo>
-   else mapa.set(caminho + '/', null);
+   if (h.kind === 'file') { try { mapa.set(caminho, await h.getFile()); } catch (e) { mapa.set(caminho, { size: null, lastModified: 0, erro: e.message }); } }
+   else await andar(h, caminho + '/');
   }
+  if (vazia && prefixo) mapa.set(prefixo, null);
  }
- await andar(dir, '', 0);
- return { nome: dir.name, mapa };
+ await andar(dir, '');
+ return { nome: dir.name, mapa, cortado };
 }
 function lerPorLista(files) {
  const mapa = new Map(); let nome = '';
  for (const f of files) { const partes = f.webkitRelativePath.split('/'); nome = partes.shift(); mapa.set(partes.join('/'), f); }
- return { nome, mapa };
+ return { nome, mapa, cortado: false }; // o seletor de arquivos não lista pastas vazias
+}
+/* Árvore de arquivos e subpastas, em texto, com tamanho e data de cada arquivo e o total de cada pasta. */
+function arvore(nomeRaiz, mapa) {
+ const raiz = { pastas: new Map(), arquivos: [] };
+ for (const [caminho, f] of mapa) {
+  const partes = caminho.split('/'), ehPasta = caminho.endsWith('/'); if (ehPasta) partes.pop();
+  let no = raiz; const fim = ehPasta ? partes.length : partes.length - 1;
+  for (let i = 0; i < fim; i++) { if (!no.pastas.has(partes[i])) no.pastas.set(partes[i], { pastas: new Map(), arquivos: [] }); no = no.pastas.get(partes[i]); }
+  if (!ehPasta) no.arquivos.push({ nome: partes.at(-1), f });
+ }
+ const soma = no => { let n = no.arquivos.length, t = no.arquivos.reduce((s, a) => s + (a.f && a.f.size || 0), 0); for (const p of no.pastas.values()) { const r = soma(p); n += r.n; t += r.t; } no.n = n; no.t = t; return { n, t }; };
+ soma(raiz);
+ const L = [`${nomeRaiz}/  (${raiz.n} arquivo(s), ${kb(raiz.t)})`], cmp = (a, b) => a.localeCompare(b, 'pt-BR', { numeric: true });
+ const desce = (no, pre) => {
+  const itens = [...[...no.pastas.keys()].sort(cmp).map(k => ['p', k]), ...no.arquivos.sort((a, b) => cmp(a.nome, b.nome)).map(a => ['a', a])];
+  itens.forEach(([tipo, x], i) => {
+   const ult = i === itens.length - 1, ramo = pre + (ult ? '└── ' : '├── '), segue = pre + (ult ? '    ' : '│   ');
+   if (tipo === 'p') { const p = no.pastas.get(x); L.push(`${ramo}${x}/  (${p.n} arquivo(s), ${kb(p.t)})`); desce(p, segue); }
+   else L.push(`${ramo}${x.nome}  ·  ${x.f && x.f.erro ? 'não consegui ler: ' + x.f.erro : kb(x.f.size) + ' · ' + dt(x.f.lastModified)}`);
+  });
+ };
+ desce(raiz, '');
+ return L.join('\n');
 }
 
 /* ---------- utilidades ---------- */
@@ -104,8 +132,8 @@ const versaoNum = v => String(v || '').replace(/^(Portal|Produção)\s+/i, '').t
 function compara(a, b) { const x = a.split('.').map(Number), y = b.split('.').map(Number); for (let i = 0; i < Math.max(x.length, y.length); i++) { if ((x[i] || 0) !== (y[i] || 0)) return (x[i] || 0) > (y[i] || 0) ? 1 : -1; } return 0; }
 
 /* ---------- conferência ---------- */
-async function conferir({ nome, mapa }) {
- const R = { pasta: nome, quando: new Date(), secoes: [] };
+async function conferir({ nome, mapa, cortado }) {
+ const R = { pasta: nome, quando: new Date(), secoes: [], arvore: arvore(nome, mapa), cortado };
  const sec = (titulo, cols) => { const s = { titulo, cols, linhas: [] }; R.secoes.push(s); return (st, ...cel) => s.linhas.push({ st, cel }); };
  const arquivos = [...mapa.keys()];
  const raiz = arquivos.filter(p => !p.includes('/'));
@@ -228,6 +256,7 @@ function mostrar(R) {
   h += s.linhas.map(l => `<tr><td><span class="st ${l.st}">${ROT[l.st]}</span></td>${l.cel.map(c => `<td${typeof c === 'number' ? ' class="n"' : ''}>${esc(c)}</td>`).join('')}</tr>`).join('');
   h += `</tbody></table></div></section>`;
  }
+ h += `<section><h2>Árvore da pasta</h2><p class="muted">Todos os arquivos e subpastas lidos${R.cortado ? ` · <b>parou em ${LIMITE} itens</b> (pasta muito grande)` : ''}. Vai junto no relatório copiado ou baixado.</p><details><summary>Mostrar a árvore (${R.arvore.split('\n').length} linhas)</summary><pre class="arvore">${esc(R.arvore)}</pre></details></section>`;
  document.getElementById('saida').innerHTML = h;
  document.getElementById('copiar').disabled = document.getElementById('baixar').disabled = false;
  document.getElementById('estado').textContent = t.erro ? `${t.erro} erro(s) para corrigir.` : t.aviso ? `${t.aviso} ponto(s) de atenção.` : 'Tudo em ordem.';
@@ -235,6 +264,7 @@ function mostrar(R) {
 function texto(R) {
  const L = [`Verificação da pasta "${R.pasta}" · ${R.quando.toLocaleString('pt-BR')}`, `Erros ${R.totais.erro} · Atenção ${R.totais.aviso} · OK ${R.totais.ok} · Info ${R.totais.info}`, ''];
  for (const s of R.secoes) { L.push('== ' + s.titulo); for (const l of s.linhas) L.push(`[${ROT[l.st]}] ` + l.cel.join(' | ')); L.push(''); }
+ L.push('== Árvore da pasta' + (R.cortado ? ` (parou em ${LIMITE} itens)` : ''), R.arvore, '');
  return L.join('\n');
 }
 async function rodar(leitura) {
