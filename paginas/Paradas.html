@@ -3171,6 +3171,18 @@ const vacLogin = (() => {
     ls('vac.login.ultimo.' + u.codigo, iso()); const E = lj('vac.login.erros', {}); delete E[u.codigo]; ls('vac.login.erros', JSON.stringify(E));
     avisar(u.nome); return ult;
   }
+  async function gravarConta(u, operacao, abrir = true) {
+    const chaves = ['vac.sessao','vac.user','vac.userId','vac.perfil'];
+    const anterior = chaves.map(k => lg(k));
+    const ultimo = abrir ? abrirSessao(u) : lg('vac.login.ultimo.' + u.codigo);
+    try {
+      if (window.__vacEmbedded) await window.vacPagina.executarContaPropria(String(u.codigo), operacao);
+      else await operacao();
+      return ultimo;
+    } catch (erro) {
+      chaves.forEach((k,i) => ls(k, anterior[i])); avisar(anterior[1] || ''); throw erro;
+    }
+  }
   function sair() { for (const k of ['vac.sessao', 'vac.user', 'vac.userId', 'vac.perfil']) ls(k, null); avisar(''); fechar(); abrir(); }
   /* ---- quando não aparece ---- */
   function dispensado() {
@@ -3278,7 +3290,7 @@ const vacLogin = (() => {
       const er = conferirNova(a, b); if (er) return msg(er, 'e');
       const ok = el.querySelector('#vlOk'); ok.disabled = true;
       try { const s = await gerar(a, false, nome), tu = el.querySelector('#vlTurno'), u = { codigo: id, nome, perfil: 'CONSULTA', turno: tu && tu.value || null, especialidade: el.querySelector('#vlEsp').value.trim() || null };
-        abrirSessao(u); await h.autocadastro(u, s); entrou(usuario(id) || u, 'Cadastro feito.', null); }
+        await gravarConta(u, () => h.autocadastro(u, s)); entrou(usuario(id) || u, 'Cadastro feito.', null); }
       catch (x) { ok.disabled = false; msg('Não consegui cadastrar: ' + (x.message || x), 'e'); }
     };
   }
@@ -3293,7 +3305,7 @@ const vacLogin = (() => {
     el.querySelector('#vlOk').onclick = async () => {
       const a = pin('vlP1'), er = conferirNova(a, pin('vlP2')); if (er) return msg(er, 'e');
       const ok = el.querySelector('#vlOk'); ok.disabled = true;
-      try { const s = await gerar(a, false, u.nome); const ult = abrirSessao(u); await h.criarSenha(u, s, provisoria ? 'troca da senha provisória' : '1º acesso: senha criada pela pessoa'); entrou(usuario(u.codigo) || u, 'Senha criada.', ult); }
+      try { const s = await gerar(a, false, u.nome); const ult = await gravarConta(u, () => h.criarSenha(u, s, provisoria ? 'troca da senha provisória' : '1º acesso: senha criada pela pessoa')); entrou(usuario(u.codigo) || u, 'Senha criada.', ult); }
       catch (x) { ok.disabled = false; msg('Não consegui gravar a senha: ' + (x.message || x), 'e'); }
     };
   }
@@ -3339,7 +3351,7 @@ const vacLogin = (() => {
     el.querySelector('#vlOk').onclick = async () => {
       if (u.senha && u.senha.hash) { if (bloqueio(u.codigo)) return msg('Bloqueado por senhas erradas. Tente em alguns minutos.', 'e'); if (!(await confere(u, pin('vlP0')))) { errou(u.codigo); limpaPin('vlP0'); return msg('A senha atual não confere.', 'e'); } }
       const a = pin('vlP1'), er = conferirNova(a, pin('vlP2')); if (er) return msg(er, 'e');
-      try { await h.criarSenha(u, await gerar(a, false, u.nome), 'senha trocada pela pessoa'); msg('Senha trocada.', 'o'); setTimeout(passoConta, 900); } catch (x) { msg('Não consegui gravar: ' + (x.message || x), 'e'); }
+      try { const nova = await gerar(a, false, u.nome); await gravarConta(u, () => h.criarSenha(u, nova, 'senha trocada pela pessoa'), false); msg('Senha trocada.', 'o'); setTimeout(passoConta, 900); } catch (x) { msg('Não consegui gravar: ' + (x.message || x), 'e'); }
     };
   }
   /* ---- ciclo: abre quando falta sessão; fecha sozinho se outra aba entrou ---- */
@@ -3630,7 +3642,62 @@ window.vacPagina = (() => {
       return { id: el.id, label: el.textContent.trim() || el.title || el.getAttribute('aria-label'), disabled: !!el.disabled };
     }).filter(c => c.label);
   }
+  // N1: autorização temporária exclusiva para as operações da conta atual.
+  // Não altera o formato do cadastro nem substitui a transação/backup do Portal.
+  let conta = null;
+  const canon = valor => JSON.stringify(ordenar(valor));
+  function ordenar(v) { return Array.isArray(v) ? v.map(ordenar) : v && typeof v === 'object' ? Object.fromEntries(Object.keys(v).sort().map(k => [k, ordenar(v[k])])) : v; }
+  function filaSoContaPropria() {
+    try {
+      const ses = vacLogin.sessao();
+      if (!conta || id() !== 'portal' || !ses || String(ses.id) !== conta.codigo || Date.now() - conta.desde > 30000 || !Cad.fila.length) return false;
+      let usuarios = 0;
+      for (const op of Cad.fila) {
+        if (op.tipo === 'perfis') {
+          const padrao = DEFAULT_PERFIS.find(p => p.codigo === 'CONSULTA');
+          if (op.acao !== 'criação' || op.codigo !== 'CONSULTA' || op.origem !== 'autocadastro' || (Cad.base.perfis || []).some(p => p.codigo === 'CONSULTA') || canon(op.item) !== canon(padrao)) return false;
+          continue;
+        }
+        if (op.tipo !== 'usuarios' || String(op.codigo) !== conta.codigo) return false;
+        usuarios++;
+        if (op.acao === 'edição') {
+          if (op.origem !== 'login' || !op.mudancas || Object.keys(op.mudancas).join(',') !== 'senha' || !op.mudancas.senha.depois?.hash) return false;
+        } else if (op.acao === 'criação') {
+          const u = op.item, campos = ['codigo','nome','perfil','turno','especialidade','email','paginaInicial','ativo','origem','primeiroAcessoEm','senha'];
+          if (op.origem !== 'autocadastro' || !u || String(u.codigo) !== conta.codigo || u.perfil !== 'CONSULTA' || u.ativo !== true || !u.senha?.hash || Object.keys(u).some(k => !campos.includes(k))) return false;
+        } else return false;
+      }
+      return usuarios > 0;
+    } catch (e) { return false; }
+  }
+  async function validarDocumentoConta(texto, backup) {
+    if (!filaSoContaPropria()) throw new DOMException('Fila não autorizada para conta própria.', 'NotAllowedError');
+    const atualTexto = await (await (await Store.dir.getFileHandle(CAD_FILE)).getFile()).text();
+    if (backup) { if (texto !== atualTexto) throw new DOMException('Backup diferente do cadastro atual.', 'NotAllowedError'); return; }
+    const atual = JSON.parse(atualTexto), proximo = JSON.parse(texto), esperado = cadFix(clone(atual)), auditoria = [];
+    for (const op of Cad.fila) { if (!aplicarOp(esperado,op,auditoria).ok) throw new DOMException('Conflito na conta própria.', 'NotAllowedError'); }
+    esperado.auditoria = (esperado.auditoria || []).concat(auditoria).slice(-CAD_AUD_MAX);
+    const negocio = b => Object.fromEntries(Object.entries(b).filter(([k]) => !['rev','revId','revAt','revBy','appVersion'].includes(k)));
+    if (canon(negocio(esperado)) !== canon(negocio(proximo)) || proximo.rev !== (+atual.rev || 0) + 1 || proximo.appVersion !== 'Portal ' + PAGE.versao)
+      throw new DOMException('O documento contém mudanças fora da conta própria.', 'NotAllowedError');
+  }
+  async function executarContaPropria(codigo, operacao) {
+    if (id() !== 'portal' || conta || Cad.gravando || !vacLogin.sessao() || String(vacLogin.sessao().id) !== String(codigo)) throw new DOMException('Transação de conta indisponível.', 'NotAllowedError');
+    conta = Object.freeze({ codigo: String(codigo), desde: Date.now() });
+    try {
+      if (Cad.fila.length && !filaSoContaPropria()) throw new DOMException('Resolva as outras alterações antes de gravar sua conta.', 'NotAllowedError');
+      await operacao();
+      if (Cad.fila.length || (Store.mode !== 'teste' && Cad.status !== 'salvo')) throw new Error('A conta não foi confirmada na pasta. A alteração continua pendente neste navegador.');
+      if (Store.mode !== 'teste') {
+        const salvo = JSON.parse(await (await (await Store.dir.getFileHandle(CAD_FILE)).getFile()).text());
+        const usuario = (salvo.usuarios || []).find(u => String(u.codigo) === String(codigo));
+        if (!usuario?.senha?.hash || canon(usuario.senha) !== canon(Cad.base.usuarios.find(u => String(u.codigo) === String(codigo))?.senha)) throw new Error('A senha não foi confirmada na releitura.');
+      }
+    } finally { conta = null; }
+  }
   return { pronto, pendente, conectado, conectar, ir: irAba, abas, comandos,
+    executarContaPropria, filaSoContaPropria, validarDocumentoConta,
+    get contaPropria() { return conta; },
     descartar: () => window.__vacRuntimeDispose && window.__vacRuntimeDispose(),
     bibliotecaCarregada: () => { if (typeof vacPdf !== 'undefined') vacPdf.instalar(); },
     comando: chave => { const el = document.getElementById(chave); if (!el) throw new Error('Comando indisponível: ' + chave); el.click(); },

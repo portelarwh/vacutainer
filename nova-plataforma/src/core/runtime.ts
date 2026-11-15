@@ -81,10 +81,36 @@ function runtimePrelude(config:{id:string;route:string;demo:boolean;scope:string
   Object.defineProperty(window,'localStorage',{configurable:true,get:()=>new Proxy(methods,{get:(t,k)=>k==='length'?Object.keys(raw).filter(x=>x.startsWith(prefix)).length:typeof k==='string'&&k in t?(t as any)[k]:methods.getItem(String(k)),set:(_,k,v)=>{methods.setItem(String(k),v);return true}})});
   const op=indexedDB.open.bind(indexedDB),del=indexedDB.deleteDatabase.bind(indexedDB);indexedDB.open=(n:string,v?:number)=>v===undefined?op(prefix+n):op(prefix+n,v);indexedDB.deleteDatabase=(n:string)=>del(prefix+n);
   W.showDirectoryPicker=async()=>structuredClone(await host.safeFolder(config.id));
-  // Interceptar no realm do motor preserva handles nativos e sua clonagem no IndexedDB.
-  const guard=()=>{if(!host.canWrite(config.id))throw new DOMException(host.policy(config.id)?.reason||'Sessão ou perfil não permite gravar.','NotAllowedError')};
-  for(const proto of [W.FileSystemFileHandle?.prototype,W.FileSystemDirectoryHandle?.prototype]){if(!proto)continue;for(const key of ['createWritable','removeEntry','remove','move']){const original=proto[key];if(original)proto[key]=function(...args:any[]){guard();return original.apply(this,args)}}}
-  const dp=W.FileSystemDirectoryHandle?.prototype;if(dp)for(const key of ['getFileHandle','getDirectoryHandle']){const original=dp[key];dp[key]=function(name:string,options?:any){if(options?.create&&!host.canWrite(config.id))return original.call(this,name);return original.call(this,name,options)}}
+  // Handles permanecem nativos e clonáveis. A exceção N1 confere caminho e conteúdo.
+  const denied=()=>new DOMException(host.policy(config.id)?.reason||'Sessão ou perfil não permite gravar.','NotAllowedError');
+  const normal=()=>host.canWrite(config.id);
+  async function accountPath(handle:any,name?:string){
+   if(config.id!=='portal'||!host.policy(config.id)||host.policy(config.id).readOnly||!W.vacPagina?.filaSoContaPropria())throw denied();
+   const path=await(await host.pasta()).resolve(handle);if(!path)throw denied();return [...path,...(name?[name]:[])];
+  }
+  const main=(path:string[])=>path.join('/')==='00. Bases/vacutainer-cadastros.json';
+  const backup=(path:string[])=>path.length===3&&path[0]==='00. Backups'&&path[1]==='Cadastros'&&/^vacutainer-cadastros_\d{4}-\d{2}-\d{2}_\d{2}h\d{2}m\d{2}s_rev\d+\.json$/.test(path[2]);
+  const fp=W.FileSystemFileHandle?.prototype;
+  if(fp){const create=fp.createWritable;fp.createWritable=async function(...args:any[]){
+   if(normal())return create.apply(this,args);
+   const path=await accountPath(this);if(!main(path)&&!backup(path))throw denied();
+   const stream=await create.apply(this,args);let validated=false;
+   return new Proxy(stream,{get:(target,key)=>{
+    if(key==='write')return async(data:any)=>{await accountPath(this);if(typeof data!=='string')throw denied();try{await W.vacPagina.validarDocumentoConta(data,backup(path));validated=true;return await target.write(data)}catch(e){await target.abort().catch(()=>{});throw e}};
+    if(key==='close')return async()=>{try{await accountPath(this);if(!validated)throw denied();return await target.close()}catch(e){await target.abort().catch(()=>{});throw e}};
+    const value=Reflect.get(target,key,target);return typeof value==='function'?value.bind(target):value;
+   }});
+  }}
+  for(const proto of [fp,W.FileSystemDirectoryHandle?.prototype]){if(!proto)continue;for(const key of ['removeEntry','remove','move']){const original=proto[key];if(original)proto[key]=function(...args:any[]){if(!normal())throw denied();return original.apply(this,args)}}}
+  const dp=W.FileSystemDirectoryHandle?.prototype;
+  if(dp)for(const key of ['getFileHandle','getDirectoryHandle']){const original=dp[key];dp[key]=async function(name:string,options?:any){
+   if(options?.create&&!normal()){
+    let allowed=false;try{const path=await accountPath(this,name),joined=path.join('/');allowed=key==='getFileHandle'?(main(path)||backup(path)):['00. Backups','00. Backups/Cadastros'].includes(joined)}catch{}
+    if(!allowed)return original.call(this,name);
+   }
+   return original.call(this,name,options);
+  }}
+
  }
  const api=()=>{const value=W.vacPagina;const required=['pendente','conectado','conectar','ir','abas','abrirOrdem'];if(!value||required.some(k=>typeof value[k]!=='function'))throw new Error('Contrato vacPagina incompleto: '+config.id);return value};
  function pending(){try{return api().pendente()}catch{return true}}
