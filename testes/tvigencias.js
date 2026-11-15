@@ -1,6 +1,6 @@
 // E2 do plano único (08/11/2026): versão única por página (F10), "hoje" no dia local (F12) e meta do Waste pela vigência do mês,
 // ponderada pelos dias quando há duas vigências no mesmo mês (F05). node testes/tvigencias.js → "sem erros"; código 1 se falhar
-const path = require('path'), fs = require('fs'); const RAIZ = path.resolve(__dirname, '..') + '/'; const PG = 'file://' + RAIZ + 'paginas/';
+const path = require('path'), fs = require('fs'); const RAIZ = path.resolve(__dirname, '..') + '/'; const PG = 'file://' + RAIZ + '__modulos__/';
 const { chromium } = require('playwright');
 const errs = []; const ok = (c, m) => { console.log((c ? 'ok   ' : 'FALHA ') + m); if (!c) errs.push(m); };
 const PAGS = ['Portal.html', 'OEE-Vacutainer.html', 'Perdas-Ordem.html', 'Gestão-Gel-Vacutainer.html', 'Paradas.html', 'Equipamentos.html', 'Iniciativas.html', 'Projetos.html'];
@@ -14,7 +14,7 @@ const PAGS = ['Portal.html', 'OEE-Vacutainer.html', 'Perdas-Ordem.html', 'Gestã
       const p = await b.newPage(); p.on('dialog', d => d.accept()); await p.goto(PG + encodeURI(a)); await p.waitForTimeout(1300);
       const v = await p.evaluate(() => ({ tela: ((document.getElementById('appVer') || {}).textContent || '').trim().replace(/^v/, ''), page: typeof PAGE !== 'undefined' ? String(PAGE.versao) : null,
         app: typeof APP_VER !== 'undefined' ? APP_VER : typeof APP_VERSION !== 'undefined' ? APP_VERSION : null }));
-      const det = await portal.evaluate(t => versaoHtml(t).v, fs.readFileSync(RAIZ + 'paginas/' + a, 'utf8'));
+      const det = await portal.evaluate(t => versaoHtml(t).v, require('../scripts/html.cjs').engine(a));
       const base = a === 'Perdas-Ordem.html' ? await p.evaluate(() => ({ e: emptyBase().appVersion })) : null;
       const vs = [v.tela, v.page, det].concat(v.app ? [v.app] : []).concat(base ? [base.e] : []);
       ok(v.tela && vs.every(x => x === v.tela), `${a}: versão igual na tela, no código${v.app ? ', na constante' : ''}${base ? ', na base' : ''} e no Portal › Versões (${vs.join(' / ')})`);

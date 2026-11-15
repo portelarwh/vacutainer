@@ -18,7 +18,7 @@ const LER = () => {
 (async () => {
   const b = await chromium.launch(); const pe = [];
   const nova = async (w, h, tema) => { const c = await b.newContext({ viewport: { width: w, height: h }, colorScheme: tema }); await c.clock.setFixedTime(new Date('2026-11-11T12:00:00')); const o = await c.newPage();   /* data fixa: a referência vale em qualquer dia */ o.on('pageerror', e => pe.push(e.message)); o.on('dialog', d => d.accept());
-    await o.goto('file://' + RAIZ + 'paginas/Paradas.html'); await o.waitForTimeout(900);
+    await o.goto('file://' + RAIZ + '__modulos__/Paradas.html'); await o.waitForTimeout(900);
     await o.evaluate(() => { document.querySelectorAll('.overlay').forEach(x => x.remove()); try { localStorage.removeItem('vac.grupos.paradas'); } catch (e) { } modoTeste(); App.go('geral'); }); await o.waitForTimeout(900); return { c, o }; };
   const { c, o } = await nova(1440, 900, 'light');
   const atual = await o.evaluate(LER);

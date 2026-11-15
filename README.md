@@ -1,28 +1,23 @@
-# Sistemas · Linha Vacutainer
+# Vacutainer
 
-Plataforma única da linha e fontes dos nove motores atuais.
+**Abra ou baixe [Plataforma.html](Plataforma.html). É o aplicativo completo e sua única fonte de código.**
 
-## Produto e instalação
+Não precisa de páginas antigas, instalação de Node, internet, API ou servidor. Produção, Portal, Waste, Gel, Paradas, Equipamentos, Iniciativas/Ações, Linha 360°, Projetos e demonstração estão incorporados. Os dados operacionais permanecem em `00. Bases/` e `00. Backups/`; não entram no Git.
 
-A plataforma única é o produto: `nova-plataforma/dist/Plataforma.html`. O Chrome/Edge abre esse arquivo na pasta da linha; bases e backups continuam em `00. Bases/` e `00. Backups/`. Sem API ou servidor interno.
+Para testar sem dados reais, abra `Plataforma.html?demo=1` ou use o botão de demonstração. Fontes/logotipos oficiais são opcionais e externos por licença: [MARCA](docs/MARCA.md).
 
-**O corte ainda não foi executado.** Leia [o roteiro de homologação e corte](nova-plataforma/docs/CORTE.md) e o [guia de instalação da plataforma](nova-plataforma/dist/Instalacao-Plataforma.html). Os HTML de `paginas/` não serão distribuídos: são as fontes e referências dos motores atuais incorporados à plataforma.
+## Melhorar o aplicativo
 
-## Compilar e testar
+Leia [AGENTS](AGENTS.md) e [COMECE-AQUI](docs/COMECE-AQUI.md). Os componentes, estilos, motores e bibliotecas são blocos nomeados dentro do mesmo HTML. Procure `data-vac-source="css/brand"`, `modulo/App` ou `motor/oee`, conforme o que precisa editar. Não há outra cópia de fonte nem etapas Python de substituição.
+
+Testes, scripts de verificação, documentação e licenças são mantidos para permitir evolução com segurança. Nenhum deles é consultado pelo aplicativo durante o uso.
 
 ```sh
-npm install
-npm ci --prefix nova-plataforma
-npm run build --prefix nova-plataforma
+npm ci
+npm run build
+npm run test:unit
 npm test
-npm run test:all --prefix nova-plataforma
+npm run test:plataforma
 ```
 
-O build da plataforma compila a raiz antes de empacotar os nove motores. Alterações de regra continuam em `fontes/` ou `paginas/`, conforme o proprietário documentado em [CLAUDE.md](CLAUDE.md). A casca React não duplica esses cálculos.
-
-Código e contratos da plataforma: [nova-plataforma/README.md](nova-plataforma/README.md). Correção da revisão PR76: [acompanhamento](nova-plataforma/docs/pr76/ACOMPANHAMENTO.md).
-
-
-## Preparação de layout e marca
-
-Para trabalhar no produto novo, leia [o ponto de entrada dos agentes](nova-plataforma/docs/COMECE-AQUI.md), o [Design System](nova-plataforma/docs/DESIGN_SYSTEM.md) e a [referência BD](nova-plataforma/docs/BD_Dashboard_Brand_Guidelines.md). As alterações visuais usam os mesmos tokens na casca e nos motores incorporados, preservando suas regras.
+Node 22 e Chromium do Playwright são necessários apenas para esses comandos. `npm run dev` abre uma prévia local com o mesmo HTML. Detalhes: [arquitetura](docs/ARQUITETURA.md), [consolidação](docs/CONSOLIDACAO.md), [plano visual](docs/PLANO-DE-MELHORIAS.md), [pendências](PENDENCIAS.md) e [homologação/corte](docs/CORTE.md).

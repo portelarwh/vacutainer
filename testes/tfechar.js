@@ -2,7 +2,7 @@
 // desabilitado fica com deleted:true) e botões acesos quando o turno fecha ou o hora a hora fica completo.
 // Modo exemplo (dados fictícios). node testes/tfechar.js → "sem erros"; código 1 se falhar
 const { chromium } = require('playwright'); const path = require('path');
-const PG = 'file://' + path.resolve(__dirname, '..') + '/paginas/OEE-Vacutainer.html';
+const PG = 'file://' + path.resolve(__dirname, '..') + '/__modulos__/OEE-Vacutainer.html';
 const errs = []; const ok = (c, m) => { console.log((c ? 'ok   ' : 'FALHA ') + m); if (!c) errs.push(m); };
 (async () => {
   const b = await chromium.launch(); const pe = [];

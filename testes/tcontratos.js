@@ -1,7 +1,7 @@
 // E4 do plano único (08/11/2026): o que cada página publica por ordem (exports, aditivo na versão 1) e como as outras leem.
 // Produção porOrdem com histórico e dias do lote; Paradas porOrdem; Gel cobertura; leitores conferem a versão (F06);
 // Waste: ordem em várias competências (F07) e dias do lote pela chave "dia|lote" (F08). node testes/tcontratos.js → "sem erros"
-const path = require('path'); const RAIZ = path.resolve(__dirname, '..') + '/'; const PG = 'file://' + RAIZ + 'paginas/';
+const path = require('path'); const RAIZ = path.resolve(__dirname, '..') + '/'; const PG = 'file://' + RAIZ + '__modulos__/';
 const { chromium } = require('playwright');
 const errs = []; const ok = (c, m) => { console.log((c ? 'ok   ' : 'FALHA ') + m); if (!c) errs.push(m); };
 (async () => {

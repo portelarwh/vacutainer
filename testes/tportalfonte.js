@@ -1,6 +1,6 @@
 // Fase 1 do briefing de 09/11/2026: o Portal como fonte única (ARQ-01 a ARQ-07).
 // node testes/tportalfonte.js → imprime as conferências; sai com código 1 se alguma falhar
-const SP = require('path').resolve(__dirname, '..') + '/'; const S = 'file://' + SP + 'paginas/';
+const SP = require('path').resolve(__dirname, '..') + '/'; const S = 'file://' + SP + '__modulos__/';
 const { chromium } = require('playwright');
 (async () => {
   const b = await chromium.launch(); const ctx = await b.newContext({ viewport: { width: 1440, height: 1000 } }); const errs = [];

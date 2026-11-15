@@ -1,8 +1,8 @@
 // D6 (13/11/2026) · permissão por ação na tela (vacTravas, kit_v21.js): o perfil Consulta não lança, não fecha, não importa, não exclui
 // nem configura em nenhuma página; o Líder lança e fecha; sem usuário identificado nada muda. Dados fictícios.
 // node testes/tpermissoes.js → "sem erros"; código 1 se falhar
-const path = require('path'); const RAIZ = path.resolve(__dirname, '..') + '/', PG = 'file://' + RAIZ + 'paginas/';
-const { chromium } = require(process.env.VAC_PLATAFORMA ? '../nova-plataforma/tests/engine-browser.cjs' : 'playwright');
+const path = require('path'); const RAIZ = path.resolve(__dirname, '..') + '/', PG = 'file://' + RAIZ + '__modulos__/';
+const { chromium } = require(process.env.VAC_PLATAFORMA ? './plataforma/engine-browser.cjs' : 'playwright');
 const errs = []; const ok = (c, m) => { console.log((c ? 'ok   ' : 'FALHA ') + m); if (!c) errs.push(m); };
 const MODS = ['portal', 'oee', 'perdas', 'gel', 'paradas', 'equip', 'inic', 'projetos'], FN = ['ver', 'lancar', 'fechar', 'importar', 'exportar', 'excluir', 'configurar'];
 const perm = f => Object.fromEntries(MODS.map(m => [m, Object.fromEntries(FN.map(x => [x, f(m, x)]))]));

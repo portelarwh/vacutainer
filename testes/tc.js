@@ -1,5 +1,5 @@
 const RAIZ=require('path').resolve(__dirname,'..')+'/';
-const {chromium}=require('playwright');const S='file://'+require('path').resolve(__dirname,'..')+'/paginas/';(async()=>{const b=await chromium.launch();const p=await b.newPage({viewport:{width:1440,height:1000}});const errs=[];p.on('pageerror',e=>errs.push(e.message));p.on('dialog',d=>d.type()==='prompt'?d.accept('5,6000'):d.accept());
+const {chromium}=require('playwright');const S='file://'+require('path').resolve(__dirname,'..')+'/__modulos__/';(async()=>{const b=await chromium.launch();const p=await b.newPage({viewport:{width:1440,height:1000}});const errs=[];p.on('pageerror',e=>errs.push(e.message));p.on('dialog',d=>d.type()==='prompt'?d.accept('5,6000'):d.accept());
 await p.goto(S+'Portal.html#geral');await p.waitForTimeout(600);await p.evaluate(()=>{enterTest();});await p.waitForTimeout(400);
 await p.evaluate(()=>{Lock.on(Cad.D.seguranca.senhaHash);location.hash='cadastros/cambio'});await p.waitForTimeout(600);
 const st=async l=>console.log(l,JSON.stringify(await p.evaluate(()=>{const it=cadItem('cambio','USD');return it?{v:it.vigencias.map(v=>v.de+'→'+(v.ate||'…')+'='+v.cotacao),d:(it.vigenciasDesativadas||[]).length}:null})));

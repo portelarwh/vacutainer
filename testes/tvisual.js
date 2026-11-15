@@ -2,7 +2,7 @@
 // node testes/tvisual.js            → tabela de medidas + checagens; prints em testes/saida/visual/
 // node testes/tvisual.js --sem-print → só medidas
 // Sai com código 1 se alguma checagem falhar.
-const SP=require('path').resolve(__dirname,'..')+'/';const S='file://'+SP+'paginas/';const fs=require('fs');
+const SP=require('path').resolve(__dirname,'..')+'/';const S='file://'+SP+'__modulos__/';const fs=require('fs');
 const {chromium}=require('playwright');const PRINT=!process.argv.includes('--sem-print');
 const CONSTR=new Set(['Projetos']);   /* em construção: sem dados, sem ações de base, sem gráficos. Iniciativas e Equipamentos saíram do gerador na 1.0.0 (C4) */
 const PAGS=[['Portal','Portal.html'],['Produção','OEE-Vacutainer.html'],['Waste','Perdas-Ordem.html'],['Gel','Gestão-Gel-Vacutainer.html'],['Paradas','Paradas.html'],

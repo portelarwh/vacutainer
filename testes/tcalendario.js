@@ -9,7 +9,7 @@ const errs = []; const ok = (c, m) => { console.log((c ? 'ok   ' : 'FALHA ') + m
   const b = await chromium.launch(), c = await b.newContext({ viewport: { width: 1440, height: 1000 } }), pe = [];
   // ---------- Portal
   const p = await c.newPage(); p.on('pageerror', e => pe.push('Portal: ' + e.message)); p.on('dialog', d => d.accept());
-  await p.goto('file://' + RAIZ + 'paginas/Portal.html#geral'); await p.waitForTimeout(700);
+  await p.goto('file://' + RAIZ + '__modulos__/Portal.html#geral'); await p.waitForTimeout(700);
   const P = await p.evaluate(async () => { enterTest(); await new Promise(r => setTimeout(r, 300)); Lock.on(Cad.D.seguranca.senhaHash);
     const ruim = cadValidarItem('calendario', { codigo: '25/12/2026', tipo: 'sem produção', nome: 'Natal' }, Cad.D, { novo: true });
     const bom = cadValidarItem('calendario', { codigo: '2026-12-25', tipo: 'sem produção', nome: 'Natal' }, Cad.D, { novo: true });
@@ -24,7 +24,7 @@ const errs = []; const ok = (c, m) => { console.log((c ? 'ok   ' : 'FALHA ') + m
 
   // ---------- Produção
   const o = await c.newPage(); o.on('pageerror', e => pe.push('Produção: ' + e.message)); o.on('dialog', d => d.accept());
-  await o.goto('file://' + RAIZ + 'paginas/OEE-Vacutainer.html'); await o.waitForTimeout(900);
+  await o.goto('file://' + RAIZ + '__modulos__/OEE-Vacutainer.html'); await o.waitForTimeout(900);
   const R = await o.evaluate(() => { document.querySelectorAll('.overlay').forEach(x => x.remove()); Demo.enterExample(); document.querySelectorAll('.overlay').forEach(x => x.remove());
     const d = Store.S.db, LN = 'line_vac', aud = [], audit = x => aud.push(x);
     // dia com lançamento (não vira "sem produção")

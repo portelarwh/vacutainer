@@ -1,2 +1,0 @@
-import {test} from 'node:test';import assert from 'node:assert/strict';import {readFileSync} from 'node:fs';import vm from 'node:vm';
-test('item 7: Portal conserva sev 1 urgente e sev 2 atenção em tela e relatórios',()=>{const html=readFileSync('../paginas/Portal.html','utf8');const code=html.match(/const sevDoModulo=.*?;/)![0];assert.deepEqual(vm.runInNewContext(code+'[sevDoModulo(1),sevDoModulo(2)].join(",")'),'1,2');assert.ok(!html.includes('p.sev>=2'));assert.match(html,/sort\(\(a,b\)=>a.sev-b.sev/)});

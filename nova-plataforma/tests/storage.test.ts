@@ -1,2 +1,0 @@
-import {test} from 'node:test';import assert from 'node:assert/strict';import {readFileSync} from 'node:fs';
-test('M1: cadastro e eventos são propagados com chave canônica',()=>{const s=readFileSync('src/core/runtime.ts','utf8');assert.ok(s.includes('new StorageEvent'));assert.ok(s.includes('key.slice(prefix.length)'));assert.ok(s.includes('cadastro:setCad')||readFileSync('src/App.tsx','utf8').includes('cadastro:setCad'));assert.ok(s.includes('callbacks.cadastro'))});

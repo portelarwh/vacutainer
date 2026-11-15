@@ -1,5 +1,5 @@
 const RAIZ=require('path').resolve(__dirname,'..')+'/';
-const {chromium}=require('playwright');const S='file://'+require('path').resolve(__dirname,'..')+'/paginas/';(async()=>{const b=await chromium.launch();const w=await b.newPage({viewport:{width:1440,height:900}});const errs=[];w.on('pageerror',e=>errs.push(e.message));w.on('dialog',d=>d.accept());
+const {chromium}=require('playwright');const S='file://'+require('path').resolve(__dirname,'..')+'/__modulos__/';(async()=>{const b=await chromium.launch();const w=await b.newPage({viewport:{width:1440,height:900}});const errs=[];w.on('pageerror',e=>errs.push(e.message));w.on('dialog',d=>d.accept());
 await w.goto(S+'Perdas-Ordem.html');await w.waitForTimeout(800);await w.evaluate(()=>{localStorage.setItem('vac.user','Pedro');enterTest()});await w.waitForTimeout(600);
 await w.evaluate(()=>{const cats=[...new Set(B.rows.map(r=>r.cat))];localStorage.setItem('vac.cadastros',JSON.stringify({catalogos:cats.map((c,i)=>({codigo:c,tipoItem:i===0?'preparacao':'tubo'}))}));_tiCache.clear()});
 const r=await w.evaluate(()=>{const ps=allPers();const T=porTipoOrdem(ps[0],ps[ps.length-1]);return{L:T.L.map(x=>[x.nome,x.n,Math.round(x.liq)]),tot:[T.tot.n,Math.round(T.tot.liq)],soma:Math.round(T.L.reduce((a,x)=>a+x.liq,0))}});console.log(JSON.stringify(r));

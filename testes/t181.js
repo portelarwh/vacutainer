@@ -1,6 +1,6 @@
 const RAIZ=require('path').resolve(__dirname,'..')+'/';
 const {chromium}=require('playwright');const SP=require('path').resolve(__dirname,'..')+'/';(async()=>{const b=await chromium.launch();const p=await b.newPage({viewport:{width:1440,height:1100}});const errs=[];p.on('pageerror',e=>errs.push(e.message));p.on('dialog',d=>d.accept());
-await p.goto('file://'+SP+'paginas/Portal.html#geral');await p.waitForTimeout(600);await p.evaluate(()=>enterTest());await p.waitForTimeout(400);await p.evaluate(()=>Lock.on(Cad.D.seguranca.senhaHash));
+await p.goto('file://'+SP+'__modulos__/Portal.html#geral');await p.waitForTimeout(600);await p.evaluate(()=>enterTest());await p.waitForTimeout(400);await p.evaluate(()=>Lock.on(Cad.D.seguranca.senhaHash));
 console.log('regra 06:00–14:20 (30):',await p.evaluate(()=>turnoIntervalosRegra({inicio:'06:00',fim:'14:20',regraPedacoFinal:30}).map(([a,c])=>a/60+'-'+(c/60).toFixed(2)).join(' ')));
 console.log('resumo:',await p.evaluate(()=>turnoResumo({inicio:'06:00',fim:'14:20',dias:[1,2,3,4,5,6],pausas:[{duracaoMin:60,dias:[6],desconta:true}]})));
 // turnos lista + ficha

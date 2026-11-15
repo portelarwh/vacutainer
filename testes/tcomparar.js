@@ -1,4 +1,4 @@
-// Ferramenta "Comparar importação" (ferramentas/Comparar-importacao.html, 11/11/2026): reconhece as colunas de cada importação como a
+// Ferramenta "Comparar importação" (__ferramentas__/Comparar-importacao.html, 11/11/2026): reconhece as colunas de cada importação como a
 // plataforma reconhece hoje, aponta colunas novas e obrigatórias faltando, descaracteriza a amostra (nenhum número longo do original
 // sobra) e monta o prompt. Usa as amostras de testes/amostras (MB51, COOIS, CS12) e listas sintéticas (KKBC_ORD, MES, Ações).
 // Código 1 se falhar.
@@ -22,7 +22,7 @@ const ACOES = 'Ação\tResponsável\tPrazo\tStatus\n"Trocar sensor"\tJoão da Si
 (async () => {
   const b = await chromium.launch(); const pe = [];
   const o = await (await b.newContext({ viewport: { width: 1280, height: 900 } })).newPage(); o.on('pageerror', e => pe.push(e.message));
-  await o.goto('file://' + RAIZ + 'ferramentas/Comparar-importacao.html'); await o.waitForTimeout(400);
+  await o.goto('file://' + RAIZ + '__ferramentas__/Comparar-importacao.html'); await o.waitForTimeout(400);
   const rodar = async (tipo, txt, notas) => { await o.selectOption('#tipo', tipo); await o.fill('#txt', txt); if (notas) await o.fill('#notas', notas); await o.waitForTimeout(400);
     return o.evaluate(() => ({ cmp: document.getElementById('cmp').innerText, out: document.getElementById('out').value, seg: document.getElementById('seg').innerText })); };
   // MB51 real (amostra): todas as obrigatórias, sem coluna nova crítica, nenhum número longo original sobra

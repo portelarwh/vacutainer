@@ -3,7 +3,7 @@
 // node testes/tficha.js → "sem erros"; código 1 se falhar. Prints em testes/saida/ficha/
 const path = require('path'), fs = require('fs'), http = require('http'); const RAIZ = path.resolve(__dirname, '..');
 const { chromium } = require('playwright');
-const srv = http.createServer((q, r) => { const f = path.join(RAIZ, decodeURIComponent(q.url.split('?')[0])); if (!f.startsWith(RAIZ) || !fs.existsSync(f) || fs.statSync(f).isDirectory()) { r.writeHead(404); return r.end(); } r.writeHead(200, { 'content-type': f.endsWith('.html') ? 'text/html; charset=utf-8' : f.endsWith('.js') ? 'text/javascript' : 'application/octet-stream' }); fs.createReadStream(f).pipe(r); });
+const srv = require('../scripts/servidor-testes.cjs').server();
 const errs = []; const ok = (c, m) => { console.log((c ? 'ok   ' : 'FALHA ') + m); if (!c) errs.push(m); };
 const SAI = path.join(RAIZ, 'testes', 'saida', 'ficha'); fs.mkdirSync(SAI, { recursive: true });
 const PAGS = { oee: 'OEE-Vacutainer.html', perdas: 'Perdas-Ordem.html', gel: 'Gestão-Gel-Vacutainer.html', paradas: 'Paradas.html', portal: 'Portal.html' };
@@ -36,7 +36,7 @@ const texto = p => p.evaluate(() => { const a = document.querySelector('#vacFich
 const blocoTxt = (p, t) => p.evaluate(t => { const s = [...document.querySelectorAll('#vacFicha .vf-bl')].find(x => x.querySelector('h3').textContent.startsWith(t)); return s ? { txt: s.innerText.replace(/\s+/g, ' '), off: s.classList.contains('off') } : null; }, t);
 
 (async () => {
-  await new Promise(r => srv.listen(0, r)); const U = `http://127.0.0.1:${srv.address().port}/paginas/`;
+  await new Promise(r => srv.listen(0, r)); const U = `http://127.0.0.1:${srv.address().port}/__modulos__/`;
   const b = await chromium.launch(); const ctx = await b.newContext({ viewport: { width: 1440, height: 900 } });
   const pe = [];
   const abre = async (arq, hash = '') => { const p = await ctx.newPage(); p.on('pageerror', e => pe.push(arq + ': ' + e.message)); p.on('dialog', d => d.accept()); await p.goto(U + encodeURI(arq) + hash); await p.waitForTimeout(1200); await p.evaluate(() => document.querySelectorAll('.overlay,.ov').forEach(o => { if (!o.closest('#vacFicha')) o.remove(); })); return p; };

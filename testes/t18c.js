@@ -1,5 +1,5 @@
 const RAIZ=require('path').resolve(__dirname,'..')+'/';
-const {chromium}=require('playwright');const SP=require('path').resolve(__dirname,'..')+'/';const S='file://'+SP+'paginas/';(async()=>{const b=await chromium.launch();const p=await b.newPage({viewport:{width:1440,height:1100}});const errs=[];p.on('pageerror',e=>errs.push(e.message));p.on('dialog',d=>d.accept());
+const {chromium}=require('playwright');const SP=require('path').resolve(__dirname,'..')+'/';const S='file://'+SP+'__modulos__/';(async()=>{const b=await chromium.launch();const p=await b.newPage({viewport:{width:1440,height:1100}});const errs=[];p.on('pageerror',e=>errs.push(e.message));p.on('dialog',d=>d.accept());
 await p.goto(S+'Portal.html#geral');await p.waitForTimeout(600);await p.evaluate(()=>enterTest());await p.waitForTimeout(400);await p.evaluate(()=>Lock.on(Cad.D.seguranca.senhaHash));
 console.log('equip:',await p.evaluate(()=>Cad.D.equipamentos.map(e=>e.codigo).join(',')),'| turnos pausas:',await p.evaluate(()=>JSON.stringify(Cad.D.turnos.map(t=>t.vigencias.map(v=>(v.pausas||[]).length)))));
 await p.evaluate(()=>{Cad.ui.sec='inicio';App.show('cad')});await p.waitForTimeout(300);await p.click('#cadTrazerCfg');await p.waitForTimeout(600);

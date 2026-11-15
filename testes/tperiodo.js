@@ -1,6 +1,6 @@
 // Fase 5 do briefing (relatórios e Visão Geral). 5a: período no Portal (POR-05, POR-06, POR-08, POR-09; D6).
 // node testes/tperiodo.js → código 1 se alguma conferência falhar
-const SP = require('path').resolve(__dirname, '..') + '/'; const S = 'file://' + SP + 'paginas/';
+const SP = require('path').resolve(__dirname, '..') + '/'; const S = 'file://' + SP + '__modulos__/';
 const { chromium } = require('playwright');
 (async () => {
   const b = await chromium.launch(); const ctx = await b.newContext({ viewport: { width: 1440, height: 1000 } }); const errs = [];

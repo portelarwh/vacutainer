@@ -2,7 +2,7 @@
 // node testes/tds.js → barra lateral nas 9 páginas (item ativo, recolher com preferência, menu sobreposto < 900 px, Esc), cabeçalho de 58 px com
 // "onde estou", modais acima da barra, grade de gráficos (largura e ordem gravadas por página), vacOrdemLote, impressão sem navegação,
 // Paretos verticais do Waste e Linha 360° (números da planta = soma dos eventos, ficha do ponto, postos, checklists). Código 1 se falhar.
-const path = require('path'); const RAIZ = path.resolve(__dirname, '..') + '/'; const PG = 'file://' + RAIZ + 'paginas/';
+const path = require('path'); const RAIZ = path.resolve(__dirname, '..') + '/'; const PG = 'file://' + RAIZ + '__modulos__/';
 const { chromium } = require('playwright'); const errs = []; const ok = (c, m) => { console.log((c ? 'ok   ' : 'FALHA ') + m); if (!c) errs.push(m); };
 const PAGS = [['portal', 'Portal.html'], ['oee', 'OEE-Vacutainer.html'], ['perdas', 'Perdas-Ordem.html'], ['gel', 'Gestão-Gel-Vacutainer.html'], ['paradas', 'Paradas.html'], ['equip', 'Equipamentos.html'], ['inic', 'Iniciativas.html'], ['linha', 'Linha-360.html'], ['projetos', 'Projetos.html']];
 (async () => {

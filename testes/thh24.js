@@ -33,7 +33,7 @@ const PREP = () => {
 (async () => {
   const b = await chromium.launch(); const pe = [];
   const c = await b.newContext({ viewport: { width: 1440, height: 900 } }); const o = await c.newPage(); o.on('pageerror', e => pe.push(e.message));
-  await o.goto('file://' + RAIZ + 'paginas/OEE-Vacutainer.html'); await o.waitForTimeout(900);
+  await o.goto('file://' + RAIZ + '__modulos__/OEE-Vacutainer.html'); await o.waitForTimeout(900);
   await o.evaluate(() => { document.querySelectorAll('.overlay').forEach(x => x.remove()); Demo.enterExample(); }); await o.waitForTimeout(900);
   await o.evaluate(PREP); await o.waitForTimeout(700);
   // 1) turno A com as horas fora do turno

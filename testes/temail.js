@@ -5,7 +5,7 @@
 // - relatório da tela (dia e turno) sem o bloco repetido do SQDCP.
 // Dados fictícios (modo exemplo). Prints em testes/saida/email/. node testes/temail.js → "sem erros"; código 1 se falhar
 const { chromium } = require('playwright'); const path = require('path'), fs = require('fs');
-const RAIZ = path.resolve(__dirname, '..') + '/', PG = 'file://' + RAIZ + 'paginas/OEE-Vacutainer.html', SAI = RAIZ + 'testes/saida/email/'; fs.mkdirSync(SAI, { recursive: true });
+const RAIZ = path.resolve(__dirname, '..') + '/', PG = 'file://' + RAIZ + '__modulos__/OEE-Vacutainer.html', SAI = RAIZ + 'testes/saida/email/'; fs.mkdirSync(SAI, { recursive: true });
 const errs = []; const ok = (c, m) => { console.log((c ? 'ok   ' : 'FALHA ') + m); if (!c) errs.push(m); };
 (async () => {
   const b = await chromium.launch(); const ctx = await b.newContext({ viewport: { width: 1440, height: 900 } }); const pe = [];

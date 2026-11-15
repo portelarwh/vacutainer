@@ -2,7 +2,7 @@ const RAIZ=require('path').resolve(__dirname,'..')+'/';
 const {chromium}=require('playwright');const fs=require('fs');const SS=require('path').resolve(__dirname,'..')+'/';
 (async()=>{const b=await chromium.launch();const ctx=await b.newContext({viewport:{width:1440,height:900},permissions:['clipboard-read','clipboard-write']});const errs=[];
 const p=await ctx.newPage();p.on('pageerror',e=>errs.push('OEE '+e.message));p.on('dialog',d=>d.accept());
-await p.goto('file://'+RAIZ+'paginas/OEE-Vacutainer.html');await p.waitForTimeout(2200);await p.evaluate(()=>{document.querySelectorAll('.overlay').forEach(o=>o.remove());Demo.enterExample()});await p.waitForTimeout(1200);await p.evaluate(()=>document.querySelectorAll('.overlay').forEach(o=>o.remove()));
+await p.goto('file://'+RAIZ+'__modulos__/OEE-Vacutainer.html');await p.waitForTimeout(2200);await p.evaluate(()=>{document.querySelectorAll('.overlay').forEach(o=>o.remove());Demo.enterExample()});await p.waitForTimeout(1200);await p.evaluate(()=>document.querySelectorAll('.overlay').forEach(o=>o.remove()));
 // Voltar entre abas
 console.log('voltar visivel no inicio:',await p.evaluate(()=>{const b=document.getElementById('vacVoltar');return b?!b.hidden:'sem botão'}));
 await p.evaluate(()=>go('plan'));await p.waitForTimeout(300);
@@ -34,7 +34,7 @@ await p.click('#vacVoltar');await p.waitForTimeout(2500);console.log('voltou par
 await b.close();
 // Waste sozinha: importar fica na tela
 const b2=await chromium.launch();const q=await b2.newPage({viewport:{width:1440,height:900}});q.on('pageerror',e=>errs.push('W '+e.message));q.on('dialog',d=>d.accept());
-await q.goto('file://'+RAIZ+'paginas/Perdas-Ordem.html#aba=importar&kkbc=900000001,900000002');await q.waitForTimeout(800);await q.evaluate(()=>{localStorage.setItem('vac.user','Pedro');enterTest()});await q.waitForTimeout(600);
+await q.goto('file://'+RAIZ+'__modulos__/Perdas-Ordem.html#aba=importar&kkbc=900000001,900000002');await q.waitForTimeout(800);await q.evaluate(()=>{localStorage.setItem('vac.user','Pedro');enterTest()});await q.waitForTimeout(600);
 await q.evaluate(()=>{showTab('importar');kkbcPedLer()});await q.waitForTimeout(300);console.log('faixa:',await q.$eval('#kkbcPed',e=>e.innerText.replace(/\n/g,' ').slice(0,200)));
 await q.evaluate(async()=>{const r0=B.rows[0];const per=r0.per;IMP={R:{recs:[{...r0,ordem:'900000001',id:undefined}],rej:[],dupI:0,subt:0,gran:'ordem × componente',extra:null},meta:{arquivo:'teste.txt',raw:null},headers:[],map:{},list:true};await doImport()});await q.waitForTimeout(800);
 console.log('após importar: aba',await q.evaluate(()=>localStorage.getItem('perdas.tab')),'|',await q.$eval('#impOk',e=>e.innerText.replace(/\n/g,' ').slice(0,160)).catch(e=>'sem card'),'| faixa:',await q.$eval('#kkbcPed',e=>e.innerText.replace(/\n/g,' ').slice(0,120)));

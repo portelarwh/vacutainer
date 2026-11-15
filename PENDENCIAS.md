@@ -1,171 +1,36 @@
-# Pendências · Sistemas da Linha Vacutainer
+# Pendências atuais · Vacutainer
 
-> O conteúdo abaixo registra rodadas anteriores. Para o produto novo, use [COMECE-AQUI](nova-plataforma/docs/COMECE-AQUI.md), [plano visual](nova-plataforma/docs/PLANO-DE-MELHORIAS.md) e [CORTE](nova-plataforma/docs/CORTE.md). As instruções antigas de distribuir HTMLs separados não substituem o roteiro da plataforma única. Nenhum corte foi executado.
+Atualizado após a consolidação do aplicativo em 15/11/2026. Esta é a lista ativa; entregas antigas e instruções de distribuir HTMLs separados foram retiradas. O histórico continua recuperável no Git e no [registro de decisões](docs/DECISOES-HISTORICAS.md).
 
+## Material e decisões do responsável
 
-Atualizado em 12/11/2026. Serve para retomar o trabalho em outro chat: leia este arquivo, o `CLAUDE.md` e o `docs/auditorias/registro-decisoes.md`. Item recusado no registro só volta com fato novo.
+- E7: amostra da planilha oficial de OSM para definir o importador; ações e Planner já existentes devem ser reutilizados.
+- E9: definir a estação que coleta os relatórios da pasta e a rotina de atualização. Não há API ou servidor interno; automatização deve respeitar permissões e navegador aberto.
+- E10c: validar jornadas de operador, liderança, PCP, qualidade e manutenção; definir Resumo/Detalhado por uso, sem mudar permissões implicitamente.
+- E12: amostras de SQL/MES e critérios de conciliação com apontamentos manuais, início/fim e cronologia por equipamento.
+- E13: padrões técnicos AM/TPM, CILT, center line, lubrificação e 5S, por equipamento e checklist. Não inventar conteúdo técnico.
+- E15: escopo de Projetos. A área incorporada continua identificada como em construção.
+- R-02: decidir tratamento de responsáveis digitados por nome versus identificador estável.
+- Confirmar regra vigente de microparadas (documentos históricos divergem entre 5 e 10 minutos); preservar o parâmetro/motor atual até decisão.
 
-## 0. Rodada do Design System (12/11/2026) · ler primeiro
+## Homologação na linha
 
-Branch `claude/zen-bohr-jnr5d5`, ainda **sem merge no `main`**. Pedido do usuário: padronizar todas as páginas pelo Design System (`docs/design-system.md`), barra lateral, gráficos reorganizáveis, gráficos do dashboard da controladoria no Waste, página Linha 360° e a regra ordem × lote.
+- Chrome e Edge corporativos por file://, sem internet; caminhos com acentos e permissões da pasta.
+- SMB, perda de conexão/permissão, duas estações e duas abas; filas, recuperação e conflitos. Testes em OPFS não concluem essa homologação.
+- Cadastro de área dos usuários, bases da pasta, ação originada de Paradas, configurações do gel, data de corte, scrap no turno e Resumo do dia.
+- Primeira conexão/CadSync, fechamento/reabertura de turno e dia, habilitação pontual do turno não produtivo e atribuição de produção fora do turno.
+- Impressora da linha, PDF, A4 do SQDCP e gráficos colados no Outlook desktop/web.
+- Fontes/licenças corporativas, logotipos oficiais e conferência das diretrizes atuais no Maxwell. Não publicar arquivos comerciais no repositório público.
 
-**Feito e testado nesta rodada**
+## Melhorias já identificadas
 
-| Entrega | Onde | Versões |
-|---|---|---|
-| Design System no kit: paleta, barra lateral recolhível, cabeçalho de 58 px, ícones Lucide, impressão | `fontes/kit/kit_ds.css`, `fontes/kit/kit_ds.js` | todas as páginas |
-| Grade de gráficos: largura 1/1, 1/2, 1/3 e ordem, por página e computador | `vacGrade` no `kit_ds.js` | todas as páginas |
-| Paretos da controladoria (verticais, favorável e desfavorável juntos, 3 dimensões × 3 métricas) | `paginas/Perdas-Ordem.html`, grupo D | Waste 1.12.0 |
-| Regra ordem × lote: conflito vira pendência, sem bloquear | `vacOrdemLote` no kit; `exports.ordemLote` da Produção | Produção 2.4.60 |
-| Linha 360° com dados reais | `fontes/linha360/`, `docs/linha-360.md` | Linha 360° 1.0.0 |
-| Teste novo | `testes/tds.js` (entrou no `tudo.js`) | |
+- [Plano de UX](docs/PLANO-DE-MELHORIAS.md): Visão da linha, operador, filtros/tabelas/gráficos, ficha contextual, Planner e relatórios.
+- Revisão individual dos gráficos, formulários e e-mails dos motores; a camada BD não equivale a revisão completa dessas telas.
+- Registrar a última falha de backup diário do Portal: comportamento e aviso ainda precisam de decisão; não esconder falha de gravação.
+- Índice de comentários/ações do Waste quando o painel ultrapassar 300 ms ou 2 mil comentários; funções grandes e parser Meta FY27 duplicado precisam de referência de comportamento antes de refatorar.
+- Locais de estoque continuam no Gel. Scrap "Dia (sem turno)" do Gel não tem equivalente na Produção; não converter automaticamente.
+- Unificar geradores de relatório somente com prova de números, filtros e conteúdo equivalente.
 
-Versões desta branch: Portal 1.9.28 · Produção 2.4.60 · Waste 1.12.0 · Gel 2.29 · Paradas 1.2.1 · Equipamentos 1.0.11 · Iniciativas 1.1.8 · Linha 360° 1.0.0 · Projetos 0.1.11.
+## Limites da consolidação
 
-**Segunda entrega (12/11/2026, depois do merge do PR #61):** fluxo de ação e OS a partir da planta conferido de ponta a ponta (Iniciativas 1.1.9 conhece a origem Linha 360° e o vínculo de ponto); símbolos de texto dos botões trocados por ícones em todas as páginas (`vacSimbolos`); guia de instalação e LEIA-ME com a página nova. Versões: Portal 1.9.29 · Produção 2.4.61 · Waste 1.12.1 · Gel 2.30 · Paradas 1.2.2 · Equipamentos 1.0.12 · Iniciativas 1.1.9 · Linha 360° 1.0.1 · Projetos 0.1.12. O cartão da Linha 360° no Portal já existia (o Portal monta pelo `exports`).
-
-**Terceira entrega (12/11/2026, depois do merge do PR #62):** modelo de e-mail para o Outlook no kit (`vacEmail`) e usado na Linha 360° 1.1.0; "Página X de Y" na impressão direta; chips de filtros ativos e configuração compacta na Linha 360°. Versões: Portal 1.9.30 · Produção 2.4.62 · Waste 1.12.2 · Gel 2.31 · Paradas 1.2.3 · Equipamentos 1.0.13 · Iniciativas 1.1.10 · Linha 360° 1.1.0 · Projetos 0.1.13. Falta levar o `vacEmail` aos relatórios das outras páginas e conferir o e-mail colado no Outlook da empresa.
-
-**Revisão da impressão e do PDF (12/11/2026, mesma entrega):** padrão único pelo kit para a impressão direta, os relatórios em janela e todos os PDFs (`docs/design-system.md`, "Impressão e PDF"). Conferir na pasta real: imprimir uma tela de cada página, gerar um PDF de cada página e olhar em papel na impressora da linha.
-
-**Portal 1.9.31 (12/11/2026, depois do merge do PR #63):** cartão "Pendências da linha" da Visão geral refeito pelo modelo visual enviado pelo usuário (`docs/layout-visao-geral.md`).
-
-**Produção 2.4.63 (12/11/2026):** relatório diário do MES. A 1ª linha com caixa > 0 contava em dobro às 00:00; corrigido (`docs/producao-ordens-sap.md` § 2.4.63). Na 2.4.75 a caixa repetida dos dias já importados é corrigida ao abrir a base; não é preciso reimportar.
-
-**Produção 2.4.64 (12/11/2026):** fechar turno e dia com turno não produtivo desabilitado no dia (dava erro ao fechar o dia; os turnos fechados um a um não fechavam o dia); botões acesos em verde quando o turno fecha ou o hora a hora fica completo (`docs/producao-ordens-sap.md` § 2.4.64). Conferir na pasta real: fechar um turno e o dia, e ver os botões nos dois temas.
-
-**Portal 1.9.32 e Produção 2.4.65 (12/11/2026):** Pendências da linha com metade da largura e Ação prioritária ao lado; cartões reorganizáveis (kit `vacGrade`): alça que arrasta no Chrome/Edge, barra também nos cartões sem gráfico da grade, setas apagadas na ponta. Conferir na pasta real, no Edge: arrastar um cartão da Visão geral da Produção pela alça ⠿.
-
-**Produção 2.4.66 (12/11/2026):** e-mail do turno e do dia para o Outlook refeito (medidor do OEE reportado, acumulado do dia no turno, hora a hora alto, sem repetições, "Itens do e-mail" com layout gravado). `docs/producao-ordens-sap.md` § 2.4.66. **Conferir no Outlook da empresa** se os medidores e o gráfico chegam ao colar.
-
-**Decisões do usuário nesta rodada:** tema claro por padrão, com o escuro mantido; Linha 360° com dados reais e base própria; conflito de ordem × lote avisa e lista, não bloqueia; Pareto vertical como no dashboard anexado.
-
-**Implantar (histórico, antes da plataforma única):** copiar para a pasta da rede as nove páginas de `paginas/` (inclusive `Linha-360.html`, nova). Depois do corte, só `nova-plataforma/dist/Plataforma.html`. Nenhuma base muda de formato. A `linha360-base.json` é criada em `00. Bases` na primeira conexão da Linha 360°, com confirmação.
-
-**O que falta do Design System** (lista completa em `docs/design-system.md` § 4): filtros em painel recolhível com chips nas páginas que ainda não têm, esqueleto de carregamento, `vacEmail` nos relatórios das outras páginas, paleta única nos gráficos da Produção e do Gel.
-
-**O que falta da Linha 360°** (`docs/linha-360.md`): conferir posições com a linha, vincular os equipamentos reais, OEE por equipamento (depende do MES).
-
-**Conferir na pasta real:** barra lateral nas nove páginas; Modo TV; impressão e PDF dos relatórios com o cabeçalho novo; modais e fichas abrindo por cima da barra; Waste › grupo D com dados reais; pendência de ordem × lote no Portal quando houver conflito no plano.
-
-## 1. Onde paramos
-
-Versões no `main`, todas com os PRs mesclados até o #59:
-
-| Página | Versão | Última entrega |
-|---|---|---|
-| Portal | 1.9.27 | Lê o MUV e o target do Waste |
-| Produção (`OEE-Vacutainer.html`) | 2.4.59 | Todos os gráficos hora a hora com a lógica do Apontamento |
-| Waste (`Perdas-Ordem.html`) | 1.11.0 | MUV oficial e target MUV por linha |
-| Paradas | 1.2.0 | Refatoração UX/UI completa |
-| Gestão de Gel | 2.28 | — |
-| Equipamentos | 1.0.10 | — |
-| Iniciativas | 1.1.7 | — |
-| Projetos | 0.1.10 | Em construção |
-
-Últimas entregas desta rodada (11 e 12/11/2026):
-- **Produção 2.4.52–2.4.59:**
-  - hora a hora 24 h;
-  - Caixas do MES pelo dia de trabalho;
-  - Lançamento no layout novo;
-  - nenhum ⓘ (a explicação fica no título);
-  - SQDCP – Gestão Diária com Modo Reunião;
-  - todos os gráficos hora a hora com as horas fora do turno.
-- **Waste 1.9.0–1.11.0:** grade da controladoria, MUV oficial, target MUV por linha, filtros Linha e Semana.
-- **Paradas 1.1.0–1.2.0:** Visão geral em faixas, Pareto, Equipamentos, Recorrência, Eventos, Fila técnica, Validação, Ações, ficha e celular.
-- **Ferramenta:** `ferramentas/Comparar-importacao.html`.
-- **Testes:** as comparações de versão passaram a ser numéricas (`verN`).
-
-## 2. Implantar na pasta da rede
-
-Copiar para a raiz da pasta, guardando antes a versão anterior renomeada:
-- `Portal.html`
-- `OEE-Vacutainer.html`
-- `Perdas-Ordem.html`
-- `Paradas.html`
-
-As bases em `00. Bases/` e a pasta `lib/` não mudam. Abrir cada página com Ctrl+F5 e conferir a versão no cabeçalho.
-
-Ajustes de cadastro no Portal depois de copiar:
-- **Target por linha:** cadastrar em Metas da área o `WASTE-MUV-<linha>` de cada linha, com o campo Linha, R$ ou US$, mês ou ano. Depois **desativar a `WASTE-MES`**, que deixa de valer quando existe algum `WASTE-MUV`.
-- **Meta mensal:** se a meta do Waste foi definida sobre o desvio total, revisar o valor, porque agora ela é comparada com o MUV.
-
-No Waste:
-- **Reimportar as ordens no formato antigo:** a lista está na aba Importar. Até lá, o MUV delas aparece como "aprox.".
-
-## 3. Homologação na pasta real
-
-Checklist interativo (artefato): https://claude.ai/artifact/CBHNMp4M15v3n4N32ZCYV8
-
-Grupos abertos desta rodada:
-
-| Grupo | O que conferir |
-|---|---|
-| H24, H54, H55 | Hora a hora 24 h e por turno |
-| L56 | Lançamento novo e explicação no título |
-| HHT | Gráficos hora a hora com 04:00/05:00 antes das 06:00 |
-| SQL | SQDCP – Gestão Diária e Modo Reunião na TV |
-| WGR | KKBC em grade |
-| MUV | MUV oficial |
-| TGT | Target por linha |
-| PUX-01 a PUX-10 | Paradas |
-
-Também de antes:
-- **Primeira abertura:** aviso do CadSync na Produção.
-- **Gravação simultânea:** duas abas e duas estações gravando ao mesmo tempo (C1, etapa H).
-- **Ambiente:** uso sem internet, Chrome e Edge, acentos nos caminhos.
-- **Densidade:** observar as telas com operador e liderança.
-- **Gel (Fase 4):** Trazer configurações › parâmetros do gel, data de corte, Registrar scrap num turno, Resumo do dia no Gel.
-- **Outlook:** cópia com imagens no Outlook da empresa (desktop e web).
-
-## 4. Pendências de funcionalidade
-
-**Sem bloqueio, prontas para fazer:**
-- **Falha do backup diário em Portal › Versões:** as páginas não registram a falha na pasta (registro § V, C5).
-- **Padrão das outras páginas:** levar o padrão de layout do Paradas 1.2.0 (faixas, filtros ativos, tabela com cabeçalho e coluna fixos, "Mais filtros" no celular) para Gel, Equipamentos e Iniciativas, se o usuário pedir.
-- **Cor de "atenção" no SQDCP:** a cor âmbar só entra quando houver uma regra de alerta por indicador.
-
-**Esperando decisão ou material do usuário:**
-- **R-02, identificador da pessoa:** o responsável é guardado pelo nome; falta decidir o que fazer com nomes digitados à mão (registro § V).
-- **Telas por perfil (E10c):** Resumo/Detalhado, o que fica em "Mais", passagem de turno, alerta de ritmo. Falta validar as jornadas com operador e liderança.
-- **OSM (E7):** falta a amostra da planilha.
-- **Importação por pasta (E9):** falta decidir a estação coletora.
-- **MES (E12):** faltam amostras e regras.
-- **AM/TPM e 5S (E13):** faltam os padrões.
-- **Projetos (E15):** falta o escopo.
-- **XLSX local (E3b):** falta o arquivo.
-- **`paginas/lib/xlsx.full.min.js` (SheetJS 0.20.3):** subir o arquivo que está na pasta da linha. Sem ele, o teste do Excel fica "NÃO VERIFICADO".
-
-## 5. Testes e manutenção
-
-**Testes instáveis ou de ambiente:**
-- **`testes/tnv.js`:** falha neste ambiente de desenvolvimento com 8 `SecurityError` no armazenamento de arquivos do navegador (OPFS). Falha igual no `main` sem nenhuma mudança, então não é da página. Conferir num Chrome normal.
-
-**Testes com referência gravada antes da mudança:**
-- **Lista:** `tvisaogeral`, `twaste_vg`, `tparadas_vg`, `tparadas_ux`, `tgel_vg`, `tportal_vg` e `tsqdcp_layout`.
-- **`--gravar`:** só antes de mudar a tela.
-- **`tvisaogeral`:** tem `--atualizar-grafico` para trocar um gráfico só.
-
-**Manutenção (registro § C):**
-- **Waste:** índice por ordem para comentários e ações, quando o Painel passar de 300 ms ou de 2 mil comentários.
-- **Funções grandes** (`computeDayRaw`, `CadSync.aplicar`, `openConfig` do Gel, `parseMetaFY27`, `cadValidarItem`): começar a próxima mudança por um teste que fixe o comportamento.
-- **Meta FY27:** a leitura está duplicada (Produção e Portal).
-- **Backup diário do Portal:** ignora falha; falta decidir o aviso.
-- **Geradores de PDF:** são três (Portal/Waste, Produção, Gel); unificar no kit se precisar.
-
-**Layout:** faltam exemplos visuais dos componentes (cards, pílulas, abas) nos dois temas (registro § L).
-
-## 6. Como retomar em outro chat
-
-> Leia `PENDENCIAS.md`, `CLAUDE.md` e `docs/auditorias/registro-decisoes.md` do repositório portelarwh/vacutainer. Continue pela seção 4 (sem bloqueio) ou pela homologação da seção 3. Siga as regras do `CLAUDE.md`:
-> - a Produção é editada em `fontes/producao/` e montada com o `build.py`;
-> - gravar a referência dos números antes de mudar uma tela;
-> - subir a versão a cada entrega;
-> - abrir PR ao final;
-> - atualizar o checklist de homologação.
-
-Ao resolver um item, tirar daqui e do `CLAUDE.md` (Pendências conhecidas) e marcar no registro.
-
-**15/11/2026 · análise de marca, gráficos e fluidez (Produção 2.4.76, Portal 1.9.38, Linha 360° 1.1.3):** resumo do dia (`vacFicha` `dia`), letra de
-gráfico legível e Ampliar no `vacGrade`, casca sem salto ao abrir módulo, fonte e logo na pasta `Marca/` (fora do git; `nova-plataforma/docs/MARCA.md`).
-Ficou para depois: ver "Ficou para depois" em `docs/design-system.md` § Resumo do dia. Homologar na pasta real: copiar a pasta `Marca` e conferir a fonte.
+Retirar arquivos antigos do GitHub não executa corte na pasta da linha, não migra bases e não resolve as decisões acima. Seguir [CORTE](docs/CORTE.md). Novas ideias devem entrar nesta lista ou no plano com motivo, dependência e critério de aceite.

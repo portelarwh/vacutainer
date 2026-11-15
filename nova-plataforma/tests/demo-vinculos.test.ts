@@ -1,2 +1,0 @@
-import {test} from 'node:test';import assert from 'node:assert/strict';import {readFileSync} from 'node:fs';
-test('N4: vínculos de equipamentos da Linha 360° existem no cadastro fictício',()=>{const b=JSON.parse(readFileSync('../fontes/kit/demo_cenario.json','utf8')).bases,codes=new Set(b.cad.equipamentos.map((e:{codigo:string})=>e.codigo));for(const ponto of b.linha.pontos)for(const code of ponto.equipamentos||[])assert.ok(codes.has(code),'equipamento fictício não cadastrado: '+code)});

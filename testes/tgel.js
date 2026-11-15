@@ -1,6 +1,6 @@
 // Fase 4 do briefing (Gel dentro da Produção). Passo 4a (D10, G2/G3): parâmetros do gel no Portal, lidos pelo Gel sem mudar nenhuma conta.
 // node testes/tgel.js → código 1 se alguma conferência falhar
-const SP = require('path').resolve(__dirname, '..') + '/'; const S = 'file://' + SP + 'paginas/';
+const SP = require('path').resolve(__dirname, '..') + '/'; const S = 'file://' + SP + '__modulos__/';
 const { chromium } = require('playwright');
 (async () => {
   const b = await chromium.launch(); const ctx = await b.newContext({ viewport: { width: 1440, height: 1000 } }); const errs = [];

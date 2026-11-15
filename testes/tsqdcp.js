@@ -2,7 +2,7 @@
 // Usa somente dados fictícios. HTTP e OPFS servem como transporte/pasta do teste.
 const fs = require('fs'), path = require('path'), http = require('http'), assert = require('assert/strict');
 const { spawnSync } = require('child_process'), { chromium } = require('playwright');
-const M = require('../fontes/producao/sqdcp_modelo.js');
+const M = require('../scripts/html.cjs').model('SQDCPModelo');
 const raiz = path.resolve(__dirname, '..'), saida = path.join(__dirname, 'saida', 'sqdcp');
 fs.mkdirSync(saida, { recursive: true });
 const ok = (c, m) => { assert.ok(c, m); console.log('ok   ' + m); };
@@ -17,16 +17,12 @@ ok(consolidado.qn.quantidade === 2 && consolidado.acidente.quantidade === 0 && !
 ok(M.resumo([{ acidente: null, qn: null }]).acidente.quantidade === null, 'base antiga sem resposta permanece desconhecida');
 ok(!M.dataValida('2026-02-31') && M.dataValida('2026-11-09'), 'datas inválidas não são normalizadas para outro dia');
 
-const srv = http.createServer((q, r) => {
-  const f = path.resolve(raiz, '.' + decodeURIComponent(q.url.split('?')[0]));
-  if (!f.startsWith(raiz + path.sep) || !fs.existsSync(f) || !fs.statSync(f).isFile()) { r.writeHead(404); return r.end(); }
-  r.setHeader('Content-Type', f.endsWith('.html') ? 'text/html; charset=utf-8' : 'application/octet-stream'); fs.createReadStream(f).pipe(r);
-});
+const srv = require('../scripts/servidor-testes.cjs').server();
 (async () => {
   let browser;
   try {
     await new Promise(r => srv.listen(0, '127.0.0.1', r));
-    const url = 'http://127.0.0.1:' + srv.address().port + '/paginas/OEE-Vacutainer.html';
+    const url = 'http://127.0.0.1:' + srv.address().port + '/__modulos__/OEE-Vacutainer.html';
     browser = await chromium.launch();
     const ctx = await browser.newContext({ viewport: { width: 1440, height: 1000 } });
     const p = await ctx.newPage(), erros = [];

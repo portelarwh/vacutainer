@@ -7,11 +7,11 @@
 const path = require('path'), fs = require('fs'), http = require('http'); const RAIZ = path.resolve(__dirname, '..') + '/';
 const { chromium } = require('playwright');
 const errs = []; const ok = (c, m) => { console.log((c ? 'ok   ' : 'FALHA ') + m); if (!c) errs.push(m); };
-const srv = http.createServer((q, r) => { const f = path.join(RAIZ, decodeURIComponent(q.url.split('?')[0])); if (!f.startsWith(RAIZ) || !fs.existsSync(f) || fs.statSync(f).isDirectory()) { r.writeHead(404); return r.end(); } r.writeHead(200, { 'Content-Type': f.endsWith('.html') ? 'text/html; charset=utf-8' : 'application/octet-stream' }); fs.createReadStream(f).pipe(r); });
+const srv = require('../scripts/servidor-testes.cjs').server();
 const CAD = { schema: 'vac-cadastros', schemaVersion: 1, rev: 1, perfis: [{ codigo: 'LIDER', nome: 'Liderança', ativo: true, layout: { chaves: { 'vac.grupos.paradas': '{"B":1}', 'vac.grade.paradas': '{"perfil":1}' }, de: 'u9' } }],
   usuarios: [{ codigo: 'u1', nome: 'Pessoa Um', perfil: 'LIDER', ativo: true }, { codigo: 'u2', nome: 'Pessoa Dois', perfil: 'LIDER', ativo: true }] };
 (async () => {
-  await new Promise(r => srv.listen(0, r)); const U = `http://127.0.0.1:${srv.address().port}/paginas/`;
+  await new Promise(r => srv.listen(0, r)); const U = `http://127.0.0.1:${srv.address().port}/__modulos__/`;
   const b = await chromium.launch(), c = await b.newContext(), pe = [];
   const abre = async (arq, user, limpar) => { const p = await c.newPage(); p.on('pageerror', e => pe.push(arq + ': ' + e.message)); p.on('dialog', d => d.accept());
     await p.addInitScript(([cad, u, limpar]) => { try { if (limpar && !sessionStorage.getItem('t.limpo')) { localStorage.clear(); sessionStorage.setItem('t.limpo', '1'); } localStorage.setItem('vac.cadastros', JSON.stringify(cad)); localStorage.setItem('vac.prefs.forcar', '1'); if (u) localStorage.setItem('vac.userId', u); else localStorage.removeItem('vac.userId'); } catch (e) { } }, [CAD, user, limpar]);

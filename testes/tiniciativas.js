@@ -6,7 +6,7 @@
 const path = require('path'), fs = require('fs'), http = require('http'); const RAIZ = path.resolve(__dirname, '..');
 const { chromium } = require('playwright');
 const verN = v => String(v || '').split(/[^\d]+/).filter(Boolean).slice(0, 4).map(Number).reduce((t, n, i) => t + n * Math.pow(1000, 3 - i), 0);   // versão como número (1.10 > 1.9; texto comparava errado)
-const srv = http.createServer((q, r) => { const f = path.join(RAIZ, decodeURIComponent(q.url.split('?')[0])); if (!f.startsWith(RAIZ) || !fs.existsSync(f) || fs.statSync(f).isDirectory()) { r.writeHead(404); return r.end(); } r.writeHead(200, { 'content-type': f.endsWith('.html') ? 'text/html; charset=utf-8' : 'application/octet-stream' }); fs.createReadStream(f).pipe(r); });
+const srv = require('../scripts/servidor-testes.cjs').server();
 const errs = []; const ok = (c, m) => { console.log((c ? 'ok   ' : 'FALHA ') + m); if (!c) errs.push(m); };
 const SAI = path.join(RAIZ, 'testes', 'saida', 'iniciativas'); fs.mkdirSync(SAI, { recursive: true });
 const CAD = { schema: 'vac-cadastros', rev: 4, usuarios: [{ codigo: '1', nome: 'J. Lima', ativo: true }],
@@ -18,7 +18,7 @@ const LEG = [
   { id: 'w3', ordem: '', comp: '', desc: 'Revisar padrão de setup', causa: '', status: 'aguardando validação', resp: '', area: '', prazo: '', conclusao: '', econ: null, pri: 'baixa', obs: '', abertura: '2026-11-01', user: 'ana', hist: [] }];
 
 (async () => {
-  await new Promise(r => srv.listen(0, r)); const PG = `http://127.0.0.1:${srv.address().port}/paginas/`;
+  await new Promise(r => srv.listen(0, r)); const PG = `http://127.0.0.1:${srv.address().port}/__modulos__/`;
   const b = await chromium.launch(); const ctx = await b.newContext({ viewport: { width: 1440, height: 900 } }); const pe = [];
   const abre = async (arq, h = '') => { const p = await ctx.newPage(); p.on('pageerror', e => pe.push(arq + ': ' + e.message)); p.on('dialog', d => d.accept()); await p.goto(PG + arq + h); await p.waitForTimeout(700); return p; };
 

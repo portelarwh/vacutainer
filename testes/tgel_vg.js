@@ -22,7 +22,7 @@ const LER = () => {
 (async () => {
   const b = await chromium.launch(); const pe = [];
   const nova = async (w, h, tema) => { const c = await b.newContext({ viewport: { width: w, height: h }, colorScheme: tema }); await c.clock.setFixedTime(new Date('2026-11-11T12:00:00')); const o = await c.newPage();   /* data fixa: a referência vale em qualquer dia */ o.on('pageerror', e => pe.push(e.message)); o.on('dialog', d => d.accept());
-    await o.goto('file://' + RAIZ + encodeURI('paginas/Gestão-Gel-Vacutainer.html')); await o.waitForTimeout(1200);
+    await o.goto('file://' + RAIZ + encodeURI('__modulos__/Gestão-Gel-Vacutainer.html')); await o.waitForTimeout(1200);
     await o.evaluate(() => { document.querySelectorAll('.overlay').forEach(x => x.remove()); localStorage.removeItem('vac.cadastros'); enterDemo(); ui.tab = 'painel'; render(); }); await o.waitForTimeout(1200); return { c, o }; };
   const { c, o } = await nova(1440, 900, 'light');
   const atual = await o.evaluate(LER);

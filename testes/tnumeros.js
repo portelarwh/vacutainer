@@ -1,6 +1,6 @@
 // E3 do plano único (08/11/2026): número digitado e importado só é aceito inteiro ("12a" não vira 12), com a regra de cada campo/fonte.
 // node testes/tnumeros.js → "sem erros"; código 1 se falhar
-const path = require('path'); const RAIZ = path.resolve(__dirname, '..') + '/'; const PG = 'file://' + RAIZ + 'paginas/';
+const path = require('path'); const RAIZ = path.resolve(__dirname, '..') + '/'; const PG = 'file://' + RAIZ + '__modulos__/';
 const { chromium } = require('playwright');
 const errs = []; const ok = (c, m) => { console.log((c ? 'ok   ' : 'FALHA ') + m); if (!c) errs.push(m); };
 // [entrada, ponto decimal (Gel), ponto milhar (Paradas), sap (decimal + sinal no fim)]
@@ -43,7 +43,7 @@ const CASOS = [
     const p = await b.newPage(); p.on('dialog', d => d.accept()); await p.goto(PG + 'Paradas.html'); await p.waitForTimeout(900); await p.evaluate(() => { document.querySelectorAll('.overlay').forEach(o => o.remove()); modoTeste(); }); await p.waitForTimeout(600);
     const r = await p.evaluate(() => ({ min: [parseNum('15'), parseNum('15 min'), parseNum('1,5'), parseNum('1.234'), parseNum('12a'), parseNum('15-'), parseNum('')].map(x => x === null ? null : Number.isNaN(x) ? 'NaN' : x) }));
     ok(JSON.stringify(r.min) === JSON.stringify([15, 15, 1.5, 1234, 'NaN', 'NaN', null]), `Paradas › minutos do Forms: ${JSON.stringify(r.min)} ("12a" e "15-" recusados; antes 12 e 15)`);
-    const src = require('fs').readFileSync(RAIZ + 'paginas/Paradas.html', 'utf8');
+    const src = require('../scripts/html.cjs').engine('paradas');
     ok(/duração inválida/.test(src) && /quantidade de vezes inválida/.test(src), 'Paradas › linha com minutos ou vezes inválidos vai para os erros da importação, com o motivo');
     // Paradas 1.2.4 · coluna "Lote" do Forms vai para o lote (antes caía na ordem); "Ordem" e "Ordem ou lote" continuam na ordem
     const lt = await p.evaluate(() => { const C1 = mapCols(['Data da parada', 'Código – Linha', 'Lote']), C2 = mapCols(['Data da parada', 'Código – Linha', 'Ordem ou lote']), C3 = mapCols(['Data da parada', 'Código – Linha', 'Ordem', 'Lote']);

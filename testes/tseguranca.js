@@ -1,7 +1,7 @@
 // Revisão independente dos achados do Codex sobre 065fe6f (07/11/2026): segurança e dados, TV da Produção, scripts, índice do Gel.
-// node testes/tseguranca.js → código 1 se falhar. Usa cópias temporárias para testar os scripts (o repositório não muda).
-const SP = require('path').resolve(__dirname, '..') + '/'; const PG = 'file://' + SP + 'paginas/';
-const fs = require('fs'), os = require('os'), path = require('path'), crypto = require('crypto'); const { execFileSync, spawnSync } = require('child_process');
+// node testes/tseguranca.js → código 1 se falhar. O código é lido do HTML único, com dados fictícios.
+const SP = require('path').resolve(__dirname, '..') + '/'; const PG = 'file://' + SP + '__modulos__/';
+const fs = require('fs'), path = require('path');
 const { chromium } = require('playwright');
 const errs = []; const ok = (c, m) => { console.log((c ? 'ok   ' : 'FALHA ') + m); if (!c) errs.push(m); };
 const fecha = () => document.querySelectorAll('.overlay').forEach(o => o.remove());
@@ -10,7 +10,7 @@ const fecha = () => document.querySelectorAll('.overlay').forEach(o => o.remove(
   const b = await chromium.launch();
 
   // ---------- 1. Waste: identificadores importados nos botões do detalhe da ordem
-  const src = fs.readFileSync(SP + 'paginas/Perdas-Ordem.html', 'utf8');
+  const src = require('../scripts/html.cjs').engine('perdas');
   const inl = src.match(/on[a-z]+="[^"]*\$\{[^"]*"/g) || [];
   ok(inl.length > 10 && inl.every(a => !/'\$\{/.test(a)), `Waste: nenhum onclick monta string com '\${…}' (${inl.length} atributos com valor da página, todos por jsArg)`);
   const CASOS = [
@@ -122,29 +122,12 @@ const fecha = () => document.querySelectorAll('.overlay').forEach(o => o.remove(
     await p.close();
   }
 
-  // ---------- 10. modelo das páginas em construção: toast declarado uma vez
-  for (const f of ['fontes/modelo/pagina-em-construcao.html', 'paginas/Equipamentos.html', 'paginas/Iniciativas.html', 'paginas/Projetos.html']) {
-    const n = (fs.readFileSync(SP + f, 'utf8').match(/^function toast\(/mg) || []).length; ok(n === 1, `${f}: toast declarado ${n} vez(es)`);
+  // Os geradores antigos foram removidos; os testes de atualização atômica e
+  // integridade do HTML único estão em testes/plataforma/arquivo-unico.test.mjs.
+  for (const id of ['equip','inic','projetos']) {
+    const n=(require('../scripts/html.cjs').engine(id).match(/^function toast\(/mg)||[]).length;
+    ok(n===1,id+': toast declarado uma vez');
   }
   await b.close();
-
-  // ---------- 5. scripts de geração: duas fases (nada pela metade) e saída com \n
-  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'vac-scripts-')); const hash = f => crypto.createHash('sha1').update(fs.readFileSync(f)).digest('hex');
-  try {
-    for (const d of ['fontes', 'paginas']) fs.cpSync(SP + d, path.join(tmp, d), { recursive: true });
-    const pags = fs.readdirSync(path.join(tmp, 'paginas')).filter(n => n.endsWith('.html')).map(n => path.join(tmp, 'paginas', n));
-    const h0 = Object.fromEntries(pags.map(f => [f, hash(f)]));
-    spawnSync('python3', [path.join(tmp, 'fontes/kit/aplicar_kit21.py')]); spawnSync('python3', [path.join(tmp, 'fontes/producao/build.py')]);
-    ok(pags.every(f => hash(f) === h0[f]), 'scripts: rodar de novo gera os mesmos arquivos, byte a byte');
-    ok(pags.every(f => !fs.readFileSync(f, 'utf8').includes('\r\n')), 'scripts: arquivos gravados com \\n (sem CRLF)');
-    // página com o bloco do kit quebrado: o aplicar para antes de gravar qualquer página
-    const par = path.join(tmp, 'paginas', 'Paradas.html'); fs.writeFileSync(par, fs.readFileSync(par, 'utf8').replace('/* ----- vac-cabecalho v2.1', '/* ----- QUEBRADO'));
-    const h1 = Object.fromEntries(pags.map(f => [f, hash(f)]));
-    const r1 = spawnSync('python3', [path.join(tmp, 'fontes/kit/aplicar_kit21.py')], { encoding: 'utf8' });
-    ok(r1.status !== 0 && /nada foi gravado/.test(r1.stderr + r1.stdout) && pags.every(f => hash(f) === h1[f]), 'aplicar_kit21: erro numa página não regrava nenhuma outra');
-    const r2 = spawnSync('python3', [path.join(tmp, 'fontes/modelo/gerar_paginas.py')], { encoding: 'utf8' });
-    ok(r2.status !== 0 && pags.every(f => hash(f) === h1[f]), 'gerar_paginas: se o aplicar_kit21 falha, as páginas geradas voltam ao que eram');
-  } finally { fs.rmSync(tmp, { recursive: true, force: true }); }
-
   console.log(errs.length ? `\n${errs.length} falha(s)` : '\nsem erros'); process.exit(errs.length ? 1 : 0);
 })().catch(e => { console.error(e); process.exit(1); });
