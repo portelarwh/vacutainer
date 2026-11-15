@@ -1002,7 +1002,7 @@ document.addEventListener('click', ev => { const b = ev.target.closest('.vk-mais
    (Portal › Administração › Perfis: lancar, fechar, importar, excluir, configurar). O que o perfil não pode fica desligado, com o motivo
    no título; o clique também é barrado. Sem usuário identificado, ou perfil sem permissões gravadas, nada muda (vacPode devolve true).
    Identifica, não é cofre (registro 5.4/A07): a proteção real é a permissão da pasta. A Linha 360° segue o módulo Equipamentos. */
-/* vac-permissoes-comum */
+/* A regra compartilhada é incorporada em vac-bases, antes do código de cada motor. */
 const VAC_PODE_TXT = { lancar: 'lançar ou editar', fechar: 'fechar ou reabrir', importar: 'importar', excluir: 'excluir', configurar: 'configurar' };
 const VAC_PODE_MAPA = {
   oee: {

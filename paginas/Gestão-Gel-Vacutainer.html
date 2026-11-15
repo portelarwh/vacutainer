@@ -1012,6 +1012,16 @@ svg.vpar .pux-80 text{fill:var(--warn);font-size:11px;font-weight:600}
 svg.vpar g[role="button"]:focus{outline:none}svg.vpar g[role="button"]:focus-visible rect{stroke:var(--accent);stroke-width:2.5}
 </style>
 <script id="vac-bases">
+// Regra pura compartilhada pelos motores e pela casca. Ausência preserva o contrato do kit;
+// a exigência de sessão válida pertence à camada de acesso, não muda esta regra.
+const VAC_PODE_MOD = Object.freeze({ linha: 'equip' });
+function vacPodeComum(cadastro, usuario, modulo, acao = 'ver') {
+  const perfil = cadastro && usuario ? (cadastro.perfis || []).find(p => p.codigo === usuario.perfil) : null;
+  const alvo = VAC_PODE_MOD[modulo] || modulo;
+  if (!perfil || !perfil.permissoes || !perfil.permissoes[alvo]) return true;
+  return perfil.permissoes[alvo][acao] !== false;
+}
+
 /* Demonstração integrada, incorporada em cada HTML pelos builds. Nenhuma dependência de servidor.
    O cenário é fictício; armazenamento e IndexedDB são isolados por sessão de demonstração. */
 const vacDemo = (() => {
@@ -8993,16 +9003,7 @@ document.addEventListener('click', ev => { const b = ev.target.closest('.vk-mais
    (Portal › Administração › Perfis: lancar, fechar, importar, excluir, configurar). O que o perfil não pode fica desligado, com o motivo
    no título; o clique também é barrado. Sem usuário identificado, ou perfil sem permissões gravadas, nada muda (vacPode devolve true).
    Identifica, não é cofre (registro 5.4/A07): a proteção real é a permissão da pasta. A Linha 360° segue o módulo Equipamentos. */
-// Regra pura compartilhada pelos motores e pela casca. Ausência preserva o contrato do kit;
-// a exigência de sessão válida pertence à camada de acesso, não muda esta regra.
-const VAC_PODE_MOD = Object.freeze({ linha: 'equip' });
-function vacPodeComum(cadastro, usuario, modulo, acao = 'ver') {
-  const perfil = cadastro && usuario ? (cadastro.perfis || []).find(p => p.codigo === usuario.perfil) : null;
-  const alvo = VAC_PODE_MOD[modulo] || modulo;
-  if (!perfil || !perfil.permissoes || !perfil.permissoes[alvo]) return true;
-  return perfil.permissoes[alvo][acao] !== false;
-}
-
+/* A regra compartilhada é incorporada em vac-bases, antes do código de cada motor. */
 const VAC_PODE_TXT = { lancar: 'lançar ou editar', fechar: 'fechar ou reabrir', importar: 'importar', excluir: 'excluir', configurar: 'configurar' };
 const VAC_PODE_MAPA = {
   oee: {

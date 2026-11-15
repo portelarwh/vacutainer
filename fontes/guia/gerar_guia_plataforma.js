@@ -15,6 +15,7 @@ async function capturar(){
  }finally{await browser?.close();server.close()}
 }
 function compor(){
+ const captures=JSON.parse(fs.readFileSync(path.join(images,'capturas.json'),'utf8'));if(captures.uiSha256!==inputHash())throw new Error('Interface alterada: atualize os prints com gerar_guia_plataforma.js --capturar após compilar a plataforma.');
  const manifest=JSON.parse(fs.readFileSync(path.join(app,'src/generated/manifest.json'),'utf8'));let html=fs.readFileSync(path.join(__dirname,'guia_plataforma.html'),'utf8');
  const replacements={'@@REVISAO@@':manifest.sourceRevision.slice(0,12),'@@PACOTE@@':manifest.enginesSha256.slice(0,12),'@@IMG_INICIO@@':'<img alt="Tela inicial da plataforma, sem base real conectada" src="data:image/png;base64,'+fs.readFileSync(path.join(images,'inicio.png')).toString('base64')+'">','@@IMG_LOGIN@@':'<img alt="Entrada por ID no Portal com dados fictícios" src="data:image/png;base64,'+fs.readFileSync(path.join(images,'login.png')).toString('base64')+'">'};
  for(const [key,value]of Object.entries(replacements)){if(html.split(key).length!==2)throw new Error('Marcador deve existir exatamente uma vez: '+key);html=html.replace(key,value)}

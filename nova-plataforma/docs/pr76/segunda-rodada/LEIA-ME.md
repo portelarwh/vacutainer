@@ -37,3 +37,9 @@ A compressão usa fflate 0.8.2 fixado no lockfile, em vez de depender da versão
 O contrato do kit publica indicadores como `{texto,tom}` separados, além da situação editorial da página. A casca renderiza pílulas com separadores, versão e um único aviso de atualização/construção. O aviso nativo real (#vacEstFaixa) fica oculto só no quadro embutido.
 
 A barra de abas indica conteúdo lateral com sombras, admite rolagem horizontal e revela a aba ativa ao navegar/redimensionar. Os observers e listeners são removidos ao desmontar. `test:tela` confere 390 e 1440 px, os separadores, a primeira e a última aba totalmente visíveis e um aviso de atualização explicitamente exercitado. As capturas do guia auxiliar foram renovadas com Playwright e dados fictícios.
+
+## Regressão encontrada na suíte completa · carregamento N2
+
+A execução completa expôs chamadas de vacPode durante a inicialização do Waste e do Gel, antes do script tardio do kit v2.1. A regra ESM compartilhada foi movida para o bloco vac-bases do head, que antecede o código dos motores; permanece uma única implementação. O teste novo `test:inicializacao` abre as nove páginas atuais em consulta local e demonstração, rejeita erros de script e verifica navegação e os Paretos do Waste. As 18 aberturas passaram. A suíte completa é reiniciada após essa correção para conferir o mesmo estado final, sem misturar resultados.
+
+O gerador do guia também recusa capturas cujo hash da interface ficou desatualizado. A atualização das imagens continua explícita, com Playwright.
