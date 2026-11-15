@@ -1579,7 +1579,7 @@ const U = (() => {
 
 /* ---- 02-model.js ---- */
 /* ================= modelo de dados, valores iniciais e integridade ================= */
-const APP_VERSION = '2.4.74';
+const APP_VERSION = '2.4.75';
 const SCHEMA_VERSION = 1;
 const BASE_FILE = 'oee-vacutainer-base.json';
 const BACKUP_DIR = '00. Backups';
@@ -1694,6 +1694,7 @@ const Model = (() => {
     if (!db.server || typeof db.server !== 'object') db.server = { segments: [], gaps: [], mes: [], lotClass: {}, imports: [] };
     for (const k of ['segments', 'gaps', 'mes', 'imports']) if (!Array.isArray(db.server[k])) db.server[k] = [];
     if (!db.server.lotClass || typeof db.server.lotClass !== 'object') db.server.lotClass = {};
+    if (typeof ServerData !== 'undefined') ServerData.semCaixaRepetida(db.server);   /* 2.4.63 · base com dias importados antes da correção da 1ª linha do MES */
     if (!db.server.dayLot || typeof db.server.dayLot !== 'object') db.server.dayLot = {};
     // retrabalho: pela política da empresa o tempo e as peças saem do OEE (desconta do planejado, fora do Pareto)
     if (db.downtimeCodes.length && !db.downtimeCodes.some(c => c.code === 'RTB')) db.downtimeCodes.push({ id: db.downtimeCodes.some(c => c.id === 'dc_RTB') ? U.uid('dc') : 'dc_RTB', code: 'RTB', name: 'Retrabalho (fora do OEE)', description: 'Tempo de retrabalho de lote: sai do tempo planejado e as peças não contam (política da empresa).', category: 'Planejada', subcategory: 'Retrabalho', color: '#a3adb8', planned: true, deductsPlanned: true, affectsA: false, affectsP: false, affectsQ: false, inReport: true, inPareto: false, requiresNote: false, requiresTimes: false, allowsManualDuration: true, requiresPrevCatalog: false, requiresNextCatalog: false, validFrom: '2025-01-01', validTo: null, active: true, ...meta('Sistema') });
@@ -4275,9 +4276,27 @@ const ServerData = (() => {
     store.segments = kept.concat(joined);
     store.gaps = store.gaps.filter(g => g.lineId !== lineId || !inR(g.from)).concat(an.gaps.map(g => ({ ...g, lineId })));
     store.mes = store.mes.filter(e => e.lineId !== lineId || !inR(e.t)).concat(an.mes.map(e => ({ ...e, lineId }))).sort((x, y) => x.t < y.t ? -1 : 1);
+    semCaixaRepetida(store);   /* 2.4.63 */
     return store;
   }
 
+  /* 2.4.63 · caixa repetida às 00:00 nos trechos importados antes da correção da 1ª linha do relatório diário */
+  function semCaixaRepetida(store) {
+    if (!store || !Array.isArray(store.segments) || store.segments.length < 2) return 0;
+    let n = 0; const ult = new Map(), fora = new Set(), lac = new Set();
+    const ord = store.segments.slice().sort((x, y) => x.t0 < y.t0 ? -1 : x.t0 > y.t0 ? 1 : 0);
+    for (const s of ord) {
+      const k = (s.lineId || '') + '|' + s.lot, p = ult.get(k);
+      if (p && s.lot != null && s.b0 === p.b1 && p.t1 <= s.t0) {
+        const mins = dec(s); lac.add(k + '|' + s.t0); n++;
+        if (s.n <= 1 || mins.length <= 1) { fora.add(s); continue; }
+        const e = enc(mins.slice(1)); s.b0 += 1; s.n -= 1; s.t0 = fromMin(mins[1]); s.base = e.base; s.m = e.m; s.semRepetida = true;
+      }
+      ult.set(k, s);
+    }
+    if (n) { store.segments = store.segments.filter(s => !fora.has(s)); if (Array.isArray(store.gaps)) store.gaps = store.gaps.filter(g => !lac.has((g.lineId || '') + '|' + g.lot + '|' + g.from)); }
+    return n;
+  }
   /* ---------- leituras derivadas ---------- */
   const segsOf = (db, lineId) => ((db.server || {}).segments || []).filter(s => s.lineId === lineId).sort((x, y) => x.t0 < y.t0 ? -1 : 1);
   // trocas: última caixa de um trecho → 1ª caixa do trecho seguinte de outro lote, com o registro do MES no meio
@@ -4462,7 +4481,7 @@ const ServerData = (() => {
     return out;
   }
 
-  return { parseCsv, analyze, merge, fillUnknown, ensureStore, emptyStore, changes, countWindow, lots, orderByLot, lotKind, segsOf, daySuggest, reworkPlan, divergences, clipToIvs, enc, dec, tm, fromMin, dayStartMin, br };
+  return { semCaixaRepetida, parseCsv, analyze, merge, fillUnknown, ensureStore, emptyStore, changes, countWindow, lots, orderByLot, lotKind, segsOf, daySuggest, reworkPlan, divergences, clipToIvs, enc, dec, tm, fromMin, dayStartMin, br };
 })();
 
 

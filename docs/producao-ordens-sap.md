@@ -226,6 +226,19 @@ Agora a 1ª linha só fixa catálogo, lote e o ponto de partida. O trecho do dia
 
 Regra em `fontes/producao/mes_build.py`; teste `testes/tmes_dia.js`, com dados fictícios.
 
+## 2.4.75 · caixa repetida corrigida também nos dias já importados (15/11/2026)
+
+A 2.4.63 corrigiu a importação, mas os dias importados antes dela continuavam com a caixa repetida guardada na base. Em Ordens do mês, por exemplo, o lote 6299928 aparecia com 1.261 caixas (o certo é 1.259) e o 6299937 com 1.261 (o certo é 1.260): a soma dos trechos contava a mesma caixa no fim de um dia e de novo às 00:00 do dia seguinte.
+
+Agora a Produção corrige a base ao abrir (`Model.ensure`) e depois de cada importação (`merge`), pela função `ServerData.semCaixaRepetida`. O trecho que começa com o mesmo número em que o trecho anterior do mesmo lote terminou perde essa 1ª caixa, e a lacuna que ela abriu (das 00:00 até a caixa seguinte) sai junto.
+
+- Não é preciso reimportar.
+- A correção vai para a pasta na próxima gravação da Produção.
+- É idempotente: depois de corrigido, o trecho já não começa no mesmo número.
+- Só vale dentro do mesmo lote; outro lote com o mesmo número de caixa não muda.
+
+Conferido com os relatórios reais de 09 a 12/11/2026: importados pela 2.4.62 e abertos na 2.4.75, dão 950, 1.259, 1.260 e 167 caixas por lote. Teste `testes/tmes_dia.js`, com dados fictícios.
+
 ## 2.4.64 · Fechar turno e botões acesos (12/11/2026)
 
 **Erro encontrado e corrigido.** O dia pode ter um turno não produtivo que foi habilitado e depois desabilitado (TUR-02). Esse turno fica guardado como excluído (`deleted:true`), mas o fechamento olhava todos os turnos do dia, inclusive ele:

@@ -25,7 +25,7 @@ const errs = []; const ok = (c, m) => { console.log((c ? 'ok   ' : 'FALHA ') + m
   // ---------- destinos
   const o = await abre('OEE-Vacutainer.html#aba=reports&rel=day');
   const O = await o.evaluate(() => ({ r: App.route, t: rpState().type, sel: (document.querySelector('[data-rpt][aria-selected="true"]') || {}).dataset, v: APP_VERSION }));
-  ok(O.v === '2.4.74' && O.r === 'reports' && O.t === 'day' && O.sel && O.sel.rpt === 'day', 'Produção 2.4.74: #aba=reports&rel=day abre Relatórios com o Relatório do dia escolhido');
+  ok(O.v === '2.4.75' && O.r === 'reports' && O.t === 'day' && O.sel && O.sel.rpt === 'day', 'Produção 2.4.75: #aba=reports&rel=day abre Relatórios com o Relatório do dia escolhido');
   await o.goto(RAIZ + 'OEE-Vacutainer.html#aba=reports&rel=tables'); await o.waitForTimeout(1500);
   ok(await o.evaluate(() => App.route === 'reports' && rpState().type === 'tables'), 'Produção: #aba=reports&rel=tables abre as Tabelas');
   await o.goto(RAIZ + 'OEE-Vacutainer.html#aba=sqdcp'); await o.waitForTimeout(1500);
