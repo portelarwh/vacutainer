@@ -518,7 +518,7 @@ function vacNovaAcaoHref(d) {
 }
 function vacNovaAcaoBotao(d, rot = '+ Ação no Planner', cls = 'b sm') { const e = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); return `<a class="${e(cls)}" href="${e(vacNovaAcaoHref(d))}" target="_blank" rel="noopener" title="Abre Iniciativas com a ação preenchida (você confere antes de criar)">${e(rot)}</a>`; }
 /* endereço desta página com uma rota (para o "reconsultar" da ação) */
-function vacAquiHref(hash) { return vacDemo.ativo ? vacDemo.paginas[PAGE.id] + (hash ? '#' + hash : '') : location.href.split('#')[0].split('/').pop() + (hash ? '#' + hash : ''); }
+function vacAquiHref(hash) { if (window.__vacEmbedded) return parent.vacAppHost.link(PAGE.id,hash?'#'+hash:''); return vacDemo.ativo ? vacDemo.paginas[PAGE.id] + (hash ? '#' + hash : '') : location.href.split('#')[0].split('/').pop() + (hash ? '#' + hash : ''); }
 
 /* ===== vacGel · conta do gel comum (Fase 4 · 4b do briefing de 09/11/2026) =====
    A mesma conta na Gestão de Gel e na Produção (Registrar scrap e Teórico × Real), sem cópia divergente.
@@ -779,6 +779,18 @@ const vacLogin = (() => {
     ls('vac.login.ultimo.' + u.codigo, iso()); const E = lj('vac.login.erros', {}); delete E[u.codigo]; ls('vac.login.erros', JSON.stringify(E));
     avisar(u.nome); return ult;
   }
+  async function gravarConta(u, operacao, abrir = true) {
+    const chaves = ['vac.sessao','vac.user','vac.userId','vac.perfil'];
+    const anterior = chaves.map(k => lg(k));
+    const ultimo = abrir ? abrirSessao(u) : lg('vac.login.ultimo.' + u.codigo);
+    try {
+      if (window.__vacEmbedded) await window.vacPagina.executarContaPropria(String(u.codigo), operacao);
+      else await operacao();
+      return ultimo;
+    } catch (erro) {
+      chaves.forEach((k,i) => ls(k, anterior[i])); avisar(anterior[1] || ''); throw erro;
+    }
+  }
   function sair() { for (const k of ['vac.sessao', 'vac.user', 'vac.userId', 'vac.perfil']) ls(k, null); avisar(''); fechar(); abrir(); }
   /* ---- quando não aparece ---- */
   function dispensado() {
@@ -886,7 +898,7 @@ const vacLogin = (() => {
       const er = conferirNova(a, b); if (er) return msg(er, 'e');
       const ok = el.querySelector('#vlOk'); ok.disabled = true;
       try { const s = await gerar(a, false, nome), tu = el.querySelector('#vlTurno'), u = { codigo: id, nome, perfil: 'CONSULTA', turno: tu && tu.value || null, especialidade: el.querySelector('#vlEsp').value.trim() || null };
-        abrirSessao(u); await h.autocadastro(u, s); entrou(usuario(id) || u, 'Cadastro feito.', null); }
+        await gravarConta(u, () => h.autocadastro(u, s)); entrou(usuario(id) || u, 'Cadastro feito.', null); }
       catch (x) { ok.disabled = false; msg('Não consegui cadastrar: ' + (x.message || x), 'e'); }
     };
   }
@@ -901,7 +913,7 @@ const vacLogin = (() => {
     el.querySelector('#vlOk').onclick = async () => {
       const a = pin('vlP1'), er = conferirNova(a, pin('vlP2')); if (er) return msg(er, 'e');
       const ok = el.querySelector('#vlOk'); ok.disabled = true;
-      try { const s = await gerar(a, false, u.nome); const ult = abrirSessao(u); await h.criarSenha(u, s, provisoria ? 'troca da senha provisória' : '1º acesso: senha criada pela pessoa'); entrou(usuario(u.codigo) || u, 'Senha criada.', ult); }
+      try { const s = await gerar(a, false, u.nome); const ult = await gravarConta(u, () => h.criarSenha(u, s, provisoria ? 'troca da senha provisória' : '1º acesso: senha criada pela pessoa')); entrou(usuario(u.codigo) || u, 'Senha criada.', ult); }
       catch (x) { ok.disabled = false; msg('Não consegui gravar a senha: ' + (x.message || x), 'e'); }
     };
   }
@@ -947,7 +959,7 @@ const vacLogin = (() => {
     el.querySelector('#vlOk').onclick = async () => {
       if (u.senha && u.senha.hash) { if (bloqueio(u.codigo)) return msg('Bloqueado por senhas erradas. Tente em alguns minutos.', 'e'); if (!(await confere(u, pin('vlP0')))) { errou(u.codigo); limpaPin('vlP0'); return msg('A senha atual não confere.', 'e'); } }
       const a = pin('vlP1'), er = conferirNova(a, pin('vlP2')); if (er) return msg(er, 'e');
-      try { await h.criarSenha(u, await gerar(a, false, u.nome), 'senha trocada pela pessoa'); msg('Senha trocada.', 'o'); setTimeout(passoConta, 900); } catch (x) { msg('Não consegui gravar: ' + (x.message || x), 'e'); }
+      try { const nova = await gerar(a, false, u.nome); await gravarConta(u, () => h.criarSenha(u, nova, 'senha trocada pela pessoa'), false); msg('Senha trocada.', 'o'); setTimeout(passoConta, 900); } catch (x) { msg('Não consegui gravar: ' + (x.message || x), 'e'); }
     };
   }
   /* ---- ciclo: abre quando falta sessão; fecha sozinho se outra aba entrou ---- */
@@ -990,7 +1002,7 @@ document.addEventListener('click', ev => { const b = ev.target.closest('.vk-mais
    (Portal › Administração › Perfis: lancar, fechar, importar, excluir, configurar). O que o perfil não pode fica desligado, com o motivo
    no título; o clique também é barrado. Sem usuário identificado, ou perfil sem permissões gravadas, nada muda (vacPode devolve true).
    Identifica, não é cofre (registro 5.4/A07): a proteção real é a permissão da pasta. A Linha 360° segue o módulo Equipamentos. */
-const VAC_PODE_MOD = { linha: 'equip' };
+/* A regra compartilhada é incorporada em vac-bases, antes do código de cada motor. */
 const VAC_PODE_TXT = { lancar: 'lançar ou editar', fechar: 'fechar ou reabrir', importar: 'importar', excluir: 'excluir', configurar: 'configurar' };
 const VAC_PODE_MAPA = {
   oee: {
@@ -1027,7 +1039,7 @@ const VAC_PODE_MAPA = {
   }
 };
 VAC_PODE_MAPA.linha = VAC_PODE_MAPA.equip;
-function vacPodeAqui(fn) { if (typeof vacPode !== 'function' || typeof PAGE === 'undefined' || !PAGE) return true; try { return vacPode(VAC_PODE_MOD[PAGE.id] || PAGE.id, fn); } catch (e) { return true; } }
+function vacPodeAqui(fn) { if (window.__vacEmbedded && !(typeof vacDemo !== 'undefined' && vacDemo.ativo) && !['ver','exportar'].includes(fn) && !vacLogin.sessao()) return false; if (typeof vacPode !== 'function' || typeof PAGE === 'undefined' || !PAGE) return true; try { return vacPode(VAC_PODE_MOD[PAGE.id] || PAGE.id, fn); } catch (e) { return true; } }
 const vacTravas = (() => {
   let agendado = 0;
   const motivo = fn => { let p = null; try { p = typeof vacPerfil === 'function' ? vacPerfil() : null; } catch (e) { } return `Seu perfil${p && p.nome ? ' (' + p.nome + ')' : ''} não permite ${VAC_PODE_TXT[fn] || fn} nesta página. Quem muda o perfil é o administrador, no Portal.`; };
@@ -1132,4 +1144,186 @@ const vacPrefs = (() => {
   if (typeof document !== 'undefined') { let n = 0; const t = setInterval(() => { n++; if (pasta() && ativo()) { clearInterval(t); sincronizar(); } else if (n > 30) clearInterval(t); }, 2000);
     document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') sincronizar({ semRecarregar: true }); }); }
   return { sincronizar, mudou, registrar, restaurar, ler, CHAVE, get ultimo() { return ultimo; }, _fontes: fontes };
+})();
+
+// API de autenticação da casca: a senha e a sessão continuam pertencendo ao vacLogin.
+window.vacAutenticacao = { abrir: op => vacLogin.abrir(op), sessao: () => vacLogin.sessao(), sair: () => vacLogin.sair() };
+
+/* PR76 · fronteira pública dos motores. A casca não conhece Store, App ou nomes de funções locais.
+   Adaptadores ficam junto ao kit aplicado pelos builds; nenhuma fórmula é duplicada. */
+window.vacPagina = (() => {
+  const id = () => PAGE.id;
+  let conectando = false;
+  let rascunho = null;
+  document.addEventListener('input', ev => { const el = ev.target; if (el && el.closest) rascunho = el.closest('.overlay,.mod-bg,.modal.on,#mForm') || rascunho; }, true);
+  function pronto() {
+    try {
+      if (id() === 'oee') return typeof CadSync !== 'undefined' && !!db();
+      if (id() === 'portal') return typeof Cad !== 'undefined' && !!Store.B;
+      if (id() === 'perdas') return typeof B !== 'undefined' && !!B;
+      if (id() === 'gel') return typeof gelExports === 'function' && typeof backend !== 'undefined';
+      if (id() === 'projetos') return typeof atual !== 'undefined' && typeof show === 'function';
+      return typeof Store !== 'undefined' && !!Store.data;
+    } catch (e) { return false; }
+  }
+  function pendente() {
+    try {
+      if (!pronto() || conectando) return true;
+      if (rascunho && document.contains(rascunho) && rascunho.getClientRects().length) return true;
+      switch (id()) {
+        case 'oee': return !!Store.S.dirty || !!Store.S.saving;
+        case 'portal': return !!Store.pending || !!Cad.fila.length || !!Cad.gravando;
+        case 'perdas': return !!ST.pending;
+        case 'gel': return !!FS.pending.length || !!FS.busy;
+        case 'projetos': return false;
+        default: return !!Store.queue.length || !!Store.saving;
+      }
+    } catch (e) { return true; } // Falha na consulta nunca libera a troca de pasta.
+  }
+  function conectado() {
+    if (conectando) return false;
+    switch (id()) {
+      case 'oee': return Store.S.mode === 'pasta';
+      case 'portal': return Store.mode === 'pasta';
+      case 'perdas': return ST.mode === 'pasta';
+      case 'gel': return !!FS.base;
+      case 'projetos': return false;
+      default: return !!Store.dir && !!Store.perm;
+    }
+  }
+  async function conectar(dir) {
+    if (!dir) throw new Error('Pasta não informada.');
+    if (window.__vacEmbedded) dir = structuredClone(dir);
+    conectando = true;
+    try { switch (id()) {
+      case 'oee': await connectFolder(dir, false); if (Store.S.mode === 'pasta') document.querySelector('#wFolder')?.closest('.overlay')?.remove(); break;
+      case 'portal': await Store.connect(dir); await App.onConnect(); break;
+      case 'perdas': await connectDir(dir, { ask: false }); break;
+      case 'gel': await fsUse(dir, { create: false }); break;
+      case 'projetos': return;
+      default: await Store.usar(dir);
+    } } finally { conectando = false; }
+  }
+  function irAba(aba, hash, contexto) {
+    if (hash) {
+      location.hash = hash;
+      if (typeof cadRota === 'function') cadRota();
+      if (typeof applyHash === 'function') { applyHash(); renderNow(); }
+      if (typeof rota === 'function') rota();
+      if (typeof hashTry === 'function') hashTry();
+      if (/^#(?:dia=|plano=|pend=|lote=|ordem=|ficha=|nova=|acao=|reuniao=|cadastros(?:\/|$)|cs12=)/.test(hash)) return;
+      if (hash.startsWith('#aba=')) aba = decodeURIComponent(hash.slice(5).split('&')[0]);
+    }
+    if (!aba) return;
+    switch (id()) {
+      case 'oee':
+        if (aba === 'importar-producao') { App.cfgSec = 'importacao'; App.route = 'config'; }
+        else if (aba === 'importar-ordens') { Ord.sub = 'mb51'; App.route = 'ordens'; }
+        else App.route = aba;
+        if (contexto) { Object.assign(App.filters, { from: contexto.from, to: contexto.to }); App.filters.shiftId = (db().shifts.find(s => s.code === contexto.turno) || {}).id || ''; if (['launch','hourly'].includes(aba)) App.sel.date = contexto.to; }
+        renderNow(); break;
+      case 'portal': {
+        const secoes = { cadastros: 'inicio', usuarios: 'usuarios', parametros: 'parametros', importar: 'importar' };
+        if (aba in secoes) { Cad.ui.sec = secoes[aba]; App.show('cad'); } else App.show(aba); break;
+      }
+      case 'perdas': showTab(aba); break;
+      case 'gel': if (aba === 'config') openConfig(); else { ui.tab = aba; render(); } break;
+      case 'paradas': if (aba === 'relatorios') document.querySelector('#btnRel')?.click(); else { App.tab = aba; App.render(); } break;
+      case 'projetos': show(aba); break;
+      default: ir(aba);
+    }
+  }
+  function abas() {
+    let lista;
+    if (id() === 'oee') lista = ROUTES;
+    else if (id() === 'gel') lista = TABS.concat([['config','Configuração']]);
+    else if (['equip','inic','linha'].includes(id())) lista = ABAS;
+    else lista = [...document.querySelectorAll('#nav [data-t],#nav [data-tab],#nav [data-route]')].map(el => {
+      const clone = el.cloneNode(true); clone.querySelectorAll('.cnt,.badge,svg').forEach(n => n.remove());
+      return [el.dataset.t || el.dataset.tab || el.dataset.route, clone.textContent.trim().replace(/^⚙\s*/, '')];
+    });
+    return lista.map(([chave, nome]) => ({ id: chave, label: nome, route: chave }));
+  }
+  function comandos() {
+    return [...document.querySelectorAll('.vpage button,.vpage a[href],#vdsPag button,#vdsPag a[href]')].filter(el => !el.closest('#nav')).map((el, i) => {
+      if (!el.id) el.id = 'vac-comando-' + i;
+      return { id: el.id, label: el.textContent.trim() || el.title || el.getAttribute('aria-label'), disabled: !!el.disabled };
+    }).filter(c => c.label);
+  }
+  // N1: autorização temporária exclusiva para as operações da conta atual.
+  // Não altera o formato do cadastro nem substitui a transação/backup do Portal.
+  let conta = null;
+  const canon = valor => JSON.stringify(ordenar(valor));
+  function ordenar(v) { return Array.isArray(v) ? v.map(ordenar) : v && typeof v === 'object' ? Object.fromEntries(Object.keys(v).sort().map(k => [k, ordenar(v[k])])) : v; }
+  function filaSoContaPropria() {
+    try {
+      const ses = vacLogin.sessao();
+      if (!conta || id() !== 'portal' || !ses || String(ses.id) !== conta.codigo || Date.now() - conta.desde > 30000 || !Cad.fila.length) return false;
+      let usuarios = 0;
+      for (const op of Cad.fila) {
+        if (op.tipo === 'perfis') {
+          const padrao = DEFAULT_PERFIS.find(p => p.codigo === 'CONSULTA');
+          if (op.acao !== 'criação' || op.codigo !== 'CONSULTA' || op.origem !== 'autocadastro' || (Cad.base.perfis || []).some(p => p.codigo === 'CONSULTA') || canon(op.item) !== canon(padrao)) return false;
+          continue;
+        }
+        if (op.tipo !== 'usuarios' || String(op.codigo) !== conta.codigo) return false;
+        usuarios++;
+        if (op.acao === 'edição') {
+          if (op.origem !== 'login' || !op.mudancas || Object.keys(op.mudancas).join(',') !== 'senha' || !op.mudancas.senha.depois?.hash) return false;
+        } else if (op.acao === 'criação') {
+          const u = op.item, campos = ['codigo','nome','perfil','turno','especialidade','email','paginaInicial','ativo','origem','primeiroAcessoEm','senha'];
+          if (op.origem !== 'autocadastro' || !u || String(u.codigo) !== conta.codigo || u.perfil !== 'CONSULTA' || u.ativo !== true || !u.senha?.hash || Object.keys(u).some(k => !campos.includes(k))) return false;
+        } else return false;
+      }
+      return usuarios > 0;
+    } catch (e) { return false; }
+  }
+  async function validarDocumentoConta(texto, backup) {
+    if (!filaSoContaPropria()) throw new DOMException('Fila não autorizada para conta própria.', 'NotAllowedError');
+    const atualTexto = await (await (await Store.dir.getFileHandle(CAD_FILE)).getFile()).text();
+    if (backup) { if (texto !== atualTexto) throw new DOMException('Backup diferente do cadastro atual.', 'NotAllowedError'); return; }
+    const atual = JSON.parse(atualTexto), proximo = JSON.parse(texto), esperado = cadFix(clone(atual)), auditoria = [];
+    for (const op of Cad.fila) { if (!aplicarOp(esperado,op,auditoria).ok) throw new DOMException('Conflito na conta própria.', 'NotAllowedError'); }
+    esperado.auditoria = (esperado.auditoria || []).concat(auditoria).slice(-CAD_AUD_MAX);
+    const negocio = b => Object.fromEntries(Object.entries(b).filter(([k]) => !['rev','revId','revAt','revBy','appVersion'].includes(k)));
+    if (canon(negocio(esperado)) !== canon(negocio(proximo)) || proximo.rev !== (+atual.rev || 0) + 1 || proximo.appVersion !== 'Portal ' + PAGE.versao)
+      throw new DOMException('O documento contém mudanças fora da conta própria.', 'NotAllowedError');
+  }
+  async function executarContaPropria(codigo, operacao) {
+    if (id() !== 'portal' || conta || Cad.gravando || !vacLogin.sessao() || String(vacLogin.sessao().id) !== String(codigo)) throw new DOMException('Transação de conta indisponível.', 'NotAllowedError');
+    conta = Object.freeze({ codigo: String(codigo), desde: Date.now() });
+    try {
+      if (Cad.fila.length && !filaSoContaPropria()) throw new DOMException('Resolva as outras alterações antes de gravar sua conta.', 'NotAllowedError');
+      await operacao();
+      if (Cad.fila.length || (Store.mode !== 'teste' && Cad.status !== 'salvo')) throw new Error('A conta não foi confirmada na pasta. A alteração continua pendente neste navegador.');
+      if (Store.mode !== 'teste') {
+        const salvo = JSON.parse(await (await (await Store.dir.getFileHandle(CAD_FILE)).getFile()).text());
+        const usuario = (salvo.usuarios || []).find(u => String(u.codigo) === String(codigo));
+        if (!usuario?.senha?.hash || canon(usuario.senha) !== canon(Cad.base.usuarios.find(u => String(u.codigo) === String(codigo))?.senha)) throw new Error('A senha não foi confirmada na releitura.');
+      }
+    } finally { conta = null; }
+  }
+  return { pronto, pendente, conectado, conectar, ir: irAba, abas, comandos,
+    executarContaPropria, filaSoContaPropria, validarDocumentoConta,
+    pode: (modulo, acao) => vacPodeComum(vacCad(), vacUsuario(), modulo, acao),
+    get contaPropria() { return conta; },
+    descartar: () => window.__vacRuntimeDispose && window.__vacRuntimeDispose(),
+    bibliotecaCarregada: () => { if (typeof vacPdf !== 'undefined') vacPdf.instalar(); },
+    comando: chave => { const el = document.getElementById(chave); if (!el) throw new Error('Comando indisponível: ' + chave); el.click(); },
+    info: () => {
+      const el = document.querySelector('#stBase')?.cloneNode(true);
+      if (el) el.querySelectorAll('a,button,.vapps,#appVer,#vacEstPill').forEach(n => n.remove());
+      // Mantém as fronteiras dos indicadores e acrescenta espaços entre nós de texto.
+      const texto = n => n.nodeType === 3 ? n.textContent : Array.from(n.childNodes).map(texto).join(' ');
+      const estado = el ? Array.from(el.childNodes).map(n => ({
+        texto: texto(n).replace(/\s+/g, ' ').trim(),
+        tom: n.classList && ['bad','warn','good','info'].find(c => n.classList.contains(c)) || 'neutral'
+      })).filter(p => p.texto && p.texto !== '·') : [];
+      return { versao: PAGE.versao, estado, situacaoPagina: vacEstadoDe(PAGE.id), podeImprimir: vacPodeAqui('exportar') };
+    },
+    imprimir: () => { if (!vacPodeAqui('exportar')) throw new Error('Seu perfil não permite imprimir.'); window.print(); },
+    abrirOrdem: n => vacFicha.abrir('ordem', String(n)),
+    atualizar: () => { if (typeof vacAoVoltar === 'function') return vacAoVoltar(); },
+    autenticar: op => vacLogin.abrir(op), sessao: () => vacLogin.sessao()
+  };
 })();

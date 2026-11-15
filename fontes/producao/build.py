@@ -227,7 +227,9 @@ css="""<style>
 @media(max-width:760px){#nav.ngrupos{overflow-x:auto}.ngrp .natual{display:none}}
 </style>
 """
-kit21=open(os.path.join(RAIZ,'fontes','kit','kit_v21.js'),encoding='utf-8').read()
+sys.path.insert(0,os.path.join(RAIZ,'fontes','kit'))
+from permissoes_embed import ler_kit,ler_permissoes
+kit21=ler_kit(RAIZ)
 kit21=kit21.rstrip('\n')+'\n'+open(os.path.join(RAIZ,'fontes','kit','kit_ds.js'),encoding='utf-8').read().strip('\n')   # Design System
 # catálogo de sistemas único (fontes/kit/sistemas.js), igual nas 5 páginas
 import re as _re
@@ -242,7 +244,7 @@ if s.count('\n</head>\n')!=1: raise SystemExit('ERRO: </head> (linha própria) n
 _bas=open(os.path.join(RAIZ,'fontes','kit','kit_bases.js'),encoding='utf-8').read().strip()
 _demo=open(os.path.join(RAIZ,'fontes','kit','kit_demo.js'),encoding='utf-8').read()
 _cenario=json.load(open(os.path.join(RAIZ,'fontes','kit','demo_cenario.json'),encoding='utf-8'))
-_bas=_demo.replace('@@VAC_DEMO_CENARIO@@',json.dumps(_cenario,ensure_ascii=False,separators=(',',':')).replace('</','<\\/'))+'\n'+_bas   # bases em 00. Bases (antes do código da página)
+_bas=ler_permissoes(RAIZ)+'\n'+_demo.replace('@@VAC_DEMO_CENARIO@@',json.dumps(_cenario,ensure_ascii=False,separators=(',',':')).replace('</','<\\/'))+'\n'+_bas   # bases em 00. Bases (antes do código da página)
 s=s.replace('\n</head>\n','\n<style id="vac-visual">\n'+_vis+'\n</style>\n<script id="vac-bases">\n'+_bas+'\n</script>\n</head>\n')
 sync=open(os.path.join(AQUI,'cad_sync.js'),encoding='utf-8').read()
 R("S.cadastro = c && c.schema === 'vac-cadastros' ? { rev: c.rev, revAt: c.revAt, revBy: c.revBy } : null; }","S.cadastro = c && c.schema === 'vac-cadastros' ? { rev: c.rev, revAt: c.revAt, revBy: c.revBy } : null; S.cadDoc = S.cadastro ? c : null; S.cadDocAusente = false; if (S.cadDoc && typeof CadSync !== 'undefined') setTimeout(() => CadSync.talvez(), 0); }")

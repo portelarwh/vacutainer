@@ -1,12 +1,12 @@
 # Sistemas · Linha Vacutainer (BD Curitiba)
 
-Plataforma de páginas HTML de arquivo único que trabalham juntas numa **pasta única da rede** (File System Access API). Na raiz da pasta ficam só os HTML, `lib/`, `Logo.png` e as pastas; **as bases `.json` ficam em `00. Bases/`** (kit vac-bases), os backups em `00. Backups/<módulo>/`. Instalação e atualização: **`Guia de instalação.html`** (raiz; prints de onde clicar), resumo em `paginas/LEIA-ME.txt`. Cada página tem a sua base JSON; o **Portal** é dono do cadastro geral. Interface e mensagens sempre em **português do Brasil**.
+Produto único: **`nova-plataforma/dist/Plataforma.html`**, aberto pelo Chrome/Edge na pasta da rede, sem API ou servidor interno. As bases JSON ficam em **`00. Bases/`** e backups em **`00. Backups/<módulo>/`**. `fontes/` e `paginas/` conservam as regras mais recentes e alimentam os motores incorporados; os HTML individuais não serão distribuídos. O Portal é dono do cadastro geral. Interface em português do Brasil. Instalação em `Guia de instalação.html`; corte ainda condicionado à homologação (`nova-plataforma/docs/CORTE.md`).
 
-## Páginas (em `paginas/`, com `paginas/lib/`, é o que vai para a pasta da rede)
+## Motores atuais (fontes em `paginas/` e `fontes/`, incorporados à plataforma única)
 
 | Página | Arquivo | Base | Versão | Como editar |
 |---|---|---|---|---|
-| Portal (cadastro geral, Administração) | `Portal.html` | `portal-base.json` + `vacutainer-cadastros.json` | 1.9.36 | direto no HTML |
+| Portal (cadastro geral, Administração) | `Portal.html` | `portal-base.json` + `vacutainer-cadastros.json` | 1.9.37 | direto no HTML |
 | Produção (OEE, plano, ordens SAP) | `OEE-Vacutainer.html` | `oee-vacutainer-base.json` (+ `ordens-base.json`) | 2.4.74 | **NÃO editar o HTML**: editar `fontes/producao/` e rodar o build |
 | Waste (perdas por ordem, KKBC) | `Perdas-Ordem.html` | `perdas-base.json` | 1.12.8 | direto no HTML |
 | Gestão de Gel | `Gestão-Gel-Vacutainer.html` | `fifo-base.json` | 2.35 · **em atualização** | direto no HTML |
@@ -19,7 +19,7 @@ Plataforma de páginas HTML de arquivo único que trabalham juntas numa **pasta 
 Divisão final (Portal 1.7): Portal · Produção · Waste · Gestão de Gel · Paradas · **Equipamentos** (inclui manutenção; não há página Manutenção) · **Iniciativas** (uma página: Ações/Planner · KAS · OSM · 5S; não há OSM.html) · **Projetos** · Outros ▾ · ⚙ Administração.
 Situação de cada página (em construção / em atualização / estável): `PAGE.estado` + `sistemas.js`, trocável no Portal › Configuração › Módulos; ver `docs/paginas-construcao.md`. Páginas em construção são **geradas** (não editar o HTML; editar `fontes/modelo/` e rodar o gerador). Quando uma delas começar de verdade (v1.0), tirar da lista do gerador e passar a editar direto. Arquitetura: `docs/plano-evolucao-plataforma.md`, `docs/osm-arquitetura.md` (aba OSM de Iniciativas). `docs/paginas-novas.md` é histórico (lista antiga Máquinas/Manutenção).
 
-Demonstração integrada: botão comum nas oito páginas; `paginas/Demonstracao.html` reúne as páginas reais e mantém os exemplos na memória durante a navegação, sem bases reais. Fontes e limites em `docs/demonstracao-integrada.md`. **Depois de qualquer build/alteração das páginas, rodar `python fontes/demo/gerar_demo.py` por último e copiar o pacote junto com os HTML.**
+Demonstração integrada: botão comum nas oito páginas; `paginas/Demonstracao.html` reúne as páginas reais e mantém os exemplos na memória durante a navegação, sem bases reais. Fontes e limites em `docs/demonstracao-integrada.md`. **Depois de alterar os motores, o build da raiz regenera o cenário de testes. A demonstração distribuída está dentro de Plataforma.html (?demo=1); não se copia paginas/Demonstracao.html para a linha.**
 
 SQDCP (Produção 2.4.20; gráficos em barras verde/vermelho com linha só para meta e tendência na 2.4.33, PRD-09): quadro de 25 posições, acidente/QN por turno e impressão de uma A4 paisagem. Fontes em `fontes/producao/sqdcp*`; uso, contratos e pendências em `docs/producao-sqdcp.md`. Campos opcionais; ausência de resposta nunca é zero. **2.4.58:** layout "SQDCP – Gestão Diária" (cabeçalho em três blocos, resumo executivo por pilar com o mesmo resultado das posições, cards com engrenagem, cores dos pilares × cor da situação, Modo Reunião `body.sqdcp-reuniao`, quadro sem a série do mês); números conferidos pela referência `testes/bases/sqdcp-referencia.json` (`tsqdcp_layout.js`).
 
@@ -59,7 +59,7 @@ node testes/tvisual.js                 # layout: 8 páginas (as 3 em construçã
 node testes/tbases.js                  # bases em 00. Bases: mover da raiz, ler antes/depois, gravar, cópia mais nova/velha na raiz, B01–B07 com falhas injetadas, concorrência, volta de versão (OPFS + HTTP local); código 1 se falhar
 node testes/trelatorios.js            # relatórios: PDF (pdfinfo/pdftotext), texto, Outlook, impressão (2 temas), ordem das abas, aba inicial por perfil; código 1 se falhar
 node fontes/guia/gerar_guia.js         # gera "Guia de instalação.html" (raiz) a partir de fontes/guia/guia_modelo.html, com prints reais das páginas embutidos; rodar quando mudar tela de conexão/entrada ou versão
-node testes/tmeta.js                   # importação da Meta OEE FY27 no Portal (precisa também do pacote npm xlsx)
+node testes/tmeta.js                   # importação da Meta OEE FY27 no Portal (usa a SheetJS local)
 node testes/tconstrucao.js             # situação das páginas: selos, faixa, Portal › Módulos, cartão em construção, as 3 páginas geradas (2 temas, 390 px); código 1 se falhar
 node testes/tseguranca.js             # revisão 065fe6f: botões do Waste com valores importados, restauração sem cópia (Portal/Gel), CSV sem fórmulas, URLs de download, TV da Produção, índice do Gel, scripts em duas fases; código 1 se falhar
 node testes/tordens.js                # E1 do plano único: Produção › Ordens com leitura estrita, pendência recuperável (Gravar de novo), releitura por revId, backup obrigatório antes de substituir, backups do local antigo (OPFS + HTTP local); código 1 se falhar
@@ -183,7 +183,7 @@ Lista única do que ficou para depois. O motivo e o gatilho de cada item estão 
 **Funcionalidade e integração**
 - UX-02 (guia por aba): feito em todas as páginas menos Projetos (em construção); ao mudar uma tela, atualizar o `VAC_GUIA` dela (Produção: `fontes/producao/guia.js`; as outras: bloco "UX-02 · guia por aba" no fim do HTML).
 - Telas por perfil (E10c): Resumo/Detalhado, o que fica em "Mais", passagem de turno e alerta de ritmo; espera a lista de jornadas por perfil validada com operador e liderança (registro § U).
-- OSM (E7, falta a amostra da planilha), importação por pasta (E9, falta decidir a estação coletora), MES (E12, faltam amostras e regras), conteúdo AM/TPM e 5S (E13, faltam os padrões), Projetos (E15, falta o escopo) e XLSX local (E3b, falta o arquivo): registro § U.
+- OSM (E7, falta a amostra da planilha), importação por pasta (E9, falta decidir a estação coletora), MES (E12, faltam amostras e regras), conteúdo AM/TPM e 5S (E13, faltam os padrões), Projetos (E15, falta o escopo) (E3b resolvido: XLSX local disponível): registro § U.
 - Fase 4 do briefing: homologar na pasta real (Trazer configurações › parâmetros do gel, data de corte, Registrar scrap num turno e Resumo do dia no Gel). Os **locais** de estoque continuam no Gel; scrap do dia sem turno ("Dia (sem turno)" do Gel) não existe na Produção.
 - Homologação da C1 na pasta real (etapa H): duas abas, base renomeada, duas estações (registro § V).
 - R-02, identificador estável da pessoa (responsável guardado pelo nome): falta decidir o que fazer com nomes digitados à mão (registro § V).
@@ -194,7 +194,7 @@ Lista única do que ficou para depois. O motivo e o gatilho de cada item estão 
 
 **Homologação e testes**
 - Conferência com a pasta real: primeira abertura (aviso do CadSync na Produção), duas estações gravando ao mesmo tempo (os testes de gravação usam pasta simulada), uso sem internet, Chrome/Edge, acentos nos caminhos (registro A09), densidade observada com operador e liderança (registro § L).
-- `paginas/lib/xlsx.full.min.js` (SheetJS 0.20.3) ainda não está no repositório (o `trelatorios.js` marca o Excel como NÃO VERIFICADO): o ambiente de desenvolvimento não alcança cdn.sheetjs.com e o npm só tem até 0.18.5. Subir o arquivo que está na pasta da linha. jsPDF e AutoTable já estão em `paginas/lib/`.
+- SheetJS oficial 0.20.3 está em `paginas/lib/xlsx.full.min.js`, com licença e hash documentados. Os testes de Excel usam essa biblioteca local; a homologação no computador corporativo permanece pendente.
 - Volta para versão anterior a `00. Bases`: procedimento manual no guia (item 9), validado no `tbases.js` › B06; não automatizado de propósito (registro § R).
 - Cópia para o Outlook com imagens: conferir no Outlook da empresa (desktop e web) se os gráficos chegam (registro § P).
 
@@ -209,3 +209,7 @@ Lista única do que ficou para depois. O motivo e o gatilho de cada item estão 
 ## Estabilização NV-01–NV-05 (08/11/2026)
 
 Implementação e limites: `docs/estabilizacao-nv-01-05.md`. Teste novo `testes/tnv.js`, incluído em `testes/tudo.js`. Nenhum schema de negócio, código ou vigência foi alterado. Identidade de pasta e reservas são locais ao navegador; a homologação com pasta real e duas estações continua pendente.
+
+PR76: a plataforma única é o produto. As fontes atuais de `fontes/` e `paginas/` alimentam os motores incorporados; o único artefato de distribuição será `nova-plataforma/dist/Plataforma.html`, após homologação e corte documentado. `window.vacPagina` é o contrato público da casca. Portal 1.9.37: sev 1 = urgente, sev 2 = atenção também internamente, nos contadores e relatórios (decisão do responsável).
+
+PR76: SheetJS oficial 0.20.3 agora está em `paginas/lib/xlsx.full.min.js`, com licença e hash documentados em `nova-plataforma/vendor/LEIA-ME.md`; o build compartilha esse mesmo arquivo. A pendência E3b de obter a biblioteca foi resolvida; uso corporativo continua na homologação.

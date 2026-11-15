@@ -1,0 +1,3 @@
+import {test} from 'node:test';import assert from 'node:assert/strict';import {readFileSync} from 'node:fs';import {createHash} from 'node:crypto';
+const manifest=JSON.parse(readFileSync('src/generated/manifest.json','utf8'));
+test('N5: manifesto descreve as fontes e os bytes empacotados, sem depender de HEAD',()=>{assert.equal(Object.hasOwn(manifest,'revision'),false);assert.match(manifest.sourceRevision,/^[a-f0-9]{40}$/);const sha=createHash('sha256').update(readFileSync('src/generated/engines.json')).update('\0').update(readFileSync('src/generated/libraries.json')).digest('hex');assert.equal(manifest.enginesSha256,sha);assert.ok(manifest.dirtySources.every((p:string)=>!p.includes('paginas/Demonstracao.html')))});

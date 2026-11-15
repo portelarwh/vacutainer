@@ -1,4 +1,4 @@
-// Portal › Relatórios como compilado de todos os relatórios (13/11/2026; Portal 1.9.36, Produção 2.4.74, Gel 2.35, Paradas 1.2.11).
+// Portal › Relatórios como compilado de todos os relatórios (13/11/2026; Portal 1.9.37, Produção 2.4.74, Gel 2.35, Paradas 1.2.11).
 // Confere a lista por página (Portal, Produção, Waste, Gestão de Gel, Paradas, Outros), o endereço de cada botão e que cada endereço
 // abre a tela do relatório na página dona; Relatórios da barra lateral leva a esta tela. Dados fictícios. node testes/trelcompilado.js → "sem erros"
 const path = require('path'); const RAIZ = 'file://' + path.resolve(__dirname, '..') + '/paginas/';
@@ -15,7 +15,7 @@ const errs = []; const ok = (c, m) => { console.log((c ? 'ok   ' : 'FALHA ') + m
     document.querySelectorAll('[data-rel-ir]').forEach(x => x.click());
     return { url: location.pathname.split('/').pop(), aba: App.tab, ver: PAGE.versao, blocos, ir, resumo: !!document.getElementById('rResumo'), pend: !!document.getElementById('rPend') }; });
   ok(P.url === 'Portal.html' && P.aba === 'rel', 'Relatórios da barra lateral (no Paradas) abre Portal › Relatórios');
-  ok(P.ver === '1.9.36' && ['Portal', 'Produção', 'Waste', 'Gestão de Gel', 'Paradas', 'Outros'].every(n => P.blocos.includes(n)) && P.resumo && P.pend, 'Portal 1.9.36: um bloco por página (Portal, Produção, Waste, Gestão de Gel, Paradas) e Outros; Resumo e Pendências da linha continuam');
+  ok(P.ver === '1.9.37' && ['Portal', 'Produção', 'Waste', 'Gestão de Gel', 'Paradas', 'Outros'].every(n => P.blocos.includes(n)) && P.resumo && P.pend, 'Portal 1.9.37: um bloco por página (Portal, Produção, Waste, Gestão de Gel, Paradas) e Outros; Resumo e Pendências da linha continuam');
   const tem = h => P.ir.includes(h);
   ok(['shift', 'day', 'week', 'month', 'stops', 'plan', 'view', 'tables'].every(k => tem('OEE-Vacutainer.html#aba=reports&rel=' + k)), 'Produção: os 8 relatórios com link direto (aba=reports&rel=…)');
   ok(tem('Perdas-Ordem.html#aba=relatorios') && tem('Gestão-Gel-Vacutainer.html#aba=relatorios') && tem('Paradas.html#relatorio'), 'Waste, Gel e Paradas: link para a tela de relatórios');

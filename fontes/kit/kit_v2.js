@@ -10,7 +10,7 @@ function vacCad(){if(typeof Cad!=='undefined'&&Cad&&Cad.D)return Cad.D;try{retur
 function vacUsuario(c=vacCad()){let id='';try{id=localStorage.getItem('vac.userId')||''}catch(e){}return id&&c?(c.usuarios||[]).find(u=>String(u.codigo)===String(id))||null:null}
 function vacPerfil(c=vacCad()){const u=vacUsuario(c);return u&&c?(c.perfis||[]).find(p=>p.codigo===u.perfil)||null:null}
 /* permissão do perfil na página (sem perfil, sem cadastro ou sem a página no perfil = pode) */
-function vacPode(mod,fn='ver'){const p=vacPerfil();if(!p||!p.permissoes||!p.permissoes[mod])return true;return p.permissoes[mod][fn]!==false}
+function vacPode(mod,fn='ver'){return vacPodeComum(vacCad(),vacUsuario(),mod,fn)}
 /* semáforo comum: 'ok' | 'warn' | 'crit' | 'none' em relação à meta (inverso: menor é melhor, ex.: scrap, waste) */
 function vacSemaforo(v,meta,{inverso=false}={}){if(v==null||meta==null||!isFinite(v)||!isFinite(meta)||!meta)return'none';const c=vacCad(),P=(c&&c.parametros)||{};
  const vd=(+P.semaforoVerdePct||100)/100,am=(+P.semaforoAmareloPct||90)/100,r=inverso?(v<=0?Infinity:meta/v):v/meta;return r>=vd?'ok':r>=am?'warn':'crit'}

@@ -1,0 +1,3 @@
+import {test} from 'node:test';import assert from 'node:assert/strict';import {readFileSync} from 'node:fs';
+test('item 4: ponte não usa eval nem nomes privados dos motores',()=>{const s=readFileSync('src/core/runtime.ts','utf8');assert.doesNotMatch(s,/\.eval\(|Store\.S|ST\.pending|FS\.pending|Cad\.fila|connectFolder|fsChooseBase/);assert.match(s,/vacPagina/)});
+test('item 4: kit publica contrato obrigatório e consulta de pendência falha fechada',()=>{const s=readFileSync('../fontes/kit/kit_v21.js','utf8');assert.match(s,/window\.vacPagina\s*=/);for(const n of ['pendente','conectado','conectar','ir','abas','abrirOrdem'])assert.match(s,new RegExp(n+'\\s*[:(]'));assert.match(s,/catch\s*\([^)]*\)\s*\{\s*return true/)});

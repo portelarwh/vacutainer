@@ -2,7 +2,7 @@
 // nem configura em nenhuma página; o Líder lança e fecha; sem usuário identificado nada muda. Dados fictícios.
 // node testes/tpermissoes.js → "sem erros"; código 1 se falhar
 const path = require('path'); const RAIZ = path.resolve(__dirname, '..') + '/', PG = 'file://' + RAIZ + 'paginas/';
-const { chromium } = require('playwright');
+const { chromium } = require(process.env.VAC_PLATAFORMA ? '../nova-plataforma/tests/engine-browser.cjs' : 'playwright');
 const errs = []; const ok = (c, m) => { console.log((c ? 'ok   ' : 'FALHA ') + m); if (!c) errs.push(m); };
 const MODS = ['portal', 'oee', 'perdas', 'gel', 'paradas', 'equip', 'inic', 'projetos'], FN = ['ver', 'lancar', 'fechar', 'importar', 'exportar', 'excluir', 'configurar'];
 const perm = f => Object.fromEntries(MODS.map(m => [m, Object.fromEntries(FN.map(x => [x, f(m, x)]))]));
@@ -24,7 +24,7 @@ const PAGINAS = [
     const R = {};
     for (const quem of ['', 'u1', 'u2']) {
       const c = await b.newContext({ viewport: { width: 1440, height: 900 } }); const p = await c.newPage(); p.on('pageerror', e => pe.push(arq + ': ' + e.message)); p.on('dialog', d => d.dismiss());
-      await p.addInitScript(([cad, u]) => { try { localStorage.setItem('vac.cadastros', JSON.stringify(cad)); if (u) localStorage.setItem('vac.userId', u); } catch (e) { } }, [CAD, quem]);
+      await p.addInitScript(([cad, u]) => { try { localStorage.setItem('vac.cadastros', JSON.stringify(cad)); if (u) { localStorage.setItem('vac.userId', u); if (navigator.webdriver) localStorage.setItem('vac.sessao', JSON.stringify({id:u,ate:Date.now()+3600000})); } } catch (e) { } }, [CAD, quem]);
       await p.goto(PG + arq); await p.waitForTimeout(1000);
       try { await prep(p); } catch (e) { pe.push(arq + ' prep: ' + e.message); }
       await p.waitForTimeout(500);
@@ -36,7 +36,7 @@ const PAGINAS = [
     const tot = (r, f) => Object.entries(r).filter(([fn]) => f(fn)).reduce((s, [, x]) => s + x.n, 0), trav = (r, f) => Object.entries(r).filter(([fn]) => f(fn)).reduce((s, [, x]) => s + x.trava, 0), todos = () => true;
     const n = tot(R.u1, todos);
     ok(n > 0 && trav(R.u1, todos) === n && /Consulta/.test(Object.values(R.u1).map(x => x.tit).join(' ')), `${arq}: Consulta com os ${n} botão(ões) de gravação da tela desligados e o motivo no título`);
-    ok(trav(R['ninguém'], todos) === 0, `${arq}: sem usuário identificado, nada travado`);
+    ok(process.env.VAC_PLATAFORMA ? trav(R['ninguém'], todos) === tot(R['ninguém'], todos) : trav(R['ninguém'], todos) === 0, `${arq}: sem usuário identificado: consulta na plataforma, comportamento histórico fora dela`);
     const lf = fn => fn === 'lancar' || fn === 'fechar' || fn === 'importar', cf = fn => fn === 'configurar' || fn === 'excluir';
     ok(trav(R.u2, lf) === 0 && trav(R.u2, cf) === tot(R.u2, cf), `${arq}: Liderança lança/fecha/importa (${tot(R.u2, lf)} livres) e não configura nem exclui (${tot(R.u2, cf)} travados)`);
   }
