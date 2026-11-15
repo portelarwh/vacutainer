@@ -64,9 +64,11 @@ npm test
 npm run test:reprodutibilidade --prefix nova-plataforma
 ```
 
+Para navegar sem bases reais, abra o endereço mostrado pelo Vite com `?demo=1`. O arquivo .nvmrc desta pasta indica Node 22; o pacote exige Node 22 ou mais recente. Para testes/capturas, instale o Chromium do Playwright nesta pasta (`npx playwright install chromium`), como no CI.
+
 O servidor do Vite é apenas de desenvolvimento. Não entra na implantação. Não acrescente CDN, fonte remota ou servidor necessário para operar o HTML distribuído.
 
-Ao alterar telas, atualize as capturas do guia auxiliar depois de compilar: `node fontes/guia/gerar_guia_plataforma.js --capturar`. O guia antigo da raiz permanece preservado até o corte.
+Ao alterar telas, use `npm run build:capturar --prefix nova-plataforma`: ele compila, confere o artefato e renova as capturas reais do guia auxiliar com dados fictícios. O build normal é determinístico e recusa capturas antigas. O guia antigo da raiz permanece preservado até o corte.
 
 ## Forma de trabalho entre agentes
 

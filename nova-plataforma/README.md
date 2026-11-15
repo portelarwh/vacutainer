@@ -45,3 +45,5 @@ Evidências atuais: [N1–N6](docs/pr76/segunda-rodada/RESULTADO.md). Arquitetur
 Referência: [marca BD](docs/BD_Dashboard_Brand_Guidelines.md). Aplicação e contraste: [Design System](docs/DESIGN_SYSTEM.md). Fonte única: `src/design/brand.css`, usada na casca e nos módulos incorporados. O layout da casca está em `src/style.css`.
 
 [Plano por jornada](docs/PLANO-DE-MELHORIAS.md) e [ambiguidades conhecidas](docs/PENDENCIAS-DOCUMENTAIS.md) permitem continuar sem inventar regras ou repetir propostas antigas. O roteiro mantém a distinção entre fundação pronta, telas futuras e homologação corporativa pendente.
+
+Para renovar o guia após mudar a interface: `npm run build:capturar --prefix nova-plataforma` (Chromium do Playwright instalado). O build normal conserva a verificação de capturas e os artefatos determinísticos.
