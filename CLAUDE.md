@@ -6,8 +6,8 @@ Produto único: **`nova-plataforma/dist/Plataforma.html`**, aberto pelo Chrome/E
 
 | Página | Arquivo | Base | Versão | Como editar |
 |---|---|---|---|---|
-| Portal (cadastro geral, Administração) | `Portal.html` | `portal-base.json` + `vacutainer-cadastros.json` | 1.9.38 | direto no HTML |
-| Produção (OEE, plano, ordens SAP) | `OEE-Vacutainer.html` | `oee-vacutainer-base.json` (+ `ordens-base.json`) | 2.4.76 | **NÃO editar o HTML**: editar `fontes/producao/` e rodar o build |
+| Portal (cadastro geral, Administração) | `Portal.html` | `portal-base.json` + `vacutainer-cadastros.json` | 1.9.39 | direto no HTML |
+| Produção (OEE, plano, ordens SAP) | `OEE-Vacutainer.html` | `oee-vacutainer-base.json` (+ `ordens-base.json`) | 2.4.77 | **NÃO editar o HTML**: editar `fontes/producao/` e rodar o build |
 | Waste (perdas por ordem, KKBC) | `Perdas-Ordem.html` | `perdas-base.json` | 1.12.8 | direto no HTML |
 | Gestão de Gel | `Gestão-Gel-Vacutainer.html` | `fifo-base.json` | 2.35 · **em atualização** | direto no HTML |
 | Paradas | `Paradas.html` | `paradas-base.json` | 1.2.11 · **em atualização** | direto no HTML |
@@ -55,6 +55,7 @@ node testes/tgrade.js                  # cartões reorganizáveis (kit vacGrade)
 node testes/tfechar.js                 # Produção 2.4.64: fechar turno e dia com turno desabilitado no dia (deleted), reabrir; botões acesos (Fechado · Reabrir, Hora a hora completo, seletor do Hora a hora) nos 2 temas; código 1 se falhar
 node testes/tmes_dia.js                # Produção 2.4.63: relatório diário do MES (1ª linha = última caixa do relatório anterior, não conta de novo; caixa 0; troca de lote; "(null)"; lote destrocado; quatro dias somados = contador); dados fictícios; código 1 se falhar
 node testes/tds.js                     # Design System e Linha 360°: barra lateral nas 9 páginas, recolher, menu sobreposto, modal acima da barra, grade de gráficos, vacOrdemLote, impressão direta (cabeçalho, filtros por escrito, paisagem), faixa e cores nos PDFs, e-mail do Outlook, Paretos verticais do Waste, planta (números = soma dos eventos), postos e checklists; código 1 se falhar
+node testes/tautor.js                 # Produção 2.4.77: autoria pela sessão do login (não pelo nome antigo guardado no IndexedDB); troca de pessoa em outra página atualiza o nome guardado; sessão vencida não vale; código 1 se falhar
 node testes/tdia.js                    # resumo do dia (vacFicha 'dia'): mesmos números dos exports em 3 páginas, frase por extenso, Resumo × Detalhado, dia anterior/próximo, ordem e ← Voltar, Ctrl K por data, #ficha=dia/, barra da Linha 360° (clique e Enter); grade: letra legível no cartão de 1/3 e Ampliar; código 1 se falhar
 node testes/tparada_tempo.js           # duração visível, regras do Portal, troca de código, gravação e abono
 node testes/tsqdcp.js                 # formulário S/Q, QN única, relatórios, reimportação, persistência e A4
@@ -75,7 +76,7 @@ node testes/tvigencias.js             # E2 do plano único: versão igual em tel
 node testes/tnumeros.js               # E3: vacNumero (decimal, milhar, SAP) nas páginas, preço do Gel com "12a" não grava, minutos/vezes do Forms no Paradas; código 1 se falhar
 node testes/tficha.js                 # E5: ficha da ordem/lote/LP (mesmos números dos exports nas 5 páginas), Ctrl K por índice (LX1 antes de LX10), cópia sem pasta, versão 2 recusada, #ficha=, ← Voltar; código 1 se falhar
 node testes/tplanner.js               # E6/E8: Iniciativas › Ações (base em 00. Bases, operações, duas estações, erro de leitura, tempos com transferência/espera/reabertura, exports, #nova= com aviso de ação parecida, KAS, links das outras páginas); código 1 se falhar
-node testes/tfila.js                  # E10: Portal › Minha fila (Minhas, Minha equipe pela área do cadastro, Sem responsável) e Reunião diária (dia/turno, granularidade, pauta, decisão, fotografia, encaminhar); código 1 se falhar
+node testes/tfila.js                  # E10: Portal › Pendências e ações (1.9.39: antiga Minha fila + Pendências; Minhas, Minha equipe pela área do cadastro, Sem responsável, Linha com só as ações atrasadas e "Ver todas", agrupar por prazo/página, contadores, #pend) e Reunião diária (dia/turno, granularidade, pauta, decisão, fotografia, encaminhar); código 1 se falhar
 node testes/tequip.js                 # E11: Equipamentos (ficha, OS do evento do Paradas sem cópia, TAG com vigência, anomalia → OS, Paradas mostra a OS); código 1 se falhar
 node testes/tpendencias.js            # C1: alterações pendentes sem perda entre abas (fila durável; trava da 2ª aba no Portal/Waste), base que some não vira vazia, formato desconhecido não grava, link de origem seguro, regravação em 24 h; código 1 se falhar
 node testes/tcorrecoes.js             # C2–C6: resumo do dia ao voltar à aba, link da anomalia, troca de usuário, ordem com zeros, sem dado de paradas ≠ 0, ação do grupo com todas as ordens, links da Reunião e do Pareto, saúde dos dados no Portal › Versões, ficha por pasta; código 1 se falhar

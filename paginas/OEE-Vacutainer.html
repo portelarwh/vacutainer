@@ -1595,7 +1595,7 @@ const U = (() => {
 
 /* ---- 02-model.js ---- */
 /* ================= modelo de dados, valores iniciais e integridade ================= */
-const APP_VERSION = '2.4.76';
+const APP_VERSION = '2.4.77';
 const SCHEMA_VERSION = 1;
 const BASE_FILE = 'oee-vacutainer-base.json';
 const BACKUP_DIR = '00. Backups';
@@ -5261,7 +5261,7 @@ function bindGlobal() {
   wireCabecalho();
   $('#opBtn').onclick = () => go('shift');
   Help.bind();
-  window.addEventListener('storage', e => { if (e.key === 'vac.theme') applyTheme(); if (e.key === 'vac.sistemas') renderSysNav(); if (e.key === 'vac.user') { Store.S.user = e.newValue || ''; renderTop(); } });
+  window.addEventListener('storage', e => { if (e.key === 'vac.theme') applyTheme(); if (e.key === 'vac.sistemas') renderSysNav(); if (e.key === 'vac.user') { Store.S.user = e.newValue || ''; try { IDB.set('user', Store.S.user); } catch (x) { } renderTop(); } });
   window.addEventListener('hashchange', () => { App.op = location.hash === '#turno'; if (App.op) App.route = 'shift'; else applyHash(); render(); });
   window.addEventListener('beforeunload', e => { if (Store.S.dirty && Store.S.mode !== 'local') { e.preventDefault(); e.returnValue = ''; } });
   window.addEventListener('focus', () => { Store.checkExternal().then(r => { if (r === 'reloaded') { toast('Base atualizada com alterações de outra pessoa.'); } }); });
@@ -11880,7 +11880,8 @@ async function boot() {
   await loadPrefs(); applyTheme();
   try { matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => { if (App.prefs.theme === 'auto') render(); }); } catch (e) { }
   bindGlobal(); Charts.bind(); window.addEventListener('resize', U.debounce(() => Charts.fit(document), 150));
-  Store.S.user = (await IDB.get('user')) || (() => { try { return localStorage.getItem('vac.user') || ''; } catch (e) { return ''; } })();
+  Store.S.user = (() => { try { const s = JSON.parse(localStorage.getItem('vac.sessao') || 'null'), id = localStorage.getItem('vac.userId') || ''; if (s && s.id && String(s.id) === id && +s.ate > Date.now() && s.nome) return s.nome; return localStorage.getItem('vac.user') || ''; } catch (e) { return ''; } })() || (await IDB.get('user')) || '';   /* 2.4.77: sessão antes do nome guardado */
+  try { if (Store.S.user && Store.S.user !== (await IDB.get('user'))) await IDB.set('user', Store.S.user); } catch (e) { }
   const dir = await IDB.get('dirHandle').catch(() => null);
   const cache = await IDB.get('cache').catch(() => null);
   let started = false;

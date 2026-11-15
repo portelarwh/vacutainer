@@ -28,7 +28,7 @@ R("location.href=sysHref(port,'versoes')", "vacDemo.ir(sysHref(port,'versoes'))"
 R('<button class="btn primary" id="uOk">Usar este nome</button>', '<button class="btn primary" id="uOk">Usar este nome</button><button class="btn" data-vdemo-entrar onclick="vacDemo.entrar()">Demonstração do sistema</button>')
 R('<button class="btn ghost" id="wLocal">Começar só neste navegador</button>', '<button class="btn ghost" id="wLocal">Começar só neste navegador</button><button class="btn" data-vdemo-entrar onclick="vacDemo.entrar()">Demonstração do sistema</button>')
 R('Abre uma <b>cópia em memória</b> da base com cerca de 3 semanas de dados fictícios (hora a hora, paradas, scrap, dias fechados e abertos), para treinar ou demonstrar. Nada é gravado na pasta da rede nem no navegador: ao sair, tudo volta exatamente como estava.', 'Abre a <b>demonstração integrada do sistema</b>, com produção, perdas, gel, paradas, equipamentos e ações fictícias relacionadas. Você pode editar o exemplo e navegar entre as páginas. As bases reais ficam preservadas; fechar ou recarregar a demonstração descarta as alterações fictícias.')
-R("const APP_VERSION = '2.0.1';","const APP_VERSION = '2.4.76';")
+R("const APP_VERSION = '2.0.1';","const APP_VERSION = '2.4.77';")
 # 2.4.76 · gaveta do dia com o botão "Resumo em todas as páginas" (vacFicha 'dia'); na demonstração os gráficos voltam a se redesenhar na largura do cartão
 R("""<button class="btn sm" id="drOpen">Abrir lançamento</button>""", """<button class="btn sm" id="drOpen">Abrir lançamento</button><button class="btn sm" id="drTudo" title="Paradas, ordens, lotes, gel e ações deste dia, de todas as páginas">Resumo em todas as páginas</button>""")
 R("""    el.querySelector('#drOpen').onclick = """, """    el.querySelector('#drTudo').onclick = () => { const dd = d.date; close(); try { vacFicha.abrir('dia', dd); } catch (er) { toast('Resumo indisponível: ' + er.message, true); } };\n    el.querySelector('#drOpen').onclick = """)
@@ -332,6 +332,14 @@ aplicar_prefs(R)
 # 2.4.73 · calendário de produção do Portal: dia travado no Plano do mês e origem no exports (fontes/producao/cal_build.py; a aplicação está no cad_sync.js)
 from cal_build import aplicar as aplicar_cal
 aplicar_cal(R)
+# 2.4.77 · autoria (revisão da PR #76; trazida do branch bold-feynman): quem grava é a pessoa da sessão do login (mesma regra do vacLogin: vac.sessao com o id de
+# vac.userId e dentro da validade), depois o vac.user atual e só por último o nome guardado no IndexedDB; a troca de pessoa feita em
+# outra página (evento storage) também atualiza o nome guardado, para a próxima abertura não voltar à pessoa anterior.
+R("  Store.S.user = (await IDB.get('user')) || (() => { try { return localStorage.getItem('vac.user') || ''; } catch (e) { return ''; } })();",
+  "  Store.S.user = (() => { try { const s = JSON.parse(localStorage.getItem('vac.sessao') || 'null'), id = localStorage.getItem('vac.userId') || ''; if (s && s.id && String(s.id) === id && +s.ate > Date.now() && s.nome) return s.nome; return localStorage.getItem('vac.user') || ''; } catch (e) { return ''; } })() || (await IDB.get('user')) || '';   /* 2.4.77: sessão antes do nome guardado */\n"
+  "  try { if (Store.S.user && Store.S.user !== (await IDB.get('user'))) await IDB.set('user', Store.S.user); } catch (e) { }")
+R("if (e.key === 'vac.user') { Store.S.user = e.newValue || ''; renderTop(); }",
+  "if (e.key === 'vac.user') { Store.S.user = e.newValue || ''; try { IDB.set('user', Store.S.user); } catch (x) { } renderTop(); }")
 # 2.4.74 · Portal › Relatórios (compilado): #aba=reports&rel=<tipo> abre o relatório escolhido (shift, day, week, month, stops, plan, view, tables)
 R("    if (ab === 'config' && sc && typeof CFG_SECS !== 'undefined' && CFG_SECS.some(x => x[0] === sc)) App.cfgSec = sc;",
   "    if (ab === 'config' && sc && typeof CFG_SECS !== 'undefined' && CFG_SECS.some(x => x[0] === sc)) App.cfgSec = sc;\n"

@@ -311,3 +311,14 @@ O relatório continua sendo gerado pela página dona (regra 1); o Portal só lis
 
 Nos cartões das páginas com série por dia (`miniChart`, chave = data), cada barra abre o resumo do dia (`data-vac-dia`, clique ou Enter), com a área
 de clique na altura toda da coluna. O Portal continua só mostrando o `exports` (regra 1).
+
+## 1.9.39 · Pendências e Minha fila numa tela só (15/11/2026)
+
+Trazida do branch `claude/bold-feynman-7c69j0`. As abas "Minha fila" e "Pendências" viram uma só, **Pendências e ações** (decisões do usuário em 13/11/2026):
+- Visões: **Minhas** (abre sempre aqui), **Minha equipe**, **Sem responsável** e **Linha** (tudo da linha, de qualquer pessoa: a antiga aba Pendências).
+- Itens: as pendências de todas as páginas (as mesmas de antes, `allPend`, inclusive cadastro e versões) e as ações abertas de Iniciativas. Na visão Linha as ações começam só com as atrasadas; "Ver todas as ações (N)" mostra as outras.
+- Contadores por página que acompanham a visão (clicar filtra a página), agrupar por prazo ou por página, urgência escrita em cada pendência, botão "Relatório da linha" (o mesmo "Pendências da linha" de Portal › Relatórios).
+- `#pend` e a aba antiga guardada abrem a visão Linha; o contador de atrasadas continua na aba.
+- Urgência pela regra comum `sevDoModulo` da 1.9.37 (sev 1 = urgente, sev 2 = atenção), também no "Relatório da linha".
+
+Só leitura, como antes: cada item abre na página dona. Teste: `testes/tfila.js`.
