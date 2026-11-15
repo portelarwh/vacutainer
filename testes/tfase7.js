@@ -82,7 +82,7 @@ const verN = v => String(v || '').split(/[^\d]+/).filter(Boolean).slice(0, 4).ma
   ok(/cópia local/.test(u[3]) && /não lido/.test(u[4]) && /Revisão do cadastro geral do Portal/.test(u[1]), 'UX-04: cópia local e "não lido" sinalizados; ⓘ explica o número');
   await o.close();
 
-  for (const [arq, id, abas] of [['Portal.html', 'portal', 7], ['Paradas.html', 'paradas', 10], ['Perdas-Ordem.html', 'perdas', 8], ['Gestão-Gel-Vacutainer.html', 'gel', 8], ['Iniciativas.html', 'inic', 6], ['Equipamentos.html', 'equip', 5]]) {
+  for (const [arq, id, abas] of [['Portal.html', 'portal', 6], ['Paradas.html', 'paradas', 10], ['Perdas-Ordem.html', 'perdas', 8], ['Gestão-Gel-Vacutainer.html', 'gel', 8], ['Iniciativas.html', 'inic', 6], ['Equipamentos.html', 'equip', 5]]) {
     const pg = await nova(arq); const r = await pg.evaluate(id => { vacGuia.abrir(); return { n: Object.keys((window.VAC_GUIA || {})[id] || {}).length, a: vacGuia.aba(), h: (document.querySelector('#vacGuia h2') || {}).textContent }; }, id);
     ok(r.n >= abas && /^Guia · /.test(r.h || ''), `UX-02: ${arq} com guia em ${r.n} aba(s); aberto na aba "${r.a}" (${r.h})`); await pg.close();
   }

@@ -7,7 +7,7 @@ Plataforma de páginas HTML de arquivo único que trabalham juntas numa **pasta 
 | Página | Arquivo | Base | Versão | Como editar |
 |---|---|---|---|---|
 | Portal (cadastro geral, Administração) | `Portal.html` | `portal-base.json` + `vacutainer-cadastros.json` | 1.9.37 | direto no HTML |
-| Produção (OEE, plano, ordens SAP) | `OEE-Vacutainer.html` | `oee-vacutainer-base.json` (+ `ordens-base.json`) | 2.4.74 | **NÃO editar o HTML**: editar `fontes/producao/` e rodar o build |
+| Produção (OEE, plano, ordens SAP) | `OEE-Vacutainer.html` | `oee-vacutainer-base.json` (+ `ordens-base.json`) | 2.4.75 | **NÃO editar o HTML**: editar `fontes/producao/` e rodar o build |
 | Waste (perdas por ordem, KKBC) | `Perdas-Ordem.html` | `perdas-base.json` | 1.12.8 | direto no HTML |
 | Gestão de Gel | `Gestão-Gel-Vacutainer.html` | `fifo-base.json` | 2.35 · **em atualização** | direto no HTML |
 | Paradas | `Paradas.html` | `paradas-base.json` | 1.2.11 · **em atualização** | direto no HTML |
@@ -76,6 +76,7 @@ node testes/tpermissoes.js            # D6: permissão por ação na tela (vacTr
 node testes/tprefs.js                 # Fase 5: layout da pessoa em 00. Bases/Preferencias/<ID>.json (vacPrefs): grava, outro computador recebe, padrão do perfil, Restaurar meu layout, sem usuário nada; pasta simulada (OPFS + HTTP local); código 1 se falhar
 node testes/tcalendario.js            # calendário de produção: Portal › Calendário de produção (data, tipo, motivo; validação) e a Produção aplicando pelo CadSync (dia travado no Plano do mês, dia com lançamento ignorado, inativar desfaz, exports.calendario com a origem); código 1 se falhar
 node testes/trelcompilado.js          # Portal › Relatórios (1.9.36): compilado por página (Portal, Produção, Waste, Gel, Paradas) e Outros (SQDCP, Projetos, Iniciativas); cada link abre a tela do relatório na página dona (#aba=reports&rel=<tipo>, #aba=relatorios, #relatorio); Relatórios da barra lateral leva até lá; código 1 se falhar
+node testes/tautor.js                 # Produção 2.4.75: autoria pela sessão do login (não pelo nome antigo guardado no IndexedDB); troca de pessoa em outra página atualiza o nome guardado; sessão vencida não vale; código 1 se falhar
 node testes/tnv.js                    # NV-01–NV-05: isolamento por pasta, duas abas, cache homônimo, reserva em falha e saúde dos dados; dados fictícios
 node testes/tudo.js                   # a suíte inteira, uma por vez (--parte=N/4 roda só uma parte, como o CI): passou / falhou / NÃO VERIFICADO (falta biblioteca ou pacote; não conta como aprovado); tz roda de novo uma vez; código 1 se alguma falhar
 node testes/tportalfonte.js           # Fase 1 do briefing (09/11/2026): Parâmetros (Produção, Neste computador, arredondamento com vigência), Configurações da Produção só consulta, PRD-04, Trazer configurações (Produção e Gel), Gel ligado ao Portal com contas iguais; código 1 se falhar

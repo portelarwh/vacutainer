@@ -315,3 +315,7 @@ Teste: `testes/tlote_origem.js`, `testes/tcalendario.js`.
 ## 2.4.74 · Link direto para cada relatório (13/11/2026)
 
 `#aba=reports&rel=<tipo>` (shift, day, week, month, stops, plan, view, tables) abre Relatórios com o tipo escolhido; usado por Portal › Relatórios (`fontes/producao/build.py`, regra no `applyHash`). Teste: `testes/trelcompilado.js`.
+
+## 2.4.75 · Autoria pela sessão do login (15/11/2026)
+
+Revisão da PR #76 (plataforma única). Ao abrir, a Produção pegava o nome guardado no IndexedDB antes do da sessão, e a troca de pessoa feita em outra página mudava só a tela, não o nome guardado: depois de Ana e de Bia entrarem, a Produção reaberta gravava "Ana". Agora a ordem é: pessoa da sessão válida (mesma regra do `vacLogin`: `vac.sessao` com o id de `vac.userId`, dentro da validade) → `vac.user` → nome guardado; o evento `storage` de `vac.user` também atualiza o nome guardado. Regra no `fontes/producao/build.py`. Teste: `testes/tautor.js`.

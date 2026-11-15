@@ -59,7 +59,7 @@ const PREP = () => {
     const ld = (X.lotesHistorico || []).find(l => l.lote === 'L-DIA'); ok(ld && ld.obs === 'só classificação de dia' && ld.dias.join() === '2026-03-10' && !(X.lotes || []).some(l => l.lote === 'L-DIA'), 'lote com classificação de dia recente e sem caixas do MES vem no lotesHistorico (não está no lotes) (revisão Codex P2)');
     ok(oh && oh.lote === 'L-OLD' && oh.mes === '2023-05' && !(X.porOrdem || []).some(o => o.ordem === 'O-OLD') && lh && lh.situacao === 'retrabalho' && lh.obs === 'nota antiga' && lh.dias.join() === '2023-05-10' && lh.retrabalhoDias.join() === '2023-05-10' && !(X.lotesHistorico || []).some(l => l.lote === 'L-501'),
       'Produção 2.4.73: ordensHistorico (plano fora dos 24 meses) e lotesHistorico (situação, observação e dias de lote antigo), sem repetir os recentes'); }
-  ok(await o.evaluate(() => APP_VERSION) === '2.4.74', 'Produção 2.4.74');
+  ok(await o.evaluate(() => APP_VERSION) === '2.4.75', 'Produção 2.4.75');
 
   // ---------- Portal 1.9.33: cartão "Agora" com o exports.atual (sem calcular nada)
   const pt = await c.newPage(); pt.on('pageerror', e => pe.push('Portal: ' + e.message));
