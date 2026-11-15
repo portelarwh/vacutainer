@@ -13,3 +13,9 @@ Além do caminho, valida o conteúdo completo contra a reaplicação das operaç
 `fontes/kit/permissoes.mjs` é a única regra. O build a incorpora nos scripts clássicos e a casca importa esse mesmo módulo ESM. Os antigos corpos de vacPode foram substituídos por delegação; o mapeamento linha → equip também é único. A camada de acesso ainda exige sessão válida.
 
 A regressão falhou com perfil sem permissões no código anterior. A tabela cobre ausência de permissões, módulo ausente, ação ausente, false e true. O teste no navegador compara 315 combinações com vacPode e vacPagina.pode do motor.
+
+## N3 · Guias separados
+
+Os três arquivos operacionais foram restaurados byte a byte de 7c3f064. O guia novo está em `fontes/guia/guia_plataforma.html` e é gerado por `gerar_guia_plataforma.js` em `nova-plataforma/dist/Instalacao-Plataforma.html`, com duas capturas reais do Playwright usando cenário fictício e o procedimento de retorno ao ponto de corte.
+
+As capturas têm relógio e viewport fixos e são versionadas. O build normal só compõe o HTML a partir dessas imagens; `--capturar` atualiza as imagens explicitamente. Isso evita mudanças de PNG por ambiente no CI. O teste confere o guia antigo por SHA-256, os prints incorporados e as instruções de retorno.
