@@ -53,3 +53,7 @@ Página que não foi lida aparece como "sem dados", nunca como zero. Ação nova
 - **Filtros ativos em chips** abaixo dos filtros (turno, ordem · lote, fluxo, área): um clique tira o filtro; "Limpar filtros" tira todos.
 - **Configuração › Pontos e equipamentos**: cada linha mostra os equipamentos vinculados e abre a lista só ao clicar em "alterar".
 - **Teste:** `testes/tds.js` § 7.
+
+## 1.1.3 · Barra do dia abre o resumo do dia (15/11/2026)
+
+Em "Tempo parado por dia", cada barra abre o resumo do dia (`data-vac-dia`, clique ou Enter) e usa a cor de gráfico da marca (`--chart-primary`).

@@ -1,4 +1,4 @@
-import brandCss from '../design/brand.css?raw';
+import brandCss from '../design/brand.css?raw';import {marcaCss} from '../design/marca';
 import {replaceOnce} from './text';
 import {sessionUser,mayWrite} from './auth';
 import {protectFolder} from './compatibility';import manifest from '../generated/manifest.json';import {FILES} from './modules';
@@ -46,7 +46,7 @@ export function openOrder(id:ModuleId,code:string){const w=frames.get(id)?.conte
 export function refreshEngine(id:ModuleId){const w=frames.get(id)?.contentWindow as any;return w?.vacPagina?.atualizar()}
 export async function connectEngine(id:ModuleId){const w=frames.get(id)?.contentWindow as any;if(!w?.vacPagina)throw new Error('Contrato indisponível.');await w.vacPagina.conectar(await (window as any).vacAppHost.safeFolder(id));}
 export function hasPending(){return[...frames.values()].some(f=>{try{const api=(f.contentWindow as any)?.vacPagina;return !api||api.pendente()}catch{return true}})}
-const embeddedCss=brandCss+`
+const embeddedCss=marcaCss+brandCss+`
 html,body{margin:0!important;padding:0!important;height:auto!important;min-height:0!important;min-width:0!important;font-family:var(--f-body)!important;background:var(--bg)!important}
 .vac-estado-banner,#vacEstFaixa,.vestfaixa{display:none!important}
 .vsuite,.vpage,nav.vtabs,#vacDemoBar,#sysNav,#vacGuiaBotao,body>.testbar{display:none!important}
@@ -135,7 +135,7 @@ function runtimePrelude(config:{id:string;route:string;demo:boolean;scope:string
   const parentThemeObserver=new MutationObserver(followTheme);parentThemeObserver.observe(parent.document.documentElement,{attributes:true,attributeFilter:['data-theme']});
   window.addEventListener('beforeprint',()=>{printing=true;followTheme()});
   window.addEventListener('afterprint',()=>{printing=false;followTheme()});
-  const resize=()=>{const modal=[...document.querySelectorAll('.vlog,.overlay,.modal.on')].some(e=>e.getClientRects().length>0);host.resize(config.id,Math.ceil(modal?Math.max(320,parent.innerHeight-110):Math.max(360,document.body.getBoundingClientRect().height)),modal)};new ResizeObserver(resize).observe(document.body);new MutationObserver(()=>requestAnimationFrame(resize)).observe(document.body,{childList:true,subtree:true});window.addEventListener('resize',resize);resize();
+  const resize=()=>{const modal=[...document.querySelectorAll('.vlog,.overlay,.modal.on,.vg-amp')].some(e=>e.getClientRects().length>0);host.resize(config.id,Math.ceil(modal?Math.max(320,parent.innerHeight-110):Math.max(360,document.body.getBoundingClientRect().height)),modal)};new ResizeObserver(resize).observe(document.body);new MutationObserver(()=>requestAnimationFrame(resize)).observe(document.body,{childList:true,subtree:true});window.addEventListener('resize',resize);resize();
   route('',config.route||undefined);report();
   setInterval(()=>report(),1800);
  },200);

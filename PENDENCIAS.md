@@ -167,3 +167,7 @@ Também de antes:
 > - atualizar o checklist de homologação.
 
 Ao resolver um item, tirar daqui e do `CLAUDE.md` (Pendências conhecidas) e marcar no registro.
+
+**15/11/2026 · análise de marca, gráficos e fluidez (Produção 2.4.76, Portal 1.9.38, Linha 360° 1.1.3):** resumo do dia (`vacFicha` `dia`), letra de
+gráfico legível e Ampliar no `vacGrade`, casca sem salto ao abrir módulo, fonte e logo na pasta `Marca/` (fora do git; `nova-plataforma/docs/MARCA.md`).
+Ficou para depois: ver "Ficou para depois" em `docs/design-system.md` § Resumo do dia. Homologar na pasta real: copiar a pasta `Marca` e conferir a fonte.
