@@ -19,3 +19,9 @@ A regressão falhou com perfil sem permissões no código anterior. A tabela cob
 Os três arquivos operacionais foram restaurados byte a byte de 7c3f064. O guia novo está em `fontes/guia/guia_plataforma.html` e é gerado por `gerar_guia_plataforma.js` em `nova-plataforma/dist/Instalacao-Plataforma.html`, com duas capturas reais do Playwright usando cenário fictício e o procedimento de retorno ao ponto de corte.
 
 As capturas têm relógio e viewport fixos e são versionadas. O build normal só compõe o HTML a partir dessas imagens; `--capturar` atualiza as imagens explicitamente. Isso evita mudanças de PNG por ambiente no CI. O teste confere o guia antigo por SHA-256, os prints incorporados e as instruções de retorno.
+
+## N4 · Bases preenchidas e comparação integral
+
+As oito fixtures passam pelos adaptadores `vacDemo.registrar` atuais, com o cenário fictício versionado. Linha 360° ganhou apenas um vínculo demonstrativo de ponto/equipamento; nenhum padrão MES/TPM foi inventado. Produção aplica o cadastro pelo CadSync original antes da extração e usa a serialização oficial. O gerador anterior falha no novo critério de preenchimento do Waste.
+
+`test:pasta` compara a base inteira na conexão e após uma alteração real por módulo. A referência contém explicitamente o campo alterado; os exports são calculados pelo motor atual sobre essa referência ANTES da escrita. Os históricos anteriores precisam permanecer idênticos; a única auditoria acrescentada tem tipo, autor e identificador conferidos. Metadados específicos de cada motor são previstos explicitamente. A normalização só ignora os controles documentados na raiz e exports.geradoEm, preservando campos homônimos dentro dos históricos. Também continuam os testes de sessão ausente, oito bases futuras e descarte na troca de pasta.
