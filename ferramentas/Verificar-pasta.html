@@ -1,0 +1,285 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Verificar pasta da linha</title>
+<style>
+/* Ferramenta só de leitura (15/11/2026): mapeia a pasta da rede e confere a configuração. Nunca grava, move ou apaga nada. */
+:root{--navy:#060A3D;--blue:#044ED7;--ink:#3D3E41;--muted:#62616A;--line:#DBD8D7;--bg:#F9F4F1;--surface:#fff;
+ --ok:#197A4A;--ok-bg:#E9F5EE;--warn:#8F3B00;--warn-bg:#FFF0E5;--crit:#C62828;--crit-bg:#FCECEE;--info:#044ED7;--info-bg:#EDF2FF}
+*{box-sizing:border-box}
+body{margin:0;font:14px/1.5 "FS Albert Pro",Arial,"Helvetica Neue",sans-serif;color:var(--ink);background:var(--bg)}
+header{background:var(--navy);color:#fff;padding:18px 24px}
+header h1{margin:0;font-size:22px;font-weight:300}
+header p{margin:4px 0 0;color:#E0E5FF;font-size:13px}
+main{max-width:1100px;margin:0 auto;padding:20px 16px 40px}
+.bar{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-bottom:16px}
+button,label.btn{font:inherit;font-weight:600;border:1px solid #85828B;background:#fff;color:var(--navy);border-radius:8px;padding:10px 14px;cursor:pointer;min-height:40px}
+button.p,label.btn.p{background:var(--blue);border-color:var(--blue);color:#fff}
+button:focus-visible,label.btn:focus-within{outline:3px solid #1D74FF;outline-offset:2px}
+button:disabled{opacity:.5;cursor:default}
+.muted{color:var(--muted)}
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin:12px 0 18px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:12px 14px}
+.card b{display:block;font-size:28px;font-weight:300;color:var(--navy)}
+section{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:14px 16px;margin-bottom:14px}
+section h2{margin:0 0 8px;font-size:17px;font-weight:600;color:var(--navy)}
+table{width:100%;border-collapse:collapse}
+th,td{text-align:left;padding:7px 8px;border-bottom:1px solid var(--line);vertical-align:top}
+th{font-size:12px;color:var(--muted);font-weight:600}
+td.n{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+.st{display:inline-block;min-width:72px;text-align:center;font-size:12px;font-weight:700;border-radius:999px;padding:2px 8px}
+.st.ok{color:var(--ok);background:var(--ok-bg)}.st.aviso{color:var(--warn);background:var(--warn-bg)}
+.st.erro{color:var(--crit);background:var(--crit-bg)}.st.info{color:var(--info);background:var(--info-bg)}
+.scroll{overflow-x:auto}
+code{background:#F0F3FC;padding:1px 5px;border-radius:4px}
+#vazio{padding:28px;text-align:center}
+.arvore{margin:8px 0 0;max-height:70vh;overflow:auto;background:#F7F8FC;border:1px solid var(--line);border-radius:8px;padding:10px 12px;font:12px/1.45 Consolas,"Courier New",monospace;white-space:pre}
+summary{cursor:pointer;font-weight:600;color:var(--navy)}
+@media print{header,.bar{display:none}section{break-inside:avoid}}
+</style>
+</head>
+<body>
+<header>
+ <h1>Verificar pasta da linha</h1>
+ <p>Mapeia a pasta compartilhada inteira (árvore de arquivos e subpastas) e confere se bases, backups e aplicativo estão no lugar certo. Só lê: nada é gravado, movido ou apagado.</p>
+</header>
+<main>
+ <div class="bar">
+  <button class="p" id="abrir" type="button">Escolher a pasta da linha</button>
+  <label class="btn" title="Alternativa para navegadores sem acesso a pastas: o navegador lê os arquivos da pasta escolhida">
+   Ler pasta pelo seletor de arquivos <input id="arquivos" type="file" webkitdirectory multiple hidden>
+  </label>
+  <button id="copiar" type="button" disabled>Copiar relatório</button>
+  <button id="baixar" type="button" disabled>Baixar relatório (.txt)</button>
+  <span class="muted" id="estado">Escolha a raiz da linha (a pasta que contém <code>00. Bases</code>), não a própria <code>00. Bases</code>.</span>
+ </div>
+ <div id="saida"><section id="vazio"><p class="muted">Nenhuma pasta lida ainda.</p></section></div>
+</main>
+<script>
+'use strict';
+/* ---------- referência (atualizar quando a plataforma mudar de versão) ---------- */
+// Iguais às do pacote da plataforma (nova-plataforma/src/generated/manifest.json); o teste ferramenta-verificar confere.
+const VERSOES = { portal: '1.9.39', oee: '2.4.77', perdas: '1.12.8', gel: '2.35', paradas: '1.2.11', equip: '1.0.16', inic: '1.1.12', linha: '1.1.3' };
+const BASES = [
+ { arq: 'vacutainer-cadastros.json', mod: 'portal', nome: 'Cadastro geral (Portal)', obrig: true, cadastro: true, bk: 'Cadastros' },
+ { arq: 'portal-base.json', mod: 'portal', nome: 'Portal', obrig: true, bk: 'Portal' },
+ { arq: 'oee-vacutainer-base.json', mod: 'oee', nome: 'Produção', obrig: true, bk: 'OEE' },
+ { arq: 'ordens-base.json', mod: 'oee', nome: 'Ordens SAP (Produção)', obrig: false, semExports: true },
+ { arq: 'perdas-base.json', mod: 'perdas', nome: 'Waste', obrig: true, bk: 'Perdas' },
+ { arq: 'fifo-base.json', mod: 'gel', nome: 'Gestão de Gel', obrig: true, bk: 'Gel' },
+ { arq: 'paradas-base.json', mod: 'paradas', nome: 'Paradas', obrig: true, bk: 'Paradas' },
+ { arq: 'equipamentos-base.json', mod: 'equip', nome: 'Equipamentos', obrig: false, bk: 'Equipamentos' },
+ { arq: 'iniciativas-base.json', mod: 'inic', nome: 'Iniciativas / Ações', obrig: false, bk: 'Iniciativas' },
+ { arq: 'linha360-base.json', mod: 'linha', nome: 'Linha 360°', obrig: false, bk: 'Linha360' }
+];
+const PAGINAS_ANTIGAS = ['Portal.html', 'OEE-Vacutainer.html', 'Perdas-Ordem.html', 'Gestão-Gel-Vacutainer.html', 'Paradas.html', 'Equipamentos.html', 'Iniciativas.html', 'Linha-360.html', 'Projetos.html', 'Demonstracao.html'];
+const DIAS_BACKUP = 7;
+
+/* ---------- leitura (só leitura) ---------- */
+// Mapa caminho relativo → File (pastas vazias como "caminho/" → null). Lê a pasta INTEIRA, com todas as subpastas.
+const LIMITE = 50000; // proteção para pastas enormes: o relatório avisa quando para
+async function lerPorHandle(dir) {
+ const mapa = new Map(); let cortado = false;
+ async function andar(d, prefixo) {
+  let vazia = true;
+  for await (const [nome, h] of d.entries()) {
+   vazia = false; if (mapa.size >= LIMITE) { cortado = true; return; }
+   const caminho = prefixo + nome;
+   if (h.kind === 'file') { try { mapa.set(caminho, await h.getFile()); } catch (e) { mapa.set(caminho, { size: null, lastModified: 0, erro: e.message }); } }
+   else await andar(h, caminho + '/');
+  }
+  if (vazia && prefixo) mapa.set(prefixo, null);
+ }
+ await andar(dir, '');
+ return { nome: dir.name, mapa, cortado };
+}
+function lerPorLista(files) {
+ const mapa = new Map(); let nome = '';
+ for (const f of files) { const partes = f.webkitRelativePath.split('/'); nome = partes.shift(); mapa.set(partes.join('/'), f); }
+ return { nome, mapa, cortado: false }; // o seletor de arquivos não lista pastas vazias
+}
+/* Árvore de arquivos e subpastas, em texto, com tamanho e data de cada arquivo e o total de cada pasta. */
+function arvore(nomeRaiz, mapa) {
+ const raiz = { pastas: new Map(), arquivos: [] };
+ for (const [caminho, f] of mapa) {
+  const partes = caminho.split('/'), ehPasta = caminho.endsWith('/'); if (ehPasta) partes.pop();
+  let no = raiz; const fim = ehPasta ? partes.length : partes.length - 1;
+  for (let i = 0; i < fim; i++) { if (!no.pastas.has(partes[i])) no.pastas.set(partes[i], { pastas: new Map(), arquivos: [] }); no = no.pastas.get(partes[i]); }
+  if (!ehPasta) no.arquivos.push({ nome: partes.at(-1), f });
+ }
+ const soma = no => { let n = no.arquivos.length, t = no.arquivos.reduce((s, a) => s + (a.f && a.f.size || 0), 0); for (const p of no.pastas.values()) { const r = soma(p); n += r.n; t += r.t; } no.n = n; no.t = t; return { n, t }; };
+ soma(raiz);
+ const L = [`${nomeRaiz}/  (${raiz.n} arquivo(s), ${kb(raiz.t)})`], cmp = (a, b) => a.localeCompare(b, 'pt-BR', { numeric: true });
+ const desce = (no, pre) => {
+  const itens = [...[...no.pastas.keys()].sort(cmp).map(k => ['p', k]), ...no.arquivos.sort((a, b) => cmp(a.nome, b.nome)).map(a => ['a', a])];
+  itens.forEach(([tipo, x], i) => {
+   const ult = i === itens.length - 1, ramo = pre + (ult ? '└── ' : '├── '), segue = pre + (ult ? '    ' : '│   ');
+   if (tipo === 'p') { const p = no.pastas.get(x); L.push(`${ramo}${x}/  (${p.n} arquivo(s), ${kb(p.t)})`); desce(p, segue); }
+   else L.push(`${ramo}${x.nome}  ·  ${x.f && x.f.erro ? 'não consegui ler: ' + x.f.erro : kb(x.f.size) + ' · ' + dt(x.f.lastModified)}`);
+  });
+ };
+ desce(raiz, '');
+ return L.join('\n');
+}
+
+/* ---------- utilidades ---------- */
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const dt = ms => ms ? new Date(ms).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—';
+const kb = n => n == null ? '—' : n < 1024 ? n + ' B' : n < 1048576 ? (n / 1024).toFixed(0) + ' KB' : (n / 1048576).toFixed(1) + ' MB';
+const dias = ms => Math.floor((Date.now() - ms) / 864e5);
+const versaoNum = v => String(v || '').replace(/^(Portal|Produção)\s+/i, '').trim();
+function compara(a, b) { const x = a.split('.').map(Number), y = b.split('.').map(Number); for (let i = 0; i < Math.max(x.length, y.length); i++) { if ((x[i] || 0) !== (y[i] || 0)) return (x[i] || 0) > (y[i] || 0) ? 1 : -1; } return 0; }
+
+/* ---------- conferência ---------- */
+async function conferir({ nome, mapa, cortado }) {
+ const R = { pasta: nome, quando: new Date(), secoes: [], arvore: arvore(nome, mapa), cortado };
+ const sec = (titulo, cols) => { const s = { titulo, cols, linhas: [] }; R.secoes.push(s); return (st, ...cel) => s.linhas.push({ st, cel }); };
+ const arquivos = [...mapa.keys()];
+ const raiz = arquivos.filter(p => !p.includes('/'));
+ const temBases = arquivos.some(p => p.startsWith('00. Bases/'));
+
+ // 1. Raiz e aplicativo
+ const a = sec('Raiz da pasta e aplicativo', ['Situação', 'Item', 'Detalhe']);
+ if (/^00\. (Bases|Backups)$/i.test(nome)) a('erro', 'Pasta escolhida', `Você escolheu "${nome}". Escolha a pasta de cima (a raiz da linha).`);
+ a(temBases ? 'ok' : 'erro', '00. Bases', temBases ? 'Encontrada.' : 'Não encontrada. As bases precisam ficar em 00. Bases/.');
+ a(arquivos.some(p => p.startsWith('00. Backups/')) ? 'ok' : 'aviso', '00. Backups', arquivos.some(p => p.startsWith('00. Backups/')) ? 'Encontrada.' : 'Não encontrada: ainda não houve backup ou a pasta foi movida.');
+ const plat = mapa.get('Plataforma.html');
+ a(plat ? 'ok' : 'info', 'Plataforma.html', plat ? `Presente · ${kb(plat.size)} · ${dt(plat.lastModified)}` : 'Ausente. Normal enquanto o corte não foi feito (ver CORTE.md).');
+ const antigas = PAGINAS_ANTIGAS.filter(p => mapa.get(p));
+ if (antigas.length) a(plat ? 'aviso' : 'info', 'Páginas individuais', `${antigas.length} na raiz: ${antigas.join(', ')}. ${plat ? 'Com a Plataforma instalada, retire-as só depois do aceite do corte, para não haver duas versões gravando.' : 'Em uso até o corte.'}`);
+ if (antigas.length && !arquivos.some(p => /^lib\/xlsx/i.test(p))) a('aviso', 'lib/', 'As páginas individuais usam lib/xlsx.full.min.js e lib/jspdf; não encontrei lib/.');
+ a(mapa.get('Logo.png') ? 'ok' : 'info', 'Logo.png', mapa.get('Logo.png') ? 'Presente.' : 'Ausente (opcional).');
+ if (/[À-ú]/.test(nome)) a('info', 'Acentos no nome da pasta', 'O nome tem acento. Conferir abertura no Chrome/Edge da estação (pendência de homologação A09).');
+
+ // 2. Bases
+ const b = sec('Bases (00. Bases)', ['Situação', 'Base', 'Arquivo', 'Versão gravada', 'Atualizada', 'Tamanho', 'Observação']);
+ const lidas = {};
+ for (const def of BASES) {
+  const f = mapa.get('00. Bases/' + def.arq), solta = mapa.get(def.arq);
+  if (solta) b(f ? 'aviso' : 'erro', def.nome, def.arq + ' (na raiz)', '—', dt(solta.lastModified), kb(solta.size), f ? `Há uma cópia solta na raiz${solta.lastModified > f.lastModified ? ', MAIS NOVA que a de 00. Bases' : ''}. A página move a da raiz para o backup ao conectar; não apague à mão sem conferir.` : 'A base está na raiz, fora de 00. Bases. A página move ao conectar; confira antes de usar.');
+  if (!f) { if (!solta) b(def.obrig ? 'erro' : 'info', def.nome, def.arq, '—', '—', '—', def.obrig ? 'Não encontrada.' : 'Ainda não criada (módulo opcional ou sem uso).'); continue; }
+  let j; try { j = JSON.parse(await f.text()); } catch (e) { b('erro', def.nome, def.arq, '—', dt(f.lastModified), kb(f.size), 'JSON inválido: ' + e.message + '. Não abra a página por cima; restaure do backup.'); continue; }
+  lidas[def.arq] = j;
+  const obs = [], v = versaoNum(j.appVersion || j.applicationVersion), esperada = VERSOES[def.mod]; let st = 'ok';
+  if (def.cadastro) {
+   if (j.schema !== 'vac-cadastros') { st = 'erro'; obs.push('formato desconhecido (schema ' + (j.schema || 'ausente') + ')'); }
+   obs.push('rev ' + (j.rev ?? '—'));
+  } else if (!def.semExports) {
+   if (!j.exports) { st = 'aviso'; obs.push('sem bloco exports: o Portal e a plataforma não mostram os números dela'); }
+   else if (j.exports.exportsVersion != null && j.exports.exportsVersion !== 1) { st = 'erro'; obs.push('exportsVersion ' + j.exports.exportsVersion + ' (esperado 1)'); }
+   if (j.rev != null) obs.push('rev ' + j.rev);
+  }
+  if (v && esperada && /^\d+(\.\d+)*$/.test(v)) {
+   const c = compara(v, esperada);
+   if (c > 0) { st = st === 'erro' ? st : 'aviso'; obs.push(`gravada por versão MAIS NOVA que a referência ${esperada}: a plataforma abre só leitura`); }
+   else if (c < 0) obs.push(`versão anterior à ${esperada}; atualiza ao gravar`);
+  }
+  const idade = dias(f.lastModified);
+  if (idade > 7 && def.obrig) { st = st === 'ok' ? 'info' : st; obs.push(`sem gravação há ${idade} dias`); }
+  b(st, def.nome, def.arq, v || '—', dt(f.lastModified), kb(f.size), obs.join(' · ') || 'OK');
+ }
+
+ // 3. Sobras de gravação
+ const s = sec('Sobras de gravação e arquivos estranhos em 00. Bases', ['Situação', 'Arquivo', 'Detalhe']);
+ const conhecidos = new Set(BASES.map(x => '00. Bases/' + x.arq).concat('00. Bases/projetos-base.json'));
+ for (const p of arquivos.filter(p => p.startsWith('00. Bases/') && !p.startsWith('00. Bases/Preferencias/') && !conhecidos.has(p))) {
+  const f = mapa.get(p); if (!f) continue;
+  const n = p.slice(10);
+  if (/_NAO-GRAVADO/i.test(n)) s('aviso', n, 'Alteração que não pôde ser gravada (conflito). Alguém precisa conferir e aplicar ou descartar.');
+  else if (/\.(tmp|lock|crswap)$|^~|\.swp$/i.test(n)) s('aviso', n, `Arquivo temporário ou trava (${dt(f.lastModified)}). Se for antigo e ninguém estiver gravando, foi uma gravação interrompida.`);
+  else s('info', n, 'Arquivo não reconhecido em 00. Bases.');
+ }
+ if (!R.secoes.at(-1).linhas.length) s('ok', '—', 'Nenhuma sobra encontrada.');
+
+ // 4. Backups
+ const k = sec('Backups (00. Backups)', ['Situação', 'Pasta', 'Arquivos', 'Mais recente', 'Observação']);
+ const pastasBk = [...new Set(BASES.filter(x => x.bk).map(x => x.bk))];
+ for (const bk of pastasBk) {
+  const fs = arquivos.filter(p => p.startsWith('00. Backups/' + bk + '/') && mapa.get(p));
+  const def = BASES.find(x => x.bk === bk), usada = mapa.has('00. Bases/' + def.arq);
+  if (!fs.length) { k(usada ? 'aviso' : 'info', bk, 0, '—', usada ? 'Base em uso e nenhum backup aqui.' : 'Sem backups (base ainda não usada).'); continue; }
+  const ult = Math.max(...fs.map(p => mapa.get(p).lastModified)), idade = dias(ult);
+  k(usada && idade > DIAS_BACKUP ? 'aviso' : 'ok', bk, fs.length, dt(ult), idade > DIAS_BACKUP ? `último backup há ${idade} dias` : 'OK');
+ }
+ const soltos = arquivos.filter(p => /^00\. Backups\/[^/]+$/.test(p) && mapa.get(p));
+ if (soltos.length) k('info', '(raiz de 00. Backups)', soltos.length, dt(Math.max(...soltos.map(p => mapa.get(p).lastModified))), 'Backups soltos fora das pastas por módulo (ex.: bases movidas da raiz).');
+
+ // 5. Cadastro
+ const cad = lidas['vacutainer-cadastros.json'];
+ if (cad) {
+  const c = sec('Cadastro geral: pessoas e perfis', ['Situação', 'Item', 'Detalhe']);
+  const us = (cad.usuarios || []).filter(u => u.ativo !== false), sem = us.filter(u => !u.senha || !u.senha.hash), prov = us.filter(u => u.senha && u.senha.provisoria);
+  c(us.length ? 'ok' : 'aviso', 'Usuários ativos', us.length + (us.length ? '' : ' — ninguém consegue entrar'));
+  c(sem.length ? 'info' : 'ok', 'Sem senha criada', sem.length ? `${sem.length}: ${sem.slice(0, 8).map(u => u.nome || u.codigo).join(', ')}${sem.length > 8 ? '…' : ''} (criam no 1º acesso)` : 'Todos já criaram senha.');
+  if (prov.length) c('info', 'Senha provisória', prov.length + ' pessoa(s) precisam trocar no próximo acesso.');
+  const perfis = cad.perfis || [], codPerfis = new Set(perfis.map(p => p.codigo));
+  const orfaos = us.filter(u => u.perfil && !codPerfis.has(u.perfil));
+  if (orfaos.length) c('aviso', 'Perfil inexistente', orfaos.map(u => (u.nome || u.codigo) + ' → ' + u.perfil).join(', '));
+  const semPerm = perfis.filter(p => p.ativo !== false && !p.permissoes);
+  if (semPerm.length) c('info', 'Perfis sem permissões definidas', semPerm.map(p => p.codigo).join(', ') + ' (tratados como liberados)');
+  c('info', 'Tipos cadastrados', ['linhas', 'catalogos', 'materiais', 'turnos', 'paradas', 'equipamentos', 'metasOee', 'calendario'].map(t => t + ' ' + ((cad[t] || []).length)).join(' · '));
+ }
+
+ // 6. Preferências
+ const pref = arquivos.filter(p => p.startsWith('00. Bases/Preferencias/') && mapa.get(p));
+ if (pref.length) {
+  const p = sec('Preferências das pessoas (00. Bases/Preferencias)', ['Situação', 'Item', 'Detalhe']);
+  let ruins = 0; for (const x of pref) { try { JSON.parse(await mapa.get(x).text()); } catch { ruins++; } }
+  p(ruins ? 'aviso' : 'ok', 'Arquivos', `${pref.length} pessoa(s)${ruins ? ` · ${ruins} com JSON inválido (o layout dessas pessoas volta ao padrão)` : ''}`);
+ }
+
+ // 7. Pendências publicadas
+ const pd = sec('Pendências publicadas pelos módulos', ['Situação', 'Módulo', 'Urgentes (sev 1)', 'Atenção (sev 2)']);
+ for (const def of BASES.filter(x => !x.cadastro && !x.semExports)) {
+  const j = lidas[def.arq]; if (!j || !j.exports) continue;
+  const P = (j.exports.pendencias || []).filter(x => !x.aPartirDe || new Date(x.aPartirDe) <= new Date());
+  const u = P.filter(x => +x.sev === 1).length;
+  pd(u ? 'aviso' : P.length ? 'info' : 'ok', def.nome, u, P.length - u);
+ }
+
+ R.totais = { ok: 0, info: 0, aviso: 0, erro: 0 };
+ for (const x of R.secoes) for (const l of x.linhas) R.totais[l.st]++;
+ return R;
+}
+
+/* ---------- apresentação ---------- */
+const ROT = { ok: 'OK', info: 'Info', aviso: 'Atenção', erro: 'Erro' };
+let ultimo = null;
+function mostrar(R) {
+ ultimo = R;
+ const t = R.totais;
+ let h = `<p class="muted">Pasta <b>${esc(R.pasta)}</b> · lida em ${esc(R.quando.toLocaleString('pt-BR'))} · somente leitura</p>
+ <div class="cards"><div class="card"><b>${t.erro}</b>Erros</div><div class="card"><b>${t.aviso}</b>Pontos de atenção</div><div class="card"><b>${t.ok}</b>Itens OK</div><div class="card"><b>${t.info}</b>Informações</div></div>`;
+ for (const s of R.secoes) {
+  h += `<section><h2>${esc(s.titulo)}</h2><div class="scroll"><table><thead><tr>${s.cols.map(c => `<th>${esc(c)}</th>`).join('')}</tr></thead><tbody>`;
+  h += s.linhas.map(l => `<tr><td><span class="st ${l.st}">${ROT[l.st]}</span></td>${l.cel.map(c => `<td${typeof c === 'number' ? ' class="n"' : ''}>${esc(c)}</td>`).join('')}</tr>`).join('');
+  h += `</tbody></table></div></section>`;
+ }
+ h += `<section><h2>Árvore da pasta</h2><p class="muted">Todos os arquivos e subpastas lidos${R.cortado ? ` · <b>parou em ${LIMITE} itens</b> (pasta muito grande)` : ''}. Vai junto no relatório copiado ou baixado.</p><details><summary>Mostrar a árvore (${R.arvore.split('\n').length} linhas)</summary><pre class="arvore">${esc(R.arvore)}</pre></details></section>`;
+ document.getElementById('saida').innerHTML = h;
+ document.getElementById('copiar').disabled = document.getElementById('baixar').disabled = false;
+ document.getElementById('estado').textContent = t.erro ? `${t.erro} erro(s) para corrigir.` : t.aviso ? `${t.aviso} ponto(s) de atenção.` : 'Tudo em ordem.';
+}
+function texto(R) {
+ const L = [`Verificação da pasta "${R.pasta}" · ${R.quando.toLocaleString('pt-BR')}`, `Erros ${R.totais.erro} · Atenção ${R.totais.aviso} · OK ${R.totais.ok} · Info ${R.totais.info}`, ''];
+ for (const s of R.secoes) { L.push('== ' + s.titulo); for (const l of s.linhas) L.push(`[${ROT[l.st]}] ` + l.cel.join(' | ')); L.push(''); }
+ L.push('== Árvore da pasta' + (R.cortado ? ` (parou em ${LIMITE} itens)` : ''), R.arvore, '');
+ return L.join('\n');
+}
+async function rodar(leitura) {
+ document.getElementById('estado').textContent = 'Lendo a pasta…';
+ try { mostrar(await conferir(await leitura())); }
+ catch (e) { if (e.name === 'AbortError') { document.getElementById('estado').textContent = 'Nenhuma pasta escolhida.'; return; } document.getElementById('estado').textContent = 'Não consegui ler a pasta: ' + e.message; }
+}
+document.getElementById('abrir').onclick = () => {
+ if (!window.showDirectoryPicker) { document.getElementById('estado').textContent = 'Este navegador não abre pastas por aqui. Use Chrome/Edge atualizado ou o botão "Ler pasta pelo seletor de arquivos".'; return; }
+ rodar(async () => lerPorHandle(await showDirectoryPicker({ id: 'vac-verificar', mode: 'read' })));
+};
+document.getElementById('arquivos').onchange = e => { const f = [...e.target.files]; if (f.length) rodar(async () => lerPorLista(f)); };
+document.getElementById('copiar').onclick = async () => { try { await navigator.clipboard.writeText(texto(ultimo)); document.getElementById('estado').textContent = 'Relatório copiado.'; } catch { document.getElementById('estado').textContent = 'Não consegui copiar; use "Baixar relatório".'; } };
+document.getElementById('baixar').onclick = () => { const u = URL.createObjectURL(new Blob([texto(ultimo)], { type: 'text/plain;charset=utf-8' })); const a = document.createElement('a'); a.href = u; a.download = 'verificacao-pasta-' + new Date().toISOString().slice(0, 10) + '.txt'; a.click(); setTimeout(() => URL.revokeObjectURL(u), 1000); };
+</script>
+</body>
+</html>
