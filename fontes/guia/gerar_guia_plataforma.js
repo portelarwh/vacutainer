@@ -16,7 +16,7 @@ async function capturar(){
 }
 function compor(){
  const manifest=JSON.parse(fs.readFileSync(path.join(app,'src/generated/manifest.json'),'utf8'));let html=fs.readFileSync(path.join(__dirname,'guia_plataforma.html'),'utf8');
- const replacements={'@@REVISAO@@':(manifest.sourceRevision||manifest.revision).slice(0,12),'@@PACOTE@@':manifest.enginesSha256?.slice(0,12)||'em validação','@@IMG_INICIO@@':'<img alt="Tela inicial da plataforma, sem base real conectada" src="data:image/png;base64,'+fs.readFileSync(path.join(images,'inicio.png')).toString('base64')+'">','@@IMG_LOGIN@@':'<img alt="Entrada por ID no Portal com dados fictícios" src="data:image/png;base64,'+fs.readFileSync(path.join(images,'login.png')).toString('base64')+'">'};
+ const replacements={'@@REVISAO@@':manifest.sourceRevision.slice(0,12),'@@PACOTE@@':manifest.enginesSha256.slice(0,12),'@@IMG_INICIO@@':'<img alt="Tela inicial da plataforma, sem base real conectada" src="data:image/png;base64,'+fs.readFileSync(path.join(images,'inicio.png')).toString('base64')+'">','@@IMG_LOGIN@@':'<img alt="Entrada por ID no Portal com dados fictícios" src="data:image/png;base64,'+fs.readFileSync(path.join(images,'login.png')).toString('base64')+'">'};
  for(const [key,value]of Object.entries(replacements)){if(html.split(key).length!==2)throw new Error('Marcador deve existir exatamente uma vez: '+key);html=html.replace(key,value)}
  fs.mkdirSync(path.join(app,'dist'),{recursive:true});fs.writeFileSync(path.join(app,'dist/Instalacao-Plataforma.html'),html);console.log('Guia separado atualizado · Instalacao-Plataforma.html');
 }
