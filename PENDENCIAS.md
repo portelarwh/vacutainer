@@ -40,7 +40,7 @@ Versões desta branch: Portal 1.9.28 · Produção 2.4.60 · Waste 1.12.0 · Gel
 
 **Decisões do usuário nesta rodada:** tema claro por padrão, com o escuro mantido; Linha 360° com dados reais e base própria; conflito de ordem × lote avisa e lista, não bloqueia; Pareto vertical como no dashboard anexado.
 
-**Implantar:** copiar para a pasta da rede as nove páginas de `paginas/` (inclusive `Linha-360.html`, nova) e o `Demonstracao.html`. Nenhuma base muda de formato. A `linha360-base.json` é criada em `00. Bases` na primeira conexão da Linha 360°, com confirmação.
+**Implantar (histórico, antes da plataforma única):** copiar para a pasta da rede as nove páginas de `paginas/` (inclusive `Linha-360.html`, nova). Depois do corte, só `nova-plataforma/dist/Plataforma.html`. Nenhuma base muda de formato. A `linha360-base.json` é criada em `00. Bases` na primeira conexão da Linha 360°, com confirmação.
 
 **O que falta do Design System** (lista completa em `docs/design-system.md` § 4): filtros em painel recolhível com chips nas páginas que ainda não têm, esqueleto de carregamento, `vacEmail` nos relatórios das outras páginas, paleta única nos gráficos da Produção e do Gel.
 
@@ -83,7 +83,6 @@ Copiar para a raiz da pasta, guardando antes a versão anterior renomeada:
 - `OEE-Vacutainer.html`
 - `Perdas-Ordem.html`
 - `Paradas.html`
-- `Demonstracao.html` (é gerado de novo a cada entrega)
 
 As bases em `00. Bases/` e a pasta `lib/` não mudam. Abrir cada página com Ctrl+F5 e conferir a versão no cabeçalho.
 
@@ -160,7 +159,6 @@ Também de antes:
 
 > Leia `PENDENCIAS.md`, `CLAUDE.md` e `docs/auditorias/registro-decisoes.md` do repositório portelarwh/vacutainer. Continue pela seção 4 (sem bloqueio) ou pela homologação da seção 3. Siga as regras do `CLAUDE.md`:
 > - a Produção é editada em `fontes/producao/` e montada com o `build.py`;
-> - rodar `gerar_demo.py` por último;
 > - gravar a referência dos números antes de mudar uma tela;
 > - subir a versão a cada entrega;
 > - abrir PR ao final;

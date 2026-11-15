@@ -6,7 +6,7 @@ Plataforma única da linha e fontes dos nove motores atuais.
 
 A plataforma única é o produto: `nova-plataforma/dist/Plataforma.html`. O Chrome/Edge abre esse arquivo na pasta da linha; bases e backups continuam em `00. Bases/` e `00. Backups/`. Sem API ou servidor interno.
 
-**O corte ainda não foi executado.** Leia [o roteiro de homologação e corte](nova-plataforma/docs/CORTE.md) e o `Guia de instalação.html`. Os HTML de `paginas/` não serão distribuídos: são as fontes e referências dos motores atuais incorporados à plataforma.
+**O corte ainda não foi executado.** Leia [o roteiro de homologação e corte](nova-plataforma/docs/CORTE.md) e o [guia de instalação da plataforma](nova-plataforma/dist/Instalacao-Plataforma.html). Os HTML de `paginas/` não serão distribuídos: são as fontes e referências dos motores atuais incorporados à plataforma.
 
 ## Compilar e testar
 
