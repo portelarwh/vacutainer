@@ -1,6 +1,6 @@
 # Sistemas · Linha Vacutainer (BD Curitiba)
 
-Produto único: **`nova-plataforma/dist/Plataforma.html`**, aberto pelo Chrome/Edge na pasta da rede, sem API ou servidor interno. As bases JSON ficam em **`00. Bases/`** e backups em **`00. Backups/<módulo>/`**. `fontes/` e `paginas/` conservam as regras mais recentes e alimentam os motores incorporados; os HTML individuais não serão distribuídos. O Portal é dono do cadastro geral. Interface em português do Brasil. Instalação em `Guia de instalação.html`; corte ainda condicionado à homologação (`nova-plataforma/docs/CORTE.md`).
+Produto único: **`nova-plataforma/dist/Plataforma.html`**, aberto pelo Chrome/Edge na pasta da rede, sem API ou servidor interno. As bases JSON ficam em **`00. Bases/`** e backups em **`00. Backups/<módulo>/`**. `fontes/` e `paginas/` conservam as regras mais recentes e alimentam os motores incorporados; os HTML individuais não serão distribuídos. O Portal é dono do cadastro geral. Interface em português do Brasil. Instalação em `nova-plataforma/dist/Instalacao-Plataforma.html` (gerado de `fontes/guia/guia_plataforma.html`); corte à homologação (`nova-plataforma/docs/CORTE.md`).
 
 ## Motores atuais (fontes em `paginas/` e `fontes/`, incorporados à plataforma única)
 
@@ -19,7 +19,7 @@ Produto único: **`nova-plataforma/dist/Plataforma.html`**, aberto pelo Chrome/E
 Divisão final (Portal 1.7): Portal · Produção · Waste · Gestão de Gel · Paradas · **Equipamentos** (inclui manutenção; não há página Manutenção) · **Iniciativas** (uma página: Ações/Planner · KAS · OSM · 5S; não há OSM.html) · **Projetos** · Outros ▾ · ⚙ Administração.
 Situação de cada página (em construção / em atualização / estável): `PAGE.estado` + `sistemas.js`, trocável no Portal › Configuração › Módulos; ver `docs/paginas-construcao.md`. Páginas em construção são **geradas** (não editar o HTML; editar `fontes/modelo/` e rodar o gerador). Quando uma delas começar de verdade (v1.0), tirar da lista do gerador e passar a editar direto. Arquitetura: `docs/plano-evolucao-plataforma.md`, `docs/osm-arquitetura.md` (aba OSM de Iniciativas). `docs/paginas-novas.md` é histórico (lista antiga Máquinas/Manutenção).
 
-Demonstração integrada: botão comum nas oito páginas; `paginas/Demonstracao.html` reúne as páginas reais e mantém os exemplos na memória durante a navegação, sem bases reais. Fontes e limites em `docs/demonstracao-integrada.md`. **Depois de alterar os motores, o build da raiz regenera o cenário de testes. A demonstração distribuída está dentro de Plataforma.html (?demo=1); não se copia paginas/Demonstracao.html para a linha.**
+Demonstração: dentro de `Plataforma.html` (`?demo=1`), com o cenário fictício `fontes/kit/demo_cenario.json`. A antiga `paginas/Demonstracao.html` (e `fontes/demo/`) saiu na limpeza pós-corte; `docs/demonstracao-integrada.md` é histórico.
 
 SQDCP (Produção 2.4.20; gráficos em barras verde/vermelho com linha só para meta e tendência na 2.4.33, PRD-09): quadro de 25 posições, acidente/QN por turno e impressão de uma A4 paisagem. Fontes em `fontes/producao/sqdcp*`; uso, contratos e pendências em `docs/producao-sqdcp.md`. Campos opcionais; ausência de resposta nunca é zero. **2.4.58:** layout "SQDCP – Gestão Diária" (cabeçalho em três blocos, resumo executivo por pilar com o mesmo resultado das posições, cards com engrenagem, cores dos pilares × cor da situação, Modo Reunião `body.sqdcp-reuniao`, quadro sem a série do mês); números conferidos pela referência `testes/bases/sqdcp-referencia.json` (`tsqdcp_layout.js`).
 
@@ -49,7 +49,6 @@ python fontes/producao/build.py        # monta paginas/OEE-Vacutainer.html a par
 python fontes/kit/aplicar_kit21.py     # recopia fontes/kit/kit_v21.js (+ kit_ds.js), o Design System fontes/kit/kit_ds.css, o catálogo fontes/kit/sistemas.js, o padrão visual fontes/kit/kit_visual.css e as bases em 00. Bases fontes/kit/kit_bases.js nas outras páginas (Portal, Waste, Paradas, Gel e as 3 em construção)
 python fontes/modelo/gerar_paginas.py  # gera Projetos.html (em construção) a partir de fontes/modelo/pagina-em-construcao.html e roda o aplicar_kit21.py
 python fontes/linha360/build.py        # monta paginas/Linha-360.html (moldura comum de Equipamentos.html + fontes/linha360/) e roda o aplicar_kit21.py; rodar DEPOIS de mexer em Equipamentos.html ou no kit
-python fontes/demo/gerar_demo.py       # pacote offline da demonstração; SEMPRE depois dos outros builds
 node testes/temail.js                  # Produção 2.4.66: e-mail do turno e do dia para o Outlook (mesmos números do cálculo, medidor do OEE reportado, acumulado do dia no turno, hora a hora alto, sem repetições, formato de e-mail, Itens do e-mail gravados); prints em testes/saida/email/; código 1 se falhar
 node testes/tgrade.js                  # cartões reorganizáveis (kit vacGrade): barra em todo cartão da grade, alça ⠿ arrasta com o mouse, 1/3 por clique, setas apagadas na ponta; Portal › Pendências da linha com metade da largura e Ação prioritária ao lado; código 1 se falhar
 node testes/tfechar.js                 # Produção 2.4.64: fechar turno e dia com turno desabilitado no dia (deleted), reabrir; botões acesos (Fechado · Reabrir, Hora a hora completo, seletor do Hora a hora) nos 2 temas; código 1 se falhar
@@ -60,14 +59,12 @@ node testes/tdia.js                    # resumo do dia (vacFicha 'dia'): mesmos 
 node testes/tparada_tempo.js           # duração visível, regras do Portal, troca de código, gravação e abono
 node testes/tsqdcp.js                 # formulário S/Q, QN única, relatórios, reimportação, persistência e A4
 node testes/tsqdcp_layout.js          # SQDCP 2.4.58: mesmos números das 25 posições da referência, três blocos, resumo, cards, Modo Reunião, erro de fonte, CSV, A4, 3 larguras × 2 temas; --gravar só antes de mudar a tela; código 1 se falhar
-node testes/tdemo.js                  # navegação nas oito páginas, ação Paradas → Planner → Portal/ficha, reinício/saída e isolamento
 node testes/tpg.js                     # testes Playwright (abrem paginas/ em modo teste/exemplo; imprimem "sem erros")
 node testes/tintegra.js                # Portal × exports: números iguais aos das páginas, urgência, gravação pendente com conflito
 node testes/tdiag.js                   # cenários das auditorias de 06/11/2026 (F01–F08, M01–M04: colisão e falha de leitura na gravação, CadSync, SAP, Gel, Paradas, versões); tintegra e tdiag saem com código 1 se falhar
 node testes/tvisual.js                 # layout: 8 páginas (as 3 em construção sem as checagens de dados) × 2 temas × 5 larguras (geometria, abas, contraste, tema entre páginas); prints em testes/saida/visual/; código 1 se falhar
 node testes/tbases.js                  # bases em 00. Bases: mover da raiz, ler antes/depois, gravar, cópia mais nova/velha na raiz, B01–B07 com falhas injetadas, concorrência, volta de versão (OPFS + HTTP local); código 1 se falhar
 node testes/trelatorios.js            # relatórios: PDF (pdfinfo/pdftotext), texto, Outlook, impressão (2 temas), ordem das abas, aba inicial por perfil; código 1 se falhar
-node fontes/guia/gerar_guia.js         # gera "Guia de instalação.html" (raiz) a partir de fontes/guia/guia_modelo.html, com prints reais das páginas embutidos; rodar quando mudar tela de conexão/entrada ou versão
 node testes/tmeta.js                   # importação da Meta OEE FY27 no Portal (usa a SheetJS local)
 node testes/tconstrucao.js             # situação das páginas: selos, faixa, Portal › Módulos, cartão em construção, as 3 páginas geradas (2 temas, 390 px); código 1 se falhar
 node testes/tseguranca.js             # revisão 065fe6f: botões do Waste com valores importados, restauração sem cópia (Portal/Gel), CSV sem fórmulas, URLs de download, TV da Produção, índice do Gel, scripts em duas fases; código 1 se falhar
@@ -111,7 +108,7 @@ node testes/tportal_vg.js             # Portal › Visão geral no padrão comum
 ```
 
 - O build usa substituições exatas (`R(antes, depois)`) sobre a base 2.0: se um trecho não for achado exatamente 1 vez, para com `ERRO`. Mudança na Produção = nova regra `R(...)` no `build.py` ou mudança nos `.js` de `fontes/producao/`.
-- CI (13/11/2026): `.github/workflows/testes.yml` roda em cada PR e na main: confere que `paginas/` bate com as fontes (`npm run build` não muda nada; a `Demonstracao.html` pelo conteúdo, com `python3 fontes/demo/conferir_demo.py`, porque o gzip muda com a versão do zlib) e roda `npm test` (`testes/tudo.js`); `package.json` com o Playwright fixo.
+- CI (13/11/2026): `.github/workflows/testes.yml` roda em cada PR e na main: confere que `paginas/` bate com as fontes (`npm run build` não muda nada) e roda `npm test` (`testes/tudo.js`); `package.json` com o Playwright fixo.
 - Playwright e Chromium: `require('playwright')`; os testes usam `enterTest()` (Portal, Waste, Paradas) ou `Demo.enterExample()` (Produção) e bases sintéticas em `testes/bases/`. Amostras do SAP (descaracterizadas) em `testes/amostras/`. Prints vão para `testes/saida/` (fora do git).
 
 ## Regras da plataforma (não quebrar)
@@ -179,7 +176,7 @@ Produção aplica o cadastro na base do OEE pelo `CadSync` (`fontes/producao/cad
 - Briefing de 09/11/2026 (respostas da seção 10, POR-04/09 e proposta da Fase 1 para aprovação): `briefing-2026-11-09-fase0-fase1.md`
 - Páginas: `portal-1-7.md` (Portal 1.7–1.8.12), `producao-ordens-sap.md`, `waste-v1-8.md`, `perdas-ordem-v1.md`, `paradas-arquitetura.md`, `portal-pedido-paradas.md`, `paginas-novas.md`, `osm-arquitetura.md`
 
-Ao terminar uma entrega, atualizar o doc da página (seção nova com a versão e a data) e o `CLAUDE.md` se mudar regra, versão ou comando. Se mudar a instalação, a estrutura da pasta ou as telas de entrar/conectar, editar `fontes/guia/guia_modelo.html` e rodar `node fontes/guia/gerar_guia.js` (nunca editar o `Guia de instalação.html` gerado).
+Ao terminar uma entrega, atualizar o doc da página (seção nova com a versão e a data) e o `CLAUDE.md` se mudar regra, versão ou comando. Se mudar a instalação, a estrutura da pasta ou as telas de entrar/conectar, editar `fontes/guia/guia_plataforma.html` e rodar `npm run build:capturar --prefix nova-plataforma` (nunca editar o `Instalacao-Plataforma.html` gerado). O guia das páginas antigas (`Guia de instalação.html`, `guia_modelo.html`, `gerar_guia.js`) saiu na limpeza pós-corte.
 
 ## Auditorias externas
 
