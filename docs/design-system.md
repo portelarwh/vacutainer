@@ -102,3 +102,35 @@ Versões: Produção 2.4.72, Portal 1.9.34, Waste 1.12.6, Gel 2.33, Equipamentos
 `vacPareto` (em `kit_bases.js`, no script `vac-bases`, que carrega antes do código da página): `calc(lista, {valor, abs, ordenar})` → itens com `parte`, `acum`, `ate80` (quem soma 80 %; o 1º sempre) e `barras(itens, op)` → barras horizontais com valor, "· N% acum.", traço dos 80 % (`ref80`), seleção (`sel`), clique (`g[data-k]`; `attrs(x)` para atributos da página, ex.: `data-fk`/`data-dbf`), unidade, `fmtBarra`, `dica`, `total` (base do acumulado quando só os primeiros aparecem). O espaço à direita acompanha o texto mais longo (não corta "% acum."). Usado por: Paradas 1.2.9 (`hbars`), Waste 1.12.7 (`paretoChart`; o Pareto vertical da controladoria usa só o `calc`), Gel 2.34 (`pareto`, `dbParetoHtml`). Números conferidos por referência gravada antes (`tgel_vg`, `twaste_vg` comparam rótulo | valor | % acumulado; `tparadas_ux`/`tparadas_vg`).
 
 Revisão Codex da PR #73: item clicável do Pareto comum recebe foco (Tab, `tabindex="0"`, `role="button"`, `aria-pressed`, `aria-label`) e Enter/Espaço fazem o mesmo clique (filtros do Paradas, do Waste e do Gel pelo teclado, como os botões antigos do Gel).
+
+## Resumo do dia, letra legível e marca fora do repositório (15/11/2026)
+
+Análise de 15/11/2026 na plataforma única (`Plataforma.html?demo=1`, 1440 × 900): a letra dos gráficos encolhia com o cartão (2,7 px no Waste em 1/3),
+a tela pulava ao abrir e ao voltar aos módulos e não havia um caminho "do gráfico para o dia". Só apresentação e navegação; nenhuma fórmula mudou.
+
+**Resumo do dia (`vacFicha` tipo `dia`, kit `kit_v21.js`).** Abre por `data-vac-dia="AAAA-MM-DD"` (clique, Enter ou espaço), `vacFicha.abrir('dia', data)`,
+`#ficha=dia/<data>`, `vacPagina.abrirDia(data)` ou digitando a data no Ctrl K. Lê só os `exports`:
+- frase do dia por extenso (OEE × meta em p.p., minutos parados, maior parada, calendário): a cor reforça, nunca substitui;
+- Produção (`porDia`, `porDiaTurno`; no Detalhado `porDiaCatalogo` e `trocas`), Paradas (`todos` do Paradas + `paradasEventos` da Produção que não
+  casaram pelo `eventoId`, sem contar em dobro), Ordens e lotes (`trechos`, `porOrdem`, paradas com ordem), Gel (`porDiaGel`), Ações (criadas,
+  concluídas ou com prazo no dia);
+- "sem dado" nunca vira zero: cada bloco diz a janela publicada;
+- navegação: ‹ › para o dia anterior/próximo **com dados**, ordem e lote abrem a ficha deles e o ← Voltar retorna ao dia, e cada bloco tem o link para a página dona.
+Ligado em: Linha 360° (Tempo parado por dia), cartões do Portal com série por dia, gaveta do dia da Produção ("Resumo em todas as páginas") e o gráfico
+de produção da casca. Gráfico por dia novo: pôr o `data-vac-dia` na barra.
+
+**`vacGrade` (kit `kit_ds.js`).** A disposição é aplicada no `requestAnimationFrame` seguinte à mudança (antes aparecia 180 ms depois e o cartão pulava).
+`legivel()`: se a letra típica do SVG ficaria abaixo de 9 px na tela, o SVG ganha largura mínima e o cartão rola de lado (`.vg-rola`); desfaz ao alargar.
+Botão **Ampliar** na barra do cartão (`data-vg="amp"`): o próprio cartão ocupa a tela, com cliques e dicas funcionando; Esc volta.
+
+**Voltar a um módulo já aberto.** `vacPagina.ir` com a mesma aba e o mesmo período mostra a tela já desenhada e roda a atualização 40 ms depois
+(a mesma de antes), em vez de segurar a troca. Aba, período ou endereço diferentes continuam aplicados na hora.
+
+**Casca.** Linha das abas e faixa de comandos com altura reservada e uma linha só (CLS da casca ao abrir módulo: 0,16–0,42 → ≈0,01); entrada de 160 ms
+ao trocar de página (respeita `prefers-reduced-motion`).
+
+**Marca.** `nova-plataforma/docs/MARCA.md`: fonte e logos na pasta `Marca/` ao lado do `Plataforma.html`, nunca no git.
+
+**Ficou para depois (medido, não corrigido):** Linha 360° ainda desloca ≈0,09 ao redesenhar (abaixo da dobra); Waste desloca ≈0,19 no primeiro
+desenho da barra de filtros; os gráficos do Gel seguem sem dica e sem clique; cores fora da paleta (Georgia no Waste, âmbar do Portal, paleta antiga
+nas barras de Pareto da Linha 360°); tamanhos de letra diferentes entre os módulos. Teste: `testes/tdia.js`.

@@ -328,3 +328,9 @@ Teste: `testes/tlote_origem.js`, `testes/tcalendario.js`.
 ## 2.4.74 · Link direto para cada relatório (13/11/2026)
 
 `#aba=reports&rel=<tipo>` (shift, day, week, month, stops, plan, view, tables) abre Relatórios com o tipo escolhido; usado por Portal › Relatórios (`fontes/producao/build.py`, regra no `applyHash`). Teste: `testes/trelcompilado.js`.
+
+## 2.4.76 · Resumo do dia em todas as páginas (15/11/2026)
+
+A gaveta do dia (clique num dia dos gráficos da Visão Geral) ganhou o botão **Resumo em todas as páginas**, que abre a ficha comum do dia
+(`vacFicha` tipo `dia`: paradas, ordens e lotes, gel e ações, só com os `exports`; `docs/design-system.md`). Na demonstração, os gráficos voltaram
+a se redesenhar na largura do cartão (faltava o `resize` → `Charts.fit` nesse caminho). Nenhum cálculo novo.
