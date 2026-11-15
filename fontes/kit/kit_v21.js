@@ -263,7 +263,7 @@ function vacCadPilula(rev, o = {}) {
    ou o link <página>#ficha=ordem/<n> (também lote/<x> e lp/<x>). O ← Voltar do navegador fecha a ficha e mantém a tela. */
 const vacFicha = (() => {
   const FONTES = [
-    { id: 'oee', nome: 'Produção', base: 'oee-vacutainer-base.json', pega: ex => ({ porOrdem: ex.porOrdem || [], cob: ex.porOrdemCobertura || null, lotes: ex.lotes || [], porDiaTurno: ex.porDiaTurno || [], porDiaCatalogo: ex.porDiaCatalogo || [], trechos: ex.trechos || [], trocas: ex.trocas || [], paradasEventos: ex.paradasEventos || [] }) },   /* Fase 4: ficha do trecho */   /* Fase 4 · 4d: o Gel lê os turnos da Produção */
+    { id: 'oee', nome: 'Produção', base: 'oee-vacutainer-base.json', pega: ex => ({ porOrdem: ex.porOrdem || [], cob: ex.porOrdemCobertura || null, lotes: ex.lotes || [], porDia: ex.porDia || [], calendario: ex.calendario || [], porDiaTurno: ex.porDiaTurno || [], porDiaCatalogo: ex.porDiaCatalogo || [], trechos: ex.trechos || [], trocas: ex.trocas || [], paradasEventos: ex.paradasEventos || [] }) },   /* Fase 4: ficha do trecho */   /* Fase 4 · 4d: o Gel lê os turnos da Produção */
     { id: 'ordens', nome: 'SAP (Produção › Ordens)', sis: 'oee', base: 'ordens-base.json', pega: ex => ({ porOrdem: ex.porOrdem || [] }) },
     { id: 'perdas', nome: 'Waste', base: 'perdas-base.json', pega: ex => ({ porOrdem: ex.porOrdem || [], acoesLegado: ex.acoesLegado || null }) },   /* Fase 6: Iniciativas traz as ações antigas */
     { id: 'gel', nome: 'Gestão de Gel', base: 'fifo-base.json', pega: ex => ({ ordens: ex.ordens || [], cob: ex.ordensCobertura || null, porDiaGel: ex.porDiaGel || [] }) },   /* Fase 4 · 4e */
@@ -335,6 +335,9 @@ const vacFicha = (() => {
   function buscar(q) {
     const k = nk(q), ks = semAc(q).trim(); if (k.length < 2) return [];
     const I = indice(), R = [];
+    /* 15/11/2026 · data digitada (15/11, 15/11/2026 ou 2026-11-15) abre o resumo do dia */
+    { const m = /^(\d{1,2})\/(\d{1,2})(?:\/(\d{2,4}))?$/.exec(tx(q)) , iso = /^\d{4}-\d{2}-\d{2}$/.test(tx(q)) ? tx(q) : m ? `${m[3] ? (m[3].length === 2 ? '20' + m[3] : m[3]) : (typeof vacHoje === 'function' ? vacHoje() : new Date().toISOString()).slice(0, 4)}-${m[2].padStart(2, '0')}-${m[1].padStart(2, '0')}` : '';
+      if (iso && diaOk(iso)) R.push({ tipo: 'Dia', txt: dt(iso), sub: 'resumo do dia em todas as páginas', go: () => abrir('dia', iso), r: -1 }); }
     const rank = c => c === k ? 0 : c.startsWith(k) ? 1 : 2;
     const top = (m, n) => [...m.values()].filter(x => x.k.includes(k)).sort((a, b) => rank(a.k) - rank(b.k) || a.k.length - b.k.length || a.k.localeCompare(b.k)).slice(0, n);
     const per = x => { const d = x.datas.filter(Boolean).sort(); return d.length ? (d[0] === d[d.length - 1] ? dt(d[0]) : dt(d[0]) + ' a ' + dt(d[d.length - 1])) : ''; };
@@ -452,21 +455,92 @@ const vacFicha = (() => {
     if (okFonte('inic') || ac.length) H.push(bloco('Ações das ordens do trecho', 'inic', '', ac.map(x => `<p class="vf-ac"><span class="pill">${e2(x.status || '')}</span> ${e2(x.titulo || '')}${x.responsavel ? ' · ' + e2(x.responsavel) : ''}</p>`).join(''), ac.length ? '' : 'Nenhuma ação ligada às ordens deste trecho.'));
     return { cab: `<div class="vf-t1"><span class="vf-tp">Trecho</span><h2>${e2(dt(I.de))} – ${e2(I.ate.slice(0, 10) === I.de.slice(0, 10) ? I.ate.slice(11, 16) : dt(I.ate))}</h2></div><div class="vf-ids">${lotes.length ? `<span>Lote${lotes.length > 1 ? 's' : ''} ${lotes.map(l => `<b>${e2(l)}</b>`).join(' ')}</span>` : ''}${ords.length ? `<span>Ordem${ords.length > 1 ? 's' : ''} ${ords.map(o => `<b>${e2(o)}</b>`).join(' ')}</span>` : ''}</div>`, corpo: H.join('') };
   }
+  /* 15/11/2026 · resumo do dia (AAAA-MM-DD): o que aconteceu naquele dia em todas as páginas, só com os exports (nenhuma conta nova além de
+     somas e divisões do que já está publicado). Abre pelo clique numa barra de dia (data-vac-dia), por vacFicha.abrir('dia', data) ou
+     #ficha=dia/<data>. Resumo = o essencial para quem está começando; Detalhado = turnos, catálogos, lotes, todas as paradas e ações.
+     Dali se navega: dia anterior/próximo, ficha do lote e da ordem, e a tela do dia em cada página. */
+  const DSEM = ['domingo', 'segunda-feira', 'terça-feira', 'quarta-feira', 'quinta-feira', 'sexta-feira', 'sábado'];
+  const diaOk = c => /^\d{4}-\d{2}-\d{2}$/.test(tx(c)) && !isNaN(Date.parse(tx(c) + 'T12:00:00Z'));
+  const diaMais = (d, n) => new Date(Date.parse(d + 'T12:00:00Z') + n * 864e5).toISOString().slice(0, 10);
+  const pc = (v, d = 1) => v == null || !Number.isFinite(+v) ? '—' : nf(100 * v, d) + '%';
+  function diasComDado() { const P = D('oee') || {}, st = new Set(); for (const x of P.porDia || []) if (x.dia) st.add(x.dia); for (const e of (D('paradas') || {}).todos || []) if (e.dia) st.add(e.dia); for (const g of (D('gel') || {}).porDiaGel || []) if (g.dia) st.add(g.dia); return [...st].sort(); }
+  function htmlDia(cod) {
+    const dia = tx(cod); if (!diaOk(dia)) return { cab: '<div class="vf-t1"><span class="vf-tp">Dia</span><h2>—</h2></div>', corpo: '<p class="vf-aviso">Data inválida.</p>' };
+    const det = modo() === 'det', P = D('oee') || {}, C = typeof vacCad === 'function' ? vacCad() : null;
+    const eqNome = c => { const e = C && (C.equipamentos || []).find(x => tx(x.codigo) === tx(c)); return e && e.nome ? tx(c) + ' · ' + e.nome : tx(c); };
+    const pd = (P.porDia || []).find(x => x.dia === dia), tur = (P.porDiaTurno || []).filter(x => x.dia === dia), cats = (P.porDiaCatalogo || []).filter(x => x.dia === dia);
+    const T = (P.trechos || []).filter(t => tx(t.ini).slice(0, 10) <= dia && tx(t.fim).slice(0, 10) >= dia), tro = (P.trocas || []).filter(x => tx(x.em).slice(0, 10) === dia);
+    const cal = (P.calendario || []).find(x => (x.dia || x.data || x.codigo) === dia);
+    const par = ((D('paradas') || {}).todos || []).filter(e => e.dia === dia), usados = new Set(par.map(e => e.eventoId).filter(Boolean));
+    const pro = (P.paradasEventos || []).filter(e => e.dia === dia && !usados.has(String(e.id)));
+    const gel = ((D('gel') || {}).porDiaGel || []).find(g => g.dia === dia);
+    const ordsDia = new Map(); const poe = (o, l, c, f) => { const k = nk(o); if (!k) return; const x = ordsDia.get(k) || { ordem: tx(o).replace(/^0+(?=\d)/, ''), lotes: new Set(), cat: '', fontes: new Set() }; if (l) x.lotes.add(tx(l)); if (c && !x.cat) x.cat = tx(c); x.fontes.add(f); ordsDia.set(k, x); };
+    for (const t of T) if (t.ordem) poe(t.ordem, t.lote, t.catalogo, 'MES');
+    for (const o of P.porOrdem || []) { const a = tx(o.inicioReal || o.inicio).slice(0, 10), b = tx(o.fimReal || o.fim).slice(0, 10); if ((o.diasLote || []).includes(dia) || (a && b && a <= dia && dia <= b)) poe(o.ordem, o.lote, o.catalogo, 'plano'); }
+    for (const e of par) if (e.ordem) poe(e.ordem, e.lote, null, 'Paradas');
+    const lotesSemOrdem = [...new Set(T.filter(t => !t.ordem).map(t => tx(t.lote)).filter(Boolean))];
+    const acs = ((D('inic') || {}).acoes || []), acDia = acs.filter(a => tx(a.criadaEm).slice(0, 10) === dia || tx(a.concluidaEm).slice(0, 10) === dia || tx(a.prazo).slice(0, 10) === dia);
+    const acQ = a => tx(a.criadaEm).slice(0, 10) === dia ? 'criada' : tx(a.concluidaEm).slice(0, 10) === dia ? 'concluída' : 'vence';
+    const H = [];
+    /* em uma frase: a situação do dia, por extenso (nunca só a cor) */
+    let frase = '', tom = '';
+    if (pd && pd.oee != null) { const dif = pd.oeeMeta != null ? 100 * (pd.oee - pd.oeeMeta) : null; tom = dif == null ? '' : dif >= 0 ? 'ok' : 'crit';
+      frase = `OEE de <b>${pc(pd.oee)}</b>` + (dif == null ? '' : dif >= 0 ? `, <b>na meta</b> de ${pc(pd.oeeMeta)} (+${nf(dif, 1)} p.p.)` : `, <b>abaixo da meta</b> de ${pc(pd.oeeMeta)} (${nf(dif, 1)} p.p.)`) + '.'; }
+    const minPar = par.reduce((a, e) => a + (+e.minutos || 0), 0) + pro.reduce((a, e) => a + (+e.minutos || 0), 0), nPar = par.length + pro.length;
+    const maior = par.concat(pro).slice().sort((a, b) => (+b.minutos || 0) - (+a.minutos || 0))[0];
+    if (nPar) frase += ` ${nf(minPar, minPar % 1 ? 1 : 0)} min parados em ${nf(nPar)} parada(s)` + (maior ? `; a maior: <b>${e2(eqNome(maior.equipamento) || '—')}</b>, ${nf(maior.minutos, maior.minutos % 1 ? 1 : 0)} min (${e2(maior.codigo || '')}${maior.inicio ? ' às ' + e2(maior.inicio) : ''}).` : '.');
+    if (cal) frase = `<b>${e2(cal.tipo || 'Calendário')}</b>${cal.motivo ? ': ' + e2(cal.motivo) : ''}. ` + frase;
+    if (frase) H.push(`<p class="vf-frase${tom ? ' ' + tom : ''}">${frase}</p>`);
+    /* Produção */
+    { const tot = pd ? (+pd.boa || 0) + (+pd.scrap || 0) : 0;
+      const corpo = pd ? dl([['OEE', pc(pd.oee)], ['Meta OEE', pc(pd.oeeMeta)], ['Situação', e2(pd.status || '—')], ['Produção boa', nf(pd.boa)], ['Meta', nf(pd.metaOp)], ['Atendimento', pd.metaOp ? pc(pd.boa / pd.metaOp) : '—'], ['Scrap', nf(pd.scrap) + (tot ? ' · ' + pc(pd.scrap / tot, 2) : '')]])
+        + (tur.length ? tab(['Turno', '#OEE', '#Produção boa', '#Meta', '#Scrap', 'Situação'], tur.map(t => [e2(t.turno || ''), pc(t.oee), nf(t.boa), nf(t.metaOp), nf(t.scrap), e2(t.semProducao ? 'sem produção (' + t.semProducao + ')' : t.status || '')])) : '')
+        + (det && cats.length ? '<p class="vf-nota">Por catálogo</p>' + tab(['Turno', 'Catálogo', '#Produção boa', '#Meta', '#OEE', '#Min'], cats.map(c => [e2(c.turno || ''), e2(c.catalogo || '—'), nf(c.boa), nf(c.metaOp), pc(c.oee), nf(c.minutos)])) : '')
+        + (det && tro.length ? `<p class="vf-nota">Trocas de lote: ${tro.map(x => e2(tx(x.em).slice(11, 16)) + ' (' + e2(x.de) + ' → ' + e2(x.para) + ')').join(', ')}.</p>` : '')
+        + (pd.origem === 'importado' ? '<p class="vf-nota">Dia importado (não lançado hora a hora).</p>' : '') : '';
+      H.push(bloco('Produção', 'oee', linkAbrir('oee', 'dia=' + dia, 'Abrir o dia na Produção'), corpo, pd ? '' : vazio('oee', 'Sem lançamento neste dia (ou fora dos 120 dias que a Produção publica por dia): sem dado não quer dizer zero.'))); }
+    /* Paradas */
+    { const porEq = new Map(); for (const e of par.concat(pro)) { const k = tx(e.equipamento) || '—', x = porEq.get(k) || { m: 0, n: 0 }; x.m += +e.minutos || 0; x.n++; porEq.set(k, x); }
+      const top = [...porEq.entries()].sort((a, b) => b[1].m - a[1].m), linha = (e, org) => [e2(e.inicio || ''), e2(e.turno || ''), e2(eqNome(e.equipamento)), e2(e.codigo || ''), nf(e.minutos, e.minutos % 1 ? 1 : 0), e.ordem ? `<a href="#" data-vac-ordem="${e2(e.ordem)}" class="mono">${e2(e.ordem)}</a>` : '—', e2(e.descricao || ''), org];
+      const todas = par.slice().sort((a, b) => tx(a.inicio).localeCompare(tx(b.inicio))).map(e => linha(e, 'Paradas' + (e.eventoId ? ' · também na Produção' : ''))).concat(pro.map(e => linha(e, 'só na Produção')));
+      const corpo = nPar ? dl([['Paradas', nf(nPar)], ['Minutos', nf(minPar, minPar % 1 ? 1 : 0)], ['Equipamentos', nf(porEq.size)]])
+        + tab(['Equipamento', '#Paradas', '#Min'], top.slice(0, det ? 99 : 3).map(([k, x]) => [e2(eqNome(k)), nf(x.n), nf(x.m, x.m % 1 ? 1 : 0)]))
+        + (!det && top.length > 3 ? `<p class="vf-nota">Os 3 equipamentos com mais tempo parado; em <b>Detalhado</b>, todos e a lista das paradas.</p>` : '')
+        + (det ? tab(['Início', 'Turno', 'Equip.', 'Código', '#Min', 'Ordem', 'Descrição', 'Origem'], todas) : '') : '';
+      H.push(bloco('Paradas', 'paradas', linkAbrir('paradas', 'aba=eventos', 'Abrir no Paradas'), corpo, nPar ? '' : vazio('paradas', 'Nenhuma parada apontada neste dia (ou fora dos 90 dias publicados em lista): sem dado não quer dizer zero.'))); }
+    /* Ordens e lotes */
+    { const L = [...ordsDia.values()];
+      const corpo = (L.length ? tab(['Ordem', 'Lote', 'Catálogo', 'Aparece em'], L.map(o => [`<a href="#" data-vac-ordem="${e2(o.ordem)}" class="mono">${e2(o.ordem)}</a>`, [...o.lotes].map(l => `<a href="#" data-vac-lote="${e2(l)}" class="mono">${e2(l)}</a>`).join(' ') || '—', e2(o.cat || '—'), e2([...o.fontes].join(' · '))])) : '')
+        + (lotesSemOrdem.length ? `<p class="vf-nota">Lote(s) do MES ainda sem ordem ligada: ${lotesSemOrdem.map(l => `<a href="#" data-vac-lote="${e2(l)}" class="mono">${e2(l)}</a>`).join(', ')}.</p>` : '')
+        + (L.length ? '<p class="vf-nota">Clique na ordem para ver produção, paradas, Waste, gel e SAP dela.</p>' : '');
+      H.push(bloco('Ordens e lotes do dia', 'oee', '', corpo, L.length || lotesSemOrdem.length ? '' : vazio('oee', 'Nenhuma ordem ou lote ligado a este dia nos resumos publicados.'))); }
+    /* Gel */
+    if (gel || okFonte('gel')) { const sc = gel && gel.scrapKg ? (+gel.scrapKg.T || 0) + (+gel.scrapKg.B || 0) + (+gel.scrapKg.P || 0) : null;
+      H.push(bloco('Gestão de Gel', 'gel', linkAbrir('gel', 'aba=painel', 'Abrir em Gestão de Gel'), gel ? dl([['Tubos', nf(gel.tubos)], ['Teórico', gel.teoKg == null ? '—' : nf(gel.teoKg, 1) + ' kg'], ['Baixado', gel.baixadoKg == null ? '—' : nf(gel.baixadoKg, 1) + ' kg'], ['Desvio', gel.desvio == null ? '—' : nf(gel.desvio, 1) + ' kg'], ['Scrap de gel', sc == null ? '—' : nf(sc, 2) + ' kg'], ['Barris', nf(gel.barris)]]) + (det && gel.indice != null ? `<p class="vf-nota">Índice ${nf(gel.indice, 3)}${gel.savingKg != null ? ' · saving ' + nf(gel.savingKg, 1) + ' kg' : ''} · fonte ${e2(gel.fonte || '')}.</p>` : '') : '', gel ? '' : 'Sem registro de gel neste dia (ou fora dos 60 dias publicados).')); }
+    /* Ações */
+    if (okFonte('inic') || acDia.length) H.push(bloco('Ações do dia', 'inic', linkAbrir('inic', 'aba=acoes', 'Abrir em Iniciativas'), acDia.slice(0, det ? 99 : 5).map(a => `<p class="vf-ac"><span class="pill">${acQ(a)}</span> ${e2(a.titulo || '')}${a.responsavel ? ' · ' + e2(a.responsavel) : ''}${a.status ? ' · ' + e2(a.status) : ''}</p>`).join('') + (!det && acDia.length > 5 ? `<p class="vf-nota">Mais ${acDia.length - 5} em Detalhado.</p>` : ''), acDia.length ? '' : 'Nenhuma ação criada, concluída ou com prazo neste dia.'));
+    const dias = diasComDado(), ant = dias.filter(x => x < dia).pop() || diaMais(dia, -1), prox = dias.find(x => x > dia) || diaMais(dia, 1), hoje = typeof vacHoje === 'function' ? vacHoje() : '';
+    const nav = (d, rot, seta) => `<button type="button" class="vf-b vf-nav" data-vac-dia="${e2(d)}" title="${rot}: ${dt(d)}" aria-label="${rot}: ${dt(d)}">${seta}</button>`;
+    const cab = `<div class="vf-t1"><span class="vf-tp">Dia</span>${nav(ant, 'Dia anterior com dados', '‹')}<h2>${e2(dt(dia))}</h2>${nav(prox, 'Próximo dia com dados', '›')}${dia === hoje ? '<span class="pill">hoje</span>' : ''}</div>
+      <div class="vf-ids"><span>${DSEM[new Date(dia + 'T12:00:00Z').getUTCDay()]}</span>${tur.length ? `<span>Turnos <b>${tur.map(t => e2(t.turno)).join(' ')}</b></span>` : ''}${ordsDia.size ? `<span>${nf(ordsDia.size)} ordem(ns)</span>` : ''}</div>`;
+    return { cab, corpo: H.join('') };
+  }
   function render() {
     const a = S.aberto; if (!a) return; let el = document.getElementById('vacFicha');
     if (!el) {
       el = document.createElement('div'); el.id = 'vacFicha'; el.className = 'vficha-fundo'; el.innerHTML = '<aside class="vficha" role="dialog" aria-modal="true" aria-label="Ficha"></aside>'; document.body.appendChild(el);
       el.addEventListener('click', e => { if (e.target === el) fechar(); });
     }
-    const h = a.tipo === 'lote' ? htmlLote(a.cod) : a.tipo === 'lp' ? htmlLp(a.cod) : a.tipo === 'intervalo' ? htmlIntervalo(a.cod) : htmlOrdem(a.cod), md = modo();
+    const h = a.tipo === 'lote' ? htmlLote(a.cod) : a.tipo === 'lp' ? htmlLp(a.cod) : a.tipo === 'intervalo' ? htmlIntervalo(a.cod) : a.tipo === 'dia' ? htmlDia(a.cod) : htmlOrdem(a.cod), md = modo();
     const asd = el.querySelector('.vficha'), rol = asd.scrollTop;
     asd.innerHTML = `<header class="vf-cab">${h.cab}<div class="vf-acoes"><span class="vf-seg" role="group" aria-label="Nível de detalhe"><button type="button" data-vf-modo="res" class="${md === 'res' ? 'on' : ''}">Resumo</button><button type="button" data-vf-modo="det" class="${md === 'det' ? 'on' : ''}">Detalhado</button></span><span class="vf-sp"></span>${S.carregando ? '<span class="vf-nota">lendo as bases…</span>' : ''}${a.tipo === 'ordem' && typeof vacNovaAcaoHref === 'function' ? `<a class="vf-b" href="${e2(vacNovaAcaoHref({ titulo: '', origem: { tipo: 'ficha', ref: 'ordem|' + a.cod, resumo: 'Ficha da ordem ' + a.cod, link: link(a.tipo, a.cod) }, vinculos: [{ tipo: 'ordem', cod: a.cod }] }))}" target="_blank" rel="noopener" title="Abre Iniciativas com a ordem já ligada">+ Abrir ação</a>` : ''}<button type="button" class="vf-b" data-vf-link title="Copia o endereço que abre esta ficha">Copiar link</button><button type="button" class="vf-b" data-vf-fechar aria-label="Fechar a ficha" title="Fechar (Esc)">✕</button></div></header><div class="vf-corpo">${h.corpo}</div>`;
     asd.scrollTop = rol;
   }
   function abrir(tipo, cod, op = {}) {
-    cod = tx(cod); if (!cod) return; tipo = ['ordem', 'lote', 'lp', 'intervalo'].includes(tipo) ? tipo : 'ordem';
+    cod = tx(cod); if (!cod) return; tipo = ['ordem', 'lote', 'lp', 'intervalo', 'dia'].includes(tipo) ? tipo : 'ordem';
+    const veioDoDia = S.aberto && S.aberto.tipo === 'dia' && tipo !== 'dia';   /* do resumo do dia para uma ordem ou lote: o ← Voltar retorna ao dia */
     S.aberto = { tipo, cod };
-    if (op.hist !== false) { try { if (history.state && history.state.vacFicha) history.replaceState({ ...history.state, vacFicha: { tipo, cod } }, ''); else { history.pushState({ ...(history.state || {}), vacFicha: { tipo, cod } }, ''); } S.empilhado = true; } catch (e) { } }
+    if (op.hist !== false) { try { if (history.state && history.state.vacFicha && !veioDoDia) history.replaceState({ ...history.state, vacFicha: { tipo, cod } }, ''); else { history.pushState({ ...(history.state || {}), vacFicha: { tipo, cod } }, ''); } S.empilhado = true; } catch (e) { } }
     render(); document.addEventListener('keydown', esc, true);
     const p = carregar(); render(); p.then(render, render);
   }
@@ -478,7 +552,7 @@ const vacFicha = (() => {
   const link = (tipo, cod) => vacDemo.atualHref('ficha=' + tipo + '/' + encodeURIComponent(cod));
   function avisa(m) { try { if (typeof toast === 'function') return toast(m); } catch (e) { } console.info(m); }
   document.addEventListener('click', e => {
-    const t = e.target.closest && e.target.closest('[data-vac-ordem],[data-vac-lote],[data-vac-lp],[data-vf-modo],[data-vf-link],[data-vf-fechar],[data-vf-ir]'); if (!t) return;
+    const t = e.target.closest && e.target.closest('[data-vac-ordem],[data-vac-lote],[data-vac-lp],[data-vac-dia],[data-vf-modo],[data-vf-link],[data-vf-fechar],[data-vf-ir]'); if (!t) return;
     if (t.hasAttribute('data-vf-ir')) { const h = t.getAttribute('href') || ''; if (h.startsWith('#')) { e.preventDefault(); fechar({ hist: false }); try { if (history.state && history.state.vacFicha) history.replaceState({ ...history.state, vacFicha: null }, ''); } catch (x) { } if (location.hash === h) window.dispatchEvent(new HashChangeEvent('hashchange')); else location.hash = h; } else fechar({ hist: false }); return; }
     e.preventDefault(); e.stopPropagation();
     if (t.hasAttribute('data-vf-modo')) { try { localStorage.setItem('vac.ficha.modo', t.getAttribute('data-vf-modo')); } catch (x) { } return render(); }
@@ -487,9 +561,12 @@ const vacFicha = (() => {
     if (t.hasAttribute('data-vac-ordem')) return abrir('ordem', t.getAttribute('data-vac-ordem'));
     if (t.hasAttribute('data-vac-lote')) return abrir('lote', t.getAttribute('data-vac-lote'));
     if (t.hasAttribute('data-vac-lp')) return abrir('lp', t.getAttribute('data-vac-lp'));
+    if (t.hasAttribute('data-vac-dia')) return abrir('dia', t.getAttribute('data-vac-dia'));
   }, true);
+  /* barra de dia com foco: Enter ou espaço abrem o resumo do dia (o clique já abre) */
+  document.addEventListener('keydown', e => { if (e.key !== 'Enter' && e.key !== ' ') return; const t = e.target && e.target.closest && e.target.closest('[data-vac-dia]'); if (!t || /^(BUTTON|A|INPUT)$/.test(t.tagName)) return; e.preventDefault(); abrir('dia', t.getAttribute('data-vac-dia')); });
   window.addEventListener('popstate', e => { const f = e.state && e.state.vacFicha; if (f) abrir(f.tipo, f.cod, { hist: false }); else if (S.aberto) fechar({ hist: false }); });
-  const rota = () => { const m = /^#ficha=(ordem|lote|lp|intervalo)\/(.+)$/.exec(location.hash || ''); if (!m) return; let c = m[2]; try { c = decodeURIComponent(c); } catch (e) { } try { history.replaceState(history.state, '', location.href.split('#')[0]); } catch (e) { } abrir(m[1], c); };
+  const rota = () => { const m = /^#ficha=(ordem|lote|lp|intervalo|dia)\/(.+)$/.exec(location.hash || ''); if (!m) return; let c = m[2]; try { c = decodeURIComponent(c); } catch (e) { } try { history.replaceState(history.state, '', location.href.split('#')[0]); } catch (e) { } abrir(m[1], c); };
   window.addEventListener('hashchange', rota);
   /* busca: ordem, lote, LP, catálogo e equipamento entram na busca comum (Ctrl K) de todas as páginas */
   const ligaBusca = () => {
@@ -1204,7 +1281,17 @@ window.vacPagina = (() => {
       default: await Store.usar(dir);
     } } finally { conectando = false; }
   }
+  /* 15/11/2026 · voltar para um módulo já aberto, na mesma aba e no mesmo período: a tela que já estava desenhada aparece na hora e a
+     atualização (o mesmo redesenho de antes, com os mesmos dados) roda logo depois da pintura, em vez de segurar a troca de módulo.
+     Aba, período ou endereço diferentes continuam sendo aplicados na hora. */
+  let irUlt = '', irT = 0;
   function irAba(aba, hash, contexto) {
+    clearTimeout(irT);
+    const chave = JSON.stringify([aba || '', contexto || null]);
+    if (!hash && aba && chave === irUlt) { irT = setTimeout(() => { try { irAgora(aba, hash, contexto); } catch (e) { console.warn('vacPagina.ir', e); } }, 40); return; }
+    irUlt = hash ? '' : chave; return irAgora(aba, hash, contexto);
+  }
+  function irAgora(aba, hash, contexto) {
     if (hash) {
       location.hash = hash;
       if (typeof cadRota === 'function') cadRota();
@@ -1323,6 +1410,7 @@ window.vacPagina = (() => {
     },
     imprimir: () => { if (!vacPodeAqui('exportar')) throw new Error('Seu perfil não permite imprimir.'); window.print(); },
     abrirOrdem: n => vacFicha.abrir('ordem', String(n)),
+    abrirDia: d => vacFicha.abrir('dia', String(d)),
     atualizar: () => { if (typeof vacAoVoltar === 'function') return vacAoVoltar(); },
     autenticar: op => vacLogin.abrir(op), sessao: () => vacLogin.sessao()
   };

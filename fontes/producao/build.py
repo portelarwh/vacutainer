@@ -16,7 +16,7 @@ from sqdcp_build import aplicar as aplicar_sqdcp
 aplicar_sqdcp(R)
 # Demonstração integrada: antes de ler preferências, handles e caches da operação real.
 R("async function boot() {\n  await loadPrefs(); applyTheme();", """async function boot() {
-  if(vacDemo.ativo){await loadPrefs();applyTheme();bindGlobal();Charts.bind();Store.S.user='Pessoa de demonstração';Store.enterExample(vacDemo.ler('oee'));
+  if(vacDemo.ativo){await loadPrefs();applyTheme();bindGlobal();Charts.bind();window.addEventListener('resize',U.debounce(()=>Charts.fit(document),150));Store.S.user='Pessoa de demonstração';Store.enterExample(vacDemo.ler('oee'));
     vacDemo.registrar('oee',()=>({...db(),exports:Exports.build(db())}),d=>{Store.S.db=Model.ensure(d);Engine.bumpConfig()},()=>renderNow());Store.on(e=>{if(e==='data')vacDemo.publicar('oee')});
     App.sel.lineId='line_vac';App.filters.lineId='line_vac';App.filters.from=U.today();App.filters.to=U.today();App.op=location.hash==='#turno';if(App.op)App.route='shift';else applyHash();vacDemo.publicar('oee');renderNow();return}
   await loadPrefs(); applyTheme();""")
@@ -28,7 +28,10 @@ R("location.href=sysHref(port,'versoes')", "vacDemo.ir(sysHref(port,'versoes'))"
 R('<button class="btn primary" id="uOk">Usar este nome</button>', '<button class="btn primary" id="uOk">Usar este nome</button><button class="btn" data-vdemo-entrar onclick="vacDemo.entrar()">Demonstração do sistema</button>')
 R('<button class="btn ghost" id="wLocal">Começar só neste navegador</button>', '<button class="btn ghost" id="wLocal">Começar só neste navegador</button><button class="btn" data-vdemo-entrar onclick="vacDemo.entrar()">Demonstração do sistema</button>')
 R('Abre uma <b>cópia em memória</b> da base com cerca de 3 semanas de dados fictícios (hora a hora, paradas, scrap, dias fechados e abertos), para treinar ou demonstrar. Nada é gravado na pasta da rede nem no navegador: ao sair, tudo volta exatamente como estava.', 'Abre a <b>demonstração integrada do sistema</b>, com produção, perdas, gel, paradas, equipamentos e ações fictícias relacionadas. Você pode editar o exemplo e navegar entre as páginas. As bases reais ficam preservadas; fechar ou recarregar a demonstração descarta as alterações fictícias.')
-R("const APP_VERSION = '2.0.1';","const APP_VERSION = '2.4.75';")
+R("const APP_VERSION = '2.0.1';","const APP_VERSION = '2.4.76';")
+# 2.4.76 · gaveta do dia com o botão "Resumo em todas as páginas" (vacFicha 'dia'); na demonstração os gráficos voltam a se redesenhar na largura do cartão
+R("""<button class="btn sm" id="drOpen">Abrir lançamento</button>""", """<button class="btn sm" id="drOpen">Abrir lançamento</button><button class="btn sm" id="drTudo" title="Paradas, ordens, lotes, gel e ações deste dia, de todas as páginas">Resumo em todas as páginas</button>""")
+R("""    el.querySelector('#drOpen').onclick = """, """    el.querySelector('#drTudo').onclick = () => { const dd = d.date; close(); try { vacFicha.abrir('dia', dd); } catch (er) { toast('Resumo indisponível: ' + er.message, true); } };\n    el.querySelector('#drOpen').onclick = """)
 # 2.4.67 · MB51 colado como lista com títulos abreviados (Cen., Dt.lçto., Qtd UMReg., UMR, D/C; fontes/producao/ordens_servico.js)
 # 2.4.65 · kit: cartões reorganizáveis (alça que arrasta no Chrome/Edge, barra também nos cartões sem gráfico da grade, setas apagadas na ponta)
 # 2.4.45 · login comum do kit (vacLogin): o "Quem está usando?" só aparece quando o login não vale (demonstração, teste, TV)

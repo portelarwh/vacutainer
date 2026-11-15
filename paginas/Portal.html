@@ -515,6 +515,13 @@ nav.vtabs .badge[hidden]{display:none}
 .vficha .vf-fonte,.vficha .vf-nota{font-size:12px;color:var(--muted);margin:6px 0 0}
 .vficha .vf-cache{color:var(--warn);font-weight:600}
 .vficha .vf-vz{margin:6px 0 0;font-size:13px}
+.vficha .vf-frase{margin:0;padding:10px 14px;border:1px solid var(--line);border-left:4px solid var(--none);border-radius:10px;background:var(--surface);font-size:14.5px;line-height:1.45}
+.vficha .vf-frase.ok{border-left-color:var(--ok)}.vficha .vf-frase.crit{border-left-color:var(--crit)}
+.vficha .vf-nav{min-width:32px;font-size:18px;line-height:1;padding:2px 8px}
+[data-vac-dia]{cursor:pointer}svg [data-vac-dia]:hover,svg [data-vac-dia]:focus-visible{filter:brightness(.82);outline:none}svg [data-vac-dia]:focus-visible{stroke:var(--focus,#1D74FF);stroke-width:2}
+.vficha-fundo{animation:vfFundo .14s ease-out}.vficha{animation:vfEntra .18s ease-out}
+@keyframes vfFundo{from{opacity:0}to{opacity:1}}@keyframes vfEntra{from{transform:translateX(24px);opacity:.5}to{transform:none;opacity:1}}
+@media (prefers-reduced-motion:reduce){.vficha-fundo,.vficha{animation:none}}
 .vficha .vf-aviso{margin:0;padding:8px 12px;border:1px dashed var(--line);border-radius:8px;font-size:13px}
 .vficha .vf-ac{margin:6px 0 0;font-size:13px}
 .vficha .vf-tw{overflow-x:auto;margin-top:8px}
@@ -767,6 +774,15 @@ button,input,select,textarea{font-family:var(--f-body)}
 .vg-barra button[aria-disabled="true"]{opacity:.35;cursor:default}.vg-barra button[aria-disabled="true"]:hover{background:none;color:var(--muted)}
 .vg-barra [data-vg="l6"]::before{content:"1/1"}.vg-barra [data-vg="l3"]::before{content:"1/2"}.vg-barra [data-vg="l2"]::before{content:"1/3"}
 .vg-barra i{width:1px;height:18px;background:var(--line);margin:0 2px}
+.vg-rola{overflow-x:auto;overflow-y:hidden;-webkit-overflow-scrolling:touch}   /* 15/11/2026: gráfico que não encolhe abaixo da letra legível */
+.vg-barra [data-vg="rest"]~i,.vg-barra [data-vg="amp"]{display:inline-flex}
+.vg-it.vg-amp{position:fixed!important;inset:12px;z-index:900;margin:0!important;overflow:auto;max-height:none!important;box-shadow:0 12px 48px rgba(6,10,61,.35)!important;animation:vgAmp .16s ease-out}
+.vg-it.vg-amp>.vg-barra{opacity:1;pointer-events:auto;position:sticky;float:right;top:0}
+.vg-it.vg-amp>.vg-barra>:not([data-vg="amp"]){display:none}
+html.vg-tem-amp body::after{content:"";position:fixed;inset:0;z-index:899;background:rgba(6,10,61,.45)}
+.vg-it.vg-amp svg[viewBox]{max-height:calc(100vh - 170px)!important}
+@keyframes vgAmp{from{opacity:.4;transform:scale(.985)}to{opacity:1;transform:none}}
+@media (prefers-reduced-motion:reduce){.vg-it.vg-amp{animation:none}}
 .vg-it.vg-arrastando{opacity:.45}
 .vg-it.vg-alvo{outline:2px dashed var(--accent);outline-offset:3px}
 @media (hover:none){.vg-barra{opacity:1;pointer-events:auto;position:static;justify-content:flex-end;border:0;box-shadow:none;padding:0 0 4px;background:none}}
@@ -1649,7 +1665,8 @@ function miniChart(d,{fmt=fmtK,tit=''}={}){if(!d.length)return'';
  const cx=X=>Math.min(W-pr-22,Math.max(pl+22,X));let s=`<svg class="mini" viewBox="0 0 ${W} ${h}" width="100%" role="img" aria-label="${esc(tit)}">`;
  s+=`<line x1="${pl}" x2="${W-pr}" y1="${y(0)}" y2="${y(0)}" stroke="var(--axis)"/>`;
  d.forEach((x,i)=>{const X=pl+i*bw+bw*.15,w=Math.max(2,bw*.7),y0=y(0),y1=y(vals[i]),dest=i===iU||i===iM;
-  s+=`<g><title>${esc(x.label)}: ${esc(fmt(vals[i]))}</title><rect x="${X}" y="${Math.min(y0,y1)}" width="${w}" height="${Math.max(1,Math.abs(y1-y0))}" fill="${x.color||'var(--accent)'}" opacity="${dest?1:.72}" rx="1.5"/></g>`;
+  const ehDia=/^\d{4}-\d{2}-\d{2}$/.test(String(x.key||''));   /* 1.9.38 · barra de um dia abre o resumo do dia (vacFicha) */
+  s+=`<g${ehDia?` data-vac-dia="${esc(x.key)}" tabindex="0" role="button" aria-label="${esc(x.label+': '+fmt(vals[i])+'. Abrir o resumo do dia')}"`:''}><title>${esc(x.label)}: ${esc(fmt(vals[i]))}${ehDia?' · clique para ver o resumo do dia':''}</title><rect x="${pl+i*bw}" y="0" width="${bw}" height="${h-pb}" fill="transparent"/><rect x="${X}" y="${Math.min(y0,y1)}" width="${w}" height="${Math.max(1,Math.abs(y1-y0))}" fill="${x.color||'var(--accent)'}" opacity="${dest?1:.72}" rx="1.5"/></g>`;
   if(dest)s+=`<text x="${cx(X+w/2)}" y="${vals[i]>=0?Math.max(12,y1-4):Math.min(h-pb+12,y1+13)}" font-size="11" font-weight="600" text-anchor="middle" fill="var(--ink)">${esc(fmt(vals[i]))}</text>`});
  s+=`<text x="${pl}" y="${h-3}" font-size="11" fill="var(--muted)">${esc(d[0].label)}</text>`;if(d.length>1)s+=`<text x="${W-pr}" y="${h-3}" font-size="11" text-anchor="end" fill="var(--muted)">${esc(d[iU].label)}</text>`;
  return`<div class="minichart">${tit?`<div class="mtit">${esc(tit)}</div>`:''}${s}</svg></div>`}
@@ -1735,7 +1752,7 @@ function wireConfigComum(){$('#cPasta').onclick=async()=>{if(await Store.pick())
         entrar pelo ID (autocadastro como Consulta); página inicial por perfil (1x por sessão); vigência gravada não se edita (desativar com motivo); painel de vigências; semáforo central; saída do modo de teste.
    1.1.2: aviso da carga diz qual base foi lida.  1.5: páginas Paradas, Máquinas, Manutenção e Projetos na lista (aparecem quando o HTML chega na pasta).  1.4: lista técnica pela CS12 multinível (itens = nível 1, estrutura = níveis 2+); CS03 sai.  1.3: cabeçalho comum (vac-cabecalho v2: barra do sistema + página + abas), busca Ctrl K, acabamento V1.90, Versões com cabeçalho e último backup.  1.2: Configuração › Versões das páginas (versão e data de cada HTML, gravação das bases, cópias repetidas, histórico).
    ===================================================================== */
-const PAGE={id:'portal',titulo:'Portal · Linha Vacutainer',tituloCurto:'Portal',subtitulo:'Sistemas de gestão da linha',versao:'1.9.37',baseFile:'portal-base.json',idb:'vac-portal',backupDir:'00. Backups/Portal',
+const PAGE={id:'portal',titulo:'Portal · Linha Vacutainer',tituloCurto:'Portal',subtitulo:'Sistemas de gestão da linha',versao:'1.9.38',baseFile:'portal-base.json',idb:'vac-portal',backupDir:'00. Backups/Portal',
  vazio:()=>({schema:'portal-base',rev:0,config:{modulos:{},avisoDias:30,notas:{}},audit:[]}),
  /* itens do Portal para a busca Ctrl K: cadastro, pendências e telas */
  busca:q=>{const R=[],D=Cad.D;if(D)for(const t of CAD_ORD){for(const it of D[t]||[]){const c=String(it[kOf(t)]),nm=t==='bom'?((cadItem('catalogos',it.catalogo)||{}).nome||''):it.nome||'';if(norm(c+' '+nm).includes(q))R.push({tipo:CAD_T[t].um,txt:c+(nm?' · '+nm:''),sub:'Cadastros'+(cadAtivo(t,it,D)?'':' · inativo'),href:'#cadastros/'+t+'/'+encodeURIComponent(c)});if(R.length>30)break}}
@@ -4620,7 +4637,7 @@ function vacCadPilula(rev, o = {}) {
    ou o link <página>#ficha=ordem/<n> (também lote/<x> e lp/<x>). O ← Voltar do navegador fecha a ficha e mantém a tela. */
 const vacFicha = (() => {
   const FONTES = [
-    { id: 'oee', nome: 'Produção', base: 'oee-vacutainer-base.json', pega: ex => ({ porOrdem: ex.porOrdem || [], cob: ex.porOrdemCobertura || null, lotes: ex.lotes || [], porDiaTurno: ex.porDiaTurno || [], porDiaCatalogo: ex.porDiaCatalogo || [], trechos: ex.trechos || [], trocas: ex.trocas || [], paradasEventos: ex.paradasEventos || [] }) },   /* Fase 4: ficha do trecho */   /* Fase 4 · 4d: o Gel lê os turnos da Produção */
+    { id: 'oee', nome: 'Produção', base: 'oee-vacutainer-base.json', pega: ex => ({ porOrdem: ex.porOrdem || [], cob: ex.porOrdemCobertura || null, lotes: ex.lotes || [], porDia: ex.porDia || [], calendario: ex.calendario || [], porDiaTurno: ex.porDiaTurno || [], porDiaCatalogo: ex.porDiaCatalogo || [], trechos: ex.trechos || [], trocas: ex.trocas || [], paradasEventos: ex.paradasEventos || [] }) },   /* Fase 4: ficha do trecho */   /* Fase 4 · 4d: o Gel lê os turnos da Produção */
     { id: 'ordens', nome: 'SAP (Produção › Ordens)', sis: 'oee', base: 'ordens-base.json', pega: ex => ({ porOrdem: ex.porOrdem || [] }) },
     { id: 'perdas', nome: 'Waste', base: 'perdas-base.json', pega: ex => ({ porOrdem: ex.porOrdem || [], acoesLegado: ex.acoesLegado || null }) },   /* Fase 6: Iniciativas traz as ações antigas */
     { id: 'gel', nome: 'Gestão de Gel', base: 'fifo-base.json', pega: ex => ({ ordens: ex.ordens || [], cob: ex.ordensCobertura || null, porDiaGel: ex.porDiaGel || [] }) },   /* Fase 4 · 4e */
@@ -4692,6 +4709,9 @@ const vacFicha = (() => {
   function buscar(q) {
     const k = nk(q), ks = semAc(q).trim(); if (k.length < 2) return [];
     const I = indice(), R = [];
+    /* 15/11/2026 · data digitada (15/11, 15/11/2026 ou 2026-11-15) abre o resumo do dia */
+    { const m = /^(\d{1,2})\/(\d{1,2})(?:\/(\d{2,4}))?$/.exec(tx(q)) , iso = /^\d{4}-\d{2}-\d{2}$/.test(tx(q)) ? tx(q) : m ? `${m[3] ? (m[3].length === 2 ? '20' + m[3] : m[3]) : (typeof vacHoje === 'function' ? vacHoje() : new Date().toISOString()).slice(0, 4)}-${m[2].padStart(2, '0')}-${m[1].padStart(2, '0')}` : '';
+      if (iso && diaOk(iso)) R.push({ tipo: 'Dia', txt: dt(iso), sub: 'resumo do dia em todas as páginas', go: () => abrir('dia', iso), r: -1 }); }
     const rank = c => c === k ? 0 : c.startsWith(k) ? 1 : 2;
     const top = (m, n) => [...m.values()].filter(x => x.k.includes(k)).sort((a, b) => rank(a.k) - rank(b.k) || a.k.length - b.k.length || a.k.localeCompare(b.k)).slice(0, n);
     const per = x => { const d = x.datas.filter(Boolean).sort(); return d.length ? (d[0] === d[d.length - 1] ? dt(d[0]) : dt(d[0]) + ' a ' + dt(d[d.length - 1])) : ''; };
@@ -4809,21 +4829,92 @@ const vacFicha = (() => {
     if (okFonte('inic') || ac.length) H.push(bloco('Ações das ordens do trecho', 'inic', '', ac.map(x => `<p class="vf-ac"><span class="pill">${e2(x.status || '')}</span> ${e2(x.titulo || '')}${x.responsavel ? ' · ' + e2(x.responsavel) : ''}</p>`).join(''), ac.length ? '' : 'Nenhuma ação ligada às ordens deste trecho.'));
     return { cab: `<div class="vf-t1"><span class="vf-tp">Trecho</span><h2>${e2(dt(I.de))} – ${e2(I.ate.slice(0, 10) === I.de.slice(0, 10) ? I.ate.slice(11, 16) : dt(I.ate))}</h2></div><div class="vf-ids">${lotes.length ? `<span>Lote${lotes.length > 1 ? 's' : ''} ${lotes.map(l => `<b>${e2(l)}</b>`).join(' ')}</span>` : ''}${ords.length ? `<span>Ordem${ords.length > 1 ? 's' : ''} ${ords.map(o => `<b>${e2(o)}</b>`).join(' ')}</span>` : ''}</div>`, corpo: H.join('') };
   }
+  /* 15/11/2026 · resumo do dia (AAAA-MM-DD): o que aconteceu naquele dia em todas as páginas, só com os exports (nenhuma conta nova além de
+     somas e divisões do que já está publicado). Abre pelo clique numa barra de dia (data-vac-dia), por vacFicha.abrir('dia', data) ou
+     #ficha=dia/<data>. Resumo = o essencial para quem está começando; Detalhado = turnos, catálogos, lotes, todas as paradas e ações.
+     Dali se navega: dia anterior/próximo, ficha do lote e da ordem, e a tela do dia em cada página. */
+  const DSEM = ['domingo', 'segunda-feira', 'terça-feira', 'quarta-feira', 'quinta-feira', 'sexta-feira', 'sábado'];
+  const diaOk = c => /^\d{4}-\d{2}-\d{2}$/.test(tx(c)) && !isNaN(Date.parse(tx(c) + 'T12:00:00Z'));
+  const diaMais = (d, n) => new Date(Date.parse(d + 'T12:00:00Z') + n * 864e5).toISOString().slice(0, 10);
+  const pc = (v, d = 1) => v == null || !Number.isFinite(+v) ? '—' : nf(100 * v, d) + '%';
+  function diasComDado() { const P = D('oee') || {}, st = new Set(); for (const x of P.porDia || []) if (x.dia) st.add(x.dia); for (const e of (D('paradas') || {}).todos || []) if (e.dia) st.add(e.dia); for (const g of (D('gel') || {}).porDiaGel || []) if (g.dia) st.add(g.dia); return [...st].sort(); }
+  function htmlDia(cod) {
+    const dia = tx(cod); if (!diaOk(dia)) return { cab: '<div class="vf-t1"><span class="vf-tp">Dia</span><h2>—</h2></div>', corpo: '<p class="vf-aviso">Data inválida.</p>' };
+    const det = modo() === 'det', P = D('oee') || {}, C = typeof vacCad === 'function' ? vacCad() : null;
+    const eqNome = c => { const e = C && (C.equipamentos || []).find(x => tx(x.codigo) === tx(c)); return e && e.nome ? tx(c) + ' · ' + e.nome : tx(c); };
+    const pd = (P.porDia || []).find(x => x.dia === dia), tur = (P.porDiaTurno || []).filter(x => x.dia === dia), cats = (P.porDiaCatalogo || []).filter(x => x.dia === dia);
+    const T = (P.trechos || []).filter(t => tx(t.ini).slice(0, 10) <= dia && tx(t.fim).slice(0, 10) >= dia), tro = (P.trocas || []).filter(x => tx(x.em).slice(0, 10) === dia);
+    const cal = (P.calendario || []).find(x => (x.dia || x.data || x.codigo) === dia);
+    const par = ((D('paradas') || {}).todos || []).filter(e => e.dia === dia), usados = new Set(par.map(e => e.eventoId).filter(Boolean));
+    const pro = (P.paradasEventos || []).filter(e => e.dia === dia && !usados.has(String(e.id)));
+    const gel = ((D('gel') || {}).porDiaGel || []).find(g => g.dia === dia);
+    const ordsDia = new Map(); const poe = (o, l, c, f) => { const k = nk(o); if (!k) return; const x = ordsDia.get(k) || { ordem: tx(o).replace(/^0+(?=\d)/, ''), lotes: new Set(), cat: '', fontes: new Set() }; if (l) x.lotes.add(tx(l)); if (c && !x.cat) x.cat = tx(c); x.fontes.add(f); ordsDia.set(k, x); };
+    for (const t of T) if (t.ordem) poe(t.ordem, t.lote, t.catalogo, 'MES');
+    for (const o of P.porOrdem || []) { const a = tx(o.inicioReal || o.inicio).slice(0, 10), b = tx(o.fimReal || o.fim).slice(0, 10); if ((o.diasLote || []).includes(dia) || (a && b && a <= dia && dia <= b)) poe(o.ordem, o.lote, o.catalogo, 'plano'); }
+    for (const e of par) if (e.ordem) poe(e.ordem, e.lote, null, 'Paradas');
+    const lotesSemOrdem = [...new Set(T.filter(t => !t.ordem).map(t => tx(t.lote)).filter(Boolean))];
+    const acs = ((D('inic') || {}).acoes || []), acDia = acs.filter(a => tx(a.criadaEm).slice(0, 10) === dia || tx(a.concluidaEm).slice(0, 10) === dia || tx(a.prazo).slice(0, 10) === dia);
+    const acQ = a => tx(a.criadaEm).slice(0, 10) === dia ? 'criada' : tx(a.concluidaEm).slice(0, 10) === dia ? 'concluída' : 'vence';
+    const H = [];
+    /* em uma frase: a situação do dia, por extenso (nunca só a cor) */
+    let frase = '', tom = '';
+    if (pd && pd.oee != null) { const dif = pd.oeeMeta != null ? 100 * (pd.oee - pd.oeeMeta) : null; tom = dif == null ? '' : dif >= 0 ? 'ok' : 'crit';
+      frase = `OEE de <b>${pc(pd.oee)}</b>` + (dif == null ? '' : dif >= 0 ? `, <b>na meta</b> de ${pc(pd.oeeMeta)} (+${nf(dif, 1)} p.p.)` : `, <b>abaixo da meta</b> de ${pc(pd.oeeMeta)} (${nf(dif, 1)} p.p.)`) + '.'; }
+    const minPar = par.reduce((a, e) => a + (+e.minutos || 0), 0) + pro.reduce((a, e) => a + (+e.minutos || 0), 0), nPar = par.length + pro.length;
+    const maior = par.concat(pro).slice().sort((a, b) => (+b.minutos || 0) - (+a.minutos || 0))[0];
+    if (nPar) frase += ` ${nf(minPar, minPar % 1 ? 1 : 0)} min parados em ${nf(nPar)} parada(s)` + (maior ? `; a maior: <b>${e2(eqNome(maior.equipamento) || '—')}</b>, ${nf(maior.minutos, maior.minutos % 1 ? 1 : 0)} min (${e2(maior.codigo || '')}${maior.inicio ? ' às ' + e2(maior.inicio) : ''}).` : '.');
+    if (cal) frase = `<b>${e2(cal.tipo || 'Calendário')}</b>${cal.motivo ? ': ' + e2(cal.motivo) : ''}. ` + frase;
+    if (frase) H.push(`<p class="vf-frase${tom ? ' ' + tom : ''}">${frase}</p>`);
+    /* Produção */
+    { const tot = pd ? (+pd.boa || 0) + (+pd.scrap || 0) : 0;
+      const corpo = pd ? dl([['OEE', pc(pd.oee)], ['Meta OEE', pc(pd.oeeMeta)], ['Situação', e2(pd.status || '—')], ['Produção boa', nf(pd.boa)], ['Meta', nf(pd.metaOp)], ['Atendimento', pd.metaOp ? pc(pd.boa / pd.metaOp) : '—'], ['Scrap', nf(pd.scrap) + (tot ? ' · ' + pc(pd.scrap / tot, 2) : '')]])
+        + (tur.length ? tab(['Turno', '#OEE', '#Produção boa', '#Meta', '#Scrap', 'Situação'], tur.map(t => [e2(t.turno || ''), pc(t.oee), nf(t.boa), nf(t.metaOp), nf(t.scrap), e2(t.semProducao ? 'sem produção (' + t.semProducao + ')' : t.status || '')])) : '')
+        + (det && cats.length ? '<p class="vf-nota">Por catálogo</p>' + tab(['Turno', 'Catálogo', '#Produção boa', '#Meta', '#OEE', '#Min'], cats.map(c => [e2(c.turno || ''), e2(c.catalogo || '—'), nf(c.boa), nf(c.metaOp), pc(c.oee), nf(c.minutos)])) : '')
+        + (det && tro.length ? `<p class="vf-nota">Trocas de lote: ${tro.map(x => e2(tx(x.em).slice(11, 16)) + ' (' + e2(x.de) + ' → ' + e2(x.para) + ')').join(', ')}.</p>` : '')
+        + (pd.origem === 'importado' ? '<p class="vf-nota">Dia importado (não lançado hora a hora).</p>' : '') : '';
+      H.push(bloco('Produção', 'oee', linkAbrir('oee', 'dia=' + dia, 'Abrir o dia na Produção'), corpo, pd ? '' : vazio('oee', 'Sem lançamento neste dia (ou fora dos 120 dias que a Produção publica por dia): sem dado não quer dizer zero.'))); }
+    /* Paradas */
+    { const porEq = new Map(); for (const e of par.concat(pro)) { const k = tx(e.equipamento) || '—', x = porEq.get(k) || { m: 0, n: 0 }; x.m += +e.minutos || 0; x.n++; porEq.set(k, x); }
+      const top = [...porEq.entries()].sort((a, b) => b[1].m - a[1].m), linha = (e, org) => [e2(e.inicio || ''), e2(e.turno || ''), e2(eqNome(e.equipamento)), e2(e.codigo || ''), nf(e.minutos, e.minutos % 1 ? 1 : 0), e.ordem ? `<a href="#" data-vac-ordem="${e2(e.ordem)}" class="mono">${e2(e.ordem)}</a>` : '—', e2(e.descricao || ''), org];
+      const todas = par.slice().sort((a, b) => tx(a.inicio).localeCompare(tx(b.inicio))).map(e => linha(e, 'Paradas' + (e.eventoId ? ' · também na Produção' : ''))).concat(pro.map(e => linha(e, 'só na Produção')));
+      const corpo = nPar ? dl([['Paradas', nf(nPar)], ['Minutos', nf(minPar, minPar % 1 ? 1 : 0)], ['Equipamentos', nf(porEq.size)]])
+        + tab(['Equipamento', '#Paradas', '#Min'], top.slice(0, det ? 99 : 3).map(([k, x]) => [e2(eqNome(k)), nf(x.n), nf(x.m, x.m % 1 ? 1 : 0)]))
+        + (!det && top.length > 3 ? `<p class="vf-nota">Os 3 equipamentos com mais tempo parado; em <b>Detalhado</b>, todos e a lista das paradas.</p>` : '')
+        + (det ? tab(['Início', 'Turno', 'Equip.', 'Código', '#Min', 'Ordem', 'Descrição', 'Origem'], todas) : '') : '';
+      H.push(bloco('Paradas', 'paradas', linkAbrir('paradas', 'aba=eventos', 'Abrir no Paradas'), corpo, nPar ? '' : vazio('paradas', 'Nenhuma parada apontada neste dia (ou fora dos 90 dias publicados em lista): sem dado não quer dizer zero.'))); }
+    /* Ordens e lotes */
+    { const L = [...ordsDia.values()];
+      const corpo = (L.length ? tab(['Ordem', 'Lote', 'Catálogo', 'Aparece em'], L.map(o => [`<a href="#" data-vac-ordem="${e2(o.ordem)}" class="mono">${e2(o.ordem)}</a>`, [...o.lotes].map(l => `<a href="#" data-vac-lote="${e2(l)}" class="mono">${e2(l)}</a>`).join(' ') || '—', e2(o.cat || '—'), e2([...o.fontes].join(' · '))])) : '')
+        + (lotesSemOrdem.length ? `<p class="vf-nota">Lote(s) do MES ainda sem ordem ligada: ${lotesSemOrdem.map(l => `<a href="#" data-vac-lote="${e2(l)}" class="mono">${e2(l)}</a>`).join(', ')}.</p>` : '')
+        + (L.length ? '<p class="vf-nota">Clique na ordem para ver produção, paradas, Waste, gel e SAP dela.</p>' : '');
+      H.push(bloco('Ordens e lotes do dia', 'oee', '', corpo, L.length || lotesSemOrdem.length ? '' : vazio('oee', 'Nenhuma ordem ou lote ligado a este dia nos resumos publicados.'))); }
+    /* Gel */
+    if (gel || okFonte('gel')) { const sc = gel && gel.scrapKg ? (+gel.scrapKg.T || 0) + (+gel.scrapKg.B || 0) + (+gel.scrapKg.P || 0) : null;
+      H.push(bloco('Gestão de Gel', 'gel', linkAbrir('gel', 'aba=painel', 'Abrir em Gestão de Gel'), gel ? dl([['Tubos', nf(gel.tubos)], ['Teórico', gel.teoKg == null ? '—' : nf(gel.teoKg, 1) + ' kg'], ['Baixado', gel.baixadoKg == null ? '—' : nf(gel.baixadoKg, 1) + ' kg'], ['Desvio', gel.desvio == null ? '—' : nf(gel.desvio, 1) + ' kg'], ['Scrap de gel', sc == null ? '—' : nf(sc, 2) + ' kg'], ['Barris', nf(gel.barris)]]) + (det && gel.indice != null ? `<p class="vf-nota">Índice ${nf(gel.indice, 3)}${gel.savingKg != null ? ' · saving ' + nf(gel.savingKg, 1) + ' kg' : ''} · fonte ${e2(gel.fonte || '')}.</p>` : '') : '', gel ? '' : 'Sem registro de gel neste dia (ou fora dos 60 dias publicados).')); }
+    /* Ações */
+    if (okFonte('inic') || acDia.length) H.push(bloco('Ações do dia', 'inic', linkAbrir('inic', 'aba=acoes', 'Abrir em Iniciativas'), acDia.slice(0, det ? 99 : 5).map(a => `<p class="vf-ac"><span class="pill">${acQ(a)}</span> ${e2(a.titulo || '')}${a.responsavel ? ' · ' + e2(a.responsavel) : ''}${a.status ? ' · ' + e2(a.status) : ''}</p>`).join('') + (!det && acDia.length > 5 ? `<p class="vf-nota">Mais ${acDia.length - 5} em Detalhado.</p>` : ''), acDia.length ? '' : 'Nenhuma ação criada, concluída ou com prazo neste dia.'));
+    const dias = diasComDado(), ant = dias.filter(x => x < dia).pop() || diaMais(dia, -1), prox = dias.find(x => x > dia) || diaMais(dia, 1), hoje = typeof vacHoje === 'function' ? vacHoje() : '';
+    const nav = (d, rot, seta) => `<button type="button" class="vf-b vf-nav" data-vac-dia="${e2(d)}" title="${rot}: ${dt(d)}" aria-label="${rot}: ${dt(d)}">${seta}</button>`;
+    const cab = `<div class="vf-t1"><span class="vf-tp">Dia</span>${nav(ant, 'Dia anterior com dados', '‹')}<h2>${e2(dt(dia))}</h2>${nav(prox, 'Próximo dia com dados', '›')}${dia === hoje ? '<span class="pill">hoje</span>' : ''}</div>
+      <div class="vf-ids"><span>${DSEM[new Date(dia + 'T12:00:00Z').getUTCDay()]}</span>${tur.length ? `<span>Turnos <b>${tur.map(t => e2(t.turno)).join(' ')}</b></span>` : ''}${ordsDia.size ? `<span>${nf(ordsDia.size)} ordem(ns)</span>` : ''}</div>`;
+    return { cab, corpo: H.join('') };
+  }
   function render() {
     const a = S.aberto; if (!a) return; let el = document.getElementById('vacFicha');
     if (!el) {
       el = document.createElement('div'); el.id = 'vacFicha'; el.className = 'vficha-fundo'; el.innerHTML = '<aside class="vficha" role="dialog" aria-modal="true" aria-label="Ficha"></aside>'; document.body.appendChild(el);
       el.addEventListener('click', e => { if (e.target === el) fechar(); });
     }
-    const h = a.tipo === 'lote' ? htmlLote(a.cod) : a.tipo === 'lp' ? htmlLp(a.cod) : a.tipo === 'intervalo' ? htmlIntervalo(a.cod) : htmlOrdem(a.cod), md = modo();
+    const h = a.tipo === 'lote' ? htmlLote(a.cod) : a.tipo === 'lp' ? htmlLp(a.cod) : a.tipo === 'intervalo' ? htmlIntervalo(a.cod) : a.tipo === 'dia' ? htmlDia(a.cod) : htmlOrdem(a.cod), md = modo();
     const asd = el.querySelector('.vficha'), rol = asd.scrollTop;
     asd.innerHTML = `<header class="vf-cab">${h.cab}<div class="vf-acoes"><span class="vf-seg" role="group" aria-label="Nível de detalhe"><button type="button" data-vf-modo="res" class="${md === 'res' ? 'on' : ''}">Resumo</button><button type="button" data-vf-modo="det" class="${md === 'det' ? 'on' : ''}">Detalhado</button></span><span class="vf-sp"></span>${S.carregando ? '<span class="vf-nota">lendo as bases…</span>' : ''}${a.tipo === 'ordem' && typeof vacNovaAcaoHref === 'function' ? `<a class="vf-b" href="${e2(vacNovaAcaoHref({ titulo: '', origem: { tipo: 'ficha', ref: 'ordem|' + a.cod, resumo: 'Ficha da ordem ' + a.cod, link: link(a.tipo, a.cod) }, vinculos: [{ tipo: 'ordem', cod: a.cod }] }))}" target="_blank" rel="noopener" title="Abre Iniciativas com a ordem já ligada">+ Abrir ação</a>` : ''}<button type="button" class="vf-b" data-vf-link title="Copia o endereço que abre esta ficha">Copiar link</button><button type="button" class="vf-b" data-vf-fechar aria-label="Fechar a ficha" title="Fechar (Esc)">✕</button></div></header><div class="vf-corpo">${h.corpo}</div>`;
     asd.scrollTop = rol;
   }
   function abrir(tipo, cod, op = {}) {
-    cod = tx(cod); if (!cod) return; tipo = ['ordem', 'lote', 'lp', 'intervalo'].includes(tipo) ? tipo : 'ordem';
+    cod = tx(cod); if (!cod) return; tipo = ['ordem', 'lote', 'lp', 'intervalo', 'dia'].includes(tipo) ? tipo : 'ordem';
+    const veioDoDia = S.aberto && S.aberto.tipo === 'dia' && tipo !== 'dia';   /* do resumo do dia para uma ordem ou lote: o ← Voltar retorna ao dia */
     S.aberto = { tipo, cod };
-    if (op.hist !== false) { try { if (history.state && history.state.vacFicha) history.replaceState({ ...history.state, vacFicha: { tipo, cod } }, ''); else { history.pushState({ ...(history.state || {}), vacFicha: { tipo, cod } }, ''); } S.empilhado = true; } catch (e) { } }
+    if (op.hist !== false) { try { if (history.state && history.state.vacFicha && !veioDoDia) history.replaceState({ ...history.state, vacFicha: { tipo, cod } }, ''); else { history.pushState({ ...(history.state || {}), vacFicha: { tipo, cod } }, ''); } S.empilhado = true; } catch (e) { } }
     render(); document.addEventListener('keydown', esc, true);
     const p = carregar(); render(); p.then(render, render);
   }
@@ -4835,7 +4926,7 @@ const vacFicha = (() => {
   const link = (tipo, cod) => vacDemo.atualHref('ficha=' + tipo + '/' + encodeURIComponent(cod));
   function avisa(m) { try { if (typeof toast === 'function') return toast(m); } catch (e) { } console.info(m); }
   document.addEventListener('click', e => {
-    const t = e.target.closest && e.target.closest('[data-vac-ordem],[data-vac-lote],[data-vac-lp],[data-vf-modo],[data-vf-link],[data-vf-fechar],[data-vf-ir]'); if (!t) return;
+    const t = e.target.closest && e.target.closest('[data-vac-ordem],[data-vac-lote],[data-vac-lp],[data-vac-dia],[data-vf-modo],[data-vf-link],[data-vf-fechar],[data-vf-ir]'); if (!t) return;
     if (t.hasAttribute('data-vf-ir')) { const h = t.getAttribute('href') || ''; if (h.startsWith('#')) { e.preventDefault(); fechar({ hist: false }); try { if (history.state && history.state.vacFicha) history.replaceState({ ...history.state, vacFicha: null }, ''); } catch (x) { } if (location.hash === h) window.dispatchEvent(new HashChangeEvent('hashchange')); else location.hash = h; } else fechar({ hist: false }); return; }
     e.preventDefault(); e.stopPropagation();
     if (t.hasAttribute('data-vf-modo')) { try { localStorage.setItem('vac.ficha.modo', t.getAttribute('data-vf-modo')); } catch (x) { } return render(); }
@@ -4844,9 +4935,12 @@ const vacFicha = (() => {
     if (t.hasAttribute('data-vac-ordem')) return abrir('ordem', t.getAttribute('data-vac-ordem'));
     if (t.hasAttribute('data-vac-lote')) return abrir('lote', t.getAttribute('data-vac-lote'));
     if (t.hasAttribute('data-vac-lp')) return abrir('lp', t.getAttribute('data-vac-lp'));
+    if (t.hasAttribute('data-vac-dia')) return abrir('dia', t.getAttribute('data-vac-dia'));
   }, true);
+  /* barra de dia com foco: Enter ou espaço abrem o resumo do dia (o clique já abre) */
+  document.addEventListener('keydown', e => { if (e.key !== 'Enter' && e.key !== ' ') return; const t = e.target && e.target.closest && e.target.closest('[data-vac-dia]'); if (!t || /^(BUTTON|A|INPUT)$/.test(t.tagName)) return; e.preventDefault(); abrir('dia', t.getAttribute('data-vac-dia')); });
   window.addEventListener('popstate', e => { const f = e.state && e.state.vacFicha; if (f) abrir(f.tipo, f.cod, { hist: false }); else if (S.aberto) fechar({ hist: false }); });
-  const rota = () => { const m = /^#ficha=(ordem|lote|lp|intervalo)\/(.+)$/.exec(location.hash || ''); if (!m) return; let c = m[2]; try { c = decodeURIComponent(c); } catch (e) { } try { history.replaceState(history.state, '', location.href.split('#')[0]); } catch (e) { } abrir(m[1], c); };
+  const rota = () => { const m = /^#ficha=(ordem|lote|lp|intervalo|dia)\/(.+)$/.exec(location.hash || ''); if (!m) return; let c = m[2]; try { c = decodeURIComponent(c); } catch (e) { } try { history.replaceState(history.state, '', location.href.split('#')[0]); } catch (e) { } abrir(m[1], c); };
   window.addEventListener('hashchange', rota);
   /* busca: ordem, lote, LP, catálogo e equipamento entram na busca comum (Ctrl K) de todas as páginas */
   const ligaBusca = () => {
@@ -5561,7 +5655,17 @@ window.vacPagina = (() => {
       default: await Store.usar(dir);
     } } finally { conectando = false; }
   }
+  /* 15/11/2026 · voltar para um módulo já aberto, na mesma aba e no mesmo período: a tela que já estava desenhada aparece na hora e a
+     atualização (o mesmo redesenho de antes, com os mesmos dados) roda logo depois da pintura, em vez de segurar a troca de módulo.
+     Aba, período ou endereço diferentes continuam sendo aplicados na hora. */
+  let irUlt = '', irT = 0;
   function irAba(aba, hash, contexto) {
+    clearTimeout(irT);
+    const chave = JSON.stringify([aba || '', contexto || null]);
+    if (!hash && aba && chave === irUlt) { irT = setTimeout(() => { try { irAgora(aba, hash, contexto); } catch (e) { console.warn('vacPagina.ir', e); } }, 40); return; }
+    irUlt = hash ? '' : chave; return irAgora(aba, hash, contexto);
+  }
+  function irAgora(aba, hash, contexto) {
     if (hash) {
       location.hash = hash;
       if (typeof cadRota === 'function') cadRota();
@@ -5680,6 +5784,7 @@ window.vacPagina = (() => {
     },
     imprimir: () => { if (!vacPodeAqui('exportar')) throw new Error('Seu perfil não permite imprimir.'); window.print(); },
     abrirOrdem: n => vacFicha.abrir('ordem', String(n)),
+    abrirDia: d => vacFicha.abrir('dia', String(d)),
     atualizar: () => { if (typeof vacAoVoltar === 'function') return vacAoVoltar(); },
     autenticar: op => vacLogin.abrir(op), sessao: () => vacLogin.sessao()
   };
@@ -5726,6 +5831,7 @@ const VAC_ICONES = {
   fechar: '<path d="M18 6 6 18"/><path d="m6 6 12 12"/>',
   pega: '<circle cx="9" cy="12" r="1"/><circle cx="9" cy="5" r="1"/><circle cx="9" cy="19" r="1"/><circle cx="15" cy="12" r="1"/><circle cx="15" cy="5" r="1"/><circle cx="15" cy="19" r="1"/>',
   restaurar: '<path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/>',
+  ampliar: '<polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" x2="14" y1="3" y2="10"/><line x1="3" x2="10" y1="21" y2="14"/>',
   filtro: '<line x1="21" x2="14" y1="4" y2="4"/><line x1="10" x2="3" y1="4" y2="4"/><line x1="21" x2="12" y1="12" y2="12"/><line x1="8" x2="3" y1="12" y2="12"/><line x1="21" x2="16" y1="20" y2="20"/><line x1="12" x2="3" y1="20" y2="20"/><line x1="14" x2="14" y1="2" y2="6"/><line x1="8" x2="8" y1="10" y2="14"/><line x1="16" x2="16" y1="18" y2="22"/>',
   calendario: '<path d="M8 2v4"/><path d="M16 2v4"/><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M3 10h18"/>',
   pessoas: '<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>',
@@ -5981,12 +6087,30 @@ const vacGrade = (() => {
         filhos.forEach((x, i) => { const k = chaves[i]; if (!x.dataset.vgN) x.dataset.vgN = String((p._vgNat && p._vgNat[k]) || 6); const l = String(larg[k] || x.dataset.vgN); if (x.dataset.vgL !== l) x.dataset.vgL = l; const o = ordem.indexOf(k), ord = String(o >= 0 ? o : ordem.length + i); if (x.style.order !== ord) x.style.order = ord; x.dataset.vgKey = k; });
         cs.forEach(c => { c.classList.add('vg-it'); if (c.querySelector(':scope > .vg-barra')) { marcar(c); return; }
           const b = document.createElement('div'); b.className = 'vg-barra'; b.setAttribute('role', 'toolbar'); b.setAttribute('aria-label', 'Disposição do gráfico');
-          b.innerHTML = '<button type="button" class="vg-pega" draggable="true" data-vg="pega" title="Arrastar para mudar de lugar" aria-label="Arrastar para mudar de lugar">' + vacIcone('pega', 'sm') + '</button><button type="button" data-vg="antes" title="Mover para antes" aria-label="Mover para antes">' + vacIcone('esquerda', 'sm') + '</button><button type="button" data-vg="depois" title="Mover para depois" aria-label="Mover para depois">' + vacIcone('direita', 'sm') + '</button><i></i><button type="button" data-vg="l6" title="Largura inteira" aria-label="Largura inteira"></button><button type="button" data-vg="l3" title="Metade da largura (2 lado a lado)" aria-label="Metade da largura"></button><button type="button" data-vg="l2" title="Um terço da largura (3 lado a lado)" aria-label="Um terço da largura"></button><i></i><button type="button" data-vg="rest" title="Voltar à disposição original deste bloco" aria-label="Voltar à disposição original">' + vacIcone('restaurar', 'sm') + '</button>';
+          b.innerHTML = '<button type="button" class="vg-pega" draggable="true" data-vg="pega" title="Arrastar para mudar de lugar" aria-label="Arrastar para mudar de lugar">' + vacIcone('pega', 'sm') + '</button><button type="button" data-vg="antes" title="Mover para antes" aria-label="Mover para antes">' + vacIcone('esquerda', 'sm') + '</button><button type="button" data-vg="depois" title="Mover para depois" aria-label="Mover para depois">' + vacIcone('direita', 'sm') + '</button><i></i><button type="button" data-vg="l6" title="Largura inteira" aria-label="Largura inteira"></button><button type="button" data-vg="l3" title="Metade da largura (2 lado a lado)" aria-label="Metade da largura"></button><button type="button" data-vg="l2" title="Um terço da largura (3 lado a lado)" aria-label="Um terço da largura"></button><i></i><button type="button" data-vg="rest" title="Voltar à disposição original deste bloco" aria-label="Voltar à disposição original">' + vacIcone('restaurar', 'sm') + '</button><i></i><button type="button" data-vg="amp" aria-pressed="false" title="Ampliar este gráfico na tela inteira" aria-label="Ampliar este gráfico na tela inteira">' + vacIcone('ampliar', 'sm') + '</button>';
           c.appendChild(b); marcar(c); });
         marcarGrupo(p);
       });
     } finally { aplicar._em = 0; }
   }
+  /* 15/11/2026 · letra legível: o SVG com viewBox encolhe junto com o cartão e a letra ia junto (2,7 px num cartão de 1/3). Quando a letra
+     típica do gráfico ficaria abaixo de 9 px na tela, o gráfico deixa de encolher (largura mínima) e o cartão ganha rolagem lateral.
+     Só apresentação: o gráfico e os números são os mesmos. Gráfico que se redesenha na largura do cartão (Produção) não é tocado. */
+  const LEG_MIN = 9;
+  function legivel() {
+    document.querySelectorAll('main .vg-it svg[viewBox], main .card svg[viewBox], main .vk-card svg[viewBox]').forEach(sv => {
+      if (sv.closest('.vg-barra,button,a,.kpi,table') || sv.classList.contains('vi') || sv.classList.contains('ico')) return;
+      const vb = sv.viewBox && sv.viewBox.baseVal; if (!vb || vb.width < 200) return; const cx = sv.parentElement; if (!cx || !cx.clientWidth) return;
+      let fs = sv._vgFs; if (fs === undefined || sv._vgN !== sv.childElementCount) { const L = [...sv.querySelectorAll('text')].slice(0, 60).map(x => parseFloat(getComputedStyle(x).fontSize)).filter(x => x > 0).sort((a, b) => a - b); fs = sv._vgFs = L.length ? L[L.length >> 1] : 0; sv._vgN = sv.childElementCount; }
+      if (!fs) return; const minW = Math.ceil(vb.width * LEG_MIN / fs), livre = cx.clientWidth;
+      if (sv.dataset.vgLeg) { if (livre >= minW - 2) { delete sv.dataset.vgLeg; sv.style.minWidth = sv._vgMw || ''; cx.classList.remove('vg-rola'); } return; }
+      if (sv.getBoundingClientRect().width * fs / vb.width < LEG_MIN - .4 && livre < minW) { sv._vgMw = sv.style.minWidth; sv.dataset.vgLeg = '1'; sv.style.minWidth = minW + 'px'; cx.classList.add('vg-rola'); }
+    });
+  }
+  /* Ampliar: o próprio cartão (com os cliques e a dica do gráfico) ocupa a tela; Esc ou o botão voltam. */
+  function ampliar(c, on) { const liga = on === undefined ? !c.classList.contains('vg-amp') : on; document.querySelectorAll('.vg-amp').forEach(x => x.classList.remove('vg-amp')); document.documentElement.classList.toggle('vg-tem-amp', liga); if (liga) c.classList.add('vg-amp');
+    const b = c.querySelector(':scope > .vg-barra [data-vg="amp"]'); if (b) { b.setAttribute('aria-pressed', String(liga)); b.title = liga ? 'Voltar ao tamanho normal (Esc)' : 'Ampliar este gráfico na tela inteira'; b.setAttribute('aria-label', b.title); }
+    redesenhar(); setTimeout(() => { try { legivel(); } catch (e) { } }, 140); }
   function marcar(c) { const l = c.dataset.vgL || '6'; c.querySelectorAll(':scope > .vg-barra [data-vg^="l"]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.vg === 'l' + l)));
     /* 12/11/2026 · seta sem efeito (cartão na ponta ou sozinho no grupo) fica apagada, com o motivo */
     const p = c.parentElement; if (!p) return; const L = itens(p), i = L.indexOf(c), so = L.length < 2;
@@ -5997,7 +6121,7 @@ const vacGrade = (() => {
   function salvarOrdem(p, lista) { const prefs = ler(), gk = chaveGrupo(p); prefs[gk] = prefs[gk] || {}; prefs[gk].ordem = lista.map(x => x.dataset.vgKey); gravar(prefs); lista.forEach((x, i) => { x.style.order = String(i); }); marcarGrupo(p); }
   function redesenhar() { setTimeout(() => window.dispatchEvent(new Event('resize')), 60); }
   document.addEventListener('click', e => { const b = e.target.closest && e.target.closest('.vg-barra [data-vg]'); if (!b) return; const c = b.closest('.vg-it'), p = c && c.parentElement; if (!p) return; e.preventDefault(); e.stopPropagation();
-    const a = b.dataset.vg, prefs = ler(), gk = chaveGrupo(p); prefs[gk] = prefs[gk] || {};
+    const a = b.dataset.vg; if (a === 'amp') { ampliar(c); return; } const prefs = ler(), gk = chaveGrupo(p); prefs[gk] = prefs[gk] || {};
     if (a === 'l6' || a === 'l3' || a === 'l2') { prefs[gk].larg = prefs[gk].larg || {}; prefs[gk].larg[c.dataset.vgKey] = +a.slice(1); gravar(prefs); c.dataset.vgL = a.slice(1); marcar(c); redesenhar(); }
     else if (a === 'antes' || a === 'depois') { const L = itens(p), i = L.indexOf(c), j = a === 'antes' ? i - 1 : i + 1; if (j < 0 || j >= L.length) { marcar(c); return; } L.splice(i, 1); L.splice(j, 0, c); salvarOrdem(p, L); b.focus(); }
     else if (a === 'rest') { delete prefs[gk]; gravar(prefs); [...p.children].forEach((x, i) => { if (x.dataset.vgN) x.dataset.vgL = x.dataset.vgN; x.style.order = ''; }); aplicar(); marcarGrupo(p); redesenhar(); } }, true);
@@ -6006,10 +6130,15 @@ const vacGrade = (() => {
   document.addEventListener('dragover', e => { if (!arr) return; const t = e.target.closest && e.target.closest('.vg-grade > *'); document.querySelectorAll('.vg-alvo').forEach(x => x.classList.remove('vg-alvo')); if (t && t !== arr && t.parentElement === arr.parentElement && t.dataset.vgKey) { e.preventDefault(); t.classList.add('vg-alvo'); } });
   document.addEventListener('drop', e => { if (!arr) return; const t = e.target.closest && e.target.closest('.vg-grade > *'); if (t && t !== arr && t.parentElement === arr.parentElement && t.dataset.vgKey) { e.preventDefault(); const p = arr.parentElement, L = itens(p), i = L.indexOf(arr); L.splice(i, 1); const j = L.indexOf(t), r = t.getBoundingClientRect(), depois = e.clientX > r.left + r.width / 2; L.splice(j + (depois ? 1 : 0), 0, arr); salvarOrdem(p, L); } });
   document.addEventListener('dragend', () => { document.querySelectorAll('.vg-alvo,.vg-arrastando').forEach(x => x.classList.remove('vg-alvo', 'vg-arrastando')); arr = null; });
-  let t = 0; const agendar = () => { clearTimeout(t); t = setTimeout(() => { try { aplicar(); } catch (e) { console.warn('vacGrade', e); } }, 180); };
+  /* 15/11/2026 · a disposição é aplicada antes da próxima pintura (requestAnimationFrame): o cartão não aparece primeiro na largura antiga para
+     depois pular. O temporizador continua como garantia (gráfico desenhado mais tarde) e confere a letra dos gráficos (legivel). */
+  let t = 0, q = 0; const roda = () => { q = 0; try { aplicar(); legivel(); } catch (e) { console.warn('vacGrade', e); } };
+  const agendar = () => { if (!q) q = requestAnimationFrame(roda); clearTimeout(t); t = setTimeout(roda, 180); };
   const ini = () => { const m = document.querySelector('main'); if (!m || window.VAC_GRADE_OFF) return; new MutationObserver(agendar).observe(m, { childList: true, subtree: true }); document.addEventListener('click', agendar); window.addEventListener('hashchange', agendar); agendar(); };
-  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', () => setTimeout(ini, 300)); else setTimeout(ini, 300);
-  return { aplicar, agendar };
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', ini); else ini();
+  window.addEventListener('resize', () => { clearTimeout(legivel._t); legivel._t = setTimeout(() => { try { legivel(); } catch (e) { } }, 220); });
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') { const c = document.querySelector('.vg-amp'); if (c) { e.stopPropagation(); ampliar(c, false); } } }, true);
+  return { aplicar, agendar, legivel, ampliar };
 })();
 </script>
 <script>
