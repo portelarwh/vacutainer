@@ -8,8 +8,10 @@ const {FILE,load,encode} = helpers;
 const sha = text => createHash('sha256').update(text).digest('hex');
 export function metadata(app) {
   const old = JSON.parse(app.text('dados/manifesto'));
-  const files = [...app.sources.keys()].filter(id=>id.startsWith('motor/')).map(key => {
-    const id = key.slice(6), html = app.assemble(key);
+  const records=helpers.registry(app);
+  for(const key of app.sources.keys())if(key.startsWith('motor/')&&!records.some(m=>key==='motor/'+m.id))throw new Error('Motor sem registro: '+key);
+  const files = records.map(({id}) => {
+    const html = app.assemble('motor/'+id);
     const version = html.match(/const PAGE\s*=\s*\{[^}]*?versao\s*:\s*['"]([^'"]+)/s)?.[1] || html.match(/(?:const|let) APP_VER(?:SION)?\s*=\s*['"]([^'"]+)/)?.[1];
     if (!version) throw new Error('Versão ausente: ' + id);
     return {id,path:'Plataforma.html#motor/'+id,version,sha256:sha(html),bytes:Buffer.byteLength(html)};

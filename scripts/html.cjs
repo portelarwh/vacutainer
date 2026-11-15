@@ -41,8 +41,16 @@ function fromHtml(html) {
 function load(file = FILE) {return fromHtml(fs.readFileSync(file, 'utf8'));}
 let cached;
 const current = () => cached || (cached = load());
-const names = {'Portal.html':'portal','OEE-Vacutainer.html':'oee','Perdas-Ordem.html':'perdas','Gestão-Gel-Vacutainer.html':'gel','Paradas.html':'paradas','Equipamentos.html':'equip','Iniciativas.html':'inic','Linha-360.html':'linha','Projetos.html':'projetos'};
-const engine = name => current().assemble('motor/' + (names[name] || name));
+const registries=new WeakMap();
+function registry(app=current()) {
+  if(registries.has(app))return registries.get(app);
+  const declaration=app.text('modulo/core/modules').match(/const modules = (\[[\s\S]*?\n\]);/);
+  if(!declaration)throw new Error('Registro literal de módulos ausente do código.');
+  const records=vm.runInNewContext(declaration[1],Object.create(null),{timeout:1000});
+  if(!Array.isArray(records)||records.some(m=>typeof m.id!=='string'||typeof m.file!=='string')||new Set(records.map(m=>m.id)).size!==records.length)throw new Error('Registro de módulos inválido.');
+  registries.set(app,records);return records;
+}
+const engine = name => current().assemble('motor/' + (registry().find(m=>m.file===name)?.id || name));
 const manifest = () => JSON.parse(current().text('dados/manifesto'));
 function library(name) {
   const target = new Module(FILE + '#' + name, module);
@@ -65,4 +73,5 @@ function materialize(directory = fs.mkdtempSync(path.join(os.tmpdir(), 'vac-modu
   }
   return directory;
 }
-module.exports = {ROOT, FILE, parse, assemble, load, fromHtml, current, names, engine, manifest, library, model, materialize, encode};
+module.exports = {ROOT, FILE, parse, assemble, load, fromHtml, current, registry, engine, manifest, library, model, materialize, encode};
+Object.defineProperty(module.exports,'names',{get:()=>Object.fromEntries(registry().map(m=>[m.file,m.id]))});
