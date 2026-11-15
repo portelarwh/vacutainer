@@ -23,6 +23,10 @@ Demonstração integrada: botão comum nas oito páginas; `paginas/Demonstracao.
 
 SQDCP (Produção 2.4.20; gráficos em barras verde/vermelho com linha só para meta e tendência na 2.4.33, PRD-09): quadro de 25 posições, acidente/QN por turno e impressão de uma A4 paisagem. Fontes em `fontes/producao/sqdcp*`; uso, contratos e pendências em `docs/producao-sqdcp.md`. Campos opcionais; ausência de resposta nunca é zero. **2.4.58:** layout "SQDCP – Gestão Diária" (cabeçalho em três blocos, resumo executivo por pilar com o mesmo resultado das posições, cards com engrenagem, cores dos pilares × cor da situação, Modo Reunião `body.sqdcp-reuniao`, quadro sem a série do mês); números conferidos pela referência `testes/bases/sqdcp-referencia.json` (`tsqdcp_layout.js`).
 
+## Preparação visual do produto único (15/11/2026)
+
+Para a nova plataforma, começar por `nova-plataforma/docs/COMECE-AQUI.md`, seu AGENTS.md e a referência BD fornecida pelo responsável. A identidade do produto é `nova-plataforma/src/design/brand.css`, aplicada igualmente na casca e nos módulos incorporados. `fontes/kit/kit_ds.css` continua a base visual legada; não editar cada HTML para mudar a marca da plataforma. Esta camada é só apresentação, sem alterar fórmula, classificação, permissão, persistência ou estrutura. A revisão individual de gráficos e relatórios permanece no plano de melhorias.
+
 ## Design System (12/11/2026) · ler antes de mexer em layout
 
 Padrão visual único das páginas: `docs/design-system.md` (o que existe e o que falta), com a especificação do usuário em `docs/ux/padronizacao-design-system.txt` e `docs/ux/agente-persona.txt`. Código só em `fontes/kit/kit_ds.css` e `fontes/kit/kit_ds.js`, aplicados pelos builds em todas as páginas:

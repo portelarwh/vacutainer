@@ -1,3 +1,4 @@
+import brandCss from '../design/brand.css?raw';
 import {replaceOnce} from './text';
 import {sessionUser,mayWrite} from './auth';
 import {protectFolder} from './compatibility';import manifest from '../generated/manifest.json';import {FILES} from './modules';
@@ -45,7 +46,7 @@ export function openOrder(id:ModuleId,code:string){const w=frames.get(id)?.conte
 export function refreshEngine(id:ModuleId){const w=frames.get(id)?.contentWindow as any;return w?.vacPagina?.atualizar()}
 export async function connectEngine(id:ModuleId){const w=frames.get(id)?.contentWindow as any;if(!w?.vacPagina)throw new Error('Contrato indisponível.');await w.vacPagina.conectar(await (window as any).vacAppHost.safeFolder(id));}
 export function hasPending(){return[...frames.values()].some(f=>{try{const api=(f.contentWindow as any)?.vacPagina;return !api||api.pendente()}catch{return true}})}
-const embeddedCss=`
+const embeddedCss=brandCss+`
 html,body{margin:0!important;padding:0!important;height:auto!important;min-height:0!important;min-width:0!important;font-family:var(--f-body)!important;background:var(--bg)!important}
 .vac-estado-banner,#vacEstFaixa,.vestfaixa{display:none!important}
 .vsuite,.vpage,nav.vtabs,#vacDemoBar,#sysNav,#vacGuiaBotao,body>.testbar{display:none!important}
@@ -125,7 +126,15 @@ function runtimePrelude(config:{id:string;route:string;demo:boolean;scope:string
  document.addEventListener('click',e=>{const a=(e.target as Element)?.closest?.('a[href]');if(!a||a.hasAttribute('download')||e.ctrlKey||e.metaKey)return;const h=a.getAttribute('href')||'';if(/\.html(?:[?#]|$)/i.test(h)){e.preventDefault();e.stopImmediatePropagation();host.ir(h)}},true);
  function report(){try{host.status(config.id,{ready:true,pending:pending(),connected:connected(),tabs:api().abas(),commands:api().comandos(),info:api().info()})}catch(e){host.status(config.id,{ready:true,pending:true,connected:false,error:(e as Error).message})}}
  let attempts=0;const timer=setInterval(()=>{if(!ready()){if(++attempts>150){clearInterval(timer);host.status(config.id,{ready:false,pending:false,connected:false,error:'O módulo não concluiu a abertura.'})}return}clearInterval(timer);
-  document.documentElement.dataset.theme=(parent.document.documentElement.dataset.theme||'light');
+  document.documentElement.dataset.theme=parent.document.documentElement.dataset.theme||'light';
+  // O motor pode conservar sua preferência antiga. A marca usa um atributo de
+  // apresentação próprio, evitando disputar data-theme com observers do Gel.
+  let printing=false;
+  const followTheme=()=>{const theme=printing?'light':parent.document.documentElement.dataset.theme||'light';if(document.documentElement.dataset.vacHostTheme!==theme)document.documentElement.dataset.vacHostTheme=theme};
+  followTheme();
+  const parentThemeObserver=new MutationObserver(followTheme);parentThemeObserver.observe(parent.document.documentElement,{attributes:true,attributeFilter:['data-theme']});
+  window.addEventListener('beforeprint',()=>{printing=true;followTheme()});
+  window.addEventListener('afterprint',()=>{printing=false;followTheme()});
   const resize=()=>{const modal=[...document.querySelectorAll('.vlog,.overlay,.modal.on')].some(e=>e.getClientRects().length>0);host.resize(config.id,Math.ceil(modal?Math.max(320,parent.innerHeight-110):Math.max(360,document.body.getBoundingClientRect().height)),modal)};new ResizeObserver(resize).observe(document.body);new MutationObserver(()=>requestAnimationFrame(resize)).observe(document.body,{childList:true,subtree:true});window.addEventListener('resize',resize);resize();
   route('',config.route||undefined);report();
   setInterval(()=>report(),1800);

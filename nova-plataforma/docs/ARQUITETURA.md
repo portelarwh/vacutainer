@@ -1,4 +1,4 @@
-# Arquitetura e contratos
+# Arquitetura implementada e contratos
 
 ## Distribuição
 
@@ -37,3 +37,10 @@ A primeira entrega não altera o modelo de gravação para arquivos por estaçã
 ## Correções PR76
 
 O build da plataforma primeiro compila a raiz; o empacotador lê os nove HTML atuais, sem transformações textuais e sem fallback de snapshot. A casca usa a sessão vacLogin e as permissões por ação do vacTravas. Antes da conexão, a versão é conferida; a escrita é protegida no realm do motor sem tornar os handles não clonáveis no IndexedDB. Os escopos de todas as pastas são preservados e a troca consulta reservas e fila durável. O plano de corte está em CORTE.md; nenhuma troca foi executada na pasta real.
+
+
+## Camada visual compartilhada
+
+A identidade do produto novo está em `src/design/brand.css`, importado pela casca e como texto pela ponte de apresentação dos módulos. A folha adapta os tokens existentes do kit, preservando os motores empacotados. Não é um novo armazenamento ou motor de cálculo. `src/style.css` cuida do layout da casca. Critérios de cor de resultado, como verde/vermelho no SQDCP, permanecem os mesmos.
+
+A arquitetura desejada está em [ARQUITETURA-v1.md](ARQUITETURA-v1.md); o ponto de entrada para os agentes é [COMECE-AQUI.md](COMECE-AQUI.md). Esta preparação não altera os contratos de base, autenticação, cálculo ou persistência.
