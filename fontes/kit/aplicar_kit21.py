@@ -6,7 +6,8 @@ Uso (na raiz do projeto): python fontes/kit/aplicar_kit21.py
 A Produção pega o kit_v21.js ao rodar fontes/producao/build.py."""
 import os,re,json
 RAIZ=os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)),'..','..'))
-k=open(os.path.join(RAIZ,'fontes','kit','kit_v21.js'),encoding='utf-8').read()
+from permissoes_embed import ler_kit
+k=ler_kit(RAIZ)
 k=k.rstrip('\n')+'\n'+open(os.path.join(RAIZ,'fontes','kit','kit_ds.js'),encoding='utf-8').read().strip('\n')   # Design System (barra lateral, ícones, grade de gráficos)
 sis=open(os.path.join(RAIZ,'fontes','kit','sistemas.js'),encoding='utf-8').read().strip()
 PAD=re.compile(r'const DEFAULT_SYSTEMS=\[.*?\];',re.S)

@@ -227,7 +227,9 @@ css="""<style>
 @media(max-width:760px){#nav.ngrupos{overflow-x:auto}.ngrp .natual{display:none}}
 </style>
 """
-kit21=open(os.path.join(RAIZ,'fontes','kit','kit_v21.js'),encoding='utf-8').read()
+sys.path.insert(0,os.path.join(RAIZ,'fontes','kit'))
+from permissoes_embed import ler_kit
+kit21=ler_kit(RAIZ)
 kit21=kit21.rstrip('\n')+'\n'+open(os.path.join(RAIZ,'fontes','kit','kit_ds.js'),encoding='utf-8').read().strip('\n')   # Design System
 # catálogo de sistemas único (fontes/kit/sistemas.js), igual nas 5 páginas
 import re as _re

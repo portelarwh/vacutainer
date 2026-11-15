@@ -1150,7 +1150,7 @@ function vacCad(){if(typeof Cad!=='undefined'&&Cad&&Cad.D)return Cad.D;try{retur
 function vacUsuario(c=vacCad()){let id='';try{id=localStorage.getItem('vac.userId')||''}catch(e){}return id&&c?(c.usuarios||[]).find(u=>String(u.codigo)===String(id))||null:null}
 function vacPerfil(c=vacCad()){const u=vacUsuario(c);return u&&c?(c.perfis||[]).find(p=>p.codigo===u.perfil)||null:null}
 /* permissão do perfil na página (sem perfil, sem cadastro ou sem a página no perfil = pode) */
-function vacPode(mod,fn='ver'){const p=vacPerfil();if(!p||!p.permissoes||!p.permissoes[mod])return true;return p.permissoes[mod][fn]!==false}
+function vacPode(mod,fn='ver'){return vacPodeComum(vacCad(),vacUsuario(),mod,fn)}
 /* semáforo comum: 'ok' | 'warn' | 'crit' | 'none' em relação à meta (inverso: menor é melhor, ex.: scrap, waste) */
 function vacSemaforo(v,meta,{inverso=false}={}){if(v==null||meta==null||!isFinite(v)||!isFinite(meta)||!meta)return'none';const c=vacCad(),P=(c&&c.parametros)||{};
  const vd=(+P.semaforoVerdePct||100)/100,am=(+P.semaforoAmareloPct||90)/100,r=inverso?(v<=0?Infinity:meta/v):v/meta;return r>=vd?'ok':r>=am?'warn':'crit'}
@@ -2195,7 +2195,16 @@ document.addEventListener('click', ev => { const b = ev.target.closest('.vk-mais
    (Portal › Administração › Perfis: lancar, fechar, importar, excluir, configurar). O que o perfil não pode fica desligado, com o motivo
    no título; o clique também é barrado. Sem usuário identificado, ou perfil sem permissões gravadas, nada muda (vacPode devolve true).
    Identifica, não é cofre (registro 5.4/A07): a proteção real é a permissão da pasta. A Linha 360° segue o módulo Equipamentos. */
-const VAC_PODE_MOD = { linha: 'equip' };
+// Regra pura compartilhada pelos motores e pela casca. Ausência preserva o contrato do kit;
+// a exigência de sessão válida pertence à camada de acesso, não muda esta regra.
+const VAC_PODE_MOD = Object.freeze({ linha: 'equip' });
+function vacPodeComum(cadastro, usuario, modulo, acao = 'ver') {
+  const perfil = cadastro && usuario ? (cadastro.perfis || []).find(p => p.codigo === usuario.perfil) : null;
+  const alvo = VAC_PODE_MOD[modulo] || modulo;
+  if (!perfil || !perfil.permissoes || !perfil.permissoes[alvo]) return true;
+  return perfil.permissoes[alvo][acao] !== false;
+}
+
 const VAC_PODE_TXT = { lancar: 'lançar ou editar', fechar: 'fechar ou reabrir', importar: 'importar', excluir: 'excluir', configurar: 'configurar' };
 const VAC_PODE_MAPA = {
   oee: {
@@ -2498,6 +2507,7 @@ window.vacPagina = (() => {
   }
   return { pronto, pendente, conectado, conectar, ir: irAba, abas, comandos,
     executarContaPropria, filaSoContaPropria, validarDocumentoConta,
+    pode: (modulo, acao) => vacPodeComum(vacCad(), vacUsuario(), modulo, acao),
     get contaPropria() { return conta; },
     descartar: () => window.__vacRuntimeDispose && window.__vacRuntimeDispose(),
     bibliotecaCarregada: () => { if (typeof vacPdf !== 'undefined') vacPdf.instalar(); },
