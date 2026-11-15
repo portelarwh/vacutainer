@@ -4721,7 +4721,17 @@ window.vacPagina = (() => {
     descartar: () => window.__vacRuntimeDispose && window.__vacRuntimeDispose(),
     bibliotecaCarregada: () => { if (typeof vacPdf !== 'undefined') vacPdf.instalar(); },
     comando: chave => { const el = document.getElementById(chave); if (!el) throw new Error('Comando indisponível: ' + chave); el.click(); },
-    info: () => { const el = document.querySelector('#stBase')?.cloneNode(true); if (el) el.querySelectorAll('a,button,.vapps').forEach(n => n.remove()); return { versao: PAGE.versao, estado: el?.textContent.trim() || '', podeImprimir: vacPodeAqui('exportar') }; },
+    info: () => {
+      const el = document.querySelector('#stBase')?.cloneNode(true);
+      if (el) el.querySelectorAll('a,button,.vapps,#appVer,#vacEstPill').forEach(n => n.remove());
+      // Mantém as fronteiras dos indicadores e acrescenta espaços entre nós de texto.
+      const texto = n => n.nodeType === 3 ? n.textContent : Array.from(n.childNodes).map(texto).join(' ');
+      const estado = el ? Array.from(el.childNodes).map(n => ({
+        texto: texto(n).replace(/\s+/g, ' ').trim(),
+        tom: n.classList && ['bad','warn','good','info'].find(c => n.classList.contains(c)) || 'neutral'
+      })).filter(p => p.texto && p.texto !== '·') : [];
+      return { versao: PAGE.versao, estado, situacaoPagina: vacEstadoDe(PAGE.id), podeImprimir: vacPodeAqui('exportar') };
+    },
     imprimir: () => { if (!vacPodeAqui('exportar')) throw new Error('Seu perfil não permite imprimir.'); window.print(); },
     abrirOrdem: n => vacFicha.abrir('ordem', String(n)),
     atualizar: () => { if (typeof vacAoVoltar === 'function') return vacAoVoltar(); },

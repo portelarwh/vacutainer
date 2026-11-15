@@ -31,3 +31,9 @@ As oito fixtures passam pelos adaptadores `vacDemo.registrar` atuais, com o cen�
 O manifesto não carrega mais HEAD como revisão dos motores. Registra `sourceRevision` do último commit de fontes/paginas e `enginesSha256`, SHA-256 dos bytes de engines.json + NUL + libraries.json. A demonstração gerada não conta como fonte suja. Saúde dos dados e guia auxiliar exibem revisão e hash.
 
 A compressão usa fflate 0.8.2 fixado no lockfile, em vez de depender da versão do zlib do Node. Isso permite ao CI comparar src/generated/ e dist/ com o commit. `test:reprodutibilidade` recompila duas vezes e compara todos os artefatos, incluindo o guia; também roda no CI. Os 37 testes unitários passaram nesta etapa. Os artefatos serão recompilados novamente após o último commit de fontes para registrar a proveniência final sem circularidade de HEAD.
+
+## N6 · Situação e navegação das abas
+
+O contrato do kit publica indicadores como `{texto,tom}` separados, além da situação editorial da página. A casca renderiza pílulas com separadores, versão e um único aviso de atualização/construção. O aviso nativo real (#vacEstFaixa) fica oculto só no quadro embutido.
+
+A barra de abas indica conteúdo lateral com sombras, admite rolagem horizontal e revela a aba ativa ao navegar/redimensionar. Os observers e listeners são removidos ao desmontar. `test:tela` confere 390 e 1440 px, os separadores, a primeira e a última aba totalmente visíveis e um aviso de atualização explicitamente exercitado. As capturas do guia auxiliar foram renovadas com Playwright e dados fictícios.

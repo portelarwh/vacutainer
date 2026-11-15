@@ -3,7 +3,7 @@ import {sessionUser,mayWrite} from './auth';
 import {protectFolder} from './compatibility';import manifest from '../generated/manifest.json';import {FILES} from './modules';
 import compressed from '../generated/engines.json';import shared from '../generated/libraries.json';import scenario from '../generated/scenario.json';
 import {moduleOf,type ModuleId,type Tab} from './modules';import {today,sourceFrom,type Directory,type Json,type Source} from './data';
-export interface EngineStatus{ready:boolean;pending:boolean;connected:boolean;error?:string;readOnly?:boolean;tabs?:Tab[];commands?:{id:string;label:string;disabled:boolean}[];info?:{versao:string;estado:string;podeImprimir?:boolean}}
+export interface EngineStatus{ready:boolean;pending:boolean;connected:boolean;error?:string;readOnly?:boolean;tabs?:Tab[];commands?:{id:string;label:string;disabled:boolean}[];info?:{versao:string;estado:{texto:string;tom:string}[];situacaoPagina?:{estado:string;rot:string;cls:string;nota:string}|null;podeImprimir?:boolean}}
 export interface HostCallbacks {navigate:(id:ModuleId,tab?:string,hash?:string)=>void;demonstrate:()=>void;status:(id:ModuleId,status:EngineStatus)=>void;changed:()=>void;search:()=>void;cadastro?:(cad:Json)=>void}
 const libraries:Record<string,string>={};
 async function decode(encoded:string){const bytes=Uint8Array.from(atob(encoded),c=>c.charCodeAt(0));return new Response(new Blob([bytes]).stream().pipeThrough(new DecompressionStream('gzip'))).text()}
@@ -47,6 +47,7 @@ export async function connectEngine(id:ModuleId){const w=frames.get(id)?.content
 export function hasPending(){return[...frames.values()].some(f=>{try{const api=(f.contentWindow as any)?.vacPagina;return !api||api.pendente()}catch{return true}})}
 const embeddedCss=`
 html,body{margin:0!important;padding:0!important;height:auto!important;min-height:0!important;min-width:0!important;font-family:var(--f-body)!important;background:var(--bg)!important}
+.vac-estado-banner,#vacEstFaixa,.vestfaixa{display:none!important}
 .vsuite,.vpage,nav.vtabs,#vacDemoBar,#sysNav,#vacGuiaBotao,body>.testbar{display:none!important}
 body>header,body>.top,body>.head,body>.sysbar,body>nav,#nav,#vdsTop,#vdsPag{display:none!important}
 body main,#main,main.wrap{max-width:none!important;width:auto!important;min-height:0!important;margin:0!important;padding:16px 20px!important}

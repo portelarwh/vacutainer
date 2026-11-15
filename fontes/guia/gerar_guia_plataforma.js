@@ -4,7 +4,7 @@
 const fs=require('fs'),path=require('path'),http=require('http'),crypto=require('crypto');
 const root=path.resolve(__dirname,'../..'),app=path.join(root,'nova-plataforma'),images=path.join(app,'docs/instalacao');
 const args=new Set(process.argv.slice(2));
-function inputHash(){const files=['src/App.tsx','src/core/runtime.ts','src/style.css','src/components/ModuleFrame.tsx'];return crypto.createHash('sha256').update(Buffer.concat(files.map(f=>fs.readFileSync(path.join(app,f))))).digest('hex')}
+function inputHash(){const files=['src/App.tsx','src/core/runtime.ts','src/style.css','src/components/ModuleFrame.tsx','src/components/ModuleTabs.tsx'];return crypto.createHash('sha256').update(Buffer.concat(files.map(f=>fs.readFileSync(path.join(app,f))))).digest('hex')}
 async function capturar(){
  const {chromium}=require('playwright'),options=require('../../nova-plataforma/tests/chromium.cjs');
  const html=fs.readFileSync(path.join(app,'dist/Plataforma.html')),server=http.createServer((q,r)=>{r.setHeader('Content-Type','text/html');r.end(html)});let browser;
