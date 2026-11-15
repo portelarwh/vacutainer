@@ -1,10 +1,11 @@
 /* Portal 1.8.2 · Importar › Meta OEE FY27 (planilha fictícia no formato da aba Meta OEE FY27)
-   Precisa de: npm i -D playwright xlsx   ·   uso: node testes/tmeta.js */
+   Usa Playwright e SheetJS 0.20.3 local   ·   uso: node testes/tmeta.js */
 const RAIZ = require('path').resolve(__dirname, '..') + '/';
 const fs = require('fs'), path = require('path');
 const { chromium } = require('playwright');
-const XLSX = require('xlsx');
-const XLSX_JS = path.join(path.dirname(require.resolve('xlsx')), 'dist', 'xlsx.full.min.js');
+const XLSX_JS = path.join(RAIZ, 'paginas/lib/xlsx.full.min.js');
+const XLSX = require(XLSX_JS);
+if (XLSX.set_fs) XLSX.set_fs(fs);
 const SAIDA = RAIZ + 'testes/saida/'; fs.mkdirSync(SAIDA, { recursive: true });
 
 /* aba Meta OEE FY27: quadro mensal EDTA e SST (milheiros), quadro explícito EDTA out/26; BASE DE DADOS com PPH FY27 da EDTA */

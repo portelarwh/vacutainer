@@ -55,8 +55,8 @@ const PREP = () => {
   const V = await p.evaluate(() => ({ tab: App.tab, seg: Fila.seg, on: (document.querySelector('#flSeg .on') || {}).textContent }));
   ok(V.tab === 'fila' && V.seg === 'linha' && /^Linha/.test(V.on || ''), `#pend (antiga aba Pendências) abre a visão Linha (${V.on})`);
   L = await lista();
-  const pillU = await p.evaluate(() => { const i = [...document.querySelectorAll('.fl-i')].find(x => /Classificar 4 eventos/.test(x.innerText)); return i && /atenção/.test(i.innerText); });
-  ok(L.includes('Ajustar guia EQ03') && L.includes('Classificar 4 eventos') && !L.includes('Trocar mola') && !L.includes('Sem dono') && !L.includes('Já feita') && pillU, `Linha: todas as pendências (urgência escrita: "atenção") e só as ações atrasadas (${L.join(' | ')})`);
+  const pillU = await p.evaluate(() => { const i = [...document.querySelectorAll('.fl-i')].find(x => /Classificar 4 eventos/.test(x.innerText)); return i && /urgente/.test(i.innerText); });
+  ok(L.includes('Ajustar guia EQ03') && L.includes('Classificar 4 eventos') && !L.includes('Trocar mola') && !L.includes('Sem dono') && !L.includes('Já feita') && pillU, `Linha: todas as pendências (sev 1 escrita como "urgente") e só as ações atrasadas (${L.join(' | ')})`);
   ok(/Ver todas as ações \(4\)/.test(await p.evaluate(() => (document.getElementById('flTodas') || {}).textContent || '')), 'Linha: botão "Ver todas as ações (4)"');
   await p.click('#flTodas'); await p.waitForTimeout(150); L = await lista();
   ok(['Ajustar guia EQ03', 'Trocar mola', 'Apoio na limpeza', 'Sem dono'].every(x => L.includes(x)) && !L.includes('Já feita'), 'Ver todas as ações: as 4 abertas, de qualquer pessoa; concluída não entra');

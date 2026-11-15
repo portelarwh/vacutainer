@@ -1,0 +1,2 @@
+import {test} from 'node:test';import assert from 'node:assert/strict';import {readFileSync} from 'node:fs';
+test('M5: Ctrl+P encaminha para o módulo aberto e existe comando de impressão',()=>{const app=readFileSync('src/App.tsx','utf8'),kit=readFileSync('../fontes/kit/kit_v21.js','utf8');assert.ok(app.includes('printEngine'));assert.ok(app.includes("toLowerCase()==='p'"));assert.ok(app.includes('Imprimir módulo'));assert.ok(kit.includes('imprimir:'))});

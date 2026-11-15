@@ -1,0 +1,53 @@
+# Melhorias N1–N6 · 15/11/2026
+
+Somente dados fictícios e OPFS. Sem corte, merge ou alteração de formato das bases. N7 fica para depois do merge e em outro branch.
+
+## N1 · Conta própria
+
+A regressão em `tests/conta.cjs` falhou no artefato anterior: o Consulta fechava o login sem a senha existir no arquivo. A correção usa a transação e o backup existentes do Portal, com autorização temporária no contrato do kit. Só admite senha do próprio usuário, autocadastro Consulta e a criação exata do perfil padrão Consulta quando ausente. Não libera turnos, outras contas, outros arquivos ou base de versão futura.
+
+Além do caminho, valida o conteúdo completo contra a reaplicação das operações pela função original do Portal, incluindo auditoria. Confirma a gravação por releitura; erro não exibe sucesso e a autorização termina em finally. Testes conferem backup, releitura após recarregar, autocadastro sem perfil prévio, fila misturada, adulteração do documento e versão futura.
+
+## N2 · Permissão compartilhada
+
+`fontes/kit/permissoes.mjs` é a única regra. O build a incorpora nos scripts clássicos e a casca importa esse mesmo módulo ESM. Os antigos corpos de vacPode foram substituídos por delegação; o mapeamento linha → equip também é único. A camada de acesso ainda exige sessão válida.
+
+A regressão falhou com perfil sem permissões no código anterior. A tabela cobre ausência de permissões, módulo ausente, ação ausente, false e true. O teste no navegador compara 315 combinações com vacPode e vacPagina.pode do motor.
+
+## N3 · Guias separados
+
+Os três arquivos operacionais foram restaurados byte a byte de 7c3f064. O guia novo está em `fontes/guia/guia_plataforma.html` e é gerado por `gerar_guia_plataforma.js` em `nova-plataforma/dist/Instalacao-Plataforma.html`, com duas capturas reais do Playwright usando cenário fictício e o procedimento de retorno ao ponto de corte.
+
+As capturas têm relógio e viewport fixos e são versionadas. O build normal só compõe o HTML a partir dessas imagens; `--capturar` atualiza as imagens explicitamente. Isso evita mudanças de PNG por ambiente no CI. O teste confere o guia antigo por SHA-256, os prints incorporados e as instruções de retorno.
+
+## N4 · Bases preenchidas e comparação integral
+
+As oito fixtures passam pelos adaptadores `vacDemo.registrar` atuais, com o cenário fictício versionado. Linha 360° ganhou apenas um vínculo demonstrativo de ponto/equipamento; nenhum padrão MES/TPM foi inventado. Produção aplica o cadastro pelo CadSync original antes da extração e usa a serialização oficial. O gerador anterior falha no novo critério de preenchimento do Waste.
+
+`test:pasta` compara a base inteira na conexão e após uma alteração real por módulo. A referência contém explicitamente o campo alterado; os exports são calculados pelo motor atual sobre essa referência ANTES da escrita. Os históricos anteriores precisam permanecer idênticos; a única auditoria acrescentada tem tipo, autor e identificador conferidos. Metadados específicos de cada motor são previstos explicitamente. A normalização só ignora os controles documentados na raiz e exports.geradoEm, preservando campos homônimos dentro dos históricos. Também continuam os testes de sessão ausente, oito bases futuras e descarte na troca de pasta.
+
+## N5 · Proveniência e build reproduzível
+
+O manifesto não carrega mais HEAD como revisão dos motores. Registra `sourceRevision` do último commit de fontes/paginas e `enginesSha256`, SHA-256 dos bytes de engines.json + NUL + libraries.json. A demonstração gerada não conta como fonte suja. Saúde dos dados e guia auxiliar exibem revisão e hash.
+
+A compressão usa fflate 0.8.2 fixado no lockfile, em vez de depender da versão do zlib do Node. Isso permite ao CI comparar src/generated/ e dist/ com o commit. `test:reprodutibilidade` recompila duas vezes e compara todos os artefatos, incluindo o guia; também roda no CI. Os 37 testes unitários passaram nesta etapa. Os artefatos serão recompilados novamente após o último commit de fontes para registrar a proveniência final sem circularidade de HEAD.
+
+## N6 · Situação e navegação das abas
+
+O contrato do kit publica indicadores como `{texto,tom}` separados, além da situação editorial da página. A casca renderiza pílulas com separadores, versão e um único aviso de atualização/construção. O aviso nativo real (#vacEstFaixa) fica oculto só no quadro embutido.
+
+A barra de abas indica conteúdo lateral com sombras, admite rolagem horizontal e revela a aba ativa ao navegar/redimensionar. Os observers e listeners são removidos ao desmontar. `test:tela` confere 390 e 1440 px, os separadores, a primeira e a última aba totalmente visíveis e um aviso de atualização explicitamente exercitado. As capturas do guia auxiliar foram renovadas com Playwright e dados fictícios.
+
+## Regressão encontrada na suíte completa · carregamento N2
+
+A execução completa expôs chamadas de vacPode durante a inicialização do Waste e do Gel, antes do script tardio do kit v2.1. A regra ESM compartilhada foi movida para o bloco vac-bases do head, que antecede o código dos motores; permanece uma única implementação. O teste novo `test:inicializacao` abre as nove páginas atuais em consulta local e demonstração, rejeita erros de script e verifica navegação e os Paretos do Waste. As 18 aberturas passaram. A suíte completa é reiniciada após essa correção para conferir o mesmo estado final, sem misturar resultados.
+
+O gerador do guia também recusa capturas cujo hash da interface ficou desatualizado. A atualização das imagens continua explícita, com Playwright.
+
+## Fechamento da verificação
+
+O CI da plataforma usa fetch-depth: 0. O empacotador rejeita histórico raso, pois nele um commit só de artefatos pode ser confundido com origem dos motores. O teste cria dois repositórios Git fictícios locais e reproduz esse erro antes da proteção.
+
+As abas expõem IDs estáveis; o teste de navegação compara esses IDs com os do motor. O contrato remove o símbolo decorativo de Administração antes de publicar o rótulo, impedindo que o carregamento dos ícones altere seu texto. O equipamento do ponto fictício de gel da Linha 360° foi ligado ao EQ03 já existente no cadastro; o novo teste verifica todos os vínculos desse cenário.
+
+As 67 suítes da raiz passaram na execução completa. Após esses dois últimos ajustes de rótulo/vínculo, são repetidos design, demonstração e segurança/build, além da suíte completa da plataforma. Os resultados finais ficam em RESULTADO.md nesta pasta.

@@ -1,7 +1,6 @@
 # Testes automáticos (13/11/2026, pendência "package.json/CI" do registro § 1, decidida pelo responsável).
 # 1) as páginas de paginas/ batem com as fontes (rodar os builds não muda nada);
-# 2) a suíte inteira (node testes/tudo.js): passou / falhou / NÃO VERIFICADO (falta biblioteca ou pacote; não conta como aprovado),
-#    dividida em 4 partes que rodam ao mesmo tempo (node testes/tudo.js --parte=N/4; as partes são montadas pelo tempo de cada teste).
+# 2) a suíte inteira (node testes/tudo.js): passou / falhou / NÃO VERIFICADO (falta biblioteca ou pacote; não conta como aprovado).
 name: Testes
 on:
   pull_request:
@@ -9,10 +8,13 @@ on:
     branches: [main]
   workflow_dispatch:
 jobs:
-  paginas:
-    name: páginas iguais às fontes
+  testes:
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3, 4]
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 90
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -21,8 +23,11 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-      - name: Dependências
-        run: npm install --no-audit --no-fund
+      - name: Dependências (Playwright com Chromium; pdfinfo/pdftotext para os relatórios)
+        run: |
+          npm install --no-audit --no-fund
+          npx playwright install --with-deps chromium
+          sudo apt-get install -y poppler-utils
       - name: Páginas geradas iguais às fontes
         run: |
           git show HEAD:paginas/Demonstracao.html > "$RUNNER_TEMP/Demonstracao.html"
@@ -31,30 +36,59 @@ jobs:
           # a demonstração embute as páginas em gzip, e os bytes do gzip mudam com a versão do zlib: ela é conferida pelo conteúdo
           git diff --exit-code --stat -- paginas/ ':(exclude)paginas/Demonstracao.html' || (echo "::error::paginas/ não bate com fontes/: rode os builds (npm run build) e grave as páginas geradas" && exit 1)
           python3 fontes/demo/conferir_demo.py "$RUNNER_TEMP/Demonstracao.html"
-  testes:
-    name: testes (parte ${{ matrix.parte }} de 4)
-    runs-on: ubuntu-latest
-    timeout-minutes: 45
-    strategy:
-      fail-fast: false
-      matrix:
-        parte: [1, 2, 3, 4]
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-      - name: Dependências (Playwright com Chromium; pdfinfo/pdftotext para os relatórios)
-        run: |
-          npm install --no-audit --no-fund
-          npx playwright install --with-deps chromium
-          sudo apt-get install -y poppler-utils
-      - name: Suíte de testes (parte ${{ matrix.parte }} de 4)
-        run: node testes/tudo.js --parte=${{ matrix.parte }}/4
+      - name: Suíte de testes
+        env:
+          TEST_SHARD: ${{ matrix.shard }}/4
+        run: npm test
       - name: Saída dos testes que falharam
         if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: saida-testes-parte-${{ matrix.parte }}
+          name: saida-testes-${{ matrix.shard }}
           path: testes/saida/
           retention-days: 7
+
+  plataforma:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: npm install --no-audit --no-fund
+      - run: npm ci --prefix nova-plataforma --no-audit --no-fund
+      - run: npx playwright install --with-deps chromium
+        working-directory: nova-plataforma
+      - run: npm run build --prefix nova-plataforma
+      - name: Artefatos da plataforma correspondem às fontes
+        run: git diff --exit-code nova-plataforma/src/generated/ nova-plataforma/dist/
+      - run: npm run test:reprodutibilidade --prefix nova-plataforma
+      - run: npm test --prefix nova-plataforma
+      - run: npm run test:contrato --prefix nova-plataforma
+      - run: npm run test:abas --prefix nova-plataforma
+      - run: npm run test:pasta --prefix nova-plataforma
+      - run: npm run test:integracao --prefix nova-plataforma
+      - run: npm run test:paridade-permissoes --prefix nova-plataforma
+      - run: npm run test:conta --prefix nova-plataforma
+      - name: Login e permissões da raiz dentro da plataforma
+        env:
+          VAC_PLATAFORMA: '1'
+        run: |
+          node testes/tlogin.js
+          node testes/tpermissoes.js
+      - run: npm run test:browser --prefix nova-plataforma
+      - run: npm run test:tela --prefix nova-plataforma
+      - run: npm run test:inicializacao --prefix nova-plataforma
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: plataforma-e-evidencias
+          path: |
+            nova-plataforma/dist/Plataforma.html
+            nova-plataforma/testes-saida/

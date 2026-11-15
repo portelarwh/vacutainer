@@ -1,0 +1,2 @@
+import {test} from 'node:test';import assert from 'node:assert/strict';import {readFileSync} from 'node:fs';import {createHash} from 'node:crypto';import {execFileSync} from 'node:child_process';
+test('N3: guia operacional é preservado byte a byte até o corte',()=>{for(const file of ['fontes/guia/guia_modelo.html','fontes/guia/gerar_guia.js','Guia de instalação.html'])assert.equal(createHash('sha256').update(readFileSync('../'+file)).digest('hex'),createHash('sha256').update(execFileSync('git',['show','7c3f064:'+file],{maxBuffer:32<<20})).digest('hex'),file)});

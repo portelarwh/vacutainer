@@ -1,0 +1,2 @@
+import {test} from 'node:test';import assert from 'node:assert/strict';import {readFileSync} from 'node:fs';
+test('I1: casca importa o Design System e não redefine outra paleta nos motores',()=>{const main=readFileSync('src/main.tsx','utf8'),runtime=readFileSync('src/core/runtime.ts','utf8');assert.ok(main.includes('fontes/kit/kit_ds.css'));assert.ok(!runtime.includes('--accent:#147c71'));assert.ok(readFileSync('src/style.css','utf8').includes('--teal:var(--accent)'))});

@@ -1,7 +1,7 @@
 // Login com ID e senha de 6 números (kit vacLogin, Portal 1.9.22, 11/11/2026): pop-up em todas as páginas, 1º acesso, senha errada e bloqueio,
 // provisória, autocadastro, sessão compartilhada e até o fim do turno, TV e testes sem pop-up. Dados fictícios. Código 1 se falhar.
 const path = require('path'), fs = require('fs'); const RAIZ = path.resolve(__dirname, '..') + '/'; const PG = 'file://' + RAIZ + 'paginas/';
-const { chromium } = require('playwright');
+const { chromium } = require(process.env.VAC_PLATAFORMA ? '../nova-plataforma/tests/engine-browser.cjs' : 'playwright');
 const errs = []; const ok = (c, m) => { console.log((c ? 'ok   ' : 'FALHA ') + m); if (!c) errs.push(m); };
 const SAI = RAIZ + 'testes/saida/login/'; fs.mkdirSync(SAI, { recursive: true });
 const USERS = [{ codigo: '104233', nome: 'Pedro Teste', perfil: 'ADMIN', especialidade: 'Engenharia de Processos', ativo: true },
