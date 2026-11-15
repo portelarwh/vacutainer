@@ -1,5 +1,7 @@
 # Correção da integração — PR 76
 
+> Histórico da primeira rodada. A entrega atual, com N1–N6, guias separados e manifesto novo, está em [segunda-rodada/RESULTADO.md](segunda-rodada/RESULTADO.md).
+
 Direção: a plataforma é o produto; `fontes/` e `paginas/` são as fontes dos motores. Apenas `nova-plataforma/dist/Plataforma.html` será distribuído, após homologação. Nenhuma base real é usada nesta rodada.
 
 | Item | Regressão e resultado | Observação |

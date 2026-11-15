@@ -1,5 +1,7 @@
 # Resultado da revisão PR76
 
+> Histórico da primeira rodada. A entrega atual, com N1–N6, guias separados e manifesto novo, está em [segunda-rodada/RESULTADO.md](segunda-rodada/RESULTADO.md).
+
 **Pronto para homologação; corte não executado.** A plataforma é o produto único. Foram corrigidos os itens 1 a 8, preparados guia e roteiro do item 9 e aplicados A3/A4, M1, M3, M6, I1 e M5. Nenhuma base real foi acessada. Nenhum motor foi reescrito em React e nenhuma regra de negócio pendente foi criada.
 
 ## Origem da entrega
