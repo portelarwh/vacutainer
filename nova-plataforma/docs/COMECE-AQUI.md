@@ -2,6 +2,8 @@
 
 Atualização: 15/11/2026. Este é o ponto de entrada para Codex, Claude e os demais colaboradores.
 
+Estado da preparação e evidências: [RESULTADO.md](preparacao-visual/RESULTADO.md). Fundação visual pronta para evolução; homologação e revisão detalhada de todas as telas continuam pendentes.
+
 ## Produto e limites
 
 A nova plataforma está em `nova-plataforma/` do repositório `portelarwh/vacutainer`. O aplicativo distribuído será `dist/Plataforma.html`. Ela precisa das fontes de `fontes/` e `paginas/` no mesmo checkout para compilar os motores atuais. Não copie só esta pasta para outro repositório esperando o mesmo build.
