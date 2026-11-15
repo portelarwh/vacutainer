@@ -1,5 +1,8 @@
 # Pendências · Sistemas da Linha Vacutainer
 
+> O conteúdo abaixo registra rodadas anteriores. Para o produto novo, use [COMECE-AQUI](nova-plataforma/docs/COMECE-AQUI.md), [plano visual](nova-plataforma/docs/PLANO-DE-MELHORIAS.md) e [CORTE](nova-plataforma/docs/CORTE.md). As instruções antigas de distribuir HTMLs separados não substituem o roteiro da plataforma única. Nenhum corte foi executado.
+
+
 Atualizado em 12/11/2026. Serve para retomar o trabalho em outro chat: leia este arquivo, o `CLAUDE.md` e o `docs/auditorias/registro-decisoes.md`. Item recusado no registro só volta com fato novo.
 
 ## 0. Rodada do Design System (12/11/2026) · ler primeiro

@@ -70,10 +70,29 @@ A disposição deve ser adaptada à finalidade de cada página.
 - Preservar o contexto dos filtros utilizados.
 
 ## 11. Cores e tipografia
-Paleta de cores e fontes ainda não aprovadas.
-Não estabelecer novos padrões definitivos sem autorização.
-Usar cores funcionais para comunicar estados e prioridades.
-Não depender exclusivamente da cor para transmitir informação.
+
+A preparação visual de 15/11/2026 adota a referência de marca fornecida pelo responsável em [BD_Dashboard_Brand_Guidelines.md](BD_Dashboard_Brand_Guidelines.md). Ela foi adaptada do Template.pptx; não equivale a uma conferência do Maxwell. A norma corporativa vigente prevalece em assuntos de marca.
+
+A fonte técnica única da identidade no produto é `src/design/brand.css`. Ela é aplicada na casca React, nos nove motores incorporados, no resumo impresso da casca e no guia auxiliar, depois da base visual do kit. Os tokens bd-* preservam a paleta original; os aliases funcionais adaptam tema e contraste. Não alterar fontes/kit/ ou criar cópias de paleta por página para ajustar apenas o produto novo.
+
+- Base institucional: navy #060A3D, azul #044ED7; realces #1D74FF; lavanda #9199D8; laranja #FF6E00; neutros do anexo.
+- Laranja pontual (aproximadamente 5–10% de área), distinguindo destaque de marca de alerta operacional.
+- Verde e vermelho preservam o significado de resultado versus meta, inclusive SQDCP. Não substituir uma regra de cor funcional por uma sequência de séries institucionais.
+- Títulos em FS Albert Pro Light; corpo em FS Albert Pro; fallback Arial/Helvetica Neue/sans-serif. Sem CDN. Nenhum arquivo de fonte é redistribuído sem a licença aplicável.
+- Logotipo somente com arquivo oficial. O ícone V existente identifica a aplicação; não é uma reprodução do logotipo BD.
+- Tema escuro: adaptação técnica acessível dos aliases, mantendo os valores institucionais originais. Conferência corporativa do tema segue pendente.
+
+### Contraste e exceções ao anexo
+
+Texto normal precisa de 4,5:1; texto grande e indicadores gráficos essenciais, 3:1. Sempre combinar cor e texto/forma. Não usar cinza quente como texto principal.
+
+A recomendação do anexo de charcoal sobre laranja/lavanda não atinge 4,5:1 em texto normal (3,81:1 e 3,95:1). Usar navy nesses fundos (6,69:1 e 6,93:1). Laranja sobre branco tem 2,81:1; azul vivo sobre branco, 4,20:1. Portanto, ambos não são cores de texto normal nesses fundos. O alias warn usa um tom escuro para texto; warn-fill preserva o laranja institucional. A ordem de séries do anexo não dispensa contraste, rótulos e significado operacional.
+
+### Escala e suporte
+
+Grid de 8 px, margens de 24–32 px no desktop e 16 px no celular, espaços de 16–24 px e raios de 8–12 px. Na casca, títulos de página 30–36 px, números principais 32–44 px, corpo/controles 14 px e notas 12 px. Controles com pelo menos 40 px e foco visível de 2 px ou mais.
+
+Tabelas extensas podem ter rolagem própria; não comprimir a página inteira para evitar isso. Impressão tem escala própria. O SQDCP continua uma A4 paisagem e os formulários que exigem retrato preservam essa orientação. Layout nunca modifica número, unidade, fonte do dado, período ou regra de agregação.
 
 ## 12. Responsividade e acessibilidade
 - Garantir legibilidade em diferentes tamanhos de tela.
@@ -99,3 +118,7 @@ Antes de concluir mudanças visuais:
 Este documento é a referência visual do sistema.
 Mudanças de padrões devem ser documentadas e aprovadas.
 Não substituir padrões existentes arbitrariamente.
+
+
+## 16. Estado da adoção
+A fundação de marca e a casca são tratadas nesta rodada. Os motores reutilizam os tokens, mas gráficos específicos, PDFs, e-mails e formulários ainda precisam de revisão por jornada conforme [PLANO-DE-MELHORIAS.md](PLANO-DE-MELHORIAS.md). Não declarar acessibilidade completa, nova identidade corporativa aprovada no Maxwell ou migração integral para React com base apenas nessa camada.

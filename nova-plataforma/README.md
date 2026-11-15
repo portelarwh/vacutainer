@@ -1,5 +1,8 @@
 # Plataforma Vacutainer
 
+Comece por [docs/COMECE-AQUI.md](docs/COMECE-AQUI.md): documentos obrigatórios, marca, componentes existentes, comandos e forma de trabalho entre agentes. A pasta pertence ao repositório portelarwh/vacutainer e depende das fontes da raiz.
+
+
 Produto único: `dist/Plataforma.html`, aberto no Chrome/Edge sem API, servidor interno ou internet. Bases e backups permanecem na pasta de rede. **O corte não foi executado:** depende da homologação descrita em [CORTE.md](docs/CORTE.md).
 
 Os nove motores vêm da árvore atual de `fontes/` e `paginas/`, compilada pelo build da raiz antes do empacotamento. Eles conservam cálculos, formulários, transações, importadores e contratos de dados. Não há uma cópia antiga mantida em paralelo. Alterar uma regra significa alterar sua fonte e reconstruir a plataforma.
@@ -11,6 +14,7 @@ O manifesto em `src/generated/manifest.json` registra `sourceRevision` (último 
 ```sh
 npm install
 npm ci --prefix nova-plataforma
+npm run check:setup --prefix nova-plataforma
 npm run build --prefix nova-plataforma
 npm test
 npm run test:all --prefix nova-plataforma
@@ -34,3 +38,10 @@ Demonstração: botão da tela inicial ou `Plataforma.html?demo=1`; dados fictí
 OSM, MES, AM/TPM e Projetos mantêm as decisões e amostras pendentes. Nenhuma regra técnica foi inventada nesta integração. Conversão para React será gradual, começando por telas que só leem exports; formulários de gravação continuam nos motores até teste de paridade.
 
 Evidências atuais: [N1–N6](docs/pr76/segunda-rodada/RESULTADO.md). Arquitetura: [ARQUITETURA.md](docs/ARQUITETURA.md). Guia auxiliar: `dist/Instalacao-Plataforma.html`, gerado de `fontes/guia/guia_plataforma.html`. O guia operacional da raiz permanece preservado até o corte.
+
+
+## Base visual para as próximas melhorias
+
+Referência: [marca BD](docs/BD_Dashboard_Brand_Guidelines.md). Aplicação e contraste: [Design System](docs/DESIGN_SYSTEM.md). Fonte única: `src/design/brand.css`, usada na casca e nos módulos incorporados. O layout da casca está em `src/style.css`.
+
+[Plano por jornada](docs/PLANO-DE-MELHORIAS.md) e [ambiguidades conhecidas](docs/PENDENCIAS-DOCUMENTAIS.md) permitem continuar sem inventar regras ou repetir propostas antigas. O roteiro mantém a distinção entre fundação pronta, telas futuras e homologação corporativa pendente.
