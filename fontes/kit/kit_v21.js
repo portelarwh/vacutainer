@@ -1240,7 +1240,7 @@ window.vacPagina = (() => {
     else if (['equip','inic','linha'].includes(id())) lista = ABAS;
     else lista = [...document.querySelectorAll('#nav [data-t],#nav [data-tab],#nav [data-route]')].map(el => {
       const clone = el.cloneNode(true); clone.querySelectorAll('.cnt,.badge,svg').forEach(n => n.remove());
-      return [el.dataset.t || el.dataset.tab || el.dataset.route, clone.textContent.trim()];
+      return [el.dataset.t || el.dataset.tab || el.dataset.route, clone.textContent.trim().replace(/^⚙\s*/, '')];
     });
     return lista.map(([chave, nome]) => ({ id: chave, label: nome, route: chave }));
   }

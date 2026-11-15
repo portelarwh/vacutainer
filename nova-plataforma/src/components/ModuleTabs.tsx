@@ -6,5 +6,5 @@ export function ModuleTabs({tabs,active,onSelect}:{tabs:Tab[];active:string;onSe
  const reveal=()=>{n.querySelector('.active')?.scrollIntoView({block:'nearest',inline:'nearest',behavior:'instant'});update()};
  reveal();n.addEventListener('scroll',update,{passive:true});const observer=new ResizeObserver(reveal);observer.observe(n);return()=>{n.removeEventListener('scroll',update);observer.disconnect()};
  },[tabs,active]);
- return <div className={'module-tabs-wrap'+(edges.left?' more-left':'')+(edges.right?' more-right':'')}><nav ref={nav} className="module-tabs" aria-label="Abas do módulo">{tabs.map(t=><button key={t.id} aria-current={active===t.id?'page':undefined} className={active===t.id?'active':''} onClick={()=>onSelect(t.id)}>{t.label}</button>)}</nav></div>;
+ return <div className={'module-tabs-wrap'+(edges.left?' more-left':'')+(edges.right?' more-right':'')}><nav ref={nav} className="module-tabs" aria-label="Abas do módulo">{tabs.map(t=><button key={t.id} data-tab-id={t.id} aria-current={active===t.id?'page':undefined} className={active===t.id?'active':''} onClick={()=>onSelect(t.id)}>{t.label}</button>)}</nav></div>;
 }

@@ -11,8 +11,10 @@ As regras continuam nas fontes de cada motor. O build da raiz aplica `fontes/kit
 | `abas()` | Publica rotas e rótulos do próprio motor; a casca não mantém uma segunda lista. |
 | `abrirOrdem(numero)` | Abre a ficha pelo código textual, sem converter zeros à esquerda. |
 | `comandos()/comando(id)` | Reaproveita os comandos existentes do cabeçalho, incluindo Voltar, relatório, backup e TV. |
-| `info()` | Versão e situação da base; autorização de impressão. |
+| `info()` | Versão, indicadores separados em `estado: [{texto,tom}]`, `situacaoPagina` e autorização de impressão. |
 | `atualizar()/imprimir()` | Releitura e impressão pelo próprio motor. |
+| `pode(modulo,acao)` | Mesma regra pura do kit em permissoes.mjs; linha usa o módulo equip. |
+| `executarContaPropria(codigo,operacao)` | Transação restrita de senha/autocadastro no Portal; fila validada, backup e confirmação por releitura, sem liberar outras alterações. |
 | `autenticar()/sessao()` | Delega ao vacLogin; a casca não fabrica sessão nem escolhe identidade numa lista. |
 | `descartar()` | Encerra timers e observers antes de retirar o iframe. O callback ref tem identidade estável entre renders. |
 

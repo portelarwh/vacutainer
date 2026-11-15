@@ -43,3 +43,11 @@ A barra de abas indica conteúdo lateral com sombras, admite rolagem horizontal 
 A execução completa expôs chamadas de vacPode durante a inicialização do Waste e do Gel, antes do script tardio do kit v2.1. A regra ESM compartilhada foi movida para o bloco vac-bases do head, que antecede o código dos motores; permanece uma única implementação. O teste novo `test:inicializacao` abre as nove páginas atuais em consulta local e demonstração, rejeita erros de script e verifica navegação e os Paretos do Waste. As 18 aberturas passaram. A suíte completa é reiniciada após essa correção para conferir o mesmo estado final, sem misturar resultados.
 
 O gerador do guia também recusa capturas cujo hash da interface ficou desatualizado. A atualização das imagens continua explícita, com Playwright.
+
+## Fechamento da verificação
+
+O CI da plataforma usa fetch-depth: 0. O empacotador rejeita histórico raso, pois nele um commit só de artefatos pode ser confundido com origem dos motores. O teste cria dois repositórios Git fictícios locais e reproduz esse erro antes da proteção.
+
+As abas expõem IDs estáveis; o teste de navegação compara esses IDs com os do motor. O contrato remove o símbolo decorativo de Administração antes de publicar o rótulo, impedindo que o carregamento dos ícones altere seu texto. O equipamento do ponto fictício de gel da Linha 360° foi ligado ao EQ03 já existente no cadastro; o novo teste verifica todos os vínculos desse cenário.
+
+As 67 suítes da raiz passaram na execução completa. Após esses dois últimos ajustes de rótulo/vínculo, são repetidos design, demonstração e segurança/build, além da suíte completa da plataforma. Os resultados finais ficam em RESULTADO.md nesta pasta.
