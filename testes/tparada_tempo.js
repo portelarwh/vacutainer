@@ -2,11 +2,7 @@
 const fs = require('fs'), path = require('path'), http = require('http'), assert = require('assert/strict');
 const { chromium } = require('playwright');
 const root = path.resolve(__dirname, '..');
-const srv = http.createServer((q, r) => {
-  const f = path.resolve(root, '.' + decodeURIComponent(q.url.split('?')[0]));
-  if (!f.startsWith(root + path.sep) || !fs.existsSync(f) || !fs.statSync(f).isFile()) { r.writeHead(404); return r.end(); }
-  r.setHeader('Content-Type', f.endsWith('.html') ? 'text/html; charset=utf-8' : 'application/octet-stream'); fs.createReadStream(f).pipe(r);
-});
+const srv = require('../scripts/servidor-testes.cjs').server();
 (async () => {
   let browser;
   try {
@@ -14,7 +10,7 @@ const srv = http.createServer((q, r) => {
     browser = await chromium.launch();
     const p = await browser.newPage({ viewport: { width: 1440, height: 1000 } }), errors = [];
     p.on('pageerror', e => errors.push(e.message));
-    await p.goto('http://127.0.0.1:' + srv.address().port + '/paginas/OEE-Vacutainer.html?demo=teste-parada-tempo');
+    await p.goto('http://127.0.0.1:' + srv.address().port + '/__modulos__/OEE-Vacutainer.html?demo=teste-parada-tempo');
     await p.waitForFunction(() => typeof CadSync !== 'undefined' && Store.S.mode === 'exemplo');
     await p.evaluate(() => Store.mutate((d, audit) => {
       d.productionDays[0].status = 'em lançamento'; d.productionDays[0].events = [];

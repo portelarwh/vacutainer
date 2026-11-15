@@ -5,7 +5,7 @@
 // - Portal › Visão geral: Pendências da linha com metade da largura, Ação prioritária e Próximas decisões ao lado (empilha no celular).
 // Dados fictícios (modo exemplo/teste). node testes/tgrade.js → "sem erros"; código 1 se falhar
 const { chromium } = require('playwright'); const path = require('path');
-const PG = 'file://' + path.resolve(__dirname, '..') + '/paginas/';
+const PG = 'file://' + path.resolve(__dirname, '..') + '/__modulos__/';
 const errs = []; const ok = (c, m) => { console.log((c ? 'ok   ' : 'FALHA ') + m); if (!c) errs.push(m); };
 const PROD = v => { localStorage.setItem('vac.grade.oee', '{}'); document.querySelectorAll('.overlay').forEach(o => o.remove()); Demo.enterExample(); const d = Store.S.db; for (const k of ['productionDays', 'monthPlans', 'calendar']) (d[k] || []).forEach(x => delete x.demo); Engine.bumpConfig(); document.querySelectorAll('.overlay').forEach(o => o.remove()); Panel.st().view = v; go('overview'); };
 (async () => {

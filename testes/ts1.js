@@ -1,6 +1,6 @@
 const RAIZ=require('path').resolve(__dirname,'..')+'/';
 const {chromium}=require('playwright');const SP=require('path').resolve(__dirname,'..')+'/';(async()=>{const b=await chromium.launch();const p=await b.newPage({viewport:{width:1440,height:1000}});const errs=[];p.on('pageerror',e=>errs.push(e.message));p.on('dialog',d=>d.accept());
-await p.goto('file://'+SP+'paginas/OEE-Vacutainer.html');await p.waitForTimeout(2000);await p.evaluate(()=>{document.querySelectorAll('.overlay').forEach(o=>o.remove());Demo.enterExample()});await p.waitForTimeout(1200);await p.evaluate(()=>document.querySelectorAll('.overlay').forEach(o=>o.remove()));
+await p.goto('file://'+SP+'__modulos__/OEE-Vacutainer.html');await p.waitForTimeout(2000);await p.evaluate(()=>{document.querySelectorAll('.overlay').forEach(o=>o.remove());Demo.enterExample()});await p.waitForTimeout(1200);await p.evaluate(()=>document.querySelectorAll('.overlay').forEach(o=>o.remove()));
 const C={schema:'vac-cadastros',rev:12,revId:'rX',revAt:'2026-11-05T17:00',
  linhas:[{codigo:'VAC',nome:'Linha Vacutainer',unidade:'BD Curitiba',setor:'Vacutainer'}],familias:[{codigo:'EDTA',nome:'EDTA',cor:'#7a3fbf'},{codigo:'SST',nome:'SST',cor:'#c08a00'}],
  equipamentos:[{codigo:'LINHA',nome:'Linha Vacutainer',linha:'VAC',papel:'oee',tipo:'linha'},{codigo:'EQ01',nome:'Tullip A',linha:'VAC',papel:'equipamento'}],

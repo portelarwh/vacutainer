@@ -1,7 +1,7 @@
 // Fase 3 do briefing de 09/11/2026: Portal › Importação (IMP-01..04), abas Importar levando ao Portal (IMP-06, WST-02),
 // endereços diretos das telas de importação (IMP-05) e Produção › Ordens reorganizada (PRD-02/03).
 // node testes/timportacao.js → código 1 se alguma conferência falhar
-const SP = require('path').resolve(__dirname, '..') + '/'; const S = 'file://' + SP + 'paginas/';
+const SP = require('path').resolve(__dirname, '..') + '/'; const S = 'file://' + SP + '__modulos__/';
 const { chromium } = require('playwright');
 (async () => {
   const b = await chromium.launch(); const ctx = await b.newContext({ viewport: { width: 1440, height: 1000 } }); const errs = [];

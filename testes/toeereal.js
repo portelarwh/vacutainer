@@ -1,7 +1,7 @@
 // Produção 2.4.37 (10/11/2026): OEE real pela linha do tempo (início e fim espelhados), OEE reportado / OEE real / Fora de turno no dia e na
 // Visão Geral, caixas do MES e trocas de lote por turno, cartão do turno não produtivo com caixas, "Editar cards" (preferência do computador).
 // node testes/toeereal.js → "sem erros"; código 1 se falhar
-const SP = require('path').resolve(__dirname, '..') + '/'; const S = 'file://' + SP + 'paginas/';
+const SP = require('path').resolve(__dirname, '..') + '/'; const S = 'file://' + SP + '__modulos__/';
 const { chromium } = require('playwright');
 (async () => {
   const b = await chromium.launch(); const ctx = await b.newContext({ viewport: { width: 1440, height: 1000 } }); const errs = [], pe = [];

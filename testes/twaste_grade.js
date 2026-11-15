@@ -31,7 +31,7 @@ const GRADE = [T(CAB),
 (async () => {
   const b = await chromium.launch(); const pe = [];
   const o = await (await b.newContext({ viewport: { width: 1440, height: 900 } })).newPage(); o.on('pageerror', e => pe.push(e.message));
-  await o.goto('file://' + RAIZ + 'paginas/Perdas-Ordem.html'); await o.waitForTimeout(800);
+  await o.goto('file://' + RAIZ + '__modulos__/Perdas-Ordem.html'); await o.waitForTimeout(800);
   await o.evaluate(() => { document.querySelectorAll('.overlay').forEach(x => x.remove()); localStorage.setItem('vac.user', 'Teste'); enterTest(); showTab('importar'); }); await o.waitForTimeout(600);
   const antes = await o.evaluate(() => { B.imports.push({ id: 'velha', tipo: 'KKBC_ORD', arquivo: 'antiga.txt', data: '2026-10-05T10:00:00Z', usuario: 't', periodos: ['2026-09'], status: 'importado' });
     B.rows.push({ id: 'rv1', imp: 'velha', ordem: '900000001', per: '2026-09', comp: '111', cT: 100, cR: 120, dEstr: 0 }); renderAll(); const S = semEmpregado(); return { sem: S.sem, total: S.total, box: (document.getElementById('reimpBox') || {}).innerText || '' }; });

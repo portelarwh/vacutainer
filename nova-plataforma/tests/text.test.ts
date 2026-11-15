@@ -1,2 +1,0 @@
-import {test} from 'node:test';import assert from 'node:assert/strict';import {replaceOnce} from '../src/core/text';
-test('item 1: substituição estrutural recusa trecho ausente ou duplicado',()=>{assert.throws(()=>replaceOnce('sem ancora',/ALVO/,()=>''),/encontrado 0/);assert.throws(()=>replaceOnce('ALVO ALVO',/ALVO/,()=>''),/encontrado 2/);assert.equal(replaceOnce('a ALVO b',/ALVO/,()=>'<script>'),'a <script> b')});

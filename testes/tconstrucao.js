@@ -2,7 +2,7 @@
    node testes/tconstrucao.js  → sai com código 1 se alguma checagem falhar. Prints em testes/saida/construcao/. */
 const RAIZ = require('path').resolve(__dirname, '..') + '/', fs = require('fs');
 const { chromium } = require('playwright');
-const S = 'file://' + RAIZ + 'paginas/', OUT = RAIZ + 'testes/saida/construcao/'; fs.mkdirSync(OUT, { recursive: true });
+const S = 'file://' + RAIZ + '__modulos__/', OUT = RAIZ + 'testes/saida/construcao/'; fs.mkdirSync(OUT, { recursive: true });
 const errs = []; const ok = (c, m) => { console.log((c ? 'ok    ' : 'FALHA ') + m); if (!c) errs.push(m); };
 const NOVAS = [['Projetos', 'Projetos.html', 'projetos', ['lista', 'cronograma']]];
 (async () => {
@@ -48,7 +48,7 @@ const NOVAS = [['Projetos', 'Projetos.html', 'projetos', ['lista', 'cronograma']
         ok(r.pill === 'em construção' && r.faixa, `${nome} · pílula e faixa "em construção"`);
         ok(await p.evaluate(() => !!document.querySelector('#sysNav a.cur .vest[data-e="construcao"]')), `${nome} · página atual na barra com selo`);
         ok(abas.every(a => r.nav.includes(a)) && r.nav[0] === 'geral', `${nome} · abas planejadas: ${r.nav.join(', ')}`);
-        const vg = (fs.readFileSync(RAIZ + 'fontes/modelo/gerar_paginas.py', 'utf8').match(/'versao': '([\d.]+)'/) || [])[1];   // versão do gerador (0.1, 0.1.1…)
+        const vg = require('../scripts/html.cjs').manifest().files.find(f=>f.id===id).version;   // versão do gerador (0.1, 0.1.1…)
         ok(r.ver === 'v' + vg && !r.sync, `${nome} · versão v${vg} (do gerador) e sem Sincronizar/Backup/TV`);
         ok(!r.ls.length, `${nome} · não grava nada no navegador além de tema/sistemas (${r.ls.join(',') || 'nada'})`);
         await p.click(`#nav [data-t="${abas[0]}"]`); await p.waitForTimeout(250);

@@ -1,7 +1,7 @@
 // Fase 7 do briefing (09/11/2026): PRD-05 (responsável por turno), PRD-06 (hora a hora por turno), UX-01 (ⓘ), UX-03 (Painel →
 // Visão Geral no Waste e no Gel), UX-04 (pílula única do cadastro, com "desatualizada"). UX-02 ficou para depois.
 // node testes/tfase7.js → "sem erros"; código 1 se falhar.
-const SP = require('path').resolve(__dirname, '..') + '/'; const S = 'file://' + SP + 'paginas/';
+const SP = require('path').resolve(__dirname, '..') + '/'; const S = 'file://' + SP + '__modulos__/';
 const { chromium } = require('playwright');
 const verN = v => String(v || '').split(/[^\d]+/).filter(Boolean).slice(0, 4).map(Number).reduce((t, n, i) => t + n * Math.pow(1000, 3 - i), 0);   // versão como número (1.10 > 1.9; texto comparava errado)
 (async () => {

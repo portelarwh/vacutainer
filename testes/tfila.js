@@ -1,6 +1,6 @@
 // E10a e E10b do plano único (08/11/2026): Portal › Minha fila e Reunião diária.
 // Portal em modo de teste com exports sintéticos de Iniciativas, Produção, Paradas, Gel e Waste. node testes/tfila.js → "sem erros"; código 1 se falhar
-const path = require('path'), fs = require('fs'); const RAIZ = path.resolve(__dirname, '..') + '/'; const PG = 'file://' + RAIZ + 'paginas/';
+const path = require('path'), fs = require('fs'); const RAIZ = path.resolve(__dirname, '..') + '/'; const PG = 'file://' + RAIZ + '__modulos__/';
 const { chromium } = require('playwright');
 const errs = []; const ok = (c, m) => { console.log((c ? 'ok   ' : 'FALHA ') + m); if (!c) errs.push(m); };
 const addDaysN = n => { const d = new Date(); d.setDate(d.getDate() + n); return d.toISOString().slice(0, 10); };

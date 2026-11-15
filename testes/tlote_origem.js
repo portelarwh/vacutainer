@@ -39,7 +39,7 @@ const PREP = () => {
 (async () => {
   const b = await chromium.launch(); const pe = [];
   const c = await b.newContext({ viewport: { width: 1440, height: 900 } }); const o = await c.newPage(); o.on('pageerror', e => pe.push(e.message));
-  await o.goto('file://' + RAIZ + 'paginas/OEE-Vacutainer.html'); await o.waitForTimeout(900);
+  await o.goto('file://' + RAIZ + '__modulos__/OEE-Vacutainer.html'); await o.waitForTimeout(900);
   await o.evaluate(() => { document.querySelectorAll('.overlay').forEach(x => x.remove()); Demo.enterExample(); }); await o.waitForTimeout(900);
   const P = await o.evaluate(PREP); const X = P.x;
   ok(X.trechos.length === 2 && X.trechos[0].lote === 'L-501' && X.trechos[0].ordem === '100200301' && X.trechos[0].ini === '2026-03-11T06:00' && X.trechos[0].fim === '2026-03-11T09:59' && X.trechos[0].caixas === 240 && X.trechos[1].ordem === '100200302' && X.trechos[1].catalogo === P.cats[1],
@@ -63,14 +63,14 @@ const PREP = () => {
 
   // ---------- Portal 1.9.33: cartão "Agora" com o exports.atual (sem calcular nada)
   const pt = await c.newPage(); pt.on('pageerror', e => pe.push('Portal: ' + e.message));
-  await pt.goto('file://' + RAIZ + 'paginas/Portal.html'); await pt.waitForTimeout(900);
+  await pt.goto('file://' + RAIZ + '__modulos__/Portal.html'); await pt.waitForTimeout(900);
   const AG = await pt.evaluate(A => { MOD.data.oee = Object.assign(MOD.data.oee || {}, { extra: { emProd: [], atual: A } }); const h = agoraCard(), d = document.createElement('div'); d.innerHTML = h; return { t: d.innerText.replace(/\s+/g, ' '), v: PAGE.versao }; }, X.atual);
   ok(AG.v === '1.9.39' && /Lote L-502/.test(AG.t) && /100200302/.test(AG.t) && /60\.28\d peças\/h/.test(AG.t) && /falta 90\.000/.test(AG.t) && /término 11\/03 15:\d\d estimado/.test(AG.t) && /última caixa 11\/03 13:59/.test(AG.t),
     'Portal 1.9.33: cartão "Agora" com lote, ordem, ritmo, falta e término estimado do exports da Produção (' + AG.t.slice(0, 140) + '…)');
 
   // ---------- Waste 1.12.8: ordem antiga pelo exports (ordensHistorico/lotesHistorico), sem guardar planos nem servidor da Produção
   const ws = await c.newPage(); ws.on('pageerror', e => pe.push('Waste: ' + e.message));
-  await ws.goto('file://' + RAIZ + 'paginas/Perdas-Ordem.html'); await ws.waitForTimeout(900);
+  await ws.goto('file://' + RAIZ + '__modulos__/Perdas-Ordem.html'); await ws.waitForTimeout(900);
   const WS = await ws.evaluate(async X => { enterTest(); const base = { exports: X, monthPlans: [{ month: '2023-05', orders: [{ order: 'O-OLD' }] }], server: { lotClass: {}, lotNotes: {} } };
     ST.mode = 'pasta'; ST.dir = { getFileHandle: async () => ({ getFile: async () => ({ lastModified: 42, text: async () => JSON.stringify(base) }) }) }; OEE.at = 0; OEE.mod = 0;
     await loadOEE(true); const f = oeeFind('O-OLD'); return { mp: OEE.src && OEE.src.monthPlans, sv: OEE.src && OEE.src.server, lote: f && f.lote, fonte: f && f.fonte, lot: f && f.lotHits.map(h => h.path).join(' | '), ver: APP_VER }; }, X);
@@ -78,7 +78,7 @@ const PREP = () => {
 
   // ---------- Paradas: ordem e catálogo pelo lote ou pelo horário; eventoId
   const p = await c.newPage(); p.on('pageerror', e => pe.push(e.message));
-  await p.goto('file://' + RAIZ + 'paginas/Paradas.html'); await p.waitForTimeout(900);
+  await p.goto('file://' + RAIZ + '__modulos__/Paradas.html'); await p.waitForTimeout(900);
   const R = await p.evaluate(X => { modoTeste(); Ext.oee = X; Ext.oeeOk = true;
     const D = Store.data, mk = (id, o) => Object.assign({ id, origem: 'forms', dia: '2026-03-11', turno: 'T1', minutos: 10, equipamento: 'EQ09', codigo: 'FME', ordem: '', lote: '' }, o);
     D.eventos = [mk('FN-1', { lote: 'L-502', inicio: '06:10' }), mk('FN-2', { inicio: '08:15' }), mk('FN-3', { lote: 'L-999', inicio: '08:30' }), mk('FN-4', { inicio: '18:00' }),
@@ -111,7 +111,7 @@ const PREP = () => {
 
   // ---------- Equipamentos 1.0.14 (D5): ficha do equipamento com paradas por catálogo e ordem e Pareto por código
   const q = await c.newPage(); q.on('pageerror', e => pe.push('Equipamentos: ' + e.message));
-  await q.goto('file://' + RAIZ + 'paginas/Equipamentos.html'); await q.waitForTimeout(900);
+  await q.goto('file://' + RAIZ + '__modulos__/Equipamentos.html'); await q.waitForTimeout(900);
   const EQ = await q.evaluate(ex => { document.querySelectorAll('.overlay,.mod-bg').forEach(x => x.remove()); Store.test = true;
     const h = hoje(); Ext.par = { ...ex, eventos: ex.eventos.map(e => ({ ...e, dia: h })) }; App.tab = 'equip'; App.eq = 'EQ09'; render();
     const lin = sel => [...document.querySelectorAll(sel + ' tr')].slice(1).map(r => [...r.cells].map(td => td.innerText.trim().replace(/\s+/g, ' ')));

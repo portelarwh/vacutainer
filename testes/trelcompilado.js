@@ -1,7 +1,7 @@
 // Portal › Relatórios como compilado de todos os relatórios (13/11/2026; Portal 1.9.39, Produção 2.4.74, Gel 2.35, Paradas 1.2.11).
 // Confere a lista por página (Portal, Produção, Waste, Gestão de Gel, Paradas, Outros), o endereço de cada botão e que cada endereço
 // abre a tela do relatório na página dona; Relatórios da barra lateral leva a esta tela. Dados fictícios. node testes/trelcompilado.js → "sem erros"
-const path = require('path'); const RAIZ = 'file://' + path.resolve(__dirname, '..') + '/paginas/';
+const path = require('path'); const RAIZ = 'file://' + path.resolve(__dirname, '..') + '/__modulos__/';
 const { chromium } = require('playwright');
 const errs = []; const ok = (c, m) => { console.log((c ? 'ok   ' : 'FALHA ') + m); if (!c) errs.push(m); };
 (async () => {

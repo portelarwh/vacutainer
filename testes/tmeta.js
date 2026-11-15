@@ -3,8 +3,7 @@
 const RAIZ = require('path').resolve(__dirname, '..') + '/';
 const fs = require('fs'), path = require('path');
 const { chromium } = require('playwright');
-const XLSX_JS = path.join(RAIZ, 'paginas/lib/xlsx.full.min.js');
-const XLSX = require(XLSX_JS);
+const XLSX = require('../scripts/html.cjs').library('xlsx');
 if (XLSX.set_fs) XLSX.set_fs(fs);
 const SAIDA = RAIZ + 'testes/saida/'; fs.mkdirSync(SAIDA, { recursive: true });
 
@@ -42,8 +41,8 @@ function planilha(arq, oeeNovEdta = 77.4) {
 (async () => {
   const b = await chromium.launch(); const p = await b.newPage({ viewport: { width: 1440, height: 1100 } }); const errs = [];
   p.on('pageerror', e => errs.push(e.message)); p.on('dialog', dl => dl.accept());
-  await p.goto('file://' + RAIZ + 'paginas/Portal.html#geral'); await p.waitForTimeout(600);
-  await p.addScriptTag({ path: XLSX_JS });
+  await p.goto('file://' + RAIZ + '__modulos__/Portal.html#geral'); await p.waitForTimeout(600);
+  await p.addScriptTag({ content: require('../scripts/html.cjs').current().text('biblioteca/xlsx') });
   await p.evaluate(() => enterTest()); await p.waitForTimeout(400); await p.evaluate(() => Lock.on(Cad.D.seguranca.senhaHash));
   await p.evaluate(() => { location.hash = '#cadastros/importar/metaoee'; }); await p.waitForTimeout(500);
   console.log('modo:', await p.evaluate(() => Cad.ui.imp && Cad.ui.imp.modo), '| botão ativo:', await p.textContent('#iModo .on'));

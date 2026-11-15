@@ -1,7 +1,7 @@
 // Fase 2 do briefing de 09/11/2026: turno não produtivo (TUR-01), habilitar no dia (TUR-02), produção fora de turno (TUR-03),
 // OEE reportado × real (TUR-04) e madrugada antes das 06:00 (POR-10). Regras D1–D4 do usuário (10/11/2026).
 // node testes/tturnos.js → código 1 se alguma conferência falhar
-const SP = require('path').resolve(__dirname, '..') + '/'; const S = 'file://' + SP + 'paginas/';
+const SP = require('path').resolve(__dirname, '..') + '/'; const S = 'file://' + SP + '__modulos__/';
 const { chromium } = require('playwright');
 (async () => {
   const b = await chromium.launch(); const ctx = await b.newContext({ viewport: { width: 1440, height: 1000 } }); const errs = [];

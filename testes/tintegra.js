@@ -1,6 +1,6 @@
 // Portal 1.8.3 · os números do Portal são os do exports de cada página (auditoria A01–A04, A06)
 // node testes/tintegra.js  → imprime as conferências e "sem erros"; sai com código 1 se alguma falhar
-const SP=require('path').resolve(__dirname,'..')+'/';const S='file://'+SP+'paginas/';
+const SP=require('path').resolve(__dirname,'..')+'/';const S='file://'+SP+'__modulos__/';
 const {chromium}=require('playwright');
 (async()=>{const b=await chromium.launch();const ctx=await b.newContext({viewport:{width:1440,height:1000}});const errs=[];
 const ok=(c,msg)=>{console.log((c?'ok   ':'FALHA ')+msg);if(!c)errs.push('falhou: '+msg)};

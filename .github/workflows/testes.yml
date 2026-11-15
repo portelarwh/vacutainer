@@ -1,6 +1,3 @@
-# Testes automáticos (13/11/2026, pendência "package.json/CI" do registro § 1, decidida pelo responsável).
-# 1) as páginas de paginas/ batem com as fontes (rodar os builds não muda nada);
-# 2) a suíte inteira (node testes/tudo.js): passou / falhou / NÃO VERIFICADO (falta biblioteca ou pacote; não conta como aprovado).
 name: Testes
 on:
   pull_request:
@@ -8,7 +5,7 @@ on:
     branches: [main]
   workflow_dispatch:
 jobs:
-  testes:
+  regras:
     strategy:
       fail-fast: false
       matrix:
@@ -20,73 +17,43 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-      - uses: actions/setup-python@v5
-        with:
-          python-version: '3.12'
-      - name: Dependências (Playwright com Chromium; pdfinfo/pdftotext para os relatórios)
-        run: |
-          npm install --no-audit --no-fund
-          npx playwright install --with-deps chromium
-          sudo apt-get install -y poppler-utils
-      - name: Páginas geradas iguais às fontes
-        run: |
-          npm run build
-          git status --porcelain paginas/
-          git diff --exit-code --stat -- paginas/ || (echo "::error::paginas/ não bate com fontes/: rode os builds (npm run build) e grave as páginas geradas" && exit 1)
-      - name: Suíte de testes
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - run: npx playwright install --with-deps chromium
+      - run: sudo apt-get install -y poppler-utils
+      - name: Verificar fonte executável única
+        run: npm run build
+      - name: Regressão dos motores incorporados
         env:
           TEST_SHARD: ${{ matrix.shard }}/4
         run: npm test
-      - name: Saída dos testes que falharam
+      - uses: actions/upload-artifact@v4
         if: failure()
-        uses: actions/upload-artifact@v4
         with:
-          name: saida-testes-${{ matrix.shard }}
+          name: regras-${{ matrix.shard }}
           path: testes/saida/
           retention-days: 7
-
   plataforma:
     runs-on: ubuntu-latest
     timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-      - uses: actions/setup-python@v5
-        with:
-          python-version: '3.12'
-      - run: npm install --no-audit --no-fund
-      - run: npm ci --prefix nova-plataforma --no-audit --no-fund
+          cache: npm
+      - run: npm ci --no-audit --no-fund
       - run: npx playwright install --with-deps chromium
-        working-directory: nova-plataforma
-      - run: npm run build --prefix nova-plataforma
-      - name: Artefatos da plataforma correspondem às fontes
-        run: git diff --exit-code nova-plataforma/src/generated/ nova-plataforma/dist/
-      - run: npm run test:reprodutibilidade --prefix nova-plataforma
-      - run: npm test --prefix nova-plataforma
-      - run: npm run test:contrato --prefix nova-plataforma
-      - run: npm run test:abas --prefix nova-plataforma
-      - run: npm run test:pasta --prefix nova-plataforma
-      - run: npm run test:integracao --prefix nova-plataforma
-      - run: npm run test:paridade-permissoes --prefix nova-plataforma
-      - run: npm run test:conta --prefix nova-plataforma
-      - name: Login e permissões da raiz dentro da plataforma
-        env:
-          VAC_PLATAFORMA: '1'
-        run: |
-          node testes/tlogin.js
-          node testes/tpermissoes.js
-      - run: npm run test:browser --prefix nova-plataforma
-      - run: npm run test:marca --prefix nova-plataforma
-      - run: npm run test:tela --prefix nova-plataforma
-      - run: npm run test:inicializacao --prefix nova-plataforma
+      - run: npm run build
+      - run: npm run test:reprodutibilidade
+      - run: npm run test:plataforma
+      - name: Verificação não reescreve o aplicativo
+        run: git diff --exit-code -- Plataforma.html
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: plataforma-e-evidencias
           path: |
-            nova-plataforma/dist/Plataforma.html
-            nova-plataforma/testes-saida/
+            Plataforma.html
+            testes/saida/
+          retention-days: 7

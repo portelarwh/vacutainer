@@ -3,7 +3,7 @@
 // node testes/tequip.js → "sem erros"; código 1 se falhar. Prints em testes/saida/equip/
 const path = require('path'), fs = require('fs'), http = require('http'); const RAIZ = path.resolve(__dirname, '..');
 const { chromium } = require('playwright');
-const srv = http.createServer((q, r) => { const f = path.join(RAIZ, decodeURIComponent(q.url.split('?')[0])); if (!f.startsWith(RAIZ) || !fs.existsSync(f) || fs.statSync(f).isDirectory()) { r.writeHead(404); return r.end(); } r.writeHead(200, { 'content-type': f.endsWith('.html') ? 'text/html; charset=utf-8' : 'application/octet-stream' }); fs.createReadStream(f).pipe(r); });
+const srv = require('../scripts/servidor-testes.cjs').server();
 const errs = []; const ok = (c, m) => { console.log((c ? 'ok   ' : 'FALHA ') + m); if (!c) errs.push(m); };
 const SAI = path.join(RAIZ, 'testes', 'saida', 'equip'); fs.mkdirSync(SAI, { recursive: true });
 const CAD = { schema: 'vac-cadastros', rev: 3, equipamentos: [{ codigo: 'EQ03', nome: 'Tampadora', apelidos: ['LX3'], ativo: true }, { codigo: 'EQ05', nome: 'Transporte', ativo: true }] };
@@ -15,7 +15,7 @@ const LER = async () => { const d = await navigator.storage.getDirectory(); try 
 const espera = p => p.waitForFunction(() => !Store.saving && !Store.queue.length, null, { timeout: 8000 }).catch(() => { });
 
 (async () => {
-  await new Promise(r => srv.listen(0, r)); const U = `http://127.0.0.1:${srv.address().port}/paginas/`;
+  await new Promise(r => srv.listen(0, r)); const U = `http://127.0.0.1:${srv.address().port}/__modulos__/`;
   const b = await chromium.launch(); const ctx = await b.newContext({ viewport: { width: 1440, height: 900 } }); const pe = [];
   const abre = async (arq, h = '') => { const p = await ctx.newPage(); p.on('pageerror', e => pe.push(arq + ': ' + e.message)); p.on('dialog', d => d.accept('corrigido')); await p.goto(U + arq + h); await p.waitForTimeout(800); return p; };
   // 1. modo de teste: ficha

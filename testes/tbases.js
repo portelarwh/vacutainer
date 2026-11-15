@@ -4,8 +4,8 @@
 // node testes/tbases.js → "sem erros"; código 1 se falhar
 const path=require('path'),fs=require('fs'),http=require('http');const RAIZ=path.resolve(__dirname,'..');
 const {chromium}=require('playwright');
-const srv=http.createServer((q,r)=>{const f=path.join(RAIZ,decodeURIComponent(q.url.split('?')[0]));if(!f.startsWith(RAIZ)||!fs.existsSync(f)||fs.statSync(f).isDirectory()){r.writeHead(404);return r.end()}r.writeHead(200,{'content-type':f.endsWith('.html')?'text/html; charset=utf-8':f.endsWith('.js')?'text/javascript':'application/octet-stream'});fs.createReadStream(f).pipe(r)});
-(async()=>{await new Promise(r=>srv.listen(0,r));const U=`http://127.0.0.1:${srv.address().port}/paginas/`;
+const srv=require('../scripts/servidor-testes.cjs').server();
+(async()=>{await new Promise(r=>srv.listen(0,r));const U=`http://127.0.0.1:${srv.address().port}/__modulos__/`;
 const b=await chromium.launch();const ctx=await b.newContext({viewport:{width:1280,height:900}});const errs=[];
 const ok=(c,m)=>{console.log((c?'ok   ':'FALHA ')+m);if(!c)errs.push(m)};
 const nova=async(arq,tag)=>{const p=await ctx.newPage();p.on('pageerror',e=>errs.push(tag+' '+e.message));p.on('dialog',d=>d.accept());await p.goto(U+encodeURI(arq));await p.waitForTimeout(1200);await p.evaluate(()=>document.querySelectorAll('.overlay').forEach(o=>o.remove()));return p};
@@ -176,23 +176,8 @@ r=await cenario(async()=>{const X=__H;await X.prep({bases:{'perdas-base.json':'{
   const ok=await connectDir(await X.ROOT());window.confirm=c0;return{ok,pergunta,...await X.estado()}});
 ok(r.ok===false&&!r.pergunta&&r.bases['perdas-base.json']==='{corrompida',`página: base ilegível não é tratada como ausente (não pergunta "Criar a base", arquivo intacto)`);
 
-// B06 · volta para a versão anterior (sem 00. Bases): a Produção antiga recria base na raiz; com o procedimento do guia, não
-{const fsx=require('fs'),cp=require('child_process');let antigo=null;try{antigo=cp.execSync('git show 38542d0:paginas/OEE-Vacutainer.html',{cwd:RAIZ,maxBuffer:64e6}).toString()}catch(e){}
- if(!antigo)console.log('obs  B06: git sem o commit 38542d0; cenário de volta de versão não executado');
- else{const dir=path.join(RAIZ,'testes/saida/antigas');fsx.mkdirSync(dir,{recursive:true});fsx.writeFileSync(path.join(dir,'OEE-Vacutainer.html'),antigo);
-  const UA=U.replace('/paginas/','/testes/saida/antigas/');
-  const pn=await nova('OEE-Vacutainer.html','PN');   // versão nova: põe a base em 00. Bases
-  const v0=await pn.evaluate(async()=>{const d=await navigator.storage.getDirectory();for await(const[n]of d.entries())await d.removeEntry(n,{recursive:true});const db=Model.emptyBase('teste');db.databaseVersion=9;db.settings=db.settings||{};db.settings.marcaTeste='base-real';const fh=await d.getFileHandle('oee-vacutainer-base.json',{create:true});const s=await fh.createWritable();await s.write(JSON.stringify(db));await s.close();await Store.connect(FolderBackend(d),{ask:false});return Store.S.baseVersion});
-  const pa=await ctx.newPage();pa.on('dialog',d=>d.accept());await pa.goto(UA+'OEE-Vacutainer.html');await pa.waitForTimeout(1300);
-  // sem o procedimento: a Produção antiga reconecta e cria base nova (vazia) na raiz
-  const semProc=await pa.evaluate(async()=>{const d=await navigator.storage.getDirectory();document.querySelectorAll('.overlay').forEach(o=>o.remove());await Store.connect(FolderBackend(d),{ask:false});let raiz=null;try{raiz=JSON.parse(await (await (await d.getFileHandle('oee-vacutainer-base.json')).getFile()).text()).databaseVersion}catch(e){}return{raiz,ver:Store.S.baseVersion}});
-  ok(semProc.raiz!=null&&semProc.raiz<9,`B06 reproduzido: sem devolver as bases, a Produção antiga cria outra base na raiz (versão ${semProc.raiz}, a real é ${v0})`);
-  // com o procedimento do guia: apagar a base que a página antiga criou e mover 00. Bases de volta para a raiz
-  const comProc=await pa.evaluate(async()=>{const d=await navigator.storage.getDirectory();await d.removeEntry('oee-vacutainer-base.json');const B=await d.getDirectoryHandle('00. Bases');
-    for await(const[n,h]of B.entries())if(h.kind==='file'&&n.endsWith('.json')&&!n.startsWith('.')){const t=await (await h.getFile()).text();const fh=await d.getFileHandle(n,{create:true});const s=await fh.createWritable();await s.write(t);await s.close();await B.removeEntry(n)}
-    await Store.connect(FolderBackend(d),{ask:false});return{ver:Store.S.baseVersion,marca:(Store.S.db.settings||{}).marcaTeste}});
-  ok(comProc.marca==='base-real'&&comProc.ver>=9,`B06 com o procedimento do guia: a Produção antiga abre a base real (marca ${comProc.marca}, versão ${comProc.ver})`);
-  const volta=await pn.evaluate(async()=>{location.reload()});await pn.waitForTimeout(1500);
-  const re=await pn.evaluate(async()=>{const d=await navigator.storage.getDirectory();document.querySelectorAll('.overlay').forEach(o=>o.remove());await Store.connect(FolderBackend(d),{ask:false});let naRaiz=true;try{await d.getFileHandle('oee-vacutainer-base.json')}catch(e){naRaiz=false}return{ver:Store.S.baseVersion,naRaiz,marca:(Store.S.db.settings||{}).marcaTeste}});
-  ok(re.marca==='base-real'&&!re.naRaiz,`B06 nova atualização depois da volta: a base real vai de novo para 00. Bases (marca ${re.marca}, versão ${re.ver})`);}}
+// B06 histórico: abrir o HTML anterior a 00. Bases saiu da regressão ativa.
+// O produto já não contém esse motor nem depende de git show. O retorno ao
+// ponto de corte é manual (docs/CORTE.md); versões futuras/compatibilidade de
+// bases atuais são verificadas em testes/plataforma/pasta.cjs.
 console.log(errs.join('\n')||'sem erros');await b.close();srv.close();if(errs.length)process.exitCode=1})();

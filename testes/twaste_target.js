@@ -7,7 +7,7 @@ const errs = []; const ok = (c, m) => { console.log((c ? 'ok   ' : 'FALHA ') + m
 (async () => {
   const b = await chromium.launch(); const c = await b.newContext({ viewport: { width: 1440, height: 1000 } }); await c.clock.setFixedTime(new Date('2026-11-11T12:00:00'));
   const o = await c.newPage(); const pe = []; o.on('pageerror', e => pe.push(e.message)); o.on('dialog', d => d.accept());
-  await o.goto('file://' + RAIZ + 'paginas/Perdas-Ordem.html'); await o.waitForTimeout(900);
+  await o.goto('file://' + RAIZ + '__modulos__/Perdas-Ordem.html'); await o.waitForTimeout(900);
   await o.evaluate(() => { document.querySelectorAll('.overlay').forEach(x => x.remove()); try { localStorage.removeItem('perdas.moeda'); } catch (e) { } enterTest(); }); await o.waitForTimeout(1200);
   const R = await o.evaluate(async () => {
     const w = t => new Promise(r => setTimeout(r, t)), out = {};

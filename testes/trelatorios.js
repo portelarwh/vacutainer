@@ -2,13 +2,12 @@
 // Confere o que cada saída realmente produz: PDF (pdfinfo/pdftotext), texto copiado, HTML do Outlook, impressão (mídia print em A4),
 // nos dois temas; ordem das abas e aba inicial por perfil. Arquivos em testes/saida/relatorios/. Sai com código 1 se falhar.
 // Precisa de pdfinfo e pdftotext (poppler-utils).
-const SP = require('path').resolve(__dirname, '..') + '/'; const PG = 'file://' + SP + 'paginas/'; const OUT = SP + 'testes/saida/relatorios/';
+const SP = require('path').resolve(__dirname, '..') + '/'; const PG = 'file://' + SP + '__modulos__/'; const OUT = SP + 'testes/saida/relatorios/';
 const fs = require('fs'); const { execSync } = require('child_process'); const { chromium } = require('playwright');
 fs.mkdirSync(OUT, { recursive: true });
 const errs = []; const ok = (c, m) => { console.log((c ? 'ok   ' : 'FALHA ') + m); if (!c) errs.push(m); };
 // C4 · o que não dá para conferir aqui não conta como aprovado: sai como "NÃO VERIFICADO" e aparece no fim (o código de saída não muda)
 const naoVerif = []; const nv = m => { console.log('NÃO VERIFICADO ' + m); naoVerif.push(m); };
-const XLSX_LIB = SP + 'paginas/lib/xlsx.full.min.js';
 const info = f => { const s = execSync(`pdfinfo "${f}"`).toString(); const sz = (s.match(/Page size:\s+([\d.]+) x ([\d.]+)/) || []).slice(1).map(Number); return { pags: +(s.match(/Pages:\s+(\d+)/) || [])[1], orient: sz[0] > sz[1] ? 'paisagem' : 'retrato' }; };
 const txt = f => execSync(`pdftotext -layout "${f}" -`).toString();
 const LONGO = Array.from({ length: 70 }, (_, i) => `Linha ${i + 1} do comentário de análise.`).join('\n') + '\nFIM-DO-COMENTARIO';
@@ -80,8 +79,8 @@ const CAD = (perfil, inicial) => JSON.stringify({ schema: 'vac-cadastros', schem
       ok(r.txt && r.img, `Paradas ${tema}: texto para WhatsApp/Teams e Outlook com o gráfico como imagem`);
       const f = await baixa(p, () => Report.pdf(relParadas()), `Paradas-${tema}-real.pdf`); const t = txt(f).replace(/\s+/g, ' '), I = info(f);
       ok(I.orient === 'paisagem' && /PARETO POR CÓDIGO/.test(t) && /EQUIPAMENTOS/.test(t) && /RECORRÊNCIA/.test(t), `Paradas ${tema}: PDF em paisagem com as três partes (${I.pags} pág.)`);
-      const fx = fs.existsSync(XLSX_LIB) ? await baixa(p, () => Report.xlsx(relParadas()), `Paradas-${tema}.xlsx`).catch(e => null) : null; if (!fs.existsSync(XLSX_LIB)) nv(`Paradas ${tema}: Excel (falta paginas/lib/xlsx.full.min.js, etapa E3b)`);
-      else { let abas = []; try { const X = require(XLSX_LIB); abas = X.read(fs.readFileSync(fx)).SheetNames; } catch (e) { } ok(!!fx && abas.length > 0, `Paradas ${tema}: Excel baixado e lido (${abas.join(', ') || 'não abriu'})`); }
+      const fx = require('../scripts/html.cjs').current().sources.has('biblioteca/xlsx') ? await baixa(p, () => Report.xlsx(relParadas()), `Paradas-${tema}.xlsx`).catch(e => null) : null; if (!require('../scripts/html.cjs').current().sources.has('biblioteca/xlsx')) nv(`Paradas ${tema}: Excel (falta __modulos__/lib/xlsx.full.min.js, etapa E3b)`);
+      else { let abas = []; try { const X = require('../scripts/html.cjs').library('xlsx'); abas = X.read(fs.readFileSync(fx)).SheetNames; } catch (e) { } ok(!!fx && abas.length > 0, `Paradas ${tema}: Excel baixado e lido (${abas.join(', ') || 'não abriu'})`); }
       ok(!pe.length, `Paradas ${tema}: sem erro de página${pe.length ? ' (' + pe[0] + ')' : ''}`);
       await p.close();
     }

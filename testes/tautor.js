@@ -1,7 +1,7 @@
 // Autoria na Produção (2.4.77, revisão da PR #76): o nome de quem grava vem da sessão do login, não de um nome antigo guardado no
 // IndexedDB; a troca de pessoa feita em outra página (evento storage) também atualiza o nome guardado. Dados fictícios.
 // node testes/tautor.js → "sem erros"; código 1 se falhar
-const path = require('path'); const PG = 'file://' + path.resolve(__dirname, '..') + '/paginas/OEE-Vacutainer.html';
+const path = require('path'); const PG = 'file://' + path.resolve(__dirname, '..') + '/__modulos__/OEE-Vacutainer.html';
 const { chromium } = require('playwright');
 const errs = []; const ok = (c, m) => { console.log((c ? 'ok   ' : 'FALHA ') + m); if (!c) errs.push(m); };
 (async () => {

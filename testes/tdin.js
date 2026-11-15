@@ -1,6 +1,6 @@
 const RAIZ=require('path').resolve(__dirname,'..')+'/';
 const {chromium}=require('playwright');const fs=require('fs');const SS=require('path').resolve(__dirname,'..')+'/';(async()=>{const b=await chromium.launch();const p=await b.newPage({viewport:{width:1440,height:900}});const errs=[];p.on('pageerror',e=>errs.push(e.message));p.on('dialog',d=>d.accept());
-await p.goto('file://'+RAIZ+'paginas/Portal.html#geral');await p.waitForTimeout(600);await p.evaluate(()=>enterTest());await p.waitForTimeout(400);
+await p.goto('file://'+RAIZ+'__modulos__/Portal.html#geral');await p.waitForTimeout(600);await p.evaluate(()=>enterTest());await p.waitForTimeout(400);
 const txt=fs.readFileSync(RAIZ+'testes/amostras/cs12din.txt','utf8');
 const P=await p.evaluate(t=>{const P=parseCS12(t);return{cab:P.cab,erros:P.erros,alertas:P.alertas.map(a=>a.campo+': '+a.erro),itens:P.itens.map(r=>[r.nivel,r.numeroItem,r.materialPai,r.componente,r.descricaoComponente,r.quantidadeOriginalTexto,r.quantidadeComponente,r.unidadeComponente,r.unidadeBasicaComponente,r.qtdPorMilheiro,r.qtdPorMilheiroUMB].join(' | '))}},txt);
 console.log(JSON.stringify(P,null,1));

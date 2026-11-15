@@ -6,18 +6,18 @@ const C={schema:'vac-cadastros',rev:12,materiais:[{codigo:'10000001',nome:'Gel',
  turnos:[{codigo:'T1',nome:'1º',ativo:true,vigencias:[{de:'2025-01-01',ate:null,inicio:'06:00',fim:'14:20',dias:[1,2,3,4,5,6],ativo:true,pausas:[{nome:'Almoço',duracaoMin:60,dias:[6],desconta:true},{nome:'Ginástica',inicio:'09:00',fim:'09:10',dias:[],desconta:true}]}]},{codigo:'T2',nome:'2º',ativo:true,vigencias:[{de:'2025-01-01',inicio:'14:20',fim:'22:40',dias:[1,2,3,4,5],ativo:true,pausas:[]}]}],
  parametros:{paradaLongaMin:25,limiteMicroMin:5}};
 // Gel
-const g=await ctx.newPage();g.on('pageerror',e=>errs.push('G '+e.message));g.on('dialog',d=>d.accept());await g.goto('file://'+SP+'paginas/'+encodeURI('Gestão-Gel-Vacutainer.html'));await g.waitForTimeout(1500);
+const g=await ctx.newPage();g.on('pageerror',e=>errs.push('G '+e.message));g.on('dialog',d=>d.accept());await g.goto('file://'+SP+'__modulos__/'+encodeURI('Gestão-Gel-Vacutainer.html'));await g.waitForTimeout(1500);
 await g.evaluate(C=>localStorage.setItem('vac.cadastros',JSON.stringify(C)),C);
 console.log('GEL',JSON.stringify(await g.evaluate(()=>({shift:shiftAtRaw('2026-11-07'),abSab:abDefOf('2026-11-07'),abSeg:abDefOf('2026-11-09'),preco:priceAt('2026-11-05')}))));
 await g.evaluate(()=>openConfig('turnos'));await g.waitForTimeout(400);console.log('gel cfg turnos:',await g.$eval('.cfgbody',e=>e.innerText.slice(0,160).replace(/\n/g,' ')));
 await g.evaluate(()=>openConfig('preco'));await g.waitForTimeout(400);console.log('gel cfg preço:',await g.$eval('.cfgbody',e=>e.innerText.slice(0,200).replace(/\n/g,' ')));
 await g.screenshot({path:SP+'testes/saida/gel95.png'});
 // Waste
-const w=await ctx.newPage();w.on('pageerror',e=>errs.push('W '+e.message));w.on('dialog',d=>d.accept());await w.goto('file://'+SP+'paginas/Perdas-Ordem.html');await w.waitForTimeout(800);await w.evaluate(()=>{localStorage.setItem('vac.user','Pedro');enterTest()});await w.waitForTimeout(800);
+const w=await ctx.newPage();w.on('pageerror',e=>errs.push('W '+e.message));w.on('dialog',d=>d.accept());await w.goto('file://'+SP+'__modulos__/Perdas-Ordem.html');await w.waitForTimeout(800);await w.evaluate(()=>{localStorage.setItem('vac.user','Pedro');enterTest()});await w.waitForTimeout(800);
 console.log('WASTE meta:',await w.evaluate(()=>CFG().meta),'| tipo 1034567:',await w.evaluate(()=>itemType({comp:'1034567'})),'| config local meta:',await w.evaluate(()=>B.config.meta));
 await w.evaluate(()=>showTab('config'));await w.waitForTimeout(400);console.log('cfgMeta:',await w.evaluate(()=>[$('#cfgMeta').disabled,$('#cfgMetaPortal').innerText]));
 for(const t of ['painel','comp','hist','acoes','relatorios']){await w.evaluate(t=>showTab(t),t).catch(()=>{});await w.waitForTimeout(300)}
 // Paradas
-const pa=await ctx.newPage();pa.on('pageerror',e=>errs.push('P '+e.message));pa.on('dialog',d=>d.accept());await pa.goto('file://'+SP+'paginas/Paradas.html');await pa.waitForTimeout(1200);
+const pa=await ctx.newPage();pa.on('pageerror',e=>errs.push('P '+e.message));pa.on('dialog',d=>d.accept());await pa.goto('file://'+SP+'__modulos__/Paradas.html');await pa.waitForTimeout(1200);
 console.log('PARADAS',JSON.stringify(await pa.evaluate(C=>{Ext.cad=C;Cad.build();return{longa:Cad.paradaLonga,portal:Cad.longaPortal,ap:parseMaquina('Tulip velha',{}),prog:programado([{dia:'2026-11-07'},{dia:'2026-11-09'}],null,null)}},C)));
 console.log(errs.join('\n')||'sem erros');await b.close()})();

@@ -1,6 +1,6 @@
 // Resposta ao diagnóstico de 06/11/2026 (F01–F08): cada cenário reproduzido pelo relatório, agora com o resultado certo.
 // node testes/tdiag.js  → imprime as conferências; sai com código 1 se alguma falhar
-const SP=require('path').resolve(__dirname,'..')+'/';const S='file://'+SP+'paginas/';
+const SP=require('path').resolve(__dirname,'..')+'/';const S='file://'+SP+'__modulos__/';
 const {chromium}=require('playwright');
 (async()=>{const b=await chromium.launch();const ctx=await b.newContext({viewport:{width:1440,height:1000}});const errs=[];
 const ok=(c,msg)=>{console.log((c?'ok   ':'FALHA ')+msg);if(!c)errs.push('falhou: '+msg)};

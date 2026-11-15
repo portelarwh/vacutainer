@@ -24,7 +24,7 @@ const LER = () => {
   const nova = async (w, h, tema) => {
     const c = await b.newContext({ viewport: { width: w, height: h }, colorScheme: tema }); await c.clock.setFixedTime(new Date('2026-11-11T12:00:00'));
     const o = await c.newPage(); o.on('pageerror', e => pe.push(e.message)); o.on('console', m => { if (m.type() === 'error') pe.push('console: ' + m.text()); });
-    await o.goto('file://' + RAIZ + 'paginas/OEE-Vacutainer.html'); await o.waitForTimeout(900);
+    await o.goto('file://' + RAIZ + '__modulos__/OEE-Vacutainer.html'); await o.waitForTimeout(900);
     await o.evaluate(() => { document.querySelectorAll('.overlay').forEach(x => x.remove()); Demo.enterExample(); }); await o.waitForTimeout(900);
     // dias da demonstração valendo nas contas (como no trelatorios) e as fontes lidas antes de comparar
     await o.evaluate(async () => { const d0 = Store.S.db; for (const k of ['productionDays', 'monthPlans', 'calendar']) (d0[k] || []).forEach(x => delete x.demo); Engine.bumpConfig();

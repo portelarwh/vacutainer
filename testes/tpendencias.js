@@ -4,7 +4,7 @@
 // node testes/tpendencias.js → "sem erros"; código 1 se falhar
 const path = require('path'), fs = require('fs'), http = require('http'); const RAIZ = path.resolve(__dirname, '..');
 const { chromium } = require('playwright');
-const srv = http.createServer((q, r) => { const f = path.join(RAIZ, decodeURIComponent(q.url.split('?')[0])); if (!f.startsWith(RAIZ) || !fs.existsSync(f) || fs.statSync(f).isDirectory()) { r.writeHead(404); return r.end(); } r.writeHead(200, { 'content-type': f.endsWith('.html') ? 'text/html; charset=utf-8' : 'application/octet-stream' }); fs.createReadStream(f).pipe(r); });
+const srv = require('../scripts/servidor-testes.cjs').server();
 const errs = []; const ok = (c, m) => { console.log((c ? 'ok   ' : 'FALHA ') + m); if (!c) errs.push(m); };
 const dorme = ms => new Promise(r => setTimeout(r, ms));
 
@@ -24,7 +24,7 @@ const BASE = (k, rev, n) => { const b = { schema: PG[k].schema, schemaVersion: 1
   return b; };
 
 (async () => {
-  await new Promise(r => srv.listen(0, r)); const U = `http://127.0.0.1:${srv.address().port}/paginas/`;
+  await new Promise(r => srv.listen(0, r)); const U = `http://127.0.0.1:${srv.address().port}/__modulos__/`;
   const b = await chromium.launch(); const pe = [];
   const nova = async (ctx, arq, h = '', dlg = 'accept') => { const p = await ctx.newPage(); p.on('pageerror', e => pe.push(arq + ': ' + e.message)); p.on('dialog', d => dlg === 'accept' ? d.accept() : d.dismiss()); await p.goto(U + encodeURI(arq) + h); await p.waitForTimeout(900); return p; };
   // pasta simulada: escreve/lê/apaga a base em 00. Bases; conecta sem guardar a raiz do OPFS no IndexedDB (o Chromium do teste não aguenta)

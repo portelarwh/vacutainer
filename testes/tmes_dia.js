@@ -24,7 +24,7 @@ d3.push(`${hora(3, 500)},,1000003.000,`); for (let i = 1; i <= 20; i++) d3.push(
 const d4 = [CAB, `11/4/2030 12:00:01.000 AM,900001.000,1000003.000,20.0`];
 (async () => {
   const b = await chromium.launch(); const p = await b.newPage(); const pe = []; p.on('pageerror', e => pe.push(e.message));
-  await p.goto('file://' + RAIZ + 'paginas/OEE-Vacutainer.html'); await p.waitForTimeout(1500);
+  await p.goto('file://' + RAIZ + '__modulos__/OEE-Vacutainer.html'); await p.waitForTimeout(1500);
   const r = await p.evaluate(F => { const S = ServerData, store = S.emptyStore(), out = [];
     for (const txt of F) { const an = S.analyze(S.parseCsv(txt)); out.push({ boxes: an.boxes, carry: an.carry, zeros: an.zeros, snaps: an.snaps, jumps: an.jumps.length, gaps: an.gaps.filter(g => /T00:0/.test(g.from)).length, segs: an.segments.map(s => ({ lot: s.lot, cat: s.cat, b0: s.b0, b1: s.b1, n: s.n, t0: s.t0 })) }); S.merge(store, an, 'VAC'); }
     const porLote = {}; for (const s of store.segments) porLote[s.lot] = (porLote[s.lot] || 0) + s.n;

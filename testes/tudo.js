@@ -4,12 +4,15 @@
 // Código de saída 1 se alguma falhar. "Não verificado" (falta biblioteca ou pacote) não conta como aprovado nem como falha.
 const { spawnSync } = require('child_process'); const path = require('path'), fs = require('fs');
 const AQUI = __dirname;
+// Os processos filhos usam o mesmo transporte dos motores incorporados.
+const preload=path.join(AQUI,'http-local.cjs');
+if(!(process.env.NODE_OPTIONS||'').includes(preload))process.env.NODE_OPTIONS=((process.env.NODE_OPTIONS||'')+' --require '+JSON.stringify(preload)).trim();
 const SUITE = ['tds', 'tdia', 'tlote_origem', 'tpermissoes', 'tprefs', 'tcalendario', 'tautor', 'trelcompilado', 't181', 'temail', 'tgrade', 'tfechar', 'tmes_dia', 'tlogin', 'thh24', 'thh_todos', 'tcomparar', 'twaste_grade', 'twaste_target', 'tsqdcp_layout', 'tvisaogeral', 'twaste_vg', 'tparadas_vg', 'tparadas_ux', 'tgel_vg', 'tportal_vg', 'tportalfonte', 'tturnos', 'timportacao', 'tgel', 'tperiodo', 'tiniciativas', 'tfase7', 'toeereal', 'tparada_tempo', 'tsqdcp', 'tnv', 'tpendencias', 'tcorrecoes', 'tfila', 'tequip', 'tplanner', 'tficha', 'tordens', 'tvigencias', 'tnumeros', 'tcontratos', 'tbases', 'tdiag', 'tintegra',
   'tpg', 'tseguranca', 'trelatorios', 'tconstrucao', 'tvisual', 't18', 't18c', 't18d', 't18e', 'tc', 'tdin', 'tg', 'tk', 'tq', 'tr', 'ts1', 'tz', 'tmeta'];
 // instáveis conhecidas (CLAUDE.md › Pendências): rodam de novo uma vez antes de contar como falha
 const INSTAVEL = new Set([]);   /* 13/11/2026: o tz deixou de ser instável (esperava o redesenho do formulário) */
 // precisam de algo que pode faltar no ambiente: sem isso, "não verificado"
-const PRECISA = { tmeta: () => fs.existsSync(path.join(AQUI,'../paginas/lib/xlsx.full.min.js')) ? '' : 'falta a SheetJS local' };
+const PRECISA = { tmeta: () => require('../scripts/html.cjs').current().sources.has('biblioteca/xlsx') ? '' : 'falta a SheetJS local' };
 const pedidas = process.argv.slice(2).map(x => x.replace(/\.js$/, ''));
 const shard = process.env.TEST_SHARD ? process.env.TEST_SHARD.split('/').map(Number) : null;
 if(shard && !(shard.length===2 && shard.every(Number.isInteger) && shard[0]>=1 && shard[0]<=shard[1]))throw new Error('TEST_SHARD deve ser N/T, com 1 <= N <= T');

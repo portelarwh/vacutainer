@@ -1,5 +1,5 @@
 const RAIZ=require('path').resolve(__dirname,'..')+'/';
-const {chromium}=require('playwright');const S='file://'+require('path').resolve(__dirname,'..')+'/paginas/';(async()=>{const b=await chromium.launch();const p=await b.newPage({viewport:{width:1440,height:900}});const errs=[];p.on('pageerror',e=>errs.push(e.message));p.on('dialog',d=>d.accept());
+const {chromium}=require('playwright');const S='file://'+require('path').resolve(__dirname,'..')+'/__modulos__/';(async()=>{const b=await chromium.launch();const p=await b.newPage({viewport:{width:1440,height:900}});const errs=[];p.on('pageerror',e=>errs.push(e.message));p.on('dialog',d=>d.accept());
 for(const f of ['Gestão-Gel-Vacutainer.html','Paradas.html']){await p.goto(S+encodeURI(f));await p.waitForTimeout(1500);
  const tabs=await p.$$eval('#nav [data-t],#nav [data-tab],[role=tab][data-tab]',a=>a.slice(0,3).map(x=>x.getAttribute('data-t')||x.getAttribute('data-tab')));
  console.log(f,'voltar:',await p.evaluate(()=>!!document.getElementById('vacVoltar')),'abas:',tabs.join(','));

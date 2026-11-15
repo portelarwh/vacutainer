@@ -3,7 +3,7 @@
 // node testes/tordens.js → "sem erros"; código 1 se falhar
 const path = require('path'), fs = require('fs'), http = require('http'); const RAIZ = path.resolve(__dirname, '..');
 const { chromium } = require('playwright');
-const srv = http.createServer((q, r) => { const f = path.join(RAIZ, decodeURIComponent(q.url.split('?')[0])); if (!f.startsWith(RAIZ) || !fs.existsSync(f) || fs.statSync(f).isDirectory()) { r.writeHead(404); return r.end(); } r.writeHead(200, { 'content-type': f.endsWith('.html') ? 'text/html; charset=utf-8' : f.endsWith('.js') ? 'text/javascript' : 'application/octet-stream' }); fs.createReadStream(f).pipe(r); });
+const srv = require('../scripts/servidor-testes.cjs').server();
 const errs = []; const ok = (c, m) => { console.log((c ? 'ok   ' : 'FALHA ') + m); if (!c) errs.push(m); };
 
 // funções que rodam na página
@@ -31,7 +31,7 @@ const PREP = async () => {
 };
 
 (async () => {
-  await new Promise(r => srv.listen(0, r)); const U = `http://127.0.0.1:${srv.address().port}/paginas/`;
+  await new Promise(r => srv.listen(0, r)); const U = `http://127.0.0.1:${srv.address().port}/__modulos__/`;
   const b = await chromium.launch(); const ctx = await b.newContext({ viewport: { width: 1280, height: 900 } });
   const nova = async () => { const p = await ctx.newPage(); p.on('pageerror', e => errs.push('página: ' + e.message)); p.on('dialog', d => d.accept()); await p.goto(U + 'OEE-Vacutainer.html'); await p.waitForTimeout(1200); await p.evaluate(() => document.querySelectorAll('.overlay').forEach(o => o.remove())); return p; };
   const p = await nova();
