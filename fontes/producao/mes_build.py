@@ -32,3 +32,33 @@ def aplicar(R):
     R("    if (an.zeros) warns.push(",
       "    if (an.carry) warns.push(`1ª linha do arquivo: o lote ${an.carry.lot} estava na caixa ${an.carry.box} (a última do relatório anterior). Ela não conta de novo e o horário dessa linha é ignorado; a contagem começa na caixa ${an.carry.box + 1}. Dias importados antes da versão 2.4.63: importe o período de novo para tirar a caixa repetida das 00:00.`);\n"
       "    if (an.zeros) warns.push(")
+    # 2.4.63 · dias importados antes da correção: a caixa repetida às 00:00 já está guardada na base. Ao abrir a base (Model.ensure) e depois
+    # de cada importação (merge), o trecho que começa com o mesmo número em que o trecho anterior do mesmo lote terminou perde essa 1ª caixa,
+    # e a lacuna que ela abriu (00:00 até a caixa seguinte) sai junto. Assim as Ordens do mês, as Caixas do MES e o OEE real ficam certos sem
+    # precisar reimportar. Idempotente: depois de corrigido, o trecho já não começa no mesmo número.
+    R("  /* ---------- leituras derivadas ---------- */\n",
+      "  /* 2.4.63 · caixa repetida às 00:00 nos trechos importados antes da correção da 1ª linha do relatório diário */\n"
+      "  function semCaixaRepetida(store) {\n"
+      "    if (!store || !Array.isArray(store.segments) || store.segments.length < 2) return 0;\n"
+      "    let n = 0; const ult = new Map(), fora = new Set(), lac = new Set();\n"
+      "    const ord = store.segments.slice().sort((x, y) => x.t0 < y.t0 ? -1 : x.t0 > y.t0 ? 1 : 0);\n"
+      "    for (const s of ord) {\n"
+      "      const k = (s.lineId || '') + '|' + s.lot, p = ult.get(k);\n"
+      "      if (p && s.lot != null && s.b0 === p.b1 && p.t1 <= s.t0) {\n"
+      "        const mins = dec(s); lac.add(k + '|' + s.t0); n++;\n"
+      "        if (s.n <= 1 || mins.length <= 1) { fora.add(s); continue; }\n"
+      "        const e = enc(mins.slice(1)); s.b0 += 1; s.n -= 1; s.t0 = fromMin(mins[1]); s.base = e.base; s.m = e.m; s.semRepetida = true;\n"
+      "      }\n"
+      "      ult.set(k, s);\n"
+      "    }\n"
+      "    if (n) { store.segments = store.segments.filter(s => !fora.has(s)); if (Array.isArray(store.gaps)) store.gaps = store.gaps.filter(g => !lac.has((g.lineId || '') + '|' + g.lot + '|' + g.from)); }\n"
+      "    return n;\n"
+      "  }\n"
+      "  /* ---------- leituras derivadas ---------- */\n")
+    R("    store.mes = store.mes.filter(e => e.lineId !== lineId || !inR(e.t)).concat(an.mes.map(e => ({ ...e, lineId }))).sort((x, y) => x.t < y.t ? -1 : 1);\n    return store;",
+      "    store.mes = store.mes.filter(e => e.lineId !== lineId || !inR(e.t)).concat(an.mes.map(e => ({ ...e, lineId }))).sort((x, y) => x.t < y.t ? -1 : 1);\n    semCaixaRepetida(store);   /* 2.4.63 */\n    return store;")
+    R("  return { parseCsv, analyze, merge, fillUnknown, ensureStore,",
+      "  return { semCaixaRepetida, parseCsv, analyze, merge, fillUnknown, ensureStore,")
+    R("    if (!db.server.lotClass || typeof db.server.lotClass !== 'object') db.server.lotClass = {};\n",
+      "    if (!db.server.lotClass || typeof db.server.lotClass !== 'object') db.server.lotClass = {};\n"
+      "    if (typeof ServerData !== 'undefined') ServerData.semCaixaRepetida(db.server);   /* 2.4.63 · base com dias importados antes da correção da 1ª linha do MES */\n")

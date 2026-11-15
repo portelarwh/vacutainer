@@ -4,7 +4,14 @@
 const fs=require('fs'),path=require('path'),http=require('http'),crypto=require('crypto');
 const root=path.resolve(__dirname,'../..'),app=path.join(root,'nova-plataforma'),images=path.join(app,'docs/instalacao');
 const args=new Set(process.argv.slice(2));
-function inputHash(){const files=['src/App.tsx','src/core/runtime.ts','src/style.css','src/components/ModuleFrame.tsx','src/components/ModuleTabs.tsx'];return crypto.createHash('sha256').update(Buffer.concat(files.map(f=>fs.readFileSync(path.join(app,f))))).digest('hex')}
+function inputHash(){
+ const source=path.join(app,'src');
+ const collect=dir=>fs.readdirSync(dir,{withFileTypes:true}).sort((a,b)=>a.name.localeCompare(b.name,'en')).flatMap(e=>e.name==='generated'?[]:e.isDirectory()?collect(path.join(dir,e.name)):/\.(css|tsx)$/.test(e.name)?[path.join(dir,e.name)]:[]);
+ const files=[...collect(source),path.join(source,'core/runtime.ts')].sort();const hash=crypto.createHash('sha256');
+ for(const file of files)hash.update(path.relative(source,file).split(path.sep).join('/')).update('\0').update(fs.readFileSync(file)).update('\0');
+ return hash.digest('hex');
+}
+
 async function capturar(){
  const {chromium}=require('playwright'),options=require('../../nova-plataforma/tests/chromium.cjs');
  const html=fs.readFileSync(path.join(app,'dist/Plataforma.html')),server=http.createServer((q,r)=>{r.setHeader('Content-Type','text/html');r.end(html)});let browser;
@@ -17,7 +24,7 @@ async function capturar(){
 function compor(){
  const captures=JSON.parse(fs.readFileSync(path.join(images,'capturas.json'),'utf8'));if(captures.uiSha256!==inputHash())throw new Error('Interface alterada: atualize os prints com gerar_guia_plataforma.js --capturar após compilar a plataforma.');
  const manifest=JSON.parse(fs.readFileSync(path.join(app,'src/generated/manifest.json'),'utf8'));let html=fs.readFileSync(path.join(__dirname,'guia_plataforma.html'),'utf8');
- const replacements={'@@REVISAO@@':manifest.sourceRevision.slice(0,12),'@@PACOTE@@':manifest.enginesSha256.slice(0,12),'@@IMG_INICIO@@':'<img alt="Tela inicial da plataforma, sem base real conectada" src="data:image/png;base64,'+fs.readFileSync(path.join(images,'inicio.png')).toString('base64')+'">','@@IMG_LOGIN@@':'<img alt="Entrada por ID no Portal com dados fictícios" src="data:image/png;base64,'+fs.readFileSync(path.join(images,'login.png')).toString('base64')+'">'};
+ const replacements={'@@MARCA@@':fs.readFileSync(path.join(app,'src/design/brand.css'),'utf8'),'@@REVISAO@@':manifest.sourceRevision.slice(0,12),'@@PACOTE@@':manifest.enginesSha256.slice(0,12),'@@IMG_INICIO@@':'<img alt="Tela inicial da plataforma, sem base real conectada" src="data:image/png;base64,'+fs.readFileSync(path.join(images,'inicio.png')).toString('base64')+'">','@@IMG_LOGIN@@':'<img alt="Entrada por ID no Portal com dados fictícios" src="data:image/png;base64,'+fs.readFileSync(path.join(images,'login.png')).toString('base64')+'">'};
  for(const [key,value]of Object.entries(replacements)){if(html.split(key).length!==2)throw new Error('Marcador deve existir exatamente uma vez: '+key);html=html.replace(key,value)}
  fs.mkdirSync(path.join(app,'dist'),{recursive:true});fs.writeFileSync(path.join(app,'dist/Instalacao-Plataforma.html'),html);console.log('Guia separado atualizado · Instalacao-Plataforma.html');
 }

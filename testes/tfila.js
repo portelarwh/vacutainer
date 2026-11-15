@@ -48,7 +48,7 @@ const PREP = () => {
   await p.evaluate(() => { localStorage.removeItem('vac.userId'); localStorage.removeItem('vac.user'); Fila.seg = 'minhas'; App.render(); });
   ok(/Entre com o seu ID/.test(await p.evaluate(() => document.getElementById('main').innerText)), 'sem usuário: pede para entrar (item sem responsável nunca aparece em "Minhas")');
   await p.evaluate(() => { localStorage.setItem('vac.user', 'J. Lima'); localStorage.setItem('vac.userId', '1'); });
-  // 1.9.37 · Pendências e Minha fila numa tela só ("Pendências e ações"): abre em Minhas; Linha = tudo da linha, ações de início só as atrasadas
+  // 1.9.39 · Pendências e Minha fila numa tela só ("Pendências e ações"): abre em Minhas; Linha = tudo da linha, ações de início só as atrasadas
   const U = await p.evaluate(() => ({ abas: [...document.querySelectorAll('#nav [data-t]')].map(b => b.dataset.t + '=' + b.textContent.trim()), seg0: (() => { App.show('geral'); return Fila.seg; })() }));
   ok(!U.abas.some(x => /^pend=/.test(x)) && U.abas.some(x => /^fila=Pendências e ações/.test(x)) && U.seg0 === 'minhas', `uma aba só, "Pendências e ações", que abre em Minhas (${U.abas.join(' | ')})`);
   await p.evaluate(() => App.show('pend')); await p.waitForTimeout(200);

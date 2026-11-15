@@ -307,9 +307,14 @@ Portal › Relatórios passa a listar todos os relatórios da plataforma, um blo
 
 O relatório continua sendo gerado pela página dona (regra 1); o Portal só lista (`REL_CAT`, `REL_OUTROS`). Iniciativas, Equipamentos e Linha 360° não têm relatório próprio (impressão da tela). Relatório novo numa página entra no `REL_CAT`. O botão Relatórios da barra lateral (kit) vai para `#rel` (antes `#relatorios`, que o Portal não reconhecia). Teste: `testes/trelcompilado.js`.
 
-## 1.9.38 · Pendências e Minha fila numa tela só (15/11/2026)
+## 1.9.38 · Barra do dia abre o resumo do dia (15/11/2026)
 
-As abas "Minha fila" e "Pendências" viram uma só, **Pendências e ações** (decisões do usuário em 13/11/2026):
+Nos cartões das páginas com série por dia (`miniChart`, chave = data), cada barra abre o resumo do dia (`data-vac-dia`, clique ou Enter), com a área
+de clique na altura toda da coluna. O Portal continua só mostrando o `exports` (regra 1).
+
+## 1.9.39 · Pendências e Minha fila numa tela só (15/11/2026)
+
+Trazida do branch `claude/bold-feynman-7c69j0`. As abas "Minha fila" e "Pendências" viram uma só, **Pendências e ações** (decisões do usuário em 13/11/2026):
 - Visões: **Minhas** (abre sempre aqui), **Minha equipe**, **Sem responsável** e **Linha** (tudo da linha, de qualquer pessoa: a antiga aba Pendências).
 - Itens: as pendências de todas as páginas (as mesmas de antes, `allPend`, inclusive cadastro e versões) e as ações abertas de Iniciativas. Na visão Linha as ações começam só com as atrasadas; "Ver todas as ações (N)" mostra as outras.
 - Contadores por página que acompanham a visão (clicar filtra a página), agrupar por prazo ou por página, urgência escrita em cada pendência, botão "Relatório da linha" (o mesmo "Pendências da linha" de Portal › Relatórios).

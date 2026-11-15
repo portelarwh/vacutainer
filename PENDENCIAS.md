@@ -1,5 +1,8 @@
 # Pendências · Sistemas da Linha Vacutainer
 
+> O conteúdo abaixo registra rodadas anteriores. Para o produto novo, use [COMECE-AQUI](nova-plataforma/docs/COMECE-AQUI.md), [plano visual](nova-plataforma/docs/PLANO-DE-MELHORIAS.md) e [CORTE](nova-plataforma/docs/CORTE.md). As instruções antigas de distribuir HTMLs separados não substituem o roteiro da plataforma única. Nenhum corte foi executado.
+
+
 Atualizado em 12/11/2026. Serve para retomar o trabalho em outro chat: leia este arquivo, o `CLAUDE.md` e o `docs/auditorias/registro-decisoes.md`. Item recusado no registro só volta com fato novo.
 
 ## 0. Rodada do Design System (12/11/2026) · ler primeiro
@@ -27,7 +30,7 @@ Versões desta branch: Portal 1.9.28 · Produção 2.4.60 · Waste 1.12.0 · Gel
 
 **Portal 1.9.31 (12/11/2026, depois do merge do PR #63):** cartão "Pendências da linha" da Visão geral refeito pelo modelo visual enviado pelo usuário (`docs/layout-visao-geral.md`).
 
-**Produção 2.4.63 (12/11/2026):** relatório diário do MES. A 1ª linha com caixa > 0 contava em dobro às 00:00; corrigido (`docs/producao-ordens-sap.md` § 2.4.63). **Na pasta real: importar de novo os dias já importados** para tirar a caixa repetida.
+**Produção 2.4.63 (12/11/2026):** relatório diário do MES. A 1ª linha com caixa > 0 contava em dobro às 00:00; corrigido (`docs/producao-ordens-sap.md` § 2.4.63). Na 2.4.75 a caixa repetida dos dias já importados é corrigida ao abrir a base; não é preciso reimportar.
 
 **Produção 2.4.64 (12/11/2026):** fechar turno e dia com turno não produtivo desabilitado no dia (dava erro ao fechar o dia; os turnos fechados um a um não fechavam o dia); botões acesos em verde quando o turno fecha ou o hora a hora fica completo (`docs/producao-ordens-sap.md` § 2.4.64). Conferir na pasta real: fechar um turno e o dia, e ver os botões nos dois temas.
 
@@ -164,3 +167,7 @@ Também de antes:
 > - atualizar o checklist de homologação.
 
 Ao resolver um item, tirar daqui e do `CLAUDE.md` (Pendências conhecidas) e marcar no registro.
+
+**15/11/2026 · análise de marca, gráficos e fluidez (Produção 2.4.76, Portal 1.9.38, Linha 360° 1.1.3):** resumo do dia (`vacFicha` `dia`), letra de
+gráfico legível e Ampliar no `vacGrade`, casca sem salto ao abrir módulo, fonte e logo na pasta `Marca/` (fora do git; `nova-plataforma/docs/MARCA.md`).
+Ficou para depois: ver "Ficou para depois" em `docs/design-system.md` § Resumo do dia. Homologar na pasta real: copiar a pasta `Marca` e conferir a fonte.
