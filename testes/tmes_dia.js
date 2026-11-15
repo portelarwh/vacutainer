@@ -39,6 +39,18 @@ const d4 = [CAB, `11/4/2030 12:00:01.000 AM,900001.000,1000003.000,20.0`];
   ok(o4.carry && o4.carry.box === 20 && o4.boxes === 0 && o4.segs.length === 0, 'dia 4: só a 1ª linha (linha parada): nenhuma caixa e nenhum trecho');
   ok(r.porLote['1000001'] === 40 && r.porLote['1000002'] === 35 && r.porLote['1000003'] === 20, `quatro dias somados = contador do MES em cada lote (A ${r.porLote['1000001']}, B ${r.porLote['1000002']}, C ${r.porLote['1000003']})`);
   ok(r.primeira === 0 && o2.gaps + o3.gaps + o4.gaps === 0, 'nenhum trecho começando às 00:00 e nenhuma lacuna criada pela 1ª linha');
+  // base gravada antes da 2.4.63: o 2º dia guardou a caixa 12 de novo às 00:00:01, com uma lacuna até a caixa 13
+  const v = await p.evaluate(() => { const S = ServerData, mm = ts => ts.map(t => S.tm(t)), mk = (lot, b0, ts) => { const e = S.enc(mm(ts).map(Math.floor)); return { id: 'x' + lot + b0, lineId: 'VAC', lot, cat: '900001', b0, b1: b0 + ts.length - 1, t0: ts[0], t1: ts[ts.length - 1], n: ts.length, base: e.base, m: e.m }; };
+    const a1 = mk('1000002', 1, ['2030-11-01T20:00:00', '2030-11-01T20:10:00', '2030-11-01T20:20:00']);
+    const a2 = mk('1000002', 3, ['2030-11-02T00:00:01', '2030-11-02T05:00:00', '2030-11-02T05:10:00']); a2.partial = true;
+    const outro = mk('1000009', 3, ['2030-11-02T06:00:00', '2030-11-02T06:10:00']);
+    const db = { server: { segments: [a1, a2, outro], gaps: [{ lineId: 'VAC', lot: '1000002', from: '2030-11-02T00:00:01', to: '2030-11-02T05:00:00' }, { lineId: 'VAC', lot: '1000002', from: '2030-11-01T20:20:00', to: '2030-11-02T05:00:00' }], mes: [], lotClass: {}, imports: [] } };
+    const n1 = S.semCaixaRepetida(db.server), soma = db.server.segments.filter(s => s.lot === '1000002').reduce((x, s) => x + s.n, 0), seg2 = db.server.segments.find(s => s.lot === '1000002' && s.b0 > 1);
+    const n2 = S.semCaixaRepetida(db.server);
+    return { n1, n2, soma, b0: seg2.b0, t0: seg2.t0, gaps: db.server.gaps.length, outro: db.server.segments.find(s => s.lot === '1000009').n };
+  });
+  ok(v.n1 === 1 && v.soma === 5 && v.b0 === 4 && /T05:00/.test(v.t0) && v.gaps === 1, `base antiga: a caixa repetida das 00:00 sai sem reimportar (lote com ${v.soma} caixas, trecho começa na caixa ${v.b0} às ${v.t0.slice(11, 16)}, lacuna das 00:00 retirada)`);
+  ok(v.n2 === 0 && v.outro === 2, 'correção idempotente e só no mesmo lote (outro lote com o mesmo número não muda)');
   ok(!pe.length, 'sem erros de página' + (pe.length ? ': ' + pe.join(' | ') : ''));
   await b.close(); console.log(errs.length ? `\n${errs.length} falha(s)` : '\nsem erros'); process.exit(errs.length ? 1 : 0);
 })();
