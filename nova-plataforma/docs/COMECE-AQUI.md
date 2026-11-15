@@ -70,7 +70,7 @@ Para navegar sem bases reais, abra o endereço mostrado pelo Vite com `?demo=1`.
 
 O servidor do Vite é apenas de desenvolvimento. Não entra na implantação. Não acrescente CDN, fonte remota ou servidor necessário para operar o HTML distribuído.
 
-Ao alterar telas, use `npm run build:capturar --prefix nova-plataforma`: ele compila, confere o artefato e renova as capturas reais do guia auxiliar com dados fictícios. O build normal é determinístico e recusa capturas antigas. O guia antigo da raiz permanece preservado até o corte.
+Ao alterar telas, use `npm run build:capturar --prefix nova-plataforma`: ele compila, confere o artefato e renova as capturas reais do guia auxiliar com dados fictícios. O build normal é determinístico e recusa capturas antigas. O guia antigo da raiz saiu na limpeza pós-corte.
 
 ## Forma de trabalho entre agentes
 
