@@ -135,7 +135,7 @@ function runtimePrelude(config:{id:string;route:string;demo:boolean;scope:string
   const parentThemeObserver=new MutationObserver(followTheme);parentThemeObserver.observe(parent.document.documentElement,{attributes:true,attributeFilter:['data-theme']});
   window.addEventListener('beforeprint',()=>{printing=true;followTheme()});
   window.addEventListener('afterprint',()=>{printing=false;followTheme()});
-  const resize=()=>{const modal=[...document.querySelectorAll('.vlog,.overlay,.modal.on')].some(e=>e.getClientRects().length>0);host.resize(config.id,Math.ceil(modal?Math.max(320,parent.innerHeight-110):Math.max(360,document.body.getBoundingClientRect().height)),modal)};new ResizeObserver(resize).observe(document.body);new MutationObserver(()=>requestAnimationFrame(resize)).observe(document.body,{childList:true,subtree:true});window.addEventListener('resize',resize);resize();
+  const resize=()=>{const modal=[...document.querySelectorAll('.vlog,.overlay,.modal.on,.vg-amp')].some(e=>e.getClientRects().length>0);host.resize(config.id,Math.ceil(modal?Math.max(320,parent.innerHeight-110):Math.max(360,document.body.getBoundingClientRect().height)),modal)};new ResizeObserver(resize).observe(document.body);new MutationObserver(()=>requestAnimationFrame(resize)).observe(document.body,{childList:true,subtree:true});window.addEventListener('resize',resize);resize();
   route('',config.route||undefined);report();
   setInterval(()=>report(),1800);
  },200);
