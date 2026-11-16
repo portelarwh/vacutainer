@@ -2,7 +2,7 @@
 // A pessoa é o ID do cadastro: o nome é só informativo e pode mudar. Confere: ação criada pelo nome guarda o ID; o nome mostrado
 // e o exports seguem o cadastro quando ele muda; "Minhas" do Portal acha pela sessão (ID) mesmo depois da troca de nome;
 // nome repetido no cadastro fica sem ID; OS de Equipamentos e responsável do turno da Produção guardam o ID; a auditoria da
-// Produção grava o ID. Backup: falha registrada no navegador e em 00. Backups/<módulo>/registro-backup.log (pasta simulada),
+// Produção grava o ID. Backup: falha registrada no navegador e em 00. Backups/<módulo>/registro-backup-<estação>.log (pasta simulada),
 // Portal › Versões mostra a falha até um backup dar certo; o arquivo .log não conta como backup. Dados fictícios.
 // node testes/tid_backup.js → "sem erros"; código 1 se falhar
 const { chromium } = require('playwright');
@@ -64,13 +64,23 @@ const RENOMEADO = { ...CAD, rev: 5, usuarios: CAD.usuarios.map(u => u.codigo ===
     const r = await p.evaluate(() => {
       const A = [{ id: 'AC-1', titulo: 'Ação com o nome antigo', status: 'a fazer', responsavel: 'Ana Lima', responsavelId: 'U7', apoios: [], prazo: '2020-01-01', atrasada: true, origem: { tipo: 'manual' } },
         { id: 'AC-2', titulo: 'Ação da outra Bia', status: 'a fazer', responsavel: 'Bia', responsavelId: 'U9', apoios: [], prazo: '2020-01-02', atrasada: true, origem: { tipo: 'manual' } },
-        { id: 'AC-3', titulo: 'Ação antiga só com nome', status: 'a fazer', responsavel: 'Ana Lima Souza', apoios: [], prazo: '2020-01-03', atrasada: true, origem: { tipo: 'manual' } }];
+        { id: 'AC-3', titulo: 'Ação antiga só com nome', status: 'a fazer', responsavel: 'Ana Lima Souza', apoios: [], prazo: '2020-01-03', atrasada: true, origem: { tipo: 'manual' } },
+        { id: 'AC-4', titulo: 'Confirmar qual Bia', status: 'a fazer', responsavel: 'Bia', apoios: [], prazo: '2020-01-04', atrasada: true, origem: { tipo: 'manual' } },
+        { id: 'AC-5', titulo: 'Ação da Bia de Produção', status: 'a fazer', responsavel: 'Bia', responsavelId: 'U8', apoios: [], prazo: '2020-01-05', atrasada: true, origem: { tipo: 'manual' } }];
       MOD.data.inic = { ex: { exportsVersion: 1, acoes: A, pendencias: [] }, pend: [] };
       const Q = filaQuem(), I = filaItens().filter(i => i.tipo === 'acao'), minhas = I.filter(i => filaDe(i, Q.u, Q.uid)).map(i => i.id), equipe = I.filter(i => filaEquipe(i, Q)).map(i => i.id);
       return { uid: Q.uid, u: Q.u, minhas, equipe, nome: I.find(i => i.id === 'AC-1').resp };
     });
     ok(r.uid === 'U7' && r.u === 'Ana Lima Souza' && r.minhas.join() === 'AC-1,AC-3' && r.nome === 'Ana Lima Souza', `Portal › Minhas pela sessão U7: ${r.minhas.join(', ')} (nome antigo guardado vale pelo ID; ação só com o nome novo vale pelo nome); mostra "${r.nome}"`);
     ok(!r.equipe.includes('AC-2'), `Minha equipe pelo ID: a Bia da Manutenção (U9) não entra na equipe de Produção (${r.equipe.join(', ') || 'nenhuma'})`);
+    const ambigua = await p.evaluate(() => {
+      const I = filaItens().filter(i => i.tipo === 'acao');
+      const minhas = ['U8', 'U9'].map(uid => I.filter(i => filaDe(i, 'Bia', uid)).map(i => i.id));
+      App.show('fila'); Fila.seg = 'sem'; Fila.pag = ''; App.render();
+      return { minhas, texto: document.getElementById('main').innerText };
+    });
+    ok(ambigua.minhas[0].join() === 'AC-5' && ambigua.minhas[1].join() === 'AC-2', 'nome Bia sem ID não entra em Minhas de U8 nem de U9');
+    ok(/Confirmar qual Bia/.test(ambigua.texto) && /confirmar responsável/i.test(ambigua.texto) && !/Ação da Bia de Produção/.test(ambigua.texto), 'Sem responsável mantém o item ambíguo visível e pede confirmação, sem misturar a ação com ID');
     await ctx.close();
   }
 
@@ -108,10 +118,10 @@ const RENOMEADO = { ...CAD, rev: 5, usuarios: CAD.usuarios.map(u => u.codigo ===
     const r = await p.evaluate(async () => { const d = await navigator.storage.getDirectory(); for await (const [n] of d.entries()) await d.removeEntry(n, { recursive: true });
       const bk = await (await d.getDirectoryHandle('00. Backups', { create: true })).getDirectoryHandle('Paradas', { create: true });
       { const fh = await bk.getFileHandle('paradas-base_diario.json', { create: true }), w = await fh.createWritable(); await w.write('{}'); await w.close(); }
-      await vacBackupRegistro.registrar('paradas', { ok: true, arquivo: 'paradas-base_diario.json', dir: bk });
+      const primeiro = await vacBackupRegistro.registrar('paradas', { ok: true, arquivo: 'paradas-base_diario.json', dir: bk });
       await new Promise(r => setTimeout(r, 20));
       await vacBackupRegistro.registrar('paradas', { erro: new DOMException('acesso negado à pasta', 'NotAllowedError'), dir: () => bk });
-      const L = await vacBackupRegistro.ler('paradas', bk), txt = await (await (await bk.getFileHandle('registro-backup.log')).getFile()).text();
+      const L = await vacBackupRegistro.ler('paradas', bk), txt = await (await (await bk.getFileHandle(primeiro.registroArquivo)).getFile()).text();
       // pasta inacessível: fica só neste navegador
       const semPasta = await vacBackupRegistro.registrar('equip', { erro: 'sem permissão', dir: async () => { throw new Error('pasta fora do ar'); } });
       const L2 = await vacBackupRegistro.ler('equip', null);

@@ -8,6 +8,7 @@
 // node testes/tlote_origem.js → "sem erros"; código 1 se falhar
 const path = require('path'); const RAIZ = path.resolve(__dirname, '..') + '/';
 const { chromium } = require('playwright');
+const V = Object.fromEntries(require('../scripts/html.cjs').manifest().files.map(f => [f.id, f.version]));
 const errs = []; const ok = (c, m) => { console.log((c ? 'ok   ' : 'FALHA ') + m); if (!c) errs.push(m); };
 const PREP = () => {
   const d = JSON.parse(Store.serialize(Store.S.db)), SD = ServerData, LINE = 'line_vac', DIA = '2026-03-11';
@@ -59,13 +60,13 @@ const PREP = () => {
     const ld = (X.lotesHistorico || []).find(l => l.lote === 'L-DIA'); ok(ld && ld.obs === 'só classificação de dia' && ld.dias.join() === '2026-03-10' && !(X.lotes || []).some(l => l.lote === 'L-DIA'), 'lote com classificação de dia recente e sem caixas do MES vem no lotesHistorico (não está no lotes) (revisão Codex P2)');
     ok(oh && oh.lote === 'L-OLD' && oh.mes === '2023-05' && !(X.porOrdem || []).some(o => o.ordem === 'O-OLD') && lh && lh.situacao === 'retrabalho' && lh.obs === 'nota antiga' && lh.dias.join() === '2023-05-10' && lh.retrabalhoDias.join() === '2023-05-10' && !(X.lotesHistorico || []).some(l => l.lote === 'L-501'),
       'Produção 2.4.73: ordensHistorico (plano fora dos 24 meses) e lotesHistorico (situação, observação e dias de lote antigo), sem repetir os recentes'); }
-  ok(await o.evaluate(() => APP_VERSION) === '2.4.78', 'Produção 2.4.78');
+  ok(await o.evaluate(() => APP_VERSION) === V.oee, 'Produção 2.4.78');
 
   // ---------- Portal 1.9.33: cartão "Agora" com o exports.atual (sem calcular nada)
   const pt = await c.newPage(); pt.on('pageerror', e => pe.push('Portal: ' + e.message));
   await pt.goto('file://' + RAIZ + '__modulos__/Portal.html'); await pt.waitForTimeout(900);
   const AG = await pt.evaluate(A => { MOD.data.oee = Object.assign(MOD.data.oee || {}, { extra: { emProd: [], atual: A } }); const h = agoraCard(), d = document.createElement('div'); d.innerHTML = h; return { t: d.innerText.replace(/\s+/g, ' '), v: PAGE.versao }; }, X.atual);
-  ok(AG.v === '1.9.40' && /Lote L-502/.test(AG.t) && /100200302/.test(AG.t) && /60\.28\d peças\/h/.test(AG.t) && /falta 90\.000/.test(AG.t) && /término 11\/03 15:\d\d estimado/.test(AG.t) && /última caixa 11\/03 13:59/.test(AG.t),
+  ok(AG.v === V.portal && /Lote L-502/.test(AG.t) && /100200302/.test(AG.t) && /60\.28\d peças\/h/.test(AG.t) && /falta 90\.000/.test(AG.t) && /término 11\/03 15:\d\d estimado/.test(AG.t) && /última caixa 11\/03 13:59/.test(AG.t),
     'Portal 1.9.33: cartão "Agora" com lote, ordem, ritmo, falta e término estimado do exports da Produção (' + AG.t.slice(0, 140) + '…)');
 
   // ---------- Waste 1.12.8: ordem antiga pelo exports (ordensHistorico/lotesHistorico), sem guardar planos nem servidor da Produção
@@ -74,7 +75,7 @@ const PREP = () => {
   const WS = await ws.evaluate(async X => { enterTest(); const base = { exports: X, monthPlans: [{ month: '2023-05', orders: [{ order: 'O-OLD' }] }], server: { lotClass: {}, lotNotes: {} } };
     ST.mode = 'pasta'; ST.dir = { getFileHandle: async () => ({ getFile: async () => ({ lastModified: 42, text: async () => JSON.stringify(base) }) }) }; OEE.at = 0; OEE.mod = 0;
     await loadOEE(true); const f = oeeFind('O-OLD'); return { mp: OEE.src && OEE.src.monthPlans, sv: OEE.src && OEE.src.server, lote: f && f.lote, fonte: f && f.fonte, lot: f && f.lotHits.map(h => h.path).join(' | '), ver: APP_VER }; }, X);
-  ok(WS.ver === '1.12.9' && WS.mp === null && WS.sv === null && WS.lote === 'L-OLD' && WS.fonte === 'exports' && /lotesHistorico/.test(WS.lot), `Waste 1.12.9: ordem antiga achada no exports (${WS.fonte}; lote ${WS.lote}; ${WS.lot}), sem guardar planos nem servidor da Produção`);
+  ok(WS.ver === V.perdas && WS.mp === null && WS.sv === null && WS.lote === 'L-OLD' && WS.fonte === 'exports' && /lotesHistorico/.test(WS.lot), `Waste 1.12.9: ordem antiga achada no exports (${WS.fonte}; lote ${WS.lote}; ${WS.lot}), sem guardar planos nem servidor da Produção`);
 
   // ---------- Paradas: ordem e catálogo pelo lote ou pelo horário; eventoId
   const p = await c.newPage(); p.on('pageerror', e => pe.push(e.message));
@@ -96,7 +97,7 @@ const PREP = () => {
   ok(R.ex5.eventoId === 'ev_teste1' && R.n === 6 && !R.ids.some(i => /^OEE:/.test(i)), 'Paradas: a mesma parada apontada na Produção ganha o eventoId dela; nenhum evento contado duas vezes');
   ok(/100200301:2/.test(R.porOrdem) && /100200302:1/.test(R.porOrdem), 'Paradas: exports.porOrdem com as ordens vindas do lote e do horário (' + R.porOrdem + ')');
   ok(R.avisos && R.avisos.semOrdem === 1 && R.avisos.soProducao === 0, 'Paradas: avisos de origem (lote não encontrado: 1; paradas só na Produção: 0)');
-  ok(await p.evaluate(() => PAGE.versao) === '1.2.12', 'Paradas 1.2.12');
+  ok(await p.evaluate(() => PAGE.versao) === V.paradas, 'Paradas 1.2.12');
 
   // ---------- Produção 2.4.71 / kit: clique numa hora do gráfico abre a ficha do trecho (vacFicha 'intervalo') com lotes, ordens, caixas e paradas
   const FI = await o.evaluate(([X, exPar]) => { const S = vacFicha._S, pg = id => vacFicha.FONTES.find(f => f.id === id).pega;
@@ -117,7 +118,7 @@ const PREP = () => {
     const lin = sel => [...document.querySelectorAll(sel + ' tr')].slice(1).map(r => [...r.cells].map(td => td.innerText.trim().replace(/\s+/g, ' ')));
     return { cat: lin('[data-eq-cat]'), par: lin('[data-eq-pareto]'), botoes: document.querySelectorAll('[data-eq-cat] .vficha-bt').length, ver: PAGE.versao }; }, R.exPar);
   const cx = k => (EQ.cat.find(r => r[0] === k) || []);
-  ok(EQ.ver === '1.0.17' && cx(P.cats[0])[1] && /100200301/.test(cx(P.cats[0])[1]) && cx(P.cats[0])[2] === '1' && /100200302/.test(cx(P.cats[1])[1] || '') && /sem catálogo/.test(EQ.cat.map(r => r[0]).join('|')) && EQ.botoes >= 2,
+  ok(EQ.ver === V.equip && cx(P.cats[0])[1] && /100200301/.test(cx(P.cats[0])[1]) && cx(P.cats[0])[2] === '1' && /100200302/.test(cx(P.cats[1])[1] || '') && /sem catálogo/.test(EQ.cat.map(r => r[0]).join('|')) && EQ.botoes >= 2,
     'Equipamentos 1.0.14: ficha com paradas por catálogo e ordem (botão da ficha da ordem) e "sem catálogo" para o que não tem origem');
   const soma = EQ.cat.reduce((s, r) => s + +r[3].replace(/\D/g, ''), 0), somaP = EQ.par.reduce((s, r) => s + +r[2].replace(/\D/g, ''), 0);
   ok(EQ.par.length && EQ.par[0][0] === 'FME' && soma === 50 && somaP === 50 && /100 %$/.test(EQ.par[EQ.par.length - 1][3]), `Equipamentos: Pareto por código e total por catálogo iguais à soma das paradas do equipamento (${soma} min)`);
