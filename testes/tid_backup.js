@@ -204,6 +204,26 @@ const RENOMEADO = { ...CAD, rev: 5, usuarios: CAD.usuarios.map(u => u.codigo ===
     await ctx.close();
   }
 
+  // ---------- retenção dos backups (Administração › Parâmetros › Guardar backups por): prazo mínimo 7 dias, 10 mais recentes ficam, .log intocado
+  {
+    const ctx = await b.newContext(); const p = await nova(ctx, 'Portal.html');
+    const r = await p.evaluate(async () => { enterTest(); await new Promise(r => setTimeout(r, 300)); Lock.on(Cad.D.seguranca.senhaHash);
+      Cad.ui.sec = 'parametros'; App.show('cad'); await new Promise(r => setTimeout(r, 300));
+      const grava = async v => { Cad.ui.sec = 'parametros'; App.show('cad'); await new Promise(r => setTimeout(r, 200)); document.querySelector('[data-par="backupDias"]').value = v; document.querySelector('#sParOk').click(); await new Promise(r => setTimeout(r, 300)); return (Cad.D.parametros || {}).backupDias ?? null; };
+      const curto = await grava('3'), certo = await grava('180');
+      const d = await navigator.storage.getDirectory(); for await (const [n] of d.entries()) await d.removeEntry(n, { recursive: true });
+      const bk = await (await d.getDirectoryHandle('00. Backups', { create: true })).getDirectoryHandle('Teste', { create: true });
+      for (let k = 1; k <= 15; k++) { const fh = await bk.getFileHandle('base_' + String(k).padStart(2, '0') + '.json', { create: true }); const w = await fh.createWritable(); await w.write('{}'); await w.close(); }
+      { const fh = await bk.getFileHandle('registro-backup-x.log', { create: true }); const w = await fh.createWritable(); await w.write(''); await w.close(); }
+      const v0 = window.vacCad, n0 = Date.now; window.vacCad = () => ({ parametros: {} }); const semPrazo = await vacBackupRegistro.limpar(bk);
+      window.vacCad = () => ({ parametros: { backupDias: 7 } }); const novos = await vacBackupRegistro.limpar(bk);
+      Date.now = () => n0() + 30 * 864e5; const velhos = await vacBackupRegistro.limpar(bk); Date.now = n0; window.vacCad = v0;
+      const sobram = []; for await (const [n] of bk.entries()) sobram.push(n); return { curto, certo, semPrazo, novos, velhos, json: sobram.filter(n => /\.json$/.test(n)).length, log: sobram.includes('registro-backup-x.log') }; });
+    ok(r.curto === null && r.certo === 180, `Administração: "Guardar backups por" recusa 3 dias e grava 180 (${r.curto} / ${r.certo})`);
+    ok(r.semPrazo === null && r.novos === null && r.velhos && r.velhos.apagados === 5 && r.json === 10 && r.log, `retenção: sem prazo nada sai; com prazo, só o que passou do prazo, ficam os 10 mais recentes e o registro (.log) (${JSON.stringify(r)})`);
+    await ctx.close();
+  }
+
   ok(!pe.length, 'sem erro de página' + (pe.length ? ': ' + [...new Set(pe)].slice(0, 3).join(' | ') : ''));
   await b.close(); srv.close(); if (errs.length) { console.log(`\n${errs.length} falha(s)`); process.exit(1); } console.log('\nsem erros');
 })().catch(e => { console.error(e); process.exit(1); });
