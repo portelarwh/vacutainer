@@ -10,7 +10,7 @@ Atualizado após a consolidação do aplicativo em 15/11/2026. Esta é a lista a
 - E12: amostras de SQL/MES e critérios de conciliação com apontamentos manuais, início/fim e cronologia por equipamento.
 - E13: padrões técnicos AM/TPM, CILT, center line, lubrificação e 5S, por equipamento e checklist. Não inventar conteúdo técnico.
 - E15: escopo de Projetos. A área incorporada continua identificada como em construção.
-- R-02: decidir tratamento de responsáveis digitados por nome versus identificador estável.
+- R-02 (decidido em 16/11/2026: a pessoa é o ID do cadastro; o nome só informa): feito em Iniciativas, Equipamentos (OS), Portal › Pendências e ações e Produção (responsável do turno e auditoria). Falta estender aos outros campos de pessoa (técnico do Paradas, comentários do Waste, Linha 360°) quando cada tela for revista.
 - Confirmar regra vigente de microparadas (documentos históricos divergem entre 5 e 10 minutos); preservar o parâmetro/motor atual até decisão.
 
 ## Homologação na linha
@@ -26,7 +26,7 @@ Atualizado após a consolidação do aplicativo em 15/11/2026. Esta é a lista a
 
 - [Plano de UX](docs/PLANO-DE-MELHORIAS.md): Visão da linha, operador, filtros/tabelas/gráficos, ficha contextual, Planner e relatórios.
 - Revisão individual dos gráficos, formulários e e-mails dos motores; a camada BD não equivale a revisão completa dessas telas.
-- Registrar a última falha de backup diário do Portal: comportamento e aviso ainda precisam de decisão; não esconder falha de gravação.
+- Backup diário (16/11/2026): cada módulo registra o resultado em `00. Backups/<módulo>/registro-backup.log` e no navegador; o Portal › Versões mostra a falha como pendência urgente até um backup dar certo. Falta homologar com a pasta real (permissão negada, pasta fora do ar).
 - Índice de comentários/ações do Waste quando o painel ultrapassar 300 ms ou 2 mil comentários; funções grandes e parser Meta FY27 duplicado precisam de referência de comportamento antes de refatorar.
 - Locais de estoque continuam no Gel. Scrap "Dia (sem turno)" do Gel não tem equivalente na Produção; não converter automaticamente.
 - Unificar geradores de relatório somente com prova de números, filtros e conteúdo equivalente.

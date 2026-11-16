@@ -9,9 +9,12 @@ const app=helpers.current();
 test('fonte única monta os mesmos oito motores operacionais e preserva os nove IDs',()=>{
   const before=JSON.parse(readFileSync('testes/bases/consolidacao-motores.json','utf8'));
   assert.equal([...app.sources.keys()].filter(k=>k.startsWith('motor/')).length,9);
-  for(const [id,record]of Object.entries(before))if(id!=='portal')assert.equal(createHash('sha256').update(app.assemble('motor/'+id)).digest('hex'),record.sha256,id);
-  // O Portal ganhou apenas o adaptador de metadados para código incorporado;
-  // sua compatibilidade integral de base é conferida em pasta.cjs.
+  // consolidacao-motores.json é o registro do dia da consolidação (mesmos IDs e arquivos de antes).
+  // Depois dela os motores evoluem: cada motor montado tem de bater com o hash do manifesto incorporado.
+  const manifesto=JSON.parse(app.text('dados/manifesto'));
+  assert.deepEqual(Object.keys(before).sort(),[...app.sources.keys()].filter(k=>k.startsWith('motor/')).map(k=>k.slice(6)).sort());
+  for(const [id,record]of Object.entries(before)){const m=manifesto.files.find(f=>f.id===id);assert.ok(m,id);assert.equal(helpers.registry().find(r=>r.id===id).file,record.file,id);
+    assert.equal(createHash('sha256').update(app.assemble('motor/'+id)).digest('hex'),m.sha256,id)}
   for(const folder of ['paginas','fontes','nova-plataforma'])assert.equal(existsSync(path.join(helpers.ROOT,folder)),false);
 });
 test('texto de código e HTML interno preservam & e fechamento de textarea',()=>{
