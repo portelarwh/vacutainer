@@ -13,7 +13,11 @@ const files={portal:'portal-base.json',oee:'oee-vacutainer-base.json',perdas:'pe
   const before=fixture.bases[entry.id];await page.locator('.sidebar').getByRole('button',{name:entry.id==='portal'?'Administração':({oee:'Produção',perdas:'Waste',gel:'Gestão de Gel',paradas:'Paradas',equip:'Equipamentos',inic:'Iniciativas / Ações',linha:'Linha 360°'})[entry.id],exact:true}).click();
   const title=entry.id==='portal'?'Administração':({oee:'Produção',perdas:'Waste',gel:'Gestão de Gel',paradas:'Paradas',equip:'Equipamentos',inic:'Iniciativas / Ações',linha:'Linha 360°'})[entry.id];const iframe=page.locator('iframe[title="Módulo '+title+'"]');await iframe.waitFor();const frame=await(await iframe.elementHandle()).contentFrame();await frame.waitForFunction(()=>window.vacPagina?.conectado());
   const baseline=await page.evaluate(async file=>JSON.parse(await(await(await fixtureDir.getFileHandle(file)).getFile()).text()),files[entry.id]);
-  integral(before,baseline,entry.id+' conexão');
+  // Base gravada por outra versão: alguns motores regravam ao conectar só para atualizar o resumo (exports) e o carimbo
+  // de quem gravou. Os dados têm de continuar iguais; o exports novo tem de ser da versão atual.
+  const versaoBase=before.appVersion||before.applicationVersion,atualizou=!!versaoBase&&versaoBase!==entry.version&&JSON.stringify(before.exports)!==JSON.stringify(baseline.exports);
+  if(atualizou){const semResumo=b=>({...b,exports:undefined,revBy:undefined});assert.equal((baseline.exports||{}).appVersion||baseline.appVersion,entry.version,entry.id+' exports atualizado na conexão');integral(semResumo(before),semResumo(baseline),entry.id+' conexão (só o resumo atualizado)')}
+  else integral(before,baseline,entry.id+' conexão');
   const expected=structuredClone(baseline),text='Alteração fictícia N4 '+entry.id;
   if(entry.id==='oee'){const day=expected.productionDays.find(d=>!d.deleted);day.note=text;day.updatedAt='2026-11-15T12:00:00+00:00';day.updatedBy='Sem nome';day.revision=(day.revision||0)+1;expected.databaseVersion=(expected.databaseVersion||0)+1;expected.lastModifiedAt='2026-11-15T12:00:00+00:00';expected.lastModifiedBy='Sem nome'}
   else if(entry.id==='portal'){expected.config.notas=expected.config.notas||{};expected.config.notas.n4={texto:text,u:'Pessoa Fictícia de Verificação',t:'2026-11-15T12:00:00.000Z'}}
@@ -64,6 +68,7 @@ const files={portal:'portal-base.json',oee:'oee-vacutainer-base.json',perdas:'pe
   if(['portal','perdas'].includes(entry.id))expected.updatedBy='Pessoa Fictícia de Verificação';
   if(entry.id==='gel'){expected.revBy=reference.writer;expected.savedAt='2026-11-15T12:00'}
   assert.equal(saved.appVersion,entry.version,entry.id+' appVersion');
+  if(entry.id==='oee')assert.equal(saved.applicationVersion,entry.version,'oee applicationVersion');
   integral(expected,saved,entry.id+' abrir → alterar → gravar → reler');
   console.log('ok abrir/gravar/reler '+entry.id+' '+saved.appVersion+' · '+Object.keys(saved.exports).length+' chaves de exports');
  }
