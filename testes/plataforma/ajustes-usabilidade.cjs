@@ -1,4 +1,4 @@
-// Ajustes de usabilidade (17/11/2026; plataforma 1.5.0, Produção 2.4.82, Administração 1.9.44). Demonstração, dados fictícios.
+// Ajustes de usabilidade (17/11/2026; plataforma 1.5.0, Produção 2.4.82, Administração 1.9.44 · atualizado em 1.6.0). Demonstração, dados fictícios.
 // Confere: Recolher tudo / Expandir tudo e a seta de cada seção (01, 02…) em seis telas; seta do Cabeçalho do dia da Produção;
 // aba Equipamentos da Produção abre a página Equipamentos (Voltar volta); "?" abre o guia da aba do módulo; faixa "Onde lançar"
 // com atalho para o turno; "Lançar meu turno" em destaque laranja (padrão); previsão do catálogo no "Agora na linha";

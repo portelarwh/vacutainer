@@ -194,6 +194,16 @@ html.vg-tem-amp body::after{content:"";position:fixed;inset:0;z-index:899;backgr
 @keyframes vgAmp{from{opacity:.4;transform:scale(.985)}to{opacity:1;transform:none}}
 @media (prefers-reduced-motion:reduce){.vg-it.vg-amp{animation:none}}
 .vg-it.vg-arrastando{opacity:.45}
+.vg-grade>[data-vg-oculto="1"]{display:none!important}   /* 1.6.0 · ocultado na pílula Exibição */
+.vg-it svg[viewBox]{max-width:100%}
+[data-vg-exibir]{display:inline-block;position:relative;margin-left:auto}
+.vg-exib>summary{list-style:none;cursor:pointer;display:inline-flex;align-items:center;gap:6px;padding:5px 12px;border:1px solid var(--line,#d5dde6);border-radius:999px;background:var(--card,#fff);font-size:13px;font-weight:600;color:var(--ink,#102f55)}
+.vg-exib>summary::-webkit-details-marker{display:none}
+.vg-exib[open]>summary{border-color:var(--accent,#044ED7);color:var(--accent,#044ED7)}
+.vg-exib-m{position:absolute;right:0;top:calc(100% + 6px);z-index:60;min-width:280px;max-height:60vh;overflow:auto;background:var(--card,#fff);border:1px solid var(--line,#d5dde6);border-radius:10px;box-shadow:0 10px 30px rgba(6,10,61,.18);padding:10px 12px;display:flex;flex-direction:column;gap:6px;font-size:13px;font-weight:400;text-align:left}
+.vg-exib-m label{display:flex;gap:8px;align-items:center;cursor:pointer;white-space:nowrap}
+.vg-exib-a{display:flex;gap:6px;margin-top:4px;padding-top:8px;border-top:1px solid var(--line,#d5dde6)}
+@media print{[data-vg-exibir]{display:none!important}}
 .vg-it.vg-alvo{outline:2px dashed var(--accent);outline-offset:3px}
 @media (hover:none){.vg-barra{opacity:1;pointer-events:auto;position:static;justify-content:flex-end;border:0;box-shadow:none;padding:0 0 4px;background:none}}
 
@@ -2823,20 +2833,38 @@ const vacGrade = (() => {
     try {
       const prefs = ler(), grupos = new Map(); cartoes().forEach(c => { const p = c.parentElement; if (!grupos.has(p)) grupos.set(p, []); grupos.get(p).push(c); });
       grupos.forEach((cs, p) => { if (p.dataset.vgNao) return;
-        const filhos = [...p.children].filter(x => !x.classList.contains('vg-barra') &amp;&amp; x.tagName !== 'SCRIPT' &amp;&amp; x.tagName !== 'STYLE' &amp;&amp; getComputedStyle(x).display !== 'none' &amp;&amp; getComputedStyle(x).position !== 'absolute' &amp;&amp; getComputedStyle(x).position !== 'fixed');
+        const filhos = [...p.children].filter(x => !x.classList.contains('vg-barra') &amp;&amp; x.tagName !== 'SCRIPT' &amp;&amp; x.tagName !== 'STYLE' &amp;&amp; (x.dataset.vgOculto === '1' || getComputedStyle(x).display !== 'none') &amp;&amp; getComputedStyle(x).position !== 'absolute' &amp;&amp; getComputedStyle(x).position !== 'fixed');
         if (!p.classList.contains('vg-grade')) { /* 1ª vez: guarda a largura que cada filho tinha no layout da página */
-          const nat = filhos.map(x => larguraNatural(x, p)); if (nat.some(n => !n)) { p.dataset.vgNao = '1'; return; } p._vgNat = {}; filhos.forEach((x, i) => { x.dataset.vgN = nat[i]; p._vgNat[chaveItem(x, i)] = nat[i]; }); p.classList.add('vg-grade'); }
-        const gk = chaveGrupo(p), pg = prefs[gk] || {}, larg = pg.larg || {}, ordem = pg.ordem || [];
+          const nat = filhos.map(x => +x.dataset.vgLarg || larguraNatural(x, p)); if (nat.some(n => !n)) { p.dataset.vgNao = '1'; return; } p._vgNat = {}; filhos.forEach((x, i) => { x.dataset.vgN = nat[i]; p._vgNat[chaveItem(x, i)] = nat[i]; }); p.classList.add('vg-grade'); }
+        const oculto = prefs.__oculto || {}, gk = chaveGrupo(p), pg = prefs[gk] || {}, larg = pg.larg || {}, ordem = pg.ordem || [];
         const chaves = filhos.map((x, i) => chaveItem(x, i));
-        filhos.forEach((x, i) => { const k = chaves[i]; if (!x.dataset.vgN) x.dataset.vgN = String((p._vgNat &amp;&amp; p._vgNat[k]) || 6); const l = String(larg[k] || x.dataset.vgN); if (x.dataset.vgL !== l) x.dataset.vgL = l; const o = ordem.indexOf(k), ord = String(o >= 0 ? o : ordem.length + i); if (x.style.order !== ord) x.style.order = ord; x.dataset.vgKey = k; });
+        filhos.forEach((x, i) => { const k = chaves[i]; if (!x.dataset.vgN) x.dataset.vgN = String((p._vgNat &amp;&amp; p._vgNat[k]) || 6); const l = String(larg[k] || x.dataset.vgN); if (x.dataset.vgL !== l) x.dataset.vgL = l; const o = ordem.indexOf(k), ord = String(o >= 0 ? o : ordem.length + i); if (x.style.order !== ord) x.style.order = ord; x.dataset.vgKey = k; const oc = oculto[k] ? '1' : ''; if ((x.dataset.vgOculto || '') !== oc) { if (oc) x.dataset.vgOculto = oc; else delete x.dataset.vgOculto; } });
         cs.forEach(c => { c.classList.add('vg-it'); if (c.querySelector(':scope > .vg-barra')) { marcar(c); return; }
           const b = document.createElement('div'); b.className = 'vg-barra'; b.setAttribute('role', 'toolbar'); b.setAttribute('aria-label', 'Disposição do gráfico');
           b.innerHTML = '<button type="button" class="vg-pega" draggable="true" data-vg="pega" title="Arrastar para mudar de lugar" aria-label="Arrastar para mudar de lugar">' + vacIcone('pega', 'sm') + '</button><button type="button" data-vg="antes" title="Mover para antes" aria-label="Mover para antes">' + vacIcone('esquerda', 'sm') + '</button><button type="button" data-vg="depois" title="Mover para depois" aria-label="Mover para depois">' + vacIcone('direita', 'sm') + '</button><i></i><button type="button" data-vg="l6" title="Largura inteira" aria-label="Largura inteira"></button><button type="button" data-vg="l3" title="Metade da largura (2 lado a lado)" aria-label="Metade da largura"></button><button type="button" data-vg="l2" title="Um terço da largura (3 lado a lado)" aria-label="Um terço da largura"></button><i></i><button type="button" data-vg="rest" title="Voltar à disposição original deste bloco" aria-label="Voltar à disposição original">' + vacIcone('restaurar', 'sm') + '</button><i></i><button type="button" data-vg="amp" aria-pressed="false" title="Ampliar este gráfico na tela inteira" aria-label="Ampliar este gráfico na tela inteira">' + vacIcone('ampliar', 'sm') + '</button>';
           c.appendChild(b); marcar(c); });
         marcarGrupo(p);
       });
+      mover(prefs); document.querySelectorAll('[data-vg-exibir]').forEach(exibicao);
     } finally { aplicar._em = 0; }
   }
+  /* 1.6.0 · arrastar para outro grupo: o cartão vai para a grade do alvo (prefs.__mov[cartão] = grupo). Quando a página redesenha a grade de
+     origem, o cartão novo volta a ser levado e a cópia antiga do destino sai. Os gráficos são localizados pelo id: continuam se atualizando. */
+  const grades = () => [...document.querySelectorAll('main .vg-grade')];
+  function mover(prefs) { const M = prefs.__mov || {}; for (const [k, g] of Object.entries(M)) { const dst = grades().find(x => chaveGrupo(x) === g); if (!dst) continue;
+      const L = [...document.querySelectorAll('main .vg-grade > [data-vg-key]')].filter(x => x.dataset.vgKey === k), fora = L.filter(x => x.parentElement !== dst); if (!fora.length) continue;
+      L.filter(x => x.parentElement === dst).forEach(x => x.remove()); const el = fora[fora.length - 1]; fora.slice(0, -1).forEach(x => x.remove()); el.dataset.vgMov = '1'; dst.appendChild(el); } }
+  /* 1.6.0 · pílula "Exibição": escolhe quais cartões aparecem (prefs.__oculto). <span data-vg-exibir="seletor da área"></span> na página. */
+  const titulo = c => { const h = c.querySelector('h2,h3,h4'); return h ? ([...h.childNodes].filter(n => !(n.nodeType === 1 &amp;&amp; /^(I|BUTTON|SELECT|INPUT)$/.test(n.tagName))).map(n => n.textContent).join('').replace(/\s+/g, ' ').trim()) : c.dataset.vgKey; };
+  function exibicao(host) { const area = document.querySelector(host.dataset.vgExibir) || document.querySelector('main'); if (!area) return; const prefs = ler(), oc = prefs.__oculto || {};
+    const C = [...area.querySelectorAll('.vg-grade > [data-vg-key]')].filter(c => c.matches(CARTAO) &amp;&amp; (c.dataset.vgOculto === '1' || c.offsetParent || c.closest('.vk-grp'))); const vis = C.filter(c => !oc[c.dataset.vgKey]).length;
+    const ass = C.map(c => c.dataset.vgKey + (oc[c.dataset.vgKey] ? '-' : '+')).join(); if (host._ass === ass &amp;&amp; host.firstElementChild) return; host._ass = ass; const ab = host.querySelector('details')?.open;
+    host.innerHTML = '<details class="vg-exib"' + (ab ? ' open' : '') + '><summary class="vg-exib-b" title="Escolher quais gráficos aparecem nesta área (vale para este computador)">Exibição · ' + vis + ' de ' + C.length + ' ▾</summary><div class="vg-exib-m" role="group" aria-label="Gráficos visíveis">'
+      + C.map(c => '<label><input type="checkbox" data-vg-exk="' + c.dataset.vgKey.replace(/"/g, '&amp;quot;') + '"' + (oc[c.dataset.vgKey] ? '' : ' checked') + '> ' + String(titulo(c)).replace(/&amp;/g, '&amp;amp;').replace(/</g, '&amp;lt;') + '</label>').join('')
+      + '<div class="vg-exib-a"><button type="button" class="b sm" data-vg-exall="1">Mostrar todos</button><button type="button" class="b sm" data-vg-exall="0">Ocultar todos</button></div></div></details>'; }
+  document.addEventListener('change', e => { const i = e.target.closest &amp;&amp; e.target.closest('[data-vg-exk]'); if (!i) return; const prefs = ler(); prefs.__oculto = prefs.__oculto || {}; if (i.checked) delete prefs.__oculto[i.dataset.vgExk]; else prefs.__oculto[i.dataset.vgExk] = 1; gravar(prefs); aplicar(); redesenhar(); });
+  document.addEventListener('click', e => { const b = e.target.closest &amp;&amp; e.target.closest('[data-vg-exall]'); if (!b) return; const h = b.closest('[data-vg-exibir]'), prefs = ler(); prefs.__oculto = prefs.__oculto || {};
+    h.querySelectorAll('[data-vg-exk]').forEach(i => { if (b.dataset.vgExall === '1') delete prefs.__oculto[i.dataset.vgExk]; else prefs.__oculto[i.dataset.vgExk] = 1; }); gravar(prefs); aplicar(); redesenhar(); });
   /* 15/11/2026 · letra legível: o SVG com viewBox encolhe junto com o cartão e a letra ia junto (2,7 px num cartão de 1/3). Quando a letra
      típica do gráfico ficaria abaixo de 9 px na tela, o gráfico deixa de encolher (largura mínima) e o cartão ganha rolagem lateral.
      Só apresentação: o gráfico e os números são os mesmos. Gráfico que se redesenha na largura do cartão (Produção) não é tocado. */
@@ -2846,7 +2874,7 @@ const vacGrade = (() => {
       if (sv.closest('.vg-barra,button,a,.kpi,table') || sv.classList.contains('vi') || sv.classList.contains('ico')) return;
       const vb = sv.viewBox &amp;&amp; sv.viewBox.baseVal; if (!vb || vb.width < 200) return; const cx = sv.parentElement; if (!cx || !cx.clientWidth) return;
       let fs = sv._vgFs; if (fs === undefined || sv._vgN !== sv.childElementCount) { const L = [...sv.querySelectorAll('text')].slice(0, 60).map(x => parseFloat(getComputedStyle(x).fontSize)).filter(x => x > 0).sort((a, b) => a - b); fs = sv._vgFs = L.length ? L[L.length >> 1] : 0; sv._vgN = sv.childElementCount; }
-      if (!fs) return; const minW = Math.ceil(vb.width * LEG_MIN / fs), livre = cx.clientWidth;
+      if (!fs) return; const minW = 0, livre = cx.clientWidth;   /* 1.6.0 · o gráfico sempre cabe no cartão: sem rolagem lateral */
       if (sv.dataset.vgLeg) { if (livre >= minW - 2) { delete sv.dataset.vgLeg; sv.style.minWidth = sv._vgMw || ''; cx.classList.remove('vg-rola'); } return; }
       if (sv.getBoundingClientRect().width * fs / vb.width < LEG_MIN - .4 &amp;&amp; livre < minW) { sv._vgMw = sv.style.minWidth; sv.dataset.vgLeg = '1'; sv.style.minWidth = minW + 'px'; cx.classList.add('vg-rola'); }
     });
@@ -2871,8 +2899,13 @@ const vacGrade = (() => {
     else if (a === 'rest') { delete prefs[gk]; gravar(prefs); [...p.children].forEach((x, i) => { if (x.dataset.vgN) x.dataset.vgL = x.dataset.vgN; x.style.order = ''; }); aplicar(); marcarGrupo(p); redesenhar(); } }, true);
   let arr = null;
   document.addEventListener('dragstart', e => { const g = e.target.closest &amp;&amp; e.target.closest('.vg-pega'); if (!g) return; arr = g.closest('.vg-it'); if (!arr) return; arr.classList.add('vg-arrastando'); try { e.dataTransfer.effectAllowed = 'move'; e.dataTransfer.setData('text/plain', 'vg'); e.dataTransfer.setDragImage(arr, 20, 20); } catch (x) { } });
-  document.addEventListener('dragover', e => { if (!arr) return; const t = e.target.closest &amp;&amp; e.target.closest('.vg-grade > *'); document.querySelectorAll('.vg-alvo').forEach(x => x.classList.remove('vg-alvo')); if (t &amp;&amp; t !== arr &amp;&amp; t.parentElement === arr.parentElement &amp;&amp; t.dataset.vgKey) { e.preventDefault(); t.classList.add('vg-alvo'); } });
-  document.addEventListener('drop', e => { if (!arr) return; const t = e.target.closest &amp;&amp; e.target.closest('.vg-grade > *'); if (t &amp;&amp; t !== arr &amp;&amp; t.parentElement === arr.parentElement &amp;&amp; t.dataset.vgKey) { e.preventDefault(); const p = arr.parentElement, L = itens(p), i = L.indexOf(arr); L.splice(i, 1); const j = L.indexOf(t), r = t.getBoundingClientRect(), depois = e.clientX > r.left + r.width / 2; L.splice(j + (depois ? 1 : 0), 0, arr); salvarOrdem(p, L); } });
+  /* 1.6.0 · ao arrastar perto da borda de cima ou de baixo, a página rola (a página fica dentro da plataforma: rola a janela de fora) */
+  function autoRola(y) { let W = window, Y = y; try { if (window.frameElement) { W = parent; Y = frameElement.getBoundingClientRect().top + y; } } catch (x) { }
+    const H = W.innerHeight, m = 90, d = Y < m ? -Math.ceil((m - Y) / 3) - 6 : Y > H - m ? Math.ceil((Y - H + m) / 3) + 6 : 0; if (d) W.scrollBy(0, d); }
+  document.addEventListener('dragover', e => { if (!arr) return; autoRola(e.clientY); const t = e.target.closest &amp;&amp; e.target.closest('.vg-grade > *'); document.querySelectorAll('.vg-alvo').forEach(x => x.classList.remove('vg-alvo')); if (t &amp;&amp; t !== arr &amp;&amp; t.dataset.vgKey) { e.preventDefault(); try { e.dataTransfer.dropEffect = 'move'; } catch (x) { } t.classList.add('vg-alvo'); } });
+  document.addEventListener('drop', e => { if (!arr) return; const t = e.target.closest &amp;&amp; e.target.closest('.vg-grade > *'); if (t &amp;&amp; t !== arr &amp;&amp; t.dataset.vgKey) { e.preventDefault(); const src = arr.parentElement, p = t.parentElement, r = t.getBoundingClientRect(), depois = e.clientX > r.left + r.width / 2;
+    if (src !== p) { const prefs = ler(); prefs.__mov = prefs.__mov || {}; prefs.__mov[arr.dataset.vgKey] = chaveGrupo(p); gravar(prefs); arr.dataset.vgMov = '1'; p.appendChild(arr); }
+    const L = itens(p).filter(x => x !== arr), j = L.indexOf(t); L.splice(j + (depois ? 1 : 0), 0, arr); salvarOrdem(p, L); if (src !== p) salvarOrdem(src, itens(src)); redesenhar(); } });
   document.addEventListener('dragend', () => { document.querySelectorAll('.vg-alvo,.vg-arrastando').forEach(x => x.classList.remove('vg-alvo', 'vg-arrastando')); arr = null; });
   /* 15/11/2026 · a disposição é aplicada antes da próxima pintura (requestAnimationFrame): o cartão não aparece primeiro na largura antiga para
      depois pular. O temporizador continua como garantia (gráfico desenhado mais tarde) e confere a letra dos gráficos (legivel). */
@@ -3880,7 +3913,7 @@ function wireConfigComum(){$('#cPasta').onclick=async()=>{if(await Store.pick())
         entrar pelo ID (autocadastro como Consulta); página inicial por perfil (1x por sessão); vigência gravada não se edita (desativar com motivo); painel de vigências; semáforo central; saída do modo de teste.
    1.1.2: aviso da carga diz qual base foi lida.  1.5: páginas Paradas, Máquinas, Manutenção e Projetos na lista (aparecem quando o HTML chega na pasta).  1.4: lista técnica pela CS12 multinível (itens = nível 1, estrutura = níveis 2+); CS03 sai.  1.3: cabeçalho comum (vac-cabecalho v2: barra do sistema + página + abas), busca Ctrl K, acabamento V1.90, Versões com cabeçalho e último backup.  1.2: Configuração › Versões das páginas (versão e data de cada HTML, gravação das bases, cópias repetidas, histórico).
    ===================================================================== */
-const PAGE={id:'portal',titulo:"Administração · Linha Vacutainer",tituloCurto:"Administração",subtitulo:'Sistemas de gestão da linha',versao:'1.9.44',baseFile:'portal-base.json',idb:'vac-portal',backupDir:'00. Backups/Portal',
+const PAGE={id:'portal',titulo:"Administração · Linha Vacutainer",tituloCurto:"Administração",subtitulo:'Sistemas de gestão da linha',versao:'1.9.45',baseFile:'portal-base.json',idb:'vac-portal',backupDir:'00. Backups/Portal',
  vazio:()=>({schema:'portal-base',rev:0,config:{modulos:{},avisoDias:30,notas:{}},audit:[]}),
  /* itens do Portal para a busca Ctrl K: cadastro, pendências e telas */
  busca:q=>{const R=[],D=Cad.D;if(D)for(const t of CAD_ORD){for(const it of D[t]||[]){const c=String(it[kOf(t)]),nm=t==='bom'?((cadItem('catalogos',it.catalogo)||{}).nome||''):it.nome||'';if(norm(c+' '+nm).includes(q))R.push({tipo:CAD_T[t].um,txt:c+(nm?' · '+nm:''),sub:'Cadastros'+(cadAtivo(t,it,D)?'':' · inativo'),href:'#cadastros/'+t+'/'+encodeURIComponent(c)});if(R.length>30)break}}
@@ -4257,7 +4290,7 @@ function viewImportacao(m){if(!Imp.dia)Imp.dia=addDays(todayISO(),-1);const X=Im
     :`<p class="small muted">${k==='iniciativas'?'Ainda não há importação de dados em Iniciativas / Ações. Cada programa (5S, KAS, OSM…) terá o seu botão "Importar dados" (INI-03, Fase 6), e ele aparece aqui.':'Nada a importar.'}</p>`}</div>`}).join('')}`;
  const vai=d=>{Imp.dia=d;App.render()};$('#iAnt').onclick=()=>vai(addDays(X,-1));$('#iProx').onclick=()=>vai(addDays(X,1));$('#iDia').onchange=e=>{if(e.target.value)vai(e.target.value)};
  $$('[data-impir]').forEach(a=>a.onclick=e=>{const h=a.getAttribute('href')||'';if(h.startsWith('#'))return;e.preventDefault();vacDemo.ir(h)});
- if(Imp.sec){const el=$('#imp-'+Imp.sec);if(el)setTimeout(()=>el.scrollIntoView({block:'start',behavior:'smooth'}),60)}}
+ if(Imp.sec&amp;&amp;Imp._rolou!==Imp.sec){Imp._rolou=Imp.sec;const el=$('#imp-'+Imp.sec);if(el)setTimeout(()=>el.scrollIntoView({block:'start',behavior:'smooth'}),60)}}   /* 1.9.45 · rola uma vez ao abrir pelo link, não a cada redesenho */
 function viewConfig(m){const list=systems();
  m.innerHTML=`<div class="row">${configComum()}<div class="card"><h3>Demonstração ${ib('Demonstração','Abre as oito páginas com dados fictícios relacionados, só na memória deste navegador. Nada é gravado nas bases da pasta. É a única forma de ver a plataforma com dados de exemplo (o antigo "Modo exemplo" de cada página saiu na 1.9.6, ARQ-09).')}</h3><p class="small muted">Navega por todas as páginas com dados fictícios relacionados. Nada é gravado.</p>${Store.mode==='teste'?'<button class="b p" onclick="exitTest()">Sair do modo de teste</button>':'<button class="b" onclick="vacDemo.entrar()">Iniciar demonstração do sistema</button>'}</div></div>
  ${cardVersoes()}
@@ -4929,7 +4962,7 @@ function cs12NovoCat(I,g){const c=g.P.cab,nv=I.novo&amp;&amp;normCat(I.novo.codi
  Object.assign(it,{codigo:g.cat,tipoItem:tipo,unidade:nv?nv.unidade:['UN','L','G','KG'].includes(ub)?ub:tipo==='tubo'?'UN':'L',nome:(nv&amp;&amp;nv.nome)||c.descricao||g.cat,codigoSAP:/^NS/i.test(g.mat)?g.mat:null});
  if(it.vigencias&amp;&amp;it.vigencias[0]){it.vigencias[0].de=g.de;if(tipo==='preparacao')it.vigencias[0].tubosPorCaixa=null}return it}
 function cadHash(cod){const s=Cad.ui.sec||'inicio';const h='#cadastros'+(s!=='inicio'?'/'+s:'')+(cod!=null?'/'+encodeURIComponent(cod):'');if(location.hash!==h)history.replaceState(null,'',h)}
-function cadRota(){const raw=location.hash.slice(1);if(/^reuniao=/.test(raw)){let v=raw.slice(8);try{v=decodeURIComponent(v)}catch(e){}const[d,t]=v.split('|');if(/^\d{4}-\d{2}-\d{2}$/.test(d||''))Reu.dia=d;Reu.rec=/^[\w-]{1,12}$/.test(t||'')?t:'dia';App.show('reuniao',{keepHash:true});return true}if(/^cs12=/.test(raw)){cadNovoCS12(raw);return true}if(/^(geral|fila|reuniao|pend|rel|config)$/.test(raw)){App.show(raw);return true}if(/^importacao(\/|$)/.test(raw)){Imp.sec=(raw.split('/')[1]||'').replace(/[^a-z]/g,'')||null;App.show('imp',{keepHash:true});return true}if(raw==='admin'){App.show('cad');return true}if(/^entrar(=\w*)?$/.test(raw)){const vt=(raw.split('=')[1]||'').replace(/\W/g,'');App.show('geral',{keepHash:true});setTimeout(()=>{if(typeof vacLogin!=='undefined')vacLogin.abrir({trocar:!!vacLogin.sessao(),volta:vt||null});else Entrar.abrir()},450);return true}if(raw==='versoes'){irVersoes();return true}
+function cadRota(){const raw=location.hash.slice(1);if(/^reuniao=/.test(raw)){let v=raw.slice(8);try{v=decodeURIComponent(v)}catch(e){}const[d,t]=v.split('|');if(/^\d{4}-\d{2}-\d{2}$/.test(d||''))Reu.dia=d;Reu.rec=/^[\w-]{1,12}$/.test(t||'')?t:'dia';App.show('reuniao',{keepHash:true});return true}if(/^cs12=/.test(raw)){cadNovoCS12(raw);return true}if(/^(geral|fila|reuniao|pend|rel|config)$/.test(raw)){App.show(raw);return true}if(/^importacao(\/|$)/.test(raw)){Imp.sec=(raw.split('/')[1]||'').replace(/[^a-z]/g,'')||null;Imp._rolou=null;App.show('imp',{keepHash:true});return true}if(raw==='admin'){App.show('cad');return true}if(/^entrar(=\w*)?$/.test(raw)){const vt=(raw.split('=')[1]||'').replace(/\W/g,'');App.show('geral',{keepHash:true});setTimeout(()=>{if(typeof vacLogin!=='undefined')vacLogin.abrir({trocar:!!vacLogin.sessao(),volta:vt||null});else Entrar.abrir()},450);return true}if(raw==='versoes'){irVersoes();return true}
  if(!/^cadastros(\/|$)/.test(raw))return false;const p=raw.split('/').slice(1).map(x=>{try{return decodeURIComponent(x)}catch(e){return x}});
  const sec=p[0]||'inicio';if(sec==='importar'&amp;&amp;/^meta/i.test(p[1]||'')){const I=Cad.ui.imp=Cad.ui.imp||{modo:'cs12',fmt:'auto',de:todayISO(),map:{},soBOM:true,txt:'',prev:null};I.modo='meta'}Cad.ui.sec=CAD_T[sec]||CAD_SECS.includes(sec)?sec:'inicio';App.show('cad',{keepHash:true});
  if(p[1]&amp;&amp;CAD_T[Cad.ui.sec]&amp;&amp;Cad.D&amp;&amp;Cad.ui.sec!=='cambio'){if(cadItem(Cad.ui.sec,p[1]))Ficha.abrir(Cad.ui.sec,p[1]);else{Cad.ui.q=p[1];Cad.ui.sit='todos';App.render();toast(`${cap1(CAD_T[Cad.ui.sec].um)} ${p[1]} não está no cadastro.`,5000,true)}}
@@ -19920,7 +19953,7 @@ button.b,label.b,a.b{border-radius:8px}
   <div class="card" id="resumo" style="display:none"></div>
   <div class="kpis" id="kpis"></div>
   <div id="vkDiag" class="vk-dados"></div>
-  <div class="vk-sec vk-dados"><b>04</b><h3>Análises</h3><span>Clique num grupo para recolher ou abrir</span></div>
+  <div class="vk-sec vk-dados"><b>04</b><h3>Análises</h3><span>Clique num grupo para recolher ou abrir · arraste pelo ⠿ para mudar de lugar, também entre grupos</span><span data-vg-exibir="#t-painel" data-vg-nao="1"></span></div>
   <section class="vk-grp vk-dados" data-vk-grupo="A"><button type="button" class="vk-gh" aria-expanded="true" aria-controls="vkg-perdas-A"><span class="seta" aria-hidden="true">▾</span><span><span class="t">A · Evolução por competência</span><br><span class="q">O MUV está dentro da meta mês a mês?</span></span></button><div class="vk-gb" id="vkg-perdas-A">
     <div class="card"><h3>Tendência mensal do MUV <i class="i" title="MUV (Desv. estrutura + Desv. empregado) por mês. Vermelho = acima da meta (ou desfavorável, sem meta). Clique numa barra para filtrar o mês.">i</i></h3><div id="chTrend"></div></div>
     <div class="card"><h3>MUV × target acumulado no FY <i class="i" title="Barras: MUV acumulado do ano fiscal até cada mês (com os filtros). Traço: target acumulado (soma das metas de cada mês; com uma linha escolhida, o target dessa linha). Vermelho = acumulado acima do target. Clique numa barra para filtrar o mês.">i</i></h3><div id="chAcum"></div></div>
@@ -19928,10 +19961,8 @@ button.b,label.b,a.b{border-radius:8px}
   </div></section>
   <section class="vk-grp vk-dados" data-vk-grupo="B"><button type="button" class="vk-gh" aria-expanded="true" aria-controls="vkg-perdas-B"><span class="seta" aria-hidden="true">▾</span><span><span class="t">B · Onde está a perda</span><br><span class="q">Quais linhas, SKUs e componentes concentram o MUV?</span></span></button><div class="vk-gb" id="vkg-perdas-B">
     <div class="card"><h3>Pareto do MUV <i class="i" title="Escolha a dimensão (Linha, SKU = catálogo, Componente), a métrica (MUV, Desv. estrutura, Desv. empregado), o sentido (desfavorável = positivo, favorável = negativo) e quantos itens mostrar. Clique num item de SKU ou Componente para filtrar.">i</i></h3><div id="pzCtl" class="pz-ctl"></div><div id="chPz"></div></div>
-    <div class="row">
-    <div class="card"><h3>Pareto por componente <i class="i" title="Componentes com maior MUV desfavorável. Coluna da direita = % acumulado. Clique para filtrar.">i</i></h3><div id="chComp"></div></div>
-    <div class="card"><h3>Pareto por catálogo <i class="i" title="MUV desfavorável por produto produzido pela ordem. Clique para filtrar.">i</i></h3><div id="chProd"></div></div>
-    </div>
+    <div class="card" data-vg-larg="3"><h3>Pareto por componente <i class="i" title="Componentes com maior MUV desfavorável. Coluna da direita = % acumulado. Clique para filtrar.">i</i></h3><div id="chComp"></div></div>
+    <div class="card" data-vg-larg="3"><h3>Pareto por catálogo <i class="i" title="MUV desfavorável por produto produzido pela ordem. Clique para filtrar.">i</i></h3><div id="chProd"></div></div>
   </div></section>
   <section class="vk-grp vk-dados" data-vk-grupo="D"><button type="button" class="vk-gh" aria-expanded="true" aria-controls="vkg-perdas-D"><span class="seta" aria-hidden="true">▾</span><span><span class="t">D · Paretos da controladoria</span><br><span class="q">MUV, Desv. estrutura e Desv. empregado por linha, SKU e componente, com favoráveis e desfavoráveis no mesmo gráfico</span></span></button><div class="vk-gb" id="vkg-perdas-D">
     <div id="pvCtl" class="pz-ctl"></div>
@@ -20101,7 +20132,7 @@ button.b,label.b,a.b{border-radius:8px}
    Base: perdas-base.json na pasta da rede (mesmo padrão OEE / Gel)
    Contrato: bloco "exports" (exportsVersion 1) lido pelas outras páginas
    ===================================================================== */
-const APP_VER='1.12.12',   /* 1.12.8 · ordens e lotes antigos pelo exports da Produção (ordensHistorico, lotesHistorico), sem ler a base dela */   /* 1.12.7 · D8: Pareto comum do kit (vacPareto) */   /* 1.12.6 · Fase 5: layout no arquivo da pessoa (vacPrefs do kit) */   /* 1.12.5 · D6: botões de gravação travados conforme o perfil (vacTravas do kit) */   /* 1.12.4 · Importar: lista das ordens ainda sem KKBC_ORD (Produção e SAP, mês atual e os 2 anteriores) */   /* 1.12.3 · KKBC_ORD colada como lista com Cen./Planta/Ordem/Origem/Material e títulos abreviados (Desv.qtd., Desv.preço) */   /* 1.12.2 · kit: modelo de e-mail (vacEmail) e número da página na impressão */   /* 1.12.1 · ícones no lugar dos símbolos de texto (kit) */   /* 1.12.0 · Design System (barra lateral), Paretos da controladoria (verticais), aviso ordem × lote */   /* 1.11.0 · target MUV da linha (Portal › Metas da área WASTE-MUV…, vigência, R$/US$ pelo câmbio do Portal), MUV × target acumulado no FY, filtros Linha e Semana */   /* 1.10.0 · MUV oficial (Desv. estrutura + Desv. empregado, como a controladoria): meta, situação, criticidade, exports e relatórios; Pareto do MUV por Linha/SKU/Componente × métrica, favorável/desfavorável e Top N */   /* 1.9.0 · KKBC_ORD em grade (layout da controladoria, uma ordem por arquivo): Desv. Empregado, Desv. preço de input e Desv. qtde guardados; aviso das ordens no formato antigo (reimportar) */   /* 1.8.36 · gráficos: "Valores em …" (moeda), eixo sem rótulos repetidos, medida do Comparativo no gráfico do relatório (docs/graficos-padrao.md) */   /* 1.8.35 · Visão Geral no padrão comum (vacLayout): situação, números, diagnóstico, análises em grupos */   /* 1.8.34 · kit: login com ID e senha */   /* 1.8.33 · kit: datas DD/MM/AAAA */   /* 1.8.32 · nome Eficácia/Confirmação de Processo */   /* 1.8.31 · kit: nome e presença de Iniciativas / Ações na barra */   /* 1.8.30 · UX-02: guia por aba */   /* 1.8.29 · Fase 7 (UX-03, WST-01): Painel → Visão Geral */   /* 1.8.28 · Fase 6 (WST-03, INI-04): ações em Iniciativas / Ações; antigas até a migração, depois só leitura */   /* 1.8.27 · Fase 3 (IMP-04/06, WST-02): importações no exports; aba Importar leva ao Portal › Importação */   /* 1.8.26 · ARQ-09: "Ver com dados de teste" vira a Demonstração integrada */   /* 1.8.23 · C2–C6: kit com a ficha por pasta (AT-08) e a contagem da fila durável (Portal › Versões) */   /* 1.8.22 · C1: trava da 2ª aba com alteração pendente (nada é descartado); kit com a fila durável */   /* 1.8.21 · E11: busca do kit leva o equipamento à ficha em Equipamentos */   /* 1.8.20 · E8: kit com "+ Abrir ação" na ficha da ordem (Planner de Iniciativas) */   /* 1.8.19 · E5: ficha da ordem comum (botão Ficha na ordem; busca Ctrl K por ordem, lote e LP) */   /* 1.8.18 · E4: versão do exports conferida (Produção, Ordens), ordem em várias competências, dias do lote pela chave · 1.8.17 · E2: fonte única da versão (tela, base, exports e Portal › Versões) */ BASE_FN='perdas-base.json', DIR_ORIG='00. Originais SAP', DIR_BKP='00. Backups', DIR_IN='00. Entrada KKBC', DIR_DONE='00. Entrada KKBC/Processados';
+const APP_VER='1.12.13',   /* 1.12.8 · ordens e lotes antigos pelo exports da Produção (ordensHistorico, lotesHistorico), sem ler a base dela */   /* 1.12.7 · D8: Pareto comum do kit (vacPareto) */   /* 1.12.6 · Fase 5: layout no arquivo da pessoa (vacPrefs do kit) */   /* 1.12.5 · D6: botões de gravação travados conforme o perfil (vacTravas do kit) */   /* 1.12.4 · Importar: lista das ordens ainda sem KKBC_ORD (Produção e SAP, mês atual e os 2 anteriores) */   /* 1.12.3 · KKBC_ORD colada como lista com Cen./Planta/Ordem/Origem/Material e títulos abreviados (Desv.qtd., Desv.preço) */   /* 1.12.2 · kit: modelo de e-mail (vacEmail) e número da página na impressão */   /* 1.12.1 · ícones no lugar dos símbolos de texto (kit) */   /* 1.12.0 · Design System (barra lateral), Paretos da controladoria (verticais), aviso ordem × lote */   /* 1.11.0 · target MUV da linha (Portal › Metas da área WASTE-MUV…, vigência, R$/US$ pelo câmbio do Portal), MUV × target acumulado no FY, filtros Linha e Semana */   /* 1.10.0 · MUV oficial (Desv. estrutura + Desv. empregado, como a controladoria): meta, situação, criticidade, exports e relatórios; Pareto do MUV por Linha/SKU/Componente × métrica, favorável/desfavorável e Top N */   /* 1.9.0 · KKBC_ORD em grade (layout da controladoria, uma ordem por arquivo): Desv. Empregado, Desv. preço de input e Desv. qtde guardados; aviso das ordens no formato antigo (reimportar) */   /* 1.8.36 · gráficos: "Valores em …" (moeda), eixo sem rótulos repetidos, medida do Comparativo no gráfico do relatório (docs/graficos-padrao.md) */   /* 1.8.35 · Visão Geral no padrão comum (vacLayout): situação, números, diagnóstico, análises em grupos */   /* 1.8.34 · kit: login com ID e senha */   /* 1.8.33 · kit: datas DD/MM/AAAA */   /* 1.8.32 · nome Eficácia/Confirmação de Processo */   /* 1.8.31 · kit: nome e presença de Iniciativas / Ações na barra */   /* 1.8.30 · UX-02: guia por aba */   /* 1.8.29 · Fase 7 (UX-03, WST-01): Painel → Visão Geral */   /* 1.8.28 · Fase 6 (WST-03, INI-04): ações em Iniciativas / Ações; antigas até a migração, depois só leitura */   /* 1.8.27 · Fase 3 (IMP-04/06, WST-02): importações no exports; aba Importar leva ao Portal › Importação */   /* 1.8.26 · ARQ-09: "Ver com dados de teste" vira a Demonstração integrada */   /* 1.8.23 · C2–C6: kit com a ficha por pasta (AT-08) e a contagem da fila durável (Portal › Versões) */   /* 1.8.22 · C1: trava da 2ª aba com alteração pendente (nada é descartado); kit com a fila durável */   /* 1.8.21 · E11: busca do kit leva o equipamento à ficha em Equipamentos */   /* 1.8.20 · E8: kit com "+ Abrir ação" na ficha da ordem (Planner de Iniciativas) */   /* 1.8.19 · E5: ficha da ordem comum (botão Ficha na ordem; busca Ctrl K por ordem, lote e LP) */   /* 1.8.18 · E4: versão do exports conferida (Produção, Ordens), ordem em várias competências, dias do lote pela chave · 1.8.17 · E2: fonte única da versão (tela, base, exports e Portal › Versões) */ BASE_FN='perdas-base.json', DIR_ORIG='00. Originais SAP', DIR_BKP='00. Backups', DIR_IN='00. Entrada KKBC', DIR_DONE='00. Entrada KKBC/Processados';
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 /* página para o núcleo comum, o cabeçalho (vac-cabecalho v2) e o quadro de Versões do Portal */
 const PAGE={id:'perdas',titulo:'Waste · Linha Vacutainer',tituloCurto:'Waste',subtitulo:'Custos e perdas por ordem',versao:APP_VER,baseFile:BASE_FN,backupDir:'00. Backups/Perdas',busca:q=>buscaPerdas(q)};
@@ -21604,11 +21635,13 @@ function renderMatrix(){
 }
 function renderCompOrders(obs){
  let list,tit;const M=MET[C.met];
+ /* 1.6.0 · sem grupo escolhido, a lista completa repetia Visão geral › 05 Ordens e componentes: aqui só as ordens do que foi clicado */
+ if(!C.cell&amp;&amp;!C.tipo){$('#cOrdTit').innerHTML='Ordens do grupo escolhido';$('#cOrd').innerHTML='<div class="note small">Clique numa linha do <b>Ranking</b> ou numa célula de <b>Tipo de item × catálogo</b> (ou escolha um tipo de item no filtro) para ver só as ordens dela, na medida escolhida. A lista de todas as ordens fica em <a href="#" id="cIrOrd">Visão geral › 05 Ordens e componentes</a>.</div>';const a=$('#cIrOrd');if(a)a.onclick=e=>{e.preventDefault();showTab('painel');const s=$('#segView');if(s)s.scrollIntoView({block:'start'})};return}
  if(C.cell&amp;&amp;C.cell.t){const sv={by:C.by,tipo:C.tipo,cat:C.cat};C.by='tipo';C.tipo=C.cell.t;C.cat=C.cell.c==='?'?'':C.cell.c;list=compObs().obs;Object.assign(C,sv);tit=`${esc(C.cell.t)} no catálogo ${esc(C.cell.c)}`}
  else{obs=obs||compObs().obs;list=C.cell&amp;&amp;C.cell.k!=null?obs.filter(x=>x.key===C.cell.k):obs;tit=C.cell&amp;&amp;C.cell.k!=null?`Grupo ${esc((list[0]||{}).label||C.cell.k)}`:(C.tipo?esc(C.tipo)+' em todas as ordens':'Todas as ordens')}
  list=[...list].sort((a,b)=>(metricOf(b)??-1e18)-(metricOf(a)??-1e18));
  const one=!!(C.tipo||(C.cell&amp;&amp;C.cell.t)||(C.by==='tipo'&amp;&amp;C.cell&amp;&amp;C.cell.k!=null));const qh=one?'<th class="n">Qtd teórica</th><th class="n">Qtd real</th>':'';
- $('#cOrdTit').innerHTML=`${tit} <span class="muted small">· ${list.length} · ordenado por ${M.l}</span> ${C.cell?'<button class="b sm" id="cClr">ver todas</button>':''}`;
+ $('#cOrdTit').innerHTML=`${tit} <span class="muted small">· ${list.length} · ordenado por ${M.l}</span> ${C.cell?'<button class="b sm" id="cClr">limpar escolha</button>':''}`;
  $('#cOrd').innerHTML=`<table><tr><th>Ordem</th><th>Mês</th><th>Data (OEE)</th><th>Catálogo</th><th>Descrição</th>${list.some(x=>x.tipo)?'<th>Tipo de item</th>':''}<th class="n">Tubos</th>${qh}<th class="n">Desvio qtd</th><th class="n">Desvio ${msim()}</th><th class="n">Efeito preço</th><th class="n">${M.l}</th></tr>
  ${list.slice(0,400).map(x=>`<tr class="click ${hl(x.lvl)}" data-o="${esc(x.ordem)}"><td>${esc(x.ordem)}</td><td>${fmtM(x.per)}</td><td>${fmtD(x.dt)}</td><td>${esc(x.cat||'')}</td><td class="small">${esc(x.prodDesc||'')}</td>${list.some(y=>y.tipo)?`<td>${esc(x.tipo)}</td>`:''}<td class="n">${fmtQ(x.tubes)}</td>${one?`<td class="n">${fmtQ(x.qT)}</td><td class="n">${fmtQ(x.qR)}</td>`:''}<td class="n">${x.qT?fmtP((x.qR-x.qT)/x.qT):'–'}</td><td class="n">${fmtR(x.d,2)}</td><td class="n">${fmtR(x.ep,2)}</td><td class="n"><b>${(v=>v==null?'–':M.f(v))(metricOf(x))}</b></td></tr>`).join('')}</table>`;
  $$('#cOrd tr.click').forEach(tr=>tr.onclick=()=>openOrder(tr.dataset.o));const b=$('#cClr');if(b)b.onclick=()=>{C.cell=null;renderCompOrders(null)};
@@ -35605,70 +35638,70 @@ td { font-size:15px; }
       "id": "oee",
       "path": "Plataforma.html#motor/oee",
       "version": "2.4.82",
-      "sha256": "d2a244a9c24119ec6d98f6a608fe63ae9000f528889decf421314c8a4a87782c",
-      "bytes": 2083421
+      "sha256": "7bf4c171380a1b3d79293b0f53b412badba308e0a17ab8c1595bbdc96714b186",
+      "bytes": 2089193
     },
     {
       "id": "perdas",
       "path": "Plataforma.html#motor/perdas",
-      "version": "1.12.12",
-      "sha256": "2c98f6cd3ca2b82fa6b6078b2c59dd40e09f22ab107edd8537e5716126bb2f66",
-      "bytes": 911679
+      "version": "1.12.13",
+      "sha256": "65adb98f3b915356e5e09f2c56ebc718865df10434bf8ce84863feb28a1d5c7a",
+      "bytes": 918273
     },
     {
       "id": "gel",
       "path": "Plataforma.html#motor/gel",
       "version": "2.39",
-      "sha256": "e81982eb28078e33692a8a0bc5cc4f1b1081544b741479c9c0ef741d9942257b",
-      "bytes": 1597928
+      "sha256": "c5ea66ecbe94c79a1e565289dc91c9b9723de0d7288a9e5f6fdb13d0047516e0",
+      "bytes": 1603700
     },
     {
       "id": "paradas",
       "path": "Plataforma.html#motor/paradas",
       "version": "1.2.15",
-      "sha256": "6086d316b9fa41c2ad085ce8764fce38542b52152be27672751fe0bcac3ee10f",
-      "bytes": 876797
+      "sha256": "5f5f360a4648cfa65b01a47a0f47d93b6b13c4f41395e5217230337c6d7c5aaf",
+      "bytes": 882569
     },
     {
       "id": "equip",
       "path": "Plataforma.html#motor/equip",
       "version": "1.0.20",
-      "sha256": "cbb8654a20ab0b873b391bab48af282ab508e4bd179f1d55d5f29638e7cc8502",
-      "bytes": 675252
+      "sha256": "4a96e34b61a2c73b8820a76c7c49a2a33d7169a3243092f16233bf26506200f4",
+      "bytes": 681024
     },
     {
       "id": "inic",
       "path": "Plataforma.html#motor/inic",
       "version": "1.1.16",
-      "sha256": "89e5794b5cf112da58dd10bac4a8caebcc358284e604bb054657a491d7abc750",
-      "bytes": 696899
+      "sha256": "22ed22f5768e4bf26b5d6b260eb5495c32eb38d8ae86c89a6f64cafa5aa57e25",
+      "bytes": 702671
     },
     {
       "id": "linha",
       "path": "Plataforma.html#motor/linha",
       "version": "1.1.7",
-      "sha256": "0783b2b62965ca7c970d4ee89e2e0901ee351b5e3f39d33f28a384b72d4735fa",
-      "bytes": 803394
+      "sha256": "65da383501ebe1eb87d5f70fb944a20cb756572976f53a4e052653379edb7a35",
+      "bytes": 809166
     },
     {
       "id": "projetos",
       "path": "Plataforma.html#motor/projetos",
       "version": "0.1.16",
-      "sha256": "5497c77aa2ec9105246ed6cb3dc90d7b6a66a973c2f2ddcbb5182d48a0d58f91",
-      "bytes": 615722
+      "sha256": "39663e39ee8bd098930ebd73197c46c1964b6c12c0332977f540dd6b1f67c0ce",
+      "bytes": 621494
     },
     {
       "id": "portal",
       "path": "Plataforma.html#motor/portal",
-      "version": "1.9.44",
-      "sha256": "73a06d7dd0bd5e412876f1c40dab16eff7f244c05c96ab27eeebb6abcd22164a",
-      "bytes": 1187439
+      "version": "1.9.45",
+      "sha256": "766206d27e81d5967a548dc800e2a7d90b4b6cfcba07cddc44ec81a5376a501f",
+      "bytes": 1193341
     }
   ],
   "limitations": [
     "Projetos e conteúdo técnico OSM/MES/AM/TPM mantêm os limites documentados nas fontes."
   ],
-  "enginesSha256": "71e92e9101166f181d3c4727dc86d120dcd82f4416373215c51d6a1826ac6560",
+  "enginesSha256": "0ab3d9108d9629988462a9ffafe1d170065c36ed55cefffb115f3be3d3fa01ab",
   "originRevision": "ffc9ee8",
   "sourceMode": "single-html",
   "originEnginesSha256": "a87a64ad0c328f70e102b2ae888790a9b5d5a9bd05778652a7ce7cae140e40d2"
@@ -35738,7 +35771,7 @@ summary{cursor:pointer;font-weight:600;color:var(--navy)}
 'use strict';
 /* ---------- referência (atualizar quando a plataforma mudar de versão) ---------- */
 // Iguais às do pacote da plataforma (nova-plataforma/src/generated/manifest.json); o teste ferramenta-verificar confere.
-const VERSOES = {"oee":"2.4.82","perdas":"1.12.12","gel":"2.39","paradas":"1.2.15","equip":"1.0.20","inic":"1.1.16","linha":"1.1.7","projetos":"0.1.16","portal":"1.9.44"};
+const VERSOES = {"oee":"2.4.82","perdas":"1.12.13","gel":"2.39","paradas":"1.2.15","equip":"1.0.20","inic":"1.1.16","linha":"1.1.7","projetos":"0.1.16","portal":"1.9.45"};
 const BASES = [
  { arq: 'vacutainer-cadastros.json', mod: 'portal', nome: 'Cadastro geral (Portal)', obrig: true, cadastro: true, bk: 'Cadastros' },
  { arq: 'portal-base.json', mod: 'portal', nome: 'Portal', obrig: true, bk: 'Portal' },
@@ -36329,7 +36362,7 @@ import { Icon, Button, Badge, Empty, Modal, BarChart, BrandLogo, CommandMenu } f
 import { ModuleFrame } from "vac:modulo/components/ModuleFrame";
 import manifest from "vac:recurso/manifesto";
 import { ModuleTabs } from "vac:modulo/components/ModuleTabs";
-const VERSION = "1.5.0";
+const VERSION = "1.6.0";
 /* Navegação 1.3.0 (16/11/2026): Visão da linha, Relatórios e Importações têm abas; as que mostram uma tela do
    Portal (motor da Administração) trazem o 3º campo com a aba dele. Administração fica só com cadastros e configuração. */
 const SHELL_TABS = {
@@ -36371,7 +36404,7 @@ function routeFromHash() {
   return normalizeRoute({ page: path || "inicio", tab: p.get("tab") || "", hash: p.get("rota") || "" });
 }
 function App() {
-  const [route, setRoute] = useState(routeFromHash), [visited, setVisited] = useState([]), [folder, setFolder] = useState(null), [sources, setSources] = useState([]), [cad, setCad] = useState(null), [busy, setBusy] = useState(false), [message, setMessage] = useState(""), [folderError, setFolderError] = useState(""), [durablePending, setDurablePending] = useState(false);
+  const [route, setRoute] = useState(routeFromHash), [visited, setVisited] = useState([]), [folder, setFolder] = useState(null), [lembrada, setLembrada] = useState(null), [sources, setSources] = useState([]), [cad, setCad] = useState(null), [busy, setBusy] = useState(false), [message, setMessage] = useState(""), [folderError, setFolderError] = useState(""), [durablePending, setDurablePending] = useState(false);
   const demo = new URLSearchParams(location.search).get("demo") === "1";
   const [session, setSession] = useState(() => demo ? "demo-" + crypto.randomUUID() : "real-inicial"), [statuses, setStatuses] = useState({});
   const [pendDialog, setPendDialog] = useState(null);
@@ -36449,7 +36482,11 @@ function App() {
       if (p === "granted") {
         setSession(await dbGet("scope") || "pasta");
         setFolder(h);
-      } else setMessage("A pasta foi lembrada. Clique em Conectar pasta para conceder acesso nesta sess\xE3o.");
+      } else {
+        /* 1.6.0 · a pasta fica guardada: o Chrome só pede para permitir de novo (um clique, sem escolher a pasta outra vez) */
+        setLembrada(h);
+        setMessage("Pasta lembrada: " + h.name + ". Clique em Reconectar e escolha Permitir (ou Permitir em todas as visitas).");
+      }
     }).catch((e) => setMessage("N\xE3o foi poss\xEDvel restaurar a pasta: " + e.message));
   }, []);
   useEffect(() => {
@@ -36559,6 +36596,21 @@ function App() {
       return;
     }
     setBusy(true);
+    if (lembrada &amp;&amp; !folder &amp;&amp; !force) {
+      try {
+        const p = await lembrada.requestPermission({ mode: "readwrite" });
+        if (p === "granted") {
+          setSession(await dbGet("scope") || "pasta");
+          setFolder(lembrada);
+          setLembrada(null);
+          setMessage("Pasta reconectada: " + lembrada.name + ".");
+          setBusy(false);
+          return;
+        }
+      } catch (e) {
+        console.warn("reconectar", e);
+      }
+    }
     try {
       const pick = window.showDirectoryPicker;
       if (!pick) throw new Error("Use Chrome ou Edge atualizado para abrir a pasta compartilhada.");
@@ -36775,7 +36827,7 @@ function App() {
               refresh();
               if (current) refreshEngine(current.id);
             }, disabled: busy, children: busy ? "Atualizando\u2026" : "Atualizar" }),
-            !demo &amp;&amp; /* @__PURE__ */ jsx(Button, { primary: true, icon: "folder", onClick: () => connect(), disabled: busy, children: folder ? "Trocar pasta" : "Conectar pasta" })
+            !demo &amp;&amp; /* @__PURE__ */ jsx(Button, { primary: true, icon: "folder", onClick: () => connect(), disabled: busy, title: lembrada &amp;&amp; !folder ? "Reconectar a pasta " + lembrada.name + " (o navegador pede para permitir)" : void 0, children: folder ? "Trocar pasta" : lembrada ? "Reconectar pasta" : "Conectar pasta" })
           ] })
         ] }),
         durablePending &amp;&amp; !demo &amp;&amp; /* @__PURE__ */ jsx("div", { className: "inline-alert", children: "H\xE1 fila pendente nesta pasta ou falha ao consult\xE1-la. Abra o m\xF3dulo respons\xE1vel e confira a grava\xE7\xE3o antes de trocar de pasta." }),
@@ -36795,7 +36847,7 @@ function App() {
               /* @__PURE__ */ jsx("h2", { children: "Sua linha, em um s\xF3 lugar." }),
               /* @__PURE__ */ jsx("p", { children: "Conecte a pasta compartilhada para consultar seus dados ou explore o cen\xE1rio de demonstra\xE7\xE3o. Os m\xF3dulos operacionais est\xE3o reunidos neste arquivo." }),
               /* @__PURE__ */ jsxs("div", { className: "welcome-actions", children: [
-                /* @__PURE__ */ jsx(Button, { primary: true, icon: "folder", onClick: () => connect(), children: "Conectar pasta da linha" }),
+                /* @__PURE__ */ jsx(Button, { primary: true, icon: "folder", onClick: () => connect(), children: lembrada ? "Reconectar " + lembrada.name : "Conectar pasta da linha" }),
                 /* @__PURE__ */ jsx(Button, { icon: "play", onClick: () => window.vacAppHost.demonstrar(), children: "Explorar demonstra\xE7\xE3o" })
               ] })
             ] })
@@ -37241,7 +37293,14 @@ function ModuleTabs({ tabs, active, onSelect }) {
       setEdges((old) => old.left === next.left &amp;&amp; old.right === next.right ? old : next);
     };
     const reveal = () => {
-      n.querySelector(".active")?.scrollIntoView({ block: "nearest", inline: "nearest", behavior: "instant" });
+      /* 1.6.0 · só a faixa das abas rola, na horizontal: scrollIntoView também rolava a página até as abas (a tela "pulava para o topo"
+         sempre que a faixa mudava de tamanho: fonte carregada, sincronização, janela redimensionada) */
+      const a = n.querySelector(".active");
+      if (a) {
+        const l = a.getBoundingClientRect().left - n.getBoundingClientRect().left + n.scrollLeft, r = l + a.offsetWidth;
+        if (l < n.scrollLeft) n.scrollLeft = l;
+        else if (r > n.scrollLeft + n.clientWidth) n.scrollLeft = r - n.clientWidth;
+      }
       update();
     };
     reveal();
@@ -37787,9 +37846,16 @@ function configureRuntime(demo, folder, identity, c, cb) {
   const host = { library: loadLibrary, storage: (id, key, value, old) => publishStorage(id, key, value, old), resize: (id, height, modal = false) => {
     const f = frames.get(id);
     if (!f) return;
-    if (modal &amp;&amp; f.dataset.modal !== "1") window.scrollTo(0, scrollY + f.getBoundingClientRect().top - 88);
+    /* 1.6.0 · a tela não pula para o topo: (1) janela/login aberto guarda a posição e a devolve ao fechar; (2) o quadro só encolhe depois
+       de 700 ms com o conteúdo menor (redesenho de gráfico, sincronização com a pasta), senão o navegador corta a rolagem da página */
+    const abre = modal &amp;&amp; f.dataset.modal !== "1", fecha = !modal &amp;&amp; f.dataset.modal === "1";
+    if (abre) { f._vacY = scrollY; window.scrollTo(0, scrollY + f.getBoundingClientRect().top - 88); }
     f.dataset.modal = modal ? "1" : "0";
-    if (Math.abs(f.clientHeight - height) > 1) f.style.height = height + "px";
+    clearTimeout(f._vacEncolhe);
+    const aplica = (h) => { if (Math.abs(f.clientHeight - h) > 1) f.style.height = h + "px"; };
+    if (modal || fecha || height >= f.clientHeight) aplica(height);
+    else f._vacEncolhe = setTimeout(() => aplica(height), 700);
+    if (fecha &amp;&amp; f._vacY != null) { const y = f._vacY; f._vacY = null; requestAnimationFrame(() => window.scrollTo(0, y)); }
   }, search: () => callbacks.search(), styles: embeddedCss, ir: (href, origin) => navigateHref(href, origin), href: canonicalHref, demonstrar: () => callbacks.demonstrate(), pasta: async () => {
     if (!root) throw new DOMException("Conecte a pasta no cabe\xE7alho da plataforma.", "AbortError");
     return root;
