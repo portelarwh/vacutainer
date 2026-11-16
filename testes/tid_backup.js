@@ -101,6 +101,56 @@ const RENOMEADO = { ...CAD, rev: 5, usuarios: CAD.usuarios.map(u => u.codigo ===
     await ctx.close();
   }
 
+  // ---------- Paradas (técnico), Waste (autor do comentário) e Linha 360° (pessoa do posto) com o ID
+  {
+    const ctx = await b.newContext(); const p = await nova(ctx, 'Paradas.html', '#teste');
+    const id = await p.evaluate(() => { const e = Store.data.eventos[0]; abrirEvento(e.id); return e.id; }); await p.waitForTimeout(300);
+    await p.fill('#tTec', 'U9'); await p.locator('button', { hasText: /^Salvar$/ }).last().click(); await p.waitForTimeout(300);
+    const t = await p.evaluate(id => { const t = Store.data.tecnico[id] || {}, ev = calcExports(Store.data).eventos.find(e => e.id === id); return { n: t.tecnico, i: t.tecnicoId, por: t.porId, ex: ev && [ev.tecnico, ev.tecnicoId] }; }, id);
+    ok(t.n === 'Bia' && t.i === 'U9' && t.por === 'U7' && t.ex && t.ex[1] === 'U9', `Paradas: técnico digitado pelo ID U9 vira "${t.n}" (${t.i}); exports com o ID; quem gravou ${t.por}`);
+    await p.evaluate(id => abrirEvento(id), id);
+    await p.locator('button', { hasText: /^Salvar$/ }).last().click(); await p.waitForTimeout(200);
+    ok(await p.evaluate(id => Store.data.tecnico[id].tecnicoId === 'U9', id), 'Paradas: editar sem trocar a Bia mantém U9, apesar do homônimo U8');
+    const ren = { ...CAD, usuarios: CAD.usuarios.map(u => u.codigo === 'U9' ? { ...u, nome: 'Beatriz Manutenção' } : u) };
+    const atual = await p.evaluate(({ id, cad }) => { localStorage.setItem('vac.cadastros', JSON.stringify(cad)); Cad.D = null; abrirEvento(id); const ex = calcExports(Store.data).eventos.find(e => e.id === id), row = evLinha(eventosTodos().find(e => e.id === id)); return { valor: document.getElementById('tTec').value, nome: ex.tecnico, id: ex.tecnicoId, relatorio: row.Técnico }; }, { id, cad: ren });
+    ok(atual.valor === 'Beatriz Manutenção' && atual.nome === atual.valor && atual.relatorio === atual.valor && atual.id === 'U9', 'Paradas: formulário, exports e relatório usam nome atual pelo mesmo ID');
+    await ctx.close();
+  }
+  {
+    const ctx = await b.newContext(); const p = await nova(ctx, 'Perdas-Ordem.html');
+    const ordem = await p.evaluate(() => { enterTest(); return B.rows[0].ordem; }); await p.waitForTimeout(400);
+    await p.evaluate(o => commentForm(o, '', null), ordem); await p.waitForTimeout(200);
+    await p.fill('#cmTxt', 'Comentário do teste do ID'); await p.click('#cmSave'); await p.waitForTimeout(400);
+    const c = await p.evaluate(() => { const x = B.comments.find(c => c.texto === 'Comentário do teste do ID'); return x && { u: x.user, id: x.userId }; });
+    ok(c && c.id === 'U7', `Waste: comentário gravado com o autor pelo ID (${c && c.id}; nome "${c && c.u}")`);
+    const cid = await p.evaluate(() => B.comments.find(c => c.texto === 'Comentário do teste do ID').id);
+    const autor = await p.evaluate(cad => { localStorage.setItem('vac.cadastros', JSON.stringify(cad)); const c = B.comments.find(c => c.texto === 'Comentário do teste do ID'); return { nome: autorC(c), rel: docOrdem(c.ordem).blocos.find(b => b.titulo === 'Comentários e causas').linhas.some(l => l[1] === 'Ana Lima Souza') }; }, RENOMEADO);
+    ok(autor.nome === 'Ana Lima Souza' && autor.rel, 'Waste: nome atual do autor também no relatório da ordem');
+    await p.evaluate(({ cid, ordem }) => { localStorage.setItem('vac.userId', 'U8'); localStorage.setItem('vac.user', 'Bia'); commentForm(ordem, '', cid); }, { cid, ordem });
+    await p.fill('#cmTxt', 'Comentário editado pela outra pessoa'); await p.click('#cmSave'); await p.waitForTimeout(250);
+    const edited = await p.evaluate(cid => { const x = B.comments.find(c => c.id === cid); return { autor: x.userId, editor: x.alteradoPorId, historico: x.hist.at(-1).userId }; }, cid);
+    ok(edited.autor === 'U7' && edited.editor === 'U8' && edited.historico === 'U7', 'Waste: preserva autor U7 e histórico e registra editor U8 sem confundir homônimos');
+    await p.evaluate(async cid => { localStorage.setItem('vac.userId', 'U9'); await delComment(cid); }, cid);
+    ok(await p.evaluate(cid => { const c = B.comments.find(c => c.id === cid); return c.excluidoPorId === 'U9' && c.userId === 'U7' && c.ativo === false; }, cid), 'Waste: exclusão registra U9 sem substituir autoria U7');
+    await ctx.close();
+  }
+  {
+    const ctx = await b.newContext(); const p = await nova(ctx, 'Linha-360.html', '#teste');
+    await p.evaluate(() => { App.tab = 'pessoas'; render(); }); await p.waitForTimeout(300);
+    const campo = p.locator('#fPosto input[name^="t_"]').first(); const nomeCampo = await campo.getAttribute('name');
+    await campo.fill('U8'); await p.evaluate(() => document.getElementById('fPosto').requestSubmit()); await p.waitForTimeout(300);
+    const r = await p.evaluate(n => { const t = n.slice(2), x = postos().find(q => q.id === App.posto); return { n: (x.pessoas || {})[t], i: (x.pessoasIds || {})[t], mostra: pesNome(x, t) }; }, nomeCampo);
+    ok(r.n === 'Bia' && r.i === 'U8' && r.mostra === 'Bia', `Linha 360°: pessoa do posto digitada pelo ID U8 vira "${r.n}" (${r.i})`);
+    await p.locator('#fPosto input[name="area"]').fill('Área alterada sem trocar pessoa'); await p.evaluate(() => document.getElementById('fPosto').requestSubmit()); await p.waitForTimeout(200);
+    ok(await p.evaluate(n => postos().find(q => q.id === App.posto).pessoasIds[n.slice(2)] === 'U8', nomeCampo), 'Linha 360°: alterar área preserva ID do homônimo selecionado');
+    const ren = { ...CAD, usuarios: CAD.usuarios.map(u => u.codigo === 'U8' ? { ...u, nome: 'Beatriz Produção' } : u) };
+    const atual = await p.evaluate(({ cad, n }) => { localStorage.setItem('vac.cadastros', JSON.stringify(cad)); render(); const x = calcExports(Store.data).postos.find(q => q.id === App.posto); return { nome: document.querySelector('#fPosto [name="' + n + '"]').value, ex: x.pessoas[n.slice(2)], id: x.pessoasIds[n.slice(2)], tabela: document.body.innerText.includes('Beatriz Produção') }; }, { cad: ren, n: nomeCampo });
+    ok(atual.nome === 'Beatriz Produção' && atual.ex === atual.nome && atual.id === 'U8' && atual.tabela, 'Linha 360°: nome atualizado no formulário, quadro e exports sem alterar ID');
+    await p.locator('#fPosto [name="' + nomeCampo + '"]').fill(''); await p.evaluate(() => document.getElementById('fPosto').requestSubmit()); await p.waitForTimeout(200);
+    ok(await p.evaluate(n => { const x = postos().find(q => q.id === App.posto), tc = n.slice(2); return !x.pessoas[tc] && !x.pessoasIds[tc]; }, nomeCampo), 'Linha 360°: limpar pessoa limpa o ID do turno');
+    await ctx.close();
+  }
+
   // ---------- Produção: responsável do turno e auditoria com o ID
   {
     const ctx = await b.newContext(); const p = await nova(ctx, 'OEE-Vacutainer.html');
@@ -129,6 +179,13 @@ const RENOMEADO = { ...CAD, rev: 5, usuarios: CAD.usuarios.map(u => u.codigo ===
     });
     ok(r.aberta && /NotAllowedError: acesso negado/.test(r.erro) && r.por === 'U7' && r.linhas === 2, `backup do Paradas: falha registrada no arquivo da pasta (2 linhas) com erro "${r.erro}" e o ID de quem estava (${r.por})`);
     ok(r.soLocal && r.aberta2, 'pasta de backup fora do ar: a falha fica registrada neste navegador');
+    const status = await p.evaluate(async () => {
+      const d = await navigator.storage.getDirectory(), originalDir = Store.dir, originalPerm = Store.perm, create = FileSystemFileHandle.prototype.createWritable; let writes = 0;
+      Store.dir = d; Store.perm = true; FileSystemFileHandle.prototype.createWritable = function() { writes++; throw new Error('Status não pode escrever'); };
+      try { const info = await vacPagina.diagnostico(); return { writes, base: info.base, aberta: info.backup.aberta, erro: info.backup.falha.erro }; }
+      finally { Store.dir = originalDir; Store.perm = originalPerm; FileSystemFileHandle.prototype.createWritable = create; }
+    });
+    ok(status.writes === 0 && status.base === 'paradas-base.json' && status.aberta && /acesso negado/.test(status.erro), 'Status consulta base, fila e falha de backup sem abrir nenhuma escrita');
     // Portal › Versões mostra a falha (pendência urgente) e um backup bom depois dela apaga o aviso
     const pp = await nova(ctx, 'Portal.html');
     const v = await pp.evaluate(async () => { const d = await navigator.storage.getDirectory(), bk = await (await d.getDirectoryHandle('00. Backups')).getDirectoryHandle('Paradas');

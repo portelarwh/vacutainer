@@ -10,13 +10,13 @@ const errs = []; const ok = (c, m) => { console.log((c ? 'ok   ' : 'FALHA ') + m
   const abre = async (arq) => { const p = await c.newPage(); p.on('pageerror', e => pe.push(arq + ': ' + e.message)); p.on('dialog', d => d.accept()); await p.goto(RAIZ + arq); await p.waitForTimeout(1500); await p.evaluate(() => document.querySelectorAll('.overlay').forEach(o => o.remove())); return p; };
 
   // ---------- Portal › Relatórios
-  const p = await abre('Paradas.html'); await p.evaluate(() => document.getElementById('vdsRel').click()); await p.waitForTimeout(1500);
+  const p = await abre('Paradas.html'); await p.evaluate(() => document.getElementById('vdsRel').click()); await p.waitForFunction(() => typeof PAGE !== 'undefined' && PAGE.id === 'portal' && App.tab === 'rel' && document.querySelectorAll('[data-rel-ir]').length > 0);
   const P = await p.evaluate(() => { const ir = []; vacDemo.ir = h => ir.push(h);
     const blocos = [...document.querySelectorAll('#main .card h3')].map(h => h.firstChild.textContent.trim());
     document.querySelectorAll('[data-rel-ir]').forEach(x => x.click());
     return { url: location.pathname.split('/').pop(), aba: App.tab, ver: PAGE.versao, blocos, ir, resumo: !!document.getElementById('rResumo'), pend: !!document.getElementById('rPend') }; });
   ok(P.url === 'Portal.html' && P.aba === 'rel', 'Relatórios da barra lateral (no Paradas) abre Portal › Relatórios');
-  ok(P.ver === V.portal && ['Portal', 'Produção', 'Waste', 'Gestão de Gel', 'Paradas', 'Outros'].every(n => P.blocos.includes(n)) && P.resumo && P.pend, 'Portal 1.9.40: um bloco por página (Portal, Produção, Waste, Gestão de Gel, Paradas) e Outros; Resumo e Pendências da linha continuam');
+  ok(P.ver === V.portal && ['Administração', 'Produção', 'Waste', 'Gestão de Gel', 'Paradas', 'Outros'].every(n => P.blocos.includes(n)) && P.resumo && P.pend, 'Portal 1.9.40: um bloco por página (Portal, Produção, Waste, Gestão de Gel, Paradas) e Outros; Resumo e Pendências da linha continuam');
   const tem = h => P.ir.includes(h);
   ok(['shift', 'day', 'week', 'month', 'stops', 'plan', 'view', 'tables'].every(k => tem('OEE-Vacutainer.html#aba=reports&rel=' + k)), 'Produção: os 8 relatórios com link direto (aba=reports&rel=…)');
   ok(tem('Perdas-Ordem.html#aba=relatorios') && tem('Gestão-Gel-Vacutainer.html#aba=relatorios') && tem('Paradas.html#relatorio'), 'Waste, Gel e Paradas: link para a tela de relatórios');
@@ -39,8 +39,8 @@ const errs = []; const ok = (c, m) => { console.log((c ? 'ok   ' : 'FALHA ') + m
   // revisão Codex (PR #75): com a janela "Abrir a base da pasta" aberta, o link espera ela fechar (não a esconde)
   const g2 = await c.newPage(); g2.on('pageerror', e => pe.push('Gel: ' + e.message));
   await g2.addInitScript(() => { window.addEventListener('DOMContentLoaded', () => setTimeout(() => { if (typeof modal === 'function') modal('Abrir a base da pasta', '<p>conexão</p>', '<button class="btn" data-close>Agora não</button>'); }, 300)); });
-  await g2.goto(RAIZ + 'Gestão-Gel-Vacutainer.html#aba=relatorios'); await g2.waitForTimeout(2500);
-  const c1 = await g2.evaluate(() => /Abrir a base da pasta/i.test((document.querySelector('#ov') || {}).innerText || '')); await g2.evaluate(() => closeModal()); await g2.waitForTimeout(1200);
+  await g2.goto(RAIZ + 'Gestão-Gel-Vacutainer.html#aba=relatorios'); await g2.waitForFunction(() => /Abrir a base da pasta/i.test((document.querySelector('#ov') || {}).innerText || ''));
+  const c1 = await g2.evaluate(() => /Abrir a base da pasta/i.test((document.querySelector('#ov') || {}).innerText || '')); await g2.evaluate(() => closeModal()); await g2.waitForFunction(() => /Fichas e relatórios em PDF/i.test((document.querySelector('#ov') || {}).innerText || ''));
   const c2 = await g2.evaluate(() => /Fichas e relatórios em PDF/i.test((document.querySelector('#ov') || {}).innerText || ''));
   ok(c1 && c2, 'Gel: com a janela de conexão aberta, os relatórios esperam ela fechar (a conexão não some)'); await g2.close();
   const r = await abre('Paradas.html#relatorio');

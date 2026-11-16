@@ -41,7 +41,7 @@ const errs = []; const ok = (c, m) => { console.log((c ? 'ok   ' : 'FALHA ') + m
   ok(R.ver === V.oee && JSON.stringify(R.natal) === '["off","Natal","portal"]' && JSON.stringify(R.extra) === '["extra","portal"]' && R.R1.calendario === 3 && R.aud >= 2, 'Produção 2.4.74: o CadSync aplica o dia sem produção e o dia extra do Portal (origin portal, com auditoria)');
   ok(!R.lanc && Array.isArray(R.ign) && R.ign.length === 1 && R.R1.calendarioIgnorado === 1, 'dia com lançamento não vira "sem produção" (ignorado, com aviso)');
   ok(!R.inicio && R.domingo && JSON.stringify(R.mDom) === '["extra","portal"]', 'iniciar produção num dia extra do Portal (domingo) cria o dia e mantém a marca do Portal (revisão Codex P1)' + (R.inicio ? ': ' + R.inicio : ''));
-  ok(/vem do Calendário de produção do Portal/.test(R.trava), 'Plano do mês: o dia que veio do Portal fica travado (' + (R.trava || 'não travou').slice(0, 80) + '…)');
+  ok(/vem do Calendário de produção da Administração/.test(R.trava), 'Plano do mês: o dia que veio do Portal fica travado (' + (R.trava || 'não travou').slice(0, 80) + '…)');
   ok(R.ex && R.ex.origem === 'portal' && R.ex.tipo === 'sem produção', 'exports.calendario diz a origem do dia (portal)');
   ok(R.depois === null && R.R2.calendario === 1, 'dia inativado no Portal: a marca que veio de lá sai da Produção');
   ok(!pe.length, 'sem erro de página' + (pe.length ? ': ' + [...new Set(pe)].slice(0, 3).join(' | ') : ''));
