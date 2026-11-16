@@ -35,3 +35,39 @@ Os nomes são os do kit de marca; não renomeie.
 
 - Não copiar a pasta `Marca` para dentro do repositório (está no `.gitignore`), nem converter a fonte em base64 dentro de CSS ou HTML.
 - Não publicar o `Plataforma.html` com a fonte embutida.
+
+## Estrutura da pasta operacional
+
+A raiz é a pasta que você seleciona em **Conectar pasta**, não a pasta `Marca` nem `00. Bases`.
+
+```text
+Pasta da linha/
+├── Plataforma.html
+├── Marca/                         # arquivos oficiais opcionais, nomes acima
+├── 00. Bases/
+│   ├── vacutainer-cadastros.json
+│   ├── portal-base.json
+│   ├── oee-vacutainer-base.json
+│   ├── ordens-base.json
+│   ├── perdas-base.json
+│   ├── fifo-base.json
+│   ├── paradas-base.json
+│   ├── equipamentos-base.json
+│   ├── iniciativas-base.json
+│   ├── linha360-base.json
+│   └── Preferencias/              # arquivos de layout por ID de pessoa
+├── 00. Backups/
+│   ├── Portal/
+│   ├── OEE/
+│   ├── Perdas/
+│   ├── Gel/
+│   ├── Paradas/
+│   ├── Equipamentos/
+│   ├── Iniciativas/
+│   └── Linha360/
+└── pastas de relatórios de entrada # conforme o caminho configurado em cada importador
+```
+
+As bases e subpastas são mantidas pelo aplicativo conforme o uso; não criar JSON vazios, renomear bases ou apagar dados existentes para reproduzir a árvore. Projetos ainda está em construção: não é necessário criar `projetos-base.json`. Algumas rotinas também guardam originais SAP nas pastas configuradas; preserve-as. Os logs de backup ficam nas subpastas do respectivo módulo.
+
+Na pasta da linha, `scripts`, `testes`, `node_modules` e `docs` não são dependências de execução. A pasta `Marca` fica somente nessa distribuição local/corporativa e continua excluída do Git. A distribuição e o retorno seguem [CORTE.md](CORTE.md).
