@@ -67,3 +67,13 @@ Atalhos e impressão continuam usando as rotas e permissões existentes. O paine
 Extensão autorizada de R02-B, mantendo schemaVersion 1: Paradas acrescenta `tecnicoId` e `porId` na parte técnica e publica técnico/nome atual e ID nos eventos; Waste guarda `userId`, `alteradoPorId`, `excluidoPorId` e o ID do autor de cada versão no histórico do comentário; Linha 360° guarda `pessoasIds[turno]` ao lado de `pessoas[turno]`, publica os dois e registra `porId` na conclusão do checklist. Campos são opcionais e aditivos. Não há migração em lote de bases reais. Texto livre e homônimos sem ID continuam sem associação automática. Editar outro campo preserva o ID escolhido mesmo com nomes iguais.
 
 O Status usa `info()` para estado corrente e `diagnostico()` para consultar registros existentes do próprio módulo. Revisão/publicação das demais bases vêm dos resumos já lidos pela casca. Publicação não comprova importação completa; um log de sucesso não substitui verificar a cópia física. A operação não concede permissão, não calcula indicadores e não grava bases. A nomenclatura visual preserva IDs internos como portal e valores canônicos como paginaInicial=Portal.
+
+## Usabilidade 1.5.0 (17/11/2026)
+
+Plataforma 1.5.0, Produção 2.4.82, Administração 1.9.44.
+
+- `vacLayout` (comum/interface): seções numeradas (`.vk-sec`, e `.vgl-sec` da Visão Geral da Produção) ganham seta própria e uma barra "Recolher tudo / Expandir tudo" (`[data-vk-todos]`); a página que já tem a dela (Gel, `[data-colall]`) usa a dela, e o kit recolhe as seções junto. O kit liga sozinho (observa a tela); estado por pessoa em `vac.grupos.<página>` (chave `sec:<nº>:<título>`). O corpo escondido usa `display:none !important` inline (vence regras de display das próprias páginas) e volta ao original. Na impressão tudo aparece.
+- `vacPagina.guia()` abre o guia da aba aberta; o "?" da casca chama quando há módulo na tela.
+- Casca: `normalizeRoute` leva `#/oee?tab=equip` para a página Equipamentos. Botões em destaque: `parametros.destaques` = linhas "Página · texto do botão · cor" (laranja, azul, verde, vermelho; laranja com texto azul-marinho pelo contraste); sem configuração, "Produção · Lançar meu turno · laranja"; "nenhum" desliga. Só muda a cor.
+- Produção: `exports.atual.catalogoMes` = {mes, planejado, realizado, falta, previsaoFim} — o que falta do catálogo no Plano do mês ÷ ritmo da corrida atual (estimado; sem plano ou sem ritmo, sem previsão). O "Agora na linha" mostra.
+- Backups: `parametros.backupDias` (inteiro ≥ 7) e `vacBackupRegistro.limpar(dir)`, chamado pelo registro depois de um backup que deu certo.
