@@ -575,49 +575,97 @@ const vacPessoa = (() => {
     const L = lista().filter(u => norm(u.nome) === norm(k)); return L.length === 1 ? L[0] : null; }
   const id = (nome, idGuardado) => String(idGuardado || '').trim() || (achar(nome) ? String(achar(nome).codigo) : '');
   const nome = (idGuardado, nomeGuardado) => { const u = porId(idGuardado) || (!idGuardado ? achar(nomeGuardado) : null); return (u &amp;&amp; u.nome) || String(nomeGuardado || (idGuardado || '')); };
-  /* mesma pessoa? por ID quando os dois têm; senão pelo nome */
-  function mesma(aId, aNome, bId, bNome) { const A = id(aNome, aId), B = id(bNome, bId); if (A &amp;&amp; B) return A === B; return !!norm(aNome) &amp;&amp; norm(aNome) === norm(bNome); }
+  /* Só um ID inequívoco confirma a pessoa. Nome ambíguo ou não cadastrado fica sem vínculo. */
+  function mesma(aId, aNome, bId, bNome) { const A = id(aNome, aId), B = id(bNome, bId); return !!A &amp;&amp; !!B &amp;&amp; A === B; }
   /* a pessoa deste computador: ID da sessão, nome do cadastro (ou o guardado) */
   function eu() { let i = '', n = ''; try { i = localStorage.getItem('vac.userId') || ''; n = localStorage.getItem('vac.user') || ''; } catch (e) { } return { id: i || id(n), nome: nome(i, n) }; }
   /* campo digitado: ID ou nome viram {id, nome}; quem não está no cadastro fica sem ID (só o nome) */
   function deTexto(t) { const k = String(t == null ? '' : t).trim(); if (!k) return { id: '', nome: '' }; const u = achar(k); return u ? { id: String(u.codigo), nome: u.nome } : { id: '', nome: k }; }
-  /* opções para <datalist>: nome com o ID ao lado */
-  const opcoes = (esc = s => String(s)) => lista().filter(u => u.ativo !== false).map(u => `<option value="${esc(u.nome)}" label="ID ${esc(u.codigo)}"></option>`).join('');
+  /* opções para <datalist>: o valor é o ID; o nome acompanha a opção. */
+  const opcoes = (esc = s => String(s)) => lista().filter(u => u.ativo !== false).map(u => `<option value="${esc(String(u.codigo))}" label="${esc(u.nome)}"></option>`).join('');
   return { norm, achar, id, nome, mesma, eu, deTexto, opcoes, lista };
 })();
-/* 16/11/2026 · registro do backup diário. Cada página registra o resultado do próprio backup:
-   neste navegador (vac.backup.<página>) e, quando dá, no arquivo registro-backup.log da própria pasta de backup
-   (JSON por linha, as 50 últimas). O Portal › Versões lê os dois; falha nunca fica escondida. */
+/* 16/11/2026 · cada estação escreve o próprio registro de backup.
+   O Portal consolida esses arquivos, o registro antigo e o cache local.
+   Web Locks serializam abas do mesmo navegador; sem eles, o arquivo é por instância. */
 const vacBackupRegistro = (() => {
-  const ARQ = 'registro-backup.log', MAX = 50;
+  const ARQ = 'registro-backup.log', PREFIXO = 'registro-backup-', MAX = 50;
   const ls = k => { try { return localStorage.getItem(k); } catch (e) { return null; } };
   const chave = p => 'vac.backup.' + p;
   const msg = e => !e ? '' : String((e.name &amp;&amp; e.name !== 'Error' ? e.name + ': ' : '') + (e.message || e)).slice(0, 300);
-  function linhas(texto) { return String(texto || '').split('\n').map(l => { try { return JSON.parse(l); } catch (e) { return null; } }).filter(x => x &amp;&amp; x.em); }
+  const novoId = () => typeof crypto !== 'undefined' &amp;&amp; crypto.randomUUID ? crypto.randomUUID().replace(/-/g, '') : Date.now().toString(36) + Math.random().toString(36).slice(2) + Math.random().toString(36).slice(2);
+  const instancia = novoId();
+  let fila = Promise.resolve();
+  function estacao() {
+    const existente = ls('vac.backup.estacao');
+    if (/^[a-z0-9-]{8,80}$/i.test(existente || '')) return existente;
+    const id = novoId();
+    try { localStorage.setItem('vac.backup.estacao', id); return id; } catch (e) { return instancia; }
+  }
+  function linhas(texto) { return String(texto || '').split('\n').map(l => { try { return JSON.parse(l); } catch (e) { return null; } }).filter(x => x &amp;&amp; typeof x.em === 'string'); }
+  function salvarLocal(pagina, linha) {
+    try { const a = JSON.parse(ls(chave(pagina)) || '{}'); a[linha.ok ? 'ok' : 'falha'] = linha; localStorage.setItem(chave(pagina), JSON.stringify(a)); } catch (e) { }
+  }
+  async function comTrava(run) {
+    const locks = typeof navigator !== 'undefined' &amp;&amp; navigator.locks;
+    if (!locks || typeof locks.request !== 'function') return run(false);
+    let entrou = false;
+    try { return await locks.request('vac.backup.registro', () => { entrou = true; return run(true); }); }
+    catch (e) { if (entrou) throw e; return run(false); }
+  }
   async function anexar(dir, linha) {
-    const fh = await dir.getFileHandle(ARQ, { create: true });
+    const fh = await dir.getFileHandle(linha.registroArquivo, { create: true });
     const antes = linhas(await (await fh.getFile()).text()).slice(-(MAX - 1));
-    const w = await fh.createWritable(); await w.write(antes.concat([linha]).map(x => JSON.stringify(x)).join('\n') + '\n'); await w.close();
+    const w = await fh.createWritable();
+    try { await w.write(antes.concat([{ ...linha, soLocal: false }]).map(x => JSON.stringify(x)).join('\n') + '\n'); await w.close(); }
+    catch (e) { try { if (w.abort) await w.abort(); } catch (_) { } throw e; }
   }
   async function registrar(pagina, r = {}) {
     if (typeof vacDemo !== 'undefined' &amp;&amp; vacDemo.ativo) return null;
-    const linha = { em: new Date().toISOString(), pagina, ok: !!r.ok, erro: r.ok ? '' : msg(r.erro) || 'falha sem mensagem', arquivo: r.arquivo || '',
-      por: ls('vac.user') || '', porId: ls('vac.userId') || '', versao: (typeof PAGE !== 'undefined' &amp;&amp; PAGE.versao) || '' };
-    try { const a = JSON.parse(ls(chave(pagina)) || '{}'); a[linha.ok ? 'ok' : 'falha'] = linha; localStorage.setItem(chave(pagina), JSON.stringify(a)); } catch (e) { }
-    try { const d = typeof r.dir === 'function' ? await r.dir() : r.dir; if (d) await anexar(d, linha); else linha.soLocal = true; } catch (e) { linha.soLocal = true; }
-    return linha;
+    const executar = () => comTrava(async compartilhado => {
+      const idEstacao = estacao();
+      const linha = { id: novoId(), em: new Date().toISOString(), pagina, ok: !!r.ok, erro: r.ok ? '' : msg(r.erro) || 'falha sem mensagem', arquivo: r.arquivo || '',
+        por: ls('vac.user') || '', porId: ls('vac.userId') || '', versao: (typeof PAGE !== 'undefined' &amp;&amp; PAGE.versao) || '', estacao: idEstacao,
+        registroArquivo: PREFIXO + idEstacao + (compartilhado ? '' : '-' + instancia) + '.log', soLocal: true };
+      salvarLocal(pagina, linha);
+      try { const d = typeof r.dir === 'function' ? await r.dir() : r.dir; if (d) { await anexar(d, linha); linha.soLocal = false; } }
+      catch (e) { linha.erroRegistro = msg(e); }
+      salvarLocal(pagina, linha);
+      return linha;
+    });
+    const pending = fila.then(executar, executar);
+    fila = pending.catch(() => {});
+    return pending;
   }
-  /* último ok e última falha: do arquivo da pasta (todas as estações) e deste navegador */
+  /* Consulta nunca cria arquivo: lê todos os logs da pasta e preserva o legado. */
   async function ler(pagina, dir) {
-    const L = []; let erroLeitura = '';
-    if (dir) try { L.push(...linhas(await (await (await dir.getFileHandle(ARQ)).getFile()).text())); } catch (e) { if (!vacNaoAchou(e)) erroLeitura = msg(e); }
+    const L = [], erros = [], arquivos = new Set([ARQ]);
+    if (dir) {
+      try { for await (const [nome, handle] of dir.entries()) if (handle.kind === 'file' &amp;&amp; /^registro-backup-[a-z0-9-]+\.log$/i.test(nome)) arquivos.add(nome); }
+      catch (e) { erros.push('listar registros: ' + msg(e)); }
+      for (const nome of arquivos) {
+        try {
+          const text = await (await (await dir.getFileHandle(nome)).getFile()).text();
+          const rows = linhas(text);
+          if (String(text).split('\n').filter(l => l.trim()).length !== rows.length) erros.push(nome + ': contém linha inválida');
+          L.push(...rows.filter(x => !x.pagina || x.pagina === pagina).map(x => ({ ...x, registroArquivo: nome, local: false, soLocal: false })));
+        } catch (e) { if (!vacNaoAchou(e)) erros.push(nome + ': ' + msg(e)); }
+      }
+    }
     try { const a = JSON.parse(ls(chave(pagina)) || '{}'); for (const k of ['ok', 'falha']) if (a[k] &amp;&amp; a[k].em) L.push({ ...a[k], local: true }); } catch (e) { }
-    L.sort((a, b) => a.em < b.em ? -1 : 1);
-    const ok = L.filter(x => x.ok).pop() || null, falha = L.filter(x => !x.ok).pop() || null;
-    return { ok, falha, aberta: !!falha &amp;&amp; (!ok || falha.em > ok.em), erroLeitura };
+    const unicos = new Map();
+    for (const x of L) {
+      const key = x.id || JSON.stringify([x.em, x.pagina, x.ok, x.erro, x.arquivo, x.porId]);
+      if (!unicos.has(key) || !x.local) unicos.set(key, x);
+    }
+    const registros = [...unicos.values()].sort((a, b) => a.em.localeCompare(b.em));
+    const ok = registros.filter(x => x.ok).pop() || null, falha = registros.filter(x => !x.ok).pop() || null;
+    // Relógios empatados entre estações não comprovam que o sucesso veio depois.
+    return { ok, falha, aberta: !!falha &amp;&amp; (!ok || falha.em >= ok.em), erroLeitura: erros.join(' · '), registros };
   }
-  return { ARQ, registrar, ler, linhas };
+  return { ARQ, PREFIXO, registrar, ler, linhas };
 })();
+
 function vacRaiz(raiz) {
   if (!raiz || raiz.__vacRaiz) return raiz;
   let sub = null;
@@ -3498,7 +3546,7 @@ const Store={B:null,mode:'local',dir:null,mod:0,pending:false,pendFrom:0,err:'',
  async writeFile(dir,name,content){const fh=await dir.getFileHandle(name,{create:true});const w=await fh.createWritable();await w.write(content);await w.close()},
  async readRemote(){const r=await this.readFile(PAGE.baseFile);return{data:JSON.parse(r.text),mod:r.mod}},
  async writeRemote(){const day=todayISO(),k='vac.bkp.'+PAGE.id;
-  if(localStorage.getItem(k)!==day){const nm=PAGE.baseFile.replace('.json','')+'_'+day+'.json',dir=()=>this.sub(PAGE.backupDir);try{const r=await this.readFile(PAGE.baseFile);await this.writeFile(await dir(),nm,r.text);localStorage.setItem(k,day);vacBackupRegistro.registrar('portal',{ok:true,arquivo:nm,dir})}catch(e){/* 1.9.40 · a falha do backup diário fica registrada (Portal › Versões) */vacBackupRegistro.registrar('portal',{erro:e,dir})}}
+  if(localStorage.getItem(k)!==day){const nm=PAGE.baseFile.replace('.json','')+'_'+day+'.json',dir=()=>this.sub(PAGE.backupDir);try{const r=await this.readFile(PAGE.baseFile);await this.writeFile(await dir(),nm,r.text);localStorage.setItem(k,day);await vacBackupRegistro.registrar('portal',{ok:true,arquivo:nm,dir})}catch(e){/* 1.9.40 · a falha do backup diário fica registrada (Portal › Versões) */await vacBackupRegistro.registrar('portal',{erro:e,dir})}}
   await this.writeFile(this.dir,PAGE.baseFile,JSON.stringify(this.B));try{this.mod=(await (await this.dir.getFileHandle(PAGE.baseFile)).getFile()).lastModified}catch(e){}},
  async connect(dir,opts={}){return vacEditarBase('portal',async()=>{vacGuardaAba('portal',!!this.pending);await this.pendenteAtual();return this._connect(dir,opts)},()=>this.pending)},
  async _connect(dir,{ask=false}={}){if(!dir)return false;let p=await dir.queryPermission({mode:'readwrite'});if(p!=='granted'&amp;&amp;ask)p=await dir.requestPermission({mode:'readwrite'});if(p!=='granted')return false;
@@ -3745,7 +3793,7 @@ function wireConfigComum(){$('#cPasta').onclick=async()=>{if(await Store.pick())
         entrar pelo ID (autocadastro como Consulta); página inicial por perfil (1x por sessão); vigência gravada não se edita (desativar com motivo); painel de vigências; semáforo central; saída do modo de teste.
    1.1.2: aviso da carga diz qual base foi lida.  1.5: páginas Paradas, Máquinas, Manutenção e Projetos na lista (aparecem quando o HTML chega na pasta).  1.4: lista técnica pela CS12 multinível (itens = nível 1, estrutura = níveis 2+); CS03 sai.  1.3: cabeçalho comum (vac-cabecalho v2: barra do sistema + página + abas), busca Ctrl K, acabamento V1.90, Versões com cabeçalho e último backup.  1.2: Configuração › Versões das páginas (versão e data de cada HTML, gravação das bases, cópias repetidas, histórico).
    ===================================================================== */
-const PAGE={id:'portal',titulo:'Portal · Linha Vacutainer',tituloCurto:'Portal',subtitulo:'Sistemas de gestão da linha',versao:'1.9.40',baseFile:'portal-base.json',idb:'vac-portal',backupDir:'00. Backups/Portal',
+const PAGE={id:'portal',titulo:'Portal · Linha Vacutainer',tituloCurto:'Portal',subtitulo:'Sistemas de gestão da linha',versao:'1.9.41',baseFile:'portal-base.json',idb:'vac-portal',backupDir:'00. Backups/Portal',
  vazio:()=>({schema:'portal-base',rev:0,config:{modulos:{},avisoDias:30,notas:{}},audit:[]}),
  /* itens do Portal para a busca Ctrl K: cadastro, pendências e telas */
  busca:q=>{const R=[],D=Cad.D;if(D)for(const t of CAD_ORD){for(const it of D[t]||[]){const c=String(it[kOf(t)]),nm=t==='bom'?((cadItem('catalogos',it.catalogo)||{}).nome||''):it.nome||'';if(norm(c+' '+nm).includes(q))R.push({tipo:CAD_T[t].um,txt:c+(nm?' · '+nm:''),sub:'Cadastros'+(cadAtivo(t,it,D)?'':' · inativo'),href:'#cadastros/'+t+'/'+encodeURIComponent(c)});if(R.length>30)break}}
@@ -4201,8 +4249,8 @@ const Vers={dados:null,busy:false,cache:{},
   else if(r.bkp&amp;&amp;r.bkpAnt&amp;&amp;r.bkpAnt.mod>r.bkp.mod)A.push(['warn',`o último backup foi gravado em 00. Backups/ (local antigo), não em ${r.bkpPasta}/`]);
   else if(r.bkp&amp;&amp;Date.now()-r.bkp.mod>3*864e5)A.push(['warn',`último backup há ${Math.floor((Date.now()-r.bkp.mod)/864e5)} dias`]);
   /* 1.9.40 · a última falha do backup diário aparece até um backup dar certo depois dela */
-  if(r.reg&amp;&amp;r.reg.aberta){const f=r.reg.falha;A.push(['crit',`backup diário falhou em ${fmtDT(f.em)}${f.por?' ('+f.por+(f.porId?' · ID '+f.porId:'')+')':''}: ${f.erro}${f.local&amp;&amp;!r.reg.ok?' · registrado só neste computador':''}`])}
-  if(r.reg&amp;&amp;r.reg.erroLeitura)A.push(['warn',`não deu para ler ${r.bkpPasta}/${vacBackupRegistro.ARQ}: ${r.reg.erroLeitura}`]);
+  if(r.reg&amp;&amp;r.reg.aberta){const f=r.reg.falha;A.push(['crit',`backup diário falhou em ${fmtDT(f.em)}${f.por?' ('+f.por+(f.porId?' · ID '+f.porId:'')+')':''}: ${f.erro}${f.soLocal||f.local&amp;&amp;!r.reg.ok?' · registrado só neste computador':''}`])}
+  if(r.reg&amp;&amp;r.reg.erroLeitura)A.push(['warn',`não deu para ler os registros de backup em ${r.bkpPasta}: ${r.reg.erroLeitura}`]);
   /* C5 · saúde dos dados: resumo de outro dia, lista de eventos cortada e alterações que ainda não chegaram à pasta */
   if(r.id!=='portal'&amp;&amp;r.base&amp;&amp;r.base.exp&amp;&amp;r.base.expEm&amp;&amp;String(r.base.expEm).slice(0,10)<addDays(todayISO(),-1))A.push(['warn',`resumo (exports) de ${fmtD(String(r.base.expEm).slice(0,10))}: o Portal mostra os números desse dia; abra ${r.nome} com a pasta para atualizar`]);
   if(r.base&amp;&amp;r.base.cob&amp;&amp;r.base.cob.cortado)A.push(['warn',`o Paradas publicou só os eventos desde ${fmtD(r.base.cob.de)} (lista cortada); antes disso o Portal mostra "sem dado"`]);
@@ -6256,13 +6304,13 @@ function viewFila(m){const Q=filaQuem(),I=filaItens(),h=todayISO(),fim=addDays(h
  /* 1.9.39 · Linha = tudo da linha: todas as pendências e as ações abertas (de início só as atrasadas; "Ver todas as ações" mostra o resto) */
  const acLinha=I.filter(i=>i.tipo==='acao'),acAtr=acLinha.filter(i=>i.atrasada);
  const linha=I.filter(i=>i.tipo!=='acao'||Fila.todas||i.atrasada);
- const seg={minhas:I.filter(i=>filaDe(i,Q.u,Q.uid)),equipe:I.filter(i=>filaEquipe(i,Q)),sem:I.filter(i=>!i.resp),linha};
+ const seg={minhas:I.filter(i=>filaDe(i,Q.u,Q.uid)),equipe:I.filter(i=>filaEquipe(i,Q)),sem:I.filter(i=>!vacPessoa.id(i.resp,i.respId)),linha};
  const base=seg[Fila.seg]||seg.minhas;let L=Fila.pag?base.filter(i=>i.mod===Fila.pag):base;
  const aviso=Fila.seg==='minhas'&amp;&amp;!Q.u&amp;&amp;!Q.uid?'Entre com o seu ID (no alto, à direita) para ver o que é seu.':Fila.seg==='equipe'&amp;&amp;!Q.area?'Sua área não está no cadastro de usuários (Administração › Usuários › Área). Com ela preenchida, aqui aparece o que é das pessoas da mesma área.':'';
  const ord=(a,b)=>(a.prazo||'9999').localeCompare(b.prazo||'9999')||(a.sev||2)-(b.sev||2);
  const dP=d=>{const n=Math.round((Date.parse(h)-Date.parse(d))/864e5);return n>0?`<b class="fl-atr">venceu ${fmtD(d)} (${n} d)</b>`:n===0?'<b>vence hoje</b>':'vence '+fmtD(d)};
  const urg=i=>i.tipo==='acao'?'<span></span>':`<span class="pill ${i.sev===1?'crit':'warn'}">${i.sev===1?'urgente':'atenção'}</span>`;
- const lin=i=>{const s=sysOf(i.mod);return`<div class="fl-i"><span class="pill ${i.mod==='inic'?'info':'none'}">${esc(i.rot)}</span><div class="fl-t"><div>${esc(i.txt)}</div><div class="small muted">${esc(i.sub)}${i.resp?' · '+esc(i.resp):' · sem responsável'}${(i.apoios||[]).length?' (+'+i.apoios.length+')':''}</div></div>${urg(i)}<span class="small">${i.prazo?dP(i.prazo):'<span class="muted">—</span>'}</span><span class="pill ${i.status==='em andamento'?'warn':'none'}">${esc(i.status)}</span><a class="b sm" href="${esc(sysHref(s,i.link||''))}">Abrir ›</a></div>`};
+ const lin=i=>{const s=sysOf(i.mod);return`<div class="fl-i"><span class="pill ${i.mod==='inic'?'info':'none'}">${esc(i.rot)}</span><div class="fl-t"><div>${esc(i.txt)}</div><div class="small muted">${esc(i.sub)}${i.resp?' · '+esc(i.resp):' · sem responsável'}${i.resp&amp;&amp;!vacPessoa.id(i.resp,i.respId)?' <span class="pill warn">Confirmar responsável</span>':''}${(i.apoios||[]).length?' (+'+i.apoios.length+')':''}</div></div>${urg(i)}<span class="small">${i.prazo?dP(i.prazo):'<span class="muted">—</span>'}</span><span class="pill ${i.status==='em andamento'?'warn':'none'}">${esc(i.status)}</span><a class="b sm" href="${esc(sysHref(s,i.link||''))}">Abrir ›</a></div>`};
  const modsOrd=systems().map(x=>x.id).filter(id=>base.some(i=>i.mod===id));
  /* contadores por página: acompanham a visão escolhida; clicar filtra a página */
  const cont=modsOrd.length?`<div class="fl-cont" id="flCont">${modsOrd.map(id=>{const X=base.filter(i=>i.mod===id),u=X.filter(i=>i.sev===1).length;return`<button type="button" class="b sm${Fila.pag===id?' p':''}" data-fc="${esc(id)}" aria-pressed="${Fila.pag===id}">${esc(sysOf(id).nome)} <b>${X.length}</b>${u?` <span class="small">(${u} urg.)</span>`:''}</button>`}).join('')}</div>`:'';
@@ -6273,7 +6321,7 @@ function viewFila(m){const Q=filaQuem(),I=filaItens(),h=todayISO(),fim=addDays(h
   <span class="seg" id="flAgr" title="Agrupar por">${[['prazo','Por prazo'],['pagina','Por página']].map(([k,t])=>`<button data-fa="${k}" class="${Fila.agr===k?'on':''}">${t}</button>`).join('')}</span>
   <select id="flPag"><option value="">Página: todas</option>${modsOrd.map(x=>`<option value="${esc(x)}"${Fila.pag===x?' selected':''}>${esc(sysOf(x).nome)}</option>`).join('')}</select><span class="sp"></span>
   <button type="button" class="b sm" id="flRel" title="Pendências da linha (PDF, Excel, texto, Outlook ou impressão), para a reunião diária">Relatório da linha</button>
-  <span class="small muted">${Q.u?esc(Q.u)+(Q.area?' · área '+esc(Q.area):''):'sem usuário'} · ${MOD.at?'lido às '+new Date(MOD.at).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}):'leitura pendente'} ${ib('Pendências e ações','Junta as pendências que as páginas publicam e as ações abertas de Iniciativas. Só leitura: cada item abre na página dona, onde se resolve.\nMinhas = você é responsável ou apoio. Minha equipe = pessoas da mesma área no cadastro de usuários. Sem responsável = itens que ninguém assumiu. Linha = tudo da linha, de qualquer pessoa (as ações de Iniciativas começam só com as atrasadas).')}</span></div>
+  <span class="small muted">${Q.u?esc(Q.u)+(Q.area?' · área '+esc(Q.area):''):'sem usuário'} · ${MOD.at?'lido às '+new Date(MOD.at).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}):'leitura pendente'} ${ib('Pendências e ações','Junta as pendências que as páginas publicam e as ações abertas de Iniciativas. Só leitura: cada item abre na página dona, onde se resolve.\nMinhas = você é responsável ou apoio. Minha equipe = pessoas da mesma área no cadastro de usuários. Sem responsável = itens sem pessoa definida ou com nome sem vínculo inequívoco. Abra o item e informe o ID do cadastro para confirmar. Linha = tudo da linha, de qualquer pessoa (as ações de Iniciativas começam só com as atrasadas).')}</span></div>
   ${cont}${aviso?`<div class="card"><p>${aviso}</p></div>`:''}${maisAc}
   ${!aviso?(G.filter(g=>g[1].length).map(([t,X,c])=>`<h3 class="fl-g">${esc(t)} <span class="pill ${c}">${X.length}</span></h3><div class="fl">${X.sort(ord).map(lin).join('')}</div>`).join('')||'<div class="card"><p class="good">Nada aqui.</p></div>'):''}`;
  $$('#flSeg [data-fs]').forEach(b=>b.onclick=()=>{Fila.seg=b.dataset.fs;App.render()});$$('#flAgr [data-fa]').forEach(b=>b.onclick=()=>{Fila.agr=b.dataset.fa;App.render()});
@@ -7148,7 +7196,7 @@ const U = (() => {
 
 /* ---- 02-model.js ---- */
 /* ================= modelo de dados, valores iniciais e integridade ================= */
-const APP_VERSION = '2.4.78';
+const APP_VERSION = '2.4.79';
 const SCHEMA_VERSION = 1;
 const BASE_FILE = 'oee-vacutainer-base.json';
 const BACKUP_DIR = '00. Backups';
@@ -8208,8 +8256,8 @@ const Store = (() => {
         if (ext &amp;&amp; (reasons.length || S.lastDailyBackup !== todayKey)) {
           /* 2.4.78 · resultado do backup registrado para o Portal › Versões; a falha continua impedindo a gravação */
           const bkDia = S.lastDailyBackup !== todayKey, bkN = bkNome(bkDia ? 'diario' : 'hora'), bkDir = () => S.backend.backupDir &amp;&amp; S.backend.backupDir();
-          try { await S.backend.backup(bkN, ext.text); if (bkDia) vacBackupRegistro.registrar('oee', { ok: true, arquivo: bkN, dir: bkDir }); }
-          catch (e) { vacBackupRegistro.registrar('oee', { erro: e, arquivo: bkN, dir: bkDir }); throw e; }
+          try { await S.backend.backup(bkN, ext.text); if (bkDia) await vacBackupRegistro.registrar('oee', { ok: true, arquivo: bkN, dir: bkDir }); }
+          catch (e) { await vacBackupRegistro.registrar('oee', { erro: e, arquivo: bkN, dir: bkDir }); throw e; }
           S.lastDailyBackup = todayKey; await IDB.set('lastDailyBackup', todayKey);
         }
         const rev0 = S.rev;   // alterações feitas durante a gravação não podem ser dadas como salvas
@@ -19930,7 +19978,7 @@ button.b,label.b,a.b{border-radius:8px}
    Base: perdas-base.json na pasta da rede (mesmo padrão OEE / Gel)
    Contrato: bloco "exports" (exportsVersion 1) lido pelas outras páginas
    ===================================================================== */
-const APP_VER='1.12.9',   /* 1.12.8 · ordens e lotes antigos pelo exports da Produção (ordensHistorico, lotesHistorico), sem ler a base dela */   /* 1.12.7 · D8: Pareto comum do kit (vacPareto) */   /* 1.12.6 · Fase 5: layout no arquivo da pessoa (vacPrefs do kit) */   /* 1.12.5 · D6: botões de gravação travados conforme o perfil (vacTravas do kit) */   /* 1.12.4 · Importar: lista das ordens ainda sem KKBC_ORD (Produção e SAP, mês atual e os 2 anteriores) */   /* 1.12.3 · KKBC_ORD colada como lista com Cen./Planta/Ordem/Origem/Material e títulos abreviados (Desv.qtd., Desv.preço) */   /* 1.12.2 · kit: modelo de e-mail (vacEmail) e número da página na impressão */   /* 1.12.1 · ícones no lugar dos símbolos de texto (kit) */   /* 1.12.0 · Design System (barra lateral), Paretos da controladoria (verticais), aviso ordem × lote */   /* 1.11.0 · target MUV da linha (Portal › Metas da área WASTE-MUV…, vigência, R$/US$ pelo câmbio do Portal), MUV × target acumulado no FY, filtros Linha e Semana */   /* 1.10.0 · MUV oficial (Desv. estrutura + Desv. empregado, como a controladoria): meta, situação, criticidade, exports e relatórios; Pareto do MUV por Linha/SKU/Componente × métrica, favorável/desfavorável e Top N */   /* 1.9.0 · KKBC_ORD em grade (layout da controladoria, uma ordem por arquivo): Desv. Empregado, Desv. preço de input e Desv. qtde guardados; aviso das ordens no formato antigo (reimportar) */   /* 1.8.36 · gráficos: "Valores em …" (moeda), eixo sem rótulos repetidos, medida do Comparativo no gráfico do relatório (docs/graficos-padrao.md) */   /* 1.8.35 · Visão Geral no padrão comum (vacLayout): situação, números, diagnóstico, análises em grupos */   /* 1.8.34 · kit: login com ID e senha */   /* 1.8.33 · kit: datas DD/MM/AAAA */   /* 1.8.32 · nome Eficácia/Confirmação de Processo */   /* 1.8.31 · kit: nome e presença de Iniciativas / Ações na barra */   /* 1.8.30 · UX-02: guia por aba */   /* 1.8.29 · Fase 7 (UX-03, WST-01): Painel → Visão Geral */   /* 1.8.28 · Fase 6 (WST-03, INI-04): ações em Iniciativas / Ações; antigas até a migração, depois só leitura */   /* 1.8.27 · Fase 3 (IMP-04/06, WST-02): importações no exports; aba Importar leva ao Portal › Importação */   /* 1.8.26 · ARQ-09: "Ver com dados de teste" vira a Demonstração integrada */   /* 1.8.23 · C2–C6: kit com a ficha por pasta (AT-08) e a contagem da fila durável (Portal › Versões) */   /* 1.8.22 · C1: trava da 2ª aba com alteração pendente (nada é descartado); kit com a fila durável */   /* 1.8.21 · E11: busca do kit leva o equipamento à ficha em Equipamentos */   /* 1.8.20 · E8: kit com "+ Abrir ação" na ficha da ordem (Planner de Iniciativas) */   /* 1.8.19 · E5: ficha da ordem comum (botão Ficha na ordem; busca Ctrl K por ordem, lote e LP) */   /* 1.8.18 · E4: versão do exports conferida (Produção, Ordens), ordem em várias competências, dias do lote pela chave · 1.8.17 · E2: fonte única da versão (tela, base, exports e Portal › Versões) */ BASE_FN='perdas-base.json', DIR_ORIG='00. Originais SAP', DIR_BKP='00. Backups', DIR_IN='00. Entrada KKBC', DIR_DONE='00. Entrada KKBC/Processados';
+const APP_VER='1.12.10',   /* 1.12.8 · ordens e lotes antigos pelo exports da Produção (ordensHistorico, lotesHistorico), sem ler a base dela */   /* 1.12.7 · D8: Pareto comum do kit (vacPareto) */   /* 1.12.6 · Fase 5: layout no arquivo da pessoa (vacPrefs do kit) */   /* 1.12.5 · D6: botões de gravação travados conforme o perfil (vacTravas do kit) */   /* 1.12.4 · Importar: lista das ordens ainda sem KKBC_ORD (Produção e SAP, mês atual e os 2 anteriores) */   /* 1.12.3 · KKBC_ORD colada como lista com Cen./Planta/Ordem/Origem/Material e títulos abreviados (Desv.qtd., Desv.preço) */   /* 1.12.2 · kit: modelo de e-mail (vacEmail) e número da página na impressão */   /* 1.12.1 · ícones no lugar dos símbolos de texto (kit) */   /* 1.12.0 · Design System (barra lateral), Paretos da controladoria (verticais), aviso ordem × lote */   /* 1.11.0 · target MUV da linha (Portal › Metas da área WASTE-MUV…, vigência, R$/US$ pelo câmbio do Portal), MUV × target acumulado no FY, filtros Linha e Semana */   /* 1.10.0 · MUV oficial (Desv. estrutura + Desv. empregado, como a controladoria): meta, situação, criticidade, exports e relatórios; Pareto do MUV por Linha/SKU/Componente × métrica, favorável/desfavorável e Top N */   /* 1.9.0 · KKBC_ORD em grade (layout da controladoria, uma ordem por arquivo): Desv. Empregado, Desv. preço de input e Desv. qtde guardados; aviso das ordens no formato antigo (reimportar) */   /* 1.8.36 · gráficos: "Valores em …" (moeda), eixo sem rótulos repetidos, medida do Comparativo no gráfico do relatório (docs/graficos-padrao.md) */   /* 1.8.35 · Visão Geral no padrão comum (vacLayout): situação, números, diagnóstico, análises em grupos */   /* 1.8.34 · kit: login com ID e senha */   /* 1.8.33 · kit: datas DD/MM/AAAA */   /* 1.8.32 · nome Eficácia/Confirmação de Processo */   /* 1.8.31 · kit: nome e presença de Iniciativas / Ações na barra */   /* 1.8.30 · UX-02: guia por aba */   /* 1.8.29 · Fase 7 (UX-03, WST-01): Painel → Visão Geral */   /* 1.8.28 · Fase 6 (WST-03, INI-04): ações em Iniciativas / Ações; antigas até a migração, depois só leitura */   /* 1.8.27 · Fase 3 (IMP-04/06, WST-02): importações no exports; aba Importar leva ao Portal › Importação */   /* 1.8.26 · ARQ-09: "Ver com dados de teste" vira a Demonstração integrada */   /* 1.8.23 · C2–C6: kit com a ficha por pasta (AT-08) e a contagem da fila durável (Portal › Versões) */   /* 1.8.22 · C1: trava da 2ª aba com alteração pendente (nada é descartado); kit com a fila durável */   /* 1.8.21 · E11: busca do kit leva o equipamento à ficha em Equipamentos */   /* 1.8.20 · E8: kit com "+ Abrir ação" na ficha da ordem (Planner de Iniciativas) */   /* 1.8.19 · E5: ficha da ordem comum (botão Ficha na ordem; busca Ctrl K por ordem, lote e LP) */   /* 1.8.18 · E4: versão do exports conferida (Produção, Ordens), ordem em várias competências, dias do lote pela chave · 1.8.17 · E2: fonte única da versão (tela, base, exports e Portal › Versões) */ BASE_FN='perdas-base.json', DIR_ORIG='00. Originais SAP', DIR_BKP='00. Backups', DIR_IN='00. Entrada KKBC', DIR_DONE='00. Entrada KKBC/Processados';
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 /* página para o núcleo comum, o cabeçalho (vac-cabecalho v2) e o quadro de Versões do Portal */
 const PAGE={id:'perdas',titulo:'Waste · Linha Vacutainer',tituloCurto:'Waste',subtitulo:'Custos e perdas por ordem',versao:APP_VER,baseFile:BASE_FN,backupDir:'00. Backups/Perdas',busca:q=>buscaPerdas(q)};
@@ -20137,7 +20185,7 @@ const bkNome=(tipo)=>{const b=PAGE.baseFile.replace(/\.json$/i,''),d=todayISO(),
  return tipo==='diario'?`${b}_${d}.json`:tipo==='antes'?`${b}_antes-restaurar_${d}_${h}.json`:`${b}_${d}_${h}.json`};
 async function writeRemote(){
  const day=todayISO();
- if(localStorage.getItem('perdas.bkp')!==day){const nm=bkNome('diario'),dir=()=>subDir(PAGE.backupDir);try{const r=await readRemote();await writeFile(await dir(),nm,JSON.stringify(r.data));localStorage.setItem('perdas.bkp',day);vacBackupRegistro.registrar('perdas',{ok:true,arquivo:nm,dir})}catch(e){/* 1.12.9 · falha do backup diário registrada (Portal › Versões) */vacBackupRegistro.registrar('perdas',{erro:e,dir})}}
+ if(localStorage.getItem('perdas.bkp')!==day){const nm=bkNome('diario'),dir=()=>subDir(PAGE.backupDir);try{const r=await readRemote();await writeFile(await dir(),nm,JSON.stringify(r.data));localStorage.setItem('perdas.bkp',day);await vacBackupRegistro.registrar('perdas',{ok:true,arquivo:nm,dir})}catch(e){/* 1.12.9 · falha do backup diário registrada (Portal › Versões) */await vacBackupRegistro.registrar('perdas',{erro:e,dir})}}
  await writeFile(ST.dir,BASE_FN,JSON.stringify(B));
  try{const f=await (await ST.dir.getFileHandle(BASE_FN)).getFile();ST.mod=f.lastModified}catch(e){}
 }
@@ -22932,9 +22980,9 @@ async function fsBackup(force){
   let cur;try{cur=await (await FS.base.getFileHandle(BASE_FILE)).getFile()}catch(e){return FS.bk}
   const put=async dir=>{const bf=await dir.getFileHandle(name,{create:true});const old=await bf.getFile();if(old.size&amp;&amp;!force)return 'já existia';const w=await bf.createWritable();await w.write(await cur.text());await w.close();return 'gravado'};
   const dirBk=()=>fsSub(PAGE.backupDir);
-  try{const bd=await dirBk();const r=await put(bd);FS.bk={day,where:PAGE.backupDir+'/'+name,st:r};fsLog('Backup '+r+': '+PAGE.backupDir+'/'+name);if(r==='gravado')vacBackupRegistro.registrar('gel',{ok:true,arquivo:name,dir:bd})}
+  try{const bd=await dirBk();const r=await put(bd);FS.bk={day,where:PAGE.backupDir+'/'+name,st:r};fsLog('Backup '+r+': '+PAGE.backupDir+'/'+name);if(r==='gravado')await vacBackupRegistro.registrar('gel',{ok:true,arquivo:name,dir:bd})}
   catch(e){const err=(e&amp;&amp;(e.name+': '+e.message))||String(e);
-    try{const r=await put(FS.base);FS.bk={day,where:name+' (pasta da base)',st:r,err};fsLog('Backup em '+PAGE.backupDir+' falhou ('+err+'); gravado na pasta da base');vacBackupRegistro.registrar('gel',{erro:err+' (cópia gravada na pasta da base)',arquivo:name,dir:dirBk})}catch(e2){FS.bk={day,err:(e2&amp;&amp;e2.message)||String(e2)};fsLog('Backup falhou: '+FS.bk.err);/* 2.36 · falha registrada (Portal › Versões) */vacBackupRegistro.registrar('gel',{erro:e2,dir:dirBk})}}
+    try{const r=await put(FS.base);FS.bk={day,where:name+' (pasta da base)',st:r,err};fsLog('Backup em '+PAGE.backupDir+' falhou ('+err+'); gravado na pasta da base');await vacBackupRegistro.registrar('gel',{erro:err+' (cópia gravada na pasta da base)',arquivo:name,dir:dirBk})}catch(e2){FS.bk={day,err:(e2&amp;&amp;e2.message)||String(e2)};fsLog('Backup falhou: '+FS.bk.err);/* 2.36 · falha registrada (Portal › Versões) */await vacBackupRegistro.registrar('gel',{erro:e2,dir:dirBk})}}
   FS.bkDay=day;return FS.bk}
 async function fsWriteBase(obj){
   await fsBackup();
@@ -22973,7 +23021,7 @@ const fileBackend={kind:'file',async commit(ch){applyLocal(ch);FS.pending.push(c
 async function fsRefresh(){if(S.mode!=='file'||FS.busy||ui.demo)return;try{const cur=await fsReadBase(fsKnown());if(cur&amp;&amp;!cur.same){FS.mod=cur.mod;FS.rev=cur.rev;FS.revBy=cur.by;loadData(cur.data);FS.pending.forEach(applyLocal);localBackend.save();render()}}catch(e){}}
 /* ================= V1.89 · integração com as outras páginas (Portal, OEE, Perdas) ================= */
 // versão da página (topo, Guia e base gravada)
-const APP_VERSION='2.36';   /* 2.35 · #aba=relatorios (Portal › Relatórios) abre as fichas e relatórios em PDF */   /* 2.34 · D8: Pareto comum do kit (vacPareto) */   /* 2.33 · Fase 5: layout no arquivo da pessoa (vacPrefs do kit) */   /* 2.32 · D6: botões de gravação travados conforme o perfil (vacTravas do kit) */   /* 2.29 · Design System (barra lateral, paleta, grade de gráficos) */   /* 2.28 · gráficos: "Valores em …" (kg, tubos, barris, dias, índice) onde o eixo não diz a unidade (docs/graficos-padrao.md) */   /* 2.27 · Visão Geral no padrão comum (vacLayout): situação, números, diagnóstico, análises do painel, explorar */   /* 2.26 · kit: padrão visual comum (vacLayout) */   /* 2.25 · kit: login com ID e senha */   /* 2.22 · UX-02: guia por aba */   /* 2.21 · Fase 7 (UX-03, GEL-01): Painel → Visão Geral */   /* 2.20 · Fase 4 · 4e: exports porDiaGel (teórico × real por dia) */   /* 2.19 · Fase 4 · 4d: lê da Produção a partir do corte (GelProd); Resumo do dia */   /* 2.18 · Fase 4 · 4b: pesagem pela conta comum do kit (vacGel) */   /* 2.17 · Fase 4 · 4a: parâmetros do gel do Portal (processo, formatos, motivos, descartes, gel do catálogo) */   /* 2.16 · Fase 3 (IMP-04): importações no exports; #importar abre a importação */   /* 2.15 · ARQ-05/ARQ-07: catálogos e equipamentos do Portal (GelCad); contas do gel iguais */   /* 2.14 · ARQ-09: sem entrada própria de "Modo exemplo" */   /* 2.11 · C2–C6: kit com a ficha por pasta (AT-08) e a contagem da fila durável (Portal › Versões) */   /* 2.10 · C1: alterações pendentes na fila durável do kit (sem perda entre abas) */   /* 2.09 · E11: busca do kit leva o equipamento à ficha em Equipamentos */   /* 2.08 · E8: kit com "+ Abrir ação" na ficha da ordem */   /* 2.07 · E5: ficha da ordem comum (botão na ordem) e busca por ordem, lote e LP */   /* 2.06 · E3: número digitado só aceito inteiro; E4: cobertura das ordens no exports */   /* 2.05 · E2: a versão da tela vem desta constante (o rótulo estava fixo em v2.01); kit com data local e meta do mês ponderada */   /* 2.04 · revisão 065fe6f: restauração por arquivo confirma e não segue sem a cópia anterior; CSV sem fórmulas; índice por dia no Painel */
+const APP_VERSION='2.37';   /* 2.35 · #aba=relatorios (Portal › Relatórios) abre as fichas e relatórios em PDF */   /* 2.34 · D8: Pareto comum do kit (vacPareto) */   /* 2.33 · Fase 5: layout no arquivo da pessoa (vacPrefs do kit) */   /* 2.32 · D6: botões de gravação travados conforme o perfil (vacTravas do kit) */   /* 2.29 · Design System (barra lateral, paleta, grade de gráficos) */   /* 2.28 · gráficos: "Valores em …" (kg, tubos, barris, dias, índice) onde o eixo não diz a unidade (docs/graficos-padrao.md) */   /* 2.27 · Visão Geral no padrão comum (vacLayout): situação, números, diagnóstico, análises do painel, explorar */   /* 2.26 · kit: padrão visual comum (vacLayout) */   /* 2.25 · kit: login com ID e senha */   /* 2.22 · UX-02: guia por aba */   /* 2.21 · Fase 7 (UX-03, GEL-01): Painel → Visão Geral */   /* 2.20 · Fase 4 · 4e: exports porDiaGel (teórico × real por dia) */   /* 2.19 · Fase 4 · 4d: lê da Produção a partir do corte (GelProd); Resumo do dia */   /* 2.18 · Fase 4 · 4b: pesagem pela conta comum do kit (vacGel) */   /* 2.17 · Fase 4 · 4a: parâmetros do gel do Portal (processo, formatos, motivos, descartes, gel do catálogo) */   /* 2.16 · Fase 3 (IMP-04): importações no exports; #importar abre a importação */   /* 2.15 · ARQ-05/ARQ-07: catálogos e equipamentos do Portal (GelCad); contas do gel iguais */   /* 2.14 · ARQ-09: sem entrada própria de "Modo exemplo" */   /* 2.11 · C2–C6: kit com a ficha por pasta (AT-08) e a contagem da fila durável (Portal › Versões) */   /* 2.10 · C1: alterações pendentes na fila durável do kit (sem perda entre abas) */   /* 2.09 · E11: busca do kit leva o equipamento à ficha em Equipamentos */   /* 2.08 · E8: kit com "+ Abrir ação" na ficha da ordem */   /* 2.07 · E5: ficha da ordem comum (botão na ordem) e busca por ordem, lote e LP */   /* 2.06 · E3: número digitado só aceito inteiro; E4: cobertura das ordens no exports */   /* 2.05 · E2: a versão da tela vem desta constante (o rótulo estava fixo em v2.01); kit com data local e meta do mês ponderada */   /* 2.04 · revisão 065fe6f: restauração por arquivo confirma e não segue sem a cópia anterior; CSV sem fórmulas; índice por dia no Painel */
 /* 2.03 · situação "em atualização" (kit: selo, pílula e faixa; docs/paginas-construcao.md) */
 /* 2.02 · relatório montado: todas as linhas no PDF, comentário, aviso de corte no texto; Painel em 1º; aba inicial do perfil; impressão e PDF no tema claro */
 /* 1.99 · menu Mais do cabeçalho (vac-visual v1): fecha ao escolher uma ação, ao clicar fora e com Esc */
@@ -29364,7 +29412,7 @@ const MATRIZ_PROPOSTA={"OUT": ["Tullip A", "Tullip B", "Packout", "Metro", "Cap 
    PARADAS · núcleo (pasta, base, fila de gravação, backups, cadastro, utilidades)
    ===================================================================================== */
 const PAGE={id:'paradas',titulo:'Paradas · Análise de falhas e paradas de máquina',tituloCurto:'Paradas',subtitulo:'Análise de falhas e paradas de máquina',
-  versao:'1.2.12',estado:'atualizacao',estadoNota:'Matriz, componentes e limite de microparada passam a vir só do Portal; eventos da Produção entram como sugestão.',baseFile:'paradas-base.json',backupDir:'00. Backups/Paradas',busca:q=>buscaPagina(q)};
+  versao:'1.2.13',estado:'atualizacao',estadoNota:'Matriz, componentes e limite de microparada passam a vir só do Portal; eventos da Produção entram como sugestão.',baseFile:'paradas-base.json',backupDir:'00. Backups/Paradas',busca:q=>buscaPagina(q)};
 const APP_VERSION=PAGE.versao;
 const CAD_FILE='vacutainer-cadastros.json',OEE_FILE='oee-vacutainer-base.json';
 const $=(s,r=document)=>r.querySelector(s),$$=(s,r=document)=>[...r.querySelectorAll(s)];
@@ -29514,7 +29562,7 @@ const Store={origem:'',dir:null,dirName:'',perm:false,data:completar(vazio()),qu
     if(this.fila)this.fila.confirmar(ops);const feitas=new Set(ops.map(o=>o.qid));this.queue=this.queue.filter(o=>!feitas.has(o.qid));if(this._recriar){this._recriar=false;this.dataRecriar=null;toast('Base recriada em 00. Bases com a cópia deste navegador.')}this.sumiu=false;this.conhecer(D);this.data=D;this.queue.forEach(op=>applyOp(this.data,op));this.baseFound=true;this.lastSaved=new Date();this.lastErr='';this.cache();
     if(!this.queue.length&amp;&amp;!this.again)break;this.again=false}
   }catch(e){this.lastErr=e.message;toast('Gravação pendente: '+e.message,1)}finally{this.saving=false;renderTop();if(this.again){this.again=false;setTimeout(()=>this.save(),200)}}},
- async backupDiario(obj){const dir=()=>this.sub(PAGE.backupDir,true);try{const d=await dir();const nm=bkNome('diario');if(!(await this.exists(nm,d))){await this.writeJSON(nm,obj,d);vacBackupRegistro.registrar(PAGE.id,{ok:true,arquivo:nm,dir:d})}}catch(e){console.warn('backup',e);/* 1.2.12 · falha registrada (Portal › Versões) */vacBackupRegistro.registrar(PAGE.id,{erro:e,dir})}},
+ async backupDiario(obj){const dir=()=>this.sub(PAGE.backupDir,true);try{const d=await dir();const nm=bkNome('diario');if(!(await this.exists(nm,d))){await this.writeJSON(nm,obj,d);await vacBackupRegistro.registrar(PAGE.id,{ok:true,arquivo:nm,dir:d})}}catch(e){console.warn('backup',e);/* 1.2.12 · falha registrada (Portal › Versões) */await vacBackupRegistro.registrar(PAGE.id,{erro:e,dir})}},
  async backupAgora(){if(this.test)return toast('Modo de teste: sem backup');if(!this.dir||!this.perm)return toast('Conecte a pasta para criar backup',1);
   const r=await this.findBase();if(!r)return toast('Ainda não existe base gravada');const d=await this.sub(PAGE.backupDir,true);const nm=bkNome('botao');await this.writeJSON(nm,r.obj,d);toast('Backup criado: '+PAGE.backupDir+'/'+nm)},
  async listBackups(){const out=[];if(!this.dir||!this.perm)return out;const b=PAGE.baseFile.replace(/\.json$/i,'');
@@ -30667,7 +30715,7 @@ table.t tr.on td{background:var(--accent-soft)}
 <main class="wrap" id="main"></main>
 <div class="toasts" id="toasts"></div>
 <script>
-const PAGE={id:"equip",titulo:"Equipamentos · Máquinas da linha e manutenção",tituloCurto:"Equipamentos",subtitulo:"Ficha, OS, TAGs e AM/TPM",versao:"1.0.17",baseFile:"equipamentos-base.json",backupDir:"00. Backups/Equipamentos",estado:"atualizacao",estadoNota:"Primeira versão: ficha, ordens de serviço, TAGs e estrutura AM/TPM. MES e conteúdo dos padrões chegam nas próximas etapas."};
+const PAGE={id:"equip",titulo:"Equipamentos · Máquinas da linha e manutenção",tituloCurto:"Equipamentos",subtitulo:"Ficha, OS, TAGs e AM/TPM",versao:"1.0.18",baseFile:"equipamentos-base.json",backupDir:"00. Backups/Equipamentos",estado:"atualizacao",estadoNota:"Primeira versão: ficha, ordens de serviço, TAGs e estrutura AM/TPM. MES e conteúdo dos padrões chegam nas próximas etapas."};
 const APP_VERSION=PAGE.versao;
 /* ---------- vac-cabecalho v2 · JS (igual em todas as páginas) ---------- */
 const VAC_CAB_VERSAO=2;
@@ -30907,7 +30955,7 @@ const Store={origem:'',dir:null,dirName:'',perm:false,data:completar(vazio()),qu
     if(!this.queue.length&amp;&amp;!this.again)break;this.again=false}
    if(this.queue.length&amp;&amp;!this.again)this.lastErr='a gravação não foi confirmada depois de 5 tentativas; as alterações continuam pendentes neste navegador';
   }catch(e){this.lastErr=e.message;toast('Gravação pendente: '+e.message,1)}finally{this.saving=false;topo();if(this.again){this.again=false;setTimeout(()=>this.save(),200)}}},
- async backupDiario(obj){const dir=()=>this.sub(PAGE.backupDir,true);try{const d=await dir();const nm=bkNome('diario');try{await d.getFileHandle(nm)}catch(e){if(!vacNaoAchou(e))throw e;await this.escrever(obj,d,nm);vacBackupRegistro.registrar(PAGE.id,{ok:true,arquivo:nm,dir:d})}}catch(e){console.warn('backup',e);/* falha do backup diário registrada (Portal › Versões) */vacBackupRegistro.registrar(PAGE.id,{erro:e,dir})}},
+ async backupDiario(obj){const dir=()=>this.sub(PAGE.backupDir,true);try{const d=await dir();const nm=bkNome('diario');try{await d.getFileHandle(nm)}catch(e){if(!vacNaoAchou(e))throw e;await this.escrever(obj,d,nm);await vacBackupRegistro.registrar(PAGE.id,{ok:true,arquivo:nm,dir:d})}}catch(e){console.warn('backup',e);/* falha do backup diário registrada (Portal › Versões) */await vacBackupRegistro.registrar(PAGE.id,{erro:e,dir})}},
  async backupAgora(){if(this.test)return toast('Modo de teste: sem backup');if(!this.dir||!this.perm)return toast('Conecte a pasta para criar backup',1);
   let r;try{r=await this.ler()}catch(e){return toast('Não consegui ler a base: '+e.message,1)}if(!r)return toast('Ainda não existe base gravada');const d=await this.sub(PAGE.backupDir,true);const nm=bkNome('botao');await this.escrever(r,d,nm);toast('Backup criado: '+PAGE.backupDir+'/'+nm)}};
 /* dia local de um ISO (o exports guarda UTC) */
@@ -31195,7 +31243,7 @@ table.t tr.on td{background:var(--accent-soft)}
 <main class="wrap" id="main"></main>
 <div class="toasts" id="toasts"></div>
 <script>
-const PAGE={id:"inic",titulo:"Iniciativas / Ações · KAS · OSM · 5S",tituloCurto:"Iniciativas / Ações",subtitulo:"Ações (Planner) · KAS · OSM · 5S",versao:"1.1.13",baseFile:"iniciativas-base.json",backupDir:"00. Backups/Iniciativas",estado:"atualizacao",estadoNota:"Primeira versão: Ações (Planner) e KAS. OSM e 5S chegam nas próximas etapas."};
+const PAGE={id:"inic",titulo:"Iniciativas / Ações · KAS · OSM · 5S",tituloCurto:"Iniciativas / Ações",subtitulo:"Ações (Planner) · KAS · OSM · 5S",versao:"1.1.14",baseFile:"iniciativas-base.json",backupDir:"00. Backups/Iniciativas",estado:"atualizacao",estadoNota:"Primeira versão: Ações (Planner) e KAS. OSM e 5S chegam nas próximas etapas."};
 const APP_VERSION=PAGE.versao;
 /* ---------- vac-cabecalho v2 · JS (igual em todas as páginas) ---------- */
 const VAC_CAB_VERSAO=2;
@@ -31451,7 +31499,7 @@ const Store={origem:'',dir:null,dirName:'',perm:false,data:completar(vazio()),qu
     if(!this.queue.length&amp;&amp;!this.again)break;this.again=false}
    if(this.queue.length&amp;&amp;!this.again)this.lastErr='a gravação não foi confirmada depois de 5 tentativas; as alterações continuam pendentes neste navegador';
   }catch(e){this.lastErr=e.message;toast('Gravação pendente: '+e.message,1)}finally{this.saving=false;topo();if(this.again){this.again=false;setTimeout(()=>this.save(),200)}}},
- async backupDiario(obj){const dir=()=>this.sub(PAGE.backupDir,true);try{const d=await dir();const nm=bkNome('diario');try{await d.getFileHandle(nm)}catch(e){if(!vacNaoAchou(e))throw e;await this.escrever(obj,d,nm);vacBackupRegistro.registrar(PAGE.id,{ok:true,arquivo:nm,dir:d})}}catch(e){console.warn('backup',e);/* falha do backup diário registrada (Portal › Versões) */vacBackupRegistro.registrar(PAGE.id,{erro:e,dir})}},
+ async backupDiario(obj){const dir=()=>this.sub(PAGE.backupDir,true);try{const d=await dir();const nm=bkNome('diario');try{await d.getFileHandle(nm)}catch(e){if(!vacNaoAchou(e))throw e;await this.escrever(obj,d,nm);await vacBackupRegistro.registrar(PAGE.id,{ok:true,arquivo:nm,dir:d})}}catch(e){console.warn('backup',e);/* falha do backup diário registrada (Portal › Versões) */await vacBackupRegistro.registrar(PAGE.id,{erro:e,dir})}},
  async backupAgora(){if(this.test)return toast('Modo de teste: sem backup');if(!this.dir||!this.perm)return toast('Conecte a pasta para criar backup',1);
   let r;try{r=await this.ler()}catch(e){return toast('Não consegui ler a base: '+e.message,1)}if(!r)return toast('Ainda não existe base gravada');const d=await this.sub(PAGE.backupDir,true);const nm=bkNome('botao');await this.escrever(r,d,nm);toast('Backup criado: '+PAGE.backupDir+'/'+nm)}};
 /* dia local de um ISO (o exports guarda UTC) */
@@ -31927,7 +31975,7 @@ table.t tr.on td{background:var(--accent-soft)}
 <main class="wrap" id="main"></main>
 <div class="toasts" id="toasts"></div>
 <script>
-const PAGE={id:"linha",titulo:"Linha 360° · Planta interativa da linha",tituloCurto:"Linha 360°",subtitulo:"Planta interativa: paradas, pessoas e ações em cada ponto da linha",versao:"1.1.4",baseFile:"linha360-base.json",backupDir:"00. Backups/Linha360",estado:"atualizacao",estadoNota:"Primeira versão: planta, pontos, áreas, postos e checklists. MES por equipamento chega depois."};
+const PAGE={id:"linha",titulo:"Linha 360° · Planta interativa da linha",tituloCurto:"Linha 360°",subtitulo:"Planta interativa: paradas, pessoas e ações em cada ponto da linha",versao:"1.1.5",baseFile:"linha360-base.json",backupDir:"00. Backups/Linha360",estado:"atualizacao",estadoNota:"Primeira versão: planta, pontos, áreas, postos e checklists. MES por equipamento chega depois."};
 const APP_VERSION=PAGE.versao;
 /* ---------- vac-cabecalho v2 · JS (igual em todas as páginas) ---------- */
 const VAC_CAB_VERSAO=2;
@@ -32121,7 +32169,7 @@ const Store={origem:'',dir:null,dirName:'',perm:false,data:completar(vazio()),qu
     if(!this.queue.length&amp;&amp;!this.again)break;this.again=false}
    if(this.queue.length&amp;&amp;!this.again)this.lastErr='a gravação não foi confirmada depois de 5 tentativas; as alterações continuam pendentes neste navegador';
   }catch(e){this.lastErr=e.message;toast('Gravação pendente: '+e.message,1)}finally{this.saving=false;topo();if(this.again){this.again=false;setTimeout(()=>this.save(),200)}}},
- async backupDiario(obj){const dir=()=>this.sub(PAGE.backupDir,true);try{const d=await dir();const nm=bkNome('diario');try{await d.getFileHandle(nm)}catch(e){if(!vacNaoAchou(e))throw e;await this.escrever(obj,d,nm);vacBackupRegistro.registrar(PAGE.id,{ok:true,arquivo:nm,dir:d})}}catch(e){console.warn('backup',e);/* falha do backup diário registrada (Portal › Versões) */vacBackupRegistro.registrar(PAGE.id,{erro:e,dir})}},
+ async backupDiario(obj){const dir=()=>this.sub(PAGE.backupDir,true);try{const d=await dir();const nm=bkNome('diario');try{await d.getFileHandle(nm)}catch(e){if(!vacNaoAchou(e))throw e;await this.escrever(obj,d,nm);await vacBackupRegistro.registrar(PAGE.id,{ok:true,arquivo:nm,dir:d})}}catch(e){console.warn('backup',e);/* falha do backup diário registrada (Portal › Versões) */await vacBackupRegistro.registrar(PAGE.id,{erro:e,dir})}},
  async backupAgora(){if(this.test)return toast('Modo de teste: sem backup');if(!this.dir||!this.perm)return toast('Conecte a pasta para criar backup',1);
   let r;try{r=await this.ler()}catch(e){return toast('Não consegui ler a base: '+e.message,1)}if(!r)return toast('Ainda não existe base gravada');const d=await this.sub(PAGE.backupDir,true);const nm=bkNome('botao');await this.escrever(r,d,nm);toast('Backup criado: '+PAGE.backupDir+'/'+nm)}};
 /* dia local de um ISO (o exports guarda UTC) */
@@ -32549,7 +32597,7 @@ window.VAC_GUIA.linha = {
 <div class="toasts" id="toasts"></div>
 <script type="application/json" id="vac-planejado">{"nota":"Projetos de melhoria, projetos grandes e compra de máquina. Escopo ainda não definido: esta lista de abas é provisória.","entrega":"Depois das outras fases do plano de evolução; o escopo será desenhado antes.","docs":["docs/plano-evolucao-plataforma.md","docs/paginas-construcao.md § 5.5"],"hoje":[{"txt":"Ações de perdas","pagina":"perdas","hash":"aba=acoes","obs":"no Waste"},{"txt":"Ações de paradas","pagina":"paradas","hash":"aba=acoes","obs":"em Paradas"}],"abas":[{"id":"lista","aba":"Projetos","grupo":"Operação","itens":["Lista e ficha do projeto: tipo, dono, ganho esperado, prazo","Situação de cada projeto"]},{"id":"cronograma","aba":"Cronograma","grupo":"Gestão","itens":["Marcos e prazos","Atrasos"]},{"id":"acoes","aba":"Ações","grupo":"Gestão","itens":["Ações dos projetos","Ligação com Waste, Paradas e Produção"]},{"id":"relatorios","aba":"Relatórios","grupo":"Gestão","itens":["Resumo para a diretoria"]}]}</script>
 <script>
-const PAGE={id:"projetos",titulo:"Projetos · Projetos de melhoria e investimentos",tituloCurto:"Projetos",subtitulo:"Projetos de melhoria e investimentos",versao:"0.1.13",baseFile:"projetos-base.json",backupDir:"00. Backups/Projetos",estado:"construcao",estadoNota:"Escopo a desenhar: projetos de melhoria, projetos grandes e compra de máquina."};
+const PAGE={id:"projetos",titulo:"Projetos · Projetos de melhoria e investimentos",tituloCurto:"Projetos",subtitulo:"Projetos de melhoria e investimentos",versao:"0.1.14",baseFile:"projetos-base.json",backupDir:"00. Backups/Projetos",estado:"construcao",estadoNota:"Escopo a desenhar: projetos de melhoria, projetos grandes e compra de máquina."};
 PAGE.busca=q=>{const k=norm(q),R=[];for(const a of PLANO.abas){if(norm(a.aba+' '+(a.itens||[]).join(' ')).includes(k))R.push({tipo:'Aba',txt:a.aba,sub:'em construção',go:()=>show(a.id)});
  for(const s of a.subabas||[])if(norm(a.aba+' '+s.nome+' '+(s.itens||[]).join(' ')).includes(k))R.push({tipo:'Aba',txt:a.aba+' › '+s.nome,sub:'em construção',go:()=>show(a.id,s.id)})}return R.slice(0,30)};
 const APP_VERSION=PAGE.versao;
@@ -33293,6 +33341,37 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var r,n,i,a,
     --sh: 0 2px 8px rgba(0, 0, 0, 0.20);
     --sh-hover: 0 4px 12px rgba(0, 0, 0, 0.28);
   }
+}
+
+/* Escala operacional aprovada em 16/11/2026. Só tela: impressão/SQDCP mantêm sua escala. */
+@media screen {
+ body { font-size:15px; line-height:1.5; }
+ :where(h1,h2,h3,h4) { font-family:var(--f-display); color:var(--heading); letter-spacing:-.02em; }
+ h1 { font-size:clamp(28px,2.5vw,34px); }
+ h2 { font-size:24px; }
+ h3 { font-size:19px; }
+ :where(.small,.muted,.hint,.note,.pill,.chip,.badge) { line-height:1.5; }
+ .small,.hint { font-size:13px; }
+ .barra select,.barra input[type=text],.barra #fQ,.filters label input,.filters label select,.op .hh select { font-size:15px; }
+ .b,.btn { min-height:40px; font-size:14px; }
+ input:not([type=checkbox]):not([type=radio]):not([type=color]):not([type=range]),select,textarea { font-size:15px; min-height:40px; }
+ textarea[style],select[style] { font-size:15px!important; }
+ :where(input[type=checkbox],input[type=radio]) { width:18px; height:18px; }
+ th { font-size:13px; line-height:1.5; text-transform:none; }
+ td { font-size:14px; line-height:1.5; }
+ .kpi .val,.kpi .v,.kv .v { font-variant-numeric:tabular-nums; font-size:clamp(28px,2.4vw,38px); line-height:1.2; }
+ .kpi .label,.kpi .lbl,.kpi .l,.kv .label,.kv .l { font-size:13px; }
+ .quadro { gap:16px; }
+ .col { padding:12px; }
+ .ac { padding:12px; margin-bottom:12px; border-radius:10px; box-shadow:none; }
+ .ac .t { font-size:15px; line-height:1.45; margin:8px 0; }
+ .ac .m { font-size:13px; line-height:1.5; }
+ .eqi { padding-block:12px; min-height:44px; }
+ :where(.card,.panel,.kpi) { box-shadow:none; border-radius:12px; }
+ :where(.card h2,.card h3,.panel h2) { font-size:22px; }
+ :where(.filtros,.filters,.filterbar,.fbar) { gap:12px; }
+ :where(dialog,.mod,.modal) { max-width:calc(100vw - 24px); }
+ :where(button,a,input,select,textarea,summary,[tabindex]):focus-visible { outline:2px solid var(--focus); outline-offset:3px; }
 }
 </textarea>
 
@@ -35109,84 +35188,211 @@ td strong {
   border:1px solid var(--line)
 }
 
-/* Escala da casca: títulos leves, controles legíveis e densidade responsiva. */
-body { font-size: 14px; line-height: 1.5; }
-h1, h2, h3, h4 { color: var(--heading); }
-.page-heading h1 { font-family: var(--f-display); font-size: clamp(30px, 2.5vw, 36px); font-weight: 300; }
-.panel-heading h2, .section-heading h2, .welcome-card h2 { font-family: var(--f-display); font-size: 24px; font-weight: 300; }
-.metric-value { color: var(--heading); font-family: var(--f-display); font-size: clamp(32px, 3vw, 44px); font-weight: 300; letter-spacing: -.025em; line-height: 1.15; }
-.metric-label, .metric-note, .filter-title, .filter-range, .module-card footer > span:not(.badge), .badge, .engine-pills { font-size: 12px; }
-.page-heading p, .module-card > p, .welcome-card p, .intro-panel p, .panel-footer, .filter-bar select, .button, .module-tabs button { font-size: 14px; }
-.eyebrow, .nav-label, .sidebar-foot, .workspace-label, .page-footer, .demo-strip, .demo-strip button, .engine-status, .module-page-state { font-size: 12px; }
-.module-card-title h3 { font-size: 18px; }
-.button, .icon-button, .filter-bar select, .search-trigger, .avatar { min-height: 40px; }
-.icon-button, .avatar { min-width: 40px; }
-.filter-bar select, .field select, .search-field { border-color: var(--control-border); }
-.button.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
-.panel-heading .button, .import-row .button, .report-actions .button { font-size: 14px; }
-.module-toolbar .button { font-size: 13px; white-space: normal; }
-.module-tabs button { min-height: 44px; }
-.brand-symbol { color: white; }
-.folder-info, .folder-info small { color: var(--sb-ink); }
-.metric-value, td { font-variant-numeric: tabular-nums; }
-:where(button, a, input, select, textarea, summary, [tabindex]):focus-visible { outline: 2px solid var(--focus); outline-offset: 3px; }
-@media (max-width: 760px) {
-  .page-main, .workbench-main { padding: 24px 16px 16px; }
-  .metrics-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
-  .metric { padding: 16px; }
-  .module-grid { grid-template-columns: 1fr; }
-  .module-card > p { min-height: 0; }
-  .filter-bar { gap: 8px; }
-  .filter-range { flex-basis: 100%; }
-  .heading-actions .button { min-width: 40px; }
-  .demo-strip { line-height: 1.5; align-items: center; }
-  .report-actions, .help-actions { flex-wrap: wrap; }
+/* Direção executiva aprovada: resultado → análise → ação. Cores vêm de css/brand. */
+body { font-size:15px; line-height:1.5; }
+h1,h2,h3,h4 { color:var(--heading); }
+.page-heading h1 { font-family:var(--f-display); font-size:clamp(32px,2.4vw,36px); font-weight:300; letter-spacing:-.025em; }
+.panel-heading h2,.section-heading h2,.welcome-card h2 { font-family:var(--f-display); font-size:24px; font-weight:400; letter-spacing:-.025em; }
+.metric-value { color:var(--heading); font-family:var(--f-display); font-size:clamp(36px,3vw,48px); font-weight:400; letter-spacing:-.03em; line-height:1.15; }
+.metric-label { font-size:15px; color:var(--heading); letter-spacing:normal; }
+.metric-note,.metric-delta,.filter-title,.filter-range,.badge,.engine-pills,.subtle,.pending-list small { font-size:13px; }
+.metric-value small { font-size:14px; }
+.page-heading p,.module-card > p,.welcome-card p,.intro-panel p,.panel-footer,.filter-bar select,.button,.module-tabs button,.pending-list strong,.report-links p,.dialog-body p { font-size:15px; }
+.eyebrow,.nav-label,.sidebar-foot,.workspace-label,.page-footer,.demo-strip,.demo-strip button,.engine-status,.module-page-state { font-size:12px; }
+.module-card-title h3 { font-size:18px; }
+.button,.icon-button,.filter-bar select,.filter-bar input,.search-trigger,.avatar { min-height:42px; }
+.icon-button,.avatar { min-width:42px; }
+.filter-bar select,.field select,.search-field { border-color:var(--control-border); }
+.button.primary { background:var(--accent); color:var(--accent-ink); border-color:var(--accent); }
+.panel-heading .button,.import-row .button,.report-actions .button { font-size:14px; }
+.module-toolbar .button { font-size:14px; white-space:normal; }
+.module-tabs button { min-height:44px; }
+.brand-symbol { color:var(--bd-white); }
+.folder-info,.folder-info small { color:var(--sb-ink); }
+.metric-value,td { font-variant-numeric:tabular-nums; }
+:where(button,a,input,select,textarea,summary,[tabindex]):focus-visible { outline:2px solid var(--focus); outline-offset:3px; }
+th { font-size:13px; text-transform:none; letter-spacing:normal; color:var(--heading); }
+td { font-size:15px; }
+.numeric { text-align:right; }
+.nav-item { font-size:15px; min-height:44px; }
+.brand small,.folder-info small { font-size:12px; }
+.brand-logo { height:41px; width:auto; display:block; flex:none; }
+.bar-day { cursor:pointer; outline:none; }
+.bar-day:hover rect:last-of-type,.bar-day:focus-visible rect:last-of-type { opacity:1; stroke:var(--focus); stroke-width:2; }
+.topbar { height:56px; padding-inline:28px; }
+.search-trigger { font-size:14px; width:min(370px,45%); }
+.breadcrumb { font-size:14px; }
+.page-main,.workbench-main { max-width:1920px; padding:20px 28px 16px; }
+.page-heading { margin-bottom:16px; }
+.page-heading h1 { margin-top:0; }
+.page-heading p { margin-top:4px; }
+.page-heading .eyebrow { display:none; }
+.heading-actions { flex-wrap:wrap; justify-content:flex-end; }
+.panel,.metric { box-shadow:none; border-radius:12px; }
+.panel-heading { padding:16px 22px 12px; align-items:flex-start; flex-wrap:wrap; }
+.panel-heading h2 { margin-top:0; }
+.panel-heading .subtle { margin-top:4px; line-height:1.5; }
+.view-switch,.period-presets { display:inline-flex; gap:4px; padding:3px; border:1px solid var(--line); background:var(--surface); border-radius:8px; }
+.view-switch button,.period-presets button { border:0; background:transparent; color:var(--ink); padding:8px 14px; min-height:38px; border-radius:6px; font-size:14px; white-space:nowrap; }
+.view-switch button[aria-pressed=true],.period-presets button[aria-pressed=true] { background:var(--accent); color:var(--accent-ink); }
+.filter-bar { gap:12px; padding:12px; box-shadow:none; flex-wrap:wrap; margin-bottom:12px; }
+.period-select { display:none; }
+.filter-range { margin-left:auto; color:var(--ink); }
+.executive-provenance { display:flex; align-items:center; gap:8px; font-size:13px; color:var(--muted); margin:0 0 12px; flex-wrap:wrap; }
+.executive-provenance .text-button { margin-left:auto; min-height:28px; }
+.safety-strip { display:flex; align-items:center; flex-wrap:wrap; gap:12px; background:var(--surface); border:1px solid var(--line); border-radius:12px; padding:8px 12px; margin-bottom:16px; }
+.safety-item { display:flex; align-items:center; gap:10px; text-align:left; padding:8px 12px; border:1px solid var(--line); background:var(--surface); border-radius:8px; min-height:44px; flex:1 1 230px; color:var(--ink); }
+.safety-item > span { display:flex; flex-wrap:wrap; align-items:center; gap:4px 12px; }
+.safety-item strong,.safety-item small { display:block; }
+.safety-item strong { font-size:14px; font-weight:600; }
+.safety-item small { font-size:13px; margin-top:0; }
+.safety-item.negative { color:var(--crit); background:var(--crit-bg); }
+.safety-item.positive { color:var(--ok); background:var(--ok-bg); }
+.safety-item.neutral { color:var(--muted); background:var(--surface-3); }
+.executive-metrics { gap:18px; margin-bottom:16px; }
+.executive-metrics .metric { padding:16px 20px; min-height:154px; position:relative; display:flex; flex-direction:column; }
+.executive-metrics .metric-value { margin:8px 0 6px; line-height:1.05; color:var(--heading); overflow-wrap:anywhere; }
+.executive-metrics .metric.negative .metric-value,.executive-metrics .metric.positive .metric-value { color:var(--heading); }
+.metric-delta { margin-top:6px; padding-right:25px; line-height:1.5; color:var(--muted); }
+.metric.negative .metric-delta { color:var(--crit); }
+.metric.positive .metric-delta { color:var(--ok); }
+.metric-open { position:absolute; inset:0; display:flex; align-items:flex-end; justify-content:flex-end; width:100%; height:100%; min-height:40px; padding:12px; border:0; border-radius:12px; background:transparent; }
+.metric-open > svg { position:absolute; right:14px; bottom:15px; }
+.metric-open:focus-visible { outline:2px solid var(--focus); outline-offset:3px; }
+.metric:has(.metric-open:hover) { border-color:var(--accent); }
+.executive-analysis { display:grid; grid-template-columns:minmax(0,1.55fr) minmax(320px,1fr); gap:20px; margin-bottom:16px; }
+.executive-analysis > .panel { min-width:0; }
+.executive-link.button { padding:4px 0; min-height:36px; background:transparent; color:var(--link); border-color:transparent; }
+.chart-legend { flex-wrap:wrap; gap:14px; font-size:13px; padding-bottom:12px; }
+.chart-legend i { width:9px; height:9px; }
+.chart-viewport { max-width:100%; overflow:auto; overscroll-behavior-inline:contain; margin:0 16px; scrollbar-width:thin; }
+.chart-viewport .bar-chart { display:block; margin:0; max-width:none; }
+.chart-label,.chart-value { fill:var(--muted); font-size:13px; }
+.chart-value { fill:var(--heading); font-weight:600; }
+.panel-note { color:var(--muted); font-size:13px; line-height:1.5; padding:12px 22px 18px; }
+.loss-ranking { list-style:none; padding:0 22px; margin:0; }
+.loss-row { display:grid; grid-template-columns:minmax(110px,1.1fr) minmax(40px,1fr) auto 16px; gap:12px; align-items:center; text-align:left; border:0; border-bottom:1px solid var(--line); width:100%; background:transparent; color:var(--ink); padding:14px 0; min-height:62px; font-size:14px; }
+.loss-row:hover { color:var(--link); }
+.loss-label { min-width:0; overflow-wrap:anywhere; }
+.loss-label strong,.loss-label small { display:block; }
+.loss-label strong { font-size:14px; font-weight:500; }
+.loss-label small { font-size:12px; color:var(--muted); margin-top:3px; }
+.loss-track { height:18px; background:var(--surface-3); border-radius:3px; }
+.loss-track > span { display:block; background:var(--chart-primary); height:100%; border-radius:3px; }
+.loss-track > span.secondary { background:var(--bd-lavender); outline:1px solid var(--heading); outline-offset:-1px; }
+.action-priorities { margin-bottom:20px; }
+.priority-heading-actions { display:flex; align-items:center; gap:12px; flex-wrap:wrap; }
+.priority-table { min-width:730px; }
+.priority-table th { background:var(--surface-3); white-space:nowrap; }
+.priority-table td,.priority-table th { padding:8px 18px; }
+.priority-table td:first-child { width:100px; }
+.priority-table td:nth-child(2) { min-width:245px; }
+.action-title { text-align:left; padding:4px 0; color:var(--heading); font-size:15px; }
+.action-title:hover { color:var(--link); }
+.action-title strong,.action-title small { display:block; }
+.action-title small { color:var(--muted); font-size:12px; margin-top:3px; }
+.nowrap { white-space:nowrap; }
+.executive-details { margin-bottom:20px; }
+.executive-details table { min-width:780px; }
+.executive-more { margin-bottom:16px; }
+.executive-more summary { padding:16px 22px; font-size:15px; color:var(--heading); cursor:pointer; }
+.executive-more .pending-list button { display:flex; align-items:center; gap:12px; }
+.executive-more .pending-list strong { font-size:14px; }
+.executive-shortcuts { display:flex; flex-wrap:wrap; gap:8px; padding:16px 22px; }
+.executive-bottom { display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:12px; color:var(--muted); font-size:13px; }
+.engine-commands { scrollbar-width:thin; }
+.engine-command.button { display:block; max-width:280px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+@media(min-width:761px) {
+ .sidebar { width:220px; }
+ .main-shell { margin-left:220px; }
+ .brand { padding:24px 18px 16px; gap:9px; font-size:13px; }
+ .workspace-label { margin:0 14px 12px; padding:10px; font-size:11px; }
+ .sidebar nav { flex:1; min-height:0; padding:0 12px 12px; }
+ .nav-item { padding:10px; gap:10px; font-size:14px; }
+ .nav-group { margin-top:16px; }
+ .sidebar-bottom { padding:12px 18px; }
+ .folder-info { padding-top:10px; }
+ .sidebar-foot { margin-top:12px; }
 }
+@media(min-width:901px) {
+ .module-toolbar .engine-commands { flex:1 1 0; min-width:0; flex-wrap:nowrap; min-height:46px; overflow-x:auto; overflow-y:hidden; scrollbar-width:thin; }
+ .module-toolbar .engine-commands > * { flex:none; }
+ .module-toolbar .engine-commands .button { white-space:nowrap; }
+ .module-toolbar .engine-pills { flex-wrap:nowrap; white-space:nowrap; }
+ .module-toolbar .engine-pill { overflow-wrap:normal; }
+ .module-toolbar .module-page-state { white-space:nowrap; max-width:340px; overflow:hidden; text-overflow:ellipsis; }
+ .module-toolbar .engine-status { flex:none; min-height:46px; display:flex; align-items:center; gap:6px; white-space:nowrap; }
+}
+@media(max-width:1250px) {
+ .executive-analysis { grid-template-columns:minmax(0,1.3fr) minmax(280px,1fr); }
+ .executive-metrics { grid-template-columns:repeat(2,minmax(0,1fr)); }
+ .safety-strip > .button { flex-basis:100%; }
+ .filter-range { margin-left:0; }
+ .page-main,.workbench-main { padding-inline:24px; }
+}
+@media(max-width:1000px) {
+ .executive-analysis { grid-template-columns:1fr; }
+ .heading-actions { gap:8px; }
+ .heading-actions .button { font-size:14px; }
+ .page-heading { flex-wrap:wrap; }
+ .view-switch { margin-right:auto; }
+}
+@media(max-width:760px) {
+ .sidebar { width:280px; }
+ .sidebar nav { flex:1; min-height:0; }
+ .main-shell { margin-left:0; }
+ .page-main,.workbench-main { padding:20px 16px 16px; }
+ .topbar { padding-inline:12px; }
+ .page-heading h1 { font-size:32px; }
+ .page-heading p { font-size:15px; }
+ .heading-actions { width:100%; justify-content:flex-start; }
+ .period-presets { display:none; }
+ .period-select { display:flex; flex-direction:column; gap:4px; font-size:13px; flex:1; min-width:130px; }
+ .filter-bar { align-items:flex-end; }
+ .filter-bar > select { flex:1; min-width:130px; }
+ .filter-range { flex-basis:100%; font-size:13px; }
+ .filter-bar input { max-width:100%; min-width:0; flex:1 1 130px; }
+ .safety-strip .button { padding:4px 10px; }
+ .metrics-grid,.executive-metrics { grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px; }
+ .metric,.executive-metrics .metric { padding:16px; }
+ .executive-metrics .metric-value { font-size:36px; }
+ .executive-metrics .metric-value small { display:block; font-size:13px; margin:4px 0 0; }
+ .executive-metrics .metric-label { align-items:flex-start; font-size:14px; }
+ .metric-note,.metric-delta { font-size:13px; }
+ .metric-delta { padding-right:12px; }
+ .module-grid { grid-template-columns:1fr; }
+ .module-card > p { min-height:0; }
+ .panel-heading { padding:18px 16px 12px; }
+ .panel-heading h2 { font-size:22px; }
+ .report-actions,.help-actions { flex-wrap:wrap; }
+ .panel-note { padding-inline:16px; }
+ .loss-ranking { padding:0 16px; }
+ .loss-row { grid-template-columns:minmax(110px,1fr) minmax(35px,.7fr) auto 14px; gap:8px; }
+ .chart-legend { padding-inline:16px; }
+ .executive-provenance { font-size:13px; }
+ .demo-strip { line-height:1.5; align-items:center; }
+}
+@media(max-width:380px) {
+ .metrics-grid,.executive-metrics { grid-template-columns:1fr; }
+}
+.module-frame:not([hidden]),.workbench-main > .page-heading { animation:vacEntra .16s ease-out; }
+@keyframes vacEntra { from { opacity:.35; } to { opacity:1; } }
+@media(prefers-reduced-motion:reduce) { .module-frame:not([hidden]),.workbench-main > .page-heading { animation:none; } }
+.module-toolbar .module-tabs-wrap { min-height:51px; }
 @media print {
-  body { background: white; }
-  .page-heading h1 { font-size: 24px; }
-  .metric-value { font-size: 28px; }
-  th, td { font-size: 10px; }
+ body { background:var(--bd-white); }
+ .page-heading h1 { font-size:24px; }
+ .metric-value { font-size:28px; }
+ th,td { font-size:10px; }
+ .executive-provenance button,.view-switch,.executive-more,.executive-bottom,.metric-open { display:none; }
+ .executive-analysis { grid-template-columns:1.5fr 1fr; }
+ .chart-viewport { overflow:visible; }
+ .chart-viewport .bar-chart { max-width:100%; height:auto!important; }
+ .executive-metrics { grid-template-columns:repeat(4,minmax(0,1fr)); }
+ .executive-metrics .metric { min-height:0; padding:12px; }
+ .executive-metrics .metric-value { font-size:28px; }
+ .panel { break-inside:avoid; }
 }
-
-@media (max-width: 480px) {
-  .metrics-grid { grid-template-columns: 1fr; }
-  .heading-actions .button.primary { font-size: 14px; }
-}
-
-th { font-size: 12px; text-transform: none; letter-spacing: normal; color: var(--heading); }
-td { font-size: 14px; }
-.numeric { text-align: right; }
-
-/* Texto de navegação e de ações permanece legível nos painéis resumidos. */
-.nav-item { font-size: 14px; min-height: 44px; }
-.brand small, .folder-info small { font-size: 11px; }
-.pending-list small, .subtle { font-size: 12px; }
-.pending-list strong, .report-links p, .dialog-body p { font-size: 14px; }
-
-/* 15/11/2026 · marca fora do repositório (pasta Marca ao lado do Plataforma.html): logo na barra lateral quando o arquivo existe */
-.brand-logo { height:41px; width:auto; display:block; flex:none }
-/* gráfico de produção por dia: a barra abre o resumo do dia */
-.bar-day { cursor:pointer; outline:none }
-.bar-day:hover rect:last-of-type, .bar-day:focus-visible rect:last-of-type { opacity:1; stroke:var(--focus); stroke-width:2 }
-/* a faixa de comandos e situação do módulo tem uma linha só, com altura reservada: quando o motor termina de carregar e publica os
-   comandos e as pílulas, o conteúdo de baixo não desce mais (CLS 0,28 → 0). O que não couber rola de lado dentro da faixa. */
-@media (min-width:901px) {
-  .module-toolbar .engine-commands { flex:1 1 0; min-width:0; flex-wrap:nowrap; min-height:46px; overflow-x:auto; overflow-y:hidden; scrollbar-width:none }
-  .module-toolbar .engine-commands::-webkit-scrollbar { display:none }
-  .module-toolbar .engine-commands > * { flex:none }
-  .module-toolbar .engine-commands .button { white-space:nowrap }
-  .module-toolbar .engine-pills { flex-wrap:nowrap; white-space:nowrap }
-  .module-toolbar .engine-pill { overflow-wrap:normal }
-  .module-toolbar .module-page-state { white-space:nowrap; max-width:340px; overflow:hidden; text-overflow:ellipsis }
-  .module-toolbar .engine-status { flex:none; min-height:46px; display:flex; align-items:center; gap:6px; white-space:nowrap }
-}
-/* troca de página e de módulo: entrada curta, sem deslocar o layout */
-.module-frame:not([hidden]), .workbench-main > .page-heading { animation:vacEntra .16s ease-out }
-@keyframes vacEntra { from { opacity:.35 } to { opacity:1 } }
-@media (prefers-reduced-motion:reduce) { .module-frame:not([hidden]), .workbench-main > .page-heading { animation:none } }
-/* a linha das abas existe desde o primeiro instante (as abas chegam quando o motor fica pronto): sem ela a faixa nascia e empurrava o módulo */
-.module-toolbar .module-tabs-wrap { min-height:51px }
 </textarea>
 
 <!-- dados/manifesto -->
@@ -35197,71 +35403,71 @@ td { font-size: 14px; }
     {
       "id": "oee",
       "path": "Plataforma.html#motor/oee",
-      "version": "2.4.78",
-      "sha256": "26708092059b156c2a288920f3a093d087dd1184d9f48ce5f7f8d0370bd7dabc",
-      "bytes": 2065536
+      "version": "2.4.79",
+      "sha256": "45c85c82bb9311e04c5bcd133fc5a44052f66552a00ef31b568c530629ae1ce7",
+      "bytes": 2068105
     },
     {
       "id": "perdas",
       "path": "Plataforma.html#motor/perdas",
-      "version": "1.12.9",
-      "sha256": "00907763682a66184523fcbc67abf2e3b462fbf42fab06d846cf0d5c187ab031",
-      "bytes": 898667
+      "version": "1.12.10",
+      "sha256": "384a1aea6b83d1748f26f58144b5f85c66fead8f0c2f3ae30156c1530e520d7e",
+      "bytes": 901237
     },
     {
       "id": "gel",
       "path": "Plataforma.html#motor/gel",
-      "version": "2.36",
-      "sha256": "7af5a9e758b7524218db2f24e384bf7f9da1e436c30e73b86cdd7e5345b1b6a7",
-      "bytes": 1585082
+      "version": "2.37",
+      "sha256": "5cb75e2bbd324a8668e6ee36f61e078f9ded080a7e53bef5c2d9bdf70c22cf9f",
+      "bytes": 1587657
     },
     {
       "id": "paradas",
       "path": "Plataforma.html#motor/paradas",
-      "version": "1.2.12",
-      "sha256": "a6f5bf02c97fa1da75e796d04709ac2dabd9f48511aded088ac6b3463c252967",
-      "bytes": 863293
+      "version": "1.2.13",
+      "sha256": "552563e5b797a75f223b48cd3deea953a72dc9c38a13d53c09c8411d06669359",
+      "bytes": 865862
     },
     {
       "id": "equip",
       "path": "Plataforma.html#motor/equip",
-      "version": "1.0.17",
-      "sha256": "1a1ddfbebfe7f2463c50c56d5aed2bac966a1f209418f1824126c5966c0e7e00",
-      "bytes": 662759
+      "version": "1.0.18",
+      "sha256": "f6b0d3bb5a5ee4fe9d4b24a7ce3c5c1b3afd9f46249defa9012343e2602995c7",
+      "bytes": 665328
     },
     {
       "id": "inic",
       "path": "Plataforma.html#motor/inic",
-      "version": "1.1.13",
-      "sha256": "ebc9ddbe612d641ae4c86ad5430bf86d592acbb298158916df3405847dfb02bc",
-      "bytes": 684370
+      "version": "1.1.14",
+      "sha256": "a11e044d32fd17cea34914f328a57277f696a48719696cd8e3a65c67500ee3b8",
+      "bytes": 686939
     },
     {
       "id": "linha",
       "path": "Plataforma.html#motor/linha",
-      "version": "1.1.4",
-      "sha256": "d0f5d19ed1f9623767efcebe0fb9e1ce38b9f358ef0113bf969271b524701da4",
-      "bytes": 790270
+      "version": "1.1.5",
+      "sha256": "185bca3a048f9e3a03bad4c4b33914f564b0217882cc3fc634ca2e08e17ab16e",
+      "bytes": 792839
     },
     {
       "id": "projetos",
       "path": "Plataforma.html#motor/projetos",
-      "version": "0.1.13",
-      "sha256": "1555bc53df05bb9a7c9fdd8247a97af8353a8512efd95372082df6ec8d2c28d4",
-      "bytes": 603277
+      "version": "0.1.14",
+      "sha256": "5acae967bcb55c49cab33bb7b898c1d5243102a1f273435837faea88523d02b2",
+      "bytes": 605834
     },
     {
       "id": "portal",
       "path": "Plataforma.html#motor/portal",
-      "version": "1.9.40",
-      "sha256": "c78698ed8a8ffdb13a66ac4210862e3aed0e6de72e02e966cddf1dadff244061",
-      "bytes": 1172266
+      "version": "1.9.41",
+      "sha256": "3c2c6dfa4e131ede67413dbaf1fb44c6284893a3ce6eda12a34ea5479cf85605",
+      "bytes": 1175062
     }
   ],
   "limitations": [
     "Projetos e conteúdo técnico OSM/MES/AM/TPM mantêm os limites documentados nas fontes."
   ],
-  "enginesSha256": "d4c5f4f509d98eeb00716f3cb15e7e83bb34ea262c04fdc252b7893ca996b082",
+  "enginesSha256": "441658426bdab83d0b19a66e9b07f077a1f533787364dd992c97b2a5e08790cd",
   "originRevision": "ffc9ee8",
   "sourceMode": "single-html",
   "originEnginesSha256": "a87a64ad0c328f70e102b2ae888790a9b5d5a9bd05778652a7ce7cae140e40d2"
@@ -35331,7 +35537,7 @@ summary{cursor:pointer;font-weight:600;color:var(--navy)}
 'use strict';
 /* ---------- referência (atualizar quando a plataforma mudar de versão) ---------- */
 // Iguais às do pacote da plataforma (nova-plataforma/src/generated/manifest.json); o teste ferramenta-verificar confere.
-const VERSOES = { portal: '1.9.40', oee: '2.4.78', perdas: '1.12.9', gel: '2.36', paradas: '1.2.12', equip: '1.0.17', inic: '1.1.13', linha: '1.1.4' };
+const VERSOES = {"portal":"1.9.41","oee":"2.4.79","perdas":"1.12.10","gel":"2.37","paradas":"1.2.13","equip":"1.0.18","inic":"1.1.14","linha":"1.1.5","projetos":"0.1.14"};
 const BASES = [
  { arq: 'vacutainer-cadastros.json', mod: 'portal', nome: 'Cadastro geral (Portal)', obrig: true, cadastro: true, bk: 'Cadastros' },
  { arq: 'portal-base.json', mod: 'portal', nome: 'Portal', obrig: true, bk: 'Portal' },
@@ -35916,13 +36122,13 @@ import { MARCA_LOGO, marcaCss } from "vac:modulo/design/marca";
 import { rememberFolder, queuePending, queueDetail } from "vac:modulo/core/scopes";
 import { useCallback, useEffect, useMemo, useRef, useState } from "vac:vendor/react";
 import { modules, moduleOf, IMPORTS } from "vac:modulo/core/modules";
-import { today, date, fmt, pct, productionView, pending, searchOrders, readSources, loadHandle, saveHandle, dbGet, dbSet, esc, csvCell, periodRange } from "vac:modulo/core/data";
+import { today, date, fmt, pct, productionView, pending, searchOrders, readSources, loadHandle, saveHandle, dbGet, dbSet, esc, csvCell, periodRange, executiveView } from "vac:modulo/core/data";
 import { configureRuntime, demoSources, frames, hasPending, pendingDetail, refreshEngine, currentUser, printEngine } from "vac:modulo/core/runtime";
 import { Icon, Button, Badge, Empty, Modal, BarChart, BrandLogo } from "vac:modulo/components/ui";
 import { ModuleFrame } from "vac:modulo/components/ModuleFrame";
 import manifest from "vac:recurso/manifesto";
 import { ModuleTabs } from "vac:modulo/components/ModuleTabs";
-const VERSION = "1.1.0";
+const VERSION = "1.2.0";
 function routeFromHash() {
   const [path, query = ""] = location.hash.replace(/^#\/?/, "").split("?");
   const p = new URLSearchParams(query);
@@ -36139,7 +36345,21 @@ function App() {
     navigate(id, "", "#ficha=ordem/" + encodeURIComponent(code));
   }
   const rangeLabel = (rangeFrom === rangeTo ? date(rangeFrom) : date(rangeFrom) + " a " + date(rangeTo)) + (turno ? " \xB7 " + turno : "");
-  function reportRows() {
+  function reportRows(executiveOnly = false) {
+    if (executiveOnly === true) {
+      const v=executiveView(sources,rangeFrom,rangeTo,turno,cad);
+      const coverage = e => e.expected ? e.answered+' de '+e.expected+' reportes preenchidos' : 'Sem reportes publicados';
+      const owner = a => (cad?.usuarios || []).find(u=>String(u.codigo)===String(a.responsavelId || ''))?.nome || a.responsavel || 'Confirmar responsável';
+      return [
+        ['Produção','OEE publicado',pct(v.prod.rate),rangeLabel+' · '+(v.prod.goal!=null?'meta '+pct(v.prod.goal):v.prod.rateNote)],
+        ['Produção','Produção boa',fmt(v.prod.good)+' peças',rangeLabel+' · meta operacional '+fmt(v.target)+' peças'],
+        ['Produção','Scrap informado',fmt(v.prod.scrap)+' peças',rangeLabel+' · sem limite publicado neste resumo'],
+        ['Paradas','Paradas registradas',fmt(v.stopMinutes,1)+' min',rangeLabel+' · '+(v.stopCovered?'soma dos registros; tempos simultâneos podem se sobrepor':'sem cobertura completa')],
+        ['SQDCP','Segurança',safetyText(v.safety,'acidente'),rangeLabel+' · '+coverage(v.safety)],
+        ['SQDCP','Qualidade',safetyText(v.quality,'QN'),rangeLabel+' · '+coverage(v.quality)],
+        ...v.actions.slice(0,detail?12:3).map(a=>['Iniciativas / Ações',a.id+' · '+a.titulo,owner(a),'Posição atual do Planner · prazo '+date(a.prazo)+' · '+(a.atrasada?'Vencida':a.status)])
+      ];
+    }
     return modules.filter((m) => source(m.id)?.state === "ok").flatMap((m) => {
       if (m.id === "oee") return [[m.name, "Produ\xE7\xE3o boa", fmt(prod.good), rangeLabel], [m.name, "OEE", pct(prod.rate), prod.rateNote], [m.name, "Scrap", fmt(prod.scrap), rangeLabel]];
       return (source(m.id)?.exports?.kpis || []).map((k) => [m.name, String(k[0]), String(k[1] ?? "\u2014"), m.id === "perdas" ? "Compet\xEAncia publicada \xB7 " + (k[2] || "") : "Posi\xE7\xE3o publicada \xB7 " + (k[2] || "")]);
@@ -36157,41 +36377,30 @@ function App() {
     a.click();
     setTimeout(() => URL.revokeObjectURL(u), 1e3);
   }
-  function reportHtml() {
-    return '<!doctype html><html lang="pt-BR"><meta charset="utf-8"><title>Resumo da linha</title><base href="' + document.baseURI.replace(/["<>]/g, "") + '"><style>' + marcaCss + brandCss + 'body{font:14px/1.5 var(--f-body);color:var(--ink);background:var(--surface);padding:24px}h1{font:300 32px var(--f-display);color:var(--heading)}table{width:100%;border-collapse:collapse}td,th{padding:10px;text-align:left;border-bottom:1px solid var(--line)}th{background:var(--bd-navy);color:white}td:nth-child(3),th:nth-child(3){text-align:right}tr{break-inside:avoid}@page{size:A4 landscape;margin:12mm}</style><img src="' + MARCA_LOGO.claro + '" alt="" height="40" style="float:right" onerror="this.remove()"><h1>Vacutainer \xB7 Resumo da linha</h1><p>' + esc(rangeLabel) + (demo ? " \xB7 DADOS FICT\xCDCIOS" : "") + "</p><p>Produ\xE7\xE3o: recorte selecionado. Demais fontes: refer\xEAncia e granularidade publicadas por cada m\xF3dulo.</p><table><thead><tr><th>M\xF3dulo</th><th>Indicador</th><th>Valor</th><th>Refer\xEAncia</th></tr></thead><tbody>" + reportRows().map((r) => "<tr>" + r.map((c) => "<td>" + esc(c) + "</td>").join("") + "</tr>").join("") + "</tbody></table><p>Gerado em " + esc((/* @__PURE__ */ new Date()).toLocaleString("pt-BR")) + ". Fontes ausentes n\xE3o s\xE3o consideradas zero.</p></html>";
+  function reportHtml(executiveOnly = false) {
+    const reportTitle = executiveOnly === true ? 'Resumo executivo da fábrica' : 'Resumo da linha';
+    return '<!doctype html><html lang="pt-BR"><meta charset="utf-8"><title>' + reportTitle + '</title><base href="' + document.baseURI.replace(/["<>]/g, "") + '"><style>' + marcaCss + brandCss + 'body{font:15px/1.5 var(--f-body);color:var(--ink);background:var(--surface);padding:24px}h1{font:300 32px var(--f-display);color:var(--heading)}table{width:100%;border-collapse:collapse}td,th{padding:10px;text-align:left;border-bottom:1px solid var(--line)}th{background:var(--bd-navy);color:white}td:nth-child(3),th:nth-child(3){text-align:right}tr{break-inside:avoid}@page{size:A4 landscape;margin:12mm}</style><img src="' + MARCA_LOGO.claro + '" alt="" height="40" style="float:right" onerror="this.remove()"><h1>Vacutainer \xB7 ' + reportTitle + '</h1><p>' + esc(rangeLabel) + (demo ? " \xB7 DADOS FICT\xCDCIOS" : "") + "</p><p>Produ\xE7\xE3o: recorte selecionado. Demais fontes: refer\xEAncia e granularidade publicadas por cada m\xF3dulo.</p><table><thead><tr><th>M\xF3dulo</th><th>Indicador</th><th>Valor</th><th>Refer\xEAncia</th></tr></thead><tbody>" + reportRows(executiveOnly === true).map((r) => "<tr>" + r.map((c) => "<td>" + esc(c) + "</td>").join("") + "</tr>").join("") + "</tbody></table><p>Gerado em " + esc((/* @__PURE__ */ new Date()).toLocaleString("pt-BR")) + ". Fontes ausentes n\xE3o s\xE3o consideradas zero.</p></html>";
   }
-  function print() {
+  function print(executiveOnly = false) {
     const w = window.open("", "_blank");
     if (!w) {
       setMessage("Permita a abertura da janela de impress\xE3o.");
       return;
     }
-    w.document.write(reportHtml());
+    w.document.write(reportHtml(executiveOnly === true));
     w.document.close();
     w.focus();
     setTimeout(() => w.print(), 200);
   }
-  const filters = /* @__PURE__ */ jsxs("div", { className: "filter-bar", children: [
-    /* @__PURE__ */ jsxs("div", { className: "filter-title", children: [
-      /* @__PURE__ */ jsx(Icon, { name: "clock", size: 17 }),
-      /* @__PURE__ */ jsx("span", { children: "Janela de consulta" })
-    ] }),
-    /* @__PURE__ */ jsx("select", { "aria-label": "Per\xEDodo", value: period, onChange: (e) => setPeriod(e.target.value), children: [["hoje", "Hoje"], ["ontem", "Ontem"], ["semana", "Esta semana"], ["mes", "Este m\xEAs"], ["custom", "Personalizado"]].map(([v, l]) => /* @__PURE__ */ jsx("option", { value: v, children: l }, v)) }),
-    period === "custom" &amp;&amp; /* @__PURE__ */ jsxs(Fragment, { children: [
-      /* @__PURE__ */ jsx("input", { "aria-label": "De", type: "date", value: from, onChange: (e) => setFrom(e.target.value || today()) }),
-      /* @__PURE__ */ jsx("span", { children: "at\xE9" }),
-      /* @__PURE__ */ jsx("input", { "aria-label": "At\xE9", type: "date", value: to, onChange: (e) => setTo(e.target.value || today()) })
-    ] }),
-    /* @__PURE__ */ jsxs("select", { "aria-label": "Turno", value: turno, onChange: (e) => setTurno(e.target.value), children: [
-      /* @__PURE__ */ jsx("option", { value: "", children: "Todos os turnos" }),
-      (cad?.turnos || []).filter((t) => t.ativo !== false).map((t) => /* @__PURE__ */ jsx("option", { value: t.codigo, children: t.nome || t.codigo }, t.codigo))
-    ] }),
-    /* @__PURE__ */ jsx("span", { className: "filter-range", children: rangeLabel }),
-    /* @__PURE__ */ jsx("button", { className: "text-button", onClick: () => {
-      setDetail(!detail);
-    }, children: detail ? "\u2212 Menos detalhes" : "+ Mais detalhes" })
-  ] });
-  const title = route.page === "inicio" ? "Vis\xE3o da linha" : route.page === "importacoes" ? "Central de importa\xE7\xF5es" : route.page === "relatorios" ? "Relat\xF3rios da linha" : route.page === "saude" ? "Sa\xFAde dos dados" : current?.name || "P\xE1gina n\xE3o encontrada";
+  const periods = [['hoje','Hoje'],['ontem','Ontem'],['semana','Semana'],['mes','Mês'],['custom','Personalizado']];
+  const filters = jsxs('div', {className:'filter-bar',children:[
+    jsx('div',{className:'period-presets',role:'group','aria-label':'Períodos de consulta',children:periods.map(([v,l])=>jsx('button',{type:'button','aria-pressed':period===v,onClick:()=>setPeriod(v),children:l},v))}),
+    jsxs('label',{className:'period-select',children:['Período',jsx('select',{'aria-label':'Período',value:period,onChange:e=>setPeriod(e.target.value),children:periods.map(([v,l])=>jsx('option',{value:v,children:l},v))})]}),
+    period==='custom' &amp;&amp; jsxs(Fragment,{children:[jsx('input',{'aria-label':'De',type:'date',value:from,onChange:e=>setFrom(e.target.value || today())}),jsx('span',{children:'até'}),jsx('input',{'aria-label':'Até',type:'date',value:to,onChange:e=>setTo(e.target.value || today())})]}),
+    jsxs('select',{'aria-label':'Turno',value:turno,onChange:e=>setTurno(e.target.value),children:[jsx('option',{value:'',children:'Todos os turnos'}),(cad?.turnos || []).filter(t=>t.ativo!==false).map(t=>jsx('option',{value:t.codigo,children:t.nome || t.codigo},t.codigo))]}),
+    jsx('span',{className:'filter-range',children:rangeLabel})
+  ]});
+  const title = route.page === "inicio" ? "Resultado da fábrica" : route.page === "importacoes" ? "Central de importa\xE7\xF5es" : route.page === "relatorios" ? "Relat\xF3rios da linha" : route.page === "saude" ? "Sa\xFAde dos dados" : current?.name || "P\xE1gina n\xE3o encontrada";
   return /* @__PURE__ */ jsxs("div", { className: "app-shell", children: [
     /* @__PURE__ */ jsxs("aside", { className: "sidebar " + (navOpen ? "open" : ""), children: [
       /* @__PURE__ */ jsxs("a", { href: "#/inicio", className: "brand", onClick: (e) => {
@@ -36296,11 +36505,13 @@ function App() {
             /* @__PURE__ */ jsx("span", { className: "eyebrow", children: current?.group || "GEST\xC3O INTEGRADA" }),
             /* @__PURE__ */ jsxs("h1", { children: [
               title,
-              /* @__PURE__ */ jsx("span", { className: "heading-dot", children: "." })
+              route.page !== "inicio" &amp;&amp; jsx("span", { className:"heading-dot",children:"." })
             ] }),
             /* @__PURE__ */ jsx("p", { children: current?.description || (route.page === "inicio" ? "Os n\xFAmeros, os desvios e os pr\xF3ximos passos. Tudo no mesmo lugar." : route.page === "importacoes" ? "Uma sequ\xEAncia de atualiza\xE7\xE3o, com a confer\xEAncia de cada fonte." : route.page === "saude" ? "Origem, revis\xE3o e disponibilidade dos dados usados pelo sistema." : "Escolha o recorte e leve a informa\xE7\xE3o certa para cada conversa.") })
           ] }),
           /* @__PURE__ */ jsxs("div", { className: "heading-actions", children: [
+            route.page === 'inicio' &amp;&amp; jsxs('div',{className:'view-switch',role:'group','aria-label':'Nível de detalhe',children:[jsx('button',{'aria-pressed':!detail,onClick:()=>setDetail(false),children:'Resumo'}),jsx('button',{'aria-pressed':detail,onClick:()=>setDetail(true),children:'Detalhado'})]}),
+            route.page === 'inicio' &amp;&amp; jsx(Button,{icon:'download',onClick:()=>print(true),disabled:!validRange || !reportRows().length,children:'Exportar resumo'}),
             /* @__PURE__ */ jsx("button", { className: "icon-button", "aria-label": "Ajuda desta p\xE1gina", onClick: () => setHelp(true), children: /* @__PURE__ */ jsx(Icon, { name: "help" }) }),
             /* @__PURE__ */ jsx(Button, { icon: "refresh", onClick: () => {
               refresh();
@@ -36330,116 +36541,7 @@ function App() {
               ] })
             ] })
           ] }),
-          /* @__PURE__ */ jsxs("section", { className: "metrics-grid", "aria-label": "Indicadores da linha", children: [
-            /* @__PURE__ */ jsx(Metric, { label: "Produ\xE7\xE3o boa", value: fmt(prod.good), unit: "pe\xE7as", note: rangeLabel, icon: "factory" }),
-            /* @__PURE__ */ jsx(Metric, { label: "OEE publicado", value: pct(prod.rate), note: prod.rate != null ? "Meta " + pct(prod.goal) : prod.rateNote, icon: "chart", tone: prod.rate != null &amp;&amp; prod.goal != null ? prod.rate >= prod.goal ? "positive" : "negative" : "" }),
-            /* @__PURE__ */ jsx(Metric, { label: "A\xE7\xF5es abertas", value: fmt(openActions), note: "Posi\xE7\xE3o atual do Planner", icon: "kanban" }),
-            /* @__PURE__ */ jsx(Metric, { label: "Pontos de aten\xE7\xE3o", value: sources.some((s) => s.state === "ok") ? String(pend.length) : "\u2014", note: "Pend\xEAncias publicadas pelos m\xF3dulos", icon: "alert", tone: pend.some((p) => +p.sev === 1) ? "negative" : "" })
-          ] }),
-          /* @__PURE__ */ jsxs("div", { className: "dashboard-columns", children: [
-            /* @__PURE__ */ jsxs("section", { className: "panel production-panel", children: [
-              /* @__PURE__ */ jsxs("header", { className: "panel-heading", children: [
-                /* @__PURE__ */ jsxs("div", { children: [
-                  /* @__PURE__ */ jsx("span", { className: "eyebrow", children: "DESEMPENHO" }),
-                  /* @__PURE__ */ jsx("h2", { children: "Ritmo da produ\xE7\xE3o" })
-                ] }),
-                /* @__PURE__ */ jsxs(Button, { onClick: () => open("oee", "overview"), children: [
-                  "Ver Produ\xE7\xE3o ",
-                  /* @__PURE__ */ jsx(Icon, { name: "arrow", size: 16 })
-                ] })
-              ] }),
-              /* @__PURE__ */ jsxs("div", { className: "chart-legend", children: [
-                /* @__PURE__ */ jsxs("span", { children: [
-                  /* @__PURE__ */ jsx("i", { className: "green" }),
-                  "Na meta"
-                ] }),
-                /* @__PURE__ */ jsxs("span", { children: [
-                  /* @__PURE__ */ jsx("i", { className: "red" }),
-                  "Abaixo da meta"
-                ] }),
-                /* @__PURE__ */ jsxs("span", { children: [
-                  /* @__PURE__ */ jsx("i", { className: "mark" }),
-                  "Meta operacional"
-                ] })
-              ] }),
-              /* @__PURE__ */ jsx(BarChart, { rows: validRange ? prod.rows : [], onDay: (dia) => navigate("oee", "", "#ficha=dia/" + dia) }),
-              detail &amp;&amp; /* @__PURE__ */ jsx("div", { className: "table-scroll", children: /* @__PURE__ */ jsxs("table", { children: [
-                /* @__PURE__ */ jsx("thead", { children: /* @__PURE__ */ jsxs("tr", { children: [
-                  /* @__PURE__ */ jsx("th", { children: "Dia" }),
-                  /* @__PURE__ */ jsx("th", { children: "Turno" }),
-                  /* @__PURE__ */ jsx("th", { className: "numeric", children: "Produ\xE7\xE3o" }),
-                  /* @__PURE__ */ jsx("th", { className: "numeric", children: "Meta" }),
-                  /* @__PURE__ */ jsx("th", { className: "numeric", children: "OEE publicado" })
-                ] }) }),
-                /* @__PURE__ */ jsx("tbody", { children: prod.rows.map((r, i) => /* @__PURE__ */ jsxs("tr", { children: [
-                  /* @__PURE__ */ jsx("td", { children: date(r.dia) }),
-                  /* @__PURE__ */ jsx("td", { children: r.turno || "Todos" }),
-                  /* @__PURE__ */ jsx("td", { className: "numeric", children: fmt(r.boa) }),
-                  /* @__PURE__ */ jsx("td", { className: "numeric", children: fmt(r.metaOp) }),
-                  /* @__PURE__ */ jsx("td", { className: "numeric", children: pct(r.oee) })
-                ] }, i)) })
-              ] }) })
-            ] }),
-            /* @__PURE__ */ jsxs("section", { className: "panel attention-panel", children: [
-              /* @__PURE__ */ jsxs("header", { className: "panel-heading", children: [
-                /* @__PURE__ */ jsxs("div", { children: [
-                  /* @__PURE__ */ jsx("span", { className: "eyebrow", children: "PARA ACOMPANHAR" }),
-                  /* @__PURE__ */ jsx("h2", { children: "O que pede aten\xE7\xE3o" })
-                ] }),
-                /* @__PURE__ */ jsx(Badge, { tone: pend.length ? "amber" : "neutral", children: pend.length })
-              ] }),
-              pend.length ? /* @__PURE__ */ jsx("ul", { className: "pending-list", children: pend.slice(0, 5).map((p, i) => /* @__PURE__ */ jsxs("li", { children: [
-                /* @__PURE__ */ jsx("span", { className: "pending-symbol " + (+p.sev === 1 ? "red" : "amber"), children: /* @__PURE__ */ jsx(Icon, { name: "alert", size: 16 }) }),
-                /* @__PURE__ */ jsxs("button", { onClick: () => open(p.module, void 0, p.link ? "#" + p.link : ""), children: [
-                  /* @__PURE__ */ jsx("small", { children: moduleOf(p.module)?.name }),
-                  /* @__PURE__ */ jsx("strong", { children: p.txt })
-                ] }),
-                /* @__PURE__ */ jsx(Icon, { name: "chevron", size: 16 })
-              ] }, i)) }) : /* @__PURE__ */ jsx(Empty, { title: sources.length ? "Nenhuma pend\xEAncia publicada" : "Aguardando suas fontes", children: sources.length ? "Confira a cobertura em Sa\xFAde dos dados." : "Conecte a pasta para consultar as pend\xEAncias da linha." }),
-              /* @__PURE__ */ jsxs("button", { className: "panel-footer", onClick: () => open("portal", "fila"), children: [
-                "Abrir minha fila ",
-                /* @__PURE__ */ jsx(Icon, { name: "arrow", size: 16 })
-              ] })
-            ] })
-          ] }),
-          /* @__PURE__ */ jsxs("div", { className: "section-heading", children: [
-            /* @__PURE__ */ jsxs("div", { children: [
-              /* @__PURE__ */ jsx("span", { className: "eyebrow", children: "SEU ESPA\xC7O DE TRABALHO" }),
-              /* @__PURE__ */ jsx("h2", { children: "Uma linha. Todos os m\xF3dulos." })
-            ] }),
-            /* @__PURE__ */ jsx("span", { className: "subtle", children: "Mesmas ordens, equipamentos e cadastros" })
-          ] }),
-          /* @__PURE__ */ jsx("div", { className: "module-grid", children: modules.filter((m) => m.id !== "portal" &amp;&amp; moduleAllowed(m.id)).map((m) => {
-            const s = source(m.id);
-            const k = s?.exports?.kpis?.[0];
-            return /* @__PURE__ */ jsxs("button", { className: "module-card", onClick: () => navigate(m.id), children: [
-              /* @__PURE__ */ jsx("span", { className: "module-icon " + m.id, children: /* @__PURE__ */ jsx(Icon, { name: m.icon, size: 23 }) }),
-              /* @__PURE__ */ jsxs("div", { className: "module-card-title", children: [
-                /* @__PURE__ */ jsx("h3", { children: m.name }),
-                /* @__PURE__ */ jsx(Icon, { name: "arrow", size: 17 })
-              ] }),
-              /* @__PURE__ */ jsx("p", { children: m.description }),
-              /* @__PURE__ */ jsxs("footer", { children: [
-                m.id === "projetos" ? /* @__PURE__ */ jsx(Badge, { children: "Escopo em defini\xE7\xE3o" }) : /* @__PURE__ */ jsx(Badge, { tone: s?.state === "ok" ? "green" : s?.state === "erro" ? "red" : "neutral", children: s?.state === "ok" ? "Fonte dispon\xEDvel" : s?.state === "erro" ? "Erro de leitura" : "Sem fonte conectada" }),
-                detail &amp;&amp; k &amp;&amp; /* @__PURE__ */ jsxs("span", { children: [
-                  String(k[0]),
-                  ": ",
-                  /* @__PURE__ */ jsx("b", { children: String(k[1]) })
-                ] })
-              ] })
-            ] }, m.id);
-          }) }),
-          /* @__PURE__ */ jsxs("section", { className: "update-card", children: [
-            /* @__PURE__ */ jsx("span", { className: "module-icon", children: /* @__PURE__ */ jsx(Icon, { name: "upload", size: 24 }) }),
-            /* @__PURE__ */ jsxs("div", { children: [
-              /* @__PURE__ */ jsx("h3", { children: "O dia est\xE1 atualizado?" }),
-              /* @__PURE__ */ jsx("p", { children: "Siga a sequ\xEAncia de importa\xE7\xF5es e confira os arquivos de cada etapa." })
-            ] }),
-            /* @__PURE__ */ jsxs(Button, { onClick: () => navigate("importacoes"), children: [
-              "Abrir central ",
-              /* @__PURE__ */ jsx(Icon, { name: "arrow", size: 16 })
-            ] })
-          ] })
+          jsx(ExecutiveOverview,{sources,cad,from:rangeFrom,to:rangeTo,turno,detail,rangeLabel,navigate,validRange,print:()=>print(true),reportAvailable:reportRows().length>0,canOpen:moduleAllowed})
         ] }),
         route.page === "importacoes" &amp;&amp; /* @__PURE__ */ jsxs(Fragment, { children: [
           /* @__PURE__ */ jsxs("section", { className: "panel intro-panel", children: [
@@ -36556,7 +36658,7 @@ function App() {
                   setMessage(e.message);
                 }
               }, children: "Imprimir m\xF3dulo" }),
-              (statuses[current.id]?.commands || []).map((c) => /* @__PURE__ */ jsx(Button, { disabled: c.disabled, onClick: () => {
+              (statuses[current.id]?.commands || []).map((c) => /* @__PURE__ */ jsx(Button, { className:"engine-command", title:c.label, disabled: c.disabled, onClick: () => {
                 try {
                   frames.get(current.id)?.contentWindow?.vacPagina.comando(c.id);
                 } catch (e) {
@@ -36683,7 +36785,7 @@ function App() {
         /* @__PURE__ */ jsxs("section", { children: [
           /* @__PURE__ */ jsx(Icon, { name: "book", size: 25 }),
           /* @__PURE__ */ jsx("h3", { children: "Comece pelo contexto" }),
-          /* @__PURE__ */ jsx("p", { children: "Escolha per\xEDodo e turno. Resumo mostra os indicadores principais; Mais detalhes abre as linhas publicadas. Estoque e fila de a\xE7\xF5es s\xE3o posi\xE7\xF5es atuais; Waste \xE9 mensal." })
+          /* @__PURE__ */ jsx("p", { children: "Escolha per\xEDodo e turno. Resumo mostra os indicadores principais; Detalhado abre as linhas publicadas. Estoque e fila de a\xE7\xF5es s\xE3o posi\xE7\xF5es atuais; Waste \xE9 mensal." })
         ] }),
         /* @__PURE__ */ jsxs("section", { children: [
           /* @__PURE__ */ jsx(Icon, { name: "folder", size: 25 }),
@@ -36718,7 +36820,7 @@ function App() {
     ] })
   ] });
 }
-function Metric({ label, value, unit, note, icon, tone = "" }) {
+function Metric({ label, value, unit, note, icon, tone = "", delta, onOpen }) {
   return /* @__PURE__ */ jsxs("article", { className: "metric " + tone, children: [
     /* @__PURE__ */ jsxs("div", { className: "metric-label", children: [
       label,
@@ -36726,11 +36828,66 @@ function Metric({ label, value, unit, note, icon, tone = "" }) {
     ] }),
     /* @__PURE__ */ jsxs("div", { className: "metric-value", children: [
       value,
-      unit &amp;&amp; /* @__PURE__ */ jsx("small", { children: unit })
+      unit &amp;&amp; jsxs("small", { children: [" ",unit] })
     ] }),
-    /* @__PURE__ */ jsx("div", { className: "metric-note", children: note })
+    jsx("div", { className: "metric-note", children: note }),
+    delta &amp;&amp; jsx("div",{className:"metric-delta",children:delta}),
+    onOpen &amp;&amp; jsx("button",{className:"metric-open","aria-label":"Abrir "+label,onClick:onOpen,children:jsx(Icon,{name:"chevron",size:18})})
   ] });
 }
+function safetyText(value,name) {
+  return value.quantity != null ? fmt(value.quantity)+' '+name+(value.quantity===1?(name==='QN'?' informada':' informado'):(name==='QN'?'s informadas':'s informados')) : value.positive?'Ocorrência informada':value.complete?'Sem ocorrência informada':'Não informado';
+}
+function ExecutiveOverview({ sources, cad, from, to, turno, detail, rangeLabel, navigate, validRange, print, reportAvailable, canOpen }) {
+  const view = executiveView(sources, from, to, turno, cad), {prod} = view;
+  const go = navigate; navigate = (id,tab='',hash='') => { if (canOpen(id)) go(id,tab,hash); };
+  const source = id => sources.find(s => s.id === id);
+  const link = (text, id, tab = '', hash = '') => jsx(Button, {className:'executive-link',onClick:()=>navigate(id,tab,hash),children:jsxs(Fragment,{children:[text,jsx(Icon,{name:'arrow',size:16})]})});
+  const drillProduction = () => navigate('oee','',from === to ? '#dia='+from : '');
+  const pp = prod.rate != null &amp;&amp; prod.goal != null ? (prod.rate-prod.goal)*100 : null;
+  const delta = view.target != null &amp;&amp; prod.good != null ? prod.good-view.target : null;
+  const signed = (v,d=0) => (v>0?'+':v<0?'−':'')+fmt(Math.abs(v),d);
+  const metrics = [
+    {label:'OEE publicado',value:pct(prod.rate),note:prod.goal != null?'Meta '+pct(prod.goal):prod.rate!=null?'Meta não publicada':'OEE do recorte não publicado',delta:pp==null?(prod.rate==null?'Consultar cálculo na Produção':'Sem comparação com meta'):signed(pp,1)+' p.p. da meta',tone:pp==null?'':pp>=0?'positive':'negative',icon:'chart',onOpen:drillProduction},
+    {label:'Produção boa',value:fmt(prod.good),unit:'peças',note:view.target!=null?'Meta operacional '+fmt(view.target)+' peças':'Meta não publicada para este recorte',delta:delta==null?rangeLabel:signed(delta)+' peças da meta',tone:delta==null?'':delta>=0?'positive':'negative',icon:'factory',onOpen:drillProduction},
+    {label:'Scrap informado',value:fmt(prod.scrap),unit:'peças',note:'Quantidade publicada pela Produção',delta:'Sem limite publicado neste resumo',icon:'layers',onOpen:drillProduction},
+    {label:'Paradas registradas',value:fmt(view.stopMinutes,1),unit:'min',note:view.stopCovered?'Soma dos registros no período':'Sem cobertura completa para este recorte',delta:'Registros podem se sobrepor',icon:'clock',onOpen:()=>navigate('paradas')}
+  ];
+  function safetyItem(value, label, name) {
+    const text = safetyText(value,name);
+    return jsxs('button',{className:'safety-item '+(value.positive?'negative':value.complete?'positive':'neutral'),onClick:()=>navigate('oee','sqdcp'),children:[jsx(Icon,{name:value.positive?'alert':value.complete?'check':'help',size:18}),jsxs('span',{children:[jsx('strong',{children:label+': '+text}),jsx('small',{children:value.expected ? value.answered+' de '+value.expected+' reportes preenchidos'+(!value.complete?' · parcial':''):'Sem reportes publicados no recorte'})]})]});
+  }
+  const published = s => s?.updated ? new Date(s.updated).toLocaleString('pt-BR',{dateStyle:'short',timeStyle:'short'}):'não disponível';
+  return jsxs(Fragment,{children:[
+    jsxs('div',{className:'executive-provenance',children:[jsx(Icon,{name:'file',size:15}),jsx('span',{children:'Publicação das fontes: Produção '+published(source('oee'))+' · Paradas '+published(source('paradas'))}),jsx('button',{className:'text-button',onClick:()=>navigate('saude'),children:'Conferir fontes'})]}),
+    jsxs('section',{className:'safety-strip','aria-label':'Segurança e qualidade do período',children:[safetyItem(view.safety,'Segurança','acidente'),safetyItem(view.quality,'Qualidade','QN'),link('Ver SQDCP','oee','sqdcp')]}),
+    jsxs('section',{className:'metrics-grid executive-metrics','aria-label':'Indicadores da linha',children:metrics.map(m=>jsx(Metric,m,m.label))}),
+    jsxs('div',{className:'executive-analysis',children:[
+      jsxs('section',{className:'panel production-panel',children:[
+        jsxs('header',{className:'panel-heading',children:[jsxs('div',{children:[jsx('h2',{children:view.byShift?'Produção boa por turno':'Produção boa por dia'}),jsx('p',{className:'subtle',children:rangeLabel+' · peças · fonte: Produção'})]}),link(from===to?'Ver hora a hora':'Ver Produção','oee',from===to?'hourly':'overview')]}),
+        jsxs('div',{className:'chart-legend',children:[jsxs('span',{children:[jsx('i',{className:'green'}),'Na meta']}),jsxs('span',{children:[jsx('i',{className:'red'}),'Abaixo da meta']}),jsxs('span',{children:[jsx('i',{className:'mark'}),'Meta operacional']})]}),
+        jsx(BarChart,{rows:validRange?view.chartRows:[],byShift:view.byShift,onDay:dia=>navigate('oee','','#dia='+dia)}),
+        jsx('p',{className:'panel-note',children:'Hora a hora e OEE ponderado ficam disponíveis na Produção. Ausência de meta mantém a barra neutra.'})
+      ]}),
+      jsxs('section',{className:'panel losses-panel',children:[
+        jsxs('header',{className:'panel-heading',children:[jsxs('div',{children:[jsx('h2',{children:'Onde o tempo foi registrado'}),jsx('p',{className:'subtle',children:'Paradas por equipamento · '+rangeLabel})]}),link('Investigar','paradas')]}),
+        view.equipment.length ? jsx('ol',{className:'loss-ranking',children:view.equipment.slice(0,detail?8:3).map((r,i)=>jsxs('li',{children:[jsxs('button',{className:'loss-row',onClick:()=>r.code?navigate('equip','equip','#aba=equip&amp;eq='+encodeURIComponent(r.code)):navigate('paradas'),children:[jsxs('span',{className:'loss-label',children:[jsx('strong',{children:r.name}),jsx('small',{children:r.code || 'Sem vínculo cadastrado'})]}),jsx('span',{className:'loss-track','aria-hidden':'true',children:jsx('span',{style:{width:(view.equipment[0].minutes?r.minutes/view.equipment[0].minutes*100:0)+'%'},className:i>1?'secondary':''})}),jsx('strong',{className:'numeric',children:fmt(r.minutes,1)+' min'}),jsx(Icon,{name:'chevron',size:16})]})]},r.code))}):jsx(Empty,{title:view.stopCovered?'Nenhuma parada publicada no recorte':'Cobertura de paradas indisponível',children:view.stopCovered?'Sem eventos publicados para o período e turno selecionados.':'Confira a janela publicada em Paradas antes de comparar resultados.'}),
+        jsx('p',{className:'panel-note',children:'Soma de registros por equipamento. Não representa automaticamente tempo de perda de OEE; registros simultâneos podem se sobrepor.'})
+      ]})
+    ]}),
+    jsxs('section',{className:'panel action-priorities',children:[
+      jsxs('header',{className:'panel-heading',children:[jsxs('div',{children:[jsx('h2',{children:'Prioridades para a reunião'}),jsx('p',{className:'subtle',children:'Posição atual do Planner · não limitada ao filtro de produção'})]}),jsxs('div',{className:'priority-heading-actions',children:[jsx(Badge,{tone:view.overdue?'red':'neutral',children:view.actionsAvailable?view.overdue+' ação(ões) vencida(s)':'Fonte não disponível'}),link('Abrir Planner','inic')]} )]}),
+      view.actions.length ? jsx('div',{className:'table-scroll',children:jsxs('table',{className:'priority-table',children:[jsx('thead',{children:jsxs('tr',{children:['Prioridade','Ação','Responsável','Prazo','Situação',''].map(t=>jsx('th',{children:t},t))})}),jsx('tbody',{children:view.actions.slice(0,detail?12:3).map(a=>{
+        const name=(cad?.usuarios || []).find(u=>String(u.codigo)===String(a.responsavelId || ''))?.nome || a.responsavel || 'Confirmar responsável';
+        return jsxs('tr',{children:[jsx('td',{children:jsx(Badge,{tone:a.prioridade==='alta'?'red':'neutral',children:a.prioridade || 'Não informada'})}),jsx('td',{children:jsxs('button',{className:'action-title text-button',onClick:()=>navigate('inic','','#acao='+encodeURIComponent(a.id)),children:[jsx('strong',{children:a.titulo}),jsx('small',{children:a.id})]})}),jsx('td',{children:name}),jsx('td',{className:'nowrap',children:date(a.prazo)}),jsx('td',{children:jsx(Badge,{tone:a.atrasada?'red':'neutral',children:a.atrasada?'Vencida':a.status})}),jsx('td',{children:jsx('button',{className:'icon-button','aria-label':'Abrir ação '+a.id,onClick:()=>navigate('inic','','#acao='+encodeURIComponent(a.id)),children:jsx(Icon,{name:'chevron',size:18})})})]},a.id);
+      })})]})}):jsx(Empty,{title:view.actionsAvailable?'Nenhuma ação aberta publicada':'Planner não disponível',children:'Abra Iniciativas / Ações para conferir o acompanhamento.'})
+    ]}),
+    detail &amp;&amp; jsxs('section',{className:'panel executive-details',children:[jsxs('header',{className:'panel-heading',children:[jsx('h2',{children:'Dados publicados do recorte'}),jsx(Button,{onClick:print,disabled:!reportAvailable,icon:'file',children:'Exportar resumo'})]}),jsx('div',{className:'table-scroll',children:jsxs('table',{children:[jsx('thead',{children:jsx('tr',{children:['Dia','Turno','Produção boa','Meta operacional','Scrap (peças)','OEE publicado','Situação'].map(t=>jsx('th',{children:t},t))})}),jsx('tbody',{children:prod.rows.map((r,i)=>jsxs('tr',{children:[jsx('td',{children:date(r.dia)}),jsx('td',{children:r.turno || 'Todos'}),jsx('td',{className:'numeric',children:fmt(r.boa)}),jsx('td',{className:'numeric',children:fmt(r.metaOp)}),jsx('td',{className:'numeric',children:fmt(r.scrap)}),jsx('td',{className:'numeric',children:pct(r.oee)}),jsx('td',{children:r.status || 'Não publicada'})]},i))})]})})]}),
+    jsxs('details',{className:'panel executive-more',children:[jsx('summary',{children:'Pendências publicadas e acesso aos módulos'}),jsx('p',{className:'panel-note',children:'Pendências e indicadores de outros módulos conservam sua própria referência. Waste permanece mensal.'}),jsx('ul',{className:'pending-list',children:pending(sources).slice(0,detail?20:5).map((p,i)=>jsx('li',{children:jsx('button',{onClick:()=>navigate(p.module,'',p.link?'#'+p.link:''),children:jsxs(Fragment,{children:[jsx(Badge,{tone:+p.sev===1?'red':'amber',children:+p.sev===1?'Urgente':'Atenção'}),jsx('strong',{children:p.txt})]})})},i))}),jsx('div',{className:'executive-shortcuts',children:modules.filter(m=>m.id!=='portal' &amp;&amp; canOpen(m.id)).map(m=>jsx(Button,{icon:m.icon,onClick:()=>navigate(m.id),children:m.name},m.id))})]}),
+    jsxs('div',{className:'executive-bottom',children:[jsx('span',{children:'Fontes e unidades preservadas · dados ausentes não são zero'}),jsx(Button,{icon:'upload',onClick:()=>navigate('importacoes'),children:'Conferir importações'})]})
+  ]});
+}
+
 var stdin_default = App;
 export {
   stdin_default as default
@@ -36927,47 +37084,36 @@ function BrandLogo({ src, alt = "BD" }) {
     /* @__PURE__ */ jsx("span", {})
   ] });
 }
-function BarChart({ rows, onDay }) {
-  rows = rows.filter((r) => typeof r.boa === "number" &amp;&amp; Number.isFinite(r.boa));
-  if (!rows.length) return /* @__PURE__ */ jsx(Empty, { title: "Sem produ\xE7\xE3o publicada neste per\xEDodo", children: "Selecione outra janela ou atualize os dados na Produ\xE7\xE3o." });
-  const max = Math.max(1, ...rows.map((r) => Math.max(Number(r.boa) || 0, Number(r.metaOp) || 0)));
-  const w = 800, h = 220, bar = Math.min(34, 650 / rows.length), step = 720 / rows.length;
-  return /* @__PURE__ */ jsxs("svg", { className: "bar-chart", role: "img", "aria-label": "Produ\xE7\xE3o boa por dia. Barras verdes atingem a meta; vermelhas ficam abaixo; pontos indicam a meta.", viewBox: `0 0 ${w} ${h + 35}`, children: [
-    [0, 1, 2, 3].map((i) => /* @__PURE__ */ jsxs("g", { children: [
-      /* @__PURE__ */ jsx("line", { x1: "55", x2: "790", y1: h - i * h / 3, y2: h - i * h / 3, stroke: "var(--line)", strokeDasharray: "3 4" }),
-      /* @__PURE__ */ jsxs("text", { x: "45", y: h - i * h / 3 + 4, textAnchor: "end", className: "chart-label", children: [
-        fmt(max * i / 3 / 1e3),
-        "k"
-      ] })
-    ] }, i)),
-    rows.map((r, i) => {
-      const value = Number(r.boa) || 0, x = 65 + i * step + step / 2, y = h - value / max * (h - 15), color = r.metaOp == null ? "var(--teal)" : value >= r.metaOp ? "var(--green)" : "var(--red)";
-      const br = String(r.dia).slice(8) + "/" + String(r.dia).slice(5, 7) + "/" + String(r.dia).slice(0, 4), abrir = onDay &amp;&amp; /^\d{4}-\d{2}-\d{2}$/.test(String(r.dia)) ? () => onDay(String(r.dia)) : void 0;
-      return /* @__PURE__ */ jsxs("g", { className: abrir ? "bar-day" : void 0, role: abrir ? "button" : void 0, tabIndex: abrir ? 0 : void 0, "aria-label": abrir ? br + ": " + fmt(value) + " pe\xE7as. Abrir o resumo do dia" : void 0, onClick: abrir, onKeyDown: abrir ? (e) => {
-        if (e.key === "Enter" || e.key === " ") {
-          e.preventDefault();
-          abrir();
-        }
-      } : void 0, children: [
-        abrir &amp;&amp; /* @__PURE__ */ jsx("rect", { x: x - step / 2, y: 0, width: step, height: h, fill: "transparent" }),
-        /* @__PURE__ */ jsx("rect", { x: x - bar / 2, y, width: bar, height: Math.max(1, h - y), rx: "4", fill: color, opacity: ".9", children: /* @__PURE__ */ jsxs("title", { children: [
-          br,
-          ": ",
-          fmt(value),
-          " pe\xE7as \xB7 meta ",
-          fmt(r.metaOp),
-          abrir ? " \xB7 clique para ver o resumo do dia" : ""
-        ] }) }),
-        r.metaOp != null &amp;&amp; /* @__PURE__ */ jsx("line", { x1: x - bar / 2 - 3, x2: x + bar / 2 + 3, y1: h - r.metaOp / max * (h - 15), y2: h - r.metaOp / max * (h - 15), stroke: "var(--ink)", strokeWidth: "2" }),
-        (rows.length < 16 || i % Math.ceil(rows.length / 12) === 0) &amp;&amp; /* @__PURE__ */ jsxs("text", { x, y: h + 23, className: "chart-label", textAnchor: "middle", children: [
-          String(r.dia).slice(8),
-          "/",
-          String(r.dia).slice(5, 7)
-        ] })
-      ] }, r.dia + "-" + i);
+function BarChart({ rows, onDay, byShift = false }) {
+  const ref = useRef(null), [width,setWidth] = useState(700);
+  rows = rows.filter(r => typeof r.boa === 'number' &amp;&amp; Number.isFinite(r.boa));
+  useEffect(() => {
+    if (!ref.current) return;
+    const observer = new ResizeObserver(entries => setWidth(Math.round(entries[0].contentRect.width)));
+    observer.observe(ref.current); return () => observer.disconnect();
+  }, [rows.length]);
+  if (!rows.length) return jsx(Empty,{title:'Sem produção publicada neste período',children:'Selecione outra janela ou atualize os dados na Produção.'});
+  const max = Math.max(1,...rows.map(r=>Math.max(r.boa,Number(r.metaOp)||0)));
+  const w = Math.max(440,width,rows.length*46+85), h = 190, left = 70, right = 18, top = 28, bottom = 34;
+  const step = (w-left-right)/rows.length, bar = Math.min(96,step*.65), y = value => h-value/max*(h-top);
+  const scale = value => max>=10000?fmt(value/1000,0)+' mil':fmt(value,0);
+  return jsx('div',{className:'chart-viewport',ref,role:'region',tabIndex:0,'aria-label':'Gráfico de produção; use as setas para rolar quando necessário',children:jsxs('svg',{className:'bar-chart',role:'img','aria-label':'Produção boa por '+(byShift?'turno':'dia')+'. Barras verdes atingem a meta; vermelhas ficam abaixo. Marcadores indicam a meta operacional.',viewBox:`0 0 ${w} ${h+bottom}`,style:{width:w,height:h+bottom},children:[
+    [0,.5,1].map((v,i)=>jsxs('g',{children:[jsx('line',{x1:left,x2:w-right,y1:y(max*v),y2:y(max*v),stroke:'var(--line)',strokeDasharray:'3 4'}),jsx('text',{x:left-10,y:y(max*v)+4,textAnchor:'end',className:'chart-label',children:scale(max*v)})]},i)),
+    rows.map((r,i)=>{
+      const x=left+(i+.5)*step, value=r.boa, goal=typeof r.metaOp==='number'&amp;&amp;Number.isFinite(r.metaOp)?r.metaOp:null;
+      const label=(byShift?r.turno+' · ':'')+dateLabel(r.dia), open=onDay&amp;&amp;/^\d{4}-\d{2}-\d{2}$/.test(String(r.dia))?()=>onDay(r.dia):undefined;
+      return jsxs('g',{className:open?'bar-day':undefined,role:open?'button':undefined,tabIndex:open?0:undefined,'aria-label':label+': '+fmt(value)+' peças; meta '+fmt(goal)+(open?'. Abrir o resumo do dia':''),onClick:open,onKeyDown:open?e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();open();}}:undefined,children:[
+        jsx('rect',{x:x-step/2,y:0,width:step,height:h,fill:'transparent'}),
+        jsx('rect',{x:x-bar/2,y:y(value),width:bar,height:Math.max(1,h-y(value)),rx:4,fill:goal==null?'var(--chart-primary)':value>=goal?'var(--green)':'var(--red)',children:jsx('title',{children:label+': '+fmt(value)+' peças · meta '+fmt(goal)})}),
+        goal!=null&amp;&amp;jsx('line',{x1:x-bar/2-4,x2:x+bar/2+4,y1:y(goal),y2:y(goal),stroke:'var(--heading)',strokeWidth:2,strokeDasharray:'5 3'}),
+        jsx('text',{x,y:Math.max(16,y(Math.max(value,goal ?? 0))-10),textAnchor:'middle',className:'chart-value',children:scale(value)}),
+        jsx('text',{x,y:h+24,textAnchor:'middle',className:'chart-label',children:byShift?r.turno:String(r.dia).slice(8)+'/'+String(r.dia).slice(5,7)})
+      ]},r.dia+'-'+r.turno+'-'+i);
     })
-  ] });
+  ]})});
 }
+function dateLabel(value) { return /^\d{4}-\d{2}-\d{2}$/.test(String(value))?String(value).slice(8)+'/'+String(value).slice(5,7)+'/'+String(value).slice(0,4):String(value); }
+
 export {
   Badge,
   BarChart,
@@ -37224,7 +37370,46 @@ async function dbSet(key, value) {
     };
   });
 }
+/* Consulta executiva: seleciona exports; não recalcula OEE, SQDCP ou classificação de paradas. */
+function executiveView(sources, from, to, turno, cad) {
+  const source = id => sources.find(s => s.id === id &amp;&amp; s.state === 'ok');
+  const production = source('oee')?.exports, stops = source('paradas')?.exports;
+  const prod = productionView(production, from, to, turno), valid = from <= to;
+  const finite = v => typeof v === 'number' &amp;&amp; Number.isFinite(v);
+  const target = valid &amp;&amp; prod.rows.length &amp;&amp; prod.rows.every(r => finite(r.metaOp)) ? prod.rows.reduce((n,r) => n+r.metaOp,0) : null;
+  const chartRows = from === to &amp;&amp; !turno ? (production?.porDiaTurno || []).filter(r => r.dia === from) : prod.rows;
+  const coverage = stops?.eventosCobertura;
+  const covered = !!(valid &amp;&amp; coverage &amp;&amp; from >= coverage.de &amp;&amp; to <= coverage.ate &amp;&amp; Array.isArray(stops.eventos));
+  const events = covered ? stops.eventos.filter(r => r &amp;&amp; r.dia >= from &amp;&amp; r.dia <= to &amp;&amp; (!turno || r.turno === turno)) : [];
+  const stopValid = covered &amp;&amp; events.every(r => finite(r.minutos) &amp;&amp; r.minutos >= 0);
+  const byEquipment = new Map();
+  if (stopValid) for (const e of events) {
+    const code = String(e.equipamento || ''), previous = byEquipment.get(code) || {code,minutes:0};
+    previous.minutes += e.minutos; byEquipment.set(code,previous);
+  }
+  const equipment = [...byEquipment.values()].map(r => ({...r,name:(cad?.equipamentos || []).find(e => String(e.codigo) === r.code)?.nome || r.code || 'Sem equipamento'})).sort((a,b) => b.minutes-a.minutes || a.code.localeCompare(b.code));
+  const sq = production?.sqdcp, sqCovered = !!(valid &amp;&amp; sq?.versao === 1 &amp;&amp; from >= sq.de &amp;&amp; to <= sq.ate);
+  const shifts = sqCovered &amp;&amp; Array.isArray(sq.turnos) ? sq.turnos.filter(r => r &amp;&amp; r.dia >= from &amp;&amp; r.dia <= to &amp;&amp; (!production.linha || r.linha === production.linha) &amp;&amp; (!turno || r.turno === turno)) : [];
+  const day = sqCovered &amp;&amp; from === to &amp;&amp; !turno &amp;&amp; Array.isArray(sq.porDia) ? sq.porDia.find(r => r.dia === from &amp;&amp; (!production.linha || r.linha === production.linha)) : null;
+  function safety(key) {
+    const answered = shifts.filter(r => ['sim','nao'].includes(r[key]?.resposta));
+    const positive = answered.some(r => r[key].resposta === 'sim');
+    const complete = shifts.length > 0 &amp;&amp; answered.length === shifts.length;
+    // Quantidade consolidada somente se já publicada; não somar QNs entre turnos/dias.
+    let quantity = day?.[key]?.quantidade;
+    if (shifts.length === 1) quantity = answered[0]?.[key]?.quantidade;
+    if (!finite(quantity) || (!complete &amp;&amp; quantity === 0)) quantity = null;
+    return {quantity,positive,complete,answered:answered.length,expected:shifts.length};
+  }
+  const actions = source('inic')?.exports?.acoes || [];
+  const open = actions.filter(a => a &amp;&amp; !['concluída','cancelada'].includes(a.status));
+  const rank = {alta:0,media:1,média:1,baixa:2};
+  const ordered = [...open].sort((a,b) => Number(!!b.atrasada)-Number(!!a.atrasada) || (rank[a.prioridade] ?? 3)-(rank[b.prioridade] ?? 3) || String(a.prazo || '9999').localeCompare(String(b.prazo || '9999')) || String(a.id).localeCompare(String(b.id)));
+  return {prod,target,chartRows,byShift:from === to &amp;&amp; !turno,stopMinutes:stopValid ? events.reduce((n,r) => n+r.minutos,0) : null,equipment,stopCovered:stopValid,stopCoverage:coverage,safety:safety('acidente'),quality:safety('qn'),actions:ordered,overdue:open.filter(a => a.atrasada).length,actionsAvailable:!!source('inic')};
+}
+
 export {
+  executiveView,
   addDays,
   csvCell,
   date,

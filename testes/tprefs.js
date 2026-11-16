@@ -6,6 +6,7 @@
 // - sem usuário, nada é gravado. Pasta simulada (OPFS por HTTP local). node testes/tprefs.js → "sem erros"; código 1 se falhar
 const path = require('path'), fs = require('fs'), http = require('http'); const RAIZ = path.resolve(__dirname, '..') + '/';
 const { chromium } = require('playwright');
+const V = Object.fromEntries(require('../scripts/html.cjs').manifest().files.map(f => [f.id, f.version]));
 const errs = []; const ok = (c, m) => { console.log((c ? 'ok   ' : 'FALHA ') + m); if (!c) errs.push(m); };
 const srv = require('../scripts/servidor-testes.cjs').server();
 const CAD = { schema: 'vac-cadastros', schemaVersion: 1, rev: 1, perfis: [{ codigo: 'LIDER', nome: 'Liderança', ativo: true, layout: { chaves: { 'vac.grupos.paradas': '{"B":1}', 'vac.grade.paradas': '{"perfil":1}' }, de: 'u9' } }],
@@ -99,7 +100,7 @@ const CAD = { schema: 'vac-cadastros', schemaVersion: 1, rev: 1, perfis: [{ codi
   // 7) Portal 1.9.34: copiar o layout de um usuário para o perfil
   p = await abre('Portal.html', 'u1');
   r = await p.evaluate(async () => { const F = await vacPrefs.ler('u1'); return { tem: !!F, versao: PAGE.versao, fn: typeof CAD_T.perfis === 'object' }; });
-  ok(r.tem && r.versao === '1.9.40', 'Portal 1.9.40 lê o arquivo de preferências de um usuário (para copiar como padrão do perfil)');
+  ok(r.tem && r.versao === V.portal, 'Portal 1.9.40 lê o arquivo de preferências de um usuário (para copiar como padrão do perfil)');
   await p.close();
 
   ok(!pe.length, 'sem erro de página' + (pe.length ? ': ' + [...new Set(pe)].slice(0, 4).join(' | ') : ''));

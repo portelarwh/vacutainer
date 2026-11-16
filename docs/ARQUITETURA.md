@@ -4,7 +4,7 @@
 
 Plataforma.html é simultaneamente o arquivo de distribuição e a fonte editável. Ele contém blocos nomeados em textareas ocultos: módulos JavaScript ES2022, CSS, documentos dos motores, bibliotecas e cenário fictício. O carregador cria URLs blob locais e um importmap para os módulos. Os documentos operacionais são montados em srcdoc sob demanda, na origem do aplicativo. Não são consultados arquivos HTML externos.
 
-Blocos comum/* e css/kit são compartilhados por referências internas @@vac:ID@@; a montagem é estrita, rejeitando fragmento ausente ou ciclo. A extração inicial reproduziu os nove motores byte por byte. A única adaptação posterior dentro de motor/portal trata leitura de versões/páginas em construção e bibliotecas pelo pacote interno, em lugar dos arquivos antigos. Não altera fórmulas ou modelo de base.
+Blocos comum/* e css/kit são compartilhados por referências internas @@vac:ID@@; a montagem é estrita, rejeitando fragmento ausente ou ciclo. A extração inicial reproduziu os nove motores byte por byte. Na consolidação, o Portal foi adaptado para ler versões/páginas em construção e bibliotecas pelo pacote interno. A evolução posterior de identificação por ID e registro de backups está descrita no CONTRATO-MOTORES.md; não equivale a mudar fórmulas ou modelo das bases.
 
 A fonte não contém os arquivos comerciais de fontes/logos. Marca/ é opcional e há fallback offline. React/ReactDOM, Zod, SheetJS, jsPDF e AutoTable são código local incorporado com licenças preservadas.
 

@@ -34,7 +34,7 @@ const espera = p => p.waitForFunction(() => !Store.saving && !Store.queue.length
     await p.click('[data-vis="resp"]'); await p.waitForTimeout(150);
     const g = await p.evaluate(() => [...document.querySelectorAll('.porresp .grp h3')].map(h => h.childNodes[0].textContent.trim()));
     ok(g.includes('J. Lima') && g[g.length - 1] === '(sem responsável)', `Por responsável: grupos (${g.join(', ')})`);
-    await p.evaluate(() => { localStorage.setItem('vac.user', 'J. Lima'); }); await p.click('[data-vis="minhas"]'); await p.waitForTimeout(150);
+    await p.evaluate(cad => { localStorage.setItem('vac.cadastros', JSON.stringify(cad)); localStorage.setItem('vac.user', 'J. Lima'); localStorage.setItem('vac.userId', '1'); }, CAD); await p.click('[data-vis="minhas"]'); await p.waitForTimeout(150);
     const m = await p.evaluate(() => [...document.querySelectorAll('.porresp .ac')].map(a => a.dataset.ac));
     ok(m.length === 1 && m[0] === 'AC-T-0147', `Minhas (J. Lima): só a ação dele (${m.join()})`);
     await p.evaluate(() => localStorage.removeItem('vac.user')); await p.click('[data-vis="quadro"]');
