@@ -7,6 +7,7 @@ Base preparada em 15/11/2026. O objetivo desta rodada é uma fundação consiste
 - Referência de marca no repositório, documentação com escopo e responsabilidades explícitos.
 - Tokens institucionais e funcionais compartilhados pela casca e pelos nove módulos incorporados.
 - Cores com contraste verificado, tipografia com fallback offline, foco e controles de leitura confortável na casca.
+- 16/11/2026: contraste renderizado medido também nos nove módulos, nos dois temas (`testes/plataforma/contraste.cjs`, nenhum texto abaixo de 4,5:1); letra mínima de 11 px e área de toque na casca; gráfico "Ritmo da produção" legível em 390 px; Ctrl K com foco na busca; rótulo curto nos comandos dos módulos.
 - Temas claro/escuro preservados; a adaptação escura é técnica, não um tema corporativo certificado.
 - Os hashes dos motores permitem verificar que cálculos, formulários e estruturas não foram reescritos.
 

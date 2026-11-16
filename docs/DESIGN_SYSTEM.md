@@ -88,9 +88,13 @@ Texto normal precisa de 4,5:1; texto grande e indicadores gráficos essenciais, 
 
 A recomendação do anexo de charcoal sobre laranja/lavanda não atinge 4,5:1 em texto normal (3,81:1 e 3,95:1). Usar navy nesses fundos (6,69:1 e 6,93:1). Laranja sobre branco tem 2,81:1; azul vivo sobre branco, 4,20:1. Portanto, ambos não são cores de texto normal nesses fundos. O alias warn usa um tom escuro para texto; warn-fill preserva o laranja institucional. A ordem de séries do anexo não dispensa contraste, rótulos e significado operacional.
 
+Texto sobre fundo cheio usa `--on-fill` (claro no tema claro, escuro no escuro), definido no `css/brand` junto com as cores de fundo: assim os dois seguem o mesmo tema mesmo quando o módulo e a casca divergem. Token do kit que carrega cor precisa de par no `css/brand`. `--none-fill` é um cinza escuro (#62616A) que sustenta texto branco; o cinza quente fica para superfícies e divisores. Mapa de calor com número dentro limita a intensidade do fundo a 50% para o texto continuar legível nos dois temas.
+
+O contraste **renderizado** é conferido pelo `testes/plataforma/contraste.cjs` (16/11/2026): mede texto × fundo efetivo na casca e nos nove módulos, nos dois temas, abrindo os módulos em sequência; qualquer texto abaixo de 4,5:1 (3:1 grande) reprova. Gráficos em SVG e imagens não entram nessa medição.
+
 ### Escala e suporte
 
-Grid de 8 px, margens de 24–32 px no desktop e 16 px no celular, espaços de 16–24 px e raios de 8–12 px. Na casca, títulos de página 30–36 px, números principais 32–44 px, corpo/controles 14 px e notas 12 px. Controles com pelo menos 40 px e foco visível de 2 px ou mais.
+Grid de 8 px, margens de 24–32 px no desktop e 16 px no celular, espaços de 16–24 px e raios de 8–12 px. Na casca, títulos de página 30–36 px, números principais 32–44 px, corpo/controles 14 px e notas 11–12 px (nunca abaixo de 11 px na tela; a impressão tem escala própria). Controles principais com pelo menos 40 px; botões de texto pequenos com área de toque de pelo menos 32 px; foco visível de 2 px ou mais. Gráfico em SVG não encolhe além de 9 px de letra: o cartão rola na horizontal.
 
 Tabelas extensas podem ter rolagem própria; não comprimir a página inteira para evitar isso. Impressão tem escala própria. O SQDCP continua uma A4 paisagem e os formulários que exigem retrato preservam essa orientação. Layout nunca modifica número, unidade, fonte do dado, período ou regra de agregação.
 

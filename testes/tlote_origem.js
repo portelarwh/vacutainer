@@ -59,7 +59,7 @@ const PREP = () => {
     const ld = (X.lotesHistorico || []).find(l => l.lote === 'L-DIA'); ok(ld && ld.obs === 'só classificação de dia' && ld.dias.join() === '2026-03-10' && !(X.lotes || []).some(l => l.lote === 'L-DIA'), 'lote com classificação de dia recente e sem caixas do MES vem no lotesHistorico (não está no lotes) (revisão Codex P2)');
     ok(oh && oh.lote === 'L-OLD' && oh.mes === '2023-05' && !(X.porOrdem || []).some(o => o.ordem === 'O-OLD') && lh && lh.situacao === 'retrabalho' && lh.obs === 'nota antiga' && lh.dias.join() === '2023-05-10' && lh.retrabalhoDias.join() === '2023-05-10' && !(X.lotesHistorico || []).some(l => l.lote === 'L-501'),
       'Produção 2.4.73: ordensHistorico (plano fora dos 24 meses) e lotesHistorico (situação, observação e dias de lote antigo), sem repetir os recentes'); }
-  ok(await o.evaluate(() => APP_VERSION) === '2.4.78', 'Produção 2.4.78');
+  ok(await o.evaluate(() => APP_VERSION) === '2.4.79', 'Produção 2.4.79');
 
   // ---------- Portal 1.9.33: cartão "Agora" com o exports.atual (sem calcular nada)
   const pt = await c.newPage(); pt.on('pageerror', e => pe.push('Portal: ' + e.message));
@@ -74,7 +74,7 @@ const PREP = () => {
   const WS = await ws.evaluate(async X => { enterTest(); const base = { exports: X, monthPlans: [{ month: '2023-05', orders: [{ order: 'O-OLD' }] }], server: { lotClass: {}, lotNotes: {} } };
     ST.mode = 'pasta'; ST.dir = { getFileHandle: async () => ({ getFile: async () => ({ lastModified: 42, text: async () => JSON.stringify(base) }) }) }; OEE.at = 0; OEE.mod = 0;
     await loadOEE(true); const f = oeeFind('O-OLD'); return { mp: OEE.src && OEE.src.monthPlans, sv: OEE.src && OEE.src.server, lote: f && f.lote, fonte: f && f.fonte, lot: f && f.lotHits.map(h => h.path).join(' | '), ver: APP_VER }; }, X);
-  ok(WS.ver === '1.12.9' && WS.mp === null && WS.sv === null && WS.lote === 'L-OLD' && WS.fonte === 'exports' && /lotesHistorico/.test(WS.lot), `Waste 1.12.9: ordem antiga achada no exports (${WS.fonte}; lote ${WS.lote}; ${WS.lot}), sem guardar planos nem servidor da Produção`);
+  ok(WS.ver === '1.12.10' && WS.mp === null && WS.sv === null && WS.lote === 'L-OLD' && WS.fonte === 'exports' && /lotesHistorico/.test(WS.lot), `Waste 1.12.10: ordem antiga achada no exports (${WS.fonte}; lote ${WS.lote}; ${WS.lot}), sem guardar planos nem servidor da Produção`);
 
   // ---------- Paradas: ordem e catálogo pelo lote ou pelo horário; eventoId
   const p = await c.newPage(); p.on('pageerror', e => pe.push(e.message));
@@ -96,7 +96,7 @@ const PREP = () => {
   ok(R.ex5.eventoId === 'ev_teste1' && R.n === 6 && !R.ids.some(i => /^OEE:/.test(i)), 'Paradas: a mesma parada apontada na Produção ganha o eventoId dela; nenhum evento contado duas vezes');
   ok(/100200301:2/.test(R.porOrdem) && /100200302:1/.test(R.porOrdem), 'Paradas: exports.porOrdem com as ordens vindas do lote e do horário (' + R.porOrdem + ')');
   ok(R.avisos && R.avisos.semOrdem === 1 && R.avisos.soProducao === 0, 'Paradas: avisos de origem (lote não encontrado: 1; paradas só na Produção: 0)');
-  ok(await p.evaluate(() => PAGE.versao) === '1.2.12', 'Paradas 1.2.12');
+  ok(await p.evaluate(() => PAGE.versao) === '1.2.13', 'Paradas 1.2.13');
 
   // ---------- Produção 2.4.71 / kit: clique numa hora do gráfico abre a ficha do trecho (vacFicha 'intervalo') com lotes, ordens, caixas e paradas
   const FI = await o.evaluate(([X, exPar]) => { const S = vacFicha._S, pg = id => vacFicha.FONTES.find(f => f.id === id).pega;
