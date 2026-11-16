@@ -36,6 +36,8 @@ O arquivo não é gerado de outro HTML ou de uma árvore TypeScript. JavaScript 
 5. Sev 1 é urgente e sev 2 atenção, inclusive no Portal e relatórios. Rastreabilidade por ordem/lote/equipamento segue relações existentes, sem presumir unicidade global.
 6. Layout não altera números, unidades, filtros, IDs, eventos, metas ou períodos. SQDCP permanece uma A4 paisagem e verde/vermelho conforme resultado versus meta.
 7. Não modificar fórmulas, interpretação de madrugada/turnos, classificação de paradas, OSM/MES/AM/TPM/Projetos ou estruturas de base sem autorização explícita.
+8. Pessoa = ID do cadastro (`usuarios[].codigo`); o nome é informativo e pode mudar no Portal. Quem grava guarda o ID ao lado do nome (`responsavelId`, `apoiosIds`, `responsibleId`, `userId`), quem mostra usa o nome atual e quem compara usa o ID, pelo `vacPessoa` (comum/bases). Nome repetido no cadastro não decide.
+9. Backup diário: o resultado vai para `vacBackupRegistro` (comum/bases), em `00. Backups/<módulo>/registro-backup.log` e no navegador; falha nunca fica em `catch(e){}`. O Portal › Versões mostra a última falha.
 
 ## Comandos na raiz
 
@@ -49,6 +51,8 @@ npm run test:plataforma
 npm run test:reprodutibilidade
 ```
 
-`npm run atualizar:metadados` valida e atualiza hashes após mudanças no código incorporado. `npm run dev` serve o próprio arquivo apenas para desenvolvimento. Não recriar build.py, aplicar_kit21.py ou um empacotador que dependa de páginas separadas. A regressão preserva as 68 suítes operacionais e os testes de integração da plataforma; testes de geradores removidos foram substituídos pela validação do HTML canônico.
+`node scripts/cenario-demo.cjs --gravar` refaz o cenário da demonstração (dados/cenario) com o formato e os exports do código atual; rodar depois de mudar exports ou formato de base. Os testes rodam sem internet: pedido externo reprova (testes/http-local.cjs).
+
+`npm run atualizar:metadados` valida e atualiza hashes após mudanças no código incorporado. `npm run dev` serve o próprio arquivo apenas para desenvolvimento. Não recriar build.py, aplicar_kit21.py ou um empacotador que dependa de páginas separadas. A regressão preserva as 69 suítes operacionais (68 + `tid_backup`) e os testes de integração da plataforma; testes de geradores removidos foram substituídos pela validação do HTML canônico.
 
 Resultados e exclusões: [CONSOLIDACAO](docs/CONSOLIDACAO.md). Pendências únicas: [PENDENCIAS](PENDENCIAS.md). O histórico anterior foi retirado da árvore ativa, sem apagar o histórico Git.

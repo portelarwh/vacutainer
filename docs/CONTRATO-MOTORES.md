@@ -32,3 +32,13 @@ Antes era só uma mensagem e a troca ficava bloqueada; um módulo parado conecta
 
 "Voltar e conferir" mantém a pasta. "Trocar mesmo assim" troca: o que está guardado no navegador continua no escopo desta pasta e volta quando ela for conectada de novo; só um formulário aberto e não salvo se perde. Testes: `tests/scopes.test.ts` e `tests/integracao.cjs`.
 
+
+## Pessoa pelo ID, registro do backup e cenário da demonstração (16/11/2026)
+
+Portal 1.9.40, Produção 2.4.78, Waste 1.12.9, Gel 2.36, Paradas 1.2.12, Equipamentos 1.0.17, Iniciativas 1.1.13, Linha 360° 1.1.4.
+
+- **Pessoa = ID** (`vacPessoa`, em comum/bases). `id(nome, idGuardado)`, `nome(id, nomeGuardado)` (nome atual do cadastro), `mesma(aId, aNome, bId, bNome)` (pelo ID quando os dois têm), `eu()` (sessão), `deTexto(t)` (ID ou nome digitado → `{id, nome}`; fora do cadastro fica só o nome; nome repetido no cadastro fica sem ID). Campos novos, opcionais: Iniciativas `responsavelId`, `apoiosIds`, `criadaPorId` e eventos `deId`/`paraId`; Equipamentos `responsavelId`, `criadaPorId`; Produção `ps.responsibleId`, `day.responsibleId` e `auditLog[].userId`. Os exports de Iniciativas e Equipamentos publicam o nome atual e o ID. Portal › Pendências e ações: Minhas e Minha equipe comparam pelo ID (registro antigo só com nome vale pelo nome).
+- **Registro do backup** (`vacBackupRegistro`, em comum/bases): cada módulo registra o backup diário (ok ou falha, erro, pessoa e ID, versão) em `00. Backups/<módulo>/registro-backup.log` (JSON por linha, 50 últimas; extensão .log para não contar como backup) e em `vac.backup.<módulo>` no navegador. Portal › Versões lê os dois: falha mais nova que o último ok = aviso crítico e pendência urgente. Produção: a falha continua impedindo a gravação.
+- **Cenário da demonstração**: `node scripts/cenario-demo.cjs --gravar` abre cada módulo em demonstração, aplica pelo código da página os dados fictícios que faltavam (caixas do MES pelo importador, lote confirmado no dia, desvio da KKBC dividido em estrutura/empregado/preço, lote no PCP do Gel, data de leitura da produção pelo Gel) e grava as bases e exports atuais com as datas de volta ao dia de referência.
+- **Paradas 1.2.12**: na demonstração a 1ª tela era montada antes do kit carregar (vacLayout); agora espera o documento terminar.
+- **Testes sem internet**: `testes/http-local.cjs` atende as bibliotecas pela CDN com os blocos `biblioteca/*` e reprova qualquer outro pedido à internet.
