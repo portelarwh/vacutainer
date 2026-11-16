@@ -15,5 +15,7 @@ Após a consolidação, caminhos para paginas/ e fontes/ no histórico referem-s
 | Distribuição | Procedimentos antigos de copiar HTMLs separados correspondem à distribuição anterior. O produto novo é Plataforma.html; a troca só ocorre conforme CORTE.md, sem misturar versões após o aceite. |
 | Arquiteturas | ARQUITETURA.md descreve a implementação atual. ARQUITETURA-v1.md descreve requisitos de evolução. Ambos são obrigatórios; a lista de conceitos do segundo não é uma ordem para duplicar módulos como Produção/OEE ou Iniciativas/Ações. |
 | Identificadores | Códigos preservados como texto; normalização e escopo devem seguir os contratos atuais. Não presumir unicidade global ou alterar vínculo ordem/lote nesta rodada visual. |
+| Pessoas | R-02 usa ID. Nome antigo só resolve uma pessoa quando é único no cadastro; homônimo ou nome não cadastrado fica a confirmar. Não reintroduzir comparação direta por nome. A implantação nos demais campos segue R02-B da lista única. |
+| Backup | O log compartilhado antigo é somente lido. A escrita é por perfil/estação, com fallback por instância e leitura consolidada. Teste em OPFS não comprova SMB. Falha sem pasta é visível localmente; não prometer que outra estação recebeu um registro que não chegou à rede. |
 
 A auditoria histórica e os registros de decisões são preservados. Quando um ponto for resolvido, registre decisão, escopo, data, fonte e critérios de aceite, com ligação ao documento vigente.
