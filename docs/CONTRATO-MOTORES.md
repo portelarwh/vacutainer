@@ -10,7 +10,8 @@ As regras estão nos blocos motor/* do Plataforma.html. O bloco compartilhado co
 | `ir(aba, hash?, contexto?)` | Delega à navegação existente, preservando ficha/ordem/lote e os filtros do motor. |
 | `abas()` | Publica rotas e rótulos do próprio motor; a casca não mantém uma segunda lista. |
 | `abrirOrdem(numero)` | Abre a ficha pelo código textual, sem converter zeros à esquerda. |
-| `comandos()/comando(id)` | Reaproveita os comandos existentes do cabeçalho, incluindo Voltar, relatório, backup e TV. |
+| `comandos()/comando(id)` | Reaproveita os comandos do cabeçalho: `{id,label,dica,disabled,itens?}`. `itens` contém os comandos dos menus TV/Mais. A casca chama o mesmo ID do item original; descrições não viram rótulos longos. |
+| `diagnostico()` | Consulta assíncrona, sem criar pasta/arquivo: nome da base, pasta de backup, fila durável do módulo e registros já disponíveis de backup; erros são informados. |
 | `info()` | Versão, indicadores separados em `estado: [{texto,tom}]`, `situacaoPagina` e autorização de impressão. |
 | `atualizar()/imprimir()` | Releitura e impressão pelo próprio motor. |
 | `pode(modulo,acao)` | Mesma regra pura do kit em permissoes.mjs; linha usa o módulo equip. |
@@ -60,3 +61,9 @@ Atalhos e impressão continuam usando as rotas e permissões existentes. O paine
 - Rotas antigas do Portal (`#/portal?tab=fila`, `#/portal?rota=#fila`, `#reuniao=…`, `#importacao/<sec>`, `#rel`, `#geral`) são normalizadas para a página nova (`normalizeRoute`), e o endereço é reescrito. Links dos módulos para o Portal (`vacPortalHref`) continuam valendo.
 - `vacPagina.info().aba` (opcional): a tela aberta no módulo (`App.tab`). A casca acompanha quando o Portal troca de aba sozinho (ex.: "Ver todas" vai para Pendências); o estado é publicado a cada 1,8 s e logo depois de um clique.
 - Nenhum dado, cálculo, permissão ou gravação mudou: o Portal é o mesmo motor, só mostrado em outro lugar.
+
+## Identidade e consulta de Status — 1.4.0 (16/11/2026)
+
+Extensão autorizada de R02-B, mantendo schemaVersion 1: Paradas acrescenta `tecnicoId` e `porId` na parte técnica e publica técnico/nome atual e ID nos eventos; Waste guarda `userId`, `alteradoPorId`, `excluidoPorId` e o ID do autor de cada versão no histórico do comentário; Linha 360° guarda `pessoasIds[turno]` ao lado de `pessoas[turno]`, publica os dois e registra `porId` na conclusão do checklist. Campos são opcionais e aditivos. Não há migração em lote de bases reais. Texto livre e homônimos sem ID continuam sem associação automática. Editar outro campo preserva o ID escolhido mesmo com nomes iguais.
+
+O Status usa `info()` para estado corrente e `diagnostico()` para consultar registros existentes do próprio módulo. Revisão/publicação das demais bases vêm dos resumos já lidos pela casca. Publicação não comprova importação completa; um log de sucesso não substitui verificar a cópia física. A operação não concede permissão, não calcula indicadores e não grava bases. A nomenclatura visual preserva IDs internos como portal e valores canônicos como paginaInicial=Portal.

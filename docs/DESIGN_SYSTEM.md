@@ -136,3 +136,12 @@ O responsável aprovou a proposta visual e sua aplicação completa. A versão 1
 - **Impressão:** Exportar resumo da visão inicial usa o mesmo recorte e valores do dashboard, com unidades, cobertura e referência das ações. O relatório compilado mantém a granularidade de cada módulo. A nova escala operacional é de tela; os PDFs específicos e o SQDCP A4 mantêm seus formatos.
 
 A preparação usa dados fictícios em 390/768/1440/1920 px, claro/escuro, navegação offline e os nove módulos. Aprovação visual não substitui validação das jornadas por perfil (E10c), conferência corporativa, impressora/Outlook ou homologação da pasta da linha.
+
+## 18. Acessibilidade e Status — plataforma 1.4.0 (16/11/2026)
+
+- Metadados técnicos saem da barra das abas. O botão **Status**, no cabeçalho da página, abre versão, arquivo da base, revisão, publicação, cadastro, conexão, permissão, fila e registros de backup. Falha de consulta é informada; falta de registro não comprova sucesso. Erro, alterações pendentes e somente leitura continuam visíveis fora da janela.
+- TV e Mais são menus recolhíveis. O rótulo identifica o comando; a explicação aparece no título ou na descrição do item. Setas/Home/End percorrem itens; Escape devolve o foco. Ctrl K abre diretamente no campo de busca; diálogos devolvem foco ao comando de origem.
+- Os seis textos pequenos da casca têm piso de 12 px; Guia e Sair da demonstração têm alvo de 40 px. A escala operacional da seção 11 continua valendo; isso não autoriza reduzir corpo/tabelas a 12 px.
+- A paleta mantém seus valores. Fundos fortes usam tinta adequada ao tema; grupos/códigos podem usar a mesma cor em borda e fundo suave, com texto legível. Atenuação por opacidade não pode tornar ilegível um estado sem dados/em construção. Verde/vermelho continuam com seus significados operacionais.
+- `testes/plataforma/contraste.cjs` mede texto HTML, valores/placeholder e opacidade sobre fundos sólidos nos dois temas, percorrendo abas dos nove módulos e janelas de Status, além de busca e TV em foco/hover. O teste informa os fundos não suportados; SVG/canvas, imagens/gradientes, popups nativos, pseudoelementos decorativos e impressão exigem conferência própria. Não declarar conformidade WCAG integral com base nesse ensaio.
+- Destinos visíveis: Administração para cadastros; Importações para carga/conferência; Visão da linha para acompanhamento. Valores antigos, rotas e IDs permanecem compatíveis; não substituir nomes em dados históricos.
