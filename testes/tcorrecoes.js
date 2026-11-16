@@ -52,7 +52,7 @@ const CAD = { equipamentos: ['EQ01', 'EQ02', 'EQ03', 'EQ 04/B'].map(c => ({ codi
     const ctx = await b.newContext(); const p = await nova(ctx, 'Portal.html');
     const prep = () => { enterTest(); const h = todayISO(); const C = vacCad() || JSON.parse(JSON.stringify(Cad.base || {})); C.usuarios = [{ codigo: '1', nome: 'Ana', ativo: true }, { codigo: '2', nome: 'Bia', ativo: true }]; if (Cad.base) Cad.base.usuarios = C.usuarios; localStorage.setItem('vac.cadastros', JSON.stringify(C));
       localStorage.setItem('vac.user', 'Ana'); localStorage.setItem('vac.userId', '1');
-      const ac = (id, t, resp) => ({ id, titulo: t, status: 'em andamento', responsavel: resp, apoios: [], prazo: addDays(h, -1), atrasada: true, origem: { tipo: 'manual' }, vinculos: [], checklist: [0, 0] });
+      const ac = (id, t, resp) => ({ id, titulo: t, status: 'em andamento', responsavel: resp, responsavelId: resp === 'Ana' ? '1' : '2', apoios: [], prazo: addDays(h, -1), atrasada: true, origem: { tipo: 'manual' }, vinculos: [], checklist: [0, 0] });
       MOD.data.inic = { sys: sysOf('inic'), kpis: [], pend: [], ex: { exportsVersion: 1, acoes: [ac('AC-A', 'Tarefa da Ana', 'Ana'), ac('AC-B', 'Tarefa da Bia', 'Bia')] } }; App.show('fila'); };
     await ev(p, prep); await p.waitForTimeout(200);
     const lista = pg => ev(pg, () => [...document.querySelectorAll('.fl-i')].map(x => x.querySelector('.fl-t div').textContent).join(','));
