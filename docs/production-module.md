@@ -347,3 +347,22 @@ Também devem ser validados:
 - `mes-integration.md`
 - `dashboard-style-guide.md`
 - `architecture-decisions.md`
+
+
+## 20. Situação da implementação (Produção 2.5.0 · 17/11/2026)
+
+Entregue nesta versão: a **Timeline operacional** (seções 6 a 12, 14 e 15), como aba "Linha do tempo" da Produção. Detalhes em `timeline-operacional.md` › Implementação.
+
+| Item | Situação |
+|---|---|
+| Timeline nível 1 e 2, tooltip, detalhes, legenda, zoom (6, 12) | Entregue |
+| Três origens numa estrutura comum, prioridade e divisão de intervalos (7, 9) | Entregue; MES e tags por importação de arquivo |
+| Mapa de tags administrável, com vigência (8) | Entregue (Configurações › Mapa de tags) |
+| Atualização sem recarregar (10) | Entregue nesta estação; entre estações, pela releitura da pasta |
+| Indicadores de tempo, ocorrências e máquina com maior perda (5) | Entregue |
+| Produção realizada, meta e aderência no mesmo topo (5) | Pendente: continuam nas abas Visão Geral e Lançamento |
+| Filtros Ordem e Lote (4) | Pendente: ordem e lote aparecem nos detalhes do bloco |
+| Auditoria (14) | Entregue para comentário, importação de tags e mapa; a parada do operador segue a auditoria que já existia |
+| Permissões (13) | Usa as ações que já existem (ver, lançar, importar, configurar); validar = fechar o dia. Perfis específicos de supervisão não foram criados |
+| Estados da interface (15) | Entregue |
+| Endpoints (18) | Não se aplica: a plataforma não tem servidor |

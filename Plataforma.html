@@ -7221,6 +7221,49 @@ a.vic{display:inline-flex;align-items:center;justify-content:center;text-decorat
 nav.vtabs .tabs{scroll-padding-left:12px}
 .vapps,.tabs{max-width:100%}
 
+
+/* ===== Timeline Operacional (2.5.0) ===== */
+.tlo-f .f>.seg{margin-top:2px}
+.tlo-k{grid-template-columns:repeat(auto-fill,minmax(176px,1fr));margin-top:12px}
+.tlo-card{position:relative}
+.tlo-hd{display:flex;flex-wrap:wrap;gap:8px 12px;align-items:center}
+.tlo-hd h3{white-space:nowrap}
+.tlo-leg{display:flex;flex-wrap:wrap;gap:6px 18px;align-items:center;padding:8px 2px 10px;font-size:13px;position:sticky;top:0;z-index:5;background:var(--surface)}
+.tlo-leg span{display:inline-flex;align-items:center;gap:6px;white-space:nowrap}
+.tlo-sw{display:inline-block;width:16px;height:12px;border-radius:3px;vertical-align:-1px;flex:none;background:var(--none)}
+.tlo-sw.prod{background:var(--ok)}
+.tlo-sw.parada{background:var(--crit) repeating-linear-gradient(135deg,rgba(255,255,255,.45) 0 1.5px,transparent 1.5px 5px)}
+.tlo-sw.bloq{background:var(--pend) repeating-linear-gradient(90deg,rgba(255,255,255,.45) 0 1.5px,transparent 1.5px 4px)}
+.tlo-sw.ociosa{background:var(--muted) radial-gradient(rgba(255,255,255,.5) 1px,transparent 1.2px) 0 0/4px 4px}
+.tlo-sw.mk{background:linear-gradient(135deg,var(--surface) 0 42%,var(--crit) 42%);border:1px solid var(--line)}
+.tlo-sw.sc{background:var(--crit);outline:1.5px dashed var(--ink);outline-offset:-2px}
+.tlo-box{position:relative;overflow:auto;border:1px solid var(--line);border-radius:var(--r);background:var(--surface);max-height:560px;overscroll-behavior:contain}
+.tlo-box:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.tlo-in{display:flex;width:max-content;min-width:100%}
+.tlo-lab{position:sticky;left:0;z-index:3;width:190px;flex:none;background:var(--surface);border-right:1px solid var(--line)}
+.tlo-lab .hd{position:sticky;top:0;z-index:4;background:var(--surface);border-bottom:1px solid var(--line);height:80px;box-sizing:border-box}
+.tlo-lab .ax{height:26px;display:flex;align-items:center;padding:0 10px;font-size:11.5px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em}
+.tlo-lab .mc{height:48px;display:flex;flex-direction:column;justify-content:center;padding:0 10px;line-height:1.25}
+.tlo-lab .mc span{font-size:11.5px;color:var(--muted)}
+.tlo-lab .r{height:28px;display:block;line-height:28px;padding:0 10px;font-size:12.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;box-sizing:border-box}
+.tlo-lab .r:nth-child(odd){background:color-mix(in srgb,var(--line) 22%,transparent)}
+.tlo-lab .r b{font-weight:600;color:var(--muted);font-size:11.5px;margin-right:4px}
+.tlo-plot{position:relative;flex:none}
+.tlo-plot canvas{position:sticky;top:0;left:190px;display:block}
+.tlo-nota{margin:8px 0 0}
+.tlo-tip{position:fixed;z-index:200;max-width:320px;padding:9px 11px;border-radius:8px;background:var(--ink);color:var(--surface);font-size:12.5px;line-height:1.45;box-shadow:0 6px 24px rgba(0,0,0,.28);pointer-events:none;display:flex;flex-direction:column;gap:1px}
+.tlo-tip[hidden]{display:none}
+.tlo-tip b{font-weight:700}.tlo-tip .o{opacity:.75;margin-top:3px;font-size:11.5px}
+.tlo-tit{font-size:16px;margin:0 0 12px;display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.tlo-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:10px 16px}
+.tlo-c{display:flex;flex-direction:column;gap:2px;min-width:0}
+.tlo-c span{font-size:11.5px;color:var(--muted);text-transform:uppercase;letter-spacing:.04em}
+.tlo-c b{font-weight:600;font-size:14px;overflow-wrap:anywhere}
+.tlo-h{margin:16px 0 6px;font-size:13px}
+.tlo-com{white-space:pre-wrap;overflow-wrap:anywhere;padding:10px 12px;border:1px solid var(--line);border-radius:var(--r);background:var(--surface-3);font-size:14px;line-height:1.5}
+#tldCom{width:100%;box-sizing:border-box;font:inherit;padding:8px 10px;border:1px solid var(--line);border-radius:var(--r);background:var(--surface);color:var(--ink)}
+#tloOc tr.click:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
+@media print{.tlo-box{max-height:none!important;overflow:visible}.tlo-tip{display:none!important}}
 </style>
 @@vac:comum/visual@@
 @@vac:comum/bases@@
@@ -7326,7 +7369,7 @@ const U = (() => {
 
 /* ---- 02-model.js ---- */
 /* ================= modelo de dados, valores iniciais e integridade ================= */
-const APP_VERSION = '2.4.82';
+const APP_VERSION = '2.5.0';
 const SCHEMA_VERSION = 1;
 const BASE_FILE = 'oee-vacutainer-base.json';
 const BACKUP_DIR = '00. Backups';
@@ -7443,6 +7486,10 @@ const Model = (() => {
     if (!db.server.lotClass || typeof db.server.lotClass !== 'object') db.server.lotClass = {};
     if (typeof ServerData !== 'undefined') ServerData.semCaixaRepetida(db.server);   /* 2.4.63 · base com dias importados antes da correção da 1ª linha do MES */
     if (!db.server.dayLot || typeof db.server.dayLot !== 'object') db.server.dayLot = {};
+    /* 2.5.0 · Timeline Operacional: bloco aditivo (mapa de tags, eventos de tag, comentários, importações); base antiga sem ele continua válida */
+    if (!db.timeline || typeof db.timeline !== 'object') db.timeline = {};
+    for (const k of ['tagMap', 'tagEvents', 'imports']) if (!Array.isArray(db.timeline[k])) db.timeline[k] = [];
+    if (!db.timeline.comments || typeof db.timeline.comments !== 'object') db.timeline.comments = {};
     // retrabalho: pela política da empresa o tempo e as peças saem do OEE (desconta do planejado, fora do Pareto)
     if (db.downtimeCodes.length &amp;&amp; !db.downtimeCodes.some(c => c.code === 'RTB')) db.downtimeCodes.push({ id: db.downtimeCodes.some(c => c.id === 'dc_RTB') ? U.uid('dc') : 'dc_RTB', code: 'RTB', name: 'Retrabalho (fora do OEE)', description: 'Tempo de retrabalho de lote: sai do tempo planejado e as peças não contam (política da empresa).', category: 'Planejada', subcategory: 'Retrabalho', color: '#a3adb8', planned: true, deductsPlanned: true, affectsA: false, affectsP: false, affectsQ: false, inReport: true, inPareto: false, requiresNote: false, requiresTimes: false, allowsManualDuration: true, requiresPrevCatalog: false, requiresNextCatalog: false, validFrom: '2025-01-01', validTo: null, active: true, ...meta('Sistema') });
     if (db.databaseVersion == null) db.databaseVersion = 0;
@@ -10688,8 +10735,8 @@ const App = {
   views: {}, drawer: null, nextFocus: null
 };
 // abas agrupadas por jornada: Operação → Análise → Planejamento → Gestão
-const ROUTES = [['launch', 'Lançamento'], ['hourly', 'Hora a Hora'], ['pend', 'Pendências'], ['overview', 'Visão Geral'], ['stops', 'Paradas'], ['history', 'Histórico'], ['weekly', 'Semanal'], ['monthly', 'Mensal'], ['plan', 'Plano do mês'], ['lots', 'Lotes'], ['panel', 'Painel'], ['reports', 'Relatórios'], ['sqdcp', 'SQDCP'], ['equip', 'Equipamentos'], ['config', 'Configurações']];
-const ROUTE_GROUP = { launch: 'Operação', hourly: 'Operação', pend: 'Operação', overview: 'Análise', stops: 'Análise', history: 'Análise', weekly: 'Análise', monthly: 'Análise', plan: 'Planejamento', lots: 'Planejamento', panel: 'Gestão', reports: 'Gestão', sqdcp: 'Gestão', equip: 'Gestão', config: 'Gestão' };
+const ROUTES = [['launch', 'Lançamento'], ['hourly', 'Hora a Hora'], ['pend', 'Pendências'], ['overview', 'Visão Geral'], ['stops', 'Paradas'], ['timeline', 'Linha do tempo'], ['history', 'Histórico'], ['weekly', 'Semanal'], ['monthly', 'Mensal'], ['plan', 'Plano do mês'], ['lots', 'Lotes'], ['panel', 'Painel'], ['reports', 'Relatórios'], ['sqdcp', 'SQDCP'], ['equip', 'Equipamentos'], ['config', 'Configurações']];
+const ROUTE_GROUP = { launch: 'Operação', hourly: 'Operação', pend: 'Operação', overview: 'Análise', stops: 'Análise', timeline: 'Análise', history: 'Análise', weekly: 'Análise', monthly: 'Análise', plan: 'Planejamento', lots: 'Planejamento', panel: 'Gestão', reports: 'Gestão', sqdcp: 'Gestão', equip: 'Gestão', config: 'Gestão' };
 const $ = (s, r = document) => r.querySelector(s);
 const $$ = (s, r = document) => [...r.querySelectorAll(s)];
 const db = () => Store.S.db;
@@ -12125,7 +12172,7 @@ function projection(days, ff, from, to) {
 
 /* ---- 11-ui-config.js ---- */
 /* ================= Configurações ================= */
-const CFG_SECS = [['base', 'Base de dados'], ['usuario', 'Usuário'], ['estrutura', 'Estrutura'], ['turnos', 'Turnos'], ['catalogos', 'Catálogos'], ['metas', 'Metas e capacidades'], ['paradas', 'Tipos de parada'], ['parametros', 'Parâmetros de cálculo'], ['abas', 'Abas'], ['importacao', 'Importação'], ['exportacao', 'Exportação'], ['auditoria', 'Auditoria'], ['ajuda', 'Ajuda e aceite']];
+const CFG_SECS = [['base', 'Base de dados'], ['usuario', 'Usuário'], ['estrutura', 'Estrutura'], ['turnos', 'Turnos'], ['catalogos', 'Catálogos'], ['metas', 'Metas e capacidades'], ['paradas', 'Tipos de parada'], ['tags', 'Mapa de tags'], ['parametros', 'Parâmetros de cálculo'], ['abas', 'Abas'], ['importacao', 'Importação'], ['exportacao', 'Exportação'], ['auditoria', 'Auditoria'], ['ajuda', 'Ajuda e aceite']];
 const Cfg = {};
 App.views.config = {
   render() {
@@ -13368,6 +13415,478 @@ function constructionPage(k, title) {
   return `<div class="empty" style="padding:48px 20px"><div style="font-size:40px" aria-hidden="true">🚧</div><h2 style="margin:8px 0">${esc(title)} · em construção</h2><p>${esc(t.msg || 'Esta tela ainda está sendo preparada.')}</p><p class="small muted">O estado das telas é definido em Configurações › Abas.</p></div>`;
 }
 /* 2.4.82 · o cadastro de equipamentos fica na página Equipamentos: a aba leva até lá (na plataforma, a casca já abre a página direto) */
+/* ================= Timeline Operacional (2.5.0 · docs/timeline-operacional.md) =================
+   Motor (sem tela): junta as três origens numa estrutura única de eventos, resolve sobreposições pela prioridade e devolve, para a linha e
+   para cada máquina, uma sequência contínua de trechos (sem buraco e sem sobreposição) classificados em Produzindo, Parada, Bloqueada ou Ociosa.
+   Não altera OEE, metas, classificação de paradas nem nenhum número existente: só lê day.events, db.server e db.timeline.
+   Tempo: minutos absolutos de relógio local (o mesmo de ServerData.tm), fracionários.
+   Prioridade (maior vence): Operador validado (dia fechado) 50 · parada registrada a partir do MES (troca, retrabalho, planilha) 40 ·
+   Operador ainda não validado 30 · intervalo sem caixas do MES 25 · Tag 20 (+ prioridade do mapa ÷ 10) · produção inferida pelas caixas do MES 10 ·
+   estado padrão 0 (dentro de turno produtivo = Produzindo; fora = Ociosa). O intervalo sem caixas e a produção são inferidos da contagem de
+   caixas (não dizem máquina nem motivo), por isso ficam abaixo do registro de uma pessoa, mesmo não validado. */
+const Timeline = (() => {
+  const EST = ['prod', 'parada', 'bloq', 'ociosa'];
+  const NOME = { prod: 'Produzindo', parada: 'Parada', bloq: 'Bloqueada', ociosa: 'Ociosa' };
+  const FONTE = { op: 'Operador', mes: 'MES', tag: 'Tag automática', padrao: 'Estado padrão' };
+  const RANK = { opVal: 50, mes: 40, op: 30, mesGap: 25, tag: 20, mesProd: 10 };
+  const MAX_DIAS = 31;
+  /* mapeamento inicial de tags (vale enquanto não houver linha própria no Mapa de tags) */
+  const TAGS_PADRAO = [['RUN', 'Produzindo', 'prod', 'Estado'], ['RUNNING', 'Produzindo', 'prod', 'Estado'], ['PRODUZINDO', 'Produzindo', 'prod', 'Estado'],
+    ['STOP', 'Parada', 'parada', 'Estado'], ['PARADA', 'Parada', 'parada', 'Estado'], ['FAULT', 'Falha do equipamento', 'parada', 'Falha'], ['FALHA', 'Falha do equipamento', 'parada', 'Falha'], ['ALARM', 'Alarme', 'parada', 'Falha'],
+    ['BLOCKED', 'Bloqueada na saída', 'bloq', 'Fluxo'], ['BLOQUEADA', 'Bloqueada', 'bloq', 'Fluxo'], ['STARVED', 'Sem alimentação na entrada', 'bloq', 'Fluxo'],
+    ['IDLE', 'Ociosa', 'ociosa', 'Estado'], ['OCIOSA', 'Ociosa', 'ociosa', 'Estado'], ['STANDBY', 'Em espera', 'ociosa', 'Estado']];
+  const norm = s => String(s == null ? '' : s).trim().toUpperCase();
+  const tm = s => ServerData.tm(String(s).length === 16 ? s + ':00' : String(s));
+  const iso = m => ServerData.fromMin(m);
+  const diaDe = m => iso(m).slice(0, 10);
+  const inicioDia = d => ServerData.dayStartMin(d);
+  const relogio = () => { const d = new Date(); return Date.UTC(d.getFullYear(), d.getMonth(), d.getDate(), d.getHours(), d.getMinutes(), d.getSeconds()) / 60000; };
+  function store(db) {
+    if (!db.timeline || typeof db.timeline !== 'object') db.timeline = {};
+    for (const k of ['tagMap', 'tagEvents', 'imports']) if (!Array.isArray(db.timeline[k])) db.timeline[k] = [];
+    if (!db.timeline.comments || typeof db.timeline.comments !== 'object') db.timeline.comments = {};
+    return db.timeline;
+  }
+  /* estado macro de um tipo de parada da Produção quando o Mapa de tags não diz outra coisa:
+     desconta do tempo planejado (refeição, sem programação, retrabalho) = Ociosa; logística/falta de material = Bloqueada; o resto = Parada */
+  function estadoDoCodigo(c) { if (!c) return 'parada'; if (c.deductsPlanned) return 'ociosa'; if (/log[ií]stica/i.test(c.category || '') || c.code === 'FMA') return 'bloq'; return 'parada'; }
+  /* devolve (código, máquina, data) → linha do mapa vigente na data do evento (a configuração usada fica rastreável: mapId) */
+  function resolvedor(db) {
+    const idx = new Map();
+    for (const e of store(db).tagMap) { if (e.deleted) continue; const k = norm(e.code); if (!idx.has(k)) idx.set(k, []); idx.get(k).push(e); }
+    const pad = new Map(TAGS_PADRAO.map(t => [t[0], { code: t[0], description: t[1], state: t[2], category: t[3], priority: 0, padrao: true }]));
+    return (code, machineId, data) => {
+      const k = norm(code), L = idx.get(k);
+      if (L) { const ok = L.filter(e => (!e.validFrom || e.validFrom <= data) &amp;&amp; (!e.validTo || e.validTo >= data) &amp;&amp; (!e.machineId || e.machineId === machineId));
+        if (ok.length) { const m = ok.sort((x, y) => (y.machineId ? 1 : 0) - (x.machineId ? 1 : 0) || (y.validFrom || '').localeCompare(x.validFrom || ''))[0]; return m.active === false ? { code: k, inativa: true } : m; } }   /* linha desativada: a tag não participa do cálculo */
+      return pad.get(k) || null;
+    };
+  }
+  /* janelas de turno produtivo (estado padrão = Produzindo) e todas as janelas de turno (para o filtro Turno) no intervalo de datas */
+  function janelas(db, lineId, d0, d1) {
+    const prod = [], todas = [], dias = new Map((db.productionDays || []).filter(d => !d.deleted &amp;&amp; d.lineId === lineId).map(d => [d.date, d]));
+    for (let d = d0; d <= d1; d = U.addDays(d, 1)) {
+      const base = inicioDia(d), day = dias.get(d), off = Engine.isOffDay(db, { date: d, lineId });
+      const add = (id, nome, s, e, produtivo) => { if (s == null || e == null) return; if (e <= s) e += 1440; const w = { a: base + s, b: base + e, id, nome, data: d, produtivo }; todas.push(w); if (produtivo &amp;&amp; !off) prod.push(w); };
+      if (day &amp;&amp; (day.shifts || []).some(p => !p.deleted)) for (const p of day.shifts) { if (p.deleted || !p.snap) continue; add(p.shiftId || p.id, p.snap.name, U.toMin(p.snap.start), U.toMin(p.snap.end), !p.off &amp;&amp; p.productive !== false); }
+      else for (const x of Engine.activeShiftsAt(db, d, lineId, null, true)) add(x.shift.id, x.shift.name, U.toMin(x.v.start), U.toMin(x.v.end), x.v.productive !== false);
+    }
+    prod.sort((x, y) => x.a - y.a); todas.sort((x, y) => x.a - y.a);
+    return { prod, todas };
+  }
+  /* estrutura comum dos eventos: {id, src, machineId, state, code, reason, category, a, b, open, note, by, createdAt, updatedBy, updatedAt, validated, rank, ...} */
+  function coletar(db, a, b, lineId, agora) {
+    const T = store(db), res = resolvedor(db), linha = [], porMaq = new Map(), semHorario = [], semMapa = new Map();
+    const push = (mid, ev) => { if (!porMaq.has(mid)) porMaq.set(mid, []); porMaq.get(mid).push(ev); };
+    const d0 = diaDe(a - 1440), d1 = diaDe(b), maq = new Map((db.machines || []).map(m => [m.id, m])), cods = new Map((db.downtimeCodes || []).map(c => [c.id, c]));
+    // 1) operador (e paradas que a própria Produção gerou a partir do servidor): day.events com horário
+    for (const day of db.productionDays || []) {
+      if (day.deleted || day.lineId !== lineId || day.date < d0 || day.date > d1) continue;
+      const base = inicioDia(day.date), val = day.status === 'fechado';
+      for (const e of day.events || []) {
+        if (e.deleted) continue; const c = cods.get(e.codeId) || null, doServ = !!(e.srvRework || e.srvSetup || e.importSrc);
+        if (e.start == null || e.end == null) { if (base + 1440 * 2 > a &amp;&amp; base < b) semHorario.push({ dia: day.date, codigo: c ? c.code : '?', nome: c ? c.name : 'Código removido', minutos: +e.minutes || 0, id: e.id }); continue; }
+        const x = base + e.start, y = base + e.end; if (y <= a || x >= b || y <= x) continue;
+        const mp = res(c ? c.code : '', e.equipmentId || null, day.date), st = mp &amp;&amp; !mp.inativa &amp;&amp; !mp.padrao ? mp.state : estadoDoCodigo(c);
+        const ev = { id: e.id, src: doServ ? 'mes' : 'op', machineId: e.equipmentId || null, state: st, code: c ? c.code : '?', reason: c ? c.name : 'Código removido', category: c ? c.category : '', a: x, b: y, open: false,
+          note: e.note || '', by: e.createdBy || '', createdAt: e.createdAt || '', updatedBy: e.updatedBy || '', updatedAt: e.updatedAt || '', validated: val, dia: day.date, evId: e.id, auto: !!e.auto, mapId: mp &amp;&amp; mp.id || null,
+          rank: doServ ? RANK.mes : val ? RANK.opVal : RANK.op };
+        linha.push(ev); if (ev.machineId) push(ev.machineId, ev);
+      }
+    }
+    // 2) MES: trechos com caixas = produção inferida; intervalos sem caixa (acima do limite da importação) = parada do MES
+    const S = db.server || {}, IMP = (S.imports || []).slice().sort((x, y) => (x.at || '') < (y.at || '') ? -1 : 1), ult = IMP[IMP.length - 1] || {};
+    let mesAte = null;
+    for (const s of S.segments || []) { if (s.lineId !== lineId || !s.t0 || !s.t1) continue; const x = tm(s.t0), y = tm(s.t1); if (mesAte == null || y > mesAte) mesAte = y; if (y <= a || x >= b || y <= x) continue;
+      linha.push({ id: 'mes-seg|' + s.t0, src: 'mes', machineId: null, state: 'prod', code: 'CAIXAS', reason: 'Caixas passando na estação de medição', category: 'Produção', a: x, b: y, open: false, note: '', by: ult.by || '', createdAt: ult.at || '', updatedBy: ult.by || '', updatedAt: ult.at || '',
+        validated: true, lot: s.lot || '', cat: s.cat || '', inferido: true, rank: RANK.mesProd }); }
+    for (const g of S.gaps || []) { if (g.lineId !== lineId || !g.from || !g.to) continue; const x = tm(g.from), y = tm(g.to); if (y <= a || x >= b || y <= x) continue; const k = 'mes-gap|' + g.from, cm = T.comments[k];
+      linha.push({ id: k, src: 'mes', machineId: null, state: 'parada', code: 'SEM-CAIXA', reason: 'Sem caixas na estação de medição', category: 'MES', a: x, b: y, open: false, note: cm ? cm.text : '', by: ult.by || '', createdAt: ult.at || '', updatedBy: cm ? cm.by : ult.by || '', updatedAt: cm ? cm.at : ult.at || '',
+        validated: true, comentavel: true, inferido: true, rank: RANK.mesGap }); }
+    // 3) tags automáticas: db.timeline.tagEvents {id, m (máquina), t (tag), s (início), e (fim ou null = em aberto)}
+    for (const g of T.tagEvents) {
+      if (g.deleted || !g.s) continue; const x = tm(g.s), aberto = !g.e, y = aberto ? Math.max(agora, x) : tm(g.e); if (y <= a || x >= b || y < x || (aberto &amp;&amp; x > agora)) continue;
+      const m = maq.get(g.m) || null; if (m &amp;&amp; m.lineId &amp;&amp; m.lineId !== lineId) continue;
+      const mp = res(g.t, g.m || null, g.s.slice(0, 10)); if (mp &amp;&amp; mp.inativa) continue;
+      if (!mp) semMapa.set(norm(g.t), (semMapa.get(norm(g.t)) || 0) + 1);
+      const cm = T.comments[g.id];
+      const ev = { id: g.id, src: 'tag', machineId: g.m || null, state: mp ? mp.state : 'parada', code: norm(g.t), reason: mp ? mp.description || norm(g.t) : 'Tag sem classificação', category: mp ? mp.category || '' : '', a: x, b: y, open: aberto,
+        note: cm ? cm.text : g.c || '', by: g.by || '', createdAt: g.at || '', updatedBy: cm ? cm.by : g.uby || g.by || '', updatedAt: cm ? cm.at : g.uat || g.at || '', validated: false, semClasse: !mp, comentavel: true, mapId: mp &amp;&amp; mp.id || null, mapPadrao: !!(mp &amp;&amp; mp.padrao),
+        rank: RANK.tag + Math.max(0, Math.min(9, +(mp &amp;&amp; mp.priority) || 0)) / 10 };
+      if (!m || m.role === 'oee') linha.push(ev); else push(m.id, ev);
+    }
+    return { linha, porMaq, semHorario, semMapa, mesAte };
+  }
+  /* varredura: em cada instante vale o evento de maior prioridade (empate: o que começou depois); onde não há evento, o estado padrão */
+  function consolidar(evs, wins, a, b) {
+    const E = evs.filter(e => e.b > a &amp;&amp; e.a < b).sort((x, y) => x.a - y.a), n = E.length;
+    const P = new Float64Array(2 * n + 2 * wins.length + 2); let k = 0; P[k++] = a; P[k++] = b;
+    for (const e of E) { P[k++] = Math.max(a, e.a); P[k++] = Math.min(b, e.b); }
+    for (const w of wins) { if (w.b <= a || w.a >= b) continue; P[k++] = Math.max(a, w.a); P[k++] = Math.min(b, w.b); }
+    const pts = P.subarray(0, k).sort();
+    const H = []; const maior = (x, y) => x.rank > y.rank || (x.rank === y.rank &amp;&amp; x.a > y.a);
+    const sobe = i => { while (i > 0) { const p = (i - 1) >> 1; if (!maior(H[i], H[p])) break; [H[i], H[p]] = [H[p], H[i]]; i = p; } };
+    const desce = i => { for (;;) { let m = i; const l = 2 * i + 1, r = l + 1; if (l < H.length &amp;&amp; maior(H[l], H[m])) m = l; if (r < H.length &amp;&amp; maior(H[r], H[m])) m = r; if (m === i) break; [H[i], H[m]] = [H[m], H[i]]; i = m; } };
+    const tira = () => { const u = H.pop(); if (H.length) { H[0] = u; desce(0); } };
+    const out = []; let i = 0, wi = 0, ult = null;
+    for (let j = 0; j + 1 < pts.length; j++) {
+      const p = pts[j], q = pts[j + 1]; if (q - p < 1e-9) continue;
+      while (i < n &amp;&amp; E[i].a <= p + 1e-9) { H.push(E[i++]); sobe(H.length - 1); }
+      while (H.length &amp;&amp; H[0].b <= p + 1e-9) tira();
+      while (wi < wins.length &amp;&amp; wins[wi].b <= p + 1e-9) wi++;
+      const ev = H[0] || null, w = wi < wins.length &amp;&amp; wins[wi].a <= p + 1e-9 ? wins[wi] : null, st = ev ? ev.state : w ? 'prod' : 'ociosa';
+      if (ult &amp;&amp; ult.ev === ev &amp;&amp; ult.state === st &amp;&amp; ult.win === w) ult.b = q; else out.push(ult = { a: p, b: q, state: st, ev, win: w });
+    }
+    return out;
+  }
+  function totais(segs) { const t = { prod: 0, parada: 0, bloq: 0, ociosa: 0 }; for (const s of segs) t[s.state] += s.b - s.a; return t; }
+  /* modelo completo do período: f = {a, b, lineId, machineId, tipo, origem, agora} */
+  function modelo(db, f) {
+    if (!(f.b > f.a)) throw new Error('O fim do período precisa ser depois do início.');
+    if (f.b - f.a > MAX_DIAS * 1440) throw new Error('Período maior que ' + MAX_DIAS + ' dias. Reduza o intervalo.');
+    const agora = f.agora != null ? f.agora : relogio(), C = coletar(db, f.a, f.b, f.lineId, agora), J = janelas(db, f.lineId, diaDe(f.a - 1440), diaDe(f.b));
+    const passa = e => (!f.origem || e.src === f.origem) &amp;&amp; (!f.tipo || e.state === 'prod' || e.code === f.tipo);
+    const maqs = (db.machines || []).filter(m => !m.deleted &amp;&amp; m.lineId === f.lineId &amp;&amp; m.role !== 'oee' &amp;&amp; m.status !== 'inativo' &amp;&amp; m.active !== false &amp;&amp; (!f.machineId || m.id === f.machineId));
+    const evL = C.linha.filter(e => passa(e) &amp;&amp; (!f.machineId || !e.machineId || e.machineId === f.machineId));
+    const linha = { evs: evL, segs: consolidar(evL, J.prod, f.a, f.b) };
+    const rows = maqs.map(m => { const evs = (C.porMaq.get(m.id) || []).filter(passa); return { m, evs, segs: consolidar(evs, J.prod, f.a, f.b) }; });
+    const t = totais(linha.segs), total = f.b - f.a;
+    // ocorrências = blocos consolidados da linha que não são produção e vêm de um registro
+    const oc = linha.segs.filter(s => s.ev &amp;&amp; s.state !== 'prod'), ids = new Set(oc.map(s => s.ev.id)), perda = new Map();
+    for (const s of oc) if (s.state !== 'ociosa' &amp;&amp; s.ev.machineId) perda.set(s.ev.machineId, (perda.get(s.ev.machineId) || 0) + (s.b - s.a));
+    for (const r of rows) for (const s of r.segs) if (s.ev &amp;&amp; s.ev.src === 'tag' &amp;&amp; s.state !== 'prod' &amp;&amp; s.state !== 'ociosa') perda.set(r.m.id, (perda.get(r.m.id) || 0) + (s.b - s.a));
+    const top = [...perda.entries()].sort((x, y) => y[1] - x[1])[0] || null;
+    const abertos = evL.concat(...rows.map(r => r.evs)).filter(e => e.open).length;
+    return { a: f.a, b: f.b, agora, linha, rows, janelas: J, total, t, util: total ? t.prod / total : 0, soma: t.prod + t.parada + t.bloq + t.ociosa, nOcorr: ids.size,
+      maiorPerda: top ? { m: (db.machines || []).find(x => x.id === top[0]), min: top[1] } : null, semHorario: C.semHorario, semMapa: C.semMapa, mesAte: C.mesAte, abertos,
+      nEventos: C.linha.length + [...C.porMaq.values()].reduce((s, l) => s + l.length, 0) };
+  }
+  /* registros que perderam a prioridade num bloco (o dado original continua na base; aqui só se mostra quem não prevaleceu) */
+  function sobrepostos(evs, seg) { return evs.filter(e => e !== seg.ev &amp;&amp; e.b > seg.a + 1e-9 &amp;&amp; e.a < seg.b - 1e-9).sort((x, y) => y.rank - x.rank); }
+  /* ---------- importação de tags: CSV/texto com Máquina; Tag; Início; Fim (vazio = em aberto); Comentário (opcional) ---------- */
+  function lerData(s) {
+    s = String(s || '').trim(); if (!s) return null; let m;
+    if ((m = s.match(/^(\d{4})-(\d{2})-(\d{2})[T ](\d{1,2}):(\d{2})(?::(\d{2}))?/))) return `${m[1]}-${m[2]}-${m[3]}T${m[4].padStart(2, '0')}:${m[5]}:${m[6] || '00'}`;
+    if ((m = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})[ T](\d{1,2}):(\d{2})(?::(\d{2}))?/))) return `${m[3]}-${m[2].padStart(2, '0')}-${m[1].padStart(2, '0')}T${m[4].padStart(2, '0')}:${m[5]}:${m[6] || '00'}`;
+    return undefined;
+  }
+  function lerTags(db, texto) {
+    const L = String(texto || '').replace(/^﻿/, '').split(/\r?\n/).map(l => l.trim()).filter(Boolean), ok = [], erros = [];
+    if (!L.length) return { ok, erros: ['Nenhuma linha para importar.'] };
+    const sep = (L[0].match(/;/g) || []).length >= (L[0].match(/,/g) || []).length ? ((L[0].match(/\t/g) || []).length > (L[0].match(/;/g) || []).length ? '\t' : ';') : ',';
+    const cab = /m[aá]quina|machine|tag|in[ií]cio|start/i.test(L[0]) ? L.shift().split(sep).map(c => U.norm(c)) : null;
+    const col = (nomes, pad) => { if (!cab) return pad; const i = cab.findIndex(c => nomes.some(n => c.includes(n))); return i < 0 ? pad : i; };
+    const iM = col(['maquina', 'machine', 'equip'], 0), iT = col(['tag', 'codigo', 'code', 'estado', 'state'], 1), iS = col(['inicio', 'start', 'de'], 2), iE = col(['fim', 'end', 'termino', 'ate'], 3), iC = col(['coment', 'obs', 'comment'], 4);
+    const maqs = (db.machines || []).filter(m => !m.deleted), acha = v => { const k = U.norm(v); return maqs.find(m => U.norm(m.code) === k) || maqs.find(m => U.norm(m.name) === k) || null; };
+    L.forEach((l, n) => { const c = l.split(sep).map(x => x.trim().replace(/^"|"$/g, '')), m = acha(c[iM]), s = lerData(c[iS]), e = lerData(c[iE]), num = n + (cab ? 2 : 1);
+      if (!m) return erros.push(`Linha ${num}: máquina "${c[iM] || ''}" não está no cadastro.`);
+      if (!c[iT]) return erros.push(`Linha ${num}: falta a tag.`);
+      if (!s) return erros.push(`Linha ${num}: início inválido ("${c[iS] || ''}").`);
+      if (e === undefined) return erros.push(`Linha ${num}: fim inválido ("${c[iE]}").`);
+      if (e &amp;&amp; e <= s) return erros.push(`Linha ${num}: o fim precisa ser depois do início.`);
+      ok.push({ m: m.id, t: norm(c[iT]), s, e: e || null, c: c[iC] || '' }); });
+    return { ok, erros };
+  }
+  /* grava as tags lidas: mesma máquina + tag + início = o mesmo evento (atualiza o fim ou o comentário); nada é apagado */
+  function gravarTags(db, lista, por, arquivo, audit) {
+    const T = store(db), idx = new Map(T.tagEvents.map(g => [g.m + '|' + g.t + '|' + g.s, g])), at = U.nowIso(), imp = { id: U.uid('tgi'), at, by: por, file: arquivo || 'colado', n: lista.length, novos: 0, alterados: 0 };
+    for (const x of lista) { const k = x.m + '|' + x.t + '|' + x.s, g = idx.get(k);
+      if (!g) { const n = { id: U.uid('tg'), m: x.m, t: x.t, s: x.s, e: x.e, c: x.c, by: por, at, imp: imp.id }; T.tagEvents.push(n); idx.set(k, n); imp.novos++; }
+      else if ((g.e || null) !== (x.e || null) || (x.c &amp;&amp; x.c !== g.c)) { g.e = x.e; if (x.c) g.c = x.c; g.uby = por; g.uat = at; g.deleted = false; imp.alterados++; } }
+    T.imports.push(imp); if (T.imports.length > 200) T.imports.splice(0, T.imports.length - 200);
+    if (audit) audit({ action: 'importação', entity: 'tags da timeline', entityId: imp.id, after: `${imp.novos} nova(s), ${imp.alterados} alterada(s) de ${imp.n} linha(s) · ${imp.file}`, origin: 'importação' });
+    return imp;
+  }
+  return { relogio, EST, NOME, FONTE, RANK, MAX_DIAS, TAGS_PADRAO, tm, iso, diaDe, inicioDia, store, estadoDoCodigo, resolvedor, janelas, coletar, consolidar, totais, modelo, sobrepostos, lerData, lerTags, gravarTags };
+})();
+
+/* ---------- Timeline Operacional · tela (2.5.0) ----------
+   Filtros → Timeline.modelo → KPIs, faixa da linha (nível 1), faixa de cada máquina (nível 2), tooltip, detalhes e lista de ocorrências.
+   O desenho é num canvas do tamanho da área visível (a rolagem só muda o trecho desenhado): 100 mil eventos não viram 100 mil elementos. */
+App.tl = { modo: 'dia', date: null, shiftId: '', de: '', ate: '', lineId: 'line_vac', machineId: '', tipo: '', origem: '', estado: '', zoom: 'fit', rec: false, sx: 0, n: 50 };
+const TLV = (() => {
+  const T = Timeline, AX = 26, MC = 48, HH = AX + MC + 6, RH = 28, LAB = 190;
+  const p2 = n => String(n).padStart(2, '0');
+  const dur = m => { const s = Math.round(m * 60); if (s < 60) return s + ' s'; const h = Math.floor(s / 3600), mi = Math.floor((s % 3600) / 60), ss = s % 60; return (h ? h + ' h ' + p2(mi) + ' min' : mi + ' min') + (ss &amp;&amp; !h ? ' ' + p2(ss) + ' s' : ''); };
+  /* KPI: valor curto + unidade pequena (16 h 16 min → "16 h 16" + min) */
+  const kd = m => { const s = Math.round(m * 60), h = Math.floor(s / 3600), mi = Math.floor((s % 3600) / 60); return h ? [h + ' h ' + p2(mi), 'min'] : [String(mi) + (s % 60 ? ':' + p2(s % 60) : ''), s % 60 ? 'min:s' : 'min']; };
+  const hora = (m, seg) => { const s = T.iso(m); return s.slice(11, 16) + (seg || s.slice(17, 19) !== '00' ? ':' + s.slice(17, 19) : ''); };
+  const dh = m => { const s = T.iso(m); return s.slice(8, 10) + '/' + s.slice(5, 7) + '/' + s.slice(0, 4) + ' ' + hora(m); };
+  const dtLocal = m => T.iso(m).slice(0, 16);
+  const carimbo = s => s ? U.brDT(s) : '—';
+  const css = v => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+  let M = null, cv = null, box = null, tip = null, pats = null, cores = null, relo = 0;
+  /* período pedido nos filtros → {a, b, rot} em minutos absolutos */
+  function periodo() {
+    const S = App.tl, d = db(); if (!S.date) S.date = App.sel.date || U.today();
+    const J = T.janelas(d, S.lineId, S.date, S.date).todas, ini = J.length ? Math.min(...J.map(w => w.a)) : T.inicioDia(S.date);
+    if (S.modo === 'turno') { const w = J.find(x => x.id === S.shiftId) || J[0]; if (!w) throw new Error('Não há turno cadastrado em ' + U.brDate(S.date) + '. Escolha outra data ou use Dia.'); S.shiftId = w.id; return { a: w.a, b: w.b, rot: w.nome + ' · ' + U.brDate(S.date), turnos: J }; }
+    if (S.modo === 'periodo') { if (!S.de) S.de = dtLocal(ini); if (!S.ate) S.ate = dtLocal(ini + 1440); return { a: T.tm(S.de), b: T.tm(S.ate), rot: 'Período personalizado', turnos: J }; }
+    return { a: ini, b: ini + 1440, rot: 'Dia de produção · ' + U.brDate(S.date), turnos: J };
+  }
+  const maquinas = () => (db().machines || []).filter(m => !m.deleted &amp;&amp; m.lineId === App.tl.lineId &amp;&amp; m.role !== 'oee' &amp;&amp; m.status !== 'inativo' &amp;&amp; m.active !== false);
+  function filtros(P) {
+    const S = App.tl, d = db(), linhas = (d.lines || []).filter(l => !l.deleted), cods = (d.downtimeCodes || []).filter(c => c.active !== false);
+    const tags = [...new Set(T.store(d).tagEvents.filter(g => !g.deleted).map(g => g.t))].sort();
+    const sg = (k, l) => `<button type="button" data-tlmodo="${k}" aria-pressed="${S.modo === k}">${l}</button>`;
+    const op = (v, l, cur) => `<option value="${esc(v)}" ${String(cur) === String(v) ? 'selected' : ''}>${esc(l)}</option>`;
+    return `<div class="filters tlo-f" role="group" aria-label="Filtros da linha do tempo">
+      <div class="f"><span>Período</span><div class="seg">${sg('dia', 'Dia')}${sg('turno', 'Turno')}${sg('periodo', 'Personalizado')}</div></div>
+      ${S.modo !== 'periodo' ? `<label class="f"><span>Data</span><input type="date" data-tlf="date" value="${esc(S.date || '')}"></label>` : ''}
+      ${S.modo === 'turno' ? `<label class="f"><span>Turno</span><select data-tlf="shiftId">${(P.turnos || []).map(w => op(w.id, w.nome + ' (' + hora(w.a) + '–' + hora(w.b) + ')', S.shiftId)).join('') || '<option value="">sem turno</option>'}</select></label>` : ''}
+      ${S.modo === 'periodo' ? `<label class="f"><span>Início</span><input type="datetime-local" data-tlf="de" value="${esc(S.de)}"></label><label class="f"><span>Fim</span><input type="datetime-local" data-tlf="ate" value="${esc(S.ate)}"></label>` : ''}
+      <label class="f"><span>Linha</span><select data-tlf="lineId">${linhas.map(l => op(l.id, l.name, S.lineId)).join('')}</select></label>
+      <label class="f"><span>Máquina</span><select data-tlf="machineId">${op('', 'Todas', S.machineId)}${maquinas().map(m => op(m.id, m.name, S.machineId)).join('')}</select></label>
+      <label class="f"><span>Tipo de parada</span><select data-tlf="tipo">${op('', 'Todos', S.tipo)}${cods.map(c => op(c.code, c.code + ' · ' + c.name, S.tipo)).join('')}${op('SEM-CAIXA', 'SEM-CAIXA · sem caixas (MES)', S.tipo)}${tags.map(t => op(t, t + ' · tag', S.tipo)).join('')}</select></label>
+      <label class="f"><span>Origem do registro</span><select data-tlf="origem">${op('', 'Todas', S.origem)}${op('op', 'Operador', S.origem)}${op('mes', 'MES', S.origem)}${op('tag', 'Tags automáticas', S.origem)}</select></label>
+      <label class="f"><span>Estado</span><select data-tlf="estado">${op('', 'Todos', S.estado)}${T.EST.map(e => op(e, T.NOME[e], S.estado)).join('')}</select></label>
+      <button type="button" class="btn sm" id="tlLimpar" title="Volta para o dia, sem filtros">Limpar</button>
+      <span style="flex:1"></span>
+      <button type="button" class="btn sm" id="tlTags" title="Importar eventos de tags dos equipamentos (CSV)">Importar tags</button>
+      <button type="button" class="btn sm" id="tlMapa" title="Qual estado cada tag ou tipo de parada representa">Mapa de tags</button>
+    </div>`;
+  }
+  const legenda = () => `<div class="tlo-leg" role="list" aria-label="Legenda dos estados">${T.EST.map(e => `<span role="listitem"><i class="tlo-sw ${e}" aria-hidden="true"></i>${T.NOME[e]}</span>`).join('')}<span role="listitem" title="Parada sem comentário"><i class="tlo-sw mk" aria-hidden="true"></i>sem comentário</span><span role="listitem" title="Tag que ainda não está no Mapa de tags"><i class="tlo-sw sc" aria-hidden="true"></i>sem classificação</span></div>`;
+  function kpis() {
+    const t = M.t, pc = v => M.total ? U.pct(v / M.total, 1) : '—';
+    return `<div class="kpis tlo-k">
+      ${kpi('Tempo total do período', kd(M.total)[0], kd(M.total)[1], esc(dh(M.a)) + ' → ' + esc(dh(M.b)), 'data-tlk="total"')}
+      ${kpi('Tempo de produção útil', kd(t.prod)[0], kd(t.prod)[1], 'só os trechos Produzindo', 'data-tlk="prod"')}
+      ${kpi('Tempo parado', kd(t.parada)[0], kd(t.parada)[1], pc(t.parada) + ' do período', 'data-tlk="parada"')}
+      ${kpi('Tempo bloqueado', kd(t.bloq)[0], kd(t.bloq)[1], pc(t.bloq) + ' do período', 'data-tlk="bloq"')}
+      ${kpi('Tempo ocioso', kd(t.ociosa)[0], kd(t.ociosa)[1], pc(t.ociosa) + ' do período', 'data-tlk="ociosa"')}
+      ${kpi('% de produção útil', U.pct(M.util, 1), '', 'produção útil ÷ tempo total', 'data-tlk="util"')}
+      ${kpi('Ocorrências', String(M.nOcorr), '', 'registros que não são produção', 'data-tlk="n"')}
+      ${kpi('Máquina com maior perda', M.maiorPerda &amp;&amp; M.maiorPerda.m ? esc(M.maiorPerda.m.name) : '—', '', M.maiorPerda ? dur(M.maiorPerda.min) + ' parada ou bloqueada' : 'sem perda atribuída a máquina', 'data-tlk="maq"')}
+    </div>`;
+  }
+  function avisos() {
+    const h = [], S = Store.S;
+    if (S.status === 'erro' || S.conflict) h.push(`<div class="banner crit" data-tlav="falha"><b>Falha na leitura da base.</b> A linha do tempo mostra a última cópia lida; recarregue os dados antes de confiar nos números.</div>`);
+    if (M.mesAte != null &amp;&amp; M.mesAte < Math.min(M.b, M.agora) - 30 &amp;&amp; M.mesAte > M.a - 1440 * 40) h.push(`<div class="banner warn" data-tlav="parcial"><b>Dados parcialmente atualizados:</b> o MES foi importado até ${esc(dh(M.mesAte))}. Depois disso a linha do tempo usa só operador, tags e o estado padrão do turno.</div>`);
+    if (M.abertos) h.push(`<div class="banner info" data-tlav="aberto"><b>${M.abertos} evento(s) em aberto:</b> mostrados até agora (${esc(hora(M.agora))}); o término não é gravado até a tag fechar.</div>`);
+    if (M.semMapa.size) h.push(`<div class="banner pend" data-tlav="semclasse"><b>Tag sem classificação:</b> ${[...M.semMapa.entries()].map(([k, n]) => esc(k) + ' (' + n + ')').join(', ')}. Entram como Parada, hachuradas, até serem incluídas no <a href="#" data-tlmapa="1">Mapa de tags</a>.</div>`);
+    if (M.semHorario.length) h.push(`<div class="banner warn" data-tlav="semhora"><b>${M.semHorario.length} parada(s) sem horário</b> (${dur(U.sum(M.semHorario, x => x.minutos))}) não cabem na linha do tempo: foram lançadas só com a duração. Informe início e fim no Lançamento para que apareçam.</div>`);
+    if (!M.nEventos &amp;&amp; !M.janelas.prod.some(w => w.b > M.a &amp;&amp; w.a < M.b)) h.push(`<div class="banner info" data-tlav="vazio"><b>Sem dados no período:</b> não há turno produtivo, parada, MES ou tag neste intervalo. Todo o tempo aparece como Ociosa.</div>`);
+    return h.join('');
+  }
+  /* blocos da linha e das máquinas que vêm de um registro e não são produção, do maior para o menor */
+  function ocorrencias() {
+    const L = []; for (const s of M.linha.segs) if (s.ev &amp;&amp; s.state !== 'prod') L.push({ s, row: -1, m: s.ev.machineId ? (db().machines || []).find(x => x.id === s.ev.machineId) : null });
+    M.rows.forEach((r, i) => { for (const s of r.segs) if (s.ev &amp;&amp; s.ev.src === 'tag' &amp;&amp; s.state !== 'prod') L.push({ s, row: i, m: r.m }); });
+    return L.filter(x => !App.tl.estado || x.s.state === App.tl.estado).sort((x, y) => (y.s.b - y.s.a) - (x.s.b - x.s.a));
+  }
+  function tabela() {
+    const L = ocorrencias(), n = App.tl.n; M.oc = L;
+    if (!L.length) return `<section class="card section" id="tloOc"><header><h3>Ocorrências do período</h3></header><div class="empty">Nenhuma ocorrência registrada neste período com os filtros escolhidos.</div></section>`;
+    return `<section class="card section" id="tloOc"><header><h3>Ocorrências do período</h3><span class="small muted">${L.length} bloco(s) · do maior para o menor · clique para ver os detalhes</span></header>
+      <div class="tw"><table data-nosort="1"><thead><tr><th>Estado</th><th>Máquina</th><th>Motivo</th><th>Início</th><th>Fim</th><th class="n">Duração</th><th>Origem</th><th>Responsável</th><th>Comentário</th></tr></thead><tbody>
+      ${L.slice(0, n).map((x, i) => { const e = x.s.ev; return `<tr class="click" data-tloc="${i}" tabindex="0"><td><i class="tlo-sw ${x.s.state}" aria-hidden="true"></i> ${T.NOME[x.s.state]}</td><td>${esc(x.m ? x.m.name : 'Linha')}</td><td><b>${esc(e.code)}</b> ${esc(e.reason)}${e.semClasse ? ' <span class="pill pend">sem classificação</span>' : ''}</td><td class="mono">${esc(dh(x.s.a))}</td><td class="mono">${e.open ? '<span class="pill info">em aberto</span>' : esc(dh(x.s.b))}</td><td class="n">${dur(x.s.b - x.s.a)}</td><td>${T.FONTE[e.src]}${e.src === 'op' &amp;&amp; !e.validated ? ' <span class="small muted">(não validado)</span>' : ''}</td><td>${esc(e.by || '—')}</td><td class="small">${e.note ? esc(e.note.length > 90 ? e.note.slice(0, 90) + '…' : e.note) : '<span class="pill warn">sem comentário</span>'}</td></tr>`; }).join('')}</tbody></table></div>
+      ${L.length > n ? `<div style="margin-top:8px"><button type="button" class="btn sm" id="tloMais">Mostrar mais ${Math.min(100, L.length - n)}</button></div>` : ''}</section>`;
+  }
+  function corpo() {
+    const zs = [['fit', 'Ajustar'], ['dia', 'Dia'], ['turno', 'Turno'], ['hora', 'Hora']];
+    return avisos() + kpis() + `<section class="card section tlo-card" id="tloCard" data-vg-nao="1">
+      <header class="tlo-hd"><h3>Linha do tempo</h3><span class="small muted" id="tloSoma"></span><span style="flex:1"></span>
+        <div class="seg" role="group" aria-label="Zoom">${zs.map(([k, l]) => `<button type="button" data-tlzoom="${k}" aria-pressed="${App.tl.zoom === k}" title="${k === 'fit' ? 'O período inteiro na largura da tela' : 'Uma tela = ' + (k === 'dia' ? '24 horas' : k === 'turno' ? '8 horas' : '1 hora')}">${l}</button>`).join('')}</div>
+        <button type="button" class="btn sm" id="tloRec" aria-expanded="${!App.tl.rec}">${App.tl.rec ? 'Mostrar máquinas ▸' : 'Recolher máquinas ▾'}</button></header>
+      ${legenda()}
+      <div class="tlo-box" id="tloBox" tabindex="0" aria-label="Linha do tempo: role para os lados para ver outros horários"><div class="tlo-in">
+        <div class="tlo-lab"><div class="hd"><div class="ax">Horário</div><div class="mc"><b>${esc(((db().lines || []).find(l => l.id === App.tl.lineId) || {}).name || 'Linha')}</b><span>estado macro da linha</span></div></div>
+          ${App.tl.rec ? '' : M.rows.map(r => `<div class="r" title="${esc(r.m.name)}"><b>${esc(r.m.code || '')}</b> ${esc(r.m.name)}</div>`).join('')}</div>
+        <div class="tlo-plot" id="tloPlot"><canvas id="tloCv" role="img" aria-label="Estados da linha e das máquinas ao longo do tempo. A tabela Ocorrências do período, abaixo, traz os mesmos registros em texto."></canvas></div>
+      </div></div>
+      <p class="small muted tlo-nota">Sem registro, o tempo dentro de turno produtivo conta como Produzindo e fora dele como Ociosa (estado padrão). Nas sobreposições vale, nesta ordem: operador validado (dia fechado), parada registrada pelo MES, operador ainda não validado, intervalo sem caixas do MES e tags.</p>
+    </section>` + tabela();
+  }
+  /* ---------- desenho ---------- */
+  function padroes(ctx) {
+    const mk = (fn) => { const c = document.createElement('canvas'); c.width = c.height = 8; const g = c.getContext('2d'); g.strokeStyle = g.fillStyle = 'rgba(255,255,255,.42)'; g.lineWidth = 1.4; fn(g); return ctx.createPattern(c, 'repeat'); };
+    return { prod: null, parada: mk(g => { g.beginPath(); g.moveTo(-2, 10); g.lineTo(10, -2); g.moveTo(-6, 6); g.lineTo(6, -6); g.moveTo(2, 14); g.lineTo(14, 2); g.stroke(); }), bloq: mk(g => { g.beginPath(); g.moveTo(2, 0); g.lineTo(2, 8); g.moveTo(6, 0); g.lineTo(6, 8); g.stroke(); }), ociosa: mk(g => { g.fillRect(1, 1, 2, 2); g.fillRect(5, 5, 2, 2); }) };
+  }
+  const ppm = () => { const vw = Math.max(200, box.clientWidth - LAB), d = M.b - M.a, z = App.tl.zoom, fit = vw / d; return Math.max(fit, z === 'dia' ? vw / 1440 : z === 'turno' ? vw / 480 : z === 'hora' ? vw / 60 : fit); };
+  const busca = (segs, t) => { let lo = 0, hi = segs.length - 1; while (lo < hi) { const m = (lo + hi) >> 1; if (segs[m].b <= t) lo = m + 1; else hi = m; } return lo; };
+  function medidas() {
+    const n = App.tl.rec ? 0 : M.rows.length, H = HH + n * RH + 8, k = ppm(), W = Math.round((M.b - M.a) * k), plot = box.querySelector('#tloPlot');
+    let alto = 560; try { alto = (window.frameElement ? parent.innerHeight : innerHeight) - 250; } catch (e) { } alto = Math.max(300, Math.min(alto, 900));
+    box.style.maxHeight = alto + 'px'; plot.style.width = W + 'px'; plot.style.height = H + 'px';
+    const vw = Math.max(200, box.clientWidth - LAB), vh = Math.min(H, box.clientHeight || alto), r = window.devicePixelRatio || 1;
+    cv.style.width = vw + 'px'; cv.style.height = vh + 'px'; cv.style.left = LAB + 'px';
+    if (cv.width !== Math.round(vw * r) || cv.height !== Math.round(vh * r)) { cv.width = Math.round(vw * r); cv.height = Math.round(vh * r); }
+    return { k, W, H, vw, vh, r, n };
+  }
+  function faixa(ctx, segs, x0, k, y, h, vw, mostraTexto) {
+    const t0 = M.a + x0 / k, t1 = M.a + (x0 + vw) / k, est = App.tl.estado;
+    for (let i = busca(segs, t0); i < segs.length &amp;&amp; segs[i].a < t1; i++) {
+      const s = segs[i], x = (s.a - M.a) * k - x0, w = Math.max((s.b - s.a) * k, 0.6), X = Math.max(x, -2), W2 = Math.min(x + w, vw + 2) - X; if (W2 <= 0) continue;
+      ctx.globalAlpha = est &amp;&amp; s.state !== est ? 0.18 : s.ev ? 1 : 0.72;
+      ctx.fillStyle = cores[s.state]; ctx.fillRect(X, y, W2, h);
+      if (w >= 5 &amp;&amp; pats[s.state]) { ctx.fillStyle = pats[s.state]; ctx.fillRect(X, y, W2, h); }
+      if (s.ev &amp;&amp; s.ev.semClasse &amp;&amp; w >= 4) { ctx.save(); ctx.setLineDash([4, 3]); ctx.strokeStyle = cores.tinta; ctx.lineWidth = 1.5; ctx.strokeRect(X + .75, y + .75, W2 - 1.5, h - 1.5); ctx.restore(); }
+      if (s.ev &amp;&amp; s.state !== 'prod' &amp;&amp; !s.ev.note &amp;&amp; !s.ev.auto &amp;&amp; w >= 8) { ctx.fillStyle = cores.fundo; ctx.beginPath(); ctx.moveTo(X, y); ctx.lineTo(X + 8, y); ctx.lineTo(X, y + 8); ctx.fill(); }
+      if (w >= 2) { ctx.fillStyle = cores.fundo; ctx.globalAlpha = .55; ctx.fillRect(x, y, 1, h); }
+      if (mostraTexto &amp;&amp; W2 >= 62) { ctx.globalAlpha = est &amp;&amp; s.state !== est ? 0.4 : 1; ctx.fillStyle = '#fff'; ctx.font = '600 11px ' + cores.fonte; ctx.textBaseline = 'middle'; const tx = T.NOME[s.state] + (W2 >= 120 ? ' · ' + dur(s.b - s.a) : ''); ctx.save(); ctx.beginPath(); ctx.rect(X, y, W2, h); ctx.clip(); ctx.shadowColor = 'rgba(0,0,0,.45)'; ctx.shadowBlur = 2; ctx.fillText(tx, X + 6, y + h / 2 + .5); ctx.restore(); }
+    }
+    ctx.globalAlpha = 1;
+  }
+  function eixo(ctx, x0, k, vw, vh) {
+    const passos = [1, 5, 10, 15, 30, 60, 120, 180, 360, 720, 1440, 2880, 10080], passo = passos.find(p => p * k >= 64) || 10080, t0 = M.a + x0 / k, t1 = M.a + (x0 + vw) / k, multi = M.b - M.a > 1440.5;
+    ctx.font = '11px ' + cores.fonte; ctx.textBaseline = 'middle'; ctx.fillStyle = cores.muted; ctx.strokeStyle = cores.linha; ctx.lineWidth = 1;
+    for (let t = Math.ceil(t0 / passo) * passo; t <= t1; t += passo) { const x = Math.round((t - M.a) * k - x0) + .5, meia = Math.abs(t % 1440) < 1e-6;
+      ctx.globalAlpha = meia ? .9 : .45; ctx.beginPath(); ctx.moveTo(x, AX - 6); ctx.lineTo(x, vh); ctx.stroke(); ctx.globalAlpha = 1;
+      ctx.fillText(passo >= 1440 || (multi &amp;&amp; meia) ? T.iso(t).slice(8, 10) + '/' + T.iso(t).slice(5, 7) + (passo >= 1440 ? '' : ' 00:00') : hora(t), x + 4, AX / 2); }
+  }
+  function desenhar() {
+    if (!M || !cv || !box || !box.isConnected) return; const g = medidas(), ctx = cv.getContext('2d'), x0 = box.scrollLeft, y0 = box.scrollTop;
+    App.tl.sx = x0; App.tl.sy = y0; ctx.setTransform(g.r, 0, 0, g.r, 0, 0); ctx.clearRect(0, 0, g.vw, g.vh);
+    cores = { prod: css('--ok') || '#1d8048', parada: css('--crit') || '#c22a2a', bloq: css('--pend') || '#c4570c', ociosa: css('--muted') || '#5b6979', fundo: css('--surface') || '#fff', linha: css('--line') || '#d3dae2', muted: css('--muted') || '#5b6979', tinta: css('--ink') || '#15222f', fonte: getComputedStyle(document.body).fontFamily || 'sans-serif' };
+    if (!pats) pats = padroes(ctx);
+    // nível 2: máquinas (rolam na vertical, por baixo do cabeçalho fixo)
+    ctx.save(); ctx.beginPath(); ctx.rect(0, HH, g.vw, g.vh - HH); ctx.clip();
+    for (let i = 0; i < g.n; i++) { const y = HH + i * RH - y0; if (y + RH < HH || y > g.vh) continue; if (i % 2) { ctx.fillStyle = cores.linha; ctx.globalAlpha = .22; ctx.fillRect(0, y, g.vw, RH); ctx.globalAlpha = 1; } faixa(ctx, M.rows[i].segs, x0, g.k, y + 5, RH - 10, g.vw, false); }
+    ctx.restore();
+    // cabeçalho fixo: eixo de horários + nível 1 (linha)
+    ctx.fillStyle = cores.fundo; ctx.fillRect(0, 0, g.vw, HH); eixo(ctx, x0, g.k, g.vw, g.vh);
+    faixa(ctx, M.linha.segs, x0, g.k, AX + 4, MC - 8, g.vw, true);
+    ctx.strokeStyle = cores.linha; ctx.beginPath(); ctx.moveTo(0, HH - .5); ctx.lineTo(g.vw, HH - .5); ctx.stroke();
+    if (M.agora > M.a &amp;&amp; M.agora < M.b) { const x = Math.round((M.agora - M.a) * g.k - x0) + .5; if (x >= 0 &amp;&amp; x <= g.vw) { ctx.strokeStyle = cores.tinta; ctx.setLineDash([3, 3]); ctx.beginPath(); ctx.moveTo(x, AX); ctx.lineTo(x, g.vh); ctx.stroke(); ctx.setLineDash([]); ctx.fillStyle = cores.tinta; ctx.font = '600 10px ' + cores.fonte; ctx.fillText('agora', x + 3, AX + 2); } }
+    cv._g = g;
+  }
+  /* o que está sob o cursor: {seg, row (-1 = linha), nome} */
+  function alvo(ev) {
+    const g = cv._g; if (!g) return null; const r = cv.getBoundingClientRect(), cx = ev.clientX - r.left, cy = ev.clientY - r.top; if (cy < AX || cx < 0) return null;
+    const t = M.a + (cx + box.scrollLeft) / g.k; let row = -1; if (cy >= HH) { row = Math.floor((cy + box.scrollTop - HH) / RH); if (row < 0 || row >= g.n) return null; } else if (cy > AX + MC) return null;
+    const segs = row < 0 ? M.linha.segs : M.rows[row].segs, s = segs[busca(segs, t)]; if (!s || t < s.a || t >= s.b) return null;
+    return { seg: s, row, t };
+  }
+  const nomeMaq = (x) => { const id = x.seg.ev &amp;&amp; x.seg.ev.machineId, m = x.row >= 0 ? M.rows[x.row].m : id ? (db().machines || []).find(q => q.id === id) : null; return m ? m.name : 'Linha (sem máquina indicada)'; };
+  function dica(ev) {
+    const x = alvo(ev); if (!x) { tip.hidden = true; cv.style.cursor = ''; return; } const s = x.seg, e = s.ev; cv.style.cursor = 'pointer';
+    tip.innerHTML = `<b><i class="tlo-sw ${s.state}" aria-hidden="true"></i> ${T.NOME[s.state]}</b><span>${esc(nomeMaq(x))}</span><span>${esc(dh(s.a))} → ${e &amp;&amp; e.open ? 'em aberto' : esc(dh(s.b))}</span><span>Duração: <b>${dur(s.b - s.a)}</b></span><span>Motivo: ${e ? esc(e.code + ' · ' + e.reason) : s.win ? 'sem ocorrência registrada (' + esc(s.win.nome) + ')' : 'fora de turno produtivo'}</span><span class="o">${e ? T.FONTE[e.src] : 'Estado padrão'} · clique para detalhes</span>`;
+    tip.hidden = false; const w = tip.offsetWidth, h = tip.offsetHeight; let L = ev.clientX + 14, Tp = ev.clientY + 16; if (L + w > innerWidth - 8) L = ev.clientX - w - 12; const br = box.getBoundingClientRect(); if (Tp + h > br.bottom + 60) Tp = ev.clientY - h - 12; tip.style.left = Math.max(4, L) + 'px'; tip.style.top = Math.max(4, Tp) + 'px';
+  }
+  /* ---------- Detalhes da Ocorrência ---------- */
+  function detalhes(x) {
+    const s = x.seg, e = s.ev, d = db(), evs = x.row < 0 ? M.linha.evs : M.rows[x.row].evs, perd = e ? T.sobrepostos(evs, s) : [];
+    const lin = (d.lines || []).find(l => l.id === App.tl.lineId) || {}, meio = (s.a + s.b) / 2;
+    const tre = ((d.server || {}).segments || []).find(g => g.lineId === App.tl.lineId &amp;&amp; g.t0 &amp;&amp; T.tm(g.t0) <= meio &amp;&amp; T.tm(g.t1) >= meio) || ((d.server || {}).segments || []).filter(g => g.lineId === App.tl.lineId &amp;&amp; g.t1 &amp;&amp; T.tm(g.t1) <= meio &amp;&amp; meio - T.tm(g.t1) < 240).sort((p, q) => p.t1 < q.t1 ? 1 : -1)[0];
+    const lote = tre ? String(tre.lot || '') : '', ord = lote ? (ServerData.orderByLot(d, App.tl.lineId).get(lote) || {}).o : null;
+    const day = e &amp;&amp; e.dia ? (d.productionDays || []).find(q => !q.deleted &amp;&amp; q.lineId === App.tl.lineId &amp;&amp; q.date === e.dia) : (d.productionDays || []).find(q => !q.deleted &amp;&amp; q.lineId === App.tl.lineId &amp;&amp; q.date === (s.win ? s.win.data : T.diaDe(s.a)));
+    const pode = typeof vacPode !== 'function' || vacPode('oee', 'lancar');
+    const c = (l, v, k) => `<div class="tlo-c"${k ? ` data-tld="${k}"` : ''}><span>${l}</span><b>${v}</b></div>`;
+    const titulo = e ? (s.state === 'prod' ? 'Produzindo' : T.NOME[s.state] + (e.reason ? ' por ' + e.reason : '')) : T.NOME[s.state] + ' (estado padrão)';
+    const body = `<p class="tlo-tit"><i class="tlo-sw ${s.state}" aria-hidden="true"></i> <b>${esc(titulo)}</b>${e &amp;&amp; e.open ? ' <span class="pill info">em aberto</span>' : ''}${e &amp;&amp; e.semClasse ? ' <span class="pill pend">sem classificação</span>' : ''}${e &amp;&amp; e.src === 'op' ? (e.validated ? ' <span class="pill ok">validado</span>' : ' <span class="pill warn">não validado</span>') : ''}</p>
+      <div class="tlo-grid">${c('Linha', esc(lin.name || '—'), 'linha')}${c('Máquina', esc(nomeMaq(x)), 'maquina')}${c('Estado', T.NOME[s.state], 'estado')}${c('Tag ou código', e ? esc(e.code) : '—', 'codigo')}${c('Motivo', e ? esc(e.reason) + (e.category ? ' <span class="small muted">· ' + esc(e.category) + '</span>' : '') : s.win ? 'Sem ocorrência registrada no ' + esc(s.win.nome) : 'Fora de turno produtivo', 'motivo')}
+        ${c('Data/hora de início', esc(dh(s.a)) + (hora(s.a, true).length > 5 ? '' : ''), 'inicio')}${c('Data/hora de fim', e &amp;&amp; e.open ? 'em aberto (mostrado até agora)' : esc(dh(s.b)), 'fim')}${c('Duração', dur(s.b - s.a), 'duracao')}${c('Ordem', ord &amp;&amp; ord.order ? esc(String(ord.order)) : '—', 'ordem')}${c('Lote', lote ? esc(lote) : '—', 'lote')}
+        ${c('Origem do registro', e ? T.FONTE[e.src] + (e.inferido ? ' <span class="small muted">· inferido pelas caixas</span>' : '') : 'Estado padrão do turno', 'origem')}${c('Responsável', e ? esc(e.by || '—') : '—', 'responsavel')}${c('Criado em', e ? esc(carimbo(e.createdAt)) : '—', 'criado')}${c('Última alteração', e ? esc(carimbo(e.updatedAt)) + (e.updatedBy ? ' · ' + esc(e.updatedBy) : '') : '—', 'alterado')}</div>
+      ${e &amp;&amp; (e.a < s.a - 1e-6 || e.b > s.b + 1e-6) ? `<p class="small muted">O registro original vai de ${esc(dh(e.a))} a ${e.open ? 'em aberto' : esc(dh(e.b))} (${dur(e.b - e.a)}); este bloco é a parte dele que prevaleceu neste período.</p>` : ''}
+      <h4 class="tlo-h">Comentário</h4>
+      ${e &amp;&amp; e.comentavel &amp;&amp; pode ? `<textarea id="tldCom" rows="4" maxlength="2000" placeholder="O que aconteceu? (fica registrado com seu nome e a hora)">${esc(e.note || '')}&lt;/textarea>` : `<div class="tlo-com" data-tld="comentario">${e &amp;&amp; e.note ? esc(e.note) : '<span class="muted">Sem comentário registrado.</span>'}</div>`}
+      ${perd.length ? `<h4 class="tlo-h">Registros sobrepostos que não prevaleceram</h4><div class="tw"><table data-nosort="1"><thead><tr><th>Origem</th><th>Estado</th><th>Motivo</th><th>Início</th><th>Fim</th></tr></thead><tbody>${perd.slice(0, 20).map(q => `<tr><td>${T.FONTE[q.src]}</td><td>${T.NOME[q.state]}</td><td>${esc(q.code + ' · ' + q.reason)}</td><td class="mono">${esc(dh(q.a))}</td><td class="mono">${q.open ? 'em aberto' : esc(dh(q.b))}</td></tr>`).join('')}</tbody></table></div><p class="small muted">Prevaleceu: ${T.FONTE[e.src]}${e.src === 'op' &amp;&amp; e.validated ? ' validado' : ''}. Os registros originais continuam na base.</p>` : ''}`;
+    const foot = `${e &amp;&amp; e.src === 'op' &amp;&amp; day &amp;&amp; pode ? '<button class="btn" id="tldEd">Editar ocorrência</button>' : ''}${!e &amp;&amp; day &amp;&amp; pode ? '<button class="btn" id="tldNova">Registrar ocorrência neste dia</button>' : ''}${day ? '<button class="btn" id="tldDia">Abrir o lançamento do dia</button>' : ''}${e &amp;&amp; e.comentavel &amp;&amp; pode ? '<button class="btn primary" id="tldSalvar">Salvar comentário</button>' : ''}<button class="btn" data-close>Fechar</button>`;
+    modal('Detalhes da Ocorrência', body, foot, (el, close) => {
+      const q = id => el.querySelector(id);
+      if (q('#tldEd')) q('#tldEd').onclick = () => { close(); eventModal(day, e.evId); };
+      if (q('#tldNova')) q('#tldNova').onclick = () => { close(); eventModal(day, null, null); };
+      if (q('#tldDia')) q('#tldDia').onclick = () => { close(); App.sel.date = day.date; App.sel.lineId = day.lineId; go('launch'); };
+      if (q('#tldSalvar')) q('#tldSalvar').onclick = () => run(() => { comentar(e, q('#tldCom').value.trim()); close(); }, 'Comentário salvo.');
+    }, { wide: true });
+  }
+  function comentar(e, texto) {
+    if (typeof vacPode === 'function' &amp;&amp; !vacPode('oee', 'lancar')) throw new Error('Seu perfil não permite comentar ocorrências na Produção.');
+    Store.mutate((d, audit) => { const C = T.store(d).comments, antes = C[e.id] ? C[e.id].text : e.note || '', por = Store.S.user || 'Sem nome', at = U.nowIso();
+      C[e.id] = { text: texto, by: por, byId: (typeof vacPessoa !== 'undefined' &amp;&amp; vacPessoa.eu().id) || null, at, src: e.src };
+      audit({ action: 'edição', entity: 'ocorrência da timeline', entityId: e.id, field: 'comentário', before: antes, after: texto, origin: T.FONTE[e.src] }); });
+  }
+  /* ---------- importar tags e mapa de tags ---------- */
+  function importarTags() {
+    if (typeof vacPode === 'function' &amp;&amp; !vacPode('oee', 'importar')) { toast('Seu perfil não permite importar na Produção.', true); return; }
+    modal('Importar tags dos equipamentos', `<p class="q">Uma linha por evento: <b>Máquina; Tag; Início; Fim; Comentário</b>. Máquina = código ou nome do cadastro. Fim vazio = evento em aberto. Datas como 17/11/2026 08:12 ou 2026-11-17 08:12:30. Importar de novo a mesma máquina, tag e início atualiza o fim: nada é duplicado nem apagado.</p>
+      <div class="form"><label class="f wide"><span>Arquivo CSV ou TXT</span><input type="file" id="tgArq" accept=".csv,.txt,text/csv,text/plain"></label><label class="f wide"><span>ou cole aqui</span><textarea id="tgTxt" rows="7" placeholder="Máquina;Tag;Início;Fim;Comentário&amp;#10;EQ01;STOP;17/11/2026 08:12;17/11/2026 08:46;Falta de sílica">&lt;/textarea></label></div><div id="tgPrev"></div>`,
+      `<button class="btn" data-close>Cancelar</button><button class="btn" id="tgVer">Conferir</button><button class="btn primary" id="tgOk" disabled>Importar</button>`, (el, close) => {
+        let lido = null, arq = '';
+        const ver = () => { lido = T.lerTags(db(), el.querySelector('#tgTxt').value); el.querySelector('#tgOk').disabled = !lido.ok.length;
+          el.querySelector('#tgPrev').innerHTML = `<div class="banner ${lido.erros.length ? 'warn' : 'info'}"><b>${lido.ok.length} evento(s) prontos</b>${lido.erros.length ? ` · ${lido.erros.length} linha(s) recusada(s)` : ''}</div>${lido.erros.length ? `<ul class="small">${lido.erros.slice(0, 12).map(x => `<li>${esc(x)}</li>`).join('')}${lido.erros.length > 12 ? '<li>…</li>' : ''}</ul>` : ''}`; };
+        el.querySelector('#tgArq').onchange = async ev => { const f = ev.target.files[0]; if (!f) return; arq = f.name; el.querySelector('#tgTxt').value = await f.text(); ver(); };
+        el.querySelector('#tgVer').onclick = ver;
+        el.querySelector('#tgOk').onclick = () => run(() => { if (!lido || !lido.ok.length) throw new Error('Confira o arquivo antes de importar.'); const L = lido.ok, por = Store.S.user || 'Sem nome'; const imp = Store.mutate((d, audit) => T.gravarTags(d, L, por, arq, audit), { flush: true }); close(); return imp; }, 'Tags importadas: a linha do tempo foi atualizada.');
+      }, { wide: true });
+  }
+  function ligar(root) {
+    const S = App.tl, re = () => { S.n = 50; render(); };
+    root.querySelectorAll('[data-tlmodo]').forEach(b => b.onclick = () => { S.modo = b.dataset.tlmodo; S.zoom = 'fit'; S.sx = 0; S.sy = 0; re(); });
+    root.querySelectorAll('[data-tlf]').forEach(i => i.onchange = () => { S[i.dataset.tlf] = i.value; if (i.dataset.tlf === 'date') { S.shiftId = S.shiftId; App.sel.date = i.value; } if (i.dataset.tlf === 'lineId') S.machineId = ''; S.sx = 0; re(); });
+    const q = id => root.querySelector(id);
+    if (q('#tlLimpar')) q('#tlLimpar').onclick = () => { Object.assign(S, { modo: 'dia', shiftId: '', de: '', ate: '', machineId: '', tipo: '', origem: '', estado: '', zoom: 'fit', sx: 0 }); re(); };
+    if (q('#tlTags')) q('#tlTags').onclick = importarTags;
+    if (q('#tlMapa')) q('#tlMapa').onclick = () => { App.cfgSec = 'tags'; go('config'); };
+  }
+  function montar(root) {
+    const alvoEl = root.querySelector('#tloBody'); if (!alvoEl) return; let P;
+    try { P = periodo(); M = T.modelo(db(), { a: P.a, b: P.b, lineId: App.tl.lineId, machineId: App.tl.machineId, tipo: App.tl.tipo, origem: App.tl.origem }); }
+    catch (e) { M = null; alvoEl.removeAttribute('aria-busy'); alvoEl.innerHTML = `<div class="banner crit" data-tlav="erro"><b>Não foi possível montar a linha do tempo.</b> ${esc(e.message || String(e))}</div>`; return; }
+    alvoEl.removeAttribute('aria-busy'); alvoEl.innerHTML = corpo();
+    box = alvoEl.querySelector('#tloBox'); cv = alvoEl.querySelector('#tloCv'); pats = null;
+    tip = document.getElementById('tloTip'); if (!tip) { tip = document.createElement('div'); tip.id = 'tloTip'; tip.className = 'tlo-tip'; tip.setAttribute('role', 'tooltip'); tip.hidden = true; document.body.appendChild(tip); }
+    const soma = alvoEl.querySelector('#tloSoma'); if (soma) soma.textContent = `${P.rot} · ${dur(M.soma)} classificados de ${dur(M.total)}`;
+    const sx0 = App.tl.sx || 0, sy0 = App.tl.sy || 0; desenhar(); box.scrollLeft = sx0; box.scrollTop = sy0; desenhar();
+    let q = 0; const re = () => { if (!q) q = requestAnimationFrame(() => { q = 0; desenhar(); }); };
+    box.addEventListener('scroll', () => { tip.hidden = true; re(); }, { passive: true });
+    cv.addEventListener('mousemove', dica); cv.addEventListener('mouseleave', () => { tip.hidden = true; });
+    cv.addEventListener('click', ev => { const x = alvo(ev); if (x) { tip.hidden = true; detalhes(x); } });
+    if (typeof ResizeObserver !== 'undefined') { const ro = new ResizeObserver(re); ro.observe(box); }
+    alvoEl.querySelectorAll('[data-tlzoom]').forEach(b => b.onclick = () => { const g = cv._g, centro = g ? M.a + (box.scrollLeft + g.vw / 2) / g.k : M.a; App.tl.zoom = b.dataset.tlzoom; alvoEl.querySelectorAll('[data-tlzoom]').forEach(z => z.setAttribute('aria-pressed', String(z === b))); desenhar(); const g2 = cv._g; box.scrollLeft = Math.max(0, (centro - M.a) * g2.k - g2.vw / 2); desenhar(); });
+    const rec = alvoEl.querySelector('#tloRec'); if (rec) rec.onclick = () => { App.tl.rec = !App.tl.rec; render(); };
+    alvoEl.querySelectorAll('[data-tlmapa]').forEach(a => a.onclick = ev => { ev.preventDefault(); App.cfgSec = 'tags'; go('config'); });
+    const abre = tr => { const o = M.oc[+tr.dataset.tloc]; if (o) detalhes({ seg: o.s, row: o.row }); };
+    alvoEl.querySelectorAll('[data-tloc]').forEach(tr => { tr.onclick = () => abre(tr); tr.onkeydown = ev => { if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); abre(tr); } }; });
+    const mais = alvoEl.querySelector('#tloMais'); if (mais) mais.onclick = () => { App.tl.n += 100; render(); };
+    // evento em aberto e a marca "agora" andam sozinhos: redesenha sem recarregar a página
+    clearInterval(relo); relo = setInterval(() => { if (App.route !== 'timeline' || !box || !box.isConnected) { clearInterval(relo); return; } if (document.hidden || document.querySelector('.overlay') || (document.activeElement &amp;&amp; document.activeElement.closest &amp;&amp; document.activeElement.closest('.tlo-f'))) return; const ag = T.relogio(); if (M &amp;&amp; (M.abertos || (ag > M.a &amp;&amp; ag < M.b + 2))) render(); }, 30000);
+  }
+  return { periodo, filtros, montar, ligar, desenhar, dur, dh, modelo: () => M, alvo, detalhes, importarTags, AX, MC, HH, RH, LAB };
+})();
+App.views.timeline = {
+  render() {
+    let P = {}; try { P = TLV.periodo(); } catch (e) { P = {}; }
+    if (typeof vacPode === 'function' &amp;&amp; !vacPode('oee', 'ver')) return `<div class="banner crit" data-tlav="permissao"><b>Sem permissão.</b> Seu perfil não permite consultar a Produção.</div>`;
+    return TLV.filtros(P) + `<div id="tloBody" aria-busy="true"><div class="empty" data-tlav="carregando">Carregando a linha do tempo…</div></div>`;
+  },
+  mount(root) { TLV.ligar(root); TLV.montar(root); }
+};
+/* ---------- Configurações › Mapa de tags (qual estado cada tag ou tipo de parada representa) ---------- */
+const F_TAG = () => [{ k: 'code', label: 'Código da tag', req: 1, hint: 'Como chega do equipamento ou do MES; para um tipo de parada da Produção, o código dele (ex.: FMA)' }, { k: 'description', label: 'Descrição', req: 1 },
+  { k: 'machineId', label: 'Máquina', type: 'select', emptyLabel: 'Todas as máquinas', options: (db().machines || []).filter(m => !m.deleted).map(m => [m.id, m.name]) },
+  { k: 'state', label: 'Estado macro', type: 'select', empty: false, req: 1, options: Timeline.EST.map(e => [e, Timeline.NOME[e]]) }, { k: 'category', label: 'Categoria' },
+  { k: 'priority', label: 'Prioridade (0 a 9)', type: 'number', step: 1, hint: 'Entre duas tags no mesmo horário, vence a de maior prioridade' }, { k: 'validFrom', label: 'Vale a partir de', type: 'date', req: 1 }, { k: 'active', label: 'Ativa (participa do cálculo)', type: 'check' }];
+Cfg.tags = {
+  render() {
+    const T = Timeline, L = T.store(db()).tagMap.filter(e => !e.deleted).sort((a, b) => a.code.localeCompare(b.code) || (a.validFrom || '').localeCompare(b.validFrom || '')), maq = id => ((db().machines || []).find(m => m.id === id) || {}).name || 'Todas';
+    const vig = e => (e.validFrom ? U.brDate(e.validFrom) : '—') + ' → ' + (e.validTo ? U.brDate(e.validTo) : 'em vigor');
+    return `<section class="card"><header><h3>Mapa de tags da linha do tempo</h3><button class="btn sm primary" id="tgNew">${I.plus} Nova tag</button><button class="btn sm" id="tgImp">Importar tags</button></header>
+      <p class="q">Cada tag do equipamento ou do MES vira um dos quatro estados da linha do tempo. Alterar uma linha encerra a vigência anterior e cria outra: os eventos antigos continuam com o estado que valia na data deles.</p>
+      <div class="tw"><table data-nosort="1"><thead><tr><th>Tag</th><th>Descrição</th><th>Máquina</th><th>Estado macro</th><th>Categoria</th><th class="n">Prioridade</th><th>Vigência</th><th>Status</th><th></th></tr></thead><tbody>
+      ${L.map(e => `<tr${e.active === false || e.validTo ? ' class="muted"' : ''}><td><b>${esc(e.code)}</b></td><td>${esc(e.description || '')}</td><td>${esc(e.machineId ? maq(e.machineId) : 'Todas')}</td><td><i class="tlo-sw ${e.state}" aria-hidden="true"></i> ${T.NOME[e.state] || esc(e.state)}</td><td>${esc(e.category || '')}</td><td class="n">${+e.priority || 0}</td><td class="small">${vig(e)}</td><td>${e.validTo ? 'encerrada' : e.active === false ? 'inativa' : 'ativa'}</td><td>${e.validTo ? '' : `<button class="btn xs" data-tged="${esc(e.id)}">Alterar</button> <button class="btn xs ghost" data-tgat="${esc(e.id)}">${e.active === false ? 'Ativar' : 'Desativar'}</button>`}</td></tr>`).join('') || '<tr><td colspan="9" class="muted">Nenhuma tag própria: vale o mapeamento inicial abaixo.</td></tr>'}</tbody></table></div>
+      <h4 style="margin:16px 0 6px">Mapeamento inicial (vale enquanto não houver uma linha própria com o mesmo código)</h4>
+      <div class="tw"><table data-nosort="1"><thead><tr><th>Tag</th><th>Descrição</th><th>Estado macro</th><th>Categoria</th></tr></thead><tbody>${T.TAGS_PADRAO.map(t => `<tr><td><b>${t[0]}</b></td><td>${esc(t[1])}</td><td><i class="tlo-sw ${t[2]}" aria-hidden="true"></i> ${T.NOME[t[2]]}</td><td>${esc(t[3])}</td></tr>`).join('')}</tbody></table></div>
+      <p class="small muted" style="margin-top:8px">Tipos de parada lançados pelo operador: descontam do tempo planejado (refeição, sem programação, retrabalho) = Ociosa; logística e falta de material = Bloqueada; os demais = Parada. Para mudar um deles, crie uma tag com o código do tipo de parada.</p></section>`;
+  },
+  mount(root) {
+    const T = Timeline, pode = () => { if (typeof vacPode === 'function' &amp;&amp; !vacPode('oee', 'configurar')) throw new Error('Seu perfil não permite configurar a Produção.'); };
+    const limpa = d => { const code = String(d.code || '').trim().toUpperCase(); if (!code) throw new Error('Informe o código da tag.'); if (!T.EST.includes(d.state)) throw new Error('Escolha o estado macro.'); if (!d.validFrom) throw new Error('Informe a partir de quando vale.'); return { code, description: String(d.description || '').trim(), machineId: d.machineId || '', state: d.state, category: String(d.category || '').trim(), priority: Math.max(0, Math.min(9, Math.round(+d.priority || 0))), validFrom: d.validFrom, active: d.active !== false }; };
+    root.querySelector('#tgImp').onclick = () => TLV.importarTags();
+    root.querySelector('#tgNew').onclick = () => editModal('Nova tag', F_TAG(), { state: 'parada', priority: 0, active: true, validFrom: U.today() }, d => { pode(); const n = limpa(d);
+      Store.mutate((b, audit) => { const M = T.store(b).tagMap; if (M.some(e => !e.deleted &amp;&amp; !e.validTo &amp;&amp; e.code === n.code &amp;&amp; (e.machineId || '') === n.machineId)) throw new Error('Já existe uma linha em vigor para esta tag e máquina. Use Alterar.'); const por = Store.S.user || 'Sem nome', o = { id: U.uid('tm'), ...n, validTo: null, ...Model.meta(por) }; M.push(o); audit({ action: 'criação', entity: 'mapa de tags', entityId: o.id, after: `${o.code} → ${T.NOME[o.state]}` }); }); });
+    root.querySelectorAll('[data-tged]').forEach(b => b.onclick = () => { const o = T.store(db()).tagMap.find(e => e.id === b.dataset.tged); if (!o) return;
+      editModal('Alterar tag ' + o.code, F_TAG(), { ...o, validFrom: U.today() }, d => { pode(); const n = limpa({ ...d, code: o.code });
+        Store.mutate((bs, audit) => { const M = T.store(bs).tagMap, v = M.find(e => e.id === o.id), por = Store.S.user || 'Sem nome', antes = `${v.code} → ${T.NOME[v.state]} (prioridade ${v.priority || 0})`;
+          if (n.validFrom <= (v.validFrom || '')) { Object.assign(v, n, { updatedAt: U.nowIso(), updatedBy: por, revision: (v.revision || 1) + 1 }); }   /* mesma data de início: ainda não valeu para nenhum dia anterior */
+          else { v.validTo = U.addDays(n.validFrom, -1); v.updatedAt = U.nowIso(); v.updatedBy = por; M.push({ id: U.uid('tm'), ...n, validTo: null, ...Model.meta(por) }); }
+          audit({ action: 'edição', entity: 'mapa de tags', entityId: o.id, before: antes, after: `${n.code} → ${T.NOME[n.state]} (prioridade ${n.priority}) a partir de ${n.validFrom}` }); }); }); });
+    root.querySelectorAll('[data-tgat]').forEach(b => b.onclick = () => run(() => { pode(); Store.mutate((bs, audit) => { const v = T.store(bs).tagMap.find(e => e.id === b.dataset.tgat); if (!v) return; const antes = v.active !== false; v.active = !antes; v.updatedAt = U.nowIso(); v.updatedBy = Store.S.user || 'Sem nome'; audit({ action: 'edição', entity: 'mapa de tags', entityId: v.id, field: 'ativa', before: antes, after: v.active }); }); }, 'Mapa de tags atualizado.'));
+  }
+};
+
 App.views.equip = { render() { const h = constructionPage('equip', 'Equipamentos'), i = h.lastIndexOf('</div>'); return h.slice(0, i) + `<p style="margin-top:14px"><a class="btn primary" href="Equipamentos.html">Abrir Equipamentos (fichas, OS, TAGs e AM/TPM) ›</a></p>` + h.slice(i); } };
 Cfg.abas = {
   render() {
@@ -15488,6 +16007,27 @@ window.VAC_GUIA.oee = {
       ['Por que não consigo mudar turnos, catálogos e metas aqui?', "Eles vêm da Administração (fonte única). Use \"Editar na Administração\"."],
       ['Restaurar intervalos ou Reaplicar metas apaga algo?', 'Não. Restaurar só funciona sem produção lançada; Reaplicar troca a meta, não a produção. O ⓘ de cada botão detalha.']
     ]
+  },
+  timeline: {
+    titulo: 'Linha do tempo',
+    para: 'Mostra, minuto a minuto, quando a linha e cada máquina estiveram <b>Produzindo</b>, <b>Paradas</b>, <b>Bloqueadas</b> ou <b>Ociosas</b>, juntando o que o operador lançou, o que veio do MES e as tags dos equipamentos. Não muda o OEE nem nenhum lançamento.',
+    itens: [
+      { sel: '[data-tlmodo]', nome: 'Período', o: 'Dia de produção (do início do 1º turno até 24 h depois), um turno ou um período com data e hora de início e fim (até 31 dias).' },
+      { sel: '[data-tlf="tipo"]', nome: 'Tipo de parada e Origem', o: 'Deixam na linha do tempo só as ocorrências daquele tipo ou daquela origem; o resto volta ao estado padrão do turno, e os tempos são recalculados.' },
+      { sel: '.tlo-k', nome: 'Tempos do período', o: 'Produzindo + Parada + Bloqueada + Ociosa somam exatamente o período escolhido. Produção útil é só o tempo Produzindo.' },
+      { sel: '.tlo-leg', nome: 'Legenda', o: 'Verde liso = Produzindo; vermelho com riscos = Parada; laranja com listras = Bloqueada; cinza pontilhado = Ociosa. Canto branco = parada sem comentário; contorno tracejado = tag sem classificação.' },
+      { sel: '#tloBox', nome: 'Linha e máquinas', o: 'A faixa de cima é a linha; abaixo, uma faixa por máquina, no mesmo horário. Passe o mouse para ver o resumo e clique para abrir os detalhes.', como: 'Use Ajustar, Dia, Turno ou Hora para aproximar e role para os lados.' },
+      { sel: '#tloOc', nome: 'Ocorrências do período', o: 'Os mesmos blocos em tabela, do maior para o menor: estado, máquina, motivo, início, fim, duração, origem, responsável e comentário.' },
+      { sel: '#tlTags', nome: 'Importar tags', o: 'Recebe o CSV de eventos dos equipamentos (Máquina; Tag; Início; Fim; Comentário). Reimportar atualiza o fim de um evento em aberto.' },
+      { sel: '#tlMapa', nome: 'Mapa de tags', o: 'Diz qual dos quatro estados cada tag representa, por máquina e com vigência.' }
+    ],
+    passos: [
+      ['Ver por que o turno perdeu tempo', ['Escolha <b>Turno</b> e a data.', 'Leia os tempos no alto e procure os blocos vermelhos e laranja na faixa da linha.', 'Clique num bloco: máquina, motivo, início, fim, duração, quem registrou e o comentário.']],
+      ['Registrar uma parada que falta', ['Clique num trecho verde no horário da parada.', 'Use <b>Registrar ocorrência neste dia</b> e preencha início, fim, tipo e comentário.', 'Ao salvar, a linha do tempo e os tempos se atualizam sozinhos.']]
+    ],
+    duvidas: [['Quem vence quando duas fontes dizem coisas diferentes?', 'Operador com o dia fechado (validado), depois a parada registrada a partir do MES (troca, retrabalho), depois o operador com o dia ainda aberto, depois o intervalo sem caixas do MES e, por último, as tags. As caixas do MES só dizem que havia produção onde ninguém registrou parada. O registro que não prevaleceu continua na base e aparece nos detalhes.'],
+      ['E quando não há registro nenhum?', 'Vale o estado padrão: dentro de turno produtivo, Produzindo; fora dele, Ociosa. Esses trechos aparecem um pouco mais claros.'],
+      ['Uma parada lançada não aparece', 'Paradas lançadas só com a duração, sem início e fim, não têm lugar na linha do tempo. O aviso amarelo no alto diz quantas são.']]
   },
   hourly: {
     titulo: 'Hora a hora',
@@ -19236,7 +19776,7 @@ const NAV_GRUPOS = [
   { g: 'Plano', itens: [['plan', 'Plano do mês']] },
   { g: 'Ordens', itens: [['ordens', 'Ordens produzidas', 'lista'], ['plan', 'Ordens (plano do mês)'], ['ordens', 'Conciliação', 'conc'], ['ordens', 'Histórico de competências', 'hist'], ['ordens', 'Importar ↗', 'portal']] },   // 2.4.26 · PRD-02/03, IMP-06
   { g: 'Apontamento', itens: [['launch', 'Lançamento'], ['hourly', 'Hora a hora'], ['lots', 'Lotes (MES)'], ['pend', 'Pendências']] },
-  { g: 'Análise', itens: [['stops', 'Paradas'], ['history', 'Histórico'], ['weekly', 'Semanal'], ['monthly', 'Mensal']] },
+  { g: 'Análise', itens: [['stops', 'Paradas'], ['timeline', 'Linha do tempo'], ['history', 'Histórico'], ['weekly', 'Semanal'], ['monthly', 'Mensal']] },
   { g: 'Gestão', itens: [['reports', 'Relatórios'], ['sqdcp', 'SQDCP']] },
   { g: 'Configurações', itens: [['config', 'Configurações']] }];
 function renderNavGrupos() {
@@ -35637,9 +36177,9 @@ td { font-size:15px; }
     {
       "id": "oee",
       "path": "Plataforma.html#motor/oee",
-      "version": "2.4.82",
-      "sha256": "7bf4c171380a1b3d79293b0f53b412badba308e0a17ab8c1595bbdc96714b186",
-      "bytes": 2089193
+      "version": "2.5.0",
+      "sha256": "fe1e27a35f8d39cc152500a023a5936ddb57778ff7c8f7ca8fbe4d4b1158eb43",
+      "bytes": 2157964
     },
     {
       "id": "perdas",
@@ -35701,7 +36241,7 @@ td { font-size:15px; }
   "limitations": [
     "Projetos e conteúdo técnico OSM/MES/AM/TPM mantêm os limites documentados nas fontes."
   ],
-  "enginesSha256": "0ab3d9108d9629988462a9ffafe1d170065c36ed55cefffb115f3be3d3fa01ab",
+  "enginesSha256": "dba3ba661838e5088d96ad841e7a5c837b4bf158be440cf1aff8d828cf53f264",
   "originRevision": "ffc9ee8",
   "sourceMode": "single-html",
   "originEnginesSha256": "a87a64ad0c328f70e102b2ae888790a9b5d5a9bd05778652a7ce7cae140e40d2"
@@ -35771,7 +36311,7 @@ summary{cursor:pointer;font-weight:600;color:var(--navy)}
 'use strict';
 /* ---------- referência (atualizar quando a plataforma mudar de versão) ---------- */
 // Iguais às do pacote da plataforma (nova-plataforma/src/generated/manifest.json); o teste ferramenta-verificar confere.
-const VERSOES = {"oee":"2.4.82","perdas":"1.12.13","gel":"2.39","paradas":"1.2.15","equip":"1.0.20","inic":"1.1.16","linha":"1.1.7","projetos":"0.1.16","portal":"1.9.45"};
+const VERSOES = {"oee":"2.5.0","perdas":"1.12.13","gel":"2.39","paradas":"1.2.15","equip":"1.0.20","inic":"1.1.16","linha":"1.1.7","projetos":"0.1.16","portal":"1.9.45"};
 const BASES = [
  { arq: 'vacutainer-cadastros.json', mod: 'portal', nome: 'Cadastro geral (Portal)', obrig: true, cadastro: true, bk: 'Cadastros' },
  { arq: 'portal-base.json', mod: 'portal', nome: 'Portal', obrig: true, bk: 'Portal' },
@@ -36362,7 +36902,7 @@ import { Icon, Button, Badge, Empty, Modal, BarChart, BrandLogo, CommandMenu } f
 import { ModuleFrame } from "vac:modulo/components/ModuleFrame";
 import manifest from "vac:recurso/manifesto";
 import { ModuleTabs } from "vac:modulo/components/ModuleTabs";
-const VERSION = "1.6.0";
+const VERSION = "1.7.0";
 /* Navegação 1.3.0 (16/11/2026): Visão da linha, Relatórios e Importações têm abas; as que mostram uma tela do
    Portal (motor da Administração) trazem o 3º campo com a aba dele. Administração fica só com cadastros e configuração. */
 const SHELL_TABS = {

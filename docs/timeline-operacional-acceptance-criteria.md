@@ -271,3 +271,31 @@ Quanto tempo durou?
 Quem informou a ocorrência?
 Qual comentário foi registrado?
 Como as perdas se distribuíram durante o turno, dia ou período consultado?
+
+
+## Validação (Produção 2.5.0 · 17/11/2026)
+
+Verificação automática em `testes/ttimeline.js` (regras, três origens, tela e volume) e `testes/plataforma/timeline.cjs` (dentro da plataforma, em 1366, 1920 e 3440 px). Dados fictícios.
+
+| Critério | Situação | Como foi verificado |
+|---|---|---|
+| CA-01 | Atende | Faixa da linha com os quatro estados; quatro cores distintas na legenda |
+| CA-02 | Atende | Data, Turno, Período, Linha, Máquina, Tipo de parada, Origem (e Estado); origem, tipo e máquina mudam os tempos |
+| CA-03 | Atende | Seis indicadores na tela; turno de 480 min e período de 08:00 a 10:00 conferidos ao minuto |
+| CA-04 | Atende | Produção útil = só Produzindo (395 de 480 min no cenário) |
+| CA-05 | Atende | Uma faixa por máquina do cadastro, com tempos independentes |
+| CA-06 | Atende, com ressalva | Cadastro, edição, exclusão, MES e tag atualizam a tela sem recarregar. De outra estação, a mudança chega na releitura da pasta (60 s) |
+| CA-07 | Atende, com ressalva | Operador, MES e tags na mesma estrutura. MES e tags entram por importação de arquivo, não por conexão direta |
+| CA-08 | Atende | Modal "Detalhes da Ocorrência" com os nove campos (e linha, código, ordem, lote) |
+| CA-09 | Atende | Comentário inteiro, com quebras de linha |
+| CA-10 | Atende | Início, fim e duração; mudar o fim de 08:35 para 08:50 leva a duração de 25 para 40 min |
+| CA-11 | Atende | Operador validado > MES > tags, intervalo dividido, sem duplicar (60 min, e não 125) |
+| CA-12 | Atende | Trechos contínuos do início ao fim do período; sem registro vale o estado padrão |
+| CA-13 | Atende | Tooltip com estado, máquina, início, término, duração e motivo |
+| CA-14 | Atende | Dia, Turno e Período personalizado; evento de 30 s contado como 0,5 min |
+| CA-15 | Atende | 30 dias, 50 máquinas, 100.000 eventos: carregamento em 0,5 s neste ambiente (limite 5 s) |
+| CA-16 | Atende | Notebook, Full HD e ultrawide sem rolagem lateral da página; rolagem horizontal dentro da linha do tempo |
+| CA-17 | Atende | Legenda visível ao rolar a linha do tempo para os lados e para baixo |
+| CA-18 | Atende | Soma dos quatro estados = período, no cenário e em cada uma das 50 faixas do teste de volume |
+| CA-19 | Atende | Origem, responsável, criação e última alteração nos detalhes |
+| CA-20 | Atende nos testes | As dez perguntas são respondidas pela faixa, pelos detalhes e pela tabela de ocorrências. Falta o aceite do responsável funcional com dados reais |

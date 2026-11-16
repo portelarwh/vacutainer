@@ -19,7 +19,7 @@ O arquivo não é gerado de outro HTML ou de uma árvore TypeScript. JavaScript 
 | comum/visual; css/kit; comum/interface | Estilos, cabeçalho, componentes e contrato vacPagina compartilhados. |
 | comum/bases | Persistência, filas, adaptação do cenário e utilitários comuns. |
 | motor/portal | Administração e cadastro geral; base portal-base.json. Na plataforma 1.3.0 as telas de acompanhamento dele aparecem como abas da casca: Visão geral, Pendências e ações e Reunião diária na Visão da linha; Relatórios e Importação nas páginas Relatórios e Importações. Administração mostra só cadastros e configuração. |
-| motor/oee | Produção, OEE, SAP, turnos, scrap, gel e SQDCP; bases oee-vacutainer-base.json e ordens-base.json. |
+| motor/oee | Produção, OEE, SAP, turnos, scrap, gel, SQDCP e Timeline Operacional (aba Linha do tempo: `Timeline`, `TLV`, `Cfg.tags`; bloco aditivo `db.timeline`; ver docs/timeline-operacional.md); bases oee-vacutainer-base.json e ordens-base.json. |
 | motor/perdas; motor/gel; motor/paradas | Waste/MUV, estoque e consumo de gel, paradas. |
 | motor/equip; motor/inic; motor/linha | Equipamentos/OS, Iniciativas/Ações, Linha 360°. |
 | motor/projetos | Escopo ainda em construção. |
@@ -53,6 +53,6 @@ npm run test:reprodutibilidade
 
 `node scripts/cenario-demo.cjs --gravar` refaz o cenário da demonstração (dados/cenario) com o formato e os exports do código atual; rodar depois de mudar exports ou formato de base. Os testes rodam sem internet: pedido externo reprova (testes/http-local.cjs).
 
-`npm run atualizar:metadados` valida e atualiza hashes após mudanças no código incorporado. `npm run dev` serve o próprio arquivo apenas para desenvolvimento. Não recriar build.py, aplicar_kit21.py ou um empacotador que dependa de páginas separadas. A regressão preserva as 69 suítes operacionais (68 + `tid_backup`) e os testes de integração da plataforma; testes de geradores removidos foram substituídos pela validação do HTML canônico.
+`npm run atualizar:metadados` valida e atualiza hashes após mudanças no código incorporado. `npm run dev` serve o próprio arquivo apenas para desenvolvimento. Não recriar build.py, aplicar_kit21.py ou um empacotador que dependa de páginas separadas. A regressão preserva as 70 suítes operacionais (68 + `tid_backup` + `ttimeline`) e os testes de integração da plataforma; testes de geradores removidos foram substituídos pela validação do HTML canônico.
 
 Resultados e exclusões: [CONSOLIDACAO](docs/CONSOLIDACAO.md). Pendências únicas: [PENDENCIAS](PENDENCIAS.md). O histórico anterior foi retirado da árvore ativa, sem apagar o histórico Git.
