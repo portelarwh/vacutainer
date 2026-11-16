@@ -78,6 +78,10 @@ Plataforma 1.5.0, Produção 2.4.82, Administração 1.9.44.
 - Produção: `exports.atual.catalogoMes` = {mes, planejado, realizado, falta, previsaoFim} — o que falta do catálogo no Plano do mês ÷ ritmo da corrida atual (estimado; sem plano ou sem ritmo, sem previsão). O "Agora na linha" mostra.
 - Backups: `parametros.backupDias` (inteiro ≥ 7) e `vacBackupRegistro.limpar(dir)`, chamado pelo registro depois de um backup que deu certo.
 
+## Timeline Operacional — Produção 2.5.0, plataforma 1.7.0 (17/11/2026)
+
+Aba Linha do tempo da Produção (`docs/timeline-operacional.md`). Só leitura de `day.events` e `db.server`; não altera OEE, metas, classificação de paradas, turnos nem exports. Bloco **aditivo** na base da Produção, autorizado pela especificação: `db.timeline = { tagMap[], tagEvents[], comments{}, imports[] }` (base sem o bloco continua válida; `Model.ensure` completa). Vigência do mapa de tags segue o contrato 2 (encerra e cria outra). Comentário, importação de tags e mapa passam por `Store.mutate` (releitura, backup, fila, auditoria). Testes: `testes/ttimeline.js` e `testes/plataforma/timeline.cjs`.
+
 ## Rolagem, gráficos e pasta 1.6.0 (17/11/2026)
 
 Plataforma 1.6.0, Waste 1.12.13, Administração 1.9.45. Nenhum número, filtro, cálculo ou base mudou.
