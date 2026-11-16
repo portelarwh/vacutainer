@@ -18,7 +18,7 @@ O arquivo não é gerado de outro HTML ou de uma árvore TypeScript. JavaScript 
 | css/brand; css/style | Identidade BD e layout da plataforma. |
 | comum/visual; css/kit; comum/interface | Estilos, cabeçalho, componentes e contrato vacPagina compartilhados. |
 | comum/bases | Persistência, filas, adaptação do cenário e utilitários comuns. |
-| motor/portal | Administração e cadastro geral; base portal-base.json. |
+| motor/portal | Administração e cadastro geral; base portal-base.json. Na plataforma 1.3.0 as telas de acompanhamento dele aparecem como abas da casca: Visão geral, Pendências e ações e Reunião diária na Visão da linha; Relatórios e Importação nas páginas Relatórios e Importações. Administração mostra só cadastros e configuração. |
 | motor/oee | Produção, OEE, SAP, turnos, scrap, gel e SQDCP; bases oee-vacutainer-base.json e ordens-base.json. |
 | motor/perdas; motor/gel; motor/paradas | Waste/MUV, estoque e consumo de gel, paradas. |
 | motor/equip; motor/inic; motor/linha | Equipamentos/OS, Iniciativas/Ações, Linha 360°. |

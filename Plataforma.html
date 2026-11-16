@@ -1276,8 +1276,8 @@ function vacExportsOk(ex, conhecida = 1) {
    (a página foi aberta antes da última gravação no Portal). o = { fonte: 'pasta'|'copia'|'teste'|…, revAt, revBy, portal:true }. */
 function vacCadPilula(rev, o = {}) {
   const e = s => String(s ?? '').replace(/[&amp;<>"']/g, c => ({ '&amp;': '&amp;amp;', '<': '&amp;lt;', '>': '&amp;gt;', '"': '&amp;quot;', "'": '&amp;#39;' }[c]));
-  const AJ = 'Revisão do cadastro geral do Portal (vacutainer-cadastros.json) que esta página está usando. Cada gravação no Portal soma 1. Todas as páginas devem mostrar o mesmo número; se esta estiver atrás, ela foi aberta antes da última mudança no Portal: clique em ↻ Sincronizar ou recarregue (F5). Não é a revisão da base da própria página.';
-  if (rev == null) return `<span class="pill none" data-vac-cadrev="" title="${e('Cadastro do Portal ainda não lido nesta página (pasta sem vacutainer-cadastros.json ou não conectada). ' + AJ)}">Cadastro: não lido</span>`;
+  const AJ = 'Revisão do cadastro geral (vacutainer-cadastros.json, mantido na Administração) que esta página está usando. Cada gravação do cadastro soma 1. Todas as páginas devem mostrar o mesmo número; se esta estiver atrás, ela foi aberta antes da última mudança no Portal: clique em ↻ Sincronizar ou recarregue (F5). Não é a revisão da base da própria página.';
+  if (rev == null) return `<span class="pill none" data-vac-cadrev="" title="${e('Cadastro geral ainda não lido nesta página (pasta sem vacutainer-cadastros.json ou não conectada). ' + AJ)}">Cadastro: não lido</span>`;
   let ult = null; try { const c = JSON.parse(localStorage.getItem('vac.cadastros') || 'null'); if (c &amp;&amp; c.rev != null &amp;&amp; isFinite(+c.rev)) ult = +c.rev; } catch (x) { }
   const atras = !o.portal &amp;&amp; ult != null &amp;&amp; +rev < ult, copia = o.fonte &amp;&amp; o.fonte !== 'pasta' &amp;&amp; o.fonte !== 'teste';
   const cls = atras ? 'warn' : copia ? 'warn' : o.portal ? 'ok' : 'info';
@@ -1965,8 +1965,8 @@ const vacLogin = (() => {
   }
   function semCadastro() {
     const h = hook(); el.dataset.passo = 'semcad';
-    corpo('<p>Este computador ainda não tem o cadastro de usuários. ' + (h ? 'Conecte a pasta da rede da linha para conferir o seu ID.' : 'Abra o Portal pela pasta da rede uma vez para trazer o cadastro.') + '</p><div class="vl-msg" id="vlMsg"></div><div class="vl-a">' +
-      (h &amp;&amp; h.conectar ? '<button type="button" class="vl-btn p" id="vlCon">Conectar pasta</button>' : '<a class="vl-btn p" href="' + e(portalHref('entrar=' + (typeof PAGE !== 'undefined' ? PAGE.id : ''))) + '">Abrir o Portal</a>') +
+    corpo('<p>Este computador ainda não tem o cadastro de usuários. ' + (h ? 'Conecte a pasta da rede da linha para conferir o seu ID.' : 'Conecte a pasta da rede da linha uma vez (botão “Conectar pasta”, no alto da plataforma) para trazer o cadastro.') + '</p><div class="vl-msg" id="vlMsg"></div><div class="vl-a">' +
+      (h &amp;&amp; h.conectar ? '<button type="button" class="vl-btn p" id="vlCon">Conectar pasta</button>' : '<a class="vl-btn p" href="' + e(portalHref('entrar=' + (typeof PAGE !== 'undefined' ? PAGE.id : ''))) + '">Abrir a Administração</a>') +
       '<span class="vl-sp"></span><button type="button" class="vl-lk" id="vlDemo">Ver a demonstração</button></div>');
     const c = el.querySelector('#vlCon'); if (c) c.onclick = async () => { try { await h.conectar(); } catch (x) { msg(String(x.message || x), 'e'); } if (cad()) passoId(); };
     el.querySelector('#vlDemo').onclick = () => { try { vacDemo.entrar(); } catch (x) { } };
@@ -1987,10 +1987,10 @@ const vacLogin = (() => {
     const x = el.querySelector('#vlX'); if (x) x.onclick = fechar;
     el.querySelector('#vlDemo').onclick = () => { try { vacDemo.entrar(); } catch (z) { } };
   }
-  function irPortal(txt, h) { corpo('<p>' + txt + '</p><div class="vl-a"><a class="vl-btn p" href="' + e(portalHref(h)) + '">Ir para o Portal</a><button type="button" class="vl-lk" id="vlVolta">Voltar</button></div>'); el.querySelector('#vlVolta').onclick = () => passoId(); }
+  function irPortal(txt, h) { corpo('<p>' + txt + '</p><div class="vl-a"><a class="vl-btn p" href="' + e(portalHref(h)) + '">Ir para a Administração</a><button type="button" class="vl-lk" id="vlVolta">Voltar</button></div>'); el.querySelector('#vlVolta').onclick = () => passoId(); }
   function naoCadastrado(id) {
     const h = hook();
-    if (!h) return irPortal('O ID <b>' + e(id) + '</b> não está no cadastro. O primeiro acesso (nome, ID e senha) é feito no Portal.', 'entrar=' + (typeof PAGE !== 'undefined' ? PAGE.id : ''));
+    if (!h) return irPortal('O ID <b>' + e(id) + '</b> não está no cadastro. O primeiro acesso (nome, ID e senha) é feito na Administração.', 'entrar=' + (typeof PAGE !== 'undefined' ? PAGE.id : ''));
     const T = h.turnos ? h.turnos() : [];
     corpo('<p><b>Primeiro acesso.</b> O ID <b>' + e(id) + '</b> ainda não está cadastrado. Informe seus dados e crie a senha; você entra com o perfil <b>Consulta</b> e o administrador ajusta depois.</p>' +
       '<label class="vl-l">Nome completo<input class="vl-i vl-n" id="vlNome" autocomplete="name"></label>' +
@@ -2013,7 +2013,7 @@ const vacLogin = (() => {
   function conferirNova(a, b) { if (a.length < 6) return 'A senha tem 6 números.'; if (fraca(a)) return 'Evite números repetidos ou em sequência (111111, 123456).'; if (a !== b) return 'As duas senhas não são iguais.'; return ''; }
   function criarSenha(u, provisoria) {
     const h = hook();
-    if (!h) return irPortal(provisoria ? 'Você entrou com uma senha provisória. Crie a sua senha definitiva no Portal.' : '<b>' + e(u.nome) + '</b>, a sua senha ainda não foi criada. Crie a senha de 6 números no Portal (uma vez só).', 'entrar=' + (typeof PAGE !== 'undefined' ? PAGE.id : ''));
+    if (!h) return irPortal(provisoria ? 'Você entrou com uma senha provisória. Crie a sua senha definitiva na Administração.' : '<b>' + e(u.nome) + '</b>, a sua senha ainda não foi criada. Crie a senha de 6 números na Administração (uma vez só).', 'entrar=' + (typeof PAGE !== 'undefined' ? PAGE.id : ''));
     corpo(quem(u) + '<p>' + (provisoria ? 'Você entrou com a senha provisória. Crie agora a sua senha.' : 'Primeiro acesso: crie a sua senha de 6 números.') + '</p><div class="vl-l">Nova senha' + pinHtml('vlP1') + '</div><div class="vl-l">Repita a senha' + pinHtml('vlP2') + '</div><div class="vl-msg" id="vlMsg"></div>' +
       '<div class="vl-a"><button type="button" class="vl-btn p" id="vlOk">Criar senha e entrar</button><button type="button" class="vl-lk" id="vlVolta">Não sou eu</button></div>');
     const L1 = ligaPin('vlP1', () => { const L2 = el.querySelectorAll('#vlP2 input'); if (L2[0]) L2[0].focus(); }); ligaPin('vlP2', null); L1[0].focus();
@@ -2040,7 +2040,7 @@ const vacLogin = (() => {
     };
     ligaPin('vlP1', ir)[0].focus(); ok.onclick = ir; trava();
     el.querySelector('#vlVolta').onclick = () => passoId();
-    el.querySelector('#vlEsq').onclick = () => msg('Peça ao administrador uma senha provisória no Portal › Cadastros › Usuários.', 'w');
+    el.querySelector('#vlEsq').onclick = () => msg('Peça ao administrador uma senha provisória em Administração › Cadastros › Usuários.', 'w');
   }
   function entrou(u, txt, ult) {
     const s = sessao(); fechar();
@@ -2051,7 +2051,7 @@ const vacLogin = (() => {
   function passoConta() {
     const u = usuario(lg('vac.userId')) || { nome: lg('vac.user') || '', codigo: lg('vac.userId') || '' }, s = sessao(), h = hook();
     corpo(quem(u) + '<p class="vl-s">Sessão até ' + e(s ? new Date(s.ate).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : '—') + ' neste computador.</p><div class="vl-msg" id="vlMsg"></div>' +
-      '<div class="vl-a"><button type="button" class="vl-btn" id="vlTroca">Trocar usuário</button>' + (h ? '<button type="button" class="vl-btn" id="vlSenha">Trocar minha senha</button>' : '<a class="vl-btn" href="' + e(portalHref('entrar=' + (typeof PAGE !== 'undefined' ? PAGE.id : ''))) + '">Trocar minha senha (Portal)</a>') +
+      '<div class="vl-a"><button type="button" class="vl-btn" id="vlTroca">Trocar usuário</button>' + (h ? '<button type="button" class="vl-btn" id="vlSenha">Trocar minha senha</button>' : '<a class="vl-btn" href="' + e(portalHref('entrar=' + (typeof PAGE !== 'undefined' ? PAGE.id : ''))) + '">Trocar minha senha (Administração)</a>') +
       '<button type="button" class="vl-btn" id="vlLay" title="Apaga as suas escolhas de layout (cartões, grupos recolhidos, itens do e-mail…) e volta ao padrão do seu perfil">Restaurar meu layout</button><button type="button" class="vl-btn" id="vlSair">Sair</button><span class="vl-sp"></span><button type="button" class="vl-btn p" id="vlX">Fechar</button></div>');
     el.querySelector('#vlTroca').onclick = () => { modo.trocar = true; passoId(); };
     el.querySelector('#vlSair').onclick = sair; el.querySelector('#vlX').onclick = fechar;
@@ -2437,7 +2437,9 @@ window.vacPagina = (() => {
         texto: texto(n).replace(/\s+/g, ' ').trim(),
         tom: n.classList &amp;&amp; ['bad','warn','good','info'].find(c => n.classList.contains(c)) || 'neutral'
       })).filter(p => p.texto &amp;&amp; p.texto !== '·') : [];
-      return { versao: PAGE.versao, estado, situacaoPagina: vacEstadoDe(PAGE.id), podeImprimir: vacPodeAqui('exportar') };
+      // aba: a tela aberta no módulo (App.tab, quando existe), para a casca acompanhar a navegação interna
+      let aba; try { aba = typeof App !== 'undefined' &amp;&amp; App &amp;&amp; typeof App.tab === 'string' ? App.tab : undefined; } catch (e) { }
+      return { versao: PAGE.versao, estado, situacaoPagina: vacEstadoDe(PAGE.id), podeImprimir: vacPodeAqui('exportar'), aba };
     },
     imprimir: () => { if (!vacPodeAqui('exportar')) throw new Error('Seu perfil não permite imprimir.'); window.print(); },
     abrirOrdem: n => vacFicha.abrir('ordem', String(n)),
@@ -35404,70 +35406,70 @@ td { font-size:15px; }
       "id": "oee",
       "path": "Plataforma.html#motor/oee",
       "version": "2.4.79",
-      "sha256": "45c85c82bb9311e04c5bcd133fc5a44052f66552a00ef31b568c530629ae1ce7",
-      "bytes": 2068105
+      "sha256": "9c1a2b70a69c34f3ac97ab3b9dff018240699c7389b1d8a1903cb50468549958",
+      "bytes": 2068484
     },
     {
       "id": "perdas",
       "path": "Plataforma.html#motor/perdas",
       "version": "1.12.10",
-      "sha256": "384a1aea6b83d1748f26f58144b5f85c66fead8f0c2f3ae30156c1530e520d7e",
-      "bytes": 901237
+      "sha256": "075bc6a03241503ed89325b6daab867967abd4e6684c0b5a1f37552c6c604538",
+      "bytes": 901616
     },
     {
       "id": "gel",
       "path": "Plataforma.html#motor/gel",
       "version": "2.37",
-      "sha256": "5cb75e2bbd324a8668e6ee36f61e078f9ded080a7e53bef5c2d9bdf70c22cf9f",
-      "bytes": 1587657
+      "sha256": "b5087a6e688945d9fb19d848a062a3f299b458952c31917d98f826919cafdfdd",
+      "bytes": 1588036
     },
     {
       "id": "paradas",
       "path": "Plataforma.html#motor/paradas",
       "version": "1.2.13",
-      "sha256": "552563e5b797a75f223b48cd3deea953a72dc9c38a13d53c09c8411d06669359",
-      "bytes": 865862
+      "sha256": "f98ac66b2ec8b208632fdf2ff562a77f10d848a7c9943dc0e14ad515a4bc879f",
+      "bytes": 866241
     },
     {
       "id": "equip",
       "path": "Plataforma.html#motor/equip",
       "version": "1.0.18",
-      "sha256": "f6b0d3bb5a5ee4fe9d4b24a7ce3c5c1b3afd9f46249defa9012343e2602995c7",
-      "bytes": 665328
+      "sha256": "c72cc4379b5972e8419e8bf460e955f4a2e18f4176bcf9a81bcf5e4588a35776",
+      "bytes": 665707
     },
     {
       "id": "inic",
       "path": "Plataforma.html#motor/inic",
       "version": "1.1.14",
-      "sha256": "a11e044d32fd17cea34914f328a57277f696a48719696cd8e3a65c67500ee3b8",
-      "bytes": 686939
+      "sha256": "3245a55d6ef570cb006edb777494bc7f9452fddf9025fbba08d517144c3804b0",
+      "bytes": 687318
     },
     {
       "id": "linha",
       "path": "Plataforma.html#motor/linha",
       "version": "1.1.5",
-      "sha256": "185bca3a048f9e3a03bad4c4b33914f564b0217882cc3fc634ca2e08e17ab16e",
-      "bytes": 792839
+      "sha256": "d6abfb21f4817ff32d90a3cfe5c40ba80fefeed60e57bdc8a74498c2a2d109e0",
+      "bytes": 793218
     },
     {
       "id": "projetos",
       "path": "Plataforma.html#motor/projetos",
       "version": "0.1.14",
-      "sha256": "5acae967bcb55c49cab33bb7b898c1d5243102a1f273435837faea88523d02b2",
-      "bytes": 605834
+      "sha256": "6b3df56e9734a63ce512660adcf72dc11b97c63efa24014bc2d367691fd35ebd",
+      "bytes": 606213
     },
     {
       "id": "portal",
       "path": "Plataforma.html#motor/portal",
       "version": "1.9.41",
-      "sha256": "3c2c6dfa4e131ede67413dbaf1fb44c6284893a3ce6eda12a34ea5479cf85605",
-      "bytes": 1175062
+      "sha256": "ae2ea99aecd3af8740d86e4254b0315e9a86a3f420c6517d6b3a125bee81fe39",
+      "bytes": 1175441
     }
   ],
   "limitations": [
     "Projetos e conteúdo técnico OSM/MES/AM/TPM mantêm os limites documentados nas fontes."
   ],
-  "enginesSha256": "441658426bdab83d0b19a66e9b07f077a1f533787364dd992c97b2a5e08790cd",
+  "enginesSha256": "44b5067c31ef09373e20495dfb2d8d518c9157a133006c2c106e97005fb5f8dc",
   "originRevision": "ffc9ee8",
   "sourceMode": "single-html",
   "originEnginesSha256": "a87a64ad0c328f70e102b2ae888790a9b5d5a9bd05778652a7ce7cae140e40d2"
@@ -36128,11 +36130,30 @@ import { Icon, Button, Badge, Empty, Modal, BarChart, BrandLogo } from "vac:modu
 import { ModuleFrame } from "vac:modulo/components/ModuleFrame";
 import manifest from "vac:recurso/manifesto";
 import { ModuleTabs } from "vac:modulo/components/ModuleTabs";
-const VERSION = "1.2.0";
+const VERSION = "1.3.0";
+/* Navegação 1.3.0 (16/11/2026): Visão da linha, Relatórios e Importações têm abas; as que mostram uma tela do
+   Portal (motor da Administração) trazem o 3º campo com a aba dele. Administração fica só com cadastros e configuração. */
+const SHELL_TABS = {
+  inicio: [["resultado", "Resultado da linha"], ["situacao", "Situação da linha", "geral"], ["pendencias", "Pendências e ações", "fila"], ["reuniao", "Reunião diária", "reuniao"]],
+  relatorios: [["resumo", "Resumo da linha"], ["todos", "Todos os relatórios", "rel"]],
+  importacoes: [["central", "Central de importações"], ["por-pagina", "Importação por página", "imp"]]
+};
+const PORTAL_ONDE = {};
+for (const [pg, abas] of Object.entries(SHELL_TABS)) for (const [id, , aba] of abas) if (aba) PORTAL_ONDE[aba] = [pg, id];
+PORTAL_ONDE.pend = PORTAL_ONDE.fila; PORTAL_ONDE.importacao = PORTAL_ONDE.imp;
+/* rota antiga do Portal (aba ou #hash) → página e aba da casca; null = fica em Administração */
+function portalDestino(tab, hash) {
+  const h = String(hash || "").replace(/^#/, ""), k = tab || (h.match(/^(geral|fila|pend|reuniao|rel|importacao)(?=$|[=/])/) || [])[1];
+  return k &amp;&amp; PORTAL_ONDE[k] || null;
+}
+function normalizeRoute(r) {
+  if (r.page === "portal") { const d = portalDestino(r.tab, r.hash); if (d) return { page: d[0], tab: d[1], hash: r.hash }; }
+  return r;
+}
 function routeFromHash() {
   const [path, query = ""] = location.hash.replace(/^#\/?/, "").split("?");
   const p = new URLSearchParams(query);
-  return { page: path || "inicio", tab: p.get("tab") || "", hash: p.get("rota") || "" };
+  return normalizeRoute({ page: path || "inicio", tab: p.get("tab") || "", hash: p.get("rota") || "" });
 }
 function App() {
   const [route, setRoute] = useState(routeFromHash), [visited, setVisited] = useState([]), [folder, setFolder] = useState(null), [sources, setSources] = useState([]), [cad, setCad] = useState(null), [busy, setBusy] = useState(false), [message, setMessage] = useState(""), [folderError, setFolderError] = useState(""), [durablePending, setDurablePending] = useState(false);
@@ -36142,9 +36163,14 @@ function App() {
   const [period, setPeriod] = useState(demo ? "hoje" : "ontem"), [from, setFrom] = useState(today()), [to, setTo] = useState(today()), [turno, setTurno] = useState(""), [detail, setDetail] = useState(false), [navOpen, setNavOpen] = useState(false), [help, setHelp] = useState(false), [search, setSearch] = useState(false), [query, setQuery] = useState(""), [selectedOrder, setSelectedOrder] = useState(null), [userDialog, setUserDialog] = useState(false);
   const [theme, setTheme] = useState(() => localStorage.getItem(demo ? "vac.platform.demo.theme" : "vac.platform.theme") || "light"), [userId, setUserId] = useState(() => demo ? localStorage.getItem("vac.platform.demo.user") || "9001" : "");
   const [rangeFrom, rangeTo] = periodRange(period, from, to), validRange = rangeFrom <= rangeTo;
-  const current = moduleOf(route.page), currentTabs = current ? statuses[current.id]?.tabs || [] : [], currentTab = route.tab || currentTabs[0]?.id || "";
+  const shellTabs = SHELL_TABS[route.page] || null, shellTab = shellTabs ? shellTabs.find((t) => t[0] === route.tab) || shellTabs[0] : null;
+  const embedded = shellTab &amp;&amp; shellTab[2] ? moduleOf("portal") : null, pageId = embedded ? "portal" : route.page;
+  const current = embedded || moduleOf(route.page);
+  const currentTabs = current ? (statuses[current.id]?.tabs || []).filter((t) => current.id !== "portal" || !PORTAL_ONDE[t.id]) : [];
+  const currentTab = embedded ? shellTab[2] : route.tab || currentTabs[0]?.id || "";
   const user = (cad?.usuarios || []).find((u) => String(u.codigo) === userId), profile = (cad?.perfis || []).find((p) => p.codigo === user?.perfil);
   const navigate = useCallback((page, tab = "", hash = "") => {
+    ({ page, tab, hash } = normalizeRoute({ page, tab: tab || "", hash: hash || "" }));
     const q = new URLSearchParams();
     if (tab) q.set("tab", tab);
     if (hash) q.set("rota", hash);
@@ -36223,7 +36249,8 @@ function App() {
     };
   }, []);
   useEffect(() => {
-    const fn = () => setRoute(routeFromHash());
+    const fn = () => { const r = routeFromHash(); if (/^#\/?portal\b/.test(location.hash) &amp;&amp; r.page !== "portal") { const q = new URLSearchParams(); if (r.tab) q.set("tab", r.tab); if (r.hash) q.set("rota", r.hash); history.replaceState(null, "", "#/" + r.page + (q.size ? "?" + q : "")); } setRoute(r); };
+    if (/^#\/?portal\b/.test(location.hash)) fn();   // link antigo aberto direto: o endereço passa a ser o novo
     window.addEventListener("popstate", fn);
     window.addEventListener("hashchange", fn);
     return () => {
@@ -36234,6 +36261,17 @@ function App() {
   useEffect(() => {
     if (current) setVisited((v) => v.includes(current.id) ? v : [...v, current.id]);
   }, [current?.id, session]);
+  /* o Portal trocou de aba por conta própria (ex.: "Ver todas"): a página e a aba da casca acompanham */
+  const ultAba = useRef("");
+  useEffect(() => {
+    const a = statuses.portal?.info?.aba;
+    if (!a || a === ultAba.current) return;
+    const antes = ultAba.current; ultAba.current = a;
+    if (!antes || pageId !== "portal") return;
+    const d = PORTAL_ONDE[a];
+    if (d) { if (route.page !== d[0] || shellTab?.[0] !== d[1]) navigate(d[0], d[1]); }
+    else if (embedded) navigate("portal", a);
+  }, [statuses.portal?.info?.aba]);
   useEffect(() => {
     if (!demo) {
       const timer = setInterval(() => setUserId(currentUser()?.codigo || ""), 1e3);
@@ -36259,7 +36297,7 @@ function App() {
   useEffect(() => {
     const key = (e) => {
       if ((e.ctrlKey || e.metaKey) &amp;&amp; e.key.toLowerCase() === "p") {
-        const id = moduleOf(routeFromHash().page)?.id;
+        const r = routeFromHash(), t = (SHELL_TABS[r.page] || []).find((x) => x[0] === r.tab), id = t &amp;&amp; t[2] ? "portal" : moduleOf(r.page)?.id;
         if (id) {
           e.preventDefault();
           try {
@@ -36400,7 +36438,7 @@ function App() {
     jsxs('select',{'aria-label':'Turno',value:turno,onChange:e=>setTurno(e.target.value),children:[jsx('option',{value:'',children:'Todos os turnos'}),(cad?.turnos || []).filter(t=>t.ativo!==false).map(t=>jsx('option',{value:t.codigo,children:t.nome || t.codigo},t.codigo))]}),
     jsx('span',{className:'filter-range',children:rangeLabel})
   ]});
-  const title = route.page === "inicio" ? "Resultado da fábrica" : route.page === "importacoes" ? "Central de importa\xE7\xF5es" : route.page === "relatorios" ? "Relat\xF3rios da linha" : route.page === "saude" ? "Sa\xFAde dos dados" : current?.name || "P\xE1gina n\xE3o encontrada";
+  const title = route.page === "inicio" ? "Visão da linha" : route.page === "importacoes" ? "Central de importa\xE7\xF5es" : route.page === "relatorios" ? "Relat\xF3rios da linha" : route.page === "saude" ? "Sa\xFAde dos dados" : current?.name || "P\xE1gina n\xE3o encontrada";
   return /* @__PURE__ */ jsxs("div", { className: "app-shell", children: [
     /* @__PURE__ */ jsxs("aside", { className: "sidebar " + (navOpen ? "open" : ""), children: [
       /* @__PURE__ */ jsxs("a", { href: "#/inicio", className: "brand", onClick: (e) => {
@@ -36502,16 +36540,16 @@ function App() {
       /* @__PURE__ */ jsxs("main", { className: current ? "workbench-main" : "page-main", children: [
         /* @__PURE__ */ jsxs("div", { className: "page-heading", children: [
           /* @__PURE__ */ jsxs("div", { children: [
-            /* @__PURE__ */ jsx("span", { className: "eyebrow", children: current?.group || "GEST\xC3O INTEGRADA" }),
+            /* @__PURE__ */ jsx("span", { className: "eyebrow", children: (embedded ? null : current)?.group || "GEST\xC3O INTEGRADA" }),
             /* @__PURE__ */ jsxs("h1", { children: [
               title,
               route.page !== "inicio" &amp;&amp; jsx("span", { className:"heading-dot",children:"." })
             ] }),
-            /* @__PURE__ */ jsx("p", { children: current?.description || (route.page === "inicio" ? "Os n\xFAmeros, os desvios e os pr\xF3ximos passos. Tudo no mesmo lugar." : route.page === "importacoes" ? "Uma sequ\xEAncia de atualiza\xE7\xE3o, com a confer\xEAncia de cada fonte." : route.page === "saude" ? "Origem, revis\xE3o e disponibilidade dos dados usados pelo sistema." : "Escolha o recorte e leve a informa\xE7\xE3o certa para cada conversa.") })
+            /* @__PURE__ */ jsx("p", { children: (embedded ? null : current)?.description || (route.page === "inicio" ? "Os n\xFAmeros, os desvios e os pr\xF3ximos passos. Tudo no mesmo lugar." : route.page === "importacoes" ? "Uma sequ\xEAncia de atualiza\xE7\xE3o, com a confer\xEAncia de cada fonte." : route.page === "saude" ? "Origem, revis\xE3o e disponibilidade dos dados usados pelo sistema." : "Escolha o recorte e leve a informa\xE7\xE3o certa para cada conversa.") })
           ] }),
           /* @__PURE__ */ jsxs("div", { className: "heading-actions", children: [
-            route.page === 'inicio' &amp;&amp; jsxs('div',{className:'view-switch',role:'group','aria-label':'Nível de detalhe',children:[jsx('button',{'aria-pressed':!detail,onClick:()=>setDetail(false),children:'Resumo'}),jsx('button',{'aria-pressed':detail,onClick:()=>setDetail(true),children:'Detalhado'})]}),
-            route.page === 'inicio' &amp;&amp; jsx(Button,{icon:'download',onClick:()=>print(true),disabled:!validRange || !reportRows().length,children:'Exportar resumo'}),
+            route.page === 'inicio' &amp;&amp; !embedded &amp;&amp; jsxs('div',{className:'view-switch',role:'group','aria-label':'Nível de detalhe',children:[jsx('button',{'aria-pressed':!detail,onClick:()=>setDetail(false),children:'Resumo'}),jsx('button',{'aria-pressed':detail,onClick:()=>setDetail(true),children:'Detalhado'})]}),
+            route.page === 'inicio' &amp;&amp; !embedded &amp;&amp; jsx(Button,{icon:'download',onClick:()=>print(true),disabled:!validRange || !reportRows().length,children:'Exportar resumo'}),
             /* @__PURE__ */ jsx("button", { className: "icon-button", "aria-label": "Ajuda desta p\xE1gina", onClick: () => setHelp(true), children: /* @__PURE__ */ jsx(Icon, { name: "help" }) }),
             /* @__PURE__ */ jsx(Button, { icon: "refresh", onClick: () => {
               refresh();
@@ -36527,8 +36565,9 @@ function App() {
           ". Os valores anteriores foram retirados da vis\xE3o."
         ] }),
         !validRange &amp;&amp; /* @__PURE__ */ jsx("div", { className: "inline-alert error", children: "A data inicial deve ser anterior ou igual \xE0 data final." }),
+        shellTabs &amp;&amp; jsx("div", { className: "page-tabs", children: jsx(ModuleTabs, { tabs: shellTabs.map(([id, label]) => ({ id, label })), active: shellTab[0], onSelect: (id) => navigate(route.page, id === shellTabs[0][0] ? "" : id) }) }),
         !current &amp;&amp; filters,
-        route.page === "inicio" &amp;&amp; /* @__PURE__ */ jsxs(Fragment, { children: [
+        route.page === "inicio" &amp;&amp; !embedded &amp;&amp; /* @__PURE__ */ jsxs(Fragment, { children: [
           !folder &amp;&amp; !demo &amp;&amp; /* @__PURE__ */ jsxs("section", { className: "welcome-card", children: [
             /* @__PURE__ */ jsx("div", { className: "welcome-art", children: /* @__PURE__ */ jsx(Icon, { name: "layers", size: 42 }) }),
             /* @__PURE__ */ jsxs("div", { children: [
@@ -36543,7 +36582,7 @@ function App() {
           ] }),
           jsx(ExecutiveOverview,{sources,cad,from:rangeFrom,to:rangeTo,turno,detail,rangeLabel,navigate,validRange,print:()=>print(true),reportAvailable:reportRows().length>0,canOpen:moduleAllowed})
         ] }),
-        route.page === "importacoes" &amp;&amp; /* @__PURE__ */ jsxs(Fragment, { children: [
+        route.page === "importacoes" &amp;&amp; !embedded &amp;&amp; /* @__PURE__ */ jsxs(Fragment, { children: [
           /* @__PURE__ */ jsxs("section", { className: "panel intro-panel", children: [
             /* @__PURE__ */ jsx(Icon, { name: "upload", size: 26 }),
             /* @__PURE__ */ jsxs("div", { children: [
@@ -36565,7 +36604,7 @@ function App() {
           ] }, i.title)) }),
           /* @__PURE__ */ jsx("p", { className: "footnote", children: "Excel, CSV, impress\xE3o e PDF usam bibliotecas incorporadas ao HTML. O arquivo aceito e as regras aparecem no pr\xF3prio importador." })
         ] }),
-        route.page === "relatorios" &amp;&amp; /* @__PURE__ */ jsxs("section", { className: "panel", children: [
+        route.page === "relatorios" &amp;&amp; !embedded &amp;&amp; /* @__PURE__ */ jsxs("section", { className: "panel", children: [
           /* @__PURE__ */ jsxs("header", { className: "panel-heading", children: [
             /* @__PURE__ */ jsxs("div", { children: [
               /* @__PURE__ */ jsx("span", { className: "eyebrow", children: "RESUMO E DETALHE" }),
@@ -36649,7 +36688,7 @@ function App() {
         ] }),
         current &amp;&amp; /* @__PURE__ */ jsxs(Fragment, { children: [
           /* @__PURE__ */ jsxs("div", { className: "module-toolbar", children: [
-            /* @__PURE__ */ jsx(ModuleTabs, { tabs: currentTabs, active: currentTab, onSelect: (id) => navigate(current.id, id) }),
+            /* @__PURE__ */ !embedded &amp;&amp; currentTabs.length > 1 &amp;&amp; jsx(ModuleTabs, { tabs: currentTabs, active: currentTab, onSelect: (id) => navigate(current.id, id) }),
             /* @__PURE__ */ jsxs("div", { className: "engine-commands", children: [
               /* @__PURE__ */ jsx(Button, { disabled: statuses[current.id]?.info?.podeImprimir === false, onClick: () => {
                 try {
@@ -36683,7 +36722,7 @@ function App() {
           current.id === "projetos" &amp;&amp; /* @__PURE__ */ jsx("div", { className: "inline-alert", children: "Projetos mant\xE9m o escopo em defini\xE7\xE3o. A plataforma n\xE3o apresenta fun\xE7\xF5es futuras como j\xE1 implementadas." })
         ] }),
         !current &amp;&amp; !["inicio", "importacoes", "relatorios", "saude"].includes(route.page) &amp;&amp; /* @__PURE__ */ jsx(Empty, { title: "P\xE1gina n\xE3o encontrada", action: /* @__PURE__ */ jsx(Button, { onClick: () => navigate("inicio"), children: "Voltar \xE0 vis\xE3o da linha" }) }),
-        /* @__PURE__ */ jsx("div", { className: current ? "frames-area" : "frames-area parked", children: visited.map((id) => /* @__PURE__ */ jsx(ModuleFrame, { id, tab: route.page === id ? currentTab : "", hash: route.page === id ? route.hash : void 0, active: route.page === id, session, status: statuses[id], folder: !!folder &amp;&amp; !demo, context: { from: rangeFrom, to: rangeTo, turno } }, session + id)) }),
+        /* @__PURE__ */ jsx("div", { className: current ? "frames-area" : "frames-area parked", children: visited.map((id) => /* @__PURE__ */ jsx(ModuleFrame, { id, tab: pageId === id ? currentTab : "", hash: pageId === id ? route.hash : void 0, active: pageId === id, session, status: statuses[id], folder: !!folder &amp;&amp; !demo, context: { from: rangeFrom, to: rangeTo, turno } }, session + id)) }),
         !current &amp;&amp; /* @__PURE__ */ jsxs("footer", { className: "page-footer", children: [
           /* @__PURE__ */ jsx("span", { children: "Vacutainer \xB7 BD Curitiba" }),
           /* @__PURE__ */ jsx("span", { children: demo ? "Demonstra\xE7\xE3o integrada" : folder ? "Fonte: " + folder.name : "Trabalho offline \xB7 arquivos na pasta da linha" })
@@ -37958,6 +37997,7 @@ function runtimePrelude(config) {
     route("", config.route || void 0);
     report();
     setInterval(() => report(), 1800);
+    document.addEventListener("click", () => setTimeout(report, 250), true);
   }, 200);
   window.addEventListener("beforeunload", (e) => {
     if (pending()) {

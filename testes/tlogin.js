@@ -81,7 +81,7 @@ const digita = async (p, sel, pin) => { const L = await p.$$(sel + ' input'); fo
   await q2.screenshot({ path: SAI + 'producao-id.png' });
   await q2.evaluate(() => { const C = JSON.parse(localStorage.getItem('vac.cadastros')); C.usuarios.push({ codigo: '700', nome: 'Sem Senha', perfil: 'CONSULTA', ativo: true }); localStorage.setItem('vac.cadastros', JSON.stringify(C)); });
   await q2.fill('#vlId', '700'); await q2.click('#vlOk');
-  ok(await q2.evaluate(() => /Portal/.test(document.querySelector('.vl-b').innerText) && /entrar=oee/.test(document.querySelector('.vl-b a').getAttribute('href'))), 'Produção: quem não tem senha cria no Portal (link volta para a Produção)');
+  ok(await q2.evaluate(() => /Administração/.test(document.querySelector('.vl-b').innerText) && /entrar=oee/.test(document.querySelector('.vl-b a').getAttribute('href'))), 'Produção: quem não tem senha cria na Administração (link volta para a Produção)');
   await q2.click('#vlVolta'); await q2.fill('#vlId', '104233'); await q2.click('#vlOk'); await digita(q2, '#vlP1', '482913'); await q2.waitForTimeout(1500);
   const r4 = await q2.evaluate(() => ({ ab: vacLogin.aberto, u: localStorage.getItem('vac.user'), s: vacLogin.sessao() }));
   ok(!r4.ab && r4.u === 'Pedro Teste' && r4.s, 'Produção: entra com a senha criada no Portal (mesma conta da cópia do cadastro)');
