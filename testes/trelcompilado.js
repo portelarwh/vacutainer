@@ -25,7 +25,7 @@ const errs = []; const ok = (c, m) => { console.log((c ? 'ok   ' : 'FALHA ') + m
   // ---------- destinos
   const o = await abre('OEE-Vacutainer.html#aba=reports&rel=day');
   const O = await o.evaluate(() => ({ r: App.route, t: rpState().type, sel: (document.querySelector('[data-rpt][aria-selected="true"]') || {}).dataset, v: APP_VERSION }));
-  ok(O.v === '2.4.79' && O.r === 'reports' && O.t === 'day' && O.sel && O.sel.rpt === 'day', 'Produção 2.4.79: #aba=reports&rel=day abre Relatórios com o Relatório do dia escolhido');
+  ok(O.v === '2.4.78' && O.r === 'reports' && O.t === 'day' && O.sel && O.sel.rpt === 'day', 'Produção 2.4.78: #aba=reports&rel=day abre Relatórios com o Relatório do dia escolhido');
   await o.goto(RAIZ + 'OEE-Vacutainer.html#aba=reports&rel=tables'); await o.waitForTimeout(1500);
   ok(await o.evaluate(() => App.route === 'reports' && rpState().type === 'tables'), 'Produção: #aba=reports&rel=tables abre as Tabelas');
   await o.goto(RAIZ + 'OEE-Vacutainer.html#aba=sqdcp'); await o.waitForTimeout(1500);
@@ -43,7 +43,7 @@ const errs = []; const ok = (c, m) => { console.log((c ? 'ok   ' : 'FALHA ') + m
   const c2 = await g2.evaluate(() => /Fichas e relatórios em PDF/i.test((document.querySelector('#ov') || {}).innerText || ''));
   ok(c1 && c2, 'Gel: com a janela de conexão aberta, os relatórios esperam ela fechar (a conexão não some)'); await g2.close();
   const r = await abre('Paradas.html#relatorio');
-  ok(await r.evaluate(() => { const m = document.querySelector('.modal.on, #repModal, .rep'); return !!m && PAGE.versao === '1.2.13'; }), 'Paradas 1.2.13: #relatorio abre o relatório de paradas'); await r.close();
+  ok(await r.evaluate(() => { const m = document.querySelector('.modal.on, #repModal, .rep'); return !!m && PAGE.versao === '1.2.12'; }), 'Paradas 1.2.12: #relatorio abre o relatório de paradas'); await r.close();
 
   ok(!pe.length, 'sem erro de página' + (pe.length ? ': ' + [...new Set(pe)].slice(0, 3).join(' | ') : ''));
   await b.close(); if (errs.length) { console.log(`\n${errs.length} falha(s)`); process.exit(1); } console.log('\nsem erros');

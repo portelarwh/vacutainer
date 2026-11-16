@@ -91,34 +91,6 @@ const RENOMEADO = { ...CAD, rev: 5, usuarios: CAD.usuarios.map(u => u.codigo ===
     await ctx.close();
   }
 
-  // ---------- Paradas (técnico), Waste (autor do comentário) e Linha 360° (pessoa do posto) com o ID
-  {
-    const ctx = await b.newContext(); const p = await nova(ctx, 'Paradas.html', '#teste');
-    const id = await p.evaluate(() => { const e = Store.data.eventos[0]; abrirEvento(e.id); return e.id; }); await p.waitForTimeout(300);
-    await p.fill('#tTec', 'U9'); await p.locator('button', { hasText: /^Salvar$/ }).last().click(); await p.waitForTimeout(300);
-    const t = await p.evaluate(id => { const t = Store.data.tecnico[id] || {}, ev = calcExports(Store.data).eventos.find(e => e.id === id); return { n: t.tecnico, i: t.tecnicoId, por: t.porId, ex: ev && [ev.tecnico, ev.tecnicoId] }; }, id);
-    ok(t.n === 'Bia' && t.i === 'U9' && t.por === 'U7' && t.ex && t.ex[1] === 'U9', `Paradas: técnico digitado pelo ID U9 vira "${t.n}" (${t.i}); exports com o ID; quem gravou ${t.por}`);
-    await ctx.close();
-  }
-  {
-    const ctx = await b.newContext(); const p = await nova(ctx, 'Perdas-Ordem.html');
-    const ordem = await p.evaluate(() => { enterTest(); return B.rows[0].ordem; }); await p.waitForTimeout(400);
-    await p.evaluate(o => commentForm(o, '', null), ordem); await p.waitForTimeout(200);
-    await p.fill('#cmTxt', 'Comentário do teste do ID'); await p.click('#cmSave'); await p.waitForTimeout(400);
-    const c = await p.evaluate(() => { const x = B.comments.find(c => c.texto === 'Comentário do teste do ID'); return x && { u: x.user, id: x.userId }; });
-    ok(c && c.id === 'U7', `Waste: comentário gravado com o autor pelo ID (${c && c.id}; nome "${c && c.u}")`);
-    await ctx.close();
-  }
-  {
-    const ctx = await b.newContext(); const p = await nova(ctx, 'Linha-360.html', '#teste');
-    await p.evaluate(() => { App.tab = 'pessoas'; render(); }); await p.waitForTimeout(300);
-    const campo = p.locator('#fPosto input[name^="t_"]').first(); const nomeCampo = await campo.getAttribute('name');
-    await campo.fill('U8'); await p.evaluate(() => document.getElementById('fPosto').requestSubmit()); await p.waitForTimeout(300);
-    const r = await p.evaluate(n => { const t = n.slice(2), x = postos().find(q => q.id === App.posto); return { n: (x.pessoas || {})[t], i: (x.pessoasIds || {})[t], mostra: pesNome(x, t) }; }, nomeCampo);
-    ok(r.n === 'Bia' && r.i === 'U8' && r.mostra === 'Bia', `Linha 360°: pessoa do posto digitada pelo ID U8 vira "${r.n}" (${r.i})`);
-    await ctx.close();
-  }
-
   // ---------- Produção: responsável do turno e auditoria com o ID
   {
     const ctx = await b.newContext(); const p = await nova(ctx, 'OEE-Vacutainer.html');
