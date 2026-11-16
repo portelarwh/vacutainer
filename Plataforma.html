@@ -32681,7 +32681,7 @@ table.t tr.on td{background:var(--accent-soft)}
 <main class="wrap" id="main"></main>
 <div class="toasts" id="toasts"></div>
 <script>
-const PAGE={id:"linha",titulo:"Linha 360° · Planta interativa da linha",tituloCurto:"Linha 360°",subtitulo:"Planta interativa: paradas, pessoas e ações em cada ponto da linha",versao:"1.1.7",baseFile:"linha360-base.json",backupDir:"00. Backups/Linha360",estado:"atualizacao",estadoNota:"Primeira versão: planta, pontos, áreas, postos e checklists. MES por equipamento chega depois."};
+const PAGE={id:"linha",titulo:"Linha 360° · Planta interativa da linha",tituloCurto:"Linha 360°",subtitulo:"Planta interativa: paradas, pessoas e ações em cada ponto da linha",versao:"1.2.0",baseFile:"linha360-base.json",backupDir:"00. Backups/Linha360",estado:"atualizacao",estadoNota:"Primeira versão: planta, pontos, áreas, postos e checklists. MES por equipamento chega depois."};
 const APP_VERSION=PAGE.versao;
 /* ---------- vac-cabecalho v2 · JS (igual em todas as páginas) ---------- */
 const VAC_CAB_VERSAO=2;
@@ -33021,6 +33021,10 @@ function calcExports(D){const s0=Store.data;Store.data=D;try{const h=hoje(),pend
 /* ---------- interface ---------- */
 const ABAS=[['mapa','Visão da linha'],['pessoas','Pessoas e postos'],['checklists','Checklists'],['config','Configuração']];
 const ic=(n,c)=>typeof vacIcone==='function'?vacIcone(n,c):'';
+/* 1.2.0 · Piloto de consulta (docs/linha-360-piloto.md): aba fora de ABAS, aberta só por link (#aba=piloto; na plataforma, #/linha?tab=piloto).
+   Somente leitura: nada aqui chama Store.commit, Store.save, Store.reload nem lerExt. */
+const ABA_PILOTO='piloto';
+const abaOk=t=>t===ABA_PILOTO||ABAS.some(a=>a[0]===t);
 function navHtml(){const n=chkPendentes(hoje(),turnoAgora()).length;return ABAS.map(([id,t])=>`<button data-t="${id}" class="${App.tab===id?'on':''}"${App.tab===id?' aria-current="page"':''}>${esc(t)}${id==='checklists'&amp;&amp;n?` <span class="cnt" title="Checklists pendentes agora">${n}</span>`:''}</button>`).join('')}
 function ir(tab){App.tab=tab;App.edit=false;App.desenho=null;const h='#aba='+tab;if(location.hash!==h)history.replaceState(history.state,'',h);render()}
 document.addEventListener('click',e=>{const b=e.target.closest('#nav [data-t]');if(b)ir(b.dataset.t)});
@@ -33178,8 +33182,11 @@ function vConfig(){const S=Store,E=eqs(),a=areas().find(x=>x.id===App.areaSel)||
   <div class="row"><button class="b" id="cConn">${S.dir&amp;&amp;!S.perm?'Reconectar a pasta':'Conectar pasta'}</button><button class="b" id="cSave">Sincronizar</button><button class="b" id="cBk">Backup agora</button>${S.test?'<button class="b" id="cSairT">Sair do modo de teste</button>':'<button class="b" id="cTeste">Ver com dados de demonstração</button>'}</div>
   <p class="small muted mt">Só esta página grava em ${esc(PAGE.baseFile)}. Paradas, ordens de serviço, ações e a ordem em produção são lidas das páginas donas (Paradas, Equipamentos, Iniciativas e Produção) e nunca copiadas para cá.</p></div>`}
 
+function vPiloto(){return`<div class="vk-hd" id="piloto"><div><h2>Piloto de consulta</h2><p>Tela em validação: reúne, para um ponto da linha, as perdas e as pendências que hoje estão em abas diferentes. Somente leitura: nada é gravado por esta tela.</p></div></div>
+ ${semPasta()}${avisos()}
+ <p class="l3-av" role="status">${ic('info','sm')} Etapa 1 do piloto: a tela ainda não mostra dados. A ficha do ponto entra na etapa 2.</p>`}
 function render(){topo();const nv=$('#nav');if(nv)nv.innerHTML=navHtml();const m=$('#main');const sy=scrollY;const vp=$('.l3-vp'),sl=vp?[vp.scrollLeft,vp.scrollTop]:null;
- m.innerHTML=App.tab==='pessoas'?vPessoas():App.tab==='checklists'?vChecklists():App.tab==='config'?vConfig():vMapa();const v2=$('.l3-vp');if(v2&amp;&amp;sl){v2.scrollLeft=sl[0];v2.scrollTop=sl[1]}scrollTo(0,sy);ligar()}
+ m.innerHTML=App.tab===ABA_PILOTO?vPiloto():App.tab==='pessoas'?vPessoas():App.tab==='checklists'?vChecklists():App.tab==='config'?vConfig():vMapa();const v2=$('.l3-vp');if(v2&amp;&amp;sl){v2.scrollLeft=sl[0];v2.scrollTop=sl[1]}scrollTo(0,sy);ligar()}
 function pctDe(e){const r=$('#cv').getBoundingClientRect();return[Math.max(0,Math.min(100,+((e.clientX-r.left)/r.width*100).toFixed(2))),Math.max(0,Math.min(100,+((e.clientY-r.top)/r.height*100).toFixed(2)))]}
 function ligar(){const on=(s,ev,f)=>{const e=$(s);if(e)e[ev]=f};const av=$('#avConn');if(av)av.onclick=e=>{e.preventDefault();Store.dir?Store.reconnect():Store.pick()};
  on('#fPer','onchange',e=>{App.f.per=e.target.value;if(App.f.per==='p'){const[d,a]=periodo();App.f.de=App.f.de||d;App.f.ate=App.f.ate||a}App.f.ordem='';render()});on('#fDe','onchange',e=>{App.f.de=e.target.value;render()});on('#fAte','onchange',e=>{App.f.ate=e.target.value;render()});
@@ -33233,7 +33240,7 @@ function enterTest(){Store.test=true;Store.queue=[];const h=hoje(),D=completar(v
 
 /* ---------- rotas: #aba=, #ponto=, #teste ---------- */
 function rota(){const h=location.hash.slice(1);if(!h)return;const i=h.indexOf('='),k=i<0?h:h.slice(0,i);let v=i<0?'':h.slice(i+1);try{v=decodeURIComponent(v)}catch(e){}
- if(k==='teste')return enterTest();if(k==='aba'&amp;&amp;ABAS.some(a=>a[0]===v)){App.tab=v;return render()}
+ if(k==='teste')return enterTest();if(k==='aba'&amp;&amp;abaOk(v)){App.tab=v;return render()}
  if(k==='ponto'&amp;&amp;P(v)){App.tab='mapa';App.sel=String(v);history.replaceState(history.state,'','#aba=mapa');return render()}}
 window.addEventListener('hashchange',rota);
 PAGE.busca=q=>{const k=norm(q),R=[];for(const p of pontos())if(norm(p.id+' '+p.nome+' '+eqDoPonto(p).lista.map(c=>c+' '+eqNome(c)).join(' ')).includes(k))R.push({tipo:'Ponto da linha',txt:p.id+' · '+p.nome,sub:'Linha 360° · planta',go:()=>{App.sel=p.id;ir('mapa')}});
@@ -33244,7 +33251,7 @@ function vacGuiaAba(){return App.tab}
  const va=document.createElement('span');va.className='vacts';va.innerHTML='<button class="b" id="btnSync" title="Reler Paradas, Produção, Equipamentos e Iniciativas e gravar pendências">Sincronizar</button><button class="b" id="btnMail" title="Copia o relatório do período, com o gráfico, para colar num e-mail do Outlook">Copiar para o Outlook</button><button class="b" id="btnImp" title="Imprimir ou salvar em PDF">Imprimir</button>';$('.vpage .wrap').appendChild(va);
  $('#btnSync').onclick=async()=>{if(Store.test)return toast('Modo de teste: nada a sincronizar');if(!Store.dir)return Store.pick();if(!Store.perm)return Store.reconnect();await Store.reload();await Store.save();render();toast('Sincronizado')};$('#btnImp').onclick=()=>window.print();$('#btnMail').onclick=()=>{if(App.tab!=='mapa')ir('mapa');setTimeout(emailLinha,60)};
  window.addEventListener('storage',e=>{if(e.key==='vac.theme')applyTheme();if(e.key==='vac.cadastros')render()});
- const h0=location.hash;if(/^#aba=/.test(h0)){const t=h0.slice(5).split('&amp;')[0];if(ABAS.some(a=>a[0]===t))App.tab=t}
+ const h0=location.hash;if(/^#aba=/.test(h0)){const t=h0.slice(5).split('&amp;')[0];if(abaOk(t))App.tab=t}
  render();if(vacDemo.ativo){Store.test=true;const lerDemo=()=>{Ext.par=vacDemo.exports('paradas');Ext.oee=vacDemo.exports('oee');Ext.equip=vacDemo.exports('equip');Ext.inic=vacDemo.exports('inic');Ext.erros={};render()};
   vacDemo.registrar('linha',()=>({...Store.data,exports:calcExports(Store.data)}),d=>{Store.data=completar(d)},lerDemo);vacDemo.publicar('linha');rota();return}
  if(h0==='#teste')return enterTest();await Store.init();render();if(h0&amp;&amp;!/^#aba=/.test(h0))rota()})();
@@ -33261,6 +33268,7 @@ window.VAC_GUIA.linha = {
     duvidas: [{ p: 'Por que um ponto está cinza?', r: 'Não houve registro no período, ou o ponto não tem equipamento do cadastro vinculado (Configuração).' }] },
   pessoas: { titulo: 'Pessoas e postos', para: 'Registrar quem ocupa cada posto (OP1, OP2, OP3) em cada turno.', campos: [{ sel: '#fPosto', nome: 'Posto', o: 'Pessoa por turno, área e ponto da planta.' }] },
   checklists: { titulo: 'Checklists', para: 'Verificações de rotina por ponto da planta; marcar o que foi feito no turno.', campos: [{ sel: '#ckTurno', nome: 'Turno', o: 'Turno em que a verificação é marcada.' }, { sel: '#fChk', nome: 'Cadastrar checklist', o: 'Com o padrão da área em mãos.' }] },
+  piloto: { titulo: 'Piloto de consulta', para: 'Tela em validação, somente leitura: perdas e pendências de um ponto da linha num só lugar.', campos: [] },
   config: { titulo: 'Configuração', para: 'Posição dos pontos e postos, equipamentos de cada ponto, áreas, pasta e base.', campos: [{ sel: '#cfEdit', nome: 'Editar posições', o: 'Arrastar pontos e postos na planta.' }, { sel: '#cfDes', nome: 'Redesenhar área', o: 'Clicar nos cantos da área na planta.' }] }
 };
 </script>
@@ -36219,9 +36227,9 @@ td { font-size:15px; }
     {
       "id": "linha",
       "path": "Plataforma.html#motor/linha",
-      "version": "1.1.7",
-      "sha256": "65da383501ebe1eb87d5f70fb944a20cb756572976f53a4e052653379edb7a35",
-      "bytes": 809166
+      "version": "1.2.0",
+      "sha256": "427bef7d3c79d8d1ae155ea56488b7b6ad63d5c8573ed8af1c7e5ccde924c65d",
+      "bytes": 810089
     },
     {
       "id": "projetos",
@@ -36241,7 +36249,7 @@ td { font-size:15px; }
   "limitations": [
     "Projetos e conteúdo técnico OSM/MES/AM/TPM mantêm os limites documentados nas fontes."
   ],
-  "enginesSha256": "dba3ba661838e5088d96ad841e7a5c837b4bf158be440cf1aff8d828cf53f264",
+  "enginesSha256": "03e671e9f4b9ae23edf463d53c92a7a508515d265ffe7e7bd37bad78baa6be24",
   "originRevision": "ffc9ee8",
   "sourceMode": "single-html",
   "originEnginesSha256": "a87a64ad0c328f70e102b2ae888790a9b5d5a9bd05778652a7ce7cae140e40d2"
