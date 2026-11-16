@@ -48,6 +48,13 @@ const RENOMEADO = { ...CAD, rev: 5, usuarios: CAD.usuarios.map(u => u.codigo ===
     await p.fill('#trR', 'U8'); await p.click('.mod [data-ok]'); await p.waitForTimeout(250);
     const t = await p.evaluate(id => { const x = Store.data.acoes.find(a => a.id === id); return { r: x.responsavel, rid: x.responsavelId }; }, a.id);
     ok(t.r === 'Bia' && t.rid === 'U8', `transferir digitando o ID U8: responsável "${t.r}" com ID ${t.rid}`);
+    // revisão Codex (PR #83): responsável U8 e apoio U9 (as duas "Bia"); editar só o título mantém os dois IDs
+    await p.evaluate(id => formAcao(Store.data.acoes.find(x => x.id === id)), a.id); await p.waitForTimeout(150);
+    await p.fill('#aA', 'U9'); await p.click('.mod [data-ok]'); await p.waitForTimeout(250);
+    await p.evaluate(id => formAcao(Store.data.acoes.find(x => x.id === id)), a.id); await p.waitForTimeout(150);
+    await p.fill('#aT', 'Trocar sensor da tampadora (teste do ID, título novo)'); await p.click('.mod [data-ok]'); await p.waitForTimeout(250);
+    const k = await p.evaluate(id => { const x = Store.data.acoes.find(a => a.id === id); return { t: x.titulo, rid: x.responsavelId, ap: x.apoios, apid: x.apoiosIds }; }, a.id);
+    ok(/título novo/.test(k.t) && k.rid === 'U8' && k.ap[0] === 'Bia' && k.apid[0] === 'U9', `editar só o título com as duas "Bia": responsável ${k.rid} e apoio ${k.apid && k.apid[0]} mantidos`);
     await ctx.close();
   }
 
@@ -74,6 +81,13 @@ const RENOMEADO = { ...CAD, rev: 5, usuarios: CAD.usuarios.map(u => u.codigo ===
     await p.fill('#oR', 'ana lima'); await p.click('.mod [data-ok]'); await p.waitForTimeout(300);
     const o = await p.evaluate(() => { const x = Store.data.os.find(o => o.titulo === 'OS do teste do ID'); return x && { r: x.responsavel, rid: x.responsavelId, dl: !!document.getElementById('dlPessoasOS') }; });
     ok(o && o.r === 'Ana Lima' && o.rid === 'U7', `OS nova: "ana lima" vira "${o && o.r}" com ID ${o && o.rid}`);
+    // revisão Codex (PR #83): OS de uma das duas "Bia" (U9); editar só o título não pode apagar o ID; a pendência publica o ID
+    await p.evaluate(() => formOS(null, { equipamento: 'EQ03', titulo: 'OS da Bia da manutenção' })); await p.waitForTimeout(200);
+    await p.fill('#oR', 'U9'); await p.fill('#oZ', '2020-01-01'); await p.click('.mod [data-ok]'); await p.waitForTimeout(300);
+    await p.evaluate(() => formOS(Store.data.os.find(o => o.titulo === 'OS da Bia da manutenção'))); await p.waitForTimeout(200);
+    await p.fill('[id="oT"], .mod input[value="OS da Bia da manutenção"]', 'OS da Bia da manutenção (título novo)'); await p.click('.mod [data-ok]'); await p.waitForTimeout(300);
+    const e = await p.evaluate(() => { const x = Store.data.os.find(o => /^OS da Bia/.test(o.titulo)), pend = calcExports(Store.data).pendencias.find(q => q.id === x.id); return { t: x.titulo, rid: x.responsavelId, pend: pend && { r: pend.responsavel, rid: pend.responsavelId } }; });
+    ok(/título novo/.test(e.t) && e.rid === 'U9' && e.pend && e.pend.rid === 'U9' && e.pend.r === 'Bia', `OS da Bia U9: editar só o título mantém o ID (${e.rid}); a pendência publica o ID (${JSON.stringify(e.pend)})`);
     await ctx.close();
   }
 
