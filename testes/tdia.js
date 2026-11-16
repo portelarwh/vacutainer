@@ -1,6 +1,6 @@
 // Resumo do dia (15/11/2026): vacFicha 'dia' do kit. Clique numa barra de dia → resumo com Produção, Paradas, ordens e lotes, Gel e ações,
 // só com os exports (regra 1); navegação para o dia anterior/próximo, ordem e lote; Resumo × Detalhado; busca por data; link #ficha=dia/.
-// Também confere a grade de gráficos: disposição aplicada antes da pintura, letra legível num cartão de 1/3 e Ampliar.
+// Também confere a grade de gráficos: disposição aplicada antes da pintura, gráfico que cabe num cartão de 1/3 (sem rolagem lateral, 1.6.0) e Ampliar.
 // Dados fictícios em pasta simulada (OPFS). node testes/tdia.js → "sem erros"; código 1 se falhar. Prints em testes/saida/dia/
 const path = require('path'), fs = require('fs'), http = require('http'); const RAIZ = path.resolve(__dirname, '..');
 const { chromium } = require('playwright');
@@ -74,15 +74,15 @@ const cab = p => p.evaluate(() => { const a = document.querySelector('#vacFicha 
       await p.keyboard.press('Escape'); await p.evaluate(() => { const r = document.querySelector('#gDia rect[data-vac-dia]'); r.focus(); }); await p.keyboard.press('Enter'); await p.waitForTimeout(300); ok(/^Dia/.test(await cab(p)), 'Linha 360°: Enter na barra com foco também abre'); await p.screenshot({ path: path.join(SAI, 'linha360.png') });
     } else ok(false, 'Linha 360°: gráfico por dia com barras clicáveis (nenhuma barra encontrada)');
     await p.close(); }
-  // grade: letra legível num cartão de 1/3 e Ampliar (Waste em modo teste)
+  // grade: gráfico cabe num cartão de 1/3, sem rolagem lateral (1.6.0, pedido do responsável), e Ampliar (Waste em modo teste)
   { const p = await abre('Perdas-Ordem.html'); await p.evaluate(() => { try { enterTest(); } catch (e) { } }); await p.waitForTimeout(2500);
     const r = await p.evaluate(async () => { const med = sv => { const vb = sv.viewBox.baseVal, k = sv.getBoundingClientRect().width / vb.width, f = [...sv.querySelectorAll('text')].map(t => parseFloat(getComputedStyle(t).fontSize) * k).sort((a, b) => a - b); return f[f.length >> 1]; };
       const c = [...document.querySelectorAll('.vg-it')].find(c => c.offsetParent && [...c.querySelectorAll('svg[viewBox]')].some(s => s.viewBox.baseVal.width > 500 && s.querySelector('text'))); if (!c) return null; const sv = () => [...c.querySelectorAll('svg[viewBox]')].find(s => s.viewBox.baseVal.width > 500);
-      const antes = med(sv()); c.querySelector('[data-vg="l2"]').click(); await new Promise(r => setTimeout(r, 700)); const terco = med(sv()), rola = sv().parentElement.classList.contains('vg-rola'), semH = document.documentElement.scrollWidth <= innerWidth + 1;
+      const antes = med(sv()); c.querySelector('[data-vg="l2"]').click(); await new Promise(r => setTimeout(r, 700)); const terco = med(sv()), rola = sv().parentElement.classList.contains('vg-rola') || sv().getBoundingClientRect().width > c.clientWidth + 2, semH = document.documentElement.scrollWidth <= innerWidth + 1;
       c.querySelector('[data-vg="amp"]').click(); await new Promise(r => setTimeout(r, 500)); const amp = c.classList.contains('vg-amp'), larg = c.getBoundingClientRect().width; document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true })); await new Promise(r => setTimeout(r, 200)); const saiu = !c.classList.contains('vg-amp');
       c.querySelector('[data-vg="l6"]').click(); await new Promise(r => setTimeout(r, 600)); return { antes, terco, rola, semH, amp, larg, saiu, volta: !sv().dataset.vgLeg }; });
-    ok(r && r.terco >= 8.5 && r.rola && r.semH, `gráfico num cartão de 1/3: letra continua legível (${r && r.terco.toFixed(1)} px; antes ficava abaixo de 3 px) com rolagem só dentro do cartão`);
-    ok(r && r.amp && r.larg > 1300 && r.saiu && r.volta, 'Ampliar põe o cartão na tela inteira, Esc volta, e a largura inteira desfaz a rolagem');
+    ok(r && r.terco > 0 && r.terco < r.antes && !r.rola && r.semH, `gráfico num cartão de 1/3: encolhe junto e cabe no cartão, sem rolagem lateral (letra ${r && r.terco.toFixed(1)} px)`);
+    ok(r && r.amp && r.larg > 1300 && r.saiu && r.volta, 'Ampliar põe o cartão na tela inteira e Esc volta');
     await p.close(); }
   ok(!pe.length, 'sem erros de página' + (pe.length ? ': ' + pe.join(' | ') : ''));
   await b.close(); srv.close(); console.log(errs.length ? `\n${errs.length} falha(s)` : '\nsem erros'); process.exit(errs.length ? 1 : 0);

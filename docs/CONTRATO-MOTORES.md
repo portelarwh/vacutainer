@@ -77,3 +77,12 @@ Plataforma 1.5.0, Produção 2.4.82, Administração 1.9.44.
 - Casca: `normalizeRoute` leva `#/oee?tab=equip` para a página Equipamentos. Botões em destaque: `parametros.destaques` = linhas "Página · texto do botão · cor" (laranja, azul, verde, vermelho; laranja com texto azul-marinho pelo contraste); sem configuração, "Produção · Lançar meu turno · laranja"; "nenhum" desliga. Só muda a cor.
 - Produção: `exports.atual.catalogoMes` = {mes, planejado, realizado, falta, previsaoFim} — o que falta do catálogo no Plano do mês ÷ ritmo da corrida atual (estimado; sem plano ou sem ritmo, sem previsão). O "Agora na linha" mostra.
 - Backups: `parametros.backupDias` (inteiro ≥ 7) e `vacBackupRegistro.limpar(dir)`, chamado pelo registro depois de um backup que deu certo.
+
+## Rolagem, gráficos e pasta 1.6.0 (17/11/2026)
+
+Plataforma 1.6.0, Waste 1.12.13, Administração 1.9.45. Nenhum número, filtro, cálculo ou base mudou.
+
+- Tela pulando para o topo: a faixa de abas da casca (`ModuleTabs`) usava `scrollIntoView` na aba ativa a cada mudança de tamanho, o que rolava a página inteira até as abas; agora só a faixa rola, na horizontal. O quadro do módulo (`host.resize`) só encolhe depois de 700 ms com o conteúdo menor (redesenho, sincronização) e, ao fechar janela/login, devolve a tela à posição de antes. Importações do Portal rola até a seção do link uma vez, não a cada redesenho.
+- `vacGrade` (comum/interface): arrastar pelo ⠿ também entre grupos (`prefs.__mov[cartão] = grupo`; a página redesenhando a grade de origem não duplica o cartão), com rolagem automática perto da borda; gráfico sempre cabe no cartão (sem a largura mínima que gerava rolagem lateral); `data-vg-larg` define a largura padrão; pílula Exibição (`<span data-vg-exibir="área">`, `prefs.__oculto`), por computador.
+- Waste: Pareto por componente e por catálogo viram cartões do grupo B (metade cada, por padrão); Exibição em 04 Análises; Comparativos mostra só as ordens do grupo escolhido (a lista de todas as ordens fica em Visão geral › 05).
+- Pasta: o handle já ficava salvo; ao reabrir, o Chrome pede permissão de novo. O botão vira "Reconectar pasta" e pede a permissão da pasta lembrada (`requestPermission`), sem abrir o seletor. "Permitir em todas as visitas", quando o Chrome oferece, evita o pedido nas próximas vezes.
