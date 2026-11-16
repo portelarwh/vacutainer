@@ -10,7 +10,7 @@ const H=require('../../scripts/html.cjs');
    const context=await browser.newContext({viewport:{width,height:width===390?844:1080},reducedMotion:'reduce'}),page=await context.newPage(),errors=[],remote=[];
    page.on('pageerror',e=>errors.push(e.message));page.on('request',r=>{if(/^https?:/.test(r.url())&&!r.url().startsWith('http://127.0.0.1:'))remote.push(r.url())});
    await context.addInitScript(theme=>{localStorage.setItem('vac.platform.demo.theme',theme);window.print=()=>{}},theme);
-   await page.goto('http://127.0.0.1:'+server.address().port+'/?demo=1');await page.getByRole('heading',{name:'Resultado da fábrica',exact:true}).waitFor();await page.locator('.executive-metrics .metric-value').filter({hasText:'881.000'}).waitFor();await context.setOffline(true);
+   await page.goto('http://127.0.0.1:'+server.address().port+'/?demo=1');await page.getByRole('heading',{name:'Visão da linha',exact:true}).waitFor();await page.locator('.executive-metrics .metric-value').filter({hasText:'881.000'}).waitFor();await context.setOffline(true);
    const metric=label=>page.locator('.executive-metrics .metric').filter({has:page.locator('.metric-label',{hasText:label})});
    assert.equal(await page.locator('.executive-metrics .metric').count(),4);
    assert.match(await metric('Produção boa').innerText(),/937\.000/);assert.match(await metric('Scrap informado').innerText(),/8\.610/);assert.match(await metric('Paradas registradas').innerText(),/369/);
@@ -25,11 +25,11 @@ const H=require('../../scripts/html.cjs');
    if(width===1440 && theme==='light') {
     await openMetric.press('Enter');const iframe=page.locator('iframe[title="Módulo Produção"]');await iframe.waitFor();const f=await(await iframe.elementHandle()).contentFrame();await f.waitForFunction(()=>vacPagina.pronto());
     await f.locator('#selDate').waitFor();assert.equal(await f.locator('#selDate').inputValue(),await page.evaluate(()=>{const d=new Date();return [d.getFullYear(),String(d.getMonth()+1).padStart(2,'0'),String(d.getDate()).padStart(2,'0')].join('-')}));
-    await page.evaluate(()=>location.hash='#/inicio');await page.getByRole('heading',{name:'Resultado da fábrica',exact:true}).waitFor();
+    await page.evaluate(()=>location.hash='#/inicio');await page.getByRole('heading',{name:'Visão da linha',exact:true}).waitFor();
     await page.getByRole('button',{name:'Ver hora a hora',exact:true}).click();
     await f.waitForFunction(()=>App.route==='hourly');
     assert.equal(await f.evaluate(()=>App.sel.date),await page.evaluate(()=>{const d=new Date();return [d.getFullYear(),String(d.getMonth()+1).padStart(2,'0'),String(d.getDate()).padStart(2,'0')].join('-')}));
-    await page.evaluate(()=>location.hash='#/inicio');await page.getByRole('heading',{name:'Resultado da fábrica',exact:true}).waitFor();
+    await page.evaluate(()=>location.hash='#/inicio');await page.getByRole('heading',{name:'Visão da linha',exact:true}).waitFor();
 
    }
 

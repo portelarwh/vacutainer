@@ -52,3 +52,11 @@ A apresentação consulta os mesmos exports. `executiveView` em modulo/core/data
 Produção por turno vem de porDiaTurno; por dia vem de porDia. OEE só aparece com a taxa já publicada para o recorte, sem média de percentuais. Quantidade consolidada de QN é lida de sqdcp.porDia; entre vários dias não se inventa contagem consolidada. Paradas só recebem total com eventosCobertura compatível e minutos válidos; somar registros não elimina simultaneidade nem determina a perda de OEE. A fila mostra posição atual e atraso publicado; não é filtrada silenciosamente pela data de produção.
 
 Atalhos e impressão continuam usando as rotas e permissões existentes. O painel não abre uma base operacional para recalcular indicadores, nem grava dados para produzir o novo layout. A tipografia é injetada pelo css/brand, também nos documentos dos módulos, com regras de tela separadas da impressão.
+
+## Navegação 1.3.0 (16/11/2026): telas do Portal como abas da casca
+
+- `SHELL_TABS` (modulo/App): páginas da casca com abas. Uma aba com 3º campo mostra o quadro do Portal (motor da Administração) naquela aba, com o cabeçalho e as abas da página da casca: Visão da linha (`resultado`, `situacao`→geral, `pendencias`→fila, `reuniao`→reuniao), Relatórios (`resumo`, `todos`→rel), Importações (`central`, `por-pagina`→imp).
+- Administração (`#/portal`) mostra só as abas do Portal que não mudaram de lugar (hoje, `cad`); sem barra quando sobra uma aba.
+- Rotas antigas do Portal (`#/portal?tab=fila`, `#/portal?rota=#fila`, `#reuniao=…`, `#importacao/<sec>`, `#rel`, `#geral`) são normalizadas para a página nova (`normalizeRoute`), e o endereço é reescrito. Links dos módulos para o Portal (`vacPortalHref`) continuam valendo.
+- `vacPagina.info().aba` (opcional): a tela aberta no módulo (`App.tab`). A casca acompanha quando o Portal troca de aba sozinho (ex.: "Ver todas" vai para Pendências); o estado é publicado a cada 1,8 s e logo depois de um clique.
+- Nenhum dado, cálculo, permissão ou gravação mudou: o Portal é o mesmo motor, só mostrado em outro lugar.

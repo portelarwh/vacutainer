@@ -79,7 +79,7 @@ const verN = v => String(v || '').split(/[^\d]+/).filter(Boolean).slice(0, 4).ma
   /* UX-04: pílula comum, "desatualizada" quando outra página já leu uma rev mais nova */
   const u = await o.evaluate(() => { localStorage.setItem('vac.cadastros', JSON.stringify({ schema: 'vac-cadastros', rev: 9 })); return [vacCadPilula(7, { fonte: 'pasta' }), vacCadPilula(9, { fonte: 'pasta' }), vacCadPilula(7, { fonte: 'pasta', portal: true }), vacCadPilula(9, { fonte: 'copia' }), vacCadPilula(null)]; });
   ok(/desatualizada/.test(u[0]) && /pill warn/.test(u[0]) && !/desatualizada/.test(u[1]) && /pill info/.test(u[1]) && !/desatualizada/.test(u[2]), 'UX-04: rev atrás da mais nova lida neste computador = "desatualizada"; igual = normal; no Portal nunca');
-  ok(/cópia local/.test(u[3]) && /não lido/.test(u[4]) && /Revisão do cadastro geral do Portal/.test(u[1]), 'UX-04: cópia local e "não lido" sinalizados; ⓘ explica o número');
+  ok(/cópia local/.test(u[3]) && /não lido/.test(u[4]) && /Revisão do cadastro geral/.test(u[1]), 'UX-04: cópia local e "não lido" sinalizados; ⓘ explica o número');
   await o.close();
 
   for (const [arq, id, abas] of [['Portal.html', 'portal', 6], ['Paradas.html', 'paradas', 10], ['Perdas-Ordem.html', 'perdas', 8], ['Gestão-Gel-Vacutainer.html', 'gel', 8], ['Iniciativas.html', 'inic', 6], ['Equipamentos.html', 'equip', 5]]) {
