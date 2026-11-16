@@ -5,7 +5,7 @@ const H=require('../../scripts/html.cjs');
  const server=http.createServer((q,r)=>{r.setHeader('Content-Type','text/html; charset=utf-8');r.end(fs.readFileSync(process.env.PLATAFORMA_HTML||H.FILE))});let browser;
  try{
   await new Promise(r=>server.listen(0,'127.0.0.1',r));browser=await chromium.launch(require('./chromium.cjs')());
-  for(const width of [390,1440])for(const theme of ['light','dark']){
+  for(const width of [390,768,1440])for(const theme of ['light','dark']){
    const c=await browser.newContext({viewport:{width,height:960},reducedMotion:'reduce'}),p=await c.newPage(),errors=[];
    p.on('pageerror',e=>errors.push(e.message));await c.addInitScript(t=>localStorage.setItem('vac.platform.demo.theme',t),theme);
    await p.goto('http://127.0.0.1:'+server.address().port+'/?demo=1#/oee');
@@ -30,7 +30,7 @@ const H=require('../../scripts/html.cjs');
    const tabs=p.locator('.module-tabs button');for(const index of [await tabs.count()-1,0]){await tabs.nth(index).click();await p.waitForFunction(()=>{const a=document.querySelector('.module-tabs .active'),n=document.querySelector('.module-tabs');if(!a||!n)return false;const x=a.getBoundingClientRect(),r=n.getBoundingClientRect();return x.left>=r.left-1&&x.right<=r.right+1});}
    assert.ok(await f.locator('#vacEstFaixa').evaluateAll(ns=>ns.every(n=>getComputedStyle(n).display==='none')));
    await p.evaluate(()=>location.hash='#/gel');const gel=p.locator('iframe[title="Módulo Gestão de Gel"]');await gel.waitFor();const g=await(await gel.elementHandle()).contentFrame();await g.waitForFunction(()=>vacPagina.pronto());
-   const tv=p.locator('.engine-commands button[aria-haspopup="menu"]').filter({hasText:/TV/});await tv.waitFor();
+   const tv=p.locator('.engine-commands button[aria-haspopup="menu"]').filter({hasText:/TV/});await tv.waitFor();assert.equal((await tv.innerText()).trim(),'TV ▾','só um indicador de menu');
    assert.equal(await p.getByRole('menuitem').count(),0);await tv.click();const menu=p.getByRole('menu',{name:/TV/});await menu.waitFor();assert.equal(await menu.getByRole('menuitem').count(),3);
    const bounds=await menu.boundingBox();assert.ok(bounds.x>=0&&bounds.x+bounds.width<=width+1,'menu não cortado');assert.equal(await tv.getAttribute('aria-expanded'),'true');
    assert.equal(await menu.locator('button').first().evaluate(e=>e===document.activeElement),true);await p.keyboard.press('End');assert.equal(await menu.locator('button').last().evaluate(e=>e===document.activeElement),true);
