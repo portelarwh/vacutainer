@@ -90,7 +90,7 @@ A recomendação do anexo de charcoal sobre laranja/lavanda não atinge 4,5:1 em
 
 ### Escala e suporte
 
-Grid de 8 px, margens de 24–32 px no desktop e 16 px no celular, espaços de 16–24 px e raios de 8–12 px. Na casca, títulos de página 30–36 px, números principais 32–44 px, corpo/controles 14 px e notas 12 px. Controles com pelo menos 40 px e foco visível de 2 px ou mais.
+Grid de 8 px, margens de 24–32 px no desktop e 16 px no celular, espaços de 16–24 px e raios de 8–12 px. Na revisão executiva aprovada em 16/11/2026, títulos de página usam 32–36 px, indicadores principais 36–48 px conforme a largura (44–48 px no desktop amplo), corpo/campos 15 px e notas/rótulos 13 px. Tabelas operacionais usam 14–15 px. Controles com pelo menos 40 px e foco visível de 2 px ou mais.
 
 Tabelas extensas podem ter rolagem própria; não comprimir a página inteira para evitar isso. Impressão tem escala própria. O SQDCP continua uma A4 paisagem e os formulários que exigem retrato preservam essa orientação. Layout nunca modifica número, unidade, fonte do dado, período ou regra de agregação.
 
@@ -121,4 +121,18 @@ Não substituir padrões existentes arbitrariamente.
 
 
 ## 16. Estado da adoção
-A fundação de marca e a casca são tratadas nesta rodada. Os motores reutilizam os tokens, mas gráficos específicos, PDFs, e-mails e formulários ainda precisam de revisão por jornada conforme [PLANO-DE-MELHORIAS.md](PLANO-DE-MELHORIAS.md). Não declarar acessibilidade completa, nova identidade corporativa aprovada no Maxwell ou migração integral para React com base apenas nessa camada.
+A fundação de marca foi preservada e a casca recebeu a direção executiva aprovada em 16/11/2026. Os motores reutilizam os tokens, mas gráficos específicos, PDFs, e-mails e formulários ainda precisam de revisão por jornada conforme [PLANO-DE-MELHORIAS.md](PLANO-DE-MELHORIAS.md). Não declarar acessibilidade completa, nova identidade corporativa aprovada no Maxwell ou migração integral para React com base apenas nessa camada.
+
+
+## 17. Direção executiva aprovada e aplicada (16/11/2026)
+
+O responsável aprovou a proposta visual e sua aplicação completa. A versão 1.2.0 adota **resultado → análise → ação**, mantendo os valores da paleta e os motores originais.
+
+- **Visão inicial:** Resultado da fábrica, com quatro indicadores, meta/desvio quando publicados, segurança/qualidade, produção por turno ou dia, tempos por equipamento e prioridades do Planner. Resumo destaca três ações; Detalhado amplia a lista e mostra as linhas do recorte. As demais pendências e os atalhos continuam acessíveis em uma seção recolhível e no menu.
+- **Fontes reais:** a imagem de referência é conceitual. Os exports atuais não publicam hora a hora completo; o resumo usa dia/turno e abre o hora a hora na Produção. Scrap aparece em peças, sem criar percentual/limite. Paradas são soma de registros, com cobertura explícita e possível sobreposição; não são automaticamente perda de OEE. QN informada não significa QN aberta. Quantidades consolidadas de SQDCP vêm do resumo publicado, sem somar a mesma QN entre turnos.
+- **Contextos separados:** indicadores diários seguem o período/turno selecionados; ações mostram a posição atual publicada no Planner. Waste conserva competência mensal. Data de publicação é identificada como publicação, não como atualização em tempo real ou prova de importação completa.
+- **Componentes:** fontes, filtros, botões, tabelas, estados, margens e navegação compartilham a escala da casca e de css/brand nos nove módulos. Comandos longos têm limite visual, descrição completa e rolagem na barra. Nada é removido por densidade ou por falta de espaço.
+- **Gráficos:** rótulos legíveis, base zero, marcador de meta e barras verdes/vermelhas somente quando existe meta; sem meta, série institucional neutra. Rolagem é interna ao gráfico quando necessária. Equipamentos e ações preservam seus IDs nos atalhos.
+- **Impressão:** Exportar resumo da visão inicial usa o mesmo recorte e valores do dashboard, com unidades, cobertura e referência das ações. O relatório compilado mantém a granularidade de cada módulo. A nova escala operacional é de tela; os PDFs específicos e o SQDCP A4 mantêm seus formatos.
+
+A preparação usa dados fictícios em 390/768/1440/1920 px, claro/escuro, navegação offline e os nove módulos. Aprovação visual não substitui validação das jornadas por perfil (E10c), conferência corporativa, impressora/Outlook ou homologação da pasta da linha.

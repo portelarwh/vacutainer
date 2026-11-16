@@ -43,3 +43,12 @@ Versões desta entrega: casca 1.1.1, Portal 1.9.41, Produção 2.4.79, Waste 1.1
 - **Cenário da demonstração**: `node scripts/cenario-demo.cjs --gravar` abre cada módulo em demonstração, aplica pelo código da página os dados fictícios que faltavam (caixas do MES pelo importador, lote confirmado no dia, desvio da KKBC dividido em estrutura/empregado/preço, lote no PCP do Gel, data de leitura da produção pelo Gel) e grava as bases e exports atuais com as datas de volta ao dia de referência.
 - **Paradas 1.2.12**: na demonstração a 1ª tela era montada antes do kit carregar (vacLayout); agora espera o documento terminar.
 - **Testes sem internet**: `testes/http-local.cjs` atende as bibliotecas pela CDN com os blocos `biblioteca/*` e reprova qualquer outro pedido à internet.
+
+
+## Visão executiva 1.2.0 (16/11/2026)
+
+A apresentação consulta os mesmos exports. `executiveView` em modulo/core/data seleciona período/turno e organiza listas para a tela; `productionView` e as regras dos motores permanecem iguais. Nenhum campo foi acrescentado às bases ou aos exports. O hash dos motores é o mesmo da entrega anterior.
+
+Produção por turno vem de porDiaTurno; por dia vem de porDia. OEE só aparece com a taxa já publicada para o recorte, sem média de percentuais. Quantidade consolidada de QN é lida de sqdcp.porDia; entre vários dias não se inventa contagem consolidada. Paradas só recebem total com eventosCobertura compatível e minutos válidos; somar registros não elimina simultaneidade nem determina a perda de OEE. A fila mostra posição atual e atraso publicado; não é filtrada silenciosamente pela data de produção.
+
+Atalhos e impressão continuam usando as rotas e permissões existentes. O painel não abre uma base operacional para recalcular indicadores, nem grava dados para produzir o novo layout. A tipografia é injetada pelo css/brand, também nos documentos dos módulos, com regras de tela separadas da impressão.

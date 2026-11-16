@@ -16,7 +16,7 @@ const {chromium}=require('playwright'),H=require('../../scripts/html.cjs');
   const page=await browser.newPage();page.on('pageerror',e=>errors.push(e.message));page.on('dialog',d=>d.dismiss());
   page.on('request',r=>{if(/^https?:/.test(r.url()))requests.push(new URL(r.url()).pathname);});
   await page.goto('http://127.0.0.1:'+server.address().port+'/Plataforma.html?demo=1');
-  await page.getByRole('heading',{name:'Visão da linha.'}).waitFor();
+  await page.getByRole('heading',{name:'Resultado da fábrica'}).waitFor();
   const labels={portal:'Administração',oee:'Produção',perdas:'Waste',gel:'Gestão de Gel',paradas:'Paradas',equip:'Equipamentos',inic:'Iniciativas / Ações',linha:'Linha 360°',projetos:'Projetos'};
   for(const id of Object.values(H.names)){
    await page.evaluate(id=>location.hash='#/'+id,id);

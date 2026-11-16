@@ -17,6 +17,10 @@ Atualizado em 16/11/2026. **Uma entrega por etapa, com os mesmos dados antes e d
 
 Etapa 1 é o aceite para uso na linha; seu bloqueio não impede preparar melhorias de consulta com dados fictícios. Cada tela precisa de diagnóstico antes de alterar. Não é uma ordem para reescrever tudo em React ou criar outra árvore de fontes.
 
+## Recorte visual aprovado em 16/11/2026
+
+A aplicação da proposta executiva foi autorizada: hierarquia resultado → análise → ação, tipografia maior na casca e nos nove módulos, Resumo/Detalhado, navegação e relatório executivo. A especificação aplicada está na seção 17 do [Design System](DESIGN_SYSTEM.md). A maquete não é fonte de números/metas: usar somente campos publicados e preservar a granularidade. Os próximos recortes funcionais, materiais pendentes e homologações seguem nesta sequência; a entrega visual não os conclui automaticamente.
+
 ## Recortes da etapa 6
 
 - **PLN-01 — Kanban:** títulos e responsáveis legíveis; status com texto e cor, prioridade e prazo claros. Preservar filtros, movimentação e histórico.
