@@ -53,7 +53,9 @@ const files={portal:'portal-base.json',oee:'oee-vacutainer-base.json',perdas:'pe
   console.log('gravou operação',entry.id);
   const saved=await page.evaluate(async file=>JSON.parse(await(await(await fixtureDir.getFileHandle(file)).getFile()).text()),files[entry.id]);
   expected.exports=reference.exportsEsperado;
-  if(entry.id==='oee'){assert.match(saved.saveId,/^sv_/);assert.notEqual(saved.saveId,baseline.saveId);expected.saveId=saved.saveId}
+  if(entry.id==='oee'){assert.match(saved.saveId,/^sv_/);assert.notEqual(saved.saveId,baseline.saveId);expected.saveId=saved.saveId;
+   // Produção 2.5.0: db.timeline é bloco aditivo; a base antiga não o tem e a primeira gravação o cria vazio (nunca preenchido pela edição de nota).
+   if(!baseline.timeline)expected.timeline={tagMap:[],tagEvents:[],comments:{},imports:[]}}
   const auditKey=entry.id==='oee'?'auditLog':['portal','perdas'].includes(entry.id)?'audit':'auditoria';
   if(Array.isArray(saved[auditKey])){
    const previous=baseline[auditKey]||[],added=saved[auditKey].slice(previous.length);
