@@ -50,7 +50,7 @@ const errs = []; const ok = (c, m) => { console.log((c ? 'ok   ' : 'FALHA ') + m
   ok(R.linhas.nV + R.linhas.nL === R.linhas.nT && R.linhas.nV > 0 && R.linhas.catsV === '360051,360060' && R.linhas.soma, `filtro de linha: ${R.linhas.nV} + ${R.linhas.nL} = ${R.linhas.nT} ordens, VAC só com 360051/360060, MUV soma`);
   ok(/Linha Vacutainer/.test(R.linhas.opc) && /Linha 2/.test(R.linhas.opc) && /Linha: Linha Vacutainer/.test(R.chip), `seletor e pílula da linha (${R.linhas.opc})`);
   ok(/Meta do período\s*R\$\s*[\d.]+/.test(R.sit) && !/Sem meta/.test(R.sit), 'Situação com a meta da linha');
-  ok(R.acum.bars > 0 && (R.acum.metas === R.acum.bars || R.acum.linha) && R.acumOk && /target pelo Portal/.test(R.acum.txt), `MUV × target acumulado no FY: ${R.acum.bars} barras com o target acumulado (${R.acum.metas || (R.acum.linha ? 'linha' : 0)} traço(s)), último = soma do FY`);
+  ok(R.acum.bars > 0 && (R.acum.metas === R.acum.bars || R.acum.linha) && R.acumOk && /target pela Administração/.test(R.acum.txt), `MUV × target acumulado no FY: ${R.acum.bars} barras com o target acumulado (${R.acum.metas || (R.acum.linha ? 'linha' : 0)} traço(s)), último = soma do FY`);
   ok(Math.abs(R.usd - 14000) < 0.01, `vendo em US$: R$ 20.000 ÷ 5 + US$ 10.000 = ${R.usd}`);
   ok(R.ex && R.ex.meta === 70000 && R.ex.metaFonte === 'portal-muv' && R.linhaDepois === 'VAC', `exports.porMes: meta total em R$ (${R.ex && R.ex.meta}, ${R.ex && R.ex.metaFonte}) sem o filtro da tela, que fica como estava`);
   ok(R.mes === 45000 && R.mesLinha == null, `sem WASTE-MUV: meta WASTE-MES (${R.mes}); com linha escolhida, sem meta (${R.mesLinha})`);

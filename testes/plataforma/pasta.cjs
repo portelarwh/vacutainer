@@ -71,6 +71,24 @@ const files={portal:'portal-base.json',oee:'oee-vacutainer-base.json',perdas:'pe
   if(entry.id==='oee')assert.equal(saved.applicationVersion,entry.version,'oee applicationVersion');
   integral(expected,saved,entry.id+' abrir → alterar → gravar → reler');
   console.log('ok abrir/gravar/reler '+entry.id+' '+saved.appVersion+' · '+Object.keys(saved.exports).length+' chaves de exports');
+  // R02-B: formulários reais conectados à pasta fictícia, escrita pelo motor e releitura física do JSON.
+  if(['paradas','perdas','linha'].includes(entry.id)){
+   let record;
+   if(entry.id==='paradas'){
+    record=await frame.evaluate(()=>{const e=Store.data.eventos[0];abrirEvento(e.id);return e.id});await frame.fill('#tTec','9099');await frame.locator('button',{hasText:/^Salvar$/}).last().dispatchEvent('click');
+    await frame.evaluate(async()=>{clearTimeout(Store.t);await Store.save()});
+   }else if(entry.id==='perdas'){
+    await frame.evaluate(()=>commentForm(B.rows[0].ordem,'',null));await frame.fill('#cmTxt','Autoria por ID em OPFS fictício');await frame.locator('#cmSave').evaluate(el=>el.onclick());
+    await frame.waitForFunction(()=>B.comments.some(c=>c.texto==='Autoria por ID em OPFS fictício'));
+   }else{
+    await frame.evaluate(()=>{App.tab='pessoas';render()});const input=frame.locator('#fPosto input[name^="t_"]').first(),name=await input.getAttribute('name');record=await frame.evaluate(()=>App.posto);await input.fill('9099');await frame.evaluate(async()=>{document.getElementById('fPosto').requestSubmit();clearTimeout(Store.t);await Store.save()});record={id:record,turno:name.slice(2)};
+   }
+   const persisted=await page.evaluate(async file=>JSON.parse(await(await(await fixtureDir.getFileHandle(file)).getFile()).text()),files[entry.id]);
+   if(entry.id==='paradas'){assert.equal(persisted.tecnico[record].tecnicoId,'9099');assert.equal(persisted.exports.eventos.find(e=>e.id===record).tecnicoId,'9099')}
+   else if(entry.id==='perdas')assert.equal(persisted.comments.find(c=>c.texto==='Autoria por ID em OPFS fictício').userId,'9099');
+   else{assert.equal(persisted.postos.find(p=>p.id===record.id).pessoasIds[record.turno],'9099');assert.equal(persisted.exports.postos.find(p=>p.id===record.id).pessoasIds[record.turno],'9099')}
+   console.log('ok R02-B '+entry.id+': formulário → gravação do motor → ID preservado no arquivo fictício');
+  }
  }
  assert.deepEqual(errors,[]);
  await page.evaluate(async()=>{window.disposed=[];for(const frame of document.querySelectorAll('iframe')){const api=frame.contentWindow.vacPagina,previous=api.descartar;api.descartar=()=>{parent.disposed.push(frame.title);previous()}}const other=await(await navigator.storage.getDirectory()).getDirectoryHandle('Outra-Ficticia',{create:true});await other.getDirectoryHandle('00. Bases',{create:true});window.showDirectoryPicker=async()=>other});

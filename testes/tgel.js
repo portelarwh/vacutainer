@@ -40,7 +40,7 @@ const { chromium } = require('playwright');
     const k = vacGel.teorico({ tubosPorCat: t, date: d, cg: id => ({ fmt: catFmt(id), vig: catVigList(catById(id)) }), fmts: S.config.fmts, params: S.config.params }); return [d, pc.teo, k.teo, pc.gelBons, k.gelBons]; }).filter(x => Math.abs(x[1] - x[2]) > 1e-9 || Math.abs(x[3] - x[4]) > 1e-9));
   ok(!cruz.length, '4b: teórico do kit (vacGel.teorico) igual ao prodCalc do Gel em todos os dias registrados' + (cruz.length ? ' · ' + JSON.stringify(cruz[0]) : ''));
   const trav = await g.evaluate(async () => { const r = {}; for (const sec of ['proc', 'fmts', 'motivos', 'equip']) { openConfig(sec); await new Promise(x => setTimeout(x, 60)); const b = document.querySelector('#ov .cfgbody');
-      r[sec] = { banner: /cadastro geral do Portal/.test(b.innerText), livres: [...b.querySelectorAll('input,select,textarea,button')].filter(el => !el.disabled && !el.closest('a') && el.id !== 'ctPortal').length }; }
+      r[sec] = { banner: /cadastro geral da Administração/.test(b.innerText), livres: [...b.querySelectorAll('input,select,textarea,button')].filter(el => !el.disabled && !el.closest('a') && el.id !== 'ctPortal').length }; }
     document.querySelectorAll('.overlay').forEach(o => o.remove()); return r; });
   for (const [sec, r] of Object.entries(trav)) ok(r.banner && r.livres === 0, `4a: Gel › Configuração › ${sec} só consulta, com "Editar no Portal" (livres: ${r.livres})`);
   await g.evaluate(() => localStorage.removeItem('vac.cadastros'));

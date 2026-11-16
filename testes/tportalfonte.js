@@ -64,7 +64,7 @@ const { chromium } = require('playwright');
     Store.S.cadDoc = { schema: 'vac-cadastros', rev: 9, turnos: [{ codigo: 'T1', vigencias: [] }], catalogos: [], paradas: [], metasOee: [], linhas: [], parametros: {} };
     const D = CadSync.dominios(), ban = CadSync.banner('catalogos'), banT = CadSync.banner('turnos');
     const sl = CadSync.soLocal('turnos'); Store.S.cadDoc = null;
-    return { semDoc, D, vazio: /O Portal ainda não tem catálogos/.test(ban), soLocal: sl, banT: /Só na Produção/.test(banT) };
+    return { semDoc, D, vazio: /A Administração ainda não tem catálogos/.test(ban), soLocal: sl, banT: /Só na Produção/.test(banT) };
   });
   ok(r2.semDoc === '{}', 'ARQ-01..04: sem pasta e sem Portal (modo local/testes) as Configurações ficam como antes');
   ok(r2.D.turnos && r2.D.catalogos && r2.D.metas && r2.D.paradas && r2.D.estrutura, 'ARQ-01..04: com o cadastro do Portal, turnos, catálogos, metas, paradas e estrutura ficam só consulta, mesmo com o domínio vazio no Portal');
@@ -114,7 +114,7 @@ const { chromium } = require('playwright');
   ok(lig.desc, 'ARQ-05: nome e cor do catálogo vêm do Portal (vínculo pelo número)');
   ok(lig.eq && lig.n === 2, 'ARQ-07: equipamento do Gel liga ao do Portal pelo nome (código guardado no vínculo)');
   const ui5 = await g.evaluate(async () => {
-    openConfig('cat'); await new Promise(r => setTimeout(r, 150)); const novoEscondido = !!document.querySelector('#ctSave') && !!document.querySelector('#ctSave').closest('.catform[hidden]'); const banner = /cadastro geral do Portal/.test(document.body.innerText);
+    openConfig('cat'); await new Promise(r => setTimeout(r, 150)); const novoEscondido = !!document.querySelector('#ctSave') && !!document.querySelector('#ctSave').closest('.catform[hidden]'); const banner = /cadastro geral da Administração/.test(document.body.innerText);
     ui.catEdit = S.catalogs[0].id; openConfig('cat'); await new Promise(r => setTimeout(r, 150)); const numTrav = document.querySelector('#ctNum').disabled && document.querySelector('#ctDesc').disabled;
     ui.catEdit = null; ui.eqEdit = null; ui.eqDraft = null; openConfig('equip'); await new Promise(r => setTimeout(r, 150));
     const sel = document.querySelector('#eqPortal'), nomeEsc = !!document.querySelector('#eqName') && !!document.querySelector('#eqName').closest('[hidden]');
