@@ -3678,14 +3678,15 @@ const Store={B:null,mode:'local',dir:null,mod:0,pending:false,pendFrom:0,err:'',
   if(localStorage.getItem(k)!==day){const nm=PAGE.baseFile.replace('.json','')+'_'+day+'.json',dir=()=>this.sub(PAGE.backupDir);try{const r=await this.readFile(PAGE.baseFile);await this.writeFile(await dir(),nm,r.text);localStorage.setItem(k,day);await vacBackupRegistro.registrar('portal',{ok:true,arquivo:nm,dir})}catch(e){/* 1.9.40 · a falha do backup diário fica registrada (Portal › Versões) */await vacBackupRegistro.registrar('portal',{erro:e,dir})}}
   await this.writeFile(this.dir,PAGE.baseFile,JSON.stringify(this.B));try{this.mod=(await (await this.dir.getFileHandle(PAGE.baseFile)).getFile()).lastModified}catch(e){}},
  async connect(dir,opts={}){return vacEditarBase('portal',async()=>{vacGuardaAba('portal',!!this.pending);await this.pendenteAtual();return this._connect(dir,opts)},()=>this.pending)},
- async _connect(dir,{ask=false}={}){if(!dir)return false;let p=await dir.queryPermission({mode:'readwrite'});if(p!=='granted'&amp;&amp;ask)p=await dir.requestPermission({mode:'readwrite'});if(p!=='granted')return false;
+ async _connect(dir,{ask=false}={}){if(!dir)return false;this.motivo='';let p=await dir.queryPermission({mode:'readwrite'});if(p!=='granted'&amp;&amp;ask)p=await dir.requestPermission({mode:'readwrite'});if(p!=='granted'){this.motivo='o navegador não deu permissão de gravação na pasta';return false}
   /* 1.8.9 · bases em 00. Bases: o Portal move as dele (portal-base e cadastros) e passa a ler/gravar por vacRaiz */
   this.dir=vacRaiz(dir);this.mode='pasta';try{vacAvisoBases(await vacMoverBases(dir,[[PAGE.baseFile,PAGE.backupDir],[CAD_FILE,CAD_BKP]]))}catch(e){console.warn('bases',e)}
-  let remote=null;try{remote=await this.readRemote()}catch(e){/* 1.8.10 · só "não encontrado" é base ausente; outro erro (rede, permissão, JSON) não oferece criar base nova por cima */if(!vacNaoAchou(e)){toast('Não consegui ler a base da pasta ('+(e.message||e.name||e)+'). Nada foi alterado: confira a pasta e tente de novo.',9000,true);this.dir=null;this.mode='local';return false}}
+  let remote=null;try{remote=await this.readRemote()}catch(e){/* 1.8.10 · só "não encontrado" é base ausente; outro erro (rede, permissão, JSON) não oferece criar base nova por cima */if(!vacNaoAchou(e)){this.motivo='não consegui ler 00. Bases/'+PAGE.baseFile+' ('+(e.message||e.name||e)+')';toast('Não consegui ler a base da pasta ('+(e.message||e.name||e)+'). Nada foi alterado: confira a pasta e tente de novo.',9000,true);this.dir=null;this.mode='local';return false}}
   if(remote){if(this.pending&amp;&amp;remote.data.rev===this.pendFrom){await this.writeRemote();this.pending=false;toast('Alterações feitas sem a pasta foram gravadas.')}
     else{if(this.pending){downloadBlob(new Blob([JSON.stringify(this.B)],{type:'application/json'}),PAGE.baseFile.replace('.json','')+'_NAO-GRAVADO_'+todayISO()+'.json');toast('A base da pasta mudou enquanto você estava sem acesso. Suas alterações locais foram baixadas para conferência.',8000)}
       this.B=this.fix(remote.data);this.mod=remote.mod;this.pending=false}}
-  else{if(!confirm('A pasta escolhida não tem '+PAGE.baseFile+'. Criar a base nesta pasta?')){this.dir=null;this.mode='local';return false}await this.writeRemote()}
+  else{/* 1.8.5 · ADM-01: a Administração continua no HTML único e usa 00. Bases/portal-base.json (configuração da Administração e da plataforma). Com backup, restaurar é melhor que criar vazia */
+   if(!confirm('A pasta não tem 00. Bases/'+PAGE.baseFile+', a base da Administração (configuração da Administração e da plataforma; o cadastro fica em vacutainer-cadastros.json).\n\nSe você tem o backup dela, clique em Cancelar, copie o arquivo para a pasta 00. Bases e conecte de novo.\n\nCriar uma base nova, vazia, agora?')){this.motivo='falta 00. Bases/'+PAGE.baseFile+' (restaure o backup ou permita criar uma nova)';this.dir=null;this.mode='local';return false}await this.writeRemote()}
   await this.idb.set('base',this.B);await this.idb.set('pending',{p:this.pending,from:this.pendFrom,aba:vacFila('portal').aba});this.waiting=false;return true},
  async pick(){if(!window.showDirectoryPicker){alert('Este navegador não permite acessar pastas. Use o Chrome ou o Edge.');return false}
   try{const d=await window.showDirectoryPicker({mode:'readwrite',id:PAGE.id});if(await this.connect(d,{ask:true})){await this.idb.set('dir',d);return true}}catch(e){if(e.name!=='AbortError')alert('Não consegui abrir a pasta: '+e.message+'\nDica: escolha a pasta pela unidade mapeada (ex.: Z:).')}return false},
@@ -3922,7 +3923,7 @@ function wireConfigComum(){$('#cPasta').onclick=async()=>{if(await Store.pick())
         entrar pelo ID (autocadastro como Consulta); página inicial por perfil (1x por sessão); vigência gravada não se edita (desativar com motivo); painel de vigências; semáforo central; saída do modo de teste.
    1.1.2: aviso da carga diz qual base foi lida.  1.5: páginas Paradas, Máquinas, Manutenção e Projetos na lista (aparecem quando o HTML chega na pasta).  1.4: lista técnica pela CS12 multinível (itens = nível 1, estrutura = níveis 2+); CS03 sai.  1.3: cabeçalho comum (vac-cabecalho v2: barra do sistema + página + abas), busca Ctrl K, acabamento V1.90, Versões com cabeçalho e último backup.  1.2: Configuração › Versões das páginas (versão e data de cada HTML, gravação das bases, cópias repetidas, histórico).
    ===================================================================== */
-const PAGE={id:'portal',titulo:"Administração · Linha Vacutainer",tituloCurto:"Administração",subtitulo:'Sistemas de gestão da linha',versao:'1.9.45',baseFile:'portal-base.json',idb:'vac-portal',backupDir:'00. Backups/Portal',
+const PAGE={id:'portal',titulo:"Administração · Linha Vacutainer",tituloCurto:"Administração",subtitulo:'Sistemas de gestão da linha',versao:'1.9.46',baseFile:'portal-base.json',idb:'vac-portal',backupDir:'00. Backups/Portal',
  vazio:()=>({schema:'portal-base',rev:0,config:{modulos:{},avisoDias:30,notas:{}},audit:[]}),
  /* itens do Portal para a busca Ctrl K: cadastro, pendências e telas */
  busca:q=>{const R=[],D=Cad.D;if(D)for(const t of CAD_ORD){for(const it of D[t]||[]){const c=String(it[kOf(t)]),nm=t==='bom'?((cadItem('catalogos',it.catalogo)||{}).nome||''):it.nome||'';if(norm(c+' '+nm).includes(q))R.push({tipo:CAD_T[t].um,txt:c+(nm?' · '+nm:''),sub:'Cadastros'+(cadAtivo(t,it,D)?'':' · inativo'),href:'#cadastros/'+t+'/'+encodeURIComponent(c)});if(R.length>30)break}}
@@ -4477,7 +4478,7 @@ const CAD_T={
   vcampos:[['pphNominal','PPH nominal (peças/h)','int'],['tubosPorCaixa','Tubos por caixa','int'],['caixasPorLote','Caixas por lote','int']]},
  materiais:{nome:'Materiais',um:'material',campos:[['codigo','Código SAP','cod'],['nome','Descrição','txt',null,{w:2}],['unidade','Unidade','sel',UNIDS],['tipo','Tipo','sel',['gel','rolha','tubo','etiqueta','caixa','aditivo','outro']],['tipoSAP','Tipo SAP (ROH, HALB…)','txt']]},
  bom:{nome:'BOM',um:'BOM',key:'catalogo',vig:true,campos:[['catalogo','Catálogo','refcod','catalogos']]},
- equipamentos:{nome:'Equipamentos',um:'equipamento',campos:[['codigo','Código','cod'],['nome','Nome','txt'],['linha','Linha','ref','linhas'],['posicao','Posição na linha','int'],['tipo','Tipo','sel',['equipamento','linha'],{up:1}],['papel','Papel','sel',['oee','equipamento'],{up:1}],['fabricante','Fabricante','txt'],['modelo','Modelo','txt'],['numeroSerie','Nº de série','txt'],['ano','Ano','int'],['apelidos','Outros nomes (de-para)','txt',null,{w:2}],['categoria','Categoria','sel',['linha','gel'],{lab:{linha:'Equipamento da linha',gel:'Equipamento – Gel'},redraw:1}]]},
+ equipamentos:{nome:'Equipamentos',um:'equipamento',campos:[['codigo','Código','cod'],['nome','Nome','txt'],['linha','Linha','ref','linhas'],['posicao','Posição na linha','int'],['tipo','Tipo','sel',['equipamento','linha'],{up:1}],['papel','Papel','sel',['oee','equipamento'],{up:1}],['fabricante','Fabricante','txt'],['modelo','Modelo','txt'],['numeroSerie','Nº de série','txt'],['ano','Ano','int'],['apelidos','Outros nomes (de-para)','txt',null,{w:2}],['codigoMes','Código MES','txt'],['departamento','Departamento','txt'],['centroTrabalho','Centro de trabalho (Work Center)','txt'],['categoria','Categoria','sel',['linha','gel'],{lab:{linha:'Equipamento da linha',gel:'Equipamento – Gel'},redraw:1}]]},
  turnos:{nome:'Turnos',um:'turno',vig:true,campos:[['codigo','Código','cod'],['nome','Nome','txt'],['linha','Linha','ref','linhas'],['cor','Cor','cor']],
   vcampos:[['inicio','Início (HH:MM)','hora'],['fim','Fim (24 h+, ex.: 30:00)','hora'],['dias','Dias','dias'],['ativo','Turno ativo nesta vigência','bool'],['naoProdutivo','Turno não produtivo','bool'],['regraPedacoFinal','Somar pedaço final de até (min)','int']]},
  paradas:{nome:'Códigos de parada',um:'código de parada',campos:[['codigo','Código','cod'],['numero','Nº (3 dígitos)','num3'],['nome','Nome','txt',null,{w:2}],['categoria','Categoria','txt'],['subcategoria','Subcategoria','txt'],['cor','Cor','cor'],
@@ -4581,6 +4582,7 @@ const AJUDA_CAMPO={
  'usuarios.paginaInicial':"Página e aba que abrem para a pessoa (ex.: \"Produção › Painel\"). Vale ao abrir pela Administração e ao abrir a própria página direto (1ª vez na sessão; link com # tem prioridade). \"(do perfil)\" = usa a do perfil.",
  /* ---- 1.8: campos novos (com exemplo) ---- */
  'equipamentos.categoria':'Para que página o equipamento existe. "Equipamento – Gel" aparece primeiro na Gestão de Gel (Configuração › Equipamentos da linha), que lê nome e situação daqui e guarda só a embalagem e os descartes. Vazio = equipamento da linha. Ex.: Dosadora de gel 1 → Equipamento – Gel.',
+ 'equipamentos.codigoMes':'Código do recurso no MES (Resource Name). As TAGs do equipamento começam com ele. Ex.: VASS01. Não pode repetir em outro equipamento.','equipamentos.departamento':'Departamento do recurso no MES. Ex.: PAS_TUBOS_VACUTAINER.','equipamentos.centroTrabalho':'Centro de trabalho (Work Center) do recurso no MES/SAP. Ex.: P3050503.',
  'equipamentos.apelidos':'Outros nomes com que este equipamento aparece em formulários antigos, no Forms ou em planilhas, separados por ponto e vírgula. A Paradas usa para ligar o nome ao código (de-para). Ex.: "Tullip B; Tulip B; Rotuladora 2".',
  'paradas.duracaoManual':'Permite lançar só a duração (minutos), sem horário de início e fim. Ex.: RTB (retrabalho) ou abono de almoço.',
  'paradas.relatorio':'Aparece nos relatórios de paradas da Produção. Desmarque para códigos internos que não devem sair no relatório (ex.: troca de turno sem parada).',
@@ -4764,6 +4766,7 @@ function cadValidarItem(t,it,D,{novo=false}={}){const T=CAD_T[t],k=kOf(t),e=[];c
      const ch=[i.pai,n,i.item||'',i.material].join('|');if(vE.has(ch))e.push(`estrutura: ${i.material} repetido sob ${i.pai}`+q);vE.add(ch);
      if(!has('materiais',i.material))e.push(`material ${i.material} (estrutura) não existe em Materiais`+q);if(i.qtdPorMilheiro!=null&amp;&amp;!(+i.qtdPorMilheiro>=0))e.push(`estrutura: quantidade de ${i.material} inválida (${i.qtdPorMilheiro})`+q)}
     for(const i of v.itens||[])if(i.alternativoDe&amp;&amp;!mats.has(i.alternativoDe))e.push(`${i.material}: alternativo de ${i.alternativoDe}, que não está nesta lista`+q)}}}
+ if(t==='equipamentos'&amp;&amp;it.codigoMes&amp;&amp;(D.equipamentos||[]).some(x=>String(x.codigo)!==cod&amp;&amp;String(x.codigoMes||'').trim().toUpperCase()===String(it.codigoMes).trim().toUpperCase()))e.push(`o código MES ${it.codigoMes} já é de outro equipamento`);
  if(t==='equipamentos'&amp;&amp;it.posicao!=null&amp;&amp;!(Number.isInteger(+it.posicao)&amp;&amp;+it.posicao>=0))e.push('posição deve ser um número inteiro (0 = linha inteira)');
  if(t==='paradas'){if(it.numero!=null&amp;&amp;it.numero!==''){if(!/^\d{3}$/.test(String(it.numero)))e.push('nº deve ter 3 dígitos (ex.: 801)');else if((D.paradas||[]).some(x=>String(x.codigo)!==cod&amp;&amp;String(x.numero||'')===String(it.numero)))e.push(`o nº ${it.numero} já é de outro código`)}
   if(it.pilar&amp;&amp;!PAR_PILAR.includes(it.pilar))e.push('pilar inválido ('+it.pilar+')');if(it.classe&amp;&amp;!PAR_CLASSE.includes(it.classe))e.push('classe inválida ('+it.classe+')');if(it.ondeAponta&amp;&amp;!PAR_ONDE.includes(it.ondeAponta))e.push('"onde se aponta" inválido ('+it.ondeAponta+')');
@@ -4864,12 +4867,13 @@ const Cad={base:null,D:null,mod:0,fonte:'nenhum',err:'',fila:[],gravando:false,d
   let d;try{d=JSON.parse(await f.text())}catch(e){this.fonte='erro';this.err=CAD_FILE+' não é um JSON válido ('+e.message+'). Restaure um backup em Cadastros › Backups.';return true}
   const v=cadValida(d);if(v.length){this.fonte='erro';this.err=CAD_FILE+': '+v.join('; ');return true}
   const mudou=!this.base||d.rev!==this.base.rev||d.revId!==this.base.revId||this.fonte!=='pasta';this.base=cadFix(d);this.mod=f.lastModified;this.fonte='pasta';this.err='';this.salvarCopia();this.recompute();return mudou},
+ motivoEdicao(){const ok=this.podeEditar(true);return ok?'':this._m},
  podeEditar(silent){let m='';const D=this.D;
   if(!D)m='O cadastro ainda não existe.';else if(Store.mode!=='pasta'&amp;&amp;Store.mode!=='teste')m='Conecte a pasta da rede para editar o cadastro.';
   else if(this.fonte==='erro')m=this.err;else if(this.fonte==='sumiu')m='O arquivo do cadastro não está na pasta. Recrie a partir da cópia local ou restaure um backup.';
   else if(this.status==='conflito')m='Resolva o conflito de gravação primeiro.';else if(!Lock.ok())m='Desbloqueie a edição (senha).';
   else if(D.seguranca&amp;&amp;D.seguranca.trocar)m='Troque a senha inicial em Cadastros › Segurança antes de editar.';
-  if(m&amp;&amp;!silent)toast(m,5000,true);return!m},
+  this._m=m;if(m&amp;&amp;!silent)toast(m,5000,true);return!m},
  op(o){return this.ops([o])},
  ops(list){const em=isoLocal(),por=user();for(const o of list){o.id=uid('op');o.qid=o.id;o.em=em;o.por=por;this.fila.push(o)}this.persistFila();this.recompute();if(this.status==='salvo')this.status='pendente';this.render();return this.gravar()},
  async gravar(){
@@ -4987,7 +4991,7 @@ function cadBarra(){const D=Cad.D,b=Cad.base,lk=Lock.ok();const dm=x=>{const s=f
  if(Store.mode==='teste')notes+='<div class="note">Modo de teste: cadastro fictício na memória; a senha de edição é <b>teste</b>.</div>';
  if(Cad.fonte==='erro')notes+=`<div class="note e"><b>Cadastro com problema:</b> ${esc(Cad.err)}</div>`;
  if(Cad.fonte==='sumiu')notes+=`<div class="note e">O arquivo <span class="mono">${CAD_FILE}</span> não está na pasta. Mostrando a cópia deste navegador (rev ${b?b.rev:'?'}). Restaure um backup em Backups ou recrie o arquivo a partir da cópia. ${lk?'<button class="b sm" id="cadRecriar">Recriar a partir da cópia local</button>':''}</div>`;
- if(Cad.fonte==='copia'&amp;&amp;Store.mode!=='pasta')notes+='<div class="note w">Sem a pasta da rede: mostrando a cópia guardada neste navegador. Conecte a pasta em Configuração para ver a versão atual e editar.</div>';
+ if(Cad.fonte==='copia'&amp;&amp;Store.mode!=='pasta')notes+=`<div class="note w">Sem a pasta da rede: mostrando a cópia guardada neste navegador.${Store.motivo?` Motivo: ${esc(Store.motivo)}.`:''} Conecte a pasta para ver a versão atual e editar. <button class="b sm p" onclick="Store.pick().then(ok=>ok&amp;&amp;App.onConnect())">Conectar agora</button></div>`;
  if(lk&amp;&amp;D&amp;&amp;D.seguranca&amp;&amp;D.seguranca.trocar)notes+='<div class="note w"><b>Troque a senha inicial</b> em <a href="#cadastros/seguranca">Segurança</a>. Até lá a edição fica travada.</div>';
  return`<div class="cadbar">${selo} ${st}<span class="sp"></span>${lock}</div>${notes}`}
 function wireCadBarra(){const on=(id,f)=>{const x=$('#'+id);if(x)x.onclick=f};
@@ -5049,7 +5053,7 @@ function cadCols(t,D){const fam=c=>{if(!c)return'';const f=cadItem('familias',c,
   catalogos:[['Tipo',it=>it.tipoItem==='preparacao'?'<span class="pill info">preparação</span>':'tubo'],['Código',it=>`${safeCor(it.cor)?`<i class="sw" style="background:${safeCor(it.cor)}"></i>`:''}<b class="mono">${esc(it.codigo)}</b>`],['Nome',it=>esc(it.nome)],['Família',it=>fam(it.familia)],['Formato',it=>esc(it.formato||'')],['PPH nominal',it=>fmtN(vigHoje(it).pphNominal),'n'],['Tubos/caixa',it=>fmtN(vigHoje(it).tubosPorCaixa),'n'],['Caixas/lote',it=>fmtN(vigHoje(it).caixasPorLote),'n'],['BOM',it=>D.bom.some(b=>b.catalogo===it.codigo)?'sim':'<span class="muted">–</span>']],
   materiais:[['Código SAP',cod],['Descrição',it=>esc(it.nome)],['Unidade',it=>esc(it.unidade||'')],['Tipo',it=>esc(it.tipo||'')],['Tipo SAP',it=>esc(it.tipoSAP||'')],['Em BOMs',it=>String(D.bom.filter(b=>(vigHoje(b).itens||[]).concat(vigHoje(b).estrutura||[]).some(i=>i.material===it.codigo)).length),'n']],
   bom:[['Catálogo',cod],['Nome do catálogo',it=>esc((cadItem('catalogos',it.catalogo,D)||{}).nome||'')],['Vigente desde',it=>vigHoje(it).de?fmtD(vigHoje(it).de):'<span class="warn">sem vigência hoje</span>'],['Fonte',it=>esc(vigHoje(it).fonte||(vigHoje(it).de?'manual / anterior':''))],['Itens N1',it=>String((vigHoje(it).itens||[]).length),'n'],['Estrutura',it=>(vigHoje(it).estrutura||[]).length?String(vigHoje(it).estrutura.length):'','n'],['Origem',it=>`<span class="small">${esc(vigHoje(it).origem||'')}</span>`],['Vigências',it=>String((it.vigencias||[]).length),'n']],
-  equipamentos:[['Pos.',it=>fmtN(it.posicao),'n'],['Código',cod],['Nome',it=>esc(it.nome)],['Tipo',it=>esc(String(it.tipo||'').toUpperCase())],['Papel',it=>esc(String(it.papel||'').toUpperCase())],['Fabricante / modelo',it=>esc([it.fabricante,it.modelo].filter(Boolean).join(' · '))],['Comp.',it=>{const n=(D.componentes||[]).filter(c=>c.equipamento===it.codigo).length;return n?String(n):''},'n'],['Foto',it=>sim(it.foto)],['Docs',it=>(it.documentos||[]).length?String(it.documentos.length):'','n']],
+  equipamentos:[['Pos.',it=>fmtN(it.posicao),'n'],['Código',cod],['Código MES',it=>`<span class="mono">${esc(it.codigoMes||'')}</span>`],['Nome',it=>esc(it.nome)],['Tipo',it=>esc(String(it.tipo||'').toUpperCase())],['Papel',it=>esc(String(it.papel||'').toUpperCase())],['Fabricante / modelo',it=>esc([it.fabricante,it.modelo].filter(Boolean).join(' · '))],['Comp.',it=>{const n=(D.componentes||[]).filter(c=>c.equipamento===it.codigo).length;return n?String(n):''},'n'],['Foto',it=>sim(it.foto)],['Docs',it=>(it.documentos||[]).length?String(it.documentos.length):'','n']],
   turnos:[['Horas (vigência de hoje)',it=>{const v=vigHoje(it);return v&amp;&amp;v.inicio?esc(turnoResumo(v)):''}],['Código',it=>`${safeCor(it.cor)?`<i class="sw" style="background:${safeCor(it.cor)}"></i>`:''}<b class="mono">${esc(it.codigo)}</b>`],['Nome',it=>esc(it.nome)],['Horário',it=>{const v=vigHoje(it);return v.inicio?`${esc(v.inicio)}–${esc(v.fim)}${v.ativo===false?' <span class="muted">(desligado)</span>':''}`:'<span class="warn">sem vigência hoje</span>'}],['Dias',it=>diasTxt(vigHoje(it).dias)],['Pausas',it=>esc((vigHoje(it).pausas||[]).map(p=>p.inicio+'–'+p.fim).join(', '))],['Vigente desde',it=>fmtD(vigHoje(it).de)]],
   componentes:[['Código',cod],['Equipamento',it=>{const q=cadItem('equipamentos',it.equipamento,D);return`<span class="mono">${esc(it.equipamento||'')}</span>${q?' · '+esc(q.nome):''}`}],['Nome',it=>esc(it.nome)],['Sistema',it=>esc(it.sistema||'')],['Crit.',it=>esc(it.criticidade||'')],['Material SAP',it=>`<span class="mono">${esc(it.materialSAP||'')}</span>`]],
   modosFalha:[['Código',cod],['Nome',it=>esc(it.nome)]],
@@ -5085,13 +5089,15 @@ function cadLista(el,t){const D=Cad.D,T=CAD_T[t],cols=cadCols(t,D),k=kOf(t);cons
   <span class="seg" id="cadSit">${[['ativos','Ativos'],['inativos','Inativos'],['todos','Todos']].map(([v,l])=>`<button data-v="${v}" class="${sit===v?'on':''}">${l}</button>`).join('')}</span>
   ${FP?parFiltrosHtml(D,FP):''}<span class="small muted" style="align-self:center">${L.length} de ${(D[t]||[]).length}</span><span style="flex:1"></span>
   ${pe&amp;&amp;t==='perfis'&amp;&amp;DEFAULT_PERFIS.some(x=>!cadItem('perfis',x.codigo,D))?'<button class="b" id="cadPerfisPad">Criar os perfis padrão</button>':''}${pe?`<button class="b p" id="cadNovo">+ ${t==='bom'?'Nova BOM':'Novo '+esc(T.um)}</button>`:''}${t==='equipamentos'?formBtn(null,'Imprimir todos os formulários'):''}<button class="b" id="cadXls">⇩ Excel</button></div>
-  <div class="tw"><table><tr>${cols.map((c,i)=>`<th class="${c[2]||''}" data-ci="${i}" style="cursor:pointer" title="Ordenar por ${esc(c[0])}" aria-sort="${OR&amp;&amp;OR.c===i?(OR.d>0?'ascending':'descending'):'none'}">${esc(c[0])}${OR&amp;&amp;OR.c===i?(OR.d>0?' ▲':' ▼'):''}</th>`).join('')}</tr>${L.map(it=>`<tr class="click" data-cod="${esc(it[k])}">${cols.map(c=>`<td class="${c[2]||''}">${c[1](it)??''}</td>`).join('')}</tr>`).join('')||`<tr><td colspan="${cols.length}" class="muted">Nenhum item${q?' para esta busca':''}.</td></tr>`}</table></div>
+  ${pe?'':`<div class="note w" style="margin:8px 0">Somente leitura: ${esc(Cad.motivoEdicao()||'edição bloqueada')} ${!Lock.ok()&amp;&amp;Cad.D&amp;&amp;(Store.mode==='pasta'||Store.mode==='teste')?'<button class="b sm p" id="cadDesbl">Desbloquear edição</button>':Store.mode!=='pasta'&amp;&amp;Store.mode!=='teste'?'<button class="b sm p" id="cadConectar">Conectar agora</button>':''}</div>`}
+  <div class="tw"><table><tr>${cols.map((c,i)=>`<th class="${c[2]||''}" data-ci="${i}" style="cursor:pointer" title="Ordenar por ${esc(c[0])}" aria-sort="${OR&amp;&amp;OR.c===i?(OR.d>0?'ascending':'descending'):'none'}">${esc(c[0])}${OR&amp;&amp;OR.c===i?(OR.d>0?' ▲':' ▼'):''}</th>`).join('')}<th aria-label="Abrir a ficha"></th></tr>${L.map(it=>`<tr class="click" data-cod="${esc(it[k])}">${cols.map(c=>`<td class="${c[2]||''}">${c[1](it)??''}</td>`).join('')}<td class="r"><button type="button" class="b sm" data-abrir="${esc(it[k])}">${pe?'Editar':'Ver'}</button></td></tr>`).join('')||`<tr><td colspan="${cols.length+1}" class="muted">Nenhum item${q?' para esta busca':''}.</td></tr>`}</table></div>
   ${t==='bom'?'<p class="small muted">Quantidades por 1.000 tubos. Itens = nível 1 (o que a ordem consome); estrutura = níveis 2+. Para trazer do SAP, use Importar do SAP › Lista técnica (CS12).</p>':''}`;
  const qi=$('#cadQ');let tm;qi.oninput=()=>{clearTimeout(tm);tm=setTimeout(()=>{Cad.ui.q=qi.value;cadLista(el,t)},180)};if(foco){qi.focus();qi.setSelectionRange(qi.value.length,qi.value.length)}
  $$('#cadSit button').forEach(b=>b.onclick=()=>{Cad.ui.sit=b.dataset.v;cadLista(el,t)});
  el.querySelectorAll('th[data-ci]').forEach(h=>h.onclick=e=>{if(e.target.closest('.ib'))return;const i=+h.dataset.ci,o=Cad.ui.ord;Cad.ui.ord=!o||o.t!==t||o.c!==i?{t,c:i,d:1}:o.d>0?{t,c:i,d:-1}:null;cadLista(el,t)});
  el.querySelectorAll('[data-fp]').forEach(x=>x.onchange=()=>{FP[x.dataset.fp]=x.value;cadLista(el,t)});const fx=$('#cadFpX');if(fx)fx.onclick=()=>{Cad.ui.fp={};cadLista(el,t)};
  el.querySelectorAll('tr[data-cod]').forEach(r=>r.onclick=()=>Ficha.abrir(t,r.dataset.cod));
+ {const db=el.querySelector('#cadDesbl');if(db)db.onclick=()=>cadDesbloquear(()=>App.render());const cc=el.querySelector('#cadConectar');if(cc)cc.onclick=()=>Store.pick().then(ok=>ok&amp;&amp;App.onConnect())}
  const nv=$('#cadNovo');if(nv)nv.onclick=()=>Ficha.abrir(t,null,{novo:true});
  const pp=$('#cadPerfisPad');if(pp)pp.onclick=()=>{if(!Cad.podeEditar())return;const F=DEFAULT_PERFIS.filter(x=>!cadItem('perfis',x.codigo,D));if(!confirm(`Criar ${F.length} perfil(is) padrão: ${F.map(x=>x.nome).join(', ')}?`))return;Cad.ops(F.map(x=>({acao:'criação',tipo:'perfis',codigo:x.codigo,item:clone(x),motivo:'perfis padrão (Portal 1.7)'})));toast(F.length+' perfil(is) criados.')};
  if(t==='usuarios')el.insertAdjacentHTML('afterbegin','<div class="note">Cada pessoa entra pelo <b>ID</b> e pela <b>senha de 6 números</b> no login que abre em todas as páginas. Quem não está aqui se cadastra sozinho no 1º acesso (nome + ID) e entra com o perfil <b>Consulta</b>; o administrador muda o perfil aqui, com a senha.</div>');
@@ -5105,7 +5111,7 @@ function cadModelo(t){const h=todayISO(),D=Cad.D,L0=(D.linhas.find(l=>l.ativo!==
   catalogos:{codigo:'',tipoItem:'tubo',unidade:'UN',nome:'',familia:null,linha:L0,formato:null,volumeMl:null,aditivo:null,cor:null,codigoSAP:null,ativo:true,vigencias:[{de:h,ate:null,pphNominal:null,tubosPorCaixa:1000,caixasPorLote:null}]},
   materiais:{codigo:'',nome:'',unidade:'un',tipo:'outro',ativo:true},
   bom:{catalogo:'',vigencias:[{de:h,ate:null,origem:'cadastro manual',itens:[]}]},
-  equipamentos:{codigo:'',nome:'',linha:L0,posicao:(Math.max(0,...D.equipamentos.map(e=>+e.posicao||0))+1),tipo:'equipamento',papel:'equipamento',categoria:'linha',fabricante:null,modelo:null,numeroSerie:null,ano:null,dados:{},foto:null,documentos:[],ativo:true},
+  equipamentos:{codigo:'',nome:'',linha:L0,posicao:(Math.max(0,...D.equipamentos.map(e=>+e.posicao||0))+1),tipo:'equipamento',papel:'equipamento',categoria:'linha',fabricante:null,modelo:null,numeroSerie:null,ano:null,codigoMes:null,departamento:null,centroTrabalho:null,dados:{},foto:null,documentos:[],ativo:true},
   turnos:{codigo:'',nome:'',linha:L0,cor:null,ativo:true,vigencias:[{de:h,ate:null,inicio:'06:00',fim:'14:30',dias:[1,2,3,4,5,6],ativo:true,pausas:[],regraPedacoFinal:30,intervalos:[]}]},
   componentes:{codigo:'',equipamento:null,nome:'',sistema:'mecânico',criticidade:'B',materialSAP:null,ativo:true},
   modosFalha:{codigo:'',nome:'',ativo:true},
@@ -5149,6 +5155,7 @@ const Ficha={t:null,cod:null,orig:null,W:null,novo:false,edit:false,dirty:false,
    ${W.substituidoPor?`<span class="pill warn">substituído por&amp;nbsp;<a href="#cadastros/${t}/${encodeURIComponent(W.substituidoPor)}">${esc(W.substituidoPor)}</a></span>`:''}${W.substitui?`<span class="pill">substitui&amp;nbsp;<a href="#cadastros/${t}/${encodeURIComponent(W.substitui)}">${esc(W.substitui)}</a></span>`:''}
    <span style="flex:1"></span>${!this.novo&amp;&amp;t==='equipamentos'?formBtn(this.cod):''}${this.novo?'':'<button class="b sm" id="fLink">Copiar link</button>'}${e&amp;&amp;!this.novo&amp;&amp;t!=='bom'?(at?'<button class="b sm" id="fSubst">Substituir código…</button><button class="b sm d" id="fInat">Inativar…</button>':'<button class="b sm" id="fReat">Reativar</button>'):''}</div>`;
   if(!e&amp;&amp;this.dirty)h+='<div class="note w">A edição foi bloqueada. Desbloqueie para salvar o que você mudou nesta ficha.</div>';
+  else if(!e&amp;&amp;!this.novo)h+=`<div class="note w">Somente leitura: ${esc(Cad.motivoEdicao()||'edição bloqueada')}. ${!Lock.ok()&amp;&amp;Cad.D&amp;&amp;(Store.mode==='pasta'||Store.mode==='teste')?'<button class="b sm p" onclick="cadDesbloquear(()=>Ficha.reabrir())">Desbloquear edição</button>':''}</div>`;
   if(Lock.ok()&amp;&amp;D.seguranca&amp;&amp;D.seguranca.trocar)h+='<div class="note w">Troque a senha inicial em Cadastros › Segurança para liberar a edição.</div>';
   h+=`<div class="fg">${T.campos.map(f=>this.campo(f)).join('')}</div>`;
   if(t==='equipamentos')h+=this.dados()+(W.categoria==='gel'||W.gel?this.gelEq():'')+this.comps()+this.arquivos();
@@ -5546,7 +5553,7 @@ function mofOps(P,D,mot){const sel=P.recs.filter(r=>r.sel&amp;&amp;!r.erro&amp;&
   if(novo)ops.push({acao:'importação',tipo:'metasOee',codigo:cod,item:{...clone(novo),vigencias:vs},origem:P.origem,motivo:mot});
   else ops.push({acao:'importação',tipo:'metasOee',codigo:cod,mudancas:Object.assign({vigencias:{antes:clone(it.vigencias||[]),depois:vs}},des.length!==(it.vigenciasDesativadas||[]).length?{vigenciasDesativadas:{antes:clone(it.vigenciasDesativadas||null),depois:des}}:{}),origem:P.origem,motivo:mot})}
  return ops}
-const MOF_SEG=m=>`<span class="seg" id="iModo"><button data-m="cs12" class="${m==='cs12'?'on':''}">Lista técnica (CS12)</button><button data-m="mat" class="${m==='mat'?'on':''}">Materiais</button><button data-m="comp" class="${m==='comp'?'on':''}">Componentes</button><button data-m="meta" class="${m==='meta'?'on':''}">Meta OEE FY27</button></span>`;
+const MOF_SEG=m=>`<span class="seg" id="iModo"><button data-m="cs12" class="${m==='cs12'?'on':''}">Lista técnica (CS12)</button><button data-m="mat" class="${m==='mat'?'on':''}">Materiais</button><button data-m="comp" class="${m==='comp'?'on':''}">Componentes</button><button data-m="eqmes" class="${m==='eqmes'?'on':''}">Equipamentos (MES)</button><button data-m="meta" class="${m==='meta'?'on':''}">Meta OEE FY27</button></span>`;
 function cadImportarMeta(el,I){const D=Cad.D,pe=Cad.podeEditar(true),P=I.mof||null;
  el.innerHTML=`<div class="card form"><h3>Importar a Meta OEE FY27 ${ib('Importar a Meta OEE FY27','Lê a aba "Meta OEE FY27" da planilha OEE-Vacutainer_v2.xlsm (o resto do arquivo é ignorado) e grava em Metas de OEE: uma meta por família (OEE-EDTA, OEE-SST…; usa a que já existe para a família), uma vigência por mês a partir do dia 1º, com OEE meta, PPH, meta diária e o quadro hora a hora. O fim de cada vigência é a véspera da próxima; o último mês continua valendo até a próxima importação.\nO PPH vem da aba BASE DE DADOS (bloco FY27) ou do PPH nominal do catálogo da família. Valores em milheiros viram peças.\nMês que já tem vigência igual é ignorado; diferente só é substituído se você marcar (a antiga vai para Desativadas, com motivo). Semáforo, cobertura e divergência da meta são mantidos.\nA Produção recebe as metas pelo cadastro na próxima abertura.')}</h3>
   ${MOF_SEG('meta')}
@@ -5984,7 +5991,71 @@ function cs12Avisos(g){const ord={erro:0,aviso:1,info:2},by={};g.av.forEach(x=>(
  return ks.map(k=>{const T=CS12_TIPOS[k],L=by[k],cl=T.sev==='erro'?'crit':T.sev==='aviso'?'warn':'';
   return`<details class="cd"${T.sev==='erro'?' open':''}><summary><span class="pill ${cl}" style="font-size:11px">${T.sev==='erro'?'Erro':T.sev==='aviso'?'Aviso':'Info'}</span> ${esc(T.t)} <span class="muted small">(${L.length})</span> ${ib(T.t,T.h+(T.sev==='erro'?' Enquanto houver erro, este catálogo não entra.':T.sev==='aviso'?' Não impede a importação.':''))}</summary>
    <ul class="small" style="margin:6px 0 2px 18px;padding:0;max-height:220px;overflow:auto">${L.map(x=>`<li>${x.linha?`<span class="muted">linha ${x.linha}</span> · `:''}${esc(x.t)}</li>`).join('')}</ul></details>`}).join('')}
-function cadImportar(el){const I=Cad.ui.imp||(Cad.ui.imp={modo:'cs12',fmt:'auto',de:todayISO(),map:{},soBOM:true,txt:'',prev:null});if(!I.map)I.map={};if(I.modo==='comp')return cadImportarComp(el,I);if(I.modo==='meta')return cadImportarMeta(el,I);if(I.modo!=='mat')I.modo='cs12';const D=Cad.D,pe=Cad.podeEditar(true);
+/* ===== 1.8.5 · EQP-02: equipamentos pela planilha do MES (Resource Name · Description · Department · Work Center · Resource Type) =====
+   Liga cada linha a um equipamento do cadastro: Código MES igual, depois outro nome (de-para), depois nome igual; "1 - Collection" é a LINHA.
+   Parecido pelo nome só vira sugestão ("confira"); empate ou nada parecido fica para escolher. Nada é apagado; o código EQ não muda.
+   Nome trocado pela Description guarda o nome anterior em "Outros nomes" (a Paradas e os formulários continuam ligando). */
+const EqMes={
+ norm:s=>String(s||'').normalize('NFD').replace(/[̀-ͯ]/g,'').toUpperCase().replace(/[^A-Z0-9]+/g,' ').trim(),
+ toks(s){return this.norm(s).split(' ').filter(x=>x.length>=2||/\d/.test(x))},
+ bi(a){const o=new Set();for(let i=0;i<a.length-1;i++)o.add(a.slice(i,i+2));return o},
+ parecido(a,b){if(a===b)return true;if(a.length<5||b.length<5)return false;const A=this.bi(a),B=this.bi(b);let n=0;for(const x of A)if(B.has(x))n++;return 2*n/(A.size+B.size)>=0.75},
+ nota(desc,nome){const A=this.toks(desc),B=this.toks(nome);if(!A.length||!B.length)return 0;let n=0;const usados=new Set();for(const b of B){const i=A.findIndex((a,j)=>!usados.has(j)&amp;&amp;this.parecido(a,b));if(i>=0){usados.add(i);n++}}return n/Math.max(A.length,B.length)},
+ ler(txt){const L=String(txt||'').split(/\r?\n/).map(l=>l.trim()?l.split(l.includes('\t')?'\t':';').map(x=>x.trim()):null).filter(Boolean),erros=[];if(!L.length)return{linhas:[],erros:['Cole a tabela (com ou sem cabeçalho).']};
+  let col={mes:0,desc:1,dep:2,wc:3,tipo:4},ini=0;const h=L[0].map(x=>this.norm(x));
+  if(h.some(x=>/RESOURCE|DESCRIPTION|DEPARTMENT|WORK CENTER|CODIGO|DESCRICAO/.test(x))){ini=1;const f=re=>h.findIndex(x=>re.test(x));col={mes:f(/RESOURCE NAME|^CODIGO|^RECURSO/),desc:f(/DESCRIPTION|DESCRICAO|^NOME/),dep:f(/DEPARTMENT|DEPARTAMENTO/),wc:f(/WORK ?CENTER|CENTRO/),tipo:f(/RESOURCE TYPE|^TIPO/)};if(col.mes<0||col.desc<0)erros.push('Faltam as colunas Resource Name e Description no cabeçalho.')}
+  const g=(r,i)=>i>=0&amp;&amp;r[i]!=null?String(r[i]).trim():'',vistos=new Map();
+  const linhas=L.slice(ini).map((r,i)=>{const x={n:i+1+ini,mes:g(r,col.mes),desc:g(r,col.desc),dep:g(r,col.dep),wc:g(r,col.wc),tipoTxt:g(r,col.tipo),erros:[]};x.colecao=/^\s*1\b|COLLECTION/i.test(x.tipoTxt);
+   if(!x.mes)x.erros.push('sem Resource Name');else{const k=x.mes.toUpperCase();if(vistos.has(k))x.erros.push('Resource Name repetido na linha '+vistos.get(k));else vistos.set(k,x.n)}if(!x.desc)x.erros.push('sem Description');return x});
+  return{linhas,erros}},
+ sugerir(P,D){const E=(D.equipamentos||[]).filter(q=>q.ativo!==false),porMes=new Map(E.filter(q=>q.codigoMes).map(q=>[String(q.codigoMes).trim().toUpperCase(),q]));
+  const fuzzy=[];
+  for(const r of P.linhas){r.cod='';r.por='';r.cand=[];if(r.erros.length)continue;
+   if(r.colecao){const q=E.find(q=>q.codigo==='LINHA')||E.find(q=>q.tipo==='linha');if(q){r.cod=q.codigo;r.por='Collection = linha inteira'}else r.aviso='não há o registro LINHA no cadastro';continue}
+   const q1=porMes.get(r.mes.toUpperCase());if(q1){r.cod=q1.codigo;r.por='código MES';continue}
+   const nm=this.norm(r.mes),nd=this.norm(r.desc),ap=q=>String(q.apelidos||'').split(';').map(x=>this.norm(x)).filter(Boolean);
+   const q2=E.filter(q=>q.tipo!=='linha'&amp;&amp;ap(q).some(a=>a===nm||a===nd));if(q2.length===1){r.cod=q2[0].codigo;r.por='outro nome';continue}
+   const q3=E.filter(q=>q.tipo!=='linha'&amp;&amp;this.norm(q.nome)===nd);if(q3.length===1){r.cod=q3[0].codigo;r.por='nome igual';continue}
+   r.cand=E.filter(q=>q.tipo!=='linha').map(q=>({q,s:this.nota(r.desc,q.nome)})).filter(x=>x.s>=0.5).sort((a,b)=>b.s-a.s);fuzzy.push(r)}
+  /* sugestão só quando o melhor é único para a linha e a linha é a única a apontar para ele (sem empate) */
+  const usados=new Set(P.linhas.filter(r=>r.cod).map(r=>r.cod)),alvo=new Map();
+  for(const r of fuzzy){const c=r.cand;if(!c.length||(c[1]&amp;&amp;c[1].s===c[0].s)||usados.has(c[0].q.codigo))continue;const k=c[0].q.codigo;alvo.set(k,(alvo.get(k)||[]).concat([r]))}
+  for(const[k,L]of alvo){const m=Math.max(...L.map(r=>r.cand[0].s)),top=L.filter(r=>r.cand[0].s===m);if(top.length===1){top[0].cod=k;top[0].por='sugestão pelo nome · confira'}}
+  for(const r of P.linhas)if(r.cod)r.troca=true;return P},
+ proximo(D,usados){let n=Math.max(0,...(D.equipamentos||[]).map(q=>{const m=/^EQ(\d+)$/i.exec(q.codigo||'');return m?+m[1]:0}),...usados.map(c=>{const m=/^EQ(\d+)$/i.exec(c);return m?+m[1]:0}));return'EQ'+String(n+1).padStart(2,'0')},
+ ops(P,D){const out=[],novos=[],origem='planilha do MES colada em '+fmtD(todayISO()),L0=((D.equipamentos||[]).find(q=>q.codigo==='LINHA')||{}).linha||((D.linhas||[])[0]||{}).codigo||null;let pos=Math.max(0,...(D.equipamentos||[]).map(e=>+e.posicao||0));
+  for(const r of P.linhas){if(r.erros.length||!r.cod||r.cod==='-')continue;
+   if(r.cod==='+'){const c=this.proximo(D,novos);novos.push(c);out.push({acao:'importação',tipo:'equipamentos',codigo:c,origem,motivo:null,item:{codigo:c,nome:r.desc,linha:L0,posicao:++pos,tipo:'equipamento',papel:'equipamento',categoria:'linha',fabricante:null,modelo:null,numeroSerie:null,ano:null,codigoMes:r.mes,departamento:r.dep||null,centroTrabalho:r.wc||null,dados:{},foto:null,documentos:[],ativo:true}});continue}
+   const q=cadItem('equipamentos',r.cod,D);if(!q)continue;const mud={},set=(c,v)=>{const a=q[c]??null;if(String(a??'')!==String(v??''))mud[c]={antes:a,depois:v}};
+   set('codigoMes',r.mes);set('departamento',r.dep||null);set('centroTrabalho',r.wc||null);
+   if(r.troca&amp;&amp;r.desc&amp;&amp;r.desc!==q.nome){set('nome',r.desc);const ap=String(q.apelidos||'').split(';').map(x=>x.trim()).filter(Boolean);if(q.nome&amp;&amp;!ap.some(a=>this.norm(a)===this.norm(q.nome)))mud.apelidos={antes:q.apelidos??null,depois:ap.concat([q.nome]).join('; ')}}
+   if(Object.keys(mud).length)out.push({acao:'importação',tipo:'equipamentos',codigo:q.codigo,origem,motivo:null,mudancas:mud})}
+  return out}};
+function cadImportarEqMes(el,I){const D=Cad.D,pe=Cad.podeEditar(true);if(!D){el.innerHTML='<div class="card"><p class="muted">O cadastro ainda não existe.</p></div>';return}
+ el.innerHTML=`<div class="card form"><h3>Importar equipamentos do MES ${ib('Equipamentos do MES','Cole a tabela do MES com Resource Name, Description, Department, Work Center e Resource Type. Cada linha é ligada a um equipamento do cadastro: pelo Código MES, por outro nome ou pelo nome igual; "1 - Collection" é a LINHA. Parecido pelo nome vira sugestão para conferir. Nada é apagado e o código EQ não muda. O nome trocado fica em Outros nomes.')}</h3>
+  ${MOF_SEG('eqmes')}
+  <p class="small muted" style="margin:8px 0">Colunas: <b>Resource Name · Description · Department · Work Center · Resource Type</b> (com ou sem cabeçalho; tabulação ou ponto e vírgula). 2 - Singular = equipamento; 1 - Collection = a linha inteira (LINHA).</p>
+  <label>Cole aqui (Ctrl V)<textarea id="iTxt" rows="9">${esc(I.txtEq||'')}&lt;/textarea></label>
+  <div style="display:flex;gap:8px"><button class="b p" id="iLer">Ler e mostrar prévia</button><button class="b" id="iLimpar">Limpar</button></div></div><div id="iPrev"></div>`;
+ $$('#iModo button').forEach(b=>b.onclick=()=>{I.txtEq=$('#iTxt').value;I.modo=b.dataset.m;I.prev=null;I.eqP=null;cadImportar(el)});
+ $('#iTxt').oninput=()=>{I.txtEq=$('#iTxt').value};$('#iLimpar').onclick=()=>{I.txtEq='';I.eqP=null;cadImportarEqMes(el,I)};
+ $('#iLer').onclick=()=>{I.txtEq=$('#iTxt').value;I.eqP=EqMes.sugerir(EqMes.ler(I.txtEq),Cad.D);eqMesPrev(I)};
+ if(I.eqP)eqMesPrev(I)}
+function eqMesPrev(I){const box=$('#iPrev');if(!box)return;const D=Cad.D,P=I.eqP,pe=Cad.podeEditar(true),E=(D.equipamentos||[]).filter(q=>q.ativo!==false).sort((a,b)=>(+a.posicao||999)-(+b.posicao||999)||String(a.codigo).localeCompare(String(b.codigo)));
+ const dup=new Map();for(const r of P.linhas)if(r.cod&amp;&amp;r.cod!=='+'&amp;&amp;r.cod!=='-')dup.set(r.cod,(dup.get(r.cod)||0)+1);
+ const ops=EqMes.ops(P,D),sem=P.linhas.filter(r=>!r.erros.length&amp;&amp;!r.cod).length,repet=[...dup].filter(([,n])=>n>1).map(([c])=>c),conf=P.linhas.filter(r=>/sugest/.test(r.por||'')).length;
+ const sit=r=>{if(r.erros.length)return`<span class="bad">${esc(r.erros.join('; '))}</span>`;if(!r.cod)return`<span class="warn">escolha o equipamento${r.aviso?' · '+esc(r.aviso):''}</span>`;if(r.cod==='-')return'<span class="muted">ignorada</span>';if(r.cod==='+')return'<span class="st-novo">novo equipamento</span>';if(dup.get(r.cod)>1)return'<span class="bad">equipamento escolhido em mais de uma linha</span>';const q=cadItem('equipamentos',r.cod,D);const d=[];if(q){if(String(q.codigoMes||'')!==r.mes)d.push('código MES');if(String(q.departamento||'')!==String(r.dep||''))d.push('departamento');if(String(q.centroTrabalho||'')!==String(r.wc||''))d.push('work center');if(r.troca&amp;&amp;r.desc!==q.nome)d.push('nome')}return(d.length?'muda: '+d.join(', '):'<span class="muted">igual</span>')+(r.por?` <span class="small ${/sugest/.test(r.por)?'warn':'muted'}">(${esc(r.por)})</span>`:'')};
+ box.innerHTML=`<div class="card"><h3>Prévia · equipamentos do MES <span class="muted small">${ops.filter(o=>o.item).length} novo(s) · ${ops.filter(o=>o.mudancas).length} alterado(s) · ${sem} sem escolha · ${conf} sugestão(ões) para conferir</span></h3>${P.erros.map(e=>`<div class="note e">${esc(e)}</div>`).join('')}
+  <div class="tw" style="max-height:520px"><table><tr><th>Linha</th><th>Código MES</th><th>Description</th><th>Tipo</th><th>Equipamento do cadastro</th><th>Nome</th><th>Department · Work Center</th><th>Situação</th></tr>${P.linhas.map((r,i)=>{const q=r.cod&amp;&amp;r.cod!=='+'&amp;&amp;r.cod!=='-'?cadItem('equipamentos',r.cod,D):null;
+   return`<tr><td>${r.n}</td><td class="mono">${esc(r.mes)}</td><td>${esc(r.desc)}</td><td class="small">${r.colecao?'Collection':'Singular'}</td><td>${r.erros.length?'':`<select data-eqi="${i}" aria-label="Equipamento do cadastro para ${esc(r.mes)}"><option value="">— escolher —</option>${E.map(q=>`<option value="${esc(q.codigo)}" ${r.cod===q.codigo?'selected':''}>${esc(q.codigo)} · ${esc(q.nome||'')}${q.codigoMes?' ['+esc(q.codigoMes)+']':''}${(r.cand||[]).some(c=>c.q.codigo===q.codigo)?' (parecido)':''}</option>`).join('')}<option value="+" ${r.cod==='+'?'selected':''}>+ Novo equipamento</option><option value="-" ${r.cod==='-'?'selected':''}>Ignorar esta linha</option></select>`}</td>
+   <td class="small">${q&amp;&amp;r.desc!==q.nome?`<label class="chk"><input type="checkbox" data-eqn="${i}" ${r.troca?'checked':''}> ${esc(q.nome||'—')} → <b>${esc(r.desc)}</b></label>`:esc(r.cod==='+'?r.desc:q?q.nome:'')}</td><td class="small mono">${esc([r.dep,r.wc].filter(Boolean).join(' · '))}</td><td class="small">${sit(r)}</td></tr>`}).join('')}</table></div>
+  <p class="small muted">Linhas sem escolha não entram. Nome trocado guarda o anterior em Outros nomes. Os códigos EQ não mudam.</p>
+  ${repet.length?`<div class="note e">O mesmo equipamento foi escolhido em mais de uma linha: ${esc(repet.join(', '))}. Corrija antes de importar.</div>`:''}
+  ${ops.length?(pe?`<button class="b p" id="iGo" ${repet.length?'disabled':''}>Importar ${ops.length} alteração(ões)</button>`:`<p class="small warn">Somente leitura: ${esc(Cad.motivoEdicao()||'desbloqueie a edição para importar')}.</p>`):'<p class="small muted">Nada a importar.</p>'}</div>`;
+ box.querySelectorAll('[data-eqi]').forEach(s=>s.onchange=()=>{const r=P.linhas[+s.dataset.eqi];r.cod=s.value;r.por=s.value&amp;&amp;s.value!=='+'&amp;&amp;s.value!=='-'?'escolhido':'';r.troca=true;eqMesPrev(I)});
+ box.querySelectorAll('[data-eqn]').forEach(c=>c.onchange=()=>{P.linhas[+c.dataset.eqn].troca=c.checked;eqMesPrev(I)});
+ const go=$('#iGo');if(go)go.onclick=()=>{if(!Cad.podeEditar())return;const O=EqMes.ops(P,Cad.D);if(!O.length)return;Cad.ops(O);toast(O.length+' alteração(ões) de equipamentos; gravando…');I.txtEq='';I.eqP=null;Cad.ui.sec='equipamentos';cadHash();App.render()}}
+function cadImportar(el){const I=Cad.ui.imp||(Cad.ui.imp={modo:'cs12',fmt:'auto',de:todayISO(),map:{},soBOM:true,txt:'',prev:null});if(!I.map)I.map={};if(I.modo==='comp')return cadImportarComp(el,I);if(I.modo==='eqmes')return cadImportarEqMes(el,I);if(I.modo==='meta')return cadImportarMeta(el,I);if(I.modo!=='mat')I.modo='cs12';const D=Cad.D,pe=Cad.podeEditar(true);
  el.innerHTML=`<div class="card form"><h3>Importar do SAP ${ib('Importar do SAP','Lista técnica: CS12 "Estrutura multinível" (é a única fonte da BOM do cadastro). Materiais: lista do SAP com Material, Texto breve e UM básica. Nada é gravado antes da prévia; o SAP manda no que vem dele. Exige a edição desbloqueada para gravar.')}</h3>
   ${MOF_SEG(I.modo)}
   ${I.modo==='cs12'&amp;&amp;I.novo?`<div class="note" style="margin:8px 0"><b>Cadastrar o material ${esc(I.novo.codigo)}</b>${I.novo.nome?' · '+esc(I.novo.nome):''} · ${I.novo.tipoItem==='preparacao'?'Preparação (aditivo / solução)':'Tubo'} · ${esc(I.novo.unidade)}<br>No SAP: CS12 › material <b class="mono">${esc(I.novo.codigo)}</b> › Estrutura multinível › copie a lista inteira (Ctrl A, Ctrl C) e cole abaixo. O catálogo é criado junto com a BOM ao importar. <button class="b sm" id="iNovoX">Cancelar este cadastro</button></div>`:''}
@@ -6371,7 +6442,7 @@ document.addEventListener('click',async ev=>{const b=ev.target.closest('[data-us
   Modal.open(`<h2>Senha provisória</h2><p>Entregue esta senha a <b>${esc(u.nome)}</b> (ID <span class="mono">${esc(u.codigo)}</span>):</p><p class="mono" id="usuProv" style="font-size:30px;letter-spacing:.2em;margin:10px 0">${pin}</p><p class="small muted">Ela vale só para a primeira entrada: a pessoa cria a senha definitiva logo em seguida. Esta tela não volta a mostrar o número.</p><div style="margin-top:10px"><button class="b p" onclick="Modal.close(true)">Entendi</button></div>`,{wide:false})}
  try{if(typeof Ficha!=='undefined'&amp;&amp;Ficha.aberta&amp;&amp;Ficha.aberta()&amp;&amp;Ficha.t==='usuarios'&amp;&amp;Ficha.cod===cod)Ficha.recarregar()}catch(e){}if(App.tab==='cad')App.render()});
 window.vacLoginPortal={
- conectar:async()=>{if(await Store.pick()){await App.onConnect()}},
+ conectar:async()=>{if(await Store.pick()){await App.onConnect();return true}App.render();throw new Error('A Administração não conectou à pasta'+(Store.motivo?': '+Store.motivo:'')+'.')},   /* 1.8.5 · ADM-01: a casca mostra o motivo e "Tentar conexão novamente" */
  turnos:()=>((Cad.D&amp;&amp;Cad.D.turnos)||[]).filter(t=>t.ativo!==false),
  criarSenha:(u,s,mot)=>usuSenhaOp(u.codigo,s,mot||'senha criada pela pessoa'),
  autocadastro:(u,s)=>{const D=Cad.D;if(!D)return Promise.reject(new Error('cadastro não carregado'));const ops=[];
@@ -36660,15 +36731,15 @@ td { font-size:15px; }
     {
       "id": "portal",
       "path": "Plataforma.html#motor/portal",
-      "version": "1.9.45",
-      "sha256": "769955c1b5ddc6d6f6f3b7830bac553bf7da817af376953e8c31ece22a2392b0",
-      "bytes": 1198396
+      "version": "1.9.46",
+      "sha256": "5466efe387255ba7491be0c663bea32216ec6ac04d37209b0aabcbb42e46db49",
+      "bytes": 1213430
     }
   ],
   "limitations": [
     "Projetos e conteúdo técnico OSM/MES/AM/TPM mantêm os limites documentados nas fontes."
   ],
-  "enginesSha256": "9cfe98a1d9090eb314c8bb7a5f814a6279d2fe8b47a056d65158d96ca3a1b6e5",
+  "enginesSha256": "3ff3f8c4c5f8b206d3cdbb03a2614064c48466226a5741821f5fe6e9efac7199",
   "originRevision": "ffc9ee8",
   "sourceMode": "single-html",
   "originEnginesSha256": "a87a64ad0c328f70e102b2ae888790a9b5d5a9bd05778652a7ce7cae140e40d2"
@@ -36738,7 +36809,7 @@ summary{cursor:pointer;font-weight:600;color:var(--navy)}
 'use strict';
 /* ---------- referência (atualizar quando a plataforma mudar de versão) ---------- */
 // Iguais às do pacote da plataforma (nova-plataforma/src/generated/manifest.json); o teste ferramenta-verificar confere.
-const VERSOES = {"oee":"2.6.4","perdas":"1.12.15","gel":"2.39","paradas":"1.2.15","equip":"1.0.20","inic":"1.1.16","linha":"1.2.0","projetos":"0.1.16","portal":"1.9.45"};
+const VERSOES = {"oee":"2.6.4","perdas":"1.12.15","gel":"2.39","paradas":"1.2.15","equip":"1.0.20","inic":"1.1.16","linha":"1.2.0","projetos":"0.1.16","portal":"1.9.46"};
 const BASES = [
  { arq: 'vacutainer-cadastros.json', mod: 'portal', nome: 'Cadastro geral (Portal)', obrig: true, cadastro: true, bk: 'Cadastros' },
  { arq: 'portal-base.json', mod: 'portal', nome: 'Portal', obrig: true, bk: 'Portal' },
@@ -37329,7 +37400,7 @@ import { Icon, Button, Badge, Empty, Modal, BarChart, BrandLogo, CommandMenu } f
 import { ModuleFrame } from "vac:modulo/components/ModuleFrame";
 import manifest from "vac:recurso/manifesto";
 import { ModuleTabs } from "vac:modulo/components/ModuleTabs";
-const VERSION = "1.8.4";
+const VERSION = "1.8.5";
 /* Navegação 1.3.0 (16/11/2026): Visão da linha, Relatórios e Importações têm abas; as que mostram uma tela do
    Portal (motor da Administração) trazem o 3º campo com a aba dele. Administração fica só com cadastros e configuração. */
 const SHELL_TABS = {

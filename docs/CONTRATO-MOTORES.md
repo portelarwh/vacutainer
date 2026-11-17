@@ -82,6 +82,14 @@ Plataforma 1.5.0, Produção 2.4.82, Administração 1.9.44.
 
 Aba Linha do tempo da Produção (`docs/timeline-operacional.md`). Só leitura de `day.events` e `db.server`; não altera OEE, metas, classificação de paradas, turnos nem exports. Bloco **aditivo** na base da Produção, autorizado pela especificação: `db.timeline = { tagMap[], tagEvents[], comments{}, imports[] }` (base sem o bloco continua válida; `Model.ensure` completa). Vigência do mapa de tags segue o contrato 2 (encerra e cria outra). Comentário, importação de tags e mapa passam por `Store.mutate` (releitura, backup, fila, auditoria). Testes: `testes/ttimeline.js` e `testes/plataforma/timeline.cjs`.
 
+## Equipamentos do MES e conexão da Administração · Administração 1.9.46, plataforma 1.8.5 (17/11/2026)
+
+- **Campos novos, opcionais, no cadastro de equipamentos** (autorizados pelo responsável em 17/11/2026): `codigoMes` (Resource Name do MES; prefixo das TAGs; não repete), `departamento`, `centroTrabalho` (Work Center). Equipamento antigo sem eles continua válido. O código EQ continua o identificador.
+- **Importar › Equipamentos (MES)** (`EqMes`, `cadImportarEqMes`): cola Resource Name · Description · Department · Work Center · Resource Type. Liga por Código MES, outro nome ou nome igual; "1 - Collection" é o registro LINHA. Parecido pelo nome só vira sugestão ("confira"); empate ou pouco parecido fica para escolher. Description substitui o nome (desmarcável por linha) e o nome anterior vai para Outros nomes (de-para da Paradas). "+ Novo equipamento" recebe o próximo EQ. Nada é apagado; tudo pela fila do cadastro (backup e auditoria, origem "planilha do MES").
+- **Editar visível**: botão Editar/Ver em cada linha das listas de cadastro; edição bloqueada mostra o motivo (mesma regra de `Cad.podeEditar`, via `Cad.motivoEdicao`) com "Desbloquear edição" ou "Conectar agora".
+- **ADM-01**: a conexão da Administração que falha guarda o motivo (`Store.motivo`: permissão, leitura ou falta de `00. Bases/portal-base.json`) e `vacPagina.conectar` avisa a casca, que mostra "Tentar conexão novamente". O aviso "Sem a pasta da rede" traz o motivo e "Conectar agora". O pedido para criar `portal-base.json` explica que, com backup, restaurar é melhor.
+- Teste: `testes/plataforma/equipamentos-mes.cjs`.
+
 ## Semáforo só pelas faixas configuradas · Produção 2.6.4, Waste 1.12.15, plataforma 1.8.4 (17/11/2026)
 
 Revisão do PR #98: a cor passa a sair só das faixas do semáforo (Administração › Parâmetros, copiadas para a Produção). Antes, "atingiu a meta" virava verde mesmo com o verde configurado acima de 100% (ex.: verde 110%, 105% da meta saía verde no gráfico e amarelo no cartão). Vale para `Charts.combo` (maior e menor é melhor), OEE do período, OEE do dia, resumo e cartão do turno, `BarChart` da Visão da linha e MUV do Waste (estado e tendência). Meta zero ou negativa: atingiu ou não. Com verde em 100% (padrão) nada muda. Teste: `testes/plataforma/semaforo.cjs`.
