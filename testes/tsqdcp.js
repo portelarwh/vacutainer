@@ -39,6 +39,9 @@ const srv = require('../scripts/servidor-testes.cjs').server();
       return { dia: d.date, day: d.id, ps: d.shifts.map(p => ({ id: p.id, shiftId: p.shiftId })) };
     });
     const box = id => p.locator('[data-sq-turno="' + id + '"]');
+    /* plataforma 1.8.3: turnos em resumo; o formulário fica no detalhe do turno aberto (clique no resumo abre) */
+    const abre = async id => { if (await p.locator(`section.tl[data-tl="${id}"].tr-oculto`).count()) await p.locator(`[data-trturno="${id}"]`).click(); };
+    await abre(prep.ps[0].id);
     await box(prep.ps[0].id).locator('[data-sq-resp="acidente"]').selectOption('sim');
     await box(prep.ps[0].id).locator('[data-sq-qtd="acidente"]').fill('2');
     await box(prep.ps[0].id).locator('[data-sq-refs="acidente"]').fill('AC-001, AC-002');
@@ -50,6 +53,7 @@ const srv = require('../scripts/servidor-testes.cjs').server();
     await p.waitForFunction(id => db().productionDays[0].shifts.find(p => p.id === id).sqdcp?.qn?.quantidade === 2, prep.ps[0].id);
     ok(await p.evaluate(() => db().auditLog.some(a => a.field === 'segurança e QN')), 'formulário grava respostas com auditoria');
     for (let i = 1; i < prep.ps.length; i++) {
+      await abre(prep.ps[i].id);
       await box(prep.ps[i].id).locator('[data-sq-resp="acidente"]').selectOption('nao');
       await box(prep.ps[i].id).locator('[data-sq-resp="qn"]').selectOption(i === 1 ? 'sim' : 'nao');
       if (i === 1) await box(prep.ps[i].id).locator('[data-sq-refs="qn"]').fill('00001');
