@@ -90,6 +90,9 @@ async function casoPasta(browser, porta, rotulo, usuario, semFontes) {
   const { context, page, erros } = await abrir(browser, porta, usuario, semFontes);
   try {
     const frame = await moduloLinha(page, '#/linha');
+    // O kit comum relê os dados quando a janela do módulo ganha foco (vacAoVoltar), em qualquer aba. O primeiro clique dentro do
+    // módulo dispara isso; acontece aqui, antes do retrato, para que a medição pegue só o que o piloto faz.
+    await frame.locator('#main h2').first().click();
     await assentar(frame);
     // estado próprio das abas atuais, para conferir que o piloto não o perde
     await frame.evaluate(() => { App.sel = '2'; App.camada = 'oc'; App.f.per = '30'; App.zoom = 1.5; render(); });

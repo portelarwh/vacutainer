@@ -34,6 +34,7 @@ Fora do piloto: upload ou troca da planta, editor de mapa e de polígonos, movim
 
 - A inicialização do módulo pode gravar sozinha (fila pendente, ou resumo `exports` de outro dia). Isso acontece em qualquer aba e não é causado pelo piloto. Por isso o teste mede o estado **depois** da inicialização.
 - Sem sessão, ou com perfil sem ação de escrita em Equipamentos (a Linha 360° usa as permissões de Equipamentos), a casca recusa essa gravação e o módulo mostra "Sessão ou perfil não permite gravar". É o comportamento atual em todas as abas.
+- Quando a janela do módulo ganha foco (primeiro clique dentro dele, volta de outra aba ou janela), o kit comum relê os dados (`vacAoVoltar`) e, com a mesma regra da inicialização, pode regravar o resumo do dia. Vale para todas as abas; o piloto não muda isso.
 - O botão Sincronizar do cabeçalho é da página, não do piloto, e continua relendo e gravando como antes.
 
 ## Desvios conhecidos da especificação
