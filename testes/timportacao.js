@@ -40,7 +40,7 @@ const { chromium } = require('playwright');
     setEx('perdas', [{ tipo: 'KKBC_ORD', em: '2026-03-02T10:00', periodos: ['2026-02'] }]);
     MOD.ordensEx = { exportsVersion: 1, importacoes: comTudo ? [{ tipo: 'MB51', comp: '2026-03', em: '2026-03-11T09:00' }, { tipo: 'COOIS', comp: '2026-03', em: '2026-03-11T09:10' }] : [{ tipo: 'MB51', comp: '2026-03', em: '2026-03-11T09:00' }] };
     Imp.dia = X; location.hash = '#importacao'; App.show('imp', { keepHash: true });
-    const rows = [...document.querySelectorAll('#main table tr')].slice(1).map(r => [r.cells[1].innerText.split('\n')[0], r.cells[4].innerText]);
+    const rows = [...document.querySelectorAll('#impSeq tr')].slice(1).map(r => [r.cells[1].innerText.split('\n')[0], r.cells[4].innerText]);
     return { rows, txt: document.querySelector('#main').innerText, botoes: [...document.querySelectorAll('[data-impir]')].map(a => [a.dataset.impir, a.getAttribute('href')]) };
   }, { X, comTudo });
   const p1 = await montar(true);
