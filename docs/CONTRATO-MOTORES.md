@@ -82,6 +82,12 @@ Plataforma 1.5.0, Produção 2.4.82, Administração 1.9.44.
 
 Aba Linha do tempo da Produção (`docs/timeline-operacional.md`). Só leitura de `day.events` e `db.server`; não altera OEE, metas, classificação de paradas, turnos nem exports. Bloco **aditivo** na base da Produção, autorizado pela especificação: `db.timeline = { tagMap[], tagEvents[], comments{}, imports[] }` (base sem o bloco continua válida; `Model.ensure` completa). Vigência do mapa de tags segue o contrato 2 (encerra e cria outra). Comentário, importação de tags e mapa passam por `Store.mutate` (releitura, backup, fila, auditoria). Testes: `testes/ttimeline.js` e `testes/plataforma/timeline.cjs`.
 
+## Escala de espaçamento nos demais módulos · plataforma 1.7.5 (17/11/2026)
+
+Mesma regra da Produção nos blocos `<style>` de Administração (237 valores), Waste (153), Gel (370), Paradas (149), Equipamentos (44), Iniciativas (35) e Linha 360° (68). Mantidos: CSS montado no JavaScript, blocos `@media print` e `@page`, e as regras de relatório impresso (`.rep`, `.printarea`). Projetos não tem bloco `<style>`. Fora do `<style>` cada bloco é idêntico; versões dos motores não mudam. Verificado com 212 capturas antes e depois (todas as abas, 1440 e 1024 px, claro e escuro), sem erro nem rolagem lateral.
+
+Testes ajustados nesta etapa: `testes/tsqdcp_layout.js` volta a rodar (navegador da plataforma) e entra em `npm run test:plataforma`; `testes/ttimeline.js` (CA-13) centraliza o gráfico antes de passar o mouse, porque com a página mais compacta o ponto caía sob um aviso no rodapé da janela.
+
 ## Escala de espaçamento na Produção · plataforma 1.7.4 (17/11/2026)
 
 `motor/oee`: 340 valores de padding, margin e gap dos blocos `<style>` convertidos para `var(--sp-N,Npx)`. Ficaram como estavam: o CSS montado no JavaScript (vai para relatórios e Outlook, que não leem `var()`), as 95 regras do SQDCP (A4 paisagem) e os 6 blocos `@media print`. Fora do `<style>` o bloco é idêntico. Versão do motor não muda. Verificado: capturas das 17 abas (1440 e 1024 px, claro e escuro) e o teste de layout do SQDCP rodado com o navegador da plataforma (`testes/tsqdcp_layout.js` ainda abre as páginas antigas e não roda sozinho).

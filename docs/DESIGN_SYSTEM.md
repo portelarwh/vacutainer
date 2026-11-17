@@ -100,7 +100,7 @@ Escala única aprovada pelo responsável: **4, 8, 12, 16, 24 e 32 px**, nos toke
 
 Vale para padding, margin e gap. Ficam fora: 0; 1–3 px (bordas e ajuste fino); medidas estruturais acima de 32 px (largura da barra lateral, altura do cabeçalho); valores com `calc()`. Valores entre passos vão para o mais próximo; no empate (6, 10, 14, 20, 28), o menor, para não aumentar a densidade das telas.
 
-Aplicada em `css/brand`, `css/kit` e `css/style` (casca e kit comum). Os módulos (`motor/*`) entram em etapas, um por vez, com capturas antes e depois em 1440 e 1024 px, claro e escuro.
+Aplicada na casca e no kit (`css/brand`, `css/kit`, `css/style`, 1.7.3) e nos blocos `<style>` de todos os módulos (1.7.4 e 1.7.5). Ficam de fora, de propósito: o CSS montado no JavaScript, porque vai para relatórios e para o Outlook, que não leem `var()`; `@media print` e `@page`; o SQDCP (A4 paisagem) e os relatórios impressos (`.rep`, `.printarea`). CSS novo usa a escala desde o início.
 
 ## 12. Responsividade e acessibilidade
 - Garantir legibilidade em diferentes tamanhos de tela.
