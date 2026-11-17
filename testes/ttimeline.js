@@ -100,6 +100,8 @@ const D = '2031-03-10', D2 = '2031-03-11';   // segunda e terça, sem nada lanç
       ok(t.labs === t.maqs && t.labs >= 5, `CA-05: uma faixa por máquina cadastrada (${t.labs})`);
       await p.screenshot({ path: path.join(SAI, 'turno-1440.png') });
       // tooltip (CA-13) e detalhes (CA-08, CA-09, CA-19)
+      // plataforma 1.7.5: centraliza o gráfico antes de passar o mouse; perto do rodapé da janela o ponto pode cair sob um aviso (toast)
+      await p.evaluate(() => document.querySelector('#tloCv').scrollIntoView({ block: 'center' })); await p.waitForTimeout(150);
       const pos = await p.evaluate(D => { const c = document.querySelector('#tloCv'), g = c._g, r = c.getBoundingClientRect(), M = TLV.modelo(), box = document.querySelector('#tloBox'); return { x: r.left + (Timeline.inicioDia(D) + 500 - M.a) * g.k - box.scrollLeft, y: r.top + TLV.AX + TLV.MC / 2 }; }, D);
       await p.mouse.move(pos.x, pos.y); await p.waitForTimeout(200);
       const tip = await p.evaluate(() => { const e = document.querySelector('#tloTip'); return e && !e.hidden ? e.innerText : ''; });
