@@ -8824,7 +8824,10 @@ const Actions = (() => {
     for (const e of d.events) {
       if (e.deleted || !e.intervalId || !ids.has(e.intervalId)) continue;
       const old = antigos.find(i => i.id === e.intervalId), alvo = novos.find(i => old.start >= i.start &amp;&amp; old.start < i.end) || novos[0];
-      e.intervalId = alvo ? alvo.id : null; if (!alvo) e.productionShiftId = ps.id;
+      // parada maior que o intervalo de destino (ex.: 120 min de um período voltando para horas de 60 min): fica no turno,
+      // e o cálculo distribui o tempo pelos intervalos do turno, como já faz com parada só com o tempo lançada no turno
+      if (!alvo || (+e.minutes || 0) > alvo.end - alvo.start) { e.intervalId = null; e.productionShiftId = ps.id; }
+      else e.intervalId = alvo.id;
     }
   }
   const resumoPer = L => L.map(p => U.range(p.start, p.end) + ' ' + (p.good == null ? '—' : p.good)).join(' + ');
@@ -8851,6 +8854,10 @@ const Actions = (() => {
       const novos = L.map(p => ({ id: uid('iv'), start: p.start, end: p.end, catalogId: null, good: p.good, note: '', kind: 'total' }));
       L.forEach((p, k) => { if (k) novos[k].catalogId = p.catalogId; });
       const bCat = ps.initialCatalogId;
+      /* turno reaberto: o período com o mesmo horário e o mesmo catálogo mantém a meta congelada no fechamento (tgt), como a correção de
+         uma hora no hora a hora; período novo, horário ou catálogo diferentes usam a meta vigente */
+      const catAnt = (iv, k) => k === 0 ? (iv.catalogId || bCat || null) : (iv.catalogId || null);
+      novos.forEach((nv, k) => { const cat = k === 0 ? (L[0].catalogId || bCat || null) : nv.catalogId; const o = naFaixa.find((iv, j) => iv.tgt &amp;&amp; iv.start === nv.start &amp;&amp; iv.end === nv.end &amp;&amp; catAnt(iv, j) === cat); if (o) nv.tgt = JSON.parse(JSON.stringify(o.tgt)); });
       if (L[0].catalogId) ps.initialCatalogId = L[0].catalogId;
       remapParadas(d, ps, naFaixa, novos);
       ps.intervals = ps.intervals.filter(i => !(!i.deleted &amp;&amp; dentro(i, F))).concat(novos).sort((x, y) => x.start - y.start);
@@ -10324,6 +10331,7 @@ const ServerData = (() => {
     const mine = timed.filter(e => e.srvRework === lot);
     const goods = [];
     for (const f of res.flat || []) {
+      if (f.ps &amp;&amp; f.ps.lancamento &amp;&amp; f.ps.lancamento.modo === 'total') continue;   // 2.6.0 · turno pelo total: a produção informada não é trocada pela contagem do servidor
       const w = countWindow(db, lineId, base + f.iv.start, base + f.iv.end); if (!w.some(x => x.lot === lot)) continue;
       const norm = U.sum(w.filter(x => kind(x.lot) === 'normal'), x => x.n), rw = U.sum(w.filter(x => x.lot === lot), x => x.n);
       const nv = norm ? norm * qty : (f.iv.good == null ? null : 0);
@@ -15405,7 +15413,7 @@ const Srv = (() => {
           for (const e of keep) parts = parts.flatMap(([x, y]) => { if (e.end <= x || e.start >= y) return [[x, y]]; const o = []; if (e.start > x) o.push([x, e.start]); if (e.end < y) o.push([e.end, y]); return o; });
           for (const [x, y] of parts) if (y - x >= 1) { day.events.push({ id: U.uid('ev'), codeId: code.id, start: x, end: y, minutes: null, intervalId: null, note: `Retrabalho do lote ${lot} (servidor)${opt.note ? ' · ' + opt.note : ''}`, impact: Actions.impactSnap(code), srvRework: lot, manual: false, ...Model.meta(by()) }); nEv++; }
         }
-        for (const g of P.goods) if ((opt.goods || []).includes(g.ivId)) { const iv = day.shifts.flatMap(p => p.intervals).find(i => i.id === g.ivId); if (iv.good === g.nv) continue; audit({ action: 'edição', entity: 'intervalo', entityId: iv.id, field: 'good', before: iv.good, after: g.nv, origin: `retrabalho ${lot} (confirmado)` }); iv.good = g.nv; nG++; }
+        for (const g of P.goods) if ((opt.goods || []).includes(g.ivId)) { const iv = day.shifts.flatMap(p => p.intervals).find(i => i.id === g.ivId), psg = day.shifts.find(p => p.intervals.includes(iv)); if (psg &amp;&amp; psg.lancamento &amp;&amp; psg.lancamento.modo === 'total') continue; if (iv.good === g.nv) continue; audit({ action: 'edição', entity: 'intervalo', entityId: iv.id, field: 'good', before: iv.good, after: g.nv, origin: `retrabalho ${lot} (confirmado)` }); iv.good = g.nv; nG++; }
       } else {
         s.dayLot[key] = { kind: 'normal', by: by(), at: U.nowIso(), note: opt.note || '' };
         for (const e of P.mine) { e.deleted = true; e.updatedAt = U.nowIso(); e.updatedBy = by(); nDel++; }
@@ -15555,6 +15563,7 @@ const SrvUI = (() => {
       <h4 class="section">1 · Parada "RTB · Retrabalho (fora do OEE)"</h4><p class="small">Lançada nos horários acima. Desconta do tempo planejado: não entra na Disponibilidade nem no Pareto.</p>
       ${P.inside.length ? `<h4 class="section">2 · Paradas já lançadas dentro do retrabalho</h4><p class="small">Como o trecho não conta, o normal é removê-las. Desmarque as que devem continuar contando.</p><div class="tw"><table data-nosort="1"><tbody>${P.inside.map(e => `<tr><td><input type="checkbox" data-rmi="${e.id}" checked></td><td class="mono">${U.range(e.start, e.end)}</td><td>${esc(dc(e.codeId).code || '')} · ${esc(dc(e.codeId).name || '')}</td><td class="small wrap">${esc(e.note || '')}</td></tr>`).join('')}</tbody></table></div>` : ''}
       ${P.setups.length ? `<h4 class="section">Trocas de entrada e saída do retrabalho</h4><p class="small">Marcadas = também saem do OEE (viram RTB e substituem a troca lançada). A regra: a entrada sempre; a saída só quando volta para o mesmo catálogo. Confira e decida.</p><div class="tw"><table data-nosort="1"><tbody>${P.setups.map(x => `<tr><td><input type="checkbox" data-rws="${esc(x.key)}" ${x.def ? 'checked' : ''}></td><td class="mono">${x.spans.map(([a, b]) => U.range(a, b)).join(' · ')}</td><td class="n">${U.fmt(x.minutes)} min</td><td>${x.kind === 'entrada' ? 'Entrada' : 'Saída'}: ${esc(x.c.fromCat)} · ${esc(x.c.fromLot)} → ${esc(x.c.toCat)} · ${esc(x.c.toLot)}</td><td class="small muted wrap">${esc(x.why)}${x.inside.length ? ` · substitui ${x.inside.length} parada(s) lançada(s)` : ''}</td></tr>`).join('')}</tbody></table></div>` : ''}
+      ${day.shifts.some(ps => ps.lancamento &amp;&amp; ps.lancamento.modo === 'total' &amp;&amp; P.spans.some(([a, z]) => ps.intervals.some(i => !i.deleted &amp;&amp; U.overlap(a, z, i.start, i.end) > 0))) ? '<p class="small muted">Turno lançado pelo total: a produção informada não é trocada pela contagem do servidor. Se o retrabalho estava somado no total, corrija o total no bloco do turno.</p>' : ''}
       ${P.goods.length ? `<h4 class="section">${P.inside.length ? 3 : 2} · Produção das horas com esse lote</h4><p class="small">Fica só o que foi feito de lotes normais (caixas × ${U.fmt(db().settings.serverBoxQty || 1000)}).</p><div class="tw"><table data-nosort="1"><thead><tr><th></th><th>Intervalo</th><th class="n">Lançado</th><th class="n">Fica</th><th>Caixas</th></tr></thead><tbody>${P.goods.map(g => `<tr><td><input type="checkbox" data-rwg="${g.ivId}" ${g.cur === g.nv ? 'disabled' : 'checked'}></td><td class="mono">${U.range(g.start, g.end)}</td><td class="n">${g.cur == null ? '<span class="muted">vazio</span>' : fq(g.cur)}</td><td class="n"><b>${g.nv == null ? '—' : fq(g.nv)}</b></td><td class="small">${g.rw} de retrabalho${g.norm ? ` · ${g.norm} normais` : ''}</td></tr>`).join('')}</tbody></table></div>` : ''}
       <label class="f wide"><span>Observação (opcional)</span><input type="text" id="rwNote" maxlength="200" placeholder="ex.: retrabalho do lote de setembro, reinspeção"></label>
       <p class="small muted">Vale só para ${U.brDate(day.date)}. Desmarcar o check desfaz: as paradas RTB saem e o lote volta a contar.</p>`,
@@ -36479,8 +36488,8 @@ td { font-size:15px; }
       "id": "oee",
       "path": "Plataforma.html#motor/oee",
       "version": "2.6.0",
-      "sha256": "d751f8a8534e12568e57d50d6ee63e448fedfa94480246567f7d4a9f4b8ef932",
-      "bytes": 2190511
+      "sha256": "794a1434ba5b76f27796c4f520429e4a9af3e1f039b50254e19b96bed654adf2",
+      "bytes": 2192140
     },
     {
       "id": "perdas",
@@ -36542,7 +36551,7 @@ td { font-size:15px; }
   "limitations": [
     "Projetos e conteúdo técnico OSM/MES/AM/TPM mantêm os limites documentados nas fontes."
   ],
-  "enginesSha256": "7b95137945398b4cf5416d1dfe1f104e21a6871b11b87d25b436e1e3c6bbe09c",
+  "enginesSha256": "5848c9b02f827a06f08b7e1472556be272aa41d9db2ea306e4d45d62c4c858f1",
   "originRevision": "ffc9ee8",
   "sourceMode": "single-html",
   "originEnginesSha256": "a87a64ad0c328f70e102b2ae888790a9b5d5a9bd05778652a7ce7cae140e40d2"

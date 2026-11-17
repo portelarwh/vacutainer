@@ -92,17 +92,30 @@ const html = fs.readFileSync(path.resolve(__dirname, '../../Plataforma.html'));
       // parada só com o tempo no 2º período (vai para a hora certa na volta)
       const code = db().downtimeCodes.find(c => c.active !== false && !c.deleted && c.allowsManualDuration && !c.requiresPrevCatalog && !c.requiresNextCatalog && !c.deductsPlanned);
       Actions.saveEvent(d.id, { codeId: code.id, start: null, end: null, minutes: 15, intervalId: ps.intervals[1].id, note: 'teste' });
+      Actions.saveEvent(d.id, { codeId: code.id, start: null, end: null, minutes: 120, intervalId: ps.intervals[0].id, note: 'longa' });
       return { setIv: __tt.tenta(() => Actions.setIv(d.id, iv.id, 'good', 1)), cat: __tt.tenta(() => Actions.setIv(d.id, iv.id, 'catalogId', null)), colar: __tt.tenta(() => Actions.setGoods(d.id, [{ ivId: iv.id, good: 1 }])), dividir: __tt.tenta(() => Actions.splitInterval(d.id, iv.id, iv.start + 60, 1, 1)), excluir: __tt.tenta(() => Actions.deleteInterval(d.id, iv.id)), horario: __tt.tenta(() => Actions.editIntervalTimes(d.id, iv.id, iv.start, iv.end - 10)) }; }, D);
     for (const [k, v] of Object.entries(prot)) assert.match(v, /lançado pelo total/, 'recusa ' + k);
     const volta = await f.evaluate(s => { const d = __tt.dia(s), ps = d.shifts[0]; Actions.voltarHoraAHora(d.id, ps.id, true); const ps2 = __tt.turno(s), ev = __tt.dia(s).events.find(e => !e.deleted && e.note === 'teste'), iv = ps2.intervals.find(i => i.id === ev.intervalId);
       const aud = (db().auditLog || []).filter(a => a.entityId === ps.id && a.field === 'produção total do turno').map(a => a.after);
-      return { modo: !!ps2.lancamento, ivs: ps2.intervals.length, goods: ps2.intervals.filter(i => i.good != null).length, paradaEm: iv ? U.range(iv.start, iv.end) : null, aud }; }, D);
+      const longa = __tt.dia(s).events.find(e => !e.deleted && e.note === 'longa'), msgs = Actions.closingCheck(db(), __tt.dia(s), ps2.id).msgs.map(m => m.msg).join(' | ');
+      const R = Engine.computeDay(db(), __tt.dia(s)), minLonga = R.events && R.events[longa.id] ? R.events[longa.id].minutes : null;
+      return { modo: !!ps2.lancamento, ivs: ps2.intervals.length, goods: ps2.intervals.filter(i => i.good != null).length, paradaEm: iv ? U.range(iv.start, iv.end) : null, aud, longa: { iv: longa.intervalId, turno: longa.productionShiftId === ps2.id, min: minLonga }, msgs }; }, D);
     assert.equal(volta.modo, false); assert.ok(volta.ivs >= 8); assert.equal(volta.goods, 0);
     assert.equal(volta.paradaEm, '10:00–11:00', 'parada só com o tempo foi para a hora em que o período começava');
+    assert.equal(volta.longa.iv, null); assert.ok(volta.longa.turno, 'parada de 120 min (maior que uma hora) fica no turno'); assert.equal(volta.longa.min, 120, 'com os mesmos 120 min');
+    assert.doesNotMatch(volta.msgs, /maior que o intervalo/, 'nenhuma parada maior que o intervalo depois da volta');
     assert.ok(volta.aud.length >= 2 && volta.aud.some(a => /^total:/.test(a)) && volta.aud.some(a => /hora a hora/.test(a)), 'auditoria de lançar e voltar ' + JSON.stringify(volta.aud));
     const fechado = await f.evaluate(s => { const d = __tt.dia(s), ps = d.shifts[0], F = TotalTurno.faixa(d, ps); Actions.lancarTotal(d.id, ps.id, [{ start: F.a, end: F.b, good: 400000 }]); Actions.closeShift(d.id, ps.id, true); return __tt.tenta(() => Actions.voltarHoraAHora(d.id, ps.id, true)); }, D);
     assert.match(fechado, /fechado/);
-    ok('turno pelo total recusa digitar, colar, dividir, excluir e mudar horário; volta recria as horas com a parada na hora certa; auditoria; turno fechado não muda');
+    const congelada = await f.evaluate(s => { const d = __tt.dia(s), ps = d.shifts[0], t0 = JSON.stringify(ps.intervals[0].tgt || null);
+      Actions.reopen(d.id, ps.id, 'teste do total');
+      const F = TotalTurno.faixa(__tt.dia(s), ps), cat = __tt.turno(s).initialCatalogId;
+      Actions.lancarTotal(d.id, ps.id, [{ start: F.a, end: F.b, catalogId: cat, good: 410000 }]); const igual = JSON.stringify(__tt.turno(s).intervals[0].tgt || null);
+      Actions.lancarTotal(d.id, ps.id, [{ start: F.a, end: F.a + 240, catalogId: cat, good: 200000 }, { start: F.a + 240, end: F.b, catalogId: cat, good: 200000 }]); const outro = __tt.turno(s).intervals.map(i => !!i.tgt);
+      return { t0, igual, outro, good: __tt.res(s).good }; }, D);
+    assert.notEqual(congelada.t0, 'null', 'o fechamento congelou a meta do período'); assert.equal(congelada.igual, congelada.t0, 'corrigir o total no mesmo período mantém a meta congelada');
+    assert.deepEqual(congelada.outro, [false, false], 'período com outro horário usa a meta vigente'); assert.equal(congelada.good, 400000);
+    ok('turno pelo total recusa digitar, colar, dividir, excluir e mudar horário; volta recria as horas com a parada na hora certa e a parada longa no turno; auditoria; turno fechado não muda; reaberto mantém a meta congelada');
 
     // ---------- 5. Hora a hora (liderança) ----------
     await f.evaluate(s => { App.sel.date = s; App.route = 'hourly'; render(); }, num.B_date); await page.waitForTimeout(700);
@@ -135,6 +148,17 @@ const html = fs.readFileSync(path.resolve(__dirname, '../../Plataforma.html'));
     t = await f.evaluate(s => __tt.turno(s).intervals.filter(i => i.good != null).length, E.date);
     assert.ok(t >= 8, 'aceite grava o hora a hora do servidor');
     ok('servidor: prévia avisa produção já apontada (dia fechado), turno pelo total não recebe produção sem a troca, revisão leva ao aceite');
+    // retrabalho de um lote dentro de um turno lançado pelo total: tempo sai do OEE, produção informada não é trocada pela contagem
+    const G = await f.evaluate(() => { const s = __tt.novoDia(6), d = __tt.dia(s), ps = d.shifts[0], F = TotalTurno.faixa(d, ps); Actions.lancarTotal(d.id, ps.id, [{ start: F.a, end: F.b, catalogId: ps.initialCatalogId, good: 430000 }]); return { date: s, cat: (db().catalogs.find(c => c.id === ps.initialCatalogId) || {}).code }; });
+    const csv2 = 'Timestamp;Catalogo;Lote;Caixa\n' + Array.from({ length: 30 }, (_, k) => { const m = 6 * 60 + 5 + k * 10; return `${G.date}T${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}:00;${G.cat};9990002;${k + 1}`; }).join('\n');
+    await f.evaluate(csv => { window.pickFile = async () => new File([csv], 'teste-retrabalho.csv', { type: 'text/csv' }); SrvUI.importFlow(); }, csv2); await page.waitForTimeout(1200);
+    await f.evaluate(() => document.querySelectorAll('[data-cls]').forEach(s => s.value = 'normal')); await f.locator('#svGo').click(); await page.waitForTimeout(900);
+    const rw = await f.evaluate(s => { document.querySelectorAll('.overlay').forEach(o => o.remove()); const d = __tt.dia(s), ps = d.shifts[0], P = ServerData.reworkPlan(db(), d, Engine.computeDay(db(), d), '9990002', db().settings);
+      let erro = ''; try { Srv.setDayRework(d.id, '9990002', true, { goods: ps.intervals.map(i => i.id), removeInside: [], setups: [] }); } catch (e) { erro = e.message; }
+      return { planoTrocaTotal: P.goods.some(g => ps.intervals.some(i => i.id === g.ivId)), erro, good: __tt.res(s).good, rtb: __tt.dia(s).events.filter(e => !e.deleted && e.srvRework === '9990002').length }; }, G.date);
+    assert.equal(rw.planoTrocaTotal, false, 'o plano de retrabalho não propõe trocar a produção do turno pelo total');
+    if (/RTB/.test(rw.erro)) console.log('aviso: demonstração sem o tipo RTB; conferido só o plano'); else { assert.equal(rw.erro, ''); assert.equal(rw.good, 430000, 'retrabalho não troca o total informado'); assert.ok(rw.rtb > 0, 'o tempo de retrabalho entra como parada RTB'); }
+    ok('retrabalho em turno lançado pelo total: tempo vira parada RTB, produção informada continua 430 mil');
 
     assert.deepEqual(erros, [], 'sem erro de JavaScript');
     console.log('ok total do turno: sem erro de JavaScript');
