@@ -82,6 +82,12 @@ Plataforma 1.5.0, Produção 2.4.82, Administração 1.9.44.
 
 Aba Linha do tempo da Produção (`docs/timeline-operacional.md`). Só leitura de `day.events` e `db.server`; não altera OEE, metas, classificação de paradas, turnos nem exports. Bloco **aditivo** na base da Produção, autorizado pela especificação: `db.timeline = { tagMap[], tagEvents[], comments{}, imports[] }` (base sem o bloco continua válida; `Model.ensure` completa). Vigência do mapa de tags segue o contrato 2 (encerra e cria outra). Comentário, importação de tags e mapa passam por `Store.mutate` (releitura, backup, fila, auditoria). Testes: `testes/ttimeline.js` e `testes/plataforma/timeline.cjs`.
 
+## Ajustes de lançamento · Produção 2.6.1, plataforma 1.8.1 (17/11/2026)
+
+- Gráficos hora a hora (`hhChartOpts`, ritmo por hora e gráfico do e-mail do turno): o período de um turno lançado pelo total leva no eixo o código do turno (`snap.code`, ex.: 2T), não a hora de início; com troca de catálogo, `2T 1/2`, `2T 2/2` (`rotuloIv`).
+- Janelas da Produção: `.overlay .kv .v` e `.modal .kv .v` voltam a 15 px (a regra de KPI de `css/brand` deixava a categoria da parada com 28 px).
+- E-mail (`vacEmail.pecas.cabecalho`, comum/interface): cabeçalho claro com texto azul-marinho; ver `docs/DESIGN_SYSTEM.md` §19.
+
 ## Produção total do turno · Produção 2.6.0, plataforma 1.8.0 (17/11/2026)
 
 Para o turno sem hora a hora (sem foto do quadro, servidor fora do ar), o bloco **Produção total do turno** aparece no "Lançar meu turno" e no Hora a hora. Preencher o total bloqueia as horas; lançar uma hora bloqueia o total; apagar o total volta ao hora a hora. Com troca de catálogo, o turno é dividido em **períodos** (hora da troca, catálogo e produção de cada um, com a média por hora).

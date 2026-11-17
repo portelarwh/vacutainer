@@ -2737,8 +2737,11 @@ const vacEmail = (() => {
   const marcadores = (L, html) => `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">${L.map(x => `<tr><td width="14" valign="top" style="${F}font-size:13px;color:#0D5E9C;padding:3px 0">&amp;bull;</td><td style="${F}font-size:13px;line-height:19px;color:${INK};padding:3px 0">${html ? x : H(x)}</td></tr>`).join('')}</table>`;
   const img = (src, alt, w = 632) => `<img src="${H(src)}" width="${w}" alt="${H(alt || '')}" style="display:block;width:${w}px;max-width:100%;height:auto;border:1px solid ${LIN}">`;
   // Outlook/Word pode redefinir a cor de cada bloco ao colar: não depender da herança do td.
-  const textoBranco = h => `<font color="#FFFFFF" style="color:#FFFFFF">${h}</font>`;
-  const cabecalho = (sistema, titulo, sub) => `<tr><td bgcolor="#102333" style="background:#102333;padding:16px 24px;${F}color:#FFFFFF"><div style="font-size:11px;letter-spacing:1px;color:#FFFFFF">${textoBranco(sistema ? 'BD &amp;middot; SISTEMAS DA LINHA VACUTAINER &amp;middot; ' + H(sistema) : 'BD &amp;middot; SISTEMAS DA LINHA VACUTAINER')}</div><div style="font-size:20px;font-weight:bold;padding-top:4px;color:#FFFFFF">${textoBranco(H(titulo || ''))}</div><div style="font-size:13px;padding-top:2px;color:#FFFFFF">${textoBranco(H(sub || ''))}</div></td></tr>`;
+  /* plataforma 1.8.1 · cabeçalho claro: o Outlook novo mantinha o fundo azul-escuro e descartava a cor branca do texto (título preto sobre
+     azul). Fundo claro + texto azul-marinho fica legível se o editor tirar a cor do texto (preto sobre claro) ou o fundo (azul-marinho sobre
+     branco). A faixa azul-marinho do topo é uma linha própria: sem ela, nada some. */
+  const textoCab = (h, cor = '#102333') => `<font color="${cor}" style="color:${cor}">${h}</font>`;
+  const cabecalho = (sistema, titulo, sub) => `<tr><td height="6" bgcolor="#102333" style="background:#102333;height:6px;font-size:1px;line-height:1px">&amp;nbsp;</td></tr><tr><td bgcolor="#EAF2FA" data-vac-cab="1" style="background:#EAF2FA;padding:14px 24px 16px;${F}color:#102333;border-bottom:1px solid ${LIN}"><div style="font-size:11px;letter-spacing:1px;color:#3D5A78">${textoCab(sistema ? 'BD &amp;middot; SISTEMAS DA LINHA VACUTAINER &amp;middot; ' + H(sistema) : 'BD &amp;middot; SISTEMAS DA LINHA VACUTAINER', '#3D5A78')}</div><div style="font-size:20px;font-weight:bold;padding-top:4px;color:#102333">${textoCab(H(titulo || ''))}</div><div style="font-size:13px;padding-top:2px;color:#3D5A78">${textoCab(H(sub || ''), '#3D5A78')}</div></td></tr>`;
   const situacao = (txt, cor, nota) => `<tr><td style="padding:14px 24px 0"><table role="presentation" cellpadding="0" cellspacing="0" border="0"><tr><td bgcolor="${cor}" style="background:${cor};padding:4px 12px;${F}font-size:12px;font-weight:bold;color:#FFFFFF">${H(txt)}</td>${nota ? `<td style="padding:4px 10px;${F}font-size:12px;color:${MUT}">${H(nota)}</td>` : ''}</tr></table></td></tr>`;
   const nota = (rot, txt) => linha(`<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-top:12px"><tr><td style="background:#EAF4FC;border-left:4px solid #0D5E9C;padding:10px 12px;${F}font-size:13px;line-height:19px;color:${INK}"><b>${H(rot)}:</b> ${H(txt).replace(/\n/g, '<br>')}</td></tr></table>`);
   const rodape = htmlTxt => `<tr><td style="padding:18px 24px 16px;${F}font-size:11px;line-height:16px;color:${MUT};border-top:1px solid ${LIN}">${htmlTxt}</td></tr>`;
@@ -6848,6 +6851,8 @@ td .bar{height:6px;background:var(--s1);border-radius:0 3px 3px 0;min-width:1px}
 #main[data-rota="config"] .kv .v{font-size:16px!important;line-height:1.35;font-weight:600}
 #main[data-rota="config"] .kv .l{font-size:12px}
 .kv input{width:100%}
+/* plataforma 1.8.1 · nas janelas, rótulo e valor em tamanho de texto (a regra de KPI grande de css/brand pegava .kv .v: categoria da parada a 28 px) */
+.overlay .kv .v,.modal .kv .v{font-size:15px;line-height:1.35}
 
 /* formulários */
 .form{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:var(--sp-8,8px) var(--sp-12,12px)}
@@ -7389,7 +7394,7 @@ const U = (() => {
 
 /* ---- 02-model.js ---- */
 /* ================= modelo de dados, valores iniciais e integridade ================= */
-const APP_VERSION = '2.6.0';   /* 2.6.0 · produção total do turno (sem hora a hora; períodos na troca de catálogo), aviso do servidor para turno lançado pelo total e para dia com produção apontada */
+const APP_VERSION = '2.6.1';   /* 2.6.1 · gráficos: turno lançado pelo total com o nome do turno no eixo; janelas: rótulo e valor em tamanho de texto */   /* 2.6.0 · produção total do turno (sem hora a hora; períodos na troca de catálogo), aviso do servidor para turno lançado pelo total e para dia com produção apontada */
 const SCHEMA_VERSION = 1;
 const BASE_FILE = 'oee-vacutainer-base.json';
 const BACKUP_DIR = '00. Backups';
@@ -11547,10 +11552,17 @@ function dayHasDataModal(day) {
     }, { wide: true });
 }
 const locked = (day, ps) => day.status === 'fechado' || (ps &amp;&amp; ps.status === 'fechado');
+/* 2.6.1 · nos gráficos, o período de um turno lançado pelo total leva o nome curto do turno (ex.: 2T), não a hora de início (14:30);
+   com troca de catálogo, numera os períodos (2T 1/2, 2T 2/2) */
+function rotuloIv(f, flat) {
+  const ps = f.ps; if (!(ps &amp;&amp; ps.lancamento &amp;&amp; ps.lancamento.modo === 'total')) return U.hhmm(f.iv.start);
+  const L = (flat || []).filter(x => x.ps === ps), k = L.indexOf(f), nome = (ps.snap &amp;&amp; (ps.snap.code || ps.snap.name)) || '';
+  return L.length > 1 ? `${nome} ${k + 1}/${L.length}` : nome;
+}
 // gráfico do hora a hora: coluna verde quando a hora atinge a meta, vermelha quando fica abaixo; família e catálogo na marca e na dica
 function hhChartOpts(fl, height) {
   const famOf = f => { const c = db().catalogs.find(x => x.id === f.cat), fm = c &amp;&amp; db().families.find(x => x.id === c.familyId); return fm ? [{ color: fm.color || 'var(--muted)', label: fm.code }] : []; };
-  return { x: fl.map(f => U.hhmm(f.iv.start)), xFull: fl.map(f => `${U.range(f.iv.start, f.iv.end)} · ${f.ps.snap.name}`), xName: 'Intervalo', bars: [{ name: 'Produção boa', values: fl.map(f => f.good), color: 'var(--s1)', meta: fl.map(f => f.metaOp > 0 ? f.metaOp : null) }], lines: [{ name: 'Meta', values: fl.map(f => f.metaOp > 0 ? f.metaOp : null), color: 'var(--ink)', width: 1.5, dash: true, dots: false }], unit: qUn, fmtY: v => fq(v), height, mark: fl.map(famOf), markName: 'Família',
+  return { x: fl.map(f => rotuloIv(f, fl)), xFull: fl.map(f => `${U.range(f.iv.start, f.iv.end)} · ${f.ps.snap.name}`), xName: 'Intervalo', bars: [{ name: 'Produção boa', values: fl.map(f => f.good), color: 'var(--s1)', meta: fl.map(f => f.metaOp > 0 ? f.metaOp : null) }], lines: [{ name: 'Meta', values: fl.map(f => f.metaOp > 0 ? f.metaOp : null), color: 'var(--ink)', width: 1.5, dash: true, dots: false }], unit: qUn, fmtY: v => fq(v), height, mark: fl.map(famOf), markName: 'Família',
     tipRows: i => { const f = fl[i]; const r = [['Catálogo', catName(f.cat)], ['Acumulado do dia', `${fq(f.cumGood)} / meta ${fq(f.cumMetaAdj)}`]]; if (f.a + f.p) r.push(['Paradas na hora', U.fmt(f.a + f.p) + ' min']); if (f.deduct) r.push(['Abono / pausa', U.fmt(f.deduct) + ' min']); if (f.iv.note) r.push(['Obs.', f.iv.note]); return r; }, empty: 'Sem hora a hora.' };
 }
 function msgList(msgs, max = 40) {
@@ -18032,7 +18044,7 @@ const LancV2 = (() => {
   /* 2.4.59 · mesma base do Apontamento › Hora a hora: intervalos dos turnos + horas do MES fora do turno que contam no dia, em ordem de horário.
      Hora fora do turno: OEE da hora = produção do MES ÷ (PPH do turno que recebe × 1 h), como no OEE real; barra mais clara. O OEE oficial não muda. */
   function oeeHoras(res, day) {
-    const H = (res.flat || []).filter(f => f.good != null &amp;&amp; f.pph > 0 &amp;&amp; f.min > 0).map(f => ({ h: U.hhmm(f.iv.start), s: f.iv.start, v: f.good / (f.pph * f.min / 60) }));
+    const H = (res.flat || []).filter(f => f.good != null &amp;&amp; f.pph > 0 &amp;&amp; f.min > 0).map(f => ({ h: rotuloIv(f, res.flat), s: f.iv.start, v: f.good / (f.pph * f.min / 60) }));
     if (day &amp;&amp; typeof HHPs !== 'undefined') try {
       const ft = res.foraTurno;
       for (const it of ((ft &amp;&amp; ft.recebe) || []).filter(i => i.alvo &amp;&amp; i.alvo.date === day.date &amp;&amp; !(ft.semAlvo || []).includes(i))) {
@@ -18193,7 +18205,7 @@ const HHComum = {
   /* pontos de 1 dia: { k: rótulo da hora, s: minuto no dia de produção (ordem), g: produção, m: meta, fora, conta } */
   pontos(day, res) {
     const P = [];
-    for (const f of res.flat) { if (f.good == null &amp;&amp; !(f.metaOp > 0)) continue; P.push({ k: U.hhmm(f.iv.start), s: f.iv.start, g: f.good, m: f.metaOp > 0 ? f.metaOp : 0, fora: false }); }
+    for (const f of res.flat) { if (f.good == null &amp;&amp; !(f.metaOp > 0)) continue; P.push({ k: rotuloIv(f, res.flat), s: f.iv.start, g: f.good, m: f.metaOp > 0 ? f.metaOp : 0, fora: false }); }
     const ft = res.foraTurno;
     for (const it of ((ft &amp;&amp; ft.recebe) || []).filter(i => i.alvo &amp;&amp; i.alvo.date === day.date &amp;&amp; !(ft.semAlvo || []).includes(i)))
       for (const r of HHPs.porHora(day, it)) P.push({ k: HHPs.hm(r.h), s: r.h, g: r.pecas, m: 0, fora: true, conta: it.alvo.name });
@@ -36487,71 +36499,71 @@ td { font-size:15px; }
     {
       "id": "oee",
       "path": "Plataforma.html#motor/oee",
-      "version": "2.6.0",
-      "sha256": "794a1434ba5b76f27796c4f520429e4a9af3e1f039b50254e19b96bed654adf2",
-      "bytes": 2192140
+      "version": "2.6.1",
+      "sha256": "ddd340e1df4a4e54d6b44cb472d8cb1fefa2bd40565a6454da11f51dd925e671",
+      "bytes": 2193601
     },
     {
       "id": "perdas",
       "path": "Plataforma.html#motor/perdas",
       "version": "1.12.13",
-      "sha256": "2d15cf851faf7b4f3e8d28086118ad8dd41e50f5581a3f93f6c592f74f835b34",
-      "bytes": 921719
+      "sha256": "33c6036cd9967c18578acf98285b155d4085e235fb63a26858038e441167a6ff",
+      "bytes": 922295
     },
     {
       "id": "gel",
       "path": "Plataforma.html#motor/gel",
       "version": "2.39",
-      "sha256": "89ecc609aff27b81dba48dbe2d6de7efd0f8169fcb27922c1e255034b82f4729",
-      "bytes": 1609987
+      "sha256": "75ab0cd038153dc1d54a4f91b17846d283d3a3637877a47f5ab709f2c7bcc2a3",
+      "bytes": 1610563
     },
     {
       "id": "paradas",
       "path": "Plataforma.html#motor/paradas",
       "version": "1.2.15",
-      "sha256": "b90b0135091cc1962ec8331b2d1d539e22bfb3b63fa2ab14cdd0ddd99db205df",
-      "bytes": 885984
+      "sha256": "939d7e2492da58791df63bf80a2246b5c2b8d6fd7a5e11bedf9e81021672be2b",
+      "bytes": 886560
     },
     {
       "id": "equip",
       "path": "Plataforma.html#motor/equip",
       "version": "1.0.20",
-      "sha256": "09ed95f128f1fcc5ef967c35070ef95b48be602a1136802b30c74f89aa126b44",
-      "bytes": 683144
+      "sha256": "19314e4d4b5b4277266ca7b993bbfe181361da008d7f79686f13a9d768335ecc",
+      "bytes": 683720
     },
     {
       "id": "inic",
       "path": "Plataforma.html#motor/inic",
       "version": "1.1.16",
-      "sha256": "5486132109870695158b79919119df36b2d1c5c941107fe25929a5a8d6a8d93e",
-      "bytes": 704680
+      "sha256": "c76d6fc26dba2b76506d0cd6fc247cb77d8c157efe1c700e288f6ae9183656ac",
+      "bytes": 705256
     },
     {
       "id": "linha",
       "path": "Plataforma.html#motor/linha",
       "version": "1.2.0",
-      "sha256": "abcc482747dc3524c27e97c2806605f5e1a877d0c2ea0dd27b060d16ba4b7321",
-      "bytes": 826811
+      "sha256": "79104f3d9a4a401070d6cb411202a1ba9cc40050b559f6d97e6b48af2c07e921",
+      "bytes": 827387
     },
     {
       "id": "projetos",
       "path": "Plataforma.html#motor/projetos",
       "version": "0.1.16",
-      "sha256": "1a3f8647f27c8e1faf2ea5203a5136676c562fa1da7ce0ddc48b1d1e0e80f658",
-      "bytes": 623084
+      "sha256": "6ee25c11944d53d2a65a19b7ad1fc612a18260f970bd4155772493bbc280b881",
+      "bytes": 623660
     },
     {
       "id": "portal",
       "path": "Plataforma.html#motor/portal",
       "version": "1.9.45",
-      "sha256": "736faace5256283c2ad3b03cf73eea8a2b310717edab0564645e7472c4be20ca",
-      "bytes": 1197820
+      "sha256": "769955c1b5ddc6d6f6f3b7830bac553bf7da817af376953e8c31ece22a2392b0",
+      "bytes": 1198396
     }
   ],
   "limitations": [
     "Projetos e conteúdo técnico OSM/MES/AM/TPM mantêm os limites documentados nas fontes."
   ],
-  "enginesSha256": "5848c9b02f827a06f08b7e1472556be272aa41d9db2ea306e4d45d62c4c858f1",
+  "enginesSha256": "001c550db44e1513ca9aee14e477598d8461278299e4ee9a0b9168cac76d74d8",
   "originRevision": "ffc9ee8",
   "sourceMode": "single-html",
   "originEnginesSha256": "a87a64ad0c328f70e102b2ae888790a9b5d5a9bd05778652a7ce7cae140e40d2"
@@ -36621,7 +36633,7 @@ summary{cursor:pointer;font-weight:600;color:var(--navy)}
 'use strict';
 /* ---------- referência (atualizar quando a plataforma mudar de versão) ---------- */
 // Iguais às do pacote da plataforma (nova-plataforma/src/generated/manifest.json); o teste ferramenta-verificar confere.
-const VERSOES = {"oee":"2.6.0","perdas":"1.12.13","gel":"2.39","paradas":"1.2.15","equip":"1.0.20","inic":"1.1.16","linha":"1.2.0","projetos":"0.1.16","portal":"1.9.45"};
+const VERSOES = {"oee":"2.6.1","perdas":"1.12.13","gel":"2.39","paradas":"1.2.15","equip":"1.0.20","inic":"1.1.16","linha":"1.2.0","projetos":"0.1.16","portal":"1.9.45"};
 const BASES = [
  { arq: 'vacutainer-cadastros.json', mod: 'portal', nome: 'Cadastro geral (Portal)', obrig: true, cadastro: true, bk: 'Cadastros' },
  { arq: 'portal-base.json', mod: 'portal', nome: 'Portal', obrig: true, bk: 'Portal' },
@@ -37212,7 +37224,7 @@ import { Icon, Button, Badge, Empty, Modal, BarChart, BrandLogo, CommandMenu } f
 import { ModuleFrame } from "vac:modulo/components/ModuleFrame";
 import manifest from "vac:recurso/manifesto";
 import { ModuleTabs } from "vac:modulo/components/ModuleTabs";
-const VERSION = "1.8.0";
+const VERSION = "1.8.1";
 /* Navegação 1.3.0 (16/11/2026): Visão da linha, Relatórios e Importações têm abas; as que mostram uma tela do
    Portal (motor da Administração) trazem o 3º campo com a aba dele. Administração fica só com cadastros e configuração. */
 const SHELL_TABS = {
