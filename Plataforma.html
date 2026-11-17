@@ -7084,6 +7084,7 @@ table input.num{width:120px;text-align:right;padding:var(--sp-4,4px) var(--sp-8,
 .ord-t .dfield .dtxt{width:150px;font-size:12.5px;padding:3px var(--sp-24,24px) 3px var(--sp-4,4px)}
 /* valor abaixo da meta em vermelho em todos os quadros */
 .kpi .v.below,.tv .bk .v.below{color:var(--crit)}
+.kpi .v.below.bw,.tv .bk .v.below.bw{color:var(--warn)}
 .kpi.k-ok .v.below,.kpi.k-warn .v.below,.kpi.k-crit .v.below{color:var(--kc)}
 [hidden]{display:none!important}
 .dfield{width:max-content;max-width:100%;align-self:flex-start}
@@ -7394,7 +7395,7 @@ const U = (() => {
 
 /* ---- 02-model.js ---- */
 /* ================= modelo de dados, valores iniciais e integridade ================= */
-const APP_VERSION = '2.6.1';   /* 2.6.1 · gráficos: turno lançado pelo total com o nome do turno no eixo; janelas: rótulo e valor em tamanho de texto */   /* 2.6.0 · produção total do turno (sem hora a hora; períodos na troca de catálogo), aviso do servidor para turno lançado pelo total e para dia com produção apontada */
+const APP_VERSION = '2.6.2';   /* 2.6.2 · gráficos e números com meta seguem o semáforo de três cores (verde, amarelo, vermelho) */   /* 2.6.1 · gráficos: turno lançado pelo total com o nome do turno no eixo; janelas: rótulo e valor em tamanho de texto */   /* 2.6.0 · produção total do turno (sem hora a hora; períodos na troca de catálogo), aviso do servidor para turno lançado pelo total e para dia com produção apontada */
 const SCHEMA_VERSION = 1;
 const BASE_FILE = 'oee-vacutainer-base.json';
 const BACKUP_DIR = '00. Backups';
@@ -10420,11 +10421,16 @@ const Charts = (() => {
   const legendItem = (color, label, kind) => `<span><i class="${kind || ''}" style="background:${color};color:${color}"></i>${esc(label)}</span>`;
 
   /* colunas + linhas no mesmo eixo (ex.: produção × meta)
-     Série de colunas com "meta" (lista por categoria): verde quando atinge, vermelho quando fica abaixo (lowerBetter inverte).
+     Série de colunas com "meta" (lista por categoria): cor pelo semáforo da Administração (2.6.2): verde a partir do % verde da meta,
+     amarelo a partir do % amarelo, vermelho abaixo (lowerBetter inverte: meta ÷ valor).
      Valores escritos dentro da coluna, na vertical, quando cabem. "mark": faixa colorida por categoria (ex.: família produzida). */
-  const OK = 'var(--ok)', BAD = 'var(--crit)';
-  const metaHit = (b, i, v) => { const m = b.meta &amp;&amp; b.meta[i]; if (v == null || m == null || !isFinite(m)) return null; return b.lowerBetter ? v <= m + 1e-9 : v >= m - 1e-9; };
-  const barColor = (b, v, i) => { const h = metaHit(b, i, v); return h == null ? (b.colorFn ? b.colorFn(v, i) : b.color) : h ? OK : BAD; };
+  const OK = 'var(--ok)', WARN = 'var(--warn-fill, var(--warn))', BAD = 'var(--crit)';
+  const semCfg = () => { try { return (db().settings || {}).semaphore || {}; } catch (e) { return {}; } };
+  const metaSem = (b, i, v) => { const m = b.meta &amp;&amp; b.meta[i]; if (v == null || m == null || !isFinite(m)) return null;
+    if (b.lowerBetter) return v <= m + 1e-9 ? 'ok' : Engine.sem(v > 0 ? m / v : 1, semCfg());
+    return v >= m - 1e-9 ? 'ok' : Engine.sem(m > 0 ? v / m : 0, semCfg()); };
+  const metaHit = (b, i, v) => { const s = metaSem(b, i, v); return s == null ? null : s === 'ok'; };
+  const barColor = (b, v, i) => { const s = metaSem(b, i, v); return s == null ? (b.colorFn ? b.colorFn(v, i) : b.color) : s === 'ok' ? OK : s === 'warn' ? WARN : BAD; };
   function combo(o) {
     const W = o.width || curW;
     const cid = o._cid || 'c' + (++seq);
@@ -10481,7 +10487,7 @@ const Charts = (() => {
     s += '</svg>';
     reg.set(cid, { tip: i => o.tip ? o.tip(i) : defaultTip(o, i), click: o.click, xc, kind: 'combo', fn: combo, o, w: W });
     const anyMeta = (o.bars || []).some(b => b.meta);
-    const series = [...(o.bars || []).flatMap(b => b.meta ? [legendItem(OK, b.lowerBetter ? `${b.name}: dentro da meta` : `${b.name}: na meta ou acima`, 'box'), legendItem(BAD, b.lowerBetter ? 'acima da meta' : 'abaixo da meta', 'box')] : [legendItem(b.color, b.name, 'box')]), ...(o.lines || []).map(l => legendItem(l.color, l.name, l.dash ? 'dash' : ''))];
+    const series = [...(o.bars || []).flatMap(b => b.meta ? [legendItem(OK, b.lowerBetter ? `${b.name}: dentro da meta` : `${b.name}: na meta ou acima`, 'box'), legendItem(WARN, 'atenção (perto da meta)', 'box'), legendItem(BAD, b.lowerBetter ? 'acima da meta' : 'abaixo da meta', 'box')] : [legendItem(b.color, b.name, 'box')]), ...(o.lines || []).map(l => legendItem(l.color, l.name, l.dash ? 'dash' : ''))];
     if (hasMark) { const seen = new Map(); o.mark.forEach(ms => (ms || []).forEach(m => { if (!seen.has(m.label)) seen.set(m.label, m.color); })); seen.forEach((c, l) => series.push(legendItem(c, l, 'mark'))); }
     const table = o.noTable ? '' : tableHtml([o.xName || 'Categoria', ...(hasMark ? [o.markName || 'Família'] : []), ...(o.bars || []).map(b => b.name), ...(o.lines || []).map(l => l.name)], o.x.map((x, i) => [o.xFull ? o.xFull[i] : x, ...(hasMark ? [(o.mark[i] || []).map(m => m.label).join(' + ') || '—'] : []), ...(o.bars || []).map(b => b.values[i] == null ? '—' : (b.fmt || fmtY)(b.values[i], 1)), ...(o.lines || []).map(l => l.values[i] == null ? '—' : (l.fmt || fmtY)(l.values[i]))]));
     return unTag(o) + wrap(cid, s, series.length > 1 || o.forceLegend || anyMeta ? series.join('') : '', table, H);
@@ -10490,7 +10496,7 @@ const Charts = (() => {
     const fmtY = o.fmtY || compact;
     const rows = [...(o.bars || []).map(b => [barColor(b, b.values[i], i), b.name, b.values[i], b.fmt]), ...(o.lines || []).map(l => [l.color, l.name, l.values[i], l.fmt])];
     let h = `<b>${esc(o.xFull ? o.xFull[i] : o.x[i])}</b>${rows.map(([c, n, v, f]) => `<div class="tr"><span><i style="background:${c}"></i>${esc(n)}</span><span>${v == null ? '—' : esc((f || fmtY)(v))}</span></div>`).join('')}`;
-    for (const b of (o.bars || [])) { const hit = metaHit(b, i, b.values[i]); if (hit == null) continue; const d = b.values[i] - b.meta[i]; h += `<div class="tr"><span>${esc(b.name)} × meta</span><span class="${hit ? 'delta-up' : 'delta-down'}">${hit ? (b.lowerBetter ? 'dentro da meta' : 'atingiu') : (b.lowerBetter ? 'acima da meta' : 'abaixo')} (${d > 0 ? '+' : d < 0 ? '−' : ''}${esc((b.fmt || fmtY)(Math.abs(d)))})</span></div>`; }
+    for (const b of (o.bars || [])) { const sm = metaSem(b, i, b.values[i]), hit = sm == null ? null : sm === 'ok'; if (hit == null) continue; const d = b.values[i] - b.meta[i]; h += `<div class="tr"><span>${esc(b.name)} × meta</span><span class="${hit ? 'delta-up' : 'delta-down'}">${hit ? (b.lowerBetter ? 'dentro da meta' : 'atingiu') : sm === 'warn' ? 'atenção' : (b.lowerBetter ? 'acima da meta' : 'abaixo')} (${d > 0 ? '+' : d < 0 ? '−' : ''}${esc((b.fmt || fmtY)(Math.abs(d)))})</span></div>`; }
     if (o.mark &amp;&amp; o.mark[i] &amp;&amp; o.mark[i].length) h += `<div class="tr"><span>${esc(o.markName || 'Família')}</span><span>${esc(o.mark[i].map(m => m.label).join(' + '))}</span></div>`;
     if (o.tipRows) { const extra = o.tipRows(i) || []; if (extra.length) h += `<div class="tsep"></div>` + extra.map(([a, b]) => `<div class="tr"><span>${esc(a)}</span><span>${esc(b)}</span></div>`).join(''); }
     if (o.click) h += `<div class="muted small" style="margin-top:4px">${esc(o.clickHint || 'Clique para ver o detalhe do dia')}</div>`;
@@ -11011,6 +11017,8 @@ function kpiDeco(label, html, semState) {
 }
 // valor abaixo da meta: o selo do quadro indica 'atenção' ou 'abaixo' → o número fica vermelho
 const belowMeta = html => /class="sem (warn|crit)"/.test(String(html || ''));
+// 2.6.2 · classe do número do cartão pelo semáforo: vermelho abaixo, amarelo na atenção
+const belowCls = html => { const m = /class="sem (warn|crit)"/.exec(String(html || '')); return m ? ' below' + (m[1] === 'warn' ? ' bw' : '') : ''; };
 const SEM_TXT = { ok: 'Na meta', warn: 'Atenção', crit: 'Abaixo', sem: 'Sem dados' };
 function semB(state, label) { const ic = state === 'ok' ? I.check : state === 'warn' ? I.warn : state === 'crit' ? I.x : I.dash; return `<span class="sem ${state === 'sem' ? 'sem-none' : state}" title="${esc(SEM_TXT[state])}">${ic}${esc(label != null ? label : SEM_TXT[state])}</span>`; }
 const DAY_ST = { 'não iniciado': 'none', 'em lançamento': 'info', 'pendente de conferência': 'pend', 'fechado': 'ok', 'reaberto': 'warn', 'excluído': 'none' };
@@ -11723,7 +11731,7 @@ App.views.launch = {
   }
 };
 const KPI_HELP = { 'Confiabilidade do OEE': 'oeeReliab', 'Perda não explicada': 'unexplained', 'OEE do período': 'oee', 'Atendimento à meta': 'attain', 'Atendimento ao plano inicial': 'plan', 'Realizado × plano do mês': 'plan', 'Plano do mês': 'plan', 'Realizado no mês': 'plan', 'Ritmo do plano': 'plan', 'Necessidade por dia': 'plan', 'Projeção do mês': 'plan', 'Dias': 'planCal', 'Produção boa': 'production', 'OEE realizado': 'oee', 'OEE': 'oee', 'OEE meta (ponderada)': 'oeeTarget', 'Meta ponderada': 'oeeTarget', 'Disponibilidade': 'D', 'Performance': 'P', 'Qualidade': 'Q', 'Capacidade planejada': 'capacity', 'Capacidade': 'capacity', 'Meta diária oficial': 'metaDaily', 'Atendimento ao plano': 'attain', 'Atendimento': 'attain', 'Scrap': 'scrap', 'Cobertura do apontamento': 'coverage', 'Perdas': 'coverage', 'Perda total apurada': 'coverage', 'Cobertura': 'coverage', 'Divergência': 'divergenceMax' };
-function kpi(l, v, unit, s, extra = '') { const kd = kpiDeco(l, s); return `<div class="kpi ${kd.cls}" ${extra}>${kd.icon}<span class="l">${esc(l)}${ib(KPI_HELP[l])}</span><span class="v${belowMeta(s) ? ' below' : ''}">${v}${unit ? `<small>${esc(unit)}</small>` : ''}</span><span class="s">${s || ''}</span></div>`; }
+function kpi(l, v, unit, s, extra = '') { const kd = kpiDeco(l, s); return `<div class="kpi ${kd.cls}" ${extra}>${kd.icon}<span class="l">${esc(l)}${ib(KPI_HELP[l])}</span><span class="v${belowCls(s)}">${v}${unit ? `<small>${esc(unit)}</small>` : ''}</span><span class="s">${s || ''}</span></div>`; }
 function shiftBlock(day, sr, res) {
   const ps = sr.ps, r = sr.r, lk = locked(day, ps);
   const cats = db().catalogs.filter(c => c.active !== false &amp;&amp; Engine.catalogValid(c, day.date));
@@ -12026,7 +12034,7 @@ const A = {
     const d = (val != null &amp;&amp; o.prev != null) ? val - o.prev : null;
     const good = d == null ? null : (o.higher === false ? d < 0 : d > 0);
     const dTxt = d == null ? '' : `<span class="${Math.abs(d) < 1e-12 ? '' : good ? 'delta-up' : 'delta-down'}" title="vs período anterior equivalente">${d > 0 ? '▲' : d < 0 ? '▼' : '■'} ${o.pct ? U.pp(d) : (o.fmtDelta || fmtv)(Math.abs(d))}</span>`;
-    const kd = kpiDeco(label, o.sub, o.semState); return `<div class="kpi ${kd.cls} ${o.click ? 'clickable' : ''}" ${o.click ? `data-kclick="${o.click}"` : ''}>${kd.icon}<span class="l">${esc(label)}${ib(KPI_HELP[label])}</span><span class="v${o.semState === 'warn' || o.semState === 'crit' || belowMeta(o.sub) ? ' below' : ''}">${val == null ? '—' : fmtv(val)}${o.unit ? `<small>${esc(o.unit)}</small>` : ''}</span>
+    const kd = kpiDeco(label, o.sub, o.semState); return `<div class="kpi ${kd.cls} ${o.click ? 'clickable' : ''}" ${o.click ? `data-kclick="${o.click}"` : ''}>${kd.icon}<span class="l">${esc(label)}${ib(KPI_HELP[label])}</span><span class="v${o.semState === 'crit' ? ' below' : o.semState === 'warn' ? ' below bw' : belowCls(o.sub)}">${val == null ? '—' : fmtv(val)}${o.unit ? `<small>${esc(o.unit)}</small>` : ''}</span>
       <span class="s">${o.meta != null ? `meta <b>${fmtv(o.meta)}</b> ${o.semState ? semB(o.semState, '') : ''}` : ''}${dTxt}</span>
       ${o.best != null || o.worst != null ? `<span class="s">melhor <b>${o.best == null ? '—' : fmtv(o.best)}</b> · pior <b>${o.worst == null ? '—' : fmtv(o.worst)}</b></span>` : ''}
       ${o.series ? Charts.spark(o.series, 'var(--s1)') : ''}${o.sub ? `<span class="s">${o.sub}</span>` : ''}</div>`;
@@ -13102,7 +13110,7 @@ const TV = {
     const now = new Date(), nm = opNowMin(day.date, 99999);
     const done = res.flat.filter(f => f.iv.end <= nm || f.good != null);
     const metaNow = U.sum(done, f => f.metaOp), att = metaNow ? r.good / metaNow : null;
-    const bk = (l, v, s, state, small) => `<div class="bk"><div class="l">${esc(l)}</div><div class="v${small ? ' sm' : ''}${state === 'warn' || state === 'crit' ? ' below' : ''}">${v}</div><div class="s">${s}</div>${state ? `<div class="s">${semB(state)}</div>` : ''}</div>`;
+    const bk = (l, v, s, state, small) => `<div class="bk"><div class="l">${esc(l)}</div><div class="v${small ? ' sm' : ''}${state === 'crit' ? ' below' : state === 'warn' ? ' below bw' : ''}">${v}</div><div class="s">${s}</div>${state ? `<div class="s">${semB(state)}</div>` : ''}</div>`;
     const evs = Engine.eventsIn(db(), [day]).filter(e => e.bucket !== 'deduct').sort((a, b) => b.minutes - a.minutes).slice(0, 5);
     return `<div class="big">${bk('Produção boa', fq(r.good), `meta até agora ${fq(metaNow)} · dia ${fq(res.officialDaily)} ${esc(unitLbl())}`, Engine.sem(att, st.semaphore))}${bk('OEE', U.pct(r.oee), 'meta ' + U.pct(r.oeeTarget), r.semOee)}${bk('Atendimento', U.pct(att, 0), 'produção ÷ meta acumulada', Engine.sem(att, st.semaphore))}${bk('D · P · Q', `${U.pct(r.D, 0)}<span style="font-size:.5em"> · </span>${U.pct(r.P, 0)}<span style="font-size:.5em"> · </span>${r.Q == null ? '—' : U.pct(r.Q, 0)}`, 'Disponibilidade · Performance · Qualidade', null, true)}</div>
       <div class="grid g2" style="flex:1;min-height:0"><div class="bk">${Charts.combo({ ...HHComum.dia(day, res, '', 300), noTable: true })}</div>
@@ -14789,7 +14797,7 @@ function pnKpi(key) {
 }
 function pnAllKpis() { return Object.keys(PN_K).concat(db().families.filter(f => !f.deleted).map(f => 'fam:' + f.id)); }
 function pnKpiHtml(x, keys) {
-  const tiles = keys.map(k => { const K = pnKpi(k); if (!K) return ''; let o; try { o = K.c(x); } catch (e) { console.error(e); o = { v: '—', s: 'erro ao calcular' }; } return `<div class="kpi"><span class="l">${esc(K.l)}${ib(KPI_HELP[K.l])}</span><span class="v${belowMeta(o.s) ? ' below' : ''}">${o.v}${o.u ? `<small>${esc(o.u)}</small>` : ''}</span>${o.s ? `<span class="s">${o.s}</span>` : ''}${o.d ? `<span class="s">${o.d}</span>` : ''}</div>`; }).join('');
+  const tiles = keys.map(k => { const K = pnKpi(k); if (!K) return ''; let o; try { o = K.c(x); } catch (e) { console.error(e); o = { v: '—', s: 'erro ao calcular' }; } return `<div class="kpi"><span class="l">${esc(K.l)}${ib(KPI_HELP[K.l])}</span><span class="v${belowCls(o.s)}">${o.v}${o.u ? `<small>${esc(o.u)}</small>` : ''}</span>${o.s ? `<span class="s">${o.s}</span>` : ''}${o.d ? `<span class="s">${o.d}</span>` : ''}</div>`; }).join('');
   return tiles ? `<div class="kpis pn-kpis">${tiles}</div>` : '';
 }
 
@@ -15133,7 +15141,7 @@ function rpDocHtml(M, sum, note) {
   return `<header class="rp-head">${logo ? `<img src="${esc(logo)}" alt="" class="rp-logo">` : ''}<div><h2>${esc(M.title)}</h2><p class="muted">${M.sub || ''}</p></div><p class="small muted rp-gen">${esc(db().settings.sector || 'Vacutainer')} · gerado em ${U.brDT(U.nowIso())} por ${esc(Store.S.user || '—')}</p></header>
     <div class="rp-note" ${note &amp;&amp; note.trim() ? '' : 'hidden'}>${rpParas(note)}</div>
     <div class="rp-sum">${rpParas(sum)}</div>
-    ${M.kpis.length ? `<div class="kpis rp-kpis">${M.kpis.map(k => `<div class="kpi"><span class="l">${esc(k.l)}</span><span class="v${belowMeta(k.s) ? ' below' : ''}">${k.v}${k.u ? `<small>${esc(k.u)}</small>` : ''}</span>${k.s ? `<span class="s">${k.s}</span>` : ''}${k.dl ? `<span class="s">${k.dl}</span>` : ''}</div>`).join('')}</div>` : ''}
+    ${M.kpis.length ? `<div class="kpis rp-kpis">${M.kpis.map(k => `<div class="kpi"><span class="l">${esc(k.l)}</span><span class="v${belowCls(k.s)}">${k.v}${k.u ? `<small>${esc(k.u)}</small>` : ''}</span>${k.s ? `<span class="s">${k.s}</span>` : ''}${k.dl ? `<span class="s">${k.dl}</span>` : ''}</div>`).join('')}</div>` : ''}
     <div class="pn-grid">${M.blocks.map((b, i) => `<section class="card pn-blk ${b.w === 'f' ? 'full' : ''}" data-rpb="${i}"><header><h3>${esc(b.l)}</h3></header>${b.html}</section>`).join('')}</div>`;
 }
 
@@ -17466,9 +17474,9 @@ const VGL = (() => {
 .vgl-oee .big{font-size:40px;font-weight:800;font-variant-numeric:tabular-nums;line-height:1.05}
 .vgl-oee .mt{display:grid;gap:2px;font-size:13px;color:var(--muted)}.vgl-oee .mt b{font-size:17px;color:var(--ink);font-variant-numeric:tabular-nums}
 .vgl-bar{height:12px;border-radius:999px;background:var(--surface-2);overflow:hidden;position:relative}
-.vgl-bar i{display:block;height:100%;border-radius:999px;background:var(--info)}.vgl-bar i.ok{background:var(--ok)}.vgl-bar i.crit{background:var(--crit)}
+.vgl-bar i{display:block;height:100%;border-radius:999px;background:var(--info)}.vgl-bar i.ok{background:var(--ok)}.vgl-bar i.crit{background:var(--crit)}.vgl-bar i.warn{background:var(--warn-fill,var(--warn))}
 .vgl-st{display:inline-flex;align-items:center;gap:6px;padding:3px 10px;border-radius:999px;font-weight:700;font-size:12.5px;width:max-content}
-.vgl-st.ok{background:var(--ok-bg);color:var(--ok)}.vgl-st.crit{background:var(--crit-bg);color:var(--crit)}.vgl-st.none{background:var(--none-bg);color:var(--muted)}
+.vgl-st.ok{background:var(--ok-bg);color:var(--ok)}.vgl-st.crit{background:var(--crit-bg);color:var(--crit)}.vgl-st.warn{background:var(--warn-bg);color:var(--warn)}.vgl-st.none{background:var(--none-bg);color:var(--muted)}
 .vgl-acao{display:grid;gap:10px;align-content:start}.vgl-acao .decide{margin:0}
 .vgl-perda{padding:14px 18px;display:grid;gap:8px}
 .vgl-perda h4{margin:0;font-family:var(--f-body);font-size:14px;font-weight:700;text-transform:none;letter-spacing:0}
@@ -17501,8 +17509,8 @@ const VGL = (() => {
     return { days, rows, r, pf, pd, pr, weeks: A.byWeek(rows), months: A.byMonth(rows), par: A.pareto(A.events(days), 'codigo'), rel: oeeReliability(days) };
   }
   function situacao(D) {
-    const r = D.r, pr = D.pr, temMeta = r.oeeTarget != null &amp;&amp; r.oee != null, st = r.oee == null ? 'none' : !temMeta ? 'none' : r.oee >= r.oeeTarget ? 'ok' : 'crit';
-    const rot = r.oee == null ? 'Sem dados' : !temMeta ? 'Sem meta vigente' : st === 'ok' ? 'Na meta' : 'Abaixo da meta';
+    const r = D.r, pr = D.pr, temMeta = r.oeeTarget != null &amp;&amp; r.oee != null, st = r.oee == null ? 'none' : !temMeta ? 'none' : r.oee >= r.oeeTarget ? 'ok' : Engine.sem(r.oeeTarget > 0 ? r.oee / r.oeeTarget : 0, db().settings.semaphore);   /* 2.6.2 · semáforo */
+    const rot = r.oee == null ? 'Sem dados' : !temMeta ? 'Sem meta vigente' : st === 'ok' ? 'Na meta' : st === 'warn' ? 'Atenção: perto da meta' : 'Abaixo da meta';
     const pc = temMeta &amp;&amp; r.oeeTarget > 0 ? Math.min(100, r.oee / r.oeeTarget * 100) : null;
     const dPrev = pr &amp;&amp; pr.oee != null &amp;&amp; r.oee != null ? r.oee - pr.oee : null;
     return `<section class="card vgl-oee" aria-label="OEE do período"><span class="l">OEE do período ${ib('oee')}</span>
@@ -18326,7 +18334,7 @@ const EmailDia = {
         if (day.shifts.every(p => p.summary)) return '';
         let h = sec('Hora a hora' + (turno ? ' · ' + ps.snap.name : ''));
         if (comImagem) { Charts.setWidth(900); let svg; try { svg = Charts.combo({ ...HHComum.dia(day, res, turno ? ps.id : null, 360), forceLegend: true }); } finally { Charts.setWidth(720); }
-          const im = await this.png(svg, 2); if (im) h += linha(`<img src="${im.data}" width="632" alt="Produção boa e meta por hora" style="display:block;width:632px;max-width:100%;height:auto;border:1px solid ${lin}"><div style="${F}font-size:11px;color:${mut};padding-top:4px">Barras: produção boa por hora (verde = na meta ou acima; vermelho = abaixo). Linha tracejada: meta da hora. Faixa colorida embaixo: catálogo. Valores em ${e(u)}.</div>`); else comImagem = false; }
+          const im = await this.png(svg, 2); if (im) h += linha(`<img src="${im.data}" width="632" alt="Produção boa e meta por hora" style="display:block;width:632px;max-width:100%;height:auto;border:1px solid ${lin}"><div style="${F}font-size:11px;color:${mut};padding-top:4px">Barras: produção boa por hora (verde = na meta ou acima; amarelo = atenção, perto da meta; vermelho = abaixo). Linha tracejada: meta da hora. Faixa colorida embaixo: catálogo. Valores em ${e(u)}.</div>`); else comImagem = false; }
         if (!comImagem) h += await itens.hhtab(true);
         return h;
       },
@@ -36507,9 +36515,9 @@ td { font-size:15px; }
     {
       "id": "oee",
       "path": "Plataforma.html#motor/oee",
-      "version": "2.6.1",
-      "sha256": "1d5d2625ed976a40e04afa100fd702eb5670e44152b5b3fc23bc36838547216d",
-      "bytes": 2193637
+      "version": "2.6.2",
+      "sha256": "476240b02b3233780375ff897c8873fee503e0d9c5621aabdd798880fe9996e5",
+      "bytes": 2194925
     },
     {
       "id": "perdas",
@@ -36571,7 +36579,7 @@ td { font-size:15px; }
   "limitations": [
     "Projetos e conteúdo técnico OSM/MES/AM/TPM mantêm os limites documentados nas fontes."
   ],
-  "enginesSha256": "14ad0ff77f0a2367f6cc60e870249f8c1c851f6058d9fa9ed6b60f485f8279ed",
+  "enginesSha256": "6651514657200bdfefcfd180dc13a01de0fbd611480380411d78654793bcc443",
   "originRevision": "ffc9ee8",
   "sourceMode": "single-html",
   "originEnginesSha256": "a87a64ad0c328f70e102b2ae888790a9b5d5a9bd05778652a7ce7cae140e40d2"
