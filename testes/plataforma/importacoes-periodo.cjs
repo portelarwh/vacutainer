@@ -41,6 +41,20 @@ const html = fs.readFileSync(path.resolve(__dirname, '../../Plataforma.html'));
     assert.equal(R.semLeitura, 'sl', 'página não lida = sem leitura'); assert.equal(R.kkbc, 'cr', 'mensal vencida sem competência = falta');
     console.log('ok regras: falta, coberto, no prazo, semanal, não obrigatória, sem leitura e mensal');
 
+    // 2b) revisão do PR #101: o plano do PCP vale pelos meses com plano gravado, não pela data da importação;
+    //     as contagens do período só somam importações que cobrem os dias do período (hoje não entra em "Ontem")
+    const rv = await f.evaluate(() => {
+      const c = id => IMP_CAT.find(x => x.id === id), h = todayISO(), ont = addDays(h, -1), oee = MOD.data.oee, antes = oee.ex;
+      oee.ex = Object.assign({}, antes, { planosMeses: ['2020-03'], planoMes: null, importacoes: [{ tipo: 'PLANOS_PCP', em: '2020-04-02T09:00' },
+        { tipo: 'MES', em: h + 'T08:00', de: ont + 'T05:00', ate: h + 'T06:30', lidas: 10, gravadas: 10, duplicadas: null, rejeitadas: 0 },
+        { tipo: 'MES', em: h + 'T18:00', de: h + 'T06:00', ate: h + 'T18:00', lidas: 99, gravadas: 99, duplicadas: null, rejeitadas: 0 }] });
+      const out = { marco: impMes(c('PLANOS_PCP'), '2020-03').st, abril: impMes(c('PLANOS_PCP'), '2020-04').st };
+      Imp.per = '1'; App.render(); out.ontem = [...document.querySelectorAll('#impGrade tr')].find(r => /MES/.test(r.cells[0].innerText)).lastElementChild.innerText;
+      oee.ex = antes; Imp.per = '7'; App.render(); return out; });
+    assert.equal(rv.marco, 'ok', 'mês com plano gravado = coberto'); assert.equal(rv.abril, 'cr', 'importação em abril sem plano de abril não cobre abril');
+    assert.match(rv.ontem, /^10 lidas/, '"Ontem" não soma a importação de hoje: ' + rv.ontem);
+    console.log('ok revisão: plano do PCP pelos meses gravados; contagens só dos dias do período');
+
     // 3) configuração: salvar e voltar ao padrão (gravado na base da Administração)
     await f.evaluate(() => { Imp.cfgAberta = true; App.render(); }); await f.waitForSelector('#impCfg[open]');
     await f.locator('[data-ifq="MB51"]').selectOption('nao'); await f.locator('[data-ipz="FORMS"]').fill('2'); await f.locator('#iCfgSalvar').click();
