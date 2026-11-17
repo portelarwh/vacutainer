@@ -32584,6 +32584,11 @@ window.VAC_GUIA.inic = {
 @@vac:comum/cabecalho-css@@
 <style>
 /* ===== Linha 360° (página) · fontes/linha360/linha.css ===== */
+/* 1.2.0 · piloto de consulta: etiqueta do recorte de tempo de cada bloco */
+.l3-rc{display:inline-block;margin-left:4px;font-size:11.5px;font-weight:600;letter-spacing:0;text-transform:none;color:var(--muted);border:1px solid var(--line);border-radius:999px;padding:1px 8px;vertical-align:middle}
+#pilFicha section{display:grid;gap:8px}#pilFicha section p{margin:0}#pilTab tr.on td{background:var(--accent-soft,color-mix(in srgb,var(--accent) 10%,var(--surface)))}
+/* a ficha fica ao lado da planta a partir de 980 px (dentro da plataforma o módulo tem menos de 1250 px); a Visão da linha não muda */
+@media(min-width:980px){#pilArea.l3-lay{grid-template-columns:minmax(0,1fr) 340px}#pilArea .l3-cv{min-width:560px}}
 .l3-top{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:12px;margin-bottom:6px}
 .l3-k{background:var(--surface);border:1px solid var(--line);border-left:4px solid var(--info-fill,var(--accent));border-radius:12px;padding:12px 14px;box-shadow:var(--sh);min-width:0;display:grid;gap:2px;align-content:start}
 .l3-k.ok{border-left-color:var(--ok-fill,var(--ok))}.l3-k.crit{border-left-color:var(--crit-fill,var(--crit))}.l3-k.warn{border-left-color:var(--warn-fill,var(--warn))}.l3-k.none{border-left-color:var(--none-fill,var(--none))}
@@ -32681,7 +32686,7 @@ table.t tr.on td{background:var(--accent-soft)}
 <main class="wrap" id="main"></main>
 <div class="toasts" id="toasts"></div>
 <script>
-const PAGE={id:"linha",titulo:"Linha 360° · Planta interativa da linha",tituloCurto:"Linha 360°",subtitulo:"Planta interativa: paradas, pessoas e ações em cada ponto da linha",versao:"1.1.7",baseFile:"linha360-base.json",backupDir:"00. Backups/Linha360",estado:"atualizacao",estadoNota:"Primeira versão: planta, pontos, áreas, postos e checklists. MES por equipamento chega depois."};
+const PAGE={id:"linha",titulo:"Linha 360° · Planta interativa da linha",tituloCurto:"Linha 360°",subtitulo:"Planta interativa: paradas, pessoas e ações em cada ponto da linha",versao:"1.2.0",baseFile:"linha360-base.json",backupDir:"00. Backups/Linha360",estado:"atualizacao",estadoNota:"Primeira versão: planta, pontos, áreas, postos e checklists. MES por equipamento chega depois."};
 const APP_VERSION=PAGE.versao;
 /* ---------- vac-cabecalho v2 · JS (igual em todas as páginas) ---------- */
 const VAC_CAB_VERSAO=2;
@@ -33021,6 +33026,10 @@ function calcExports(D){const s0=Store.data;Store.data=D;try{const h=hoje(),pend
 /* ---------- interface ---------- */
 const ABAS=[['mapa','Visão da linha'],['pessoas','Pessoas e postos'],['checklists','Checklists'],['config','Configuração']];
 const ic=(n,c)=>typeof vacIcone==='function'?vacIcone(n,c):'';
+/* 1.2.0 · Piloto de consulta (docs/linha-360-piloto.md): aba fora de ABAS, aberta só por link (#aba=piloto; na plataforma, #/linha?tab=piloto).
+   Somente leitura: nada aqui chama Store.commit, Store.save, Store.reload nem lerExt. */
+const ABA_PILOTO='piloto';
+const abaOk=t=>t===ABA_PILOTO||ABAS.some(a=>a[0]===t);
 function navHtml(){const n=chkPendentes(hoje(),turnoAgora()).length;return ABAS.map(([id,t])=>`<button data-t="${id}" class="${App.tab===id?'on':''}"${App.tab===id?' aria-current="page"':''}>${esc(t)}${id==='checklists'&amp;&amp;n?` <span class="cnt" title="Checklists pendentes agora">${n}</span>`:''}</button>`).join('')}
 function ir(tab){App.tab=tab;App.edit=false;App.desenho=null;const h='#aba='+tab;if(location.hash!==h)history.replaceState(history.state,'',h);render()}
 document.addEventListener('click',e=>{const b=e.target.closest('#nav [data-t]');if(b)ir(b.dataset.t)});
@@ -33178,8 +33187,75 @@ function vConfig(){const S=Store,E=eqs(),a=areas().find(x=>x.id===App.areaSel)||
   <div class="row"><button class="b" id="cConn">${S.dir&amp;&amp;!S.perm?'Reconectar a pasta':'Conectar pasta'}</button><button class="b" id="cSave">Sincronizar</button><button class="b" id="cBk">Backup agora</button>${S.test?'<button class="b" id="cSairT">Sair do modo de teste</button>':'<button class="b" id="cTeste">Ver com dados de demonstração</button>'}</div>
   <p class="small muted mt">Só esta página grava em ${esc(PAGE.baseFile)}. Paradas, ordens de serviço, ações e a ordem em produção são lidas das páginas donas (Paradas, Equipamentos, Iniciativas e Produção) e nunca copiadas para cá.</p></div>`}
 
+/* ---------- 1.2.0 · Piloto de consulta (docs/linha-360-piloto.md) ----------
+   Uma tela só de leitura: a planta e, para o ponto escolhido, as paradas, as OS, as ações, os checklists e as pessoas do posto.
+   Nenhum número novo: tudo vem das mesmas funções da Visão da linha (numeros, eventos, periodo, chkFeito, pesNome).
+   O piloto tem ponto e filtros próprios (Pil). Para usar aquelas funções sem copiá-las, emPiloto troca o estado só durante a
+   conta e devolve em seguida: as abas atuais não percebem. Cada bloco diz o seu recorte de tempo, porque paradas seguem o
+   período e OS, ações, checklists e pessoas não. */
+const Pil={sel:null,f:null,N:null};
+function emPiloto(fn){if(!Pil.f){Pil.f={...App.f};Pil.sel=App.sel}
+ const g={f:App.f,sel:App.sel,fluxo:App.fluxo,zonas:App.zonas,zona:App.zona,zoom:App.zoom,camada:App.camada};
+ Object.assign(App,{f:Pil.f,sel:Pil.sel,fluxo:'',zonas:false,zona:null,zoom:1,camada:'min'});try{return fn()}finally{Object.assign(App,g)}}
+const PIL_FONTES=[['par','Paradas'],['equip','Equipamentos'],['inic','Iniciativas'],['oee','Produção']];
+const pilSemV='<span class="muted" title="Ponto sem equipamento do cadastro vinculado: paradas e OS chegam ao ponto pelo equipamento">sem vínculo</span>';
+const pilSec=(t,rc)=>`<h4>${esc(t)} <span class="l3-rc">${esc(rc)}</span></h4>`;
+function pilFontes(){return`${pilSec('Fontes','de onde vem cada número')}<ul class="l3-li" id="pilFontes">${PIL_FONTES.map(([k,n])=>{const x=Ext[k];return`<li data-fonte="${k}"><span>${esc(n)}</span><span class="sp"></span>${x?`<span class="small muted">resumo gerado em ${esc(brh(x.geradoEm))}</span>`:`<span class="pill warn" title="${esc(Ext.erros[k]||'A página de origem não foi lida')}">sem dados</span>`}</li>`}).join('')}
+  <li><span>Linha 360° · checklists e postos</span><span class="sp"></span><span class="small muted">${Store.test?'dados de demonstração':Store.dir&amp;&amp;Store.perm?'base rev '+(Store.data.rev||0):'só neste navegador'}</span></li></ul>${Ext.em?`<p class="small muted">Outras páginas lidas às ${esc(brh(Ext.em.toISOString()))}. Para reler, use Sincronizar no cabeçalho (fora do piloto).</p>`:''}`}
+function pilFicha(N,p){const r=N.R[p.id],E=eqDoPonto(p),m=mapaEq(),h=hoje(),[de,ate]=periodo(),f=App.f,T=turnos(),tn=turnoAgora(),nomeT=c=>(T.find(t=>t.codigo===c)||{}).nome||c;
+ const lk=(s,hash)=>{const x=(typeof systems==='function'?systems():[]).find(y=>y.id===s);return x&amp;&amp;typeof sysHref==='function'?sysHref(x,hash):'#'};
+ const rcPer='no período · '+br(de)+(de!==ate?' a '+br(ate):'')+(f.turno?' · '+nomeT(f.turno):'')+(f.ordem?' · ordem '+f.ordem:'');
+ const evT=eventos().filter(e=>m[String(e.equipamento)]===p.id).sort((a,b)=>(b.dia+(b.inicio||'')).localeCompare(a.dia+(a.inicio||''))),evs=evT.slice(0,6);
+ const ossT=((Ext.equip&amp;&amp;Ext.equip.os)||[]).filter(o=>!/conclu|cancel/i.test(o.status||'')&amp;&amp;m[String(o.equipamento)]===p.id),oss=ossT.slice(0,8);
+ const acsT=((Ext.inic&amp;&amp;Ext.inic.acoes)||[]).filter(a=>acAberta(a)&amp;&amp;(a.vinculos||[]).some(v=>(v.tipo==='equipamento'&amp;&amp;m[String(v.cod)]===p.id)||(v.tipo==='ponto'&amp;&amp;String(v.cod)===p.id))),acs=acsT.slice(0,8);
+ const cks=chkAtivos().filter(c=>c.ponto===p.id),ps=postos().filter(x=>x.ponto===p.id),eq1=E.lista[0]||'';
+ const cob=Ext.par&amp;&amp;Ext.par.eventosCobertura&amp;&amp;Ext.par.eventosCobertura.de>de?`<p class="small muted" id="pilCob">O Paradas publica eventos desde ${br(Ext.par.eventosCobertura.de)}: antes disso não há dados neste período.</p>`:'';
+ const mais=(n,t)=>t>n?`<p class="small muted">Mostrando ${n} de ${t}.</p>`:'';
+ return`<aside class="card l3-fi" id="pilFicha" aria-label="Ficha do ponto selecionado"><div><div class="eb">Ponto ${esc(p.id)} · fluxo ${esc((FLUXOS[p.fluxo]||['—'])[0])}</div><h3>${esc(p.nome)}</h3>
+  <div class="small muted" id="pilEq">${E.lista.length?E.lista.map(c=>`<span class="code">${esc(c)}</span> ${esc(eqNome(c))}`).join(' · ')+(E.sugerido?' <span class="pill warn" title="Vínculo sugerido pelo nome; confirme em Configuração">sugerido</span>':''):'Sem equipamento do cadastro vinculado: as paradas e as OS deste ponto não aparecem aqui.'}</div></div>
+  <section id="pilPar">${pilSec('Paradas',rcPer)}
+   <div class="l3-tl"><div class="g"><small>Tempo parado</small><b>${E.lista.length?dado(Ext.par,nf(r.min)+' min'):pilSemV}</b></div><div><small>Ocorrências</small><b>${E.lista.length?dado(Ext.par,nf(r.oc)):pilSemV}</b></div><div><small>Quebras</small><b>${E.lista.length?dado(Ext.par,nf(r.queb)):pilSemV}</b></div></div>${cob}
+   ${evs.length?`<ul class="l3-li mt">${evs.map(e=>`<li class="g"><span class="small muted">${brc(e.dia)} ${esc(e.turno||'')}</span><span>${esc(e.descricao||e.codigo||'')}${e.ordem?`<br><span class="small muted">ordem ${esc(e.ordem)}</span>`:''}</span><span class="n">${nf(e.minutos)} min</span></li>`).join('')}</ul>${mais(evs.length,evT.length)}`:Ext.par&amp;&amp;E.lista.length?'<p class="small muted">Nenhuma parada deste ponto no período e nos filtros.</p>':''}</section>
+  <section id="pilOS">${pilSec('Ordens de serviço abertas','agora · não seguem o período')}
+   ${!Ext.equip?`<p>${dado(null)}</p>`:!E.lista.length?`<p>${pilSemV}</p>`:`<p><b class="n">${nf(r.os)}</b> aberta(s)${r.osAtr?` <span class="pill crit">${r.osAtr} atrasada(s)</span>`:''}</p>${oss.length?`<ul class="l3-li">${oss.map(o=>`<li><a href="${esc(lk('equip','os='+encodeURIComponent(o.id)))}">${esc(o.id)}</a><span>${esc(o.titulo||'')}</span><span class="sp"></span>${o.programadaPara?`<span class="small muted">para ${br(o.programadaPara)}</span>`:''}<span class="pill ${o.programadaPara&amp;&amp;o.programadaPara<h?'crit':'info'}">${esc(o.status||'')}</span></li>`).join('')}</ul>${mais(oss.length,ossT.length)}`:''}`}</section>
+  <section id="pilAc">${pilSec('Ações abertas','agora · não seguem o período')}
+   ${!Ext.inic?`<p>${dado(null)}</p>`:`<p><b class="n">${nf(r.ac)}</b> aberta(s)${r.acAtr?` <span class="pill crit">${r.acAtr} atrasada(s)</span>`:''}</p>${acs.length?`<ul class="l3-li">${acs.map(a=>`<li><a href="${esc(lk('inic','acao='+encodeURIComponent(a.id)))}">${esc(a.id)}</a><span>${esc(a.titulo||'')}</span><span class="sp"></span><span class="small muted">${esc(a.responsavel||'sem responsável')} · ${br(a.prazo)}</span></li>`).join('')}</ul>${mais(acs.length,acsT.length)}`:''}`}</section>
+  <section id="pilCk">${pilSec('Checklists','previstos agora · '+br(h)+' · '+nomeT(tn))}
+   ${cks.length?`<ul class="l3-li">${cks.map(c=>{const fe=chkFeito(c,h,tn);return`<li><span class="pill ${fe?'ok':'warn'}">${fe?'Feito':'Pendente'}</span><span>${esc(c.titulo)}</span><span class="sp"></span><span class="small muted">${esc((FREQ.find(x=>x[0]===c.frequencia)||FREQ[0])[1].toLowerCase())}${fe?' · '+esc(fe.por||'?')+' em '+brh(fe.em):''}</span></li>`}).join('')}</ul>`:'<p class="small muted">Nenhum checklist ligado a este ponto.</p>'}</section>
+  <section id="pilPes">${pilSec('Pessoas do posto','cadastro · por turno')}
+   ${ps.length?ps.map(x=>`<div class="small"><b>${esc(x.id)}</b>${x.area?' · '+esc(x.area):''}</div><ul class="l3-li">${T.map(t=>{const n=(pesNome(x,t.codigo)||'').trim();return`<li><span>${esc(t.nome)}${t.codigo===tn?' <span class="l3-rc">turno atual</span>':''}</span><span class="sp"></span>${n?`<span>${esc(n)}</span>`:'<span class="muted">não definido</span>'}</li>`}).join('')}</ul>`).join(''):'<p class="small muted">Nenhum posto ligado a este ponto.</p>'}</section>
+  <section>${pilSec('Consultar na página de origem','abre a página dona do registro')}<div class="l3-lk">
+   ${eq1?`<a href="${esc(lk('paradas','equipamento='+encodeURIComponent(eq1)))}"><span>${ic('paradas')} Paradas deste equipamento</span>${ic('seta','sm')}</a><a href="${esc(lk('equip','eq='+encodeURIComponent(eq1)))}"><span>${ic('equip')} Ficha do equipamento</span>${ic('seta','sm')}</a>`:''}
+   <a href="${esc(lk('inic',''))}"><span>${ic('inic')} Iniciativas / Ações</span>${ic('seta','sm')}</a><a href="${esc(lk('oee',''))}"><span>${ic('oee')} Produção e OEE</span>${ic('seta','sm')}</a></div></section>
+  <section>${pilFontes()}</section></aside>`}
+function vPiloto(){return emPiloto(()=>{const N=numeros(),[de,ate]=periodo(),p=P(App.sel)||pontos()[0],ords=ordensPeriodo(),f=App.f,h=hoje(),tn=turnoAgora();Pil.N=N;if(p)Pil.sel=p.id;
+ const linhas=pontos().map(x=>{const r=N.R[x.id],v=eqDoPonto(x).lista.length,ck=chkAtivos().filter(c=>c.ponto===x.id),pen=ck.filter(c=>!chkFeito(c,h,tn)).length;
+  return`<tr class="clk${p&amp;&amp;p.id===x.id?' on':''}" data-ppt="${esc(x.id)}" tabindex="0"><td class="code">${esc(x.id)}</td><td>${esc(x.nome)}</td><td>${v?dado(Ext.par,nf(r.min)+' min'):pilSemV}</td><td>${!Ext.equip?dado(null):v?nf(r.os)+(r.osAtr?` <span class="pill crit">${r.osAtr} atrasada(s)</span>`:''):pilSemV}</td><td>${dado(Ext.inic,nf(r.ac)+(r.acAtr?` <span class="pill crit">${r.acAtr} atrasada(s)</span>`:''))}</td><td>${ck.length?`${pen} de ${ck.length} pendente(s)`:'<span class="muted">—</span>'}</td></tr>`}).join('');
+ return`<div class="vk-hd" id="piloto"><div><h2>Piloto de consulta</h2><p>Tela em validação: reúne, para um ponto da linha, as perdas e as pendências que hoje estão em abas diferentes. Somente leitura: nada é gravado por esta tela.</p></div></div>
+ ${semPasta()}${avisos()}
+ <div class="filters" id="pilFiltros"><label>Período das paradas <select id="pPer">${[['0','Hoje'],['1','Ontem'],['7','Últimos 7 dias'],['30','Últimos 30 dias'],['m','Mês atual'],['p','Personalizado']].map(o=>`<option value="${o[0]}"${f.per===o[0]?' selected':''}>${o[1]}</option>`).join('')}</select></label>
+  ${f.per==='p'?`<label>De <input type="date" id="pDe" value="${esc(f.de||de)}"></label><label>Até <input type="date" id="pAte" value="${esc(f.ate||ate)}"></label>`:''}
+  <label>Turno das paradas <select id="pTurno"><option value="">Todos</option>${turnos().map(t=>`<option value="${esc(t.codigo)}"${f.turno===t.codigo?' selected':''}>${esc(t.nome)}</option>`).join('')}</select></label>
+  <label title="Ordem de produção (cada ordem tem um lote) em que a parada aconteceu">Ordem · lote das paradas <select id="pOrdem"><option value="">Todas</option>${ords.map(o=>`<option value="${esc(o.ordem)}"${f.ordem===o.ordem?' selected':''}>${esc(o.ordem+(o.lote?' · lote '+o.lote:''))}</option>`).join('')}</select></label>
+  <span class="sp"></span><span class="small muted">Os filtros valem só para as paradas. OS, ações, checklists e pessoas mostram a situação de agora.</span></div>
+ ${N.fora.min?`<p class="l3-av" id="pilFora">${ic('info','sm')} ${nf(N.fora.min)} min de parada no período são de equipamento sem ponto na planta (${esc([...N.fora.eq].join(', '))}) e não aparecem em nenhum ponto.</p>`:''}
+ <div class="l3-lay" id="pilArea"><section class="card l3-map" data-vg-nao><div class="l3-mh"><div><h3>Planta da linha</h3><p>O número em cada ponto é o tempo parado no período. Clique num ponto para ver a ficha.</p></div></div>${plantaHtml('piloto')}
+   <div class="l3-leg"><span><i style="background:#14804A"></i>Intensidade baixa</span><span><i style="background:#B26F00"></i>Média</span><span><i style="background:#C23B3A"></i>Alta</span><span><i style="background:var(--none-fill,#A8B4C1)"></i>Sem registro, sem dados ou sem vínculo</span><span class="sp"></span><span>Intensidade relativa ao ponto com mais tempo parado no período.</span></div></section>
+  ${p?pilFicha(N,p):''}</div>
+ ${vacLayout.sec('01','Pontos da linha','Na ordem da planta; clique na linha para ver a ficha')}
+ <div class="tw"><table class="t" id="pilTab"><caption class="small muted" style="text-align:left;padding:6px 8px">Paradas no período; OS, ações e checklists na situação de agora</caption><thead><tr><th scope="col">Ponto</th><th scope="col">Nome</th><th scope="col">Tempo parado (período)</th><th scope="col">OS abertas (agora)</th><th scope="col">Ações abertas (agora)</th><th scope="col">Checklists (agora)</th></tr></thead><tbody>${linhas}</tbody></table></div>`})}
+/* liga só leitura: escolher ponto e filtros do piloto. Roda depois de ligar(), para tirar dos pinos o clique e o arraste das abas atuais. */
+function ligarPiloto(){const N=Pil.N;if(!N)return;const mx=Math.max(1,...Object.values(N.R).map(r=>r.min)),sel=Pil.sel,escolher=id=>{Pil.sel=String(id);render()};
+ $$('#pilArea [data-pin]').forEach(b=>{const p=P(b.dataset.pin);if(!p)return;const r=N.R[p.id];b.onpointerdown=null;let cls='none',tit=`${p.id} · ${p.nome} · tempo parado no período: `;
+  if(!eqDoPonto(p).lista.length)tit+='sem equipamento vinculado';else if(!Ext.par)tit+='sem dados (Paradas não lido)';
+  else{const nv=nivel(r.min,mx);cls=nv[0];tit+=`${fmtCam('min',r.min)} (intensidade ${nv[1]})`;if(r.min)b.insertAdjacentHTML('beforeend',`<span class="vl">${esc(fmtCam('min',r.min))}</span>`)}
+  b.className='l3-pin '+cls+(p.id===sel?' on':'');b.title=tit;b.setAttribute('aria-label',tit);b.setAttribute('aria-pressed',p.id===sel?'true':'false');b.onclick=()=>escolher(p.id)});const cv=$('#cv');if(cv)cv.onclick=null;
+ $$('#pilTab tr[data-ppt]').forEach(tr=>{tr.onclick=()=>escolher(tr.dataset.ppt);tr.onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();escolher(tr.dataset.ppt)}}});
+ const on=(s,fn)=>{const e=$(s);if(e)e.onchange=fn},f=Pil.f;
+ on('#pPer',e=>{f.per=e.target.value;if(f.per==='p'){const[d,a]=emPiloto(periodo);f.de=f.de||d;f.ate=f.ate||a}f.ordem='';render()});on('#pDe',e=>{f.de=e.target.value;render()});on('#pAte',e=>{f.ate=e.target.value;render()});
+ on('#pTurno',e=>{f.turno=e.target.value;render()});on('#pOrdem',e=>{f.ordem=e.target.value;render()})}
 function render(){topo();const nv=$('#nav');if(nv)nv.innerHTML=navHtml();const m=$('#main');const sy=scrollY;const vp=$('.l3-vp'),sl=vp?[vp.scrollLeft,vp.scrollTop]:null;
- m.innerHTML=App.tab==='pessoas'?vPessoas():App.tab==='checklists'?vChecklists():App.tab==='config'?vConfig():vMapa();const v2=$('.l3-vp');if(v2&amp;&amp;sl){v2.scrollLeft=sl[0];v2.scrollTop=sl[1]}scrollTo(0,sy);ligar()}
+ m.innerHTML=App.tab===ABA_PILOTO?vPiloto():App.tab==='pessoas'?vPessoas():App.tab==='checklists'?vChecklists():App.tab==='config'?vConfig():vMapa();const v2=$('.l3-vp');if(v2&amp;&amp;sl){v2.scrollLeft=sl[0];v2.scrollTop=sl[1]}scrollTo(0,sy);ligar();if(App.tab===ABA_PILOTO)ligarPiloto()}
 function pctDe(e){const r=$('#cv').getBoundingClientRect();return[Math.max(0,Math.min(100,+((e.clientX-r.left)/r.width*100).toFixed(2))),Math.max(0,Math.min(100,+((e.clientY-r.top)/r.height*100).toFixed(2)))]}
 function ligar(){const on=(s,ev,f)=>{const e=$(s);if(e)e[ev]=f};const av=$('#avConn');if(av)av.onclick=e=>{e.preventDefault();Store.dir?Store.reconnect():Store.pick()};
  on('#fPer','onchange',e=>{App.f.per=e.target.value;if(App.f.per==='p'){const[d,a]=periodo();App.f.de=App.f.de||d;App.f.ate=App.f.ate||a}App.f.ordem='';render()});on('#fDe','onchange',e=>{App.f.de=e.target.value;render()});on('#fAte','onchange',e=>{App.f.ate=e.target.value;render()});
@@ -33233,7 +33309,7 @@ function enterTest(){Store.test=true;Store.queue=[];const h=hoje(),D=completar(v
 
 /* ---------- rotas: #aba=, #ponto=, #teste ---------- */
 function rota(){const h=location.hash.slice(1);if(!h)return;const i=h.indexOf('='),k=i<0?h:h.slice(0,i);let v=i<0?'':h.slice(i+1);try{v=decodeURIComponent(v)}catch(e){}
- if(k==='teste')return enterTest();if(k==='aba'&amp;&amp;ABAS.some(a=>a[0]===v)){App.tab=v;return render()}
+ if(k==='teste')return enterTest();if(k==='aba'&amp;&amp;abaOk(v)){App.tab=v;return render()}
  if(k==='ponto'&amp;&amp;P(v)){App.tab='mapa';App.sel=String(v);history.replaceState(history.state,'','#aba=mapa');return render()}}
 window.addEventListener('hashchange',rota);
 PAGE.busca=q=>{const k=norm(q),R=[];for(const p of pontos())if(norm(p.id+' '+p.nome+' '+eqDoPonto(p).lista.map(c=>c+' '+eqNome(c)).join(' ')).includes(k))R.push({tipo:'Ponto da linha',txt:p.id+' · '+p.nome,sub:'Linha 360° · planta',go:()=>{App.sel=p.id;ir('mapa')}});
@@ -33244,7 +33320,7 @@ function vacGuiaAba(){return App.tab}
  const va=document.createElement('span');va.className='vacts';va.innerHTML='<button class="b" id="btnSync" title="Reler Paradas, Produção, Equipamentos e Iniciativas e gravar pendências">Sincronizar</button><button class="b" id="btnMail" title="Copia o relatório do período, com o gráfico, para colar num e-mail do Outlook">Copiar para o Outlook</button><button class="b" id="btnImp" title="Imprimir ou salvar em PDF">Imprimir</button>';$('.vpage .wrap').appendChild(va);
  $('#btnSync').onclick=async()=>{if(Store.test)return toast('Modo de teste: nada a sincronizar');if(!Store.dir)return Store.pick();if(!Store.perm)return Store.reconnect();await Store.reload();await Store.save();render();toast('Sincronizado')};$('#btnImp').onclick=()=>window.print();$('#btnMail').onclick=()=>{if(App.tab!=='mapa')ir('mapa');setTimeout(emailLinha,60)};
  window.addEventListener('storage',e=>{if(e.key==='vac.theme')applyTheme();if(e.key==='vac.cadastros')render()});
- const h0=location.hash;if(/^#aba=/.test(h0)){const t=h0.slice(5).split('&amp;')[0];if(ABAS.some(a=>a[0]===t))App.tab=t}
+ const h0=location.hash;if(/^#aba=/.test(h0)){const t=h0.slice(5).split('&amp;')[0];if(abaOk(t))App.tab=t}
  render();if(vacDemo.ativo){Store.test=true;const lerDemo=()=>{Ext.par=vacDemo.exports('paradas');Ext.oee=vacDemo.exports('oee');Ext.equip=vacDemo.exports('equip');Ext.inic=vacDemo.exports('inic');Ext.erros={};render()};
   vacDemo.registrar('linha',()=>({...Store.data,exports:calcExports(Store.data)}),d=>{Store.data=completar(d)},lerDemo);vacDemo.publicar('linha');rota();return}
  if(h0==='#teste')return enterTest();await Store.init();render();if(h0&amp;&amp;!/^#aba=/.test(h0))rota()})();
@@ -33261,6 +33337,7 @@ window.VAC_GUIA.linha = {
     duvidas: [{ p: 'Por que um ponto está cinza?', r: 'Não houve registro no período, ou o ponto não tem equipamento do cadastro vinculado (Configuração).' }] },
   pessoas: { titulo: 'Pessoas e postos', para: 'Registrar quem ocupa cada posto (OP1, OP2, OP3) em cada turno.', campos: [{ sel: '#fPosto', nome: 'Posto', o: 'Pessoa por turno, área e ponto da planta.' }] },
   checklists: { titulo: 'Checklists', para: 'Verificações de rotina por ponto da planta; marcar o que foi feito no turno.', campos: [{ sel: '#ckTurno', nome: 'Turno', o: 'Turno em que a verificação é marcada.' }, { sel: '#fChk', nome: 'Cadastrar checklist', o: 'Com o padrão da área em mãos.' }] },
+  piloto: { titulo: 'Piloto de consulta', para: 'Tela em validação, somente leitura: perdas e pendências de um ponto da linha num só lugar.', campos: [{ sel: '#pilFiltros', nome: 'Filtros das paradas', o: 'Período, turno e ordem valem só para as paradas.' }, { sel: '#pilFicha', nome: 'Ficha do ponto', o: 'Cada bloco diz o seu recorte: no período, agora ou cadastro.' }, { sel: '#pilTab', nome: 'Pontos da linha', o: 'A mesma leitura, ponto a ponto.' }], passos: ['Escolha o período das paradas.', 'Clique num ponto da planta ou da lista.', 'Leia a ficha e abra a página de origem do registro.'] },
   config: { titulo: 'Configuração', para: 'Posição dos pontos e postos, equipamentos de cada ponto, áreas, pasta e base.', campos: [{ sel: '#cfEdit', nome: 'Editar posições', o: 'Arrastar pontos e postos na planta.' }, { sel: '#cfDes', nome: 'Redesenhar área', o: 'Clicar nos cantos da área na planta.' }] }
 };
 </script>
@@ -36219,9 +36296,9 @@ td { font-size:15px; }
     {
       "id": "linha",
       "path": "Plataforma.html#motor/linha",
-      "version": "1.1.7",
-      "sha256": "65da383501ebe1eb87d5f70fb944a20cb756572976f53a4e052653379edb7a35",
-      "bytes": 809166
+      "version": "1.2.0",
+      "sha256": "e8aec44e3754391cb9f2b0369b69022c5038c2c7d7344f8dc0ffc7c98f4a8adf",
+      "bytes": 824394
     },
     {
       "id": "projetos",
@@ -36241,7 +36318,7 @@ td { font-size:15px; }
   "limitations": [
     "Projetos e conteúdo técnico OSM/MES/AM/TPM mantêm os limites documentados nas fontes."
   ],
-  "enginesSha256": "dba3ba661838e5088d96ad841e7a5c837b4bf158be440cf1aff8d828cf53f264",
+  "enginesSha256": "430641ed3d83669631ceff411b7317926b9a643c0267e51aea64c68b0184c394",
   "originRevision": "ffc9ee8",
   "sourceMode": "single-html",
   "originEnginesSha256": "a87a64ad0c328f70e102b2ae888790a9b5d5a9bd05778652a7ce7cae140e40d2"
@@ -36311,7 +36388,7 @@ summary{cursor:pointer;font-weight:600;color:var(--navy)}
 'use strict';
 /* ---------- referência (atualizar quando a plataforma mudar de versão) ---------- */
 // Iguais às do pacote da plataforma (nova-plataforma/src/generated/manifest.json); o teste ferramenta-verificar confere.
-const VERSOES = {"oee":"2.5.0","perdas":"1.12.13","gel":"2.39","paradas":"1.2.15","equip":"1.0.20","inic":"1.1.16","linha":"1.1.7","projetos":"0.1.16","portal":"1.9.45"};
+const VERSOES = {"oee":"2.5.0","perdas":"1.12.13","gel":"2.39","paradas":"1.2.15","equip":"1.0.20","inic":"1.1.16","linha":"1.2.0","projetos":"0.1.16","portal":"1.9.45"};
 const BASES = [
  { arq: 'vacutainer-cadastros.json', mod: 'portal', nome: 'Cadastro geral (Portal)', obrig: true, cadastro: true, bk: 'Cadastros' },
  { arq: 'portal-base.json', mod: 'portal', nome: 'Portal', obrig: true, bk: 'Portal' },

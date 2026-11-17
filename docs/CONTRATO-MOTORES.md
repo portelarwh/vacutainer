@@ -82,6 +82,10 @@ Plataforma 1.5.0, Produção 2.4.82, Administração 1.9.44.
 
 Aba Linha do tempo da Produção (`docs/timeline-operacional.md`). Só leitura de `day.events` e `db.server`; não altera OEE, metas, classificação de paradas, turnos nem exports. Bloco **aditivo** na base da Produção, autorizado pela especificação: `db.timeline = { tagMap[], tagEvents[], comments{}, imports[] }` (base sem o bloco continua válida; `Model.ensure` completa). Vigência do mapa de tags segue o contrato 2 (encerra e cria outra). Comentário, importação de tags e mapa passam por `Store.mutate` (releitura, backup, fila, auditoria). Testes: `testes/ttimeline.js` e `testes/plataforma/timeline.cjs`.
 
+## Linha 360° 1.2.0 · Piloto de consulta (17/11/2026)
+
+Aba `piloto` do módulo Linha 360° (`docs/linha-360-piloto.md`), aberta só por link (`#/linha?tab=piloto`; no módulo, `#aba=piloto`). Fica fora de `ABAS`: não entra na barra da página, nas abas da casca nem em `vacPagina.abas()`. Somente leitura: usa `numeros()`, `eventos()`, `chkFeito`, `pesNome` e os exports já lidos; não chama `Store.commit`, `save`, `reload` nem `lerExt`, e tem ponto e filtros próprios (as abas atuais não perdem os seus). Não muda base, `schemaVersion`, exports, permissões nem números. Teste: `testes/plataforma/linha-piloto.cjs`. A versão 1.1.5 citada acima é histórica; a anterior a esta entrega era 1.1.7.
+
 ## Rolagem, gráficos e pasta 1.6.0 (17/11/2026)
 
 Plataforma 1.6.0, Waste 1.12.13, Administração 1.9.45. Nenhum número, filtro, cálculo ou base mudou.
