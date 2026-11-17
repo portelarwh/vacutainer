@@ -7395,7 +7395,7 @@ const U = (() => {
 
 /* ---- 02-model.js ---- */
 /* ================= modelo de dados, valores iniciais e integridade ================= */
-const APP_VERSION = '2.6.3';   /* 2.6.2 · gráficos e números com meta seguem o semáforo de três cores (verde, amarelo, vermelho) */   /* 2.6.1 · gráficos: turno lançado pelo total com o nome do turno no eixo; janelas: rótulo e valor em tamanho de texto */   /* 2.6.0 · produção total do turno (sem hora a hora; períodos na troca de catálogo), aviso do servidor para turno lançado pelo total e para dia com produção apontada */
+const APP_VERSION = '2.6.4';   /* 2.6.4 · semáforo só pelas faixas configuradas (verde acima de 100% vale) */   /* 2.6.2 · gráficos e números com meta seguem o semáforo de três cores (verde, amarelo, vermelho) */   /* 2.6.1 · gráficos: turno lançado pelo total com o nome do turno no eixo; janelas: rótulo e valor em tamanho de texto */   /* 2.6.0 · produção total do turno (sem hora a hora; períodos na troca de catálogo), aviso do servidor para turno lançado pelo total e para dia com produção apontada */
 const SCHEMA_VERSION = 1;
 const BASE_FILE = 'oee-vacutainer-base.json';
 const BACKUP_DIR = '00. Backups';
@@ -10427,8 +10427,10 @@ const Charts = (() => {
   const OK = 'var(--ok)', WARN = 'var(--warn-fill, var(--warn))', BAD = 'var(--crit)';
   const semCfg = () => { try { return (db().settings || {}).semaphore || {}; } catch (e) { return {}; } };
   const metaSem = (b, i, v) => { const m = b.meta &amp;&amp; b.meta[i]; if (v == null || m == null || !isFinite(m)) return null;
-    if (b.lowerBetter) return v <= m + 1e-9 ? 'ok' : Engine.sem(v > 0 ? m / v : 1, semCfg());
-    return v >= m - 1e-9 ? 'ok' : Engine.sem(m > 0 ? v / m : 0, semCfg()); };
+    /* 2.6.4 · só as faixas da Administração decidem (verde acima de 100% vale); meta zero ou negativa: atingiu ou não */
+    if (!(m > 0)) return (b.lowerBetter ? v <= m + 1e-9 : v >= m - 1e-9) ? 'ok' : 'crit';
+    if (b.lowerBetter) return v > 0 ? Engine.sem(m / v, semCfg()) : 'ok';
+    return Engine.sem(v / m, semCfg()); };
   const metaHit = (b, i, v) => { const s = metaSem(b, i, v); return s == null ? null : s === 'ok'; };
   const barColor = (b, v, i) => { const s = metaSem(b, i, v); return s == null ? (b.colorFn ? b.colorFn(v, i) : b.color) : s === 'ok' ? OK : s === 'warn' ? WARN : BAD; };
   function combo(o) {
@@ -16573,8 +16575,8 @@ const TurnoResumo = {
   cartao(day, sr, res, on) {
     const ps = sr.ps, r = sr.r || {}, meta = r.metaOp;
     let dentro = r.good; try { dentro = r.good - TurnoCard.real(day, sr, res).fora; } catch (e) { }
-    const pc = meta > 0 &amp;&amp; dentro != null ? dentro / meta : null, st = pc == null ? '' : dentro >= meta ? 'ok' : this.sem(pc) || '';
-    const so = r.oeeTarget == null || r.oee == null ? '' : r.oee >= r.oeeTarget ? 'ok' : this.sem(r.oee / r.oeeTarget) || '';
+    const pc = meta > 0 &amp;&amp; dentro != null ? dentro / meta : null, st = pc == null ? '' : this.sem(pc) || '';
+    const so = r.oeeTarget == null || r.oee == null ? '' : r.oeeTarget > 0 ? this.sem(r.oee / r.oeeTarget) || '' : r.oee >= r.oeeTarget ? 'ok' : 'crit';
     const [f, n] = ps.summary ? [0, 0] : HHPs.fill(ps), tot = typeof TotalTurno !== 'undefined' &amp;&amp; TotalTurno.ehTotal(ps);
     const scr = day.scrapMode === 'day' ? 'rateado' : ps.scrap == null ? '<span class="tr-pend">não informado</span>' : U.fmt(ps.scrap);
     const est = ps.status === 'fechado' ? 'fe' : /pendente/.test(ps.status || '') ? 'pe' : '';
@@ -17227,8 +17229,8 @@ section.tl.tr-oculto{display:none}
     const w = OeeReal.janelaPs(ps), mx = w ? OeeReal.mes(db(), day, w[0], w[1]) : null, fb = retorno(day, ps, dentro, meta);
     const okP = meta > 0 &amp;&amp; dentro >= meta, pc = meta > 0 ? dentro / meta : null;
     /* 2.6.3 · semáforo de três cores: verde na meta, amarelo perto, vermelho abaixo (faixas da Administração) */
-    const semT = v => v == null || !isFinite(v) ? '' : Engine.sem(v, (db().settings || {}).semaphore || {}) || '', stP = okP ? 'ok' : semT(pc);
-    const metaTxt = (ok, v, txt) => ok ? `<span class="tl-okt">${ic('check', 15)} ${txt}</span>` : semT(v) === 'warn' ? `<span class="tl-warnt">${txt}</span>` : `<span class="tl-bad">${txt}</span>`;
+    const semT = v => v == null || !isFinite(v) ? '' : Engine.sem(v, (db().settings || {}).semaphore || {}) || '', stP = semT(pc);
+    const metaTxt = (v, txt) => { const t = semT(v); return t === 'ok' ? `<span class="tl-okt">${ic('check', 15)} ${txt}</span>` : t === 'warn' ? `<span class="tl-warnt">${txt}</span>` : `<span class="tl-bad">${txt}</span>`; };
     const hh = it => `${U.hhmm(it.t0 % 1440)} – ${U.hhmm(it.t1 % 1440)}${it.data !== day.date ? ' de ' + U.brDate(it.data).slice(0, 5) : ''}`;
     const scr = day.scrapMode === 'day' ? `<span class="tl-v sm">${U.fmt(r.scrap)} <small>peças</small></span><span class="tl-a">rateado do total diário</span>`
       : `${ps.scrap == null ? '<span class="tl-pend">● Não informado</span>' : `<span class="tl-v sm">${U.fmt(ps.scrap)} <small>peças</small></span><span class="tl-a">${U.pct(r.scrapPct, 2)} · ${ps.scrapMaq ? 'por máquina' : 'só o total'}${TurnoCard.gelTxt(day, sr, res)}</span>`}
@@ -17254,7 +17256,7 @@ section.tl.tr-oculto{display:none}
       <div class="tl-bar" role="progressbar" aria-label="Produção dentro do turno em relação à meta" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${pc == null ? 0 : Math.round(Math.min(1, pc) * 100)}"><span class="tl-tr"><i class="${stP}" style="width:${pc == null ? 0 : Math.min(100, pc * 100).toFixed(1)}%"></i></span><b class="tl-pct ${stP}">${pc == null ? '—' : U.pct(pc, 0)}</b></div>
       <div class="tl-pinfo">
         <div><div class="tl-v">${fq(r.good)} <small>${unitLbl()}</small></div><div class="tl-a">Produção total considerada ${tip('prodTotal')}</div></div>
-        <div>${meta > 0 ? (r.good >= meta ? `<span class="tl-okt">${ic('check', 16)} Meta ${fq(meta)} ${unitLbl()}</span>` : metaTxt(false, r.attain, `Meta ${fq(meta)} ${unitLbl()} · ${U.pct(r.attain, 0)}`)) : '<span class="tl-a">Sem meta</span>'}<div class="tl-a">${x.fora ? 'Turno + janela fora do turno' : 'Só o turno'}</div></div>
+        <div>${meta > 0 ? metaTxt(r.attain, `Meta ${fq(meta)} ${unitLbl()}${r.good >= meta ? '' : ` · ${U.pct(r.attain, 0)}`}`) : '<span class="tl-a">Sem meta</span>'}<div class="tl-a">${x.fora ? 'Turno + janela fora do turno' : 'Só o turno'}</div></div>
       </div>
     </div>
     <div class="tl-fb ${fb.cls}" role="status">${ic(fb.ico, 38)}<b>${fb.t}</b><p>${fb.p}</p></div>
@@ -17267,7 +17269,7 @@ section.tl.tr-oculto{display:none}
   </div>
   <div class="tl-g4">
     ${card('target', '', `Capacidade planejada ${tip('capacity')}`, `<span class="tl-v">${fq(r.cap)} <small>${unitLbl()}</small></span>`)}
-    ${card('trend', '', `OEE reportado ${tip('oeeRep')}`, `<span class="tl-v">${pct2(r.oee)}</span>${r.oeeTarget == null ? '<span class="tl-a">sem meta</span>' : metaTxt(r.oee != null &amp;&amp; r.oee >= r.oeeTarget, r.oee != null &amp;&amp; r.oeeTarget > 0 ? r.oee / r.oeeTarget : null, `Meta ${pct2(r.oeeTarget)}`)}`)}
+    ${card('trend', '', `OEE reportado ${tip('oeeRep')}`, `<span class="tl-v">${pct2(r.oee)}</span>${r.oeeTarget == null ? '<span class="tl-a">sem meta</span>' : metaTxt(r.oee != null &amp;&amp; r.oeeTarget > 0 ? r.oee / r.oeeTarget : null, `Meta ${pct2(r.oeeTarget)}`)}`)}
     ${card('bars', '', `OEE real ${tip('oeeReal')}`, `<span class="tl-v">${pct2(x.real)}</span><span class="tl-a">${x.extraMin ? `+${U.fmt(x.extraMin)} min fora do turno` : 'igual ao reportado'}</span>`)}
     ${card('gear', '', `D · P · Q ${tip('dpq')}`, `<span class="tl-v sm tl-dpq"><span>${pct2(r.D)}</span> · <span>${pct2(r.P)}</span> · <span>${r.Q == null ? '—' : pct2(r.Q)}</span></span>${sr.scrapAllocated ? '<span class="tl-a">Q do dia (scrap diário)</span>' : ''}`)}
   </div>
@@ -17593,7 +17595,7 @@ const VGL = (() => {
     return { days, rows, r, pf, pd, pr, weeks: A.byWeek(rows), months: A.byMonth(rows), par: A.pareto(A.events(days), 'codigo'), rel: oeeReliability(days) };
   }
   function situacao(D) {
-    const r = D.r, pr = D.pr, temMeta = r.oeeTarget != null &amp;&amp; r.oee != null, st = r.oee == null ? 'none' : !temMeta ? 'none' : r.oee >= r.oeeTarget ? 'ok' : Engine.sem(r.oeeTarget > 0 ? r.oee / r.oeeTarget : 0, db().settings.semaphore);   /* 2.6.2 · semáforo */
+    const r = D.r, pr = D.pr, temMeta = r.oeeTarget != null &amp;&amp; r.oee != null, st = r.oee == null ? 'none' : !temMeta ? 'none' : r.oeeTarget > 0 ? Engine.sem(r.oee / r.oeeTarget, db().settings.semaphore) : r.oee >= r.oeeTarget ? 'ok' : 'crit';   /* 2.6.2 · semáforo */
     const rot = r.oee == null ? 'Sem dados' : !temMeta ? 'Sem meta vigente' : st === 'ok' ? 'Na meta' : st === 'warn' ? 'Atenção: perto da meta' : 'Abaixo da meta';
     const pc = temMeta &amp;&amp; r.oeeTarget > 0 ? Math.min(100, r.oee / r.oeeTarget * 100) : null;
     const dPrev = pr &amp;&amp; pr.oee != null &amp;&amp; r.oee != null ? r.oee - pr.oee : null;
@@ -18148,7 +18150,7 @@ const LancV2 = (() => {
     return H.sort((a, b) => a.s - b.s);
   }
   /* 2.6.3 · barra pelo semáforo contra a meta de OEE do dia (verde, atenção, vermelho); sem meta, azul */
-  function corOee(v, meta) { if (!(meta > 0) || v == null) return '#1e6fd9'; if (v >= meta - 1e-9) return 'var(--ok)'; const st = Engine.sem(v / meta, (db().settings || {}).semaphore || {}); return st === 'warn' ? 'var(--warn-fill, var(--warn))' : 'var(--crit)'; }
+  function corOee(v, meta) { if (!(meta > 0) || v == null) return '#1e6fd9'; const st = Engine.sem(v / meta, (db().settings || {}).semaphore || {}); return st === 'ok' ? 'var(--ok)' : st === 'warn' ? 'var(--warn-fill, var(--warn))' : 'var(--crit)'; }
   function grafOee(res, day) {
     const H = oeeHoras(res, day), meta = res.r &amp;&amp; res.r.oeeTarget;
     if (!H.length) return '<p class="small muted" style="margin:14px 0 0">Sem produção lançada no hora a hora deste dia.</p>';
@@ -21004,7 +21006,7 @@ button.b,label.b,a.b{border-radius:8px}
    Base: perdas-base.json na pasta da rede (mesmo padrão OEE / Gel)
    Contrato: bloco "exports" (exportsVersion 1) lido pelas outras páginas
    ===================================================================== */
-const APP_VER='1.12.14',   /* 1.12.14 · MUV: situação e tendência pelo semáforo de três cores */   /* 1.12.8 · ordens e lotes antigos pelo exports da Produção (ordensHistorico, lotesHistorico), sem ler a base dela */   /* 1.12.7 · D8: Pareto comum do kit (vacPareto) */   /* 1.12.6 · Fase 5: layout no arquivo da pessoa (vacPrefs do kit) */   /* 1.12.5 · D6: botões de gravação travados conforme o perfil (vacTravas do kit) */   /* 1.12.4 · Importar: lista das ordens ainda sem KKBC_ORD (Produção e SAP, mês atual e os 2 anteriores) */   /* 1.12.3 · KKBC_ORD colada como lista com Cen./Planta/Ordem/Origem/Material e títulos abreviados (Desv.qtd., Desv.preço) */   /* 1.12.2 · kit: modelo de e-mail (vacEmail) e número da página na impressão */   /* 1.12.1 · ícones no lugar dos símbolos de texto (kit) */   /* 1.12.0 · Design System (barra lateral), Paretos da controladoria (verticais), aviso ordem × lote */   /* 1.11.0 · target MUV da linha (Portal › Metas da área WASTE-MUV…, vigência, R$/US$ pelo câmbio do Portal), MUV × target acumulado no FY, filtros Linha e Semana */   /* 1.10.0 · MUV oficial (Desv. estrutura + Desv. empregado, como a controladoria): meta, situação, criticidade, exports e relatórios; Pareto do MUV por Linha/SKU/Componente × métrica, favorável/desfavorável e Top N */   /* 1.9.0 · KKBC_ORD em grade (layout da controladoria, uma ordem por arquivo): Desv. Empregado, Desv. preço de input e Desv. qtde guardados; aviso das ordens no formato antigo (reimportar) */   /* 1.8.36 · gráficos: "Valores em …" (moeda), eixo sem rótulos repetidos, medida do Comparativo no gráfico do relatório (docs/graficos-padrao.md) */   /* 1.8.35 · Visão Geral no padrão comum (vacLayout): situação, números, diagnóstico, análises em grupos */   /* 1.8.34 · kit: login com ID e senha */   /* 1.8.33 · kit: datas DD/MM/AAAA */   /* 1.8.32 · nome Eficácia/Confirmação de Processo */   /* 1.8.31 · kit: nome e presença de Iniciativas / Ações na barra */   /* 1.8.30 · UX-02: guia por aba */   /* 1.8.29 · Fase 7 (UX-03, WST-01): Painel → Visão Geral */   /* 1.8.28 · Fase 6 (WST-03, INI-04): ações em Iniciativas / Ações; antigas até a migração, depois só leitura */   /* 1.8.27 · Fase 3 (IMP-04/06, WST-02): importações no exports; aba Importar leva ao Portal › Importação */   /* 1.8.26 · ARQ-09: "Ver com dados de teste" vira a Demonstração integrada */   /* 1.8.23 · C2–C6: kit com a ficha por pasta (AT-08) e a contagem da fila durável (Portal › Versões) */   /* 1.8.22 · C1: trava da 2ª aba com alteração pendente (nada é descartado); kit com a fila durável */   /* 1.8.21 · E11: busca do kit leva o equipamento à ficha em Equipamentos */   /* 1.8.20 · E8: kit com "+ Abrir ação" na ficha da ordem (Planner de Iniciativas) */   /* 1.8.19 · E5: ficha da ordem comum (botão Ficha na ordem; busca Ctrl K por ordem, lote e LP) */   /* 1.8.18 · E4: versão do exports conferida (Produção, Ordens), ordem em várias competências, dias do lote pela chave · 1.8.17 · E2: fonte única da versão (tela, base, exports e Portal › Versões) */ BASE_FN='perdas-base.json', DIR_ORIG='00. Originais SAP', DIR_BKP='00. Backups', DIR_IN='00. Entrada KKBC', DIR_DONE='00. Entrada KKBC/Processados';
+const APP_VER='1.12.15',   /* 1.12.14 · MUV: situação e tendência pelo semáforo de três cores */   /* 1.12.8 · ordens e lotes antigos pelo exports da Produção (ordensHistorico, lotesHistorico), sem ler a base dela */   /* 1.12.7 · D8: Pareto comum do kit (vacPareto) */   /* 1.12.6 · Fase 5: layout no arquivo da pessoa (vacPrefs do kit) */   /* 1.12.5 · D6: botões de gravação travados conforme o perfil (vacTravas do kit) */   /* 1.12.4 · Importar: lista das ordens ainda sem KKBC_ORD (Produção e SAP, mês atual e os 2 anteriores) */   /* 1.12.3 · KKBC_ORD colada como lista com Cen./Planta/Ordem/Origem/Material e títulos abreviados (Desv.qtd., Desv.preço) */   /* 1.12.2 · kit: modelo de e-mail (vacEmail) e número da página na impressão */   /* 1.12.1 · ícones no lugar dos símbolos de texto (kit) */   /* 1.12.0 · Design System (barra lateral), Paretos da controladoria (verticais), aviso ordem × lote */   /* 1.11.0 · target MUV da linha (Portal › Metas da área WASTE-MUV…, vigência, R$/US$ pelo câmbio do Portal), MUV × target acumulado no FY, filtros Linha e Semana */   /* 1.10.0 · MUV oficial (Desv. estrutura + Desv. empregado, como a controladoria): meta, situação, criticidade, exports e relatórios; Pareto do MUV por Linha/SKU/Componente × métrica, favorável/desfavorável e Top N */   /* 1.9.0 · KKBC_ORD em grade (layout da controladoria, uma ordem por arquivo): Desv. Empregado, Desv. preço de input e Desv. qtde guardados; aviso das ordens no formato antigo (reimportar) */   /* 1.8.36 · gráficos: "Valores em …" (moeda), eixo sem rótulos repetidos, medida do Comparativo no gráfico do relatório (docs/graficos-padrao.md) */   /* 1.8.35 · Visão Geral no padrão comum (vacLayout): situação, números, diagnóstico, análises em grupos */   /* 1.8.34 · kit: login com ID e senha */   /* 1.8.33 · kit: datas DD/MM/AAAA */   /* 1.8.32 · nome Eficácia/Confirmação de Processo */   /* 1.8.31 · kit: nome e presença de Iniciativas / Ações na barra */   /* 1.8.30 · UX-02: guia por aba */   /* 1.8.29 · Fase 7 (UX-03, WST-01): Painel → Visão Geral */   /* 1.8.28 · Fase 6 (WST-03, INI-04): ações em Iniciativas / Ações; antigas até a migração, depois só leitura */   /* 1.8.27 · Fase 3 (IMP-04/06, WST-02): importações no exports; aba Importar leva ao Portal › Importação */   /* 1.8.26 · ARQ-09: "Ver com dados de teste" vira a Demonstração integrada */   /* 1.8.23 · C2–C6: kit com a ficha por pasta (AT-08) e a contagem da fila durável (Portal › Versões) */   /* 1.8.22 · C1: trava da 2ª aba com alteração pendente (nada é descartado); kit com a fila durável */   /* 1.8.21 · E11: busca do kit leva o equipamento à ficha em Equipamentos */   /* 1.8.20 · E8: kit com "+ Abrir ação" na ficha da ordem (Planner de Iniciativas) */   /* 1.8.19 · E5: ficha da ordem comum (botão Ficha na ordem; busca Ctrl K por ordem, lote e LP) */   /* 1.8.18 · E4: versão do exports conferida (Produção, Ordens), ordem em várias competências, dias do lote pela chave · 1.8.17 · E2: fonte única da versão (tela, base, exports e Portal › Versões) */ BASE_FN='perdas-base.json', DIR_ORIG='00. Originais SAP', DIR_BKP='00. Backups', DIR_IN='00. Entrada KKBC', DIR_DONE='00. Entrada KKBC/Processados';
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 /* página para o núcleo comum, o cabeçalho (vac-cabecalho v2) e o quadro de Versões do Portal */
 const PAGE={id:'perdas',titulo:'Waste · Linha Vacutainer',tituloCurto:'Waste',subtitulo:'Custos e perdas por ordem',versao:APP_VER,baseFile:BASE_FN,backupDir:'00. Backups/Perdas',busca:q=>buscaPerdas(q)};
@@ -21880,7 +21882,7 @@ function renderPainel(){
 /* 1.8.35 · Visão Geral no padrão comum (vacLayout do kit): 01 Situação, 03 Diagnóstico e grupos; só apresentação dos números já calculados */
 function wasteVK(x){if(typeof vacLayout==='undefined'){if(!wasteVK._esp){wasteVK._esp=1;setTimeout(()=>{wasteVK._esp=0;renderPainel()},0)}return}   /* o kit (vacLayout) carrega depois do 1º desenho na demonstração */
  const T=$('#t-painel');T.querySelectorAll('.vk-dados').forEach(e=>e.style.display=x.has?'':'none');if(!x.has)return;
- const L=vacLayout,st=x.metaP==null?['none','Sem meta cadastrada']:x.liq<=x.metaP?['ok','Dentro da meta']:(s=>s==='warn'?['warn','Atenção: pouco acima da meta']:['crit','Acima da meta'])(x.metaP>0?vacSemaforo(x.liq,x.metaP,{inverso:true}):'crit');   /* 1.12.14 · semáforo de três cores (Administração); MUV: menor é melhor */
+ const L=vacLayout,st=x.metaP==null?['none','Sem meta cadastrada']:(s=>s==='ok'?['ok','Dentro da meta']:s==='warn'?['warn','Atenção: pouco acima da meta']:['crit','Acima da meta'])(x.metaP>0?vacSemaforo(x.liq,x.metaP,{inverso:true}):x.liq<=x.metaP?'ok':'crit');   /* 1.12.14 · semáforo de três cores (Administração); MUV: menor é melhor */
  const pc=x.metaP>0?Math.min(100,Math.max(0,x.liq/x.metaP*100)):null,cmp=F.ate||allPers().slice(-1)[0];
  const prior=[];if(x.semC)prior.push(`<li><span><b>${fmtN(x.semC)}</b> ordem(ns) crítica(s)/alta(s) sem causa</span><span class="sp"></span><button type="button" class="b sm" data-vk-prior="1">Ver prioridades</button></li>`);
  if(x.venc)prior.push(`<li><span><b>${fmtN(x.venc)}</b> ação(ões) vencida(s)</span><span class="sp"></span><button type="button" class="b sm" data-vk-acoes="1">Abrir ações</button></li>`);
@@ -22642,7 +22644,7 @@ function resumoPeriodo(de,ate){
  return{rows,ords,mat,liq,base,qE,vMat:sum(mat,dEst),vScr:sum(mat,scrapOf),muv:sum(ords,o=>o.muv),estr:sum(ords,o=>o.estr),emp:sum(ords,o=>o.emp),preco:sum(ords,o=>o.preco),mDesf:sum(ords,o=>o.mDesf),mFav:sum(ords,o=>o.mFav),aprox:ords.filter(o=>o.aprox).length,perda:sum(ords,o=>o.perda),ganho:sum(ords,o=>o.ganho),comps,cats,
   crit:ords.filter(o=>o.lvl>=2).sort((a,b)=>b.muv-a.muv)}}
 function trendSerie(ate,n=12){const pm={};for(const o of aggOrders(vigRows()))pm[o.per]=(pm[o.per]||0)+o.muv;   /* 1.10.0 · MUV */
- return Object.keys(pm).sort().filter(p=>!ate||p<=ate).slice(-n).map(p=>({label:fmtM(p),value:pm[p],key:p,meta:metaPer(p),color:metaPer(p)!=null?(pm[p]<=metaPer(p)?'var(--ok)':metaPer(p)>0&amp;&amp;vacSemaforo(pm[p],metaPer(p),{inverso:true})==='warn'?'var(--warn-fill,var(--warn))':'var(--crit)'):(pm[p]>0?'var(--crit)':'var(--ok)')}))}
+ return Object.keys(pm).sort().filter(p=>!ate||p<=ate).slice(-n).map(p=>({label:fmtM(p),value:pm[p],key:p,meta:metaPer(p),color:metaPer(p)!=null?((s=>s==='ok'?'var(--ok)':s==='warn'?'var(--warn-fill,var(--warn))':'var(--crit)')(metaPer(p)>0?vacSemaforo(pm[p],metaPer(p),{inverso:true}):pm[p]<=metaPer(p)?'ok':'crit')):(pm[p]>0?'var(--crit)':'var(--ok)')}))}
 /* ---------- TV ---------- */
 function tvSlides(){const ult=allPers().slice(-1)[0];if(!ult)return[{titulo:'Sem dados',html:'<div class="card"><p>Nenhuma KKBC importada ainda.</p></div>'}];
  const R=resumoPeriodo(ult,ult);const bk=(l,v,sub,c)=>`<div class="bk"><div class="l">${esc(l)}</div><div class="v sm ${c||''}">${esc(v)}</div><div class="s">${esc(sub||'')}</div></div>`;
@@ -36602,16 +36604,16 @@ td { font-size:15px; }
     {
       "id": "oee",
       "path": "Plataforma.html#motor/oee",
-      "version": "2.6.3",
-      "sha256": "d4cb18830259668f0662c044c8f6200665169acc652390ba847240ba112c626a",
-      "bytes": 2206024
+      "version": "2.6.4",
+      "sha256": "f3a158f76da67bf30976d92616c9996446cb33f468899fa3a775e0b945b4e985",
+      "bytes": 2206161
     },
     {
       "id": "perdas",
       "path": "Plataforma.html#motor/perdas",
-      "version": "1.12.14",
-      "sha256": "266757c383b0cbfbd8bd8a61a2addaab672f0bfe6d05fefe28c8e48bcc1df659",
-      "bytes": 922770
+      "version": "1.12.15",
+      "sha256": "c0efcf0470c6667062cdde4a68b4f85178ef0d4ea8e89fc1e33867495cc20ecb",
+      "bytes": 922812
     },
     {
       "id": "gel",
@@ -36666,7 +36668,7 @@ td { font-size:15px; }
   "limitations": [
     "Projetos e conteúdo técnico OSM/MES/AM/TPM mantêm os limites documentados nas fontes."
   ],
-  "enginesSha256": "68ad7449e385e64c484cf38b2bd4b19d3ba33b2839a6b16ff02d0574f8f00a33",
+  "enginesSha256": "9cfe98a1d9090eb314c8bb7a5f814a6279d2fe8b47a056d65158d96ca3a1b6e5",
   "originRevision": "ffc9ee8",
   "sourceMode": "single-html",
   "originEnginesSha256": "a87a64ad0c328f70e102b2ae888790a9b5d5a9bd05778652a7ce7cae140e40d2"
@@ -36736,7 +36738,7 @@ summary{cursor:pointer;font-weight:600;color:var(--navy)}
 'use strict';
 /* ---------- referência (atualizar quando a plataforma mudar de versão) ---------- */
 // Iguais às do pacote da plataforma (nova-plataforma/src/generated/manifest.json); o teste ferramenta-verificar confere.
-const VERSOES = {"oee":"2.6.3","perdas":"1.12.14","gel":"2.39","paradas":"1.2.15","equip":"1.0.20","inic":"1.1.16","linha":"1.2.0","projetos":"0.1.16","portal":"1.9.45"};
+const VERSOES = {"oee":"2.6.4","perdas":"1.12.15","gel":"2.39","paradas":"1.2.15","equip":"1.0.20","inic":"1.1.16","linha":"1.2.0","projetos":"0.1.16","portal":"1.9.45"};
 const BASES = [
  { arq: 'vacutainer-cadastros.json', mod: 'portal', nome: 'Cadastro geral (Portal)', obrig: true, cadastro: true, bk: 'Cadastros' },
  { arq: 'portal-base.json', mod: 'portal', nome: 'Portal', obrig: true, bk: 'Portal' },
@@ -37327,7 +37329,7 @@ import { Icon, Button, Badge, Empty, Modal, BarChart, BrandLogo, CommandMenu } f
 import { ModuleFrame } from "vac:modulo/components/ModuleFrame";
 import manifest from "vac:recurso/manifesto";
 import { ModuleTabs } from "vac:modulo/components/ModuleTabs";
-const VERSION = "1.8.3";
+const VERSION = "1.8.4";
 /* Navegação 1.3.0 (16/11/2026): Visão da linha, Relatórios e Importações têm abas; as que mostram uma tela do
    Portal (motor da Administração) trazem o 3º campo com a aba dele. Administração fica só com cadastros e configuração. */
 const SHELL_TABS = {
@@ -38432,7 +38434,7 @@ function BarChart({ rows, onDay, byShift = false, semaforo = [1, 0.9] }) {
       const label=(byShift?r.turno+' · ':'')+dateLabel(r.dia), open=onDay&amp;&amp;/^\d{4}-\d{2}-\d{2}$/.test(String(r.dia))?()=>onDay(r.dia):undefined;
       return jsxs('g',{className:open?'bar-day':undefined,role:open?'button':undefined,tabIndex:open?0:undefined,'aria-label':label+': '+fmt(value)+' peças; meta '+fmt(goal)+(open?'. Abrir o resumo do dia':''),onClick:open,onKeyDown:open?e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();open();}}:undefined,children:[
         jsx('rect',{x:x-step/2,y:0,width:step,height:h,fill:'transparent'}),
-        jsx('rect',{x:x-bar/2,y:y(value),width:bar,height:Math.max(1,h-y(value)),rx:4,fill:goal==null?'var(--chart-primary)':value>=goal||(goal>0&amp;&amp;value/goal>=semaforo[0]-1e-9)?'var(--green)':goal>0&amp;&amp;value/goal>=semaforo[1]-1e-9?'var(--warn-fill, var(--amber))':'var(--red)',children:jsx('title',{children:label+': '+fmt(value)+' peças · meta '+fmt(goal)})}),
+        jsx('rect',{x:x-bar/2,y:y(value),width:bar,height:Math.max(1,h-y(value)),rx:4,fill:goal==null?'var(--chart-primary)':(goal>0?value/goal>=semaforo[0]-1e-9:value>=goal)?'var(--green)':goal>0&amp;&amp;value/goal>=semaforo[1]-1e-9?'var(--warn-fill, var(--amber))':'var(--red)',children:jsx('title',{children:label+': '+fmt(value)+' peças · meta '+fmt(goal)})}),
         goal!=null&amp;&amp;jsx('line',{x1:x-bar/2-4,x2:x+bar/2+4,y1:y(goal),y2:y(goal),stroke:'var(--heading)',strokeWidth:2,strokeDasharray:'5 3'}),
         jsx('text',{x,y:Math.max(16,y(Math.max(value,goal ?? 0))-10),textAnchor:'middle',className:'chart-value',children:scale(value)}),
         jsx('text',{x,y:h+24,textAnchor:'middle',className:'chart-label',children:byShift?r.turno:String(r.dia).slice(8)+'/'+String(r.dia).slice(5,7)})

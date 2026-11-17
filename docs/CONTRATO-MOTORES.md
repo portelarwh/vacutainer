@@ -82,6 +82,10 @@ Plataforma 1.5.0, Produção 2.4.82, Administração 1.9.44.
 
 Aba Linha do tempo da Produção (`docs/timeline-operacional.md`). Só leitura de `day.events` e `db.server`; não altera OEE, metas, classificação de paradas, turnos nem exports. Bloco **aditivo** na base da Produção, autorizado pela especificação: `db.timeline = { tagMap[], tagEvents[], comments{}, imports[] }` (base sem o bloco continua válida; `Model.ensure` completa). Vigência do mapa de tags segue o contrato 2 (encerra e cria outra). Comentário, importação de tags e mapa passam por `Store.mutate` (releitura, backup, fila, auditoria). Testes: `testes/ttimeline.js` e `testes/plataforma/timeline.cjs`.
 
+## Semáforo só pelas faixas configuradas · Produção 2.6.4, Waste 1.12.15, plataforma 1.8.4 (17/11/2026)
+
+Revisão do PR #98: a cor passa a sair só das faixas do semáforo (Administração › Parâmetros, copiadas para a Produção). Antes, "atingiu a meta" virava verde mesmo com o verde configurado acima de 100% (ex.: verde 110%, 105% da meta saía verde no gráfico e amarelo no cartão). Vale para `Charts.combo` (maior e menor é melhor), OEE do período, OEE do dia, resumo e cartão do turno, `BarChart` da Visão da linha e MUV do Waste (estado e tendência). Meta zero ou negativa: atingiu ou não. Com verde em 100% (padrão) nada muda. Teste: `testes/plataforma/semaforo.cjs`.
+
 ## Lançamento mais enxuto · Produção 2.6.3, plataforma 1.8.3 (17/11/2026)
 
 - **Scrap (total)** no topo do Lançamento (`ScrapDia`): `r.scrap` e `r.scrapPct` do cálculo (soma dos turnos ou total diário, mesmo % do card Qualidade). Sem meta de scrap na Produção: card neutro. Nada lançado: "—" (contrato 1); lançamento parcial diz qual turno falta. Entra no Editar cards.

@@ -40,6 +40,14 @@ const html = fs.readFileSync(path.resolve(__dirname, '../../Plataforma.html'));
     assert.deepEqual(g.menor, ['ok', 'warn', 'crit'], 'menor é melhor: 90 verde, 105 atenção, 150 vermelho (meta 100)');
     assert.ok(g.legenda, 'legenda do gráfico com atenção');
     assert.deepEqual(g.belowCls, [' below bw', ' below', ''], 'número do cartão: amarelo na atenção, vermelho abaixo');
+    // revisão do PR #98: verde configurado acima de 100% é respeitado (105% com verde em 110% = atenção, não verde)
+    const v110 = await f.evaluate(() => { const S = db().settings, ant = S.semaphore; S.semaphore = { green: 1.1, yellow: 0.9 };
+      const cores = h => { const d = document.createElement('div'); d.innerHTML = h; return [...d.querySelectorAll('[fill^="var(--ok"],[fill^="var(--warn"],[fill^="var(--crit"]')].map(r => r.getAttribute('fill').replace(/var\(--([a-z]+).*/, '$1')); };
+      try { return { maior: cores(Charts.combo({ x: ['a', 'b', 'c'], bars: [{ name: 'P', values: [105, 112, 85], meta: [100, 100, 100], color: 'var(--s1)' }], height: 200 })),
+        menor: cores(Charts.combo({ x: ['a', 'b'], bars: [{ name: 'C', lowerBetter: true, values: [95, 90], meta: [100, 100], color: 'var(--s1)' }], height: 200 })) }; } finally { S.semaphore = ant; } });
+    assert.deepEqual(v110.maior, ['warn', 'ok', 'crit'], 'verde em 110%: 105% atenção, 112% verde, 85% vermelho');
+    assert.deepEqual(v110.menor, ['warn', 'ok'], 'verde em 110%, menor é melhor: 95 (105%) atenção, 90 (111%) verde');
+    console.log('ok semáforo: verde configurado acima de 100% é respeitado');
     const telaHH = await f.evaluate(() => [...document.querySelectorAll('svg [fill]')].map(r => r.getAttribute('fill') || '').filter(x => /var\(--(ok|warn|crit)/.test(x)).length);
     assert.ok(telaHH > 0, 'gráfico do hora a hora pinta pelo semáforo');
     console.log('ok semáforo Produção: gráficos (maior e menor é melhor), legenda e número dos cartões');
