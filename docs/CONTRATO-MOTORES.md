@@ -82,6 +82,16 @@ Plataforma 1.5.0, Produção 2.4.82, Administração 1.9.44.
 
 Aba Linha do tempo da Produção (`docs/timeline-operacional.md`). Só leitura de `day.events` e `db.server`; não altera OEE, metas, classificação de paradas, turnos nem exports. Bloco **aditivo** na base da Produção, autorizado pela especificação: `db.timeline = { tagMap[], tagEvents[], comments{}, imports[] }` (base sem o bloco continua válida; `Model.ensure` completa). Vigência do mapa de tags segue o contrato 2 (encerra e cria outra). Comentário, importação de tags e mapa passam por `Store.mutate` (releitura, backup, fila, auditoria). Testes: `testes/ttimeline.js` e `testes/plataforma/timeline.cjs`.
 
+## Semáforo de três cores · plataforma 1.8.2, Produção 2.6.2, Waste 1.12.14 (17/11/2026)
+
+Indicador com meta segue o semáforo configurado (Produção: `settings.semaphore`, padrão verde ≥ 100 %, atenção ≥ 90 %; demais: `parametros.semaforoVerdePct/semaforoAmareloPct` via `vacSemaforo`): verde na meta, amarelo (atenção) perto dela, vermelho abaixo. Antes, gráficos e alguns cartões eram só verde/vermelho.
+
+- Produção: barras do `Charts.combo` com meta (`metaSem`, também "menor é melhor"), legenda e dica com "atenção"; número dos cartões em amarelo na atenção (`belowCls`); OEE do período (`vgl-oee`); legenda do e-mail.
+- Visão da linha: cartões OEE publicado e Produção boa (`semTone`) e gráfico por turno (`BarChart`, prop `semaforo`).
+- Waste: estado do MUV e gráfico de tendência com `vacSemaforo(..., {inverso:true})`.
+- Só cor: números, metas, fórmulas, filtros e períodos iguais. Fora, por decisão: SQDCP (verde/vermelho por contrato 6), Gel (regra própria dosagem × BOM) e medidores D/P/Q. Teste: `testes/plataforma/semaforo.cjs`.
+- Hora a hora: o bloco Produção total do turno passa a quebrar linha (`.tt-box{white-space:normal}`); antes, a tabela sem quebra deixava o campo sobre o título em 1440 px.
+
 ## Ajustes de lançamento · Produção 2.6.1, plataforma 1.8.1 (17/11/2026)
 
 - Gráficos hora a hora (`hhChartOpts`, ritmo por hora e gráfico do e-mail do turno): o período de um turno lançado pelo total leva no eixo o código do turno (`snap.code`, ex.: 2T), não a hora de início; com troca de catálogo, `2T 1/2`, `2T 2/2` (`rotuloIv`).
