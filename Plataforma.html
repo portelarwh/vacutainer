@@ -7395,7 +7395,7 @@ const U = (() => {
 
 /* ---- 02-model.js ---- */
 /* ================= modelo de dados, valores iniciais e integridade ================= */
-const APP_VERSION = '2.6.2';   /* 2.6.2 · gráficos e números com meta seguem o semáforo de três cores (verde, amarelo, vermelho) */   /* 2.6.1 · gráficos: turno lançado pelo total com o nome do turno no eixo; janelas: rótulo e valor em tamanho de texto */   /* 2.6.0 · produção total do turno (sem hora a hora; períodos na troca de catálogo), aviso do servidor para turno lançado pelo total e para dia com produção apontada */
+const APP_VERSION = '2.6.3';   /* 2.6.2 · gráficos e números com meta seguem o semáforo de três cores (verde, amarelo, vermelho) */   /* 2.6.1 · gráficos: turno lançado pelo total com o nome do turno no eixo; janelas: rótulo e valor em tamanho de texto */   /* 2.6.0 · produção total do turno (sem hora a hora; períodos na troca de catálogo), aviso do servidor para turno lançado pelo total e para dia com produção apontada */
 const SCHEMA_VERSION = 1;
 const BASE_FILE = 'oee-vacutainer-base.json';
 const BACKUP_DIR = '00. Backups';
@@ -11108,7 +11108,7 @@ const Libs = {
 async function loadPrefs() { const p = await IDB.get('prefs'); if (p) Object.assign(App.prefs, p); try { const r = localStorage.getItem('oee-route'); if (r &amp;&amp; ROUTES.some(x => x[0] === r)) App.route = r; } catch (e) { } if (App.prefs.tabs &amp;&amp; App.prefs.tabs.start) App.route = App.prefs.tabs.start; }
 const savePrefs = U.debounce(() => { IDB.set('prefs', U.clone(App.prefs)).catch(() => { }); if (typeof vacPrefs !== 'undefined') vacPrefs.mudou(); }, 300);
 /* 2.4.72 · Fase 5: preferências de layout no arquivo da pessoa (vacPrefs do kit) */
-const PREFS_PESSOA = ['tabs', 'kcOff', 'cabFold', 'vgFold', 'lcFold', 'hhFold', 'vgGrupo', 'moreKpi', 'panel', 'panelLayout', 'showMetaCols', 'pnOeeReal', 'rpImg', 'rpSQ', 'mailLay'];
+const PREFS_PESSOA = ['tabs', 'kcOff', 'cabFold', 'vgFold', 'lcFold', 'lcTurno', 'hhFold', 'vgGrupo', 'moreKpi', 'panel', 'panelLayout', 'showMetaCols', 'pnOeeReal', 'rpImg', 'rpSQ', 'mailLay'];
 { const reg = () => { if (typeof vacPrefs !== 'undefined') vacPrefs.registrar('oee', {   /* o kit vem num <script> depois deste: registra quando a página termina de carregar */
   ler: () => { const o = {}; for (const k of PREFS_PESSOA) if (App.prefs[k] !== undefined) o[k] = App.prefs[k]; return o; },
   aplicar: o => { for (const k of PREFS_PESSOA) { if (o &amp;&amp; o[k] !== undefined) App.prefs[k] = U.clone(o[k]); else delete App.prefs[k]; } IDB.set('prefs', U.clone(App.prefs)).catch(() => { }); }
@@ -11682,11 +11682,13 @@ App.views.launch = {
       ${kpi('Qualidade', r.Q == null ? '—' : U.pct(r.Q, 2), '', `scrap ${U.fmt(r.scrap)} un · ${U.pct(r.scrapPct, 2)}`)}
       ${kpi('Capacidade planejada', fq(r.cap), unitLbl(), `${U.fmt(r.netMin)} min líquidos`)}
       ${kpi('Meta diária oficial', fq(res.officialDaily), unitLbl(), res.comp ? (res.comp.applied ? `ajuste última hora ${fqs(res.comp.adjust)}` : '<span class="ferr">compensação inválida</span>') : '')}
+      ${ScrapDia.kpi(day, res)}
       ${OeeReal.kpis(day, res)}${MesDia.kpiDia(day)}
-    </div>`);
+    </div>`, [KC.OEE_DIA]);
     h += LancUI.bloco(day, res);   /* 2.4.47 · layout novo (antes: SrvUI.dayCard + ForaTurnoUI.card) */
     h += GelDia.card(day, res);   /* 2.4.29 · GEL-04 */
     // turnos
+    h += TurnoResumo.faixa(day, res);   /* 2.6.3 · turnos em resumo; o clicado abre o detalhe */
     { const np = OeeReal.cardsNP(day, res); h += `<div class="section tl-list">${res.shifts.map(sr => TurnoUI.bloco(day, sr, res)).join('')}${np ? `<div class="grid g2">${np}</div>` : ''}</div>`; }
     h += `<section class="card section"><header><h3>Validação</h3>${errs ? semB('crit', errs + ' erro(s)') : semB('ok', 'sem erros')} ${alerts ? semB('warn', alerts + ' alerta(s)') : ''}</header>${msgList(res.msgs)}</section>`;
     h += `<div class="section">${oeePanel(r, 'Cascata de perdas do dia')}</div><div class="section">${qaPanel(r)}</div>`;
@@ -11695,11 +11697,13 @@ App.views.launch = {
   mount(root) {
     { const cf = root.querySelector('#cabTg'); if (cf) cf.onclick = () => { App.prefs.cabFold = !App.prefs.cabFold; savePrefs(); render(); }; }
     root.querySelectorAll('[data-ir-turno]').forEach(b => b.onclick = () => { const s = root.querySelector('section.tl[data-tl="' + CSS.escape(b.dataset.irTurno) + '"]'); if (!s) return;
+      if (s.classList.contains('tr-oculto')) { const d0 = curDay(); if (d0) TurnoResumo.abrir(root, d0, b.dataset.irTurno); }
       /* dentro da plataforma o quadro tem a altura do conteúdo: quem rola é a janela de fora */
       const fe = window.__vacEmbedded &amp;&amp; window.frameElement; if (fe) { const y = fe.getBoundingClientRect().top + s.getBoundingClientRect().top + parent.scrollY - 90; parent.scrollTo({ top: Math.max(0, y), behavior: 'smooth' }); } else s.scrollIntoView({ behavior: 'smooth', block: 'start' }); });
     { const mb = root.querySelector('#dayMetas'); if (mb) mb.onclick = () => metasModal(); const kc = root.querySelector('#kcEdit'); if (kc) kc.onclick = () => KC.editar(); }
     bindDayBar(root); bindNoDay(root);
     const day = curDay(); if (!day || Engine.isOffDay(db(), day)) return;
+    TurnoResumo.ligar(root, day);
     SrvUI.bindDay(root, day); ForaTurnoUI.mount(root, day); GelTurno.mount(root, day, Engine.computeDay(db(), day)); TurnoCard.ligar(root, day); LancV2.montar(root, day);
     root.querySelectorAll('[data-dayf]').forEach(el => el.addEventListener('change', () => run(() => Actions.setDayField(day.id, el.dataset.dayf, el.value.trim()))));
     root.querySelectorAll('[data-scrapmode]').forEach(b => b.addEventListener('click', async () => {
@@ -13629,7 +13633,7 @@ function orderedRoutes() {
   const pos = k => { const i = o.indexOf(k); return i < 0 ? 1000 + ROUTES.findIndex(r => r[0] === k) : i; };
   return ROUTES.slice().sort((a, b) => pos(a[0]) - pos(b[0]));
 }
-function visibleRoutes() { const p = App.prefs.tabs || {}; const hid = new Set(p.hidden || []); return orderedRoutes().filter(([k]) => k === 'config' || (!hid.has(k) &amp;&amp; tabState(k).state !== 'oculta')); }
+function visibleRoutes() { const p = App.prefs.tabs || {}; const hid = new Set(p.hidden || []); return orderedRoutes().filter(([k]) => k !== 'panel' &amp;&amp; (k === 'config' || (!hid.has(k) &amp;&amp; tabState(k).state !== 'oculta'))); }   /* 2.6.3 · Painel = Visão Geral (2.4.31): sem aba repetida */
 const textOn = hex => { const h = String(hex || '').replace('#', ''); if (h.length < 6) return '#fff'; const r = parseInt(h.slice(0, 2), 16), g = parseInt(h.slice(2, 4), 16), b = parseInt(h.slice(4, 6), 16); return (r * 299 + g * 587 + b * 114) / 1000 > 150 ? '#111' : '#fff'; };
 function tabLabel(k, l) {
   const hl = (App.prefs.tabs || {}).hl || {}; const st = tabState(k).state;
@@ -16539,14 +16543,78 @@ const OeeReal = {
     }).join('');
   }
 };
+/* ===== Produção 2.6.3 · plataforma 1.8.3 =====
+   ScrapDia: card "Scrap (total)" no topo do Lançamento. Mesmo número do cálculo (r.scrap, soma dos turnos ou total diário) e o mesmo %
+   do card Qualidade (r.scrapPct). Sem meta de scrap na Produção: card neutro. Nada lançado: "—", nunca zero (contrato 1).
+   TurnoResumo: os turnos em resumo, lado a lado; o clicado abre o detalhe (o cartão de hoje) na largura toda. Todos os cartões
+   continuam na página (o fechado só fica escondido). Aberto: o escolhido no dia (App.prefs.lcTurno, neste computador) ou, sem escolha,
+   o turno em lançamento agora / o primeiro não fechado. Impressão: tudo aberto. ===== */
+const ScrapDia = {
+  conhecido(day) { if (day.scrapMode === 'day') return day.scrapDay != null ? 'tudo' : '';
+    const P = (day.shifts || []).filter(p => !p.off), I = P.filter(p => p.scrap != null || (p.summary &amp;&amp; (p.summary.segments || []).some(x => x.scrap != null)));
+    return !I.length ? '' : I.length === P.length ? 'tudo' : 'parte'; },
+  kpi(day, res) {
+    const r = res.r || {}, k = this.conhecido(day);
+    if (!k) return kpi('Scrap (total)', '—', '', 'nenhum scrap lançado no dia');
+    const falta = k === 'parte' ? (day.shifts || []).filter(p => !p.off &amp;&amp; p.scrap == null &amp;&amp; !p.summary).map(p => p.snap.name) : [];
+    return kpi('Scrap (total)', U.fmt(r.scrap), 'peças', `${U.pct(r.scrapPct, 2)} da produção${day.scrapMode === 'day' ? ' · total diário' : ''}${falta.length ? ` · <span class="ferr">falta ${esc(falta.join(', '))}</span>` : ''}`);
+  }
+};
+Object.assign(KPI_HELP, { 'Scrap (total)': 'scrapTotalDia' });
+const TurnoResumo = {
+  sem(v) { return v == null || !isFinite(v) ? null : Engine.sem(v, (db().settings || {}).semaphore || {}); },
+  auto(day, res) {
+    const L = res.shifts.filter(sr => !sr.ps.off &amp;&amp; !sr.ps.summary), nm = opNowMin(day.date);
+    const ivs = sr => (res.flat || []).filter(f => f.ps === sr.ps), agora = nm != null &amp;&amp; L.find(sr => { const F = ivs(sr); return sr.ps.status !== 'fechado' &amp;&amp; F.length &amp;&amp; nm >= F[0].iv.start &amp;&amp; nm < F[F.length - 1].iv.end; });
+    const x = agora || L.find(sr => sr.ps.status !== 'fechado') || null; return x ? x.ps.id : null;
+  },
+  aberto(day, res) { const P = App.prefs.lcTurno; if (P &amp;&amp; P.date === day.date &amp;&amp; (P.id === '' || res.shifts.some(sr => sr.ps.id === P.id))) return P.id || null; return this.auto(day, res); },
+  escolher(day, id) { App.prefs.lcTurno = { date: day.date, id: id || '' }; try { savePrefs(); } catch (e) { } },
+  cartao(day, sr, res, on) {
+    const ps = sr.ps, r = sr.r || {}, meta = r.metaOp;
+    let dentro = r.good; try { dentro = r.good - TurnoCard.real(day, sr, res).fora; } catch (e) { }
+    const pc = meta > 0 &amp;&amp; dentro != null ? dentro / meta : null, st = pc == null ? '' : dentro >= meta ? 'ok' : this.sem(pc) || '';
+    const so = r.oeeTarget == null || r.oee == null ? '' : r.oee >= r.oeeTarget ? 'ok' : this.sem(r.oee / r.oeeTarget) || '';
+    const [f, n] = ps.summary ? [0, 0] : HHPs.fill(ps), tot = typeof TotalTurno !== 'undefined' &amp;&amp; TotalTurno.ehTotal(ps);
+    const scr = day.scrapMode === 'day' ? 'rateado' : ps.scrap == null ? '<span class="tr-pend">não informado</span>' : U.fmt(ps.scrap);
+    const est = ps.status === 'fechado' ? 'fe' : /pendente/.test(ps.status || '') ? 'pe' : '';
+    return `<button type="button" class="tr-c${on ? ' on' : ''}${ps.off ? ' off' : ''}" data-trturno="${esc(ps.id)}" aria-expanded="${on}" aria-controls="tl-${esc(ps.id)}" title="${on ? 'Recolher o detalhe deste turno' : 'Abrir o detalhe deste turno'}">
+      <span class="tr-hd"><b>${esc(ps.snap.name)}</b><span class="tr-hr">${esc(ps.snap.start || '')}–${ps.snap.end ? U.hhmm(U.toMin(ps.snap.end)) : ''}</span><span class="tr-sp"></span><span class="tr-st ${est}">${esc(ps.status || '—')}</span></span>
+      ${ps.off ? `<span class="tr-big"><b>—</b> <span class="tr-mut">turno sem produção</span></span><span class="tr-bar"><i style="width:0"></i></span>`
+        : `<span class="tr-big"><b>${fq(dentro)}</b> ${esc(unitLbl())} ${pc == null ? '<span class="tr-mut">sem meta</span>' : `<span class="tr-pc ${st}"><b>${U.pct(pc, 0)}</b> da meta ${fq(meta)}</span>`}</span>
+      <span class="tr-bar" aria-hidden="true"><i class="${st}" style="width:${pc == null ? 0 : Math.min(100, pc * 100).toFixed(1)}%"></i></span>`}
+      <span class="tr-k"><span>OEE<b class="${so}">${r.oee == null ? '—' : U.pct(r.oee)}</b></span><span>Paradas<b>${U.fmt((r.aMin || 0) + (r.pMin || 0))} min</b></span><span>Scrap<b>${scr}</b></span></span>
+      <span class="tr-ft">${ps.summary ? 'Lançado pelo resumo' : tot ? 'Lançado pelo total' : `Hora a hora ${f}/${n}`}<span class="tr-sp"></span><span class="tr-ab">${on ? '▴ recolher' : '▾ abrir'}</span></span></button>`;
+  },
+  faixa(day, res) {
+    if (res.shifts.length < 2) return '';
+    const a = this.aberto(day, res);
+    return `<div class="section tr-faixa" role="group" aria-label="Turnos do dia em resumo">${res.shifts.map(sr => this.cartao(day, sr, res, sr.ps.id === a)).join('')}</div>`;
+  },
+  aplicar(root, day) {
+    const fx = root.querySelector('.tr-faixa'); if (!fx) return;
+    const res = Engine.computeDay(db(), day), a = this.aberto(day, res);
+    root.querySelectorAll('section.tl[data-tl]').forEach(s => { s.id = 'tl-' + s.dataset.tl; s.classList.toggle('tr-oculto', s.dataset.tl !== a); });
+    fx.querySelectorAll('[data-trturno]').forEach(b => { const on = b.dataset.trturno === a; b.classList.toggle('on', on); b.setAttribute('aria-expanded', String(on)); const t = b.querySelector('.tr-ab'); if (t) t.textContent = on ? '▴ recolher' : '▾ abrir'; b.title = on ? 'Recolher o detalhe deste turno' : 'Abrir o detalhe deste turno'; });
+  },
+  abrir(root, day, id) { this.escolher(day, id); this.aplicar(root, day); },
+  ligar(root, day) {
+    root.querySelectorAll('[data-trturno]').forEach(b => b.onclick = () => { const res = Engine.computeDay(db(), day); this.abrir(root, day, this.aberto(day, res) === b.dataset.trturno ? '' : b.dataset.trturno); });
+    this.aplicar(root, day);
+  }
+};
+Object.assign(HELP, { scrapTotalDia: ['Scrap (total)', [['O que mostra?', 'O scrap do dia: a soma do scrap lançado nos turnos (ou o total diário, quando o scrap é lançado por dia). O % é o mesmo do card Qualidade.'], ['E sem lançamento?', 'Mostra "—": scrap não lançado não vira zero. Se só parte dos turnos lançou, o card diz qual falta.'], ['Tem meta?', 'Não. A Produção não tem meta de scrap; por isso o card não tem cor de semáforo.']]] });
 /* ---------- editor de cartões (faixa de indicadores do Lançamento; preferência deste computador) ---------- */
 const KC = {
   chave(el) { if (el.classList.contains('kpi-cat')) return 'Catálogo'; const l = el.querySelector('.l'); if (!l) return ''; const c = l.cloneNode(true); c.querySelectorAll('.ib,button').forEach(b => b.remove()); return c.textContent.trim(); },
   off() { const L = App.prefs.kcOff; return Array.isArray(L) ? L : []; },
-  filtrar(html) {
+  /* 1.8.3 · o gráfico "OEE do dia" entra depois (LancV2.kpis); vem como extra para aparecer na lista e poder ser desligado */
+  OEE_DIA: 'OEE do dia (evolução por hora)',
+  filtrar(html, extras = []) {
     const t = document.createElement('template'); t.innerHTML = html; const box = t.content.querySelector('.kpis'); if (!box) return html;
     const off = new Set(this.off()), todos = [];
     [...box.children].forEach(el => { if (!el.classList.contains('kpi')) return; const k = this.chave(el); if (!k) return; todos.push(k); if (off.has(k)) el.remove(); });
+    for (const k of extras) if (!todos.includes(k)) todos.push(k);
     KC.ultimos = todos; return t.innerHTML;
   },
   editar() {
@@ -17094,7 +17162,20 @@ button[data-scrapturno]{background:var(--crit-fill,#C62828);border-color:var(--c
 .tl .tl-dpq span{white-space:nowrap}
 .tl .tl-a{font-size:13px;color:var(--t-mute);font-variant-numeric:tabular-nums}
 .tl .tl-okt{color:var(--t-ok-ink);font-weight:600;font-size:13.5px;display:inline-flex;gap:4px;align-items:center}
-.tl .tl-bad{color:var(--crit);font-weight:600;font-size:13.5px}
+.tl .tl-bad{color:var(--crit);font-weight:600;font-size:13.5px}.tl .tl-warnt{color:var(--warn);font-weight:600;font-size:13.5px}
+.tl .tl-tr i.warn{background:var(--warn-fill, var(--warn))}.tl .tl-tr i.crit{background:var(--crit)}.tl .tl-pct.warn{color:var(--warn)}.tl .tl-pct.crit{color:var(--crit)}
+/* 2.6.3 · turnos em resumo, lado a lado; o aberto mostra o cartão completo embaixo */
+.tr-faixa{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:var(--sp-16,16px)}
+.tr-c{all:unset;box-sizing:border-box;cursor:pointer;display:flex;flex-direction:column;gap:var(--sp-8,8px);padding:var(--sp-16,16px);border:1px solid var(--line);border-radius:14px;background:var(--surface);color:var(--ink,var(--text));font:inherit;min-width:0}
+.tr-c:hover{border-color:var(--accent)}.tr-c:focus-visible{outline:3px solid var(--accent);outline-offset:2px}.tr-c.on{border:2px solid var(--accent);padding:calc(var(--sp-16,16px) - 1px)}.tr-c.off{opacity:.8}
+.tr-hd{display:flex;align-items:center;gap:var(--sp-8,8px);min-width:0}.tr-hd b{font-size:17px;letter-spacing:.02em;text-transform:uppercase;white-space:nowrap}.tr-hr{color:var(--muted);font-size:13px;white-space:nowrap}.tr-sp{flex:1}
+.tr-st{font-size:11px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;padding:2px var(--sp-8,8px);border-radius:999px;background:var(--accent-soft,var(--surface-2));color:var(--accent);white-space:nowrap}.tr-st.fe{background:var(--t-ok-soft,var(--surface-2));color:var(--t-ok-ink,var(--ok))}.tr-st.pe{background:var(--t-warn-soft,var(--surface-2));color:var(--t-warn-ink,var(--warn))}
+.tr-big{font-size:14px;color:var(--muted)}.tr-big b{font-size:28px;color:var(--ink,var(--text));font-variant-numeric:tabular-nums}.tr-pc b{font-size:16px;color:inherit}.tr-pc.ok{color:var(--ok)}.tr-pc.warn{color:var(--warn)}.tr-pc.crit{color:var(--crit)}.tr-mut{color:var(--muted)}
+.tr-bar{display:block;height:8px;border-radius:999px;background:var(--surface-2,var(--line));overflow:hidden}.tr-bar i{display:block;height:100%;border-radius:999px;background:var(--accent)}.tr-bar i.ok{background:var(--ok)}.tr-bar i.warn{background:var(--warn-fill, var(--warn))}.tr-bar i.crit{background:var(--crit)}
+.tr-k{display:grid;grid-template-columns:repeat(3,1fr);gap:var(--sp-4,4px);font-size:12px;color:var(--muted)}.tr-k b{display:block;font-size:15px;color:var(--ink,var(--text));font-variant-numeric:tabular-nums}.tr-k b.ok{color:var(--ok)}.tr-k b.warn{color:var(--warn)}.tr-k b.crit{color:var(--crit)}.tr-pend{color:var(--warn);font-weight:600;font-size:13px}
+.tr-ft{display:flex;gap:var(--sp-8,8px);font-size:12px;color:var(--muted)}.tr-ab{color:var(--accent);font-weight:700}
+section.tl.tr-oculto{display:none}
+@media print{.tr-faixa{display:none}section.tl.tr-oculto{display:block}}
 .tl .tl-pend{display:inline-flex;align-items:center;gap:6px;padding:2px 10px;border-radius:999px;background:var(--t-warn-soft);color:var(--t-warn-ink);font-weight:600;font-size:13px;width:max-content}
 .tl select,.tl .tl-in{min-height:42px;border-radius:8px}
 .tl .tl-b select,.tl .tl-b .tl-in{width:100%;font-weight:600;font-size:15px}
@@ -17145,6 +17226,9 @@ button[data-scrapturno]{background:var(--crit-fill,#C62828);border-color:var(--c
     const cats = db().catalogs.filter(c => c.active !== false &amp;&amp; Engine.catalogValid(c, day.date)), prod = catsDoTurno(res, ps);
     const w = OeeReal.janelaPs(ps), mx = w ? OeeReal.mes(db(), day, w[0], w[1]) : null, fb = retorno(day, ps, dentro, meta);
     const okP = meta > 0 &amp;&amp; dentro >= meta, pc = meta > 0 ? dentro / meta : null;
+    /* 2.6.3 · semáforo de três cores: verde na meta, amarelo perto, vermelho abaixo (faixas da Administração) */
+    const semT = v => v == null || !isFinite(v) ? '' : Engine.sem(v, (db().settings || {}).semaphore || {}) || '', stP = okP ? 'ok' : semT(pc);
+    const metaTxt = (ok, v, txt) => ok ? `<span class="tl-okt">${ic('check', 15)} ${txt}</span>` : semT(v) === 'warn' ? `<span class="tl-warnt">${txt}</span>` : `<span class="tl-bad">${txt}</span>`;
     const hh = it => `${U.hhmm(it.t0 % 1440)} – ${U.hhmm(it.t1 % 1440)}${it.data !== day.date ? ' de ' + U.brDate(it.data).slice(0, 5) : ''}`;
     const scr = day.scrapMode === 'day' ? `<span class="tl-v sm">${U.fmt(r.scrap)} <small>peças</small></span><span class="tl-a">rateado do total diário</span>`
       : `${ps.scrap == null ? '<span class="tl-pend">● Não informado</span>' : `<span class="tl-v sm">${U.fmt(ps.scrap)} <small>peças</small></span><span class="tl-a">${U.pct(r.scrapPct, 2)} · ${ps.scrapMaq ? 'por máquina' : 'só o total'}${TurnoCard.gelTxt(day, sr, res)}</span>`}
@@ -17167,10 +17251,10 @@ button[data-scrapturno]{background:var(--crit-fill,#C62828);border-color:var(--c
     <div>
       <span class="tl-l">Produção dentro do turno ${tip('prodDentro')}</span>
       <div class="tl-big${okP ? ' ok' : ''}">${fq(dentro)} <small style="font-size:24px">${unitLbl()}</small></div>
-      <div class="tl-bar" role="progressbar" aria-label="Produção dentro do turno em relação à meta" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${pc == null ? 0 : Math.round(Math.min(1, pc) * 100)}"><span class="tl-tr"><i class="${okP ? 'ok' : ''}" style="width:${pc == null ? 0 : Math.min(100, pc * 100).toFixed(1)}%"></i></span><b class="tl-pct${okP ? ' ok' : ''}">${pc == null ? '—' : U.pct(pc, 0)}</b></div>
+      <div class="tl-bar" role="progressbar" aria-label="Produção dentro do turno em relação à meta" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${pc == null ? 0 : Math.round(Math.min(1, pc) * 100)}"><span class="tl-tr"><i class="${stP}" style="width:${pc == null ? 0 : Math.min(100, pc * 100).toFixed(1)}%"></i></span><b class="tl-pct ${stP}">${pc == null ? '—' : U.pct(pc, 0)}</b></div>
       <div class="tl-pinfo">
         <div><div class="tl-v">${fq(r.good)} <small>${unitLbl()}</small></div><div class="tl-a">Produção total considerada ${tip('prodTotal')}</div></div>
-        <div>${meta > 0 ? (r.good >= meta ? `<span class="tl-okt">${ic('check', 16)} Meta ${fq(meta)} ${unitLbl()}</span>` : `<span class="tl-bad">Meta ${fq(meta)} ${unitLbl()} · ${U.pct(r.attain, 0)}</span>`) : '<span class="tl-a">Sem meta</span>'}<div class="tl-a">${x.fora ? 'Turno + janela fora do turno' : 'Só o turno'}</div></div>
+        <div>${meta > 0 ? (r.good >= meta ? `<span class="tl-okt">${ic('check', 16)} Meta ${fq(meta)} ${unitLbl()}</span>` : metaTxt(false, r.attain, `Meta ${fq(meta)} ${unitLbl()} · ${U.pct(r.attain, 0)}`)) : '<span class="tl-a">Sem meta</span>'}<div class="tl-a">${x.fora ? 'Turno + janela fora do turno' : 'Só o turno'}</div></div>
       </div>
     </div>
     <div class="tl-fb ${fb.cls}" role="status">${ic(fb.ico, 38)}<b>${fb.t}</b><p>${fb.p}</p></div>
@@ -17183,7 +17267,7 @@ button[data-scrapturno]{background:var(--crit-fill,#C62828);border-color:var(--c
   </div>
   <div class="tl-g4">
     ${card('target', '', `Capacidade planejada ${tip('capacity')}`, `<span class="tl-v">${fq(r.cap)} <small>${unitLbl()}</small></span>`)}
-    ${card('trend', '', `OEE reportado ${tip('oeeRep')}`, `<span class="tl-v">${pct2(r.oee)}</span>${r.oeeTarget == null ? '<span class="tl-a">sem meta</span>' : r.oee != null &amp;&amp; r.oee >= r.oeeTarget ? `<span class="tl-okt">${ic('check', 15)} Meta ${pct2(r.oeeTarget)}</span>` : `<span class="tl-bad">Meta ${pct2(r.oeeTarget)}</span>`}`)}
+    ${card('trend', '', `OEE reportado ${tip('oeeRep')}`, `<span class="tl-v">${pct2(r.oee)}</span>${r.oeeTarget == null ? '<span class="tl-a">sem meta</span>' : metaTxt(r.oee != null &amp;&amp; r.oee >= r.oeeTarget, r.oee != null &amp;&amp; r.oeeTarget > 0 ? r.oee / r.oeeTarget : null, `Meta ${pct2(r.oeeTarget)}`)}`)}
     ${card('bars', '', `OEE real ${tip('oeeReal')}`, `<span class="tl-v">${pct2(x.real)}</span><span class="tl-a">${x.extraMin ? `+${U.fmt(x.extraMin)} min fora do turno` : 'igual ao reportado'}</span>`)}
     ${card('gear', '', `D · P · Q ${tip('dpq')}`, `<span class="tl-v sm tl-dpq"><span>${pct2(r.D)}</span> · <span>${pct2(r.P)}</span> · <span>${r.Q == null ? '—' : pct2(r.Q)}</span></span>${sr.scrapAllocated ? '<span class="tl-a">Q do dia (scrap diário)</span>' : ''}`)}
   </div>
@@ -17993,6 +18077,7 @@ const LancV2 = (() => {
 #main[data-rota="launch"] .v2-kpis .v2-oeeh .l small{font-weight:400;color:var(--muted);margin-left:4px}
 #main[data-rota="launch"] .v2-kpis .v2-oeeh .leg{display:flex;gap:12px;font-size:11.5px;color:var(--muted);justify-content:flex-end;margin-top:-22px;pointer-events:none}
 #main[data-rota="launch"] .v2-kpis .v2-oeeh .leg i{display:inline-block;width:9px;height:9px;border-radius:50%;background:#1e6fd9;margin-right:4px;vertical-align:middle}
+#main[data-rota="launch"] .v2-kpis .v2-oeeh .leg i.ok{background:var(--ok)}#main[data-rota="launch"] .v2-kpis .v2-oeeh .leg i.wa{background:var(--warn-fill, var(--warn))}#main[data-rota="launch"] .v2-kpis .v2-oeeh .leg i.cr{background:var(--crit)}
 #main[data-rota="launch"] .v2-kpis .v2-oeeh .leg i.m{width:14px;height:0;border-radius:0;background:none;border-top:2px dashed var(--ok)}
 #main[data-rota="launch"] .v2-kpis .v2-oeeh svg{width:100%;height:auto;display:block}
 #main[data-rota="launch"] .v2-kpis .v2-oeeh svg text{font-size:10px;fill:var(--muted)}
@@ -18062,6 +18147,8 @@ const LancV2 = (() => {
     } catch (e) { console.warn('oeeHoras', e); }
     return H.sort((a, b) => a.s - b.s);
   }
+  /* 2.6.3 · barra pelo semáforo contra a meta de OEE do dia (verde, atenção, vermelho); sem meta, azul */
+  function corOee(v, meta) { if (!(meta > 0) || v == null) return '#1e6fd9'; if (v >= meta - 1e-9) return 'var(--ok)'; const st = Engine.sem(v / meta, (db().settings || {}).semaphore || {}); return st === 'warn' ? 'var(--warn-fill, var(--warn))' : 'var(--crit)'; }
   function grafOee(res, day) {
     const H = oeeHoras(res, day), meta = res.r &amp;&amp; res.r.oeeTarget;
     if (!H.length) return '<p class="small muted" style="margin:14px 0 0">Sem produção lançada no hora a hora deste dia.</p>';
@@ -18070,7 +18157,7 @@ const LancV2 = (() => {
     const ticks = [0, .25, .5, ...(meta &amp;&amp; meta < 1 &amp;&amp; Math.abs(meta - .5) > .06 &amp;&amp; Math.abs(meta - .75) > .06 ? [meta] : [.75]), 1].sort((a, b) => a - b);
     let s = `<svg viewBox="0 0 ${W} ${Ht}" role="img" aria-label="OEE do dia por hora">`;
     for (const t of ticks) s += `<line x1="${L}" x2="${W - R}" y1="${y(t)}" y2="${y(t)}" stroke="var(--line)" stroke-width="1"/><text x="${L - 6}" y="${y(t) + 3}" text-anchor="end">${U.pct(t, 0)}</text>`;
-    H.forEach((x, i) => { const bx = L + i * bw + bw * .18, w = bw * .64, yy = y(x.v); s += `<rect x="${bx.toFixed(1)}" y="${yy.toFixed(1)}" width="${w.toFixed(1)}" height="${Math.max(1, T + ih - yy).toFixed(1)}" rx="2" fill="#1e6fd9"${x.fora ? ' fill-opacity=".45" class="v2-fora"' : ''}><title>${esc(x.h)} · OEE ${esc(U.pct(x.v, 1))}${x.fora ? ' · fora do turno · conta no ' + esc(x.fora) + ' (pelo PPH do turno)' : ''}</title></rect>`;
+    H.forEach((x, i) => { const bx = L + i * bw + bw * .18, w = bw * .64, yy = y(x.v); s += `<rect x="${bx.toFixed(1)}" y="${yy.toFixed(1)}" width="${w.toFixed(1)}" height="${Math.max(1, T + ih - yy).toFixed(1)}" rx="2" fill="${corOee(x.v, meta)}"${x.fora ? ' fill-opacity=".45" class="v2-fora"' : ''}><title>${esc(x.h)} · OEE ${esc(U.pct(x.v, 1))}${x.fora ? ' · fora do turno · conta no ' + esc(x.fora) + ' (pelo PPH do turno)' : ''}</title></rect>`;
       if (n <= 16 || i % Math.ceil(n / 12) === 0) s += `<text x="${(L + i * bw + bw / 2).toFixed(1)}" y="${Ht - 6}" text-anchor="middle">${esc(x.h.slice(0, 2))}h</text>`; });
     if (meta) s += `<line x1="${L}" x2="${W - R}" y1="${y(meta)}" y2="${y(meta)}" stroke="var(--ok)" stroke-width="1.6" stroke-dasharray="5 4"/>`;
     return s + '</svg>';
@@ -18086,10 +18173,10 @@ const LancV2 = (() => {
       const rot = v ? txt(v) : U.pct(g[0]); if (v) v.classList.add('v2-sr2');
       const d = document.createElement('div'); d.className = 'v2-g'; d.innerHTML = gauge(g[0], g[1], rot); (v || l).after(d);
     }
-    if (!k.querySelector('.v2-oeeh')) {
+    if (!k.querySelector('.v2-oeeh') &amp;&amp; !KC.off().includes(KC.OEE_DIA)) {
       const meta = r.oeeTarget;
       k.insertAdjacentHTML('beforeend', `<div class="kpi v2-oeeh"><span class="kic">${ic('chart', 20)}</span><span class="l">OEE do dia <small>(evolução por hora)</small></span>
-        <div class="leg"><span><i></i>OEE (%)</span>${meta ? `<span><i class="m"></i>Meta (${esc(U.pct(meta, 0))})</span>` : ''}</div>${grafOee(res, day)}</div>`);
+        <div class="leg">${meta ? `<span><i class="ok"></i>Na meta</span><span><i class="wa"></i>Atenção</span><span><i class="cr"></i>Abaixo</span><span><i class="m"></i>Meta (${esc(U.pct(meta, 0))})</span>` : '<span><i></i>OEE (%)</span>'}</div>${grafOee(res, day)}</div>`);
     }
   }
   /* Explicação no próprio título (Produção inteira, todas as abas):
@@ -36515,9 +36602,9 @@ td { font-size:15px; }
     {
       "id": "oee",
       "path": "Plataforma.html#motor/oee",
-      "version": "2.6.2",
-      "sha256": "476240b02b3233780375ff897c8873fee503e0d9c5621aabdd798880fe9996e5",
-      "bytes": 2194925
+      "version": "2.6.3",
+      "sha256": "d4cb18830259668f0662c044c8f6200665169acc652390ba847240ba112c626a",
+      "bytes": 2206024
     },
     {
       "id": "perdas",
@@ -36579,7 +36666,7 @@ td { font-size:15px; }
   "limitations": [
     "Projetos e conteúdo técnico OSM/MES/AM/TPM mantêm os limites documentados nas fontes."
   ],
-  "enginesSha256": "6651514657200bdfefcfd180dc13a01de0fbd611480380411d78654793bcc443",
+  "enginesSha256": "68ad7449e385e64c484cf38b2bd4b19d3ba33b2839a6b16ff02d0574f8f00a33",
   "originRevision": "ffc9ee8",
   "sourceMode": "single-html",
   "originEnginesSha256": "a87a64ad0c328f70e102b2ae888790a9b5d5a9bd05778652a7ce7cae140e40d2"
@@ -36649,7 +36736,7 @@ summary{cursor:pointer;font-weight:600;color:var(--navy)}
 'use strict';
 /* ---------- referência (atualizar quando a plataforma mudar de versão) ---------- */
 // Iguais às do pacote da plataforma (nova-plataforma/src/generated/manifest.json); o teste ferramenta-verificar confere.
-const VERSOES = {"oee":"2.6.2","perdas":"1.12.14","gel":"2.39","paradas":"1.2.15","equip":"1.0.20","inic":"1.1.16","linha":"1.2.0","projetos":"0.1.16","portal":"1.9.45"};
+const VERSOES = {"oee":"2.6.3","perdas":"1.12.14","gel":"2.39","paradas":"1.2.15","equip":"1.0.20","inic":"1.1.16","linha":"1.2.0","projetos":"0.1.16","portal":"1.9.45"};
 const BASES = [
  { arq: 'vacutainer-cadastros.json', mod: 'portal', nome: 'Cadastro geral (Portal)', obrig: true, cadastro: true, bk: 'Cadastros' },
  { arq: 'portal-base.json', mod: 'portal', nome: 'Portal', obrig: true, bk: 'Portal' },
@@ -37240,7 +37327,7 @@ import { Icon, Button, Badge, Empty, Modal, BarChart, BrandLogo, CommandMenu } f
 import { ModuleFrame } from "vac:modulo/components/ModuleFrame";
 import manifest from "vac:recurso/manifesto";
 import { ModuleTabs } from "vac:modulo/components/ModuleTabs";
-const VERSION = "1.8.2";
+const VERSION = "1.8.3";
 /* Navegação 1.3.0 (16/11/2026): Visão da linha, Relatórios e Importações têm abas; as que mostram uma tela do
    Portal (motor da Administração) trazem o 3º campo com a aba dele. Administração fica só com cadastros e configuração. */
 const SHELL_TABS = {

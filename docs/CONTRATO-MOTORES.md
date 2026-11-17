@@ -82,6 +82,15 @@ Plataforma 1.5.0, Produção 2.4.82, Administração 1.9.44.
 
 Aba Linha do tempo da Produção (`docs/timeline-operacional.md`). Só leitura de `day.events` e `db.server`; não altera OEE, metas, classificação de paradas, turnos nem exports. Bloco **aditivo** na base da Produção, autorizado pela especificação: `db.timeline = { tagMap[], tagEvents[], comments{}, imports[] }` (base sem o bloco continua válida; `Model.ensure` completa). Vigência do mapa de tags segue o contrato 2 (encerra e cria outra). Comentário, importação de tags e mapa passam por `Store.mutate` (releitura, backup, fila, auditoria). Testes: `testes/ttimeline.js` e `testes/plataforma/timeline.cjs`.
 
+## Lançamento mais enxuto · Produção 2.6.3, plataforma 1.8.3 (17/11/2026)
+
+- **Scrap (total)** no topo do Lançamento (`ScrapDia`): `r.scrap` e `r.scrapPct` do cálculo (soma dos turnos ou total diário, mesmo % do card Qualidade). Sem meta de scrap na Produção: card neutro. Nada lançado: "—" (contrato 1); lançamento parcial diz qual turno falta. Entra no Editar cards.
+- **OEE do dia** (gráfico por hora) passa a constar no Editar cards (`KC.filtrar(html, extras)`, chave `KC.OEE_DIA`) e pode ser desligado; barras pelo semáforo contra a meta de OEE do dia.
+- **Turnos em resumo** (`TurnoResumo`): resumo de cada turno lado a lado (produção × meta, OEE, paradas, scrap, hora a hora); o clicado abre o cartão completo embaixo, clicar no aberto recolhe. Escolha lembrada por dia neste computador (`App.prefs.lcTurno = {date, id}`); sem escolha, abre o turno em lançamento agora ou o primeiro não fechado. Todos os cartões continuam na página (o fechado fica escondido, `section.tl.tr-oculto`); "cartão ↓" abre o turno; impressão abre tudo. Turno não produtivo com caixas segue no cartão próprio abaixo.
+- **Cartão do turno** com semáforo de três cores na barra, no % e nas metas de produção e de OEE (lacuna da 1.8.2).
+- **Aba Painel** sai da barra: desde a 2.4.31 ela abre a Visão Geral (mesma tela). `#aba=panel` e `go('panel')` continuam abrindo a Visão Geral; visões do Painel seguem dentro dela.
+- Só apresentação: números, fórmulas, metas, filtros e bases iguais. Teste: `testes/plataforma/lancamento-183.cjs`.
+
 ## Semáforo de três cores · plataforma 1.8.2, Produção 2.6.2, Waste 1.12.14 (17/11/2026)
 
 Indicador com meta segue o semáforo configurado (Produção: `settings.semaphore`, padrão verde ≥ 100 %, atenção ≥ 90 %; demais: `parametros.semaforoVerdePct/semaforoAmareloPct` via `vacSemaforo`): verde na meta, amarelo (atenção) perto dela, vermelho abaixo. Antes, gráficos e alguns cartões eram só verde/vermelho.
