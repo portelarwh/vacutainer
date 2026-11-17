@@ -82,6 +82,35 @@ Plataforma 1.5.0, Produção 2.4.82, Administração 1.9.44.
 
 Aba Linha do tempo da Produção (`docs/timeline-operacional.md`). Só leitura de `day.events` e `db.server`; não altera OEE, metas, classificação de paradas, turnos nem exports. Bloco **aditivo** na base da Produção, autorizado pela especificação: `db.timeline = { tagMap[], tagEvents[], comments{}, imports[] }` (base sem o bloco continua válida; `Model.ensure` completa). Vigência do mapa de tags segue o contrato 2 (encerra e cria outra). Comentário, importação de tags e mapa passam por `Store.mutate` (releitura, backup, fila, auditoria). Testes: `testes/ttimeline.js` e `testes/plataforma/timeline.cjs`.
 
+## Semáforo só pelas faixas configuradas · Produção 2.6.4, Waste 1.12.15, plataforma 1.8.4 (17/11/2026)
+
+Revisão do PR #98: a cor passa a sair só das faixas do semáforo (Administração › Parâmetros, copiadas para a Produção). Antes, "atingiu a meta" virava verde mesmo com o verde configurado acima de 100% (ex.: verde 110%, 105% da meta saía verde no gráfico e amarelo no cartão). Vale para `Charts.combo` (maior e menor é melhor), OEE do período, OEE do dia, resumo e cartão do turno, `BarChart` da Visão da linha e MUV do Waste (estado e tendência). Meta zero ou negativa: atingiu ou não. Com verde em 100% (padrão) nada muda. Teste: `testes/plataforma/semaforo.cjs`.
+
+## Lançamento mais enxuto · Produção 2.6.3, plataforma 1.8.3 (17/11/2026)
+
+- **Scrap (total)** no topo do Lançamento (`ScrapDia`): `r.scrap` e `r.scrapPct` do cálculo (soma dos turnos ou total diário, mesmo % do card Qualidade). Sem meta de scrap na Produção: card neutro. Nada lançado: "—" (contrato 1); lançamento parcial diz qual turno falta. Entra no Editar cards.
+- **OEE do dia** (gráfico por hora) passa a constar no Editar cards (`KC.filtrar(html, extras)`, chave `KC.OEE_DIA`) e pode ser desligado; barras pelo semáforo contra a meta de OEE do dia.
+- **Turnos em resumo** (`TurnoResumo`): resumo de cada turno lado a lado (produção × meta, OEE, paradas, scrap, hora a hora); o clicado abre o cartão completo embaixo, clicar no aberto recolhe. Escolha lembrada por dia neste computador (`App.prefs.lcTurno = {date, id}`); sem escolha, abre o turno em lançamento agora ou o primeiro não fechado. Todos os cartões continuam na página (o fechado fica escondido, `section.tl.tr-oculto`); "cartão ↓" abre o turno; impressão abre tudo. Turno não produtivo com caixas segue no cartão próprio abaixo.
+- **Cartão do turno** com semáforo de três cores na barra, no % e nas metas de produção e de OEE (lacuna da 1.8.2).
+- **Aba Painel** sai da barra: desde a 2.4.31 ela abre a Visão Geral (mesma tela). `#aba=panel` e `go('panel')` continuam abrindo a Visão Geral; visões do Painel seguem dentro dela.
+- Só apresentação: números, fórmulas, metas, filtros e bases iguais. Teste: `testes/plataforma/lancamento-183.cjs`.
+
+## Semáforo de três cores · plataforma 1.8.2, Produção 2.6.2, Waste 1.12.14 (17/11/2026)
+
+Indicador com meta segue o semáforo configurado (Produção: `settings.semaphore`, padrão verde ≥ 100 %, atenção ≥ 90 %; demais: `parametros.semaforoVerdePct/semaforoAmareloPct` via `vacSemaforo`): verde na meta, amarelo (atenção) perto dela, vermelho abaixo. Antes, gráficos e alguns cartões eram só verde/vermelho.
+
+- Produção: barras do `Charts.combo` com meta (`metaSem`, também "menor é melhor"), legenda e dica com "atenção"; número dos cartões em amarelo na atenção (`belowCls`); OEE do período (`vgl-oee`); legenda do e-mail.
+- Visão da linha: cartões OEE publicado e Produção boa (`semTone`) e gráfico por turno (`BarChart`, prop `semaforo`).
+- Waste: estado do MUV e gráfico de tendência com `vacSemaforo(..., {inverso:true})`.
+- Só cor: números, metas, fórmulas, filtros e períodos iguais. Fora, por decisão: SQDCP (verde/vermelho por contrato 6), Gel (regra própria dosagem × BOM) e medidores D/P/Q. Teste: `testes/plataforma/semaforo.cjs`.
+- Hora a hora: o bloco Produção total do turno passa a quebrar linha (`.tt-box{white-space:normal}`); antes, a tabela sem quebra deixava o campo sobre o título em 1440 px.
+
+## Ajustes de lançamento · Produção 2.6.1, plataforma 1.8.1 (17/11/2026)
+
+- Gráficos hora a hora (`hhChartOpts`, ritmo por hora e gráfico do e-mail do turno): o período de um turno lançado pelo total leva no eixo o código do turno (`snap.code`, ex.: 2T), não a hora de início; com troca de catálogo, `2T 1/2`, `2T 2/2` (`rotuloIv`).
+- Janelas da Produção: `.overlay .kv .v` e `.modal .kv .v` voltam a 15 px (a regra de KPI de `css/brand` deixava a categoria da parada com 28 px).
+- E-mail (`vacEmail.pecas.cabecalho`, comum/interface): cabeçalho claro com texto azul-marinho; ver `docs/DESIGN_SYSTEM.md` §19.
+
 ## Produção total do turno · Produção 2.6.0, plataforma 1.8.0 (17/11/2026)
 
 Para o turno sem hora a hora (sem foto do quadro, servidor fora do ar), o bloco **Produção total do turno** aparece no "Lançar meu turno" e no Hora a hora. Preencher o total bloqueia as horas; lançar uma hora bloqueia o total; apagar o total volta ao hora a hora. Com troca de catálogo, o turno é dividido em **períodos** (hora da troca, catálogo e produção de cada um, com a média por hora).

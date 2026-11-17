@@ -18,7 +18,8 @@ const errs = []; const ok = (c, m) => { console.log((c ? 'ok   ' : 'FALHA ') + m
   const copia = async () => { await p.evaluate(() => { App.rep.lastCopy = null; document.querySelector('#rpOut').click(); }); await p.waitForFunction(() => App.rep.lastCopy && App.rep.lastCopy.html, null, { timeout: 20000 }); return p.evaluate(() => App.rep.lastCopy); };
   const formato = h => /<table role="presentation" width="680"/.test(h) && !/<script|<svg|display:\s*(flex|grid)|<style/i.test(h);
   const conta = (h, t) => h.split(t).length - 1;
-  const cabecalhoBranco = h => p.evaluate(html => { const doc = new DOMParser().parseFromString(html, 'text/html'), cell = doc.querySelector('td[bgcolor="#102333"]'); return !!cell && [...cell.querySelectorAll('div')].length === 3 && [...cell.querySelectorAll('div')].every(el => el.style.color === 'rgb(255, 255, 255)' && el.querySelector('font')?.getAttribute('color') === '#FFFFFF'); }, h);
+  /* plataforma 1.8.1: cabeçalho claro (#EAF2FA) com texto azul-marinho explícito em cada linha (inline e font color), legível no Outlook novo */
+  const cabecalhoBranco = h => p.evaluate(html => { const doc = new DOMParser().parseFromString(html, 'text/html'), cell = doc.querySelector('td[bgcolor="#EAF2FA"][data-vac-cab]'), D = cell ? [...cell.querySelectorAll('div')] : [], hex = { 'rgb(16, 35, 51)': '#102333', 'rgb(61, 90, 120)': '#3D5A78' }; return !!cell && D.length === 3 && D.every(el => hex[el.style.color] && el.querySelector('font')?.getAttribute('color') === hex[el.style.color]); }, h);
 
   const print = async (h, nome) => { const q = await ctx.newPage(); await q.setViewportSize({ width: 760, height: 800 }); await q.setContent('<meta charset="utf-8"><body style="margin:0">' + h); await q.waitForTimeout(400); await q.screenshot({ path: SAI + nome + '.png', fullPage: true }); const imgs = await q.evaluate(() => [...document.images].map(i => ({ w: i.naturalWidth, h: i.naturalHeight, alt: i.alt, exib: Math.round(i.getBoundingClientRect().height) }))); await q.close(); return imgs; };
 
@@ -27,7 +28,7 @@ const errs = []; const ok = (c, m) => { console.log((c ? 'ok   ' : 'FALHA ') + m
   const N = await p.evaluate(() => { const R = App.rep, d = db(), day = d.productionDays.find(z => !z.deleted && z.date === R.date), res = Engine.computeDay(d, day), sr = res.shifts.find(s => s.ps.id === R.psId) || res.shifts[0];
     return { nome: sr.ps.snap.name, oee: U.pct(sr.r.oee), dia: U.pct(res.r.oee), good: fq(sr.r.good), goodDia: fq(res.r.good), D: U.pct(sr.r.D), P: U.pct(sr.r.P), Q: U.pct(sr.r.Q, 2), turnos: res.shifts.map(s => ({ n: s.ps.snap.name, oee: U.pct(s.r.oee), good: fq(s.r.good) })) }; });
   let c = await copia(), h = c.html; fs.writeFileSync(SAI + 'turno.html', h);
-  ok(await cabecalhoBranco(h), 'turno: cabeçalho do e-mail copiado tem branco explícito, sem depender da herança');
+  ok(await cabecalhoBranco(h), 'turno: cabeçalho claro do e-mail copiado tem a cor do texto explícita, sem depender da herança');
   ok(formato(h), 'turno: e-mail em tabelas de 680 px, sem script, SVG, flex, grid nem <style>');
   ok(h.includes('Passagem de turno · ' + N.nome) && h.includes(N.good) && h.includes(N.D) && h.includes(N.P) && h.includes(N.Q), `turno: produção ${N.good} e D/P/Q (${N.D} · ${N.P} · ${N.Q}) iguais aos do cálculo`);
   ok(new RegExp('alt="OEE reportado ' + N.nome + ': ' + N.oee.replace('.', '\\.')).test(h) && new RegExp('alt="OEE reportado acumulado do dia: ' + N.dia).test(h) && h.includes('Acumulado do dia') && h.includes(N.goodDia),
@@ -57,7 +58,7 @@ const errs = []; const ok = (c, m) => { console.log((c ? 'ok   ' : 'FALHA ') + m
 
   // ---------- dia (o e-mail da manhã seguinte)
   await abre('day'); c = await copia(); h = c.html; fs.writeFileSync(SAI + 'dia.html', h);
-  ok(await cabecalhoBranco(h), 'dia: cabeçalho também preserva branco no e-mail copiado');
+  ok(await cabecalhoBranco(h), 'dia: cabeçalho claro também preserva a cor do texto no e-mail copiado');
   ok(formato(h) && h.includes('Resumo do dia') && new RegExp('alt="OEE reportado do dia: ' + N.dia).test(h) && h.includes(N.goodDia), `dia: medidor do OEE reportado do dia (${N.dia}) e produção ${N.goodDia}`);
   ok(/Resultado por turno/.test(h) && N.turnos.every(t => h.includes('<b>' + t.n + '</b>') && h.includes(t.oee) && h.includes(t.good)), `dia: resultado por turno com os números de cada turno (${N.turnos.map(t => t.n + ' ' + t.oee).join(' · ')})`);
   ok(conta(h, 'Segurança e Qualidade') === 1 && !/Segurança e QN por turno|Gap vs meta|Período de /i.test(h) && conta(h, '>Maiores paradas<') === 1, 'dia: sem repetições (Segurança e Qualidade uma vez; sem "Gap vs meta" nem texto repetindo os cartões)');

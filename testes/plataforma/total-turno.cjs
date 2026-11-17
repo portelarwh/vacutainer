@@ -44,10 +44,12 @@ const html = fs.readFileSync(path.resolve(__dirname, '../../Plataforma.html'));
       ivs.forEach((iv, k) => { const g = k === ivs.length - 1 ? rest : Math.round(TOTAL * (iv.end - iv.start) / dur / 1000) * 1000; rest -= g; Actions.setIv(dA.id, iv.id, 'good', g); });
       const dB = __tt.dia(B), psB = dB.shifts[0], F = TotalTurno.faixa(dB, psB);
       Actions.lancarTotal(dB.id, psB.id, [{ start: F.a, end: F.b, catalogId: psB.initialCatalogId, good: TOTAL }]);
-      return { A: __tt.res(A), B: __tt.res(B), ivsB: __tt.turno(B).intervals.length, modo: __tt.turno(B).lancamento.modo, B_date: B };
+      const fl = Engine.computeDay(db(), __tt.dia(B)).flat, ps0 = __tt.turno(B);
+      return { A: __tt.res(A), B: __tt.res(B), ivsB: __tt.turno(B).intervals.length, modo: __tt.turno(B).lancamento.modo, B_date: B, eixo: hhChartOpts(fl).x, codigo: ps0.snap.code || ps0.snap.name };
     });
     assert.equal(num.modo, 'total'); assert.equal(num.ivsB, 1, 'turno pelo total vira um período');
     for (const k of ['good', 'cap', 'metaDec', 'D', 'P', 'Q', 'oee', 'oeeTarget', 'netMin', 'grossMin']) assert.equal(num.B[k], num.A[k], 'mesmo ' + k + ' que o hora a hora');
+    assert.equal(num.eixo[0], num.codigo, 'no gráfico hora a hora o turno pelo total aparece com o nome do turno, não com a hora de início');
     ok(`mesmos números do hora a hora (OEE ${(num.A.oee * 100).toFixed(1)}%, produção, capacidade, meta oficial, D, P, Q)`);
 
     // ---------- 2. Lançar meu turno ----------

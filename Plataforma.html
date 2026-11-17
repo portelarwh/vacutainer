@@ -2737,8 +2737,11 @@ const vacEmail = (() => {
   const marcadores = (L, html) => `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">${L.map(x => `<tr><td width="14" valign="top" style="${F}font-size:13px;color:#0D5E9C;padding:3px 0">&amp;bull;</td><td style="${F}font-size:13px;line-height:19px;color:${INK};padding:3px 0">${html ? x : H(x)}</td></tr>`).join('')}</table>`;
   const img = (src, alt, w = 632) => `<img src="${H(src)}" width="${w}" alt="${H(alt || '')}" style="display:block;width:${w}px;max-width:100%;height:auto;border:1px solid ${LIN}">`;
   // Outlook/Word pode redefinir a cor de cada bloco ao colar: não depender da herança do td.
-  const textoBranco = h => `<font color="#FFFFFF" style="color:#FFFFFF">${h}</font>`;
-  const cabecalho = (sistema, titulo, sub) => `<tr><td bgcolor="#102333" style="background:#102333;padding:16px 24px;${F}color:#FFFFFF"><div style="font-size:11px;letter-spacing:1px;color:#FFFFFF">${textoBranco(sistema ? 'BD &amp;middot; SISTEMAS DA LINHA VACUTAINER &amp;middot; ' + H(sistema) : 'BD &amp;middot; SISTEMAS DA LINHA VACUTAINER')}</div><div style="font-size:20px;font-weight:bold;padding-top:4px;color:#FFFFFF">${textoBranco(H(titulo || ''))}</div><div style="font-size:13px;padding-top:2px;color:#FFFFFF">${textoBranco(H(sub || ''))}</div></td></tr>`;
+  /* plataforma 1.8.1 · cabeçalho claro: o Outlook novo mantinha o fundo azul-escuro e descartava a cor branca do texto (título preto sobre
+     azul). Fundo claro + texto azul-marinho fica legível se o editor tirar a cor do texto (preto sobre claro) ou o fundo (azul-marinho sobre
+     branco). A faixa azul-marinho do topo é uma linha própria: sem ela, nada some. */
+  const textoCab = (h, cor = '#102333') => `<font color="${cor}" style="color:${cor}">${h}</font>`;
+  const cabecalho = (sistema, titulo, sub) => `<tr><td height="6" bgcolor="#102333" style="background:#102333;height:6px;font-size:1px;line-height:1px">&amp;nbsp;</td></tr><tr><td bgcolor="#EAF2FA" data-vac-cab="1" style="background:#EAF2FA;padding:14px 24px 16px;${F}color:#102333;border-bottom:1px solid ${LIN}"><div style="font-size:11px;letter-spacing:1px;color:#3D5A78">${textoCab(sistema ? 'BD &amp;middot; SISTEMAS DA LINHA VACUTAINER &amp;middot; ' + H(sistema) : 'BD &amp;middot; SISTEMAS DA LINHA VACUTAINER', '#3D5A78')}</div><div style="font-size:20px;font-weight:bold;padding-top:4px;color:#102333">${textoCab(H(titulo || ''))}</div><div style="font-size:13px;padding-top:2px;color:#3D5A78">${textoCab(H(sub || ''), '#3D5A78')}</div></td></tr>`;
   const situacao = (txt, cor, nota) => `<tr><td style="padding:14px 24px 0"><table role="presentation" cellpadding="0" cellspacing="0" border="0"><tr><td bgcolor="${cor}" style="background:${cor};padding:4px 12px;${F}font-size:12px;font-weight:bold;color:#FFFFFF">${H(txt)}</td>${nota ? `<td style="padding:4px 10px;${F}font-size:12px;color:${MUT}">${H(nota)}</td>` : ''}</tr></table></td></tr>`;
   const nota = (rot, txt) => linha(`<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-top:12px"><tr><td style="background:#EAF4FC;border-left:4px solid #0D5E9C;padding:10px 12px;${F}font-size:13px;line-height:19px;color:${INK}"><b>${H(rot)}:</b> ${H(txt).replace(/\n/g, '<br>')}</td></tr></table>`);
   const rodape = htmlTxt => `<tr><td style="padding:18px 24px 16px;${F}font-size:11px;line-height:16px;color:${MUT};border-top:1px solid ${LIN}">${htmlTxt}</td></tr>`;
@@ -6848,6 +6851,8 @@ td .bar{height:6px;background:var(--s1);border-radius:0 3px 3px 0;min-width:1px}
 #main[data-rota="config"] .kv .v{font-size:16px!important;line-height:1.35;font-weight:600}
 #main[data-rota="config"] .kv .l{font-size:12px}
 .kv input{width:100%}
+/* plataforma 1.8.1 · nas janelas, rótulo e valor em tamanho de texto (a regra de KPI grande de css/brand pegava .kv .v: categoria da parada a 28 px) */
+.overlay .kv .v,.modal .kv .v{font-size:15px;line-height:1.35}
 
 /* formulários */
 .form{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:var(--sp-8,8px) var(--sp-12,12px)}
@@ -7079,6 +7084,7 @@ table input.num{width:120px;text-align:right;padding:var(--sp-4,4px) var(--sp-8,
 .ord-t .dfield .dtxt{width:150px;font-size:12.5px;padding:3px var(--sp-24,24px) 3px var(--sp-4,4px)}
 /* valor abaixo da meta em vermelho em todos os quadros */
 .kpi .v.below,.tv .bk .v.below{color:var(--crit)}
+.kpi .v.below.bw,.tv .bk .v.below.bw{color:var(--warn)}
 .kpi.k-ok .v.below,.kpi.k-warn .v.below,.kpi.k-crit .v.below{color:var(--kc)}
 [hidden]{display:none!important}
 .dfield{width:max-content;max-width:100%;align-self:flex-start}
@@ -7118,7 +7124,7 @@ tr.lot-pend td:first-child{box-shadow:inset 3px 0 0 var(--crit)}
 /* plataforma 1.7.2: ícone de alerta no tamanho do texto pequeno (aviso de quantidade e marcador srv do hora a hora) */
 .qprev svg.vi,.srvh svg.vi{width:12px;height:12px;vertical-align:-2px;margin-top:0}
 /* 2.6.0 · Produção total do turno */
-.tt-box{display:grid;grid-template-columns:minmax(150px,auto) minmax(150px,200px) 1fr;gap:var(--sp-8,8px) var(--sp-16,16px);align-items:center;margin:var(--sp-8,8px) 0 var(--sp-12,12px);padding:var(--sp-12,12px) var(--sp-16,16px);border:1px solid var(--line);border-left:4px solid var(--accent);border-radius:10px;background:var(--surface-3,var(--surface))}
+.tt-box{display:grid;grid-template-columns:minmax(190px,max-content) minmax(150px,200px) minmax(0,1fr);white-space:normal;gap:var(--sp-8,8px) var(--sp-16,16px);align-items:center;margin:var(--sp-8,8px) 0 var(--sp-12,12px);padding:var(--sp-12,12px) var(--sp-16,16px);border:1px solid var(--line);border-left:4px solid var(--accent);border-radius:10px;background:var(--surface-3,var(--surface))}
 .tt-box .tt-l{font-weight:700;font-size:14px;letter-spacing:.02em;text-transform:uppercase}.tt-box .tt-l small{display:block;font-weight:400;color:var(--muted);font-size:12.5px;letter-spacing:0;text-transform:none}
 .tt-box .tt-in{font-size:20px;font-weight:700;text-align:right;padding:var(--sp-8,8px) var(--sp-12,12px);width:100%;box-sizing:border-box}
 .tt-box .tt-in:disabled{background:var(--surface-2,var(--surface));color:var(--muted)}
@@ -7389,7 +7395,7 @@ const U = (() => {
 
 /* ---- 02-model.js ---- */
 /* ================= modelo de dados, valores iniciais e integridade ================= */
-const APP_VERSION = '2.6.0';   /* 2.6.0 · produção total do turno (sem hora a hora; períodos na troca de catálogo), aviso do servidor para turno lançado pelo total e para dia com produção apontada */
+const APP_VERSION = '2.6.4';   /* 2.6.4 · semáforo só pelas faixas configuradas (verde acima de 100% vale) */   /* 2.6.2 · gráficos e números com meta seguem o semáforo de três cores (verde, amarelo, vermelho) */   /* 2.6.1 · gráficos: turno lançado pelo total com o nome do turno no eixo; janelas: rótulo e valor em tamanho de texto */   /* 2.6.0 · produção total do turno (sem hora a hora; períodos na troca de catálogo), aviso do servidor para turno lançado pelo total e para dia com produção apontada */
 const SCHEMA_VERSION = 1;
 const BASE_FILE = 'oee-vacutainer-base.json';
 const BACKUP_DIR = '00. Backups';
@@ -10415,11 +10421,18 @@ const Charts = (() => {
   const legendItem = (color, label, kind) => `<span><i class="${kind || ''}" style="background:${color};color:${color}"></i>${esc(label)}</span>`;
 
   /* colunas + linhas no mesmo eixo (ex.: produção × meta)
-     Série de colunas com "meta" (lista por categoria): verde quando atinge, vermelho quando fica abaixo (lowerBetter inverte).
+     Série de colunas com "meta" (lista por categoria): cor pelo semáforo da Administração (2.6.2): verde a partir do % verde da meta,
+     amarelo a partir do % amarelo, vermelho abaixo (lowerBetter inverte: meta ÷ valor).
      Valores escritos dentro da coluna, na vertical, quando cabem. "mark": faixa colorida por categoria (ex.: família produzida). */
-  const OK = 'var(--ok)', BAD = 'var(--crit)';
-  const metaHit = (b, i, v) => { const m = b.meta &amp;&amp; b.meta[i]; if (v == null || m == null || !isFinite(m)) return null; return b.lowerBetter ? v <= m + 1e-9 : v >= m - 1e-9; };
-  const barColor = (b, v, i) => { const h = metaHit(b, i, v); return h == null ? (b.colorFn ? b.colorFn(v, i) : b.color) : h ? OK : BAD; };
+  const OK = 'var(--ok)', WARN = 'var(--warn-fill, var(--warn))', BAD = 'var(--crit)';
+  const semCfg = () => { try { return (db().settings || {}).semaphore || {}; } catch (e) { return {}; } };
+  const metaSem = (b, i, v) => { const m = b.meta &amp;&amp; b.meta[i]; if (v == null || m == null || !isFinite(m)) return null;
+    /* 2.6.4 · só as faixas da Administração decidem (verde acima de 100% vale); meta zero ou negativa: atingiu ou não */
+    if (!(m > 0)) return (b.lowerBetter ? v <= m + 1e-9 : v >= m - 1e-9) ? 'ok' : 'crit';
+    if (b.lowerBetter) return v > 0 ? Engine.sem(m / v, semCfg()) : 'ok';
+    return Engine.sem(v / m, semCfg()); };
+  const metaHit = (b, i, v) => { const s = metaSem(b, i, v); return s == null ? null : s === 'ok'; };
+  const barColor = (b, v, i) => { const s = metaSem(b, i, v); return s == null ? (b.colorFn ? b.colorFn(v, i) : b.color) : s === 'ok' ? OK : s === 'warn' ? WARN : BAD; };
   function combo(o) {
     const W = o.width || curW;
     const cid = o._cid || 'c' + (++seq);
@@ -10476,7 +10489,7 @@ const Charts = (() => {
     s += '</svg>';
     reg.set(cid, { tip: i => o.tip ? o.tip(i) : defaultTip(o, i), click: o.click, xc, kind: 'combo', fn: combo, o, w: W });
     const anyMeta = (o.bars || []).some(b => b.meta);
-    const series = [...(o.bars || []).flatMap(b => b.meta ? [legendItem(OK, b.lowerBetter ? `${b.name}: dentro da meta` : `${b.name}: na meta ou acima`, 'box'), legendItem(BAD, b.lowerBetter ? 'acima da meta' : 'abaixo da meta', 'box')] : [legendItem(b.color, b.name, 'box')]), ...(o.lines || []).map(l => legendItem(l.color, l.name, l.dash ? 'dash' : ''))];
+    const series = [...(o.bars || []).flatMap(b => b.meta ? [legendItem(OK, b.lowerBetter ? `${b.name}: dentro da meta` : `${b.name}: na meta ou acima`, 'box'), legendItem(WARN, 'atenção (perto da meta)', 'box'), legendItem(BAD, b.lowerBetter ? 'acima da meta' : 'abaixo da meta', 'box')] : [legendItem(b.color, b.name, 'box')]), ...(o.lines || []).map(l => legendItem(l.color, l.name, l.dash ? 'dash' : ''))];
     if (hasMark) { const seen = new Map(); o.mark.forEach(ms => (ms || []).forEach(m => { if (!seen.has(m.label)) seen.set(m.label, m.color); })); seen.forEach((c, l) => series.push(legendItem(c, l, 'mark'))); }
     const table = o.noTable ? '' : tableHtml([o.xName || 'Categoria', ...(hasMark ? [o.markName || 'Família'] : []), ...(o.bars || []).map(b => b.name), ...(o.lines || []).map(l => l.name)], o.x.map((x, i) => [o.xFull ? o.xFull[i] : x, ...(hasMark ? [(o.mark[i] || []).map(m => m.label).join(' + ') || '—'] : []), ...(o.bars || []).map(b => b.values[i] == null ? '—' : (b.fmt || fmtY)(b.values[i], 1)), ...(o.lines || []).map(l => l.values[i] == null ? '—' : (l.fmt || fmtY)(l.values[i]))]));
     return unTag(o) + wrap(cid, s, series.length > 1 || o.forceLegend || anyMeta ? series.join('') : '', table, H);
@@ -10485,7 +10498,7 @@ const Charts = (() => {
     const fmtY = o.fmtY || compact;
     const rows = [...(o.bars || []).map(b => [barColor(b, b.values[i], i), b.name, b.values[i], b.fmt]), ...(o.lines || []).map(l => [l.color, l.name, l.values[i], l.fmt])];
     let h = `<b>${esc(o.xFull ? o.xFull[i] : o.x[i])}</b>${rows.map(([c, n, v, f]) => `<div class="tr"><span><i style="background:${c}"></i>${esc(n)}</span><span>${v == null ? '—' : esc((f || fmtY)(v))}</span></div>`).join('')}`;
-    for (const b of (o.bars || [])) { const hit = metaHit(b, i, b.values[i]); if (hit == null) continue; const d = b.values[i] - b.meta[i]; h += `<div class="tr"><span>${esc(b.name)} × meta</span><span class="${hit ? 'delta-up' : 'delta-down'}">${hit ? (b.lowerBetter ? 'dentro da meta' : 'atingiu') : (b.lowerBetter ? 'acima da meta' : 'abaixo')} (${d > 0 ? '+' : d < 0 ? '−' : ''}${esc((b.fmt || fmtY)(Math.abs(d)))})</span></div>`; }
+    for (const b of (o.bars || [])) { const sm = metaSem(b, i, b.values[i]), hit = sm == null ? null : sm === 'ok'; if (hit == null) continue; const d = b.values[i] - b.meta[i]; h += `<div class="tr"><span>${esc(b.name)} × meta</span><span class="${hit ? 'delta-up' : 'delta-down'}">${hit ? (b.lowerBetter ? 'dentro da meta' : 'atingiu') : sm === 'warn' ? 'atenção' : (b.lowerBetter ? 'acima da meta' : 'abaixo')} (${d > 0 ? '+' : d < 0 ? '−' : ''}${esc((b.fmt || fmtY)(Math.abs(d)))})</span></div>`; }
     if (o.mark &amp;&amp; o.mark[i] &amp;&amp; o.mark[i].length) h += `<div class="tr"><span>${esc(o.markName || 'Família')}</span><span>${esc(o.mark[i].map(m => m.label).join(' + '))}</span></div>`;
     if (o.tipRows) { const extra = o.tipRows(i) || []; if (extra.length) h += `<div class="tsep"></div>` + extra.map(([a, b]) => `<div class="tr"><span>${esc(a)}</span><span>${esc(b)}</span></div>`).join(''); }
     if (o.click) h += `<div class="muted small" style="margin-top:4px">${esc(o.clickHint || 'Clique para ver o detalhe do dia')}</div>`;
@@ -11006,6 +11019,8 @@ function kpiDeco(label, html, semState) {
 }
 // valor abaixo da meta: o selo do quadro indica 'atenção' ou 'abaixo' → o número fica vermelho
 const belowMeta = html => /class="sem (warn|crit)"/.test(String(html || ''));
+// 2.6.2 · classe do número do cartão pelo semáforo: vermelho abaixo, amarelo na atenção
+const belowCls = html => { const m = /class="sem (warn|crit)"/.exec(String(html || '')); return m ? ' below' + (m[1] === 'warn' ? ' bw' : '') : ''; };
 const SEM_TXT = { ok: 'Na meta', warn: 'Atenção', crit: 'Abaixo', sem: 'Sem dados' };
 function semB(state, label) { const ic = state === 'ok' ? I.check : state === 'warn' ? I.warn : state === 'crit' ? I.x : I.dash; return `<span class="sem ${state === 'sem' ? 'sem-none' : state}" title="${esc(SEM_TXT[state])}">${ic}${esc(label != null ? label : SEM_TXT[state])}</span>`; }
 const DAY_ST = { 'não iniciado': 'none', 'em lançamento': 'info', 'pendente de conferência': 'pend', 'fechado': 'ok', 'reaberto': 'warn', 'excluído': 'none' };
@@ -11095,7 +11110,7 @@ const Libs = {
 async function loadPrefs() { const p = await IDB.get('prefs'); if (p) Object.assign(App.prefs, p); try { const r = localStorage.getItem('oee-route'); if (r &amp;&amp; ROUTES.some(x => x[0] === r)) App.route = r; } catch (e) { } if (App.prefs.tabs &amp;&amp; App.prefs.tabs.start) App.route = App.prefs.tabs.start; }
 const savePrefs = U.debounce(() => { IDB.set('prefs', U.clone(App.prefs)).catch(() => { }); if (typeof vacPrefs !== 'undefined') vacPrefs.mudou(); }, 300);
 /* 2.4.72 · Fase 5: preferências de layout no arquivo da pessoa (vacPrefs do kit) */
-const PREFS_PESSOA = ['tabs', 'kcOff', 'cabFold', 'vgFold', 'lcFold', 'hhFold', 'vgGrupo', 'moreKpi', 'panel', 'panelLayout', 'showMetaCols', 'pnOeeReal', 'rpImg', 'rpSQ', 'mailLay'];
+const PREFS_PESSOA = ['tabs', 'kcOff', 'cabFold', 'vgFold', 'lcFold', 'lcTurno', 'hhFold', 'vgGrupo', 'moreKpi', 'panel', 'panelLayout', 'showMetaCols', 'pnOeeReal', 'rpImg', 'rpSQ', 'mailLay'];
 { const reg = () => { if (typeof vacPrefs !== 'undefined') vacPrefs.registrar('oee', {   /* o kit vem num <script> depois deste: registra quando a página termina de carregar */
   ler: () => { const o = {}; for (const k of PREFS_PESSOA) if (App.prefs[k] !== undefined) o[k] = App.prefs[k]; return o; },
   aplicar: o => { for (const k of PREFS_PESSOA) { if (o &amp;&amp; o[k] !== undefined) App.prefs[k] = U.clone(o[k]); else delete App.prefs[k]; } IDB.set('prefs', U.clone(App.prefs)).catch(() => { }); }
@@ -11547,10 +11562,17 @@ function dayHasDataModal(day) {
     }, { wide: true });
 }
 const locked = (day, ps) => day.status === 'fechado' || (ps &amp;&amp; ps.status === 'fechado');
+/* 2.6.1 · nos gráficos, o período de um turno lançado pelo total leva o nome curto do turno (ex.: 2T), não a hora de início (14:30);
+   com troca de catálogo, numera os períodos (2T 1/2, 2T 2/2) */
+function rotuloIv(f, flat) {
+  const ps = f.ps; if (!(ps &amp;&amp; ps.lancamento &amp;&amp; ps.lancamento.modo === 'total')) return U.hhmm(f.iv.start);
+  const L = (flat || []).filter(x => x.ps === ps), k = L.indexOf(f), nome = (ps.snap &amp;&amp; (ps.snap.code || ps.snap.name)) || '';
+  return L.length > 1 ? `${nome} ${k + 1}/${L.length}` : nome;
+}
 // gráfico do hora a hora: coluna verde quando a hora atinge a meta, vermelha quando fica abaixo; família e catálogo na marca e na dica
 function hhChartOpts(fl, height) {
   const famOf = f => { const c = db().catalogs.find(x => x.id === f.cat), fm = c &amp;&amp; db().families.find(x => x.id === c.familyId); return fm ? [{ color: fm.color || 'var(--muted)', label: fm.code }] : []; };
-  return { x: fl.map(f => U.hhmm(f.iv.start)), xFull: fl.map(f => `${U.range(f.iv.start, f.iv.end)} · ${f.ps.snap.name}`), xName: 'Intervalo', bars: [{ name: 'Produção boa', values: fl.map(f => f.good), color: 'var(--s1)', meta: fl.map(f => f.metaOp > 0 ? f.metaOp : null) }], lines: [{ name: 'Meta', values: fl.map(f => f.metaOp > 0 ? f.metaOp : null), color: 'var(--ink)', width: 1.5, dash: true, dots: false }], unit: qUn, fmtY: v => fq(v), height, mark: fl.map(famOf), markName: 'Família',
+  return { x: fl.map(f => rotuloIv(f, fl)), xFull: fl.map(f => `${U.range(f.iv.start, f.iv.end)} · ${f.ps.snap.name}`), xName: 'Intervalo', bars: [{ name: 'Produção boa', values: fl.map(f => f.good), color: 'var(--s1)', meta: fl.map(f => f.metaOp > 0 ? f.metaOp : null) }], lines: [{ name: 'Meta', values: fl.map(f => f.metaOp > 0 ? f.metaOp : null), color: 'var(--ink)', width: 1.5, dash: true, dots: false }], unit: qUn, fmtY: v => fq(v), height, mark: fl.map(famOf), markName: 'Família',
     tipRows: i => { const f = fl[i]; const r = [['Catálogo', catName(f.cat)], ['Acumulado do dia', `${fq(f.cumGood)} / meta ${fq(f.cumMetaAdj)}`]]; if (f.a + f.p) r.push(['Paradas na hora', U.fmt(f.a + f.p) + ' min']); if (f.deduct) r.push(['Abono / pausa', U.fmt(f.deduct) + ' min']); if (f.iv.note) r.push(['Obs.', f.iv.note]); return r; }, empty: 'Sem hora a hora.' };
 }
 function msgList(msgs, max = 40) {
@@ -11662,11 +11684,13 @@ App.views.launch = {
       ${kpi('Qualidade', r.Q == null ? '—' : U.pct(r.Q, 2), '', `scrap ${U.fmt(r.scrap)} un · ${U.pct(r.scrapPct, 2)}`)}
       ${kpi('Capacidade planejada', fq(r.cap), unitLbl(), `${U.fmt(r.netMin)} min líquidos`)}
       ${kpi('Meta diária oficial', fq(res.officialDaily), unitLbl(), res.comp ? (res.comp.applied ? `ajuste última hora ${fqs(res.comp.adjust)}` : '<span class="ferr">compensação inválida</span>') : '')}
+      ${ScrapDia.kpi(day, res)}
       ${OeeReal.kpis(day, res)}${MesDia.kpiDia(day)}
-    </div>`);
+    </div>`, [KC.OEE_DIA]);
     h += LancUI.bloco(day, res);   /* 2.4.47 · layout novo (antes: SrvUI.dayCard + ForaTurnoUI.card) */
     h += GelDia.card(day, res);   /* 2.4.29 · GEL-04 */
     // turnos
+    h += TurnoResumo.faixa(day, res);   /* 2.6.3 · turnos em resumo; o clicado abre o detalhe */
     { const np = OeeReal.cardsNP(day, res); h += `<div class="section tl-list">${res.shifts.map(sr => TurnoUI.bloco(day, sr, res)).join('')}${np ? `<div class="grid g2">${np}</div>` : ''}</div>`; }
     h += `<section class="card section"><header><h3>Validação</h3>${errs ? semB('crit', errs + ' erro(s)') : semB('ok', 'sem erros')} ${alerts ? semB('warn', alerts + ' alerta(s)') : ''}</header>${msgList(res.msgs)}</section>`;
     h += `<div class="section">${oeePanel(r, 'Cascata de perdas do dia')}</div><div class="section">${qaPanel(r)}</div>`;
@@ -11675,11 +11699,13 @@ App.views.launch = {
   mount(root) {
     { const cf = root.querySelector('#cabTg'); if (cf) cf.onclick = () => { App.prefs.cabFold = !App.prefs.cabFold; savePrefs(); render(); }; }
     root.querySelectorAll('[data-ir-turno]').forEach(b => b.onclick = () => { const s = root.querySelector('section.tl[data-tl="' + CSS.escape(b.dataset.irTurno) + '"]'); if (!s) return;
+      if (s.classList.contains('tr-oculto')) { const d0 = curDay(); if (d0) TurnoResumo.abrir(root, d0, b.dataset.irTurno); }
       /* dentro da plataforma o quadro tem a altura do conteúdo: quem rola é a janela de fora */
       const fe = window.__vacEmbedded &amp;&amp; window.frameElement; if (fe) { const y = fe.getBoundingClientRect().top + s.getBoundingClientRect().top + parent.scrollY - 90; parent.scrollTo({ top: Math.max(0, y), behavior: 'smooth' }); } else s.scrollIntoView({ behavior: 'smooth', block: 'start' }); });
     { const mb = root.querySelector('#dayMetas'); if (mb) mb.onclick = () => metasModal(); const kc = root.querySelector('#kcEdit'); if (kc) kc.onclick = () => KC.editar(); }
     bindDayBar(root); bindNoDay(root);
     const day = curDay(); if (!day || Engine.isOffDay(db(), day)) return;
+    TurnoResumo.ligar(root, day);
     SrvUI.bindDay(root, day); ForaTurnoUI.mount(root, day); GelTurno.mount(root, day, Engine.computeDay(db(), day)); TurnoCard.ligar(root, day); LancV2.montar(root, day);
     root.querySelectorAll('[data-dayf]').forEach(el => el.addEventListener('change', () => run(() => Actions.setDayField(day.id, el.dataset.dayf, el.value.trim()))));
     root.querySelectorAll('[data-scrapmode]').forEach(b => b.addEventListener('click', async () => {
@@ -11711,7 +11737,7 @@ App.views.launch = {
   }
 };
 const KPI_HELP = { 'Confiabilidade do OEE': 'oeeReliab', 'Perda não explicada': 'unexplained', 'OEE do período': 'oee', 'Atendimento à meta': 'attain', 'Atendimento ao plano inicial': 'plan', 'Realizado × plano do mês': 'plan', 'Plano do mês': 'plan', 'Realizado no mês': 'plan', 'Ritmo do plano': 'plan', 'Necessidade por dia': 'plan', 'Projeção do mês': 'plan', 'Dias': 'planCal', 'Produção boa': 'production', 'OEE realizado': 'oee', 'OEE': 'oee', 'OEE meta (ponderada)': 'oeeTarget', 'Meta ponderada': 'oeeTarget', 'Disponibilidade': 'D', 'Performance': 'P', 'Qualidade': 'Q', 'Capacidade planejada': 'capacity', 'Capacidade': 'capacity', 'Meta diária oficial': 'metaDaily', 'Atendimento ao plano': 'attain', 'Atendimento': 'attain', 'Scrap': 'scrap', 'Cobertura do apontamento': 'coverage', 'Perdas': 'coverage', 'Perda total apurada': 'coverage', 'Cobertura': 'coverage', 'Divergência': 'divergenceMax' };
-function kpi(l, v, unit, s, extra = '') { const kd = kpiDeco(l, s); return `<div class="kpi ${kd.cls}" ${extra}>${kd.icon}<span class="l">${esc(l)}${ib(KPI_HELP[l])}</span><span class="v${belowMeta(s) ? ' below' : ''}">${v}${unit ? `<small>${esc(unit)}</small>` : ''}</span><span class="s">${s || ''}</span></div>`; }
+function kpi(l, v, unit, s, extra = '') { const kd = kpiDeco(l, s); return `<div class="kpi ${kd.cls}" ${extra}>${kd.icon}<span class="l">${esc(l)}${ib(KPI_HELP[l])}</span><span class="v${belowCls(s)}">${v}${unit ? `<small>${esc(unit)}</small>` : ''}</span><span class="s">${s || ''}</span></div>`; }
 function shiftBlock(day, sr, res) {
   const ps = sr.ps, r = sr.r, lk = locked(day, ps);
   const cats = db().catalogs.filter(c => c.active !== false &amp;&amp; Engine.catalogValid(c, day.date));
@@ -12014,7 +12040,7 @@ const A = {
     const d = (val != null &amp;&amp; o.prev != null) ? val - o.prev : null;
     const good = d == null ? null : (o.higher === false ? d < 0 : d > 0);
     const dTxt = d == null ? '' : `<span class="${Math.abs(d) < 1e-12 ? '' : good ? 'delta-up' : 'delta-down'}" title="vs período anterior equivalente">${d > 0 ? '▲' : d < 0 ? '▼' : '■'} ${o.pct ? U.pp(d) : (o.fmtDelta || fmtv)(Math.abs(d))}</span>`;
-    const kd = kpiDeco(label, o.sub, o.semState); return `<div class="kpi ${kd.cls} ${o.click ? 'clickable' : ''}" ${o.click ? `data-kclick="${o.click}"` : ''}>${kd.icon}<span class="l">${esc(label)}${ib(KPI_HELP[label])}</span><span class="v${o.semState === 'warn' || o.semState === 'crit' || belowMeta(o.sub) ? ' below' : ''}">${val == null ? '—' : fmtv(val)}${o.unit ? `<small>${esc(o.unit)}</small>` : ''}</span>
+    const kd = kpiDeco(label, o.sub, o.semState); return `<div class="kpi ${kd.cls} ${o.click ? 'clickable' : ''}" ${o.click ? `data-kclick="${o.click}"` : ''}>${kd.icon}<span class="l">${esc(label)}${ib(KPI_HELP[label])}</span><span class="v${o.semState === 'crit' ? ' below' : o.semState === 'warn' ? ' below bw' : belowCls(o.sub)}">${val == null ? '—' : fmtv(val)}${o.unit ? `<small>${esc(o.unit)}</small>` : ''}</span>
       <span class="s">${o.meta != null ? `meta <b>${fmtv(o.meta)}</b> ${o.semState ? semB(o.semState, '') : ''}` : ''}${dTxt}</span>
       ${o.best != null || o.worst != null ? `<span class="s">melhor <b>${o.best == null ? '—' : fmtv(o.best)}</b> · pior <b>${o.worst == null ? '—' : fmtv(o.worst)}</b></span>` : ''}
       ${o.series ? Charts.spark(o.series, 'var(--s1)') : ''}${o.sub ? `<span class="s">${o.sub}</span>` : ''}</div>`;
@@ -13090,7 +13116,7 @@ const TV = {
     const now = new Date(), nm = opNowMin(day.date, 99999);
     const done = res.flat.filter(f => f.iv.end <= nm || f.good != null);
     const metaNow = U.sum(done, f => f.metaOp), att = metaNow ? r.good / metaNow : null;
-    const bk = (l, v, s, state, small) => `<div class="bk"><div class="l">${esc(l)}</div><div class="v${small ? ' sm' : ''}${state === 'warn' || state === 'crit' ? ' below' : ''}">${v}</div><div class="s">${s}</div>${state ? `<div class="s">${semB(state)}</div>` : ''}</div>`;
+    const bk = (l, v, s, state, small) => `<div class="bk"><div class="l">${esc(l)}</div><div class="v${small ? ' sm' : ''}${state === 'crit' ? ' below' : state === 'warn' ? ' below bw' : ''}">${v}</div><div class="s">${s}</div>${state ? `<div class="s">${semB(state)}</div>` : ''}</div>`;
     const evs = Engine.eventsIn(db(), [day]).filter(e => e.bucket !== 'deduct').sort((a, b) => b.minutes - a.minutes).slice(0, 5);
     return `<div class="big">${bk('Produção boa', fq(r.good), `meta até agora ${fq(metaNow)} · dia ${fq(res.officialDaily)} ${esc(unitLbl())}`, Engine.sem(att, st.semaphore))}${bk('OEE', U.pct(r.oee), 'meta ' + U.pct(r.oeeTarget), r.semOee)}${bk('Atendimento', U.pct(att, 0), 'produção ÷ meta acumulada', Engine.sem(att, st.semaphore))}${bk('D · P · Q', `${U.pct(r.D, 0)}<span style="font-size:.5em"> · </span>${U.pct(r.P, 0)}<span style="font-size:.5em"> · </span>${r.Q == null ? '—' : U.pct(r.Q, 0)}`, 'Disponibilidade · Performance · Qualidade', null, true)}</div>
       <div class="grid g2" style="flex:1;min-height:0"><div class="bk">${Charts.combo({ ...HHComum.dia(day, res, '', 300), noTable: true })}</div>
@@ -13609,7 +13635,7 @@ function orderedRoutes() {
   const pos = k => { const i = o.indexOf(k); return i < 0 ? 1000 + ROUTES.findIndex(r => r[0] === k) : i; };
   return ROUTES.slice().sort((a, b) => pos(a[0]) - pos(b[0]));
 }
-function visibleRoutes() { const p = App.prefs.tabs || {}; const hid = new Set(p.hidden || []); return orderedRoutes().filter(([k]) => k === 'config' || (!hid.has(k) &amp;&amp; tabState(k).state !== 'oculta')); }
+function visibleRoutes() { const p = App.prefs.tabs || {}; const hid = new Set(p.hidden || []); return orderedRoutes().filter(([k]) => k !== 'panel' &amp;&amp; (k === 'config' || (!hid.has(k) &amp;&amp; tabState(k).state !== 'oculta'))); }   /* 2.6.3 · Painel = Visão Geral (2.4.31): sem aba repetida */
 const textOn = hex => { const h = String(hex || '').replace('#', ''); if (h.length < 6) return '#fff'; const r = parseInt(h.slice(0, 2), 16), g = parseInt(h.slice(2, 4), 16), b = parseInt(h.slice(4, 6), 16); return (r * 299 + g * 587 + b * 114) / 1000 > 150 ? '#111' : '#fff'; };
 function tabLabel(k, l) {
   const hl = (App.prefs.tabs || {}).hl || {}; const st = tabState(k).state;
@@ -14777,7 +14803,7 @@ function pnKpi(key) {
 }
 function pnAllKpis() { return Object.keys(PN_K).concat(db().families.filter(f => !f.deleted).map(f => 'fam:' + f.id)); }
 function pnKpiHtml(x, keys) {
-  const tiles = keys.map(k => { const K = pnKpi(k); if (!K) return ''; let o; try { o = K.c(x); } catch (e) { console.error(e); o = { v: '—', s: 'erro ao calcular' }; } return `<div class="kpi"><span class="l">${esc(K.l)}${ib(KPI_HELP[K.l])}</span><span class="v${belowMeta(o.s) ? ' below' : ''}">${o.v}${o.u ? `<small>${esc(o.u)}</small>` : ''}</span>${o.s ? `<span class="s">${o.s}</span>` : ''}${o.d ? `<span class="s">${o.d}</span>` : ''}</div>`; }).join('');
+  const tiles = keys.map(k => { const K = pnKpi(k); if (!K) return ''; let o; try { o = K.c(x); } catch (e) { console.error(e); o = { v: '—', s: 'erro ao calcular' }; } return `<div class="kpi"><span class="l">${esc(K.l)}${ib(KPI_HELP[K.l])}</span><span class="v${belowCls(o.s)}">${o.v}${o.u ? `<small>${esc(o.u)}</small>` : ''}</span>${o.s ? `<span class="s">${o.s}</span>` : ''}${o.d ? `<span class="s">${o.d}</span>` : ''}</div>`; }).join('');
   return tiles ? `<div class="kpis pn-kpis">${tiles}</div>` : '';
 }
 
@@ -15121,7 +15147,7 @@ function rpDocHtml(M, sum, note) {
   return `<header class="rp-head">${logo ? `<img src="${esc(logo)}" alt="" class="rp-logo">` : ''}<div><h2>${esc(M.title)}</h2><p class="muted">${M.sub || ''}</p></div><p class="small muted rp-gen">${esc(db().settings.sector || 'Vacutainer')} · gerado em ${U.brDT(U.nowIso())} por ${esc(Store.S.user || '—')}</p></header>
     <div class="rp-note" ${note &amp;&amp; note.trim() ? '' : 'hidden'}>${rpParas(note)}</div>
     <div class="rp-sum">${rpParas(sum)}</div>
-    ${M.kpis.length ? `<div class="kpis rp-kpis">${M.kpis.map(k => `<div class="kpi"><span class="l">${esc(k.l)}</span><span class="v${belowMeta(k.s) ? ' below' : ''}">${k.v}${k.u ? `<small>${esc(k.u)}</small>` : ''}</span>${k.s ? `<span class="s">${k.s}</span>` : ''}${k.dl ? `<span class="s">${k.dl}</span>` : ''}</div>`).join('')}</div>` : ''}
+    ${M.kpis.length ? `<div class="kpis rp-kpis">${M.kpis.map(k => `<div class="kpi"><span class="l">${esc(k.l)}</span><span class="v${belowCls(k.s)}">${k.v}${k.u ? `<small>${esc(k.u)}</small>` : ''}</span>${k.s ? `<span class="s">${k.s}</span>` : ''}${k.dl ? `<span class="s">${k.dl}</span>` : ''}</div>`).join('')}</div>` : ''}
     <div class="pn-grid">${M.blocks.map((b, i) => `<section class="card pn-blk ${b.w === 'f' ? 'full' : ''}" data-rpb="${i}"><header><h3>${esc(b.l)}</h3></header>${b.html}</section>`).join('')}</div>`;
 }
 
@@ -16519,14 +16545,78 @@ const OeeReal = {
     }).join('');
   }
 };
+/* ===== Produção 2.6.3 · plataforma 1.8.3 =====
+   ScrapDia: card "Scrap (total)" no topo do Lançamento. Mesmo número do cálculo (r.scrap, soma dos turnos ou total diário) e o mesmo %
+   do card Qualidade (r.scrapPct). Sem meta de scrap na Produção: card neutro. Nada lançado: "—", nunca zero (contrato 1).
+   TurnoResumo: os turnos em resumo, lado a lado; o clicado abre o detalhe (o cartão de hoje) na largura toda. Todos os cartões
+   continuam na página (o fechado só fica escondido). Aberto: o escolhido no dia (App.prefs.lcTurno, neste computador) ou, sem escolha,
+   o turno em lançamento agora / o primeiro não fechado. Impressão: tudo aberto. ===== */
+const ScrapDia = {
+  conhecido(day) { if (day.scrapMode === 'day') return day.scrapDay != null ? 'tudo' : '';
+    const P = (day.shifts || []).filter(p => !p.off), I = P.filter(p => p.scrap != null || (p.summary &amp;&amp; (p.summary.segments || []).some(x => x.scrap != null)));
+    return !I.length ? '' : I.length === P.length ? 'tudo' : 'parte'; },
+  kpi(day, res) {
+    const r = res.r || {}, k = this.conhecido(day);
+    if (!k) return kpi('Scrap (total)', '—', '', 'nenhum scrap lançado no dia');
+    const falta = k === 'parte' ? (day.shifts || []).filter(p => !p.off &amp;&amp; p.scrap == null &amp;&amp; !p.summary).map(p => p.snap.name) : [];
+    return kpi('Scrap (total)', U.fmt(r.scrap), 'peças', `${U.pct(r.scrapPct, 2)} da produção${day.scrapMode === 'day' ? ' · total diário' : ''}${falta.length ? ` · <span class="ferr">falta ${esc(falta.join(', '))}</span>` : ''}`);
+  }
+};
+Object.assign(KPI_HELP, { 'Scrap (total)': 'scrapTotalDia' });
+const TurnoResumo = {
+  sem(v) { return v == null || !isFinite(v) ? null : Engine.sem(v, (db().settings || {}).semaphore || {}); },
+  auto(day, res) {
+    const L = res.shifts.filter(sr => !sr.ps.off &amp;&amp; !sr.ps.summary), nm = opNowMin(day.date);
+    const ivs = sr => (res.flat || []).filter(f => f.ps === sr.ps), agora = nm != null &amp;&amp; L.find(sr => { const F = ivs(sr); return sr.ps.status !== 'fechado' &amp;&amp; F.length &amp;&amp; nm >= F[0].iv.start &amp;&amp; nm < F[F.length - 1].iv.end; });
+    const x = agora || L.find(sr => sr.ps.status !== 'fechado') || null; return x ? x.ps.id : null;
+  },
+  aberto(day, res) { const P = App.prefs.lcTurno; if (P &amp;&amp; P.date === day.date &amp;&amp; (P.id === '' || res.shifts.some(sr => sr.ps.id === P.id))) return P.id || null; return this.auto(day, res); },
+  escolher(day, id) { App.prefs.lcTurno = { date: day.date, id: id || '' }; try { savePrefs(); } catch (e) { } },
+  cartao(day, sr, res, on) {
+    const ps = sr.ps, r = sr.r || {}, meta = r.metaOp;
+    let dentro = r.good; try { dentro = r.good - TurnoCard.real(day, sr, res).fora; } catch (e) { }
+    const pc = meta > 0 &amp;&amp; dentro != null ? dentro / meta : null, st = pc == null ? '' : this.sem(pc) || '';
+    const so = r.oeeTarget == null || r.oee == null ? '' : r.oeeTarget > 0 ? this.sem(r.oee / r.oeeTarget) || '' : r.oee >= r.oeeTarget ? 'ok' : 'crit';
+    const [f, n] = ps.summary ? [0, 0] : HHPs.fill(ps), tot = typeof TotalTurno !== 'undefined' &amp;&amp; TotalTurno.ehTotal(ps);
+    const scr = day.scrapMode === 'day' ? 'rateado' : ps.scrap == null ? '<span class="tr-pend">não informado</span>' : U.fmt(ps.scrap);
+    const est = ps.status === 'fechado' ? 'fe' : /pendente/.test(ps.status || '') ? 'pe' : '';
+    return `<button type="button" class="tr-c${on ? ' on' : ''}${ps.off ? ' off' : ''}" data-trturno="${esc(ps.id)}" aria-expanded="${on}" aria-controls="tl-${esc(ps.id)}" title="${on ? 'Recolher o detalhe deste turno' : 'Abrir o detalhe deste turno'}">
+      <span class="tr-hd"><b>${esc(ps.snap.name)}</b><span class="tr-hr">${esc(ps.snap.start || '')}–${ps.snap.end ? U.hhmm(U.toMin(ps.snap.end)) : ''}</span><span class="tr-sp"></span><span class="tr-st ${est}">${esc(ps.status || '—')}</span></span>
+      ${ps.off ? `<span class="tr-big"><b>—</b> <span class="tr-mut">turno sem produção</span></span><span class="tr-bar"><i style="width:0"></i></span>`
+        : `<span class="tr-big"><b>${fq(dentro)}</b> ${esc(unitLbl())} ${pc == null ? '<span class="tr-mut">sem meta</span>' : `<span class="tr-pc ${st}"><b>${U.pct(pc, 0)}</b> da meta ${fq(meta)}</span>`}</span>
+      <span class="tr-bar" aria-hidden="true"><i class="${st}" style="width:${pc == null ? 0 : Math.min(100, pc * 100).toFixed(1)}%"></i></span>`}
+      <span class="tr-k"><span>OEE<b class="${so}">${r.oee == null ? '—' : U.pct(r.oee)}</b></span><span>Paradas<b>${U.fmt((r.aMin || 0) + (r.pMin || 0))} min</b></span><span>Scrap<b>${scr}</b></span></span>
+      <span class="tr-ft">${ps.summary ? 'Lançado pelo resumo' : tot ? 'Lançado pelo total' : `Hora a hora ${f}/${n}`}<span class="tr-sp"></span><span class="tr-ab">${on ? '▴ recolher' : '▾ abrir'}</span></span></button>`;
+  },
+  faixa(day, res) {
+    if (res.shifts.length < 2) return '';
+    const a = this.aberto(day, res);
+    return `<div class="section tr-faixa" role="group" aria-label="Turnos do dia em resumo">${res.shifts.map(sr => this.cartao(day, sr, res, sr.ps.id === a)).join('')}</div>`;
+  },
+  aplicar(root, day) {
+    const fx = root.querySelector('.tr-faixa'); if (!fx) return;
+    const res = Engine.computeDay(db(), day), a = this.aberto(day, res);
+    root.querySelectorAll('section.tl[data-tl]').forEach(s => { s.id = 'tl-' + s.dataset.tl; s.classList.toggle('tr-oculto', s.dataset.tl !== a); });
+    fx.querySelectorAll('[data-trturno]').forEach(b => { const on = b.dataset.trturno === a; b.classList.toggle('on', on); b.setAttribute('aria-expanded', String(on)); const t = b.querySelector('.tr-ab'); if (t) t.textContent = on ? '▴ recolher' : '▾ abrir'; b.title = on ? 'Recolher o detalhe deste turno' : 'Abrir o detalhe deste turno'; });
+  },
+  abrir(root, day, id) { this.escolher(day, id); this.aplicar(root, day); },
+  ligar(root, day) {
+    root.querySelectorAll('[data-trturno]').forEach(b => b.onclick = () => { const res = Engine.computeDay(db(), day); this.abrir(root, day, this.aberto(day, res) === b.dataset.trturno ? '' : b.dataset.trturno); });
+    this.aplicar(root, day);
+  }
+};
+Object.assign(HELP, { scrapTotalDia: ['Scrap (total)', [['O que mostra?', 'O scrap do dia: a soma do scrap lançado nos turnos (ou o total diário, quando o scrap é lançado por dia). O % é o mesmo do card Qualidade.'], ['E sem lançamento?', 'Mostra "—": scrap não lançado não vira zero. Se só parte dos turnos lançou, o card diz qual falta.'], ['Tem meta?', 'Não. A Produção não tem meta de scrap; por isso o card não tem cor de semáforo.']]] });
 /* ---------- editor de cartões (faixa de indicadores do Lançamento; preferência deste computador) ---------- */
 const KC = {
   chave(el) { if (el.classList.contains('kpi-cat')) return 'Catálogo'; const l = el.querySelector('.l'); if (!l) return ''; const c = l.cloneNode(true); c.querySelectorAll('.ib,button').forEach(b => b.remove()); return c.textContent.trim(); },
   off() { const L = App.prefs.kcOff; return Array.isArray(L) ? L : []; },
-  filtrar(html) {
+  /* 1.8.3 · o gráfico "OEE do dia" entra depois (LancV2.kpis); vem como extra para aparecer na lista e poder ser desligado */
+  OEE_DIA: 'OEE do dia (evolução por hora)',
+  filtrar(html, extras = []) {
     const t = document.createElement('template'); t.innerHTML = html; const box = t.content.querySelector('.kpis'); if (!box) return html;
     const off = new Set(this.off()), todos = [];
     [...box.children].forEach(el => { if (!el.classList.contains('kpi')) return; const k = this.chave(el); if (!k) return; todos.push(k); if (off.has(k)) el.remove(); });
+    for (const k of extras) if (!todos.includes(k)) todos.push(k);
     KC.ultimos = todos; return t.innerHTML;
   },
   editar() {
@@ -17074,7 +17164,20 @@ button[data-scrapturno]{background:var(--crit-fill,#C62828);border-color:var(--c
 .tl .tl-dpq span{white-space:nowrap}
 .tl .tl-a{font-size:13px;color:var(--t-mute);font-variant-numeric:tabular-nums}
 .tl .tl-okt{color:var(--t-ok-ink);font-weight:600;font-size:13.5px;display:inline-flex;gap:4px;align-items:center}
-.tl .tl-bad{color:var(--crit);font-weight:600;font-size:13.5px}
+.tl .tl-bad{color:var(--crit);font-weight:600;font-size:13.5px}.tl .tl-warnt{color:var(--warn);font-weight:600;font-size:13.5px}
+.tl .tl-tr i.warn{background:var(--warn-fill, var(--warn))}.tl .tl-tr i.crit{background:var(--crit)}.tl .tl-pct.warn{color:var(--warn)}.tl .tl-pct.crit{color:var(--crit)}
+/* 2.6.3 · turnos em resumo, lado a lado; o aberto mostra o cartão completo embaixo */
+.tr-faixa{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:var(--sp-16,16px)}
+.tr-c{all:unset;box-sizing:border-box;cursor:pointer;display:flex;flex-direction:column;gap:var(--sp-8,8px);padding:var(--sp-16,16px);border:1px solid var(--line);border-radius:14px;background:var(--surface);color:var(--ink,var(--text));font:inherit;min-width:0}
+.tr-c:hover{border-color:var(--accent)}.tr-c:focus-visible{outline:3px solid var(--accent);outline-offset:2px}.tr-c.on{border:2px solid var(--accent);padding:calc(var(--sp-16,16px) - 1px)}.tr-c.off{opacity:.8}
+.tr-hd{display:flex;align-items:center;gap:var(--sp-8,8px);min-width:0}.tr-hd b{font-size:17px;letter-spacing:.02em;text-transform:uppercase;white-space:nowrap}.tr-hr{color:var(--muted);font-size:13px;white-space:nowrap}.tr-sp{flex:1}
+.tr-st{font-size:11px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;padding:2px var(--sp-8,8px);border-radius:999px;background:var(--accent-soft,var(--surface-2));color:var(--accent);white-space:nowrap}.tr-st.fe{background:var(--t-ok-soft,var(--surface-2));color:var(--t-ok-ink,var(--ok))}.tr-st.pe{background:var(--t-warn-soft,var(--surface-2));color:var(--t-warn-ink,var(--warn))}
+.tr-big{font-size:14px;color:var(--muted)}.tr-big b{font-size:28px;color:var(--ink,var(--text));font-variant-numeric:tabular-nums}.tr-pc b{font-size:16px;color:inherit}.tr-pc.ok{color:var(--ok)}.tr-pc.warn{color:var(--warn)}.tr-pc.crit{color:var(--crit)}.tr-mut{color:var(--muted)}
+.tr-bar{display:block;height:8px;border-radius:999px;background:var(--surface-2,var(--line));overflow:hidden}.tr-bar i{display:block;height:100%;border-radius:999px;background:var(--accent)}.tr-bar i.ok{background:var(--ok)}.tr-bar i.warn{background:var(--warn-fill, var(--warn))}.tr-bar i.crit{background:var(--crit)}
+.tr-k{display:grid;grid-template-columns:repeat(3,1fr);gap:var(--sp-4,4px);font-size:12px;color:var(--muted)}.tr-k b{display:block;font-size:15px;color:var(--ink,var(--text));font-variant-numeric:tabular-nums}.tr-k b.ok{color:var(--ok)}.tr-k b.warn{color:var(--warn)}.tr-k b.crit{color:var(--crit)}.tr-pend{color:var(--warn);font-weight:600;font-size:13px}
+.tr-ft{display:flex;gap:var(--sp-8,8px);font-size:12px;color:var(--muted)}.tr-ab{color:var(--accent);font-weight:700}
+section.tl.tr-oculto{display:none}
+@media print{.tr-faixa{display:none}section.tl.tr-oculto{display:block}}
 .tl .tl-pend{display:inline-flex;align-items:center;gap:6px;padding:2px 10px;border-radius:999px;background:var(--t-warn-soft);color:var(--t-warn-ink);font-weight:600;font-size:13px;width:max-content}
 .tl select,.tl .tl-in{min-height:42px;border-radius:8px}
 .tl .tl-b select,.tl .tl-b .tl-in{width:100%;font-weight:600;font-size:15px}
@@ -17125,6 +17228,9 @@ button[data-scrapturno]{background:var(--crit-fill,#C62828);border-color:var(--c
     const cats = db().catalogs.filter(c => c.active !== false &amp;&amp; Engine.catalogValid(c, day.date)), prod = catsDoTurno(res, ps);
     const w = OeeReal.janelaPs(ps), mx = w ? OeeReal.mes(db(), day, w[0], w[1]) : null, fb = retorno(day, ps, dentro, meta);
     const okP = meta > 0 &amp;&amp; dentro >= meta, pc = meta > 0 ? dentro / meta : null;
+    /* 2.6.3 · semáforo de três cores: verde na meta, amarelo perto, vermelho abaixo (faixas da Administração) */
+    const semT = v => v == null || !isFinite(v) ? '' : Engine.sem(v, (db().settings || {}).semaphore || {}) || '', stP = semT(pc);
+    const metaTxt = (v, txt) => { const t = semT(v); return t === 'ok' ? `<span class="tl-okt">${ic('check', 15)} ${txt}</span>` : t === 'warn' ? `<span class="tl-warnt">${txt}</span>` : `<span class="tl-bad">${txt}</span>`; };
     const hh = it => `${U.hhmm(it.t0 % 1440)} – ${U.hhmm(it.t1 % 1440)}${it.data !== day.date ? ' de ' + U.brDate(it.data).slice(0, 5) : ''}`;
     const scr = day.scrapMode === 'day' ? `<span class="tl-v sm">${U.fmt(r.scrap)} <small>peças</small></span><span class="tl-a">rateado do total diário</span>`
       : `${ps.scrap == null ? '<span class="tl-pend">● Não informado</span>' : `<span class="tl-v sm">${U.fmt(ps.scrap)} <small>peças</small></span><span class="tl-a">${U.pct(r.scrapPct, 2)} · ${ps.scrapMaq ? 'por máquina' : 'só o total'}${TurnoCard.gelTxt(day, sr, res)}</span>`}
@@ -17147,10 +17253,10 @@ button[data-scrapturno]{background:var(--crit-fill,#C62828);border-color:var(--c
     <div>
       <span class="tl-l">Produção dentro do turno ${tip('prodDentro')}</span>
       <div class="tl-big${okP ? ' ok' : ''}">${fq(dentro)} <small style="font-size:24px">${unitLbl()}</small></div>
-      <div class="tl-bar" role="progressbar" aria-label="Produção dentro do turno em relação à meta" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${pc == null ? 0 : Math.round(Math.min(1, pc) * 100)}"><span class="tl-tr"><i class="${okP ? 'ok' : ''}" style="width:${pc == null ? 0 : Math.min(100, pc * 100).toFixed(1)}%"></i></span><b class="tl-pct${okP ? ' ok' : ''}">${pc == null ? '—' : U.pct(pc, 0)}</b></div>
+      <div class="tl-bar" role="progressbar" aria-label="Produção dentro do turno em relação à meta" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${pc == null ? 0 : Math.round(Math.min(1, pc) * 100)}"><span class="tl-tr"><i class="${stP}" style="width:${pc == null ? 0 : Math.min(100, pc * 100).toFixed(1)}%"></i></span><b class="tl-pct ${stP}">${pc == null ? '—' : U.pct(pc, 0)}</b></div>
       <div class="tl-pinfo">
         <div><div class="tl-v">${fq(r.good)} <small>${unitLbl()}</small></div><div class="tl-a">Produção total considerada ${tip('prodTotal')}</div></div>
-        <div>${meta > 0 ? (r.good >= meta ? `<span class="tl-okt">${ic('check', 16)} Meta ${fq(meta)} ${unitLbl()}</span>` : `<span class="tl-bad">Meta ${fq(meta)} ${unitLbl()} · ${U.pct(r.attain, 0)}</span>`) : '<span class="tl-a">Sem meta</span>'}<div class="tl-a">${x.fora ? 'Turno + janela fora do turno' : 'Só o turno'}</div></div>
+        <div>${meta > 0 ? metaTxt(r.attain, `Meta ${fq(meta)} ${unitLbl()}${r.good >= meta ? '' : ` · ${U.pct(r.attain, 0)}`}`) : '<span class="tl-a">Sem meta</span>'}<div class="tl-a">${x.fora ? 'Turno + janela fora do turno' : 'Só o turno'}</div></div>
       </div>
     </div>
     <div class="tl-fb ${fb.cls}" role="status">${ic(fb.ico, 38)}<b>${fb.t}</b><p>${fb.p}</p></div>
@@ -17163,7 +17269,7 @@ button[data-scrapturno]{background:var(--crit-fill,#C62828);border-color:var(--c
   </div>
   <div class="tl-g4">
     ${card('target', '', `Capacidade planejada ${tip('capacity')}`, `<span class="tl-v">${fq(r.cap)} <small>${unitLbl()}</small></span>`)}
-    ${card('trend', '', `OEE reportado ${tip('oeeRep')}`, `<span class="tl-v">${pct2(r.oee)}</span>${r.oeeTarget == null ? '<span class="tl-a">sem meta</span>' : r.oee != null &amp;&amp; r.oee >= r.oeeTarget ? `<span class="tl-okt">${ic('check', 15)} Meta ${pct2(r.oeeTarget)}</span>` : `<span class="tl-bad">Meta ${pct2(r.oeeTarget)}</span>`}`)}
+    ${card('trend', '', `OEE reportado ${tip('oeeRep')}`, `<span class="tl-v">${pct2(r.oee)}</span>${r.oeeTarget == null ? '<span class="tl-a">sem meta</span>' : metaTxt(r.oee != null &amp;&amp; r.oeeTarget > 0 ? r.oee / r.oeeTarget : null, `Meta ${pct2(r.oeeTarget)}`)}`)}
     ${card('bars', '', `OEE real ${tip('oeeReal')}`, `<span class="tl-v">${pct2(x.real)}</span><span class="tl-a">${x.extraMin ? `+${U.fmt(x.extraMin)} min fora do turno` : 'igual ao reportado'}</span>`)}
     ${card('gear', '', `D · P · Q ${tip('dpq')}`, `<span class="tl-v sm tl-dpq"><span>${pct2(r.D)}</span> · <span>${pct2(r.P)}</span> · <span>${r.Q == null ? '—' : pct2(r.Q)}</span></span>${sr.scrapAllocated ? '<span class="tl-a">Q do dia (scrap diário)</span>' : ''}`)}
   </div>
@@ -17454,9 +17560,9 @@ const VGL = (() => {
 .vgl-oee .big{font-size:40px;font-weight:800;font-variant-numeric:tabular-nums;line-height:1.05}
 .vgl-oee .mt{display:grid;gap:2px;font-size:13px;color:var(--muted)}.vgl-oee .mt b{font-size:17px;color:var(--ink);font-variant-numeric:tabular-nums}
 .vgl-bar{height:12px;border-radius:999px;background:var(--surface-2);overflow:hidden;position:relative}
-.vgl-bar i{display:block;height:100%;border-radius:999px;background:var(--info)}.vgl-bar i.ok{background:var(--ok)}.vgl-bar i.crit{background:var(--crit)}
+.vgl-bar i{display:block;height:100%;border-radius:999px;background:var(--info)}.vgl-bar i.ok{background:var(--ok)}.vgl-bar i.crit{background:var(--crit)}.vgl-bar i.warn{background:var(--warn-fill,var(--warn))}
 .vgl-st{display:inline-flex;align-items:center;gap:6px;padding:3px 10px;border-radius:999px;font-weight:700;font-size:12.5px;width:max-content}
-.vgl-st.ok{background:var(--ok-bg);color:var(--ok)}.vgl-st.crit{background:var(--crit-bg);color:var(--crit)}.vgl-st.none{background:var(--none-bg);color:var(--muted)}
+.vgl-st.ok{background:var(--ok-bg);color:var(--ok)}.vgl-st.crit{background:var(--crit-bg);color:var(--crit)}.vgl-st.warn{background:var(--warn-bg);color:var(--warn)}.vgl-st.none{background:var(--none-bg);color:var(--muted)}
 .vgl-acao{display:grid;gap:10px;align-content:start}.vgl-acao .decide{margin:0}
 .vgl-perda{padding:14px 18px;display:grid;gap:8px}
 .vgl-perda h4{margin:0;font-family:var(--f-body);font-size:14px;font-weight:700;text-transform:none;letter-spacing:0}
@@ -17489,8 +17595,8 @@ const VGL = (() => {
     return { days, rows, r, pf, pd, pr, weeks: A.byWeek(rows), months: A.byMonth(rows), par: A.pareto(A.events(days), 'codigo'), rel: oeeReliability(days) };
   }
   function situacao(D) {
-    const r = D.r, pr = D.pr, temMeta = r.oeeTarget != null &amp;&amp; r.oee != null, st = r.oee == null ? 'none' : !temMeta ? 'none' : r.oee >= r.oeeTarget ? 'ok' : 'crit';
-    const rot = r.oee == null ? 'Sem dados' : !temMeta ? 'Sem meta vigente' : st === 'ok' ? 'Na meta' : 'Abaixo da meta';
+    const r = D.r, pr = D.pr, temMeta = r.oeeTarget != null &amp;&amp; r.oee != null, st = r.oee == null ? 'none' : !temMeta ? 'none' : r.oeeTarget > 0 ? Engine.sem(r.oee / r.oeeTarget, db().settings.semaphore) : r.oee >= r.oeeTarget ? 'ok' : 'crit';   /* 2.6.2 · semáforo */
+    const rot = r.oee == null ? 'Sem dados' : !temMeta ? 'Sem meta vigente' : st === 'ok' ? 'Na meta' : st === 'warn' ? 'Atenção: perto da meta' : 'Abaixo da meta';
     const pc = temMeta &amp;&amp; r.oeeTarget > 0 ? Math.min(100, r.oee / r.oeeTarget * 100) : null;
     const dPrev = pr &amp;&amp; pr.oee != null &amp;&amp; r.oee != null ? r.oee - pr.oee : null;
     return `<section class="card vgl-oee" aria-label="OEE do período"><span class="l">OEE do período ${ib('oee')}</span>
@@ -17973,6 +18079,7 @@ const LancV2 = (() => {
 #main[data-rota="launch"] .v2-kpis .v2-oeeh .l small{font-weight:400;color:var(--muted);margin-left:4px}
 #main[data-rota="launch"] .v2-kpis .v2-oeeh .leg{display:flex;gap:12px;font-size:11.5px;color:var(--muted);justify-content:flex-end;margin-top:-22px;pointer-events:none}
 #main[data-rota="launch"] .v2-kpis .v2-oeeh .leg i{display:inline-block;width:9px;height:9px;border-radius:50%;background:#1e6fd9;margin-right:4px;vertical-align:middle}
+#main[data-rota="launch"] .v2-kpis .v2-oeeh .leg i.ok{background:var(--ok)}#main[data-rota="launch"] .v2-kpis .v2-oeeh .leg i.wa{background:var(--warn-fill, var(--warn))}#main[data-rota="launch"] .v2-kpis .v2-oeeh .leg i.cr{background:var(--crit)}
 #main[data-rota="launch"] .v2-kpis .v2-oeeh .leg i.m{width:14px;height:0;border-radius:0;background:none;border-top:2px dashed var(--ok)}
 #main[data-rota="launch"] .v2-kpis .v2-oeeh svg{width:100%;height:auto;display:block}
 #main[data-rota="launch"] .v2-kpis .v2-oeeh svg text{font-size:10px;fill:var(--muted)}
@@ -18032,7 +18139,7 @@ const LancV2 = (() => {
   /* 2.4.59 · mesma base do Apontamento › Hora a hora: intervalos dos turnos + horas do MES fora do turno que contam no dia, em ordem de horário.
      Hora fora do turno: OEE da hora = produção do MES ÷ (PPH do turno que recebe × 1 h), como no OEE real; barra mais clara. O OEE oficial não muda. */
   function oeeHoras(res, day) {
-    const H = (res.flat || []).filter(f => f.good != null &amp;&amp; f.pph > 0 &amp;&amp; f.min > 0).map(f => ({ h: U.hhmm(f.iv.start), s: f.iv.start, v: f.good / (f.pph * f.min / 60) }));
+    const H = (res.flat || []).filter(f => f.good != null &amp;&amp; f.pph > 0 &amp;&amp; f.min > 0).map(f => ({ h: rotuloIv(f, res.flat), s: f.iv.start, v: f.good / (f.pph * f.min / 60) }));
     if (day &amp;&amp; typeof HHPs !== 'undefined') try {
       const ft = res.foraTurno;
       for (const it of ((ft &amp;&amp; ft.recebe) || []).filter(i => i.alvo &amp;&amp; i.alvo.date === day.date &amp;&amp; !(ft.semAlvo || []).includes(i))) {
@@ -18042,6 +18149,8 @@ const LancV2 = (() => {
     } catch (e) { console.warn('oeeHoras', e); }
     return H.sort((a, b) => a.s - b.s);
   }
+  /* 2.6.3 · barra pelo semáforo contra a meta de OEE do dia (verde, atenção, vermelho); sem meta, azul */
+  function corOee(v, meta) { if (!(meta > 0) || v == null) return '#1e6fd9'; const st = Engine.sem(v / meta, (db().settings || {}).semaphore || {}); return st === 'ok' ? 'var(--ok)' : st === 'warn' ? 'var(--warn-fill, var(--warn))' : 'var(--crit)'; }
   function grafOee(res, day) {
     const H = oeeHoras(res, day), meta = res.r &amp;&amp; res.r.oeeTarget;
     if (!H.length) return '<p class="small muted" style="margin:14px 0 0">Sem produção lançada no hora a hora deste dia.</p>';
@@ -18050,7 +18159,7 @@ const LancV2 = (() => {
     const ticks = [0, .25, .5, ...(meta &amp;&amp; meta < 1 &amp;&amp; Math.abs(meta - .5) > .06 &amp;&amp; Math.abs(meta - .75) > .06 ? [meta] : [.75]), 1].sort((a, b) => a - b);
     let s = `<svg viewBox="0 0 ${W} ${Ht}" role="img" aria-label="OEE do dia por hora">`;
     for (const t of ticks) s += `<line x1="${L}" x2="${W - R}" y1="${y(t)}" y2="${y(t)}" stroke="var(--line)" stroke-width="1"/><text x="${L - 6}" y="${y(t) + 3}" text-anchor="end">${U.pct(t, 0)}</text>`;
-    H.forEach((x, i) => { const bx = L + i * bw + bw * .18, w = bw * .64, yy = y(x.v); s += `<rect x="${bx.toFixed(1)}" y="${yy.toFixed(1)}" width="${w.toFixed(1)}" height="${Math.max(1, T + ih - yy).toFixed(1)}" rx="2" fill="#1e6fd9"${x.fora ? ' fill-opacity=".45" class="v2-fora"' : ''}><title>${esc(x.h)} · OEE ${esc(U.pct(x.v, 1))}${x.fora ? ' · fora do turno · conta no ' + esc(x.fora) + ' (pelo PPH do turno)' : ''}</title></rect>`;
+    H.forEach((x, i) => { const bx = L + i * bw + bw * .18, w = bw * .64, yy = y(x.v); s += `<rect x="${bx.toFixed(1)}" y="${yy.toFixed(1)}" width="${w.toFixed(1)}" height="${Math.max(1, T + ih - yy).toFixed(1)}" rx="2" fill="${corOee(x.v, meta)}"${x.fora ? ' fill-opacity=".45" class="v2-fora"' : ''}><title>${esc(x.h)} · OEE ${esc(U.pct(x.v, 1))}${x.fora ? ' · fora do turno · conta no ' + esc(x.fora) + ' (pelo PPH do turno)' : ''}</title></rect>`;
       if (n <= 16 || i % Math.ceil(n / 12) === 0) s += `<text x="${(L + i * bw + bw / 2).toFixed(1)}" y="${Ht - 6}" text-anchor="middle">${esc(x.h.slice(0, 2))}h</text>`; });
     if (meta) s += `<line x1="${L}" x2="${W - R}" y1="${y(meta)}" y2="${y(meta)}" stroke="var(--ok)" stroke-width="1.6" stroke-dasharray="5 4"/>`;
     return s + '</svg>';
@@ -18066,10 +18175,10 @@ const LancV2 = (() => {
       const rot = v ? txt(v) : U.pct(g[0]); if (v) v.classList.add('v2-sr2');
       const d = document.createElement('div'); d.className = 'v2-g'; d.innerHTML = gauge(g[0], g[1], rot); (v || l).after(d);
     }
-    if (!k.querySelector('.v2-oeeh')) {
+    if (!k.querySelector('.v2-oeeh') &amp;&amp; !KC.off().includes(KC.OEE_DIA)) {
       const meta = r.oeeTarget;
       k.insertAdjacentHTML('beforeend', `<div class="kpi v2-oeeh"><span class="kic">${ic('chart', 20)}</span><span class="l">OEE do dia <small>(evolução por hora)</small></span>
-        <div class="leg"><span><i></i>OEE (%)</span>${meta ? `<span><i class="m"></i>Meta (${esc(U.pct(meta, 0))})</span>` : ''}</div>${grafOee(res, day)}</div>`);
+        <div class="leg">${meta ? `<span><i class="ok"></i>Na meta</span><span><i class="wa"></i>Atenção</span><span><i class="cr"></i>Abaixo</span><span><i class="m"></i>Meta (${esc(U.pct(meta, 0))})</span>` : '<span><i></i>OEE (%)</span>'}</div>${grafOee(res, day)}</div>`);
     }
   }
   /* Explicação no próprio título (Produção inteira, todas as abas):
@@ -18193,7 +18302,7 @@ const HHComum = {
   /* pontos de 1 dia: { k: rótulo da hora, s: minuto no dia de produção (ordem), g: produção, m: meta, fora, conta } */
   pontos(day, res) {
     const P = [];
-    for (const f of res.flat) { if (f.good == null &amp;&amp; !(f.metaOp > 0)) continue; P.push({ k: U.hhmm(f.iv.start), s: f.iv.start, g: f.good, m: f.metaOp > 0 ? f.metaOp : 0, fora: false }); }
+    for (const f of res.flat) { if (f.good == null &amp;&amp; !(f.metaOp > 0)) continue; P.push({ k: rotuloIv(f, res.flat), s: f.iv.start, g: f.good, m: f.metaOp > 0 ? f.metaOp : 0, fora: false }); }
     const ft = res.foraTurno;
     for (const it of ((ft &amp;&amp; ft.recebe) || []).filter(i => i.alvo &amp;&amp; i.alvo.date === day.date &amp;&amp; !(ft.semAlvo || []).includes(i)))
       for (const r of HHPs.porHora(day, it)) P.push({ k: HHPs.hm(r.h), s: r.h, g: r.pecas, m: 0, fora: true, conta: it.alvo.name });
@@ -18314,7 +18423,7 @@ const EmailDia = {
         if (day.shifts.every(p => p.summary)) return '';
         let h = sec('Hora a hora' + (turno ? ' · ' + ps.snap.name : ''));
         if (comImagem) { Charts.setWidth(900); let svg; try { svg = Charts.combo({ ...HHComum.dia(day, res, turno ? ps.id : null, 360), forceLegend: true }); } finally { Charts.setWidth(720); }
-          const im = await this.png(svg, 2); if (im) h += linha(`<img src="${im.data}" width="632" alt="Produção boa e meta por hora" style="display:block;width:632px;max-width:100%;height:auto;border:1px solid ${lin}"><div style="${F}font-size:11px;color:${mut};padding-top:4px">Barras: produção boa por hora (verde = na meta ou acima; vermelho = abaixo). Linha tracejada: meta da hora. Faixa colorida embaixo: catálogo. Valores em ${e(u)}.</div>`); else comImagem = false; }
+          const im = await this.png(svg, 2); if (im) h += linha(`<img src="${im.data}" width="632" alt="Produção boa e meta por hora" style="display:block;width:632px;max-width:100%;height:auto;border:1px solid ${lin}"><div style="${F}font-size:11px;color:${mut};padding-top:4px">Barras: produção boa por hora (verde = na meta ou acima; amarelo = atenção, perto da meta; vermelho = abaixo). Linha tracejada: meta da hora. Faixa colorida embaixo: catálogo. Valores em ${e(u)}.</div>`); else comImagem = false; }
         if (!comImagem) h += await itens.hhtab(true);
         return h;
       },
@@ -20720,7 +20829,7 @@ button.b,label.b,a.b{border-radius:8px}
   <div id="vkDiag" class="vk-dados"></div>
   <div class="vk-sec vk-dados"><b>04</b><h3>Análises</h3><span>Clique num grupo para recolher ou abrir · arraste pelo ⠿ para mudar de lugar, também entre grupos</span><span data-vg-exibir="#t-painel" data-vg-nao="1"></span></div>
   <section class="vk-grp vk-dados" data-vk-grupo="A"><button type="button" class="vk-gh" aria-expanded="true" aria-controls="vkg-perdas-A"><span class="seta" aria-hidden="true">▾</span><span><span class="t">A · Evolução por competência</span><br><span class="q">O MUV está dentro da meta mês a mês?</span></span></button><div class="vk-gb" id="vkg-perdas-A">
-    <div class="card"><h3>Tendência mensal do MUV <i class="i" title="MUV (Desv. estrutura + Desv. empregado) por mês. Vermelho = acima da meta (ou desfavorável, sem meta). Clique numa barra para filtrar o mês.">i</i></h3><div id="chTrend"></div></div>
+    <div class="card"><h3>Tendência mensal do MUV <i class="i" title="MUV (Desv. estrutura + Desv. empregado) por mês. Verde = dentro da meta; amarelo = pouco acima (atenção, pelo semáforo da Administração); vermelho = acima da meta (ou desfavorável, sem meta). Clique numa barra para filtrar o mês.">i</i></h3><div id="chTrend"></div></div>
     <div class="card"><h3>MUV × target acumulado no FY <i class="i" title="Barras: MUV acumulado do ano fiscal até cada mês (com os filtros). Traço: target acumulado (soma das metas de cada mês; com uma linha escolhida, o target dessa linha). Vermelho = acumulado acima do target. Clique numa barra para filtrar o mês.">i</i></h3><div id="chAcum"></div></div>
     <div class="card" id="porComp" style="display:none"></div>
   </div></section>
@@ -20897,7 +21006,7 @@ button.b,label.b,a.b{border-radius:8px}
    Base: perdas-base.json na pasta da rede (mesmo padrão OEE / Gel)
    Contrato: bloco "exports" (exportsVersion 1) lido pelas outras páginas
    ===================================================================== */
-const APP_VER='1.12.13',   /* 1.12.8 · ordens e lotes antigos pelo exports da Produção (ordensHistorico, lotesHistorico), sem ler a base dela */   /* 1.12.7 · D8: Pareto comum do kit (vacPareto) */   /* 1.12.6 · Fase 5: layout no arquivo da pessoa (vacPrefs do kit) */   /* 1.12.5 · D6: botões de gravação travados conforme o perfil (vacTravas do kit) */   /* 1.12.4 · Importar: lista das ordens ainda sem KKBC_ORD (Produção e SAP, mês atual e os 2 anteriores) */   /* 1.12.3 · KKBC_ORD colada como lista com Cen./Planta/Ordem/Origem/Material e títulos abreviados (Desv.qtd., Desv.preço) */   /* 1.12.2 · kit: modelo de e-mail (vacEmail) e número da página na impressão */   /* 1.12.1 · ícones no lugar dos símbolos de texto (kit) */   /* 1.12.0 · Design System (barra lateral), Paretos da controladoria (verticais), aviso ordem × lote */   /* 1.11.0 · target MUV da linha (Portal › Metas da área WASTE-MUV…, vigência, R$/US$ pelo câmbio do Portal), MUV × target acumulado no FY, filtros Linha e Semana */   /* 1.10.0 · MUV oficial (Desv. estrutura + Desv. empregado, como a controladoria): meta, situação, criticidade, exports e relatórios; Pareto do MUV por Linha/SKU/Componente × métrica, favorável/desfavorável e Top N */   /* 1.9.0 · KKBC_ORD em grade (layout da controladoria, uma ordem por arquivo): Desv. Empregado, Desv. preço de input e Desv. qtde guardados; aviso das ordens no formato antigo (reimportar) */   /* 1.8.36 · gráficos: "Valores em …" (moeda), eixo sem rótulos repetidos, medida do Comparativo no gráfico do relatório (docs/graficos-padrao.md) */   /* 1.8.35 · Visão Geral no padrão comum (vacLayout): situação, números, diagnóstico, análises em grupos */   /* 1.8.34 · kit: login com ID e senha */   /* 1.8.33 · kit: datas DD/MM/AAAA */   /* 1.8.32 · nome Eficácia/Confirmação de Processo */   /* 1.8.31 · kit: nome e presença de Iniciativas / Ações na barra */   /* 1.8.30 · UX-02: guia por aba */   /* 1.8.29 · Fase 7 (UX-03, WST-01): Painel → Visão Geral */   /* 1.8.28 · Fase 6 (WST-03, INI-04): ações em Iniciativas / Ações; antigas até a migração, depois só leitura */   /* 1.8.27 · Fase 3 (IMP-04/06, WST-02): importações no exports; aba Importar leva ao Portal › Importação */   /* 1.8.26 · ARQ-09: "Ver com dados de teste" vira a Demonstração integrada */   /* 1.8.23 · C2–C6: kit com a ficha por pasta (AT-08) e a contagem da fila durável (Portal › Versões) */   /* 1.8.22 · C1: trava da 2ª aba com alteração pendente (nada é descartado); kit com a fila durável */   /* 1.8.21 · E11: busca do kit leva o equipamento à ficha em Equipamentos */   /* 1.8.20 · E8: kit com "+ Abrir ação" na ficha da ordem (Planner de Iniciativas) */   /* 1.8.19 · E5: ficha da ordem comum (botão Ficha na ordem; busca Ctrl K por ordem, lote e LP) */   /* 1.8.18 · E4: versão do exports conferida (Produção, Ordens), ordem em várias competências, dias do lote pela chave · 1.8.17 · E2: fonte única da versão (tela, base, exports e Portal › Versões) */ BASE_FN='perdas-base.json', DIR_ORIG='00. Originais SAP', DIR_BKP='00. Backups', DIR_IN='00. Entrada KKBC', DIR_DONE='00. Entrada KKBC/Processados';
+const APP_VER='1.12.15',   /* 1.12.14 · MUV: situação e tendência pelo semáforo de três cores */   /* 1.12.8 · ordens e lotes antigos pelo exports da Produção (ordensHistorico, lotesHistorico), sem ler a base dela */   /* 1.12.7 · D8: Pareto comum do kit (vacPareto) */   /* 1.12.6 · Fase 5: layout no arquivo da pessoa (vacPrefs do kit) */   /* 1.12.5 · D6: botões de gravação travados conforme o perfil (vacTravas do kit) */   /* 1.12.4 · Importar: lista das ordens ainda sem KKBC_ORD (Produção e SAP, mês atual e os 2 anteriores) */   /* 1.12.3 · KKBC_ORD colada como lista com Cen./Planta/Ordem/Origem/Material e títulos abreviados (Desv.qtd., Desv.preço) */   /* 1.12.2 · kit: modelo de e-mail (vacEmail) e número da página na impressão */   /* 1.12.1 · ícones no lugar dos símbolos de texto (kit) */   /* 1.12.0 · Design System (barra lateral), Paretos da controladoria (verticais), aviso ordem × lote */   /* 1.11.0 · target MUV da linha (Portal › Metas da área WASTE-MUV…, vigência, R$/US$ pelo câmbio do Portal), MUV × target acumulado no FY, filtros Linha e Semana */   /* 1.10.0 · MUV oficial (Desv. estrutura + Desv. empregado, como a controladoria): meta, situação, criticidade, exports e relatórios; Pareto do MUV por Linha/SKU/Componente × métrica, favorável/desfavorável e Top N */   /* 1.9.0 · KKBC_ORD em grade (layout da controladoria, uma ordem por arquivo): Desv. Empregado, Desv. preço de input e Desv. qtde guardados; aviso das ordens no formato antigo (reimportar) */   /* 1.8.36 · gráficos: "Valores em …" (moeda), eixo sem rótulos repetidos, medida do Comparativo no gráfico do relatório (docs/graficos-padrao.md) */   /* 1.8.35 · Visão Geral no padrão comum (vacLayout): situação, números, diagnóstico, análises em grupos */   /* 1.8.34 · kit: login com ID e senha */   /* 1.8.33 · kit: datas DD/MM/AAAA */   /* 1.8.32 · nome Eficácia/Confirmação de Processo */   /* 1.8.31 · kit: nome e presença de Iniciativas / Ações na barra */   /* 1.8.30 · UX-02: guia por aba */   /* 1.8.29 · Fase 7 (UX-03, WST-01): Painel → Visão Geral */   /* 1.8.28 · Fase 6 (WST-03, INI-04): ações em Iniciativas / Ações; antigas até a migração, depois só leitura */   /* 1.8.27 · Fase 3 (IMP-04/06, WST-02): importações no exports; aba Importar leva ao Portal › Importação */   /* 1.8.26 · ARQ-09: "Ver com dados de teste" vira a Demonstração integrada */   /* 1.8.23 · C2–C6: kit com a ficha por pasta (AT-08) e a contagem da fila durável (Portal › Versões) */   /* 1.8.22 · C1: trava da 2ª aba com alteração pendente (nada é descartado); kit com a fila durável */   /* 1.8.21 · E11: busca do kit leva o equipamento à ficha em Equipamentos */   /* 1.8.20 · E8: kit com "+ Abrir ação" na ficha da ordem (Planner de Iniciativas) */   /* 1.8.19 · E5: ficha da ordem comum (botão Ficha na ordem; busca Ctrl K por ordem, lote e LP) */   /* 1.8.18 · E4: versão do exports conferida (Produção, Ordens), ordem em várias competências, dias do lote pela chave · 1.8.17 · E2: fonte única da versão (tela, base, exports e Portal › Versões) */ BASE_FN='perdas-base.json', DIR_ORIG='00. Originais SAP', DIR_BKP='00. Backups', DIR_IN='00. Entrada KKBC', DIR_DONE='00. Entrada KKBC/Processados';
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 /* página para o núcleo comum, o cabeçalho (vac-cabecalho v2) e o quadro de Versões do Portal */
 const PAGE={id:'perdas',titulo:'Waste · Linha Vacutainer',tituloCurto:'Waste',subtitulo:'Custos e perdas por ordem',versao:APP_VER,baseFile:BASE_FN,backupDir:'00. Backups/Perdas',busca:q=>buscaPerdas(q)};
@@ -21773,7 +21882,7 @@ function renderPainel(){
 /* 1.8.35 · Visão Geral no padrão comum (vacLayout do kit): 01 Situação, 03 Diagnóstico e grupos; só apresentação dos números já calculados */
 function wasteVK(x){if(typeof vacLayout==='undefined'){if(!wasteVK._esp){wasteVK._esp=1;setTimeout(()=>{wasteVK._esp=0;renderPainel()},0)}return}   /* o kit (vacLayout) carrega depois do 1º desenho na demonstração */
  const T=$('#t-painel');T.querySelectorAll('.vk-dados').forEach(e=>e.style.display=x.has?'':'none');if(!x.has)return;
- const L=vacLayout,st=x.metaP==null?['none','Sem meta cadastrada']:x.liq>x.metaP?['crit','Acima da meta']:['ok','Dentro da meta'];
+ const L=vacLayout,st=x.metaP==null?['none','Sem meta cadastrada']:(s=>s==='ok'?['ok','Dentro da meta']:s==='warn'?['warn','Atenção: pouco acima da meta']:['crit','Acima da meta'])(x.metaP>0?vacSemaforo(x.liq,x.metaP,{inverso:true}):x.liq<=x.metaP?'ok':'crit');   /* 1.12.14 · semáforo de três cores (Administração); MUV: menor é melhor */
  const pc=x.metaP>0?Math.min(100,Math.max(0,x.liq/x.metaP*100)):null,cmp=F.ate||allPers().slice(-1)[0];
  const prior=[];if(x.semC)prior.push(`<li><span><b>${fmtN(x.semC)}</b> ordem(ns) crítica(s)/alta(s) sem causa</span><span class="sp"></span><button type="button" class="b sm" data-vk-prior="1">Ver prioridades</button></li>`);
  if(x.venc)prior.push(`<li><span><b>${fmtN(x.venc)}</b> ação(ões) vencida(s)</span><span class="sp"></span><button type="button" class="b sm" data-vk-acoes="1">Abrir ações</button></li>`);
@@ -22535,7 +22644,7 @@ function resumoPeriodo(de,ate){
  return{rows,ords,mat,liq,base,qE,vMat:sum(mat,dEst),vScr:sum(mat,scrapOf),muv:sum(ords,o=>o.muv),estr:sum(ords,o=>o.estr),emp:sum(ords,o=>o.emp),preco:sum(ords,o=>o.preco),mDesf:sum(ords,o=>o.mDesf),mFav:sum(ords,o=>o.mFav),aprox:ords.filter(o=>o.aprox).length,perda:sum(ords,o=>o.perda),ganho:sum(ords,o=>o.ganho),comps,cats,
   crit:ords.filter(o=>o.lvl>=2).sort((a,b)=>b.muv-a.muv)}}
 function trendSerie(ate,n=12){const pm={};for(const o of aggOrders(vigRows()))pm[o.per]=(pm[o.per]||0)+o.muv;   /* 1.10.0 · MUV */
- return Object.keys(pm).sort().filter(p=>!ate||p<=ate).slice(-n).map(p=>({label:fmtM(p),value:pm[p],key:p,meta:metaPer(p),color:metaPer(p)!=null?(pm[p]>metaPer(p)?'var(--crit)':'var(--ok)'):(pm[p]>0?'var(--crit)':'var(--ok)')}))}
+ return Object.keys(pm).sort().filter(p=>!ate||p<=ate).slice(-n).map(p=>({label:fmtM(p),value:pm[p],key:p,meta:metaPer(p),color:metaPer(p)!=null?((s=>s==='ok'?'var(--ok)':s==='warn'?'var(--warn-fill,var(--warn))':'var(--crit)')(metaPer(p)>0?vacSemaforo(pm[p],metaPer(p),{inverso:true}):pm[p]<=metaPer(p)?'ok':'crit')):(pm[p]>0?'var(--crit)':'var(--ok)')}))}
 /* ---------- TV ---------- */
 function tvSlides(){const ult=allPers().slice(-1)[0];if(!ult)return[{titulo:'Sem dados',html:'<div class="card"><p>Nenhuma KKBC importada ainda.</p></div>'}];
  const R=resumoPeriodo(ult,ult);const bk=(l,v,sub,c)=>`<div class="bk"><div class="l">${esc(l)}</div><div class="v sm ${c||''}">${esc(v)}</div><div class="s">${esc(sub||'')}</div></div>`;
@@ -34942,6 +35051,9 @@ select,input[type=date] {
 .metric.negative .metric-value {
   color:var(--red)
 }
+.metric.attention .metric-value {
+  color:var(--amber)
+}
 .panel {
   background:var(--surface);
   border:1px solid var(--line);
@@ -34997,6 +35109,10 @@ select,input[type=date] {
 }
 .chart-legend .red {
   background:var(--red)
+}
+/* 1.8.2 · semáforo de três cores: atenção (perto da meta) em amarelo */
+.chart-legend .amber {
+  background:var(--warn-fill, var(--amber))
 }
 .chart-legend .mark {
   height:2px;
@@ -36298,10 +36414,11 @@ td { font-size:15px; }
 .executive-metrics { gap:var(--sp-16,16px); margin-bottom:var(--sp-16,16px); }
 .executive-metrics .metric { padding:var(--sp-16,16px) var(--sp-16,16px); min-height:154px; position:relative; display:flex; flex-direction:column; }
 .executive-metrics .metric-value { margin:var(--sp-8,8px) 0 var(--sp-4,4px); line-height:1.05; color:var(--heading); overflow-wrap:anywhere; }
-.executive-metrics .metric.negative .metric-value,.executive-metrics .metric.positive .metric-value { color:var(--heading); }
+.executive-metrics .metric.negative .metric-value,.executive-metrics .metric.positive .metric-value,.executive-metrics .metric.attention .metric-value { color:var(--heading); }
 .metric-delta { margin-top:var(--sp-4,4px); padding-right:var(--sp-24,24px); line-height:1.5; color:var(--muted); }
 .metric.negative .metric-delta { color:var(--crit); }
 .metric.positive .metric-delta { color:var(--ok); }
+.metric.attention .metric-delta { color:var(--warn); }
 .metric-open { position:absolute; inset:0; display:flex; align-items:flex-end; justify-content:flex-end; width:100%; height:100%; min-height:40px; padding:var(--sp-12,12px); border:0; border-radius:12px; background:transparent; }
 .metric-open > svg { position:absolute; right:14px; bottom:15px; }
 .metric-open:focus-visible { outline:2px solid var(--focus); outline-offset:3px; }
@@ -36487,71 +36604,71 @@ td { font-size:15px; }
     {
       "id": "oee",
       "path": "Plataforma.html#motor/oee",
-      "version": "2.6.0",
-      "sha256": "794a1434ba5b76f27796c4f520429e4a9af3e1f039b50254e19b96bed654adf2",
-      "bytes": 2192140
+      "version": "2.6.4",
+      "sha256": "f3a158f76da67bf30976d92616c9996446cb33f468899fa3a775e0b945b4e985",
+      "bytes": 2206161
     },
     {
       "id": "perdas",
       "path": "Plataforma.html#motor/perdas",
-      "version": "1.12.13",
-      "sha256": "2d15cf851faf7b4f3e8d28086118ad8dd41e50f5581a3f93f6c592f74f835b34",
-      "bytes": 921719
+      "version": "1.12.15",
+      "sha256": "c0efcf0470c6667062cdde4a68b4f85178ef0d4ea8e89fc1e33867495cc20ecb",
+      "bytes": 922812
     },
     {
       "id": "gel",
       "path": "Plataforma.html#motor/gel",
       "version": "2.39",
-      "sha256": "89ecc609aff27b81dba48dbe2d6de7efd0f8169fcb27922c1e255034b82f4729",
-      "bytes": 1609987
+      "sha256": "75ab0cd038153dc1d54a4f91b17846d283d3a3637877a47f5ab709f2c7bcc2a3",
+      "bytes": 1610563
     },
     {
       "id": "paradas",
       "path": "Plataforma.html#motor/paradas",
       "version": "1.2.15",
-      "sha256": "b90b0135091cc1962ec8331b2d1d539e22bfb3b63fa2ab14cdd0ddd99db205df",
-      "bytes": 885984
+      "sha256": "939d7e2492da58791df63bf80a2246b5c2b8d6fd7a5e11bedf9e81021672be2b",
+      "bytes": 886560
     },
     {
       "id": "equip",
       "path": "Plataforma.html#motor/equip",
       "version": "1.0.20",
-      "sha256": "09ed95f128f1fcc5ef967c35070ef95b48be602a1136802b30c74f89aa126b44",
-      "bytes": 683144
+      "sha256": "19314e4d4b5b4277266ca7b993bbfe181361da008d7f79686f13a9d768335ecc",
+      "bytes": 683720
     },
     {
       "id": "inic",
       "path": "Plataforma.html#motor/inic",
       "version": "1.1.16",
-      "sha256": "5486132109870695158b79919119df36b2d1c5c941107fe25929a5a8d6a8d93e",
-      "bytes": 704680
+      "sha256": "c76d6fc26dba2b76506d0cd6fc247cb77d8c157efe1c700e288f6ae9183656ac",
+      "bytes": 705256
     },
     {
       "id": "linha",
       "path": "Plataforma.html#motor/linha",
       "version": "1.2.0",
-      "sha256": "abcc482747dc3524c27e97c2806605f5e1a877d0c2ea0dd27b060d16ba4b7321",
-      "bytes": 826811
+      "sha256": "79104f3d9a4a401070d6cb411202a1ba9cc40050b559f6d97e6b48af2c07e921",
+      "bytes": 827387
     },
     {
       "id": "projetos",
       "path": "Plataforma.html#motor/projetos",
       "version": "0.1.16",
-      "sha256": "1a3f8647f27c8e1faf2ea5203a5136676c562fa1da7ce0ddc48b1d1e0e80f658",
-      "bytes": 623084
+      "sha256": "6ee25c11944d53d2a65a19b7ad1fc612a18260f970bd4155772493bbc280b881",
+      "bytes": 623660
     },
     {
       "id": "portal",
       "path": "Plataforma.html#motor/portal",
       "version": "1.9.45",
-      "sha256": "736faace5256283c2ad3b03cf73eea8a2b310717edab0564645e7472c4be20ca",
-      "bytes": 1197820
+      "sha256": "769955c1b5ddc6d6f6f3b7830bac553bf7da817af376953e8c31ece22a2392b0",
+      "bytes": 1198396
     }
   ],
   "limitations": [
     "Projetos e conteúdo técnico OSM/MES/AM/TPM mantêm os limites documentados nas fontes."
   ],
-  "enginesSha256": "5848c9b02f827a06f08b7e1472556be272aa41d9db2ea306e4d45d62c4c858f1",
+  "enginesSha256": "9cfe98a1d9090eb314c8bb7a5f814a6279d2fe8b47a056d65158d96ca3a1b6e5",
   "originRevision": "ffc9ee8",
   "sourceMode": "single-html",
   "originEnginesSha256": "a87a64ad0c328f70e102b2ae888790a9b5d5a9bd05778652a7ce7cae140e40d2"
@@ -36621,7 +36738,7 @@ summary{cursor:pointer;font-weight:600;color:var(--navy)}
 'use strict';
 /* ---------- referência (atualizar quando a plataforma mudar de versão) ---------- */
 // Iguais às do pacote da plataforma (nova-plataforma/src/generated/manifest.json); o teste ferramenta-verificar confere.
-const VERSOES = {"oee":"2.6.0","perdas":"1.12.13","gel":"2.39","paradas":"1.2.15","equip":"1.0.20","inic":"1.1.16","linha":"1.2.0","projetos":"0.1.16","portal":"1.9.45"};
+const VERSOES = {"oee":"2.6.4","perdas":"1.12.15","gel":"2.39","paradas":"1.2.15","equip":"1.0.20","inic":"1.1.16","linha":"1.2.0","projetos":"0.1.16","portal":"1.9.45"};
 const BASES = [
  { arq: 'vacutainer-cadastros.json', mod: 'portal', nome: 'Cadastro geral (Portal)', obrig: true, cadastro: true, bk: 'Cadastros' },
  { arq: 'portal-base.json', mod: 'portal', nome: 'Portal', obrig: true, bk: 'Portal' },
@@ -37212,7 +37329,7 @@ import { Icon, Button, Badge, Empty, Modal, BarChart, BrandLogo, CommandMenu } f
 import { ModuleFrame } from "vac:modulo/components/ModuleFrame";
 import manifest from "vac:recurso/manifesto";
 import { ModuleTabs } from "vac:modulo/components/ModuleTabs";
-const VERSION = "1.8.0";
+const VERSION = "1.8.4";
 /* Navegação 1.3.0 (16/11/2026): Visão da linha, Relatórios e Importações têm abas; as que mostram uma tela do
    Portal (motor da Administração) trazem o 3º campo com a aba dele. Administração fica só com cadastros e configuração. */
 const SHELL_TABS = {
@@ -38026,9 +38143,12 @@ function ExecutiveOverview({ sources, cad, from, to, turno, detail, rangeLabel, 
   const pp = prod.rate != null &amp;&amp; prod.goal != null ? (prod.rate-prod.goal)*100 : null;
   const delta = view.target != null &amp;&amp; prod.good != null ? prod.good-view.target : null;
   const signed = (v,d=0) => (v>0?'+':v<0?'−':'')+fmt(Math.abs(v),d);
+  /* 1.8.2 · tom pelo semáforo da Administração (verde, atenção, vermelho), o mesmo dos módulos */
+  const semP = (cad &amp;&amp; cad.parametros) || {}, semVd = (+semP.semaforoVerdePct || 100) / 100, semAm = (+semP.semaforoAmareloPct || 90) / 100;
+  const semTone = (v, meta) => v == null || meta == null || !(meta > 0) ? '' : v / meta >= semVd - 1e-9 ? 'positive' : v / meta >= semAm - 1e-9 ? 'attention' : 'negative';
   const metrics = [
-    {label:'OEE publicado',value:pct(prod.rate),note:prod.goal != null?'Meta '+pct(prod.goal):prod.rate!=null?'Meta não publicada':'OEE do recorte não publicado',delta:pp==null?(prod.rate==null?'Consultar cálculo na Produção':'Sem comparação com meta'):signed(pp,1)+' p.p. da meta',tone:pp==null?'':pp>=0?'positive':'negative',icon:'chart',onOpen:drillProduction},
-    {label:'Produção boa',value:fmt(prod.good),unit:'peças',note:view.target!=null?'Meta operacional '+fmt(view.target)+' peças':'Meta não publicada para este recorte',delta:delta==null?rangeLabel:signed(delta)+' peças da meta',tone:delta==null?'':delta>=0?'positive':'negative',icon:'factory',onOpen:drillProduction},
+    {label:'OEE publicado',value:pct(prod.rate),note:prod.goal != null?'Meta '+pct(prod.goal):prod.rate!=null?'Meta não publicada':'OEE do recorte não publicado',delta:pp==null?(prod.rate==null?'Consultar cálculo na Produção':'Sem comparação com meta'):signed(pp,1)+' p.p. da meta',tone:pp==null?'':semTone(prod.rate,prod.goal),icon:'chart',onOpen:drillProduction},
+    {label:'Produção boa',value:fmt(prod.good),unit:'peças',note:view.target!=null?'Meta operacional '+fmt(view.target)+' peças':'Meta não publicada para este recorte',delta:delta==null?rangeLabel:signed(delta)+' peças da meta',tone:delta==null?'':semTone(prod.good,view.target),icon:'factory',onOpen:drillProduction},
     {label:'Scrap informado',value:fmt(prod.scrap),unit:'peças',note:'Quantidade publicada pela Produção',delta:'Sem limite publicado neste resumo',icon:'layers',onOpen:drillProduction},
     {label:'Paradas registradas',value:fmt(view.stopMinutes,1),unit:'min',note:view.stopCovered?'Soma dos registros no período':'Sem cobertura completa para este recorte',delta:'Registros podem se sobrepor',icon:'clock',onOpen:()=>navigate('paradas')}
   ];
@@ -38044,8 +38164,8 @@ function ExecutiveOverview({ sources, cad, from, to, turno, detail, rangeLabel, 
     jsxs('div',{className:'executive-analysis',children:[
       jsxs('section',{className:'panel production-panel',children:[
         jsxs('header',{className:'panel-heading',children:[jsxs('div',{children:[jsx('h2',{children:view.byShift?'Produção boa por turno':'Produção boa por dia'}),jsx('p',{className:'subtle',children:rangeLabel+' · peças · fonte: Produção'})]}),link(from===to?'Ver hora a hora':'Ver Produção','oee',from===to?'hourly':'overview')]}),
-        jsxs('div',{className:'chart-legend',children:[jsxs('span',{children:[jsx('i',{className:'green'}),'Na meta']}),jsxs('span',{children:[jsx('i',{className:'red'}),'Abaixo da meta']}),jsxs('span',{children:[jsx('i',{className:'mark'}),'Meta operacional']})]}),
-        jsx(BarChart,{rows:validRange?view.chartRows:[],byShift:view.byShift,onDay:dia=>navigate('oee','','#dia='+dia)}),
+        jsxs('div',{className:'chart-legend',children:[jsxs('span',{children:[jsx('i',{className:'green'}),'Na meta']}),jsxs('span',{children:[jsx('i',{className:'amber'}),'Atenção']}),jsxs('span',{children:[jsx('i',{className:'red'}),'Abaixo da meta']}),jsxs('span',{children:[jsx('i',{className:'mark'}),'Meta operacional']})]}),
+        jsx(BarChart,{semaforo:[semVd,semAm],rows:validRange?view.chartRows:[],byShift:view.byShift,onDay:dia=>navigate('oee','','#dia='+dia)}),
         jsx('p',{className:'panel-note',children:'Hora a hora e OEE ponderado ficam disponíveis na Produção. Ausência de meta mantém a barra neutra.'})
       ]}),
       jsxs('section',{className:'panel losses-panel',children:[
@@ -38294,7 +38414,7 @@ function BrandLogo({ src, alt = "BD" }) {
     /* @__PURE__ */ jsx("span", {})
   ] });
 }
-function BarChart({ rows, onDay, byShift = false }) {
+function BarChart({ rows, onDay, byShift = false, semaforo = [1, 0.9] }) {
   const ref = useRef(null), [width,setWidth] = useState(700);
   rows = rows.filter(r => typeof r.boa === 'number' &amp;&amp; Number.isFinite(r.boa));
   useEffect(() => {
@@ -38314,7 +38434,7 @@ function BarChart({ rows, onDay, byShift = false }) {
       const label=(byShift?r.turno+' · ':'')+dateLabel(r.dia), open=onDay&amp;&amp;/^\d{4}-\d{2}-\d{2}$/.test(String(r.dia))?()=>onDay(r.dia):undefined;
       return jsxs('g',{className:open?'bar-day':undefined,role:open?'button':undefined,tabIndex:open?0:undefined,'aria-label':label+': '+fmt(value)+' peças; meta '+fmt(goal)+(open?'. Abrir o resumo do dia':''),onClick:open,onKeyDown:open?e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();open();}}:undefined,children:[
         jsx('rect',{x:x-step/2,y:0,width:step,height:h,fill:'transparent'}),
-        jsx('rect',{x:x-bar/2,y:y(value),width:bar,height:Math.max(1,h-y(value)),rx:4,fill:goal==null?'var(--chart-primary)':value>=goal?'var(--green)':'var(--red)',children:jsx('title',{children:label+': '+fmt(value)+' peças · meta '+fmt(goal)})}),
+        jsx('rect',{x:x-bar/2,y:y(value),width:bar,height:Math.max(1,h-y(value)),rx:4,fill:goal==null?'var(--chart-primary)':(goal>0?value/goal>=semaforo[0]-1e-9:value>=goal)?'var(--green)':goal>0&amp;&amp;value/goal>=semaforo[1]-1e-9?'var(--warn-fill, var(--amber))':'var(--red)',children:jsx('title',{children:label+': '+fmt(value)+' peças · meta '+fmt(goal)})}),
         goal!=null&amp;&amp;jsx('line',{x1:x-bar/2-4,x2:x+bar/2+4,y1:y(goal),y2:y(goal),stroke:'var(--heading)',strokeWidth:2,strokeDasharray:'5 3'}),
         jsx('text',{x,y:Math.max(16,y(Math.max(value,goal ?? 0))-10),textAnchor:'middle',className:'chart-value',children:scale(value)}),
         jsx('text',{x,y:h+24,textAnchor:'middle',className:'chart-label',children:byShift?r.turno:String(r.dia).slice(8)+'/'+String(r.dia).slice(5,7)})
