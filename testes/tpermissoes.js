@@ -21,8 +21,7 @@ const PAGINAS = [
   // Linha 360° (plataforma 1.7.1, opção A): lançar = checklist e posto; configurar = planta, áreas, pontos e cadastro de checklist
   ['Linha-360.html', async p => { await p.evaluate(() => { enterTest(); ir('checklists'); }); }, 'checklists'],
   ['Linha-360.html', async p => { await p.evaluate(() => { enterTest(); ir('pessoas'); }); }, 'pessoas'],
-  ['Linha-360.html', async p => { await p.evaluate(() => { enterTest(); ir('config'); }); }, 'configuração'],
-  ['Linha-360.html', async p => { await p.evaluate(() => { enterTest(); ir('piloto'); }); }, 'piloto']];
+  ['Linha-360.html', async p => { await p.evaluate(() => { enterTest(); ir('config'); }); }, 'configuração']];   /* 1.8.6 · o Piloto de consulta foi incorporado à Visão da linha */
 (async () => {
   const b = await chromium.launch(); const pe = [];
   for (const [arq0, prep, aba] of PAGINAS) {
@@ -41,7 +40,6 @@ const PAGINAS = [
     }
     const tot = (r, f) => Object.entries(r).filter(([fn]) => f(fn)).reduce((s, [, x]) => s + x.n, 0), trav = (r, f) => Object.entries(r).filter(([fn]) => f(fn)).reduce((s, [, x]) => s + x.trava, 0), todos = () => true;
     const n = tot(R.u1, todos);
-    if (aba === 'piloto') { ok(n === 0 && tot(R.u2, todos) === 0 && tot(R['ninguém'], todos) === 0, `${arq}: nenhum botão de gravação na tela (somente leitura)`); continue; }
     ok(n > 0 && trav(R.u1, todos) === n && /Consulta/.test(Object.values(R.u1).map(x => x.tit).join(' ')), `${arq}: Consulta com os ${n} botão(ões) de gravação da tela desligados e o motivo no título`);
     ok(process.env.VAC_PLATAFORMA ? trav(R['ninguém'], todos) === tot(R['ninguém'], todos) : trav(R['ninguém'], todos) === 0, `${arq}: sem usuário identificado: consulta na plataforma, comportamento histórico fora dela`);
     const lf = fn => fn === 'lancar' || fn === 'fechar' || fn === 'importar', cf = fn => fn === 'configurar' || fn === 'excluir';
