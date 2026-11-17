@@ -7117,6 +7117,18 @@ tr.lot-pend td:first-child{box-shadow:inset 3px 0 0 var(--crit)}
 .qprev.bad{color:var(--crit);font-weight:600}
 /* plataforma 1.7.2: ícone de alerta no tamanho do texto pequeno (aviso de quantidade e marcador srv do hora a hora) */
 .qprev svg.vi,.srvh svg.vi{width:12px;height:12px;vertical-align:-2px;margin-top:0}
+/* 2.6.0 · Produção total do turno */
+.tt-box{display:grid;grid-template-columns:minmax(150px,auto) minmax(150px,200px) 1fr;gap:var(--sp-8,8px) var(--sp-16,16px);align-items:center;margin:var(--sp-8,8px) 0 var(--sp-12,12px);padding:var(--sp-12,12px) var(--sp-16,16px);border:1px solid var(--line);border-left:4px solid var(--accent);border-radius:10px;background:var(--surface-3,var(--surface))}
+.tt-box .tt-l{font-weight:700;font-size:14px;letter-spacing:.02em;text-transform:uppercase}.tt-box .tt-l small{display:block;font-weight:400;color:var(--muted);font-size:12.5px;letter-spacing:0;text-transform:none}
+.tt-box .tt-in{font-size:20px;font-weight:700;text-align:right;padding:var(--sp-8,8px) var(--sp-12,12px);width:100%;box-sizing:border-box}
+.tt-box .tt-in:disabled{background:var(--surface-2,var(--surface));color:var(--muted)}
+.tt-msg{font-size:13px;line-height:1.45}.tt-acts{margin-top:var(--sp-8,8px);display:flex;gap:var(--sp-8,8px);flex-wrap:wrap}
+.tt-pill{display:inline-block;margin-right:var(--sp-4,4px);padding:2px var(--sp-8,8px);border-radius:999px;background:var(--accent-soft,var(--surface-2));color:var(--accent);font-size:12px;font-weight:700}
+.tt-per{list-style:none;margin:0;padding:0;display:grid;gap:var(--sp-4,4px);font-size:13px}
+tr.tt-off>td{opacity:.45}tr.tt-off>td:nth-child(8){opacity:1}
+tr.tt-row>td{padding:0 var(--sp-8,8px)!important;background:var(--surface)}
+.tt-ed td{vertical-align:middle}.tt-ed input[type=time]{width:110px}.tt-ed .tt-pq{width:130px;text-align:right}
+@media(max-width:860px){.tt-box{grid-template-columns:1fr}}
 /* ===== acabamento V1.90 (padrão comum: Portal, Gel, Perdas, OEE) ===== */
 :root{--r:10px;--sh:0 1px 2px rgba(16,24,40,.06),0 2px 6px rgba(16,24,40,.06)}
 @media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--sh:0 1px 2px rgba(0,0,0,.35),0 2px 8px rgba(0,0,0,.25)}}
@@ -7377,7 +7389,7 @@ const U = (() => {
 
 /* ---- 02-model.js ---- */
 /* ================= modelo de dados, valores iniciais e integridade ================= */
-const APP_VERSION = '2.5.0';
+const APP_VERSION = '2.6.0';   /* 2.6.0 · produção total do turno (sem hora a hora; períodos na troca de catálogo), aviso do servidor para turno lançado pelo total e para dia com produção apontada */
 const SCHEMA_VERSION = 1;
 const BASE_FILE = 'oee-vacutainer-base.json';
 const BACKUP_DIR = '00. Backups';
@@ -8651,6 +8663,9 @@ const Actions = (() => {
     if (day.status === 'fechado' || (ps &amp;&amp; ps.status === 'fechado')) throw new Error('Este lançamento está fechado. Reabra o turno ou o dia para editar.');
   }
   function startEditing(day) { if (day.status === 'não iniciado' || !day.status) day.status = 'em lançamento'; }
+  /* 2.6.0 · turno lançado pelo total (ps.lancamento.modo === 'total'): as horas não se editam uma a uma; usa-se o bloco "Produção total do turno" */
+  const TOTAL_MSG = 'Este turno foi lançado pelo total. Altere no bloco "Produção total do turno" ou apague o total para voltar ao hora a hora.';
+  function assertHoras(ps) { if (ps &amp;&amp; ps.lancamento &amp;&amp; ps.lancamento.modo === 'total') throw new Error(TOTAL_MSG); }
 
   /* ---------- dia ---------- */
   function createDay(date, lineId, machineId) {
@@ -8717,7 +8732,7 @@ const Actions = (() => {
   /* ---------- intervalos ---------- */
   function setIv(dayId, ivId, field, value) {
     Store.mutate((db, audit) => {
-      const d = dayById(db, dayId); const { ps, iv } = findIv(d, ivId); assertEditable(d, ps);
+      const d = dayById(db, dayId); const { ps, iv } = findIv(d, ivId); assertEditable(d, ps); if (field === 'good' || field === 'catalogId') assertHoras(ps);
       // catálogo da 1ª hora do turno = catálogo inicial do turno (uma única informação; o card do turno e o hora a hora sempre batem)
       if (field === 'catalogId') {
         const first = ps.intervals.filter(i => !i.deleted).sort((x, y) => x.start - y.start)[0];
@@ -8744,14 +8759,14 @@ const Actions = (() => {
   }
   function editIntervalTimes(dayId, ivId, start, end) {
     Store.mutate((db, audit) => {
-      const d = dayById(db, dayId); const { ps, iv } = findIv(d, ivId); assertEditable(d, ps);
+      const d = dayById(db, dayId); const { ps, iv } = findIv(d, ivId); assertEditable(d, ps); assertHoras(ps);
       const b = U.range(iv.start, iv.end); ivMove(d, iv, start, end); touch(d);
       audit({ action: 'edição', entity: 'intervalo', entityId: iv.id, field: 'horário', before: b, after: U.range(start, end) });
     });
   }
   function splitInterval(dayId, ivId, at, goodA, goodB) {
     Store.mutate((db, audit) => {
-      const d = dayById(db, dayId); const { ps, iv } = findIv(d, ivId); assertEditable(d, ps);
+      const d = dayById(db, dayId); const { ps, iv } = findIv(d, ivId); assertEditable(d, ps); assertHoras(ps);
       if (!(at > iv.start &amp;&amp; at < iv.end)) throw new Error(`O horário de divisão deve ficar entre ${U.hhmm(iv.start)} e ${U.hhmm(iv.end)}.`);
       const nv = { id: uid('iv'), start: at, end: iv.end, catalogId: null, good: goodB != null ? goodB : null, note: '', kind: 'dividido' };
       const b = U.range(iv.start, iv.end);
@@ -8774,7 +8789,7 @@ const Actions = (() => {
   }
   function deleteInterval(dayId, ivId) {
     Store.mutate((db, audit) => {
-      const d = dayById(db, dayId); const { ps, iv } = findIv(d, ivId); assertEditable(d, ps);
+      const d = dayById(db, dayId); const { ps, iv } = findIv(d, ivId); assertEditable(d, ps); assertHoras(ps);
       if (iv.good != null &amp;&amp; iv.good !== 0) throw new Error('Este intervalo possui produção registrada e não pode ser excluído diretamente.');
       const hasEv = d.events.some(e => !e.deleted &amp;&amp; (e.intervalId === iv.id || (e.start != null &amp;&amp; U.overlap(e.start, e.end, iv.start, iv.end) > 0)));
       if (hasEv) throw new Error('Este intervalo possui parada registrada. Exclua ou mova a parada antes de excluir o intervalo.');
@@ -8787,9 +8802,89 @@ const Actions = (() => {
       const d = dayById(db, dayId); assertEditable(d);
       if (d.shifts.some(ps => ps.intervals.some(i => i.good != null &amp;&amp; i.good !== 0))) throw new Error('Há produção lançada. Restaurar os intervalos padrão apagaria esses valores; zere a produção antes.');
       const fresh = Engine.buildDay(db, d.date, d.lineId, d.machineId, by(), d.demo ? { shiftLineId: 'line_vac' } : {});
-      for (const ps of d.shifts) { const f = fresh.shifts.find(x => x.shiftId === ps.shiftId); if (f) { ps.intervals = f.intervals; ps.snap = f.snap; ps.shiftVersionId = f.shiftVersionId; } }
+      for (const ps of d.shifts) { const f = fresh.shifts.find(x => x.shiftId === ps.shiftId); if (f) { ps.intervals = f.intervals; ps.snap = f.snap; ps.shiftVersionId = f.shiftVersionId; delete ps.lancamento; } }
       touch(d); audit({ action: 'edição', entity: 'dia', entityId: d.id, field: 'intervalos', after: 'intervalos padrão restaurados' });
     });
+  }
+  /* ---------- 2.6.0 · produção total do turno ----------
+     Sem o hora a hora (sem foto do quadro, servidor fora do ar), o turno informa só o total, em um ou mais períodos (troca de catálogo).
+     Os intervalos padrão do turno viram os períodos (kind 'total'); o turno ganha ps.lancamento = { modo: 'total', em, por } (campo opcional,
+     autorizado pelo responsável). Os números do OEE saem do mesmo cálculo de sempre: capacidade e meta oficial iguais às do hora a hora; a
+     meta operacional é arredondada por período (pode ficar um pouco abaixo da soma hora a hora). Paradas com horário não mudam; paradas só
+     com o tempo passam para o período que contém a hora em que estavam. Voltar ao hora a hora recria os intervalos padrão do turno. */
+  function faixaTurno(db, d, ps) {
+    const fresh = Engine.buildDay(db, d.date, d.lineId, d.machineId, by(), d.demo ? { shiftLineId: 'line_vac' } : {});
+    const f = fresh.shifts.find(x => x.shiftId === ps.shiftId);
+    if (!f || !f.intervals.length) throw new Error('Não encontrei o horário padrão deste turno no cadastro.');
+    return { a: f.intervals[0].start, b: f.intervals[f.intervals.length - 1].end, padrao: f.intervals };
+  }
+  const dentro = (iv, F) => iv.start >= F.a &amp;&amp; iv.end <= F.b;
+  function remapParadas(d, ps, antigos, novos) {
+    const ids = new Set(antigos.map(i => i.id));
+    for (const e of d.events) {
+      if (e.deleted || !e.intervalId || !ids.has(e.intervalId)) continue;
+      const old = antigos.find(i => i.id === e.intervalId), alvo = novos.find(i => old.start >= i.start &amp;&amp; old.start < i.end) || novos[0];
+      // parada maior que o intervalo de destino (ex.: 120 min de um período voltando para horas de 60 min): fica no turno,
+      // e o cálculo distribui o tempo pelos intervalos do turno, como já faz com parada só com o tempo lançada no turno
+      if (!alvo || (+e.minutes || 0) > alvo.end - alvo.start) { e.intervalId = null; e.productionShiftId = ps.id; }
+      else e.intervalId = alvo.id;
+    }
+  }
+  const resumoPer = L => L.map(p => U.range(p.start, p.end) + ' ' + (p.good == null ? '—' : p.good)).join(' + ');
+  function lancarTotal(dayId, psId, periodos) {
+    return Store.mutate((db, audit) => {
+      const d = dayById(db, dayId), ps = d &amp;&amp; d.shifts.find(p => p.id === psId);
+      if (!ps) throw new Error('Turno não encontrado.');
+      assertEditable(d, ps);
+      if (ps.summary) throw new Error('Este turno veio da importação da planilha (resumo) e não pode ser lançado aqui.');
+      if (ps.off) throw new Error('O turno está marcado como sem produção. Desmarque para lançar a produção.');
+      const F = faixaTurno(db, d, ps), naFaixa = ps.intervals.filter(i => !i.deleted &amp;&amp; dentro(i, F));
+      const total = ps.lancamento &amp;&amp; ps.lancamento.modo === 'total';
+      if (!total &amp;&amp; naFaixa.some(i => i.good != null &amp;&amp; i.good !== 0)) throw new Error('Já há produção lançada por hora neste turno. Apague as horas para lançar só o total.');
+      const L = (periodos || []).map(p => ({ start: +p.start, end: +p.end, catalogId: p.catalogId || null, good: p.good == null || p.good === '' ? null : +p.good })).sort((x, y) => x.start - y.start);
+      if (!L.length) throw new Error('Informe ao menos um período.');
+      if (L[0].start !== F.a || L[L.length - 1].end !== F.b) throw new Error(`Os períodos precisam cobrir o turno inteiro, de ${U.hhmm(F.a)} a ${U.hhmm(F.b)}.`);
+      L.forEach((p, k) => {
+        if (!(p.end > p.start)) throw new Error(`Período ${k + 1}: o fim precisa ser depois do início.`);
+        if (k &amp;&amp; p.start !== L[k - 1].end) throw new Error(`Período ${k + 1}: precisa começar onde o anterior termina (${U.hhmm(L[k - 1].end)}).`);
+        if (p.good != null &amp;&amp; (!isFinite(p.good) || p.good < 0)) throw new Error(`Período ${k + 1}: produção inválida.`);
+        if (k &amp;&amp; !p.catalogId) throw new Error(`Período ${k + 1}: informe o catálogo (a troca de catálogo é o motivo de dividir o turno).`);
+      });
+      const antes = resumoPer(naFaixa);
+      const novos = L.map(p => ({ id: uid('iv'), start: p.start, end: p.end, catalogId: null, good: p.good, note: '', kind: 'total' }));
+      L.forEach((p, k) => { if (k) novos[k].catalogId = p.catalogId; });
+      const bCat = ps.initialCatalogId;
+      /* turno reaberto: o período com o mesmo horário e o mesmo catálogo mantém a meta congelada no fechamento (tgt), como a correção de
+         uma hora no hora a hora; período novo, horário ou catálogo diferentes usam a meta vigente */
+      const catAnt = (iv, k) => k === 0 ? (iv.catalogId || bCat || null) : (iv.catalogId || null);
+      novos.forEach((nv, k) => { const cat = k === 0 ? (L[0].catalogId || bCat || null) : nv.catalogId; const o = naFaixa.find((iv, j) => iv.tgt &amp;&amp; iv.start === nv.start &amp;&amp; iv.end === nv.end &amp;&amp; catAnt(iv, j) === cat); if (o) nv.tgt = JSON.parse(JSON.stringify(o.tgt)); });
+      if (L[0].catalogId) ps.initialCatalogId = L[0].catalogId;
+      remapParadas(d, ps, naFaixa, novos);
+      ps.intervals = ps.intervals.filter(i => !(!i.deleted &amp;&amp; dentro(i, F))).concat(novos).sort((x, y) => x.start - y.start);
+      const bModo = total ? 'total' : 'hora a hora';
+      ps.lancamento = { modo: 'total', em: nowIso(), por: by() };
+      touch(d); startEditing(d);
+      audit({ action: 'edição', entity: 'turno', entityId: ps.id, field: 'produção total do turno', before: (bModo === 'total' ? 'total: ' : 'hora a hora: ') + antes, after: 'total: ' + resumoPer(novos) });
+      if (bCat !== ps.initialCatalogId) audit({ action: 'edição', entity: 'turno', entityId: ps.id, field: 'initialCatalogId', before: bCat, after: ps.initialCatalogId, origin: 'produção total do turno' });
+      return ps;
+    }, { flush: true });
+  }
+  function voltarHoraAHora(dayId, psId, descartar) {
+    return Store.mutate((db, audit) => {
+      const d = dayById(db, dayId), ps = d &amp;&amp; d.shifts.find(p => p.id === psId);
+      if (!ps) throw new Error('Turno não encontrado.');
+      assertEditable(d, ps);
+      if (!(ps.lancamento &amp;&amp; ps.lancamento.modo === 'total')) return ps;
+      const F = faixaTurno(db, d, ps), naFaixa = ps.intervals.filter(i => !i.deleted &amp;&amp; dentro(i, F));
+      if (!descartar &amp;&amp; naFaixa.some(i => i.good != null &amp;&amp; i.good !== 0)) throw new Error('Apague o total do turno antes de voltar ao hora a hora.');
+      const novos = F.padrao.map(i => ({ ...i }));
+      remapParadas(d, ps, naFaixa, novos);
+      ps.intervals = ps.intervals.filter(i => !(!i.deleted &amp;&amp; dentro(i, F))).concat(novos).sort((x, y) => x.start - y.start);
+      delete ps.lancamento;
+      touch(d);
+      audit({ action: 'edição', entity: 'turno', entityId: ps.id, field: 'produção total do turno', before: 'total: ' + resumoPer(naFaixa), after: 'hora a hora (intervalos padrão)' + (descartar ? ' · total descartado' : '') });
+      return ps;
+    }, { flush: true });
   }
   function reapplyTargets(dayId) {
     Store.mutate((db, audit) => { const d = dayById(db, dayId); assertEditable(d); let n = 0; d.shifts.forEach(ps => ps.intervals.forEach(i => { if (i.tgt) { delete i.tgt; n++; } })); touch(d); audit({ action: 'edição', entity: 'dia', entityId: d.id, field: 'metas', after: `metas vigentes reaplicadas (${n} intervalos)` }); });
@@ -8911,7 +9006,7 @@ const Actions = (() => {
   function setGoods(dayId, pairs) {
     Store.mutate((db, audit) => {
       const d = dayById(db, dayId);
-      for (const { ivId, good } of pairs) { const { ps, iv } = findIv(d, ivId); assertEditable(d, ps); const b = iv.good; if (b === good) continue; iv.good = good; audit({ action: 'edição', entity: 'intervalo', entityId: iv.id, field: 'good', before: b, after: good, origin: 'colado' }); }
+      for (const { ivId, good } of pairs) { const { ps, iv } = findIv(d, ivId); assertEditable(d, ps); assertHoras(ps); const b = iv.good; if (b === good) continue; iv.good = good; audit({ action: 'edição', entity: 'intervalo', entityId: iv.id, field: 'good', before: b, after: good, origin: 'colado' }); }
       touch(d); startEditing(d);
     });
   }
@@ -9475,7 +9570,7 @@ const Actions = (() => {
     });
   }
 
-  return { setShiftSQDCP, setSQDCPVaga, setSQDCPP, setSQDCPManual, createDay, setDayField, setDayStatus, scrapModeImpact, setScrapMode, deleteDay, setShiftField, setIv, editIntervalTimes, splitInterval, addInterval, deleteInterval, restoreDefaultIntervals, reapplyTargets, validateEvent, saveEvent, deleteEvent, saveAbono, setShiftOff, setGoods, closingCheck, submitShift, returnShift, closeShift, closeDay, reopen, upsertConfig, setStatusConfig, endTarget, setSettings, importTargets, importRelatorio, importParadas, logExport, loadDemo, removeDemo, impactSnap, planLocked, savePlan, setPlanDay, setDayOff, startProduction, moveDay, setPlanWorkdays, importPlans, setPlanOrder, fillOrdersFromProduction, acceptOrderApurado, savePanelView, deletePanelView, saveReportNote };
+  return { setShiftSQDCP, setSQDCPVaga, setSQDCPP, setSQDCPManual, createDay, setDayField, setDayStatus, scrapModeImpact, setScrapMode, deleteDay, setShiftField, setIv, editIntervalTimes, splitInterval, addInterval, deleteInterval, restoreDefaultIntervals, lancarTotal, voltarHoraAHora, reapplyTargets, validateEvent, saveEvent, deleteEvent, saveAbono, setShiftOff, setGoods, closingCheck, submitShift, returnShift, closeShift, closeDay, reopen, upsertConfig, setStatusConfig, endTarget, setSettings, importTargets, importRelatorio, importParadas, logExport, loadDemo, removeDemo, impactSnap, planLocked, savePlan, setPlanDay, setDayOff, startProduction, moveDay, setPlanWorkdays, importPlans, setPlanOrder, fillOrdersFromProduction, acceptOrderApurado, savePanelView, deletePanelView, saveReportNote };
 })();
 
 
@@ -10171,7 +10266,7 @@ const ServerData = (() => {
       for (const x of w) { const k = kind(x.lot); n[k] += x.n; const L = lotsDay.get(x.lot) || { lot: x.lot, cat: x.cat, n: 0, kind: k }; L.n += x.n; lotsDay.set(x.lot, L); }
       const norm = w.filter(x => kind(x.lot) === 'normal').sort((a, b) => b.n - a.n)[0];
       const cs = norm ? catId(norm.cat) : null;
-      return { ivId: f.iv.id, start: f.iv.start, end: f.iv.end, off: !!(f.ps &amp;&amp; f.ps.off), cur: f.iv.good == null ? null : f.iv.good, sug: n.normal * qty, n, lots: w, catCur: f.cat || null, catSrv: cs };
+      return { ivId: f.iv.id, psId: f.ps ? f.ps.id : null, total: !!(f.ps &amp;&amp; f.ps.lancamento &amp;&amp; f.ps.lancamento.modo === 'total'), start: f.iv.start, end: f.iv.end, off: !!(f.ps &amp;&amp; f.ps.off), cur: f.iv.good == null ? null : f.iv.good, sug: n.normal * qty, n, lots: w, catCur: f.cat || null, catSrv: cs };
     });
     // catálogo: o servidor manda onde há caixa; sem caixa, segue o anterior. Sugere só nos pontos de troca (o resto herda).
     // simula a herança depois de aplicar: explícito do intervalo > anterior
@@ -10236,6 +10331,7 @@ const ServerData = (() => {
     const mine = timed.filter(e => e.srvRework === lot);
     const goods = [];
     for (const f of res.flat || []) {
+      if (f.ps &amp;&amp; f.ps.lancamento &amp;&amp; f.ps.lancamento.modo === 'total') continue;   // 2.6.0 · turno pelo total: a produção informada não é trocada pela contagem do servidor
       const w = countWindow(db, lineId, base + f.iv.start, base + f.iv.end); if (!w.some(x => x.lot === lot)) continue;
       const norm = U.sum(w.filter(x => kind(x.lot) === 'normal'), x => x.n), rw = U.sum(w.filter(x => x.lot === lot), x => x.n);
       const nv = norm ? norm * qty : (f.iv.good == null ? null : 0);
@@ -10790,6 +10886,108 @@ function ivMaxQ(day, ivId) {
   const f = Engine.computeDay(db(), day).flat.find(x => x.iv.id === ivId); const top = Math.max(1, ...db().catalogs.map(c => +c.pph || 0));
   return f ? (f.pph || top) * f.min / 60 * 1.5 : top * 3;
 }
+/* ===== 2.6.0 · Produção total do turno: bloco do "Lançar meu turno" e do "Hora a hora" =====
+   Sem o hora a hora, o turno informa só o total (ou um total por período, quando trocou de catálogo). Preencher o total bloqueia as horas;
+   lançar horas bloqueia o total. Apagar o total volta ao hora a hora. A gravação é Actions.lancarTotal / Actions.voltarHoraAHora. */
+const TotalTurno = (() => {
+  const ehTotal = ps => !!(ps &amp;&amp; ps.lancamento &amp;&amp; ps.lancamento.modo === 'total');
+  function faixa(day, ps) {
+    try {
+      const fresh = Engine.buildDay(db(), day.date, day.lineId, day.machineId, '', day.demo ? { shiftLineId: 'line_vac' } : {});
+      const f = fresh.shifts.find(x => x.shiftId === ps.shiftId);
+      return f &amp;&amp; f.intervals.length ? { a: f.intervals[0].start, b: f.intervals[f.intervals.length - 1].end, horas: f.intervals } : null;
+    } catch (e) { return null; }
+  }
+  const periodos = (ps, F) => ps.intervals.filter(i => !i.deleted &amp;&amp; i.start >= F.a &amp;&amp; i.end <= F.b).sort((x, y) => x.start - y.start);
+  const catDe = (ps, P, k) => k === 0 ? (ps.initialCatalogId || (P[0] &amp;&amp; P[0].catalogId) || null) : (P[k].catalogId || null);
+  const maxQ = min => Math.max(1, ...db().catalogs.map(c => +c.pph || 0)) * min / 60 * 1.5;
+  const mediaH = (good, min) => good == null || !min ? null : good / (min / 60);
+  const val = v => v == null ? '' : fq(v).replace(/\./g, '');
+  const hh = x => { const m = ((x % 1440) + 1440) % 1440; return String(Math.floor(m / 60)).padStart(2, '0') + ':' + String(m % 60).padStart(2, '0'); };
+  const dayNow = day0 => db().productionDays.find(x => x.id === day0.id) || day0;
+  function bloco(day, ps, res, lk) {
+    if (!ps || ps.summary) return '';
+    const F = faixa(day, ps); if (!F) return '';
+    const P = periodos(ps, F), tot = ehTotal(ps), fechado = !!lk || day.status === 'fechado' || ps.status === 'fechado';
+    const nH = P.filter(i => i.good != null).length, emHoras = !tot &amp;&amp; nH > 0;
+    const total = U.sum(P, i => i.good || 0), mT = tot ? mediaH(total, F.b - F.a) : null;
+    let campo;
+    if (tot &amp;&amp; P.length > 1) campo = `<ul class="tt-per">${P.map((iv, k) => { const c = catDe(ps, P, k), m = mediaH(iv.good, iv.end - iv.start); return `<li><span class="mono">${U.range(iv.start, iv.end)}</span> ${c ? catPill(c) : '<span class="muted">—</span>'} <b>${iv.good == null ? '—' : fq(iv.good)}</b> ${esc(unitLbl())}${m != null ? ` <span class="small muted">· ${fq(m)}/h</span>` : ''}</li>`; }).join('')}</ul>`;
+    else campo = `<input type="text" inputmode="decimal" class="n tt-in" data-tttot="${ps.id}" data-fk="tt-${ps.id}" value="${tot ? val(P[0].good) : ''}" aria-label="Produção total do ${esc(ps.snap.name)}" ${fechado || ps.off || emHoras ? 'disabled' : ''} placeholder="${emHoras ? '—' : ''}">`;
+    let msg;
+    if (ps.off) msg = 'Turno marcado como <b>sem produção</b>.';
+    else if (tot) msg = `<span class="tt-pill">Turno lançado pelo total</span> <b>Hora a hora bloqueado</b> porque o total foi informado${P.length > 1 ? ` em ${P.length} períodos (troca de catálogo)` : ''}: ${fq(total)} ${esc(unitLbl())}${mT != null ? ` · média ${fq(mT)}/h` : ''}. Paradas, scrap, segurança e qualidade continuam normais.${fechado ? '' : P.length > 1 ? ' Para mudar, edite os períodos.' : ' Para lançar por hora, apague o total.'}`;
+    else if (emHoras) msg = `<b>Lançamento por hora em andamento</b> (${nH} de ${P.length} hora${P.length > 1 ? 's' : ''}). O total do turno sai das horas. Para lançar só o total, apague as horas lançadas.`;
+    else msg = `Sem o hora a hora (sem foto do quadro, servidor fora do ar)? Informe a produção boa do turno inteiro, de ${U.hhmm(F.a)} a ${U.hhmm(F.b)}. O hora a hora fica bloqueado.`;
+    const acts = fechado || ps.off || emHoras ? '' : `<button type="button" class="btn xs" data-ttper="${ps.id}">${tot &amp;&amp; P.length > 1 ? 'Editar períodos' : 'Trocou de catálogo? Dividir em períodos'}</button>${tot ? ` <button type="button" class="btn xs ghost" data-ttvolta="${ps.id}">Voltar ao hora a hora</button>` : ''}`;
+    return `<div class="tt-box${tot ? ' on' : ''}" data-tt="${ps.id}"><div class="tt-l">Produção total do turno<small>Use quando não houver o hora a hora</small></div><div class="tt-c">${campo}</div><div class="tt-msg">${msg}${acts ? `<div class="tt-acts">${acts}</div>` : ''}</div></div>`;
+  }
+  // "Lançar meu turno" no modo total: as horas do turno aparecem em cinza, só como referência; paradas por hora continuam
+  function linhasCinza(day, ps, res, lk) {
+    const F = faixa(day, ps); if (!F) return '';
+    const P = periodos(ps, F);
+    return F.horas.map(h => {
+      const per = P.find(iv => h.start >= iv.start &amp;&amp; h.start < iv.end) || P[0]; if (!per) return '';
+      const c = catDe(ps, P, P.indexOf(per));
+      const evs = day.events.filter(e => !e.deleted &amp;&amp; ((e.start != null &amp;&amp; U.overlap(e.start, e.end, h.start, h.end) > 0) || (e.start == null &amp;&amp; e.intervalId === per.id &amp;&amp; h.start === per.start)));
+      return `<tr class="tt-off" data-ttiv="${per.id}"><td class="ivt">${U.range(h.start, h.end)}</td><td><span class="small muted">${c ? esc(catName(c)) : '—'}</span></td><td class="n">—</td><td class="n"><input type="text" class="n" disabled placeholder="—" aria-label="Hora a hora bloqueado: turno lançado pelo total"></td><td class="n">—</td><td class="n">—</td><td>—</td><td><div class="evs">${evs.map(e => evChip(db(), e, res)).join('')}${lk ? '' : `<button class="btn xs" data-addev="${per.id}">${I.plus} Parada</button>`}</div></td><td></td></tr>`;
+    }).join('');
+  }
+  function editarPeriodos(day0, psId) {
+    const day = dayNow(day0), ps = day.shifts.find(p => p.id === psId), F = ps &amp;&amp; faixa(day, ps); if (!F) return;
+    const cats = db().catalogs.filter(c => c.active !== false &amp;&amp; Engine.catalogValid(c, day.date));
+    let L;
+    if (ehTotal(ps) &amp;&amp; periodos(ps, F).length > 1) { const P = periodos(ps, F); L = P.map((iv, k) => ({ start: iv.start, end: iv.end, catalogId: catDe(ps, P, k), good: iv.good })); }
+    else { const meio = F.horas[Math.floor(F.horas.length / 2)].start, g0 = ehTotal(ps) ? periodos(ps, F)[0].good : null; L = [{ start: F.a, end: meio, catalogId: ps.initialCatalogId || null, good: g0 }, { start: meio, end: F.b, catalogId: null, good: null }]; }
+    const emMin = v => { if (!/^\d{1,2}:\d{2}$/.test(v || '')) return null; let x = U.toMin(v); while (x < F.a) x += 1440; return x; };
+    const linha = (p, k, n) => `<tr data-k="${k}"><td>${k ? `<input type="time" data-ti="${k}" value="${hh(p.start)}" aria-label="Início do período ${k + 1}">` : `<span class="mono">${hh(p.start)}</span>`}</td><td>${k < n - 1 ? `<span class="mono" data-tf="${k}">${hh(p.end)}</span>` : `<span class="mono">${hh(p.end)}</span>`}</td>
+      <td><select data-tc="${k}" aria-label="Catálogo do período ${k + 1}"><option value="">${k ? '— escolha —' : '(segue o turno anterior)'}</option>${cats.map(c => `<option value="${c.id}" ${p.catalogId === c.id ? 'selected' : ''}>${esc(c.code)} · ${esc(c.description || c.name || '')}</option>`).join('')}</select></td>
+      <td><input type="text" inputmode="decimal" class="n tt-pq" data-tp="${k}" value="${val(p.good)}" aria-label="Produção do período ${k + 1}"></td><td class="n small muted" data-tm="${k}"></td><td>${n > 1 ? `<button type="button" class="btn xs ghost" data-tx="${k}" aria-label="Tirar o período ${k + 1}">${I.x || '×'}</button>` : ''}</td></tr>`;
+    modal(`Períodos do ${esc(ps.snap.name)} · ${U.brDate(day.date)}`, `<p class="small">Use quando o turno trocou de catálogo e não há o hora a hora. Informe a hora da troca, o catálogo e a produção boa de cada período. O primeiro período começa às ${hh(F.a)} e o último termina às ${hh(F.b)}.</p>
+      <div class="tw"><table class="tt-ed" data-nosort="1"><thead><tr><th>Início</th><th>Fim</th><th>Catálogo</th><th class="n">Produção (${esc(unitLbl())})</th><th class="n">Média por hora</th><th></th></tr></thead><tbody id="ttRows"></tbody></table></div>
+      <p><button type="button" class="btn xs" id="ttAdd">${I.plus} Adicionar troca de catálogo</button></p><p class="small ferr" id="ttErr" role="alert"></p>`,
+      `<button class="btn" data-close>Cancelar</button><button class="btn primary" id="ttOk">Salvar períodos</button>`, (el, close) => {
+        const tb = el.querySelector('#ttRows'), err = el.querySelector('#ttErr');
+        const ler = () => { el.querySelectorAll('[data-ti]').forEach(i => { const k = +i.dataset.ti, x = emMin(i.value); if (x != null) { L[k].start = x; L[k - 1].end = x; } }); el.querySelectorAll('[data-tc]').forEach(s => { L[+s.dataset.tc].catalogId = s.value || null; }); el.querySelectorAll('[data-tp]').forEach(i => { const v = parseQ(i.value, true); L[+i.dataset.tp].good = Number.isNaN(v) ? NaN : v; }); };
+        const medias = () => L.forEach((p, k) => { const c = el.querySelector(`[data-tm="${k}"]`), m = p.good == null || Number.isNaN(p.good) ? null : mediaH(p.good, p.end - p.start); if (c) c.textContent = m != null &amp;&amp; p.end > p.start ? fq(m) + '/h' : '—'; const f = el.querySelector(`[data-tf="${k}"]`); if (f) f.textContent = hh(p.end); });
+        const desenha = () => { tb.innerHTML = L.map((p, k) => linha(p, k, L.length)).join(''); medias();
+          tb.querySelectorAll('input,select').forEach(i => i.addEventListener('input', () => { ler(); medias(); }));
+          tb.querySelectorAll('[data-tx]').forEach(b => b.onclick = () => { ler(); const k = +b.dataset.tx; if (k === 0) { L[1].start = L[0].start; L.splice(0, 1); } else { L[k - 1].end = L[k].end; L.splice(k, 1); } desenha(); }); };
+        desenha();
+        el.querySelector('#ttAdd').onclick = () => { ler(); const u = L[L.length - 1], meio = u.start + Math.max(30, Math.round((u.end - u.start) / 2 / 30) * 30); if (meio >= u.end) { err.textContent = 'O último período é curto demais para dividir.'; return; } L.push({ start: meio, end: u.end, catalogId: null, good: null }); u.end = meio; desenha(); };
+        el.querySelector('#ttOk').onclick = () => {
+          ler(); err.textContent = '';
+          if (L.some(p => Number.isNaN(p.good))) { err.textContent = 'Produção inválida: use números (ex.: 210 ou 210.000).'; return; }
+          if (L.some(p => p.good == null)) { err.textContent = 'Informe a produção de cada período.'; return; }
+          const g = L.map(p => qtyGuard(p.good, maxQ(p.end - p.start), String(p.good), 'o período')).find(Boolean); if (g) { err.textContent = g; return; }
+          run(() => { Actions.lancarTotal(day.id, ps.id, L.map(p => ({ ...p }))); close(); }, 'Períodos do turno gravados.');
+        };
+      }, { wide: true });
+  }
+  function mount(root, day0) {
+    bindQtyPreview(root, 'input[data-tttot]', inp => { const day = dayNow(day0), ps = day.shifts.find(p => p.id === inp.dataset.tttot), F = ps &amp;&amp; faixa(day, ps); return F ? maxQ(F.b - F.a) : null; }, true);
+    root.querySelectorAll('input[data-tttot]').forEach(inp => {
+      inp.dataset.orig = inp.value;
+      const salvar = () => {
+        if (inp.value === inp.dataset.orig) return;
+        const day = dayNow(day0), ps = day.shifts.find(p => p.id === inp.dataset.tttot); if (!ps) return;
+        const v = parseQ(inp.value, true);
+        if (Number.isNaN(v) || (v != null &amp;&amp; v < 0)) { inp.classList.add('err'); toast('Valor inválido. Use números (ex.: 432 ou 432.000).', true); return; }
+        const F = faixa(day, ps); if (!F) return;
+        const g = qtyGuard(v, maxQ(F.b - F.a), inp.value.trim(), 'o turno inteiro'); if (g) { inp.classList.add('err'); toast(g, true); return; }
+        inp.dataset.orig = inp.value;
+        if (v == null) { if (ehTotal(ps)) run(() => Actions.voltarHoraAHora(day.id, ps.id, true), 'Total apagado: o turno volta ao hora a hora.'); return; }
+        run(() => Actions.lancarTotal(day.id, ps.id, [{ start: F.a, end: F.b, catalogId: ps.initialCatalogId || null, good: v }]), 'Total do turno gravado.');
+      };
+      inp.addEventListener('input', () => inp.classList.remove('err'));
+      inp.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); salvar(); } else if (e.key === 'Escape') { e.preventDefault(); inp.value = inp.dataset.orig; inp.blur(); } });
+      inp.addEventListener('change', salvar);
+    });
+    root.querySelectorAll('[data-ttper]').forEach(b => b.onclick = () => editarPeriodos(day0, b.dataset.ttper));
+    root.querySelectorAll('[data-ttvolta]').forEach(b => b.onclick = () => confirmDlg('Voltar ao hora a hora?', 'O total informado deste turno será apagado e as horas voltam a ficar abertas para lançar. Paradas, scrap, segurança e qualidade não mudam.', 'Voltar ao hora a hora', true).then(ok => { if (ok) run(() => Actions.voltarHoraAHora(dayNow(day0).id, b.dataset.ttvolta, true), 'O turno voltou ao hora a hora.'); }));
+  }
+  return { ehTotal, faixa, periodos, bloco, linhasCinza, editarPeriodos, mount };
+})();
 // cartão de indicador: cor de status pela situação (selo do subtítulo ou semáforo) e ícone de linha pelo assunto
 const KIC = {
   gauge: '<path d="M3 13a7 7 0 1 1 14 0"/><path d="M10 13l3.5-4"/>', box: '<path d="M3 6l7-3 7 3v8l-7 3-7-3z"/><path d="M3 6l7 3 7-3M10 9v8"/>',
@@ -11584,7 +11782,8 @@ App.views.hourly = {
     for (const sr of res.shifts.filter(sr => HHPs.mostra(day, sr.ps))) {
       const ps = sr.ps, lk = locked(day, ps), fs = res.flat.filter(f => f.ps === ps);
       const sm = U.sum(fs, f => f.metaOp), sg = U.sum(fs, f => f.good || 0);
-      h += `<tr class="grp" data-hhgrp="${esc(ps.snap.code || ps.id)}" title="Recolher / expandir o turno"><td colspan="${showM ? 17 : 13}">${HHPs.seta(ps.snap.code || ps.id)} <span class="swatch" style="background:${esc(ps.snap.color || 'var(--s1)')}"></span> ${esc(ps.snap.name)} · ${ps.snap.start}–${U.hhmm(U.toMin(ps.snap.end))} · meta ${fq(sm)} · produção ${fq(sg)} · ${semB(Engine.sem(sm ? sg / sm : null, st.semaphore), U.pct(sm ? sg / sm : null, 0))} ${ps.status === 'fechado' ? I.lock + ' fechado' : ''}${ps.off ? ` · <b>sem produção</b> (${esc(ps.offReason || '')}) — desmarque em Lançamento para lançar` : ''}</td></tr>`;
+      h += `<tr class="grp" data-hhgrp="${esc(ps.snap.code || ps.id)}" title="Recolher / expandir o turno"><td colspan="${showM ? 17 : 13}">${HHPs.seta(ps.snap.code || ps.id)} <span class="swatch" style="background:${esc(ps.snap.color || 'var(--s1)')}"></span> ${esc(ps.snap.name)} · ${ps.snap.start}–${U.hhmm(U.toMin(ps.snap.end))} · meta ${fq(sm)} · produção ${fq(sg)} · ${semB(Engine.sem(sm ? sg / sm : null, st.semaphore), U.pct(sm ? sg / sm : null, 0))} ${ps.status === 'fechado' ? I.lock + ' fechado' : ''}${ps.off ? ` · <b>sem produção</b> (${esc(ps.offReason || '')}) — desmarque em Lançamento para lançar` : ''}${TotalTurno.ehTotal(ps) ? ' · <span class="tt-pill">lançado pelo total</span>' : ''}</td></tr>`;
+      if (!ps.off &amp;&amp; !ps.summary) h += `<tr class="tt-row" data-hhg="${esc(ps.snap.code || ps.id)}"${HHPs.dobrado(ps.snap.code || ps.id) ? ' hidden' : ''}><td colspan="${showM ? 17 : 13}">${TotalTurno.bloco(day, ps, res, lk)}</td></tr>`;
       const _fr = HHPs.fora(day, res, ps); h += _fr.antes;   /* 2.4.52: produção fora do turno que conta neste turno */
       for (const f of fs) {
         const iv = f.iv;
@@ -11593,17 +11792,17 @@ App.views.hourly = {
         h += `<tr class="${iv.kind === 'extra' ? 'extra ' : ''}${f.errs.length ? 'has-err ' : ''}${cur ? 'sel' : ''}" data-iv="${iv.id}" data-hhg="${esc(ps.snap.code || ps.id)}"${HHPs.dobrado(ps.snap.code || ps.id) ? ' hidden' : ''}>
           <td class="ivt" title="${esc(f.errs.join(' ') || (iv.kind === 'extra' ? 'Hora extra' : iv.kind))}">${U.range(iv.start, iv.end)}${iv.kind === 'extra' ? ' <span class="flag on">extra</span>' : ''}${f.errs.length ? ' <span class="sem crit">' + I.x + '</span>' : ''}</td>
           <td class="n">${f.min}</td>
-          <td>${lk ? esc(f.cat ? catName(f.cat) : '—') : `<select data-ivcat="${iv.id}" aria-label="Catálogo ${U.range(iv.start, iv.end)}" data-fk="c-${iv.id}"><option value="">${f.cat ? '↳ ' + esc(catName(f.cat)) : '—'}</option>${cats.map(c => `<option value="${c.id}" ${iv.catalogId === c.id ? 'selected' : ''}>${esc(catLabel(c))}</option>`).join('')}</select>`}</td>
+          <td>${lk || TotalTurno.ehTotal(ps) ? esc(f.cat ? catName(f.cat) : '—') : `<select data-ivcat="${iv.id}" aria-label="Catálogo ${U.range(iv.start, iv.end)}" data-fk="c-${iv.id}"><option value="">${f.cat ? '↳ ' + esc(catName(f.cat)) : '—'}</option>${cats.map(c => `<option value="${c.id}" ${iv.catalogId === c.id ? 'selected' : ''}>${esc(catLabel(c))}</option>`).join('')}</select>`}</td>
           ${showM ? `<td class="n">${U.fmt(f.pph)}</td><td class="n">${f.rt ? U.pct(f.oeeT) : '—'}</td><td class="n" title="decimal ${U.fmt(f.metaOrigDec, 1)}">${fq(f.metaOrigOp)}</td><td class="n">${f.deduct ? U.fmt(f.deduct) : ''}</td>` : ''}
           <td class="n" title="${esc(`Decimal ${U.fmt(f.metaAdjDec, 1)} · ${f.metaSrc}${f.compensated ? ' · última hora ajustada para a soma igualar a meta diária oficial' : ''}${f.diffDeduct ? ' · descontos reduziram ' + fq(f.diffDeduct) : ''}`)}">${fq(f.metaOp)}${f.compensated ? '<sup title="ajuste de compensação">*</sup>' : ''}${f.boardVal != null ? '' : ''}</td>
-          <td class="n"><input type="text" inputmode="decimal" class="n" data-good="${iv.id}" data-fk="g-${iv.id}" value="${iv.good == null ? '' : fq(iv.good).replace(/\./g, '')}" aria-label="Produção boa ${U.range(iv.start, iv.end)}" ${lk || f.ps.off ? 'disabled' : ''} ${f.ps.off ? 'placeholder="sem produção" title="Turno sem produção (não programado): o tempo conta como parada"' : ''} autocomplete="off">${SrvUI.ivHint(day, res, iv.id)}</td>
+          <td class="n"><input type="text" inputmode="decimal" class="n" data-good="${iv.id}" data-fk="g-${iv.id}" value="${iv.good == null ? '' : fq(iv.good).replace(/\./g, '')}" aria-label="Produção boa ${U.range(iv.start, iv.end)}" ${lk || f.ps.off || TotalTurno.ehTotal(f.ps) ? 'disabled' : ''}${TotalTurno.ehTotal(f.ps) ? ' title="Turno lançado pelo total: altere no bloco Produção total do turno"' : ''} ${f.ps.off ? 'placeholder="sem produção" title="Turno sem produção (não programado): o tempo conta como parada"' : ''} autocomplete="off">${SrvUI.ivHint(day, res, iv.id)}</td>
           <td class="n">${fq(f.cumGood)}</td><td class="n">${fq(f.cumMetaAdj)}</td>
           <td class="n">${f.metaOp === 0 &amp;&amp; f.deduct >= f.min ? '<span class="muted small">pausa</span>' : f.good == null ? '' : `<span class="${f.devHour < 0 ? 'delta-down' : 'delta-up'}">${fqs(f.devHour)}</span>`}</td>
           <td class="n"><span class="${f.devCum < 0 ? 'delta-down' : 'delta-up'}">${fqs(f.devCum)}</span></td>
           <td class="n">${f.good == null ? '' : semB(f.sem, U.pct(f.attain, 0))}</td>
           <td><div class="evs">${evs.map(e => evChip(db(), e, res)).join('')}${!lk ? `<button class="btn xs" data-addev="${iv.id}" aria-label="Registrar parada em ${U.range(iv.start, iv.end)}" title="Registrar parada (Alt+P)">${I.plus}</button>` : ''}</div></td>
           <td><button class="btn xs ghost ${iv.note ? 'note-ic' : ''}" data-note="${iv.id}" title="${esc(iv.note || 'Observação (Alt+O)')}" aria-label="Observação">${I.note}${iv.note ? '' : ''}</button></td>
-          <td>${!lk ? `<button class="btn xs ghost" data-ivmenu="${iv.id}" aria-label="Editar, dividir ou excluir o intervalo" title="Editar horário, dividir ou excluir este intervalo">⋯</button>` : ''}</td></tr>`;
+          <td>${!lk &amp;&amp; !TotalTurno.ehTotal(ps) ? `<button class="btn xs ghost" data-ivmenu="${iv.id}" aria-label="Editar, dividir ou excluir o intervalo" title="Editar horário, dividir ou excluir este intervalo">⋯</button>` : ''}</td></tr>`;
       }
       h += _fr.depois;
     }
@@ -11657,6 +11856,7 @@ App.views.hourly = {
     root.querySelectorAll('[data-ivmenu]').forEach(b => b.onclick = () => ivMenu(day, b.dataset.ivmenu));
     const ex = root.querySelector('#hhExtra'); if (ex) ex.onclick = () => addIvModal(day);
     bindPaste(root, day);
+    TotalTurno.mount(root, day);
     const hp = root.querySelector('#hhPause'); if (hp) hp.onclick = () => eventModal(day, null, null, { pause: true });
     const hc = root.querySelector('#hhPauseCfg'); if (hc) hc.onclick = () => { App.cfgSec = 'turnos'; go('config'); };
   }
@@ -13134,12 +13334,13 @@ App.views.shift = {
     else if (ps.status === 'pendente de conferência') h += `<div class="banner pend section"><p>Turno enviado para conferência${ps.submitted ? ` por ${esc(ps.submitted.by)} em ${U.brDT(ps.submitted.at)}` : ''}. Você ainda pode corrigir até a liderança fechar.</p></div>`;
     if (ps.off) h += `<div class="banner info section"><p>Turno marcado como <b>sem produção</b>${ps.offReason ? ' (' + esc(ps.offReason) + ')' : ''}. Desmarque no fim da página para lançar produção.</p></div>`;
     const sm = U.sum(fs, f => f.metaOp), sg = U.sum(fs, f => f.good || 0);
-    h += `<div class="kpis section">${kpi('Produção boa', fq(sg), unitLbl(), `meta ${fq(sm)} ${semB(Engine.sem(sm ? sg / sm : null, st.semaphore), '')}`)}${kpi('Atendimento', U.pct(sm ? sg / sm : null, 0), '', semB(Engine.sem(sm ? sg / sm : null, st.semaphore)))}${kpi('OEE', U.pct(r.oee), '', semB(r.semOee, 'meta ' + U.pct(r.oeeTarget)))}${kpi('Paradas', U.fmt(r.aMin + r.pMin), 'min', r.events + ' registro(s)')}${kpi('Horas lançadas', `${fs.filter(f => f.good != null).length}/${fs.length}`, '', '')}</div>`;
+    h += `<div class="kpis section">${kpi('Produção boa', fq(sg), unitLbl(), `meta ${fq(sm)} ${semB(Engine.sem(sm ? sg / sm : null, st.semaphore), '')}`)}${kpi('Atendimento', U.pct(sm ? sg / sm : null, 0), '', semB(Engine.sem(sm ? sg / sm : null, st.semaphore)))}${kpi('OEE', U.pct(r.oee), '', semB(r.semOee, 'meta ' + U.pct(r.oeeTarget)))}${kpi('Paradas', U.fmt(r.aMin + r.pMin), 'min', r.events + ' registro(s)')}${(TotalTurno.ehTotal(ps) ? kpi('Horas lançadas', 'Total', '', 'turno lançado pelo total') : kpi('Horas lançadas', `${fs.filter(f => f.good != null).length}/${fs.length}`, '', ''))}</div>`;
     h += `<section class="card section"><header><h3>${esc(ps.snap.name)} · ${U.brDate(day.date)}</h3>
         <label class="row small">Catálogo no início do turno ${ib('initialCatalog')} <select id="opCat" ${lk ? 'disabled' : ''} data-fk="op-cat" style="font-size:15px"><option value="">(segue o turno anterior${fs[0] &amp;&amp; fs[0].cat ? ': ' + esc(catName(fs[0].cat)) : ''})</option>${cats.map(c => `<option value="${c.id}" ${ps.initialCatalogId === c.id ? 'selected' : ''}>${esc(catLabel(c))}</option>`).join('')}</select></label></header>
-      <p class="small muted">Digite a produção boa de cada hora em <b>${esc(UNIT() > 1 ? 'mil' : unitLbl())}</b> ou no número completo (61 ou 61.000) e aperte Enter para ir à próxima. A gravação é automática.</p>
+      ${TotalTurno.bloco(day, ps, res, lk)}
+      <p class="small muted">${TotalTurno.ehTotal(ps) ? `Turno lançado pelo total: as horas abaixo ficam só como referência. Registre as paradas na hora em que aconteceram.` : `Digite a produção boa de cada hora em <b>${esc(UNIT() > 1 ? 'mil' : unitLbl())}</b> ou no número completo (61 ou 61.000) e aperte Enter para ir à próxima. A gravação é automática.`}</p>
       <div class="tw"><table class="hh"><thead><tr><th>Horário</th><th>Catálogo</th><th class="n">Meta ${ib('meta')}</th><th class="n">Produção ${ib('production')}</th><th class="n">Acumulado do turno ${ib('cum')}</th><th class="n">Meta acum. do turno</th><th>Situação ${ib('attain')}</th><th>Paradas ${ib('stops')}</th><th>Obs.</th></tr></thead><tbody>
-      ${(() => { let cg = 0, cm = 0; return fs.map(f => { cg += f.good || 0; cm += f.metaOp; f._cg = cg; f._cm = cm; f._semc = Engine.sem(cm ? cg / cm : null, st.semaphore); }); })() &amp;&amp; ''}${fs.map(f => { const iv = f.iv; const evs = day.events.filter(e => !e.deleted &amp;&amp; f.evIds.includes(e.id)); const cur = nowMin != null &amp;&amp; nowMin >= iv.start &amp;&amp; nowMin < iv.end;
+      ${(() => { let cg = 0, cm = 0; return fs.map(f => { cg += f.good || 0; cm += f.metaOp; f._cg = cg; f._cm = cm; f._semc = Engine.sem(cm ? cg / cm : null, st.semaphore); }); })() &amp;&amp; ''}${TotalTurno.ehTotal(ps) ? TotalTurno.linhasCinza(day, ps, res, lk) : fs.map(f => { const iv = f.iv; const evs = day.events.filter(e => !e.deleted &amp;&amp; f.evIds.includes(e.id)); const cur = nowMin != null &amp;&amp; nowMin >= iv.start &amp;&amp; nowMin < iv.end;
         return `<tr data-iv="${iv.id}" class="${cur ? 'sel' : ''}${f.errs.length ? ' has-err' : ''}"><td class="ivt" title="${esc(f.errs.join(' '))}">${U.range(iv.start, iv.end)}</td>
           <td>${lk ? esc(catName(f.cat)) : `<select data-ivcat="${iv.id}" aria-label="Catálogo ${U.range(iv.start, iv.end)}" data-fk="oc-${iv.id}"><option value="">${f.cat ? '↳ ' + esc(catName(f.cat)) : '—'}</option>${cats.map(c => `<option value="${c.id}" ${iv.catalogId === c.id ? 'selected' : ''}>${esc(c.code)}</option>`).join('')}</select>`}</td>
           <td class="n">${fq(f.metaOp)}</td>
@@ -13172,6 +13373,7 @@ App.views.shift = {
     if (!day || Engine.isOffDay(d, day)) return;
     const ps = day.shifts.find(p => p.shiftId === O.shiftId); if (!ps) return;
     GelTurno.mount(root, day, Engine.computeDay(d, day));
+    TotalTurno.mount(root, day);
     const cat = root.querySelector('#opCat'); if (cat) cat.onchange = () => run(() => Actions.setShiftField(day.id, ps.id, 'initialCatalogId', cat.value || null));
     root.querySelectorAll('[data-ivcat]').forEach(s => s.onchange = () => run(() => Actions.setIv(day.id, s.dataset.ivcat, 'catalogId', s.value || null)));
     const sc = root.querySelector('#opScrap'); if (sc) sc.onchange = () => { const v = sc.value.trim() === '' ? null : +sc.value.replace(/\./g, '').replace(',', '.'); if (v != null &amp;&amp; (!isFinite(v) || v < 0)) { toast('Scrap inválido: informe peças.', true); return; } run(() => Actions.setShiftField(day.id, ps.id, 'scrap', v)); };
@@ -15161,6 +15363,7 @@ const Srv = (() => {
       for (const g of sel.goods) {
         const ps = dd.shifts.find(p => p.intervals.some(i => i.id === g.ivId)), iv = ps.intervals.find(i => i.id === g.ivId);
         if (dd.status === 'fechado' || ps.status === 'fechado') throw new Error('O dia ou o turno está fechado. Reabra para aplicar.');
+        if (ps.lancamento &amp;&amp; ps.lancamento.modo === 'total') { out.errors.push(`${ps.snap.name}: lançado pelo total; troque pelo hora a hora antes de aplicar a produção do servidor.`); continue; }
         if (iv.good === g.good) continue;
         audit({ action: 'edição', entity: 'intervalo', entityId: iv.id, field: 'good', before: iv.good, after: g.good, origin: 'servidor (confirmado)' });
         iv.good = g.good; out.goods++;
@@ -15210,7 +15413,7 @@ const Srv = (() => {
           for (const e of keep) parts = parts.flatMap(([x, y]) => { if (e.end <= x || e.start >= y) return [[x, y]]; const o = []; if (e.start > x) o.push([x, e.start]); if (e.end < y) o.push([e.end, y]); return o; });
           for (const [x, y] of parts) if (y - x >= 1) { day.events.push({ id: U.uid('ev'), codeId: code.id, start: x, end: y, minutes: null, intervalId: null, note: `Retrabalho do lote ${lot} (servidor)${opt.note ? ' · ' + opt.note : ''}`, impact: Actions.impactSnap(code), srvRework: lot, manual: false, ...Model.meta(by()) }); nEv++; }
         }
-        for (const g of P.goods) if ((opt.goods || []).includes(g.ivId)) { const iv = day.shifts.flatMap(p => p.intervals).find(i => i.id === g.ivId); if (iv.good === g.nv) continue; audit({ action: 'edição', entity: 'intervalo', entityId: iv.id, field: 'good', before: iv.good, after: g.nv, origin: `retrabalho ${lot} (confirmado)` }); iv.good = g.nv; nG++; }
+        for (const g of P.goods) if ((opt.goods || []).includes(g.ivId)) { const iv = day.shifts.flatMap(p => p.intervals).find(i => i.id === g.ivId), psg = day.shifts.find(p => p.intervals.includes(iv)); if (psg &amp;&amp; psg.lancamento &amp;&amp; psg.lancamento.modo === 'total') continue; if (iv.good === g.nv) continue; audit({ action: 'edição', entity: 'intervalo', entityId: iv.id, field: 'good', before: iv.good, after: g.nv, origin: `retrabalho ${lot} (confirmado)` }); iv.good = g.nv; nG++; }
       } else {
         s.dayLot[key] = { kind: 'normal', by: by(), at: U.nowIso(), note: opt.note || '' };
         for (const e of P.mine) { e.deleted = true; e.updatedAt = U.nowIso(); e.updatedBy = by(); nDel++; }
@@ -15283,11 +15486,17 @@ const SrvUI = (() => {
     const longs = chg.filter(c => c.long).length;
     if (longs) warns.push(`${longs} troca(s) passam de ${d.settings.serverSetupMax || 240} min e devem incluir parada longa (noite ou fim de semana parados). Elas não entram na média de setup até serem separadas no lançamento.`);
     const prevImp = store().imports.filter(i => i.to >= an.range.from &amp;&amp; i.from <= an.range.to);
+    /* 2.6.0 · dias do arquivo que já têm produção apontada (aberto ou fechado, por hora ou pelo total) */
+    const apontados = (() => { const de = String(an.range.from).slice(0, 10), ate = String(an.range.to).slice(0, 10);
+      return d.productionDays.filter(x => !x.deleted &amp;&amp; x.lineId === L &amp;&amp; x.date >= de &amp;&amp; x.date <= ate).sort((a, b) => a.date.localeCompare(b.date)).map(x => { const r = Engine.computeDay(d, x);
+        const T = r.shifts.filter(sr => !sr.ps.off &amp;&amp; (sr.ps.summary || sr.ps.intervals.some(i => !i.deleted &amp;&amp; i.good != null))).map(sr => `${esc(sr.ps.snap.name)} ${fq(sr.agg.good)} ${esc(unitLbl())} (${TotalTurno.ehTotal(sr.ps) ? 'pelo total' : sr.ps.summary ? 'resumo importado' : 'hora a hora'}${sr.ps.status === 'fechado' &amp;&amp; x.status !== 'fechado' ? ', turno fechado' : ''})`);
+        return T.length ? { date: x.date, fechado: x.status === 'fechado', T } : null; }).filter(Boolean); })();
     const ignored = p.nulls + an.snaps + an.dups + an.noise.length + p.bad;
     const unk = lots.filter(x => !x.order &amp;&amp; !x.cls);
     const sel = x => x.order ? `<span class="small muted">ordem ${esc(x.order.order)}</span>` : `<select data-cls="${esc(x.lot)}" aria-label="Classificação do lote ${esc(x.lot)}">${['pendente', 'retrabalho', 'normal', 'ignorar'].map(k => `<option value="${k}" ${(x.cls || 'pendente') === k ? 'selected' : ''}>${k === 'pendente' ? `— confirmar (sugestão: ${Srv.KIND[x.sug].toLowerCase()})` : Srv.KIND[k]}</option>`).join('')}</select>`;
     modal('Prévia: dados do servidor', `<p>Arquivo <b>${esc(file)}</b> · ${U.fmt(p.lines)} linhas · data no formato ${esc(p.dateOrder)} convertida para DD/MM/AAAA · ${br(an.range.from)} a ${br(an.range.to)}.</p>
       <div class="kpis">${kpi('Caixas', U.fmt(an.boxes), '', `${U.fmt(an.boxes * q / UNIT())} ${esc(unitLbl())} (1 caixa = ${U.fmt(q)} peças)`)}${kpi('Lotes', U.fmt(lots.length), '', `${an.segments.length} trecho(s) · ${lots.filter(x => x.segs > 1).length} retomado(s)`)}${kpi('Trocas', U.fmt(chg.length), '', `${chg.filter(c => c.kind === 'catalogo').length} de catálogo · ${chg.filter(c => c.kind === 'lote').length} de lote`)}${kpi('Linhas ignoradas', U.fmt(ignored), '', `${p.nulls} sem leitura · ${an.snaps + an.dups} releitura · ${an.noise.length} ruído`)}${kpi('Lotes a confirmar', U.fmt(unk.length), '', 'sem ordem em nenhum plano')}</div>
+      ${apontados.length ? `<div class="banner warn"><p><b>Já existem dados apontados de produção</b> em ${apontados.length === 1 ? 'um dia' : apontados.length + ' dias'} deste arquivo:</p><ul class="small">${apontados.map(a => `<li><b>${U.brDate(a.date)}</b>${a.fechado ? ' · <b>dia fechado</b>' : ''}: ${a.T.join(' · ')}</li>`).join('')}</ul><p class="small">A importação não muda o lançamento. As sugestões aparecem no Lançamento de cada dia para conferir e aceitar${apontados.some(a => a.fechado) ? '; dia fechado precisa ser reaberto para aplicar' : ''}.</p></div>` : ''}
       ${prevImp.length ? `<div class="banner info"><p>O período já tem dados importados (${prevImp.map(i => `${esc(i.file)} em ${U.brDT(i.at)}`).join('; ')}). O trecho coberto por este arquivo será substituído; nada é duplicado.</p></div>` : ''}
       <h4 class="section">Lotes do arquivo</h4>
       <p class="small muted">Lotes sem ordem em nenhum plano do mês ficam "a confirmar": diga se são retrabalho, produção normal ou ruído. Enquanto não confirmar, as caixas deles não entram na sugestão de produção. ${unk.length ? '<button type="button" class="btn xs" id="sgAll">Usar as sugestões em todos</button>' : ''}</p>
@@ -15315,11 +15524,13 @@ const SrvUI = (() => {
     memo = { k, v }; return v;
   }
   function pendingRows(S) {
-    const goods = S.ivs.filter(x => !x.off &amp;&amp; (x.st === 'vazio' &amp;&amp; x.n.normal > 0 || x.st === 'diverge'));
-    const corte = S.ivs.filter(x => x.st === 'corte');
-    const cats = S.ivs.filter(x => x.catSug);
+    /* 2.6.0 · turno lançado pelo total: produção e catálogo do servidor não entram direto; o turno aparece em "totais" para trocar pelo hora a hora */
+    const goods = S.ivs.filter(x => !x.off &amp;&amp; !x.total &amp;&amp; (x.st === 'vazio' &amp;&amp; x.n.normal > 0 || x.st === 'diverge'));
+    const corte = S.ivs.filter(x => x.st === 'corte' &amp;&amp; !x.total);
+    const cats = S.ivs.filter(x => x.catSug &amp;&amp; !x.total);
     const evs = S.events.filter(e => !e.dup);
-    return { goods, cats, evs, corte, n: goods.length + cats.length + evs.filter(e => e.type === 'catalogo' || e.type === 'lote').length };
+    const totais = [...new Set(S.ivs.filter(x => x.total &amp;&amp; !x.off &amp;&amp; (x.n.normal + x.n.pendente + x.n.retrabalho) > 0).map(x => x.psId))];
+    return { goods, cats, evs, corte, totais, n: goods.length + cats.length + evs.filter(e => e.type === 'catalogo' || e.type === 'lote').length + totais.length };
   }
   function timeline(S) {
     const span = S.w1 - S.w0, pct = m => Math.max(0, Math.min(100, (m - S.w0) / span * 100));
@@ -15352,6 +15563,7 @@ const SrvUI = (() => {
       <h4 class="section">1 · Parada "RTB · Retrabalho (fora do OEE)"</h4><p class="small">Lançada nos horários acima. Desconta do tempo planejado: não entra na Disponibilidade nem no Pareto.</p>
       ${P.inside.length ? `<h4 class="section">2 · Paradas já lançadas dentro do retrabalho</h4><p class="small">Como o trecho não conta, o normal é removê-las. Desmarque as que devem continuar contando.</p><div class="tw"><table data-nosort="1"><tbody>${P.inside.map(e => `<tr><td><input type="checkbox" data-rmi="${e.id}" checked></td><td class="mono">${U.range(e.start, e.end)}</td><td>${esc(dc(e.codeId).code || '')} · ${esc(dc(e.codeId).name || '')}</td><td class="small wrap">${esc(e.note || '')}</td></tr>`).join('')}</tbody></table></div>` : ''}
       ${P.setups.length ? `<h4 class="section">Trocas de entrada e saída do retrabalho</h4><p class="small">Marcadas = também saem do OEE (viram RTB e substituem a troca lançada). A regra: a entrada sempre; a saída só quando volta para o mesmo catálogo. Confira e decida.</p><div class="tw"><table data-nosort="1"><tbody>${P.setups.map(x => `<tr><td><input type="checkbox" data-rws="${esc(x.key)}" ${x.def ? 'checked' : ''}></td><td class="mono">${x.spans.map(([a, b]) => U.range(a, b)).join(' · ')}</td><td class="n">${U.fmt(x.minutes)} min</td><td>${x.kind === 'entrada' ? 'Entrada' : 'Saída'}: ${esc(x.c.fromCat)} · ${esc(x.c.fromLot)} → ${esc(x.c.toCat)} · ${esc(x.c.toLot)}</td><td class="small muted wrap">${esc(x.why)}${x.inside.length ? ` · substitui ${x.inside.length} parada(s) lançada(s)` : ''}</td></tr>`).join('')}</tbody></table></div>` : ''}
+      ${day.shifts.some(ps => ps.lancamento &amp;&amp; ps.lancamento.modo === 'total' &amp;&amp; P.spans.some(([a, z]) => ps.intervals.some(i => !i.deleted &amp;&amp; U.overlap(a, z, i.start, i.end) > 0))) ? '<p class="small muted">Turno lançado pelo total: a produção informada não é trocada pela contagem do servidor. Se o retrabalho estava somado no total, corrija o total no bloco do turno.</p>' : ''}
       ${P.goods.length ? `<h4 class="section">${P.inside.length ? 3 : 2} · Produção das horas com esse lote</h4><p class="small">Fica só o que foi feito de lotes normais (caixas × ${U.fmt(db().settings.serverBoxQty || 1000)}).</p><div class="tw"><table data-nosort="1"><thead><tr><th></th><th>Intervalo</th><th class="n">Lançado</th><th class="n">Fica</th><th>Caixas</th></tr></thead><tbody>${P.goods.map(g => `<tr><td><input type="checkbox" data-rwg="${g.ivId}" ${g.cur === g.nv ? 'disabled' : 'checked'}></td><td class="mono">${U.range(g.start, g.end)}</td><td class="n">${g.cur == null ? '<span class="muted">vazio</span>' : fq(g.cur)}</td><td class="n"><b>${g.nv == null ? '—' : fq(g.nv)}</b></td><td class="small">${g.rw} de retrabalho${g.norm ? ` · ${g.norm} normais` : ''}</td></tr>`).join('')}</tbody></table></div>` : ''}
       <label class="f wide"><span>Observação (opcional)</span><input type="text" id="rwNote" maxlength="200" placeholder="ex.: retrabalho do lote de setembro, reinspeção"></label>
       <p class="small muted">Vale só para ${U.brDate(day.date)}. Desmarcar o check desfaz: as paradas RTB saem e o lote volta a contar.</p>`,
@@ -15380,14 +15592,17 @@ const SrvUI = (() => {
     const codeSel = (i, id) => `<select data-evc="${i}"><option value="">— escolha o tipo —</option>${codes.map(c => `<option value="${c.id}" ${c.id === id ? 'selected' : ''}>${esc(c.code + ' · ' + c.name)}</option>`).join('')}</select>`;
     const lotTxt = x => x.lots.map(l => `${esc(l.lot)} ${l.n}${ServerData.lotKind(db(), L, l.lot, null, day.date) !== 'normal' ? ' (' + esc(Srv.KIND[ServerData.lotKind(db(), L, l.lot, null, day.date)].toLowerCase()) + ')' : ''}`).join(', ');
     const allEv = S.events;
-    modal(`Sugestões do servidor · ${U.brDate(day.date)}`, `<p class="small">Marque o que deve entrar no lançamento. Nada é gravado sem você confirmar. ${lk ? '<b class="ferr">O dia está fechado: reabra para aplicar.</b>' : ''}</p>
+    const totaisHtml = P.totais.map(id => { const ps = day.shifts.find(p => p.id === id); if (!ps) return ''; const sr = res.shifts.find(x => x.ps === ps), trava = lk || ps.status === 'fechado', cx = U.sum(S.ivs.filter(x => x.psId === id), x => x.n.normal);
+      return `<div class="banner warn"><p><b>${esc(ps.snap.name)}: existem dados apontados de produção.</b> O turno foi lançado pelo total (${fq(sr ? sr.agg.good : 0)} ${esc(unitLbl())}) e o servidor tem ${U.fmt(cx)} caixa(s) normais dele, hora a hora. Para aceitar o servidor, troque o total pelo hora a hora: as horas abrem com as sugestões marcadas para você conferir. ${trava ? '<b class="ferr">Turno ou dia fechado: reabra para trocar.</b>' : `<button type="button" class="btn xs primary" data-ttsrv="${ps.id}">Trocar o total pelo hora a hora do servidor</button>`}</p></div>`; }).join('');
+    modal(`Sugestões do servidor · ${U.brDate(day.date)}`, `<p class="small">Marque o que deve entrar no lançamento. Nada é gravado sem você confirmar. ${lk ? '<b class="ferr">O dia está fechado: reabra para aplicar.</b>' : ''}</p>${totaisHtml}
       <h4 class="section">Produção boa por intervalo <span class="small muted">(caixas × ${U.fmt(S.qty)} peças; só lotes normais)</span></h4>
-      ${P.goods.length ? `<div class="tw" style="max-height:30vh"><table data-nosort="1"><thead><tr><th><input type="checkbox" id="gAll" aria-label="Marcar todos"></th><th>Intervalo</th><th class="n">Lançado</th><th class="n">Servidor</th><th class="n">Diferença</th><th>Lotes (caixas)</th></tr></thead><tbody>${P.goods.map((x, i) => `<tr><td><input type="checkbox" data-g="${i}" ${x.cur == null &amp;&amp; !shiftLocked(x.ivId) ? 'checked' : ''} ${shiftLocked(x.ivId) ? 'disabled' : ''}></td><td class="mono">${U.range(x.start, x.end)}</td><td class="n">${x.cur == null ? '<span class="muted">vazio</span>' : fq(x.cur)}</td><td class="n"><b>${fq(x.sug)}</b></td><td class="n">${x.cur == null ? '' : `<span class="${x.sug < x.cur ? 'delta-down' : 'delta-up'}">${fqs(x.sug - x.cur)}</span>`}</td><td class="small">${lotTxt(x)}${x.n.pendente ? ' <b class="ferr">· lote a confirmar</b>' : ''}</td></tr>`).join('')}</tbody></table></div><p class="small muted">Horas já lançadas com valor diferente vêm desmarcadas: marque só se o servidor estiver certo.</p>` : '<p class="small muted">A produção lançada confere com o servidor.</p>'}${P.corte.length ? `<p class="small muted">${P.corte.length} hora(s) com diferença compensada na hora vizinha (linha de corte: ${P.corte.map(x => `${U.range(x.start, x.end)} ${fqs(x.diff)}`).join(', ')}). Não precisam de ajuste.</p>` : ''}
+      ${P.goods.length ? `<div class="tw" style="max-height:30vh"><table data-nosort="1"><thead><tr><th><input type="checkbox" id="gAll" aria-label="Marcar todos"></th><th>Intervalo</th><th class="n">Lançado</th><th class="n">Servidor</th><th class="n">Diferença</th><th>Lotes (caixas)</th></tr></thead><tbody>${P.goods.map((x, i) => `<tr><td><input type="checkbox" data-g="${i}" ${x.cur == null &amp;&amp; !shiftLocked(x.ivId) ? 'checked' : ''} ${shiftLocked(x.ivId) ? 'disabled' : ''}></td><td class="mono">${U.range(x.start, x.end)}</td><td class="n">${x.cur == null ? '<span class="muted">vazio</span>' : fq(x.cur)}</td><td class="n"><b>${fq(x.sug)}</b></td><td class="n">${x.cur == null ? '' : `<span class="${x.sug < x.cur ? 'delta-down' : 'delta-up'}">${fqs(x.sug - x.cur)}</span>`}</td><td class="small">${lotTxt(x)}${x.n.pendente ? ' <b class="ferr">· lote a confirmar</b>' : ''}</td></tr>`).join('')}</tbody></table></div><p class="small muted">Horas já lançadas com valor diferente vêm desmarcadas: marque só se o servidor estiver certo.</p>` : P.totais.length ? '<p class="small muted">Turno lançado pelo total fica de fora até a troca acima; os demais conferem com o servidor.</p>' : '<p class="small muted">A produção lançada confere com o servidor.</p>'}${P.corte.length ? `<p class="small muted">${P.corte.length} hora(s) com diferença compensada na hora vizinha (linha de corte: ${P.corte.map(x => `${U.range(x.start, x.end)} ${fqs(x.diff)}`).join(', ')}). Não precisam de ajuste.</p>` : ''}
       ${P.cats.length ? `<h4 class="section">Catálogo</h4><div class="tw"><table data-nosort="1"><thead><tr><th></th><th>A partir de</th><th>Lançado</th><th>Servidor</th></tr></thead><tbody>${P.cats.map((x, i) => `<tr><td><input type="checkbox" data-c="${i}" ${shiftLocked(x.ivId) ? 'disabled' : 'checked'}></td><td class="mono">${U.range(x.start, x.end)}</td><td>${x.catCur ? catPill(x.catCur) : '—'}</td><td>${catPill(x.catSug)}</td></tr>`).join('')}</tbody></table></div>` : ''}
       <h4 class="section">Paradas</h4>
       ${allEv.length ? `<div class="tw" style="max-height:34vh"><table data-nosort="1"><thead><tr><th></th><th>Horário</th><th class="n">Min</th><th>O quê</th><th>Tipo da parada</th><th>Detalhe</th></tr></thead><tbody>${allEv.map((e, i) => { const dup = e.dup &amp;&amp; day.events.find(x => x.id === e.dup); const dc = dup &amp;&amp; db().downtimeCodes.find(c => c.id === dup.codeId); return `<tr class="${dup ? 'muted' : ''}"><td><input type="checkbox" data-e="${i}" ${dup || lk ? 'disabled' : (e.type === 'catalogo' || e.type === 'lote') &amp;&amp; !e.long ? 'checked' : ''}></td><td class="mono">${U.range(e.start, e.end)}</td><td class="n">${U.fmt(e.end - e.start)}</td><td>${{ catalogo: 'Troca de catálogo', lote: 'Troca de lote', parada: 'Sem caixa', retrabalho: 'Retrabalho' }[e.type]}${e.long ? ' <span class="pill warn" title="Passa do limite de setup: provavelmente inclui parada longa. Ajuste o horário depois de lançar.">inclui parada longa?</span>' : ''}</td><td>${dup ? `já lançado: ${esc(dc ? dc.code : '')}` : codeSel(i, e.codeId)}</td><td class="small wrap">${esc(e.note)}</td></tr>`; }).join('')}</tbody></table></div><p class="small muted">Trocas vêm marcadas com Troca de catálogo/lote. Paradas sem caixa e retrabalho vêm desmarcadas: escolha o tipo e marque as que quer lançar. Depois de lançadas, as paradas editam normalmente no Hora a hora.</p>` : '<p class="small muted">Sem paradas sugeridas.</p>'}`,
       `<button class="btn" data-close>Cancelar</button><button class="btn primary" id="rvGo" ${lk ? 'disabled' : ''}>Aplicar selecionados</button>`, (el, close) => {
         const ga = el.querySelector('#gAll'); if (ga) ga.onchange = () => el.querySelectorAll('[data-g]:not(:disabled)').forEach(c => c.checked = ga.checked);
+        el.querySelectorAll('[data-ttsrv]').forEach(b => b.onclick = () => confirmDlg('Trocar o total pelo hora a hora do servidor?', 'O total informado deste turno é apagado e as horas voltam a abrir. Em seguida as sugestões do servidor aparecem marcadas para você conferir e aplicar. Paradas, scrap, segurança e qualidade não mudam.', 'Trocar e conferir', true).then(async ok => { if (!ok) return; const r = await run(() => Actions.voltarHoraAHora(day.id, b.dataset.ttsrv, true)); if (!r) return; close(); reviewModal(day); }));
         el.querySelectorAll('[data-evc]').forEach(s => s.onchange = () => { const c = el.querySelector(`[data-e="${s.dataset.evc}"]`); if (c &amp;&amp; !c.disabled &amp;&amp; s.value) c.checked = true; });
         const go = el.querySelector('#rvGo'); if (go) go.onclick = async () => {
           const sel = { goods: [], cats: [], events: [] };
@@ -15410,7 +15625,7 @@ const SrvUI = (() => {
   // hora a hora: dica ao lado do campo de produção
   function ivHint(day, res, ivId) {
     const S = sug(day, res); if (!S.has) return '';
-    const x = S.ivs.find(r => r.ivId === ivId); if (!x || x.off || !x.lots.length) return '';
+    const x = S.ivs.find(r => r.ivId === ivId); if (!x || x.off || x.total || !x.lots.length) return '';
     const t = `Servidor: ${x.lots.map(l => `${l.n} cx do lote ${l.lot}${ServerData.lotKind(db(), L, l.lot, null, day.date) !== 'normal' ? ' (' + Srv.KIND[ServerData.lotKind(db(), L, l.lot, null, day.date)].toLowerCase() + ')' : ''}`).join(', ')}`;
     if (x.st === 'igual') return `<span class="srvh ok" title="${esc(t)}">✓ srv</span>`;
     if (x.st === 'corte') return `<span class="srvh" title="${esc(t + ` · ${fq(x.sug)} no servidor; a diferença se compensa na hora vizinha (linha de corte da hora). Sem ajuste.`)}">≈ srv ${fq(x.sug)}</span>`;
@@ -15420,8 +15635,9 @@ const SrvUI = (() => {
   function hourlyBanner(day, res) {
     const S = sug(day, res); if (!S.has) return '';
     const P = pendingRows(S), n = P.goods.length + P.cats.length + P.evs.length;
-    if (!n) return '';
-    return `<div class="banner info" style="margin:0 0 10px"><p>${n} sugestão(ões) do servidor para conferir. <button type="button" class="btn xs primary" id="srvRev">Revisar sugestões</button></p></div>`;
+    if (!n &amp;&amp; !P.totais.length) return '';
+    const tt = P.totais.map(id => (day.shifts.find(p => p.id === id) || { snap: { name: '?' } }).snap.name);
+    return `<div class="banner ${P.totais.length ? 'warn' : 'info'}" style="margin:0 0 10px"><p>${n ? `${n} sugestão(ões) do servidor para conferir.` : ''}${tt.length ? ` <b>Existem dados do servidor</b> para ${esc(tt.join(' e '))}, lançado${tt.length > 1 ? 's' : ''} pelo total.` : ''} <button type="button" class="btn xs primary" id="srvRev">${tt.length &amp;&amp; !n ? 'Revisar e aceitar' : 'Revisar sugestões'}</button></p></div>`;
   }
 
   /* ---------- plano do mês: ordens e trocas ---------- */
@@ -36271,9 +36487,9 @@ td { font-size:15px; }
     {
       "id": "oee",
       "path": "Plataforma.html#motor/oee",
-      "version": "2.5.0",
-      "sha256": "88ac778163dca9c7cbb6be552988e923edae839602c4a4972a82cbad9edf13f9",
-      "bytes": 2164256
+      "version": "2.6.0",
+      "sha256": "794a1434ba5b76f27796c4f520429e4a9af3e1f039b50254e19b96bed654adf2",
+      "bytes": 2192140
     },
     {
       "id": "perdas",
@@ -36335,7 +36551,7 @@ td { font-size:15px; }
   "limitations": [
     "Projetos e conteúdo técnico OSM/MES/AM/TPM mantêm os limites documentados nas fontes."
   ],
-  "enginesSha256": "d4ba323b16c80ebfd234d4a8bc51c559e980ca7eccbe85393a80c0f169a9e40b",
+  "enginesSha256": "5848c9b02f827a06f08b7e1472556be272aa41d9db2ea306e4d45d62c4c858f1",
   "originRevision": "ffc9ee8",
   "sourceMode": "single-html",
   "originEnginesSha256": "a87a64ad0c328f70e102b2ae888790a9b5d5a9bd05778652a7ce7cae140e40d2"
@@ -36405,7 +36621,7 @@ summary{cursor:pointer;font-weight:600;color:var(--navy)}
 'use strict';
 /* ---------- referência (atualizar quando a plataforma mudar de versão) ---------- */
 // Iguais às do pacote da plataforma (nova-plataforma/src/generated/manifest.json); o teste ferramenta-verificar confere.
-const VERSOES = {"oee":"2.5.0","perdas":"1.12.13","gel":"2.39","paradas":"1.2.15","equip":"1.0.20","inic":"1.1.16","linha":"1.2.0","projetos":"0.1.16","portal":"1.9.45"};
+const VERSOES = {"oee":"2.6.0","perdas":"1.12.13","gel":"2.39","paradas":"1.2.15","equip":"1.0.20","inic":"1.1.16","linha":"1.2.0","projetos":"0.1.16","portal":"1.9.45"};
 const BASES = [
  { arq: 'vacutainer-cadastros.json', mod: 'portal', nome: 'Cadastro geral (Portal)', obrig: true, cadastro: true, bk: 'Cadastros' },
  { arq: 'portal-base.json', mod: 'portal', nome: 'Portal', obrig: true, bk: 'Portal' },
@@ -36996,7 +37212,7 @@ import { Icon, Button, Badge, Empty, Modal, BarChart, BrandLogo, CommandMenu } f
 import { ModuleFrame } from "vac:modulo/components/ModuleFrame";
 import manifest from "vac:recurso/manifesto";
 import { ModuleTabs } from "vac:modulo/components/ModuleTabs";
-const VERSION = "1.7.5";
+const VERSION = "1.8.0";
 /* Navegação 1.3.0 (16/11/2026): Visão da linha, Relatórios e Importações têm abas; as que mostram uma tela do
    Portal (motor da Administração) trazem o 3º campo com a aba dele. Administração fica só com cadastros e configuração. */
 const SHELL_TABS = {
