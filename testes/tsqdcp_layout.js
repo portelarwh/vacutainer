@@ -7,7 +7,8 @@
 //   node testes/tsqdcp_layout.js --gravar   grava a referência (só antes de mudar a tela)
 // Código 1 se falhar.
 const path = require('path'), fs = require('fs'); const RAIZ = path.resolve(__dirname, '..') + '/';
-const { chromium } = require('playwright');
+// plataforma 1.7.5: as páginas antigas (__modulos__/*.html) não existem mais como arquivo; o navegador da plataforma as serve do HTML único
+const { chromium } = require('./plataforma/engine-browser.cjs');
 const REF = RAIZ + 'testes/bases/sqdcp-referencia.json', SAI = RAIZ + 'testes/saida/sqdcp-layout/'; fs.mkdirSync(SAI, { recursive: true });
 const GRAVAR = process.argv.includes('--gravar');
 const errs = []; const ok = (c, m) => { console.log((c ? 'ok   ' : 'FALHA ') + m); if (!c) errs.push(m); };
