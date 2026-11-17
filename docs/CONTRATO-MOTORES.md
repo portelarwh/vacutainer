@@ -82,6 +82,10 @@ Plataforma 1.5.0, Produção 2.4.82, Administração 1.9.44.
 
 Aba Linha do tempo da Produção (`docs/timeline-operacional.md`). Só leitura de `day.events` e `db.server`; não altera OEE, metas, classificação de paradas, turnos nem exports. Bloco **aditivo** na base da Produção, autorizado pela especificação: `db.timeline = { tagMap[], tagEvents[], comments{}, imports[] }` (base sem o bloco continua válida; `Model.ensure` completa). Vigência do mapa de tags segue o contrato 2 (encerra e cria outra). Comentário, importação de tags e mapa passam por `Store.mutate` (releitura, backup, fila, auditoria). Testes: `testes/ttimeline.js` e `testes/plataforma/timeline.cjs`.
 
+## Piloto incorporado à Visão da linha · Linha 360° 1.3.0, plataforma 1.8.6 (17/11/2026)
+
+O Piloto de consulta (1.2.0) foi retirado a pedido do responsável, por repetir a Visão da linha. A ficha do ponto da Visão da linha (`fichaPonto`) recebeu o que só o piloto tinha: checklists previstos agora (`#fCk`), pessoas do posto por turno (`#fPes`), fontes de cada número (`fontesHtml`, `#fFontes`; página não lida = "sem dados") e a etiqueta do recorte de cada bloco (`secRc`: no período · agora · cadastro). Só leitura, como antes: nada novo é gravado e nenhum número muda. `ir()` leva aba desconhecida (ex.: o link antigo `#/linha?tab=piloto`) para a Visão da linha. Teste: `testes/plataforma/linha-ficha.cjs` (substitui `linha-piloto.cjs`).
+
 ## Equipamentos do MES e conexão da Administração · Administração 1.9.46, plataforma 1.8.5 (17/11/2026)
 
 - **Campos novos, opcionais, no cadastro de equipamentos** (autorizados pelo responsável em 17/11/2026): `codigoMes` (Resource Name do MES; prefixo das TAGs; não repete), `departamento`, `centroTrabalho` (Work Center). Equipamento antigo sem eles continua válido. O código EQ continua o identificador.

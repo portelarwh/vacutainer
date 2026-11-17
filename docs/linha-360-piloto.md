@@ -1,5 +1,7 @@
 # Linha 360° · Piloto de consulta
 
+> **Encerrado na plataforma 1.8.6 (Linha 360° 1.3.0, 17/11/2026).** O responsável avaliou que o piloto repetia a Visão da linha. Os blocos que só ele tinha (checklists previstos agora, pessoas do posto por turno, fontes de cada número e a etiqueta do recorte de tempo) foram levados para a ficha do ponto da Visão da linha, e a aba foi retirada. O link antigo (`#/linha?tab=piloto`) abre a Visão da linha. O texto abaixo fica como registro.
+
 Linha 360° 1.2.0. Primeira entrega derivada de [linha-360-especificacao.md](linha-360-especificacao.md). **Não é o MVP da especificação** (§16.6): é uma tela de validação, somente leitura, para responder a uma pergunta:
 
 > Ao selecionar um ponto da linha, a pessoa entende as perdas e as pendências daquele ponto sem procurar em várias abas?
