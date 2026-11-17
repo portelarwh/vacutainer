@@ -82,6 +82,10 @@ Plataforma 1.5.0, Produção 2.4.82, Administração 1.9.44.
 
 Aba Linha do tempo da Produção (`docs/timeline-operacional.md`). Só leitura de `day.events` e `db.server`; não altera OEE, metas, classificação de paradas, turnos nem exports. Bloco **aditivo** na base da Produção, autorizado pela especificação: `db.timeline = { tagMap[], tagEvents[], comments{}, imports[] }` (base sem o bloco continua válida; `Model.ensure` completa). Vigência do mapa de tags segue o contrato 2 (encerra e cria outra). Comentário, importação de tags e mapa passam por `Store.mutate` (releitura, backup, fila, auditoria). Testes: `testes/ttimeline.js` e `testes/plataforma/timeline.cjs`.
 
+## Permissões da Linha 360° · plataforma 1.7.1 (17/11/2026)
+
+`VAC_PODE_MAPA.linha` (comum/interface) passa a listar os botões da própria Linha 360°; antes apontava para os de Equipamentos, que não existem na página, e nada ficava desligado na tela (a gravação já era barrada pela casca). A permissão continua sendo a do módulo `equip` (`VAC_PODE_MOD`); nenhum perfil ou ação nova no Portal. Opção A do responsável: **lançar** = marcar e desfazer checklist e salvar o posto; **configurar** = editar posições, desenhar e salvar áreas, salvar pontos e equipamentos, cadastrar, editar e desativar checklist. Sem sessão na plataforma, tudo desligado. Teste: `testes/tpermissoes.js` (telas Checklists, Pessoas e postos, Configuração e Piloto).
+
 ## Linha 360° 1.2.0 · Piloto de consulta (17/11/2026)
 
 Aba `piloto` do módulo Linha 360° (`docs/linha-360-piloto.md`), aberta só por link (`#/linha?tab=piloto`; no módulo, `#aba=piloto`). Fica fora de `ABAS`: não entra na barra da página, nas abas da casca nem em `vacPagina.abas()`. Somente leitura: usa `numeros()`, `eventos()`, `chkFeito`, `pesNome` e os exports já lidos; não chama `Store.commit`, `save`, `reload` nem `lerExt`, e tem ponto e filtros próprios (as abas atuais não perdem os seus). Não muda base, `schemaVersion`, exports, permissões nem números. Teste: `testes/plataforma/linha-piloto.cjs`. A versão 1.1.5 citada acima é histórica; a anterior a esta entrega era 1.1.7.
