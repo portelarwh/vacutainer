@@ -7115,6 +7115,8 @@ tr.lot-rw td:first-child{box-shadow:inset 3px 0 0 var(--warn)}
 tr.lot-pend td:first-child{box-shadow:inset 3px 0 0 var(--crit)}
 .qprev{display:block;font-size:10.5px;line-height:1.2;color:var(--muted);white-space:nowrap;margin-top:2px;text-align:right}
 .qprev.bad{color:var(--crit);font-weight:600}
+/* plataforma 1.7.2: ícone de alerta no tamanho do texto pequeno (aviso de quantidade e marcador srv do hora a hora) */
+.qprev svg.vi,.srvh svg.vi{width:12px;height:12px;vertical-align:-2px;margin-top:0}
 /* ===== acabamento V1.90 (padrão comum: Portal, Gel, Perdas, OEE) ===== */
 :root{--r:10px;--sh:0 1px 2px rgba(16,24,40,.06),0 2px 6px rgba(16,24,40,.06)}
 @media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--sh:0 1px 2px rgba(0,0,0,.35),0 2px 8px rgba(0,0,0,.25)}}
@@ -10777,7 +10779,8 @@ function bindQtyPreview(root, sel, getMax, big) {
       const raw = inp.value.trim(); if (!raw) { if (pv) pv.remove(); return; }
       const v = parseQ(raw, big), max = getMax ? getMax(inp) : null, msg = Number.isNaN(v) ? 'valor inválido' : qtyGuard(v, max, raw);
       if (!pv) { pv = document.createElement('span'); pv.className = 'qprev'; inp.insertAdjacentElement('afterend', pv); }
-      pv.classList.toggle('bad', !!msg || Number.isNaN(v)); pv.textContent = msg ? '⚠ acima do possível' : Number.isNaN(v) ? '⚠ inválido' : '= ' + U.fmt(v) + ' peças'; pv.title = msg || '';
+      pv.classList.toggle('bad', !!msg || Number.isNaN(v)); pv.textContent = msg ? 'acima do possível' : Number.isNaN(v) ? 'inválido' : '= ' + U.fmt(v) + ' peças';   /* plataforma 1.7.2: ícone de alerta da biblioteca no lugar do ⚠ */
+      if ((msg || Number.isNaN(v)) &amp;&amp; typeof vacIcone === 'function') pv.insertAdjacentHTML('afterbegin', vacIcone('alerta', 'sm') + ' '); else if (msg || Number.isNaN(v)) pv.textContent = '⚠ ' + pv.textContent; pv.title = msg || '';
     };
     inp.addEventListener('input', show); inp.addEventListener('blur', () => { const pv = inp.parentElement.querySelector(':scope > .qprev'); if (pv &amp;&amp; !pv.classList.contains('bad')) pv.remove(); });
   });
@@ -12921,7 +12924,7 @@ const HELP = {
   serverData: ['Dados do servidor (MES)', [['De onde vem?', 'Do CSV exportado do servidor: catálogo atual, lote atual e o número de cada caixa que passa na estação de medição. Depois virá de uma tabela SQL, no mesmo formato.'], ['O que a página faz com isso?', 'Monta a linha do tempo de cada dia, sugere a produção boa de cada hora (caixas × peças por caixa), as trocas de catálogo e de lote com o horário exato, as paradas sem caixa, o início e o fim real das ordens e a análise de trocas do mês.'], ['Grava sozinho?', 'Não. Tudo é sugestão: você marca o que entra e confirma. O que você pontuar à mão prevalece.'], ['Setup', 'Última caixa de um lote até a 1ª caixa do próximo. A troca registrada no MES divide o tempo em duas partes: até começar a troca e a troca em si.'], ['Lote retomado', 'O número da caixa continua de onde parou quando o lote volta, então a página sabe que é o mesmo lote em outro trecho (ex.: outro lote entrou no meio).'], ['Lote sem ordem', 'Lotes que não estão em nenhum plano (ex.: retrabalho de lote antigo na mesma linha) ficam "a confirmar". Você diz se é retrabalho, produção normal ou ruído. Retrabalho não entra na produção boa sugerida.'], ['Reimportar', 'Pode importar de novo um período: o trecho coberto pelo arquivo é substituído, nada é duplicado.']]],
   serverRework: ['Retrabalho no dia', [['Quando marcar?', 'Quando o lote rodou na linha como retrabalho (ex.: lote antigo reinspecionado). Vale só para o dia marcado.'], ['O que acontece?', 'Pela política, o retrabalho não existe para o OEE: o tempo do lote (1ª à última caixa dentro dos turnos) vira parada RTB, que desconta do tempo planejado e fica fora do Pareto; a produção das horas fica só com as caixas de lotes normais; paradas lançadas dentro do trecho podem ser removidas.'], ['Exemplo', 'Em 10 h de turno, 9 h de retrabalho: só 1 h entra no tempo planejado, e só o que foi feito nessa 1 h conta como produção.'], ['E as trocas?', 'A troca para o lote de retrabalho e a volta continuam como sugestão de parada normal (TRC/TRL). Se a regra for tirá-las também, lance como RTB.'], ['Desfazer', 'Desmarque o check: as paradas RTB saem e o lote volta a contar. Confira a produção em "Revisar sugestões".']]],
   serverDiv: ['Divergências do servidor', [['O que entra aqui?', 'Lote sem ordem no plano; lote acima ou abaixo do planejado (parado); catálogo do MES diferente do plano; início/fim real da ordem diferente do servidor; ordem prevista sem nenhuma caixa; produção lançada diferente das caixas do dia; caixas fora dos turnos lançados; retrabalho marcado sem o tempo descontado.'], ['Como resolver?', 'Cada linha tem as decisões possíveis. Algumas já fazem a correção (classificar o lote, encerrar a ordem, usar o horário do servidor); outras só registram a decisão e pedem o motivo.'], ['E se mudar depois?', 'Se os dados mudarem (ex.: o lote voltou e passou de 965 caixas), a divergência é recalculada e aparece de novo. Decididas ficam na lista "Decididas" e podem ser reabertas.']]],
-  serverHourTol: ['Tolerância por hora', [['O que é?', 'Quantas caixas de diferença entre o lançado e o servidor uma hora pode ter sem aviso.'], ['Linha de corte', 'Se o operador lançou 13–14 = 64 e 14–15 = 65 e o servidor contou 65 e 64, a diferença se compensa na hora vizinha: é só onde a hora foi cortada. Essas horas mostram "≈ srv" e não pedem ajuste.'], ['Quando avisa?', 'Só quando a diferença passa da tolerância e não se compensa na hora anterior nem na seguinte do mesmo turno ("⚠ srv"). O total do dia diferente também aparece em Pendências.']]],
+  serverHourTol: ['Tolerância por hora', [['O que é?', 'Quantas caixas de diferença entre o lançado e o servidor uma hora pode ter sem aviso.'], ['Linha de corte', 'Se o operador lançou 13–14 = 64 e 14–15 = 65 e o servidor contou 65 e 64, a diferença se compensa na hora vizinha: é só onde a hora foi cortada. Essas horas mostram "≈ srv" e não pedem ajuste.'], ['Quando avisa?', 'Só quando a diferença passa da tolerância e não se compensa na hora anterior nem na seguinte do mesmo turno (marcador "srv" com o sinal de alerta). O total do dia diferente também aparece em Pendências.']]],
   oeeReliab: ['Confiabilidade do OEE', [['O que mostra?', 'Se o OEE do período pode ser usado como está ou ainda depende de dados: horas sem produção lançada, scrap pendente, divergências do servidor abertas (Baixa); turnos ainda não fechados ou dias sem dados do servidor (Média); nada disso (Alta).'], ['Muda o cálculo?', 'Não. Só avisa o quanto confiar no número. Clique para ver as pendências.']]],
   unexplained: ['Perda não explicada', [['O que é?', 'Minutos de perda de Disponibilidade + Performance que não têm parada apontada: perda total em minutos − scrap − paradas apontadas.'], ['Por que não chamar de microparada?', 'Porque ninguém mediu. Pode ser velocidade reduzida, microparada ou parada não apontada. Nos dias com dados do servidor, o intervalo entre caixas ajuda a separar.']]],
   serverBoxQty: ['Peças por caixa', [['O que é?', 'Quantas peças tem cada caixa contada pelo servidor.'], ['Como saber?', 'Os lotes fecham em 1.260 caixas para QTDE 1.260.000 do PCP: 1 caixa = 1.000 tubos, o mesmo milheiro que o operador digita.']]],
@@ -15411,7 +15414,7 @@ const SrvUI = (() => {
     const t = `Servidor: ${x.lots.map(l => `${l.n} cx do lote ${l.lot}${ServerData.lotKind(db(), L, l.lot, null, day.date) !== 'normal' ? ' (' + Srv.KIND[ServerData.lotKind(db(), L, l.lot, null, day.date)].toLowerCase() + ')' : ''}`).join(', ')}`;
     if (x.st === 'igual') return `<span class="srvh ok" title="${esc(t)}">✓ srv</span>`;
     if (x.st === 'corte') return `<span class="srvh" title="${esc(t + ` · ${fq(x.sug)} no servidor; a diferença se compensa na hora vizinha (linha de corte da hora). Sem ajuste.`)}">≈ srv ${fq(x.sug)}</span>`;
-    if (x.st === 'diverge') return `<span class="srvh diff" title="${esc(t + ' · diferença que não se compensa na hora vizinha: confira')}">⚠ srv ${fq(x.sug)}</span>`;
+    if (x.st === 'diverge') return `<span class="srvh diff" title="${esc(t + ' · diferença que não se compensa na hora vizinha: confira')}">${typeof vacIcone==='function'?vacIcone('alerta','sm'):'⚠'} srv ${fq(x.sug)}</span>`;
     return `<span class="srvh${x.cur != null ? ' diff' : ''}" title="${esc(t)}">srv ${fq(x.sug)}</span>`;
   }
   function hourlyBanner(day, res) {
@@ -25113,14 +25116,14 @@ function drumCard(l,stage){
   const qty=closed?`${kg(l.lastQtyKg)} kg`:(l.partialOut?`${kg(l._remain)} kg <span style="font-size:12px;color:var(--muted)">(relatório ${kg(l.qtyKg)})</span>`:`${kg(l.qtyKg)} kg`);
   let rows=`<dt>Lote</dt><dd class="big">${closed?esc(l.batch):audVal(l,'batch',l.batch)}</dd><dt>LP</dt><dd><button class="linkish mono" data-detail="${esc(l.lp)}">${esc(l.lp)}</button></dd><dt>Qtd.</dt><dd>${qty}</dd><dt>Validade</dt><dd>${fmtD(l.expiry)}</dd>`;
   if(closed)rows+=`<dt>Saída</dt><dd>${fmtD(l.closedAt)}</dd><dt>Último local</dt><dd>${esc(l.lastLocation||l.location)}</dd><dt>Situação</dt><dd>${esc(l.closeReason)}</dd>`;
-  else rows+=`<dt>Idade</dt><dd>${l._age??'—'} dias</dd><dt>Local</dt><dd>${audVal(l,'location',l.location)}${l._badLoc?`<div class="audv" style="color:var(--crit)">⚠ ${esc(l._badLoc.msg||'local de alerta')}</div>`:''}</dd><dt>Zona</dt><dd>${audVal(l,'zone',l.zone)}</dd><dt>Status</dt><dd>${l._purga?(l._purga.kind==='delete'?'Excluído no SAP ':'Enviado ao CFPURGA (remix) ')+(l._purga.at?fmtDT(l._purga.at):'')+(l._purga.kind==='delete'&amp;&amp;l._purga.cmt?' · '+esc(l._purga.cmt):''):l._pend?'Baixa registrada '+fmtDT(l.pendingBaixa.at):esc(isAvail(l)?'Disponível':l.status)}</dd>`;
+  else rows+=`<dt>Idade</dt><dd>${l._age??'—'} dias</dd><dt>Local</dt><dd>${audVal(l,'location',l.location)}${l._badLoc?`<div class="audv" style="color:var(--crit)">${typeof vacIcone==='function'?vacIcone('alerta','sm'):'⚠'} ${esc(l._badLoc.msg||'local de alerta')}</div>`:''}</dd><dt>Zona</dt><dd>${audVal(l,'zone',l.zone)}</dd><dt>Status</dt><dd>${l._purga?(l._purga.kind==='delete'?'Excluído no SAP ':'Enviado ao CFPURGA (remix) ')+(l._purga.at?fmtDT(l._purga.at):'')+(l._purga.kind==='delete'&amp;&amp;l._purga.cmt?' · '+esc(l._purga.cmt):''):l._pend?'Baixa registrada '+fmtDT(l.pendingBaixa.at):esc(isAvail(l)?'Disponível':l.status)}</dd>`;
   let foot='';
   if(closed){const st=finStatus(l),bx=finBaixa(l);if(st==='sem'||st==='dest')foot=`<footer><button class="btn sm primary" data-regbx="${esc(l.lp)}">Regularizar baixa</button></footer>`;else if(bx)foot=`<footer><button class="btn sm" data-bxedit="${esc(bx.id)}">Editar baixa</button></footer>`}
   if(!closed&amp;&amp;!l._pend&amp;&amp;stage==='line')foot=`<footer><button class="btn sm primary" data-baixa="${esc(l.lp)}">Registrar consumido</button><button class="btn sm" data-hmeas="${esc(l.lp)}">Registrar altura</button><button class="btn sm" data-obs="${esc(l.lp)}">Observação</button><button class="btn sm" data-linedit="${esc(l.lp)}">Editar cabeçote</button><button class="btn sm" data-unline="${esc(l.lp)}">Tirar da linha</button></footer>`;
   else if(!closed&amp;&amp;!l._pend)foot=`<footer>${(stage==='now'||stage==='next')&amp;&amp;D&amp;&amp;D.act.filter(x=>x.inUse&amp;&amp;!x._purga&amp;&amp;x.material===l.material).length<lineSlots()?`<button class="btn sm" data-online="${esc(l.lp)}">Colocar na linha</button>`:''}<button class="btn sm ${stage==='now'?'primary':''}" data-baixa="${esc(l.lp)}">Registrar retirada</button><button class="btn sm" data-obs="${esc(l.lp)}">Observação</button>${l.manualBlock||l.blockObs?`<button class="btn sm" data-release="${esc(l.lp)}">Liberar</button>`:''}</footer>`;
   if(l._pend&amp;&amp;pendTotal(l))foot=`<footer><button class="btn sm" data-cancel="${esc(l.lp)}">Desfazer baixa</button></footer>`;else if(l._purga)foot=`<footer><button class="btn sm" data-detail="${esc(l.lp)}">Ver histórico</button></footer>`;
   if(!closed&amp;&amp;foot)foot=foot.replace('</footer>',`<button class="btn sm" data-audit="${esc(l.lp)}">Auditar</button></footer>`);
-  if(!closed&amp;&amp;noLoc(l))rows+=`<dt>Local real</dt><dd><span class="audv" style="font-size:12.5px;color:var(--crit)">⚠ não estava em ${esc(l.noLoc.sapLoc)} (${fmtD(l.noLoc.at).slice(0,5)} · ${esc(l.noLoc.by)})</span></dd>`;else if(!closed&amp;&amp;audOpen(l)&amp;&amp;audDiff(l,'cond'))rows+=`<dt>Condição</dt><dd><span class="audv" style="font-size:12.5px">⚠ ${esc(audDiff(l,'cond').real)}</span></dd>`;
+  if(!closed&amp;&amp;noLoc(l))rows+=`<dt>Local real</dt><dd><span class="audv" style="font-size:12.5px;color:var(--crit)">${typeof vacIcone==='function'?vacIcone('alerta','sm'):'⚠'} não estava em ${esc(l.noLoc.sapLoc)} (${fmtD(l.noLoc.at).slice(0,5)} · ${esc(l.noLoc.by)})</span></dd>`;else if(!closed&amp;&amp;audOpen(l)&amp;&amp;audDiff(l,'cond'))rows+=`<dt>Condição</dt><dd><span class="audv" style="font-size:12.5px">${typeof vacIcone==='function'?vacIcone('alerta','sm'):'⚠'} ${esc(audDiff(l,'cond').real)}</span></dd>`;
   const note=!closed&amp;&amp;l.lastObs?`<p class="note" data-obs="${esc(l.lp)}" title="Ver, editar ou excluir observações">${esc(l.lastObs)}</p>`:'';
   const lvl=!closed&amp;&amp;stage==='line'&amp;&amp;l.inUse&amp;&amp;!l._purga?(()=>{try{return drumLineHtml(l)}catch(e){console.warn(e);return ''}})():'';
   return `<article class="drum ${cls}"><header><span class="pos">${pos}</span><span class="tag">${STAGE[stage]}</span><span class="flags">${flags.join('')}</span></header>${lvl}<dl>${rows}</dl>${note}${foot}</article>`;
@@ -25178,7 +25181,7 @@ function zonePrompt(){const P=S.config.locZonePend||{};const ks=Object.keys(P).s
 const audOpen=l=>!!(l&amp;&amp;l.audit&amp;&amp;l.audit.open);
 const audDiff=(l,k)=>audOpen(l)?(l.audit.diffs||[]).find(d=>d.k===k):null;
 const noLoc=l=>!!(l&amp;&amp;l.noLoc);
-function audVal(l,k,val){const d=audDiff(l,k);return d?`${esc(val)}<div class="audv" title="Auditado em ${fmtDT(l.audit.at)} por ${esc(l.audit.by)}">⚠ estava em: <b>${esc(d.real)}</b> · ${fmtD(l.audit.at).slice(0,5)}</div>`:esc(val)}
+function audVal(l,k,val){const d=audDiff(l,k);return d?`${esc(val)}<div class="audv" title="Auditado em ${fmtDT(l.audit.at)} por ${esc(l.audit.by)}">${typeof vacIcone==='function'?vacIcone('alerta','sm'):'⚠'} estava em: <b>${esc(d.real)}</b> · ${fmtD(l.audit.at).slice(0,5)}</div>`:esc(val)}
 // monta a auditoria a partir do que foi visto, comparando com o SAP (o local real é o que importa)
 function buildAudit(l,obs,meta){
   const at=meta.at||nowDT(),diffs=[];
@@ -36261,8 +36264,8 @@ td { font-size:15px; }
       "id": "oee",
       "path": "Plataforma.html#motor/oee",
       "version": "2.5.0",
-      "sha256": "8739fd85076931bd32879ae2f692e5972c2fc20eb6a2528a9847d447c42270d6",
-      "bytes": 2158531
+      "sha256": "d2a38fd060c46b12c21cf077906ca824de891a6c54ffa8fc9da6fccbcfe1d32f",
+      "bytes": 2159100
     },
     {
       "id": "perdas",
@@ -36275,8 +36278,8 @@ td { font-size:15px; }
       "id": "gel",
       "path": "Plataforma.html#motor/gel",
       "version": "2.39",
-      "sha256": "c6e46b38fc53dfa5e9f3b7d3fc969e70578aefca31483d65351bb97644b8ba11",
-      "bytes": 1604267
+      "sha256": "be25c19a4b3ce93126ddf38ec19a6c1fe881d4cf7706ee4c49ffbd7fe3cacd35",
+      "bytes": 1604499
     },
     {
       "id": "paradas",
@@ -36324,7 +36327,7 @@ td { font-size:15px; }
   "limitations": [
     "Projetos e conteúdo técnico OSM/MES/AM/TPM mantêm os limites documentados nas fontes."
   ],
-  "enginesSha256": "d89e05c939c1be8cf69d613ec4866b811d18676cd707395ecefb1c27a14eae7a",
+  "enginesSha256": "760ab23f079c86323bbde44b90ed4346612c45c17ca6ea9022612e0e94638a87",
   "originRevision": "ffc9ee8",
   "sourceMode": "single-html",
   "originEnginesSha256": "a87a64ad0c328f70e102b2ae888790a9b5d5a9bd05778652a7ce7cae140e40d2"
@@ -39172,6 +39175,9 @@ export {
 <!-- modulo/design/marca -->
 <textarea data-vac-source="modulo/design/marca" spellcheck="false">const MARCA_DIR = "Marca/";
 const MARCA_LOGO = { escuro: MARCA_DIR + "BD_1-Color_Reverse_RGB_TransparentBurst.svg", claro: MARCA_DIR + "BD_2-Color_RGB.svg" };
+/* Plataforma 1.7.2 · favicon com o símbolo BD, lido da pasta Marca/ como a logo (a marca não entra no HTML; docs/MARCA.md).
+   Só aparece se o arquivo carregar; sem ele a aba fica sem ícone, sem imagem quebrada. */
+const MARCA_FAVICON = MARCA_DIR + "favicon.svg";
 const face = (file, weight, style) => `@font-face{font-family:"FS Albert Pro";src:local("FSAlbertPro-${file}"),url("${MARCA_DIR}FSAlbertPro-${file}.otf") format("opentype");font-weight:${weight};font-style:${style};font-display:block}`;
 const marcaCss = face("Regular", "300 500", "normal") + face("Bold", "600 800", "normal") + face("Italic", "300 500", "italic");
 function aplicarMarca(doc = document) {
@@ -39180,6 +39186,22 @@ function aplicarMarca(doc = document) {
   s.id = "vacMarcaCss";
   s.textContent = marcaCss;
   doc.head.appendChild(s);
+}
+function aplicarFavicon(doc = document) {
+  if (doc.getElementById("vacFavicon")) return;
+  const im = new Image();
+  im.onload = () => {
+    if (!im.naturalWidth || doc.getElementById("vacFavicon")) return;
+    const l = doc.createElement("link");
+    l.id = "vacFavicon";
+    l.rel = "icon";
+    l.type = "image/svg+xml";
+    l.href = MARCA_FAVICON;
+    doc.head.appendChild(l);
+  };
+  im.onerror = () => {
+  };
+  im.src = MARCA_FAVICON;
 }
 const marcaUrl = (rel) => {
   try {
@@ -39190,7 +39212,9 @@ const marcaUrl = (rel) => {
 };
 export {
   MARCA_DIR,
+  MARCA_FAVICON,
   MARCA_LOGO,
+  aplicarFavicon,
   aplicarMarca,
   marcaCss,
   marcaUrl
@@ -39201,8 +39225,9 @@ export {
 <textarea data-vac-source="modulo/main" spellcheck="false">import { jsx } from "vac:vendor/react";
 import { createRoot } from "vac:vendor/react";
 import App from "vac:modulo/App";
-import { aplicarMarca } from "vac:modulo/design/marca";
+import { aplicarFavicon, aplicarMarca } from "vac:modulo/design/marca";
 aplicarMarca();
+aplicarFavicon();
 createRoot(document.getElementById("root")).render(/* @__PURE__ */ jsx(App, {}));
 </textarea>
 

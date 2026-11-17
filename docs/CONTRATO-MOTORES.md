@@ -82,6 +82,11 @@ Plataforma 1.5.0, Produção 2.4.82, Administração 1.9.44.
 
 Aba Linha do tempo da Produção (`docs/timeline-operacional.md`). Só leitura de `day.events` e `db.server`; não altera OEE, metas, classificação de paradas, turnos nem exports. Bloco **aditivo** na base da Produção, autorizado pela especificação: `db.timeline = { tagMap[], tagEvents[], comments{}, imports[] }` (base sem o bloco continua válida; `Model.ensure` completa). Vigência do mapa de tags segue o contrato 2 (encerra e cria outra). Comentário, importação de tags e mapa passam por `Store.mutate` (releitura, backup, fila, auditoria). Testes: `testes/ttimeline.js` e `testes/plataforma/timeline.cjs`.
 
+## Favicon e ícones · plataforma 1.7.2 (17/11/2026)
+
+- Favicon: `aplicarFavicon` (modulo/design/marca), chamado em `modulo/main`, testa `Marca/favicon.svg` (nome definido pelo responsável) e só então insere `<link id="vacFavicon" rel="icon">`; sem o arquivo, nada é inserido. A marca continua fora do HTML (`docs/MARCA.md`). Teste: `testes/plataforma/favicon.cjs`.
+- Ícones: os ⚠ visíveis viraram `vacIcone('alerta','sm')` (Lucide, a biblioteca do kit): prévia de quantidade da Produção (`bindQtyPreview`, mesmo texto e mesmas regras), marcador "srv" do hora a hora e auditoria do Gel. Sem `vacIcone`, volta o ⚠. Mantidos de propósito: 🔒/🔓 do Portal (decisão do responsável); o ⌕ do botão Buscar e o ⚠ do selo de versão dos módulos, que ficam ocultos dentro da plataforma (a casca tem cabeçalho e busca próprios). Versões dos motores não mudaram.
+
 ## Permissões da Linha 360° · plataforma 1.7.1 (17/11/2026)
 
 `VAC_PODE_MAPA.linha` (comum/interface) passa a listar os botões da própria Linha 360°; antes apontava para os de Equipamentos, que não existem na página, e nada ficava desligado na tela (a gravação já era barrada pela casca). A permissão continua sendo a do módulo `equip` (`VAC_PODE_MOD`); nenhum perfil ou ação nova no Portal. Opção A do responsável: **lançar** = marcar e desfazer checklist e salvar o posto; **configurar** = editar posições, desenhar e salvar áreas, salvar pontos e equipamentos, cadastrar, editar e desativar checklist. Sem sessão na plataforma, tudo desligado. Teste: `testes/tpermissoes.js` (telas Checklists, Pessoas e postos, Configuração e Piloto).
