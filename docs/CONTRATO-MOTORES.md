@@ -82,6 +82,10 @@ Plataforma 1.5.0, Produção 2.4.82, Administração 1.9.44.
 
 Aba Linha do tempo da Produção (`docs/timeline-operacional.md`). Só leitura de `day.events` e `db.server`; não altera OEE, metas, classificação de paradas, turnos nem exports. Bloco **aditivo** na base da Produção, autorizado pela especificação: `db.timeline = { tagMap[], tagEvents[], comments{}, imports[] }` (base sem o bloco continua válida; `Model.ensure` completa). Vigência do mapa de tags segue o contrato 2 (encerra e cria outra). Comentário, importação de tags e mapa passam por `Store.mutate` (releitura, backup, fila, auditoria). Testes: `testes/ttimeline.js` e `testes/plataforma/timeline.cjs`.
 
+## Escala de espaçamento na Produção · plataforma 1.7.4 (17/11/2026)
+
+`motor/oee`: 340 valores de padding, margin e gap dos blocos `<style>` convertidos para `var(--sp-N,Npx)`. Ficaram como estavam: o CSS montado no JavaScript (vai para relatórios e Outlook, que não leem `var()`), as 95 regras do SQDCP (A4 paisagem) e os 6 blocos `@media print`. Fora do `<style>` o bloco é idêntico. Versão do motor não muda. Verificado: capturas das 17 abas (1440 e 1024 px, claro e escuro) e o teste de layout do SQDCP rodado com o navegador da plataforma (`testes/tsqdcp_layout.js` ainda abre as páginas antigas e não roda sozinho).
+
 ## Escala de espaçamento · plataforma 1.7.3 (17/11/2026)
 
 Tokens `--sp-4` … `--sp-32` em `css/brand` (regras em `docs/DESIGN_SYSTEM.md`, seção 11). `css/kit` e `css/style` passaram a usá-los em padding, margin e gap: 438 valores avulsos convertidos para o passo mais próximo; 32 mantidos (0, 1–3 px, acima de 32 px ou com calc). Só apresentação: nenhum ID, evento, cálculo, filtro ou dado muda. `modulo/App` volta a mostrar a versão da plataforma (`VERSION`, que tinha ficado em 1.7.0 nas entregas 1.7.1 e 1.7.2). Módulos (`motor/*`) ainda com os valores antigos; entram em etapas.
