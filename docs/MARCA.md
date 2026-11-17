@@ -59,17 +59,20 @@ Pasta da linha/
 │   ├── linha360-base.json
 │   └── Preferencias/              # arquivos de layout por ID de pessoa
 ├── 00. Backups/
-│   ├── Portal/
+│   ├── Portal/                    # base da Administração (portal-base.json)
+│   ├── Cadastros/                 # vacutainer-cadastros.json
 │   ├── OEE/
+│   ├── Ordens/                    # ordens-base.json (Produção)
 │   ├── Perdas/
 │   ├── Gel/
 │   ├── Paradas/
 │   ├── Equipamentos/
 │   ├── Iniciativas/
-│   └── Linha360/
+│   ├── Linha360/
+│   └── Projetos/                  # quando Projetos gravar
 └── pastas de relatórios de entrada # conforme o caminho configurado em cada importador
 ```
 
-As bases e subpastas são mantidas pelo aplicativo conforme o uso; não criar JSON vazios, renomear bases ou apagar dados existentes para reproduzir a árvore. Projetos ainda está em construção: não é necessário criar `projetos-base.json`. Algumas rotinas também guardam originais SAP nas pastas configuradas; preserve-as. Os logs de backup ficam nas subpastas do respectivo módulo.
+Todas as páginas usam a mesma pasta raiz (a conectada na plataforma). As subpastas de `00. Backups/` são criadas pelo aplicativo no primeiro backup de cada página. A Administração continua dentro do `Plataforma.html` e usa `00. Bases/portal-base.json`: não apagar; sem ele a Administração fica sem a pasta (restaure o backup de `00. Backups/Portal/`). As bases e subpastas são mantidas pelo aplicativo conforme o uso; não criar JSON vazios, renomear bases ou apagar dados existentes para reproduzir a árvore. Projetos ainda está em construção: não é necessário criar `projetos-base.json`. Algumas rotinas também guardam originais SAP nas pastas configuradas; preserve-as. Os logs de backup ficam nas subpastas do respectivo módulo.
 
 Na pasta da linha, `scripts`, `testes`, `node_modules` e `docs` não são dependências de execução. A pasta `Marca` fica somente nessa distribuição local/corporativa e continua excluída do Git. A distribuição e o retorno seguem [CORTE.md](CORTE.md).
