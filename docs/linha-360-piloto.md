@@ -80,4 +80,4 @@ Registrar tempo, erros e por onde a pessoa navegou. Registrar também a parcela 
 | A pessoa não consegue ligar equipamento e ponto | Posicionamento individual de equipamentos. |
 | O mapa atual já responde | O editor espacial (rascunho, publicação, versões) pode esperar. |
 
-Qualquer bloco com escrita depende de definir as permissões próprias da Linha 360° (hoje herdadas de Equipamentos). Rascunho e publicação fazem parte do MVP da especificação; tirá-los do MVP é decisão de escopo ainda não tomada.
+Os botões de gravação da Linha 360° já seguem o perfil (plataforma 1.7.1: lançar para checklist e posto, configurar para planta e cadastro de checklist), ainda com a permissão do módulo Equipamentos. Um bloco que crie registros novos pela Linha pode exigir permissão própria. Rascunho e publicação fazem parte do MVP da especificação; tirá-los do MVP é decisão de escopo ainda não tomada.

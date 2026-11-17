@@ -15,7 +15,8 @@ Pasta da linha\
 │  ├─ FSAlbertPro-Bold.otf
 │  ├─ FSAlbertPro-Italic.otf
 │  ├─ BD_1-Color_Reverse_RGB_TransparentBurst.svg   (barra lateral, fundo navy)
-│  └─ BD_2-Color_RGB.svg                            (relatório impresso, fundo claro)
+│  ├─ BD_2-Color_RGB.svg                            (relatório impresso, fundo claro)
+│  └─ favicon.svg                                   (ícone da aba do navegador: símbolo BD legível em fundo claro)
 ├─ 00. Bases\
 └─ 00. Backups\
 ```
@@ -27,6 +28,7 @@ Os nomes são os do kit de marca; não renomeie.
 - o bloco `modulo/design/marca` declara os `@font-face` apontando para `Marca/…` e é aplicado na casca (`modulo/main`), em cada motor incorporado
   (`modulo/core/runtime`, junto do `brand.css`) e no relatório impresso da casca.
 - A logo da barra lateral só troca o símbolo em texto depois que o arquivo carrega (`BrandLogo`), então não há imagem quebrada.
+- O favicon (`aplicarFavicon`, plataforma 1.7.2) segue a mesma regra: `Marca/favicon.svg` só vira ícone da aba se carregar; sem ele, a aba fica sem ícone. O nome `favicon.svg` foi escolhido pelo responsável. Em `file://`, confirmar no Chrome/Edge corporativo se o navegador mostra o ícone.
 - **Sem a pasta** (ou sem um dos arquivos) nada quebra: o texto sai em Arial (a reserva de `--bd-font-body`) e a barra lateral mostra o símbolo "V".
 - `font-display: block`: a leitura na pasta leva milissegundos e o texto não troca de fonte depois de aparecer (sem salto de layout).
 - O kit de marca não tem o peso Light: os títulos usam o Regular.
