@@ -39,7 +39,7 @@ const { chromium } = require('playwright');
     const kl = [...document.querySelectorAll('.section.kpis .kpi .l')].map(l => l.childNodes[0].textContent.trim());
     out.kpis = kl; out.ib = ['oeeRep', 'oeeReal', 'foraTurnoKpi'].every(k => document.querySelector(`.section.kpis [data-help="${k}"]`));
     const tx = s => s.textContent.replace(/\s+/g, ' '); out.cartoes = document.querySelectorAll('section.tl, section.shift').length;
-    out.B = [...document.querySelectorAll('section.tl, section.shift:not(.np)')].map(tx).find(t => /Turno B/.test(t)) || ''; out.C = [...document.querySelectorAll('section.shift.np')].map(tx).join(' ');
+    out.B = [...document.querySelectorAll('section.tl, section.shift:not(.np)')].map(tx).find(t => /Turno B/.test(t)) || ''; out.C = [...document.querySelectorAll('section.tl.tl-np, section.shift.np')].map(tx).join(' ');   /* 2.6.9 · LANC-02: o 3º turno virou detalhe ao lado dos outros */
     // 2.4.41 · cartão do turno (PRD-10) e popup de scrap (PRD-13)
     out.cardB = out.B; out.temProcessada = /Produção processada/i.test(document.querySelector('section.tl, section.shift:not(.np)').textContent);
     const psB = dd.productionDays.find(x => x.date === X).shifts.find(p => p.snap.code === 'T2');
@@ -53,7 +53,7 @@ const { chromium } = require('playwright');
     document.querySelector(`[data-scrapturno="${psB.id}"]`).click(); await w(200); ov = document.querySelector('.overlay');
     ov.querySelector('#scSo').click(); await w(50); ov.querySelector('#scTot').value = '1.000'; ov.querySelector('#scOk').click(); await w(400);
     const psB3 = db().productionDays.find(x => x.date === X).shifts.find(p => p.snap.code === 'T2'); out.scTot = [psB3.scrap, psB3.scrapMaq == null];
-    out.scTxt = (document.querySelector(`[data-scrapturno="${psB.id}"]`).closest('.kv, .tl-k') || {}).textContent || '';
+    out.scTxt = (document.querySelector(`[data-scrapturno="${psB.id}"]`).closest('.kv, .tl-k, .tl-s') || {}).textContent || '';
     // Painel: indicadores novos
     out.pnK = ['oeeRep', 'oeeReal', 'fora', 'caixas'].every(k => PN_K[k]) && PN_MINE().kpis.includes('oeeReal');
     // Editar cards
@@ -104,7 +104,7 @@ const { chromium } = require('playwright');
   ok(R.X1.antes === 240 && R.X1.depois === 0 && R.X1.real < R.X1.rep, `início espelhado: produção da madrugada (02:00) sem continuidade vai para o A e o real conta da 1ª caixa (+${R.X1.antes} min)`);
   ok(['OEE reportado', 'OEE real', 'Fora de turno'].every(k => R.kpis.includes(k)) && R.ib, `os 3 indicadores na faixa do dia, com ⓘ (${R.kpis.join(' · ')})`);
   ok(/Caixas do MES/.test(R.B) && /1ª 20:00 · última 22:46/.test(R.B) && /L-1 terminou 20:10 → L-2 começou 22:30 · 2h20/.test(R.B) && /Total de troca no turno: 2h20/.test(R.B), 'cartão do B: 1ª e última caixa, troca de lote (fim, início, duração) e total de troca');
-  ok(R.cartoes === 3 && /não produtivo/.test(R.C) && /Turno B/.test(R.C) && /Turno A de 11\/03\/2026/.test(R.C) && /Só leitura/.test(R.C), `cartão do turno C (não produtivo) com as caixas e para onde foram (${R.C.slice(0, 160)})`);
+  ok(R.cartoes === 3 && /não produtivo/.test(R.C) && /Turno B/.test(R.C) && /Turno A (de )?11\/03\/2026/.test(R.C) && /Habilitar Turno C neste dia/.test(R.C), `cartão do turno C (não produtivo) com as caixas e para onde foram (${R.C.slice(0, 160)})`);
   ok(R.edit.includes('Fora de turno') && R.edit.includes('Produção boa') && R.semFora && R.pref === '["Fora de turno"]', 'Editar cards: desmarcar esconde o indicador e fica na preferência do computador');
   ok(R.vg.length === 3 && R.vgReal.real < R.vgReal.rep && R.vgReal.fora === 85000, `Visão Geral com os 3 no período (fora de turno ${R.vgReal.fora})`);
   ok(/Caixas do MES/.test(R.kpiCx) && /20:00 – 23:40/.test(R.kpiCx) && /54 fora do turno/.test(R.kpiCx) && /1 troca/.test(R.kpiCx), `cartão "Caixas do MES" no Lançamento com 1ª e última caixa do dia de trabalho (2.4.53: 02:00–02:30 conta no A do dia seguinte, não aqui) e trocas (${R.kpiCx.replace(/\s+/g, ' ').slice(0, 120)})`);

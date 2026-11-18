@@ -34,7 +34,7 @@ const errs = []; const ok = (c, m) => { console.log((c ? 'ok   ' : 'FALHA ') + m
   for (const tema of ['light', 'dark']) {
     const p = await novo(tema);
     await p.evaluate(() => { const d = db().productionDays.filter(x => x.status !== 'fechado').pop(); Actions.closeShift(d.id, d.shifts[0].id); App.sel.date = d.date; go('launch'); }); await p.waitForTimeout(800);
-    const r = await p.evaluate(() => { const c = b => b ? getComputedStyle(b) : null, re = document.querySelector('[data-reopenps]'), fe = document.querySelector('[data-closeps]'), hh = [...document.querySelectorAll('[data-hhps]')].filter(b => /\d+\/\d+/.test(b.innerText));
+    const r = await p.evaluate(() => { const c = b => b ? getComputedStyle(b) : null, re = document.querySelector('[data-reopenps]'), fe = document.querySelector('[data-closeps]'), hh = [...document.querySelectorAll('.tl-hhfill')];   /* 2.6.9 · LANC-02: estado do hora a hora no detalhe de cada turno */
       return { re: re && re.classList.contains('lit') && /Fechado/.test(re.innerText), reCor: c(re) && c(re).color, fe: fe && !fe.classList.contains('lit'), hh: hh.map(b => b.classList.contains('lit')) }; });
     await p.evaluate(() => go('hourly')); await p.waitForTimeout(500);
     const s = await p.evaluate(() => [...document.querySelectorAll('[data-hhsel]')].map(b => b.innerText.trim().replace(/\s+/g, ' ') + (b.classList.contains('lit') ? ' [aceso]' : '')));

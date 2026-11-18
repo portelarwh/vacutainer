@@ -18,7 +18,7 @@ const verN = v => String(v || '').split(/[^\d]+/).filter(Boolean).slice(0, 4).ma
     const m = document.getElementById('main') || document.body, R = { ver: APP_VERSION, date: d.date };
     R.respDia = !!m.querySelector('[data-dayf="responsible"]');
     R.respTurno = m.querySelectorAll('[data-psf$="|responsible"]').length; R.nTurnos = m.querySelectorAll('section.tl, section.shift').length;
-    R.hhBtn = m.querySelectorAll('section.tl [data-hhps], section.shift [data-hhps]').length;
+    R.hhBtn = m.querySelectorAll('section.tl .tl-dir table.hh, section.shift [data-hhps]').length;   /* 2.6.9 · LANC-02: o hora a hora fica dentro do detalhe de cada turno */
     R.ib = ['restaurarIv', 'reaplicarMetas', 'moverDia', 'diaSemProd'].filter(k => m.querySelector(`[data-help="${k}"]`));
     R.pill = (document.querySelector('[data-vac-cadrev]') || {}).outerHTML || '';
     // Total diário → Responsável pelo reporte
@@ -29,7 +29,8 @@ const verN = v => String(v || '').split(/[^\d]+/).filter(Boolean).slice(0, 4).ma
     const ps = d.shifts.filter(p => !p.deleted && !p.summary)[1]; Actions.setShiftField(d.id, ps.id, 'responsible', 'P. Costa'); await w();
     R.psResp = db().productionDays.find(x => x.id === d.id).shifts.find(p => p.id === ps.id).responsible;
     // PRD-06: hora a hora só do turno
-    render(); await w(); document.querySelector(`section.tl [data-hhps="${ps.id}"]`).click(); await w();
+    render(); await w(); R.detalhe = [...document.querySelectorAll(`section.tl[data-tl="${ps.id}"] .tl-dir input[data-good]`)].length === ps.intervals.filter(i => !i.deleted).length && !document.querySelector(`section.tl[data-tl="${ps.id}"] .tl-dir tr.grp`);
+    HHPs.ir(d, ps.id); await w();
     R.rota = App.route; R.grp = [...document.querySelectorAll('table.hh tr.grp')].map(t => t.textContent.trim().slice(0, 30));
     R.seg = [...document.querySelectorAll('[data-hhsel]:not([data-hhsel="dia"])')].map(x => x.textContent.trim());   // 2.4.52: "Dia (24 h)" é a visão do dia, não um turno
     R.sel = (document.querySelector('[data-hhsel][aria-pressed="true"]') || {}).dataset?.hhsel;
@@ -40,7 +41,7 @@ const verN = v => String(v || '').split(/[^\d]+/).filter(Boolean).slice(0, 4).ma
   ok(!r.respDia && r.respTurno === r.nTurnos && r.nTurnos >= 2, `PRD-05: sem "Responsável" do dia; um por turno (${r.respTurno}/${r.nTurnos})`);
   ok(r.respRep, 'PRD-05: com scrap "Total diário" aparece "Responsável pelo reporte"');
   ok(r.psResp === 'P. Costa', 'PRD-05: responsável do turno gravado no turno');
-  ok(r.hhBtn === r.nTurnos, 'PRD-06: cada turno tem o próprio botão Hora a hora');
+  ok(r.hhBtn === r.nTurnos && r.detalhe, 'PRD-06: cada turno tem o próprio hora a hora (no detalhe do turno, LANC-02)');
   ok(r.rota === 'hourly' && r.grp.length === 1 && r.grp[0].includes(r.psNome) && r.sel, `PRD-06: abre só o turno escolhido (${r.grp.join(' | ')})`);
   ok(r.seg[0] === 'Todos' && r.seg.length === r.nTurnos + 1 && /\d+\/\d+/.test(r.seg[1]) && r.todos === r.nTurnos, `PRD-06: troca entre turnos com preenchimento x/y e "Todos" (${r.seg.join(' · ')})`);
   ok(r.ib.length === 4, `UX-01: ⓘ em ${r.ib.join(', ')}`);
