@@ -40,9 +40,11 @@ const html = fs.readFileSync(path.resolve(__dirname, '../../Plataforma.html'));
     assert.equal(await f.locator('.v2-oeeh').count(), 1, 'ligado de novo: o gráfico volta');
     console.log('ok OEE do dia: na lista do Editar cards, desliga e volta; barras verde/atenção/vermelho');
 
-    // 3) turnos em resumo: um aberto; clicar abre outro; clicar no aberto recolhe; lembrado no dia
+    // 3) turnos em resumo (2.6.10): nenhum aberto por padrão; clicar abre; outro troca; clicar no aberto recolhe
     const t0 = await f.evaluate(() => ({ n: document.querySelectorAll('[data-trturno]').length, tl: document.querySelectorAll('section.tl[data-tl]').length, vis: [...document.querySelectorAll('section.tl[data-tl]')].filter(s => !s.classList.contains('tr-oculto')).map(s => s.dataset.tl), on: [...document.querySelectorAll('[data-trturno].on')].map(b => b.dataset.trturno) }));
-    assert.equal(t0.n, t0.tl, 'um resumo por turno'); assert.equal(t0.vis.length, 1, 'um turno aberto'); assert.deepEqual(t0.on, t0.vis, 'resumo marcado = turno aberto');
+    assert.equal(t0.n, t0.tl, 'um resumo por turno'); assert.equal(t0.vis.length, 0, 'nenhum turno aberto por padrão'); assert.deepEqual(t0.on, [], 'nenhum resumo marcado');
+    const prim = await f.evaluate(() => document.querySelector('[data-trturno]').dataset.trturno); await f.locator(`[data-trturno="${prim}"]`).click();
+    assert.deepEqual(await f.evaluate(() => [...document.querySelectorAll('section.tl[data-tl]')].filter(s => !s.classList.contains('tr-oculto')).map(s => s.dataset.tl)), [prim], 'clicar abre o detalhe'); t0.vis = [prim];
     const outro = await f.evaluate(v => [...document.querySelectorAll('[data-trturno]')].map(b => b.dataset.trturno).find(id => id !== v), t0.vis[0]);
     await f.locator(`[data-trturno="${outro}"]`).click();
     const t1 = await f.evaluate(() => [...document.querySelectorAll('section.tl[data-tl]')].filter(s => !s.classList.contains('tr-oculto')).map(s => s.dataset.tl));
@@ -52,7 +54,7 @@ const html = fs.readFileSync(path.resolve(__dirname, '../../Plataforma.html'));
     assert.equal(await f.locator('section.tl[data-tl]:not(.tr-oculto)').count(), 0, 'clicar no aberto recolhe');
     await f.evaluate(id => document.querySelector(`[data-ir-turno="${id}"]`)?.click(), t0.vis[0]);
     if (await f.locator('[data-ir-turno]').count()) assert.equal(await f.locator(`section.tl[data-tl="${t0.vis[0]}"]:not(.tr-oculto)`).count(), 1, '"cartão ↓" abre o turno');
-    console.log('ok turnos em resumo: um aberto, troca, recolhe, lembrado no dia, "cartão ↓" abre');
+    console.log('ok turnos em resumo: nenhum aberto por padrão, clicar abre, outro troca, clicar de novo recolhe');
 
     // 4) semáforo no cartão do turno (94% e OEE perto da meta → amarelo)
     const sem = await f.evaluate(() => { const res = Engine.computeDay(db(), curDay()), st = db().settings.semaphore || {};

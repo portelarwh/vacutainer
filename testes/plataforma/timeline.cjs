@@ -14,7 +14,8 @@ const html = fs.readFileSync(path.resolve(__dirname, '../../Plataforma.html'));
       const p = await b.newPage({ viewport: { width: w, height: h } }); p.on('pageerror', e => erros.push(nome + ': ' + e.message)); p.on('dialog', d => d.dismiss());
       await p.goto(U); await p.waitForFunction(() => [...document.querySelectorAll('iframe')].some(f => f.offsetParent && f.contentWindow.vacPagina?.pronto?.() && f.contentDocument.querySelector('#tloCv')), null, { timeout: 30000 });
       let f; for (const x of p.frames()) if (x.parentFrame() && await x.evaluate(() => !!(window.frameElement && window.frameElement.offsetParent)).catch(() => false)) f = x; await p.waitForTimeout(600);
-      assert.ok(await p.locator('.module-tabs button[data-tab-id="timeline"]').count(), 'aba Linha do tempo na Produção');
+      /* 2.6.11 · a Linha do tempo fica dentro da aba Paradas (Análise · Linha do tempo); ?tab=timeline abre direto nela */
+      assert.ok(await p.locator('.module-tabs button[data-tab-id="stops"]').count() && await f.evaluate(() => !!document.querySelector('.grp-sub [data-grpsub="stops|timeline"][aria-selected="true"]')), 'Linha do tempo na aba Paradas da Produção');
       const r = await f.evaluate(() => { const M = TLV.modelo(), box = document.querySelector('#tloBox').getBoundingClientRect(); return { leg: [...document.querySelectorAll('.tlo-leg span')].slice(0, 4).map(s => s.textContent.trim()).join(), soma: Math.abs(M.soma - M.total) < 1e-9, total: M.total, kpis: document.querySelectorAll('[data-tlk]').length, maqs: document.querySelectorAll('.tlo-lab .r').length, larg: box.width, iw: innerWidth, alto: box.height }; });
       assert.equal(r.leg, 'Produzindo,Parada,Bloqueada,Ociosa', nome + ': legenda dos quatro estados');
       assert.ok(r.soma && r.total === 1440 && r.kpis === 8 && r.maqs >= 3, nome + ': KPIs e faixas ' + JSON.stringify(r));
