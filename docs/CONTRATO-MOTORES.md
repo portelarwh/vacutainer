@@ -82,6 +82,14 @@ Plataforma 1.5.0, Produção 2.4.82, Administração 1.9.44.
 
 Aba Linha do tempo da Produção (`docs/timeline-operacional.md`). Só leitura de `day.events` e `db.server`; não altera OEE, metas, classificação de paradas, turnos nem exports. Bloco **aditivo** na base da Produção, autorizado pela especificação: `db.timeline = { tagMap[], tagEvents[], comments{}, imports[] }` (base sem o bloco continua válida; `Model.ensure` completa). Vigência do mapa de tags segue o contrato 2 (encerra e cria outra). Comentário, importação de tags e mapa passam por `Store.mutate` (releitura, backup, fila, auditoria). Testes: `testes/ttimeline.js` e `testes/plataforma/timeline.cjs`.
 
+## GEL-06 · scrap de gel lançado na Produção · Produção 2.6.13, Gestão de Gel 2.41, plataforma 1.8.17 (18/11/2026)
+
+Pedido do responsável: o "Registrar scrap" da Gestão de Gel passa para a Produção; na Gestão de Gel fica só a consulta. Usa o que já existia (GEL-02/03/05): o registro do turno (`ps.gelScrap`, base da Produção) vai no `exports.porDiaTurno[].gel` e, a partir de "Gel lido da Produção a partir de" (Administração › Parâmetros › Gestão de Gel), a Gestão de Gel monta o dia com o exports. Nenhuma fórmula, campo ou estrutura de base muda.
+- **Produção › Lançamento › detalhe do turno:** botão "Scrap gel" abaixo do "Editar scrap", com o resumo (Tubos · Barril · Purga kg, "sem scrap" ou "sem registro"). Aparece quando o turno produziu catálogo que usa gel; fica desabilitado, com o motivo, sem equipamento de gel na Administração › Equipamentos, antes da data de corte (o dia ainda é da Gestão de Gel) ou com o turno fechado. Mesma regra no "Lançar meu turno".
+- **Link direto:** `#dia=AAAA-MM-DD&turno=CÓDIGO` abre o Lançamento do dia com o turno aberto.
+- **Gestão de Gel (dias a partir do corte, só consulta):** "Lançado na Produção neste dia" com tubos bons por catálogo, OP e lote (exports.porOrdem); aviso quando o catálogo lançado na Produção não está no cadastro do Gel (antes os tubos sumiam do teórico sem aviso); em cada turno, as pesagens lançadas e "Editar na Produção ↗".
+- Teste: `testes/plataforma/gel-producao.cjs` (equipamento de gel e data de corte simulados só na memória).
+
 ## KKBC-02 · competência da KKBC amarrada à Produção · Waste 1.12.17, plataforma 1.8.16 (18/11/2026)
 
 A lista da KKBC_ORD copiada do SAP não traz data: antes, todas as ordens recebiam o "Mês de referência" da tela, e um mês errado levava a ordem para a competência errada sem aviso.

@@ -7615,7 +7615,7 @@ const U = (() => {
 
 /* ---- 02-model.js ---- */
 /* ================= modelo de dados, valores iniciais e integridade ================= */
-const APP_VERSION = '2.6.12';   /* 2.6.12 · TUR-04: turno com horário diferente no sábado (linhas por dia da semana) */   /* 2.6.11 · abas agrupadas: Ordens e lotes, Resultados, Paradas */   /* 2.6.10 · Lançamento sem turno aberto por padrão; abas visíveis na casca */   /* 2.6.9 · LANC-02: Lançamento unificado (hora a hora no detalhe do turno, 3º turno ao lado, Problemas de QN) */   /* 2.6.5 · IMP-01: contagens das importações nos exports */   /* 2.6.4 · semáforo só pelas faixas configuradas (verde acima de 100% vale) */   /* 2.6.2 · gráficos e números com meta seguem o semáforo de três cores (verde, amarelo, vermelho) */   /* 2.6.1 · gráficos: turno lançado pelo total com o nome do turno no eixo; janelas: rótulo e valor em tamanho de texto */   /* 2.6.0 · produção total do turno (sem hora a hora; períodos na troca de catálogo), aviso do servidor para turno lançado pelo total e para dia com produção apontada */
+const APP_VERSION = '2.6.13';   /* 2.6.13 · GEL-06: Scrap gel no detalhe do turno */   /* 2.6.12 · TUR-04: turno com horário diferente no sábado (linhas por dia da semana) */   /* 2.6.11 · abas agrupadas: Ordens e lotes, Resultados, Paradas */   /* 2.6.10 · Lançamento sem turno aberto por padrão; abas visíveis na casca */   /* 2.6.9 · LANC-02: Lançamento unificado (hora a hora no detalhe do turno, 3º turno ao lado, Problemas de QN) */   /* 2.6.5 · IMP-01: contagens das importações nos exports */   /* 2.6.4 · semáforo só pelas faixas configuradas (verde acima de 100% vale) */   /* 2.6.2 · gráficos e números com meta seguem o semáforo de três cores (verde, amarelo, vermelho) */   /* 2.6.1 · gráficos: turno lançado pelo total com o nome do turno no eixo; janelas: rótulo e valor em tamanho de texto */   /* 2.6.0 · produção total do turno (sem hora a hora; períodos na troca de catálogo), aviso do servidor para turno lançado pelo total e para dia com produção apontada */
 const SCHEMA_VERSION = 1;
 const BASE_FILE = 'oee-vacutainer-base.json';
 const BACKUP_DIR = '00. Backups';
@@ -11569,7 +11569,11 @@ const aggF = (days, f = App.filters) => Engine.periodResult(db(), days, { shiftI
 /* ---------- links pelo endereço (contrato comum): #dia=AAAA-MM-DD · #ordem=N · #lote=N · #plano=AAAA-MM · #pend=servidor · #turno ---------- */
 function applyHash() {
   const h = decodeURIComponent((location.hash || '').replace(/^#/, '')); if (!h || h === 'turno') return false;
-  if (h.includes('&amp;')) { const q = new URLSearchParams(h), ab = q.get('aba'); if (ab &amp;&amp; ROUTES.some(r => r[0] === ab)) { App.route = ab; const sb = q.get('sub'), sc = q.get('sec');
+  if (h.includes('&amp;')) { { const q0 = new URLSearchParams(h), dq = q0.get('dia'); if (dq &amp;&amp; /^\d{4}-\d{2}-\d{2}$/.test(dq) &amp;&amp; !q0.get('aba')) {   /* 2.6.13 · GEL-06 */
+      App.sel.date = dq; App.sel.lineId = 'line_vac'; App.route = 'launch'; const tc = q0.get('turno');
+      if (tc) { const dd = (db().productionDays || []).find(x => !x.deleted &amp;&amp; x.date === dq &amp;&amp; x.lineId === 'line_vac'), ps = dd &amp;&amp; dd.shifts.find(p => !p.deleted &amp;&amp; (p.snap.code === tc || p.snap.name === tc || p.id === tc)); if (ps &amp;&amp; typeof TurnoResumo !== 'undefined') TurnoResumo.escolher(dd, ps.id); }
+      try { history.replaceState(null, '', location.pathname + location.search); } catch (e) { } return true; } }
+    const q = new URLSearchParams(h), ab = q.get('aba'); if (ab &amp;&amp; ROUTES.some(r => r[0] === ab)) { App.route = ab; const sb = q.get('sub'), sc = q.get('sec');
     if (ab === 'ordens' &amp;&amp; sb &amp;&amp; typeof Ord !== 'undefined' &amp;&amp; ['mb51', 'coois', 'lista', 'conc', 'hist'].includes(sb)) Ord.sub = sb;
     if (ab === 'config' &amp;&amp; sc &amp;&amp; typeof CFG_SECS !== 'undefined' &amp;&amp; CFG_SECS.some(x => x[0] === sc)) App.cfgSec = sc;
     if (ab === 'reports' &amp;&amp; typeof rpState === 'function' &amp;&amp; typeof RP_TYPES !== 'undefined') { const rt = q.get('rel'); if (rt &amp;&amp; RP_TYPES.some(r => r[0] === rt)) rpState().type = rt; }   /* 2.4.74 */
@@ -16314,12 +16318,33 @@ const GelTurno = {
       day._rev = (day._rev || 0) + 1; day.updatedAt = U.nowIso(); day.updatedBy = by;
     });
   },
+  /* 2.6.13 · GEL-06: o scrap de gel é lançado na Produção a partir da data de corte (Administração › Parâmetros › Gestão de Gel ›
+     "Gel lido da Produção a partir de"); antes dela, é o registro da Gestão de Gel que vale. O botão aparece quando o turno produziu
+     um catálogo que usa gel; fica desabilitado, com o motivo, sem equipamento de gel na Administração, antes do corte ou com o turno fechado. */
+  estado(day, ps, res) {
+    const C = this.ctx(), usa = !!ps.gelScrap || (!!C &amp;&amp; this.catsDoTurno(res, ps).some(c => C.usaGel(c))); if (!usa) return null;
+    const corte = C &amp;&amp; C.corte, lk = day.status === 'fechado' || ps.status === 'fechado';
+    const motivo = !C ? 'Cadastro do gel indisponível (Administração).'
+      : !C.equips().length ? 'Cadastre os equipamentos de pesagem de gel na Administração › Equipamentos (categoria Gel) para lançar aqui.'
+      : !corte ? 'O scrap de gel ainda é registrado na Gestão de Gel: defina "Gel lido da Produção a partir de" em Administração › Parâmetros › Gestão de Gel.'
+      : day.date < corte ? `Antes de ${U.brDate(corte)} o scrap de gel é registrado na Gestão de Gel.`
+      : lk ? 'Turno fechado: reabra para lançar.' : '';
+    const gs = ps.gelScrap, k = gs ? this.soma(gs, day.date, C) : null, f3 = v => U.fmt(v, 3);
+    const txt = !gs ? 'gel: sem registro' : gs.none ? 'gel: sem scrap neste turno' : `gel: Tubos ${f3(k.T)} kg · Barril ${f3(k.B)} kg · Purga ${f3(k.P)} kg`;
+    return { pode: !motivo, motivo, txt, pend: !gs };
+  },
+  /* célula Scrap do detalhe do turno (Lançamento): botão "Scrap gel" abaixo do "Editar scrap" */
+  celula(day, sr, res) {
+    const e = this.estado(day, sr.ps, res); if (!e) return '';
+    return `<div class="tl-gel"><button type="button" class="btn tl-gelb" data-gelscrap="${sr.ps.id}"${e.pode ? '' : ` disabled title="${esc(e.motivo)}"`}>Scrap gel</button><span class="tl-a${e.pend &amp;&amp; e.pode ? ' tl-gelp' : ''}">${esc(e.txt)}</span>${e.pode ? '' : `<span class="tl-a small">${esc(e.motivo)}</span>`}</div>`;
+  },
   /* bloco no turno (Lançamento) */
   bloco(day, sr, res) {
     const ps = sr.ps, C = this.ctx(); if (!this.mostra(res, ps, C)) return '';
     const gs = ps.gelScrap, k = this.soma(gs, day.date, C), lk = day.status === 'fechado' || ps.status === 'fechado', f3 = v => U.fmt(v, 3);
     const txt = !gs ? '<span class="muted">sem registro</span>' : gs.none ? 'sem scrap de gel neste turno' : `${k.n} pesagem(ns) · gel Tubos ${f3(k.T)} kg · Barril ${f3(k.B)} kg · Purga ${f3(k.P)} kg`;
-    return `<div class="kv" style="grid-column:1/-1"><span class="l">Scrap de gel ${ib('gelScrap')}</span><span class="v small">${txt}</span><button type="button" class="btn sm" data-gelscrap="${ps.id}" ${lk ? 'disabled' : ''}>Registrar scrap</button></div>`;
+    const e = this.estado(day, ps, res) || { pode: !lk, motivo: '' };
+    return `<div class="kv" style="grid-column:1/-1"><span class="l">Scrap de gel ${ib('gelScrap')}</span><span class="v small">${txt}</span><button type="button" class="btn sm" data-gelscrap="${ps.id}" ${e.pode ? '' : `disabled title="${esc(e.motivo)}"`}>Registrar scrap</button>${e.pode ? '' : `<span class="small muted">${esc(e.motivo)}</span>`}</div>`;
   },
   /* formulário (mesmos campos do Registrar scrap da Gestão de Gel) */
   abrir(day, psId, res) {
@@ -17540,6 +17565,8 @@ section.tl.tr-oculto{display:none}
 .tl .tl-s-prod .tl-bar{margin-top:4px;gap:10px}.tl .tl-s-prod .tl-tr{height:10px}.tl .tl-s-prod .tl-pct{font-size:18px;min-width:52px}
 .tl .tl-s-prod .tl-pinfo{display:block;margin:0}.tl .tl-fbt{font-weight:600}.tl .tl-fbt.ok{color:var(--t-ok-ink)}
 .tl .tl-s-scrap .btn{min-height:34px!important;margin-top:4px!important;align-self:flex-start}
+.tl .tl-gel{display:grid;gap:3px;margin-top:4px}.tl .tl-gelb{background:#FEF4E6!important;border-color:#C97A16!important;color:#8A4F06!important;font-weight:700}.tl .tl-gelb[disabled]{opacity:.55}.tl .tl-gelp{color:#8A4F06;font-weight:600}
+html[data-theme="dark"] .tl .tl-gelb{background:#3a2a12!important;color:#F2C27A!important}
 .tl .tl-in.tl-sug{font-style:italic;color:var(--t-mute)}.tl .tl-lk{all:unset;cursor:pointer;color:var(--accent);font-weight:700;text-decoration:underline}.tl .tl-lk:focus-visible{outline:2px solid var(--accent)}
 .tl .tl-mes{display:flex;flex-wrap:wrap;gap:6px 12px;align-items:baseline;padding:10px 16px}
 .tl .tl-corpo{display:grid;grid-template-columns:minmax(260px,1fr) minmax(0,2.7fr);gap:14px;align-items:start}
@@ -17616,7 +17643,7 @@ section.tl.tr-oculto{display:none}
       ${x.its.length ? `<span class="tl-a">Produção fora do turno ${tip('prodFora')}: <b>${fq(x.fora)}</b> ${unitLbl()} · ${U.fmt(x.caixas)} caixa(s) · ${x.its.map(hh).join(' · ')}</span>` : ''}
       <span class="tl-a tl-fbt ${fb.cls}" role="status">${fb.t}</span>`)}
     ${cel('', `Tempo planejado ${tip('plannedTime')}`, `<span class="tl-v">${U.fmt(r.netMin)} <small>min</small></span><span class="tl-a">Bruto ${U.fmt(r.grossMin)} · Descontos ${U.fmt(r.deductMin)}${r.extraMin ? ` · extra ${U.fmt(r.extraMin)}` : ''}</span><span class="tl-a">Capacidade ${tip('capacity')} ${fq(r.cap)} ${unitLbl()}</span>`)}
-    ${cel('tl-s-scrap', `Scrap ${tip('scrapTurno')}`, scr)}
+    ${cel('tl-s-scrap', `Scrap ${tip('scrapTurno')}`, scr + GelTurno.celula(day, sr, res))}
     ${cel('', `Paradas ${tip('stopsTurno')}`, `<span class="tl-v">${U.fmt(r.aMin + r.pMin)} <small>min</small></span><span class="tl-a">${U.fmt(r.events)} evento(s)</span>`)}
     ${cel('', `OEE reportado ${tip('oeeRep')}`, `<span class="tl-v">${pct2(r.oee)}</span>${r.oeeTarget == null ? '<span class="tl-a">sem meta</span>' : metaTxt(r.oee != null &amp;&amp; r.oeeTarget > 0 ? r.oee / r.oeeTarget : null, `Meta ${pct2(r.oeeTarget)}`)}`)}
     ${cel('', `OEE real ${tip('oeeReal')}`, `<span class="tl-v">${pct2(x.real)}</span><span class="tl-a">${x.extraMin ? `+${U.fmt(x.extraMin)} min fora do turno` : 'igual ao reportado'}</span>`)}
@@ -24577,7 +24604,7 @@ const fileBackend={kind:'file',async commit(ch){applyLocal(ch);FS.pending.push(c
 async function fsRefresh(){if(S.mode!=='file'||FS.busy||ui.demo)return;try{const cur=await fsReadBase(fsKnown());if(cur&amp;&amp;!cur.same){FS.mod=cur.mod;FS.rev=cur.rev;FS.revBy=cur.by;loadData(cur.data);FS.pending.forEach(applyLocal);localBackend.save();render()}}catch(e){}}
 /* ================= V1.89 · integração com as outras páginas (Portal, OEE, Perdas) ================= */
 // versão da página (topo, Guia e base gravada)
-const APP_VERSION='2.40';   /* 2.35 · #aba=relatorios (Portal › Relatórios) abre as fichas e relatórios em PDF */   /* 2.34 · D8: Pareto comum do kit (vacPareto) */   /* 2.33 · Fase 5: layout no arquivo da pessoa (vacPrefs do kit) */   /* 2.32 · D6: botões de gravação travados conforme o perfil (vacTravas do kit) */   /* 2.29 · Design System (barra lateral, paleta, grade de gráficos) */   /* 2.28 · gráficos: "Valores em …" (kg, tubos, barris, dias, índice) onde o eixo não diz a unidade (docs/graficos-padrao.md) */   /* 2.27 · Visão Geral no padrão comum (vacLayout): situação, números, diagnóstico, análises do painel, explorar */   /* 2.26 · kit: padrão visual comum (vacLayout) */   /* 2.25 · kit: login com ID e senha */   /* 2.22 · UX-02: guia por aba */   /* 2.21 · Fase 7 (UX-03, GEL-01): Painel → Visão Geral */   /* 2.20 · Fase 4 · 4e: exports porDiaGel (teórico × real por dia) */   /* 2.19 · Fase 4 · 4d: lê da Produção a partir do corte (GelProd); Resumo do dia */   /* 2.18 · Fase 4 · 4b: pesagem pela conta comum do kit (vacGel) */   /* 2.17 · Fase 4 · 4a: parâmetros do gel do Portal (processo, formatos, motivos, descartes, gel do catálogo) */   /* 2.16 · Fase 3 (IMP-04): importações no exports; #importar abre a importação */   /* 2.15 · ARQ-05/ARQ-07: catálogos e equipamentos do Portal (GelCad); contas do gel iguais */   /* 2.14 · ARQ-09: sem entrada própria de "Modo exemplo" */   /* 2.11 · C2–C6: kit com a ficha por pasta (AT-08) e a contagem da fila durável (Portal › Versões) */   /* 2.10 · C1: alterações pendentes na fila durável do kit (sem perda entre abas) */   /* 2.09 · E11: busca do kit leva o equipamento à ficha em Equipamentos */   /* 2.08 · E8: kit com "+ Abrir ação" na ficha da ordem */   /* 2.07 · E5: ficha da ordem comum (botão na ordem) e busca por ordem, lote e LP */   /* 2.06 · E3: número digitado só aceito inteiro; E4: cobertura das ordens no exports */   /* 2.05 · E2: a versão da tela vem desta constante (o rótulo estava fixo em v2.01); kit com data local e meta do mês ponderada */   /* 2.04 · revisão 065fe6f: restauração por arquivo confirma e não segue sem a cópia anterior; CSV sem fórmulas; índice por dia no Painel */
+const APP_VERSION='2.41';   /* 2.41 · GEL-06: dia da Produção com pesagens, ordem/lote e "Editar na Produção" */   /* 2.35 · #aba=relatorios (Portal › Relatórios) abre as fichas e relatórios em PDF */   /* 2.34 · D8: Pareto comum do kit (vacPareto) */   /* 2.33 · Fase 5: layout no arquivo da pessoa (vacPrefs do kit) */   /* 2.32 · D6: botões de gravação travados conforme o perfil (vacTravas do kit) */   /* 2.29 · Design System (barra lateral, paleta, grade de gráficos) */   /* 2.28 · gráficos: "Valores em …" (kg, tubos, barris, dias, índice) onde o eixo não diz a unidade (docs/graficos-padrao.md) */   /* 2.27 · Visão Geral no padrão comum (vacLayout): situação, números, diagnóstico, análises do painel, explorar */   /* 2.26 · kit: padrão visual comum (vacLayout) */   /* 2.25 · kit: login com ID e senha */   /* 2.22 · UX-02: guia por aba */   /* 2.21 · Fase 7 (UX-03, GEL-01): Painel → Visão Geral */   /* 2.20 · Fase 4 · 4e: exports porDiaGel (teórico × real por dia) */   /* 2.19 · Fase 4 · 4d: lê da Produção a partir do corte (GelProd); Resumo do dia */   /* 2.18 · Fase 4 · 4b: pesagem pela conta comum do kit (vacGel) */   /* 2.17 · Fase 4 · 4a: parâmetros do gel do Portal (processo, formatos, motivos, descartes, gel do catálogo) */   /* 2.16 · Fase 3 (IMP-04): importações no exports; #importar abre a importação */   /* 2.15 · ARQ-05/ARQ-07: catálogos e equipamentos do Portal (GelCad); contas do gel iguais */   /* 2.14 · ARQ-09: sem entrada própria de "Modo exemplo" */   /* 2.11 · C2–C6: kit com a ficha por pasta (AT-08) e a contagem da fila durável (Portal › Versões) */   /* 2.10 · C1: alterações pendentes na fila durável do kit (sem perda entre abas) */   /* 2.09 · E11: busca do kit leva o equipamento à ficha em Equipamentos */   /* 2.08 · E8: kit com "+ Abrir ação" na ficha da ordem */   /* 2.07 · E5: ficha da ordem comum (botão na ordem) e busca por ordem, lote e LP */   /* 2.06 · E3: número digitado só aceito inteiro; E4: cobertura das ordens no exports */   /* 2.05 · E2: a versão da tela vem desta constante (o rótulo estava fixo em v2.01); kit com data local e meta do mês ponderada */   /* 2.04 · revisão 065fe6f: restauração por arquivo confirma e não segue sem a cópia anterior; CSV sem fórmulas; índice por dia no Painel */
 /* 2.03 · situação "em atualização" (kit: selo, pílula e faixa; docs/paginas-construcao.md) */
 /* 2.02 · relatório montado: todas as linhas no PDF, comentário, aviso de corte no texto; Painel em 1º; aba inicial do perfil; impressão e PDF no tema claro */
 /* 1.99 · menu Mais do cabeçalho (vac-visual v1): fecha ao escolher uma ação, ao clicar fora e com Esc */
@@ -27649,6 +27676,16 @@ const GelProd={oee:null,lendo:false,lidoEm:0,
   const rec={date:dia,turns,orders:Object.entries(M).map(([cat,t])=>({cat,t})),sT:'',sB:'',sP:'',resp:'Produção',obs:'',fromProd:true,prodGeradoEm:this.oee.geradoEm||null,savedAt:this.oee.geradoEm||null};
   if(anyGel){const es=recEquipScrap(rec,dia);rec.sT=+es.T.toFixed(3);rec.sB=+es.B.toFixed(3);rec.sP=+es.P.toFixed(3);rec.eqScrap=es.any}
   return rec},
+ /* 2.41 · GEL-06: tubos bons de cada catálogo lançado na Produção no dia, com a ordem e o lote do PCP (exports.porOrdem) e o aviso
+    do catálogo que o Gel não reconhece (os tubos dele não entram no teórico: antes sumiam sem aviso) */
+ catsDia(dia){const D=this.oee&amp;&amp;this.oee.d;if(!D)return null;const known=code=>(S.catalogs||[]).some(c=>String(c.num)===String(code));
+  const M=new Map();for(const k of D.porDiaCatalogo||[])if(k&amp;&amp;k.dia===dia&amp;&amp;k.catalogo!=null){const c=String(k.catalogo);M.set(c,(M.get(c)||0)+(+k.boa||0))}
+  const d10=v=>String(v||'').slice(0,10),ords=c=>(D.porOrdem||[]).filter(o=>String(o.catalogo)===c&amp;&amp;((o.diasLote||[]).includes(dia)||(o.inicioReal&amp;&amp;d10(o.inicioReal)<=dia&amp;&amp;(!o.fimReal||d10(o.fimReal)>=dia)))).map(o=>({ordem:o.ordem,lote:o.lote}));
+  return[...M].filter(([,b])=>b>0).map(([cat,boa])=>({cat,boa,ok:known(cat),ords:ords(cat)}))},
+ catsHtml(dia){const L=this.catsDia(dia);if(!L||!L.length)return'';
+  const lin=x=>`<li><b>${esc(x.cat)}</b>${x.ords.length?' · '+x.ords.map(o=>`OP ${esc(o.ordem)}${o.lote?' · lote '+esc(o.lote):''}`).join(' / '):''} · ${nf0.format(x.boa)} tubos bons${x.ok?'':' <b class="bad">· fora do cadastro do Gel</b>'}</li>`;
+  const ruins=L.filter(x=>!x.ok);
+  return`<div class="info" style="margin-bottom:8px"><b>Lançado na Produção neste dia</b><ul style="margin:4px 0 0 18px;padding:0">${L.map(lin).join('')}</ul></div>${ruins.length?`<div class="alert" style="margin-bottom:8px">${ruins.map(x=>`Catálogo <b>${esc(x.cat)}</b> lançado na Produção (${nf0.format(x.boa)} tubos) não está no cadastro do Gel: não entrou no teórico deste dia.`).join('<br>')} Cadastre o catálogo (com o formato) para ele contar.</div>`:''}`},
  aplicar(){const c=this.corte();if(!c||!this.oee||!this.oee.d)return false;const D=this.oee.d,porDia={};let m=false;
   for(const t of D.porDiaTurno||[])if(t&amp;&amp;t.dia>=c)(porDia[t.dia]=porDia[t.dia]||{turnos:[],cats:[]}).turnos.push(t);
   for(const k of D.porDiaCatalogo||[])if(k&amp;&amp;k.dia>=c)(porDia[k.dia]=porDia[k.dia]||{turnos:[],cats:[]}).cats.push(k);
@@ -28252,7 +28289,15 @@ function rgMotRows(tn,e,ds,ent){const opts=motFor(ds);if(!opts.length&amp;&amp;!
   return `${rows}<div class="scm"><button type="button" class="btn sm ghost" data-rgmotadd="${k}">+ motivo</button><span class="sub" style="margin:0" data-rgmotw="${k}"></span></div>`}
 
 /* ---- registro: bloco "Registrar scrap" do turno ---- */
+/* 2.41 · GEL-06: dia a partir do corte: o scrap de gel do turno vem da Produção (Lançamento › turno › Scrap gel). Aqui é consulta:
+   as pesagens como foram lançadas e o atalho que abre o Lançamento daquele dia com o turno aberto. */
+function prodHref(h){const s=(typeof systems==='function'?systems():[]).find(x=>x.id==='oee')||{id:'oee',html:'OEE-Vacutainer.html'};return typeof sysHref==='function'?sysHref(s,h):'OEE-Vacutainer.html#'+h}
+function rgScrapProd(d,tn){const t=(d.turns||{})[tn]||{},sc=turnScrap({turns:d.turns},d.date,tn);
+ const linhas=sc.ents.map(en=>{const e=equipById(en.e),ds=e&amp;&amp;(e.descs||[]).find(x=>x.id===en.d);return`<li>${esc(e?e.name:'equipamento ?')}${ds&amp;&amp;COMPS[ds.comp]?' · '+esc(COMPS[ds.comp].l):''} → ${esc(SCAT[en.c.scat]||en.c.scat)}: ${kg3(en.kg)} kg bruto → <b>${kg3(en.c.gel)} kg de gel</b>${+en.nb?' · '+en.nb+' barril(is)':''}${(en.mots||[]).length?' · '+esc(en.mots.map(m=>m.m).filter(Boolean).join(', ')):''}</li>`}).join('');
+ const st=t.none?'<b>sem scrap de gel neste turno</b>':sc.any?`gel líquido <b>${kg3(sc.T+sc.B+sc.P)} kg</b> (Tubos ${kg3(sc.T)} · Barril ${kg3(sc.B)} · Purga ${kg3(sc.P)})`:'<span style="color:var(--muted)">sem registro na Produção</span>';
+ return`<div class="scro"><b>Scrap de gel</b> <span class="sub" style="margin:0">${st}${t.none||sc.any?' · lançado na Produção':' · lança-se no turno, na Produção'}</span> <a class="btn sm" href="${esc(prodHref('dia='+d.date+'&amp;turno='+encodeURIComponent(tn)))}" title="O scrap de gel deste dia é lançado na Produção, no turno">Editar na Produção ↗</a>${linhas?`<ul class="sub" style="margin:4px 0 0 18px;padding:0">${linhas}</ul>`:''}</div>`}
 function rgScrapHtml(d,tn){
+  if(GelProd.resumo(d.date)&amp;&amp;tn!=='_dia')return rgScrapProd(d,tn);
   const t=(d.turns||{})[tn]||{};const open=(ui.rgScrapOpen||{})[tn];const sc=turnScrap({turns:d.turns},d.date,tn);const tot=sc.T+sc.B+sc.P;
   const head=`<button type="button" class="btn sm ${open?'primary':''}" data-rgscrap="${esc(tn)}">${open?'▾':'▸'} ${tn==='_dia'?'Registrar scrap do dia (sem turno)':'Registrar scrap'}</button> <span class="sub" style="margin:0" data-rgeqs="${esc(tn)}">${t.none?'<b>sem scrap neste turno</b>':sc.any?`gel líquido ${kg3(tot)} kg (tubos ${kg3(sc.T)} · barril ${kg3(sc.B)} · purga ${kg3(sc.P)})`:'nada registrado'}</span>`;
   if(!open)return head;
@@ -28634,8 +28679,8 @@ function rgTurnsHtml(d){
    ${v.turns.map(t=>{const x=T[t.n]||{};const h=x.off?0:Math.max(0,turnHours(t)+(x.x!=null&amp;&amp;x.x!==''?+String(x.x).replace(',','.'):(+ex[t.n]||0))-abMin(x)/60);const abs=abList(x);const mots=(S.config.abMotivos||[]);const sc=k=>`<label style="display:inline-flex;gap:4px;align-items:center;margin-right:10px">${k==='sT'?'Tubos':k==='sB'?'Barril':'Purga'} <input type="text" inputmode="decimal" data-rgturn="${esc(t.n)}" data-k="${k}" value="${esc(x[k]??'')}" placeholder="kg" style="width:64px"></label>`;
      return `<tr class="trow"><td><b>${esc(t.n)}</b> <span class="sub" style="margin:0">${esc(t.a)}–${esc(t.b)}</span></td><td class="n"><input type="text" inputmode="numeric" data-rgturn="${esc(t.n)}" data-k="t" value="${x.t?nf0.format(x.t):''}" style="width:100px"></td><td class="n"><input type="text" inputmode="decimal" data-rgturn="${esc(t.n)}" data-k="x" value="${esc(x.x??'')}" placeholder="${+ex[t.n]?nf1.format(+ex[t.n])+' plan.':'0'}" style="width:64px"></td><td><input type="checkbox" data-rgturn="${esc(t.n)}" data-k="off" ${x.off?'checked':''} aria-label="Turno ${esc(t.n)} sem produção"></td><td class="n" data-rglive="${esc(t.n)}|r">${x.t&amp;&amp;h?nf0.format(x.t/h):'—'}</td><td class="n" data-rglive="${esc(t.n)}|o" style="color:${oeeColor(oeeOf(x.t,h))}">${x.t&amp;&amp;h?pct(oeeOf(x.t,h)):'—'}</td></tr>
      <tr class="srow abrow"><td class="sub" style="margin:0;padding-left:18px">Abono (min)</td><td colspan="5"><div class="abcell">${abs.map((a,i)=>`<span class="abent"><input type="text" inputmode="numeric" data-rgab="${esc(t.n)}|${i}" data-k="min" value="${esc(a.min??'')}" placeholder="min" style="width:54px" aria-label="Minutos de abono"><select data-rgab="${esc(t.n)}|${i}" data-k="m" aria-label="Motivo do abono"><option value="">motivo…</option>${mots.concat(a.m&amp;&amp;!mots.includes(a.m)?[a.m]:[]).map(m=>`<option ${a.m===m?'selected':''}>${esc(m)}</option>`).join('')}</select><button type="button" class="btn sm ghost" data-act="rgAbRm" data-tn="${esc(t.n)}" data-i="${i}" aria-label="Remover abono">✕</button></span>`).join('')}<button type="button" class="btn sm ghost" data-act="rgAbAdd" data-tn="${esc(t.n)}">+ abono</button></div></td></tr>
-     ${equipList().length||(x.eq&amp;&amp;x.eq.length)?`<tr class="srow"><td colspan="6" style="padding-left:18px">${rgScrapHtml(d,t.n)}</td></tr>`:`<tr class="srow"><td class="sub" style="margin:0;padding-left:18px">Registro de scrap (kg)</td><td colspan="5">${sc('sT')}${sc('sB')}${sc('sP')}</td></tr>`}`}).join('')}
-   ${equipList().length||((T._dia||{}).eq||[]).length?`<tr class="srow dayrow"><td colspan="6" style="padding-left:18px">${rgScrapHtml(d,'_dia')}<div class="sub" style="margin:2px 0 0">Para o que é registrado no dia todo (ex.: sobra dos barris). Soma com o scrap dos turnos.</div></td></tr>`:''}
+     ${GelProd.resumo(d.date)||equipList().length||(x.eq&amp;&amp;x.eq.length)?`<tr class="srow"><td colspan="6" style="padding-left:18px">${rgScrapHtml(d,t.n)}</td></tr>`:`<tr class="srow"><td class="sub" style="margin:0;padding-left:18px">Registro de scrap (kg)</td><td colspan="5">${sc('sT')}${sc('sB')}${sc('sP')}</td></tr>`}`}).join('')}
+   ${!GelProd.resumo(d.date)&amp;&amp;(equipList().length||((T._dia||{}).eq||[]).length)?`<tr class="srow dayrow"><td colspan="6" style="padding-left:18px">${rgScrapHtml(d,'_dia')}<div class="sub" style="margin:2px 0 0">Para o que é registrado no dia todo (ex.: sobra dos barris). Soma com o scrap dos turnos.</div></td></tr>`:''}
    </tbody></table></div><span class="sub" style="margin:0">Horas disponíveis do dia: ${nf2.format(hrs)} h${(()=>{const m=Object.values(T).reduce((q,x)=>q+abMin(x),0);return m?` (já descontados ${nf0.format(m)} min de abono)`:''})()}${tot&amp;&amp;hrs?` · ritmo ${nf0.format(tot/hrs)} tubos/h · <b style="color:${oeeColor(oeeOf(tot,hrs))}">OEE do dia ${pct(oeeOf(tot,hrs))}</b> (máx. ${nf0.format(maxRate())}/h)`:''}. O scrap dos turnos soma o scrap do dia.</span></div>`;
 }
 function prodCalc(date,rec){
@@ -28768,7 +28813,7 @@ function renderProd(){
     ${recent.length?`<span class="sub" style="color:var(--muted);font-size:12.5px">Registrados:</span>${recent.map(k=>`<button class="btn sm ${k===ui.rgDate?'primary':''}" data-rgday="${k}">${fmtD(k).slice(0,5)}</button>`).join('')}`:''}</div>
   <div class="grid2">
    <div class="card"><h3>${GelProd.resumo(d.date)?'Resumo de ':'Registro de '}${dayLabel(d.date)}${GelProd.resumo(d.date)?' <span class="pill p-ok">da Produção</span>':d.exists?' <span class="pill p-ok">registrado</span>':''}</h3>
-    ${GelProd.resumo(d.date)?`<div class="info" style="margin-bottom:8px">Tubos bons, hora extra, "sem produção" e scrap deste dia vêm da <b>Produção</b> (Registrar scrap de cada turno)${GelProd.oee?` · lidos de ${fmtDT(GelProd.oee.geradoEm||'')}`:' · <b>ainda não lidos</b>: conecte a pasta ou abra a Produção'}. Aqui é só consulta; o Gel lê da Produção a partir de ${fmtD(GelProd.corte())} (Administração › Parâmetros › Gestão de Gel).</div>`:''}
+    ${GelProd.resumo(d.date)?`<div class="info" style="margin-bottom:8px">Tubos bons, hora extra, "sem produção" e scrap deste dia vêm da <b>Produção</b> (Registrar scrap de cada turno)${GelProd.oee?` · lidos de ${fmtDT(GelProd.oee.geradoEm||'')}`:' · <b>ainda não lidos</b>: conecte a pasta ou abra a Produção'}. Aqui é só consulta; o Gel lê da Produção a partir de ${fmtD(GelProd.corte())} (Administração › Parâmetros › Gestão de Gel).</div>${GelProd.catsHtml(d.date)}`:''}
     <p class="sub">${dp?`Programado: ${dp.unit==='tubos'?nf0.format(dp.tubes)+' tubos':dp.barrels+' barris'}. `:''}${GelProd.resumo(d.date)?'Os barris consumidos vêm das baixas, feitas aqui ou na Operação.':'Informe os tubos bons produzidos por catálogo. Os barris consumidos vêm das baixas, feitas aqui ou na Operação.'}</p>
     ${GelProd.resumo(d.date)?'<fieldset disabled style="border:0;padding:0;margin:0;min-width:0">':''}<div class="rgform">
      <div class="f"><span>Produção (tubos bons)</span>
@@ -37359,9 +37404,9 @@ body.vac-porta{overflow:hidden}
     {
       "id": "oee",
       "path": "Plataforma.html#motor/oee",
-      "version": "2.6.12",
-      "sha256": "488fa0f01cbb319bdc797a17ba822339c5accc82b4873864b5a6dab041bb7a71",
-      "bytes": 2239785
+      "version": "2.6.13",
+      "sha256": "82208107cc3d7f8b5d62ffce72d8655a71c362d8b6144cb37c8e60d7a56d0706",
+      "bytes": 2243112
     },
     {
       "id": "perdas",
@@ -37373,9 +37418,9 @@ body.vac-porta{overflow:hidden}
     {
       "id": "gel",
       "path": "Plataforma.html#motor/gel",
-      "version": "2.40",
-      "sha256": "9e8d61673d971d2d80d44d8f0d3750925a9bfcc4bfa0a22ea37e16f67a81f5d2",
-      "bytes": 1614423
+      "version": "2.41",
+      "sha256": "b4756a4e3bd9b2c5077869a215e9121c4913fb199a9f98f79eceb13c66b9b003",
+      "bytes": 1618064
     },
     {
       "id": "paradas",
@@ -37423,7 +37468,7 @@ body.vac-porta{overflow:hidden}
   "limitations": [
     "Projetos e conteúdo técnico OSM/MES/AM/TPM mantêm os limites documentados nas fontes."
   ],
-  "enginesSha256": "9c58c18369093b1e10574c3822d3a870dc521884e009bd8c6afb1fd7ed974d6b",
+  "enginesSha256": "a81e8ce138eadbda747abc655b590e9c6fa68482cbbe8b1de74d2c865017148d",
   "originRevision": "ffc9ee8",
   "sourceMode": "single-html",
   "originEnginesSha256": "a87a64ad0c328f70e102b2ae888790a9b5d5a9bd05778652a7ce7cae140e40d2"
@@ -37493,7 +37538,7 @@ summary{cursor:pointer;font-weight:600;color:var(--navy)}
 'use strict';
 /* ---------- referência (atualizar quando a plataforma mudar de versão) ---------- */
 // Iguais às do pacote da plataforma (nova-plataforma/src/generated/manifest.json); o teste ferramenta-verificar confere.
-const VERSOES = {"oee":"2.6.12","perdas":"1.12.17","gel":"2.40","paradas":"1.2.17","equip":"1.0.20","inic":"1.1.16","linha":"1.3.0","projetos":"0.1.16","portal":"1.9.50"};
+const VERSOES = {"oee":"2.6.13","perdas":"1.12.17","gel":"2.41","paradas":"1.2.17","equip":"1.0.20","inic":"1.1.16","linha":"1.3.0","projetos":"0.1.16","portal":"1.9.50"};
 const BASES = [
  { arq: 'vacutainer-cadastros.json', mod: 'portal', nome: 'Cadastro geral (Portal)', obrig: true, cadastro: true, bk: 'Cadastros' },
  { arq: 'portal-base.json', mod: 'portal', nome: 'Portal', obrig: true, bk: 'Portal' },
@@ -38084,7 +38129,7 @@ import { Icon, Button, Badge, Empty, Modal, BarChart, BrandLogo, CommandMenu } f
 import { ModuleFrame } from "vac:modulo/components/ModuleFrame";
 import manifest from "vac:recurso/manifesto";
 import { ModuleTabs } from "vac:modulo/components/ModuleTabs";
-const VERSION = "1.8.16";
+const VERSION = "1.8.17";
 /* Navegação 1.3.0 (16/11/2026): Visão da linha, Relatórios e Importações têm abas; as que mostram uma tela do
    Portal (motor da Administração) trazem o 3º campo com a aba dele. Administração fica só com cadastros e configuração. */
 const SHELL_TABS = {
