@@ -131,7 +131,7 @@ const { chromium } = require('playwright');
   const g4d = await nova('Gestão-Gel-Vacutainer.html', 'Gel 4d');
   const r4d = await g4d.evaluate(async () => { document.querySelectorAll('.overlay').forEach(o => o.remove()); enterDemo();
     const h = todayISO(), X = addDays(h, -1), A = addDays(h, -3), num = S.catalogs[0].num;
-    S.prodlog[A] = S.prodlog[A] || { date: A, turns: {}, orders: [{ cat: S.catalogs[0].id, t: 123000 }], sT: '', sB: '', sP: '', resp: 'Gel', obs: '' };
+    S.prodlog[A] = S.prodlog[A] || { date: A, turns: {}, orders: [{ cat: S.catalogs[0].id, t: 123000 }], sT: '5', sB: '2', sP: '1', resp: 'Gel', obs: 'registro manual fictício' };
     const antesA = JSON.stringify(S.prodlog[A]);
     S.config.equips = [{ id: 'eq-1', name: 'Máquina de gel', tara: '', active: true, descs: [] }];
     const G = { formatos: [{ from: '2000-01-01', tara: 70, taraP: 4, sobra: 1.3, f: { '100': { tubo: 4.8, gel: 0.83, adit: 0.02, tr: 2.31 }, '75': { tubo: 3.55, gel: 0.82, adit: 0.015, tr: 2.29 } } }], processo: [{ from: '2000-01-01', g: 0.97, pT: 2.1, pB: 0.71, pP: 0.5 }], motivos: [], registroPelaProducaoDesde: addDays(h, -2) };
@@ -145,13 +145,16 @@ const { chromium } = require('playwright');
     const teo = vacGel.teorico({ tubosPorCat: { x: 900000 }, date: X, cg: () => ({ fmt: '100', vig: [{ from: '2000-01-01', gTubo: 0.85 }] }), fmts: G.formatos, params: G.processo });
     ui.tab = 'prod'; ui.rgDate = X; ui.rgDraft = null; render(); await new Promise(r => setTimeout(r, 200));
     const fs = document.querySelector('fieldset[disabled] .rgform'), aba = (TABS.find(t => t[0] === 'prod') || [])[1];
-    return { from: rec && rec.fromProd, tubes: pc.tubes, x: rec.turns.T1.x, none: !!rec.turns.T2.none, sT: rec.sT, pesGel: +pes.gel.toFixed(3), teoGel: pc.teo, teoKit: teo.teo, aEscopo: (() => { const a = S.prodlog[A], o = JSON.parse(antesA); return !!a.fromProd && recTubes(a) === 999000 && a.sT === o.sT && a.sB === o.sB && a.sP === o.sP && a.obs === o.obs && !!a.manualAnterior && JSON.stringify(a.manualAnterior.orders) === JSON.stringify(o.orders); })(), fs: !!fs, aba, txt: /vêm da Produção/.test(document.body.innerText), salvar: (() => { const b = document.querySelector('[data-act="rgSave"]'); return b ? b.closest('fieldset') && b.closest('fieldset').disabled : true; })() };
+    return { from: rec && rec.fromProd, tubes: pc.tubes, x: rec.turns.T1.x, none: !!rec.turns.T2.none, sT: rec.sT, pesGel: +pes.gel.toFixed(3), teoGel: pc.teo, teoKit: teo.teo, aEscopo: (() => { GelProd.aplicar(); GelProd.aplicar();   /* revisão do PR #108: sincronizar de novo não apaga o scrap manual */
+      const a = S.prodlog[A], o = JSON.parse(antesA), e = (gelExports().porDiaGel || []).find(x => x.dia === A);
+      return { vista: !!a._vista, tubos: recTubes(a), scrap: [a.sT, a.sB, a.sP, a.obs].join('|') === [o.sT, o.sB, o.sP, o.obs].join('|'), base: JSON.stringify(snapshotData().prodlog[A]) === antesA, exp: !e || e.tubos === 123000 }; })(), fs: !!fs, aba, txt: /vêm da Produção/.test(document.body.innerText), salvar: (() => { const b = document.querySelector('[data-act="rgSave"]'); return b ? b.closest('fieldset') && b.closest('fieldset').disabled : true; })() };
   });
   ok(r4d.from && r4d.tubes === 900000, 'GEL-02: a partir do corte, os tubos bons do dia vêm da Produção (por catálogo, somando os turnos)');
   ok(r4d.x === 0.5 && r4d.none, 'G5: hora extra (30 min → 0,5 h) e "sem scrap no turno" vêm dos turnos da Produção');
   ok(r4d.sT === r4d.pesGel, 'GEL-03/G1: o scrap do dia é o das pesagens registradas na Produção, pela conta comum');
   ok(Math.abs(r4d.teoGel - r4d.teoKit) < 1e-9, 'GEL-04 (base): o teórico do Gel com os dados da Produção é o mesmo do kit');
-  ok(r4d.aEscopo, 'G3 (GEL-07): antes do corte os tubos vêm da Produção; o scrap continua o registrado no Gel e o registro manual anterior fica em manualAnterior');
+  ok(r4d.aEscopo.vista && r4d.aEscopo.tubos === 999000 && r4d.aEscopo.scrap, 'G3 (GEL-07): antes do corte os tubos vêm da Produção (vista) e o scrap manual do Gel continua, mesmo sincronizando de novo ' + JSON.stringify(r4d.aEscopo));
+  ok(r4d.aEscopo.base && r4d.aEscopo.exp, 'G3 (GEL-07): a base e os exports do Gel guardam o registro original do dia (a vista da Produção fica só na tela)');
   ok(r4d.fs && r4d.salvar && r4d.txt && r4d.aba === 'Resumo do dia', 'GEL-05: Registro do dia vira Resumo do dia (só leitura, com o aviso de que vem da Produção)');
   await g4d.evaluate(() => localStorage.removeItem('vac.cadastros'));
 
