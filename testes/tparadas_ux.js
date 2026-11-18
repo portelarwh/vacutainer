@@ -4,7 +4,7 @@
 //   - o que a tela mostra: dicas (<title>) das barras de cada gráfico, linhas das tabelas de Equipamentos e Recorrência.
 // Depois confere a tela nova: faixas da Visão geral, filtros ativos, Pareto (seletores, seleção ativa, 80 % opcional, clique, + Ação),
 // seleção por clique nos gráficos, temas, larguras, impressão e sem erro no console.
-//   node testes/tparadas_ux.js --gravar   grava a referência (só antes de mudar a tela)
+//   node testes/tparadas_ux.js --gravar   atualiza a referência após mudanças aprovadas
 // Código 1 se falhar.
 const path = require('path'), fs = require('fs'); const RAIZ = path.resolve(__dirname, '..') + '/';
 const { chromium } = require('playwright');
@@ -19,8 +19,7 @@ const LER = async () => {
   out.totais = { registros: L.length, minutos: perda.reduce((s, e) => s + e.minutos, 0), ocorrencias: perda.reduce((s, e) => s + (e.ocorrencias || 1), 0) };
   const P = programado(L, F.de, F.ate); out.programado = { min: r2(P.min), fonte: P.fonte, dias: P.dias };
   out.equip = statsEquip(F.apply(all, { eq: 1 }), F.de, F.ate).map(s => [s.eq, r2(s.min), s.n, s.nQ, r2(s.mQ), r2(s.mOp), s.nMicro, r2(s.mtbf), r2(s.mttr), r2(s.mtbs), r2(s.disp), s.top || '']);
-  const ate = F.ate || all.reduce((m, e) => e.dia > m ? e.dia : m, '');
-  out.recor = recorrencias(all, ate).map(r => [r.k, r.n30, r2(r.min30), r.n, r2(r.min), r.meses, r.ult, r.acao ? r.acao.status : '']);
+  out.recor = recorrenciasNoRecorte(all).R.map(r => [r.k, r.n30, r2(r.min30), r.n, r2(r.min), r.meses, r.ult, r.acao ? r.acao.status : '']);
   const dicas = id => { const e = document.getElementById(id); return e ? [...e.querySelectorAll('[data-k] > title, [data-k] title')].map(t => n(t.textContent)) : []; };
   App.go('geral'); await w(300); out.geral = { mes: n((document.getElementById('chMes') || {}).textContent ? [...document.querySelectorAll('#chMes title')].map(t => n(t.textContent)).join(' | ') : ''), eq: dicas('chEq'), cl: dicas('chCl'), tu: dicas('chTu') };
   out.pareto = {}; const P0 = VIEWS.pareto, d0 = P0.dim, m0 = P0.med;
@@ -134,8 +133,8 @@ const LER = async () => {
     q('#evTab tbody tr').click(); await w(300); out.ficha = qa('.mod .pux-fg').length === 3 && ['#tTroca', '#tComp', '#tModo', '#tAcao', '#tOS', '#tTec', '#tEsp', '#tRep', '#tCod', '#tCausa', '#tConf'].every(id => q('.mod ' + id)); qa('.mod-bg').forEach(m => m.remove()); await w(100);
     App.go('fila'); await w(300); const R = VIEWS.fila.R;
     out.fila = R.length ? (q('.pux-fres b').textContent.trim() === n0(R.length) && qa('#flTab tr.pux-lpend, #flTab tr.pux-lsug').length === Math.min(400, R.length)) : !!q('#main .pux-vazio.pux-ok');
-    App.go('valid'); await w(300); const D = VIEWS.valid.dias, val = D.filter(d => Store.data.validacao[d.k]).length;
-    out.valid = qa('#main .pux-rres b').map(b => b.textContent.trim()).slice(0, 3).join('|') === [D.length, D.length - val, val].map(n0).join('|') && qa('#vaTab tr.pux-laberto').length === Math.min(200, D.length - val);
+    App.go('valid'); await w(300); const D = VIEWS.valid.dias, val = D.filter(d => d.estado === 'validado').length, rev = D.filter(d => d.estado === 'revisao').length;
+    out.valid = qa('#main .pux-rres b').map(b => b.textContent.trim()).join('|') === [D.length, D.length - val - rev, rev, val].map(n0).join('|') && qa('#vaTab tr.pux-laberto').length === Math.min(200, D.length - val);
     App.go('acoes'); await w(300); const A = VIEWS.acoes.A, ab = A.filter(a => a.status !== 'concluída' && a.status !== 'cancelada');
     out.acoes = A.length ? q('#main .pux-rres b').textContent.trim() === n0(ab.length) && q('#acNova').classList.contains('pri') : !!q('#main .pux-vazio');
     // Modo TV, relatório e Excel continuam abrindo
