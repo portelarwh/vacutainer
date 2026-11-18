@@ -1936,7 +1936,6 @@ const vacLogin = (() => {
   function dispensado() {
     try { if (typeof vacDemo !== 'undefined' &amp;&amp; vacDemo.ativo) return true; } catch (x) { }
     if (location.hash === '#tv' || document.querySelector('body > .tv, #tvEl, #tv:not([hidden])') || document.body.classList.contains('tv-on')) return true;
-    try { if (window.__vacEmbedded &amp;&amp; parent.vacAppHost &amp;&amp; parent.vacAppHost.consulta) return true; } catch (x) { }   /* 1.8.9 · "Entrar só para consulta" na tela de entrada */
     if (lg('vac.login.forcar') === '1') return false;
     if (navigator.webdriver) return true;
     if (location.hash === '#teste') return true;
@@ -1944,6 +1943,8 @@ const vacLogin = (() => {
     try { if (typeof MOD !== 'undefined' &amp;&amp; MOD &amp;&amp; MOD.teste) return true; } catch (x) { }
     return false;
   }
+  /* 1.8.9 · "Entrar só para consulta" (tela de entrada): sem janela automática; o login pedido pela pessoa (modo.pedido) continua aberto */
+  function consulta() { try { return !!(window.__vacEmbedded &amp;&amp; parent.vacAppHost &amp;&amp; parent.vacAppHost.consulta); } catch (x) { return false; } }
   /* ---- tentativas ---- */
   const bloqueio = id => { const x = lj('vac.login.erros', {})[id]; return x &amp;&amp; x.ate &amp;&amp; x.ate > Date.now() ? x.ate : 0; };
   function errou(id) { const E = lj('vac.login.erros', {}), x = E[id] &amp;&amp; E[id].ate &amp;&amp; E[id].ate <= Date.now() ? { n: 0 } : (E[id] || { n: 0 }); x.n = (x.n || 0) + 1; if (x.n >= MAX_ERR) x.ate = Date.now() + BLOQ_MS; E[id] = x; ls('vac.login.erros', JSON.stringify(E)); return x; }
@@ -2105,12 +2106,12 @@ const vacLogin = (() => {
   }
   /* ---- ciclo: abre quando falta sessão; fecha sozinho se outra aba entrou ---- */
   function checar() {
-    if (el) { if (dispensado() || (sessao() &amp;&amp; !modo.trocar)) fechar(); else if (el.dataset.passo === 'semcad' &amp;&amp; cad()) passoId(); return; }
-    if (!dispensado() &amp;&amp; !sessao()) abrir();
+    if (el) { if (dispensado() || (consulta() &amp;&amp; !modo.pedido) || (sessao() &amp;&amp; !modo.trocar)) fechar(); else if (el.dataset.passo === 'semcad' &amp;&amp; cad()) passoId(); return; }
+    if (!dispensado() &amp;&amp; !consulta() &amp;&amp; !sessao()) abrir();
   }
   function iniciar() { setTimeout(checar, 400); setInterval(checar, 20000); window.addEventListener('storage', ev => { if (['vac.sessao', 'vac.userId', 'vac.cadastros'].includes(ev.key)) setTimeout(checar, 50); }); window.addEventListener('hashchange', () => setTimeout(checar, 50)); }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', iniciar); else iniciar();
-  return { abrir, fechar, sair, sessao, gerar, confere, fraca, provisoriaNova, fimSessao, dispensado, checar, get aberto() { return !!el; } };
+  return { abrir, fechar, sair, sessao, gerar, confere, fraca, provisoriaNova, fimSessao, dispensado, consulta, checar, get aberto() { return !!el; } };
 })();
 /* o "Entrar" antigo do cabeçalho abre o login (trocar usuário, trocar senha, sair) */
 try { if (typeof VacEntrar !== 'undefined') VacEntrar.abrir = () => vacLogin.abrir({ trocar: true }); } catch (e) { }
@@ -2332,9 +2333,9 @@ const vacPrefs = (() => {
 
 // API de autenticação da casca: a senha e a sessão continuam pertencendo ao vacLogin.
 /* 1.8.9 · porta(true): a tela de entrada da plataforma mostra só a janela de login desta página, sobre o fundo dela (o resto fica invisível) */
-window.vacAutenticacao = { abrir: op => vacLogin.abrir(op), sessao: () => vacLogin.sessao(), sair: () => vacLogin.sair(),
+window.vacAutenticacao = { abrir: op => vacLogin.abrir({ ...(op || {}), pedido: true }), sessao: () => vacLogin.sessao(), sair: () => vacLogin.sair(),
   porta: on => { const r = document.documentElement; if (!document.getElementById('vacPortaCss')) { const st = document.createElement('style'); st.id = 'vacPortaCss'; st.textContent = 'html.vac-porta,html.vac-porta body{background:transparent!important}html.vac-porta body>*:not(.vlog){visibility:hidden!important}html.vac-porta .vlog{background:transparent!important;backdrop-filter:none!important;place-items:center!important}'; document.head.appendChild(st); }
-    r.classList.toggle('vac-porta', !!on); if (on &amp;&amp; !vacLogin.sessao() &amp;&amp; !vacLogin.aberto) vacLogin.abrir(); if (!on &amp;&amp; vacLogin.aberto &amp;&amp; vacLogin.dispensado()) vacLogin.fechar(); } };
+    r.classList.toggle('vac-porta', !!on); if (on &amp;&amp; !vacLogin.sessao() &amp;&amp; !vacLogin.aberto) vacLogin.abrir(); if (!on &amp;&amp; vacLogin.aberto &amp;&amp; (vacLogin.dispensado() || vacLogin.consulta())) vacLogin.fechar(); } };
 
 /* PR76 · fronteira pública dos motores. A casca não conhece Store, App ou nomes de funções locais.
    Adaptadores ficam junto ao kit aplicado pelos builds; nenhuma fórmula é duplicada. */
@@ -2547,7 +2548,7 @@ window.vacPagina = (() => {
     abrirOrdem: n => vacFicha.abrir('ordem', String(n)),
     abrirDia: d => vacFicha.abrir('dia', String(d)),
     atualizar: () => { if (typeof vacAoVoltar === 'function') return vacAoVoltar(); },
-    autenticar: op => vacLogin.abrir(op), sessao: () => vacLogin.sessao(),
+    autenticar: op => vacLogin.abrir({ ...(op || {}), pedido: true }), sessao: () => vacLogin.sessao(),
     guia: () => { if (typeof vacGuia === 'undefined') return false; vacGuia.abrir(); return true; }
   };
 })();
@@ -37045,70 +37046,70 @@ body.vac-porta{overflow:hidden}
       "id": "oee",
       "path": "Plataforma.html#motor/oee",
       "version": "2.6.8",
-      "sha256": "32273b6c60dce34eee09de0fde97298cd4d781b3eebb94ecf90bb1002a85952e",
-      "bytes": 2209607
+      "sha256": "c83c3495f780e316867dd41a0266a0d552b11a20019ae1f70bbd9013b46aee1a",
+      "bytes": 2209858
     },
     {
       "id": "perdas",
       "path": "Plataforma.html#motor/perdas",
       "version": "1.12.16",
-      "sha256": "424c7bd9b042ca4b52f7a44d989865b088e53a4343a121eb8b46d1402e614025",
-      "bytes": 924603
+      "sha256": "eba48ec6871081400e0047e02c4b8bce98da464bdb554947d86b6011691ebb47",
+      "bytes": 924854
     },
     {
       "id": "gel",
       "path": "Plataforma.html#motor/gel",
       "version": "2.40",
-      "sha256": "cbf581b7229f3b0266471b59d2b36d286dcc575b09ba59dce15b3694d805b59b",
-      "bytes": 1612309
+      "sha256": "9372ecbaeed1d1c3e7a2c23095272c59482f1558cfced8c4ac2ac5830ea9aff0",
+      "bytes": 1612560
     },
     {
       "id": "paradas",
       "path": "Plataforma.html#motor/paradas",
       "version": "1.2.17",
-      "sha256": "4cc31c2611c9e7ab86b0bdf2d310fecc12548e7479cc229c91d4fce6cfcd609b",
-      "bytes": 901436
+      "sha256": "f4f20a38be98dadebbac6f13bf12276a5ba24e3ca3b66db2fea2ede0ac444a41",
+      "bytes": 901687
     },
     {
       "id": "equip",
       "path": "Plataforma.html#motor/equip",
       "version": "1.0.20",
-      "sha256": "d7c0f5782f9bd2a2b2fcc2e75f9b521c578563e6bdc6434e9cedf1feac1f79e7",
-      "bytes": 685350
+      "sha256": "04b131523ec9967c59372e15176c095faef586bf4912847a33e0bdf7a9c14e32",
+      "bytes": 685601
     },
     {
       "id": "inic",
       "path": "Plataforma.html#motor/inic",
       "version": "1.1.16",
-      "sha256": "7a6a7067b6fb53d492fc0ca11f668e39b33b7268f8d0d0203b76734afe967ca7",
-      "bytes": 706886
+      "sha256": "4c890998cbca1941a6ea43cabf20ca6a7830fe24aebd199514f5c0e3e721c668",
+      "bytes": 707137
     },
     {
       "id": "linha",
       "path": "Plataforma.html#motor/linha",
       "version": "1.3.0",
-      "sha256": "1887d53b529bbbe67c63c0eec2f934005ca1ef39aa9fea7cfbea311512805e46",
-      "bytes": 817122
+      "sha256": "1fc7117c119fad7939b805c6e09116b81413417369ae1872412d565e0cc69a3c",
+      "bytes": 817373
     },
     {
       "id": "projetos",
       "path": "Plataforma.html#motor/projetos",
       "version": "0.1.16",
-      "sha256": "712b0b79d6bf4bc21d1dadf6310fd98aa6bfdf08bc5381d0201fdb443a6d7df3",
-      "bytes": 625290
+      "sha256": "6595cc90337f908f0c23ca2a17e753d24fd5c987f6f8c90742ff13a6e49d71b5",
+      "bytes": 625541
     },
     {
       "id": "portal",
       "path": "Plataforma.html#motor/portal",
       "version": "1.9.49",
-      "sha256": "808e025d57b6b6a43742a66a85898b0eac70364d264deb3ade750caacaf9d163",
-      "bytes": 1235317
+      "sha256": "5cd2ed2f01da99126b8d831d3715f28b166cadb2ab3c5c8fb934bf3186f98cf9",
+      "bytes": 1235568
     }
   ],
   "limitations": [
     "Projetos e conteúdo técnico OSM/MES/AM/TPM mantêm os limites documentados nas fontes."
   ],
-  "enginesSha256": "3357f72acda42df88252bc2cac0d092c19dc17d2d5345bde570458a63cb4997f",
+  "enginesSha256": "a0efb5d9c0f2cd541080d4e5ec473e7c0ce210f2a3e2453d6ef5021061339e0a",
   "originRevision": "ffc9ee8",
   "sourceMode": "single-html",
   "originEnginesSha256": "a87a64ad0c328f70e102b2ae888790a9b5d5a9bd05778652a7ce7cae140e40d2"
@@ -37769,7 +37770,7 @@ import { Icon, Button, Badge, Empty, Modal, BarChart, BrandLogo, CommandMenu } f
 import { ModuleFrame } from "vac:modulo/components/ModuleFrame";
 import manifest from "vac:recurso/manifesto";
 import { ModuleTabs } from "vac:modulo/components/ModuleTabs";
-const VERSION = "1.8.10";
+const VERSION = "1.8.11";
 /* Navegação 1.3.0 (16/11/2026): Visão da linha, Relatórios e Importações têm abas; as que mostram uma tela do
    Portal (motor da Administração) trazem o 3º campo com a aba dele. Administração fica só com cadastros e configuração. */
 const SHELL_TABS = {
@@ -37824,7 +37825,7 @@ function App() {
     } catch {
       return false;
     }
-  }), [restaurado, setRestaurado] = useState(demo), [, setTique] = useState(0);
+  }), [restaurado, setRestaurado] = useState(demo), [, setTique] = useState(0), [lidoDe, setLidoDe] = useState(null);
   const rotaAntes = useRef(null);
   const forcarLogin = (() => {
     try {
@@ -37835,7 +37836,8 @@ function App() {
   })();
   const logado = !demo &amp;&amp; !!(window.vacAppHost &amp;&amp; window.vacAppHost.usuario);
   const porta = !demo &amp;&amp; !consulta &amp;&amp; !logado &amp;&amp; !(navigator.webdriver &amp;&amp; !forcarLogin);
-  const portaPasso = !porta ? null : !restaurado || folder &amp;&amp; !cad ? "abrindo" : !folder ? "pasta" : "login";
+  /* revisão do PR #103: pasta lida sem cadastro válido não prende em "abrindo": mostra o motivo e deixa trocar de pasta ou consultar */
+  const portaPasso = !porta ? null : !restaurado || folder &amp;&amp; !cad &amp;&amp; lidoDe !== folder ? "abrindo" : !folder ? "pasta" : !cad ? "semcad" : "login";
   function entrarConsulta() {
     try {
       sessionStorage.setItem("vac.platform.consulta", "1");
@@ -37885,6 +37887,7 @@ function App() {
       setCad(null);
     } finally {
       setBusy(false);
+      setLidoDe(folder);
     }
   }, [folder, demo, session]);
   const refreshRef = useRef(refresh);
@@ -38176,7 +38179,12 @@ function App() {
           /* @__PURE__ */ jsx("span", { className: "porta-v", "aria-hidden": "true", children: "V" }),
           /* @__PURE__ */ jsxs("div", { children: [/* @__PURE__ */ jsx("b", { children: "VACUTAINER" }), /* @__PURE__ */ jsx("small", { children: "Plataforma da linha" })] })
         ] }),
-        portaPasso === "abrindo" ? /* @__PURE__ */ jsx("p", { className: "porta-txt", role: "status", children: "Abrindo a plataforma\u2026" }) : /* @__PURE__ */ jsxs(Fragment, { children: [
+        portaPasso === "abrindo" ? /* @__PURE__ */ jsx("p", { className: "porta-txt", role: "status", children: "Abrindo a plataforma\u2026" }) : portaPasso === "semcad" ? /* @__PURE__ */ jsxs(Fragment, { children: [
+          /* @__PURE__ */ jsx("h1", { children: "Cadastro n\xE3o encontrado" }),
+          /* @__PURE__ */ jsx("p", { className: "porta-txt", children: "A pasta " + (folder?.name || "") + " n\xE3o tem o cadastro de usu\xE1rios (00. Bases/vacutainer-cadastros.json) ou ele n\xE3o p\xF4de ser lido. Escolha a pasta da linha." }),
+          folderError &amp;&amp; /* @__PURE__ */ jsx("p", { className: "porta-erro", role: "alert", children: folderError }),
+          /* @__PURE__ */ jsx(Button, { primary: true, icon: "folder", onClick: () => connect(), disabled: busy, children: "Escolher outra pasta" })
+        ] }) : /* @__PURE__ */ jsxs(Fragment, { children: [
           /* @__PURE__ */ jsx("h1", { children: "Entrar" }),
           /* @__PURE__ */ jsx("p", { className: "porta-txt", children: "Conecte a pasta da linha para entrar com o seu ID e a sua senha." }),
           /* @__PURE__ */ jsx(Button, { primary: true, icon: "folder", onClick: () => connect(), disabled: busy, children: lembrada ? "Reconectar " + lembrada.name : "Conectar pasta da linha" }),

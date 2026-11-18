@@ -96,6 +96,7 @@ Pedido do responsável: ao abrir, a plataforma só aparece depois do login ou da
 - **O login continua sendo do `vacLogin`** (contrato: a casca não cria sessão). No passo login, a casca abre a Administração atrás da tela e chama `vacAutenticacao.porta(true)` (comum/interface): a Administração mostra só a janela de login, centrada e com o fundo transparente, sobre a tela de entrada. Primeiro acesso, troca de senha, bloqueio por erros e sessão até o fim do turno não mudam.
 - **Consulta:** `sessionStorage vac.platform.consulta = 1`, só nesta aba do navegador. `vacAppHost.consulta` informa as páginas, e `vacLogin.dispensado()` não abre a janela de login nelas. Sem sessão, nada é gravado (`vacPodeAqui`), como antes. O login pode ser feito depois, pelo botão da pessoa no alto.
 - **Fora da tela:** demonstração e testes automáticos (mesma regra do `vacLogin`: `navigator.webdriver`, salvo `vac.login.forcar = 1`).
+- **Revisão do PR #103 (plataforma 1.8.11):** pasta lida sem cadastro válido mostra "Cadastro não encontrado", com "Escolher outra pasta" e "Entrar só para consulta", em vez de ficar em "abrindo". No modo consulta, `vacLogin` só deixa de abrir a janela automática; o login pedido pela pessoa (`vacAutenticacao.abrir` e `vacPagina.autenticar`, com `pedido: true`) continua aberto.
 - Teste: `testes/plataforma/entrada.cjs` (pasta e pessoa fictícias; login com ID e senha, consulta, demonstração).
 
 ## IMP-01 · conferência das importações por período · Administração 1.9.47, plataforma 1.8.7 (17/11/2026)

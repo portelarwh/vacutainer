@@ -78,5 +78,25 @@ function bases() {
       assert.equal(await p.evaluate(() => sessionStorage.getItem('vac.platform.consulta')), '1', 'consulta guardada nesta aba (vale ao recarregar; recarregar com a pasta derruba o Chromium deste ambiente)');
       assert.deepEqual(erros, []); await ctx.close(); }
     console.log('ok consulta: sem sessão, sem gravação e sem janela de login nas páginas; vale nesta aba');
+
+    // 5) revisão do PR #103: login pedido pela pessoa no modo consulta não fecha sozinho
+    { const { ctx, p, erros } = await abrir(); const f = await conectar(p);
+      await p.getByRole('button', { name: 'Entrar só para consulta' }).click(); await p.waitForFunction(() => !document.querySelector('.porta'));
+      await f.evaluate(() => { vacAutenticacao.abrir({ trocar: true }); vacLogin.checar(); });
+      assert.equal(await f.evaluate(() => vacLogin.aberto), true, 'login pedido continua aberto na consulta');
+      await f.evaluate(() => { vacLogin.fechar(); vacLogin.checar(); });
+      assert.equal(await f.evaluate(() => vacLogin.aberto), false, 'na consulta, a janela automática não volta');
+      assert.deepEqual(erros, []); await ctx.close(); }
+    console.log('ok consulta: login pedido pela pessoa fica aberto; a janela automática não aparece');
+
+    // 6) revisão do PR #103: pasta sem cadastro não prende em "abrindo": mostra o motivo, Escolher outra pasta e Consulta
+    { const { ctx, p } = await abrir();
+      await p.evaluate(async () => { const root = await (await navigator.storage.getDirectory()).getDirectoryHandle('Pasta-Errada-Ficticia', { create: true }); await root.getDirectoryHandle('00. Bases', { create: true }); window.showDirectoryPicker = async () => root; });
+      await p.locator('.porta-card').getByRole('button', { name: 'Conectar pasta da linha' }).click();
+      await p.getByRole('heading', { name: 'Cadastro não encontrado' }).waitFor({ timeout: 30000 });
+      assert.equal(await p.locator('.porta-card').getByRole('button', { name: 'Escolher outra pasta' }).count(), 1);
+      assert.equal(await p.getByRole('button', { name: 'Entrar só para consulta' }).count(), 1);
+      await ctx.close(); }
+    console.log('ok pasta sem cadastro: motivo, Escolher outra pasta e Consulta');
   } finally { if (browser) await browser.close(); srv.close(); }
 })().catch(e => { console.error(e); process.exitCode = 1; });
