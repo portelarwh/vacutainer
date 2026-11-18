@@ -82,6 +82,12 @@ Plataforma 1.5.0, Produção 2.4.82, Administração 1.9.44.
 
 Aba Linha do tempo da Produção (`docs/timeline-operacional.md`). Só leitura de `day.events` e `db.server`; não altera OEE, metas, classificação de paradas, turnos nem exports. Bloco **aditivo** na base da Produção, autorizado pela especificação: `db.timeline = { tagMap[], tagEvents[], comments{}, imports[] }` (base sem o bloco continua válida; `Model.ensure` completa). Vigência do mapa de tags segue o contrato 2 (encerra e cria outra). Comentário, importação de tags e mapa passam por `Store.mutate` (releitura, backup, fila, auditoria). Testes: `testes/ttimeline.js` e `testes/plataforma/timeline.cjs`.
 
+## Ajustes da casca e do Lançamento · Produção 2.6.10, plataforma 1.8.13 (18/11/2026)
+
+- **Sem "Imprimir módulo"** na barra de comandos da casca (pedido do responsável: a impressão certa fica em Relatórios). Ctrl+P continua imprimindo a página ativa.
+- **Abas da Produção na casca:** `vacPagina.abas()` passa a publicar as abas visíveis (`visibleRoutes`), não a lista completa de rotas. Saem Painel (= Visão Geral, já escondido na página desde 2.6.3) e Hora a hora (agora no Lançamento); as abas escondidas pela pessoa também deixam de aparecer. Os endereços antigos continuam abrindo.
+- **Lançamento:** nenhum turno aberto por padrão; clicar abre o detalhe, clicar de novo fecha, clicar em outro troca. A escolha vale enquanto a página está aberta (`TurnoResumo.sel`, não é mais gravada nas preferências).
+
 ## LANC-02 · Lançamento unificado · Produção 2.6.9, plataforma 1.8.12 (18/11/2026)
 
 Layout aprovado pelo responsável: as abas Lançamento e Hora a hora viram uma só (LANÇAMENTO). Nenhum número, fórmula, turno ou export muda; as telas usam o mesmo cálculo (`Engine.computeDay`).
