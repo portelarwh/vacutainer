@@ -82,6 +82,15 @@ Plataforma 1.5.0, Produção 2.4.82, Administração 1.9.44.
 
 Aba Linha do tempo da Produção (`docs/timeline-operacional.md`). Só leitura de `day.events` e `db.server`; não altera OEE, metas, classificação de paradas, turnos nem exports. Bloco **aditivo** na base da Produção, autorizado pela especificação: `db.timeline = { tagMap[], tagEvents[], comments{}, imports[] }` (base sem o bloco continua válida; `Model.ensure` completa). Vigência do mapa de tags segue o contrato 2 (encerra e cria outra). Comentário, importação de tags e mapa passam por `Store.mutate` (releitura, backup, fila, auditoria). Testes: `testes/ttimeline.js` e `testes/plataforma/timeline.cjs`.
 
+## TUR-04 · turno com horário diferente no sábado · Administração 1.9.50, Produção 2.6.12, plataforma 1.8.15 (18/11/2026)
+
+Pedido do responsável: no sábado não há revezamento; o turno trabalha 1 h a menos (1º turno 06:00–13:30, 2º 13:30–21:00).
+- **Cadastro (`vacutainer-cadastros.json › turnos[].vigencias[]`, sem campo novo):** um turno pode ter **mais de uma linha no mesmo período** (mesmo `de`), cada uma com os próprios `inicio`, `fim`, `dias`, pausas e intervalos. Regra: o mesmo dia da semana não pode estar em duas linhas que se sobrepõem no tempo (`vigErrosTurno`, por dia; antes a regra recusava qualquer sobreposição de datas).
+- **Administração › Turnos:** a vigência nova ganha "+ Horário para outros dias" (linha nova com os dias que sobraram, ex.: Sáb). O dia já marcado numa linha fica desabilitado nas outras do mesmo período. "+ Nova vigência" copia todas as linhas do período anterior e encerra todas na véspera. Remover/desativar uma linha que tem irmã no período não mexe no período anterior. A vigência gravada continua imutável (regra 1.7).
+- **Leitura comum `vacTurnosEm(data)`:** devolve a linha que tem o dia da semana da data (sem nenhuma, a vigência mais recente, como antes).
+- **Produção:** a sincronização casa cada versão pelo início **e** pelos dias (`validFrom` + `weekdays`); o motor já escolhia a versão pelo dia da semana (`shiftVersionAt`). O dia novo de sábado nasce com a janela do sábado, os intervalos do sábado e a meta de cada hora pela fórmula de sempre (PPH × minutos × OEE meta): a meta diária oficial do sábado fica menor sozinha. Dias já lançados guardam o próprio turno (usar "Restaurar intervalos padrão" num sábado futuro já criado).
+- Teste: `testes/plataforma/turno-sabado.cjs`.
+
 ## Abas agrupadas da Produção · Produção 2.6.11, plataforma 1.8.14 (18/11/2026)
 
 Proposta A aprovada pelo responsável. As telas são as mesmas; só mudam de lugar (nenhum número, filtro, relatório ou export muda).
