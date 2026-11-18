@@ -32,9 +32,9 @@ const html = fs.readFileSync(path.resolve(__dirname, '../../Plataforma.html'));
     { const { p, f } = await abre('#/oee');
       const cab = await f.evaluate(async () => { document.querySelector('#cabTg').click(); await new Promise(r => setTimeout(r, 500)); const c = document.querySelector('#cabDia'); return [...c.children].filter(e => e.tagName !== 'HEADER').every(e => getComputedStyle(e).display === 'none'); });
       assert.ok(cab, 'seta do Cabeçalho do dia recolhe o conteúdo'); await f.evaluate(() => document.querySelector('#cabTg').click());
-      const onde = await f.evaluate(() => { const b = document.querySelector('.onde-lancar'); return b && { txt: /por hora/.test(b.textContent), turnos: b.querySelectorAll('[data-ir-turno]').length, hh: b.querySelectorAll('[data-hhps]').length }; });
-      assert.ok(onde && onde.txt && onde.turnos >= 1 && onde.turnos === onde.hh, 'faixa "Onde lançar" com cartão e Hora a hora de cada turno');
-      await f.click('[data-ir-turno]'); await p.waitForTimeout(900); assert.ok(await p.evaluate(() => scrollY) > 600, 'o atalho rola a página até o cartão do turno');
+      /* 2.6.9 · LANC-02: no lugar da faixa "Onde lançar", o cartão de cada turno abre o detalhe com o hora a hora dentro */
+      const onde = await f.evaluate(() => ({ onde: !!document.querySelector('.onde-lancar'), turnos: document.querySelectorAll('[data-trturno]').length, hh: document.querySelectorAll('section.tl .tl-dir table.hh').length }));
+      assert.ok(!onde.onde && onde.turnos >= 2 && onde.hh >= 2, 'cartão e hora a hora de cada turno no Lançamento ' + JSON.stringify(onde));
       await p.evaluate(() => scrollTo(0, 0)); await p.locator('button[aria-label="Guia desta aba"]').click(); await p.waitForTimeout(600);
       assert.ok(await f.evaluate(() => /Lançamento do dia/i.test(document.body.innerText)), '"?" abre o guia da aba Lançamento');
       const dest = await p.evaluate(() => { const b = [...document.querySelectorAll('.engine-command')].find(x => /Lançar meu turno/.test(x.textContent)); return b && b.className; });
