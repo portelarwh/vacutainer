@@ -1141,7 +1141,9 @@ function vacCambio(data, moeda = 'USD') {
 const vacVig = (vs, data) => { const d = String(data || '').slice(0, 10) || vacHoje(); return (vs || []).filter(v => v.de <= d &amp;&amp; (!v.ate || v.ate >= d)).sort((a, b) => a.de < b.de ? 1 : -1)[0] || null; };
 function vacParam(k) { const c = typeof vacCad === 'function' ? vacCad() : null; return c &amp;&amp; c.parametros ? c.parametros[k] ?? null : null; }
 /* turnos vigentes numa data: [{codigo, nome, inicio, fim, dias, ativo, pausas}] (fim em 24 h+) */
-function vacTurnosEm(data) { const c = typeof vacCad === 'function' ? vacCad() : null; return (c &amp;&amp; c.turnos || []).filter(t => t.ativo !== false).map(t => { const v = vacVig(t.vigencias, data); return v ? { codigo: t.codigo, nome: t.nome, ...v } : null; }).filter(Boolean); }
+/* TUR-04 (plataforma 1.8.15): um turno pode ter mais de uma linha no mesmo período (ex.: Seg–Sex e Sáb): vale a linha que tem o dia da semana da data */
+function vacTurnosEm(data) { const c = typeof vacCad === 'function' ? vacCad() : null; const d = String(data || '').slice(0, 10) || vacHoje(), wd = new Date(d + 'T12:00:00').getDay();
+  return (c &amp;&amp; c.turnos || []).filter(t => t.ativo !== false).map(t => { const vs = (t.vigencias || []).filter(v => v.de <= d &amp;&amp; (!v.ate || v.ate >= d)).sort((a, b) => a.de < b.de ? 1 : -1); const v = vs.find(x => (x.dias || []).includes(wd)) || vacVig(t.vigencias, data); return v ? { codigo: t.codigo, nome: t.nome, ...v } : null; }).filter(Boolean); }
 /* preço vigente de um material: {preco, moeda, porUnidade, de} */
 function vacPrecoEm(material, data) { const c = typeof vacCad === 'function' ? vacCad() : null; const it = c &amp;&amp; (c.precos || []).find(p => String(p.material) === String(material)); const v = it ? vacVig(it.vigencias, data) : null; return v &amp;&amp; +v.preco > 0 ? { preco: +v.preco, moeda: v.moeda || 'USD', porUnidade: v.porUnidade || 'kg', de: v.de } : null; }
 /* meta da área vigente: {valor, alerta, unidade, sentido, periodo, de} */
@@ -3938,7 +3940,7 @@ function wireConfigComum(){$('#cPasta').onclick=async()=>{if(await Store.pick())
         entrar pelo ID (autocadastro como Consulta); página inicial por perfil (1x por sessão); vigência gravada não se edita (desativar com motivo); painel de vigências; semáforo central; saída do modo de teste.
    1.1.2: aviso da carga diz qual base foi lida.  1.5: páginas Paradas, Máquinas, Manutenção e Projetos na lista (aparecem quando o HTML chega na pasta).  1.4: lista técnica pela CS12 multinível (itens = nível 1, estrutura = níveis 2+); CS03 sai.  1.3: cabeçalho comum (vac-cabecalho v2: barra do sistema + página + abas), busca Ctrl K, acabamento V1.90, Versões com cabeçalho e último backup.  1.2: Configuração › Versões das páginas (versão e data de cada HTML, gravação das bases, cópias repetidas, histórico).
    ===================================================================== */
-const PAGE={id:'portal',titulo:"Administração · Linha Vacutainer",tituloCurto:"Administração",subtitulo:'Sistemas de gestão da linha',versao:'1.9.49',baseFile:'portal-base.json',idb:'vac-portal',backupDir:'00. Backups/Portal',
+const PAGE={id:'portal',titulo:"Administração · Linha Vacutainer",tituloCurto:"Administração",subtitulo:'Sistemas de gestão da linha',versao:'1.9.50',baseFile:'portal-base.json',idb:'vac-portal',backupDir:'00. Backups/Portal',
  vazio:()=>({schema:'portal-base',rev:0,config:{modulos:{},avisoDias:30,notas:{}},audit:[]}),
  /* itens do Portal para a busca Ctrl K: cadastro, pendências e telas */
  busca:q=>{const R=[],D=Cad.D;if(D)for(const t of CAD_ORD){for(const it of D[t]||[]){const c=String(it[kOf(t)]),nm=t==='bom'?((cadItem('catalogos',it.catalogo)||{}).nome||''):it.nome||'';if(norm(c+' '+nm).includes(q))R.push({tipo:CAD_T[t].um,txt:c+(nm?' · '+nm:''),sub:'Cadastros'+(cadAtivo(t,it,D)?'':' · inativo'),href:'#cadastros/'+t+'/'+encodeURIComponent(c)});if(R.length>30)break}}
@@ -4833,6 +4835,14 @@ const cadItem=(t,cod,D=Cad.D)=>(D&amp;&amp;D[t]||[]).find(x=>String(x[kOf(t)])==
 const cadAtivo=(t,it,D=Cad.D)=>{if(t==='bom'){const c=cadItem('catalogos',it.catalogo,D);return!c||c.ativo!==false}return it.ativo!==false};
 const vigEm=(vs,dia)=>(vs||[]).find(v=>v.de<=dia&amp;&amp;(!v.ate||v.ate>=dia))||null;
 const vigHoje=it=>vigEm(it&amp;&amp;it.vigencias,todayISO())||{};
+/* 1.9.50 · TUR-04: um turno pode ter mais de uma linha de horário no mesmo período (ex.: Seg–Sex 06:00–14:30 e Sáb 06:00–13:30).
+   A regra de não sobrepor vale por dia da semana: o mesmo dia não pode estar em duas linhas que se sobrepõem no tempo. */
+function vigErrosTurno(vs){const L=vs||[],m=new Map();
+ for(const x of vigErros(L.filter(v=>!(v.dias||[]).length)))if(!m.has(x))m.set(x,[]);
+ for(let d=0;d<7;d++)for(const x of vigErros(L.filter(v=>(v.dias||[]).includes(d)))){if(!m.has(x))m.set(x,[]);if(/se sobrepõem/.test(x))m.get(x).push(DIAS[d])}
+ return[...m].map(([x,ds])=>ds.length?x+' em '+ds.join(', ')+' (o mesmo dia não pode estar em duas linhas do mesmo período)':x)}
+/* linhas do mesmo período do turno (mesmo início) */
+const vigLinhas=(vs,de)=>(vs||[]).filter(v=>v.de===de);
 function vigErros(vs){const e=[];const s=[...(vs||[])].sort((a,b)=>String(a.de)<String(b.de)?-1:1);
  s.forEach((v,i)=>{if(!/^\d{4}-\d{2}-\d{2}$/.test(v.de||''))e.push('vigência sem data de início válida');if(v.ate&amp;&amp;!/^\d{4}-\d{2}-\d{2}$/.test(v.ate))e.push('vigência com data de fim inválida');if(v.ate&amp;&amp;v.ate<v.de)e.push(`vigência de ${fmtD(v.de)} termina antes de começar`);const n=s[i+1];if(n&amp;&amp;(!v.ate||v.ate>=n.de))e.push(`vigências de ${fmtD(v.de)} e ${fmtD(n.de)} se sobrepõem`)});return e}
 
@@ -4855,7 +4865,7 @@ function cadValidarItem(t,it,D,{novo=false}={}){const T=CAD_T[t],k=kOf(t),e=[];c
  const has=(rt,c)=>(D[rt]||[]).some(x=>String(x.codigo)===String(c));
  for(const[f,lab,ty,rt]of T.campos){if((ty==='ref'||ty==='refcod')&amp;&amp;it[f]!=null&amp;&amp;it[f]!==''&amp;&amp;!has(rt,it[f]))e.push(`${lab} "${it[f]}" não existe em ${CAD_T[rt].nome}`);
   if(ty==='cor'&amp;&amp;it[f]&amp;&amp;!/^#[0-9a-f]{6}$/i.test(it[f]))e.push(`${lab}: cor inválida (${it[f]}); use #RRGGBB`)}
- if(T.vig){const vs=it.vigencias||[];if(!vs.length)e.push('precisa de pelo menos uma vigência');e.push(...vigErros(vs));
+ if(T.vig){const vs=it.vigencias||[];if(!vs.length)e.push('precisa de pelo menos uma vigência');e.push(...(t==='turnos'?vigErrosTurno(vs):vigErros(vs)));
   for(const v of vs){const q=` (vigência de ${fmtD(v.de)})`;
    if(t==='cambio'&amp;&amp;!(+v.cotacao>0))e.push('informe a cotação (maior que zero)'+q);
    if(t==='precos'){if(!(+v.preco>0))e.push('informe o preço (maior que zero)'+q);if(!['USD','BRL'].includes(v.moeda))e.push('informe a moeda (USD ou BRL)'+q)}
@@ -5165,7 +5175,7 @@ function cadCols(t,D){const fam=c=>{if(!c)return'';const f=cadItem('familias',c,
   materiais:[['Código SAP',cod],['Descrição',it=>esc(it.nome)],['Unidade',it=>esc(it.unidade||'')],['Tipo',it=>esc(it.tipo||'')],['Tipo SAP',it=>esc(it.tipoSAP||'')],['Em BOMs',it=>String(D.bom.filter(b=>(vigHoje(b).itens||[]).concat(vigHoje(b).estrutura||[]).some(i=>i.material===it.codigo)).length),'n']],
   bom:[['Catálogo',cod],['Nome do catálogo',it=>esc((cadItem('catalogos',it.catalogo,D)||{}).nome||'')],['Vigente desde',it=>vigHoje(it).de?fmtD(vigHoje(it).de):'<span class="warn">sem vigência hoje</span>'],['Fonte',it=>esc(vigHoje(it).fonte||(vigHoje(it).de?'manual / anterior':''))],['Itens N1',it=>String((vigHoje(it).itens||[]).length),'n'],['Estrutura',it=>(vigHoje(it).estrutura||[]).length?String(vigHoje(it).estrutura.length):'','n'],['Origem',it=>`<span class="small">${esc(vigHoje(it).origem||'')}</span>`],['Vigências',it=>String((it.vigencias||[]).length),'n']],
   equipamentos:[['Pos.',it=>fmtN(it.posicao),'n'],['Código',cod],['Código MES',it=>`<span class="mono">${esc(it.codigoMes||'')}</span>`],['Nome',it=>esc(it.nome)],['Tipo',it=>esc(String(it.tipo||'').toUpperCase())],['Papel',it=>esc(String(it.papel||'').toUpperCase())],['Fabricante / modelo',it=>esc([it.fabricante,it.modelo].filter(Boolean).join(' · '))],['Comp.',it=>{const n=(D.componentes||[]).filter(c=>c.equipamento===it.codigo).length;return n?String(n):''},'n'],['Foto',it=>sim(it.foto)],['Docs',it=>(it.documentos||[]).length?String(it.documentos.length):'','n']],
-  turnos:[['Horas (vigência de hoje)',it=>{const v=vigHoje(it);return v&amp;&amp;v.inicio?esc(turnoResumo(v)):''}],['Código',it=>`${safeCor(it.cor)?`<i class="sw" style="background:${safeCor(it.cor)}"></i>`:''}<b class="mono">${esc(it.codigo)}</b>`],['Nome',it=>esc(it.nome)],['Horário',it=>{const v=vigHoje(it);return v.inicio?`${esc(v.inicio)}–${esc(v.fim)}${v.ativo===false?' <span class="muted">(desligado)</span>':''}`:'<span class="warn">sem vigência hoje</span>'}],['Dias',it=>diasTxt(vigHoje(it).dias)],['Pausas',it=>esc((vigHoje(it).pausas||[]).map(p=>p.inicio+'–'+p.fim).join(', '))],['Vigente desde',it=>fmtD(vigHoje(it).de)]],
+  turnos:[['Horas (vigência de hoje)',it=>{const h=todayISO(),L=(it.vigencias||[]).filter(v=>v.de<=h&amp;&amp;(!v.ate||v.ate>=h)&amp;&amp;v.inicio);return esc(L.map(turnoResumo).join(' · '))}],['Código',it=>`${safeCor(it.cor)?`<i class="sw" style="background:${safeCor(it.cor)}"></i>`:''}<b class="mono">${esc(it.codigo)}</b>`],['Nome',it=>esc(it.nome)],['Horário',it=>{const v=vigHoje(it);return v.inicio?`${esc(v.inicio)}–${esc(v.fim)}${v.ativo===false?' <span class="muted">(desligado)</span>':''}`:'<span class="warn">sem vigência hoje</span>'}],['Dias',it=>diasTxt(vigHoje(it).dias)],['Pausas',it=>esc((vigHoje(it).pausas||[]).map(p=>p.inicio+'–'+p.fim).join(', '))],['Vigente desde',it=>fmtD(vigHoje(it).de)]],
   componentes:[['Código',cod],['Equipamento',it=>{const q=cadItem('equipamentos',it.equipamento,D);return`<span class="mono">${esc(it.equipamento||'')}</span>${q?' · '+esc(q.nome):''}`}],['Nome',it=>esc(it.nome)],['Sistema',it=>esc(it.sistema||'')],['Crit.',it=>esc(it.criticidade||'')],['Material SAP',it=>`<span class="mono">${esc(it.materialSAP||'')}</span>`]],
   modosFalha:[['Código',cod],['Nome',it=>esc(it.nome)]],
   calendario:[['Data',it=>`<b class="mono">${esc(fmtD(it.codigo))}</b>`],['Dia',it=>{const d=new Date(String(it.codigo)+'T12:00:00');return isNaN(d)?'':['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'][d.getDay()]}],['Tipo',it=>it.tipo==='dia extra'?'<span class="pill info">dia extra</span>':'<span class="pill warn">sem produção</span>'],['Motivo',it=>esc(it.nome||'')]],
@@ -5286,7 +5296,9 @@ const Ficha={t:null,cod:null,orig:null,W:null,novo:false,edit:false,dirty:false,
   return h},
  campo([f,lab,ty,arg,o],base=''){const p=base+f,v=pget(this.W,p),dis=(!this.edit||((ty==='cod'||ty==='refcod')&amp;&amp;!this.novo))?' disabled':'',w=o&amp;&amp;o.w===2?' class="w2"':'';
   if(ty==='bool'){const ab=campoAjuda(this.t,f);return`<label class="ck"><input type="checkbox" data-p="${p}" data-k="bool" ${v?'checked':''}${dis}> ${esc(lab)}${ab?' '+ib(lab,ab):''}</label>`}
-  if(ty==='dias'){const ad=campoAjuda(this.t,f);return`<label><span>${esc(lab)}${ad?' '+ib(lab,ad):''}</span><span class="dias">${DIAS.map((d,i)=>`<label><input type="checkbox" data-p="${p}" data-k="dia" data-dia="${i}" ${(v||[]).includes(i)?'checked':''}${dis}>${d}</label>`).join('')}</span></label>`;}
+  if(ty==='dias'){const ad=campoAjuda(this.t,f);let usa=new Set();const mm=this.t==='turnos'?/^vigencias\.(\d+)\.dias$/.exec(p):null;
+   if(mm){const vs=this.W.vigencias||[],me=vs[+mm[1]];if(me)usa=new Set(vs.filter((o,j)=>j!==+mm[1]&amp;&amp;o&amp;&amp;o.de<=(me.ate||'9999-12-31')&amp;&amp;(!o.ate||o.ate>=me.de)).flatMap(o=>o.dias||[]))}
+   return`<label><span>${esc(lab)}${ad?' '+ib(lab,ad):''}</span><span class="dias">${DIAS.map((d,i)=>{const outra=usa.has(i)&amp;&amp;!(v||[]).includes(i);return`<label${outra?' title="Este dia já está em outra linha deste período"':''}><input type="checkbox" data-p="${p}" data-k="dia" data-dia="${i}" ${(v||[]).includes(i)?'checked':''}${dis||(outra?' disabled':'')}>${d}</label>`}).join('')}</span></label>`;}
   let c;const aj=campoAjuda(this.t,f);
   if(ty==='sel'&amp;&amp;o&amp;&amp;(o.up||o.lab)){const tx=x=>o.lab?(o.lab[x]||x):String(x).toUpperCase();c=`<select data-p="${p}" data-k="txt"${dis}${o.redraw?' data-redraw="1"':''}><option value=""></option>${arg.map(x=>`<option value="${esc(x)}" ${String(x)===String(v)?'selected':''}>${esc(tx(x))}</option>`).join('')}${v&amp;&amp;!arg.includes(v)?`<option selected value="${esc(v)}">${esc(tx(v))}</option>`:''}</select>`}
   else if(ty==='sel')c=selRaw(p,arg,v,!dis);
@@ -5304,7 +5316,7 @@ const Ficha={t:null,cod:null,orig:null,W:null,novo:false,edit:false,dirty:false,
   return`<h3 style="margin-top:14px">Vigências ${ib('Vigências','Valores que mudam com o tempo. Quem lê o cadastro usa a vigência da data do fato (dia de produção, data da ordem), nunca a de hoje. Para mudar daqui para a frente, use "Nova vigência a partir de": a anterior termina na véspera (fim calculado). Uma vigência com data antiga entra na ordem e não apaga as outras. Regra 1.7: vigência gravada não se edita; se foi digitada errada, desative (com motivo) e crie de novo. Vigência já usada em registros fechados não pode ser desativada.')}</h3>
   ${e?`<div class="filters" style="margin:4px 0"><label>Nova vigência a partir de<input type="date" id="fvDe" value="${hoje}"></label><button class="b sm" id="fvNova">+ Nova vigência</button></div>`:''}
   ${ord.map(([v,i])=>{const cur=v.de<=hoje&amp;&amp;(!v.ate||v.ate>=hoje),b='vigencias.'+i+'.',nova=!!v._nova,sv=this.edit;this.edit=e&amp;&amp;nova;
-   const h=`<div class="vig ${cur?'cur':''}${nova?'':' trav'}"><div class="vh"><b>${fmtD(v.de)||'?'} → ${v.ate?fmtD(v.ate):'em aberto'}</b>${cur?'<span class="pill ok">vigente hoje</span>':v.de>hoje?'<span class="pill info">futura</span>':'<span class="pill">encerrada</span>'}${nova?'<span class="pill pend">nova · ainda não gravada</span>':'<span class="small muted" title="Vigência gravada não se edita: desative (com motivo) e crie de novo.">🔒 gravada</span>'}<span style="flex:1"></span>${nova&amp;&amp;e?`<button class="b sm d" data-delvig="${i}">Remover</button>`:''}${!nova&amp;&amp;e?`<button class="b sm d" data-desvig="${i}" title="Tira esta vigência da lista usada pelas páginas (fica em Desativadas, com motivo). Não é possível se ela já foi usada em registros fechados.">Desativar…</button>`:''}</div>
+   const h=`<div class="vig ${cur?'cur':''}${nova?'':' trav'}"><div class="vh"><b>${fmtD(v.de)||'?'} → ${v.ate?fmtD(v.ate):'em aberto'}</b>${t==='turnos'&amp;&amp;vigLinhas(this.W.vigencias,v.de).length>1?`<span class="pill info" title="Linha de horário deste período (TUR-04)">${esc((v.dias||[]).map(d=>DIAS[d]).join(', ')||'sem dias')}${v.inicio&amp;&amp;v.fim?' · '+esc(v.inicio)+'–'+esc(v.fim):''}</span>`:''}${cur?'<span class="pill ok">vigente hoje</span>':v.de>hoje?'<span class="pill info">futura</span>':'<span class="pill">encerrada</span>'}${nova?'<span class="pill pend">nova · ainda não gravada</span>':'<span class="small muted" title="Vigência gravada não se edita: desative (com motivo) e crie de novo.">🔒 gravada</span>'}<span style="flex:1"></span>${nova&amp;&amp;e&amp;&amp;t==='turnos'?`<button class="b sm" data-linhavig="${i}" title="Mais uma linha neste período, com outro horário para outros dias (ex.: sábado com 1 h a menos). O mesmo dia não pode estar nas duas linhas.">+ Horário para outros dias</button>`:''}${nova&amp;&amp;e?`<button class="b sm d" data-delvig="${i}">Remover</button>`:''}${!nova&amp;&amp;e?`<button class="b sm d" data-desvig="${i}" title="Tira esta vigência da lista usada pelas páginas (fica em Desativadas, com motivo). Não é possível se ela já foi usada em registros fechados.">Desativar…</button>`:''}</div>
    ${v.criadoPor||v.origem?`<div class="small muted" style="margin:2px 0 4px">${v.criadoPor?'criada por '+esc(v.criadoPor)+(v.criadoEm?' em '+fmtDT(v.criadoEm):''):''}${v.criadoPor&amp;&amp;v.origem&amp;&amp;t!=='bom'?' · ':''}${v.origem&amp;&amp;t!=='bom'?'origem '+esc(v.origem):''}</div>`:''}
    <div class="fg">${(T.vcampos||[]).map(f=>this.campo(f,b)).join('')}${t==='bom'?this.campo(['origem','Origem','txt',null,{w:2}],b):''}</div>
    ${t==='turnos'?this.pausas(v,b)+this.intervalos(v,b):''}${t==='metasOee'&amp;&amp;(v.quadro||[]).length?`<details class="cd" style="margin-top:6px"><summary>Quadro hora a hora (${v.quadro.length}) ${ib('Quadro hora a hora',AJUDA_CAMPO['metasOee.quadro'])}</summary><table class="small">${v.quadro.map(q=>q.start!=null&amp;&amp;q.end!=null&amp;&amp;q.target!=null?`<tr><td class="mono">${mofHM(q.start)}–${mofHM(q.end)}</td><td class="n">${fmtN(q.target)}</td></tr>`:`<tr>${Object.entries(q).map(([k,x])=>`<td><span class="muted">${esc(k)}</span> ${esc(typeof x==='number'?fmtN(x):x)}</td>`).join('')}</tr>`).join('')}</table></details>`:''}${t==='bom'?this.itens(v,b):''}</div>`;this.edit=sv;return h}).join('')||'<p class="muted small">Sem vigências.</p>'}
@@ -5380,7 +5392,8 @@ const Ficha={t:null,cod:null,orig:null,W:null,novo:false,edit:false,dirty:false,
   box.onclick=e=>{const a=e.target.closest('[data-add]');if(a&amp;&amp;this.edit){let arr=pget(this.W,a.dataset.add);if(!Array.isArray(arr)){arr=[];pset(this.W,a.dataset.add,arr)}arr.push(JSON.parse(a.dataset.tpl));this.dirty=true;return this.draw()}
    const d=e.target.closest('[data-del]');if(d&amp;&amp;this.edit){const ps=d.dataset.del.split('.'),i=+ps.pop();pget(this.W,ps.join('.')).splice(i,1);this.dirty=true;return this.draw()}
    const dz=e.target.closest('[data-desvig]');if(dz&amp;&amp;this.edit)return this.desativarVig(+dz.dataset.desvig);
-   const dv=e.target.closest('[data-delvig]');if(dv&amp;&amp;this.edit){const vs=this.W.vigencias,rm=vs[+dv.dataset.delvig];vs.splice(+dv.dataset.delvig,1);if(rm){const ord=[...vs].sort((a,b)=>a.de<b.de?-1:1),ant=ord.filter(x=>x.de<rm.de).pop(),prox=ord.find(x=>x.de>rm.de);if(ant&amp;&amp;!ant._nova){const o=(this.orig&amp;&amp;this.orig.vigencias||[]).find(x=>x.de===ant.de);ant.ate=prox?addDays(prox.de,-1):(o?o.ate:rm.ate||null)}}this.dirty=true;return this.draw()}
+   const lv=e.target.closest('[data-linhavig]');if(lv&amp;&amp;this.edit)return this.novaLinha(+lv.dataset.linhavig);
+   const dv=e.target.closest('[data-delvig]');if(dv&amp;&amp;this.edit){const vs=this.W.vigencias,rm=vs[+dv.dataset.delvig];vs.splice(+dv.dataset.delvig,1);if(rm&amp;&amp;this.t==='turnos'&amp;&amp;vigLinhas(vs,rm.de).length){this.dirty=true;return this.draw()}if(rm&amp;&amp;this.t==='turnos'){const ord=[...vs].sort((a,b)=>a.de<b.de?-1:1),ant=ord.filter(x=>x.de<rm.de).pop(),prox=ord.find(x=>x.de>rm.de);if(ant)for(const x of vigLinhas(vs,ant.de))if(!x._nova){const o=(this.orig&amp;&amp;this.orig.vigencias||[]).find(y=>y.de===x.de&amp;&amp;JSON.stringify(y.dias||[])===JSON.stringify(x.dias||[]));x.ate=prox?addDays(prox.de,-1):(o?o.ate:rm.ate||null)}this.dirty=true;return this.draw()}if(rm){const ord=[...vs].sort((a,b)=>a.de<b.de?-1:1),ant=ord.filter(x=>x.de<rm.de).pop(),prox=ord.find(x=>x.de>rm.de);if(ant&amp;&amp;!ant._nova){const o=(this.orig&amp;&amp;this.orig.vigencias||[]).find(x=>x.de===ant.de);ant.ate=prox?addDays(prox.de,-1):(o?o.ate:rm.ate||null)}}this.dirty=true;return this.draw()}
    const od=e.target.closest('[data-opendoc]');if(od)return EqFiles.abrir(od.dataset.opendoc);
    const rd=e.target.closest('[data-rmdoc]');if(rd)return this.rmDoc(+rd.dataset.rmdoc)};
   const on=(id,f)=>{const x=box.querySelector('#'+id);if(x)x.onclick=f};
@@ -5407,6 +5420,8 @@ const Ficha={t:null,cod:null,orig:null,W:null,novo:false,edit:false,dirty:false,
   else{v=el.value.trim();if(v==='')v=null}
   if(el.type==='color'){const s=el.parentElement.querySelector('[data-cor]');if(s)s.value=v}else if(el.dataset.cor&amp;&amp;/^#[0-9a-f]{6}$/i.test(v||'')){const s=el.parentElement.querySelector('input[type=color]');if(s)s.value=v}
   pset(this.W,p,v);this.dirty=true;
+  if(k==='dia'&amp;&amp;this.t==='turnos'&amp;&amp;/^vigencias\.\d+\.dias$/.test(p))return this.draw();   /* 1.9.50 · TUR-04: atualiza os dias livres das outras linhas */
+  if(e.type==='change'&amp;&amp;this.t==='turnos'&amp;&amp;/^vigencias\.\d+\.(inicio|fim)$/.test(p))return this.draw();   /* TUR-04: título da linha e horas do turno acompanham o horário digitado */
   if(this.t==='componentes'&amp;&amp;this.novo&amp;&amp;p==='equipamento'&amp;&amp;v&amp;&amp;(!this.W.codigo||/-C\d+$/.test(this.W.codigo))){this.W.codigo=proxComp(v);const c=document.querySelector('#fBox [data-p="codigo"]');if(c)c.value=this.W.codigo}},
  erro(es){const x=$('#fErr');if(x)x.innerHTML=es?`<div class="note e"><b>Corrija antes de salvar:</b><ul style="margin:4px 0 0 18px;padding:0">${(Array.isArray(es)?es:[es]).map(s=>`<li>${s}</li>`).join('')}</ul></div>`:''},
  mot(){return(($('#fMot')||{}).value||'').trim()},
@@ -5429,7 +5444,17 @@ const Ficha={t:null,cod:null,orig:null,W:null,novo:false,edit:false,dirty:false,
   if(!confirm(`Criar ${novo} com os dados de ${this.cod} e inativar ${this.cod} (substituído por ${novo})?${this.t==='catalogos'?'\nA BOM do catálogo antigo não é copiada: importe a do novo.':''}${this.t==='materiais'?'\nAs BOMs continuam apontando para o código antigo até serem importadas de novo.':''}`))return;
   Cad.ops([{acao:'criação',tipo:this.t,codigo:novo,item:n,motivo:mot},{acao:'inativação',tipo:this.t,codigo:this.cod,mudancas:{ativo:{antes:it.ativo??null,depois:false},inativadoEm:{antes:it.inativadoEm??null,depois:todayISO()},substituidoPor:{antes:it.substituidoPor??null,depois:novo}},motivo:mot}]);
   this.dirty=false;this.cod=novo;this.recarregar()},
+ /* 1.9.50 · TUR-04: mais uma linha no período novo do turno, com os dias que sobraram (ex.: Sáb) e o mesmo horário para ajustar */
+ novaLinha(i){const vs=this.W.vigencias||[],v=vs[i];if(!v)return;const usa=new Set(vigLinhas(vs,v.de).flatMap(x=>x.dias||[]));
+  const antes=[...vs].filter(x=>x.de<v.de).sort((a,b)=>a.de<b.de?1:-1),base=antes.length?new Set(vigLinhas(vs,antes[0].de).flatMap(x=>x.dias||[])):new Set([1,2,3,4,5,6]);
+  let livres=[...base].filter(d=>!usa.has(d)).sort((a,b)=>a-b);if(!livres.length)livres=[0,1,2,3,4,5,6].filter(d=>!usa.has(d)&amp;&amp;d!==0);
+  if(![0,1,2,3,4,5,6].some(d=>!usa.has(d)))return toast('Todos os dias da semana já estão em alguma linha deste período.',6000,true);
+  const nv=clone(v);nv.dias=livres;nv.intervalos=[];nv._nova=true;nv.criadoPor=user()||null;nv.criadoEm=isoLocal();nv.origem='cadastro manual';vs.push(nv);this.dirty=true;this.draw();
+  toast(livres.length?'Nova linha para '+livres.map(d=>DIAS[d]).join(', ')+': ajuste início, fim e pausas desses dias.':'Nova linha: marque os dias que ainda não estão em outra linha.',6000)},
  novaVig(de){if(!/^\d{4}-\d{2}-\d{2}$/.test(de||''))return toast('Informe a data de início.',4000,true);const vs=this.W.vigencias=this.W.vigencias||[];
+  if(this.t==='turnos'&amp;&amp;!vs.some(v=>v.de===de)){const ant=[...vs].filter(v=>v.de<de).sort((a,b)=>a.de<b.de?1:-1)[0]||null,prox=[...vs].filter(v=>v.de>de).sort((a,b)=>a.de<b.de?-1:1)[0]||null;
+   const linhas=ant?vigLinhas(vs,ant.de):[];if(linhas.length>1){for(const a of linhas){const nv=clone(a);delete nv._nova;nv.de=de;nv.ate=prox?addDays(prox.de,-1):null;nv._nova=true;nv.criadoPor=user()||null;nv.criadoEm=isoLocal();nv.origem='cadastro manual';delete nv.desativadaEm;delete nv.desativadaPor;delete nv.motivoDesativacao;if(!a.ate||a.ate>=de)a.ate=addDays(de,-1);vs.push(nv)}
+    this.dirty=true;this.draw();if(de<todayISO())toast('Vigência começando antes de hoje: informe o motivo ao salvar.',5000);return}}
   if(vs.some(v=>v.de===de))return toast('Já existe uma vigência começando em '+fmtD(de)+'. Vigência gravada não se edita: desative-a (com motivo) e crie a nova.',7000,true);
   const ant=vigEm(vs,de)||[...vs].filter(v=>v.de<de).sort((a,b)=>a.de<b.de?1:-1)[0]||null,prox=[...vs].filter(v=>v.de>de).sort((a,b)=>a.de<b.de?-1:1)[0]||null;
   const nv=ant?clone(ant):clone(cadModelo(this.t).vigencias[0]);delete nv._nova;nv.de=de;nv.ate=prox?addDays(prox.de,-1):null;if(this.t==='bom')nv.origem='cadastro manual';nv._nova=true;nv.criadoPor=user()||null;nv.criadoEm=isoLocal();if(this.t!=='bom')nv.origem='cadastro manual';delete nv.desativadaEm;delete nv.desativadaPor;delete nv.motivoDesativacao;
@@ -5438,7 +5463,7 @@ const Ficha={t:null,cod:null,orig:null,W:null,novo:false,edit:false,dirty:false,
   if(vs.length<=1)return toast('É a única vigência: crie a nova vigência antes de desativar esta.',6000,true);
   const u=usoVig(this.t,this.cod,v);if(u.n)return alert(`A vigência de ${fmtD(v.de)}${v.ate?' a '+fmtD(v.ate):''} já foi usada em registros fechados:\n• ${u.onde.join('\n• ')}\n\nEla não pode ser desativada. Para mudar daqui para a frente, crie uma nova vigência.`);
   const m=(prompt(`Desativar a vigência de ${fmtD(v.de)}${v.ate?' a '+fmtD(v.ate):''}?\n${u.n===null?'(Não deu para conferir o uso nas outras páginas: elas não foram lidas.)\n':''}Ela sai da lista usada pelas páginas e fica em "Desativadas". Motivo:`)||'').trim();if(!m)return;
-  vs.splice(i,1);const ord=[...vs].sort((a,b)=>a.de<b.de?-1:1),ant=ord.filter(x=>x.de<v.de).pop(),prox=ord.find(x=>x.de>v.de);if(ant)ant.ate=prox?addDays(prox.de,-1):(v.ate||null);
+  vs.splice(i,1);if(!(this.t==='turnos'&amp;&amp;vigLinhas(vs,v.de).length)){const ord=[...vs].sort((a,b)=>a.de<b.de?-1:1),ant=ord.filter(x=>x.de<v.de).pop(),prox=ord.find(x=>x.de>v.de);if(ant)for(const x of this.t==='turnos'?vigLinhas(vs,ant.de):[ant])x.ate=prox?addDays(prox.de,-1):(v.ate||null)}
   const{_nova,...x}=v;(this.W.vigenciasDesativadas=this.W.vigenciasDesativadas||[]).push({...x,desativadaEm:isoLocal(),desativadaPor:user()||null,motivoDesativacao:m});
   this.dirty=true;this.draw();const f=$('#fMot');if(f&amp;&amp;!f.value)f.value='vigência de '+fmtD(v.de)+' desativada: '+m;toast('Vigência desativada na ficha. Clique em "Salvar alterações" para gravar.',6000)},
  async upFoto(f){if(!f||!Cad.podeEditar())return;if(Store.mode!=='pasta')return toast('Arquivos só com a pasta da rede conectada.',5000,true);if(f.size>20e6)return toast('Foto muito grande (máx. 20 MB).',5000,true);
@@ -6375,7 +6400,7 @@ const TrazCfg={B:{},lidos:[],avisos:[],P:[],
   if(G&amp;&amp;G.config){const c=G.config,sh=(c.shifts||[]).slice().sort((a,b)=>a.from<b.from?1:-1)[0];
    if(sh)for(const tu of sh.turns||[])if(+tu.p>0){const t=cadItem('turnos',tu.n,D);if(!t)continue;add('Pausas e abonos',`Turno ${tu.n}: pausa fixa de ${tu.p} min (Gestão de Gel)`,'Todos os dias do turno, desconta do planejado. Confira se a Produção já não tem a mesma pausa.',W2=>{const it=W2.turnos.find(x=>x.codigo===tu.n);const vv=vigEm(it.vigencias,todayISO())||it.vigencias[it.vigencias.length-1];if(vv)vv.pausas=(vv.pausas||[]).concat([{codigo:null,nome:'Pausa fixa',inicio:'',fim:'',duracaoMin:+tu.p,dias:[],desconta:true}])},false)}
    const ab=c.abDefault||{};for(const[wd,a]of Object.entries(ab))if(a&amp;&amp;+a.min>0){add('Pausas e abonos',`Abono de ${DIAS[+wd]}: ${a.min} min por turno (${a.m||'abono'}) · Gestão de Gel`,'Entra como pausa só por duração, nesse dia da semana, em todos os turnos ativos (vigência atual). Escolha depois o código de parada (ex.: REF).',
-    W2=>{for(const it of W2.turnos){if(it.ativo===false)continue;const vv=vigEm(it.vigencias,todayISO())||it.vigencias[it.vigencias.length-1];if(!vv||vv.ativo===false||!(vv.dias||[]).includes(+wd))continue;if((vv.pausas||[]).some(p=>(p.dias||[]).includes(+wd)&amp;&amp;(+p.duracaoMin===+a.min||(p.inicio&amp;&amp;p.fim&amp;&amp;hmin(p.fim)-hmin(p.inicio)===+a.min))))continue;vv.pausas=(vv.pausas||[]).concat([{codigo:null,nome:a.m||'Abono',inicio:'',fim:'',duracaoMin:+a.min,dias:[+wd],desconta:true}])}})}}
+    W2=>{for(const it of W2.turnos){if(it.ativo===false)continue;const vv=(it.vigencias||[]).find(v=>v.de<=todayISO()&amp;&amp;(!v.ate||v.ate>=todayISO())&amp;&amp;(v.dias||[]).includes(+wd))||vigEm(it.vigencias,todayISO())||it.vigencias[it.vigencias.length-1];if(!vv||vv.ativo===false||!(vv.dias||[]).includes(+wd))continue;if((vv.pausas||[]).some(p=>(p.dias||[]).includes(+wd)&amp;&amp;(+p.duracaoMin===+a.min||(p.inicio&amp;&amp;p.fim&amp;&amp;hmin(p.fim)-hmin(p.inicio)===+a.min))))continue;vv.pausas=(vv.pausas||[]).concat([{codigo:null,nome:a.m||'Abono',inicio:'',fim:'',duracaoMin:+a.min,dias:[+wd],desconta:true}])}})}}
   /* 3. metas de OEE */
   if(O&amp;&amp;(O.targets||[]).length&amp;&amp;!(D.metasOee||[]).length){const G2=new Map();
    for(const tg of O.targets.filter(x=>!x.deleted&amp;&amp;!x.demo&amp;&amp;x.status!=='inativo')){const cat=(byId(O.catalogs,tg.catalogId)||{}).code||null,fam=(byId(O.families,tg.familyId)||{}).code||null,maq=(byId(O.machines,tg.machineId)||{}).code||null,lin=(byId(O.lines,tg.lineId)||{}).code||null;
@@ -7590,7 +7615,7 @@ const U = (() => {
 
 /* ---- 02-model.js ---- */
 /* ================= modelo de dados, valores iniciais e integridade ================= */
-const APP_VERSION = '2.6.11';   /* 2.6.11 · abas agrupadas: Ordens e lotes, Resultados, Paradas */   /* 2.6.10 · Lançamento sem turno aberto por padrão; abas visíveis na casca */   /* 2.6.9 · LANC-02: Lançamento unificado (hora a hora no detalhe do turno, 3º turno ao lado, Problemas de QN) */   /* 2.6.5 · IMP-01: contagens das importações nos exports */   /* 2.6.4 · semáforo só pelas faixas configuradas (verde acima de 100% vale) */   /* 2.6.2 · gráficos e números com meta seguem o semáforo de três cores (verde, amarelo, vermelho) */   /* 2.6.1 · gráficos: turno lançado pelo total com o nome do turno no eixo; janelas: rótulo e valor em tamanho de texto */   /* 2.6.0 · produção total do turno (sem hora a hora; períodos na troca de catálogo), aviso do servidor para turno lançado pelo total e para dia com produção apontada */
+const APP_VERSION = '2.6.12';   /* 2.6.12 · TUR-04: turno com horário diferente no sábado (linhas por dia da semana) */   /* 2.6.11 · abas agrupadas: Ordens e lotes, Resultados, Paradas */   /* 2.6.10 · Lançamento sem turno aberto por padrão; abas visíveis na casca */   /* 2.6.9 · LANC-02: Lançamento unificado (hora a hora no detalhe do turno, 3º turno ao lado, Problemas de QN) */   /* 2.6.5 · IMP-01: contagens das importações nos exports */   /* 2.6.4 · semáforo só pelas faixas configuradas (verde acima de 100% vale) */   /* 2.6.2 · gráficos e números com meta seguem o semáforo de três cores (verde, amarelo, vermelho) */   /* 2.6.1 · gráficos: turno lançado pelo total com o nome do turno no eixo; janelas: rótulo e valor em tamanho de texto */   /* 2.6.0 · produção total do turno (sem hora a hora; períodos na troca de catálogo), aviso do servidor para turno lançado pelo total e para dia com produção apontada */
 const SCHEMA_VERSION = 1;
 const BASE_FILE = 'oee-vacutainer-base.json';
 const BACKUP_DIR = '00. Backups';
@@ -20700,7 +20725,11 @@ const CadSync = (() => {
       else upd(o, { name: t.nome || t.codigo, lineId: lineId(t.linha), status: stOf(t.ativo) }, 'turno', 'turnos');
       const usados = new Set(); let n = 0;
       for (const { v, p } of versoes) {
-        let ver = (o.versions || []).find(x => !x.deleted &amp;&amp; x.validFrom === v.de);
+        /* 2.6.12 · TUR-04: duas linhas no mesmo período (ex.: Seg–Sex e Sáb) têm o mesmo início; a versão casa pelo início e pelos dias.
+           Só o início serve quando aquele período tem uma linha só (ex.: os dias da vigência foram corrigidos) */
+        const dk = a => JSON.stringify((a || []).slice().sort((x, y) => x - y));
+        let ver = (o.versions || []).find(x => !x.deleted &amp;&amp; !usados.has(x.id) &amp;&amp; x.validFrom === v.de &amp;&amp; dk(x.weekdays) === dk(v.dias))
+          || ((t.vigencias || []).filter(y => y &amp;&amp; y.de === v.de).length === 1 ? (o.versions || []).find(x => !x.deleted &amp;&amp; !usados.has(x.id) &amp;&amp; x.validFrom === v.de) : null);
         if (ver) { usados.add(ver.id); for (const [k, val] of Object.entries(p)) if (JSON.stringify(ver[k] ?? null) !== JSON.stringify(val ?? null)) { audit({ action: "sincronização da Administração", entity: 'turno', entityId: o.id, field: 'vigência ' + v.de + ' · ' + k, before: ver[k] ?? null, after: val ?? null, reason }); ver[k] = val; n++; } }
         else { ver = { id: U.uid('sv'), ...p }; o.versions.push(ver); usados.add(ver.id); audit({ action: "sincronização da Administração", entity: 'turno', entityId: o.id, field: 'vigência', before: null, after: v.de, reason }); n++; }
       }
@@ -21476,7 +21505,7 @@ button.b,label.b,a.b{border-radius:8px}
    Base: perdas-base.json na pasta da rede (mesmo padrão OEE / Gel)
    Contrato: bloco "exports" (exportsVersion 1) lido pelas outras páginas
    ===================================================================== */
-const APP_VER='1.12.16',   /* 1.12.14 · MUV: situação e tendência pelo semáforo de três cores */   /* 1.12.8 · ordens e lotes antigos pelo exports da Produção (ordensHistorico, lotesHistorico), sem ler a base dela */   /* 1.12.7 · D8: Pareto comum do kit (vacPareto) */   /* 1.12.6 · Fase 5: layout no arquivo da pessoa (vacPrefs do kit) */   /* 1.12.5 · D6: botões de gravação travados conforme o perfil (vacTravas do kit) */   /* 1.12.4 · Importar: lista das ordens ainda sem KKBC_ORD (Produção e SAP, mês atual e os 2 anteriores) */   /* 1.12.3 · KKBC_ORD colada como lista com Cen./Planta/Ordem/Origem/Material e títulos abreviados (Desv.qtd., Desv.preço) */   /* 1.12.2 · kit: modelo de e-mail (vacEmail) e número da página na impressão */   /* 1.12.1 · ícones no lugar dos símbolos de texto (kit) */   /* 1.12.0 · Design System (barra lateral), Paretos da controladoria (verticais), aviso ordem × lote */   /* 1.11.0 · target MUV da linha (Portal › Metas da área WASTE-MUV…, vigência, R$/US$ pelo câmbio do Portal), MUV × target acumulado no FY, filtros Linha e Semana */   /* 1.10.0 · MUV oficial (Desv. estrutura + Desv. empregado, como a controladoria): meta, situação, criticidade, exports e relatórios; Pareto do MUV por Linha/SKU/Componente × métrica, favorável/desfavorável e Top N */   /* 1.9.0 · KKBC_ORD em grade (layout da controladoria, uma ordem por arquivo): Desv. Empregado, Desv. preço de input e Desv. qtde guardados; aviso das ordens no formato antigo (reimportar) */   /* 1.8.36 · gráficos: "Valores em …" (moeda), eixo sem rótulos repetidos, medida do Comparativo no gráfico do relatório (docs/graficos-padrao.md) */   /* 1.8.35 · Visão Geral no padrão comum (vacLayout): situação, números, diagnóstico, análises em grupos */   /* 1.8.34 · kit: login com ID e senha */   /* 1.8.33 · kit: datas DD/MM/AAAA */   /* 1.8.32 · nome Eficácia/Confirmação de Processo */   /* 1.8.31 · kit: nome e presença de Iniciativas / Ações na barra */   /* 1.8.30 · UX-02: guia por aba */   /* 1.8.29 · Fase 7 (UX-03, WST-01): Painel → Visão Geral */   /* 1.8.28 · Fase 6 (WST-03, INI-04): ações em Iniciativas / Ações; antigas até a migração, depois só leitura */   /* 1.8.27 · Fase 3 (IMP-04/06, WST-02): importações no exports; aba Importar leva ao Portal › Importação */   /* 1.8.26 · ARQ-09: "Ver com dados de teste" vira a Demonstração integrada */   /* 1.8.23 · C2–C6: kit com a ficha por pasta (AT-08) e a contagem da fila durável (Portal › Versões) */   /* 1.8.22 · C1: trava da 2ª aba com alteração pendente (nada é descartado); kit com a fila durável */   /* 1.8.21 · E11: busca do kit leva o equipamento à ficha em Equipamentos */   /* 1.8.20 · E8: kit com "+ Abrir ação" na ficha da ordem (Planner de Iniciativas) */   /* 1.8.19 · E5: ficha da ordem comum (botão Ficha na ordem; busca Ctrl K por ordem, lote e LP) */   /* 1.8.18 · E4: versão do exports conferida (Produção, Ordens), ordem em várias competências, dias do lote pela chave · 1.8.17 · E2: fonte única da versão (tela, base, exports e Portal › Versões) */ BASE_FN='perdas-base.json', DIR_ORIG='00. Originais SAP', DIR_BKP='00. Backups', DIR_IN='00. Entrada KKBC', DIR_DONE='00. Entrada KKBC/Processados';
+const APP_VER='1.12.17',   /* 1.12.17 · KKBC-02: competência da lista KKBC amarrada ao MB51 › Plano do mês */   /* 1.12.14 · MUV: situação e tendência pelo semáforo de três cores */   /* 1.12.8 · ordens e lotes antigos pelo exports da Produção (ordensHistorico, lotesHistorico), sem ler a base dela */   /* 1.12.7 · D8: Pareto comum do kit (vacPareto) */   /* 1.12.6 · Fase 5: layout no arquivo da pessoa (vacPrefs do kit) */   /* 1.12.5 · D6: botões de gravação travados conforme o perfil (vacTravas do kit) */   /* 1.12.4 · Importar: lista das ordens ainda sem KKBC_ORD (Produção e SAP, mês atual e os 2 anteriores) */   /* 1.12.3 · KKBC_ORD colada como lista com Cen./Planta/Ordem/Origem/Material e títulos abreviados (Desv.qtd., Desv.preço) */   /* 1.12.2 · kit: modelo de e-mail (vacEmail) e número da página na impressão */   /* 1.12.1 · ícones no lugar dos símbolos de texto (kit) */   /* 1.12.0 · Design System (barra lateral), Paretos da controladoria (verticais), aviso ordem × lote */   /* 1.11.0 · target MUV da linha (Portal › Metas da área WASTE-MUV…, vigência, R$/US$ pelo câmbio do Portal), MUV × target acumulado no FY, filtros Linha e Semana */   /* 1.10.0 · MUV oficial (Desv. estrutura + Desv. empregado, como a controladoria): meta, situação, criticidade, exports e relatórios; Pareto do MUV por Linha/SKU/Componente × métrica, favorável/desfavorável e Top N */   /* 1.9.0 · KKBC_ORD em grade (layout da controladoria, uma ordem por arquivo): Desv. Empregado, Desv. preço de input e Desv. qtde guardados; aviso das ordens no formato antigo (reimportar) */   /* 1.8.36 · gráficos: "Valores em …" (moeda), eixo sem rótulos repetidos, medida do Comparativo no gráfico do relatório (docs/graficos-padrao.md) */   /* 1.8.35 · Visão Geral no padrão comum (vacLayout): situação, números, diagnóstico, análises em grupos */   /* 1.8.34 · kit: login com ID e senha */   /* 1.8.33 · kit: datas DD/MM/AAAA */   /* 1.8.32 · nome Eficácia/Confirmação de Processo */   /* 1.8.31 · kit: nome e presença de Iniciativas / Ações na barra */   /* 1.8.30 · UX-02: guia por aba */   /* 1.8.29 · Fase 7 (UX-03, WST-01): Painel → Visão Geral */   /* 1.8.28 · Fase 6 (WST-03, INI-04): ações em Iniciativas / Ações; antigas até a migração, depois só leitura */   /* 1.8.27 · Fase 3 (IMP-04/06, WST-02): importações no exports; aba Importar leva ao Portal › Importação */   /* 1.8.26 · ARQ-09: "Ver com dados de teste" vira a Demonstração integrada */   /* 1.8.23 · C2–C6: kit com a ficha por pasta (AT-08) e a contagem da fila durável (Portal › Versões) */   /* 1.8.22 · C1: trava da 2ª aba com alteração pendente (nada é descartado); kit com a fila durável */   /* 1.8.21 · E11: busca do kit leva o equipamento à ficha em Equipamentos */   /* 1.8.20 · E8: kit com "+ Abrir ação" na ficha da ordem (Planner de Iniciativas) */   /* 1.8.19 · E5: ficha da ordem comum (botão Ficha na ordem; busca Ctrl K por ordem, lote e LP) */   /* 1.8.18 · E4: versão do exports conferida (Produção, Ordens), ordem em várias competências, dias do lote pela chave · 1.8.17 · E2: fonte única da versão (tela, base, exports e Portal › Versões) */ BASE_FN='perdas-base.json', DIR_ORIG='00. Originais SAP', DIR_BKP='00. Backups', DIR_IN='00. Entrada KKBC', DIR_DONE='00. Entrada KKBC/Processados';
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 /* página para o núcleo comum, o cabeçalho (vac-cabecalho v2) e o quadro de Versões do Portal */
 const PAGE={id:'perdas',titulo:'Waste · Linha Vacutainer',tituloCurto:'Waste',subtitulo:'Custos e perdas por ordem',versao:APP_VER,baseFile:BASE_FN,backupDir:'00. Backups/Perdas',busca:q=>buscaPerdas(q)};
@@ -21901,6 +21930,9 @@ function buildPreview0(){
  if(sapCheck.inv)h+=`<div class="note w">O desvio informado pelo SAP está com o <b>sinal invertido</b> em relação a real − meta em ${sapCheck.inv} de ${sapCheck.n} linhas. A análise usa o desvio calculado (real − meta, positivo = perda), então isso não muda os números; vale só como conferência.</div>`;
  else if(sapCheck.diff)h+=`<div class="note w">Em ${sapCheck.diff} de ${sapCheck.n} linhas o desvio do SAP não bate com real − meta. Elas aparecem em Qualidade dos dados.</div>`;
  if(R.extra.length)h+=`<div class="note">Colunas não usadas na análise, guardadas com cada linha: ${R.extra.map(esc).join(', ')}.</div>`;
+ /* KKBC-02 · arquivo com o mês em cada linha: vale o arquivo; aqui só o aviso quando o mês não é uma das competências da ordem na Produção */
+ {const dv=[];const vis=new Set();for(const r of R.recs){const k=r.ordem+'|'+r.per;if(vis.has(k))continue;vis.add(k);const c=compDaOrdem(r.ordem,r.per);if(c&amp;&amp;!c.ok&amp;&amp;!c.sem)dv.push([r.ordem,r.per,c])}
+  if(dv.length)h+=`<div class="note w"><b>${dv.length} ordem(ns) com o mês do arquivo diferente da Produção:</b> ${dv.slice(0,12).map(([o,p,c])=>esc(o)+' '+fmtM(p)+' × '+esc(c.fonte)+' '+c.L.map(fmtM).join('/')).join(' · ')}${dv.length>12?' …':''}. O mês do arquivo é mantido; confira.</div>`}
  if(dupFile)h+=`<div class="note w">Estes mesmos dados já foram importados em ${fmtDT(dupFile.data)} por ${esc(dupFile.usuario||'—')}. Importar de novo só cria uma nova versão igual.</div>`;
  if(touchClosed.length)h+=`<div class="note w">Mês fechado afetado: <b>${touchClosed.map(fmtM).join(', ')}</b>. O fechamento oficial não muda; a importação fica registrada com o motivo e o mês aparece como "fechado com alterações".</div><label class="small">Motivo <input id="impMotivo" size="60"></label>`;
  if(R.rej.length)h+=`<details style="margin:8px 0"><summary class="small">${R.rej.length} linhas rejeitadas</summary><div class="tw" style="max-height:200px"><table><tr><th>Linha</th><th>Motivo</th></tr>${R.rej.slice(0,300).map(x=>`<tr><td>${x.ln}</td><td>${esc(x.why)}</td></tr>`).join('')}</table></div></details>`;
@@ -22063,22 +22095,26 @@ function interpretList(txt,meta){
  IMP={meta,list:true,R,headers:R.headers.map(k=>FK[k]?.l||k),map:R.headers,rows:[],hi:0};buildPreviewList();return null}
 function buildPreviewList0(){
  const{R,meta}=IMP;const vig=vigRows();const verKey=r=>CFG().ver==='ordem'?r.ordem:r.ordem+'|'+r.per;
- for(const r of R.recs)r.per=meta.per;
+ /* 1.12.17 · KKBC-02: competência por ordem pelo MB51 › Plano do mês › tela (IMP.compTela = usar o mês da tela em todas) */
+ const CP=new Map(R.orders.map(o=>[o.ordem,IMP.compTela?{per:meta.per||null,fonte:'tela',ok:!!meta.per,forcado:true}:compDaOrdem(o.ordem,meta.per)]));
+ for(const r of R.recs){const c=CP.get(r.ordem);r.per=(c&amp;&amp;c.per)||meta.per||null}
+ const perDe=o=>(CP.get(o.ordem)||{}).per||meta.per,ajust=R.orders.filter(o=>{const c=CP.get(o.ordem);return c&amp;&amp;!c.ok&amp;&amp;!c.sem}),semFonte=R.orders.filter(o=>(CP.get(o.ordem)||{}).sem),pers=[...new Set(R.recs.map(r=>r.per).filter(Boolean))].sort(),faltaPer=R.recs.some(r=>!r.per);
+ const compCel=o=>{const c=CP.get(o.ordem)||{};return`${fmtM(c.per)||'–'} <span class="small muted">${esc(c.forcado?'tela':c.fonte||'')}</span>${!c.ok&amp;&amp;!c.sem&amp;&amp;!c.forcado?` <span class="tag o" title="${esc((c.varias?'Competências no '+c.fonte+': '+c.L.map(fmtM).join(', ')+'. ':'')+(meta.per?'A tela dizia '+fmtM(meta.per)+'.':''))}">${c.varias?'conferir':'ajustada'}</span>`:''}${c.sem&amp;&amp;!c.forcado?' <span class="tag b" title="Ordem sem MB51 e sem Plano do mês na Produção">sem MB51/plano</span>':''}`};
  const exist=new Set(vig.map(verKey));const keys=[...new Set(R.recs.map(verKey))];const repl=keys.filter(k=>exist.has(k)).length;
- const closed=closedPers();const touchClosed=[meta.per,...vig.filter(r=>keys.includes(verKey(r))).map(r=>r.per)].filter((p,i,a)=>p&amp;&amp;closed.has(p)&amp;&amp;a.indexOf(p)===i);
+ const closed=closedPers();const touchClosed=[...pers,...vig.filter(r=>keys.includes(verKey(r))).map(r=>r.per)].filter((p,i,a)=>p&amp;&amp;closed.has(p)&amp;&amp;a.indexOf(p)===i);
  const dupFile=B.imports.find(i=>i.hash===meta.hash&amp;&amp;i.status!=='cancelado');
  const tot=R.recs.reduce((a,r)=>{a.cT+=r.cT||0;a.cR+=r.cR||0;a.d+=dev(r);return a},{cT:0,cR:0,d:0});
  const semGrupo=R.orders.filter(o=>!o.n);const grupos=[...new Set(R.orders.flatMap(o=>Object.keys(o.grupos)))].filter(Boolean);
  const need=['cT','cR'].filter(k=>!R.headers.includes(k));
  let h=`<div class="card"><h3>2 · Ordens encontradas na lista <span class="muted small">KKBC_ORD · saída dinâmica de lista${R.dataExtr?' · extraída em '+fmtD(R.dataExtr):''}</span></h3>
- <div class="tw" style="max-height:300px"><table><tr><th>Ordem</th><th>Catálogo</th><th>Descrição</th><th class="n">Qtd planejada</th><th class="n">Qtd real</th><th class="n">Itens usados</th><th class="n">Custo meta</th><th class="n">Custo real</th><th class="n">Desvio</th><th>Situação</th></tr>
- ${R.orders.map(o=>{const d=o.cR-o.cT;return`<tr><td>${esc(o.ordem)}</td><td>${esc(catOf(o.prod))}</td><td>${esc(o.prodDesc)}</td><td class="n">${fmtQ(o.qOrd)}</td><td class="n">${fmtQ(o.qEnt)}</td><td class="n">${o.n}</td><td class="n">${fmtR(o.cT,2)}</td><td class="n">${fmtR(o.cR,2)}</td><td class="n ${d>0?'bad':'good'}">${fmtR(d,2)}</td><td>${exist.has(CFG().ver==='ordem'?o.ordem:o.ordem+'|'+meta.per)?'<span class="tag o">nova versão</span>':'<span class="tag b">nova</span>'}</td></tr>`}).join('')}</table></div>
+ <div class="tw" style="max-height:300px"><table><tr><th>Ordem</th><th>Catálogo</th><th>Descrição</th><th class="n">Qtd planejada</th><th class="n">Qtd real</th><th class="n">Itens usados</th><th class="n">Custo meta</th><th class="n">Custo real</th><th class="n">Desvio</th><th>Competência</th><th>Situação</th></tr>
+ ${R.orders.map(o=>{const d=o.cR-o.cT;return`<tr><td>${esc(o.ordem)}</td><td>${esc(catOf(o.prod))}</td><td>${esc(o.prodDesc)}</td><td class="n">${fmtQ(o.qOrd)}</td><td class="n">${fmtQ(o.qEnt)}</td><td class="n">${o.n}</td><td class="n">${fmtR(o.cT,2)}</td><td class="n">${fmtR(o.cR,2)}</td><td class="n ${d>0?'bad':'good'}">${fmtR(d,2)}</td><td>${compCel(o)}</td><td>${exist.has(CFG().ver==='ordem'?o.ordem:o.ordem+'|'+perDe(o))?'<span class="tag o">nova versão</span>':'<span class="tag b">nova</span>'}</td></tr>`}).join('')}</table></div>
  <p class="small muted">Grupos na lista: ${grupos.map(g=>want(g)?`<b>${esc(g)}</b> (usado)`:esc(g)).join(' · ')||'—'}. Para mudar quais grupos entram, veja Configuração › Grupos de custo usados.</p></div>`;
  function want(g){return String(CFG().grupos||'Materials').split(';').map(x=>normH(x)).includes(normH(g))}
  h+=`<div class="card"><h3>3 · Resultado da leitura</h3><div class="kpis">
   <div class="kpi"><div class="l">Itens de material</div><div class="v">${fmtN(R.recs.length)}</div><div class="s">${R.rej.length} rejeitados · ${R.dupI} repetidos</div></div>
   <div class="kpi"><div class="l">Ordens</div><div class="v">${fmtN(R.orders.length)}</div><div class="s">${repl?repl+' já existem (viram nova versão)':'todas novas'}</div></div>
-  <div class="kpi"><div class="l">Mês de referência</div><div class="v" style="font-size:16px">${fmtM(meta.per)||'–'}</div><div class="s">campo "Mês de referência" acima</div></div>
+  <div class="kpi"><div class="l">Competência</div><div class="v" style="font-size:16px">${pers.map(fmtM).join(', ')||'–'}</div><div class="s">${IMP.compTela?'mês da tela em todas as ordens':'de cada ordem: MB51 › Plano do mês › tela'}</div></div>
   <div class="kpi"><div class="l">Custo meta</div><div class="v">${fmtC(tot.cT)}</div></div>
   <div class="kpi"><div class="l">Custo real</div><div class="v">${fmtC(tot.cR)}</div></div>
   <div class="kpi"><div class="l">Desvio (real − meta)</div><div class="v ${tot.d>0?'bad':'good'}">${fmtC(tot.d)}</div></div></div>`;
@@ -22086,14 +22122,20 @@ function buildPreviewList0(){
  if(R.semGrupo)h+=`<div class="note">${R.semGrupo} ordem(ns) vieram sem as linhas de grupo (* Materials…): entraram todos os itens de material, sem a linha do produto e sem as atividades.</div>`;
  if(R.recs.length&amp;&amp;!R.headers.includes('dEstr'))h+=`<div class="note w">A lista não tem a coluna <b>Desv.estr.</b>: a VAR. MATERIAL destas ordens fica zerada e todo o desvio aparece como SCRAP. Para separar, inclua a coluna Desv.estr. no layout da KKBC_ORD.</div>`;
  if(semGrupo.length)h+=`<div class="note w">${semGrupo.length} ordem(ns) sem itens no grupo usado: ${semGrupo.map(o=>esc(o.ordem)).join(', ')}.</div>`;
- if(!meta.per)h+=`<div class="note e">Escolha o mês de referência.</div>`;
+ /* KKBC-02 · aviso da competência amarrada */
+ if(ajust.length)h+=`<div class="note w"><b>${ajust.length} ordem(ns) com a competência ajustada pela Produção</b>${meta.per?' (a tela dizia '+fmtM(meta.per)+')':''}: ${ajust.slice(0,12).map(o=>{const c=CP.get(o.ordem);return esc(o.ordem)+' → '+fmtM(c.per)+' ('+esc(c.fonte)+(c.varias?', conferir: '+c.L.map(fmtM).join('/'):'')+')'}).join(' · ')}${ajust.length>12?' …':''}. Confira antes de importar.</div>`;
+ if(semFonte.length&amp;&amp;!IMP.compTela)h+=`<div class="note">${semFonte.length} ordem(ns) sem MB51 e sem Plano do mês na Produção: ${meta.per?'entram no mês da tela ('+fmtM(meta.per)+')':'escolha o mês de referência para elas'}.</div>`;
+ if(!ORDX.idx&amp;&amp;!(OEE.src&amp;&amp;OEE.src.exports))h+=`<div class="note w">Não deu para ler o MB51 nem o Plano do mês da Produção nesta pasta: todas as ordens entram no mês da tela. ${esc(ORDX.err||OEE.err||'')}</div>`;
+ h+=`<label class="small" style="display:block;margin:6px 0"><input type="checkbox" id="compTela" ${IMP.compTela?'checked':''}> Usar o mês da tela para todas as ordens (ignorar o MB51 e o Plano do mês)</label>`;
+ if(faltaPer)h+=`<div class="note e">Escolha o mês de referência.</div>`;
  if(dupFile)h+=`<div class="note w">Esta mesma lista já foi importada em ${fmtDT(dupFile.data)} por ${esc(dupFile.usuario||'—')}.</div>`;
  if(touchClosed.length)h+=`<div class="note w">Mês fechado afetado: <b>${touchClosed.map(fmtM).join(', ')}</b>. O fechamento oficial não muda; a importação fica registrada com o motivo.</div><label class="small">Motivo <input id="impMotivo" size="60"></label>`;
  if(R.rej.length)h+=`<details style="margin:8px 0"><summary class="small">${R.rej.length} linhas rejeitadas</summary><table class="small">${R.rej.slice(0,200).map(x=>`<tr><td>linha ${x.ln}</td><td>${esc(x.why)}</td></tr>`).join('')}</table></details>`;
  h+=`<details style="margin:8px 0" open><summary class="small">Itens que entram na análise</summary><div class="tw" style="max-height:320px"><table><tr><th>Ordem</th><th>Material</th><th>Descrição</th><th class="n">Qtd teórica</th><th class="n">Qtd real</th><th class="n">Custo meta</th><th class="n">Custo real</th><th class="n">Desvio</th><th class="n">Desv. estrutura</th></tr>
  ${R.recs.slice(0,200).map(r=>`<tr class="${hl(level(dev(r),r.cT))}"><td>${esc(r.ordem)}</td><td>${esc(r.comp)}</td><td>${esc(r.compDesc)}</td><td class="n">${fmtQ(r.qT)}</td><td class="n">${fmtQ(r.qR)}</td><td class="n">${fmtR(r.cT,2)}</td><td class="n">${fmtR(r.cR,2)}</td><td class="n ${dev(r)>0?'bad':''}">${fmtR(dev(r),2)}</td><td class="n">${r.dEstr?fmtR(r.dEstr,2):''}</td></tr>`).join('')}</table></div></details>
- ${moedaCheckHtml(R.recs)}<div style="display:flex;gap:8px;align-items:center"><button class="b p" id="btnDoImp" ${!R.recs.length||!meta.per||need.length?'disabled':''}>Importar ${fmtN(R.recs.length)} itens de ${R.orders.length} ordem(ns)</button><span class="muted small">Fonte: ${esc(meta.arquivo)}</span></div></div>`;
+ ${moedaCheckHtml(R.recs)}<div style="display:flex;gap:8px;align-items:center"><button class="b p" id="btnDoImp" ${!R.recs.length||faltaPer||need.length?'disabled':''}>Importar ${fmtN(R.recs.length)} itens de ${R.orders.length} ordem(ns)</button><span class="muted small">Fonte: ${esc(meta.arquivo)}</span></div></div>`;
  $('#impPrev').innerHTML=h;const bt=$('#btnDoImp');if(bt)bt.onclick=doImport;
+ const ct=$('#compTela');if(ct)ct.onchange=()=>{IMP.compTela=ct.checked;buildPreviewList()};
 }
 
 /* ===================== CÁLCULOS ===================== */
@@ -22544,6 +22586,17 @@ async function loadOrdens(force){
    const vis=new Set(x.mat.map(v=>JSON.stringify(v)));for(const v of(o.materiais||[]))if(!vis.has(JSON.stringify(v))){x.mat.push(v);vis.add(JSON.stringify(v))}if(c&amp;&amp;!x.comps.includes(c))x.comps.push(c);m.set(k,x)}
   ORDX.idx=m;ORDX.mod=f.lastModified;ORDX.err=''}catch(e){ORDX.err=e.name==='NotFoundError'?'Ainda não há '+ORD_FN+' na pasta (Produção › Ordens).':String(e.message||e);ORDX.idx=null}}
 const ordX=o=>ORDX.idx?ORDX.idx.get(String(o).replace(/^0+/,'')):null;
+/* 1.12.17 · KKBC-02: a lista da KKBC_ORD não traz data. A competência de cada ordem é amarrada ao que a Produção já tem:
+   1) MB51 (ordens-base.json › exports.porOrdem.competencia): o mês da tela vale se for uma das competências da ordem; se a ordem
+      tem uma só e é outra, vale a do MB51 (ajustada); com várias e nenhuma igual à tela, a mais recente, marcada para conferir;
+   2) sem MB51: o mês da ordem no Plano do mês (PCP), com a mesma regra; 3) sem os dois: o mês da tela.
+   Só leitura dos exports das outras páginas; nada é recalculado e nenhum campo novo é gravado nas linhas. */
+function compDaOrdem(ordem,tela){const k=String(ordem||'').replace(/^0+/,'');
+ const esc1=(L,fonte)=>{L=[...new Set(L.filter(Boolean))].sort();if(!L.length)return null;if(tela&amp;&amp;L.includes(tela))return{per:tela,fonte,ok:true,L};
+  return{per:L[L.length-1],fonte,ok:false,L,varias:L.length>1}};
+ const x=ordX(k),a=x?esc1(x.comps||[],'MB51'):null;if(a)return a;
+ const pl=((OEE.src&amp;&amp;OEE.src.exports&amp;&amp;OEE.src.exports.porOrdem)||[]).filter(o=>String(o.ordem).replace(/^0+/,'')===k).map(o=>o.mes),b=esc1(pl,'Plano do mês');if(b)return b;
+ return{per:tela||null,fonte:'tela',ok:!!tela,sem:true}}
 function tipoOrdDe(o){const x=ordX(o);return x&amp;&amp;x.tipo?x.tipo:'sem dado do COOIS'}
 function tiposOrdem(){if(!ORDX.idx)return[];const t=new Set(['sem dado do COOIS']);for(const r of B.rows)t.add(tipoOrdDe(r.ordem));return[...t].sort((a,b)=>a.startsWith('sem')?1:b.startsWith('sem')?-1:a.localeCompare(b))}
 const _tiCache=new Map();let _tiCad=null;
@@ -37306,71 +37359,71 @@ body.vac-porta{overflow:hidden}
     {
       "id": "oee",
       "path": "Plataforma.html#motor/oee",
-      "version": "2.6.11",
-      "sha256": "ccd545a7c0f6b017cbb2f94cd0f4756b108fcb637ab05d842082f4762355d769",
-      "bytes": 2238695
+      "version": "2.6.12",
+      "sha256": "488fa0f01cbb319bdc797a17ba822339c5accc82b4873864b5a6dab041bb7a71",
+      "bytes": 2239785
     },
     {
       "id": "perdas",
       "path": "Plataforma.html#motor/perdas",
-      "version": "1.12.16",
-      "sha256": "726f06ac2592e846e22a7084d02a2630c79a93260383f468035555efae23dc00",
-      "bytes": 926297
+      "version": "1.12.17",
+      "sha256": "3bef1504b2e157ec97a7297e32416e4fa8f4a522e5bf70678f594abcb6439794",
+      "bytes": 931124
     },
     {
       "id": "gel",
       "path": "Plataforma.html#motor/gel",
       "version": "2.40",
-      "sha256": "a8de14a8b73c197d6f44d2f0e1a560d03895dfd69988ec70b31dba4244c4d095",
-      "bytes": 1614003
+      "sha256": "9e8d61673d971d2d80d44d8f0d3750925a9bfcc4bfa0a22ea37e16f67a81f5d2",
+      "bytes": 1614423
     },
     {
       "id": "paradas",
       "path": "Plataforma.html#motor/paradas",
       "version": "1.2.17",
-      "sha256": "4c5eab32def88cdf7932ed89288075855715d11fb9092a047412e36fa86060f1",
-      "bytes": 903130
+      "sha256": "8467c0469999f4b854a2063bc4b3a9e53f7576744c486306f6d6f15e6c3e44a9",
+      "bytes": 903550
     },
     {
       "id": "equip",
       "path": "Plataforma.html#motor/equip",
       "version": "1.0.20",
-      "sha256": "2ff1001ea7a7fb0863bad65620b5c8474345818c5d4ae7407782354f020f6429",
-      "bytes": 687044
+      "sha256": "84e7a04566273371071ac72d4640059f10ad70db48c0b1c8961de77af4f35e03",
+      "bytes": 687464
     },
     {
       "id": "inic",
       "path": "Plataforma.html#motor/inic",
       "version": "1.1.16",
-      "sha256": "ff58756838c1417a69b21b828e39be61fa2ece35b85ad9e66f44c62f73499f13",
-      "bytes": 708580
+      "sha256": "52af90c759f0f2f4d458a4d260fba959b56051b6d81df9fc942a0151c3f0c5f7",
+      "bytes": 709000
     },
     {
       "id": "linha",
       "path": "Plataforma.html#motor/linha",
       "version": "1.3.0",
-      "sha256": "9f20805222f30af140031926a3bef0d9f88c1b4ad7801a18021d2498ebd3448d",
-      "bytes": 818816
+      "sha256": "335ae5e724728f65ab723fdbe0d250e6a3627a7c1469b84370d8d2cbe9bfca51",
+      "bytes": 819236
     },
     {
       "id": "projetos",
       "path": "Plataforma.html#motor/projetos",
       "version": "0.1.16",
-      "sha256": "eea4c39bdbe347b0b9a0dc5c93c42a75063c093a56a18d790f15c0d36408b8f6",
-      "bytes": 626984
+      "sha256": "9102199b2b8596c6199332c833ab243c162cf13e90fa8aac485075e2c6ffa618",
+      "bytes": 627404
     },
     {
       "id": "portal",
       "path": "Plataforma.html#motor/portal",
-      "version": "1.9.49",
-      "sha256": "63e0e2ece8332d97276a1e6f2f37aa2e72832c9f42c1344d93b9f58005d2a202",
-      "bytes": 1237011
+      "version": "1.9.50",
+      "sha256": "54309f3712e5f79c6b0bc5767474f5eaa687c86acfe3bc9f1744fb2455e524fd",
+      "bytes": 1242249
     }
   ],
   "limitations": [
     "Projetos e conteúdo técnico OSM/MES/AM/TPM mantêm os limites documentados nas fontes."
   ],
-  "enginesSha256": "c857de535838dbe4c791e37f5b2ea65955517665383ec958a5b49862d347a062",
+  "enginesSha256": "9c58c18369093b1e10574c3822d3a870dc521884e009bd8c6afb1fd7ed974d6b",
   "originRevision": "ffc9ee8",
   "sourceMode": "single-html",
   "originEnginesSha256": "a87a64ad0c328f70e102b2ae888790a9b5d5a9bd05778652a7ce7cae140e40d2"
@@ -37440,7 +37493,7 @@ summary{cursor:pointer;font-weight:600;color:var(--navy)}
 'use strict';
 /* ---------- referência (atualizar quando a plataforma mudar de versão) ---------- */
 // Iguais às do pacote da plataforma (nova-plataforma/src/generated/manifest.json); o teste ferramenta-verificar confere.
-const VERSOES = {"oee":"2.6.11","perdas":"1.12.16","gel":"2.40","paradas":"1.2.17","equip":"1.0.20","inic":"1.1.16","linha":"1.3.0","projetos":"0.1.16","portal":"1.9.49"};
+const VERSOES = {"oee":"2.6.12","perdas":"1.12.17","gel":"2.40","paradas":"1.2.17","equip":"1.0.20","inic":"1.1.16","linha":"1.3.0","projetos":"0.1.16","portal":"1.9.50"};
 const BASES = [
  { arq: 'vacutainer-cadastros.json', mod: 'portal', nome: 'Cadastro geral (Portal)', obrig: true, cadastro: true, bk: 'Cadastros' },
  { arq: 'portal-base.json', mod: 'portal', nome: 'Portal', obrig: true, bk: 'Portal' },
@@ -38031,7 +38084,7 @@ import { Icon, Button, Badge, Empty, Modal, BarChart, BrandLogo, CommandMenu } f
 import { ModuleFrame } from "vac:modulo/components/ModuleFrame";
 import manifest from "vac:recurso/manifesto";
 import { ModuleTabs } from "vac:modulo/components/ModuleTabs";
-const VERSION = "1.8.14";
+const VERSION = "1.8.16";
 /* Navegação 1.3.0 (16/11/2026): Visão da linha, Relatórios e Importações têm abas; as que mostram uma tela do
    Portal (motor da Administração) trazem o 3º campo com a aba dele. Administração fica só com cadastros e configuração. */
 const SHELL_TABS = {
