@@ -7571,7 +7571,7 @@ const U = (() => {
 
 /* ---- 02-model.js ---- */
 /* ================= modelo de dados, valores iniciais e integridade ================= */
-const APP_VERSION = '2.6.6';   /* 2.6.5 · IMP-01: contagens das importações nos exports */   /* 2.6.4 · semáforo só pelas faixas configuradas (verde acima de 100% vale) */   /* 2.6.2 · gráficos e números com meta seguem o semáforo de três cores (verde, amarelo, vermelho) */   /* 2.6.1 · gráficos: turno lançado pelo total com o nome do turno no eixo; janelas: rótulo e valor em tamanho de texto */   /* 2.6.0 · produção total do turno (sem hora a hora; períodos na troca de catálogo), aviso do servidor para turno lançado pelo total e para dia com produção apontada */
+const APP_VERSION = '2.6.7';   /* 2.6.5 · IMP-01: contagens das importações nos exports */   /* 2.6.4 · semáforo só pelas faixas configuradas (verde acima de 100% vale) */   /* 2.6.2 · gráficos e números com meta seguem o semáforo de três cores (verde, amarelo, vermelho) */   /* 2.6.1 · gráficos: turno lançado pelo total com o nome do turno no eixo; janelas: rótulo e valor em tamanho de texto */   /* 2.6.0 · produção total do turno (sem hora a hora; períodos na troca de catálogo), aviso do servidor para turno lançado pelo total e para dia com produção apontada */
 const SCHEMA_VERSION = 1;
 const BASE_FILE = 'oee-vacutainer-base.json';
 const BACKUP_DIR = '00. Backups';
@@ -10820,11 +10820,17 @@ const Exports = (() => {
       porMes.push({ mes: m, dias: ds.length, oee: r4(r.oee), oeeMeta: r4(r.oeeTarget), D: r4(r.D), P: r4(r.P), Q: r4(r.Q), boa: n0(r.good), scrap: n0(r.scrap), scrapPct: r4(r.scrapPct), metaOp: n0(r.metaOp), atendimento: r4(r.metaOp ? r.good / r.metaOp : null), perdaMin: n0(r.lossTotalMin != null ? r.lossTotalMin : r.aMin + r.pMin) });
     }
     // 120 dias e 60 dias por turno; calendário (sem produção / extra) para quem não lê o plano
-    const porDia = [], porDiaTurno = [], porDiaCatalogo = [], d120 = U.addDays(today, -119), d60 = U.addDays(today, -59);
+    const porDia = [], porDiaTurno = [], porDiaCatalogo = [], tempoProgramadoTurnos = [], d120 = U.addDays(today, -119), d60 = U.addDays(today, -59);
     const paradasEventos = [], pe90 = U.addDays(today, -89), pePorDia = [];   /* 2.4.68 */
     for (const d of days.filter(x => x.date >= d120 &amp;&amp; x.date <= today).sort((a, b) => a.date.localeCompare(b.date))) {
       const res = Engine.computeDay(db, d), r = res.r;
       porDia.push({ dia: d.date, oee: r4(r.oee), oeeMeta: r4(r.oeeTarget), boa: n0(r.good), scrap: n0(r.scrap), metaOp: n0(r.metaOp), cap: n0(r.cap), metaDec: n0(r.metaDec), status: d.status || 'não iniciado', origem: d.origin === 'importação' ? 'importado' : 'lançado' });
+      for (const sr of res.shifts) tempoProgramadoTurnos.push({
+        dia: d.date, turno: sr.ps.snap.code || sr.ps.snap.name,
+        minutosProgramados: r4(Math.max(0, sr.r.netMin)),
+        semProducao: sr.ps.off ? (sr.ps.offType === 'np' ? 'não programado' : 'programado') : null,
+        fechado: /^fechad/i.test(d.status || '') || /^fechad/i.test(sr.ps.status || '')
+      });
       if (d.date >= pe90) pePorDia.push({ d, res });
       if (d.date >= d60) {
         // abono do turno (só eventos marcados como abono; refeição e outras pausas ficam em descontoMin)
@@ -10920,7 +10926,7 @@ const Exports = (() => {
     /* 2.6.6 · IMP-01 (revisão do PR #101): meses que têm plano do PCP gravado, para a conferência não deduzir pela data da importação */
     const planosMeses = [...new Set((db.monthPlans || []).filter(p => p &amp;&amp; !p.deleted &amp;&amp; p.lineId === LINE &amp;&amp; p.month).map(p => p.month))].sort();
     return { exportsVersion: 1, geradoEm: U.nowIso(), cadastros: cad, modulo: 'oee', importacoes, planosMeses, appVersion: typeof APP_VERSION !== 'undefined' ? APP_VERSION : null, linha: LINE,
-      sqdcp: SQDCPModelo.exportar(db, today, Engine, U), porMes, porDia, porDiaTurno, porDiaCatalogo, paradasEquipamento, calendario, planoMes, ordens, porOrdem, porOrdemCobertura, ordemLote, lotes, pendencias, kpis,
+      sqdcp: SQDCPModelo.exportar(db, today, Engine, U), porMes, porDia, porDiaTurno, porDiaCatalogo, tempoProgramadoTurnos, paradasEquipamento, calendario, planoMes, ordens, porOrdem, porOrdemCobertura, ordemLote, lotes, pendencias, kpis,
       ordensHistorico: hist.ordens, lotesHistorico: hist.lotes,
       trechos: origem.trechos, atual: origem.atual, trocas: origem.trocas, paradasEventos: origem.paradasEventos, paradasEventosCobertura: origem.cob };
   }
@@ -30560,7 +30566,7 @@ td.n,th.n{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
 #main .pux-rec .pux-rcn{color:var(--muted)}
 #main .pux-rec .pux-rcomp{display:inline-block;padding:1px var(--sp-8,8px);border-radius:999px;background:var(--surface-2);font-size:12px}
 #main .pux-rec .pux-rq{display:inline-block;min-width:26px;text-align:center;padding:1px var(--sp-8,8px);border-radius:999px;font-weight:700;background:color-mix(in srgb,var(--warn) 18%,var(--surface))}
-#main .pux-rec tr.hl3 .pux-rq{background:color-mix(in srgb,var(--crit) 20%,var(--surface));color:var(--crit)}
+#main .pux-rec tr.hl3 .pux-rq{background:color-mix(in srgb,var(--crit) 20%,var(--surface));color:var(--ink)}
 #main .pux-rec .pux-rult{white-space:nowrap}
 @media(max-width:900px){#main .pux-rres{grid-template-columns:1fr 1fr}}
 @media(max-width:640px){#main .pux-tfix>.tw{max-height:none}#main .pux-tfix table.t td:first-child,#main .pux-tfix table.t th:first-child{max-width:42vw}#main .pux-rres b{font-size:19px}}
@@ -30627,7 +30633,7 @@ const MATRIZ_PROPOSTA={"OUT": ["Tullip A", "Tullip B", "Packout", "Metro", "Cap 
    PARADAS · núcleo (pasta, base, fila de gravação, backups, cadastro, utilidades)
    ===================================================================================== */
 const PAGE={id:'paradas',titulo:'Paradas · Análise de falhas e paradas de máquina',tituloCurto:'Paradas',subtitulo:'Análise de falhas e paradas de máquina',
-  versao:'1.2.16',estado:'atualizacao',estadoNota:"Matriz, componentes e limite de microparada passam a vir só da Administração; eventos da Produção entram como sugestão.",baseFile:'paradas-base.json',backupDir:'00. Backups/Paradas',busca:q=>buscaPagina(q)};
+  versao:'1.2.17',estado:'atualizacao',estadoNota:"Matriz, componentes e limite de microparada passam a vir só da Administração; eventos da Produção entram como sugestão.",baseFile:'paradas-base.json',backupDir:'00. Backups/Paradas',busca:q=>buscaPagina(q)};
 const APP_VERSION=PAGE.versao;
 const CAD_FILE='vacutainer-cadastros.json',OEE_FILE='oee-vacutainer-base.json';
 const $=(s,r=document)=>r.querySelector(s),$$=(s,r=document)=>[...r.querySelectorAll(s)];
@@ -30696,13 +30702,45 @@ function vazio(){return{schema:'vac-paradas',schemaVersion:1,rev:0,revBy:'',revA
    {k:'wipe',what}           limpa eventos/técnico/validação (e ações se what='tudo')
    aud: texto da auditoria */
 function applyOp(D,op){
- if(op.k==='list'){const L=D[op.c]||(D[op.c]=[]);const ix=new Map(L.map((x,i)=>[x.id,i]));for(const it of op.items){if(ix.has(it.id))L[ix.get(it.id)]=it;else{ix.set(it.id,L.length);L.push(it)}}}
+ if(op.k==='importar') aplicarImportacao(D,op);
+ else if(op.k==='desfazerImportacao') desfazerImportacao(D,op.id);
+ else if(op.k==='list'){const L=D[op.c]||(D[op.c]=[]);const ix=new Map(L.map((x,i)=>[x.id,i]));for(const it of op.items){if(ix.has(it.id))L[ix.get(it.id)]=it;else{ix.set(it.id,L.length);L.push(it)}}}
  else if(op.k==='del'){const s=new Set(op.ids);D[op.c]=(D[op.c]||[]).filter(x=>!s.has(x.id))}
  else if(op.k==='mapf'){const M=D[op.c]||(D[op.c]={});const o=M[op.id]||{};for(const[k,v]of Object.entries(op.f)){if(v==null||v==='')delete o[k];else o[k]=v}if(Object.keys(o).length)M[op.id]=o;else delete M[op.id]}
  else if(op.k==='mapdel'){const M=D[op.c]||{};for(const id of op.ids)delete M[id]}
  else if(op.k==='cfg'){D.config=D.config||{};if(op.v==null)delete D.config[op.key];else D.config[op.key]=op.v}
  else if(op.k==='wipe'){D.eventos=[];D.tecnico={};D.validacao={};D.importacoes=[];if(op.what==='tudo')D.acoes=[]}
  return D}
+/* O lote e suas versões são aplicados juntos, inclusive ao reaplicar a fila sobre a base da rede. */
+function versaoEvento(e){return e?JSON.stringify(e,Object.keys(e).sort()):null}
+function aplicarImportacao(D,op){
+ if(D.importacoes.some(i=>i.id===op.lote.id))return;
+ const atuais=new Map(D.eventos.map(e=>[e.id,e])),mudancas=[];
+ for(const {evento,esperada} of op.itens){
+  const anterior=atuais.get(evento.id)||null;
+  if(versaoEvento(anterior)!==esperada)continue;
+  atuais.set(evento.id,evento);
+  mudancas.push({id:evento.id,anterior,gravada:versaoEvento(evento)});
+ }
+ if(!mudancas.length)return;
+ D.eventos=[...atuais.values()];
+ const atualizadas=mudancas.filter(m=>m.anterior).length;
+ D.importacoes.push({...op.lote,novas:mudancas.length-atualizadas,atualizadas,mudancas});
+}
+function podeDesfazerImportacao(lote){return Array.isArray(lote.mudancas)||lote.atualizadas===0}
+function desfazerImportacao(D,id){
+ const lote=D.importacoes.find(i=>i.id===id);
+ if(!lote||!podeDesfazerImportacao(lote))return;
+ const mudancas=lote.mudancas&amp;&amp;new Map(lote.mudancas.map(m=>[m.id,m]));
+ const anterior=e=>{
+  if(!e||e.importId!==id)return e;
+  if(!mudancas)return null;
+  const m=mudancas.get(e.id);
+  return m&amp;&amp;versaoEvento(e)===m.gravada?m.anterior:e;
+ };
+ D.eventos=D.eventos.map(anterior).filter(Boolean);
+ D.importacoes=D.importacoes.filter(i=>i.id!==id).map(i=>i.mudancas?{...i,mudancas:i.mudancas.map(m=>({...m,anterior:anterior(m.anterior)}))}:i);
+}
 function completar(D){const V=vazio();for(const k of Object.keys(V))if(D[k]==null)D[k]=V[k];for(const k of Object.keys(V.config))if(!(k in D.config))D.config[k]=V.config[k];return D}
 function validarBase(D){const e=[];if(!D||typeof D!=='object')return['não é um objeto'];
  for(const k of['eventos','acoes','importacoes'])if(D[k]!=null&amp;&amp;!Array.isArray(D[k]))e.push(k+' não é lista');
@@ -30792,11 +30830,16 @@ const bkNome=(tipo)=>{const b=PAGE.baseFile.replace(/\.json$/i,''),d=todayISO(),
  return tipo==='diario'?`${b}_${d}.json`:tipo==='antes'?`${b}_antes-restaurar_${d}_${h}.json`:`${b}_${d}_${h}.json`};
 
 /* ---------------- Dados das outras páginas (só leitura) ---------------- */
-const Ext={cad:null,cadFonte:'nenhum',cadRev:null,cadAt:null,oee:null,oeeOk:false,logoUrl:null,
+const Ext={cad:null,cadFonte:'nenhum',cadRev:null,cadAt:null,oee:null,oeeOk:false,logoUrl:null,inic:null,
  async load(){if(Store.dir&amp;&amp;Store.perm&amp;&amp;!Store.test){
    try{const r=await Store.readJSON(CAD_FILE);if(r){this.cad=r.obj;this.cadFonte='pasta';this.cadRev=r.obj.rev;this.cadAt=r.file.lastModified;const c=clone(r.obj);delete c.auditoria;delete c.seguranca;c.copiaEm=new Date().toISOString();LS.set('vac.cadastros',c)}}catch(e){console.warn(e)}
-   try{const r=await Store.readJSON(OEE_FILE);const ex=r?.obj?.exports||null,vk=typeof vacExportsOk==='function'?vacExportsOk(ex):{ok:!!ex};this.oee=vk.ok?ex:null;this.oeeErr=ex&amp;&amp;!vk.ok?vk.motivo:'';this.oeeOk=!!this.oee}catch(e){this.oeeOk=false}   /* E4 · versão do exports conferida */
+   try{const r=await Store.readJSON(OEE_FILE);const ex=r?.obj?.exports||null,vk=typeof vacExportsOk==='function'?vacExportsOk(ex):{ok:!!ex};this.oee=vk.ok?ex:null;this.oeeErr=ex&amp;&amp;!vk.ok?vk.motivo:'';this.oeeOk=!!this.oee}catch(e){this.oee=null;this.oeeOk=false}   /* E4 · versão do exports conferida */
    try{const r=await Store.readJSON('equipamentos-base.json');const ex=r?.obj?.exports||null,vk=typeof vacExportsOk==='function'?vacExportsOk(ex):{ok:!!ex};this.equip=vk.ok?ex:null}catch(e){this.equip=null}   /* E11 · OS por evento (Equipamentos) */
+   this.inic=null;
+   if(vacPode('inic'))try{
+    const r=await Store.readJSON('iniciativas-base.json'),ex=r?.obj?.exports;
+    if(vacExportsOk(ex).ok&amp;&amp;Array.isArray(ex.acoes))this.inic=ex;
+   }catch(e){console.warn('Iniciativas: leitura indisponível',e)}
    try{const f=await(await Store.fh('Logo.png')).getFile();if(this.logoUrl)URL.revokeObjectURL(this.logoUrl);this.logoUrl=URL.createObjectURL(f)}catch(e){}}
   if(!this.cad){const c=LS.get('vac.cadastros',null);if(c){this.cad=c;this.cadFonte='cópia local';this.cadRev=c.rev}}
   Cad.build();Logo.apply()}};
@@ -30856,26 +30899,63 @@ const grpChip=c=>{const x=Cad.code(c);const g=x?x.grupo:0;return`<span class="gr
 function nomeTec(t,e){t=t||{};const n=t.tecnico||(e&amp;&amp;e.tecnicoForms)||'';return n||t.tecnicoId?vacPessoa.nome(t.tecnicoId,n):''}
 function idTec(t,e){t=t||{};return vacPessoa.id(t.tecnico||(e&amp;&amp;e.tecnicoForms)||'',t.tecnicoId)}
 function codigoEf(ev){return Store.data.tecnico[ev.id]?.codigoValidado||ev.codigo}
+function assinaturaDia(eventos){
+ const campos=eventos.map(e=>JSON.stringify([e.id,e.turno,e.equipamento,e.codigo,codigoEf(e),classe(e),e.inicio,e.fim,e.minutos,e.ocorrencias||1,trocou(e),e.descricao]));
+ return JSON.stringify(campos.sort());
+}
+function estadoValidacao(dia,eventos){
+ const v=Store.data.validacao[dia];
+ return !v?'aberto':v.assinatura===assinaturaDia(eventos)?'validado':'revisao';
+}
 function trocou(ev){const t=Store.data.tecnico[ev.id];return t&amp;&amp;t.trocouPeca!=null?t.trocouPeca:ev.trocouPeca}
 function classe(ev){const c=Cad.code(codigoEf(ev));if(!c)return'indef';if(c.grupo===8)return'quebra';
  if(c.classe==='porDuracao'){const n=ev.ocorrencias||1;return(ev.minutos/n)<Cad.limite?'micro':'operacional'}
  if(c.classe==='calculada')return'velocidade';if(c.classe==='emPecas')return'qualidade';
  return{0:'outros',1:'utilizacao',2:'planejada',3:'partida',4:'organizacao',5:'setup',6:'consumivel',7:'operacional'}[c.grupo]||'outros'}
-/* 1.2.5 · Fase 1 ordem/lote: a parada do Forms é a que conta (D1). A mesma parada apontada na Produção (exports.paradasEventos) só dá o
-   eventoId dela à parada do Forms (mesmo dia e equipamento, turno igual quando os dois têm, início a até 10 min; sem horário, duração a até 1 min;
-   cada evento da Produção casa com no máximo uma). Evento que só a Produção tem não entra nas análises (nada é contado duas vezes): vira o aviso
-   "N só na Produção". Antes (1.0.7, nunca usado porque a Produção não publicava), o evento da Produção substituía o do Forms. */
-const EVENTO_OEE=new Map();EVENTO_OEE.soProducao=0;
-function eventosTodos(){const D=Store.data;const base=D.eventos.filter(e=>!e.excluido);
- const oe=Ext.oee?.paradasEventos||[];EVENTO_OEE.clear();EVENTO_OEE.soProducao=0;
+/* O registro do Forms conta. Produção fornece o vínculo quando os dois lados têm um melhor candidato inequívoco. */
+const EVENTO_OEE=new Map();
+EVENTO_OEE.pendentes=new Map();
+EVENTO_OEE.soProducao=0;
+function eventosTodos(){
+ const base=Store.data.eventos.filter(e=>!e.excluido),oe=Ext.oee?.paradasEventos||[];
+ EVENTO_OEE.clear();EVENTO_OEE.pendentes.clear();EVENTO_OEE.soProducao=0;
  if(!oe.length)return base;
  const hm=s=>{const m=/^(\d{1,2}):(\d{2})/.exec(s||'');return m?+m[1]*60+ +m[2]:null};
- const mesma=(e,o)=>e.dia===o.dia&amp;&amp;!!e.equipamento&amp;&amp;String(e.equipamento)===String(o.equipamento||'')&amp;&amp;(!e.turno||!o.turno||String(e.turno)===String(o.turno))
-  &amp;&amp;(hm(e.inicio)!=null&amp;&amp;hm(o.inicio)!=null?Math.abs(hm(e.inicio)-hm(o.inicio))<=10:Math.abs((+e.minutos||0)-(+o.minutos||0))<=1);
- const porDia=new Map();oe.forEach((o,k)=>{if(!o||!o.dia)return;let a=porDia.get(o.dia);if(!a)porDia.set(o.dia,a=[]);a.push(k)});
- const usado=new Set();
- for(const e of base){if(e.origem==='tally')continue;const L=porDia.get(e.dia);if(!L)continue;const k=L.find(k=>!usado.has(k)&amp;&amp;mesma(e,oe[k]));if(k==null)continue;usado.add(k);EVENTO_OEE.set(e.id,String(oe[k].id))}
- EVENTO_OEE.soProducao=oe.length-usado.size;return base}
+ const porDia=new Map(),porForms=new Map(),porProducao=new Map();
+ for(const o of oe){
+  if(!o?.dia||!o.id)continue;
+  const k=o.dia+'|'+o.equipamento,L=porDia.get(k)||[];
+  L.push(o);porDia.set(k,L);
+ }
+ for(const e of base){
+  if(e.origem==='tally'||!e.equipamento)continue;
+  for(const o of porDia.get(e.dia+'|'+e.equipamento)||[]){
+   const turnos=o.turnos?.length?o.turnos:o.turno?[o.turno]:[];
+   if(e.turno&amp;&amp;turnos.length&amp;&amp;!turnos.includes(e.turno))continue;
+   const inicio=hm(e.inicio),inicioOee=hm(o.inicio);
+   const distancia=inicio==null||inicioOee==null?null:Math.abs(inicio-inicioOee);
+   const duracao=Math.abs((+e.minutos||0)-(+o.minutos||0));
+   if(distancia==null?duracao>1:distancia>10)continue;
+   const codigo=o.codigo&amp;&amp;(o.codigo===e.codigo||o.codigo===codigoEf(e));
+   const candidato={o,agrupada:(e.ocorrencias||1)>1,criterios:[distancia??11,duracao,codigo?0:1,e.turno&amp;&amp;turnos.length?0:1]};
+   for(const [indice,id] of [[porForms,e.id],[porProducao,String(o.id)]]){
+    const L=indice.get(id)||[];L.push(candidato);indice.set(id,L);
+   }
+  }
+ }
+ const comparar=(a,b)=>a.criterios.map((v,i)=>v-b.criterios[i]).find(v=>v!==0)||0;
+ const melhor=L=>L.length===1||comparar(L[0],L[1])<0?L[0]:null;
+ for(const L of porProducao.values())L.sort(comparar);
+ for(const [id,L] of porForms){
+  L.sort(comparar);
+  const m=melhor(L);
+  if(m&amp;&amp;!m.agrupada&amp;&amp;melhor(porProducao.get(String(m.o.id)))===m)EVENTO_OEE.set(id,String(m.o.id));
+  else EVENTO_OEE.pendentes.set(id,L.map(c=>c.o));
+ }
+ const relacionados=new Set([...EVENTO_OEE.values(),...[...EVENTO_OEE.pendentes.values()].flatMap(L=>L.map(o=>String(o.id)))]);
+ EVENTO_OEE.soProducao=oe.filter(o=>o?.id&amp;&amp;!relacionados.has(String(o.id))).length;
+ return base;
+}
 /* 1.2.5 · ordem, lote e catálogo da parada, calculados na leitura (a base guarda só o que veio do Forms):
    ordem digitada → vale ("apontada"); lote digitado → ordem e catálogo pelo lote no exports da Produção (porOrdem, lotes, trechos);
    sem lote → pelo horário: o trecho do MES (exports.trechos) que contém o início da parada ("horário"). Lote fora da Produção ou em duas
@@ -30905,8 +30985,8 @@ const ORIGEM_TXT={apontada:'apontada',lote:'pelo lote',horário:'pelo horário (
 /* filtro global (período, equipamento, turno, classe) */
 const F={de:null,ate:null,eq:'',turno:'',cls:'',grupo:'',q:'',
  init(){const ev=eventosTodos();const last=ev.reduce((m,e)=>e.dia>m?e.dia:m,'');const ate=last||todayISO();this.ate=ate;this.de=addDays(ate,-90)},
- apply(L,skip={}){const ig=Store.data.config.ignorarAntesDe;return L.filter(e=>(!ig||e.dia>=ig)&amp;&amp;(!this.de||e.dia>=this.de)&amp;&amp;(!this.ate||e.dia<=this.ate)&amp;&amp;(skip.eq||!this.eq||e.equipamento===this.eq)&amp;&amp;(!this.turno||e.turno===this.turno)
-  &amp;&amp;(skip.cls||!this.cls||classe(e)===this.cls)&amp;&amp;(!this.grupo||String(Cad.code(codigoEf(e))?.grupo)===this.grupo))}};
+ apply(L,skip={}){const ig=Store.data.config.ignorarAntesDe;return L.filter(e=>(!ig||e.dia>=ig)&amp;&amp;(skip.de||!this.de||e.dia>=this.de)&amp;&amp;(!this.ate||e.dia<=this.ate)&amp;&amp;(skip.eq||!this.eq||e.equipamento===this.eq)&amp;&amp;(!this.turno||e.turno===this.turno)
+  &amp;&amp;(skip.cls||!this.cls||classe(e)===this.cls)&amp;&amp;(skip.grupo||!this.grupo||String(Cad.code(codigoEf(e))?.grupo)===this.grupo))}};
 function filtrosHTML(opts={}){const eqs=Cad.eqs.filter(e=>e.ativo);
  return`<div class="filters"><label>De<input type="date" id="fDe" value="${F.de||''}"></label><label>Até<input type="date" id="fAte" value="${F.ate||''}"></label>
  <label class="vk-opt">Atalho<select id="fAt"><option value="">—</option><option value="30">últimos 30 dias</option><option value="90">últimos 90 dias</option><option value="180">últimos 180 dias</option><option value="365">últimos 12 meses</option><option value="all">tudo</option></select></label>
@@ -31009,23 +31089,84 @@ function hash(s){let h=2166136261;for(let i=0;i<s.length;i++){h^=s.charCodeAt(i)
 /* ---------------- indicadores ---------------- */
 function agg(L,kf,vf=e=>e.minutos){const m=new Map();for(const e of L){const ks=[].concat(kf(e));for(const k of ks){if(k==null)continue;const o=m.get(k)||{k,min:0,n:0,ev:[]};o.min+=vf(e)||0;o.n+=e.ocorrencias||1;o.ev.push(e);m.set(k,o)}}return[...m.values()]}
 const NAO_PERDA=new Set(['utilizacao','velocidade','qualidade']);
-function turnoMin(cod){const t=Cad.turnos().find(x=>x.codigo===cod);const v=t?.vigencias?.find(v=>!v.ate)||t?.vigencias?.[0];if(!v?.inicio)return 510;
- const m=s=>{const[a,b]=s.split(':').map(Number);return a*60+b};let d=m(v.fim)-m(v.inicio);if(d<=0)d+=1440;for(const p of v.pausas||[])if(p.desconta)d-=Math.max(0,m(p.fim)-m(p.inicio));return d}
-/* tempo programado no período: OEE (turnos com produção) ou estimativa (dias com apontamento × horas/dia) */
-function programado(L,de,ate){const T=Ext.oee?.porDiaTurno;if(T&amp;&amp;T.length){const R=T.filter(x=>(!de||x.dia>=de)&amp;&amp;(!ate||x.dia<=ate)&amp;&amp;x.semProducao!=='programado');
-  const cob=R.length?R.reduce((m,x)=>x.dia<m?x.dia:m,R[0].dia):null;if(R.length&amp;&amp;cob<= (de||cob))return{min:R.reduce((s,x)=>s+turnoMin(x.turno),0),fonte:'OEE',dias:new Set(R.map(x=>x.dia)).size}}
- const ds=[...new Set(L.map(e=>e.dia))];
- if((Cad.turnosRaw||[]).length){const hm=x=>{const[a,b]=String(x||'').split(':').map(Number);return isFinite(a)?a*60+(b||0):null};let tot=0;
-  for(const dia of ds){const wd=new Date(dia+'T12:00:00').getDay();for(const t of Cad.turnosRaw){const v=(t.vigencias||[]).filter(v=>v.de<=dia&amp;&amp;(!v.ate||v.ate>=dia)).sort((a,b)=>a.de<b.de?1:-1)[0];if(!v||v.ativo===false||!(v.dias||[]).includes(wd))continue;
-   let m=hm(v.fim)-hm(v.inicio);for(const p of v.pausas||[]){if(p.desconta===false||((p.dias||[]).length&amp;&amp;!p.dias.includes(wd)))continue;const i=hm(p.inicio),j=hm(p.fim);m-=i!=null&amp;&amp;j!=null&amp;&amp;j>i?j-i:(+p.duracaoMin||0)}if(m>0)tot+=m}}
-  if(tot>0)return{min:tot,fonte:"turnos da Administração",dias:ds.length}}
- return{min:ds.length*(+Store.data.config.horasDia||17)*60,fonte:'estimado',dias:ds.length}}
-function statsEquip(L,de,ate){const P=programado(L,de,ate);const linhaMin=L.filter(e=>e.equipamento==='LINHA'&amp;&amp;!NAO_PERDA.has(classe(e))).reduce((s,e)=>s+e.minutos,0);
+const fimMes=mes=>addDays(addDays(mes+'-28',5).slice(0,7)+'-01',-1);
+function turnoMin(v,dia){
+ const hm=x=>/^\d{1,2}:\d{2}$/.test(x||'')?x.split(':').reduce((h,m)=>h*60+Number(m)):null;
+ const i=hm(v?.inicio),f=hm(v?.fim),wd=new Date(dia+'T12:00:00').getDay();
+ if(i==null||f==null)return null;
+ let min=f>i?f-i:f+1440-i;
+ for(const p of v.pausas||[]){
+  if(p.desconta===false||p.dias?.length&amp;&amp;!p.dias.includes(wd))continue;
+  const a=hm(p.inicio),b=hm(p.fim);
+  min-=a!=null&amp;&amp;b!=null?(b>=a?b-a:b+1440-a):(+p.duracaoMin||0);
+ }
+ return Math.max(0,min);
+}
+/* Produção publica o tempo planejado do turno. Exportações antigas usam a vigência da data como estimativa. */
+function programado(L,de,ate,turno='',exigirFechado=false){
+ const ds=[...new Set(L.map(e=>e.dia))].sort(),diasComParada=new Set(ds);
+ de=[de||ds[0],Store.data.config.ignorarAntesDe].filter(Boolean).sort().at(-1);
+ ate=ate||ds.at(-1);
+ if(!de||!ate||de>ate)return{min:0,fonte:'sem dados',dias:0,cobertos:0,esperados:0,completa:false,diasPlanejados:[]};
+ const porDia=new Map(),diasPlanejados=new Set(),off=new Set((Ext.oee?.calendario||[]).filter(x=>x.tipo==='sem produção').map(x=>x.dia));
+ const linhas=Ext.oee?.tempoProgramadoTurnos||Ext.oee?.porDiaTurno||[];
+ for(const x of linhas){
+  if(x.dia<de||x.dia>ate||turno&amp;&amp;x.turno!==turno)continue;
+  const R=porDia.get(x.dia)||new Map();
+  R.set(x.turno,x);porDia.set(x.dia,R);
+ }
+ const cadastro=Cad.turnos().filter(t=>!turno||t.codigo===turno);
+ let min=0,dias=0,cobertos=0,esperados=0,estimados=0,coberturaIndefinida=false;
+ for(let dia=de;dia<=ate;dia=addDays(dia,1)){
+  const wd=new Date(dia+'T12:00:00').getDay(),R=porDia.get(dia)||new Map();
+  const vigencias=cadastro.map(t=>[t.codigo,vacVig(t.vigencias,dia)]).filter(([,v])=>v);
+  const previstos=new Map(vigencias.filter(([,v])=>v.ativo!==false&amp;&amp;(!v.dias?.length||v.dias.includes(wd))));
+  const codigos=new Set([...R.keys(),...previstos.keys()]);
+  if(!off.has(dia)&amp;&amp;!vigencias.length)coberturaIndefinida=true;
+  if(!off.has(dia)&amp;&amp;!vigencias.length&amp;&amp;!R.size){
+   if(diasComParada.has(dia)&amp;&amp;!turno){min+=(+Store.data.config.horasDia||17)*60;dias++;estimados++}
+   continue;
+  }
+  let diaComTempo=false;
+  for(const cod of codigos){
+   const x=R.get(cod);
+   if(x?.semProducao==='programado'||(!x&amp;&amp;off.has(dia)))continue;
+   esperados++;diasPlanejados.add(dia);
+   const medida=x?.minutosProgramados;
+   if(Number.isFinite(medida)&amp;&amp;medida>=0&amp;&amp;(!exigirFechado||x.fechado)){min+=medida;cobertos++;diaComTempo=true;continue}
+   const estimativa=turnoMin(previstos.get(cod)||vigencias.find(([k])=>k===cod)?.[1],dia);
+   if(estimativa!=null){min+=estimativa;estimados++;diaComTempo=true}
+  }
+  if(diaComTempo)dias++;
+ }
+ const completa=!coberturaIndefinida&amp;&amp;esperados>0&amp;&amp;cobertos===esperados;
+ const fonte=completa?'OEE':cobertos?'Produção + cobertura parcial':estimados?'estimado':'sem dados';
+ return{min,fonte,dias,cobertos,esperados,completa,de,ate,diasPlanejados:[...diasPlanejados]};
+}
+function coberturaTempo(P){
+ const conta=P.esperados?` · ${n0(P.cobertos)} de ${n0(P.esperados)} turnos com tempo da Produção`:'';
+ return P.fonte+conta;
+}
+function perdasNoRecorte(all=eventosTodos()){
+ return F.apply(all,{eq:1,cls:1,grupo:1}).filter(e=>!NAO_PERDA.has(classe(e)));
+}
+function temposTecnicos(quebras){
+ const medir=campo=>{
+  const valores=quebras.map(e=>Store.data.tecnico[e.id]?.[campo]).filter(v=>Number.isFinite(v)&amp;&amp;v>=0);
+  return{media:valores.length?valores.reduce((s,v)=>s+v,0)/valores.length:null,n:valores.length};
+ };
+ return{espera:medir('esperaMin'),reparo:medir('reparoMin')};
+}
+function fmtTempoTecnico(t,total){return t.n?`${n1(t.media)} (${t.n}/${total})`:'—'}
+function statsEquip(L,de,ate,turno='',perdas=L){
+ const P=programado(perdas,de,ate,turno),linhaMin=perdas.filter(e=>e.equipamento==='LINHA'&amp;&amp;!NAO_PERDA.has(classe(e))).reduce((s,e)=>s+e.minutos,0);
+ const tempoEquip=new Map(agg(perdas.filter(e=>!NAO_PERDA.has(classe(e))),e=>e.equipamento).map(o=>[o.k,o.min]));
  return agg(L.filter(e=>e.equipamento!=='LINHA'),e=>e.equipamento).map(o=>{const E=o.ev.filter(e=>!NAO_PERDA.has(classe(e)));const Q=E.filter(e=>classe(e)==='quebra');
-  const mQ=Q.reduce((s,e)=>s+e.minutos,0),mTot=E.reduce((s,e)=>s+e.minutos,0),nQ=Q.length,nT=E.reduce((s,e)=>s+(e.ocorrencias||1),0);const op=Math.max(0,P.min-linhaMin-mTot);
+  const mQ=Q.reduce((s,e)=>s+e.minutos,0),mTot=E.reduce((s,e)=>s+e.minutos,0),nQ=Q.length,nT=E.reduce((s,e)=>s+(e.ocorrencias||1),0);
+  const minEquip=tempoEquip.get(o.k)||0,op=Math.max(0,P.min-linhaMin-minEquip);
   const top=agg(E,e=>codigoEf(e)).sort((a,b)=>b.min-a.min)[0];
-  return{eq:o.k,nome:Cad.eqNome(o.k),min:mTot,n:nT,nQ,mQ,mOp:E.filter(e=>classe(e)==='operacional').reduce((s,e)=>s+e.minutos,0),nMicro:E.filter(e=>classe(e)==='micro').reduce((s,e)=>s+(e.ocorrencias||1),0),
-   mtbf:nQ?op/nQ/60:null,mttr:nQ?mQ/nQ:null,mtbs:nT?op/nT/60:null,disp:P.min?Math.max(0,1-mTot/P.min):null,top:top?.k,fonte:P.fonte}}).sort((a,b)=>b.min-a.min)}
+  return{eq:o.k,nome:Cad.eqNome(o.k),min:mTot,n:nT,nQ,mQ,...temposTecnicos(Q),mOp:E.filter(e=>classe(e)==='operacional').reduce((s,e)=>s+e.minutos,0),nMicro:E.filter(e=>classe(e)==='micro').reduce((s,e)=>s+(e.ocorrencias||1),0),
+   mtbf:nQ&amp;&amp;P.min?op/nQ/60:null,mttr:nQ?mQ/nQ:null,mtbs:nT&amp;&amp;P.min?op/nT/60:null,disp:P.min?Math.max(0,1-minEquip/P.min):null,top:top?.k,fonte:P.fonte}}).sort((a,b)=>b.min-a.min)}
 /* fila técnica: o que falta a camada técnica completar */
 function filaTecnica(L){const D=Store.data,out=[];for(const e of L){const c=classe(e),t=D.tecnico[e.id]||{},tp=trocou(e),cod=codigoEf(e);const falta=[];let tipo=null;
   if(c==='quebra'){if(tp==null)falta.push('confirmar troca de peça');if(!(t.componente||e.peca))falta.push('componente');if(!t.modo)falta.push('modo de falha');if(!t.acao)falta.push('ação');if(tp===false)tipo='reclass'}
@@ -31037,14 +31178,91 @@ function filaTecnica(L){const D=Store.data,out=[];for(const e of L){const c=clas
 function sugReclass(e,tp){const cod=codigoEf(e),x=norm(e.descricao+' '+(e.obs||''));
  if(tp===false){return /sensor/.test(x)?'SNS':/visao|camera/.test(x)?'VSI':/alarm|reset|intertrav/.test(x)?'ALM':cod==='FEL'?'ALM':'AJP'}
  return /sensor/.test(x)?'FSE':/visao|camera/.test(x)?'FVS':/pneum|cilindro|valvul/.test(x)?'FPN':/eletr|motor|bobina|contator|fusiv/.test(x)?'FEL':'FME'}
-/* recorrência: mesmo equipamento + código (+ componente) 3+ vezes em 30 dias; crônica: 3+ meses seguidos */
-function recorrencias(L,ate){const D=Store.data;const lim=addDays(ate||todayISO(),-30);const out=[];
- const key=e=>{const t=D.tecnico[e.id]||{};const comp=norm(t.componente||e.peca||'');return e.equipamento+'|'+codigoEf(e)+(comp?'|'+comp:'')};
- const G=agg(L.filter(e=>!NAO_PERDA.has(classe(e))&amp;&amp;!['setup','organizacao','planejada','partida','utilizacao'].includes(classe(e))),key);
- for(const g of G){const r30=g.ev.filter(e=>e.dia>=lim);const meses=[...new Set(g.ev.map(e=>e.dia.slice(0,7)))].sort();let seq=1,best=1;for(let i=1;i<meses.length;i++){const[a,b]=[meses[i-1],meses[i]];const nx=addDays(a+'-28',5).slice(0,7);seq=nx===b?seq+1:1;best=Math.max(best,seq)}
-  if(r30.length>=3||best>=3){const[eq,cod,comp]=g.k.split('|');out.push({k:g.k,eq,cod,comp:comp||'',n30:r30.length,min30:r30.reduce((s,e)=>s+e.minutos,0),n:g.n,min:g.min,meses:best,ult:g.ev.reduce((m,e)=>e.dia>m?e.dia:m,''),ev:g.ev,
-   acao:D.acoes.find(a=>a.chave===g.k&amp;&amp;a.status!=='concluída')})}}
- return out.sort((a,b)=>b.min30-a.min30||b.min-a.min)}
+/* Mesma chave do Planner: equipamento + código (+ componente). */
+function chaveRecorrencia(e){
+ const comp=norm(Store.data.tecnico[e.id]?.componente||e.peca||'');
+ return e.equipamento+'|'+codigoEf(e)+(comp?'|'+comp:'');
+}
+const CLASSES_FORA_RECORRENCIA=new Set(['setup','organizacao','planejada','partida']);
+function recorrencias(L,ate,acompanhadas=new Map()){
+ ate=ate||todayISO();
+ const lim=addDays(ate,-29),out=[],acoes=Store.data.acoes;
+ const G=agg(L.filter(e=>e.dia<=ate&amp;&amp;!NAO_PERDA.has(classe(e))&amp;&amp;!CLASSES_FORA_RECORRENCIA.has(classe(e))),chaveRecorrencia);
+ const existentes=new Set(G.map(g=>g.k));
+ for(const k of acompanhadas.keys())if(!existentes.has(k))G.push({k,n:0,min:0,ev:[]});
+ for(const g of G){
+  const r30=g.ev.filter(e=>e.dia>=lim),n30=r30.reduce((s,e)=>s+(e.ocorrencias||1),0);
+  const meses=[...new Set(g.ev.map(e=>e.dia.slice(0,7)))].sort();
+  let seq=1,best=meses.length?1:0;
+  for(let i=1;i<meses.length;i++){
+   seq=addDays(fimMes(meses[i-1]),1).slice(0,7)===meses[i]?seq+1:1;
+   best=Math.max(best,seq);
+  }
+  const recorrente=n30>=3||best>=3;
+  if(!recorrente&amp;&amp;!acompanhadas.has(g.k))continue;
+  const [eq,cod,...comp]=g.k.split('|');
+  out.push({k:g.k,eq,cod,comp:comp.join('|'),n30,min30:r30.reduce((s,e)=>s+e.minutos,0),n:g.n,min:g.min,meses:best,recorrente,ult:g.ev.reduce((m,e)=>e.dia>m?e.dia:m,acompanhadas.get(g.k)?.dia||''),ev:g.ev,
+   acao:acoes.find(a=>a.chave===g.k&amp;&amp;!['concluída','cancelada'].includes(a.status))});
+ }
+ return out.sort((a,b)=>b.min30-a.min30||b.min-a.min);
+}
+function recorrenciasNoRecorte(all){
+ const ate=F.ate||all.reduce((m,e)=>e.dia>m?e.dia:m,'')||todayISO();
+ const de=[addDays(ate,-29),F.de,Store.data.config.ignorarAntesDe].filter(Boolean).sort().at(-1);
+ const historico=new Map();
+ for(const e of F.apply(all,{de:1})){
+  if(NAO_PERDA.has(classe(e))||CLASSES_FORA_RECORRENCIA.has(classe(e)))continue;
+  const k=chaveRecorrencia(e);
+  if(!historico.has(k)||historico.get(k).dia<e.dia)historico.set(k,e);
+ }
+ const acoes=acoesDaRecorrencia([...historico.keys()].map(k=>({k})),all);
+ const acompanhadas=new Map([...historico].filter(([k])=>acoes.has(k)));
+ return{de,ate,R:recorrencias(F.apply(all),ate,acompanhadas),acoes};
+}
+const EFICACIA_PLANNER={acompanhamento:'Em acompanhamento',eficaz:'Eficaz',sem:'Sem eficácia'};
+function acoesDaRecorrencia(R,all){
+ if(!R.length||!Ext.inic||!vacPode('inic'))return new Map();
+ const porRef=new Map(R.map(r=>['recor|'+r.k,r.k])),chaves=new Set(R.map(r=>r.k));
+ for(const e of all){
+  const k=chaveRecorrencia(e);
+  if(chaves.has(k))porRef.set('evento|'+e.id,k);
+ }
+ const lista=new Map();
+ for(const a of Ext.inic.acoes){
+  const k=a.origem?.tipo==='paradas'?porRef.get(a.origem.ref):null;
+  if(!k||a.status==='cancelada')continue;
+  const L=lista.get(k)||[];
+  L.push(a);lista.set(k,L);
+ }
+ for(const L of lista.values())L.sort((a,b)=>(a.status==='concluída')-(b.status==='concluída')||String(b.concluidaEm||b.criadaEm||'').localeCompare(String(a.concluidaEm||a.criadaEm||'')));
+ return lista;
+}
+function janelaEficacia(r,all,de,ate){
+ const P=programado([],de,ate,'',true);
+ const lotes=Store.data.importacoes.filter(i=>i.de&amp;&amp;i.ate&amp;&amp;i.erros===0);
+ const forms=P.diasPlanejados.filter(dia=>lotes.some(i=>i.de<=dia&amp;&amp;i.ate>=dia)).length;
+ const perdas=all.filter(e=>e.dia>=de&amp;&amp;e.dia<=ate&amp;&amp;(e.equipamento===r.eq||e.equipamento==='LINHA')&amp;&amp;!NAO_PERDA.has(classe(e)));
+ const n=perdas.filter(e=>chaveRecorrencia(e)===r.k).reduce((s,e)=>s+(e.ocorrencias||1),0);
+ const minutos=Math.max(0,P.min-perdas.reduce((s,e)=>s+e.minutos,0));
+ const aposCorte=P.de===de;
+ const coberta=aposCorte&amp;&amp;P.completa&amp;&amp;forms===P.diasPlanejados.length;
+ return{de,ate,n,minutos,forms,aposCorte,dias:P.diasPlanejados.length,turnos:P.cobertos,esperados:P.esperados,taxa:coberta&amp;&amp;minutos>0?n*6000/minutos:null};
+}
+function comparacaoEficacia(r,acoes,all,ate){
+ const a=acoes.filter(a=>a.status==='concluída'&amp;&amp;a.concluidaEm).sort((a,b)=>b.concluidaEm.localeCompare(a.concluidaEm))[0];
+ if(!a)return null;
+ const dia=a.concluidaEm.slice(0,10),fim=addDays(dia,30);
+ if(fim>ate||fim>=todayISO())return{a,pendente:fim};
+ return{a,antes:janelaEficacia(r,all,addDays(dia,-30),addDays(dia,-1)),depois:janelaEficacia(r,all,addDays(dia,1),fim)};
+}
+function textoJanelaEficacia(j){
+ return`${br(j.de)} a ${br(j.ate)} · Produção ${j.turnos}/${j.esperados} turnos fechados · Forms ${j.forms}/${j.dias} dias previstos${j.aposCorte?'':' · janela anterior ao corte de análise'}${j.taxa==null?'':` · ${n0(j.n)} ocorr. em ${n1(j.minutos/60)} h estimadas`}`;
+}
+function celulaEficacia(C){
+ if(!C)return '—';
+ if(C.pendente)return `<span class="muted small">Janela até ${br(C.pendente)}</span>`;
+ return `<div><b>${n1(C.antes.taxa)} → ${n1(C.depois.taxa)}</b><small class="muted"> · recorrências/100 h</small></div><details class="small"><summary>Cobertura · ${esc(C.a.id)}</summary><div>Antes · ${esc(textoJanelaEficacia(C.antes))}</div><div>Depois · ${esc(textoJanelaEficacia(C.depois))}</div></details>`;
+}
 /* pendências (Visão geral, Portal, TV) */
 function pendencias(){const P=[];const D=Store.data;const all=eventosTodos();const ate=all.reduce((m,e)=>e.dia>m?e.dia:m,'')||todayISO();
  const fila=filaTecnica(all.filter(e=>e.dia>=addDays(ate,-90)));const qb=fila.filter(f=>classe(f.e)==='quebra'&amp;&amp;f.falta.length).length,rc=fila.filter(f=>f.tipo==='reclass').length;
@@ -31053,7 +31271,7 @@ function pendencias(){const P=[];const D=Store.data;const all=eventosTodos();con
  if(qb)P.push({sev:1,txt:`${qb} quebra(s) dos últimos 90 dias sem a parte técnica completa (peça, componente, modo, ação)`,go:'fila',link:'aba=fila'});
  if(rc)P.push({sev:1,txt:`${rc} parada(s) com sugestão de reclassificação (quebra sem troca de peça ou ao contrário)`,go:'fila',link:'aba=fila'});
  const tmp=all.filter(e=>/^(OUT|NDI)$/.test(codigoEf(e))&amp;&amp;daysBetween(e.dia,ate)>7&amp;&amp;!D.tecnico[e.id]?.codigoValidado).length;if(tmp)P.push({sev:2,txt:`${tmp} parada(s) com código temporário (OUT/NDI) há mais de 7 dias`,go:'fila',link:'aba=fila'});
- const dias=[...new Set(all.filter(e=>e.dia>=addDays(ate,-14)).map(e=>e.dia))].filter(d=>!D.validacao[d]);if(dias.length)P.push({sev:2,txt:`${dias.length} dia(s) das últimas 2 semanas sem validação da liderança`,go:'valid',link:'aba=valid'});
+ const dias=agg(all.filter(e=>e.dia>=addDays(ate,-14)),e=>e.dia).filter(d=>estadoValidacao(d.k,d.ev)!=='validado');if(dias.length)P.push({sev:2,txt:`${dias.length} dia(s) das últimas 2 semanas sem validação da liderança`,go:'valid',link:'aba=valid'});
  const prov=Cad.eqs.filter(e=>e.prov);if(prov.length)P.push({sev:2,txt:`${prov.length} máquina(s) do Forms sem equipamento do cadastro (de-para): ${prov.map(e=>e.nome).slice(0,4).join(', ')}`,go:'config',link:'aba=config'});
  const fora=new Set(all.map(e=>codigoEf(e)).filter(c=>Cad.code(c)&amp;&amp;!Cad.code(c).noCadastro));if(fora.size)P.push({sev:2,txt:`${fora.size} código(s) em uso ainda não cadastrados na Administração (catálogo proposto): ${[...fora].slice(0,6).join(', ')}`,go:'guia',link:'aba=guia'});
  const venc=D.acoes.filter(a=>a.status!=='concluída'&amp;&amp;a.prazo&amp;&amp;a.prazo<todayISO()).length;if(venc)P.push({sev:1,txt:`${venc} ação(ões) com prazo vencido`,go:'acoes',link:'aba=acoes'});
@@ -31065,16 +31283,17 @@ function pendencias(){const P=[];const D=Store.data;const all=eventosTodos();con
 function calcExports(D){const old=Store.data;Store.data=D;try{
  const all=eventosTodos();const ate=all.reduce((m,e)=>e.dia>m?e.dia:m,'')||todayISO();const de13=addDays(ate.slice(0,7)+'-01',-365).slice(0,7);
  const porEq=[];const meses=[...new Set(all.map(e=>e.dia.slice(0,7)))].filter(m=>m>=de13).sort();
- for(const m of meses){const L=all.filter(e=>e.dia.slice(0,7)===m);for(const s of statsEquip(L,m+'-01',m+'-31'))porEq.push({mes:m,equipamento:s.eq,equipamentoNome:s.nome,minutos:s.min,ocorrencias:s.n,quebras:s.nQ,minQuebra:s.mQ,minOperacional:s.mOp,micro:s.nMicro,mtbfH:s.mtbf,mttrMin:s.mttr,disponibilidade:s.disp,fonteTempo:s.fonte})}
+ for(const m of meses){const L=all.filter(e=>e.dia.slice(0,7)===m);for(const s of statsEquip(L,m+'-01',fimMes(m)))porEq.push({mes:m,equipamento:s.eq,equipamentoNome:s.nome,minutos:s.min,ocorrencias:s.n,quebras:s.nQ,minQuebra:s.mQ,minOperacional:s.mOp,micro:s.nMicro,mtbfH:s.mtbf,mttrMin:s.mttr,esperaMediaMin:s.espera.media,reparoMedioMin:s.reparo.media,quebrasComEspera:s.espera.n,quebrasComReparo:s.reparo.n,disponibilidade:s.disp,fonteTempo:s.fonte})}
  const ult90=all.filter(e=>e.dia>=addDays(ate,-90)).sort((a,b)=>a.dia<b.dia?-1:a.dia>b.dia?1:0);   // AT-06 · em ordem de dia: o corte de 3000 fica com os mais recentes
  const porComp=agg(ult90.filter(e=>classe(e)==='quebra'),e=>{const t=D.tecnico[e.id]||{};return e.equipamento+'|'+(t.componente||e.peca||'(sem componente)')+'|'+(t.modo||'')}).map(o=>{const[eq,c,mo]=o.k.split('|');return{equipamento:eq,componente:c,modo:mo,ocorrencias:o.n,minutos:o.min,ultima:o.ev.reduce((m,e)=>e.dia>m?e.dia:m,'')}}).sort((a,b)=>b.minutos-a.minutos).slice(0,300);
  const cortado=ult90.length>3000,eventosCobertura={de:cortado?addDays(ult90[ult90.length-3000].dia,1):addDays(ate,-90),ate,cortado};   // AT-06 · o Portal mostra "sem dado" fora disto
+ const diasValidados=new Set(agg(ult90,e=>e.dia).filter(d=>estadoValidacao(d.k,d.ev)==='validado').map(d=>d.k));
  const eventos=ult90.slice(-3000).map(e=>{const t=D.tecnico[e.id]||{};return{id:e.id,dia:e.dia,turno:e.turno,inicio:e.inicio,fim:e.fim,minutos:e.minutos,ocorrencias:e.ocorrencias||1,equipamento:e.equipamento,codigo:codigoEf(e),codigoApontado:e.codigo,classe:classe(e),
-  descricao:e.descricao,trocouPeca:trocou(e),componente:t.componente||e.peca||'',modo:t.modo||'',acao:t.acao||'',os:t.os||'',tecnico:nomeTec(t,e),tecnicoId:idTec(t,e),...(o=>({ordem:o.ordem||'',lote:o.lote||'',loteDigitado:o.loteDigitado,catalogo:o.catalogo||null,ordemFonte:o.fonte||null}))(Origem.de(e)),eventoId:EVENTO_OEE.get(e.id)||null,validado:!!D.validacao[e.dia]}});   /* 1.2.5 · ordem/lote/catálogo pelo lote ou pelo horário; eventoId da Produção */
+  descricao:e.descricao,trocouPeca:trocou(e),componente:t.componente||e.peca||'',modo:t.modo||'',acao:t.acao||'',os:t.os||'',esperaMin:t.esperaMin??null,reparoMin:t.reparoMin??null,tecnico:nomeTec(t,e),tecnicoId:idTec(t,e),...(o=>({ordem:o.ordem||'',lote:o.lote||'',loteDigitado:o.loteDigitado,catalogo:o.catalogo||null,ordemFonte:o.fonte||null}))(Origem.de(e)),eventoId:EVENTO_OEE.get(e.id)||null,validado:diasValidados.has(e.dia)}});   /* 1.2.5 · ordem/lote/catálogo pelo lote ou pelo horário; eventoId da Produção */
  const rec=recorrencias(all,ate).slice(0,100).map(r=>({chave:r.k,equipamento:r.eq,codigo:r.cod,componente:r.comp,ocorrencias30d:r.n30,minutos30d:r.min30,mesesSeguidos:r.meses,ultima:r.ult,acao:r.acao?.id||null}));
  const recl=filaTecnica(ult90).filter(f=>f.tipo==='reclass').map(f=>({idEvento:f.e.id,dia:f.e.dia,equipamento:f.e.equipamento,de:codigoEf(f.e),para:f.sug,motivo:trocou(f.e)?'trocou peça':'sem troca de peça',status:'sugerida'}));
  const vali=Object.entries(D.tecnico).filter(([id,t])=>t.codigoValidado).map(([id,t])=>({idEvento:id,para:t.codigoValidado,por:t.por||'',em:t.em||''}));
- const mesA=ate.slice(0,7),Lm=all.filter(e=>e.dia.slice(0,7)===mesA);const sM=statsEquip(Lm,mesA+'-01',mesA+'-31');const nQ=sM.reduce((s,x)=>s+x.nQ,0),mQ=sM.reduce((s,x)=>s+x.mQ,0);
+ const mesA=ate.slice(0,7),Lm=all.filter(e=>e.dia.slice(0,7)===mesA);const sM=statsEquip(Lm,mesA+'-01',fimMes(mesA));const nQ=sM.reduce((s,x)=>s+x.nQ,0),mQ=sM.reduce((s,x)=>s+x.mQ,0);
  const perda=Lm.filter(e=>!NAO_PERDA.has(classe(e))).reduce((s,e)=>s+e.minutos,0);const pend=pendencias();
  return{exportsVersion:1,geradoEm:new Date().toISOString(),modulo:'paradas',appVersion:APP_VERSION,limiteMicroMin:Cad.limite,
   /* 1.0.25 · IMP-04: importações do Forms com os dias cobertos, para o Portal › Importação */
@@ -31103,10 +31322,10 @@ function cadastrosProposta(){const eqs=Cad.eqs.filter(e=>e.cad&amp;&amp;e.tipo!=
    ===================================================================================== */
 /* ---------- gráficos SVG ---------- */
 /* 1.2.9 · D8: o desenho do Pareto é o comum do kit (vacPareto.barras, o mesmo do Waste e do Gel); aqui fica só a unidade da escala */
-function hbars(items,{fmt=fmtMin,max,pareto,onClick,sel,w=560,lw=170,color,unit,ref80}={}){if(!items.length)return'<div class="empty">Sem dados no período.</div>';   /* 1.0.33 · unit = linha "Valores em …" (docs/graficos-padrao.md) */
+function hbars(items,{fmt=fmtMin,max,pareto,onClick,sel,w=560,lw=170,color,unit,ref80,total}={}){if(!items.length)return'<div class="empty">Sem dados no período.</div>';   /* 1.0.33 · unit = linha "Valores em …" (docs/graficos-padrao.md) */
  /* 1.0.10 · uma unidade para o gráfico inteiro (antes as barras grandes em h e as pequenas em min); a dica mantém o valor exato */
  const fA=fmt===fmtMin?(Math.max(...items.map(x=>x.v))>=600?v=>n1(v/60)+' h':v=>n0(v)+' min'):fmt;
- return vacPareto.barras(items,{fmt,fmtBarra:fA,max,pareto,onClick,sel,w,lw,color,unit,ref80})}
+ return vacPareto.barras(items,{fmt,fmtBarra:fA,max,pareto,onClick,sel,w,lw,color,unit,ref80,total})}
 function vbars(cats,series,{h=230,fmt=v=>n0(v),onClick,sel}={}){if(!cats.length)return'<div class="empty">Sem dados no período.</div>';
  const w=Math.max(420,cats.length*46),pb=24,pt=10,ch=h-pb-pt;const tot=cats.map((c,i)=>series.reduce((s,S)=>s+(S.v[i]||0),0));const M=Math.max(...tot)||1;
  /* 1.0.8 · vac-visual: uma unidade só para a escala inteira (antes o eixo misturava "300 min" e "12,5 h"); a dica mantém o valor exato */
@@ -31127,7 +31346,7 @@ function tabela(cols,rows,{id,clk,max=500,cls=r=>''}={}){if(!rows.length)return'
 function bindRows(sel,rows,fn){$$(sel+' tbody tr').forEach(tr=>tr.onclick=()=>fn(rows[+tr.dataset.i]))}
 async function excel(nome,abas){try{const X=await loadXLSX();const wb=X.utils.book_new();for(const[n,rows]of abas)X.utils.book_append_sheet(wb,X.utils.json_to_sheet(rows.length?rows:[{}]),n.slice(0,31));X.writeFile(wb,nome)}catch(e){toast(e.message,1)}}
 const evLinha=e=>{const t=Store.data.tecnico[e.id]||{};return{Data:br(e.dia),Turno:e.turno,Equipamento:Cad.eqNome(e.equipamento),'Cód. EQ':e.equipamento,'Nº':Cad.code(codigoEf(e))?.numero||'',Código:codigoEf(e),Nome:Cad.code(codigoEf(e))?.nome||'',
- Classe:CLASSE[classe(e)][0],Minutos:e.minutos,Ocorrências:e.ocorrencias||1,Início:e.inicio||'',Descrição:e.descricao,'Trocou peça':trocou(e)==null?'':trocou(e)?'sim':'não',Componente:t.componente||e.peca||'',Modo:t.modo||'',Ação:t.acao||'',OS:t.os||'',Técnico:nomeTec(t,e),Origem:e.origem,'Código apontado':e.codigo,'Tipo original':e.codigoOrig||'',Id:e.id}};
+ Classe:CLASSE[classe(e)][0],Minutos:e.minutos,Ocorrências:e.ocorrencias||1,Início:e.inicio||'',Descrição:e.descricao,'Trocou peça':trocou(e)==null?'':trocou(e)?'sim':'não',Componente:t.componente||e.peca||'',Modo:t.modo||'','Espera (min)':t.esperaMin??'','Reparo (min)':t.reparoMin??'',Ação:t.acao||'',OS:t.os||'',Técnico:nomeTec(t,e),Origem:e.origem,'Código apontado':e.codigo,'Tipo original':e.codigoOrig||'',Id:e.id}};
 
 /* ---------- App ---------- */
 const App={tab:'geral',sel:{},
@@ -31145,9 +31364,14 @@ function renderTop(){renderSysNav();$('#appVer').textContent='v'+PAGE.versao;con
  p.push(`<span class="pill ${Ext.oeeOk?'ok':''}">${Ext.oeeOk?(Ext.oee.paradasEventos?'OEE: eventos':'OEE lido'):'OEE não lido'}</span>`);
  { const A=Ext.oeeOk?origemAvisos():null;   /* 1.2.5 */
   if(A&amp;&amp;A.semOrdem)p.push(`<span class="pill warn" title="Lote digitado no Forms que não está na Produção, ou que aparece em mais de uma ordem">${A.semOrdem} parada(s) com lote sem ordem</span>`);
+  if(EVENTO_OEE.pendentes.size)p.push(`<button type="button" class="b sm" id="pConc">${EVENTO_OEE.pendentes.size} vínculo(s) a conferir</button>`);
   if(A&amp;&amp;A.soProducao)p.push(`<span class="pill" title="Paradas apontadas na Produção sem a mesma parada no Forms (dia, equipamento, turno e horário). Não entram nas análises do Paradas.">${A.soProducao} só na Produção</span>`); }
  const ev=eventosTodos();const ult=ev.reduce((m,e)=>e.dia>m?e.dia:m,'');if(ult){const d=daysBetween(ult,todayISO());p.push(`<span class="pill ${d>3?'crit':'info'}">Última parada ${br(ult)}</span>`)}
- p.push(vacRecuperacaoBotao(S));$('#stBase').innerHTML=p.join('');const pp=$('#pPasta');if(pp)pp.onclick=()=>S.dir?S.reconnect():S.pick();const pr=$('#pRecriar');if(pr)pr.onclick=()=>S.recriar();const po=$('#pOutra');if(po)po.onclick=()=>S.pick()}
+ p.push(vacRecuperacaoBotao(S));$('#stBase').innerHTML=p.join('');const pp=$('#pPasta');if(pp)pp.onclick=()=>S.dir?S.reconnect():S.pick();const pr=$('#pRecriar');if(pr)pr.onclick=()=>S.recriar();const po=$('#pOutra');if(po)po.onclick=()=>S.pick();
+ const conc=$('#pConc');if(conc)conc.onclick=()=>{
+  const L=eventosTodos().filter(e=>EVENTO_OEE.pendentes.has(e.id));
+  modal({title:'Conciliação Forms × Produção',body:tabela(colsEv(),L,{id:'concTab',clk:1,max:L.length}),wide:true,onOpen:()=>bindRows('#concTab',L,e=>abrirEvento(e.id))});
+ }}
 
 /* ---------- vac-cabecalho v2 · JS (igual em todas as páginas) ---------- */
 const VAC_CAB_VERSAO=2;
@@ -31256,11 +31480,15 @@ function abrirEvento(id){const e=eventosTodos().find(x=>x.id===id);if(!e)return 
  const body=`<div class="grid g2"><div class="card"><div class="row"><b style="font-size:16px">${esc(Cad.eqNome(e.equipamento))}</b><span class="code muted">${esc(e.equipamento)}</span><span class="sp"></span>${grpChip(codigoEf(e))}<span class="pill" style="--tc:${CLASSE[classe(e)][1]}">${CLASSE[classe(e)][0]}</span></div>
   <p style="margin:8px 0"><span class="num">${esc(codLabel(codigoEf(e)))}</span> · ${esc(c?.nome||'código fora do catálogo')}${t.codigoValidado?` <span class="pill info">reclassificado (apontado: ${esc(codLabel(e.codigo))})</span>`:''}</p>
   <table class="t"><tr><td class="muted">Data / turno</td><td>${br(e.dia)} · ${esc(e.turno||'—')}</td></tr>${(()=>{const L=(Ext.equip?.porEvento||{})[e.id]||[],s=(typeof systems==='function'?systems():[]).find(x=>x.id==='equip'),h=x=>s?sysHref(s,x):'Equipamentos.html#'+x;if(!s||s.futuro)return'';return`<tr><td class="muted">OS (Equipamentos)</td><td>${L.map(o=>`<a href="${esc(h('os='+o.id))}" class="code">${esc(o.id)}</a> <span class="pill${['concluída','cancelada'].includes(o.status)?'':' warn'}">${esc(o.status)}</span> `).join('')}<a class="b sm" target="_blank" rel="noopener" href="${esc(h('novaOS='+encodeURIComponent(JSON.stringify({equipamento:e.equipamento,titulo:(c?.nome||codigoEf(e))+(e.descricao?': '+String(e.descricao).slice(0,80):''),descricao:e.descricao||'',origem:{tipo:'paradas',ref:e.id,resumo:`Parada de ${br(e.dia)} ${e.turno||''} · ${n0(e.minutos)} min`,link:vacAquiHref('evento='+e.id)}}))))}">+ Abrir OS</a></td></tr>`})()}${typeof vacNovaAcaoBotao==='function'?`<tr><td class="muted">Planner</td><td>${vacNovaAcaoBotao(acaoPlanner('evento',null,e.id,Cad.eqNome(e.equipamento)+' · '+(c?.nome||codigoEf(e))+' · '+br(e.dia),[e],{eq:e.equipamento,cod:codigoEf(e),ordem:e.ordem}),'+ Ação no Planner')}</td></tr>`:''}${e.ordem?`<tr><td class="muted">Ordem</td><td><span class="code">${esc(e.ordem)}</span> ${typeof vacFichaBotao==='function'?vacFichaBotao(e.ordem):''}</td></tr>`:''}<tr><td class="muted">Início · fim</td><td>${esc(e.inicio||'—')} · ${esc(e.fim||'—')}</td></tr>
-  <tr><td class="muted">Duração</td><td>${n0(e.minutos)} min${(e.ocorrencias||1)>1?` · ${e.ocorrencias} ocorrências`:''}</td></tr><tr><td class="muted">O que aconteceu</td><td>${esc(e.descricao||'—')}</td></tr>
+  <tr><td class="muted">Tempo total de parada</td><td>${n0(e.minutos)} min${(e.ocorrencias||1)>1?` · ${e.ocorrencias} ocorrências`:''}</td></tr>
+  <tr><td class="muted">Espera · reparo</td><td>${fmtMin(t.esperaMin)} · ${fmtMin(t.reparoMin)}</td></tr><tr><td class="muted">O que aconteceu</td><td>${esc(e.descricao||'—')}</td></tr>
   ${e.obs?`<tr><td class="muted">Observação</td><td>${esc(e.obs)}</td></tr>`:''}<tr><td class="muted">Apontado por</td><td>${esc(e.por||'—')} · ${esc(e.origem)}</td></tr>
   ${e.codigoOrig?`<tr><td class="muted">No Forms</td><td>${esc(e.codigoOrig)}${e.regra?` <span class="muted small">(${esc(e.regra)})</span>`:''}</td></tr>`:''}${(()=>{const o=Origem.de(e),id=EVENTO_OEE.get(e.id);let h='';   /* 1.2.5 */
    if(o.ordem||o.lote||o.fonte)h+=`<tr><td class="muted">Ordem · lote</td><td>${o.ordem?esc(o.ordem)+(typeof vacFichaBotao==='function'?' '+vacFichaBotao(o.ordem):''):'—'} · ${esc(o.lote||'—')}${o.catalogo?` · catálogo ${esc(o.catalogo)}`:''}${o.fonte?` <span class="muted small">(${esc(ORIGEM_TXT[o.fonte]||o.fonte)}${o.ordens?': '+esc(o.ordens.join(', ')):''})</span>`:''}</td></tr>`;
-   if(id)h+=`<tr><td class="muted">Na Produção</td><td>mesma parada do apontamento <span class="muted small">(${esc(id)})</span></td></tr>`;return h})()}</table>
+   if(id)h+=`<tr><td class="muted">Na Produção</td><td>Vínculo sugerido <span class="muted small">(${esc(id)})</span></td></tr>`;
+   const candidatos=EVENTO_OEE.pendentes.get(e.id);
+   if(candidatos?.length)h+=`<tr><td class="muted">Na Produção</td><td>A conferir · ${candidatos.map(o=>esc([o.inicio||'sem horário',o.minutos+' min',o.codigo||'',o.id].filter(Boolean).join(' · '))).join('<br>')}</td></tr>`;
+   return h})()}</table>
   ${sug&amp;&amp;sug.tipo==='reclass'?`<div class="tint" style="--tc:var(--warn);padding:8px 10px;border-radius:8px;margin-top:10px">Sugestão: reclassificar para <b>${esc(codLabel(sug.sug))}</b> (${trocou(e)?'houve troca de peça':'não houve troca de peça'}). <button class="b sm" id="aplSug">Aplicar</button></div>`:''}
   ${c?.guia?.descricao?`<p class="small muted mt"><b>Guia:</b> ${esc(c.guia.descricao)}</p>`:''}</div>
   <div class="card"><b>Parte técnica</b> ${help('Preenchida pelo técnico ou engenharia. Fica só no Paradas, presa ao id da parada. Quebra exige peça trocada/reparada; sem troca, a parada é operacional ou microparada.')}
@@ -31279,6 +31507,7 @@ function abrirEvento(id){const e=eventosTodos().find(x=>x.id===id);if(!e)return 
  let ini=null;const md=modal({title:'Parada · '+br(e.dia),body,wide:true,guard:()=>JSON.stringify(read())!==ini,
   buttons:[...(e.origem==='manual'||e.origem==='tally'?[{t:'Excluir parada',crit:1,fn:()=>{if(!confirm('Excluir esta parada lançada aqui?'))return false;Store.commit({k:'del',c:'eventos',ids:[e.id],aud:'excluiu parada '+e.id})}}]:[]),
    {t:'Cancelar',fn:()=>{}},{t:'Salvar',pri:1,fn:()=>{const f=read();const tp=f.trocouPeca;
+   if([f.esperaMin,f.reparoMin].some(v=>v!=null&amp;&amp;(!Number.isFinite(v)||v<0))){toast('Informe tempos de espera e reparo válidos.',1);return false}
    /* nome mostrado e não mudado mantém o ID; digitado (nome ou ID) passa pelo cadastro */
    const P=f.tecnico===nomeTec(t,e)&amp;&amp;(t.tecnicoId||t.tecnico||e.tecnicoForms)?{nome:f.tecnico,id:idTec(t,e)}:vacPessoa.deTexto(f.tecnico);f.tecnico=P.nome;f.tecnicoId=P.id;
    Store.commit({k:'mapf',c:'tecnico',id:e.id,f:{...f,trocouPeca:tp,por:user(),porId:vacPessoa.eu().id,em:new Date().toISOString()},aud:'parte técnica '+e.id});toast('Parte técnica salva')}}],
@@ -31310,11 +31539,12 @@ function abrirAcao(id,pre={}){const a=id?Store.data.acoes.find(x=>x.id===id):{id
 
 /* ---------- equipamento (detalhe) ---------- */
 function abrirEquip(eq){const all=eventosTodos().filter(e=>e.equipamento===eq);const ate=all.reduce((m,e)=>e.dia>m?e.dia:m,'')||todayISO();const meses=[...new Set(all.map(e=>e.dia.slice(0,7)))].sort().slice(-13);
- const S=meses.map(m=>statsEquip(all.filter(e=>e.dia.slice(0,7)===m),m+'-01',m+'-31')[0]||{});const L=F.apply(all,{eq:1});
+ const linha=eq==='LINHA'?[]:eventosTodos().filter(e=>e.equipamento==='LINHA');
+ const S=meses.map(m=>statsEquip(all.filter(e=>e.dia.slice(0,7)===m),m+'-01',fimMes(m),'',all.concat(linha).filter(e=>e.dia.slice(0,7)===m))[0]||{});const L=F.apply(all,{eq:1}),codigos=agg(L,e=>codigoEf(e)).sort((a,b)=>b.min-a.min);
  const cls=['quebra','operacional','micro','setup','consumivel','organizacao','planejada','partida','outros'];
  const body=`<div class="grid g2"><div class="card"><b>Tempo de parada por mês e classe</b>${vbars(meses.map(m=>({k:m,label:brM(m)})),cls.map(c=>({nome:CLASSE[c][0],cor:CLASSE[c][1],v:meses.map(m=>all.filter(e=>e.dia.slice(0,7)===m&amp;&amp;classe(e)===c).reduce((s,e)=>s+e.minutos,0))})),{fmt:fmtMin})}</div>
- <div class="card"><b>MTBF (h) e MTTR (min) por mês</b>${tabela([{h:'Mês',f:(r,i)=>brM(r.m)},{h:'Quebras',n:1,f:r=>n0(r.s.nQ)},{h:'MTBF h',n:1,f:r=>n1(r.s.mtbf)},{h:'MTTR min',n:1,f:r=>n0(r.s.mttr)},{h:'Parada',n:1,f:r=>fmtMin(r.s.min)}],meses.map((m,i)=>({m,s:S[i]})).reverse())}</div>
- <div class="card"><b>Principais códigos (período do filtro)</b>${hbars(agg(L,e=>codigoEf(e)).sort((a,b)=>b.min-a.min).slice(0,12).map(o=>({k:o.k,label:codLabel(o.k)+' '+(Cad.code(o.k)?.nome||''),v:o.min,n:o.n,color:GRUPO_COR(Cad.code(o.k)?.grupo)})),{pareto:1,w:620,lw:260})}</div>
+ <div class="card"><b>MTBF (h) e MTTR histórico (min) por mês</b>${tabela([{h:'Mês',f:(r,i)=>brM(r.m)},{h:'Quebras',n:1,f:r=>n0(r.s.nQ)},{h:'MTBF h',n:1,f:r=>n1(r.s.mtbf)},{h:'MTTR min',n:1,f:r=>n0(r.s.mttr)},{h:'Parada',n:1,f:r=>fmtMin(r.s.min)}],meses.map((m,i)=>({m,s:S[i]})).reverse())}</div>
+ <div class="card"><b>Principais códigos (período do filtro)</b>${hbars(codigos.slice(0,12).map(o=>({k:o.k,label:codLabel(o.k)+' '+(Cad.code(o.k)?.nome||''),v:o.min,n:o.n,color:GRUPO_COR(Cad.code(o.k)?.grupo)})),{pareto:1,w:620,lw:260,total:codigos.reduce((s,o)=>s+o.min,0)})}</div>
  <div class="card"><b>Componentes com quebra</b>${hbars(agg(L.filter(e=>classe(e)==='quebra'),e=>Store.data.tecnico[e.id]?.componente||e.peca||'(sem componente)').sort((a,b)=>b.min-a.min).slice(0,12).map(o=>({k:o.k,label:o.k,v:o.min,n:o.n,color:'var(--g8)'})),{w:620,lw:220})}</div></div>
  <div class="row mt"><b>Paradas no período</b><span class="sp"></span><button class="b sm" id="eqForm">${ico('print',16)} Formulário</button></div><div class="mt">${tabela(colsEv(),L.slice().sort((a,b)=>b.dia.localeCompare(a.dia)),{id:'eqTab',clk:1,max:200})}</div>`;
  modal({title:Cad.eqNome(eq)+' · '+eq,body,wide:true,onOpen:()=>{bindRows('#eqTab',L.slice().sort((a,b)=>b.dia.localeCompare(a.dia)),e=>abrirEvento(e.id));$('#eqForm').onclick=()=>imprimirForms([eq])}})}
@@ -31330,20 +31560,22 @@ const VIEWS={};
    organizadas em faixas — 1 filtros (com os ativos em pílulas) · 2 indicadores principais e secundários · 3 prioridades · 4 análise visual
    (evolução mensal e Pareto de equipamentos) · 5 análises complementares (grupos recolhíveis e atalhos). Cada número aparece uma vez. */
 VIEWS.geral={html(){const all=eventosTodos();if(!all.length)return inicioVazio();const L=F.apply(all);const pend=pendencias();
- const perda=L.filter(e=>!NAO_PERDA.has(classe(e)));const min=perda.reduce((s,e)=>s+e.minutos,0);const SE=statsEquip(L,F.de,F.ate);const nQ=SE.reduce((s,x)=>s+x.nQ,0),mQ=SE.reduce((s,x)=>s+x.mQ,0);
- const P=programado(L,F.de,F.ate);const op=Math.max(0,P.min-min);const nMic=perda.filter(e=>classe(e)==='micro').reduce((s,e)=>s+(e.ocorrencias||1),0);const tmp=perda.filter(e=>/^(OUT|NDI)$/.test(codigoEf(e))).length;
+ const perda=L.filter(e=>!NAO_PERDA.has(classe(e)));const min=perda.reduce((s,e)=>s+e.minutos,0);const exp=perdasNoRecorte(all),SE=statsEquip(L,F.de,F.ate,F.turno,exp);const nQ=SE.reduce((s,x)=>s+x.nQ,0),mQ=SE.reduce((s,x)=>s+x.mQ,0);
+ const P=programado(exp,F.de,F.ate,F.turno);
+ const minExpostos=exp.filter(e=>!F.eq||e.equipamento===F.eq||e.equipamento==='LINHA').reduce((s,e)=>s+e.minutos,0);
+ const op=Math.max(0,P.min-minExpostos);const nMic=perda.filter(e=>classe(e)==='micro').reduce((s,e)=>s+(e.ocorrencias||1),0);const tmp=perda.filter(e=>/^(OUT|NDI)$/.test(codigoEf(e))).length;
  const s1=pend.filter(p=>p.sev===1);const ac=s1[0]||pend[0];
  const meses=[...new Set(L.map(e=>e.dia.slice(0,7)))].sort();const cls=['quebra','operacional','micro','setup','consumivel','organizacao','planejada','partida','outros'];
  const pc=P.min>0?min/P.min:null;
  return`<div class="vk-hd"><div><h2>Visão geral das paradas</h2><p>Tempo parado, quebras e confiabilidade da linha</p></div></div>
- <div class="pux-faixa" data-pux-faixa="filtros">${filtrosHTML({info:`${n0(L.length)} registros · tempo de operação ${P.fonte==='OEE'?'do OEE':'estimado ('+n0(P.dias)+' dias × '+n0(Store.data.config.horasDia)+' h)'}`})}${ativosHTML()}</div>
+ <div class="pux-faixa" data-pux-faixa="filtros">${filtrosHTML({info:`${n0(L.length)} registros · tempo programado ${coberturaTempo(P)}`})}${ativosHTML()}</div>
  ${vacLayout.sec('01','Indicadores principais','Tempo parado, quebras e confiabilidade com os filtros acima')}
  <div class="pux-faixa" data-pux-faixa="principais"><div class="kpis pux-kpis-main">${kpi('Tempo de parada',fmtMin(min),n0(perda.reduce((s,e)=>s+(e.ocorrencias||1),0))+' ocorrências','','clock')}${kpi('Quebras',n0(nQ),fmtMin(mQ)+' · '+(min?pct(mQ/min):'—')+' do tempo',nQ?'bad':'good','wrench')}
- ${kpi('MTBF da linha',nQ?n1(op/nQ/60)+' h':'—','entre quebras · '+(P.fonte==='OEE'?'OEE':'estimado'),'','gauge')}${kpi('MTTR',nQ?n0(mQ/nQ)+' min':'—','reparo médio por quebra','','clock')}
+ ${kpi('MTBF da linha',nQ&amp;&amp;P.min?n1(op/nQ/60)+' h':'—','entre quebras · '+P.fonte,'','gauge')}${kpi('MTTR',nQ?n0(mQ/nQ)+' min':'—','tempo parado médio por quebra','','clock')}
  ${kpi('Máquina crítica',SE[0]?.nome||'—',SE[0]?fmtMin(SE[0].min):'','','machine')}</div>
  ${SE[0]?`<div class="pux-kpi-act"><button type="button" class="b sm" data-vk-f="eq|${esc(SE[0].eq)}" title="Filtrar a página por ${esc(SE[0].nome)}">${ico('machine',15)} Filtrar ${esc(SE[0].nome)}</button></div>`:''}</div>
  <div class="pux-faixa" data-pux-faixa="secundarios"><div class="kpis pux-kpis-sec">${kpi('Microparadas',n0(nMic),'abaixo de '+Cad.limite+' min',nMic?'':'warn','repeat')}${kpi('Código temporário',n0(tmp),'OUT / NDI a classificar',tmp?'warn':'good','flag')}
- <div class="pux-sit"><span class="l">Parado em relação ao tempo de operação</span><b>${pc==null?'—':pct(pc)}</b>${pc==null?'':`<div class="vk-bar" role="progressbar" aria-label="Tempo parado em relação ao tempo de operação" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${Math.round(Math.min(1,pc)*100)}"><i class="${pc>0.2?'crit':''}" style="width:${(Math.min(1,pc)*100).toFixed(1)}%"></i></div>`}${vacLayout.estado('none','Sem meta cadastrada para paradas')}</div></div>
+ <div class="pux-sit"><span class="l">Parado em relação ao tempo programado</span><b>${pc==null?'—':pct(pc)}</b>${pc==null?'':`<div class="vk-bar" role="progressbar" aria-label="Tempo parado em relação ao tempo programado" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${Math.round(Math.min(1,pc)*100)}"><i class="${pc>0.2?'crit':''}" style="width:${(Math.min(1,pc)*100).toFixed(1)}%"></i></div>`}${vacLayout.estado('none','Sem meta cadastrada para paradas')}</div></div>
  ${nMic<perda.length*0.05&amp;&amp;perda.length>50?`<div class="tint small pux-aviso" style="--tc:var(--warn)">Quase não há microparadas registradas (${n0(nMic)} de ${n0(perda.length)}). No Forms novo, use o campo <b>Quantas vezes aconteceu?</b> para contar as paradas curtas.</div>`:''}</div>
  ${vacLayout.sec('02','Prioridades','O que resolver agora')}
  <div class="pux-faixa pux-prio" data-pux-faixa="prioridades"><div class="acao tint ${s1.length?'vm':pend.length?'am':''}"><span class="t">Ação prioritária</span><span class="f">${esc(ac?ac.txt:'Nada urgente. Classificação em dia.')}</span>${ac?`<div><button class="b pri" data-go="${ac.go}">Resolver</button></div>`:''}</div>
@@ -31351,7 +31583,7 @@ VIEWS.geral={html(){const all=eventosTodos();if(!all.length)return inicioVazio()
  <div class="card pux-pend"><b>Pendências por tipo</b><div class="pux-plinks"><button type="button" class="b" data-vk-go="valid">${ico('flag',15)} Validação dos dias e códigos</button><button type="button" class="b" data-vk-go="fila">${ico('wrench',15)} Fila técnica</button><button type="button" class="b" data-vk-go="acoes">${ico('list',15)} Ações</button></div></div></div>
  ${vacLayout.sec('03','Análise visual','Evolução mensal e onde parou')}
  <div class="pux-faixa pux-visual" data-pux-faixa="visual"><div class="card">${secH('bar','Tempo por mês','por classe de perda · uma unidade na escala (h ou min) · clique num mês para filtrar')}<div id="chMes">${vbars(meses.map(m=>({k:m,label:brM(m)})),cls.map(c=>({nome:CLASSE[c][0],cor:CLASSE[c][1],v:meses.map(m=>perda.filter(e=>e.dia.slice(0,7)===m&amp;&amp;classe(e)===c).reduce((s,e)=>s+e.minutos,0))})),{fmt:fmtMin})}</div>${parMeses(perda,meses)}</div>
- <div class="card">${secH('machine','Pareto de equipamentos','tempo de parada (h ou min) e % acumulado · clique para filtrar')}<div id="chEq">${hbars(SE.slice(0,14).map(s=>({k:s.eq,label:s.nome,v:s.min,n:s.n})),{pareto:1,sel:F.eq,onClick:1})}</div></div></div>
+ <div class="card">${secH('machine','Pareto de equipamentos','tempo de parada (h ou min) e % acumulado · clique para filtrar')}<div id="chEq">${hbars(SE.slice(0,14).map(s=>({k:s.eq,label:s.nome,v:s.min,n:s.n})),{pareto:1,sel:F.eq,onClick:1,total:SE.reduce((s,x)=>s+x.min,0)})}</div></div></div>
  ${vacLayout.sec('04','Análises complementares','Clique num grupo para recolher ou abrir')}
  <div class="pux-faixa" data-pux-faixa="complementar">
  ${vacLayout.grupo('paradas','B','Por classe de perda','Quais classes concentram o tempo?',`<div class="card">${secH('list','Por classe','tempo de parada (h ou min) e % acumulado · clique para filtrar')}<div id="chCl">${hbars(agg(perda,e=>classe(e)).sort((a,b)=>b.min-a.min).map(o=>({k:o.k,label:CLASSE[o.k][0],v:o.min,n:o.n,color:CLASSE[o.k][1]})),{pareto:1,sel:F.cls,onClick:1})}</div></div>`)}
@@ -31359,7 +31591,7 @@ VIEWS.geral={html(){const all=eventosTodos();if(!all.length)return inicioVazio()
  ${vacLayout.grupo('paradas','D','Mapa de calor','Em que hora, dia e equipamento a linha mais para?',`<div class="card" id="cardCalorDia">${secH('clock','Dia da semana × hora','minutos de parada pelo início · mesmos filtros da tela')}${mapaCalor(perda,'dia')}</div><div class="card" id="cardCalorEq">${secH('machine','Equipamento × hora','os 10 equipamentos com mais tempo · minutos pelo início')}${mapaCalor(perda,'eq')}</div>`)}
  <section class="vk-card pux-explorar"><b>Explorar dados</b><div class="row" style="gap:8px;flex-wrap:wrap">${[['eventos','Eventos'],['pareto','Pareto'],['equip','Equipamentos'],['recor','Recorrência'],['fila','Fila técnica'],['valid','Validação'],['acoes','Ações']].map(([t,n])=>`<button type="button" class="b" data-vk-go="${t}">${n}</button>`).join('')}</div></section></div>`},
  wire(){$$('[data-go]').forEach(b=>b.onclick=()=>App.go(b.dataset.go));vacLayout.ligar($('#main'),'paradas');$$('#main [data-vk-go]').forEach(b=>b.onclick=()=>App.go(b.dataset.vkGo));
-  $$('#main [data-vk-f]').forEach(b=>b.onclick=()=>{const[k,v]=b.dataset.vkF.split('|');if(k==='mes'){F.de=v+'-01';F.ate=v+'-31'}else F[k]=F[k]===v?'':v;App.render()});const vt=$('#verTodas');if(vt)vt.onclick=e=>{e.preventDefault();verPendencias()};
+  $$('#main [data-vk-f]').forEach(b=>b.onclick=()=>{const[k,v]=b.dataset.vkF.split('|');if(k==='mes'){F.de=v+'-01';F.ate=fimMes(v)}else F[k]=F[k]===v?'':v;App.render()});const vt=$('#verTodas');if(vt)vt.onclick=e=>{e.preventDefault();verPendencias()};
   bindChart($('#chEq'),k=>{F.eq=F.eq===k?'':k;App.render()});bindChart($('#chCl'),k=>{F.cls=F.cls===k?'':k;App.render()});bindChart($('#chTu'),k=>{F.turno=F.turno===k?'':k;App.render()});
   bindChart($('#chMes'),k=>{if(F.de===k+'-01'){F.init()}else{F.de=k+'-01';F.ate=k+'-31'}App.render()});wireAtivos();wireInicio()}};
 /* 1.2.8 · Fase 6 · mapa de calor (13/11/2026): minutos de parada (classes de perda, mesmos filtros) por hora de início × dia da semana ou × equipamento.
@@ -31383,7 +31615,7 @@ function wireAtivos(){$$('#main [data-pux-tira]').forEach(b=>b.onclick=()=>{cons
 function parSit(L,perda,min,P,SE){const oc=perda.reduce((s,e)=>s+(e.ocorrencias||1),0),pc=P.min>0?min/P.min:null;
  return`<section class="vk-card vk-main" aria-label="Tempo de parada no período"><span class="l">Tempo de parada no período</span>
  <div class="row1"><span class="vk-big">${fmtMin(min)}</span><span class="vk-mt"><span>Ocorrências</span><b>${n0(oc)}</b></span><span class="vk-mt"><span>Do tempo de operação</span><b>${pc==null?'—':pct(pc)}</b></span></div>
- ${pc==null?'':`<div class="vk-bar" role="progressbar" aria-label="Tempo parado em relação ao tempo de operação" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${Math.round(Math.min(1,pc)*100)}"><i class="${pc>0.2?'crit':''}" style="width:${(Math.min(1,pc)*100).toFixed(1)}%"></i></div>`}
+ ${pc==null?'':`<div class="vk-bar" role="progressbar" aria-label="Tempo parado em relação ao tempo programado" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${Math.round(Math.min(1,pc)*100)}"><i class="${pc>0.2?'crit':''}" style="width:${(Math.min(1,pc)*100).toFixed(1)}%"></i></div>`}
  ${vacLayout.estado('none','Sem meta cadastrada para paradas')}<span class="small muted">Tempo de operação ${P.fonte==='OEE'?'do OEE':'estimado ('+n0(P.dias)+' dias × '+n0(Store.data.config.horasDia)+' h)'} · ${n0(L.length)} registros</span></section>`}
 function parTop(perda,SE){const C=agg(perda,e=>classe(e)).sort((a,b)=>b.min-a.min)[0],li=[];
  if(SE[0])li.push(`<li><span>Equipamento: <b>${esc(SE[0].nome)}</b></span><span class="sp"></span><span class="v">${fmtMin(SE[0].min)}</span><button type="button" class="b sm" data-vk-f="eq|${esc(SE[0].eq)}">Filtrar</button></li>`);
@@ -31419,14 +31651,25 @@ VIEWS.fila={html(){const L=F.apply(eventosTodos());const R=filaTecnica(L).sort((
  wire(){bindRows('#flTab',this.R,r=>abrirEvento(r.e.id));wireAtivos();const b=$('#aplTodas');if(b)b.onclick=()=>{const rc=this.R.filter(r=>r.tipo);modal({title:'Aplicar reclassificações',body:`<p>${rc.length} paradas vão ganhar o código validado sugerido (o código apontado fica guardado). Confira antes na lista; cada uma pode ser desfeita na ficha.</p>${tabela([{h:'Data',f:r=>br(r.e.dia)},{h:'Equip.',f:r=>esc(Cad.eqNome(r.e.equipamento))},{h:'De → para',f:r=>esc(codigoEf(r.e)+' → '+r.sug)},{h:'Descrição',f:r=>esc(r.e.descricao.slice(0,80))}],rc,{max:60})}`,
   buttons:[{t:'Cancelar',fn:()=>{}},{t:'Aplicar',pri:1,fn:()=>{for(const r of rc)Store.commit({k:'mapf',c:'tecnico',id:r.e.id,f:{codigoValidado:r.sug,por:user(),em:new Date().toISOString()},aud:'reclassificação sugerida '+r.e.id});toast(rc.length+' reclassificações aplicadas')}}]})}}};
 
-VIEWS.valid={html(){const all=F.apply(eventosTodos());const D=Store.data;const dias=agg(all,e=>e.dia).sort((a,b)=>b.k.localeCompare(a.k));this.dias=dias;
- return`${secH('check','Validação diária','a liderança confere a classificação do dia (1º motivo, quebra só com troca de peça, setup até o 1º produto bom) e fecha')}${filtrosHTML({info:`${n0(dias.filter(d=>D.validacao[d.k]).length)} de ${n0(dias.length)} dias validados`})}
- ${ativosHTML()}${(()=>{const val=dias.filter(d=>D.validacao[d.k]).length;return dias.length?`<div class="pux-rres" role="status"><div><span>Dias com parada</span><b>${n0(dias.length)}</b></div><div class="${dias.length-val?'pux-sem':''}"><span>Abertos (a validar)</span><b>${n0(dias.length-val)}</b></div><div><span>Validados</span><b>${n0(val)}</b></div><div><span>Validados no período</span><b>${dias.length?pct(val/dias.length):'—'}</b></div></div>`:`<div class="card pux-vazio">${ico('check',22)}<div><b>Nenhum dia com parada no período.</b><span>Ajuste o período nos filtros.</span></div></div>`})()}
- <div class="pux-tfix">${tabela([{h:'Dia',f:d=>br(d.k)},{h:'Paradas',n:1,f:d=>n0(d.ev.length)},{h:'Minutos',n:1,f:d=>n0(d.min)},{h:'Quebras',n:1,f:d=>n0(d.ev.filter(e=>classe(e)==='quebra').length)},{h:'Pendências técnicas',n:1,f:d=>{const n=filaTecnica(d.ev).length;return n?`<span class="hl1">${n}</span>`:'0'}},
-  {h:'Temporários',n:1,f:d=>n0(d.ev.filter(e=>/^(OUT|NDI)$/.test(codigoEf(e))).length)},{h:'Validado',f:d=>D.validacao[d.k]?`<span class="pill ok">${esc(D.validacao[d.k].por)} · ${esc((D.validacao[d.k].em||'').slice(0,10).split('-').reverse().join('/'))}</span>`:'<span class="pill warn">aberto</span>'}],dias,{id:'vaTab',clk:1,max:200,cls:d=>D.validacao[d.k]?'':'pux-laberto'})}</div><p class="pux-dica muted small">Clique num dia para conferir as paradas e validar (ou reabrir).</p>`},
- wire(){wireAtivos();bindRows('#vaTab',this.dias,d=>{const v=Store.data.validacao[d.k];const fl=filaTecnica(d.ev);
-  modal({title:'Validação · '+br(d.k),wide:true,body:`${fl.length?`<div class="tint" style="--tc:var(--warn);padding:8px 12px;border-radius:8px;margin-bottom:10px">${fl.length} parada(s) com pendência técnica neste dia. Dá para validar assim mesmo; elas continuam na Fila técnica.</div>`:''}${tabela(colsEv(),d.ev,{id:'vdTab',clk:1})}<label class="mt" style="display:block">Observação da liderança<textarea id="vObs">${esc(v?.obs||'')}&lt;/textarea></label>`,
-   onOpen:()=>bindRows('#vdTab',d.ev,e=>abrirEvento(e.id)),buttons:[...(v?[{t:'Reabrir',fn:()=>Store.commit({k:'mapdel',c:'validacao',ids:[d.k],aud:'reabriu dia '+d.k})}]:[]),{t:'Fechar',fn:()=>{}},{t:v?'Atualizar':'Validar dia',pri:1,fn:()=>{if(!user()){setUser();return false}Store.commit({k:'mapf',c:'validacao',id:d.k,f:{por:user(),em:new Date().toISOString(),obs:$('#vObs').value.trim(),n:d.ev.length,min:d.min},aud:'validou '+d.k});toast('Dia validado')}}]})})}};
+VIEWS.valid={html(){const all=eventosTodos(),visiveis=new Set(F.apply(all).map(e=>e.dia));
+ const dias=agg(all.filter(e=>visiveis.has(e.dia)),e=>e.dia).sort((a,b)=>b.k.localeCompare(a.k));
+ for(const d of dias)d.estado=estadoValidacao(d.k,d.ev);
+ this.dias=dias;
+ const val=dias.filter(d=>d.estado==='validado').length,rev=dias.filter(d=>d.estado==='revisao').length;
+ return`${secH('check','Validação diária','Confira os eventos do dia inteiro antes de aprovar a classificação.')}${filtrosHTML({info:`${n0(val)} de ${n0(dias.length)} dias validados`})}
+ ${ativosHTML()}${dias.length?`<div class="pux-rres" role="status"><div><span>Dias com parada</span><b>${n0(dias.length)}</b></div><div><span>Abertos</span><b>${n0(dias.length-val-rev)}</b></div><div><span>Revisão necessária</span><b>${n0(rev)}</b></div><div><span>Validados</span><b>${n0(val)}</b></div></div>`:'<div class="card pux-vazio"><b>Nenhum dia com parada no período.</b></div>'}
+ <div class="pux-tfix">${tabela([{h:'Dia',f:d=>br(d.k)},{h:'Paradas',n:1,f:d=>n0(d.ev.length)},{h:'Minutos',n:1,f:d=>n0(d.min)},{h:'Quebras',n:1,f:d=>n0(d.ev.filter(e=>classe(e)==='quebra').length)},{h:'Pendências técnicas',n:1,f:d=>n0(filaTecnica(d.ev).length)},
+  {h:'Temporários',n:1,f:d=>n0(d.ev.filter(e=>/^(OUT|NDI)$/.test(codigoEf(e))).length)},{h:'Validação',f:d=>d.estado==='validado'?`<span class="pill ok">${esc(Store.data.validacao[d.k].por)}</span>`:`<span class="pill warn">${d.estado==='revisao'?'revisão necessária':'aberto'}</span>`}],dias,{id:'vaTab',clk:1,max:200,cls:d=>d.estado==='validado'?'':'pux-laberto'})}</div>`},
+ wire(){wireAtivos();bindRows('#vaTab',this.dias,d=>{
+  const v=Store.data.validacao[d.k],atual=()=>eventosTodos().filter(e=>e.dia===d.k),ev=atual(),assinatura=assinaturaDia(ev),fl=filaTecnica(ev);
+  modal({title:'Validação · '+br(d.k),wide:true,body:`<p class="small muted">Dia inteiro · todos os turnos e equipamentos.</p>${fl.length?`<p class="small">${fl.length} parada(s) seguem com pendência na Fila técnica.</p>`:''}${tabela(colsEv(),ev,{id:'vdTab',clk:1,max:ev.length})}<label class="mt" style="display:block">Observação da liderança<textarea id="vObs">${esc(v?.obs||'')}&lt;/textarea></label>`,
+   onOpen:()=>bindRows('#vdTab',ev,e=>abrirEvento(e.id)),buttons:[...(v?[{t:'Reabrir',fn:()=>{if(!vacPodeAqui('fechar')){toast('Seu perfil não permite reabrir o dia.',1);return false}Store.commit({k:'mapdel',c:'validacao',ids:[d.k],aud:'reabriu dia '+d.k})}}]:[]),{t:'Fechar',fn:()=>{}},{t:d.estado==='validado'?'Atualizar':'Validar dia',pri:1,fn:()=>{
+    if(!vacPodeAqui('fechar')){toast('Seu perfil não permite validar o dia.',1);return false}
+    if(!user()){setUser();return false}
+    if(assinaturaDia(atual())!==assinatura){toast('As paradas mudaram durante a revisão. Abra o dia novamente.',1);return false}
+    Store.commit({k:'mapf',c:'validacao',id:d.k,f:{por:user(),em:new Date().toISOString(),obs:$('#vObs').value.trim(),n:ev.length,min:ev.reduce((s,e)=>s+e.minutos,0),assinatura},aud:'validou '+d.k});toast('Dia validado');
+   }}]});
+ })}};
 
 VIEWS.pareto={dim:'codigo',med:'min',html(){const all=F.apply(eventosTodos()).filter(e=>!NAO_PERDA.has(classe(e)));const D=Store.data;
  const K={codigo:['Código',e=>codigoEf(e),k=>codLabel(k)+' '+(Cad.code(k)?.nome||''),k=>GRUPO_COR(Cad.code(k)?.grupo)],grupo:['Grupo',e=>String(Cad.code(codigoEf(e))?.grupo??'?'),k=>k+'xx '+(GRUPOS[k]||'?'),k=>GRUPO_COR(k)],
@@ -31441,7 +31684,7 @@ VIEWS.pareto={dim:'codigo',med:'min',html(){const all=F.apply(eventosTodos()).fi
  <div class="pux-pg"><span class="pux-pl">Medida</span><div class="seg" id="pMed" role="group" aria-label="Medida"><button data-m="min" class="${this.med==='min'?'on':''}" aria-pressed="${this.med==='min'}">Minutos</button><button data-m="n" class="${this.med==='n'?'on':''}" aria-pressed="${this.med==='n'}">Ocorrências</button></div></div>
  <div class="pux-pg"><span class="pux-pl">Referência</span><button type="button" class="b sm${r80?' on':''}" id="pRef80" aria-pressed="${r80}" title="Marca onde o % acumulado passa de 80 % (regra de Pareto). É só referência, não é meta.">${r80?'✓ ':''}Linha de 80 %</button></div></div>
  <div class="card" id="pCh"><div class="pux-leg"><span><i class="pux-lb"></i>${esc(nm)} · ${med} (${this.med==='min'?'h ou min':'ocorrências'})</span><span><i class="pux-la"></i>% acumulado</span>${r80?'<span><i class="pux-l8"></i>referência de 80 %</span>':''}<span class="muted">${n0(G.length)} ${G.length===1?'item':'itens'}${G.length>25?' · os 25 maiores':''}</span></div>
- ${hbars(G.slice(0,25).map(g=>({k:g.k,label:lf(g.k),v:this.med==='min'?g.min:g.n,n:g.n,color:cf?cf(g.k):undefined})),{pareto:1,onClick:1,sel,w:900,lw:330,fmt:this.med==='min'?fmtMin:n0,unit:this.med==='min'?null:'ocorrências',ref80:r80})}</div>
+ ${hbars(G.slice(0,25).map(g=>({k:g.k,label:lf(g.k),v:this.med==='min'?g.min:g.n,n:g.n,color:cf?cf(g.k):undefined})),{pareto:1,onClick:1,sel,w:900,lw:330,fmt:this.med==='min'?fmtMin:n0,unit:this.med==='min'?null:'ocorrências',ref80:r80,total:G.reduce((s,g)=>s+g[this.med],0)})}</div>
  ${sel?`<div class="pux-selbar"><span class="pux-sl">Seleção</span><b>${esc(lf(sel))}</b><span class="muted">${n0(L.length)} paradas · ${fmtMin(L.reduce((s,e)=>s+e.minutos,0))}</span><span class="sp"></span><button class="b sm pri" id="pAcao">+ Ação</button>${typeof vacNovaAcaoBotao==='function'?vacNovaAcaoBotao(acaoPlanner('pareto',this.dim,sel,lf(sel),L)):''}<button class="b sm" id="pClr">Limpar seleção</button></div><div class="mt">${tabela(colsEv(),L,{id:'pTab',clk:1,max:300})}</div>`:`<p class="pux-dica muted small">Clique numa barra para ver as paradas daquele item e abrir uma ação.</p>`}`},
  wire(){$$('#pDim button').forEach(b=>b.onclick=()=>{this.dim=b.dataset.d;App.sel.par=null;App.render()});$$('#pMed button').forEach(b=>b.onclick=()=>{this.med=b.dataset.m;App.render()});
   const r=$('#pRef80');if(r)r.onclick=()=>{try{localStorage.setItem('vac.paradas.p80',p80()?'0':'1')}catch(e){}App.render()};wireAtivos();
@@ -31453,27 +31696,38 @@ const STOP=new Set(['tullip','parada','linha','maquina','troca','falha','sendo',
 
 /* 1.1.1 · refatoração UX/UI etapa 2 (só apresentação). Equipamentos: ranking gráfico com os resultados de statsEquip (sem conta nova)
    e a tabela técnica completa com cabeçalho e 1ª coluna fixos; o clique continua abrindo o detalhe (abrirEquip). */
-VIEWS.equip={html(){const L=F.apply(eventosTodos(),{eq:1});const S=statsEquip(L,F.de,F.ate);this.S=S;const P=programado(L,F.de,F.ate);
+VIEWS.equip={html(){const all=eventosTodos(),L=F.apply(all,{eq:1}),exp=perdasNoRecorte(all);
+ const S=statsEquip(L,F.de,F.ate,F.turno,exp);this.S=S;const P=programado(exp,F.de,F.ate,F.turno);
  const R=S.slice().sort((a,b)=>b.min-a.min).slice(0,14),Q=S.filter(s=>s.nQ>0).sort((a,b)=>b.nQ-a.nQ||b.mQ-a.mQ).slice(0,14);
- return`${secH('machine','Equipamentos','MTBF, MTTR, MTBS e disponibilidade por equipamento · base para Máquinas e Manutenção (TPM)')}${filtrosHTML({info:`tempo de operação ${P.fonte==='OEE'?'do OEE':'estimado'} ${help('MTBF = tempo de operação ÷ nº de quebras. Tempo de operação = tempo programado − paradas da linha − paradas do equipamento. Sem o OEE, o programado é estimado: dias com apontamento × horas por dia (Configuração).\nMTTR = minutos de quebra ÷ nº de quebras. MTBS = tempo de operação ÷ nº de paradas (todas).\nQuebra = grupo 8 (peça trocada ou consertada).')}`})}${ativosHTML()}
+ return`${secH('machine','Equipamentos','MTBF, MTTR, MTBS e disponibilidade por equipamento · base para Máquinas e Manutenção (TPM)')}${filtrosHTML({info:`tempo programado ${coberturaTempo(P)} ${help('MTBF = tempo de operação ÷ nº de quebras. Tempo de operação = tempo programado − paradas da linha − paradas do equipamento. Turnos sem dados da Produção usam a vigência da data quando disponível.\nMTTR histórico = tempo parado por quebra. As médias de espera e reparo usam os registros preenchidos (preenchidos/total). MTBS = tempo de operação ÷ nº de paradas (todas).\nQuebra = grupo 8 (peça trocada ou consertada).')}`})}${ativosHTML()}
  ${S.length?`<div class="pux-visual pux-eqg"><div class="card">${secH('bar','Ranking por tempo parado','tempo de parada (h ou min) · clique para abrir o equipamento')}<div id="eqRk">${hbars(R.map(s=>({k:s.eq,label:s.nome,v:s.min,n:s.n})),{onClick:1,w:620,lw:200})}</div></div>
  <div class="card">${secH('wrench','Quebras por equipamento','quantidade de quebras (grupo 8) · clique para abrir o equipamento')}<div id="eqQb">${Q.length?hbars(Q.map(s=>({k:s.eq,label:s.nome,v:s.nQ,n:s.nQ,color:'var(--g8)'})),{onClick:1,w:620,lw:200,fmt:n0,unit:'quebras'}):'<div class="empty">Nenhuma quebra no período.</div>'}</div></div></div>`:''}
  <div class="pux-tbar"><b>Tabela técnica</b><span class="muted small">${n0(S.length)} equipamento(s) · clique numa linha para o detalhe (meses, códigos, componentes e paradas)</span></div>
  <div class="pux-tfix">${tabela([{h:'Equipamento',f:s=>`<b>${esc(s.nome)}</b> <span class="code muted">${esc(s.eq)}</span>${Cad.eq(s.eq)?.prov?' <span class="pill warn">provisório</span>':''}`},{h:'Parada',n:1,f:s=>fmtMin(s.min)},{h:'Ocorr.',n:1,f:s=>n0(s.n)},{h:'Quebras',n:1,f:s=>n0(s.nQ)},{h:'Min quebra',n:1,f:s=>n0(s.mQ)},
-  {h:'Operacional',n:1,f:s=>n0(s.mOp)},{h:'Micro',n:1,f:s=>n0(s.nMicro)},{h:'MTBF h',n:1,f:s=>n1(s.mtbf)},{h:'MTTR min',n:1,f:s=>n0(s.mttr)},{h:'MTBS h',n:1,f:s=>n1(s.mtbs)},{h:'Disp.',n:1,f:s=>pct(s.disp)},{h:'Principal código',f:s=>s.top?`${grpChip(s.top)} ${esc(Cad.code(s.top)?.nome||s.top)}`:''}],S,{id:'eqT',clk:1})}</div>`},
+  {h:'Operacional',n:1,f:s=>n0(s.mOp)},{h:'Micro',n:1,f:s=>n0(s.nMicro)},{h:'MTBF h',n:1,f:s=>n1(s.mtbf)},{h:'MTTR min',n:1,f:s=>n0(s.mttr)},{h:'Espera média (min)',n:1,f:s=>fmtTempoTecnico(s.espera,s.nQ)},{h:'Reparo médio (min)',n:1,f:s=>fmtTempoTecnico(s.reparo,s.nQ)},{h:'MTBS h',n:1,f:s=>n1(s.mtbs)},{h:'Disp.',n:1,f:s=>pct(s.disp)},{h:'Principal código',f:s=>s.top?`${grpChip(s.top)} ${esc(Cad.code(s.top)?.nome||s.top)}`:''}],S,{id:'eqT',clk:1})}</div>`},
  wire(){bindRows('#eqT',this.S,s=>abrirEquip(s.eq));bindChart($('#eqRk'),k=>abrirEquip(k));bindChart($('#eqQb'),k=>abrirEquip(k));wireAtivos()}};
 
-/* Recorrência: mesmos critérios de recorrencias() (3+ em 30 dias ou 3 meses seguidos); a tela destaca equipamento, código, componente,
-   quantidade, tempo, última ocorrência e ação, com um resumo dos números que já estão na lista. */
-VIEWS.recor={html(){const all=eventosTodos();const ate=F.ate||all.reduce((m,e)=>e.dia>m?e.dia:m,'');const R=recorrencias(F.eq?all.filter(e=>e.equipamento===F.eq):all,ate);this.R=R;
- const cr=R.filter(r=>r.meses>=3).length,al=R.filter(r=>r.n30>=6).length,sa=R.filter(r=>!r.acao).length;
- return`${secH('repeat','Recorrência','mesma falha no mesmo equipamento: 3 ou mais vezes em 30 dias, ou presente em 3 meses seguidos (crônica) · candidatas a causa raiz e ao plano de manutenção')}${filtrosHTML({info:'janela de 30 dias até '+br(ate)})}${ativosHTML()}
- <div class="pux-rres" role="status"><div><span>Falhas recorrentes</span><b>${n0(R.length)}</b></div><div><span>Crônicas (3+ meses seguidos)</span><b>${n0(cr)}</b></div><div class="${al?'pux-alto':''}"><span>6 ou mais em 30 dias</span><b>${n0(al)}</b></div><div class="${sa?'pux-sem':''}"><span>Sem ação vinculada</span><b>${n0(sa)}</b></div></div>
- ${R.length?'':'<div class="card empty">Nenhuma falha recorrente na janela de 30 dias nem crônica. Com o filtro de equipamento, a lista considera só ele.</div>'}
- <div class="pux-tfix pux-rec">${tabela([{h:'Equipamento',f:r=>`<b class="pux-req">${esc(Cad.eqNome(r.eq))}</b>`},{h:'Código',f:r=>`${grpChip(r.cod)} <span class="code">${esc(r.cod)}</span> <span class="pux-rcn">${esc(Cad.code(r.cod)?.nome||'')}</span>`},{h:'Componente',f:r=>`<span class="pux-rcomp">${esc(r.comp||'—')}</span>`},{h:'30 dias',n:1,f:r=>`<span class="pux-rq">${n0(r.n30)}</span> · ${n0(r.min30)} min`},{h:'Total',n:1,f:r=>`<b>${n0(r.n)}</b> · ${fmtMin(r.min)}`},
-  {h:'Meses seguidos',n:1,f:r=>r.meses>=3?`<span class="hl2">${r.meses}</span>`:r.meses},{h:'Última',f:r=>`<span class="pux-rult">${br(r.ult)}</span>`},{h:'Ação',f:r=>(r.acao?`<span class="pill info">${esc(r.acao.status)}</span>`:`<button class="b sm" data-ac="${esc(r.k)}">+ Ação</button>`)+(typeof vacNovaAcaoBotao==='function'?' '+vacNovaAcaoBotao(acaoPlanner('recor',null,r.k,`${Cad.eqNome(r.eq)} · ${Cad.code(r.cod)?.nome||r.cod}${r.comp?' · '+r.comp:''}`,r.ev,{eq:r.eq,cod:r.cod}),'Planner'):'')}],R,{id:'rcT',clk:1,max:200,cls:r=>r.n30>=6?'hl3':''})}</div>`},
- wire(){$$('#rcT a[target]').forEach(a=>a.addEventListener('click',ev=>ev.stopPropagation()));$$('[data-ac]').forEach(b=>b.onclick=ev=>{ev.stopPropagation();const r=this.R.find(x=>x.k===b.dataset.ac);abrirAcao(null,{titulo:`Recorrência: ${Cad.eqNome(r.eq)} · ${Cad.code(r.cod)?.nome||r.cod}${r.comp?' · '+r.comp:''}`,equipamento:r.eq,codigo:r.cod,componente:r.comp,chave:r.k,tipo:'Causa raiz (5 porquês)'})});
-  bindRows('#rcT',this.R,r=>{const L=r.ev.slice().sort((a,b)=>b.dia.localeCompare(a.dia));modal({title:'Recorrência',wide:true,body:tabela(colsEv(),L,{id:'rcE',clk:1}),onOpen:()=>bindRows('#rcE',L,e=>abrirEvento(e.id))})});wireAtivos()}};
+function linhaAcaoPlanner(a){
+ const pagina=systems().find(s=>s.id==='inic'),hash='acao='+encodeURIComponent(a.id);
+ const href=window.__vacEmbedded?parent.vacAppHost.link('inic','#'+hash):pagina&amp;&amp;sysHref(pagina,hash);
+ const titulo=href?`<a href="${esc(href)}" target="_blank" rel="noopener">${esc(a.titulo||a.id)}</a>`:esc(a.titulo||a.id);
+ return `<div>${titulo}<div class="small muted">${esc([a.status,a.responsavel,a.prazo&amp;&amp;'prazo '+br(a.prazo),EFICACIA_PLANNER[a.eficacia]||(a.status==='concluída'?'Eficácia não avaliada':'')].filter(Boolean).join(' · '))}</div></div>`;
+}
+VIEWS.recor={html(){const all=eventosTodos(),{de,ate,R,acoes}=recorrenciasNoRecorte(all);this.R=R;
+ const sem=R.filter(r=>!r.acao&amp;&amp;!acoes.has(r.k)).length;
+ const cr=R.filter(r=>r.meses>=3).length,al=R.filter(r=>r.n30>=6).length;
+ const A=R.slice(0,200).map(r=>({...r,planner:acoes.get(r.k)||[],comparacao:comparacaoEficacia(r,acoes.get(r.k)||[],all,ate)}));this.A=A;
+ return`${secH('repeat','Recorrência','3 ou mais ocorrências em 30 dias ou falhas em 3 meses seguidos')}${filtrosHTML({info:`Janela de ${br(de)} a ${br(ate)}`})}${ativosHTML()}
+ <div class="pux-rres" role="status"><div><span>Falhas recorrentes</span><b>${n0(R.filter(r=>r.recorrente).length)}</b></div><div><span>Crônicas (3+ meses seguidos)</span><b>${n0(cr)}</b></div><div class="${al?'pux-alto':''}"><span>6 ou mais na janela</span><b>${n0(al)}</b></div><div class="${sem?'pux-sem':''}"><span>Sem ação vinculada</span><b>${n0(sem)}</b></div></div>
+ ${R.length?'':'<div class="card empty">Nenhuma falha recorrente no recorte selecionado.</div>'}
+ <div class="pux-tfix pux-rec">${tabela([{h:'Equipamento',f:r=>`<b class="pux-req">${esc(Cad.eqNome(r.eq))}</b>`},{h:'Código',f:r=>`${grpChip(r.cod)} <span class="code pux-rcn">${esc(r.cod)}</span> ${esc(Cad.code(r.cod)?.nome||'')}${r.recorrente?'':' <span class="pill info">Ação vinculada</span>'}`},{h:'Componente',f:r=>esc(r.comp||'—')},{h:'Na janela',n:1,f:r=>`<span class="pux-rq">${n0(r.n30)}</span> · ${n0(r.min30)} min`},{h:'Total',n:1,f:r=>`<b>${n0(r.n)}</b> · ${fmtMin(r.min)}`},
+  {h:'Meses seguidos',n:1,f:r=>r.meses>=3?`<span class="hl2">${r.meses}</span>`:r.meses},{h:'Última',f:r=>`<span class="pux-rult">${br(r.ult)}</span>`},
+  {h:'Ação',f:r=>r.planner.length?r.planner.map(linhaAcaoPlanner).join(''):((r.acao?`<span class="pill info">${esc(r.acao.status)}</span>`:`<button class="b sm" data-ac="${esc(r.k)}">+ Ação</button>`)+(typeof vacNovaAcaoBotao==='function'&amp;&amp;vacPode('inic','lancar')?' '+vacNovaAcaoBotao(acaoPlanner('recor',null,r.k,`${Cad.eqNome(r.eq)} · ${Cad.code(r.cod)?.nome||r.cod}${r.comp?' · '+r.comp:''}`,r.ev,{eq:r.eq,cod:r.cod}),'Planner'):''))},
+  {h:'Antes → depois',f:r=>celulaEficacia(r.comparacao)}],A,{id:'rcT',clk:1,max:200,cls:r=>r.n30>=6?'hl3':''})}</div>
+ ${R.length>200?`<p class="small muted">Mostrando 200 de ${n0(R.length)} resultados. Ajuste os filtros.</p>`:''}`},
+ wire(){$$('#rcT a, #rcT details').forEach(el=>el.addEventListener('click',e=>e.stopPropagation()));
+  $$('[data-ac]').forEach(b=>b.onclick=ev=>{ev.stopPropagation();const r=this.R.find(x=>x.k===b.dataset.ac);abrirAcao(null,{titulo:`Recorrência: ${Cad.eqNome(r.eq)} · ${Cad.code(r.cod)?.nome||r.cod}${r.comp?' · '+r.comp:''}`,equipamento:r.eq,codigo:r.cod,componente:r.comp,chave:r.k,tipo:'Causa raiz (5 porquês)'})});
+  bindRows('#rcT',this.A,r=>{const L=r.ev.slice().sort((a,b)=>b.dia.localeCompare(a.dia));modal({title:'Recorrência',wide:true,body:tabela(colsEv(),L,{id:'rcE',clk:1}),onOpen:()=>bindRows('#rcE',L,e=>abrirEvento(e.id))})});wireAtivos()}};
 
 VIEWS.acoes={html(){const A=Store.data.acoes.slice().sort((a,b)=>(a.status==='concluída')-(b.status==='concluída')||String(a.prazo||'9').localeCompare(String(b.prazo||'9')));this.A=A;
  const hoje=todayISO(),ab=A.filter(a=>a.status!=='concluída'&amp;&amp;a.status!=='cancelada'),venc=ab.filter(a=>a.prazo&amp;&amp;a.prazo<hoje);
@@ -31603,14 +31857,19 @@ VIEWS.importar={html(){const I=Store.data.importacoes.slice().reverse();this.I=I
  return`${secH('up','Importar','Excel de respostas do Microsoft Forms (novo ou antigo), CSV ou o HTML de análise antigo · sempre com prévia antes de gravar')}<p class="small muted">Ordem recomendada e status de cada dia de todas as importações: <a href="#" onclick="if(typeof vacIrImportacao==='function'){vacIrImportacao('paradas')};return false">Importações › Importação por página ↗</a>. O Forms continua sendo gravado aqui, na base do Paradas.</p>
  <div class="card" id="drop" style="border:2px dashed var(--line);text-align:center;padding:28px"><p style="margin:0 0 10px"><b>Arraste o arquivo aqui</b> ou</p><label class="b pri">Escolher arquivo<input type="file" id="impF" accept=".xlsx,.xls,.csv,.txt,.html,.htm" hidden></label>
  <p class="muted small" style="margin-top:12px">Forms novo: colunas "Máquina" + "Código – …" (ver Formulários). Forms antigo: "Máquina", "Tipo de parada", "Tempo de parada (min)". HTML antigo: o "Dashboard de Paradas" com os dados embutidos.<br>Reimportar o mesmo arquivo atualiza as respostas pelo ID, sem duplicar. A parte técnica já preenchida é mantida.</p></div>
- <div class="card mt">${secH('list','Importações','desfazer tira da base as paradas daquela importação (a parte técnica fica guardada se a parada voltar)')}
- ${tabela([{h:'Quando',f:i=>esc((i.em||'').slice(0,16).replace('T',' '))},{h:'Por',f:i=>esc(i.por||'')},{h:'Arquivo',f:i=>esc(i.arquivo)},{h:'Formato',f:i=>esc(i.layout)},{h:'Novas',n:1,f:i=>n0(i.novas)},{h:'Atualizadas',n:1,f:i=>n0(i.atualizadas)},{h:'Período',f:i=>`${br(i.de)} a ${br(i.ate)}`},{h:'',f:i=>`<button class="b sm crit" data-undo="${esc(i.id)}">Desfazer</button>`}],I)}</div>
+ <div class="card mt">${secH('list','Importações','desfazer restaura as versões anteriores e preserva edições posteriores')}
+ ${tabela([{h:'Quando',f:i=>esc((i.em||'').slice(0,16).replace('T',' '))},{h:'Por',f:i=>esc(i.por||'')},{h:'Arquivo',f:i=>esc(i.arquivo)},{h:'Formato',f:i=>esc(i.layout)},{h:'Novas',n:1,f:i=>n0(i.novas)},{h:'Atualizadas',n:1,f:i=>n0(i.atualizadas)},{h:'Período',f:i=>`${br(i.de)} a ${br(i.ate)}`},{h:'',f:i=>podeDesfazerImportacao(i)?`<button class="b sm crit" data-undo="${esc(i.id)}">Desfazer</button>`:'<span class="muted" title="Este lote foi gravado sem as versões anteriores. Consulte o backup para recuperar correções.">Sem histórico para desfazer</span>'}],I)}</div>
  <div class="card mt"><b>Começar sem o histórico?</b> <span class="muted small">Não importe o arquivo antigo, ou use Configuração › Limpar base (com backup), ou Configuração › "Ignorar nas análises antes de" para manter os dados mas não contar.</span></div>`},
  wire(){const f=$('#impF');f.onchange=()=>{if(f.files[0])prevImport(f.files[0]);f.value=''};const d=$('#drop');d.ondragover=e=>{e.preventDefault();d.style.borderColor='var(--accent)'};d.ondragleave=()=>d.style.borderColor='';d.ondrop=e=>{e.preventDefault();d.style.borderColor='';const x=e.dataTransfer.files[0];if(x)prevImport(x)};
-  $$('[data-undo]').forEach(b=>b.onclick=()=>{const i=Store.data.importacoes.find(x=>x.id===b.dataset.undo);const ids=Store.data.eventos.filter(e=>e.importId===i.id).map(e=>e.id);
-   if(!confirm(`Tirar da base as ${ids.length} paradas que ainda são desta importação (${i.arquivo})?`))return;Store.commit({k:'del',c:'eventos',ids,aud:'desfez importação '+i.arquivo});Store.commit({k:'del',c:'importacoes',ids:[i.id],aud:''});toast(ids.length+' paradas retiradas')})}};
-async function prevImport(file){let r;try{r=await lerArquivo(file)}catch(e){return toast(e.message,1)}const M=montarImport(r.rows,r.fonte);if(!M.layout)return modal({title:'Arquivo não reconhecido',body:`<p>${esc(M.erros[0].t)}</p>`});
- const cur=new Map(Store.data.eventos.map(e=>[e.id,e]));const novas=M.ev.filter(e=>!cur.has(e.id)),atual=M.ev.filter(e=>cur.has(e.id)&amp;&amp;JSON.stringify({...cur.get(e.id),importId:0})!==JSON.stringify({...e,importId:0})),iguais=M.ev.length-novas.length-atual.length;
+  $$('[data-undo]').forEach(b=>b.onclick=()=>{
+   const i=Store.data.importacoes.find(x=>x.id===b.dataset.undo);
+   if(!i||!podeDesfazerImportacao(i)||!vacPodeAqui('importar'))return;
+   if(!confirm(`Desfazer a importação ${i.arquivo}? Correções com versão anterior serão restauradas. Alterações posteriores serão preservadas.`))return;
+   Store.commit({k:'desfazerImportacao',id:i.id,aud:'desfez importação '+i.arquivo});
+   Cad.build();App.render();toast('Importação desfeita');
+  })}};
+async function prevImport(file){if(!vacPodeAqui('importar'))return;let r;try{r=await lerArquivo(file)}catch(e){return toast(e.message,1)}const M=montarImport(r.rows,r.fonte);if(!M.layout)return modal({title:'Arquivo não reconhecido',body:`<p>${esc(M.erros[0].t)}</p>`});
+ const cur=new Map(Store.data.eventos.map(e=>[e.id,e]));const novas=M.ev.filter(e=>!cur.has(e.id)),atual=M.ev.filter(e=>cur.has(e.id)&amp;&amp;versaoEvento({...cur.get(e.id),importId:0})!==versaoEvento({...e,importId:0})),iguais=M.ev.length-novas.length-atual.length;
  const st={map:{},dep:{}};const grupos=M.layout==='antigo'?agg(M.ev,e=>e.grupoImport).sort((a,b)=>b.n-a.n):[];const maqs=agg(M.ev,e=>e.maquinaOrig).sort((a,b)=>b.n-a.n);
  const eqOpts=sel=>`<option value="">(provisório: manter o nome)</option>${Cad.eqs.filter(e=>!e.prov).map(e=>`<option value="${esc(e.codigo)}"${sel===e.codigo?' selected':''}>${esc(e.codigo)} · ${esc(e.nome)}</option>`).join('')}`;
  const codOpts=sel=>Cad.codes.filter(c=>c.ativo&amp;&amp;/^\d{3}$/.test(c.numero)).map(c=>`<option value="${c.codigo}"${c.codigo===sel?' selected':''}>${c.numero} ${c.codigo} · ${esc(c.nome)}</option>`).join('');
@@ -31624,10 +31883,14 @@ async function prevImport(file){let r;try{r=await lerArquivo(file)}catch(e){retu
  ${tabela([{h:'Tipo no Forms',f:g=>esc(g.k.split('→')[0])},{h:'Regra',f:g=>esc(g.ev[0].regra||'')},{h:'Paradas',n:1,f:g=>n0(g.n)},{h:'Minutos',n:1,f:g=>n0(g.min)},{h:'Código',f:g=>`<select data-grp="${esc(g.k)}">${codOpts(g.ev[0].codigo)}</select>`}],grupos,{max:200})}`:''}
  <label class="mt" style="display:block"><input type="checkbox" id="impSalva" checked> guardar estas ligações para as próximas importações</label>`;
  modal({title:'Prévia da importação',body,wide:true,onOpen:bg=>{bg.querySelectorAll('[data-dep]').forEach(s=>s.onchange=()=>st.dep[s.dataset.dep]=s.value);bg.querySelectorAll('[data-grp]').forEach(s=>s.onchange=()=>st.map[s.dataset.grp]=s.value)},
-  buttons:[{t:'Cancelar',fn:()=>{}},{t:`Importar ${n0(novas.length+atual.length)} parada(s)`,pri:1,fn:()=>{const imp={id:uid('I-'),em:new Date().toISOString(),por:user(),arquivo:file.name,layout:M.layout,fonte:r.fonte,novas:novas.length,atualizadas:atual.length,erros:M.erros.length,de:dias[0],ate:dias[dias.length-1]};
+  buttons:[{t:'Cancelar',fn:()=>{}},{t:`Importar ${n0(novas.length+atual.length)} parada(s)`,pri:1,fn:()=>{if(!vacPodeAqui('importar'))return false;const imp={id:uid('I-'),em:new Date().toISOString(),por:user(),arquivo:file.name,layout:M.layout,fonte:r.fonte,novas:novas.length,atualizadas:atual.length,erros:M.erros.length,de:dias[0],ate:dias[dias.length-1]};
    const items=novas.concat(atual).map(e=>{const x={...e,importId:imp.id};const d=st.dep[e.maquinaOrig];if(d!=null)x.equipamento=d||'X:'+e.maquinaOrig;if(x.grupoImport&amp;&amp;st.map[x.grupoImport])x.codigo=st.map[x.grupoImport];return x});
    if(!items.length){toast('Nada novo para importar');return}
-   Store.commit({k:'list',c:'eventos',items,aud:`importou ${file.name}: ${novas.length} novas, ${atual.length} atualizadas`});Store.commit({k:'list',c:'importacoes',items:[imp]});
+   const atuais=new Map(Store.data.eventos.map(e=>[e.id,e]));
+   if(items.some(e=>versaoEvento(atuais.get(e.id))!==versaoEvento(cur.get(e.id)))){
+    toast('A base mudou desde a prévia. Abra o arquivo novamente para conferir.',1);return false;
+   }
+   Store.commit({k:'importar',lote:imp,itens:items.map(evento=>({evento,esperada:versaoEvento(cur.get(evento.id))})),aud:'importou '+file.name});
    if($('#impSalva').checked){const dm={...Store.data.config.deparaMaquina};for(const[k,v]of Object.entries(st.dep))if(v)dm[k]=v;else delete dm[k];const dt={...Store.data.config.deparaTipo,...st.map};
     Store.commit({k:'cfg',key:'deparaMaquina',v:dm,aud:'de-para de máquinas'});if(Object.keys(st.map).length)Store.commit({k:'cfg',key:'deparaTipo',v:dt,aud:'de-para de tipos'})}
    Cad.build();F.init();toast(`${n0(items.length)} paradas importadas`);App.go('geral')}}]})}
@@ -31671,8 +31934,8 @@ VIEWS.config={html(){const D=Store.data,c=D.config;const prov=Cad.eqs.filter(e=>
 const TV={el:null,i:0,t:null,
  slides(){const all=eventosTodos();const ate=all.reduce((m,e)=>e.dia>m?e.dia:m,'')||todayISO();const de=addDays(ate,-30);const L=all.filter(e=>e.dia>=de&amp;&amp;!NAO_PERDA.has(classe(e)));const SE=statsEquip(L,de,ate);const nQ=SE.reduce((s,x)=>s+x.nQ,0),mQ=SE.reduce((s,x)=>s+x.mQ,0);
   return[{t:'Paradas · últimos 30 dias',h:`<div class="kpis">${kpi('Tempo de parada',fmtMin(L.reduce((s,e)=>s+e.minutos,0)),n0(L.length)+' paradas','','clock')}${kpi('Quebras',n0(nQ),fmtMin(mQ),nQ?'bad':'good','wrench')}${kpi('MTTR',nQ?n0(mQ/nQ)+' min':'—','','','clock')}${kpi('Máquina crítica',SE[0]?.nome||'—',SE[0]?fmtMin(SE[0].min):'','','machine')}</div>
-   <div class="card">${hbars(SE.slice(0,10).map(s=>({k:s.eq,label:s.nome,v:s.min,n:s.n})),{pareto:1,w:1100,lw:260})}</div>`},
-   {t:'Principais códigos · 30 dias',h:`<div class="card">${hbars(agg(L,e=>codigoEf(e)).sort((a,b)=>b.min-a.min).slice(0,14).map(o=>({k:o.k,label:codLabel(o.k)+' '+(Cad.code(o.k)?.nome||''),v:o.min,n:o.n,color:GRUPO_COR(Cad.code(o.k)?.grupo)})),{pareto:1,w:1100,lw:380})}</div>`},
+   <div class="card">${hbars(SE.slice(0,10).map(s=>({k:s.eq,label:s.nome,v:s.min,n:s.n})),{pareto:1,w:1100,lw:260,total:SE.reduce((s,o)=>s+o.min,0)})}</div>`},
+   {t:'Principais códigos · 30 dias',h:`<div class="card">${hbars(agg(L,e=>codigoEf(e)).sort((a,b)=>b.min-a.min).slice(0,14).map(o=>({k:o.k,label:codLabel(o.k)+' '+(Cad.code(o.k)?.nome||''),v:o.min,n:o.n,color:GRUPO_COR(Cad.code(o.k)?.grupo)})),{pareto:1,w:1100,lw:380,total:L.reduce((s,e)=>s+e.minutos,0)})}</div>`},
    {t:'Recorrências',h:tabela([{h:'Equipamento',f:r=>esc(Cad.eqNome(r.eq))},{h:'Falha',f:r=>esc(codLabel(r.cod)+' '+(Cad.code(r.cod)?.nome||''))},{h:'Componente',f:r=>esc(r.comp||'—')},{h:'30 dias',n:1,f:r=>n0(r.n30)+' × · '+n0(r.min30)+' min'}],recorrencias(all,ate).slice(0,12))},
    {t:'Fila técnica',h:tabela([{h:'Data',f:r=>br(r.e.dia)},{h:'Equipamento',f:r=>esc(Cad.eqNome(r.e.equipamento))},{h:'Código',f:r=>esc(codLabel(codigoEf(r.e)))},{h:'Min',n:1,f:r=>n0(r.e.minutos)},{h:'Falta',f:r=>esc(r.falta.join(', ')||'reclassificar')}],filaTecnica(all.filter(e=>e.dia>=de)).sort((a,b)=>b.e.minutos-a.e.minutos).slice(0,14))}]},
  abrir(){if(this.el)return;const d=document.createElement('div');d.className='tv';document.body.appendChild(d);this.el=d;this.i=0;this.show();this.t=setInterval(()=>{this.i++;this.show()},20000);
@@ -31691,7 +31954,7 @@ function modoTeste(){Store.test=true;$('#testBar').hidden=false;const nomes=['Tu
    const h=(tu==='T1'?6:15)+Math.floor(rnd()*8);ev.push({id:'T-'+dia+tu+k,origem:'forms',dia,turno:tu,inicio:`${String(h).padStart(2,'0')}:${String(Math.floor(rnd()*60)).padStart(2,'0')}`,minutos:min,ocorrencias:vz,equipamento:linha?'LINHA':eq,codigo:cod,
     descricao:pick(desc[cod]||['—']),trocouPeca:cod[0]==='F'&amp;&amp;cod!=='FMA'?(rnd()<.8?true:null):false,por:'Operador '+(1+Math.floor(rnd()*4))})}}}
  D.eventos=ev;for(const e of ev.filter(e=>e.codigo.startsWith('F')&amp;&amp;e.codigo!=='FMA'&amp;&amp;rnd()<.5))D.tecnico[e.id]={componente:pick(['Rolamento','Correia','Sensor de entrada','Bobina blade stop','Cilindro do alimentador']),modo:pick(['Desgaste','Ruptura / quebra','Queima']),acao:'Trocou peça',tecnico:pick(['Willian','Leonardo'])};
- for(let d=5;d<60;d++)D.validacao[addDays(base,d)]={por:'Líder',em:addDays(base,d)+'T18:00'};D.acoes=[{id:'A-1',titulo:'Enrosco de etiqueta recorrente na Tullip B',equipamento:'EQ02',codigo:'ENR',resp:'Engenharia',prazo:addDays(todayISO(),-3),status:'em andamento',tipo:'Causa raiz (5 porquês)'}];
+ for(let d=5;d<60;d++){const dia=addDays(base,d);D.validacao[dia]={por:'Líder',em:dia+'T18:00',assinatura:assinaturaDia(ev.filter(e=>e.dia===dia))}}D.acoes=[{id:'A-1',titulo:'Enrosco de etiqueta recorrente na Tullip B',equipamento:'EQ02',codigo:'ENR',resp:'Engenharia',prazo:addDays(todayISO(),-3),status:'em andamento',tipo:'Causa raiz (5 porquês)'}];
  Cad.build();F.init();App.render();toast('Modo de teste: dados fictícios, nada é gravado')}
 
 /* ---------- início ---------- */
@@ -31771,16 +32034,22 @@ function svgToPng(svg,width=1400){return new Promise((ok,ko)=>{const el=document
  const vb=(s.getAttribute('viewBox')||'0 0 800 300').split(/\s+/).map(Number);const h=Math.round(width*vb[3]/vb[2]);const im=new Image();im.onload=()=>{const c=document.createElement('canvas');c.width=width;c.height=h;const g=c.getContext('2d');g.fillStyle='#fff';g.fillRect(0,0,width,h);g.drawImage(im,0,0,width,h);ok(c.toDataURL('image/png'))};im.onerror=ko;im.src='data:image/svg+xml;charset=utf-8,'+encodeURIComponent(txt)})}
 
 /* conteúdo do relatório: mesmos filtros (período, equipamento, turno, classe) da tela */
-function relParadas(){const L=F.apply(eventosTodos()).filter(e=>!NAO_PERDA.has(classe(e)));const per=`${F.de?br(F.de):'início'} a ${F.ate?br(F.ate):'hoje'}`;
- const min=L.reduce((s,e)=>s+e.minutos,0),n=L.reduce((s,e)=>s+(e.ocorrencias||1),0),S=statsEquip(L,F.de,F.ate),nQ=S.reduce((s,x)=>s+x.nQ,0),mQ=S.reduce((s,x)=>s+x.mQ,0);
- const G=agg(L,e=>codigoEf(e)).sort((a,b)=>b.min-a.min);const all=eventosTodos(),ate=F.ate||all.reduce((m,e)=>e.dia>m?e.dia:m,'');const Rc=recorrencias(all.filter(e=>(!ate||e.dia<=ate)&amp;&amp;(!F.eq||e.equipamento===F.eq)&amp;&amp;(!F.turno||e.turno===F.turno)&amp;&amp;(!F.cls||classe(e)===F.cls)),ate).slice(0,30);
- const filt=[F.eq?'equipamento '+Cad.eqNome(F.eq):'',F.turno?'turno '+F.turno:'',F.cls?'classe '+(CLASSE[F.cls]||[F.cls])[0]:''].filter(Boolean).join(' · ');
+function relParadas(){const all=eventosTodos(),L=F.apply(all).filter(e=>!NAO_PERDA.has(classe(e))),exp=perdasNoRecorte(all),P=programado(exp,F.de,F.ate,F.turno);const per=`${F.de?br(F.de):'início'} a ${F.ate?br(F.ate):'hoje'}`;
+ const min=L.reduce((s,e)=>s+e.minutos,0),n=L.reduce((s,e)=>s+(e.ocorrencias||1),0),S=statsEquip(L,F.de,F.ate,F.turno,exp),nQ=S.reduce((s,x)=>s+x.nQ,0),mQ=S.reduce((s,x)=>s+x.mQ,0);
+ const G=agg(L,e=>codigoEf(e)).sort((a,b)=>b.min-a.min),{de,ate,R,acoes}=recorrenciasNoRecorte(all),Rc=R.slice(0,30);
+ const filt=[F.eq?'equipamento '+Cad.eqNome(F.eq):'',F.turno?'turno '+F.turno:'',F.cls?'classe '+(CLASSE[F.cls]||[F.cls])[0]:'',F.grupo?'grupo '+F.grupo+'xx':''].filter(Boolean).join(' · ');
  return{titulo:'Paradas da linha',subtitulo:'Paradas'+(filt?' · '+filt:''),periodo:per,arquivo:'Paradas_'+(F.de||'')+'_'+(F.ate||todayISO()),blocos:[
-  {tipo:'kpis',itens:[['Tempo de parada',fmtMin(min),n0(n)+' ocorrências',''],['Quebras',n0(nQ),fmtMin(mQ)+' de quebra',nQ?'bad':'good'],['MTTR',nQ?n0(mQ/nQ)+' min':'—','reparo médio por quebra',''],['Máquina crítica',S[0]?.nome||'—',S[0]?fmtMin(S[0].min):'','']]},
-  {tipo:'svg',titulo:'Pareto por código (tempo de parada e % acumulado)',svg:hbars(G.slice(0,12).map(g=>({k:g.k,label:codLabel(g.k)+' '+(Cad.code(g.k)?.nome||''),v:g.min,n:g.n})),{pareto:1,w:900,lw:330,fmt:fmtMin})},
+  {tipo:'kpis',itens:[['Tempo de parada',fmtMin(min),n0(n)+' ocorrências',''],['Quebras',n0(nQ),fmtMin(mQ)+' de quebra',nQ?'bad':'good'],['MTTR',nQ?n0(mQ/nQ)+' min':'—','tempo parado médio por quebra',''],['Máquina crítica',S[0]?.nome||'—',S[0]?fmtMin(S[0].min):'','']]},
+  {tipo:'svg',titulo:'Pareto por código (tempo de parada e % acumulado)',svg:hbars(G.slice(0,12).map(g=>({k:g.k,label:codLabel(g.k)+' '+(Cad.code(g.k)?.nome||''),v:g.min,n:g.n})),{pareto:1,w:900,lw:330,fmt:fmtMin,total:min})},
   {tipo:'tabela',titulo:'Pareto por código',cab:['Código','Nome','Minutos','Ocorrências','% do tempo'],num:[2,3,4],linhas:G.slice(0,25).map(g=>[codLabel(g.k),Cad.code(g.k)?.nome||'',n0(g.min),n0(g.n),min?pct(g.min/min):'—'])},
-  {tipo:'tabela',titulo:'Equipamentos',cab:['Equipamento','Parada','Ocorrências','Quebras','MTBF (h)','MTTR (min)','Disponibilidade'],num:[1,2,3,4,5,6],linhas:S.map(s=>[s.nome,fmtMin(s.min),n0(s.n),n0(s.nQ),n1(s.mtbf),n0(s.mttr),pct(s.disp)])},
-  {tipo:'tabela',titulo:'Recorrência (30 dias até '+br(ate)+')',cab:['Equipamento','Código','Componente','30 dias','Meses seguidos','Última'],linhas:Rc.map(r=>[Cad.eqNome(r.eq),codLabel(r.cod)+' '+(Cad.code(r.cod)?.nome||''),r.comp||'—',`${n0(r.n30)} · ${n0(r.min30)} min`,String(r.meses),br(r.ult)]),destaque:Rc.map(r=>r.n30>=6?'hl3':r.meses>=3?'hl2':'')}]}}
+  {tipo:'tabela',titulo:'Equipamentos',cab:['Equipamento','Parada','Ocorrências','Quebras','MTBF (h)','MTTR histórico (min)','Espera média (min)','Reparo médio (min)','Disponibilidade'],num:[1,2,3,4,5,6,7,8],linhas:S.map(s=>[s.nome,fmtMin(s.min),n0(s.n),n0(s.nQ),n1(s.mtbf),n0(s.mttr),fmtTempoTecnico(s.espera,s.nQ),fmtTempoTecnico(s.reparo,s.nQ),pct(s.disp)])},
+  {tipo:'texto',titulo:'Cobertura do tempo programado',texto:coberturaTempo(P)},
+  {tipo:'tabela',titulo:'Recorrência · '+br(de)+' a '+br(ate),cab:['Equipamento','Código','Componente','Na janela','Meses seguidos','Última','Ação · eficácia','Antes → depois / 100 h'],linhas:Rc.map(r=>{
+   const A=acoes.get(r.k)||[],C=comparacaoEficacia(r,A,all,ate);
+   const ac=A.map(a=>[a.id,a.responsavel,a.status,a.prazo&amp;&amp;br(a.prazo),EFICACIA_PLANNER[a.eficacia]].filter(Boolean).join(' · ')).join(' / ')||r.acao?.status||'—';
+   const taxa=!C?'—':C.pendente?'Janela até '+br(C.pendente):`${n1(C.antes.taxa)} → ${n1(C.depois.taxa)} · Antes: ${textoJanelaEficacia(C.antes)} · Depois: ${textoJanelaEficacia(C.depois)}`;
+   return [Cad.eqNome(r.eq),codLabel(r.cod)+' '+(Cad.code(r.cod)?.nome||''),r.comp||'—',`${n0(r.n30)} · ${n0(r.min30)} min`,String(r.meses),br(r.ult),ac,taxa];
+  }),destaque:Rc.map(r=>r.n30>=6?'hl3':r.meses>=3?'hl2':'')}]}}
 /* E8 · ação no Planner (Iniciativas) com a fotografia do que motivou e o link para reconsultar; o Paradas não grava lá */
 function acaoPlanner(onde,dim,k,rot,L,x={}){const min=L.reduce((s,e)=>s+(+e.minutos||0),0),n=L.reduce((s,e)=>s+(e.ocorrencias||1),0),dias=L.map(e=>e.dia).sort();
  let eq=x.eq,cod=x.cod;if(onde==='pareto'){if(dim==='equip')eq=k;if(dim==='codigo')cod=k;if(dim==='eqcod'){[eq,cod]=String(k).split('|')}}
@@ -31798,6 +32067,17 @@ function abrirPareto(v){const p=String(v||'').split('|'),dt=x=>/^\d{4}-\d{2}-\d{
  if(k&amp;&amp;!(VIEWS.pareto.G||[]).some(g=>g.k===k))toast('O detalhe desse período não está mais nesta base (ou o filtro mudou). A fotografia guardada na ação continua valendo.',1)}
 /* E5 · pasta conectada para a ficha comum (kit) */
 function vacPastaAtual(){return Store.perm&amp;&amp;!Store.test?Store.dir:null}
+let atualizandoParadas=false;
+async function vacAoVoltar(){
+ if(Store.test||!Store.dir||!Store.perm||Store.saving||atualizandoParadas)return;
+ atualizandoParadas=true;
+ try{
+  const inic=Ext.inic?.geradoEm,oee=Ext.oee?.geradoEm,revisao=Store.data.rev;
+  if(Store.queue.length)await Store.save();
+  await Store.reload();
+  if(inic!==Ext.inic?.geradoEm||oee!==Ext.oee?.geradoEm||revisao!==Store.data.rev)App.render();
+ }finally{atualizandoParadas=false}
+}
 function rota(){let h=location.hash.slice(1);try{h=decodeURIComponent(h)}catch(e){}if(!h)return;if(h.startsWith('pareto='))return abrirPareto(h.slice(7));const[k,v]=h.split('=');
  if(k==='ordem'&amp;&amp;v){F.q=v;F.de=null;F.ate=null;return App.go('eventos')}
  if(k==='relatorio'){try{history.replaceState(null,'',location.pathname+location.search)}catch(e){}return setTimeout(()=>{const r=$('#btnRel');if(r)r.click()},900)}   /* 1.2.11 · Portal › Relatórios (compilado) */
@@ -31808,11 +32088,10 @@ async function iniciar(){applyTheme();wireCabecalho();$('#btnTheme').onclick=cyc
  $('#sairTeste').onclick=e=>{e.preventDefault();location.hash='';location.reload()};
  /* 1.0.25 · IMP-06: a aba Importar leva ao Portal › Importação › Paradas; a tela abre direto por #aba=importar (o botão do Portal) */
 $$('#nav [data-t]').forEach(b=>b.onclick=()=>b.dataset.t==='importar'&amp;&amp;typeof vacIrImportacao==='function'?vacIrImportacao('paradas'):App.go(b.dataset.t));
- if(vacDemo.ativo){Store.test=true;vacDemo.registrar('paradas',()=>({...Store.data,exports:calcExports(Store.data)}),d=>{Store.data=completar(d)},()=>{Ext.cad=vacDemo.ler('cad');Ext.cadFonte='teste';Ext.cadRev=Ext.cad.rev;Ext.oee=vacDemo.exports('oee');Ext.oeeOk=!!Ext.oee;Ext.equip=vacDemo.exports('equip');Cad.build();App.render()});vacDemo.publicar('paradas')}else{await Store.init();await Ext.load()}F.init();App.go('geral');
+ if(vacDemo.ativo){Store.test=true;vacDemo.registrar('paradas',()=>({...Store.data,exports:calcExports(Store.data)}),d=>{Store.data=completar(d)},()=>{Ext.cad=vacDemo.ler('cad');Ext.cadFonte='teste';Ext.cadRev=Ext.cad.rev;Ext.oee=vacDemo.exports('oee');Ext.oeeOk=!!Ext.oee;Ext.equip=vacDemo.exports('equip');Ext.inic=vacDemo.exports('inic');Cad.build();App.render()});vacDemo.publicar('paradas')}else{await Store.init();await Ext.load()}F.init();App.go('geral');
  {const ai=typeof vacAbaInicial==='function'?vacAbaInicial('paradas'):null;if(ai){const[k,v]=ai.split('=');if(k==='aba'&amp;&amp;VIEWS[v])App.go(v)}}   /* 1.0.11 · aba inicial do perfil */
  rota();window.addEventListener('hashchange',rota);
- const tick=async()=>{if(Store.test||!Store.dir||!Store.perm||document.hidden)return;if(Store.queue.length)await Store.save();else{const r=Store.data.rev;await Store.reload();if(Store.data.rev!==r)App.render()}};
- setInterval(tick,60000);document.addEventListener('visibilitychange',()=>{if(!document.hidden)tick()});
+ setInterval(()=>{if(!document.hidden)vacAoVoltar()},60000);
  window.addEventListener('beforeunload',e=>{if(Store.queue.length&amp;&amp;Store.dir&amp;&amp;Store.perm){e.preventDefault();e.returnValue=''}})}
 /* 1.2.12 · na demonstração a 1ª tela era montada antes do kit (vacLayout) carregar: espera o documento terminar */
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',iniciar,{once:true});else iniciar();
@@ -31843,9 +32122,9 @@ window.VAC_GUIA = window.VAC_GUIA || {};
       passos: [['Completar uma quebra', ['Abra a parada (clique na linha).', 'Informe o componente (peça), o modo de falha (como falhou) e a ação executada.', 'Se for causa recorrente, abra uma ação (vai para Iniciativas).']]]
     },
     fila: { titulo: 'Fila técnica', para: 'O que falta para a análise de falhas valer: quebra sem peça, componente, modo ou ação; paradas longas sem ação; códigos temporários; sugestões de reclassificação. No topo, o resumo: itens na fila, sugestões de reclassificação e o que falta (contagem por tipo); a linha tem marca amarela (pendência) ou azul (sugestão).', campos: FILTROS, passos: [['Zerar a fila', ['Comece pelas quebras mais longas.', 'Complete a parte técnica na ficha da parada.', 'Reclassifique quando o código sugerido for mais correto.']]] },
-    valid: { titulo: 'Validação diária', para: 'A liderança confere a classificação do dia e fecha: o 1º motivo é o que vale, quebra só com troca de peça, setup até o 1º produto bom. No topo: dias com parada, abertos, validados e o % validado; dia aberto tem marca amarela na linha.', campos: FILTROS, passos: [['Validar o dia', ['Abra o dia na lista.', 'Confira código e duração de cada parada; corrija o que estiver errado.', 'Clique em Validar. Dá para validar com pendência técnica (ela fica na Fila técnica).']]] },
+    valid: { titulo: 'Validação diária', para: 'A liderança confere o dia inteiro, incluindo todos os turnos e equipamentos. Mudanças nos dados aprovados colocam o dia em revisão necessária.', campos: FILTROS, passos: [['Validar o dia', ['Abra o dia na lista.', 'Confira código e duração de cada parada; corrija o que estiver errado.', 'Clique em Validar. Dá para validar com pendência técnica (ela fica na Fila técnica).']]] },
     pareto: { titulo: 'Pareto', para: 'Tempo ou ocorrências por qualquer dimensão (código, equipamento, turno, componente…). Clique numa barra para ver as paradas: a seleção aparece numa faixa com + Ação e Limpar seleção. "Linha de 80 %" marca onde o % acumulado passa de 80 % (só referência, não é meta; fica lembrada neste computador).', campos: FILTROS },
-    equip: { titulo: 'Equipamentos', para: 'MTBF, MTTR, MTBS e disponibilidade por equipamento: base para a manutenção (TPM). No topo, o ranking por tempo parado e as quebras por equipamento (clique abre o detalhe). A tabela técnica rola com o cabeçalho e o nome do equipamento fixos; clique numa linha para o detalhe.', campos: FILTROS, duvidas: [['MTBF e MTTR', 'MTBF: tempo médio entre falhas (quanto maior, melhor). MTTR: tempo médio para reparar (quanto menor, melhor).']] },
+    equip: { titulo: 'Equipamentos', para: 'MTBF, MTTR, MTBS e disponibilidade por equipamento: base para a manutenção (TPM). No topo, o ranking por tempo parado e as quebras por equipamento (clique abre o detalhe). A tabela técnica rola com o cabeçalho e o nome do equipamento fixos; clique numa linha para o detalhe.', campos: FILTROS, duvidas: [['MTBF e MTTR', 'MTBF: tempo médio entre falhas (quanto maior, melhor). MTTR histórico: tempo parado médio por quebra. A espera e o reparo têm médias próprias.']] },
     recor: { titulo: 'Recorrência', para: 'Mesma falha no mesmo equipamento 3 ou mais vezes em 30 dias, ou em 3 meses seguidos (crônica): candidatas a causa raiz e ao plano de manutenção. O resumo no topo conta a própria lista: recorrentes, crônicas, 6 ou mais em 30 dias (linha destacada em vermelho claro) e sem ação vinculada.', campos: FILTROS },
     acoes: { titulo: 'Ações', para: 'Ações corretivas, de causa raiz e melhorias ligadas às paradas, com responsável e prazo. No topo: abertas, vencidas, concluídas e total; ação vencida fica com fundo vermelho claro.', campos: [{ sel: '#acNova', nome: '+ Nova ação', o: 'Registra uma ação ligada às paradas.' }, { sel: '#acXls', nome: 'Excel', o: 'Exporta as ações.' }] },
     guia: { titulo: 'Guia de paradas', para: 'Como escolher o código certo (padrão BD de OEE aplicado à linha). Use antes de treinar operadores.' },
@@ -36727,9 +37006,9 @@ td { font-size:15px; }
     {
       "id": "oee",
       "path": "Plataforma.html#motor/oee",
-      "version": "2.6.6",
-      "sha256": "f705cd34deb47f660aa45e7c5db25d9cd117ec6e42734d4eff3c605a9d281418",
-      "bytes": 2207814
+      "version": "2.6.7",
+      "sha256": "284fea1612a1ff62fb71a935b64dc832b2841d6eb46adff905b68829384ca1ca",
+      "bytes": 2208250
     },
     {
       "id": "perdas",
@@ -36748,9 +37027,9 @@ td { font-size:15px; }
     {
       "id": "paradas",
       "path": "Plataforma.html#motor/paradas",
-      "version": "1.2.16",
-      "sha256": "46b61ffbf198d582a37016477308415590b2e449a9cba380662290513af1bae4",
-      "bytes": 887370
+      "version": "1.2.17",
+      "sha256": "ea9426622a6bcf772e2e52720c827abc83033699bfae9bc552807f86bdfa39b5",
+      "bytes": 900429
     },
     {
       "id": "equip",
@@ -36791,7 +37070,7 @@ td { font-size:15px; }
   "limitations": [
     "Projetos e conteúdo técnico OSM/MES/AM/TPM mantêm os limites documentados nas fontes."
   ],
-  "enginesSha256": "b6d621e0a6d038e8cfdf9441ea0873bbd8454da6312b01bbe88bf7078a5bc653",
+  "enginesSha256": "fa305590ad9cf4f6d7b6fc324e872fa72318a80779bd536f41ed884d37157248",
   "originRevision": "ffc9ee8",
   "sourceMode": "single-html",
   "originEnginesSha256": "a87a64ad0c328f70e102b2ae888790a9b5d5a9bd05778652a7ce7cae140e40d2"
@@ -36861,7 +37140,7 @@ summary{cursor:pointer;font-weight:600;color:var(--navy)}
 'use strict';
 /* ---------- referência (atualizar quando a plataforma mudar de versão) ---------- */
 // Iguais às do pacote da plataforma (nova-plataforma/src/generated/manifest.json); o teste ferramenta-verificar confere.
-const VERSOES = {"oee":"2.6.6","perdas":"1.12.16","gel":"2.40","paradas":"1.2.16","equip":"1.0.20","inic":"1.1.16","linha":"1.3.0","projetos":"0.1.16","portal":"1.9.48"};
+const VERSOES = {"oee":"2.6.7","perdas":"1.12.16","gel":"2.40","paradas":"1.2.17","equip":"1.0.20","inic":"1.1.16","linha":"1.3.0","projetos":"0.1.16","portal":"1.9.48"};
 const BASES = [
  { arq: 'vacutainer-cadastros.json', mod: 'portal', nome: 'Cadastro geral (Portal)', obrig: true, cadastro: true, bk: 'Cadastros' },
  { arq: 'portal-base.json', mod: 'portal', nome: 'Portal', obrig: true, bk: 'Portal' },
