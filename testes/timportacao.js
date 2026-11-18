@@ -70,15 +70,15 @@ const { chromium } = require('playwright');
   /* ---------- Produção › Ordens (PRD-02/03) e endereços diretos ---------- */
   const o2 = await nova('OEE-Vacutainer.html', 'Produção2');
   const ord = await o2.evaluate(async () => { document.querySelectorAll('.overlay').forEach(x => x.remove()); Demo.enterExample(); await new Promise(r => setTimeout(r, 300)); go('ordens'); await new Promise(r => setTimeout(r, 400));
-    return { sub: Ord.sub, abas: [...document.querySelectorAll('.ord-sub button')].map(x => x.textContent.trim()), menu: (NAV_GRUPOS.find(g => g.g === 'Ordens') || { itens: [] }).itens.map(x => x[1]) }; });
-  ok(ord.sub === 'lista' && ord.abas.join('|') === 'Ordens produzidas|Ordens (plano do mês)|Conciliação|Histórico de competências|Importar ↗', 'PRD-02: Ordens abre em Ordens produzidas; ordem Ordens produzidas · Ordens (plano do mês) · Conciliação · Histórico · Importar');
-  ok(ord.menu.join('|') === 'Ordens produzidas|Ordens (plano do mês)|Conciliação|Histórico de competências|Importar ↗', 'PRD-03: MB51 e COOIS viraram um item só (Importar) no menu');
-  ok(/Portal\.html#importacao\/producao$/.test(await leva(o2, () => o2.click('.ord-sub [data-oimp-portal]'))), 'IMP-06: Produção › Ordens › Importar leva ao Portal › Importação › Produção');
+    return { sub: Ord.sub, abas: [...document.querySelectorAll('.grp-sub [data-grpsub^="ordens|"]')].map(x => x.textContent.trim())   /* 2.6.11 · barra separada do grupo Ordens e lotes */, menu: (NAV_GRUPOS.find(g => g.g === 'Ordens') || { itens: [] }).itens.map(x => x[1]) }; });
+  ok(ord.sub === 'lista' && ord.abas.join('|') === 'Ordens produzidas|Ordens (plano do mês)|Conciliação|Histórico de competências|Lotes (MES)|Importar ↗', 'PRD-02: Ordens e lotes abre em Ordens produzidas; ordem Ordens produzidas · Ordens (plano do mês) · Conciliação · Histórico · Lotes (MES) · Importar');
+  ok(ord.menu.join('|') === 'Ordens produzidas|Ordens (plano do mês)|Conciliação|Histórico de competências|Lotes (MES)|Importar ↗', 'PRD-03: MB51 e COOIS viraram um item só (Importar) no menu');
+  ok(/Portal\.html#importacao\/producao$/.test(await leva(o2, () => o2.click('[data-grpsub="ordens|importar"]'))), 'IMP-06: Produção › Ordens › Importar leva ao Portal › Importação › Produção');
   const o3 = await nova('OEE-Vacutainer.html', 'Produção3', '#aba=ordens&sub=coois');
   const r3 = await o3.evaluate(async () => { document.querySelectorAll('.overlay').forEach(x => x.remove()); return { route: App.route, sub: Ord.sub, passos: [...document.querySelectorAll('.ord-imp [data-osub]')].map(x => x.textContent.trim()) }; });
   ok(r3.route === 'ordens' && r3.sub === 'coois', 'IMP-05: #aba=ordens&sub=coois abre a importação do COOIS');
   ok(r3.passos.length === 2 && /MB51/.test(r3.passos[0]) && /COOIS/.test(r3.passos[1]), 'PRD-03: na importação, 1 · MB51 e 2 · COOIS lado a lado (o COOIS complementa o MB51)');
-  ok(await o3.evaluate(async () => { go('ordens'); await new Promise(r => setTimeout(r, 300)); document.querySelector('.ord-sub [data-oplano]').click(); await new Promise(r => setTimeout(r, 300)); return App.route === 'plan'; }), 'PRD-02: "Ordens (plano do mês)" abre o Plano do mês');
+  ok(await o3.evaluate(async () => { go('ordens'); await new Promise(r => setTimeout(r, 300)); document.querySelector('[data-grpsub="ordens|plano"]').click(); await new Promise(r => setTimeout(r, 300)); return App.route === 'ordens' && !!document.querySelector('#pmK') && !!document.querySelector('.grp-sub [aria-selected="true"][data-grpsub="ordens|plano"]'); }), 'PRD-02: "Ordens (plano do mês)" abre o Plano do mês dentro de Ordens e lotes, com a barra à vista (2.6.11)');
   const o4 = await nova('OEE-Vacutainer.html', 'Produção4', '#aba=config&sec=importacao');
   ok(await o4.evaluate(() => App.route === 'config' && App.cfgSec === 'importacao'), 'IMP-05: #aba=config&sec=importacao abre Configurações › Importação (MES, PCP, histórico)');
 
