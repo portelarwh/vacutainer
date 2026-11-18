@@ -7615,7 +7615,7 @@ const U = (() => {
 
 /* ---- 02-model.js ---- */
 /* ================= modelo de dados, valores iniciais e integridade ================= */
-const APP_VERSION = '2.6.14';   /* 2.6.14 · GEL-07: Relatório do Gel e Perdas de gel (turno com gel e Relatórios) */   /* 2.6.13 · GEL-06: Scrap gel no detalhe do turno */   /* 2.6.12 · TUR-04: turno com horário diferente no sábado (linhas por dia da semana) */   /* 2.6.11 · abas agrupadas: Ordens e lotes, Resultados, Paradas */   /* 2.6.10 · Lançamento sem turno aberto por padrão; abas visíveis na casca */   /* 2.6.9 · LANC-02: Lançamento unificado (hora a hora no detalhe do turno, 3º turno ao lado, Problemas de QN) */   /* 2.6.5 · IMP-01: contagens das importações nos exports */   /* 2.6.4 · semáforo só pelas faixas configuradas (verde acima de 100% vale) */   /* 2.6.2 · gráficos e números com meta seguem o semáforo de três cores (verde, amarelo, vermelho) */   /* 2.6.1 · gráficos: turno lançado pelo total com o nome do turno no eixo; janelas: rótulo e valor em tamanho de texto */   /* 2.6.0 · produção total do turno (sem hora a hora; períodos na troca de catálogo), aviso do servidor para turno lançado pelo total e para dia com produção apontada */
+const APP_VERSION = '2.6.15';   /* 2.6.15 · REL-01: gel no relatório/e-mail do dia e do turno; Enviar relatório na janela do dia */   /* 2.6.14 · GEL-07: Relatório do Gel e Perdas de gel (turno com gel e Relatórios) */   /* 2.6.13 · GEL-06: Scrap gel no detalhe do turno */   /* 2.6.12 · TUR-04: turno com horário diferente no sábado (linhas por dia da semana) */   /* 2.6.11 · abas agrupadas: Ordens e lotes, Resultados, Paradas */   /* 2.6.10 · Lançamento sem turno aberto por padrão; abas visíveis na casca */   /* 2.6.9 · LANC-02: Lançamento unificado (hora a hora no detalhe do turno, 3º turno ao lado, Problemas de QN) */   /* 2.6.5 · IMP-01: contagens das importações nos exports */   /* 2.6.4 · semáforo só pelas faixas configuradas (verde acima de 100% vale) */   /* 2.6.2 · gráficos e números com meta seguem o semáforo de três cores (verde, amarelo, vermelho) */   /* 2.6.1 · gráficos: turno lançado pelo total com o nome do turno no eixo; janelas: rótulo e valor em tamanho de texto */   /* 2.6.0 · produção total do turno (sem hora a hora; períodos na troca de catálogo), aviso do servidor para turno lançado pelo total e para dia com produção apontada */
 const SCHEMA_VERSION = 1;
 const BASE_FILE = 'oee-vacutainer-base.json';
 const BACKUP_DIR = '00. Backups';
@@ -11901,6 +11901,7 @@ App.views.launch = {
       </div>
       <div class="row" style="margin-top:12px">
         <button class="btn primary" data-hhps="" title="Hora a hora de todos os turnos do dia">Hora a hora ${I.chevR}</button>
+        <button class="btn" id="dEnviar" title="Dia inteiro, um turno, só o gel ou scrap e perdas: copiar para o Outlook ou abrir na aba Relatórios">${EnviarRel.ICONE} Enviar relatório</button>
         ${lk ? `<button class="btn" id="dReopen">Reabrir dia</button>` : `<button class="btn primary" id="dClose">${I.lock} Fechar dia</button>${day.status !== 'pendente de conferência' ? `<button class="btn" id="dPend">Marcar como pendente de conferência</button>` : ''}`}
         <span class="spacer"></span>
         ${!lk &amp;&amp; !day.shifts.some(p => p.summary) ? `<button class="btn sm ghost" id="dRestore">Restaurar intervalos padrão</button>${ib('restaurarIv')}<button class="btn sm ghost" id="dReapply" title="Usa as metas vigentes na data no lugar das metas congeladas no fechamento">Reaplicar metas vigentes</button>${ib('reaplicarMetas')}` : ''}
@@ -11972,6 +11973,7 @@ App.views.launch = {
     const rs = root.querySelector('#dRestore'); if (rs) rs.onclick = async () => { if (await confirmDlg('Restaurar intervalos padrão?', 'Os intervalos voltam ao padrão dos turnos vigentes nesta data.', 'Restaurar')) run(() => Actions.restoreDefaultIntervals(day.id)); };
     const ra = root.querySelector('#dReapply'); if (ra) ra.onclick = async () => { if (await confirmDlg('Reaplicar metas vigentes?', 'As metas congeladas no último fechamento serão substituídas pelas metas vigentes hoje na configuração para esta data.', 'Reaplicar')) run(() => Actions.reapplyTargets(day.id)); };
     const dh = root.querySelector('#dHist'); if (dh) dh.onclick = () => auditForDay(day);
+    const den = root.querySelector('#dEnviar'); if (den) den.onclick = () => EnviarRel.abrir(day);   /* 2.6.15 · REL-01 */
     const dOff = root.querySelector('#dOff'); if (dOff) dOff.onclick = () => dayOffModal(day.date, day.lineId);
     const dMv = root.querySelector('#dMove'); if (dMv) dMv.onclick = () => moveDayModal(day);
     const dd = root.querySelector('#dDel'); if (dd) dd.onclick = async () => { const r = await askReason('Excluir lançamento', `O lançamento de ${U.brDate(day.date)} será marcado como excluído (exclusão lógica: continua na base e na auditoria).`, ['lançamento criado por engano', 'dia sem produção', 'duplicidade', 'outro']); if (r) run(() => Actions.deleteDay(day.id, r), 'Lançamento excluído.'); };
@@ -15327,7 +15329,10 @@ function rpModel(R) {
   const blocks = lay.blocks.filter(b => PN_B[b.id]).map(b => { const B = PN_B[b.id]; Charts.setWidth(b.w === 'f' ? 1440 : 720); let h; try { h = x.days.length || ['external', 'trend12', 'planMonth', 'planTable'].includes(b.id) ? B.r(x) : '<div class="empty">Sem lançamentos no período.</div>'; } catch (e) { console.error(e); h = '<div class="empty">Não foi possível montar este bloco.</div>'; } Charts.setWidth(720); return { id: b.id, l: B.l, q: B.q, w: b.w, html: h }; });
   const key = `${R.type}:${x.a}:${x.b}${R.type === 'view' || R.type === 'month' ? ':' + R.view : ''}`;
   blocks.push(Sqdcp.blocoRelatorio(x.a, x.b));
-  return { type: R.type, title, sub, a: x.a, b: x.b, x, kpis, blocks, key, auto: rpAutoSummary(R.type, x) };
+  /* 2.6.15 · REL-01: no relatório do dia, o gel quando algum catálogo produzido usa gel */
+  let gelTxt = '';
+  if (R.type === 'day') { const gd = (d.productionDays || []).find(z => !z.deleted &amp;&amp; z.lineId === 'line_vac' &amp;&amp; z.date === R.date); if (gd) { const gr = Engine.computeDay(d, gd), gb = GelDia.bloco(gd, gr); if (gb) { blocks.push(gb); gelTxt = GelDia.texto(gd, gr); } } }
+  return { type: R.type, title, sub, a: x.a, b: x.b, x, kpis, blocks, key, auto: [rpAutoSummary(R.type, x), gelTxt].filter(Boolean).join('\n') };
 }
 function rpAutoSummary(type, x) {
   const r = x.r, L = [], u = unitLbl();
@@ -15369,9 +15374,9 @@ function rpShiftModel(R) {
   const stT = stops.length ? `<div class="tw"><table data-nosort="1"><thead><tr><th>Horário</th><th>Tipo</th><th>Equipamento</th><th class="n">Min</th><th>Observação</th></tr></thead><tbody>${stops.map(e => `<tr><td class="mono">${e.ev.start != null ? U.range(e.ev.start, e.ev.end) : 'sem horário'}</td><td>${esc(e.code.code + ' · ' + e.code.name)}</td><td>${esc(e.equipment ? e.equipment.name : '—')}</td><td class="n">${U.fmt(e.minutes)}</td><td class="small wrap">${esc(e.ev.note || '')}</td></tr>`).join('')}</tbody></table></div>` : '<div class="empty">Nenhuma parada apontada.</div>';
   const notes = [ps.off ? 'Turno sem produção' + (ps.offReason ? ': ' + ps.offReason : '') : '', ps.note, day.note ? 'Dia: ' + day.note : '', abonos.length ? 'Pausas e abonos: ' + abonos.map(e => (e.ev.note || e.code.name) + ' ' + (e.ev.start != null ? U.range(e.ev.start, e.ev.end) : U.fmt(e.minutes) + ' min')).join('; ') : ''].filter(Boolean);
   const top = stops.slice().sort((p, q) => q.minutes - p.minutes).slice(0, 3);
-  const auto = [`${ps.snap.name} de ${U.brDate(day.date)} (${U.WD[U.weekday(day.date)]}).`, `Produção boa ${fq(r.good)} ${u} contra meta de ${fq(r.metaOp)} ${u} (${U.pct(r.attain, 0)}). OEE ${U.pct(r.oee)} (meta ${U.pct(r.oeeTarget)}).`, `Paradas: ${U.fmt(r.apontMin)} min${top.length ? ' · ' + top.map(e => `${e.code.name} ${U.fmt(e.minutes)} min`).join('; ') : ''}.`, ps.scrap == null &amp;&amp; day.scrapMode !== 'day' ? 'Scrap não informado.' : `Scrap ${U.fmt(r.scrap)} un (${U.pct(r.scrapPct, 2)}).`, Sqdcp.resumoTexto(day.date, day.date, ps.shiftId), ps.note ? 'Observação: ' + ps.note : ''].filter(Boolean).join('\n');
+  const auto = [`${ps.snap.name} de ${U.brDate(day.date)} (${U.WD[U.weekday(day.date)]}).`, `Produção boa ${fq(r.good)} ${u} contra meta de ${fq(r.metaOp)} ${u} (${U.pct(r.attain, 0)}). OEE ${U.pct(r.oee)} (meta ${U.pct(r.oeeTarget)}).`, `Paradas: ${U.fmt(r.apontMin)} min${top.length ? ' · ' + top.map(e => `${e.code.name} ${U.fmt(e.minutes)} min`).join('; ') : ''}.`, ps.scrap == null &amp;&amp; day.scrapMode !== 'day' ? 'Scrap não informado.' : `Scrap ${U.fmt(r.scrap)} un (${U.pct(r.scrapPct, 2)}).`, Sqdcp.resumoTexto(day.date, day.date, ps.shiftId), GelDia.textoTurno(day, sr, res), ps.note ? 'Observação: ' + ps.note : ''].filter(Boolean).join('\n');
   return { ...base, sub: `${ps.snap.name} · ${U.brDate(day.date)} · ${U.WD[U.weekday(day.date)]} · ${stPill(ps.off ? 'sem produção' : ps.status)}`, kpis, key: `shift:${day.date}:${ps.shiftId}`, auto,
-    blocks: [Sqdcp.blocoRelatorio(day.date, day.date, ps.shiftId), { id: 'hh', l: 'Hora a hora', w: 'f', html: chart }, { id: 'hht', l: 'Hora a hora · tabela', w: 'f', html: tbl }, { id: 'st', l: 'Paradas do turno', w: 'f', html: stT }, { id: 'nt', l: 'Observações', w: 'f', html: notes.length ? `<ul>${notes.map(n => `<li>${esc(n)}</li>`).join('')}</ul>` : '<div class="empty">Sem observações.</div>' }] };
+    blocks: [Sqdcp.blocoRelatorio(day.date, day.date, ps.shiftId), GelDia.blocoTurno(day, sr, res), { id: 'hh', l: 'Hora a hora', w: 'f', html: chart }, { id: 'hht', l: 'Hora a hora · tabela', w: 'f', html: tbl }, { id: 'st', l: 'Paradas do turno', w: 'f', html: stT }, { id: 'nt', l: 'Observações', w: 'f', html: notes.length ? `<ul>${notes.map(n => `<li>${esc(n)}</li>`).join('')}</ul>` : '<div class="empty">Sem observações.</div>' }].filter(Boolean) };
 }
 
 /* ---------- tela ---------- */
@@ -16420,6 +16425,34 @@ const GelDia = {
     const g = this.gel &amp;&amp; this.gel.d ? (this.gel.d.porDiaGel || []).find(x => x.dia === day.date) : null;
     return { tub, tubos: Object.values(tub).reduce((a, b) => a + b, 0), teo, sc, pesou, meta, allowed, real, idx: meta > 0 &amp;&amp; pesou ? real / meta * 100 : null, saving: pesou ? allowed - real : null, g, desvio: g &amp;&amp; g.baixadoKg &amp;&amp; teo.teo > 0 ? g.baixadoKg / teo.teo - 1 : null };
   },
+  /* 2.6.15 · REL-01: o gel no relatório e no e-mail. Os mesmos números do quadro "Gel · teórico × real" (calc), só apresentados;
+     o turno mostra o scrap de gel pesado nele (GelTurno). Sem catálogo de gel no dia/turno, nada aparece. */
+  linhas(day, res) {
+    const x = this.calc(day, res); if (!x) return null;
+    if (!this.gel &amp;&amp; !this.lendo &amp;&amp; Date.now() - this.lidoEm > 60000) this.ler().then(() => { if (this.gel) render(); });
+    const f3 = v => v == null ? '—' : U.fmt(v, 3) + ' kg', tot = x.sc.T + x.sc.B + x.sc.P;
+    return { x, cats: Object.keys(x.tub), rows: [
+      ['Tubos bons (catálogos com gel)', U.fmt(x.tubos), ''],
+      ['Gel teórico', f3(x.teo.teo), 'tubos bons × g/tubo ÷ (1 − perdas)'],
+      ['Scrap de gel pesado · total', x.pesou ? f3(tot) : 'não pesado', 'teórico ' + f3(x.teo.sTeo.T + x.teo.sTeo.B + x.teo.sTeo.P)],
+      ['Scrap de gel · Tubos', x.pesou ? f3(x.sc.T) : '—', 'teórico ' + f3(x.teo.sTeo.T)],
+      ['Scrap de gel · Barril', x.pesou ? f3(x.sc.B) : '—', 'teórico ' + f3(x.teo.sTeo.B)],
+      ['Scrap de gel · Purga', x.pesou ? f3(x.sc.P) : '—', 'teórico ' + f3(x.teo.sTeo.P)],
+      ['Índice de uso', x.idx == null ? '—' : U.fmt(x.idx, 2), 'meta 100'],
+      ['Ganho sobre a BOM', x.saving == null ? '—' : (x.saving >= 0 ? '+' : '') + f3(x.saving), 'permitido ' + f3(x.allowed)],
+      ['Barris baixados (consumo real)', x.g &amp;&amp; x.g.baixadoKg != null ? f3(x.g.baixadoKg) : '—', x.g ? 'Gestão de Gel' : 'Gestão de Gel não lida']] };
+  },
+  tabela(rows) { return `<div class="tw"><table><thead><tr><th>Gel</th><th class="n">Valor</th><th>Referência</th></tr></thead><tbody>${rows.map(r => `<tr><td>${esc(r[0])}</td><td class="n">${esc(r[1])}</td><td class="small muted">${esc(r[2])}</td></tr>`).join('')}</tbody></table></div>`; },
+  bloco(day, res) { const L = this.linhas(day, res); if (!L) return null;
+    return { id: 'gel', l: 'Gel do dia · teórico × real', w: 'f', html: `<p class="small muted">Catálogos com gel: ${esc(L.cats.join(', '))}. Mesma conta da Gestão de Gel (parâmetros da Administração).</p>` + this.tabela(L.rows) }; },
+  texto(day, res) { const L = this.linhas(day, res); if (!L) return ''; const x = L.x, f3 = v => U.fmt(v, 3);
+    return `Gel: teórico ${f3(x.teo.teo)} kg; ` + (x.pesou ? `scrap pesado ${f3(x.sc.T + x.sc.B + x.sc.P)} kg (Tubos ${f3(x.sc.T)} · Barril ${f3(x.sc.B)} · Purga ${f3(x.sc.P)})` : 'scrap de gel ainda não pesado nos turnos')
+      + (x.idx != null ? `; índice ${U.fmt(x.idx, 2)} (meta 100)` : '') + (x.saving != null ? `; ganho s/ BOM ${x.saving >= 0 ? '+' : ''}${f3(x.saving)} kg` : '') + (x.g &amp;&amp; x.g.baixadoKg != null ? `; barris baixados ${f3(x.g.baixadoKg)} kg` : '') + '.'; },
+  turno(day, sr, res) { const e = GelTurno.estado(day, sr.ps, res); if (!e) return null; const C = GelTurno.ctx(), gs = sr.ps.gelScrap, k = gs &amp;&amp; !gs.none ? GelTurno.soma(gs, day.date, C) : null;
+    const f3 = v => U.fmt(v, 3) + ' kg';
+    return { e, rows: [['Situação', !gs ? 'sem registro' : gs.none ? 'sem scrap de gel' : k.n + ' pesagem(ns)', gs &amp;&amp; gs.por ? 'por ' + gs.por : ''], ['Scrap de gel · Tubos', k ? f3(k.T) : '—', ''], ['Scrap de gel · Barril', k ? f3(k.B) : '—', ''], ['Scrap de gel · Purga', k ? f3(k.P) : '—', ''], ['Scrap de gel · total', k ? f3(k.T + k.B + k.P) : gs &amp;&amp; gs.none ? f3(0) : '—', '']] }; },
+  blocoTurno(day, sr, res) { const t = this.turno(day, sr, res); if (!t) return null; return { id: 'gelt', l: 'Gel · scrap pesado no turno', w: 'f', html: this.tabela(t.rows) }; },
+  textoTurno(day, sr, res) { const t = this.turno(day, sr, res); return t ? 'Gel no turno: ' + t.e.txt.replace(/^gel: /, '') + '.' : ''; },
   card(day, res) {
     const x = this.calc(day, res); if (!x) return '';
     if (!this.gel &amp;&amp; !this.lendo &amp;&amp; Date.now() - this.lidoEm > 60000) this.ler().then(() => { if (this.gel) render(); });
@@ -18765,11 +18798,91 @@ const HHComum = {
    Formato de e-mail: tabelas, CSS inline, 680 px, sem flex/grid/JavaScript.
    D8 (13/11/2026, Produção 2.4.70): moldura, cabeçalho, situação, seções, tabelas, barras, rodapé e medidor são as peças do vacEmail do kit
    (vacEmail.pecas); aqui fica só o que é do turno e do dia: quais blocos, com que números. */
+
+/* ===== Produção 2.6.15 · REL-01 · "Enviar relatório" na janela do dia (pedido do responsável, 18/11/2026) =====
+   Pergunta o que enviar: dia inteiro, um turno, só o gel do dia ou scrap e perdas; depois "Copiar para o Outlook" (direto, o mesmo
+   e-mail da aba Relatórios) ou "Abrir na aba Relatórios" (já no tipo, dia e turno escolhidos). "Só o gel" abre o relatório da própria
+   Gestão de Gel no dia. "Scrap e perdas": scrap de tubos por turno (Produção), gel do dia e o Waste (MUV) das ordens que rodaram no dia,
+   por ordem, ACUMULADO DA COMPETÊNCIA (o Waste não tem valor por dia). Só leitura: nada é gravado; Waste e Gel lidos dos exports. */
+const EnviarRel = {
+  ICONE: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/></svg>',
+  waste: null, lendo: false, lidoEm: 0,
+  lerWaste() { if (typeof vacFicha === 'undefined') return Promise.resolve(); if (this.lendo) return this._p; this.lendo = true;
+    return this._p = vacFicha.carregar().then(() => { const x = vacFicha.dados('perdas'); this.waste = x &amp;&amp; x.d ? x : null; this.lidoEm = Date.now(); }).catch(e => console.warn('EnviarRel', e)).finally(() => { this.lendo = false; }); },
+  /* ordens que rodaram no dia: lotes do dia (dia ↔ lote, a mesma ligação dos diasLote do exports) → ordens do plano com esse lote */
+  ordensDoDia(date) {
+    const d = db(), lotes = new Set(Object.keys((d.server || {}).dayLot || {}).filter(k => k.startsWith(date + '|')).map(k => k.slice(date.length + 1).trim()).filter(Boolean)); if (!lotes.size) return [];
+    const p = Engine.planFor(d, date.slice(0, 7), 'line_vac'), out = [], vistos = new Set();
+    for (const o of (p &amp;&amp; p.orders) || []) { const lot = o.lot ? String(o.lot).trim() : ''; if (!lotes.has(lot) || vistos.has(String(o.order))) continue; vistos.add(String(o.order)); out.push({ ordem: String(o.order), lote: lot, catalogo: ((d.catalogs || []).find(c => c.id === o.catalogId) || {}).code || o.code || '' }); }
+    for (const lot of lotes) if (!out.some(o => o.lote === lot)) out.push({ ordem: '', lote: lot, catalogo: '' });
+    return out;
+  },
+  /* Waste por ordem: a competência do mês do dia, se houver; senão a mais recente (dito na tela) */
+  wasteDe(ordem, date) { const L = ((this.waste &amp;&amp; this.waste.d &amp;&amp; this.waste.d.porOrdem) || []).filter(w => String(w.ordem) === String(ordem)); if (!L.length) return null;
+    const m = date.slice(0, 7); return L.find(w => String(w.per || '').slice(0, 7) === m) || L.slice().sort((a, b) => String(b.per || '').localeCompare(String(a.per || '')))[0]; },
+  perdas(day) {
+    const d = db(), res = Engine.computeDay(d, day), u = unitLbl();
+    const turnos = res.shifts.map(sr => ({ nome: sr.ps.snap.name, good: sr.r.good, scrap: sr.ps.scrap == null &amp;&amp; day.scrapMode !== 'day' ? null : sr.r.scrap, pct: sr.ps.scrap == null &amp;&amp; day.scrapMode !== 'day' ? null : sr.r.scrapPct }));
+    const ords = this.ordensDoDia(day.date).map(o => ({ ...o, w: o.ordem ? this.wasteDe(o.ordem, day.date) : null }));
+    return { day, res, u, turnos, r: res.r, gel: GelDia.linhas(day, res), ords, wasteLido: !!this.waste };
+  },
+  brl: v => v == null || !isFinite(v) ? '—' : 'R$ ' + U.fmt(v, 2),
+  perdasHtml(P) {
+    const K_ = vacEmail.pecas, { F, sec, linha, td, tab } = K_, e = esc, mut = K_.MUT, b = this.brl, day = P.day;
+    const out = [K_.cabecalho('PRODUÇÃO', 'Scrap e perdas do dia', U.brDate(day.date) + ' · ' + U.WD[U.weekday(day.date)])];
+    out.push(sec('Scrap de tubos (Produção)') + linha(tab([['Turno'], ['Produção boa (' + P.u + ')', 1], ['Scrap (un)', 1], ['Scrap %', 1]],
+      P.turnos.map(t => `<tr>${td(e(t.nome))}${td(e(fq(t.good)), 1)}${td(t.scrap == null ? 'não informado' : e(U.fmt(t.scrap)), 1)}${td(t.pct == null ? '—' : e(U.pct(t.pct, 2)), 1)}</tr>`)
+        .concat([`<tr>${td('<b>Dia</b>')}${td('<b>' + e(fq(P.r.good)) + '</b>', 1)}${td('<b>' + e(U.fmt(P.r.scrap)) + '</b>', 1)}${td('<b>' + e(U.pct(P.r.scrapPct, 2)) + '</b>', 1)}</tr>`]))));
+    if (P.gel) out.push(sec('Gel do dia · teórico × real') + linha(tab([['Gel'], ['Valor', 1], ['Referência']], P.gel.rows.map(r => `<tr>${td(e(r[0]))}${td('<b>' + e(r[1]) + '</b>', 1)}${td(`<span style="color:${mut}">${e(r[2])}</span>`)}</tr>`))));
+    out.push(sec('Waste (MUV) das ordens do dia') + linha(`<div style="${F}font-size:12px;color:${mut};padding-bottom:6px">Valores do Waste por ordem, acumulados na competência indicada: não são do dia.</div>` +
+      (!P.ords.length ? `<div style="${F}font-size:13px;color:${mut}">Nenhuma ordem/lote ligada a este dia.</div>` : !P.wasteLido ? `<div style="${F}font-size:13px;color:${mut}">Waste não lido (base do Waste indisponível).</div>`
+        : tab([['OP'], ['Lote'], ['Catálogo'], ['Competência'], ['Perda', 1], ['Scrap', 1], ['MUV', 1]], P.ords.map(o => `<tr>${td(e(o.ordem || '—'))}${td(e(o.lote || '—'))}${td(e(o.catalogo || '—'))}${td(o.w ? e(String(o.w.per || '—')) : 'sem registro no Waste')}${td(o.w ? e(b(o.w.perda)) : '—', 1)}${td(o.w ? e(b(o.w.scrap)) : '—', 1)}${td(o.w ? e(b(o.w.muv)) : '—', 1)}</tr>`)))));
+    out.push(K_.rodape(`Gerado pela Produção (OEE-Vacutainer ${e(APP_VERSION)}) em ${e(U.brDT(U.nowIso()))} &amp;middot; Uso interno &amp;middot; Waste por ordem, acumulado da competência`));
+    return K_.moldura(out);
+  },
+  perdasTexto(P) { const day = P.day, L = [`*Scrap e perdas do dia* · ${U.brDate(day.date)} (${U.WD[U.weekday(day.date)]})`, ''];
+    L.push(`• Scrap de tubos: ${U.fmt(P.r.scrap)} un (${U.pct(P.r.scrapPct, 2)}) · ` + P.turnos.map(t => `${t.nome} ${t.scrap == null ? 'não informado' : U.fmt(t.scrap) + ' un'}`).join('; '));
+    if (P.gel) L.push('• ' + GelDia.texto(day, P.res));
+    if (P.ords.length &amp;&amp; P.wasteLido) L.push('• Waste das ordens do dia (acumulado da competência): ' + P.ords.map(o => `OP ${o.ordem || '—'} lote ${o.lote || '—'}: ${o.w ? 'MUV ' + this.brl(o.w.muv) + ' (' + (o.w.per || '—') + ')' : 'sem registro no Waste'}`).join('; '));
+    return L.join('\n'); },
+  /* modelo da aba Relatórios no tipo escolhido, como se o usuário tivesse aberto lá */
+  preparar(day, tipo, psId) { const R = rpState(); R.type = tipo; R.summary = null; if (tipo === 'stops') { R.from = day.date; R.to = day.date; } else { R.date = day.date; if (psId) R.psId = psId; } return R; },
+  async copiarRelatorio(day, tipo, psId) { const R = this.preparar(day, tipo, psId), M = rpModel(R); R.model = M;
+    const nota = (db().reportNotes || []).find(n => n.key === M.key &amp;&amp; !n.deleted), c = { M, sum: M.auto, note: nota ? nota.text : '', doc: null };
+    const novo = await EmailDia.html(c, App.prefs.rpImg !== false); if (!novo) throw new Error('Sem lançamento para o relatório.');
+    await rpCopy(novo, EmailDia.texto(c)); },
+  abrirRelatorio(day, tipo, psId) { this.preparar(day, tipo, psId); go('reports'); },
+  abrir(day) {
+    const shs = day.shifts.filter(p => !p.deleted), cats = (() => { try { const res = Engine.computeDay(db(), day), C = GelTurno.ctx(); return !!C &amp;&amp; GelTurno.catsDoTurno ? res.shifts.some(sr => GelTurno.estado(day, sr.ps, res)) : false; } catch (e) { return false; } })();
+    if (!this.waste &amp;&amp; !this.lendo) this.lerWaste();
+    const op = (v, t, sub, extra) => `<label class="envr-op"><input type="radio" name="envr" value="${v}"${v === 'dia' ? ' checked' : ''}><span><b>${t}</b>${extra || ''}<br><span class="small muted">${sub}</span></span></label>`;
+    modal('Enviar relatório · ' + U.brDate(day.date), `<p class="small muted" style="margin-top:0">O que você quer enviar?</p>
+      ${op('dia', 'Dia inteiro', 'Relatório do dia: OEE, produção, turnos, paradas, scrap e, quando houver catálogo de gel, o gel (teórico × real, scrap pesado, índice).')}
+      ${op('turno', 'Um turno', 'Passagem de turno, com o scrap de gel pesado no turno quando houver.', shs.length ? ` · <select id="envrPs" aria-label="Turno">${shs.map(p => `<option value="${esc(p.id)}">${esc(p.snap.name)}</option>`).join('')}</select>` : '')}
+      ${op('gel', 'Só o gel do dia', cats ? 'Abre o relatório da Gestão de Gel no dia: consumo, scrap por equipamento e motivo, OP e lote (lá tem Copiar para o Outlook).' : 'Nenhum catálogo com gel neste dia: o relatório do Gel abre mesmo assim, no dia.')}
+      ${op('perdas', 'Scrap e perdas', 'Scrap de tubos por turno (Produção), gel do dia e o Waste (MUV) das ordens do dia, acumulado da competência.')}`,
+      `<button class="btn" data-close>Cancelar</button><span class="spacer"></span><button class="btn" id="envrAbrir">Abrir na aba Relatórios</button><button class="btn primary" id="envrCopiar">Copiar para o Outlook</button>`, (el, close) => {
+        if (!document.getElementById('envrCss')) { const st = document.createElement('style'); st.id = 'envrCss'; st.textContent = '.envr-op{display:flex;gap:10px;align-items:flex-start;padding:10px 12px;border:1px solid var(--line);border-radius:10px;margin-bottom:8px;cursor:pointer}.envr-op:has(input:checked){border-color:var(--accent);background:color-mix(in srgb,var(--accent) 7%,transparent)}.envr-op input[type=radio]{margin-top:3px}'; document.head.appendChild(st); }
+        const val = () => (el.querySelector('input[name="envr"]:checked') || {}).value || 'dia', psId = () => (el.querySelector('#envrPs') || {}).value || null;
+        const ps = el.querySelector('#envrPs'); if (ps) ps.addEventListener('change', () => { el.querySelector('input[value="turno"]').checked = true; upd(); });
+        const bA = el.querySelector('#envrAbrir'), bC = el.querySelector('#envrCopiar');
+        const upd = () => { const v = val(); bA.textContent = v === 'gel' ? 'Abrir o relatório do Gel ↗' : 'Abrir na aba Relatórios'; bC.hidden = v === 'gel'; };
+        el.querySelectorAll('input[name="envr"]').forEach(r => r.addEventListener('change', upd)); upd();
+        bA.onclick = () => { const v = val(); close();
+          if (v === 'gel') { location.href = GelTurno.relHref(day.date, day.date); return; }
+          this.abrirRelatorio(day, v === 'turno' ? 'shift' : v === 'perdas' ? 'stops' : 'day', psId()); };
+        bC.onclick = () => run(async () => { const v = val();
+          if (v === 'perdas') { rpState(); await this.lerWaste(); const P = this.perdas(day);   /* rpCopy usa o estado da aba Relatórios */ await rpCopy(this.perdasHtml(P), this.perdasTexto(P)); }
+          else await this.copiarRelatorio(day, v === 'turno' ? 'shift' : 'day', psId());
+          close(); }, 'Copiado. No Outlook, abra um novo e-mail e cole (Ctrl+V).');
+      });
+  }
+};
 const EmailDia = {
   ITENS: {
-    shift: [['painel', 'Medidor do OEE do turno, acumulado do dia e produção', 1], ['kpis', 'Disponibilidade, Performance, Qualidade, scrap e paradas', 1], ['hh', 'Gráfico hora a hora', 1], ['paradas', 'Maiores paradas (barras)', 1],
+    shift: [['painel', 'Medidor do OEE do turno, acumulado do dia e produção', 1], ['kpis', 'Disponibilidade, Performance, Qualidade, scrap e paradas', 1], ['gel', 'Gel: scrap pesado no turno (quando o turno usa gel)', 1], ['hh', 'Gráfico hora a hora', 1], ['paradas', 'Maiores paradas (barras)', 1],
       ['sq', 'Segurança e Qualidade', 1], ['obs', 'Observações do turno', 1], ['hhtab', 'Tabela hora a hora', 0], ['lista', 'Lista completa das paradas', 0], ['resumo', 'Resumo em texto', 0]],
-    day: [['painel', 'Medidor do OEE do dia e produção', 1], ['kpis', 'Disponibilidade, Performance, Qualidade, scrap e paradas', 1], ['turnos', 'Resultado por turno', 1], ['hh', 'Gráfico hora a hora', 1], ['paradas', 'Maiores paradas (barras)', 1],
+    day: [['painel', 'Medidor do OEE do dia e produção', 1], ['kpis', 'Disponibilidade, Performance, Qualidade, scrap e paradas', 1], ['gel', 'Gel do dia: teórico × real, scrap pesado e índice (quando há catálogo de gel)', 1], ['turnos', 'Resultado por turno', 1], ['hh', 'Gráfico hora a hora', 1], ['paradas', 'Maiores paradas (barras)', 1],
       ['sq', 'Segurança e Qualidade', 1], ['obs', 'Observações registradas', 1], ['cascata', 'Cascata do OEE (gráfico)', 0], ['lista', 'Lista completa das paradas', 0], ['resumo', 'Resumo em texto', 0]]
   },
   vale(tipo) { return tipo === 'shift' || tipo === 'day'; },
@@ -18838,6 +18951,11 @@ const EmailDia = {
           ['Scrap', X.semScrap ? '—' : U.pct(r.scrapPct, 2), X.semScrap ? 'não informado' : U.fmt(r.scrap) + ' un'], ['Paradas', U.fmt(r.apontMin) + ' min', X.stops.length + ' registro(s)']];
         return sec('Indicadores') + `<tr><td style="padding:0 18px"><table role="presentation" width="100%" cellpadding="0" cellspacing="6" border="0"><tr>${K.map(([n, v, s]) => `<td width="20%" valign="top" style="border:1px solid ${lin};border-top:3px solid #0D5E9C;padding:8px 10px;${F}"><div style="font-size:10.5px;color:${mut}">${e(n)}</div><div style="font-size:18px;font-weight:bold;color:${ink};padding-top:2px">${e(v)}</div><div style="font-size:10.5px;color:${mut};padding-top:1px">${e(s) || '&amp;nbsp;'}</div></td>`).join('')}</tr></table></td></tr>`;
       },
+      /* 2.6.15 · REL-01: gel (os números do quadro da tela; nada aparece sem catálogo de gel) */
+      gel: async () => {
+        const G = turno ? GelDia.turno(day, X.sr, res) : GelDia.linhas(day, res); if (!G) return '';
+        return sec(turno ? 'Gel · scrap pesado no turno' : 'Gel do dia · teórico × real') + linha(tab([['Gel'], ['Valor', 1], ['Referência']], G.rows.map(r => `<tr>${td(e(r[0]))}${td('<b>' + e(r[1]) + '</b>', 1)}${td(`<span style="color:${mut}">${e(r[2])}</span>`)}</tr>`)));
+      },
       turnos: async () => {
         if (turno) return '';
         const rows = res.shifts.map(s => { const q = s.r; return `<tr>${td('<b>' + e(s.ps.snap.name) + '</b>' + (s.ps.off ? ' <span style="color:' + mut + '">(sem produção)</span>' : ''))}${td(e(fq(q.good)), 1)}${td(e(fq(q.metaOp)), 1)}${td(`<b style="color:${corSem(q.semAttain)}">${e(U.pct(q.attain, 0))}</b>`, 1)}${td(`<b style="color:${corSem(q.semOee)}">${e(U.pct(q.oee))}</b>`, 1)}${td(e(U.pct(q.oeeTarget)), 1)}${td(e(U.pct(q.D, 0)), 1)}${td(e(U.pct(q.P, 0)), 1)}${td(e(U.pct(q.Q, 1)), 1)}${td(e(U.fmt(q.apontMin)), 1)}</tr>`; });
@@ -18898,6 +19016,7 @@ const EmailDia = {
     L.push(`• Produção boa: ${fq(r.good)} ${u} de ${fq(r.metaOp)} ${u} (${U.pct(r.attain, 0)})`, `• D ${U.pct(r.D)} · P ${U.pct(r.P)} · Q ${U.pct(r.Q, 2)}`, `• Scrap: ${X.semScrap ? 'não informado' : U.pct(r.scrapPct, 2) + ' (' + U.fmt(r.scrap) + ' un)'}`);
     const par = A.pareto(X.stops, 'codigo').slice(0, 3); L.push(`• Paradas: ${U.fmt(r.apontMin)} min${par.length ? ' · ' + par.map(p => `${p.label.split(' · ').slice(1).join(' · ') || p.label} ${U.fmt(p.value)} min`).join('; ') : ''}`);
     if (RelSQ.incluir()) { const s = RelSQ.resumo(R); if (s) L.push('• ' + s); }
+    if (this.lay(R.type).some(x => x.id === 'gel' &amp;&amp; x.on)) { const g = turno ? GelDia.textoTurno(day, X.sr, X.res) : GelDia.texto(day, X.res); if (g) L.push('• ' + g); }   /* 2.6.15 · REL-01 */
     for (const n of X.notas) L.push('• ' + n);
     if (R.summary != null &amp;&amp; c.sum &amp;&amp; c.sum.trim()) L.push('', c.sum.trim());
     return L.join('\n').replace(/\n{3,}/g, '\n\n').trim();
@@ -37490,9 +37609,9 @@ body.vac-porta{overflow:hidden}
     {
       "id": "oee",
       "path": "Plataforma.html#motor/oee",
-      "version": "2.6.14",
-      "sha256": "7e1029535ed48d795d444440d58c24c60c905d1f9dc6deb3d88d3a4f7f7f9917",
-      "bytes": 2245131
+      "version": "2.6.15",
+      "sha256": "7130dcf7ed5946397bae2bee750fa423d21aa6315d9eae398ba653963d9a7956",
+      "bytes": 2261313
     },
     {
       "id": "perdas",
@@ -37554,7 +37673,7 @@ body.vac-porta{overflow:hidden}
   "limitations": [
     "Projetos e conteúdo técnico OSM/MES/AM/TPM mantêm os limites documentados nas fontes."
   ],
-  "enginesSha256": "5b2cb1150762473529b2b9b319ca6fec777cc3d2e562dabe67a2f8cedcb9211d",
+  "enginesSha256": "513255482a7809e4e5f1a875c4732d85e22914957cf4c1405d24542891bd6474",
   "originRevision": "ffc9ee8",
   "sourceMode": "single-html",
   "originEnginesSha256": "a87a64ad0c328f70e102b2ae888790a9b5d5a9bd05778652a7ce7cae140e40d2"
@@ -37624,7 +37743,7 @@ summary{cursor:pointer;font-weight:600;color:var(--navy)}
 'use strict';
 /* ---------- referência (atualizar quando a plataforma mudar de versão) ---------- */
 // Iguais às do pacote da plataforma (nova-plataforma/src/generated/manifest.json); o teste ferramenta-verificar confere.
-const VERSOES = {"oee":"2.6.14","perdas":"1.12.17","gel":"2.42","paradas":"1.2.17","equip":"1.0.20","inic":"1.1.16","linha":"1.3.0","projetos":"0.1.16","portal":"1.9.50"};
+const VERSOES = {"oee":"2.6.15","perdas":"1.12.17","gel":"2.42","paradas":"1.2.17","equip":"1.0.20","inic":"1.1.16","linha":"1.3.0","projetos":"0.1.16","portal":"1.9.50"};
 const BASES = [
  { arq: 'vacutainer-cadastros.json', mod: 'portal', nome: 'Cadastro geral (Portal)', obrig: true, cadastro: true, bk: 'Cadastros' },
  { arq: 'portal-base.json', mod: 'portal', nome: 'Portal', obrig: true, bk: 'Portal' },
@@ -38215,7 +38334,7 @@ import { Icon, Button, Badge, Empty, Modal, BarChart, BrandLogo, CommandMenu } f
 import { ModuleFrame } from "vac:modulo/components/ModuleFrame";
 import manifest from "vac:recurso/manifesto";
 import { ModuleTabs } from "vac:modulo/components/ModuleTabs";
-const VERSION = "1.8.18";
+const VERSION = "1.8.19";
 /* Navegação 1.3.0 (16/11/2026): Visão da linha, Relatórios e Importações têm abas; as que mostram uma tela do
    Portal (motor da Administração) trazem o 3º campo com a aba dele. Administração fica só com cadastros e configuração. */
 const SHELL_TABS = {
