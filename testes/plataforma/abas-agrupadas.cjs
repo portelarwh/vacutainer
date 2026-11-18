@@ -40,6 +40,7 @@ const html = fs.readFileSync(path.resolve(__dirname, '../../Plataforma.html'));
     await f.click('[data-grpsub="ordens|plano"]'); await w();
     assert.ok(await f.evaluate(() => !!document.querySelector('#pmK')), 'Ordens (plano do mês) mostra o Plano do mês sem sair da aba');
     assert.equal(await f.evaluate(() => App.route), 'ordens');
+    await w(600); assert.equal(await page.evaluate(() => document.querySelector('.module-tabs [aria-selected="true"], .module-tabs .active, .module-tabs [aria-current="page"]')?.textContent.trim()), 'Ordens e lotes', 'destaque da casca na aba aberta');
     console.log('ok Ordens e lotes: a barra fica à vista e separada em Ordens produzidas, plano do mês, Conciliação, Histórico e Lotes');
 
     // 4) Resultados e Paradas: escolha lembrada; endereços antigos abrem a tela certa dentro do grupo
