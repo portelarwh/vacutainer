@@ -209,7 +209,7 @@ const RENOMEADO = { ...CAD, rev: 5, usuarios: CAD.usuarios.map(u => u.codigo ===
     const ctx = await b.newContext(); const p = await nova(ctx, 'Portal.html');
     const r = await p.evaluate(async () => { enterTest(); await new Promise(r => setTimeout(r, 300)); Lock.on(Cad.D.seguranca.senhaHash);
       Cad.ui.sec = 'parametros'; App.show('cad'); await new Promise(r => setTimeout(r, 300));
-      const grava = async v => { Cad.ui.sec = 'parametros'; App.show('cad'); await new Promise(r => setTimeout(r, 200)); document.querySelector('[data-par="backupDias"]').value = v; document.querySelector('#sParOk').click(); await new Promise(r => setTimeout(r, 300)); return (Cad.D.parametros || {}).backupDias ?? null; };
+      const grava = async v => { Cad.ui.sec = 'parametros'; App.show('cad'); await new Promise(r => setTimeout(r, 200)); document.querySelector('[data-par="backupDias"]').value = v; document.querySelector('#sGerOk').click(); await new Promise(r => setTimeout(r, 300)); return (Cad.D.parametros || {}).backupDias ?? null; };
       const curto = await grava('3'), certo = await grava('180');
       const d = await navigator.storage.getDirectory(); for await (const [n] of d.entries()) await d.removeEntry(n, { recursive: true });
       const bk = await (await d.getDirectoryHandle('00. Backups', { create: true })).getDirectoryHandle('Teste', { create: true });

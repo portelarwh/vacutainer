@@ -82,6 +82,23 @@ Plataforma 1.5.0, Produção 2.4.82, Administração 1.9.44.
 
 Aba Linha do tempo da Produção (`docs/timeline-operacional.md`). Só leitura de `day.events` e `db.server`; não altera OEE, metas, classificação de paradas, turnos nem exports. Bloco **aditivo** na base da Produção, autorizado pela especificação: `db.timeline = { tagMap[], tagEvents[], comments{}, imports[] }` (base sem o bloco continua válida; `Model.ensure` completa). Vigência do mapa de tags segue o contrato 2 (encerra e cria outra). Comentário, importação de tags e mapa passam por `Store.mutate` (releitura, backup, fila, auditoria). Testes: `testes/ttimeline.js` e `testes/plataforma/timeline.cjs`.
 
+## Semáforo sem amarelo e Parâmetros por cartão · plataforma 1.8.10, Administração 1.9.49, Produção 2.6.8 (18/11/2026)
+
+- **Novo parâmetro opcional `parametros.semaforoAmarelo`** (autorizado pelo responsável): `false` = só verde e vermelho; sem o campo, como antes (com amarelo). A regra comum `vacSemaforo` (igual nas nove páginas) usa o verde como início do amarelo quando ele está desligado; a Produção recebe `semaphore.yellow = green` pelo CadSync e esconde "atenção" nas legendas; a Visão da linha esconde "Atenção" na legenda. Metas de OEE com semáforo próprio continuam com as faixas delas.
+- **Administração › Parâmetros:** cada cartão (Parâmetros gerais, Semáforo, Produção e Gel) tem o próprio Salvar no topo, e a mensagem aparece logo abaixo dele. O Semáforo ganha "Usar amarelo (atenção)" e a prévia das faixas ao vivo. Com amarelo, ele continua precisando começar abaixo do verde.
+- **Avisos flutuantes (toast) dentro da plataforma:** o quadro de cada página tem a altura do conteúdo, e o aviso "fixo embaixo" ficava no fim da rolagem. O runtime da casca reposiciona os avisos fixos ancorados embaixo para a parte visível da tela, acompanhando a rolagem. O texto e a duração não mudam.
+- Teste: `testes/plataforma/parametros-semaforo.cjs`.
+
+## Tela de entrada · plataforma 1.8.9 (18/11/2026)
+
+Pedido do responsável: ao abrir, a plataforma só aparece depois do login ou da escolha "Entrar só para consulta".
+- **Casca (`modulo/App`):** tela de entrada em três passos: abrindo; sem pasta (Conectar ou Reconectar a pasta da linha); login. Fundo `Marca/login.png` ou `login.svg` desfocado, ou o azul da marca. Botões "Entrar só para consulta" e "Ver a demonstração". Ao entrar, a plataforma abre na página que estava no endereço.
+- **O login continua sendo do `vacLogin`** (contrato: a casca não cria sessão). No passo login, a casca abre a Administração atrás da tela e chama `vacAutenticacao.porta(true)` (comum/interface): a Administração mostra só a janela de login, centrada e com o fundo transparente, sobre a tela de entrada. Primeiro acesso, troca de senha, bloqueio por erros e sessão até o fim do turno não mudam.
+- **Consulta:** `sessionStorage vac.platform.consulta = 1`, só nesta aba do navegador. `vacAppHost.consulta` informa as páginas, e `vacLogin.dispensado()` não abre a janela de login nelas. Sem sessão, nada é gravado (`vacPodeAqui`), como antes. O login pode ser feito depois, pelo botão da pessoa no alto.
+- **Fora da tela:** demonstração e testes automáticos (mesma regra do `vacLogin`: `navigator.webdriver`, salvo `vac.login.forcar = 1`).
+- **Revisão do PR #103 (plataforma 1.8.11):** pasta lida sem cadastro válido mostra "Cadastro não encontrado", com "Escolher outra pasta" e "Entrar só para consulta", em vez de ficar em "abrindo". No modo consulta, `vacLogin` só deixa de abrir a janela automática; o login pedido pela pessoa (`vacAutenticacao.abrir` e `vacPagina.autenticar`, com `pedido: true`) continua aberto.
+- Teste: `testes/plataforma/entrada.cjs` (pasta e pessoa fictícias; login com ID e senha, consulta, demonstração).
+
 ## IMP-01 · conferência das importações por período · Administração 1.9.47, plataforma 1.8.7 (17/11/2026)
 
 - **Exports (campos opcionais, autorizados pelo responsável em 17/11/2026):** cada item de `exports.importacoes` ganha `lidas`, `gravadas`, `duplicadas` e `rejeitadas` (número ou `null` quando o importador não guarda). Só o que já estava gravado na base de cada página; nada é recalculado. Produção 2.6.5 (MES: linhas encontradas, caixas, linhas ignoradas; planilhas: encontradas, novas + atualizadas, repetidas de paradas, inválidas), Paradas 1.2.16 (novas + atualizadas, erros), Gel 2.40 (linhas do relatório), Waste 1.12.16 (importadas, rejeitadas). `exportsVersion` não muda: leitores antigos ignoram os campos.

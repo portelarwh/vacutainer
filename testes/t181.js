@@ -10,7 +10,7 @@ console.log('intervalos copiados:',await p.evaluate(()=>JSON.stringify(Ficha.W.v
 console.log('horas:',await p.evaluate(()=>[...document.querySelectorAll('#fBox .small')].map(x=>x.innerText).filter(t=>/Horas do turno|Intervalos do Hora/.test(t)).slice(0,2).join(' || ')));
 await p.screenshot({path:SP+'testes/saida/q1.png'});await p.evaluate(()=>Modal.close(true));
 // parâmetros
-await p.evaluate(()=>{Cad.ui.sec='parametros';App.render()});await p.waitForTimeout(300);await p.fill('[data-par=motivosAbono]','Almoço\nRevezamento');await p.click('#sParOk');await p.waitForTimeout(600);console.log('motivosAbono:',await p.evaluate(()=>JSON.stringify(Cad.D.parametros.motivosAbono)));
+await p.evaluate(()=>{Cad.ui.sec='parametros';App.render()});await p.waitForTimeout(300);await p.fill('[data-par=motivosAbono]','Almoço\nRevezamento');await p.click('#sGerOk');await p.waitForTimeout(600);console.log('motivosAbono:',await p.evaluate(()=>JSON.stringify(Cad.D.parametros.motivosAbono)));
 // preparação: cria catálogo prep com código de material da BOM
 await p.evaluate(()=>{const mat=Cad.D.bom[0].vigencias.slice(-1)[0].itens[0].material;Cad.ops([{acao:'criação',tipo:'catalogos',codigo:mat,item:{codigo:mat,tipoItem:'preparacao',unidade:'L',nome:'Solução teste',ativo:true,vigencias:[{de:'2026-01-01',ate:null,pphNominal:null,tubosPorCaixa:null,caixasPorLote:null}]}}])});await p.waitForTimeout(800);
 const mat=await p.evaluate(()=>Cad.D.bom[0].vigencias.slice(-1)[0].itens[0].material);
