@@ -81,6 +81,11 @@ const html = fs.readFileSync(path.resolve(__dirname, '../../Plataforma.html'));
     await f.selectOption(`${box} [data-sq-resp="acidente"]`, 'sim');
     assert.equal(await f.locator(`${box} [data-sq-detalhe="acidente"] [data-sq-resumo="acidente"]`).isVisible(), true, 'Segurança "Sim": observação aparece');
     await f.selectOption(`${box} [data-sq-resp="acidente"]`, 'nao');
+    /* revisão do PR #104: gravação recusada não mostra "✓ Salvo" */
+    await f.evaluate(() => { window.__pode = window.vacPode; window.vacPode = () => false; });
+    await f.click(`${box} [data-sq-salvar]`); await w(600);
+    assert.doesNotMatch(await f.evaluate(b => document.querySelector(b + ' [data-sq-ult]').textContent, box), /Salvo/, 'recusa não mostra Salvo');
+    await f.evaluate(() => { window.vacPode = window.__pode; });
     await f.click(`${box} [data-sq-salvar]`); await w(800);
     const sq = await f.evaluate(([b, id]) => ({ txt: document.querySelector(b + ' [data-sq-ult]').textContent, q: curDay().shifts.find(p => p.id === id).sqdcp.qn }), [box, ids[0]]);
     assert.match(sq.txt, /^✓ Salvo · último registro: .+ · \d{2}\/\d{2}\/\d{4}/); assert.equal(sq.q.problema, 'Rótulo ilegível'); assert.equal(sq.q.resumo, 'Lote fictício');
@@ -107,6 +112,21 @@ const html = fs.readFileSync(path.resolve(__dirname, '../../Plataforma.html'));
     await f.evaluate(id => document.querySelector(`[data-respok="${id}"]`).click(), sug.id); await w(500);
     assert.equal(await f.evaluate(id => curDay().shifts.find(p => p.id === id).responsible, sug.id), 'Pessoa A', 'confirmar grava');
     console.log('ok líder sugerido (Pessoa A, 2 dos últimos 3) e confirmado');
+    /* revisão do PR #104: com o turno fechado, o responsável continua editável (PRD-05) */
+    const fech = await f.evaluate(async id => { const ps = curDay().shifts.find(p => p.id === id), st = ps.status; ps.status = 'fechado'; render(); await new Promise(r => setTimeout(r, 300));
+      const dis = document.querySelector(`[data-psf="${id}|responsible"]`).disabled; ps.status = st; render(); return dis; }, sug.id);
+    assert.equal(fech, false, 'responsável editável com o turno fechado');
+    console.log('ok responsável editável com o turno fechado');
+
+    /* revisão do PR #104: o 3º turno habilitado no dia continua com o interruptor para desabilitar */
+    const npId = ids[2].slice(3);
+    await f.click(`[data-trturno="${ids[2]}"]`); await w(300);
+    await f.evaluate(id => { const c = document.querySelector(`[data-turnonp="${id}"]`); c.checked = true; c.dispatchEvent(new Event('change')); }, npId); await w(900);
+    const hab = await f.evaluate(id => { const ps = curDay().shifts.find(p => !p.deleted && p.shiftId === id && p.enabledNP); const c = ps && document.querySelector(`section.tl[data-tl="${ps.id}"] [data-turnonp="${id}"]`); return { ps: !!ps, chk: !!c && c.checked }; }, npId);
+    assert.ok(hab.ps && hab.chk, 'habilitado: detalhe do turno com o interruptor marcado');
+    await f.evaluate(id => { const ps = curDay().shifts.find(p => !p.deleted && p.shiftId === id && p.enabledNP); const c = document.querySelector(`section.tl[data-tl="${ps.id}"] [data-turnonp="${id}"]`); c.checked = false; c.dispatchEvent(new Event('change')); }, npId); await w(900);
+    assert.equal(await f.evaluate(id => curDay().shifts.some(p => !p.deleted && p.shiftId === id), npId), false, 'desmarcar volta a não produtivo');
+    console.log('ok 3º turno habilitado e desabilitado pelo interruptor do detalhe');
 
     // 8) cards de produção por turno, servidor ao lado dos lotes
     const k = await f.evaluate(() => { const day = curDay(), res = Engine.computeDay(db(), day); return res.shifts.map(sr => { const c = [...document.querySelectorAll('.kpis > .kpi')].find(x => KC.chave(x) === 'Produção · ' + sr.ps.snap.name); return c ? c.querySelector('.v').textContent === fq(sr.r.good) + unitLbl() : false; }); });

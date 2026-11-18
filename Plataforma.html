@@ -17579,8 +17579,8 @@ section.tl.tr-oculto{display:none}
   <div class="tl-c tl-strip">
     ${cel('tl-s-cat', `Catálogo ${tip('initialCatalog')}`, `<select data-psf="${ps.id}|initialCatalogId" ${lk ? 'disabled' : ''} data-fk="ps-cat-${ps.id}" aria-label="Catálogo inicial do turno"><option value="">(segue o turno anterior)</option>${cats.map(c => `<option value="${c.id}" ${ps.initialCatalogId === c.id ? 'selected' : ''}>${esc(c.code)} - ${esc(c.name || '')}</option>`).join('')}</select>
       <span class="tl-tags">Produzindo: ${prod.length ? prod.map(id => catPill(id)).join('') : '<span class="muted">—</span>'}</span>`)}
-    ${cel('tl-s-resp', `Responsável ${tip('shiftResponsible')}`, `<input type="text" class="tl-in${sug ? ' tl-sug' : ''}" data-psf="${ps.id}|responsible" value="${esc(ps.responsible || (sug ? sug.nome : ''))}" maxlength="60" placeholder="${esc(ps.closing ? ps.closing.by || 'Quem responde pelo turno' : 'Quem responde pelo turno')}" data-fk="ps-resp-${ps.id}" aria-label="Responsável do turno"${lk ? ' disabled' : ''}>
-      ${sug ? `<span class="tl-a">sugerido: ${esc(sug.motivo)}${lk ? '' : ` · <button type="button" class="tl-lk" data-respok="${ps.id}" data-nome="${esc(sug.nome)}">confirmar</button>`}</span>` : ''}`)}
+    ${cel('tl-s-resp', `Responsável ${tip('shiftResponsible')}`, `<input type="text" class="tl-in${sug ? ' tl-sug' : ''}" data-psf="${ps.id}|responsible" value="${esc(ps.responsible || (sug ? sug.nome : ''))}" maxlength="60" placeholder="${esc(ps.closing ? ps.closing.by || 'Quem responde pelo turno' : 'Quem responde pelo turno')}" data-fk="ps-resp-${ps.id}" aria-label="Responsável do turno">
+      ${sug ? `<span class="tl-a">sugerido: ${esc(sug.motivo)} · <button type="button" class="tl-lk" data-respok="${ps.id}" data-nome="${esc(sug.nome)}">confirmar</button></span>` : ''}`)}
     ${cel('tl-s-prod', `Produção dentro do turno ${tip('prodDentro')}`, `<span class="tl-v${okP ? ' ok' : ''}">${fq(dentro)} <small>${unitLbl()}</small> <span class="tl-meta">× meta ${meta > 0 ? fq(meta) : '—'}</span></span>
       <div class="tl-bar" role="progressbar" aria-label="Produção dentro do turno em relação à meta" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${pc == null ? 0 : Math.round(Math.min(1, pc) * 100)}"><span class="tl-tr"><i class="${stP}" style="width:${pc == null ? 0 : Math.min(100, pc * 100).toFixed(1)}%"></i></span><b class="tl-pct ${stP}">${pc == null ? '—' : U.pct(pc, 0)}</b></div>
       <span class="tl-a tl-pinfo">Produção total considerada ${tip('prodTotal')}: <b>${fq(r.good)}</b> ${unitLbl()} · ${meta > 0 ? metaTxt(r.attain, `Meta ${fq(meta)} ${unitLbl()}${r.good >= meta ? '' : ` · ${U.pct(r.attain, 0)}`}`) : 'sem meta'}</span>
@@ -17602,6 +17602,7 @@ section.tl.tr-oculto{display:none}
         <h4 class="tl-h4">${ic('person', 16)} ABONO/REVEZAMENTO ${tip('breaks')}</h4>
         <div class="row" style="flex-wrap:wrap;gap:8px">${abonoChips(day, ps, lk)}</div>
         <label class="kvrow"><input type="checkbox" data-shoff="${ps.id}" ${ps.off ? 'checked' : ''} ${lk ? 'disabled' : ''}> <span>Turno sem produção</span>${ps.off ? `<span class="small muted">· ${offTxt(ps)}</span> <button type="button" class="btn xs" data-shoffed="${ps.id}">alterar</button>` : ''}</label>
+        ${ps.enabledNP ? `<label class="kvrow"><input type="checkbox" role="switch" data-turnonp="${esc(ps.shiftId)}" checked ${day.status === 'fechado' ? 'disabled' : ''} aria-label="Habilitar ${esc(ps.snap.name)} neste dia"> <span>Habilitado neste dia <span class="small muted">· não produtivo no cadastro; desmarque para voltar (só sem produção, scrap ou parada lançada)</span></span></label>` : ''}
       </div>
       <div class="tl-c tl-obs">
         <h4 class="tl-h4">Observações do turno</h4>
@@ -19689,7 +19690,8 @@ const Sqdcp = (() => {
     try {
       const valor = lerFormulario(box), dia = box.dataset.sqDay, turno = box.dataset.sqTurno;
       salvoAgora = { turno, at: Date.now() };   /* 2.6.9 · LANC-02: aviso visível de salvo, com quem e quando */
-      run(() => Actions.setShiftSQDCP(dia, turno, valor), 'Segurança e qualidade registradas.').then(() => {
+      run(() => { Actions.setShiftSQDCP(dia, turno, valor); return true; }, 'Segurança e qualidade registradas.').then(ok => {
+        if (ok !== true) { salvoAgora = null; return; }   /* run() devolve undefined quando a gravação falha */
         const b2 = document.querySelector('.sq-ocorrencias[data-sq-turno="' + CSS.escape(turno) + '"] [data-sq-ult]'), d = db().productionDays.find(x => x.id === dia), p = d &amp;&amp; d.shifts.find(x => x.id === turno), q = p &amp;&amp; p.sqdcp;
         if (b2 &amp;&amp; q &amp;&amp; q.em) { b2.className = 'small sq-ult ok'; b2.textContent = '✓ Salvo · último registro: ' + (q.por || '—') + ' · ' + U.brDT(q.em); }
       });
@@ -37218,8 +37220,8 @@ body.vac-porta{overflow:hidden}
       "id": "oee",
       "path": "Plataforma.html#motor/oee",
       "version": "2.6.9",
-      "sha256": "91f9842683060ad247b6085377dfe122d6b4acbffffbd25bfd9b13d8403ec15a",
-      "bytes": 2230725
+      "sha256": "4b0c8c65da0a7a55d776a582b9681041422a57bb8986757af65486adda10bdee",
+      "bytes": 2231227
     },
     {
       "id": "perdas",
@@ -37281,7 +37283,7 @@ body.vac-porta{overflow:hidden}
   "limitations": [
     "Projetos e conteúdo técnico OSM/MES/AM/TPM mantêm os limites documentados nas fontes."
   ],
-  "enginesSha256": "d8f47f97e0128526d469a16969c38b3632c17aa92befb2dbf5f3679e753d0797",
+  "enginesSha256": "122e53a2404fbb89f835c361ef706b6f6d1d4142351183fe4c5f933557758c50",
   "originRevision": "ffc9ee8",
   "sourceMode": "single-html",
   "originEnginesSha256": "a87a64ad0c328f70e102b2ae888790a9b5d5a9bd05778652a7ce7cae140e40d2"
