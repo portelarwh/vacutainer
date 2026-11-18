@@ -1936,6 +1936,7 @@ const vacLogin = (() => {
   function dispensado() {
     try { if (typeof vacDemo !== 'undefined' &amp;&amp; vacDemo.ativo) return true; } catch (x) { }
     if (location.hash === '#tv' || document.querySelector('body > .tv, #tvEl, #tv:not([hidden])') || document.body.classList.contains('tv-on')) return true;
+    try { if (window.__vacEmbedded &amp;&amp; parent.vacAppHost &amp;&amp; parent.vacAppHost.consulta) return true; } catch (x) { }   /* 1.8.9 · "Entrar só para consulta" na tela de entrada */
     if (lg('vac.login.forcar') === '1') return false;
     if (navigator.webdriver) return true;
     if (location.hash === '#teste') return true;
@@ -2330,7 +2331,10 @@ const vacPrefs = (() => {
 })();
 
 // API de autenticação da casca: a senha e a sessão continuam pertencendo ao vacLogin.
-window.vacAutenticacao = { abrir: op => vacLogin.abrir(op), sessao: () => vacLogin.sessao(), sair: () => vacLogin.sair() };
+/* 1.8.9 · porta(true): a tela de entrada da plataforma mostra só a janela de login desta página, sobre o fundo dela (o resto fica invisível) */
+window.vacAutenticacao = { abrir: op => vacLogin.abrir(op), sessao: () => vacLogin.sessao(), sair: () => vacLogin.sair(),
+  porta: on => { const r = document.documentElement; if (!document.getElementById('vacPortaCss')) { const st = document.createElement('style'); st.id = 'vacPortaCss'; st.textContent = 'html.vac-porta,html.vac-porta body{background:transparent!important}html.vac-porta body>*:not(.vlog){visibility:hidden!important}html.vac-porta .vlog{background:transparent!important;backdrop-filter:none!important;place-items:center!important}'; document.head.appendChild(st); }
+    r.classList.toggle('vac-porta', !!on); if (on &amp;&amp; !vacLogin.sessao() &amp;&amp; !vacLogin.aberto) vacLogin.abrir(); if (!on &amp;&amp; vacLogin.aberto &amp;&amp; vacLogin.dispensado()) vacLogin.fechar(); } };
 
 /* PR76 · fronteira pública dos motores. A casca não conhece Store, App ou nomes de funções locais.
    Adaptadores ficam junto ao kit aplicado pelos builds; nenhuma fórmula é duplicada. */
@@ -36996,6 +37000,24 @@ td { font-size:15px; }
 .button.engine-command.dest-verde{background:var(--bd-success,#197A4A);border-color:var(--bd-success,#197A4A);color:#fff}
 .button.engine-command.dest-vermelho{background:var(--bd-danger,#C62828);border-color:var(--bd-danger,#C62828);color:#fff}
 .button.engine-command[class*="dest-"]:hover:not(:disabled){filter:brightness(.95)}
+
+/* 1.8.9 · tela de entrada (porta): foto da pasta Marca (login.png ou login.svg) desfocada e escurecida; sem a foto, o azul da marca.
+   Passo "login": a janela de login da Administração (vacLogin) aparece por cima, em tela cheia, com o fundo transparente. */
+.porta{position:fixed;inset:0;z-index:1000;display:grid;place-items:center;padding:var(--sp-16,16px);overflow:hidden;color:#fff;font-family:var(--bd-font-body,Arial,sans-serif)}
+.porta-fundo{position:absolute;inset:-32px;background:url("Marca/login.png") center/cover no-repeat,url("Marca/login.svg") center/cover no-repeat,radial-gradient(120% 90% at 20% 10%,#1D3B8F 0%,var(--bd-navy,#060A3D) 60%);filter:blur(12px) brightness(.62) saturate(1.05);transform:scale(1.04)}
+.porta::after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,rgba(6,10,61,.25),rgba(6,10,61,.55));pointer-events:none}
+.porta-card{position:relative;z-index:1;width:min(420px,100%);display:grid;gap:var(--sp-16,16px);padding:var(--sp-32,32px) var(--sp-24,24px);border-radius:18px;background:rgba(255,255,255,.96);color:var(--bd-navy,#060A3D);box-shadow:0 24px 60px rgba(0,0,0,.35)}
+.porta-card h1{margin:0;font-size:24px;font-weight:700}.porta-txt{margin:0;color:#3D3E41;font-size:15px;line-height:1.45}.porta-erro{margin:0;color:var(--bd-danger,#C62828);font-size:14px}
+.porta-marca{display:flex;align-items:center;gap:var(--sp-12,12px)}.porta-marca b{display:block;letter-spacing:.14em;font-size:15px}.porta-marca small{color:#3D3E41;font-size:13px}
+.porta-v{display:grid;place-items:center;width:44px;height:44px;border-radius:12px;background:var(--bd-blue,#044ED7);color:#fff;font-weight:800;font-size:24px}
+.porta-card .button{justify-content:center;min-height:44px}
+.porta-acoes{position:fixed;left:0;right:0;bottom:var(--sp-24,24px);z-index:1002;display:flex;gap:var(--sp-16,16px);justify-content:center;align-items:center;flex-wrap:wrap;padding:0 var(--sp-16,16px)}
+.porta-consulta{min-height:44px;padding:0 var(--sp-24,24px);border-radius:999px;border:1px solid rgba(255,255,255,.75);background:rgba(6,10,61,.55);color:#fff;font:inherit;font-weight:700;cursor:pointer;backdrop-filter:blur(4px)}
+.porta-consulta:hover{background:rgba(6,10,61,.8)}.porta-link{background:none;border:0;color:#fff;font:inherit;text-decoration:underline;cursor:pointer;padding:var(--sp-8,8px)}
+.porta-consulta:focus-visible,.porta-link:focus-visible{outline:3px solid #fff;outline-offset:2px}
+body.vac-porta .module-frame:not([hidden]) iframe{position:fixed!important;inset:0!important;width:100vw!important;height:100vh!important;max-height:none!important;z-index:1001!important;background:transparent!important;border:0!important;color-scheme:normal}
+body.vac-porta{overflow:hidden}
+@media print{.porta{display:none}}
 </textarea>
 
 <!-- dados/manifesto -->
@@ -37007,70 +37029,70 @@ td { font-size:15px; }
       "id": "oee",
       "path": "Plataforma.html#motor/oee",
       "version": "2.6.7",
-      "sha256": "284fea1612a1ff62fb71a935b64dc832b2841d6eb46adff905b68829384ca1ca",
-      "bytes": 2208250
+      "sha256": "4ac9eece82a5f8a8f3e74e2fb9569850b5e020c80a013fd08237a2658e74eab3",
+      "bytes": 2209228
     },
     {
       "id": "perdas",
       "path": "Plataforma.html#motor/perdas",
       "version": "1.12.16",
-      "sha256": "f75ebbeef64418156acd027d5cfb525416d16b099bd5a3294fc4858503e766c1",
-      "bytes": 923596
+      "sha256": "3daded1332a62bf07b810d994a43bb67d1b14304621e8b27c1167ed10746a498",
+      "bytes": 924574
     },
     {
       "id": "gel",
       "path": "Plataforma.html#motor/gel",
       "version": "2.40",
-      "sha256": "fd8f5fd9b3c36f87cbeee1fcfee25e8521355452bba0a118e692b06759c3be48",
-      "bytes": 1611302
+      "sha256": "d0dbac345d81e878f21795e788ca3bff204b026b159b51567faa0176c5761b08",
+      "bytes": 1612280
     },
     {
       "id": "paradas",
       "path": "Plataforma.html#motor/paradas",
       "version": "1.2.17",
-      "sha256": "ea9426622a6bcf772e2e52720c827abc83033699bfae9bc552807f86bdfa39b5",
-      "bytes": 900429
+      "sha256": "c486ef56a49b0395def354c76c07e69383e58b26118ebd4f93a077f8ea01c4d7",
+      "bytes": 901407
     },
     {
       "id": "equip",
       "path": "Plataforma.html#motor/equip",
       "version": "1.0.20",
-      "sha256": "6c56dfb1e03fc666265eaffd2cba988ca5fea80b2df3c62e3b98ebea89e0a957",
-      "bytes": 684343
+      "sha256": "cfa781912fcdedb71ed9ddf1de5c43cb030579b59f390c819498d88c5e508fc1",
+      "bytes": 685321
     },
     {
       "id": "inic",
       "path": "Plataforma.html#motor/inic",
       "version": "1.1.16",
-      "sha256": "b629db0f81082b4bf2e8ffd8d6a993e3b40a6c84f8a1c88ae75cd68badd42090",
-      "bytes": 705879
+      "sha256": "6e869c75cb44b6fd6741304d481fefc9c3092b8edf5e2a10fb55c9d6a17cc57a",
+      "bytes": 706857
     },
     {
       "id": "linha",
       "path": "Plataforma.html#motor/linha",
       "version": "1.3.0",
-      "sha256": "27c3b43aa5197e3e69a777fb59846616572da18736fd626fdd63c08435c17f7c",
-      "bytes": 816115
+      "sha256": "50a42f6041a153b7cc8fe922d0ca6099c115a8dcb358fd418e6d4cb831587df8",
+      "bytes": 817093
     },
     {
       "id": "projetos",
       "path": "Plataforma.html#motor/projetos",
       "version": "0.1.16",
-      "sha256": "0e63109fc71a5bdb8eb005f5404ad1d11731d86bcf8e9d337740651be439d2aa",
-      "bytes": 624283
+      "sha256": "d179d9526d3275e392bef2d7b3ec18648c3c6468486299e03a7a0f48ce365fa9",
+      "bytes": 625261
     },
     {
       "id": "portal",
       "path": "Plataforma.html#motor/portal",
       "version": "1.9.48",
-      "sha256": "da48cf0ef4591df82e8d9b1b2efd430f8b3fa161617d172549d00af5182a7729",
-      "bytes": 1231714
+      "sha256": "11c07987b5927287a87e9191c556000767ffbcf2848e7168dfcfb618dc1f5d8c",
+      "bytes": 1232692
     }
   ],
   "limitations": [
     "Projetos e conteúdo técnico OSM/MES/AM/TPM mantêm os limites documentados nas fontes."
   ],
-  "enginesSha256": "fa305590ad9cf4f6d7b6fc324e872fa72318a80779bd536f41ed884d37157248",
+  "enginesSha256": "a7b39ca0079a10bd4126172406e35dcdf8ac670d84c5d26f603a85173c967fc1",
   "originRevision": "ffc9ee8",
   "sourceMode": "single-html",
   "originEnginesSha256": "a87a64ad0c328f70e102b2ae888790a9b5d5a9bd05778652a7ce7cae140e40d2"
@@ -37731,7 +37753,7 @@ import { Icon, Button, Badge, Empty, Modal, BarChart, BrandLogo, CommandMenu } f
 import { ModuleFrame } from "vac:modulo/components/ModuleFrame";
 import manifest from "vac:recurso/manifesto";
 import { ModuleTabs } from "vac:modulo/components/ModuleTabs";
-const VERSION = "1.8.8";
+const VERSION = "1.8.9";
 /* Navegação 1.3.0 (16/11/2026): Visão da linha, Relatórios e Importações têm abas; as que mostram uma tela do
    Portal (motor da Administração) trazem o 3º campo com a aba dele. Administração fica só com cadastros e configuração. */
 const SHELL_TABS = {
@@ -37777,6 +37799,34 @@ function App() {
   const demo = new URLSearchParams(location.search).get("demo") === "1";
   const [session, setSession] = useState(() => demo ? "demo-" + crypto.randomUUID() : "real-inicial"), [statuses, setStatuses] = useState({});
   const [pendDialog, setPendDialog] = useState(null);
+  /* 1.8.9 · tela de entrada: ao abrir, a plataforma só aparece depois do login (ID e senha, pelo vacLogin da Administração) ou de
+     "Entrar só para consulta" (vale nesta aba; nada é gravado). Fundo: Marca/login.png ou login.svg desfocado; sem arquivo, o azul da marca.
+     Fora: demonstração e testes automáticos (mesma regra do vacLogin: navigator.webdriver, salvo vac.login.forcar = 1). */
+  const [consulta, setConsulta] = useState(() => {
+    try {
+      return sessionStorage.getItem("vac.platform.consulta") === "1";
+    } catch {
+      return false;
+    }
+  }), [restaurado, setRestaurado] = useState(demo), [, setTique] = useState(0);
+  const rotaAntes = useRef(null);
+  const forcarLogin = (() => {
+    try {
+      return localStorage.getItem("vac.login.forcar") === "1";
+    } catch {
+      return false;
+    }
+  })();
+  const logado = !demo &amp;&amp; !!(window.vacAppHost &amp;&amp; window.vacAppHost.usuario);
+  const porta = !demo &amp;&amp; !consulta &amp;&amp; !logado &amp;&amp; !(navigator.webdriver &amp;&amp; !forcarLogin);
+  const portaPasso = !porta ? null : !restaurado || folder &amp;&amp; !cad ? "abrindo" : !folder ? "pasta" : "login";
+  function entrarConsulta() {
+    try {
+      sessionStorage.setItem("vac.platform.consulta", "1");
+    } catch {
+    }
+    setConsulta(true);
+  }
   const [statusOpen,setStatusOpen] = useState(false);
   const [period, setPeriod] = useState(demo ? "hoje" : "ontem"), [from, setFrom] = useState(today()), [to, setTo] = useState(today()), [turno, setTurno] = useState(""), [detail, setDetail] = useState(false), [navOpen, setNavOpen] = useState(false), [help, setHelp] = useState(false), [search, setSearch] = useState(false), [query, setQuery] = useState(""), [selectedOrder, setSelectedOrder] = useState(null), [userDialog, setUserDialog] = useState(false);
   const [theme, setTheme] = useState(() => localStorage.getItem(demo ? "vac.platform.demo.theme" : "vac.platform.theme") || "light"), [userId, setUserId] = useState(() => demo ? localStorage.getItem("vac.platform.demo.user") || "9001" : "");
@@ -37856,7 +37906,7 @@ function App() {
         setLembrada(h);
         setMessage("Pasta lembrada: " + h.name + ". Clique em Reconectar e escolha Permitir (ou Permitir em todas as visitas).");
       }
-    }).catch((e) => setMessage("N\xE3o foi poss\xEDvel restaurar a pasta: " + e.message));
+    }).catch((e) => setMessage("N\xE3o foi poss\xEDvel restaurar a pasta: " + e.message)).finally(() => setRestaurado(true));
   }, []);
   useEffect(() => {
     refresh();
@@ -37900,6 +37950,29 @@ function App() {
       return () => clearInterval(timer);
     }
   }, [demo, session]);
+  useEffect(() => {
+    const on = portaPasso === "login";
+    document.body.classList.toggle("vac-porta", on);
+    if (on) {
+      if (route.page !== "portal") {
+        if (!rotaAntes.current) rotaAntes.current = { ...route };
+        navigate("portal");
+        return;
+      }
+      if (statuses.portal?.ready) frames.get("portal")?.contentWindow?.vacAutenticacao?.porta?.(true);
+      const t = setInterval(() => setTique((n) => n + 1), 1e3);
+      return () => clearInterval(t);
+    }
+    try {
+      frames.get("portal")?.contentWindow?.vacAutenticacao?.porta?.(false);
+    } catch {
+    }
+    if (!porta &amp;&amp; rotaAntes.current) {
+      const r = rotaAntes.current;
+      rotaAntes.current = null;
+      navigate(r.page, r.tab, r.hash);
+    }
+  }, [portaPasso, route.page, statuses.portal?.ready]);
   useEffect(() => {
     if (!userDialog) return;
     if (route.page !== "portal") {
@@ -38080,6 +38153,29 @@ function App() {
   const statusDanger=!!(statusCurrent?.error || statusCurrent?.info?.estado?.some(p=>p.tom==='bad') || sources.some(s=>s.state==='erro' || s.state==='incompativel'));
   const statusWarning=!!(durablePending || statusCurrent?.pending || statusCurrent?.readOnly || statusCurrent?.info?.estado?.some(p=>['bad','warn'].includes(p.tom)));
   return /* @__PURE__ */ jsxs("div", { className: "app-shell", children: [
+    porta &amp;&amp; /* @__PURE__ */ jsxs("div", { className: "porta" + (portaPasso === "login" ? " porta-login" : ""), role: portaPasso === "login" ? void 0 : "dialog", "aria-modal": portaPasso === "login" ? void 0 : "true", "aria-label": "Entrada da plataforma", children: [
+      /* @__PURE__ */ jsx("div", { className: "porta-fundo", "aria-hidden": "true" }),
+      portaPasso !== "login" &amp;&amp; /* @__PURE__ */ jsxs("div", { className: "porta-card", children: [
+        /* @__PURE__ */ jsxs("div", { className: "porta-marca", children: [
+          /* @__PURE__ */ jsx("span", { className: "porta-v", "aria-hidden": "true", children: "V" }),
+          /* @__PURE__ */ jsxs("div", { children: [/* @__PURE__ */ jsx("b", { children: "VACUTAINER" }), /* @__PURE__ */ jsx("small", { children: "Plataforma da linha" })] })
+        ] }),
+        portaPasso === "abrindo" ? /* @__PURE__ */ jsx("p", { className: "porta-txt", role: "status", children: "Abrindo a plataforma\u2026" }) : /* @__PURE__ */ jsxs(Fragment, { children: [
+          /* @__PURE__ */ jsx("h1", { children: "Entrar" }),
+          /* @__PURE__ */ jsx("p", { className: "porta-txt", children: "Conecte a pasta da linha para entrar com o seu ID e a sua senha." }),
+          /* @__PURE__ */ jsx(Button, { primary: true, icon: "folder", onClick: () => connect(), disabled: busy, children: lembrada ? "Reconectar " + lembrada.name : "Conectar pasta da linha" }),
+          folderError &amp;&amp; /* @__PURE__ */ jsx("p", { className: "porta-erro", role: "alert", children: folderError })
+        ] })
+      ] }),
+    ] }),
+    porta &amp;&amp; portaPasso !== "abrindo" &amp;&amp; /* @__PURE__ */ jsxs("div", { className: "porta-acoes", children: [
+        /* @__PURE__ */ jsx("button", { type: "button", className: "porta-consulta", onClick: entrarConsulta, children: "Entrar s\xF3 para consulta" }),
+        portaPasso !== "login" &amp;&amp; /* @__PURE__ */ jsx("button", { type: "button", className: "porta-link", onClick: () => {
+          const u = new URL(location.href);
+          u.searchParams.set("demo", "1");
+          location.assign(u.href);
+        }, children: "Ver a demonstra\xE7\xE3o" })
+      ] }),
     /* @__PURE__ */ jsxs("aside", { className: "sidebar " + (navOpen ? "open" : ""), children: [
       /* @__PURE__ */ jsxs("a", { href: "#/inicio", className: "brand", onClick: (e) => {
         e.preventDefault();
@@ -39240,6 +39336,13 @@ function configureRuntime(demo, folder, identity, c, cb) {
     return root;
   }, canWrite: (id) => policies.has(id) &amp;&amp; !policies.get(id).readOnly &amp;&amp; mayWrite(scopedStorage(), cad, id), policy: (id) => policies.get(id), get cadastro() {
     return cad;
+  }, get consulta() {
+    /* 1.8.9 · tela de entrada: "Entrar só para consulta" vale nesta aba do navegador; as páginas não pedem login e não gravam */
+    try {
+      return !mode &amp;&amp; sessionStorage.getItem("vac.platform.consulta") === "1";
+    } catch {
+      return false;
+    }
   }, get usuario() {
     return mode ? (cad?.usuarios || []).find((u) => String(u.codigo) === (localStorage.getItem("vac.platform.demo.user") || "9001")) || null : sessionUser(scopedStorage(), cad);
   }, status: (id, s) => callbacks.status(id, { ...s, ...policies.get(id)?.readOnly ? { readOnly: true, error: policies.get(id).reason } : {} }), changed: () => callbacks.changed(), link: (id, route = "") => appLink(id, route), scope: identity };

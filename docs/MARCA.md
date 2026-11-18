@@ -16,7 +16,8 @@ Pasta da linha\
 │  ├─ FSAlbertPro-Italic.otf
 │  ├─ BD_1-Color_Reverse_RGB_TransparentBurst.svg   (barra lateral, fundo navy)
 │  ├─ BD_2-Color_RGB.svg                            (relatório impresso, fundo claro)
-│  └─ favicon.svg                                   (ícone da aba do navegador: símbolo BD legível em fundo claro)
+│  ├─ favicon.svg                                   (ícone da aba do navegador: símbolo BD legível em fundo claro)
+│  └─ login.png ou login.svg                        (foto de fundo da tela de entrada; aparece desfocada)
 ├─ 00. Bases\
 └─ 00. Backups\
 ```
@@ -29,6 +30,7 @@ Os nomes são os do kit de marca; não renomeie.
   (`modulo/core/runtime`, junto do `brand.css`) e no relatório impresso da casca.
 - A logo da barra lateral só troca o símbolo em texto depois que o arquivo carrega (`BrandLogo`), então não há imagem quebrada.
 - O favicon (`aplicarFavicon`, plataforma 1.7.2) segue a mesma regra: `Marca/favicon.svg` só vira ícone da aba se carregar; sem ele, a aba fica sem ícone. O nome `favicon.svg` foi escolhido pelo responsável. Em `file://`, confirmar no Chrome/Edge corporativo se o navegador mostra o ícone.
+- A tela de entrada (plataforma 1.8.9) usa `Marca/login.png` ou, sem ele, `Marca/login.svg` como fundo, desfocado e escurecido para destacar o login. Sem nenhum dos dois, o fundo é o azul da marca. Foto em paisagem, de preferência 1920 × 1080 ou maior; o nome tem de ser exatamente `login.png` ou `login.svg`.
 - **Sem a pasta** (ou sem um dos arquivos) nada quebra: o texto sai em Arial (a reserva de `--bd-font-body`) e a barra lateral mostra o símbolo "V".
 - `font-display: block`: a leitura na pasta leva milissegundos e o texto não troca de fonte depois de aparecer (sem salto de layout).
 - O kit de marca não tem o peso Light: os títulos usam o Regular.
