@@ -82,6 +82,14 @@ Plataforma 1.5.0, Produção 2.4.82, Administração 1.9.44.
 
 Aba Linha do tempo da Produção (`docs/timeline-operacional.md`). Só leitura de `day.events` e `db.server`; não altera OEE, metas, classificação de paradas, turnos nem exports. Bloco **aditivo** na base da Produção, autorizado pela especificação: `db.timeline = { tagMap[], tagEvents[], comments{}, imports[] }` (base sem o bloco continua válida; `Model.ensure` completa). Vigência do mapa de tags segue o contrato 2 (encerra e cria outra). Comentário, importação de tags e mapa passam por `Store.mutate` (releitura, backup, fila, auditoria). Testes: `testes/ttimeline.js` e `testes/plataforma/timeline.cjs`.
 
+## KKBC-02 · competência da KKBC amarrada à Produção · Waste 1.12.17, plataforma 1.8.16 (18/11/2026)
+
+A lista da KKBC_ORD copiada do SAP não traz data: antes, todas as ordens recebiam o "Mês de referência" da tela, e um mês errado levava a ordem para a competência errada sem aviso.
+- **Regra (só leitura dos exports, nada recalculado, nenhum campo novo nas linhas):** para cada ordem, (1) MB51 (`ordens-base.json › exports.porOrdem.competencia`): o mês da tela vale se for uma das competências da ordem; se ela tem uma só e é outra, vale a do MB51 ("ajustada"); com várias e nenhuma igual, a mais recente, marcada "conferir"; (2) sem MB51, o mês da ordem no Plano do mês (`oee-vacutainer-base.json › exports.porOrdem.mes`), com a mesma regra; (3) sem os dois, o mês da tela.
+- **Prévia:** coluna Competência por ordem (com a fonte), aviso "N ordem(ns) com a competência ajustada pela Produção (a tela dizia …)" e a opção "Usar o mês da tela para todas as ordens". O mês da tela só é obrigatório se alguma ordem não tiver MB51 nem plano.
+- **Arquivo com a coluna de mês:** vale o mês do arquivo; a prévia só avisa quando ele não é uma das competências da ordem na Produção.
+- Teste: `testes/plataforma/kkbc-competencia.cjs` (ordem e lista fictícias).
+
 ## TUR-04 · turno com horário diferente no sábado · Administração 1.9.50, Produção 2.6.12, plataforma 1.8.15 (18/11/2026)
 
 Pedido do responsável: no sábado não há revezamento; o turno trabalha 1 h a menos (1º turno 06:00–13:30, 2º 13:30–21:00).
