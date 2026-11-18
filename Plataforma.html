@@ -7590,7 +7590,7 @@ const U = (() => {
 
 /* ---- 02-model.js ---- */
 /* ================= modelo de dados, valores iniciais e integridade ================= */
-const APP_VERSION = '2.6.10';   /* 2.6.10 · Lançamento sem turno aberto por padrão; abas visíveis na casca */   /* 2.6.9 · LANC-02: Lançamento unificado (hora a hora no detalhe do turno, 3º turno ao lado, Problemas de QN) */   /* 2.6.5 · IMP-01: contagens das importações nos exports */   /* 2.6.4 · semáforo só pelas faixas configuradas (verde acima de 100% vale) */   /* 2.6.2 · gráficos e números com meta seguem o semáforo de três cores (verde, amarelo, vermelho) */   /* 2.6.1 · gráficos: turno lançado pelo total com o nome do turno no eixo; janelas: rótulo e valor em tamanho de texto */   /* 2.6.0 · produção total do turno (sem hora a hora; períodos na troca de catálogo), aviso do servidor para turno lançado pelo total e para dia com produção apontada */
+const APP_VERSION = '2.6.11';   /* 2.6.11 · abas agrupadas: Ordens e lotes, Resultados, Paradas */   /* 2.6.10 · Lançamento sem turno aberto por padrão; abas visíveis na casca */   /* 2.6.9 · LANC-02: Lançamento unificado (hora a hora no detalhe do turno, 3º turno ao lado, Problemas de QN) */   /* 2.6.5 · IMP-01: contagens das importações nos exports */   /* 2.6.4 · semáforo só pelas faixas configuradas (verde acima de 100% vale) */   /* 2.6.2 · gráficos e números com meta seguem o semáforo de três cores (verde, amarelo, vermelho) */   /* 2.6.1 · gráficos: turno lançado pelo total com o nome do turno no eixo; janelas: rótulo e valor em tamanho de texto */   /* 2.6.0 · produção total do turno (sem hora a hora; períodos na troca de catálogo), aviso do servidor para turno lançado pelo total e para dia com produção apontada */
 const SCHEMA_VERSION = 1;
 const BASE_FILE = 'oee-vacutainer-base.json';
 const BACKUP_DIR = '00. Backups';
@@ -11318,7 +11318,7 @@ const Libs = {
 async function loadPrefs() { const p = await IDB.get('prefs'); if (p) Object.assign(App.prefs, p); try { const r = localStorage.getItem('oee-route'); if (r &amp;&amp; ROUTES.some(x => x[0] === r)) App.route = r; } catch (e) { } if (App.prefs.tabs &amp;&amp; App.prefs.tabs.start) App.route = App.prefs.tabs.start; }
 const savePrefs = U.debounce(() => { IDB.set('prefs', U.clone(App.prefs)).catch(() => { }); if (typeof vacPrefs !== 'undefined') vacPrefs.mudou(); }, 300);
 /* 2.4.72 · Fase 5: preferências de layout no arquivo da pessoa (vacPrefs do kit) */
-const PREFS_PESSOA = ['tabs', 'kcOff', 'cabFold', 'vgFold', 'lcFold', 'lcTurno', 'lcGraf', 'hhFold', 'vgGrupo', 'moreKpi', 'panel', 'panelLayout', 'showMetaCols', 'pnOeeReal', 'rpImg', 'rpSQ', 'mailLay'];
+const PREFS_PESSOA = ['tabs', 'kcOff', 'cabFold', 'vgFold', 'lcFold', 'lcTurno', 'lcGraf', 'grpSub', 'hhFold', 'vgGrupo', 'moreKpi', 'panel', 'panelLayout', 'showMetaCols', 'pnOeeReal', 'rpImg', 'rpSQ', 'mailLay'];
 { const reg = () => { if (typeof vacPrefs !== 'undefined') vacPrefs.registrar('oee', {   /* o kit vem num <script> depois deste: registra quando a página termina de carregar */
   ler: () => { const o = {}; for (const k of PREFS_PESSOA) if (App.prefs[k] !== undefined) o[k] = App.prefs[k]; return o; },
   aplicar: o => { for (const k of PREFS_PESSOA) { if (o &amp;&amp; o[k] !== undefined) App.prefs[k] = U.clone(o[k]); else delete App.prefs[k]; } IDB.set('prefs', U.clone(App.prefs)).catch(() => { }); }
@@ -11336,12 +11336,13 @@ function renderNow() {
   renderTop();
   Charts.reset();
   if (App.route === 'panel') { App.route = 'overview'; try { localStorage.setItem('oee-route', 'overview'); } catch (e) { } if (VisaoGeral.naPadrao()) Panel.st().view = 'mine'; }   /* 2.4.31 · PRD-01: o Painel abre na Visão Geral */
+  if (typeof GrpAbas !== 'undefined') GrpAbas.normalizar();   /* 2.6.11 · Semanal, Mensal, Linha do tempo e Lotes abrem dentro da aba do grupo */
   const v = App.views[App.route];
   const main = $('#main'); main.dataset.rota = App.route;   /* 2.4.47 · estilo do layout novo só no Lançamento (lanc_layout.js) */
   const ts = tabState(App.route);
   try {
     if (App.route !== 'config' &amp;&amp; App.route !== 'shift' &amp;&amp; ts.state === 'construção') main.innerHTML = constructionPage(App.route, (ROUTES.find(r => r[0] === App.route) || [, ''])[1]);
-    else { main.innerHTML = tabBanner(App.route) + (v ? v.render() : ''); if (v &amp;&amp; v.mount) v.mount(main); Tables.enhance(main, App.route); DateFields.enhance(main); Charts.fit(main); if (App.scrollTo) { const t = document.getElementById(App.scrollTo); App.scrollTo = null; if (t) { setTimeout(() => { t.scrollIntoView({ behavior: 'smooth', block: 'start' }); t.classList.add('flash'); }, 30); } } }
+    else { main.innerHTML = tabBanner(App.route) + (v ? v.render() : ''); if (v &amp;&amp; v.mount) v.mount(main); Tables.enhance(main, typeof GrpAbas !== 'undefined' ? GrpAbas.rota() : App.route); DateFields.enhance(main); Charts.fit(main); if (App.scrollTo) { const t = document.getElementById(App.scrollTo); App.scrollTo = null; if (t) { setTimeout(() => { t.scrollIntoView({ behavior: 'smooth', block: 'start' }); t.classList.add('flash'); }, 30); } } }
   }
   catch (e) { console.error(e); main.innerHTML = `<div class="banner crit"><p>Não foi possível montar esta tela: ${esc(friendly(e))}</p></div>`; }
   const want = App.nextFocus || fk; App.nextFocus = null;
@@ -13882,7 +13883,7 @@ function orderedRoutes() {
   const pos = k => { const i = o.indexOf(k); return i < 0 ? 1000 + ROUTES.findIndex(r => r[0] === k) : i; };
   return ROUTES.slice().sort((a, b) => pos(a[0]) - pos(b[0]));
 }
-function visibleRoutes() { const p = App.prefs.tabs || {}; const hid = new Set(p.hidden || []); return orderedRoutes().filter(([k]) => k !== 'panel' &amp;&amp; k !== 'hourly' &amp;&amp; (k === 'config' || (!hid.has(k) &amp;&amp; tabState(k).state !== 'oculta'))); }   /* 2.6.3 · Painel = Visão Geral (2.4.31): sem aba repetida */
+function visibleRoutes() { const p = App.prefs.tabs || {}; const hid = new Set(p.hidden || []); return orderedRoutes().filter(([k]) => k !== 'panel' &amp;&amp; k !== 'hourly' &amp;&amp; !(typeof GrpAbas !== 'undefined' &amp;&amp; GrpAbas.filha(k)) &amp;&amp; (k === 'config' || (!hid.has(k) &amp;&amp; tabState(k).state !== 'oculta'))); }   /* 2.6.3 · Painel = Visão Geral (2.4.31): sem aba repetida */
 const textOn = hex => { const h = String(hex || '').replace('#', ''); if (h.length < 6) return '#fff'; const r = parseInt(h.slice(0, 2), 16), g = parseInt(h.slice(2, 4), 16), b = parseInt(h.slice(4, 6), 16); return (r * 299 + g * 587 + b * 114) / 1000 > 150 ? '#111' : '#fff'; };
 function tabLabel(k, l) {
   const hl = (App.prefs.tabs || {}).hl || {}; const st = tabState(k).state;
@@ -14326,7 +14327,7 @@ const TLV = (() => {
     alvoEl.querySelectorAll('[data-tloc]').forEach(tr => { tr.onclick = () => abre(tr); tr.onkeydown = ev => { if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); abre(tr); } }; });
     const mais = alvoEl.querySelector('#tloMais'); if (mais) mais.onclick = () => { App.tl.n += 100; render(); };
     // evento em aberto e a marca "agora" andam sozinhos: redesenha sem recarregar a página
-    clearInterval(relo); relo = setInterval(() => { if (App.route !== 'timeline' || !box || !box.isConnected) { clearInterval(relo); return; } if (document.hidden || document.querySelector('.overlay') || (document.activeElement &amp;&amp; document.activeElement.closest &amp;&amp; document.activeElement.closest('.tlo-f'))) return; const ag = T.relogio(); if (M &amp;&amp; (M.abertos || (ag > M.a &amp;&amp; ag < M.b + 2))) render(); }, 30000);
+    clearInterval(relo); relo = setInterval(() => { if ((typeof GrpAbas !== 'undefined' ? GrpAbas.rota() : App.route) !== 'timeline' || !box || !box.isConnected) { clearInterval(relo); return; } if (document.hidden || document.querySelector('.overlay') || (document.activeElement &amp;&amp; document.activeElement.closest &amp;&amp; document.activeElement.closest('.tlo-f'))) return; const ag = T.relogio(); if (M &amp;&amp; (M.abertos || (ag > M.a &amp;&amp; ag < M.b + 2))) render(); }, 30000);
   }
   return { periodo, filtros, montar, ligar, desenhar, dur, dh, modelo: () => M, alvo, detalhes, importarTags, AX, MC, HH, RH, LAB };
 })();
@@ -14814,7 +14815,7 @@ App.views.plan = {
     }
     const ext = R.extraProd.length ? `<p class="small muted">${R.extraProd.map(U.brDate).join(', ')}: produção fora dos dias de trabalho; o dia entrou no cálculo. Clique no dia e marque "dia extra" para registrar o motivo.</p>` : '';
     return `<section class="card section"><header><h3>Calendário do mês</h3>${ib('planCal')}</header><p class="q">Em cima, o <b>planejado</b> (catálogos das ordens e a quantidade do dia); embaixo, o <b>realizado</b>, em verde quando atingiu o previsto e em vermelho quando ficou abaixo. ▶ início e ■ fim de ordem (4 últimos dígitos). Clique num dia para ver o detalhe, abrir o lançamento ou marcar sem produção.</p>
-      <div class="row small" style="margin-bottom:8px"><span class="muted">Dias de trabalho:</span>${WD_SHORT.map((w, i) => `<label class="chk"><input type="checkbox" data-wd="${i}" ${plan.workdays.includes(i) ? 'checked' : ''}> ${w}</label>`).join('')}</div>
+      <div class="row small" style="margin-bottom:8px"><span class="muted">Dias de trabalho:</span>${WD_SHORT.map((w, i) => `<label class="chk"><input type="checkbox" data-wd="${i}" ${(plan.workdays || [1, 2, 3, 4, 5, 6]).includes(i) ? 'checked' : ''}> ${w}</label>`).join('')}</div>
       <div class="cal wk8">${WD_SHORT.map(w => `<div class="ch">${w}</div>`).join('')}<div class="ch">Semana</div>${cells.join('')}</div>${ext}
       ${R.cal.excCount ? `<p class="small muted">Plano importado com ${R.cal.excCount} exceção(ões) sem data. Ao marcar o primeiro dia sem produção no calendário, a contagem importada deixa de valer.</p>` : ''}</section>`;
   },
@@ -14851,7 +14852,7 @@ App.views.plan = {
 function planDayModal(month, date) {
   const d = db(), plan = Engine.planFor(d, month, PLAN_LINE), R = Engine.monthPlanResult(d, plan, U.today()), INFO = App.views.plan.dayInfo(plan, R), I = INFO[date];
   const mk = Engine.dayMark(d, date, PLAN_LINE), day = d.productionDays.find(x => !x.deleted &amp;&amp; x.lineId === PLAN_LINE &amp;&amp; x.date === date);
-  const work = plan.workdays.includes(U.weekday(date)), res = day &amp;&amp; !Engine.isOffDay(d, day) ? Engine.computeDay(d, day) : null;
+  const work = (plan.workdays || [1, 2, 3, 4, 5, 6]).includes(U.weekday(date)), res = day &amp;&amp; !Engine.isOffDay(d, day) ? Engine.computeDay(d, day) : null;
   const sit = mk ? (mk.kind === 'off' ? `<span class="pill warn">⏸ sem produção · ${esc(mk.reason || '')}</span> <span class="small muted">por ${esc(mk.by || '—')} em ${U.brDT(mk.at)}</span>` : `<span class="pill info">dia extra · ${esc(mk.reason || '')}</span>`) : work ? '<span class="pill none">dia de trabalho</span>' : '<span class="pill none">fora dos dias de trabalho</span>';
   const ordRows = I.orders.map(o => `<tr><td class="mono">${esc(o.order)}</td><td class="mono">${esc(o.lot || '—')}</td><td>${catPill(o.catalogId)}</td><td class="n">${fq(o.qty)}</td><td>${esc((o.start || '').slice(0, 10) ? U.brDate(o.start.slice(0, 10)).slice(0, 5) : '—')} – ${esc((o.end || '').slice(0, 10) ? U.brDate(o.end.slice(0, 10)).slice(0, 5) : '—')}</td></tr>`).join('');
   const shRows = res ? res.shifts.map(sr => `<tr><td>${esc(sr.ps.snap.name)}</td><td class="n">${sr.off ? '—' : fq(sr.r.good)}</td><td class="n">${sr.off ? '—' : fq(sr.r.metaOp, 0)}</td><td class="n">${sr.off ? '—' : semB(sr.r.semOee, U.pct(sr.r.oee))}</td><td class="small">${sr.ps.off ? offTxt(sr.ps) : (sr.ps.summary ? sr.ps.summary.segments.filter(sg => sg.good > 0).map(sg => sg.catalogId ? catPill(sg.catalogId) : esc(((db().families.find(f => f.id === sg.familyId) || {}).code || '') + ' (sem catálogo)')).join(' ') : [...new Set(res.flat.filter(f => f.ps === sr.ps &amp;&amp; f.good > 0 &amp;&amp; f.cat).map(f => f.cat))].map(c => catPill(c)).join(' → '))}</td></tr>`).join('') : '';
@@ -16464,6 +16465,7 @@ const RelSQ = {
    Etapa 1: Lançamento, Hora a hora, Plano do mês, Ordens (produzidas, conciliação, importar) e Visão Geral.
    Cada item com "sel" ganha o número na tela em "Mostrar na tela". Entra no script principal pelo build.py (antes do boot). */
 function vacGuiaAba() {
+  { const r = typeof GrpAbas !== 'undefined' ? GrpAbas.rota() : App.route; if (r !== App.route &amp;&amp; r !== 'ordens') return r; }   /* 2.6.11 · guia da tela aberta dentro do grupo */
   if (App.route === 'ordens') return typeof Ord !== 'undefined' ? ({ mb51: 'ordens-imp', coois: 'ordens-imp', conc: 'ordens-conc', hist: 'ordens-hist' }[Ord.sub] || 'ordens') : 'ordens';
   if (App.route === 'panel') return 'overview';
   return App.route;
@@ -20201,6 +20203,9 @@ function ordPerBar() {
 /* ---------- telas ---------- */
 App.views.ordens = {
   render() {
+    /* 2.6.11 · "Ordens (plano do mês)" e "Lotes (MES)" abrem aqui dentro, com a barra do grupo à vista (as telas são as mesmas do Plano do mês e de Lotes) */
+    if (Ord.sub === 'plano') return GrpAbas.barra('ordens') + App.views.plan.render();
+    if (Ord.sub === 'lotes') return GrpAbas.barra('ordens') + App.views.lots.render();
     if (!Ord.carregado) { Ord.carregar().then(() => render()); return '<section class="card section"><p class="muted">Lendo ordens…</p></section>'; }
     const c = Ord.cur(), R = c &amp;&amp; c.resultado, X = c &amp;&amp; c.coois ? c.coois.cruz : null;
     /* 2.4.26 · PRD-02/03: Ordens produzidas · Conciliação · Histórico · Importar (MB51 e COOIS num item só; a aba leva ao Portal › Importação, IMP-06) */
@@ -20214,10 +20219,10 @@ App.views.ordens = {
       <div class="ord-st">${porPer ? '' : c &amp;&amp; c.mb51 ? ordPill('MB51 · ' + c.mb51.arquivo + ' · ' + new Date(c.mb51.em).toLocaleDateString('pt-BR') + ' · ' + c.mb51.por, 'ok') : ordPill('MB51 não importado', 'warn')} ${porPer ? '' : c &amp;&amp; c.coois ? ordPill('COOIS · cobertura ' + fmtPct(X.cobertura), X.cobertura < 1 ? 'warn' : 'ok') : R ? ordPill('COOIS pendente', 'pend') : ''} ${R &amp;&amp; !porPer ? ordPill(R.kpi.ordensProduzidas + ' ordens produzidas', 'info') : ''} ${R &amp;&amp; !porPer &amp;&amp; Ord.waste &amp;&amp; !Ord.waste.erro ? (n => n ? `<button class="pill crit" data-ofilt="sem KKBC" title="Ordens produzidas (MB51) sem KKBC_ORD lançada no Waste">${n} sem KKBC no Waste</button>` : ordPill('KKBC: todas lançadas', 'ok'))(R.ordens.filter(o => o.produzida &amp;&amp; Ord.kkbc(o.ordem) === 'pendente').length) : ''} ${Ord.modo() === 'pasta' ? ordPill(ORD_FILE + ' · rev ' + (Ord.B.rev || 0), 'none') : ordPill(Ord.modo() === 'exemplo' ? 'modo exemplo: só na memória' : 'sem pasta: só neste navegador', 'warn')}</div></div>
       ${Ord.err ? `<div class="note e">${esc(Ord.err)}</div>` : ''}
       ${Ord.pend ? `<div class="note w" id="oPend"><b>Alteração pendente</b> desde ${new Date(Ord.pend.em).toLocaleString('pt-BR')}: ${esc(Ord.pend.comps.map(compTxt).join(', '))} ainda não foi confirmada na pasta. <button type="button" class="btn sm primary" id="oPendGo">Gravar de novo</button></div>` : ''}
-      <div class="seg ord-sub" role="tablist">${sub.map(([k, l]) => k === 'plano' ? `<button type="button" data-oplano="1" title="Ordens do PCP do mês (Plano do mês): quantidade, janela prevista e pontuação">${l}</button>` : k === 'importar' ? `<button type="button" data-oimp-portal="1" aria-pressed="${naImp}" title="Abre o Importações › Importação por página › Produção: ordem recomendada e status de cada dia">${l} ↗</button>` : `<button type="button" data-osub="${k}" aria-pressed="${Ord.sub === k}">${l}</button>`).join('')}</div>${porPer ? ordPerBar() : ''}</section>
+      ${porPer ? ordPerBar() : ''}</section>
       ${naImp ? `<section class="card section ord-imp"><div class="row" style="gap:8px;align-items:center;flex-wrap:wrap"><b>Importar</b><div class="seg" role="tablist"><button type="button" data-osub="mb51" aria-pressed="${Ord.sub === 'mb51'}">1 · MB51 (movimentos, oficial)</button><button type="button" data-osub="coois" aria-pressed="${Ord.sub === 'coois'}">2 · COOIS (complementa o MB51)</button></div><span class="sp" style="flex:1"></span><a class="btn sm" href="${esc(ordPortalImpHref())}" data-oimp-portal="1">Ordem e status: Importações › Importação por página ↗</a></div></section>` : ''}`;
     const body = { mb51: () => this.vMB51(c), coois: () => this.vCOOIS(c), lista: () => this.vLista(c), conc: () => this.vConc(c), hist: () => this.vHist() }[Ord.sub]();
-    return top + body;
+    return GrpAbas.barra('ordens') + top + body;
   },
   entrada(qual) {
     const pode = Ord.podeImportar();
@@ -20327,6 +20332,8 @@ App.views.ordens = {
       <h4 class="section">Auditoria</h4><div class="tw"><table><tr><th>Quando</th><th>Quem</th><th>Ação</th><th>Competência</th><th>Detalhe</th></tr>${Ord.B.auditoria.slice(-80).reverse().map(a => `<tr><td class="small">${new Date(a.em).toLocaleString('pt-BR').slice(0, 17)}</td><td class="small">${esc(a.por)}</td><td class="small">${esc(a.acao)}</td><td class="small">${compTxt(a.comp)}</td><td class="small">${esc(a.det || '')}</td></tr>`).join('') || '<tr><td colspan="5" class="muted">Sem registros.</td></tr>'}</table></div></section>`;
   },
   mount(root) {
+    GrpAbas.ligar(root);
+    if (Ord.sub === 'plano' || Ord.sub === 'lotes') { const v = Ord.sub === 'plano' ? App.views.plan : App.views.lots; if (v.mount) v.mount(root); return; }
     const on = (s, ev, f) => { const x = root.querySelector(s); if (x) x[ev] = f; };
     root.querySelectorAll('[data-osub]').forEach(b => b.onclick = e => { e.preventDefault(); Ord.sub = b.dataset.osub; render(); });
     root.querySelectorAll('[data-oimp-portal]').forEach(b => b.onclick = e => { e.preventDefault(); ordIrPortalImp(); });
@@ -20846,6 +20853,84 @@ const CadSync = (() => {
     Uu.render = function () { return `<div class="banner info" style="margin-bottom:10px"><p>Quem está usando vem do <b>Entrar</b> do cabeçalho (ID do cadastro de Usuários da Administração). <button class="btn sm" type="button" onclick="VacEntrar.abrir()">Entrar / trocar</button></p></div>` + r0.apply(this, arguments); };
   }
 })();
+
+/* ===== Produção 2.6.11 · plataforma 1.8.14 · abas agrupadas (Proposta A aprovada em 18/11/2026) =====
+   Três abas reúnem telas que já existiam, sem mudar nenhuma delas (números, filtros e relatórios iguais):
+     Ordens e lotes = Ordens produzidas · Ordens (plano do mês) · Conciliação · Histórico de competências · Lotes (MES) · Importar
+     Resultados     = Histórico (dia a dia) · Semanal · Mensal
+     Paradas        = Análise · Linha do tempo
+   A escolha fica numa barra separada no topo da página, sempre à vista (também em "Ordens (plano do mês)" e "Lotes"). A escolha de
+   Resultados e Paradas fica lembrada por pessoa (App.prefs.grpSub). Endereços antigos (go('weekly'), ?tab=lots, aba=timeline…)
+   abrem a aba do grupo já na tela certa. A aba "Plano do mês" continua existindo sozinha. */
+const GrpAbas = (() => {
+  const G = {
+    ordens: { nome: 'Ordens e lotes', itens: [['lista', 'Ordens produzidas'], ['plano', 'Ordens (plano do mês)'], ['conc', 'Conciliação'], ['hist', 'Histórico de competências'], ['lotes', 'Lotes (MES)'], ['importar', 'Importar ↗']] },
+    history: { nome: 'Resultados', itens: [['history', 'Histórico (dia a dia)'], ['weekly', 'Semanal'], ['monthly', 'Mensal']] },
+    stops: { nome: 'Paradas', itens: [['stops', 'Análise'], ['timeline', 'Linha do tempo']] }
+  };
+  const PAI = { weekly: 'history', monthly: 'history', timeline: 'stops', lots: 'ordens' };
+  const V0 = {};
+  const prefs = () => { const P = App.prefs.grpSub; return P &amp;&amp; typeof P === 'object' ? P : (App.prefs.grpSub = {}); };
+  const filha = k => !!PAI[k];
+  function sel(pai) {
+    if (pai === 'ordens') { const s = typeof Ord !== 'undefined' ? Ord.sub : 'lista'; return s === 'mb51' || s === 'coois' ? 'importar' : s; }
+    const s = prefs()[pai]; return G[pai].itens.some(([k]) => k === s) ? s : G[pai].itens[0][0];
+  }
+  /* rota efetiva: a tela que está aberta dentro do grupo (para guia, tabelas e a atualização automática da Linha do tempo) */
+  function rota() { const r = App.route; if (r === 'history' || r === 'stops') return sel(r); if (r === 'ordens') { const s = sel('ordens'); return s === 'plano' ? 'plan' : s === 'lotes' ? 'lots' : 'ordens'; } return r; }
+  function normalizar() {
+    const p = PAI[App.route]; if (!p) return;
+    if (p === 'ordens') { if (typeof Ord !== 'undefined') Ord.sub = 'lotes'; } else { prefs()[p] = App.route; try { savePrefs(); } catch (e) { } }
+    App.route = p; try { localStorage.setItem('oee-route', p); } catch (e) { }
+  }
+  function barra(pai) {
+    const g = G[pai], s = sel(pai);
+    return `<nav class="grp-sub" aria-label="${esc(g.nome)}"><div class="grp-seg" role="tablist">${g.itens.map(([k, l]) => `<button type="button" role="tab" data-grpsub="${pai}|${k}" aria-selected="${s === k}"${k === 'importar' ? ' title="Abre o Importações › Importação por página › Produção: ordem recomendada e status de cada dia"' : ''}>${esc(l)}</button>`).join('')}</div></nav>`;
+  }
+  function ligar(root) {
+    root.querySelectorAll('[data-grpsub]').forEach(b => b.onclick = e => {
+      e.preventDefault(); const [pai, k] = b.dataset.grpsub.split('|');
+      if (pai === 'ordens') { if (k === 'importar') { ordIrPortalImp(); return; } Ord.sub = k; }
+      else { prefs()[pai] = k; try { savePrefs(); } catch (er) { } }
+      render();
+    });
+  }
+  /* Resultados e Paradas: a aba do grupo mostra a tela escolhida (as views de cada uma continuam as mesmas) */
+  function agrupar(pai) {
+    for (const [k] of G[pai].itens) V0[k] = App.views[k];
+    const base = App.views[pai];
+    App.views[pai] = { ...base,
+      render() { const v = V0[sel(pai)]; return barra(pai) + (v ? v.render() : ''); },
+      mount(root) { ligar(root); const v = V0[sel(pai)]; if (v &amp;&amp; v.mount) v.mount(root); } };
+  }
+  /* barra separada, sempre à vista, no tamanho da aprovada (não fica dentro do cartão de filtros) */
+  const CSS = `.grp-sub{margin:0 0 var(--sp-16,16px);display:flex;flex-wrap:wrap}
+.grp-seg{display:inline-flex;flex-wrap:wrap;border:1px solid var(--line);border-radius:10px;overflow:hidden;background:var(--surface);box-shadow:0 1px 2px rgba(16,42,86,.05)}
+.grp-seg button{all:unset;box-sizing:border-box;cursor:pointer;padding:9px 16px;font-size:14px;font-weight:500;color:var(--ink,var(--text));border-right:1px solid var(--line);white-space:nowrap;min-height:40px;display:inline-flex;align-items:center}
+.grp-seg button:last-child{border-right:0}.grp-seg button:hover{background:var(--surface-2,var(--line))}
+.grp-seg button[aria-selected="true"]{background:var(--accent);color:var(--accent-ink,#fff);font-weight:600}
+.grp-seg button:focus-visible{outline:3px solid var(--accent);outline-offset:-3px}
+@media print{.grp-sub{display:none}}`;
+  function iniciar() {
+    /* a casca acompanha a aba aberta (vacPagina.info().aba lê App.tab): a Produção usa App.route */
+    if (!Object.getOwnPropertyDescriptor(App, 'tab')) Object.defineProperty(App, 'tab', { get: () => App.route, configurable: true });
+    if (!document.getElementById('grpCss')) { const st = document.createElement('style'); st.id = 'grpCss'; st.textContent = CSS; document.head.appendChild(st); }
+    agrupar('history'); agrupar('stops');
+    /* nomes e ordem das abas (Proposta A): Lançamento · Pendências · Visão Geral · Resultados · Paradas · Plano do mês · Ordens e lotes · Relatórios · SQDCP · Equipamentos · ⚙ Config. */
+    const nome = { history: 'Resultados', stops: 'Paradas', ordens: 'Ordens e lotes', config: '⚙ Config.' };
+    for (const r of ROUTES) if (nome[r[0]]) r[1] = nome[r[0]];
+    const ordem = ['launch', 'hourly', 'pend', 'overview', 'history', 'weekly', 'monthly', 'stops', 'timeline', 'plan', 'ordens', 'lots', 'panel', 'reports', 'sqdcp', 'equip', 'config'];
+    const pos = k => { const i = ordem.indexOf(k); return i < 0 ? 900 : i; };
+    ROUTES.sort((a, b) => pos(a[0]) - pos(b[0]));
+    if (typeof NAV_GRUPOS !== 'undefined') {
+      const gO = NAV_GRUPOS.find(x => x.g === 'Ordens'); if (gO &amp;&amp; !gO.itens.some(i => i[2] === 'lotes')) gO.itens.splice(gO.itens.length - 1, 0, ['ordens', 'Lotes (MES)', 'lotes']);
+      const gA = NAV_GRUPOS.find(x => x.g === 'Apontamento'); if (gA) gA.itens = gA.itens.filter(i => i[0] !== 'lots');
+      const gN = NAV_GRUPOS.find(x => x.g === 'Análise'); if (gN) gN.itens = [['history', 'Resultados'], ['stops', 'Paradas']];
+    }
+  }
+  return { G, PAI, V0, filha, sel, rota, normalizar, barra, ligar, iniciar };
+})();
+GrpAbas.iniciar();
 
 </script>
 @@vac:comum/interface@@
@@ -37221,9 +37306,9 @@ body.vac-porta{overflow:hidden}
     {
       "id": "oee",
       "path": "Plataforma.html#motor/oee",
-      "version": "2.6.10",
-      "sha256": "2fa52793679404f5e950cfb280a0f7b38113dcac6f66394a446681029e948c2b",
-      "bytes": 2231576
+      "version": "2.6.11",
+      "sha256": "ccd545a7c0f6b017cbb2f94cd0f4756b108fcb637ab05d842082f4762355d769",
+      "bytes": 2238695
     },
     {
       "id": "perdas",
@@ -37285,7 +37370,7 @@ body.vac-porta{overflow:hidden}
   "limitations": [
     "Projetos e conteúdo técnico OSM/MES/AM/TPM mantêm os limites documentados nas fontes."
   ],
-  "enginesSha256": "1575c8a3743fca626855e933a06bab765ba214a1a9d482d1df28d857955dc3e4",
+  "enginesSha256": "c857de535838dbe4c791e37f5b2ea65955517665383ec958a5b49862d347a062",
   "originRevision": "ffc9ee8",
   "sourceMode": "single-html",
   "originEnginesSha256": "a87a64ad0c328f70e102b2ae888790a9b5d5a9bd05778652a7ce7cae140e40d2"
@@ -37355,7 +37440,7 @@ summary{cursor:pointer;font-weight:600;color:var(--navy)}
 'use strict';
 /* ---------- referência (atualizar quando a plataforma mudar de versão) ---------- */
 // Iguais às do pacote da plataforma (nova-plataforma/src/generated/manifest.json); o teste ferramenta-verificar confere.
-const VERSOES = {"oee":"2.6.10","perdas":"1.12.16","gel":"2.40","paradas":"1.2.17","equip":"1.0.20","inic":"1.1.16","linha":"1.3.0","projetos":"0.1.16","portal":"1.9.49"};
+const VERSOES = {"oee":"2.6.11","perdas":"1.12.16","gel":"2.40","paradas":"1.2.17","equip":"1.0.20","inic":"1.1.16","linha":"1.3.0","projetos":"0.1.16","portal":"1.9.49"};
 const BASES = [
  { arq: 'vacutainer-cadastros.json', mod: 'portal', nome: 'Cadastro geral (Portal)', obrig: true, cadastro: true, bk: 'Cadastros' },
  { arq: 'portal-base.json', mod: 'portal', nome: 'Portal', obrig: true, bk: 'Portal' },
@@ -37946,7 +38031,7 @@ import { Icon, Button, Badge, Empty, Modal, BarChart, BrandLogo, CommandMenu } f
 import { ModuleFrame } from "vac:modulo/components/ModuleFrame";
 import manifest from "vac:recurso/manifesto";
 import { ModuleTabs } from "vac:modulo/components/ModuleTabs";
-const VERSION = "1.8.13";
+const VERSION = "1.8.14";
 /* Navegação 1.3.0 (16/11/2026): Visão da linha, Relatórios e Importações têm abas; as que mostram uma tela do
    Portal (motor da Administração) trazem o 3º campo com a aba dele. Administração fica só com cadastros e configuração. */
 const SHELL_TABS = {
@@ -38030,6 +38115,11 @@ function App() {
   const current = embedded || moduleOf(route.page);
   const currentTabs = current ? (statuses[current.id]?.tabs || []).filter((t) => current.id !== "portal" || !PORTAL_ONDE[t.id]) : [];
   const currentTab = embedded ? shellTab[2] : route.tab || currentTabs[0]?.id || "";
+  /* 1.8.14 · a página trocou de aba por conta própria (ex.: Produção: um link abre Semanal dentro de Resultados): o destaque da aba acompanha.
+     Só o destaque: não navega de novo. Um clique numa aba volta a mandar. */
+  const abaMod = current &amp;&amp; current.id !== "portal" ? statuses[current.id]?.info?.aba : void 0, [abaSeguida, setAbaSeguida] = useState(null);
+  useEffect(() => { setAbaSeguida(null); }, [route.page, route.tab]);
+  useEffect(() => { if (abaMod &amp;&amp; abaMod !== currentTab &amp;&amp; currentTabs.some((t) => t.id === abaMod)) setAbaSeguida(abaMod); }, [abaMod]);
   const user = (cad?.usuarios || []).find((u) => String(u.codigo) === userId), profile = (cad?.perfis || []).find((p) => p.codigo === user?.perfil);
   const navigate = useCallback((page, tab = "", hash = "") => {
     ({ page, tab, hash } = normalizeRoute({ page, tab: tab || "", hash: hash || "" }));
@@ -38625,7 +38715,7 @@ function App() {
         ] }),
         current &amp;&amp; /* @__PURE__ */ jsxs(Fragment, { children: [
           /* @__PURE__ */ jsxs("div", { className: "module-toolbar", children: [
-            /* @__PURE__ */ !embedded &amp;&amp; currentTabs.length > 1 &amp;&amp; jsx(ModuleTabs, { tabs: currentTabs, active: currentTab, onSelect: (id) => navigate(current.id, id) }),
+            /* @__PURE__ */ !embedded &amp;&amp; currentTabs.length > 1 &amp;&amp; jsx(ModuleTabs, { tabs: currentTabs, active: abaSeguida || currentTab, onSelect: (id) => navigate(current.id, id) }),
             /* @__PURE__ */ jsxs("div", { className: "engine-commands", children: [
               /* 1.8.13 · sem o botão "Imprimir módulo": a impressão certa fica em Relatórios (pedido do responsável) */
               (statuses[current.id]?.commands || []).map(c=>c.itens?.length?jsx(CommandMenu,{command:c,onCommand:id=>{try{frames.get(current.id)?.contentWindow?.vacPagina.comando(id)}catch(e){setMessage(e.message)}}},current.id+':'+c.id):jsx(Button,{className:'engine-command'+corDestaque(cad,current,c.label),title:c.dica || c.label,disabled:c.disabled,onClick:()=>{try{frames.get(current.id)?.contentWindow?.vacPagina.comando(c.id)}catch(e){setMessage(e.message)}},children:c.label},c.id)),

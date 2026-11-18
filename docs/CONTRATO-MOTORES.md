@@ -82,6 +82,18 @@ Plataforma 1.5.0, Produção 2.4.82, Administração 1.9.44.
 
 Aba Linha do tempo da Produção (`docs/timeline-operacional.md`). Só leitura de `day.events` e `db.server`; não altera OEE, metas, classificação de paradas, turnos nem exports. Bloco **aditivo** na base da Produção, autorizado pela especificação: `db.timeline = { tagMap[], tagEvents[], comments{}, imports[] }` (base sem o bloco continua válida; `Model.ensure` completa). Vigência do mapa de tags segue o contrato 2 (encerra e cria outra). Comentário, importação de tags e mapa passam por `Store.mutate` (releitura, backup, fila, auditoria). Testes: `testes/ttimeline.js` e `testes/plataforma/timeline.cjs`.
 
+## Abas agrupadas da Produção · Produção 2.6.11, plataforma 1.8.14 (18/11/2026)
+
+Proposta A aprovada pelo responsável. As telas são as mesmas; só mudam de lugar (nenhum número, filtro, relatório ou export muda).
+- **Barra da casca (11 abas):** Lançamento · Pendências · Visão Geral · Resultados · Paradas · Plano do mês · Ordens e lotes · Relatórios · SQDCP · Equipamentos · ⚙ Config.
+- **Ordens e lotes** (`ordens`): Ordens produzidas · Ordens (plano do mês) · Conciliação · Histórico de competências · Lotes (MES) · Importar ↗. "Ordens (plano do mês)" e "Lotes (MES)" abrem dentro da aba (`Ord.sub = 'plano' | 'lotes'`, com as views `plan` e `lots` de sempre); antes "Ordens (plano do mês)" saía para o Plano do mês e a barra sumia.
+- **Resultados** (`history`): Histórico (dia a dia) · Semanal · Mensal. **Paradas** (`stops`): Análise · Linha do tempo. A escolha fica em `App.prefs.grpSub` (por pessoa).
+- A barra de escolha (`GrpAbas.barra`) fica separada no topo da página, fora do cartão de filtros, e sempre à vista.
+- **Endereços antigos:** `weekly`, `monthly`, `timeline` e `lots` (go, `?tab=`, `#aba=`) abrem a aba do grupo já na tela certa (`GrpAbas.normalizar`). Guia, tabelas e a atualização automática da Linha do tempo usam a tela aberta (`GrpAbas.rota()`).
+- **Casca:** a Produção publica a aba aberta (`App.tab`, lido por `vacPagina.info().aba`) e a casca acompanha o destaque quando a página troca de aba sozinha (só o destaque; não navega de novo).
+- **Plano do mês:** a tela usa segunda a sábado quando o plano não tem `workdays` gravado, o mesmo padrão do cálculo (`Engine`); antes a tela quebrava na demonstração.
+- Teste: `testes/plataforma/abas-agrupadas.cjs`.
+
 ## Ajustes da casca e do Lançamento · Produção 2.6.10, plataforma 1.8.13 (18/11/2026)
 
 - **Sem "Imprimir módulo"** na barra de comandos da casca (pedido do responsável: a impressão certa fica em Relatórios). Ctrl+P continua imprimindo a página ativa.
