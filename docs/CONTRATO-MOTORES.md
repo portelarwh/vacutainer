@@ -82,6 +82,13 @@ Plataforma 1.5.0, Produção 2.4.82, Administração 1.9.44.
 
 Aba Linha do tempo da Produção (`docs/timeline-operacional.md`). Só leitura de `day.events` e `db.server`; não altera OEE, metas, classificação de paradas, turnos nem exports. Bloco **aditivo** na base da Produção, autorizado pela especificação: `db.timeline = { tagMap[], tagEvents[], comments{}, imports[] }` (base sem o bloco continua válida; `Model.ensure` completa). Vigência do mapa de tags segue o contrato 2 (encerra e cria outra). Comentário, importação de tags e mapa passam por `Store.mutate` (releitura, backup, fila, auditoria). Testes: `testes/ttimeline.js` e `testes/plataforma/timeline.cjs`.
 
+## Semáforo sem amarelo e Parâmetros por cartão · plataforma 1.8.10, Administração 1.9.49, Produção 2.6.8 (18/11/2026)
+
+- **Novo parâmetro opcional `parametros.semaforoAmarelo`** (autorizado pelo responsável): `false` = só verde e vermelho; sem o campo, como antes (com amarelo). A regra comum `vacSemaforo` (igual nas nove páginas) usa o verde como início do amarelo quando ele está desligado; a Produção recebe `semaphore.yellow = green` pelo CadSync e esconde "atenção" nas legendas; a Visão da linha esconde "Atenção" na legenda. Metas de OEE com semáforo próprio continuam com as faixas delas.
+- **Administração › Parâmetros:** cada cartão (Parâmetros gerais, Semáforo, Produção e Gel) tem o próprio Salvar no topo, e a mensagem aparece logo abaixo dele. O Semáforo ganha "Usar amarelo (atenção)" e a prévia das faixas ao vivo. Com amarelo, ele continua precisando começar abaixo do verde.
+- **Avisos flutuantes (toast) dentro da plataforma:** o quadro de cada página tem a altura do conteúdo, e o aviso "fixo embaixo" ficava no fim da rolagem. O runtime da casca reposiciona os avisos fixos ancorados embaixo para a parte visível da tela, acompanhando a rolagem. O texto e a duração não mudam.
+- Teste: `testes/plataforma/parametros-semaforo.cjs`.
+
 ## Tela de entrada · plataforma 1.8.9 (18/11/2026)
 
 Pedido do responsável: ao abrir, a plataforma só aparece depois do login ou da escolha "Entrar só para consulta".
