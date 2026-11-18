@@ -57,9 +57,17 @@ const html = fs.readFileSync(path.resolve(__dirname, '../../Plataforma.html'));
       const L = GelProd.catsDia(dia), h = GelProd.catsHtml(dia);
       const d = { date: dia, turns: { T1: { eq: [] } }, orders: [] }, sc = rgScrapHtml(d, 'T1');
       const L2 = (() => { const cats = S.catalogs; S.catalogs = []; try { return GelProd.catsHtml(dia); } finally { S.catalogs = cats; } })();
-      return { dia, L, ordem: /OP 100234567 · lote 6275187/.test(h), editar: /Editar na Produção ↗/.test(sc) && /dia=\d{4}-\d{2}-\d{2}&amp;turno=T1|dia=\d{4}-\d{2}-\d{2}&turno=T1/.test(sc), semCad: /não está no cadastro do Gel/.test(L2) };
+      /* revisão do PR #107: ordem que rodou nos dias 17 e 19 não aparece no 18; ordem sem fim real não fica para sempre */
+      const D0 = GelProd.oee.d, salvo = D0.porOrdem;
+      D0.porOrdem = salvo.concat([{ ordem: '900000001', lote: 'L-A', catalogo: L[0].cat, diasLote: [U2(dia, -1), U2(dia, 1)], inicioReal: U2(dia, -1), fimReal: U2(dia, 1) },
+        { ordem: '900000002', lote: 'L-B', catalogo: L[0].cat, diasLote: [], inicioReal: U2(dia, -5), fimReal: null }]);
+      function U2(d, k) { const x = new Date(d + 'T12:00:00Z'); x.setUTCDate(x.getUTCDate() + k); return x.toISOString().slice(0, 10); }
+      const intruso = GelProd.catsDia(dia)[0].ords.map(o => o.ordem).filter(o => o.startsWith('9000000'));
+      D0.porOrdem = salvo;
+      return { dia, L, intruso, ordem: /OP 100234567 · lote 6275187/.test(h), editar: /Editar na Produção ↗/.test(sc) && /dia=\d{4}-\d{2}-\d{2}&amp;turno=T1|dia=\d{4}-\d{2}-\d{2}&turno=T1/.test(sc), semCad: /não está no cadastro do Gel/.test(L2) };
     });
     assert.ok(r4.dia, 'dia com produção no exports'); assert.ok(r4.L.length && r4.ordem, 'catálogo com ordem e lote ' + JSON.stringify(r4.L));
+    assert.deepEqual(r4.intruso, [], 'só a ordem que rodou no dia (dias do lote)');
     assert.ok(r4.editar, 'Editar na Produção com o dia e o turno'); assert.ok(r4.semCad, 'aviso do catálogo fora do cadastro do Gel');
     console.log('ok Gestão de Gel: tubos por catálogo com OP e lote, aviso de catálogo fora do cadastro e "Editar na Produção" no turno');
 

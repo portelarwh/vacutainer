@@ -27680,7 +27680,10 @@ const GelProd={oee:null,lendo:false,lidoEm:0,
     do catálogo que o Gel não reconhece (os tubos dele não entram no teórico: antes sumiam sem aviso) */
  catsDia(dia){const D=this.oee&amp;&amp;this.oee.d;if(!D)return null;const known=code=>(S.catalogs||[]).some(c=>String(c.num)===String(code));
   const M=new Map();for(const k of D.porDiaCatalogo||[])if(k&amp;&amp;k.dia===dia&amp;&amp;k.catalogo!=null){const c=String(k.catalogo);M.set(c,(M.get(c)||0)+(+k.boa||0))}
-  const d10=v=>String(v||'').slice(0,10),ords=c=>(D.porOrdem||[]).filter(o=>String(o.catalogo)===c&amp;&amp;((o.diasLote||[]).includes(dia)||(o.inicioReal&amp;&amp;d10(o.inicioReal)<=dia&amp;&amp;(!o.fimReal||d10(o.fimReal)>=dia)))).map(o=>({ordem:o.ordem,lote:o.lote}));
+  /* revisão do PR #107: os dias em que o lote rodou (diasLote) são a prova; o intervalo início–fim real só vale para a ordem sem
+     dias de lote e com início e fim reais (ordem que rodou nos dias 17 e 19 não aparece no 18; ordem sem fim não fica para sempre) */
+  const d10=v=>String(v||'').slice(0,10),ords=c=>{const L=(D.porOrdem||[]).filter(o=>String(o.catalogo)===c),P=L.filter(o=>(o.diasLote||[]).includes(dia));
+   return(P.length?P:L.filter(o=>!(o.diasLote||[]).length&amp;&amp;o.inicioReal&amp;&amp;o.fimReal&amp;&amp;d10(o.inicioReal)<=dia&amp;&amp;d10(o.fimReal)>=dia)).map(o=>({ordem:o.ordem,lote:o.lote}))};
   return[...M].filter(([,b])=>b>0).map(([cat,boa])=>({cat,boa,ok:known(cat),ords:ords(cat)}))},
  catsHtml(dia){const L=this.catsDia(dia);if(!L||!L.length)return'';
   const lin=x=>`<li><b>${esc(x.cat)}</b>${x.ords.length?' · '+x.ords.map(o=>`OP ${esc(o.ordem)}${o.lote?' · lote '+esc(o.lote):''}`).join(' / '):''} · ${nf0.format(x.boa)} tubos bons${x.ok?'':' <b class="bad">· fora do cadastro do Gel</b>'}</li>`;
@@ -37419,8 +37422,8 @@ body.vac-porta{overflow:hidden}
       "id": "gel",
       "path": "Plataforma.html#motor/gel",
       "version": "2.41",
-      "sha256": "b4756a4e3bd9b2c5077869a215e9121c4913fb199a9f98f79eceb13c66b9b003",
-      "bytes": 1618064
+      "sha256": "3d78520f726ada8c417a5372f9793c23da59024da7c5452c7a07dc68187bf3ae",
+      "bytes": 1618416
     },
     {
       "id": "paradas",
@@ -37468,7 +37471,7 @@ body.vac-porta{overflow:hidden}
   "limitations": [
     "Projetos e conteúdo técnico OSM/MES/AM/TPM mantêm os limites documentados nas fontes."
   ],
-  "enginesSha256": "a81e8ce138eadbda747abc655b590e9c6fa68482cbbe8b1de74d2c865017148d",
+  "enginesSha256": "2c68c21fdc17441717c8e439b40133a22dfc3fa61a5b4e49b75491b83cfb413d",
   "originRevision": "ffc9ee8",
   "sourceMode": "single-html",
   "originEnginesSha256": "a87a64ad0c328f70e102b2ae888790a9b5d5a9bd05778652a7ce7cae140e40d2"
