@@ -90,6 +90,9 @@ const { chromium } = require('playwright');
       const c0 = {id:'primeira',dia:a.dia,turno:'T1',equipamento:a.equipamento,codigo:a.codigo,minutos:90,inicio:'08:00'};
       Ext.oee.paradasEventos = [c0,{ ...c0,id:'exata',inicio:'08:09' }];
       eventosTodos();
+      const agrupada = !EVENTO_OEE.has(a.id)&&EVENTO_OEE.pendentes.has(a.id);
+      a.ocorrencias=1;
+      eventosTodos();
       const exata = EVENTO_OEE.get(a.id);
       Ext.oee.paradasEventos.push({ ...c0,id:'empate',inicio:'08:09' });
       eventosTodos();
@@ -109,7 +112,7 @@ const { chromium } = require('playwright');
         historico:[historico.min,historico.fonte,historico.completa],
         indicadores:[s.n,s.nQ,s.mttr,s.espera.media,s.reparo.media],
         rec:[rec.n30,rec.min30,rec.ult,relRec[0][3]],
-        exata,empate,acumulado:svg.querySelector('g:last-of-type .pux-acum')?.textContent,fimPareto,
+        exata,empate,agrupada,acumulado:svg.querySelector('g:last-of-type .pux-acum')?.textContent,fimPareto,
       };
     });
     assert.deepEqual(resultados.cobertura, [1010,1,2,false]);
@@ -118,6 +121,7 @@ const { chromium } = require('playwright');
     assert.deepEqual(resultados.indicadores, [3,1,90,70,20]);
     assert.deepEqual(resultados.rec, [3,90,'2026-10-05','3 · 90 min']);
     assert.equal(resultados.exata, 'exata');
+    assert.equal(resultados.agrupada, true);
     assert.deepEqual(resultados.empate, [false,3]);
     assert.match(resultados.acumulado, /30% acum/);
     assert.match(resultados.fimPareto, /63% acum/);
@@ -139,13 +143,16 @@ const { chromium } = require('playwright');
       const antes=r.comparacao.antes,depois=r.comparacao.depois;
       Ext.oee.tempoProgramadoTurnos.at(-1).fechado=false;
       const parcial=comparacaoEficacia(r,r.planner,Store.data.eventos,ate).depois;
-      return { atual:r.n30,antes:antes.taxa,depois:depois.taxa,parcial:parcial.taxa,fechados:parcial.turnos,html };
+      Store.data.config.ignorarAntesDe=addDays(de,1);
+      const recortada=comparacaoEficacia(r,r.planner,Store.data.eventos,ate).antes;
+      return { atual:r.n30,antes:antes.taxa,depois:depois.taxa,parcial:parcial.taxa,fechados:parcial.turnos,recortada:recortada.taxa,html };
     });
     assert.equal(acompanhamento.atual, 0);
     assert.equal(acompanhamento.antes, 18000/1780);
     assert.equal(acompanhamento.depois, 0);
     assert.equal(acompanhamento.parcial, null);
     assert.equal(acompanhamento.fechados, 29);
+    assert.equal(acompanhamento.recortada, null);
     assert.match(acompanhamento.html, /Melhoria da máquina.*Pessoa teste.*Eficaz/s);
     assert.deepEqual(erros, []);
     console.log('ok · ação continua visível sem novas falhas e a taxa exige cobertura das janelas');

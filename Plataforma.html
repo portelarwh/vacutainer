@@ -30937,7 +30937,7 @@ function eventosTodos(){
    const duracao=Math.abs((+e.minutos||0)-(+o.minutos||0));
    if(distancia==null?duracao>1:distancia>10)continue;
    const codigo=o.codigo&amp;&amp;(o.codigo===e.codigo||o.codigo===codigoEf(e));
-   const candidato={e,o,criterios:[distancia??11,duracao,codigo?0:1,e.turno&amp;&amp;turnos.length?0:1]};
+   const candidato={o,agrupada:(e.ocorrencias||1)>1,criterios:[distancia??11,duracao,codigo?0:1,e.turno&amp;&amp;turnos.length?0:1]};
    for(const [indice,id] of [[porForms,e.id],[porProducao,String(o.id)]]){
     const L=indice.get(id)||[];L.push(candidato);indice.set(id,L);
    }
@@ -30949,7 +30949,7 @@ function eventosTodos(){
  for(const [id,L] of porForms){
   L.sort(comparar);
   const m=melhor(L);
-  if(m&amp;&amp;melhor(porProducao.get(String(m.o.id)))===m)EVENTO_OEE.set(id,String(m.o.id));
+  if(m&amp;&amp;!m.agrupada&amp;&amp;melhor(porProducao.get(String(m.o.id)))===m)EVENTO_OEE.set(id,String(m.o.id));
   else EVENTO_OEE.pendentes.set(id,L.map(c=>c.o));
  }
  const relacionados=new Set([...EVENTO_OEE.values(),...[...EVENTO_OEE.pendentes.values()].flatMap(L=>L.map(o=>String(o.id)))]);
@@ -31244,8 +31244,9 @@ function janelaEficacia(r,all,de,ate){
  const perdas=all.filter(e=>e.dia>=de&amp;&amp;e.dia<=ate&amp;&amp;(e.equipamento===r.eq||e.equipamento==='LINHA')&amp;&amp;!NAO_PERDA.has(classe(e)));
  const n=perdas.filter(e=>chaveRecorrencia(e)===r.k).reduce((s,e)=>s+(e.ocorrencias||1),0);
  const minutos=Math.max(0,P.min-perdas.reduce((s,e)=>s+e.minutos,0));
- const coberta=P.completa&amp;&amp;forms===P.diasPlanejados.length;
- return{de,ate,n,minutos,forms,dias:P.diasPlanejados.length,turnos:P.cobertos,esperados:P.esperados,taxa:coberta&amp;&amp;minutos>0?n*6000/minutos:null};
+ const aposCorte=P.de===de;
+ const coberta=aposCorte&amp;&amp;P.completa&amp;&amp;forms===P.diasPlanejados.length;
+ return{de,ate,n,minutos,forms,aposCorte,dias:P.diasPlanejados.length,turnos:P.cobertos,esperados:P.esperados,taxa:coberta&amp;&amp;minutos>0?n*6000/minutos:null};
 }
 function comparacaoEficacia(r,acoes,all,ate){
  const a=acoes.filter(a=>a.status==='concluída'&amp;&amp;a.concluidaEm).sort((a,b)=>b.concluidaEm.localeCompare(a.concluidaEm))[0];
@@ -31255,7 +31256,7 @@ function comparacaoEficacia(r,acoes,all,ate){
  return{a,antes:janelaEficacia(r,all,addDays(dia,-30),addDays(dia,-1)),depois:janelaEficacia(r,all,addDays(dia,1),fim)};
 }
 function textoJanelaEficacia(j){
- return`${br(j.de)} a ${br(j.ate)} · Produção ${j.turnos}/${j.esperados} turnos fechados · Forms ${j.forms}/${j.dias} dias previstos${j.taxa==null?'':` · ${n0(j.n)} ocorr. em ${n1(j.minutos/60)} h estimadas`}`;
+ return`${br(j.de)} a ${br(j.ate)} · Produção ${j.turnos}/${j.esperados} turnos fechados · Forms ${j.forms}/${j.dias} dias previstos${j.aposCorte?'':' · janela anterior ao corte de análise'}${j.taxa==null?'':` · ${n0(j.n)} ocorr. em ${n1(j.minutos/60)} h estimadas`}`;
 }
 function celulaEficacia(C){
  if(!C)return '—';
@@ -37027,8 +37028,8 @@ td { font-size:15px; }
       "id": "paradas",
       "path": "Plataforma.html#motor/paradas",
       "version": "1.2.17",
-      "sha256": "960c244b213e1cf9ea1e0f85a776010d8f55cfa7ae3a7f9384978d88f1266eb5",
-      "bytes": 900280
+      "sha256": "4e3f799fad2904e5e2642e4b282c0f542e7e27480970a5fa34219f6a53a3d5d7",
+      "bytes": 900430
     },
     {
       "id": "equip",
@@ -37069,7 +37070,7 @@ td { font-size:15px; }
   "limitations": [
     "Projetos e conteúdo técnico OSM/MES/AM/TPM mantêm os limites documentados nas fontes."
   ],
-  "enginesSha256": "5bd22ad834175ead76ac56a137ec52250c252c40683492830c9e0f42b15f6966",
+  "enginesSha256": "300eaeb44c2abe86d77a3776c639b4e9454403e66a83cd61869e2b17d7f776a5",
   "originRevision": "ffc9ee8",
   "sourceMode": "single-html",
   "originEnginesSha256": "a87a64ad0c328f70e102b2ae888790a9b5d5a9bd05778652a7ce7cae140e40d2"

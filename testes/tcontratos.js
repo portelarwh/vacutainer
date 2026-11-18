@@ -20,9 +20,17 @@ const errs = []; const ok = (c, m) => { console.log((c ? 'ok   ' : 'FALHA ') + m
       db.server = db.server || {}; db.server.dayLot = Object.assign({}, db.server.dayLot, { [m6 + '-03|LX1']: { kind: 'retrabalho' }, [m6 + '-04|LX1']: { kind: 'normal' }, [m6 + '-05|LX10']: { kind: 'normal' } });
       Engine.bumpConfig(); const t0 = performance.now(); const ex = Exports.build(db, hoje); const ms = performance.now() - t0;
       const o0 = (ex.porOrdem || []).find(o => o.ordem === '910000000'), o1 = (ex.porOrdem || []).find(o => o.ordem === '910000001');
-      return { ms: Math.round(ms), n: (ex.porOrdem || []).length, cob: ex.porOrdemCobertura, naOrdens: (ex.ordens || []).some(o => String(o.ordem) === '910000000'), o0, o1, versao: ex.exportsVersion, ordensAntigas: (ex.ordens || []).length };
+      const tempos = ex.tempoProgramadoTurnos;
+      const tempoOk = Array.isArray(tempos) && tempos.length > 0 && tempos.every(t => {
+        const d = db.productionDays.find(d => d.date === t.dia && !d.deleted && d.lineId === 'line_vac');
+        const s = d && Engine.computeDay(db,d).shifts.find(s => (s.ps.snap.code || s.ps.snap.name) === t.turno);
+        return s && Math.abs(t.minutosProgramados - Math.max(0,s.r.netMin)) < 0.001
+          && t.fechado === (d.status === 'fechado' || s.ps.status === 'fechado');
+      });
+      return { tempoOk, ms: Math.round(ms), n: (ex.porOrdem || []).length, cob: ex.porOrdemCobertura, naOrdens: (ex.ordens || []).some(o => String(o.ordem) === '910000000'), o0, o1, versao: ex.exportsVersion, ordensAntigas: (ex.ordens || []).length };
     });
     ok(!r.erro && r.versao === 1 && r.cob && r.cob.meses === 24 && r.cob.ordens === r.n, `Produção: porOrdem com cobertura declarada (${r.n} ordens, ${r.cob && r.cob.de} a ${r.cob && r.cob.ate}; exportsVersion ${r.versao}; montagem ${r.ms} ms)`);
+    ok(r.tempoOk, 'Produção: tempo programado publicado por dia e turno corresponde ao motor e indica se o turno está fechado');
     ok(r.o0 && !r.naOrdens, `Produção: ordem de 6 meses atrás está em porOrdem (o bloco "ordens" de 2 meses continua igual, ${r.ordensAntigas} ordens)`);
     ok(r.o0 && JSON.stringify(r.o0.diasLote) === JSON.stringify([r.o0.mes + '-03', r.o0.mes + '-04']) && JSON.stringify(r.o0.retrabalhoDias) === JSON.stringify([r.o0.mes + '-03']) && r.o1 && r.o1.diasLote.length === 1,
       `Produção: dias do lote pela chave "dia|lote", sem misturar LX1 com LX10 (LX1: ${r.o0 && r.o0.diasLote}; retrabalho ${r.o0 && r.o0.retrabalhoDias}; LX10: ${r.o1 && r.o1.diasLote})`);
