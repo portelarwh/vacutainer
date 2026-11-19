@@ -38494,7 +38494,7 @@ import { Icon, Button, Badge, Empty, Modal, BarChart, BrandLogo, CommandMenu } f
 import { ModuleFrame } from "vac:modulo/components/ModuleFrame";
 import manifest from "vac:recurso/manifesto";
 import { ModuleTabs } from "vac:modulo/components/ModuleTabs";
-const VERSION = "1.8.22";
+const VERSION = "1.8.23";
 /* Navegação 1.3.0 (16/11/2026): Visão da linha, Relatórios e Importações têm abas; as que mostram uma tela do
    Portal (motor da Administração) trazem o 3º campo com a aba dele. Administração fica só com cadastros e configuração. */
 const SHELL_TABS = {
@@ -39331,16 +39331,16 @@ function App() {
   ] });
 }
 /* 1.8.22 · LOGIN-FOTOS (pedido do responsável, 19/11/2026): fundo da tela de entrada com várias fotos, trocando a cada 3 s.
-   Na pasta Marca: login1, login2, login3… (.png, .jpg ou .svg), em sequência, sem pular número (a busca para no primeiro que falta;
+   Na pasta Marca: login1, login2, login3… (.jpg, .jpeg, .png, .webp ou .svg), em sequência, sem pular número (a busca para no primeiro que falta;
    até 30). Sem fotos numeradas, vale Marca/login.png ou login.svg (como antes) e, sem nada, o azul da marca. Quem pede menos movimento
    no sistema (prefers-reduced-motion) vê só a primeira foto. Só leitura de imagem da pasta; nada é gravado. */
-const PORTA_TROCA_MS = 3000, PORTA_MAX_FOTOS = 30;
+const PORTA_TROCA_MS = 3000, PORTA_MAX_FOTOS = 30, PORTA_EXTS = ["jpg", "jpeg", "png", "webp", "svg"];   /* 1.8.23: + .webp e .jpeg */
 function PortaFundo() {
   const [fotos, setFotos] = useState([]), [atual, setAtual] = useState(0);
   useEffect(() => { let vivo = true;
     const tenta = src => new Promise(r => { const im = new Image(); im.onload = () => r(src); im.onerror = () => r(null); im.src = src; });
     (async () => { const L = [];
-      for (let n = 1; n <= PORTA_MAX_FOTOS &amp;&amp; vivo; n++) { let s = null; for (const ext of ["png", "jpg", "svg"]) { s = await tenta(`Marca/login${n}.${ext}`); if (s) break; } if (!s) break; L.push(s); }
+      for (let n = 1; n <= PORTA_MAX_FOTOS &amp;&amp; vivo; n++) { let s = null; for (const ext of PORTA_EXTS) { s = await tenta(`Marca/login${n}.${ext}`); if (s) break; } if (!s) break; L.push(s); }
       if (vivo &amp;&amp; L.length) setFotos(L); })();
     return () => { vivo = false; }; }, []);
   useEffect(() => { if (fotos.length < 2) return;
