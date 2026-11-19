@@ -34685,8 +34685,8 @@ function calcExports(D){const s0=Store.data;Store.data=D;try{const h=hoje(),pend
    para passar tarefas pontuais, recorrentes ou planejadas. Folha A4 (retrato) com título, cabeçalho repetido em todas as páginas
    ("Página 1 de 2"), observação e as fotos com marcações numeradas (seta, círculo, retângulo ou só o número, por cor); cada marcação
    vira um item com caixa de seleção ao lado da foto. A área, o ponto (máquina/local) e a planta vêm da própria Linha 360°.
-   Dono: esta página (linha360-base.json, bloco aditivo "formularios"; operação {k:'form',it}). Fotos: arquivos JPEG na pasta da linha
-   (Formularios/<formulário>/<foto>.jpg), nunca dentro da base; sem pasta (demonstração ou só neste navegador) ficam só nesta sessão.
+   Dono: esta página (linha360-base.json, bloco aditivo "formularios"; operação {k:'form',it}). Fotos: arquivos WebP na pasta da linha
+   (Formularios/<formulário>/<foto>.webp; JPEG só se o navegador não gerar WebP), nunca dentro da base; sem pasta (demonstração ou só neste navegador) ficam só nesta sessão.
    Pessoa = ID do cadastro (contrato 8): emissor, responsável e quem confirma guardam o ID ao lado do nome. Nenhum número de outra
    página é lido ou recalculado aqui.
    ===================================================================================== */
@@ -34714,13 +34714,15 @@ function fmNumeros(d){let n=(d.tarefas||[]).filter(t=>(t.txt||'').trim()).length
 /* ---------- fotos: arquivo na pasta; cache da sessão ---------- */
 const FotoMem=new Map();
 function fmReduzir(file){return new Promise((ok,ko)=>{const u=URL.createObjectURL(file),im=new Image();im.onload=()=>{const k=Math.min(1,FM_MAXPX/Math.max(im.naturalWidth,im.naturalHeight)),w=Math.round(im.naturalWidth*k),h=Math.round(im.naturalHeight*k);
-  const c=document.createElement('canvas');c.width=w;c.height=h;const x=c.getContext('2d');x.fillStyle='#fff';x.fillRect(0,0,w,h);x.drawImage(im,0,0,w,h);URL.revokeObjectURL(u);c.toBlob(b=>b?ok({blob:b,w,h}):ko(new Error('não consegui converter a foto')),'image/jpeg',.85)};
+  const c=document.createElement('canvas');c.width=w;c.height=h;const x=c.getContext('2d');x.fillStyle='#fff';x.fillRect(0,0,w,h);x.drawImage(im,0,0,w,h);URL.revokeObjectURL(u);
+  /* WebP (pedido do responsável): convertida e reduzida assim que escolhida; navegador sem codificador WebP devolve outro tipo → JPEG */
+  c.toBlob(b=>{if(b&amp;&amp;b.type==='image/webp')return ok({blob:b,w,h,ext:'webp'});c.toBlob(j=>j?ok({blob:j,w,h,ext:'jpg'}):ko(new Error('não consegui converter a foto')),'image/jpeg',.85)},'image/webp',.82)};
  im.onerror=()=>{URL.revokeObjectURL(u);ko(new Error('arquivo não é uma imagem que o navegador abre'))};im.src=u})}
 const fmPodeArquivo=()=>!Store.test&amp;&amp;Store.dir&amp;&amp;Store.perm;
-async function fmGuardarFoto(formId,fid,file){const{blob,w,h}=await fmReduzir(file);FotoMem.set(fid,URL.createObjectURL(blob));let arq='';
- if(fmPodeArquivo()){try{const d=await Store.sub(FM_DIR+'/'+formId,true),fh=await d.getFileHandle(fid+'.jpg',{create:true}),wr=await fh.createWritable();await wr.write(blob);await wr.close();arq=FM_DIR+'/'+formId+'/'+fid+'.jpg'}
+async function fmGuardarFoto(formId,fid,file){const{blob,w,h,ext}=await fmReduzir(file);FotoMem.set(fid,URL.createObjectURL(blob));let arq='';
+ if(fmPodeArquivo()){try{const d=await Store.sub(FM_DIR+'/'+formId,true),fh=await d.getFileHandle(fid+'.'+ext,{create:true}),wr=await fh.createWritable();await wr.write(blob);await wr.close();arq=FM_DIR+'/'+formId+'/'+fid+'.'+ext}
   catch(e){toast('A foto ficou só nesta sessão: não consegui gravá-la na pasta ('+(e.message||e.name)+')',1)}}
- return{w,h,arq}}
+ return{w,h,arq,ext,kb:Math.round(blob.size/1024)}}
 async function fmUrl(f){if(FotoMem.has(f.id))return FotoMem.get(f.id);if(!f.arq||!Store.dir||!Store.perm||Store.test)return'';
  try{const p=f.arq.split('/'),nm=p.pop(),d=await Store.sub(p.join('/')),b=await(await d.getFileHandle(nm)).getFile(),u=URL.createObjectURL(b);FotoMem.set(f.id,u);return u}catch(e){return''}}
 async function fmCarregarFotos(raiz){const d=App.fm&amp;&amp;App.fm.d;if(!d)return;for(const el of (raiz||document).querySelectorAll('[data-fid]')){const f=(d.fotos||[]).find(x=>x.id===el.dataset.fid);if(!f)continue;const u=await fmUrl(f);
@@ -34909,7 +34911,8 @@ function ligarForm(){const fm=App.fm;if(!fm)return;const on=(s,ev,f)=>{const e=$
  on('#fmCanc','onclick',()=>{if(confirm('Cancelar este formulário? Ele continua guardado, só para consulta.'))fmStatus('cancelado')});on('#fmDup','onclick',fmDuplicar);
  if(d.status!=='aberto')return;
  ['#fmTitulo','#fmObs','#fmResp','#fmConf','#fmEmissao','#fmPrazo'].forEach(s=>on(s,'oninput',()=>fmPrevAtualizar()));
- ['#fmTipo','#fmEq','#fmArea','#fmTurno','#fmPorPag','#fmFreq','#fmResp','#fmConf'].forEach(s=>on(s,'onchange',()=>{fmLerCampos();fm.sujo=true;render()}));
+ ['#fmTipo','#fmEq','#fmArea','#fmTurno','#fmPorPag','#fmFreq'].forEach(s=>on(s,'onchange',()=>{fmLerCampos();fm.sujo=true;render()}));   /* pessoas: só a prévia (redesenhar ao sair do campo roubava o clique do campo seguinte) */
+ ['#fmResp','#fmConf'].forEach(s=>on(s,'onchange',()=>fmPrevAtualizar()));
  on('#fmRec','onchange',()=>{fmLerCampos();fm.sujo=true;render()});
  on('#fmPonto','onchange',e=>{fmLerCampos();d.ponto=e.target.value;d.equipamento='';if(d.ponto)d.area=fmAreaDoPonto(d.ponto)||d.area;fm.sujo=true;render()});
  $$('[data-tar]').forEach(i=>i.oninput=()=>fmPrevAtualizar());
@@ -38182,8 +38185,8 @@ body.vac-porta{overflow:hidden}
       "id": "linha",
       "path": "Plataforma.html#motor/linha",
       "version": "1.4.0",
-      "sha256": "68d16cc8be42aa56752dce5840f318e020e19fe53e576e79d7638aede7d17018",
-      "bytes": 870896
+      "sha256": "a7730e38b518c4bfa0a176e882226b068345f3fbdb70a68e887766ccfa52b0df",
+      "bytes": 871378
     },
     {
       "id": "projetos",
@@ -38203,7 +38206,7 @@ body.vac-porta{overflow:hidden}
   "limitations": [
     "Projetos e conteúdo técnico OSM/MES/AM/TPM mantêm os limites documentados nas fontes."
   ],
-  "enginesSha256": "45185d2dd377b734c952748a6c072d812151ca6f193363be29574eaa5995ea9b",
+  "enginesSha256": "e960d660337848d730b59985e60da4da1a2c6a63c7fe3560227e351ab0610cc8",
   "originRevision": "ffc9ee8",
   "sourceMode": "single-html",
   "originEnginesSha256": "a87a64ad0c328f70e102b2ae888790a9b5d5a9bd05778652a7ce7cae140e40d2"

@@ -32,6 +32,8 @@ const html = fs.readFileSync(path.resolve(__dirname, '../../Plataforma.html'));
     await fr.selectOption('#fmRec', 'recorrente'); await fr.selectOption('#fmFreq', 'semana');
     await fr.selectOption('#fmPonto', '1'); await fr.fill('#fmEmissao', '2025-12-20'); await fr.fill('#fmPrazo', '2026-01-01');
     assert.equal(await fr.inputValue('#fmArea'), 'preparo', 'área vem do ponto (Linha 360°)');
+    await fr.fill('#fmResp', '1001'); await fr.click('#fmConf'); await fr.fill('#fmConf', '9001');   // ir de um campo ao outro não pode perder o segundo
+    assert.deepEqual(await fr.evaluate(() => [App.fm.d.respId, App.fm.d.confId]), ['1001', '9001'], 'responsável e quem confirma por ID');
     await fr.fill('#fmObs', 'Usar luvas e óculos (teste).');
     for (const t of ['Bloquear a energia (teste)', 'Retirar resíduos do piso (teste)']) { await fr.click('#fmTarNova'); await fr.locator('[data-tar]').last().fill(t); }
 
@@ -56,7 +58,10 @@ const html = fs.readFileSync(path.resolve(__dirname, '../../Plataforma.html'));
     await fr.click('#edOk'); await fr.selectOption('#fmPorPag', '1'); await fr.click('#fmSalvar'); await page.waitForTimeout(400);
     const g = await fr.evaluate(() => { const f = Store.data.formularios[0]; return { n: Store.data.formularios.length, tipo: f.tipo, rec: f.rec, freq: f.freq, area: f.area, ponto: f.ponto, emissorId: f.emissorId, emissao: f.emissao, fotos: f.fotos.length, marcas: f.fotos.map(x => x.marcas.length), outro: f.fotos[1].ponto, st: f.status, base: JSON.stringify(Store.data).length, temDados: JSON.stringify(Store.data.formularios).includes('data:image') }; });
     assert.deepEqual({ ...g, base: undefined, emissao: undefined }, { n: 1, tipo: 'limpeza', rec: 'recorrente', freq: 'semana', area: 'preparo', ponto: '1', emissorId: '9001', fotos: 3, marcas: [3, 1, 0], outro: '2', st: 'aberto', base: undefined, emissao: undefined, temDados: false });
-    console.log('ok formulário salvo na base da Linha 360° (tipo, recorrência, local, emissor por ID); fotos fora da base; marcações numeradas 3, 4, 5 depois das 2 tarefas');
+    const wp = await fr.evaluate(async () => { const cv = document.createElement('canvas'); cv.width = 3200; cv.height = 2400; cv.getContext('2d').fillRect(0, 0, 50, 50); const b = await new Promise(r => cv.toBlob(r, 'image/png'));
+      const r = await fmReduzir(new File([b], 'x.png', { type: 'image/png' })); return { ext: r.ext, tipo: r.blob.type, w: r.w, h: r.h }; });
+    assert.deepEqual(wp, { ext: 'webp', tipo: 'image/webp', w: 1600, h: 1200 }, 'foto convertida para WebP e reduzida (lado maior 1.600 px)');
+    console.log('ok formulário salvo na base da Linha 360° (tipo, recorrência, local, emissor por ID); fotos em WebP (até 1.600 px) fora da base; marcações numeradas 3, 4, 5 depois das 2 tarefas');
 
     // 4) folha A4: cabeçalho em todas as páginas com "Página x de N", observação na 1ª, pílula na foto de outro local, itens com caixa
     const A4 = await fr.evaluate(() => { const P = [...document.querySelectorAll('#fmPrev .fm-pg')], r = P[0].getBoundingClientRect(), z = parseFloat(getComputedStyle(P[0]).zoom) || 1;
