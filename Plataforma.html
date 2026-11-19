@@ -3973,7 +3973,7 @@ function wireConfigComum(){$('#cPasta').onclick=async()=>{if(await Store.pick())
         entrar pelo ID (autocadastro como Consulta); página inicial por perfil (1x por sessão); vigência gravada não se edita (desativar com motivo); painel de vigências; semáforo central; saída do modo de teste.
    1.1.2: aviso da carga diz qual base foi lida.  1.5: páginas Paradas, Máquinas, Manutenção e Projetos na lista (aparecem quando o HTML chega na pasta).  1.4: lista técnica pela CS12 multinível (itens = nível 1, estrutura = níveis 2+); CS03 sai.  1.3: cabeçalho comum (vac-cabecalho v2: barra do sistema + página + abas), busca Ctrl K, acabamento V1.90, Versões com cabeçalho e último backup.  1.2: Configuração › Versões das páginas (versão e data de cada HTML, gravação das bases, cópias repetidas, histórico).
    ===================================================================== */
-const PAGE={id:'portal',titulo:"Administração · Linha Vacutainer",tituloCurto:"Administração",subtitulo:'Sistemas de gestão da linha',versao:'1.9.51',baseFile:'portal-base.json',idb:'vac-portal',backupDir:'00. Backups/Portal',
+const PAGE={id:'portal',titulo:"Administração · Linha Vacutainer",tituloCurto:"Administração",subtitulo:'Sistemas de gestão da linha',versao:'1.9.52',baseFile:'portal-base.json',idb:'vac-portal',backupDir:'00. Backups/Portal',
  vazio:()=>({schema:'portal-base',rev:0,config:{modulos:{},avisoDias:30,notas:{}},audit:[]}),
  /* itens do Portal para a busca Ctrl K: cadastro, pendências e telas */
  busca:q=>{const R=[],D=Cad.D;if(D)for(const t of CAD_ORD){for(const it of D[t]||[]){const c=String(it[kOf(t)]),nm=t==='bom'?((cadItem('catalogos',it.catalogo)||{}).nome||''):it.nome||'';if(norm(c+' '+nm).includes(q))R.push({tipo:CAD_T[t].um,txt:c+(nm?' · '+nm:''),sub:'Cadastros'+(cadAtivo(t,it,D)?'':' · inativo'),href:'#cadastros/'+t+'/'+encodeURIComponent(c)});if(R.length>30)break}}
@@ -5264,7 +5264,7 @@ function eqDnd(tb){let de=null,alvo=null,abaixo=false;const linhas=()=>[...tb.qu
   const fim=e=>{if(!de)return;const r=alvo,origem=de;de=null;alvo=null;limpa();if(e.type!=='pointerup'||!r)return;
    const cod=origem.dataset.cod,linha=origem.dataset.linha||null,D=Cad.D,ord=EqOrd.lista(D,linha).map(q=>q.codigo).filter(c=>c!==cod);let i=r.dataset.fixo?0:ord.indexOf(r.dataset.cod);if(i<0)i=ord.length;else if(abaixo&amp;&amp;!r.dataset.fixo)i++;ord.splice(i,0,cod);
    const P=EqOrd.sequencia(D,linha,ord);if(!P.length)return toast('A ordem não mudou.');
-   if(!Cad.podeEditar())return;if(!confirm(`Reorganizar a linha: ${P.length} equipamento(s) mudam de posição (os ativos ficam 1, 2, 3… na ordem nova).\n\n${EqOrd.txt(P)}`))return;
+   if(!Cad.podeEditar())return;   /* 1.9.52: grava direto, sem a confirmação com a lista (pedido do responsável); a mudança fica na auditoria */
    Cad.ops(EqOrd.ops(P,'reorganização da linha (arrastar e soltar)'));toast('Ordem salva: '+P.length+' posição(ões).')};
   h.addEventListener('pointerup',fim);h.addEventListener('pointercancel',fim)})}
 function cadLista(el,t){const D=Cad.D,T=CAD_T[t],cols=cadCols(t,D),k=kOf(t);const q=norm(Cad.ui.q),sit=Cad.ui.sit||'ativos';
@@ -5508,13 +5508,13 @@ const Ficha={t:null,cod:null,orig:null,W:null,novo:false,edit:false,dirty:false,
   let emp=[];if(t==='equipamentos'&amp;&amp;W.ativo!==false&amp;&amp;!EqOrd.ehLinha(W)&amp;&amp;W.posicao!=null&amp;&amp;(this.novo||String(this.orig.posicao??'')!==String(W.posicao))){
    if(+W.posicao===0)return this.erro('A posição <b>0</b> é da linha inteira. Use 1 para o primeiro equipamento.');
    emp=EqOrd.empurrar(Cad.D,this.novo?null:this.cod,+W.posicao,W.linha);
-   if(emp.length&amp;&amp;!confirm(`A posição ${W.posicao} já é de ${emp[0][0].codigo}${emp[0][0].nome?' ('+emp[0][0].nome+')':''}. Ele e os seguintes andam +1:\n\n${EqOrd.txt(emp)}\n\nConfirmar?`))return}
+   /* 1.9.52: sem confirmação; quem estava na posição e os seguintes andam +1 */}
   const extra=EqOrd.ops(emp,`posição ${W.posicao} dada a ${String(W[k])}`);
   if(this.novo){this.cod=String(W[k]);this.novo=false;Cad.ops([{acao:'criação',tipo:t,codigo:this.cod,item:W,motivo:mot||null},...extra])}
   else{const mud=cadDiff(this.orig,W);if(!Object.keys(mud).length){this.dirty=false;return toast('Nada mudou.')}
    if(cadMudaPassado(t,this.orig,W)&amp;&amp;!mot){this.erro('Informe o <b>motivo</b>: a alteração muda uma vigência que já valeu (antes de hoje).');$('#fMot').focus();return}
    Cad.ops([{acao:'edição',tipo:t,codigo:this.cod,mudancas:mud,motivo:mot||null},...extra])}
-  this.recarregar();toast('Alteração registrada.')},
+  this.recarregar();toast('Alteração registrada.'+(emp.length?` ${emp.length} equipamento(s) andaram +1 na posição.`:''))},
  inativar(){if(!Cad.podeEditar())return;const mot=this.mot();if(!mot){this.erro('Informe o <b>motivo</b> para inativar.');$('#fMot').focus();return}
   if(this.dirty&amp;&amp;!confirm('As outras alterações desta ficha (não salvas) serão descartadas. Continuar?'))return;
   const it=cadItem(this.t,this.cod),U=cadUsos(this.t,this.cod).filter(u=>u.ativo);if(U.length&amp;&amp;!confirm(`Ainda usado por ${U.length} item(ns) ativo(s): ${U.slice(0,6).map(u=>u.cod).join(', ')}${U.length>6?'…':''}. Inativar mesmo assim?`))return;
@@ -37742,7 +37742,10 @@ td { font-size:15px; }
 /* 1.8.9 · tela de entrada (porta): foto da pasta Marca (login.png ou login.svg) desfocada e escurecida; sem a foto, o azul da marca.
    Passo "login": a janela de login da Administração (vacLogin) aparece por cima, em tela cheia, com o fundo transparente. */
 .porta{position:fixed;inset:0;z-index:1000;display:grid;place-items:center;padding:var(--sp-16,16px);overflow:hidden;color:#fff;font-family:var(--bd-font-body,Arial,sans-serif)}
-.porta-fundo{position:absolute;inset:-32px;background:url("Marca/login.png") center/cover no-repeat,url("Marca/login.svg") center/cover no-repeat,radial-gradient(120% 90% at 20% 10%,#1D3B8F 0%,var(--bd-navy,#060A3D) 60%);filter:blur(12px) brightness(.62) saturate(1.05);transform:scale(1.04)}
+.porta-fundo{position:absolute;inset:-32px;background:url("Marca/login.png") center/cover no-repeat,url("Marca/login.svg") center/cover no-repeat,radial-gradient(120% 90% at 20% 10%,#1D3B8F 0%,var(--bd-navy,#060A3D) 60%);filter:blur(4px) brightness(.72) saturate(1.05);transform:scale(1.04)}
+/* 1.8.22 · LOGIN-FOTOS: menos desfoque (12px → 4px) e fotos login1, login2… em sequência, com transição suave */
+.porta-fundo .porta-foto{position:absolute;inset:0;background:center/cover no-repeat;opacity:0;transition:opacity 1s ease}.porta-fundo .porta-foto.on{opacity:1}
+@media (prefers-reduced-motion:reduce){.porta-fundo .porta-foto{transition:none}}
 .porta::after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,rgba(6,10,61,.25),rgba(6,10,61,.55));pointer-events:none}
 .porta-card{position:relative;z-index:1;width:min(420px,100%);display:grid;gap:var(--sp-16,16px);padding:var(--sp-32,32px) var(--sp-24,24px);border-radius:18px;background:rgba(255,255,255,.96);color:var(--bd-navy,#060A3D);box-shadow:0 24px 60px rgba(0,0,0,.35)}
 .porta-card h1{margin:0;font-size:24px;font-weight:700}.porta-txt{margin:0;color:#3D3E41;font-size:15px;line-height:1.45}.porta-erro{margin:0;color:var(--bd-danger,#C62828);font-size:14px}
@@ -37822,15 +37825,15 @@ body.vac-porta{overflow:hidden}
     {
       "id": "portal",
       "path": "Plataforma.html#motor/portal",
-      "version": "1.9.51",
-      "sha256": "cc5036ceeaa8050d20044d2bc970d4c0a23020707edd600c247b4c00035df05d",
-      "bytes": 1254902
+      "version": "1.9.52",
+      "sha256": "5d06348ea34a209a2d21f484937c94e1b8a3e7376f5cfd5446adbed9c7acbe4d",
+      "bytes": 1254824
     }
   ],
   "limitations": [
     "Projetos e conteúdo técnico OSM/MES/AM/TPM mantêm os limites documentados nas fontes."
   ],
-  "enginesSha256": "09454b0a3aca6b0c29728f9800a2a98410358d9664f10b4dca3bb90afe3c1f27",
+  "enginesSha256": "9af3dbfd2898a8057706d8bd63edc7857cea7dd6b0766681b6acbe9992cad615",
   "originRevision": "ffc9ee8",
   "sourceMode": "single-html",
   "originEnginesSha256": "a87a64ad0c328f70e102b2ae888790a9b5d5a9bd05778652a7ce7cae140e40d2"
@@ -37900,7 +37903,7 @@ summary{cursor:pointer;font-weight:600;color:var(--navy)}
 'use strict';
 /* ---------- referência (atualizar quando a plataforma mudar de versão) ---------- */
 // Iguais às do pacote da plataforma (nova-plataforma/src/generated/manifest.json); o teste ferramenta-verificar confere.
-const VERSOES = {"oee":"2.6.16","perdas":"1.12.17","gel":"2.42","paradas":"1.2.18","equip":"1.0.20","inic":"1.1.16","linha":"1.3.0","projetos":"0.1.16","portal":"1.9.51"};
+const VERSOES = {"oee":"2.6.16","perdas":"1.12.17","gel":"2.42","paradas":"1.2.18","equip":"1.0.20","inic":"1.1.16","linha":"1.3.0","projetos":"0.1.16","portal":"1.9.52"};
 const BASES = [
  { arq: 'vacutainer-cadastros.json', mod: 'portal', nome: 'Cadastro geral (Portal)', obrig: true, cadastro: true, bk: 'Cadastros' },
  { arq: 'portal-base.json', mod: 'portal', nome: 'Portal', obrig: true, bk: 'Portal' },
@@ -38491,7 +38494,7 @@ import { Icon, Button, Badge, Empty, Modal, BarChart, BrandLogo, CommandMenu } f
 import { ModuleFrame } from "vac:modulo/components/ModuleFrame";
 import manifest from "vac:recurso/manifesto";
 import { ModuleTabs } from "vac:modulo/components/ModuleTabs";
-const VERSION = "1.8.21";
+const VERSION = "1.8.22";
 /* Navegação 1.3.0 (16/11/2026): Visão da linha, Relatórios e Importações têm abas; as que mostram uma tela do
    Portal (motor da Administração) trazem o 3º campo com a aba dele. Administração fica só com cadastros e configuração. */
 const SHELL_TABS = {
@@ -38899,7 +38902,7 @@ function App() {
   const statusWarning=!!(durablePending || statusCurrent?.pending || statusCurrent?.readOnly || statusCurrent?.info?.estado?.some(p=>['bad','warn'].includes(p.tom)));
   return /* @__PURE__ */ jsxs("div", { className: "app-shell", children: [
     porta &amp;&amp; /* @__PURE__ */ jsxs("div", { className: "porta" + (portaPasso === "login" ? " porta-login" : ""), role: portaPasso === "login" ? void 0 : "dialog", "aria-modal": portaPasso === "login" ? void 0 : "true", "aria-label": "Entrada da plataforma", children: [
-      /* @__PURE__ */ jsx("div", { className: "porta-fundo", "aria-hidden": "true" }),
+      /* @__PURE__ */ jsx(PortaFundo, {}),
       portaPasso !== "login" &amp;&amp; /* @__PURE__ */ jsxs("div", { className: "porta-card", children: [
         /* @__PURE__ */ jsxs("div", { className: "porta-marca", children: [
           /* @__PURE__ */ jsx("span", { className: "porta-v", "aria-hidden": "true", children: "V" }),
@@ -39326,6 +39329,25 @@ function App() {
       ] })
     ] })
   ] });
+}
+/* 1.8.22 · LOGIN-FOTOS (pedido do responsável, 19/11/2026): fundo da tela de entrada com várias fotos, trocando a cada 3 s.
+   Na pasta Marca: login1, login2, login3… (.png, .jpg ou .svg), em sequência, sem pular número (a busca para no primeiro que falta;
+   até 30). Sem fotos numeradas, vale Marca/login.png ou login.svg (como antes) e, sem nada, o azul da marca. Quem pede menos movimento
+   no sistema (prefers-reduced-motion) vê só a primeira foto. Só leitura de imagem da pasta; nada é gravado. */
+const PORTA_TROCA_MS = 3000, PORTA_MAX_FOTOS = 30;
+function PortaFundo() {
+  const [fotos, setFotos] = useState([]), [atual, setAtual] = useState(0);
+  useEffect(() => { let vivo = true;
+    const tenta = src => new Promise(r => { const im = new Image(); im.onload = () => r(src); im.onerror = () => r(null); im.src = src; });
+    (async () => { const L = [];
+      for (let n = 1; n <= PORTA_MAX_FOTOS &amp;&amp; vivo; n++) { let s = null; for (const ext of ["png", "jpg", "svg"]) { s = await tenta(`Marca/login${n}.${ext}`); if (s) break; } if (!s) break; L.push(s); }
+      if (vivo &amp;&amp; L.length) setFotos(L); })();
+    return () => { vivo = false; }; }, []);
+  useEffect(() => { if (fotos.length < 2) return;
+    let calmo = false; try { calmo = window.matchMedia("(prefers-reduced-motion: reduce)").matches; } catch (e) { calmo = false; } if (calmo) return;
+    const t = setInterval(() => setAtual(x => (x + 1) % fotos.length), PORTA_TROCA_MS); return () => clearInterval(t); }, [fotos]);
+  return /* @__PURE__ */ jsx("div", { className: "porta-fundo" + (fotos.length ? " porta-fotos" : ""), "aria-hidden": "true", "data-fotos": fotos.length,
+    children: fotos.map((src, k) => /* @__PURE__ */ jsx("div", { className: "porta-foto" + (k === atual ? " on" : ""), style: { backgroundImage: `url("${src}")` } }, src)) });
 }
 function PageStatus({current,title,source,sources,statuses,folder,demo,cad,onNavigate}) {
   const [diagnostic,setDiagnostic]=useState(null),[failure,setFailure]=useState(''),[busy,setBusy]=useState(false),[refresh,setRefresh]=useState(0);

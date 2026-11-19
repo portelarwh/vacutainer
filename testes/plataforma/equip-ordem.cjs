@@ -36,7 +36,7 @@ const html = fs.readFileSync(path.resolve(__dirname, '../../Plataforma.html'));
     // 2) arrastar EQ12 para antes do EQ03 com o ponteiro: os ativos ficam 1..N e a Linha 0
     const h = f.locator('tr[data-cod="EQ12"] td.eq-h'); await h.scrollIntoViewIfNeeded(); const a = await h.boundingBox(), d = await f.locator('tr[data-cod="EQ03"]').boundingBox();
     await page.mouse.move(a.x + a.width / 2, a.y + a.height / 2); await page.mouse.down(); await page.mouse.move(a.x + 8, a.y - 10, { steps: 4 }); await page.mouse.move(d.x + 300, d.y + 4, { steps: 12 }); await page.mouse.up(); await w(900);
-    assert.match(dialogos.pop() || '', /Reorganizar a linha: \d+ equipamento\(s\) mudam de posição/);
+    assert.equal(dialogos.length, 0, 'sem confirmação ao arrastar (grava direto)');
     const p2 = await pos();
     assert.equal(p2.LINHA, 0); assert.deepEqual([p2.EQ01, p2.EQ02, p2.EQ12, p2.EQ03, p2.EQ11], [1, 2, 3, 4, 12], JSON.stringify(p2));
     assert.deepEqual((await ordemTela()).slice(0, 5), ['LINHA', 'EQ01', 'EQ02', 'EQ12', 'EQ03']);
@@ -47,7 +47,7 @@ const html = fs.readFileSync(path.resolve(__dirname, '../../Plataforma.html'));
     await f.fill('#fBox [data-p="posicao"]', '0'); await f.locator('#fBox [data-p="posicao"]').dispatchEvent('change'); await f.click('#fSalvar'); await w(300);
     assert.match(await f.locator('#fErr').textContent(), /posição 0 é da linha inteira/);
     await f.fill('#fBox [data-p="posicao"]', '3'); await f.locator('#fBox [data-p="posicao"]').dispatchEvent('change'); await f.click('#fSalvar'); await w(700);
-    assert.match(dialogos.pop() || '', /A posição 3 já é de EQ12[\s\S]*andam \+1/);
+    assert.equal(dialogos.length, 0, 'sem confirmação ao digitar a posição');
     const p3 = await pos();
     assert.deepEqual([p3.EQ01, p3.EQ02, p3.EQ11, p3.EQ12, p3.EQ03, p3.EQ10], [1, 2, 3, 4, 5, 12], JSON.stringify(p3));
     const aud = await f.evaluate(() => ((Cad.D.auditoria || []).concat(Cad.fila || [])).filter(a => a.tipo === 'equipamentos' && (a.campo === 'posicao' || (a.mudancas && a.mudancas.posicao))).length);
