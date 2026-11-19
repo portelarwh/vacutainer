@@ -2727,6 +2727,33 @@ const vacSimbolos = (() => {
    gráfico em PNG (svgPng) com texto alternativo, para o e-mail continuar legível com as imagens bloqueadas. No máximo 4 KPIs.
    d = {area, titulo, linha, periodo, status, resumo:[{rot, txt}], kpis:[{nome, valor, sub, cor}], grafico:{src, alt, frase},
         ocorrencias:[texto], acoes:[texto], link, base}. Nenhum número é calculado aqui: a página entrega os valores prontos. ----- */
+/* 1.8.20 · PAR-BUSCA (pedido do responsável, 19/11/2026): busca por texto numa lista de escolha (select). Digite "setup" e ficam só as
+   opções com "setup" no código, no nome ou no grupo (sem diferença de acento e maiúscula; várias palavras = todas precisam aparecer).
+   A lista abre aberta enquanto há texto; uma só opção é escolhida sozinha; Enter escolhe a primeira; ↓ vai para a lista. Não muda valores. */
+function vacFiltroSelect(sel, { placeholder = 'Digite para filtrar (ex.: setup)' } = {}) {
+  if (!sel || sel.dataset.vacFiltro) return null; sel.dataset.vacFiltro = '1';
+  const norm = x => String(x || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
+  const rot = (sel.closest('label') &amp;&amp; sel.closest('label').querySelector('span') || {}).textContent || sel.getAttribute('aria-label') || 'opções';
+  const inp = document.createElement('input'); inp.type = 'search'; inp.className = 'vac-filtro'; inp.placeholder = placeholder; inp.autocomplete = 'off';
+  inp.setAttribute('aria-label', 'Filtrar ' + rot.trim()); inp.style.cssText = 'display:block;width:100%;margin:0 0 4px;box-sizing:border-box';
+  const msg = document.createElement('span'); msg.className = 'vac-filtro-msg small muted'; msg.setAttribute('aria-live', 'polite'); msg.style.cssText = 'display:block;min-height:1em';
+  sel.parentNode.insertBefore(inp, sel); sel.after(msg);
+  const ops = [...sel.options], escolher = o => { if (o &amp;&amp; sel.value !== o.value) { sel.value = o.value; sel.dispatchEvent(new Event('change', { bubbles: true })); } };
+  const aplicar = () => {
+    const termos = norm(inp.value).split(/\s+/).filter(Boolean); let n = 0, prim = null;
+    for (const o of ops) {
+      if (!o.value) { o.hidden = !!termos.length; continue; }
+      const g = o.parentElement &amp;&amp; o.parentElement.tagName === 'OPTGROUP' ? o.parentElement.label : '', ok = termos.every(t => norm(o.textContent + ' ' + g).includes(t));
+      o.hidden = !ok; if (ok) { n++; prim = prim || o; }
+    }
+    sel.querySelectorAll('optgroup').forEach(g => { g.hidden = ![...g.children].some(o => !o.hidden); });
+    if (termos.length) { sel.size = Math.max(2, Math.min(8, n + sel.querySelectorAll('optgroup:not([hidden])').length)); msg.textContent = n ? n + (n === 1 ? ' opção' : ' opções') : 'Nada encontrado com "' + inp.value.trim() + '".'; if (n === 1) escolher(prim); }
+    else { sel.removeAttribute('size'); msg.textContent = ''; }
+  };
+  inp.addEventListener('input', aplicar);
+  inp.addEventListener('keydown', e => { if (e.key === 'ArrowDown') { e.preventDefault(); sel.focus(); } else if (e.key === 'Enter') { e.preventDefault(); escolher(ops.find(o => o.value &amp;&amp; !o.hidden)); } });
+  return inp;
+}
 const vacEmail = (() => {
   const H = s => String(s ?? '').replace(/[&amp;<>"']/g, c => ({ '&amp;': '&amp;amp;', '<': '&amp;lt;', '>': '&amp;gt;', '"': '&amp;quot;', "'": '&amp;#39;' }[c]));
   const F = 'font-family:Segoe UI,Arial,sans-serif;', COR = { ok: '#14804A', crit: '#C94645', warn: '#D78B11', info: '#0D5E9C', none: '#6F8092' };
@@ -7671,7 +7698,7 @@ const U = (() => {
 
 /* ---- 02-model.js ---- */
 /* ================= modelo de dados, valores iniciais e integridade ================= */
-const APP_VERSION = '2.6.15';   /* 2.6.15 · REL-01: gel no relatório/e-mail do dia e do turno; Enviar relatório na janela do dia */   /* 2.6.14 · GEL-07: Relatório do Gel e Perdas de gel (turno com gel e Relatórios) */   /* 2.6.13 · GEL-06: Scrap gel no detalhe do turno */   /* 2.6.12 · TUR-04: turno com horário diferente no sábado (linhas por dia da semana) */   /* 2.6.11 · abas agrupadas: Ordens e lotes, Resultados, Paradas */   /* 2.6.10 · Lançamento sem turno aberto por padrão; abas visíveis na casca */   /* 2.6.9 · LANC-02: Lançamento unificado (hora a hora no detalhe do turno, 3º turno ao lado, Problemas de QN) */   /* 2.6.5 · IMP-01: contagens das importações nos exports */   /* 2.6.4 · semáforo só pelas faixas configuradas (verde acima de 100% vale) */   /* 2.6.2 · gráficos e números com meta seguem o semáforo de três cores (verde, amarelo, vermelho) */   /* 2.6.1 · gráficos: turno lançado pelo total com o nome do turno no eixo; janelas: rótulo e valor em tamanho de texto */   /* 2.6.0 · produção total do turno (sem hora a hora; períodos na troca de catálogo), aviso do servidor para turno lançado pelo total e para dia com produção apontada */
+const APP_VERSION = '2.6.16';   /* 2.6.16 · TUR-05: dia em aberto passa ao horário vigente do turno; PAR-BUSCA: tipo de parada por texto */   /* 2.6.15 · REL-01: gel no relatório/e-mail do dia e do turno; Enviar relatório na janela do dia */   /* 2.6.14 · GEL-07: Relatório do Gel e Perdas de gel (turno com gel e Relatórios) */   /* 2.6.13 · GEL-06: Scrap gel no detalhe do turno */   /* 2.6.12 · TUR-04: turno com horário diferente no sábado (linhas por dia da semana) */   /* 2.6.11 · abas agrupadas: Ordens e lotes, Resultados, Paradas */   /* 2.6.10 · Lançamento sem turno aberto por padrão; abas visíveis na casca */   /* 2.6.9 · LANC-02: Lançamento unificado (hora a hora no detalhe do turno, 3º turno ao lado, Problemas de QN) */   /* 2.6.5 · IMP-01: contagens das importações nos exports */   /* 2.6.4 · semáforo só pelas faixas configuradas (verde acima de 100% vale) */   /* 2.6.2 · gráficos e números com meta seguem o semáforo de três cores (verde, amarelo, vermelho) */   /* 2.6.1 · gráficos: turno lançado pelo total com o nome do turno no eixo; janelas: rótulo e valor em tamanho de texto */   /* 2.6.0 · produção total do turno (sem hora a hora; períodos na troca de catálogo), aviso do servidor para turno lançado pelo total e para dia com produção apontada */
 const SCHEMA_VERSION = 1;
 const BASE_FILE = 'oee-vacutainer-base.json';
 const BACKUP_DIR = '00. Backups';
@@ -9079,6 +9106,38 @@ const Actions = (() => {
       audit({ action: 'exclusão lógica', entity: 'intervalo', entityId: iv.id, before: U.range(iv.start, iv.end) });
     });
   }
+  /* 2.6.16 · TUR-05 (pedido do responsável, 19/11/2026): o horário do turno mudou no cadastro (vigência nova, linha do sábado) e o dia em
+     aberto ficou com o horário antigo (ex.: sábado criado antes de a Produção ler o cadastro). Passa cada turno em aberto ao horário vigente
+     da data: as horas que continuam iguais (mesmo início e fim) ficam com o que foi lançado; se houver produção ou parada só com tempo numa
+     hora que deixa de existir, recusa e diz qual. Turno ou dia fechado nunca muda; turno lançado pelo total pede voltar ao hora a hora. */
+  function shiftScheduleDiff(db, d) {
+    let fresh; try { fresh = Engine.buildDay(db, d.date, d.lineId, d.machineId, by(), d.demo ? { shiftLineId: 'line_vac' } : {}); } catch (e) { return []; }
+    const key = i => i.start + '-' + i.end, out = [];
+    for (const ps of d.shifts) { if (ps.deleted || ps.status === 'fechado' || ps.off) continue; const f = fresh.shifts.find(x => x.shiftId === ps.shiftId); if (!f) continue;
+      const cur = ps.intervals.filter(i => !i.deleted);
+      if (cur.length === f.intervals.length &amp;&amp; cur.every((i, k) => key(i) === key(f.intervals[k]))) continue;
+      out.push({ ps, f, de: ps.snap.start + '–' + U.hhmm(U.toMin(ps.snap.end)), para: f.snap.start + '–' + U.hhmm(U.toMin(f.snap.end)) }); }
+    return out;
+  }
+  function applyShiftSchedule(dayId) {
+    let resumo = '';
+    Store.mutate((db, audit) => {
+      const d = dayById(db, dayId); if (d.status === 'fechado') throw new Error('Dia fechado: o horário não muda.');
+      const L = shiftScheduleDiff(db, d); if (!L.length) throw new Error('O dia já está com o horário vigente dos turnos.');
+      const key = i => i.start + '-' + i.end, mud = [];
+      for (const { ps, f, de, para } of L) {
+        if (ps.lancamento) throw new Error(`${ps.snap.name} está lançado pelo total: volte ao hora a hora antes de aplicar o horário novo.`);
+        const cur = ps.intervals.filter(i => !i.deleted), novas = new Set(f.intervals.map(key));
+        const some = cur.filter(i => !novas.has(key(i)) &amp;&amp; ((i.good != null &amp;&amp; i.good !== 0) || (d.events || []).some(e => !e.deleted &amp;&amp; e.intervalId === i.id &amp;&amp; e.start == null)));
+        if (some.length) throw new Error(`${ps.snap.name}: há produção ou parada lançada em ${some.map(i => U.range(i.start, i.end)).join(', ')}, hora que deixa de existir no horário novo (${para}). Zere ou mova esses lançamentos antes.`);
+        const velho = new Map(cur.map(i => [key(i), i]));
+        ps.intervals = f.intervals.map(n => velho.get(key(n)) || n);
+        mud.push(`${ps.snap.name}: ${de} → ${para}`); ps.snap = f.snap; ps.shiftVersionId = f.shiftVersionId;
+      }
+      resumo = mud.join('; '); touch(d); audit({ action: 'edição', entity: 'dia', entityId: d.id, field: 'horário dos turnos', after: resumo, reason: 'horário vigente do turno (TUR-05)' });
+    });
+    return resumo;
+  }
   function restoreDefaultIntervals(dayId) {
     Store.mutate((db, audit) => {
       const d = dayById(db, dayId); assertEditable(d);
@@ -9852,7 +9911,7 @@ const Actions = (() => {
     });
   }
 
-  return { setShiftSQDCP, setSQDCPVaga, setSQDCPP, setSQDCPManual, createDay, setDayField, setDayStatus, scrapModeImpact, setScrapMode, deleteDay, setShiftField, setIv, editIntervalTimes, splitInterval, addInterval, deleteInterval, restoreDefaultIntervals, lancarTotal, voltarHoraAHora, reapplyTargets, validateEvent, saveEvent, deleteEvent, saveAbono, setShiftOff, setGoods, closingCheck, submitShift, returnShift, closeShift, closeDay, reopen, upsertConfig, setStatusConfig, endTarget, setSettings, importTargets, importRelatorio, importParadas, logExport, loadDemo, removeDemo, impactSnap, planLocked, savePlan, setPlanDay, setDayOff, startProduction, moveDay, setPlanWorkdays, importPlans, setPlanOrder, fillOrdersFromProduction, acceptOrderApurado, savePanelView, deletePanelView, saveReportNote };
+  return { shiftScheduleDiff, applyShiftSchedule, setShiftSQDCP, setSQDCPVaga, setSQDCPP, setSQDCPManual, createDay, setDayField, setDayStatus, scrapModeImpact, setScrapMode, deleteDay, setShiftField, setIv, editIntervalTimes, splitInterval, addInterval, deleteInterval, restoreDefaultIntervals, lancarTotal, voltarHoraAHora, reapplyTargets, validateEvent, saveEvent, deleteEvent, saveAbono, setShiftOff, setGoods, closingCheck, submitShift, returnShift, closeShift, closeDay, reopen, upsertConfig, setStatusConfig, endTarget, setSettings, importTargets, importRelatorio, importParadas, logExport, loadDemo, removeDemo, impactSnap, planLocked, savePlan, setPlanDay, setDayOff, startProduction, moveDay, setPlanWorkdays, importPlans, setPlanOrder, fillOrdersFromProduction, acceptOrderApurado, savePanelView, deletePanelView, saveReportNote };
 })();
 
 
@@ -11943,6 +12002,7 @@ App.views.launch = {
     let h = dayBar('launch');
     /* 2.6.9 · LANC-02: o aviso "Onde lançar" saiu; a produção por hora fica no detalhe de cada turno, logo abaixo dos cartões */
     if (day.demo) h += `<div class="banner demo"><p><b>Dados de demonstração.</b> Este dia não faz parte da base real.</p></div>`;
+    if (!lk) { const HN = Actions.shiftScheduleDiff(db(), day); if (HN.length) h += `<div class="banner warn" id="horNovo"><p><b>O horário do turno mudou no cadastro.</b> Este dia ainda está com o horário antigo: ${HN.map(x => `<b>${esc(x.ps.snap.name)}</b> ${esc(x.de)} → ${esc(x.para)}`).join(' · ')}. <button type="button" class="btn sm primary" id="horAplicar">Aplicar o horário novo</button></p><p class="small muted">A produção das horas que continuam iguais fica. Se houver produção numa hora que deixa de existir, o sistema avisa qual antes de mudar. Dias fechados não mudam.</p></div>`; }   /* 2.6.16 · TUR-05 */
     if (day.origin === 'importação') h += `<div class="banner info"><p>Dia importado do RELATÓRIO (resumo por turno, sem hora a hora). Os valores mostram o que a planilha registrou.</p></div>`;
     h += `<section class="card${App.prefs.cabFold ? ' cab-fold' : ''}" id="cabDia"><header><button type="button" class="btn xs ghost cab-tg" id="cabTg" aria-expanded="${!App.prefs.cabFold}" aria-controls="cabDia" title="${App.prefs.cabFold ? 'Mostrar' : 'Recolher'} o cabeçalho do dia (vale neste computador)">${App.prefs.cabFold ? '▸ Mostrar' : '▾ Recolher'}</button><h3>Cabeçalho do dia</h3>${stPill(day.status)}<span class="small muted">Última alteração ${U.brDT(day.updatedAt)} · ${esc(day.updatedBy || '')}</span><button class="btn xs" id="dayMetas">Metas dos próximos meses</button><button class="btn xs" id="kcEdit" title="Liga e desliga os indicadores do topo (vale neste computador)">Editar cards</button></header>
       <div class="form">
@@ -12026,6 +12086,7 @@ App.views.launch = {
     const c = root.querySelector('#dClose'); if (c) c.onclick = () => closeFlow(day, null);
     const ro = root.querySelector('#dReopen'); if (ro) ro.onclick = async () => { const r = await askReason('Reabrir dia', 'Todos os turnos do dia serão reabertos. A ação fica registrada no histórico.'); if (r) run(() => Actions.reopen(day.id, null, r), 'Dia reaberto.'); };
     const pe = root.querySelector('#dPend'); if (pe) pe.onclick = () => run(() => Actions.setDayStatus(day.id, 'pendente de conferência'));
+    const hn = root.querySelector('#horAplicar'); if (hn) hn.onclick = () => run(() => { const r = Actions.applyShiftSchedule(day.id); toast('Horário novo aplicado: ' + r + '.'); });   /* 2.6.16 · TUR-05 */
     const rs = root.querySelector('#dRestore'); if (rs) rs.onclick = async () => { if (await confirmDlg('Restaurar intervalos padrão?', 'Os intervalos voltam ao padrão dos turnos vigentes nesta data.', 'Restaurar')) run(() => Actions.restoreDefaultIntervals(day.id)); };
     const ra = root.querySelector('#dReapply'); if (ra) ra.onclick = async () => { if (await confirmDlg('Reaplicar metas vigentes?', 'As metas congeladas no último fechamento serão substituídas pelas metas vigentes hoje na configuração para esta data.', 'Reaplicar')) run(() => Actions.reapplyTargets(day.id)); };
     const dh = root.querySelector('#dHist'); if (dh) dh.onclick = () => auditForDay(day);
@@ -12303,6 +12364,7 @@ function eventModal(day, evId, ivId, opts = {}) {
         getPair.sync();
       };
       el.querySelector('#eCode').addEventListener('change', sync);
+      if (typeof vacFiltroSelect === 'function') vacFiltroSelect(el.querySelector('#eCode'), { placeholder: 'Buscar o tipo: digite parte do nome ou do código (ex.: setup)' });   /* 2.6.16 · PAR-BUSCA */
       if (opts.pause &amp;&amp; !ev) { const pc = d.downtimeCodes.find(c => c.deductsPlanned &amp;&amp; c.active !== false); if (pc) el.querySelector('#eCode').value = pc.id; }
       sync();
       const data = () => {
@@ -13114,6 +13176,22 @@ Cfg.demo = {
   }
 };
 
+/* 2.6.16 · TUR-05: o cadastro da Administração mudou o horário de um turno: dias em aberto com o horário antigo (sem produção: aplica
+   com um clique; com produção: cada dia mostra o aviso "Aplicar o horário novo", que mantém as horas que continuam) */
+function offerCadShiftApply() {
+  const d = db(); if (!d) return;
+  const L = d.productionDays.filter(x => !x.deleted &amp;&amp; !x.demo &amp;&amp; x.status !== 'fechado').map(day => ({ day, dif: Actions.shiftScheduleDiff(d, day) })).filter(x => x.dif.length);
+  if (!L.length) return;
+  const prod = x => x.day.shifts.some(p => p.intervals.some(i => !i.deleted &amp;&amp; i.good != null &amp;&amp; i.good !== 0)), free = L.filter(x => !prod(x)), busy = L.filter(prod);
+  const lin = x => `${U.brDate(x.day.date)} (${U.WD[U.weekday(x.day.date)]}): ${x.dif.map(z => esc(z.ps.snap.name) + ' ' + esc(z.de) + ' → ' + esc(z.para)).join(', ')}`;
+  modal('Horário dos turnos mudou no cadastro', `<p>A Administração mudou o horário de turno. Dias em aberto que ainda estão com o horário antigo:</p>
+    ${free.length ? `<p><b>${free.length} dia(s) sem produção lançada</b> podem passar ao horário novo agora:</p><ul>${free.map(x => `<li>${lin(x)}</li>`).join('')}</ul>` : ''}
+    ${busy.length ? `<p><b>${busy.length} dia(s) com produção lançada</b>: abra o dia e use <b>Aplicar o horário novo</b> (as horas que continuam ficam com o que foi lançado):</p><ul>${busy.map(x => `<li>${lin(x)}</li>`).join('')}</ul>` : ''}
+    <p class="small muted">Dias fechados nunca são alterados.</p>`,
+    `<button class="btn" data-close>Deixar como está</button>${free.length ? `<button class="btn primary" id="hnGo">Aplicar aos ${free.length} dia(s) sem produção</button>` : ''}`, (el, close) => {
+      const g = el.querySelector('#hnGo'); if (g) g.onclick = () => run(() => { free.forEach(x => Actions.applyShiftSchedule(x.day.id)); close(); }, 'Horário novo aplicado.');
+    });
+}
 /* depois de mudar o horário de um turno: dias em aberto que ficaram com o formato antigo */
 function offerShiftApply(shiftId, ver) {
   const d = db(); if (!d) return;
@@ -13925,6 +14003,7 @@ function shiftOffModal(day, psId) {
       };
       el.querySelectorAll('[data-ot]').forEach(b => b.onclick = () => { type = b.dataset.ot; sync(); });
       el.querySelector('#otM').oninput = e => { if (type === 'np') { const g = guess(e.target.value); if (g) el.querySelector('#otC').value = g; } };
+      if (typeof vacFiltroSelect === 'function') vacFiltroSelect(el.querySelector('#otC'), { placeholder: 'Buscar o tipo de parada (ex.: setup)' });   /* 2.6.16 · PAR-BUSCA */
       sync();
       el.querySelector('#otOk').onclick = () => run(() => { Actions.setShiftOff(day.id, psId, true, el.querySelector('#otM').value, type, type === 'np' ? el.querySelector('#otC').value : null); close(); }, 'Turno marcado sem produção.');
     });
@@ -21033,6 +21112,7 @@ const CadSync = (() => {
       let R; Store.mutate((d, audit) => { R = aplicar(d, C, audit); }, { flush: true });
       try { Engine.bumpConfig(); } catch (e) { }
       const n = Object.entries(R).filter(([k, v]) => v &amp;&amp; k !== 'removidas' &amp;&amp; k !== 'soLocal').map(([k, v]) => `${v} ${k}`).join(', ');
+      if (R.turnos) setTimeout(() => { try { offerCadShiftApply(); } catch (e) { console.warn('TUR-05', e); } }, 400);   /* 2.6.16 · TUR-05 */
       if (n || R.removidas) toast(`Cadastro da Administração (rev ${C.rev}) aplicado: ${n || 'nada mudou'}${R.removidas ? ` · ${R.removidas} meta(s) antiga(s) substituída(s)` : ''}${R.soLocal ? ` · ${R.soLocal} turno(s) que não está(ão) na Administração ficou(aram) inativo(s)` : ''}.`);
       render();
     } catch (e) { console.warn('CadSync', e); toast('Não consegui aplicar o cadastro do Portal: ' + (e.message || e), true); }
@@ -31281,7 +31361,7 @@ const MATRIZ_PROPOSTA={"OUT": ["Tullip A", "Tullip B", "Packout", "Metro", "Cap 
    PARADAS · núcleo (pasta, base, fila de gravação, backups, cadastro, utilidades)
    ===================================================================================== */
 const PAGE={id:'paradas',titulo:'Paradas · Análise de falhas e paradas de máquina',tituloCurto:'Paradas',subtitulo:'Análise de falhas e paradas de máquina',
-  versao:'1.2.17',estado:'atualizacao',estadoNota:"Matriz, componentes e limite de microparada passam a vir só da Administração; eventos da Produção entram como sugestão.",baseFile:'paradas-base.json',backupDir:'00. Backups/Paradas',busca:q=>buscaPagina(q)};
+  versao:'1.2.18',estado:'atualizacao',estadoNota:"Matriz, componentes e limite de microparada passam a vir só da Administração; eventos da Produção entram como sugestão.",baseFile:'paradas-base.json',backupDir:'00. Backups/Paradas',busca:q=>buscaPagina(q)};
 const APP_VERSION=PAGE.versao;
 const CAD_FILE='vacutainer-cadastros.json',OEE_FILE='oee-vacutainer-base.json';
 const $=(s,r=document)=>r.querySelector(s),$$=(s,r=document)=>[...r.querySelectorAll(s)];
@@ -32159,7 +32239,8 @@ function abrirEvento(id){const e=eventosTodos().find(x=>x.id===id);if(!e)return 
    /* nome mostrado e não mudado mantém o ID; digitado (nome ou ID) passa pelo cadastro */
    const P=f.tecnico===nomeTec(t,e)&amp;&amp;(t.tecnicoId||t.tecnico||e.tecnicoForms)?{nome:f.tecnico,id:idTec(t,e)}:vacPessoa.deTexto(f.tecnico);f.tecnico=P.nome;f.tecnicoId=P.id;
    Store.commit({k:'mapf',c:'tecnico',id:e.id,f:{...f,trocouPeca:tp,por:user(),porId:vacPessoa.eu().id,em:new Date().toISOString()},aud:'parte técnica '+e.id});toast('Parte técnica salva')}}],
-  onOpen:()=>{ini=JSON.stringify(read());const a=$('#aplSug');if(a)a.onclick=()=>{$('#tCod').value=sug.sug;if(sug.e&amp;&amp;trocou(e)==null)$('#tTroca').value=''}}})}
+  onOpen:()=>{if(typeof vacFiltroSelect==='function')vacFiltroSelect($('#tCod'),{placeholder:'Buscar o código: digite parte do nome ou do número (ex.: setup)'});   /* 1.2.18 · PAR-BUSCA */
+   ini=JSON.stringify(read());const a=$('#aplSug');if(a)a.onclick=()=>{$('#tCod').value=sug.sug;if(sug.e&amp;&amp;trocou(e)==null)$('#tTroca').value=''}}})}
 function novoEvento(pre={}){const eqs=Cad.eqs.filter(e=>e.ativo);
  const body=`<p class="muted small">Use só na transição ou para paradas que não vieram pelo Forms (ex.: engenharia). O Forms continua sendo a entrada do operador.</p>
  <div class="fgrid"><label>Data<input type="date" id="nDia" value="${pre.dia||todayISO()}"></label><label>Turno<select id="nTur">${Cad.turnos().map(t=>`<option>${t.codigo}</option>`).join('')}</select></label>
@@ -37672,71 +37753,71 @@ body.vac-porta{overflow:hidden}
     {
       "id": "oee",
       "path": "Plataforma.html#motor/oee",
-      "version": "2.6.15",
-      "sha256": "ac9575867f7dbd225e19c9280e0b5e8304b4a6f8cd4d15c1f0f6d926de43c388",
-      "bytes": 2261967
+      "version": "2.6.16",
+      "sha256": "b4fd1ce7470e3f74ca902d9500f9360252c07719ce83ffe9acd32512efb513e4",
+      "bytes": 2271023
     },
     {
       "id": "perdas",
       "path": "Plataforma.html#motor/perdas",
       "version": "1.12.17",
-      "sha256": "c29d79b5eabb3798b6eedbf0e674f26497b2454797ce5fce1b8eed1adaa65f03",
-      "bytes": 931120
+      "sha256": "98d5e17c65d4974c500036d97b33762d5b64ec668821c7785f698df03f6fec0c",
+      "bytes": 933820
     },
     {
       "id": "gel",
       "path": "Plataforma.html#motor/gel",
       "version": "2.42",
-      "sha256": "eae59fba8159cd7c5f94a383413a71a6bf7208f0d9af1268aaec9b7c0300d9bc",
-      "bytes": 1631568
+      "sha256": "7b919377134d31d01369e4f528cc3add837af6e9006e081e63b7bd38c8530e50",
+      "bytes": 1634268
     },
     {
       "id": "paradas",
       "path": "Plataforma.html#motor/paradas",
-      "version": "1.2.17",
-      "sha256": "1b266fde2aff82bf10bbfef8138e5fd432a3771f75818480e2bdfcceaa55ecc0",
-      "bytes": 903546
+      "version": "1.2.18",
+      "sha256": "1aa77ad025e8e605f76c6daedbe5066cd213a476043241c4056ebd92e319f303",
+      "bytes": 906427
     },
     {
       "id": "equip",
       "path": "Plataforma.html#motor/equip",
       "version": "1.0.20",
-      "sha256": "02fa1a65f8cdd4fc18b86f1255f2f037932fc4ea9c1d8f022e83949871551774",
-      "bytes": 687460
+      "sha256": "5e63c72842ffb472f4ae77c54af587152b29073c0f35f42fd33bcab536838bfb",
+      "bytes": 690160
     },
     {
       "id": "inic",
       "path": "Plataforma.html#motor/inic",
       "version": "1.1.16",
-      "sha256": "24790e931b0e63e4638b0767c6852306831dd6214467603678a7b46c8bc55f34",
-      "bytes": 708996
+      "sha256": "2a3742ad6ac0766d8191fe832c15c9c37c5c2b3c5cd9ceb0f52850ef244a8873",
+      "bytes": 711696
     },
     {
       "id": "linha",
       "path": "Plataforma.html#motor/linha",
       "version": "1.3.0",
-      "sha256": "322a78f24e802a1a0345450673303c86fc69fc8f802f86174ff04fe0eb663553",
-      "bytes": 819232
+      "sha256": "b42513b31dc40ef8b720c51f84eb31d5b8119aaabc2c69051365bc7bbc0b2312",
+      "bytes": 821932
     },
     {
       "id": "projetos",
       "path": "Plataforma.html#motor/projetos",
       "version": "0.1.16",
-      "sha256": "6b7dbca46190a10f05e7a76b842eb58d46660b6359f73f16429dec20de818242",
-      "bytes": 627400
+      "sha256": "f7cf29d0b7b37f5ce4ed04277f781ef9d07402ed6bcb6f28b2781b091969fbed",
+      "bytes": 630100
     },
     {
       "id": "portal",
       "path": "Plataforma.html#motor/portal",
       "version": "1.9.51",
-      "sha256": "470160ca14914f6f6940ea2cbf19203db7cfdb3bcf5d36953e3d9219890bc363",
-      "bytes": 1252202
+      "sha256": "cc5036ceeaa8050d20044d2bc970d4c0a23020707edd600c247b4c00035df05d",
+      "bytes": 1254902
     }
   ],
   "limitations": [
     "Projetos e conteúdo técnico OSM/MES/AM/TPM mantêm os limites documentados nas fontes."
   ],
-  "enginesSha256": "b6ef15e1371d09d707c704cc6be5bd65b36178182af9b54c9d2083b9b1c498fa",
+  "enginesSha256": "34e97048806d0e32f9211de8c7f24779958698a895c434cbe03c7d30b1e4894d",
   "originRevision": "ffc9ee8",
   "sourceMode": "single-html",
   "originEnginesSha256": "a87a64ad0c328f70e102b2ae888790a9b5d5a9bd05778652a7ce7cae140e40d2"
@@ -37806,7 +37887,7 @@ summary{cursor:pointer;font-weight:600;color:var(--navy)}
 'use strict';
 /* ---------- referência (atualizar quando a plataforma mudar de versão) ---------- */
 // Iguais às do pacote da plataforma (nova-plataforma/src/generated/manifest.json); o teste ferramenta-verificar confere.
-const VERSOES = {"oee":"2.6.15","perdas":"1.12.17","gel":"2.42","paradas":"1.2.17","equip":"1.0.20","inic":"1.1.16","linha":"1.3.0","projetos":"0.1.16","portal":"1.9.51"};
+const VERSOES = {"oee":"2.6.16","perdas":"1.12.17","gel":"2.42","paradas":"1.2.18","equip":"1.0.20","inic":"1.1.16","linha":"1.3.0","projetos":"0.1.16","portal":"1.9.51"};
 const BASES = [
  { arq: 'vacutainer-cadastros.json', mod: 'portal', nome: 'Cadastro geral (Portal)', obrig: true, cadastro: true, bk: 'Cadastros' },
  { arq: 'portal-base.json', mod: 'portal', nome: 'Portal', obrig: true, bk: 'Portal' },
@@ -38397,7 +38478,7 @@ import { Icon, Button, Badge, Empty, Modal, BarChart, BrandLogo, CommandMenu } f
 import { ModuleFrame } from "vac:modulo/components/ModuleFrame";
 import manifest from "vac:recurso/manifesto";
 import { ModuleTabs } from "vac:modulo/components/ModuleTabs";
-const VERSION = "1.8.20";
+const VERSION = "1.8.21";
 /* Navegação 1.3.0 (16/11/2026): Visão da linha, Relatórios e Importações têm abas; as que mostram uma tela do
    Portal (motor da Administração) trazem o 3º campo com a aba dele. Administração fica só com cadastros e configuração. */
 const SHELL_TABS = {
