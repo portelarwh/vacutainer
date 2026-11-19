@@ -90,6 +90,14 @@ Pedidos do responsável: (1) com a vigência nova do turno (sábado 06:00–13:3
 - **PAR-BUSCA:** campo de busca acima da lista do tipo de parada (Registrar parada e turno não produtivo, na Produção; reclassificação no Paradas): filtra pelo código, nome e grupo, sem diferença de acento e maiúscula, várias palavras = todas; uma opção só é escolhida sozinha; Enter escolhe a primeira. Função comum `vacFiltroSelect` (comum/interface). Não muda códigos nem valores.
 - Teste: `testes/plataforma/turno-vigente.cjs` (demonstração, dados fictícios).
 
+## SRV-DIA · aviso de produção do servidor em dia sem lançamento · Produção 2.6.17, plataforma 1.8.24 (19/11/2026)
+
+Pedido do responsável: dia sem lançamento (botão "Criar lançamento do dia") que tem produção nos dados importados do servidor (MES) mostra um aviso claro.
+- **Aviso** acima do quadro do dia: peças, caixas, primeiro e último horário e lotes, contados pela mesma `ServerData.countWindow` do cartão "Produção registrada no servidor", na janela dos turnos vigentes da data (sem turno, o dia civil a partir do início do dia de produção). Sem caixas no período, nada aparece.
+- **Botão** "Abrir o dia com os dados do servidor": usa a ação do próprio quadro (Criar lançamento; no dia marcado sem produção ou não útil, Iniciar a produção) e leva ao cartão do servidor, realçado. As sugestões continuam sendo revisadas e aplicadas como antes; nada é gravado só por ver o aviso.
+- **Sem mudança** de cálculo, turno, regra de lote ou base. Na demonstração, o deslocamento de datas (`vacDemo.mover` e o inverso em `scripts/cenario-demo.cjs`) agora também desloca o minuto absoluto `base` dos segmentos do servidor, para que as caixas fictícias caiam no dia da demonstração.
+- **Teste**: `testes/plataforma/servidor-dia.cjs`.
+
 ## EQ-ORD · ordem dos equipamentos, gel do formato e lista enxuta · Administração 1.9.51, plataforma 1.8.20 (19/11/2026)
 
 Pedido do responsável (Administração › Cadastros › Equipamentos): reorganizar do primeiro ao último, sendo a Linha a posição 0, arrastando ou digitando a posição (a ocupada empurra as seguintes +1); no equipamento de gel que segue o formato, mostrar esses dados e o link para alterar; tirar da tabela Fabricante/modelo, Comp. e Docs e deixar a foto ao lado do Código MES.
