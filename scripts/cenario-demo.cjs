@@ -74,7 +74,7 @@ async function COMPLEMENTO([mod, id]) {
     const meses = (+dia.slice(0, 4) - +cen.referencia.slice(0, 4)) * 12 + +dia.slice(5, 7) - +cen.referencia.slice(5, 7);
     // o inverso do mover() do vacDemo: datas voltam ao dia de referência
     const volta = x => { if (Array.isArray(x)) return x.map(volta); if (x && typeof x === 'object') return Object.fromEntries(Object.entries(x).map(([k, v]) => [volta(k), volta(v)])); if (typeof x !== 'string') return x;
-      if (/^\d{4}-\d{2}-\d{2}(?:T.*)?$/.test(x)) { const t = new Date(Date.parse(x.slice(0, 10) + 'T12:00:00Z') - dias * 864e5); return t.toISOString().slice(0, 10) + x.slice(10); }
+      if (/^\d{4}-\d{2}-\d{2}(?:T.*|\|.*)?$/.test(x)) { const t = new Date(Date.parse(x.slice(0, 10) + 'T12:00:00Z') - dias * 864e5);   /* também a chave "data|…" (dia ↔ lote), como o mover() */ return t.toISOString().slice(0, 10) + x.slice(10); }
       if (/^\d{4}-\d{2}$/.test(x)) { const d = new Date(+x.slice(0, 4), +x.slice(5, 7) - 1 - meses, 1); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0'); } return x; };
     const novo = JSON.parse(JSON.stringify(cen)); const resumo = [];
     for (const mod of ['cad', ...ORDEM]) { const t = ls[`vac.demo.${ID}.base.${mod}`]; if (!t) { resumo.push(`${mod}: não publicou (mantido)`); continue; }

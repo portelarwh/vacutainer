@@ -28,7 +28,7 @@ const html = fs.readFileSync(path.resolve(__dirname, '../../Plataforma.html'));
     // utilitários dentro da página
     await f.evaluate(() => {
       window.__tt = {
-        novoDia(k) { const ref = db().productionDays.filter(d => !d.deleted).sort((a, b) => b.date.localeCompare(a.date))[0]; const x = new Date(ref.date + 'T12:00:00'); x.setDate(x.getDate() + k); const s = x.toISOString().slice(0, 10); Actions.createDay(s, ref.lineId, ref.machineId); return s; },
+        novoDia(k) { const ref = db().productionDays.filter(d => !d.deleted).sort((a, b) => b.date.localeCompare(a.date))[0]; const x = new Date(ref.date + 'T12:00:00'); for (let n = 0; n < k;) { x.setDate(x.getDate() + 1); if (x.getDay() !== 0) n++; } const s = x.toISOString().slice(0, 10);   /* k-ésimo dia útil depois do último (o calendário da demonstração não tem turno no domingo: o teste dependia do dia da semana) */ Actions.createDay(s, ref.lineId, ref.machineId); return s; },
         dia: s => db().productionDays.find(d => !d.deleted && d.date === s),
         turno(s, i = 0) { return __tt.dia(s).shifts[i]; },
         res(s, i = 0) { const d = __tt.dia(s); const sr = Engine.computeDay(db(), d).shifts.find(x => x.ps === d.shifts[i]); const k = ['good', 'cap', 'metaDec', 'D', 'P', 'Q', 'oee', 'oeeTarget', 'netMin', 'grossMin']; return Object.fromEntries(k.map(x => [x, sr.r[x] == null ? null : +(+sr.r[x]).toFixed(6)])); },
