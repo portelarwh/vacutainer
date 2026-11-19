@@ -18,7 +18,7 @@ Pasta da linha\
 │  ├─ BD_2-Color_RGB.svg                            (relatório impresso, fundo claro)
 │  ├─ favicon.svg                                   (ícone da aba do navegador: símbolo BD legível em fundo claro)
 │  ├─ login.png ou login.svg                        (foto de fundo da tela de entrada; aparece desfocada)
-│  └─ login1.jpg, login2.png, login3.webp…          (opcional: várias fotos que trocam a cada 3 s)
+│  └─ login (1).webp, login (2).jpg, login (3).png… (opcional: várias fotos que trocam a cada 3 s)
 ├─ 00. Bases\
 └─ 00. Backups\
 ```
@@ -32,7 +32,7 @@ Os nomes são os do kit de marca; não renomeie.
 - A logo da barra lateral só troca o símbolo em texto depois que o arquivo carrega (`BrandLogo`), então não há imagem quebrada.
 - O favicon (`aplicarFavicon`, plataforma 1.7.2) segue a mesma regra: `Marca/favicon.svg` só vira ícone da aba se carregar; sem ele, a aba fica sem ícone. O nome `favicon.svg` foi escolhido pelo responsável. Em `file://`, confirmar no Chrome/Edge corporativo se o navegador mostra o ícone.
 - A tela de entrada (plataforma 1.8.9) usa `Marca/login.png` ou, sem ele, `Marca/login.svg` como fundo, desfocado e escurecido para destacar o login. Sem nenhum dos dois, o fundo é o azul da marca. Foto em paisagem, de preferência 1920 × 1080 ou maior; o nome tem de ser exatamente `login.png` ou `login.svg`.
-- **Várias fotos (plataforma 1.8.22):** `login1`, `login2`, `login3`… (`.jpg`, `.jpeg`, `.png`, `.webp` ou `.svg`; a plataforma 1.8.23 passou a aceitar `.webp` e `.jpeg`), em sequência e sem pular número: a busca para no primeiro número que falta (até 30). Elas trocam a cada 3 s com transição suave; com fotos numeradas, o `login.png` só aparece enquanto elas carregam. Quem usa "reduzir movimento" no sistema vê só a primeira. O desfoque passou de 12 px para 4 px.
+- **Várias fotos (plataforma 1.8.22):** `login (1)`, `login (2)`, `login (3)`… (o nome que o Windows dá ao renomear várias fotos de uma vez; `login1`, `login2`… também valem) (`.jpg`, `.jpeg`, `.png`, `.webp` ou `.svg`; a plataforma 1.8.23 passou a aceitar `.webp` e `.jpeg`), em sequência e sem pular número: a busca para no primeiro número que falta (até 30). Elas trocam a cada 3 s com transição suave; com fotos numeradas, o `login.png` só aparece enquanto elas carregam. Quem usa "reduzir movimento" no sistema vê só a primeira. O desfoque passou de 12 px para 4 px.
 - **Sem a pasta** (ou sem um dos arquivos) nada quebra: o texto sai em Arial (a reserva de `--bd-font-body`) e a barra lateral mostra o símbolo "V".
 - `font-display: block`: a leitura na pasta leva milissegundos e o texto não troca de fonte depois de aparecer (sem salto de layout).
 - O kit de marca não tem o peso Light: os títulos usam o Regular.
