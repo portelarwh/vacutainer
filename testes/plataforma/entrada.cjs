@@ -82,6 +82,9 @@ function bases() {
     // 5) revisão do PR #103: login pedido pela pessoa no modo consulta não fecha sozinho
     { const { ctx, p, erros } = await abrir(); const f = await conectar(p);
       await p.getByRole('button', { name: 'Entrar só para consulta' }).click(); await p.waitForFunction(() => !document.querySelector('.porta'));
+      /* a entrada na consulta fecha a janela automática da Administração; abrir o login pedido antes disso terminar deixava a transição
+         fechá-lo também (falha intermitente, também na main): espera a janela automática fechar */
+      await f.waitForFunction(() => !document.querySelector('.vlog') && !vacLogin.aberto, null, { timeout: 15000 }); await p.waitForTimeout(300);
       await f.evaluate(() => { vacAutenticacao.abrir({ trocar: true }); vacLogin.checar(); });
       assert.equal(await f.evaluate(() => vacLogin.aberto), true, 'login pedido continua aberto na consulta');
       await f.evaluate(() => { vacLogin.fechar(); vacLogin.checar(); });

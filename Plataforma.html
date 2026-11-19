@@ -2727,6 +2727,33 @@ const vacSimbolos = (() => {
    gráfico em PNG (svgPng) com texto alternativo, para o e-mail continuar legível com as imagens bloqueadas. No máximo 4 KPIs.
    d = {area, titulo, linha, periodo, status, resumo:[{rot, txt}], kpis:[{nome, valor, sub, cor}], grafico:{src, alt, frase},
         ocorrencias:[texto], acoes:[texto], link, base}. Nenhum número é calculado aqui: a página entrega os valores prontos. ----- */
+/* 1.8.20 · PAR-BUSCA (pedido do responsável, 19/11/2026): busca por texto numa lista de escolha (select). Digite "setup" e ficam só as
+   opções com "setup" no código, no nome ou no grupo (sem diferença de acento e maiúscula; várias palavras = todas precisam aparecer).
+   A lista abre aberta enquanto há texto; uma só opção é escolhida sozinha; Enter escolhe a primeira; ↓ vai para a lista. Não muda valores. */
+function vacFiltroSelect(sel, { placeholder = 'Digite para filtrar (ex.: setup)' } = {}) {
+  if (!sel || sel.dataset.vacFiltro) return null; sel.dataset.vacFiltro = '1';
+  const norm = x => String(x || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
+  const rot = (sel.closest('label') &amp;&amp; sel.closest('label').querySelector('span') || {}).textContent || sel.getAttribute('aria-label') || 'opções';
+  const inp = document.createElement('input'); inp.type = 'search'; inp.className = 'vac-filtro'; inp.placeholder = placeholder; inp.autocomplete = 'off';
+  inp.setAttribute('aria-label', 'Filtrar ' + rot.trim()); inp.style.cssText = 'display:block;width:100%;margin:0 0 4px;box-sizing:border-box';
+  const msg = document.createElement('span'); msg.className = 'vac-filtro-msg small muted'; msg.setAttribute('aria-live', 'polite'); msg.style.cssText = 'display:block;min-height:1em';
+  sel.parentNode.insertBefore(inp, sel); sel.after(msg);
+  const ops = [...sel.options], escolher = o => { if (o &amp;&amp; sel.value !== o.value) { sel.value = o.value; sel.dispatchEvent(new Event('change', { bubbles: true })); } };
+  const aplicar = () => {
+    const termos = norm(inp.value).split(/\s+/).filter(Boolean); let n = 0, prim = null;
+    for (const o of ops) {
+      if (!o.value) { o.hidden = !!termos.length; continue; }
+      const g = o.parentElement &amp;&amp; o.parentElement.tagName === 'OPTGROUP' ? o.parentElement.label : '', ok = termos.every(t => norm(o.textContent + ' ' + g).includes(t));
+      o.hidden = !ok; if (ok) { n++; prim = prim || o; }
+    }
+    sel.querySelectorAll('optgroup').forEach(g => { g.hidden = ![...g.children].some(o => !o.hidden); });
+    if (termos.length) { sel.size = Math.max(2, Math.min(8, n + sel.querySelectorAll('optgroup:not([hidden])').length)); msg.textContent = n ? n + (n === 1 ? ' opção' : ' opções') : 'Nada encontrado com "' + inp.value.trim() + '".'; if (n === 1) escolher(prim); }
+    else { sel.removeAttribute('size'); msg.textContent = ''; }
+  };
+  inp.addEventListener('input', aplicar);
+  inp.addEventListener('keydown', e => { if (e.key === 'ArrowDown') { e.preventDefault(); sel.focus(); } else if (e.key === 'Enter') { e.preventDefault(); escolher(ops.find(o => o.value &amp;&amp; !o.hidden)); } });
+  return inp;
+}
 const vacEmail = (() => {
   const H = s => String(s ?? '').replace(/[&amp;<>"']/g, c => ({ '&amp;': '&amp;amp;', '<': '&amp;lt;', '>': '&amp;gt;', '"': '&amp;quot;', "'": '&amp;#39;' }[c]));
   const F = 'font-family:Segoe UI,Arial,sans-serif;', COR = { ok: '#14804A', crit: '#C94645', warn: '#D78B11', info: '#0D5E9C', none: '#6F8092' };
@@ -3358,6 +3385,10 @@ svg text{font-family:var(--f-body)}
 .dias{display:flex;gap:var(--sp-4,4px);flex-wrap:wrap;padding-top:3px}.form .dias label{flex-direction:row;align-items:center;gap:3px;font-size:12.5px;color:var(--ink);margin:0}
 table.cadst td.in input,table.cadst td.in select{width:100%;min-width:70px}
 table.cadst td{vertical-align:middle}
+/* 1.9.51 · EQ-ORD */
+.eq-foto{display:inline-flex;align-items:center;min-height:32px}.eq-foto:not(:has(img))::after{content:'📷'}.eq-semfoto::after{content:'–';color:var(--muted,#64788f)}.eq-mini{height:32px;width:44px;object-fit:cover;border-radius:4px;border:1px solid var(--line,#d5dde6);display:block}.eq-sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+table.eq-dnd td.eq-h{touch-action:none;cursor:grab;width:28px;text-align:center;font-size:16px;color:var(--muted,#64788f);user-select:none}table.eq-dnd tr.eq-arr{opacity:.45}table.eq-dnd tr.eq-ac td{box-shadow:inset 0 3px 0 var(--accent,#0d5e9c)}table.eq-dnd tr.eq-ab td{box-shadow:inset 0 -3px 0 var(--accent,#0d5e9c)}
+#parGel.eq-real{outline:3px solid var(--accent,#0d5e9c);outline-offset:3px;transition:outline-color .6s}
 .st-novo{color:var(--ok);font-weight:600}.st-alt{color:var(--warn);font-weight:600}.st-rem{color:var(--crit);font-weight:600}
 details.cd{border:1px solid var(--line);border-radius:var(--r);padding:var(--sp-4,4px) var(--sp-8,8px);margin:var(--sp-4,4px) 0;background:var(--surface)}
 details.cd summary{cursor:pointer;font-family:var(--f-display);font-weight:600;text-transform:uppercase;letter-spacing:.04em}
@@ -3942,7 +3973,7 @@ function wireConfigComum(){$('#cPasta').onclick=async()=>{if(await Store.pick())
         entrar pelo ID (autocadastro como Consulta); página inicial por perfil (1x por sessão); vigência gravada não se edita (desativar com motivo); painel de vigências; semáforo central; saída do modo de teste.
    1.1.2: aviso da carga diz qual base foi lida.  1.5: páginas Paradas, Máquinas, Manutenção e Projetos na lista (aparecem quando o HTML chega na pasta).  1.4: lista técnica pela CS12 multinível (itens = nível 1, estrutura = níveis 2+); CS03 sai.  1.3: cabeçalho comum (vac-cabecalho v2: barra do sistema + página + abas), busca Ctrl K, acabamento V1.90, Versões com cabeçalho e último backup.  1.2: Configuração › Versões das páginas (versão e data de cada HTML, gravação das bases, cópias repetidas, histórico).
    ===================================================================== */
-const PAGE={id:'portal',titulo:"Administração · Linha Vacutainer",tituloCurto:"Administração",subtitulo:'Sistemas de gestão da linha',versao:'1.9.50',baseFile:'portal-base.json',idb:'vac-portal',backupDir:'00. Backups/Portal',
+const PAGE={id:'portal',titulo:"Administração · Linha Vacutainer",tituloCurto:"Administração",subtitulo:'Sistemas de gestão da linha',versao:'1.9.51',baseFile:'portal-base.json',idb:'vac-portal',backupDir:'00. Backups/Portal',
  vazio:()=>({schema:'portal-base',rev:0,config:{modulos:{},avisoDias:30,notas:{}},audit:[]}),
  /* itens do Portal para a busca Ctrl K: cadastro, pendências e telas */
  busca:q=>{const R=[],D=Cad.D;if(D)for(const t of CAD_ORD){for(const it of D[t]||[]){const c=String(it[kOf(t)]),nm=t==='bom'?((cadItem('catalogos',it.catalogo)||{}).nome||''):it.nome||'';if(norm(c+' '+nm).includes(q))R.push({tipo:CAD_T[t].um,txt:c+(nm?' · '+nm:''),sub:'Cadastros'+(cadAtivo(t,it,D)?'':' · inativo'),href:'#cadastros/'+t+'/'+encodeURIComponent(c)});if(R.length>30)break}}
@@ -4966,6 +4997,26 @@ const EqFiles={
   for(let i=2;i<100;i++){try{await d.getFileHandle(nome);nome=b+'_'+i+(ext||'')}catch(e){break}}
   await Store.writeFile(d,nome,file);return pasta+'/'+nome}};
 
+/* 1.9.51 · EQ-ORD (pedido do responsável, 19/11/2026): ordem dos equipamentos na linha, do primeiro ao último; a Linha é a posição 0.
+   Duas formas: (1) arrastar e soltar na lista: os ativos da linha ficam 1, 2, 3… na ordem nova; (2) digitar a posição na ficha: se o número
+   já é de outro equipamento, ele e os seguintes em sequência andam +1 (até o primeiro número livre). Inativos não ocupam posição.
+   Grava pela fila (edição de "posicao", com antes e depois), numa operação só: aparece na auditoria e passa pela reaplicação na pasta. */
+const EqOrd={
+ ehLinha:q=>!!q&amp;&amp;(q.tipo==='linha'||q.codigo==='LINHA'),
+ pos:q=>q.posicao==null||q.posicao===''?null:+q.posicao,
+ lista(D,linha){return(D.equipamentos||[]).filter(q=>q.ativo!==false&amp;&amp;!this.ehLinha(q)&amp;&amp;(q.linha||null)===(linha||null))
+  .sort((a,b)=>(this.pos(a)??1e9)-(this.pos(b)??1e9)||String(a.codigo).localeCompare(String(b.codigo),'pt-BR',{numeric:true}))},
+ /* número digitado: quem está em P e os seguintes em sequência andam +1 */
+ empurrar(D,cod,P,linha){const out=[];let nx=+P;for(const q of this.lista(D,linha).filter(q=>q.codigo!==cod&amp;&amp;this.pos(q)!=null&amp;&amp;this.pos(q)>=+P)){if(this.pos(q)<=nx){nx++;out.push([q,nx])}else break}return out},
+ /* nova ordem (arrastar e soltar): os ativos da linha viram 1..N; a Linha fica 0 */
+ sequencia(D,linha,codigos){const out=[];codigos.forEach((c,i)=>{const q=cadItem('equipamentos',c,D);if(q&amp;&amp;this.pos(q)!==i+1)out.push([q,i+1])});
+  const L=(D.equipamentos||[]).find(q=>this.ehLinha(q)&amp;&amp;(q.linha||null)===(linha||null));if(L&amp;&amp;this.pos(L)!==0)out.push([L,0]);return out},
+ ops(pares,motivo){return pares.map(([q,depois])=>({acao:'edição',tipo:'equipamentos',codigo:q.codigo,mudancas:{posicao:{antes:q.posicao??null,depois}},motivo}))},
+ txt(pares){return pares.slice(0,12).map(([q,d])=>`${q.codigo}${q.nome?' ('+q.nome+')':''}: ${q.posicao??'—'} → ${d}`).join('\n')+(pares.length>12?`\n… e mais ${pares.length-12}`:'')}};
+/* foto do equipamento em miniatura na lista (arquivo da pasta; guardada enquanto a página está aberta) */
+const EqThumb={m:new Map(),url(path){if(!this.m.has(path))this.m.set(path,EqFiles.url(path));return this.m.get(path)},
+ carregar(el){el.querySelectorAll('[data-eqfoto]').forEach(s=>{if(s.dataset.ok)return;s.dataset.ok='1';this.url(s.dataset.eqfoto).then(u=>{if(!u||!s.isConnected)return;const im=document.createElement('img');im.src=u;im.alt='Foto de '+(s.dataset.nome||'equipamento');im.className='eq-mini';s.replaceChildren(im)})})}};
+
 /* ---------- o cadastro: leitura, fila e gravação ---------- */
 const Cad={base:null,D:null,mod:0,fonte:'nenhum',err:'',fila:[],gravando:false,denovo:false,conflitos:null,status:'salvo',_lk:false,
  ui:{sec:'inicio',q:'',sit:'ativos',imp:null,aud:{t:'',q:''}},
@@ -5101,6 +5152,7 @@ function cadHash(cod){const s=Cad.ui.sec||'inicio';const h='#cadastros'+(s!=='in
 function cadRota(){const raw=location.hash.slice(1);if(/^reuniao=/.test(raw)){let v=raw.slice(8);try{v=decodeURIComponent(v)}catch(e){}const[d,t]=v.split('|');if(/^\d{4}-\d{2}-\d{2}$/.test(d||''))Reu.dia=d;Reu.rec=/^[\w-]{1,12}$/.test(t||'')?t:'dia';App.show('reuniao',{keepHash:true});return true}if(/^cs12=/.test(raw)){cadNovoCS12(raw);return true}if(/^(geral|fila|reuniao|pend|rel|config)$/.test(raw)){App.show(raw);return true}if(/^importacao(\/|$)/.test(raw)){Imp.sec=(raw.split('/')[1]||'').replace(/[^a-z]/g,'')||null;Imp._rolou=null;App.show('imp',{keepHash:true});return true}if(raw==='admin'){App.show('cad');return true}if(/^entrar(=\w*)?$/.test(raw)){const vt=(raw.split('=')[1]||'').replace(/\W/g,'');App.show('geral',{keepHash:true});setTimeout(()=>{if(typeof vacLogin!=='undefined')vacLogin.abrir({trocar:!!vacLogin.sessao(),volta:vt||null});else Entrar.abrir()},450);return true}if(raw==='versoes'){irVersoes();return true}
  if(!/^cadastros(\/|$)/.test(raw))return false;const p=raw.split('/').slice(1).map(x=>{try{return decodeURIComponent(x)}catch(e){return x}});
  const sec=p[0]||'inicio';if(sec==='importar'&amp;&amp;/^meta/i.test(p[1]||'')){const I=Cad.ui.imp=Cad.ui.imp||{modo:'cs12',fmt:'auto',de:todayISO(),map:{},soBOM:true,txt:'',prev:null};I.modo='meta'}Cad.ui.sec=CAD_T[sec]||CAD_SECS.includes(sec)?sec:'inicio';App.show('cad',{keepHash:true});
+ if(Cad.ui.sec==='parametros'&amp;&amp;p[1]==='gel')setTimeout(()=>{const x=$('#parGel');if(x){x.scrollIntoView({block:'start'});x.classList.add('eq-real');setTimeout(()=>x.classList.remove('eq-real'),2200)}},80);   /* 1.9.51 */
  if(p[1]&amp;&amp;CAD_T[Cad.ui.sec]&amp;&amp;Cad.D&amp;&amp;Cad.ui.sec!=='cambio'){if(cadItem(Cad.ui.sec,p[1]))Ficha.abrir(Cad.ui.sec,p[1]);else{Cad.ui.q=p[1];Cad.ui.sit='todos';App.render();toast(`${cap1(CAD_T[Cad.ui.sec].um)} ${p[1]} não está no cadastro.`,5000,true)}}
  return true}
 
@@ -5176,7 +5228,7 @@ function cadCols(t,D){const fam=c=>{if(!c)return'';const f=cadItem('familias',c,
   catalogos:[['Tipo',it=>it.tipoItem==='preparacao'?'<span class="pill info">preparação</span>':'tubo'],['Código',it=>`${safeCor(it.cor)?`<i class="sw" style="background:${safeCor(it.cor)}"></i>`:''}<b class="mono">${esc(it.codigo)}</b>`],['Nome',it=>esc(it.nome)],['Família',it=>fam(it.familia)],['Formato',it=>esc(it.formato||'')],['PPH nominal',it=>fmtN(vigHoje(it).pphNominal),'n'],['Tubos/caixa',it=>fmtN(vigHoje(it).tubosPorCaixa),'n'],['Caixas/lote',it=>fmtN(vigHoje(it).caixasPorLote),'n'],['BOM',it=>D.bom.some(b=>b.catalogo===it.codigo)?'sim':'<span class="muted">–</span>']],
   materiais:[['Código SAP',cod],['Descrição',it=>esc(it.nome)],['Unidade',it=>esc(it.unidade||'')],['Tipo',it=>esc(it.tipo||'')],['Tipo SAP',it=>esc(it.tipoSAP||'')],['Em BOMs',it=>String(D.bom.filter(b=>(vigHoje(b).itens||[]).concat(vigHoje(b).estrutura||[]).some(i=>i.material===it.codigo)).length),'n']],
   bom:[['Catálogo',cod],['Nome do catálogo',it=>esc((cadItem('catalogos',it.catalogo,D)||{}).nome||'')],['Vigente desde',it=>vigHoje(it).de?fmtD(vigHoje(it).de):'<span class="warn">sem vigência hoje</span>'],['Fonte',it=>esc(vigHoje(it).fonte||(vigHoje(it).de?'manual / anterior':''))],['Itens N1',it=>String((vigHoje(it).itens||[]).length),'n'],['Estrutura',it=>(vigHoje(it).estrutura||[]).length?String(vigHoje(it).estrutura.length):'','n'],['Origem',it=>`<span class="small">${esc(vigHoje(it).origem||'')}</span>`],['Vigências',it=>String((it.vigencias||[]).length),'n']],
-  equipamentos:[['Pos.',it=>fmtN(it.posicao),'n'],['Código',cod],['Código MES',it=>`<span class="mono">${esc(it.codigoMes||'')}</span>`],['Nome',it=>esc(it.nome)],['Tipo',it=>esc(String(it.tipo||'').toUpperCase())],['Papel',it=>esc(String(it.papel||'').toUpperCase())],['Fabricante / modelo',it=>esc([it.fabricante,it.modelo].filter(Boolean).join(' · '))],['Comp.',it=>{const n=(D.componentes||[]).filter(c=>c.equipamento===it.codigo).length;return n?String(n):''},'n'],['Foto',it=>sim(it.foto)],['Docs',it=>(it.documentos||[]).length?String(it.documentos.length):'','n']],
+  equipamentos:[['Pos.',it=>it.posicao==null||it.posicao===''?'–':fmtN(it.posicao),'n'],['Código',cod],['Código MES',it=>`<span class="mono">${esc(it.codigoMes||'')}</span>`],['Foto',it=>it.foto?`<span class="eq-foto" data-eqfoto="${esc(it.foto)}" data-nome="${esc(it.nome||it.codigo)}" title="Foto de ${esc(it.nome||it.codigo)}"><span class="eq-sr">sim</span></span>`:'<span class="eq-semfoto" title="Sem foto"></span>'],['Nome',it=>esc(it.nome)],['Tipo',it=>esc(String(it.tipo||'').toUpperCase())],['Papel',it=>esc(String(it.papel||'').toUpperCase())]],   /* 1.9.51 · EQ-ORD: sem Fabricante/modelo, Comp. e Docs (continuam na ficha); foto ao lado do Código MES */
   turnos:[['Horas (vigência de hoje)',it=>{const h=todayISO(),L=(it.vigencias||[]).filter(v=>v.de<=h&amp;&amp;(!v.ate||v.ate>=h)&amp;&amp;v.inicio);return esc(L.map(turnoResumo).join(' · '))}],['Código',it=>`${safeCor(it.cor)?`<i class="sw" style="background:${safeCor(it.cor)}"></i>`:''}<b class="mono">${esc(it.codigo)}</b>`],['Nome',it=>esc(it.nome)],['Horário',it=>{const v=vigHoje(it);return v.inicio?`${esc(v.inicio)}–${esc(v.fim)}${v.ativo===false?' <span class="muted">(desligado)</span>':''}`:'<span class="warn">sem vigência hoje</span>'}],['Dias',it=>diasTxt(vigHoje(it).dias)],['Pausas',it=>esc((vigHoje(it).pausas||[]).map(p=>p.inicio+'–'+p.fim).join(', '))],['Vigente desde',it=>fmtD(vigHoje(it).de)]],
   componentes:[['Código',cod],['Equipamento',it=>{const q=cadItem('equipamentos',it.equipamento,D);return`<span class="mono">${esc(it.equipamento||'')}</span>${q?' · '+esc(q.nome):''}`}],['Nome',it=>esc(it.nome)],['Sistema',it=>esc(it.sistema||'')],['Crit.',it=>esc(it.criticidade||'')],['Material SAP',it=>`<span class="mono">${esc(it.materialSAP||'')}</span>`]],
   modosFalha:[['Código',cod],['Nome',it=>esc(it.nome)]],
@@ -5201,10 +5253,24 @@ function parFiltrosHtml(D,FP){const T=D.paradas||[];
  return PAR_FILTROS.map(([k,l,f,nm])=>{const vs=[...new Set(T.flatMap(it=>{const x=f(it);return Array.isArray(x)?x:[x]}).filter(Boolean))].sort((a,b)=>String(a).localeCompare(String(b),'pt-BR',{numeric:true}));
   return`<label>${esc(l)}<select data-fp="${k}"><option value="">todos</option>${vs.map(v=>`<option value="${esc(v)}" ${FP[k]===v?'selected':''}>${esc(nm?nm(v):v)}</option>`).join('')}</select></label>`}).join('')+
   (PAR_FILTROS.some(([k])=>FP[k])?'<button class="b sm" id="cadFpX" style="align-self:end">Limpar filtros</button>':'')+' '+ib('Filtros dos códigos de parada','Mostram só os códigos com o valor escolhido (ex.: Pilar D e Onde se aponta "Máquina" = quebras apontadas na máquina). Valem também para o ⇩ Excel. Clique no título de uma coluna para ordenar; de novo inverte; a terceira vez volta à ordem padrão (pelo Nº).')}
+/* 1.9.51 · EQ-ORD: arrastar e soltar as linhas da lista de equipamentos (só dentro da mesma linha de produção) */
+function eqDnd(tb){let de=null,alvo=null,abaixo=false;const linhas=()=>[...tb.querySelectorAll('tr[data-cod]')],limpa=()=>linhas().forEach(r=>r.classList.remove('eq-ac','eq-ab','eq-arr'));
+ /* arrastar com o ponteiro (mouse, toque ou caneta): funciona também no tablet do chão de fábrica */
+ const sob=(x,y)=>{const el=document.elementFromPoint(x,y);return el&amp;&amp;el.closest?el.closest('tr[data-cod]'):null};
+ tb.querySelectorAll('td.eq-h[data-arrasta]').forEach(h=>{
+  h.addEventListener('pointerdown',e=>{if(e.button>0)return;e.preventDefault();de=h.closest('tr');alvo=null;de.classList.add('eq-arr');try{h.setPointerCapture(e.pointerId)}catch(x){}});
+  h.addEventListener('pointermove',e=>{if(!de)return;const r=sob(e.clientX,e.clientY);linhas().forEach(x=>x.classList.remove('eq-ac','eq-ab'));alvo=null;
+   if(!r||r===de||r.dataset.linha!==de.dataset.linha)return;const b=r.getBoundingClientRect();abaixo=!!(e.clientY>b.top+b.height/2||r.dataset.fixo);alvo=r;r.classList.add(abaixo?'eq-ab':'eq-ac')});
+  const fim=e=>{if(!de)return;const r=alvo,origem=de;de=null;alvo=null;limpa();if(e.type!=='pointerup'||!r)return;
+   const cod=origem.dataset.cod,linha=origem.dataset.linha||null,D=Cad.D,ord=EqOrd.lista(D,linha).map(q=>q.codigo).filter(c=>c!==cod);let i=r.dataset.fixo?0:ord.indexOf(r.dataset.cod);if(i<0)i=ord.length;else if(abaixo&amp;&amp;!r.dataset.fixo)i++;ord.splice(i,0,cod);
+   const P=EqOrd.sequencia(D,linha,ord);if(!P.length)return toast('A ordem não mudou.');
+   if(!Cad.podeEditar())return;if(!confirm(`Reorganizar a linha: ${P.length} equipamento(s) mudam de posição (os ativos ficam 1, 2, 3… na ordem nova).\n\n${EqOrd.txt(P)}`))return;
+   Cad.ops(EqOrd.ops(P,'reorganização da linha (arrastar e soltar)'));toast('Ordem salva: '+P.length+' posição(ões).')};
+  h.addEventListener('pointerup',fim);h.addEventListener('pointercancel',fim)})}
 function cadLista(el,t){const D=Cad.D,T=CAD_T[t],cols=cadCols(t,D),k=kOf(t);const q=norm(Cad.ui.q),sit=Cad.ui.sit||'ativos';
  let L=(D[t]||[]).filter(it=>sit==='todos'||(sit==='ativos')===cadAtivo(t,it,D));if(q)L=L.filter(it=>cadBusca(t,it,D).includes(q));
  const FP=t==='paradas'?(Cad.ui.fp||(Cad.ui.fp={})):null;if(FP)L=parFiltrar(L,FP);   /* 1.9.16 · POR-02 */
- L.sort(t==='paradas'?(a,b)=>String(a.numero||'999z').localeCompare(String(b.numero||'999z'))||String(a.codigo).localeCompare(String(b.codigo)):t==='equipamentos'?(a,b)=>(+a.posicao||999)-(+b.posicao||999)||String(a.codigo).localeCompare(String(b.codigo)):(a,b)=>String(a[k]).localeCompare(String(b[k]),'pt-BR',{numeric:true}));
+ L.sort(t==='paradas'?(a,b)=>String(a.numero||'999z').localeCompare(String(b.numero||'999z'))||String(a.codigo).localeCompare(String(b.codigo)):t==='equipamentos'?(a,b)=>(EqOrd.pos(a)??1e9)-(EqOrd.pos(b)??1e9)||String(a.codigo).localeCompare(String(b.codigo),'pt-BR',{numeric:true}):(a,b)=>String(a[k]).localeCompare(String(b[k]),'pt-BR',{numeric:true}));
  const OR=Cad.ui.ord&amp;&amp;Cad.ui.ord.t===t&amp;&amp;cols[Cad.ui.ord.c]?Cad.ui.ord:null;   /* POR-02: ordem pela coluna clicada (texto exibido; números em ordem numérica; vazios no fim) */
  if(OR){const c=cols[OR.c],key=new Map(L.map(it=>[it,htmlTxt(String(c[1](it)??''))]));L.sort((a,b)=>{const x=key.get(a),y=key.get(b);if(!x!==!y)return x?-1:1;return OR.d*x.localeCompare(y,'pt-BR',{numeric:true,sensitivity:'base'})})}
  const foco=document.activeElement&amp;&amp;document.activeElement.id==='cadQ';const pe=Cad.podeEditar(true);
@@ -5213,13 +5279,14 @@ function cadLista(el,t){const D=Cad.D,T=CAD_T[t],cols=cadCols(t,D),k=kOf(t);cons
   ${FP?parFiltrosHtml(D,FP):''}<span class="small muted" style="align-self:center">${L.length} de ${(D[t]||[]).length}</span><span style="flex:1"></span>
   ${pe&amp;&amp;t==='perfis'&amp;&amp;DEFAULT_PERFIS.some(x=>!cadItem('perfis',x.codigo,D))?'<button class="b" id="cadPerfisPad">Criar os perfis padrão</button>':''}${pe?`<button class="b p" id="cadNovo">+ ${t==='bom'?'Nova BOM':'Novo '+esc(T.um)}</button>`:''}${t==='equipamentos'?formBtn(null,'Imprimir todos os formulários'):''}<button class="b" id="cadXls">⇩ Excel</button></div>
   ${pe?'':`<div class="note w" style="margin:8px 0">Somente leitura: ${esc(Cad.motivoEdicao()||'edição bloqueada')} ${!Lock.ok()&amp;&amp;Cad.D&amp;&amp;(Store.mode==='pasta'||Store.mode==='teste')?'<button class="b sm p" id="cadDesbl">Desbloquear edição</button>':Store.mode!=='pasta'&amp;&amp;Store.mode!=='teste'?'<button class="b sm p" id="cadConectar">Conectar agora</button>':''}</div>`}
-  <div class="tw"><table><tr>${cols.map((c,i)=>`<th class="${c[2]||''}" data-ci="${i}" style="cursor:pointer" title="Ordenar por ${esc(c[0])}" aria-sort="${OR&amp;&amp;OR.c===i?(OR.d>0?'ascending':'descending'):'none'}">${esc(c[0])}${OR&amp;&amp;OR.c===i?(OR.d>0?' ▲':' ▼'):''}</th>`).join('')}<th aria-label="Abrir a ficha"></th></tr>${L.map(it=>`<tr class="click" data-cod="${esc(it[k])}">${cols.map(c=>`<td class="${c[2]||''}">${c[1](it)??''}</td>`).join('')}<td class="r"><button type="button" class="b sm" data-abrir="${esc(it[k])}">${pe?'Editar':'Ver'}</button></td></tr>`).join('')||`<tr><td colspan="${cols.length+1}" class="muted">Nenhum item${q?' para esta busca':''}.</td></tr>`}</table></div>
+  ${t==='equipamentos'?(()=>{const dnd=pe&amp;&amp;!q&amp;&amp;sit==='ativos'&amp;&amp;!OR;return`<p class="small muted" style="margin:6px 0">${dnd?'Arraste pela alça ⠿ para reorganizar (a Linha é a posição 0 e fica no topo); ou digite a posição na ficha: quem já está nela e os seguintes andam +1.':pe?'Para reorganizar arrastando, mostre os <b>ativos</b>, sem busca e sem ordenar por coluna.':''}</p>`})():''}<div class="tw"><table${t==='equipamentos'&amp;&amp;pe&amp;&amp;!q&amp;&amp;sit==='ativos'&amp;&amp;!OR?' class="eq-dnd"':''}><tr>${t==='equipamentos'&amp;&amp;pe&amp;&amp;!q&amp;&amp;sit==='ativos'&amp;&amp;!OR?'<th aria-label="Arrastar"></th>':''}${cols.map((c,i)=>`<th class="${c[2]||''}" data-ci="${i}" style="cursor:pointer" title="Ordenar por ${esc(c[0])}" aria-sort="${OR&amp;&amp;OR.c===i?(OR.d>0?'ascending':'descending'):'none'}">${esc(c[0])}${OR&amp;&amp;OR.c===i?(OR.d>0?' ▲':' ▼'):''}</th>`).join('')}<th aria-label="Abrir a ficha"></th></tr>${L.map(it=>`<tr class="click" data-cod="${esc(it[k])}"${t==='equipamentos'&amp;&amp;pe&amp;&amp;!q&amp;&amp;sit==='ativos'&amp;&amp;!OR?` data-linha="${esc(it.linha||'')}"${EqOrd.ehLinha(it)?' data-fixo="1"':''}`:''}>${t==='equipamentos'&amp;&amp;pe&amp;&amp;!q&amp;&amp;sit==='ativos'&amp;&amp;!OR?(EqOrd.ehLinha(it)?'<td class="eq-h muted" title="A Linha é sempre a posição 0">0</td>':`<td class="eq-h" data-arrasta="1" title="Arraste para mudar a posição" aria-label="Arrastar ${esc(it.codigo)}">⠿</td>`):''}${cols.map(c=>`<td class="${c[2]||''}">${c[1](it)??''}</td>`).join('')}<td class="r"><button type="button" class="b sm" data-abrir="${esc(it[k])}">${pe?'Editar':'Ver'}</button></td></tr>`).join('')||`<tr><td colspan="${cols.length+1}" class="muted">Nenhum item${q?' para esta busca':''}.</td></tr>`}</table></div>
   ${t==='bom'?'<p class="small muted">Quantidades por 1.000 tubos. Itens = nível 1 (o que a ordem consome); estrutura = níveis 2+. Para trazer do SAP, use Importar do SAP › Lista técnica (CS12).</p>':''}`;
  const qi=$('#cadQ');let tm;qi.oninput=()=>{clearTimeout(tm);tm=setTimeout(()=>{Cad.ui.q=qi.value;cadLista(el,t)},180)};if(foco){qi.focus();qi.setSelectionRange(qi.value.length,qi.value.length)}
  $$('#cadSit button').forEach(b=>b.onclick=()=>{Cad.ui.sit=b.dataset.v;cadLista(el,t)});
  el.querySelectorAll('th[data-ci]').forEach(h=>h.onclick=e=>{if(e.target.closest('.ib'))return;const i=+h.dataset.ci,o=Cad.ui.ord;Cad.ui.ord=!o||o.t!==t||o.c!==i?{t,c:i,d:1}:o.d>0?{t,c:i,d:-1}:null;cadLista(el,t)});
  el.querySelectorAll('[data-fp]').forEach(x=>x.onchange=()=>{FP[x.dataset.fp]=x.value;cadLista(el,t)});const fx=$('#cadFpX');if(fx)fx.onclick=()=>{Cad.ui.fp={};cadLista(el,t)};
- el.querySelectorAll('tr[data-cod]').forEach(r=>r.onclick=()=>Ficha.abrir(t,r.dataset.cod));
+ el.querySelectorAll('tr[data-cod]').forEach(r=>r.onclick=e=>{if(e.target.closest('.eq-h'))return;Ficha.abrir(t,r.dataset.cod)});
+ if(t==='equipamentos'){EqThumb.carregar(el);const tb=el.querySelector('table.eq-dnd');if(tb)eqDnd(tb)}   /* 1.9.51 · EQ-ORD */
  {const db=el.querySelector('#cadDesbl');if(db)db.onclick=()=>cadDesbloquear(()=>App.render());const cc=el.querySelector('#cadConectar');if(cc)cc.onclick=()=>Store.pick().then(ok=>ok&amp;&amp;App.onConnect())}
  const nv=$('#cadNovo');if(nv)nv.onclick=()=>Ficha.abrir(t,null,{novo:true});
  const pp=$('#cadPerfisPad');if(pp)pp.onclick=()=>{if(!Cad.podeEditar())return;const F=DEFAULT_PERFIS.filter(x=>!cadItem('perfis',x.codigo,D));if(!confirm(`Criar ${F.length} perfil(is) padrão: ${F.map(x=>x.nome).join(', ')}?`))return;Cad.ops(F.map(x=>({acao:'criação',tipo:'perfis',codigo:x.codigo,item:clone(x),motivo:'perfis padrão (Portal 1.7)'})));toast(F.length+' perfil(is) criados.')};
@@ -5357,7 +5424,14 @@ const Ficha={t:null,cod:null,orig:null,W:null,novo:false,edit:false,dirty:false,
   ${e?`<button class="b sm" data-add="_dados" data-tpl="${esc('{"k":"","v":""}')}" style="margin-top:6px">+ Dado</button>`:''}`},
  /* 1.9.12 · Fase 4 · 4a: dados do gel na ficha (formato igual ao da Gestão de Gel) */
  gelEq(){const e=this.edit,G=this.W.gel||{},D=(G.descs||[]),M=((Cad.D.parametros||{}).gel||{}).motivos||[];
-  return`<h3 style="margin-top:14px">Gel: embalagem e descartes ${ib('Gel',AJUDA_CAMPO['gel.equip'])}</h3><div class="fg"><label>Embalagem própria (g) · vazio = a do formato${inpRaw('gel.tara','num',G.tara,e)}</label></div>
+  /* 1.9.51 · EQ-ORD: o que vale quando a embalagem própria está vazia (formato vigente em Parâmetros › Gestão de Gel), com o link para alterar */
+  const FS=((Cad.D.parametros||{}).gel||{}).formatos||[],h=todayISO(),fv=FS.filter(v=>v.from&amp;&amp;v.from<=h).sort((a,b)=>a.from<b.from?-1:1).pop(),F=fv||GEL_FMT_DEF,g=v=>v==null||v===''?'–':fmtN(+v,3).replace(/,?0+$/,''),gu=(v,u)=>v==null||v===''?'–':g(v)+' '+u;
+  const fmtBox=`<div class="note" style="margin:6px 0 8px"><div style="display:flex;flex-wrap:wrap;gap:6px 14px;align-items:baseline"><b>${G.tara!=null&amp;&amp;G.tara!==''?'Embalagem própria deste equipamento: '+g(G.tara)+' g':'Segue o formato'}</b><span class="small muted">${fv?'Parâmetros › Gestão de Gel, vigência desde '+fmtD(fv.from):'sem vigência em Parâmetros: vale o padrão'}</span><span style="flex:1"></span><a href="#cadastros/parametros/gel" class="b sm" data-irpar="gel">Alterar em Parâmetros › Gestão de Gel ↗</a></div>
+   <div style="display:flex;flex-wrap:wrap;gap:10px;margin-top:6px"><div class="tw" style="flex:0 1 auto"><table class="cadst small"><tr><th>Embalagem</th><th class="n">Valor</th><th>Usado em</th></tr>
+    <tr><td>Saco da pesagem</td><td class="n">${gu(F.tara,'g')}${G.tara!=null&amp;&amp;G.tara!==''?' <span class="muted">(não usado: há embalagem própria)</span>':''}</td><td class="small muted">toda pesagem sem embalagem própria</td></tr>
+    <tr><td>Folha da purga</td><td class="n">${gu(F.taraP,'g')}</td><td class="small muted">descarte de purga</td></tr><tr><td>Sobra no barril</td><td class="n">${gu(F.sobra,'kg')}</td><td class="small muted">descarte "barris × sobra padrão"</td></tr></table></div>
+    <div class="tw" style="flex:0 1 auto"><table class="cadst small"><tr><th>Composição (g por tubo)</th><th class="n">Tubo</th><th class="n">Gel</th><th class="n">Aditivo</th><th class="n">Tampa + rolha</th></tr>${['100','75'].map(f=>{const c=(F.f||{})[f]||{};return`<tr><td>Tubo ${f}</td>${['tubo','gel','adit','tr'].map(k=>`<td class="n">${g(c[k])}</td>`).join('')}</tr>`}).join('')}</table></div></div></div>`;
+  return`<h3 style="margin-top:14px">Gel: embalagem e descartes ${ib('Gel',AJUDA_CAMPO['gel.equip'])}</h3><div class="fg"><label>Embalagem própria (g) · vazio = a do formato${inpRaw('gel.tara','num',G.tara,e)}</label></div>${fmtBox}
   <div class="tw"><table class="cadst"><tr><th>Descarte: como o peso é contabilizado</th><th>Categoria do scrap</th><th>Motivos (vazio = todos)</th>${e?'<th></th>':''}</tr>${D.map((d,j)=>`<tr><td class="in"><select data-p="gel.descs.${j}.comp" data-k="txt"${e?'':' disabled'}>${Object.entries(GEL_COMPS).map(([k,l])=>`<option value="${k}" ${d.comp===k?'selected':''}>${esc(l)}</option>`).join('')}</select></td><td class="in"><select data-p="gel.descs.${j}.cat" data-k="txt"${e?'':' disabled'}>${Object.entries(GEL_SCAT).map(([k,l])=>`<option value="${k}" ${d.cat===k?'selected':''}>${l}</option>`).join('')}</select></td>
    <td class="small">${M.filter(m=>m.active!==false&amp;&amp;(!(m.comps||[]).length||m.comps.includes(d.comp))).map(m=>`<label style="margin-right:6px"><input type="checkbox" data-p="gel.descs.${j}.mots" data-k="set" data-val="${esc(m.id)}" ${(d.mots||[]).includes(m.id)?'checked':''}${e?'':' disabled'}> ${esc(m.name)}</label>`).join('')||'<span class="muted">nenhum motivo cadastrado</span>'}</td>${e?`<td><button class="b sm d" data-del="gel.descs.${j}">×</button></td>`:''}</tr>`).join('')||'<tr><td colspan="4" class="small muted">Nenhum descarte.</td></tr>'}</table></div>
   ${e?`<button class="b sm" data-add="gel.descs" data-tpl="${esc(JSON.stringify({id:'d-'+gelUid(),comp:'tubogel',cat:'T',mots:[]}))}" style="margin-top:6px">+ Descarte</button>`:''}`},
@@ -5397,6 +5471,7 @@ const Ficha={t:null,cod:null,orig:null,W:null,novo:false,edit:false,dirty:false,
    const lv=e.target.closest('[data-linhavig]');if(lv&amp;&amp;this.edit)return this.novaLinha(+lv.dataset.linhavig);
    const dv=e.target.closest('[data-delvig]');if(dv&amp;&amp;this.edit){const vs=this.W.vigencias,rm=vs[+dv.dataset.delvig];vs.splice(+dv.dataset.delvig,1);if(rm&amp;&amp;this.t==='turnos'&amp;&amp;vigLinhas(vs,rm.de).length){this.dirty=true;return this.draw()}if(rm&amp;&amp;this.t==='turnos'){const ord=[...vs].sort((a,b)=>a.de<b.de?-1:1),ant=ord.filter(x=>x.de<rm.de).pop(),prox=ord.find(x=>x.de>rm.de);if(ant)for(const x of vigLinhas(vs,ant.de))if(!x._nova){const o=(this.orig&amp;&amp;this.orig.vigencias||[]).find(y=>y.de===x.de&amp;&amp;JSON.stringify(y.dias||[])===JSON.stringify(x.dias||[]));x.ate=prox?addDays(prox.de,-1):(o?o.ate:rm.ate||null)}this.dirty=true;return this.draw()}if(rm){const ord=[...vs].sort((a,b)=>a.de<b.de?-1:1),ant=ord.filter(x=>x.de<rm.de).pop(),prox=ord.find(x=>x.de>rm.de);if(ant&amp;&amp;!ant._nova){const o=(this.orig&amp;&amp;this.orig.vigencias||[]).find(x=>x.de===ant.de);ant.ate=prox?addDays(prox.de,-1):(o?o.ate:rm.ate||null)}}this.dirty=true;return this.draw()}
    const od=e.target.closest('[data-opendoc]');if(od)return EqFiles.abrir(od.dataset.opendoc);
+   const ip=e.target.closest('[data-irpar]');if(ip){e.preventDefault();Modal.close();if(!Ficha.aberta())location.hash='#cadastros/parametros/'+ip.dataset.irpar;return}   /* 1.9.51: fecha a ficha (pergunta se há alteração) e vai ao lugar de alterar */
    const rd=e.target.closest('[data-rmdoc]');if(rd)return this.rmDoc(+rd.dataset.rmdoc)};
   const on=(id,f)=>{const x=box.querySelector('#'+id);if(x)x.onclick=f};
   on('fLink',async()=>{const u=location.href.split('#')[0]+'#cadastros/'+this.t+'/'+encodeURIComponent(this.cod);try{await navigator.clipboard.writeText(u);toast('Link copiado.')}catch(e){prompt('Copie o link:',u)}});
@@ -5429,10 +5504,16 @@ const Ficha={t:null,cod:null,orig:null,W:null,novo:false,edit:false,dirty:false,
  mot(){return(($('#fMot')||{}).value||'').trim()},
  salvar(){if(!Cad.podeEditar())return;const t=this.t,k=kOf(t),W=cadFinal(t,clone(this.W)),mot=this.mot();
   const es=cadValidarItem(t,W,Cad.D,{novo:this.novo});if(es.length)return this.erro(es.map(esc));
-  if(this.novo){this.cod=String(W[k]);this.novo=false;Cad.op({acao:'criação',tipo:t,codigo:this.cod,item:W,motivo:mot||null})}
+  /* 1.9.51 · EQ-ORD: posição digitada já ocupada → quem está nela e os seguintes em sequência andam +1 (na mesma gravação) */
+  let emp=[];if(t==='equipamentos'&amp;&amp;W.ativo!==false&amp;&amp;!EqOrd.ehLinha(W)&amp;&amp;W.posicao!=null&amp;&amp;(this.novo||String(this.orig.posicao??'')!==String(W.posicao))){
+   if(+W.posicao===0)return this.erro('A posição <b>0</b> é da linha inteira. Use 1 para o primeiro equipamento.');
+   emp=EqOrd.empurrar(Cad.D,this.novo?null:this.cod,+W.posicao,W.linha);
+   if(emp.length&amp;&amp;!confirm(`A posição ${W.posicao} já é de ${emp[0][0].codigo}${emp[0][0].nome?' ('+emp[0][0].nome+')':''}. Ele e os seguintes andam +1:\n\n${EqOrd.txt(emp)}\n\nConfirmar?`))return}
+  const extra=EqOrd.ops(emp,`posição ${W.posicao} dada a ${String(W[k])}`);
+  if(this.novo){this.cod=String(W[k]);this.novo=false;Cad.ops([{acao:'criação',tipo:t,codigo:this.cod,item:W,motivo:mot||null},...extra])}
   else{const mud=cadDiff(this.orig,W);if(!Object.keys(mud).length){this.dirty=false;return toast('Nada mudou.')}
    if(cadMudaPassado(t,this.orig,W)&amp;&amp;!mot){this.erro('Informe o <b>motivo</b>: a alteração muda uma vigência que já valeu (antes de hoje).');$('#fMot').focus();return}
-   Cad.op({acao:'edição',tipo:t,codigo:this.cod,mudancas:mud,motivo:mot||null})}
+   Cad.ops([{acao:'edição',tipo:t,codigo:this.cod,mudancas:mud,motivo:mot||null},...extra])}
   this.recarregar();toast('Alteração registrada.')},
  inativar(){if(!Cad.podeEditar())return;const mot=this.mot();if(!mot){this.erro('Informe o <b>motivo</b> para inativar.');$('#fMot').focus();return}
   if(this.dirty&amp;&amp;!confirm('As outras alterações desta ficha (não salvas) serão descartadas. Continuar?'))return;
@@ -6179,7 +6260,7 @@ function cadImportarEqMes(el,I){const D=Cad.D,pe=Cad.podeEditar(true);if(!D){el.
  $('#iTxt').oninput=()=>{I.txtEq=$('#iTxt').value};$('#iLimpar').onclick=()=>{I.txtEq='';I.eqP=null;cadImportarEqMes(el,I)};
  $('#iLer').onclick=()=>{I.txtEq=$('#iTxt').value;I.eqP=EqMes.sugerir(EqMes.ler(I.txtEq),Cad.D);eqMesPrev(I)};
  if(I.eqP)eqMesPrev(I)}
-function eqMesPrev(I){const box=$('#iPrev');if(!box)return;const D=Cad.D,P=I.eqP,pe=Cad.podeEditar(true),E=(D.equipamentos||[]).filter(q=>q.ativo!==false).sort((a,b)=>(+a.posicao||999)-(+b.posicao||999)||String(a.codigo).localeCompare(String(b.codigo)));
+function eqMesPrev(I){const box=$('#iPrev');if(!box)return;const D=Cad.D,P=I.eqP,pe=Cad.podeEditar(true),E=(D.equipamentos||[]).filter(q=>q.ativo!==false).sort((a,b)=>(EqOrd.pos(a)??1e9)-(EqOrd.pos(b)??1e9)||String(a.codigo).localeCompare(String(b.codigo),'pt-BR',{numeric:true}));
  const dup=new Map();for(const r of P.linhas)if(r.cod&amp;&amp;r.cod!=='+'&amp;&amp;r.cod!=='-')dup.set(r.cod,(dup.get(r.cod)||0)+1);
  const ops=EqMes.ops(P,D),sem=P.linhas.filter(r=>!r.erros.length&amp;&amp;!r.cod).length,repet=[...dup].filter(([,n])=>n>1).map(([c])=>c),conf=P.linhas.filter(r=>/sugest/.test(r.por||'')).length;
  const sit=r=>{if(r.erros.length)return`<span class="bad">${esc(r.erros.join('; '))}</span>`;if(!r.cod)return`<span class="warn">escolha o equipamento${r.aviso?' · '+esc(r.aviso):''}</span>`;if(r.cod==='-')return'<span class="muted">ignorada</span>';if(r.cod==='+')return'<span class="st-novo">novo equipamento</span>';if(dup.get(r.cod)>1)return'<span class="bad">equipamento escolhido em mais de uma linha</span>';const q=cadItem('equipamentos',r.cod,D);const d=[];if(q){if(String(q.codigoMes||'')!==r.mes)d.push('código MES');if(String(q.departamento||'')!==String(r.dep||''))d.push('departamento');if(String(q.centroTrabalho||'')!==String(r.wc||''))d.push('work center');if(r.troca&amp;&amp;r.desc!==q.nome)d.push('nome')}return(d.length?'muda: '+d.join(', '):'<span class="muted">igual</span>')+(r.por?` <span class="small ${/sugest/.test(r.por)?'warn':'muted'}">(${esc(r.por)})</span>`:'')};
@@ -7617,7 +7698,7 @@ const U = (() => {
 
 /* ---- 02-model.js ---- */
 /* ================= modelo de dados, valores iniciais e integridade ================= */
-const APP_VERSION = '2.6.15';   /* 2.6.15 · REL-01: gel no relatório/e-mail do dia e do turno; Enviar relatório na janela do dia */   /* 2.6.14 · GEL-07: Relatório do Gel e Perdas de gel (turno com gel e Relatórios) */   /* 2.6.13 · GEL-06: Scrap gel no detalhe do turno */   /* 2.6.12 · TUR-04: turno com horário diferente no sábado (linhas por dia da semana) */   /* 2.6.11 · abas agrupadas: Ordens e lotes, Resultados, Paradas */   /* 2.6.10 · Lançamento sem turno aberto por padrão; abas visíveis na casca */   /* 2.6.9 · LANC-02: Lançamento unificado (hora a hora no detalhe do turno, 3º turno ao lado, Problemas de QN) */   /* 2.6.5 · IMP-01: contagens das importações nos exports */   /* 2.6.4 · semáforo só pelas faixas configuradas (verde acima de 100% vale) */   /* 2.6.2 · gráficos e números com meta seguem o semáforo de três cores (verde, amarelo, vermelho) */   /* 2.6.1 · gráficos: turno lançado pelo total com o nome do turno no eixo; janelas: rótulo e valor em tamanho de texto */   /* 2.6.0 · produção total do turno (sem hora a hora; períodos na troca de catálogo), aviso do servidor para turno lançado pelo total e para dia com produção apontada */
+const APP_VERSION = '2.6.16';   /* 2.6.16 · TUR-05: dia em aberto passa ao horário vigente do turno; PAR-BUSCA: tipo de parada por texto */   /* 2.6.15 · REL-01: gel no relatório/e-mail do dia e do turno; Enviar relatório na janela do dia */   /* 2.6.14 · GEL-07: Relatório do Gel e Perdas de gel (turno com gel e Relatórios) */   /* 2.6.13 · GEL-06: Scrap gel no detalhe do turno */   /* 2.6.12 · TUR-04: turno com horário diferente no sábado (linhas por dia da semana) */   /* 2.6.11 · abas agrupadas: Ordens e lotes, Resultados, Paradas */   /* 2.6.10 · Lançamento sem turno aberto por padrão; abas visíveis na casca */   /* 2.6.9 · LANC-02: Lançamento unificado (hora a hora no detalhe do turno, 3º turno ao lado, Problemas de QN) */   /* 2.6.5 · IMP-01: contagens das importações nos exports */   /* 2.6.4 · semáforo só pelas faixas configuradas (verde acima de 100% vale) */   /* 2.6.2 · gráficos e números com meta seguem o semáforo de três cores (verde, amarelo, vermelho) */   /* 2.6.1 · gráficos: turno lançado pelo total com o nome do turno no eixo; janelas: rótulo e valor em tamanho de texto */   /* 2.6.0 · produção total do turno (sem hora a hora; períodos na troca de catálogo), aviso do servidor para turno lançado pelo total e para dia com produção apontada */
 const SCHEMA_VERSION = 1;
 const BASE_FILE = 'oee-vacutainer-base.json';
 const BACKUP_DIR = '00. Backups';
@@ -9025,6 +9106,51 @@ const Actions = (() => {
       audit({ action: 'exclusão lógica', entity: 'intervalo', entityId: iv.id, before: U.range(iv.start, iv.end) });
     });
   }
+  /* 2.6.16 · TUR-05 (pedido do responsável, 19/11/2026): o horário do turno mudou no cadastro (vigência nova, linha do sábado) e o dia em
+     aberto ficou com o horário antigo (ex.: sábado criado antes de a Produção ler o cadastro). Passa cada turno em aberto ao horário vigente
+     da data: as horas que continuam iguais (mesmo início e fim) ficam com o que foi lançado; se houver produção ou parada só com tempo numa
+     hora que deixa de existir, recusa e diz qual. Turno ou dia fechado nunca muda; turno lançado pelo total pede voltar ao hora a hora. */
+  /* revisão do PR #110: "mudou" = o horário cadastrado do turno mudou (início, fim e pausas da versão do dia × a versão vigente da data),
+     e não o desenho dos intervalos: turno lançado pelo total ou com intervalos divididos à mão não acusa mudança sem mudança de horário. */
+  function shiftScheduleDiff(db, d) {
+    let fresh; try { fresh = Engine.buildDay(db, d.date, d.lineId, d.machineId, by(), d.demo ? { shiftLineId: 'line_vac' } : {}); } catch (e) { return []; }
+    const ver = id => { for (const s of db.shifts || []) { const v = (s.versions || []).find(x => x.id === id); if (v) return v; } return null; };
+    const sig = v => JSON.stringify([v.start, v.end, (v.breaks || []).map(b => [b.start, b.end, b.min ?? b.minutes ?? null])]), hor = sn => sn.start + '–' + U.hhmm(U.toMin(sn.end)), out = [];
+    for (const ps of d.shifts) { if (ps.deleted || ps.status === 'fechado' || ps.off) continue; const f = fresh.shifts.find(x => x.shiftId === ps.shiftId); if (!f) continue;
+      const a = ver(ps.shiftVersionId), b = ver(f.shiftVersionId);
+      const mudou = a &amp;&amp; b ? sig(a) !== sig(b) : (ps.snap.start !== f.snap.start || ps.snap.end !== f.snap.end);
+      if (mudou) out.push({ ps, f, de: hor(ps.snap), para: hor(f.snap) }); }
+    return out;
+  }
+  /* cada intervalo antigo vai para o intervalo novo que o contém (ex.: 12:00–13:00 → 12:00–13:30), levando produção, catálogo, observação
+     e as paradas ligadas a ele; dado (produção, troca de catálogo, observação ou parada) num intervalo que não cabe em nenhum novo, ou
+     dois intervalos com dados no mesmo novo, faz recusar dizendo qual. */
+  function applyShiftSchedule(dayId) {
+    let resumo = '';
+    Store.mutate((db, audit) => {
+      const d = dayById(db, dayId); if (d.status === 'fechado') throw new Error('Dia fechado: o horário não muda.');
+      const L = shiftScheduleDiff(db, d); if (!L.length) throw new Error('O dia já está com o horário vigente dos turnos.');
+      const evs = (d.events || []).filter(e => !e.deleted), mud = [], remap = new Map();
+      const dado = i => (i.good != null &amp;&amp; i.good !== 0) || !!i.catalogId || !!(i.note &amp;&amp; String(i.note).trim()) || evs.some(e => e.intervalId === i.id);
+      const plano = [];
+      for (const { ps, f, de, para } of L) {
+        if (ps.lancamento) throw new Error(`${ps.snap.name} está lançado pelo total: volte ao hora a hora antes de aplicar o horário novo.`);
+        const cur = ps.intervals.filter(i => !i.deleted), dest = new Map(f.intervals.map(n => [n, []])), fora = [];
+        for (const o of cur) { const n = f.intervals.find(n => n.start <= o.start &amp;&amp; o.end <= n.end); if (n) dest.get(n).push(o); else if (dado(o)) fora.push(o); }
+        if (fora.length) throw new Error(`${ps.snap.name}: há lançamento (produção, troca de catálogo, observação ou parada) em ${fora.map(i => U.range(i.start, i.end)).join(', ')}, horário que não existe no horário novo (${para}). Mova ou apague esse lançamento antes.`);
+        const ivs = f.intervals.map(n => { const A = dest.get(n), C = A.filter(dado);
+          if (C.length > 1) throw new Error(`${ps.snap.name}: ${C.map(i => U.range(i.start, i.end)).join(' e ')} cairiam no mesmo horário novo (${U.range(n.start, n.end)}). Junte esses lançamentos antes.`);
+          const base = C[0] || A[0]; if (!base) return n;
+          for (const o of A) if (o !== base) remap.set(o.id, base.id);
+          return { ...base, start: n.start, end: n.end }; });
+        plano.push({ ps, f, ivs }); mud.push(`${ps.snap.name}: ${de} → ${para}`);
+      }
+      for (const { ps, f, ivs } of plano) { ps.intervals = ivs; ps.snap = f.snap; ps.shiftVersionId = f.shiftVersionId; }
+      for (const e of d.events || []) if (remap.has(e.intervalId)) e.intervalId = remap.get(e.intervalId);
+      resumo = mud.join('; '); touch(d); audit({ action: 'edição', entity: 'dia', entityId: d.id, field: 'horário dos turnos', after: resumo, reason: 'horário vigente do turno (TUR-05)' });
+    });
+    return resumo;
+  }
   function restoreDefaultIntervals(dayId) {
     Store.mutate((db, audit) => {
       const d = dayById(db, dayId); assertEditable(d);
@@ -9798,7 +9924,7 @@ const Actions = (() => {
     });
   }
 
-  return { setShiftSQDCP, setSQDCPVaga, setSQDCPP, setSQDCPManual, createDay, setDayField, setDayStatus, scrapModeImpact, setScrapMode, deleteDay, setShiftField, setIv, editIntervalTimes, splitInterval, addInterval, deleteInterval, restoreDefaultIntervals, lancarTotal, voltarHoraAHora, reapplyTargets, validateEvent, saveEvent, deleteEvent, saveAbono, setShiftOff, setGoods, closingCheck, submitShift, returnShift, closeShift, closeDay, reopen, upsertConfig, setStatusConfig, endTarget, setSettings, importTargets, importRelatorio, importParadas, logExport, loadDemo, removeDemo, impactSnap, planLocked, savePlan, setPlanDay, setDayOff, startProduction, moveDay, setPlanWorkdays, importPlans, setPlanOrder, fillOrdersFromProduction, acceptOrderApurado, savePanelView, deletePanelView, saveReportNote };
+  return { shiftScheduleDiff, applyShiftSchedule, setShiftSQDCP, setSQDCPVaga, setSQDCPP, setSQDCPManual, createDay, setDayField, setDayStatus, scrapModeImpact, setScrapMode, deleteDay, setShiftField, setIv, editIntervalTimes, splitInterval, addInterval, deleteInterval, restoreDefaultIntervals, lancarTotal, voltarHoraAHora, reapplyTargets, validateEvent, saveEvent, deleteEvent, saveAbono, setShiftOff, setGoods, closingCheck, submitShift, returnShift, closeShift, closeDay, reopen, upsertConfig, setStatusConfig, endTarget, setSettings, importTargets, importRelatorio, importParadas, logExport, loadDemo, removeDemo, impactSnap, planLocked, savePlan, setPlanDay, setDayOff, startProduction, moveDay, setPlanWorkdays, importPlans, setPlanOrder, fillOrdersFromProduction, acceptOrderApurado, savePanelView, deletePanelView, saveReportNote };
 })();
 
 
@@ -11889,6 +12015,7 @@ App.views.launch = {
     let h = dayBar('launch');
     /* 2.6.9 · LANC-02: o aviso "Onde lançar" saiu; a produção por hora fica no detalhe de cada turno, logo abaixo dos cartões */
     if (day.demo) h += `<div class="banner demo"><p><b>Dados de demonstração.</b> Este dia não faz parte da base real.</p></div>`;
+    if (!lk) { const HN = Actions.shiftScheduleDiff(db(), day); if (HN.length) h += `<div class="banner warn" id="horNovo"><p><b>O horário do turno mudou no cadastro.</b> Este dia ainda está com o horário antigo: ${HN.map(x => `<b>${esc(x.ps.snap.name)}</b> ${esc(x.de)} → ${esc(x.para)}`).join(' · ')}. <button type="button" class="btn sm primary" id="horAplicar">Aplicar o horário novo</button></p><p class="small muted">A produção das horas que continuam iguais fica. Se houver produção numa hora que deixa de existir, o sistema avisa qual antes de mudar. Dias fechados não mudam.</p></div>`; }   /* 2.6.16 · TUR-05 */
     if (day.origin === 'importação') h += `<div class="banner info"><p>Dia importado do RELATÓRIO (resumo por turno, sem hora a hora). Os valores mostram o que a planilha registrou.</p></div>`;
     h += `<section class="card${App.prefs.cabFold ? ' cab-fold' : ''}" id="cabDia"><header><button type="button" class="btn xs ghost cab-tg" id="cabTg" aria-expanded="${!App.prefs.cabFold}" aria-controls="cabDia" title="${App.prefs.cabFold ? 'Mostrar' : 'Recolher'} o cabeçalho do dia (vale neste computador)">${App.prefs.cabFold ? '▸ Mostrar' : '▾ Recolher'}</button><h3>Cabeçalho do dia</h3>${stPill(day.status)}<span class="small muted">Última alteração ${U.brDT(day.updatedAt)} · ${esc(day.updatedBy || '')}</span><button class="btn xs" id="dayMetas">Metas dos próximos meses</button><button class="btn xs" id="kcEdit" title="Liga e desliga os indicadores do topo (vale neste computador)">Editar cards</button></header>
       <div class="form">
@@ -11972,6 +12099,7 @@ App.views.launch = {
     const c = root.querySelector('#dClose'); if (c) c.onclick = () => closeFlow(day, null);
     const ro = root.querySelector('#dReopen'); if (ro) ro.onclick = async () => { const r = await askReason('Reabrir dia', 'Todos os turnos do dia serão reabertos. A ação fica registrada no histórico.'); if (r) run(() => Actions.reopen(day.id, null, r), 'Dia reaberto.'); };
     const pe = root.querySelector('#dPend'); if (pe) pe.onclick = () => run(() => Actions.setDayStatus(day.id, 'pendente de conferência'));
+    const hn = root.querySelector('#horAplicar'); if (hn) hn.onclick = () => run(() => { const r = Actions.applyShiftSchedule(day.id); toast('Horário novo aplicado: ' + r + '.'); });   /* 2.6.16 · TUR-05 */
     const rs = root.querySelector('#dRestore'); if (rs) rs.onclick = async () => { if (await confirmDlg('Restaurar intervalos padrão?', 'Os intervalos voltam ao padrão dos turnos vigentes nesta data.', 'Restaurar')) run(() => Actions.restoreDefaultIntervals(day.id)); };
     const ra = root.querySelector('#dReapply'); if (ra) ra.onclick = async () => { if (await confirmDlg('Reaplicar metas vigentes?', 'As metas congeladas no último fechamento serão substituídas pelas metas vigentes hoje na configuração para esta data.', 'Reaplicar')) run(() => Actions.reapplyTargets(day.id)); };
     const dh = root.querySelector('#dHist'); if (dh) dh.onclick = () => auditForDay(day);
@@ -12249,6 +12377,7 @@ function eventModal(day, evId, ivId, opts = {}) {
         getPair.sync();
       };
       el.querySelector('#eCode').addEventListener('change', sync);
+      if (typeof vacFiltroSelect === 'function') vacFiltroSelect(el.querySelector('#eCode'), { placeholder: 'Buscar o tipo: digite parte do nome ou do código (ex.: setup)' });   /* 2.6.16 · PAR-BUSCA */
       if (opts.pause &amp;&amp; !ev) { const pc = d.downtimeCodes.find(c => c.deductsPlanned &amp;&amp; c.active !== false); if (pc) el.querySelector('#eCode').value = pc.id; }
       sync();
       const data = () => {
@@ -13060,6 +13189,22 @@ Cfg.demo = {
   }
 };
 
+/* 2.6.16 · TUR-05: o cadastro da Administração mudou o horário de um turno: dias em aberto com o horário antigo (sem produção: aplica
+   com um clique; com produção: cada dia mostra o aviso "Aplicar o horário novo", que mantém as horas que continuam) */
+function offerCadShiftApply() {
+  const d = db(); if (!d) return;
+  const L = d.productionDays.filter(x => !x.deleted &amp;&amp; !x.demo &amp;&amp; x.status !== 'fechado').map(day => ({ day, dif: Actions.shiftScheduleDiff(d, day) })).filter(x => x.dif.length);
+  if (!L.length) return;
+  const prod = x => x.day.shifts.some(p => p.intervals.some(i => !i.deleted &amp;&amp; i.good != null &amp;&amp; i.good !== 0)), free = L.filter(x => !prod(x)), busy = L.filter(prod);
+  const lin = x => `${U.brDate(x.day.date)} (${U.WD[U.weekday(x.day.date)]}): ${x.dif.map(z => esc(z.ps.snap.name) + ' ' + esc(z.de) + ' → ' + esc(z.para)).join(', ')}`;
+  modal('Horário dos turnos mudou no cadastro', `<p>A Administração mudou o horário de turno. Dias em aberto que ainda estão com o horário antigo:</p>
+    ${free.length ? `<p><b>${free.length} dia(s) sem produção lançada</b> podem passar ao horário novo agora:</p><ul>${free.map(x => `<li>${lin(x)}</li>`).join('')}</ul>` : ''}
+    ${busy.length ? `<p><b>${busy.length} dia(s) com produção lançada</b>: abra o dia e use <b>Aplicar o horário novo</b> (as horas que continuam ficam com o que foi lançado):</p><ul>${busy.map(x => `<li>${lin(x)}</li>`).join('')}</ul>` : ''}
+    <p class="small muted">Dias fechados nunca são alterados.</p>`,
+    `<button class="btn" data-close>Deixar como está</button>${free.length ? `<button class="btn primary" id="hnGo">Aplicar aos ${free.length} dia(s) sem produção</button>` : ''}`, (el, close) => {
+      const g = el.querySelector('#hnGo'); if (g) g.onclick = () => run(() => { free.forEach(x => Actions.applyShiftSchedule(x.day.id)); close(); }, 'Horário novo aplicado.');
+    });
+}
 /* depois de mudar o horário de um turno: dias em aberto que ficaram com o formato antigo */
 function offerShiftApply(shiftId, ver) {
   const d = db(); if (!d) return;
@@ -13871,6 +14016,7 @@ function shiftOffModal(day, psId) {
       };
       el.querySelectorAll('[data-ot]').forEach(b => b.onclick = () => { type = b.dataset.ot; sync(); });
       el.querySelector('#otM').oninput = e => { if (type === 'np') { const g = guess(e.target.value); if (g) el.querySelector('#otC').value = g; } };
+      if (typeof vacFiltroSelect === 'function') vacFiltroSelect(el.querySelector('#otC'), { placeholder: 'Buscar o tipo de parada (ex.: setup)' });   /* 2.6.16 · PAR-BUSCA */
       sync();
       el.querySelector('#otOk').onclick = () => run(() => { Actions.setShiftOff(day.id, psId, true, el.querySelector('#otM').value, type, type === 'np' ? el.querySelector('#otC').value : null); close(); }, 'Turno marcado sem produção.');
     });
@@ -20979,6 +21125,7 @@ const CadSync = (() => {
       let R; Store.mutate((d, audit) => { R = aplicar(d, C, audit); }, { flush: true });
       try { Engine.bumpConfig(); } catch (e) { }
       const n = Object.entries(R).filter(([k, v]) => v &amp;&amp; k !== 'removidas' &amp;&amp; k !== 'soLocal').map(([k, v]) => `${v} ${k}`).join(', ');
+      if (R.turnos) setTimeout(() => { try { offerCadShiftApply(); } catch (e) { console.warn('TUR-05', e); } }, 400);   /* 2.6.16 · TUR-05 */
       if (n || R.removidas) toast(`Cadastro da Administração (rev ${C.rev}) aplicado: ${n || 'nada mudou'}${R.removidas ? ` · ${R.removidas} meta(s) antiga(s) substituída(s)` : ''}${R.soLocal ? ` · ${R.soLocal} turno(s) que não está(ão) na Administração ficou(aram) inativo(s)` : ''}.`);
       render();
     } catch (e) { console.warn('CadSync', e); toast('Não consegui aplicar o cadastro do Portal: ' + (e.message || e), true); }
@@ -31227,7 +31374,7 @@ const MATRIZ_PROPOSTA={"OUT": ["Tullip A", "Tullip B", "Packout", "Metro", "Cap 
    PARADAS · núcleo (pasta, base, fila de gravação, backups, cadastro, utilidades)
    ===================================================================================== */
 const PAGE={id:'paradas',titulo:'Paradas · Análise de falhas e paradas de máquina',tituloCurto:'Paradas',subtitulo:'Análise de falhas e paradas de máquina',
-  versao:'1.2.17',estado:'atualizacao',estadoNota:"Matriz, componentes e limite de microparada passam a vir só da Administração; eventos da Produção entram como sugestão.",baseFile:'paradas-base.json',backupDir:'00. Backups/Paradas',busca:q=>buscaPagina(q)};
+  versao:'1.2.18',estado:'atualizacao',estadoNota:"Matriz, componentes e limite de microparada passam a vir só da Administração; eventos da Produção entram como sugestão.",baseFile:'paradas-base.json',backupDir:'00. Backups/Paradas',busca:q=>buscaPagina(q)};
 const APP_VERSION=PAGE.versao;
 const CAD_FILE='vacutainer-cadastros.json',OEE_FILE='oee-vacutainer-base.json';
 const $=(s,r=document)=>r.querySelector(s),$$=(s,r=document)=>[...r.querySelectorAll(s)];
@@ -32105,7 +32252,8 @@ function abrirEvento(id){const e=eventosTodos().find(x=>x.id===id);if(!e)return 
    /* nome mostrado e não mudado mantém o ID; digitado (nome ou ID) passa pelo cadastro */
    const P=f.tecnico===nomeTec(t,e)&amp;&amp;(t.tecnicoId||t.tecnico||e.tecnicoForms)?{nome:f.tecnico,id:idTec(t,e)}:vacPessoa.deTexto(f.tecnico);f.tecnico=P.nome;f.tecnicoId=P.id;
    Store.commit({k:'mapf',c:'tecnico',id:e.id,f:{...f,trocouPeca:tp,por:user(),porId:vacPessoa.eu().id,em:new Date().toISOString()},aud:'parte técnica '+e.id});toast('Parte técnica salva')}}],
-  onOpen:()=>{ini=JSON.stringify(read());const a=$('#aplSug');if(a)a.onclick=()=>{$('#tCod').value=sug.sug;if(sug.e&amp;&amp;trocou(e)==null)$('#tTroca').value=''}}})}
+  onOpen:()=>{if(typeof vacFiltroSelect==='function')vacFiltroSelect($('#tCod'),{placeholder:'Buscar o código: digite parte do nome ou do número (ex.: setup)'});   /* 1.2.18 · PAR-BUSCA */
+   ini=JSON.stringify(read());const a=$('#aplSug');if(a)a.onclick=()=>{$('#tCod').value=sug.sug;if(sug.e&amp;&amp;trocou(e)==null)$('#tTroca').value=''}}})}
 function novoEvento(pre={}){const eqs=Cad.eqs.filter(e=>e.ativo);
  const body=`<p class="muted small">Use só na transição ou para paradas que não vieram pelo Forms (ex.: engenharia). O Forms continua sendo a entrada do operador.</p>
  <div class="fgrid"><label>Data<input type="date" id="nDia" value="${pre.dia||todayISO()}"></label><label>Turno<select id="nTur">${Cad.turnos().map(t=>`<option>${t.codigo}</option>`).join('')}</select></label>
@@ -37618,71 +37766,71 @@ body.vac-porta{overflow:hidden}
     {
       "id": "oee",
       "path": "Plataforma.html#motor/oee",
-      "version": "2.6.15",
-      "sha256": "ac9575867f7dbd225e19c9280e0b5e8304b4a6f8cd4d15c1f0f6d926de43c388",
-      "bytes": 2261967
+      "version": "2.6.16",
+      "sha256": "125c0f2cd50a2c8ab6bc2f4be9bae02d6ab8876ab68dbcf1e58be5c5941d0362",
+      "bytes": 2272728
     },
     {
       "id": "perdas",
       "path": "Plataforma.html#motor/perdas",
       "version": "1.12.17",
-      "sha256": "c29d79b5eabb3798b6eedbf0e674f26497b2454797ce5fce1b8eed1adaa65f03",
-      "bytes": 931120
+      "sha256": "98d5e17c65d4974c500036d97b33762d5b64ec668821c7785f698df03f6fec0c",
+      "bytes": 933820
     },
     {
       "id": "gel",
       "path": "Plataforma.html#motor/gel",
       "version": "2.42",
-      "sha256": "eae59fba8159cd7c5f94a383413a71a6bf7208f0d9af1268aaec9b7c0300d9bc",
-      "bytes": 1631568
+      "sha256": "7b919377134d31d01369e4f528cc3add837af6e9006e081e63b7bd38c8530e50",
+      "bytes": 1634268
     },
     {
       "id": "paradas",
       "path": "Plataforma.html#motor/paradas",
-      "version": "1.2.17",
-      "sha256": "1b266fde2aff82bf10bbfef8138e5fd432a3771f75818480e2bdfcceaa55ecc0",
-      "bytes": 903546
+      "version": "1.2.18",
+      "sha256": "1aa77ad025e8e605f76c6daedbe5066cd213a476043241c4056ebd92e319f303",
+      "bytes": 906427
     },
     {
       "id": "equip",
       "path": "Plataforma.html#motor/equip",
       "version": "1.0.20",
-      "sha256": "02fa1a65f8cdd4fc18b86f1255f2f037932fc4ea9c1d8f022e83949871551774",
-      "bytes": 687460
+      "sha256": "5e63c72842ffb472f4ae77c54af587152b29073c0f35f42fd33bcab536838bfb",
+      "bytes": 690160
     },
     {
       "id": "inic",
       "path": "Plataforma.html#motor/inic",
       "version": "1.1.16",
-      "sha256": "24790e931b0e63e4638b0767c6852306831dd6214467603678a7b46c8bc55f34",
-      "bytes": 708996
+      "sha256": "2a3742ad6ac0766d8191fe832c15c9c37c5c2b3c5cd9ceb0f52850ef244a8873",
+      "bytes": 711696
     },
     {
       "id": "linha",
       "path": "Plataforma.html#motor/linha",
       "version": "1.3.0",
-      "sha256": "322a78f24e802a1a0345450673303c86fc69fc8f802f86174ff04fe0eb663553",
-      "bytes": 819232
+      "sha256": "b42513b31dc40ef8b720c51f84eb31d5b8119aaabc2c69051365bc7bbc0b2312",
+      "bytes": 821932
     },
     {
       "id": "projetos",
       "path": "Plataforma.html#motor/projetos",
       "version": "0.1.16",
-      "sha256": "6b7dbca46190a10f05e7a76b842eb58d46660b6359f73f16429dec20de818242",
-      "bytes": 627400
+      "sha256": "f7cf29d0b7b37f5ce4ed04277f781ef9d07402ed6bcb6f28b2781b091969fbed",
+      "bytes": 630100
     },
     {
       "id": "portal",
       "path": "Plataforma.html#motor/portal",
-      "version": "1.9.50",
-      "sha256": "53803f97931e2e2069c82caf78e8203ed25582c78041a5c92ea0f0600482be3c",
-      "bytes": 1242245
+      "version": "1.9.51",
+      "sha256": "cc5036ceeaa8050d20044d2bc970d4c0a23020707edd600c247b4c00035df05d",
+      "bytes": 1254902
     }
   ],
   "limitations": [
     "Projetos e conteúdo técnico OSM/MES/AM/TPM mantêm os limites documentados nas fontes."
   ],
-  "enginesSha256": "79e9cfc0f05256b0a15519758a3220c1e18d4d1ec27d5444e6b74a00e62c2f7b",
+  "enginesSha256": "09454b0a3aca6b0c29728f9800a2a98410358d9664f10b4dca3bb90afe3c1f27",
   "originRevision": "ffc9ee8",
   "sourceMode": "single-html",
   "originEnginesSha256": "a87a64ad0c328f70e102b2ae888790a9b5d5a9bd05778652a7ce7cae140e40d2"
@@ -37752,7 +37900,7 @@ summary{cursor:pointer;font-weight:600;color:var(--navy)}
 'use strict';
 /* ---------- referência (atualizar quando a plataforma mudar de versão) ---------- */
 // Iguais às do pacote da plataforma (nova-plataforma/src/generated/manifest.json); o teste ferramenta-verificar confere.
-const VERSOES = {"oee":"2.6.15","perdas":"1.12.17","gel":"2.42","paradas":"1.2.17","equip":"1.0.20","inic":"1.1.16","linha":"1.3.0","projetos":"0.1.16","portal":"1.9.50"};
+const VERSOES = {"oee":"2.6.16","perdas":"1.12.17","gel":"2.42","paradas":"1.2.18","equip":"1.0.20","inic":"1.1.16","linha":"1.3.0","projetos":"0.1.16","portal":"1.9.51"};
 const BASES = [
  { arq: 'vacutainer-cadastros.json', mod: 'portal', nome: 'Cadastro geral (Portal)', obrig: true, cadastro: true, bk: 'Cadastros' },
  { arq: 'portal-base.json', mod: 'portal', nome: 'Portal', obrig: true, bk: 'Portal' },
@@ -38343,7 +38491,7 @@ import { Icon, Button, Badge, Empty, Modal, BarChart, BrandLogo, CommandMenu } f
 import { ModuleFrame } from "vac:modulo/components/ModuleFrame";
 import manifest from "vac:recurso/manifesto";
 import { ModuleTabs } from "vac:modulo/components/ModuleTabs";
-const VERSION = "1.8.19";
+const VERSION = "1.8.21";
 /* Navegação 1.3.0 (16/11/2026): Visão da linha, Relatórios e Importações têm abas; as que mostram uma tela do
    Portal (motor da Administração) trazem o 3º campo com a aba dele. Administração fica só com cadastros e configuração. */
 const SHELL_TABS = {
