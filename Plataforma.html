@@ -9110,30 +9110,43 @@ const Actions = (() => {
      aberto ficou com o horário antigo (ex.: sábado criado antes de a Produção ler o cadastro). Passa cada turno em aberto ao horário vigente
      da data: as horas que continuam iguais (mesmo início e fim) ficam com o que foi lançado; se houver produção ou parada só com tempo numa
      hora que deixa de existir, recusa e diz qual. Turno ou dia fechado nunca muda; turno lançado pelo total pede voltar ao hora a hora. */
+  /* revisão do PR #110: "mudou" = o horário cadastrado do turno mudou (início, fim e pausas da versão do dia × a versão vigente da data),
+     e não o desenho dos intervalos: turno lançado pelo total ou com intervalos divididos à mão não acusa mudança sem mudança de horário. */
   function shiftScheduleDiff(db, d) {
     let fresh; try { fresh = Engine.buildDay(db, d.date, d.lineId, d.machineId, by(), d.demo ? { shiftLineId: 'line_vac' } : {}); } catch (e) { return []; }
-    const key = i => i.start + '-' + i.end, out = [];
+    const ver = id => { for (const s of db.shifts || []) { const v = (s.versions || []).find(x => x.id === id); if (v) return v; } return null; };
+    const sig = v => JSON.stringify([v.start, v.end, (v.breaks || []).map(b => [b.start, b.end, b.min ?? b.minutes ?? null])]), hor = sn => sn.start + '–' + U.hhmm(U.toMin(sn.end)), out = [];
     for (const ps of d.shifts) { if (ps.deleted || ps.status === 'fechado' || ps.off) continue; const f = fresh.shifts.find(x => x.shiftId === ps.shiftId); if (!f) continue;
-      const cur = ps.intervals.filter(i => !i.deleted);
-      if (cur.length === f.intervals.length &amp;&amp; cur.every((i, k) => key(i) === key(f.intervals[k]))) continue;
-      out.push({ ps, f, de: ps.snap.start + '–' + U.hhmm(U.toMin(ps.snap.end)), para: f.snap.start + '–' + U.hhmm(U.toMin(f.snap.end)) }); }
+      const a = ver(ps.shiftVersionId), b = ver(f.shiftVersionId);
+      const mudou = a &amp;&amp; b ? sig(a) !== sig(b) : (ps.snap.start !== f.snap.start || ps.snap.end !== f.snap.end);
+      if (mudou) out.push({ ps, f, de: hor(ps.snap), para: hor(f.snap) }); }
     return out;
   }
+  /* cada intervalo antigo vai para o intervalo novo que o contém (ex.: 12:00–13:00 → 12:00–13:30), levando produção, catálogo, observação
+     e as paradas ligadas a ele; dado (produção, troca de catálogo, observação ou parada) num intervalo que não cabe em nenhum novo, ou
+     dois intervalos com dados no mesmo novo, faz recusar dizendo qual. */
   function applyShiftSchedule(dayId) {
     let resumo = '';
     Store.mutate((db, audit) => {
       const d = dayById(db, dayId); if (d.status === 'fechado') throw new Error('Dia fechado: o horário não muda.');
       const L = shiftScheduleDiff(db, d); if (!L.length) throw new Error('O dia já está com o horário vigente dos turnos.');
-      const key = i => i.start + '-' + i.end, mud = [];
+      const evs = (d.events || []).filter(e => !e.deleted), mud = [], remap = new Map();
+      const dado = i => (i.good != null &amp;&amp; i.good !== 0) || !!i.catalogId || !!(i.note &amp;&amp; String(i.note).trim()) || evs.some(e => e.intervalId === i.id);
+      const plano = [];
       for (const { ps, f, de, para } of L) {
         if (ps.lancamento) throw new Error(`${ps.snap.name} está lançado pelo total: volte ao hora a hora antes de aplicar o horário novo.`);
-        const cur = ps.intervals.filter(i => !i.deleted), novas = new Set(f.intervals.map(key));
-        const some = cur.filter(i => !novas.has(key(i)) &amp;&amp; ((i.good != null &amp;&amp; i.good !== 0) || (d.events || []).some(e => !e.deleted &amp;&amp; e.intervalId === i.id &amp;&amp; e.start == null)));
-        if (some.length) throw new Error(`${ps.snap.name}: há produção ou parada lançada em ${some.map(i => U.range(i.start, i.end)).join(', ')}, hora que deixa de existir no horário novo (${para}). Zere ou mova esses lançamentos antes.`);
-        const velho = new Map(cur.map(i => [key(i), i]));
-        ps.intervals = f.intervals.map(n => velho.get(key(n)) || n);
-        mud.push(`${ps.snap.name}: ${de} → ${para}`); ps.snap = f.snap; ps.shiftVersionId = f.shiftVersionId;
+        const cur = ps.intervals.filter(i => !i.deleted), dest = new Map(f.intervals.map(n => [n, []])), fora = [];
+        for (const o of cur) { const n = f.intervals.find(n => n.start <= o.start &amp;&amp; o.end <= n.end); if (n) dest.get(n).push(o); else if (dado(o)) fora.push(o); }
+        if (fora.length) throw new Error(`${ps.snap.name}: há lançamento (produção, troca de catálogo, observação ou parada) em ${fora.map(i => U.range(i.start, i.end)).join(', ')}, horário que não existe no horário novo (${para}). Mova ou apague esse lançamento antes.`);
+        const ivs = f.intervals.map(n => { const A = dest.get(n), C = A.filter(dado);
+          if (C.length > 1) throw new Error(`${ps.snap.name}: ${C.map(i => U.range(i.start, i.end)).join(' e ')} cairiam no mesmo horário novo (${U.range(n.start, n.end)}). Junte esses lançamentos antes.`);
+          const base = C[0] || A[0]; if (!base) return n;
+          for (const o of A) if (o !== base) remap.set(o.id, base.id);
+          return { ...base, start: n.start, end: n.end }; });
+        plano.push({ ps, f, ivs }); mud.push(`${ps.snap.name}: ${de} → ${para}`);
       }
+      for (const { ps, f, ivs } of plano) { ps.intervals = ivs; ps.snap = f.snap; ps.shiftVersionId = f.shiftVersionId; }
+      for (const e of d.events || []) if (remap.has(e.intervalId)) e.intervalId = remap.get(e.intervalId);
       resumo = mud.join('; '); touch(d); audit({ action: 'edição', entity: 'dia', entityId: d.id, field: 'horário dos turnos', after: resumo, reason: 'horário vigente do turno (TUR-05)' });
     });
     return resumo;
@@ -37754,8 +37767,8 @@ body.vac-porta{overflow:hidden}
       "id": "oee",
       "path": "Plataforma.html#motor/oee",
       "version": "2.6.16",
-      "sha256": "b4fd1ce7470e3f74ca902d9500f9360252c07719ce83ffe9acd32512efb513e4",
-      "bytes": 2271023
+      "sha256": "125c0f2cd50a2c8ab6bc2f4be9bae02d6ab8876ab68dbcf1e58be5c5941d0362",
+      "bytes": 2272728
     },
     {
       "id": "perdas",
@@ -37817,7 +37830,7 @@ body.vac-porta{overflow:hidden}
   "limitations": [
     "Projetos e conteúdo técnico OSM/MES/AM/TPM mantêm os limites documentados nas fontes."
   ],
-  "enginesSha256": "34e97048806d0e32f9211de8c7f24779958698a895c434cbe03c7d30b1e4894d",
+  "enginesSha256": "09454b0a3aca6b0c29728f9800a2a98410358d9664f10b4dca3bb90afe3c1f27",
   "originRevision": "ffc9ee8",
   "sourceMode": "single-html",
   "originEnginesSha256": "a87a64ad0c328f70e102b2ae888790a9b5d5a9bd05778652a7ce7cae140e40d2"
