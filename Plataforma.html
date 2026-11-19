@@ -18809,13 +18809,20 @@ const EnviarRel = {
   waste: null, lendo: false, lidoEm: 0,
   lerWaste() { if (typeof vacFicha === 'undefined') return Promise.resolve(); if (this.lendo) return this._p; this.lendo = true;
     return this._p = vacFicha.carregar().then(() => { const x = vacFicha.dados('perdas'); this.waste = x &amp;&amp; x.d ? x : null; this.lidoEm = Date.now(); }).catch(e => console.warn('EnviarRel', e)).finally(() => { this.lendo = false; }); },
-  /* ordens que rodaram no dia: lotes do dia (dia ↔ lote, a mesma ligação dos diasLote do exports) → ordens do plano com esse lote */
-  ordensDoDia(date) {
-    const d = db(), lotes = new Set(Object.keys((d.server || {}).dayLot || {}).filter(k => k.startsWith(date + '|')).map(k => k.slice(date.length + 1).trim()).filter(Boolean)); if (!lotes.size) return [];
-    const p = Engine.planFor(d, date.slice(0, 7), 'line_vac'), out = [], vistos = new Set();
-    for (const o of (p &amp;&amp; p.orders) || []) { const lot = o.lot ? String(o.lot).trim() : ''; if (!lotes.has(lot) || vistos.has(String(o.order))) continue; vistos.add(String(o.order)); out.push({ ordem: String(o.order), lote: lot, catalogo: ((d.catalogs || []).find(c => c.id === o.catalogId) || {}).code || o.code || '' }); }
-    for (const lot of lotes) if (!out.some(o => o.lote === lot)) out.push({ ordem: '', lote: lot, catalogo: '' });
-    return out;
+  /* ordens que rodaram no dia (revisão do PR #109): lotes com produção do servidor na janela do dia (mesma janela das sugestões do
+     dia: do início ao fim dos intervalos dos turnos) + lotes marcados no dia (dia ↔ lote); "ignorar" fica de fora. A ordem vem de
+     qualquer plano mensal (ServerData.orderByLot), como nos diasLote do exports: lote de ordem do mês anterior também resolve. */
+  ordensDoDia(day) {
+    const d = db(), SD = ServerData, lineId = day.lineId || 'line_vac', lotes = new Set();
+    const kind = lot => SD.lotKind(d, lineId, lot, byLot, day.date), byLot = SD.orderByLot(d, lineId);
+    for (const k of Object.keys((d.server || {}).dayLot || {})) if (k.startsWith(day.date + '|')) { const lot = k.slice(day.date.length + 1).trim(); if (lot) lotes.add(lot); }
+    const ivs = day.shifts.filter(p => !p.deleted).flatMap(p => p.intervals.filter(i => !i.deleted));
+    if (ivs.length) { const base = SD.dayStartMin(day.date), A = base + Math.min(...ivs.map(i => i.start)), B = base + Math.max(...ivs.map(i => i.end));
+      for (const sg of ((d.server || {}).segments || [])) if (sg.lineId === lineId &amp;&amp; sg.lot &amp;&amp; SD.tm(sg.t1) >= A &amp;&amp; SD.tm(sg.t0) < B) lotes.add(String(sg.lot).trim()); }
+    const out = [];
+    for (const lot of lotes) { if (kind(lot) === 'ignorar') continue; const m = byLot.get(lot), o = m &amp;&amp; m.o;
+      out.push({ ordem: o ? String(o.order) : '', lote: lot, catalogo: o ? (((d.catalogs || []).find(c => c.id === o.catalogId) || {}).code || o.code || '') : '' }); }
+    return out.sort((a, b) => a.lote.localeCompare(b.lote));
   },
   /* Waste por ordem: a competência do mês do dia, se houver; senão a mais recente (dito na tela) */
   wasteDe(ordem, date) { const L = ((this.waste &amp;&amp; this.waste.d &amp;&amp; this.waste.d.porOrdem) || []).filter(w => String(w.ordem) === String(ordem)); if (!L.length) return null;
@@ -18823,7 +18830,7 @@ const EnviarRel = {
   perdas(day) {
     const d = db(), res = Engine.computeDay(d, day), u = unitLbl();
     const turnos = res.shifts.map(sr => ({ nome: sr.ps.snap.name, good: sr.r.good, scrap: sr.ps.scrap == null &amp;&amp; day.scrapMode !== 'day' ? null : sr.r.scrap, pct: sr.ps.scrap == null &amp;&amp; day.scrapMode !== 'day' ? null : sr.r.scrapPct }));
-    const ords = this.ordensDoDia(day.date).map(o => ({ ...o, w: o.ordem ? this.wasteDe(o.ordem, day.date) : null }));
+    const ords = this.ordensDoDia(day).map(o => ({ ...o, w: o.ordem ? this.wasteDe(o.ordem, day.date) : null }));
     return { day, res, u, turnos, r: res.r, gel: GelDia.linhas(day, res), ords, wasteLido: !!this.waste };
   },
   brl: v => v == null || !isFinite(v) ? '—' : 'R$ ' + U.fmt(v, 2),
@@ -37610,8 +37617,8 @@ body.vac-porta{overflow:hidden}
       "id": "oee",
       "path": "Plataforma.html#motor/oee",
       "version": "2.6.15",
-      "sha256": "7130dcf7ed5946397bae2bee750fa423d21aa6315d9eae398ba653963d9a7956",
-      "bytes": 2261313
+      "sha256": "839a726f4f4fab13ab33011d663ece84c3fca853df8b91e88c291aae45f4b5f2",
+      "bytes": 2261971
     },
     {
       "id": "perdas",
@@ -37673,7 +37680,7 @@ body.vac-porta{overflow:hidden}
   "limitations": [
     "Projetos e conteúdo técnico OSM/MES/AM/TPM mantêm os limites documentados nas fontes."
   ],
-  "enginesSha256": "513255482a7809e4e5f1a875c4732d85e22914957cf4c1405d24542891bd6474",
+  "enginesSha256": "f449b62c86bddc66520c0aef65498f6552fff2f1af48ab595a7b1f35692f9907",
   "originRevision": "ffc9ee8",
   "sourceMode": "single-html",
   "originEnginesSha256": "a87a64ad0c328f70e102b2ae888790a9b5d5a9bd05778652a7ce7cae140e40d2"

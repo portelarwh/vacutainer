@@ -29,6 +29,15 @@ const html = fs.readFileSync(path.resolve(__dirname, '../../Plataforma.html'));
     assert.match(h1, /100234567/, 'OP do dia (dia ↔ lote)'); assert.match(c1['text/plain'] || '', /Waste das ordens do dia \(acumulado da competência\)/);
     console.log('ok Enviar relatório › Scrap e perdas: scrap de tubos por turno, gel do dia e Waste por ordem (acumulado da competência)');
 
+    // 1b) revisão do PR #109: a ordem do dia vem também da produção do servidor (lote normal sem marcação dia ↔ lote) e de plano de outro mês
+    const r1b = await o.evaluate(() => { const d = db(), day = curDay(), lista = () => EnviarRel.ordensDoDia(day).map(x => x.ordem + '/' + x.lote).join(',');
+      const dl = (d.server.dayLot = d.server.dayLot || {}), guard = JSON.parse(JSON.stringify(dl)); for (const k of Object.keys(dl)) if (k.startsWith(day.date + '|')) delete dl[k];
+      const semMarcacao = lista(); Object.keys(dl).forEach(k => delete dl[k]); Object.assign(dl, guard);
+      const p = Engine.planFor(d, day.date.slice(0, 7), 'line_vac'), m0 = p.month; p.month = '2020-01'; const outroMes = lista(); p.month = m0;
+      return { semMarcacao, outroMes }; });
+    assert.deepEqual(r1b, { semMarcacao: '100234567/6275187', outroMes: '100234567/6275187' }, 'ordens do dia: servidor e plano de outro mês');
+    console.log('ok ordens do dia: lote com produção do servidor sem marcação no dia e ordem de plano de outro mês');
+
     // 2) Dia inteiro: o e-mail do dia leva o item Gel (mesmos números do quadro da tela)
     const tela = await o.evaluate(() => { const day = curDay(), res = Engine.computeDay(db(), day), x = GelDia.calc(day, res); return x && U.fmt(x.teo.teo, 3); });
     assert.ok(tela, 'dia da demonstração com catálogo de gel');
