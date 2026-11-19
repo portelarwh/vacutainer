@@ -82,6 +82,17 @@ Plataforma 1.5.0, Produção 2.4.82, Administração 1.9.44.
 
 Aba Linha do tempo da Produção (`docs/timeline-operacional.md`). Só leitura de `day.events` e `db.server`; não altera OEE, metas, classificação de paradas, turnos nem exports. Bloco **aditivo** na base da Produção, autorizado pela especificação: `db.timeline = { tagMap[], tagEvents[], comments{}, imports[] }` (base sem o bloco continua válida; `Model.ensure` completa). Vigência do mapa de tags segue o contrato 2 (encerra e cria outra). Comentário, importação de tags e mapa passam por `Store.mutate` (releitura, backup, fila, auditoria). Testes: `testes/ttimeline.js` e `testes/plataforma/timeline.cjs`.
 
+## EQ-ORD · ordem dos equipamentos, gel do formato e lista enxuta · Administração 1.9.51, plataforma 1.8.20 (19/11/2026)
+
+Pedido do responsável (Administração › Cadastros › Equipamentos): reorganizar do primeiro ao último, sendo a Linha a posição 0, arrastando ou digitando a posição (a ocupada empurra as seguintes +1); no equipamento de gel que segue o formato, mostrar esses dados e o link para alterar; tirar da tabela Fabricante/modelo, Comp. e Docs e deixar a foto ao lado do Código MES.
+- **Arrastar e soltar** pela alça ⠿ (ponteiro: mouse, toque e caneta; vale para o tablet): os equipamentos **ativos** da mesma linha de produção ficam 1, 2, 3… na ordem nova; a Linha (`tipo` linha ou código `LINHA`) fica 0, no topo e sem alça. Só com a lista mostrando a ordem real (Ativos, sem busca e sem ordenar por coluna). Pede confirmação com a lista do que muda.
+- **Posição digitada na ficha**: se o número já é de outro equipamento ativo da mesma linha, ele e os seguintes em sequência andam +1 até o primeiro número livre (os demais não mudam). A posição 0 é recusada para quem não é a Linha. Pede confirmação.
+- **Gravação**: uma operação de edição de `posicao` (antes → depois) por equipamento, numa mesma gravação da fila do cadastro: aparece na auditoria e passa pela reaplicação sobre a pasta (mudança concorrente vira conflito, não sobrescreve). Inativos não ocupam posição nem são renumerados. Nenhum campo novo.
+- **Ordem da lista**: corrigida a ordenação que mandava a posição 0 para o fim (`+posicao||999`); vale também para a prévia da importação do MES.
+- **Equipamento de gel** ("Embalagem própria · vazio = a do formato"): quadro com o formato vigente de Parâmetros › Gestão de Gel (saco da pesagem, folha da purga, sobra do barril e composição por tubo de 100 e 75), ou o padrão quando não há vigência, e "Alterar em Parâmetros › Gestão de Gel ↗" (fecha a ficha, perguntando se há alteração, e abre `#cadastros/parametros/gel`, já no bloco do gel).
+- **Tabela**: sem Fabricante/modelo, Comp. e Docs (continuam na ficha); Foto em miniatura ao lado do Código MES (arquivo da pasta; sem pasta, "–"). No Excel a coluna Foto continua "sim"/vazio.
+- Teste: `testes/plataforma/equip-ordem.cjs` (demonstração, dados fictícios).
+
 ## REL-01 · gel nos relatórios da Produção e "Enviar relatório" na janela do dia · Produção 2.6.15, plataforma 1.8.19 (18/11/2026)
 
 Pedido do responsável: os relatórios da Produção não traziam o consumo nem o scrap de gel (o quadro "Gel · teórico × real" só aparecia na tela do Lançamento); e um botão na janela do dia para enviar o relatório do dia, de um turno, só do gel ou de scrap e perdas, ou levar à aba Relatórios. Decisões: gel como item padrão; Waste por ordem acumulado da competência; telas aprovadas.

@@ -3358,6 +3358,10 @@ svg text{font-family:var(--f-body)}
 .dias{display:flex;gap:var(--sp-4,4px);flex-wrap:wrap;padding-top:3px}.form .dias label{flex-direction:row;align-items:center;gap:3px;font-size:12.5px;color:var(--ink);margin:0}
 table.cadst td.in input,table.cadst td.in select{width:100%;min-width:70px}
 table.cadst td{vertical-align:middle}
+/* 1.9.51 · EQ-ORD */
+.eq-foto{display:inline-flex;align-items:center;min-height:32px}.eq-foto:not(:has(img))::after{content:'📷'}.eq-semfoto::after{content:'–';color:var(--muted,#64788f)}.eq-mini{height:32px;width:44px;object-fit:cover;border-radius:4px;border:1px solid var(--line,#d5dde6);display:block}.eq-sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+table.eq-dnd td.eq-h{touch-action:none;cursor:grab;width:28px;text-align:center;font-size:16px;color:var(--muted,#64788f);user-select:none}table.eq-dnd tr.eq-arr{opacity:.45}table.eq-dnd tr.eq-ac td{box-shadow:inset 0 3px 0 var(--accent,#0d5e9c)}table.eq-dnd tr.eq-ab td{box-shadow:inset 0 -3px 0 var(--accent,#0d5e9c)}
+#parGel.eq-real{outline:3px solid var(--accent,#0d5e9c);outline-offset:3px;transition:outline-color .6s}
 .st-novo{color:var(--ok);font-weight:600}.st-alt{color:var(--warn);font-weight:600}.st-rem{color:var(--crit);font-weight:600}
 details.cd{border:1px solid var(--line);border-radius:var(--r);padding:var(--sp-4,4px) var(--sp-8,8px);margin:var(--sp-4,4px) 0;background:var(--surface)}
 details.cd summary{cursor:pointer;font-family:var(--f-display);font-weight:600;text-transform:uppercase;letter-spacing:.04em}
@@ -3942,7 +3946,7 @@ function wireConfigComum(){$('#cPasta').onclick=async()=>{if(await Store.pick())
         entrar pelo ID (autocadastro como Consulta); página inicial por perfil (1x por sessão); vigência gravada não se edita (desativar com motivo); painel de vigências; semáforo central; saída do modo de teste.
    1.1.2: aviso da carga diz qual base foi lida.  1.5: páginas Paradas, Máquinas, Manutenção e Projetos na lista (aparecem quando o HTML chega na pasta).  1.4: lista técnica pela CS12 multinível (itens = nível 1, estrutura = níveis 2+); CS03 sai.  1.3: cabeçalho comum (vac-cabecalho v2: barra do sistema + página + abas), busca Ctrl K, acabamento V1.90, Versões com cabeçalho e último backup.  1.2: Configuração › Versões das páginas (versão e data de cada HTML, gravação das bases, cópias repetidas, histórico).
    ===================================================================== */
-const PAGE={id:'portal',titulo:"Administração · Linha Vacutainer",tituloCurto:"Administração",subtitulo:'Sistemas de gestão da linha',versao:'1.9.50',baseFile:'portal-base.json',idb:'vac-portal',backupDir:'00. Backups/Portal',
+const PAGE={id:'portal',titulo:"Administração · Linha Vacutainer",tituloCurto:"Administração",subtitulo:'Sistemas de gestão da linha',versao:'1.9.51',baseFile:'portal-base.json',idb:'vac-portal',backupDir:'00. Backups/Portal',
  vazio:()=>({schema:'portal-base',rev:0,config:{modulos:{},avisoDias:30,notas:{}},audit:[]}),
  /* itens do Portal para a busca Ctrl K: cadastro, pendências e telas */
  busca:q=>{const R=[],D=Cad.D;if(D)for(const t of CAD_ORD){for(const it of D[t]||[]){const c=String(it[kOf(t)]),nm=t==='bom'?((cadItem('catalogos',it.catalogo)||{}).nome||''):it.nome||'';if(norm(c+' '+nm).includes(q))R.push({tipo:CAD_T[t].um,txt:c+(nm?' · '+nm:''),sub:'Cadastros'+(cadAtivo(t,it,D)?'':' · inativo'),href:'#cadastros/'+t+'/'+encodeURIComponent(c)});if(R.length>30)break}}
@@ -4966,6 +4970,26 @@ const EqFiles={
   for(let i=2;i<100;i++){try{await d.getFileHandle(nome);nome=b+'_'+i+(ext||'')}catch(e){break}}
   await Store.writeFile(d,nome,file);return pasta+'/'+nome}};
 
+/* 1.9.51 · EQ-ORD (pedido do responsável, 19/11/2026): ordem dos equipamentos na linha, do primeiro ao último; a Linha é a posição 0.
+   Duas formas: (1) arrastar e soltar na lista: os ativos da linha ficam 1, 2, 3… na ordem nova; (2) digitar a posição na ficha: se o número
+   já é de outro equipamento, ele e os seguintes em sequência andam +1 (até o primeiro número livre). Inativos não ocupam posição.
+   Grava pela fila (edição de "posicao", com antes e depois), numa operação só: aparece na auditoria e passa pela reaplicação na pasta. */
+const EqOrd={
+ ehLinha:q=>!!q&amp;&amp;(q.tipo==='linha'||q.codigo==='LINHA'),
+ pos:q=>q.posicao==null||q.posicao===''?null:+q.posicao,
+ lista(D,linha){return(D.equipamentos||[]).filter(q=>q.ativo!==false&amp;&amp;!this.ehLinha(q)&amp;&amp;(q.linha||null)===(linha||null))
+  .sort((a,b)=>(this.pos(a)??1e9)-(this.pos(b)??1e9)||String(a.codigo).localeCompare(String(b.codigo),'pt-BR',{numeric:true}))},
+ /* número digitado: quem está em P e os seguintes em sequência andam +1 */
+ empurrar(D,cod,P,linha){const out=[];let nx=+P;for(const q of this.lista(D,linha).filter(q=>q.codigo!==cod&amp;&amp;this.pos(q)!=null&amp;&amp;this.pos(q)>=+P)){if(this.pos(q)<=nx){nx++;out.push([q,nx])}else break}return out},
+ /* nova ordem (arrastar e soltar): os ativos da linha viram 1..N; a Linha fica 0 */
+ sequencia(D,linha,codigos){const out=[];codigos.forEach((c,i)=>{const q=cadItem('equipamentos',c,D);if(q&amp;&amp;this.pos(q)!==i+1)out.push([q,i+1])});
+  const L=(D.equipamentos||[]).find(q=>this.ehLinha(q)&amp;&amp;(q.linha||null)===(linha||null));if(L&amp;&amp;this.pos(L)!==0)out.push([L,0]);return out},
+ ops(pares,motivo){return pares.map(([q,depois])=>({acao:'edição',tipo:'equipamentos',codigo:q.codigo,mudancas:{posicao:{antes:q.posicao??null,depois}},motivo}))},
+ txt(pares){return pares.slice(0,12).map(([q,d])=>`${q.codigo}${q.nome?' ('+q.nome+')':''}: ${q.posicao??'—'} → ${d}`).join('\n')+(pares.length>12?`\n… e mais ${pares.length-12}`:'')}};
+/* foto do equipamento em miniatura na lista (arquivo da pasta; guardada enquanto a página está aberta) */
+const EqThumb={m:new Map(),url(path){if(!this.m.has(path))this.m.set(path,EqFiles.url(path));return this.m.get(path)},
+ carregar(el){el.querySelectorAll('[data-eqfoto]').forEach(s=>{if(s.dataset.ok)return;s.dataset.ok='1';this.url(s.dataset.eqfoto).then(u=>{if(!u||!s.isConnected)return;const im=document.createElement('img');im.src=u;im.alt='Foto de '+(s.dataset.nome||'equipamento');im.className='eq-mini';s.replaceChildren(im)})})}};
+
 /* ---------- o cadastro: leitura, fila e gravação ---------- */
 const Cad={base:null,D:null,mod:0,fonte:'nenhum',err:'',fila:[],gravando:false,denovo:false,conflitos:null,status:'salvo',_lk:false,
  ui:{sec:'inicio',q:'',sit:'ativos',imp:null,aud:{t:'',q:''}},
@@ -5101,6 +5125,7 @@ function cadHash(cod){const s=Cad.ui.sec||'inicio';const h='#cadastros'+(s!=='in
 function cadRota(){const raw=location.hash.slice(1);if(/^reuniao=/.test(raw)){let v=raw.slice(8);try{v=decodeURIComponent(v)}catch(e){}const[d,t]=v.split('|');if(/^\d{4}-\d{2}-\d{2}$/.test(d||''))Reu.dia=d;Reu.rec=/^[\w-]{1,12}$/.test(t||'')?t:'dia';App.show('reuniao',{keepHash:true});return true}if(/^cs12=/.test(raw)){cadNovoCS12(raw);return true}if(/^(geral|fila|reuniao|pend|rel|config)$/.test(raw)){App.show(raw);return true}if(/^importacao(\/|$)/.test(raw)){Imp.sec=(raw.split('/')[1]||'').replace(/[^a-z]/g,'')||null;Imp._rolou=null;App.show('imp',{keepHash:true});return true}if(raw==='admin'){App.show('cad');return true}if(/^entrar(=\w*)?$/.test(raw)){const vt=(raw.split('=')[1]||'').replace(/\W/g,'');App.show('geral',{keepHash:true});setTimeout(()=>{if(typeof vacLogin!=='undefined')vacLogin.abrir({trocar:!!vacLogin.sessao(),volta:vt||null});else Entrar.abrir()},450);return true}if(raw==='versoes'){irVersoes();return true}
  if(!/^cadastros(\/|$)/.test(raw))return false;const p=raw.split('/').slice(1).map(x=>{try{return decodeURIComponent(x)}catch(e){return x}});
  const sec=p[0]||'inicio';if(sec==='importar'&amp;&amp;/^meta/i.test(p[1]||'')){const I=Cad.ui.imp=Cad.ui.imp||{modo:'cs12',fmt:'auto',de:todayISO(),map:{},soBOM:true,txt:'',prev:null};I.modo='meta'}Cad.ui.sec=CAD_T[sec]||CAD_SECS.includes(sec)?sec:'inicio';App.show('cad',{keepHash:true});
+ if(Cad.ui.sec==='parametros'&amp;&amp;p[1]==='gel')setTimeout(()=>{const x=$('#parGel');if(x){x.scrollIntoView({block:'start'});x.classList.add('eq-real');setTimeout(()=>x.classList.remove('eq-real'),2200)}},80);   /* 1.9.51 */
  if(p[1]&amp;&amp;CAD_T[Cad.ui.sec]&amp;&amp;Cad.D&amp;&amp;Cad.ui.sec!=='cambio'){if(cadItem(Cad.ui.sec,p[1]))Ficha.abrir(Cad.ui.sec,p[1]);else{Cad.ui.q=p[1];Cad.ui.sit='todos';App.render();toast(`${cap1(CAD_T[Cad.ui.sec].um)} ${p[1]} não está no cadastro.`,5000,true)}}
  return true}
 
@@ -5176,7 +5201,7 @@ function cadCols(t,D){const fam=c=>{if(!c)return'';const f=cadItem('familias',c,
   catalogos:[['Tipo',it=>it.tipoItem==='preparacao'?'<span class="pill info">preparação</span>':'tubo'],['Código',it=>`${safeCor(it.cor)?`<i class="sw" style="background:${safeCor(it.cor)}"></i>`:''}<b class="mono">${esc(it.codigo)}</b>`],['Nome',it=>esc(it.nome)],['Família',it=>fam(it.familia)],['Formato',it=>esc(it.formato||'')],['PPH nominal',it=>fmtN(vigHoje(it).pphNominal),'n'],['Tubos/caixa',it=>fmtN(vigHoje(it).tubosPorCaixa),'n'],['Caixas/lote',it=>fmtN(vigHoje(it).caixasPorLote),'n'],['BOM',it=>D.bom.some(b=>b.catalogo===it.codigo)?'sim':'<span class="muted">–</span>']],
   materiais:[['Código SAP',cod],['Descrição',it=>esc(it.nome)],['Unidade',it=>esc(it.unidade||'')],['Tipo',it=>esc(it.tipo||'')],['Tipo SAP',it=>esc(it.tipoSAP||'')],['Em BOMs',it=>String(D.bom.filter(b=>(vigHoje(b).itens||[]).concat(vigHoje(b).estrutura||[]).some(i=>i.material===it.codigo)).length),'n']],
   bom:[['Catálogo',cod],['Nome do catálogo',it=>esc((cadItem('catalogos',it.catalogo,D)||{}).nome||'')],['Vigente desde',it=>vigHoje(it).de?fmtD(vigHoje(it).de):'<span class="warn">sem vigência hoje</span>'],['Fonte',it=>esc(vigHoje(it).fonte||(vigHoje(it).de?'manual / anterior':''))],['Itens N1',it=>String((vigHoje(it).itens||[]).length),'n'],['Estrutura',it=>(vigHoje(it).estrutura||[]).length?String(vigHoje(it).estrutura.length):'','n'],['Origem',it=>`<span class="small">${esc(vigHoje(it).origem||'')}</span>`],['Vigências',it=>String((it.vigencias||[]).length),'n']],
-  equipamentos:[['Pos.',it=>fmtN(it.posicao),'n'],['Código',cod],['Código MES',it=>`<span class="mono">${esc(it.codigoMes||'')}</span>`],['Nome',it=>esc(it.nome)],['Tipo',it=>esc(String(it.tipo||'').toUpperCase())],['Papel',it=>esc(String(it.papel||'').toUpperCase())],['Fabricante / modelo',it=>esc([it.fabricante,it.modelo].filter(Boolean).join(' · '))],['Comp.',it=>{const n=(D.componentes||[]).filter(c=>c.equipamento===it.codigo).length;return n?String(n):''},'n'],['Foto',it=>sim(it.foto)],['Docs',it=>(it.documentos||[]).length?String(it.documentos.length):'','n']],
+  equipamentos:[['Pos.',it=>it.posicao==null||it.posicao===''?'–':fmtN(it.posicao),'n'],['Código',cod],['Código MES',it=>`<span class="mono">${esc(it.codigoMes||'')}</span>`],['Foto',it=>it.foto?`<span class="eq-foto" data-eqfoto="${esc(it.foto)}" data-nome="${esc(it.nome||it.codigo)}" title="Foto de ${esc(it.nome||it.codigo)}"><span class="eq-sr">sim</span></span>`:'<span class="eq-semfoto" title="Sem foto"></span>'],['Nome',it=>esc(it.nome)],['Tipo',it=>esc(String(it.tipo||'').toUpperCase())],['Papel',it=>esc(String(it.papel||'').toUpperCase())]],   /* 1.9.51 · EQ-ORD: sem Fabricante/modelo, Comp. e Docs (continuam na ficha); foto ao lado do Código MES */
   turnos:[['Horas (vigência de hoje)',it=>{const h=todayISO(),L=(it.vigencias||[]).filter(v=>v.de<=h&amp;&amp;(!v.ate||v.ate>=h)&amp;&amp;v.inicio);return esc(L.map(turnoResumo).join(' · '))}],['Código',it=>`${safeCor(it.cor)?`<i class="sw" style="background:${safeCor(it.cor)}"></i>`:''}<b class="mono">${esc(it.codigo)}</b>`],['Nome',it=>esc(it.nome)],['Horário',it=>{const v=vigHoje(it);return v.inicio?`${esc(v.inicio)}–${esc(v.fim)}${v.ativo===false?' <span class="muted">(desligado)</span>':''}`:'<span class="warn">sem vigência hoje</span>'}],['Dias',it=>diasTxt(vigHoje(it).dias)],['Pausas',it=>esc((vigHoje(it).pausas||[]).map(p=>p.inicio+'–'+p.fim).join(', '))],['Vigente desde',it=>fmtD(vigHoje(it).de)]],
   componentes:[['Código',cod],['Equipamento',it=>{const q=cadItem('equipamentos',it.equipamento,D);return`<span class="mono">${esc(it.equipamento||'')}</span>${q?' · '+esc(q.nome):''}`}],['Nome',it=>esc(it.nome)],['Sistema',it=>esc(it.sistema||'')],['Crit.',it=>esc(it.criticidade||'')],['Material SAP',it=>`<span class="mono">${esc(it.materialSAP||'')}</span>`]],
   modosFalha:[['Código',cod],['Nome',it=>esc(it.nome)]],
@@ -5201,10 +5226,24 @@ function parFiltrosHtml(D,FP){const T=D.paradas||[];
  return PAR_FILTROS.map(([k,l,f,nm])=>{const vs=[...new Set(T.flatMap(it=>{const x=f(it);return Array.isArray(x)?x:[x]}).filter(Boolean))].sort((a,b)=>String(a).localeCompare(String(b),'pt-BR',{numeric:true}));
   return`<label>${esc(l)}<select data-fp="${k}"><option value="">todos</option>${vs.map(v=>`<option value="${esc(v)}" ${FP[k]===v?'selected':''}>${esc(nm?nm(v):v)}</option>`).join('')}</select></label>`}).join('')+
   (PAR_FILTROS.some(([k])=>FP[k])?'<button class="b sm" id="cadFpX" style="align-self:end">Limpar filtros</button>':'')+' '+ib('Filtros dos códigos de parada','Mostram só os códigos com o valor escolhido (ex.: Pilar D e Onde se aponta "Máquina" = quebras apontadas na máquina). Valem também para o ⇩ Excel. Clique no título de uma coluna para ordenar; de novo inverte; a terceira vez volta à ordem padrão (pelo Nº).')}
+/* 1.9.51 · EQ-ORD: arrastar e soltar as linhas da lista de equipamentos (só dentro da mesma linha de produção) */
+function eqDnd(tb){let de=null,alvo=null,abaixo=false;const linhas=()=>[...tb.querySelectorAll('tr[data-cod]')],limpa=()=>linhas().forEach(r=>r.classList.remove('eq-ac','eq-ab','eq-arr'));
+ /* arrastar com o ponteiro (mouse, toque ou caneta): funciona também no tablet do chão de fábrica */
+ const sob=(x,y)=>{const el=document.elementFromPoint(x,y);return el&amp;&amp;el.closest?el.closest('tr[data-cod]'):null};
+ tb.querySelectorAll('td.eq-h[data-arrasta]').forEach(h=>{
+  h.addEventListener('pointerdown',e=>{if(e.button>0)return;e.preventDefault();de=h.closest('tr');alvo=null;de.classList.add('eq-arr');try{h.setPointerCapture(e.pointerId)}catch(x){}});
+  h.addEventListener('pointermove',e=>{if(!de)return;const r=sob(e.clientX,e.clientY);linhas().forEach(x=>x.classList.remove('eq-ac','eq-ab'));alvo=null;
+   if(!r||r===de||r.dataset.linha!==de.dataset.linha)return;const b=r.getBoundingClientRect();abaixo=!!(e.clientY>b.top+b.height/2||r.dataset.fixo);alvo=r;r.classList.add(abaixo?'eq-ab':'eq-ac')});
+  const fim=e=>{if(!de)return;const r=alvo,origem=de;de=null;alvo=null;limpa();if(e.type!=='pointerup'||!r)return;
+   const cod=origem.dataset.cod,linha=origem.dataset.linha||null,D=Cad.D,ord=EqOrd.lista(D,linha).map(q=>q.codigo).filter(c=>c!==cod);let i=r.dataset.fixo?0:ord.indexOf(r.dataset.cod);if(i<0)i=ord.length;else if(abaixo&amp;&amp;!r.dataset.fixo)i++;ord.splice(i,0,cod);
+   const P=EqOrd.sequencia(D,linha,ord);if(!P.length)return toast('A ordem não mudou.');
+   if(!Cad.podeEditar())return;if(!confirm(`Reorganizar a linha: ${P.length} equipamento(s) mudam de posição (os ativos ficam 1, 2, 3… na ordem nova).\n\n${EqOrd.txt(P)}`))return;
+   Cad.ops(EqOrd.ops(P,'reorganização da linha (arrastar e soltar)'));toast('Ordem salva: '+P.length+' posição(ões).')};
+  h.addEventListener('pointerup',fim);h.addEventListener('pointercancel',fim)})}
 function cadLista(el,t){const D=Cad.D,T=CAD_T[t],cols=cadCols(t,D),k=kOf(t);const q=norm(Cad.ui.q),sit=Cad.ui.sit||'ativos';
  let L=(D[t]||[]).filter(it=>sit==='todos'||(sit==='ativos')===cadAtivo(t,it,D));if(q)L=L.filter(it=>cadBusca(t,it,D).includes(q));
  const FP=t==='paradas'?(Cad.ui.fp||(Cad.ui.fp={})):null;if(FP)L=parFiltrar(L,FP);   /* 1.9.16 · POR-02 */
- L.sort(t==='paradas'?(a,b)=>String(a.numero||'999z').localeCompare(String(b.numero||'999z'))||String(a.codigo).localeCompare(String(b.codigo)):t==='equipamentos'?(a,b)=>(+a.posicao||999)-(+b.posicao||999)||String(a.codigo).localeCompare(String(b.codigo)):(a,b)=>String(a[k]).localeCompare(String(b[k]),'pt-BR',{numeric:true}));
+ L.sort(t==='paradas'?(a,b)=>String(a.numero||'999z').localeCompare(String(b.numero||'999z'))||String(a.codigo).localeCompare(String(b.codigo)):t==='equipamentos'?(a,b)=>(EqOrd.pos(a)??1e9)-(EqOrd.pos(b)??1e9)||String(a.codigo).localeCompare(String(b.codigo),'pt-BR',{numeric:true}):(a,b)=>String(a[k]).localeCompare(String(b[k]),'pt-BR',{numeric:true}));
  const OR=Cad.ui.ord&amp;&amp;Cad.ui.ord.t===t&amp;&amp;cols[Cad.ui.ord.c]?Cad.ui.ord:null;   /* POR-02: ordem pela coluna clicada (texto exibido; números em ordem numérica; vazios no fim) */
  if(OR){const c=cols[OR.c],key=new Map(L.map(it=>[it,htmlTxt(String(c[1](it)??''))]));L.sort((a,b)=>{const x=key.get(a),y=key.get(b);if(!x!==!y)return x?-1:1;return OR.d*x.localeCompare(y,'pt-BR',{numeric:true,sensitivity:'base'})})}
  const foco=document.activeElement&amp;&amp;document.activeElement.id==='cadQ';const pe=Cad.podeEditar(true);
@@ -5213,13 +5252,14 @@ function cadLista(el,t){const D=Cad.D,T=CAD_T[t],cols=cadCols(t,D),k=kOf(t);cons
   ${FP?parFiltrosHtml(D,FP):''}<span class="small muted" style="align-self:center">${L.length} de ${(D[t]||[]).length}</span><span style="flex:1"></span>
   ${pe&amp;&amp;t==='perfis'&amp;&amp;DEFAULT_PERFIS.some(x=>!cadItem('perfis',x.codigo,D))?'<button class="b" id="cadPerfisPad">Criar os perfis padrão</button>':''}${pe?`<button class="b p" id="cadNovo">+ ${t==='bom'?'Nova BOM':'Novo '+esc(T.um)}</button>`:''}${t==='equipamentos'?formBtn(null,'Imprimir todos os formulários'):''}<button class="b" id="cadXls">⇩ Excel</button></div>
   ${pe?'':`<div class="note w" style="margin:8px 0">Somente leitura: ${esc(Cad.motivoEdicao()||'edição bloqueada')} ${!Lock.ok()&amp;&amp;Cad.D&amp;&amp;(Store.mode==='pasta'||Store.mode==='teste')?'<button class="b sm p" id="cadDesbl">Desbloquear edição</button>':Store.mode!=='pasta'&amp;&amp;Store.mode!=='teste'?'<button class="b sm p" id="cadConectar">Conectar agora</button>':''}</div>`}
-  <div class="tw"><table><tr>${cols.map((c,i)=>`<th class="${c[2]||''}" data-ci="${i}" style="cursor:pointer" title="Ordenar por ${esc(c[0])}" aria-sort="${OR&amp;&amp;OR.c===i?(OR.d>0?'ascending':'descending'):'none'}">${esc(c[0])}${OR&amp;&amp;OR.c===i?(OR.d>0?' ▲':' ▼'):''}</th>`).join('')}<th aria-label="Abrir a ficha"></th></tr>${L.map(it=>`<tr class="click" data-cod="${esc(it[k])}">${cols.map(c=>`<td class="${c[2]||''}">${c[1](it)??''}</td>`).join('')}<td class="r"><button type="button" class="b sm" data-abrir="${esc(it[k])}">${pe?'Editar':'Ver'}</button></td></tr>`).join('')||`<tr><td colspan="${cols.length+1}" class="muted">Nenhum item${q?' para esta busca':''}.</td></tr>`}</table></div>
+  ${t==='equipamentos'?(()=>{const dnd=pe&amp;&amp;!q&amp;&amp;sit==='ativos'&amp;&amp;!OR;return`<p class="small muted" style="margin:6px 0">${dnd?'Arraste pela alça ⠿ para reorganizar (a Linha é a posição 0 e fica no topo); ou digite a posição na ficha: quem já está nela e os seguintes andam +1.':pe?'Para reorganizar arrastando, mostre os <b>ativos</b>, sem busca e sem ordenar por coluna.':''}</p>`})():''}<div class="tw"><table${t==='equipamentos'&amp;&amp;pe&amp;&amp;!q&amp;&amp;sit==='ativos'&amp;&amp;!OR?' class="eq-dnd"':''}><tr>${t==='equipamentos'&amp;&amp;pe&amp;&amp;!q&amp;&amp;sit==='ativos'&amp;&amp;!OR?'<th aria-label="Arrastar"></th>':''}${cols.map((c,i)=>`<th class="${c[2]||''}" data-ci="${i}" style="cursor:pointer" title="Ordenar por ${esc(c[0])}" aria-sort="${OR&amp;&amp;OR.c===i?(OR.d>0?'ascending':'descending'):'none'}">${esc(c[0])}${OR&amp;&amp;OR.c===i?(OR.d>0?' ▲':' ▼'):''}</th>`).join('')}<th aria-label="Abrir a ficha"></th></tr>${L.map(it=>`<tr class="click" data-cod="${esc(it[k])}"${t==='equipamentos'&amp;&amp;pe&amp;&amp;!q&amp;&amp;sit==='ativos'&amp;&amp;!OR?` data-linha="${esc(it.linha||'')}"${EqOrd.ehLinha(it)?' data-fixo="1"':''}`:''}>${t==='equipamentos'&amp;&amp;pe&amp;&amp;!q&amp;&amp;sit==='ativos'&amp;&amp;!OR?(EqOrd.ehLinha(it)?'<td class="eq-h muted" title="A Linha é sempre a posição 0">0</td>':`<td class="eq-h" data-arrasta="1" title="Arraste para mudar a posição" aria-label="Arrastar ${esc(it.codigo)}">⠿</td>`):''}${cols.map(c=>`<td class="${c[2]||''}">${c[1](it)??''}</td>`).join('')}<td class="r"><button type="button" class="b sm" data-abrir="${esc(it[k])}">${pe?'Editar':'Ver'}</button></td></tr>`).join('')||`<tr><td colspan="${cols.length+1}" class="muted">Nenhum item${q?' para esta busca':''}.</td></tr>`}</table></div>
   ${t==='bom'?'<p class="small muted">Quantidades por 1.000 tubos. Itens = nível 1 (o que a ordem consome); estrutura = níveis 2+. Para trazer do SAP, use Importar do SAP › Lista técnica (CS12).</p>':''}`;
  const qi=$('#cadQ');let tm;qi.oninput=()=>{clearTimeout(tm);tm=setTimeout(()=>{Cad.ui.q=qi.value;cadLista(el,t)},180)};if(foco){qi.focus();qi.setSelectionRange(qi.value.length,qi.value.length)}
  $$('#cadSit button').forEach(b=>b.onclick=()=>{Cad.ui.sit=b.dataset.v;cadLista(el,t)});
  el.querySelectorAll('th[data-ci]').forEach(h=>h.onclick=e=>{if(e.target.closest('.ib'))return;const i=+h.dataset.ci,o=Cad.ui.ord;Cad.ui.ord=!o||o.t!==t||o.c!==i?{t,c:i,d:1}:o.d>0?{t,c:i,d:-1}:null;cadLista(el,t)});
  el.querySelectorAll('[data-fp]').forEach(x=>x.onchange=()=>{FP[x.dataset.fp]=x.value;cadLista(el,t)});const fx=$('#cadFpX');if(fx)fx.onclick=()=>{Cad.ui.fp={};cadLista(el,t)};
- el.querySelectorAll('tr[data-cod]').forEach(r=>r.onclick=()=>Ficha.abrir(t,r.dataset.cod));
+ el.querySelectorAll('tr[data-cod]').forEach(r=>r.onclick=e=>{if(e.target.closest('.eq-h'))return;Ficha.abrir(t,r.dataset.cod)});
+ if(t==='equipamentos'){EqThumb.carregar(el);const tb=el.querySelector('table.eq-dnd');if(tb)eqDnd(tb)}   /* 1.9.51 · EQ-ORD */
  {const db=el.querySelector('#cadDesbl');if(db)db.onclick=()=>cadDesbloquear(()=>App.render());const cc=el.querySelector('#cadConectar');if(cc)cc.onclick=()=>Store.pick().then(ok=>ok&amp;&amp;App.onConnect())}
  const nv=$('#cadNovo');if(nv)nv.onclick=()=>Ficha.abrir(t,null,{novo:true});
  const pp=$('#cadPerfisPad');if(pp)pp.onclick=()=>{if(!Cad.podeEditar())return;const F=DEFAULT_PERFIS.filter(x=>!cadItem('perfis',x.codigo,D));if(!confirm(`Criar ${F.length} perfil(is) padrão: ${F.map(x=>x.nome).join(', ')}?`))return;Cad.ops(F.map(x=>({acao:'criação',tipo:'perfis',codigo:x.codigo,item:clone(x),motivo:'perfis padrão (Portal 1.7)'})));toast(F.length+' perfil(is) criados.')};
@@ -5357,7 +5397,14 @@ const Ficha={t:null,cod:null,orig:null,W:null,novo:false,edit:false,dirty:false,
   ${e?`<button class="b sm" data-add="_dados" data-tpl="${esc('{"k":"","v":""}')}" style="margin-top:6px">+ Dado</button>`:''}`},
  /* 1.9.12 · Fase 4 · 4a: dados do gel na ficha (formato igual ao da Gestão de Gel) */
  gelEq(){const e=this.edit,G=this.W.gel||{},D=(G.descs||[]),M=((Cad.D.parametros||{}).gel||{}).motivos||[];
-  return`<h3 style="margin-top:14px">Gel: embalagem e descartes ${ib('Gel',AJUDA_CAMPO['gel.equip'])}</h3><div class="fg"><label>Embalagem própria (g) · vazio = a do formato${inpRaw('gel.tara','num',G.tara,e)}</label></div>
+  /* 1.9.51 · EQ-ORD: o que vale quando a embalagem própria está vazia (formato vigente em Parâmetros › Gestão de Gel), com o link para alterar */
+  const FS=((Cad.D.parametros||{}).gel||{}).formatos||[],h=todayISO(),fv=FS.filter(v=>v.from&amp;&amp;v.from<=h).sort((a,b)=>a.from<b.from?-1:1).pop(),F=fv||GEL_FMT_DEF,g=v=>v==null||v===''?'–':fmtN(+v,3).replace(/,?0+$/,''),gu=(v,u)=>v==null||v===''?'–':g(v)+' '+u;
+  const fmtBox=`<div class="note" style="margin:6px 0 8px"><div style="display:flex;flex-wrap:wrap;gap:6px 14px;align-items:baseline"><b>${G.tara!=null&amp;&amp;G.tara!==''?'Embalagem própria deste equipamento: '+g(G.tara)+' g':'Segue o formato'}</b><span class="small muted">${fv?'Parâmetros › Gestão de Gel, vigência desde '+fmtD(fv.from):'sem vigência em Parâmetros: vale o padrão'}</span><span style="flex:1"></span><a href="#cadastros/parametros/gel" class="b sm" data-irpar="gel">Alterar em Parâmetros › Gestão de Gel ↗</a></div>
+   <div style="display:flex;flex-wrap:wrap;gap:10px;margin-top:6px"><div class="tw" style="flex:0 1 auto"><table class="cadst small"><tr><th>Embalagem</th><th class="n">Valor</th><th>Usado em</th></tr>
+    <tr><td>Saco da pesagem</td><td class="n">${gu(F.tara,'g')}${G.tara!=null&amp;&amp;G.tara!==''?' <span class="muted">(não usado: há embalagem própria)</span>':''}</td><td class="small muted">toda pesagem sem embalagem própria</td></tr>
+    <tr><td>Folha da purga</td><td class="n">${gu(F.taraP,'g')}</td><td class="small muted">descarte de purga</td></tr><tr><td>Sobra no barril</td><td class="n">${gu(F.sobra,'kg')}</td><td class="small muted">descarte "barris × sobra padrão"</td></tr></table></div>
+    <div class="tw" style="flex:0 1 auto"><table class="cadst small"><tr><th>Composição (g por tubo)</th><th class="n">Tubo</th><th class="n">Gel</th><th class="n">Aditivo</th><th class="n">Tampa + rolha</th></tr>${['100','75'].map(f=>{const c=(F.f||{})[f]||{};return`<tr><td>Tubo ${f}</td>${['tubo','gel','adit','tr'].map(k=>`<td class="n">${g(c[k])}</td>`).join('')}</tr>`}).join('')}</table></div></div></div>`;
+  return`<h3 style="margin-top:14px">Gel: embalagem e descartes ${ib('Gel',AJUDA_CAMPO['gel.equip'])}</h3><div class="fg"><label>Embalagem própria (g) · vazio = a do formato${inpRaw('gel.tara','num',G.tara,e)}</label></div>${fmtBox}
   <div class="tw"><table class="cadst"><tr><th>Descarte: como o peso é contabilizado</th><th>Categoria do scrap</th><th>Motivos (vazio = todos)</th>${e?'<th></th>':''}</tr>${D.map((d,j)=>`<tr><td class="in"><select data-p="gel.descs.${j}.comp" data-k="txt"${e?'':' disabled'}>${Object.entries(GEL_COMPS).map(([k,l])=>`<option value="${k}" ${d.comp===k?'selected':''}>${esc(l)}</option>`).join('')}</select></td><td class="in"><select data-p="gel.descs.${j}.cat" data-k="txt"${e?'':' disabled'}>${Object.entries(GEL_SCAT).map(([k,l])=>`<option value="${k}" ${d.cat===k?'selected':''}>${l}</option>`).join('')}</select></td>
    <td class="small">${M.filter(m=>m.active!==false&amp;&amp;(!(m.comps||[]).length||m.comps.includes(d.comp))).map(m=>`<label style="margin-right:6px"><input type="checkbox" data-p="gel.descs.${j}.mots" data-k="set" data-val="${esc(m.id)}" ${(d.mots||[]).includes(m.id)?'checked':''}${e?'':' disabled'}> ${esc(m.name)}</label>`).join('')||'<span class="muted">nenhum motivo cadastrado</span>'}</td>${e?`<td><button class="b sm d" data-del="gel.descs.${j}">×</button></td>`:''}</tr>`).join('')||'<tr><td colspan="4" class="small muted">Nenhum descarte.</td></tr>'}</table></div>
   ${e?`<button class="b sm" data-add="gel.descs" data-tpl="${esc(JSON.stringify({id:'d-'+gelUid(),comp:'tubogel',cat:'T',mots:[]}))}" style="margin-top:6px">+ Descarte</button>`:''}`},
@@ -5397,6 +5444,7 @@ const Ficha={t:null,cod:null,orig:null,W:null,novo:false,edit:false,dirty:false,
    const lv=e.target.closest('[data-linhavig]');if(lv&amp;&amp;this.edit)return this.novaLinha(+lv.dataset.linhavig);
    const dv=e.target.closest('[data-delvig]');if(dv&amp;&amp;this.edit){const vs=this.W.vigencias,rm=vs[+dv.dataset.delvig];vs.splice(+dv.dataset.delvig,1);if(rm&amp;&amp;this.t==='turnos'&amp;&amp;vigLinhas(vs,rm.de).length){this.dirty=true;return this.draw()}if(rm&amp;&amp;this.t==='turnos'){const ord=[...vs].sort((a,b)=>a.de<b.de?-1:1),ant=ord.filter(x=>x.de<rm.de).pop(),prox=ord.find(x=>x.de>rm.de);if(ant)for(const x of vigLinhas(vs,ant.de))if(!x._nova){const o=(this.orig&amp;&amp;this.orig.vigencias||[]).find(y=>y.de===x.de&amp;&amp;JSON.stringify(y.dias||[])===JSON.stringify(x.dias||[]));x.ate=prox?addDays(prox.de,-1):(o?o.ate:rm.ate||null)}this.dirty=true;return this.draw()}if(rm){const ord=[...vs].sort((a,b)=>a.de<b.de?-1:1),ant=ord.filter(x=>x.de<rm.de).pop(),prox=ord.find(x=>x.de>rm.de);if(ant&amp;&amp;!ant._nova){const o=(this.orig&amp;&amp;this.orig.vigencias||[]).find(x=>x.de===ant.de);ant.ate=prox?addDays(prox.de,-1):(o?o.ate:rm.ate||null)}}this.dirty=true;return this.draw()}
    const od=e.target.closest('[data-opendoc]');if(od)return EqFiles.abrir(od.dataset.opendoc);
+   const ip=e.target.closest('[data-irpar]');if(ip){e.preventDefault();Modal.close();if(!Ficha.aberta())location.hash='#cadastros/parametros/'+ip.dataset.irpar;return}   /* 1.9.51: fecha a ficha (pergunta se há alteração) e vai ao lugar de alterar */
    const rd=e.target.closest('[data-rmdoc]');if(rd)return this.rmDoc(+rd.dataset.rmdoc)};
   const on=(id,f)=>{const x=box.querySelector('#'+id);if(x)x.onclick=f};
   on('fLink',async()=>{const u=location.href.split('#')[0]+'#cadastros/'+this.t+'/'+encodeURIComponent(this.cod);try{await navigator.clipboard.writeText(u);toast('Link copiado.')}catch(e){prompt('Copie o link:',u)}});
@@ -5429,10 +5477,16 @@ const Ficha={t:null,cod:null,orig:null,W:null,novo:false,edit:false,dirty:false,
  mot(){return(($('#fMot')||{}).value||'').trim()},
  salvar(){if(!Cad.podeEditar())return;const t=this.t,k=kOf(t),W=cadFinal(t,clone(this.W)),mot=this.mot();
   const es=cadValidarItem(t,W,Cad.D,{novo:this.novo});if(es.length)return this.erro(es.map(esc));
-  if(this.novo){this.cod=String(W[k]);this.novo=false;Cad.op({acao:'criação',tipo:t,codigo:this.cod,item:W,motivo:mot||null})}
+  /* 1.9.51 · EQ-ORD: posição digitada já ocupada → quem está nela e os seguintes em sequência andam +1 (na mesma gravação) */
+  let emp=[];if(t==='equipamentos'&amp;&amp;W.ativo!==false&amp;&amp;!EqOrd.ehLinha(W)&amp;&amp;W.posicao!=null&amp;&amp;(this.novo||String(this.orig.posicao??'')!==String(W.posicao))){
+   if(+W.posicao===0)return this.erro('A posição <b>0</b> é da linha inteira. Use 1 para o primeiro equipamento.');
+   emp=EqOrd.empurrar(Cad.D,this.novo?null:this.cod,+W.posicao,W.linha);
+   if(emp.length&amp;&amp;!confirm(`A posição ${W.posicao} já é de ${emp[0][0].codigo}${emp[0][0].nome?' ('+emp[0][0].nome+')':''}. Ele e os seguintes andam +1:\n\n${EqOrd.txt(emp)}\n\nConfirmar?`))return}
+  const extra=EqOrd.ops(emp,`posição ${W.posicao} dada a ${String(W[k])}`);
+  if(this.novo){this.cod=String(W[k]);this.novo=false;Cad.ops([{acao:'criação',tipo:t,codigo:this.cod,item:W,motivo:mot||null},...extra])}
   else{const mud=cadDiff(this.orig,W);if(!Object.keys(mud).length){this.dirty=false;return toast('Nada mudou.')}
    if(cadMudaPassado(t,this.orig,W)&amp;&amp;!mot){this.erro('Informe o <b>motivo</b>: a alteração muda uma vigência que já valeu (antes de hoje).');$('#fMot').focus();return}
-   Cad.op({acao:'edição',tipo:t,codigo:this.cod,mudancas:mud,motivo:mot||null})}
+   Cad.ops([{acao:'edição',tipo:t,codigo:this.cod,mudancas:mud,motivo:mot||null},...extra])}
   this.recarregar();toast('Alteração registrada.')},
  inativar(){if(!Cad.podeEditar())return;const mot=this.mot();if(!mot){this.erro('Informe o <b>motivo</b> para inativar.');$('#fMot').focus();return}
   if(this.dirty&amp;&amp;!confirm('As outras alterações desta ficha (não salvas) serão descartadas. Continuar?'))return;
@@ -6179,7 +6233,7 @@ function cadImportarEqMes(el,I){const D=Cad.D,pe=Cad.podeEditar(true);if(!D){el.
  $('#iTxt').oninput=()=>{I.txtEq=$('#iTxt').value};$('#iLimpar').onclick=()=>{I.txtEq='';I.eqP=null;cadImportarEqMes(el,I)};
  $('#iLer').onclick=()=>{I.txtEq=$('#iTxt').value;I.eqP=EqMes.sugerir(EqMes.ler(I.txtEq),Cad.D);eqMesPrev(I)};
  if(I.eqP)eqMesPrev(I)}
-function eqMesPrev(I){const box=$('#iPrev');if(!box)return;const D=Cad.D,P=I.eqP,pe=Cad.podeEditar(true),E=(D.equipamentos||[]).filter(q=>q.ativo!==false).sort((a,b)=>(+a.posicao||999)-(+b.posicao||999)||String(a.codigo).localeCompare(String(b.codigo)));
+function eqMesPrev(I){const box=$('#iPrev');if(!box)return;const D=Cad.D,P=I.eqP,pe=Cad.podeEditar(true),E=(D.equipamentos||[]).filter(q=>q.ativo!==false).sort((a,b)=>(EqOrd.pos(a)??1e9)-(EqOrd.pos(b)??1e9)||String(a.codigo).localeCompare(String(b.codigo),'pt-BR',{numeric:true}));
  const dup=new Map();for(const r of P.linhas)if(r.cod&amp;&amp;r.cod!=='+'&amp;&amp;r.cod!=='-')dup.set(r.cod,(dup.get(r.cod)||0)+1);
  const ops=EqMes.ops(P,D),sem=P.linhas.filter(r=>!r.erros.length&amp;&amp;!r.cod).length,repet=[...dup].filter(([,n])=>n>1).map(([c])=>c),conf=P.linhas.filter(r=>/sugest/.test(r.por||'')).length;
  const sit=r=>{if(r.erros.length)return`<span class="bad">${esc(r.erros.join('; '))}</span>`;if(!r.cod)return`<span class="warn">escolha o equipamento${r.aviso?' · '+esc(r.aviso):''}</span>`;if(r.cod==='-')return'<span class="muted">ignorada</span>';if(r.cod==='+')return'<span class="st-novo">novo equipamento</span>';if(dup.get(r.cod)>1)return'<span class="bad">equipamento escolhido em mais de uma linha</span>';const q=cadItem('equipamentos',r.cod,D);const d=[];if(q){if(String(q.codigoMes||'')!==r.mes)d.push('código MES');if(String(q.departamento||'')!==String(r.dep||''))d.push('departamento');if(String(q.centroTrabalho||'')!==String(r.wc||''))d.push('work center');if(r.troca&amp;&amp;r.desc!==q.nome)d.push('nome')}return(d.length?'muda: '+d.join(', '):'<span class="muted">igual</span>')+(r.por?` <span class="small ${/sugest/.test(r.por)?'warn':'muted'}">(${esc(r.por)})</span>`:'')};
@@ -37674,15 +37728,15 @@ body.vac-porta{overflow:hidden}
     {
       "id": "portal",
       "path": "Plataforma.html#motor/portal",
-      "version": "1.9.50",
-      "sha256": "53803f97931e2e2069c82caf78e8203ed25582c78041a5c92ea0f0600482be3c",
-      "bytes": 1242245
+      "version": "1.9.51",
+      "sha256": "470160ca14914f6f6940ea2cbf19203db7cfdb3bcf5d36953e3d9219890bc363",
+      "bytes": 1252202
     }
   ],
   "limitations": [
     "Projetos e conteúdo técnico OSM/MES/AM/TPM mantêm os limites documentados nas fontes."
   ],
-  "enginesSha256": "79e9cfc0f05256b0a15519758a3220c1e18d4d1ec27d5444e6b74a00e62c2f7b",
+  "enginesSha256": "b6ef15e1371d09d707c704cc6be5bd65b36178182af9b54c9d2083b9b1c498fa",
   "originRevision": "ffc9ee8",
   "sourceMode": "single-html",
   "originEnginesSha256": "a87a64ad0c328f70e102b2ae888790a9b5d5a9bd05778652a7ce7cae140e40d2"
@@ -37752,7 +37806,7 @@ summary{cursor:pointer;font-weight:600;color:var(--navy)}
 'use strict';
 /* ---------- referência (atualizar quando a plataforma mudar de versão) ---------- */
 // Iguais às do pacote da plataforma (nova-plataforma/src/generated/manifest.json); o teste ferramenta-verificar confere.
-const VERSOES = {"oee":"2.6.15","perdas":"1.12.17","gel":"2.42","paradas":"1.2.17","equip":"1.0.20","inic":"1.1.16","linha":"1.3.0","projetos":"0.1.16","portal":"1.9.50"};
+const VERSOES = {"oee":"2.6.15","perdas":"1.12.17","gel":"2.42","paradas":"1.2.17","equip":"1.0.20","inic":"1.1.16","linha":"1.3.0","projetos":"0.1.16","portal":"1.9.51"};
 const BASES = [
  { arq: 'vacutainer-cadastros.json', mod: 'portal', nome: 'Cadastro geral (Portal)', obrig: true, cadastro: true, bk: 'Cadastros' },
  { arq: 'portal-base.json', mod: 'portal', nome: 'Portal', obrig: true, bk: 'Portal' },
@@ -38343,7 +38397,7 @@ import { Icon, Button, Badge, Empty, Modal, BarChart, BrandLogo, CommandMenu } f
 import { ModuleFrame } from "vac:modulo/components/ModuleFrame";
 import manifest from "vac:recurso/manifesto";
 import { ModuleTabs } from "vac:modulo/components/ModuleTabs";
-const VERSION = "1.8.19";
+const VERSION = "1.8.20";
 /* Navegação 1.3.0 (16/11/2026): Visão da linha, Relatórios e Importações têm abas; as que mostram uma tela do
    Portal (motor da Administração) trazem o 3º campo com a aba dele. Administração fica só com cadastros e configuração. */
 const SHELL_TABS = {
