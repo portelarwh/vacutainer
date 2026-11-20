@@ -19,7 +19,7 @@ const html = fs.readFileSync(path.resolve(__dirname, '../../Plataforma.html'));
     await f.locator('[data-pin="2"]').first().click(); await f.waitForTimeout(400);
     const t = await f.evaluate(() => ({ abas: [...document.querySelectorAll('#nav [data-t]')].map(b => b.dataset.t), ck: document.querySelector('#fCk h4')?.textContent || '', pes: document.querySelector('#fPes h4')?.textContent || '',
       fontes: [...document.querySelectorAll('#fFontes [data-fonte]')].map(li => li.dataset.fonte), rc: [...document.querySelectorAll('#ficha h4 .l3-rc')].map(x => x.textContent) }));
-    assert.deepEqual(t.abas, ['mapa', 'pessoas', 'checklists', 'config'], 'abas da página sem o piloto');
+    assert.deepEqual(t.abas, ['mapa', 'pessoas', 'checklists', 'form', 'config'], 'abas da página sem o piloto (1.4.0: com Formulários)');
     assert.match(t.ck, /previstos agora/); assert.match(t.pes, /cadastro · por turno/);
     assert.deepEqual(t.fontes, ['par', 'equip', 'inic', 'oee'], 'fontes de cada número');
     assert.ok(t.rc.some(x => /^no período/.test(x)) && t.rc.some(x => /^agora/.test(x)), 'recorte de tempo nos blocos: ' + JSON.stringify(t.rc));
