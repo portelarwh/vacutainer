@@ -8031,8 +8031,11 @@ const Engine = (() => {
       const k = f.iv.end <= 1440 ? 0 : f.iv.start >= 1440 ? 1 : (f.iv.end - 1440) / (f.iv.end - f.iv.start);
       all.cap += f.capDec; all.metaDec += f.metaAdjDec; all.metaOp += f.metaOp; all.grossMin += f.min;
       if (!k) continue;
-      raw.grossMin += f.min * k; raw.deductMin += f.deduct * k; raw.netMin += f.net * k; raw.aMin += f.a * k; raw.pMin += f.p * k; raw.infoMin += f.info * k;
-      raw.cap += f.capDec * k; raw.metaDec += f.metaAdjDec * k; raw.metaOrigDec += f.metaOrigDec * k; raw.metaOp += f.metaOp * k;
+      /* paradas com horário: o que caiu depois de 00:00; as sem horário (rateadas no intervalo): pela proporção do tempo */
+      const T = f.tAll || {}, P = f.tPos || {}, depois = bk => (P[bk] || 0) + ((f[bk] || 0) - (T[bk] || 0)) * k;
+      const dD = depois('deduct'), gross = f.min * k, net = Math.max(0, gross - dD), kn = f.net > 0 ? net / f.net : k;
+      raw.grossMin += gross; raw.deductMin += dD; raw.netMin += net; raw.aMin += depois('a'); raw.pMin += depois('p'); raw.infoMin += depois('info');
+      raw.cap += f.capDec * kn; raw.metaDec += f.metaAdjDec * kn; raw.metaOrigDec += f.metaOrigDec * k; raw.metaOp += f.metaOp * kn;
       raw.good += (f.good || 0) * k; raw.goodMin += f.pph ? (f.good || 0) * k * 60 / f.pph : 0; if (f.iv.kind === 'extra') raw.extraMin += f.min * k;
     }
     if (!raw.grossMin) return null;
@@ -8140,11 +8143,12 @@ const Engine = (() => {
   const bumpConfig = () => { cfgRev++; };
   /* TUR-07: o dia anterior da mesma linha (a parte depois de 00:00 do turno dele entra aqui) */
   const diaAnterior = (db, day) => (db.productionDays || []).find(d => !d.deleted &amp;&amp; d.lineId === day.lineId &amp;&amp; d.date === U.addDays(day.date, -1)) || null;
+  const diaSeguinte = (db, day) => (db.productionDays || []).find(d => !d.deleted &amp;&amp; d.lineId === day.lineId &amp;&amp; d.date === U.addDays(day.date, 1)) || null;
   function computeDay(db, day) {
-    const c = cache.get(day), ant = diaAnterior(db, day), antRev = ant ? ant.id + ':' + ant._rev : '';
-    if (c &amp;&amp; c.rev === day._rev &amp;&amp; c.cfg === cfgRev &amp;&amp; c.db === db &amp;&amp; c.ant === antRev) return c.res;
+    const c = cache.get(day), ant = diaAnterior(db, day), antRev = ant ? ant.id + ':' + ant._rev : '', seg = diaSeguinte(db, day), segId = seg ? seg.id : '';
+    if (c &amp;&amp; c.rev === day._rev &amp;&amp; c.cfg === cfgRev &amp;&amp; c.db === db &amp;&amp; c.ant === antRev &amp;&amp; c.seg === segId) return c.res;
     const res = computeDayRaw(db, day);
-    cache.set(day, { rev: day._rev, cfg: cfgRev, db, res, ant: antRev });
+    cache.set(day, { rev: day._rev, cfg: cfgRev, db, res, ant: antRev, seg: segId });
     return res;
   }
 
@@ -8178,7 +8182,9 @@ const Engine = (() => {
       const imp = impactOf(ev, db), b = bucketOf(imp);
       const er = { ev, imp, bucket: b, minutes: eventMinutes(ev), splits: [], shiftIds: new Set() };
       if (ev.start != null &amp;&amp; ev.end != null) {
-        for (const f of flat) { const o = overlap(ev.start, ev.end, f.iv.start, f.iv.end); if (o > 0) { f[b] += o; f.evIds.push(ev.id); er.splits.push({ ivId: f.iv.id, min: o }); er.shiftIds.add(f.ps.id); } }
+        for (const f of flat) { const o = overlap(ev.start, ev.end, f.iv.start, f.iv.end); if (o > 0) { f[b] += o; f.evIds.push(ev.id); er.splits.push({ ivId: f.iv.id, min: o }); er.shiftIds.add(f.ps.id);
+          /* TUR-07: minutos com horário no intervalo e os que caem depois de 00:00 (a divisão segue o horário real, não a proporção) */
+          f.tAll = f.tAll || {}; f.tAll[b] = (f.tAll[b] || 0) + o; const oPos = overlap(ev.start, ev.end, Math.max(f.iv.start, 1440), f.iv.end); if (oPos > 0) { f.tPos = f.tPos || {}; f.tPos[b] = (f.tPos[b] || 0) + oPos; } } }
         const covered = sum(er.splits, s => s.min);
         if (covered < er.minutes - 0.01) M('erro', `A parada ${U.range(ev.start, ev.end)} tem ${U.fmt(er.minutes - covered)} min fora dos intervalos do dia.`, { ev: ev.id });
       } else if (ev.intervalId &amp;&amp; ivMap.has(ev.intervalId)) {
@@ -8309,13 +8315,15 @@ const Engine = (() => {
     if (ForaTurno.relogio(db, day.date)) {
       const partes = [];
       for (const sr of shiftRes) { if (sr.off || sr.npOff) continue; const v = viradaDoTurno(flat.filter(f => f.ps === sr.ps), sr, shiftManual[sr.ps.id], day.scrapMode === 'day'); if (v) partes.push({ ps: sr.ps, ...v }); }
-      if (partes.length) { virada = { agg: partes.reduce((a, x) => addAgg(a, x.agg), emptyAgg()), turnos: partes.map(x => x.ps.snap.name), para: U.addDays(day.date, 1) }; subAgg(dayAgg, virada.agg);
-        M('info', `${virada.turnos.join(', ')}: ${U.fmt(virada.agg.good)} produzido(s) depois de 00:00 contam no total de ${U.brDate(virada.para)} (o OEE do turno é o do turno inteiro).`); }
+      if (partes.length) { const ag = partes.reduce((a, x) => addAgg(a, x.agg), emptyAgg()), nomes = partes.map(x => x.ps.snap.name), para = U.addDays(day.date, 1);
+        if (diaSeguinte(db, day)) { virada = { agg: ag, turnos: nomes, para }; subAgg(dayAgg, virada.agg);
+          M('info', `${nomes.join(', ')}: ${U.fmt(ag.good)} produzido(s) depois de 00:00 contam no total de ${U.brDate(para)} (o OEE do turno é o do turno inteiro).`); }
+        else M('info', `${nomes.join(', ')}: ${U.fmt(ag.good)} produzido(s) depois de 00:00 ficam no total deste dia enquanto não existir o lançamento de ${U.brDate(para)}.`); }
     }
     if (!opts.semVizinho) { const ant = diaAnterior(db, day);
       if (ant &amp;&amp; ForaTurno.relogio(db, ant.date)) { let ra = null; try { ra = computeDayRaw(db, ant, { semVizinho: true }); } catch (e) { console.warn('TUR-07', e); }
         if (ra &amp;&amp; ra.virada) { vem = { ...ra.virada, de: ant.date }; addAgg(dayAgg, vem.agg); M('info', `Inclui ${U.fmt(vem.agg.good)} produzido(s) depois de 00:00 pelo ${vem.turnos.join(', ')} de ${U.brDate(ant.date)} (parte do turno que passou da meia-noite).`); } } }
-    if (day.scrapMode === 'day') { dayAgg.scrap = +day.scrapDay || 0; dayAgg.scrapKnown = day.scrapDay != null; dayAgg.scrapMin = dayAgg.cap > 0 ? dayAgg.scrap * dayAgg.netMin / dayAgg.cap : 0; }
+    if (day.scrapMode === 'day') { dayAgg.scrap = (+day.scrapDay || 0) + (vem ? vem.agg.scrap || 0 : 0); dayAgg.scrapKnown = day.scrapDay != null; dayAgg.scrapMin = dayAgg.cap > 0 ? dayAgg.scrap * dayAgg.netMin / dayAgg.cap : 0; }   /* TUR-07: + scrap que veio do turno do dia anterior */
     if (dayManual.n) {
       dayAgg.aMin += dayManual.a; dayAgg.pMin += dayManual.p; dayAgg.infoMin += dayManual.info;
       if (dayManual.deduct &amp;&amp; dayAgg.netMin > 0) { const k = Math.max(0, dayAgg.netMin - dayManual.deduct) / dayAgg.netMin; dayAgg.cap *= k; dayAgg.metaDec *= k; dayAgg.metaOp *= k; dayAgg.netMin -= dayManual.deduct; dayAgg.deductMin += dayManual.deduct; }
@@ -38404,8 +38412,8 @@ body.vac-porta{overflow:hidden}
       "id": "oee",
       "path": "Plataforma.html#motor/oee",
       "version": "2.6.21",
-      "sha256": "0535828a73c0aa5ed306c18f96e51d404a738050d792b784663b7060f148e756",
-      "bytes": 2292729
+      "sha256": "ad8f9a991bfc1a46ea4fe541c535a50a6f3a7a960d022cc916a1350f78c6ab15",
+      "bytes": 2294018
     },
     {
       "id": "perdas",
@@ -38467,7 +38475,7 @@ body.vac-porta{overflow:hidden}
   "limitations": [
     "Projetos e conteúdo técnico OSM/MES/AM/TPM mantêm os limites documentados nas fontes."
   ],
-  "enginesSha256": "75c8b4255ba39b02fbd3937bf8be92c197dfbddd52049528d7e1d81c8d643a93",
+  "enginesSha256": "6877007105b7ec4ef79cf3a4bd7fdb5520fa1edcca98a1decfb552b65a10ef8f",
   "originRevision": "ffc9ee8",
   "sourceMode": "single-html",
   "originEnginesSha256": "a87a64ad0c328f70e102b2ae888790a9b5d5a9bd05778652a7ce7cae140e40d2"

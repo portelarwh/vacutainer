@@ -94,8 +94,10 @@ Pedidos do responsável: (1) com a vigência nova do turno (sábado 06:00–13:3
 
 Decisão do responsável (20/11/2026; dias desde 01/11/2026, a mesma data da TUR-06): com o 3º turno habilitado (ou qualquer turno produtivo que passe de 00:00), o total do dia segue o calendário.
 - **Lançamento:** o turno continua um só, no dia em que começou, com o OEE do turno inteiro (resultado do turno não muda).
-- **Total do dia (`computeDayRaw`):** a parte depois de 00:00 (`res.virada`) sai do total do dia do turno e entra no total do dia seguinte (`res.vem`, lido de `computeDayRaw(diaAnterior, { semVizinho: true })`). Horas: pelos minutos de cada lado (a hora que atravessa 00:00 divide-se pelos minutos); paradas com horário: pelo horário das horas; paradas sem horário: proporcionais ao tempo; scrap do turno: proporcional à produção (sem produção, ao tempo); capacidade e meta: pela mesma escala do turno. Scrap diário (modo dia) e as contagens de intervalos e paradas ficam no dia do turno.
-- **Cache:** o resultado do dia guarda a revisão do dia anterior (muda junto).
+- **Total do dia (`computeDayRaw`):** a parte depois de 00:00 (`res.virada`) sai do total do dia do turno e entra no total do dia seguinte (`res.vem`, lido de `computeDayRaw(diaAnterior, { semVizinho: true })`). Horas: pelos minutos de cada lado (a hora que atravessa 00:00 divide-se pelos minutos); paradas com horário: pelo horário real (`f.tAll`/`f.tPos`, mesmo dentro da hora que atravessa 00:00); paradas sem horário: proporcionais ao tempo; scrap do turno: proporcional à produção (sem produção, ao tempo); capacidade e meta: pela mesma escala do turno. Scrap diário (modo dia) e as contagens de intervalos e paradas ficam no dia do turno.
+- **Dia seguinte sem lançamento:** a parte fica no dia do turno (os relatórios só somam dias lançados) e o dia avisa; ao criar o lançamento do dia seguinte, ela passa para ele.
+- **Scrap diário no dia seguinte:** o scrap que veio do turno soma ao scrap do dia.
+- **Cache:** o resultado do dia guarda a revisão do dia anterior e se o dia seguinte existe.
 - **Avisos:** "X produzido(s) depois de 00:00 contam no total de dd/mm" no dia do turno e "Inclui X … de dd/mm" no seguinte.
 - **Limite:** turno lançado pelo total (sem horas) não se divide.
 - **Teste:** `testes/plataforma/turno-virada.cjs`.

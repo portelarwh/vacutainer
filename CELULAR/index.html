@@ -104,7 +104,7 @@ const hm2min=s=>{const[h,m]=String(s||'0:0').split(':').map(Number);return h*60+
 const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,6);
 const addDias=(iso,n)=>{const d=new Date(iso+'T12:00:00');d.setDate(d.getDate()+n);return hojeISO(d)};
 function toast(t){const e=document.createElement('div');e.className='toast';e.textContent=t;document.body.appendChild(e);setTimeout(()=>e.remove(),2600)}
-const VERSAO='0.2';
+const VERSAO='0.3';
 /* o arquivo é enviado aos celulares e aberto direto (sem servidor): se o navegador que abriu não guarda dados, o operador é avisado */
 const GUARDA=(()=>{try{localStorage.setItem('mt.teste','1');localStorage.removeItem('mt.teste');return true}catch(e){return false}})();
 const LS={get(k,d){try{const v=localStorage.getItem('mt.'+k);return v?JSON.parse(v):d}catch(e){return d}},set(k,v){try{localStorage.setItem('mt.'+k,JSON.stringify(v))}catch(e){toast('Memória do celular cheia: exporte o histórico')}}};
@@ -134,10 +134,14 @@ function turnoAgora(d=new Date()){const m=d.getHours()*60+d.getMinutes();for(con
 
 /* ============================ dados do aparelho ============================ */
 let TURNOS=LS.get('turnos',[]);const salvarT=()=>LS.set('turnos',TURNOS);
-function novoTurno(tc,data){const t=turnoDe(tc),c=CFG.cats[0];return{id:uid(),data,turno:tc,operador:LS.get('operador',''),cat:c.c,lote:'',op:'',
+/* 0.3 · o turno guarda a meta, o gel e o nome do catálogo do momento do lançamento (catSnap): mudar a configuração depois não
+   altera turnos já lançados nem os relatórios refeitos deles. Turno antigo sem catSnap usa a configuração atual. */
+const fotoCat=c=>c?{c:c.c,n:c.n,meta:c.meta,gel:c.gel}:null;
+const catDo=T=>T.catSnap&&T.catSnap.c===T.cat?T.catSnap:cat(T.cat);
+function novoTurno(tc,data){const t=turnoDe(tc),c=CFG.cats[0];return{id:uid(),data,turno:tc,operador:LS.get('operador',''),cat:c.c,catSnap:fotoCat(c),lote:'',op:'',
  slots:intervalos(t).map(s=>({...s,real:null,par:[]})),scrapModo:'total',scrapTotal:null,scrapMaq:{},gel:{aplicadoKg:null,itens:{}},foto:null,obs:'',fechado:false,criadoEm:new Date().toISOString()}}
-const planoSlot=(T,s)=>{const c=cat(T.cat);return c?Math.round(c.meta*s.min/60):0};
-function resumo(T){const c=cat(T.cat)||{},pl=T.slots.reduce((a,s)=>a+planoSlot(T,s),0),inf=T.slots.filter(s=>s.real!=null),re=inf.reduce((a,s)=>a+(+s.real||0),0);
+const planoSlot=(T,s)=>{const c=catDo(T);return c?Math.round(c.meta*s.min/60):0};
+function resumo(T){const c=catDo(T)||{},pl=T.slots.reduce((a,s)=>a+planoSlot(T,s),0),inf=T.slots.filter(s=>s.real!=null),re=inf.reduce((a,s)=>a+(+s.real||0),0);
  const par=T.slots.flatMap(s=>s.par.map(p=>({...p,de:s.de,ate:s.ate}))),pm=par.reduce((a,p)=>a+(+p.min||0),0);
  const scrap=T.scrapModo==='maq'?Object.values(T.scrapMaq).reduce((a,v)=>a+(+v||0),0):(T.scrapTotal==null?null:+T.scrapTotal);
  const gT=c.gel?re*1000*c.gel/1000:null /* re (mil tubos) × 1000 × g/tubo ÷ 1000 = kg */, gR=T.gel.aplicadoKg==null?null:+T.gel.aplicadoKg, gS=Object.values(T.gel.itens||{}).reduce((a,v)=>a+(+v||0),0);
@@ -184,7 +188,7 @@ const atual=()=>abertoHoje()||TURNOS.filter(x=>!x.fechado).slice(-1)[0];
 function slotAgora(T){const a=turnoAgora();if(a.data!==T.data||a.t!==T.turno)return -1;const d=new Date(),m=d.getHours()*60+d.getMinutes();
  return T.slots.findIndex(s=>{let x=hm2min(s.de),y=hm2min(s.ate);if(y<=x)y+=1440;let mm=m;if(mm<x)mm+=1440;return mm>=x&&mm<y})}
 function vTurno(){const T=atual();if(!T)return topo('Meu turno')+`<main><div class="card">Nenhum turno aberto. <button class="btn pri blk" onclick="ir('inicio')">Voltar</button></div></main>`;
- const c=cat(T.cat)||{},r=resumo(T),ag=slotAgora(T);let acP=0,acR=0;
+ const c=catDo(T)||{},r=resumo(T),ag=slotAgora(T);let acP=0,acR=0;
  return topo('Meu turno',`${(turnoDe(T.turno)||{}).n} · ${br(T.data)}`,'<a class="ib" href="#inicio" aria-label="Voltar" style="text-decoration:none">‹</a>')+`<main>
  <div class="card"><h2>Turno</h2><div style="display:grid;gap:10px">
   <div class="chips" role="radiogroup" aria-label="Turno">${CFG.turnos.map(t=>`<button class="chip${T.turno===t.c?' on':''}" data-tc="${t.c}">${esc(t.n)}</button>`).join('')}</div>
@@ -218,7 +222,7 @@ function vTurno(){const T=atual();if(!T)return topo('Meu turno')+`<main><div cla
 function ligTurno(){const T=atual();comum();if(!T)return;const sv=()=>{salvarT()},rr=()=>{salvarT();const y=scrollY;render();scrollTo(0,y)};
  $$('[data-tc]').forEach(b=>b.onclick=()=>{if(b.dataset.tc===T.turno)return;if(T.slots.some(s=>s.real!=null||s.par.length)&&!confirm('Trocar o turno refaz o hora a hora. Continuar?'))return;T.turno=b.dataset.tc;T.slots=intervalos(turnoDe(T.turno)).map(s=>({...s,real:null,par:[]}));rr()});
  $('#op').oninput=e=>{T.operador=e.target.value;LS.set('operador',T.operador);sv()};$('#lote').oninput=e=>{T.lote=e.target.value.trim();sv()};$('#opn').oninput=e=>{T.op=e.target.value.trim();sv()};
- $('#cat').onchange=e=>{T.cat=e.target.value;rr()};
+ $('#cat').onchange=e=>{T.cat=e.target.value;T.catSnap=fotoCat(cat(T.cat));rr()};
  $$('[data-real]').forEach(i=>{i.onchange=()=>{const v=i.value.trim();T.slots[+i.dataset.real].real=v===''?null:Math.max(0,+v.replace(',','.'));rr()}});
  $$('[data-addp]').forEach(b=>b.onclick=()=>parada(T,+b.dataset.addp,rr));
  $$('[data-delp]').forEach(b=>b.onclick=()=>{const[i,k]=b.dataset.delp.split(':').map(Number);T.slots[i].par.splice(k,1);rr()});

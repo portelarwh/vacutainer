@@ -40,6 +40,11 @@ const html = fs.readFileSync(path.resolve(__dirname, '../../CELULAR/index.html')
     assert.ok(await p.evaluate(() => document.querySelector('#cv').getContext('2d').getImageData(80, 120, 1, 1).data[3] > 0), 'imagem do WhatsApp desenhada');
     console.log('ok fechamento e texto do WhatsApp (hora vazia como "—", não zero); imagem desenhada');
 
+    // 3b) mudar a meta e o gel do catálogo na configuração não altera o turno já lançado (catSnap)
+    const snap = await p.evaluate(() => { const c = CFG.cats.find(x => x.c === '360060'); c.meta = 100; c.gel = 1; LS.set('cfg', CFG); const r = resumo(TURNOS[0]); const t = txtWA(TURNOS[0]); c.meta = 56; c.gel = 0.834; LS.set('cfg', CFG); return { pl: r.pl, gT: +r.gT.toFixed(3), t: /Produção: 164 de 462 mil/.test(t) }; });
+    assert.deepEqual(snap, { pl: 462, gT: 136.776, t: true }, 'turno lançado mantém a meta e o gel do momento');
+    console.log('ok mudar a meta (56 → 100) e o gel depois do fechamento não altera o turno lançado nem o texto do WhatsApp');
+
     // 4) gel na ordem: 800 tubos × 0,834 g = 667,2 g
     await p.goto(p.url().split('#')[0] + '#gel'); await p.fill('#gq', '800');
     assert.equal(await p.textContent('#gres'), '667,2 g'); await p.fill('#gj', '0,5'); assert.match(await p.textContent('main'), /Falta apontar: 167,2 g/);
@@ -52,9 +57,9 @@ const html = fs.readFileSync(path.resolve(__dirname, '../../CELULAR/index.html')
     await p.goto(p.url().split('#')[0] + '#config'); await p.fill('#cl', 'Linha Exemplo (TESTE)'); await p.fill('[data-cm="0"]', '61'); await p.click('#csv');
     const gerado = await p.evaluate(() => gerarApp());
     assert.ok(gerado.startsWith('<!doctype html>') && gerado.includes('"linha":"Linha Exemplo (TESTE)"') && !gerado.includes('6275188') && !gerado.includes('Operador (TESTE)'), 'HTML gerado com a configuração e sem o histórico');
-    const srv2 = http.createServer((q, r) => { r.setHeader('Content-Type', 'text/html; charset=utf-8'); r.end(gerado); }); await new Promise(r => srv2.listen(0, '127.0.0.1', r));
+    const srv2 = http.createServer((q, r) => { r.setHeader('Content-Type', 'text/html; charset=utf-8'); r.end(gerado); }); await new Promise(r => srv2.listen(0, '127.0.0.1', r)); srv2.unref();
     const abrir = async antigo => { const c2 = await browser.newContext({ ...devices['Pixel 7'] }); if (antigo) await c2.addInitScript(() => { if (!localStorage.getItem('mt.cfg')) localStorage.setItem('mt.cfg', JSON.stringify({ linha: 'Antiga', unidade: 'mil', junta: 45, turnos: [{ c: 'T1', n: '1º', i: '06:00', f: '14:30' }], cats: [{ c: '1', n: 'x', meta: 1, gel: 0 }], maqs: [], motivos: [], scrapGel: [], rev: 1 })); });
-      const p2 = await c2.newPage(); await p2.goto('http://127.0.0.1:' + srv2.address().port + '/#inicio'); const r = await p2.evaluate(() => ({ linha: CFG.linha, meta: CFG.cats[0].meta, guardada: JSON.parse(localStorage.getItem('mt.cfg')).linha, versao: document.body.textContent.includes('versão 0.2'), denovo: gerarApp().includes('Linha Exemplo') })); await c2.close(); return r; };
+      const p2 = await c2.newPage(); await p2.goto('http://127.0.0.1:' + srv2.address().port + '/#inicio'); const r = await p2.evaluate(() => ({ linha: CFG.linha, meta: CFG.cats[0].meta, guardada: JSON.parse(localStorage.getItem('mt.cfg')).linha, versao: /versão \d+\.\d+/.test(document.body.textContent), denovo: gerarApp().includes('Linha Exemplo') })); await c2.close(); return r; };
     const esperado = { linha: 'Linha Exemplo (TESTE)', meta: 61, guardada: 'Linha Exemplo (TESTE)', versao: true, denovo: true };
     assert.deepEqual(await abrir(false), esperado, 'celular novo'); assert.deepEqual(await abrir(true), esperado, 'celular com configuração antiga');
     srv2.close(); console.log('ok "Gerar app com esta configuração": o HTML gerado abre configurado (celular novo ou com configuração antiga), sem levar o histórico');
