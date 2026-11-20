@@ -1,6 +1,6 @@
 # Proposta LANC-03 · aba Lançamento por modo (hora a hora, por turno, dia) e scrap por turno ou diário
 
-Pedido do responsável (20/11/2026). **Ainda não implementado.** Muda a interface da aba Lançamento da Produção (`motor/oee`, LANC-02, cartões `lc-*`/`tl-*`). Os números, as fórmulas e as permissões continuam iguais (contrato 6), exceto o modo "Dia", que precisa de decisão (item 4).
+Pedido do responsável (20/11/2026). **Ainda não implementado.** Muda a interface da aba Lançamento da Produção (`motor/oee`, LANC-02, cartões `lc-*`/`tl-*`). Os números, as fórmulas e as permissões continuam iguais (contrato 6), O modo "Dia" foi decidido como "só no dia" (item 4), sem rateio entre turnos ou horas.
 
 ## 1. Cabeçalho do dia (uma linha, sem repetição)
 
@@ -34,14 +34,25 @@ Pedido do responsável (20/11/2026). **Ainda não implementado.** Muda a interfa
 - **Trocar de modo com dados lançados:** pede confirmação e diz o que acontece, por exemplo "o total do turno é apagado e as horas voltam a abrir", reaproveitando a troca que já existe no `TotalTurno`. Nunca apaga sem confirmar.
 - **Avisos que não se perdem:** sugestões do servidor e alertas (hora extra, meia-noite) continuam aparecendo em qualquer modo.
 
-## 4. Modo "Dia": decisão necessária antes de implementar
+## 4. Modo "Dia": decidido, só no dia (opção b, responsável, 20/11/2026)
 
-Hoje não existe lançamento de produção por dia: o OEE é apurado por turno e somado no dia. Opções:
+**Princípio:** o tipo de reporte vale só para o nível em que foi feito. Nada é dividido nem estimado para um nível mais fino. Ratear a produção do dia entre turnos ou horas inventaria números e contaminaria o cálculo real dos dias lançados hora a hora ou por turno.
 
-- **(a) Rateio:** a produção do dia é distribuída entre os turnos produtivos pelo tempo planejado de cada um. Fórmula nova de rateio, precisa de autorização (contrato 7).
-- **(b) Só no dia:** produção e paradas ficam no nível do dia; os turnos aparecem sem produção ("lançado por dia") e o OEE só existe no dia. Os relatórios por turno ficam vazios nesses dias.
+| Visão | Dia lançado por **hora** | Dia lançado por **turno** | Dia lançado por **dia** |
+|---|---|---|---|
+| Dia, semana, mês, período | entra | entra | entra |
+| Por turno (OEE, relatório, ranking) | entra | entra | **não entra**; aparece como "lançado por dia" |
+| Hora a hora (perfil por hora, gráfico) | entra | **não entra** (o total do turno não vira hora) | **não entra** |
 
-Recomendação: (b) se o uso for raro; (a) se os relatórios por turno forem importantes.
+Regras de implementação:
+
+- **Onde guardar:** `day.lancDia = { good, scrap? }`, um bloco novo e aditivo. As paradas do dia ficam em `day.events`, sem `intervalId`/turno e marcadas `nivel:'dia'`. Não se grava produção em `iv.good` nem em `ps.*` nesse modo, para nenhuma visão por turno ou hora a pegar por engano.
+- **OEE do dia:** soma a produção, o tempo planejado (com as horas extras de cada turno) e as paradas, e calcula o OEE uma vez sobre essas somas. É o mesmo agregado ponderado de hoje; nunca a média de taxas (contrato 1).
+- **Turnos desse dia:** OEE, produzido e atendimento mostram "—" com o selo "lançado por dia". Ausência nunca vira zero (contrato 1), e a meta do turno não entra num denominador por turno.
+- **Semana e mês com dias mistos:** o total soma todos os dias. A visão por turno ou por hora mostra uma nota: "N dia(s) lançado(s) por dia não entram nesta visão".
+- **Conferir:** os relatórios e gráficos por hora precisam ignorar o período único do `TotalTurno` (turno lançado pelo total), para que ele não seja lido como produção de uma hora.
+- **Trocar de modo:** como no item 3, com confirmação. Ao sair do modo Dia, o `lancDia` é apagado (com auditoria) só depois de confirmar.
+- **Contrato 7:** nenhuma fórmula nova. O modo Dia só soma os mesmos componentes no nível do dia.
 
 ## 5. Pílula Scrap
 
