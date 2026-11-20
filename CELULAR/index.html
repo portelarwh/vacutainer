@@ -87,6 +87,10 @@ pre.wa{white-space:pre-wrap;background:#0b141a;color:#e9edef;border-radius:12px;
 <div id="print"></div>
 <script>
 'use strict';
+/* 0.2 · "Gerar app com esta configuração": o próprio arquivo, lido aqui antes de qualquer desenho, é copiado com a configuração
+   do responsável embutida em CFG_EMB. O cadastro real nunca passa pelo repositório (que só tem dados fictícios). */
+const FONTE='<!doctype html>\n'+document.documentElement.outerHTML;
+const CFG_EMB=/*CFG*/null/*CFG*/;
 /* =========================== utilitários =========================== */
 const $=(s,r=document)=>r.querySelector(s),$$=(s,r=document)=>[...r.querySelectorAll(s)];
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -100,7 +104,7 @@ const hm2min=s=>{const[h,m]=String(s||'0:0').split(':').map(Number);return h*60+
 const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,6);
 const addDias=(iso,n)=>{const d=new Date(iso+'T12:00:00');d.setDate(d.getDate()+n);return hojeISO(d)};
 function toast(t){const e=document.createElement('div');e.className='toast';e.textContent=t;document.body.appendChild(e);setTimeout(()=>e.remove(),2600)}
-const VERSAO='0.1';
+const VERSAO='0.2';
 /* o arquivo é enviado aos celulares e aberto direto (sem servidor): se o navegador que abriu não guarda dados, o operador é avisado */
 const GUARDA=(()=>{try{localStorage.setItem('mt.teste','1');localStorage.removeItem('mt.teste');return true}catch(e){return false}})();
 const LS={get(k,d){try{const v=localStorage.getItem('mt.'+k);return v?JSON.parse(v):d}catch(e){return d}},set(k,v){try{localStorage.setItem('mt.'+k,JSON.stringify(v))}catch(e){toast('Memória do celular cheia: exporte o histórico')}}};
@@ -112,7 +116,10 @@ const CFG0={linha:'Linha Vacutainer',unidade:'mil',junta:45,   /* sobra final qu
  maqs:['Tray Loader','Tullip A','Tullip B','Gel dispensor','Metro','Evacuator','Cap Placer','Silica spray coater','Kallfass','Packout','Etiquetagem','Transporte de bandejas'],
  motivos:['Setup / troca','Falha mecânica','Falha elétrica','Qualidade','Falta de material','Limpeza','Ajuste de processo','Reunião / comunicado','Outro'],
  scrapGel:['Purga','Sobra no barril','Outros']};
-let CFG=LS.get('cfg',null)||JSON.parse(JSON.stringify(CFG0));
+/* configuração: a embutida vale quando é mais nova que a do aparelho (rev = data da geração/gravação) */
+let CFG=(()=>{const l=LS.get('cfg',null);if(CFG_EMB&&(!l||(l.rev||0)<(CFG_EMB.rev||0))){const c=JSON.parse(JSON.stringify(CFG_EMB));LS.set('cfg',c);return c}return l||JSON.parse(JSON.stringify(CFG0))})();
+function gerarApp(){const M='/'+'*CFG*'+'/',i=FONTE.indexOf(M),j=FONTE.indexOf(M,i+M.length);if(i<0||j<0)throw new Error('arquivo sem marcador de configuração');
+ const c={...CFG,rev:Date.now()};return FONTE.slice(0,i+M.length)+JSON.stringify(c).replace(/</g,'\\u003c')+FONTE.slice(j)}
 const cat=c=>CFG.cats.find(x=>x.c===c);
 const turnoDe=c=>CFG.turnos.find(t=>t.c===c);
 
@@ -345,14 +352,17 @@ function vCfg(){return topo('Configuração','Cadastro inicial da linha','<a cla
   <label class="f">Meta (${CFG.unidade}/h)<input class="in tn" data-cm="${i}" inputmode="decimal" value="${c.meta}"></label><label class="f">Gel (g/tubo; 0 = sem gel)<input class="in tn" data-cg="${i}" inputmode="decimal" value="${c.gel}"></label></div>`).join('')}</div>
  <div class="card" style="display:grid;gap:8px"><h2>Máquinas e motivos</h2><label class="f">Máquinas (uma por linha)<textarea class="in" id="cmq" rows="5">${esc(CFG.maqs.join('\n'))}</textarea></label><label class="f">Motivos de parada (um por linha)<textarea class="in" id="cmo" rows="5">${esc(CFG.motivos.join('\n'))}</textarea></label></div>
  <button class="btn pri blk" id="csv">Salvar configuração</button>
+ <button class="btn wa blk" id="capp">Gerar app com esta configuração</button><div class="small muted">Cria um MeuTurno.html já com esta configuração. Envie esse arquivo aos operadores: eles só abrem no Chrome, sem importar nada.</div>
  <div class="g2"><button class="btn sm" id="cex">Compartilhar configuração</button><label class="btn sm">Receber configuração<input type="file" accept="application/json" id="cim" hidden></label></div>
  <p class="small muted">O supervisor monta a configuração uma vez e envia o arquivo pelo WhatsApp; cada operador abre "Receber configuração".</p></main>`}
 function ligCfg(){comum();$('#cn').onclick=()=>{CFG.cats.push({c:'',n:'',meta:56,gel:0});render()};
  $('#csv').onclick=()=>{CFG.linha=$('#cl').value.trim()||CFG.linha;CFG.junta=Math.max(0,Math.min(59,+$('#cj').value||0));$$('[data-tn]').forEach(e=>CFG.turnos[e.dataset.tn].n=e.value);$$('[data-ti]').forEach(e=>CFG.turnos[e.dataset.ti].i=e.value);$$('[data-tf]').forEach(e=>CFG.turnos[e.dataset.tf].f=e.value);
   $$('[data-cc]').forEach(e=>CFG.cats[e.dataset.cc].c=e.value.trim());$$('[data-cnm]').forEach(e=>CFG.cats[e.dataset.cnm].n=e.value.trim());$$('[data-cm]').forEach(e=>CFG.cats[e.dataset.cm].meta=+e.value.replace(',','.')||0);$$('[data-cg]').forEach(e=>CFG.cats[e.dataset.cg].gel=+e.value.replace(',','.')||0);
-  CFG.cats=CFG.cats.filter(c=>c.c);CFG.maqs=$('#cmq').value.split('\n').map(s=>s.trim()).filter(Boolean);CFG.motivos=$('#cmo').value.split('\n').map(s=>s.trim()).filter(Boolean);LS.set('cfg',CFG);toast('Configuração salva')};
+  CFG.cats=CFG.cats.filter(c=>c.c);CFG.maqs=$('#cmq').value.split('\n').map(s=>s.trim()).filter(Boolean);CFG.motivos=$('#cmo').value.split('\n').map(s=>s.trim()).filter(Boolean);CFG.rev=Date.now();LS.set('cfg',CFG);toast('Configuração salva')};
  $('#cex').onclick=async()=>{const f=new File([JSON.stringify({app:'meu-turno-config',versao:1,cfg:CFG},null,1)],'configuracao-linha.json',{type:'application/json'});if(navigator.canShare&&navigator.canShare({files:[f]})){try{await navigator.share({files:[f],text:'Configuração do app Meu Turno'})}catch(e){}}else{const a=document.createElement('a');a.href=URL.createObjectURL(f);a.download=f.name;a.click()}};
- $('#cim').onchange=async e=>{try{const j=JSON.parse(await e.target.files[0].text());if(!j.cfg||!Array.isArray(j.cfg.turnos))throw 0;CFG=j.cfg;LS.set('cfg',CFG);toast('Configuração recebida');render()}catch(er){toast('Arquivo de configuração inválido')}}}
+ $('#capp').onclick=async()=>{if(!confirm('Salvou a configuração? O app gerado leva a configuração salva neste celular.'))return;let h;try{h=gerarApp()}catch(e){return toast(e.message)}
+  const f=new File([h],'MeuTurno.html',{type:'text/html'});if(navigator.canShare&&navigator.canShare({files:[f]})){try{await navigator.share({files:[f],text:'App Meu Turno ('+CFG.linha+'): abra no Chrome'})}catch(e){}}else{const a=document.createElement('a');a.href=URL.createObjectURL(f);a.download=f.name;a.click();toast('MeuTurno.html salvo em Downloads')}};
+ $('#cim').onchange=async e=>{try{const j=JSON.parse(await e.target.files[0].text());if(!j.cfg||!Array.isArray(j.cfg.turnos))throw 0;CFG={...j.cfg,rev:Date.now()};LS.set('cfg',CFG);toast('Configuração recebida');render()}catch(er){toast('Arquivo de configuração inválido')}}}
 
 /* ============================ partida ============================ */
 document.documentElement.dataset.tema=LS.get('tema','');

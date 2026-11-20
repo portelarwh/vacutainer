@@ -48,6 +48,17 @@ const html = fs.readFileSync(path.resolve(__dirname, '../../CELULAR/index.html')
     // 5) histórico por período e sem internet nem erro
     await p.goto(p.url().split('#')[0] + '#historico'); await p.click('[data-hm="periodo"]');
     assert.match(await p.textContent('main'), /Resumo do período · 1 turno\(s\)[\s\S]*164 mil[\s\S]*Falta de material/);
+    // 6) "Gerar app com esta configuração": o HTML gerado abre já configurado (aparelho novo e aparelho com configuração antiga)
+    await p.goto(p.url().split('#')[0] + '#config'); await p.fill('#cl', 'Linha Exemplo (TESTE)'); await p.fill('[data-cm="0"]', '61'); await p.click('#csv');
+    const gerado = await p.evaluate(() => gerarApp());
+    assert.ok(gerado.startsWith('<!doctype html>') && gerado.includes('"linha":"Linha Exemplo (TESTE)"') && !gerado.includes('6275188') && !gerado.includes('Operador (TESTE)'), 'HTML gerado com a configuração e sem o histórico');
+    const srv2 = http.createServer((q, r) => { r.setHeader('Content-Type', 'text/html; charset=utf-8'); r.end(gerado); }); await new Promise(r => srv2.listen(0, '127.0.0.1', r));
+    const abrir = async antigo => { const c2 = await browser.newContext({ ...devices['Pixel 7'] }); if (antigo) await c2.addInitScript(() => { if (!localStorage.getItem('mt.cfg')) localStorage.setItem('mt.cfg', JSON.stringify({ linha: 'Antiga', unidade: 'mil', junta: 45, turnos: [{ c: 'T1', n: '1º', i: '06:00', f: '14:30' }], cats: [{ c: '1', n: 'x', meta: 1, gel: 0 }], maqs: [], motivos: [], scrapGel: [], rev: 1 })); });
+      const p2 = await c2.newPage(); await p2.goto('http://127.0.0.1:' + srv2.address().port + '/#inicio'); const r = await p2.evaluate(() => ({ linha: CFG.linha, meta: CFG.cats[0].meta, guardada: JSON.parse(localStorage.getItem('mt.cfg')).linha, versao: document.body.textContent.includes('versão 0.2'), denovo: gerarApp().includes('Linha Exemplo') })); await c2.close(); return r; };
+    const esperado = { linha: 'Linha Exemplo (TESTE)', meta: 61, guardada: 'Linha Exemplo (TESTE)', versao: true, denovo: true };
+    assert.deepEqual(await abrir(false), esperado, 'celular novo'); assert.deepEqual(await abrir(true), esperado, 'celular com configuração antiga');
+    srv2.close(); console.log('ok "Gerar app com esta configuração": o HTML gerado abre configurado (celular novo ou com configuração antiga), sem levar o histórico');
+
     assert.deepEqual(externos, [], 'nenhum pedido à internet'); assert.deepEqual(erros, [], 'sem erro de JavaScript');
     console.log('ok histórico por período; sem internet e sem erro de JavaScript');
   } finally { if (browser) await browser.close(); srv.close(); }

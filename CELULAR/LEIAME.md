@@ -31,6 +31,15 @@ O arquivo `index.html` é enviado aos celulares (por exemplo, renomeado `MeuTurn
 - iPhone: o app de Arquivos não executa o HTML; é preciso abrir no Safari (testar antes de distribuir).
 - Validado no Chromium aberto como arquivo local: dados e foto continuam depois de fechar e reabrir. Não validado ainda: o celular real de cada operador.
 
+## Configuração real (sem passar pelo repositório)
+
+O repositório é público e só tem dados fictícios; o cadastro real nunca entra nele. O responsável faz o cadastro no próprio celular (⚙ Configuração › Salvar) e escolhe uma das formas:
+
+1. **Gerar app com esta configuração** (recomendado): cria um `MeuTurno.html` com a configuração embutida. Envie esse arquivo aos operadores; eles só abrem no Chrome. Não leva o histórico de quem gerou. Num celular que já tinha o app, a configuração embutida mais nova substitui a antiga; o histórico do operador continua.
+2. **Compartilhar configuração**: gera `configuracao-linha.json`; cada operador abre ⚙ › Receber configuração uma vez.
+
+Para mudar um catálogo, meta ou turno depois, repita: salve, gere o app de novo e reenvie.
+
 ## Dados e limites
 
 - Os dados ficam só no celular: turnos no armazenamento do navegador e fotos no IndexedDB. Limpar os dados do navegador apaga o histórico; use "Exportar histórico" como cópia.
