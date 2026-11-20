@@ -90,6 +90,16 @@ Pedidos do responsável: (1) com a vigência nova do turno (sábado 06:00–13:3
 - **PAR-BUSCA:** campo de busca acima da lista do tipo de parada (Registrar parada e turno não produtivo, na Produção; reclassificação no Paradas): filtra pelo código, nome e grupo, sem diferença de acento e maiúscula, várias palavras = todas; uma opção só é escolhida sozinha; Enter escolhe a primeira. Função comum `vacFiltroSelect` (comum/interface). Não muda códigos nem valores.
 - Teste: `testes/plataforma/turno-vigente.cjs` (demonstração, dados fictícios).
 
+## TUR-06 · produção no turno não produtivo pela meia-noite · Produção 2.6.19, plataforma 1.8.27 (20/11/2026)
+
+Decisão do responsável (autorizada em 20/11/2026; muda a interpretação da madrugada, contrato 7): com o 3º turno não produtivo, a produção da janela dele vai pelo relógio, não pela continuidade.
+- **Regra (ForaTurno.doDiaRelogio):** na janela fora dos turnos produtivos, as caixas do servidor feitas **antes da meia-noite seguinte ao fim do turno anterior** contam nesse turno (o 2º até 00:00); as feitas **depois** contam no próximo turno produtivo (o 1º do dia seguinte), mesmo com paradas no meio. Sem turno anterior ou seguinte, vai para o que existir.
+- **Desde 01/11/2026** (`RELOGIO_DESDE`; `settings.foraTurnoRelogioDesde` muda a data): janelas de dias operacionais anteriores seguem a regra antiga (D1: trecho contínuo, até "Continuidade entre caixas", emendado com o fim do turno anterior conta nele; o resto vai para o próximo). Os dias de novembro, inclusive fechados, são recalculados.
+- **Hora extra (60 min, `settings.horaExtraMax`):** produção além de 60 min depois do fim do turno anterior (ex.: 2º até 23:47) ou antes de 60 min do início do próximo (1º a partir de 05:00) continua contando pela regra, mas o dia que recebe mostra um alerta.
+- **Sem mudança:** o hora a hora lançado, a hora real das caixas, o OEE real do trecho e o 3º turno habilitado no dia (produtivo: a produção é dele, como antes).
+- **Pendente (TUR-07):** com o 3º turno produtivo, separar a parte antes e depois de 00:00 no total diário.
+- **Teste:** `testes/plataforma/turno-meia-noite.cjs`.
+
 ## PAR-CAT · tipo de parada por categoria e com busca · Produção 2.6.18, plataforma 1.8.26 (20/11/2026)
 
 Pedido do responsável: nas sugestões do servidor não havia digitação livre para o tipo de parada, e a lista vinha inteira.
