@@ -34,6 +34,25 @@ Pedido do responsável (20/11/2026). **Ainda não implementado.** Muda a interfa
 - **Trocar de modo com dados lançados:** pede confirmação e diz o que acontece, por exemplo "o total do turno é apagado e as horas voltam a abrir", reaproveitando a troca que já existe no `TotalTurno`. Nunca apaga sem confirmar.
 - **Avisos que não se perdem:** sugestões do servidor e alertas (hora extra, meia-noite) continuam aparecendo em qualquer modo.
 
+## 3.1 O que cada modo pede (decisão do responsável, 20/11/2026)
+
+Cada informação fica no nível do modo escolhido, sem repetir nem dividir:
+
+| Informação | Hora a hora | Por turno | Dia |
+|---|---|---|---|
+| Produção | por hora (`iv.good`) | do turno (`TotalTurno`) | do dia (`day.lancDia.good`) |
+| Paradas | na hora em que aconteceram | do turno | do dia (`nivel:'dia'`, sem turno e sem hora) |
+| Abono / revezamento | do turno (`saveAbono`) | do turno | **do dia**: minutos que descontam do tempo planejado do dia, sem rateio nos turnos |
+| Hora extra | do turno (HEX-01) | do turno | do turno (selos), porque muda o tempo planejado do dia |
+| Observação | do turno (`ps.note`) | do turno (`ps.note`) | do dia (`day.note`) |
+| Segurança e qualidade (SQDCP) | do turno (`ps.sqdcp`) | do turno (`ps.sqdcp`) | do dia; ver abaixo |
+| Scrap | conforme a pílula Scrap | conforme a pílula Scrap | do dia (a pílula fica em Diário e travada) |
+
+- **O detalhe continua:** a seção Segurança e qualidade e a tabela hora a hora detalhada (com todas as colunas, a aba Hora a hora de hoje) não saem da plataforma. No modo Hora a hora, o cartão do turno mostra a tabela compacta e o link "Abrir hora a hora" leva à tabela detalhada. Segurança e qualidade ficam numa seção recolhível do cartão do turno (ou do bloco do dia), que abre com um clique e mostra um selo quando há registro.
+- **Abono no modo Dia:** o abono de hoje é rateado nos intervalos do turno (`saveAbono`), e no modo Dia isso não pode acontecer. Um evento novo, `nivel:'dia'`, guarda o código REV (ou outro que desconte do planejado) e os minutos. Ele entra só no tempo planejado do dia.
+- **Segurança e qualidade no modo Dia (padrão proposto):** são fatos, não taxas. Vão para `day.sqdcpDia`, com o mesmo modelo `SQDCPModelo`, e contam no dia, na semana e no mês. A SQDCP por turno mostra "lançado por dia" (A4 paisagem mantida, contrato 6). Um acidente registrado no dia nunca some por não ter turno.
+- **Trocar de modo:** a confirmação lista também abonos, observações e segurança e qualidade do nível que sai. Eles ficam guardados e não são apagados, mas deixam de contar enquanto o modo estiver em outro nível. Voltar ao modo anterior traz tudo de volta.
+
 ## 4. Modo "Dia": decidido, só no dia (opção b, responsável, 20/11/2026)
 
 **Princípio:** o tipo de reporte vale só para o nível em que foi feito. Nada é dividido nem estimado para um nível mais fino. Ratear a produção do dia entre turnos ou horas inventaria números e contaminaria o cálculo real dos dias lançados hora a hora ou por turno.
