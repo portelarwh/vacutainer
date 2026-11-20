@@ -22,6 +22,15 @@ Arquivo único: [index.html](index.html), HTML, CSS e JavaScript nativos, sem bi
 - Plano do intervalo = meta do catálogo (mil/h) × minutos ÷ 60. Produção em mil tubos; scrap em tubos; % de scrap = scrap ÷ (produção × 1000 + scrap).
 - Gel teórico = tubos × g/tubo. "Gel na ordem": 800 tubos × 0,834 g = 667,2 g.
 
+## Distribuição (decisão do responsável, 20/11/2026)
+
+O arquivo `index.html` é enviado aos celulares (por exemplo, renomeado `MeuTurno.html`) e aberto direto, sem servidor e sem link: nenhum dado sai do celular a não ser pelo WhatsApp ou PDF que o operador envia. O teste é feito primeiro no celular do responsável.
+
+- Abrir pelo **Chrome** (Android: tocar no arquivo › Abrir com › Chrome) e, se quiser, "Adicionar à tela inicial". Outros visualizadores de arquivo podem não guardar os dados; nesse caso a tela inicial avisa.
+- Para atualizar, enviar o arquivo novo **no mesmo lugar e com o mesmo nome**; a versão aparece no rodapé da tela inicial. Antes, use "Exportar histórico" por segurança.
+- iPhone: o app de Arquivos não executa o HTML; é preciso abrir no Safari (testar antes de distribuir).
+- Validado no Chromium aberto como arquivo local: dados e foto continuam depois de fechar e reabrir. Não validado ainda: o celular real de cada operador.
+
 ## Dados e limites
 
 - Os dados ficam só no celular: turnos no armazenamento do navegador e fotos no IndexedDB. Limpar os dados do navegador apaga o histórico; use "Exportar histórico" como cópia.

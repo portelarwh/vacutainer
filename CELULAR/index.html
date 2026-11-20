@@ -100,6 +100,9 @@ const hm2min=s=>{const[h,m]=String(s||'0:0').split(':').map(Number);return h*60+
 const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,6);
 const addDias=(iso,n)=>{const d=new Date(iso+'T12:00:00');d.setDate(d.getDate()+n);return hojeISO(d)};
 function toast(t){const e=document.createElement('div');e.className='toast';e.textContent=t;document.body.appendChild(e);setTimeout(()=>e.remove(),2600)}
+const VERSAO='0.1';
+/* o arquivo é enviado aos celulares e aberto direto (sem servidor): se o navegador que abriu não guarda dados, o operador é avisado */
+const GUARDA=(()=>{try{localStorage.setItem('mt.teste','1');localStorage.removeItem('mt.teste');return true}catch(e){return false}})();
 const LS={get(k,d){try{const v=localStorage.getItem('mt.'+k);return v?JSON.parse(v):d}catch(e){return d}},set(k,v){try{localStorage.setItem('mt.'+k,JSON.stringify(v))}catch(e){toast('Memória do celular cheia: exporte o histórico')}}};
 
 /* ======== configuração (a mesma lógica da plataforma; dados fictícios até o cadastro inicial) ======== */
@@ -161,7 +164,8 @@ function vInicio(){const a=turnoAgora(),t=turnoDe(a.t),ab=abertoHoje(),ult=TURNO
   <button class="tile" id="hist"><i>☰</i><div><b>Histórico</b><span>Por turno ou por período</span></div></button>
   <button class="tile" id="gel"><i>⚗</i><div><b>Gel na ordem</b><span>Quanto gel apontar para a ordem ficar sem perda</span></div></button></section>
   ${ult?`<div class="card"><h2>Último turno fechado</h2>${itemTurno(ult)}</div>`:''}
-  <p class="small muted" style="text-align:center">Os dados ficam neste celular e saem por WhatsApp ou PDF. Sem ligação com o servidor.</p></main>`}
+  ${GUARDA?'':'<div class="warnbox"><b>Este navegador não está guardando os dados.</b> Abra o arquivo pelo Chrome (Abrir com › Chrome); assim o turno não se perde.</div>'}
+  <p class="small muted" style="text-align:center">Os dados ficam neste celular e saem por WhatsApp ou PDF. Sem ligação com o servidor. · versão ${VERSAO}</p></main>`}
 function itemTurno(T){const r=resumo(T),t=turnoDe(T.turno)||{n:T.turno};return`<button class="it" data-rel="${T.id}"><span class="dot" style="background:var(--${r.ader==null?'ln':r.ader>=1?'ok':r.ader>=.9?'warn':'crit'})"></span>
  <div><b>${br(T.data)} · ${esc(t.n)}</b><div class="small muted">${esc(T.cat)} · lote ${esc(T.lote||'—')} · ${esc(T.operador||'—')}</div></div>
  <div style="text-align:right"><b class="tn ${corAder(r.ader)}">${r.ader==null?'—':nf(r.ader*100)+'%'}</b><div class="small muted tn">${nf(r.re)} / ${nf(r.pl)}</div></div></button>`}
