@@ -1,6 +1,6 @@
 # Proposta LANC-03 · aba Lançamento por modo (hora a hora, por turno, dia) e scrap por turno ou diário
 
-Pedido do responsável (20/11/2026). **Ainda não implementado.** Muda a interface da aba Lançamento da Produção (`motor/oee`, LANC-02, cartões `lc-*`/`tl-*`). Os números, as fórmulas e as permissões continuam iguais (contrato 6), O modo "Dia" foi decidido como "só no dia" (item 4), sem rateio entre turnos ou horas.
+Pedido do responsável (20/11/2026). **LANC-04 (itens 0.1 e 0.2) entregue na Produção 2.6.22 / plataforma 1.8.31; LANC-03 ainda não implementada.** Muda a interface da aba Lançamento da Produção (`motor/oee`, LANC-02, cartões `lc-*`/`tl-*`). Os números, as fórmulas e as permissões continuam iguais (contrato 6), O modo "Dia" foi decidido como "só no dia" (item 4), sem rateio entre turnos ou horas.
 
 ## Pedidos do responsável (conferência)
 
@@ -60,6 +60,8 @@ Os rótulos ficam padronizados ("Visão geral", não "Visão Geral"; "Config." s
 
 ## 0.1 LANC-04 · Config. › Abas refletida na página (diagnóstico de 20/11/2026)
 
+> **Entregue (Produção 2.6.22, plataforma 1.8.31).** `abas()` manda `cor`, `corTexto`, `estado` e `inicial`; `ModuleTabs` desenha a pílula e o selo; a casca já relia as abas a cada 1,8 s e depois de cada clique, então a mudança aparece sem recarregar. A casca abria sempre a primeira aba (`route.tab || currentTabs[0]`) e mandava essa aba ao motor, por cima do `start`: agora abre a aba inicial **salva** pela pessoa; sem aba salva, continua a primeira (a ordem padrão nova fica para a LANC-03, item 0). Teste `abas-config`.
+
 Pendência separada da LANC-03 (decisão do responsável, 20/11/2026): é correção do que já existe e pode ser entregue antes. Só a ordem padrão nova das abas (item 0) depende da LANC-03.
 
 Testado na Demonstração da plataforma 1.8.30, salvando pelo próprio formulário de Config. › Abas e lendo as abas que a casca mostra:
@@ -86,6 +88,8 @@ Correção (sem mudar rota, ID nem permissão):
 - **Teste `abas`** (estender): cor visível na aba da casca, selo de estado, atualização sem recarregar e aba inicial.
 
 ### 0.2 LANC-04 · Grade de gráficos: 1/1, 1/2 e 1/3 e mover (diagnóstico de 20/11/2026)
+
+> **Entregue (Produção 2.6.22, plataforma 1.8.31).** Em vez de estilo em linha, a largura escolhida vence por regra do css/kit com `!important` sobre `data-vg-l`, para que a regra do celular (abaixo de 760 px, 1/1) continue valendo. Os blocos `.pn-grid > .pn-blk` entram na grade mesmo sendo só tabela. O redesenho já existia (`Charts.fit` no `resize` que o `vacGrade` dispara); faltava o `scatter` (Frequência × duração), que desenhava sempre em 720 px. No Hora a hora em 1/3, os rótulos do eixo passam a sair um a cada N, abaixo da faixa de família. A conferência achou o mesmo defeito na Gestão de Gel (painel), também corrigido. Teste `grade-larguras`: 103 cartões em 16 páginas.
 
 **Regra pedida:** a página é uma grade de até 3 colunas. Qualquer cartão (gráfico, tabela ou lista) aceita 1/1, 1/2 ou 1/3. Três cartões em 1/3 ficam lado a lado na mesma linha. ← → e o arrasto mudam o lugar de qualquer cartão.
 
@@ -257,6 +261,13 @@ Regras:
 - **Explicar o número:** cada aviso ganha uma linha curta com o cálculo, por exemplo "Cobertura 82% = 41 min apontados ÷ 50 min de perda; mínimo 95%".
 - **Contrato 6 e 7:** só navegação e texto. Limites, fórmulas e status (adequado, atenção, crítico) não mudam.
 - **Teste:** cada botão leva ao campo certo (foco visível) e o link para a Administração abre a seção certa.
+
+## 10. Decisões de 20/11/2026 (dúvidas levantadas antes de implementar)
+
+1. **Madrugada no modo Dia:** a pílula Dia fica desligada quando o dia tem turno produtivo que passa de 00:00 ou recebe a parte depois de 00:00 do dia anterior (TUR-07); o aviso diz para usar Por turno. A regra da madrugada não muda.
+2. **Catálogo no modo Dia:** um campo "Catálogo do dia" dá o PPH da capacidade; vem preenchido com o catálogo inicial do 1º turno. Dia com troca de catálogo usa Por turno.
+3. **Troca do modo de scrap:** os dois valores ficam guardados (`ps.scrap` e `day.scrapDay`); só o do modo atual conta. Ao passar para Diário, a soma dos turnos é sugerida apenas quando o campo do dia está vazio, sempre com confirmação. Hoje `setScrapMode` apaga ou soma: muda na etapa d.
+4. **Segurança e qualidade para fechar o dia:** exigidas só nos dias a partir da data da versão que trouxer a regra; dias antigos reabertos não travam. **Pedido adicional do responsável:** para que os dias antigos sigam a mesma regra, deve ser possível excluir os lançamentos de um dia antigo, tenha ele lançamentos ou nem tenha sido iniciado, e relançá-lo; conferir na etapa e o que o Excluir dia (`#dDel`) permite hoje.
 
 ## Maquete
 

@@ -169,9 +169,11 @@ button,input,select,textarea{font-family:var(--f-body)}
 /* --- 8 · grade reorganizável de gráficos (vacGrade no kit_ds.js): largura inteira, metade ou um terço; ordem por arrastar ou setas --- */
 .vg-grade{display:grid!important;grid-template-columns:repeat(6,minmax(0,1fr))!important;gap:var(--sp-12,12px);align-items:start}
 .vg-grade>*{grid-column:span 6;min-width:0;margin:0!important}
-.vg-grade>[data-vg-l="3"]{grid-column:span 3}.vg-grade>[data-vg-l="2"]{grid-column:span 2}
-@media (max-width:1100px){.vg-grade>[data-vg-l="2"]{grid-column:span 3}}
-@media (max-width:760px){.vg-grade>[data-vg-l]{grid-column:span 6}}
+/* LANC-04 · a largura escolhida (data-vg-l) sempre vence a largura de nascença do cartão (grid-column:1/-1 em linha, .pn-blk.full,
+   .vk-span-*): a de nascença vira só o padrão (data-vg-n). !important porque o estilo em linha do cartão também é regra de largura. */
+.vg-grade>[data-vg-l="6"]{grid-column:span 6!important}.vg-grade>[data-vg-l="3"]{grid-column:span 3!important}.vg-grade>[data-vg-l="2"]{grid-column:span 2!important}
+@media (max-width:1100px){.vg-grade>[data-vg-l="2"]{grid-column:span 3!important}}
+@media (max-width:760px){.vg-grade>[data-vg-l]{grid-column:span 6!important}}
 .vg-it{position:relative}
 .vg-barra{position:absolute;top:8px;right:8px;z-index:3;display:flex;align-items:center;gap:2px;padding:2px;border:1px solid var(--line);border-radius:8px;background:var(--surface);box-shadow:var(--sh);opacity:0;pointer-events:none;transition:opacity .12s ease}
 .vg-it:hover>.vg-barra,.vg-it:focus-within>.vg-barra,html.vg-editar .vg-barra{opacity:1;pointer-events:auto}
@@ -2450,7 +2452,20 @@ window.vacPagina = (() => {
       const clone = el.cloneNode(true); clone.querySelectorAll('.cnt,.badge,svg').forEach(n => n.remove());
       return [el.dataset.t || el.dataset.tab || el.dataset.route, clone.textContent.trim().replace(/^⚙\s*/, '')];
     });
-    return lista.map(([chave, nome]) => ({ id: chave, label: nome, route: chave }));
+    const abas = lista.map(([chave, nome]) => ({ id: chave, label: nome, route: chave }));
+    /* LANC-04 · Produção: o destaque colorido, o selo de estado e a aba inicial de Config. › Abas chegam às abas da plataforma.
+       A aba inicial só vale quando a pessoa a salvou (sem salvar, a casca abre a primeira aba, como antes). */
+    if (id() === 'oee') {
+      const p = (typeof App !== 'undefined' &amp;&amp; App.prefs &amp;&amp; App.prefs.tabs) || {}, hl = p.hl || {};
+      for (const t of abas) {
+        const cor = /^#[0-9a-f]{6}$/i.test(hl[t.id] || '') ? hl[t.id] : '';
+        if (cor) { t.cor = cor; if (typeof textOn === 'function') t.corTexto = textOn(cor); }
+        const st = typeof tabState === 'function' ? tabState(t.id).state : 'normal';
+        if (st === 'construção' || st === 'atualização') t.estado = st;
+        if (p.start &amp;&amp; p.start === t.id) t.inicial = true;
+      }
+    }
+    return abas;
   }
   function comandos() {
     let serial = 0;
@@ -2874,7 +2889,11 @@ const vacGrade = (() => {
   const slug = s => String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 48);
   const chaveItem = (el, i) => el.dataset.vgK || el.id || (() => { const h = el.querySelector('h2,h3,h4,.t,.tit,header'); const s = h ? slug(h.textContent) : ''; return s || 'i' + i; })();
   const chaveGrupo = (p) => { if (p.id) return p.id; let a = p.parentElement, n = 0; while (a &amp;&amp; !a.id &amp;&amp; n < 6) { a = a.parentElement; n++; } const base = a &amp;&amp; a.id ? a.id : 'raiz'; const irm = a ? [...a.querySelectorAll('.vg-grade,[data-vg-g]')] : []; if (!p.dataset.vgG) p.dataset.vgG = base + ':' + (irm.filter(x => x !== p).length); return p.dataset.vgG; };
-  function cartoes() { const S = new Set(); document.querySelectorAll('main svg, main canvas, main [id^="ch"], main .chart').forEach(g => { if (g.id &amp;&amp; !/^ch[A-Z0-9]/.test(g.id) &amp;&amp; !/svg|canvas/i.test(g.tagName) &amp;&amp; !g.classList.contains('chart')) return; if (!ehGrafico(g)) return; const c = g.closest(CARTAO); if (!c || c.closest(FORA) || c.tagName === 'MAIN' || !c.parentElement || c.parentElement.tagName === 'BODY') return; S.add(c); }); /* só o cartão mais interno */ const L = [...S].filter(c => ![...S].some(o => o !== c &amp;&amp; c.contains(o)));
+  function cartoes() { const S = new Set(); document.querySelectorAll('main svg, main canvas, main [id^="ch"], main .chart').forEach(g => { if (g.id &amp;&amp; !/^ch[A-Z0-9]/.test(g.id) &amp;&amp; !/svg|canvas/i.test(g.tagName) &amp;&amp; !g.classList.contains('chart')) return; if (!ehGrafico(g)) return; const c = g.closest(CARTAO); if (!c || c.closest(FORA) || c.tagName === 'MAIN' || !c.parentElement || c.parentElement.tagName === 'BODY') return; S.add(c); });
+    /* LANC-04 · blocos de painel e relatório (Produção, .pn-grid > .pn-blk) entram mesmo quando o bloco é só tabela ou lista (Paradas do
+       período, Plano por família e catálogo, Observações registradas): todos aceitam 1/1, 1/2, 1/3 e mudam de lugar */
+    document.querySelectorAll('main .pn-grid > .pn-blk').forEach(c => { if (!c.closest(FORA) &amp;&amp; c.offsetParent &amp;&amp; c.getBoundingClientRect().height >= 60) S.add(c); });
+    /* só o cartão mais interno */ const L = [...S].filter(c => ![...S].some(o => o !== c &amp;&amp; c.contains(o)));
     /* 12/11/2026 · os outros cartões da mesma grade (tabela, lista, sem gráfico) também mudam de lugar e de largura */
     for (const p of new Set(L.map(c => c.parentElement))) for (const x of p.children) if (!L.includes(x) &amp;&amp; x.matches(CARTAO) &amp;&amp; !x.matches(FORA) &amp;&amp; x.offsetParent &amp;&amp; x.getBoundingClientRect().height >= 60) L.push(x);
     return L; }
@@ -3979,7 +3998,7 @@ function wireConfigComum(){$('#cPasta').onclick=async()=>{if(await Store.pick())
         entrar pelo ID (autocadastro como Consulta); página inicial por perfil (1x por sessão); vigência gravada não se edita (desativar com motivo); painel de vigências; semáforo central; saída do modo de teste.
    1.1.2: aviso da carga diz qual base foi lida.  1.5: páginas Paradas, Máquinas, Manutenção e Projetos na lista (aparecem quando o HTML chega na pasta).  1.4: lista técnica pela CS12 multinível (itens = nível 1, estrutura = níveis 2+); CS03 sai.  1.3: cabeçalho comum (vac-cabecalho v2: barra do sistema + página + abas), busca Ctrl K, acabamento V1.90, Versões com cabeçalho e último backup.  1.2: Configuração › Versões das páginas (versão e data de cada HTML, gravação das bases, cópias repetidas, histórico).
    ===================================================================== */
-const PAGE={id:'portal',titulo:"Administração · Linha Vacutainer",tituloCurto:"Administração",subtitulo:'Sistemas de gestão da linha',versao:'1.9.53',baseFile:'portal-base.json',idb:'vac-portal',backupDir:'00. Backups/Portal',
+const PAGE={id:'portal',titulo:"Administração · Linha Vacutainer",tituloCurto:"Administração",subtitulo:'Sistemas de gestão da linha',versao:'1.9.54',baseFile:'portal-base.json',idb:'vac-portal',backupDir:'00. Backups/Portal',
  vazio:()=>({schema:'portal-base',rev:0,config:{modulos:{},avisoDias:30,notas:{}},audit:[]}),
  /* itens do Portal para a busca Ctrl K: cadastro, pendências e telas */
  busca:q=>{const R=[],D=Cad.D;if(D)for(const t of CAD_ORD){for(const it of D[t]||[]){const c=String(it[kOf(t)]),nm=t==='bom'?((cadItem('catalogos',it.catalogo)||{}).nome||''):it.nome||'';if(norm(c+' '+nm).includes(q))R.push({tipo:CAD_T[t].um,txt:c+(nm?' · '+nm:''),sub:'Cadastros'+(cadAtivo(t,it,D)?'':' · inativo'),href:'#cadastros/'+t+'/'+encodeURIComponent(c)});if(R.length>30)break}}
@@ -4858,6 +4877,9 @@ const CAD_SECS=['inicio','matriz','importar','auditoria','backups','seguranca','
    curtas (macro, sem detalhe técnico). REGRA: toda versão nova da plataforma ganha uma entrada aqui, a mais recente primeiro
    (AGENTS.md e CLAUDE.md). Tipos: nova (função nova), melhoria (algo que já existia ficou melhor), correcao (erro corrigido). */
 const NOVIDADES=[
+ {v:'1.8.31',d:'2026-11-20',itens:[['correcao','Produção: o destaque colorido, o selo "em construção" / "atualizando" e a aba inicial de Config. › Abas aparecem nas abas da plataforma, sem recarregar.'],
+  ['correcao','Gráficos, tabelas e listas aceitam largura inteira, metade ou um terço em todas as páginas, inclusive os de largura inteira; até 3 lado a lado.'],
+  ['melhoria','O gráfico se redesenha na largura nova do cartão, e as tabelas estreitas rolam dentro do cartão.']]},
  {v:'1.8.30',d:'2026-11-20',itens:[['nova','Novidades na Administração: o que mudou em cada versão, em poucas palavras.'],
   ['correcao','Turno que passa da meia-noite: sem lançamento do dia seguinte, a produção depois de 00:00 fica no dia do turno; parada com horário e scrap diário divididos corretamente.'],
   ['correcao','App de celular: mudar a meta ou o gel na configuração não altera mais os turnos já lançados.']]},
@@ -7742,7 +7764,7 @@ function tipoParadaOpts(codes, sel) {
   const cats = [...new Set(codes.map(c => c.category || 'Sem categoria'))];
   return cats.map(cat => `<optgroup label="${esc(cat)}">${codes.filter(c => (c.category || 'Sem categoria') === cat).map(c => `<option value="${c.id}" ${sel === c.id ? 'selected' : ''}>${esc(c.code + ' · ' + c.name)}</option>`).join('')}</optgroup>`).join('');
 }
-const APP_VERSION = '2.6.21';   /* 2.6.21 · TUR-07: turno que passa da meia-noite dividido no total diário (depois de 00:00 → dia seguinte; scrap proporcional à produção, paradas sem horário ao tempo) */   /* 2.6.20 · HEX-01: "Houve hora extra?" no cartão do turno (até 60 min antes do início ou depois do fim) */   /* 2.6.19 · TUR-06: produção no turno não produtivo pela meia-noite (antes → turno anterior; depois → próximo) desde 01/11/2026; aviso de hora extra */   /* 2.6.18 · PAR-CAT: tipo de parada por categoria e com busca nas sugestões do servidor, na importação de paradas e no turno sem produção */   /* 2.6.17 · SRV-DIA: dia sem lançamento com produção do servidor: aviso e abrir o dia com os dados */   /* 2.6.16 · TUR-05: dia em aberto passa ao horário vigente do turno; PAR-BUSCA: tipo de parada por texto */   /* 2.6.15 · REL-01: gel no relatório/e-mail do dia e do turno; Enviar relatório na janela do dia */   /* 2.6.14 · GEL-07: Relatório do Gel e Perdas de gel (turno com gel e Relatórios) */   /* 2.6.13 · GEL-06: Scrap gel no detalhe do turno */   /* 2.6.12 · TUR-04: turno com horário diferente no sábado (linhas por dia da semana) */   /* 2.6.11 · abas agrupadas: Ordens e lotes, Resultados, Paradas */   /* 2.6.10 · Lançamento sem turno aberto por padrão; abas visíveis na casca */   /* 2.6.9 · LANC-02: Lançamento unificado (hora a hora no detalhe do turno, 3º turno ao lado, Problemas de QN) */   /* 2.6.5 · IMP-01: contagens das importações nos exports */   /* 2.6.4 · semáforo só pelas faixas configuradas (verde acima de 100% vale) */   /* 2.6.2 · gráficos e números com meta seguem o semáforo de três cores (verde, amarelo, vermelho) */   /* 2.6.1 · gráficos: turno lançado pelo total com o nome do turno no eixo; janelas: rótulo e valor em tamanho de texto */   /* 2.6.0 · produção total do turno (sem hora a hora; períodos na troca de catálogo), aviso do servidor para turno lançado pelo total e para dia com produção apontada */
+const APP_VERSION = '2.6.22';   /* 2.6.22 · LANC-04: Config. › Abas na plataforma (destaque, selo, aba inicial) e Frequência × duração redesenhado na largura do cartão */   /* 2.6.21 · TUR-07: turno que passa da meia-noite dividido no total diário (depois de 00:00 → dia seguinte; scrap proporcional à produção, paradas sem horário ao tempo) */   /* 2.6.20 · HEX-01: "Houve hora extra?" no cartão do turno (até 60 min antes do início ou depois do fim) */   /* 2.6.19 · TUR-06: produção no turno não produtivo pela meia-noite (antes → turno anterior; depois → próximo) desde 01/11/2026; aviso de hora extra */   /* 2.6.18 · PAR-CAT: tipo de parada por categoria e com busca nas sugestões do servidor, na importação de paradas e no turno sem produção */   /* 2.6.17 · SRV-DIA: dia sem lançamento com produção do servidor: aviso e abrir o dia com os dados */   /* 2.6.16 · TUR-05: dia em aberto passa ao horário vigente do turno; PAR-BUSCA: tipo de parada por texto */   /* 2.6.15 · REL-01: gel no relatório/e-mail do dia e do turno; Enviar relatório na janela do dia */   /* 2.6.14 · GEL-07: Relatório do Gel e Perdas de gel (turno com gel e Relatórios) */   /* 2.6.13 · GEL-06: Scrap gel no detalhe do turno */   /* 2.6.12 · TUR-04: turno com horário diferente no sábado (linhas por dia da semana) */   /* 2.6.11 · abas agrupadas: Ordens e lotes, Resultados, Paradas */   /* 2.6.10 · Lançamento sem turno aberto por padrão; abas visíveis na casca */   /* 2.6.9 · LANC-02: Lançamento unificado (hora a hora no detalhe do turno, 3º turno ao lado, Problemas de QN) */   /* 2.6.5 · IMP-01: contagens das importações nos exports */   /* 2.6.4 · semáforo só pelas faixas configuradas (verde acima de 100% vale) */   /* 2.6.2 · gráficos e números com meta seguem o semáforo de três cores (verde, amarelo, vermelho) */   /* 2.6.1 · gráficos: turno lançado pelo total com o nome do turno no eixo; janelas: rótulo e valor em tamanho de texto */   /* 2.6.0 · produção total do turno (sem hora a hora; períodos na troca de catálogo), aviso do servidor para turno lançado pelo total e para dia com produção apontada */
 const SCHEMA_VERSION = 1;
 const BASE_FILE = 'oee-vacutainer-base.json';
 const BACKUP_DIR = '00. Backups';
@@ -10897,7 +10919,10 @@ const Charts = (() => {
     s += `<g class="ax">${sc.ticks.map(t => `<line class="gl" x1="${padL}" x2="${W - padR}" y1="${y(t)}" y2="${y(t)}"/><text x="${padL - 6}" y="${y(t) + 4}" text-anchor="end">${esc(fmtT(t))}</text>`).join('')}</g>`;
     const maxL = o.maxLabels || Math.max(3, Math.floor(iw / (narrow ? 42 : 48)));
     const every = Math.max(1, Math.ceil(n / maxL));
-    s += `<g class="ax">${o.x.map((l, i) => o.allLabels || i % every === 0 ? (rotL ? `<text transform="translate(${xc(i)},${H - padB + 12}) rotate(-50)" text-anchor="end" style="font-size:10px">${esc(l)}</text>` : `<text x="${xc(i)}" y="${H - padB + 16}" text-anchor="middle">${esc(l)}</text>`) : '').join('')}</g>`;
+    /* LANC-04 · cartão estreito (1/3): com menos de 22 px por barra, os rótulos girados se sobrepunham; mostra um a cada `every` (a dica e
+       a tabela continuam com todos) e o rótulo girado fica abaixo da faixa de família (mark) */
+    const denso = rotL &amp;&amp; (W - 64) / n < 22;
+    s += `<g class="ax">${o.x.map((l, i) => (o.allLabels &amp;&amp; !denso) || i % every === 0 ? (rotL ? `<text transform="translate(${xc(i)},${H - padB + 12 + (hasMark ? 20 : 0)}) rotate(-50)" text-anchor="end" style="font-size:10px">${esc(l)}</text>` : `<text x="${xc(i)}" y="${H - padB + 16}" text-anchor="middle">${esc(l)}</text>`) : '').join('')}</g>`;
     const nb = (o.bars || []).length, y0 = y(Math.max(sc.lo, 0));
     const labelsOn = o.labels !== false;
     (o.bars || []).forEach((b, k) => {
@@ -11016,7 +11041,8 @@ const Charts = (() => {
 
   /* dispersão de uma série (frequência × duração) */
   function scatter(o) {
-    const cid = 'c' + (++seq);
+    const W = o.width || curW;   /* LANC-04 · redesenhado na largura do cartão (fit), como os demais */
+    const cid = o._cid || 'c' + (++seq);
     const pts = o.points; if (!pts.length) return `<div class="empty">${esc(o.empty || 'Sem dados.')}</div>`;
     const H = o.height || 260, padL = 52, padR = 16, padT = 14, padB = 40;
     const sx = nice(Math.max(4, ...pts.map(p => p.x)), 0), sy = nice(Math.max(...pts.map(p => p.y)), 0);
@@ -11030,7 +11056,7 @@ const Charts = (() => {
     const lab = pts.slice().sort((a, b) => b.x * b.y - a.x * a.y).slice(0, 4);
     lab.forEach(p => { const right = X(p.x) > W * 0.7; s += `<text class="lbl2" x="${X(p.x) + (right ? -8 : 8)}" y="${Y(p.y) - 6}" text-anchor="${right ? 'end' : 'start'}">${esc(p.label.slice(0, 26))}</text>`; });
     s += `<line class="bl" x1="${padL}" x2="${W - padR}" y1="${Y(0)}" y2="${Y(0)}"/></svg>`;
-    reg.set(cid, { tip: i => { const p = pts[i]; return `<b>${esc(p.label)}</b><div class="tr"><span>${esc(o.xName)}</span><span>${U.fmt(p.x)}</span></div><div class="tr"><span>${esc(o.yName)}</span><span>${U.fmt(p.y, 1)}</span></div>`; }, click: o.click ? i => o.click(pts[i]) : null, kind: 'sc' });
+    reg.set(cid, { tip: i => { const p = pts[i]; return `<b>${esc(p.label)}</b><div class="tr"><span>${esc(o.xName)}</span><span>${U.fmt(p.x)}</span></div><div class="tr"><span>${esc(o.yName)}</span><span>${U.fmt(p.y, 1)}</span></div>`; }, click: o.click ? i => o.click(pts[i]) : null, kind: 'sc', fn: scatter, o, w: W });
     return wrap(cid, s, '', tableHtml(['Item', o.xName, o.yName], pts.map(p => [p.label, U.fmt(p.x), U.fmt(p.y, 1)])));
   }
 
@@ -37422,6 +37448,32 @@ td strong {
   color:var(--teal);
   font-weight:650
 }
+/* LANC-04 · destaque e selo de Config. › Abas (Produção) */
+.module-tabs .tab-pill {
+  display:inline-block;
+  padding:1px var(--sp-8,8px);
+  border-radius:999px;
+  font-weight:600
+}
+.module-tabs .tab-rotulo {
+  display:inline-flex;
+  align-items:center;
+  gap:var(--sp-4,4px)
+}
+.module-tabs .tab-selo {
+  display:inline-block;
+  padding:0 var(--sp-4,4px);
+  border-radius:4px;
+  font-size:10.5px;
+  font-weight:600;
+  line-height:1.5;
+  background:var(--info-bg,#e6f0f7);
+  color:var(--info,#1d4b73)
+}
+.module-tabs .tab-selo-atualizando {
+  background:var(--warn-bg,#fff4e0);
+  color:var(--warn,#8a5a00)
+}
 .engine-status {
   display:flex;
   gap:var(--sp-4,4px);
@@ -38442,71 +38494,71 @@ body.vac-porta{overflow:hidden}
     {
       "id": "oee",
       "path": "Plataforma.html#motor/oee",
-      "version": "2.6.21",
-      "sha256": "ad8f9a991bfc1a46ea4fe541c535a50a6f3a7a960d022cc916a1350f78c6ab15",
-      "bytes": 2294018
+      "version": "2.6.22",
+      "sha256": "2c111f4fe6fccbf67d3294b5c01fa496c0b7c565b7e4c0a0add3706e1d6a90e9",
+      "bytes": 2296269
     },
     {
       "id": "perdas",
       "path": "Plataforma.html#motor/perdas",
       "version": "1.12.17",
-      "sha256": "4b428a36439fc75ab9ba50bfdf5241fb547b60dacf341402a4018f35beb35265",
-      "bytes": 934799
+      "sha256": "ab7d75b4ee0b045e7bb23d5380aa1dde570519764b1c875a6f685ff72fb45150",
+      "bytes": 936443
     },
     {
       "id": "gel",
       "path": "Plataforma.html#motor/gel",
       "version": "2.42",
-      "sha256": "7818203c0994bc671ceca026e175a3db88e45a75b898b47367464954076b5c0a",
-      "bytes": 1635247
+      "sha256": "53deadeda3bea654248465040dbd02d30875781be8b5c7c7a696318d15055ec2",
+      "bytes": 1636891
     },
     {
       "id": "paradas",
       "path": "Plataforma.html#motor/paradas",
       "version": "1.2.18",
-      "sha256": "cdec98856c16d5cbdff3bba9150b47592c9f3d903d6032a77a308646be4336dc",
-      "bytes": 907406
+      "sha256": "21e7e9649395257816748eb7ecc05cc3629701539a2eb7b26a071f85cbaff02e",
+      "bytes": 909050
     },
     {
       "id": "equip",
       "path": "Plataforma.html#motor/equip",
       "version": "1.0.20",
-      "sha256": "47a20c2a514638fe80b8bbcf540fafc613783dc62fe1ec2b04ebbce9a74ce90c",
-      "bytes": 691139
+      "sha256": "bc6f567220bb3d3a130756e3b10005f14ecfb6752a27292cdd4908db26d80226",
+      "bytes": 692783
     },
     {
       "id": "inic",
       "path": "Plataforma.html#motor/inic",
       "version": "1.1.16",
-      "sha256": "1b614b9e809ed45846995942076375d6dd0db2766fca17b63c8d036cfb221343",
-      "bytes": 712675
+      "sha256": "438436149e8e2713c52fa7aa2659e2bdc95ababf293791c6bbf4627cd4a27f39",
+      "bytes": 714319
     },
     {
       "id": "linha",
       "path": "Plataforma.html#motor/linha",
       "version": "1.4.0",
-      "sha256": "131bdb604fc58363af33ede9b7a006469139525042697851e375ff36b5a80067",
-      "bytes": 894434
+      "sha256": "861ee915e4907bdc4772277d35638a187146b313d62fb8b62db359b5525bc353",
+      "bytes": 896078
     },
     {
       "id": "projetos",
       "path": "Plataforma.html#motor/projetos",
       "version": "0.1.16",
-      "sha256": "7705493d8eb5aaecdffc75e5c0c822a53adf4b58de7ab6eb392a4b3247d4959c",
-      "bytes": 631079
+      "sha256": "b314a7219186311dec13c6c81be0c9bd5bf3dd7bf001f9f5f08338552ddea0c3",
+      "bytes": 632723
     },
     {
       "id": "portal",
       "path": "Plataforma.html#motor/portal",
-      "version": "1.9.53",
-      "sha256": "244b45a5a08eec9a1159a05527fd48393030e4d260f5dbfb317001dc30e36aa0",
-      "bytes": 1260455
+      "version": "1.9.54",
+      "sha256": "7d4d81269f463d32a8599e4c02617115b44f77b85306c06431f9c1662db3f70e",
+      "bytes": 1262595
     }
   ],
   "limitations": [
     "Projetos e conteúdo técnico OSM/MES/AM/TPM mantêm os limites documentados nas fontes."
   ],
-  "enginesSha256": "fdceace2772d7b5be085e7dbad52fff720a74d74241181dc9b7cfa02cbcf4d46",
+  "enginesSha256": "ea29821b5056c1de8c86ba506b39f8d1f2a5c41d2f60d86d7ecc6bec0a63eac6",
   "originRevision": "ffc9ee8",
   "sourceMode": "single-html",
   "originEnginesSha256": "a87a64ad0c328f70e102b2ae888790a9b5d5a9bd05778652a7ce7cae140e40d2"
@@ -38576,7 +38628,7 @@ summary{cursor:pointer;font-weight:600;color:var(--navy)}
 'use strict';
 /* ---------- referência (atualizar quando a plataforma mudar de versão) ---------- */
 // Iguais às do pacote da plataforma (nova-plataforma/src/generated/manifest.json); o teste ferramenta-verificar confere.
-const VERSOES = {"oee":"2.6.21","perdas":"1.12.17","gel":"2.42","paradas":"1.2.18","equip":"1.0.20","inic":"1.1.16","linha":"1.4.0","projetos":"0.1.16","portal":"1.9.53"};
+const VERSOES = {"oee":"2.6.22","perdas":"1.12.17","gel":"2.42","paradas":"1.2.18","equip":"1.0.20","inic":"1.1.16","linha":"1.4.0","projetos":"0.1.16","portal":"1.9.54"};
 const BASES = [
  { arq: 'vacutainer-cadastros.json', mod: 'portal', nome: 'Cadastro geral (Portal)', obrig: true, cadastro: true, bk: 'Cadastros' },
  { arq: 'portal-base.json', mod: 'portal', nome: 'Portal', obrig: true, bk: 'Portal' },
@@ -39167,7 +39219,7 @@ import { Icon, Button, Badge, Empty, Modal, BarChart, BrandLogo, CommandMenu } f
 import { ModuleFrame } from "vac:modulo/components/ModuleFrame";
 import manifest from "vac:recurso/manifesto";
 import { ModuleTabs } from "vac:modulo/components/ModuleTabs";
-const VERSION = "1.8.30";
+const VERSION = "1.8.31";
 /* Navegação 1.3.0 (16/11/2026): Visão da linha, Relatórios e Importações têm abas; as que mostram uma tela do
    Portal (motor da Administração) trazem o 3º campo com a aba dele. Administração fica só com cadastros e configuração. */
 const SHELL_TABS = {
@@ -39251,7 +39303,8 @@ function App() {
   const embedded = shellTab &amp;&amp; shellTab[2] ? moduleOf(shellTab[3] || "portal") : null, pageId = embedded ? embedded.id : route.page;
   const current = embedded || moduleOf(route.page);
   const currentTabs = current ? (statuses[current.id]?.tabs || []).filter((t) => current.id !== "portal" || !PORTAL_ONDE[t.id]) : [];
-  const currentTab = embedded ? shellTab[2] : route.tab || currentTabs[0]?.id || "";
+  /* LANC-04 · sem aba na rota, abre a aba inicial salva em Config. › Abas (Produção: inicial=true); sem ela, a primeira, como antes */
+  const currentTab = embedded ? shellTab[2] : route.tab || (currentTabs.find((t) => t.inicial) || currentTabs[0])?.id || "";
   /* 1.8.14 · a página trocou de aba por conta própria (ex.: Produção: um link abre Semanal dentro de Resultados): o destaque da aba acompanha.
      Só o destaque: não navega de novo. Um clique numa aba volta a mandar. */
   const abaMod = current &amp;&amp; current.id !== "portal" ? statuses[current.id]?.info?.aba : void 0, [abaSeguida, setAbaSeguida] = useState(null);
@@ -40189,7 +40242,7 @@ export {
 </textarea>
 
 <!-- modulo/components/ModuleTabs -->
-<textarea data-vac-source="modulo/components/ModuleTabs" spellcheck="false">import { jsx } from "vac:vendor/react";
+<textarea data-vac-source="modulo/components/ModuleTabs" spellcheck="false">import { jsx, jsxs } from "vac:vendor/react";
 import { useLayoutEffect, useRef, useState } from "vac:vendor/react";
 function ModuleTabs({ tabs, active, onSelect }) {
   const nav = useRef(null), [edges, setEdges] = useState({ left: false, right: false });
@@ -40220,7 +40273,15 @@ function ModuleTabs({ tabs, active, onSelect }) {
       observer.disconnect();
     };
   }, [tabs, active]);
-  return /* @__PURE__ */ jsx("div", { className: "module-tabs-wrap" + (edges.left ? " more-left" : "") + (edges.right ? " more-right" : ""), children: /* @__PURE__ */ jsx("nav", { ref: nav, className: "module-tabs", "aria-label": "Abas do m\xF3dulo", children: tabs.map((t) => /* @__PURE__ */ jsx("button", { "data-tab-id": t.id, "aria-current": active === t.id ? "page" : void 0, className: active === t.id ? "active" : "", onClick: () => onSelect(t.id), children: t.label }, t.id)) }) });
+  return /* @__PURE__ */ jsx("div", { className: "module-tabs-wrap" + (edges.left ? " more-left" : "") + (edges.right ? " more-right" : ""), children: /* @__PURE__ */ jsx("nav", { ref: nav, className: "module-tabs", "aria-label": "Abas do m\xF3dulo", children: tabs.map((t) => /* @__PURE__ */ jsx("button", { "data-tab-id": t.id, "aria-current": active === t.id ? "page" : void 0, className: active === t.id ? "active" : "", onClick: () => onSelect(t.id), children: rotulo(t) }, t.id)) }) });
+}
+/* LANC-04 · destaque colorido (pílula atrás do nome, com o texto em contraste) e selo de estado, vindos de Config. › Abas da página */
+const SELO = { "constru\xE7\xE3o": ["em constru\xE7\xE3o", "Em constru\xE7\xE3o"], "atualiza\xE7\xE3o": ["atualizando", "Em atualiza\xE7\xE3o"] };
+function rotulo(t) {
+  const nome = t.cor ? jsx("span", { className: "tab-pill", style: { background: t.cor, color: t.corTexto || "#fff" }, children: t.label }) : t.label;
+  const selo = SELO[t.estado];
+  if (!selo) return nome;
+  return jsxs("span", { className: "tab-rotulo", children: [nome, jsx("span", { className: "tab-selo tab-selo-" + (t.estado === "atualiza\xE7\xE3o" ? "atualizando" : "construcao"), title: selo[1], children: selo[0] })] });
 }
 export {
   ModuleTabs
