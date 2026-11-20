@@ -19,6 +19,7 @@ Pedido do responsável (20/11/2026). **Ainda não implementado.** Muda a interfa
 | 11 | Validação: botão para ir até o ajuste (cobertura, divergência…) | 9 |
 | 12 | Cards resumo em bloco recolhível, expandido por padrão | 1.1 |
 | 13 | Topo da página Produção conforme a imagem enviada (cabeçalho, abas e barra de ações) | 0 |
+| 14 | Config. › Abas refletida na página (destaque, cores, estado) | 0.1 |
 
 ## 0. Topo da página Produção (decisão do responsável, 20/11/2026)
 
@@ -55,6 +56,31 @@ Os rótulos ficam padronizados ("Visão geral", não "Visão Geral"; "Config." s
 **Seletor do dia:** a barra Data / Linha / "Ver o dia inteiro (24 h)" fica logo abaixo, sem mudança, e o cabeçalho do dia (item 1) vem depois dela.
 
 **Teste:** a ordem das abas, os rótulos, o chip de situação nos três estados, Trocar pasta (pasta × sem pasta × Demonstração) e a barra de ações à esquerda e à direita.
+
+## 0.1 Config. › Abas refletida na página (diagnóstico de 20/11/2026)
+
+Testado na Demonstração da plataforma 1.8.30, salvando pelo próprio formulário de Config. › Abas e lendo as abas que a casca mostra:
+
+| Configuração | Reflete na página? | Motivo |
+|---|---|---|
+| Ordem (arrastar) | sim | a casca usa `visibleRoutes()` |
+| Mostrar / ocultar (só para mim) | sim | idem |
+| Estado "Oculta para todos" | sim | idem |
+| Estado "Em atualização": faixa no topo da tela | sim | `tabBanner` do motor |
+| **Destaque colorido** | **não** | `abas()` (comum/interface) passa só `[id, nome]`, e `ModuleTabs` (modulo/components) desenha só o texto. A cor (`App.prefs.tabs.hl`) se perde. |
+| **Selo "em construção" / "atualizando" na aba** | **não** | mesmo motivo: `tabLabel()` só é usado no `#nav` antigo do motor, que fica oculto na plataforma. Até esse `#nav` agrupado (`nitem`) usa só o nome. |
+| Aba inicial | não confirmado | `loadPrefs` aplica `start`, mas na Demonstração as preferências não sobrevivem ao recarregar. Conferir com a pasta, e ver se a casca, ao abrir a Produção, não força a rota `launch`. |
+
+Correção (sem mudar rota, ID nem permissão):
+
+- **`abas()` (comum/interface):** para a Produção, devolver também `cor` (`App.prefs.tabs.hl[k]`) e `estado` (`tabState(k).state`).
+- **`ModuleTabs`:**
+  - aplicar a cor como pílula atrás do nome, com contraste automático (`textOn`), mantendo o sublinhado da aba ativa;
+  - mostrar o selo "em construção" ou "atualizando" ao lado do nome.
+- **Atualização imediata:** depois de **Salvar** em Config. › Abas, a casca relê as abas na hora, sem precisar recarregar.
+- **Aba inicial:** ao abrir a Produção sem rota explícita na URL, a casca respeita `start`.
+- **Ordem padrão:** a ordem da imagem (item 0) passa a ser a ordem padrão de `ROUTES`. A ordem que cada pessoa salvou continua valendo para ela.
+- **Teste `abas`** (estender): cor visível na aba da casca, selo de estado, atualização sem recarregar e aba inicial.
 
 ## 1. Cabeçalho do dia (uma linha, sem repetição)
 
