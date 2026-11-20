@@ -20,6 +20,7 @@ Pedido do responsável (20/11/2026). **Ainda não implementado.** Muda a interfa
 | 12 | Cards resumo em bloco recolhível, expandido por padrão | 1.1 |
 | 13 | Topo da página Produção conforme a imagem enviada (cabeçalho, abas e barra de ações) | 0 |
 | 14 | Config. › Abas refletida na página (destaque, cores, estado): **pendência própria LANC-04** | 0.1 |
+| 15 | Gráficos que não mudam de tamanho (1/1, 1/2, 1/3) nem de lugar; grade de até 3 lado a lado: **LANC-04** | 0.2 |
 
 ## 0. Topo da página Produção (decisão do responsável, 20/11/2026)
 
@@ -83,6 +84,38 @@ Correção (sem mudar rota, ID nem permissão):
 - **Aba inicial:** ao abrir a Produção sem rota explícita na URL, a casca respeita `start`.
 - **Ordem padrão:** a ordem da imagem (item 0) passa a ser a ordem padrão de `ROUTES`. A ordem que cada pessoa salvou continua valendo para ela.
 - **Teste `abas`** (estender): cor visível na aba da casca, selo de estado, atualização sem recarregar e aba inicial.
+
+### 0.2 LANC-04 · Grade de gráficos: 1/1, 1/2 e 1/3 e mover (diagnóstico de 20/11/2026)
+
+**Regra pedida:** a página é uma grade de até 3 colunas. Qualquer cartão (gráfico, tabela ou lista) aceita 1/1, 1/2 ou 1/3. Três cartões em 1/3 ficam lado a lado na mesma linha. ← → e o arrasto mudam o lugar de qualquer cartão.
+
+**Teste na Demonstração (1.8.30, tela de 1600 px):** cliquei 1/3 em cada cartão e medi a largura.
+
+| Onde | Cartão | Resultado |
+|---|---|---|
+| Visão geral · padrão | PPH real × nominal, Perdas em minutos por dia, Scrap % por dia, Tendência mensal | **não muda** (continua 1282 de 1282 px) |
+| Visão geral · Meu painel e modelos | OEE × meta, Tendência de OEE · 12 meses | **não muda** |
+| Visões e relatórios com os blocos | Hora a hora, Paradas do período, Plano do mês · acumulado, Plano por família e catálogo, Observações registradas (os que você citou), Resultado por turno | **não muda**: todos são blocos de largura inteira (`w:'f'`) |
+| Demais cartões (Produção boa, OEE por turno, Cascata, Pareto…) | | ok: 635 → 419 px |
+
+**Causa:** os cartões nascidos com largura inteira têm `grid-column:1/-1` fixo, que vence a largura escolhida (`data-vg-l`) do `vacGrade` (comum/interface):
+- `style="grid-column:1/-1"` em linha (Visão geral · padrão, `card(…, span)`);
+- a classe `.pn-grid .pn-blk.full` (blocos `PN_B` com `w:'f'`).
+
+Ocupando a linha toda, o cartão também não fica ao lado de outro, por isso parece que não se move.
+
+**Correção:**
+- **Largura escolhida sempre vence:** o `vacGrade.aplicar` passa a gravar a largura como `grid-column: span N` em linha, sobrescrevendo o `1/-1` do cartão. A largura inteira de nascença continua sendo só o padrão (`data-vg-n`), usado enquanto a pessoa não escolhe outra.
+- **Gráfico redesenhado na largura nova:** depois da troca, o gráfico é redesenhado na largura real do cartão (o mesmo redesenho de "texto sempre no mesmo tamanho"), em vez de encolher o desenho de 1440 px (`Charts.setWidth`). Eixos e legendas continuam legíveis em 1/3.
+- **Tabelas em 1/2 ou 1/3:** rolam na horizontal dentro do cartão (`.tw`), sem quebrar a grade.
+- **Todos os cartões têm a barra 1/1 · 1/2 · 1/3 e ← →:** inclusive os de tabela ou lista sozinhos numa grade, que hoje ficam sem barra (Paradas do período, Plano por família e catálogo, Observações registradas).
+- **Celular:** abaixo de 760 px, tudo continua 1/1 (regra atual).
+- **Revisar todas as páginas que usam `vacGrade`:** Visão geral (padrão, Meu painel, visões e modelos), Lançamento, Resultados, Plano do mês, Relatórios e as páginas dos outros motores. O teste faz isso automaticamente.
+- **Teste `grade-larguras` (novo):**
+  - para cada cartão com barra, em cada página: 1/3 dá cerca de 1/3 da grade, 1/2 cerca de metade e 1/1 a largura toda;
+  - três cartões em 1/3 ficam na mesma linha;
+  - ← → muda a ordem e a ordem sobrevive ao redesenho;
+  - o gráfico é redesenhado: a largura do SVG acompanha a do cartão.
 
 ## 1. Cabeçalho do dia (uma linha, sem repetição)
 
