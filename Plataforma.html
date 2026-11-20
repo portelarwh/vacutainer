@@ -7711,7 +7711,7 @@ function tipoParadaOpts(codes, sel) {
   const cats = [...new Set(codes.map(c => c.category || 'Sem categoria'))];
   return cats.map(cat => `<optgroup label="${esc(cat)}">${codes.filter(c => (c.category || 'Sem categoria') === cat).map(c => `<option value="${c.id}" ${sel === c.id ? 'selected' : ''}>${esc(c.code + ' · ' + c.name)}</option>`).join('')}</optgroup>`).join('');
 }
-const APP_VERSION = '2.6.20';   /* 2.6.20 · HEX-01: "Houve hora extra?" no cartão do turno (até 60 min antes do início ou depois do fim) */   /* 2.6.19 · TUR-06: produção no turno não produtivo pela meia-noite (antes → turno anterior; depois → próximo) desde 01/11/2026; aviso de hora extra */   /* 2.6.18 · PAR-CAT: tipo de parada por categoria e com busca nas sugestões do servidor, na importação de paradas e no turno sem produção */   /* 2.6.17 · SRV-DIA: dia sem lançamento com produção do servidor: aviso e abrir o dia com os dados */   /* 2.6.16 · TUR-05: dia em aberto passa ao horário vigente do turno; PAR-BUSCA: tipo de parada por texto */   /* 2.6.15 · REL-01: gel no relatório/e-mail do dia e do turno; Enviar relatório na janela do dia */   /* 2.6.14 · GEL-07: Relatório do Gel e Perdas de gel (turno com gel e Relatórios) */   /* 2.6.13 · GEL-06: Scrap gel no detalhe do turno */   /* 2.6.12 · TUR-04: turno com horário diferente no sábado (linhas por dia da semana) */   /* 2.6.11 · abas agrupadas: Ordens e lotes, Resultados, Paradas */   /* 2.6.10 · Lançamento sem turno aberto por padrão; abas visíveis na casca */   /* 2.6.9 · LANC-02: Lançamento unificado (hora a hora no detalhe do turno, 3º turno ao lado, Problemas de QN) */   /* 2.6.5 · IMP-01: contagens das importações nos exports */   /* 2.6.4 · semáforo só pelas faixas configuradas (verde acima de 100% vale) */   /* 2.6.2 · gráficos e números com meta seguem o semáforo de três cores (verde, amarelo, vermelho) */   /* 2.6.1 · gráficos: turno lançado pelo total com o nome do turno no eixo; janelas: rótulo e valor em tamanho de texto */   /* 2.6.0 · produção total do turno (sem hora a hora; períodos na troca de catálogo), aviso do servidor para turno lançado pelo total e para dia com produção apontada */
+const APP_VERSION = '2.6.21';   /* 2.6.21 · TUR-07: turno que passa da meia-noite dividido no total diário (depois de 00:00 → dia seguinte; scrap proporcional à produção, paradas sem horário ao tempo) */   /* 2.6.20 · HEX-01: "Houve hora extra?" no cartão do turno (até 60 min antes do início ou depois do fim) */   /* 2.6.19 · TUR-06: produção no turno não produtivo pela meia-noite (antes → turno anterior; depois → próximo) desde 01/11/2026; aviso de hora extra */   /* 2.6.18 · PAR-CAT: tipo de parada por categoria e com busca nas sugestões do servidor, na importação de paradas e no turno sem produção */   /* 2.6.17 · SRV-DIA: dia sem lançamento com produção do servidor: aviso e abrir o dia com os dados */   /* 2.6.16 · TUR-05: dia em aberto passa ao horário vigente do turno; PAR-BUSCA: tipo de parada por texto */   /* 2.6.15 · REL-01: gel no relatório/e-mail do dia e do turno; Enviar relatório na janela do dia */   /* 2.6.14 · GEL-07: Relatório do Gel e Perdas de gel (turno com gel e Relatórios) */   /* 2.6.13 · GEL-06: Scrap gel no detalhe do turno */   /* 2.6.12 · TUR-04: turno com horário diferente no sábado (linhas por dia da semana) */   /* 2.6.11 · abas agrupadas: Ordens e lotes, Resultados, Paradas */   /* 2.6.10 · Lançamento sem turno aberto por padrão; abas visíveis na casca */   /* 2.6.9 · LANC-02: Lançamento unificado (hora a hora no detalhe do turno, 3º turno ao lado, Problemas de QN) */   /* 2.6.5 · IMP-01: contagens das importações nos exports */   /* 2.6.4 · semáforo só pelas faixas configuradas (verde acima de 100% vale) */   /* 2.6.2 · gráficos e números com meta seguem o semáforo de três cores (verde, amarelo, vermelho) */   /* 2.6.1 · gráficos: turno lançado pelo total com o nome do turno no eixo; janelas: rótulo e valor em tamanho de texto */   /* 2.6.0 · produção total do turno (sem hora a hora; períodos na troca de catálogo), aviso do servidor para turno lançado pelo total e para dia com produção apontada */
 const SCHEMA_VERSION = 1;
 const BASE_FILE = 'oee-vacutainer-base.json';
 const BACKUP_DIR = '00. Backups';
@@ -8018,6 +8018,31 @@ const Engine = (() => {
   const AGG_KEYS = ['grossMin', 'deductMin', 'netMin', 'aMin', 'pMin', 'infoMin', 'cap', 'metaDec', 'metaOp', 'metaOrigDec', 'good', 'scrap', 'goodMin', 'scrapMin', 'extraMin', 'events', 'intervals', 'goodMissing'];
   const emptyAgg = () => { const a = {}; AGG_KEYS.forEach(k => a[k] = 0); a.scrapKnown = true; a.shifts = 0; a.days = 0; return a; };
   function addAgg(a, b) { AGG_KEYS.forEach(k => a[k] += b[k] || 0); a.scrapKnown = a.scrapKnown &amp;&amp; b.scrapKnown; a.shifts += b.shifts || 0; a.days += b.days || 0; return a; }
+  const subAgg = (a, b) => { AGG_KEYS.forEach(k => a[k] -= b[k] || 0); return a; };
+  /* 2.6.21 · TUR-07 (decisão do responsável, 20/11/2026; dias desde 01/11/2026, a mesma data da regra da meia-noite): turno produtivo que
+     passa da meia-noite (ex.: 3º turno habilitado) continua um só no lançamento, com o OEE do turno inteiro; no TOTAL DO DIA, a parte depois
+     de 00:00 sai do dia em que o turno começou e entra no dia seguinte. Horas: pelos minutos de cada lado (a que atravessa 00:00 divide-se
+     pelos minutos); paradas com horário: pelo horário (vêm das horas); paradas sem horário: proporcionais ao tempo; scrap do turno:
+     proporcional à produção (sem produção, ao tempo). Scrap diário (modo dia) não se move. Contagens (intervalos, paradas) ficam no dia
+     do turno. */
+  function viradaDoTurno(fs, sr, sm, scrapDia) {
+    const raw = emptyAgg(), all = emptyAgg();
+    for (const f of fs) {
+      const k = f.iv.end <= 1440 ? 0 : f.iv.start >= 1440 ? 1 : (f.iv.end - 1440) / (f.iv.end - f.iv.start);
+      all.cap += f.capDec; all.metaDec += f.metaAdjDec; all.metaOp += f.metaOp; all.grossMin += f.min;
+      if (!k) continue;
+      raw.grossMin += f.min * k; raw.deductMin += f.deduct * k; raw.netMin += f.net * k; raw.aMin += f.a * k; raw.pMin += f.p * k; raw.infoMin += f.info * k;
+      raw.cap += f.capDec * k; raw.metaDec += f.metaAdjDec * k; raw.metaOrigDec += f.metaOrigDec * k; raw.metaOp += f.metaOp * k;
+      raw.good += (f.good || 0) * k; raw.goodMin += f.pph ? (f.good || 0) * k * 60 / f.pph : 0; if (f.iv.kind === 'extra') raw.extraMin += f.min * k;
+    }
+    if (!raw.grossMin) return null;
+    const a = sr.agg, kt = all.grossMin ? raw.grossMin / all.grossMin : 0, kCap = all.cap ? a.cap / all.cap : 1, kMeta = all.metaDec ? a.metaDec / all.metaDec : 1, kOp = all.metaOp ? a.metaOp / all.metaOp : 1;
+    const part = Object.assign(emptyAgg(), { grossMin: raw.grossMin, deductMin: raw.deductMin + sm.deduct * kt, netMin: raw.netMin - sm.deduct * kt, aMin: raw.aMin + sm.a * kt, pMin: raw.pMin + sm.p * kt, infoMin: raw.infoMin + sm.info * kt,
+      cap: raw.cap * kCap, metaDec: raw.metaDec * kMeta, metaOrigDec: raw.metaOrigDec, metaOp: raw.metaOp * kOp, good: raw.good, goodMin: raw.goodMin, extraMin: raw.extraMin });
+    const kg = a.good > 0 ? raw.good / a.good : kt;
+    if (!scrapDia) { part.scrap = (a.scrap || 0) * kg; part.scrapMin = (a.scrapMin || 0) * kg; }
+    return { agg: part, kt, kg };
+  }
 
   // indicadores derivados + cascata + qualidade do apontamento
   function finalize(a, st) {
@@ -8113,15 +8138,17 @@ const Engine = (() => {
   const cache = new WeakMap();
   let cfgRev = 0;
   const bumpConfig = () => { cfgRev++; };
+  /* TUR-07: o dia anterior da mesma linha (a parte depois de 00:00 do turno dele entra aqui) */
+  const diaAnterior = (db, day) => (db.productionDays || []).find(d => !d.deleted &amp;&amp; d.lineId === day.lineId &amp;&amp; d.date === U.addDays(day.date, -1)) || null;
   function computeDay(db, day) {
-    const c = cache.get(day);
-    if (c &amp;&amp; c.rev === day._rev &amp;&amp; c.cfg === cfgRev &amp;&amp; c.db === db) return c.res;
+    const c = cache.get(day), ant = diaAnterior(db, day), antRev = ant ? ant.id + ':' + ant._rev : '';
+    if (c &amp;&amp; c.rev === day._rev &amp;&amp; c.cfg === cfgRev &amp;&amp; c.db === db &amp;&amp; c.ant === antRev) return c.res;
     const res = computeDayRaw(db, day);
-    cache.set(day, { rev: day._rev, cfg: cfgRev, db, res });
+    cache.set(day, { rev: day._rev, cfg: cfgRev, db, res, ant: antRev });
     return res;
   }
 
-  function computeDayRaw(db, day) {
+  function computeDayRaw(db, day, opts = {}) {
     const st = db.settings;
     const ru = roundAt(st, day.date);
     const msgs = [];
@@ -8277,6 +8304,17 @@ const Engine = (() => {
     if (ft &amp;&amp; ft.pecas) M('info', `${U.fmt(ft.pecas)} peça(s) produzida(s) fora dos turnos produtivos contam neste dia (OEE reportado). Veja o quadro "Turnos não produtivos e produção fora de turno".`);
     /* 2.6.19 · TUR-06: hora extra acima do limite (60 min) só avisa; a produção conta pela regra do relógio */
     if (ft) for (const it of (ft.recebe || [])) if (it.horaExtra &amp;&amp; !(ft.semAlvo || []).includes(it)) M('alerta', `${it.alvo.name}: produção além de ${it.horaExtra.limite} min de hora extra (${U.fmt(it.horaExtra.caixas)} caixa(s) entre ${U.hhmm(it.horaExtra.de)} e ${U.hhmm(it.horaExtra.ate)} na ${it.rotulo}). Ela conta no ${it.alvo.name} pela regra da meia-noite; confira se faltou lançar a hora extra no turno ou se o 3º turno deveria estar habilitado.`);
+    /* 2.6.21 · TUR-07: turno que passa da meia-noite → a parte depois de 00:00 conta no total do dia seguinte (desde 01/11/2026) */
+    let virada = null, vem = null;
+    if (ForaTurno.relogio(db, day.date)) {
+      const partes = [];
+      for (const sr of shiftRes) { if (sr.off || sr.npOff) continue; const v = viradaDoTurno(flat.filter(f => f.ps === sr.ps), sr, shiftManual[sr.ps.id], day.scrapMode === 'day'); if (v) partes.push({ ps: sr.ps, ...v }); }
+      if (partes.length) { virada = { agg: partes.reduce((a, x) => addAgg(a, x.agg), emptyAgg()), turnos: partes.map(x => x.ps.snap.name), para: U.addDays(day.date, 1) }; subAgg(dayAgg, virada.agg);
+        M('info', `${virada.turnos.join(', ')}: ${U.fmt(virada.agg.good)} produzido(s) depois de 00:00 contam no total de ${U.brDate(virada.para)} (o OEE do turno é o do turno inteiro).`); }
+    }
+    if (!opts.semVizinho) { const ant = diaAnterior(db, day);
+      if (ant &amp;&amp; ForaTurno.relogio(db, ant.date)) { let ra = null; try { ra = computeDayRaw(db, ant, { semVizinho: true }); } catch (e) { console.warn('TUR-07', e); }
+        if (ra &amp;&amp; ra.virada) { vem = { ...ra.virada, de: ant.date }; addAgg(dayAgg, vem.agg); M('info', `Inclui ${U.fmt(vem.agg.good)} produzido(s) depois de 00:00 pelo ${vem.turnos.join(', ')} de ${U.brDate(ant.date)} (parte do turno que passou da meia-noite).`); } } }
     if (day.scrapMode === 'day') { dayAgg.scrap = +day.scrapDay || 0; dayAgg.scrapKnown = day.scrapDay != null; dayAgg.scrapMin = dayAgg.cap > 0 ? dayAgg.scrap * dayAgg.netMin / dayAgg.cap : 0; }
     if (dayManual.n) {
       dayAgg.aMin += dayManual.a; dayAgg.pMin += dayManual.p; dayAgg.infoMin += dayManual.info;
@@ -8329,7 +8367,7 @@ const Engine = (() => {
     if (dayR.cascade &amp;&amp; !dayR.cascade.ok &amp;&amp; dayR.cascade.check != null) M('alerta', `A cascata não fecha: diferença de ${U.fmt(dayR.cascade.check)} unidades.`);
     for (const m of dayR.qa.msgs) if (dayR.qa.status !== 'adequado') M('alerta', m);
     if (ft) { ft.real = ft.realDia ? finalize(ft.realDia, st) : null; }
-    return { day, flat, shifts: shiftRes, r: dayR, agg: dayAgg, officialDaily, comp, msgs, events: evRes, foraTurno: ft };
+    return { day, flat, shifts: shiftRes, r: dayR, agg: dayAgg, officialDaily, comp, msgs, events: evRes, foraTurno: ft, virada, vem };
   }
 
   /* ---------- geração do dia ---------- */
@@ -38365,9 +38403,9 @@ body.vac-porta{overflow:hidden}
     {
       "id": "oee",
       "path": "Plataforma.html#motor/oee",
-      "version": "2.6.20",
-      "sha256": "e3a80bf97b872c88e294993392491c33116672ddd297359ee1c202cfb3fe511d",
-      "bytes": 2288339
+      "version": "2.6.21",
+      "sha256": "0535828a73c0aa5ed306c18f96e51d404a738050d792b784663b7060f148e756",
+      "bytes": 2292729
     },
     {
       "id": "perdas",
@@ -38429,7 +38467,7 @@ body.vac-porta{overflow:hidden}
   "limitations": [
     "Projetos e conteúdo técnico OSM/MES/AM/TPM mantêm os limites documentados nas fontes."
   ],
-  "enginesSha256": "0dc6af66946f4489d69ee39bd0da19d0be099ee39813d1b1f6b90dd97dc564e3",
+  "enginesSha256": "75c8b4255ba39b02fbd3937bf8be92c197dfbddd52049528d7e1d81c8d643a93",
   "originRevision": "ffc9ee8",
   "sourceMode": "single-html",
   "originEnginesSha256": "a87a64ad0c328f70e102b2ae888790a9b5d5a9bd05778652a7ce7cae140e40d2"
@@ -38499,7 +38537,7 @@ summary{cursor:pointer;font-weight:600;color:var(--navy)}
 'use strict';
 /* ---------- referência (atualizar quando a plataforma mudar de versão) ---------- */
 // Iguais às do pacote da plataforma (nova-plataforma/src/generated/manifest.json); o teste ferramenta-verificar confere.
-const VERSOES = {"oee":"2.6.20","perdas":"1.12.17","gel":"2.42","paradas":"1.2.18","equip":"1.0.20","inic":"1.1.16","linha":"1.4.0","projetos":"0.1.16","portal":"1.9.52"};
+const VERSOES = {"oee":"2.6.21","perdas":"1.12.17","gel":"2.42","paradas":"1.2.18","equip":"1.0.20","inic":"1.1.16","linha":"1.4.0","projetos":"0.1.16","portal":"1.9.52"};
 const BASES = [
  { arq: 'vacutainer-cadastros.json', mod: 'portal', nome: 'Cadastro geral (Portal)', obrig: true, cadastro: true, bk: 'Cadastros' },
  { arq: 'portal-base.json', mod: 'portal', nome: 'Portal', obrig: true, bk: 'Portal' },
@@ -39090,7 +39128,7 @@ import { Icon, Button, Badge, Empty, Modal, BarChart, BrandLogo, CommandMenu } f
 import { ModuleFrame } from "vac:modulo/components/ModuleFrame";
 import manifest from "vac:recurso/manifesto";
 import { ModuleTabs } from "vac:modulo/components/ModuleTabs";
-const VERSION = "1.8.28";
+const VERSION = "1.8.29";
 /* Navegação 1.3.0 (16/11/2026): Visão da linha, Relatórios e Importações têm abas; as que mostram uma tela do
    Portal (motor da Administração) trazem o 3º campo com a aba dele. Administração fica só com cadastros e configuração. */
 const SHELL_TABS = {
