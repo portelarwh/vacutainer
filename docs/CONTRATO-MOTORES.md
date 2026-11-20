@@ -90,6 +90,14 @@ Pedidos do responsável: (1) com a vigência nova do turno (sábado 06:00–13:3
 - **PAR-BUSCA:** campo de busca acima da lista do tipo de parada (Registrar parada e turno não produtivo, na Produção; reclassificação no Paradas): filtra pelo código, nome e grupo, sem diferença de acento e maiúscula, várias palavras = todas; uma opção só é escolhida sozinha; Enter escolhe a primeira. Função comum `vacFiltroSelect` (comum/interface). Não muda códigos nem valores.
 - Teste: `testes/plataforma/turno-vigente.cjs` (demonstração, dados fictícios).
 
+## PAR-CAT · tipo de parada por categoria e com busca · Produção 2.6.18, plataforma 1.8.26 (20/11/2026)
+
+Pedido do responsável: nas sugestões do servidor não havia digitação livre para o tipo de parada, e a lista vinha inteira.
+- **Onde:** "Sugestões do servidor" (seção Paradas), importação de paradas ("Observação → tipo de parada") e turno sem produção (tipo de parada não programada). O registro manual de parada já tinha as duas coisas (PAR-BUSCA, 2.6.16).
+- **Como:** `tipoParadaOpts` monta a lista com um grupo por categoria, na ordem do cadastro; `vacFiltroSelect` (comum/interface) filtra em tempo real pelo código, pelo nome ou pela categoria ("setup" deixa só os tipos de Setup), escolhe sozinho quando sobra um e aceita Enter.
+- **Sem mudança** de tipos, valores, filtros de vigência ou classificação de paradas: só a forma de escolher.
+- **Teste:** `testes/plataforma/parada-categorias.cjs`.
+
 ## FORM-01 · Formulários A4 com fotos marcadas · Linha 360° 1.4.0, plataforma 1.8.25 (19/11/2026)
 
 Pedido do responsável: formulário de tarefas (checklist, limpeza, confirmação de processo, manutenção, AM, 5S), pontuais, recorrentes ou planejadas, em A4, com o local vindo da Linha 360° e fotos marcadas. A página **Relatórios** passa a se chamar **Relatórios e formulários**, com a aba **Formulários**.

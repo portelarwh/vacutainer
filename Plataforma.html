@@ -7704,7 +7704,14 @@ const U = (() => {
 
 /* ---- 02-model.js ---- */
 /* ================= modelo de dados, valores iniciais e integridade ================= */
-const APP_VERSION = '2.6.17';   /* 2.6.17 · SRV-DIA: dia sem lançamento com produção do servidor: aviso e abrir o dia com os dados */   /* 2.6.16 · TUR-05: dia em aberto passa ao horário vigente do turno; PAR-BUSCA: tipo de parada por texto */   /* 2.6.15 · REL-01: gel no relatório/e-mail do dia e do turno; Enviar relatório na janela do dia */   /* 2.6.14 · GEL-07: Relatório do Gel e Perdas de gel (turno com gel e Relatórios) */   /* 2.6.13 · GEL-06: Scrap gel no detalhe do turno */   /* 2.6.12 · TUR-04: turno com horário diferente no sábado (linhas por dia da semana) */   /* 2.6.11 · abas agrupadas: Ordens e lotes, Resultados, Paradas */   /* 2.6.10 · Lançamento sem turno aberto por padrão; abas visíveis na casca */   /* 2.6.9 · LANC-02: Lançamento unificado (hora a hora no detalhe do turno, 3º turno ao lado, Problemas de QN) */   /* 2.6.5 · IMP-01: contagens das importações nos exports */   /* 2.6.4 · semáforo só pelas faixas configuradas (verde acima de 100% vale) */   /* 2.6.2 · gráficos e números com meta seguem o semáforo de três cores (verde, amarelo, vermelho) */   /* 2.6.1 · gráficos: turno lançado pelo total com o nome do turno no eixo; janelas: rótulo e valor em tamanho de texto */   /* 2.6.0 · produção total do turno (sem hora a hora; períodos na troca de catálogo), aviso do servidor para turno lançado pelo total e para dia com produção apontada */
+/* 2.6.18 · PAR-CAT (pedido do responsável, 20/11/2026): toda lista que escolhe o tipo de parada mostra os tipos separados por categoria
+   (optgroup, na ordem do cadastro) e, com vacFiltroSelect, filtra em tempo real pelo texto digitado (código, nome ou categoria; "setup"
+   deixa só os de setup). Mesmos tipos e valores de antes: só a forma de escolher muda. */
+function tipoParadaOpts(codes, sel) {
+  const cats = [...new Set(codes.map(c => c.category || 'Sem categoria'))];
+  return cats.map(cat => `<optgroup label="${esc(cat)}">${codes.filter(c => (c.category || 'Sem categoria') === cat).map(c => `<option value="${c.id}" ${sel === c.id ? 'selected' : ''}>${esc(c.code + ' · ' + c.name)}</option>`).join('')}</optgroup>`).join('');
+}
+const APP_VERSION = '2.6.18';   /* 2.6.18 · PAR-CAT: tipo de parada por categoria e com busca nas sugestões do servidor, na importação de paradas e no turno sem produção */   /* 2.6.17 · SRV-DIA: dia sem lançamento com produção do servidor: aviso e abrir o dia com os dados */   /* 2.6.16 · TUR-05: dia em aberto passa ao horário vigente do turno; PAR-BUSCA: tipo de parada por texto */   /* 2.6.15 · REL-01: gel no relatório/e-mail do dia e do turno; Enviar relatório na janela do dia */   /* 2.6.14 · GEL-07: Relatório do Gel e Perdas de gel (turno com gel e Relatórios) */   /* 2.6.13 · GEL-06: Scrap gel no detalhe do turno */   /* 2.6.12 · TUR-04: turno com horário diferente no sábado (linhas por dia da semana) */   /* 2.6.11 · abas agrupadas: Ordens e lotes, Resultados, Paradas */   /* 2.6.10 · Lançamento sem turno aberto por padrão; abas visíveis na casca */   /* 2.6.9 · LANC-02: Lançamento unificado (hora a hora no detalhe do turno, 3º turno ao lado, Problemas de QN) */   /* 2.6.5 · IMP-01: contagens das importações nos exports */   /* 2.6.4 · semáforo só pelas faixas configuradas (verde acima de 100% vale) */   /* 2.6.2 · gráficos e números com meta seguem o semáforo de três cores (verde, amarelo, vermelho) */   /* 2.6.1 · gráficos: turno lançado pelo total com o nome do turno no eixo; janelas: rótulo e valor em tamanho de texto */   /* 2.6.0 · produção total do turno (sem hora a hora; períodos na troca de catálogo), aviso do servidor para turno lançado pelo total e para dia com produção apontada */
 const SCHEMA_VERSION = 1;
 const BASE_FILE = 'oee-vacutainer-base.json';
 const BACKUP_DIR = '00. Backups';
@@ -13387,7 +13394,7 @@ Cfg.importacao = {
     const causes = [...new Set(parsed.rows.map(r => String(r.obs || '').trim()))].sort();
     const guess = c => { const n = U.norm(c); const by = k => (d.downtimeCodes.find(x => x.code === k) || {}).id; if (/eletric/.test(n)) return by('FEL'); if (/mecanic|quebra/.test(n)) return by('FME'); if (/pneum/.test(n)) return by('FPN'); if (/enrosco|atol|travad/.test(n)) return by('ENR'); if (/troca de lote/.test(n)) return by('TRL'); if (/troca de catalogo|receita/.test(n)) return by('TRC'); if (/3 h|hours|delay/.test(n)) return by('3HD'); if (/limpeza|sanitiz/.test(n)) return by('LIM'); if (/falta de material|rolha|insumo/.test(n)) return by('FMA'); if (/reuniao|ssu/.test(n)) return by('REU'); if (/troca de turno/.test(n)) return by('TTU'); if (/teste|engenharia|simulacao/.test(n)) return by('TES'); if (/manutencao/.test(n)) return by('MPL'); if (/ajuste|regulag|process/.test(n)) return by('AJP'); if (/qualidade/.test(n)) return by('FQL'); return by('OUT'); };
     const map = {}; causes.forEach(c => map[U.norm(c) || '_vazio'] = guess(c));
-    const codeOpts = sel => d.downtimeCodes.filter(c => c.active !== false).map(c => `<option value="${c.id}" ${sel === c.id ? 'selected' : ''}>${esc(c.code + ' · ' + c.name)}</option>`).join('');
+    const codeOpts = sel => tipoParadaOpts(d.downtimeCodes.filter(c => c.active !== false), sel);   /* 2.6.18 · PAR-CAT */
     const plan0 = Importers.planParadas(d, parsed, { lineId: 'line_vac', causeMap: map, defaultCodeId: (d.downtimeCodes.find(c => c.code === 'OUT') || {}).id });
     modal('Prévia: paradas da aba PARADAS', `<p>${parsed.rows.length} linha(s). Na planilha, a coluna "Motivo" é o <b>equipamento</b> e "Observação" é o <b>tipo</b>; ajuste o tipo de parada correspondente a cada observação.</p>
       <div class="kpis">${kpi('Paradas a importar', U.fmt(plan0.events.length), '', U.fmt(U.sum(plan0.events, e => e.minutes)) + ' min')}${kpi('Sem dia de produção', U.fmt(plan0.noDay.length), '', 'importe o histórico antes')}${kpi('Inválidas', U.fmt(plan0.invalid.length), '', '')}${kpi('Já importadas', U.fmt(plan0.dup.length), '', 'não duplicadas')}${kpi('Sem turno na planilha', U.fmt(plan0.noShift || 0), '', 'entram no total do dia')}${kpi('Equipamentos novos', U.fmt(plan0.newEquip.size), '', 'serão cadastrados')}</div>
@@ -13397,6 +13404,7 @@ Cfg.importacao = {
       ${plan0.invalid.length ? `<details><summary class="small">Linhas inválidas (${plan0.invalid.length})</summary><ul class="small">${plan0.invalid.slice(0, 200).map(x => `<li>linha ${x.line}: ${esc(x.reason)}</li>`).join('')}</ul></details>` : ''}
       <p class="small muted">As paradas entram sem horário, ligadas ao turno, e passam a compor Disponibilidade, cobertura e Pareto conforme o tipo escolhido.</p>`,
       `<button class="btn" data-close>Cancelar</button><button class="btn primary" id="pGo" ${plan0.events.length ? '' : 'disabled'}>Importar paradas</button>`, (el, close) => {
+        if (typeof vacFiltroSelect === 'function') el.querySelectorAll('[data-cause]').forEach(s => vacFiltroSelect(s, { placeholder: 'Buscar o tipo (ex.: setup)' }));   /* 2.6.18 · PAR-CAT */
         const g = el.querySelector('#pGo'); if (g) g.onclick = () => run(() => {
           el.querySelectorAll('[data-cause]').forEach(s => map[s.dataset.cause] = s.value);
           const plan = Importers.planParadas(db(), parsed, { lineId: 'line_vac', causeMap: map, defaultCodeId: (d.downtimeCodes.find(c => c.code === 'OUT') || {}).id });
@@ -14034,7 +14042,7 @@ function shiftOffModal(day, psId) {
   modal(`${ps.snap.name} sem produção · ${U.brDate(day.date)}`, `<div class="seg" role="group" aria-label="Tipo"><button type="button" data-ot="prog" aria-pressed="${type === 'prog'}">Programado</button><button type="button" data-ot="np" aria-pressed="${type === 'np'}">Não programado</button></div>
       <p class="small" id="otTxt" style="margin:8px 0"></p>
       <div class="form"><label class="f wide"><span>Motivo</span><input id="otM" list="otML" maxlength="80" value="${esc(ps.offReason || '')}" placeholder="Escolha ou digite"><datalist id="otML"></datalist></label>
-      <label class="f wide" id="otCW"><span>Tipo de parada (entra no OEE e no Pareto)</span><select id="otC">${codes.map(c => `<option value="${c.id}" ${ps.offCodeId === c.id ? 'selected' : ''}>${esc(c.code + ' · ' + c.name)}</option>`).join('')}</select></label></div>`,
+      <label class="f wide" id="otCW"><span>Tipo de parada (entra no OEE e no Pareto)</span><select id="otC">${tipoParadaOpts(codes, ps.offCodeId)}</select></label></div>`,
     `<button class="btn" data-close>Cancelar</button><button class="btn primary" id="otOk">Marcar sem produção</button>`, (el, close) => {
       const sync = () => {
         el.querySelectorAll('[data-ot]').forEach(b => b.setAttribute('aria-pressed', b.dataset.ot === type));
@@ -16081,7 +16089,7 @@ const SrvUI = (() => {
     const res = Engine.computeDay(db(), day), S = sug(day, res), P = pendingRows(S), lk = day.status === 'fechado';
     const shiftLocked = ivId => { const ps = day.shifts.find(p => p.intervals.some(i => i.id === ivId)); return lk || (ps &amp;&amp; ps.status === 'fechado'); };
     const codes = db().downtimeCodes.filter(c => c.active !== false &amp;&amp; !c.deleted);
-    const codeSel = (i, id) => `<select data-evc="${i}"><option value="">— escolha o tipo —</option>${codes.map(c => `<option value="${c.id}" ${c.id === id ? 'selected' : ''}>${esc(c.code + ' · ' + c.name)}</option>`).join('')}</select>`;
+    const codeSel = (i, id) => `<select data-evc="${i}" aria-label="Tipo da parada"><option value="">— escolha o tipo —</option>${tipoParadaOpts(codes, id)}</select>`;
     const lotTxt = x => x.lots.map(l => `${esc(l.lot)} ${l.n}${ServerData.lotKind(db(), L, l.lot, null, day.date) !== 'normal' ? ' (' + esc(Srv.KIND[ServerData.lotKind(db(), L, l.lot, null, day.date)].toLowerCase()) + ')' : ''}`).join(', ');
     const allEv = S.events;
     const totaisHtml = P.totais.map(id => { const ps = day.shifts.find(p => p.id === id); if (!ps) return ''; const sr = res.shifts.find(x => x.ps === ps), trava = lk || ps.status === 'fechado', cx = U.sum(S.ivs.filter(x => x.psId === id), x => x.n.normal);
@@ -16095,6 +16103,7 @@ const SrvUI = (() => {
       `<button class="btn" data-close>Cancelar</button><button class="btn primary" id="rvGo" ${lk ? 'disabled' : ''}>Aplicar selecionados</button>`, (el, close) => {
         const ga = el.querySelector('#gAll'); if (ga) ga.onchange = () => el.querySelectorAll('[data-g]:not(:disabled)').forEach(c => c.checked = ga.checked);
         el.querySelectorAll('[data-ttsrv]').forEach(b => b.onclick = () => confirmDlg('Trocar o total pelo hora a hora do servidor?', 'O total informado deste turno é apagado e as horas voltam a abrir. Em seguida as sugestões do servidor aparecem marcadas para você conferir e aplicar. Paradas, scrap, segurança e qualidade não mudam.', 'Trocar e conferir', true).then(async ok => { if (!ok) return; const r = await run(() => Actions.voltarHoraAHora(day.id, b.dataset.ttsrv, true)); if (!r) return; close(); reviewModal(day); }));
+        if (typeof vacFiltroSelect === 'function') el.querySelectorAll('[data-evc]').forEach(s => vacFiltroSelect(s, { placeholder: 'Buscar o tipo (ex.: setup)' }));   /* 2.6.18 · PAR-CAT */
         el.querySelectorAll('[data-evc]').forEach(s => s.onchange = () => { const c = el.querySelector(`[data-e="${s.dataset.evc}"]`); if (c &amp;&amp; !c.disabled &amp;&amp; s.value) c.checked = true; });
         const go = el.querySelector('#rvGo'); if (go) go.onclick = async () => {
           const sel = { goods: [], cats: [], events: [] };
@@ -38278,9 +38287,9 @@ body.vac-porta{overflow:hidden}
     {
       "id": "oee",
       "path": "Plataforma.html#motor/oee",
-      "version": "2.6.17",
-      "sha256": "703273f2379660a9a4d8118be7d40cb98e85df6d3225f84bde7d313a3fd37699",
-      "bytes": 2277074
+      "version": "2.6.18",
+      "sha256": "fffa489a9efa8624989d6fac35a638c39aa84c2d1375b636b23e58147541f60c",
+      "bytes": 2278111
     },
     {
       "id": "perdas",
@@ -38342,7 +38351,7 @@ body.vac-porta{overflow:hidden}
   "limitations": [
     "Projetos e conteúdo técnico OSM/MES/AM/TPM mantêm os limites documentados nas fontes."
   ],
-  "enginesSha256": "d9ff30bf52e6d9545ae11e9df2b66f9f2fdbc50032ae69e298e76079c57ba3ee",
+  "enginesSha256": "141cbd1803549206009b2daeceae100ccef5d802066d11ce030d9c145fc6e9b1",
   "originRevision": "ffc9ee8",
   "sourceMode": "single-html",
   "originEnginesSha256": "a87a64ad0c328f70e102b2ae888790a9b5d5a9bd05778652a7ce7cae140e40d2"
@@ -38412,7 +38421,7 @@ summary{cursor:pointer;font-weight:600;color:var(--navy)}
 'use strict';
 /* ---------- referência (atualizar quando a plataforma mudar de versão) ---------- */
 // Iguais às do pacote da plataforma (nova-plataforma/src/generated/manifest.json); o teste ferramenta-verificar confere.
-const VERSOES = {"oee":"2.6.17","perdas":"1.12.17","gel":"2.42","paradas":"1.2.18","equip":"1.0.20","inic":"1.1.16","linha":"1.4.0","projetos":"0.1.16","portal":"1.9.52"};
+const VERSOES = {"oee":"2.6.18","perdas":"1.12.17","gel":"2.42","paradas":"1.2.18","equip":"1.0.20","inic":"1.1.16","linha":"1.4.0","projetos":"0.1.16","portal":"1.9.52"};
 const BASES = [
  { arq: 'vacutainer-cadastros.json', mod: 'portal', nome: 'Cadastro geral (Portal)', obrig: true, cadastro: true, bk: 'Cadastros' },
  { arq: 'portal-base.json', mod: 'portal', nome: 'Portal', obrig: true, bk: 'Portal' },
@@ -39003,7 +39012,7 @@ import { Icon, Button, Badge, Empty, Modal, BarChart, BrandLogo, CommandMenu } f
 import { ModuleFrame } from "vac:modulo/components/ModuleFrame";
 import manifest from "vac:recurso/manifesto";
 import { ModuleTabs } from "vac:modulo/components/ModuleTabs";
-const VERSION = "1.8.25";
+const VERSION = "1.8.26";
 /* Navegação 1.3.0 (16/11/2026): Visão da linha, Relatórios e Importações têm abas; as que mostram uma tela do
    Portal (motor da Administração) trazem o 3º campo com a aba dele. Administração fica só com cadastros e configuração. */
 const SHELL_TABS = {
