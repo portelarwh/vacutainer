@@ -50,7 +50,11 @@ Cada informação fica no nível do modo escolhido, sem repetir nem dividir:
 
 - **O detalhe continua:** a seção Segurança e qualidade e a tabela hora a hora detalhada (com todas as colunas, a aba Hora a hora de hoje) não saem da plataforma. No modo Hora a hora, o cartão do turno mostra a tabela compacta e o link "Abrir hora a hora" leva à tabela detalhada. Segurança e qualidade ficam numa seção recolhível do cartão do turno (ou do bloco do dia), que abre com um clique e mostra um selo quando há registro.
 - **Abono no modo Dia:** o abono de hoje é rateado nos intervalos do turno (`saveAbono`), e no modo Dia isso não pode acontecer. Um evento novo, `nivel:'dia'`, guarda o código REV (ou outro que desconte do planejado) e os minutos. Ele entra só no tempo planejado do dia.
-- **Segurança e qualidade no modo Dia (padrão proposto):** são fatos, não taxas. Vão para `day.sqdcpDia`, com o mesmo modelo `SQDCPModelo`, e contam no dia, na semana e no mês. A SQDCP por turno mostra "lançado por dia" (A4 paisagem mantida, contrato 6). Um acidente registrado no dia nunca some por não ter turno.
+- **Segurança e qualidade (decisão do responsável, 20/11/2026):**
+  - **Obrigatórias** em qualquer modo, para cada dia produtivo; "Sem ocorrência" é uma resposta válida. Sem elas, **Fechar dia** fica bloqueado e explica o que falta, com o botão "Ir para Segurança e qualidade".
+  - **O turno é opcional:** é um detalhe a mais que pode ser informado. A conta oficial é do dia: o dia soma o que foi registrado por turno e o que foi registrado sem turno, sem contar o mesmo registro duas vezes.
+  - **No modo Dia,** o registro fica em `day.sqdcpDia` (mesmo modelo `SQDCPModelo`), com o campo "turno" opcional por ocorrência.
+  - **SQDCP por turno:** mostra só o que tem turno informado. O que não tem aparece como "sem turno" e continua contando no dia, na semana e no mês (A4 paisagem mantida, contrato 6). Um acidente nunca some por não ter turno.
 - **Trocar de modo:** a confirmação lista também abonos, observações e segurança e qualidade do nível que sai. Eles ficam guardados e não são apagados, mas deixam de contar enquanto o modo estiver em outro nível. Voltar ao modo anterior traz tudo de volta.
 
 ## 4. Modo "Dia": decidido, só no dia (opção b, responsável, 20/11/2026)
@@ -104,6 +108,27 @@ Regras de implementação:
   - menu: grupos, Esc e travas por perfil.
 - **Versão:** nova versão da Produção e da plataforma, com a entrada em **Administração › Novidades**.
 - **Telas:** enviar as telas antes do merge.
+
+## 9. Validação: cada aviso leva ao lugar do ajuste (decisão do responsável, 20/11/2026)
+
+Hoje a seção **Validação** e o painel **Qualidade do apontamento** (cobertura, divergência, Performance acima de 100%) dizem o problema, mas não onde corrigir. Cada aviso passa a ter um botão **"Ir para o ajuste"**. Quando há mais de um lugar possível, aparecem até três botões curtos, na ordem da causa mais provável.
+
+| Aviso (`pointingQuality` e `res.msgs`) | Botões |
+|---|---|
+| Cobertura abaixo do mínimo | **Registrar paradas**: abre o turno, ou a hora no modo Hora a hora, com mais minutos sem explicação, no campo de paradas. **Ver o mínimo**: Administração › Metas de OEE (`coberturaMinPct`). |
+| Divergência acima do limite | **Tempo planejado do turno** (intervalos e abonos). **PPH e catálogo** (catálogo do turno ou vigência em Metas de OEE). **Classificação das paradas**. **Ver o limite** (`divergenciaMaxPct`). |
+| Minutos apontados acima da perda | **Ver paradas do dia**, filtrando as que se sobrepõem ou que descontam do planejado. |
+| Performance acima de 100% | **Catálogo do turno**, **PPH vigente** (Metas de OEE) e **Paradas que descontam do planejado**. |
+| Sem dados suficientes | **Turnos do dia** (tempo planejado) ou **Catálogo**, conforme o que falta. |
+| Mensagem com `ref` (`{ iv }`, `{ ps }`, `{ ev }`) | **Ir para a hora / turno / parada** com rolagem e destaque. |
+
+Regras:
+
+- **Mesma página:** abre o modo e o cartão certos, rola até o campo, foca e destaca por 2 s. Num cartão recolhido, abre antes. Se o modo atual não mostra o campo (ex.: a hora no modo Por turno), o botão diz "Abrir hora a hora".
+- **Administração (Portal):** usa `vacPortalHref('cadastros/<seção>')` (comum/interface), como já faz `vacIrImportacao`, abrindo a seção e, se houver, a meta da linha. Sem permissão para editar (`vacPodeAqui`), o botão vira "Ver" e mostra quem pode ajustar.
+- **Explicar o número:** cada aviso ganha uma linha curta com o cálculo, por exemplo "Cobertura 82% = 41 min apontados ÷ 50 min de perda; mínimo 95%".
+- **Contrato 6 e 7:** só navegação e texto. Limites, fórmulas e status (adequado, atenção, crítico) não mudam.
+- **Teste:** cada botão leva ao campo certo (foco visível) e o link para a Administração abre a seção certa.
 
 ## Maquete
 
