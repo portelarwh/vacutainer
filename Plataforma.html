@@ -3979,7 +3979,7 @@ function wireConfigComum(){$('#cPasta').onclick=async()=>{if(await Store.pick())
         entrar pelo ID (autocadastro como Consulta); página inicial por perfil (1x por sessão); vigência gravada não se edita (desativar com motivo); painel de vigências; semáforo central; saída do modo de teste.
    1.1.2: aviso da carga diz qual base foi lida.  1.5: páginas Paradas, Máquinas, Manutenção e Projetos na lista (aparecem quando o HTML chega na pasta).  1.4: lista técnica pela CS12 multinível (itens = nível 1, estrutura = níveis 2+); CS03 sai.  1.3: cabeçalho comum (vac-cabecalho v2: barra do sistema + página + abas), busca Ctrl K, acabamento V1.90, Versões com cabeçalho e último backup.  1.2: Configuração › Versões das páginas (versão e data de cada HTML, gravação das bases, cópias repetidas, histórico).
    ===================================================================== */
-const PAGE={id:'portal',titulo:"Administração · Linha Vacutainer",tituloCurto:"Administração",subtitulo:'Sistemas de gestão da linha',versao:'1.9.52',baseFile:'portal-base.json',idb:'vac-portal',backupDir:'00. Backups/Portal',
+const PAGE={id:'portal',titulo:"Administração · Linha Vacutainer",tituloCurto:"Administração",subtitulo:'Sistemas de gestão da linha',versao:'1.9.53',baseFile:'portal-base.json',idb:'vac-portal',backupDir:'00. Backups/Portal',
  vazio:()=>({schema:'portal-base',rev:0,config:{modulos:{},avisoDias:30,notas:{}},audit:[]}),
  /* itens do Portal para a busca Ctrl K: cadastro, pendências e telas */
  busca:q=>{const R=[],D=Cad.D;if(D)for(const t of CAD_ORD){for(const it of D[t]||[]){const c=String(it[kOf(t)]),nm=t==='bom'?((cadItem('catalogos',it.catalogo)||{}).nome||''):it.nome||'';if(norm(c+' '+nm).includes(q))R.push({tipo:CAD_T[t].um,txt:c+(nm?' · '+nm:''),sub:'Cadastros'+(cadAtivo(t,it,D)?'':' · inativo'),href:'#cadastros/'+t+'/'+encodeURIComponent(c)});if(R.length>30)break}}
@@ -4853,7 +4853,38 @@ const CAT_AJUDA={
  metasOsm:'Meta de observações de segurança (OSM). Ex.: 4 OSM por operador por mês.',
  usuarios:'Pessoas que usam as páginas: ID, nome, perfil e página inicial.',perfis:'O que cada perfil pode ver, lançar, fechar, importar, exportar, excluir e configurar em cada página.'};
 const campoAjuda=(t,f)=>AJUDA_CAMPO[t+'.'+f]||AJUDA_CAMPO[f]||'';
-const CAD_SECS=['inicio','matriz','importar','auditoria','backups','seguranca','vigencias','parametros'];
+const CAD_SECS=['inicio','matriz','importar','auditoria','backups','seguranca','vigencias','parametros','novidades'];
+/* 1.9.53 · NOV-01 (pedido do responsável, 20/11/2026): Administração › Novidades. O que mudou em cada versão da plataforma, em frases
+   curtas (macro, sem detalhe técnico). REGRA: toda versão nova da plataforma ganha uma entrada aqui, a mais recente primeiro
+   (AGENTS.md e CLAUDE.md). Tipos: nova (função nova), melhoria (algo que já existia ficou melhor), correcao (erro corrigido). */
+const NOVIDADES=[
+ {v:'1.8.30',d:'2026-11-20',itens:[['nova','Novidades na Administração: o que mudou em cada versão, em poucas palavras.'],
+  ['correcao','Turno que passa da meia-noite: sem lançamento do dia seguinte, a produção depois de 00:00 fica no dia do turno; parada com horário e scrap diário divididos corretamente.'],
+  ['correcao','App de celular: mudar a meta ou o gel na configuração não altera mais os turnos já lançados.']]},
+ {v:'1.8.29',d:'2026-11-20',itens:[['nova','3º turno habilitado: a produção depois da meia-noite conta no total do dia seguinte (o turno continua com o OEE inteiro).']]},
+ {v:'1.8.28',d:'2026-11-20',itens:[['nova','"Houve hora extra?" no cartão do turno (Lançamento): até 60 min antes do início ou depois do fim, somados ao OEE e à meta.']]},
+ {v:'1.8.27',d:'2026-11-20',itens:[['melhoria','Produção na madrugada com o 3º turno parado: antes da meia-noite conta no 2º turno; depois, no 1º do dia seguinte (desde 01/11/2026).'],
+  ['nova','Aviso quando a produção passa de 60 min de hora extra.']]},
+ {v:'1.8.26',d:'2026-11-20',itens:[['melhoria','Tipo de parada separado por categoria e com busca por texto nas sugestões do servidor, na importação de paradas e no turno sem produção.'],
+  ['nova','App de celular "Meu Turno" (pasta CELULAR): lançamento do turno pelo operador, envio por WhatsApp ou PDF, histórico e gel na ordem.']]},
+ {v:'1.8.25',d:'2026-11-20',itens:[['nova','Formulários A4 (checklist, limpeza, processo, manutenção, AM, 5S) com fotos marcadas, OK / NC / N/A e confirmação.'],
+  ['melhoria','A página Relatórios passa a se chamar "Relatórios e formulários".']]},
+ {v:'1.8.24',d:'2026-11-19',itens:[['nova','Aviso de produção do servidor num dia ainda sem lançamento, com o botão "Abrir o dia com os dados do servidor".']]},
+ {v:'1.8.23',d:'2026-11-19',itens:[['melhoria','Fotos da tela de entrada: nomes "login (1)", "login (2)"… e formatos jpg, png, webp e svg.']]},
+ {v:'1.8.22',d:'2026-11-19',itens:[['melhoria','Tela de entrada com várias fotos trocando a cada 3 segundos e menos desfoque.']]},
+ {v:'1.8.21',d:'2026-11-19',itens:[['correcao','Horário do turno: dia em aberto passa para o horário vigente do turno (ex.: sábado).'],['melhoria','Busca por texto no tipo de parada ao registrar a parada.']]},
+ {v:'1.8.20',d:'2026-11-19',itens:[['melhoria','Equipamentos: reorganizar a ordem arrastando ou digitando a posição; foto ao lado do código; gel mostra os dados do formato.']]},
+ {v:'1.8.19',d:'2026-11-19',itens:[['nova','Gel nos relatórios e no e-mail da Produção, e botão "Enviar relatório" na janela do dia.']]},
+ {v:'1.8.18',d:'2026-11-18',itens:[['melhoria','Gestão de Gel com tubos bons, catálogo e ordem/lote da Produção em todos os dias.']]},
+ {v:'1.8.17',d:'2026-11-18',itens:[['nova','"Scrap gel" no detalhe do turno da Produção.']]},
+ {v:'1.8.16',d:'2026-11-18',itens:[['correcao','Waste: competência de cada ordem da KKBC_ORD.']]},
+ {v:'1.8.15',d:'2026-11-18',itens:[['nova','Turno com horário diferente por dia da semana (ex.: sábado).']]}];
+const NOV_TIPO={nova:['Novo','ok'],melhoria:['Melhoria','info'],correcao:['Correção','warn']};
+function cadNovidades(el){const fd=d=>d.split('-').reverse().join('/');
+ el.innerHTML=`<div class="card"><h3>Novidades ${ib('Novidades','O que mudou em cada versão da plataforma, em poucas palavras. A versão mais recente aparece primeiro.')}</h3>
+  <p class="small muted" style="margin:0">Versão mais recente: <b>${esc(NOVIDADES[0].v)}</b> (${fd(NOVIDADES[0].d)}). A versão em uso aparece no rodapé da barra lateral da plataforma.</p></div>
+  ${NOVIDADES.map((n,i)=>`<div class="card nov-v"${i?'':' style="border-left:4px solid var(--accent,#0d5e9c)"'}><h3 style="margin:0 0 8px">Versão ${esc(n.v)} <span class="small muted" style="font-weight:400">· ${fd(n.d)}${i?'':' · mais recente'}</span></h3>
+   <ul class="pl nov-l">${n.itens.map(([t,x])=>`<li><span class="pill ${(NOV_TIPO[t]||NOV_TIPO.melhoria)[1]}" style="min-width:84px;text-align:center">${(NOV_TIPO[t]||NOV_TIPO.melhoria)[0]}</span> <span>${esc(x)}</span></li>`).join('')}</ul></div>`).join('')}`}
 const CAD_PESSOAS=['usuarios','perfis'];
 /* códigos de parada: grupo pela centena do nº (pedido do Paradas, 03/11/2026) */
 const PAR_GRUPOS=['Outros','Utilização','Planejado/engenharia','Partida','Organização','Setup','Consumíveis','Parou sem trocar peça','Quebra','Perdas sem parada'];
@@ -5181,7 +5212,7 @@ function wireCadBarra(){const on=(id,f)=>{const x=$('#'+id);if(x)x.onclick=f};
  on('cadRecriar',()=>{if(!Lock.ok())return;if(confirm(`Recriar ${CAD_FILE} na pasta a partir da cópia deste navegador (rev ${Cad.base.rev})?`))Cad.op({acao:'carga',tipo:'*',codigo:null,doc:clone(Cad.base),motivo:'arquivo recriado a partir da cópia local'})})}
 function viewCad(m){const D=Cad.D,sec=Cad.ui.sec||'inicio';
  m.innerHTML=cadBarra()+`<div class="cadg"><aside class="cadside">${cadSide(sec)}</aside><section id="cadMain" style="min-width:0"></section></div>`;
- wireCadBarra();wireAdminSide();const el=$('#cadMain');if(!D)return cadSemCadastro(el);
+ wireCadBarra();wireAdminSide();const el=$('#cadMain');if(sec==='novidades')return cadNovidades(el);if(!D)return cadSemCadastro(el);
  ({cambio:cadCambio,inicio:cadInicio,matriz:cadMatriz,importar:cadImportar,seguranca:cadSeguranca,auditoria:cadAuditoria,backups:cadBackups,vigencias:cadVigencias,parametros:cadParametros}[sec]||(x=>cadLista(x,sec)))(el)}
 /* 1.7 · menu da Administração (o mesmo na aba de cadastros e na Configuração do Portal) */
 function cadSide(sec){const D=Cad.D;const btn=(k,l,n)=>`<button data-sec="${k}" class="${sec===k?'on':''}">${l}${n!=null?`<span class="n">${n}</span>`:''}</button>`;
@@ -5191,7 +5222,7 @@ function cadSide(sec){const D=Cad.D;const btn=(k,l,n)=>`<button data-sec="${k}" 
   +g('Metas')+CAD_METAS.map(t=>btn(t,esc(CAD_T[t].nome),cnt(t))).join('')
   +g('Pessoas')+btn('usuarios','Usuários',cnt('usuarios'))+btn('perfis','Perfis e permissões',cnt('perfis'))
   +g('Regras')+btn('vigencias','Vigências')+btn('parametros','Parâmetros'):'')
-  +g('Sistema')+(D?btn('importar','Integrações SAP'):'')+btn('config',"Configuração da Administração")+btn('versoes','Versões das páginas')+(D?btn('auditoria','Auditoria')+btn('backups','Backups do cadastro')+btn('seguranca','Segurança e senha'):'')}
+  +g('Sistema')+btn('novidades','Novidades')+(D?btn('importar','Integrações SAP'):'')+btn('config',"Configuração da Administração")+btn('versoes','Versões das páginas')+(D?btn('auditoria','Auditoria')+btn('backups','Backups do cadastro')+btn('seguranca','Segurança e senha'):'')}
 /* POR-04: a lista lateral é redesenhada a cada clique; guarda e devolve a posição da rolagem interna */
 let cadSideTop=0;
 function wireAdminSide(){const sd=$('.cadside');if(sd){sd.scrollTop=cadSideTop;sd.addEventListener('scroll',()=>{cadSideTop=sd.scrollTop},{passive:true})}$$('.cadside [data-sec]').forEach(b=>b.onclick=()=>{const s=b.dataset.sec;if(s==='config'){App.show('config');return}if(s==='versoes'){irVersoes();return}Cad.ui.sec=s;Cad.ui.q='';if(App.tab!=='cad')App.show('cad');else{cadHash();App.render()}})}
@@ -8031,8 +8062,11 @@ const Engine = (() => {
       const k = f.iv.end <= 1440 ? 0 : f.iv.start >= 1440 ? 1 : (f.iv.end - 1440) / (f.iv.end - f.iv.start);
       all.cap += f.capDec; all.metaDec += f.metaAdjDec; all.metaOp += f.metaOp; all.grossMin += f.min;
       if (!k) continue;
-      raw.grossMin += f.min * k; raw.deductMin += f.deduct * k; raw.netMin += f.net * k; raw.aMin += f.a * k; raw.pMin += f.p * k; raw.infoMin += f.info * k;
-      raw.cap += f.capDec * k; raw.metaDec += f.metaAdjDec * k; raw.metaOrigDec += f.metaOrigDec * k; raw.metaOp += f.metaOp * k;
+      /* paradas com horário: o que caiu depois de 00:00; as sem horário (rateadas no intervalo): pela proporção do tempo */
+      const T = f.tAll || {}, P = f.tPos || {}, depois = bk => (P[bk] || 0) + ((f[bk] || 0) - (T[bk] || 0)) * k;
+      const dD = depois('deduct'), gross = f.min * k, net = Math.max(0, gross - dD), kn = f.net > 0 ? net / f.net : k;
+      raw.grossMin += gross; raw.deductMin += dD; raw.netMin += net; raw.aMin += depois('a'); raw.pMin += depois('p'); raw.infoMin += depois('info');
+      raw.cap += f.capDec * kn; raw.metaDec += f.metaAdjDec * kn; raw.metaOrigDec += f.metaOrigDec * k; raw.metaOp += f.metaOp * kn;
       raw.good += (f.good || 0) * k; raw.goodMin += f.pph ? (f.good || 0) * k * 60 / f.pph : 0; if (f.iv.kind === 'extra') raw.extraMin += f.min * k;
     }
     if (!raw.grossMin) return null;
@@ -8140,11 +8174,12 @@ const Engine = (() => {
   const bumpConfig = () => { cfgRev++; };
   /* TUR-07: o dia anterior da mesma linha (a parte depois de 00:00 do turno dele entra aqui) */
   const diaAnterior = (db, day) => (db.productionDays || []).find(d => !d.deleted &amp;&amp; d.lineId === day.lineId &amp;&amp; d.date === U.addDays(day.date, -1)) || null;
+  const diaSeguinte = (db, day) => (db.productionDays || []).find(d => !d.deleted &amp;&amp; d.lineId === day.lineId &amp;&amp; d.date === U.addDays(day.date, 1)) || null;
   function computeDay(db, day) {
-    const c = cache.get(day), ant = diaAnterior(db, day), antRev = ant ? ant.id + ':' + ant._rev : '';
-    if (c &amp;&amp; c.rev === day._rev &amp;&amp; c.cfg === cfgRev &amp;&amp; c.db === db &amp;&amp; c.ant === antRev) return c.res;
+    const c = cache.get(day), ant = diaAnterior(db, day), antRev = ant ? ant.id + ':' + ant._rev : '', seg = diaSeguinte(db, day), segId = seg ? seg.id : '';
+    if (c &amp;&amp; c.rev === day._rev &amp;&amp; c.cfg === cfgRev &amp;&amp; c.db === db &amp;&amp; c.ant === antRev &amp;&amp; c.seg === segId) return c.res;
     const res = computeDayRaw(db, day);
-    cache.set(day, { rev: day._rev, cfg: cfgRev, db, res, ant: antRev });
+    cache.set(day, { rev: day._rev, cfg: cfgRev, db, res, ant: antRev, seg: segId });
     return res;
   }
 
@@ -8178,7 +8213,9 @@ const Engine = (() => {
       const imp = impactOf(ev, db), b = bucketOf(imp);
       const er = { ev, imp, bucket: b, minutes: eventMinutes(ev), splits: [], shiftIds: new Set() };
       if (ev.start != null &amp;&amp; ev.end != null) {
-        for (const f of flat) { const o = overlap(ev.start, ev.end, f.iv.start, f.iv.end); if (o > 0) { f[b] += o; f.evIds.push(ev.id); er.splits.push({ ivId: f.iv.id, min: o }); er.shiftIds.add(f.ps.id); } }
+        for (const f of flat) { const o = overlap(ev.start, ev.end, f.iv.start, f.iv.end); if (o > 0) { f[b] += o; f.evIds.push(ev.id); er.splits.push({ ivId: f.iv.id, min: o }); er.shiftIds.add(f.ps.id);
+          /* TUR-07: minutos com horário no intervalo e os que caem depois de 00:00 (a divisão segue o horário real, não a proporção) */
+          f.tAll = f.tAll || {}; f.tAll[b] = (f.tAll[b] || 0) + o; const oPos = overlap(ev.start, ev.end, Math.max(f.iv.start, 1440), f.iv.end); if (oPos > 0) { f.tPos = f.tPos || {}; f.tPos[b] = (f.tPos[b] || 0) + oPos; } } }
         const covered = sum(er.splits, s => s.min);
         if (covered < er.minutes - 0.01) M('erro', `A parada ${U.range(ev.start, ev.end)} tem ${U.fmt(er.minutes - covered)} min fora dos intervalos do dia.`, { ev: ev.id });
       } else if (ev.intervalId &amp;&amp; ivMap.has(ev.intervalId)) {
@@ -8309,13 +8346,15 @@ const Engine = (() => {
     if (ForaTurno.relogio(db, day.date)) {
       const partes = [];
       for (const sr of shiftRes) { if (sr.off || sr.npOff) continue; const v = viradaDoTurno(flat.filter(f => f.ps === sr.ps), sr, shiftManual[sr.ps.id], day.scrapMode === 'day'); if (v) partes.push({ ps: sr.ps, ...v }); }
-      if (partes.length) { virada = { agg: partes.reduce((a, x) => addAgg(a, x.agg), emptyAgg()), turnos: partes.map(x => x.ps.snap.name), para: U.addDays(day.date, 1) }; subAgg(dayAgg, virada.agg);
-        M('info', `${virada.turnos.join(', ')}: ${U.fmt(virada.agg.good)} produzido(s) depois de 00:00 contam no total de ${U.brDate(virada.para)} (o OEE do turno é o do turno inteiro).`); }
+      if (partes.length) { const ag = partes.reduce((a, x) => addAgg(a, x.agg), emptyAgg()), nomes = partes.map(x => x.ps.snap.name), para = U.addDays(day.date, 1);
+        if (diaSeguinte(db, day)) { virada = { agg: ag, turnos: nomes, para }; subAgg(dayAgg, virada.agg);
+          M('info', `${nomes.join(', ')}: ${U.fmt(ag.good)} produzido(s) depois de 00:00 contam no total de ${U.brDate(para)} (o OEE do turno é o do turno inteiro).`); }
+        else M('info', `${nomes.join(', ')}: ${U.fmt(ag.good)} produzido(s) depois de 00:00 ficam no total deste dia enquanto não existir o lançamento de ${U.brDate(para)}.`); }
     }
     if (!opts.semVizinho) { const ant = diaAnterior(db, day);
       if (ant &amp;&amp; ForaTurno.relogio(db, ant.date)) { let ra = null; try { ra = computeDayRaw(db, ant, { semVizinho: true }); } catch (e) { console.warn('TUR-07', e); }
         if (ra &amp;&amp; ra.virada) { vem = { ...ra.virada, de: ant.date }; addAgg(dayAgg, vem.agg); M('info', `Inclui ${U.fmt(vem.agg.good)} produzido(s) depois de 00:00 pelo ${vem.turnos.join(', ')} de ${U.brDate(ant.date)} (parte do turno que passou da meia-noite).`); } } }
-    if (day.scrapMode === 'day') { dayAgg.scrap = +day.scrapDay || 0; dayAgg.scrapKnown = day.scrapDay != null; dayAgg.scrapMin = dayAgg.cap > 0 ? dayAgg.scrap * dayAgg.netMin / dayAgg.cap : 0; }
+    if (day.scrapMode === 'day') { dayAgg.scrap = (+day.scrapDay || 0) + (vem ? vem.agg.scrap || 0 : 0); dayAgg.scrapKnown = day.scrapDay != null; dayAgg.scrapMin = dayAgg.cap > 0 ? dayAgg.scrap * dayAgg.netMin / dayAgg.cap : 0; }   /* TUR-07: + scrap que veio do turno do dia anterior */
     if (dayManual.n) {
       dayAgg.aMin += dayManual.a; dayAgg.pMin += dayManual.p; dayAgg.infoMin += dayManual.info;
       if (dayManual.deduct &amp;&amp; dayAgg.netMin > 0) { const k = Math.max(0, dayAgg.netMin - dayManual.deduct) / dayAgg.netMin; dayAgg.cap *= k; dayAgg.metaDec *= k; dayAgg.metaOp *= k; dayAgg.netMin -= dayManual.deduct; dayAgg.deductMin += dayManual.deduct; }
@@ -38404,8 +38443,8 @@ body.vac-porta{overflow:hidden}
       "id": "oee",
       "path": "Plataforma.html#motor/oee",
       "version": "2.6.21",
-      "sha256": "0535828a73c0aa5ed306c18f96e51d404a738050d792b784663b7060f148e756",
-      "bytes": 2292729
+      "sha256": "ad8f9a991bfc1a46ea4fe541c535a50a6f3a7a960d022cc916a1350f78c6ab15",
+      "bytes": 2294018
     },
     {
       "id": "perdas",
@@ -38459,15 +38498,15 @@ body.vac-porta{overflow:hidden}
     {
       "id": "portal",
       "path": "Plataforma.html#motor/portal",
-      "version": "1.9.52",
-      "sha256": "d6290aea75b4bf7fcb199371256736ab4b9fc2f2a11c9c4611d5c3576300d57b",
-      "bytes": 1255803
+      "version": "1.9.53",
+      "sha256": "244b45a5a08eec9a1159a05527fd48393030e4d260f5dbfb317001dc30e36aa0",
+      "bytes": 1260455
     }
   ],
   "limitations": [
     "Projetos e conteúdo técnico OSM/MES/AM/TPM mantêm os limites documentados nas fontes."
   ],
-  "enginesSha256": "75c8b4255ba39b02fbd3937bf8be92c197dfbddd52049528d7e1d81c8d643a93",
+  "enginesSha256": "fdceace2772d7b5be085e7dbad52fff720a74d74241181dc9b7cfa02cbcf4d46",
   "originRevision": "ffc9ee8",
   "sourceMode": "single-html",
   "originEnginesSha256": "a87a64ad0c328f70e102b2ae888790a9b5d5a9bd05778652a7ce7cae140e40d2"
@@ -38537,7 +38576,7 @@ summary{cursor:pointer;font-weight:600;color:var(--navy)}
 'use strict';
 /* ---------- referência (atualizar quando a plataforma mudar de versão) ---------- */
 // Iguais às do pacote da plataforma (nova-plataforma/src/generated/manifest.json); o teste ferramenta-verificar confere.
-const VERSOES = {"oee":"2.6.21","perdas":"1.12.17","gel":"2.42","paradas":"1.2.18","equip":"1.0.20","inic":"1.1.16","linha":"1.4.0","projetos":"0.1.16","portal":"1.9.52"};
+const VERSOES = {"oee":"2.6.21","perdas":"1.12.17","gel":"2.42","paradas":"1.2.18","equip":"1.0.20","inic":"1.1.16","linha":"1.4.0","projetos":"0.1.16","portal":"1.9.53"};
 const BASES = [
  { arq: 'vacutainer-cadastros.json', mod: 'portal', nome: 'Cadastro geral (Portal)', obrig: true, cadastro: true, bk: 'Cadastros' },
  { arq: 'portal-base.json', mod: 'portal', nome: 'Portal', obrig: true, bk: 'Portal' },
@@ -39128,7 +39167,7 @@ import { Icon, Button, Badge, Empty, Modal, BarChart, BrandLogo, CommandMenu } f
 import { ModuleFrame } from "vac:modulo/components/ModuleFrame";
 import manifest from "vac:recurso/manifesto";
 import { ModuleTabs } from "vac:modulo/components/ModuleTabs";
-const VERSION = "1.8.29";
+const VERSION = "1.8.30";
 /* Navegação 1.3.0 (16/11/2026): Visão da linha, Relatórios e Importações têm abas; as que mostram uma tela do
    Portal (motor da Administração) trazem o 3º campo com a aba dele. Administração fica só com cadastros e configuração. */
 const SHELL_TABS = {

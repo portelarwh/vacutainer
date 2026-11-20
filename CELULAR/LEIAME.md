@@ -46,4 +46,5 @@ Para mudar um catálogo, meta ou turno depois, repita: salve, gere o app de novo
 - **A foto do quadro não preenche os números.** Ela vai como evidência no PDF. Ler a escrita à mão exige um serviço de leitura de imagem com internet, que o app não tem (ver [PENDENCIAS](../PENDENCIAS.md), CEL-02).
 - O compartilhar com imagem depende do navegador (Chrome no Android). Sem ele, o app salva a imagem e abre o WhatsApp com o texto.
 - Um catálogo por turno; uma troca no meio do turno fica para uma próxima versão.
+- O turno guarda a meta, o gel e o nome do catálogo do momento em que foi lançado (versão 0.3): mudar a configuração depois não altera turnos já lançados nem os relatórios refeitos deles.
 - A configuração do repositório é fictícia (TESTE). O cadastro real é feito no próprio app pelo responsável e enviado por arquivo; ele não entra no repositório.

@@ -12,4 +12,6 @@ Uma mudança no bloco comum alcança todos os módulos. Coordene a edição do H
 
 Após editar um motor ou biblioteca, execute `npm run atualizar:metadados`. Execute `npm run build`, testes pertinentes e a regressão completa quando houver integração compartilhada. Os utilitários de scripts/ e testes/ leem o próprio HTML; não são necessários para executá-lo. `.test-cache/` e saídas de teste nunca entram no Git.
 
+Toda versão nova da plataforma ganha uma entrada em **Administração › Novidades** (`NOVIDADES`, motor/portal), a mais recente primeiro: frases curtas, sem detalhe técnico, marcadas como novo, melhoria ou correção (pedido do responsável, 20/11/2026). O teste `novidades` reprova se a versão da plataforma não for a primeira entrada.
+
 Ao concluir, informe alteração, propósito, testes, impactos, documentação e limites. Não declare homologação em file:// corporativo, SMB, duas estações ou Outlook com base apenas em Chromium/OPFS local. Pendências: [PENDENCIAS.md](PENDENCIAS.md). Decisões históricas: [registro](docs/DECISOES-HISTORICAS.md); item recusado só volta com fato novo.
