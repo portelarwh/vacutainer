@@ -7711,7 +7711,7 @@ function tipoParadaOpts(codes, sel) {
   const cats = [...new Set(codes.map(c => c.category || 'Sem categoria'))];
   return cats.map(cat => `<optgroup label="${esc(cat)}">${codes.filter(c => (c.category || 'Sem categoria') === cat).map(c => `<option value="${c.id}" ${sel === c.id ? 'selected' : ''}>${esc(c.code + ' · ' + c.name)}</option>`).join('')}</optgroup>`).join('');
 }
-const APP_VERSION = '2.6.19';   /* 2.6.19 · TUR-06: produção no turno não produtivo pela meia-noite (antes → turno anterior; depois → próximo) desde 01/11/2026; aviso de hora extra */   /* 2.6.18 · PAR-CAT: tipo de parada por categoria e com busca nas sugestões do servidor, na importação de paradas e no turno sem produção */   /* 2.6.17 · SRV-DIA: dia sem lançamento com produção do servidor: aviso e abrir o dia com os dados */   /* 2.6.16 · TUR-05: dia em aberto passa ao horário vigente do turno; PAR-BUSCA: tipo de parada por texto */   /* 2.6.15 · REL-01: gel no relatório/e-mail do dia e do turno; Enviar relatório na janela do dia */   /* 2.6.14 · GEL-07: Relatório do Gel e Perdas de gel (turno com gel e Relatórios) */   /* 2.6.13 · GEL-06: Scrap gel no detalhe do turno */   /* 2.6.12 · TUR-04: turno com horário diferente no sábado (linhas por dia da semana) */   /* 2.6.11 · abas agrupadas: Ordens e lotes, Resultados, Paradas */   /* 2.6.10 · Lançamento sem turno aberto por padrão; abas visíveis na casca */   /* 2.6.9 · LANC-02: Lançamento unificado (hora a hora no detalhe do turno, 3º turno ao lado, Problemas de QN) */   /* 2.6.5 · IMP-01: contagens das importações nos exports */   /* 2.6.4 · semáforo só pelas faixas configuradas (verde acima de 100% vale) */   /* 2.6.2 · gráficos e números com meta seguem o semáforo de três cores (verde, amarelo, vermelho) */   /* 2.6.1 · gráficos: turno lançado pelo total com o nome do turno no eixo; janelas: rótulo e valor em tamanho de texto */   /* 2.6.0 · produção total do turno (sem hora a hora; períodos na troca de catálogo), aviso do servidor para turno lançado pelo total e para dia com produção apontada */
+const APP_VERSION = '2.6.20';   /* 2.6.20 · HEX-01: "Houve hora extra?" no cartão do turno (até 60 min antes do início ou depois do fim) */   /* 2.6.19 · TUR-06: produção no turno não produtivo pela meia-noite (antes → turno anterior; depois → próximo) desde 01/11/2026; aviso de hora extra */   /* 2.6.18 · PAR-CAT: tipo de parada por categoria e com busca nas sugestões do servidor, na importação de paradas e no turno sem produção */   /* 2.6.17 · SRV-DIA: dia sem lançamento com produção do servidor: aviso e abrir o dia com os dados */   /* 2.6.16 · TUR-05: dia em aberto passa ao horário vigente do turno; PAR-BUSCA: tipo de parada por texto */   /* 2.6.15 · REL-01: gel no relatório/e-mail do dia e do turno; Enviar relatório na janela do dia */   /* 2.6.14 · GEL-07: Relatório do Gel e Perdas de gel (turno com gel e Relatórios) */   /* 2.6.13 · GEL-06: Scrap gel no detalhe do turno */   /* 2.6.12 · TUR-04: turno com horário diferente no sábado (linhas por dia da semana) */   /* 2.6.11 · abas agrupadas: Ordens e lotes, Resultados, Paradas */   /* 2.6.10 · Lançamento sem turno aberto por padrão; abas visíveis na casca */   /* 2.6.9 · LANC-02: Lançamento unificado (hora a hora no detalhe do turno, 3º turno ao lado, Problemas de QN) */   /* 2.6.5 · IMP-01: contagens das importações nos exports */   /* 2.6.4 · semáforo só pelas faixas configuradas (verde acima de 100% vale) */   /* 2.6.2 · gráficos e números com meta seguem o semáforo de três cores (verde, amarelo, vermelho) */   /* 2.6.1 · gráficos: turno lançado pelo total com o nome do turno no eixo; janelas: rótulo e valor em tamanho de texto */   /* 2.6.0 · produção total do turno (sem hora a hora; períodos na troca de catálogo), aviso do servidor para turno lançado pelo total e para dia com produção apontada */
 const SCHEMA_VERSION = 1;
 const BASE_FILE = 'oee-vacutainer-base.json';
 const BACKUP_DIR = '00. Backups';
@@ -8276,7 +8276,7 @@ const Engine = (() => {
     const ft = ForaTurno.aplicar(db, day, shiftRes, dayAgg);
     if (ft &amp;&amp; ft.pecas) M('info', `${U.fmt(ft.pecas)} peça(s) produzida(s) fora dos turnos produtivos contam neste dia (OEE reportado). Veja o quadro "Turnos não produtivos e produção fora de turno".`);
     /* 2.6.19 · TUR-06: hora extra acima do limite (60 min) só avisa; a produção conta pela regra do relógio */
-    if (ft) for (const it of (ft.recebe || [])) if (it.horaExtra &amp;&amp; !(ft.semAlvo || []).includes(it)) M('alerta', `${it.alvo.name}: produção além de ${it.horaExtra.limite} min de hora extra (${U.fmt(it.horaExtra.caixas)} caixa(s) entre ${U.hhmm(it.horaExtra.de)} e ${U.hhmm(it.horaExtra.ate)} na ${it.rotulo}). Ela conta no ${it.alvo.name} pela regra da meia-noite; confira se o 3º turno deveria estar habilitado.`);
+    if (ft) for (const it of (ft.recebe || [])) if (it.horaExtra &amp;&amp; !(ft.semAlvo || []).includes(it)) M('alerta', `${it.alvo.name}: produção além de ${it.horaExtra.limite} min de hora extra (${U.fmt(it.horaExtra.caixas)} caixa(s) entre ${U.hhmm(it.horaExtra.de)} e ${U.hhmm(it.horaExtra.ate)} na ${it.rotulo}). Ela conta no ${it.alvo.name} pela regra da meia-noite; confira se faltou lançar a hora extra no turno ou se o 3º turno deveria estar habilitado.`);
     if (day.scrapMode === 'day') { dayAgg.scrap = +day.scrapDay || 0; dayAgg.scrapKnown = day.scrapDay != null; dayAgg.scrapMin = dayAgg.cap > 0 ? dayAgg.scrap * dayAgg.netMin / dayAgg.cap : 0; }
     if (dayManual.n) {
       dayAgg.aMin += dayManual.a; dayAgg.pMin += dayManual.p; dayAgg.infoMin += dayManual.info;
@@ -14023,7 +14023,49 @@ function abonoModal(day, psId, evId) {
       const del = el.querySelector('#abDel'); if (del) del.onclick = async () => { const r = await askReason('Excluir abono', 'O abono fica marcado como excluído e a ação vai para a auditoria.', ['lançado por engano', 'tempo errado', 'outro']); if (r) { close(); run(() => Actions.deleteEvent(day.id, ev.id, r), 'Abono excluído.'); } };
     });
 }
+/* 2.6.20 · HEX-01 (pedido do responsável, 20/11/2026): "Houve hora extra?" no cartão do turno (Lançamento). Até 60 min por turno
+   (settings.horaExtraMax), antes do início ou depois do fim. Cria o mesmo intervalo de hora extra do "Hora extra / intervalo"
+   (Actions.addInterval, kind 'extra'): os minutos entram no tempo planejado, na meta e na capacidade do turno (ex.: 500 → 560 min).
+   Nenhuma fórmula nova; remover só quando a hora não tem produção nem parada (regra do deleteInterval). */
+const HoraExtra = {
+  max: () => { const v = +((db().settings || {}).horaExtraMax); return v > 0 ? v : 60; },
+  doTurno: ps => ps.intervals.filter(i => !i.deleted &amp;&amp; i.kind === 'extra').sort((a, b) => a.start - b.start),
+  /* horário livre no dia (sem intervalo de outro turno): a opção que se sobrepõe a outro turno não aparece */
+  livre: (day, s, e) => !day.shifts.some(p => !p.deleted &amp;&amp; p.intervals.some(i => !i.deleted &amp;&amp; U.overlap(s, e, i.start, i.end) > 0)),
+  limites(ps) { const iv = ps.intervals.filter(i => !i.deleted &amp;&amp; i.kind !== 'extra'); return iv.length ? { s: Math.min(...iv.map(i => i.start)), e: Math.max(...iv.map(i => i.end)) } : null; },
+  bloco(day, ps, sr, lk, ic = () => '', tip = () => '') {
+    const L = this.limites(ps); if (ps.off || !L) return '';
+    const X = this.doTurno(ps), mx = this.max(), feito = X.reduce((a, i) => a + i.end - i.start, 0), resta = Math.max(0, mx - feito);
+    const tot = sr &amp;&amp; sr.agg ? sr.agg.grossMin : null, semHx = tot != null ? tot - feito : null;
+    const okIni = resta &amp;&amp; this.livre(day, L.s - resta, L.s), okFim = resta &amp;&amp; this.livre(day, L.e, L.e + resta);
+    const btn = (lado, rot) => `<button type="button" class="btn sm" data-hx="${ps.id}|${lado}"${lk || !resta ? ' disabled' : ''}>${rot}</button>`;
+    return `<div class="tl-c tl-hx" data-hxps="${ps.id}"><h4 class="tl-h4">${ic('clock', 16)} HORA EXTRA ${tip('horaExtra')}</h4>
+      ${X.length ? `<ul class="hx-l">${X.map(i => `<li><b>${U.range(i.start, i.end)}</b> <span class="small muted">· ${U.fmt(i.end - i.start)} min</span>${lk ? '' : ` <button type="button" class="btn xs ghost" data-hxdel="${i.id}">Remover</button>`}</li>`).join('')}</ul>
+        ${tot != null ? `<p class="small" style="margin:4px 0 0">Tempo do turno: <b>${U.fmt(semHx)} + ${U.fmt(feito)} = ${U.fmt(tot)} min</b> no OEE, na meta e na capacidade.</p>` : ''}`
+      : `<p class="small" style="margin:0 0 6px">Houve hora extra neste turno? Sem hora extra, nada a fazer.</p>`}
+      ${resta &amp;&amp; (okIni || okFim) ? `<div class="row hx-row" style="flex-wrap:wrap;gap:6px;align-items:center"><label class="small">Minutos <input type="number" data-hxmin="${ps.id}" min="1" max="${resta}" step="1" value="${resta}" style="width:72px"${lk ? ' disabled' : ''}></label>
+        ${okIni ? btn('ini', `Antes do início (${U.hhmm(L.s - resta)}–${U.hhmm(L.s)})`) : ''}${okFim ? btn('fim', `Depois do fim (${U.hhmm(L.e)}–${U.hhmm(L.e + resta)})`) : ''}</div>`
+      : resta ? `<p class="small muted" style="margin:4px 0 0">Sem horário livre antes ou depois deste turno (os vizinhos já ocupam).</p>`
+      : `<p class="small muted" style="margin:4px 0 0">Limite de ${mx} min de hora extra no turno atingido.</p>`}</div>`;
+  },
+  bind(root, day) {
+    root.querySelectorAll('[data-hx]').forEach(b => b.onclick = () => {
+      const [psId, lado] = b.dataset.hx.split('|'), ps = day.shifts.find(p => p.id === psId), L = ps &amp;&amp; this.limites(ps); if (!L) return;
+      const feito = this.doTurno(ps).reduce((a, i) => a + i.end - i.start, 0), mx = this.max(), inp = root.querySelector(`[data-hxmin="${psId}"]`), n = Math.round(+(inp &amp;&amp; inp.value) || 0);
+      if (!(n >= 1)) { toast('Informe os minutos de hora extra.', true); return; }
+      if (feito + n > mx) { toast(`O turno pode ter no máximo ${mx} min de hora extra (já tem ${feito}).`, true); return; }
+      const [s0, e0] = lado === 'ini' ? [L.s - n, L.s] : [L.e, L.e + n];
+      if (!this.livre(day, s0, e0)) { toast(`${U.range(s0, e0)} já pertence a outro turno do dia.`, true); return; }
+      run(() => Actions.addInterval(day.id, psId, s0, e0, 'extra'), `Hora extra ${U.range(s0, e0)} incluída: o turno passa a contar mais ${n} min no OEE e na meta.`);
+    });
+    root.querySelectorAll('[data-hxdel]').forEach(b => b.onclick = () => confirmDlg('Remover a hora extra?', 'O tempo dela sai do turno (OEE, meta e capacidade). Só é possível se a hora não tem produção nem parada lançada.', 'Remover', true)
+      .then(ok => { if (ok) run(() => Actions.deleteInterval(day.id, b.dataset.hxdel), 'Hora extra removida.'); }));
+  }
+};
+if (!document.getElementById('hxCss')) { const st = document.createElement('style'); st.id = 'hxCss'; st.textContent = '.hx-l{list-style:none;margin:0;padding:0;display:grid;gap:4px}.hx-l li{display:flex;gap:6px;align-items:center;flex-wrap:wrap}.tl-hx .btn{white-space:nowrap}'; document.head.appendChild(st); }
+HELP.horaExtra = ['Hora extra no turno', [['O que faz?', 'Inclui até 60 min antes do início ou depois do fim do turno (ex.: 1º turno a partir das 05:00; 2º até 23:47). Esse tempo entra no tempo planejado, na meta e na capacidade do turno: um turno de 500 min passa a 560 min no OEE.'], ['E a produção dessa hora?', 'A hora extra aparece no hora a hora do turno, com a sugestão do servidor como as outras horas. Sem hora extra lançada, a produção do servidor nesse horário conta pela regra da meia-noite e gera um aviso.'], ['Remover', 'Só quando a hora não tem produção nem parada lançada.']]];
 function bindAbonos(root, day) {
+  HoraExtra.bind(root, day);   /* 2.6.20 · HEX-01 */
   root.querySelectorAll('[data-abonoadd]').forEach(b => b.onclick = () => abonoModal(day, b.dataset.abonoadd));
   root.querySelectorAll('[data-abono]').forEach(b => b.onclick = () => { const [ps, ev] = b.dataset.abono.split('|'); abonoModal(day, ps, ev); });
   root.querySelectorAll('[data-shoffed]').forEach(b => b.onclick = e => { e.preventDefault(); e.stopPropagation(); shiftOffModal(day, b.dataset.shoffed); });
@@ -17925,6 +17967,7 @@ html[data-theme="dark"] .tl .tl-gelb{background:#3a2a12!important;color:#F2C27A!
         <label class="kvrow"><input type="checkbox" data-shoff="${ps.id}" ${ps.off ? 'checked' : ''} ${lk ? 'disabled' : ''}> <span>Turno sem produção</span>${ps.off ? `<span class="small muted">· ${offTxt(ps)}</span> <button type="button" class="btn xs" data-shoffed="${ps.id}">alterar</button>` : ''}</label>
         ${ps.enabledNP ? `<label class="kvrow"><input type="checkbox" role="switch" data-turnonp="${esc(ps.shiftId)}" checked ${day.status === 'fechado' ? 'disabled' : ''} aria-label="Habilitar ${esc(ps.snap.name)} neste dia"> <span>Habilitado neste dia <span class="small muted">· não produtivo no cadastro; desmarque para voltar (só sem produção, scrap ou parada lançada)</span></span></label>` : ''}
       </div>
+      ${HoraExtra.bloco(day, ps, sr, lk, ic, tip)}
       <div class="tl-c tl-obs">
         <h4 class="tl-h4">Observações do turno</h4>
         <textarea data-psf="${ps.id}|note" maxlength="1500" data-fk="ps-note-${ps.id}" aria-label="Observações do turno" placeholder="Passagem de turno, ocorrências, ajustes…">${esc(ps.note || '')}&lt;/textarea>
@@ -38322,9 +38365,9 @@ body.vac-porta{overflow:hidden}
     {
       "id": "oee",
       "path": "Plataforma.html#motor/oee",
-      "version": "2.6.19",
-      "sha256": "d07a05e0913f2a477b633420b0770b6e372c24e0b6019a026e843b7622536a9c",
-      "bytes": 2282548
+      "version": "2.6.20",
+      "sha256": "e3a80bf97b872c88e294993392491c33116672ddd297359ee1c202cfb3fe511d",
+      "bytes": 2288339
     },
     {
       "id": "perdas",
@@ -38386,7 +38429,7 @@ body.vac-porta{overflow:hidden}
   "limitations": [
     "Projetos e conteúdo técnico OSM/MES/AM/TPM mantêm os limites documentados nas fontes."
   ],
-  "enginesSha256": "e0ba2457002c5a4127a92a4a45f44b217e4300a19ed0f4d2c813dbe4a6ab740e",
+  "enginesSha256": "0dc6af66946f4489d69ee39bd0da19d0be099ee39813d1b1f6b90dd97dc564e3",
   "originRevision": "ffc9ee8",
   "sourceMode": "single-html",
   "originEnginesSha256": "a87a64ad0c328f70e102b2ae888790a9b5d5a9bd05778652a7ce7cae140e40d2"
@@ -38456,7 +38499,7 @@ summary{cursor:pointer;font-weight:600;color:var(--navy)}
 'use strict';
 /* ---------- referência (atualizar quando a plataforma mudar de versão) ---------- */
 // Iguais às do pacote da plataforma (nova-plataforma/src/generated/manifest.json); o teste ferramenta-verificar confere.
-const VERSOES = {"oee":"2.6.19","perdas":"1.12.17","gel":"2.42","paradas":"1.2.18","equip":"1.0.20","inic":"1.1.16","linha":"1.4.0","projetos":"0.1.16","portal":"1.9.52"};
+const VERSOES = {"oee":"2.6.20","perdas":"1.12.17","gel":"2.42","paradas":"1.2.18","equip":"1.0.20","inic":"1.1.16","linha":"1.4.0","projetos":"0.1.16","portal":"1.9.52"};
 const BASES = [
  { arq: 'vacutainer-cadastros.json', mod: 'portal', nome: 'Cadastro geral (Portal)', obrig: true, cadastro: true, bk: 'Cadastros' },
  { arq: 'portal-base.json', mod: 'portal', nome: 'Portal', obrig: true, bk: 'Portal' },
@@ -39047,7 +39090,7 @@ import { Icon, Button, Badge, Empty, Modal, BarChart, BrandLogo, CommandMenu } f
 import { ModuleFrame } from "vac:modulo/components/ModuleFrame";
 import manifest from "vac:recurso/manifesto";
 import { ModuleTabs } from "vac:modulo/components/ModuleTabs";
-const VERSION = "1.8.27";
+const VERSION = "1.8.28";
 /* Navegação 1.3.0 (16/11/2026): Visão da linha, Relatórios e Importações têm abas; as que mostram uma tela do
    Portal (motor da Administração) trazem o 3º campo com a aba dele. Administração fica só com cadastros e configuração. */
 const SHELL_TABS = {

@@ -90,6 +90,14 @@ Pedidos do responsável: (1) com a vigência nova do turno (sábado 06:00–13:3
 - **PAR-BUSCA:** campo de busca acima da lista do tipo de parada (Registrar parada e turno não produtivo, na Produção; reclassificação no Paradas): filtra pelo código, nome e grupo, sem diferença de acento e maiúscula, várias palavras = todas; uma opção só é escolhida sozinha; Enter escolhe a primeira. Função comum `vacFiltroSelect` (comum/interface). Não muda códigos nem valores.
 - Teste: `testes/plataforma/turno-vigente.cjs` (demonstração, dados fictícios).
 
+## HEX-01 · "Houve hora extra?" no cartão do turno · Produção 2.6.20, plataforma 1.8.28 (20/11/2026)
+
+Pedido do responsável: na aba Lançamento não havia como dizer se o turno fez hora extra; com hora extra (até 60 min) o OEE deve contar o tempo a mais (ex.: 500 → 560 min).
+- **O cálculo já existia:** o intervalo de hora extra (`kind: 'extra'`, botão "Hora extra / intervalo" do hora a hora) entra no tempo planejado, na meta e na capacidade do turno. Nada muda na fórmula.
+- **Novo:** bloco "HORA EXTRA" na coluna "Uma vez por turno" do cartão: minutos (padrão e máximo 60, `settings.horaExtraMax`) e "Antes do início" / "Depois do fim" com o horário; só aparece a opção cujo horário está livre no dia (o depois do fim do 1º turno é do 2º). Com hora extra: o horário, "Tempo do turno: 510 + 60 = 570 min" e "Remover" (só sem produção e sem parada na hora, regra do deleteInterval).
+- **Relação com TUR-06:** com a hora extra lançada, a produção do servidor nesse horário entra no hora a hora do turno; sem ela, conta pela regra da meia-noite e o dia avisa ("confira se faltou lançar a hora extra").
+- **Teste:** `testes/plataforma/hora-extra.cjs`.
+
 ## TUR-06 · produção no turno não produtivo pela meia-noite · Produção 2.6.19, plataforma 1.8.27 (20/11/2026)
 
 Decisão do responsável (autorizada em 20/11/2026; muda a interpretação da madrugada, contrato 7): com o 3º turno não produtivo, a produção da janela dele vai pelo relógio, não pela continuidade.
