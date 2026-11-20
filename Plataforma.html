@@ -7704,7 +7704,14 @@ const U = (() => {
 
 /* ---- 02-model.js ---- */
 /* ================= modelo de dados, valores iniciais e integridade ================= */
-const APP_VERSION = '2.6.17';   /* 2.6.17 · SRV-DIA: dia sem lançamento com produção do servidor: aviso e abrir o dia com os dados */   /* 2.6.16 · TUR-05: dia em aberto passa ao horário vigente do turno; PAR-BUSCA: tipo de parada por texto */   /* 2.6.15 · REL-01: gel no relatório/e-mail do dia e do turno; Enviar relatório na janela do dia */   /* 2.6.14 · GEL-07: Relatório do Gel e Perdas de gel (turno com gel e Relatórios) */   /* 2.6.13 · GEL-06: Scrap gel no detalhe do turno */   /* 2.6.12 · TUR-04: turno com horário diferente no sábado (linhas por dia da semana) */   /* 2.6.11 · abas agrupadas: Ordens e lotes, Resultados, Paradas */   /* 2.6.10 · Lançamento sem turno aberto por padrão; abas visíveis na casca */   /* 2.6.9 · LANC-02: Lançamento unificado (hora a hora no detalhe do turno, 3º turno ao lado, Problemas de QN) */   /* 2.6.5 · IMP-01: contagens das importações nos exports */   /* 2.6.4 · semáforo só pelas faixas configuradas (verde acima de 100% vale) */   /* 2.6.2 · gráficos e números com meta seguem o semáforo de três cores (verde, amarelo, vermelho) */   /* 2.6.1 · gráficos: turno lançado pelo total com o nome do turno no eixo; janelas: rótulo e valor em tamanho de texto */   /* 2.6.0 · produção total do turno (sem hora a hora; períodos na troca de catálogo), aviso do servidor para turno lançado pelo total e para dia com produção apontada */
+/* 2.6.18 · PAR-CAT (pedido do responsável, 20/11/2026): toda lista que escolhe o tipo de parada mostra os tipos separados por categoria
+   (optgroup, na ordem do cadastro) e, com vacFiltroSelect, filtra em tempo real pelo texto digitado (código, nome ou categoria; "setup"
+   deixa só os de setup). Mesmos tipos e valores de antes: só a forma de escolher muda. */
+function tipoParadaOpts(codes, sel) {
+  const cats = [...new Set(codes.map(c => c.category || 'Sem categoria'))];
+  return cats.map(cat => `<optgroup label="${esc(cat)}">${codes.filter(c => (c.category || 'Sem categoria') === cat).map(c => `<option value="${c.id}" ${sel === c.id ? 'selected' : ''}>${esc(c.code + ' · ' + c.name)}</option>`).join('')}</optgroup>`).join('');
+}
+const APP_VERSION = '2.6.21';   /* 2.6.21 · TUR-07: turno que passa da meia-noite dividido no total diário (depois de 00:00 → dia seguinte; scrap proporcional à produção, paradas sem horário ao tempo) */   /* 2.6.20 · HEX-01: "Houve hora extra?" no cartão do turno (até 60 min antes do início ou depois do fim) */   /* 2.6.19 · TUR-06: produção no turno não produtivo pela meia-noite (antes → turno anterior; depois → próximo) desde 01/11/2026; aviso de hora extra */   /* 2.6.18 · PAR-CAT: tipo de parada por categoria e com busca nas sugestões do servidor, na importação de paradas e no turno sem produção */   /* 2.6.17 · SRV-DIA: dia sem lançamento com produção do servidor: aviso e abrir o dia com os dados */   /* 2.6.16 · TUR-05: dia em aberto passa ao horário vigente do turno; PAR-BUSCA: tipo de parada por texto */   /* 2.6.15 · REL-01: gel no relatório/e-mail do dia e do turno; Enviar relatório na janela do dia */   /* 2.6.14 · GEL-07: Relatório do Gel e Perdas de gel (turno com gel e Relatórios) */   /* 2.6.13 · GEL-06: Scrap gel no detalhe do turno */   /* 2.6.12 · TUR-04: turno com horário diferente no sábado (linhas por dia da semana) */   /* 2.6.11 · abas agrupadas: Ordens e lotes, Resultados, Paradas */   /* 2.6.10 · Lançamento sem turno aberto por padrão; abas visíveis na casca */   /* 2.6.9 · LANC-02: Lançamento unificado (hora a hora no detalhe do turno, 3º turno ao lado, Problemas de QN) */   /* 2.6.5 · IMP-01: contagens das importações nos exports */   /* 2.6.4 · semáforo só pelas faixas configuradas (verde acima de 100% vale) */   /* 2.6.2 · gráficos e números com meta seguem o semáforo de três cores (verde, amarelo, vermelho) */   /* 2.6.1 · gráficos: turno lançado pelo total com o nome do turno no eixo; janelas: rótulo e valor em tamanho de texto */   /* 2.6.0 · produção total do turno (sem hora a hora; períodos na troca de catálogo), aviso do servidor para turno lançado pelo total e para dia com produção apontada */
 const SCHEMA_VERSION = 1;
 const BASE_FILE = 'oee-vacutainer-base.json';
 const BACKUP_DIR = '00. Backups';
@@ -8011,6 +8018,31 @@ const Engine = (() => {
   const AGG_KEYS = ['grossMin', 'deductMin', 'netMin', 'aMin', 'pMin', 'infoMin', 'cap', 'metaDec', 'metaOp', 'metaOrigDec', 'good', 'scrap', 'goodMin', 'scrapMin', 'extraMin', 'events', 'intervals', 'goodMissing'];
   const emptyAgg = () => { const a = {}; AGG_KEYS.forEach(k => a[k] = 0); a.scrapKnown = true; a.shifts = 0; a.days = 0; return a; };
   function addAgg(a, b) { AGG_KEYS.forEach(k => a[k] += b[k] || 0); a.scrapKnown = a.scrapKnown &amp;&amp; b.scrapKnown; a.shifts += b.shifts || 0; a.days += b.days || 0; return a; }
+  const subAgg = (a, b) => { AGG_KEYS.forEach(k => a[k] -= b[k] || 0); return a; };
+  /* 2.6.21 · TUR-07 (decisão do responsável, 20/11/2026; dias desde 01/11/2026, a mesma data da regra da meia-noite): turno produtivo que
+     passa da meia-noite (ex.: 3º turno habilitado) continua um só no lançamento, com o OEE do turno inteiro; no TOTAL DO DIA, a parte depois
+     de 00:00 sai do dia em que o turno começou e entra no dia seguinte. Horas: pelos minutos de cada lado (a que atravessa 00:00 divide-se
+     pelos minutos); paradas com horário: pelo horário (vêm das horas); paradas sem horário: proporcionais ao tempo; scrap do turno:
+     proporcional à produção (sem produção, ao tempo). Scrap diário (modo dia) não se move. Contagens (intervalos, paradas) ficam no dia
+     do turno. */
+  function viradaDoTurno(fs, sr, sm, scrapDia) {
+    const raw = emptyAgg(), all = emptyAgg();
+    for (const f of fs) {
+      const k = f.iv.end <= 1440 ? 0 : f.iv.start >= 1440 ? 1 : (f.iv.end - 1440) / (f.iv.end - f.iv.start);
+      all.cap += f.capDec; all.metaDec += f.metaAdjDec; all.metaOp += f.metaOp; all.grossMin += f.min;
+      if (!k) continue;
+      raw.grossMin += f.min * k; raw.deductMin += f.deduct * k; raw.netMin += f.net * k; raw.aMin += f.a * k; raw.pMin += f.p * k; raw.infoMin += f.info * k;
+      raw.cap += f.capDec * k; raw.metaDec += f.metaAdjDec * k; raw.metaOrigDec += f.metaOrigDec * k; raw.metaOp += f.metaOp * k;
+      raw.good += (f.good || 0) * k; raw.goodMin += f.pph ? (f.good || 0) * k * 60 / f.pph : 0; if (f.iv.kind === 'extra') raw.extraMin += f.min * k;
+    }
+    if (!raw.grossMin) return null;
+    const a = sr.agg, kt = all.grossMin ? raw.grossMin / all.grossMin : 0, kCap = all.cap ? a.cap / all.cap : 1, kMeta = all.metaDec ? a.metaDec / all.metaDec : 1, kOp = all.metaOp ? a.metaOp / all.metaOp : 1;
+    const part = Object.assign(emptyAgg(), { grossMin: raw.grossMin, deductMin: raw.deductMin + sm.deduct * kt, netMin: raw.netMin - sm.deduct * kt, aMin: raw.aMin + sm.a * kt, pMin: raw.pMin + sm.p * kt, infoMin: raw.infoMin + sm.info * kt,
+      cap: raw.cap * kCap, metaDec: raw.metaDec * kMeta, metaOrigDec: raw.metaOrigDec, metaOp: raw.metaOp * kOp, good: raw.good, goodMin: raw.goodMin, extraMin: raw.extraMin });
+    const kg = a.good > 0 ? raw.good / a.good : kt;
+    if (!scrapDia) { part.scrap = (a.scrap || 0) * kg; part.scrapMin = (a.scrapMin || 0) * kg; }
+    return { agg: part, kt, kg };
+  }
 
   // indicadores derivados + cascata + qualidade do apontamento
   function finalize(a, st) {
@@ -8106,15 +8138,17 @@ const Engine = (() => {
   const cache = new WeakMap();
   let cfgRev = 0;
   const bumpConfig = () => { cfgRev++; };
+  /* TUR-07: o dia anterior da mesma linha (a parte depois de 00:00 do turno dele entra aqui) */
+  const diaAnterior = (db, day) => (db.productionDays || []).find(d => !d.deleted &amp;&amp; d.lineId === day.lineId &amp;&amp; d.date === U.addDays(day.date, -1)) || null;
   function computeDay(db, day) {
-    const c = cache.get(day);
-    if (c &amp;&amp; c.rev === day._rev &amp;&amp; c.cfg === cfgRev &amp;&amp; c.db === db) return c.res;
+    const c = cache.get(day), ant = diaAnterior(db, day), antRev = ant ? ant.id + ':' + ant._rev : '';
+    if (c &amp;&amp; c.rev === day._rev &amp;&amp; c.cfg === cfgRev &amp;&amp; c.db === db &amp;&amp; c.ant === antRev) return c.res;
     const res = computeDayRaw(db, day);
-    cache.set(day, { rev: day._rev, cfg: cfgRev, db, res });
+    cache.set(day, { rev: day._rev, cfg: cfgRev, db, res, ant: antRev });
     return res;
   }
 
-  function computeDayRaw(db, day) {
+  function computeDayRaw(db, day, opts = {}) {
     const st = db.settings;
     const ru = roundAt(st, day.date);
     const msgs = [];
@@ -8268,6 +8302,19 @@ const Engine = (() => {
     /* 2.4.24 · TUR-01/04, POR-10: produção fora dos turnos reatribuída (OEE reportado); o real fica em foraTurno */
     const ft = ForaTurno.aplicar(db, day, shiftRes, dayAgg);
     if (ft &amp;&amp; ft.pecas) M('info', `${U.fmt(ft.pecas)} peça(s) produzida(s) fora dos turnos produtivos contam neste dia (OEE reportado). Veja o quadro "Turnos não produtivos e produção fora de turno".`);
+    /* 2.6.19 · TUR-06: hora extra acima do limite (60 min) só avisa; a produção conta pela regra do relógio */
+    if (ft) for (const it of (ft.recebe || [])) if (it.horaExtra &amp;&amp; !(ft.semAlvo || []).includes(it)) M('alerta', `${it.alvo.name}: produção além de ${it.horaExtra.limite} min de hora extra (${U.fmt(it.horaExtra.caixas)} caixa(s) entre ${U.hhmm(it.horaExtra.de)} e ${U.hhmm(it.horaExtra.ate)} na ${it.rotulo}). Ela conta no ${it.alvo.name} pela regra da meia-noite; confira se faltou lançar a hora extra no turno ou se o 3º turno deveria estar habilitado.`);
+    /* 2.6.21 · TUR-07: turno que passa da meia-noite → a parte depois de 00:00 conta no total do dia seguinte (desde 01/11/2026) */
+    let virada = null, vem = null;
+    if (ForaTurno.relogio(db, day.date)) {
+      const partes = [];
+      for (const sr of shiftRes) { if (sr.off || sr.npOff) continue; const v = viradaDoTurno(flat.filter(f => f.ps === sr.ps), sr, shiftManual[sr.ps.id], day.scrapMode === 'day'); if (v) partes.push({ ps: sr.ps, ...v }); }
+      if (partes.length) { virada = { agg: partes.reduce((a, x) => addAgg(a, x.agg), emptyAgg()), turnos: partes.map(x => x.ps.snap.name), para: U.addDays(day.date, 1) }; subAgg(dayAgg, virada.agg);
+        M('info', `${virada.turnos.join(', ')}: ${U.fmt(virada.agg.good)} produzido(s) depois de 00:00 contam no total de ${U.brDate(virada.para)} (o OEE do turno é o do turno inteiro).`); }
+    }
+    if (!opts.semVizinho) { const ant = diaAnterior(db, day);
+      if (ant &amp;&amp; ForaTurno.relogio(db, ant.date)) { let ra = null; try { ra = computeDayRaw(db, ant, { semVizinho: true }); } catch (e) { console.warn('TUR-07', e); }
+        if (ra &amp;&amp; ra.virada) { vem = { ...ra.virada, de: ant.date }; addAgg(dayAgg, vem.agg); M('info', `Inclui ${U.fmt(vem.agg.good)} produzido(s) depois de 00:00 pelo ${vem.turnos.join(', ')} de ${U.brDate(ant.date)} (parte do turno que passou da meia-noite).`); } } }
     if (day.scrapMode === 'day') { dayAgg.scrap = +day.scrapDay || 0; dayAgg.scrapKnown = day.scrapDay != null; dayAgg.scrapMin = dayAgg.cap > 0 ? dayAgg.scrap * dayAgg.netMin / dayAgg.cap : 0; }
     if (dayManual.n) {
       dayAgg.aMin += dayManual.a; dayAgg.pMin += dayManual.p; dayAgg.infoMin += dayManual.info;
@@ -8320,7 +8367,7 @@ const Engine = (() => {
     if (dayR.cascade &amp;&amp; !dayR.cascade.ok &amp;&amp; dayR.cascade.check != null) M('alerta', `A cascata não fecha: diferença de ${U.fmt(dayR.cascade.check)} unidades.`);
     for (const m of dayR.qa.msgs) if (dayR.qa.status !== 'adequado') M('alerta', m);
     if (ft) { ft.real = ft.realDia ? finalize(ft.realDia, st) : null; }
-    return { day, flat, shifts: shiftRes, r: dayR, agg: dayAgg, officialDaily, comp, msgs, events: evRes, foraTurno: ft };
+    return { day, flat, shifts: shiftRes, r: dayR, agg: dayAgg, officialDaily, comp, msgs, events: evRes, foraTurno: ft, virada, vem };
   }
 
   /* ---------- geração do dia ---------- */
@@ -13387,7 +13434,7 @@ Cfg.importacao = {
     const causes = [...new Set(parsed.rows.map(r => String(r.obs || '').trim()))].sort();
     const guess = c => { const n = U.norm(c); const by = k => (d.downtimeCodes.find(x => x.code === k) || {}).id; if (/eletric/.test(n)) return by('FEL'); if (/mecanic|quebra/.test(n)) return by('FME'); if (/pneum/.test(n)) return by('FPN'); if (/enrosco|atol|travad/.test(n)) return by('ENR'); if (/troca de lote/.test(n)) return by('TRL'); if (/troca de catalogo|receita/.test(n)) return by('TRC'); if (/3 h|hours|delay/.test(n)) return by('3HD'); if (/limpeza|sanitiz/.test(n)) return by('LIM'); if (/falta de material|rolha|insumo/.test(n)) return by('FMA'); if (/reuniao|ssu/.test(n)) return by('REU'); if (/troca de turno/.test(n)) return by('TTU'); if (/teste|engenharia|simulacao/.test(n)) return by('TES'); if (/manutencao/.test(n)) return by('MPL'); if (/ajuste|regulag|process/.test(n)) return by('AJP'); if (/qualidade/.test(n)) return by('FQL'); return by('OUT'); };
     const map = {}; causes.forEach(c => map[U.norm(c) || '_vazio'] = guess(c));
-    const codeOpts = sel => d.downtimeCodes.filter(c => c.active !== false).map(c => `<option value="${c.id}" ${sel === c.id ? 'selected' : ''}>${esc(c.code + ' · ' + c.name)}</option>`).join('');
+    const codeOpts = sel => tipoParadaOpts(d.downtimeCodes.filter(c => c.active !== false), sel);   /* 2.6.18 · PAR-CAT */
     const plan0 = Importers.planParadas(d, parsed, { lineId: 'line_vac', causeMap: map, defaultCodeId: (d.downtimeCodes.find(c => c.code === 'OUT') || {}).id });
     modal('Prévia: paradas da aba PARADAS', `<p>${parsed.rows.length} linha(s). Na planilha, a coluna "Motivo" é o <b>equipamento</b> e "Observação" é o <b>tipo</b>; ajuste o tipo de parada correspondente a cada observação.</p>
       <div class="kpis">${kpi('Paradas a importar', U.fmt(plan0.events.length), '', U.fmt(U.sum(plan0.events, e => e.minutes)) + ' min')}${kpi('Sem dia de produção', U.fmt(plan0.noDay.length), '', 'importe o histórico antes')}${kpi('Inválidas', U.fmt(plan0.invalid.length), '', '')}${kpi('Já importadas', U.fmt(plan0.dup.length), '', 'não duplicadas')}${kpi('Sem turno na planilha', U.fmt(plan0.noShift || 0), '', 'entram no total do dia')}${kpi('Equipamentos novos', U.fmt(plan0.newEquip.size), '', 'serão cadastrados')}</div>
@@ -13397,6 +13444,7 @@ Cfg.importacao = {
       ${plan0.invalid.length ? `<details><summary class="small">Linhas inválidas (${plan0.invalid.length})</summary><ul class="small">${plan0.invalid.slice(0, 200).map(x => `<li>linha ${x.line}: ${esc(x.reason)}</li>`).join('')}</ul></details>` : ''}
       <p class="small muted">As paradas entram sem horário, ligadas ao turno, e passam a compor Disponibilidade, cobertura e Pareto conforme o tipo escolhido.</p>`,
       `<button class="btn" data-close>Cancelar</button><button class="btn primary" id="pGo" ${plan0.events.length ? '' : 'disabled'}>Importar paradas</button>`, (el, close) => {
+        if (typeof vacFiltroSelect === 'function') el.querySelectorAll('[data-cause]').forEach(s => vacFiltroSelect(s, { placeholder: 'Buscar o tipo (ex.: setup)' }));   /* 2.6.18 · PAR-CAT */
         const g = el.querySelector('#pGo'); if (g) g.onclick = () => run(() => {
           el.querySelectorAll('[data-cause]').forEach(s => map[s.dataset.cause] = s.value);
           const plan = Importers.planParadas(db(), parsed, { lineId: 'line_vac', causeMap: map, defaultCodeId: (d.downtimeCodes.find(c => c.code === 'OUT') || {}).id });
@@ -14013,7 +14061,49 @@ function abonoModal(day, psId, evId) {
       const del = el.querySelector('#abDel'); if (del) del.onclick = async () => { const r = await askReason('Excluir abono', 'O abono fica marcado como excluído e a ação vai para a auditoria.', ['lançado por engano', 'tempo errado', 'outro']); if (r) { close(); run(() => Actions.deleteEvent(day.id, ev.id, r), 'Abono excluído.'); } };
     });
 }
+/* 2.6.20 · HEX-01 (pedido do responsável, 20/11/2026): "Houve hora extra?" no cartão do turno (Lançamento). Até 60 min por turno
+   (settings.horaExtraMax), antes do início ou depois do fim. Cria o mesmo intervalo de hora extra do "Hora extra / intervalo"
+   (Actions.addInterval, kind 'extra'): os minutos entram no tempo planejado, na meta e na capacidade do turno (ex.: 500 → 560 min).
+   Nenhuma fórmula nova; remover só quando a hora não tem produção nem parada (regra do deleteInterval). */
+const HoraExtra = {
+  max: () => { const v = +((db().settings || {}).horaExtraMax); return v > 0 ? v : 60; },
+  doTurno: ps => ps.intervals.filter(i => !i.deleted &amp;&amp; i.kind === 'extra').sort((a, b) => a.start - b.start),
+  /* horário livre no dia (sem intervalo de outro turno): a opção que se sobrepõe a outro turno não aparece */
+  livre: (day, s, e) => !day.shifts.some(p => !p.deleted &amp;&amp; p.intervals.some(i => !i.deleted &amp;&amp; U.overlap(s, e, i.start, i.end) > 0)),
+  limites(ps) { const iv = ps.intervals.filter(i => !i.deleted &amp;&amp; i.kind !== 'extra'); return iv.length ? { s: Math.min(...iv.map(i => i.start)), e: Math.max(...iv.map(i => i.end)) } : null; },
+  bloco(day, ps, sr, lk, ic = () => '', tip = () => '') {
+    const L = this.limites(ps); if (ps.off || !L) return '';
+    const X = this.doTurno(ps), mx = this.max(), feito = X.reduce((a, i) => a + i.end - i.start, 0), resta = Math.max(0, mx - feito);
+    const tot = sr &amp;&amp; sr.agg ? sr.agg.grossMin : null, semHx = tot != null ? tot - feito : null;
+    const okIni = resta &amp;&amp; this.livre(day, L.s - resta, L.s), okFim = resta &amp;&amp; this.livre(day, L.e, L.e + resta);
+    const btn = (lado, rot) => `<button type="button" class="btn sm" data-hx="${ps.id}|${lado}"${lk || !resta ? ' disabled' : ''}>${rot}</button>`;
+    return `<div class="tl-c tl-hx" data-hxps="${ps.id}"><h4 class="tl-h4">${ic('clock', 16)} HORA EXTRA ${tip('horaExtra')}</h4>
+      ${X.length ? `<ul class="hx-l">${X.map(i => `<li><b>${U.range(i.start, i.end)}</b> <span class="small muted">· ${U.fmt(i.end - i.start)} min</span>${lk ? '' : ` <button type="button" class="btn xs ghost" data-hxdel="${i.id}">Remover</button>`}</li>`).join('')}</ul>
+        ${tot != null ? `<p class="small" style="margin:4px 0 0">Tempo do turno: <b>${U.fmt(semHx)} + ${U.fmt(feito)} = ${U.fmt(tot)} min</b> no OEE, na meta e na capacidade.</p>` : ''}`
+      : `<p class="small" style="margin:0 0 6px">Houve hora extra neste turno? Sem hora extra, nada a fazer.</p>`}
+      ${resta &amp;&amp; (okIni || okFim) ? `<div class="row hx-row" style="flex-wrap:wrap;gap:6px;align-items:center"><label class="small">Minutos <input type="number" data-hxmin="${ps.id}" min="1" max="${resta}" step="1" value="${resta}" style="width:72px"${lk ? ' disabled' : ''}></label>
+        ${okIni ? btn('ini', `Antes do início (${U.hhmm(L.s - resta)}–${U.hhmm(L.s)})`) : ''}${okFim ? btn('fim', `Depois do fim (${U.hhmm(L.e)}–${U.hhmm(L.e + resta)})`) : ''}</div>`
+      : resta ? `<p class="small muted" style="margin:4px 0 0">Sem horário livre antes ou depois deste turno (os vizinhos já ocupam).</p>`
+      : `<p class="small muted" style="margin:4px 0 0">Limite de ${mx} min de hora extra no turno atingido.</p>`}</div>`;
+  },
+  bind(root, day) {
+    root.querySelectorAll('[data-hx]').forEach(b => b.onclick = () => {
+      const [psId, lado] = b.dataset.hx.split('|'), ps = day.shifts.find(p => p.id === psId), L = ps &amp;&amp; this.limites(ps); if (!L) return;
+      const feito = this.doTurno(ps).reduce((a, i) => a + i.end - i.start, 0), mx = this.max(), inp = root.querySelector(`[data-hxmin="${psId}"]`), n = Math.round(+(inp &amp;&amp; inp.value) || 0);
+      if (!(n >= 1)) { toast('Informe os minutos de hora extra.', true); return; }
+      if (feito + n > mx) { toast(`O turno pode ter no máximo ${mx} min de hora extra (já tem ${feito}).`, true); return; }
+      const [s0, e0] = lado === 'ini' ? [L.s - n, L.s] : [L.e, L.e + n];
+      if (!this.livre(day, s0, e0)) { toast(`${U.range(s0, e0)} já pertence a outro turno do dia.`, true); return; }
+      run(() => Actions.addInterval(day.id, psId, s0, e0, 'extra'), `Hora extra ${U.range(s0, e0)} incluída: o turno passa a contar mais ${n} min no OEE e na meta.`);
+    });
+    root.querySelectorAll('[data-hxdel]').forEach(b => b.onclick = () => confirmDlg('Remover a hora extra?', 'O tempo dela sai do turno (OEE, meta e capacidade). Só é possível se a hora não tem produção nem parada lançada.', 'Remover', true)
+      .then(ok => { if (ok) run(() => Actions.deleteInterval(day.id, b.dataset.hxdel), 'Hora extra removida.'); }));
+  }
+};
+if (!document.getElementById('hxCss')) { const st = document.createElement('style'); st.id = 'hxCss'; st.textContent = '.hx-l{list-style:none;margin:0;padding:0;display:grid;gap:4px}.hx-l li{display:flex;gap:6px;align-items:center;flex-wrap:wrap}.tl-hx .btn{white-space:nowrap}'; document.head.appendChild(st); }
+HELP.horaExtra = ['Hora extra no turno', [['O que faz?', 'Inclui até 60 min antes do início ou depois do fim do turno (ex.: 1º turno a partir das 05:00; 2º até 23:47). Esse tempo entra no tempo planejado, na meta e na capacidade do turno: um turno de 500 min passa a 560 min no OEE.'], ['E a produção dessa hora?', 'A hora extra aparece no hora a hora do turno, com a sugestão do servidor como as outras horas. Sem hora extra lançada, a produção do servidor nesse horário conta pela regra da meia-noite e gera um aviso.'], ['Remover', 'Só quando a hora não tem produção nem parada lançada.']]];
 function bindAbonos(root, day) {
+  HoraExtra.bind(root, day);   /* 2.6.20 · HEX-01 */
   root.querySelectorAll('[data-abonoadd]').forEach(b => b.onclick = () => abonoModal(day, b.dataset.abonoadd));
   root.querySelectorAll('[data-abono]').forEach(b => b.onclick = () => { const [ps, ev] = b.dataset.abono.split('|'); abonoModal(day, ps, ev); });
   root.querySelectorAll('[data-shoffed]').forEach(b => b.onclick = e => { e.preventDefault(); e.stopPropagation(); shiftOffModal(day, b.dataset.shoffed); });
@@ -14034,7 +14124,7 @@ function shiftOffModal(day, psId) {
   modal(`${ps.snap.name} sem produção · ${U.brDate(day.date)}`, `<div class="seg" role="group" aria-label="Tipo"><button type="button" data-ot="prog" aria-pressed="${type === 'prog'}">Programado</button><button type="button" data-ot="np" aria-pressed="${type === 'np'}">Não programado</button></div>
       <p class="small" id="otTxt" style="margin:8px 0"></p>
       <div class="form"><label class="f wide"><span>Motivo</span><input id="otM" list="otML" maxlength="80" value="${esc(ps.offReason || '')}" placeholder="Escolha ou digite"><datalist id="otML"></datalist></label>
-      <label class="f wide" id="otCW"><span>Tipo de parada (entra no OEE e no Pareto)</span><select id="otC">${codes.map(c => `<option value="${c.id}" ${ps.offCodeId === c.id ? 'selected' : ''}>${esc(c.code + ' · ' + c.name)}</option>`).join('')}</select></label></div>`,
+      <label class="f wide" id="otCW"><span>Tipo de parada (entra no OEE e no Pareto)</span><select id="otC">${tipoParadaOpts(codes, ps.offCodeId)}</select></label></div>`,
     `<button class="btn" data-close>Cancelar</button><button class="btn primary" id="otOk">Marcar sem produção</button>`, (el, close) => {
       const sync = () => {
         el.querySelectorAll('[data-ot]').forEach(b => b.setAttribute('aria-pressed', b.dataset.ot === type));
@@ -16081,7 +16171,7 @@ const SrvUI = (() => {
     const res = Engine.computeDay(db(), day), S = sug(day, res), P = pendingRows(S), lk = day.status === 'fechado';
     const shiftLocked = ivId => { const ps = day.shifts.find(p => p.intervals.some(i => i.id === ivId)); return lk || (ps &amp;&amp; ps.status === 'fechado'); };
     const codes = db().downtimeCodes.filter(c => c.active !== false &amp;&amp; !c.deleted);
-    const codeSel = (i, id) => `<select data-evc="${i}"><option value="">— escolha o tipo —</option>${codes.map(c => `<option value="${c.id}" ${c.id === id ? 'selected' : ''}>${esc(c.code + ' · ' + c.name)}</option>`).join('')}</select>`;
+    const codeSel = (i, id) => `<select data-evc="${i}" aria-label="Tipo da parada"><option value="">— escolha o tipo —</option>${tipoParadaOpts(codes, id)}</select>`;
     const lotTxt = x => x.lots.map(l => `${esc(l.lot)} ${l.n}${ServerData.lotKind(db(), L, l.lot, null, day.date) !== 'normal' ? ' (' + esc(Srv.KIND[ServerData.lotKind(db(), L, l.lot, null, day.date)].toLowerCase()) + ')' : ''}`).join(', ');
     const allEv = S.events;
     const totaisHtml = P.totais.map(id => { const ps = day.shifts.find(p => p.id === id); if (!ps) return ''; const sr = res.shifts.find(x => x.ps === ps), trava = lk || ps.status === 'fechado', cx = U.sum(S.ivs.filter(x => x.psId === id), x => x.n.normal);
@@ -16095,6 +16185,7 @@ const SrvUI = (() => {
       `<button class="btn" data-close>Cancelar</button><button class="btn primary" id="rvGo" ${lk ? 'disabled' : ''}>Aplicar selecionados</button>`, (el, close) => {
         const ga = el.querySelector('#gAll'); if (ga) ga.onchange = () => el.querySelectorAll('[data-g]:not(:disabled)').forEach(c => c.checked = ga.checked);
         el.querySelectorAll('[data-ttsrv]').forEach(b => b.onclick = () => confirmDlg('Trocar o total pelo hora a hora do servidor?', 'O total informado deste turno é apagado e as horas voltam a abrir. Em seguida as sugestões do servidor aparecem marcadas para você conferir e aplicar. Paradas, scrap, segurança e qualidade não mudam.', 'Trocar e conferir', true).then(async ok => { if (!ok) return; const r = await run(() => Actions.voltarHoraAHora(day.id, b.dataset.ttsrv, true)); if (!r) return; close(); reviewModal(day); }));
+        if (typeof vacFiltroSelect === 'function') el.querySelectorAll('[data-evc]').forEach(s => vacFiltroSelect(s, { placeholder: 'Buscar o tipo (ex.: setup)' }));   /* 2.6.18 · PAR-CAT */
         el.querySelectorAll('[data-evc]').forEach(s => s.onchange = () => { const c = el.querySelector(`[data-e="${s.dataset.evc}"]`); if (c &amp;&amp; !c.disabled &amp;&amp; s.value) c.checked = true; });
         const go = el.querySelector('#rvGo'); if (go) go.onclick = async () => {
           const sel = { goods: [], cats: [], events: [] };
@@ -16333,6 +16424,13 @@ const ForaTurno = (() => {
   const desde = db => { const d = (db.settings || {}).foraTurnoDesde; return d ? String(d) : null; };
   const vale = (db, date) => { const d = desde(db); return !!d &amp;&amp; date >= d; };
   const limite = db => { const st = db.settings || {}; return +st.continuityMin > 0 ? +st.continuityMin : (+st.serverGapMin > 0 ? +st.serverGapMin : 10); };
+  /* 2.6.19 · TUR-06 · regra do relógio (decisão do responsável, 20/11/2026; vale para as janelas de dias operacionais a partir de 01/11/2026):
+     na janela de turno não produtivo, o que foi produzido ANTES da meia-noite seguinte ao fim do turno anterior vai para esse turno (ex.: o 2º
+     até 00:00) e o que foi produzido DEPOIS vai para o próximo turno produtivo (o 1º do dia seguinte), sem olhar paradas no meio. Antes de
+     01/11/2026 continua a regra da continuidade (D1). Hora extra: até 60 min além do turno; passar disso só gera aviso (horaExtraMax). */
+  const RELOGIO_DESDE = '2026-11-01';
+  const relogio = (db, date) => date >= String((db.settings || {}).foraTurnoRelogioDesde || RELOGIO_DESDE);
+  const horaExtraMax = db => { const v = +(db.settings || {}).horaExtraMax; return v > 0 ? v : 60; };
   const diaDe = (db, date, lineId) => (db.productionDays || []).find(d => !d.deleted &amp;&amp; d.date === date &amp;&amp; d.lineId === lineId) || null;
   /* turnos do dia: o lançamento (se existe: respeita habilitação e "sem produção"); senão, o cadastro */
   function turnosDoDia(db, date, lineId) {
@@ -16371,6 +16469,7 @@ const ForaTurno = (() => {
   function doDia(db, date, lineId) {
     if (!vale(db, date) || !(db.server &amp;&amp; (db.server.segments || []).length)) return [];
     const base = SD().dayStartMin(date), lim = limite(db), qty = +(db.settings || {}).serverBoxQty || 1000, out = [];
+    if (relogio(db, date)) return doDiaRelogio(db, date, lineId, base, qty);
     for (const w of janelas(db, date, lineId)) {
       const A = base + w.a, B = base + w.b, bx = caixas(db, lineId, A - lim - 1, B + lim + 1, date); if (!bx.length) continue;
       const runs = []; let r = null; for (const x of bx) { if (!r || x.m - r[r.length - 1].m > lim) { r = []; runs.push(r); } r.push(x); }
@@ -16386,6 +16485,31 @@ const ForaTurno = (() => {
           oeeReal: pphMed > 0 ? pecas / (pphMed * planMin / 60) : null,
           alvo: alvo ? { date: alvo.date, code: alvo.code, name: alvo.name } : null,
           regra: !alvo ? 'sem turno produtivo para receber' : contPrev ? 'continua o ' + alvo.name + ' (sem parada na troca)' : contNext ? 'emenda com o ' + alvo.name : 'sem continuidade com o ' + (w.prev ? w.prev.name : 'turno anterior') + ' → ' + alvo.name });
+      }
+    }
+    return out;
+  }
+  /* TUR-06 · regra do relógio: corte na meia-noite seguinte ao fim do turno produtivo anterior */
+  function doDiaRelogio(db, date, lineId, base, qty) {
+    const out = [], hx = horaExtraMax(db), abs = x => SD().dayStartMin(x.date) + x.e;
+    for (const w of janelas(db, date, lineId)) {
+      const A = base + w.a, B = base + w.b, bx = caixas(db, lineId, A, B, date); if (!bx.length) continue;
+      const fimAnt = w.prev ? abs(w.prev) : null, corte = fimAnt != null ? Math.ceil(fimAnt / 1440) * 1440 : -Infinity;
+      const iniProx = w.next ? SD().dayStartMin(w.next.date) + w.next.s : null;
+      const partes = [['antes', bx.filter(x => x.m < corte)], ['depois', bx.filter(x => x.m >= corte)]];
+      for (const [lado, ins] of partes) {
+        if (!ins.length) continue;
+        const alvo = lado === 'antes' ? (w.prev || w.next) : (w.next || w.prev);
+        const porCat = new Map(); for (const x of ins) porCat.set(x.cat, (porCat.get(x.cat) || 0) + 1);
+        let pecas = 0, cap1h = 0; for (const [cat, n] of porCat) { const p = n * qty, pph = pphDe(db, date, cat, lineId); pecas += p; cap1h += pph ? p / pph : 0; }
+        const t0 = ins[0].m - base, t1 = ins[ins.length - 1].m - base, planMin = Math.max(1, t1 - t0 + 1), pphMed = cap1h > 0 ? pecas / cap1h : 0;
+        /* hora extra além do limite: depois de (fim do turno anterior + 60 min) ou antes de (início do próximo − 60 min) */
+        const exc = alvo &amp;&amp; alvo === w.prev &amp;&amp; fimAnt != null ? ins.filter(x => x.m >= fimAnt + hx) : alvo &amp;&amp; alvo === w.next &amp;&amp; iniProx != null ? ins.filter(x => x.m < iniProx - hx) : [];
+        const meia = lado === 'antes' ? 'antes da meia-noite' : 'depois da meia-noite';
+        out.push({ data: date, a: w.a, b: w.b, rotulo: w.rotulo, t0, t1, caixas: ins.length, pecas, goodMin: cap1h * 60, cats: [...porCat.keys()], porCat: Object.fromEntries([...porCat].map(([c, n]) => [c, n * qty])), planMin,
+          oeeReal: pphMed > 0 ? pecas / (pphMed * planMin / 60) : null, alvo: alvo ? { date: alvo.date, code: alvo.code, name: alvo.name } : null, relogio: lado,
+          horaExtra: exc.length ? { caixas: exc.length, de: exc[0].m - base, ate: exc[exc.length - 1].m - base, limite: hx } : null,
+          regra: !alvo ? 'sem turno produtivo para receber' : meia + ' → ' + alvo.name + (alvo.date !== date ? ' de ' + U.brDate(alvo.date) : '') });
       }
     }
     return out;
@@ -16413,7 +16537,7 @@ const ForaTurno = (() => {
     ft.pecas = U.sum(ft.recebe.filter(i => !ft.semAlvo.includes(i)), i => i.pecas);
     return ft;
   }
-  return { opOff, janelas, doDia, paraDia, aplicar, limite, vale, turnosDoDia, caixas };   /* 2.4.37: turnosDoDia e caixas para o OEE real e os cartões dos turnos (oee_real.js) */
+  return { opOff, janelas, doDia, paraDia, aplicar, limite, vale, turnosDoDia, caixas, relogio, horaExtraMax, RELOGIO_DESDE };   /* 2.4.37: turnosDoDia e caixas para o OEE real e os cartões dos turnos (oee_real.js) */
 })();
 
 /* ---------- TUR-02 · habilitar / desabilitar um turno não produtivo no dia ---------- */
@@ -16473,7 +16597,7 @@ const ForaTurnoUI = {
     root.querySelectorAll('[data-turnonp]').forEach(c => c.onchange = () => run(() => TurnoNP.habilitar(day.id, c.dataset.turnonp, c.checked), c.checked ? 'Turno habilitado neste dia.' : 'Turno voltou a não produtivo neste dia.').then(() => render()).catch(() => render()));
   }
 };
-HELP.foraTurno = ['Turno não produtivo e produção fora de turno', [['O que é turno não produtivo?', "Turno que existe no cadastro, mas cuja produção não conta para ele mesmo (Administração › Turnos › vigência \"Turno não produtivo\"). Ele não entra no dia nem no plano."], ['E a produção feita nessa janela?', 'As caixas do servidor (MES) continuam gravadas na hora real. Para apuração, cada trecho contínuo vai para um turno produtivo: se emenda com o fim do turno anterior (a linha não parou na troca), conta nele; senão, conta no próximo turno produtivo (ex.: madrugada → turno A do dia seguinte).'], ['Habilitar no dia', 'Torna o turno produtivo só naquele dia: o tempo dele vira planejado e a produção conta nele.'], ['OEE reportado × real', 'Reportado = com a reatribuição (o oficial; a Performance pode passar de 100%). Real = pelo horário real, sem essa produção; o OEE real do trecho usa como tempo planejado da 1ª à última caixa.']]];
+HELP.foraTurno = ['Turno não produtivo e produção fora de turno', [['O que é turno não produtivo?', "Turno que existe no cadastro, mas cuja produção não conta para ele mesmo (Administração › Turnos › vigência \"Turno não produtivo\"). Ele não entra no dia nem no plano."], ['E a produção feita nessa janela?', 'As caixas do servidor (MES) continuam gravadas na hora real. Para apuração, desde 01/11/2026 vale o relógio: o que foi feito antes da meia-noite conta no turno anterior (ex.: o 2º turno até 00:00) e o que foi feito depois conta no próximo turno produtivo (o 1º do dia seguinte), mesmo com paradas no meio. Antes dessa data, cada trecho contínuo emendado com o fim do turno anterior contava nele, e o resto ia para o próximo turno.'], ['Hora extra', 'Cada turno faz no máximo 60 min de hora extra (ex.: o 1º a partir das 05:00, o 2º até 23:47). Produção além disso continua contando pela regra da meia-noite, mas o dia mostra um aviso: confira se o 3º turno deveria estar habilitado.'], ['Habilitar no dia', 'Torna o turno produtivo só naquele dia: o tempo dele vira planejado e a produção conta nele.'], ['OEE reportado × real', 'Reportado = com a reatribuição (o oficial; a Performance pode passar de 100%). Real = pelo horário real, sem essa produção; o OEE real do trecho usa como tempo planejado da 1ª à última caixa.']]];
 HELP.foraTurnoOee = ['OEE real do trecho', [['Como é calculado?', 'Produção do trecho ÷ (PPH do catálogo × tempo da 1ª à última caixa). Mostra o quanto a linha rendeu enquanto produziu fora do turno.']]];
 
 /* ===== Produção 2.4.28 · Fase 4 · 4c do briefing (GEL-03 / PRD-10): Registrar scrap de gel na página de cada turno =====
@@ -17881,6 +18005,7 @@ html[data-theme="dark"] .tl .tl-gelb{background:#3a2a12!important;color:#F2C27A!
         <label class="kvrow"><input type="checkbox" data-shoff="${ps.id}" ${ps.off ? 'checked' : ''} ${lk ? 'disabled' : ''}> <span>Turno sem produção</span>${ps.off ? `<span class="small muted">· ${offTxt(ps)}</span> <button type="button" class="btn xs" data-shoffed="${ps.id}">alterar</button>` : ''}</label>
         ${ps.enabledNP ? `<label class="kvrow"><input type="checkbox" role="switch" data-turnonp="${esc(ps.shiftId)}" checked ${day.status === 'fechado' ? 'disabled' : ''} aria-label="Habilitar ${esc(ps.snap.name)} neste dia"> <span>Habilitado neste dia <span class="small muted">· não produtivo no cadastro; desmarque para voltar (só sem produção, scrap ou parada lançada)</span></span></label>` : ''}
       </div>
+      ${HoraExtra.bloco(day, ps, sr, lk, ic, tip)}
       <div class="tl-c tl-obs">
         <h4 class="tl-h4">Observações do turno</h4>
         <textarea data-psf="${ps.id}|note" maxlength="1500" data-fk="ps-note-${ps.id}" aria-label="Observações do turno" placeholder="Passagem de turno, ocorrências, ajustes…">${esc(ps.note || '')}&lt;/textarea>
@@ -38278,9 +38403,9 @@ body.vac-porta{overflow:hidden}
     {
       "id": "oee",
       "path": "Plataforma.html#motor/oee",
-      "version": "2.6.17",
-      "sha256": "703273f2379660a9a4d8118be7d40cb98e85df6d3225f84bde7d313a3fd37699",
-      "bytes": 2277074
+      "version": "2.6.21",
+      "sha256": "0535828a73c0aa5ed306c18f96e51d404a738050d792b784663b7060f148e756",
+      "bytes": 2292729
     },
     {
       "id": "perdas",
@@ -38342,7 +38467,7 @@ body.vac-porta{overflow:hidden}
   "limitations": [
     "Projetos e conteúdo técnico OSM/MES/AM/TPM mantêm os limites documentados nas fontes."
   ],
-  "enginesSha256": "d9ff30bf52e6d9545ae11e9df2b66f9f2fdbc50032ae69e298e76079c57ba3ee",
+  "enginesSha256": "75c8b4255ba39b02fbd3937bf8be92c197dfbddd52049528d7e1d81c8d643a93",
   "originRevision": "ffc9ee8",
   "sourceMode": "single-html",
   "originEnginesSha256": "a87a64ad0c328f70e102b2ae888790a9b5d5a9bd05778652a7ce7cae140e40d2"
@@ -38412,7 +38537,7 @@ summary{cursor:pointer;font-weight:600;color:var(--navy)}
 'use strict';
 /* ---------- referência (atualizar quando a plataforma mudar de versão) ---------- */
 // Iguais às do pacote da plataforma (nova-plataforma/src/generated/manifest.json); o teste ferramenta-verificar confere.
-const VERSOES = {"oee":"2.6.17","perdas":"1.12.17","gel":"2.42","paradas":"1.2.18","equip":"1.0.20","inic":"1.1.16","linha":"1.4.0","projetos":"0.1.16","portal":"1.9.52"};
+const VERSOES = {"oee":"2.6.21","perdas":"1.12.17","gel":"2.42","paradas":"1.2.18","equip":"1.0.20","inic":"1.1.16","linha":"1.4.0","projetos":"0.1.16","portal":"1.9.52"};
 const BASES = [
  { arq: 'vacutainer-cadastros.json', mod: 'portal', nome: 'Cadastro geral (Portal)', obrig: true, cadastro: true, bk: 'Cadastros' },
  { arq: 'portal-base.json', mod: 'portal', nome: 'Portal', obrig: true, bk: 'Portal' },
@@ -39003,7 +39128,7 @@ import { Icon, Button, Badge, Empty, Modal, BarChart, BrandLogo, CommandMenu } f
 import { ModuleFrame } from "vac:modulo/components/ModuleFrame";
 import manifest from "vac:recurso/manifesto";
 import { ModuleTabs } from "vac:modulo/components/ModuleTabs";
-const VERSION = "1.8.25";
+const VERSION = "1.8.29";
 /* Navegação 1.3.0 (16/11/2026): Visão da linha, Relatórios e Importações têm abas; as que mostram uma tela do
    Portal (motor da Administração) trazem o 3º campo com a aba dele. Administração fica só com cadastros e configuração. */
 const SHELL_TABS = {

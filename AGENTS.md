@@ -1,6 +1,6 @@
 # Orientações obrigatórias · Vacutainer
 
-O aplicativo inteiro está em **Plataforma.html**, na raiz. Esse é o arquivo executável e a única fonte editável do produto. Não existe outro projeto nem uma pasta de páginas para alimentar um build.
+O aplicativo inteiro está em **Plataforma.html**, na raiz. Esse é o arquivo executável e a única fonte editável do produto. Não existe outro projeto nem uma pasta de páginas para alimentar um build. A única exceção, autorizada pelo responsável em 20/11/2026, é a pasta [CELULAR](CELULAR/LEIAME.md): o app de celular "Meu Turno", independente, que não lê nem grava as bases da plataforma.
 
 Antes de alterar, leia [COMECE-AQUI](docs/COMECE-AQUI.md), [DESIGN_SYSTEM](docs/DESIGN_SYSTEM.md), [ARQUITETURA](docs/ARQUITETURA.md), [ARQUITETURA-v1](docs/ARQUITETURA-v1.md), [REGRAS_DE_NEGOCIO](docs/REGRAS_DE_NEGOCIO.md), [CLAUDE.md](CLAUDE.md) e as diretrizes aplicáveis à tarefa. Investigue componentes e consumidores antes de criar outra implementação.
 
