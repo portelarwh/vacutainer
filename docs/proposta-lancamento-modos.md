@@ -18,6 +18,43 @@ Pedido do responsável (20/11/2026). **Ainda não implementado.** Muda a interfa
 | 10 | Segurança e qualidade obrigatórias; o turno é opcional e a conta é do dia | 3.1 |
 | 11 | Validação: botão para ir até o ajuste (cobertura, divergência…) | 9 |
 | 12 | Cards resumo em bloco recolhível, expandido por padrão | 1.1 |
+| 13 | Topo da página Produção conforme a imagem enviada (cabeçalho, abas e barra de ações) | 0 |
+
+## 0. Topo da página Produção (decisão do responsável, 20/11/2026)
+
+Segue a imagem enviada. Vale para todas as abas da Produção. Muda só o arranjo: IDs, handlers, permissões e travas continuam os mesmos.
+
+**Cabeçalho, uma linha:**
+- À esquerda, o título "Produção" e o subtítulo "Plano, ordens, apontamento e desempenho da linha".
+- À direita, em ordem:
+  - **chip de situação** com ponto colorido, no lugar do botão vermelho "Status": "Sistema online" (verde), "Atenção" (âmbar) ou "Sem conexão com a pasta" (vermelho). O chip lê o mesmo estado e o clique abre o mesmo painel de hoje;
+  - **?** (ajuda);
+  - **Atualizar** (ícone ↻);
+  - **Trocar pasta** (botão principal azul, `data-act="connect"`; sem pasta conectada vira "Conectar pasta da rede"; na Demonstração fica oculto ou desabilitado com explicação).
+
+**Abas**, um cartão com divisória abaixo, nesta ordem:
+1. Visão geral
+2. Lançamento
+3. Pendências
+4. Paradas
+5. Resultados
+6. Plano do mês
+7. Relatórios
+8. Equipamentos
+9. Config.
+10. Ordens e lotes
+11. SQDCP
+
+Os rótulos ficam padronizados ("Visão geral", não "Visão Geral"; "Config." sem a engrenagem). A rota de cada aba continua a mesma.
+
+**Barra de ações**, no mesmo cartão das abas, abaixo da divisória:
+- À esquerda: **← Voltar** (secundário) e **+ Lançar meu turno** (laranja, principal da operação).
+- À direita: **↻ Sincronizar**, **Backup** (ícone de pasta) e **Modo TV** (ícone de monitor; hoje o rótulo é só "TV").
+- Botões com ícone e altura iguais. No celular, a barra quebra em duas linhas e mantém Lançar meu turno primeiro.
+
+**Seletor do dia:** a barra Data / Linha / "Ver o dia inteiro (24 h)" fica logo abaixo, sem mudança, e o cabeçalho do dia (item 1) vem depois dela.
+
+**Teste:** a ordem das abas, os rótulos, o chip de situação nos três estados, Trocar pasta (pasta × sem pasta × Demonstração) e a barra de ações à esquerda e à direita.
 
 ## 1. Cabeçalho do dia (uma linha, sem repetição)
 
