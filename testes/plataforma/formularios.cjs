@@ -76,12 +76,16 @@ const html = fs.readFileSync(path.resolve(__dirname, '../../Plataforma.html'));
     assert.deepEqual(A4.dados, A4.pn.map((_, i) => i ? 'cont' : 'dados')); assert.deepEqual(A4.mm, [210, 297]); assert.deepEqual(A4.orient, A4.pn.map((_, i) => !i));
     assert.deepEqual(A4.rotulos, ['Área principal', 'Máquina / local', 'Tipo / programação', 'Emitido por', 'Data de emissão', 'Conclusão prevista', 'Turno responsável', 'Responsável pela execução', 'Responsável pela confirmação']);
     assert.equal(A4.faixas.length, 3); assert.match(A4.faixas[0], /^Ponto 1 \/ Linha 360° \/ /); assert.match(A4.faixas[1], /^Ponto 2 \/ Linha 360° \/ Aplicação de gel/);
-    assert.deepEqual(A4.secoes, ['01 Atividades com referência visual', '02 Atividades complementares', '03 Registro da execução', '04 Tratamento de desvios', '05 Confirmação']);
+    assert.deepEqual(A4.secoes, ['01 Atividades com referência visual', '02 Atividades complementares', '03 Execução, desvios e confirmação']);
+    const fech = await fr.evaluate(() => { const q = document.querySelector('#fmPrev .fm-fech'), z = parseFloat(getComputedStyle(q.closest('.fm-pg')).zoom) || 1, mm = el => +(el.getBoundingClientRect().height / z / 96 * 25.4).toFixed(1);
+      return { quadros: [...q.querySelectorAll('.fm-f3 h3')].map(h => h.textContent.trim()), linha: mm(q.querySelector('.fm-cp:not(.alto) .fm-cv2')), texto: mm(q.querySelector('.fm-cp.alto .fm-cv2')), pautas: q.querySelectorAll('.fm-cv2.pauta').length, caixa: mm(document.querySelector('#fmPrev .fm-it .fm-cx')) }; });
+    assert.deepEqual(fech.quadros, ['A Registro da execução', 'B Desvios (NC)', 'C Confirmação']); assert.equal(fech.pautas, 3, '3 campos de texto livre pautados (em branco)');
+    assert.ok(fech.linha >= 8.8 && fech.texto >= 24 && fech.caixa >= 4.4, 'tamanhos para caneta ' + JSON.stringify(fech));
     assert.ok(A4.planta, 'local na planta da Linha 360°'); assert.ok(A4.vencida, 'conclusão vencida em destaque'); assert.ok(A4.leg, 'legenda OK / NC / N/A');
     assert.deepEqual(A4.itens, ['1 Limpar a lente do sensor', '2 Ver desgaste da correia', '3 Conferir parafusos', '4 Nível de gel', '5 Bloquear a energia (teste)', '6 Retirar resíduos do piso (teste)']);
     assert.deepEqual(A4.caixas, Array(6).fill('OK/NC/N/A'));
     await fr.selectOption('#fmPorPag', '4'); assert.ok(await fr.locator('#fmPrev .fm-pg').count() < A4.n, '4 por página: menos folhas'); await fr.selectOption('#fmPorPag', '1');
-    console.log('ok folha A4 (210 × 297 mm) no layout corporativo: marca, título, código e "Página x / N" em todas; dados na 1ª e continuação nas demais; seções 01–05; faixa do local; itens 1–6 com OK / NC / N/A');
+    console.log('ok folha A4 (210 × 297 mm) no layout corporativo: marca, título, código e "Página x / N" em todas; dados na 1ª e continuação nas demais; seções 01–03 (execução, desvios e confirmação num quadro A·B·C com campos para caneta); faixa do local; itens 1–6 com OK / NC / N/A');
 
     // 5) imprimir: só as folhas (window.print simulado)
     const imp = await fr.evaluate(async () => { let n = -1, cls = false; window.print = () => { n = document.querySelectorAll('#fmPrint .fm-pg').length; cls = document.body.classList.contains('fm-imprimindo'); };
