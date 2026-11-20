@@ -2,6 +2,23 @@
 
 Pedido do responsável (20/11/2026). **Ainda não implementado.** Muda a interface da aba Lançamento da Produção (`motor/oee`, LANC-02, cartões `lc-*`/`tl-*`). Os números, as fórmulas e as permissões continuam iguais (contrato 6), O modo "Dia" foi decidido como "só no dia" (item 4), sem rateio entre turnos ou horas.
 
+## Pedidos do responsável (conferência)
+
+| # | Pedido | Onde |
+|---|---|---|
+| 1 | Sem itens repetidos nem poluição visual | 1, 7 |
+| 2 | Menu ⋮ Mais ações: Ações do dia, Correções, Consulta | 2 |
+| 3 | Fechar dia sempre visível | 1 |
+| 4 | Pílulas de Lançamento: Hora a hora, Por turno, Dia; a página se adapta | 3 |
+| 5 | Pílulas de Scrap: Por turno (campo em cada turno) ou Diário | 5 |
+| 6 | Hora extra por turno, com os indicadores do turno ajustados | 6 |
+| 7 | Modo Dia só no dia, sem rateio; cada reporte vale só no seu nível | 4 |
+| 8 | Manter Segurança e qualidade e a tabela hora a hora detalhada | 3.1 |
+| 9 | Dia: abono e observação do dia. Turno: abono/revezamento, hora extra, observação e paradas de cada turno | 3.1 |
+| 10 | Segurança e qualidade obrigatórias; o turno é opcional e a conta é do dia | 3.1 |
+| 11 | Validação: botão para ir até o ajuste (cobertura, divergência…) | 9 |
+| 12 | Cards resumo em bloco recolhível, expandido por padrão | 1.1 |
+
 ## 1. Cabeçalho do dia (uma linha, sem repetição)
 
 - À esquerda: `Terça-feira, 17/11/2026`, o chip de situação (Em produção, Pendente de conferência, Sem produção ou Fechado, vindo de `day.status` e da pendência) e o texto discreto "Semana 47 · seg–sáb · Linha".
@@ -82,7 +99,7 @@ Regras de implementação:
 - **Turnos desse dia:** OEE, produzido e atendimento mostram "—" com o selo "lançado por dia". Ausência nunca vira zero (contrato 1), e a meta do turno não entra num denominador por turno.
 - **Semana e mês com dias mistos:** o total soma todos os dias. A visão por turno ou por hora mostra uma nota: "N dia(s) lançado(s) por dia não entram nesta visão".
 - **Conferir:** os relatórios e gráficos por hora precisam ignorar o período único do `TotalTurno` (turno lançado pelo total), para que ele não seja lido como produção de uma hora.
-- **Trocar de modo:** como no item 3, com confirmação. Ao sair do modo Dia, o `lancDia` é apagado (com auditoria) só depois de confirmar.
+- **Trocar de modo:** como no item 3, com confirmação. Ao sair do modo Dia, o `lancDia` fica guardado (com auditoria) e só deixa de contar; voltar ao modo Dia traz o valor de volta (item 3.1).
 - **Contrato 7:** nenhuma fórmula nova. O modo Dia só soma os mesmos componentes no nível do dia.
 
 ## 5. Pílula Scrap
@@ -113,7 +130,12 @@ Regras de implementação:
   - a troca com confirmação;
   - scrap diário × por turno;
   - hora extra em um turno só;
-  - menu: grupos, Esc e travas por perfil.
+  - menu: grupos, Esc e travas por perfil;
+  - modo Dia fora das visões por turno e hora a hora, e dentro do total da semana;
+  - abono e observação no nível do modo (dia × turno), sem rateio no modo Dia;
+  - Fechar dia bloqueado sem Segurança e qualidade, liberado com "Sem ocorrência" e sem turno;
+  - botões da Validação levando ao campo certo e à seção certa da Administração;
+  - Resumo do dia recolhe, mantém o OEE visível e abre expandido sem armazenamento.
 - **Versão:** nova versão da Produção e da plataforma, com a entrada em **Administração › Novidades**.
 - **Telas:** enviar as telas antes do merge.
 
