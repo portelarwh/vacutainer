@@ -27,6 +27,8 @@ O arquivo não é gerado de outro HTML ou de uma árvore TypeScript. JavaScript 
 | ferramenta/* | Verificar pasta e comparar importação, acessíveis em Saúde dos dados. |
 | dados/manifesto; dados/cenario | Versões/hashes do código e cenário exclusivamente fictício. |
 
+Fora do HTML único, só a pasta [CELULAR](CELULAR/LEIAME.md): app de celular "Meu Turno" (arquivo único `CELULAR/index.html`), independente da plataforma e sem acesso às bases; teste `npm run test:celular`.
+
 ## Contratos que não podem mudar incidentalmente
 
 1. Portal é o único dono de vacutainer-cadastros.json. Cada motor só grava suas bases; outros leem exports com versão compatível. Ausência ou erro nunca vira zero. Casca não recalcula OEE nem faz média simples de taxas.
