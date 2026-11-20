@@ -2227,9 +2227,13 @@ const VAC_PODE_MAPA = {
 /* Linha 360°: lançar = rotina do turno (marcar e desfazer checklist, pessoa do posto); configurar = planta (posições, áreas, pontos e
    equipamentos) e cadastro de checklist. */
 VAC_PODE_MAPA.linha = {
-  lancar: '[data-feito],[data-desf],#fPosto button[type="submit"]',
-  configurar: '#cfEdit,#cfDes,#cfAreaNova,#cfDesFim,#cfDesVolta,#cfDesCanc,#fArea button[type="submit"],#cfAreaDes,[data-ptsalvar],#chkSalvar,#chkDesativar,[data-chked]'
+  lancar: '[data-feito],[data-desf],#fPosto button[type="submit"],[data-av],#fxSalvar,#fmConcluir',
+  fechar: '#fmConfirmar,#fmDevolver,#fmReabrir',
+  configurar: '#cfEdit,#cfDes,#cfAreaNova,#cfDesFim,#cfDesVolta,#cfDesCanc,#fArea button[type="submit"],#cfAreaDes,[data-ptsalvar],#chkSalvar,#chkDesativar,[data-chked],#fmNovo,#fmSalvar,#fmDup,#fmCanc,#fmTarNova,[data-tardel],[data-ftdel],[data-ftup],#fmArq'
 };
+/* 1.4.0 · FORM-01: formulários. configurar = criar, editar e emitir o formulário (como o cadastro de checklist); lancar = avaliar
+   OK/NC/N/A e marcar como executado (rotina do turno); fechar = confirmar, devolver para ajuste ou reabrir. As gravações conferem
+   a mesma permissão (fmGravar). */
 function vacPodeAqui(fn) { if (window.__vacEmbedded &amp;&amp; !(typeof vacDemo !== 'undefined' &amp;&amp; vacDemo.ativo) &amp;&amp; !['ver','exportar'].includes(fn) &amp;&amp; !vacLogin.sessao()) return false; if (typeof vacPode !== 'function' || typeof PAGE === 'undefined' || !PAGE) return true; try { return vacPode(VAC_PODE_MOD[PAGE.id] || PAGE.id, fn); } catch (e) { return true; } }
 const vacTravas = (() => {
   let agendado = 0;
@@ -34901,9 +34905,9 @@ function fmLerExec(){const d=App.fm.d;if(!$('#fmExec')||d.status!=='aberto')retu
 function fmValidarExec(d){const L=fmItensTodos(d),falta=L.filter(i=>!fmAval(d,i.k));if(!L.length)return'O formulário não tem itens para avaliar';
  if(falta.length)return`Avalie todos os itens (OK, NC ou N/A): faltam ${falta.map(i=>i.n).join(', ')}`;
  if(fmTemNC(d)){const Dv=d.desvio||{};if(!(Dv.acao||'').trim()||!(Dv.respId||Dv.resp))return'Há item não conforme: preencha a ação corretiva e o responsável pela tratativa'}return''}
-function fmGravarExec(msg){const d=App.fm.d;fmGravar({id:d.id,exec:d.exec||{aval:{}},desvio:d.desvio||{}},msg)}
+function fmGravarExec(msg){if(!fmPode('lancar'))return fmSemPerm('lancar');const d=App.fm.d;fmGravar({id:d.id,exec:d.exec||{aval:{}},desvio:d.desvio||{}},msg)}
 function ligarExec(){const d=App.fm.d,on=(s,ev,f)=>{const e=$(s);if(e)e[ev]=f};if(!$('#fmExec'))return;
- $$('[data-av]').forEach(b=>b.onclick=()=>{fmLerCampos();fmLerExec();d.exec=d.exec||{aval:{}};d.exec.aval=d.exec.aval||{};const k=b.dataset.av;d.exec.aval[k]=d.exec.aval[k]===b.dataset.v?'':b.dataset.v;App.fm.execSujo=true;render()});
+ $$('[data-av]').forEach(b=>b.onclick=()=>{if(!fmPode('lancar'))return fmSemPerm('lancar');fmLerCampos();fmLerExec();d.exec=d.exec||{aval:{}};d.exec.aval=d.exec.aval||{};const k=b.dataset.av;d.exec.aval[k]=d.exec.aval[k]===b.dataset.v?'':b.dataset.v;App.fm.execSujo=true;render()});
  ['#fxPend','#fxPlano','#fxAcao','#fxResp'].forEach(s=>on(s,'oninput',()=>{App.fm.execSujo=true}));
  on('#fxSalvar','onclick',()=>{fmLerExec();App.fm.execSujo=false;fmGravarExec('Avaliação salva')});
  on('#fmConcluir','onclick',()=>{if(App.fm.sujo)return toast('Salve as alterações do formulário antes de marcar como executado',1);fmLerExec();const e=fmValidarExec(d);if(e)return toast(e,1);
@@ -34911,7 +34915,7 @@ function ligarExec(){const d=App.fm.d,on=(s,ev,f)=>{const e=$(s);if(e)e[ev]=f};i
  on('#fmConfirmar','onclick',()=>{if(confirm('Confirmar a execução deste formulário?'))fmStatus('confirmado',($('#fxCom')||{}).value||'')});
  on('#fmDevolver','onclick',()=>{const c=(($('#fxCom')||{}).value||'').trim();if(!c)return toast('Escreva no comentário o que precisa ser ajustado',1),$('#fxCom')?.focus();if(confirm('Devolver para ajuste? O formulário volta para aberto com o seu comentário.'))fmStatus('devolvido',c)});
  on('#fmReabrir','onclick',()=>{if(confirm('Reabrir o formulário? A marcação de executado é desfeita.'))fmStatus('aberto')})}
-function fmStatus(st,comentario){const d=App.fm.d,eu=vacPessoa.eu(),agora=new Date().toISOString(),quem={porId:eu.id||'',por:eu.nome||user()||''},it={id:d.id};
+function fmStatus(st,comentario){const fnSt={concluido:'lancar',confirmado:'fechar',devolvido:'fechar',aberto:'fechar',cancelado:'configurar'}[st];if(!fmPode(fnSt))return fmSemPerm(fnSt);const d=App.fm.d,eu=vacPessoa.eu(),agora=new Date().toISOString(),quem={porId:eu.id||'',por:eu.nome||user()||''},it={id:d.id};
  if(st==='concluido'){it.status='concluido';it.exec={...(d.exec||{aval:{}}),...quem,em:agora};it.desvio=d.desvio||{};it.concluidoEm=agora;it.concluidoPorId=quem.porId;it.concluidoPor=quem.por}
  if(st==='confirmado'){it.status='confirmado';it.confirmadoEm=agora;it.confirmadoPorId=quem.porId;it.confirmadoPor=quem.por;it.confComentario=String(comentario||'').trim()}
  if(st==='devolvido'){it.status='aberto';it.devolucoes=(d.devolucoes||[]).concat([{em:agora,...quem,comentario:String(comentario||'').trim()}]);it.concluidoEm=null;it.concluidoPorId='';it.concluidoPor=''}
@@ -35016,14 +35020,17 @@ function fmLerCampos(){const d=App.fm.d,v=s=>{const e=$(s);return e?e.value:null
  const t=v('#fmTitulo');if(t!=null)d.titulo=t.trim();for(const[s,k]of[['#fmTipo','tipo'],['#fmRec','rec'],['#fmFreq','freq'],['#fmEq','equipamento'],['#fmArea','area'],['#fmEmissao','emissao'],['#fmPrazo','prazo'],['#fmTurno','turno'],['#fmObs','obs']]){const x=v(s);if(x!=null)d[k]=k==='obs'?x:x.trim()}
  const pp=v('#fmPorPag');if(pp!=null)d.porPag=+pp;
  for(const[s,ki,kn]of[['#fmResp','respId','resp'],['#fmConf','confId','conf']]){const x=v(s);if(x==null)continue;const atual=fmPes(d[ki],d[kn]);if(x.trim()===atual)continue;const p=vacPessoa.deTexto(x);d[ki]=p.id;d[kn]=p.nome}
- $$('[data-tar]').forEach(i=>{const t=d.tarefas.find(x=>x.id===i.dataset.tar);if(t)t.txt=i.value})}
+ $$('[data-tar]').forEach(i=>{const t=d.tarefas.find(x=>x.id===i.dataset.tar);if(t)t.txt=i.value});fmLerExec()}   /* a execução também: o redesenho não perde o texto digitado */
 function fmPrevAtualizar(){fmLerCampos();App.fm.sujo=true;const p=$('#fmPrev');if(p){p.innerHTML=fmPaginasHtml(App.fm.d);fmCarregarFotos(p)}const t=$('.fm-prev-t');if(t)t.textContent=`Prévia da folha A4 · ${fmPaginas(App.fm.d).length} página(s)`}
-function fmGravar(it,msg){Store.commit({k:'form',it:clone(it)});if(msg)toast(msg)}
-function fmSalvar(){fmLerCampos();fmLerExec();const d=App.fm.d;if(!d.titulo)return toast('Dê um título ao formulário',1),$('#fmTitulo')?.focus();
+/* permissões por ação (VAC_PODE_MAPA.linha): configurar = criar/editar/emitir; lancar = avaliar e marcar executado; fechar = confirmar, devolver, reabrir */
+const fmPode=fn=>typeof vacPodeAqui!=='function'||vacPodeAqui(fn);
+function fmSemPerm(fn){toast(`Seu perfil não permite ${(typeof VAC_PODE_TXT!=='undefined'&amp;&amp;VAC_PODE_TXT[fn])||fn} nesta página; nada foi gravado.`,1);return false}
+function fmGravar(it,msg){Store.commit({k:'form',it:clone(it)});if(msg)toast(msg);return true}
+function fmSalvar(){if(!fmPode('configurar'))return fmSemPerm('configurar');fmLerCampos();fmLerExec();const d=App.fm.d;if(!d.titulo)return toast('Dê um título ao formulário',1),$('#fmTitulo')?.focus();
  if(d.prazo&amp;&amp;d.emissao&amp;&amp;d.prazo<d.emissao)return toast('A conclusão esperada é anterior à data de abertura',1);
  if(!d.ponto&amp;&amp;!d.area)return toast('Escolha o ponto/máquina ou a área do formulário',1);
  const it={...d};delete it.novo;d.novo=false;App.fm.sujo=false;it.atualizadoEm=new Date().toISOString();if(!it.criadoEm)it.criadoEm=it.atualizadoEm;fmGravar(it,'Formulário salvo');d.criadoEm=it.criadoEm}
-function fmDuplicar(){const o=App.fm.d,eu=vacPessoa.eu(),h=hoje(),f=FM_FREQ.find(x=>x[0]===o.freq),dias=o.rec==='recorrente'&amp;&amp;f?f[2]:(o.prazo&amp;&amp;o.emissao?Math.max(0,Math.round((new Date(o.prazo)-new Date(o.emissao))/864e5)):0);
+function fmDuplicar(){if(!fmPode('configurar'))return fmSemPerm('configurar');const o=App.fm.d,eu=vacPessoa.eu(),h=hoje(),f=FM_FREQ.find(x=>x[0]===o.freq),dias=o.rec==='recorrente'&amp;&amp;f?f[2]:(o.prazo&amp;&amp;o.emissao?Math.max(0,Math.round((new Date(o.prazo)-new Date(o.emissao))/864e5)):0);
  const d=clone(o);Object.assign(d,{id:fmCodigo(),emissorId:eu.id||'',emissor:eu.nome||user()||'',emissao:h,prazo:o.prazo||o.rec==='recorrente'?addDias(h,dias):'',status:'aberto',novo:true,origem:o.id,
   exec:null,desvio:null,confComentario:'',devolucoes:[],concluidoEm:null,concluidoPor:'',concluidoPorId:'',confirmadoEm:null,confirmadoPor:'',confirmadoPorId:'',canceladoEm:null,canceladoPor:'',canceladoPorId:'',criadoEm:null});
  d.fotos=d.fotos.map(x=>({...x,marcas:x.marcas.map(m=>({...m}))}));App.fm.d=d;App.fm.sujo=true;render();toast('Nova emissão criada a partir de '+o.id+': revise e salve')}
@@ -35032,7 +35039,7 @@ function fmImprimir(){fmLerCampos();let pr=$('#fmPrint');if(!pr){pr=document.cre
   const fim=()=>{document.body.classList.remove('fm-imprimindo');removeEventListener('afterprint',fim)};addEventListener('afterprint',fim);try{window.print()}finally{setTimeout(fim,1500)}})}
 function fmAbrir(id){const f=fmLista().find(x=>x.id===id);if(!f)return;App.fm.d=clone(f);App.fm.sujo=false;App.fm.d.novo=false;render();scrollTo(0,0)}
 function ligarForm(){const fm=App.fm;if(!fm)return;const on=(s,ev,f)=>{const e=$(s);if(e)e[ev]=f};
- on('#fmNovo','onclick',()=>{fm.d=fmNovo();fm.sujo=false;render();setTimeout(()=>$('#fmTitulo')?.focus(),0)});on('#fmFiltro','onchange',e=>{fm.filtro=e.target.value;render()});
+ on('#fmNovo','onclick',()=>{if(!fmPode('configurar'))return fmSemPerm('configurar');fm.d=fmNovo();fm.sujo=false;render();setTimeout(()=>$('#fmTitulo')?.focus(),0)});on('#fmFiltro','onchange',e=>{fm.filtro=e.target.value;render()});
  $$('[data-fmab]').forEach(b=>b.onclick=()=>fmAbrir(b.dataset.fmab));$$('#fmTab tbody tr').forEach(r=>r.ondblclick=()=>fmAbrir(r.dataset.fm));
  if(!fm.d)return;const d=fm.d;fmCarregarFotos();
  on('#fmVolta','onclick',()=>{if(fm.sujo&amp;&amp;!confirm('Sair sem salvar as alterações deste formulário?'))return;fm.d=null;fm.sujo=false;render()});
@@ -38272,70 +38279,70 @@ body.vac-porta{overflow:hidden}
       "id": "oee",
       "path": "Plataforma.html#motor/oee",
       "version": "2.6.17",
-      "sha256": "b235f9d4f203bad386264a34889192ee656492c12f5a5ed99c97d3be4c2ae692",
-      "bytes": 2276599
+      "sha256": "703273f2379660a9a4d8118be7d40cb98e85df6d3225f84bde7d313a3fd37699",
+      "bytes": 2277074
     },
     {
       "id": "perdas",
       "path": "Plataforma.html#motor/perdas",
       "version": "1.12.17",
-      "sha256": "f456159262034c0263082ec000941f280dedcdd8e1df663532edd5df1d3a3408",
-      "bytes": 934324
+      "sha256": "4b428a36439fc75ab9ba50bfdf5241fb547b60dacf341402a4018f35beb35265",
+      "bytes": 934799
     },
     {
       "id": "gel",
       "path": "Plataforma.html#motor/gel",
       "version": "2.42",
-      "sha256": "76c9048df4f287ae7ea76fde1f2e4dbbd527670e2657f55fe761adf999250e67",
-      "bytes": 1634772
+      "sha256": "7818203c0994bc671ceca026e175a3db88e45a75b898b47367464954076b5c0a",
+      "bytes": 1635247
     },
     {
       "id": "paradas",
       "path": "Plataforma.html#motor/paradas",
       "version": "1.2.18",
-      "sha256": "1e15dd6a4350a924339845ae4a5a1eaa6cb9ebd23ef0157839b7167a81edb638",
-      "bytes": 906931
+      "sha256": "cdec98856c16d5cbdff3bba9150b47592c9f3d903d6032a77a308646be4336dc",
+      "bytes": 907406
     },
     {
       "id": "equip",
       "path": "Plataforma.html#motor/equip",
       "version": "1.0.20",
-      "sha256": "c941ffb8ae89df0787c5c7268e5014d0867027a0e6f96df6e954e098fe4a21df",
-      "bytes": 690664
+      "sha256": "47a20c2a514638fe80b8bbcf540fafc613783dc62fe1ec2b04ebbce9a74ce90c",
+      "bytes": 691139
     },
     {
       "id": "inic",
       "path": "Plataforma.html#motor/inic",
       "version": "1.1.16",
-      "sha256": "b76e7fff649845b83fae203631fa3f813a6df10d4b83838432e627e2f4fc5ae2",
-      "bytes": 712200
+      "sha256": "1b614b9e809ed45846995942076375d6dd0db2766fca17b63c8d036cfb221343",
+      "bytes": 712675
     },
     {
       "id": "linha",
       "path": "Plataforma.html#motor/linha",
       "version": "1.4.0",
-      "sha256": "209ed9e91d3424d85e15e9e8c92e0f2fc8a8532e8a8b321e08f3e08cee99453f",
-      "bytes": 893053
+      "sha256": "131bdb604fc58363af33ede9b7a006469139525042697851e375ff36b5a80067",
+      "bytes": 894434
     },
     {
       "id": "projetos",
       "path": "Plataforma.html#motor/projetos",
       "version": "0.1.16",
-      "sha256": "ab6d1675cf676774595bf7a30209a653e1b74e398763974587c809b51ca7406d",
-      "bytes": 630604
+      "sha256": "7705493d8eb5aaecdffc75e5c0c822a53adf4b58de7ab6eb392a4b3247d4959c",
+      "bytes": 631079
     },
     {
       "id": "portal",
       "path": "Plataforma.html#motor/portal",
       "version": "1.9.52",
-      "sha256": "85b24bbe89edec4fd8bfecd7e7c5bf567952180b0799e13b8d2bcbfc6a5ee1c0",
-      "bytes": 1255328
+      "sha256": "d6290aea75b4bf7fcb199371256736ab4b9fc2f2a11c9c4611d5c3576300d57b",
+      "bytes": 1255803
     }
   ],
   "limitations": [
     "Projetos e conteúdo técnico OSM/MES/AM/TPM mantêm os limites documentados nas fontes."
   ],
-  "enginesSha256": "e79bbb651da69b93b3ec47811b813c1356ac2218fb18c5806cae4e8744097137",
+  "enginesSha256": "d9ff30bf52e6d9545ae11e9df2b66f9f2fdbc50032ae69e298e76079c57ba3ee",
   "originRevision": "ffc9ee8",
   "sourceMode": "single-html",
   "originEnginesSha256": "a87a64ad0c328f70e102b2ae888790a9b5d5a9bd05778652a7ce7cae140e40d2"

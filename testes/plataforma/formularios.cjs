@@ -97,6 +97,19 @@ const html = fs.readFileSync(path.resolve(__dirname, '../../Plataforma.html'));
     await fr.click('#fmSalvar'); await page.waitForTimeout(200);
     const ex1 = await fr.evaluate(() => { const e = calcExports(Store.data); return { r: e.formularios, p: e.pendencias.filter(x => x.tipo === 'formularioVencido').map(x => x.sev) }; });
     assert.deepEqual(ex1, { r: { abertos: 1, vencidos: 1, aguardandoConfirmacao: 0, confirmados: 0, comNaoConformidade: 0 }, p: [2] });
+    // Codex P2: texto da execução não se perde quando outro campo redesenha a tela
+    await fr.fill('#fxPend', 'Anotação antes de mudar fotos por página (teste)'); await fr.selectOption('#fmPorPag', '2');
+    assert.equal(await fr.inputValue('#fxPend'), 'Anotação antes de mudar fotos por página (teste)', 'pendência preservada no redesenho');
+    await fr.selectOption('#fmPorPag', '1'); await fr.fill('#fxPend', ''); await fr.click('#fmSalvar'); await page.waitForTimeout(200);
+    // Codex P1: permissões por ação (mapa de travas e gravação recusada)
+    const pm = await fr.evaluate(async () => { const M = VAC_PODE_MAPA.linha, tem = (fn, sel) => M[fn].split(',').includes(sel);
+      const mapa = [tem('configurar', '#fmSalvar'), tem('configurar', '#fmNovo'), tem('configurar', '#fmDup'), tem('lancar', '[data-av]'), tem('lancar', '#fmConcluir'), tem('fechar', '#fmConfirmar'), tem('fechar', '#fmDevolver')];
+      const orig = window.vacPodeAqui; window.vacPodeAqui = fn => fn !== 'lancar' && fn !== 'configurar' && fn !== 'fechar';
+      try { const k = fmItensTodos(App.fm.d)[0].k, antes = JSON.stringify(Store.data.formularios[0]); document.querySelector(`[data-av="${k}"][data-v="ok"]`).click();
+        const r = [fmStatus('concluido'), fmSalvar(), fmGravarExec('x'), fmStatus('confirmado')]; await new Promise(r => setTimeout(r, 100));
+        return { mapa, recusas: r, igual: JSON.stringify(Store.data.formularios[0]) === antes, aval: fmAval(App.fm.d, k) }; } finally { window.vacPodeAqui = orig; render(); } });
+    assert.deepEqual(pm, { mapa: [true, true, true, true, true, true, true], recusas: [false, false, false, false], igual: true, aval: '' });
+    console.log('ok permissões: configurar, lançar e fechar travam os botões e recusam a gravação; texto da execução preservado no redesenho');
     const st = () => fr.evaluate(() => Store.data.formularios[0].status);
     await fr.click('#fmConcluir'); await page.waitForTimeout(200); assert.equal(await st(), 'aberto', 'sem avaliar todos os itens não conclui');
     const chaves = await fr.evaluate(() => fmItensTodos(App.fm.d).map(i => i.k));
