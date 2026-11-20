@@ -11,6 +11,14 @@ Pedido do responsável (20/11/2026). **Ainda não implementado.** Muda a interfa
   - **Lançamento:** Hora a hora (padrão) · Por turno · Dia.
   - **Scrap:** Por turno · Diário.
 
+## 1.1 Cards resumo em bloco recolhível (decisão do responsável, 20/11/2026)
+
+- Os cards resumo do dia (OEE do dia, meta diária, scrap, gel, cards configurados em **Editar cards**, com o semáforo) ficam num bloco **"Resumo do dia"** com o botão Recolher/Expandir (`aria-expanded`, `aria-controls`).
+- Abre **expandido** por padrão.
+- O estado fica só neste navegador (`localStorage`, chave `vac.oee.resumoAberto`, com try/catch). Sem armazenamento, volta a expandido. Não grava nada na base.
+- Recolhido, o cabeçalho do bloco mantém uma linha curta com o OEE do dia e o semáforo, para o número principal não sumir.
+- Não muda os números, a ordem nem a configuração dos cards (contrato 6). Vale nos três modos; no modo Dia, mostra os mesmos cards do dia.
+
 ## 2. Menu "⋮ Mais ações"
 
 - Botão `aria-haspopup="menu"` + `div[role=menu]`. Fecha com Esc, com clique fora e depois de escolher; ↑/↓ navega.
