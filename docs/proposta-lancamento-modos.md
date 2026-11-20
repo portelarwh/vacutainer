@@ -19,7 +19,7 @@ Pedido do responsável (20/11/2026). **Ainda não implementado.** Muda a interfa
 | 11 | Validação: botão para ir até o ajuste (cobertura, divergência…) | 9 |
 | 12 | Cards resumo em bloco recolhível, expandido por padrão | 1.1 |
 | 13 | Topo da página Produção conforme a imagem enviada (cabeçalho, abas e barra de ações) | 0 |
-| 14 | Config. › Abas refletida na página (destaque, cores, estado) | 0.1 |
+| 14 | Config. › Abas refletida na página (destaque, cores, estado): **pendência própria LANC-04** | 0.1 |
 
 ## 0. Topo da página Produção (decisão do responsável, 20/11/2026)
 
@@ -57,7 +57,9 @@ Os rótulos ficam padronizados ("Visão geral", não "Visão Geral"; "Config." s
 
 **Teste:** a ordem das abas, os rótulos, o chip de situação nos três estados, Trocar pasta (pasta × sem pasta × Demonstração) e a barra de ações à esquerda e à direita.
 
-## 0.1 Config. › Abas refletida na página (diagnóstico de 20/11/2026)
+## 0.1 LANC-04 · Config. › Abas refletida na página (diagnóstico de 20/11/2026)
+
+Pendência separada da LANC-03 (decisão do responsável, 20/11/2026): é correção do que já existe e pode ser entregue antes. Só a ordem padrão nova das abas (item 0) depende da LANC-03.
 
 Testado na Demonstração da plataforma 1.8.30, salvando pelo próprio formulário de Config. › Abas e lendo as abas que a casca mostra:
 
