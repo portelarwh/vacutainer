@@ -64,7 +64,8 @@ function medir(){
  }
  /* celular: abaixo de 760 px tudo volta a 1/1, mesmo com 1/3 escolhido (a largura escolhida não vence a regra do celular) */
  await p.locator('.sidebar').getByRole('button',{name:'Produção',exact:false}).click();const fo=await (await p.locator('iframe[title="Módulo Produção"]').elementHandle()).contentFrame();
- await fo.evaluate(()=>vacPagina.ir('overview'));await p.waitForTimeout(700);
+ /* com 1 dia no período os grupos de gráficos começam recolhidos (design 2.6.29): abre todos para arrumar */
+ await fo.evaluate(()=>{const g=App.prefs.vgGrupo&&typeof App.prefs.vgGrupo==='object'?App.prefs.vgGrupo:(App.prefs.vgGrupo={});'ABCDEFX'.split('').forEach(k=>g[k]=0);vacPagina.ir('overview');});await p.waitForTimeout(700);
  await fo.evaluate(()=>{const c=document.querySelector('main .vg-grade > .vg-it');c.querySelector(':scope > .vg-barra [data-vg="l2"]').dispatchEvent(new MouseEvent('click',{bubbles:true}));window.__vgC=c;});
  await p.setViewportSize({width:700,height:1000});await p.waitForTimeout(600);
  const cel=await fo.evaluate(()=>{const c=window.__vgC,g=c.parentElement,cs=getComputedStyle(g);return [c.dataset.vgL,Math.round(c.getBoundingClientRect().width),Math.round(g.clientWidth-parseFloat(cs.paddingLeft)-parseFloat(cs.paddingRight))]});

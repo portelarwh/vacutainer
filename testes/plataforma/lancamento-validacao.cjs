@@ -25,12 +25,12 @@ const html = fs.readFileSync(path.resolve(__dirname, '../../Plataforma.html'));
       return { tipos: q.tipos, msgsIguais: q.msgs.every(m => [...val.querySelectorAll('li')].some(l => l.textContent.includes(m))),
         cob: cob && [cob.querySelector('.aj-conta')?.textContent, [...cob.querySelectorAll('.aj-bt')].map(b => b.textContent.trim())],
         div: div && [div.querySelector('.aj-conta')?.textContent, [...div.querySelectorAll('.aj-bt')].map(b => b.textContent.trim())],
-        qa: [...document.querySelectorAll('.aj-bts')].length, apont: res.r.apontMin, perda: res.r.lossTotalMin }; });
+        qa: [...document.querySelectorAll('.aj-bts')].length, notaQa: /aviso\(s\) do apontamento, com o botão de ajuste, na Validação/.test(document.body.textContent), apont: res.r.apontMin, perda: res.r.lossTotalMin }; });
     assert.deepEqual(v.tipos, ['cobertura', 'divergencia']); assert.ok(v.msgsIguais, 'texto dos avisos igual');
     assert.match(v.cob[0], /^Cobertura \d+% = [\d.,]+ min apontados ÷ [\d.,]+ min de perda; mínimo \d+%\.$/); assert.deepEqual(v.cob[1], ['Registrar paradas', 'Ver o mínimo']);
     assert.match(v.div[0], /^Divergência -?[\d.,]+ min = -?[\d.,]+% do tempo planejado de [\d.,]+ min; máximo \d+%\.$/);
     assert.deepEqual(v.div[1], ['Tempo planejado do turno', 'PPH e catálogo', 'Classificação das paradas', 'Ver o limite']);
-    assert.ok(v.qa >= 4, 'botões na Validação e na Qualidade do apontamento');
+    assert.ok(v.qa === 2 && v.notaQa, 'botões só na Validação: a Qualidade do apontamento não repete os avisos (design 2.6.29)');
     console.log('ok avisos com a conta e os botões (' + v.cob[0] + ')');
     /* 2) Registrar paradas: abre o turno com mais minutos sem explicação e foca o lançamento de parada */
     const alvo = async sel => { await f.click(sel); await page.waitForTimeout(150); return f.evaluate(() => { const a = document.querySelector('.aj-alvo'), sec = a && a.closest('section.tl'); return { cls: a ? (a.dataset.addev ? 'addev' : a.dataset.abonoadd ? 'abono' : a.matches('select') ? a.dataset.psf : a.tagName) : null, ps: sec && sec.dataset.tl, vis: !!(sec && !sec.classList.contains('tr-oculto')), foco: document.activeElement && (document.activeElement.dataset.addev ? 'addev' : document.activeElement.dataset.abonoadd ? 'abono' : document.activeElement.dataset.psf || document.activeElement.tagName) }; }); };
