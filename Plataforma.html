@@ -3998,7 +3998,7 @@ function wireConfigComum(){$('#cPasta').onclick=async()=>{if(await Store.pick())
         entrar pelo ID (autocadastro como Consulta); página inicial por perfil (1x por sessão); vigência gravada não se edita (desativar com motivo); painel de vigências; semáforo central; saída do modo de teste.
    1.1.2: aviso da carga diz qual base foi lida.  1.5: páginas Paradas, Máquinas, Manutenção e Projetos na lista (aparecem quando o HTML chega na pasta).  1.4: lista técnica pela CS12 multinível (itens = nível 1, estrutura = níveis 2+); CS03 sai.  1.3: cabeçalho comum (vac-cabecalho v2: barra do sistema + página + abas), busca Ctrl K, acabamento V1.90, Versões com cabeçalho e último backup.  1.2: Configuração › Versões das páginas (versão e data de cada HTML, gravação das bases, cópias repetidas, histórico).
    ===================================================================== */
-const PAGE={id:'portal',titulo:"Administração · Linha Vacutainer",tituloCurto:"Administração",subtitulo:'Sistemas de gestão da linha',versao:'1.9.55',baseFile:'portal-base.json',idb:'vac-portal',backupDir:'00. Backups/Portal',
+const PAGE={id:'portal',titulo:"Administração · Linha Vacutainer",tituloCurto:"Administração",subtitulo:'Sistemas de gestão da linha',versao:'1.9.56',baseFile:'portal-base.json',idb:'vac-portal',backupDir:'00. Backups/Portal',
  vazio:()=>({schema:'portal-base',rev:0,config:{modulos:{},avisoDias:30,notas:{}},audit:[]}),
  /* itens do Portal para a busca Ctrl K: cadastro, pendências e telas */
  busca:q=>{const R=[],D=Cad.D;if(D)for(const t of CAD_ORD){for(const it of D[t]||[]){const c=String(it[kOf(t)]),nm=t==='bom'?((cadItem('catalogos',it.catalogo)||{}).nome||''):it.nome||'';if(norm(c+' '+nm).includes(q))R.push({tipo:CAD_T[t].um,txt:c+(nm?' · '+nm:''),sub:'Cadastros'+(cadAtivo(t,it,D)?'':' · inativo'),href:'#cadastros/'+t+'/'+encodeURIComponent(c)});if(R.length>30)break}}
@@ -4877,6 +4877,9 @@ const CAD_SECS=['inicio','matriz','importar','auditoria','backups','seguranca','
    curtas (macro, sem detalhe técnico). REGRA: toda versão nova da plataforma ganha uma entrada aqui, a mais recente primeiro
    (AGENTS.md e CLAUDE.md). Tipos: nova (função nova), melhoria (algo que já existia ficou melhor), correcao (erro corrigido). */
 const NOVIDADES=[
+ {v:'1.8.33',d:'2026-11-21',itens:[['melhoria','Lançamento: cabeçalho do dia numa linha, com a data, a situação do dia, Fechar dia e o menu ⋮ Mais ações.'],
+  ['melhoria','Mais ações reúne Ações do dia, Correções, Consulta e Excluir dia, separado em vermelho; as permissões por perfil continuam as mesmas.'],
+  ['melhoria','Rodapé do Lançamento com "Alterações salvas" e Abrir hora a hora; cada botão aparece num lugar só.']]},
  {v:'1.8.32',d:'2026-11-21',itens:[['melhoria','Produção: abas na ordem nova, começando por Visão geral; "Config." sem a engrenagem.'],
   ['melhoria','Cabeçalho com o chip de situação (Sistema online, Atenção ou Sem conexão com a pasta) no lugar do botão Status; sem pasta, o botão diz "Conectar pasta da rede".'],
   ['melhoria','Barra de ações com ícones: Voltar e Lançar meu turno à esquerda; Sincronizar, Backup e Modo TV à direita.'],
@@ -7769,7 +7772,7 @@ function tipoParadaOpts(codes, sel) {
   const cats = [...new Set(codes.map(c => c.category || 'Sem categoria'))];
   return cats.map(cat => `<optgroup label="${esc(cat)}">${codes.filter(c => (c.category || 'Sem categoria') === cat).map(c => `<option value="${c.id}" ${sel === c.id ? 'selected' : ''}>${esc(c.code + ' · ' + c.name)}</option>`).join('')}</optgroup>`).join('');
 }
-const APP_VERSION = '2.6.23';   /* 2.6.23 · LANC-03 (itens 0 e 1.1): ordem e rótulos das abas da imagem, Modo TV e Resumo do dia recolhível */   /* 2.6.22 · LANC-04: Config. › Abas na plataforma (destaque, selo, aba inicial) e Frequência × duração redesenhado na largura do cartão */   /* 2.6.21 · TUR-07: turno que passa da meia-noite dividido no total diário (depois de 00:00 → dia seguinte; scrap proporcional à produção, paradas sem horário ao tempo) */   /* 2.6.20 · HEX-01: "Houve hora extra?" no cartão do turno (até 60 min antes do início ou depois do fim) */   /* 2.6.19 · TUR-06: produção no turno não produtivo pela meia-noite (antes → turno anterior; depois → próximo) desde 01/11/2026; aviso de hora extra */   /* 2.6.18 · PAR-CAT: tipo de parada por categoria e com busca nas sugestões do servidor, na importação de paradas e no turno sem produção */   /* 2.6.17 · SRV-DIA: dia sem lançamento com produção do servidor: aviso e abrir o dia com os dados */   /* 2.6.16 · TUR-05: dia em aberto passa ao horário vigente do turno; PAR-BUSCA: tipo de parada por texto */   /* 2.6.15 · REL-01: gel no relatório/e-mail do dia e do turno; Enviar relatório na janela do dia */   /* 2.6.14 · GEL-07: Relatório do Gel e Perdas de gel (turno com gel e Relatórios) */   /* 2.6.13 · GEL-06: Scrap gel no detalhe do turno */   /* 2.6.12 · TUR-04: turno com horário diferente no sábado (linhas por dia da semana) */   /* 2.6.11 · abas agrupadas: Ordens e lotes, Resultados, Paradas */   /* 2.6.10 · Lançamento sem turno aberto por padrão; abas visíveis na casca */   /* 2.6.9 · LANC-02: Lançamento unificado (hora a hora no detalhe do turno, 3º turno ao lado, Problemas de QN) */   /* 2.6.5 · IMP-01: contagens das importações nos exports */   /* 2.6.4 · semáforo só pelas faixas configuradas (verde acima de 100% vale) */   /* 2.6.2 · gráficos e números com meta seguem o semáforo de três cores (verde, amarelo, vermelho) */   /* 2.6.1 · gráficos: turno lançado pelo total com o nome do turno no eixo; janelas: rótulo e valor em tamanho de texto */   /* 2.6.0 · produção total do turno (sem hora a hora; períodos na troca de catálogo), aviso do servidor para turno lançado pelo total e para dia com produção apontada */
+const APP_VERSION = '2.6.24';   /* 2.6.24 · LANC-03 etapa b (itens 1, 2 e 7): cabeçalho do dia numa linha, menu ⋮ Mais ações e rodapé */   /* 2.6.23 · LANC-03 (itens 0 e 1.1): ordem e rótulos das abas da imagem, Modo TV e Resumo do dia recolhível */   /* 2.6.22 · LANC-04: Config. › Abas na plataforma (destaque, selo, aba inicial) e Frequência × duração redesenhado na largura do cartão */   /* 2.6.21 · TUR-07: turno que passa da meia-noite dividido no total diário (depois de 00:00 → dia seguinte; scrap proporcional à produção, paradas sem horário ao tempo) */   /* 2.6.20 · HEX-01: "Houve hora extra?" no cartão do turno (até 60 min antes do início ou depois do fim) */   /* 2.6.19 · TUR-06: produção no turno não produtivo pela meia-noite (antes → turno anterior; depois → próximo) desde 01/11/2026; aviso de hora extra */   /* 2.6.18 · PAR-CAT: tipo de parada por categoria e com busca nas sugestões do servidor, na importação de paradas e no turno sem produção */   /* 2.6.17 · SRV-DIA: dia sem lançamento com produção do servidor: aviso e abrir o dia com os dados */   /* 2.6.16 · TUR-05: dia em aberto passa ao horário vigente do turno; PAR-BUSCA: tipo de parada por texto */   /* 2.6.15 · REL-01: gel no relatório/e-mail do dia e do turno; Enviar relatório na janela do dia */   /* 2.6.14 · GEL-07: Relatório do Gel e Perdas de gel (turno com gel e Relatórios) */   /* 2.6.13 · GEL-06: Scrap gel no detalhe do turno */   /* 2.6.12 · TUR-04: turno com horário diferente no sábado (linhas por dia da semana) */   /* 2.6.11 · abas agrupadas: Ordens e lotes, Resultados, Paradas */   /* 2.6.10 · Lançamento sem turno aberto por padrão; abas visíveis na casca */   /* 2.6.9 · LANC-02: Lançamento unificado (hora a hora no detalhe do turno, 3º turno ao lado, Problemas de QN) */   /* 2.6.5 · IMP-01: contagens das importações nos exports */   /* 2.6.4 · semáforo só pelas faixas configuradas (verde acima de 100% vale) */   /* 2.6.2 · gráficos e números com meta seguem o semáforo de três cores (verde, amarelo, vermelho) */   /* 2.6.1 · gráficos: turno lançado pelo total com o nome do turno no eixo; janelas: rótulo e valor em tamanho de texto */   /* 2.6.0 · produção total do turno (sem hora a hora; períodos na troca de catálogo), aviso do servidor para turno lançado pelo total e para dia com produção apontada */
 const SCHEMA_VERSION = 1;
 const BASE_FILE = 'oee-vacutainer-base.json';
 const BACKUP_DIR = '00. Backups';
@@ -11632,6 +11635,7 @@ const BASE_ST = {
 };
 function renderTop() {
   const S = Store.S, d = db();
+  { const sv = document.getElementById('lcSalvo'); if (sv) sv.textContent = CabDia.salvo(); }   /* LANC-03 · rodapé do Lançamento */
   const [cls, txt] = BASE_ST[S.status] || ['none', S.status];
   const where = S.mode === 'pasta' ? `Pasta <b>${esc(S.backend &amp;&amp; S.backend.name)}</b>` : S.mode === 'arquivo' ? `Arquivo <b>${esc(S.fileName || '')}</b>` : 'Somente neste navegador';
   const cad = S.cadastro, srvEnd = d &amp;&amp; d.server &amp;&amp; d.server.segments &amp;&amp; d.server.segments.length ? d.server.segments.reduce((m, x) => x.t1 > m ? x.t1 : m, '') : null;
@@ -11971,7 +11975,7 @@ function dayBar(view) {
       <button class="btn sm" data-dnav="1" aria-label="Próximo dia">${I.chevR}</button>
       <button class="btn sm ghost" data-dnav="0">Hoje</button></div>
     <label class="f"><span>Linha</span><select id="selLine">${lines.map(l => `<option value="${l.id}" ${(App.sel.lineId || 'line_vac') === l.id ? 'selected' : ''}>${esc(l.name)}</option>`).join('')}</select></label>
-    <div class="f"><span>&amp;nbsp;</span><span>${U.WD[U.weekday(App.sel.date)]} · semana ${U.weekNum(App.sel.date)} · ${day ? stPill(day.status) : '<span class="pill none">sem lançamento</span>'}</span></div>
+    ${view === 'launch' &amp;&amp; day ? '' : `<div class="f"><span>&amp;nbsp;</span><span>${U.WD[U.weekday(App.sel.date)]} · semana ${U.weekNum(App.sel.date)} · ${day ? stPill(day.status) : '<span class="pill none">sem lançamento</span>'}</span></div>`}
     <span class="spacer"></span>
     ${view === 'launch' ? `<button type="button" class="btn sm" data-dia24 title="Todas as horas do dia de produção numa tela só: turno, meta, apontado e caixas do MES">Ver o dia inteiro (24 h)</button>`
       : `<div class="seg" role="group" aria-label="Tela">${[['launch', 'Lançamento'], ['hourly', 'Hora a Hora']].map(([k, l]) => `<button type="button" data-route="${k}" aria-pressed="${view === k}">${l}</button>`).join('')}</div>`}</div>`;
@@ -12162,27 +12166,33 @@ App.views.launch = {
     if (day.demo) h += `<div class="banner demo"><p><b>Dados de demonstração.</b> Este dia não faz parte da base real.</p></div>`;
     if (!lk) { const HN = Actions.shiftScheduleDiff(db(), day); if (HN.length) h += `<div class="banner warn" id="horNovo"><p><b>O horário do turno mudou no cadastro.</b> Este dia ainda está com o horário antigo: ${HN.map(x => `<b>${esc(x.ps.snap.name)}</b> ${esc(x.de)} → ${esc(x.para)}`).join(' · ')}. <button type="button" class="btn sm primary" id="horAplicar">Aplicar o horário novo</button></p><p class="small muted">A produção das horas que continuam iguais fica. Se houver produção numa hora que deixa de existir, o sistema avisa qual antes de mudar. Dias fechados não mudam.</p></div>`; }   /* 2.6.16 · TUR-05 */
     if (day.origin === 'importação') h += `<div class="banner info"><p>Dia importado do RELATÓRIO (resumo por turno, sem hora a hora). Os valores mostram o que a planilha registrou.</p></div>`;
-    h += `<section class="card${App.prefs.cabFold ? ' cab-fold' : ''}" id="cabDia"><header><button type="button" class="btn xs ghost cab-tg" id="cabTg" aria-expanded="${!App.prefs.cabFold}" aria-controls="cabDia" title="${App.prefs.cabFold ? 'Mostrar' : 'Recolher'} o cabeçalho do dia (vale neste computador)">${App.prefs.cabFold ? '▸ Mostrar' : '▾ Recolher'}</button><h3>Cabeçalho do dia</h3>${stPill(day.status)}<span class="small muted">Última alteração ${U.brDT(day.updatedAt)} · ${esc(day.updatedBy || '')}</span><button class="btn xs" id="dayMetas">Metas dos próximos meses</button><button class="btn xs" id="kcEdit" title="Liga e desliga os indicadores do topo (vale neste computador)">Editar cards</button></header>
+    /* LANC-03 (itens 1, 2 e 7, etapa b) · cabeçalho do dia numa linha: data por extenso, chip de situação e "Semana · calendário · linha";
+       à direita, Fechar dia (ou Reabrir) e o menu ⋮ Mais ações. Linha/máquina e Calendário saem (a linha já está na barra do dia).
+       Os itens do menu são os mesmos botões, com os mesmos IDs e handlers (VAC_PODE_MAPA e vacTravas continuam valendo); ficam no DOM,
+       escondidos com o menu fechado. Só aparece o que vale para a situação do dia. */
+    const sit = CabDia.situacao(day), alt = `Última alteração ${U.brDT(day.updatedAt)}${day.updatedBy ? ' · ' + day.updatedBy : ''}`;
+    const mi = (id, txt, extra = '', ajuda = '') => `<div class="cab2-mrow"><button type="button" class="cab2-mi" role="menuitem" id="${id}" ${extra}>${txt}</button>${ajuda ? ib(ajuda) : ''}</div>`;   /* ⓘ (UX-01) ao lado do item, fora dele */
+    const grupo = (k, nome, itens, risco) => itens.filter(Boolean).length ? `<div class="cab2-mg${risco ? ' risco' : ''}" role="group" aria-labelledby="dmg-${k}"><p id="dmg-${k}">${nome}</p>${itens.filter(Boolean).join('')}</div>` : '';
+    const editavel = !lk, semResumo = !day.shifts.some(p => p.summary);
+    h += `<section class="card${App.prefs.cabFold ? ' cab-fold' : ''}" id="cabDia"><header class="cab2-l1"><button type="button" class="btn xs ghost cab-tg" id="cabTg" aria-expanded="${!App.prefs.cabFold}" aria-controls="cabDia" title="${App.prefs.cabFold ? 'Mostrar' : 'Recolher'} o cabeçalho do dia (vale neste computador)">${App.prefs.cabFold ? '▸ Mostrar' : '▾ Recolher'}</button>
+      <div class="cab2-tit"><h3>${esc(CabDia.dataLonga(day.date))}</h3><span class="cab2-sit ${sit.tom}" title="Situação do dia: ${esc(day.status)}"><span class="dot" aria-hidden="true"></span>${esc(sit.txt)}</span><span class="cab2-sub">Semana ${U.weekNum(day.date)} · ${esc(CabDia.calendario(st.calendar))} · ${esc(lineName(day.lineId))}</span></div>
+      <span class="spacer"></span>
+      ${lk ? `<button class="btn primary" id="dReopen">Reabrir</button>` : `<button class="btn primary" id="dClose">${I.lock} Fechar dia</button>`}
+      <div class="cab2-mais"><button type="button" class="btn" id="dMais" aria-haspopup="menu" aria-expanded="false" aria-controls="dMaisMenu"><span aria-hidden="true">⋮</span> Mais ações</button>
+        <div class="cab2-menu" id="dMaisMenu" role="menu" aria-labelledby="dMais" hidden>
+          ${grupo('dia', 'Ações do dia', [editavel &amp;&amp; day.status !== 'pendente de conferência' &amp;&amp; mi('dPend', 'Pendente de conferência', 'title="Marcar o dia como pendente de conferência"'), editavel &amp;&amp; mi('dOff', 'Dia sem produção', 'title="Marcar o dia como sem produção"', 'diaSemProd'), editavel &amp;&amp; mi('dMove', 'Mover para outro dia', '', 'moverDia'), mi('dEnviar', 'Enviar relatório', 'title="Dia inteiro, um turno, só o gel ou scrap e perdas: copiar para o Outlook ou abrir na aba Relatórios"')])}
+          ${grupo('cor', 'Correções', [editavel &amp;&amp; semResumo &amp;&amp; mi('dRestore', 'Restaurar intervalos padrão', '', 'restaurarIv'), editavel &amp;&amp; semResumo &amp;&amp; mi('dReapply', 'Reaplicar metas vigentes', 'title="Usa as metas vigentes na data no lugar das metas congeladas no fechamento"', 'reaplicarMetas'), mi('kcEdit', 'Editar cards', 'title="Liga e desliga os indicadores do topo (vale neste computador)"'), mi('dayMetas', 'Metas dos próximos meses')])}
+          ${grupo('con', 'Consulta', [mi('dHist', 'Histórico de alterações<small>' + esc(alt) + '</small>')])}
+          ${grupo('risco', 'Zona de risco', [editavel &amp;&amp; mi('dDel', 'Excluir dia', 'title="Marca o lançamento deste dia como excluído (exclusão lógica, com motivo)"')], true)}
+        </div></div></header>
       <div class="form">
-        <div class="kv"><span class="l">Data</span><span class="v">${U.brDate(day.date)} (${U.WD[U.weekday(day.date)]})</span></div>
-        <div class="kv"><span class="l">Linha · máquina</span><span class="v">${esc(lineName(day.lineId))} · ${esc(mac ? mac.name : '—')}</span></div>
-        <div class="kv"><span class="l">Calendário</span><span class="v">${esc(st.calendar)}</span></div>
         ${day.scrapMode === 'day' ? `<label class="f"><span>Responsável pelo reporte ${ib('responsible')}</span><input type="text" data-dayf="responsible" value="${esc(day.responsible || '')}" maxlength="60" data-fk="d-resp"></label>` : ''}
         <div class="f"><span>Scrap ${ib('scrapMode')}</span><div class="row"><div class="seg">${[['shift', 'Por turno'], ['day', 'Total diário']].map(([k, l]) => `<button type="button" data-scrapmode="${k}" aria-pressed="${day.scrapMode === k}" ${lk ? 'disabled' : ''}>${l}</button>`).join('')}</div>
           ${day.scrapMode === 'day' ? `<input type="text" inputmode="decimal" class="n" style="width:110px" data-dayscrap value="${day.scrapDay == null ? '' : day.scrapDay}" placeholder="peças" aria-label="Scrap diário (peças)" ${lk ? 'disabled' : ''} data-fk="d-scrap">` : ''}</div></div>
         <label class="f wide"><span>Observação geral</span><textarea data-dayf="note" maxlength="2000" data-fk="d-note">${esc(day.note || '')}&lt;/textarea></label>
         ${gaps.length || day.gapJustification ? `<label class="f wide"><span>Justificativa da lacuna entre intervalos ${ib('gap')} ${gaps.length &amp;&amp; !day.gapJustification ? '<b class="ferr">(obrigatória para fechar)</b>' : ''}</span><input type="text" data-dayf="gapJustification" value="${esc(day.gapJustification || '')}" maxlength="300" data-fk="d-gap"></label>` : ''}
       </div>
-      <div class="row" style="margin-top:12px">
-        <button class="btn primary" data-hhps="" title="Hora a hora de todos os turnos do dia">Hora a hora ${I.chevR}</button>
-        <button class="btn" id="dEnviar" title="Dia inteiro, um turno, só o gel ou scrap e perdas: copiar para o Outlook ou abrir na aba Relatórios">${EnviarRel.ICONE} Enviar relatório</button>
-        ${lk ? `<button class="btn" id="dReopen">Reabrir dia</button>` : `<button class="btn primary" id="dClose">${I.lock} Fechar dia</button>${day.status !== 'pendente de conferência' ? `<button class="btn" id="dPend">Marcar como pendente de conferência</button>` : ''}`}
-        <span class="spacer"></span>
-        ${!lk &amp;&amp; !day.shifts.some(p => p.summary) ? `<button class="btn sm ghost" id="dRestore">Restaurar intervalos padrão</button>${ib('restaurarIv')}<button class="btn sm ghost" id="dReapply" title="Usa as metas vigentes na data no lugar das metas congeladas no fechamento">Reaplicar metas vigentes</button>${ib('reaplicarMetas')}` : ''}
-        ${!lk ? `<button class="btn sm ghost" id="dOff">Marcar dia sem produção</button>${ib('diaSemProd')}<button class="btn sm ghost" id="dMove">Mover para outro dia</button>${ib('moverDia')}` : ''}
-        <button class="btn sm ghost" id="dHist">Histórico de alterações</button>
-        ${!lk ? `<button class="btn sm danger" id="dDel">Excluir lançamento</button>` : ''}
-      </div></section>`;
+    </section>`;
     // KPIs do dia
     // catálogo em produção: hora atual (hoje) ou última hora com produção; lote da ordem do PCP
     const fNow = (() => { const nm = opNowMin(day.date); const fl = res.flat; return (nm != null &amp;&amp; fl.find(f => nm >= f.iv.start &amp;&amp; nm < f.iv.end)) || fl.filter(f => f.good != null).pop() || fl[0] || null; })();
@@ -12208,6 +12218,8 @@ App.views.launch = {
     h += `<div class="section tl-list">${res.shifts.map(sr => TurnoUI.bloco(day, sr, res)).join('')}${LancNP.secoes(day, res)}</div>`;   /* 2.6.9 · LANC-02: o 3º turno (não produtivo) com a produção fora do turno do dia */
     h += `<section class="card section"><header><h3>Validação</h3>${errs ? semB('crit', errs + ' erro(s)') : semB('ok', 'sem erros')} ${alerts ? semB('warn', alerts + ' alerta(s)') : ''}</header>${msgList(res.msgs)}</section>`;
     h += `<div class="section">${oeePanel(r, 'Cascata de perdas do dia')}</div><div class="section">${qaPanel(r)}</div>`;
+    /* LANC-03 (item 7) · rodapé: situação da gravação à esquerda e Abrir hora a hora à direita (o botão saiu do cabeçalho: cada ação num lugar só) */
+    h += `<footer class="lc-rodape"><span id="lcSalvo" role="status">${esc(CabDia.salvo())}</span><span class="spacer"></span><button class="btn" data-hhps="" title="Hora a hora de todos os turnos do dia">Abrir hora a hora ${I.chevR}</button></footer>`;
     return h;
   },
   mount(root) {
@@ -12242,6 +12254,7 @@ App.views.launch = {
     root.querySelectorAll('[data-reopenps]').forEach(b => b.onclick = async () => { const r = await askReason('Reabrir turno', 'A reabertura fica registrada no histórico com o estado anterior.'); if (r) run(() => Actions.reopen(day.id, b.dataset.reopenps, r), 'Turno reaberto.'); });
     HHPs.ligar(root, day);   /* 2.4.34 · PRD-06 */
     const c = root.querySelector('#dClose'); if (c) c.onclick = () => closeFlow(day, null);
+    CabDia.ligar(root);   /* LANC-03 · menu ⋮ Mais ações */
     const ro = root.querySelector('#dReopen'); if (ro) ro.onclick = async () => { const r = await askReason('Reabrir dia', 'Todos os turnos do dia serão reabertos. A ação fica registrada no histórico.'); if (r) run(() => Actions.reopen(day.id, null, r), 'Dia reaberto.'); };
     const pe = root.querySelector('#dPend'); if (pe) pe.onclick = () => run(() => Actions.setDayStatus(day.id, 'pendente de conferência'));
     const hn = root.querySelector('#horAplicar'); if (hn) hn.onclick = () => run(() => { const r = Actions.applyShiftSchedule(day.id); toast('Horário novo aplicado: ' + r + '.'); });   /* 2.6.16 · TUR-05 */
@@ -17375,6 +17388,36 @@ Object.assign(HELP, { scrapTotalDia: ['Scrap (total)', [['O que mostra?', 'O scr
 /* LANC-03 (item 1.1, decisão do responsável, 20/11/2026) · os cards resumo do dia ficam no bloco "Resumo do dia", com Recolher/Expandir.
    Abre expandido; o estado fica só neste navegador (localStorage vac.oee.resumoAberto; sem armazenamento, expandido) e não vai para a base.
    Recolhido, o cabeçalho mostra o OEE do dia com o semáforo. Os cards, a ordem e a configuração (Editar cards) não mudam. */
+/* LANC-03 (itens 1, 2 e 7) · cabeçalho do dia: data por extenso, situação do dia (do day.status), calendário curto e o menu ⋮ Mais ações
+   (abre e fecha pelo botão, Esc, clique fora e depois de escolher; ↑/↓, Home e End navegam; foco volta ao botão). */
+const CabDia = {
+  DIAS: ['Domingo', 'Segunda-feira', 'Terça-feira', 'Quarta-feira', 'Quinta-feira', 'Sexta-feira', 'Sábado'],
+  dataLonga(d) { return this.DIAS[U.weekday(d)] + ', ' + U.brDate(d); },
+  calendario(c) { const m = { segunda: 'seg', 'terça': 'ter', quarta: 'qua', quinta: 'qui', sexta: 'sex', 'sábado': 'sáb', domingo: 'dom' };
+    return String(c || '').replace(/(segunda|terça|quarta|quinta|sexta|sábado|domingo)(-feira)?/gi, w => m[w.toLowerCase().replace('-feira', '')] || w).replace(/\s+a\s+/, '–'); },
+  situacao(day) {
+    if (day.status === 'fechado') return { tom: 'ok', txt: 'Fechado' };
+    if (day.status === 'pendente de conferência') return { tom: 'pend', txt: 'Pendente de conferência' };
+    if (day.shifts.length &amp;&amp; day.shifts.every(p => p.off)) return { tom: 'none', txt: 'Sem produção' };
+    return { tom: 'info', txt: day.status === 'reaberto' ? 'Em produção · reaberto' : 'Em produção' };
+  },
+  salvo() { const S = Store.S; return S.error ? 'Não foi possível gravar: confira a situação da base' : S.dirty ? 'Alterações pendentes de gravação' : 'Alterações salvas'; },
+  itens(m) { return [...m.querySelectorAll('[role="menuitem"]')].filter(b => !b.disabled &amp;&amp; b.offsetParent !== null); },
+  abrir(foco) { const b = document.getElementById('dMais'), m = document.getElementById('dMaisMenu'); if (!b || !m) return; m.hidden = false; b.setAttribute('aria-expanded', 'true'); const L = this.itens(m); if (foco &amp;&amp; L.length) (foco === 'fim' ? L[L.length - 1] : L[0]).focus(); },
+  fechar(volta) { const b = document.getElementById('dMais'), m = document.getElementById('dMaisMenu'); if (!m || m.hidden) return; m.hidden = true; if (b) { b.setAttribute('aria-expanded', 'false'); if (volta) b.focus(); } },
+  ligar(root) {
+    const b = root.querySelector('#dMais'), m = root.querySelector('#dMaisMenu'); if (!b || !m) return;
+    b.onclick = () => m.hidden ? this.abrir('inicio') : this.fechar(false);
+    b.onkeydown = e => { if (e.key === 'ArrowDown' || e.key === 'ArrowUp') { e.preventDefault(); this.abrir(e.key === 'ArrowUp' ? 'fim' : 'inicio'); } };
+    m.addEventListener('keydown', e => { const L = this.itens(m), i = L.indexOf(document.activeElement);
+      if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); this.fechar(true); }
+      else if (e.key === 'ArrowDown' || e.key === 'ArrowUp') { e.preventDefault(); if (L.length) L[(i + (e.key === 'ArrowDown' ? 1 : -1) + L.length) % L.length].focus(); }
+      else if (e.key === 'Home' || e.key === 'End') { e.preventDefault(); if (L.length) L[e.key === 'Home' ? 0 : L.length - 1].focus(); }
+      else if (e.key === 'Tab') this.fechar(false); });
+    m.addEventListener('click', e => { if (e.target.closest('[role="menuitem"]')) this.fechar(false); });   /* o onclick do item (no próprio botão) roda antes deste, que está no menu */
+  }
+};
+document.addEventListener('click', e => { const m = document.getElementById('dMaisMenu'); if (m &amp;&amp; !m.hidden &amp;&amp; !e.target.closest('.cab2-mais')) CabDia.fechar(false); }, true);
 const ResumoDia = {
   CHAVE: 'vac.oee.resumoAberto',
   aberto() { try { return localStorage.getItem(this.CHAVE) !== '0'; } catch (e) { return true; } },
@@ -18234,6 +18277,28 @@ section.card.lf>header{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
 #main[data-rota="launch"] .card>header h3,#main[data-rota="launch"] section.card h3{font-family:var(--f-body);text-transform:none;letter-spacing:0;font-size:19px;font-weight:700}
 #main[data-rota="launch"] .kpis{gap:12px}
 .lc-resumo .lc-res-cab{display:flex;align-items:center;gap:var(--sp-8,8px);margin:0 0 var(--sp-8,8px)}
+#cabDia .cab2-l1{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+#cabDia .cab2-tit{display:flex;align-items:center;gap:10px 12px;flex-wrap:wrap;min-width:0}
+#cabDia .cab2-tit h3{margin:0;font-size:20px;text-transform:none;letter-spacing:0}
+#cabDia .cab2-sit{display:inline-flex;align-items:center;gap:6px;padding:3px 10px;border-radius:999px;font-size:13px;font-weight:600;background:var(--info-bg);color:var(--info)}
+#cabDia .cab2-sit .dot{width:8px;height:8px;border-radius:50%;background:currentColor}
+#cabDia .cab2-sit.ok{background:var(--ok-bg);color:var(--ok)}#cabDia .cab2-sit.pend{background:var(--warn-bg);color:var(--warn)}#cabDia .cab2-sit.none{background:var(--none-bg,var(--surface-2));color:var(--muted)}
+#cabDia .cab2-sub{color:var(--muted);font-size:13.5px}
+#cabDia .cab2-mais{position:relative}
+#cabDia .cab2-menu{position:absolute;right:0;top:calc(100% + 6px);z-index:30;min-width:290px;max-width:min(360px,90vw);padding:8px;border:1px solid var(--line);border-radius:10px;background:var(--surface);box-shadow:var(--sh);display:grid;gap:4px}
+#cabDia .cab2-menu[hidden]{display:none}
+#cabDia .cab2-mg{display:grid;gap:2px;padding:4px 0}
+#cabDia .cab2-mg+.cab2-mg{border-top:1px solid var(--line);padding-top:8px}
+#cabDia .cab2-mg>p{margin:0 0 2px;padding:0 10px;font-size:11.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+#cabDia .cab2-mrow{display:flex;align-items:center;gap:2px}#cabDia .cab2-mrow>.cab2-mi{flex:1}
+#cabDia .cab2-mi{display:flex;flex-direction:column;align-items:flex-start;gap:2px;width:100%;min-height:40px;padding:8px 10px;border:0;border-radius:6px;background:none;color:var(--ink);font:500 14px var(--f-body,inherit);text-align:left;cursor:pointer}
+#cabDia .cab2-mi:hover,#cabDia .cab2-mi:focus-visible{background:var(--accent-soft);outline:none}
+#cabDia .cab2-mi:disabled{opacity:.5;cursor:not-allowed}
+#cabDia .cab2-mi small{font-size:12px;color:var(--muted);font-weight:400}
+#cabDia .cab2-mg.risco>p{color:var(--crit)}#cabDia .cab2-mg.risco .cab2-mi{color:var(--crit)}
+#cabDia .cab2-mi .v2i{display:none}
+.lc-rodape{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin:16px 0 4px;padding:12px 4px 0;border-top:1px solid var(--line)}
+.lc-rodape #lcSalvo{color:var(--muted);font-size:13.5px}
 .lc-resumo .lc-res-cab h3{margin:0}
 .lc-resumo .lc-res-linha{font-size:14px;color:var(--muted)}
 .lc-resumo .lc-res-linha b{color:var(--ink);font-size:16px}
@@ -38622,9 +38687,9 @@ body.vac-porta{overflow:hidden}
     {
       "id": "oee",
       "path": "Plataforma.html#motor/oee",
-      "version": "2.6.23",
-      "sha256": "d0254d99365df13136902847a48fd85b1abf657f5874249ad5c51a6a9adebfc6",
-      "bytes": 2307900
+      "version": "2.6.24",
+      "sha256": "08265a3f685a3e55901ced0e102417b49004a59c45a2dfc262a4f1157fff3e7a",
+      "bytes": 2315463
     },
     {
       "id": "perdas",
@@ -38678,15 +38743,15 @@ body.vac-porta{overflow:hidden}
     {
       "id": "portal",
       "path": "Plataforma.html#motor/portal",
-      "version": "1.9.55",
-      "sha256": "107bbc826f755349c44713f09f603bde674f0a3d23ba42cf11bbe36027013d62",
-      "bytes": 1263374
+      "version": "1.9.56",
+      "sha256": "8f39ec8b8da2e1192cb87cc01d187619186d998d6629695d0db08948c9a0eaf4",
+      "bytes": 1263824
     }
   ],
   "limitations": [
     "Projetos e conteúdo técnico OSM/MES/AM/TPM mantêm os limites documentados nas fontes."
   ],
-  "enginesSha256": "9babab7c8a4072d9b8c464fb1b263278571f397b7c3c74e590e488d3fc81f586",
+  "enginesSha256": "b37f65558269561563c67eee89ff5f6e4878cd693d1cc91e010b88a3b00d4ecb",
   "originRevision": "ffc9ee8",
   "sourceMode": "single-html",
   "originEnginesSha256": "a87a64ad0c328f70e102b2ae888790a9b5d5a9bd05778652a7ce7cae140e40d2"
@@ -38756,7 +38821,7 @@ summary{cursor:pointer;font-weight:600;color:var(--navy)}
 'use strict';
 /* ---------- referência (atualizar quando a plataforma mudar de versão) ---------- */
 // Iguais às do pacote da plataforma (nova-plataforma/src/generated/manifest.json); o teste ferramenta-verificar confere.
-const VERSOES = {"oee":"2.6.23","perdas":"1.12.17","gel":"2.42","paradas":"1.2.18","equip":"1.0.20","inic":"1.1.16","linha":"1.4.0","projetos":"0.1.16","portal":"1.9.55"};
+const VERSOES = {"oee":"2.6.24","perdas":"1.12.17","gel":"2.42","paradas":"1.2.18","equip":"1.0.20","inic":"1.1.16","linha":"1.4.0","projetos":"0.1.16","portal":"1.9.56"};
 const BASES = [
  { arq: 'vacutainer-cadastros.json', mod: 'portal', nome: 'Cadastro geral (Portal)', obrig: true, cadastro: true, bk: 'Cadastros' },
  { arq: 'portal-base.json', mod: 'portal', nome: 'Portal', obrig: true, bk: 'Portal' },
@@ -39347,7 +39412,7 @@ import { Icon, Button, Badge, Empty, Modal, BarChart, BrandLogo, CommandMenu } f
 import { ModuleFrame } from "vac:modulo/components/ModuleFrame";
 import manifest from "vac:recurso/manifesto";
 import { ModuleTabs } from "vac:modulo/components/ModuleTabs";
-const VERSION = "1.8.32";
+const VERSION = "1.8.33";
 /* Navegação 1.3.0 (16/11/2026): Visão da linha, Relatórios e Importações têm abas; as que mostram uma tela do
    Portal (motor da Administração) trazem o 3º campo com a aba dele. Administração fica só com cadastros e configuração. */
 const SHELL_TABS = {
