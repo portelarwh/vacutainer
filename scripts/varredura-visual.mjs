@@ -82,8 +82,10 @@ function varrer(){
     const semRot=campos.filter(c=>!c.labels?.length&&!c.getAttribute('aria-label')&&!c.closest('label')&&!c.placeholder&&!/^vac-dt/.test(c.className));
     if(semRot.length)A('Filtros','ajustar','Campo sem rótulo visível (label acima do campo, em caixa de frase).',semRot.map(caminho));
   }
-  const datas=[...raiz.querySelectorAll('input[type="date"]')].filter(vis);
+  const datas=[...raiz.querySelectorAll('input[type="date"],input[type="datetime-local"]')].filter(vis);
   if(datas.length)A('Datas','ajustar','Campo de data nativo visível (mostra MM/DD/AAAA no Chrome em inglês). Usar o campo DD/MM/AAAA do kit (vacDatas; na Produção, DateFields).',datas.map(caminho));
+  const meses=[...raiz.querySelectorAll('input[type="month"],input[type="week"]')].filter(vis);
+  if(meses.length)A('Datas','ajustar','Seletor de mês/semana nativo visível: o Chrome mostra o nome do mês no idioma do Windows (ex.: "November 2026"). Usar ‹ mês › com o nome em português, como o seletor de dia do Lançamento.',meses.map(m=>`${m.value} (${caminho(m)})`));
   R.resumo.filtros=campos.length;
   /* 7 · gráficos */
   const svgs=todos.filter(e=>e.tagName==='svg'&&e.getBoundingClientRect().width>200&&e.getBoundingClientRect().height>100);
