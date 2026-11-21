@@ -21,7 +21,7 @@ const html = fs.readFileSync(path.resolve(__dirname, '../../Plataforma.html'));
     const e0 = await estado();
     /* 1) pílulas no cabeçalho do dia */
     const pil = await f.evaluate(() => ({ lanc: [...document.querySelectorAll('[data-modolanc]')].map(b => b.textContent + ':' + b.getAttribute('aria-pressed')), scrap: [...document.querySelectorAll('[data-scrapmode]')].map(b => b.textContent + ':' + b.getAttribute('aria-pressed')) }));
-    assert.deepEqual(pil, { lanc: ['Hora a hora:true', 'Por turno:false'], scrap: ['Por turno:true', 'Diário:false'] });
+    assert.deepEqual(pil, { lanc: ['Hora a hora:true', 'Por turno:false', 'Dia:false'], scrap: ['Por turno:true', 'Diário:false'] });
     /* 2) Por turno: confirmação, nada apagado, os números do dia iguais; o turno mostra o total e as paradas, sem o hora a hora */
     await f.click('[data-modolanc="turno"]'); const t1 = await confirmar(false); assert.match(t1, /Nada é apagado/); assert.equal((await estado()).modo, 'hh', 'cancelar não muda');
     await f.click('[data-modolanc="turno"]'); await confirmar(true); await f.waitForFunction(() => curDay().modoLanc === 'turno');
@@ -54,6 +54,45 @@ const html = fs.readFileSync(path.resolve(__dirname, '../../Plataforma.html'));
       const R = Engine.computeDay(db(), curDay()); return { antes, depois: R.shifts[0].r.netMin, outro: R.shifts[1].r.netMin, selos: [...document.querySelectorAll('section.tl')].map(s => [s.dataset.tl === ps.id, s.querySelectorAll('.tl-hxselo').length]) }; });
     assert.equal(hx.depois - hx.antes, 60, 'turno com hora extra: +60 min'); assert.deepEqual(hx.selos.filter(x => x[1]).map(x => x[0]), [true], 'selo só no turno com hora extra');
     console.log('ok hora extra só no 1º turno: selo e +60 min no tempo do turno');
+    /* 5) modo Dia (itens 3.1 e 4): produção só no dia, sem rateio; turnos fora das visões por turno e hora a hora, dentro dos totais */
+    await f.evaluate(async () => { const d = curDay(); const ps = d.shifts[0]; const x = HoraExtra.doTurno(ps)[0]; if (x) Actions.deleteInterval(d.id, x.id); render(); await new Promise(r => setTimeout(r, 150)); });
+    const base = await estado();
+    await f.click('[data-modolanc="dia"]'); const m1 = await confirmar(true); assert.match(m1, /só no dia, sem divisão por turno ou hora/); assert.match(m1, /Nada é apagado/);
+    await f.waitForFunction(() => curDay().modoLanc === 'dia'); await f.waitForSelector('#diaBloco');
+    await f.fill('input[data-lancdia="good"]', '800'); await f.press('input[data-lancdia="good"]', 'Tab'); await f.waitForFunction(() => curDay().lancDia && curDay().lancDia.good === 800000);
+    const md = await f.evaluate(() => { const day = curDay(), res = Engine.computeDay(db(), day), r = res.r, tT = Engine.periodResult(db(), [day], { shiftId: day.shifts[0].shiftId });
+      const ex = Store.exportsFor ? null : null;
+      return { good: r.good, oee: r.oee, cap: r.cap, net: r.netMin, scrapMode: day.scrapMode, turnos: res.shifts.map(s => [s.porDia, s.r.good, s.r.oee]), horas: HHComum.pontos(day, res).length, tT: [tT.good, tT.cap, tT.diasPorDia],
+        tela: { turnos: document.querySelectorAll('section.tl, .tr-faixa').length, rodape: !!document.querySelector('.lc-rodape [data-hhps=""]'), scrapTravado: document.querySelector('[data-scrapmode="shift"]').disabled },
+        guardado: day.shifts.map(p => p.intervals.filter(i => !i.deleted && i.good != null).length) }; });
+    assert.equal(md.good, 800000); assert.ok(Math.abs(md.oee - 800000 / md.cap) < 1e-12, 'OEE do dia = produção ÷ capacidade (o mesmo agregado)'); assert.equal(md.net, base.netMin ?? md.net);
+    assert.deepEqual(md.turnos, [[true, null, null], [true, null, null]], 'turnos do dia lançado por dia: vazio, não zero'); assert.equal(md.horas, 0, 'fora do hora a hora');
+    assert.deepEqual(md.tT, [0, 0, 1], 'visão por turno: o dia não entra e é contado'); assert.equal(md.scrapMode, 'day'); assert.deepEqual(md.tela, { turnos: 0, rodape: false, scrapTravado: true });
+    assert.deepEqual(md.guardado, base.horas, 'as horas lançadas ficam guardadas');
+    /* abono do dia: desconta do tempo planejado do dia, sem rateio; abono por turno fica guardado e não conta no modo Dia */
+    const ab0 = await f.evaluate(() => Engine.computeDay(db(), curDay()).r.netMin);
+    await f.click('[data-diaevnovo="abono"]'); const dm = f.locator('.modal.on, .overlay, dialog[open]').last(); await dm.waitFor(); await dm.locator('#deM').fill('30'); await dm.locator('#deOk').click();
+    await f.waitForFunction(n => Engine.computeDay(db(), curDay()).r.netMin === n - 30, ab0);
+    await f.click('[data-diaevnovo="parada"]'); const dp = f.locator('.modal.on, .overlay, dialog[open]').last(); await dp.waitFor(); await dp.locator('#deC').selectOption({ index: 1 }); await dp.locator('#deM').fill('20'); await dp.locator('#deOk').click();
+    await f.waitForFunction(() => curDay().events.filter(e => !e.deleted && e.nivel === 'dia').length === 2);
+    const semana = await f.evaluate(() => { const d = curDay(), ds = db().productionDays.filter(x => !x.deleted && x.lineId === d.lineId && x.date >= U.addDays(d.date, -6) && x.date <= d.date), tot = Engine.periodResult(db(), ds), soma = ds.reduce((a, x) => a + Engine.computeDay(db(), x).r.good, 0); return { tot: tot.good, soma, n: ds.length, nota: notaPorDia(ds) }; });
+    assert.equal(semana.tot, semana.soma, 'total da semana soma o dia lançado por dia'); assert.match(semana.nota, /1 dia\(s\) lançado\(s\) por dia não entram nesta visão/);
+    /* sair do modo Dia: a produção, a parada e o abono do dia ficam guardados e deixam de contar; voltar traz de volta */
+    await f.click('[data-modolanc="hh"]'); const m2 = await confirmar(true); assert.match(m2, /ficam guardados e deixam de contar/);
+    await f.waitForFunction(() => !curDay().modoLanc);
+    const volta = await estado(); assert.deepEqual([volta.good, volta.horas], [base.good, base.horas], 'de volta ao hora a hora: os números de antes');
+    await f.click('[data-modolanc="dia"]'); await confirmar(true); await f.waitForFunction(() => curDay().modoLanc === 'dia');
+    const de = await f.evaluate(() => { const r = Engine.computeDay(db(), curDay()).r; return [r.good, curDay().events.filter(e => !e.deleted && e.nivel === 'dia').length]; });
+    assert.deepEqual(de, [800000, 2], 'voltar ao modo Dia traz a produção, a parada e o abono do dia');
+    /* a aba Hora a hora explica o dia lançado por dia */
+    await f.evaluate(() => go('hourly')); await f.waitForFunction(() => /lançado por dia/.test(document.querySelector('#main').textContent));
+    await f.evaluate(() => go('launch'));
+    console.log('ok modo Dia: só no dia, sem rateio; fora das visões por turno e hora a hora, dentro da semana; abono e parada do dia; nada se perde ao trocar');
+    /* 6) virada da meia-noite: Dia desligado (decisão 1) */
+    const vir = await f.evaluate(async () => { const d = curDay(); Actions.setModoLanc(d.id, 'hh'); const ps = d.shifts[d.shifts.length - 1], iv = ps.intervals.filter(i => !i.deleted).sort((a, b) => b.end - a.end)[0], e0 = iv.end;
+      iv.end = 1450; const m = Actions.viradaImpede(db(), d); let erro = ''; try { Actions.setModoLanc(d.id, 'dia'); } catch (e) { erro = e.message; } iv.end = e0; return { m, erro }; });
+    assert.match(vir.m, /passa da meia-noite/); assert.match(vir.erro, /passa da meia-noite/);
+    console.log('ok modo Dia desligado quando um turno passa da meia-noite');
     assert.deepEqual(erros, [], 'sem erro de JavaScript');
   } finally { if (browser) await browser.close(); srv.close(); }
 })().catch(e => { console.error(e); process.exitCode = 1; });
