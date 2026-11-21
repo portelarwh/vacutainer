@@ -93,9 +93,10 @@ const html = fs.readFileSync(path.resolve(__dirname, '../../Plataforma.html'));
     const ob = await f.evaluate(() => { const d = curDay(), real = d.date; d.date = '2026-11-21'; const c1 = Actions.closingCheck(db(), d, null); d.date = '2025-01-10'; const c0 = Actions.closingCheck(db(), d, null); d.date = real;
       return { bloqueia: c1.blocking && c1.msgs.some(m => m.ref && m.ref.sq === 'dia'), antigo: c0.msgs.some(m => m.ref && m.ref.sq) }; });
     assert.deepEqual(ob, { bloqueia: true, antigo: false }, 'obrigatório desde a versão; dia antigo não trava');
-    await f.selectOption('#diaSq [data-sq-resp="acidente"]', 'nao'); await f.selectOption('#diaSq [data-sq-resp="qn"]', 'sim');
-    await f.fill('#diaSq [data-sq-qtd="qn"]', '1'); await f.selectOption('#diaSq [data-sq-turnoopt="qn"]', { index: 2 });
-    await f.click('#diaSq [data-sq-salvar]'); await f.waitForFunction(() => curDay().sqdcpDia && curDay().sqdcpDia.qn);
+    /* preenche e salva num passo só: um render assíncrono entre passos refaria o formulário e apagaria as respostas */
+    await f.evaluate(() => { const q = s => document.querySelector('#diaSq ' + s), set = (el, v) => { el.value = v; el.dispatchEvent(new Event('input', { bubbles: true })); el.dispatchEvent(new Event('change', { bubbles: true })); };
+      set(q('[data-sq-resp="acidente"]'), 'nao'); set(q('[data-sq-resp="qn"]'), 'sim'); set(q('[data-sq-qtd="qn"]'), '1');
+      const t = q('[data-sq-turnoopt="qn"]'); set(t, t.options[2].value); q('[data-sq-salvar]').click(); }); await f.waitForFunction(() => curDay().sqdcpDia && curDay().sqdcpDia.qn);
     const sq = await f.evaluate(() => { const d = curDay(), real = d.date; d.date = '2026-11-21'; const c = Actions.closingCheck(db(), d, null); d.date = real;
       const rows = SQDCPModelo.linhas(db(), d.date, d.date, d.lineId, '', Engine, U), porT = SQDCPModelo.linhas(db(), d.date, d.date, d.lineId, d.shifts[1].shiftId, Engine, U), outro = SQDCPModelo.linhas(db(), d.date, d.date, d.lineId, d.shifts[0].shiftId, Engine, U);
       return { libera: !c.msgs.some(m => m.ref && m.ref.sq), dia: d.sqdcpDia.qn.turno === d.shifts[1].shiftId, rows: rows.map(r => [r.nivel, r.turno, r.acidente && r.acidente.resposta, r.qn && r.qn.resposta]), porT: porT.length, outro: outro.length }; });
