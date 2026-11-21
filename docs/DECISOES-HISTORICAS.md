@@ -648,3 +648,4 @@ Pedido explícito: desenvolver cinco colunas e cinco posições, uma A4 paisagem
 | E15 · Projetos | Escopo adiado pelo responsável. | — |
 | TL-02 · Linha do tempo | **Mantidas as duas regras:** tag de máquina não muda o estado da linha (a falha aparece só na faixa da máquina); o registro do operador vale mais que o intervalo "sem caixas" do MES. | Produção (sem mudança) |
 | E9 · importação por pasta | **Tudo continua como está:** a importação segue manual; sem estação coletora automática. | — |
+| REL-02 · formato dos relatórios | Um só formato para todos: e-mail do Outlook no molde comum (680 px, até 4 indicadores em cartões, o restante em tabela, gráfico como imagem) e PDF com o mesmo cabeçalho, rodapé e tabela, no modelo da Produção. Conteúdo e números de cada relatório não mudam. | Plataforma 1.8.45 |
