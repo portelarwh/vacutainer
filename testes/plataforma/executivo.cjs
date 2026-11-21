@@ -53,7 +53,7 @@ const H=require('../../scripts/html.cjs');
    assert.ok(await f.evaluate(()=>parseFloat(getComputedStyle(document.body).fontSize)>=15),m.id+' corpo de texto legível');
    assert.equal(await f.evaluate(()=>getComputedStyle(document.documentElement).getPropertyValue('--bd-blue').trim()),'#044ED7');
    const input=f.locator('input:not([type=hidden]):not([type=checkbox]):not([type=radio]):visible,select:visible').first();
-   if(await input.count())assert.ok(await input.evaluate(e=>parseFloat(getComputedStyle(e).fontSize)>=15),m.id+' campo legível');
+   if(await input.count()){let fs=0;for(let i=0;i<20&&!(fs>=15);i++){fs=await input.evaluate(e=>parseFloat(getComputedStyle(e).fontSize)).catch(()=>0);if(!(fs>=15))await page.waitForTimeout(250)}assert.ok(fs>=15,m.id+' campo legível ('+fs+' px)')}   /* logo depois do pronto() o quadro do módulo ainda pode estar escondido pela casca (estilo calculado vazio = NaN): espera até 5 s. Falhava conforme o tempo, também na main */
    assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),m.id+' não alarga a plataforma');
    await page.screenshot({path:path.join(output,'modulo-'+m.id+'.png')});
   }
