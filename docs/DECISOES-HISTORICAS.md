@@ -646,4 +646,5 @@ Pedido explícito: desenvolver cinco colunas e cinco posições, uma A4 paisagem
 | LANC-02 · lista de problemas de QN | **Encerrado:** a lista será construída manualmente pelo responsável. | — |
 | GEL-06 · pesagem de gel | O vínculo dos equipamentos de pesagem será feito manualmente pelo responsável. | — |
 | E15 · Projetos | Escopo adiado pelo responsável. | — |
-| TL-02 | Explicação das duas regras com imagens enviada; aguarda a decisão. | — |
+| TL-02 · Linha do tempo | **Mantidas as duas regras:** tag de máquina não muda o estado da linha (a falha aparece só na faixa da máquina); o registro do operador vale mais que o intervalo "sem caixas" do MES. | Produção (sem mudança) |
+| E9 · importação por pasta | **Tudo continua como está:** a importação segue manual; sem estação coletora automática. | — |
