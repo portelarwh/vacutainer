@@ -127,7 +127,7 @@ const html = fs.readFileSync(path.resolve(__dirname, '../../Plataforma.html'));
 
     // ---------- 6. servidor ----------
     const E = await f.evaluate(() => { const s = __tt.novoDia(5), d = __tt.dia(s), ps = d.shifts[0], F = TotalTurno.faixa(d, ps); Actions.lancarTotal(d.id, ps.id, [{ start: F.a, end: F.b, catalogId: ps.initialCatalogId, good: 430000 }]);
-      const ps2 = d.shifts[1], F2 = TotalTurno.faixa(d, ps2); Actions.lancarTotal(d.id, ps2.id, [{ start: F2.a, end: F2.b, catalogId: ps2.initialCatalogId, good: 300000 }]); try { Actions.closeDay(d.id); } catch (e) { }
+      const ps2 = d.shifts[1], F2 = TotalTurno.faixa(d, ps2); Actions.lancarTotal(d.id, ps2.id, [{ start: F2.a, end: F2.b, catalogId: ps2.initialCatalogId, good: 300000 }]); d.shifts.filter(p => !p.off && !p.summary).forEach(p => Actions.setShiftSQDCP(d.id, p.id, { acidente: { resposta: 'nao' }, qn: { resposta: 'nao' } })); try { Actions.closeDay(d.id); } catch (e) { }
       return { date: s, cat: (db().catalogs.find(c => c.id === ps.initialCatalogId) || {}).code, fechado: __tt.dia(s).status }; });
     // dia fechado: a prévia avisa e marca o dia fechado; depois reabre para aceitar
     const csv = 'Timestamp;Catalogo;Lote;Caixa\n' + Array.from({ length: 48 }, (_, k) => { const m = 6 * 60 + 5 + k * 10; return `${E.date}T${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}:00;${E.cat};9990001;${k + 1}`; }).join('\n');

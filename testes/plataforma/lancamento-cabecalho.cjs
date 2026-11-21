@@ -58,7 +58,7 @@ const html = fs.readFileSync(path.resolve(__dirname, '../../Plataforma.html'));
     const fe = await f.evaluate(async () => { const d = curDay(); const st = d.status; d.status = 'fechado'; render(); await new Promise(r => setTimeout(r, 100));
       const o = { reabrir: !!document.querySelector('#cabDia header #dReopen'), fechar: !!document.querySelector('#dClose'), sit: document.querySelector('.cab2-sit').textContent.trim(), ids: [...document.querySelectorAll('#dMaisMenu [role="menuitem"]')].map(x => x.id) };
       d.status = st; render(); return o; });
-    assert.deepEqual([fe.reabrir, fe.fechar, fe.sit], [true, false, 'Fechado']); assert.deepEqual(fe.ids, ['dEnviar', 'kcEdit', 'dayMetas', 'dHist'], 'dia fechado: sem ações de edição nem Excluir');
+    assert.deepEqual([fe.reabrir, fe.fechar, fe.sit], [true, false, 'Fechado']); assert.deepEqual(fe.ids, ['dEnviar', 'kcEdit', 'dayMetas', 'dHist', 'dDel'], 'dia fechado: sem ações de edição; Excluir dia continua (LANC-03 e2)');
     console.log('ok dia fechado: Reabrir e só Enviar relatório, Editar cards, Metas e Histórico');
     /* 5) rodapé: situação da gravação à esquerda e Abrir hora a hora à direita; o botão do hora a hora do dia aparece uma vez só */
     await f.waitForSelector('.lc-rodape');

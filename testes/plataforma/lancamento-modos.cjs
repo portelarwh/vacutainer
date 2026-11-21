@@ -88,7 +88,30 @@ const html = fs.readFileSync(path.resolve(__dirname, '../../Plataforma.html'));
     await f.evaluate(() => go('hourly')); await f.waitForFunction(() => /lançado por dia/.test(document.querySelector('#main').textContent));
     await f.evaluate(() => go('launch'));
     console.log('ok modo Dia: só no dia, sem rateio; fora das visões por turno e hora a hora, dentro da semana; abono e parada do dia; nada se perde ao trocar');
-    /* 6) virada da meia-noite: Dia desligado (decisão 1) */
+    /* 6) Segurança e qualidade do dia (modo Dia, turno opcional) e obrigatórias para fechar o dia a partir de 21/11/2026 */
+    await f.evaluate(() => { const d = curDay(); if (d.modoLanc !== 'dia') Actions.setModoLanc(d.id, 'dia'); render(); }); await f.waitForSelector('#diaSq .sq-ocorrencias[data-sq-turno="__dia"]');
+    const ob = await f.evaluate(() => { const d = curDay(), real = d.date; d.date = '2026-11-21'; const c1 = Actions.closingCheck(db(), d, null); d.date = '2025-01-10'; const c0 = Actions.closingCheck(db(), d, null); d.date = real;
+      return { bloqueia: c1.blocking && c1.msgs.some(m => m.ref && m.ref.sq === 'dia'), antigo: c0.msgs.some(m => m.ref && m.ref.sq) }; });
+    assert.deepEqual(ob, { bloqueia: true, antigo: false }, 'obrigatório desde a versão; dia antigo não trava');
+    /* preenche e salva num passo só: um render assíncrono entre passos refaria o formulário e apagaria as respostas */
+    await f.evaluate(() => { const q = s => document.querySelector('#diaSq ' + s), set = (el, v) => { el.value = v; el.dispatchEvent(new Event('input', { bubbles: true })); el.dispatchEvent(new Event('change', { bubbles: true })); };
+      set(q('[data-sq-resp="acidente"]'), 'nao'); set(q('[data-sq-resp="qn"]'), 'sim'); set(q('[data-sq-qtd="qn"]'), '1');
+      const t = q('[data-sq-turnoopt="qn"]'); set(t, t.options[2].value); q('[data-sq-salvar]').click(); }); await f.waitForFunction(() => curDay().sqdcpDia && curDay().sqdcpDia.qn);
+    const sq = await f.evaluate(() => { const d = curDay(), real = d.date; d.date = '2026-11-21'; const c = Actions.closingCheck(db(), d, null); d.date = real;
+      const rows = SQDCPModelo.linhas(db(), d.date, d.date, d.lineId, '', Engine, U), porT = SQDCPModelo.linhas(db(), d.date, d.date, d.lineId, d.shifts[1].shiftId, Engine, U), outro = SQDCPModelo.linhas(db(), d.date, d.date, d.lineId, d.shifts[0].shiftId, Engine, U);
+      return { libera: !c.msgs.some(m => m.ref && m.ref.sq), dia: d.sqdcpDia.qn.turno === d.shifts[1].shiftId, rows: rows.map(r => [r.nivel, r.turno, r.acidente && r.acidente.resposta, r.qn && r.qn.resposta]), porT: porT.length, outro: outro.length }; });
+    assert.equal(sq.libera, true, '"Não houve" e QN registrada liberam o fechamento'); assert.ok(sq.dia, 'turno opcional da QN guardado');
+    assert.deepEqual(sq.rows.length, 1, 'uma linha do dia (sem contar duas vezes)'); assert.equal(sq.rows[0][0], 'dia'); assert.deepEqual([sq.porT, sq.outro], [1, 0], 'por turno: só o que tem turno informado');
+    /* Hora a hora: cada turno produtivo precisa responder; o aviso leva ao campo do turno */
+    const hh = await f.evaluate(async () => { const d = curDay(); Actions.setModoLanc(d.id, 'hh'); const ps = d.shifts[0], bk = ps.sqdcp; ps.sqdcp = null; const real = d.date; d.date = '2026-11-21'; const c = Actions.closingCheck(db(), d, null); d.date = real; ps.sqdcp = bk;
+      return { erro: c.msgs.filter(m => m.level === 'erro' && m.ref && m.ref.sq === ps.id).length, btn: /Ir para Segurança e qualidade/.test(Ajuste.html(c.msgs.find(m => m.ref && m.ref.sq), {})) }; });
+    assert.deepEqual(hh, { erro: 1, btn: true }, 'turno sem resposta bloqueia e tem o botão');
+    console.log('ok Segurança e qualidade: obrigatórias para fechar (desde 21/11/2026), do dia no modo Dia com turno opcional, sem contar duas vezes');
+    /* 7) Excluir dia também em dia fechado (pedido do responsável) */
+    const ex = await f.evaluate(async () => { const d = curDay(), st = d.status; d.status = 'fechado'; render(); await new Promise(r => setTimeout(r, 120)); const tem = !!document.querySelector('#dMaisMenu #dDel'); d.status = st; render(); return tem; });
+    assert.equal(ex, true, 'Excluir dia no menu de um dia fechado');
+    console.log('ok Excluir dia disponível também em dia fechado');
+    /* 8) virada da meia-noite: Dia desligado (decisão 1) */
     const vir = await f.evaluate(async () => { const d = curDay(); Actions.setModoLanc(d.id, 'hh'); const ps = d.shifts[d.shifts.length - 1], iv = ps.intervals.filter(i => !i.deleted).sort((a, b) => b.end - a.end)[0], e0 = iv.end;
       iv.end = 1450; const m = Actions.viradaImpede(db(), d); let erro = ''; try { Actions.setModoLanc(d.id, 'dia'); } catch (e) { erro = e.message; } iv.end = e0; return { m, erro }; });
     assert.match(vir.m, /passa da meia-noite/); assert.match(vir.erro, /passa da meia-noite/);

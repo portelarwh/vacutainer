@@ -3998,7 +3998,7 @@ function wireConfigComum(){$('#cPasta').onclick=async()=>{if(await Store.pick())
         entrar pelo ID (autocadastro como Consulta); página inicial por perfil (1x por sessão); vigência gravada não se edita (desativar com motivo); painel de vigências; semáforo central; saída do modo de teste.
    1.1.2: aviso da carga diz qual base foi lida.  1.5: páginas Paradas, Máquinas, Manutenção e Projetos na lista (aparecem quando o HTML chega na pasta).  1.4: lista técnica pela CS12 multinível (itens = nível 1, estrutura = níveis 2+); CS03 sai.  1.3: cabeçalho comum (vac-cabecalho v2: barra do sistema + página + abas), busca Ctrl K, acabamento V1.90, Versões com cabeçalho e último backup.  1.2: Configuração › Versões das páginas (versão e data de cada HTML, gravação das bases, cópias repetidas, histórico).
    ===================================================================== */
-const PAGE={id:'portal',titulo:"Administração · Linha Vacutainer",tituloCurto:"Administração",subtitulo:'Sistemas de gestão da linha',versao:'1.9.59',baseFile:'portal-base.json',idb:'vac-portal',backupDir:'00. Backups/Portal',
+const PAGE={id:'portal',titulo:"Administração · Linha Vacutainer",tituloCurto:"Administração",subtitulo:'Sistemas de gestão da linha',versao:'1.9.60',baseFile:'portal-base.json',idb:'vac-portal',backupDir:'00. Backups/Portal',
  vazio:()=>({schema:'portal-base',rev:0,config:{modulos:{},avisoDias:30,notas:{}},audit:[]}),
  /* itens do Portal para a busca Ctrl K: cadastro, pendências e telas */
  busca:q=>{const R=[],D=Cad.D;if(D)for(const t of CAD_ORD){for(const it of D[t]||[]){const c=String(it[kOf(t)]),nm=t==='bom'?((cadItem('catalogos',it.catalogo)||{}).nome||''):it.nome||'';if(norm(c+' '+nm).includes(q))R.push({tipo:CAD_T[t].um,txt:c+(nm?' · '+nm:''),sub:'Cadastros'+(cadAtivo(t,it,D)?'':' · inativo'),href:'#cadastros/'+t+'/'+encodeURIComponent(c)});if(R.length>30)break}}
@@ -4877,6 +4877,9 @@ const CAD_SECS=['inicio','matriz','importar','auditoria','backups','seguranca','
    curtas (macro, sem detalhe técnico). REGRA: toda versão nova da plataforma ganha uma entrada aqui, a mais recente primeiro
    (AGENTS.md e CLAUDE.md). Tipos: nova (função nova), melhoria (algo que já existia ficou melhor), correcao (erro corrigido). */
 const NOVIDADES=[
+ {v:'1.8.37',d:'2026-11-21',itens:[['nova','Segurança e qualidade passam a ser obrigatórias para fechar o dia (a partir de 21/11/2026); "Não houve" vale como resposta. O aviso leva ao campo.'],
+  ['nova','No modo Dia, Segurança e qualidade são registradas no dia, com o turno opcional em cada ocorrência; o que não tem turno conta no dia como "sem turno".'],
+  ['melhoria','Excluir dia também aparece em dia fechado, para relançar dias antigos com as regras atuais (a exclusão fica registrada com o motivo).']]},
  {v:'1.8.36',d:'2026-11-21',itens:[['nova','Lançamento no modo Dia: a produção é informada só no dia, com o catálogo do dia, paradas e abono do dia, sem dividir entre turnos ou horas.'],
   ['melhoria','Dias lançados por dia entram nos totais (dia, semana, mês) e ficam fora das visões por turno e hora a hora, com uma nota.'],
   ['melhoria','O modo Dia fica desligado quando o dia tem turno que passa da meia-noite.']]},
@@ -7780,7 +7783,7 @@ function tipoParadaOpts(codes, sel) {
   const cats = [...new Set(codes.map(c => c.category || 'Sem categoria'))];
   return cats.map(cat => `<optgroup label="${esc(cat)}">${codes.filter(c => (c.category || 'Sem categoria') === cat).map(c => `<option value="${c.id}" ${sel === c.id ? 'selected' : ''}>${esc(c.code + ' · ' + c.name)}</option>`).join('')}</optgroup>`).join('');
 }
-const APP_VERSION = '2.6.27';   /* 2.6.27 · LANC-03 etapa e1 (itens 3.1 e 4): modo Dia, só no dia, sem rateio */   /* 2.6.26 · LANC-03 etapa d (itens 3, 5 e 6): pílulas Hora a hora / Por turno e Scrap Por turno / Diário, selo de hora extra */   /* 2.6.25 · LANC-03 etapa c (item 9): Validação com Ir para o ajuste e a conta de cada aviso */   /* 2.6.24 · LANC-03 etapa b (itens 1, 2 e 7): cabeçalho do dia numa linha, menu ⋮ Mais ações e rodapé */   /* 2.6.23 · LANC-03 (itens 0 e 1.1): ordem e rótulos das abas da imagem, Modo TV e Resumo do dia recolhível */   /* 2.6.22 · LANC-04: Config. › Abas na plataforma (destaque, selo, aba inicial) e Frequência × duração redesenhado na largura do cartão */   /* 2.6.21 · TUR-07: turno que passa da meia-noite dividido no total diário (depois de 00:00 → dia seguinte; scrap proporcional à produção, paradas sem horário ao tempo) */   /* 2.6.20 · HEX-01: "Houve hora extra?" no cartão do turno (até 60 min antes do início ou depois do fim) */   /* 2.6.19 · TUR-06: produção no turno não produtivo pela meia-noite (antes → turno anterior; depois → próximo) desde 01/11/2026; aviso de hora extra */   /* 2.6.18 · PAR-CAT: tipo de parada por categoria e com busca nas sugestões do servidor, na importação de paradas e no turno sem produção */   /* 2.6.17 · SRV-DIA: dia sem lançamento com produção do servidor: aviso e abrir o dia com os dados */   /* 2.6.16 · TUR-05: dia em aberto passa ao horário vigente do turno; PAR-BUSCA: tipo de parada por texto */   /* 2.6.15 · REL-01: gel no relatório/e-mail do dia e do turno; Enviar relatório na janela do dia */   /* 2.6.14 · GEL-07: Relatório do Gel e Perdas de gel (turno com gel e Relatórios) */   /* 2.6.13 · GEL-06: Scrap gel no detalhe do turno */   /* 2.6.12 · TUR-04: turno com horário diferente no sábado (linhas por dia da semana) */   /* 2.6.11 · abas agrupadas: Ordens e lotes, Resultados, Paradas */   /* 2.6.10 · Lançamento sem turno aberto por padrão; abas visíveis na casca */   /* 2.6.9 · LANC-02: Lançamento unificado (hora a hora no detalhe do turno, 3º turno ao lado, Problemas de QN) */   /* 2.6.5 · IMP-01: contagens das importações nos exports */   /* 2.6.4 · semáforo só pelas faixas configuradas (verde acima de 100% vale) */   /* 2.6.2 · gráficos e números com meta seguem o semáforo de três cores (verde, amarelo, vermelho) */   /* 2.6.1 · gráficos: turno lançado pelo total com o nome do turno no eixo; janelas: rótulo e valor em tamanho de texto */   /* 2.6.0 · produção total do turno (sem hora a hora; períodos na troca de catálogo), aviso do servidor para turno lançado pelo total e para dia com produção apontada */
+const APP_VERSION = '2.6.28';   /* 2.6.28 · LANC-03 etapa e2: Segurança e qualidade obrigatórias para fechar o dia (desde 21/11/2026), do dia no modo Dia; Excluir dia em dia fechado */   /* 2.6.27 · LANC-03 etapa e1 (itens 3.1 e 4): modo Dia, só no dia, sem rateio */   /* 2.6.26 · LANC-03 etapa d (itens 3, 5 e 6): pílulas Hora a hora / Por turno e Scrap Por turno / Diário, selo de hora extra */   /* 2.6.25 · LANC-03 etapa c (item 9): Validação com Ir para o ajuste e a conta de cada aviso */   /* 2.6.24 · LANC-03 etapa b (itens 1, 2 e 7): cabeçalho do dia numa linha, menu ⋮ Mais ações e rodapé */   /* 2.6.23 · LANC-03 (itens 0 e 1.1): ordem e rótulos das abas da imagem, Modo TV e Resumo do dia recolhível */   /* 2.6.22 · LANC-04: Config. › Abas na plataforma (destaque, selo, aba inicial) e Frequência × duração redesenhado na largura do cartão */   /* 2.6.21 · TUR-07: turno que passa da meia-noite dividido no total diário (depois de 00:00 → dia seguinte; scrap proporcional à produção, paradas sem horário ao tempo) */   /* 2.6.20 · HEX-01: "Houve hora extra?" no cartão do turno (até 60 min antes do início ou depois do fim) */   /* 2.6.19 · TUR-06: produção no turno não produtivo pela meia-noite (antes → turno anterior; depois → próximo) desde 01/11/2026; aviso de hora extra */   /* 2.6.18 · PAR-CAT: tipo de parada por categoria e com busca nas sugestões do servidor, na importação de paradas e no turno sem produção */   /* 2.6.17 · SRV-DIA: dia sem lançamento com produção do servidor: aviso e abrir o dia com os dados */   /* 2.6.16 · TUR-05: dia em aberto passa ao horário vigente do turno; PAR-BUSCA: tipo de parada por texto */   /* 2.6.15 · REL-01: gel no relatório/e-mail do dia e do turno; Enviar relatório na janela do dia */   /* 2.6.14 · GEL-07: Relatório do Gel e Perdas de gel (turno com gel e Relatórios) */   /* 2.6.13 · GEL-06: Scrap gel no detalhe do turno */   /* 2.6.12 · TUR-04: turno com horário diferente no sábado (linhas por dia da semana) */   /* 2.6.11 · abas agrupadas: Ordens e lotes, Resultados, Paradas */   /* 2.6.10 · Lançamento sem turno aberto por padrão; abas visíveis na casca */   /* 2.6.9 · LANC-02: Lançamento unificado (hora a hora no detalhe do turno, 3º turno ao lado, Problemas de QN) */   /* 2.6.5 · IMP-01: contagens das importações nos exports */   /* 2.6.4 · semáforo só pelas faixas configuradas (verde acima de 100% vale) */   /* 2.6.2 · gráficos e números com meta seguem o semáforo de três cores (verde, amarelo, vermelho) */   /* 2.6.1 · gráficos: turno lançado pelo total com o nome do turno no eixo; janelas: rótulo e valor em tamanho de texto */   /* 2.6.0 · produção total do turno (sem hora a hora; períodos na troca de catálogo), aviso do servidor para turno lançado pelo total e para dia com produção apontada */
 const SCHEMA_VERSION = 1;
 const BASE_FILE = 'oee-vacutainer-base.json';
 const BACKUP_DIR = '00. Backups';
@@ -9578,17 +9581,24 @@ const Actions = (() => {
   }
 
   /* ---------- fechamento e reabertura ---------- */
+  const SQ_OBRIG_DESDE = '2026-11-21';   /* data da versão que trouxe a regra (plataforma 1.8.37) */
   function closingCheck(db, day, psId) {
     const res = Engine.computeDayRaw(db, day);
     const relevant = res.msgs.filter(m => !psId || !m.ref || !m.ref.ps || m.ref.ps === psId);
     const out = relevant.map(m => ({ ...m }));
     const shifts = psId ? res.shifts.filter(s => s.ps.id === psId) : res.shifts;
     for (const sr of shifts) {
+      if (sr.porDia) continue;   /* LANC-03 · modo Dia: a produção é do dia (o aviso do dia vem do cálculo) */
       if (!sr.ps.intervals.length &amp;&amp; !sr.ps.summary) out.push({ level: 'erro', msg: `${sr.ps.snap.name}: não há intervalos.` });
       if (sr.agg.good <= 0 &amp;&amp; !sr.ps.summary) out.push({ level: 'alerta', msg: `${sr.ps.snap.name}: produção zero.` });
       if (sr.agg.cap <= 0 &amp;&amp; sr.agg.good > 0) out.push({ level: 'erro', msg: `${sr.ps.snap.name}: capacidade planejada zero com produção registrada.` });
     }
-    out.push(...Sqdcp.avisos(day, shifts));
+    /* LANC-03 (item 3.1, decisões de 20/11/2026) · Segurança e qualidade obrigatórias para fechar o dia, em qualquer modo, nos dias a partir
+       de SQ_OBRIG_DESDE (dias antigos não travam); "Não houve" é resposta válida. Modo Dia: o registro do dia; demais modos: cada turno produtivo. */
+    const obrig = !psId &amp;&amp; day.date >= SQ_OBRIG_DESDE &amp;&amp; shifts.some(s => !s.ps.off &amp;&amp; !s.ps.summary);
+    if (!obrig) out.push(...Sqdcp.avisos(day, shifts));
+    else if (day.modoLanc === 'dia') { const sd = day.sqdcpDia || {}; const falta = ['acidente', 'qn'].filter(k => !SQDCPModelo.lerEvento(sd[k])); if (falta.length) out.push({ level: 'erro', msg: `Segurança e qualidade do dia não informadas (${falta.map(k => k === 'acidente' ? 'acidente' : 'QN').join(' e ')}). Responda "Não houve" quando não houve ocorrência.`, ref: { sq: 'dia' } }); }
+    else for (const s of shifts.filter(s => !s.ps.off &amp;&amp; !s.ps.summary)) { const falta = ['acidente', 'qn'].filter(k => !SQDCPModelo.lerEvento((s.ps.sqdcp || {})[k])); if (falta.length) out.push({ level: 'erro', msg: `${s.ps.snap.name}: segurança e qualidade não informadas (${falta.map(k => k === 'acidente' ? 'acidente' : 'QN').join(' e ')}). Responda "Não houve" quando não houve ocorrência.`, ref: { sq: s.ps.id } }); }
     const gaps = res.msgs.filter(m => m.ref &amp;&amp; m.ref.gap);
     if (gaps.length &amp;&amp; !day.gapJustification) out.push({ level: 'erro', msg: 'Há lacunas entre intervalos sem justificativa. Informe a justificativa no cabeçalho do dia.' });
     out.push({ level: 'info', msg: `OEE ${U.pct(res.r.oee)} · meta ${U.pct(res.r.oeeTarget)} · cascata ${res.r.cascade.ok ? 'fecha' : 'não fecha'}.` });
@@ -10096,6 +10106,24 @@ const Actions = (() => {
       audit({ action:'edição', entity:'turno', entityId:ps.id, field:'segurança e QN', before, after:ps.sqdcp });
     });
   }
+  /* LANC-03 (item 3.1) · Segurança e qualidade do dia (modo Dia): mesmo modelo do turno, em day.sqdcpDia, com o turno opcional por ocorrência */
+  function setDaySQDCP(dayId, valor) {
+    if (typeof vacPode === 'function' &amp;&amp; !vacPode('oee', 'lancar')) throw new Error('Seu perfil não permite lançar na Produção.');
+    const dados = SQDCPModelo.validarTurno(valor);
+    for (const k of ['acidente', 'qn']) if (dados[k] &amp;&amp; dados[k].resposta === 'sim' &amp;&amp; valor[k] &amp;&amp; valor[k].turno) dados[k].turno = String(valor[k].turno).slice(0, 60);
+    const diaAtual = Store.S.db &amp;&amp; Store.S.db.productionDays.find(d => d.id === dayId &amp;&amp; !d.deleted);
+    if (!diaAtual) throw new Error('Dia não encontrado.'); assertEditable(diaAtual);
+    const alterados = ['acidente', 'qn'].filter(k => JSON.stringify(SQDCPModelo.lerEvento((diaAtual.sqdcpDia || {})[k])) !== JSON.stringify(dados[k]));
+    if (!alterados.length) return;
+    Store.mutate((db, audit) => {
+      const d = dayById(db, dayId); assertEditable(d);
+      const before = d.sqdcpDia || null;
+      d.sqdcpDia = { ...(d.sqdcpDia || {}), por: by(), em: U.nowIso() };
+      for (const k of alterados) d.sqdcpDia[k] = SQDCPModelo.copiar(dados[k]);
+      touch(d); startEditing(d);
+      audit({ action: 'edição', entity: 'dia', entityId: d.id, field: 'segurança e QN do dia', before, after: d.sqdcpDia });
+    });
+  }
   function setSQDCPVaga(linha, key, cfg, dia, turno, manual) {
     if (typeof vacPode === 'function' &amp;&amp; !vacPode('oee', 'configurar')) throw new Error('Seu perfil não permite configurar o quadro.');
     cfg = Sqdcp.validarVaga(key, cfg);
@@ -10136,7 +10164,7 @@ const Actions = (() => {
     });
   }
 
-  return { shiftScheduleDiff, applyShiftSchedule, setShiftSQDCP, setSQDCPVaga, setSQDCPP, setSQDCPManual, createDay, setDayField, setDayStatus, scrapModeImpact, setScrapMode, setModoLanc, viradaImpede, setLancDia, saveEventoDia, deleteDay, setShiftField, setIv, editIntervalTimes, splitInterval, addInterval, deleteInterval, restoreDefaultIntervals, lancarTotal, voltarHoraAHora, reapplyTargets, validateEvent, saveEvent, deleteEvent, saveAbono, setShiftOff, setGoods, closingCheck, submitShift, returnShift, closeShift, closeDay, reopen, upsertConfig, setStatusConfig, endTarget, setSettings, importTargets, importRelatorio, importParadas, logExport, loadDemo, removeDemo, impactSnap, planLocked, savePlan, setPlanDay, setDayOff, startProduction, moveDay, setPlanWorkdays, importPlans, setPlanOrder, fillOrdersFromProduction, acceptOrderApurado, savePanelView, deletePanelView, saveReportNote };
+  return { shiftScheduleDiff, applyShiftSchedule, setShiftSQDCP, setDaySQDCP, setSQDCPVaga, setSQDCPP, setSQDCPManual, createDay, setDayField, setDayStatus, scrapModeImpact, setScrapMode, setModoLanc, viradaImpede, setLancDia, saveEventoDia, deleteDay, setShiftField, setIv, editIntervalTimes, splitInterval, addInterval, deleteInterval, restoreDefaultIntervals, lancarTotal, voltarHoraAHora, reapplyTargets, validateEvent, saveEvent, deleteEvent, saveAbono, setShiftOff, setGoods, closingCheck, submitShift, returnShift, closeShift, closeDay, reopen, upsertConfig, setStatusConfig, endTarget, setSettings, importTargets, importRelatorio, importParadas, logExport, loadDemo, removeDemo, impactSnap, planLocked, savePlan, setPlanDay, setDayOff, startProduction, moveDay, setPlanWorkdays, importPlans, setPlanOrder, fillOrdersFromProduction, acceptOrderApurado, savePanelView, deletePanelView, saveReportNote };
 })();
 
 
@@ -12273,7 +12301,7 @@ App.views.launch = {
           ${grupo('dia', 'Ações do dia', [editavel &amp;&amp; day.status !== 'pendente de conferência' &amp;&amp; mi('dPend', 'Pendente de conferência', 'title="Marcar o dia como pendente de conferência"'), editavel &amp;&amp; mi('dOff', 'Dia sem produção', 'title="Marcar o dia como sem produção"', 'diaSemProd'), editavel &amp;&amp; mi('dMove', 'Mover para outro dia', '', 'moverDia'), mi('dEnviar', 'Enviar relatório', 'title="Dia inteiro, um turno, só o gel ou scrap e perdas: copiar para o Outlook ou abrir na aba Relatórios"')])}
           ${grupo('cor', 'Correções', [editavel &amp;&amp; semResumo &amp;&amp; mi('dRestore', 'Restaurar intervalos padrão', '', 'restaurarIv'), editavel &amp;&amp; semResumo &amp;&amp; mi('dReapply', 'Reaplicar metas vigentes', 'title="Usa as metas vigentes na data no lugar das metas congeladas no fechamento"', 'reaplicarMetas'), mi('kcEdit', 'Editar cards', 'title="Liga e desliga os indicadores do topo (vale neste computador)"'), mi('dayMetas', 'Metas dos próximos meses')])}
           ${grupo('con', 'Consulta', [mi('dHist', 'Histórico de alterações<small>' + esc(alt) + '</small>')])}
-          ${grupo('risco', 'Zona de risco', [editavel &amp;&amp; mi('dDel', 'Excluir dia', 'title="Marca o lançamento deste dia como excluído (exclusão lógica, com motivo)"')], true)}
+          ${grupo('risco', 'Zona de risco', [mi('dDel', 'Excluir dia', `title="${lk ? 'O dia está fechado: a exclusão fica registrada com o motivo (para relançar o dia com as regras atuais)' : 'Marca o lançamento deste dia como excluído (exclusão lógica, com motivo)'}"`)], true)}
         </div></div></header>
       <div class="cab2-pil">
         <div class="f"><span id="pilLancT">Lançamento ${ib('modoLanc')}</span><div class="seg" role="group" aria-labelledby="pilLancT">${[['hh', 'Hora a hora'], ['turno', 'Por turno'], ['dia', 'Dia']].map(([k, l]) => { const imp = k === 'dia' &amp;&amp; (day.modoLanc || 'hh') !== 'dia' ? Actions.viradaImpede(db(), day) : ''; return `<button type="button" data-modolanc="${k}" aria-pressed="${(day.modoLanc || 'hh') === k}" ${lk || imp ? 'disabled' : ''}${imp ? ` title="${esc(imp)}"` : ''}>${l}</button>`; }).join('')}</div></div>
@@ -12405,9 +12433,10 @@ function shiftBlock(day, sr, res) {
 function closeFlow(day, psId) {
   const chk = Actions.closingCheck(db(), day, psId);
   const ps = psId ? day.shifts.find(s => s.id === psId) : null;
-  modal(psId ? `Fechar ${ps.snap.name}` : `Fechar o dia ${U.brDate(day.date)}`, `<p>Ao fechar, os indicadores são calculados e guardados como registro de auditoria, as metas usadas ficam congeladas e um backup é criado.</p>${msgList(chk.msgs, 60)}`,
+  modal(psId ? `Fechar ${ps.snap.name}` : `Fechar o dia ${U.brDate(day.date)}`, `<p>Ao fechar, os indicadores são calculados e guardados como registro de auditoria, as metas usadas ficam congeladas e um backup é criado.</p>${msgList(chk.msgs, 60, { ajuste: true, r: chk.res.r })}`,
     `<button class="btn" data-close>Voltar</button><button class="btn primary" id="cfOk" ${chk.blocking ? 'disabled' : ''}>${I.lock} ${chk.blocking ? 'Corrija os erros para fechar' : 'Fechar'}</button>`, (el, close) => {
       const b = el.querySelector('#cfOk'); if (b &amp;&amp; !chk.blocking) b.onclick = () => { close(); run(() => psId ? Actions.closeShift(day.id, psId) : Actions.closeDay(day.id), psId ? 'Turno fechado.' : 'Dia fechado.'); };
+      el.querySelectorAll('[data-ajuste]').forEach(x => x.onclick = () => { close(); const root = document.querySelector('#main'); if (root) Ajuste.ir(root, day, x.dataset.ajuste, x.dataset.ajArg || ''); });   /* LANC-03 · Ir para Segurança e qualidade */
     });
 }
 function auditForDay(day) {
@@ -17563,6 +17592,7 @@ const Ajuste = {
     if (ref.iv) return this.bt('hora', lanca ? 'Ir para a hora' : 'Ver a hora', 'Abre o turno e mostra a hora', ref.iv);
     if (ref.ev) return this.bt('parada', lanca ? 'Ir para a parada' : 'Ver a parada', 'Abre o turno e mostra a parada', ref.ev);
     if (ref.ps) return this.bt('turno', 'Ir para o turno', 'Abre o detalhe do turno', ref.ps);
+    if (ref.sq) return this.bt('sq', 'Ir para Segurança e qualidade', ref.sq === 'dia' ? 'Abre Segurança e qualidade do dia' : 'Abre Segurança e qualidade do turno', ref.sq);
     return '';
   },
   html(m, opts) {
@@ -17587,6 +17617,7 @@ const Ajuste = {
     if (acao === 'hora') { const f = (res.flat || []).find(x => x.iv.id === arg); const sec = f &amp;&amp; this.turno(root, day, f.ps.id); return this.destacar((sec || root).querySelector(`[data-addev="${arg}"]`) || (sec || root).querySelector(`[data-ttiv="${arg}"]`) || sec); }
     if (acao === 'parada') { const er = res.events &amp;&amp; res.events[arg], ps = er &amp;&amp; er.shiftIds &amp;&amp; [...er.shiftIds][0]; const sec = ps &amp;&amp; this.turno(root, day, ps); return this.destacar(root.querySelector(`[data-ev="${arg}"]`) || sec); }
     if (acao === 'turno') return this.destacar(this.turno(root, day, arg));
+    if (acao === 'sq') { if (arg === 'dia') { const dsq = q('#diaSq'); if (dsq) dsq.open = true; return this.destacar(q('#diaSq [data-sq-resp]') || dsq); } const sec = this.turno(root, day, arg); return this.destacar(sec &amp;&amp; (sec.querySelector('.sq-ocorrencias [data-sq-resp]') || sec)); }
     const ps = acao === 'paradas' ? this.pior(res, 'unexplMeasMin') : this.pior(res, 'netMin'), sec = this.turno(root, day, ps);
     if (!sec) return this.destacar(q('#cabDia'));
     if (acao === 'paradas') return this.destacar(sec.querySelector('[data-addev]') || sec);
@@ -17620,6 +17651,7 @@ const DiaUI = {
       </div>
       <div class="dia-ev"><div><h4>Paradas do dia</h4><ul class="dia-l">${par.map(item).join('') || '<li class="small muted">Nenhuma parada do dia.</li>'}</ul>${lk ? '' : '<button type="button" class="btn sm" data-diaevnovo="parada">' + I.plus + ' Parada do dia</button>'}</div>
         <div><h4>Abono do dia ${ib('breaks')}</h4><ul class="dia-l">${ab.map(item).join('') || '<li class="small muted">Nenhum abono do dia.</li>'}</ul>${lk ? '' : '<button type="button" class="btn sm" data-diaevnovo="abono">' + I.plus + ' Abono do dia</button>'}<p class="small muted" style="margin:6px 0 0">Desconta do tempo planejado do dia, sem dividir entre os turnos.</p></div></div>
+      ${(() => { const sd = day.sqdcpDia || {}, ok = ['acidente', 'qn'].every(k => SQDCPModelo.lerEvento(sd[k])); return `<details class="tl-c dia-sq" id="diaSq"${ok ? '' : ' open'}><summary>Segurança e qualidade do dia <span class="pill ${ok ? 'ok' : 'warn'}">${ok ? 'registrado' : 'obrigatório para fechar o dia'}</span></summary>${Sqdcp.formularioDia(day)}</details>`; })()}
     </section>`;
   },
   modal(day, abono, ev) {
@@ -18546,7 +18578,8 @@ tr.aj-alvo{outline:0!important}tr.aj-alvo>td{background:var(--accent-soft)!impor
 .dia-bloco .dia-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px;align-items:start}
 .dia-bloco .dia-grid .kv{display:grid;gap:2px}.dia-bloco .dia-grid .kv .v{font-size:18px;font-weight:700}
 .dia-bloco .dia-ev{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:18px;margin-top:14px}
-.dia-bloco .dia-ev h4{margin:0 0 6px;font-size:14px}.dia-bloco .dia-l{list-style:none;margin:0 0 8px;padding:0;display:grid;gap:4px}
+.dia-bloco .dia-ev h4{margin:0 0 6px;font-size:14px}
+.dia-bloco .dia-sq{margin-top:14px}.dia-bloco .dia-sq>summary{cursor:pointer;font-weight:700;display:flex;align-items:center;gap:8px;min-height:40px}.dia-bloco .dia-l{list-style:none;margin:0 0 8px;padding:0;display:grid;gap:4px}
 .tl .tl-mt .tl-mt-par{margin-top:12px}.tl .tl-mt .tl-h5{margin:0 0 6px;font-size:14px}
 .tl .tl-mt .evs{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
 .tl-hxselo{display:inline-flex;align-items:center;padding:2px 10px;border-radius:999px;background:var(--info-bg);color:var(--info);font-size:12px;font-weight:700;margin-left:6px}
@@ -20000,7 +20033,8 @@ const SQDCPModelo = (() => {
     const numeros = Array.isArray(v.numeros) ? [...new Set(v.numeros.map(x => String(x).trim()).filter(Boolean))] : [];
     if (numeros.length > v.quantidade || numeros.some(x => x.length > 60)) return null;
     const problema = String(v.problema == null ? '' : v.problema).trim().slice(0, 120);   /* 2.6.9 · LANC-02: problema da QN (lista de Configurações) */
-    return { resposta: 'sim', quantidade: v.quantidade, numeros, resumo: String(v.resumo || '').slice(0, 400), ...(problema ? { problema } : {}) };
+    const turno = String(v.turno == null ? '' : v.turno).trim().slice(0, 60);   /* LANC-03 · registro do dia: turno opcional da ocorrência */
+    return { resposta: 'sim', quantidade: v.quantidade, numeros, resumo: String(v.resumo || '').slice(0, 400), ...(problema ? { problema } : {}), ...(turno ? { turno } : {}) };
   }
   function validarTurno(v) {
     const o = {};
@@ -20033,6 +20067,14 @@ const SQDCPModelo = (() => {
       const d = porDia.get(dia), off = engine.dayMark(db, dia, linha);
       const registros = d ? [...d.shifts, ...Object.values(d.sqdcpTurnos || {})] : [];
       if (off &amp;&amp; off.kind === 'off' &amp;&amp; !registros.some(p => p.sqdcp &amp;&amp; (lerEvento(p.sqdcp.acidente) || lerEvento(p.sqdcp.qn)))) continue;
+      if (d &amp;&amp; d.modoLanc === 'dia') {   /* LANC-03 (item 3.1) · modo Dia: o registro é do dia; o turno de cada ocorrência é opcional */
+        const sd = d.sqdcpDia || {}, ev = k => { const x = lerEvento(sd[k]); return x &amp;&amp; (!turno || x.turno === turno) ? x : null; }, a = ev('acidente'), q = ev('qn');
+        if (turno &amp;&amp; !a &amp;&amp; !q) continue;
+        const nomes = [...new Set([a, q].filter(Boolean).map(x => x.turno).filter(Boolean))].map(t => { const p = (d.shifts || []).find(x => x.shiftId === t); return p ? codigo(p) : t; });
+        rows.push({ dia, linha, turno: nomes.length === 1 &amp;&amp; [a, q].filter(Boolean).every(x => x.turno) ? nomes[0] : 'sem turno', shiftId: null, diaId: d.id, turnoId: null, nivel: 'dia',
+          status: d.status, acidente: turno ? a : lerEvento(sd.acidente), qn: turno ? q : lerEvento(sd.qn), informadoPor: sd.por || '', informadoEm: sd.em || '' });
+        continue;
+      }
       const previsto = d || engine.buildDay(db, dia, linha, null, 'SQDCP'), ps = (previsto.shifts || []).slice();
       for (const [shiftId, antigo] of Object.entries(d &amp;&amp; d.sqdcpTurnos || {})) {
         if (!ps.some(p => p.shiftId === shiftId)) ps.push({ shiftId, snap: antigo.snap, sqdcp: antigo.sqdcp, status: 'registro SQDCP preservado da importação' });
@@ -20160,12 +20202,22 @@ const Sqdcp = (() => {
       }).join('') + '</div><div class="row"><button type="button" class="btn primary" data-sq-salvar' + dis + '>Salvar segurança e qualidade</button>' +
       '<span class="small sq-ult' + (recente ? ' ok' : ' muted') + '" data-sq-ult role="status" aria-live="polite">' + ult + '</span></div></div>';
   }
+  /* LANC-03 (item 3.1) · formulário do dia (modo Dia): o mesmo do turno, gravado em day.sqdcpDia, com o turno opcional por ocorrência */
+  function formularioDia(day) {
+    const pseudo = { id: '__dia', sqdcp: day.sqdcpDia || {}, snap: {}, status: day.status };
+    let h = formularioTurno(day, pseudo).replace('<h4>Segurança e qualidade do turno</h4>', '<h4>Segurança e qualidade do dia</h4>').replace('Informe as ocorrências deste turno.', 'Informe as ocorrências do dia (o turno de cada uma é opcional).').replace('Sem respostas registradas neste turno', 'Sem respostas registradas neste dia');
+    const turnos = (day.shifts || []).filter(p => !p.deleted), dis = locked(day, pseudo) || !pode('lancar') ? ' disabled' : '';
+    for (const k of ['acidente', 'qn']) { const x = M.lerEvento((day.sqdcpDia || {})[k]), cur = x &amp;&amp; x.turno || '';
+      h = h.replace('<div data-sq-detalhe="' + k + '"', '<div data-sq-detalhe="' + k + '"').replace('<label>Observação <textarea data-sq-resumo="' + k + '"', '<label>Turno <span class="small muted">(opcional)</span><select data-sq-turnoopt="' + k + '"' + dis + '>' + sel([['', 'Sem turno']].concat(turnos.map(p => [p.shiftId, p.snap.name])), cur) + '</select></label><label>Observação <textarea data-sq-resumo="' + k + '"'); }
+    return h;
+  }
   function lerFormulario(box) {
     const v = {};
     for (const k of ['acidente', 'qn']) v[k] = { resposta: box.querySelector('[data-sq-resp="' + k + '"]').value,
       quantidade: box.querySelector('[data-sq-qtd="' + k + '"]').value, numeros: box.querySelector('[data-sq-refs="' + k + '"]').value,
       resumo: box.querySelector('[data-sq-resumo="' + k + '"]').value };
     { const pb = box.querySelector('[data-sq-prob="qn"]'); if (pb &amp;&amp; !pb.disabled) v.qn.problema = pb.value; }   /* 2.6.9 · problema da QN (sem lista: lista desabilitada, sem problema) */
+    for (const k of ['acidente', 'qn']) { const t = box.querySelector('[data-sq-turnoopt="' + k + '"]'); if (t) v[k].turno = t.value; }   /* LANC-03 · registro do dia */
     return M.validarTurno(v);
   }
   function avisos(day, shifts) {
@@ -20677,9 +20729,9 @@ const Sqdcp = (() => {
     try {
       const valor = lerFormulario(box), dia = box.dataset.sqDay, turno = box.dataset.sqTurno;
       salvoAgora = { turno, at: Date.now() };   /* 2.6.9 · LANC-02: aviso visível de salvo, com quem e quando */
-      run(() => { Actions.setShiftSQDCP(dia, turno, valor); return true; }, 'Segurança e qualidade registradas.').then(ok => {
+      run(() => { if (turno === '__dia') Actions.setDaySQDCP(dia, valor); else Actions.setShiftSQDCP(dia, turno, valor); return true; }, 'Segurança e qualidade registradas.').then(ok => {
         if (ok !== true) { salvoAgora = null; return; }   /* run() devolve undefined quando a gravação falha */
-        const b2 = document.querySelector('.sq-ocorrencias[data-sq-turno="' + CSS.escape(turno) + '"] [data-sq-ult]'), d = db().productionDays.find(x => x.id === dia), p = d &amp;&amp; d.shifts.find(x => x.id === turno), q = p &amp;&amp; p.sqdcp;
+        const b2 = document.querySelector('.sq-ocorrencias[data-sq-turno="' + CSS.escape(turno) + '"] [data-sq-ult]'), d = db().productionDays.find(x => x.id === dia), p = d &amp;&amp; d.shifts.find(x => x.id === turno), q = turno === '__dia' ? d &amp;&amp; d.sqdcpDia : p &amp;&amp; p.sqdcp;
         if (b2 &amp;&amp; q &amp;&amp; q.em) { b2.className = 'small sq-ult ok'; b2.textContent = '✓ Salvo · último registro: ' + (q.por || '—') + ' · ' + U.brDT(q.em); }
       });
     } catch (err) { salvoAgora = null; toast(err.message, true); }
@@ -20698,7 +20750,7 @@ const Sqdcp = (() => {
     } catch (err) { ev.preventDefault(); ev.stopImmediatePropagation(); toast(err.message, true); box.scrollIntoView({ block: 'center', behavior: 'smooth' }); }
   }, true);
   App.views.sqdcp = { render: renderQuadro, mount: montar };
-  return { UI, catalogo, formularioTurno, lerFormulario, avisos, validarVaga, linhas, dados, resumo: M.resumo,
+  return { UI, catalogo, formularioTurno, formularioDia, lerFormulario, avisos, validarVaga, linhas, dados, resumo: M.resumo,
     relatorio, folha, htmlImpressao, previa, imprimir, carregarFontes, fontes, resumoTexto, blocoRelatorio, demo, reuniao };
 })();
 
@@ -38942,9 +38994,9 @@ body.vac-porta{overflow:hidden}
     {
       "id": "oee",
       "path": "Plataforma.html#motor/oee",
-      "version": "2.6.27",
-      "sha256": "cf63c2a83777e20f07cc2e74a91d29edadad11b619e1b3048ed975714cf3535c",
-      "bytes": 2347522
+      "version": "2.6.28",
+      "sha256": "8f28d183934bc29497bfa7b3c089b2eaecd258d7774971ce86d93926a9d20947",
+      "bytes": 2354593
     },
     {
       "id": "perdas",
@@ -38998,15 +39050,15 @@ body.vac-porta{overflow:hidden}
     {
       "id": "portal",
       "path": "Plataforma.html#motor/portal",
-      "version": "1.9.59",
-      "sha256": "7368f74596dddbb122597058612d9db0c8ed7646124ffe251eb446cf764656b2",
-      "bytes": 1264992
+      "version": "1.9.60",
+      "sha256": "158b56afa2ee306250d69856b251e6e02174560ad72655a7fad13a3e4285d277",
+      "bytes": 1265515
     }
   ],
   "limitations": [
     "Projetos e conteúdo técnico OSM/MES/AM/TPM mantêm os limites documentados nas fontes."
   ],
-  "enginesSha256": "19f0e71381ba2bd2959b607df67da63eccf0d44268bf23f083a1fc127c18b892",
+  "enginesSha256": "396dfea089e86ecc88fee8d329a3cf6dbf14b38e79745e513af47f6ce1a166e2",
   "originRevision": "ffc9ee8",
   "sourceMode": "single-html",
   "originEnginesSha256": "a87a64ad0c328f70e102b2ae888790a9b5d5a9bd05778652a7ce7cae140e40d2"
@@ -39076,7 +39128,7 @@ summary{cursor:pointer;font-weight:600;color:var(--navy)}
 'use strict';
 /* ---------- referência (atualizar quando a plataforma mudar de versão) ---------- */
 // Iguais às do pacote da plataforma (nova-plataforma/src/generated/manifest.json); o teste ferramenta-verificar confere.
-const VERSOES = {"oee":"2.6.27","perdas":"1.12.17","gel":"2.42","paradas":"1.2.18","equip":"1.0.20","inic":"1.1.16","linha":"1.4.0","projetos":"0.1.16","portal":"1.9.59"};
+const VERSOES = {"oee":"2.6.28","perdas":"1.12.17","gel":"2.42","paradas":"1.2.18","equip":"1.0.20","inic":"1.1.16","linha":"1.4.0","projetos":"0.1.16","portal":"1.9.60"};
 const BASES = [
  { arq: 'vacutainer-cadastros.json', mod: 'portal', nome: 'Cadastro geral (Portal)', obrig: true, cadastro: true, bk: 'Cadastros' },
  { arq: 'portal-base.json', mod: 'portal', nome: 'Portal', obrig: true, bk: 'Portal' },
@@ -39667,7 +39719,7 @@ import { Icon, Button, Badge, Empty, Modal, BarChart, BrandLogo, CommandMenu } f
 import { ModuleFrame } from "vac:modulo/components/ModuleFrame";
 import manifest from "vac:recurso/manifesto";
 import { ModuleTabs } from "vac:modulo/components/ModuleTabs";
-const VERSION = "1.8.36";
+const VERSION = "1.8.37";
 /* Navegação 1.3.0 (16/11/2026): Visão da linha, Relatórios e Importações têm abas; as que mostram uma tela do
    Portal (motor da Administração) trazem o 3º campo com a aba dele. Administração fica só com cadastros e configuração. */
 const SHELL_TABS = {
