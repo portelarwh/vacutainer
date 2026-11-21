@@ -1,6 +1,6 @@
 # Proposta LANC-03 · aba Lançamento por modo (hora a hora, por turno, dia) e scrap por turno ou diário
 
-Pedido do responsável (20/11/2026). **LANC-04 (itens 0.1 e 0.2) entregue na Produção 2.6.22 / plataforma 1.8.31. LANC-03: etapa a (itens 0 e 1.1) entregue na Produção 2.6.23 / plataforma 1.8.32; etapa b (itens 1, 2 e 7) na Produção 2.6.24 / plataforma 1.8.33; etapa c (item 9) na Produção 2.6.25 / plataforma 1.8.34; etapas d e e ainda não implementadas.** Muda a interface da aba Lançamento da Produção (`motor/oee`, LANC-02, cartões `lc-*`/`tl-*`). Os números, as fórmulas e as permissões continuam iguais (contrato 6), O modo "Dia" foi decidido como "só no dia" (item 4), sem rateio entre turnos ou horas.
+Pedido do responsável (20/11/2026). **LANC-04 (itens 0.1 e 0.2) entregue na Produção 2.6.22 / plataforma 1.8.31. LANC-03: etapa a (itens 0 e 1.1) entregue na Produção 2.6.23 / plataforma 1.8.32; etapa b (itens 1, 2 e 7) na Produção 2.6.24 / plataforma 1.8.33; etapa c (item 9) na Produção 2.6.25 / plataforma 1.8.34; etapa d (itens 3, 5 e 6) na Produção 2.6.26 / plataforma 1.8.35; etapa e (modo Dia) ainda não implementada.** Muda a interface da aba Lançamento da Produção (`motor/oee`, LANC-02, cartões `lc-*`/`tl-*`). Os números, as fórmulas e as permissões continuam iguais (contrato 6), O modo "Dia" foi decidido como "só no dia" (item 4), sem rateio entre turnos ou horas.
 
 ## Pedidos do responsável (conferência)
 
@@ -176,6 +176,8 @@ Ocupando a linha toda, o cartão também não fica ao lado de outro, por isso pa
 - **Trocar de modo com dados lançados:** pede confirmação e diz o que acontece, por exemplo "o total do turno é apagado e as horas voltam a abrir", reaproveitando a troca que já existe no `TotalTurno`. Nunca apaga sem confirmar.
 - **Avisos que não se perdem:** sugestões do servidor e alertas (hora extra, meia-noite) continuam aparecendo em qualquer modo.
 
+> **Entregue (etapa d, Produção 2.6.26).** Pílulas no cabeçalho do dia. `day.modoLanc` só existe quando é 'turno' (sem ela vale 'hh') e a troca fica na auditoria (`Actions.setModoLanc`). Trocar o modo só muda a tela: as horas já lançadas e os turnos lançados pelo total continuam e contam como antes, por isso a confirmação diz "Nada é apagado" e explica o caso de cada turno. No modo Por turno, cada turno mostra o bloco do total do turno (`TotalTurno`), as paradas do turno com "+ Parada do turno" (horário no formulário) e "Ver hora a hora"; a tabela e o gráfico do hora a hora ficam ocultos, e o "Abrir hora a hora" do rodapé some. O modo Dia vem na etapa e.
+
 ## 3.1 O que cada modo pede (decisão do responsável, 20/11/2026)
 
 Cada informação fica no nível do modo escolhido, sem repetir nem dividir:
@@ -225,6 +227,8 @@ Regras de implementação:
 - **Por turno:** cada cartão de turno ganha o campo "Scrap do turno" (`ps.scrap`) logo abaixo dos indicadores; o campo do dia some.
 - **Trocar com scrap já lançado:** pede confirmação. O valor do outro modo fica guardado e não é apagado, mas deixa de contar.
 
+> **Entregue (etapa d).** `setScrapMode` não apaga mais: ao passar para Diário com o total do dia vazio, grava a soma dos turnos (com auditoria); `ps.scrap` e `day.scrapDay` ficam guardados, e a conta já lia só o do modo atual (Engine). Um único leitor somava os dois (`dayEntries`, "o dia tem apontamento?") e passou a seguir o modo. O campo "Scrap do dia" fica ao lado da pílula.
+
 ## 6. Hora extra por turno
 
 - Cada turno tem o seu "+ Hora extra" (HEX-01). Marcado, vira um selo "Hora extra 05:00–06:00".
@@ -233,6 +237,8 @@ Regras de implementação:
   - no modo Hora a hora, como a linha "extra" na tabela;
   - no modo Por turno, somada ao tempo do turno;
   - no modo Dia, como os selos dos turnos, porque o tempo do dia soma as horas extras.
+
+> **Entregue (etapa d).** A hora extra por turno já existia (HEX-01) e já ajustava tempo, meta e capacidade; entrou o selo "Hora extra 05:00–06:00" no topo do turno. Teste `lancamento-modos`.
 
 ## 7. Rodapé e repetições
 
