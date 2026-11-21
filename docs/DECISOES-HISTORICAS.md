@@ -634,3 +634,16 @@ Pedido explícito: desenvolver cinco colunas e cinco posições, uma A4 paisagem
 | Calendário de produção no Portal | **feito** | Portal 1.9.35 (`calendario`) + CadSync da Produção 2.4.73 (`docs/centralizacao-configuracoes.md`) |
 | `tnv` falhando (achado ao rodar a suíte inteira em 13/11/2026) | **corrigido no teste** | Falhava em qualquer versão das páginas (conferido no merge da PR #70): no Chromium atual, o armazenamento do navegador (OPFS) aberto por `file://` dá "SecurityError". Agora as páginas são servidas por HTTP local (como no `tbases`). O caso `NV01-identidade-por-handle-persistido` derruba o Chromium deste ambiente (guardar no IndexedDB uma pasta do OPFS): sai como **NÃO VERIFICADO** e o navegador é aberto de novo para os outros casos. Na pasta real (Chrome/Edge, pasta da rede) o caminho é outro (`showDirectoryPicker`) |
 | `tdiag` › F07 desatualizado | **corrigido no teste** | Esperava a regra antiga (a parada da Produção substitui a do Forms); desde o Paradas 1.2.5 (A10, PR #70) a parada do Forms fica e recebe o `eventoId`. O teste passou a conferir a regra nova |
+
+## § Z3 · Decisões do responsável em 21/11/2026
+
+| Item | Decisão | Onde |
+|---|---|---|
+| REG-01 · microparada | **5 min por padrão** (abaixo = microparada, Performance; a partir de 5 min = parada operacional, Disponibilidade). Outro valor só pelo cadastro (`parametros.limiteMicroMin`). | Paradas 1.2.20 |
+| TUR-04 · Plano do mês | O plano é uma quantidade para o mês, sem dia da semana: cada dia leva a parte proporcional ao seu tempo programado (o sábado menor pede menos; o total não muda). | Produção 2.6.32 |
+| TUR-05 · dia fechado | Dia fechado com o horário antigo do turno é recalculado com o horário corrigido (reabre com o motivo, aplica e fecha de novo; o fechamento anterior fica no histórico). | Produção 2.6.32 |
+| CEL-02 · foto do quadro | **Encerrado:** a leitura automática da foto não será possível; a foto continua só como evidência. | — |
+| LANC-02 · lista de problemas de QN | **Encerrado:** a lista será construída manualmente pelo responsável. | — |
+| GEL-06 · pesagem de gel | O vínculo dos equipamentos de pesagem será feito manualmente pelo responsável. | — |
+| E15 · Projetos | Escopo adiado pelo responsável. | — |
+| TL-02 | Explicação das duas regras com imagens enviada; aguarda a decisão. | — |
