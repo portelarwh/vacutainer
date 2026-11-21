@@ -1,6 +1,6 @@
 # Proposta LANC-03 · aba Lançamento por modo (hora a hora, por turno, dia) e scrap por turno ou diário
 
-Pedido do responsável (20/11/2026). **LANC-04 (itens 0.1 e 0.2) entregue na Produção 2.6.22 / plataforma 1.8.31; LANC-03 ainda não implementada.** Muda a interface da aba Lançamento da Produção (`motor/oee`, LANC-02, cartões `lc-*`/`tl-*`). Os números, as fórmulas e as permissões continuam iguais (contrato 6), O modo "Dia" foi decidido como "só no dia" (item 4), sem rateio entre turnos ou horas.
+Pedido do responsável (20/11/2026). **LANC-04 (itens 0.1 e 0.2) entregue na Produção 2.6.22 / plataforma 1.8.31. LANC-03: etapa a (itens 0 e 1.1) entregue na Produção 2.6.23 / plataforma 1.8.32; etapas b a e ainda não implementadas.** Muda a interface da aba Lançamento da Produção (`motor/oee`, LANC-02, cartões `lc-*`/`tl-*`). Os números, as fórmulas e as permissões continuam iguais (contrato 6), O modo "Dia" foi decidido como "só no dia" (item 4), sem rateio entre turnos ou horas.
 
 ## Pedidos do responsável (conferência)
 
@@ -57,6 +57,8 @@ Os rótulos ficam padronizados ("Visão geral", não "Visão Geral"; "Config." s
 **Seletor do dia:** a barra Data / Linha / "Ver o dia inteiro (24 h)" fica logo abaixo, sem mudança, e o cabeçalho do dia (item 1) vem depois dela.
 
 **Teste:** a ordem das abas, os rótulos, o chip de situação nos três estados, Trocar pasta (pasta × sem pasta × Demonstração) e a barra de ações à esquerda e à direita.
+
+> **Entregue (Produção 2.6.23, plataforma 1.8.32).** O cabeçalho, as abas e a barra são da casca (`modulo/App`); o motor só deu a ordem e os rótulos (`GrpAbas`) e o rótulo "Modo TV". O chip usa o mesmo estado do antigo botão Status (`situacaoChip`, modulo/core/data); um erro com a pasta conectada aparece como "Erro a conferir", para não dizer "sem conexão" quando a pasta está lá. Na Demonstração o chip diz "Demonstração" (azul) e o Trocar pasta fica oculto. A barra separa os comandos pelo ID (`vacVoltar`, `opBtn` à esquerda); os IDs e as travas não mudam. Com a ordem nova, a Produção abre em Visão geral quando a pessoa não salvou outra aba inicial. Testes `lancamento-topo` e `situacao`.
 
 ## 0.1 LANC-04 · Config. › Abas refletida na página (diagnóstico de 20/11/2026)
 
@@ -137,6 +139,8 @@ Ocupando a linha toda, o cartão também não fica ao lado de outro, por isso pa
 - O estado fica só neste navegador (`localStorage`, chave `vac.oee.resumoAberto`, com try/catch). Sem armazenamento, volta a expandido. Não grava nada na base.
 - Recolhido, o cabeçalho do bloco mantém uma linha curta com o OEE do dia e o semáforo, para o número principal não sumir.
 - Não muda os números, a ordem nem a configuração dos cards (contrato 6). Vale nos três modos; no modo Dia, mostra os mesmos cards do dia.
+
+> **Entregue (Produção 2.6.23).** Bloco `#lcResumo` em volta da faixa de cards (`ResumoDia`, motor/oee), com `aria-expanded`/`aria-controls`; recolhido, mostra "OEE do dia" com o semáforo da meta. Teste `lancamento-topo` (inclusive sem armazenamento).
 
 ## 2. Menu "⋮ Mais ações"
 

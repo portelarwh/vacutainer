@@ -15,7 +15,7 @@ const files={portal:'portal-base.json',oee:'oee-vacutainer-base.json',perdas:'pe
    localStorage.setItem('vac.app.real-inicial.vac.userId','9099');localStorage.setItem('vac.app.real-inicial.vac.sessao',JSON.stringify({id:'9099',ate:Date.now()+3600000}));
    window.showDirectoryPicker=async()=>root;
   },{fixture,files});
-  await page.locator('.heading-actions').getByRole('button',{name:'Conectar pasta',exact:true}).click();
+  await page.locator('.heading-actions').locator('[data-act="connect"]').click();
   await page.locator('.folder-info strong').filter({hasText:'Somente-Metadados-Ficticios'}).waitFor();
   await page.evaluate(()=>location.hash='#/portal');const iframe=page.locator('iframe[title="Módulo Administração"]');await iframe.waitFor();
   const frame=await(await iframe.elementHandle()).contentFrame();await frame.waitForFunction(()=>vacPagina.conectado());

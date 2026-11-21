@@ -50,7 +50,7 @@ function sonda() {
           await fr.evaluate(tab=>vacPagina.ir(tab),tab.id);await p.waitForTimeout(180);
           const r=await fr.evaluate(sonda);medidos+=r.n;ignorados+=r.naoMedidos;telas++;r.ruins.forEach(x=>falhas.push(`${tema} ${id}/${tab.id}: ${x}`));
         }
-        await p.locator('.heading-actions').getByRole('button',{name:'Status',exact:true}).click();
+        await p.locator('.heading-actions .status-trigger').click();
         await p.getByRole('dialog',{name:'Status da página'}).waitFor();await p.waitForTimeout(100);
         const status=await p.evaluate(sonda);medidos+=status.n;ignorados+=status.naoMedidos;telas++;status.ruins.forEach(x=>falhas.push(`${tema} Status/${id}: ${x}`));await p.keyboard.press('Escape');
       }
