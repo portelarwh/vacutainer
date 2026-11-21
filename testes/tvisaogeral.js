@@ -116,9 +116,11 @@ const LER = () => {
       App.filters.status = 'aberto'; App.filters.shiftId = 'sh_t1'; render(); await w(400);
       document.querySelector('#vglLimpar').click(); await w(500);
       out.limpar = App.filters.status === '' && App.filters.shiftId === '' && App.filters.to >= U.today().slice(0, 8) + '01' && App.filters.lineId === 'line_vac';
-      // 1 dia no período: aviso nos gráficos por dia, sem tendência inventada
+      // 1 dia no período: uma nota só (não repetida em cada gráfico) e grupos recolhidos, sem tendência inventada
+      App.prefs.vgGrupo = {};
       App.filters.from = '2026-03-10'; App.filters.to = '2026-03-10'; App.filters.status = ''; render(); await w(500);
       out.umDia = [...document.querySelectorAll('#main .vgl-est')].filter(x => /1 dia no período/.test(x.textContent)).length;
+      out.umDiaFechados = [...document.querySelectorAll('#main .vgl-grp')].every(g => g.classList.contains('fechado'));
       out.umDiaPior = /Só 1 dia/.test((document.querySelector('#main .vgl-dg') || {}).textContent || '');
       App.filters.from = '2026-03-09'; App.filters.to = '2026-03-11'; App.prefs.vgGrupo = {}; render(); await w(500);
       // Meu painel não recebe a organização da visão padrão
@@ -132,7 +134,7 @@ const LER = () => {
     ok(/OEE do período/.test(L.situacao) && /Meta vigente/.test(L.situacao) && /Abaixo da meta|Na meta/.test(L.situacao) && /Período anterior|Sem dados no período anterior/.test(L.situacao), 'Situação: OEE, meta, desvio, estado em texto e período anterior');
     ok(L.decide && /Maior etapa da cascata/.test(L.perda) && /Parada que mais tirou tempo: TRC/.test(L.perda), 'Ação prioritária mantida e maior perda (cascata e Pareto) ao lado');
     ok(L.diag === 3 && L.maisDup === 0 && L.desligada, 'Diagnóstico com 3 cartões; Mais indicadores sem repetir os ligados na grade (e com eles quando desligados)');
-    ok(L.avisoSem && L.umDia >= 6 && L.umDiaPior, 'avisos honestos: tendência curta e período de 1 dia');
+    ok(L.avisoSem && L.umDia === 1 && L.umDiaFechados && L.umDiaPior, 'avisos honestos: tendência curta e período de 1 dia');
     ok(L.fechouC && L.lembrou, 'grupo recolhido lembra a escolha (vgGrupo) sem mexer nas dobras dos blocos');
     ok(L.limpar, 'Limpar volta para o mês e Todos (a Linha continua)');
     ok(L.painelSemVgl, 'Meu painel sem a organização da visão padrão');
