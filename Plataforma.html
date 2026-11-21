@@ -468,6 +468,12 @@ a.vk-dc,a.vk-dc:hover{text-decoration:none;color:inherit}
    link sem classe na cor da marca (antes, o azul padrão do navegador em algumas tabelas e avisos). */
 .i,.ib{font-family:var(--f-body,Arial,"Helvetica Neue",sans-serif)!important;font-size:12px!important}
 a:not([class]){color:var(--link,var(--accent,#044DD6))}
+/* plataforma 1.8.41 · padrão visual em todos os módulos: títulos h1–h4 em caixa de frase (guia BD; maiúsculas só em rótulos curtos);
+   os formulários A4 impressos e as folhas de relatório mantêm o seu desenho. Cabeçalho da aba (vacCabAba) e "Limpar filtros" (vacLimparFiltros). */
+:is(h1,h2,h3,h4):not(:is(.fprev,.fp,.printarea,.rep,.a4,.folha,.sqdcp-a4,[data-a4]) *){text-transform:none!important;letter-spacing:normal!important}
+.vac-dup{position:absolute!important;width:1px!important;height:1px!important;overflow:hidden!important;clip:rect(0 0 0 0)!important;white-space:nowrap!important;margin:0!important;padding:0!important}
+.vac-limpar{border:0;background:none;padding:0 var(--sp-4,4px);min-height:40px;color:var(--accent,#044ED7);font:600 13.5px var(--f-body,inherit);text-decoration:underline;cursor:pointer;white-space:nowrap;align-self:flex-end}
+.vac-limpar:focus-visible{outline:2px solid var(--focus,var(--accent,#044ED7));outline-offset:2px}
 </style></textarea>
 
 <!-- comum/bases -->
@@ -1914,6 +1920,73 @@ const vacCampos = (() => {
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', ini); else ini();
   return { aplicar, nomeMes };
 })();
+/* ----- plataforma 1.8.41 · vacCabAba: cabeçalho da aba (título + subtítulo) em todos os módulos, como na Produção e no Waste (skill padrao-visual) -----
+   Lê a aba ativa do menu #nav ([data-t] com .on, aria-selected ou aria-current) e põe no topo do <main> um .vk-hd com o nome da aba e o subtítulo
+   da tabela abaixo. Não age onde a aba já tem cabeçalho (.vk-hd, .vgl-hd, .sh) nem na Produção, no Waste e em Paradas, que montam o seu.
+   O título de cartão que só repetiria o da aba fica oculto à vista (continua para leitores de tela). Só apresentação. */
+const vacCabAba = (() => {
+  const SUB = {
+    gel: { op: 'Barris nos cabeçotes, fila FIFO e o que colocar na linha agora.', sim: 'Programação da produção e simulação do consumo de gel.', prod: 'Gel do dia: teórico × real por turno e catálogo.', val: 'Idade e validade dos barris em estoque.', cons: 'Consumo de gel por período, catálogo e cabeçote.', adh: 'Aderência ao FIFO: entrada na linha, sequência de locais e desvios.', pend: 'Pendências com o Almoxarifado: baixas, holds e alterações no SAP.', aud: 'Auditoria do estoque: acuracidade por local e divergências.', lotes: 'Lotes e LPs de gel com saldo, local e validade.', hist: 'Movimentações e relatórios importados.' },
+    equip: { equip: 'Ficha de cada equipamento: falhas, ordens de serviço, TAGs e anomalias.', os: 'Ordens de serviço abertas e encerradas, com prazo e responsável.', tags: 'TAGs do MES por equipamento: propósito, tipo e unidade.', am: 'Padrões de manutenção autônoma e TPM por equipamento.', config: 'Pasta e base do módulo Equipamentos.' },
+    inic: { acoes: 'Ações por situação, com responsável, prazo e origem.', kas: 'Acompanhamento das iniciativas KAS.', osm: 'Ordens de serviço de manutenção ligadas às ações.', s5: 'Auditorias e ações de 5S.', config: 'Pasta e base, e as ações trazidas do Waste.' },
+    linha: { pessoas: 'Pessoas por posto e turno, com o conhecimento por equipamento.', checklists: 'Checklists previstos e feitos por ponto da linha.', form: 'Formulários A4 da linha: checklist, limpeza, processo, manutenção, AM e 5S.', config: 'Áreas, pontos e equipamentos do mapa da linha.' },
+    projetos: { geral: 'Projetos de melhoria, investimento e compra de máquina.', lista: 'Projetos com etapa, responsável e prazo.', cronograma: 'Cronograma dos projetos por etapa.', acoes: 'Ações ligadas aos projetos.', relatorios: 'Relatórios dos projetos.' },
+    portal: { geral: 'Resultado e situação da linha.', fila: 'Pendências e ações abertas de todos os módulos.', reuniao: 'Pauta e registro da reunião diária.', rel: 'Relatórios da linha.', imp: 'Importações de todos os módulos.', cad: 'Cadastros da linha: usuários, turnos, metas, equipamentos e parâmetros.' }
+  };
+  const FORA = new Set(['oee', 'perdas', 'paradas']);
+  const e = s => String(s ?? '').replace(/[&amp;<>"']/g, c => ({ '&amp;': '&amp;amp;', '<': '&amp;lt;', '>': '&amp;gt;', '"': '&amp;quot;', "'": '&amp;#39;' }[c]));
+  const limpo = el => { const c = el.cloneNode(true); c.querySelectorAll('.cnt,.badge,svg,small,i.i,.ib,[aria-hidden="true"]').forEach(n => n.remove()); return c.textContent.replace(/[▾▸↗›]/g, '').replace(/\s+/g, ' ').trim(); };
+  function aplicar() {
+    const pid = typeof PAGE !== 'undefined' &amp;&amp; PAGE.id; if (!pid || FORA.has(pid)) return;
+    const main = document.querySelector('main#main') || document.querySelector('main'), nav = document.getElementById('nav'); if (!main || !nav) return;
+    const b = nav.querySelector('[data-t].on,[data-t][aria-selected="true"],[data-t][aria-current="page"]'); if (!b) return;
+    const aba = b.dataset.t, titulo = limpo(b); if (!titulo) return;
+    let hd = main.querySelector(':scope > .vk-hd[data-vac-cab]');
+    const proprio = [...main.children].filter(x => x !== hd &amp;&amp; !x.matches('script,style')).slice(0, 3).some(x => x.matches('.vk-hd,.vgl-hd,.sh') || x.querySelector(':scope > .vk-hd,:scope > .vgl-hd'));
+    if (proprio) { if (hd) hd.remove(); return; }
+    if (!hd) { hd = document.createElement('div'); hd.className = 'vk-hd'; hd.dataset.vacCab = '1'; }
+    let ref = main.firstElementChild; while (ref &amp;&amp; ref !== hd &amp;&amp; (ref.matches('.banner,#banner,.vac-banner,.note.demo') || ref.matches('script,style'))) ref = ref.nextElementSibling;
+    if (hd.parentNode !== main || (ref &amp;&amp; ref !== hd &amp;&amp; hd.nextElementSibling !== ref)) main.insertBefore(hd, ref === hd ? hd.nextElementSibling : ref);
+    if (hd.dataset.aba !== aba) { const sub = (SUB[pid] || {})[aba] || ''; hd.dataset.aba = aba; hd.innerHTML = `<div><h2>${e(titulo)}</h2>${sub ? `<p>${e(sub)}</p>` : ''}</div>`; }
+    /* título de cartão igual ao da aba */
+    const h = [...main.querySelectorAll('h2,h3')].find(x => x !== hd.querySelector('h2') &amp;&amp; !hd.contains(x) &amp;&amp; x.getBoundingClientRect().height);
+    main.querySelectorAll('.vac-dup').forEach(x => { if (x !== h) x.classList.remove('vac-dup'); });
+    if (h &amp;&amp; limpo(h).toLowerCase() === titulo.toLowerCase()) h.classList.add('vac-dup');
+  }
+  let raf = 0; const agenda = () => { if (raf) return; raf = requestAnimationFrame(() => { raf = 0; try { aplicar(); } catch (x) { console.warn('vacCabAba', x); } }); };
+  let navObs = null;
+  const ini = () => { agenda(); new MutationObserver(() => { const nav = document.getElementById('nav'); if (nav &amp;&amp; navObs !== nav) { navObs = nav; new MutationObserver(agenda).observe(nav, { subtree: true, attributes: true, attributeFilter: ['class', 'aria-selected', 'aria-current'] }); } agenda(); }).observe(document.body, { childList: true, subtree: true }); };
+  if (typeof document !== 'undefined') { if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', ini); else ini(); }
+  return { aplicar, SUB };
+})();
+/* ----- plataforma 1.8.41 · "Limpar filtros" nos cartões de filtro que não têm (skill padrao-visual) -----
+   Em .filters/#filtros/.filtros com 3 campos ou mais e sem botão "Limpar": as listas voltam para a opção de todos (Todos, Todas, — ou vazia) e a busca
+   fica em branco, com os mesmos eventos de quando a pessoa escolhe; o período (datas) e os números de limite continuam. A Produção tem o seu. */
+const vacLimparFiltros = (() => {
+  const TODOS = /^(todos|todas|todo|toda|qualquer|—|-|–)?$/i;
+  const fire = c => { c.dispatchEvent(new Event('input', { bubbles: true })); c.dispatchEvent(new Event('change', { bubbles: true })); };
+  const campos = box => [...box.querySelectorAll('select,input[type=text],input[type=search],input:not([type])')].filter(c => !c.closest('.vdf,.dfield,.vac-mes') &amp;&amp; !c.disabled &amp;&amp; c.getClientRects().length);
+  function um(box) {
+    if (box.dataset.vacLimpar || box.closest('dialog,.modal,.overlay,.mod-bg,.card.form,#gFilters')) return;
+    if (campos(box).length < 3) return;
+    box.dataset.vacLimpar = '1';
+    if ([...box.querySelectorAll('button,a')].some(b => /limpar/i.test(b.textContent))) return;
+    const b = document.createElement('button'); b.type = 'button'; b.className = 'vac-limpar'; b.textContent = 'Limpar filtros'; b.title = 'Listas em Todos e busca em branco (o período continua)';
+    b.addEventListener('click', () => {
+      for (const c of campos(box)) {
+        if (c.tagName === 'SELECT') { const o = [...c.options].find(o => o.value === '' || TODOS.test(o.textContent.trim())); if (o &amp;&amp; c.value !== o.value) { c.value = o.value; fire(c); } }
+        else if (c.value) { c.value = ''; fire(c); }
+      }
+    });
+    box.appendChild(b);
+  }
+  function aplicar(root) { if (typeof PAGE !== 'undefined' &amp;&amp; PAGE.id === 'oee') return; (root || document).querySelectorAll('.filters,#filtros,.filtros').forEach(um); }
+  let raf = 0; const agenda = () => { if (raf) return; raf = requestAnimationFrame(() => { raf = 0; try { aplicar(document); } catch (x) { console.warn('vacLimparFiltros', x); } }); };
+  const ini = () => { agenda(); new MutationObserver(agenda).observe(document.body, { childList: true, subtree: true }); };
+  if (typeof document !== 'undefined') { if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', ini); else ini(); }
+  return { aplicar };
+})();
+
 
 
 /* ----- kit v2.1 · login com ID e senha de 6 números (11/11/2026; igual em todas as páginas; não editar só numa) -----
@@ -3557,7 +3630,7 @@ button.b,label.b,a.b{border-radius:8px}
 h3.fl-g{display:flex;gap:var(--sp-8,8px);align-items:center;margin:var(--sp-16,16px) 0 var(--sp-4,4px);font-family:var(--f-display);font-size:17px}
 .fl{display:grid;gap:var(--sp-4,4px)}.fl-i{display:grid;grid-template-columns:150px minmax(0,1fr) 76px 170px 110px auto;gap:var(--sp-8,8px);align-items:center;background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:var(--sp-8,8px) var(--sp-12,12px)}
 .fl-i .pill{justify-self:start;max-width:100%;overflow:hidden;text-overflow:ellipsis}.fl-atr{color:var(--crit)}
-.reu-gr{font:500 10.5px var(--f-mono);color:var(--info);background:color-mix(in srgb,var(--info) 10%,transparent);border-radius:4px;padding:1px var(--sp-4,4px);text-transform:none;letter-spacing:0;margin-left:var(--sp-4,4px);white-space:nowrap}
+.reu-gr{font:500 12px var(--f-mono);color:var(--info);background:color-mix(in srgb,var(--info) 10%,transparent);border-radius:4px;padding:1px var(--sp-4,4px);text-transform:none;letter-spacing:0;margin-left:var(--sp-4,4px);white-space:nowrap}
 .reu-lay{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1fr);gap:var(--sp-12,12px);margin-top:var(--sp-12,12px)}
 .reu-par>div{display:grid;grid-template-columns:minmax(0,1fr) 70px 34px auto;gap:var(--sp-8,8px);align-items:center;padding:var(--sp-4,4px) 0;border-bottom:1px solid var(--line)}
 .reu-par .reu-b{display:block;height:7px;border-radius:4px;background:var(--accent);margin-top:3px}.reu-par .n{text-align:right;font-variant-numeric:tabular-nums}
@@ -4058,7 +4131,7 @@ function wireConfigComum(){$('#cPasta').onclick=async()=>{if(await Store.pick())
         entrar pelo ID (autocadastro como Consulta); página inicial por perfil (1x por sessão); vigência gravada não se edita (desativar com motivo); painel de vigências; semáforo central; saída do modo de teste.
    1.1.2: aviso da carga diz qual base foi lida.  1.5: páginas Paradas, Máquinas, Manutenção e Projetos na lista (aparecem quando o HTML chega na pasta).  1.4: lista técnica pela CS12 multinível (itens = nível 1, estrutura = níveis 2+); CS03 sai.  1.3: cabeçalho comum (vac-cabecalho v2: barra do sistema + página + abas), busca Ctrl K, acabamento V1.90, Versões com cabeçalho e último backup.  1.2: Configuração › Versões das páginas (versão e data de cada HTML, gravação das bases, cópias repetidas, histórico).
    ===================================================================== */
-const PAGE={id:'portal',titulo:"Administração · Linha Vacutainer",tituloCurto:"Administração",subtitulo:'Sistemas de gestão da linha',versao:'1.9.63',baseFile:'portal-base.json',idb:'vac-portal',backupDir:'00. Backups/Portal',
+const PAGE={id:'portal',titulo:"Administração · Linha Vacutainer",tituloCurto:"Administração",subtitulo:'Sistemas de gestão da linha',versao:'1.9.64',baseFile:'portal-base.json',idb:'vac-portal',backupDir:'00. Backups/Portal',
  vazio:()=>({schema:'portal-base',rev:0,config:{modulos:{},avisoDias:30,notas:{}},audit:[]}),
  /* itens do Portal para a busca Ctrl K: cadastro, pendências e telas */
  busca:q=>{const R=[],D=Cad.D;if(D)for(const t of CAD_ORD){for(const it of D[t]||[]){const c=String(it[kOf(t)]),nm=t==='bom'?((cadItem('catalogos',it.catalogo)||{}).nome||''):it.nome||'';if(norm(c+' '+nm).includes(q))R.push({tipo:CAD_T[t].um,txt:c+(nm?' · '+nm:''),sub:'Cadastros'+(cadAtivo(t,it,D)?'':' · inativo'),href:'#cadastros/'+t+'/'+encodeURIComponent(c)});if(R.length>30)break}}
@@ -4518,7 +4591,7 @@ function ligarImpPeriodo(){
 function viewImportacao(m){if(!Imp.dia)Imp.dia=addDays(todayISO(),-1);const X=Imp.dia,seq=IMP_CAT.filter(c=>c.ordem).sort((a,b)=>a.ordem-b.ordem);
  const st=seq.map(c=>({c,s:impStatus(c,X),k:IMP_MENSAL.has(c.id)?null:impCelula(c,X)})),diarias=st.filter(x=>x.k&amp;&amp;x.k.obr),falta=diarias.filter(x=>!['ok','ag'].includes(x.k.st)),noPrazo=diarias.filter(x=>x.k.st==='ag'),semLeitura=diarias.filter(x=>x.k.st==='sl');   /* 1.9.47 · IMP-01: obrigatória e prazo conforme a frequência configurada */
  const pill=(s,k)=>{const st=k?{ok:'ok',wa:'warn',cr:'crit'}[k.st]||'none':s.st==='ok'?'ok':s.st==='warn'?'warn':s.st==='crit'?'crit':'none';return`<span class="pill ${st}">${esc(s.txt)}${k&amp;&amp;k.st==='ag'?' · no prazo até '+fmtD(k.lim):''}${k&amp;&amp;k.st==='na'&amp;&amp;s.st!=='ok'?' · não obrigatória':''}</span>`};
- const btn=c=>`<a class="b sm${c.ordem?' p':''}" href="${esc(impHref(c))}" data-impir="${c.id}">Importar ↗</a>`;
+ const btn=c=>`<a class="b sm" href="${esc(impHref(c))}" data-impir="${c.id}">Importar ↗</a>`;
  const resumo=!falta.length&amp;&amp;!noPrazo.length?`<div class="note" style="border-color:var(--ok)"><b class="good">Dia ${fmtD(X)} 100% atualizado</b>: todas as importações obrigatórias cobrem o dia.</div>`:!falta.length?`<div class="note"><b>Dia ${fmtD(X)}: ${noPrazo.length} no prazo</b> · ${noPrazo.map(x=>esc(x.c.nome)+' até '+fmtD(x.k.lim)).join(' · ')}</div>`
   :`<div class="note w"><b>Dia ${fmtD(X)}: falta${falta.length>1?'m':''} ${falta.length} de ${diarias.length}</b> · ${falta.map(x=>esc(x.c.nome)).join(' · ')}${semLeitura.length?` <span class="small">(${semLeitura.length} página(s) sem leitura: conecte a pasta ou abra a página uma vez)</span>`:''}</div>`;
  m.innerHTML=`${impGrade()}<div class="card"><h3>Importação ${ib('Importação','Todas as importações da plataforma num lugar só: a ordem recomendada, qual página cada relatório alimenta e o que falta em cada dia. O botão Importar abre a tela da página dona do relatório, que é quem grava na própria base (com prévia, trava e backup); depois de importar, volte aqui para conferir o status. As abas Importar das páginas trazem para cá.')}</h3>
@@ -4937,6 +5010,7 @@ const CAD_SECS=['inicio','matriz','importar','auditoria','backups','seguranca','
    curtas (macro, sem detalhe técnico). REGRA: toda versão nova da plataforma ganha uma entrada aqui, a mais recente primeiro
    (AGENTS.md e CLAUDE.md). Tipos: nova (função nova), melhoria (algo que já existia ficou melhor), correcao (erro corrigido). */
 const NOVIDADES=[
+ {v:'1.8.41',d:'2026-11-21',itens:[['melhoria','Todas as páginas no mesmo padrão: cada aba abre com título e subtítulo, e os títulos ficam em caixa de frase, como no guia da marca.'],['melhoria','Cartões de filtro ganham "Limpar filtros", que volta as listas para Todos e apaga a busca (o período continua).'],['melhoria','Gestão de Gel com a fonte da marca; botões de Importar e textos pequenos ajustados nas Importações e na Reunião diária.']]},
  {v:'1.8.40',d:'2026-11-21',itens:[['melhoria','Waste no padrão da Produção: todas as abas abrem com título e subtítulo, as seções da Visão geral não são mais numeradas e os botões Abrir de Relatórios ficaram iguais.'],['correção','Em todas as páginas, o mês aparece em português ("Novembro de 2026") e o campo de arquivo mostra "Escolher arquivo" (antes podiam sair em inglês).'],['melhoria','O ícone de ajuda "i" usa a fonte da marca, e os links seguem a cor da marca em todas as páginas.']]},
  {v:'1.8.39',d:'2026-11-21',itens:[['melhoria','Produção: Paradas, Resultados, Plano do mês, Relatórios, Ordens e lotes e Pendências abrem com título e subtítulo, como a Visão geral.'],['melhoria','Paradas e Resultados usam o mesmo filtro da Visão geral, com Limpar filtros e o resumo do recorte; Semana, Mês e Ano fiscal ficam em Personalizado.'],['correção','O mês do Plano do mês e dos Relatórios aparece em português (antes podia sair em inglês).'],['melhoria','SQDCP com as cores das categorias da empresa: Segurança verde, Qualidade azul, Entrega laranja, Custo amarelo e Pessoas cinza; Prévia / Imprimir passa a botão secundário.'],['melhoria','Botões de escolha, calendário e textos pequenos ficaram maiores; links e cores seguem a marca.']]},
  {v:'1.8.38',d:'2026-11-21',itens:[['melhoria','Lançamento: os turnos vêm logo depois do resumo do dia; servidor, lotes e gel ficam abaixo deles.'],['melhoria','OEE reportado e OEE real só aparecem quando diferem do OEE realizado.'],['melhoria','Qualidade do apontamento no Lançamento não repete os avisos que já estão na Validação.'],['melhoria','Visão geral com 1 dia: grupos de gráficos recolhidos e uma nota só, sem repetir em cada gráfico.'],['melhoria','Títulos da Produção em caixa de frase, como no guia da marca; rótulos curtos seguem em maiúsculas.']]},
@@ -25724,7 +25798,7 @@ const fileBackend={kind:'file',async commit(ch){applyLocal(ch);FS.pending.push(c
 async function fsRefresh(){if(S.mode!=='file'||FS.busy||ui.demo)return;try{const cur=await fsReadBase(fsKnown());if(cur&amp;&amp;!cur.same){FS.mod=cur.mod;FS.rev=cur.rev;FS.revBy=cur.by;loadData(cur.data);FS.pending.forEach(applyLocal);localBackend.save();render()}}catch(e){}}
 /* ================= V1.89 · integração com as outras páginas (Portal, OEE, Perdas) ================= */
 // versão da página (topo, Guia e base gravada)
-const APP_VERSION='2.42';   /* 2.42 · GEL-07: OEE e produção da Produção em todo dia que ela tem; OP/lote e relatório comum */   /* 2.41 · GEL-06: dia da Produção com pesagens, ordem/lote e "Editar na Produção" */   /* 2.35 · #aba=relatorios (Portal › Relatórios) abre as fichas e relatórios em PDF */   /* 2.34 · D8: Pareto comum do kit (vacPareto) */   /* 2.33 · Fase 5: layout no arquivo da pessoa (vacPrefs do kit) */   /* 2.32 · D6: botões de gravação travados conforme o perfil (vacTravas do kit) */   /* 2.29 · Design System (barra lateral, paleta, grade de gráficos) */   /* 2.28 · gráficos: "Valores em …" (kg, tubos, barris, dias, índice) onde o eixo não diz a unidade (docs/graficos-padrao.md) */   /* 2.27 · Visão Geral no padrão comum (vacLayout): situação, números, diagnóstico, análises do painel, explorar */   /* 2.26 · kit: padrão visual comum (vacLayout) */   /* 2.25 · kit: login com ID e senha */   /* 2.22 · UX-02: guia por aba */   /* 2.21 · Fase 7 (UX-03, GEL-01): Painel → Visão Geral */   /* 2.20 · Fase 4 · 4e: exports porDiaGel (teórico × real por dia) */   /* 2.19 · Fase 4 · 4d: lê da Produção a partir do corte (GelProd); Resumo do dia */   /* 2.18 · Fase 4 · 4b: pesagem pela conta comum do kit (vacGel) */   /* 2.17 · Fase 4 · 4a: parâmetros do gel do Portal (processo, formatos, motivos, descartes, gel do catálogo) */   /* 2.16 · Fase 3 (IMP-04): importações no exports; #importar abre a importação */   /* 2.15 · ARQ-05/ARQ-07: catálogos e equipamentos do Portal (GelCad); contas do gel iguais */   /* 2.14 · ARQ-09: sem entrada própria de "Modo exemplo" */   /* 2.11 · C2–C6: kit com a ficha por pasta (AT-08) e a contagem da fila durável (Portal › Versões) */   /* 2.10 · C1: alterações pendentes na fila durável do kit (sem perda entre abas) */   /* 2.09 · E11: busca do kit leva o equipamento à ficha em Equipamentos */   /* 2.08 · E8: kit com "+ Abrir ação" na ficha da ordem */   /* 2.07 · E5: ficha da ordem comum (botão na ordem) e busca por ordem, lote e LP */   /* 2.06 · E3: número digitado só aceito inteiro; E4: cobertura das ordens no exports */   /* 2.05 · E2: a versão da tela vem desta constante (o rótulo estava fixo em v2.01); kit com data local e meta do mês ponderada */   /* 2.04 · revisão 065fe6f: restauração por arquivo confirma e não segue sem a cópia anterior; CSV sem fórmulas; índice por dia no Painel */
+const APP_VERSION='2.43';   /* 2.43 · padrão visual: rótulo do barril na fonte da marca (era Barlow Condensed); cabeçalho das abas e Limpar filtros pela peça comum */   /* 2.42 · GEL-07: OEE e produção da Produção em todo dia que ela tem; OP/lote e relatório comum */   /* 2.41 · GEL-06: dia da Produção com pesagens, ordem/lote e "Editar na Produção" */   /* 2.35 · #aba=relatorios (Portal › Relatórios) abre as fichas e relatórios em PDF */   /* 2.34 · D8: Pareto comum do kit (vacPareto) */   /* 2.33 · Fase 5: layout no arquivo da pessoa (vacPrefs do kit) */   /* 2.32 · D6: botões de gravação travados conforme o perfil (vacTravas do kit) */   /* 2.29 · Design System (barra lateral, paleta, grade de gráficos) */   /* 2.28 · gráficos: "Valores em …" (kg, tubos, barris, dias, índice) onde o eixo não diz a unidade (docs/graficos-padrao.md) */   /* 2.27 · Visão Geral no padrão comum (vacLayout): situação, números, diagnóstico, análises do painel, explorar */   /* 2.26 · kit: padrão visual comum (vacLayout) */   /* 2.25 · kit: login com ID e senha */   /* 2.22 · UX-02: guia por aba */   /* 2.21 · Fase 7 (UX-03, GEL-01): Painel → Visão Geral */   /* 2.20 · Fase 4 · 4e: exports porDiaGel (teórico × real por dia) */   /* 2.19 · Fase 4 · 4d: lê da Produção a partir do corte (GelProd); Resumo do dia */   /* 2.18 · Fase 4 · 4b: pesagem pela conta comum do kit (vacGel) */   /* 2.17 · Fase 4 · 4a: parâmetros do gel do Portal (processo, formatos, motivos, descartes, gel do catálogo) */   /* 2.16 · Fase 3 (IMP-04): importações no exports; #importar abre a importação */   /* 2.15 · ARQ-05/ARQ-07: catálogos e equipamentos do Portal (GelCad); contas do gel iguais */   /* 2.14 · ARQ-09: sem entrada própria de "Modo exemplo" */   /* 2.11 · C2–C6: kit com a ficha por pasta (AT-08) e a contagem da fila durável (Portal › Versões) */   /* 2.10 · C1: alterações pendentes na fila durável do kit (sem perda entre abas) */   /* 2.09 · E11: busca do kit leva o equipamento à ficha em Equipamentos */   /* 2.08 · E8: kit com "+ Abrir ação" na ficha da ordem */   /* 2.07 · E5: ficha da ordem comum (botão na ordem) e busca por ordem, lote e LP */   /* 2.06 · E3: número digitado só aceito inteiro; E4: cobertura das ordens no exports */   /* 2.05 · E2: a versão da tela vem desta constante (o rótulo estava fixo em v2.01); kit com data local e meta do mês ponderada */   /* 2.04 · revisão 065fe6f: restauração por arquivo confirma e não segue sem a cópia anterior; CSV sem fórmulas; índice por dia no Painel */
 /* 2.03 · situação "em atualização" (kit: selo, pílula e faixa; docs/paginas-construcao.md) */
 /* 2.02 · relatório montado: todas as linhas no PDF, comentário, aviso de corte no texto; Painel em 1º; aba inicial do perfil; impressão e PDF no tema claro */
 /* 1.99 · menu Mais do cabeçalho (vac-visual v1): fecha ao escolher uma ação, ao clicar fora e com Esc */
@@ -26984,7 +27058,7 @@ function drumSvg(cm,measCm,w,pump){const n=++drumSvgN,H=drumH(),k=kgPerCm(),stop
    <line x1="${x0-3}" x2="${x0+bw+3}" y1="${st}" y2="${st}" stroke="#cc2222" stroke-width="1.5" stroke-dasharray="4 3"/>
    <rect x="${w/2-w*0.035}" y="${rodTop}" width="${w*0.07}" height="${Math.max(0,lv-rodTop)}" fill="#6f7c89"/><rect x="${x0+bw*0.06}" y="${lv-3.5}" width="${bw*0.88}" height="4.5" rx="2" fill="#c9d1d9" stroke="#6f7c89" stroke-width=".8"/>
    ${measCm!=null?`<path d="M${x0-7} ${y(measCm)-5} L${x0-1} ${y(measCm)} L${x0-7} ${y(measCm)+5}Z" fill="currentColor"><title>Última medição: ${nf1.format(measCm)} cm</title></path>`:''}
-   ${fs&amp;&amp;yB-lv>fs+4?`<text x="${w/2}" y="${(lv+yB)/2+fs/3}" text-anchor="middle" font-family="Barlow Condensed,Arial Narrow,sans-serif" font-weight="700" font-size="${fs}" fill="${low?'#a00':'#3b2a00'}">${nf0.format(cm*k)} kg</text>`:''}</svg>`}
+   ${fs&amp;&amp;yB-lv>fs+4?`<text x="${w/2}" y="${(lv+yB)/2+fs/3}" text-anchor="middle" font-family="FS Albert Pro,Arial,Helvetica Neue,sans-serif" font-weight="700" font-size="${fs}" fill="${low?'#a00':'#3b2a00'}">${nf0.format(cm*k)} kg</text>`:''}</svg>`}
 const dtHM=dt=>dt?(dt.slice(0,10)===todayISO()?dt.slice(11,16):fmtD(dt.slice(0,10)).slice(0,5)+' '+dt.slice(11,16)):'';
 const hTxt=h=>h==null?'—':h<1?Math.max(1,Math.round(h*60))+' min':nf1.format(h)+' h';
 // bloco do card "Em uso na linha"
@@ -37944,7 +38018,7 @@ select,input[type=date] {
   font-weight:500
 }
 .import-row small {
-  font-size:10px;
+  font-size:12px;
   letter-spacing:.06em;
   text-transform:uppercase;
   color:var(--teal)
@@ -39136,70 +39210,70 @@ body.vac-porta{overflow:hidden}
       "id": "oee",
       "path": "Plataforma.html#motor/oee",
       "version": "2.6.31",
-      "sha256": "dd77823ef280071143d627a31b3d7e9a8c63e543a1fdb51dd465a677c7875602",
-      "bytes": 2369076
+      "sha256": "a809c1675bb44733747f2772d14898abd2bc9ebde0418c585e0710364a7176d2",
+      "bytes": 2378199
     },
     {
       "id": "perdas",
       "path": "Plataforma.html#motor/perdas",
       "version": "1.12.18",
-      "sha256": "0df49b555ca82a162d683e9a31a5f086cfbfe21f2c3a0cd593f02a9c3b8db5f2",
-      "bytes": 945122
+      "sha256": "58651ed927d9f830e697a12ba9afe639463a97322f3f30d690ee0c7a7890d86c",
+      "bytes": 954245
     },
     {
       "id": "gel",
       "path": "Plataforma.html#motor/gel",
-      "version": "2.42",
-      "sha256": "7912e62ba031103b6beb43324470bfcdee334b1bc1aae97a1cea69100afa6f47",
-      "bytes": 1643572
+      "version": "2.43",
+      "sha256": "9b9ad99ba3a6281a47c72186b9dc2fbc0fd2684498ec19613dd18e4872b1144c",
+      "bytes": 1652846
     },
     {
       "id": "paradas",
       "path": "Plataforma.html#motor/paradas",
       "version": "1.2.18",
-      "sha256": "3ec745280c1989b0b7f656db953d09dfbf0be6ea35c218e375afddd60589eaa5",
-      "bytes": 915731
+      "sha256": "10eea02e9d38595dda2117c7c4fa474252b5d86dfe44a4ebae69c79d7bb63cfb",
+      "bytes": 924854
     },
     {
       "id": "equip",
       "path": "Plataforma.html#motor/equip",
       "version": "1.0.20",
-      "sha256": "19c13c5bbeb5bdfe6bf89ff73bf743c7b23f52f0b38780caefbb0f35291e62ae",
-      "bytes": 699464
+      "sha256": "d8a7c7328b369aac1bbc03bda0473e49ef5a24ee8834770c5f12bf97749e293b",
+      "bytes": 708587
     },
     {
       "id": "inic",
       "path": "Plataforma.html#motor/inic",
       "version": "1.1.16",
-      "sha256": "243e2c1be645bd687662ce26468149f0cadec06d15e6f4190d403f0cb432f3fc",
-      "bytes": 721000
+      "sha256": "ff69e5cdaacb6ee6cd5b54890f8e8f26b83b05b1160eca1d3ea97a11451523bf",
+      "bytes": 730123
     },
     {
       "id": "linha",
       "path": "Plataforma.html#motor/linha",
       "version": "1.4.0",
-      "sha256": "95d440bd18349e61e12e7ed3c24466bd602bbc65721f39e26e05d088aaa684a2",
-      "bytes": 902759
+      "sha256": "83e1f372850c30857859c71c1489725ffa41c082348ab3485f93e159eb6285ef",
+      "bytes": 911882
     },
     {
       "id": "projetos",
       "path": "Plataforma.html#motor/projetos",
       "version": "0.1.16",
-      "sha256": "82286ed4dc6a87c0fad96dc03d45b8b85d4d0e7bda91548a0f18a928eeb9eae4",
-      "bytes": 639404
+      "sha256": "ad0e47e3229b954785a5851e53b7f3bce532a7bf8da05162628b70fbbfe07d9c",
+      "bytes": 648527
     },
     {
       "id": "portal",
       "path": "Plataforma.html#motor/portal",
-      "version": "1.9.63",
-      "sha256": "84d029a5f597177f73da0940f0683460d719fd0dc34da079bcedc817d00848c0",
-      "bytes": 1274069
+      "version": "1.9.64",
+      "sha256": "8c1c1d38507fd00abeb0f8a6f8d8275654431977b6d248870e6ff8611c9c74e5",
+      "bytes": 1283633
     }
   ],
   "limitations": [
     "Projetos e conteúdo técnico OSM/MES/AM/TPM mantêm os limites documentados nas fontes."
   ],
-  "enginesSha256": "7709d030a56e1dc5d18ec1c2e2e65c1afc1a27ffed141cbc1b208ef694565ad5",
+  "enginesSha256": "ff10f48cf3d914ce2d6283ca8854b669fcac0902011170b9f2fc57ca408cb309",
   "originRevision": "ffc9ee8",
   "sourceMode": "single-html",
   "originEnginesSha256": "a87a64ad0c328f70e102b2ae888790a9b5d5a9bd05778652a7ce7cae140e40d2"
@@ -39269,7 +39343,7 @@ summary{cursor:pointer;font-weight:600;color:var(--navy)}
 'use strict';
 /* ---------- referência (atualizar quando a plataforma mudar de versão) ---------- */
 // Iguais às do pacote da plataforma (nova-plataforma/src/generated/manifest.json); o teste ferramenta-verificar confere.
-const VERSOES = {"oee":"2.6.31","perdas":"1.12.18","gel":"2.42","paradas":"1.2.18","equip":"1.0.20","inic":"1.1.16","linha":"1.4.0","projetos":"0.1.16","portal":"1.9.63"};
+const VERSOES = {"oee":"2.6.31","perdas":"1.12.18","gel":"2.43","paradas":"1.2.18","equip":"1.0.20","inic":"1.1.16","linha":"1.4.0","projetos":"0.1.16","portal":"1.9.64"};
 const BASES = [
  { arq: 'vacutainer-cadastros.json', mod: 'portal', nome: 'Cadastro geral (Portal)', obrig: true, cadastro: true, bk: 'Cadastros' },
  { arq: 'portal-base.json', mod: 'portal', nome: 'Portal', obrig: true, bk: 'Portal' },
@@ -39860,7 +39934,7 @@ import { Icon, Button, Badge, Empty, Modal, BarChart, BrandLogo, CommandMenu } f
 import { ModuleFrame } from "vac:modulo/components/ModuleFrame";
 import manifest from "vac:recurso/manifesto";
 import { ModuleTabs } from "vac:modulo/components/ModuleTabs";
-const VERSION = "1.8.40";
+const VERSION = "1.8.41";
 /* Navegação 1.3.0 (16/11/2026): Visão da linha, Relatórios e Importações têm abas; as que mostram uma tela do
    Portal (motor da Administração) trazem o 3º campo com a aba dele. Administração fica só com cadastros e configuração. */
 const SHELL_TABS = {

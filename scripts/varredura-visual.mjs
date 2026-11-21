@@ -40,7 +40,7 @@ function varrer(){
   const numSec=todos.filter(e=>e.matches('.vk-sec > b, .vgl-sec > b')&&/^\d{1,2}$/.test(txt(e)));
   if(numSec.length)A('Seções','ajustar','Seção numerada (01, 02…). O modelo tirou a numeração na Produção 2.6.29; as seções têm só título e subtítulo.',numSec.map(b=>`${txt(b)} ${txt(b.parentElement.querySelector('h3')||b)}`));
   /* título da página: h2 (ou o cabeçalho vgl-hd/vk-hd) antes do primeiro cartão; título de cartão não conta */
-  const y0=raiz.getBoundingClientRect().top,hd=todos.find(e=>e.matches('.vgl-hd,.vk-hd,.v2-cab,.sqdcp-head'))||hs.find(h=>h.tagName==='H2'&&!h.closest('.card,section.card,.vk-card,dialog')&&h.getBoundingClientRect().top-y0<260);
+  const y0=raiz.getBoundingClientRect().top,hd=todos.find(e=>e.matches('.vgl-hd,.vk-hd,.v2-cab,.sqdcp-head'))||hs.find(h=>/^H[12]$/.test(h.tagName)&&!h.closest('.card,section.card,.vk-card,dialog')&&h.getBoundingClientRect().top-y0<260);
   if(!hd)A('Cabeçalho','ajustar','Sem título de página no topo (h2 com subtítulo, antes dos cartões). O modelo abre com título + subtítulo (o que a página mostra) e as ações à direita; título de cartão não substitui o da página.');
   R.resumo.titulos=hs.length;
   /* 2 · tipografia */
@@ -91,9 +91,9 @@ function varrer(){
   if(arqs.length)A('Datas','ajustar','Campo de arquivo nativo visível ("Choose File / No file chosen" no Chrome em inglês). O kit troca por "Escolher arquivo" (vacCampos, comum/interface).',arqs.map(caminho));
   R.resumo.filtros=campos.length;
   /* 7 · gráficos */
-  const svgs=todos.filter(e=>e.tagName==='svg'&&e.getBoundingClientRect().width>200&&e.getBoundingClientRect().height>100);
+  const svgs=todos.filter(e=>e.tagName==='svg'&&e.getBoundingClientRect().width>200&&e.getBoundingClientRect().height>100&&!e.closest('.l3-cv,.mapa,[data-mapa]')&&!e.matches('.ov'));   /* desenho do mapa (Linha 360°) não é gráfico */
   const semTit=[],semUn=[];
-  for(const s of svgs){const card=s.closest('section.card')||s.closest('.card,.kpi,.vg-it')||s.parentElement;const h=card&&card.querySelector('h3,h4,header,:scope > .l');if(!h)semTit.push(caminho(s));const t=card?card.textContent:'';if(!/valores em|\b(min|un|mil|kg|%|h|R\$|US\$|€|caixas|peças)\b/i.test(t))semUn.push(h?txt(h):caminho(s));}
+  for(const s of svgs){const card=s.closest('section.card,section.panel')||s.closest('.card,.panel,.kpi,.vg-it')||s.parentElement;const h=card&&card.querySelector('h2,h3,h4,header,:scope > .l,[class*="tit"],[class*="ttl"],.ct,.sec-h');if(!h)semTit.push(caminho(s));const t=card?card.textContent:'';if(!/valores em|\b(min|un|mil|kg|%|h|R\$|US\$|€|caixas|peças)\b/i.test(t))semUn.push(h?txt(h):caminho(s));}
   if(semTit.length)A('Gráficos','ajustar','Gráfico sem cartão com título. Modelo: cartão com título (pergunta que o gráfico responde), linha "Valores em <unidade>" quando o eixo não traz a unidade, legenda e base zero.',semTit);
   if(semUn.length)A('Gráficos','revisar','Gráfico sem unidade visível no título, eixo ou linha "Valores em …".',semUn);
   R.resumo.graficos=svgs.length;
