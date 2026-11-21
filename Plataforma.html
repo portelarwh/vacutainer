@@ -1965,10 +1965,10 @@ const vacCabAba = (() => {
 const vacLimparFiltros = (() => {
   const TODOS = /^(todos|todas|todo|toda|qualquer|—|-|–)?$/i;
   const fire = c => { c.dispatchEvent(new Event('input', { bubbles: true })); c.dispatchEvent(new Event('change', { bubbles: true })); };
-  const campos = box => [...box.querySelectorAll('select,input[type=text],input[type=search],input:not([type])')].filter(c => !c.closest('.vdf,.dfield,.vac-mes') &amp;&amp; !c.disabled &amp;&amp; c.getClientRects().length);
+  const campos = box => [...box.querySelectorAll('select,input[type=text],input[type=search],input:not([type])')].filter(c => !c.closest('.vdf,.dfield,.vac-mes,table') &amp;&amp; !c.disabled &amp;&amp; c.getClientRects().length);   /* campo de tabela é lançamento, não filtro */
   function um(box) {
     if (box.dataset.vacLimpar || box.closest('dialog,.modal,.overlay,.mod-bg,.card.form,#gFilters')) return;
-    if (campos(box).length < 3) return;
+    const cs = campos(box); if (cs.length < 3 || !cs.some(c => c.tagName === 'SELECT')) return;   /* cartão de filtro tem ao menos uma lista de escolha */
     box.dataset.vacLimpar = '1';
     if ([...box.querySelectorAll('button,a')].some(b => /limpar/i.test(b.textContent))) return;
     const b = document.createElement('button'); b.type = 'button'; b.className = 'vac-limpar'; b.textContent = 'Limpar filtros'; b.title = 'Listas em Todos e busca em branco (o período continua)';
@@ -5010,6 +5010,7 @@ const CAD_SECS=['inicio','matriz','importar','auditoria','backups','seguranca','
    curtas (macro, sem detalhe técnico). REGRA: toda versão nova da plataforma ganha uma entrada aqui, a mais recente primeiro
    (AGENTS.md e CLAUDE.md). Tipos: nova (função nova), melhoria (algo que já existia ficou melhor), correcao (erro corrigido). */
 const NOVIDADES=[
+ {v:'1.8.42',d:'2026-11-21',itens:[['melhoria','Paradas › Pareto: o gráfico ganha título com a dimensão escolhida.'],['correção','"Limpar filtros" só aparece em cartões de filtro com lista de escolha e nunca mexe em campos de tabela de lançamento.']]},
  {v:'1.8.41',d:'2026-11-21',itens:[['melhoria','Todas as páginas no mesmo padrão: cada aba abre com título e subtítulo, e os títulos ficam em caixa de frase, como no guia da marca.'],['melhoria','Cartões de filtro ganham "Limpar filtros", que volta as listas para Todos e apaga a busca (o período continua).'],['melhoria','Gestão de Gel com a fonte da marca; botões de Importar e textos pequenos ajustados nas Importações e na Reunião diária.']]},
  {v:'1.8.40',d:'2026-11-21',itens:[['melhoria','Waste no padrão da Produção: todas as abas abrem com título e subtítulo, as seções da Visão geral não são mais numeradas e os botões Abrir de Relatórios ficaram iguais.'],['correção','Em todas as páginas, o mês aparece em português ("Novembro de 2026") e o campo de arquivo mostra "Escolher arquivo" (antes podiam sair em inglês).'],['melhoria','O ícone de ajuda "i" usa a fonte da marca, e os links seguem a cor da marca em todas as páginas.']]},
  {v:'1.8.39',d:'2026-11-21',itens:[['melhoria','Produção: Paradas, Resultados, Plano do mês, Relatórios, Ordens e lotes e Pendências abrem com título e subtítulo, como a Visão geral.'],['melhoria','Paradas e Resultados usam o mesmo filtro da Visão geral, com Limpar filtros e o resumo do recorte; Semana, Mês e Ano fiscal ficam em Personalizado.'],['correção','O mês do Plano do mês e dos Relatórios aparece em português (antes podia sair em inglês).'],['melhoria','SQDCP com as cores das categorias da empresa: Segurança verde, Qualidade azul, Entrega laranja, Custo amarelo e Pessoas cinza; Prévia / Imprimir passa a botão secundário.'],['melhoria','Botões de escolha, calendário e textos pequenos ficaram maiores; links e cores seguem a marca.']]},
@@ -32281,7 +32282,7 @@ const MATRIZ_PROPOSTA={"OUT": ["Tullip A", "Tullip B", "Packout", "Metro", "Cap 
    PARADAS · núcleo (pasta, base, fila de gravação, backups, cadastro, utilidades)
    ===================================================================================== */
 const PAGE={id:'paradas',titulo:'Paradas · Análise de falhas e paradas de máquina',tituloCurto:'Paradas',subtitulo:'Análise de falhas e paradas de máquina',
-  versao:'1.2.18',estado:'atualizacao',estadoNota:"Matriz, componentes e limite de microparada passam a vir só da Administração; eventos da Produção entram como sugestão.",baseFile:'paradas-base.json',backupDir:'00. Backups/Paradas',busca:q=>buscaPagina(q)};
+  versao:'1.2.19',estado:'atualizacao',estadoNota:"Matriz, componentes e limite de microparada passam a vir só da Administração; eventos da Produção entram como sugestão.",baseFile:'paradas-base.json',backupDir:'00. Backups/Paradas',busca:q=>buscaPagina(q)};
 const APP_VERSION=PAGE.versao;
 const CAD_FILE='vacutainer-cadastros.json',OEE_FILE='oee-vacutainer-base.json';
 const $=(s,r=document)=>r.querySelector(s),$$=(s,r=document)=>[...r.querySelectorAll(s)];
@@ -33332,7 +33333,7 @@ VIEWS.pareto={dim:'codigo',med:'min',html(){const all=F.apply(eventosTodos()).fi
  <div class="card pux-pctl"><div class="pux-pg"><span class="pux-pl">Dimensão</span><div class="seg pux-seg" id="pDim" role="group" aria-label="Dimensão do Pareto">${Object.entries(K).map(([k,v])=>`<button data-d="${k}" class="${this.dim===k?'on':''}" aria-pressed="${this.dim===k}">${v[0]}</button>`).join('')}</div></div>
  <div class="pux-pg"><span class="pux-pl">Medida</span><div class="seg" id="pMed" role="group" aria-label="Medida"><button data-m="min" class="${this.med==='min'?'on':''}" aria-pressed="${this.med==='min'}">Minutos</button><button data-m="n" class="${this.med==='n'?'on':''}" aria-pressed="${this.med==='n'}">Ocorrências</button></div></div>
  <div class="pux-pg"><span class="pux-pl">Referência</span><button type="button" class="b sm${r80?' on':''}" id="pRef80" aria-pressed="${r80}" title="Marca onde o % acumulado passa de 80 % (regra de Pareto). É só referência, não é meta.">${r80?'✓ ':''}Linha de 80 %</button></div></div>
- <div class="card" id="pCh"><div class="pux-leg"><span><i class="pux-lb"></i>${esc(nm)} · ${med} (${this.med==='min'?'h ou min':'ocorrências'})</span><span><i class="pux-la"></i>% acumulado</span>${r80?'<span><i class="pux-l8"></i>referência de 80 %</span>':''}<span class="muted">${n0(G.length)} ${G.length===1?'item':'itens'}${G.length>25?' · os 25 maiores':''}</span></div>
+ <div class="card" id="pCh"><h3 class="pux-tit">Pareto por ${esc(String(nm).toLowerCase())}</h3><div class="pux-leg"><span><i class="pux-lb"></i>${esc(nm)} · ${med} (${this.med==='min'?'h ou min':'ocorrências'})</span><span><i class="pux-la"></i>% acumulado</span>${r80?'<span><i class="pux-l8"></i>referência de 80 %</span>':''}<span class="muted">${n0(G.length)} ${G.length===1?'item':'itens'}${G.length>25?' · os 25 maiores':''}</span></div>
  ${hbars(G.slice(0,25).map(g=>({k:g.k,label:lf(g.k),v:this.med==='min'?g.min:g.n,n:g.n,color:cf?cf(g.k):undefined})),{pareto:1,onClick:1,sel,w:900,lw:330,fmt:this.med==='min'?fmtMin:n0,unit:this.med==='min'?null:'ocorrências',ref80:r80,total:G.reduce((s,g)=>s+g[this.med],0)})}</div>
  ${sel?`<div class="pux-selbar"><span class="pux-sl">Seleção</span><b>${esc(lf(sel))}</b><span class="muted">${n0(L.length)} paradas · ${fmtMin(L.reduce((s,e)=>s+e.minutos,0))}</span><span class="sp"></span><button class="b sm pri" id="pAcao">+ Ação</button>${typeof vacNovaAcaoBotao==='function'?vacNovaAcaoBotao(acaoPlanner('pareto',this.dim,sel,lf(sel),L)):''}<button class="b sm" id="pClr">Limpar seleção</button></div><div class="mt">${tabela(colsEv(),L,{id:'pTab',clk:1,max:300})}</div>`:`<p class="pux-dica muted small">Clique numa barra para ver as paradas daquele item e abrir uma ação.</p>`}`},
  wire(){$$('#pDim button').forEach(b=>b.onclick=()=>{this.dim=b.dataset.d;App.sel.par=null;App.render()});$$('#pMed button').forEach(b=>b.onclick=()=>{this.med=b.dataset.m;App.render()});
@@ -39210,70 +39211,70 @@ body.vac-porta{overflow:hidden}
       "id": "oee",
       "path": "Plataforma.html#motor/oee",
       "version": "2.6.31",
-      "sha256": "a809c1675bb44733747f2772d14898abd2bc9ebde0418c585e0710364a7176d2",
-      "bytes": 2378199
+      "sha256": "54c8065613b91c5e2374c68fb37374ddaf3027734cf566321aa28e637a8cfb6f",
+      "bytes": 2378373
     },
     {
       "id": "perdas",
       "path": "Plataforma.html#motor/perdas",
       "version": "1.12.18",
-      "sha256": "58651ed927d9f830e697a12ba9afe639463a97322f3f30d690ee0c7a7890d86c",
-      "bytes": 954245
+      "sha256": "61c7dea4b95efe6fc565353e531c87cf6be015c124b520fa7d3195f153dbc093",
+      "bytes": 954419
     },
     {
       "id": "gel",
       "path": "Plataforma.html#motor/gel",
       "version": "2.43",
-      "sha256": "9b9ad99ba3a6281a47c72186b9dc2fbc0fd2684498ec19613dd18e4872b1144c",
-      "bytes": 1652846
+      "sha256": "ac74673464bc5ea7ebda516fe2741693fc01113206aa2f3b055ad321c6daed2c",
+      "bytes": 1653020
     },
     {
       "id": "paradas",
       "path": "Plataforma.html#motor/paradas",
-      "version": "1.2.18",
-      "sha256": "10eea02e9d38595dda2117c7c4fa474252b5d86dfe44a4ebae69c79d7bb63cfb",
-      "bytes": 924854
+      "version": "1.2.19",
+      "sha256": "df557c25d75347f7d224d0f8f3e68decae2c31522a65ad101779e832c7b11188",
+      "bytes": 925096
     },
     {
       "id": "equip",
       "path": "Plataforma.html#motor/equip",
       "version": "1.0.20",
-      "sha256": "d8a7c7328b369aac1bbc03bda0473e49ef5a24ee8834770c5f12bf97749e293b",
-      "bytes": 708587
+      "sha256": "56873dc98c7ff0d305e0aacedf3b37f2721bac95ff08f8a19a4410e698dc4c56",
+      "bytes": 708761
     },
     {
       "id": "inic",
       "path": "Plataforma.html#motor/inic",
       "version": "1.1.16",
-      "sha256": "ff69e5cdaacb6ee6cd5b54890f8e8f26b83b05b1160eca1d3ea97a11451523bf",
-      "bytes": 730123
+      "sha256": "f754c23e4e1c5149148a9ed3bc763f708858ecd0a2222887745344ae244c7888",
+      "bytes": 730297
     },
     {
       "id": "linha",
       "path": "Plataforma.html#motor/linha",
       "version": "1.4.0",
-      "sha256": "83e1f372850c30857859c71c1489725ffa41c082348ab3485f93e159eb6285ef",
-      "bytes": 911882
+      "sha256": "cf34b7418686f35adbf813035f1c78919bc07db814263acc5faac3af2639d91d",
+      "bytes": 912056
     },
     {
       "id": "projetos",
       "path": "Plataforma.html#motor/projetos",
       "version": "0.1.16",
-      "sha256": "ad0e47e3229b954785a5851e53b7f3bce532a7bf8da05162628b70fbbfe07d9c",
-      "bytes": 648527
+      "sha256": "7c4543f852cb32d86e33c52ad09eeee5c8bbfbce9a19b17a137fb15d4269940f",
+      "bytes": 648701
     },
     {
       "id": "portal",
       "path": "Plataforma.html#motor/portal",
       "version": "1.9.64",
-      "sha256": "8c1c1d38507fd00abeb0f8a6f8d8275654431977b6d248870e6ff8611c9c74e5",
-      "bytes": 1283633
+      "sha256": "e5644455a4ecba10d0f28a241ce8e4bb54e300a5f48518183510fc61125981f1",
+      "bytes": 1284070
     }
   ],
   "limitations": [
     "Projetos e conteúdo técnico OSM/MES/AM/TPM mantêm os limites documentados nas fontes."
   ],
-  "enginesSha256": "ff10f48cf3d914ce2d6283ca8854b669fcac0902011170b9f2fc57ca408cb309",
+  "enginesSha256": "07cadace321bb2f2b5cf48d1eed8812695c3420a4161ef19108c7493c9c495b2",
   "originRevision": "ffc9ee8",
   "sourceMode": "single-html",
   "originEnginesSha256": "a87a64ad0c328f70e102b2ae888790a9b5d5a9bd05778652a7ce7cae140e40d2"
@@ -39343,7 +39344,7 @@ summary{cursor:pointer;font-weight:600;color:var(--navy)}
 'use strict';
 /* ---------- referência (atualizar quando a plataforma mudar de versão) ---------- */
 // Iguais às do pacote da plataforma (nova-plataforma/src/generated/manifest.json); o teste ferramenta-verificar confere.
-const VERSOES = {"oee":"2.6.31","perdas":"1.12.18","gel":"2.43","paradas":"1.2.18","equip":"1.0.20","inic":"1.1.16","linha":"1.4.0","projetos":"0.1.16","portal":"1.9.64"};
+const VERSOES = {"oee":"2.6.31","perdas":"1.12.18","gel":"2.43","paradas":"1.2.19","equip":"1.0.20","inic":"1.1.16","linha":"1.4.0","projetos":"0.1.16","portal":"1.9.64"};
 const BASES = [
  { arq: 'vacutainer-cadastros.json', mod: 'portal', nome: 'Cadastro geral (Portal)', obrig: true, cadastro: true, bk: 'Cadastros' },
  { arq: 'portal-base.json', mod: 'portal', nome: 'Portal', obrig: true, bk: 'Portal' },
@@ -39934,7 +39935,7 @@ import { Icon, Button, Badge, Empty, Modal, BarChart, BrandLogo, CommandMenu } f
 import { ModuleFrame } from "vac:modulo/components/ModuleFrame";
 import manifest from "vac:recurso/manifesto";
 import { ModuleTabs } from "vac:modulo/components/ModuleTabs";
-const VERSION = "1.8.41";
+const VERSION = "1.8.42";
 /* Navegação 1.3.0 (16/11/2026): Visão da linha, Relatórios e Importações têm abas; as que mostram uma tela do
    Portal (motor da Administração) trazem o 3º campo com a aba dele. Administração fica só com cadastros e configuração. */
 const SHELL_TABS = {
