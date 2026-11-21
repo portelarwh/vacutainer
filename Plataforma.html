@@ -3998,7 +3998,7 @@ function wireConfigComum(){$('#cPasta').onclick=async()=>{if(await Store.pick())
         entrar pelo ID (autocadastro como Consulta); página inicial por perfil (1x por sessão); vigência gravada não se edita (desativar com motivo); painel de vigências; semáforo central; saída do modo de teste.
    1.1.2: aviso da carga diz qual base foi lida.  1.5: páginas Paradas, Máquinas, Manutenção e Projetos na lista (aparecem quando o HTML chega na pasta).  1.4: lista técnica pela CS12 multinível (itens = nível 1, estrutura = níveis 2+); CS03 sai.  1.3: cabeçalho comum (vac-cabecalho v2: barra do sistema + página + abas), busca Ctrl K, acabamento V1.90, Versões com cabeçalho e último backup.  1.2: Configuração › Versões das páginas (versão e data de cada HTML, gravação das bases, cópias repetidas, histórico).
    ===================================================================== */
-const PAGE={id:'portal',titulo:"Administração · Linha Vacutainer",tituloCurto:"Administração",subtitulo:'Sistemas de gestão da linha',versao:'1.9.57',baseFile:'portal-base.json',idb:'vac-portal',backupDir:'00. Backups/Portal',
+const PAGE={id:'portal',titulo:"Administração · Linha Vacutainer",tituloCurto:"Administração",subtitulo:'Sistemas de gestão da linha',versao:'1.9.58',baseFile:'portal-base.json',idb:'vac-portal',backupDir:'00. Backups/Portal',
  vazio:()=>({schema:'portal-base',rev:0,config:{modulos:{},avisoDias:30,notas:{}},audit:[]}),
  /* itens do Portal para a busca Ctrl K: cadastro, pendências e telas */
  busca:q=>{const R=[],D=Cad.D;if(D)for(const t of CAD_ORD){for(const it of D[t]||[]){const c=String(it[kOf(t)]),nm=t==='bom'?((cadItem('catalogos',it.catalogo)||{}).nome||''):it.nome||'';if(norm(c+' '+nm).includes(q))R.push({tipo:CAD_T[t].um,txt:c+(nm?' · '+nm:''),sub:'Cadastros'+(cadAtivo(t,it,D)?'':' · inativo'),href:'#cadastros/'+t+'/'+encodeURIComponent(c)});if(R.length>30)break}}
@@ -4877,6 +4877,9 @@ const CAD_SECS=['inicio','matriz','importar','auditoria','backups','seguranca','
    curtas (macro, sem detalhe técnico). REGRA: toda versão nova da plataforma ganha uma entrada aqui, a mais recente primeiro
    (AGENTS.md e CLAUDE.md). Tipos: nova (função nova), melhoria (algo que já existia ficou melhor), correcao (erro corrigido). */
 const NOVIDADES=[
+ {v:'1.8.35',d:'2026-11-21',itens:[['nova','Lançamento: escolha Hora a hora ou Por turno; no modo Por turno cada turno mostra a produção do turno e as paradas.'],
+  ['melhoria','Scrap Por turno ou Diário: trocar de modo não apaga nada; o valor do outro modo fica guardado e só deixa de contar.'],
+  ['melhoria','Hora extra aparece como selo no topo do turno (ex.: "Hora extra 05:00–06:00").']]},
  {v:'1.8.34',d:'2026-11-21',itens:[['nova','Validação do Lançamento: cada aviso tem um botão que leva ao lugar do ajuste (turno, hora, parada, catálogo, abono ou Metas de OEE).'],
   ['melhoria','Os avisos de cobertura, divergência e Performance mostram a conta, por exemplo "Cobertura 82% = 41 min ÷ 50 min; mínimo 95%".']]},
  {v:'1.8.33',d:'2026-11-21',itens:[['melhoria','Lançamento: cabeçalho do dia numa linha, com a data, a situação do dia, Fechar dia e o menu ⋮ Mais ações.'],
@@ -7774,7 +7777,7 @@ function tipoParadaOpts(codes, sel) {
   const cats = [...new Set(codes.map(c => c.category || 'Sem categoria'))];
   return cats.map(cat => `<optgroup label="${esc(cat)}">${codes.filter(c => (c.category || 'Sem categoria') === cat).map(c => `<option value="${c.id}" ${sel === c.id ? 'selected' : ''}>${esc(c.code + ' · ' + c.name)}</option>`).join('')}</optgroup>`).join('');
 }
-const APP_VERSION = '2.6.25';   /* 2.6.25 · LANC-03 etapa c (item 9): Validação com Ir para o ajuste e a conta de cada aviso */   /* 2.6.24 · LANC-03 etapa b (itens 1, 2 e 7): cabeçalho do dia numa linha, menu ⋮ Mais ações e rodapé */   /* 2.6.23 · LANC-03 (itens 0 e 1.1): ordem e rótulos das abas da imagem, Modo TV e Resumo do dia recolhível */   /* 2.6.22 · LANC-04: Config. › Abas na plataforma (destaque, selo, aba inicial) e Frequência × duração redesenhado na largura do cartão */   /* 2.6.21 · TUR-07: turno que passa da meia-noite dividido no total diário (depois de 00:00 → dia seguinte; scrap proporcional à produção, paradas sem horário ao tempo) */   /* 2.6.20 · HEX-01: "Houve hora extra?" no cartão do turno (até 60 min antes do início ou depois do fim) */   /* 2.6.19 · TUR-06: produção no turno não produtivo pela meia-noite (antes → turno anterior; depois → próximo) desde 01/11/2026; aviso de hora extra */   /* 2.6.18 · PAR-CAT: tipo de parada por categoria e com busca nas sugestões do servidor, na importação de paradas e no turno sem produção */   /* 2.6.17 · SRV-DIA: dia sem lançamento com produção do servidor: aviso e abrir o dia com os dados */   /* 2.6.16 · TUR-05: dia em aberto passa ao horário vigente do turno; PAR-BUSCA: tipo de parada por texto */   /* 2.6.15 · REL-01: gel no relatório/e-mail do dia e do turno; Enviar relatório na janela do dia */   /* 2.6.14 · GEL-07: Relatório do Gel e Perdas de gel (turno com gel e Relatórios) */   /* 2.6.13 · GEL-06: Scrap gel no detalhe do turno */   /* 2.6.12 · TUR-04: turno com horário diferente no sábado (linhas por dia da semana) */   /* 2.6.11 · abas agrupadas: Ordens e lotes, Resultados, Paradas */   /* 2.6.10 · Lançamento sem turno aberto por padrão; abas visíveis na casca */   /* 2.6.9 · LANC-02: Lançamento unificado (hora a hora no detalhe do turno, 3º turno ao lado, Problemas de QN) */   /* 2.6.5 · IMP-01: contagens das importações nos exports */   /* 2.6.4 · semáforo só pelas faixas configuradas (verde acima de 100% vale) */   /* 2.6.2 · gráficos e números com meta seguem o semáforo de três cores (verde, amarelo, vermelho) */   /* 2.6.1 · gráficos: turno lançado pelo total com o nome do turno no eixo; janelas: rótulo e valor em tamanho de texto */   /* 2.6.0 · produção total do turno (sem hora a hora; períodos na troca de catálogo), aviso do servidor para turno lançado pelo total e para dia com produção apontada */
+const APP_VERSION = '2.6.26';   /* 2.6.26 · LANC-03 etapa d (itens 3, 5 e 6): pílulas Hora a hora / Por turno e Scrap Por turno / Diário, selo de hora extra */   /* 2.6.25 · LANC-03 etapa c (item 9): Validação com Ir para o ajuste e a conta de cada aviso */   /* 2.6.24 · LANC-03 etapa b (itens 1, 2 e 7): cabeçalho do dia numa linha, menu ⋮ Mais ações e rodapé */   /* 2.6.23 · LANC-03 (itens 0 e 1.1): ordem e rótulos das abas da imagem, Modo TV e Resumo do dia recolhível */   /* 2.6.22 · LANC-04: Config. › Abas na plataforma (destaque, selo, aba inicial) e Frequência × duração redesenhado na largura do cartão */   /* 2.6.21 · TUR-07: turno que passa da meia-noite dividido no total diário (depois de 00:00 → dia seguinte; scrap proporcional à produção, paradas sem horário ao tempo) */   /* 2.6.20 · HEX-01: "Houve hora extra?" no cartão do turno (até 60 min antes do início ou depois do fim) */   /* 2.6.19 · TUR-06: produção no turno não produtivo pela meia-noite (antes → turno anterior; depois → próximo) desde 01/11/2026; aviso de hora extra */   /* 2.6.18 · PAR-CAT: tipo de parada por categoria e com busca nas sugestões do servidor, na importação de paradas e no turno sem produção */   /* 2.6.17 · SRV-DIA: dia sem lançamento com produção do servidor: aviso e abrir o dia com os dados */   /* 2.6.16 · TUR-05: dia em aberto passa ao horário vigente do turno; PAR-BUSCA: tipo de parada por texto */   /* 2.6.15 · REL-01: gel no relatório/e-mail do dia e do turno; Enviar relatório na janela do dia */   /* 2.6.14 · GEL-07: Relatório do Gel e Perdas de gel (turno com gel e Relatórios) */   /* 2.6.13 · GEL-06: Scrap gel no detalhe do turno */   /* 2.6.12 · TUR-04: turno com horário diferente no sábado (linhas por dia da semana) */   /* 2.6.11 · abas agrupadas: Ordens e lotes, Resultados, Paradas */   /* 2.6.10 · Lançamento sem turno aberto por padrão; abas visíveis na casca */   /* 2.6.9 · LANC-02: Lançamento unificado (hora a hora no detalhe do turno, 3º turno ao lado, Problemas de QN) */   /* 2.6.5 · IMP-01: contagens das importações nos exports */   /* 2.6.4 · semáforo só pelas faixas configuradas (verde acima de 100% vale) */   /* 2.6.2 · gráficos e números com meta seguem o semáforo de três cores (verde, amarelo, vermelho) */   /* 2.6.1 · gráficos: turno lançado pelo total com o nome do turno no eixo; janelas: rótulo e valor em tamanho de texto */   /* 2.6.0 · produção total do turno (sem hora a hora; períodos na troca de catálogo), aviso do servidor para turno lançado pelo total e para dia com produção apontada */
 const SCHEMA_VERSION = 1;
 const BASE_FILE = 'oee-vacutainer-base.json';
 const BACKUP_DIR = '00. Backups';
@@ -8508,7 +8511,7 @@ const Engine = (() => {
     if (!day || day.deleted) return null;
     const live = day.shifts.filter(p => !p.deleted);
     const good = sum(live, p => sum(p.intervals.filter(i => !i.deleted), i => +i.good || 0) + (p.summary ? sum(p.summary.segments || [], g => +g.good || 0) : 0));
-    const scrap = sum(live, p => +p.scrap || 0) + (+day.scrapDay || 0);
+    const scrap = day.scrapMode === 'day' ? (+day.scrapDay || 0) : sum(live, p => +p.scrap || 0);   /* LANC-03: só o do modo atual (o outro fica guardado) */
     const evs = (day.events || []).filter(e => !e.deleted &amp;&amp; !e.auto).length;
     const np = live.filter(p => p.off &amp;&amp; p.offType === 'np').length;
     const shiftsWithProd = live.filter(p => p.intervals.some(i => !i.deleted &amp;&amp; +i.good > 0) || (p.summary &amp;&amp; (p.summary.segments || []).some(g => g.good > 0))).map(p => p.snap.name);
@@ -9129,19 +9132,36 @@ const Actions = (() => {
     Store.mutate((db, audit) => { const d = dayById(db, dayId); assertEditable(d); const b = d.status; d.status = status; touch(d); audit({ action: 'edição', entity: 'dia', entityId: d.id, field: 'status', before: b, after: status }); });
   }
   // troca do modo de scrap: mostra o impacto antes e nunca duplica valores
+  /* LANC-03 (item 5, decisão do responsável, 20/11/2026) · trocar o modo do scrap não apaga nada: o valor do outro modo fica guardado e só
+     deixa de contar (a conta do dia já lê só o do modo atual: Engine, scrapMode). Ao passar para Diário com o total do dia vazio, a soma
+     dos turnos é sugerida, sempre com confirmação. Voltar ao modo anterior traz os valores de volta. */
   function scrapModeImpact(day, mode) {
     if (mode === day.scrapMode) return null;
-    if (mode === 'day') { const s = day.shifts.filter(p => p.scrap != null); return s.length ? { msg: `Os valores de scrap por turno (${s.map(p => p.snap.name + ': ' + U.fmt(p.scrap)).join(', ')}) serão somados no total diário (${U.fmt(U.sum(s, p => p.scrap))}) e os campos por turno ficarão bloqueados.`, total: U.sum(s, p => p.scrap) } : null; }
-    return day.scrapDay != null ? { msg: `O total diário de scrap (${U.fmt(day.scrapDay)}) não pode ser dividido automaticamente entre os turnos. Ele será removido e o scrap deverá ser informado em cada turno.` } : null;
+    const s = day.shifts.filter(p => !p.deleted &amp;&amp; p.scrap != null), lista = s.map(p => p.snap.name + ': ' + U.fmt(p.scrap)).join(', ');
+    if (mode === 'day') return { msg: day.scrapDay != null
+        ? `Passa a contar o scrap diário guardado (${U.fmt(day.scrapDay)} peças).${s.length ? ` Os valores por turno (${lista}) ficam guardados e deixam de contar.` : ''}`
+        : s.length ? `O scrap diário vem preenchido com a soma dos turnos (${U.fmt(U.sum(s, p => p.scrap))} peças). Os valores por turno (${lista}) ficam guardados e deixam de contar.` : 'Informe o scrap do dia no campo "Scrap do dia".',
+      total: day.scrapDay == null &amp;&amp; s.length ? U.sum(s, p => p.scrap) : null };
+    return { msg: `Passa a contar o scrap de cada turno${s.length ? ` (${lista})` : ' (ainda sem valores)'}.${day.scrapDay != null ? ` O scrap diário (${U.fmt(day.scrapDay)} peças) fica guardado e deixa de contar.` : ''}` };
   }
   function setScrapMode(dayId, mode) {
     Store.mutate((db, audit) => {
       const d = dayById(db, dayId); assertEditable(d);
       const before = d.scrapMode; if (before === mode) return;
-      if (mode === 'day') { const s = d.shifts.filter(p => p.scrap != null); if (s.length) d.scrapDay = U.sum(s, p => p.scrap); d.shifts.forEach(p => p.scrap = null); }
-      else { d.scrapDay = null; }
+      if (mode === 'day' &amp;&amp; d.scrapDay == null) { const s = d.shifts.filter(p => !p.deleted &amp;&amp; p.scrap != null); if (s.length) { d.scrapDay = U.sum(s, p => p.scrap); audit({ action: 'edição', entity: 'dia', entityId: d.id, field: 'scrapDay', before: null, after: d.scrapDay, reason: 'soma dos turnos sugerida ao passar para Diário' }); } }
       d.scrapMode = mode; touch(d);
       audit({ action: 'edição', entity: 'dia', entityId: d.id, field: 'scrapMode', before, after: mode });
+    });
+  }
+  /* LANC-03 (item 3) · modo de lançamento do dia: 'hh' (padrão, sem a propriedade) ou 'turno'. Só muda a tela: os dados lançados
+     continuam onde estão (horas ou total do turno) e contam como antes. Fica na auditoria. */
+  function setModoLanc(dayId, modo) {
+    if (!['hh', 'turno'].includes(modo)) throw new Error('Modo de lançamento inválido.');
+    Store.mutate((db, audit) => {
+      const d = dayById(db, dayId); assertEditable(d);
+      const before = d.modoLanc || 'hh'; if (before === modo) return;
+      if (modo === 'hh') delete d.modoLanc; else d.modoLanc = modo; touch(d);
+      audit({ action: 'edição', entity: 'dia', entityId: d.id, field: 'modoLanc', before, after: modo });
     });
   }
   function deleteDay(dayId, reason) {
@@ -10049,7 +10069,7 @@ const Actions = (() => {
     });
   }
 
-  return { shiftScheduleDiff, applyShiftSchedule, setShiftSQDCP, setSQDCPVaga, setSQDCPP, setSQDCPManual, createDay, setDayField, setDayStatus, scrapModeImpact, setScrapMode, deleteDay, setShiftField, setIv, editIntervalTimes, splitInterval, addInterval, deleteInterval, restoreDefaultIntervals, lancarTotal, voltarHoraAHora, reapplyTargets, validateEvent, saveEvent, deleteEvent, saveAbono, setShiftOff, setGoods, closingCheck, submitShift, returnShift, closeShift, closeDay, reopen, upsertConfig, setStatusConfig, endTarget, setSettings, importTargets, importRelatorio, importParadas, logExport, loadDemo, removeDemo, impactSnap, planLocked, savePlan, setPlanDay, setDayOff, startProduction, moveDay, setPlanWorkdays, importPlans, setPlanOrder, fillOrdersFromProduction, acceptOrderApurado, savePanelView, deletePanelView, saveReportNote };
+  return { shiftScheduleDiff, applyShiftSchedule, setShiftSQDCP, setSQDCPVaga, setSQDCPP, setSQDCPManual, createDay, setDayField, setDayStatus, scrapModeImpact, setScrapMode, setModoLanc, deleteDay, setShiftField, setIv, editIntervalTimes, splitInterval, addInterval, deleteInterval, restoreDefaultIntervals, lancarTotal, voltarHoraAHora, reapplyTargets, validateEvent, saveEvent, deleteEvent, saveAbono, setShiftOff, setGoods, closingCheck, submitShift, returnShift, closeShift, closeDay, reopen, upsertConfig, setStatusConfig, endTarget, setSettings, importTargets, importRelatorio, importParadas, logExport, loadDemo, removeDemo, impactSnap, planLocked, savePlan, setPlanDay, setDayOff, startProduction, moveDay, setPlanWorkdays, importPlans, setPlanOrder, fillOrdersFromProduction, acceptOrderApurado, savePanelView, deletePanelView, saveReportNote };
 })();
 
 
@@ -12188,10 +12208,13 @@ App.views.launch = {
           ${grupo('con', 'Consulta', [mi('dHist', 'Histórico de alterações<small>' + esc(alt) + '</small>')])}
           ${grupo('risco', 'Zona de risco', [editavel &amp;&amp; mi('dDel', 'Excluir dia', 'title="Marca o lançamento deste dia como excluído (exclusão lógica, com motivo)"')], true)}
         </div></div></header>
+      <div class="cab2-pil">
+        <div class="f"><span id="pilLancT">Lançamento ${ib('modoLanc')}</span><div class="seg" role="group" aria-labelledby="pilLancT">${[['hh', 'Hora a hora'], ['turno', 'Por turno']].map(([k, l]) => `<button type="button" data-modolanc="${k}" aria-pressed="${(day.modoLanc || 'hh') === k}" ${lk ? 'disabled' : ''}>${l}</button>`).join('')}</div></div>
+        <div class="f"><span id="pilScrapT">Scrap ${ib('scrapMode')}</span><div class="row"><div class="seg" role="group" aria-labelledby="pilScrapT">${[['shift', 'Por turno'], ['day', 'Diário']].map(([k, l]) => `<button type="button" data-scrapmode="${k}" aria-pressed="${day.scrapMode === k}" ${lk ? 'disabled' : ''}>${l}</button>`).join('')}</div>
+          ${day.scrapMode === 'day' ? `<label class="cab2-sd"><span>Scrap do dia</span><input type="text" inputmode="decimal" class="n" style="width:110px" data-dayscrap value="${day.scrapDay == null ? '' : day.scrapDay}" placeholder="peças" aria-label="Scrap do dia (peças)" ${lk ? 'disabled' : ''} data-fk="d-scrap"></label>` : ''}</div></div>
+      </div>
       <div class="form">
         ${day.scrapMode === 'day' ? `<label class="f"><span>Responsável pelo reporte ${ib('responsible')}</span><input type="text" data-dayf="responsible" value="${esc(day.responsible || '')}" maxlength="60" data-fk="d-resp"></label>` : ''}
-        <div class="f"><span>Scrap ${ib('scrapMode')}</span><div class="row"><div class="seg">${[['shift', 'Por turno'], ['day', 'Total diário']].map(([k, l]) => `<button type="button" data-scrapmode="${k}" aria-pressed="${day.scrapMode === k}" ${lk ? 'disabled' : ''}>${l}</button>`).join('')}</div>
-          ${day.scrapMode === 'day' ? `<input type="text" inputmode="decimal" class="n" style="width:110px" data-dayscrap value="${day.scrapDay == null ? '' : day.scrapDay}" placeholder="peças" aria-label="Scrap diário (peças)" ${lk ? 'disabled' : ''} data-fk="d-scrap">` : ''}</div></div>
         <label class="f wide"><span>Observação geral</span><textarea data-dayf="note" maxlength="2000" data-fk="d-note">${esc(day.note || '')}&lt;/textarea></label>
         ${gaps.length || day.gapJustification ? `<label class="f wide"><span>Justificativa da lacuna entre intervalos ${ib('gap')} ${gaps.length &amp;&amp; !day.gapJustification ? '<b class="ferr">(obrigatória para fechar)</b>' : ''}</span><input type="text" data-dayf="gapJustification" value="${esc(day.gapJustification || '')}" maxlength="300" data-fk="d-gap"></label>` : ''}
       </div>
@@ -12222,7 +12245,7 @@ App.views.launch = {
     h += `<section class="card section"><header><h3>Validação</h3>${errs ? semB('crit', errs + ' erro(s)') : semB('ok', 'sem erros')} ${alerts ? semB('warn', alerts + ' alerta(s)') : ''}</header>${msgList(res.msgs, 40, { ajuste: true, r, res })}</section>`;
     h += `<div class="section">${oeePanel(r, 'Cascata de perdas do dia')}</div><div class="section">${qaPanel(r, { ajuste: true, res })}</div>`;
     /* LANC-03 (item 7) · rodapé: situação da gravação à esquerda e Abrir hora a hora à direita (o botão saiu do cabeçalho: cada ação num lugar só) */
-    h += `<footer class="lc-rodape"><span id="lcSalvo" role="status">${esc(CabDia.salvo())}</span><span class="spacer"></span><button class="btn" data-hhps="" title="Hora a hora de todos os turnos do dia">Abrir hora a hora ${I.chevR}</button></footer>`;
+    h += `<footer class="lc-rodape"><span id="lcSalvo" role="status">${esc(CabDia.salvo())}</span><span class="spacer"></span>${(day.modoLanc || 'hh') === 'hh' ? `<button class="btn" data-hhps="" title="Hora a hora de todos os turnos do dia">Abrir hora a hora ${I.chevR}</button>` : ''}</footer>`;
     return h;
   },
   mount(root) {
@@ -12239,6 +12262,15 @@ App.views.launch = {
     TurnoUI.ligar(root, day);
     SrvUI.bindDay(root, day); ForaTurnoUI.mount(root, day); GelTurno.mount(root, day, Engine.computeDay(db(), day)); TurnoCard.ligar(root, day); LancV2.montar(root, day);
     root.querySelectorAll('[data-dayf]').forEach(el => el.addEventListener('change', () => run(() => Actions.setDayField(day.id, el.dataset.dayf, el.value.trim()))));
+    root.querySelectorAll('[data-modolanc]').forEach(b => b.addEventListener('click', async () => {   /* LANC-03 (item 3) */
+      const m = b.dataset.modolanc; if (m === (day.modoLanc || 'hh')) return;
+      const comHoras = day.shifts.filter(p => !p.off &amp;&amp; !p.summary &amp;&amp; !(typeof TotalTurno !== 'undefined' &amp;&amp; TotalTurno.ehTotal(p)) &amp;&amp; p.intervals.some(i => !i.deleted &amp;&amp; i.good != null)).map(p => p.snap.name);
+      const comTotal = day.shifts.filter(p => typeof TotalTurno !== 'undefined' &amp;&amp; TotalTurno.ehTotal(p)).map(p => p.snap.name);
+      const msg = m === 'turno' ? `Cada turno mostra o campo "Produção do turno" e as paradas do turno; o hora a hora fica oculto.${comHoras.length ? ` ${comHoras.join(' e ')} já tem produção por hora: ela continua e conta como antes (para lançar só o total, apague as horas).` : ''} Nada é apagado.`
+        : `Cada turno volta a mostrar o hora a hora.${comTotal.length ? ` ${comTotal.join(' e ')} foi lançado pelo total: o total continua e conta como antes (para voltar às horas, use "Voltar ao hora a hora" no turno).` : ''} Nada é apagado.`;
+      if (!(await confirmDlg('Mudar o modo de lançamento?', msg, 'Mudar modo'))) return;
+      run(() => Actions.setModoLanc(day.id, m));
+    }));
     root.querySelectorAll('[data-scrapmode]').forEach(b => b.addEventListener('click', async () => {
       const m = b.dataset.scrapmode; if (m === day.scrapMode) return;
       const imp = Actions.scrapModeImpact(day, m);
@@ -12259,6 +12291,7 @@ App.views.launch = {
     const c = root.querySelector('#dClose'); if (c) c.onclick = () => closeFlow(day, null);
     CabDia.ligar(root);   /* LANC-03 · menu ⋮ Mais ações */
     Ajuste.ligar(root, day);   /* LANC-03 (item 9) · Validação: Ir para o ajuste */
+    root.querySelectorAll('[data-addevps]').forEach(b => b.onclick = () => eventModal(day, null, null));   /* LANC-03 (item 3) · modo Por turno: parada do turno, horário no formulário */
     const ro = root.querySelector('#dReopen'); if (ro) ro.onclick = async () => { const r = await askReason('Reabrir dia', 'Todos os turnos do dia serão reabertos. A ação fica registrada no histórico.'); if (r) run(() => Actions.reopen(day.id, null, r), 'Dia reaberto.'); };
     const pe = root.querySelector('#dPend'); if (pe) pe.onclick = () => run(() => Actions.setDayStatus(day.id, 'pendente de conferência'));
     const hn = root.querySelector('#horAplicar'); if (hn) hn.onclick = () => run(() => { const r = Actions.applyShiftSchedule(day.id); toast('Horário novo aplicado: ' + r + '.'); });   /* 2.6.16 · TUR-05 */
@@ -17492,6 +17525,7 @@ const Ajuste = {
     root.querySelectorAll('[data-ajuste]').forEach(b => b.onclick = () => this.ir(root, day, b.dataset.ajuste, b.dataset.ajArg || ''));
   }
 };
+HELP.modoLanc = ['Modo de lançamento do dia', [['Hora a hora', 'Produção e paradas em cada hora do turno (padrão).'], ['Por turno', 'Um campo "Produção do turno" e as paradas do turno; o hora a hora fica oculto. Usa o lançamento pelo total do turno, que já existia.'], ['Trocar de modo', 'Nada é apagado: o que já foi lançado continua e conta como antes. Fica na auditoria do dia.']]];
 const ResumoDia = {
   CHAVE: 'vac.oee.resumoAberto',
   aberto() { try { return localStorage.getItem(this.CHAVE) !== '0'; } catch (e) { return true; } },
@@ -18180,7 +18214,7 @@ html[data-theme="dark"] .tl .tl-gelb{background:#3a2a12!important;color:#F2C27A!
     return `<section class="tl" data-tl="${ps.id}" aria-label="${esc(ps.snap.name)}">
   <header class="tl-c tl-head">
     <span class="tl-hic">${ic(noite(ps) ? 'moon' : 'sun', 24)}</span><h3>${esc(ps.snap.name)}</h3>
-    <span class="tl-hr">${ps.snap.start || ''} – ${ps.snap.end ? U.hhmm(U.toMin(ps.snap.end)) : ''}</span>${badge(ps.status)}
+    <span class="tl-hr">${ps.snap.start || ''} – ${ps.snap.end ? U.hhmm(U.toMin(ps.snap.end)) : ''}</span>${badge(ps.status)}${HoraExtra.doTurno(ps).map(i => `<span class="tl-hxselo" title="Hora extra: entra no tempo planejado, na meta e na capacidade do turno">Hora extra ${U.range(i.start, i.end)}</span>`).join('')}
     <span class="tl-sp"></span><div class="tl-acts">${lk ? `<button class="btn lit" data-reopenps="${ps.id}" title="Turno fechado. Clique para reabrir (com motivo).">${ic('lock', 18)} Fechado · Reabrir</button>` : `<button class="btn tl-pri" data-closeps="${ps.id}">${ic('lock', 18)} Fechar turno</button>`}</div>
   </header>
   <div class="tl-c tl-strip">
@@ -18219,14 +18253,21 @@ html[data-theme="dark"] .tl .tl-gelb{background:#3a2a12!important;color:#F2C27A!
         ${(ps.reopenHistory || []).slice(-2).map(h => `<div class="small" style="color:var(--warn)">Reaberto por ${esc(h.by)} em ${U.brDT(h.at)}: ${esc(h.reason)}</div>`).join('')}
       </div>
     </div>
-    <div class="tl-c tl-dir${tot || ps.off ? ' tl-tot' : ''}">
+    ${(day.modoLanc || 'hh') === 'turno' &amp;&amp; !ps.off ? `<div class="tl-c tl-dir tl-mt">
+      <div class="tl-dhd"><h4 class="tl-h4">Produção e paradas do turno ${tip('modoLanc')}</h4>${estHH}<span class="tl-sp"></span><button type="button" class="btn sm" data-hhps="${ps.id}" title="Ver o hora a hora deste turno (o lançamento continua pelo turno)">Ver hora a hora</button></div>
+      ${TotalTurno.bloco(day, ps, res, lk)}
+      <div class="tl-mt-par"><h5 class="tl-h5">Paradas do turno <span class="small muted">· ${U.fmt(r.aMin + r.pMin)} min</span></h5>
+        <div class="evs">${(day.events || []).filter(e => !e.deleted &amp;&amp; !e.abono &amp;&amp; (e.productionShiftId === ps.id || ps.intervals.some(i => i.id === e.intervalId) || (res.events &amp;&amp; res.events[e.id] &amp;&amp; res.events[e.id].shiftIds &amp;&amp; [...res.events[e.id].shiftIds].includes(ps.id)))).map(e => evChip(db(), e, res)).join('') || '<span class="small muted">Nenhuma parada lançada.</span>'}
+        ${lk ? '' : `<button type="button" class="btn sm" data-addevps="${ps.id}">${I.plus} Parada do turno</button>`}</div></div>
+    </div>` : ''}
+    <div class="tl-c tl-dir${tot || ps.off ? ' tl-tot' : ''}${(day.modoLanc || 'hh') === 'turno' &amp;&amp; !ps.off ? ' tl-oculto-mt' : ''}">
       <div class="tl-dhd"><h4 class="tl-h4">Hora a hora ${tip('hhTurno')}</h4>${estHH}<span class="tl-hhfill${HHPs.feito(ps) ? ' lit' : ''}" title="${HHPs.feito(ps) ? 'Turno fechado ou com todos os intervalos lançados' : 'Intervalos com produção lançada'}">${ps.status === 'fechado' ? '✓ fechado · ' : ''}${fH}/${nH} intervalo(s) com produção</span><span class="tl-sp"></span>
         <label class="small"><input type="checkbox" data-hhmeta ${showM ? 'checked' : ''}> Detalhes da meta</label>${lk ? '' : `<button type="button" class="btn sm" data-hhextra>${I.plus} Hora extra / intervalo</button>`}</div>
       ${ps.off ? '' : TotalTurno.bloco(day, ps, res, lk)}
       <div class="tw"><table class="hh">${hhCab(showM)}<tbody>${hhLinhas(day, sr, res, { showM, nowMin, cats, grp: false, tt: false })}${totalRow}</tbody></table></div>
     </div>
   </div>
-  <details class="tl-c tl-graf" data-lcgraf${App.prefs.lcGraf === 'fechado' ? '' : ' open'}><summary>Atendimento hora a hora <span class="small muted">· cada hora entregou a meta?</span></summary>${graf}</details>
+  <details class="tl-c tl-graf${(day.modoLanc || 'hh') === 'turno' &amp;&amp; !ps.off ? ' tl-oculto-mt' : ''}" data-lcgraf${App.prefs.lcGraf === 'fechado' ? '' : ' open'}><summary>Atendimento hora a hora <span class="small muted">· cada hora entregou a meta?</span></summary>${graf}</details>
 </section>`;
   }
   /* líder sugerido: o responsável mais frequente deste turno (mesmo código) nos últimos lançamentos; empate fica com o mais recente.
@@ -18358,6 +18399,10 @@ section.card.lf>header{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
 #cabDia .cab2-sit .dot{width:8px;height:8px;border-radius:50%;background:currentColor}
 #cabDia .cab2-sit.ok{background:var(--ok-bg);color:var(--ok)}#cabDia .cab2-sit.pend{background:var(--warn-bg);color:var(--warn)}#cabDia .cab2-sit.none{background:var(--none-bg,var(--surface-2));color:var(--muted)}
 #cabDia .cab2-sub{color:var(--muted);font-size:13.5px}
+#cabDia .cab2-pil{display:flex;flex-wrap:wrap;gap:12px 28px;align-items:flex-end;margin:12px 0 4px}
+#cabDia .cab2-pil .f>span:first-child{display:block;font-size:12.5px;color:var(--muted);margin-bottom:4px}
+#cabDia .cab2-pil .row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+#cabDia .cab2-sd{display:inline-flex;gap:6px;align-items:center;font-size:13px;color:var(--muted)}
 #cabDia .cab2-mais{position:relative}
 #cabDia .cab2-menu{position:absolute;right:0;top:calc(100% + 6px);z-index:30;min-width:290px;max-width:min(360px,90vw);padding:8px;border:1px solid var(--line);border-radius:10px;background:var(--surface);box-shadow:var(--sh);display:grid;gap:4px}
 #cabDia .cab2-menu[hidden]{display:none}
@@ -18376,6 +18421,10 @@ section.card.lf>header{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
 .aj-bts>.aj-bt{flex:none!important;margin:0!important;min-height:32px;text-decoration:none;display:inline-flex;align-items:center}
 .aj-alvo{outline:3px solid var(--accent)!important;outline-offset:3px;border-radius:6px;transition:outline-color .3s}
 tr.aj-alvo{outline:0!important}tr.aj-alvo>td{background:var(--accent-soft)!important;box-shadow:inset 0 2px 0 var(--accent),inset 0 -2px 0 var(--accent)}
+.tl-oculto-mt{display:none!important}
+.tl .tl-mt .tl-mt-par{margin-top:12px}.tl .tl-mt .tl-h5{margin:0 0 6px;font-size:14px}
+.tl .tl-mt .evs{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.tl-hxselo{display:inline-flex;align-items:center;padding:2px 10px;border-radius:999px;background:var(--info-bg);color:var(--info);font-size:12px;font-weight:700;margin-left:6px}
 .lc-rodape{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin:16px 0 4px;padding:12px 4px 0;border-top:1px solid var(--line)}
 .lc-rodape #lcSalvo{color:var(--muted);font-size:13.5px}
 .lc-resumo .lc-res-cab h3{margin:0}
@@ -38766,9 +38815,9 @@ body.vac-porta{overflow:hidden}
     {
       "id": "oee",
       "path": "Plataforma.html#motor/oee",
-      "version": "2.6.25",
-      "sha256": "a410020276246b674eb2075435bcb6a3452040ee5e195352fc3625ff586472e8",
-      "bytes": 2323613
+      "version": "2.6.26",
+      "sha256": "ee68c65022ebe77a3407cf00687878af4592d63696ec4b3dcbbd636d521ce138",
+      "bytes": 2330014
     },
     {
       "id": "perdas",
@@ -38822,15 +38871,15 @@ body.vac-porta{overflow:hidden}
     {
       "id": "portal",
       "path": "Plataforma.html#motor/portal",
-      "version": "1.9.57",
-      "sha256": "dfabb7a85e353a2d51f521f554005db568d99f73fdac19e572e8bc1378cef13e",
-      "bytes": 1264158
+      "version": "1.9.58",
+      "sha256": "e87f27ad1e9acefc7249e6c201c65aa3a30cd97350bb054d62cc12f6831fc11e",
+      "bytes": 1264562
     }
   ],
   "limitations": [
     "Projetos e conteúdo técnico OSM/MES/AM/TPM mantêm os limites documentados nas fontes."
   ],
-  "enginesSha256": "2d6d135e6fc63829c572b7fa2adf4eb09a2f7139be187ddd464d8f7901604c54",
+  "enginesSha256": "3566a78b67a2e1719513f1a64c51ddafd8aa04929925c9be3f5b03cdf383059a",
   "originRevision": "ffc9ee8",
   "sourceMode": "single-html",
   "originEnginesSha256": "a87a64ad0c328f70e102b2ae888790a9b5d5a9bd05778652a7ce7cae140e40d2"
@@ -38900,7 +38949,7 @@ summary{cursor:pointer;font-weight:600;color:var(--navy)}
 'use strict';
 /* ---------- referência (atualizar quando a plataforma mudar de versão) ---------- */
 // Iguais às do pacote da plataforma (nova-plataforma/src/generated/manifest.json); o teste ferramenta-verificar confere.
-const VERSOES = {"oee":"2.6.25","perdas":"1.12.17","gel":"2.42","paradas":"1.2.18","equip":"1.0.20","inic":"1.1.16","linha":"1.4.0","projetos":"0.1.16","portal":"1.9.57"};
+const VERSOES = {"oee":"2.6.26","perdas":"1.12.17","gel":"2.42","paradas":"1.2.18","equip":"1.0.20","inic":"1.1.16","linha":"1.4.0","projetos":"0.1.16","portal":"1.9.58"};
 const BASES = [
  { arq: 'vacutainer-cadastros.json', mod: 'portal', nome: 'Cadastro geral (Portal)', obrig: true, cadastro: true, bk: 'Cadastros' },
  { arq: 'portal-base.json', mod: 'portal', nome: 'Portal', obrig: true, bk: 'Portal' },
@@ -39491,7 +39540,7 @@ import { Icon, Button, Badge, Empty, Modal, BarChart, BrandLogo, CommandMenu } f
 import { ModuleFrame } from "vac:modulo/components/ModuleFrame";
 import manifest from "vac:recurso/manifesto";
 import { ModuleTabs } from "vac:modulo/components/ModuleTabs";
-const VERSION = "1.8.34";
+const VERSION = "1.8.35";
 /* Navegação 1.3.0 (16/11/2026): Visão da linha, Relatórios e Importações têm abas; as que mostram uma tela do
    Portal (motor da Administração) trazem o 3º campo com a aba dele. Administração fica só com cadastros e configuração. */
 const SHELL_TABS = {
