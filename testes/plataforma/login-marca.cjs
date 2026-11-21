@@ -34,7 +34,10 @@ function servidor(comMarca) {
         await p.evaluate(() => { localStorage.removeItem('vac.login.forcar'); sessionStorage.setItem('vac.platform.consulta', '1'); }); await p.reload();
         await p.locator('.sidebar').getByRole('button', { name: 'Administração' }).first().click();
         const fr = await (await p.waitForSelector('iframe[title^="Módulo"]')).contentFrame(); await fr.waitForFunction(() => typeof vacLogin !== 'undefined');
-        const j = await fr.evaluate(async () => { vacLogin.abrir({ trocar: true }); let im = null; for (let i = 0; i < 40 && !(im && im.complete && im.naturalWidth); i++) { await new Promise(r => setTimeout(r, 150)); im = document.querySelector('.vlog .vl-logo'); } return im ? { src: im.getAttribute('src'), ok: im.naturalWidth > 0 } : null; });
+        const j = await fr.evaluate(async () => { localStorage.setItem('vac.login.forcar', '1');   /* em navegador automatizado o login só abre com a chave (mesma regra do vacLogin) */
+          vacLogin.abrir({ trocar: true }); const im = document.querySelector('.vlog .vl-logo'), src = im ? im.getAttribute('src') : null;   /* lido na hora: a casca em modo consulta pode fechar a janela logo depois */
+          localStorage.removeItem('vac.login.forcar'); if (!src) return null;
+          const ok = await new Promise(r => { const t = new Image(); t.onload = () => r(t.naturalWidth > 0); t.onerror = () => r(false); t.src = src; }); return { src, ok }; });
         assert.ok(j && j.ok && /^Marca\//.test(j.src), 'janela de login com a logo da pasta Marca ' + JSON.stringify(j)); console.log('ok janela de login com a logo da pasta Marca');
       }
       assert.deepEqual(erros, [], 'sem erro de JavaScript'); await p.close(); srv.close();
