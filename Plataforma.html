@@ -3998,7 +3998,7 @@ function wireConfigComum(){$('#cPasta').onclick=async()=>{if(await Store.pick())
         entrar pelo ID (autocadastro como Consulta); página inicial por perfil (1x por sessão); vigência gravada não se edita (desativar com motivo); painel de vigências; semáforo central; saída do modo de teste.
    1.1.2: aviso da carga diz qual base foi lida.  1.5: páginas Paradas, Máquinas, Manutenção e Projetos na lista (aparecem quando o HTML chega na pasta).  1.4: lista técnica pela CS12 multinível (itens = nível 1, estrutura = níveis 2+); CS03 sai.  1.3: cabeçalho comum (vac-cabecalho v2: barra do sistema + página + abas), busca Ctrl K, acabamento V1.90, Versões com cabeçalho e último backup.  1.2: Configuração › Versões das páginas (versão e data de cada HTML, gravação das bases, cópias repetidas, histórico).
    ===================================================================== */
-const PAGE={id:'portal',titulo:"Administração · Linha Vacutainer",tituloCurto:"Administração",subtitulo:'Sistemas de gestão da linha',versao:'1.9.54',baseFile:'portal-base.json',idb:'vac-portal',backupDir:'00. Backups/Portal',
+const PAGE={id:'portal',titulo:"Administração · Linha Vacutainer",tituloCurto:"Administração",subtitulo:'Sistemas de gestão da linha',versao:'1.9.55',baseFile:'portal-base.json',idb:'vac-portal',backupDir:'00. Backups/Portal',
  vazio:()=>({schema:'portal-base',rev:0,config:{modulos:{},avisoDias:30,notas:{}},audit:[]}),
  /* itens do Portal para a busca Ctrl K: cadastro, pendências e telas */
  busca:q=>{const R=[],D=Cad.D;if(D)for(const t of CAD_ORD){for(const it of D[t]||[]){const c=String(it[kOf(t)]),nm=t==='bom'?((cadItem('catalogos',it.catalogo)||{}).nome||''):it.nome||'';if(norm(c+' '+nm).includes(q))R.push({tipo:CAD_T[t].um,txt:c+(nm?' · '+nm:''),sub:'Cadastros'+(cadAtivo(t,it,D)?'':' · inativo'),href:'#cadastros/'+t+'/'+encodeURIComponent(c)});if(R.length>30)break}}
@@ -4877,6 +4877,11 @@ const CAD_SECS=['inicio','matriz','importar','auditoria','backups','seguranca','
    curtas (macro, sem detalhe técnico). REGRA: toda versão nova da plataforma ganha uma entrada aqui, a mais recente primeiro
    (AGENTS.md e CLAUDE.md). Tipos: nova (função nova), melhoria (algo que já existia ficou melhor), correcao (erro corrigido). */
 const NOVIDADES=[
+ {v:'1.8.32',d:'2026-11-21',itens:[['melhoria','Produção: abas na ordem nova, começando por Visão geral; "Config." sem a engrenagem.'],
+  ['melhoria','Cabeçalho com o chip de situação (Sistema online, Atenção ou Sem conexão com a pasta) no lugar do botão Status; sem pasta, o botão diz "Conectar pasta da rede".'],
+  ['melhoria','Barra de ações com ícones: Voltar e Lançar meu turno à esquerda; Sincronizar, Backup e Modo TV à direita.'],
+  ['nova','Lançamento: os cards do dia ficam no bloco "Resumo do dia", que pode ser recolhido mantendo o OEE do dia à vista.'],
+  ['melhoria','Visão geral: período e filtros num cartão só, com Hoje, Ontem, 7 dias, 30 dias e Personalizado (Semana, Mês e Ano fiscal ficam em Personalizado) e o resumo do filtro.']]},
  {v:'1.8.31',d:'2026-11-20',itens:[['correcao','Produção: o destaque colorido, o selo "em construção" / "atualizando" e a aba inicial de Config. › Abas aparecem nas abas da plataforma, sem recarregar.'],
   ['correcao','Gráficos, tabelas e listas aceitam largura inteira, metade ou um terço em todas as páginas, inclusive os de largura inteira; até 3 lado a lado.'],
   ['melhoria','O gráfico se redesenha na largura nova do cartão, e as tabelas estreitas rolam dentro do cartão.']]},
@@ -7671,7 +7676,7 @@ nav.vtabs .tabs{scroll-padding-left:12px}
 <div class="vpage"><div class="wrap">
   <h1 id="vacTitulo">OEE</h1><span class="rule" id="vacSub"></span><span class="ver" id="appVer" title="Versões das páginas"></span>
   <span id="stBase"></span><span class="sp"></span>
-  <span class="vacts"><button class="btn sm primary" id="opBtn" title="Tela simples para lançar o turno"><svg class="icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round" aria-hidden="true"><path d="M11 2.5l2.5 2.5L6 12.5H3.5V10z"/></svg> Lançar meu turno</button><button class="btn sm" id="btnSync" title="Gravar pendências e reler a base">↻ Sincronizar</button><button class="btn sm" id="btnBackup" title="Criar backup agora">⛁ Backup</button><button class="btn sm" id="btnTV" title="Modo TV">▣ TV</button></span>
+  <span class="vacts"><button class="btn sm primary" id="opBtn" title="Tela simples para lançar o turno"><svg class="icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round" aria-hidden="true"><path d="M11 2.5l2.5 2.5L6 12.5H3.5V10z"/></svg> Lançar meu turno</button><button class="btn sm" id="btnSync" title="Gravar pendências e reler a base">↻ Sincronizar</button><button class="btn sm" id="btnBackup" title="Criar backup agora">⛁ Backup</button><button class="btn sm" id="btnTV" title="Modo TV">▣ Modo TV</button></span>
 </div></div>
 <nav class="vtabs nav" aria-label="Abas da página"><div class="wrap"><div class="tabs" id="nav"></div></div></nav>
 <!-- fim vac-cabecalho v2 -->
@@ -7764,7 +7769,7 @@ function tipoParadaOpts(codes, sel) {
   const cats = [...new Set(codes.map(c => c.category || 'Sem categoria'))];
   return cats.map(cat => `<optgroup label="${esc(cat)}">${codes.filter(c => (c.category || 'Sem categoria') === cat).map(c => `<option value="${c.id}" ${sel === c.id ? 'selected' : ''}>${esc(c.code + ' · ' + c.name)}</option>`).join('')}</optgroup>`).join('');
 }
-const APP_VERSION = '2.6.22';   /* 2.6.22 · LANC-04: Config. › Abas na plataforma (destaque, selo, aba inicial) e Frequência × duração redesenhado na largura do cartão */   /* 2.6.21 · TUR-07: turno que passa da meia-noite dividido no total diário (depois de 00:00 → dia seguinte; scrap proporcional à produção, paradas sem horário ao tempo) */   /* 2.6.20 · HEX-01: "Houve hora extra?" no cartão do turno (até 60 min antes do início ou depois do fim) */   /* 2.6.19 · TUR-06: produção no turno não produtivo pela meia-noite (antes → turno anterior; depois → próximo) desde 01/11/2026; aviso de hora extra */   /* 2.6.18 · PAR-CAT: tipo de parada por categoria e com busca nas sugestões do servidor, na importação de paradas e no turno sem produção */   /* 2.6.17 · SRV-DIA: dia sem lançamento com produção do servidor: aviso e abrir o dia com os dados */   /* 2.6.16 · TUR-05: dia em aberto passa ao horário vigente do turno; PAR-BUSCA: tipo de parada por texto */   /* 2.6.15 · REL-01: gel no relatório/e-mail do dia e do turno; Enviar relatório na janela do dia */   /* 2.6.14 · GEL-07: Relatório do Gel e Perdas de gel (turno com gel e Relatórios) */   /* 2.6.13 · GEL-06: Scrap gel no detalhe do turno */   /* 2.6.12 · TUR-04: turno com horário diferente no sábado (linhas por dia da semana) */   /* 2.6.11 · abas agrupadas: Ordens e lotes, Resultados, Paradas */   /* 2.6.10 · Lançamento sem turno aberto por padrão; abas visíveis na casca */   /* 2.6.9 · LANC-02: Lançamento unificado (hora a hora no detalhe do turno, 3º turno ao lado, Problemas de QN) */   /* 2.6.5 · IMP-01: contagens das importações nos exports */   /* 2.6.4 · semáforo só pelas faixas configuradas (verde acima de 100% vale) */   /* 2.6.2 · gráficos e números com meta seguem o semáforo de três cores (verde, amarelo, vermelho) */   /* 2.6.1 · gráficos: turno lançado pelo total com o nome do turno no eixo; janelas: rótulo e valor em tamanho de texto */   /* 2.6.0 · produção total do turno (sem hora a hora; períodos na troca de catálogo), aviso do servidor para turno lançado pelo total e para dia com produção apontada */
+const APP_VERSION = '2.6.23';   /* 2.6.23 · LANC-03 (itens 0 e 1.1): ordem e rótulos das abas da imagem, Modo TV e Resumo do dia recolhível */   /* 2.6.22 · LANC-04: Config. › Abas na plataforma (destaque, selo, aba inicial) e Frequência × duração redesenhado na largura do cartão */   /* 2.6.21 · TUR-07: turno que passa da meia-noite dividido no total diário (depois de 00:00 → dia seguinte; scrap proporcional à produção, paradas sem horário ao tempo) */   /* 2.6.20 · HEX-01: "Houve hora extra?" no cartão do turno (até 60 min antes do início ou depois do fim) */   /* 2.6.19 · TUR-06: produção no turno não produtivo pela meia-noite (antes → turno anterior; depois → próximo) desde 01/11/2026; aviso de hora extra */   /* 2.6.18 · PAR-CAT: tipo de parada por categoria e com busca nas sugestões do servidor, na importação de paradas e no turno sem produção */   /* 2.6.17 · SRV-DIA: dia sem lançamento com produção do servidor: aviso e abrir o dia com os dados */   /* 2.6.16 · TUR-05: dia em aberto passa ao horário vigente do turno; PAR-BUSCA: tipo de parada por texto */   /* 2.6.15 · REL-01: gel no relatório/e-mail do dia e do turno; Enviar relatório na janela do dia */   /* 2.6.14 · GEL-07: Relatório do Gel e Perdas de gel (turno com gel e Relatórios) */   /* 2.6.13 · GEL-06: Scrap gel no detalhe do turno */   /* 2.6.12 · TUR-04: turno com horário diferente no sábado (linhas por dia da semana) */   /* 2.6.11 · abas agrupadas: Ordens e lotes, Resultados, Paradas */   /* 2.6.10 · Lançamento sem turno aberto por padrão; abas visíveis na casca */   /* 2.6.9 · LANC-02: Lançamento unificado (hora a hora no detalhe do turno, 3º turno ao lado, Problemas de QN) */   /* 2.6.5 · IMP-01: contagens das importações nos exports */   /* 2.6.4 · semáforo só pelas faixas configuradas (verde acima de 100% vale) */   /* 2.6.2 · gráficos e números com meta seguem o semáforo de três cores (verde, amarelo, vermelho) */   /* 2.6.1 · gráficos: turno lançado pelo total com o nome do turno no eixo; janelas: rótulo e valor em tamanho de texto */   /* 2.6.0 · produção total do turno (sem hora a hora; períodos na troca de catálogo), aviso do servidor para turno lançado pelo total e para dia com produção apontada */
 const SCHEMA_VERSION = 1;
 const BASE_FILE = 'oee-vacutainer-base.json';
 const BACKUP_DIR = '00. Backups';
@@ -12183,7 +12188,7 @@ App.views.launch = {
     const fNow = (() => { const nm = opNowMin(day.date); const fl = res.flat; return (nm != null &amp;&amp; fl.find(f => nm >= f.iv.start &amp;&amp; nm < f.iv.end)) || fl.filter(f => f.good != null).pop() || fl[0] || null; })();
     const curCat = fNow ? fNow.cat : null, curOrd = fNow ? orderAt(day.date, curCat, fNow.iv.start) : null;
     const catsDay = [...new Set(res.flat.filter(f => f.cat).map(f => f.cat))];
-    h += KC.filtrar(`<div class="section kpis">
+    h += ResumoDia.abre(r) + KC.filtrar(`<div class="section kpis">
       <div class="kpi kpi-cat">${kpiDeco('catálogo').icon}<span class="l">${opNowMin(day.date) != null &amp;&amp; fNow &amp;&amp; opNowMin(day.date) < fNow.iv.end ? 'Catálogo em produção' : 'Último catálogo do dia'}${ib('initialCatalog')}</span><span class="v">${catPill(curCat, true)}</span><span class="s">${curOrd ? `Lote <b>${esc(curOrd.lot || '—')}</b> · OP ${esc(curOrd.order || '—')}` : '<span class="muted">lote: sem ordem do PCP no plano</span>'}</span>${catsDay.length > 1 ? `<span class="s">no dia: ${catsDay.map(c => catPill(c)).join(' ')}</span>` : ''}</div>
       ${kpi('Produção boa', fq(r.good), unitLbl(), `meta ${fq(r.metaOp)} · ${semB(r.semAttain, U.pct(r.attain, 0))}`)}
       ${LancNP.kpisTurnos(day, res)}
@@ -12195,7 +12200,7 @@ App.views.launch = {
       ${kpi('Meta diária oficial', fq(res.officialDaily), unitLbl(), res.comp ? (res.comp.applied ? `ajuste última hora ${fqs(res.comp.adjust)}` : '<span class="ferr">compensação inválida</span>') : '')}
       ${ScrapDia.kpi(day, res)}
       ${OeeReal.kpis(day, res)}${MesDia.kpiDia(day)}
-    </div>`, [KC.OEE_DIA]);
+    </div>`, [KC.OEE_DIA]) + ResumoDia.fecha();
     h += LancUI.bloco(day, res);   /* 2.4.47 · layout novo (antes: SrvUI.dayCard + ForaTurnoUI.card) */
     h += GelDia.card(day, res);   /* 2.4.29 · GEL-04 */
     // turnos
@@ -16849,7 +16854,7 @@ HELP.gelScrap = ['Scrap de gel do turno', [['O que é?', 'As pesagens de scrap d
    Entra no script principal pelo build.py (antes do boot). */
 const VisaoGeral = {
   PADRAO: 'padrao',
-  opcoes() { return [[this.PADRAO, 'Visão Geral · padrão']].concat(Panel.viewOptions()); },
+  opcoes() { return [[this.PADRAO, 'Visão geral · padrão']].concat(Panel.viewOptions()); },
   naPadrao() { const st = Panel.st(); return !st.view || st.view === this.PADRAO; },
   barra() {
     const st = Panel.st();
@@ -16874,7 +16879,7 @@ const VisaoGeral = {
       if (VisaoGeral.naPadrao()) { if (O.mount) O.mount(root); VisaoGeral.wire(root); return; }
       if (P.mount) P.mount(root);
       const sel = root.querySelector('#pnView');   // acrescenta a padrão no seletor do Painel
-      if (sel &amp;&amp; !sel.querySelector(`option[value="${VisaoGeral.PADRAO}"]`)) { const o = document.createElement('option'); o.value = VisaoGeral.PADRAO; o.textContent = 'Visão Geral · padrão'; sel.insertBefore(o, sel.firstChild); }
+      if (sel &amp;&amp; !sel.querySelector(`option[value="${VisaoGeral.PADRAO}"]`)) { const o = document.createElement('option'); o.value = VisaoGeral.PADRAO; o.textContent = 'Visão geral · padrão'; sel.insertBefore(o, sel.firstChild); }
     }
   };
   App.views.panel = { render() { return App.views.overview.render(); }, mount(root) { return App.views.overview.mount(root); } };
@@ -17367,6 +17372,25 @@ const TurnoResumo = {
 };
 Object.assign(HELP, { scrapTotalDia: ['Scrap (total)', [['O que mostra?', 'O scrap do dia: a soma do scrap lançado nos turnos (ou o total diário, quando o scrap é lançado por dia). O % é o mesmo do card Qualidade.'], ['E sem lançamento?', 'Mostra "—": scrap não lançado não vira zero. Se só parte dos turnos lançou, o card diz qual falta.'], ['Tem meta?', 'Não. A Produção não tem meta de scrap; por isso o card não tem cor de semáforo.']]] });
 /* ---------- editor de cartões (faixa de indicadores do Lançamento; preferência deste computador) ---------- */
+/* LANC-03 (item 1.1, decisão do responsável, 20/11/2026) · os cards resumo do dia ficam no bloco "Resumo do dia", com Recolher/Expandir.
+   Abre expandido; o estado fica só neste navegador (localStorage vac.oee.resumoAberto; sem armazenamento, expandido) e não vai para a base.
+   Recolhido, o cabeçalho mostra o OEE do dia com o semáforo. Os cards, a ordem e a configuração (Editar cards) não mudam. */
+const ResumoDia = {
+  CHAVE: 'vac.oee.resumoAberto',
+  aberto() { try { return localStorage.getItem(this.CHAVE) !== '0'; } catch (e) { return true; } },
+  guardar(v) { try { localStorage.setItem(this.CHAVE, v ? '1' : '0'); } catch (e) { } },
+  abre(r) {
+    const a = this.aberto(), oee = r &amp;&amp; r.oee != null ? `OEE do dia <b>${U.pct(r.oee)}</b> ${semB(r.semOee, 'meta ' + U.pct(r.oeeTarget))}` : 'OEE do dia <b>—</b>';
+    return `<section class="section lc-resumo${a ? '' : ' fechado'}" id="lcResumo" aria-labelledby="lcResTit"><header class="lc-res-cab"><h3 id="lcResTit">Resumo do dia</h3><span class="lc-res-linha" id="lcResLinha"${a ? ' hidden' : ''}>${oee}</span><span class="spacer"></span><button type="button" class="btn xs ghost" id="lcResTg" aria-expanded="${a}" aria-controls="lcResCorpo">${a ? 'Recolher' : 'Expandir'}</button></header><div id="lcResCorpo"${a ? '' : ' hidden'}>`;
+  },
+  fecha() { return '</div></section>'; },
+  alternar() {
+    const s = document.getElementById('lcResumo'); if (!s) return; const a = !!s.querySelector('#lcResCorpo').hidden;
+    s.querySelector('#lcResCorpo').hidden = !a; s.querySelector('#lcResLinha').hidden = a; s.classList.toggle('fechado', !a);
+    const b = s.querySelector('#lcResTg'); b.setAttribute('aria-expanded', String(a)); b.textContent = a ? 'Recolher' : 'Expandir'; this.guardar(a);
+  }
+};
+document.addEventListener('click', e => { if (e.target.closest &amp;&amp; e.target.closest('#lcResTg')) ResumoDia.alternar(); });
 const KC = {
   chave(el) { if (el.classList.contains('kpi-cat')) return 'Catálogo'; const l = el.querySelector('.l'); if (!l) return ''; const c = l.cloneNode(true); c.querySelectorAll('.ib,button').forEach(b => b.remove()); return c.textContent.trim(); },
   off() { const L = App.prefs.kcOff; return Array.isArray(L) ? L : []; },
@@ -18209,6 +18233,11 @@ section.card.lf>header{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
 #main[data-rota="launch"] .card.section{padding:18px 20px}
 #main[data-rota="launch"] .card>header h3,#main[data-rota="launch"] section.card h3{font-family:var(--f-body);text-transform:none;letter-spacing:0;font-size:19px;font-weight:700}
 #main[data-rota="launch"] .kpis{gap:12px}
+.lc-resumo .lc-res-cab{display:flex;align-items:center;gap:var(--sp-8,8px);margin:0 0 var(--sp-8,8px)}
+.lc-resumo .lc-res-cab h3{margin:0}
+.lc-resumo .lc-res-linha{font-size:14px;color:var(--muted)}
+.lc-resumo .lc-res-linha b{color:var(--ink);font-size:16px}
+.lc-resumo.fechado .lc-res-cab{margin:0;padding:var(--sp-8,8px) var(--sp-12,12px);border:1px solid var(--line);border-radius:var(--r);background:var(--surface)}
 #main[data-rota="launch"] .kpi{border-radius:12px;padding:16px 18px}
 #main[data-rota="launch"] .kpi .l{font-family:var(--f-body);text-transform:none;letter-spacing:0;font-size:13px;font-weight:500;color:var(--ink);white-space:normal;overflow:visible;text-overflow:clip;padding-right:34px;line-height:1.3}
 #main[data-rota="launch"] .kpi .s{font-size:12.5px}
@@ -18406,6 +18435,41 @@ const VGL = (() => {
 .vgl-est{margin:-2px 0 8px;padding:6px 10px;border-radius:8px;background:var(--warn-bg);color:var(--warn);font-size:12.5px;font-weight:600}
 .vgl-exp{padding:14px 18px;display:grid;gap:10px}.vgl-exp .row{gap:8px;flex-wrap:wrap}.vgl-exp .btn{min-height:40px}
 .vgl-mais{display:none}
+#main[data-rota="overview"] .vgl-hd{justify-content:space-between;align-items:center}
+#main[data-rota="overview"] .vgl-hd .vg-bar.vgl-acoes{margin:0;padding:0;border:0;background:none;box-shadow:none}
+#main[data-rota="overview"] .vgl-hd .vg-bar.vgl-acoes .row{gap:6px;flex-wrap:wrap}
+#main[data-rota="overview"] .vgl-hd .vg-bar.vgl-acoes .spacer{display:none}
+#gFilters.vgl-fil{display:grid;gap:12px;padding:14px 18px}
+#gFilters.vgl-fil .vgl-f1{display:flex;align-items:flex-end;gap:14px;flex-wrap:wrap}
+#gFilters.vgl-fil .vgl-per{flex:1 1 auto;min-width:0}
+#gFilters.vgl-fil .vgl-per-c{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+#gFilters.vgl-fil .vgl-range{display:inline-flex;align-items:center;gap:6px;height:40px;padding:0 10px;border:1px solid var(--line);border-radius:var(--r,8px);background:var(--surface)}
+#gFilters.vgl-fil .vgl-range input{border:0;background:none;padding:0;min-height:0;height:36px;width:auto;font:inherit;color:inherit;box-shadow:none}
+#gFilters.vgl-fil .vgl-range input:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:4px}
+#gFilters.vgl-fil .vgl-range .vgl-ate{color:var(--muted);padding:0 4px}
+#gFilters.vgl-fil .vgl-range input::-webkit-calendar-picker-indicator{display:none}
+#gFilters.vgl-fil .vgl-range .dpick{display:none!important}
+#gFilters.vgl-fil .vgl-range .dfield{display:inline-flex;align-items:center}
+#gFilters.vgl-fil .vgl-range .dtxt{width:11ch;border:0;background:none;padding:0;height:36px;box-shadow:none;font-size:15px}
+#gFilters.vgl-fil .vgl-cal{border:0;background:none;padding:0;width:28px;height:36px;display:inline-flex;align-items:center;justify-content:center;color:var(--muted);cursor:pointer;border-radius:6px}
+#gFilters.vgl-fil .vgl-cal:hover{color:var(--accent)}
+#gFilters.vgl-fil .vgl-qp,#gFilters.vgl-fil .vgl-per-c{overflow:visible}
+#gFilters.vgl-fil .vgl-range input{cursor:pointer}
+#gFilters.vgl-fil .vgl-qp{display:flex;gap:8px;flex-wrap:wrap;border:0;background:none;padding:0}
+#gFilters.vgl-fil .vgl-qp > button,#gFilters.vgl-fil .vgl-pers > summary{min-height:36px;padding:0 14px;border:1px solid var(--line);border-radius:8px;background:var(--surface-2);color:var(--ink);font:500 13px var(--f-body,inherit);cursor:pointer;display:inline-flex;align-items:center;list-style:none}
+#gFilters.vgl-fil .vgl-pers > summary::-webkit-details-marker{display:none}
+#gFilters.vgl-fil .vgl-qp > button[aria-pressed="true"],#gFilters.vgl-fil .vgl-pers > summary[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:var(--accent-ink,#fff);font-weight:600}
+#gFilters.vgl-fil .vgl-pers{position:relative}
+#gFilters.vgl-fil .vgl-pers-m{position:absolute;z-index:20;top:calc(100% + 6px);left:0;min-width:220px;display:grid;gap:4px;padding:10px;border:1px solid var(--line);border-radius:10px;background:var(--surface);box-shadow:var(--sh)}
+#gFilters.vgl-fil .vgl-pers-m p{margin:0 0 4px}
+#gFilters.vgl-fil .vgl-pers-m button{min-height:36px;text-align:left;padding:0 10px;border:0;border-radius:6px;background:none;color:var(--ink);font:inherit;cursor:pointer}
+#gFilters.vgl-fil .vgl-pers-m button:hover,#gFilters.vgl-fil .vgl-pers-m button:focus-visible{background:var(--accent-soft)}
+#gFilters.vgl-fil .vgl-vis{margin-left:auto;min-width:220px}
+#gFilters.vgl-fil .vgl-f2{display:grid;grid-template-columns:repeat(5,minmax(0,1fr)) auto;gap:14px;align-items:end}
+#gFilters.vgl-fil .vgl-f2 label.f select{width:100%}
+#gFilters.vgl-fil .vgl-limpar{border:0;background:none;padding:0 4px;min-height:40px;color:var(--accent);font:600 13.5px var(--f-body,inherit);text-decoration:underline;cursor:pointer;white-space:nowrap}
+#gFilters.vgl-fil .vgl-f3{margin:0;color:var(--muted);font-size:13px}
+@media (max-width:980px){#gFilters.vgl-fil .vgl-f2{grid-template-columns:repeat(2,minmax(0,1fr))}#gFilters.vgl-fil .vgl-vis{margin-left:0;flex-basis:100%}}
 @media (max-width:700px){#main[data-rota="overview"] #gFilters:not(.vgl-aberto) label.f:has(select[name="lineId"]),#main[data-rota="overview"] #gFilters:not(.vgl-aberto) label.f:has(select[name="machineId"]),#main[data-rota="overview"] #gFilters:not(.vgl-aberto) label.f:has(select[name="catalogId"]),#main[data-rota="overview"] #gFilters:not(.vgl-aberto) label.f:has(select[name="shiftId"]),#main[data-rota="overview"] #gFilters:not(.vgl-aberto) label.f:has(select[name="status"]){display:none}.vgl-mais{display:inline-flex}.vgl-oee .big{font-size:34px}}
 @media print{.vgl-grp.fechado .vgl-gb{display:block!important}.vgl-gh .seta,.vgl-exp{display:none!important}}`;
   function estilo() { if (document.getElementById('vglCss')) return; const s = document.createElement('style'); s.id = 'vglCss'; s.textContent = css; document.head.appendChild(s); }
@@ -18493,6 +18557,7 @@ const VGL = (() => {
       const mais = el('<button type="button" class="btn sm vgl-mais" id="vglMais" aria-expanded="false">Mais filtros ▾</button>');
       if (sp) { sp.before(mais); sp.before(lim); } else { fil.append(mais, lim); }
     }
+    filtros(root);
     const D = dados(); if (!D) { ligar(root, null); return; }   /* sem dias no período: Limpar e Mais filtros continuam funcionando */
     /* 01 · situação */
     const dec = root.querySelector('.decide');
@@ -18518,6 +18583,48 @@ const VGL = (() => {
     const ult = [...root.querySelectorAll('.vgl-grp')].pop();
     if (ult &amp;&amp; !root.querySelector('.vgl-exp')) { const s = sec('05', 'Explorar dados', 'Registros e relatórios do mesmo período'); ult.after(s); s.after(el(explorar(D))); }
     ligar(root, D);
+  }
+  /* LANC-03 (pedido do responsável, 21/11/2026, imagem) · período e filtros num cartão só, em três linhas:
+     1) Período (De – Até numa caixa), Hoje · Ontem · 7 dias · 30 dias · Personalizado (Semana, Mês, Semana anterior, Mês anterior e Ano
+        fiscal ficam dentro de Personalizado) e, à direita, a Visão; 2) Turno, Linha, Máquina, Catálogo, Status e Limpar filtros;
+     3) o resumo do filtro. Os campos, nomes (name/data-qp) e eventos são os mesmos do filterBar: só o arranjo muda (contrato 6).
+     Personalizar, Imprimir, Exportar e Apresentar vão para a direita do título. */
+  const QP = [['d0', t => [t, t]], ['d1', t => [U.addDays(t, -1), U.addDays(t, -1)]], ['7', t => [U.addDays(t, -6), t]], ['30', t => [U.addDays(t, -29), t]]];
+  function filtros(root) {
+    const fm = root.querySelector('#gFilters'); if (!fm || fm.classList.contains('vgl-fil')) return;
+    const campo = n => { const x = fm.querySelector(`[name="${n}"]`); return x ? x.closest('label.f') : null; };
+    const de = fm.querySelector('[name="from"]'), ate = fm.querySelector('[name="to"]'), qp = k => fm.querySelector(`[data-qp="${k}"]`);
+    if (!de || !ate) return;
+    fm.classList.add('vgl-fil');
+    const t = U.today(), f = App.filters, ativo = (QP.find(([, fn]) => { const [a, b] = fn(t); return f.from === a &amp;&amp; f.to === b; }) || ['custom'])[0];
+    const l1 = el('<div class="vgl-f1"><div class="f vgl-per"><span>Período</span><div class="vgl-per-c"><div class="vgl-range" role="group" aria-label="Período: de e até"><button type="button" class="vgl-cal" title="Abrir o calendário (De)" aria-label="Abrir o calendário (De)">' + vacIcone('calendario', 'sm') + '</button></div><div class="seg vgl-qp" role="group" aria-label="Períodos rápidos"></div></div></div></div>');
+    const rg = l1.querySelector('.vgl-range'); de.setAttribute('aria-label', 'De'); ate.setAttribute('aria-label', 'Até');
+    rg.append(de, el('<span class="vgl-ate" aria-hidden="true">–</span>'), ate);
+    /* um ícone só, o da caixa: abre o calendário de De (o campo de data continua aceitando digitar dd/mm/aaaa) */
+    l1.querySelector('.vgl-cal').addEventListener('click', () => { const b = de.closest('.dfield') &amp;&amp; de.closest('.dfield').querySelector('.dpick'); if (b) b.click(); else { try { de.showPicker(); } catch (e) { de.focus(); } } });
+    const sg = l1.querySelector('.vgl-qp');
+    for (const [k] of QP) { const b = qp(k); if (b) { b.setAttribute('aria-pressed', String(ativo === k)); sg.append(b); } }
+    const pers = el(`<details class="vgl-pers"><summary role="button" aria-pressed="${ativo === 'custom'}">Personalizado</summary><div class="vgl-pers-m" role="group" aria-label="Outros períodos"><p class="small muted">Escolha as datas em De – Até ou um destes períodos:</p></div></details>`);
+    const pm = pers.querySelector('.vgl-pers-m');
+    for (const k of ['wk', 'mtd', 'pwk', 'pm', 'fy']) { const b = qp(k); if (b) pm.append(b); }
+    pers.querySelector('summary').addEventListener('click', () => setTimeout(() => { if (pers.open) de.focus(); }, 0));
+    sg.append(pers);
+    const vis = root.querySelector('.vg-bar #vgView'); if (vis) { const lb = vis.closest('label.f'); lb.classList.add('vgl-vis'); l1.append(lb); }
+    const l2 = el('<div class="vgl-f2"></div>');
+    for (const n of ['shiftId', 'lineId', 'machineId', 'catalogId', 'status']) { const c = campo(n); if (c) l2.append(c); }
+    const lim = fm.querySelector('#vglLimpar'); if (lim) { lim.className = 'vgl-limpar'; lim.textContent = 'Limpar filtros'; l2.append(lim); }
+    const mais = fm.querySelector('#vglMais'); if (mais) l2.append(mais);
+    const d = db(), nome = (L, id) => ((L || []).find(x => x.id === id) || {}).name;
+    const cat = f.catalogId ? (d.catalogs.find(c => c.id === f.catalogId)) : null;
+    const res = [f.from === f.to ? U.brDate(f.from) : U.brDate(f.from) + ' – ' + U.brDate(f.to), f.shiftId ? nome(d.shifts, f.shiftId) || 'Turno' : 'Todos os turnos',
+      nome(d.lines, f.lineId) || 'Linha', f.machineId ? nome(d.machines, f.machineId) || 'Máquina' : 'Todas as máquinas'].concat(cat ? ['Catálogo ' + catLabel(cat)] : [], f.status ? ['Status ' + f.status] : []);
+    const l3 = el(`<p class="vgl-f3" aria-live="polite">${res.map(esc).join(' · ')}</p>`);
+    /* o que sobrou: rótulos já sem campo (De, Até, Período rápido) saem; extras ficam no fim da segunda linha */
+    [...fm.children].forEach(x => { if (x.matches('.spacer') || !x.querySelector('input,select,button,a,details')) x.remove(); else l2.append(x); });
+    fm.append(l1, l2, l3);
+    /* ações da visão à direita do título; a .vg-bar sem o seletor de Visão fica só com os botões */
+    const bar = root.querySelector('.vg-bar'), hd = root.querySelector('.vgl-hd');
+    if (bar &amp;&amp; hd &amp;&amp; !hd.contains(bar)) { bar.classList.add('vgl-acoes'); hd.append(bar); }
   }
   function ligar(root, D) {
     const lim = root.querySelector('#vglLimpar'); if (lim) lim.onclick = () => {
@@ -21478,9 +21585,12 @@ const GrpAbas = (() => {
     if (!document.getElementById('grpCss')) { const st = document.createElement('style'); st.id = 'grpCss'; st.textContent = CSS; document.head.appendChild(st); }
     agrupar('history'); agrupar('stops');
     /* nomes e ordem das abas (Proposta A): Lançamento · Pendências · Visão Geral · Resultados · Paradas · Plano do mês · Ordens e lotes · Relatórios · SQDCP · Equipamentos · ⚙ Config. */
-    const nome = { history: 'Resultados', stops: 'Paradas', ordens: 'Ordens e lotes', config: '⚙ Config.' };
+    /* LANC-03 (item 0, decisão do responsável, 20/11/2026) · ordem padrão e rótulos da imagem: Visão geral · Lançamento · Pendências · Paradas ·
+       Resultados · Plano do mês · Relatórios · Equipamentos · Config. · Ordens e lotes · SQDCP. As rotas não mudam; a ordem salva por
+       cada pessoa em Config. › Abas continua valendo para ela. */
+    const nome = { overview: 'Visão geral', history: 'Resultados', stops: 'Paradas', ordens: 'Ordens e lotes', config: 'Config.' };
     for (const r of ROUTES) if (nome[r[0]]) r[1] = nome[r[0]];
-    const ordem = ['launch', 'hourly', 'pend', 'overview', 'history', 'weekly', 'monthly', 'stops', 'timeline', 'plan', 'ordens', 'lots', 'panel', 'reports', 'sqdcp', 'equip', 'config'];
+    const ordem = ['overview', 'launch', 'hourly', 'pend', 'stops', 'timeline', 'history', 'weekly', 'monthly', 'plan', 'panel', 'reports', 'equip', 'config', 'ordens', 'lots', 'sqdcp'];
     const pos = k => { const i = ordem.indexOf(k); return i < 0 ? 900 : i; };
     ROUTES.sort((a, b) => pos(a[0]) - pos(b[0]));
     if (typeof NAV_GRUPOS !== 'undefined') {
@@ -38484,6 +38594,24 @@ td { font-size:15px; }
 body.vac-porta .module-frame:not([hidden]) iframe{position:fixed!important;inset:0!important;width:100vw!important;height:100vh!important;max-height:none!important;z-index:1001!important;background:transparent!important;border:0!important;color-scheme:normal}
 body.vac-porta{overflow:hidden}
 @media print{.porta{display:none}}
+/* LANC-03 (item 0) · chip de situação (no lugar do botão Status) e barra de ações em dois grupos */
+.status-chip { display:inline-flex; align-items:center; gap:var(--sp-8,8px); min-height:40px; padding:0 var(--sp-16,16px); border:1px solid var(--line); border-radius:999px; background:var(--surface); color:var(--ink); font:600 14px var(--f-body,inherit); cursor:pointer; white-space:nowrap; }
+.status-chip:hover { background:var(--surface-2); }
+.status-chip .status-dot { width:9px; height:9px; border-radius:50%; flex:none; background:var(--muted); }
+.status-chip.ok .status-dot { background:var(--ok); }
+.status-chip.warning { color:var(--warn); background:var(--warn-bg); border-color:var(--warn); }
+.status-chip.warning .status-dot { background:var(--warn); }
+.status-chip.danger { color:var(--crit); background:var(--crit-bg); border-color:var(--crit); }
+.status-chip.danger .status-dot { background:var(--crit); }
+.status-chip.info .status-dot { background:var(--info); }
+.engine-commands-esq,.engine-commands-dir { display:flex; align-items:center; gap:var(--sp-4,4px); flex:none; }
+.engine-commands-dir { margin-left:auto; }
+.engine-commands .engine-command { min-height:40px; }
+@media (max-width:760px) {
+ .engine-commands { flex-wrap:wrap; row-gap:var(--sp-8,8px); }
+ .engine-commands-esq,.engine-commands-dir { flex-basis:100%; flex-wrap:wrap; margin-left:0; }
+ .engine-commands-esq [data-cmd="opBtn"] { order:-1; }
+}
 </textarea>
 
 <!-- dados/manifesto -->
@@ -38494,9 +38622,9 @@ body.vac-porta{overflow:hidden}
     {
       "id": "oee",
       "path": "Plataforma.html#motor/oee",
-      "version": "2.6.22",
-      "sha256": "2c111f4fe6fccbf67d3294b5c01fa496c0b7c565b7e4c0a0add3706e1d6a90e9",
-      "bytes": 2296269
+      "version": "2.6.23",
+      "sha256": "d0254d99365df13136902847a48fd85b1abf657f5874249ad5c51a6a9adebfc6",
+      "bytes": 2307900
     },
     {
       "id": "perdas",
@@ -38550,15 +38678,15 @@ body.vac-porta{overflow:hidden}
     {
       "id": "portal",
       "path": "Plataforma.html#motor/portal",
-      "version": "1.9.54",
-      "sha256": "7d4d81269f463d32a8599e4c02617115b44f77b85306c06431f9c1662db3f70e",
-      "bytes": 1262595
+      "version": "1.9.55",
+      "sha256": "107bbc826f755349c44713f09f603bde674f0a3d23ba42cf11bbe36027013d62",
+      "bytes": 1263374
     }
   ],
   "limitations": [
     "Projetos e conteúdo técnico OSM/MES/AM/TPM mantêm os limites documentados nas fontes."
   ],
-  "enginesSha256": "ea29821b5056c1de8c86ba506b39f8d1f2a5c41d2f60d86d7ecc6bec0a63eac6",
+  "enginesSha256": "9babab7c8a4072d9b8c464fb1b263278571f397b7c3c74e590e488d3fc81f586",
   "originRevision": "ffc9ee8",
   "sourceMode": "single-html",
   "originEnginesSha256": "a87a64ad0c328f70e102b2ae888790a9b5d5a9bd05778652a7ce7cae140e40d2"
@@ -38628,7 +38756,7 @@ summary{cursor:pointer;font-weight:600;color:var(--navy)}
 'use strict';
 /* ---------- referência (atualizar quando a plataforma mudar de versão) ---------- */
 // Iguais às do pacote da plataforma (nova-plataforma/src/generated/manifest.json); o teste ferramenta-verificar confere.
-const VERSOES = {"oee":"2.6.22","perdas":"1.12.17","gel":"2.42","paradas":"1.2.18","equip":"1.0.20","inic":"1.1.16","linha":"1.4.0","projetos":"0.1.16","portal":"1.9.54"};
+const VERSOES = {"oee":"2.6.23","perdas":"1.12.17","gel":"2.42","paradas":"1.2.18","equip":"1.0.20","inic":"1.1.16","linha":"1.4.0","projetos":"0.1.16","portal":"1.9.55"};
 const BASES = [
  { arq: 'vacutainer-cadastros.json', mod: 'portal', nome: 'Cadastro geral (Portal)', obrig: true, cadastro: true, bk: 'Cadastros' },
  { arq: 'portal-base.json', mod: 'portal', nome: 'Portal', obrig: true, bk: 'Portal' },
@@ -39213,13 +39341,13 @@ import { MARCA_LOGO, marcaCss } from "vac:modulo/design/marca";
 import { rememberFolder, queuePending, queueDetail } from "vac:modulo/core/scopes";
 import { useCallback, useEffect, useMemo, useRef, useState } from "vac:vendor/react";
 import { modules, moduleOf, IMPORTS, FILES } from "vac:modulo/core/modules";
-import { today, date, fmt, pct, productionView, pending, searchOrders, readSources, loadHandle, saveHandle, dbGet, dbSet, esc, csvCell, periodRange, executiveView } from "vac:modulo/core/data";
+import { today, date, fmt, pct, productionView, pending, searchOrders, readSources, loadHandle, saveHandle, dbGet, dbSet, esc, csvCell, periodRange, executiveView, situacaoChip } from "vac:modulo/core/data";
 import { configureRuntime, demoSources, frames, hasPending, pendingDetail, refreshEngine, currentUser, printEngine } from "vac:modulo/core/runtime";
 import { Icon, Button, Badge, Empty, Modal, BarChart, BrandLogo, CommandMenu } from "vac:modulo/components/ui";
 import { ModuleFrame } from "vac:modulo/components/ModuleFrame";
 import manifest from "vac:recurso/manifesto";
 import { ModuleTabs } from "vac:modulo/components/ModuleTabs";
-const VERSION = "1.8.31";
+const VERSION = "1.8.32";
 /* Navegação 1.3.0 (16/11/2026): Visão da linha, Relatórios e Importações têm abas; as que mostram uma tela do
    Portal (motor da Administração) trazem o 3º campo com a aba dele. Administração fica só com cadastros e configuração. */
 const SHELL_TABS = {
@@ -39766,13 +39894,15 @@ function App() {
           /* @__PURE__ */ jsxs("div", { className: "heading-actions", children: [
             route.page === 'inicio' &amp;&amp; !embedded &amp;&amp; jsxs('div',{className:'view-switch',role:'group','aria-label':'Nível de detalhe',children:[jsx('button',{'aria-pressed':!detail,onClick:()=>setDetail(false),children:'Resumo'}),jsx('button',{'aria-pressed':detail,onClick:()=>setDetail(true),children:'Detalhado'})]}),
             route.page === 'inicio' &amp;&amp; !embedded &amp;&amp; jsx(Button,{icon:'download',onClick:()=>print(true),disabled:!validRange || !reportRows().length,children:'Exportar resumo'}),
-            jsx(Button,{className:'status-trigger '+(statusDanger?'danger':statusWarning?'warning':''),icon:statusDanger||statusWarning?'alert':'shield',onClick:()=>setStatusOpen(true),title:statusDanger?'Status: há erro a conferir':statusWarning?'Status: há pendências a conferir':'Status da página e das bases',children:'Status'}),
+            /* LANC-03 (item 0) · chip de situação no lugar do botão Status: o mesmo estado (statusDanger/statusWarning) e o mesmo painel */
+            (()=>{const chip=situacaoChip({demo,folder:!!folder,danger:statusDanger,warning:statusWarning});
+              return jsxs('button',{type:'button',className:'status-trigger status-chip '+chip.tom,onClick:()=>setStatusOpen(true),title:chip.dica,'aria-label':'Status: '+chip.txt,'aria-haspopup':'dialog',children:[jsx('span',{className:'status-dot','aria-hidden':'true'}),jsx('span',{children:chip.txt})]});})(),
             /* @__PURE__ */ jsx("button", { className: "icon-button", "aria-label": current ? "Guia desta aba" : "Ajuda desta p\xE1gina", title: current ? "Guia desta aba (o que é cada campo e o passo a passo · F1)" : "Ajuda desta p\xE1gina", onClick: () => { try { if (current &amp;&amp; frames.get(current.id)?.contentWindow?.vacPagina?.guia?.()) return; } catch {} setHelp(true); }, children: /* @__PURE__ */ jsx(Icon, { name: "help" }) }),
             /* @__PURE__ */ jsx(Button, { icon: "refresh", onClick: () => {
               refresh();
               if (current) refreshEngine(current.id);
             }, disabled: busy, children: busy ? "Atualizando\u2026" : "Atualizar" }),
-            !demo &amp;&amp; /* @__PURE__ */ jsx(Button, { primary: true, icon: "folder", onClick: () => connect(), disabled: busy, title: lembrada &amp;&amp; !folder ? "Reconectar a pasta " + lembrada.name + " (o navegador pede para permitir)" : void 0, children: folder ? "Trocar pasta" : lembrada ? "Reconectar pasta" : "Conectar pasta" })
+            !demo &amp;&amp; /* @__PURE__ */ jsx(Button, { primary: true, icon: "folder", "data-act": "connect", onClick: () => connect(), disabled: busy, title: lembrada &amp;&amp; !folder ? "Reconectar a pasta " + lembrada.name + " (o navegador pede para permitir)" : folder ? "Trocar a pasta da rede usada pela plataforma" : void 0, children: folder ? "Trocar pasta" : lembrada ? "Reconectar pasta" : "Conectar pasta da rede" })
           ] })
         ] }),
         durablePending &amp;&amp; !demo &amp;&amp; /* @__PURE__ */ jsx("div", { className: "inline-alert", children: "H\xE1 fila pendente nesta pasta ou falha ao consult\xE1-la. Abra o m\xF3dulo respons\xE1vel e confira a grava\xE7\xE3o antes de trocar de pasta." }),
@@ -39907,9 +40037,13 @@ function App() {
           /* @__PURE__ */ jsxs("div", { className: "module-toolbar", children: [
             /* @__PURE__ */ !embedded &amp;&amp; currentTabs.length > 1 &amp;&amp; jsx(ModuleTabs, { tabs: currentTabs, active: abaSeguida || currentTab, onSelect: (id) => navigate(current.id, id) }),
             /* @__PURE__ */ jsxs("div", { className: "engine-commands", children: [
-              /* 1.8.13 · sem o botão "Imprimir módulo": a impressão certa fica em Relatórios (pedido do responsável) */
-              (statuses[current.id]?.commands || []).map(c=>c.itens?.length?jsx(CommandMenu,{command:c,onCommand:id=>{try{frames.get(current.id)?.contentWindow?.vacPagina.comando(id)}catch(e){setMessage(e.message)}}},current.id+':'+c.id):jsx(Button,{className:'engine-command'+corDestaque(cad,current,c.label),title:c.dica || c.label,disabled:c.disabled,onClick:()=>{try{frames.get(current.id)?.contentWindow?.vacPagina.comando(c.id)}catch(e){setMessage(e.message)}},children:c.label},c.id)),
-
+              /* 1.8.13 · sem o botão "Imprimir módulo": a impressão certa fica em Relatórios (pedido do responsável)
+                 LANC-03 (item 0) · barra de ações: Voltar e Lançar meu turno à esquerda; Sincronizar, Backup e Modo TV à direita; ícone e altura iguais.
+                 Os comandos continuam os do módulo (mesmos IDs e travas); só o arranjo e o ícone mudam. */
+              ...(()=>{const cmds=statuses[current.id]?.commands || [],ESQ=['vacVoltar','opBtn'],ICONE={vacVoltar:'voltar',opBtn:'mais',btnSync:'refresh',btnBackup:'folder',btnTV:'tv'};
+                const botao=c=>c.itens?.length?jsx(CommandMenu,{command:c,onCommand:id=>{try{frames.get(current.id)?.contentWindow?.vacPagina.comando(id)}catch(e){setMessage(e.message)}}},current.id+':'+c.id):jsx(Button,{className:'engine-command'+corDestaque(cad,current,c.label),icon:ICONE[c.id],'data-cmd':c.id,title:c.dica || c.label,disabled:c.disabled,onClick:()=>{try{frames.get(current.id)?.contentWindow?.vacPagina.comando(c.id)}catch(e){setMessage(e.message)}},children:c.label},c.id);
+                const esq=cmds.filter(c=>ESQ.includes(c.id)),dir=cmds.filter(c=>!ESQ.includes(c.id));
+                return [esq.length&amp;&amp;jsx('div',{className:'engine-commands-esq',children:esq.map(botao)},'esq'),dir.length&amp;&amp;jsx('div',{className:'engine-commands-dir',children:dir.map(botao)},'dir')].filter(Boolean);})(),
             ] }),
             statusCurrent?.info?.estado?.some(p=>p.tom==='bad') &amp;&amp; jsx('div',{className:'inline-alert error',role:'alert',children:'Há alertas do módulo. Confira o Status.'}),
             statusCurrent?.pending &amp;&amp; jsx('div',{className:'engine-status',role:'status',children:'Alterações pendentes'}),
@@ -40314,7 +40448,7 @@ function Icon({ name, size = 20, ...props }) {
   ] }), search: /* @__PURE__ */ jsxs(Fragment, { children: [
     /* @__PURE__ */ jsx("circle", { cx: "10.5", cy: "10.5", r: "6.5" }),
     /* @__PURE__ */ jsx("path", { d: "m16 16 5 5" })
-  ] }), arrow: /* @__PURE__ */ jsx("path", { d: "M5 12h14m-5-5 5 5-5 5" }), chevron: /* @__PURE__ */ jsx("path", { d: "m9 5 7 7-7 7" }), upload: /* @__PURE__ */ jsx(Fragment, { children: /* @__PURE__ */ jsx("path", { d: "M12 16V3m-5 5 5-5 5 5M3 15v6h18v-6" }) }), download: /* @__PURE__ */ jsx(Fragment, { children: /* @__PURE__ */ jsx("path", { d: "M12 3v13m-5-5 5 5 5-5M3 16v5h18v-5" }) }), file: /* @__PURE__ */ jsx(Fragment, { children: /* @__PURE__ */ jsx("path", { d: "M5 3h9l5 5v13H5zM14 3v6h5M8 13h8m-8 4h6" }) }), check: /* @__PURE__ */ jsx("path", { d: "m4 12 5 5L20 6" }), alert: /* @__PURE__ */ jsx(Fragment, { children: /* @__PURE__ */ jsx("path", { d: "m12 3 10 18H2zM12 9v5m0 3h.01" }) }), folder: /* @__PURE__ */ jsx("path", { d: "M3 5h7l2 3h9v12H3z" }), refresh: /* @__PURE__ */ jsxs(Fragment, { children: [
+  ] }), arrow: /* @__PURE__ */ jsx("path", { d: "M5 12h14m-5-5 5 5-5 5" }), voltar: /* @__PURE__ */ jsx("path", { d: "M19 12H5m5-5-5 5 5 5" }), mais: /* @__PURE__ */ jsx("path", { d: "M12 5v14M5 12h14" }), tv: /* @__PURE__ */ jsxs(Fragment, { children: [/* @__PURE__ */ jsx("rect", { x: "3", y: "4", width: "18", height: "12", rx: "2" }), /* @__PURE__ */ jsx("path", { d: "M8 20h8M12 16v4" })] }), chevron: /* @__PURE__ */ jsx("path", { d: "m9 5 7 7-7 7" }), upload: /* @__PURE__ */ jsx(Fragment, { children: /* @__PURE__ */ jsx("path", { d: "M12 16V3m-5 5 5-5 5 5M3 15v6h18v-6" }) }), download: /* @__PURE__ */ jsx(Fragment, { children: /* @__PURE__ */ jsx("path", { d: "M12 3v13m-5-5 5 5 5-5M3 16v5h18v-5" }) }), file: /* @__PURE__ */ jsx(Fragment, { children: /* @__PURE__ */ jsx("path", { d: "M5 3h9l5 5v13H5zM14 3v6h5M8 13h8m-8 4h6" }) }), check: /* @__PURE__ */ jsx("path", { d: "m4 12 5 5L20 6" }), alert: /* @__PURE__ */ jsx(Fragment, { children: /* @__PURE__ */ jsx("path", { d: "m12 3 10 18H2zM12 9v5m0 3h.01" }) }), folder: /* @__PURE__ */ jsx("path", { d: "M3 5h7l2 3h9v12H3z" }), refresh: /* @__PURE__ */ jsxs(Fragment, { children: [
     /* @__PURE__ */ jsx("path", { d: "M20 7v5h-5M4 17v-5h5" }),
     /* @__PURE__ */ jsx("path", { d: "M5 8a8 8 0 0 1 13-3l2 3M4 16l2 3a8 8 0 0 0 13-3" })
   ] }), help: /* @__PURE__ */ jsxs(Fragment, { children: [
@@ -40738,7 +40872,16 @@ function executiveView(sources, from, to, turno, cad) {
   return {prod,target,chartRows,byShift:from === to &amp;&amp; !turno,stopMinutes:stopValid ? events.reduce((n,r) => n+r.minutos,0) : null,equipment,stopCovered:stopValid,stopCoverage:coverage,safety:safety('acidente'),quality:safety('qn'),actions:ordered,overdue:open.filter(a => a.atrasada).length,actionsAvailable:!!source('inic')};
 }
 
+/* LANC-03 (item 0) · chip de situação do cabeçalho: lê o mesmo estado do antigo botão Status (erro × pendência × ok).
+   Demonstração: sem bases reais, o chip diz isso em vez de "sem conexão". Só texto e tom; não muda o estado. */
+function situacaoChip({ demo = false, folder = false, danger = false, warning = false } = {}) {
+  if (demo) return { tom: "info", txt: "Demonstra\xE7\xE3o", dica: "Demonstra\xE7\xE3o: dados fict\xEDcios, sem acesso \xE0s bases reais. Clique para ver o status da p\xE1gina" };
+  if (danger) return !folder ? { tom: "danger", txt: "Sem conex\xE3o com a pasta", dica: "Status: sem conex\xE3o com a pasta da rede" } : { tom: "danger", txt: "Erro a conferir", dica: "Status: h\xE1 erro a conferir" };
+  if (warning) return { tom: "warning", txt: "Aten\xE7\xE3o", dica: "Status: h\xE1 pend\xEAncias a conferir" };
+  return { tom: "ok", txt: "Sistema online", dica: "Status da p\xE1gina e das bases" };
+}
 export {
+  situacaoChip,
   executiveView,
   addDays,
   csvCell,

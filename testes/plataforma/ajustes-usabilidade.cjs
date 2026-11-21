@@ -29,7 +29,7 @@ const html = fs.readFileSync(path.resolve(__dirname, '../../Plataforma.html'));
       console.log('ok recolher ' + hash + ': ' + r.tg + ' seções'); await p.close();
     }
     // 2. Produção: cabeçalho, onde lançar, guia, destaque, Ordens, Configurações, aba Equipamentos
-    { const { p, f } = await abre('#/oee');
+    { const { p, f } = await abre('#/oee?tab=launch');   /* LANC-03: a Produção abre em Visão geral; o Cabeçalho do dia fica no Lançamento */
       const cab = await f.evaluate(async () => { document.querySelector('#cabTg').click(); await new Promise(r => setTimeout(r, 500)); const c = document.querySelector('#cabDia'); return [...c.children].filter(e => e.tagName !== 'HEADER').every(e => getComputedStyle(e).display === 'none'); });
       assert.ok(cab, 'seta do Cabeçalho do dia recolhe o conteúdo'); await f.evaluate(() => document.querySelector('#cabTg').click());
       /* 2.6.9 · LANC-02: no lugar da faixa "Onde lançar", o cartão de cada turno abre o detalhe com o hora a hora dentro */

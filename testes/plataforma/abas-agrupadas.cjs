@@ -20,7 +20,7 @@ const html = fs.readFileSync(path.resolve(__dirname, '../../Plataforma.html'));
 
     // 1) barra de abas da casca: 11 abas, na ordem aprovada, sem Painel, Hora a hora, Semanal, Mensal, Linha do tempo e Lotes; sem "Imprimir módulo"
     const abas = await page.evaluate(() => [...document.querySelectorAll('.module-tabs [data-tab-id]')].map(b => { const c = b.cloneNode(true); c.querySelectorAll('.tab-selo').forEach(x => x.remove()); return c.textContent.trim(); }));   /* LANC-04: o selo de estado fica fora do nome */
-    assert.deepEqual(abas, ['Lançamento', 'Pendências', 'Visão Geral', 'Resultados', 'Paradas', 'Plano do mês', 'Ordens e lotes', 'Relatórios', 'SQDCP', 'Equipamentos', '⚙ Config.']);
+    assert.deepEqual(abas, ['Visão geral', 'Lançamento', 'Pendências', 'Paradas', 'Resultados', 'Plano do mês', 'Relatórios', 'Equipamentos', 'Config.', 'Ordens e lotes', 'SQDCP']);   /* LANC-03 (item 0): ordem e rótulos da imagem */
     assert.equal(await page.getByRole('button', { name: 'Imprimir módulo', exact: true }).count(), 0, 'sem Imprimir módulo');
     console.log('ok barra: ' + abas.join(' · ') + '; sem Imprimir módulo');
 

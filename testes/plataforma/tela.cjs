@@ -21,7 +21,7 @@ const H=require('../../scripts/html.cjs');
    const info=await f.evaluate(()=>{localStorage.setItem('vac.sistemas',JSON.stringify(systems().map(s=>({...s,...(s.id===PAGE.id?{estado:'atualizacao',estadoNota:'Validação visual fictícia'}:{})}))));vacEstadoRender();return vacPagina.info()});
    assert.ok(info.estado.length&&info.estado.every(i=>i.texto&&i.tom));
    const back=p.locator('.engine-commands').getByRole('button',{name:'Voltar',exact:true});await back.waitFor();assert.match(await back.getAttribute('title'),/tela anterior/);
-   const status=p.locator('.heading-actions').getByRole('button',{name:'Status',exact:true});assert.equal(await status.evaluate(e=>!!e.closest('.module-tabs,.page-tabs')),false);
+   const status=p.locator('.heading-actions .status-trigger');assert.equal(await status.evaluate(e=>!!e.closest('.module-tabs,.page-tabs')),false);
    await status.click();const dialog=p.getByRole('dialog',{name:'Status da página'});await dialog.waitFor();
    await dialog.getByText('oee-vacutainer-base.json',{exact:true}).waitFor();await dialog.getByText('Validação visual fictícia',{exact:true}).waitFor();
    for(const label of ['Versão do módulo','Revisão publicada da base','Cadastro geral','Conexão','Alterações pendentes','Fila durável neste navegador','Pasta de backup','Último backup registrado com sucesso'])await dialog.getByText(label,{exact:true}).waitFor();

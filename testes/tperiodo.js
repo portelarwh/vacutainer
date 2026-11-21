@@ -58,7 +58,7 @@ const { chromium } = require('playwright');
     return out; });
   ok(!v5.menu.includes('Painel') && v5.menu[0] === 'Visão Geral', 'PRD-01: o menu tem só Visão Geral (sem a aba Painel)');
   ok(v5.padrao && v5.botoes, 'PRD-01: Visão Geral abre na visão padrão, com o seletor (Meu painel, modelos como Diretoria mensal), Personalizar, Imprimir e Apresentar');
-  ok(v5.qp === 'Hoje|Ontem|Semana|Mês' && v5.ontem, 'D9: períodos rápidos começam por Hoje · Ontem · Semana · Mês (Ontem filtra o dia anterior)');
+  ok(v5.qp === 'Hoje|Ontem|7 dias|30 dias' && v5.ontem, 'D9 revista na LANC-03 (responsável, 21/11/2026): na Visão geral os períodos rápidos são Hoje · Ontem · 7 dias · 30 dias, com Semana, Mês e os demais em Personalizado (Ontem filtra o dia anterior)');
   ok(v5.painel && v5.pnHoje === 'Hoje|Ontem', 'PRD-01: escolhendo uma visão do Painel, a própria Visão Geral vira o Painel (com Hoje e Ontem e a volta para a padrão)');
   ok(v5.volta, 'PRD-01: o seletor do Painel volta para a Visão Geral padrão');
   ok(v5.legado, 'PRD-01: o endereço antigo do Painel (go/aba panel) abre a Visão Geral em Meu painel');
