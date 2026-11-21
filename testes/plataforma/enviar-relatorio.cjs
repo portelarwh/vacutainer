@@ -19,7 +19,7 @@ const html = fs.readFileSync(path.resolve(__dirname, '../../Plataforma.html'));
     // lê a área de transferência quando a cópia termina (o diálogo fecha depois de copiar)
     const copiar = async () => { await o.click('#envrCopiar'); await o.waitForFunction(() => !document.querySelector('.overlay #envrCopiar'), null, { timeout: 15000 });
       return o.evaluate(async () => { const it = await navigator.clipboard.read(), out = {}; for (const i of it) for (const t of i.types) out[t] = await (await i.getType(t)).text(); return out; }); };
-    const escolher = async v => { await o.evaluate(() => { go('launch'); }); await o.locator('#dEnviar').click(); await o.locator(`input[name="envr"][value="${v}"]`).check(); };
+    const escolher = async v => { await o.evaluate(() => { go('launch'); }); await o.locator('#dMais').click(); await o.locator('#dEnviar').click();   /* LANC-03: Enviar relatório fica no menu ⋮ Mais ações */ await o.locator(`input[name="envr"][value="${v}"]`).check(); };
 
     // 1) "Scrap e perdas" como PRIMEIRA cópia da sessão (antes, sem a aba Relatórios aberta, a cópia falhava): scrap de tubos, gel e Waste da ordem do dia
     await escolher('perdas');
