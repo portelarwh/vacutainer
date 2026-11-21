@@ -172,3 +172,17 @@ Todo indicador com meta usa as três cores do semáforo da Administração (subs
 - **Cartão que repete outro número** (ex.: OEE reportado igual ao realizado) só aparece quando mostra um valor diferente.
 - **Período de 1 dia:** grupos de gráficos recolhidos e uma nota única, sem tendência.
 
+## 22. Cores das categorias do SQDCP — padrão da empresa (21/11/2026)
+
+Pedido do responsável: na gestão do quadro, cada categoria tem uma cor. Ela vale nos **cabeçalhos das categorias** do SQDCP e, em qualquer página, como **barra ou detalhe do cartão** de um indicador dessa categoria (ex.: um cartão de Segurança na Visão da linha leva a barra verde). É cor de identidade, não de resultado: o resultado contra a meta continua no semáforo (seção 20) no valor ou no selo, e o SQDCP impresso continua uma A4 paisagem com verde/vermelho para o resultado (contrato 6).
+
+| Categoria | Cor | Preenchimento | Texto sobre o preenchimento | Texto/traço sobre branco |
+|---|---|---|---|---|
+| S · Segurança | verde | `#16803C` | branco (5,0:1) | `#16803C` (5,0:1) |
+| Q · Qualidade | azul | `#1769D2` | branco (5,3:1) | `#1769D2` (5,3:1) |
+| D · Entrega | laranja | `#FF6E00` | navy (6,7:1) | `#B04A00` (5,5:1) |
+| C · Custo | amarelo | `#F2B705` | navy (10,3:1) | `#7A5A00` (6,4:1) |
+| P · Pessoas | cinza | `#8A94A6` | navy (6,1:1) | `#56606E` (6,4:1) |
+
+Barras e bordas usam o preenchimento; texto e ícone sobre fundo claro usam a última coluna. O laranja da categoria Entrega não substitui o laranja de ação primária nem o amarelo de atenção do semáforo: a categoria aparece sempre com a letra ou o nome (S, Q, D, C, P).
+

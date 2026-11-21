@@ -62,6 +62,7 @@ Peça comum para páginas fora da Produção: `vacLayout` (comum/interface: `sec
 ### Identidade visual (vale para as duas)
 
 - **Cores só da paleta** (`css/brand`, `var(--…)`): navy e azul para identidade e séries neutras; laranja pontual (ação primária de lançamento, destaque); verde/amarelo/vermelho **só** para resultado × meta, pelo semáforo da Administração (`--ok`, `--warn`/`--warn-fill`, `--crit`). SQDCP, Gel e D/P/Q seguem as exceções do Design System § 20. Cores de catálogo vêm do cadastro.
+- **Cores do SQDCP (padrão da empresa para a gestão do quadro):** cada categoria tem uma cor própria — **Segurança verde, Qualidade azul, Entrega laranja, Custo amarelo, Pessoas cinza**. Usar nos **cabeçalhos das categorias** do SQDCP e, em qualquer outra página, como **barra ou detalhe do cartão** de um indicador SQDCP (ex.: cartão de Segurança com a barra lateral verde). A cor da categoria é identidade: o resultado contra a meta continua no semáforo (verde/amarelo/vermelho) no valor ou no selo, nunca na barra da categoria. Tons e contraste no Design System, seção 22; texto sobre o laranja, o amarelo e o cinza é navy, sobre o verde e o azul é branco.
 - **Fonte** só pelas variáveis `--f-body` / `--f-display` (FS Albert Pro com reserva Arial). Nada de Georgia, serifa ou família fixa no CSS do módulo.
 - **Caixa de frase** em títulos (h1–h4), seções, cartões, botões e mensagens. Maiúsculas só em rótulos curtos: rótulo de KPI, cabeçalho de tabela, pílula, chip, grupo do menu.
 - **Tamanhos**: título da página 22 px; seção 18 px; título de cartão 15–16 px; corpo 14–15 px; notas e rótulos 12–13 px; **nada abaixo de 12 px**.
@@ -79,6 +80,7 @@ Peça comum para páginas fora da Produção: `vacLayout` (comum/interface: `sec
 - [ ] Cartões KPI no formato da Produção e "Editar cards" quando a página tem grade.
 - [ ] Gráficos com título, unidade, legenda, meta e tabela recolhida; agrupados quando são muitos.
 - [ ] Nenhuma cor, fonte ou tamanho fora da marca; nada abaixo de 12 px; espaços na escala.
+- [ ] Indicador SQDCP (Segurança, Qualidade, Entrega, Custo, Pessoas) com a barra/detalhe na cor da categoria; semáforo só no resultado.
 - [ ] Nenhum aviso repetido em dois blocos.
 - [ ] Varredura de depois sem achados "ajustar"; números iguais aos de antes; testes do módulo passando.
 
@@ -86,6 +88,7 @@ Peça comum para páginas fora da Produção: `vacLayout` (comum/interface: `sec
 
 - `vacLayout.sec` (comum/interface, estilos `vk-sec`) ainda mostra a numeração 01–05; a Produção tirou na 2.6.29. Corrigir na peça comum alcança Waste e as demais páginas que a usam.
 - Selo "em construção" das abas da casca com 10,5 px (abaixo do piso de 12 px).
+- SQDCP usa hoje Entrega âmbar, Custo roxo e Pessoas vermelho (`PIL` em motor/oee); o padrão da empresa é Entrega laranja, Custo amarelo e Pessoas cinza.
 - Waste › Painel: fonte Georgia em parte do texto e mais de um botão primário no mesmo grupo.
 - A própria Produção tem espaçamentos fora da escala (14, 10, 18 px) no CSS montado pela Visão geral e legendas de 11,5 px no Lançamento: ajustar quando mexer nesses blocos.
 
