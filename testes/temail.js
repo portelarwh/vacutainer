@@ -68,11 +68,11 @@ const errs = []; const ok = (c, m) => { console.log((c ? 'ok   ' : 'FALHA ') + m
   ok(!/<img/.test(c.html) && c.html.includes(N.dia) && /Hora a hora/.test(c.html) && /Horário/.test(c.html), 'sem "gráficos como imagem": OEE em número e hora a hora em tabela, nenhum <img>');
   await p.evaluate(() => { const x = document.querySelector('#rpImg'); if (!x.checked) x.click(); });
 
-  // ---------- relatório da tela sem o bloco repetido; os outros tipos continuam com o e-mail antigo
+  // ---------- relatório da tela sem o bloco repetido; os outros tipos não têm "Itens do e-mail" e, desde a 1.8.45 (REL-02), saem no molde comum de 680 px
   for (const t of ['day', 'shift']) { await abre(t); const r = await p.evaluate(() => ({ blocos: App.rep.model.blocks.map(b => b.l), auto: App.rep.model.auto }));
     ok(r.blocos.filter(x => /Segurança/.test(x)).length === 1 && conta(r.auto, 'Segurança') === 1, `relatório da tela (${t}): Segurança e Qualidade uma vez nos blocos e no resumo`); }
   await p.evaluate(() => { const R = rpState(); R.type = 'week'; go('reports'); }); await p.waitForTimeout(1300);
-  c = await copia(); ok(!(await p.$('#rpItens')) && /Relatório semanal/.test(c.html) && !/width="680"/.test(c.html), 'relatório semanal: e-mail antigo, sem o botão Itens do e-mail');
+  c = await copia(); ok(!(await p.$('#rpItens')) && /Relatório semanal/.test(c.html) && /width="680"/.test(c.html), 'relatório semanal: molde comum do e-mail (REL-02), sem o botão Itens do e-mail');
 
   ok(!pe.length, 'sem erro de página' + (pe.length ? ': ' + [...new Set(pe)].slice(0, 3).join(' | ') : ''));
   await b.close(); if (errs.length) { console.log(`\n${errs.length} falha(s)`); process.exit(1); } console.log('\nsem erros');
