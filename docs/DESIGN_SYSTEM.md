@@ -140,7 +140,7 @@ O responsável aprovou a proposta visual e sua aplicação completa. A versão 1
 - **Fontes reais:** a imagem de referência é conceitual. Os exports atuais não publicam hora a hora completo; o resumo usa dia/turno e abre o hora a hora na Produção. Scrap aparece em peças, sem criar percentual/limite. Paradas são soma de registros, com cobertura explícita e possível sobreposição; não são automaticamente perda de OEE. QN informada não significa QN aberta. Quantidades consolidadas de SQDCP vêm do resumo publicado, sem somar a mesma QN entre turnos.
 - **Contextos separados:** indicadores diários seguem o período/turno selecionados; ações mostram a posição atual publicada no Planner. Waste conserva competência mensal. Data de publicação é identificada como publicação, não como atualização em tempo real ou prova de importação completa.
 - **Componentes:** fontes, filtros, botões, tabelas, estados, margens e navegação compartilham a escala da casca e de css/brand nos nove módulos. Comandos longos têm limite visual, descrição completa e rolagem na barra. Nada é removido por densidade ou por falta de espaço.
-- **Gráficos:** rótulos legíveis, base zero, marcador de meta e barras verdes/vermelhas somente quando existe meta; sem meta, série institucional neutra. Rolagem é interna ao gráfico quando necessária. Equipamentos e ações preservam seus IDs nos atalhos.
+- **Gráficos:** rótulos legíveis, base zero, marcador de meta e barras no semáforo (seção 20) somente quando existe meta; sem meta, série institucional neutra. Rolagem é interna ao gráfico quando necessária. Equipamentos e ações preservam seus IDs nos atalhos.
 - **Impressão:** Exportar resumo da visão inicial usa o mesmo recorte e valores do dashboard, com unidades, cobertura e referência das ações. O relatório compilado mantém a granularidade de cada módulo. A nova escala operacional é de tela; os PDFs específicos e o SQDCP A4 mantêm seus formatos.
 
 A preparação usa dados fictícios em 390/768/1440/1920 px, claro/escuro, navegação offline e os nove módulos. Aprovação visual não substitui validação das jornadas por perfil (E10c), conferência corporativa, impressora/Outlook ou homologação da pasta da linha.
@@ -162,4 +162,13 @@ Os textos sobre o fundo escuro do cabeçalho do e-mail comum usam branco diretam
 
 ## 20. Semáforo de três cores — plataforma 1.8.2
 
-Todo indicador com meta usa as três cores do semáforo da Administração: verde (`--ok`/`--green`) na meta, amarelo (`--warn-fill`/`--amber`, texto `--warn`) em atenção, vermelho (`--crit`/`--red`) abaixo. Barra sem meta mantém a cor da série. Legendas listam as três. Exceções: SQDCP (binário por contrato), Gel (regra de dosagem × BOM) e medidores D/P/Q.
+Todo indicador com meta usa as três cores do semáforo da Administração (substitui o verde/vermelho da seção 17): verde (`--ok`/`--green`) na meta, amarelo (`--warn-fill`/`--amber`, texto `--warn`) em atenção, vermelho (`--crit`/`--red`) abaixo. Barra sem meta mantém a cor da série. Legendas listam as três. Exceções: SQDCP (binário por contrato), Gel (regra de dosagem × BOM) e medidores D/P/Q.
+
+## 21. Modelo de página e títulos — Produção 2.6.29 (21/11/2026)
+
+- **Modelo de página:** Produção › Visão geral (consulta) e Produção › Lançamento (lançamento) são a referência de estrutura, filtros, gráficos e disposição de botões para as demais páginas. O modelo detalhado e o passo a passo para adequar outra página estão na skill [padrao-visual](../.claude/skills/padrao-visual/SKILL.md); `node scripts/varredura-visual.mjs --modulo "<Módulo>" --aba <id>` lista o que foge do modelo.
+- **Caixa de frase** em títulos h1–h4, seções, cartões e botões, como no guia da marca. Maiúsculas só em rótulos curtos (rótulo de KPI, cabeçalho de tabela, pílula, chip, grupo do menu). As seções não são numeradas.
+- **Um aviso num lugar só:** o que está na Validação não se repete em outro bloco da mesma página; o bloco remete à Validação.
+- **Cartão que repete outro número** (ex.: OEE reportado igual ao realizado) só aparece quando mostra um valor diferente.
+- **Período de 1 dia:** grupos de gráficos recolhidos e uma nota única, sem tendência.
+

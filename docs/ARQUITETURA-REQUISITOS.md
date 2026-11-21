@@ -1,4 +1,6 @@
-# ARQUITETURA — VACUTAINER
+# REQUISITOS DE ARQUITETURA — VACUTAINER
+
+> Requisitos desejados para a evolução. A implementação atual está em [ARQUITETURA](ARQUITETURA.md); este documento não declara nada como implementado.
 
 ## 1. Objetivo
 Transformar o Vacutainer em uma plataforma industrial integrada, modular, rastreável e escalável.

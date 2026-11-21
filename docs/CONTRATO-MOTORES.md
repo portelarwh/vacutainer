@@ -336,9 +336,9 @@ Tokens `--sp-4` … `--sp-32` em `css/brand` (regras em `docs/DESIGN_SYSTEM.md`,
 
 `VAC_PODE_MAPA.linha` (comum/interface) passa a listar os botões da própria Linha 360°; antes apontava para os de Equipamentos, que não existem na página, e nada ficava desligado na tela (a gravação já era barrada pela casca). A permissão continua sendo a do módulo `equip` (`VAC_PODE_MOD`); nenhum perfil ou ação nova no Portal. Opção A do responsável: **lançar** = marcar e desfazer checklist e salvar o posto; **configurar** = editar posições, desenhar e salvar áreas, salvar pontos e equipamentos, cadastrar, editar e desativar checklist. Sem sessão na plataforma, tudo desligado. Teste: `testes/tpermissoes.js` (telas Checklists, Pessoas e postos, Configuração e Piloto).
 
-## Linha 360° 1.2.0 · Piloto de consulta (17/11/2026)
+## Linha 360° 1.2.0 · Piloto de consulta (17/11/2026) · encerrado
 
-Aba `piloto` do módulo Linha 360° (`docs/linha-360-piloto.md`), aberta só por link (`#/linha?tab=piloto`; no módulo, `#aba=piloto`). Fica fora de `ABAS`: não entra na barra da página, nas abas da casca nem em `vacPagina.abas()`. Somente leitura: usa `numeros()`, `eventos()`, `chkFeito`, `pesNome` e os exports já lidos; não chama `Store.commit`, `save`, `reload` nem `lerExt`, e tem ponto e filtros próprios (as abas atuais não perdem os seus). Não muda base, `schemaVersion`, exports, permissões nem números. Teste: `testes/plataforma/linha-piloto.cjs`. A versão 1.1.5 citada acima é histórica; a anterior a esta entrega era 1.1.7.
+A aba `piloto` foi retirada na plataforma 1.8.6 (Linha 360° 1.3.0): o que só ela tinha foi para a ficha do ponto da Visão da linha, e o link antigo `#/linha?tab=piloto` abre a Visão da linha. O documento do piloto saiu da árvore em 21/11/2026; o texto continua no Git.
 
 ## Rolagem, gráficos e pasta 1.6.0 (17/11/2026)
 

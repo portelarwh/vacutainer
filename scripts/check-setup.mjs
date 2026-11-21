@@ -15,7 +15,7 @@ export function contrast(a,b){
  const x=luminance(a),y=luminance(b);return(Math.max(x,y)+.05)/(Math.min(x,y)+.05);
 }
 export function checkSetup(base=app){
- const mandatory=['AGENTS.md','README.md','docs/COMECE-AQUI.md','docs/DESIGN_SYSTEM.md','docs/BD_Dashboard_Brand_Guidelines.md','docs/ARQUITETURA.md','docs/ARQUITETURA-v1.md','docs/REGRAS_DE_NEGOCIO.md','docs/CONTRATO-MOTORES.md','docs/PLANO-DE-MELHORIAS.md','docs/PENDENCIAS-DOCUMENTAIS.md','docs/CORTE.md'];
+ const mandatory=['AGENTS.md','README.md','docs/COMECE-AQUI.md','docs/DESIGN_SYSTEM.md','docs/BD_Dashboard_Brand_Guidelines.md','docs/ARQUITETURA.md','docs/ARQUITETURA-REQUISITOS.md','docs/REGRAS_DE_NEGOCIO.md','docs/CONTRATO-MOTORES.md','docs/PLANO-DE-MELHORIAS.md','docs/CORTE.md'];
  for(const file of mandatory)if(!existsSync(path.join(base,file)))throw new Error('Referência obrigatória ausente: '+file);
  const css=helpers.load(path.join(base,'Plataforma.html')).text('css/brand'),reference=readFileSync(path.join(base,'docs/BD_Dashboard_Brand_Guidelines.md'),'utf8'),colors=validateBrand(reference,css);
  for(const folder of ['paginas','fontes','nova-plataforma'])if(existsSync(path.join(base,folder)))throw new Error('Árvore antiga ainda presente: '+folder);
