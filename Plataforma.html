@@ -4880,7 +4880,8 @@ const NOVIDADES=[
  {v:'1.8.32',d:'2026-11-21',itens:[['melhoria','Produção: abas na ordem nova, começando por Visão geral; "Config." sem a engrenagem.'],
   ['melhoria','Cabeçalho com o chip de situação (Sistema online, Atenção ou Sem conexão com a pasta) no lugar do botão Status; sem pasta, o botão diz "Conectar pasta da rede".'],
   ['melhoria','Barra de ações com ícones: Voltar e Lançar meu turno à esquerda; Sincronizar, Backup e Modo TV à direita.'],
-  ['nova','Lançamento: os cards do dia ficam no bloco "Resumo do dia", que pode ser recolhido mantendo o OEE do dia à vista.']]},
+  ['nova','Lançamento: os cards do dia ficam no bloco "Resumo do dia", que pode ser recolhido mantendo o OEE do dia à vista.'],
+  ['melhoria','Visão geral: período e filtros num cartão só, com Hoje, Ontem, 7 dias, 30 dias e Personalizado (Semana, Mês e Ano fiscal ficam em Personalizado) e o resumo do filtro.']]},
  {v:'1.8.31',d:'2026-11-20',itens:[['correcao','Produção: o destaque colorido, o selo "em construção" / "atualizando" e a aba inicial de Config. › Abas aparecem nas abas da plataforma, sem recarregar.'],
   ['correcao','Gráficos, tabelas e listas aceitam largura inteira, metade ou um terço em todas as páginas, inclusive os de largura inteira; até 3 lado a lado.'],
   ['melhoria','O gráfico se redesenha na largura nova do cartão, e as tabelas estreitas rolam dentro do cartão.']]},
@@ -16853,7 +16854,7 @@ HELP.gelScrap = ['Scrap de gel do turno', [['O que é?', 'As pesagens de scrap d
    Entra no script principal pelo build.py (antes do boot). */
 const VisaoGeral = {
   PADRAO: 'padrao',
-  opcoes() { return [[this.PADRAO, 'Visão Geral · padrão']].concat(Panel.viewOptions()); },
+  opcoes() { return [[this.PADRAO, 'Visão geral · padrão']].concat(Panel.viewOptions()); },
   naPadrao() { const st = Panel.st(); return !st.view || st.view === this.PADRAO; },
   barra() {
     const st = Panel.st();
@@ -16878,7 +16879,7 @@ const VisaoGeral = {
       if (VisaoGeral.naPadrao()) { if (O.mount) O.mount(root); VisaoGeral.wire(root); return; }
       if (P.mount) P.mount(root);
       const sel = root.querySelector('#pnView');   // acrescenta a padrão no seletor do Painel
-      if (sel &amp;&amp; !sel.querySelector(`option[value="${VisaoGeral.PADRAO}"]`)) { const o = document.createElement('option'); o.value = VisaoGeral.PADRAO; o.textContent = 'Visão Geral · padrão'; sel.insertBefore(o, sel.firstChild); }
+      if (sel &amp;&amp; !sel.querySelector(`option[value="${VisaoGeral.PADRAO}"]`)) { const o = document.createElement('option'); o.value = VisaoGeral.PADRAO; o.textContent = 'Visão geral · padrão'; sel.insertBefore(o, sel.firstChild); }
     }
   };
   App.views.panel = { render() { return App.views.overview.render(); }, mount(root) { return App.views.overview.mount(root); } };
@@ -18434,6 +18435,41 @@ const VGL = (() => {
 .vgl-est{margin:-2px 0 8px;padding:6px 10px;border-radius:8px;background:var(--warn-bg);color:var(--warn);font-size:12.5px;font-weight:600}
 .vgl-exp{padding:14px 18px;display:grid;gap:10px}.vgl-exp .row{gap:8px;flex-wrap:wrap}.vgl-exp .btn{min-height:40px}
 .vgl-mais{display:none}
+#main[data-rota="overview"] .vgl-hd{justify-content:space-between;align-items:center}
+#main[data-rota="overview"] .vgl-hd .vg-bar.vgl-acoes{margin:0;padding:0;border:0;background:none;box-shadow:none}
+#main[data-rota="overview"] .vgl-hd .vg-bar.vgl-acoes .row{gap:6px;flex-wrap:wrap}
+#main[data-rota="overview"] .vgl-hd .vg-bar.vgl-acoes .spacer{display:none}
+#gFilters.vgl-fil{display:grid;gap:12px;padding:14px 18px}
+#gFilters.vgl-fil .vgl-f1{display:flex;align-items:flex-end;gap:14px;flex-wrap:wrap}
+#gFilters.vgl-fil .vgl-per{flex:1 1 auto;min-width:0}
+#gFilters.vgl-fil .vgl-per-c{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+#gFilters.vgl-fil .vgl-range{display:inline-flex;align-items:center;gap:6px;height:40px;padding:0 10px;border:1px solid var(--line);border-radius:var(--r,8px);background:var(--surface)}
+#gFilters.vgl-fil .vgl-range input{border:0;background:none;padding:0;min-height:0;height:36px;width:auto;font:inherit;color:inherit;box-shadow:none}
+#gFilters.vgl-fil .vgl-range input:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:4px}
+#gFilters.vgl-fil .vgl-range .vgl-ate{color:var(--muted);padding:0 4px}
+#gFilters.vgl-fil .vgl-range input::-webkit-calendar-picker-indicator{display:none}
+#gFilters.vgl-fil .vgl-range .dpick{display:none!important}
+#gFilters.vgl-fil .vgl-range .dfield{display:inline-flex;align-items:center}
+#gFilters.vgl-fil .vgl-range .dtxt{width:11ch;border:0;background:none;padding:0;height:36px;box-shadow:none}
+#gFilters.vgl-fil .vgl-cal{border:0;background:none;padding:0;width:28px;height:36px;display:inline-flex;align-items:center;justify-content:center;color:var(--muted);cursor:pointer;border-radius:6px}
+#gFilters.vgl-fil .vgl-cal:hover{color:var(--accent)}
+#gFilters.vgl-fil .vgl-qp,#gFilters.vgl-fil .vgl-per-c{overflow:visible}
+#gFilters.vgl-fil .vgl-range input{cursor:pointer}
+#gFilters.vgl-fil .vgl-qp{display:flex;gap:8px;flex-wrap:wrap;border:0;background:none;padding:0}
+#gFilters.vgl-fil .vgl-qp > button,#gFilters.vgl-fil .vgl-pers > summary{min-height:36px;padding:0 14px;border:1px solid var(--line);border-radius:8px;background:var(--surface-2);color:var(--ink);font:500 13px var(--f-body,inherit);cursor:pointer;display:inline-flex;align-items:center;list-style:none}
+#gFilters.vgl-fil .vgl-pers > summary::-webkit-details-marker{display:none}
+#gFilters.vgl-fil .vgl-qp > button[aria-pressed="true"],#gFilters.vgl-fil .vgl-pers > summary[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:var(--accent-ink,#fff);font-weight:600}
+#gFilters.vgl-fil .vgl-pers{position:relative}
+#gFilters.vgl-fil .vgl-pers-m{position:absolute;z-index:20;top:calc(100% + 6px);left:0;min-width:220px;display:grid;gap:4px;padding:10px;border:1px solid var(--line);border-radius:10px;background:var(--surface);box-shadow:var(--sh)}
+#gFilters.vgl-fil .vgl-pers-m p{margin:0 0 4px}
+#gFilters.vgl-fil .vgl-pers-m button{min-height:36px;text-align:left;padding:0 10px;border:0;border-radius:6px;background:none;color:var(--ink);font:inherit;cursor:pointer}
+#gFilters.vgl-fil .vgl-pers-m button:hover,#gFilters.vgl-fil .vgl-pers-m button:focus-visible{background:var(--accent-soft)}
+#gFilters.vgl-fil .vgl-vis{margin-left:auto;min-width:220px}
+#gFilters.vgl-fil .vgl-f2{display:grid;grid-template-columns:repeat(5,minmax(0,1fr)) auto;gap:14px;align-items:end}
+#gFilters.vgl-fil .vgl-f2 label.f select{width:100%}
+#gFilters.vgl-fil .vgl-limpar{border:0;background:none;padding:0 4px;min-height:40px;color:var(--accent);font:600 13.5px var(--f-body,inherit);text-decoration:underline;cursor:pointer;white-space:nowrap}
+#gFilters.vgl-fil .vgl-f3{margin:0;color:var(--muted);font-size:13px}
+@media (max-width:980px){#gFilters.vgl-fil .vgl-f2{grid-template-columns:repeat(2,minmax(0,1fr))}#gFilters.vgl-fil .vgl-vis{margin-left:0;flex-basis:100%}}
 @media (max-width:700px){#main[data-rota="overview"] #gFilters:not(.vgl-aberto) label.f:has(select[name="lineId"]),#main[data-rota="overview"] #gFilters:not(.vgl-aberto) label.f:has(select[name="machineId"]),#main[data-rota="overview"] #gFilters:not(.vgl-aberto) label.f:has(select[name="catalogId"]),#main[data-rota="overview"] #gFilters:not(.vgl-aberto) label.f:has(select[name="shiftId"]),#main[data-rota="overview"] #gFilters:not(.vgl-aberto) label.f:has(select[name="status"]){display:none}.vgl-mais{display:inline-flex}.vgl-oee .big{font-size:34px}}
 @media print{.vgl-grp.fechado .vgl-gb{display:block!important}.vgl-gh .seta,.vgl-exp{display:none!important}}`;
   function estilo() { if (document.getElementById('vglCss')) return; const s = document.createElement('style'); s.id = 'vglCss'; s.textContent = css; document.head.appendChild(s); }
@@ -18521,6 +18557,7 @@ const VGL = (() => {
       const mais = el('<button type="button" class="btn sm vgl-mais" id="vglMais" aria-expanded="false">Mais filtros ▾</button>');
       if (sp) { sp.before(mais); sp.before(lim); } else { fil.append(mais, lim); }
     }
+    filtros(root);
     const D = dados(); if (!D) { ligar(root, null); return; }   /* sem dias no período: Limpar e Mais filtros continuam funcionando */
     /* 01 · situação */
     const dec = root.querySelector('.decide');
@@ -18546,6 +18583,48 @@ const VGL = (() => {
     const ult = [...root.querySelectorAll('.vgl-grp')].pop();
     if (ult &amp;&amp; !root.querySelector('.vgl-exp')) { const s = sec('05', 'Explorar dados', 'Registros e relatórios do mesmo período'); ult.after(s); s.after(el(explorar(D))); }
     ligar(root, D);
+  }
+  /* LANC-03 (pedido do responsável, 21/11/2026, imagem) · período e filtros num cartão só, em três linhas:
+     1) Período (De – Até numa caixa), Hoje · Ontem · 7 dias · 30 dias · Personalizado (Semana, Mês, Semana anterior, Mês anterior e Ano
+        fiscal ficam dentro de Personalizado) e, à direita, a Visão; 2) Turno, Linha, Máquina, Catálogo, Status e Limpar filtros;
+     3) o resumo do filtro. Os campos, nomes (name/data-qp) e eventos são os mesmos do filterBar: só o arranjo muda (contrato 6).
+     Personalizar, Imprimir, Exportar e Apresentar vão para a direita do título. */
+  const QP = [['d0', t => [t, t]], ['d1', t => [U.addDays(t, -1), U.addDays(t, -1)]], ['7', t => [U.addDays(t, -6), t]], ['30', t => [U.addDays(t, -29), t]]];
+  function filtros(root) {
+    const fm = root.querySelector('#gFilters'); if (!fm || fm.classList.contains('vgl-fil')) return;
+    const campo = n => { const x = fm.querySelector(`[name="${n}"]`); return x ? x.closest('label.f') : null; };
+    const de = fm.querySelector('[name="from"]'), ate = fm.querySelector('[name="to"]'), qp = k => fm.querySelector(`[data-qp="${k}"]`);
+    if (!de || !ate) return;
+    fm.classList.add('vgl-fil');
+    const t = U.today(), f = App.filters, ativo = (QP.find(([, fn]) => { const [a, b] = fn(t); return f.from === a &amp;&amp; f.to === b; }) || ['custom'])[0];
+    const l1 = el('<div class="vgl-f1"><div class="f vgl-per"><span>Período</span><div class="vgl-per-c"><div class="vgl-range" role="group" aria-label="Período: de e até"><button type="button" class="vgl-cal" title="Abrir o calendário (De)" aria-label="Abrir o calendário (De)">' + vacIcone('calendario', 'sm') + '</button></div><div class="seg vgl-qp" role="group" aria-label="Períodos rápidos"></div></div></div></div>');
+    const rg = l1.querySelector('.vgl-range'); de.setAttribute('aria-label', 'De'); ate.setAttribute('aria-label', 'Até');
+    rg.append(de, el('<span class="vgl-ate" aria-hidden="true">–</span>'), ate);
+    /* um ícone só, o da caixa: abre o calendário de De (o campo de data continua aceitando digitar dd/mm/aaaa) */
+    l1.querySelector('.vgl-cal').addEventListener('click', () => { const b = de.closest('.dfield') &amp;&amp; de.closest('.dfield').querySelector('.dpick'); if (b) b.click(); else { try { de.showPicker(); } catch (e) { de.focus(); } } });
+    const sg = l1.querySelector('.vgl-qp');
+    for (const [k] of QP) { const b = qp(k); if (b) { b.setAttribute('aria-pressed', String(ativo === k)); sg.append(b); } }
+    const pers = el(`<details class="vgl-pers"><summary role="button" aria-pressed="${ativo === 'custom'}">Personalizado</summary><div class="vgl-pers-m" role="group" aria-label="Outros períodos"><p class="small muted">Escolha as datas em De – Até ou um destes períodos:</p></div></details>`);
+    const pm = pers.querySelector('.vgl-pers-m');
+    for (const k of ['wk', 'mtd', 'pwk', 'pm', 'fy']) { const b = qp(k); if (b) pm.append(b); }
+    pers.querySelector('summary').addEventListener('click', () => setTimeout(() => { if (pers.open) de.focus(); }, 0));
+    sg.append(pers);
+    const vis = root.querySelector('.vg-bar #vgView'); if (vis) { const lb = vis.closest('label.f'); lb.classList.add('vgl-vis'); l1.append(lb); }
+    const l2 = el('<div class="vgl-f2"></div>');
+    for (const n of ['shiftId', 'lineId', 'machineId', 'catalogId', 'status']) { const c = campo(n); if (c) l2.append(c); }
+    const lim = fm.querySelector('#vglLimpar'); if (lim) { lim.className = 'vgl-limpar'; lim.textContent = 'Limpar filtros'; l2.append(lim); }
+    const mais = fm.querySelector('#vglMais'); if (mais) l2.append(mais);
+    const d = db(), nome = (L, id) => ((L || []).find(x => x.id === id) || {}).name;
+    const cat = f.catalogId ? (d.catalogs.find(c => c.id === f.catalogId)) : null;
+    const res = [f.from === f.to ? U.brDate(f.from) : U.brDate(f.from) + ' – ' + U.brDate(f.to), f.shiftId ? nome(d.shifts, f.shiftId) || 'Turno' : 'Todos os turnos',
+      nome(d.lines, f.lineId) || 'Linha', f.machineId ? nome(d.machines, f.machineId) || 'Máquina' : 'Todas as máquinas'].concat(cat ? ['Catálogo ' + catLabel(cat)] : [], f.status ? ['Status ' + f.status] : []);
+    const l3 = el(`<p class="vgl-f3" aria-live="polite">${res.map(esc).join(' · ')}</p>`);
+    /* o que sobrou: rótulos já sem campo (De, Até, Período rápido) saem; extras ficam no fim da segunda linha */
+    [...fm.children].forEach(x => { if (x.matches('.spacer') || !x.querySelector('input,select,button,a,details')) x.remove(); else l2.append(x); });
+    fm.append(l1, l2, l3);
+    /* ações da visão à direita do título; a .vg-bar sem o seletor de Visão fica só com os botões */
+    const bar = root.querySelector('.vg-bar'), hd = root.querySelector('.vgl-hd');
+    if (bar &amp;&amp; hd &amp;&amp; !hd.contains(bar)) { bar.classList.add('vgl-acoes'); hd.append(bar); }
   }
   function ligar(root, D) {
     const lim = root.querySelector('#vglLimpar'); if (lim) lim.onclick = () => {
@@ -38544,8 +38623,8 @@ body.vac-porta{overflow:hidden}
       "id": "oee",
       "path": "Plataforma.html#motor/oee",
       "version": "2.6.23",
-      "sha256": "c5253faf45f33634e36a53db1b5bf2d53217b33fd78048c0bc6703a913979892",
-      "bytes": 2299138
+      "sha256": "75184b85fac5bbf523acaafb34565df3186f4334e45e756843f3876d701d2ecb",
+      "bytes": 2307885
     },
     {
       "id": "perdas",
@@ -38600,14 +38679,14 @@ body.vac-porta{overflow:hidden}
       "id": "portal",
       "path": "Plataforma.html#motor/portal",
       "version": "1.9.55",
-      "sha256": "1968abee6e263a4920afc196ab34d910040dfa0b727d7e1955f74586f9cf0573",
-      "bytes": 1263184
+      "sha256": "107bbc826f755349c44713f09f603bde674f0a3d23ba42cf11bbe36027013d62",
+      "bytes": 1263374
     }
   ],
   "limitations": [
     "Projetos e conteúdo técnico OSM/MES/AM/TPM mantêm os limites documentados nas fontes."
   ],
-  "enginesSha256": "bc178f43946bc1dbd0a5d42960a4cbcd5b54f547adf107441b80ec66b116a133",
+  "enginesSha256": "113b5b67e8250cffd66536400e08f153e9e153caf38fea4dfd8f8eaf740d4f28",
   "originRevision": "ffc9ee8",
   "sourceMode": "single-html",
   "originEnginesSha256": "a87a64ad0c328f70e102b2ae888790a9b5d5a9bd05778652a7ce7cae140e40d2"

@@ -56,6 +56,30 @@ const html = fs.readFileSync(path.resolve(__dirname, '../../Plataforma.html'));
     assert.equal(cel[0][0], 'opBtn', 'celular: Lançar meu turno primeiro'); assert.ok(new Set(cel.map(c => c[1])).size >= 2, 'celular: duas linhas');
     await page.setViewportSize({ width: 1440, height: 1000 });
     console.log('ok celular: a barra quebra em duas linhas, com Lançar meu turno primeiro');
+    /* Visão geral (pedido de 21/11/2026, imagem): período e filtros num cartão, em três linhas; nenhum período sumiu */
+    await page.locator('.module-tabs button[data-tab-id="overview"]').click(); await f.waitForSelector('#gFilters.vgl-fil');
+    const vg = await f.evaluate(() => { const fm = document.querySelector('#gFilters'), tx = b => b.textContent.trim();
+      return { l1: [...fm.querySelectorAll('.vgl-f1 .vgl-qp > button, .vgl-f1 .vgl-pers > summary')].map(tx), ativo: tx(fm.querySelector('.vgl-qp [aria-pressed="true"]')),
+        datas: [...fm.querySelectorAll('.vgl-f1 .vgl-range [name]')].map(x => x.name), visao: !!fm.querySelector('.vgl-f1 .vgl-vis #vgView'),
+        l2: [...fm.querySelectorAll('.vgl-f2 select')].map(x => x.name), limpar: tx(fm.querySelector('.vgl-f2 #vglLimpar')),
+        pers: [...fm.querySelectorAll('.vgl-pers-m [data-qp]')].map(b => b.dataset.qp), resumo: tx(fm.querySelector('.vgl-f3')),
+        sobra: [...fm.querySelectorAll('label.f, div.f')].filter(x => !x.querySelector('input,select,button,details')).length,
+        acoes: [...document.querySelectorAll('.vgl-hd .vg-bar button')].map(b => b.id) }; });
+    assert.deepEqual(vg.l1, ['Hoje', 'Ontem', '7 dias', '30 dias', 'Personalizado']); assert.equal(vg.ativo, 'Hoje');
+    assert.deepEqual(vg.datas, ['from', 'to']); assert.ok(vg.visao, 'Visão na primeira linha');
+    assert.deepEqual(vg.l2, ['shiftId', 'lineId', 'machineId', 'catalogId', 'status']); assert.equal(vg.limpar, 'Limpar filtros');
+    assert.deepEqual(vg.pers, ['wk', 'mtd', 'pwk', 'pm', 'fy'], 'Semana, Mês, Semana anterior, Mês anterior e Ano fiscal em Personalizado');
+    assert.match(vg.resumo, /^\d{2}\/\d{2}\/\d{4} · Todos os turnos · Vacutainer · Todas as máquinas$/); assert.equal(vg.sobra, 0, 'sem rótulo vazio');
+    assert.deepEqual(vg.acoes.filter(Boolean).sort(), ['ovExp', 'vgPers', 'vgPrint', 'vgTv'].sort(), 'ações da visão à direita do título');
+    await f.click('.vgl-qp [data-qp="d1"]'); await f.waitForSelector('.vgl-qp [data-qp="d1"][aria-pressed="true"]');
+    const ontem = await f.evaluate(() => [App.filters.from === U.addDays(U.today(), -1) && App.filters.to === App.filters.from, document.querySelector('.vgl-f3').textContent.startsWith(U.brDate(U.addDays(U.today(), -1)))]);
+    assert.deepEqual(ontem, [true, true], 'Ontem filtra e o resumo acompanha');
+    await f.click('.vgl-pers > summary'); await f.click('.vgl-pers-m [data-qp="pm"]'); await f.waitForSelector('.vgl-pers > summary[aria-pressed="true"]');
+    const pm = await f.evaluate(() => { const p = U.addDays(U.monthStart(U.today()), -1); return App.filters.from === U.monthStart(p) && App.filters.to === p; });
+    assert.ok(pm, 'Mês anterior (em Personalizado) filtra e marca Personalizado');
+    await f.selectOption('#gFilters select[name="shiftId"]', { index: 1 }); await f.waitForFunction(() => App.filters.shiftId && !/Todos os turnos/.test(document.querySelector('.vgl-f3').textContent));
+    await f.click('#vglLimpar'); await f.waitForFunction(() => App.filters.shiftId === '' && /Todos os turnos/.test(document.querySelector('.vgl-f3').textContent));
+    console.log('ok Visão geral: período e filtros num cartão (Hoje · Ontem · 7 dias · 30 dias · Personalizado, Visão; Turno … Status, Limpar filtros; resumo)');
     /* Resumo do dia: expandido por padrão; recolher mantém o OEE do dia com o semáforo; o estado fica neste navegador */
     await page.locator('.module-tabs button[data-tab-id="launch"]').click(); await f.waitForSelector('#lcResumo');
     const r0 = await f.evaluate(() => ({ exp: document.querySelector('#lcResTg').getAttribute('aria-expanded'), ctl: document.querySelector('#lcResTg').getAttribute('aria-controls'), cards: document.querySelectorAll('#lcResCorpo .kpis > .kpi').length, linha: document.querySelector('#lcResLinha').hidden }));
