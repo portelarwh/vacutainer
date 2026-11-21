@@ -39,8 +39,9 @@ function varrer(){
   if(caixaAlta.length)A('Títulos','ajustar','Título em caixa alta. O modelo usa caixa de frase em h1–h4 (guia BD; Produção 2.6.29). Rótulos curtos (KPI, cabeçalho de tabela, pílula, chip) podem seguir em maiúsculas.',caixaAlta.map(h=>`"${txt(h)}" (${caminho(h)})`));
   const numSec=todos.filter(e=>e.matches('.vk-sec > b, .vgl-sec > b')&&/^\d{1,2}$/.test(txt(e)));
   if(numSec.length)A('Seções','ajustar','Seção numerada (01, 02…). O modelo tirou a numeração na Produção 2.6.29; as seções têm só título e subtítulo.',numSec.map(b=>`${txt(b)} ${txt(b.parentElement.querySelector('h3')||b)}`));
-  const topo=hs.filter(h=>h.getBoundingClientRect().top<400);
-  if(!topo.length)A('Cabeçalho','ajustar','Sem título visível no topo da página. O modelo abre com título + subtítulo (o que é e de onde vêm os dados) e as ações da página à direita.');
+  /* título da página: h2 (ou o cabeçalho vgl-hd/vk-hd) antes do primeiro cartão; título de cartão não conta */
+  const y0=raiz.getBoundingClientRect().top,hd=todos.find(e=>e.matches('.vgl-hd,.vk-hd,.v2-cab,.sqdcp-head'))||hs.find(h=>h.tagName==='H2'&&!h.closest('.card,section.card,.vk-card,dialog')&&h.getBoundingClientRect().top-y0<260);
+  if(!hd)A('Cabeçalho','ajustar','Sem título de página no topo (h2 com subtítulo, antes dos cartões). O modelo abre com título + subtítulo (o que a página mostra) e as ações à direita; título de cartão não substitui o da página.');
   R.resumo.titulos=hs.length;
   /* 2 · tipografia */
   const fontes=new Map(),peq=[],peq2=[];
@@ -63,7 +64,7 @@ function varrer(){
   if(espLista.length)A('Espaçamento','revisar (baixa)','Valor fora da escala 4/8/12/16/24/32 px (var(--sp-8,8px) etc.). Arredondar para o passo mais próximo; no empate, o menor.',espLista.slice(0,10).map(([k,l])=>`${k} ×${l.length} · ${l[0]}`));
   /* 5 · botões */
   const bts=todos.filter(e=>e.matches('button,a.btn,a.b,[role="button"]'));
-  const prim=bts.filter(b=>/\bprimary\b|\bprimario\b|\bb-pri\b/.test(b.className)||getComputedStyle(b).backgroundColor===rgb_(document,'--accent'));
+  const prim=bts.filter(b=>b.getAttribute('aria-pressed')!=='true'&&b.getAttribute('aria-selected')!=='true'&&!b.closest('.seg,[role="tablist"],[role="group"]')&&(/\bprimary\b|\bprimario\b|\bb-pri\b|\bp\b/.test(b.className)||getComputedStyle(b).backgroundColor===rgb_(document,'--accent')));   /* escolha marcada (pílula, grupo) não é botão primário */
   const grupos=new Map();for(const b of prim){const g=b.closest('header,section,.card,footer,.row,.vgl-hd,form,dialog')||raiz;grupos.set(g,(grupos.get(g)||[]).concat(b));}
   const varios=[...grupos].filter(([,l])=>l.length>1);
   if(varios.length)A('Botões','ajustar','Mais de um botão primário no mesmo grupo. O modelo tem um primário por região (ex.: Apresentar no cabeçalho, Fechar dia no cabeçalho do dia, Relatório do período em Explorar dados); os demais são secundários.',varios.map(([g,l])=>`${nome(g)}: ${l.map(b=>'"'+txt(b)+'"').join(', ')}`));
@@ -74,7 +75,7 @@ function varrer(){
   R.resumo.botoes={total:bts.length,primarios:prim.length};
   /* 6 · filtros */
   const campos=todos.filter(e=>e.matches('select,input[type="date"],input[type="text"],input[type="search"],input:not([type])'));
-  const caixa=campos.length?campos[0].closest('#gFilters,.filtros,.filters,.vk-fil,form,section,.card')||raiz:null;
+  const caixa=campos.length?campos[0].closest('#gFilters,.filtros,.filters,.vk-fil'):null;   /* SQDCP: data/linha/turno são o recorte do quadro, não filtro de consulta */   /* só cartão de filtros; formulário de configuração não */
   const naCaixa=caixa?[...caixa.querySelectorAll('select,input')].filter(vis).length:0;
   if(naCaixa>=3){   /* barra só de data/linha (como a do Lançamento) não é um cartão de filtros */
     const temLimpar=[...(caixa||raiz).querySelectorAll('button,a')].some(b=>/limpar/i.test(b.textContent));
@@ -86,6 +87,8 @@ function varrer(){
   if(datas.length)A('Datas','ajustar','Campo de data nativo visível (mostra MM/DD/AAAA no Chrome em inglês). Usar o campo DD/MM/AAAA do kit (vacDatas; na Produção, DateFields).',datas.map(caminho));
   const meses=[...raiz.querySelectorAll('input[type="month"],input[type="week"]')].filter(vis);
   if(meses.length)A('Datas','ajustar','Seletor de mês/semana nativo visível: o Chrome mostra o nome do mês no idioma do Windows (ex.: "November 2026"). Usar ‹ mês › com o nome em português, como o seletor de dia do Lançamento.',meses.map(m=>`${m.value} (${caminho(m)})`));
+  const arqs=[...raiz.querySelectorAll('input[type="file"]')].filter(vis);
+  if(arqs.length)A('Datas','ajustar','Campo de arquivo nativo visível ("Choose File / No file chosen" no Chrome em inglês). O kit troca por "Escolher arquivo" (vacCampos, comum/interface).',arqs.map(caminho));
   R.resumo.filtros=campos.length;
   /* 7 · gráficos */
   const svgs=todos.filter(e=>e.tagName==='svg'&&e.getBoundingClientRect().width>200&&e.getBoundingClientRect().height>100);

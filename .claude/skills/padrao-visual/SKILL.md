@@ -84,13 +84,12 @@ Peça comum para páginas fora da Produção: `vacLayout` (comum/interface: `sec
 - [ ] Nenhum aviso repetido em dois blocos.
 - [ ] Varredura de depois sem achados "ajustar"; números iguais aos de antes; testes do módulo passando.
 
-## Diferenças já conhecidas (varredura de 21/11/2026)
+## Situação por módulo (21/11/2026)
 
-- `vacLayout.sec` (comum/interface, estilos `vk-sec`) ainda mostra a numeração 01–05; a Produção tirou na 2.6.29. Corrigir na peça comum alcança Waste e as demais páginas que a usam.
-- Selo "em construção" das abas da casca com 10,5 px (abaixo do piso de 12 px).
-- SQDCP usa hoje Entrega âmbar, Custo roxo e Pessoas vermelho (`PIL` em motor/oee); o padrão da empresa é Entrega laranja, Custo amarelo e Pessoas cinza.
-- Waste › Painel: fonte Georgia em parte do texto e mais de um botão primário no mesmo grupo.
-- A própria Produção tem espaçamentos fora da escala (14, 10, 18 px) no CSS montado pela Visão geral e legendas de 11,5 px no Lançamento: ajustar quando mexer nesses blocos.
+- **Produção** (2.6.31) e **Waste** (1.12.18): sem achados "ajustar" na varredura. Restam itens "revisar" (espaçamentos 10/14/18 px no CSS montado pela Visão geral, cores de catálogo e de séries vindas do cadastro).
+- **Peças comuns já no padrão:** `vacLayout.sec` sem numeração; `vacCampos` (comum/interface) mostra mês e arquivo em português em todas as páginas; ícone de ajuda "i" com a fonte da marca; links sem classe na cor da marca; selo "em construção" das abas com 12 px; tokens `--sqdcp-*` das categorias.
+- **Exceções aceitas:** SQDCP tem o cabeçalho do quadro (`.sqdcp-head`) e data/linha/turno como recorte do quadro, sem "Limpar filtros"; Waste › Configuração tem dois "Salvar" no mesmo cartão (cada um grava uma lista).
+- **A fazer:** Gestão de Gel, Paradas, Equipamentos, Iniciativas / Ações, Linha 360°, Projetos, Administração, Visão da linha e as páginas da casca.
 
 ## O que a varredura não faz
 

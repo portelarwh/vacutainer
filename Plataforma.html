@@ -460,10 +460,14 @@ nav.vtabs .badge[hidden]{display:none}
 .vk-estilo .card .sh h2{font-family:var(--f-body,system-ui,sans-serif);text-transform:none;letter-spacing:0;font-size:17px;font-weight:700}
 a.vk-dc,a.vk-dc:hover{text-decoration:none;color:inherit}
 /* Gráficos (docs/graficos-padrao.md): linha "Valores em <unidade>" acima do gráfico cujo eixo não traz a unidade */
-.c-un{margin:0 0 2px;font-size:11.5px;color:var(--muted,#64748b)}.c-un b{font-weight:600;color:var(--ink,inherit)}
+.c-un{margin:0 0 2px;font-size:12px;color:var(--muted,#64748b)}.c-un b{font-weight:600;color:var(--ink,inherit)}
 /* D6 · botão que o perfil não pode usar (vacTravas, kit_v21.js) */
 .vac-trava{opacity:.5;cursor:not-allowed!important}
 @@vac:css/kit@@
+/* plataforma 1.8.40 · padrão visual (skill padrao-visual), em todos os módulos: o ícone de ajuda "i" usa a fonte da marca (era Georgia) com 12 px;
+   link sem classe na cor da marca (antes, o azul padrão do navegador em algumas tabelas e avisos). */
+.i,.ib{font-family:var(--f-body,Arial,"Helvetica Neue",sans-serif)!important;font-size:12px!important}
+a:not([class]){color:var(--link,var(--accent,#044DD6))}
 </style></textarea>
 
 <!-- comum/bases -->
@@ -1855,6 +1859,62 @@ const vacDatas = (() => {
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', ini); else ini();
   return { aplicar, toTxt, parse };
 })();
+/* ----- plataforma 1.8.40 · vacCampos: mês e arquivo em português em todas as páginas (skill padrao-visual) -----
+   O seletor de mês nativo mostra o nome do mês no idioma do Windows ("November 2026") e o de arquivo mostra "Choose File / No file chosen".
+   Cada <input type="month"> ganha um botão com "Novembro de 2026" e cada <input type="file"> visível ganha "Escolher arquivo" e o nome escolhido.
+   O campo original continua no lugar, com o mesmo valor (AAAA-MM; files) e os mesmos eventos: o código da página não muda. Só a tela. */
+const vacCampos = (() => {
+  const MES = ['janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho', 'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'];
+  const e = s => String(s ?? '').replace(/[&amp;<>"']/g, c => ({ '&amp;': '&amp;amp;', '<': '&amp;lt;', '>': '&amp;gt;', '"': '&amp;quot;', "'": '&amp;#39;' }[c]));
+  const nomeMes = v => { const m = /^(\d{4})-(\d{2})$/.exec(v || ''); if (!m || +m[2] < 1 || +m[2] > 12) return 'Escolher o mês'; const n = MES[+m[2] - 1]; return n[0].toUpperCase() + n.slice(1) + ' de ' + m[1]; };
+  const ICAL = '<svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"><rect x="2" y="3" width="12" height="11" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.4"/><path d="M2 6.5h12M5 1.5v3M11 1.5v3" stroke="currentColor" stroke-width="1.4" fill="none"/></svg>';
+  const IARQ = '<svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"><path d="M8 10.5V2.5M5 5.5l3-3 3 3M2.5 10.5v3h11v-3" stroke="currentColor" stroke-width="1.4" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+  function css() {
+    if (document.getElementById('vacCamposCss')) return; const st = document.createElement('style'); st.id = 'vacCamposCss';
+    st.textContent = `.vac-mes,.vac-arq{position:relative;display:inline-flex;align-items:center;gap:var(--sp-8,8px);max-width:100%}
+.vac-mes .mtxt,.vac-arq .atxt{display:inline-flex;align-items:center;justify-content:space-between;gap:var(--sp-8,8px);min-height:40px;box-sizing:border-box;padding:0 var(--sp-12,12px);border:1px solid var(--control-border,var(--line,#d3dae2));border-radius:var(--r,8px);background:var(--surface,#fff);color:var(--ink,#1a2433);font:inherit;font-size:15px;cursor:pointer;text-align:left;white-space:nowrap}
+.vac-mes .mtxt{min-width:180px}.vac-arq .atxt{font-weight:600}
+.vac-mes .mtxt:hover,.vac-arq .atxt:hover{border-color:var(--accent,#044ED7)}
+.vac-mes .mtxt:focus-visible,.vac-arq .atxt:focus-visible{outline:2px solid var(--focus,var(--accent,#044ED7));outline-offset:2px}
+.vac-mes .mtxt svg,.vac-arq .atxt svg{color:var(--muted,#5b6979);flex:none}
+.vac-arq .anome{color:var(--muted,#5b6979);font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:260px}
+.vac-mes input[type=month],.vac-arq input[type=file]{position:absolute;left:0;bottom:0;width:1px;height:1px;opacity:0;pointer-events:none;border:0;padding:0;margin:0}
+.vac-mes .mtxt:disabled,.vac-arq .atxt:disabled{opacity:.55;cursor:not-allowed}
+@media print{.vac-mes .mtxt svg,.vac-arq{display:none}}`;
+    document.head.appendChild(st);
+  }
+  function mes(inp) {
+    if (inp.dataset.vacMes || inp.closest('.vac-mes')) return; inp.dataset.vacMes = '1'; css();
+    const w = document.createElement('span'); w.className = 'vac-mes'; inp.parentNode.insertBefore(w, inp);
+    const b = document.createElement('button'); b.type = 'button'; b.className = 'mtxt';
+    const upd = () => { b.innerHTML = '<span>' + e(nomeMes(inp.value)) + '</span>' + ICAL; b.setAttribute('aria-label', 'Mês: ' + nomeMes(inp.value) + '. Escolher outro mês'); b.disabled = inp.disabled; };
+    w.appendChild(b); w.appendChild(inp); upd();
+    const desc = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value');
+    try { Object.defineProperty(inp, 'value', { configurable: true, get() { return desc.get.call(this); }, set(v) { desc.set.call(this, v); upd(); } }); } catch (x) { }
+    b.addEventListener('click', () => { try { inp.showPicker(); } catch (x) { inp.style.pointerEvents = 'auto'; inp.focus(); } });
+    inp.addEventListener('input', upd); inp.addEventListener('change', upd);
+    new MutationObserver(upd).observe(inp, { attributes: true, attributeFilter: ['disabled'] });
+  }
+  function arq(inp) {
+    if (inp.dataset.vacArq || inp.closest('.vac-arq') || inp.hidden || inp.closest('[hidden]') || inp.closest('label.b,label.btn,.btn')) return;   /* arquivo já dentro de um botão (ex.: Restaurar cópia) fica como está */
+    inp.dataset.vacArq = '1'; css();
+    const w = document.createElement('span'); w.className = 'vac-arq'; inp.parentNode.insertBefore(w, inp);
+    const b = document.createElement('button'); b.type = 'button'; b.className = 'atxt'; b.innerHTML = IARQ + '<span>' + (inp.multiple ? 'Escolher arquivos' : 'Escolher arquivo') + '</span>';
+    const nome = document.createElement('span'); nome.className = 'anome'; nome.setAttribute('aria-live', 'polite');
+    const upd = () => { const f = [...(inp.files || [])]; nome.textContent = f.length ? (f.length === 1 ? f[0].name : f.length + ' arquivos') : 'nenhum arquivo escolhido'; b.disabled = inp.disabled; };
+    w.appendChild(b); w.appendChild(nome); w.appendChild(inp); upd();
+    b.setAttribute('aria-label', (inp.getAttribute('aria-label') || 'Escolher arquivo') + (inp.accept ? ' (' + inp.accept + ')' : ''));
+    b.addEventListener('click', () => inp.click()); inp.addEventListener('change', upd);
+    new MutationObserver(upd).observe(inp, { attributes: true, attributeFilter: ['disabled', 'value'] });
+  }
+  function um(n) { if (n.type === 'month') mes(n); else if (n.type === 'file') arq(n); }
+  function aplicar(root) { (root || document).querySelectorAll('input[type=month],input[type=file]').forEach(um); }
+  const SEL = 'input[type=month],input[type=file]';
+  const ini = () => { aplicar(document); new MutationObserver(ms => { for (const m of ms) for (const n of m.addedNodes) if (n.nodeType === 1) { if (n.matches &amp;&amp; n.matches(SEL)) um(n); else if (n.querySelectorAll) aplicar(n); } }).observe(document.documentElement, { childList: true, subtree: true }); };
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', ini); else ini();
+  return { aplicar, nomeMes };
+})();
+
 
 /* ----- kit v2.1 · login com ID e senha de 6 números (11/11/2026; igual em todas as páginas; não editar só numa) -----
    Pop-up que escurece a página e só fecha com uma entrada válida: ID → nome, função e perfil → senha de 6 números.
@@ -2133,7 +2193,7 @@ const vacLayout = (() => {
   const e = s => String(s ?? '').replace(/[&amp;<>"']/g, c => ({ '&amp;': '&amp;amp;', '<': '&amp;lt;', '>': '&amp;gt;', '"': '&amp;quot;', "'": '&amp;#39;' }[c]));
   const F = p => { try { const x = JSON.parse(localStorage.getItem('vac.grupos.' + p) || '{}'); return x &amp;&amp; typeof x === 'object' ? x : {}; } catch (x) { return {}; } };
   const G = (p, f) => { try { localStorage.setItem('vac.grupos.' + p, JSON.stringify(f)); } catch (x) { } };
-  const sec = (n, t, s) => `<div class="vk-sec"><b>${e(n)}</b><h3>${e(t)}</h3>${s ? `<span>${e(s)}</span>` : ''}</div>`;
+  const sec = (n, t, s) => `<div class="vk-sec" data-n="${e(n)}"><h3>${e(t)}</h3>${s ? `<span>${e(s)}</span>` : ''}</div>`;
   const estado = (c, t) => `<span class="vk-st ${e(c)}">${e(t)}</span>`;
   /* html do grupo; o corpo é colocado pela página (string) ou depois, movendo nós para .vk-gb */
   const grupo = (p, k, nome, q, corpo, n) => { const fe = !!F(p)[k], id = 'vkg-' + p + '-' + k;
@@ -3998,7 +4058,7 @@ function wireConfigComum(){$('#cPasta').onclick=async()=>{if(await Store.pick())
         entrar pelo ID (autocadastro como Consulta); página inicial por perfil (1x por sessão); vigência gravada não se edita (desativar com motivo); painel de vigências; semáforo central; saída do modo de teste.
    1.1.2: aviso da carga diz qual base foi lida.  1.5: páginas Paradas, Máquinas, Manutenção e Projetos na lista (aparecem quando o HTML chega na pasta).  1.4: lista técnica pela CS12 multinível (itens = nível 1, estrutura = níveis 2+); CS03 sai.  1.3: cabeçalho comum (vac-cabecalho v2: barra do sistema + página + abas), busca Ctrl K, acabamento V1.90, Versões com cabeçalho e último backup.  1.2: Configuração › Versões das páginas (versão e data de cada HTML, gravação das bases, cópias repetidas, histórico).
    ===================================================================== */
-const PAGE={id:'portal',titulo:"Administração · Linha Vacutainer",tituloCurto:"Administração",subtitulo:'Sistemas de gestão da linha',versao:'1.9.62',baseFile:'portal-base.json',idb:'vac-portal',backupDir:'00. Backups/Portal',
+const PAGE={id:'portal',titulo:"Administração · Linha Vacutainer",tituloCurto:"Administração",subtitulo:'Sistemas de gestão da linha',versao:'1.9.63',baseFile:'portal-base.json',idb:'vac-portal',backupDir:'00. Backups/Portal',
  vazio:()=>({schema:'portal-base',rev:0,config:{modulos:{},avisoDias:30,notas:{}},audit:[]}),
  /* itens do Portal para a busca Ctrl K: cadastro, pendências e telas */
  busca:q=>{const R=[],D=Cad.D;if(D)for(const t of CAD_ORD){for(const it of D[t]||[]){const c=String(it[kOf(t)]),nm=t==='bom'?((cadItem('catalogos',it.catalogo)||{}).nome||''):it.nome||'';if(norm(c+' '+nm).includes(q))R.push({tipo:CAD_T[t].um,txt:c+(nm?' · '+nm:''),sub:'Cadastros'+(cadAtivo(t,it,D)?'':' · inativo'),href:'#cadastros/'+t+'/'+encodeURIComponent(c)});if(R.length>30)break}}
@@ -4877,6 +4937,7 @@ const CAD_SECS=['inicio','matriz','importar','auditoria','backups','seguranca','
    curtas (macro, sem detalhe técnico). REGRA: toda versão nova da plataforma ganha uma entrada aqui, a mais recente primeiro
    (AGENTS.md e CLAUDE.md). Tipos: nova (função nova), melhoria (algo que já existia ficou melhor), correcao (erro corrigido). */
 const NOVIDADES=[
+ {v:'1.8.40',d:'2026-11-21',itens:[['melhoria','Waste no padrão da Produção: todas as abas abrem com título e subtítulo, as seções da Visão geral não são mais numeradas e os botões Abrir de Relatórios ficaram iguais.'],['correção','Em todas as páginas, o mês aparece em português ("Novembro de 2026") e o campo de arquivo mostra "Escolher arquivo" (antes podiam sair em inglês).'],['melhoria','O ícone de ajuda "i" usa a fonte da marca, e os links seguem a cor da marca em todas as páginas.']]},
  {v:'1.8.39',d:'2026-11-21',itens:[['melhoria','Produção: Paradas, Resultados, Plano do mês, Relatórios, Ordens e lotes e Pendências abrem com título e subtítulo, como a Visão geral.'],['melhoria','Paradas e Resultados usam o mesmo filtro da Visão geral, com Limpar filtros e o resumo do recorte; Semana, Mês e Ano fiscal ficam em Personalizado.'],['correção','O mês do Plano do mês e dos Relatórios aparece em português (antes podia sair em inglês).'],['melhoria','SQDCP com as cores das categorias da empresa: Segurança verde, Qualidade azul, Entrega laranja, Custo amarelo e Pessoas cinza; Prévia / Imprimir passa a botão secundário.'],['melhoria','Botões de escolha, calendário e textos pequenos ficaram maiores; links e cores seguem a marca.']]},
  {v:'1.8.38',d:'2026-11-21',itens:[['melhoria','Lançamento: os turnos vêm logo depois do resumo do dia; servidor, lotes e gel ficam abaixo deles.'],['melhoria','OEE reportado e OEE real só aparecem quando diferem do OEE realizado.'],['melhoria','Qualidade do apontamento no Lançamento não repete os avisos que já estão na Validação.'],['melhoria','Visão geral com 1 dia: grupos de gráficos recolhidos e uma nota só, sem repetir em cada gráfico.'],['melhoria','Títulos da Produção em caixa de frase, como no guia da marca; rótulos curtos seguem em maiúsculas.']]},
  {v:'1.8.37',d:'2026-11-21',itens:[['nova','Segurança e qualidade passam a ser obrigatórias para fechar o dia (a partir de 21/11/2026); "Não houve" vale como resposta. O aviso leva ao campo.'],
@@ -7786,7 +7847,7 @@ function tipoParadaOpts(codes, sel) {
   const cats = [...new Set(codes.map(c => c.category || 'Sem categoria'))];
   return cats.map(cat => `<optgroup label="${esc(cat)}">${codes.filter(c => (c.category || 'Sem categoria') === cat).map(c => `<option value="${c.id}" ${sel === c.id ? 'selected' : ''}>${esc(c.code + ' · ' + c.name)}</option>`).join('')}</optgroup>`).join('');
 }
-const APP_VERSION = '2.6.30';   /* 2.6.30 · padrão visual (skill padrao-visual): cabeçalho nas abas, filtros de Paradas e Resultados iguais aos da Visão geral, mês em português, controles e textos no tamanho mínimo, cores pela marca; SQDCP com as cores das categorias da empresa */   /* 2.6.29 · design: turnos logo após o resumo do dia, cartões de OEE sem repetição, Visão geral com 1 dia recolhida, títulos em caixa de frase */   /* 2.6.28 · LANC-03 etapa e2: Segurança e qualidade obrigatórias para fechar o dia (desde 21/11/2026), do dia no modo Dia; Excluir dia em dia fechado */   /* 2.6.27 · LANC-03 etapa e1 (itens 3.1 e 4): modo Dia, só no dia, sem rateio */   /* 2.6.26 · LANC-03 etapa d (itens 3, 5 e 6): pílulas Hora a hora / Por turno e Scrap Por turno / Diário, selo de hora extra */   /* 2.6.25 · LANC-03 etapa c (item 9): Validação com Ir para o ajuste e a conta de cada aviso */   /* 2.6.24 · LANC-03 etapa b (itens 1, 2 e 7): cabeçalho do dia numa linha, menu ⋮ Mais ações e rodapé */   /* 2.6.23 · LANC-03 (itens 0 e 1.1): ordem e rótulos das abas da imagem, Modo TV e Resumo do dia recolhível */   /* 2.6.22 · LANC-04: Config. › Abas na plataforma (destaque, selo, aba inicial) e Frequência × duração redesenhado na largura do cartão */   /* 2.6.21 · TUR-07: turno que passa da meia-noite dividido no total diário (depois de 00:00 → dia seguinte; scrap proporcional à produção, paradas sem horário ao tempo) */   /* 2.6.20 · HEX-01: "Houve hora extra?" no cartão do turno (até 60 min antes do início ou depois do fim) */   /* 2.6.19 · TUR-06: produção no turno não produtivo pela meia-noite (antes → turno anterior; depois → próximo) desde 01/11/2026; aviso de hora extra */   /* 2.6.18 · PAR-CAT: tipo de parada por categoria e com busca nas sugestões do servidor, na importação de paradas e no turno sem produção */   /* 2.6.17 · SRV-DIA: dia sem lançamento com produção do servidor: aviso e abrir o dia com os dados */   /* 2.6.16 · TUR-05: dia em aberto passa ao horário vigente do turno; PAR-BUSCA: tipo de parada por texto */   /* 2.6.15 · REL-01: gel no relatório/e-mail do dia e do turno; Enviar relatório na janela do dia */   /* 2.6.14 · GEL-07: Relatório do Gel e Perdas de gel (turno com gel e Relatórios) */   /* 2.6.13 · GEL-06: Scrap gel no detalhe do turno */   /* 2.6.12 · TUR-04: turno com horário diferente no sábado (linhas por dia da semana) */   /* 2.6.11 · abas agrupadas: Ordens e lotes, Resultados, Paradas */   /* 2.6.10 · Lançamento sem turno aberto por padrão; abas visíveis na casca */   /* 2.6.9 · LANC-02: Lançamento unificado (hora a hora no detalhe do turno, 3º turno ao lado, Problemas de QN) */   /* 2.6.5 · IMP-01: contagens das importações nos exports */   /* 2.6.4 · semáforo só pelas faixas configuradas (verde acima de 100% vale) */   /* 2.6.2 · gráficos e números com meta seguem o semáforo de três cores (verde, amarelo, vermelho) */   /* 2.6.1 · gráficos: turno lançado pelo total com o nome do turno no eixo; janelas: rótulo e valor em tamanho de texto */   /* 2.6.0 · produção total do turno (sem hora a hora; períodos na troca de catálogo), aviso do servidor para turno lançado pelo total e para dia com produção apontada */
+const APP_VERSION = '2.6.31';   /* 2.6.31 · mês em português pela peça comum vacCampos (comum/interface) */   /* 2.6.30 · padrão visual (skill padrao-visual): cabeçalho nas abas, filtros de Paradas e Resultados iguais aos da Visão geral, mês em português, controles e textos no tamanho mínimo, cores pela marca; SQDCP com as cores das categorias da empresa */   /* 2.6.29 · design: turnos logo após o resumo do dia, cartões de OEE sem repetição, Visão geral com 1 dia recolhida, títulos em caixa de frase */   /* 2.6.28 · LANC-03 etapa e2: Segurança e qualidade obrigatórias para fechar o dia (desde 21/11/2026), do dia no modo Dia; Excluir dia em dia fechado */   /* 2.6.27 · LANC-03 etapa e1 (itens 3.1 e 4): modo Dia, só no dia, sem rateio */   /* 2.6.26 · LANC-03 etapa d (itens 3, 5 e 6): pílulas Hora a hora / Por turno e Scrap Por turno / Diário, selo de hora extra */   /* 2.6.25 · LANC-03 etapa c (item 9): Validação com Ir para o ajuste e a conta de cada aviso */   /* 2.6.24 · LANC-03 etapa b (itens 1, 2 e 7): cabeçalho do dia numa linha, menu ⋮ Mais ações e rodapé */   /* 2.6.23 · LANC-03 (itens 0 e 1.1): ordem e rótulos das abas da imagem, Modo TV e Resumo do dia recolhível */   /* 2.6.22 · LANC-04: Config. › Abas na plataforma (destaque, selo, aba inicial) e Frequência × duração redesenhado na largura do cartão */   /* 2.6.21 · TUR-07: turno que passa da meia-noite dividido no total diário (depois de 00:00 → dia seguinte; scrap proporcional à produção, paradas sem horário ao tempo) */   /* 2.6.20 · HEX-01: "Houve hora extra?" no cartão do turno (até 60 min antes do início ou depois do fim) */   /* 2.6.19 · TUR-06: produção no turno não produtivo pela meia-noite (antes → turno anterior; depois → próximo) desde 01/11/2026; aviso de hora extra */   /* 2.6.18 · PAR-CAT: tipo de parada por categoria e com busca nas sugestões do servidor, na importação de paradas e no turno sem produção */   /* 2.6.17 · SRV-DIA: dia sem lançamento com produção do servidor: aviso e abrir o dia com os dados */   /* 2.6.16 · TUR-05: dia em aberto passa ao horário vigente do turno; PAR-BUSCA: tipo de parada por texto */   /* 2.6.15 · REL-01: gel no relatório/e-mail do dia e do turno; Enviar relatório na janela do dia */   /* 2.6.14 · GEL-07: Relatório do Gel e Perdas de gel (turno com gel e Relatórios) */   /* 2.6.13 · GEL-06: Scrap gel no detalhe do turno */   /* 2.6.12 · TUR-04: turno com horário diferente no sábado (linhas por dia da semana) */   /* 2.6.11 · abas agrupadas: Ordens e lotes, Resultados, Paradas */   /* 2.6.10 · Lançamento sem turno aberto por padrão; abas visíveis na casca */   /* 2.6.9 · LANC-02: Lançamento unificado (hora a hora no detalhe do turno, 3º turno ao lado, Problemas de QN) */   /* 2.6.5 · IMP-01: contagens das importações nos exports */   /* 2.6.4 · semáforo só pelas faixas configuradas (verde acima de 100% vale) */   /* 2.6.2 · gráficos e números com meta seguem o semáforo de três cores (verde, amarelo, vermelho) */   /* 2.6.1 · gráficos: turno lançado pelo total com o nome do turno no eixo; janelas: rótulo e valor em tamanho de texto */   /* 2.6.0 · produção total do turno (sem hora a hora; períodos na troca de catálogo), aviso do servidor para turno lançado pelo total e para dia com produção apontada */
 const SCHEMA_VERSION = 1;
 const BASE_FILE = 'oee-vacutainer-base.json';
 const BACKUP_DIR = '00. Backups';
@@ -22000,7 +22061,8 @@ const CabPag = (() => {
     history: ['Resultados', 'Produção, OEE, D/P/Q, scrap e paradas por dia, semana e mês.'],
     plan: ['Plano do mês', 'Realizado × plano, ritmo, saldo e projeção do mês por família e catálogo.'],
     reports: ['Relatórios', 'Escolha o relatório, o período e a saída: PDF, Excel, texto ou Outlook.'],
-    ordens: ['Ordens e lotes', 'Ordens produzidas, plano do mês, conciliação com o MB51 e lotes do MES.']
+    ordens: ['Ordens e lotes', 'Ordens produzidas, plano do mês, conciliação com o MB51 e lotes do MES.'],
+    config: ['Configurações', 'Base e pasta, turnos, metas, importações e parâmetros da Produção.']
   };
   const MES = ['janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho', 'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'];
   const CSS = `.vac-mes{position:relative;display:inline-flex;align-items:center}
@@ -22013,6 +22075,7 @@ const CabPag = (() => {
   function estilo() { if (document.getElementById('cabPagCss')) return; const s = document.createElement('style'); s.id = 'cabPagCss'; s.textContent = CSS; document.head.appendChild(s); }
   const nomeMes = v => { const m = /^(\d{4})-(\d{2})$/.exec(v || ''); if (!m || +m[2] < 1 || +m[2] > 12) return 'Escolher o mês'; const n = MES[+m[2] - 1]; return n[0].toUpperCase() + n.slice(1) + ' de ' + m[1]; };
   function meses(root) {
+    if (typeof vacCampos !== 'undefined') { vacCampos.aplicar(root); return; }   /* 2.6.31 · peça comum (comum/interface) em todas as páginas */
     root.querySelectorAll('input[type="month"]').forEach(inp => {
       if (inp.closest('.vac-mes')) return;
       const w = document.createElement('span'); w.className = 'vac-mes'; inp.before(w);
@@ -22397,11 +22460,11 @@ button.b,label.b,a.b{border-radius:8px}
   <div class="selo small muted" id="selo"></div>
   <div id="emptyMsg"></div>
   <div id="vkSit" class="vk-dados"></div>
-  <div class="vk-sec vk-dados"><b>02</b><h3>Números do período</h3><span>Indicadores com os filtros acima</span></div>
+  <div class="vk-sec vk-dados"><h3>Números do período</h3><span>Indicadores com os filtros acima</span></div>
   <div class="card" id="resumo" style="display:none"></div>
   <div class="kpis" id="kpis"></div>
   <div id="vkDiag" class="vk-dados"></div>
-  <div class="vk-sec vk-dados"><b>04</b><h3>Análises</h3><span>Clique num grupo para recolher ou abrir · arraste pelo ⠿ para mudar de lugar, também entre grupos</span><span data-vg-exibir="#t-painel" data-vg-nao="1"></span></div>
+  <div class="vk-sec vk-dados"><h3>Análises</h3><span>Clique num grupo para recolher ou abrir · arraste pelo ⠿ para mudar de lugar, também entre grupos</span><span data-vg-exibir="#t-painel" data-vg-nao="1"></span></div>
   <section class="vk-grp vk-dados" data-vk-grupo="A"><button type="button" class="vk-gh" aria-expanded="true" aria-controls="vkg-perdas-A"><span class="seta" aria-hidden="true">▾</span><span><span class="t">A · Evolução por competência</span><br><span class="q">O MUV está dentro da meta mês a mês?</span></span></button><div class="vk-gb" id="vkg-perdas-A">
     <div class="card"><h3>Tendência mensal do MUV <i class="i" title="MUV (Desv. estrutura + Desv. empregado) por mês. Verde = dentro da meta; amarelo = pouco acima (atenção, pelo semáforo da Administração); vermelho = acima da meta (ou desfavorável, sem meta). Clique numa barra para filtrar o mês.">i</i></h3><div id="chTrend"></div></div>
     <div class="card"><h3>MUV × target acumulado no FY <i class="i" title="Barras: MUV acumulado do ano fiscal até cada mês (com os filtros). Traço: target acumulado (soma das metas de cada mês; com uma linha escolhida, o target dessa linha). Vermelho = acumulado acima do target. Clique numa barra para filtrar o mês.">i</i></h3><div id="chAcum"></div></div>
@@ -22420,7 +22483,7 @@ button.b,label.b,a.b{border-radius:8px}
   <section class="vk-grp vk-dados" data-vk-grupo="C"><button type="button" class="vk-gh" aria-expanded="true" aria-controls="vkg-perdas-C"><span class="seta" aria-hidden="true">▾</span><span><span class="t">C · Causas</span><br><span class="q">O que já foi explicado e o que falta analisar?</span></span></button><div class="vk-gb" id="vkg-perdas-C">
     <div class="card"><h3>Pareto por causa <i class="i" title="Perda das ordens/componentes que já têm causa registrada em comentário. 'Sem causa' = ainda não analisado.">i</i></h3><div id="chCausa"></div></div>
   </div></section>
-  <div class="vk-sec vk-dados"><b>05</b><h3>Ordens e componentes</h3><span>Tabela com os mesmos filtros: ordens, componentes, prioridades e excluídas</span></div>
+  <div class="vk-sec vk-dados"><h3>Ordens e componentes</h3><span>Tabela com os mesmos filtros: ordens, componentes, prioridades e excluídas</span></div>
   <div class="card">
     <h3>
       <span class="seg" id="segView"><button data-v="ordens" class="on">Ordens</button><button data-v="comps">Componentes</button><button data-v="prior">Prioridades</button><button data-v="excl" title="Ordens excluídas (fora dos totais), com justificativa e restauração">Excluídas <span id="nExcl"></span></button></span>
@@ -22436,6 +22499,7 @@ button.b,label.b,a.b{border-radius:8px}
 
 <!-- ================= COMPARATIVOS ================= -->
 <section class="tab" id="t-comp">
+  <div class="vk-hd"><div><h2>Comparativos</h2><p>Ranking por catálogo, família, tipo de item, mês ou semana, na medida escolhida.</p></div></div>   <!-- 1.12.18 · padrão visual: cabeçalho da aba -->
   <div class="filters">
     <button type="button" class="b sm btnCents" style="align-self:end">R$ ,00</button>
     <label>Comparar por <select id="cBy"><option value="cat">Catálogo</option><option value="fam">Família</option><option value="tipo">Tipo de item</option><option value="mes">Mês</option><option value="sem">Semana</option></select></label>
@@ -22444,6 +22508,7 @@ button.b,label.b,a.b{border-radius:8px}
     <label>Catálogo <select id="cCat"></select></label>
     <label>De <select id="cDe"></select></label>
     <label>Até <select id="cAte"></select></label>
+    <button type="button" class="b sm vk-limpar" id="cLimpar" style="align-self:end" title="Tipo de item, Catálogo, De e Até voltam para todos (Comparar por e Medida continuam)">Limpar filtros</button>
     <span class="muted small" style="align-self:center" id="cInfo"></span>
   </div>
   <div class="card"><h3 id="cTitRank">Ranking</h3><div id="cRank"></div></div>
@@ -22454,6 +22519,7 @@ button.b,label.b,a.b{border-radius:8px}
 
 <!-- ================= IMPORTAR ================= -->
 <section class="tab" id="t-importar">
+  <div class="vk-hd"><div><h2>Importar</h2><p>Dados da KKBC_ORD do SAP: cole ou escolha o arquivo, confira a prévia e grave.</p></div></div>   <!-- 1.12.18 · padrão visual: cabeçalho da aba -->
   <div class="note" style="margin-bottom:10px">Ordem recomendada e status de cada dia de todas as importações: <a href="#" onclick="if(typeof vacIrImportacao==='function'){vacIrImportacao('waste')};return false">Importações › Importação por página ↗</a>. A KKBC_ORD continua sendo gravada aqui, na base do Waste.</div>
   <div class="card">
     <h3>1 · Dados da KKBC_ORD <i class="i" title="Copie a grade do SAP com os cabeçalhos (Ctrl+C na lista ALV ou 'Planilha' → copiar) e cole abaixo, ou escolha um arquivo .xlsx/.xls/.csv/.txt. As colunas são reconhecidas pelo nome, em qualquer ordem.">i</i></h3>
@@ -22477,12 +22543,14 @@ button.b,label.b,a.b{border-radius:8px}
 
 <!-- ================= HISTÓRICO ================= -->
 <section class="tab" id="t-historico">
+  <div class="vk-hd"><div><h2>Histórico</h2><p>Importações feitas e registro de alterações da base do Waste.</p></div></div>   <!-- 1.12.18 · padrão visual: cabeçalho da aba -->
   <div class="card"><h3>Importações <i class="i" title="Cada importação fica registrada. Reimportar uma ordem cria uma nova versão vigente; a anterior é guardada. Desfazer uma importação restaura as versões que ela substituiu.">i</i></h3><div class="tw" id="tblImp"></div></div>
   <div class="card"><h3>Registro de alterações</h3><div class="tw" id="tblAudit" style="max-height:320px"></div></div>
 </section>
 
 <!-- ================= AÇÕES ================= -->
 <section class="tab" id="t-acoes">
+  <div class="vk-hd"><div><h2>Ações</h2><p>Ações do Waste ligadas às ordens; a edição fica em Iniciativas / Ações.</p></div></div>   <!-- 1.12.18 · padrão visual: cabeçalho da aba -->
   <div class="card"><h3>Plano de ações <button class="b sm" id="btnNovaAcao" title="Abre Iniciativas / Ações (as ações do Waste ficam lá)">+ Nova ação ↗</button>
     <label class="small muted" style="margin-left:auto"><input type="checkbox" id="acTodas"> mostrar encerradas</label></h3>
     <p class="small muted" style="margin:0 0 6px">Desde a 1.8.28 as ações ficam em <b>Iniciativas / Ações</b> (origem Waste, ligadas à ordem); aqui aparecem só para consulta e o clique abre lá. As antigas continuam editáveis aqui até serem trazidas (Iniciativas › Configuração › Trazer ações do Waste).</p>
@@ -22491,19 +22559,22 @@ button.b,label.b,a.b{border-radius:8px}
 
 <!-- ================= QUALIDADE ================= -->
 <section class="tab" id="t-qualidade">
-  <div class="card"><h3>Qualidade dos dados <i class="i" title="Pontos a conferir antes de confiar nos números: sinal do SAP, ordens sem quantidade entregue, componentes com unidades diferentes, desvio do SAP diferente do calculado etc.">i</i></h3><div id="qList"></div></div>
+  <div class="vk-hd"><div><h2>Qualidade dos dados</h2><p>Pontos a conferir antes de confiar nos números.</p></div></div>   <!-- 1.12.18 · padrão visual: cabeçalho da aba -->
+  <div class="card"><h3>Pontos a conferir <i class="i" title="Pontos a conferir antes de confiar nos números: sinal do SAP, ordens sem quantidade entregue, componentes com unidades diferentes, desvio do SAP diferente do calculado etc.">i</i></h3><div id="qList"></div></div>
 </section>
 
 <!-- ================= FECHAMENTO ================= -->
 <section class="tab" id="t-fechamento">
+  <div class="vk-hd"><div><h2>Fechamento</h2><p>Fechamento mensal: congela os números oficiais de cada competência.</p></div></div>   <!-- 1.12.18 · padrão visual: cabeçalho da aba -->
   <div class="card"><h3>Fechamento mensal <i class="i" title="Fechar um mês congela os números oficiais (perda, ganho, líquido, ordens). Importações que mexem num mês fechado pedem motivo e ficam registradas; o fechamento pode ser refeito, gerando nova versão.">i</i></h3>
     <div id="fechBox"></div></div>
 </section>
 
 <!-- ================= CONFIG ================= -->
-<section class="tab" id="t-relatorios"><div id="relBox"></div></section>
+<section class="tab" id="t-relatorios"><div class="vk-hd"><div><h2>Relatórios</h2><p>Relatórios do Waste por mês: escolha, confira a prévia e envie.</p></div></div><div id="relBox"></div></section>
 
 <section class="tab" id="t-config">
+  <div class="vk-hd"><div><h2>Configuração</h2><p>Pasta e backups, regra de sinal, formatos dos números e limites de criticidade.</p></div></div>   <!-- 1.12.18 · padrão visual: cabeçalho da aba -->
   <div class="row">
     <div class="card form">
       <h3>Pasta da rede</h3>
@@ -22580,7 +22651,7 @@ button.b,label.b,a.b{border-radius:8px}
    Base: perdas-base.json na pasta da rede (mesmo padrão OEE / Gel)
    Contrato: bloco "exports" (exportsVersion 1) lido pelas outras páginas
    ===================================================================== */
-const APP_VER='1.12.17',   /* 1.12.17 · KKBC-02: competência da lista KKBC amarrada ao MB51 › Plano do mês */   /* 1.12.14 · MUV: situação e tendência pelo semáforo de três cores */   /* 1.12.8 · ordens e lotes antigos pelo exports da Produção (ordensHistorico, lotesHistorico), sem ler a base dela */   /* 1.12.7 · D8: Pareto comum do kit (vacPareto) */   /* 1.12.6 · Fase 5: layout no arquivo da pessoa (vacPrefs do kit) */   /* 1.12.5 · D6: botões de gravação travados conforme o perfil (vacTravas do kit) */   /* 1.12.4 · Importar: lista das ordens ainda sem KKBC_ORD (Produção e SAP, mês atual e os 2 anteriores) */   /* 1.12.3 · KKBC_ORD colada como lista com Cen./Planta/Ordem/Origem/Material e títulos abreviados (Desv.qtd., Desv.preço) */   /* 1.12.2 · kit: modelo de e-mail (vacEmail) e número da página na impressão */   /* 1.12.1 · ícones no lugar dos símbolos de texto (kit) */   /* 1.12.0 · Design System (barra lateral), Paretos da controladoria (verticais), aviso ordem × lote */   /* 1.11.0 · target MUV da linha (Portal › Metas da área WASTE-MUV…, vigência, R$/US$ pelo câmbio do Portal), MUV × target acumulado no FY, filtros Linha e Semana */   /* 1.10.0 · MUV oficial (Desv. estrutura + Desv. empregado, como a controladoria): meta, situação, criticidade, exports e relatórios; Pareto do MUV por Linha/SKU/Componente × métrica, favorável/desfavorável e Top N */   /* 1.9.0 · KKBC_ORD em grade (layout da controladoria, uma ordem por arquivo): Desv. Empregado, Desv. preço de input e Desv. qtde guardados; aviso das ordens no formato antigo (reimportar) */   /* 1.8.36 · gráficos: "Valores em …" (moeda), eixo sem rótulos repetidos, medida do Comparativo no gráfico do relatório (docs/graficos-padrao.md) */   /* 1.8.35 · Visão Geral no padrão comum (vacLayout): situação, números, diagnóstico, análises em grupos */   /* 1.8.34 · kit: login com ID e senha */   /* 1.8.33 · kit: datas DD/MM/AAAA */   /* 1.8.32 · nome Eficácia/Confirmação de Processo */   /* 1.8.31 · kit: nome e presença de Iniciativas / Ações na barra */   /* 1.8.30 · UX-02: guia por aba */   /* 1.8.29 · Fase 7 (UX-03, WST-01): Painel → Visão Geral */   /* 1.8.28 · Fase 6 (WST-03, INI-04): ações em Iniciativas / Ações; antigas até a migração, depois só leitura */   /* 1.8.27 · Fase 3 (IMP-04/06, WST-02): importações no exports; aba Importar leva ao Portal › Importação */   /* 1.8.26 · ARQ-09: "Ver com dados de teste" vira a Demonstração integrada */   /* 1.8.23 · C2–C6: kit com a ficha por pasta (AT-08) e a contagem da fila durável (Portal › Versões) */   /* 1.8.22 · C1: trava da 2ª aba com alteração pendente (nada é descartado); kit com a fila durável */   /* 1.8.21 · E11: busca do kit leva o equipamento à ficha em Equipamentos */   /* 1.8.20 · E8: kit com "+ Abrir ação" na ficha da ordem (Planner de Iniciativas) */   /* 1.8.19 · E5: ficha da ordem comum (botão Ficha na ordem; busca Ctrl K por ordem, lote e LP) */   /* 1.8.18 · E4: versão do exports conferida (Produção, Ordens), ordem em várias competências, dias do lote pela chave · 1.8.17 · E2: fonte única da versão (tela, base, exports e Portal › Versões) */ BASE_FN='perdas-base.json', DIR_ORIG='00. Originais SAP', DIR_BKP='00. Backups', DIR_IN='00. Entrada KKBC', DIR_DONE='00. Entrada KKBC/Processados';
+const APP_VER='1.12.18',   /* 1.12.18 · padrão visual (skill padrao-visual): cabeçalho em todas as abas, botões Abrir iguais em Relatórios, títulos de cartão sem repetir a página */   /* 1.12.17 · KKBC-02: competência da lista KKBC amarrada ao MB51 › Plano do mês */   /* 1.12.14 · MUV: situação e tendência pelo semáforo de três cores */   /* 1.12.8 · ordens e lotes antigos pelo exports da Produção (ordensHistorico, lotesHistorico), sem ler a base dela */   /* 1.12.7 · D8: Pareto comum do kit (vacPareto) */   /* 1.12.6 · Fase 5: layout no arquivo da pessoa (vacPrefs do kit) */   /* 1.12.5 · D6: botões de gravação travados conforme o perfil (vacTravas do kit) */   /* 1.12.4 · Importar: lista das ordens ainda sem KKBC_ORD (Produção e SAP, mês atual e os 2 anteriores) */   /* 1.12.3 · KKBC_ORD colada como lista com Cen./Planta/Ordem/Origem/Material e títulos abreviados (Desv.qtd., Desv.preço) */   /* 1.12.2 · kit: modelo de e-mail (vacEmail) e número da página na impressão */   /* 1.12.1 · ícones no lugar dos símbolos de texto (kit) */   /* 1.12.0 · Design System (barra lateral), Paretos da controladoria (verticais), aviso ordem × lote */   /* 1.11.0 · target MUV da linha (Portal › Metas da área WASTE-MUV…, vigência, R$/US$ pelo câmbio do Portal), MUV × target acumulado no FY, filtros Linha e Semana */   /* 1.10.0 · MUV oficial (Desv. estrutura + Desv. empregado, como a controladoria): meta, situação, criticidade, exports e relatórios; Pareto do MUV por Linha/SKU/Componente × métrica, favorável/desfavorável e Top N */   /* 1.9.0 · KKBC_ORD em grade (layout da controladoria, uma ordem por arquivo): Desv. Empregado, Desv. preço de input e Desv. qtde guardados; aviso das ordens no formato antigo (reimportar) */   /* 1.8.36 · gráficos: "Valores em …" (moeda), eixo sem rótulos repetidos, medida do Comparativo no gráfico do relatório (docs/graficos-padrao.md) */   /* 1.8.35 · Visão Geral no padrão comum (vacLayout): situação, números, diagnóstico, análises em grupos */   /* 1.8.34 · kit: login com ID e senha */   /* 1.8.33 · kit: datas DD/MM/AAAA */   /* 1.8.32 · nome Eficácia/Confirmação de Processo */   /* 1.8.31 · kit: nome e presença de Iniciativas / Ações na barra */   /* 1.8.30 · UX-02: guia por aba */   /* 1.8.29 · Fase 7 (UX-03, WST-01): Painel → Visão Geral */   /* 1.8.28 · Fase 6 (WST-03, INI-04): ações em Iniciativas / Ações; antigas até a migração, depois só leitura */   /* 1.8.27 · Fase 3 (IMP-04/06, WST-02): importações no exports; aba Importar leva ao Portal › Importação */   /* 1.8.26 · ARQ-09: "Ver com dados de teste" vira a Demonstração integrada */   /* 1.8.23 · C2–C6: kit com a ficha por pasta (AT-08) e a contagem da fila durável (Portal › Versões) */   /* 1.8.22 · C1: trava da 2ª aba com alteração pendente (nada é descartado); kit com a fila durável */   /* 1.8.21 · E11: busca do kit leva o equipamento à ficha em Equipamentos */   /* 1.8.20 · E8: kit com "+ Abrir ação" na ficha da ordem (Planner de Iniciativas) */   /* 1.8.19 · E5: ficha da ordem comum (botão Ficha na ordem; busca Ctrl K por ordem, lote e LP) */   /* 1.8.18 · E4: versão do exports conferida (Produção, Ordens), ordem em várias competências, dias do lote pela chave · 1.8.17 · E2: fonte única da versão (tela, base, exports e Portal › Versões) */ BASE_FN='perdas-base.json', DIR_ORIG='00. Originais SAP', DIR_BKP='00. Backups', DIR_IN='00. Entrada KKBC', DIR_DONE='00. Entrada KKBC/Processados';
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 /* página para o núcleo comum, o cabeçalho (vac-cabecalho v2) e o quadro de Versões do Portal */
 const PAGE={id:'perdas',titulo:'Waste · Linha Vacutainer',tituloCurto:'Waste',subtitulo:'Custos e perdas por ordem',versao:APP_VER,baseFile:BASE_FN,backupDir:'00. Backups/Perdas',busca:q=>buscaPerdas(q)};
@@ -24107,8 +24178,8 @@ function renderMatrix(){
 }
 function renderCompOrders(obs){
  let list,tit;const M=MET[C.met];
- /* 1.6.0 · sem grupo escolhido, a lista completa repetia Visão geral › 05 Ordens e componentes: aqui só as ordens do que foi clicado */
- if(!C.cell&amp;&amp;!C.tipo){$('#cOrdTit').innerHTML='Ordens do grupo escolhido';$('#cOrd').innerHTML='<div class="note small">Clique numa linha do <b>Ranking</b> ou numa célula de <b>Tipo de item × catálogo</b> (ou escolha um tipo de item no filtro) para ver só as ordens dela, na medida escolhida. A lista de todas as ordens fica em <a href="#" id="cIrOrd">Visão geral › 05 Ordens e componentes</a>.</div>';const a=$('#cIrOrd');if(a)a.onclick=e=>{e.preventDefault();showTab('painel');const s=$('#segView');if(s)s.scrollIntoView({block:'start'})};return}
+ /* 1.6.0 · sem grupo escolhido, a lista completa repetia Visão geral › Ordens e componentes: aqui só as ordens do que foi clicado */
+ if(!C.cell&amp;&amp;!C.tipo){$('#cOrdTit').innerHTML='Ordens do grupo escolhido';$('#cOrd').innerHTML='<div class="note small">Clique numa linha do <b>Ranking</b> ou numa célula de <b>Tipo de item × catálogo</b> (ou escolha um tipo de item no filtro) para ver só as ordens dela, na medida escolhida. A lista de todas as ordens fica em <a href="#" id="cIrOrd">Visão geral › Ordens e componentes</a>.</div>';const a=$('#cIrOrd');if(a)a.onclick=e=>{e.preventDefault();showTab('painel');const s=$('#segView');if(s)s.scrollIntoView({block:'start'})};return}
  if(C.cell&amp;&amp;C.cell.t){const sv={by:C.by,tipo:C.tipo,cat:C.cat};C.by='tipo';C.tipo=C.cell.t;C.cat=C.cell.c==='?'?'':C.cell.c;list=compObs().obs;Object.assign(C,sv);tit=`${esc(C.cell.t)} no catálogo ${esc(C.cell.c)}`}
  else{obs=obs||compObs().obs;list=C.cell&amp;&amp;C.cell.k!=null?obs.filter(x=>x.key===C.cell.k):obs;tit=C.cell&amp;&amp;C.cell.k!=null?`Grupo ${esc((list[0]||{}).label||C.cell.k)}`:(C.tipo?esc(C.tipo)+' em todas as ordens':'Todas as ordens')}
  list=[...list].sort((a,b)=>(metricOf(b)??-1e18)-(metricOf(a)??-1e18));
@@ -24306,10 +24377,10 @@ function docComparativo(){const{obs}=compObs();const M=MET[C.met];const G=new Ma
   {tipo:'svg',titulo:'Por '+byL.toLowerCase()+' ('+M.l+')',svg:barChart(gs.slice(0,15).map(g=>({label:String(g.label).slice(0,10),value:g.v||0,color:(g.v||0)>0?'var(--crit)':'var(--ok)'})),{fmt:C.met==='pq'?(v=>fmtP(v)):fmtK})},
   {tipo:'tabela',titulo:'Ranking',cab:[byL,'Ordens','Tubos','Desvio',M.l],num:[1,2,3,4],linhas:gs.map(g=>[g.label,g.n,fmtK(g.tubes),fmtR(g.d),g.v==null?'–':M.f(g.v)])}]}}
 function renderRelatorios(){const ps=allPers().slice().reverse();const sel=renderRelatorios.per||ps[0]||'';
- $('#relBox').innerHTML=`<div class="card"><h3>Relatórios ${ib('Relatórios',"Mesmo molde dos relatórios do OEE e da Administração: prévia na tela e saída em PDF (A4 deitado, com logo e número de página), Excel (uma aba por tabela, números como valores), texto para WhatsApp/Teams, corpo de e-mail do Outlook ou impressão. O comentário fica salvo com o relatório.")}</h3>
+ $('#relBox').innerHTML=`<div class="card"><h3>Escolha o relatório ${ib('Relatórios',"Mesmo molde dos relatórios do OEE e da Administração: prévia na tela e saída em PDF (A4 deitado, com logo e número de página), Excel (uma aba por tabela, números como valores), texto para WhatsApp/Teams, corpo de e-mail do Outlook ou impressão. O comentário fica salvo com o relatório.")}</h3>
  <div class="filters" style="border:0;padding:0;background:none"><label>Mês <select id="relPer">${ps.map(p=>`<option value="${p}" ${p===sel?'selected':''}>${fmtML(p)}</option>`).join('')}</select></label></div>
- <ul class="pl"><li><span class="t"><b>Mensal de perdas</b><br><span class="small muted">Resumo (var. material, scrap, total), tendência, Pareto de componentes, catálogos, ordens altas/críticas e ações abertas.</span></span><button class="b p sm" id="rMensal" ${ps.length?'':'disabled'}>Abrir</button></li>
- <li><span class="t"><b>Ordens por tipo · produção × preparação</b><br><span class="small muted">Ordens de produção (tubos), ordens de preparação (aditivo) e o total, lado a lado; depois a lista de ordens de cada tipo com os totais.</span></span><label class="small">até <select id="relAte">${ps.map(p=>`<option value="${p}" ${p===sel?'selected':''}>${fmtML(p)}</option>`).join('')}</select></label><button class="b p sm" id="rTipo" ${ps.length?'':'disabled'}>Abrir</button></li>
+ <ul class="pl"><li><span class="t"><b>Mensal de perdas</b><br><span class="small muted">Resumo (var. material, scrap, total), tendência, Pareto de componentes, catálogos, ordens altas/críticas e ações abertas.</span></span><button class="b sm" id="rMensal" ${ps.length?'':'disabled'}>Abrir</button></li>
+ <li><span class="t"><b>Ordens por tipo · produção × preparação</b><br><span class="small muted">Ordens de produção (tubos), ordens de preparação (aditivo) e o total, lado a lado; depois a lista de ordens de cada tipo com os totais.</span></span><label class="small">até <select id="relAte">${ps.map(p=>`<option value="${p}" ${p===sel?'selected':''}>${fmtML(p)}</option>`).join('')}</select></label><button class="b sm" id="rTipo" ${ps.length?'':'disabled'}>Abrir</button></li>
  <li><span class="t"><b>Comparativo atual</b><br><span class="small muted">O que está escolhido na aba Comparativos (agrupamento, medida e filtros).</span></span><button class="b sm" id="rComp" ${ps.length?'':'disabled'}>Abrir</button></li>
  <li><span class="t"><b>Relatório de uma ordem</b><br><span class="small muted">No detalhe da ordem, botão "Relatório da ordem".</span></span><input id="rOrd" placeholder="nº da ordem" size="14"><button class="b sm" id="rOrdGo">Abrir</button></li>
  <li><span class="t"><b>TV</b><br><span class="small muted">Resumo, tendência, componentes, catálogos e ordens críticas do último mês, girando a cada 20 s. Link direto: Perdas-Ordem.html#tv</span></span><button class="b sm" onclick="startTV()">Abrir TV</button></li></ul></div>`;
@@ -24507,6 +24578,7 @@ $('#btnMore').onclick=()=>{F.lim+=300;renderPainel()};
 $('#btnExpXlsx').onclick=()=>exportXlsx(tableAOA(),`Waste_${F.view}_${todayISO()}.xlsx`);
 $('#btnExpCsv').onclick=()=>exportCsv(tableAOA(),`Waste_${F.view}_${todayISO()}.csv`);
 for(const[id,k]of[['cBy','by'],['cMet','met'],['cTipo','tipo'],['cCat','cat'],['cDe','de'],['cAte','ate']])$('#'+id).onchange=e=>{C[k]=e.target.value;C.cell=null;renderComp()};
+$('#cLimpar').onclick=()=>{C.tipo='';C.cat='';C.de='';C.ate='';C.cell=null;renderComp()};   /* 1.12.18 · Limpar filtros (o mesmo que escolher todos/— em cada campo) */
 $('#btnInterp').onclick=interpretPaste;
 $('#btnLimparImp').onclick=()=>{$('#impTxt').value='';$('#impPrev').innerHTML='';$('#impFile').value='';$('#impSrc').textContent='';IMP=null};
 $('#impFile').onchange=e=>{const f=e.target.files[0];if(f)readFile(f)};
@@ -39063,71 +39135,71 @@ body.vac-porta{overflow:hidden}
     {
       "id": "oee",
       "path": "Plataforma.html#motor/oee",
-      "version": "2.6.30",
-      "sha256": "14a2cbcb9b54e6bf47818acd0d449d69907c176188e17b11da5ab5dff183a64e",
-      "bytes": 2362057
+      "version": "2.6.31",
+      "sha256": "dd77823ef280071143d627a31b3d7e9a8c63e543a1fdb51dd465a677c7875602",
+      "bytes": 2369076
     },
     {
       "id": "perdas",
       "path": "Plataforma.html#motor/perdas",
-      "version": "1.12.17",
-      "sha256": "f00f977b98f83dd65471696568880c1891b57ca16378f567532eae53acabeaa3",
-      "bytes": 936443
+      "version": "1.12.18",
+      "sha256": "0df49b555ca82a162d683e9a31a5f086cfbfe21f2c3a0cd593f02a9c3b8db5f2",
+      "bytes": 945122
     },
     {
       "id": "gel",
       "path": "Plataforma.html#motor/gel",
       "version": "2.42",
-      "sha256": "51548b1d739dda5bff20bf0fd728ae1970908af984cbc2570e166c2cb7bfc586",
-      "bytes": 1636891
+      "sha256": "7912e62ba031103b6beb43324470bfcdee334b1bc1aae97a1cea69100afa6f47",
+      "bytes": 1643572
     },
     {
       "id": "paradas",
       "path": "Plataforma.html#motor/paradas",
       "version": "1.2.18",
-      "sha256": "7088a7a27e5bd786cec8b2bbeba475c651a733580baf0fe11ae4331aead7793f",
-      "bytes": 909050
+      "sha256": "3ec745280c1989b0b7f656db953d09dfbf0be6ea35c218e375afddd60589eaa5",
+      "bytes": 915731
     },
     {
       "id": "equip",
       "path": "Plataforma.html#motor/equip",
       "version": "1.0.20",
-      "sha256": "04b38a0780607c7efbf48cb369c615e2b2d81aaebf0ba553ee95304022ad404a",
-      "bytes": 692783
+      "sha256": "19c13c5bbeb5bdfe6bf89ff73bf743c7b23f52f0b38780caefbb0f35291e62ae",
+      "bytes": 699464
     },
     {
       "id": "inic",
       "path": "Plataforma.html#motor/inic",
       "version": "1.1.16",
-      "sha256": "6f8fb6f99c22a2d1de38ef6df12f83576cee208e441e9086b87ddb818f0d0a85",
-      "bytes": 714319
+      "sha256": "243e2c1be645bd687662ce26468149f0cadec06d15e6f4190d403f0cb432f3fc",
+      "bytes": 721000
     },
     {
       "id": "linha",
       "path": "Plataforma.html#motor/linha",
       "version": "1.4.0",
-      "sha256": "aa28021144275325203c9d26d2db0e5b849168b7314d79b48b97a1b7223786a3",
-      "bytes": 896078
+      "sha256": "95d440bd18349e61e12e7ed3c24466bd602bbc65721f39e26e05d088aaa684a2",
+      "bytes": 902759
     },
     {
       "id": "projetos",
       "path": "Plataforma.html#motor/projetos",
       "version": "0.1.16",
-      "sha256": "730f66b89452b50a8102006fadb7759f4bebc0b65045d27e8eecf6e22d404d31",
-      "bytes": 632723
+      "sha256": "82286ed4dc6a87c0fad96dc03d45b8b85d4d0e7bda91548a0f18a928eeb9eae4",
+      "bytes": 639404
     },
     {
       "id": "portal",
       "path": "Plataforma.html#motor/portal",
-      "version": "1.9.62",
-      "sha256": "98dc7e4eb566cabba14589419c6758e509c6850fc96da3620adf2d03912107a1",
-      "bytes": 1266872
+      "version": "1.9.63",
+      "sha256": "84d029a5f597177f73da0940f0683460d719fd0dc34da079bcedc817d00848c0",
+      "bytes": 1274069
     }
   ],
   "limitations": [
     "Projetos e conteúdo técnico OSM/MES/AM/TPM mantêm os limites documentados nas fontes."
   ],
-  "enginesSha256": "b6a184bb2f75c342d5122c9126662f143a5302913756ebbe54e570cf62de3819",
+  "enginesSha256": "7709d030a56e1dc5d18ec1c2e2e65c1afc1a27ffed141cbc1b208ef694565ad5",
   "originRevision": "ffc9ee8",
   "sourceMode": "single-html",
   "originEnginesSha256": "a87a64ad0c328f70e102b2ae888790a9b5d5a9bd05778652a7ce7cae140e40d2"
@@ -39197,7 +39269,7 @@ summary{cursor:pointer;font-weight:600;color:var(--navy)}
 'use strict';
 /* ---------- referência (atualizar quando a plataforma mudar de versão) ---------- */
 // Iguais às do pacote da plataforma (nova-plataforma/src/generated/manifest.json); o teste ferramenta-verificar confere.
-const VERSOES = {"oee":"2.6.30","perdas":"1.12.17","gel":"2.42","paradas":"1.2.18","equip":"1.0.20","inic":"1.1.16","linha":"1.4.0","projetos":"0.1.16","portal":"1.9.62"};
+const VERSOES = {"oee":"2.6.31","perdas":"1.12.18","gel":"2.42","paradas":"1.2.18","equip":"1.0.20","inic":"1.1.16","linha":"1.4.0","projetos":"0.1.16","portal":"1.9.63"};
 const BASES = [
  { arq: 'vacutainer-cadastros.json', mod: 'portal', nome: 'Cadastro geral (Portal)', obrig: true, cadastro: true, bk: 'Cadastros' },
  { arq: 'portal-base.json', mod: 'portal', nome: 'Portal', obrig: true, bk: 'Portal' },
@@ -39788,7 +39860,7 @@ import { Icon, Button, Badge, Empty, Modal, BarChart, BrandLogo, CommandMenu } f
 import { ModuleFrame } from "vac:modulo/components/ModuleFrame";
 import manifest from "vac:recurso/manifesto";
 import { ModuleTabs } from "vac:modulo/components/ModuleTabs";
-const VERSION = "1.8.39";
+const VERSION = "1.8.40";
 /* Navegação 1.3.0 (16/11/2026): Visão da linha, Relatórios e Importações têm abas; as que mostram uma tela do
    Portal (motor da Administração) trazem o 3º campo com a aba dele. Administração fica só com cadastros e configuração. */
 const SHELL_TABS = {
