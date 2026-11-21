@@ -84,12 +84,12 @@ Peça comum para páginas fora da Produção: `vacLayout` (comum/interface: `sec
 - [ ] Nenhum aviso repetido em dois blocos.
 - [ ] Varredura de depois sem achados "ajustar"; números iguais aos de antes; testes do módulo passando.
 
-## Situação por módulo (21/11/2026)
+## Situação por módulo (21/11/2026, plataforma 1.8.42)
 
-- **Produção** (2.6.31) e **Waste** (1.12.18): sem achados "ajustar" na varredura. Restam itens "revisar" (espaçamentos 10/14/18 px no CSS montado pela Visão geral, cores de catálogo e de séries vindas do cadastro).
-- **Peças comuns já no padrão:** `vacLayout.sec` sem numeração; `vacCampos` (comum/interface) mostra mês e arquivo em português em todas as páginas; ícone de ajuda "i" com a fonte da marca; links sem classe na cor da marca; selo "em construção" das abas com 12 px; tokens `--sqdcp-*` das categorias.
-- **Exceções aceitas:** SQDCP tem o cabeçalho do quadro (`.sqdcp-head`) e data/linha/turno como recorte do quadro, sem "Limpar filtros"; Waste › Configuração tem dois "Salvar" no mesmo cartão (cada um grava uma lista).
-- **A fazer:** Gestão de Gel, Paradas, Equipamentos, Iniciativas / Ações, Linha 360°, Projetos, Administração, Visão da linha e as páginas da casca.
+- **Toda a plataforma** passou pela varredura (74 abas, Produção, Waste, Gel, Paradas, Equipamentos, Iniciativas / Ações, Linha 360°, Projetos, Administração e as páginas da casca): sem achados "ajustar" fora das exceções abaixo. Restam itens "revisar" (espaçamentos fora da escala, cores de catálogo e de séries vindas do cadastro, textos de 11–12 px).
+- **Peças comuns no padrão:** `vacLayout.sec` sem numeração; `vacCabAba` (cabeçalho automático da aba, com subtítulos por módulo); `vacLimparFiltros` ("Limpar filtros" em cartões de filtro com lista de escolha); `vacCampos` (mês e arquivo em português); títulos h1–h4 em caixa de frase (comum/visual); ícone de ajuda "i" com a fonte da marca; links sem classe na cor da marca; selo "em construção" com 12 px; tokens `--sqdcp-*`.
+- **Exceções aceitas:** SQDCP com cabeçalho e recorte do quadro; Waste › Configuração com dois "Salvar" no mesmo cartão; Gel › Operação com as ações de cada posição do cabeçote (e ações por linha de tabela, que a varredura já não conta); formulários A4 impressos e folhas de relatório com desenho próprio.
+- **Página nova:** usar `vacCabAba.SUB` (subtítulo da aba), `vacLayout` e a grade `vacGrade`; rodar a varredura antes de abrir o PR.
 
 ## O que a varredura não faz
 

@@ -23,7 +23,7 @@ function varrer(){
   const txt=el=>(el.textContent||'').replace(/\s+/g,' ').trim().slice(0,70);
   const raiz=document.querySelector('#main')||document.querySelector('main')||document.body;
   const R={achados:[],resumo:{}};const A=(tipo,nivel,msg,ex)=>R.achados.push({tipo,nivel,msg,ex:(ex||[]).slice(0,6)});
-  const todos=[...raiz.querySelectorAll('*')].filter(vis);
+  const todos=[...raiz.querySelectorAll('*')].filter(vis).filter(x=>!x.closest('.fprev,.fp,.printarea,.rep,.a4,.folha'));   /* prévia de formulário A4 / relatório impresso tem desenho próprio */
   /* paleta: valores das variáveis --* da página (css/brand e kit), resolvidos em rgb */
   const vars=new Set();for(const sh of document.styleSheets){let rs;try{rs=sh.cssRules;}catch(e){continue;}const andar=l=>{for(const r of l){if(r.style)for(const p of r.style)if(p.startsWith('--'))vars.add(p);if(r.cssRules)andar(r.cssRules);}};andar(rs);}
   const prova=document.createElement('span');document.body.appendChild(prova);
@@ -64,7 +64,7 @@ function varrer(){
   if(espLista.length)A('Espaçamento','revisar (baixa)','Valor fora da escala 4/8/12/16/24/32 px (var(--sp-8,8px) etc.). Arredondar para o passo mais próximo; no empate, o menor.',espLista.slice(0,10).map(([k,l])=>`${k} ×${l.length} · ${l[0]}`));
   /* 5 · botões */
   const bts=todos.filter(e=>e.matches('button,a.btn,a.b,[role="button"]'));
-  const prim=bts.filter(b=>b.getAttribute('aria-pressed')!=='true'&&b.getAttribute('aria-selected')!=='true'&&!b.closest('.seg,[role="tablist"],[role="group"]')&&(/\bprimary\b|\bprimario\b|\bb-pri\b|\bp\b/.test(b.className)||getComputedStyle(b).backgroundColor===rgb_(document,'--accent')));   /* escolha marcada (pílula, grupo) não é botão primário */
+  const prim=bts.filter(b=>!b.closest('td,tr')&&b.getAttribute('aria-pressed')!=='true'&&b.getAttribute('aria-selected')!=='true'&&!b.closest('.seg,[role="tablist"],[role="group"]')&&(/\bprimary\b|\bprimario\b|\bb-pri\b|\bp\b/.test(b.className)||getComputedStyle(b).backgroundColor===rgb_(document,'--accent')));   /* escolha marcada (pílula, grupo) não é botão primário */
   const grupos=new Map();for(const b of prim){const g=b.closest('header,section,.card,footer,.row,.vgl-hd,form,dialog')||raiz;grupos.set(g,(grupos.get(g)||[]).concat(b));}
   const varios=[...grupos].filter(([,l])=>l.length>1);
   if(varios.length)A('Botões','ajustar','Mais de um botão primário no mesmo grupo. O modelo tem um primário por região (ex.: Apresentar no cabeçalho, Fechar dia no cabeçalho do dia, Relatório do período em Explorar dados); os demais são secundários.',varios.map(([g,l])=>`${nome(g)}: ${l.map(b=>'"'+txt(b)+'"').join(', ')}`));
@@ -76,11 +76,11 @@ function varrer(){
   /* 6 · filtros */
   const campos=todos.filter(e=>e.matches('select,input[type="date"],input[type="text"],input[type="search"],input:not([type])'));
   const caixa=campos.length?campos[0].closest('#gFilters,.filtros,.filters,.vk-fil'):null;   /* SQDCP: data/linha/turno são o recorte do quadro, não filtro de consulta */   /* só cartão de filtros; formulário de configuração não */
-  const naCaixa=caixa?[...caixa.querySelectorAll('select,input')].filter(vis).length:0;
+  const naCaixa=caixa?[...caixa.querySelectorAll('select,input[type=text],input[type=search],input:not([type])')].filter(c=>vis(c)&&!c.closest('.vdf,.dfield,.vac-mes,table')).length:0;   /* conta como o vacLimparFiltros: sem datas, caixas de marcar e campos de tabela */
   if(naCaixa>=3){   /* barra só de data/linha (como a do Lançamento) não é um cartão de filtros */
     const temLimpar=[...(caixa||raiz).querySelectorAll('button,a')].some(b=>/limpar/i.test(b.textContent));
     if(!temLimpar)A('Filtros','ajustar','Página com filtros sem "Limpar filtros". O modelo: Período (datas + Hoje/Ontem/7 dias/30 dias/Personalizado), demais filtros numa linha, "Limpar filtros" no fim da linha e uma linha-resumo do recorte abaixo.');
-    const semRot=campos.filter(c=>!c.labels?.length&&!c.getAttribute('aria-label')&&!c.closest('label')&&!c.placeholder&&!/^vac-dt/.test(c.className));
+    const semRot=campos.filter(c=>!c.closest('table')&&!c.labels?.length&&!c.getAttribute('aria-label')&&!c.closest('label')&&!c.placeholder&&!/^vac-dt/.test(c.className));
     if(semRot.length)A('Filtros','ajustar','Campo sem rótulo visível (label acima do campo, em caixa de frase).',semRot.map(caminho));
   }
   const datas=[...raiz.querySelectorAll('input[type="date"],input[type="datetime-local"]')].filter(vis);
