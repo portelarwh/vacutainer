@@ -89,7 +89,7 @@ const LER = () => {
   ok(T.cards === 25 && T.colunas === 'SQDCP', '25 posições em 5 colunas na ordem S, Q, D, C, P');
   ok(T.cardOk && T.gearA11y && T.semTextoConfig, 'cards com posição, ícone, nome, valor, Prévia / Imprimir e engrenagem com nome acessível e dica (sem o botão "Configurar posição")');
   ok(T.minAltura >= 189, `altura mínima dos cards (${Math.round(T.minAltura)} px)`);
-  ok(T.cores === '#16803c,#1769d2,#d99a00,#7935b2,#c72d45', `cores dos pilares (${T.cores})`);
+  ok(T.cores === '#16803c,#1769d2,#ff6e00,#f2b705,#8a94a6', `cores dos pilares pelo padrão da empresa: S verde, Q azul, D laranja, C amarelo, P cinza (${T.cores})`);
   ok(T.vazio, 'posição livre: card tracejado com ＋ Escolher indicador (ícone de mais)');
   ok(T.ausenteNaoZero, `sem dado mostra — (nunca 0); estados presentes: ${T.estados}`);
   ok(T.turnoMantido, 'Atualizar fontes mantém o turno escolhido');
