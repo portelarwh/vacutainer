@@ -1,6 +1,6 @@
 # Proposta LANC-03 · aba Lançamento por modo (hora a hora, por turno, dia) e scrap por turno ou diário
 
-Pedido do responsável (20/11/2026). **LANC-04 (itens 0.1 e 0.2) entregue na Produção 2.6.22 / plataforma 1.8.31. LANC-03: etapa a (itens 0 e 1.1) entregue na Produção 2.6.23 / plataforma 1.8.32; etapas b a e ainda não implementadas.** Muda a interface da aba Lançamento da Produção (`motor/oee`, LANC-02, cartões `lc-*`/`tl-*`). Os números, as fórmulas e as permissões continuam iguais (contrato 6), O modo "Dia" foi decidido como "só no dia" (item 4), sem rateio entre turnos ou horas.
+Pedido do responsável (20/11/2026). **LANC-04 (itens 0.1 e 0.2) entregue na Produção 2.6.22 / plataforma 1.8.31. LANC-03: etapa a (itens 0 e 1.1) entregue na Produção 2.6.23 / plataforma 1.8.32; etapa b (itens 1, 2 e 7) na Produção 2.6.24 / plataforma 1.8.33; etapas c a e ainda não implementadas.** Muda a interface da aba Lançamento da Produção (`motor/oee`, LANC-02, cartões `lc-*`/`tl-*`). Os números, as fórmulas e as permissões continuam iguais (contrato 6), O modo "Dia" foi decidido como "só no dia" (item 4), sem rateio entre turnos ou horas.
 
 ## Pedidos do responsável (conferência)
 
@@ -139,6 +139,8 @@ Ocupando a linha toda, o cartão também não fica ao lado de outro, por isso pa
   - **Lançamento:** Hora a hora (padrão) · Por turno · Dia.
   - **Scrap:** Por turno · Diário.
 
+> **Entregue (etapa b, Produção 2.6.24).** Data por extenso ("Quinta-feira, 19/11/2026"), chip de situação (Em produção, Pendente de conferência, Sem produção ou Fechado; reaberto aparece como "Em produção · reaberto") e "Semana 47 · seg–sáb · Vacutainer". À direita, Fechar dia (Reabrir com o dia fechado) e ⋮ Mais ações, na mesma linha; com o cabeçalho recolhido, os dois continuam à vista. Scrap, Responsável e Observação geral continuam no corpo do cabeçalho até a etapa d (pílulas). A barra do dia deixou de repetir "dia · semana · situação" quando o cabeçalho está na tela. A "Última alteração" passou para o item Histórico de alterações do menu.
+
 ## 1.1 Cards resumo em bloco recolhível (decisão do responsável, 20/11/2026)
 
 - Os cards resumo do dia (OEE do dia, meta diária, scrap, gel, cards configurados em **Editar cards**, com o semáforo) ficam num bloco **"Resumo do dia"** com o botão Recolher/Expandir (`aria-expanded`, `aria-controls`).
@@ -159,6 +161,8 @@ Ocupando a linha toda, o cartão também não fica ao lado de outro, por isso pa
   - **Zona de risco**, separada e em vermelho: Excluir dia (`#dDel`).
 - Só aparece o que vale para a situação do dia.
 - **Regra técnica:** os itens mantêm os mesmos IDs e handlers. Assim `VAC_PODE_MAPA.oee` e `vacTravas` (travas por perfil) continuam funcionando. Os itens ficam no DOM, escondidos quando o menu está fechado.
+
+> **Entregue (etapa b).** Menu `#dMais`/`#dMaisMenu` (`CabDia`, motor/oee): Esc, clique fora, Home/End e ↑/↓ (pulam os itens travados pelo perfil); o foco volta ao botão. "Excluir lançamento" passou a se chamar "Excluir dia". Teste `lancamento-cabecalho`.
 
 ## 3. Pílula Lançamento: o que cada modo mostra
 
@@ -234,6 +238,8 @@ Regras de implementação:
 
 - O rodapé fica com "Alterações salvas" à esquerda e "Abrir hora a hora" (só no modo Hora a hora) à direita.
 - Antes de mexer, inventariar os botões repetidos (Hora a hora no topo e no rodapé, Enviar relatório) e deixar cada ação em um lugar só.
+
+> **Entregue (etapa b).** Inventário: "Hora a hora" (todos os turnos) estava no cabeçalho do dia e passou para o rodapé como "Abrir hora a hora"; "Enviar relatório" ficou só no menu; "Hora a hora" de cada turno continua no cartão do turno (é outra ação: abre só aquele turno). O rodapé mostra "Alterações salvas", "Alterações pendentes de gravação" ou o aviso de erro de gravação, acompanhando a base.
 
 ## 8. Testes, versão e entrega
 
