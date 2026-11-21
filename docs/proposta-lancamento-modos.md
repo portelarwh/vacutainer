@@ -1,6 +1,6 @@
 # Proposta LANC-03 · aba Lançamento por modo (hora a hora, por turno, dia) e scrap por turno ou diário
 
-Pedido do responsável (20/11/2026). **LANC-04 (itens 0.1 e 0.2) entregue na Produção 2.6.22 / plataforma 1.8.31. LANC-03: etapa a (itens 0 e 1.1) entregue na Produção 2.6.23 / plataforma 1.8.32; etapa b (itens 1, 2 e 7) na Produção 2.6.24 / plataforma 1.8.33; etapas c a e ainda não implementadas.** Muda a interface da aba Lançamento da Produção (`motor/oee`, LANC-02, cartões `lc-*`/`tl-*`). Os números, as fórmulas e as permissões continuam iguais (contrato 6), O modo "Dia" foi decidido como "só no dia" (item 4), sem rateio entre turnos ou horas.
+Pedido do responsável (20/11/2026). **LANC-04 (itens 0.1 e 0.2) entregue na Produção 2.6.22 / plataforma 1.8.31. LANC-03: etapa a (itens 0 e 1.1) entregue na Produção 2.6.23 / plataforma 1.8.32; etapa b (itens 1, 2 e 7) na Produção 2.6.24 / plataforma 1.8.33; etapa c (item 9) na Produção 2.6.25 / plataforma 1.8.34; etapas d e e ainda não implementadas.** Muda a interface da aba Lançamento da Produção (`motor/oee`, LANC-02, cartões `lc-*`/`tl-*`). Os números, as fórmulas e as permissões continuam iguais (contrato 6), O modo "Dia" foi decidido como "só no dia" (item 4), sem rateio entre turnos ou horas.
 
 ## Pedidos do responsável (conferência)
 
@@ -278,6 +278,8 @@ Regras:
 - **Explicar o número:** cada aviso ganha uma linha curta com o cálculo, por exemplo "Cobertura 82% = 41 min apontados ÷ 50 min de perda; mínimo 95%".
 - **Contrato 6 e 7:** só navegação e texto. Limites, fórmulas e status (adequado, atenção, crítico) não mudam.
 - **Teste:** cada botão leva ao campo certo (foco visível) e o link para a Administração abre a seção certa.
+
+> **Entregue (etapa c, Produção 2.6.25).** `pointingQuality` ganhou `tipos` ao lado de `msgs` (o texto e o status não mudam); os avisos do apontamento entram na Validação com `ref: { qa }`. `Ajuste` (motor/oee) monta os botões e a conta e faz a navegação: "Registrar paradas" abre o turno com mais minutos sem explicação e foca o "+" de parada; "Tempo planejado do turno" foca o "+ Abono"; "PPH e catálogo" e "Catálogo do turno" focam o catálogo inicial; "Classificação das paradas", "Turnos do dia" e "Catálogo" abrem as seções de Configurações; "Ver o mínimo", "Ver o limite" e "PPH vigente" abrem Administração › Metas de OEE (`vacPortalHref('cadastros/metasOee')`); "Ver paradas do dia" abre Paradas no dia. Mensagens com `iv`, `ev` ou `ps` ganham "Ir para a hora / parada / turno". Sem permissão de lançar, o botão diz "Ver…"; sem configurar, a dica diz quem ajusta. Os mínimos e limites mostrados na conta são os de Configurações › Parâmetros de cálculo, os mesmos que o status usa. Os botões aparecem no Lançamento; nas outras telas o painel continua só com o texto. Teste `lancamento-validacao`.
 
 ## 10. Decisões de 20/11/2026 (dúvidas levantadas antes de implementar)
 
