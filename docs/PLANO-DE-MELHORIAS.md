@@ -41,7 +41,7 @@ A aplicação da proposta executiva foi autorizada: hierarquia resultado → an�
 
 1. Designar um agente e combinar os blocos do HTML a editar, evitando trabalho simultâneo no mesmo bloco.
 2. Fixar cenário, números, filtros e fontes de referência antes de mexer.
-3. Aplicar o Design System e a marca pelo bloco css/brand: verde/vermelho para resultado versus meta; azul para identidade e séries neutras. Fontes/logos comerciais são opcionais e externos, com fallback offline.
+3. Aplicar o Design System e a marca pelo bloco css/brand: semáforo da Administração para resultado versus meta (Design System, seção 20); azul para identidade e séries neutras. A estrutura da página segue a skill padrao-visual. Fontes/logos comerciais são opcionais e externos, com fallback offline.
 4. Conferir 390/768/1440 px, claro/escuro, foco/teclado, erro, ausência, dado desatualizado, modais e rascunhos, conforme a tela.
 5. Executar testes aplicáveis e regressão compartilhada quando necessário. Confirmar que números, códigos, contratos e permissões não mudaram incidentalmente.
 6. Atualizar metadados, documentação e evidências da PR; declarar o que ficou não verificado. Atualizar o estado apenas em PENDENCIAS.md.

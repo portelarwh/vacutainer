@@ -1,5 +1,7 @@
 # Arquitetura implementada · arquivo único
 
+> O que existe hoje. Os requisitos de evolução ficam em [ARQUITETURA-REQUISITOS](ARQUITETURA-REQUISITOS.md).
+
 ## Fonte executável
 
 Plataforma.html é simultaneamente o arquivo de distribuição e a fonte editável. Ele contém blocos nomeados em textareas ocultos: módulos JavaScript ES2022, CSS, documentos dos motores, bibliotecas e cenário fictício. O carregador cria URLs blob locais e um importmap para os módulos. Os documentos operacionais são montados em srcdoc sob demanda, na origem do aplicativo. Não são consultados arquivos HTML externos.

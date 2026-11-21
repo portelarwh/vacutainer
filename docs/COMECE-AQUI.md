@@ -8,16 +8,16 @@
 |---|---|
 | [AGENTS](../AGENTS.md) e [CLAUDE](../CLAUDE.md) | Procedimento, mapa do código e contratos protegidos, iguais para os dois agentes. |
 | [DESIGN_SYSTEM](DESIGN_SYSTEM.md) | Aplicação visual, componentes, acessibilidade e dashboards. |
+| [padrao-visual](../.claude/skills/padrao-visual/SKILL.md) | Modelo de página (Produção › Visão geral e Lançamento) e varredura para adequar outra página. |
 | [BD_Dashboard_Brand_Guidelines](BD_Dashboard_Brand_Guidelines.md) | Referência fornecida pelo responsável, preservada integralmente. |
 | [MARCA](MARCA.md) | Fontes e logos comerciais opcionais, fora do Git. |
 | [ARQUITETURA](ARQUITETURA.md) | Implementação atual em arquivo único. |
-| [ARQUITETURA-v1](ARQUITETURA-v1.md) | Requisitos de evolução; não declara tudo implementado. |
+| [ARQUITETURA-REQUISITOS](ARQUITETURA-REQUISITOS.md) | Requisitos de evolução; não declara tudo implementado. A lista de módulos ali não manda duplicar Produção/OEE ou Iniciativas/Ações. |
 | [REGRAS_DE_NEGOCIO](REGRAS_DE_NEGOCIO.md) | Proteção dos cálculos e critérios para mudar regras. |
 | [CONTRATO-MOTORES](CONTRATO-MOTORES.md) | Integração do aplicativo e seus módulos internos. |
 | [CONSOLIDACAO](CONSOLIDACAO.md) | O que foi incorporado/removido e como foi validado. |
 | [PLANO-DE-MELHORIAS](PLANO-DE-MELHORIAS.md) | Próximas jornadas de layout. |
 | [PENDENCIAS](../PENDENCIAS.md) | Lista ativa de material, decisões e homologação. |
-| [PENDENCIAS-DOCUMENTAIS](PENDENCIAS-DOCUMENTAIS.md) | Ambiguidades e interpretação das referências. |
 | [CORTE](CORTE.md) | Homologação, instalação e retorno. |
 | [DECISOES-HISTORICAS](DECISOES-HISTORICAS.md) | Decisões anteriores preservadas; caminhos de fontes no corpo são históricos. |
 
