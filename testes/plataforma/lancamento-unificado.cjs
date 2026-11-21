@@ -12,6 +12,8 @@ const html = fs.readFileSync(path.resolve(__dirname, '../../Plataforma.html'));
     browser = await chromium.launch(require('./chromium.cjs')());
     const page = await browser.newPage({ viewport: { width: 1440, height: 1000 } }), erros = [];
     page.on('pageerror', e => erros.push(e.message));
+    /* data fixa num dia útil: no sábado (TUR-04) o 3º turno da demonstração não aparece e o teste dependia do dia em que rodava */
+    await page.clock.setFixedTime(new Date('2026-11-19T10:00:00'));
     await page.goto('http://127.0.0.1:' + srv.address().port + '/?demo=1');
     await page.getByRole('heading', { name: 'Visão da linha' }).waitFor();
     await page.evaluate(() => { location.hash = '#/oee?tab=launch'; });
