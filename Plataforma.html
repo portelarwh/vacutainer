@@ -3998,7 +3998,7 @@ function wireConfigComum(){$('#cPasta').onclick=async()=>{if(await Store.pick())
         entrar pelo ID (autocadastro como Consulta); página inicial por perfil (1x por sessão); vigência gravada não se edita (desativar com motivo); painel de vigências; semáforo central; saída do modo de teste.
    1.1.2: aviso da carga diz qual base foi lida.  1.5: páginas Paradas, Máquinas, Manutenção e Projetos na lista (aparecem quando o HTML chega na pasta).  1.4: lista técnica pela CS12 multinível (itens = nível 1, estrutura = níveis 2+); CS03 sai.  1.3: cabeçalho comum (vac-cabecalho v2: barra do sistema + página + abas), busca Ctrl K, acabamento V1.90, Versões com cabeçalho e último backup.  1.2: Configuração › Versões das páginas (versão e data de cada HTML, gravação das bases, cópias repetidas, histórico).
    ===================================================================== */
-const PAGE={id:'portal',titulo:"Administração · Linha Vacutainer",tituloCurto:"Administração",subtitulo:'Sistemas de gestão da linha',versao:'1.9.56',baseFile:'portal-base.json',idb:'vac-portal',backupDir:'00. Backups/Portal',
+const PAGE={id:'portal',titulo:"Administração · Linha Vacutainer",tituloCurto:"Administração",subtitulo:'Sistemas de gestão da linha',versao:'1.9.57',baseFile:'portal-base.json',idb:'vac-portal',backupDir:'00. Backups/Portal',
  vazio:()=>({schema:'portal-base',rev:0,config:{modulos:{},avisoDias:30,notas:{}},audit:[]}),
  /* itens do Portal para a busca Ctrl K: cadastro, pendências e telas */
  busca:q=>{const R=[],D=Cad.D;if(D)for(const t of CAD_ORD){for(const it of D[t]||[]){const c=String(it[kOf(t)]),nm=t==='bom'?((cadItem('catalogos',it.catalogo)||{}).nome||''):it.nome||'';if(norm(c+' '+nm).includes(q))R.push({tipo:CAD_T[t].um,txt:c+(nm?' · '+nm:''),sub:'Cadastros'+(cadAtivo(t,it,D)?'':' · inativo'),href:'#cadastros/'+t+'/'+encodeURIComponent(c)});if(R.length>30)break}}
@@ -4877,6 +4877,8 @@ const CAD_SECS=['inicio','matriz','importar','auditoria','backups','seguranca','
    curtas (macro, sem detalhe técnico). REGRA: toda versão nova da plataforma ganha uma entrada aqui, a mais recente primeiro
    (AGENTS.md e CLAUDE.md). Tipos: nova (função nova), melhoria (algo que já existia ficou melhor), correcao (erro corrigido). */
 const NOVIDADES=[
+ {v:'1.8.34',d:'2026-11-21',itens:[['nova','Validação do Lançamento: cada aviso tem um botão que leva ao lugar do ajuste (turno, hora, parada, catálogo, abono ou Metas de OEE).'],
+  ['melhoria','Os avisos de cobertura, divergência e Performance mostram a conta, por exemplo "Cobertura 82% = 41 min ÷ 50 min; mínimo 95%".']]},
  {v:'1.8.33',d:'2026-11-21',itens:[['melhoria','Lançamento: cabeçalho do dia numa linha, com a data, a situação do dia, Fechar dia e o menu ⋮ Mais ações.'],
   ['melhoria','Mais ações reúne Ações do dia, Correções, Consulta e Excluir dia, separado em vermelho; as permissões por perfil continuam as mesmas.'],
   ['melhoria','Rodapé do Lançamento com "Alterações salvas" e Abrir hora a hora; cada botão aparece num lugar só.']]},
@@ -7772,7 +7774,7 @@ function tipoParadaOpts(codes, sel) {
   const cats = [...new Set(codes.map(c => c.category || 'Sem categoria'))];
   return cats.map(cat => `<optgroup label="${esc(cat)}">${codes.filter(c => (c.category || 'Sem categoria') === cat).map(c => `<option value="${c.id}" ${sel === c.id ? 'selected' : ''}>${esc(c.code + ' · ' + c.name)}</option>`).join('')}</optgroup>`).join('');
 }
-const APP_VERSION = '2.6.24';   /* 2.6.24 · LANC-03 etapa b (itens 1, 2 e 7): cabeçalho do dia numa linha, menu ⋮ Mais ações e rodapé */   /* 2.6.23 · LANC-03 (itens 0 e 1.1): ordem e rótulos das abas da imagem, Modo TV e Resumo do dia recolhível */   /* 2.6.22 · LANC-04: Config. › Abas na plataforma (destaque, selo, aba inicial) e Frequência × duração redesenhado na largura do cartão */   /* 2.6.21 · TUR-07: turno que passa da meia-noite dividido no total diário (depois de 00:00 → dia seguinte; scrap proporcional à produção, paradas sem horário ao tempo) */   /* 2.6.20 · HEX-01: "Houve hora extra?" no cartão do turno (até 60 min antes do início ou depois do fim) */   /* 2.6.19 · TUR-06: produção no turno não produtivo pela meia-noite (antes → turno anterior; depois → próximo) desde 01/11/2026; aviso de hora extra */   /* 2.6.18 · PAR-CAT: tipo de parada por categoria e com busca nas sugestões do servidor, na importação de paradas e no turno sem produção */   /* 2.6.17 · SRV-DIA: dia sem lançamento com produção do servidor: aviso e abrir o dia com os dados */   /* 2.6.16 · TUR-05: dia em aberto passa ao horário vigente do turno; PAR-BUSCA: tipo de parada por texto */   /* 2.6.15 · REL-01: gel no relatório/e-mail do dia e do turno; Enviar relatório na janela do dia */   /* 2.6.14 · GEL-07: Relatório do Gel e Perdas de gel (turno com gel e Relatórios) */   /* 2.6.13 · GEL-06: Scrap gel no detalhe do turno */   /* 2.6.12 · TUR-04: turno com horário diferente no sábado (linhas por dia da semana) */   /* 2.6.11 · abas agrupadas: Ordens e lotes, Resultados, Paradas */   /* 2.6.10 · Lançamento sem turno aberto por padrão; abas visíveis na casca */   /* 2.6.9 · LANC-02: Lançamento unificado (hora a hora no detalhe do turno, 3º turno ao lado, Problemas de QN) */   /* 2.6.5 · IMP-01: contagens das importações nos exports */   /* 2.6.4 · semáforo só pelas faixas configuradas (verde acima de 100% vale) */   /* 2.6.2 · gráficos e números com meta seguem o semáforo de três cores (verde, amarelo, vermelho) */   /* 2.6.1 · gráficos: turno lançado pelo total com o nome do turno no eixo; janelas: rótulo e valor em tamanho de texto */   /* 2.6.0 · produção total do turno (sem hora a hora; períodos na troca de catálogo), aviso do servidor para turno lançado pelo total e para dia com produção apontada */
+const APP_VERSION = '2.6.25';   /* 2.6.25 · LANC-03 etapa c (item 9): Validação com Ir para o ajuste e a conta de cada aviso */   /* 2.6.24 · LANC-03 etapa b (itens 1, 2 e 7): cabeçalho do dia numa linha, menu ⋮ Mais ações e rodapé */   /* 2.6.23 · LANC-03 (itens 0 e 1.1): ordem e rótulos das abas da imagem, Modo TV e Resumo do dia recolhível */   /* 2.6.22 · LANC-04: Config. › Abas na plataforma (destaque, selo, aba inicial) e Frequência × duração redesenhado na largura do cartão */   /* 2.6.21 · TUR-07: turno que passa da meia-noite dividido no total diário (depois de 00:00 → dia seguinte; scrap proporcional à produção, paradas sem horário ao tempo) */   /* 2.6.20 · HEX-01: "Houve hora extra?" no cartão do turno (até 60 min antes do início ou depois do fim) */   /* 2.6.19 · TUR-06: produção no turno não produtivo pela meia-noite (antes → turno anterior; depois → próximo) desde 01/11/2026; aviso de hora extra */   /* 2.6.18 · PAR-CAT: tipo de parada por categoria e com busca nas sugestões do servidor, na importação de paradas e no turno sem produção */   /* 2.6.17 · SRV-DIA: dia sem lançamento com produção do servidor: aviso e abrir o dia com os dados */   /* 2.6.16 · TUR-05: dia em aberto passa ao horário vigente do turno; PAR-BUSCA: tipo de parada por texto */   /* 2.6.15 · REL-01: gel no relatório/e-mail do dia e do turno; Enviar relatório na janela do dia */   /* 2.6.14 · GEL-07: Relatório do Gel e Perdas de gel (turno com gel e Relatórios) */   /* 2.6.13 · GEL-06: Scrap gel no detalhe do turno */   /* 2.6.12 · TUR-04: turno com horário diferente no sábado (linhas por dia da semana) */   /* 2.6.11 · abas agrupadas: Ordens e lotes, Resultados, Paradas */   /* 2.6.10 · Lançamento sem turno aberto por padrão; abas visíveis na casca */   /* 2.6.9 · LANC-02: Lançamento unificado (hora a hora no detalhe do turno, 3º turno ao lado, Problemas de QN) */   /* 2.6.5 · IMP-01: contagens das importações nos exports */   /* 2.6.4 · semáforo só pelas faixas configuradas (verde acima de 100% vale) */   /* 2.6.2 · gráficos e números com meta seguem o semáforo de três cores (verde, amarelo, vermelho) */   /* 2.6.1 · gráficos: turno lançado pelo total com o nome do turno no eixo; janelas: rótulo e valor em tamanho de texto */   /* 2.6.0 · produção total do turno (sem hora a hora; períodos na troca de catálogo), aviso do servidor para turno lançado pelo total e para dia com produção apontada */
 const SCHEMA_VERSION = 1;
 const BASE_FILE = 'oee-vacutainer-base.json';
 const BACKUP_DIR = '00. Backups';
@@ -8183,18 +8185,19 @@ const Engine = (() => {
   }
 
   function pointingQuality(r, st) {
-    const q = { status: 'sem', msgs: [] };
-    if (r.lossTotalMin == null || r.netMin <= 0) { q.msgs.push('Sem dados suficientes: falta tempo planejado ou capacidade.'); return q; }
-    if (r.lossTotalMin <= 0.5) { q.status = 'adequado'; q.msgs.push('Não há perda a explicar: o OEE atingiu a capacidade planejada.'); return q; }
+    const q = { status: 'sem', msgs: [], tipos: [] };   /* LANC-03 (item 9) · tipos: o mesmo aviso, identificado para o botão "Ir para o ajuste" */
+    const push = (tipo, txt) => { q.msgs.push(txt); q.tipos.push(tipo); };
+    if (r.lossTotalMin == null || r.netMin <= 0) { push('sem-dados', 'Sem dados suficientes: falta tempo planejado ou capacidade.'); return q; }
+    if (r.lossTotalMin <= 0.5) { q.status = 'adequado'; push('sem-perda', 'Não há perda a explicar: o OEE atingiu a capacidade planejada.'); return q; }
     const cov = r.coverage, dv = r.cascade &amp;&amp; r.cascade.divPct;
     const covBad = cov != null &amp;&amp; cov < st.coverageMin - 1e-9;
     const divBad = dv != null &amp;&amp; Math.abs(dv) > st.divergenceMax + 1e-9;
-    if (covBad) q.msgs.push('A cobertura do apontamento está abaixo do limite configurado. A análise de Performance pode não estar suficientemente sustentada.');
-    if (divBad) q.msgs.push('A divergência ultrapassa o limite configurado. Revise tempo planejado, capacidade, paradas e classificação das perdas.');
-    if (cov != null &amp;&amp; cov > 1.05) q.msgs.push('Os minutos apontados superam a perda total apurada. Verifique paradas duplicadas ou classificadas como perda quando deveriam descontar do tempo planejado.');
-    if (r.perfAlert) q.msgs.push('A Performance passou de 100%. Possíveis causas: PPH nominal abaixo do real, minutos planejados errados, paradas classificadas como perda que deveriam descontar do planejado, scrap, catálogo ou vigência.');
+    if (covBad) push('cobertura', 'A cobertura do apontamento está abaixo do limite configurado. A análise de Performance pode não estar suficientemente sustentada.');
+    if (divBad) push('divergencia', 'A divergência ultrapassa o limite configurado. Revise tempo planejado, capacidade, paradas e classificação das perdas.');
+    if (cov != null &amp;&amp; cov > 1.05) push('acima-perda', 'Os minutos apontados superam a perda total apurada. Verifique paradas duplicadas ou classificadas como perda quando deveriam descontar do tempo planejado.');
+    if (r.perfAlert) push('performance', 'A Performance passou de 100%. Possíveis causas: PPH nominal abaixo do real, minutos planejados errados, paradas classificadas como perda que deveriam descontar do planejado, scrap, catálogo ou vigência.');
     q.status = (covBad &amp;&amp; divBad) || (cov != null &amp;&amp; cov < st.coverageMin - 0.3) ? 'crítico' : (covBad || divBad || r.perfAlert) ? 'atenção' : 'adequado';
-    if (q.status === 'adequado' &amp;&amp; !q.msgs.length) q.msgs.push('Apontamento consistente: cobertura e divergência dentro dos limites configurados.');
+    if (q.status === 'adequado' &amp;&amp; !q.msgs.length) push('consistente', 'Apontamento consistente: cobertura e divergência dentro dos limites configurados.');
     return q;
   }
 
@@ -8434,7 +8437,7 @@ const Engine = (() => {
     }
     if (day.scrapMode === 'day' &amp;&amp; day.scrapDay == null &amp;&amp; dayAgg.good > 0) M('alerta', 'Scrap diário não informado.');
     if (dayR.cascade &amp;&amp; !dayR.cascade.ok &amp;&amp; dayR.cascade.check != null) M('alerta', `A cascata não fecha: diferença de ${U.fmt(dayR.cascade.check)} unidades.`);
-    for (const m of dayR.qa.msgs) if (dayR.qa.status !== 'adequado') M('alerta', m);
+    dayR.qa.msgs.forEach((m, i) => { if (dayR.qa.status !== 'adequado') M('alerta', m, { qa: (dayR.qa.tipos || [])[i] || null }); });
     if (ft) { ft.real = ft.realDia ? finalize(ft.realDia, st) : null; }
     return { day, flat, shifts: shiftRes, r: dayR, agg: dayAgg, officialDaily, comp, msgs, events: evRes, foraTurno: ft, virada, vem };
   }
@@ -12092,10 +12095,10 @@ function hhChartOpts(fl, height) {
   return { x: fl.map(f => rotuloIv(f, fl)), xFull: fl.map(f => `${U.range(f.iv.start, f.iv.end)} · ${f.ps.snap.name}`), xName: 'Intervalo', bars: [{ name: 'Produção boa', values: fl.map(f => f.good), color: 'var(--s1)', meta: fl.map(f => f.metaOp > 0 ? f.metaOp : null) }], lines: [{ name: 'Meta', values: fl.map(f => f.metaOp > 0 ? f.metaOp : null), color: 'var(--ink)', width: 1.5, dash: true, dots: false }], unit: qUn, fmtY: v => fq(v), height, mark: fl.map(famOf), markName: 'Família',
     tipRows: i => { const f = fl[i]; const r = [['Catálogo', catName(f.cat)], ['Acumulado do dia', `${fq(f.cumGood)} / meta ${fq(f.cumMetaAdj)}`]]; if (f.a + f.p) r.push(['Paradas na hora', U.fmt(f.a + f.p) + ' min']); if (f.deduct) r.push(['Abono / pausa', U.fmt(f.deduct) + ' min']); if (f.iv.note) r.push(['Obs.', f.iv.note]); return r; }, empty: 'Sem hora a hora.' };
 }
-function msgList(msgs, max = 40) {
+function msgList(msgs, max = 40, opts = null) {
   if (!msgs.length) return '<p class="small muted">Sem mensagens.</p>';
   const order = { erro: 0, alerta: 1, info: 2 };
-  return `<ul class="msgs">${msgs.slice().sort((a, b) => order[a.level] - order[b.level]).slice(0, max).map(m => `<li class="${m.level}">${m.level === 'erro' ? I.x : m.level === 'alerta' ? I.warn : I.info}<span><b class="sr">${m.level}: </b>${esc(m.msg)}</span></li>`).join('')}</ul>${msgs.length > max ? `<p class="small muted">+${msgs.length - max} mensagens.</p>` : ''}`;
+  return `<ul class="msgs">${msgs.slice().sort((a, b) => order[a.level] - order[b.level]).slice(0, max).map(m => `<li class="${m.level}">${m.level === 'erro' ? I.x : m.level === 'alerta' ? I.warn : I.info}<span><b class="sr">${m.level}: </b>${esc(m.msg)}${opts &amp;&amp; opts.ajuste ? Ajuste.html(m, opts) : ''}</span></li>`).join('')}</ul>${msgs.length > max ? `<p class="small muted">+${msgs.length - max} mensagens.</p>` : ''}`;
 }
 
 /* ---------- painéis de cálculo reutilizados ---------- */
@@ -12133,7 +12136,7 @@ function oeePanel(r, title) {
      </tbody></table></div>
    </section></div>`;
 }
-function qaPanel(r) {
+function qaPanel(r, opts = null) {
   const st = db().settings, q = r.qa, c = r.cascade;
   const cls = { 'adequado': 'ok', 'atenção': 'warn', 'crítico': 'crit', 'sem': 'none' }[q.status];
   return `<section class="card"><header><h3>Qualidade do apontamento ${ib('coverage')}</h3><span class="pill ${cls}">${cls === 'ok' ? I.check : cls === 'warn' ? I.warn : cls === 'crit' ? I.x : I.dash}${esc(q.status === 'sem' ? 'sem dados suficientes' : q.status)}</span></header>
@@ -12146,7 +12149,7 @@ function qaPanel(r) {
     <div class="kpi"><span class="l">Divergência</span><span class="v">${U.fmt(c.divMin, 0)}<small>min</small></span><span class="s">${U.pct(c.divPct, 1)} do planejado · máx ${U.pct(st.divergenceMax, 0)}</span></div>
     <div class="kpi"><span class="l">Consistência da cascata</span><span class="v">${c.check == null ? '—' : c.ok ? 'Fecha' : 'Não fecha'}</span><span class="s">${c.check == null ? '' : 'diferença ' + U.fmt(c.check, 1) + ' un'}</span></div>
    </div>
-   <ul class="msgs" style="margin-top:10px">${q.msgs.map(m => `<li class="${q.status === 'adequado' ? 'info' : 'alerta'}">${q.status === 'adequado' ? I.info : I.warn}<span>${esc(m)}</span></li>`).join('')}</ul>
+   <ul class="msgs" style="margin-top:10px">${q.msgs.map((m, i) => `<li class="${q.status === 'adequado' ? 'info' : 'alerta'}">${q.status === 'adequado' ? I.info : I.warn}<span>${esc(m)}${opts &amp;&amp; opts.ajuste &amp;&amp; q.status !== 'adequado' ? Ajuste.html({ msg: m, ref: { qa: (q.tipos || [])[i] } }, Object.assign({ r }, opts)) : ''}</span></li>`).join('')}</ul>
    <p class="small muted" style="margin-top:6px">Diferença em relação à CALCv3: os minutos de scrap ficam só na Qualidade e não entram na "parada não explicada", para não contar a mesma perda duas vezes.</p></section>`;
 }
 
@@ -12216,8 +12219,8 @@ App.views.launch = {
     // turnos
     h += TurnoResumo.faixa(day, res);   /* 2.6.3 · turnos em resumo; o clicado abre o detalhe */
     h += `<div class="section tl-list">${res.shifts.map(sr => TurnoUI.bloco(day, sr, res)).join('')}${LancNP.secoes(day, res)}</div>`;   /* 2.6.9 · LANC-02: o 3º turno (não produtivo) com a produção fora do turno do dia */
-    h += `<section class="card section"><header><h3>Validação</h3>${errs ? semB('crit', errs + ' erro(s)') : semB('ok', 'sem erros')} ${alerts ? semB('warn', alerts + ' alerta(s)') : ''}</header>${msgList(res.msgs)}</section>`;
-    h += `<div class="section">${oeePanel(r, 'Cascata de perdas do dia')}</div><div class="section">${qaPanel(r)}</div>`;
+    h += `<section class="card section"><header><h3>Validação</h3>${errs ? semB('crit', errs + ' erro(s)') : semB('ok', 'sem erros')} ${alerts ? semB('warn', alerts + ' alerta(s)') : ''}</header>${msgList(res.msgs, 40, { ajuste: true, r, res })}</section>`;
+    h += `<div class="section">${oeePanel(r, 'Cascata de perdas do dia')}</div><div class="section">${qaPanel(r, { ajuste: true, res })}</div>`;
     /* LANC-03 (item 7) · rodapé: situação da gravação à esquerda e Abrir hora a hora à direita (o botão saiu do cabeçalho: cada ação num lugar só) */
     h += `<footer class="lc-rodape"><span id="lcSalvo" role="status">${esc(CabDia.salvo())}</span><span class="spacer"></span><button class="btn" data-hhps="" title="Hora a hora de todos os turnos do dia">Abrir hora a hora ${I.chevR}</button></footer>`;
     return h;
@@ -12255,6 +12258,7 @@ App.views.launch = {
     HHPs.ligar(root, day);   /* 2.4.34 · PRD-06 */
     const c = root.querySelector('#dClose'); if (c) c.onclick = () => closeFlow(day, null);
     CabDia.ligar(root);   /* LANC-03 · menu ⋮ Mais ações */
+    Ajuste.ligar(root, day);   /* LANC-03 (item 9) · Validação: Ir para o ajuste */
     const ro = root.querySelector('#dReopen'); if (ro) ro.onclick = async () => { const r = await askReason('Reabrir dia', 'Todos os turnos do dia serão reabertos. A ação fica registrada no histórico.'); if (r) run(() => Actions.reopen(day.id, null, r), 'Dia reaberto.'); };
     const pe = root.querySelector('#dPend'); if (pe) pe.onclick = () => run(() => Actions.setDayStatus(day.id, 'pendente de conferência'));
     const hn = root.querySelector('#horAplicar'); if (hn) hn.onclick = () => run(() => { const r = Actions.applyShiftSchedule(day.id); toast('Horário novo aplicado: ' + r + '.'); });   /* 2.6.16 · TUR-05 */
@@ -17418,6 +17422,76 @@ const CabDia = {
   }
 };
 document.addEventListener('click', e => { const m = document.getElementById('dMaisMenu'); if (m &amp;&amp; !m.hidden &amp;&amp; !e.target.closest('.cab2-mais')) CabDia.fechar(false); }, true);
+/* LANC-03 (item 9, decisão do responsável, 20/11/2026) · cada aviso da Validação e da Qualidade do apontamento leva ao lugar do ajuste:
+   abre o turno certo, rola até o campo, foca e destaca por 2 s; o que é cadastro abre a seção da Administração ou de Configurações.
+   Cada aviso do apontamento ganha a linha com a conta. Só navegação e texto: limites, fórmulas e status não mudam (contratos 6 e 7). */
+const Ajuste = {
+  pode(fn) { try { return typeof vacPodeAqui !== 'function' || vacPodeAqui(fn); } catch (e) { return true; } },
+  bt(acao, rot, dica, arg) { return `<button type="button" class="btn xs aj-bt" data-ajuste="${esc(acao)}"${arg ? ` data-aj-arg="${esc(arg)}"` : ''} title="${esc(dica || rot)}">${esc(rot)}</button>`; },
+  adm(secao, rot, dica) {
+    const so = this.pode('configurar') ? '' : ' Seu perfil só consulta: quem ajusta é o perfil com permissão de configurar na Administração.';
+    let href = '#'; try { href = vacPortalHref('cadastros/' + secao); } catch (e) { }
+    return `<a class="btn xs aj-bt" href="${esc(href)}" data-aj-adm="${esc(secao)}" title="${esc((dica || rot) + so)}">${esc(this.pode('configurar') ? rot : rot.replace(/^Ajustar/, 'Ver'))}</a>`;
+  },
+  conta(tipo, r) {
+    const st = db().settings; if (!r) return '';
+    const c = r.cascade || {};
+    switch (tipo) {
+      case 'cobertura': case 'acima-perda': return r.coverage == null ? '' : `Cobertura ${U.pct(r.coverage, 0)} = ${U.fmt(r.apontMin)} min apontados ÷ ${U.fmt(r.lossTotalMin)} min de perda; mínimo ${U.pct(st.coverageMin, 0)}.`;
+      case 'divergencia': return c.divPct == null ? '' : `Divergência ${U.fmt(c.divMin, 0)} min = ${U.pct(c.divPct, 1)} do tempo planejado de ${U.fmt(r.netMin)} min; máximo ${U.pct(st.divergenceMax, 0)}.`;
+      case 'performance': return r.P == null ? '' : `Performance ${U.pct(r.P, 2)} = OEE ${U.pct(r.oee, 2)} ÷ (D ${U.pct(r.D, 2)} × Q ${r.Q == null ? '—' : U.pct(r.Q, 2)}).`;
+      case 'sem-dados': return `Tempo planejado ${r.netMin == null ? '—' : U.fmt(r.netMin) + ' min'} · capacidade ${r.cap == null ? '—' : fq(r.cap) + ' ' + unitLbl()}.`;
+      default: return '';
+    }
+  },
+  botoes(ref, opts) {
+    if (!ref) return '';
+    const lanca = this.pode('lancar');
+    if (ref.qa) switch (ref.qa) {
+      case 'cobertura': return this.bt('paradas', lanca ? 'Registrar paradas' : 'Ver paradas', 'Abre o turno com mais minutos sem explicação, no lançamento das paradas') + this.adm('metasOee', 'Ver o mínimo', 'Cobertura mínima: Administração › Metas de OEE (vigência da linha)');
+      case 'divergencia': return this.bt('planejado', 'Tempo planejado do turno', 'Intervalos e abonos do turno') + this.bt('catalogo', 'PPH e catálogo', 'Catálogo do turno; o PPH vigente está em Metas de OEE') + this.bt('cfg', 'Classificação das paradas', 'Configurações › Tipos de parada', 'paradas') + this.adm('metasOee', 'Ver o limite', 'Divergência máxima: Administração › Metas de OEE');
+      case 'acima-perda': return this.bt('paradas-dia', 'Ver paradas do dia', 'As paradas do dia, para achar as que se sobrepõem ou que deveriam descontar do planejado');
+      case 'performance': return this.bt('catalogo', 'Catálogo do turno', 'Catálogo inicial e trocas de catálogo do turno') + this.adm('metasOee', 'PPH vigente', 'PPH da meta vigente: Administração › Metas de OEE') + this.bt('cfg', 'Paradas que descontam do planejado', 'Configurações › Tipos de parada (desconta do planejado)', 'paradas');
+      case 'sem-dados': return this.bt('cfg', 'Turnos do dia', 'Configurações › Turnos (tempo planejado)', 'turnos') + this.bt('cfg', 'Catálogo', 'Configurações › Catálogos (PPH)', 'catalogos');
+      default: return '';
+    }
+    if (ref.iv) return this.bt('hora', lanca ? 'Ir para a hora' : 'Ver a hora', 'Abre o turno e mostra a hora', ref.iv);
+    if (ref.ev) return this.bt('parada', lanca ? 'Ir para a parada' : 'Ver a parada', 'Abre o turno e mostra a parada', ref.ev);
+    if (ref.ps) return this.bt('turno', 'Ir para o turno', 'Abre o detalhe do turno', ref.ps);
+    return '';
+  },
+  html(m, opts) {
+    const ref = m.ref || null, b = this.botoes(ref, opts || {}), cn = ref &amp;&amp; ref.qa ? this.conta(ref.qa, opts &amp;&amp; opts.r) : '';
+    return (cn ? `<span class="aj-conta">${esc(cn)}</span>` : '') + (b ? `<span class="aj-bts">${b}</span>` : '');
+  },
+  destacar(el) {
+    if (!el) return false;
+    for (let a = el.parentElement; a; a = a.parentElement) if (a.tagName === 'DETAILS' &amp;&amp; !a.open) a.open = true;
+    const alvo = el.closest('tr') || el;
+    alvo.scrollIntoView({ block: 'center', behavior: 'auto' });
+    try { (el.matches('button,a,input,select,textarea') ? el : alvo).focus({ preventScroll: true }); } catch (e) { }
+    alvo.classList.add('aj-alvo'); setTimeout(() => alvo.classList.remove('aj-alvo'), 2000);
+    return true;
+  },
+  turno(root, day, psId) { if (psId &amp;&amp; typeof TurnoResumo !== 'undefined') TurnoResumo.abrir(root, day, psId); return root.querySelector(`section.tl[data-tl="${psId}"]`); },
+  pior(res, k) { const L = (res.shifts || []).filter(sr => !sr.ps.off &amp;&amp; !sr.ps.summary &amp;&amp; sr.r); L.sort((a, b) => (b.r[k] || 0) - (a.r[k] || 0)); return L[0] ? L[0].ps.id : null; },
+  ir(root, day, acao, arg) {
+    const res = Engine.computeDay(db(), day), q = s => root.querySelector(s);
+    if (acao === 'cfg') { App.cfgSec = arg; go('config'); return; }
+    if (acao === 'paradas-dia') { Object.assign(App.filters, { from: day.date, to: day.date }); go('stops'); return; }
+    if (acao === 'hora') { const f = (res.flat || []).find(x => x.iv.id === arg); const sec = f &amp;&amp; this.turno(root, day, f.ps.id); return this.destacar((sec || root).querySelector(`[data-addev="${arg}"]`) || (sec || root).querySelector(`[data-ttiv="${arg}"]`) || sec); }
+    if (acao === 'parada') { const er = res.events &amp;&amp; res.events[arg], ps = er &amp;&amp; er.shiftIds &amp;&amp; [...er.shiftIds][0]; const sec = ps &amp;&amp; this.turno(root, day, ps); return this.destacar(root.querySelector(`[data-ev="${arg}"]`) || sec); }
+    if (acao === 'turno') return this.destacar(this.turno(root, day, arg));
+    const ps = acao === 'paradas' ? this.pior(res, 'unexplMeasMin') : this.pior(res, 'netMin'), sec = this.turno(root, day, ps);
+    if (!sec) return this.destacar(q('#cabDia'));
+    if (acao === 'paradas') return this.destacar(sec.querySelector('[data-addev]') || sec);
+    if (acao === 'planejado') return this.destacar(sec.querySelector(`[data-abonoadd]`) || sec);
+    if (acao === 'catalogo') return this.destacar(sec.querySelector(`[data-psf="${ps}|initialCatalogId"]`) || sec);
+  },
+  ligar(root, day) {
+    root.querySelectorAll('[data-ajuste]').forEach(b => b.onclick = () => this.ir(root, day, b.dataset.ajuste, b.dataset.ajArg || ''));
+  }
+};
 const ResumoDia = {
   CHAVE: 'vac.oee.resumoAberto',
   aberto() { try { return localStorage.getItem(this.CHAVE) !== '0'; } catch (e) { return true; } },
@@ -18297,6 +18371,11 @@ section.card.lf>header{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
 #cabDia .cab2-mi small{font-size:12px;color:var(--muted);font-weight:400}
 #cabDia .cab2-mg.risco>p{color:var(--crit)}#cabDia .cab2-mg.risco .cab2-mi{color:var(--crit)}
 #cabDia .cab2-mi .v2i{display:none}
+.aj-conta{display:block;margin-top:4px;color:var(--muted);font-size:13px;font-variant-numeric:tabular-nums}
+.aj-bts{display:flex!important;flex-wrap:wrap;justify-content:flex-start!important;align-items:center;gap:6px;margin-top:6px;width:100%}
+.aj-bts>.aj-bt{flex:none!important;margin:0!important;min-height:32px;text-decoration:none;display:inline-flex;align-items:center}
+.aj-alvo{outline:3px solid var(--accent)!important;outline-offset:3px;border-radius:6px;transition:outline-color .3s}
+tr.aj-alvo{outline:0!important}tr.aj-alvo>td{background:var(--accent-soft)!important;box-shadow:inset 0 2px 0 var(--accent),inset 0 -2px 0 var(--accent)}
 .lc-rodape{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin:16px 0 4px;padding:12px 4px 0;border-top:1px solid var(--line)}
 .lc-rodape #lcSalvo{color:var(--muted);font-size:13.5px}
 .lc-resumo .lc-res-cab h3{margin:0}
@@ -38687,9 +38766,9 @@ body.vac-porta{overflow:hidden}
     {
       "id": "oee",
       "path": "Plataforma.html#motor/oee",
-      "version": "2.6.24",
-      "sha256": "08265a3f685a3e55901ced0e102417b49004a59c45a2dfc262a4f1157fff3e7a",
-      "bytes": 2315463
+      "version": "2.6.25",
+      "sha256": "a410020276246b674eb2075435bcb6a3452040ee5e195352fc3625ff586472e8",
+      "bytes": 2323613
     },
     {
       "id": "perdas",
@@ -38743,15 +38822,15 @@ body.vac-porta{overflow:hidden}
     {
       "id": "portal",
       "path": "Plataforma.html#motor/portal",
-      "version": "1.9.56",
-      "sha256": "8f39ec8b8da2e1192cb87cc01d187619186d998d6629695d0db08948c9a0eaf4",
-      "bytes": 1263824
+      "version": "1.9.57",
+      "sha256": "dfabb7a85e353a2d51f521f554005db568d99f73fdac19e572e8bc1378cef13e",
+      "bytes": 1264158
     }
   ],
   "limitations": [
     "Projetos e conteúdo técnico OSM/MES/AM/TPM mantêm os limites documentados nas fontes."
   ],
-  "enginesSha256": "b37f65558269561563c67eee89ff5f6e4878cd693d1cc91e010b88a3b00d4ecb",
+  "enginesSha256": "2d6d135e6fc63829c572b7fa2adf4eb09a2f7139be187ddd464d8f7901604c54",
   "originRevision": "ffc9ee8",
   "sourceMode": "single-html",
   "originEnginesSha256": "a87a64ad0c328f70e102b2ae888790a9b5d5a9bd05778652a7ce7cae140e40d2"
@@ -38821,7 +38900,7 @@ summary{cursor:pointer;font-weight:600;color:var(--navy)}
 'use strict';
 /* ---------- referência (atualizar quando a plataforma mudar de versão) ---------- */
 // Iguais às do pacote da plataforma (nova-plataforma/src/generated/manifest.json); o teste ferramenta-verificar confere.
-const VERSOES = {"oee":"2.6.24","perdas":"1.12.17","gel":"2.42","paradas":"1.2.18","equip":"1.0.20","inic":"1.1.16","linha":"1.4.0","projetos":"0.1.16","portal":"1.9.56"};
+const VERSOES = {"oee":"2.6.25","perdas":"1.12.17","gel":"2.42","paradas":"1.2.18","equip":"1.0.20","inic":"1.1.16","linha":"1.4.0","projetos":"0.1.16","portal":"1.9.57"};
 const BASES = [
  { arq: 'vacutainer-cadastros.json', mod: 'portal', nome: 'Cadastro geral (Portal)', obrig: true, cadastro: true, bk: 'Cadastros' },
  { arq: 'portal-base.json', mod: 'portal', nome: 'Portal', obrig: true, bk: 'Portal' },
@@ -39412,7 +39491,7 @@ import { Icon, Button, Badge, Empty, Modal, BarChart, BrandLogo, CommandMenu } f
 import { ModuleFrame } from "vac:modulo/components/ModuleFrame";
 import manifest from "vac:recurso/manifesto";
 import { ModuleTabs } from "vac:modulo/components/ModuleTabs";
-const VERSION = "1.8.33";
+const VERSION = "1.8.34";
 /* Navegação 1.3.0 (16/11/2026): Visão da linha, Relatórios e Importações têm abas; as que mostram uma tela do
    Portal (motor da Administração) trazem o 3º campo com a aba dele. Administração fica só com cadastros e configuração. */
 const SHELL_TABS = {
