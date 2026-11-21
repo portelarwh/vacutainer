@@ -44,7 +44,7 @@ function varrer(){
   R.resumo.titulos=hs.length;
   /* 2 · tipografia */
   const fontes=new Map(),peq=[],peq2=[];
-  for(const e of todos){if(![...e.childNodes].some(n=>n.nodeType===3&&n.textContent.trim()))continue;const s=getComputedStyle(e),f=s.fontFamily.split(',')[0].replace(/["']/g,'').trim();fontes.set(f,(fontes.get(f)||0)+1);if(parseFloat(s.fontSize)<12&&!e.closest('svg'))(parseFloat(s.fontSize)<11?peq:peq2).push(`${s.fontSize} "${txt(e)}" (${caminho(e)})`);}
+  for(const e of todos){if(![...e.childNodes].some(n=>n.nodeType===3&&n.textContent.trim()))continue;const s=getComputedStyle(e),f=s.fontFamily.split(',')[0].replace(/["']/g,'').trim();fontes.set(f,(fontes.get(f)||0)+1);if(parseFloat(s.fontSize)<12&&parseFloat(s.fontSize)>1&&!e.closest('svg'))(parseFloat(s.fontSize)<11?peq:peq2).push(`${s.fontSize} "${txt(e)}" (${caminho(e)})`);}
   R.resumo.fontes=Object.fromEntries([...fontes].sort((a,b)=>b[1]-a[1]).slice(0,5));
   const fora=[...fontes.keys()].filter(f=>!/albert|arial|helvetica|sans-serif|system-ui|segoe|inter|roboto|mono|consolas|courier/i.test(f));
   if(fora.length)A('Tipografia','ajustar','Família fora da marca (FS Albert Pro com reserva Arial/Helvetica, pelas variáveis --f-body/--f-display).',fora);
@@ -75,7 +75,8 @@ function varrer(){
   /* 6 · filtros */
   const campos=todos.filter(e=>e.matches('select,input[type="date"],input[type="text"],input[type="search"],input:not([type])'));
   const caixa=campos.length?campos[0].closest('#gFilters,.filtros,.filters,.vk-fil,form,section,.card')||raiz:null;
-  if(campos.length>=2){
+  const naCaixa=caixa?[...caixa.querySelectorAll('select,input')].filter(vis).length:0;
+  if(naCaixa>=3){   /* barra só de data/linha (como a do Lançamento) não é um cartão de filtros */
     const temLimpar=[...(caixa||raiz).querySelectorAll('button,a')].some(b=>/limpar/i.test(b.textContent));
     if(!temLimpar)A('Filtros','ajustar','Página com filtros sem "Limpar filtros". O modelo: Período (datas + Hoje/Ontem/7 dias/30 dias/Personalizado), demais filtros numa linha, "Limpar filtros" no fim da linha e uma linha-resumo do recorte abaixo.');
     const semRot=campos.filter(c=>!c.labels?.length&&!c.getAttribute('aria-label')&&!c.closest('label')&&!c.placeholder&&!/^vac-dt/.test(c.className));
