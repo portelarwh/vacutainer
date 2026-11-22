@@ -19,25 +19,7 @@ const CASOS = [
     await p.close();
   }
   // ---------- Gel: campo de preço com "12a" não grava; com valor válido, grava igual a antes
-  {
-    const p = await b.newPage({ viewport: { width: 1440, height: 900 } }); const pe = []; p.on('pageerror', e => pe.push(e.message)); p.on('dialog', d => d.accept());
-    await p.goto(PG + encodeURI('Gestão-Gel-Vacutainer.html')); await p.waitForTimeout(1200); await p.evaluate(() => { document.querySelectorAll('.overlay').forEach(o => o.remove()); enterDemo(); render(); openConfig('preco'); }); await p.waitForTimeout(600);
-    const r = await p.evaluate(async () => {
-      const commits = []; const orig = backend.commit; backend.commit = async ch => { commits.push(JSON.parse(JSON.stringify(ch))); };
-      const u = document.querySelector('#pcUsd'), fx = document.querySelector('#pcFx'); fx.disabled = false; fx.value = '5'; fx.dispatchEvent(new Event('input', { bubbles: true }));
-      u.value = '12a'; u.dispatchEvent(new Event('input', { bubbles: true })); const marcado = u.classList.contains('num-inval'), previa = document.querySelector('#pcBrl').textContent;
-      document.querySelector('#pcSave').click(); await new Promise(r => setTimeout(r, 200)); const n1 = commits.length;
-      u.value = '12,5'; u.dispatchEvent(new Event('input', { bubbles: true })); const limpo = !u.classList.contains('num-inval'), previa2 = document.querySelector('#pcBrl').textContent;
-      document.querySelector('#pcSave').click(); await new Promise(r => setTimeout(r, 300)); backend.commit = orig;
-      const ult = commits[commits.length - 1]; const pr = ult && ult.config && ult.config.prices && ult.config.prices[ult.config.prices.length - 1];
-      return { marcado, previa, n1, limpo, previa2, n2: commits.length, usd: pr && pr.usd, price: pr && pr.price };
-    });
-    ok(r.marcado && r.previa === 'valor inválido', `Gel › preço "12a": campo marcado e prévia "${r.previa}" (antes: R$ 60,00 por kg)`);
-    ok(r.n1 === 0, `Gel › preço "12a": Salvar não grava nada (${r.n1} gravações; antes gravava 12)`);
-    ok(r.limpo && /62,50/.test(r.previa2) && r.n2 === 1 && r.usd === 12.5 && r.price === 62.5, `Gel › preço "12,5": grava como antes (US$ ${r.usd}, R$ ${r.price}/kg)`);
-    ok(!pe.length, `Gel sem erro de página${pe.length ? ' (' + pe[0] + ')' : ''}`);
-    await p.close();
-  }
+  // Gel › preço: a tela de preço do Gel saiu na plataforma 1.8.47 (CFG-ADM); o preço do gel é cadastrado só na Administração › Preços.
   // ---------- Paradas: importação do Forms recusa a linha com número inválido, com o motivo
   {
     const p = await b.newPage(); p.on('dialog', d => d.accept()); await p.goto(PG + 'Paradas.html'); await p.waitForTimeout(900); await p.evaluate(() => { document.querySelectorAll('.overlay').forEach(o => o.remove()); modoTeste(); }); await p.waitForTimeout(600);

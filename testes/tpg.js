@@ -9,8 +9,7 @@ const C={schema:'vac-cadastros',rev:12,materiais:[{codigo:'10000001',nome:'Gel',
 const g=await ctx.newPage();g.on('pageerror',e=>errs.push('G '+e.message));g.on('dialog',d=>d.accept());await g.goto('file://'+SP+'__modulos__/'+encodeURI('Gestão-Gel-Vacutainer.html'));await g.waitForTimeout(1500);
 await g.evaluate(C=>localStorage.setItem('vac.cadastros',JSON.stringify(C)),C);
 console.log('GEL',JSON.stringify(await g.evaluate(()=>({shift:shiftAtRaw('2026-11-07'),abSab:abDefOf('2026-11-07'),abSeg:abDefOf('2026-11-09'),preco:priceAt('2026-11-05')}))));
-await g.evaluate(()=>openConfig('turnos'));await g.waitForTimeout(400);console.log('gel cfg turnos:',await g.$eval('.cfgbody',e=>e.innerText.slice(0,160).replace(/\n/g,' ')));
-await g.evaluate(()=>openConfig('preco'));await g.waitForTimeout(400);console.log('gel cfg preço:',await g.$eval('.cfgbody',e=>e.innerText.slice(0,200).replace(/\n/g,' ')));
+console.log('gel cfg turnos e preço abrem na Administração:',await g.evaluate(()=>[cfgAdmGel('turnos'),cfgAdmGel('preco')].join(' · ')));   /* 1.8.47 · CFG-ADM */
 await g.screenshot({path:SP+'testes/saida/gel95.png'});
 // Waste
 const w=await ctx.newPage();w.on('pageerror',e=>errs.push('W '+e.message));w.on('dialog',d=>d.accept());await w.goto('file://'+SP+'__modulos__/Perdas-Ordem.html');await w.waitForTimeout(800);await w.evaluate(()=>{localStorage.setItem('vac.user','Pedro');enterTest()});await w.waitForTimeout(800);
