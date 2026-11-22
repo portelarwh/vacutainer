@@ -56,3 +56,9 @@ Para mudar um catálogo, meta ou turno depois, repita: salve, gere o app de novo
 - Um catálogo por turno; uma troca no meio do turno fica para uma próxima versão.
 - O turno guarda a meta, o gel e o nome do catálogo do momento em que foi lançado (versão 0.3): mudar a configuração depois não altera turnos já lançados nem os relatórios refeitos deles.
 - A configuração do repositório é fictícia (TESTE). O cadastro real é feito no próprio app pelo responsável e enviado por arquivo; ele não entra no repositório.
+
+## App Manutenção (MAN-01, 22/11/2026)
+
+Arquivo único [manutencao.html](manutencao.html), no mesmo molde do Meu Turno, para o técnico registrar o **atendimento corretivo**: técnico (da lista), equipamento, modo de falha (ou "outro"), se parou a linha, início e fim, sintoma, causa, ação, peças e situação (concluído ou pendente). Gerado em **Administração › Apps de celular › Gerar Manutencao.html** com equipamentos, modos de falha e pessoas da manutenção (só ID, nome e turno). **Enviar para a plataforma** mostra o QR e baixa o `.mm.json`; em **Equipamentos › Ordens de serviço › Importar do celular** ele vira uma OS corretiva (concluída ou aberta) com o técnico (ID), detalhe e apontamento; importar de novo não duplica. Os dados ficam só no celular; a foto ainda não vai junto.
+
+O mesmo arquivo está no bloco `celular/manutencao`: ao mudar `manutencao.html`, rode `node scripts/bloco.mjs celular/manutencao CELULAR/manutencao.html` (o teste `man-celular` confere).
