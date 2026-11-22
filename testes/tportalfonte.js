@@ -74,10 +74,12 @@ const { chromium } = require('playwright');
   const r3 = await o.evaluate(async () => {
     Store.S.cadDoc = { schema: 'vac-cadastros', rev: 9, turnos: [{ codigo: 'T1', vigencias: [] }], catalogos: [], paradas: [], metasOee: [], linhas: [], parametros: {} };
     go('config'); await new Promise(r => setTimeout(r, 300)); const res = {};
-    for (const sec of ['turnos', 'catalogos', 'metas', 'paradas']) { const bt = document.querySelector(`[data-sec="${sec}"]`); if (bt) bt.click(); await new Promise(r => setTimeout(r, 250));
+    res._adm = [...document.querySelectorAll('[data-sec-adm]')].map(b => b.dataset.secAdm).sort().join(',');   /* 1.8.46 · CFG-ADM: no menu, abrem na Administração */
+    for (const sec of ['turnos', 'catalogos', 'metas', 'paradas']) { App.cfgSec = sec; render(); await new Promise(r => setTimeout(r, 250));
       const root = document.querySelector('#main') || document.body; res[sec] = [...root.querySelectorAll('button, input, select, textarea')].filter(el => !el.disabled && !el.closest('.side') && !el.closest('[data-keep]') && !el.dataset.keep && !el.dataset.sec && !el.classList.contains('ib') && !el.closest('nav') && !el.closest('header') && !el.closest('.vsuite') && !el.closest('#vacDemoBar') && el.offsetParent && !el.closest('.filters') && !el.closest('.tsearch') && !el.closest('details > summary')).map(el => el.id || el.textContent.trim().slice(0, 20) || el.name || el.tagName).slice(0, 5); }
     Store.S.cadDoc = null; return res;
   });
+  ok(r3._adm === 'catalogos,estrutura,metas,paradas,turnos', 'CFG-ADM: com o cadastro do Portal, o menu leva estrutura, turnos, catálogos, metas e tipos de parada para a Administração (' + r3._adm + ')'); delete r3._adm;
   for (const [sec, livres] of Object.entries(r3)) ok(!livres.length, `ARQ-01..04: Produção › Configurações › ${sec} sem campo ou botão de edição com o cadastro do Portal${livres.length ? ' (livres: ' + livres.join(', ') + ')' : ''}`);
   // Portal: Trazer configurações oferece o que só existe na Produção, com o mesmo código
   const mig1 = await po.evaluate(() => {
