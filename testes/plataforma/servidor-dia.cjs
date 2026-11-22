@@ -11,6 +11,7 @@ const html = fs.readFileSync(path.resolve(__dirname, '../../Plataforma.html'));
     browser = await chromium.launch(require('./chromium.cjs')());
     const page = await browser.newPage({ viewport: { width: 1440, height: 1000 } }), erros = [];
     page.on('pageerror', e => erros.push(e.message)); page.on('dialog', d => d.accept('teste'));
+    await page.clock.setFixedTime(new Date('2026-11-19T10:00:00'));   /* dia útil fixo: num domingo a tela oferece "dia extra" no lugar de "Criar lançamento" */
     await page.goto('http://127.0.0.1:' + srv.address().port + '/?demo=1');
     await page.getByRole('heading', { name: 'Visão da linha' }).waitFor();
     await page.evaluate(() => { location.hash = '#/oee?tab=launch'; });
