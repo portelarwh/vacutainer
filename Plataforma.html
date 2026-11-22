@@ -2293,7 +2293,7 @@ const vacLogin = (() => {
       '<div class="vl-f"><span id="vlSes">Sessão até o fim do turno neste computador</span><span>' + e(typeof PAGE !== 'undefined' ? (nomePagina() + ' ' + (PAGE.versao || '')) : '') + '</span></div></div>';
     /* 1.8.43 · logo da janela de login: primeiro a da pasta Marca (ao lado do Plataforma.html, sem precisar da pasta da linha conectada),
        depois a logo cadastrada no módulo / Logo.png; sem nenhuma, some. */
-    const im = el.querySelector('.vl-logo'), alt = im.getAttribute('src'); im.onerror = () => { if (im.dataset.alt !== '1' &amp;&amp; alt) { im.dataset.alt = '1'; im.src = alt; } else im.hidden = true; }; im.src = 'Marca/BD_2-Color_RGB.svg';
+    const im = el.querySelector('.vl-logo'), alt = im.getAttribute('src'); const fila = ['Marca/BD_2-Color_RGB.svg'].concat(alt ? [alt] : []); im.onerror = () => { const n = fila.shift(); if (n) im.src = n; else im.hidden = true; }; im.src = 'IMAGENS/Marca/BD_2-Color_RGB.svg';
     for (const n of document.body.children) if (!n.inert) { n.inert = true; inertes.push(n); }
     document.body.appendChild(el);
     if (modo.trocar &amp;&amp; sessao()) passoConta(); else passoId();
@@ -5218,7 +5218,7 @@ const CAD_SECS=['inicio','matriz','importar','auditoria','backups','seguranca','
    curtas (macro, sem detalhe técnico). REGRA: toda versão nova da plataforma ganha uma entrada aqui, a mais recente primeiro
    (AGENTS.md e CLAUDE.md). Tipos: nova (função nova), melhoria (algo que já existia ficou melhor), correcao (erro corrigido). */
 const NOVIDADES=[
- {v:'1.8.51',d:'2026-11-22',itens:[['melhoria','Linha 360° › Configuração › Pontos e equipamentos: altere quantos pontos quiser e grave tudo em "Salvar alterações"; as linhas alteradas ficam marcadas e o que foi digitado não se perde até salvar ou descartar.']]},
+ {v:'1.8.51',d:'2026-11-22',itens:[['melhoria','Linha 360° › Configuração › Pontos e equipamentos: altere quantos pontos quiser e grave tudo em "Salvar alterações"; as linhas alteradas ficam marcadas e o que foi digitado não se perde até salvar ou descartar.'],['melhoria','Marca: a pasta Marca (fontes, logos, favicon e fotos da tela de entrada) passa a ficar dentro de IMAGENS (IMAGENS/Marca/). Enquanto não for movida, a pasta Marca antiga continua valendo.']]},
  {v:'1.8.50',d:'2026-11-22',itens:[['nova','Administração › Apps de celular: gera também o Manutencao.html (técnico) com equipamentos, modos de falha e pessoas do cadastro.'],['nova','Equipamentos › Ordens de serviço › Importar do celular: o atendimento do app Manutenção (QR pela webcam ou arquivo) vira OS corretiva com técnico, sintoma, causa, ação, peças, início e fim e se parou a linha. Importar de novo não duplica.']]},
  {v:'1.8.49',d:'2026-11-22',itens:[['nova','Administração › Apps de celular: gera o MeuTurno.html com o cadastro de hoje (turnos, catálogos com meta por hora, equipamentos, tipos de parada e pessoas). Envie aos celulares; o operador escolhe o nome na lista.'],['nova','Produção › Lançamento › Importar do celular: lê o QR do app pela webcam (ou o arquivo do turno), mostra a prévia e grava hora a hora, paradas com tipo e máquina, scrap, operador e observações. Importar de novo não duplica.'],['nova','App Meu Turno 0.4: "Enviar para a plataforma" mostra o QR (em partes, se o turno for grande) e gera o arquivo do turno.']]},
  {v:'1.8.48',d:'2026-11-22',itens:[['nova','Consulta de cadastros em Produção, Gestão de Gel, Paradas e Waste: os cadastros da Administração que cada página usa, com busca. O clique abre a ficha lateral (como a da ordem) com tudo do item e as vigências; "Editar na Administração" leva à seção certa e clicar fora volta para a mesma tela.'],['melhoria','Produção e Gel: no menu de Configurações, um item "Consulta de cadastros" no lugar dos atalhos para a Administração.']]},
@@ -35736,7 +35736,7 @@ function fmMiniPlanta(d){const a=areas().find(x=>x.id===d.area),p=d.ponto&amp;&a
    as seguintes: a faixa "Continuação do registro". Corpo em seções numeradas: 01 atividades com referência visual (fotos, com a
    faixa do local da Linha 360° e os itens OK/NC/N/A), 02 atividades complementares (sem foto), legenda, registro da execução,
    tratamento de desvios e confirmação. Paginação por altura estimada (mm), com folga; título de seção nunca fica sozinho no pé. */
-const FM_LOGO=(()=>{try{return new URL('Marca/BD_2-Color_RGB.svg',document.baseURI).href}catch(e){return'Marca/BD_2-Color_RGB.svg'}})();
+const fmMarcaUrl=r=>{try{return new URL(r,document.baseURI).href}catch(e){return r}},FM_LOGO=fmMarcaUrl('IMAGENS/Marca/BD_2-Color_RGB.svg'),FM_LOGO_ANTIGA=fmMarcaUrl('Marca/BD_2-Color_RGB.svg');
 const FM_AV=[['ok','OK','Conforme'],['nc','NC','Não conforme'],['na','N/A','Não aplicável']];
 const FM_MM={m:10,cab:26,dados:50,cont:15,rod:8,w:190};
 const fmCorpoPg=k=>297-2*FM_MM.m-FM_MM.cab-(k?FM_MM.cont:FM_MM.dados)-FM_MM.rod;
@@ -35769,7 +35769,7 @@ function fmPaginas(d){const pp=+d.porPag||2,F=d.fotos||[],T=fmItensTodos(d).filt
  if(F.length||T.length)poe({k:'leg'},FM_ALT.leg);
  poe({k:'fech',n:S()},FM_ALT.fech);
  return pags}
-function fmMarca(){return`<div class="fm-marca"><img src="${esc(FM_LOGO)}" alt="BD" onerror="this.parentNode.classList.add('sem')"><span class="fm-marca-t">BD</span></div>`}
+function fmMarca(){return`<div class="fm-marca"><img src="${esc(FM_LOGO)}" data-alt="${esc(FM_LOGO_ANTIGA)}" alt="BD" onerror="if(this.dataset.alt){this.src=this.dataset.alt;this.dataset.alt=''}else this.parentNode.classList.add('sem')"><span class="fm-marca-t">BD</span></div>`}
 function fmCabecalho(d,pg,N){const fotos=(d.fotos||[]).length;
  return`<header class="fm-tt"><i class="fm-acento" aria-hidden="true"></i>${fmMarca()}<div class="fm-tit"><small>BD Vacutainer / Linha 360°</small><h1>${esc(d.titulo||'Sem título')}</h1><span>${esc(fmNomeDe(FM_TIPOS,d.tipo))} · formulário operacional${fotos?' com referência visual':''}</span></div>
   <div class="fm-cod"><b>${esc(d.id)}</b><span class="fm-pn">Página ${pg} / ${N}</span></div></header>`}
@@ -54729,7 +54729,7 @@ td { font-size:15px; }
 /* 1.8.9 · tela de entrada (porta): foto da pasta Marca (login.png ou login.svg) desfocada e escurecida; sem a foto, o azul da marca.
    Passo "login": a janela de login da Administração (vacLogin) aparece por cima, em tela cheia, com o fundo transparente. */
 .porta{position:fixed;inset:0;z-index:1000;display:grid;place-items:center;padding:var(--sp-16,16px);overflow:hidden;color:#fff;font-family:var(--bd-font-body,Arial,sans-serif)}
-.porta-fundo{position:absolute;inset:-32px;background:url("Marca/login.png") center/cover no-repeat,url("Marca/login.svg") center/cover no-repeat,radial-gradient(120% 90% at 20% 10%,#1D3B8F 0%,var(--bd-navy,#060A3D) 60%);filter:blur(4px) brightness(.72) saturate(1.05);transform:scale(1.04)}
+.porta-fundo{position:absolute;inset:-32px;background:url("IMAGENS/Marca/login.png") center/cover no-repeat,url("IMAGENS/Marca/login.svg") center/cover no-repeat,url("Marca/login.png") center/cover no-repeat,url("Marca/login.svg") center/cover no-repeat,radial-gradient(120% 90% at 20% 10%,#1D3B8F 0%,var(--bd-navy,#060A3D) 60%);filter:blur(4px) brightness(.72) saturate(1.05);transform:scale(1.04)}
 /* 1.8.22 · LOGIN-FOTOS: menos desfoque (12px → 4px) e fotos login1, login2… em sequência, com transição suave */
 .porta-fundo .porta-foto{position:absolute;inset:0;background:center/cover no-repeat;opacity:0;transition:opacity 1s ease}.porta-fundo .porta-foto.on{opacity:1}
 @media (prefers-reduced-motion:reduce){.porta-fundo .porta-foto{transition:none}}
@@ -54776,70 +54776,70 @@ body.vac-porta{overflow:hidden}
       "id": "oee",
       "path": "Plataforma.html#motor/oee",
       "version": "2.6.39",
-      "sha256": "b3a98ce6f608e97b37073407b7dc2920d9866f4f8e52672c94056c193960f36d",
-      "bytes": 2389322
+      "sha256": "568c893515aea5c96548925ebd82d626557e05e56cde11e694ee694b7e71a436",
+      "bytes": 2389366
     },
     {
       "id": "perdas",
       "path": "Plataforma.html#motor/perdas",
       "version": "1.12.20",
-      "sha256": "f75339f1a4f9ff3d7197ecd851891ce4f31ee73d23a6d31683c7f7fb35ea5ca3",
-      "bytes": 979579
+      "sha256": "da9787825164253fb97e6d32b6f28c71f79dea7d381a52d897871d3fdeb2d96e",
+      "bytes": 979623
     },
     {
       "id": "gel",
       "path": "Plataforma.html#motor/gel",
       "version": "2.47",
-      "sha256": "4005f8de2acd4c769ee29918eda9579c51ea4bf21aa8a638d23d2ab1b2b6f359",
-      "bytes": 1625456
+      "sha256": "49e20592fb608d595d9cfc92c255624f9349d0cb9c49702db0a8fd758b655016",
+      "bytes": 1625500
     },
     {
       "id": "paradas",
       "path": "Plataforma.html#motor/paradas",
       "version": "1.2.22",
-      "sha256": "17cfbd67d0d5b6e959f021e852ca1da6b20e6ad05d8acd7b585d9f3050f7bcd8",
-      "bytes": 950082
+      "sha256": "14b388743f71112b30de532a50951744ac026c73be3830b6903871b9dfe27bfb",
+      "bytes": 950126
     },
     {
       "id": "equip",
       "path": "Plataforma.html#motor/equip",
       "version": "1.0.22",
-      "sha256": "2433d2ec62250ccce46f157e5cf8be162af6bf34c5c6b0cd84c0bbd20222ab7c",
-      "bytes": 741706
+      "sha256": "468b16aefe6683f83ea1601673aa60b7d159c343623873ba4de161e77e91895f",
+      "bytes": 741750
     },
     {
       "id": "inic",
       "path": "Plataforma.html#motor/inic",
       "version": "1.1.17",
-      "sha256": "4fbf72b250041c581ab5fa1e94bf12322866812dbaf7d38916b090828d0a899c",
-      "bytes": 756211
+      "sha256": "1689f774a7c33629c106d7e1f5146537fb791786b2c9b358ae2d8093164d00c1",
+      "bytes": 756255
     },
     {
       "id": "linha",
       "path": "Plataforma.html#motor/linha",
       "version": "1.4.1",
-      "sha256": "c190c2ab8a43c4578d02287e9f68c4fbf23033978a9a71db998165c76fc746e6",
-      "bytes": 938970
+      "sha256": "7b79a15034e55a2fe038250fa8d476c2c1664d16e60b360030b0008631e6f022",
+      "bytes": 939178
     },
     {
       "id": "projetos",
       "path": "Plataforma.html#motor/projetos",
       "version": "0.1.16",
-      "sha256": "ab8012f02c0ed1bd1cc3f06ee1f2b2970cca417713f8f982ba69330a8a283ca4",
-      "bytes": 673390
+      "sha256": "acea22f4df592c635b9fba5f0e4ec4d67c0e509c82617fa4db1c5c49f1d87cc6",
+      "bytes": 673434
     },
     {
       "id": "portal",
       "path": "Plataforma.html#motor/portal",
       "version": "1.9.73",
-      "sha256": "9f2e2b6dac90af8dc070326295da5e4f2bd9c51199d5ac7377c210f1a5c2037f",
-      "bytes": 1321237
+      "sha256": "30dedd6ac8d80eaf6051ec206157256dab5e2c8c2c25812bd50ef3cc2bd81640",
+      "bytes": 1321484
     }
   ],
   "limitations": [
     "Projetos e conteúdo técnico OSM/MES/AM/TPM mantêm os limites documentados nas fontes."
   ],
-  "enginesSha256": "8400667012039d67238c90600493f233f6dd5c550a0da20e0551730a48f60802",
+  "enginesSha256": "0a56c4a374858b6471274de53394630953070581a0c1c0b20c1a4ecebcc2c902",
   "originRevision": "ffc9ee8",
   "sourceMode": "single-html",
   "originEnginesSha256": "a87a64ad0c328f70e102b2ae888790a9b5d5a9bd05778652a7ce7cae140e40d2"
@@ -55490,7 +55490,7 @@ mostrarRef();
 <!-- modulo/App -->
 <textarea data-vac-source="modulo/App" spellcheck="false">import { Fragment, jsx, jsxs } from "vac:vendor/react";
 import brandCss from "vac:recurso/brand";
-import { MARCA_LOGO, marcaCss } from "vac:modulo/design/marca";
+import { MARCA_LOGO, MARCA_DIR, MARCA_DIR_ANTIGA, marcaCarrega, marcaCss } from "vac:modulo/design/marca";
 import { rememberFolder, queuePending, queueDetail } from "vac:modulo/core/scopes";
 import { useCallback, useEffect, useMemo, useRef, useState } from "vac:vendor/react";
 import { modules, moduleOf, IMPORTS, FILES } from "vac:modulo/core/modules";
@@ -56352,16 +56352,16 @@ const PORTA_TROCA_MS = 3000, PORTA_MAX_FOTOS = 30, PORTA_EXTS = ["jpg", "jpeg", 
 /* 1.8.43 · logo da tela de entrada: Marca/BD_2-Color_RGB.svg (fundo claro do cartão), lida pelo caminho ao lado do Plataforma.html
    (não precisa da pasta da linha conectada); sem o arquivo, o símbolo V. */
 function PortaLogo() {
-  const [ok, setOk] = useState(false);
-  useEffect(() => { let vivo = true; const im = new Image(); im.onload = () => { if (vivo &amp;&amp; im.naturalWidth > 0) setOk(true); }; im.onerror = () => {}; im.src = MARCA_LOGO.claro; return () => { vivo = false; }; }, []);
-  return ok ? /* @__PURE__ */ jsx("img", { className: "porta-logo", src: MARCA_LOGO.claro, alt: "BD" }) : /* @__PURE__ */ jsx("span", { className: "porta-v", "aria-hidden": "true", children: "V" });
+  const [ok, setOk] = useState(null);
+  useEffect(() => { let vivo = true; marcaCarrega(MARCA_LOGO.claro).then(u => { if (vivo &amp;&amp; u) setOk(u); }); return () => { vivo = false; }; }, []);
+  return ok ? /* @__PURE__ */ jsx("img", { className: "porta-logo", src: ok, alt: "BD" }) : /* @__PURE__ */ jsx("span", { className: "porta-v", "aria-hidden": "true", children: "V" });
 }
 function PortaFundo() {
   const [fotos, setFotos] = useState([]), [atual, setAtual] = useState(0);
   useEffect(() => { let vivo = true;
     const tenta = src => new Promise(r => { const im = new Image(); im.onload = () => r(src); im.onerror = () => r(null); im.src = src; });
     (async () => { const L = [];
-      for (let n = 1; n <= PORTA_MAX_FOTOS &amp;&amp; vivo; n++) { let s = null; for (const nome of [`login (${n})`, `login${n}`]) { for (const ext of PORTA_EXTS) { s = await tenta("Marca/" + encodeURIComponent(nome + "." + ext)); if (s) break; } if (s) break; } if (!s) break; L.push(s); }
+      for (let n = 1; n <= PORTA_MAX_FOTOS &amp;&amp; vivo; n++) { let s = null; for (const nome of [`login (${n})`, `login${n}`]) { for (const ext of PORTA_EXTS) { for (const dir of [MARCA_DIR, MARCA_DIR_ANTIGA]) { s = await tenta(dir + encodeURIComponent(nome + "." + ext)); if (s) break; } if (s) break; } if (s) break; } if (!s) break; L.push(s); }
       if (vivo &amp;&amp; L.length) setFotos(L); })();
     return () => { vivo = false; }; }, []);
   useEffect(() => { if (fotos.length < 2) return;
@@ -56586,6 +56586,7 @@ export {
 <textarea data-vac-source="modulo/components/ui" spellcheck="false">import { Fragment, jsx, jsxs } from "vac:vendor/react";
 import { useEffect, useRef, useState } from "vac:vendor/react";
 import { fmt } from "vac:modulo/core/data";
+import { marcaCarrega } from "vac:modulo/design/marca";
 function Icon({ name, size = 20, ...props }) {
   const paths = { home: /* @__PURE__ */ jsxs(Fragment, { children: [
     /* @__PURE__ */ jsx("path", { d: "m3 10 9-7 9 7v10H3z" }),
@@ -56688,21 +56689,17 @@ function CommandMenu({command,onCommand}) {
 }
 
 function BrandLogo({ src, alt = "BD" }) {
-  const [ok, setOk] = useState(false);
+  const [ok, setOk] = useState(null);
   useEffect(() => {
     let alive = true;
-    const im = new Image();
-    im.onload = () => {
-      if (alive &amp;&amp; im.naturalWidth > 0) setOk(true);
-    };
-    im.onerror = () => {
-    };
-    im.src = src;
+    marcaCarrega(src).then((u) => {
+      if (alive &amp;&amp; u) setOk(u);
+    });
     return () => {
       alive = false;
     };
   }, [src]);
-  return ok ? /* @__PURE__ */ jsx("img", { className: "brand-logo", src, alt }) : /* @__PURE__ */ jsxs("span", { className: "brand-symbol", children: [
+  return ok ? /* @__PURE__ */ jsx("img", { className: "brand-logo", src: ok, alt }) : /* @__PURE__ */ jsxs("span", { className: "brand-symbol", children: [
     "V",
     /* @__PURE__ */ jsx("span", {})
   ] });
@@ -57868,12 +57865,30 @@ export {
 </textarea>
 
 <!-- modulo/design/marca -->
-<textarea data-vac-source="modulo/design/marca" spellcheck="false">const MARCA_DIR = "Marca/";
+<textarea data-vac-source="modulo/design/marca" spellcheck="false">/* Plataforma 1.8.51 · pedido do responsável (22/11/2026): a pasta Marca fica dentro de IMAGENS (IMAGENS/Marca/, ao lado do
+   Plataforma.html). Enquanto os arquivos não forem movidos, a pasta antiga Marca/ continua valendo como reserva, arquivo por arquivo. */
+const MARCA_DIR = "IMAGENS/Marca/";
+const MARCA_DIR_ANTIGA = "Marca/";
+const marcaAlternativas = (src) => {
+  const s = String(src || "");
+  return s.startsWith(MARCA_DIR) ? [s, MARCA_DIR_ANTIGA + s.slice(MARCA_DIR.length)] : [s];
+};
+const marcaCarrega = (src) => new Promise((ok) => {
+  const L = marcaAlternativas(src);
+  const vai = (i) => {
+    if (i >= L.length) return ok(null);
+    const im = new Image();
+    im.onload = () => im.naturalWidth > 0 ? ok(L[i]) : vai(i + 1);
+    im.onerror = () => vai(i + 1);
+    im.src = L[i];
+  };
+  vai(0);
+});
 const MARCA_LOGO = { escuro: MARCA_DIR + "BD_1-Color_Reverse_RGB_TransparentBurst.svg", claro: MARCA_DIR + "BD_2-Color_RGB.svg" };
 /* Plataforma 1.7.2 · favicon com o símbolo BD, lido da pasta Marca/ como a logo (a marca não entra no HTML; docs/MARCA.md).
    Só aparece se o arquivo carregar; sem ele a aba fica sem ícone, sem imagem quebrada. */
 const MARCA_FAVICON = MARCA_DIR + "favicon.svg";
-const face = (file, weight, style) => `@font-face{font-family:"FS Albert Pro";src:local("FSAlbertPro-${file}"),url("${MARCA_DIR}FSAlbertPro-${file}.otf") format("opentype");font-weight:${weight};font-style:${style};font-display:block}`;
+const face = (file, weight, style) => `@font-face{font-family:"FS Albert Pro";src:local("FSAlbertPro-${file}"),url("${MARCA_DIR}FSAlbertPro-${file}.otf") format("opentype"),url("${MARCA_DIR_ANTIGA}FSAlbertPro-${file}.otf") format("opentype");font-weight:${weight};font-style:${style};font-display:block}`;
 const marcaCss = face("Regular", "300 500", "normal") + face("Bold", "600 800", "normal") + face("Italic", "300 500", "italic");
 function aplicarMarca(doc = document) {
   if (doc.getElementById("vacMarcaCss")) return;
@@ -57884,19 +57899,15 @@ function aplicarMarca(doc = document) {
 }
 function aplicarFavicon(doc = document) {
   if (doc.getElementById("vacFavicon")) return;
-  const im = new Image();
-  im.onload = () => {
-    if (!im.naturalWidth || doc.getElementById("vacFavicon")) return;
+  marcaCarrega(MARCA_FAVICON).then((href) => {
+    if (!href || doc.getElementById("vacFavicon")) return;
     const l = doc.createElement("link");
     l.id = "vacFavicon";
     l.rel = "icon";
     l.type = "image/svg+xml";
-    l.href = MARCA_FAVICON;
+    l.href = href;
     doc.head.appendChild(l);
-  };
-  im.onerror = () => {
-  };
-  im.src = MARCA_FAVICON;
+  });
 }
 const marcaUrl = (rel) => {
   try {
@@ -57907,10 +57918,13 @@ const marcaUrl = (rel) => {
 };
 export {
   MARCA_DIR,
+  MARCA_DIR_ANTIGA,
   MARCA_FAVICON,
   MARCA_LOGO,
   aplicarFavicon,
   aplicarMarca,
+  marcaAlternativas,
+  marcaCarrega,
   marcaCss,
   marcaUrl
 };

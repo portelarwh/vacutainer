@@ -5,20 +5,22 @@ nem é embutido no `Plataforma.html`**. Eles ficam só na pasta da rede.
 
 ## Onde colocar
 
-Uma pasta `Marca` ao lado do `Plataforma.html`:
+Uma pasta `Marca` dentro de `IMAGENS`, ao lado do `Plataforma.html` (plataforma 1.8.51, pedido do responsável em 22/11/2026). A pasta
+`Marca` antiga, direto ao lado do `Plataforma.html`, continua valendo como reserva, arquivo por arquivo, até ser movida.
 
 ```
 Pasta da linha\
 ├─ Plataforma.html
-├─ Marca\
-│  ├─ FSAlbertPro-Regular.otf
-│  ├─ FSAlbertPro-Bold.otf
-│  ├─ FSAlbertPro-Italic.otf
-│  ├─ BD_1-Color_Reverse_RGB_TransparentBurst.svg   (barra lateral, fundo navy)
-│  ├─ BD_2-Color_RGB.svg                            (relatório impresso, fundo claro)
-│  ├─ favicon.svg                                   (ícone da aba do navegador: símbolo BD legível em fundo claro)
-│  ├─ login.png ou login.svg                        (foto de fundo da tela de entrada; aparece desfocada)
-│  └─ login (1).webp, login (2).jpg, login (3).png… (opcional: várias fotos que trocam a cada 3 s)
+├─ IMAGENS\
+│  └─ Marca\
+│     ├─ FSAlbertPro-Regular.otf
+│     ├─ FSAlbertPro-Bold.otf
+│     ├─ FSAlbertPro-Italic.otf
+│     ├─ BD_1-Color_Reverse_RGB_TransparentBurst.svg   (barra lateral, fundo navy)
+│     ├─ BD_2-Color_RGB.svg                            (relatório impresso, fundo claro)
+│     ├─ favicon.svg                                   (ícone da aba do navegador: símbolo BD legível em fundo claro)
+│     ├─ login.png ou login.svg                        (foto de fundo da tela de entrada; aparece desfocada)
+│     └─ login (1).webp, login (2).jpg, login (3).png… (opcional: várias fotos que trocam a cada 3 s)
 ├─ 00. Bases\
 └─ 00. Backups\
 ```
@@ -27,7 +29,7 @@ Os nomes são os do kit de marca; não renomeie.
 
 ## Como funciona
 
-- o bloco `modulo/design/marca` declara os `@font-face` apontando para `Marca/…` e é aplicado na casca (`modulo/main`), em cada motor incorporado
+- o bloco `modulo/design/marca` declara os `@font-face` apontando para `IMAGENS/Marca/…` (com `Marca/…` como reserva) e é aplicado na casca (`modulo/main`), em cada motor incorporado
   (`modulo/core/runtime`, junto do `brand.css`) e no relatório impresso da casca.
 - A logo da barra lateral só troca o símbolo em texto depois que o arquivo carrega (`BrandLogo`), então não há imagem quebrada.
 - O favicon (`aplicarFavicon`, plataforma 1.7.2) segue a mesma regra: `Marca/favicon.svg` só vira ícone da aba se carregar; sem ele, a aba fica sem ícone. O nome `favicon.svg` foi escolhido pelo responsável. Em `file://`, confirmar no Chrome/Edge corporativo se o navegador mostra o ícone.
@@ -39,7 +41,7 @@ Os nomes são os do kit de marca; não renomeie.
 
 ## O que não fazer
 
-- Não copiar a pasta `Marca` para dentro do repositório (está no `.gitignore`), nem converter a fonte em base64 dentro de CSS ou HTML.
+- Não copiar a pasta `Marca` (nem `IMAGENS`) para dentro do repositório (as duas estão no `.gitignore`), nem converter a fonte em base64 dentro de CSS ou HTML.
 - Não publicar o `Plataforma.html` com a fonte embutida.
 
 ## Estrutura da pasta operacional
@@ -49,7 +51,8 @@ A raiz é a pasta que você seleciona em **Conectar pasta**, não a pasta `Marca
 ```text
 Pasta da linha/
 ├── Plataforma.html
-├── Marca/                         # arquivos oficiais opcionais, nomes acima
+├── IMAGENS/
+│   └── Marca/                     # arquivos oficiais opcionais, nomes acima (Marca/ antiga ainda vale)
 ├── 00. Bases/
 │   ├── vacutainer-cadastros.json
 │   ├── portal-base.json
