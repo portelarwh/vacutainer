@@ -11,7 +11,10 @@ const errs = []; const ok = (c, m) => { console.log((c ? 'ok   ' : 'FALHA ') + m
     await p.evaluate(() => { document.querySelectorAll('.overlay').forEach(o => o.remove()); Demo.enterExample(); document.querySelectorAll('.overlay').forEach(o => o.remove()); }); await p.waitForTimeout(500); return p; };
   // dia em aberto com um turno desabilitado no dia (deleted)
   const PREP = () => { const d = db().productionDays.filter(x => x.status !== 'fechado').pop();
-    Store.mutate(D => { const x = D.productionDays.find(y => y.id === d.id); const c = JSON.parse(JSON.stringify(x.shifts[1])); c.id = 'ps_np_del'; c.deleted = true; c.enabledNP = true; c.status = 'em lançamento'; c.snap.name = 'Turno NP'; x.shifts.push(c); });
+    Store.mutate(D => { const x = D.productionDays.find(y => y.id === d.id); const c = JSON.parse(JSON.stringify(x.shifts[1])); c.id = 'ps_np_del'; c.deleted = true; c.enabledNP = true; c.status = 'em lançamento'; c.snap.name = 'Turno NP'; x.shifts.push(c);
+      /* LANC-03 (desde 21/11/2026): Segurança e Qualidade são obrigatórias para fechar; "Não houve" é resposta válida. Sem isto o teste
+         dependia da data: a partir de 22/11 o último dia aberto da demonstração já cai na regra. */
+      const nh = { acidente: { resposta: 'nao' }, qn: { resposta: 'nao' } }; x.sqdcpDia = JSON.parse(JSON.stringify(nh)); for (const s of x.shifts) if (!s.deleted) s.sqdcp = JSON.parse(JSON.stringify(nh)); });
     return d.id; };
   const T = (p, fn, id) => p.evaluate(([f, id]) => { try { eval(f)(id); return 'ok'; } catch (e) { return 'ERRO: ' + e.message; } }, [fn, id]);
   const st = (p, id) => p.evaluate(id => { const x = db().productionDays.find(y => y.id === id); return { dia: x.status, turnos: x.shifts.filter(s => !s.deleted).map(s => s.status), del: x.shifts.filter(s => s.deleted).map(s => s.status) }; }, id);
