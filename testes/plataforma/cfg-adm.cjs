@@ -20,38 +20,24 @@ const html = fs.readFileSync(path.resolve(__dirname, '../../Plataforma.html'));
     const frame = async nome => { const f = await (await page.locator(`iframe[title="Módulo ${nome}"]`).elementHandle({ timeout: 60000 })).contentFrame(); await f.waitForFunction(() => document.readyState === 'complete'); await page.waitForTimeout(1500); return f; };
     const naAdm = async rota => { await page.waitForFunction(r => decodeURIComponent(location.hash).includes('#/portal') && decodeURIComponent(location.hash).includes(r), rota, { timeout: 20000 }); return decodeURIComponent(await page.evaluate(() => location.hash)); };
 
-    // 1. Produção › Configurações
+    // 1. Produção › Configurações (1.8.48 · CAD-CONS: os cinco cadastros viraram a "Consulta de cadastros"; cad-consulta.cjs confere a ficha)
     await page.goto(base + '#/oee?tab=config');
-    let f = await frame('Produção'); await f.waitForSelector('[data-sec-adm]');
-    const M = await f.evaluate(() => ({ adm: [...document.querySelectorAll('[data-sec-adm]')].map(b => b.dataset.secAdm), local: [...document.querySelectorAll('[data-sec]')].map(b => b.dataset.sec) }));
-    assert.deepEqual(M.adm.sort(), ['catalogos', 'estrutura', 'metas', 'paradas', 'turnos'], 'Produção: os cinco cadastros da Administração no menu com ↗');
+    let f = await frame('Produção'); await f.waitForSelector('[data-sec="consulta"]');
+    const M = await f.evaluate(() => ({ adm: document.querySelectorAll('[data-sec-adm]').length, local: [...document.querySelectorAll('[data-sec]')].map(b => b.dataset.sec) }));
+    assert.ok(!M.adm && M.local.includes('consulta') && !M.local.some(k => ['estrutura', 'turnos', 'catalogos', 'metas', 'paradas'].includes(k)), 'Produção: menu com a Consulta de cadastros no lugar dos cinco itens');
     for (const k of ['qn', 'tags', 'parametros', 'importacao', 'base']) assert.ok(M.local.includes(k), 'Produção: ' + k + ' continua na Produção');
-    console.log('ok Produção: menu com ' + M.adm.length + ' itens que abrem na Administração; ' + M.local.length + ' seções próprias continuam');
-    for (const [k, rota] of [['turnos', 'cadastros/turnos'], ['catalogos', 'cadastros/catalogos'], ['metas', 'cadastros/metasOee'], ['paradas', 'cadastros/paradas'], ['estrutura', 'cadastros/linhas']]) {
-      await page.goto(base + '#/oee?tab=config'); f = await frame('Produção'); await f.waitForSelector(`[data-sec-adm="${k}"]`);
-      await f.click(`[data-sec-adm="${k}"]`); const h = await naAdm(rota);
-      console.log('ok Produção › ' + k + ' → ' + h);
-    }
+    console.log('ok Produção: menu com "Consulta de cadastros"; ' + M.local.length + ' seções próprias');
     // 2. atalho de outra aba: "Metas" da lista de pendências usa o mesmo caminho
     await page.goto(base + '#/oee?tab=config'); f = await frame('Produção');
     await f.evaluate(() => cfgAbrir('metas')); console.log('ok atalho para Metas → ' + await naAdm('cadastros/metasOee'));
     await page.goto(base + '#/oee?tab=config'); f = await frame('Produção');
     await f.evaluate(() => cfgAbrir('catalogos', '1001')); console.log('ok busca de catálogo → ' + await naAdm('cadastros/catalogos/1001'));
 
-    // 3. Gestão de Gel › Configuração
+    // 3. Gestão de Gel › Configuração: as seções antigas de cadastro abrem a Consulta de cadastros (1.8.48)
     await page.goto(base + '#/gel'); f = await frame('Gestão de Gel');
-    await f.evaluate(() => openConfig('geral')); await f.waitForSelector('.cfgnav');
-    const G = await f.evaluate(() => [...document.querySelectorAll('[data-cfgadm]')].map(b => [b.dataset.cfgadm, cfgAdmGel(b.dataset.cfgadm)]));
-    assert.ok(G.length >= 1, 'Gel: ao menos uma seção com cadastro na Administração no cenário');
-    for (const [k, r] of G) assert.ok(/^cadastros\//.test(r), 'Gel: ' + k + ' aponta para ' + r);
-    console.log('ok Gel: ' + G.map(x => x[0] + ' → ' + x[1]).join(' · '));
-    const [k0, r0] = G[0]; await f.click(`[data-cfgadm="${k0}"]`); console.log('ok Gel › ' + k0 + ' → ' + await naAdm(r0));
-
-    // etapa 2 (1.8.47): Gel com as sete seções de cadastro na Administração, sempre
-    await page.goto(base + '#/gel'); f = await frame('Gestão de Gel'); await f.evaluate(() => openConfig('geral')); await f.waitForSelector('.cfgnav');
-    const G2 = await f.evaluate(() => [...document.querySelectorAll('[data-cfgadm]')].map(b => b.dataset.cfgadm).sort().join(','));
-    assert.equal(G2, 'cat,equip,fmts,motivos,preco,proc,turnos', 'Gel: as sete seções de cadastro abrem na Administração');
-    console.log('ok Gel: ' + G2 + ' abrem na Administração');
+    const G = await f.evaluate(() => { const r = {}; for (const k of ['turnos', 'preco', 'proc', 'fmts', 'motivos', 'equip', 'cat']) { openConfig(k); r[k] = !!document.querySelector('#ov .cfgbody [data-vcc]') && ui.cfgSec === 'consulta'; } return r; });
+    assert.ok(Object.values(G).every(Boolean), 'Gel: seções antigas de cadastro abrem a consulta ' + JSON.stringify(G));
+    console.log('ok Gel: turnos, preço, processo, formatos, motivos, equipamentos e catálogos abrem a Consulta de cadastros');
     // etapa 2: Produção sem as telas; abono e motivos em Parâmetros; meta dia-padrão no Plano do mês
     await page.goto(base + '#/oee?tab=config'); f = await frame('Produção');
     const P2 = await f.evaluate(async () => { App.cfgSec = 'parametros'; render(); await new Promise(r => setTimeout(r, 300)); const t = document.querySelector('.cfg > div').innerText;
@@ -59,10 +45,10 @@ const html = fs.readFileSync(path.resolve(__dirname, '../../Plataforma.html'));
       App.planMonth = '2026-11'; go('plan'); await new Promise(r => setTimeout(r, 500)); const m = document.querySelector('#plMetas'); if (m) m.querySelector('details').open = true;
       return { abono: /Abonos/.test(t) && !!document && /Motivos de "sem produção"/.test(t), card, metas: m ? m.innerText : '' }; });
     assert.ok(P2.abono, 'Parâmetros de cálculo tem os abonos e os motivos de "sem produção"');
-    assert.match(P2.card, /Turnos é cadastrado só na Administração/, 'Turnos pedido direto: aviso com o botão para a Administração');
+    assert.match(P2.card, /Consulta de cadastros/, 'Turnos pedido direto: abre a Consulta de cadastros');
     assert.match(P2.metas, /Meta dia-padrão/, 'Plano do mês: metas com a meta dia-padrão');
     assert.match(P2.metas, /\d/, 'Plano do mês: metas com números');
-    console.log('ok Produção: abonos e motivos em Parâmetros; Turnos abre na Administração; Plano do mês mostra as metas com a meta dia-padrão');
+    console.log('ok Produção: abonos e motivos em Parâmetros; Turnos abre a Consulta de cadastros; Plano do mês mostra as metas com a meta dia-padrão');
     assert.deepEqual(erros, [], 'sem erro de JavaScript'); console.log('ok sem erro de JavaScript');
   } finally { if (browser) await browser.close(); srv.close(); }
 })().catch(e => { console.error(e); process.exit(1); });

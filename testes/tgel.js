@@ -41,9 +41,9 @@ const { chromium } = require('playwright');
   ok(!cruz.length, '4b: teórico do kit (vacGel.teorico) igual ao prodCalc do Gel em todos os dias registrados' + (cruz.length ? ' · ' + JSON.stringify(cruz[0]) : ''));
   /* 1.8.47 · CFG-ADM: processo, formatos, motivos e equipamentos são cadastro da Administração; o Gel não tem mais tela para eles */
   const trav = await g.evaluate(() => { const ir = [], o = window.vacIrPortal; window.vacIrPortal = h => ir.push(h); const r = {};
-    for (const sec of ['proc', 'fmts', 'motivos', 'equip']) { ir.length = 0; openConfig(sec); r[sec] = { ir: ir.slice(), modal: !!document.querySelector('#ov .cfgbody') }; }
+    for (const sec of ['proc', 'fmts', 'motivos', 'equip']) { ir.length = 0; openConfig(sec); r[sec] = { ir: ir.slice(), cons: !!document.querySelector('#ov .cfgbody [data-vcc]') }; }
     window.vacIrPortal = o; return r; });
-  for (const [sec, r] of Object.entries(trav)) ok(r.ir.length === 1 && /^cadastros\//.test(r.ir[0]) && !r.modal, `4a: Gel › Configuração › ${sec} abre a Administração (${r.ir[0]}), sem tela no Gel`);
+  for (const [sec, r] of Object.entries(trav)) ok(!r.ir.length && r.cons, `4a/CAD-CONS: Gel › Configuração › ${sec} abre a Consulta de cadastros (só leitura), sem tela de edição no Gel`);
   await g.evaluate(() => localStorage.removeItem('vac.cadastros'));
 
   /* ---------- 4b: a pesagem do Gel é a do kit (vacGel), com os mesmos resultados de antes ---------- */
