@@ -1103,87 +1103,6 @@ const vacPareto = (() => {
   if (typeof document !== 'undefined') document.addEventListener('keydown', ev => { if (ev.key !== 'Enter' &amp;&amp; ev.key !== ' ') return; const g = ev.target &amp;&amp; ev.target.closest &amp;&amp; ev.target.closest('svg.vpar g[role="button"]'); if (!g) return; ev.preventDefault(); g.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true })); });
   return { calc, barras };
 })();
-/* Plataforma 1.8.52 · IMG-01 (pedido do responsável, 22/11/2026): banco de imagens da pasta IMAGENS, ao lado do Plataforma.html.
-   Nada é enviado: a página lê a pasta conectada a cada abertura, a cada Sincronizar e no botão Atualizar. Subpastas viram categorias
-   (IMAGENS/Linha, IMAGENS/Equipamentos…); IMAGENS/Marca (fontes e logos, docs/MARCA.md) fica de fora. Quem usa uma foto guarda só o
-   caminho (IMAGENS/Linha/x.jpg); foto renomeada ou apagada na pasta aparece como "não encontrada", sem sumir em silêncio.
-   Sem a pasta conectada não há como listar a pasta (o navegador não lista pastas por endereço); na demonstração, fotos fictícias.
-   raiz = pasta da linha conectada (ou o objeto de vacRaiz, que devolve as subpastas da raiz). */
-const vacImagens = (() => {
-  const EXT = /\.(jpe?g|png|webp|gif|svg|bmp|avif)$/i, MINI = 320;
-  const urls = new Map(), minis = new Map(), lista = new Map();
-  const partes = c => String(c || '').split('/').filter(Boolean);
-  async function pastaDe(raiz, caminho) { let d = raiz; for (const p of partes(caminho)) d = await d.getDirectoryHandle(p, { create: false }); return d; }
-  const naoAchou = e => typeof vacNaoAchou === 'function' ? vacNaoAchou(e) : !!e &amp;&amp; e.name === 'NotFoundError';
-  /* fotos fictícias da demonstração: desenhos simples, com o nome escrito (dados exclusivamente fictícios) */
-  const CORES = ['#1F6FE5', '#14804A', '#B26F00', '#C23B3A', '#6B4FBB', '#0E7C86', '#5A6B7B', '#A3478F'];
-  const NOMES = [['', 'Tray loader'], ['', 'Aplicação de gel'], ['', 'Envase'], ['', 'Tampador'], ['Inspeção', 'Câmera de nível'], ['Inspeção', 'Rejeito'], ['Saída', 'Encaixotadora'], ['Saída', 'Paletizador']];
-  function demo(sub) {
-    return NOMES.map(([pasta, nome], i) => {
-      const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="640" height="480" viewBox="0 0 640 480"><rect width="640" height="480" fill="${CORES[i]}"/><circle cx="520" cy="110" r="60" fill="#fff" opacity=".25"/><rect x="60" y="250" width="520" height="150" rx="14" fill="#fff" opacity=".18"/><text x="40" y="90" font-family="Arial" font-size="40" font-weight="700" fill="#fff">${nome}</text><text x="40" y="140" font-family="Arial" font-size="24" fill="#fff">Foto fictícia ${i + 1} · demonstração</text></svg>`;
-      const arq = 'demo-' + String(i + 1).padStart(2, '0') + '.svg';
-      return { caminho: ['IMAGENS', ...partes(sub), pasta, arq].filter(Boolean).join('/'), nome: nome + '.svg', pasta, url: 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg), demo: true };
-    });
-  }
-  /* lista as imagens de IMAGENS/<sub> (e das subpastas, até 4 níveis); {ok, itens, motivo, pasta, em} */
-  async function listar(raiz, sub = '', o = {}) {
-    const cam = ['IMAGENS', ...partes(sub)].join('/');
-    if (o.demo) { const r = { ok: true, itens: demo(sub), pasta: cam, em: new Date().toISOString(), demo: true }; lista.set(cam, r); return r; }
-    if (!raiz) return { ok: false, itens: [], pasta: cam, motivo: 'Conecte a pasta da linha para ver as imagens de ' + cam + '.' };
-    let base; try { base = await pastaDe(raiz, cam); }
-    catch (e) { return { ok: false, itens: [], pasta: cam, motivo: naoAchou(e) ? 'A pasta ' + cam + ' ainda não existe na pasta da linha. Crie a pasta e coloque as fotos nela.' : 'Não consegui ler ' + cam + ' (' + (e.message || e.name) + ').' }; }
-    const itens = [];
-    async function anda(d, pref, nivel) {
-      for await (const [nome, h] of d.entries()) {
-        if (h.kind === 'directory') { if (!(nivel === 0 &amp;&amp; !partes(sub).length &amp;&amp; /^marca$/i.test(nome)) &amp;&amp; nivel < 4) await anda(h, pref + nome + '/', nivel + 1); }
-        else if (EXT.test(nome)) itens.push({ caminho: cam + '/' + pref + nome, nome, pasta: pref.replace(/\/$/, ''), h });
-      }
-    }
-    try { await anda(base, '', 0); } catch (e) { return { ok: false, itens, pasta: cam, motivo: 'Não consegui ler ' + cam + ' (' + (e.message || e.name) + ').' }; }
-    itens.sort((a, b) => a.caminho.localeCompare(b.caminho, 'pt-BR', { numeric: true }));
-    const r = { ok: true, itens, pasta: cam, em: new Date().toISOString() }; lista.set(cam, r); return r;
-  }
-  const ultima = sub => lista.get(['IMAGENS', ...partes(sub)].join('/')) || null;
-  const achar = caminho => { for (const r of lista.values()) { const x = r.itens.find(i => i.caminho === caminho); if (x) return x; } return null; };
-  async function arquivo(raiz, caminho) {
-    const x = achar(caminho); if (x &amp;&amp; x.h) return x.h.getFile();
-    if (x &amp;&amp; x.url) { const b = await (await fetch(x.url)).blob(); return new File([b], x.nome, { type: b.type }); }
-    const p = partes(caminho), nm = p.pop(); return (await (await pastaDe(raiz, p.join('/'))).getFileHandle(nm)).getFile();
-  }
-  /* endereço da imagem inteira (cache da sessão; '' quando não acha) */
-  async function url(raiz, caminho) {
-    const x = achar(caminho); if (x &amp;&amp; x.url) return x.url;
-    if (urls.has(caminho)) return urls.get(caminho);
-    try { const f = await arquivo(raiz, caminho), u = URL.createObjectURL(f); urls.set(caminho, u); return u; } catch (e) { return ''; }
-  }
-  /* miniatura reduzida (máx. 320 px) para listas e pinos; SVG e falhas usam a imagem inteira */
-  async function mini(raiz, caminho) {
-    const x = achar(caminho); if (x &amp;&amp; x.url) return x.url;
-    if (minis.has(caminho)) return minis.get(caminho);
-    let u = '';
-    try {
-      const f = await arquivo(raiz, caminho);
-      if (/svg/i.test(f.type) || /\.svg$/i.test(caminho) || typeof createImageBitmap !== 'function') u = await url(raiz, caminho);
-      else {
-        const bm = await createImageBitmap(f), k = Math.min(1, MINI / Math.max(bm.width, bm.height)), c = document.createElement('canvas');
-        c.width = Math.max(1, Math.round(bm.width * k)); c.height = Math.max(1, Math.round(bm.height * k)); c.getContext('2d').drawImage(bm, 0, 0, c.width, c.height); bm.close &amp;&amp; bm.close();
-        const b = await new Promise(ok => c.toBlob(ok, 'image/webp', .8)); u = b ? URL.createObjectURL(b) : await url(raiz, caminho);
-      }
-    } catch (e) { u = ''; }
-    minis.set(caminho, u); return u;
-  }
-  /* preenche <img data-vac-img="caminho"> (miniatura) e <img data-vac-img-full="caminho"> dentro de el; sem achar, marca .vac-img-falta */
-  async function preencher(raiz, el) {
-    for (const im of (el || document).querySelectorAll('img[data-vac-img],img[data-vac-img-full]')) {
-      const c = im.dataset.vacImg || im.dataset.vacImgFull, u = im.dataset.vacImg ? await mini(raiz, c) : await url(raiz, c);
-      if (u) { if (im.getAttribute('src') !== u) im.src = u; im.classList.remove('vac-img-falta'); } else im.classList.add('vac-img-falta');
-    }
-  }
-  /* Atualizar: esquece miniaturas e endereços (uma foto trocada com o mesmo nome volta a ser lida) */
-  function esquecer() { for (const u of [...urls.values(), ...minis.values()]) if (String(u).startsWith('blob:')) URL.revokeObjectURL(u); urls.clear(); minis.clear(); }
-  const nomeDe = caminho => { const p = partes(caminho); return p[p.length - 1] || ''; };
-  return { listar, ultima, achar, arquivo, url, mini, preencher, esquecer, nomeDe, demo };
-})();
 </script></textarea>
 
 <!-- comum/interface -->
@@ -35707,6 +35626,88 @@ const pontos=()=>junta(Store.data.pontos,PONTOS_PADRAO).sort((a,b)=>(+a.id||999)
 const areas=()=>junta(Store.data.areas,AREAS_PADRAO);
 const postos=()=>junta(Store.data.postos,POSTOS_PADRAO).sort((a,b)=>a.id.localeCompare(b.id));
 const P=id=>pontos().find(p=>p.id===String(id));
+/* Linha 1.5.0 (plataforma 1.8.52) · IMG-01 (pedido do responsável, 22/11/2026): banco de imagens da pasta IMAGENS, ao lado do Plataforma.html.
+   Nada é enviado: a página lê a pasta conectada a cada abertura, a cada Sincronizar e no botão Atualizar. Subpastas viram categorias
+   (IMAGENS/Linha, IMAGENS/Equipamentos…); IMAGENS/Marca (fontes e logos, docs/MARCA.md) fica de fora. Quem usa uma foto guarda só o
+   caminho (IMAGENS/Linha/x.jpg); foto renomeada ou apagada na pasta aparece como "não encontrada", sem sumir em silêncio.
+   Sem a pasta conectada não há como listar a pasta (o navegador não lista pastas por endereço); na demonstração, fotos fictícias.
+   raiz = pasta da linha conectada (ou o objeto de vacRaiz, que devolve as subpastas da raiz). */
+/* Fica no motor da Linha 360° (único que usa); as URLs de imagem ficam em cache na sessão e são liberadas no Atualizar (esquecer). */
+const vacImagens = (() => {
+  const EXT = /\.(jpe?g|png|webp|gif|svg|bmp|avif)$/i, MINI = 320;
+  const urls = new Map(), minis = new Map(), lista = new Map();
+  const partes = c => String(c || '').split('/').filter(Boolean);
+  async function pastaDe(raiz, caminho) { let d = raiz; for (const p of partes(caminho)) d = await d.getDirectoryHandle(p, { create: false }); return d; }
+  const naoAchou = e => typeof vacNaoAchou === 'function' ? vacNaoAchou(e) : !!e &amp;&amp; e.name === 'NotFoundError';
+  /* fotos fictícias da demonstração: desenhos simples, com o nome escrito (dados exclusivamente fictícios) */
+  const CORES = ['#1F6FE5', '#14804A', '#B26F00', '#C23B3A', '#6B4FBB', '#0E7C86', '#5A6B7B', '#A3478F'];
+  const NOMES = [['', 'Tray loader'], ['', 'Aplicação de gel'], ['', 'Envase'], ['', 'Tampador'], ['Inspeção', 'Câmera de nível'], ['Inspeção', 'Rejeito'], ['Saída', 'Encaixotadora'], ['Saída', 'Paletizador']];
+  function demo(sub) {
+    return NOMES.map(([pasta, nome], i) => {
+      const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="640" height="480" viewBox="0 0 640 480"><rect width="640" height="480" fill="${CORES[i]}"/><circle cx="520" cy="110" r="60" fill="#fff" opacity=".25"/><rect x="60" y="250" width="520" height="150" rx="14" fill="#fff" opacity=".18"/><text x="40" y="90" font-family="Arial" font-size="40" font-weight="700" fill="#fff">${nome}</text><text x="40" y="140" font-family="Arial" font-size="24" fill="#fff">Foto fictícia ${i + 1} · demonstração</text></svg>`;
+      const arq = 'demo-' + String(i + 1).padStart(2, '0') + '.svg';
+      return { caminho: ['IMAGENS', ...partes(sub), pasta, arq].filter(Boolean).join('/'), nome: nome + '.svg', pasta, url: 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg), demo: true };
+    });
+  }
+  /* lista as imagens de IMAGENS/<sub> (e das subpastas, até 4 níveis); {ok, itens, motivo, pasta, em} */
+  async function listar(raiz, sub = '', o = {}) {
+    const cam = ['IMAGENS', ...partes(sub)].join('/');
+    if (o.demo) { const r = { ok: true, itens: demo(sub), pasta: cam, em: new Date().toISOString(), demo: true }; lista.set(cam, r); return r; }
+    if (!raiz) return { ok: false, itens: [], pasta: cam, motivo: 'Conecte a pasta da linha para ver as imagens de ' + cam + '.' };
+    let base; try { base = await pastaDe(raiz, cam); }
+    catch (e) { return { ok: false, itens: [], pasta: cam, motivo: naoAchou(e) ? 'A pasta ' + cam + ' ainda não existe na pasta da linha. Crie a pasta e coloque as fotos nela.' : 'Não consegui ler ' + cam + ' (' + (e.message || e.name) + ').' }; }
+    const itens = [];
+    async function anda(d, pref, nivel) {
+      for await (const [nome, h] of d.entries()) {
+        if (h.kind === 'directory') { if (!(nivel === 0 &amp;&amp; !partes(sub).length &amp;&amp; /^marca$/i.test(nome)) &amp;&amp; nivel < 4) await anda(h, pref + nome + '/', nivel + 1); }
+        else if (EXT.test(nome)) itens.push({ caminho: cam + '/' + pref + nome, nome, pasta: pref.replace(/\/$/, ''), h });
+      }
+    }
+    try { await anda(base, '', 0); } catch (e) { return { ok: false, itens, pasta: cam, motivo: 'Não consegui ler ' + cam + ' (' + (e.message || e.name) + ').' }; }
+    itens.sort((a, b) => a.caminho.localeCompare(b.caminho, 'pt-BR', { numeric: true }));
+    const r = { ok: true, itens, pasta: cam, em: new Date().toISOString() }; lista.set(cam, r); return r;
+  }
+  const ultima = sub => lista.get(['IMAGENS', ...partes(sub)].join('/')) || null;
+  const achar = caminho => { for (const r of lista.values()) { const x = r.itens.find(i => i.caminho === caminho); if (x) return x; } return null; };
+  async function arquivo(raiz, caminho) {
+    const x = achar(caminho); if (x &amp;&amp; x.h) return x.h.getFile();
+    if (x &amp;&amp; x.url) { const b = await (await fetch(x.url)).blob(); return new File([b], x.nome, { type: b.type }); }
+    const p = partes(caminho), nm = p.pop(); return (await (await pastaDe(raiz, p.join('/'))).getFileHandle(nm)).getFile();
+  }
+  /* endereço da imagem inteira (cache da sessão; '' quando não acha) */
+  async function url(raiz, caminho) {
+    const x = achar(caminho); if (x &amp;&amp; x.url) return x.url;
+    if (urls.has(caminho)) return urls.get(caminho);
+    try { const f = await arquivo(raiz, caminho), u = URL.createObjectURL(f); urls.set(caminho, u); return u; } catch (e) { return ''; }
+  }
+  /* miniatura reduzida (máx. 320 px) para listas e pinos; SVG e falhas usam a imagem inteira */
+  async function mini(raiz, caminho) {
+    const x = achar(caminho); if (x &amp;&amp; x.url) return x.url;
+    if (minis.has(caminho)) return minis.get(caminho);
+    let u = '';
+    try {
+      const f = await arquivo(raiz, caminho);
+      if (/svg/i.test(f.type) || /\.svg$/i.test(caminho) || typeof createImageBitmap !== 'function') u = await url(raiz, caminho);
+      else {
+        const bm = await createImageBitmap(f), k = Math.min(1, MINI / Math.max(bm.width, bm.height)), c = document.createElement('canvas');
+        c.width = Math.max(1, Math.round(bm.width * k)); c.height = Math.max(1, Math.round(bm.height * k)); c.getContext('2d').drawImage(bm, 0, 0, c.width, c.height); bm.close &amp;&amp; bm.close();
+        const b = await new Promise(ok => c.toBlob(ok, 'image/webp', .8)); u = b ? URL.createObjectURL(b) : await url(raiz, caminho);
+      }
+    } catch (e) { u = ''; }
+    minis.set(caminho, u); return u;
+  }
+  /* preenche <img data-vac-img="caminho"> (miniatura) e <img data-vac-img-full="caminho"> dentro de el; sem achar, marca .vac-img-falta */
+  async function preencher(raiz, el) {
+    for (const im of (el || document).querySelectorAll('img[data-vac-img],img[data-vac-img-full]')) {
+      const c = im.dataset.vacImg || im.dataset.vacImgFull, u = im.dataset.vacImg ? await mini(raiz, c) : await url(raiz, c);
+      if (u) { if (im.getAttribute('src') !== u) im.src = u; im.classList.remove('vac-img-falta'); } else im.classList.add('vac-img-falta');
+    }
+  }
+  /* Atualizar: esquece miniaturas e endereços (uma foto trocada com o mesmo nome volta a ser lida) */
+  function esquecer() { for (const u of [...urls.values(), ...minis.values()]) if (String(u).startsWith('blob:')) URL.revokeObjectURL(u); urls.clear(); minis.clear(); }
+  const nomeDe = caminho => { const p = partes(caminho); return p[p.length - 1] || ''; };
+  return { listar, ultima, achar, arquivo, url, mini, preencher, esquecer, nomeDe, demo };
+})();
 /* ---------- 1.5.0 · IMG-01: planta lida da pasta IMAGENS e fotos na planta ---------- */
 /* Planta (pedido do responsável, 22/11/2026): IMAGENS/PLANTA_BAIXA.SVG, para atualizar a planta sem nova versão da plataforma. Lida pela pasta
    conectada ou pelo caminho ao lado do Plataforma.html; sem o arquivo, a planta embutida (imagem de 2000 × 1125 px). Em vetor, o zoom vai a 800%.
@@ -55004,70 +55005,70 @@ body.vac-porta{overflow:hidden}
       "id": "oee",
       "path": "Plataforma.html#motor/oee",
       "version": "2.6.39",
-      "sha256": "6da76db64950675b638c29852830b0e72203ec29b1e467e778616a13a32bcadd",
-      "bytes": 2396500
+      "sha256": "568c893515aea5c96548925ebd82d626557e05e56cde11e694ee694b7e71a436",
+      "bytes": 2389366
     },
     {
       "id": "perdas",
       "path": "Plataforma.html#motor/perdas",
       "version": "1.12.20",
-      "sha256": "b7fcf6222becdacc682b40ec09d9d977d52515c48b0c1e5c4b2038c805368e6f",
-      "bytes": 986757
+      "sha256": "da9787825164253fb97e6d32b6f28c71f79dea7d381a52d897871d3fdeb2d96e",
+      "bytes": 979623
     },
     {
       "id": "gel",
       "path": "Plataforma.html#motor/gel",
       "version": "2.47",
-      "sha256": "1d4a1510596432aa37efcbcaa8c08ddd8a12bc63ee6fee860db860986bc5af4b",
-      "bytes": 1632634
+      "sha256": "49e20592fb608d595d9cfc92c255624f9349d0cb9c49702db0a8fd758b655016",
+      "bytes": 1625500
     },
     {
       "id": "paradas",
       "path": "Plataforma.html#motor/paradas",
       "version": "1.2.22",
-      "sha256": "4c17885fccea3a0e19c95b0ebf39fbf70cc65414499af386d369313630048afe",
-      "bytes": 957260
+      "sha256": "14b388743f71112b30de532a50951744ac026c73be3830b6903871b9dfe27bfb",
+      "bytes": 950126
     },
     {
       "id": "equip",
       "path": "Plataforma.html#motor/equip",
       "version": "1.0.22",
-      "sha256": "7bde2b9437419f124c953ec8ae6250062b50e1decebaf6ea11275b52b38936ce",
-      "bytes": 748884
+      "sha256": "468b16aefe6683f83ea1601673aa60b7d159c343623873ba4de161e77e91895f",
+      "bytes": 741750
     },
     {
       "id": "inic",
       "path": "Plataforma.html#motor/inic",
       "version": "1.1.17",
-      "sha256": "951339508b064ae14176d75c22e3f37436160225a10f2743aa24dc945f4707bb",
-      "bytes": 763389
+      "sha256": "1689f774a7c33629c106d7e1f5146537fb791786b2c9b358ae2d8093164d00c1",
+      "bytes": 756255
     },
     {
       "id": "linha",
       "path": "Plataforma.html#motor/linha",
       "version": "1.5.0",
-      "sha256": "918016f8754c452fcbb6119ead12ce4c37594679d22de7b3060627afad1dd468",
-      "bytes": 970777
+      "sha256": "40641819f67debedac1376bff0a2ed7655a04d2cac608a099240c90dbfec3f41",
+      "bytes": 970930
     },
     {
       "id": "projetos",
       "path": "Plataforma.html#motor/projetos",
       "version": "0.1.16",
-      "sha256": "ac40ef3ef57ceb4c23992d95fc07e4c7aa503735b2707f14646e45faae4ba7d0",
-      "bytes": 680568
+      "sha256": "acea22f4df592c635b9fba5f0e4ec4d67c0e509c82617fa4db1c5c49f1d87cc6",
+      "bytes": 673434
     },
     {
       "id": "portal",
       "path": "Plataforma.html#motor/portal",
       "version": "1.9.74",
-      "sha256": "e79efd2d1a146de1f02bed6e0c748b60b648e9b2dc54484e07eabe814bcbe262",
-      "bytes": 1329407
+      "sha256": "5cca9a0c72c0d42420a7f5ab65ee9205ca331c4798fec03f90eb2b9579e13fde",
+      "bytes": 1322273
     }
   ],
   "limitations": [
     "Projetos e conteúdo técnico OSM/MES/AM/TPM mantêm os limites documentados nas fontes."
   ],
-  "enginesSha256": "ae50acb332049cbb2cd0430472171b0d7deebdb795454a0511a13cc201a7c285",
+  "enginesSha256": "38b395dfc88a321c1d41e9cfa0b99f60477601d4e7754c6f4cc41a0c3f2c4c79",
   "originRevision": "ffc9ee8",
   "sourceMode": "single-html",
   "originEnginesSha256": "a87a64ad0c328f70e102b2ae888790a9b5d5a9bd05778652a7ce7cae140e40d2"

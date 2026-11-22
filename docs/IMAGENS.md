@@ -18,7 +18,7 @@ Pasta da linha/
 
 ## Como funciona
 
-- **Leitura:** `vacImagens` (comum/bases) lista `IMAGENS/<subpasta>` pela pasta conectada (até 4 níveis de subpasta), com miniaturas de no
+- **Leitura:** `vacImagens` (no motor/linha, o único que usa) lista `IMAGENS/<subpasta>` pela pasta conectada (até 4 níveis de subpasta), com miniaturas de no
   máximo 320 px feitas na hora e guardadas só na sessão. O navegador não lista uma pasta pelo endereço; por isso o banco precisa da pasta da linha
   conectada. Sem ela, o banco mostra o aviso; na demonstração, 8 fotos fictícias.
 - **Formatos:** JPG, JPEG, PNG, WebP, GIF, SVG, BMP e AVIF.

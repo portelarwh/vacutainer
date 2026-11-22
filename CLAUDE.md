@@ -17,11 +17,11 @@ O arquivo não é gerado de outro HTML ou de uma árvore TypeScript. JavaScript 
 | modulo/core/* | Leitura de exports, permissões, isolamento por pasta e integração. |
 | css/brand; css/style | Identidade BD e layout da plataforma. |
 | comum/visual; css/kit; comum/interface | Estilos, cabeçalho, componentes e contrato vacPagina compartilhados. |
-| comum/bases | Persistência, filas, adaptação do cenário e utilitários comuns; `vacImagens` lê o banco de imagens da pasta `IMAGENS` (docs/IMAGENS.md). |
+| comum/bases | Persistência, filas, adaptação do cenário e utilitários comuns. |
 | motor/portal | Administração e cadastro geral; base portal-base.json. Na plataforma 1.3.0 as telas de acompanhamento dele aparecem como abas da casca: Visão geral, Pendências e ações e Reunião diária na Visão da linha; Relatórios e Importação nas páginas Relatórios e formulários e Importações. Administração mostra só cadastros e configuração. |
 | motor/oee | Produção, OEE, SAP, turnos, scrap, gel, SQDCP e Timeline Operacional (aba Linha do tempo: `Timeline`, `TLV`, `Cfg.tags`; bloco aditivo `db.timeline`; ver docs/timeline-operacional.md); bases oee-vacutainer-base.json e ordens-base.json. |
 | motor/perdas; motor/gel; motor/paradas | Waste/MUV, estoque e consumo de gel, paradas. |
-| motor/equip; motor/inic; motor/linha | Equipamentos/OS, Iniciativas/Ações, Linha 360° (com os Formulários A4, aba `form`, bloco aditivo `formularios`; ver docs/CONTRATO-MOTORES.md › FORM-01; planta de `IMAGENS/PLANTA_BAIXA.SVG` e fotos na planta, bloco aditivo `fotos`; ver docs/IMAGENS.md). |
+| motor/equip; motor/inic; motor/linha | Equipamentos/OS, Iniciativas/Ações, Linha 360° (com os Formulários A4, aba `form`, bloco aditivo `formularios`; ver docs/CONTRATO-MOTORES.md › FORM-01; planta de `IMAGENS/PLANTA_BAIXA.SVG`, banco de imagens `vacImagens` e fotos na planta, bloco aditivo `fotos`; ver docs/IMAGENS.md). |
 | motor/projetos | Escopo ainda em construção. |
 | biblioteca/*; vendor/* | SheetJS, jsPDF, AutoTable, React/ReactDOM e Zod incorporados; preservar licenças. |
 | ferramenta/* | Verificar pasta e comparar importação, acessíveis em Saúde dos dados. |
