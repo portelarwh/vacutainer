@@ -41,14 +41,17 @@ const html = fs.readFileSync(path.resolve(__dirname, '../../Plataforma.html'));
     const a2 = await alvo('.aj-bt[data-ajuste="planejado"]'); assert.equal(a2.foco, 'abono', 'tempo planejado: abonos do turno');
     const a3 = await alvo('.aj-bt[data-ajuste="catalogo"]'); assert.match(a3.foco || '', /\|initialCatalogId$/, 'catálogo do turno');
     console.log('ok Registrar paradas, Tempo planejado e PPH e catálogo abrem o turno e focam o campo');
-    /* 3) Classificação das paradas → Configurações › Tipos de parada; Ver o mínimo → Administração › Metas de OEE */
-    await f.click('.aj-bt[data-ajuste="cfg"][data-aj-arg="paradas"]'); await f.waitForFunction(() => App.route === 'config' && App.cfgSec === 'paradas'); await voltar();
+    /* 3) Classificação das paradas → Administração › Tipos de parada (1.8.46 · CFG-ADM: cadastro da Administração abre direto lá);
+       Ver o mínimo → Administração › Metas de OEE */
+    await f.click('.aj-bt[data-ajuste="cfg"][data-aj-arg="paradas"]');
+    await page.waitForFunction(() => /#\/portal.*cadastros(%2F|\/)paradas/.test(decodeURIComponent(location.hash)) || /#\/portal.*cadastros\/paradas/.test(location.hash), null, { timeout: 10000 });
+    await page.evaluate(() => { location.hash = '#/oee?tab=launch'; }); await page.waitForTimeout(800); await voltar();
     const href = await f.evaluate(() => document.querySelector('[data-aj-adm="metasOee"]').getAttribute('href'));
     assert.match(href, /cadastros(%2F|\/)metasOee$/, 'link para Administração › Metas de OEE');
     await f.click('[data-aj-adm="metasOee"]');
     const adm = page.locator('iframe[title="Módulo Administração"]'); await adm.waitFor({ timeout: 10000 });
     const fa = await (await adm.elementHandle()).contentFrame(); await fa.waitForFunction(() => typeof Cad !== 'undefined' && Cad.ui.sec === 'metasOee', null, { timeout: 10000 });
-    console.log('ok Classificação das paradas abre Configurações › Tipos de parada; Ver o mínimo abre Administração › Metas de OEE');
+    console.log('ok Classificação das paradas abre Administração › Tipos de parada; Ver o mínimo abre Administração › Metas de OEE');
     /* 4) referências das mensagens: hora, parada e turno */
     await page.evaluate(() => { location.hash = '#/oee?tab=launch'; }); await f.waitForSelector('#cabDia');
     const refs = await f.evaluate(() => { const day = curDay(), res = Engine.computeDay(db(), day), iv = res.flat.find(x => x.iv)?.iv.id, ev = day.events.find(e => !e.deleted && !e.abono)?.id, ps = res.shifts[1].ps.id;
