@@ -28670,8 +28670,9 @@ const GelCad={
    S.catalogs.push({id:'cat-'+p.codigo,num:String(p.codigo),desc:p.nome||'',color:p.cor||PALETA[S.catalogs.length%PALETA.length],active:true,fmt:this.fmt(p)||'100',lotSize:v.caixasPorLote&amp;&amp;v.tubosPorCaixa?+v.caixasPorLote*+v.tubosPorCaixa:null,rateH:v.pphNominal?+v.pphNominal:null,portal:String(p.codigo),origem:'Portal'});conta=true}
   /* 2.46 · CFG-ADM: equipamento da Administração com dados de gel (embalagem e descartes) que ainda não está no Gel entra sozinho,
      como os catálogos (a tela de cadastro do Gel saiu; o cadastro é só na Administração) */
-  {S.config=S.config||{};const E=S.config.equips=S.config.equips||[];
+  {const E=(S.config&amp;&amp;S.config.equips)||[];   /* só cria a lista quando há o que incluir: a base não muda à toa */
    for(const p of (c.equipamentos||[]).filter(x=>x&amp;&amp;x.codigo&amp;&amp;x.gel&amp;&amp;x.ativo!==false)){if(E.some(e=>String(e.portal||'')===String(p.codigo)||this.eq(e,c)===p))continue;
+    S.config=S.config||{};if(!S.config.equips)S.config.equips=E;
     E.push({id:'eq-'+p.codigo,name:p.nome||String(p.codigo),tara:p.gel.tara??'',active:true,descs:Array.isArray(p.gel.descs)?JSON.parse(JSON.stringify(p.gel.descs)):[],portal:String(p.codigo)});conta=true}}
   for(const e of (S.config&amp;&amp;S.config.equips)||[]){const p=this.eq(e,c);if(!p)continue;e.portal=String(p.codigo);if(p.nome&amp;&amp;e.name!==p.nome)e.name=p.nome;const at=p.ativo!==false;if((e.active!==false)!==at){e.active=at;conta=true}}
   try{conta=this.aplicarGel(c)||conta}catch(e){console.warn('GelCad.gel',e)}   /* por último: o gel do catálogo manda no formato */
@@ -38949,8 +38950,8 @@ body.vac-porta{overflow:hidden}
       "id": "gel",
       "path": "Plataforma.html#motor/gel",
       "version": "2.46",
-      "sha256": "ceec9478b4c0fd05199c1c19e3da874a34ad02a7ee0da58aff4eb0ab3d050ec4",
-      "bytes": 1606581
+      "sha256": "91169e7e2cfba360dcb0768d64ae78255927e177501127b3b0344499d3bb4062",
+      "bytes": 1606695
     },
     {
       "id": "paradas",
@@ -38998,7 +38999,7 @@ body.vac-porta{overflow:hidden}
   "limitations": [
     "Projetos e conteúdo técnico OSM/MES/AM/TPM mantêm os limites documentados nas fontes."
   ],
-  "enginesSha256": "4ea92add10b3b1ecf97027c07e58babbf38d718d8b6ec6e5926fabefddd1187a",
+  "enginesSha256": "b794394964d5fbf6b9c40ccb34fa5ba503114a4e84ea03d1ae2900703095ca4a",
   "originRevision": "ffc9ee8",
   "sourceMode": "single-html",
   "originEnginesSha256": "a87a64ad0c328f70e102b2ae888790a9b5d5a9bd05778652a7ce7cae140e40d2"
