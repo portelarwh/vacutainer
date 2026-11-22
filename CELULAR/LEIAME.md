@@ -1,8 +1,16 @@
 # CELULAR · app "Meu Turno"
 
-App de celular para o operador lançar a produção do turno. É **independente da [Plataforma](../Plataforma.html)**: os celulares não acessam o servidor da linha, então o app não lê nem grava as bases. Ele usa a mesma lógica da plataforma e entrega o resultado por **WhatsApp** ou **PDF**.
+App de celular para o operador lançar a produção do turno. É **independente da [Plataforma](../Plataforma.html)**: os celulares não acessam o servidor da linha, então o app não lê nem grava as bases. Ele usa a mesma lógica da plataforma e entrega o resultado por **WhatsApp**, **PDF** ou, desde a versão 0.4, **de volta para a plataforma** (QR pela webcam ou arquivo).
 
-Arquivo único: [index.html](index.html), HTML, CSS e JavaScript nativos, sem biblioteca externa e sem internet. Teste: `npm run test:celular` ([testes/celular/meu-turno.cjs](../testes/celular/meu-turno.cjs)).
+Arquivo único: [index.html](index.html), HTML, CSS e JavaScript nativos, sem internet (embute a biblioteca de QR qrcode-generator, licença MIT). Teste: `npm run test:celular` ([testes/celular/meu-turno.cjs](../testes/celular/meu-turno.cjs)) e, com a plataforma, [testes/plataforma/mt-celular.cjs](../testes/plataforma/mt-celular.cjs).
+
+## Gerado pela plataforma (0.4 · MT-01, 22/11/2026)
+
+- O mesmo arquivo está dentro do `Plataforma.html` (bloco `celular/meu-turno`). **Ao mudar este `index.html`, atualize o bloco:** `node scripts/bloco.mjs celular/meu-turno CELULAR/index.html` (o teste `mt-celular` reprova se os dois forem diferentes).
+- **Administração › Apps de celular › Gerar MeuTurno.html** embute o cadastro de hoje: linha, turnos (vigência do dia), catálogos com a meta por hora (PPH × OEE meta mais específica; sem meta de OEE, o PPH), equipamentos, tipos de parada e pessoas (só ID, nome e turno). Cada nome vai com o código do cadastro. Envie o arquivo aos celulares; quando o cadastro mudar, gere de novo e reenvie com o mesmo nome (o histórico do celular continua).
+- No app gerado, o operador escolhe o nome na lista (o turno guarda o ID) e cada parada guarda o código do tipo e da máquina.
+- **Relatório do turno › Enviar para a plataforma:** mostra o QR (partes de até 450 caracteres, compactadas, que passam sozinhas) e baixa o arquivo `.mt.json` com o mesmo conteúdo.
+- Na plataforma, **Produção › Lançamento › Importar do celular** lê os QR pela webcam (ou abre o arquivo), mostra a prévia e grava hora a hora, paradas (tipo e máquina), scrap, operador e observações pelas ações normais do Lançamento. Hora vazia no celular não muda o que está lançado; reimportar não duplica paradas. O gel do celular não é gravado (é da Gestão de Gel).
 
 ## Telas
 
