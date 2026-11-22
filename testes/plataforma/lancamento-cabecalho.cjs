@@ -31,7 +31,7 @@ const html = fs.readFileSync(path.resolve(__dirname, '../../Plataforma.html'));
         grupos: [...mm.querySelectorAll('.cab2-mg > p')].map(p => p.textContent), ids: [...mm.querySelectorAll('[role="menuitem"]')].map(x => x.id), risco: mm.querySelector('.cab2-mg.risco #dDel')?.textContent.trim() }; });
     assert.deepEqual([m.pop, m.exp, m.ctl, m.oculto, m.role], ['menu', 'false', 'dMaisMenu', true, 'menu']);
     assert.deepEqual(m.grupos, ['Ações do dia', 'Correções', 'Consulta', 'Zona de risco']);
-    assert.deepEqual(m.ids, ['dPend', 'dOff', 'dMove', 'dEnviar', 'dRestore', 'dReapply', 'kcEdit', 'dayMetas', 'dHist', 'dDel']); assert.equal(m.risco, 'Excluir dia');
+    assert.deepEqual(m.ids, ['dPend', 'dOff', 'dMove', 'dEnviar', 'dImpCel', 'dRestore', 'dReapply', 'kcEdit', 'dayMetas', 'dHist', 'dDel']); assert.equal(m.risco, 'Excluir dia');
     /* teclado: abre com clique (foco no primeiro), ↓ e ↑ circulam, End vai ao último, Esc fecha e devolve o foco */
     await f.click('#dMais'); assert.equal(await f.evaluate(() => [document.querySelector('#dMaisMenu').hidden, document.activeElement.id].join()), 'false,dPend');
     await page.keyboard.press('ArrowDown'); assert.equal(await f.evaluate(() => document.activeElement.id), 'dOff');
