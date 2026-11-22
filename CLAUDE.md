@@ -27,7 +27,7 @@ O arquivo não é gerado de outro HTML ou de uma árvore TypeScript. JavaScript 
 | ferramenta/* | Verificar pasta e comparar importação, acessíveis em Saúde dos dados. |
 | dados/manifesto; dados/cenario | Versões/hashes do código e cenário exclusivamente fictício. |
 
-Fora do HTML único, só a pasta [CELULAR](CELULAR/LEIAME.md): app de celular "Meu Turno" (arquivo único `CELULAR/index.html`), independente da plataforma e sem acesso às bases; teste `npm run test:celular`. O mesmo arquivo está no bloco `celular/meu-turno`, que a Administração usa para gerar o app com o cadastro: ao mudar `CELULAR/index.html`, rode `node scripts/bloco.mjs celular/meu-turno CELULAR/index.html` (o teste `mt-celular` confere). A leitura do QR do app usa `biblioteca/jsqr` (Apache 2.0).
+Fora do HTML único, só a pasta [CELULAR](CELULAR/LEIAME.md): app de celular "Meu Turno" (arquivo único `CELULAR/index.html`), independente da plataforma e sem acesso às bases; teste `npm run test:celular`. O mesmo arquivo está no bloco `celular/meu-turno`, que a Administração usa para gerar o app com o cadastro: ao mudar `CELULAR/index.html`, rode `node scripts/bloco.mjs celular/meu-turno CELULAR/index.html` (o teste `mt-celular` confere). O app de manutenção `CELULAR/manutencao.html` segue a mesma regra com o bloco `celular/manutencao` (teste `man-celular`). A leitura do QR dos apps usa `vacQR` (comum/interface) com `biblioteca/jsqr` (Apache 2.0).
 
 ## Contratos que não podem mudar incidentalmente
 
