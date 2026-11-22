@@ -1103,6 +1103,87 @@ const vacPareto = (() => {
   if (typeof document !== 'undefined') document.addEventListener('keydown', ev => { if (ev.key !== 'Enter' &amp;&amp; ev.key !== ' ') return; const g = ev.target &amp;&amp; ev.target.closest &amp;&amp; ev.target.closest('svg.vpar g[role="button"]'); if (!g) return; ev.preventDefault(); g.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true })); });
   return { calc, barras };
 })();
+/* Plataforma 1.8.52 · IMG-01 (pedido do responsável, 22/11/2026): banco de imagens da pasta IMAGENS, ao lado do Plataforma.html.
+   Nada é enviado: a página lê a pasta conectada a cada abertura, a cada Sincronizar e no botão Atualizar. Subpastas viram categorias
+   (IMAGENS/Linha, IMAGENS/Equipamentos…); IMAGENS/Marca (fontes e logos, docs/MARCA.md) fica de fora. Quem usa uma foto guarda só o
+   caminho (IMAGENS/Linha/x.jpg); foto renomeada ou apagada na pasta aparece como "não encontrada", sem sumir em silêncio.
+   Sem a pasta conectada não há como listar a pasta (o navegador não lista pastas por endereço); na demonstração, fotos fictícias.
+   raiz = pasta da linha conectada (ou o objeto de vacRaiz, que devolve as subpastas da raiz). */
+const vacImagens = (() => {
+  const EXT = /\.(jpe?g|png|webp|gif|svg|bmp|avif)$/i, MINI = 320;
+  const urls = new Map(), minis = new Map(), lista = new Map();
+  const partes = c => String(c || '').split('/').filter(Boolean);
+  async function pastaDe(raiz, caminho) { let d = raiz; for (const p of partes(caminho)) d = await d.getDirectoryHandle(p, { create: false }); return d; }
+  const naoAchou = e => typeof vacNaoAchou === 'function' ? vacNaoAchou(e) : !!e &amp;&amp; e.name === 'NotFoundError';
+  /* fotos fictícias da demonstração: desenhos simples, com o nome escrito (dados exclusivamente fictícios) */
+  const CORES = ['#1F6FE5', '#14804A', '#B26F00', '#C23B3A', '#6B4FBB', '#0E7C86', '#5A6B7B', '#A3478F'];
+  const NOMES = [['', 'Tray loader'], ['', 'Aplicação de gel'], ['', 'Envase'], ['', 'Tampador'], ['Inspeção', 'Câmera de nível'], ['Inspeção', 'Rejeito'], ['Saída', 'Encaixotadora'], ['Saída', 'Paletizador']];
+  function demo(sub) {
+    return NOMES.map(([pasta, nome], i) => {
+      const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="640" height="480" viewBox="0 0 640 480"><rect width="640" height="480" fill="${CORES[i]}"/><circle cx="520" cy="110" r="60" fill="#fff" opacity=".25"/><rect x="60" y="250" width="520" height="150" rx="14" fill="#fff" opacity=".18"/><text x="40" y="90" font-family="Arial" font-size="40" font-weight="700" fill="#fff">${nome}</text><text x="40" y="140" font-family="Arial" font-size="24" fill="#fff">Foto fictícia ${i + 1} · demonstração</text></svg>`;
+      const arq = 'demo-' + String(i + 1).padStart(2, '0') + '.svg';
+      return { caminho: ['IMAGENS', ...partes(sub), pasta, arq].filter(Boolean).join('/'), nome: nome + '.svg', pasta, url: 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg), demo: true };
+    });
+  }
+  /* lista as imagens de IMAGENS/<sub> (e das subpastas, até 4 níveis); {ok, itens, motivo, pasta, em} */
+  async function listar(raiz, sub = '', o = {}) {
+    const cam = ['IMAGENS', ...partes(sub)].join('/');
+    if (o.demo) { const r = { ok: true, itens: demo(sub), pasta: cam, em: new Date().toISOString(), demo: true }; lista.set(cam, r); return r; }
+    if (!raiz) return { ok: false, itens: [], pasta: cam, motivo: 'Conecte a pasta da linha para ver as imagens de ' + cam + '.' };
+    let base; try { base = await pastaDe(raiz, cam); }
+    catch (e) { return { ok: false, itens: [], pasta: cam, motivo: naoAchou(e) ? 'A pasta ' + cam + ' ainda não existe na pasta da linha. Crie a pasta e coloque as fotos nela.' : 'Não consegui ler ' + cam + ' (' + (e.message || e.name) + ').' }; }
+    const itens = [];
+    async function anda(d, pref, nivel) {
+      for await (const [nome, h] of d.entries()) {
+        if (h.kind === 'directory') { if (!(nivel === 0 &amp;&amp; !partes(sub).length &amp;&amp; /^marca$/i.test(nome)) &amp;&amp; nivel < 4) await anda(h, pref + nome + '/', nivel + 1); }
+        else if (EXT.test(nome)) itens.push({ caminho: cam + '/' + pref + nome, nome, pasta: pref.replace(/\/$/, ''), h });
+      }
+    }
+    try { await anda(base, '', 0); } catch (e) { return { ok: false, itens, pasta: cam, motivo: 'Não consegui ler ' + cam + ' (' + (e.message || e.name) + ').' }; }
+    itens.sort((a, b) => a.caminho.localeCompare(b.caminho, 'pt-BR', { numeric: true }));
+    const r = { ok: true, itens, pasta: cam, em: new Date().toISOString() }; lista.set(cam, r); return r;
+  }
+  const ultima = sub => lista.get(['IMAGENS', ...partes(sub)].join('/')) || null;
+  const achar = caminho => { for (const r of lista.values()) { const x = r.itens.find(i => i.caminho === caminho); if (x) return x; } return null; };
+  async function arquivo(raiz, caminho) {
+    const x = achar(caminho); if (x &amp;&amp; x.h) return x.h.getFile();
+    if (x &amp;&amp; x.url) { const b = await (await fetch(x.url)).blob(); return new File([b], x.nome, { type: b.type }); }
+    const p = partes(caminho), nm = p.pop(); return (await (await pastaDe(raiz, p.join('/'))).getFileHandle(nm)).getFile();
+  }
+  /* endereço da imagem inteira (cache da sessão; '' quando não acha) */
+  async function url(raiz, caminho) {
+    const x = achar(caminho); if (x &amp;&amp; x.url) return x.url;
+    if (urls.has(caminho)) return urls.get(caminho);
+    try { const f = await arquivo(raiz, caminho), u = URL.createObjectURL(f); urls.set(caminho, u); return u; } catch (e) { return ''; }
+  }
+  /* miniatura reduzida (máx. 320 px) para listas e pinos; SVG e falhas usam a imagem inteira */
+  async function mini(raiz, caminho) {
+    const x = achar(caminho); if (x &amp;&amp; x.url) return x.url;
+    if (minis.has(caminho)) return minis.get(caminho);
+    let u = '';
+    try {
+      const f = await arquivo(raiz, caminho);
+      if (/svg/i.test(f.type) || /\.svg$/i.test(caminho) || typeof createImageBitmap !== 'function') u = await url(raiz, caminho);
+      else {
+        const bm = await createImageBitmap(f), k = Math.min(1, MINI / Math.max(bm.width, bm.height)), c = document.createElement('canvas');
+        c.width = Math.max(1, Math.round(bm.width * k)); c.height = Math.max(1, Math.round(bm.height * k)); c.getContext('2d').drawImage(bm, 0, 0, c.width, c.height); bm.close &amp;&amp; bm.close();
+        const b = await new Promise(ok => c.toBlob(ok, 'image/webp', .8)); u = b ? URL.createObjectURL(b) : await url(raiz, caminho);
+      }
+    } catch (e) { u = ''; }
+    minis.set(caminho, u); return u;
+  }
+  /* preenche <img data-vac-img="caminho"> (miniatura) e <img data-vac-img-full="caminho"> dentro de el; sem achar, marca .vac-img-falta */
+  async function preencher(raiz, el) {
+    for (const im of (el || document).querySelectorAll('img[data-vac-img],img[data-vac-img-full]')) {
+      const c = im.dataset.vacImg || im.dataset.vacImgFull, u = im.dataset.vacImg ? await mini(raiz, c) : await url(raiz, c);
+      if (u) { if (im.getAttribute('src') !== u) im.src = u; im.classList.remove('vac-img-falta'); } else im.classList.add('vac-img-falta');
+    }
+  }
+  /* Atualizar: esquece miniaturas e endereços (uma foto trocada com o mesmo nome volta a ser lida) */
+  function esquecer() { for (const u of [...urls.values(), ...minis.values()]) if (String(u).startsWith('blob:')) URL.revokeObjectURL(u); urls.clear(); minis.clear(); }
+  const nomeDe = caminho => { const p = partes(caminho); return p[p.length - 1] || ''; };
+  return { listar, ultima, achar, arquivo, url, mini, preencher, esquecer, nomeDe, demo };
+})();
 </script></textarea>
 
 <!-- comum/interface -->
@@ -4339,7 +4420,7 @@ function wireConfigComum(){$('#cPasta').onclick=async()=>{if(await Store.pick())
         entrar pelo ID (autocadastro como Consulta); página inicial por perfil (1x por sessão); vigência gravada não se edita (desativar com motivo); painel de vigências; semáforo central; saída do modo de teste.
    1.1.2: aviso da carga diz qual base foi lida.  1.5: páginas Paradas, Máquinas, Manutenção e Projetos na lista (aparecem quando o HTML chega na pasta).  1.4: lista técnica pela CS12 multinível (itens = nível 1, estrutura = níveis 2+); CS03 sai.  1.3: cabeçalho comum (vac-cabecalho v2: barra do sistema + página + abas), busca Ctrl K, acabamento V1.90, Versões com cabeçalho e último backup.  1.2: Configuração › Versões das páginas (versão e data de cada HTML, gravação das bases, cópias repetidas, histórico).
    ===================================================================== */
-const PAGE={id:'portal',titulo:"Administração · Linha Vacutainer",tituloCurto:"Administração",subtitulo:'Sistemas de gestão da linha',versao:'1.9.73',baseFile:'portal-base.json',idb:'vac-portal',backupDir:'00. Backups/Portal',
+const PAGE={id:'portal',titulo:"Administração · Linha Vacutainer",tituloCurto:"Administração",subtitulo:'Sistemas de gestão da linha',versao:'1.9.74',baseFile:'portal-base.json',idb:'vac-portal',backupDir:'00. Backups/Portal',
  vazio:()=>({schema:'portal-base',rev:0,config:{modulos:{},avisoDias:30,notas:{}},audit:[]}),
  /* itens do Portal para a busca Ctrl K: cadastro, pendências e telas */
  busca:q=>{const R=[],D=Cad.D;if(D)for(const t of CAD_ORD){for(const it of D[t]||[]){const c=String(it[kOf(t)]),nm=t==='bom'?((cadItem('catalogos',it.catalogo)||{}).nome||''):it.nome||'';if(norm(c+' '+nm).includes(q))R.push({tipo:CAD_T[t].um,txt:c+(nm?' · '+nm:''),sub:'Cadastros'+(cadAtivo(t,it,D)?'':' · inativo'),href:'#cadastros/'+t+'/'+encodeURIComponent(c)});if(R.length>30)break}}
@@ -5218,6 +5299,7 @@ const CAD_SECS=['inicio','matriz','importar','auditoria','backups','seguranca','
    curtas (macro, sem detalhe técnico). REGRA: toda versão nova da plataforma ganha uma entrada aqui, a mais recente primeiro
    (AGENTS.md e CLAUDE.md). Tipos: nova (função nova), melhoria (algo que já existia ficou melhor), correcao (erro corrigido). */
 const NOVIDADES=[
+ {v:'1.8.52',d:'2026-11-22',itens:[['novo','Banco de imagens: as fotos da pasta IMAGENS (subpastas viram categorias) aparecem na plataforma sem precisar enviar; foto nova na pasta aparece ao abrir, ao sincronizar ou em Atualizar.'],['novo','Linha 360° › Visão da linha › camada Fotos: arraste as fotos de IMAGENS/Linha até o local na planta; afastado, as fotos próximas viram um número e, aproximando, cada uma aparece com a miniatura. Filtro Todas ou Não colocadas.'],['novo','Linha 360°: a planta passa a ser lida de IMAGENS/PLANTA_BAIXA.SVG (sem o arquivo, a planta embutida); em vetor, o zoom vai a 800% sem perder nitidez. Ctrl + roda do mouse aproxima no ponto do cursor.'],['novo','Formulários A4: Escolher do banco copia fotos da pasta IMAGENS para o formulário.']]},
  {v:'1.8.51',d:'2026-11-22',itens:[['melhoria','Linha 360° › Configuração › Pontos e equipamentos: altere quantos pontos quiser e grave tudo em "Salvar alterações"; as linhas alteradas ficam marcadas e o que foi digitado não se perde até salvar ou descartar.'],['melhoria','Marca: a pasta Marca (fontes, logos, favicon e fotos da tela de entrada) passa a ficar dentro de IMAGENS (IMAGENS/Marca/). Enquanto não for movida, a pasta Marca antiga continua valendo.']]},
  {v:'1.8.50',d:'2026-11-22',itens:[['nova','Administração › Apps de celular: gera também o Manutencao.html (técnico) com equipamentos, modos de falha e pessoas do cadastro.'],['nova','Equipamentos › Ordens de serviço › Importar do celular: o atendimento do app Manutenção (QR pela webcam ou arquivo) vira OS corretiva com técnico, sintoma, causa, ação, peças, início e fim e se parou a linha. Importar de novo não duplica.']]},
  {v:'1.8.49',d:'2026-11-22',itens:[['nova','Administração › Apps de celular: gera o MeuTurno.html com o cadastro de hoje (turnos, catálogos com meta por hora, equipamentos, tipos de parada e pessoas). Envie aos celulares; o operador escolhe o nome na lista.'],['nova','Produção › Lançamento › Importar do celular: lê o QR do app pela webcam (ou o arquivo do turno), mostra a prévia e grava hora a hora, paradas com tipo e máquina, scrap, operador e observações. Importar de novo não duplica.'],['nova','App Meu Turno 0.4: "Enviar para a plataforma" mostra o QR (em partes, se o turno for grande) e gera o arquivo do turno.']]},
@@ -35246,6 +35328,28 @@ window.VAC_GUIA.inic = {
 :root[data-theme="dark"] .l3-cv svg.ov .zrot{stroke:#0e1a24}
 .l3-cv svg.ov .fl{fill:none;stroke-width:7;stroke-linejoin:round;stroke-linecap:round;opacity:.85}.l3-cv svg.ov .fl.t{stroke-dasharray:4 16}
 .l3-pin{position:absolute;transform:translate(-50%,-50%);min-width:34px;height:34px;padding:0 var(--sp-4,4px);border-radius:999px;border:3px solid #fff;background:var(--none-fill,#A8B4C1);color:#fff;font:800 14px var(--f-body);display:inline-flex;align-items:center;justify-content:center;box-shadow:0 2px 8px rgba(16,35,51,.45);cursor:pointer;z-index:2}
+.l3-ft{position:absolute;transform:translate(-50%,-50%);width:30px;height:30px;padding:0;border-radius:999px;border:3px solid #fff;background:#1F6FE5;color:#fff;display:inline-flex;align-items:center;justify-content:center;box-shadow:0 2px 8px rgba(16,35,51,.45);cursor:grab;z-index:3;touch-action:none}
+.l3-ft.mini{width:68px;height:51px;border-radius:8px;overflow:hidden;background:#fff}.l3-ft.mini img{width:100%;height:100%;object-fit:cover;display:block;pointer-events:none}
+.l3-ft.falta{background:#C23B3A}.l3-ft:focus-visible,.l3-fg:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+.l3-fg{position:absolute;transform:translate(-50%,-50%);min-width:42px;height:38px;padding:0 10px;gap:4px;border-radius:999px;border:3px solid #fff;background:#060A3D;color:#fff;display:inline-flex;align-items:center;justify-content:center;font:800 15px var(--f-body);box-shadow:0 2px 10px rgba(16,35,51,.5);cursor:zoom-in;z-index:3}
+.l3-pin.dim{opacity:.5;transform:translate(-50%,-50%) scale(.78)}
+.l3-cv.l3-alvo{outline:3px dashed var(--accent);outline-offset:-3px}
+.l3-lgf,.l3-lgg{border-radius:999px!important}.l3-lgf{background:#1F6FE5!important}.l3-lgg{background:#060A3D!important}
+.l3-fgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(118px,1fr));gap:8px}.l3-fgrid4{grid-template-columns:repeat(auto-fill,minmax(150px,1fr))}
+/* camada Fotos: o banco fica sempre ao lado da planta, para arrastar sem rolar; a lista rola dentro do painel */
+.l3-lay.l3-lay-f{grid-template-columns:minmax(0,1fr) 300px}@media(max-width:760px){.l3-lay.l3-lay-f{grid-template-columns:minmax(0,1fr)}}
+.l3-banco{position:static;max-height:none}.l3-banco #fGrid{max-height:640px;overflow:auto;padding:2px}
+.l3-fimg{margin:0;position:relative;display:block;border:1px solid var(--line,#d5dde6);border-radius:8px;overflow:hidden;background:var(--surface,#fff);cursor:grab}
+.l3-fimg img{width:100%;aspect-ratio:4/3;object-fit:cover;display:block;background:var(--surface-3,#eef2f6);pointer-events:none}
+.l3-fimg figcaption,.l3-fimg .fc{display:block;font-size:12px;padding:4px 6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.l3-fimg .pill{position:absolute;top:6px;left:6px}.l3-fimg.on{outline:2px solid #14804A;outline-offset:-2px}.l3-fimg[hidden]{display:none}
+.l3-fimg input[type=checkbox]{position:absolute;top:6px;right:6px;width:18px;height:18px}label.l3-fimg{cursor:pointer}
+img.vac-img-falta{visibility:hidden}
+.l3-fmodal{position:fixed;inset:0;background:rgba(6,10,61,.55);display:flex;align-items:center;justify-content:center;z-index:1000;padding:16px}
+.l3-fver{background:var(--surface,#fff);color:var(--ink);border-radius:12px;width:min(1100px,96vw);max-height:calc(var(--l3-vh,100vh) - 32px);display:grid;grid-template-rows:auto minmax(0,1fr) auto;gap:12px;padding:16px;box-shadow:0 10px 40px rgba(0,0,0,.35)}
+.l3-fvh{display:flex;gap:12px;align-items:flex-start}.l3-fvh h3{margin:2px 0}.l3-fver .eb{font-size:11.5px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.l3-fvi{min-height:0;display:flex;align-items:center;justify-content:center;background:#0b1220;border-radius:8px;overflow:hidden}.l3-fvi img{max-width:100%;max-height:calc(var(--l3-vh,100vh) - 230px);object-fit:contain}
+.l3-fvi .l3-fvfalta{display:none}.l3-fvi.falta{background:transparent}.l3-fvi.falta .l3-fvfalta{display:block;margin:24px}.l3-fvi.falta img{display:none}
 .l3-pin.ok{background:#14804A}.l3-pin.warn{background:#B26F00}.l3-pin.crit{background:#C23B3A}.l3-pin.info{background:#1972AE}
 .l3-pin.on{outline:4px solid var(--accent);outline-offset:2px;z-index:4}
 .l3-pin:focus-visible{outline:4px solid var(--accent);outline-offset:2px}
@@ -35319,7 +35423,7 @@ tr.l3-sujo>td{background:color-mix(in srgb,var(--warn) 10%,transparent)}tr.l3-su
 <main class="wrap" id="main"></main>
 <div class="toasts" id="toasts"></div>
 <script>
-const PAGE={id:"linha",titulo:"Linha 360° · Planta interativa da linha",tituloCurto:"Linha 360°",subtitulo:"Planta interativa: paradas, pessoas e ações em cada ponto da linha",versao:"1.4.1",baseFile:"linha360-base.json",backupDir:"00. Backups/Linha360",estado:"atualizacao",estadoNota:"Primeira versão: planta, pontos, áreas, postos e checklists. MES por equipamento chega depois."};
+const PAGE={id:"linha",titulo:"Linha 360° · Planta interativa da linha",tituloCurto:"Linha 360°",subtitulo:"Planta interativa: paradas, pessoas e ações em cada ponto da linha",versao:"1.5.0",baseFile:"linha360-base.json",backupDir:"00. Backups/Linha360",estado:"atualizacao",estadoNota:"Primeira versão: planta, pontos, áreas, postos e checklists. MES por equipamento chega depois."};
 const APP_VERSION=PAGE.versao;
 /* ---------- vac-cabecalho v2 · JS (igual em todas as páginas) ---------- */
 const VAC_CAB_VERSAO=2;
@@ -35479,7 +35583,7 @@ const Store={origem:'',dir:null,dirName:'',perm:false,data:completar(vazio()),qu
   if(!this._bases){this._bases=true;try{vacAvisoBases(await vacMoverBases(this.dir,[[PAGE.baseFile,PAGE.backupDir]]))}catch(e){console.warn('bases',e)}}
   try{await this.preparar();const r=await this.ler();this.readErr='';await this.recarga(r)}
   catch(e){this.readErr='Não consegui ler '+PAGE.baseFile+' ('+(e.message||e.name)+'). Nada será gravado até a leitura voltar; as alterações ficam pendentes neste navegador.';toast(this.readErr,1)}
-  await lerExt()},
+  await lerExt();lerPlanta();lerFotos(true)},
  async recarga(r){const k=this.conhecida();
   if(r){const n=await this.perdidas(r);if(n){toast(n+' alteração(ões) sua(s) que outra estação gravou por cima voltaram para a fila e serão gravadas de novo.');setTimeout(()=>this.save(),50)}
    this.sumiu=false;this.data=completar(r);this.baseFound=true;this.queue.forEach(op=>applyOp(this.data,op));this.conhecer(r);this.cache()}
@@ -35583,16 +35687,18 @@ const FREQ=[['turno','A cada turno'],['dia','Uma vez por dia'],['semana','Uma ve
 function vazio(){return{schema:'vac-linha360',schemaVersion:1,rev:0,revBy:'',revAt:'',revId:'',appVersion:APP_VERSION,pontos:[],areas:[],postos:[],checklists:[],feitos:[],eventos:[],auditoria:[],exports:null}}
 /* 1.4.0 · "formularios" (FORM-01) não entra no vazio: nasce no 1º formulário (applyOp), para que só abrir/conectar não mude uma base antiga */
 function completar(D){const V=vazio();for(const k of Object.keys(V))if(D[k]==null)D[k]=V[k];return D}
-function validarBase(D){const e=[];if(!D||typeof D!=='object')return['não é um objeto'];for(const k of['pontos','areas','postos','checklists','feitos','formularios'])if(D[k]!=null&amp;&amp;!Array.isArray(D[k]))e.push(k+' não é lista');return e.slice(0,10)}
+function validarBase(D){const e=[];if(!D||typeof D!=='object')return['não é um objeto'];for(const k of['pontos','areas','postos','checklists','feitos','formularios','fotos'])if(D[k]!=null&amp;&amp;!Array.isArray(D[k]))e.push(k+' não é lista');return e.slice(0,10)}
 /* operações (idempotentes; reaplicadas sobre a versão mais nova da base). Nada se apaga: ativo:false.
    {k:'ponto',it}   posição, nome, fluxo e equipamentos (códigos do cadastro do Portal) de um ponto da planta
    {k:'area',it}    área: nome, pontos e polígono (em % do desenho)
    {k:'posto',it}   posto de trabalho: posição, ponto vinculado e pessoa por turno
    {k:'chk',it}     checklist (título, ponto, posto, frequência)
    {k:'feito',it}   checklist cumprido num dia/turno (id = checklist|dia|turno); {k:'desfeito',id,motivo} anula sem apagar
-   {k:'form',it}    1.4.0 · formulário (FORM-01): criação, edição e situação (aberto → executado → confirmado, ou cancelado); nada se apaga */
+   {k:'form',it}    1.4.0 · formulário (FORM-01): criação, edição e situação (aberto → executado → confirmado, ou cancelado); nada se apaga
+   {k:'foto',it}    1.5.0 · foto do banco IMAGENS/Linha na planta (IMG-01): id = caminho do arquivo, posição em %; tirar do mapa = ativo:false.
+                    "fotos" não entra no vazio: nasce na 1ª foto colocada, como "formularios" */
 function applyOp(D,op){const up=(L,it)=>{const i=L.findIndex(x=>x.id===it.id);if(i>=0)L[i]={...L[i],...clone(it)};else L.push(clone(it))};
- if(op.k==='ponto')up(D.pontos,op.it);else if(op.k==='area')up(D.areas,op.it);else if(op.k==='posto')up(D.postos,op.it);else if(op.k==='chk')up(D.checklists,op.it);else if(op.k==='form'){if(!Array.isArray(D.formularios))D.formularios=[];up(D.formularios,op.it)}
+ if(op.k==='ponto')up(D.pontos,op.it);else if(op.k==='area')up(D.areas,op.it);else if(op.k==='posto')up(D.postos,op.it);else if(op.k==='chk')up(D.checklists,op.it);else if(op.k==='form'){if(!Array.isArray(D.formularios))D.formularios=[];up(D.formularios,op.it)}else if(op.k==='foto'){if(!Array.isArray(D.fotos))D.fotos=[];up(D.fotos,op.it)}
  else if(op.k==='feito'){const f=D.feitos.find(x=>x.id===op.it.id);if(f)Object.assign(f,clone(op.it),{anulado:false});else D.feitos.push(clone(op.it))}
  else if(op.k==='desfeito'){const f=D.feitos.find(x=>x.id===op.id);if(f){f.anulado=true;f.anuladoEm=op.em;f.anuladoPor=op.por}}
  return D}
@@ -35601,6 +35707,118 @@ const pontos=()=>junta(Store.data.pontos,PONTOS_PADRAO).sort((a,b)=>(+a.id||999)
 const areas=()=>junta(Store.data.areas,AREAS_PADRAO);
 const postos=()=>junta(Store.data.postos,POSTOS_PADRAO).sort((a,b)=>a.id.localeCompare(b.id));
 const P=id=>pontos().find(p=>p.id===String(id));
+/* ---------- 1.5.0 · IMG-01: planta lida da pasta IMAGENS e fotos na planta ---------- */
+/* Planta (pedido do responsável, 22/11/2026): IMAGENS/PLANTA_BAIXA.SVG, para atualizar a planta sem nova versão da plataforma. Lida pela pasta
+   conectada ou pelo caminho ao lado do Plataforma.html; sem o arquivo, a planta embutida (imagem de 2000 × 1125 px). Em vetor, o zoom vai a 800%.
+   Pontos, postos, áreas e fotos ficam em % do desenho: uma planta nova com outro enquadramento pede reposicionar os pontos (Configuração ›
+   Editar posições). */
+const Planta={src:PLANTA,w:LW,h:LH,origem:'',vetor:false,chave:''};
+const PLANTA_NOMES=['PLANTA_BAIXA.SVG','PLANTA_BAIXA.svg','planta_baixa.svg'];
+const zMax=()=>Planta.vetor?8:4;
+function plantaMedidas(t){const m=/<svg\b[^>]*>/i.exec(t||'');if(!m)return null;const s=m[0],vb=/viewBox\s*=\s*["']\s*([-\d.eE]+)[\s,]+([-\d.eE]+)[\s,]+([-\d.eE]+)[\s,]+([-\d.eE]+)/i.exec(s);
+ if(vb&amp;&amp;+vb[3]>0&amp;&amp;+vb[4]>0)return[+vb[3],+vb[4]];const w=/\swidth\s*=\s*["']\s*([\d.]+)/i.exec(s),h=/\sheight\s*=\s*["']\s*([\d.]+)/i.exec(s);return w&amp;&amp;h&amp;&amp;+w[1]>0&amp;&amp;+h[1]>0?[+w[1],+h[1]]:null}
+async function lerPlanta(){let r=null;
+ if(!Store.test&amp;&amp;Store.dir&amp;&amp;Store.perm){try{const d=await Store.sub('IMAGENS');for(const nm of PLANTA_NOMES){let f;try{f=await(await d.getFileHandle(nm)).getFile()}catch(e){continue}
+   const ch='IMAGENS/'+nm+'|'+f.lastModified+'|'+f.size;if(ch===Planta.chave)return;const t=await f.text(),md=plantaMedidas(t);
+   if(md)r={src:URL.createObjectURL(new Blob([t],{type:'image/svg+xml'})),w:md[0],h:md[1],origem:'IMAGENS/'+nm,chave:ch};else toast('IMAGENS/'+nm+' não parece um SVG válido: a planta embutida continua.',1);break}}catch(e){}}
+ if(!r)for(const nm of PLANTA_NOMES){const u='IMAGENS/'+nm;if(Planta.chave===u)return;const md=await new Promise(ok=>{const im=new Image();im.onload=()=>ok(im.naturalWidth>0?[im.naturalWidth,im.naturalHeight]:null);im.onerror=()=>ok(null);im.src=u});
+   if(md){r={src:u,w:md[0],h:md[1],origem:u,chave:u};break}}
+ if(!r)return;const velho=Planta.src;Object.assign(Planta,r,{vetor:true});if(velho.startsWith('blob:'))URL.revokeObjectURL(velho);App.zoom=Math.min(App.zoom,zMax());render()}
+
+/* Fotos (pedido do responsável, 22/11/2026): o banco é a pasta IMAGENS/Linha (e subpastas), lida sem upload (vacImagens). Arrastar uma foto do
+   banco para a planta grava só o caminho e a posição em "fotos" desta base ({k:'foto'}; nada se apaga: tirar do mapa = ativo:false).
+   Afastado, as fotos próximas viram um pino com o número; aproximando, cada foto aparece no seu lugar e, a partir de 200%, com a miniatura. */
+const FOTOS_SUB='Linha';
+const Fotos={r:null,lendo:null,filtro:'todas',pasta:''};
+const fotosMapa=()=>(Store.data.fotos||[]).filter(f=>f.ativo!==false&amp;&amp;f.arq);
+const raizImg=()=>!Store.test&amp;&amp;Store.dir&amp;&amp;Store.perm?Store.dir:null;
+const CAM_SVG='<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.4"/></svg>';
+function lerFotos(forcar){if(Fotos.lendo&amp;&amp;!forcar)return Fotos.lendo;Fotos.lendo=(async()=>{try{Fotos.r=await vacImagens.listar(raizImg(),FOTOS_SUB,{demo:!!Store.test})}catch(e){Fotos.r={ok:false,itens:[],pasta:'IMAGENS/'+FOTOS_SUB,motivo:'Não consegui ler a pasta ('+(e.message||e.name)+').'}}
+  Fotos.lendo=null;if(App.tab==='mapa'&amp;&amp;App.camada==='fotos')render()})();return Fotos.lendo}
+function fotoGrupos(){const L=fotosMapa(),W=Math.max(680,App.vpW||900)*App.zoom,H=W*Planta.h/Planta.w,rx=46/W*100,ry=46/H*100,G=[];
+ for(const f of L){const g=G.find(g=>Math.abs(g.x-f.x)<rx&amp;&amp;Math.abs(g.y-f.y)<ry);if(g){g.L.push(f);g.x=g.L.reduce((s,q)=>s+q.x,0)/g.L.length;g.y=g.L.reduce((s,q)=>s+q.y,0)/g.L.length}else G.push({x:f.x,y:f.y,L:[f]})}
+ return G}
+function fotosPins(){const mini=App.zoom>=2,G=App._grupos=fotoGrupos(),ok=c=>!Fotos.r||!Fotos.r.ok||!!vacImagens.achar(c);
+ return G.map((g,i)=>{if(g.L.length>1)return`<button type="button" class="l3-fg" data-fgrupo="${i}" style="left:${g.x}%;top:${g.y}%" title="${g.L.length} fotos neste local · clique para aproximar" aria-label="${g.L.length} fotos neste local; clique para aproximar">${CAM_SVG}<b>${g.L.length}</b></button>`;
+  const f=g.L[0],tem=ok(f.arq),nm=f.nome||vacImagens.nomeDe(f.arq);
+  return`<button type="button" class="l3-ft${mini&amp;&amp;tem?' mini':''}${tem?'':' falta'}" data-foto="${esc(f.id)}" style="left:${f.x}%;top:${f.y}%" title="${esc(nm+(tem?' · clique para ver; arraste para mudar de lugar':' · imagem não encontrada na pasta'))}" aria-label="Foto ${esc(nm)}">${mini&amp;&amp;tem?`<img data-vac-img="${esc(f.arq)}" alt="" draggable="false">`:CAM_SVG}</button>`}).join('')}
+function fotosPainel(){const r=Fotos.r,M=fotosMapa(),porArq=new Map(M.map(f=>[f.arq,f])),itens=r&amp;&amp;r.ok?r.itens:[],pastas=[...new Set(itens.map(i=>i.pasta))].sort((a,b)=>a.localeCompare(b,'pt-BR'));
+ if(Fotos.pasta&amp;&amp;!pastas.includes(Fotos.pasta))Fotos.pasta='';
+ const naPasta=L=>Fotos.pasta?L.filter(i=>i.pasta===Fotos.pasta):L,nao=naPasta(itens).filter(i=>!porArq.has(i.caminho)),tudo=naPasta(itens),L=Fotos.filtro==='nao'?nao:tudo;
+ const faltam=r&amp;&amp;r.ok?M.filter(f=>!vacImagens.achar(f.arq)):[];
+ return`<aside class="card l3-fi l3-banco" aria-label="Banco de imagens"><div><span class="eb">Banco de imagens</span><h3>Fotos da linha</h3>
+  <p class="small muted"><span class="code">${esc(r?r.pasta:'IMAGENS/'+FOTOS_SUB)}</span>${r&amp;&amp;r.ok?` · ${itens.length} foto(s) · ${M.length} no mapa · lida às ${esc(brh(r.em))}`:''}${Store.test?' · fotos fictícias da demonstração':''}</p></div>
+  ${!r?'<p class="small muted">Lendo a pasta…</p>':!r.ok?`<p class="l3-av">${ic('info','sm')} ${esc(r.motivo)}</p>`:''}
+  <div class="row wf"><div class="l3-cam l3-ffil" role="group" aria-label="Quais fotos mostrar"><button type="button" data-ffil="todas" aria-pressed="${Fotos.filtro!=='nao'}">Todas (${tudo.length})</button><button type="button" data-ffil="nao" aria-pressed="${Fotos.filtro==='nao'}">Não colocadas (${nao.length})</button></div><span class="sp"></span><button class="b sm" id="fAtual" title="Lê a pasta de novo (fotos novas aparecem aqui)">Atualizar</button></div>
+  <div class="row wf">${pastas.length>1?`<label class="small">Subpasta <select id="fPasta"><option value="">Todas</option>${pastas.map(p=>`<option value="${esc(p)}"${Fotos.pasta===p?' selected':''}>${esc(p||'(IMAGENS/'+FOTOS_SUB+')')}</option>`).join('')}</select></label>`:''}<label class="small" style="flex:1">Buscar <input id="fBusca" type="search" placeholder="nome da foto" autocomplete="off"></label></div>
+  <p class="small muted">Arraste uma foto da lista até o local na planta. Para mudar de lugar, arraste o pino da foto. Afastado, as fotos próximas viram um número; aproxime (botão + ou Ctrl + roda do mouse) para ver cada uma.</p>
+  <div class="l3-fgrid" id="fGrid">${L.map(i=>{const f=porArq.get(i.caminho);return`<figure class="l3-fimg${f?' on':''}" draggable="true" tabindex="0" data-fimg="${esc(i.caminho)}" data-busca="${esc(norm(i.nome+' '+i.pasta))}" title="${esc(i.caminho+(f?' · no mapa: clique para ver onde':' · arraste até a planta'))}"><img data-vac-img="${esc(i.caminho)}" alt="" draggable="false"><figcaption>${esc(i.nome)}</figcaption>${f?'<span class="pill ok">no mapa</span>':''}</figure>`}).join('')}</div>
+  ${r&amp;&amp;r.ok&amp;&amp;!L.length?`<p class="small muted">${Fotos.filtro==='nao'&amp;&amp;tudo.length?'Todas as fotos já estão no mapa.':'Nenhuma foto nesta pasta.'}</p>`:''}
+  ${faltam.length?`<h4>No mapa, mas não estão mais na pasta</h4><ul class="l3-li">${faltam.map(f=>`<li><span class="code">${esc(f.arq)}</span><span class="sp"></span><button class="b sm" data-fdel="${esc(f.id)}">Tirar do mapa</button></li>`).join('')}</ul>`:''}
+ </aside>`}
+const pontoPerto=f=>{let m=null,d=1e9;for(const p of pontos()){const q=Math.hypot((p.x-f.x)*Planta.w/100,(p.y-f.y)*Planta.h/100);if(q<d){d=q;m=p}}return m};
+function focar(x,y,z){App.zoom=+Math.max(1,Math.min(zMax(),z)).toFixed(2);App.centro=[x,y];render()}
+function colocarFoto(arq,xy){const f=(Store.data.fotos||[]).find(x=>x.id===arq),ja=f&amp;&amp;f.ativo!==false;
+ Store.commit({k:'foto',it:{id:arq,arq,nome:vacImagens.nomeDe(arq),x:xy[0],y:xy[1],ativo:true,em:new Date().toISOString(),por:user()||'',porId:vacPessoa.eu().id||''}});toast(ja?'Foto movida':'Foto colocada na planta')}
+function tirarFoto(id){Store.commit({k:'foto',it:{id,ativo:false,tiradaEm:new Date().toISOString(),tiradaPor:user()||'',tiradaPorId:vacPessoa.eu().id||''}});toast('Foto tirada do mapa. O arquivo continua na pasta.')}
+/* janelas de foto na parte visível da tela: o quadro da página tem a altura do conteúdo, então "fixo" centralizaria no meio do quadro
+   (mesma ideia dos avisos na casca, 1.8.10). Acompanha a rolagem da casca enquanto a janela está aberta. */
+function l3Visivel(el){const pos=()=>{if(!document.body.contains(el))return fim();let t=0,h=innerHeight;try{const fe=window.frameElement;if(fe){const q=fe.getBoundingClientRect();t=Math.max(0,-q.top);h=Math.min(innerHeight-t,parent.innerHeight-Math.max(0,q.top))}}catch(e){}
+  el.style.top=t+'px';el.style.height=Math.max(240,h)+'px';el.style.bottom='auto';el.style.setProperty('--l3-vh',Math.max(240,h)+'px')};
+ const fim=()=>{try{parent.removeEventListener('scroll',pos);parent.removeEventListener('resize',pos)}catch(e){}removeEventListener('resize',pos)};
+ try{parent.addEventListener('scroll',pos,{passive:true});parent.addEventListener('resize',pos)}catch(e){}addEventListener('resize',pos);pos()}
+function verFoto(id,ids){const L=(ids||[id]).map(i=>fotosMapa().find(f=>f.id===i)).filter(Boolean);if(!L.length)return;let k=Math.max(0,L.findIndex(f=>f.id===id));
+ let el=$('#l3FotoModal');if(!el){el=document.createElement('div');el.id='l3FotoModal';el.className='l3-fmodal';el.setAttribute('role','dialog');el.setAttribute('aria-modal','true');document.body.appendChild(el);l3Visivel(el)}
+ const volta=document.activeElement,tec=e=>{if(e.key==='Escape')fechar();else if(L.length>1&amp;&amp;e.key==='ArrowRight'){k=(k+1)%L.length;des()}else if(L.length>1&amp;&amp;e.key==='ArrowLeft'){k=(k-1+L.length)%L.length;des()}};
+ const fechar=()=>{el.remove();document.removeEventListener('keydown',tec);if(volta&amp;&amp;volta.focus&amp;&amp;document.body.contains(volta))volta.focus()};document.addEventListener('keydown',tec);
+ const des=()=>{const f=L[k],p=pontoPerto(f),nm=f.nome||vacImagens.nomeDe(f.arq);el.setAttribute('aria-label','Foto '+nm);
+  el.innerHTML=`<div class="l3-fver"><div class="l3-fvh"><div><span class="eb">Foto na planta${L.length>1?` · ${k+1} de ${L.length}`:''}</span><h3>${esc(nm)}</h3><p class="small muted"><span class="code">${esc(f.arq)}</span>${p?` · perto do ponto <b>${esc(p.id+' · '+p.nome)}</b>`:''}${f.em?` · colocada em ${esc(brh(f.em))}${f.por||f.porId?' por '+esc(vacPessoa.nome(f.porId,f.por)):''}`:''}</p></div><span class="sp"></span><button class="b sm" data-fx aria-label="Fechar">✕</button></div>
+   <div class="l3-fvi"><img data-vac-img-full="${esc(f.arq)}" alt="${esc(nm)}"><p class="l3-av l3-fvfalta">${ic('alerta','sm')} A imagem não foi encontrada em ${esc(f.arq)}: ela foi renomeada, movida ou apagada da pasta. Coloque o arquivo de volta ou tire a foto do mapa.</p></div>
+   <div class="row wf">${L.length>1?'<button class="b" data-fant>← Anterior</button><button class="b" data-fprox>Próxima →</button>':''}<span class="sp"></span>${p?`<button class="b" data-fponto="${esc(p.id)}">Ver o ponto ${esc(p.id)}</button>`:''}<button class="b" data-ftirar>Tirar do mapa</button><button class="b pri" data-fx>Fechar</button></div></div>`;
+  el.onclick=e=>{if(e.target===el)fechar()};$$('[data-fx]',el).forEach(b=>b.onclick=fechar);
+  const a=$('[data-fant]',el),b=$('[data-fprox]',el);if(a)a.onclick=()=>{k=(k-1+L.length)%L.length;des()};if(b)b.onclick=()=>{k=(k+1)%L.length;des()};
+  $('[data-ftirar]',el).onclick=()=>{if(!confirm('Tirar esta foto do mapa? O arquivo continua na pasta IMAGENS.'))return;fechar();tirarFoto(f.id)};
+  const pp=$('[data-fponto]',el);if(pp)pp.onclick=()=>{fechar();App.sel=pp.dataset.fponto;App.camada='min';render()};
+  const im=$('img',el);vacImagens.preencher(raizImg(),el).then(()=>$('.l3-fvi',el).classList.toggle('falta',im.classList.contains('vac-img-falta')));const x=$('[data-fx]',el);if(x)x.focus()};
+ des()}
+/* eventos da camada Fotos (chamado no ligar) */
+function ligarFotos(){if(App.tab!=='mapa'||App.camada!=='fotos')return;const cv=$('#cv');
+ vacImagens.preencher(raizImg(),$('#main'));
+ if(cv){cv.ondragover=e=>{if([...(e.dataTransfer.types||[])].includes('text/plain')){e.preventDefault();e.dataTransfer.dropEffect='copy';cv.classList.add('l3-alvo')}};cv.ondragleave=e=>{if(!cv.contains(e.relatedTarget))cv.classList.remove('l3-alvo')};
+  cv.ondrop=e=>{cv.classList.remove('l3-alvo');const t=e.dataTransfer.getData('text/plain')||'';if(!t.startsWith('vacfoto:'))return;e.preventDefault();colocarFoto(t.slice(8),pctDe(e))}}
+ $$('[data-fimg]').forEach(el=>{el.ondragstart=e=>{e.dataTransfer.setData('text/plain','vacfoto:'+el.dataset.fimg);e.dataTransfer.effectAllowed='copy'};
+  const ir=()=>{const f=fotosMapa().find(x=>x.arq===el.dataset.fimg);if(f)focar(f.x,f.y,Math.max(App.zoom,2));else toast('Arraste a foto até o local na planta.')};el.onclick=ir;el.onkeydown=e=>{if(e.key==='Enter'){e.preventDefault();ir()}}});
+ $$('[data-ffil]').forEach(b=>b.onclick=()=>{Fotos.filtro=b.dataset.ffil;render()});
+ const fp=$('#fPasta');if(fp)fp.onchange=()=>{Fotos.pasta=fp.value;render()};
+ const fb=$('#fBusca');if(fb){fb.value=Fotos.busca||'';const filtra=()=>{Fotos.busca=fb.value;const q=norm(fb.value);$$('[data-fimg]').forEach(x=>x.hidden=!!q&amp;&amp;!x.dataset.busca.includes(q))};fb.oninput=filtra;if(fb.value)filtra()}
+ const fa=$('#fAtual');if(fa)fa.onclick=async()=>{fa.disabled=true;vacImagens.esquecer();await lerFotos(true);toast('Pasta lida de novo')};
+ $$('[data-fdel]').forEach(b=>b.onclick=()=>{if(confirm('Tirar esta foto do mapa?'))tirarFoto(b.dataset.fdel)});
+ /* grupo: aproxima o bastante para separar as fotos (com folga); já no zoom máximo, abre as fotos do grupo em sequência */
+ $$('[data-fgrupo]').forEach(b=>b.onclick=()=>{const g=App._grupos[+b.dataset.fgrupo];if(!g)return;if(App.zoom>=zMax())return verFoto(g.L[0].id,g.L.map(f=>f.id));
+  const W1=Math.max(680,App.vpW||900),H1=W1*Planta.h/Planta.w;let d=1e9;for(let i=0;i<g.L.length;i++)for(let j=i+1;j<g.L.length;j++){const a=g.L[i],c=g.L[j];d=Math.min(d,Math.max(Math.abs(a.x-c.x)*W1/100,Math.abs(a.y-c.y)*H1/100))}
+  focar(g.x,g.y,Math.max(App.zoom*2,2,d>0?46/d*1.15:zMax()))});
+ /* pino da foto: arrastar muda de lugar; clicar (ou Enter) abre a foto */
+ $$('[data-foto]').forEach(b=>{b.onclick=e=>{if(e.detail===0)verFoto(b.dataset.foto)};b.onpointerdown=e=>{if(e.button)return;e.preventDefault();const x0=e.clientX,y0=e.clientY;let mv=false,xy=null;b.setPointerCapture(e.pointerId);
+  b.onpointermove=ev=>{if(!mv&amp;&amp;Math.hypot(ev.clientX-x0,ev.clientY-y0)<5)return;mv=true;xy=pctDe(ev);b.style.left=xy[0]+'%';b.style.top=xy[1]+'%'};
+  b.onpointerup=()=>{b.onpointermove=b.onpointerup=null;if(mv&amp;&amp;xy){Store.commit({k:'foto',it:{id:b.dataset.foto,x:xy[0],y:xy[1]}});toast('Foto movida')}else verFoto(b.dataset.foto)}}})}
+/* 1.5.0 · IMG-01: "Escolher do banco" nos Formulários. Lista a pasta IMAGENS inteira (menos Marca) e entrega os arquivos escolhidos ao mesmo
+   caminho de "Adicionar fotos": a foto é reduzida e gravada em Formularios/ junto do formulário, então o formulário não muda se a foto do banco
+   for trocada ou apagada depois. */
+async function fmBanco(entregar){let el=$('#fmBancoModal');if(el)el.remove();el=document.createElement('div');el.id='fmBancoModal';el.className='l3-fmodal';el.setAttribute('role','dialog');el.setAttribute('aria-modal','true');el.setAttribute('aria-label','Escolher fotos do banco de imagens');document.body.appendChild(el);l3Visivel(el);
+ const sel=new Set(),fechar=()=>{el.remove();document.removeEventListener('keydown',tec)},tec=e=>{if(e.key==='Escape')fechar()};document.addEventListener('keydown',tec);el.onclick=e=>{if(e.target===el)fechar()};
+ el.innerHTML='<div class="l3-fver"><p class="small muted">Lendo a pasta IMAGENS…</p></div>';
+ const r=await vacImagens.listar(raizImg(),'',{demo:!!Store.test});let pasta='';
+ const des=()=>{const itens=r.ok?r.itens:[],pastas=[...new Set(itens.map(i=>i.pasta))].sort((a,b)=>a.localeCompare(b,'pt-BR')),L=pasta?itens.filter(i=>i.pasta===pasta):itens;
+  el.innerHTML=`<div class="l3-fver"><div class="l3-fvh"><div><span class="eb">Banco de imagens</span><h3>Escolher fotos</h3><p class="small muted"><span class="code">IMAGENS</span>${r.ok?` · ${itens.length} foto(s)`:''}${Store.test?' · fotos fictícias da demonstração':''}</p></div><span class="sp"></span><button class="b sm" data-fx aria-label="Fechar">✕</button></div>
+   <div style="overflow:auto;min-height:0">${r.ok?'':`<p class="l3-av">${ic('info','sm')} ${esc(r.motivo)}</p>`}
+    ${pastas.length>1?`<div class="row wf mt"><label class="small">Subpasta <select id="fbPasta"><option value="">Todas</option>${pastas.map(p=>`<option value="${esc(p)}"${pasta===p?' selected':''}>${esc(p||'(raiz de IMAGENS)')}</option>`).join('')}</select></label></div>`:''}
+    <div class="l3-fgrid l3-fgrid4 mt">${L.map(i=>`<label class="l3-fimg${sel.has(i.caminho)?' on':''}" title="${esc(i.caminho)}"><input type="checkbox" data-fbsel="${esc(i.caminho)}"${sel.has(i.caminho)?' checked':''}><img data-vac-img="${esc(i.caminho)}" alt=""><span class="fc">${esc((i.pasta?i.pasta+' / ':'')+i.nome)}</span></label>`).join('')}</div></div>
+   <div class="row wf"><span class="small muted">A foto escolhida é copiada para o formulário: trocar a foto do banco depois não muda o formulário.</span><span class="sp"></span><button class="b" data-fx>Cancelar</button><button class="b pri" id="fbOk"${sel.size?'':' disabled'}>Adicionar${sel.size?` (${sel.size})`:''}</button></div></div>`;
+  $$('[data-fx]',el).forEach(b=>b.onclick=fechar);const fp=$('#fbPasta',el);if(fp)fp.onchange=()=>{pasta=fp.value;des()};
+  $$('[data-fbsel]',el).forEach(c=>c.onchange=()=>{if(c.checked)sel.add(c.dataset.fbsel);else sel.delete(c.dataset.fbsel);c.closest('.l3-fimg').classList.toggle('on',c.checked);const ok=$('#fbOk',el);ok.disabled=!sel.size;ok.textContent='Adicionar'+(sel.size?` (${sel.size})`:'')});
+  $('#fbOk',el).onclick=async()=>{const b=$('#fbOk',el);b.disabled=true;b.textContent='Copiando…';const F=[];for(const c of sel){try{F.push(await vacImagens.arquivo(raizImg(),c))}catch(e){toast(c+': não consegui ler o arquivo',1)}}fechar();if(F.length)await entregar(F)};
+  vacImagens.preencher(raizImg(),el)};
+ des()}
 /* 1.4.1 · barra de gravação dos pontos (em cima e embaixo da tabela) */
 function ptBarra(){const n=Object.keys(App.ptRasc||{}).length;return`<div class="row wf mt l3-ptbar"><button class="b pri" data-ptgravar ${n?'':'disabled'}>Salvar alterações${n?` (${n})`:''}</button><button class="b" data-ptdesc ${n?'':'disabled'}>Descartar alterações</button><span class="small muted" data-ptn>${n?`${n} ponto(s) alterado(s), ainda não salvo(s)`:'Altere os pontos que quiser e salve tudo de uma vez.'}</span></div>`}
 function ptBarraAtualiza(){const n=Object.keys(App.ptRasc||{}).length;$$('[data-ptgravar]').forEach(b=>{b.disabled=!n;b.textContent='Salvar alterações'+(n?` (${n})`:'')});$$('[data-ptdesc]').forEach(b=>b.disabled=!n);$$('[data-ptn]').forEach(x=>x.textContent=n?`${n} ponto(s) alterado(s), ainda não salvo(s)`:'Altere os pontos que quiser e salve tudo de uma vez.')}
@@ -35730,7 +35948,7 @@ function fmMiniPlanta(d){const a=areas().find(x=>x.id===d.area),p=d.ponto&amp;&a
  const xs=[],ys=[];if(pol&amp;&amp;pol.length>2)for(const q of pol){xs.push(q[0]*LW/100);ys.push(q[1]*LH/100)}if(p){xs.push(p.x*LW/100);ys.push(p.y*LH/100)}
  let vb=`0 0 ${LW} ${LH}`,R=38;if(xs.length){const x0=Math.min(...xs),x1=Math.max(...xs),y0=Math.min(...ys),y1=Math.max(...ys),lado=Math.min(LW,Math.max(380,x1-x0,y1-y0)*1.12),cx=(x0+x1)/2,cy=(y0+y1)/2;
   vb=`${Math.round(cx-lado/2)} ${Math.round(cy-lado/2)} ${Math.round(lado)} ${Math.round(lado)}`;R=Math.max(16,lado*.045)}
- return`<svg class="fm-planta" viewBox="${vb}" preserveAspectRatio="xMidYMid slice" role="img" aria-label="Local na planta: ${esc((a?a.nome:'')+(p?' · ponto '+p.id:''))}"><image href="${PLANTA}" width="${LW}" height="${LH}"/>${pol&amp;&amp;pol.length>2?`<polygon points="${pol.map(q=>q[0]*LW/100+','+q[1]*LH/100).join(' ')}" fill="#E5322D" fill-opacity=".16" stroke="#E5322D" stroke-width="10"/>`:''}${p?`<circle cx="${p.x*LW/100}" cy="${p.y*LH/100}" r="${R}" fill="#E5322D" stroke="#fff" stroke-width="${R/4}"/><text x="${p.x*LW/100}" y="${p.y*LH/100}" dy=".36em" text-anchor="middle" font-size="${R*1.15}" font-weight="800" fill="#fff">${esc(p.id)}</text>`:''}</svg>`}
+ return`<svg class="fm-planta" viewBox="${vb}" preserveAspectRatio="xMidYMid slice" role="img" aria-label="Local na planta: ${esc((a?a.nome:'')+(p?' · ponto '+p.id:''))}"><image href="${Planta.src}" width="${LW}" height="${LH}" preserveAspectRatio="none"/>${pol&amp;&amp;pol.length>2?`<polygon points="${pol.map(q=>q[0]*LW/100+','+q[1]*LH/100).join(' ')}" fill="#E5322D" fill-opacity=".16" stroke="#E5322D" stroke-width="10"/>`:''}${p?`<circle cx="${p.x*LW/100}" cy="${p.y*LH/100}" r="${R}" fill="#E5322D" stroke="#fff" stroke-width="${R/4}"/><text x="${p.x*LW/100}" y="${p.y*LH/100}" dy=".36em" text-anchor="middle" font-size="${R*1.15}" font-weight="800" fill="#fff">${esc(p.id)}</text>`:''}</svg>`}
 /* ---------- folha A4 (1.4.1 · layout corporativo do modelo do responsável) ----------
    Todas as páginas: marca, título, código e "Página x / N". 1ª página: situação e a grade de dados com o recorte da planta;
    as seguintes: a faixa "Continuação do registro". Corpo em seções numeradas: 01 atividades com referência visual (fotos, com a
@@ -35916,7 +36134,7 @@ function vFormEd(){const fm=App.fm,d=fm.d,ro=d.status!=='aberto',st=FM_ST[d.stat
   <label>Fotos por página${fmSel('fmPorPag',[[1,'1 por página'],[2,'2 por página'],[4,'4 por página']],d.porPag)}</label>
   <div class="w2 fm-fotos">${(d.fotos||[]).map((f,i)=>`<div class="fm-ft" data-ft="${esc(f.id)}"><div class="fm-fti">${fmFotoHtml(f,nb[f.id],150,100,'px')}</div><div><b>Foto ${i+1}</b> · ${(f.marcas||[]).length} marcação(ões)${(f.marcas||[]).length?' (itens '+nb[f.id]+'–'+(nb[f.id]+f.marcas.length-1)+')':''}<div class="small muted">${esc(fmLocal(f.ponto||d.ponto,f.eq)||'local do formulário')}</div>
    <div class="row"><button type="button" class="b sm pri" data-fted="${esc(f.id)}">${ro?'Ver marcações':'Editar marcações'}</button>${ro?'':`<button type="button" class="b sm" data-ftup="${esc(f.id)}"${i?'':' disabled'} aria-label="Subir foto ${i+1}">↑</button><button type="button" class="b sm" data-ftdel="${esc(f.id)}">Remover</button>`}</div></div></div>`).join('')}</div>
-  <div class="w2"><label class="b fm-add">+ Adicionar fotos<input type="file" id="fmArq" accept="image/*" multiple hidden></label> <span class="small muted">Escolha uma ou várias; o editor abre na primeira.</span></div>
+  <div class="w2"><label class="b fm-add">+ Adicionar fotos<input type="file" id="fmArq" accept="image/*" multiple hidden></label> <button type="button" class="b" id="fmBanco" title="Fotos da pasta IMAGENS, sem precisar enviar">Escolher do banco</button> <span class="small muted">Escolha uma ou várias; o editor abre na primeira.</span></div>
   ${muitas?'<p class="l3-av small w2">Há foto com mais de 5 marcações: com 4 fotos por página a lista pode não caber; use 2 por página.</p>':''}
  </fieldset></form>${fmExecHtml(d)}</div>
  <div class="fm-prev-w"><div class="small muted fm-prev-t">Prévia da folha A4 · ${fmPaginas(d).length} página(s)</div><div class="fm-prev" id="fmPrev">${fmPaginasHtml(d)}</div></div></div></div>`}
@@ -35995,9 +36213,10 @@ function ligarForm(){const fm=App.fm;if(!fm)return;const on=(s,ev,f)=>{const e=$
  $$('[data-fted]').forEach(b=>b.onclick=()=>{fmLerCampos();fmEditor(b.dataset.fted)});
  $$('[data-ftdel]').forEach(b=>b.onclick=()=>{if(!confirm('Remover esta foto do formulário? As marcações dela saem da lista.'))return;fmLerCampos();d.fotos=d.fotos.filter(f=>f.id!==b.dataset.ftdel);fm.sujo=true;render()});
  $$('[data-ftup]').forEach(b=>b.onclick=()=>{fmLerCampos();const i=d.fotos.findIndex(f=>f.id===b.dataset.ftup);if(i>0){[d.fotos[i-1],d.fotos[i]]=[d.fotos[i],d.fotos[i-1]];fm.sujo=true;render()}});
- const arq=$('#fmArq');if(arq)arq.onchange=async()=>{fmLerCampos();const L=[...arq.files];if(!L.length)return;let pri=null;
-  for(const file of L){const fid=uid('ft');try{const r=await fmGuardarFoto(d.id,fid,file);d.fotos.push({id:fid,arq:r.arq,w:r.w,h:r.h,ponto:'',eq:'',marcas:[]});if(!pri)pri=fid}catch(e){toast(file.name+': '+e.message,1)}}
-  arq.value='';fm.sujo=true;render();if(pri)fmEditor(pri)}}
+ const fmAdd=async L=>{let pri=null;for(const file of L){const fid=uid('ft');try{const r=await fmGuardarFoto(d.id,fid,file);d.fotos.push({id:fid,arq:r.arq,w:r.w,h:r.h,ponto:'',eq:'',marcas:[]});if(!pri)pri=fid}catch(e){toast(file.name+': '+e.message,1)}}
+  fm.sujo=true;render();if(pri)fmEditor(pri)};
+ const arq=$('#fmArq');if(arq)arq.onchange=async()=>{fmLerCampos();const L=[...arq.files];if(!L.length)return;arq.value='';await fmAdd(L)};
+ const fbb=$('#fmBanco');if(fbb)fbb.onclick=()=>{fmLerCampos();fmBanco(fmAdd)}}
 /* exports: resumo para o Portal (pendência sev 2 = atenção quando há conclusão vencida) */
 function fmResumo(D){const L=(D.formularios||[]).filter(f=>f.ativo!==false),h=hoje(),ab=L.filter(f=>f.status==='aberto');
  return{abertos:ab.length,vencidos:ab.filter(f=>f.prazo&amp;&amp;f.prazo<h).length,aguardandoConfirmacao:L.filter(f=>f.status==='concluido').length,confirmados:L.filter(f=>f.status==='confirmado').length,comNaoConformidade:L.filter(f=>f.status!=='cancelado'&amp;&amp;fmTemNC(f)).length}}
@@ -36016,7 +36235,7 @@ function semPasta(){return!Store.test&amp;&amp;(!Store.dir||!Store.perm)?`<p cla
 const dado=(fonte,v)=>fonte?v:'<span class="muted" title="A página de origem não foi lida">sem dados</span>';
 
 /* planta: imagem + áreas + fluxos + pinos. modo: 'mapa' | 'pessoas' | 'config' */
-function plantaHtml(modo,N){const mx=N?Math.max(1,...Object.values(N.R).map(r=>r[App.camada])):1,k=App.camada;
+function plantaHtml(modo,N){const mx=N?Math.max(1,...Object.values(N.R).map(r=>r[App.camada]||0)):1,k=App.camada;
  const zon=(App.zonas||modo==='config')?areas().map(a=>{const pts=(a.pol||'').split(/\s+/).map(q=>q.split(',').map(Number)).filter(q=>q.length===2&amp;&amp;q.every(isFinite));if(pts.length<3)return'';
    const v=N?(a.pts||[]).reduce((s,id)=>s+((N.R[id]||{})[k]||0),0):0,mz=N?Math.max(1,...areas().map(z=>(z.pts||[]).reduce((s,id)=>s+((N.R[id]||{})[k]||0),0))):1,nv=N?nivel(v,mz)[0]:'none',cor={crit:'#C23B3A',warn:'#B26F00',ok:'#14804A',none:'#6F8092'}[nv];
    const cx=pts.reduce((s,q)=>s+q[0],0)/pts.length*LW/100,cy=Math.min(...pts.map(q=>q[1]))*LH/100+34;
@@ -36024,12 +36243,14 @@ function plantaHtml(modo,N){const mx=N?Math.max(1,...Object.values(N.R).map(r=>r
  const des=App.desenho&amp;&amp;App.desenho.pts.length?`<polyline points="${App.desenho.pts.map(q=>(q[0]*LW/100)+','+(q[1]*LH/100)).join(' ')}" fill="none" stroke="#0D5E9C" stroke-width="5" stroke-dasharray="14 8"/>`+App.desenho.pts.map(q=>`<circle cx="${q[0]*LW/100}" cy="${q[1]*LH/100}" r="9" fill="#0D5E9C"/>`).join(''):'';
  const fl=(modo==='mapa'&amp;&amp;App.camada==='fluxo')?TRAJETOS.filter(t=>!App.fluxo||t[0]===App.fluxo).map(t=>`<polyline class="fl${t[2]?' t':''}" points="${t[1]}" stroke="${FLUXOS[t[0]][1]}"/>`).join(''):'';
  const pins=modo==='pessoas'?'':pontos().filter(p=>!App.fluxo||p.fluxo===App.fluxo||modo==='config').map(p=>{let cls='info',vl='',tit=p.nome;
-   if(modo==='mapa'&amp;&amp;N&amp;&amp;k!=='fluxo'){const v=N.R[p.id][k],nv=nivel(v,mx);cls=Ext.par||k==='os'||k==='ac'?nv[0]:'none';vl=v?`<span class="vl">${esc(fmtCam(k,v))}</span>`:'';tit=`${p.id} · ${p.nome} · ${camNome(k)}: ${fmtCam(k,v)} (intensidade ${nv[1]})`}
+   if(modo==='mapa'&amp;&amp;k==='fotos'){cls='none dim';tit=p.id+' · '+p.nome}
+   else if(modo==='mapa'&amp;&amp;N&amp;&amp;k!=='fluxo'){const v=N.R[p.id][k],nv=nivel(v,mx);cls=Ext.par||k==='os'||k==='ac'?nv[0]:'none';vl=v?`<span class="vl">${esc(fmtCam(k,v))}</span>`:'';tit=`${p.id} · ${p.nome} · ${camNome(k)}: ${fmtCam(k,v)} (intensidade ${nv[1]})`}
    else if(k==='fluxo'&amp;&amp;modo==='mapa'){cls='';tit=`${p.id} · ${p.nome} · fluxo ${FLUXOS[p.fluxo]?FLUXOS[p.fluxo][0]:''}`}
    const st=k==='fluxo'&amp;&amp;modo==='mapa'&amp;&amp;FLUXOS[p.fluxo]?`background:${FLUXOS[p.fluxo][1]};`:'';
    return`<button type="button" class="l3-pin ${cls}${App.sel===p.id?' on':''}${App.edit?' edit':''}" data-pin="${esc(p.id)}" style="${st}left:${p.x}%;top:${p.y}%" title="${esc(tit)}" aria-label="${esc(tit)}">${esc(p.id)}${vl}</button>`}).join('');
  const ops=modo==='pessoas'||(modo==='config'&amp;&amp;App.edit)?postos().map(p=>{const tem=turnos().some(t=>(pesNome(p,t.codigo)||'').trim());return`<button type="button" class="l3-op${tem?'':' vago'}${App.posto===p.id?' on':''}" data-posto="${esc(p.id)}" style="left:${p.x}%;top:${p.y}%;background-color:${OP_COR[p.op]||'#6F8092'}" title="${esc(p.id+' · '+(p.area||'')+(tem?'':' · sem pessoa definida'))}">${esc(p.op.replace('OP',''))}</button>`}).join(''):'';
- return`<div class="l3-vp"><div class="l3-cv" id="cv" style="width:${Math.round(App.zoom*100)}%"><img src="${PLANTA}" alt="Planta da linha Vacutainer: do Tray Loader (início, ao centro) à saída da linha (à esquerda), com aplicação de gel, EDTA e sílica à direita."><svg class="ov" viewBox="0 0 ${LW} ${LH}" preserveAspectRatio="none" aria-hidden="${zon?'false':'true'}">${zon}${fl}${des}</svg>${pins}${ops}</div></div>`}
+ const fts=modo==='mapa'&amp;&amp;k==='fotos'?fotosPins():'';
+ return`<div class="l3-vp"><div class="l3-cv" id="cv" style="width:${Math.round(App.zoom*100)}%;aspect-ratio:${Planta.w}/${Planta.h}"${Planta.origem?` data-planta="${esc(Planta.origem)}"`:''}><img src="${Planta.src}" draggable="false" alt="Planta da linha Vacutainer: do Tray Loader (início, ao centro) à saída da linha (à esquerda), com aplicação de gel, EDTA e sílica à direita."><svg class="ov" viewBox="0 0 ${LW} ${LH}" preserveAspectRatio="none" aria-hidden="${zon?'false':'true'}">${zon}${fl}${des}</svg>${pins}${ops}${fts}</div></div>`}
 
 /* 1.3.0 · trazido do Piloto: cada bloco da ficha diz o seu recorte de tempo e a ficha diz de onde vem cada número */
 const secRc=(t,rc)=>`<h4>${esc(t)} <span class="l3-rc">${esc(rc)}</span></h4>`;
@@ -36090,7 +36311,7 @@ async function emailLinha(){const N=numeros(),T=N.tot,[de,ate]=periodo(),per=br(
    {nome:'OS abertas',valor:Ext.equip?nf(T.os):'sem dados',sub:Ext.equip?T.osAtr+' atrasada(s)':'',cor:Ext.equip?(T.osAtr?'crit':'ok'):'none'},{nome:'Ações abertas',valor:Ext.inic?nf(T.ac):'sem dados',sub:Ext.inic?T.acAtr+' atrasada(s)':'',cor:Ext.inic?(T.acAtr?'crit':'ok'):'none'}],
   grafico:{titulo:'Tempo parado por ponto da planta (min)',src,alt:'Gráfico de barras: tempo parado por ponto da planta, em minutos, '+per+'.',frase:fr},ocorrencias:evs,acoes:acs,link:/^https?:/.test(location.href)?location.href.split('#')[0]:'',base:Store.test?'demonstração':(Store.dirName?Store.dirName+' · rev '+(Store.data.rev||0):'')};
  App.ultimoEmail=d;const okc=await vacEmail.copiar(d);toast(okc?'Relatório copiado. Cole no e-mail do Outlook. Assunto sugerido: '+vacEmail.assunto(d):'Não consegui copiar com formatação; o texto simples foi copiado.',!okc);return d}
-function vMapa(){const N=numeros(),[de,ate]=periodo(),oa=ordemAtual(),T=N.tot,k=App.camada==='fluxo'?'min':App.camada;
+function vMapa(){const N=numeros(),[de,ate]=periodo(),oa=ordemAtual(),T=N.tot,k=App.camada==='fluxo'||App.camada==='fotos'?'min':App.camada,FT=App.camada==='fotos';if(FT&amp;&amp;!Fotos.r)lerFotos();
  const top=pontos().map(p=>({p,v:N.R[p.id].min})).sort((a,b)=>b.v-a.v)[0];const ords=ordensPeriodo();
  const dias=[];for(let d=de;d<=ate&amp;&amp;dias.length<92;d=addDias(d,1))dias.push({d,v:0});const idx=Object.fromEntries(dias.map((x,i)=>[x.d,i]));for(const e of eventos())if(idx[e.dia]!=null)dias[idx[e.dia]].v+=+e.minutos||0;
  const porP=pontos().map(p=>({k:p.id,l:p.id+' · '+p.nome,v:N.R[p.id][k]})),porA=areas().map(a=>({k:a.id,l:a.nome,v:(a.pts||[]).reduce((s,id)=>s+((N.R[id]||{})[k]||0),0)}));
@@ -36113,13 +36334,13 @@ function vMapa(){const N=numeros(),[de,ate]=periodo(),oa=ordemAtual(),T=N.tot,k=
   <div class="l3-k ${Ext.inic?(T.acAtr?'crit':'ok'):'none'}"><span class="l">${ic('inic','sm')} Ações abertas na linha</span><span class="v">${dado(Ext.inic,nf(T.ac))}</span><span class="s">${Ext.inic?(T.acAtr?T.acAtr+' atrasada(s)':'nenhuma atrasada'):'Iniciativas não lido'}</span></div></div>
  ${N.fora.min?`<p class="l3-av">${ic('info','sm')} ${nf(N.fora.min)} min de parada são de equipamento sem ponto na planta (${esc([...N.fora.eq].join(', '))}). Eles entram no total, mas não aparecem no mapa. <a href="#aba=config">Vincular em Configuração</a></p>`:''}
  ${vacLayout.sec('02','Planta interativa','Escolha a camada; a cor e o número do ponto mostram a intensidade no período')}
- <div class="l3-lay"><section class="card l3-map" data-vg-nao><div class="l3-mh"><div><h3>${esc(App.camada==='fluxo'?'Fluxo produtivo':camNome(App.camada)+' por ponto')}</h3><p>${App.camada==='fluxo'?'Caminho do produto: comum, EDTA e SST':'Valores em '+(App.camada==='min'?'minutos':'quantidade')+' · '+br(de)+(de!==ate?' a '+br(ate):'')}</p></div><span class="sp"></span>
+ <div class="l3-lay${FT?' l3-lay-f':''}"><section class="card l3-map" data-vg-nao><div class="l3-mh"><div><h3>${esc(FT?'Fotos da linha':App.camada==='fluxo'?'Fluxo produtivo':camNome(App.camada)+' por ponto')}</h3><p>${FT?`Arraste as fotos do banco ao lado até o local na planta · ${fotosMapa().length} foto(s) no mapa`:App.camada==='fluxo'?'Caminho do produto: comum, EDTA e SST':'Valores em '+(App.camada==='min'?'minutos':'quantidade')+' · '+br(de)+(de!==ate?' a '+br(ate):'')}</p></div><span class="sp"></span>
    <span class="row"><button class="b sm" id="zMenos" aria-label="Diminuir a planta">−</button><span class="small" style="min-width:42px;text-align:center">${Math.round(App.zoom*100)}%</span><button class="b sm" id="zMais" aria-label="Aumentar a planta">+</button></span></div>
-  <div class="l3-cam" role="group" aria-label="Camada da planta">${CAMADAS.concat([['fluxo','Fluxo produtivo']]).map(c=>`<button type="button" data-cam="${c[0]}" aria-pressed="${App.camada===c[0]}">${esc(c[1])}</button>`).join('')}<label><input type="checkbox" id="cZonas"${App.zonas?' checked':''}> Áreas</label></div>
+  <div class="l3-cam" role="group" aria-label="Camada da planta">${CAMADAS.concat([['fluxo','Fluxo produtivo'],['fotos','Fotos']]).map(c=>`<button type="button" data-cam="${c[0]}" aria-pressed="${App.camada===c[0]}">${esc(c[1])}</button>`).join('')}<label><input type="checkbox" id="cZonas"${App.zonas?' checked':''}> Áreas</label></div>
   ${plantaHtml('mapa',N)}
-  <div class="l3-leg">${App.camada==='fluxo'?Object.values(FLUXOS).map(v=>`<span><i style="background:${v[1]}"></i>${v[0]}</span>`).join(''):`<span><i style="background:#14804A"></i>Intensidade baixa</span><span><i style="background:#B26F00"></i>Média</span><span><i style="background:#C23B3A"></i>Alta</span><span><i style="background:#A8B4C1"></i>Sem registro</span><span class="sp"></span><span>Intensidade relativa ao ponto com o maior valor do período.</span>`}</div>
+  <div class="l3-leg">${FT?`<span><i class="l3-lgf"></i>Uma foto (clique para ver)</span><span><i class="l3-lgg"></i>Várias fotos próximas (clique para aproximar)</span><span class="sp"></span><span>Ctrl + roda do mouse aproxima no ponto do cursor${Planta.vetor?' · planta em vetor ('+esc(Planta.origem)+')':' · planta embutida (coloque IMAGENS/PLANTA_BAIXA.SVG para nitidez em qualquer zoom)'}</span>`:App.camada==='fluxo'?Object.values(FLUXOS).map(v=>`<span><i style="background:${v[1]}"></i>${v[0]}</span>`).join(''):`<span><i style="background:#14804A"></i>Intensidade baixa</span><span><i style="background:#B26F00"></i>Média</span><span><i style="background:#C23B3A"></i>Alta</span><span><i style="background:#A8B4C1"></i>Sem registro</span><span class="sp"></span><span>Intensidade relativa ao ponto com o maior valor do período.</span>`}</div>
   ${App.zona&amp;&amp;areas().find(a=>a.id===App.zona)?(()=>{const a=areas().find(x=>x.id===App.zona),s=c=>(a.pts||[]).reduce((t,id)=>t+((N.R[id]||{})[c]||0),0);return`<div class="l3-leg" role="status"><b style="color:var(--ink)">Área: ${esc(a.nome)}</b><span>${nf(s('min'))} min parados</span><span>${nf(s('oc'))} ocorrência(s)</span><span>${nf(s('os'))} OS aberta(s)</span><span>${nf(s('ac'))} ação(ões)</span><span class="sp"></span><span>Pontos: ${(a.pts||[]).map(id=>`<a href="#" data-irp="${esc(id)}">${esc(id)}</a>`).join(' · ')}</span><button class="b sm" id="zLimpa">Limpar área</button></div>`})():''}
- </section>${fichaPonto(N)}</div>
+ </section>${FT?fotosPainel():fichaPonto(N)}</div>
  ${vacLayout.sec('03','Análises','Onde o tempo se concentra. Passe o mouse num gráfico para mudar a largura ou a ordem')}
  <div class="l3-g3" id="l3graf">
   <section class="card l3-ch" id="gPonto"><h3>${esc(camNome(k))} por ponto da planta</h3><p class="c-un">Valores em <b>${k==='min'?'minutos':'quantidade'}</b> · barras escuras somam 80% · clique na barra para ver o ponto</p>${barrasH(porP,un,App.sel)}<p class="res">${lider&amp;&amp;lider.v?`Maior concentração: ${esc(lider.l)}, com ${nf(lider.v)} ${un}.`:'Nada localizado no período.'}</p></section>
@@ -36179,17 +36400,24 @@ function vConfig(){const S=Store,E=eqs(),a=areas().find(x=>x.id===App.areaSel)||
   <p class="small muted mt">Só esta página grava em ${esc(PAGE.baseFile)}. Paradas, ordens de serviço, ações e a ordem em produção são lidas das páginas donas (Paradas, Equipamentos, Iniciativas e Produção) e nunca copiadas para cá.</p></div>`}
 
 function render(){topo();const nv=$('#nav');if(nv)nv.innerHTML=navHtml();const m=$('#main');const sy=scrollY;const vp=$('.l3-vp'),sl=vp?[vp.scrollLeft,vp.scrollTop]:null;
- m.innerHTML=App.tab==='pessoas'?vPessoas():App.tab==='checklists'?vChecklists():App.tab==='form'?vForm():App.tab==='config'?vConfig():vMapa();const v2=$('.l3-vp');if(v2&amp;&amp;sl){v2.scrollLeft=sl[0];v2.scrollTop=sl[1]}scrollTo(0,sy);ligar();if(App.tab==='form')ligarForm()}
+ m.innerHTML=App.tab==='pessoas'?vPessoas():App.tab==='checklists'?vChecklists():App.tab==='form'?vForm():App.tab==='config'?vConfig():vMapa();const v2=$('.l3-vp');if(v2&amp;&amp;sl){v2.scrollLeft=sl[0];v2.scrollTop=sl[1]}
+ /* 1.5.0 · foco num ponto da planta (grupo de fotos, Ctrl + roda): [x%, y%, deslocamento do cursor na janela] */
+ if(v2&amp;&amp;App.centro){const cv=$('#cv'),[x,y,ox,oy]=App.centro;v2.scrollLeft=cv.offsetWidth*x/100-(ox??v2.clientWidth/2);v2.scrollTop=cv.offsetHeight*y/100-(oy??v2.clientHeight/2)}App.centro=null;
+ scrollTo(0,sy);ligar();if(App.tab==='form')ligarForm();
+ if(v2){const w=v2.clientWidth;if(App.tab==='mapa'&amp;&amp;App.camada==='fotos'&amp;&amp;w&amp;&amp;Math.abs(w-(App.vpW||900))>40){App.vpW=w;return render()}App.vpW=w||App.vpW}}
 function pctDe(e){const r=$('#cv').getBoundingClientRect();return[Math.max(0,Math.min(100,+((e.clientX-r.left)/r.width*100).toFixed(2))),Math.max(0,Math.min(100,+((e.clientY-r.top)/r.height*100).toFixed(2)))]}
 function ligar(){const on=(s,ev,f)=>{const e=$(s);if(e)e[ev]=f};const av=$('#avConn');if(av)av.onclick=e=>{e.preventDefault();Store.dir?Store.reconnect():Store.pick()};
  on('#fPer','onchange',e=>{App.f.per=e.target.value;if(App.f.per==='p'){const[d,a]=periodo();App.f.de=App.f.de||d;App.f.ate=App.f.ate||a}App.f.ordem='';render()});on('#fDe','onchange',e=>{App.f.de=e.target.value;render()});on('#fAte','onchange',e=>{App.f.ate=e.target.value;render()});
  on('#fTurno','onchange',e=>{App.f.turno=e.target.value;render()});on('#fOrdem','onchange',e=>{App.f.ordem=e.target.value;render()});on('#fFluxo','onchange',e=>{App.fluxo=e.target.value;render()});
  $$('[data-cam]').forEach(b=>b.onclick=()=>{App.camada=b.dataset.cam;render()});on('#cZonas','onchange',e=>{App.zonas=e.target.checked;if(!App.zonas)App.zona=null;render()});
- on('#zMais','onclick',()=>{App.zoom=Math.min(2.5,+(App.zoom+.25).toFixed(2));render()});on('#zMenos','onclick',()=>{App.zoom=Math.max(1,+(App.zoom-.25).toFixed(2));render()});on('#zLimpa','onclick',()=>{App.zona=null;render()});
+ on('#zMais','onclick',()=>{App.zoom=Math.min(zMax(),+(App.zoom+(App.zoom>=2?.5:.25)).toFixed(2));render()});on('#zMenos','onclick',()=>{App.zoom=Math.max(1,+(App.zoom-(App.zoom>2?.5:.25)).toFixed(2));render()});on('#zLimpa','onclick',()=>{App.zona=null;render()});
  $$('[data-chip]').forEach(b=>b.onclick=()=>{const k=b.dataset.chip;if(k==='turno'||k==='todos')App.f.turno='';if(k==='ordem'||k==='todos')App.f.ordem='';if(k==='fluxo'||k==='todos')App.fluxo='';if(k==='zona'||k==='todos')App.zona=null;render()});
  $$('[data-irp]').forEach(a=>a.onclick=e=>{e.preventDefault();App.sel=a.dataset.irp;render()});
  $$('.l3-ch .bar').forEach(b=>b.onclick=()=>{const k=b.dataset.bar;if(b.closest('#gArea')){App.zonas=true;App.zona=App.zona===k?null:k}else App.sel=k;render()});
  $$('.zona').forEach(z=>{const f=()=>{if(App.tab==='config'){App.areaSel=z.dataset.zona}else App.zona=App.zona===z.dataset.zona?null:z.dataset.zona;render()};z.onclick=f;z.onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();f()}}});
+ ligarFotos();
+ const vp=$('.l3-vp');if(vp)vp.onwheel=e=>{if(!e.ctrlKey)return;e.preventDefault();if(App._roda)return;App._roda=1;requestAnimationFrame(()=>{App._roda=0});const z0=App.zoom,z=+Math.max(1,Math.min(zMax(),z0*(e.deltaY<0?1.25:.8))).toFixed(2);if(z===z0)return;
+  const xy=pctDe(e),r=vp.getBoundingClientRect();App.zoom=z;App.centro=[xy[0],xy[1],e.clientX-r.left,e.clientY-r.top];render()};
  /* pinos e postos: clique seleciona; no modo de edição, arrastar grava a posição */
  const arrastar=(el,salvar)=>{el.onpointerdown=e=>{if(!App.edit)return;e.preventDefault();el.setPointerCapture(e.pointerId);let xy=null;el.onpointermove=ev=>{xy=pctDe(ev);el.style.left=xy[0]+'%';el.style.top=xy[1]+'%'};el.onpointerup=()=>{el.onpointermove=el.onpointerup=null;if(xy)salvar(xy)}}};
  $$('[data-pin]').forEach(b=>{b.onclick=()=>{if(App.edit)return;App.sel=b.dataset.pin;if(App.tab==='mapa')render()};arrastar(b,xy=>{const p=P(b.dataset.pin);Store.commit({k:'ponto',it:{id:p.id,x:xy[0],y:xy[1]}},{silencio:true});toast(`Ponto ${p.id} movido`)})});
@@ -36252,8 +36480,8 @@ function vacGuiaAba(){return App.tab}
  window.addEventListener('storage',e=>{if(e.key==='vac.theme')applyTheme();if(e.key==='vac.cadastros')render()});
  const h0=location.hash;if(/^#aba=/.test(h0)){const t=h0.slice(5).split('&amp;')[0];if(abaOk(t))App.tab=t}
  render();if(vacDemo.ativo){Store.test=true;const lerDemo=()=>{Ext.par=vacDemo.exports('paradas');Ext.oee=vacDemo.exports('oee');Ext.equip=vacDemo.exports('equip');Ext.inic=vacDemo.exports('inic');Ext.erros={};render()};
-  vacDemo.registrar('linha',()=>({...Store.data,exports:calcExports(Store.data)}),d=>{Store.data=completar(d)},lerDemo);vacDemo.publicar('linha');rota();return}
- if(h0==='#teste')return enterTest();await Store.init();render();if(h0&amp;&amp;!/^#aba=/.test(h0))rota()})();
+  vacDemo.registrar('linha',()=>({...Store.data,exports:calcExports(Store.data)}),d=>{Store.data=completar(d)},lerDemo);vacDemo.publicar('linha');rota();lerPlanta();return}
+ if(h0==='#teste')return enterTest();await Store.init();render();lerPlanta();if(h0&amp;&amp;!/^#aba=/.test(h0))rota()})();
 
 </script>
 <script>
@@ -54776,70 +55004,70 @@ body.vac-porta{overflow:hidden}
       "id": "oee",
       "path": "Plataforma.html#motor/oee",
       "version": "2.6.39",
-      "sha256": "568c893515aea5c96548925ebd82d626557e05e56cde11e694ee694b7e71a436",
-      "bytes": 2389366
+      "sha256": "6da76db64950675b638c29852830b0e72203ec29b1e467e778616a13a32bcadd",
+      "bytes": 2396500
     },
     {
       "id": "perdas",
       "path": "Plataforma.html#motor/perdas",
       "version": "1.12.20",
-      "sha256": "da9787825164253fb97e6d32b6f28c71f79dea7d381a52d897871d3fdeb2d96e",
-      "bytes": 979623
+      "sha256": "b7fcf6222becdacc682b40ec09d9d977d52515c48b0c1e5c4b2038c805368e6f",
+      "bytes": 986757
     },
     {
       "id": "gel",
       "path": "Plataforma.html#motor/gel",
       "version": "2.47",
-      "sha256": "49e20592fb608d595d9cfc92c255624f9349d0cb9c49702db0a8fd758b655016",
-      "bytes": 1625500
+      "sha256": "1d4a1510596432aa37efcbcaa8c08ddd8a12bc63ee6fee860db860986bc5af4b",
+      "bytes": 1632634
     },
     {
       "id": "paradas",
       "path": "Plataforma.html#motor/paradas",
       "version": "1.2.22",
-      "sha256": "14b388743f71112b30de532a50951744ac026c73be3830b6903871b9dfe27bfb",
-      "bytes": 950126
+      "sha256": "4c17885fccea3a0e19c95b0ebf39fbf70cc65414499af386d369313630048afe",
+      "bytes": 957260
     },
     {
       "id": "equip",
       "path": "Plataforma.html#motor/equip",
       "version": "1.0.22",
-      "sha256": "468b16aefe6683f83ea1601673aa60b7d159c343623873ba4de161e77e91895f",
-      "bytes": 741750
+      "sha256": "7bde2b9437419f124c953ec8ae6250062b50e1decebaf6ea11275b52b38936ce",
+      "bytes": 748884
     },
     {
       "id": "inic",
       "path": "Plataforma.html#motor/inic",
       "version": "1.1.17",
-      "sha256": "1689f774a7c33629c106d7e1f5146537fb791786b2c9b358ae2d8093164d00c1",
-      "bytes": 756255
+      "sha256": "951339508b064ae14176d75c22e3f37436160225a10f2743aa24dc945f4707bb",
+      "bytes": 763389
     },
     {
       "id": "linha",
       "path": "Plataforma.html#motor/linha",
-      "version": "1.4.1",
-      "sha256": "7b79a15034e55a2fe038250fa8d476c2c1664d16e60b360030b0008631e6f022",
-      "bytes": 939178
+      "version": "1.5.0",
+      "sha256": "918016f8754c452fcbb6119ead12ce4c37594679d22de7b3060627afad1dd468",
+      "bytes": 970777
     },
     {
       "id": "projetos",
       "path": "Plataforma.html#motor/projetos",
       "version": "0.1.16",
-      "sha256": "acea22f4df592c635b9fba5f0e4ec4d67c0e509c82617fa4db1c5c49f1d87cc6",
-      "bytes": 673434
+      "sha256": "ac40ef3ef57ceb4c23992d95fc07e4c7aa503735b2707f14646e45faae4ba7d0",
+      "bytes": 680568
     },
     {
       "id": "portal",
       "path": "Plataforma.html#motor/portal",
-      "version": "1.9.73",
-      "sha256": "30dedd6ac8d80eaf6051ec206157256dab5e2c8c2c25812bd50ef3cc2bd81640",
-      "bytes": 1321484
+      "version": "1.9.74",
+      "sha256": "e79efd2d1a146de1f02bed6e0c748b60b648e9b2dc54484e07eabe814bcbe262",
+      "bytes": 1329407
     }
   ],
   "limitations": [
     "Projetos e conteúdo técnico OSM/MES/AM/TPM mantêm os limites documentados nas fontes."
   ],
-  "enginesSha256": "0a56c4a374858b6471274de53394630953070581a0c1c0b20c1a4ecebcc2c902",
+  "enginesSha256": "ae50acb332049cbb2cd0430472171b0d7deebdb795454a0511a13cc201a7c285",
   "originRevision": "ffc9ee8",
   "sourceMode": "single-html",
   "originEnginesSha256": "a87a64ad0c328f70e102b2ae888790a9b5d5a9bd05778652a7ce7cae140e40d2"
@@ -54909,7 +55137,7 @@ summary{cursor:pointer;font-weight:600;color:var(--navy)}
 'use strict';
 /* ---------- referência (atualizar quando a plataforma mudar de versão) ---------- */
 // Iguais às do pacote da plataforma (nova-plataforma/src/generated/manifest.json); o teste ferramenta-verificar confere.
-const VERSOES = {"oee":"2.6.39","perdas":"1.12.20","gel":"2.47","paradas":"1.2.22","equip":"1.0.22","inic":"1.1.17","linha":"1.4.1","projetos":"0.1.16","portal":"1.9.73"};
+const VERSOES = {"oee":"2.6.39","perdas":"1.12.20","gel":"2.47","paradas":"1.2.22","equip":"1.0.22","inic":"1.1.17","linha":"1.5.0","projetos":"0.1.16","portal":"1.9.74"};
 const BASES = [
  { arq: 'vacutainer-cadastros.json', mod: 'portal', nome: 'Cadastro geral (Portal)', obrig: true, cadastro: true, bk: 'Cadastros' },
  { arq: 'portal-base.json', mod: 'portal', nome: 'Portal', obrig: true, bk: 'Portal' },
@@ -55500,7 +55728,7 @@ import { Icon, Button, Badge, Empty, Modal, BarChart, BrandLogo, CommandMenu } f
 import { ModuleFrame } from "vac:modulo/components/ModuleFrame";
 import manifest from "vac:recurso/manifesto";
 import { ModuleTabs } from "vac:modulo/components/ModuleTabs";
-const VERSION = "1.8.51";
+const VERSION = "1.8.52";
 /* Navegação 1.3.0 (16/11/2026): Visão da linha, Relatórios e Importações têm abas; as que mostram uma tela do
    Portal (motor da Administração) trazem o 3º campo com a aba dele. Administração fica só com cadastros e configuração. */
 const SHELL_TABS = {

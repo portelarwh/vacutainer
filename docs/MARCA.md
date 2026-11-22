@@ -25,7 +25,7 @@ Pasta da linha\
 └─ 00. Backups\
 ```
 
-Os nomes são os do kit de marca; não renomeie.
+Os nomes são os do kit de marca; não renomeie. O resto da pasta `IMAGENS` (planta e banco de fotos) está em [IMAGENS](IMAGENS.md).
 
 ## Como funciona
 
