@@ -62,25 +62,26 @@ const { chromium } = require('playwright');
   const r2 = await o.evaluate(() => {
     const semDoc = JSON.stringify(CadSync.dominios());
     Store.S.cadDoc = { schema: 'vac-cadastros', rev: 9, turnos: [{ codigo: 'T1', vigencias: [] }], catalogos: [], paradas: [], metasOee: [], linhas: [], parametros: {} };
-    const D = CadSync.dominios(), ban = CadSync.banner('catalogos'), banT = CadSync.banner('turnos');
+    const D = CadSync.dominios();
     const sl = CadSync.soLocal('turnos'); Store.S.cadDoc = null;
-    return { semDoc, D, vazio: /A Administração ainda não tem catálogos/.test(ban), soLocal: sl, banT: /Só na Produção/.test(banT) };
+    return { semDoc, D, soLocal: sl };
   });
-  ok(r2.semDoc === '{}', 'ARQ-01..04: sem pasta e sem Portal (modo local/testes) as Configurações ficam como antes');
-  ok(r2.D.turnos && r2.D.catalogos && r2.D.metas && r2.D.paradas && r2.D.estrutura, 'ARQ-01..04: com o cadastro do Portal, turnos, catálogos, metas, paradas e estrutura ficam só consulta, mesmo com o domínio vazio no Portal');
-  ok(r2.vazio, 'ARQ-02: domínio vazio no Portal avisa que a Produção segue com o que tinha (sem editar aqui)');
-  ok(r2.soLocal.length > 0 && !r2.soLocal.includes('T1') && r2.banT, 'ARQ-01: aviso lista os turnos que só existem na Produção');
-  // tela: com o cadastro, o formulário de turnos não edita
+  ok(r2.semDoc === '{}', 'ARQ-01..04: sem pasta e sem Portal (modo local/testes) nada do cadastro é aplicado sobre a base');
+  ok(r2.D.turnos && r2.D.catalogos && r2.D.metas && r2.D.paradas && r2.D.estrutura, 'ARQ-01..04: com o cadastro do Portal, turnos, catálogos, metas, paradas e estrutura vêm dele, mesmo com o domínio vazio no Portal');
+  ok(r2.soLocal.length > 0 && !r2.soLocal.includes('T1'), 'ARQ-01: turnos que só existem na Produção são identificados (a Administração oferece trazê-los)');
+  /* 1.8.47 · CFG-ADM etapa 2: as cinco telas saíram; com ou sem cadastro do Portal, o menu e a seção pedida direto levam à Administração */
   const r3 = await o.evaluate(async () => {
+    const res = {}; go('config'); await new Promise(r => setTimeout(r, 300));
+    res.semDoc = [...document.querySelectorAll('[data-sec-adm]')].map(b => b.dataset.secAdm).sort().join(',');
     Store.S.cadDoc = { schema: 'vac-cadastros', rev: 9, turnos: [{ codigo: 'T1', vigencias: [] }], catalogos: [], paradas: [], metasOee: [], linhas: [], parametros: {} };
-    go('config'); await new Promise(r => setTimeout(r, 300)); const res = {};
-    res._adm = [...document.querySelectorAll('[data-sec-adm]')].map(b => b.dataset.secAdm).sort().join(',');   /* 1.8.46 · CFG-ADM: no menu, abrem na Administração */
-    for (const sec of ['turnos', 'catalogos', 'metas', 'paradas']) { App.cfgSec = sec; render(); await new Promise(r => setTimeout(r, 250));
-      const root = document.querySelector('#main') || document.body; res[sec] = [...root.querySelectorAll('button, input, select, textarea')].filter(el => !el.disabled && !el.closest('.side') && !el.closest('[data-keep]') && !el.dataset.keep && !el.dataset.sec && !el.classList.contains('ib') && !el.closest('nav') && !el.closest('header') && !el.closest('.vsuite') && !el.closest('#vacDemoBar') && el.offsetParent && !el.closest('.filters') && !el.closest('.tsearch') && !el.closest('details > summary')).map(el => el.id || el.textContent.trim().slice(0, 20) || el.name || el.tagName).slice(0, 5); }
-    Store.S.cadDoc = null; return res;
+    render(); await new Promise(r => setTimeout(r, 250));
+    res.comDoc = [...document.querySelectorAll('[data-sec-adm]')].map(b => b.dataset.secAdm).sort().join(',');
+    for (const sec of ['turnos', 'catalogos', 'metas', 'paradas', 'estrutura']) { App.cfgSec = sec; render(); await new Promise(r => setTimeout(r, 200));
+      const t = (document.querySelector('.cfg > div') || {}).innerText || ''; res[sec] = /é cadastrado só na Administração/.test(t) && !!document.querySelector('.cfg > div [data-sec-adm="' + sec + '"]') && !document.querySelector('.cfg > div input, .cfg > div select, .cfg > div textarea'); }
+    App.cfgSec = 'base'; Store.S.cadDoc = null; return res;
   });
-  ok(r3._adm === 'catalogos,estrutura,metas,paradas,turnos', 'CFG-ADM: com o cadastro do Portal, o menu leva estrutura, turnos, catálogos, metas e tipos de parada para a Administração (' + r3._adm + ')'); delete r3._adm;
-  for (const [sec, livres] of Object.entries(r3)) ok(!livres.length, `ARQ-01..04: Produção › Configurações › ${sec} sem campo ou botão de edição com o cadastro do Portal${livres.length ? ' (livres: ' + livres.join(', ') + ')' : ''}`);
+  ok(r3.semDoc === 'catalogos,estrutura,metas,paradas,turnos' && r3.comDoc === r3.semDoc, 'CFG-ADM: com ou sem o cadastro do Portal, o menu leva estrutura, turnos, catálogos, metas e tipos de parada para a Administração (' + r3.semDoc + ')');
+  for (const sec of ['turnos', 'catalogos', 'metas', 'paradas', 'estrutura']) ok(r3[sec], `CFG-ADM: Produção › Configurações › ${sec} não tem mais tela própria; mostra o botão para a Administração`);
   // Portal: Trazer configurações oferece o que só existe na Produção, com o mesmo código
   const mig1 = await po.evaluate(() => {
     TrazCfg.B = { oee: { lines: [], families: [], shifts: [{ id: 'sh_tc', code: 'TC', name: 'Turno C local', status: 'ativo', versions: [{ id: 'v1', validFrom: '2025-01-01', start: '22:47', end: '06:00', weekdays: [1, 2, 3, 4, 5], active: true, breaks: [{ label: 'Jantar', start: '02:00', end: '02:30', weekdays: [], deducts: true }], template: null }] }],
@@ -115,17 +116,12 @@ const { chromium } = require('playwright');
   const lig = await g.evaluate(() => ({ desc: S.catalogs.every(c => /^Portal /.test(c.desc) && c.color === '#123456' && c.portal), eq: (S.config.equips || []).every(e => /^EQ9/.test(e.portal || '')), n: (S.config.equips || []).length }));
   ok(lig.desc, 'ARQ-05: nome e cor do catálogo vêm do Portal (vínculo pelo número)');
   ok(lig.eq && lig.n === 2, 'ARQ-07: equipamento do Gel liga ao do Portal pelo nome (código guardado no vínculo)');
-  const ui5 = await g.evaluate(async () => {
-    openConfig('cat'); await new Promise(r => setTimeout(r, 150)); const novoEscondido = !!document.querySelector('#ctSave') && !!document.querySelector('#ctSave').closest('.catform[hidden]'); const banner = /cadastro geral da Administração/.test(document.body.innerText);
-    ui.catEdit = S.catalogs[0].id; openConfig('cat'); await new Promise(r => setTimeout(r, 150)); const numTrav = document.querySelector('#ctNum').disabled && document.querySelector('#ctDesc').disabled;
-    ui.catEdit = null; ui.eqEdit = null; ui.eqDraft = null; openConfig('equip'); await new Promise(r => setTimeout(r, 150));
-    const sel = document.querySelector('#eqPortal'), nomeEsc = !!document.querySelector('#eqName') && !!document.querySelector('#eqName').closest('[hidden]');
-    const opc = sel ? [...sel.options].map(o => o.value).filter(Boolean) : [];
-    document.querySelectorAll('.overlay').forEach(o => o.remove()); return { novoEscondido, banner, numTrav, sel: !!sel, opc, nomeEsc };
-  });
-  ok(ui5.banner && ui5.novoEscondido, 'ARQ-05: Gel › Configuração › Catálogos sem cadastro de catálogo novo (vem do Portal), com o aviso');
-  ok(ui5.numTrav, 'ARQ-05: catálogo ligado: número e nome travados no Gel');
-  ok(ui5.sel && ui5.nomeEsc && ui5.opc.join() === 'EQ80', 'ARQ-07: equipamento novo no Gel é escolhido do Portal (só os ainda não ligados), sem nome em texto livre');
+  /* 1.8.47 · CFG-ADM: Catálogos e Equipamentos do Gel abrem na Administração; equipamento da Administração com dados de gel entra sozinho */
+  const ui5 = await g.evaluate(() => { const ir = [], o = window.vacIrPortal; window.vacIrPortal = h => ir.push(h); openConfig('cat'); openConfig('equip'); window.vacIrPortal = o;
+    const c = JSON.parse(localStorage.getItem('vac.cadastros')); const e = (c.equipamentos || []).find(x => x.codigo === 'EQ80'); if (e) e.gel = { tara: 12, descs: [] }; localStorage.setItem('vac.cadastros', JSON.stringify(c)); render();
+    const q = (S.config.equips || []).find(x => x.portal === 'EQ80'); return { ir, modal: !!document.querySelector('#ov .cfgbody'), eq: q ? { tara: q.tara, nome: q.name } : null }; });
+  ok(ui5.ir.join() === 'cadastros/catalogos,cadastros/equipamentos' && !ui5.modal, 'CFG-ADM: Gel › Catálogos e Equipamentos abrem na Administração (' + ui5.ir.join(', ') + ')');
+  ok(ui5.eq && ui5.eq.tara === 12, 'CFG-ADM: equipamento da Administração com embalagem e descartes do gel entra sozinho no Gel (' + JSON.stringify(ui5.eq) + ')');
   const auto = await g.evaluate(() => { const c = JSON.parse(localStorage.getItem('vac.cadastros')); c.materiais = [{ codigo: '10000001', tipo: 'gel', ativo: true }]; c.catalogos.push({ codigo: '777777', tipoItem: 'tubo', nome: 'Tubo SST novo', cor: '#00aa00', formato: '13x75', ativo: true, vigencias: [{ de: '2025-01-01', pphNominal: 40000, tubosPorCaixa: 1000, caixasPorLote: 900 }] });
     c.bom = [{ catalogo: '777777', vigencias: [{ de: '2025-01-01', itens: [{ material: '10000001', qtdPorMilheiro: 0.9 }] }] }]; localStorage.setItem('vac.cadastros', JSON.stringify(c)); render();
     const k = S.catalogs.find(x => x.num === '777777'); return k ? { fmt: k.fmt, lot: k.lotSize, rate: k.rateH, portal: k.portal } : null; });
