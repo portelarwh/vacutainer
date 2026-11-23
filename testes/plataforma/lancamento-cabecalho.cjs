@@ -18,12 +18,18 @@ const html = fs.readFileSync(path.resolve(__dirname, '../../Plataforma.html'));
     await f.waitForSelector('#cabDia #dMais');
     /* 1) cabeçalho numa linha */
     const c = await f.evaluate(() => { const c = document.querySelector('#cabDia'), t = s => (c.querySelector(s) || {}).textContent?.trim();
-      return { h3: t('.cab2-tit h3'), sit: t('.cab2-sit'), sub: t('.cab2-sub'), velhos: [...c.querySelectorAll('.kv .l')].map(x => x.textContent.trim()),
-        fechar: !!c.querySelector('header #dClose.primary'), linha1: new Set([...c.querySelectorAll('.cab2-tit h3, #dClose, #dMais')].map(x => Math.round(x.getBoundingClientRect().top / 20))).size }; });
-    assert.equal(c.h3, 'Quinta-feira, 19/11/2026'); assert.equal(c.sit, 'Em produção'); assert.match(c.sub, /^Semana \d+ · seg–sáb · Vacutainer$/);
+      return { h3: t('.cab2-dt h3'), sit: t('.cab2-sit'), sub: t('.cab2-sub'), velhos: [...c.querySelectorAll('.kv .l')].map(x => x.textContent.trim()),
+        fechar: !!c.querySelector('header #dClose.primary'), linha1: new Set([...c.querySelectorAll('.cab2-dt h3, #dClose, #dMais')].map(x => Math.round(x.getBoundingClientRect().top / 20))).size,
+        /* 2.6.42 · LANC-CAB (modelo do responsável, 23/11/2026): data ‹ › Hoje no cabeçalho do dia; sem a barra de data separada */
+        nav: ['[data-dnav="-1"]', '#cabCal', '#selDate', '[data-dnav="1"]', '[data-dnav="0"]'].every(q => c.querySelector('header ' + q)), barra: !!document.querySelector('#main .filters #selDate'),
+        pil: !!c.querySelector('header .cab2-pil [data-modolanc]') && !!c.querySelector('header .cab2-pil [data-scrapmode]'), dia24: !!document.querySelector('#dMaisMenu [data-dia24]') }; });
+    assert.equal(c.h3, '19/11/2026 Quinta-feira'); assert.equal(c.sit, 'Em produção'); assert.match(c.sub, /^Semana \d+ · seg–sáb · Vacutainer$/);
+    assert.ok(c.nav && !c.barra && c.pil && c.dia24, 'data, Lançamento e Scrap no cabeçalho; Ver o dia inteiro em Mais ações ' + JSON.stringify(c));
     assert.deepEqual(c.velhos.filter(x => /Linha|Calendário|^Data$/.test(x)), [], 'saem Data, Linha · máquina e Calendário'); assert.ok(c.fechar, 'Fechar dia no cabeçalho'); assert.equal(c.linha1, 1, 'data, Fechar dia e Mais ações na mesma linha');
-    const barra = await f.evaluate(() => document.querySelector('#main .filters').textContent);
+    const barra = await f.evaluate(() => (document.querySelector('#main .filters') || {}).textContent || '');
     assert.doesNotMatch(barra, /semana/i, 'a barra do dia não repete semana e situação');
+    await f.click('#cabDia [data-dnav="1"]'); assert.equal(await f.evaluate(() => App.sel.date), '2026-11-20', '› vai para o dia seguinte');
+    await f.click('[data-dnav="-1"]'); await f.waitForSelector('#cabDia #dMais'); assert.equal(await f.evaluate(() => App.sel.date), '2026-11-19', '‹ volta');
     console.log('ok cabeçalho: ' + c.h3 + ' · ' + c.sit + ' · ' + c.sub + '; Fechar dia e Mais ações na mesma linha; sem repetição na barra');
     /* 2) menu: botão, grupos, mesmos IDs, fechado no DOM */
     const m = await f.evaluate(() => { const b = document.querySelector('#dMais'), mm = document.querySelector('#dMaisMenu');
@@ -31,7 +37,7 @@ const html = fs.readFileSync(path.resolve(__dirname, '../../Plataforma.html'));
         grupos: [...mm.querySelectorAll('.cab2-mg > p')].map(p => p.textContent), ids: [...mm.querySelectorAll('[role="menuitem"]')].map(x => x.id), risco: mm.querySelector('.cab2-mg.risco #dDel')?.textContent.trim() }; });
     assert.deepEqual([m.pop, m.exp, m.ctl, m.oculto, m.role], ['menu', 'false', 'dMaisMenu', true, 'menu']);
     assert.deepEqual(m.grupos, ['Ações do dia', 'Correções', 'Consulta', 'Zona de risco']);
-    assert.deepEqual(m.ids, ['dPend', 'dOff', 'dMove', 'dEnviar', 'dImpCel', 'dRestore', 'dReapply', 'kcEdit', 'dayMetas', 'dHist', 'dDel']); assert.equal(m.risco, 'Excluir dia');
+    assert.deepEqual(m.ids, ['dPend', 'dOff', 'dMove', 'dEnviar', 'dImpCel', 'dRestore', 'dReapply', 'kcEdit', 'dayMetas', 'dDia24', 'dHist', 'dDel']); assert.equal(m.risco, 'Excluir dia');
     /* teclado: abre com clique (foco no primeiro), ↓ e ↑ circulam, End vai ao último, Esc fecha e devolve o foco */
     await f.click('#dMais'); assert.equal(await f.evaluate(() => [document.querySelector('#dMaisMenu').hidden, document.activeElement.id].join()), 'false,dPend');
     await page.keyboard.press('ArrowDown'); assert.equal(await f.evaluate(() => document.activeElement.id), 'dOff');
@@ -41,7 +47,7 @@ const html = fs.readFileSync(path.resolve(__dirname, '../../Plataforma.html'));
     await f.focus('#dMais'); await page.keyboard.press('ArrowUp'); assert.equal(await f.evaluate(() => document.activeElement.id), 'dDel', '↑ no botão abre no último');
     await page.keyboard.press('Escape');
     /* clique fora fecha; escolher um item roda a ação e fecha */
-    await f.click('#dMais'); await f.click('.cab2-tit h3'); assert.equal(await f.evaluate(() => document.querySelector('#dMaisMenu').hidden), true, 'clique fora fecha');
+    await f.click('#dMais'); await f.click('.cab2-dt h3'); assert.equal(await f.evaluate(() => document.querySelector('#dMaisMenu').hidden), true, 'clique fora fecha');
     await f.click('#dMais'); await f.click('#dHist'); await f.waitForSelector('.modal.on, .overlay, dialog[open]');
     assert.equal(await f.evaluate(() => document.querySelector('#dMaisMenu').hidden), true, 'escolher fecha o menu');
     await page.keyboard.press('Escape'); await f.evaluate(() => document.querySelectorAll('.overlay,.modal.on').forEach(x => x.remove()));
@@ -59,7 +65,7 @@ const html = fs.readFileSync(path.resolve(__dirname, '../../Plataforma.html'));
     const fe = await f.evaluate(async () => { const d = curDay(); const st = d.status; d.status = 'fechado'; render(); await new Promise(r => setTimeout(r, 100));
       const o = { reabrir: !!document.querySelector('#cabDia header #dReopen'), fechar: !!document.querySelector('#dClose'), sit: document.querySelector('.cab2-sit').textContent.trim(), ids: [...document.querySelectorAll('#dMaisMenu [role="menuitem"]')].map(x => x.id) };
       d.status = st; render(); return o; });
-    assert.deepEqual([fe.reabrir, fe.fechar, fe.sit], [true, false, 'Fechado']); assert.deepEqual(fe.ids, ['dEnviar', 'kcEdit', 'dayMetas', 'dHist', 'dDel'], 'dia fechado: sem ações de edição; Excluir dia continua (LANC-03 e2)');
+    assert.deepEqual([fe.reabrir, fe.fechar, fe.sit], [true, false, 'Fechado']); assert.deepEqual(fe.ids, ['dEnviar', 'kcEdit', 'dayMetas', 'dDia24', 'dHist', 'dDel'], 'dia fechado: sem ações de edição; Excluir dia continua (LANC-03 e2)');
     console.log('ok dia fechado: Reabrir e só Enviar relatório, Editar cards, Metas e Histórico');
     /* 5) rodapé: situação da gravação à esquerda e Abrir hora a hora à direita; o botão do hora a hora do dia aparece uma vez só */
     await f.waitForSelector('.lc-rodape');

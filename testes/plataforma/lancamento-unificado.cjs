@@ -139,7 +139,7 @@ const html = fs.readFileSync(path.resolve(__dirname, '../../Plataforma.html'));
 
     // 9) aba Hora a hora fora da navegação; "Ver o dia inteiro (24 h)" abre o dia inteiro
     assert.ok(await f.evaluate(() => !visibleRoutes().some(([k]) => k === 'hourly')), 'Hora a hora fora da navegação');
-    await f.click('[data-dia24]'); await w(500);
+    await f.click('#dMais'); await f.click('[data-dia24]'); await w(500);   /* 2.6.42 · LANC-CAB: dentro de Mais ações */
     assert.deepEqual(await f.evaluate(() => [App.route, HHPs.id(curDay())]), ['hourly', 'dia'], 'dia inteiro (24 h)');
     console.log('ok aba Hora a hora fora da navegação; "Ver o dia inteiro (24 h)" abre o dia inteiro');
 
