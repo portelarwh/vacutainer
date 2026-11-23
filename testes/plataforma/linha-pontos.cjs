@@ -36,6 +36,57 @@ const html = fs.readFileSync(path.resolve(__dirname, '../../Plataforma.html'));
     await f.fill(`tr[data-pt="${ids[0]}"] [data-c=nome]`, 'Não vai ficar'); await f.click('[data-ptdesc]');
     assert.equal(await f.evaluate(id => document.querySelector(`tr[data-pt="${id}"] [data-c=nome]`).value, ids[0]), 'Ponto teste ' + ids[0], 'descartar volta ao gravado');
     console.log('ok "Descartar alterações" volta ao que estava gravado');
+    const menu = f.locator('#cfMenu');
+    async function acaoMapa(alvo, nome, posicao) {
+      await alvo.click({ button: 'right', position: posicao });
+      await menu.getByRole('button', { name: nome, exact: true }).click();
+    }
+    const cv = f.locator('#cv');
+    await acaoMapa(cv, 'Adicionar processo', { x: 8, y: 8 });
+    const ponto = await f.evaluate(() => P(App.sel));
+    assert.equal(ponto.tipo, 'processo');
+    assert.ok(ponto.x < 3 && ponto.y < 4 && ponto.numero > 18);
+    const pin = f.locator('[data-pin="' + ponto.id + '"]');
+    await acaoMapa(pin, 'Adicionar checklist');
+    const chk = await f.evaluate(id => chkAtivos().find(c => c.ponto === id), ponto.id);
+    await acaoMapa(pin, 'Detalhes · ' + chk.titulo);
+    assert.equal(await f.inputValue('#fChk [name=id]'), chk.id);
+    await f.fill('#fChk [name=titulo]', 'Verificação fictícia');
+    await f.click('#chkSalvar');
+    assert.equal(await f.evaluate(id => chkAtivos().find(c => c.id === id).titulo, chk.id), 'Verificação fictícia');
+    await f.evaluate(() => ir('config'));
+    await acaoMapa(pin, 'Adicionar formulário');
+    const form = await f.evaluate(id => fmLista().find(q => q.ponto === id), ponto.id);
+    await acaoMapa(pin, 'Detalhes · ' + form.titulo);
+    assert.equal(await f.inputValue('#fmPonto'), ponto.id);
+    await f.fill('#fmTitulo', 'Inspeção fictícia'); await f.click('#fmSalvar');
+    assert.equal(await f.evaluate(id => fmLista().find(q => q.id === id).titulo, form.id), 'Inspeção fictícia');
+    await f.evaluate(() => ir('config'));
+    const zona = f.locator('polygon[data-zona]').first(), areaId = await zona.getAttribute('data-zona');
+    await zona.scrollIntoViewIfNeeded();
+    await zona.evaluate(el => {
+      const r = el.getBoundingClientRect();
+      el.dispatchEvent(new MouseEvent('contextmenu', { bubbles:true, clientX:r.left+r.width/2, clientY:r.top+r.height/2 }));
+    });
+    await menu.getByRole('button', { name:'Alterar nome da área' }).click();
+    await f.fill('#fArea [name=nome]', 'Área teste'); await f.click('#fArea button[type=submit]');
+    assert.equal(await f.evaluate(id => areas().find(q => q.id === id).nome, areaId), 'Área teste');
+    await acaoMapa(cv, 'Adicionar equipamento', { x: 45, y: 15 });
+    const eqPonto = await f.evaluate(() => P(App.sel));
+    const adm = await (await page.locator('iframe[title="Módulo Administração"]').elementHandle()).contentFrame();
+    await adm.waitForSelector('#fBox [data-p=nome]');
+    assert.equal(await adm.inputValue('#fBox [data-p=nome]'), eqPonto.nome);
+    assert.match(await adm.inputValue('#fBox [data-p=codigo]'), /^EQ\d+$/);
+    const eqCodigo = await adm.inputValue('#fBox [data-p=codigo]');
+    assert.equal(await adm.evaluate(id => Cad.D.equipamentos.filter(e => e.pontoLinha360 === id).length, eqPonto.id), 1);
+
+    await adm.fill('#fBox [data-p=nome]', 'Equipamento fictício'); await adm.click('#fSalvar');
+    const cadastrado = await adm.evaluate(id => Cad.D.equipamentos.find(e => e.pontoLinha360 === id), eqPonto.id);
+    assert.equal(cadastrado.codigo, eqCodigo);
+    assert.equal(cadastrado.nome, 'Equipamento fictício');
+    assert.deepEqual(await f.evaluate(id => eqDoPonto(P(id)).lista, eqPonto.id), [eqCodigo]);
+    console.log('ok menu da planta cria e reabre os registros nos seus editores e edita a área selecionada');
+
     assert.deepEqual(erros, [], 'sem erro de JavaScript'); console.log('ok sem erro de JavaScript');
   } finally { if (browser) await browser.close(); srv.close(); }
 })().catch(e => { console.error(e); process.exit(1); });
