@@ -109,9 +109,11 @@ const { chromium } = require('playwright');
     sb.click(); await new Promise(r => setTimeout(r, 300));
     const btn = document.querySelector('.overlay #scGel'); if (!btn) return { semBotao: true };
     btn.click(); await new Promise(r => setTimeout(r, 300));
-    const m = document.querySelector('.overlay'); const kg = m.querySelector('[data-gf="kg"]'); kg.value = '2,345'; kg.dispatchEvent(new Event('change', { bubbles: true })); await new Promise(r => setTimeout(r, 100));
-    const mot = m.querySelector('[data-gm="m1"]'); if (mot) { mot.checked = true; mot.dispatchEvent(new Event('change', { bubbles: true })); await new Promise(r => setTimeout(r, 100)); }
-    const prev = m.querySelector('[data-gi="0"] td:nth-last-child(2)').innerText;
+    /* 2.6.40 · GEL-08: o formulário mostra todos os pontos de descarte (como o Registrar scrap do Gel); peso digitado no ponto, "+ motivo" */
+    const m = document.querySelector('.overlay'); const kg = m.querySelector('[data-gkg="EQ90|d1"]'); kg.value = '2,345'; kg.dispatchEvent(new Event('input', { bubbles: true })); await new Promise(r => setTimeout(r, 100));
+    m.querySelector('[data-gmotadd="EQ90|d1"]').click(); await new Promise(r => setTimeout(r, 100));
+    const mot = m.querySelector('[data-gmot="EQ90|d1|0"]'); if (mot) { mot.value = 'm1'; mot.dispatchEvent(new Event('change', { bubbles: true })); await new Promise(r => setTimeout(r, 100)); }
+    const prev = m.querySelector('[data-gc="EQ90|d1"]').innerText;
     m.querySelector('#gOk').click(); await new Promise(r => setTimeout(r, 500));
     const d2 = Store.S.db.productionDays.find(x => x.id === day.id), ps2 = d2.shifts.find(p => p.id === ps.id), gs = ps2.gelScrap;
     const esperado = vacGel.pesagem({ desc: { comp: 'tubogel', cat: 'T' }, taraEq: 80, kg: 2.345, cg: { fmt: '100', vig: [{ from: '2000-01-01', gTubo: 0.85 }] }, date: day.date, fmts: C.parametros.gel.formatos, params: C.parametros.gel.processo });

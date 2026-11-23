@@ -17364,43 +17364,60 @@ const GelTurno = {
     const e = this.estado(day, ps, res) || { pode: !lk, motivo: '' };
     return `<div class="kv" style="grid-column:1/-1"><span class="l">Scrap de gel ${ib('gelScrap')}</span><span class="v small">${txt}</span><button type="button" class="btn sm" data-gelscrap="${ps.id}" ${e.pode ? '' : `disabled title="${esc(e.motivo)}"`}>Registrar scrap</button>${e.pode ? '' : `<span class="small muted">${esc(e.motivo)}</span>`}</div>`;
   },
-  /* formulário (mesmos campos do Registrar scrap da Gestão de Gel) */
+  /* formulário. 2.6.40 · GEL-08 (pedido do responsável, 23/11/2026): o mesmo jeito do Registrar scrap da Gestão de Gel. Ao abrir aparecem
+     todos os pontos de descarte (equipamento × descarte da Administração), agrupados em Tubos, Barril e Purga, cada um com o peso bruto
+     da balança (no barril: barris terminados e, se pesou, o kg), o detalhe da conta (≈ tubos, gel, materiais, embalagem descontada) e
+     "+ motivo" com o kg de cada motivo (vazio = o restante). Campo vazio = não teve. Mesmo registro (ps.gelScrap) e mesma conta (vacGel). */
   abrir(day, psId, res) {
     const ps = day.shifts.find(p => p.id === psId), C = this.ctx(); if (!ps || !C) return;
-    const cats = this.catsDoTurno(res, ps).filter(c => C.usaGel(c)); const eqs = C.equips();
-    const W = { none: !!(ps.gelScrap &amp;&amp; ps.gelScrap.none), eq: JSON.parse(JSON.stringify((ps.gelScrap &amp;&amp; ps.gelScrap.eq) || [])) };
-    const novo = () => { const e = eqs[0]; return { e: e ? e.codigo : '', d: e &amp;&amp; e.descs[0] ? e.descs[0].id : '', cat: cats[0] || '', kg: '', nb: 0, mots: [] }; };
-    if (!W.eq.length &amp;&amp; !W.none) W.eq.push(novo());
-    const motsDe = en => { const e = C.eq(en.e), dsc = e &amp;&amp; (e.descs || []).find(x => x.id === en.d); if (!dsc) return []; return (C.motivos || []).filter(m => m.active !== false &amp;&amp; (!(m.comps || []).length || m.comps.includes(dsc.comp)) &amp;&amp; (!(dsc.mots || []).length || dsc.mots.includes(m.id))); };
-    const linha = (en, i) => { const e = C.eq(en.e), dsc = e &amp;&amp; (e.descs || []).find(x => x.id === en.d), c = this.calc(en, day.date, C);
-      return `<tr data-gi="${i}"><td><select data-gf="e">${eqs.map(x => `<option value="${esc(x.codigo)}" ${x.codigo === en.e ? 'selected' : ''}>${esc(x.codigo)} · ${esc(x.nome || '')}</option>`).join('')}</select></td>
-        <td><select data-gf="d">${(e ? e.descs : []).map(x => `<option value="${esc(x.id)}" ${x.id === en.d ? 'selected' : ''}>${esc((vacGel.COMPS[x.comp] || {}).l || x.comp)} → ${esc(vacGel.SCAT[x.cat] || x.cat)}</option>`).join('')}</select></td>
-        <td><select data-gf="cat"><option value="">—</option>${[...new Set(cats.concat(en.cat ? [en.cat] : []))].map(x => `<option value="${esc(x)}" ${x === en.cat ? 'selected' : ''}>${esc(x)}</option>`).join('')}</select></td>
-        <td><input data-gf="kg" inputmode="decimal" value="${esc(en.kg === 0 ? '' : String(en.kg).replace('.', ','))}" style="width:90px" placeholder="kg"></td>
-        <td>${dsc &amp;&amp; dsc.comp === 'barril' ? `<input data-gf="nb" type="number" min="0" step="1" value="${esc(en.nb || '')}" style="width:70px">` : ''}</td>
-        <td class="small">${motsDe(en).map(m => { const x = (en.mots || []).find(y => y.m === m.id); return `<label style="margin-right:8px"><input type="checkbox" data-gm="${esc(m.id)}" ${x ? 'checked' : ''}> ${esc(m.name)}${x ? ` <input data-gmk="${esc(m.id)}" inputmode="decimal" value="${esc(x.kg ? String(x.kg).replace('.', ',') : '')}" placeholder="kg" style="width:60px">` : ''}</label>`; }).join('') || '<span class="muted">—</span>'}</td>
-        <td class="small n">${c ? (c.comp === 'barril' &amp;&amp; c.est &amp;&amp; vacGel.sobraAt(C.fmts, day.date) == null ? "<span class=\"ferr\">sobra do barril não cadastrada na Administração</span>" : `gel <b>${U.fmt(c.gel, 3)}</b> kg${c.n ? ` · ${U.fmt(c.n)} tubos` : ''}`) : '—'}</td><td><button type="button" class="btn xs" data-gdel="${i}">✕</button></td></tr>`; };
-    const html = () => `<p class="small muted">Mesmos campos e a mesma conta da Gestão de Gel. Fica neste turno da Produção e a Gestão de Gel lê daqui. Equipamentos, descartes, formatos e motivos vêm da Administração.</p>
-      <label class="chk"><input type="checkbox" id="gNone" ${W.none ? 'checked' : ''}> Sem scrap de gel neste turno</label>
-      ${W.none ? '' : `<div class="tw"><table><thead><tr><th>Equipamento</th><th>Descarte → categoria</th><th>Catálogo</th><th>Peso bruto</th><th>Barris</th><th>Motivos</th><th class="n">Gel</th><th></th></tr></thead><tbody>${W.eq.map(linha).join('')}</tbody></table></div>
-      <button type="button" class="btn sm" id="gAdd">+ Pesagem</button>`}
-      ${!eqs.length ? "<p class=\"ferr small\">Nenhum equipamento da categoria Equipamento – Gel com descartes na Administração.</p>" : ''}`;
+    const cats = this.catsDoTurno(res, ps).filter(c => C.usaGel(c)), eqs = C.equips(), f3 = v => U.fmt(v, 3), f0 = v => U.fmt(Math.round(v || 0));
+    const g0 = ps.gelScrap || {}, W = { none: !!g0.none, cat: ((g0.eq || []).find(x => x.cat) || {}).cat || cats[0] || '', eq: JSON.parse(JSON.stringify(g0.eq || [])) };
+    const kgTxt = v => v == null || v === '' || v === 0 ? '' : String(v).replace('.', ',');
+    const ent = (e, d, criar) => { let x = W.eq.find(z => z.e === e &amp;&amp; z.d === d); if (!x &amp;&amp; criar) { x = { e, d, cat: W.cat, kg: '', nb: 0, mots: [] }; W.eq.push(x); } return x; };
+    const motsDe = dsc => (C.motivos || []).filter(m => m.active !== false &amp;&amp; (!(m.comps || []).length || m.comps.includes(dsc.comp)) &amp;&amp; (!(dsc.mots || []).length || dsc.mots.includes(m.id)));
+    const detalhe = c => { if (!c) return ''; if (c.comp === 'barril') { const so = vacGel.sobraAt(C.fmts, day.date); return c.est ? (so == null ? '<span class="ferr">sobra do barril não cadastrada na Administração</span>' : `${f0(c.nb)} barril(is) × ${U.fmt(so, 2)} kg = gel <b>${f3(c.gel)}</b> kg`) : `gel <b>${f3(c.gel)}</b> kg (pesado)`; }
+      const tara = c.tara ? ` · embalagem ${U.fmt(c.tara, 0)} g descontada` : '';
+      if (c.comp === 'gel') return `gel <b>${f3(c.gel)}</b> kg${tara}`;
+      return `≈${f0(c.n)} tubos · gel <b>${f3(c.gel)}</b> kg · tubo ${f3(c.tubo)} kg${c.tamp ? ` · ${f0(c.tamp)} tampas, ${f0(c.rolha)} rolhas, ${f0(c.etq)} etiquetas` : ''}${c.adit ? ` · aditivo ${f3(c.adit)} kg` : ''}${tara}`; };
+    const calcDe = en => en &amp;&amp; (vacNumero(String(en.kg || '').replace('.', ',')) > 0 || +en.nb > 0) ? this.calc({ ...en, cat: W.cat, kg: typeof en.kg === 'string' ? vacNumero(en.kg) || 0 : +en.kg || 0 }, day.date, C) : null;
+    const k = (e, d) => esc(e) + '|' + esc(d);
+    const item = (e, ds) => { const en = ent(e.codigo, ds.id), c = calcDe(en), comp = (vacGel.COMPS[ds.comp] || {}).l || ds.comp, ops = motsDe(ds), K = k(e.codigo, ds.id);
+      const campos = ds.comp === 'barril'
+        ? `<input data-gnb="${K}" type="number" min="0" step="1" value="${esc(en &amp;&amp; en.nb ? en.nb : '')}" placeholder="barris" style="width:80px" aria-label="Barris terminados · ${esc(e.nome || e.codigo)}"><input data-gkg="${K}" inputmode="decimal" value="${esc(kgTxt(en &amp;&amp; en.kg))}" placeholder="kg pesado (opcional)" style="width:140px" aria-label="Sobra pesada em kg · ${esc(e.nome || e.codigo)}">`
+        : `<input data-gkg="${K}" inputmode="decimal" value="${esc(kgTxt(en &amp;&amp; en.kg))}" placeholder="kg bruto" style="width:100px" aria-label="Peso bruto · ${esc(e.nome || e.codigo)} · ${esc(comp)}">`;
+      const mots = (en &amp;&amp; en.mots || []).map((x, i) => `<div class="gsc-m"><select data-gmot="${K}|${i}" aria-label="Motivo"><option value="">motivo…</option>${ops.concat(x.m &amp;&amp; !ops.some(o => o.id === x.m) ? [{ id: x.m, name: '(motivo fora da lista)' }] : []).map(o => `<option value="${esc(o.id)}" ${o.id === x.m ? 'selected' : ''}>${esc(o.name)}</option>`).join('')}</select><input data-gmotkg="${K}|${i}" inputmode="decimal" value="${esc(kgTxt(x.kg))}" placeholder="kg (vazio = o restante)" style="width:150px" aria-label="kg do motivo"><button type="button" class="btn xs" data-gmotrm="${K}|${i}" aria-label="Remover motivo">✕</button></div>`).join('');
+      return `<div class="gsc-it"><div class="gsc-l"><span class="gsc-n"><b>${esc(e.nome || e.codigo)}</b> <span class="small muted">${esc(e.codigo)} · ${esc(comp)}</span></span>${campos}<span class="small gsc-c" data-gc="${K}">${detalhe(c)}</span></div>
+        ${mots}${ops.length ? `<div class="gsc-m"><button type="button" class="btn xs" data-gmotadd="${K}">+ motivo</button></div>` : ''}</div>`; };
+    const totais = () => { const o = { T: 0, B: 0, P: 0, n: 0 }; for (const en of W.eq) { const c = calcDe(en); if (c) { o[c.scat] += c.gel; o.n += c.n || 0; } } return o; };
+    const html = () => { const t = totais();
+      const grupos = Object.entries(vacGel.SCAT).map(([sc, nome]) => { const L = eqs.flatMap(e => (e.descs || []).filter(ds => ds.cat === sc).map(ds => item(e, ds))); return L.length ? `<div class="gsc-g"><h4>${esc(nome)}</h4>${L.join('')}</div>` : ''; }).join('');
+      return `<style>.gsc-g{margin:10px 0}.gsc-g h4{margin:6px 0;font-size:13px;letter-spacing:.04em;text-transform:uppercase;color:var(--muted)}.gsc-it{padding:6px 8px;border:1px solid var(--line,#dde3ea);border-radius:8px;margin-bottom:6px}.gsc-l{display:flex;flex-wrap:wrap;gap:8px;align-items:center}.gsc-n{min-width:220px;flex:0 1 260px}.gsc-c{color:var(--muted);flex:1 1 260px}.gsc-m{display:flex;gap:6px;align-items:center;margin:4px 0 0 18px}.gsc-tot{margin-top:8px;padding:6px 8px;background:var(--surface-2,#f4f7fa);border-radius:8px}</style><p class="small muted">Os mesmos pontos de descarte e a mesma conta da Gestão de Gel (equipamentos, descartes e motivos da Administração). Informe o <b>peso bruto da balança</b>; campo vazio = não teve. Fica neste turno da Produção e a Gestão de Gel lê daqui.</p>
+      <div class="row wf"><label class="f"><span>Catálogo do scrap</span><select id="gCat">${[...new Set(cats.concat(W.cat ? [W.cat] : []))].map(x => `<option value="${esc(x)}" ${x === W.cat ? 'selected' : ''}>${esc(x)}</option>`).join('') || '<option value="">—</option>'}</select></label>
+       <label class="chk"><input type="checkbox" id="gNone" ${W.none ? 'checked' : ''}> Sem scrap de gel neste turno</label></div>
+      ${W.none ? '' : grupos || ''}
+      ${!eqs.length ? '<p class="ferr small">Nenhum equipamento da categoria Equipamento – Gel com descartes na Administração. Se eles ainda estão só na Gestão de Gel, traga-os em Administração › Trazer das páginas › Só no Gel · equipamentos e parâmetros do gel.</p>' : ''}
+      ${W.none ? '' : `<p class="gsc-tot" data-gtot>Gel líquido: <b>${f3(t.T + t.B + t.P)} kg</b> · Tubos ${f3(t.T)} · Barril ${f3(t.B)} · Purga ${f3(t.P)}${t.n ? ` · ≈${f0(t.n)} tubos` : ''}</p>`}`; };
     modal(`Registrar scrap de gel · ${ps.snap.name} · ${U.brDate(day.date)}`, `<div id="gBox">${html()}</div>`, `<button class="btn" data-close>Cancelar</button><button class="btn primary" id="gOk">Gravar</button>`, (el, close) => {
-      const box = el.querySelector('#gBox'), draw = () => { box.innerHTML = html(); };
-      box.addEventListener('change', e => { const t = e.target, tr = t.closest('[data-gi]');
-        if (t.id === 'gNone') { W.none = t.checked; if (!W.none &amp;&amp; !W.eq.length) W.eq.push(novo()); return draw(); }
-        if (!tr) return; const en = W.eq[+tr.dataset.gi];
-        if (t.dataset.gf === 'e') { en.e = t.value; const x = C.eq(en.e); en.d = x &amp;&amp; x.descs[0] ? x.descs[0].id : ''; en.mots = []; }
-        else if (t.dataset.gf === 'd') { en.d = t.value; en.mots = []; }
-        else if (t.dataset.gf) en[t.dataset.gf] = t.dataset.gf === 'nb' ? (+t.value || 0) : t.value;
-        else if (t.dataset.gm) { en.mots = en.mots || []; if (t.checked) en.mots.push({ m: t.dataset.gm, kg: 0 }); else en.mots = en.mots.filter(m => m.m !== t.dataset.gm); }
-        else if (t.dataset.gmk) { const m = (en.mots || []).find(x => x.m === t.dataset.gmk); if (m) m.kg = vacNumero(t.value) || 0; }
-        draw(); });
-      box.addEventListener('click', e => { const a = e.target.closest('#gAdd'), x = e.target.closest('[data-gdel]'); if (a) { W.eq.push(novo()); draw(); } if (x) { W.eq.splice(+x.dataset.gdel, 1); draw(); } });
+      const box = el.querySelector('#gBox'), draw = () => { const y = box.scrollTop; box.innerHTML = html(); box.scrollTop = y; };
+      const par = s => s.split('|'), achar = s => { const [e, d] = par(s); return ent(e, d, true); };
+      const conta = (K) => { const [e, d] = par(K), en = ent(e, d), c = calcDe(en), sp = box.querySelector(`[data-gc="${CSS.escape(K)}"]`); if (sp) sp.innerHTML = detalhe(c); const t = totais(), tt = box.querySelector('[data-gtot]'); if (tt) tt.innerHTML = `Gel líquido: <b>${f3(t.T + t.B + t.P)} kg</b> · Tubos ${f3(t.T)} · Barril ${f3(t.B)} · Purga ${f3(t.P)}${t.n ? ` · ≈${f0(t.n)} tubos` : ''}`; };
+      /* digitar atualiza a conta da linha e o total sem redesenhar (o cursor não pula) */
+      box.addEventListener('input', e => { const t = e.target;
+        if (t.dataset.gkg) { achar(t.dataset.gkg).kg = t.value; conta(t.dataset.gkg); }
+        else if (t.dataset.gnb) { achar(t.dataset.gnb).nb = +t.value || 0; conta(t.dataset.gnb); }
+        else if (t.dataset.gmotkg) { const p = par(t.dataset.gmotkg), en = ent(p[0], p[1], true), m = en.mots[+p[2]]; if (m) m.kg = t.value; } });
+      box.addEventListener('change', e => { const t = e.target;
+        if (t.id === 'gNone') { W.none = t.checked; return draw(); }
+        if (t.id === 'gCat') { W.cat = t.value; W.eq.forEach(x => x.cat = W.cat); return draw(); }
+        if (t.dataset.gmot) { const p = par(t.dataset.gmot), en = ent(p[0], p[1], true), m = en.mots[+p[2]]; if (m) m.m = t.value; } });
+      box.addEventListener('click', e => { const a = e.target.closest('[data-gmotadd]'), x = e.target.closest('[data-gmotrm]');
+        if (a) { const en = achar(a.dataset.gmotadd); en.mots = en.mots || []; en.mots.push({ m: '', kg: '' }); draw(); }
+        if (x) { const p = par(x.dataset.gmotrm), en = ent(p[0], p[1]); if (en) en.mots.splice(+p[2], 1); draw(); } });
       el.querySelector('#gOk').onclick = () => {
-        const eq = W.none ? [] : W.eq.map(en => ({ ...en, kg: typeof en.kg === 'string' ? (en.kg.trim() === '' ? 0 : vacNumero(en.kg)) : +en.kg || 0 }));
-        if (eq.some(en => !isFinite(en.kg) || en.kg < 0)) return toast('Peso inválido: use número (ex.: 2,345).', true);
-        if (eq.some(en => !(en.kg > 0) &amp;&amp; !(en.nb > 0))) return toast('Cada pesagem precisa do peso (ou do nº de barris, no barril).', true);
+        const num = v => typeof v === 'string' ? (v.trim() === '' ? 0 : vacNumero(v)) : +v || 0;
+        const eq = W.none ? [] : W.eq.map(en => ({ ...en, cat: W.cat, kg: num(en.kg), nb: +en.nb || 0, mots: (en.mots || []).filter(m => m.m).map(m => ({ m: m.m, kg: num(m.kg) })) })).filter(en => en.kg > 0 || en.nb > 0);
+        if (eq.some(en => !isFinite(en.kg) || en.kg < 0 || en.mots.some(m => !isFinite(m.kg) || m.kg < 0))) return toast('Peso inválido: use número (ex.: 2,345).', true);
+        if (!W.none &amp;&amp; !eq.length) return toast('Informe o peso de algum ponto ou marque "Sem scrap de gel neste turno".', true);
         run(() => this.salvar(day.id, ps.id, { none: W.none, eq }), 'Scrap de gel gravado.').then(() => { close(); render(); });
       };
     }, { wide: true });
@@ -55385,8 +55402,8 @@ body.vac-porta{overflow:hidden}
       "id": "oee",
       "path": "Plataforma.html#motor/oee",
       "version": "2.6.39",
-      "sha256": "a7f88e3bceaa3855e624faceef5cc8ed2ab1d313d65a4616beb8c9d11f823795",
-      "bytes": 2398069
+      "sha256": "ce3cfd434407431cd913a25cf33ec4ed33ff49de49cd63586ca25822e723506a",
+      "bytes": 2401821
     },
     {
       "id": "perdas",
@@ -55448,7 +55465,7 @@ body.vac-porta{overflow:hidden}
   "limitations": [
     "Projetos e conteúdo técnico OSM/MES/AM/TPM mantêm os limites documentados nas fontes."
   ],
-  "enginesSha256": "d8cd0df15ae9ed46b44b4b2e876028b294ef7e995c197308648a3cf8fc475671",
+  "enginesSha256": "0e0dbf91f4845465ee93841e7c6a8162155c703668c4835af57b45b0f00a4737",
   "originRevision": "ffc9ee8",
   "sourceMode": "single-html",
   "originEnginesSha256": "a87a64ad0c328f70e102b2ae888790a9b5d5a9bd05778652a7ce7cae140e40d2"
