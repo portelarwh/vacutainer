@@ -5260,11 +5260,14 @@ const AJUDA_CAMPO={
 /* 1.8 · ⓘ das categorias (listas de cadastro e grupos do menu) */
 const CAT_AJUDA={
  trazerCfg:'Lê as bases da Produção (oee-vacutainer-base.json), Gestão de Gel (fifo-base.json), Waste (perdas-base.json) e Paradas (paradas-base.json) e propõe levar para o cadastro o que hoje só existe nelas: pausas e abonos dos turnos, metas de OEE, regras de apontamento dos códigos de parada, preço do gel (e as cotações gravadas com ele), meta mensal do Waste, parada longa e o de-para de nomes das máquinas. Você escolhe o que entra; nada é gravado sem prévia, e fica na auditoria.',
- 'grupo:Cadastros':"Itens gerais usados por várias páginas. Cada um é cadastrado uma vez aqui, com vigência quando muda com o tempo. As páginas só leem e mostram \"Editar na Administração\".",
- 'grupo:Metas':'Metas com vigência, separadas por tipo de tratativa: OEE (% por linha, máquina, família ou catálogo), metas gerais da área (Waste, scrap, MTBF…) e OSM (quantidade por pessoa).',
- 'grupo:Pessoas':'Quem usa as páginas (entra pelo ID) e o que cada perfil pode ver e lançar.',
- 'grupo:Regras':'Regras comuns a todas as páginas: vigências, semáforo, microparada, parada longa.',
- 'grupo:Sistema':"Integrações com o SAP, configuração da Administração, versões das páginas, auditoria, backups e senha.",
+ 'grupo:Planta e linha':'Linhas e calendário de produção: o que define onde e quando a fábrica trabalha.',
+ 'grupo:Produto':'Famílias, catálogos, materiais, BOM, preços e câmbio, cada um cadastrado uma vez, com vigência quando muda com o tempo.',
+ 'grupo:Gel':'Gel: formatos, perdas teóricas e regras do estoque (chegam nas próximas etapas da Administração central).',
+ 'grupo:Equipamentos':'Máquinas, componentes e modos de falha.',
+ 'grupo:Turnos e metas':'Turnos e metas com vigência: OEE (% por linha, máquina, família ou catálogo), metas gerais da área (Waste, scrap, MTBF…) e OSM (quantidade por pessoa).',
+ 'grupo:Paradas e perdas':'Códigos de parada e a matriz de quais máquinas apontam cada um.',
+ 'grupo:Pessoas e acesso':'Quem usa as páginas (entra pelo ID) e o que cada perfil pode ver, lançar e editar em cada assunto.',
+ 'grupo:Sistema':'Vigências, parâmetros, programas, integrações com o SAP, apps de celular, configuração da Administração, versões das páginas, auditoria, backups e senha.',
  linhas:'Linhas de produção. Ex.: VAC · Linha Vacutainer.',familias:'Famílias de produto que agrupam catálogos. Ex.: EDTA, SST.',
  catalogos:'Produtos da linha (tubos) e preparações de aditivo, com PPH, tubos por caixa e lote padrão por vigência. Ex.: 360060.',
  materiais:'Materiais do SAP usados nas BOMs (gel, tampa, etiqueta…). O Tipo agrupa os componentes no Waste.',
@@ -5498,9 +5501,9 @@ const Lock={K:'vac.cad.unlock',
  on(h){try{localStorage.setItem(this.K,JSON.stringify({h,ult:Date.now(),por:user()}))}catch(e){}Cad._lk=true},
  off(exp){try{localStorage.removeItem(this.K);sessionStorage.removeItem(this.K)}catch(e){}Cad._lk=false;if(exp)toast('Edição do cadastro bloqueada: 30 min sem uso.',5000)},
  ate(){const u=this.get();return u?new Date(u.ult+CAD_TTL):null}};
-window.addEventListener('storage',e=>{if(e.key!==Lock.K&amp;&amp;e.key!=='vac.userId')return;const ok=!!(Cad.D&amp;&amp;Lock.ok());if(ok!==Cad._lk){Cad._lk=ok;if(Ficha.aberta()){Ficha.edit=Cad.podeEditar(true);Ficha.draw()}if(App.tab==='cad'&amp;&amp;!emEdicao())App.render()}});
+window.addEventListener('storage',e=>{if(e.key!==Lock.K&amp;&amp;e.key!=='vac.userId')return;const ok=!!(Cad.D&amp;&amp;Lock.ok());if(ok!==Cad._lk){Cad._lk=ok;if(Ficha.aberta()){Ficha.edit=Ficha.pode(true);Ficha.draw()}if(App.tab==='cad'&amp;&amp;!emEdicao())App.render()}});
 document.addEventListener('pointerdown',()=>Lock.touch(),true);document.addEventListener('keydown',()=>Lock.touch(),true);
-setInterval(()=>{const ok=!!(Cad.D&amp;&amp;Lock.ok());if(ok!==Cad._lk){Cad._lk=ok;if(Ficha.aberta()){Ficha.edit=Cad.podeEditar(true);Ficha.draw()}if(App.tab==='cad'&amp;&amp;!emEdicao())App.render()}},15000);
+setInterval(()=>{const ok=!!(Cad.D&amp;&amp;Lock.ok());if(ok!==Cad._lk){Cad._lk=ok;if(Ficha.aberta()){Ficha.edit=Ficha.pode(true);Ficha.draw()}if(App.tab==='cad'&amp;&amp;!emEdicao())App.render()}},15000);
 
 /* ---------- arquivos de equipamento: Equipamentos/<código>/ ao lado do Portal ---------- */
 const EqFiles={
@@ -5562,6 +5565,14 @@ const Cad={base:null,D:null,mod:0,fonte:'nenhum',err:'',fila:[],gravando:false,d
   else if(this.status==='conflito')m='Resolva o conflito de gravação primeiro.';else if(!Lock.ok())m='Desbloqueie a edição (senha).';
   else if(D.seguranca&amp;&amp;D.seguranca.trocar)m='Troque a senha inicial em Cadastros › Segurança antes de editar.';
   this._m=m;if(m&amp;&amp;!silent)toast(m,5000,true);return!m},
+ /* ADM-CENTRAL (bloco 1): permissão por assunto. Vale em cima de podeEditar (pasta, senha, conflito); sem sessão de pessoa, segue só podeEditar. */
+ podeEditarAssunto(id,silent){if(!this.podeEditar(silent))return false;const p=perfilAtual(this.D);if(!p)return true;
+  const ok=this.nivelAssunto(p,id)==='editar';if(!ok){this._m='Seu perfil só consulta este assunto ('+((ADM_ASSUNTOS.find(a=>a.id===id)||{}).nome||id)+').';if(!silent)toast(this._m,5000,true)}return ok},
+ nivelAssunto(p,id){if(p&amp;&amp;p.assuntos&amp;&amp;typeof p.assuntos==='object')return p.assuntos[id]==='editar'?'editar':'ver';
+  /* ADM-CENTRAL: transição até o importador */
+  const x=String((p&amp;&amp;p.nome)||'').toLowerCase()+' '+String((p&amp;&amp;p.codigo)||'').toLowerCase();
+  if(x.includes('processos'))return'editar';if(x.includes('pcp'))return id==='planta'||id==='turnos'?'editar':'ver';if(x.includes('almoxarifado'))return id==='gel'?'editar':'ver';
+  return this.podeEditar(true)?'editar':'ver'},
  op(o){return this.ops([o])},
  ops(list){const em=isoLocal(),por=user();for(const o of list){o.id=uid('op');o.qid=o.id;o.em=em;o.por=por;this.fila.push(o)}this.persistFila();this.recompute();if(this.status==='salvo')this.status='pendente';this.render();return this.gravar()},
  async gravar(){
@@ -5677,7 +5688,7 @@ function cadRota(){const raw=location.hash.slice(1);if(/^reuniao=/.test(raw)){le
    try{pedido=JSON.parse(localStorage.getItem('linha.criarEquipamento'));if(pedido?.ponto===p[2])localStorage.removeItem('linha.criarEquipamento')}catch(e){}
    const criar=pedido?.ponto===p[2]&amp;&amp;pedido.usuario===localStorage.getItem('vac.userId')&amp;&amp;Date.now()-pedido.em>=0&amp;&amp;Date.now()-pedido.em<60000;
    const item=Object.assign(cadModelo(sec),preset);
-   if(criar&amp;&amp;vacPodeAqui('configurar')&amp;&amp;Cad.podeEditar(true)&amp;&amp;!cadValidarItem(sec,item,Cad.D,{novo:true}).length){
+   if(criar&amp;&amp;vacPodeAqui('configurar')&amp;&amp;Cad.podeEditarAssunto(admAssuntoDe(sec),true)&amp;&amp;!cadValidarItem(sec,item,Cad.D,{novo:true}).length){
     Cad.op({acao:'criação',tipo:sec,codigo:item.codigo,item,origem:'Linha 360°',motivo:null});
     Ficha.abrir(sec,item.codigo);
    }else Ficha.abrir(sec,null,{novo:true,preset});
@@ -5764,14 +5775,24 @@ function cadApps(el){const D=Cad.D,{c,semMeta}=MT_APP.cfg(D),ok=c.turnos.length&
  const gm=$('#mmGerar');if(gm)gm.onclick=()=>baixar('manutencao','Manutencao.html');
  const g=$('#mtGerar');if(g)g.onclick=()=>{try{const h=MT_APP.gerar(D),b=new Blob([h],{type:'text/html'}),a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='MeuTurno.html';document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),4000);toast('MeuTurno.html gerado com o cadastro rev '+(D.rev??'—')+'. Envie aos celulares.')}catch(e){toast(e.message||String(e),6000,true)}}}
 /* 1.7 · menu da Administração (o mesmo na aba de cadastros e na Configuração do Portal) */
+/* ADM-CENTRAL (bloco 1): a Administração por assunto. Cada tela (sec) mora em um só assunto; Resumo fica acima deles. */
+const ADM_ASSUNTOS=[
+ {id:'planta',nome:'Planta e linha',itens:['linhas','calendario']},
+ {id:'produto',nome:'Produto',itens:['familias','catalogos','materiais','bom','cambio','precos']},
+ {id:'gel',nome:'Gel',itens:[]},
+ {id:'equipamentos',nome:'Equipamentos',itens:['equipamentos','componentes','modosFalha']},
+ {id:'turnos',nome:'Turnos e metas',itens:['turnos','metasOee','metasArea','metasOsm']},
+ {id:'paradas',nome:'Paradas e perdas',itens:['paradas','matriz']},
+ {id:'pessoas',nome:'Pessoas e acesso',itens:['usuarios','perfis']},
+ {id:'sistema',nome:'Sistema',itens:['vigencias','parametros','programas','novidades','apps','importar','config','versoes','auditoria','backups','seguranca']}];
+const admAssuntoDe=sec=>(ADM_ASSUNTOS.find(a=>a.itens.includes(sec))||{id:'sistema'}).id;
+/* rótulo do botão e se a tela só existe com o cadastro carregado */
+const ADM_ROT={matriz:['Matriz de paradas',1],usuarios:['Usuários',1],perfis:['Perfis e permissões',1],vigencias:['Vigências',1],parametros:['Parâmetros',1],novidades:['Novidades',0],apps:['Apps de celular',1],importar:['Integrações SAP',1],config:['Configuração da Administração',0],versoes:['Versões das páginas',0],auditoria:['Auditoria',1],backups:['Backups do cadastro',1],seguranca:['Segurança e senha',1]};
 function cadSide(sec){const D=Cad.D;const btn=(k,l,n)=>`<button data-sec="${k}" class="${sec===k?'on':''}">${l}${n!=null?`<span class="n">${n}</span>`:''}</button>`;
  const cnt=t=>{if(!D)return null;const L=D[t]||[],a=L.filter(x=>cadAtivo(t,x,D)).length;return a+(a!==L.length?'/'+L.length:'')};
  const g=t=>`<div class="sg">${t}${CAT_AJUDA['grupo:'+t]?' '+ib(t,CAT_AJUDA['grupo:'+t]):''}</div>`;
- return btn('inicio','Resumo')+(D?g('Cadastros')+CAD_ORD.filter(t=>!CAD_PESSOAS.includes(t)&amp;&amp;!CAD_METAS.includes(t)).map(t=>btn(t,esc(CAD_T[t].nome),cnt(t))).join('')+btn('matriz','Matriz de paradas')
-  +g('Metas')+CAD_METAS.map(t=>btn(t,esc(CAD_T[t].nome),cnt(t))).join('')
-  +g('Pessoas')+btn('usuarios','Usuários',cnt('usuarios'))+btn('perfis','Perfis e permissões',cnt('perfis'))
-  +g('Regras')+btn('vigencias','Vigências')+btn('parametros','Parâmetros'):'')
-  +g('Sistema')+btn('novidades','Novidades')+(D?btn('apps','Apps de celular'):'')+(D?btn('importar','Integrações SAP'):'')+btn('config',"Configuração da Administração")+btn('versoes','Versões das páginas')+(D?btn('auditoria','Auditoria')+btn('backups','Backups do cadastro')+btn('seguranca','Segurança e senha'):'')}
+ const item=k=>{const r=ADM_ROT[k];if(r)return r[1]&amp;&amp;!D?'':btn(k,r[0],r[0]==='Usuários'||k==='perfis'?cnt(k):null);return D?btn(k,esc(CAD_T[k].nome),cnt(k)):''};
+ return btn('inicio','Resumo')+ADM_ASSUNTOS.map(a=>{const b=a.itens.map(item).join('');return b||D?g(esc(a.nome))+(b||'<div class="small muted" style="padding:2px 12px 6px">Em construção.</div>'):''}).join('')}
 /* POR-04: a lista lateral é redesenhada a cada clique; guarda e devolve a posição da rolagem interna */
 let cadSideTop=0;
 function wireAdminSide(){const sd=$('.cadside');if(sd){sd.scrollTop=cadSideTop;sd.addEventListener('scroll',()=>{cadSideTop=sd.scrollTop},{passive:true})}$$('.cadside [data-sec]').forEach(b=>b.onclick=()=>{const s=b.dataset.sec;if(s==='config'){App.show('config');return}if(s==='versoes'){irVersoes();return}Cad.ui.sec=s;Cad.ui.q='';if(App.tab!=='cad')App.show('cad');else{cadHash();App.render()}})}
@@ -5850,7 +5871,7 @@ function eqDnd(tb){let de=null,alvo=null,abaixo=false;const linhas=()=>[...tb.qu
   const fim=e=>{if(!de)return;const r=alvo,origem=de;de=null;alvo=null;limpa();if(e.type!=='pointerup'||!r)return;
    const cod=origem.dataset.cod,linha=origem.dataset.linha||null,D=Cad.D,ord=EqOrd.lista(D,linha).map(q=>q.codigo).filter(c=>c!==cod);let i=r.dataset.fixo?0:ord.indexOf(r.dataset.cod);if(i<0)i=ord.length;else if(abaixo&amp;&amp;!r.dataset.fixo)i++;ord.splice(i,0,cod);
    const P=EqOrd.sequencia(D,linha,ord);if(!P.length)return toast('A ordem não mudou.');
-   if(!Cad.podeEditar())return;   /* 1.9.52: grava direto, sem a confirmação com a lista (pedido do responsável); a mudança fica na auditoria */
+   if(!Cad.podeEditarAssunto('paradas'))return;   /* 1.9.52: grava direto, sem a confirmação com a lista (pedido do responsável); a mudança fica na auditoria */
    Cad.ops(EqOrd.ops(P,'reorganização da linha (arrastar e soltar)'));toast('Ordem salva: '+P.length+' posição(ões).')};
   h.addEventListener('pointerup',fim);h.addEventListener('pointercancel',fim)})}
 /* 1.9.81 · PAR-LOTE (pedido do responsável, 23/11/2026): códigos de parada em lote.
@@ -5909,7 +5930,7 @@ const ParLote={
    box.querySelectorAll('[data-pl]').forEach(c=>c.onchange=()=>{P.L[+c.dataset.pl].marcado=c.checked;draw()});
    const t=box.querySelector('#plTodos');t.onchange=()=>{P.L.forEach(x=>{if(!x.erros.length&amp;&amp;!x.igual)x.marcado=t.checked});draw()};
    box.querySelector('#plCanc').onclick=()=>Modal.close(true);
-   box.querySelector('#plOk').onclick=()=>{if(!Cad.podeEditar())return;const ops=this.ops(P);if(!ops.length)return;Modal.close(true);Cad.ops(ops);toast(`${ops.length} código(s) de parada importado(s); gravando…`);if(depois)depois()}};
+   box.querySelector('#plOk').onclick=()=>{if(!Cad.podeEditarAssunto('paradas'))return;const ops=this.ops(P);if(!ops.length)return;Modal.close(true);Cad.ops(ops);toast(`${ops.length} código(s) de parada importado(s); gravando…`);if(depois)depois()}};
   draw()},
  abrirLote(D,L,depois){const C=this.campos().filter(c=>c[0]!=='codigo'),st={k:'duracaoManual',v:true,sel:new Set(L.map(x=>x.codigo)),atalho:false};
   const mb=Modal.open('<div id="plBox"></div>'),box=mb.querySelector('#plBox');
@@ -5931,7 +5952,7 @@ const ParLote={
    box.querySelectorAll('[data-ps]').forEach(c=>c.onchange=()=>{if(c.checked)st.sel.add(c.dataset.ps);else st.sel.delete(c.dataset.ps);draw()});
    box.querySelector('#plTodos').onchange=e=>{st.sel=e.target.checked?new Set(L.map(x=>x.codigo)):new Set();draw()};
    box.querySelector('#plCanc').onclick=()=>Modal.close(true);
-   box.querySelector('#plOk').onclick=()=>{if(!Cad.podeEditar())return;const M2=mudas();if(M2.erro||!M2.length)return;const motivo=st.atalho?'em lote: hora exata ou duração (Permite duração manual = SIM, Exige horário = NÃO)':`em lote: ${this.rotulo(st.k)} = ${this.txt(st.k,mudas().length?M2[0][1][st.k].depois:'')}`;
+   box.querySelector('#plOk').onclick=()=>{if(!Cad.podeEditarAssunto('paradas'))return;const M2=mudas();if(M2.erro||!M2.length)return;const motivo=st.atalho?'em lote: hora exata ou duração (Permite duração manual = SIM, Exige horário = NÃO)':`em lote: ${this.rotulo(st.k)} = ${this.txt(st.k,mudas().length?M2[0][1][st.k].depois:'')}`;
     Modal.close(true);Cad.ops(M2.map(([x,m])=>({acao:'edição',tipo:'paradas',codigo:x.codigo,mudancas:m,motivo,origem:'lote'})));toast(`${M2.length} código(s) de parada alterado(s); gravando…`);if(depois)depois()}};
   draw()}};
 function cadLista(el,t){const D=Cad.D,T=CAD_T[t],cols=cadCols(t,D),k=kOf(t);const q=norm(Cad.ui.q),sit=Cad.ui.sit||'ativos';
@@ -5940,7 +5961,7 @@ function cadLista(el,t){const D=Cad.D,T=CAD_T[t],cols=cadCols(t,D),k=kOf(t);cons
  L.sort(t==='paradas'?(a,b)=>String(a.numero||'999z').localeCompare(String(b.numero||'999z'))||String(a.codigo).localeCompare(String(b.codigo)):t==='equipamentos'?(a,b)=>(EqOrd.pos(a)??1e9)-(EqOrd.pos(b)??1e9)||String(a.codigo).localeCompare(String(b.codigo),'pt-BR',{numeric:true}):(a,b)=>String(a[k]).localeCompare(String(b[k]),'pt-BR',{numeric:true}));
  const OR=Cad.ui.ord&amp;&amp;Cad.ui.ord.t===t&amp;&amp;cols[Cad.ui.ord.c]?Cad.ui.ord:null;   /* POR-02: ordem pela coluna clicada (texto exibido; números em ordem numérica; vazios no fim) */
  if(OR){const c=cols[OR.c],key=new Map(L.map(it=>[it,htmlTxt(String(c[1](it)??''))]));L.sort((a,b)=>{const x=key.get(a),y=key.get(b);if(!x!==!y)return x?-1:1;return OR.d*x.localeCompare(y,'pt-BR',{numeric:true,sensitivity:'base'})})}
- const foco=document.activeElement&amp;&amp;document.activeElement.id==='cadQ';const pe=Cad.podeEditar(true);
+ const foco=document.activeElement&amp;&amp;document.activeElement.id==='cadQ';const pe=Cad.podeEditarAssunto(admAssuntoDe(t),true);
  el.innerHTML=`<h3 style="margin:0 0 8px">${esc(T.nome)}${CAT_AJUDA[t]?' '+ib(T.nome,CAT_AJUDA[t]):''}</h3><div class="filters"><label>Buscar<input id="cadQ" value="${esc(Cad.ui.q)}" placeholder="código, nome, qualquer campo" style="min-width:220px"></label>
   <span class="seg" id="cadSit">${[['ativos','Ativos'],['inativos','Inativos'],['todos','Todos']].map(([v,l])=>`<button data-v="${v}" class="${sit===v?'on':''}">${l}</button>`).join('')}</span>
   ${FP?parFiltrosHtml(D,FP):''}<span class="small muted" style="align-self:center">${L.length} de ${(D[t]||[]).length}</span><span style="flex:1"></span>
@@ -5956,7 +5977,7 @@ function cadLista(el,t){const D=Cad.D,T=CAD_T[t],cols=cadCols(t,D),k=kOf(t);cons
  if(t==='equipamentos'){EqThumb.carregar(el);const tb=el.querySelector('table.eq-dnd');if(tb)eqDnd(tb)}   /* 1.9.51 · EQ-ORD */
  {const db=el.querySelector('#cadDesbl');if(db)db.onclick=()=>cadDesbloquear(()=>App.render());const cc=el.querySelector('#cadConectar');if(cc)cc.onclick=()=>Store.pick().then(ok=>ok&amp;&amp;App.onConnect())}
  const nv=$('#cadNovo');if(nv)nv.onclick=()=>Ficha.abrir(t,null,{novo:true});
- const pp=$('#cadPerfisPad');if(pp)pp.onclick=()=>{if(!Cad.podeEditar())return;const F=DEFAULT_PERFIS.filter(x=>!cadItem('perfis',x.codigo,D));if(!confirm(`Criar ${F.length} perfil(is) padrão: ${F.map(x=>x.nome).join(', ')}?`))return;Cad.ops(F.map(x=>({acao:'criação',tipo:'perfis',codigo:x.codigo,item:clone(x),motivo:'perfis padrão (Portal 1.7)'})));toast(F.length+' perfil(is) criados.')};
+ const pp=$('#cadPerfisPad');if(pp)pp.onclick=()=>{if(!Cad.podeEditarAssunto('pessoas'))return;const F=DEFAULT_PERFIS.filter(x=>!cadItem('perfis',x.codigo,D));if(!confirm(`Criar ${F.length} perfil(is) padrão: ${F.map(x=>x.nome).join(', ')}?`))return;Cad.ops(F.map(x=>({acao:'criação',tipo:'perfis',codigo:x.codigo,item:clone(x),motivo:'perfis padrão (Portal 1.7)'})));toast(F.length+' perfil(is) criados.')};
  if(t==='usuarios')el.insertAdjacentHTML('afterbegin','<div class="note">Cada pessoa entra pelo <b>ID</b> e pela <b>senha de 6 números</b> no login que abre em todas as páginas. Quem não está aqui se cadastra sozinho no 1º acesso (nome + ID) e entra com o perfil <b>Consulta</b>; o administrador muda o perfil aqui, com a senha.</div>');
  if(t==='paradas'){   /* 1.9.81 · PAR-LOTE */
   const ex=$('#parExp');if(ex)ex.onclick=async()=>{try{await ParLote.exportar(D)}catch(e){toast(e.message,6000,true)}};
@@ -5984,7 +6005,7 @@ function cadModelo(t){const h=todayISO(),D=Cad.D,L0=(D.linhas.find(l=>l.ativo!==
   metasArea:{codigo:'',nome:'',pagina:'Waste',unidade:'R$',sentido:'menor',periodo:'mês',linha:L0,ativo:true,vigencias:[{de:h,ate:null,valor:null,alerta:null}]},
   metasOsm:{codigo:'',nome:'',publico:'por operador',periodo:'mês',linha:L0,turno:null,ativo:true,vigencias:[{de:h,ate:null,quantidade:4,tema:null}]},
   usuarios:{codigo:'',nome:'',perfil:'CONSULTA',turno:null,especialidade:null,area:null,email:null,paginaInicial:'(do perfil)',ativo:true},
-  perfis:{codigo:'',nome:'',paginaInicial:'Portal',descricao:null,semSenha:false,permissoes:permDe(['ver']),ativo:true},
+  perfis:{codigo:'',nome:'',paginaInicial:'Portal',descricao:null,semSenha:false,permissoes:permDe(['ver']),assuntos:Object.fromEntries(ADM_ASSUNTOS.map(a=>[a.id,'ver'])),ativo:true},
   paradas:{codigo:'',numero:null,nome:'',categoria:null,subcategoria:null,cor:null,pilar:null,classe:'fixa',ondeAponta:'Máquina',equipamentos:null,exigeTrocaPeca:false,exigeComponente:false,temporario:false,guia:null,duracaoManual:false,relatorio:true,planejada:false,descontaPlanejado:false,afetaD:true,afetaP:false,afetaQ:false,pareto:true,exigeObservacao:false,exigeHorario:false,exigeCatalogoAnterior:false,exigeCatalogoSeguinte:false,ativo:true}}[t])}
 function cadFinal(t,W){if(t==='paradas'){if(W.guia&amp;&amp;typeof W.guia==='object'&amp;&amp;!Object.values(W.guia).some(v=>v!=null&amp;&amp;String(v).trim()!==''))W.guia=null;if(W.numero!=null&amp;&amp;W.numero!=='')W.numero=String(W.numero).trim()}
  if(t==='equipamentos'){const d={};(W._dados||[]).forEach(r=>{const k=String(r.k||'').trim();if(k)d[k]=r.v==null?'':String(r.v)});W.dados=d}
@@ -5998,16 +6019,18 @@ function pset(o,p,v){const ks=String(p).split('.');let a=o;for(let i=0;i<ks.leng
 const inpRaw=(p,k,v,e,extra='')=>k==='bool'?`<input type="checkbox" data-p="${p}" data-k="bool" ${v?'checked':''}${e?'':' disabled'}>`:`<input ${k==='num'||k==='int'?`type="number" step="${k==='int'?1:'any'}"`:''} data-p="${p}" data-k="${k==='num'||k==='int'?k:'txt'}" value="${esc(v??'')}"${e?'':' disabled'} ${extra}>`;
 const selRaw=(p,opts,v,e)=>`<select data-p="${p}" data-k="txt"${e?'':' disabled'}><option value=""></option>${opts.map(x=>`<option value="${esc(x)}" ${String(x)===String(v)?'selected':''}>${esc(p==='paginaInicial'?rotuloInicial(x):x)}</option>`).join('')}${v&amp;&amp;!opts.map(String).includes(String(v))?`<option selected>${esc(v)}</option>`:''}</select>`;
 const Ficha={t:null,cod:null,orig:null,W:null,novo:false,edit:false,dirty:false,
+ pode(silent){return Cad.podeEditarAssunto(admAssuntoDe(this.t||Cad.ui.sec),silent)},
  aberta(){const m=$('#coreModal');return!!(m&amp;&amp;m.classList.contains('on')&amp;&amp;Modal.owner==='ficha'&amp;&amp;this.t)},
  abrir(t,cod,{novo=false,preset=null}={}){if(this.aberta()&amp;&amp;this.dirty&amp;&amp;!confirm('Descartar as alterações da ficha aberta?'))return;
   const it=novo?null:cadItem(t,cod);if(!novo&amp;&amp;!it)return toast('Não encontrei '+cod+' em '+CAD_T[t].nome+'.',4000,true);
   this.t=t;this.novo=novo;this.cod=novo?null:String(cod);this.orig=it?clone(it):null;this.W=novo?Object.assign(cadModelo(t),preset||{}):clone(it);if(novo&amp;&amp;Array.isArray(this.W.vigencias))this.W.vigencias.forEach(v=>{v._nova=true;v.criadoPor=user()||null;v.criadoEm=isoLocal();v.origem=v.origem||'cadastro manual'});this.prep();this.dirty=false;
   if(Cad.ui.sec!==t){Cad.ui.sec=t;App.render()}this.mostrar()},
- prep(){if(this.t==='equipamentos'){this.W._dados=Object.entries(this.W.dados||{}).map(([k,v])=>({k,v:v==null?'':String(v)}))}},
- mostrar(){this.edit=Cad.podeEditar(true);Modal.open('<div class="form" id="fBox"></div>');Modal.owner='ficha';
+ prep(){if(this.t==='perfis'&amp;&amp;!this.novo&amp;&amp;!(this.W.assuntos&amp;&amp;typeof this.W.assuntos==='object'))this.W.assuntos=Object.fromEntries(ADM_ASSUNTOS.map(a=>[a.id,Cad.nivelAssunto(this.W,a.id)]));
+  if(this.t==='equipamentos'){this.W._dados=Object.entries(this.W.dados||{}).map(([k,v])=>({k,v:v==null?'':String(v)}))}},
+ mostrar(){this.edit=Ficha.pode(true);Modal.open('<div class="form" id="fBox"></div>');Modal.owner='ficha';
   Modal.guard=()=>!this.dirty||confirm('Descartar as alterações desta ficha?');Modal.onClose=()=>{this.t=null;this.dirty=false;cadHash()};cadHash(this.novo?null:this.cod);this.draw()},
  reabrir(){if(this.t)this.mostrar()},
- recarregar(){const it=cadItem(this.t,this.cod);if(!it)return;this.orig=clone(it);this.W=clone(it);this.prep();this.dirty=false;this.edit=Cad.podeEditar(true);cadHash(this.cod);this.draw()},
+ recarregar(){const it=cadItem(this.t,this.cod);if(!it)return;this.orig=clone(it);this.W=clone(it);this.prep();this.dirty=false;this.edit=Ficha.pode(true);cadHash(this.cod);this.draw()},
  draw(){const box=$('#fBox');if(!box||!this.t)return;box.innerHTML=this.html();this.wire(box)},
  html(){const t=this.t,T=CAD_T[t],W=this.W,D=Cad.D,at=this.novo||cadAtivo(t,W,D),e=this.edit;
   const nome=t==='bom'?((cadItem('catalogos',W.catalogo)||{}).nome||''):W.nome||'';
@@ -6022,7 +6045,7 @@ const Ficha={t:null,cod:null,orig:null,W:null,novo:false,edit:false,dirty:false,
   if(t==='equipamentos')h+=this.dados()+(W.categoria==='gel'||W.gel?this.gelEq():'')+this.comps()+this.arquivos();
   if(t==='catalogos'&amp;&amp;W.tipoItem!=='preparacao')h+=this.gelCat();
   if(t==='paradas')h+=this.maqs()+this.guia();
-  if(t==='perfis')h+=this.perms()+this.layoutPerfil();
+  if(t==='perfis')h+=this.perms()+this.assuntosEd()+this.layoutPerfil();
   if(t==='usuarios'&amp;&amp;!this.novo)h+=usuSenhaHtml(W);
   if(t==='usuarios'&amp;&amp;!this.novo)h+=`<p class="small muted" style="margin-top:8px">Página inicial efetiva: <b>${esc(rotuloInicial(paginaInicialDe(W,D)))}</b>${W.origem==='autocadastro'?' · cadastrado no 1º acesso'+(W.primeiroAcessoEm?' em '+fmtDT(W.primeiroAcessoEm):''):''}. A pessoa entra digitando o ID no topo da página (Entrar).</p>`;
   if(t==='catalogos'&amp;&amp;W.tipoItem==='preparacao'&amp;&amp;!this.novo){const us=bomsComMaterial(W.codigo),m=(D.materiais||[]).find(x=>prepK(x.codigo)===prepK(W.codigo)),bp=cadItem('bom',W.codigo);
@@ -6030,7 +6053,7 @@ const Ficha={t:null,cod:null,orig:null,W:null,novo:false,edit:false,dirty:false,
   if(T.vig)h+=this.vigs();
   if(!this.novo)h+=this.uso();
   h+=e?`<div class="filters" style="margin-top:14px"><label style="flex:1;min-width:240px"><span>Motivo ${ib('Motivo','Obrigatório para inativar, substituir código e mudar vigência que já valeu (antes de hoje). Fica na auditoria.')}</span><input id="fMot" placeholder="ex.: PPH revisado pela engenharia"></label><button class="b p" id="fSalvar">${this.novo?'Criar':'Salvar alterações'}</button><button class="b" id="fCanc">${this.novo?'Cancelar':'Desfazer'}</button></div><div id="fErr"></div>`
-   :`<div class="filters" style="margin-top:14px">${Lock.ok()?'':'<button class="b p" id="fUnlock">Desbloquear edição</button>'}<span class="small muted">${Lock.ok()?esc(Cad.podeEditar(true)?'':'Edição indisponível no momento.'):'Sem a senha, o cadastro fica só para consulta.'}</span></div>`;
+   :`<div class="filters" style="margin-top:14px">${Lock.ok()?'':'<button class="b p" id="fUnlock">Desbloquear edição</button>'}<span class="small muted">${Lock.ok()?esc(Ficha.pode(true)?'':'Edição indisponível no momento.'):'Sem a senha, o cadastro fica só para consulta.'}</span></div>`;
   if(!this.novo)h+=this.audit();
   if(t==='bom')h+=`<datalist id="cadMats">${D.materiais.filter(m=>m.ativo!==false).map(m=>`<option value="${esc(m.codigo)}">${esc(m.nome||'')}</option>`).join('')}</datalist>`;
   return h},
@@ -6084,6 +6107,10 @@ const Ficha={t:null,cod:null,orig:null,W:null,novo:false,edit:false,dirty:false,
  perms(){const e=this.edit,P=this.W.permissoes||{};
   return`<h3 style="margin-top:14px">Permissões por página ${ib('Permissões',"O que este perfil pode fazer em cada página. A Administração já usa \"Ver\" para montar a barra; as outras páginas passam a respeitar as permissões quando receberem o cabeçalho comum v2. A edição do cadastro e as ações sensíveis continuam pedindo a senha de administrador.")}</h3>
   <div class="tw"><table class="cadst"><tr><th>Página</th>${PERM_FN.map(([,l])=>`<th style="text-align:center">${esc(l)}</th>`).join('')}</tr>${PERM_MODS.map(m=>`<tr><td>${esc(sysOf(m).nome||m)}</td>${PERM_FN.map(([f])=>`<td style="text-align:center">${inpRaw('permissoes.'+m+'.'+f,'bool',P[m]?P[m][f]:false,e)}</td>`).join('')}</tr>`).join('')}</table></div>`},
+ /* ADM-CENTRAL (bloco 1): o que o perfil pode editar em cada assunto da Administração */
+ assuntosEd(){const e=this.edit,A=this.W.assuntos||{};
+  return`<h3 style="margin-top:14px">Edição por assunto ${ib('Edição por assunto','Em cada assunto da Administração o perfil pode só ver ou também editar. Vale além da senha: quem não tem a senha continua só consultando.')}</h3>
+  <div class="tw"><table class="cadst"><tr><th>Assunto</th><th>Neste perfil</th></tr>${ADM_ASSUNTOS.map(a=>`<tr><td>${esc(a.nome)}</td><td class="in"><select data-p="assuntos.${a.id}" data-k="txt"${e?'':' disabled'}><option value="ver" ${A[a.id]!=='editar'?'selected':''}>Só ver</option><option value="editar" ${A[a.id]==='editar'?'selected':''}>Pode editar</option></select></td></tr>`).join('')}</table></div>`},
  /* 1.9.34 · Fase 5: layout padrão do perfil = cópia do arquivo de preferências de um usuário (00. Bases/Preferencias/<ID>.json, gravado pelo kit
     vacPrefs nas páginas). Vale para quem tem este perfil, no que a pessoa nunca mudou; "Restaurar meu layout" volta a ele. */
  layoutPerfil(){const e=this.edit,L=this.W.layout,us=(Cad.D.usuarios||[]).filter(u=>u.ativo!==false),n=L&amp;&amp;L.chaves?Object.keys(L.chaves).length:0;
@@ -6173,7 +6200,7 @@ const Ficha={t:null,cod:null,orig:null,W:null,novo:false,edit:false,dirty:false,
   if(this.t==='componentes'&amp;&amp;this.novo&amp;&amp;p==='equipamento'&amp;&amp;v&amp;&amp;(!this.W.codigo||/-C\d+$/.test(this.W.codigo))){this.W.codigo=proxComp(v);const c=document.querySelector('#fBox [data-p="codigo"]');if(c)c.value=this.W.codigo}},
  erro(es){const x=$('#fErr');if(x)x.innerHTML=es?`<div class="note e"><b>Corrija antes de salvar:</b><ul style="margin:4px 0 0 18px;padding:0">${(Array.isArray(es)?es:[es]).map(s=>`<li>${s}</li>`).join('')}</ul></div>`:''},
  mot(){return(($('#fMot')||{}).value||'').trim()},
- salvar(){if(!Cad.podeEditar())return;const t=this.t,k=kOf(t),W=cadFinal(t,clone(this.W)),mot=this.mot();
+ salvar(){if(!Ficha.pode())return;const t=this.t,k=kOf(t),W=cadFinal(t,clone(this.W)),mot=this.mot();
   const es=cadValidarItem(t,W,Cad.D,{novo:this.novo});if(es.length)return this.erro(es.map(esc));
   /* 1.9.51 · EQ-ORD: posição digitada já ocupada → quem está nela e os seguintes em sequência andam +1 (na mesma gravação) */
   let emp=[];if(t==='equipamentos'&amp;&amp;W.ativo!==false&amp;&amp;!EqOrd.ehLinha(W)&amp;&amp;W.posicao!=null&amp;&amp;(this.novo||String(this.orig.posicao??'')!==String(W.posicao))){
@@ -6186,12 +6213,12 @@ const Ficha={t:null,cod:null,orig:null,W:null,novo:false,edit:false,dirty:false,
    if(cadMudaPassado(t,this.orig,W)&amp;&amp;!mot){this.erro('Informe o <b>motivo</b>: a alteração muda uma vigência que já valeu (antes de hoje).');$('#fMot').focus();return}
    Cad.ops([{acao:'edição',tipo:t,codigo:this.cod,mudancas:mud,motivo:mot||null},...extra])}
   this.recarregar();toast('Alteração registrada.'+(emp.length?` ${emp.length} equipamento(s) andaram +1 na posição.`:''))},
- inativar(){if(!Cad.podeEditar())return;const mot=this.mot();if(!mot){this.erro('Informe o <b>motivo</b> para inativar.');$('#fMot').focus();return}
+ inativar(){if(!Ficha.pode())return;const mot=this.mot();if(!mot){this.erro('Informe o <b>motivo</b> para inativar.');$('#fMot').focus();return}
   if(this.dirty&amp;&amp;!confirm('As outras alterações desta ficha (não salvas) serão descartadas. Continuar?'))return;
   const it=cadItem(this.t,this.cod),U=cadUsos(this.t,this.cod).filter(u=>u.ativo);if(U.length&amp;&amp;!confirm(`Ainda usado por ${U.length} item(ns) ativo(s): ${U.slice(0,6).map(u=>u.cod).join(', ')}${U.length>6?'…':''}. Inativar mesmo assim?`))return;
   Cad.op({acao:'inativação',tipo:this.t,codigo:this.cod,mudancas:{ativo:{antes:it.ativo??null,depois:false},inativadoEm:{antes:it.inativadoEm??null,depois:todayISO()}},motivo:mot});this.recarregar()},
- reativar(){if(!Cad.podeEditar())return;const it=cadItem(this.t,this.cod);Cad.op({acao:'reativação',tipo:this.t,codigo:this.cod,mudancas:{ativo:{antes:it.ativo??null,depois:true},inativadoEm:{antes:it.inativadoEm??null,depois:null}},motivo:this.mot()||null});this.recarregar()},
- substituir(){if(!Cad.podeEditar())return;const mot=this.mot();if(!mot){this.erro('Informe o <b>motivo</b> da troca de código.');$('#fMot').focus();return}
+ reativar(){if(!Ficha.pode())return;const it=cadItem(this.t,this.cod);Cad.op({acao:'reativação',tipo:this.t,codigo:this.cod,mudancas:{ativo:{antes:it.ativo??null,depois:true},inativadoEm:{antes:it.inativadoEm??null,depois:null}},motivo:this.mot()||null});this.recarregar()},
+ substituir(){if(!Ficha.pode())return;const mot=this.mot();if(!mot){this.erro('Informe o <b>motivo</b> da troca de código.');$('#fMot').focus();return}
   const novo=(prompt(`O código é imutável: trocar = inativar ${this.cod} e criar o novo com os mesmos dados.\nNovo código:`)||'').trim();if(!novo)return;
   const it=cadItem(this.t,this.cod),n=clone(it);n[kOf(this.t)]=novo;n.ativo=true;delete n.inativadoEm;delete n.substituidoPor;n.substitui=this.cod;
   const es=cadValidarItem(this.t,n,Cad.D,{novo:true});if(es.length)return alert(es.join('\n'));
@@ -6220,14 +6247,14 @@ const Ficha={t:null,cod:null,orig:null,W:null,novo:false,edit:false,dirty:false,
   vs.splice(i,1);if(!(this.t==='turnos'&amp;&amp;vigLinhas(vs,v.de).length)){const ord=[...vs].sort((a,b)=>a.de<b.de?-1:1),ant=ord.filter(x=>x.de<v.de).pop(),prox=ord.find(x=>x.de>v.de);if(ant)for(const x of this.t==='turnos'?vigLinhas(vs,ant.de):[ant])x.ate=prox?addDays(prox.de,-1):(v.ate||null)}
   const{_nova,...x}=v;(this.W.vigenciasDesativadas=this.W.vigenciasDesativadas||[]).push({...x,desativadaEm:isoLocal(),desativadaPor:user()||null,motivoDesativacao:m});
   this.dirty=true;this.draw();const f=$('#fMot');if(f&amp;&amp;!f.value)f.value='vigência de '+fmtD(v.de)+' desativada: '+m;toast('Vigência desativada na ficha. Clique em "Salvar alterações" para gravar.',6000)},
- async upFoto(f){if(!f||!Cad.podeEditar())return;if(Store.mode!=='pasta')return toast('Arquivos só com a pasta da rede conectada.',5000,true);if(f.size>20e6)return toast('Foto muito grande (máx. 20 MB).',5000,true);
+ async upFoto(f){if(!f||!Ficha.pode())return;if(Store.mode!=='pasta')return toast('Arquivos só com a pasta da rede conectada.',5000,true);if(f.size>20e6)return toast('Foto muito grande (máx. 20 MB).',5000,true);
   try{const path=await EqFiles.salvar(this.cod,f);const it=cadItem('equipamentos',this.cod);Cad.op({acao:'edição',tipo:'equipamentos',codigo:this.cod,mudancas:{foto:{antes:it.foto??null,depois:path}},motivo:'foto enviada'});this.syncArq();toast('Foto copiada para '+path)}catch(e){toast('Não consegui copiar o arquivo: '+(e.message||e),6000,true)}},
- async upDoc(f){if(!f||!Cad.podeEditar())return;if(Store.mode!=='pasta')return toast('Arquivos só com a pasta da rede conectada.',5000,true);if(f.size>80e6)return toast('Arquivo muito grande (máx. 80 MB).',5000,true);
+ async upDoc(f){if(!f||!Ficha.pode())return;if(Store.mode!=='pasta')return toast('Arquivos só com a pasta da rede conectada.',5000,true);if(f.size>80e6)return toast('Arquivo muito grande (máx. 80 MB).',5000,true);
   const nome=(prompt('Nome do documento:',f.name.replace(/\.[^.]*$/,''))||'').trim();if(!nome)return;const ext=(f.name.split('.').pop()||'').toLowerCase();
   const tipo=/pdf|docx?|odt/.test(ext)?(/manual/i.test(nome)?'manual':'documento'):/dwg|dxf/.test(ext)?'desenho':/jpe?g|png|gif|webp/.test(ext)?'imagem':'outro';
   try{const path=await EqFiles.salvar(this.cod,f);const it=cadItem('equipamentos',this.cod);const L=clone(it.documentos||[]);L.push({nome,arquivo:path,tipo,data:todayISO()});
    Cad.op({acao:'edição',tipo:'equipamentos',codigo:this.cod,mudancas:{documentos:{antes:it.documentos??null,depois:L}},motivo:'documento anexado'});this.syncArq();toast('Documento copiado para '+path)}catch(e){toast('Não consegui copiar o arquivo: '+(e.message||e),6000,true)}},
- rmDoc(j){if(!Cad.podeEditar())return;const it=cadItem('equipamentos',this.cod),L=clone(it.documentos||[]);const d=L[j];if(!d||!confirm(`Tirar "${d.nome}" da lista? O arquivo continua na pasta.`))return;L.splice(j,1);
+ rmDoc(j){if(!Ficha.pode())return;const it=cadItem('equipamentos',this.cod),L=clone(it.documentos||[]);const d=L[j];if(!d||!confirm(`Tirar "${d.nome}" da lista? O arquivo continua na pasta.`))return;L.splice(j,1);
   Cad.op({acao:'edição',tipo:'equipamentos',codigo:this.cod,mudancas:{documentos:{antes:it.documentos??null,depois:L}},motivo:'documento removido da lista'});this.syncArq()},
  syncArq(){const it=cadItem('equipamentos',this.cod);for(const k of['foto','documentos']){this.orig[k]=clone(it[k]);this.W[k]=clone(it[k])}this.draw()}};
 const audRow=a=>`<tr><td class="small" style="white-space:nowrap">${fmtDT(a.em)}</td><td class="small">${esc(a.por||'')}</td><td class="small">${esc(a.acao)}</td><td class="small mono">${esc(a.campo||'')}</td><td class="small">${esc(audTxt(a.antes))}</td><td class="small">${esc(audTxt(a.depois))}</td><td class="small">${esc(a.motivo||'')}${a.origem?` <span class="tag">${esc(a.origem)}</span>`:''}</td></tr>`;
@@ -6278,7 +6305,7 @@ function cadSeguranca(el){const D=Cad.D,s=D.seguranca||{},lk=Lock.ok(),pe=Cad.po
 
 /* ---------- matriz código de parada × máquina ---------- */
 const Matriz={pend:{},grupo:'',todos:false,vista:'grade',q:'',maq:null};
-function cadMatriz(el){const D=Cad.D,M=parMaquinas(D),pe=Cad.podeEditar(true),Z=Matriz,Mc=M.map(m=>m.codigo);Z.vista=Z.vista||'grade';Z.q=Z.q||'';
+function cadMatriz(el){const D=Cad.D,M=parMaquinas(D),pe=Cad.podeEditarAssunto('paradas',true),Z=Matriz,Mc=M.map(m=>m.codigo);Z.vista=Z.vista||'grade';Z.q=Z.q||'';
  let L=D.paradas.filter(x=>x.ativo!==false);if(!Z.todos)L=L.filter(x=>norm(x.ondeAponta||'').includes('maquina'));if(Z.grupo!=='')L=L.filter(x=>String(parGrupo(x.numero))===Z.grupo);
  if(Z.q){const q=norm(Z.q);L=L.filter(x=>norm([x.codigo,x.numero,x.nome,x.categoria].join(' ')).includes(q))}
  L.sort((a,b)=>String(a.numero||'999z').localeCompare(String(b.numero||'999z'))||String(a.codigo).localeCompare(String(b.codigo)));
@@ -6313,7 +6340,7 @@ function cadMatriz(el){const D=Cad.D,M=parMaquinas(D),pe=Cad.podeEditar(true),Z=
  el.querySelectorAll('[data-mxcol]').forEach(b=>b.onclick=()=>{for(const x of L)tog(x,b.dataset.mxcol,b.dataset.on==='1');re()});
  el.querySelectorAll('[data-mxgrp]').forEach(b=>b.onclick=()=>{const g=b.dataset.mxgrp;for(const x of L.filter(x=>String(parGrupo(x.numero))===g))tog(x,Z.maq,b.dataset.on==='1');re()});
  const dz=$('#mxDesf');if(dz)dz.onclick=()=>{Z.pend={};re()};
- const ok=$('#mxOk');if(ok)ok.onclick=()=>{if(!Cad.podeEditar())return;const ops=Object.entries(Z.pend).map(([c,v])=>{const x=cadItem('paradas',c);return{acao:'edição',tipo:'paradas',codigo:c,mudancas:{equipamentos:{antes:x.equipamentos??null,depois:v}},motivo:'matriz de paradas',origem:'matriz'}});
+ const ok=$('#mxOk');if(ok)ok.onclick=()=>{if(!Cad.podeEditarAssunto('paradas'))return;const ops=Object.entries(Z.pend).map(([c,v])=>{const x=cadItem('paradas',c);return{acao:'edição',tipo:'paradas',codigo:c,mudancas:{equipamentos:{antes:x.equipamentos??null,depois:v}},motivo:'matriz de paradas',origem:'matriz'}});
   if(!ops.length)return;Cad.ops(ops);Z.pend={};toast(ops.length+' código(s) atualizados na matriz.');App.render()}}
 
 /* ---------- importação colada de componentes ---------- */
@@ -7041,7 +7068,7 @@ const cbFY=d=>{const y=+d.slice(0,4),m=+d.slice(5,7);return m>=10?y+1:y};
 function cbItem(){return cadItem('cambio','USD')}
 function cbFmt(v){return v==null?'':Number(v).toLocaleString('pt-BR',{minimumFractionDigits:4,maximumFractionDigits:4})}
 /* aplica uma lista de mudanças {de, cotacao|null (excluir)} sobre as vigências e grava numa operação só */
-function cbGravar(mud,motivo){if(!Cad.podeEditar())return false;const D=Cad.D,it=cbItem(),agora=isoLocal(),quem=user()||null;
+function cbGravar(mud,motivo){if(!Cad.podeEditarAssunto('produto'))return false;const D=Cad.D,it=cbItem(),agora=isoLocal(),quem=user()||null;
  const vs=clone(it?it.vigencias||[]:[]),des=clone(it?it.vigenciasDesativadas||[]:[]);let n=0;
  for(const m of mud){const i=vs.findIndex(v=>v.de===m.de);
   if(i>=0){if(m.cotacao!=null&amp;&amp;+vs[i].cotacao===+m.cotacao)continue;des.push({...vs[i],desativadaEm:agora,desativadaPor:quem,motivoDesativacao:m.cotacao==null?'excluída':'corrigida para '+cbFmt(m.cotacao)});vs.splice(i,1);n++}
@@ -7051,7 +7078,7 @@ function cbGravar(mud,motivo){if(!Cad.podeEditar())return false;const D=Cad.D,it
  if(!it)Cad.ops([{acao:'criação',tipo:'cambio',codigo:'USD',item:{codigo:'USD',nome:'Dólar americano',ativo:true,vigencias:vs,vigenciasDesativadas:des},motivo:motivo||'cadastro de câmbio'}]);
  else Cad.ops([{acao:'edição',tipo:'cambio',codigo:'USD',mudancas:{vigencias:{antes:clone(it.vigencias||[]),depois:vs},vigenciasDesativadas:{antes:clone(it.vigenciasDesativadas||null),depois:des}},motivo:motivo||'cadastro de câmbio'}]);
  toast('Câmbio gravado ('+n+' alteração(ões)).');return true}
-function cadCambio(el){const D=Cad.D,it=cbItem(),pe=Cad.podeEditar(true),dis=pe?'':' disabled',vs=((it&amp;&amp;it.vigencias)||[]).slice().sort((a,b)=>a.de<b.de?1:-1),hoje=todayISO(),cur=vigEm((it&amp;&amp;it.vigencias)||[],hoje);
+function cadCambio(el){const D=Cad.D,it=cbItem(),pe=Cad.podeEditarAssunto('produto',true),dis=pe?'':' disabled',vs=((it&amp;&amp;it.vigencias)||[]).slice().sort((a,b)=>a.de<b.de?1:-1),hoje=todayISO(),cur=vigEm((it&amp;&amp;it.vigencias)||[],hoje);
  const U=Cad.ui.cb=Cad.ui.cb||{fy:cbFY(hoje)-1,txt:'',prev:null};const fys=[cbFY(hoje)-2,cbFY(hoje)-1,cbFY(hoje)];
  const mesesFY=fy=>Array.from({length:12},(_,i)=>{const m=(i+9)%12,y=m>=9?fy-1:fy;return`${y}-${String(m+1).padStart(2,'0')}-01`});
  const valEm=d=>{const v=(it&amp;&amp;it.vigencias||[]).find(x=>x.de===d);return v?v.cotacao:null},vigNo=d=>vigEm((it&amp;&amp;it.vigencias)||[],d);
@@ -55593,14 +55620,14 @@ body.vac-porta{overflow:hidden}
       "id": "portal",
       "path": "Plataforma.html#motor/portal",
       "version": "1.9.81",
-      "sha256": "dc69c3ad3acfbbf02ac4609f56d394d5ff5f4f11b90ac6c2af78343167d71d6d",
-      "bytes": 1353950
+      "sha256": "3d8f42796774082317d75174f016b7b7811fce5021890e94ed3e0523051f87af",
+      "bytes": 1357504
     }
   ],
   "limitations": [
     "Projetos e conteúdo técnico OSM/MES/AM/TPM mantêm os limites documentados nas fontes."
   ],
-  "enginesSha256": "b1791947b6258fdc93a6372d6931877baca85e488ff46148736d1dbe42722e97",
+  "enginesSha256": "5bebb62333d77c4868ab8cde7aff940bc47d163e6b7864b61f3ecf3aa826fb75",
   "originRevision": "ffc9ee8",
   "sourceMode": "single-html",
   "originEnginesSha256": "a87a64ad0c328f70e102b2ae888790a9b5d5a9bd05778652a7ce7cae140e40d2"
