@@ -4404,7 +4404,7 @@ function wireConfigComum(){$('#cPasta').onclick=async()=>{if(await Store.pick())
         entrar pelo ID (autocadastro como Consulta); página inicial por perfil (1x por sessão); vigência gravada não se edita (desativar com motivo); painel de vigências; semáforo central; saída do modo de teste.
    1.1.2: aviso da carga diz qual base foi lida.  1.5: páginas Paradas, Máquinas, Manutenção e Projetos na lista (aparecem quando o HTML chega na pasta).  1.4: lista técnica pela CS12 multinível (itens = nível 1, estrutura = níveis 2+); CS03 sai.  1.3: cabeçalho comum (vac-cabecalho v2: barra do sistema + página + abas), busca Ctrl K, acabamento V1.90, Versões com cabeçalho e último backup.  1.2: Configuração › Versões das páginas (versão e data de cada HTML, gravação das bases, cópias repetidas, histórico).
    ===================================================================== */
-const PAGE={id:'portal',titulo:"Administração · Linha Vacutainer",tituloCurto:"Administração",subtitulo:'Sistemas de gestão da linha',versao:'1.9.80',baseFile:'portal-base.json',idb:'vac-portal',backupDir:'00. Backups/Portal',
+const PAGE={id:'portal',titulo:"Administração · Linha Vacutainer",tituloCurto:"Administração",subtitulo:'Sistemas de gestão da linha',versao:'1.9.81',baseFile:'portal-base.json',idb:'vac-portal',backupDir:'00. Backups/Portal',
  vazio:()=>({schema:'portal-base',rev:0,config:{modulos:{},avisoDias:30,notas:{}},audit:[]}),
  /* itens do Portal para a busca Ctrl K: cadastro, pendências e telas */
  busca:q=>{const R=[],D=Cad.D;if(D)for(const t of CAD_ORD){for(const it of D[t]||[]){const c=String(it[kOf(t)]),nm=t==='bom'?((cadItem('catalogos',it.catalogo)||{}).nome||''):it.nome||'';if(norm(c+' '+nm).includes(q))R.push({tipo:CAD_T[t].um,txt:c+(nm?' · '+nm:''),sub:'Cadastros'+(cadAtivo(t,it,D)?'':' · inativo'),href:'#cadastros/'+t+'/'+encodeURIComponent(c)});if(R.length>30)break}}
@@ -5283,6 +5283,7 @@ const CAD_SECS=['inicio','matriz','importar','auditoria','backups','seguranca','
    curtas (macro, sem detalhe técnico). REGRA: toda versão nova da plataforma ganha uma entrada aqui, a mais recente primeiro
    (AGENTS.md e CLAUDE.md). Tipos: nova (função nova), melhoria (algo que já existia ficou melhor), correcao (erro corrigido). */
 const NOVIDADES=[
+ {v:'1.8.61',d:'2026-11-23',itens:[['novo','Administração › Códigos de parada: ⇩ Exportar para editar baixa a planilha com todos os campos; ⇧ Importar planilha mostra a prévia (novo, antes → depois, erros) e grava só o marcado.'],['novo','Administração › Códigos de parada: Alterar em lote — um campo e um valor para os códigos da lista, ou o atalho Hora exata ou duração (Permite duração manual = SIM, Exige horário = NÃO).']]},
  {v:'1.8.60',d:'2026-11-23',itens:[['melhoria','Produção › Lançamento: cabeçalho do dia numa linha — data com ‹ › e Hoje, situação, semana, Lançamento, Scrap, Fechar dia e Mais ações (em telas menores, Lançamento e Scrap vão para a linha de baixo). "Ver o dia inteiro (24 h)" e a Linha (quando há mais de uma) ficam em Mais ações.']]},
  {v:'1.8.59',d:'2026-11-23',itens:[['novo','Administração › Equipamentos (categoria Gel): cada descarte tem o seu Local (ex.: Caixa rejeição, Funil berço, Purga múltipla – cabeçote A).'],['correção','Trazer das páginas › Só no Gel: os pontos do Gel ligados à mesma máquina juntam-se, cada um com o seu Local (antes, cada ponto sobrescrevia o anterior e ficava só o último). "Refazer descartes" acrescenta os pontos que faltam.'],['melhoria','Produção e Gestão de Gel: o scrap de gel mostra máquina · local · tipo de descarte, como no Gel antigo.']]},
  {v:'1.8.58',d:'2026-11-23',itens:[['melhoria','Produção · Lançar / Editar scrap: com gel no turno, o popup mostra o scrap de máquina e o de gel lado a lado, com um só Gravar.'],['melhoria','Produção · Scrap de gel no jeito da Gestão de Gel: todos os pontos de descarte (Funil, Berço…) por Tubos, Barril e Purga, com o peso, os barris, os motivos com kg e a conta na hora (tubos, gel, materiais).'],['melhoria','Tipo de parada (e as outras listas com busca): a busca fica dentro da lista, como o filtro do Excel. Clique na setinha, digite para filtrar; dois cliques, Enter ou clicar fora confirmam; Esc volta ao que estava.']]},
@@ -5846,6 +5847,87 @@ function eqDnd(tb){let de=null,alvo=null,abaixo=false;const linhas=()=>[...tb.qu
    if(!Cad.podeEditar())return;   /* 1.9.52: grava direto, sem a confirmação com a lista (pedido do responsável); a mudança fica na auditoria */
    Cad.ops(EqOrd.ops(P,'reorganização da linha (arrastar e soltar)'));toast('Ordem salva: '+P.length+' posição(ões).')};
   h.addEventListener('pointerup',fim);h.addEventListener('pointercancel',fim)})}
+/* 1.9.81 · PAR-LOTE (pedido do responsável, 23/11/2026): códigos de parada em lote.
+   ⇩ Exportar para editar: planilha com TODOS os campos de cada código (o nome técnico na 1ª linha, para voltar sem perda; aba "Campos"
+   com o nome de cada coluna e os valores aceitos). Sim/não como SIM/NÃO; listas (ex.: equipamentos) como texto JSON.
+   ⇧ Importar planilha: lê a mesma planilha (ou CSV), compara com o cadastro e mostra a prévia (novo, alterado campo a campo, igual, com
+   erro); só o que for marcado é gravado, pelas operações de sempre (auditoria, fila e releitura). Código que não está na planilha não muda.
+   Alterar em lote: um campo e um valor para os códigos escolhidos (a lista filtrada), com prévia. Atalho "Hora exata ou duração": deixa
+   todos permitirem os dois jeitos de apontar (Permite duração manual = SIM e Exige horário = NÃO). */
+const ParLote={
+ campos(){return CAD_T.paradas.campos},
+ tipo(k){const c=this.campos().find(x=>x[0]===k);return c?c[2]:(k==='ativo'?'bool':'json')},
+ rotulo(k){const c=this.campos().find(x=>x[0]===k);return c?c[1].replace(/<[^>]+>/g,''):k==='ativo'?'Ativo':k},
+ colunas(D){const T=this.campos().map(c=>c[0]),ex=new Set();for(const it of D.paradas||[])for(const k of Object.keys(it))if(!T.includes(k)&amp;&amp;k!=='ativo')ex.add(k);return T.concat(['ativo'],[...ex].sort())},
+ celula(k,v){const t=this.tipo(k);if(v==null)return t==='bool'?'NÃO':'';if(t==='bool')return v?'SIM':'NÃO';if(typeof v==='object')return JSON.stringify(v);return v},
+ txt(k,v){return v==null||v===''?'(vazio)':String(this.celula(k,v))},
+ ler(k,raw){const t=this.tipo(k),s=raw==null?'':String(raw).trim();
+  if(t==='bool'){if(s==='')return{v:k==='ativo'?null:false};   /* ativo vazio = não mexe (no código novo, ativo) */if(/^(sim|s|true|verdadeiro|1|x)$/i.test(norm(s)))return{v:true};if(/^(nao|n|false|falso|0)$/i.test(norm(s)))return{v:false};return{erro:`${this.rotulo(k)}: "${s}" não é SIM ou NÃO`}}
+  if(s==='')return{v:null};
+  if(t==='sel'){const ops=this.campos().find(x=>x[0]===k)[3];const o=ops.find(x=>norm(x)===norm(s));return o?{v:o}:{erro:`${this.rotulo(k)}: "${s}" não é um valor aceito (${ops.join(', ')})`}}
+  if(t==='num3'){const d=s.replace(/\D/g,'');return /^\d{1,3}$/.test(d)?{v:d.padStart(3,'0')}:{erro:`${this.rotulo(k)}: "${s}" precisa de até 3 dígitos`}}
+  if(t==='json'&amp;&amp;/^[[{]/.test(s)){try{return{v:JSON.parse(s)}}catch(e){return{erro:`${this.rotulo(k)}: lista ou objeto inválido`}}}
+  if(t==='json'&amp;&amp;/^(true|false)$/i.test(s))return{v:/^true$/i.test(s)};
+  return{v:s}},
+ igual(k,a,b){if(k==='ativo'&amp;&amp;b==null)return true;if(this.tipo(k)==='bool')return !!a===!!b;if((a==null||a==='')&amp;&amp;(b==null||b===''))return true;if(a!=null&amp;&amp;b!=null&amp;&amp;typeof a!=='object'&amp;&amp;typeof b!=='object')return String(a)===String(b);return deq(a??null,b??null)},
+ async exportar(D,L){const X=await Libs.xlsx(),C=this.colunas(D);
+  const linhas=[C].concat((L||D.paradas||[]).map(it=>C.map(k=>this.celula(k,it[k]))));
+  const info=[['Coluna','Campo','Valores aceitos']].concat(C.map(k=>{const c=this.campos().find(x=>x[0]===k),t=this.tipo(k);return[k,this.rotulo(k),t==='bool'?'SIM ou NÃO':t==='sel'?c[3].join(' | '):t==='num3'?'3 dígitos (ex.: 101)':t==='cor'?'#RRGGBB':t==='json'?'texto ou lista (JSON) como veio':'texto']}));
+  info.push([],['Como usar','Altere as células e importe de volta em Administração › Códigos de parada › ⇧ Importar planilha. A 1ª linha (nome técnico) não pode mudar; código novo = linha nova; código que não estiver na planilha não muda.']);
+  const wb=X.utils.book_new();X.utils.book_append_sheet(wb,X.utils.aoa_to_sheet(linhas),'Codigos de parada');X.utils.book_append_sheet(wb,X.utils.aoa_to_sheet(info),'Campos');
+  X.writeFile(wb,`Codigos_de_parada_${todayISO()}.xlsx`)},
+ async lerArquivo(f){const X=await Libs.xlsx(),wb=X.read(new Uint8Array(await f.arrayBuffer()),{type:'array'}),nm=wb.SheetNames.find(n=>/c[oó]digos/i.test(n))||wb.SheetNames[0];
+  return X.utils.sheet_to_json(wb.Sheets[nm],{header:1,raw:false,defval:''})},
+ plano(D,rows,arq){const C=this.colunas(D),porRot=new Map(C.map(k=>[norm(this.rotulo(k)),k]));
+  const head=(rows[0]||[]).map(h=>{const s=String(h||'').trim();return C.includes(s)?s:porRot.get(norm(s))||(s&amp;&amp;/^[a-z][A-Za-z0-9]*$/.test(s)?s:null)});
+  if(!head.includes('codigo'))return{erro:'A planilha precisa da coluna "codigo" na 1ª linha (use ⇩ Exportar para editar como modelo).'};
+  const vistos=new Set(),L=[];
+  for(let i=1;i<rows.length;i++){const r=rows[i];if(!r||r.every(c=>String(c).trim()===''))continue;const v={};head.forEach((k,j)=>{if(k)v[k]=r[j]});
+   const cod=String(v.codigo||'').trim().toUpperCase(),lin=i+1;if(!cod){L.push({lin,cod:'',erros:['linha sem código']});continue}
+   if(vistos.has(cod)){L.push({lin,cod,erros:['código repetido na planilha']});continue}vistos.add(cod);
+   const cur=(D.paradas||[]).find(x=>String(x.codigo).toUpperCase()===cod),erros=[],val={};
+   for(const k of head){if(!k||k==='codigo')continue;const x=this.ler(k,v[k]);if(x.erro)erros.push(x.erro);else val[k]=x.v}
+   if(!cur){if(!val.nome)erros.push('código novo precisa do nome');const item={codigo:cod};for(const[k,x]of Object.entries(val))if(x!=null&amp;&amp;!(this.tipo(k)==='bool'&amp;&amp;x===false&amp;&amp;k!=='ativo'))item[k]=x;if(item.ativo==null)item.ativo=true;
+    L.push({lin,cod,novo:true,item,erros,marcado:!erros.length});continue}
+   const mud={};for(const[k,x]of Object.entries(val))if(!this.igual(k,cur[k],x))mud[k]={antes:cur[k]??null,depois:x};
+   L.push({lin,cod:cur.codigo,mud,erros,marcado:!erros.length&amp;&amp;Object.keys(mud).length>0,igual:!Object.keys(mud).length})}
+  return{arq,L}},
+ ops(P){const motivo=`importação em lote (${P.arq})`;return P.L.filter(x=>x.marcado&amp;&amp;!x.erros.length).map(x=>x.novo?{acao:'criação',tipo:'paradas',codigo:x.cod,item:x.item,motivo,origem:'planilha'}:{acao:'edição',tipo:'paradas',codigo:x.cod,mudancas:x.mud,motivo,origem:'planilha'})},
+ prevImportar(D,P,depois){const mb=Modal.open('<div id="plBox"></div>'),box=mb.querySelector('#plBox');
+  const draw=()=>{const nv=P.L.filter(x=>x.novo&amp;&amp;!x.erros.length).length,alt=P.L.filter(x=>!x.novo&amp;&amp;!x.igual&amp;&amp;!x.erros.length).length,ig=P.L.filter(x=>x.igual&amp;&amp;!x.erros.length).length,er=P.L.filter(x=>x.erros.length).length,sel=P.L.filter(x=>x.marcado&amp;&amp;!x.erros.length).length;
+   box.innerHTML=`<h2>Importar códigos de parada</h2><p class="small muted">${esc(P.arq)} · <b>${nv}</b> novo(s) · <b>${alt}</b> alterado(s) · ${ig} igual(is) · ${er?`<b style="color:var(--crit)">${er} com erro</b>`:'0 com erro'}. Só o que estiver marcado é gravado; código que não está na planilha não muda.</p>
+    <div class="tw" style="max-height:56vh"><table class="cadst small"><tr><th><input type="checkbox" id="plTodos" aria-label="Marcar todos"></th><th>Linha</th><th>Código</th><th>Situação</th><th>O que muda</th></tr>
+    ${P.L.filter(x=>!x.igual||x.erros.length).map((x,i)=>{const idx=P.L.indexOf(x);return`<tr><td>${x.erros.length?'':`<input type="checkbox" data-pl="${idx}" ${x.marcado?'checked':''} aria-label="Gravar ${esc(x.cod)}">`}</td><td class="n">${x.lin}</td><td class="mono">${esc(x.cod||'—')}</td><td>${x.erros.length?'<span class="pill crit">erro</span>':x.novo?'<span class="pill ok">novo</span>':'<span class="pill warn">alterado</span>'}</td>
+      <td>${x.erros.length?esc(x.erros.join(' · ')):x.novo?esc(x.item.nome||'')+' <span class="muted">('+Object.keys(x.item).length+' campos)</span>':Object.entries(x.mud).map(([k,m])=>`<div><b>${esc(this.rotulo(k))}</b>: ${esc(this.txt(k,m.antes))} → <b>${esc(this.txt(k,m.depois))}</b></div>`).join('')}</td></tr>`}).join('')||'<tr><td colspan="5" class="muted">Nada muda: a planilha é igual ao cadastro.</td></tr>'}</table></div>
+    <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:10px"><button class="b" id="plCanc">Cancelar</button><button class="b p" id="plOk" ${sel?'':'disabled'}>Gravar ${sel} código(s)</button></div>`;
+   box.querySelectorAll('[data-pl]').forEach(c=>c.onchange=()=>{P.L[+c.dataset.pl].marcado=c.checked;draw()});
+   const t=box.querySelector('#plTodos');t.onchange=()=>{P.L.forEach(x=>{if(!x.erros.length&amp;&amp;!x.igual)x.marcado=t.checked});draw()};
+   box.querySelector('#plCanc').onclick=()=>Modal.close(true);
+   box.querySelector('#plOk').onclick=()=>{if(!Cad.podeEditar())return;const ops=this.ops(P);if(!ops.length)return;Modal.close(true);Cad.ops(ops);toast(`${ops.length} código(s) de parada importado(s); gravando…`);if(depois)depois()}};
+  draw()},
+ abrirLote(D,L,depois){const C=this.campos().filter(c=>c[0]!=='codigo'),st={k:'duracaoManual',v:true,sel:new Set(L.map(x=>x.codigo)),atalho:false};
+  const mb=Modal.open('<div id="plBox"></div>'),box=mb.querySelector('#plBox');
+  const valorDe=()=>{const t=this.tipo(st.k),i=box.querySelector('#plV');if(!i)return null;if(t==='bool')return i.value==='1';const x=this.ler(st.k,i.value);return x.erro?{erro:x.erro}:x.v};
+  const mudas=()=>{const alvo=L.filter(x=>st.sel.has(x.codigo));if(st.atalho)return alvo.map(x=>{const m={};if(!x.duracaoManual)m.duracaoManual={antes:x.duracaoManual??null,depois:true};if(x.exigeHorario)m.exigeHorario={antes:x.exigeHorario,depois:false};return[x,m]}).filter(([,m])=>Object.keys(m).length);
+   const v=valorDe();if(v&amp;&amp;v.erro)return v;return alvo.filter(x=>!this.igual(st.k,x[st.k],v)).map(x=>[x,{[st.k]:{antes:x[st.k]??null,depois:v}}])};
+  const draw=()=>{const t=this.tipo(st.k),c=C.find(x=>x[0]===st.k),M=mudas(),ok=!M.erro;
+   box.innerHTML=`<h2>Alterar códigos de parada em lote</h2>
+    <div class="note" style="margin:6px 0"><b>Atalho:</b> todos os códigos escolhidos permitem apontar <b>a hora exata ou só a duração</b> (Permite duração manual = SIM e Exige horário = NÃO). <button class="b sm ${st.atalho?'p':''}" id="plAt">${st.atalho?'✓ Usando o atalho':'Usar este atalho'}</button></div>
+    ${st.atalho?'':`<div class="fg"><label>Campo<select id="plK">${C.map(x=>`<option value="${x[0]}" ${x[0]===st.k?'selected':''}>${esc(x[1].replace(/<[^>]+>/g,''))}</option>`).join('')}</select></label>
+     <label>Novo valor${t==='bool'?`<select id="plV"><option value="1" ${st.v===true?'selected':''}>SIM</option><option value="0" ${st.v===false?'selected':''}>NÃO</option></select>`:t==='sel'?`<select id="plV">${c[3].map(o=>`<option ${st.v===o?'selected':''}>${esc(o)}</option>`).join('')}</select>`:`<input id="plV" value="${esc(st.v==null||st.v===true||st.v===false?'':st.v)}" ${t==='cor'?'type="color"':''}>`}</label></div>`}
+    <p class="small muted">${st.sel.size} de ${L.length} código(s) escolhido(s) (a lista filtrada da tela) · ${M.erro?`<b style="color:var(--crit)">${esc(M.erro)}</b>`:`<b>${M.length}</b> mudam; os outros já estão assim`}.</p>
+    <div class="tw" style="max-height:44vh"><table class="cadst small"><tr><th><input type="checkbox" id="plTodos" ${st.sel.size===L.length?'checked':''} aria-label="Marcar todos"></th><th>Código</th><th>Nome</th><th>${st.atalho?'Duração manual · Exige horário':esc(this.rotulo(st.k))} (hoje)</th></tr>
+     ${L.map(x=>`<tr><td><input type="checkbox" data-ps="${esc(x.codigo)}" ${st.sel.has(x.codigo)?'checked':''}></td><td class="mono">${esc(x.codigo)}</td><td>${esc(x.nome||'')}</td><td>${st.atalho?esc(this.txt('duracaoManual',x.duracaoManual)+' · '+this.txt('exigeHorario',x.exigeHorario)):esc(this.txt(st.k,x[st.k]))}</td></tr>`).join('')}</table></div>
+    <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:10px"><button class="b" id="plCanc">Cancelar</button><button class="b p" id="plOk" ${ok&amp;&amp;M.length?'':'disabled'}>Gravar ${ok?M.length:0} código(s)</button></div>`;
+   const at=box.querySelector('#plAt');at.onclick=()=>{st.atalho=!st.atalho;draw()};
+   const k=box.querySelector('#plK');if(k)k.onchange=()=>{st.k=k.value;const tt=this.tipo(st.k);st.v=tt==='bool'?true:tt==='sel'?C.find(x=>x[0]===st.k)[3][0]:'';draw()};
+   const v=box.querySelector('#plV');if(v){const f=()=>{st.v=this.tipo(st.k)==='bool'?v.value==='1':v.value;const M2=mudas(),b=box.querySelector('#plOk');b.disabled=!!M2.erro||!M2.length;b.textContent='Gravar '+(M2.erro?0:M2.length)+' código(s)'};v.oninput=f;v.onchange=()=>{f();draw()}}
+   box.querySelectorAll('[data-ps]').forEach(c=>c.onchange=()=>{if(c.checked)st.sel.add(c.dataset.ps);else st.sel.delete(c.dataset.ps);draw()});
+   box.querySelector('#plTodos').onchange=e=>{st.sel=e.target.checked?new Set(L.map(x=>x.codigo)):new Set();draw()};
+   box.querySelector('#plCanc').onclick=()=>Modal.close(true);
+   box.querySelector('#plOk').onclick=()=>{if(!Cad.podeEditar())return;const M2=mudas();if(M2.erro||!M2.length)return;const motivo=st.atalho?'em lote: hora exata ou duração (Permite duração manual = SIM, Exige horário = NÃO)':`em lote: ${this.rotulo(st.k)} = ${this.txt(st.k,mudas().length?M2[0][1][st.k].depois:'')}`;
+    Modal.close(true);Cad.ops(M2.map(([x,m])=>({acao:'edição',tipo:'paradas',codigo:x.codigo,mudancas:m,motivo,origem:'lote'})));toast(`${M2.length} código(s) de parada alterado(s); gravando…`);if(depois)depois()}};
+  draw()}};
 function cadLista(el,t){const D=Cad.D,T=CAD_T[t],cols=cadCols(t,D),k=kOf(t);const q=norm(Cad.ui.q),sit=Cad.ui.sit||'ativos';
  let L=(D[t]||[]).filter(it=>sit==='todos'||(sit==='ativos')===cadAtivo(t,it,D));if(q)L=L.filter(it=>cadBusca(t,it,D).includes(q));
  const FP=t==='paradas'?(Cad.ui.fp||(Cad.ui.fp={})):null;if(FP)L=parFiltrar(L,FP);   /* 1.9.16 · POR-02 */
@@ -5856,7 +5938,7 @@ function cadLista(el,t){const D=Cad.D,T=CAD_T[t],cols=cadCols(t,D),k=kOf(t);cons
  el.innerHTML=`<h3 style="margin:0 0 8px">${esc(T.nome)}${CAT_AJUDA[t]?' '+ib(T.nome,CAT_AJUDA[t]):''}</h3><div class="filters"><label>Buscar<input id="cadQ" value="${esc(Cad.ui.q)}" placeholder="código, nome, qualquer campo" style="min-width:220px"></label>
   <span class="seg" id="cadSit">${[['ativos','Ativos'],['inativos','Inativos'],['todos','Todos']].map(([v,l])=>`<button data-v="${v}" class="${sit===v?'on':''}">${l}</button>`).join('')}</span>
   ${FP?parFiltrosHtml(D,FP):''}<span class="small muted" style="align-self:center">${L.length} de ${(D[t]||[]).length}</span><span style="flex:1"></span>
-  ${pe&amp;&amp;t==='perfis'&amp;&amp;DEFAULT_PERFIS.some(x=>!cadItem('perfis',x.codigo,D))?'<button class="b" id="cadPerfisPad">Criar os perfis padrão</button>':''}${pe?`<button class="b p" id="cadNovo">+ ${t==='bom'?'Nova BOM':'Novo '+esc(T.um)}</button>`:''}${t==='equipamentos'?formBtn(null,'Imprimir todos os formulários'):''}<button class="b" id="cadXls">⇩ Excel</button></div>
+  ${pe&amp;&amp;t==='perfis'&amp;&amp;DEFAULT_PERFIS.some(x=>!cadItem('perfis',x.codigo,D))?'<button class="b" id="cadPerfisPad">Criar os perfis padrão</button>':''}${pe?`<button class="b p" id="cadNovo">+ ${t==='bom'?'Nova BOM':'Novo '+esc(T.um)}</button>`:''}${t==='equipamentos'?formBtn(null,'Imprimir todos os formulários'):''}<button class="b" id="cadXls">⇩ Excel</button>${t==='paradas'?`<button class="b" id="parExp" title="Planilha com todos os campos de cada código, para editar e importar de volta">⇩ Exportar para editar</button>${pe?'<label class="b" title="Lê a planilha exportada (ou CSV), mostra a prévia e grava só o que for marcado">⇧ Importar planilha<input type="file" id="parImp" accept=".xlsx,.xls,.csv" hidden></label><button class="b" id="parLote" title="Um campo e um valor para vários códigos (a lista filtrada), ou o atalho Hora exata ou duração">Alterar em lote</button>':''}`:''}</div>
   ${pe?'':`<div class="note w" style="margin:8px 0">Somente leitura: ${esc(Cad.motivoEdicao()||'edição bloqueada')} ${!Lock.ok()&amp;&amp;Cad.D&amp;&amp;(Store.mode==='pasta'||Store.mode==='teste')?'<button class="b sm p" id="cadDesbl">Desbloquear edição</button>':Store.mode!=='pasta'&amp;&amp;Store.mode!=='teste'?'<button class="b sm p" id="cadConectar">Conectar agora</button>':''}</div>`}
   ${t==='equipamentos'?(()=>{const dnd=pe&amp;&amp;!q&amp;&amp;sit==='ativos'&amp;&amp;!OR;return`<p class="small muted" style="margin:6px 0">${dnd?'Arraste pela alça ⠿ para reorganizar (a Linha é a posição 0 e fica no topo); ou digite a posição na ficha: quem já está nela e os seguintes andam +1.':pe?'Para reorganizar arrastando, mostre os <b>ativos</b>, sem busca e sem ordenar por coluna.':''}</p>`})():''}<div class="tw"><table${t==='equipamentos'&amp;&amp;pe&amp;&amp;!q&amp;&amp;sit==='ativos'&amp;&amp;!OR?' class="eq-dnd"':''}><tr>${t==='equipamentos'&amp;&amp;pe&amp;&amp;!q&amp;&amp;sit==='ativos'&amp;&amp;!OR?'<th aria-label="Arrastar"></th>':''}${cols.map((c,i)=>`<th class="${c[2]||''}" data-ci="${i}" style="cursor:pointer" title="Ordenar por ${esc(c[0])}" aria-sort="${OR&amp;&amp;OR.c===i?(OR.d>0?'ascending':'descending'):'none'}">${esc(c[0])}${OR&amp;&amp;OR.c===i?(OR.d>0?' ▲':' ▼'):''}</th>`).join('')}<th aria-label="Abrir a ficha"></th></tr>${L.map(it=>`<tr class="click" data-cod="${esc(it[k])}"${t==='equipamentos'&amp;&amp;pe&amp;&amp;!q&amp;&amp;sit==='ativos'&amp;&amp;!OR?` data-linha="${esc(it.linha||'')}"${EqOrd.ehLinha(it)?' data-fixo="1"':''}`:''}>${t==='equipamentos'&amp;&amp;pe&amp;&amp;!q&amp;&amp;sit==='ativos'&amp;&amp;!OR?(EqOrd.ehLinha(it)?'<td class="eq-h muted" title="A Linha é sempre a posição 0">0</td>':`<td class="eq-h" data-arrasta="1" title="Arraste para mudar a posição" aria-label="Arrastar ${esc(it.codigo)}">⠿</td>`):''}${cols.map(c=>`<td class="${c[2]||''}">${c[1](it)??''}</td>`).join('')}<td class="r"><button type="button" class="b sm" data-abrir="${esc(it[k])}">${pe?'Editar':'Ver'}</button></td></tr>`).join('')||`<tr><td colspan="${cols.length+1}" class="muted">Nenhum item${q?' para esta busca':''}.</td></tr>`}</table></div>
   ${t==='bom'?'<p class="small muted">Quantidades por 1.000 tubos. Itens = nível 1 (o que a ordem consome); estrutura = níveis 2+. Para trazer do SAP, use Importar do SAP › Lista técnica (CS12).</p>':''}`;
@@ -5870,6 +5952,10 @@ function cadLista(el,t){const D=Cad.D,T=CAD_T[t],cols=cadCols(t,D),k=kOf(t);cons
  const nv=$('#cadNovo');if(nv)nv.onclick=()=>Ficha.abrir(t,null,{novo:true});
  const pp=$('#cadPerfisPad');if(pp)pp.onclick=()=>{if(!Cad.podeEditar())return;const F=DEFAULT_PERFIS.filter(x=>!cadItem('perfis',x.codigo,D));if(!confirm(`Criar ${F.length} perfil(is) padrão: ${F.map(x=>x.nome).join(', ')}?`))return;Cad.ops(F.map(x=>({acao:'criação',tipo:'perfis',codigo:x.codigo,item:clone(x),motivo:'perfis padrão (Portal 1.7)'})));toast(F.length+' perfil(is) criados.')};
  if(t==='usuarios')el.insertAdjacentHTML('afterbegin','<div class="note">Cada pessoa entra pelo <b>ID</b> e pela <b>senha de 6 números</b> no login que abre em todas as páginas. Quem não está aqui se cadastra sozinho no 1º acesso (nome + ID) e entra com o perfil <b>Consulta</b>; o administrador muda o perfil aqui, com a senha.</div>');
+ if(t==='paradas'){   /* 1.9.81 · PAR-LOTE */
+  const ex=$('#parExp');if(ex)ex.onclick=async()=>{try{await ParLote.exportar(D)}catch(e){toast(e.message,6000,true)}};
+  const im=$('#parImp');if(im)im.onchange=async()=>{const f=im.files[0];im.value='';if(!f)return;try{const P=ParLote.plano(Cad.D,await ParLote.lerArquivo(f),f.name);if(P.erro)return toast(P.erro,7000,true);ParLote.prevImportar(Cad.D,P,()=>App.render())}catch(e){toast('Não consegui ler a planilha: '+e.message,7000,true)}};
+  const lt=$('#parLote');if(lt)lt.onclick=()=>ParLote.abrirLote(Cad.D,L,()=>App.render())}
  $('#cadXls').onclick=async()=>{try{const X=await Libs.xlsx();const rows=[cols.map(c=>c[0])].concat(L.map(it=>cols.map(c=>{const s=htmlTxt(c[1](it)??'');if(c[2]==='n'){const v=parseFloat(s.replace(/\./g,'').replace(',','.'));return isFinite(v)?v:s}return s})));
   const wb=X.utils.book_new();X.utils.book_append_sheet(wb,X.utils.aoa_to_sheet(rows),T.nome.slice(0,30));X.writeFile(wb,`Cadastro_${t}_${todayISO()}.xlsx`)}catch(e){toast(e.message,6000,true)}}}
 
@@ -55504,15 +55590,15 @@ body.vac-porta{overflow:hidden}
     {
       "id": "portal",
       "path": "Plataforma.html#motor/portal",
-      "version": "1.9.80",
-      "sha256": "d4388773acee93587a748c88c60ccc9fee6793f98de61d4c008b760ca282443b",
-      "bytes": 1338794
+      "version": "1.9.81",
+      "sha256": "319df5f6c8aa5e798104cf385731943901da479a362ab8a75d4deb9ee284b780",
+      "bytes": 1353435
     }
   ],
   "limitations": [
     "Projetos e conteúdo técnico OSM/MES/AM/TPM mantêm os limites documentados nas fontes."
   ],
-  "enginesSha256": "61971bec3f57c667b8210b3c4ffb74ccdc1867f7862c2628e84e161e5886529b",
+  "enginesSha256": "009e6582937046abd37ce7bb01a82118ce6bc7505a14c6f5179486840f720105",
   "originRevision": "ffc9ee8",
   "sourceMode": "single-html",
   "originEnginesSha256": "a87a64ad0c328f70e102b2ae888790a9b5d5a9bd05778652a7ce7cae140e40d2"
@@ -55582,7 +55668,7 @@ summary{cursor:pointer;font-weight:600;color:var(--navy)}
 'use strict';
 /* ---------- referência (atualizar quando a plataforma mudar de versão) ---------- */
 // Iguais às do pacote da plataforma (nova-plataforma/src/generated/manifest.json); o teste ferramenta-verificar confere.
-const VERSOES = {"oee":"2.6.42","perdas":"1.12.20","gel":"2.48","paradas":"1.2.22","equip":"1.0.22","inic":"1.1.17","linha":"1.7.1","projetos":"0.1.16","portal":"1.9.80"};
+const VERSOES = {"oee":"2.6.42","perdas":"1.12.20","gel":"2.48","paradas":"1.2.22","equip":"1.0.22","inic":"1.1.17","linha":"1.7.1","projetos":"0.1.16","portal":"1.9.81"};
 const BASES = [
  { arq: 'vacutainer-cadastros.json', mod: 'portal', nome: 'Cadastro geral (Portal)', obrig: true, cadastro: true, bk: 'Cadastros' },
  { arq: 'portal-base.json', mod: 'portal', nome: 'Portal', obrig: true, bk: 'Portal' },
@@ -56173,7 +56259,7 @@ import { Icon, Button, Badge, Empty, Modal, BarChart, BrandLogo, CommandMenu } f
 import { ModuleFrame } from "vac:modulo/components/ModuleFrame";
 import manifest from "vac:recurso/manifesto";
 import { ModuleTabs } from "vac:modulo/components/ModuleTabs";
-const VERSION = "1.8.60";
+const VERSION = "1.8.61";
 /* Navegação 1.3.0 (16/11/2026): Visão da linha, Relatórios e Importações têm abas; as que mostram uma tela do
    Portal (motor da Administração) trazem o 3º campo com a aba dele. Administração fica só com cadastros e configuração. */
 const SHELL_TABS = {
