@@ -290,6 +290,8 @@ Cadeia que o responsável quer numa tela só: **formato com vigência → compos
 
 ## Decisões para o responsável
 
+> **Respondidas pelo responsável em 23/11/2026:** todas as propostas abaixo aceitas. Item 10: o gel do Tubo 100 é **0,936 g desde 01/10/2025**.
+
 O inventário não resolve estas; a ordem das etapas 3 a 7 pode mudar conforme a resposta.
 
 1. **Linha 360° (pontos, áreas, postos, checklists, planta, fotos) é configuração ou desenho do mapa?** Proposta: a **definição** (quais pontos existem, quais equipamentos cada um tem, postos, checklists) vai para a Administração; a **posição na planta** (x/y, polígonos, fotos) continua na Linha 360° como desenho do mapa. O de-para `chaves` dos pontos some quando o equipamento do ponto passar a ser o código do cadastro.

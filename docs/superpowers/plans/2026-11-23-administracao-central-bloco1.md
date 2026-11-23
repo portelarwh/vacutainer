@@ -97,9 +97,9 @@ test('vacCad lê Cad.D, senão vac.cadastros, senão null', () => { /* vm com {C
 - [ ] **Step 1: testes que falham** (cadastro fictício no `vm`):
 
 ```js
-vigente([{de:'2026-10-01',v:1},{de:'2026-12-01',v:2}], '2026-11-23') → {de:'2026-10-01',v:1}
-vigente([{de:'2026-10-01',v:1}], '2026-09-30') → null
-vigente([{de:'2026-10-01',ate:'2026-10-31',v:1}], '2026-11-01') → null
+vigente([{de:'2025-10-01',v:1},{de:'2026-12-01',v:2}], '2026-11-23') → {de:'2025-10-01',v:1}
+vigente([{de:'2025-10-01',v:1}], '2025-09-30') → null
+vigente([{de:'2025-10-01',ate:'2026-10-31',v:1}], '2026-11-01') → null
 item('catalogos', 1001) encontra codigo '1001'
 param('producao.inexistente') → null   // nunca 0
 lista('turnos') não traz ativo:false; lista('turnos',{ativos:false}) traz
@@ -139,7 +139,7 @@ lista('turnos') não traz ativo:false; lista('turnos',{ativos:false}) traz
 
 ```js
 gel: {
-  formatos: [{ de:'2026-10-01', ate:null, embalagemG:75, folhaPurgaG:5, sobraBarrilKg:1.6,
+  formatos: [{ de:'2025-10-01', ate:null, embalagemG:75, folhaPurgaG:5, sobraBarrilKg:1.6,
     tubos: { '100': {tuboG:4.779, gelG:0.936, aditivoG:0.02, tampaRolhaG:2.3},
              '75':  {tuboG:3.56,  gelG:0.834, aditivoG:0.015, tampaRolhaG:2.3} },
     motivo:'', por:'<id>', em:'<iso>' }],
@@ -153,7 +153,7 @@ gel: {
   - `vacCad.gel.locais({data, equipamento, ativos = true} = {}): object[]`: ordenado por `ordem`; exclui locais cujo equipamento está inativo.
   - Remover `GEL_FMT_DEF` (motor/portal) e o `FMT_DEF` do Gel: sem formato não há padrão de fábrica, há `null`.
 
-- [ ] **Step 1: testes que falham**, com os valores do print do responsável (formato de 01/10/2026):
+- [ ] **Step 1: testes que falham**, com os valores do print do responsável (formato de 01/10/2025):
 
 ```js
 composicao('100','completo','2026-11-23').gPorTubo === 8.035
@@ -162,7 +162,7 @@ composicao('100','spray','2026-11-23').gPorTubo === 5.735
 composicao('75','completo','2026-11-23').gPorTubo === 6.709
 composicao('75','tubogel','2026-11-23').gPorTubo === 4.394
 composicao('75','spray','2026-11-23').gPorTubo === 4.409
-formato('2026-09-30') === null && composicao('100','completo','2026-09-30') === null   // Review Focus 1
+formato('2025-09-30') === null && composicao('100','completo','2025-09-30') === null   // Review Focus 1
 // com uma vigência futura de 2026-12-01 (gelG 1.0): formato('2026-11-23').tubos['100'].gelG === 0.936   // Review Focus 2
 locais({equipamento:'EQ-INATIVO'}) → []
 ```
@@ -224,7 +224,7 @@ locais({equipamento:'EQ-INATIVO'}) → []
 
 **Files:**
 - Create: `testes/plataforma/gel-numeros.cjs`
-- Modify: `scripts/cenario-demo.cjs` (cenário em `schemaVersion: 2` com `gel.formatos` = o formato de 01/10/2026 do print e os 14 locais da página antiga), `dados/cenario` (regravado), versões, `NOVIDADES`, `PENDENCIAS.md` (linha ADM-CENTRAL bloco 1), `docs/CONTRATO-MOTORES.md` (Gel lê o cadastro por `vacCad.gel`).
+- Modify: `scripts/cenario-demo.cjs` (cenário em `schemaVersion: 2` com `gel.formatos` = o formato de 01/10/2025 do print e os 14 locais da página antiga), `dados/cenario` (regravado), versões, `NOVIDADES`, `PENDENCIAS.md` (linha ADM-CENTRAL bloco 1), `docs/CONTRATO-MOTORES.md` (Gel lê o cadastro por `vacCad.gel`).
 
 - [ ] **Step 1:** **Antes** de qualquer mudança do Gel (rodar no `main`, ou guardar a saída já no começo da Task 5): `gel-numeros.cjs` grava em `testes/amostras/gel-numeros-antes.json` os totais de scrap de gel do cenário por dia, local e categoria (g e kg) e o consumo do mês.
 - [ ] **Step 2:** Depois das Tasks 5–8, o mesmo teste compara com o arquivo. Esperado: iguais. Diferença só onde o cenário antigo usava o padrão de fábrica 0,834 g e o novo usa o formato cadastrado; nesse caso, o teste lista a diferença e o arquivo de referência é refeito com o cenário v2 **antes** da troca do código, para que a comparação seja de código, não de dado.
