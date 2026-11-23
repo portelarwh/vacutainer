@@ -379,3 +379,14 @@ Pedido do responsável. Campos **aditivos** do item de `formularios` (nada antig
   numerada 1.1 ou na 2ª coluna do Excel vira subtarefa.
 - `obs` (orientação geral): texto livre até 4000 caracteres; o campo e o quadro da folha crescem com o texto (a altura da paginação acompanha).
 - `fotos[].marcas[].rot`: rotação em graus (−180 a 180) do retângulo e do círculo, em volta do centro, no editor e na folha.
+
+## GEL-09 · local do descarte · plataforma 1.8.59 (23/11/2026)
+
+Pedido do responsável. Campo **aditivo** `equipamentos[].gel.descs[].local` (texto) no `vacutainer-cadastros.json`: onde o descarte acontece
+na máquina (ex.: "Caixa rejeição", "Funil berço", "Purga múltipla – cabeçote A"). Nenhuma conta muda; o registro da pesagem continua
+`{e, d, cat, kg, nb, mots}` (equipamento e id do descarte). Produção e Gestão de Gel mostram máquina · local · tipo.
+
+**Trazer das páginas › Só no Gel:** no Gel antigo cada ponto era um equipamento com o local no nome ("TULLIP A - CAIXA REJEIÇÃO - VATU01"),
+vários ligados (`portal`) à mesma máquina da Administração. Os pontos da mesma máquina passam a se juntar, cada descarte com o Local tirado
+do nome (sem a máquina e sem a etiqueta, ex.: VATU01). Antes, cada ponto sobrescrevia o anterior; quando a máquina já tem descartes e falta
+algum ponto do Gel (ou o local), a proposta "Refazer descartes" acrescenta o que falta e mantém o que já está na Administração.
