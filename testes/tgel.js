@@ -107,14 +107,14 @@ const { chromium } = require('playwright');
     /* 2.4.41 (PRD-13): o gel fica no popup "Lançar scrap" do turno → "Registrar scrap de gel (pesagem)" */
     const sb = document.querySelector(`[data-scrapturno="${ps.id}"]`); if (!sb) return { semBotao: true };
     sb.click(); await new Promise(r => setTimeout(r, 300));
-    const btn = document.querySelector('.overlay #scGel'); if (!btn) return { semBotao: true };
-    btn.click(); await new Promise(r => setTimeout(r, 300));
+    /* 2.6.40: o gel fica no mesmo popup, ao lado do scrap de máquina (um só Gravar) */
+    if (!document.querySelector('.overlay .sc-lado #gBox')) return { semBotao: true };
     /* 2.6.40 · GEL-08: o formulário mostra todos os pontos de descarte (como o Registrar scrap do Gel); peso digitado no ponto, "+ motivo" */
     const m = document.querySelector('.overlay'); const kg = m.querySelector('[data-gkg="EQ90|d1"]'); kg.value = '2,345'; kg.dispatchEvent(new Event('input', { bubbles: true })); await new Promise(r => setTimeout(r, 100));
     m.querySelector('[data-gmotadd="EQ90|d1"]').click(); await new Promise(r => setTimeout(r, 100));
     const mot = m.querySelector('[data-gmot="EQ90|d1|0"]'); if (mot) { mot.value = 'm1'; mot.dispatchEvent(new Event('change', { bubbles: true })); await new Promise(r => setTimeout(r, 100)); }
     const prev = m.querySelector('[data-gc="EQ90|d1"]').innerText;
-    m.querySelector('#gOk').click(); await new Promise(r => setTimeout(r, 500));
+    m.querySelector('#scOk').click(); await new Promise(r => setTimeout(r, 500));
     const d2 = Store.S.db.productionDays.find(x => x.id === day.id), ps2 = d2.shifts.find(p => p.id === ps.id), gs = ps2.gelScrap;
     const esperado = vacGel.pesagem({ desc: { comp: 'tubogel', cat: 'T' }, taraEq: 80, kg: 2.345, cg: { fmt: '100', vig: [{ from: '2000-01-01', gTubo: 0.85 }] }, date: day.date, fmts: C.parametros.gel.formatos, params: C.parametros.gel.processo });
     d2.demo = false;   // o exports ignora dias de demonstração; aqui o dia faz papel de dia real
@@ -123,7 +123,7 @@ const { chromium } = require('playwright');
     App.op = true; App.opSel = { date: day.date, shiftId: ps.shiftId }; go('shift'); await new Promise(r => setTimeout(r, 400)); const naTelaTurno = !!document.querySelector(`[data-gelscrap="${ps.id}"]`); App.op = false;
     return { gs, prev, esperado, linha: linha ? { gel: linha.gel, extraMin: linha.extraMin } : null, naTelaTurno, catCode };
   });
-  ok(!p4c.semBotao, 'GEL-03 / PRD-10: o turno da Produção tem o botão Registrar scrap (catálogo do turno usa gel e há equipamento de gel no Portal)');
+  ok(!p4c.semBotao, 'GEL-03 / PRD-10: o Lançar scrap do turno mostra o gel ao lado do scrap de máquina (catálogo do turno usa gel e há equipamento de gel no Portal)');
   ok(p4c.gs && p4c.gs.eq.length === 1 && p4c.gs.eq[0].e === 'EQ90' && p4c.gs.eq[0].kg === 2.345 && p4c.gs.eq[0].cat === p4c.catCode && (p4c.gs.eq[0].mots || [])[0].m === 'm1' && p4c.gs.por, 'G1: a pesagem fica gravada no turno da Produção (equipamento do Portal, descarte, catálogo, peso, motivo, quem)');
   ok(p4c.linha && p4c.linha.gel && Math.abs(p4c.linha.gel.kg.T - Math.round(p4c.esperado.gel * 1000) / 1000) < 1e-9 && p4c.linha.gel.pesagens.length === 1 && p4c.linha.extraMin != null, 'GEL-03: exports porDiaTurno[].gel com as pesagens e o gel por categoria pela conta comum (vacGel), e a hora extra do turno');
   ok(/gel/.test(p4c.prev) && p4c.prev.includes(String(p4c.esperado.gel.toFixed(3)).replace('.', ',')), 'GEL-03: o formulário mostra o gel calculado de cada pesagem antes de gravar');
