@@ -364,3 +364,5 @@ Com permissão de configurar a Linha 360°, clique com o botão direito no local
 A operação `local` em `linha360-base.json` cria o ponto e o registro associado e atualiza a área na mesma operação da fila. A posição usa porcentagens da planta. O número exibido é atribuído ao criar o ponto sobre a base relida. Os vínculos usam o ID estável do ponto.
 
 Em **Adicionar equipamento**, a Administração atribui o código e abre a ficha do cadastro geral. O campo opcional `pontoLinha360` conserva a ligação com a planta. Vínculos escolhidos manualmente em **Pontos e equipamentos** têm precedência. Se o cadastro estiver bloqueado para edição, o ponto continua disponível para concluir o cadastro pela ficha após desbloquear.
+
+Em **Configuração**, selecione a área e escolha **Redimensionar área**, ou use o botão direito sobre ela. Arraste os vértices do contorno existente ou clique numa borda para inserir um vértice. **Desfazer** reverte o último ajuste, **Cancelar** descarta a edição e **Salvar contorno** grava o perímetro. O nome e os pontos operacionais vinculados à área continuam preservados.

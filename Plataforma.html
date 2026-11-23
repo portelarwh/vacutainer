@@ -5218,6 +5218,7 @@ const CAD_SECS=['inicio','matriz','importar','auditoria','backups','seguranca','
    curtas (macro, sem detalhe técnico). REGRA: toda versão nova da plataforma ganha uma entrada aqui, a mais recente primeiro
    (AGENTS.md e CLAUDE.md). Tipos: nova (função nova), melhoria (algo que já existia ficou melhor), correcao (erro corrigido). */
 const NOVIDADES=[
+ {v:'1.8.55',d:'2026-11-23',itens:[['melhoria','Linha 360° · Em Configuração, escolha Redimensionar área, arraste os vértices e salve o contorno. Desfazer e Cancelar ficam disponíveis durante o ajuste.']]},
  {v:'1.8.54',d:'2026-11-23',itens:[['novo','Linha 360° · Use o botão direito na planta de Configuração para adicionar equipamentos, processos, checklists e formulários. Clique sobre uma área para editar seu nome, pontos ou contorno.'],['correção','Fotos da linha · Clique na foto do banco para ampliar. As fotos WebP também abrem quando a miniatura não está disponível.']] },
  {v:'1.8.53',d:'2026-11-22',itens:[['correção','Entrada: a tela não fica mais presa em "Abrindo a plataforma…". Se a pasta (de rede ou OneDrive) demora, em 8 s aparece o arquivo que está sendo lido com as opções Escolher outra pasta e Entrar só para consulta; em 20 s, o arquivo que não respondeu.'],['novo','Formulários A4 (Linha 360°): escolha a versão Detalhada (fotos, marcações e itens) ou Resumida (lista sem fotos, com a máquina / local e o que verificar) para imprimir ou salvar em PDF; a prévia mostra a versão escolhida.']]},
  {v:'1.8.52',d:'2026-11-22',itens:[['novo','Banco de imagens: as fotos da pasta IMAGENS (subpastas viram categorias) aparecem na plataforma sem precisar enviar; foto nova na pasta aparece ao abrir, ao sincronizar ou em Atualizar.'],['novo','Linha 360° › Visão da linha › camada Fotos: arraste as fotos de IMAGENS/Linha até o local na planta; afastado, as fotos próximas viram um número e, aproximando, cada uma aparece com a miniatura. Filtro Todas ou Não colocadas.'],['novo','Linha 360°: a planta passa a ser lida de IMAGENS/PLANTA_BAIXA.SVG (sem o arquivo, a planta embutida); em vetor, o zoom vai a 800% sem perder nitidez. Ctrl + roda do mouse aproxima no ponto do cursor.'],['novo','Formulários A4: Escolher do banco copia fotos da pasta IMAGENS para o formulário.']]},
@@ -35296,6 +35297,12 @@ img.vac-img-falta{visibility:hidden}
 .l3-pin.on{outline:4px solid var(--accent);outline-offset:2px;z-index:4}
 .l3-pin:focus-visible{outline:4px solid var(--accent);outline-offset:2px}
 .l3-pin .vl{position:absolute;top:calc(100% + 3px);left:50%;transform:translateX(-50%);white-space:nowrap;font:700 11px var(--f-body);background:var(--surface);color:var(--ink);border:1px solid var(--line);border-radius:6px;padding:0 var(--sp-4,4px);line-height:17px}
+.l3-vertice{position:absolute;z-index:6;transform:translate(-50%,-50%);width:32px;height:32px;border:0;background:transparent;padding:0;cursor:grab;touch-action:none}
+.l3-vertice::after{content:"";display:block;width:14px;height:14px;margin:auto;background:var(--surface);border:3px solid var(--accent);border-radius:50%}
+.l3-vertice:active{cursor:grabbing}
+#cfPerimetro{stroke:var(--accent);stroke-width:3;vector-effect:non-scaling-stroke;pointer-events:none}
+[data-aresta]{stroke:transparent;stroke-width:16;vector-effect:non-scaling-stroke;cursor:crosshair;pointer-events:stroke}
+#cfPerimetro.fechado{fill:var(--accent);fill-opacity:.18}
 .l3-pin.edit{cursor:grab;border-style:dashed}
 .l3-op{position:absolute;transform:translate(-50%,-50%);width:30px;height:30px;border-radius:8px;border:2px solid #fff;color:#fff;font:800 12px var(--f-body);display:inline-flex;align-items:center;justify-content:center;box-shadow:0 2px 6px rgba(16,35,51,.4);cursor:pointer;z-index:3}
 .l3-op.vago{background-image:repeating-linear-gradient(45deg,rgba(255,255,255,.35) 0 4px,transparent 4px 8px)}
@@ -35365,7 +35372,7 @@ tr.l3-sujo>td{background:color-mix(in srgb,var(--warn) 10%,transparent)}tr.l3-su
 <main class="wrap" id="main"></main>
 <div class="toasts" id="toasts"></div>
 <script>
-const PAGE={id:"linha",titulo:"Linha 360° · Planta interativa da linha",tituloCurto:"Linha 360°",subtitulo:"Planta interativa: paradas, pessoas e ações em cada ponto da linha",versao:"1.6.0",baseFile:"linha360-base.json",backupDir:"00. Backups/Linha360",estado:"atualizacao",estadoNota:"Primeira versão: planta, pontos, áreas, postos e checklists. MES por equipamento chega depois."};
+const PAGE={id:"linha",titulo:"Linha 360° · Planta interativa da linha",tituloCurto:"Linha 360°",subtitulo:"Planta interativa: paradas, pessoas e ações em cada ponto da linha",versao:"1.6.1",baseFile:"linha360-base.json",backupDir:"00. Backups/Linha360",estado:"atualizacao",estadoNota:"Primeira versão: planta, pontos, áreas, postos e checklists. MES por equipamento chega depois."};
 const APP_VERSION=PAGE.versao;
 /* ---------- vac-cabecalho v2 · JS (igual em todas as páginas) ---------- */
 const VAC_CAB_VERSAO=2;
@@ -36286,12 +36293,21 @@ function semPasta(){return!Store.test&amp;&amp;(!Store.dir||!Store.perm)?`<p cla
 const dado=(fonte,v)=>fonte?v:'<span class="muted" title="A página de origem não foi lida">sem dados</span>';
 
 /* planta: imagem + áreas + fluxos + pinos. modo: 'mapa' | 'pessoas' | 'config' */
+const lerVertices=pol=>(pol||'').trim().split(/\s+/).map(q=>q.split(',').map(Number)).filter(q=>q.length===2&amp;&amp;q.every(Number.isFinite));
+const pontosSvg=pts=>pts.map(([x,y])=>[x*LW/100,y*LH/100].join(',')).join(' ');
 function plantaHtml(modo,N){const mx=N?Math.max(1,...Object.values(N.R).map(r=>r[App.camada]||0)):1,k=App.camada;
- const zon=(App.zonas||modo==='config')?areas().map(a=>{const pts=(a.pol||'').split(/\s+/).map(q=>q.split(',').map(Number)).filter(q=>q.length===2&amp;&amp;q.every(isFinite));if(pts.length<3)return'';
+ const desenho=modo==='config'?App.desenho:null;
+ const zon=(App.zonas||modo==='config')?areas().map(a=>{if(desenho?.id===a.id)return'';const pts=lerVertices(a.pol);if(pts.length<3)return'';
    const v=N?(a.pts||[]).reduce((s,id)=>s+((N.R[id]||{})[k]||0),0):0,mz=N?Math.max(1,...areas().map(z=>(z.pts||[]).reduce((s,id)=>s+((N.R[id]||{})[k]||0),0))):1,nv=N?nivel(v,mz)[0]:'none',cor={crit:'#C23B3A',warn:'#B26F00',ok:'#14804A',none:'#6F8092'}[nv];
    const cx=pts.reduce((s,q)=>s+q[0],0)/pts.length*LW/100,cy=Math.min(...pts.map(q=>q[1]))*LH/100+34;
    return`<polygon class="zona${App.zona===a.id?' on':''}" data-zona="${esc(a.id)}" points="${pts.map(q=>(q[0]*LW/100)+','+(q[1]*LH/100)).join(' ')}" fill="${cor}" stroke="${cor}" tabindex="0" role="button" aria-label="${esc('Área '+a.nome+(N?': '+fmtCam(k,v):''))}"><title>${esc(a.nome+(N?' · '+camNome(k)+': '+fmtCam(k,v):''))}</title></polygon><text class="zrot" x="${cx}" y="${cy}" text-anchor="middle" fill="${cor}">${esc(a.nome)}</text>`}).join(''):'';
- const des=App.desenho&amp;&amp;App.desenho.pts.length?`<polyline points="${App.desenho.pts.map(q=>(q[0]*LW/100)+','+(q[1]*LH/100)).join(' ')}" fill="none" stroke="#0D5E9C" stroke-width="5" stroke-dasharray="14 8"/>`+App.desenho.pts.map(q=>`<circle cx="${q[0]*LW/100}" cy="${q[1]*LH/100}" r="9" fill="#0D5E9C"/>`).join(''):'';
+ const forma=desenho?.pts.length>=3?'polygon':'polyline';
+ const des=desenho?`<${forma} id="cfPerimetro" class="${forma==='polygon'?'fechado':''}" points="${pontosSvg(desenho.pts)}" fill="none"></${forma}>`:'';
+ const arestas=desenho?.ajustar?desenho.pts.map(([x,y],i)=>{
+  const [x2,y2]=desenho.pts[(i+1)%desenho.pts.length];
+  return `<line data-aresta="${i}" x1="${x}%" y1="${y}%" x2="${x2}%" y2="${y2}%"/>`;
+ }).join(''):'';
+ const vertices=desenho?desenho.pts.map(([x,y],i)=>`<button type="button" class="l3-vertice" data-vertice="${i}" style="left:${x}%;top:${y}%" title="Arraste o vértice ${i+1}" aria-label="Vértice ${i+1}, use as setas para mover"></button>`).join(''):'';
  const fl=(modo==='mapa'&amp;&amp;App.camada==='fluxo')?TRAJETOS.filter(t=>!App.fluxo||t[0]===App.fluxo).map(t=>`<polyline class="fl${t[2]?' t':''}" points="${t[1]}" stroke="${FLUXOS[t[0]][1]}"/>`).join(''):'';
  const pins=modo==='pessoas'?'':pontos().filter(p=>!App.fluxo||p.fluxo===App.fluxo||modo==='config').map(p=>{let cls='info',vl='',tit=p.nome;
    if(modo==='mapa'&amp;&amp;k==='fotos'){cls='none dim';tit=numeroPonto(p)+' · '+p.nome}
@@ -36301,7 +36317,7 @@ function plantaHtml(modo,N){const mx=N?Math.max(1,...Object.values(N.R).map(r=>r
    return`<button type="button" class="l3-pin ${cls}${App.sel===p.id?' on':''}${App.edit?' edit':''}" data-pin="${esc(p.id)}" style="${st}left:${p.x}%;top:${p.y}%" title="${esc(tit)}" aria-label="${esc(tit)}">${esc(numeroPonto(p))}${vl}</button>`}).join('');
  const ops=modo==='pessoas'||(modo==='config'&amp;&amp;App.edit)?postos().map(p=>{const tem=turnos().some(t=>(pesNome(p,t.codigo)||'').trim());return`<button type="button" class="l3-op${tem?'':' vago'}${App.posto===p.id?' on':''}" data-posto="${esc(p.id)}" style="left:${p.x}%;top:${p.y}%;background-color:${OP_COR[p.op]||'#6F8092'}" title="${esc(p.id+' · '+(p.area||'')+(tem?'':' · sem pessoa definida'))}">${esc(p.op.replace('OP',''))}</button>`}).join(''):'';
  const fts=modo==='mapa'&amp;&amp;k==='fotos'?fotosPins():'';
- return`<div class="l3-vp"><div class="l3-cv" id="cv" tabindex="-1" style="width:${Math.round(App.zoom*100)}%;aspect-ratio:${Planta.w}/${Planta.h}"${Planta.origem?` data-planta="${esc(Planta.origem)}"`:''}><img src="${Planta.src}" draggable="false" alt="Planta da linha Vacutainer: do Tray Loader (início, ao centro) à saída da linha (à esquerda), com aplicação de gel, EDTA e sílica à direita."><svg class="ov" viewBox="0 0 ${LW} ${LH}" preserveAspectRatio="none" aria-hidden="${zon?'false':'true'}">${zon}${fl}${des}</svg>${pins}${ops}${fts}</div></div>`}
+ return`<div class="l3-vp"><div class="l3-cv" id="cv" tabindex="-1" style="width:${Math.round(App.zoom*100)}%;aspect-ratio:${Planta.w}/${Planta.h}"${Planta.origem?` data-planta="${esc(Planta.origem)}"`:''}><img src="${Planta.src}" draggable="false" alt="Planta da linha Vacutainer: do Tray Loader (início, ao centro) à saída da linha (à esquerda), com aplicação de gel, EDTA e sílica à direita."><svg class="ov" viewBox="0 0 ${LW} ${LH}" preserveAspectRatio="none" aria-hidden="${zon?'false':'true'}">${zon}${fl}${des}${arestas}</svg>${pins}${ops}${fts}${vertices}</div></div>`}
 
 /* 1.3.0 · trazido do Piloto: cada bloco da ficha diz o seu recorte de tempo e a ficha diz de onde vem cada número */
 const secRc=(t,rc)=>`<h4>${esc(t)} <span class="l3-rc">${esc(rc)}</span></h4>`;
@@ -36508,7 +36524,8 @@ function menuLocal(e){
   const editar=campo=>{App.areaSel=a.id;render();$(campo)?.focus()};
   acao('Alterar nome da área',()=>editar('#fArea [name=nome]'));
   acao('Alterar pontos da área',()=>editar('#fArea [name=pt]'));
-  acao('Redesenhar contorno',()=>{App.areaSel=a.id;render();$('#cfDes').click()});
+  if(lerVertices(a.pol).length>=3)acao('Redimensionar área',()=>iniciarContorno(a,true));
+  acao('Redesenhar contorno',()=>iniciarContorno(a,false));
  }
  for(const [tipo,nome] of [['equipamento','equipamento'],['processo','processo'],['chk','checklist'],['form','formulário']]){
   acao('Adicionar '+nome,()=>criarLocal(tipo,xy,area,p));
@@ -36522,14 +36539,67 @@ function menuLocal(e){
  menu.firstElementChild.focus({preventScroll:true});
 }
 
+function iniciarContorno(area,ajustar){
+ if(!area||!fmPode('configurar'))return;
+ App.areaSel=area.id;App.edit=false;
+ App.desenho={id:area.id,ajustar,pts:ajustar?lerVertices(area.pol):[],historico:[]};
+ render();
+}
+function ligarContorno(d){
+ const cv=$('#cv'),arestas=$$('[data-aresta]',cv),limitar=v=>Math.max(0,Math.min(100,+v.toFixed(2)));
+ cv.onclick=e=>{
+  if(e.target.closest('[data-vertice],[data-pin],[data-posto]')||!fmPode('configurar'))return;
+  const aresta=e.target.closest('[data-aresta]');
+  if(d.ajustar&amp;&amp;!aresta)return;
+  d.historico.push(d.pts.slice());d.pts.splice(aresta?Number(aresta.dataset.aresta)+1:d.pts.length,0,pctDe(e));render();
+ };
+ for(const b of $$('[data-vertice]',cv)){
+  const i=Number(b.dataset.vertice);
+  const mover=(x,y)=>{
+   d.pts[i]=[limitar(x),limitar(y)];
+   b.style.left=d.pts[i][0]+'%';b.style.top=d.pts[i][1]+'%';
+   $('#cfPerimetro',cv).setAttribute('points',pontosSvg(d.pts));
+   if(arestas.length){
+    const anterior=arestas[(i+arestas.length-1)%arestas.length];
+    arestas[i].setAttribute('x1',b.style.left);arestas[i].setAttribute('y1',b.style.top);
+    anterior.setAttribute('x2',b.style.left);anterior.setAttribute('y2',b.style.top);
+   }
+  };
+  b.onpointerdown=e=>{
+   if(e.button!==0||!e.isPrimary||!fmPode('configurar'))return;
+   const antes=d.pts.slice(),[x,y]=antes[i],rect=cv.getBoundingClientRect();
+   const dx=e.clientX-rect.left-x*rect.width/100,dy=e.clientY-rect.top-y*rect.height/100;
+   b.focus({preventScroll:true});b.setPointerCapture(e.pointerId);
+   const atualizar=ev=>{
+    const r=cv.getBoundingClientRect();mover((ev.clientX-r.left-dx)*100/r.width,(ev.clientY-r.top-dy)*100/r.height);
+   };
+   const finalizar=ev=>{
+    if(ev.pointerId!==e.pointerId)return;
+    b.onpointermove=b.onpointerup=b.onpointercancel=b.onlostpointercapture=null;
+    if(ev.type==='pointerup'){
+     atualizar(ev);
+     if(d.pts[i][0]!==x||d.pts[i][1]!==y){d.historico.push(antes);$('#cfDesVolta').disabled=false}
+    }else mover(x,y);
+   };
+   b.onpointermove=ev=>{if(ev.pointerId===e.pointerId)atualizar(ev)};
+   b.onpointerup=b.onpointercancel=b.onlostpointercapture=finalizar;
+  };
+  b.onkeydown=e=>{
+   const delta={ArrowLeft:[-1,0],ArrowRight:[1,0],ArrowUp:[0,-1],ArrowDown:[0,1]}[e.key];
+   if(!delta||!fmPode('configurar'))return;
+   e.preventDefault();const [x,y]=d.pts[i];d.historico.push(d.pts.slice());
+   mover(x+delta[0]*.25,y+delta[1]*.25);$('#cfDesVolta').disabled=false;
+  };
+ }
+}
 function vConfig(){const S=Store,E=eqs(),a=areas().find(x=>x.id===App.areaSel)||areas()[0];
  return`<div class="vk-hd"><div><h2>Configuração</h2><p>Posição e equipamentos de cada ponto, áreas da linha, pasta e base.</p></div></div>
  ${vacLayout.sec('01','Planta','Use o botão direito para adicionar itens ou editar uma área.')}
- <section class="card l3-map" data-vg-nao><div class="l3-cam"><button type="button" id="cfEdit" aria-pressed="${App.edit}">${App.edit?'Concluir edição das posições':'Editar posições (arrastar)'}</button>
-   <label>Área <select id="cfArea">${areas().map(x=>`<option value="${esc(x.id)}"${a&amp;&amp;a.id===x.id?' selected':''}>${esc(x.nome)}</option>`).join('')}</select></label>
-   ${App.desenho?`<button type="button" id="cfDesFim" aria-pressed="true">Concluir desenho (${App.desenho.pts.length} pontos)</button><button type="button" id="cfDesVolta">Desfazer último</button><button type="button" id="cfDesCanc">Cancelar</button>`:`<button type="button" id="cfDes">Redesenhar esta área</button><button type="button" id="cfAreaNova">+ Área</button>`}
-   <span class="small muted">${App.desenho?'Clique na planta para marcar cada canto da área.':App.edit?'Arraste e solte; cada ponto movido é gravado.':''}</span></div>${plantaHtml('config')}</section>
- ${a?`<form class="card fgrid mt" id="fArea"><label>Nome da área<input name="nome" maxlength="60" required value="${esc(a.nome)}"></label><label class="wf">Pontos desta área<span class="l3-eqs">${pontos().map(p=>`<label><input type="checkbox" name="pt" value="${esc(p.id)}"${(a.pts||[]).includes(p.id)?' checked':''}> ${esc(numeroPonto(p)+' · '+p.nome)}</label>`).join('')}</span></label><div class="row wf"><button class="b pri" type="submit">Salvar área</button><button class="b" type="button" id="cfAreaDes">Desativar área</button></div></form>`:''}
+ <section class="card l3-map" data-vg-nao><div class="l3-cam"><button type="button" id="cfEdit" ${App.desenho?'disabled':''} aria-pressed="${App.edit}">${App.edit?'Concluir edição das posições':'Editar posições (arrastar)'}</button>
+   <label>Área <select id="cfArea" ${App.desenho?'disabled':''}>${areas().map(x=>`<option value="${esc(x.id)}"${a&amp;&amp;a.id===x.id?' selected':''}>${esc(x.nome)}</option>`).join('')}</select></label>
+   ${App.desenho?`<button type="button" id="cfDesFim" ${App.desenho.pts.length<3?'disabled':''}>Salvar contorno (${App.desenho.pts.length} pontos)</button><button type="button" id="cfDesVolta" ${App.desenho.historico.length?'':'disabled'}>Desfazer</button><button type="button" id="cfDesCanc">Cancelar</button>`:`${a&amp;&amp;lerVertices(a.pol).length>=3?`<button type="button" id="cfAjustar" ${fmPode('configurar')?'':'disabled'}>Redimensionar área</button>`:''}${a?'<button type="button" id="cfDes">Redesenhar esta área</button>':''}<button type="button" id="cfAreaNova">+ Área</button>`}
+   <span class="small muted">${App.desenho?(App.desenho.ajustar?'Arraste os vértices para ajustar a área. Clique numa borda para adicionar um vértice.':'Clique para adicionar cantos ou arraste os vértices para ajustar.'):App.edit?'Arraste e solte; cada ponto movido é gravado.':''}</span></div>${plantaHtml('config')}</section>
+ ${a&amp;&amp;!App.desenho?`<form class="card fgrid mt" id="fArea"><label>Nome da área<input name="nome" maxlength="60" required value="${esc(a.nome)}"></label><label class="wf">Pontos desta área<span class="l3-eqs">${pontos().map(p=>`<label><input type="checkbox" name="pt" value="${esc(p.id)}"${(a.pts||[]).includes(p.id)?' checked':''}> ${esc(numeroPonto(p)+' · '+p.nome)}</label>`).join('')}</span></label><div class="row wf"><button class="b pri" type="submit">Salvar área</button><button class="b" type="button" id="cfAreaDes">Desativar área</button></div></form>`:''}
  ${vacLayout.sec('02','Pontos e equipamentos',"O equipamento do cadastro da Administração é o que liga o ponto às paradas, às OS e às ações")}
  ${E.length?'':`<p class="l3-av">${ic('info','sm')} O cadastro de equipamentos da Administração ainda não foi lido neste computador. <a href="${esc(vacPortalHref('cadastros/equipamentos'))}">Abrir o cadastro na Administração</a></p>`}
  ${ptBarra()}
@@ -36578,10 +36648,18 @@ function ligar(){if(App.tab==='config'&amp;&amp;fmPode('configurar'))$('#cv').on
   on('#chkDesativar','onclick',()=>{const id=fc.id.value;if(id&amp;&amp;confirm('Desativar este checklist? O histórico continua guardado.'))Store.commit({k:'chk',it:{id,ativo:false}})});on('#chkLimpar','onclick',()=>{fc.id.value='';$('#chkSalvar').textContent='Adicionar checklist';$('#chkDesativar').hidden=true})}
  /* configuração */
  on('#cfEdit','onclick',()=>{App.edit=!App.edit;App.desenho=null;render()});on('#cfArea','onchange',e=>{App.areaSel=e.target.value;render()});
- on('#cfDes','onclick',()=>{App.desenho={id:(areas().find(x=>x.id===App.areaSel)||areas()[0]).id,pts:[]};App.edit=false;render()});on('#cfDesCanc','onclick',()=>{App.desenho=null;render()});on('#cfDesVolta','onclick',()=>{App.desenho.pts.pop();render()});
- on('#cfDesFim','onclick',()=>{const d=App.desenho;if(d.pts.length<3)return toast('Marque pelo menos 3 cantos',1);Store.commit({k:'area',it:{id:d.id,pol:d.pts.map(q=>q.join(',')).join(' ')}});App.desenho=null;toast('Área redesenhada');render()});
- on('#cfAreaNova','onclick',()=>{const n=(prompt('Nome da nova área:')||'').trim();if(!n)return;const id=uid('ar');Store.commit({k:'area',it:{id,nome:n.slice(0,60),pts:[],pol:''}},{silencio:true});App.areaSel=id;App.desenho={id,pts:[]};render();toast('Marque os cantos da área na planta')});
- const cv=$('#cv');if(cv&amp;&amp;App.desenho)cv.onclick=e=>{if(e.target.closest('[data-pin],[data-posto]'))return;App.desenho.pts.push(pctDe(e));render()};
+ const areaAtual=()=>areas().find(x=>x.id===App.areaSel)||areas()[0];
+ on('#cfAjustar','onclick',()=>iniciarContorno(areaAtual(),true));
+ on('#cfDes','onclick',()=>iniciarContorno(areaAtual(),false));
+ on('#cfDesCanc','onclick',()=>{App.desenho=null;render()});
+ on('#cfDesVolta','onclick',()=>{const d=App.desenho;if(d.historico.length){d.pts=d.historico.pop();render()}});
+ on('#cfDesFim','onclick',()=>{
+  if(!fmPode('configurar'))return fmSemPerm('configurar');
+  const d=App.desenho;if(d.pts.length<3)return toast('Marque pelo menos 3 cantos',1);
+  App.desenho=null;Store.commit({k:'area',it:{id:d.id,pol:d.pts.map(q=>q.join(',')).join(' ')}});toast('Contorno salvo');
+ });
+ on('#cfAreaNova','onclick',()=>{if(!fmPode('configurar'))return fmSemPerm('configurar');const n=(prompt('Nome da nova área:')||'').trim();if(!n)return;const a={id:uid('ar'),nome:n.slice(0,60),pts:[],pol:''};Store.commit({k:'area',it:a},{silencio:true});iniciarContorno(a,false);toast('Marque os cantos da área na planta')});
+ if(App.tab==='config'&amp;&amp;App.desenho)ligarContorno(App.desenho);
  const fa=$('#fArea');if(fa){fa.onsubmit=e=>{e.preventDefault();const a=areas().find(x=>x.id===App.areaSel)||areas()[0];Store.commit({k:'area',it:{id:a.id,nome:String(new FormData(fa).get('nome')).trim(),pts:$$('input[name=pt]:checked',fa).map(i=>i.value)}});toast('Área salva')};
   on('#cfAreaDes','onclick',()=>{const a=areas().find(x=>x.id===App.areaSel)||areas()[0];if(confirm(`Desativar a área "${a.nome}"? Ela some da planta; nada é apagado.`)){App.areaSel=null;Store.commit({k:'area',it:{id:a.id,ativo:false}})}})}
  /* 1.4.1 · pedido do responsável (22/11/2026): os pontos se editam todos e gravam de uma vez em "Salvar alterações". O que é digitado fica
@@ -36641,7 +36719,7 @@ window.VAC_GUIA.linha = {
   form: { titulo: 'Formulários', para: 'Passar tarefas (pontuais, recorrentes ou planejadas) num formulário A4: checklist, limpeza, confirmação de processo, manutenção, AM ou 5S, com fotos marcadas e numeradas.',
     campos: [{ sel: '#fmNovo', nome: 'Novo formulário', o: 'Título, tipo, local da planta, pessoas, prazo, observação, tarefas e fotos.' }, { sel: '#fmFiltro', nome: 'Mostrar', o: 'Abertos, vencidos, aguardando confirmação ou todos.' }],
     passos: ['Crie o formulário e escolha o ponto da planta.', 'Adicione as fotos e marque com seta, círculo, retângulo ou número; escreva cada item.', 'Salve e imprima (A4). Depois, marque como executado; quem confirma confirma.'] },
-  config: { titulo: 'Configuração', para: 'Posição dos pontos e postos, equipamentos de cada ponto, áreas, pasta e base.', campos: [{ sel: '#cfEdit', nome: 'Editar posições', o: 'Arrastar pontos e postos na planta.' }, { sel: '#cfDes', nome: 'Redesenhar área', o: 'Clicar nos cantos da área na planta.' }] }
+  config: { titulo: 'Configuração', para: 'Posição dos pontos e postos, equipamentos de cada ponto, áreas, pasta e base.', campos: [{ sel: '#cfEdit', nome: 'Editar posições', o: 'Arrastar pontos e postos na planta.' }, { sel: '#cfAjustar', nome: 'Redimensionar área', o: 'Arrastar os vértices do contorno atual e salvar.' }, { sel: '#cfDes', nome: 'Redesenhar área', o: 'Clicar nos cantos da área na planta.' }] }
 };
 </script>
 </body>
@@ -55188,9 +55266,9 @@ body.vac-porta{overflow:hidden}
     {
       "id": "linha",
       "path": "Plataforma.html#motor/linha",
-      "version": "1.6.0",
-      "sha256": "f27eed632431dd51486ab72c6cd7246d3f2e139c4bd93d219e83322bf3c66d7a",
-      "bytes": 981177
+      "version": "1.6.1",
+      "sha256": "330db91f5136c09dd7d2896af577e8fd8125b3a878b08b83a5758fc0619e2643",
+      "bytes": 985587
     },
     {
       "id": "projetos",
@@ -55203,14 +55281,14 @@ body.vac-porta{overflow:hidden}
       "id": "portal",
       "path": "Plataforma.html#motor/portal",
       "version": "1.9.76",
-      "sha256": "206fdd339c6a48923c75e354f18b659eff05dc6440b869ab27ec3ff33f5a6f03",
-      "bytes": 1324328
+      "sha256": "62efa5f248547d45b890f06ace6312f93aa8dfc04c6c4fefccfcac16226b909a",
+      "bytes": 1324542
     }
   ],
   "limitations": [
     "Projetos e conteúdo técnico OSM/MES/AM/TPM mantêm os limites documentados nas fontes."
   ],
-  "enginesSha256": "a9b52d4f48b3a0a42b72962ecdabae94aa5bb4ded64751ab62080d21bca21de3",
+  "enginesSha256": "493ade8eec1f66c34e57af84fd5fdc9a027fce312b4110edaee58e850e62fcc8",
   "originRevision": "ffc9ee8",
   "sourceMode": "single-html",
   "originEnginesSha256": "a87a64ad0c328f70e102b2ae888790a9b5d5a9bd05778652a7ce7cae140e40d2"
@@ -55280,7 +55358,7 @@ summary{cursor:pointer;font-weight:600;color:var(--navy)}
 'use strict';
 /* ---------- referência (atualizar quando a plataforma mudar de versão) ---------- */
 // Iguais às do pacote da plataforma (nova-plataforma/src/generated/manifest.json); o teste ferramenta-verificar confere.
-const VERSOES = {"oee":"2.6.39","perdas":"1.12.20","gel":"2.47","paradas":"1.2.22","equip":"1.0.22","inic":"1.1.17","linha":"1.6.0","projetos":"0.1.16","portal":"1.9.76"};
+const VERSOES = {"oee":"2.6.39","perdas":"1.12.20","gel":"2.47","paradas":"1.2.22","equip":"1.0.22","inic":"1.1.17","linha":"1.6.1","projetos":"0.1.16","portal":"1.9.76"};
 const BASES = [
  { arq: 'vacutainer-cadastros.json', mod: 'portal', nome: 'Cadastro geral (Portal)', obrig: true, cadastro: true, bk: 'Cadastros' },
  { arq: 'portal-base.json', mod: 'portal', nome: 'Portal', obrig: true, bk: 'Portal' },
@@ -55871,7 +55949,7 @@ import { Icon, Button, Badge, Empty, Modal, BarChart, BrandLogo, CommandMenu } f
 import { ModuleFrame } from "vac:modulo/components/ModuleFrame";
 import manifest from "vac:recurso/manifesto";
 import { ModuleTabs } from "vac:modulo/components/ModuleTabs";
-const VERSION = "1.8.54";
+const VERSION = "1.8.55";
 /* Navegação 1.3.0 (16/11/2026): Visão da linha, Relatórios e Importações têm abas; as que mostram uma tela do
    Portal (motor da Administração) trazem o 3º campo com a aba dele. Administração fica só com cadastros e configuração. */
 const SHELL_TABS = {
