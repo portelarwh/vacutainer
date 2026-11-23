@@ -633,10 +633,15 @@ const vacNaoAchou = e => !!e &amp;&amp; (e.name === 'NotFoundError' || e.name ==
    quem compara usa o ID. Registro antigo só com nome: o ID vem do nome, se ele for único no cadastro. */
 // Documento do cadastro: Cad.D na Administração, senão a cópia vac.cadastros, senão null. Único lugar.
 function vacCad(){if(typeof Cad!=='undefined'&amp;&amp;Cad&amp;&amp;Cad.D)return Cad.D;try{return JSON.parse(localStorage.getItem('vac.cadastros')||'null')}catch(e){return null}}
+// Leituras do cadastro geral (vigência por data do fato; ausência é null, nunca zero).
+vacCad.vigente = (vigencias, data) => { const d = String(data || '').slice(0, 10) || vacHoje(); return (vigencias || []).filter(v => v.de <= d &amp;&amp; (!v.ate || v.ate >= d)).sort((a, b) => a.de < b.de ? 1 : -1)[0] || null; };
+vacCad.item = (tipo, codigo) => { const c = vacCad(); return ((c &amp;&amp; c[tipo]) || []).find(x => String(x.codigo) === String(codigo)) || null; };
+vacCad.lista = (tipo, { ativos = true, data } = {}) => { const c = vacCad(); return ((c &amp;&amp; c[tipo]) || []).filter(x => (!ativos || x.ativo !== false) &amp;&amp; (!data || !x.vigencias || vacCad.vigente(x.vigencias, data))); };
+vacCad.param = (caminho, data) => { const c = vacCad(); let v = c &amp;&amp; c.parametros; for (const k of String(caminho).split('.')) { if (v == null || typeof v !== 'object') return null; v = v[k]; } if (v &amp;&amp; Array.isArray(v.vigencias)) return vacCad.vigente(v.vigencias, data); return v ?? null; };
 
 const vacPessoa = (() => {
   const norm = s => String(s == null ? '' : s).normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/\s+/g, ' ').trim().toLowerCase();
-  const lista = () => { try { const c = typeof vacCad === 'function' ? vacCad() : null; return (c &amp;&amp; c.usuarios) || []; } catch (e) { return []; } };
+  const lista = () => { try { const c = vacCad(); return (c &amp;&amp; c.usuarios) || []; } catch (e) { return []; } };
   const porId = id => { const k = String(id == null ? '' : id).trim(); return k ? lista().find(u => String(u.codigo) === k) || null : null; };
   /* por ID ou por nome; nome repetido no cadastro não decide (fica sem ID) */
   function achar(x) { const k = String(x == null ? '' : x).trim(); if (!k) return null; const u = porId(k); if (u) return u;
@@ -692,7 +697,7 @@ const vacBackupRegistro = (() => {
      apaga da PRÓPRIA pasta de backup os .json mais velhos que o prazo. Sem prazo, nada é apagado; prazo mínimo 7 dias;
      os 10 mais recentes ficam sempre; registros (.log) e outras pastas nunca são tocados. */
   async function limpar(dir) {
-    let dias = 0; try { const c = typeof vacCad === 'function' ? vacCad() : null; dias = +((c &amp;&amp; c.parametros &amp;&amp; c.parametros.backupDias) || 0); } catch (e) { }
+    let dias = 0; try { const c = vacCad(); dias = +((c &amp;&amp; c.parametros &amp;&amp; c.parametros.backupDias) || 0); } catch (e) { }
     if (!(dias >= 7) || !dir || typeof dir.entries !== 'function') return null;
     const MIN = 10, limite = Date.now() - dias * 864e5, L = [];
     for await (const [nome, h] of dir.entries()) if (h.kind === 'file' &amp;&amp; /\.json$/i.test(nome)) { try { L.push({ nome, mod: (await h.getFile()).lastModified }); } catch (e) { } }
@@ -1181,31 +1186,29 @@ const vacPareto = (() => {
    Os leitores abaixo usam a data do fato quando recebem uma; vacHoje() é só o padrão quando não recebem. */
 function vacHoje() { const d = new Date(); return new Date(d - d.getTimezoneOffset() * 6e4).toISOString().slice(0, 10); }
 function vacCambio(data, moeda = 'USD') {
-  const c = typeof vacCad === 'function' ? vacCad() : null, m = c &amp;&amp; (c.cambio || []).find(x => String(x.codigo).toUpperCase() === moeda &amp;&amp; x.ativo !== false); if (!m) return null;
+  const c = vacCad(), m = c &amp;&amp; (c.cambio || []).find(x => String(x.codigo).toUpperCase() === moeda &amp;&amp; x.ativo !== false); if (!m) return null;
   const d = String(data || '').slice(0, 10) || vacHoje();
   const v = (m.vigencias || []).filter(x => x.de <= d &amp;&amp; (!x.ate || x.ate >= d)).sort((a, b) => a.de < b.de ? 1 : -1)[0];
   return v &amp;&amp; +v.cotacao > 0 ? { cotacao: +v.cotacao, de: v.de, ate: v.ate || null } : null;
 }
 /* kit v2.1 · leituras do cadastro geral (cópia vac.cadastros), iguais em todas as páginas */
-const vacVig = (vs, data) => { const d = String(data || '').slice(0, 10) || vacHoje(); return (vs || []).filter(v => v.de <= d &amp;&amp; (!v.ate || v.ate >= d)).sort((a, b) => a.de < b.de ? 1 : -1)[0] || null; };
-function vacParam(k) { const c = typeof vacCad === 'function' ? vacCad() : null; return c &amp;&amp; c.parametros ? c.parametros[k] ?? null : null; }
 /* turnos vigentes numa data: [{codigo, nome, inicio, fim, dias, ativo, pausas}] (fim em 24 h+) */
 /* TUR-04 (plataforma 1.8.15): um turno pode ter mais de uma linha no mesmo período (ex.: Seg–Sex e Sáb): vale a linha que tem o dia da semana da data */
-function vacTurnosEm(data) { const c = typeof vacCad === 'function' ? vacCad() : null; const d = String(data || '').slice(0, 10) || vacHoje(), wd = new Date(d + 'T12:00:00').getDay();
-  return (c &amp;&amp; c.turnos || []).filter(t => t.ativo !== false).map(t => { const vs = (t.vigencias || []).filter(v => v.de <= d &amp;&amp; (!v.ate || v.ate >= d)).sort((a, b) => a.de < b.de ? 1 : -1); const v = vs.find(x => (x.dias || []).includes(wd)) || vacVig(t.vigencias, data); return v ? { codigo: t.codigo, nome: t.nome, ...v } : null; }).filter(Boolean); }
+function vacTurnosEm(data) { const c = vacCad(); const d = String(data || '').slice(0, 10) || vacHoje(), wd = new Date(d + 'T12:00:00').getDay();
+  return (c &amp;&amp; c.turnos || []).filter(t => t.ativo !== false).map(t => { const vs = (t.vigencias || []).filter(v => v.de <= d &amp;&amp; (!v.ate || v.ate >= d)).sort((a, b) => a.de < b.de ? 1 : -1); const v = vs.find(x => (x.dias || []).includes(wd)) || vacCad.vigente(t.vigencias, data); return v ? { codigo: t.codigo, nome: t.nome, ...v } : null; }).filter(Boolean); }
 /* preço vigente de um material: {preco, moeda, porUnidade, de} */
-function vacPrecoEm(material, data) { const c = typeof vacCad === 'function' ? vacCad() : null; const it = c &amp;&amp; (c.precos || []).find(p => String(p.material) === String(material)); const v = it ? vacVig(it.vigencias, data) : null; return v &amp;&amp; +v.preco > 0 ? { preco: +v.preco, moeda: v.moeda || 'USD', porUnidade: v.porUnidade || 'kg', de: v.de } : null; }
+function vacPrecoEm(material, data) { const c = vacCad(); const it = c &amp;&amp; (c.precos || []).find(p => String(p.material) === String(material)); const v = it ? vacCad.vigente(it.vigencias, data) : null; return v &amp;&amp; +v.preco > 0 ? { preco: +v.preco, moeda: v.moeda || 'USD', porUnidade: v.porUnidade || 'kg', de: v.de } : null; }
 /* meta da área vigente: {valor, alerta, unidade, sentido, periodo, de} */
-function vacMetaArea(codigo, data) { const c = typeof vacCad === 'function' ? vacCad() : null; const it = c &amp;&amp; (c.metasArea || []).find(m => m.codigo === codigo &amp;&amp; m.ativo !== false); const v = it ? vacVig(it.vigencias, data) : null; return v &amp;&amp; v.valor != null ? { valor: +v.valor, alerta: v.alerta != null ? +v.alerta : null, unidade: it.unidade, sentido: it.sentido, periodo: it.periodo, de: v.de } : null; }
+function vacMetaArea(codigo, data) { const c = vacCad(); const it = c &amp;&amp; (c.metasArea || []).find(m => m.codigo === codigo &amp;&amp; m.ativo !== false); const v = it ? vacCad.vigente(it.vigencias, data) : null; return v &amp;&amp; v.valor != null ? { valor: +v.valor, alerta: v.alerta != null ? +v.alerta : null, unidade: it.unidade, sentido: it.sentido, periodo: it.periodo, de: v.de } : null; }
 /* kit v2.1 · E2 (08/11/2026): meta da área de um mês (AAAA-MM), pela vigência de cada dia (regra 3). Duas vigências no mesmo mês =
    média ponderada pelos dias de cada uma (só os dias cobertos por vigência). null se nenhum dia do mês tem vigência.
    Volta {valor, ponderada, partes:[{de, valor, dias}], diasCobertos, diasMes, unidade, sentido, periodo}. */
 function vacMetaAreaMes(codigo, per) {
-  const c = typeof vacCad === 'function' ? vacCad() : null; const it = c &amp;&amp; (c.metasArea || []).find(m => m.codigo === codigo &amp;&amp; m.ativo !== false);
+  const c = vacCad(); const it = c &amp;&amp; (c.metasArea || []).find(m => m.codigo === codigo &amp;&amp; m.ativo !== false);
   if (!it || !/^\d{4}-\d{2}$/.test(String(per || ''))) return null;
   const [y, mo] = String(per).split('-').map(Number), n = new Date(y, mo, 0).getDate(), partes = new Map(); let soma = 0, dias = 0;
   for (let d = 1; d <= n; d++) {
-    const v = vacVig(it.vigencias, per + '-' + String(d).padStart(2, '0')); if (!v || v.valor == null || v.valor === '' || !isFinite(+v.valor)) continue;
+    const v = vacCad.vigente(it.vigencias, per + '-' + String(d).padStart(2, '0')); if (!v || v.valor == null || v.valor === '' || !isFinite(+v.valor)) continue;
     soma += +v.valor; dias++; let p = partes.get(v.de); if (!p) partes.set(v.de, p = { de: v.de, valor: +v.valor, dias: 0 }); p.dias++;
   }
   if (!dias) return null; const P = [...partes.values()];
@@ -1585,7 +1588,7 @@ const vacFicha = (() => {
     for (const x of top(I.lote, 6)) R.push({ tipo: 'Lote', txt: x.cod, sub: [x.ordens.size ? 'ordem ' + [...x.ordens].join(', ') : '', x.cats.size ? 'catálogo ' + [...x.cats].join(', ') : '', per(x)].filter(Boolean).join(' · '), go: () => abrir('lote', x.cod), r: rank(x.k) });
     for (const x of top(I.ordem, 8)) R.push({ tipo: 'Ordem', txt: x.cod, sub: [x.lotes.size ? 'lote ' + [...x.lotes].join(', ') : '', x.cats.size ? 'catálogo ' + [...x.cats].join(', ') : '', [...x.fontes].join(' · ')].filter(Boolean).join(' · '), go: () => abrir('ordem', x.cod), r: rank(x.k) });
     for (const x of top(I.lp, 5)) R.push({ tipo: 'LP', txt: x.cod, sub: 'barril de gel · ordem ' + [...x.ordens].join(', '), go: () => abrir('lp', x.cod), r: rank(x.k) });
-    const C = typeof vacCad === 'function' ? vacCad() : null, href = h => typeof vacPortalHref === 'function' ? vacPortalHref(h) : 'Portal.html#' + h;
+    const C = vacCad(), href = h => typeof vacPortalHref === 'function' ? vacPortalHref(h) : 'Portal.html#' + h;
     if (C) {
       for (const c of (C.catalogos || []).filter(c => c.ativo !== false &amp;&amp; (nk(c.codigo).includes(k) || semAc(c.nome).includes(ks))).slice(0, 5)) R.push({ tipo: 'Catálogo', txt: tx(c.codigo) + (c.nome ? ' · ' + c.nome : ''), sub: "cadastro da Administração", href: href('cadastros/catalogos/' + encodeURIComponent(c.codigo)), r: nk(c.codigo) === k ? 0 : 2 });
       for (const e of (C.equipamentos || []).filter(e => e.ativo !== false &amp;&amp; (nk(e.codigo).includes(k) || semAc(e.nome).includes(ks) || (e.apelidos || []).some(a => semAc(a).includes(ks)))).slice(0, 5)) {
@@ -1617,7 +1620,7 @@ const vacFicha = (() => {
     const ws = m((D('perdas') || {}).porOrdem).sort((a, b) => tx(a.per).localeCompare(tx(b.per))), gel = m((D('gel') || {}).ordens), par = m((D('paradas') || {}).porOrdem), ev = m((D('paradas') || {}).eventos);
     const ac = ((D('inic') || {}).acoes || []).filter(a => (a.vinculos || []).some(v => v.tipo === 'ordem' &amp;&amp; nk(v.cod) === k));
     const lotes = new Set([...oee.map(o => o.lote), ...ws.map(o => o.lote), ...gel.map(o => o.lote), ...sap.flatMap(o => o.lotes || [])].filter(Boolean).map(tx));
-    const cat = [...oee, ...ws, ...gel].map(o => tx(o.catalogo)).find(Boolean) || '', C = typeof vacCad === 'function' ? vacCad() : null;
+    const cat = [...oee, ...ws, ...gel].map(o => tx(o.catalogo)).find(Boolean) || '', C = vacCad();
     const catNome = cat &amp;&amp; C ? ((C.catalogos || []).find(c => tx(c.codigo) === cat) || {}).nome || '' : '';
     const comps = [...new Set([...sap.map(o => o.competencia), ...ws.map(o => o.per)].filter(Boolean))].sort();
     const datas = [...oee.map(o => o.inicioReal || o.inicio || o.mes), ...sap.map(o => o.dataPrincipal), ...ws.map(o => o.per), ...par.map(o => o.de)].filter(Boolean).map(tx);
@@ -1707,7 +1710,7 @@ const vacFicha = (() => {
   function diasComDado() { const P = D('oee') || {}, st = new Set(); for (const x of P.porDia || []) if (x.dia) st.add(x.dia); for (const e of (D('paradas') || {}).todos || []) if (e.dia) st.add(e.dia); for (const g of (D('gel') || {}).porDiaGel || []) if (g.dia) st.add(g.dia); return [...st].sort(); }
   function htmlDia(cod) {
     const dia = tx(cod); if (!diaOk(dia)) return { cab: '<div class="vf-t1"><span class="vf-tp">Dia</span><h2>—</h2></div>', corpo: '<p class="vf-aviso">Data inválida.</p>' };
-    const det = modo() === 'det', P = D('oee') || {}, C = typeof vacCad === 'function' ? vacCad() : null;
+    const det = modo() === 'det', P = D('oee') || {}, C = vacCad();
     const eqNome = c => { const e = C &amp;&amp; (C.equipamentos || []).find(x => tx(x.codigo) === tx(c)); return e &amp;&amp; e.nome ? tx(c) + ' · ' + e.nome : tx(c); };
     const pd = (P.porDia || []).find(x => x.dia === dia), tur = (P.porDiaTurno || []).filter(x => x.dia === dia), cats = (P.porDiaCatalogo || []).filter(x => x.dia === dia);
     const T = (P.trechos || []).filter(t => tx(t.ini).slice(0, 10) <= dia &amp;&amp; tx(t.fim).slice(0, 10) >= dia), tro = (P.trocas || []).filter(x => tx(x.em).slice(0, 10) === dia);
@@ -1882,7 +1885,7 @@ const vacGel = (() => {
   }
   /* contexto a partir do cadastro do Portal (Produção) */
   function ctx(c) {
-    c = c || (typeof vacCad === 'function' ? vacCad() : null); const G = (c &amp;&amp; c.parametros &amp;&amp; c.parametros.gel) || {};
+    c = c || (vacCad()); const G = (c &amp;&amp; c.parametros &amp;&amp; c.parametros.gel) || {};
     const cat = cod => { const k = (c &amp;&amp; c.catalogos || []).find(x => x &amp;&amp; String(x.codigo) === String(cod)); if (!k) return null; const g = k.gel || {}; const f = g.fmt || (/75/.test(k.formato || '') ? '75' : /100/.test(k.formato || '') ? '100' : null); return { ...g, fmt: f || '100' }; };
     const eq = cod => { const e = (c &amp;&amp; c.equipamentos || []).find(x => x &amp;&amp; String(x.codigo) === String(cod)); return e &amp;&amp; e.gel ? { codigo: e.codigo, nome: e.nome, ativo: e.ativo !== false, tara: e.gel.tara, descs: e.gel.descs || [] } : null; };
     const equips = () => (c &amp;&amp; c.equipamentos || []).filter(e => e &amp;&amp; e.gel &amp;&amp; e.ativo !== false &amp;&amp; (e.gel.descs || []).length).map(e => eq(e.codigo));
@@ -2184,7 +2187,7 @@ const vacLogin = (() => {
   const fraca = p => !/^\d{6}$/.test(p) || /^(\d)\1{5}$/.test(p) || '0123456789'.includes(p) || '9876543210'.includes(p);
   function provisoriaNova() { for (;;) { const p = String(crypto.getRandomValues(new Uint32Array(1))[0] % 1000000).padStart(6, '0'); if (!fraca(p)) return p; } }
   /* ---- cadastro ---- */
-  const cad = () => { try { return typeof vacCad === 'function' ? vacCad() : null; } catch (x) { return null; } };
+  const cad = () => { try { return vacCad(); } catch (x) { return null; } };
   const usuario = id => { const c = cad(); return c ? (c.usuarios || []).find(u => String(u.codigo) === String(id)) || null : null; };
   const perfilDe = u => { const c = cad(); return c &amp;&amp; u ? (c.perfis || []).find(p => p.codigo === u.perfil) || null : null; };
   const funcao = u => [u.especialidade, u.area].filter(Boolean).join(' · ') || (u.turno ? 'Turno ' + u.turno : '');
@@ -33021,7 +33024,7 @@ function programado(L,de,ate,turno='',exigirFechado=false){
  let min=0,dias=0,cobertos=0,esperados=0,estimados=0,coberturaIndefinida=false;
  for(let dia=de;dia<=ate;dia=addDays(dia,1)){
   const wd=new Date(dia+'T12:00:00').getDay(),R=porDia.get(dia)||new Map();
-  const vigencias=cadastro.map(t=>[t.codigo,vacVig(t.vigencias,dia)]).filter(([,v])=>v);
+  const vigencias=cadastro.map(t=>[t.codigo,vacCad.vigente(t.vigencias,dia)]).filter(([,v])=>v);
   const previstos=new Map(vigencias.filter(([,v])=>v.ativo!==false&amp;&amp;(!v.dias?.length||v.dias.includes(wd))));
   const codigos=new Set([...R.keys(),...previstos.keys()]);
   if(!off.has(dia)&amp;&amp;!vigencias.length)coberturaIndefinida=true;
@@ -34257,7 +34260,7 @@ const osAberta=o=>OS_ABERTA.includes(o.status);
 const osAtrasada=o=>osAberta(o)&amp;&amp;o.programadaPara&amp;&amp;o.programadaPara<hoje();
 function eqs(){const c=typeof vacCad==='function'?vacCad():null;return((c&amp;&amp;c.equipamentos)||[]).filter(e=>e.ativo!==false).map(e=>({codigo:String(e.codigo),nome:e.nome||'',apelidos:e.apelidos||[],papel:e.papel||''})).sort((a,b)=>a.codigo.localeCompare(b.codigo,'pt-BR',{numeric:true}))}
 const eqNome=c=>{const e=eqs().find(x=>x.codigo===String(c));return e?e.nome:''};
-const vigDe=(t,d=hoje())=>typeof vacVig==='function'?vacVig(t.vigencias||[],d):null;
+const vigDe=(t,d=hoje())=>vacCad.vigente(t.vigencias||[],d);
 
 /* ---------- IndexedDB (pasta escolhida, compartilhada com as outras páginas) ---------- */
 const IDB={db:null,async open(){if(this.db)return this.db;return this.db=await new Promise((ok,err)=>{const r=indexedDB.open('vac-sistemas',1);r.onupgradeneeded=()=>r.result.createObjectStore('kv');r.onsuccess=()=>ok(r.result);r.onerror=()=>err(r.error)})},
@@ -55534,70 +55537,70 @@ body.vac-porta{overflow:hidden}
       "id": "oee",
       "path": "Plataforma.html#motor/oee",
       "version": "2.6.43",
-      "sha256": "1ecd93cc8ee9ebb6b6c5ba2c7612b7e393dd26b5eeb89d8e16c5b82ff224e6ce",
-      "bytes": 2408870
+      "sha256": "3aba7ac15a7a22875c45491f48c87ce76a6a0f131bad652daa16a19b7c9d317e",
+      "bytes": 2409067
     },
     {
       "id": "perdas",
       "path": "Plataforma.html#motor/perdas",
       "version": "1.12.20",
-      "sha256": "9ddf272c2450b30cf34996a55a0aaabce4230b8dadff2f9b8c2d73131407894c",
-      "bytes": 988437
+      "sha256": "66ce5dc10134900d157658e5fee8c38f4cdd7e8429cbd40fafa56df01fe8dab8",
+      "bytes": 988634
     },
     {
       "id": "gel",
       "path": "Plataforma.html#motor/gel",
       "version": "2.48",
-      "sha256": "35430fd3dbd9052aaa7e9e8361ff6ab51576d6aebbb93eb4342ea69f75ae73cf",
-      "bytes": 1634541
+      "sha256": "a56492949398025d0e0f80814a50b52503ec684579e4499b486f81bf0227c2be",
+      "bytes": 1634738
     },
     {
       "id": "paradas",
       "path": "Plataforma.html#motor/paradas",
       "version": "1.2.22",
-      "sha256": "fa51cea156a3e3faccebf7e6b6ea26a5a5a9ed3e901201412ca1e64c2ab1488a",
-      "bytes": 958940
+      "sha256": "1c673f57eeac063ed859bb16af66aedae92887af1eaa7e959b6ebcabf4aadf90",
+      "bytes": 959145
     },
     {
       "id": "equip",
       "path": "Plataforma.html#motor/equip",
       "version": "1.0.22",
-      "sha256": "c19793f587d1fbf32c6f5cbb7e0e091a13b0bbf36fe33dbeef60794023b8cd35",
-      "bytes": 750564
+      "sha256": "0cbdb77f64230210bcc4f48dc9ba7b8e414e4572b2e32ad11f7fcd3882503d66",
+      "bytes": 750737
     },
     {
       "id": "inic",
       "path": "Plataforma.html#motor/inic",
       "version": "1.1.17",
-      "sha256": "a96bd2adc71d05259bb0e88f73ab8ef5a133466fba318a18be7e314865aad0ec",
-      "bytes": 765069
+      "sha256": "ea3541c3ece49e8286002be1c10d1f7832b8a2073e9c61425e348167aa09744d",
+      "bytes": 765266
     },
     {
       "id": "linha",
       "path": "Plataforma.html#motor/linha",
       "version": "1.7.1",
-      "sha256": "25a3b6ccd198e54c3a1a40b1f2791a88e1b3c7ad4db3115e701f9e4544268984",
-      "bytes": 1013173
+      "sha256": "65c06ef796df44a92f25cf718d624618d71da00a51871c71dee01d93b68b3098",
+      "bytes": 1013370
     },
     {
       "id": "projetos",
       "path": "Plataforma.html#motor/projetos",
       "version": "0.1.16",
-      "sha256": "daca67ed0ce5d552885e6159734ff8d4b70ed0b7bb0ea07cf6d1e0bf8d303337",
-      "bytes": 682248
+      "sha256": "6510fbee8a1977c1b1f0bcc0dcbc5bfe75403538c559fb4553f8d63d409f868d",
+      "bytes": 682445
     },
     {
       "id": "portal",
       "path": "Plataforma.html#motor/portal",
       "version": "1.9.81",
-      "sha256": "f1c05360fc0c65646039027f07419cb613a0577e13df58894b63be1f8eec828c",
-      "bytes": 1353753
+      "sha256": "dc69c3ad3acfbbf02ac4609f56d394d5ff5f4f11b90ac6c2af78343167d71d6d",
+      "bytes": 1353950
     }
   ],
   "limitations": [
     "Projetos e conteúdo técnico OSM/MES/AM/TPM mantêm os limites documentados nas fontes."
   ],
-  "enginesSha256": "f138b318aeec0b25e3d607e7a44aa3d100086f89659a4d66d171de0eb37738c2",
+  "enginesSha256": "b1791947b6258fdc93a6372d6931877baca85e488ff46148736d1dbe42722e97",
   "originRevision": "ffc9ee8",
   "sourceMode": "single-html",
   "originEnginesSha256": "a87a64ad0c328f70e102b2ae888790a9b5d5a9bd05778652a7ce7cae140e40d2"
