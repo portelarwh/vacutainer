@@ -7,7 +7,7 @@
 const { chromium } = require('playwright'), http = require('http'), fs = require('fs'), path = require('path'), assert = require('assert/strict');
 const html = fs.readFileSync(path.resolve(__dirname, '../../Plataforma.html'));
 const ASSUNTOS = [['planta', 'Planta e linha'], ['produto', 'Produto'], ['gel', 'Gel'], ['equipamentos', 'Equipamentos'], ['turnos', 'Turnos e metas'], ['paradas', 'Paradas e perdas'], ['pessoas', 'Pessoas e acesso'], ['sistema', 'Sistema']];
-const SECS = ['gel', 'linhas', 'familias', 'catalogos', 'materiais', 'bom', 'equipamentos', 'componentes', 'modosFalha', 'turnos', 'calendario', 'metasOee', 'metasArea', 'metasOsm', 'paradas', 'matriz', 'usuarios', 'perfis', 'cambio', 'precos', 'programas', 'vigencias', 'parametros', 'importar', 'apps', 'auditoria', 'backups', 'versoes', 'config', 'novidades', 'seguranca'];
+const SECS = ['gel', 'linhas', 'familias', 'catalogos', 'materiais', 'bom', 'equipamentos', 'componentes', 'modosFalha', 'turnos', 'calendario', 'metasOee', 'metasArea', 'metasOsm', 'paradas', 'matriz', 'usuarios', 'perfis', 'cambio', 'precos', 'programas', 'vigencias', 'parametros', 'importar', 'importarV1', 'apps', 'auditoria', 'backups', 'versoes', 'config', 'novidades', 'seguranca'];
 (async () => {
   const srv = http.createServer((q, r) => { r.setHeader('Content-Type', 'text/html'); r.end(html); });
   let browser;
@@ -30,7 +30,7 @@ const SECS = ['gel', 'linhas', 'familias', 'catalogos', 'materiais', 'bom', 'equ
     const menu = await f.evaluate(() => [...document.querySelectorAll('.cadside .sg')].map(x => x.firstChild.textContent.trim()));
     assert.deepEqual(menu, ASSUNTOS.map(a => a[1]), 'o menu lateral mostra os 8 títulos nesta ordem');
     const btns = await f.evaluate(() => [...document.querySelectorAll('.cadside [data-sec]')].map(b => b.dataset.sec).filter(s => s !== 'inicio'));
-    assert.deepEqual([...btns].sort(), [...SECS].sort(), 'os botões do menu (data-sec) são as telas atuais ' + JSON.stringify(btns));
+    assert.deepEqual([...btns].sort(), SECS.filter(x => x !== 'importarV1').sort(), 'os botões do menu (data-sec) são as telas atuais (a importação de uso único só aparece no formato 1) ' + JSON.stringify(btns));
     for (const s of ['turnos', 'paradas', 'perfis', 'catalogos']) {
       await f.click('.cadside [data-sec="' + s + '"]'); await f.waitForFunction(x => Cad.ui.sec === x, s);
       assert.ok(await f.locator('#cadQ').count(), 'a tela de ' + s + ' abre com a lista');

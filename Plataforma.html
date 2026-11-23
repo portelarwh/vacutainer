@@ -5307,7 +5307,7 @@ const CAT_AJUDA={
  metasOsm:'Meta de observações de segurança (OSM). Ex.: 4 OSM por operador por mês.',
  usuarios:'Pessoas que usam as páginas: ID, nome, perfil e página inicial.',perfis:'O que cada perfil pode ver, lançar, fechar, importar, exportar, excluir e configurar em cada página.'};
 const campoAjuda=(t,f)=>AJUDA_CAMPO[t+'.'+f]||AJUDA_CAMPO[f]||'';
-const CAD_SECS=['inicio','gel','matriz','importar','auditoria','backups','seguranca','vigencias','parametros','novidades','apps'];
+const CAD_SECS=['inicio','gel','matriz','importar','importarV1','auditoria','backups','seguranca','vigencias','parametros','novidades','apps'];
 /* 1.9.53 · NOV-01 (pedido do responsável, 20/11/2026): Administração › Novidades. O que mudou em cada versão da plataforma, em frases
    curtas (macro, sem detalhe técnico). REGRA: toda versão nova da plataforma ganha uma entrada aqui, a mais recente primeiro
    (AGENTS.md e CLAUDE.md). Tipos: nova (função nova), melhoria (algo que já existia ficou melhor), correcao (erro corrigido). */
@@ -5495,6 +5495,7 @@ function aplicarOp(D,o,aud){
  if(o.acao==='desbloqueio'){L(null,null,null);return{ok:true}}
  if(o.acao==='restauração'){if(D.rev!==o.baseRev)return{ok:false,tipo:'restauracao',motivo:`o cadastro mudou (agora rev ${D.rev}) depois que a restauração foi pedida sobre a rev ${o.baseRev}`};
   for(const t of CAD_ORD)D[t]=clone(o.doc[t]||[]);if(o.doc.parametros)D.parametros=clone(o.doc.parametros);L(null,'rev '+D.rev,'conteúdo do backup '+(o.origem||''));return{ok:true}}
+ if(o.acao==='importação v1')return ImportarV1.aplicar(D,o,L);   /* ADM-CENTRAL: uso único */
  if(o.tipo==='seguranca'||o.tipo==='parametros'||o.tipo==='gel'){if(!D[o.tipo]||typeof D[o.tipo]!=='object')D[o.tipo]={};return aplicarMud(D[o.tipo],o,L)}
  const lista=D[o.tipo];if(!Array.isArray(lista))return{ok:false,tipo:'sumiu',motivo:'tipo desconhecido: '+o.tipo};const k=kOf(o.tipo);
  const i=lista.findIndex(x=>String(x[k])===String(o.codigo));
@@ -5590,13 +5591,12 @@ const Cad={base:null,D:null,mod:0,fonte:'nenhum',err:'',fila:[],gravando:false,d
  podeEditarAssunto(id,silent){if(!this.podeEditar(silent))return false;const p=perfilAtual(this.D);if(!p)return true;
   const ok=this.nivelAssunto(p,id)==='editar';if(!ok){this._m='Seu perfil só consulta este assunto ('+((ADM_ASSUNTOS.find(a=>a.id===id)||{}).nome||id)+').';if(!silent)toast(this._m,5000,true)}return ok},
  nivelAssunto(p,id){if(p&amp;&amp;p.assuntos&amp;&amp;typeof p.assuntos==='object')return p.assuntos[id]==='editar'?'editar':'ver';
-  /* ADM-CENTRAL: transição até o importador */
-  const x=String((p&amp;&amp;p.nome)||'').toLowerCase()+' '+String((p&amp;&amp;p.codigo)||'').toLowerCase();
-  if(x.includes('processos'))return'editar';if(x.includes('pcp'))return id==='planta'||id==='turnos'?'editar':'ver';if(x.includes('almoxarifado'))return id==='gel'?'editar':'ver';
-  return this.podeEditar(true)?'editar':'ver'},
+  /* ADM-CENTRAL: transição até o importador (a regra mora em admNivelTransicao, junto do ImportarV1) */
+  return admNivelTransicao(p,id,()=>this.podeEditar(true))},
  op(o){return this.ops([o])},
  ops(list){
   /* ADM-CENTRAL (bloco 1): o assunto de cada operação decide, em um só lugar, quem grava; login e autocadastro são a transação restrita de conta própria */
+  if(this.D&amp;&amp;!(+this.D.schemaVersion>=2)){const x=list.find(o=>!ImportarV1.permitida(o));if(x){const m='O cadastro está no formato antigo: importe das bases atuais (Sistema › Importar das bases atuais) antes de gravar qualquer outra coisa; nada foi gravado.';this._m=m;toast(m,6000,true);return false}}
   const p=perfilAtual(this.D),neg=p?list.flatMap(o=>o.origem==='login'||o.origem==='autocadastro'?[]:admAssuntosOp(o)).find(a=>this.nivelAssunto(p,a)!=='editar'):null;
   if(neg){const m='Seu perfil só consulta o assunto '+((ADM_ASSUNTOS.find(a=>a.id===neg)||{}).nome||neg)+'; nada foi gravado.';this._m=m;toast(m,5000,true);return false}
   const em=isoLocal(),por=user();for(const o of list){o.id=uid('op');o.qid=o.id;o.em=em;o.por=por;this.fila.push(o)}this.persistFila();this.recompute();if(this.status==='salvo')this.status='pendente';this.render();return this.gravar()},
@@ -5734,16 +5734,17 @@ function cadBarra(){const D=Cad.D,b=Cad.base,lk=Lock.ok();const dm=x=>{const s=f
  if(Cad.fonte==='erro')notes+=`<div class="note e"><b>Cadastro com problema:</b> ${esc(Cad.err)}</div>`;
  if(Cad.fonte==='sumiu')notes+=`<div class="note e">O arquivo <span class="mono">${CAD_FILE}</span> não está na pasta. Mostrando a cópia deste navegador (rev ${b?b.rev:'?'}). Restaure um backup em Backups ou recrie o arquivo a partir da cópia. ${lk?'<button class="b sm" id="cadRecriar">Recriar a partir da cópia local</button>':''}</div>`;
  if(Cad.fonte==='copia'&amp;&amp;Store.mode!=='pasta')notes+=`<div class="note w">Sem a pasta da rede: mostrando a cópia guardada neste navegador.${Store.motivo?` Motivo: ${esc(Store.motivo)}.`:''} Conecte a pasta para ver a versão atual e editar. <button class="b sm p" onclick="Store.pick().then(ok=>ok&amp;&amp;App.onConnect())">Conectar agora</button></div>`;
+ if(D&amp;&amp;!(+D.schemaVersion>=2))notes+='<div class="note w" id="cadV1"><b>Cadastro no formato antigo.</b> Até importar das bases atuais a Administração não grava nada além da importação, e o Gel e a Produção ainda não leem o cadastro do gel. <button class="b sm p" id="cadV1Abrir">Importar das bases atuais…</button></div>';
  if(lk&amp;&amp;D&amp;&amp;D.seguranca&amp;&amp;D.seguranca.trocar)notes+='<div class="note w"><b>Troque a senha inicial</b> em <a href="#cadastros/seguranca">Segurança</a>. Até lá a edição fica travada.</div>';
  return`<div class="cadbar">${selo} ${st}<span class="sp"></span>${lock}</div>${notes}`}
 function wireCadBarra(){const on=(id,f)=>{const x=$('#'+id);if(x)x.onclick=f};
  on('cadUnlock',()=>cadDesbloquear(()=>App.render()));on('cadLock',()=>{Lock.off();App.render();if(Ficha.aberta()){Ficha.edit=false;Ficha.draw()}toast('Edição bloqueada.')});
- on('cadGravar',()=>Cad.gravar());on('cadConf',()=>Cad.conflitosAbrir());
+ on('cadV1Abrir',()=>ImportarV1.abrir());on('cadGravar',()=>Cad.gravar());on('cadConf',()=>Cad.conflitosAbrir());
  on('cadRecriar',()=>{if(!Lock.ok())return;if(confirm(`Recriar ${CAD_FILE} na pasta a partir da cópia deste navegador (rev ${Cad.base.rev})?`))Cad.op({acao:'carga',tipo:'*',codigo:null,doc:clone(Cad.base),motivo:'arquivo recriado a partir da cópia local'})})}
 function viewCad(m){const D=Cad.D,sec=Cad.ui.sec||'inicio';
  m.innerHTML=cadBarra()+`<div class="cadg"><aside class="cadside">${cadSide(sec)}</aside><section id="cadMain" style="min-width:0"></section></div>`;
  wireCadBarra();wireAdminSide();const el=$('#cadMain');if(sec==='novidades')return cadNovidades(el);if(!D)return cadSemCadastro(el);
- ({apps:cadApps,cambio:cadCambio,inicio:cadInicio,matriz:cadMatriz,importar:cadImportar,seguranca:cadSeguranca,auditoria:cadAuditoria,backups:cadBackups,vigencias:cadVigencias,parametros:cadParametros,gel:cadGel}[sec]||(x=>cadLista(x,sec)))(el)}
+ ({apps:cadApps,cambio:cadCambio,inicio:cadInicio,matriz:cadMatriz,importar:cadImportar,importarV1:cadImportarV1,seguranca:cadSeguranca,auditoria:cadAuditoria,backups:cadBackups,vigencias:cadVigencias,parametros:cadParametros,gel:cadGel}[sec]||(x=>cadLista(x,sec)))(el)}
 /* 1.9.71 · MT-01 (pedido do responsável, 22/11/2026): Administração › Apps de celular. Gera o app "Meu Turno" (modelo no bloco
    celular/meu-turno, o mesmo arquivo de CELULAR/index.html) com o cadastro atual embutido: linha, turnos (vigência de hoje), catálogos
    com a meta por hora, equipamentos, tipos de parada e pessoas (só ID, nome e turno). Os nomes vão com o código ao lado, e o turno que
@@ -5799,6 +5800,86 @@ function cadApps(el){const D=Cad.D,{c,semMeta}=MT_APP.cfg(D),ok=c.turnos.length&
  const baixar=(app,nome)=>{try{const h=MT_APP.gerar(D,app),b=new Blob([h],{type:'text/html'}),a=document.createElement('a');a.href=URL.createObjectURL(b);a.download=nome;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),4000);toast(nome+' gerado com o cadastro rev '+(D.rev??'—')+'. Envie aos celulares.')}catch(e){toast(e.message||String(e),6000,true)}};
  const gm=$('#mmGerar');if(gm)gm.onclick=()=>baixar('manutencao','Manutencao.html');
  const g=$('#mtGerar');if(g)g.onclick=()=>{try{const h=MT_APP.gerar(D),b=new Blob([h],{type:'text/html'}),a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='MeuTurno.html';document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),4000);toast('MeuTurno.html gerado com o cadastro rev '+(D.rev??'—')+'. Envie aos celulares.')}catch(e){toast(e.message||String(e),6000,true)}}}
+/* ADM-CENTRAL: importador de uso único — sai na etapa 8 */
+/* Regra provisória de permissão por assunto de perfil sem assuntos gravados (era o nivelAssunto): Processos edita tudo, PCP planta e turnos,
+   Almoxarifado o gel; os demais, o que a sessão já pode (pode()). O importador grava esse resultado em cada perfil. */
+function admNivelTransicao(p,id,pode){const x=String((p&amp;&amp;p.nome)||'').toLowerCase()+' '+String((p&amp;&amp;p.codigo)||'').toLowerCase();
+ if(x.includes('processos'))return'editar';if(x.includes('pcp'))return id==='planta'||id==='turnos'?'editar':'ver';if(x.includes('almoxarifado'))return id==='gel'?'editar':'ver';
+ return pode()?'editar':'ver'}
+/* ADM-CENTRAL: importador de uso único — sai na etapa 8 */
+const ImportarV1={MOTIVO:'importação do formato 1',
+ /* o que a Administração ainda pode gravar com o cadastro no formato 1: a importação, a conta própria (login), a segurança (senha inicial), o desbloqueio, a carga e a restauração de backup */
+ permitida(o){return o.acao==='importação v1'||o.origem==='login'||o.origem==='autocadastro'||o.tipo==='seguranca'||['desbloqueio','carga','restauração'].includes(o.acao)},
+ num(x){const v=gelNum(x);return v==null||isNaN(v)?null:v},
+ precisaGel(cad){const g=(cad.parametros&amp;&amp;cad.parametros.gel)||{};return!((g.formatos||[]).length&amp;&amp;(cad.equipamentos||[]).some(e=>e.gel&amp;&amp;(e.gel.descs||[]).length))},
+ /* cad: cadastro v1; gelBase: fifo-base.json ou null. Devolve o que entra no cadastro v2, sem mexer em cad. */
+ plano(cad,gelBase){const av=[],cfg=(gelBase&amp;&amp;gelBase.config)||{},pg=(cad.parametros&amp;&amp;cad.parametros.gel)||{},eqs=cad.equipamentos||[];
+  /* formatos: parametros.gel.formatos; senão config.fmts do Gel */
+  let fm=Array.isArray(pg.formatos)?pg.formatos:[],fonteF=fm.length?'cadastro':null;if(!fm.length&amp;&amp;Array.isArray(cfg.fmts)&amp;&amp;cfg.fmts.length){fm=cfg.fmts;fonteF='Gel'}
+  const formatos=[],pares=[],vistos=new Set();
+  for(const x of fm.slice().sort((a,b)=>String(a&amp;&amp;a.from)<String(b&amp;&amp;b.from)?-1:1)){if(!x)continue;const de=x.from;
+   if(!/^\d{4}-\d{2}-\d{2}$/.test(de||'')){av.push('formato sem data de início válida: não importado');continue}if(vistos.has(de)){av.push('formato repetido em '+fmtD(de)+': ficou o primeiro');continue}vistos.add(de);
+   const n=(v,rot)=>{const r=this.num(v);if(r==null){av.push(`formato de ${fmtD(de)}: ${rot} vazio ou inválido; ficou 0 (confira em Gel)`);return 0}return r};
+   const tubos={};for(const f of['100','75']){const o=(x.f||{})[f]||{};tubos[f]={tuboG:n(o.tubo,'tubo vazio do Tubo '+f),gelG:n(o.gel,'gel do Tubo '+f),aditivoG:n(o.adit,'aditivo do Tubo '+f),tampaRolhaG:n(o.tr,'tampa + rolha do Tubo '+f)}}
+   const so=this.num(x.sobra);
+   const novo={de,ate:null,embalagemG:n(x.tara,'peso da embalagem (tara)'),folhaPurgaG:n(x.taraP,'folha da purga (taraP)'),sobraBarrilKg:so,tubos,motivo:this.MOTIVO,por:user()||null,em:isoLocal()};
+   formatos.push(novo);pares.push({ant:x,novo})}
+  if(!formatos.length)av.push('nenhum formato do gel encontrado (nem no cadastro nem na base do Gel): a tela Gel começa sem formato');
+  /* locais: equipamentos[].gel.descs (+ tara); senão config.equips do Gel */
+  const L=[];let fonteL=null;
+  for(const e of eqs){const g=e.gel;if(!g||!(g.descs||[]).length)continue;const t=this.num(g.tara);if(g.tara!==''&amp;&amp;g.tara!=null&amp;&amp;t==null)av.push(`tara de ${e.nome||e.codigo} inválida (${g.tara}): ficou sem peso`);
+   for(const d of g.descs){L.push({eq:e.codigo,d,emb:t,ativo:true})}}
+  if(L.length)fonteL='cadastro';
+  else for(const e of cfg.equips||[]){const eq=e&amp;&amp;e.portal!=null&amp;&amp;e.portal!==''?eqs.find(x=>String(x.codigo)===String(e.portal)):null,t=this.num(e&amp;&amp;e.tara);
+   for(const d of(e&amp;&amp;e.descs)||[]){if(!eq){av.push('local sem equipamento correspondente: '+(d.local||e.name||'?'));continue}L.push({eq:eq.codigo,d,emb:t,ativo:e.active!==false});fonteL='Gel'}}
+  if(!L.length)av.push('nenhum local de descarte encontrado: a tela Gel começa sem locais');
+  const locais=L.map((x,i)=>({id:'L-'+String(i+1).padStart(4,'0'),equipamento:x.eq,local:String(x.d.local||'').trim()||(eqs.find(e=>e.codigo===x.eq)||{}).nome||x.eq,comp:x.d.comp||'completo',categoria:x.d.cat||'T',motivos:Array.isArray(x.d.mots)?x.d.mots.slice():[],embalagemG:x.emb,ordem:i+1,ativo:x.ativo}));
+  /* perfis sem assuntos gravados recebem a regra de transição */
+  const perfis=(cad.perfis||[]).filter(p=>!(p.assuntos&amp;&amp;typeof p.assuntos==='object')).map(p=>({codigo:p.codigo,nome:p.nome,assuntos:Object.fromEntries(ADM_ASSUNTOS.map(a=>[a.id,admNivelTransicao(p,a.id,()=>true)]))}));
+  return{gel:{formatos,locais},perfis,avisos:av,pares,fontes:{formatos:fonteF,locais:fonteL}}},
+ /* aplica a importação sobre o cadastro D (na fila e ao regravar sobre a versão da pasta); se já for v2, não faz nada */
+ aplicar(D,o,L){if(+D.schemaVersion>=2)return{ok:true};const P=o.plano||{},g=P.gel||{};
+  const nF=((D.parametros&amp;&amp;D.parametros.gel&amp;&amp;D.parametros.gel.formatos)||[]).length;let nD=0,nP=0;
+  D.gel={formatos:clone(g.formatos||[]),locais:clone(g.locais||[])};if(D.parametros&amp;&amp;D.parametros.gel)delete D.parametros.gel.formatos;
+  for(const e of D.equipamentos||[]){if(!e.gel)continue;nD+=(e.gel.descs||[]).length;delete e.gel.descs;delete e.gel.tara;if(!Object.keys(e.gel).length)delete e.gel}
+  for(const q of P.perfis||[]){const p=(D.perfis||[]).find(x=>x.codigo===q.codigo);if(p&amp;&amp;!(p.assuntos&amp;&amp;typeof p.assuntos==='object')){p.assuntos=clone(q.assuntos);nP++}}
+  D.schemaVersion=2;
+  L('schemaVersion',1,2,'importação','sistema',null);
+  L('formatos',nF?nF+' formato(s) nos parâmetros do gel':'formatos da base do Gel',(g.formatos||[]).length+' vigência(s) no cadastro do Gel','importação','gel',null);
+  L('locais',nD?nD+' descarte(s) nos equipamentos':'descartes da base do Gel',(g.locais||[]).length+' local(is) no cadastro do Gel','importação','gel',null);
+  L('assuntos',null,nP+' perfil(is) com permissão por assunto gravada','importação','perfis',null);
+  return{ok:true}},
+ /* prévia em modal; Importar grava uma só operação (com auditoria "importação do formato 1") */
+ async abrir(){if(!Cad.podeEditarAssunto('sistema'))return;const D=Cad.D;if(!D)return toast('O cadastro ainda não existe.',4000,true);if(+D.schemaVersion>=2)return toast('O cadastro já está no formato 2.',4000);
+  let gel=null,lido='';if(this.precisaGel(D)&amp;&amp;Store.mode==='pasta'&amp;&amp;Store.dir){Modal.open('<h2>Importar das bases atuais</h2><p class="muted">Lendo a base da Gestão de Gel na pasta…</p>');try{await TrazCfg.ler();gel=TrazCfg.B.gel||null}catch(e){gel=null}if(!gel)lido='Não consegui ler a base da Gestão de Gel (fifo-base.json) na pasta; só o que está no cadastro entra.'}
+  const P=this.plano(D,gel);if(lido)P.avisos.unshift(lido);this.desenhar(P)},
+ desenhar(P){const D=Cad.D,nm=id=>(ADM_ASSUNTOS.find(a=>a.id===id)||{}).nome||id,n1=(n,u,m)=>n+' '+(n===1?u:m);
+  const fv=(v,u)=>v==null?'—':fmtN(v)+(u?' '+u:'');
+  const fmts=P.pares.map(({ant:a,novo:n})=>{const R=[['tara','embalagemG',a.tara,n.embalagemG,'g'],['taraP','folhaPurgaG',a.taraP,n.folhaPurgaG,'g'],['sobra','sobraBarrilKg',a.sobra,n.sobraBarrilKg,'kg']];
+   for(const f of['100','75'])for(const[v,nv,u]of[['tubo','tuboG','tubo vazio'],['gel','gelG','gel'],['adit','aditivoG','aditivo'],['tr','tampaRolhaG','tampa + rolha']])R.push([`f.${f}.${v}`,`tubos.${f}.${nv}`,((a.f||{})[f]||{})[v],n.tubos[f][nv],'g',`Tubo ${f}: ${u}`]);
+   return`<h4 style="margin:10px 0 4px">Formato desde ${fmtD(n.de)}</h4><div class="tw"><table class="cadst small"><tr><th>Campo antigo</th><th class="n">Antes</th><th>Campo novo</th><th class="n">Depois</th></tr>${R.map(r=>`<tr><td class="mono">${esc(r[0])}</td><td class="n">${esc(r[2]==null||r[2]===''?'—':String(r[2]))}</td><td class="mono">${esc(r[1])}${r[5]?` <span class="muted">· ${esc(r[5])}</span>`:''}</td><td class="n"><b>${esc(fv(r[3],r[4]))}</b></td></tr>`).join('')}</table></div>`}).join('');
+  const loc=P.gel.locais.map(l=>`<tr><td>${esc(l.local)}</td><td class="mono">${esc(l.equipamento)}</td><td>${esc(l.comp)}</td><td class="n">${esc(fv(l.embalagemG,'g'))}</td></tr>`).join('');
+  const pf=P.perfis.map(p=>{const e=ADM_ASSUNTOS.filter(a=>p.assuntos[a.id]==='editar');return`<tr><td>${esc(p.nome||p.codigo)}</td><td class="small">${e.length===ADM_ASSUNTOS.length?'edita tudo':e.length?'edita '+esc(e.map(a=>a.nome).join(', ')):'só consulta'}</td></tr>`}).join('');
+  const mb=Modal.open(`<div id="v1Box"><h2>Importar das bases atuais</h2>
+   <p>Uso único: leva o formato do gel e os locais de descarte para o cadastro novo (formato 2), grava a permissão por assunto nos perfis e remove as cópias antigas. Nada é gravado antes de <b>Importar</b>.</p>
+   <div class="tw"><table class="cadst small"><tr><th>Assunto</th><th>O que entra</th><th>De onde</th></tr>
+    <tr><td>Gel</td><td><b data-v1="formatos">${n1(P.gel.formatos.length,'formato','formatos')}</b></td><td class="small">${esc(P.fontes.formatos==='Gel'?'base da Gestão de Gel (config.fmts)':P.fontes.formatos?'parâmetros do cadastro (parametros.gel.formatos)':'—')}</td></tr>
+    <tr><td>Gel</td><td><b data-v1="locais">${n1(P.gel.locais.length,'local','locais')}</b> de descarte</td><td class="small">${esc(P.fontes.locais==='Gel'?'base da Gestão de Gel (config.equips)':P.fontes.locais?'equipamentos do cadastro (gel.descs e gel.tara)':'—')}</td></tr>
+    <tr><td>${esc(nm('pessoas'))}</td><td><b data-v1="perfis">${n1(P.perfis.length,'perfil','perfis')}</b> com permissão por assunto gravada</td><td class="small">regra atual (Processos, PCP, Almoxarifado e demais)</td></tr>
+    <tr><td>${esc(nm('sistema'))}</td><td><b data-v1="versao">schemaVersion ${+D.schemaVersion||1} → 2</b></td><td class="small">libera a gravação da Administração</td></tr></table></div>
+   ${P.avisos.length?`<div class="note w" data-v1="avisos"><b>Avisos (${P.avisos.length})</b><ul class="pl">${P.avisos.map(a=>`<li class="small">${esc(a)}</li>`).join('')}</ul></div>`:''}
+   ${fmts}
+   ${loc?`<h4 style="margin:10px 0 4px">Locais de descarte</h4><div class="tw" style="max-height:30vh"><table class="cadst small"><tr><th>Local</th><th>Equipamento</th><th>Composição</th><th class="n">Embalagem (tara)</th></tr>${loc}</table></div>`:''}
+   ${pf?`<h4 style="margin:10px 0 4px">Perfis</h4><div class="tw"><table class="cadst small"><tr><th>Perfil</th><th>Permissão por assunto</th></tr>${pf}</table></div><p class="small muted">Ajuste depois em Pessoas e acesso › Perfis e permissões.</p>`:''}
+   <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:10px"><button class="b" id="v1Canc">Cancelar</button><button class="b p" id="v1Ok">Importar</button></div></div>`);
+  mb.querySelector('#v1Canc').onclick=()=>Modal.close(true);
+  mb.querySelector('#v1Ok').onclick=async()=>{if(!Cad.podeEditarAssunto('sistema'))return;Modal.close(true);
+   const r=await Cad.ops([{acao:'importação v1',tipo:'*',codigo:null,plano:{gel:P.gel,perfis:P.perfis.map(p=>({codigo:p.codigo,assuntos:p.assuntos}))},motivo:this.MOTIVO}]);if(r===false)return;
+   toast(`Cadastro no formato 2: ${n1(P.gel.formatos.length,'formato','formatos')}, ${n1(P.gel.locais.length,'local','locais')} e ${n1(P.perfis.length,'perfil','perfis')} com permissão por assunto.`,7000);Cad.ui.sec='gel';cadHash();App.render()}}};
+function cadImportarV1(el){const D=Cad.D,v2=+D.schemaVersion>=2;
+ el.innerHTML=`<div class="card"><h3>Importar das bases atuais ${ib('Importar das bases atuais','Uso único: converte o cadastro do formato 1 para o formato 2. O formato do gel e os locais de descarte saem de "parametros.gel.formatos" e "equipamentos[].gel" (ou, se o cadastro não tiver, da base da Gestão de Gel) e passam a morar no bloco Gel; cada perfil recebe a permissão por assunto; o schemaVersion sobe para 2.')}</h3>
+  ${v2?'<p class="good small">O cadastro já está no formato 2: nada a importar.</p>':`<p>O cadastro está no <b>formato 1</b>. Enquanto não for importado, a Administração não grava nada além da importação. A prévia mostra o que muda antes de gravar.</p><button class="b p" id="v1Abrir">Ver a prévia e importar…</button>`}</div>`;
+ const b=$('#v1Abrir');if(b)b.onclick=()=>ImportarV1.abrir()}
 /* 1.7 · menu da Administração (o mesmo na aba de cadastros e na Configuração do Portal) */
 /* ADM-CENTRAL (bloco 1): a Administração por assunto. Cada tela (sec) mora em um só assunto; Resumo fica acima deles. */
 const ADM_ASSUNTOS=[
@@ -5809,17 +5890,17 @@ const ADM_ASSUNTOS=[
  {id:'turnos',nome:'Turnos e metas',itens:['turnos','metasOee','metasArea','metasOsm']},
  {id:'paradas',nome:'Paradas e perdas',itens:['paradas','matriz']},
  {id:'pessoas',nome:'Pessoas e acesso',itens:['usuarios','perfis']},
- {id:'sistema',nome:'Sistema',itens:['vigencias','parametros','programas','novidades','apps','importar','config','versoes','auditoria','backups','seguranca']}];
+ {id:'sistema',nome:'Sistema',itens:['vigencias','parametros','programas','novidades','apps','importar','importarV1','config','versoes','auditoria','backups','seguranca']}];
 const admAssuntoDe=x=>{const sec=x&amp;&amp;typeof x==='object'?admAssuntosOp(x)[0]:x;return(ADM_ASSUNTOS.find(a=>a.itens.includes(sec))||{id:'sistema'}).id};
 /* assuntos que uma operação do cadastro altera: tipo = tela; parametros.gel* é do Gel; seguranca, carga e o que não tem tela são do Sistema */
 function admAssuntosOp(o){const t=o&amp;&amp;o.tipo;if(t==='parametros'){const K=Object.keys((o.mudancas)||{});const g=K.filter(k=>k==='gel'||k.startsWith('gel.')).length;return g&amp;&amp;g===K.length?['gel']:g?['gel','sistema']:['sistema']}
  return[(ADM_ASSUNTOS.find(a=>a.itens.includes(t))||{id:'sistema'}).id]}
 /* rótulo do botão e se a tela só existe com o cadastro carregado */
-const ADM_ROT={gel:['Gel',1],matriz:['Matriz de paradas',1],usuarios:['Usuários',1],perfis:['Perfis e permissões',1],vigencias:['Vigências',1],parametros:['Parâmetros',1],novidades:['Novidades',0],apps:['Apps de celular',1],importar:['Integrações SAP',1],config:['Configuração da Administração',0],versoes:['Versões das páginas',0],auditoria:['Auditoria',1],backups:['Backups do cadastro',1],seguranca:['Segurança e senha',1]};
+const ADM_ROT={gel:['Gel',1],matriz:['Matriz de paradas',1],usuarios:['Usuários',1],perfis:['Perfis e permissões',1],vigencias:['Vigências',1],parametros:['Parâmetros',1],novidades:['Novidades',0],apps:['Apps de celular',1],importar:['Integrações SAP',1],importarV1:['Importar das bases atuais',1],config:['Configuração da Administração',0],versoes:['Versões das páginas',0],auditoria:['Auditoria',1],backups:['Backups do cadastro',1],seguranca:['Segurança e senha',1]};
 function cadSide(sec){const D=Cad.D;const btn=(k,l,n)=>`<button data-sec="${k}" class="${sec===k?'on':''}">${l}${n!=null?`<span class="n">${n}</span>`:''}</button>`;
  const cnt=t=>{if(!D)return null;const L=D[t]||[],a=L.filter(x=>cadAtivo(t,x,D)).length;return a+(a!==L.length?'/'+L.length:'')};
  const g=t=>`<div class="sg">${t}${CAT_AJUDA['grupo:'+t]?' '+ib(t,CAT_AJUDA['grupo:'+t]):''}</div>`;
- const item=k=>{const r=ADM_ROT[k];if(r)return r[1]&amp;&amp;!D?'':btn(k,r[0],r[0]==='Usuários'||k==='perfis'?cnt(k):null);return D?btn(k,esc(CAD_T[k].nome),cnt(k)):''};
+ const item=k=>{if(k==='importarV1'&amp;&amp;!(D&amp;&amp;!(+D.schemaVersion>=2)))return'';const r=ADM_ROT[k];if(r)return r[1]&amp;&amp;!D?'':btn(k,r[0],r[0]==='Usuários'||k==='perfis'?cnt(k):null);return D?btn(k,esc(CAD_T[k].nome),cnt(k)):''};
  return btn('inicio','Resumo')+ADM_ASSUNTOS.map(a=>{const b=a.itens.map(item).join('');return b||D?g(esc(a.nome))+(b||'<div class="small muted" style="padding:2px 12px 6px">Em construção.</div>'):''}).join('')}
 /* POR-04: a lista lateral é redesenhada a cada clique; guarda e devolve a posição da rolagem interna */
 let cadSideTop=0;
@@ -7367,7 +7448,7 @@ function gelDnd(tb,fim){let de=null,alvo=null,abaixo=false;const linhas=()=>[...
   const sai=e=>{if(!de)return;const r=alvo,o=de;de=null;alvo=null;limpa();if(e.type!=='pointerup'||!r)return;const ids=linhas().map(x=>x.dataset.gid).filter(i=>i!==o.dataset.gid);let i=ids.indexOf(r.dataset.gid);if(abaixo)i++;ids.splice(i,0,o.dataset.gid);fim(ids)};
   h.addEventListener('pointerup',sai);h.addEventListener('pointercancel',sai)})}
 function cadGel(el){const D=Cad.D,h=todayISO();
- if(!(+D.schemaVersion>=2)||!D.gel){el.innerHTML=`<div class="card"><h3>Gel</h3><p class="small muted">O cadastro está no formato 1, sem o bloco do Gel. A conversão para o formato 2 chega na próxima etapa da Administração central.</p></div>`;return}
+ if(!(+D.schemaVersion>=2)||!D.gel){el.innerHTML=`<div class="card"><h3>Gel</h3><p class="small muted">O cadastro está no formato 1, sem o bloco do Gel. Importe em <a href="#cadastros/importarV1">Sistema › Importar das bases atuais</a>.</p></div>`;return}
  const pe=Cad.podeEditarAssunto('gel',true),dis=pe?'':' disabled',P=D.parametros||{},err=m=>toast(m,6000,true);
  const F=(D.gel.formatos||[]).slice().sort((a,b)=>a.de<b.de?-1:a.de>b.de?1:0),L=(D.gel.locais||[]).slice().sort((a,b)=>(a.ordem??0)-(b.ordem??0));
  const vig=vacCad.gel.formato(h);if(!GelAdm.vig)GelAdm.vig=gelRascunho(vig||F[F.length-1]||null);const V=GelAdm.vig;
@@ -55743,14 +55824,14 @@ body.vac-porta{overflow:hidden}
       "id": "portal",
       "path": "Plataforma.html#motor/portal",
       "version": "1.9.81",
-      "sha256": "d7235d718f00654c8ac13c6aae2b1543846f87f27d33ffdce39d2bfea4e9844a",
-      "bytes": 1382825
+      "sha256": "99f8c5f7b6928acf53fc6902251f60e4a37a3427dc03c4a4451251c87db1fbf3",
+      "bytes": 1395715
     }
   ],
   "limitations": [
     "Projetos e conteúdo técnico OSM/MES/AM/TPM mantêm os limites documentados nas fontes."
   ],
-  "enginesSha256": "6f7005f7b01be698543d1d90259806e5e6c27514c51412919a86796d5ed605ed",
+  "enginesSha256": "b54c3dbb0bf7812108ac02714c47d18968e01e3d71ffc88addb245f30a9ec03f",
   "originRevision": "ffc9ee8",
   "sourceMode": "single-html",
   "originEnginesSha256": "a87a64ad0c328f70e102b2ae888790a9b5d5a9bd05778652a7ce7cae140e40d2"
