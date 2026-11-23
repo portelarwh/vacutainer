@@ -30,7 +30,7 @@ const html = fs.readFileSync(path.resolve(__dirname, '../../Plataforma.html'));
     assert.equal(await fr.evaluate(() => Store.data.formularios.length), 0, 'sem título não grava');
     await fr.fill('#fmTitulo', 'Limpeza do Tray Loader (teste)'); await fr.selectOption('#fmTipo', 'limpeza');
     await fr.selectOption('#fmRec', 'recorrente'); await fr.selectOption('#fmFreq', 'semana');
-    await fr.selectOption('#fmPonto', '1'); await fr.fill('#fmEmissao', '2025-12-20'); await fr.fill('#fmPrazo', '2026-01-01');
+    await fr.check('[data-fmpt="1"]'); await fr.fill('#fmEmissao', '2025-12-20'); await fr.fill('#fmPrazo', '2026-01-01');
     assert.equal(await fr.inputValue('#fmArea'), 'preparo', 'área vem do ponto (Linha 360°)');
     await fr.fill('#fmResp', '1001'); await fr.click('#fmConf'); await fr.fill('#fmConf', '9001');   // ir de um campo ao outro não pode perder o segundo
     assert.deepEqual(await fr.evaluate(() => [App.fm.d.respId, App.fm.d.confId]), ['1001', '9001'], 'responsável e quem confirma por ID');

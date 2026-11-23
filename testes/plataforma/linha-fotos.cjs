@@ -32,11 +32,13 @@ const PLANTA = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 4000 2000" 
     assert.deepEqual(pl, { ar: '4000/2000', src: 'IMAGENS/PLANTA_BAIXA.SVG', max: 8 }, 'planta lida de IMAGENS/PLANTA_BAIXA.SVG');
     console.log('ok planta de IMAGENS/PLANTA_BAIXA.SVG: proporção do arquivo e zoom até 800%');
 
-    await f.click('[data-cam="fotos"]'); await f.waitForSelector('#fGrid [data-fimg]');
+    // 1.7.0 (pedido do responsável, 23/11/2026): as fotos se montam em Configuração › Fotos, com o banco ao lado e zoom
+    await f.evaluate(() => { App.tab = 'config'; render(); }); await f.click('#cfFotos'); await f.waitForSelector('#fGrid [data-fimg]');
+    assert.equal(await f.evaluate(() => !!document.querySelector('#zMais') && !!document.querySelector('.l3-lay-f')), true, 'Configuração com zoom e o banco ao lado');
     const b0 = await f.evaluate(() => ({ n: document.querySelectorAll('#fGrid [data-fimg]').length, fil: [...document.querySelectorAll('[data-ffil]')].map(b => b.textContent) }));
     assert.equal(b0.n, 8, 'banco fictício com 8 fotos'); assert.deepEqual(b0.fil, ['Todas (8)', 'Não colocadas (8)']);
     await f.waitForFunction(() => [...document.querySelectorAll('#fGrid img')].every(i => i.getAttribute('src')), null, { timeout: 15000 });
-    console.log('ok camada Fotos: banco ao lado da planta, com Todas e Não colocadas');
+    console.log('ok Configuração › Fotos: banco ao lado da planta, com Todas e Não colocadas e zoom');
 
     const arq = await f.getAttribute('#fGrid [data-fimg]', 'data-fimg');
     /* arrastar: os mesmos eventos do navegador (dragstart na foto, dragover e drop na planta, com o DataTransfer); o arrastar nativo do
@@ -83,6 +85,55 @@ const PLANTA = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 4000 2000" 
     const F = await f.evaluate(() => window.__F);
     assert.equal(F.length, 2); assert.ok(F.every(x => x[1] && /\.svg$/.test(x[0])), 'arquivos entregues ' + JSON.stringify(F));
     console.log('ok Formulários: "Escolher do banco" entrega as fotos escolhidas');
+
+    // Visão da linha: só consulta (sem arrastar, sem tirar do mapa); mostra apenas as fotos colocadas
+    const vis = await f.evaluate(async () => { App.tab = 'mapa'; App.camada = 'fotos'; render(); await new Promise(r => setTimeout(r, 300));
+      const grid = [...document.querySelectorAll('#fGrid [data-fimg]')], pino = document.querySelector('[data-foto]');
+      return { n: grid.length, arrasta: grid.some(g => g.getAttribute('draggable') === 'true'), filtro: !!document.querySelector('[data-ffil]:not([hidden])') && !document.querySelector('[data-ffil]').closest('[hidden]'), pd: !!(pino && pino.onpointerdown), drop: !!document.querySelector('#cv').ondrop, cfg: !!document.querySelector('#fIrCfg') }; });
+    assert.deepEqual(vis, { n: 1, arrasta: false, filtro: false, pd: false, drop: false, cfg: true }, 'Visão da linha só consulta ' + JSON.stringify(vis));
+    await f.evaluate(() => document.querySelector('[data-foto]').click()); await f.waitForSelector('#l3FotoModal');
+    assert.equal(await f.locator('#l3FotoModal [data-ftirar]').count(), 0, 'na Visão não há "Tirar do mapa"');
+    await f.evaluate(() => document.querySelector('#l3FotoModal [data-fx]').click());
+    console.log('ok Visão da linha: só as fotos colocadas, sem arrastar nem tirar do mapa, com o atalho para Configuração › Fotos');
+    await f.evaluate(() => { App.tab = 'config'; render(); });
+
+    // Botão direito num local vazio da planta (Configuração): grupos e "Colocar foto aqui" → clicar na foto do banco a coloca no local
+    const alvo = await f.evaluate(async () => { App.cfFotos = false; render(); const cv = document.querySelector('#cv'), r = cv.getBoundingClientRect();
+      cv.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, cancelable: true, clientX: r.left + r.width * .7, clientY: r.top + r.height * .85 }));
+      const m = document.querySelector('#cfMenu'); return { grupos: [...m.querySelectorAll('.cf-mg')].map(g => g.textContent), opcoes: [...m.querySelectorAll('button')].map(b => b.textContent) }; });
+    assert.ok(alvo.grupos.includes('Adicionar aqui') && ['Colocar foto aqui', 'Nova área a partir daqui', 'Posto de trabalho (operador)', 'Adicionar equipamento'].every(o => alvo.opcoes.includes(o)), 'menu com grupos e opções ' + JSON.stringify(alvo));
+    await f.evaluate(() => [...document.querySelectorAll('#cfMenu button')].find(b => b.textContent === 'Colocar foto aqui').click());
+    await f.waitForSelector('#fAlvoCanc');
+    const livre = await f.evaluate(() => document.querySelector('#fGrid [data-fimg]').dataset.fimg);
+    await f.evaluate(a => document.querySelector(`#fGrid [data-fimg="${a}"]`).click(), livre);
+    const posta = await f.evaluate(a => { const x = Store.data.fotos.find(q => q.id === a); return [Math.round(x.x), Math.round(x.y), x.ativo, !!App.fotoAlvo]; }, livre);
+    assert.deepEqual(posta, [70, 85, true, false], 'foto colocada no local do botão direito');
+    console.log('ok botão direito: grupos (ponto, área, adicionar aqui) e "Colocar foto aqui" coloca a foto escolhida no local');
+
+    // WebP lido de uma pasta real de teste, incluindo a reserva quando o decodificador de miniaturas falha.
+    const imagem = await f.evaluate(async () => {
+      const raiz = await navigator.storage.getDirectory();
+      const pasta = await (await raiz.getDirectoryHandle('IMAGENS', { create: true })).getDirectoryHandle('Linha', { create: true });
+      const h = await pasta.getFileHandle('Foto de inspeção.WEBP', { create: true });
+      const c = document.createElement('canvas'); c.width = 96; c.height = 48;
+      c.getContext('2d').fillRect(0, 0, 96, 48);
+      const blob = await new Promise(resolve => c.toBlob(resolve, 'image/webp'));
+      const w = await h.createWritable(); await w.write(blob); await w.close();
+      Fotos.r = await vacImagens.listar(raiz, 'Linha');
+      const bitmap = window.createImageBitmap;
+      try {
+        window.createImageBitmap = async () => { throw new Error('miniatura indisponível'); };
+        render();
+        const mini = document.querySelector('#fGrid img');
+        await vacImagens.preencher(raiz, mini.parentElement); await mini.decode();
+        mini.parentElement.click();
+        const grande = document.querySelector('#l3FotoModal img');
+        await vacImagens.preencher(raiz, grande.parentElement); await grande.decode();
+        return [blob.type, mini.naturalWidth, grande.naturalWidth, grande.naturalHeight, !!document.querySelector('[data-ftirar]')];
+      } finally { window.createImageBitmap = bitmap; }
+    });
+    assert.deepEqual(imagem, ['image/webp', 96, 96, 48, false]);
+    console.log('ok WebP da pasta com miniatura indisponível abre no banco antes de colocar na planta');
 
     assert.deepEqual(erros, [], 'sem erro de JavaScript'); console.log('ok sem erro de JavaScript');
   } finally { if (browser) await browser.close(); srv.close(); }

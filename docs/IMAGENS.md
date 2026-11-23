@@ -10,7 +10,7 @@ Pasta da linha/
 ├── IMAGENS/
 │   ├── PLANTA_BAIXA.SVG      # planta da linha usada na Linha 360° (vetor; troque o arquivo para atualizar a planta)
 │   ├── Marca/                # fontes e logos da BD (docs/MARCA.md); fica fora do banco de imagens
-│   ├── Linha/                # fotos da linha: o banco da camada Fotos da Linha 360°
+│   ├── Linha/                # fotos da linha: o banco de Configuração › Fotos da Linha 360°
 │   │   └── <subpastas>/      # opcionais: viram categorias no filtro "Subpasta"
 │   └── <outras pastas>/      # aparecem no "Escolher do banco" dos Formulários
 └── 00. Bases/ …
@@ -35,9 +35,15 @@ Pasta da linha/
 - Do CAD: exporte a planta como SVG (DWG/DXF → SVG) e salve com o nome `PLANTA_BAIXA.SVG`. Prefira linhas a texto convertido em curvas pesadas;
   arquivos de até alguns MB abrem bem.
 
-## Fotos na planta (Linha 360° › Visão da linha › camada Fotos)
+## Fotos na planta (Linha 360° › Configuração › Fotos)
+
+Pedido do responsável (23/11/2026, Linha 1.7.0): as fotos se **montam em Configuração** (botão **Fotos** na barra da planta, com zoom pelos
+botões − / + e Ctrl + roda do mouse) e a **Visão da linha › camada Fotos** é **só consulta**: mostra as fotos já colocadas, abre a foto e
+localiza na planta, sem arrastar nem tirar do mapa. No botão direito da planta de Configuração, **Colocar foto aqui** marca o local e o
+próximo clique numa foto do banco a coloca ali. Passar o mouse num pino de foto mostra a miniatura e o nome.
 
 - Ao lado da planta abre o banco `IMAGENS/Linha`, com o filtro **Todas** ou **Não colocadas**, subpasta e busca pelo nome.
+- **Clique na miniatura** para ampliar a foto, inclusive antes de colocá-la na planta. Na janela de uma foto já posicionada, **Localizar na planta** centraliza o mapa.
 - **Arraste** uma foto do banco até o local na planta. Para mudar de lugar, arraste o pino da foto. Clique no pino para ver a foto grande, o
   ponto mais perto e quem a colocou; ali também fica **Tirar do mapa** (o arquivo continua na pasta).
 - Afastado, as fotos próximas viram um pino com o número de fotos; clique para aproximar. A partir de 200%, cada foto aparece com a miniatura.

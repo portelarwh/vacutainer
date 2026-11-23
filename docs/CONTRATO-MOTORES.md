@@ -356,3 +356,26 @@ Plataforma 1.6.0, Waste 1.12.13, Administração 1.9.45. Nenhum número, filtro,
 - **Programação e indicadores.** A Produção publica `exports.tempoProgramadoTurnos` para os últimos 120 dias, com `dia`, `turno`, `minutosProgramados`, `semProducao` e `fechado`. O campo é aditivo e deriva de `netMin` da Produção. Paradas usa o turno do filtro e explicita a cobertura. Horários estimados vêm da vigência da data. Paradas não programadas mantêm o turno no tempo planejado. O MTTR histórico continua sendo minutos de parada por registro de quebra. Espera e reparo têm médias próprias sobre os registros preenchidos, com contagem de cobertura.
 - **Paradas e planos de ação.** Recorrência aplica o mesmo recorte na tela e no relatório e conta as ocorrências agrupadas. Casos com ação do Planner vinculada à recorrência ou a um de seus eventos continuam visíveis sem novas falhas. A comparação mostra ocorrências por 100 horas estimadas de operação nos 30 dias de cada lado da conclusão, excluindo o dia da conclusão. Ela requer turnos de Produção fechados e dias planejados dentro de períodos de importação do Forms sem rejeições. A decisão de eficácia continua registrada em Iniciativas.
 - **Conciliação e Pareto.** O Forms continua sendo a fonte de eventos de Paradas. O melhor vínculo Forms × Produção é escolhido por início, duração e código, e empates, concorrência pelo mesmo evento e registros agrupados com candidatos aparecem para conferência. O Pareto calcula o acumulado sobre todos os itens da dimensão antes de limitar as barras exibidas.
+
+## Linha 360° · menu da planta em Configuração (1.6.0)
+
+Com permissão de configurar a Linha 360°, clique com o botão direito no local desejado. Equipamento e processo ganham um ponto próprio. Checklist e formulário usam o ponto clicado ou ganham um ponto no local livre. Ao clicar sobre uma área, também é possível alterar seu nome, os pontos vinculados e o contorno. Clique num ponto para voltar aos detalhes.
+
+A operação `local` em `linha360-base.json` cria o ponto e o registro associado e atualiza a área na mesma operação da fila. A posição usa porcentagens da planta. O número exibido é atribuído ao criar o ponto sobre a base relida. Os vínculos usam o ID estável do ponto.
+
+Em **Adicionar equipamento**, a Administração atribui o código e abre a ficha do cadastro geral. O campo opcional `pontoLinha360` conserva a ligação com a planta. Vínculos escolhidos manualmente em **Pontos e equipamentos** têm precedência. Se o cadastro estiver bloqueado para edição, o ponto continua disponível para concluir o cadastro pela ficha após desbloquear.
+
+Em **Configuração**, selecione a área e escolha **Redimensionar área**, ou use o botão direito sobre ela. Arraste os vértices do contorno existente ou clique numa borda para inserir um vértice. **Desfazer** reverte o último ajuste, **Cancelar** descarta a edição e **Salvar contorno** grava o perímetro. O nome e os pontos operacionais vinculados à área continuam preservados.
+
+## FORM-03 · campos do formulário A4 · Linha 360° 1.7.0, plataforma 1.8.56 (23/11/2026)
+
+Pedido do responsável. Campos **aditivos** do item de `formularios` (nada antigo muda de sentido):
+
+- `pontos` (lista de IDs de ponto) e `equipamentos` (lista de códigos do cadastro): o local com várias máquinas e vários equipamentos.
+  `ponto` continua com o 1º ponto e `equipamento` com o único equipamento (vazio quando há vários), para quem lia um só. Escolher a área marca
+  todos os pontos dela e os equipamentos de cada ponto (área → máquina → equipamento); marcar um ponto traz os equipamentos dele, desmarcar leva.
+- `tarefas[].sub` (verdadeiro = subtarefa da tarefa de cima): numeração 5, 5.1, 5.2… na tela e na folha; cada subtarefa tem a sua avaliação
+  OK / NC / N/A (pelo id, como os outros itens). Colar várias linhas numa tarefa cria uma tarefa por linha; linha recuada (tab ou 2 espaços),
+  numerada 1.1 ou na 2ª coluna do Excel vira subtarefa.
+- `obs` (orientação geral): texto livre até 4000 caracteres; o campo e o quadro da folha crescem com o texto (a altura da paginação acompanha).
+- `fotos[].marcas[].rot`: rotação em graus (−180 a 180) do retângulo e do círculo, em volta do centro, no editor e na folha.
