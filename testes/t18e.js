@@ -1,4 +1,4 @@
-const RAIZ=require('path').resolve(__dirname,'..')+'/';
+
 const {chromium}=require('playwright');const SP=require('path').resolve(__dirname,'..')+'/';(async()=>{const b=await chromium.launch();const p=await b.newPage({viewport:{width:1440,height:1100}});const errs=[];p.on('pageerror',e=>errs.push(e.message));
 await p.goto('file://'+SP+'__modulos__/Portal.html#geral');await p.waitForTimeout(600);await p.evaluate(()=>enterTest());await p.waitForTimeout(400);
 for(const [t,fill] of [['metasOee',{codigo:'OEE-LINHA',nome:'Meta da linha','vigencias.0.oeeMetaPct':'72'}],['metasArea',{codigo:'WASTE-MES',nome:'Perda líquida','vigencias.0.valor':'50000'}],['metasOsm',{codigo:'OSM-OPER',nome:'OSM por operador','vigencias.0.quantidade':'4'}],['precos',{material:'10000001','vigencias.0.preco':'12.35'}]]){

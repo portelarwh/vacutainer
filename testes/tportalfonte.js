@@ -106,7 +106,7 @@ const { chromium } = require('playwright');
     const cats = S.catalogs.filter(c => c.origem !== 'Portal').map(c => [c.num, gelReal(c.id, h), JSON.stringify(bomInfo(c.id, h)), gelReal(c.id, d30), JSON.stringify(bomInfo(c.id, d30))]);
     return JSON.stringify({ ex, cats }); });
   const g0 = await marca();
-  const liga = await g.evaluate(() => {
+  await g.evaluate(() => {
     const cats = S.catalogs.map(c => ({ codigo: String(c.num), tipoItem: 'tubo', nome: 'Portal ' + c.num, cor: '#123456', formato: '13x' + (c.fmt || '100'), ativo: c.active !== false, vigencias: [] }));
     const eqs = (S.config.equips || []).map((e, i) => ({ codigo: 'EQ9' + i, nome: e.name, ativo: e.active !== false, categoria: 'gel' })).concat([{ codigo: 'EQ80', nome: 'Dosadora nova', ativo: true, categoria: 'gel' }]);
     localStorage.setItem('vac.cadastros', JSON.stringify({ schema: 'vac-cadastros', rev: 5, catalogos: cats, equipamentos: eqs, materiais: [], bom: [] }));

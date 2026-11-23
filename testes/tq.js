@@ -1,4 +1,4 @@
-const RAIZ=require('path').resolve(__dirname,'..')+'/';
+
 const {chromium}=require('playwright');const S='file://'+require('path').resolve(__dirname,'..')+'/__modulos__/';(async()=>{const b=await chromium.launch();const w=await b.newPage({viewport:{width:1440,height:900}});const errs=[];w.on('pageerror',e=>errs.push(e.message));w.on('dialog',d=>d.accept());
 await w.goto(S+'Perdas-Ordem.html');await w.waitForTimeout(800);await w.evaluate(()=>{localStorage.setItem('vac.user','Pedro');enterTest();showTab('importar')});await w.waitForTimeout(600);
 const L=(m1,m2,col=true)=>`05.11.2026  Análise
@@ -14,6 +14,6 @@ for(const [nome,t] of [['tudo BRL',L('BRL','BRL')],['misto',L('BRL','USD')],['se
  console.log('prev:',await w.$eval('#impPrev',e=>e.innerText.slice(0,300)),'| toast:',await w.$$eval('.toast,#toast',a=>a.map(x=>x.innerText).join('/')));const st=await w.evaluate(()=>{const n=[...document.querySelectorAll('#impPrev .note')].find(x=>/Moeda|moeda/.test(x.textContent));const bt=document.querySelector('#btnDoImp');return[n?n.innerText.replace(/\n/g,' ').slice(0,260):'(sem nota)',bt?bt.disabled:'?']});
  console.log(nome,'→',st[0],'| botão desabilitado:',st[1]);
  if(nome==='misto'){await w.screenshot({path:require('path').resolve(__dirname,'..')+'/testes/saida/q1.png',fullPage:true});await w.check('#moedaOk');console.log('  após marcar:',await w.evaluate(()=>document.querySelector('#btnDoImp').disabled))}
- if(nome==='tudo BRL'){await w.click('#btnDoImp');await w.waitForTimeout(800);showTab:0;console.log('  importado; histórico moeda:',await w.evaluate(()=>JSON.stringify(B.imports[B.imports.length-1].moedas)))}
+ if(nome==='tudo BRL'){await w.click('#btnDoImp');await w.waitForTimeout(800);console.log('  importado; histórico moeda:',await w.evaluate(()=>JSON.stringify(B.imports[B.imports.length-1].moedas)))}
 }
 console.log(errs.join('\n')||'sem erros');await b.close()})();

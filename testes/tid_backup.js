@@ -30,7 +30,6 @@ const RENOMEADO = { ...CAD, rev: 5, usuarios: CAD.usuarios.map(u => u.codigo ===
   }
 
   // ---------- Iniciativas: ação criada pelo nome guarda o ID; troca de nome no cadastro
-  let exportsInic = null;
   {
     const ctx = await b.newContext(); const p = await nova(ctx, 'Iniciativas.html', '#teste');
     await p.evaluate(() => formAcao(null)); await p.waitForTimeout(200);
@@ -40,8 +39,7 @@ const RENOMEADO = { ...CAD, rev: 5, usuarios: CAD.usuarios.map(u => u.codigo ===
     ok(a && a.r === 'Ana Lima' && a.rid === 'U7' && a.ap[0] === 'Bia' && a.apid[0] === '' && a.por === 'U7', `ação nova: responsável "${a && a.r}" com ID ${a && a.rid}; apoio "Bia" (nome repetido) fica sem ID; criada por ID ${a && a.por}`);
     // o nome muda no Portal: a tela e o exports mostram o nome novo; o ID continua
     await p.evaluate(c => { localStorage.setItem('vac.cadastros', c); if (typeof Cad !== 'undefined' && Cad) Cad.D = null; }, JSON.stringify(RENOMEADO));
-    const d = await p.evaluate(id => { const ex = calcExports(Store.data), x = ex.acoes.find(a => a.id === id), pend = ex.pendencias.find(q => q.id === id); App.sel = id; render(); return { ex: x && { r: x.responsavel, rid: x.responsavelId }, det: (document.getElementById('det') || document.body).innerText, ex2: ex }; }, a.id);
-    exportsInic = d.ex2;
+    const d = await p.evaluate(id => { const ex = calcExports(Store.data), x = ex.acoes.find(a => a.id === id); App.sel = id; render(); return { ex: x && { r: x.responsavel, rid: x.responsavelId }, det: (document.getElementById('det') || document.body).innerText, ex2: ex }; }, a.id);
     ok(d.ex && d.ex.r === 'Ana Lima Souza' && d.ex.rid === 'U7' && /Ana Lima Souza/.test(d.det), `nome trocado no cadastro: exports com "${d.ex && d.ex.r}" (ID ${d.ex && d.ex.rid}) e a ficha da ação mostra o nome novo`);
     // transferir pelo ID digitado
     await p.evaluate(id => { const a = Store.data.acoes.find(x => x.id === id); transferir(a); }, a.id); await p.waitForTimeout(150);

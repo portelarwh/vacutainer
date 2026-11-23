@@ -126,7 +126,7 @@ const PAGS = [['portal', 'Portal.html'], ['oee', 'OEE-Vacutainer.html'], ['perda
       const [d] = await Promise.all([q.waitForEvent('download', { timeout: 60000 }), q.evaluate(gera)]); const f = SAI + nome + '.pdf'; await d.saveAs(f);
       const t = execSync(`pdftotext -layout "${f}" -`).toString(), n = +(execSync(`pdfinfo "${f}"`).toString().match(/Pages:\s+(\d+)/) || [])[1];
       ok((t.match(/SISTEMAS DA LINHA VACUTAINER/g) || []).length === n && (t.match(/Uso interno/g) || []).length === n, `${nome}: PDF com a faixa do sistema e "Uso interno" nas ${n} página(s)`);
-      const cor = await q.evaluate(() => { const J = window.jspdf.jsPDF, d = new J(); let v = null; const o = d.internal.write; d.setTextColor(29, 75, 115); return { vac: !!J.__vac, cor: d.getTextColor ? d.getTextColor() : '' }; });
+      const cor = await q.evaluate(() => { const J = window.jspdf.jsPDF, d = new J();   d.setTextColor(29, 75, 115); return { vac: !!J.__vac, cor: d.getTextColor ? d.getTextColor() : '' }; });
       ok(cor.vac && /^#102[ef]5[45]$/i.test(cor.cor), `${nome}: cores antigas do PDF convertidas para a paleta do Design System (${cor.cor})`);
       await c2.close(); } }
   ok(!pe.length, 'sem erros de página' + (pe.length ? ': ' + pe.slice(0, 3).join(' | ') : ''));

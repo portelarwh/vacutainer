@@ -4,7 +4,7 @@
 // - padrão do perfil (perfis[].layout do cadastro) vale para o que a pessoa nunca mudou;
 // - "Restaurar meu layout" apaga as escolhas (no arquivo também) e volta ao padrão do perfil;
 // - sem usuário, nada é gravado. Pasta simulada (OPFS por HTTP local). node testes/tprefs.js → "sem erros"; código 1 se falhar
-const path = require('path'), fs = require('fs'), http = require('http'); const RAIZ = path.resolve(__dirname, '..') + '/';
+ 
 const { chromium } = require('playwright');
 const V = Object.fromEntries(require('../scripts/html.cjs').manifest().files.map(f => [f.id, f.version]));
 const errs = []; const ok = (c, m) => { console.log((c ? 'ok   ' : 'FALHA ') + m); if (!c) errs.push(m); };

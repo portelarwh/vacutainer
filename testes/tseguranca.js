@@ -1,10 +1,10 @@
 // Revisão independente dos achados do Codex sobre 065fe6f (07/11/2026): segurança e dados, TV da Produção, scripts, índice do Gel.
 // node testes/tseguranca.js → código 1 se falhar. O código é lido do HTML único, com dados fictícios.
 const SP = require('path').resolve(__dirname, '..') + '/'; const PG = 'file://' + SP + '__modulos__/';
-const fs = require('fs'), path = require('path');
+
 const { chromium } = require('playwright');
 const errs = []; const ok = (c, m) => { console.log((c ? 'ok   ' : 'FALHA ') + m); if (!c) errs.push(m); };
-const fecha = () => document.querySelectorAll('.overlay').forEach(o => o.remove());
+
 
 (async () => {
   const b = await chromium.launch();

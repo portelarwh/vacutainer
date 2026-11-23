@@ -19,7 +19,7 @@ const { chromium } = require('playwright');
     const cat = d.catalogs.find(c => !c.deleted && c.active !== false && Engine.resolveTarget(d, X, c.id, 'mac_line', LINE));
     Object.assign(d.settings, { foraTurnoDesde: '2026-01-01', continuityMin: 10, serverBoxQty: 1000 });
     const dia = date => { const day = Engine.buildDay(d, date, LINE, 'mac_line', 'teste'); day.demo = false; day.shifts.forEach(p => { p.initialCatalogId = cat.id; p.intervals.forEach(i => i.good = 60000); p.scrap = 0; }); d.productionDays.push(day); return day; };
-    const dX = dia(X), dX1 = dia(X1);
+    dia(X); dia(X1);
     const base = SD.dayStartMin(X), rng = (a, z) => { const L = []; for (let m = a; m <= z; m++) L.push(base + m); return L; };
     const seg = (id, lot, ms, b0) => { const e = SD.enc(ms); return { id, lineId: LINE, lot, cat: cat.code, b0, b1: b0 + ms.length - 1, t0: SD.fromMin(ms[0]), t1: SD.fromMin(ms[ms.length - 1]), n: ms.length, base: e.base, m: e.m }; };
     d.server = SD.ensureStore(d);

@@ -40,7 +40,7 @@ const ACOES = 'Ação\tResponsável\tPrazo\tStatus\n"Trocar sensor"\tJoão da Si
   R = await rodar('KKBC_ORD', KKBC, 'O SAP passou a trazer a coluna "Coluna Nova".');
   ok(/1 coluna\(s\) nova\(s\)/.test(R.cmp) && /Colunas novas \(não reconhecidas hoje\): "Coluna Nova"/.test(R.out), 'KKBC_ORD: aponta a coluna nova');
   ok(!/900000123|1034567|1034568/.test(R.out) && /\|\* Materials\|/.test(R.out) && /-\|BRL/.test(R.out), 'KKBC_ORD: ordem e componentes trocados; subtotal "* Materials" e sinal no fim mantidos');
-  ok(!/1\.000,00\|  1\.200,00/.test(R.out) && /O SAP passou a trazer/.test(R.out), 'KKBC_ORD: valores multiplicados por fator; notas no prompt');
+  ok(!/1\.000,00\| {2}1\.200,00/.test(R.out) && /O SAP passou a trazer/.test(R.out), 'KKBC_ORD: valores multiplicados por fator; notas no prompt');
   ok(!/Ordem \(obrigatória\)|faltando: Ordem/.test(R.cmp) && /Lidos fora da tabela/.test(R.cmp), 'KKBC_ORD em lista: a Ordem da linha "Ordem <n>" conta como presente');
   R = await rodar('KKBC_ORD', 'Ordem      900000123  360060\n|Origem   |Material (Texto)  |Valor plan|Valor real|\n|1034567  |TAMPA HEMOGARD    |  1.000,00|  1.200,00|\n|* Materials|                |  1.500,00|  1.650,00|');
   ok(/faltando: Custo meta \(teórico\)/.test(R.cmp) && /candidatas\): Valor plan/.test(R.cmp), 'KKBC_ORD: custo meta faltando, com "Valor plan" como candidata');

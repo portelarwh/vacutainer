@@ -52,7 +52,7 @@ const digita = async (p, sel, pin) => { const L = await p.$$(sel + ' input'); fo
   const temSec = await p.evaluate(() => !!document.querySelector('[data-usen="prov"]') && /sem senha/.test(document.body.innerText));
   ok(temSec, 'ficha do usuário: seção Senha com "sem senha" e Gerar senha provisória');
   await p.click('[data-usen="prov"]'); await p.waitForTimeout(1500);
-  const prov = await p.evaluate(() => { const t = document.querySelector('.modal.on, #modal') ? document.body.innerText : ''; const m = /(\d{6})/.exec((document.querySelector('#usuProv') || {}).textContent || ''); return { pin: m && m[1], s: Cad.D.usuarios.find(u => u.codigo === '208114').senha }; });
+  const prov = await p.evaluate(() => {  const m = /(\d{6})/.exec((document.querySelector('#usuProv') || {}).textContent || ''); return { pin: m && m[1], s: Cad.D.usuarios.find(u => u.codigo === '208114').senha }; });
   ok(prov.pin && prov.s && prov.s.provisoria, `senha provisória gerada e mostrada uma vez (${prov.pin})`);
   await p.evaluate(() => { if (typeof Modal !== 'undefined') Modal.close(true); App.show('cad'); Cad.ui.sec = 'usuarios'; App.render(); }); await p.waitForTimeout(700);
   const lista = await p.evaluate(() => [...document.querySelectorAll('table')].map(t => t.innerText).join('\n'));

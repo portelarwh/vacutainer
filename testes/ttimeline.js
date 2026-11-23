@@ -24,7 +24,7 @@ const D = '2031-03-10', D2 = '2031-03-11';   // segunda e terça, sem nada lanç
         { id: 'ev_semhora', codeId: cod('OUT'), start: null, end: null, minutes: 7, productionShiftId: 'ps_tl', note: '', manual: true, ...meta }] });
     B.server = { segments: [], gaps: [], mes: [], lotClass: {}, imports: [], dayLot: {} }; B.timeline = { tagMap: [], tagEvents: [], imports: [], comments: {} };
   });
-  const TURNO = D => { const J = Timeline.janelas(db(), 'line_vac', D, D).todas[0]; return { a: J.a, b: J.b }; };
+  
   try {
     /* ================= regras (motor) ================= */
     { const p = await novo(); await p.evaluate(CENARIO, [D, true]);
@@ -130,7 +130,7 @@ const D = '2031-03-10', D2 = '2031-03-11';   // segunda e terça, sem nada lanç
       // escalas (CA-14), zoom e rolagem horizontal (CA-16), legenda sempre visível (CA-17)
       const z = await p.evaluate(async D => { const box = () => document.querySelector('#tloBox'), espera = ms => new Promise(r => setTimeout(r, ms)), o = {};
         document.querySelector('[data-tlmodo="dia"]').click(); await espera(400); o.dia = TLV.modelo().total; o.diaIni = Timeline.iso(TLV.modelo().a).slice(11, 16);
-        document.querySelector('[data-tlmodo="periodo"]').click(); await espera(400); const de = document.querySelector('[data-tlf="de"]'), ate = document.querySelector('[data-tlf="ate"]'); de.value = D + 'T08:00'; de.dispatchEvent(new Event('change')); await espera(300); document.querySelector('[data-tlf="ate"]').value = D + 'T10:00'; document.querySelector('[data-tlf="ate"]').dispatchEvent(new Event('change')); await espera(400); o.per = TLV.modelo().total; o.perT = TLV.modelo().t;
+        document.querySelector('[data-tlmodo="periodo"]').click(); await espera(400); const de = document.querySelector('[data-tlf="de"]'); de.value = D + 'T08:00'; de.dispatchEvent(new Event('change')); await espera(300); document.querySelector('[data-tlf="ate"]').value = D + 'T10:00'; document.querySelector('[data-tlf="ate"]').dispatchEvent(new Event('change')); await espera(400); o.per = TLV.modelo().total; o.perT = TLV.modelo().t;
         document.querySelector('[data-tlmodo="turno"]').click(); await espera(400); o.turno = TLV.modelo().total; o.fit = box().scrollWidth <= box().clientWidth + 2;
         document.querySelector('[data-tlzoom="hora"]').click(); await espera(300); o.hora = box().scrollWidth > box().clientWidth * 5; box().scrollLeft = box().scrollWidth; box().scrollTop = 9999; await espera(200);
         const l = document.querySelector('.tlo-leg').getBoundingClientRect(), bx = box().getBoundingClientRect(), lab = document.querySelector('.tlo-lab').getBoundingClientRect(), cv = document.querySelector('#tloCv').getBoundingClientRect();

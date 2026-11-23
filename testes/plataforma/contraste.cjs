@@ -14,7 +14,7 @@ function sonda() {
   const transparente=()=>({r:0,g:0,b:0,a:0}),branco={r:255,g:255,b:255,a:1};
   const pares=(el,fg)=>{let f=fg,b=transparente();for(let e=el;e;e=e.parentElement){const s=getComputedStyle(e);if(s.backgroundImage!=='none')return null;const bg=cor(s.backgroundColor);if(!bg)return null;f=sobre(f,bg);b=sobre(b,bg);f.a*=Number(s.opacity);b.a*=Number(s.opacity)}return[sobre(f,branco),sobre(b,branco)]};
   const ruins=new Map();let n=0,naoMedidos=0;const scope=document.querySelector('dialog[open]')||document.body,list=[];
-  const w=document.createTreeWalker(scope,NodeFilter.SHOW_TEXT);let t;while(t=w.nextNode()){const txt=t.nodeValue.trim();if(txt)list.push({el:t.parentElement,txt})}
+  const w=document.createTreeWalker(scope,NodeFilter.SHOW_TEXT);let t;while((t=w.nextNode())){const txt=t.nodeValue.trim();if(txt)list.push({el:t.parentElement,txt})}
   for(const el of scope.querySelectorAll('input,textarea,select')){
     if(el.matches('input[type=hidden],input[type=checkbox],input[type=radio],input[type=range],input[type=color],input[type=file]'))continue;
     if(el.tagName==='SELECT'){const o=el.selectedOptions[0];if(o?.textContent.trim())list.push({el,txt:o.textContent.trim()})}

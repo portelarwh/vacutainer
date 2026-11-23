@@ -1,9 +1,9 @@
 // SQDCP: apontamento real por formulário, consolidação, histórico, relatórios e impressão.
 // Usa somente dados fictícios. HTTP e OPFS servem como transporte/pasta do teste.
-const fs = require('fs'), path = require('path'), http = require('http'), assert = require('assert/strict');
+const fs = require('fs'), path = require('path'), assert = require('assert/strict');
 const { spawnSync } = require('child_process'), { chromium } = require('playwright');
 const M = require('../scripts/html.cjs').model('SQDCPModelo');
-const raiz = path.resolve(__dirname, '..'), saida = path.join(__dirname, 'saida', 'sqdcp');
+const saida = path.join(__dirname, 'saida', 'sqdcp');
 fs.mkdirSync(saida, { recursive: true });
 const ok = (c, m) => { assert.ok(c, m); console.log('ok   ' + m); };
 assert.equal(M.lerEvento(undefined), null);

@@ -3,7 +3,7 @@
 // duplicar, Portal › Importação) · WST-03/INI-04 ações do Waste em Iniciativas (+ Ação abre lá, leitura do exports, migração única
 // com histórico, antigas só leitura, pendência sem contagem dupla).
 // node testes/tiniciativas.js → "sem erros"; código 1 se falhar. Prints em testes/saida/iniciativas/
-const path = require('path'), fs = require('fs'), http = require('http'); const RAIZ = path.resolve(__dirname, '..');
+const path = require('path'), fs = require('fs'); const RAIZ = path.resolve(__dirname, '..');
 const { chromium } = require('playwright');
 const verN = v => String(v || '').split(/[^\d]+/).filter(Boolean).slice(0, 4).map(Number).reduce((t, n, i) => t + n * Math.pow(1000, 3 - i), 0);   // versão como número (1.10 > 1.9; texto comparava errado)
 const srv = require('../scripts/servidor-testes.cjs').server();
