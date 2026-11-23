@@ -84,6 +84,31 @@ const PLANTA = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 4000 2000" 
     assert.equal(F.length, 2); assert.ok(F.every(x => x[1] && /\.svg$/.test(x[0])), 'arquivos entregues ' + JSON.stringify(F));
     console.log('ok Formulários: "Escolher do banco" entrega as fotos escolhidas');
 
+    // WebP lido de uma pasta real de teste, incluindo a reserva quando o decodificador de miniaturas falha.
+    const imagem = await f.evaluate(async () => {
+      const raiz = await navigator.storage.getDirectory();
+      const pasta = await (await raiz.getDirectoryHandle('IMAGENS', { create: true })).getDirectoryHandle('Linha', { create: true });
+      const h = await pasta.getFileHandle('Foto de inspeção.WEBP', { create: true });
+      const c = document.createElement('canvas'); c.width = 96; c.height = 48;
+      c.getContext('2d').fillRect(0, 0, 96, 48);
+      const blob = await new Promise(resolve => c.toBlob(resolve, 'image/webp'));
+      const w = await h.createWritable(); await w.write(blob); await w.close();
+      Fotos.r = await vacImagens.listar(raiz, 'Linha');
+      const bitmap = window.createImageBitmap;
+      try {
+        window.createImageBitmap = async () => { throw new Error('miniatura indisponível'); };
+        render();
+        const mini = document.querySelector('#fGrid img');
+        await vacImagens.preencher(raiz, mini.parentElement); await mini.decode();
+        mini.parentElement.click();
+        const grande = document.querySelector('#l3FotoModal img');
+        await vacImagens.preencher(raiz, grande.parentElement); await grande.decode();
+        return [blob.type, mini.naturalWidth, grande.naturalWidth, grande.naturalHeight, !!document.querySelector('[data-ftirar]')];
+      } finally { window.createImageBitmap = bitmap; }
+    });
+    assert.deepEqual(imagem, ['image/webp', 96, 96, 48, false]);
+    console.log('ok WebP da pasta com miniatura indisponível abre no banco antes de colocar na planta');
+
     assert.deepEqual(erros, [], 'sem erro de JavaScript'); console.log('ok sem erro de JavaScript');
   } finally { if (browser) await browser.close(); srv.close(); }
 })().catch(e => { console.error(e); process.exit(1); });

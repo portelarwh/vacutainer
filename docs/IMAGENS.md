@@ -38,6 +38,7 @@ Pasta da linha/
 ## Fotos na planta (Linha 360° › Visão da linha › camada Fotos)
 
 - Ao lado da planta abre o banco `IMAGENS/Linha`, com o filtro **Todas** ou **Não colocadas**, subpasta e busca pelo nome.
+- **Clique na miniatura** para ampliar a foto, inclusive antes de colocá-la na planta. Na janela de uma foto já posicionada, **Localizar na planta** centraliza o mapa.
 - **Arraste** uma foto do banco até o local na planta. Para mudar de lugar, arraste o pino da foto. Clique no pino para ver a foto grande, o
   ponto mais perto e quem a colocou; ali também fica **Tirar do mapa** (o arquivo continua na pasta).
 - Afastado, as fotos próximas viram um pino com o número de fotos; clique para aproximar. A partir de 200%, cada foto aparece com a miniatura.

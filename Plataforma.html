@@ -4339,7 +4339,7 @@ function wireConfigComum(){$('#cPasta').onclick=async()=>{if(await Store.pick())
         entrar pelo ID (autocadastro como Consulta); página inicial por perfil (1x por sessão); vigência gravada não se edita (desativar com motivo); painel de vigências; semáforo central; saída do modo de teste.
    1.1.2: aviso da carga diz qual base foi lida.  1.5: páginas Paradas, Máquinas, Manutenção e Projetos na lista (aparecem quando o HTML chega na pasta).  1.4: lista técnica pela CS12 multinível (itens = nível 1, estrutura = níveis 2+); CS03 sai.  1.3: cabeçalho comum (vac-cabecalho v2: barra do sistema + página + abas), busca Ctrl K, acabamento V1.90, Versões com cabeçalho e último backup.  1.2: Configuração › Versões das páginas (versão e data de cada HTML, gravação das bases, cópias repetidas, histórico).
    ===================================================================== */
-const PAGE={id:'portal',titulo:"Administração · Linha Vacutainer",tituloCurto:"Administração",subtitulo:'Sistemas de gestão da linha',versao:'1.9.75',baseFile:'portal-base.json',idb:'vac-portal',backupDir:'00. Backups/Portal',
+const PAGE={id:'portal',titulo:"Administração · Linha Vacutainer",tituloCurto:"Administração",subtitulo:'Sistemas de gestão da linha',versao:'1.9.76',baseFile:'portal-base.json',idb:'vac-portal',backupDir:'00. Backups/Portal',
  vazio:()=>({schema:'portal-base',rev:0,config:{modulos:{},avisoDias:30,notas:{}},audit:[]}),
  /* itens do Portal para a busca Ctrl K: cadastro, pendências e telas */
  busca:q=>{const R=[],D=Cad.D;if(D)for(const t of CAD_ORD){for(const it of D[t]||[]){const c=String(it[kOf(t)]),nm=t==='bom'?((cadItem('catalogos',it.catalogo)||{}).nome||''):it.nome||'';if(norm(c+' '+nm).includes(q))R.push({tipo:CAD_T[t].um,txt:c+(nm?' · '+nm:''),sub:'Cadastros'+(cadAtivo(t,it,D)?'':' · inativo'),href:'#cadastros/'+t+'/'+encodeURIComponent(c)});if(R.length>30)break}}
@@ -5218,6 +5218,8 @@ const CAD_SECS=['inicio','matriz','importar','auditoria','backups','seguranca','
    curtas (macro, sem detalhe técnico). REGRA: toda versão nova da plataforma ganha uma entrada aqui, a mais recente primeiro
    (AGENTS.md e CLAUDE.md). Tipos: nova (função nova), melhoria (algo que já existia ficou melhor), correcao (erro corrigido). */
 const NOVIDADES=[
+ {v:'1.8.55',d:'2026-11-23',itens:[['melhoria','Linha 360° · Em Configuração, escolha Redimensionar área, arraste os vértices e salve o contorno. Desfazer e Cancelar ficam disponíveis durante o ajuste.']]},
+ {v:'1.8.54',d:'2026-11-23',itens:[['novo','Linha 360° · Use o botão direito na planta de Configuração para adicionar equipamentos, processos, checklists e formulários. Clique sobre uma área para editar seu nome, pontos ou contorno.'],['correção','Fotos da linha · Clique na foto do banco para ampliar. As fotos WebP também abrem quando a miniatura não está disponível.']] },
  {v:'1.8.53',d:'2026-11-22',itens:[['correção','Entrada: a tela não fica mais presa em "Abrindo a plataforma…". Se a pasta (de rede ou OneDrive) demora, em 8 s aparece o arquivo que está sendo lido com as opções Escolher outra pasta e Entrar só para consulta; em 20 s, o arquivo que não respondeu.'],['novo','Formulários A4 (Linha 360°): escolha a versão Detalhada (fotos, marcações e itens) ou Resumida (lista sem fotos, com a máquina / local e o que verificar) para imprimir ou salvar em PDF; a prévia mostra a versão escolhida.']]},
  {v:'1.8.52',d:'2026-11-22',itens:[['novo','Banco de imagens: as fotos da pasta IMAGENS (subpastas viram categorias) aparecem na plataforma sem precisar enviar; foto nova na pasta aparece ao abrir, ao sincronizar ou em Atualizar.'],['novo','Linha 360° › Visão da linha › camada Fotos: arraste as fotos de IMAGENS/Linha até o local na planta; afastado, as fotos próximas viram um número e, aproximando, cada uma aparece com a miniatura. Filtro Todas ou Não colocadas.'],['novo','Linha 360°: a planta passa a ser lida de IMAGENS/PLANTA_BAIXA.SVG (sem o arquivo, a planta embutida); em vetor, o zoom vai a 800% sem perder nitidez. Ctrl + roda do mouse aproxima no ponto do cursor.'],['novo','Formulários A4: Escolher do banco copia fotos da pasta IMAGENS para o formulário.']]},
  {v:'1.8.51',d:'2026-11-22',itens:[['melhoria','Linha 360° › Configuração › Pontos e equipamentos: altere quantos pontos quiser e grave tudo em "Salvar alterações"; as linhas alteradas ficam marcadas e o que foi digitado não se perde até salvar ou descartar.'],['melhoria','Marca: a pasta Marca (fontes, logos, favicon e fotos da tela de entrada) passa a ficar dentro de IMAGENS (IMAGENS/Marca/). Enquanto não for movida, a pasta Marca antiga continua valendo.']]},
@@ -5588,6 +5590,23 @@ function cadRota(){const raw=location.hash.slice(1);if(/^reuniao=/.test(raw)){le
  if(!/^cadastros(\/|$)/.test(raw))return false;const p=raw.split('/').slice(1).map(x=>{try{return decodeURIComponent(x)}catch(e){return x}});
  const sec=p[0]||'inicio';if(sec==='importar'&amp;&amp;/^meta/i.test(p[1]||'')){const I=Cad.ui.imp=Cad.ui.imp||{modo:'cs12',fmt:'auto',de:todayISO(),map:{},soBOM:true,txt:'',prev:null};I.modo='meta'}Cad.ui.sec=CAD_T[sec]||CAD_SECS.includes(sec)?sec:'inicio';App.show('cad',{keepHash:true});
  if(Cad.ui.sec==='parametros'&amp;&amp;p[1]==='gel')setTimeout(()=>{const x=$('#parGel');if(x){x.scrollIntoView({block:'start'});x.classList.add('eq-real');setTimeout(()=>x.classList.remove('eq-real'),2200)}},80);   /* 1.9.51 */
+ if(sec==='equipamentos'&amp;&amp;p[1]==='planta'&amp;&amp;/^pt[a-z0-9]{8,30}$/.test(p[2]||'')){
+  if(!Cad.D){toast('Carregue o cadastro para abrir a ficha do equipamento.',5000,true);return true}
+  const existente=Cad.D.equipamentos.find(e=>e.pontoLinha360===p[2]);
+  if(existente)Ficha.abrir(sec,existente.codigo);
+  else{
+   const preset={codigo:EqMes.proximo(Cad.D,[]),nome:String(p[3]||'Equipamento').slice(0,60),pontoLinha360:p[2]};
+   let pedido;
+   try{pedido=JSON.parse(localStorage.getItem('linha.criarEquipamento'));if(pedido?.ponto===p[2])localStorage.removeItem('linha.criarEquipamento')}catch(e){}
+   const criar=pedido?.ponto===p[2]&amp;&amp;pedido.usuario===localStorage.getItem('vac.userId')&amp;&amp;Date.now()-pedido.em>=0&amp;&amp;Date.now()-pedido.em<60000;
+   const item=Object.assign(cadModelo(sec),preset);
+   if(criar&amp;&amp;vacPodeAqui('configurar')&amp;&amp;Cad.podeEditar(true)&amp;&amp;!cadValidarItem(sec,item,Cad.D,{novo:true}).length){
+    Cad.op({acao:'criação',tipo:sec,codigo:item.codigo,item,origem:'Linha 360°',motivo:null});
+    Ficha.abrir(sec,item.codigo);
+   }else Ficha.abrir(sec,null,{novo:true,preset});
+  }
+  return true;
+ }
  if(p[1]&amp;&amp;CAD_T[Cad.ui.sec]&amp;&amp;Cad.D&amp;&amp;Cad.ui.sec!=='cambio'){if(cadItem(Cad.ui.sec,p[1]))Ficha.abrir(Cad.ui.sec,p[1]);else{Cad.ui.q=p[1];Cad.ui.sit='todos';App.render();toast(`${cap1(CAD_T[Cad.ui.sec].um)} ${p[1]} não está no cadastro.`,5000,true)}}
  return true}
 
@@ -35240,9 +35259,12 @@ window.VAC_GUIA.inic = {
 .l3-cam button[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
 .l3-cam label{display:inline-flex;align-items:center;gap:var(--sp-4,4px);font-size:13px;margin-left:var(--sp-4,4px)}
 .l3-vp{overflow:auto;background:var(--surface-3,var(--bg));max-height:78vh}
+#cfMenu{position:fixed;inset:auto;margin:0;max-width:min(320px,100vw);overflow:auto;padding:var(--sp-8,8px)}
+#cfMenu{z-index:1000;display:grid;gap:var(--sp-4,4px)}
+#cfMenu button{text-align:left}
 .l3-cv{position:relative;width:100%;aspect-ratio:2000/1125;min-width:680px;background:#fff;user-select:none;touch-action:pan-x pan-y}
-.l3-cv img{position:absolute;inset:0;width:100%;height:100%;display:block;pointer-events:none}
-:root[data-theme="dark"] .l3-cv{background:#0e1a24}:root[data-theme="dark"] .l3-cv img{filter:invert(1) hue-rotate(180deg) brightness(.92) contrast(.95);mix-blend-mode:screen}
+.l3-cv > img{position:absolute;inset:0;width:100%;height:100%;display:block;pointer-events:none}
+:root[data-theme="dark"] .l3-cv{background:#0e1a24}:root[data-theme="dark"] .l3-cv > img{filter:invert(1) hue-rotate(180deg) brightness(.92) contrast(.95);mix-blend-mode:screen}
 .l3-cv svg.ov{position:absolute;inset:0;width:100%;height:100%;overflow:visible}
 .l3-cv svg.ov .zona{fill-opacity:.14;stroke-width:3;cursor:pointer;vector-effect:non-scaling-stroke}.l3-cv svg.ov .zona.on{fill-opacity:.26;stroke-width:5}
 .l3-cv svg.ov .zrot{font:700 26px var(--f-body);paint-order:stroke;stroke:#fff;stroke-width:6px;pointer-events:none}
@@ -35278,6 +35300,12 @@ img.vac-img-falta{visibility:hidden}
 .l3-pin.on{outline:4px solid var(--accent);outline-offset:2px;z-index:4}
 .l3-pin:focus-visible{outline:4px solid var(--accent);outline-offset:2px}
 .l3-pin .vl{position:absolute;top:calc(100% + 3px);left:50%;transform:translateX(-50%);white-space:nowrap;font:700 11px var(--f-body);background:var(--surface);color:var(--ink);border:1px solid var(--line);border-radius:6px;padding:0 var(--sp-4,4px);line-height:17px}
+.l3-vertice{position:absolute;z-index:6;transform:translate(-50%,-50%);width:32px;height:32px;border:0;background:transparent;padding:0;cursor:grab;touch-action:none}
+.l3-vertice::after{content:"";display:block;width:14px;height:14px;margin:auto;background:var(--surface);border:3px solid var(--accent);border-radius:50%}
+.l3-vertice:active{cursor:grabbing}
+#cfPerimetro{stroke:var(--accent);stroke-width:3;vector-effect:non-scaling-stroke;pointer-events:none}
+[data-aresta]{stroke:transparent;stroke-width:16;vector-effect:non-scaling-stroke;cursor:crosshair;pointer-events:stroke}
+#cfPerimetro.fechado{fill:var(--accent);fill-opacity:.18}
 .l3-pin.edit{cursor:grab;border-style:dashed}
 .l3-op{position:absolute;transform:translate(-50%,-50%);width:30px;height:30px;border-radius:8px;border:2px solid #fff;color:#fff;font:800 12px var(--f-body);display:inline-flex;align-items:center;justify-content:center;box-shadow:0 2px 6px rgba(16,35,51,.4);cursor:pointer;z-index:3}
 .l3-op.vago{background-image:repeating-linear-gradient(45deg,rgba(255,255,255,.35) 0 4px,transparent 4px 8px)}
@@ -35347,7 +35375,7 @@ tr.l3-sujo>td{background:color-mix(in srgb,var(--warn) 10%,transparent)}tr.l3-su
 <main class="wrap" id="main"></main>
 <div class="toasts" id="toasts"></div>
 <script>
-const PAGE={id:"linha",titulo:"Linha 360° · Planta interativa da linha",tituloCurto:"Linha 360°",subtitulo:"Planta interativa: paradas, pessoas e ações em cada ponto da linha",versao:"1.5.1",baseFile:"linha360-base.json",backupDir:"00. Backups/Linha360",estado:"atualizacao",estadoNota:"Primeira versão: planta, pontos, áreas, postos e checklists. MES por equipamento chega depois."};
+const PAGE={id:"linha",titulo:"Linha 360° · Planta interativa da linha",tituloCurto:"Linha 360°",subtitulo:"Planta interativa: paradas, pessoas e ações em cada ponto da linha",versao:"1.6.1",baseFile:"linha360-base.json",backupDir:"00. Backups/Linha360",estado:"atualizacao",estadoNota:"Primeira versão: planta, pontos, áreas, postos e checklists. MES por equipamento chega depois."};
 const APP_VERSION=PAGE.versao;
 /* ---------- vac-cabecalho v2 · JS (igual em todas as páginas) ---------- */
 const VAC_CAB_VERSAO=2;
@@ -35622,12 +35650,13 @@ function validarBase(D){const e=[];if(!D||typeof D!=='object')return['não é um
    {k:'foto',it}    1.5.0 · foto do banco IMAGENS/Linha na planta (IMG-01): id = caminho do arquivo, posição em %; tirar do mapa = ativo:false.
                     "fotos" não entra no vazio: nasce na 1ª foto colocada, como "formularios" */
 function applyOp(D,op){const up=(L,it)=>{const i=L.findIndex(x=>x.id===it.id);if(i>=0)L[i]={...L[i],...clone(it)};else L.push(clone(it))};
- if(op.k==='ponto')up(D.pontos,op.it);else if(op.k==='area')up(D.areas,op.it);else if(op.k==='posto')up(D.postos,op.it);else if(op.k==='chk')up(D.checklists,op.it);else if(op.k==='form'){if(!Array.isArray(D.formularios))D.formularios=[];up(D.formularios,op.it)}else if(op.k==='foto'){if(!Array.isArray(D.fotos))D.fotos=[];up(D.fotos,op.it)}
+ if(op.k==='local')aplicarLocal(D,op);else if(op.k==='ponto')up(D.pontos,op.it);else if(op.k==='area')up(D.areas,op.it);else if(op.k==='posto')up(D.postos,op.it);else if(op.k==='chk')up(D.checklists,op.it);else if(op.k==='form'){if(!Array.isArray(D.formularios))D.formularios=[];up(D.formularios,op.it)}else if(op.k==='foto'){if(!Array.isArray(D.fotos))D.fotos=[];up(D.fotos,op.it)}
  else if(op.k==='feito'){const f=D.feitos.find(x=>x.id===op.it.id);if(f)Object.assign(f,clone(op.it),{anulado:false});else D.feitos.push(clone(op.it))}
  else if(op.k==='desfeito'){const f=D.feitos.find(x=>x.id===op.id);if(f){f.anulado=true;f.anuladoEm=op.em;f.anuladoPor=op.por}}
  return D}
 const junta=(base,pad)=>{const m=new Map(pad.map(x=>[x.id,{...x}]));for(const x of base||[])m.set(x.id,{...(m.get(x.id)||{}),...x});return[...m.values()].filter(x=>x.ativo!==false)};
-const pontos=()=>junta(Store.data.pontos,PONTOS_PADRAO).sort((a,b)=>(+a.id||999)-(+b.id||999)||String(a.id).localeCompare(String(b.id)));
+const numeroPonto=p=>p.numero||p.id;
+const pontos=()=>junta(Store.data.pontos,PONTOS_PADRAO).sort((a,b)=>(+numeroPonto(a)||999)-(+numeroPonto(b)||999)||String(a.id).localeCompare(String(b.id)));
 const areas=()=>junta(Store.data.areas,AREAS_PADRAO);
 const postos=()=>junta(Store.data.postos,POSTOS_PADRAO).sort((a,b)=>a.id.localeCompare(b.id));
 const P=id=>pontos().find(p=>p.id===String(id));
@@ -35638,6 +35667,9 @@ const P=id=>pontos().find(p=>p.id===String(id));
    Sem a pasta conectada não há como listar a pasta (o navegador não lista pastas por endereço); na demonstração, fotos fictícias.
    raiz = pasta da linha conectada (ou o objeto de vacRaiz, que devolve as subpastas da raiz). */
 /* Fica no motor da Linha 360° (único que usa); as URLs de imagem ficam em cache na sessão e são liberadas no Atualizar (esquecer). */
+function imagemTipada(f,nome){
+  return /\.webp$/i.test(nome)&amp;&amp;f.type!=='image/webp'?f.slice(0,f.size,'image/webp'):f;
+}
 const vacImagens = (() => {
   const EXT = /\.(jpe?g|png|webp|gif|svg|bmp|avif)$/i, MINI = 320;
   const urls = new Map(), minis = new Map(), lista = new Map();
@@ -35683,7 +35715,7 @@ const vacImagens = (() => {
   async function url(raiz, caminho) {
     const x = achar(caminho); if (x &amp;&amp; x.url) return x.url;
     if (urls.has(caminho)) return urls.get(caminho);
-    try { const f = await arquivo(raiz, caminho), u = URL.createObjectURL(f); urls.set(caminho, u); return u; } catch (e) { return ''; }
+    try { const f = await arquivo(raiz, caminho), u = URL.createObjectURL(imagemTipada(f,caminho)); urls.set(caminho, u); return u; } catch (e) { return ''; }
   }
   /* miniatura reduzida (máx. 320 px) para listas e pinos; SVG e falhas usam a imagem inteira */
   /* 1.5.2 · pedido do responsável (23/11/2026, fotos .webp sem miniatura): a foto é decodificada já reduzida (resizeWidth), várias ao mesmo
@@ -35709,7 +35741,7 @@ const vacImagens = (() => {
         const b = await new Promise(ok => c.toBlob(ok, 'image/webp', .8)); u = b ? URL.createObjectURL(b) : await url(raiz, caminho);
       }
       if (!u) erros.set(caminho, 'não consegui gerar a miniatura');
-    } catch (e) { u = ''; erros.set(caminho, (e &amp;&amp; (e.message || e.name)) || 'não consegui abrir o arquivo'); }
+    } catch (e) { erros.set(caminho, (e &amp;&amp; (e.message || e.name)) || 'não consegui abrir o arquivo'); u = await url(raiz, caminho); }
     if (u) { minis.set(caminho, u); erros.delete(caminho); }
     return u;
   }
@@ -35773,8 +35805,8 @@ function fotosPainel(){const r=Fotos.r,M=fotosMapa(),porArq=new Map(M.map(f=>[f.
   ${!r?'<p class="small muted">Lendo a pasta…</p>':!r.ok?`<p class="l3-av">${ic('info','sm')} ${esc(r.motivo)}</p>`:''}
   <div class="row wf"><div class="l3-cam l3-ffil" role="group" aria-label="Quais fotos mostrar"><button type="button" data-ffil="todas" aria-pressed="${Fotos.filtro!=='nao'}">Todas (${tudo.length})</button><button type="button" data-ffil="nao" aria-pressed="${Fotos.filtro==='nao'}">Não colocadas (${nao.length})</button></div><span class="sp"></span><button class="b sm" id="fAtual" title="Lê a pasta de novo (fotos novas aparecem aqui)">Atualizar</button></div>
   <div class="row wf">${pastas.length>1?`<label class="small">Subpasta <select id="fPasta"><option value="">Todas</option>${pastas.map(p=>`<option value="${esc(p)}"${Fotos.pasta===p?' selected':''}>${esc(p||'(IMAGENS/'+FOTOS_SUB+')')}</option>`).join('')}</select></label>`:''}<label class="small" style="flex:1">Buscar <input id="fBusca" type="search" placeholder="nome da foto" autocomplete="off"></label></div>
-  <p class="small muted">Arraste uma foto da lista até o local na planta. Para mudar de lugar, arraste o pino da foto. Afastado, as fotos próximas viram um número; aproxime (botão + ou Ctrl + roda do mouse) para ver cada uma.</p>
-  <div class="l3-fgrid" id="fGrid">${L.map(i=>{const f=porArq.get(i.caminho);return`<figure class="l3-fimg${f?' on':''}" draggable="true" tabindex="0" data-fimg="${esc(i.caminho)}" data-busca="${esc(norm(i.nome+' '+i.pasta))}" title="${esc(i.caminho+(f?' · no mapa: clique para ver onde':' · arraste até a planta'))}"><img data-vac-img="${esc(i.caminho)}"${vacImagens.pronta(i.caminho)?` src="${esc(vacImagens.pronta(i.caminho))}"`:''} alt="" draggable="false"><figcaption>${esc(i.nome)}</figcaption>${f?'<span class="pill ok">no mapa</span>':''}</figure>`}).join('')}</div>
+  <p class="small muted">Clique na foto para ampliar ou arraste-a até o local na planta. Para mudar de lugar, arraste o pino da foto. Afastado, as fotos próximas viram um número; aproxime (botão + ou Ctrl + roda do mouse) para ver cada uma.</p>
+  <div class="l3-fgrid" id="fGrid">${L.map(i=>{const f=porArq.get(i.caminho);return`<figure role="button" class="l3-fimg${f?' on':''}" draggable="true" tabindex="0" data-fimg="${esc(i.caminho)}" data-busca="${esc(norm(i.nome+' '+i.pasta))}" title="${esc(i.caminho+' · clique para ver a foto ou arraste até a planta')}"><img data-vac-img="${esc(i.caminho)}"${vacImagens.pronta(i.caminho)?` src="${esc(vacImagens.pronta(i.caminho))}"`:''} alt="" draggable="false"><figcaption>${esc(i.nome)}</figcaption>${f?'<span class="pill ok">no mapa</span>':''}</figure>`}).join('')}</div>
   ${r&amp;&amp;r.ok&amp;&amp;!L.length?`<p class="small muted">${Fotos.filtro==='nao'&amp;&amp;tudo.length?'Todas as fotos já estão no mapa.':'Nenhuma foto nesta pasta.'}</p>`:''}
   ${faltam.length?`<h4>No mapa, mas não estão mais na pasta</h4><ul class="l3-li">${faltam.map(f=>`<li><span class="code">${esc(f.arq)}</span><span class="sp"></span><button class="b sm" data-fdel="${esc(f.id)}">Tirar do mapa</button></li>`).join('')}</ul>`:''}
  </aside>`}
@@ -35789,19 +35821,20 @@ function l3Visivel(el){const pos=()=>{if(!document.body.contains(el))return fim(
   el.style.top=t+'px';el.style.height=Math.max(240,h)+'px';el.style.bottom='auto';el.style.setProperty('--l3-vh',Math.max(240,h)+'px')};
  const fim=()=>{try{parent.removeEventListener('scroll',pos);parent.removeEventListener('resize',pos)}catch(e){}removeEventListener('resize',pos)};
  try{parent.addEventListener('scroll',pos,{passive:true});parent.addEventListener('resize',pos)}catch(e){}addEventListener('resize',pos);pos()}
-function verFoto(id,ids){const L=(ids||[id]).map(i=>fotosMapa().find(f=>f.id===i)).filter(Boolean);if(!L.length)return;let k=Math.max(0,L.findIndex(f=>f.id===id));
+function verFoto(id,ids){const L=(ids||[id]).map(i=>{const f=fotosMapa().find(f=>f.id===i);if(f)return f;const img=vacImagens.achar(i);return img&amp;&amp;{arq:i,nome:img.nome}}).filter(Boolean);if(!L.length)return;let k=Math.max(0,L.findIndex(f=>f.id===id));
  let el=$('#l3FotoModal');if(!el){el=document.createElement('div');el.id='l3FotoModal';el.className='l3-fmodal';el.setAttribute('role','dialog');el.setAttribute('aria-modal','true');document.body.appendChild(el);l3Visivel(el)}
  const volta=document.activeElement,tec=e=>{if(e.key==='Escape')fechar();else if(L.length>1&amp;&amp;e.key==='ArrowRight'){k=(k+1)%L.length;des()}else if(L.length>1&amp;&amp;e.key==='ArrowLeft'){k=(k-1+L.length)%L.length;des()}};
  const fechar=()=>{el.remove();document.removeEventListener('keydown',tec);if(volta&amp;&amp;volta.focus&amp;&amp;document.body.contains(volta))volta.focus()};document.addEventListener('keydown',tec);
- const des=()=>{const f=L[k],p=pontoPerto(f),nm=f.nome||vacImagens.nomeDe(f.arq);el.setAttribute('aria-label','Foto '+nm);
-  el.innerHTML=`<div class="l3-fver"><div class="l3-fvh"><div><span class="eb">Foto na planta${L.length>1?` · ${k+1} de ${L.length}`:''}</span><h3>${esc(nm)}</h3><p class="small muted"><span class="code">${esc(f.arq)}</span>${p?` · perto do ponto <b>${esc(p.id+' · '+p.nome)}</b>`:''}${f.em?` · colocada em ${esc(brh(f.em))}${f.por||f.porId?' por '+esc(vacPessoa.nome(f.porId,f.por)):''}`:''}</p></div><span class="sp"></span><button class="b sm" data-fx aria-label="Fechar">✕</button></div>
-   <div class="l3-fvi"><img data-vac-img-full="${esc(f.arq)}" alt="${esc(nm)}"><p class="l3-av l3-fvfalta">${ic('alerta','sm')} A imagem não foi encontrada em ${esc(f.arq)}: ela foi renomeada, movida ou apagada da pasta. Coloque o arquivo de volta ou tire a foto do mapa.</p></div>
-   <div class="row wf">${L.length>1?'<button class="b" data-fant>← Anterior</button><button class="b" data-fprox>Próxima →</button>':''}<span class="sp"></span>${p?`<button class="b" data-fponto="${esc(p.id)}">Ver o ponto ${esc(p.id)}</button>`:''}<button class="b" data-ftirar>Tirar do mapa</button><button class="b pri" data-fx>Fechar</button></div></div>`;
+ const des=()=>{const f=L[k],p=f.id&amp;&amp;pontoPerto(f),nm=f.nome||vacImagens.nomeDe(f.arq);el.setAttribute('aria-label','Foto '+nm);
+  el.innerHTML=`<div class="l3-fver"><div class="l3-fvh"><div><span class="eb">${f.id?'Foto na planta':'Banco de imagens'}${L.length>1?` · ${k+1} de ${L.length}`:''}</span><h3>${esc(nm)}</h3><p class="small muted"><span class="code">${esc(f.arq)}</span>${p?` · perto do ponto <b>${esc(numeroPonto(p)+' · '+p.nome)}</b>`:''}${f.em?` · colocada em ${esc(brh(f.em))}${f.por||f.porId?' por '+esc(vacPessoa.nome(f.porId,f.por)):''}`:''}</p></div><span class="sp"></span><button class="b sm" data-fx aria-label="Fechar">✕</button></div>
+   <div class="l3-fvi"><img data-vac-img-full="${esc(f.arq)}" alt="${esc(nm)}"><p class="l3-av l3-fvfalta">${ic('alerta','sm')} Não foi possível abrir ${esc(f.arq)}. Confira o arquivo na pasta e atualize o banco.</p></div>
+   <div class="row wf">${L.length>1?'<button class="b" data-fant>← Anterior</button><button class="b" data-fprox>Próxima →</button>':''}<span class="sp"></span>${p?`<button class="b" data-fponto="${esc(p.id)}">Ver o ponto ${esc(numeroPonto(p))}</button>`:''}${f.id?'<button class="b" data-flocal>Localizar na planta</button><button class="b" data-ftirar>Tirar do mapa</button>':''}<button class="b pri" data-fx>Fechar</button></div></div>`;
   el.onclick=e=>{if(e.target===el)fechar()};$$('[data-fx]',el).forEach(b=>b.onclick=fechar);
   const a=$('[data-fant]',el),b=$('[data-fprox]',el);if(a)a.onclick=()=>{k=(k-1+L.length)%L.length;des()};if(b)b.onclick=()=>{k=(k+1)%L.length;des()};
-  $('[data-ftirar]',el).onclick=()=>{if(!confirm('Tirar esta foto do mapa? O arquivo continua na pasta IMAGENS.'))return;fechar();tirarFoto(f.id)};
+  const local=$('[data-flocal]',el);if(local)local.onclick=()=>{fechar();focar(f.x,f.y,Math.max(App.zoom,2))};
+  const tirar=$('[data-ftirar]',el);if(tirar)tirar.onclick=()=>{if(!confirm('Tirar esta foto do mapa? O arquivo continua na pasta IMAGENS.'))return;fechar();tirarFoto(f.id)};
   const pp=$('[data-fponto]',el);if(pp)pp.onclick=()=>{fechar();App.sel=pp.dataset.fponto;App.camada='min';render()};
-  const im=$('img',el);vacImagens.preencher(raizImg(),el).then(()=>$('.l3-fvi',el).classList.toggle('falta',im.classList.contains('vac-img-falta')));const x=$('[data-fx]',el);if(x)x.focus()};
+  const im=$('img',el),box=im.parentElement;im.onerror=()=>box.classList.add('falta');vacImagens.preencher(raizImg(),el).then(()=>{if(im.classList.contains('vac-img-falta'))box.classList.add('falta')});const x=$('[data-fx]',el);if(x)x.focus()};
  des()}
 /* eventos da camada Fotos (chamado no ligar) */
 function ligarFotos(){if(App.tab!=='mapa'||App.camada!=='fotos')return;const cv=$('#cv');
@@ -35809,7 +35842,7 @@ function ligarFotos(){if(App.tab!=='mapa'||App.camada!=='fotos')return;const cv=
  if(cv){cv.ondragover=e=>{if([...(e.dataTransfer.types||[])].includes('text/plain')){e.preventDefault();e.dataTransfer.dropEffect='copy';cv.classList.add('l3-alvo')}};cv.ondragleave=e=>{if(!cv.contains(e.relatedTarget))cv.classList.remove('l3-alvo')};
   cv.ondrop=e=>{cv.classList.remove('l3-alvo');const t=e.dataTransfer.getData('text/plain')||'';if(!t.startsWith('vacfoto:'))return;e.preventDefault();colocarFoto(t.slice(8),pctDe(e))}}
  $$('[data-fimg]').forEach(el=>{el.ondragstart=e=>{e.dataTransfer.setData('text/plain','vacfoto:'+el.dataset.fimg);e.dataTransfer.effectAllowed='copy'};
-  const ir=()=>{const f=fotosMapa().find(x=>x.arq===el.dataset.fimg);if(f)focar(f.x,f.y,Math.max(App.zoom,2));else toast('Arraste a foto até o local na planta.')};el.onclick=ir;el.onkeydown=e=>{if(e.key==='Enter'){e.preventDefault();ir()}}});
+  const ir=()=>verFoto(el.dataset.fimg);el.onclick=ir;el.onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();ir()}}});
  $$('[data-ffil]').forEach(b=>b.onclick=()=>{Fotos.filtro=b.dataset.ffil;render()});
  const fp=$('#fPasta');if(fp)fp.onchange=()=>{Fotos.pasta=fp.value;render()};
  const fb=$('#fBusca');if(fb){fb.value=Fotos.busca||'';const filtra=()=>{Fotos.busca=fb.value;const q=norm(fb.value);$$('[data-fimg]').forEach(x=>x.hidden=!!q&amp;&amp;!x.dataset.busca.includes(q))};fb.oninput=filtra;if(fb.value)filtra()}
@@ -35844,11 +35877,11 @@ async function fmBanco(entregar){let el=$('#fmBancoModal');if(el)el.remove();el=
 /* 1.4.1 · barra de gravação dos pontos (em cima e embaixo da tabela) */
 function ptBarra(){const n=Object.keys(App.ptRasc||{}).length;return`<div class="row wf mt l3-ptbar"><button class="b pri" data-ptgravar ${n?'':'disabled'}>Salvar alterações${n?` (${n})`:''}</button><button class="b" data-ptdesc ${n?'':'disabled'}>Descartar alterações</button><span class="small muted" data-ptn>${n?`${n} ponto(s) alterado(s), ainda não salvo(s)`:'Altere os pontos que quiser e salve tudo de uma vez.'}</span></div>`}
 function ptBarraAtualiza(){const n=Object.keys(App.ptRasc||{}).length;$$('[data-ptgravar]').forEach(b=>{b.disabled=!n;b.textContent='Salvar alterações'+(n?` (${n})`:'')});$$('[data-ptdesc]').forEach(b=>b.disabled=!n);$$('[data-ptn]').forEach(x=>x.textContent=n?`${n} ponto(s) alterado(s), ainda não salvo(s)`:'Altere os pontos que quiser e salve tudo de uma vez.')}
-function eqs(){const c=typeof vacCad==='function'?vacCad():null;return((c&amp;&amp;c.equipamentos)||[]).filter(e=>e.ativo!==false).map(e=>({codigo:String(e.codigo),nome:e.nome||'',apelidos:e.apelidos||[]})).sort((a,b)=>a.codigo.localeCompare(b.codigo,'pt-BR',{numeric:true}))}
+function eqs(){const c=typeof vacCad==='function'?vacCad():null;return((c&amp;&amp;c.equipamentos)||[]).filter(e=>e.ativo!==false).map(e=>({codigo:String(e.codigo),nome:e.nome||'',apelidos:e.apelidos||[],pontoLinha360:e.pontoLinha360})).sort((a,b)=>a.codigo.localeCompare(b.codigo,'pt-BR',{numeric:true}))}
 const eqNome=c=>{const e=eqs().find(x=>x.codigo===String(c));return e?e.nome:''};
 function turnos(){const c=typeof vacCad==='function'?vacCad():null;const L=((c&amp;&amp;c.turnos)||[]).filter(t=>t.ativo!==false).map(t=>({codigo:String(t.codigo),nome:t.nome||t.codigo}));return L.length?L:[{codigo:'T1',nome:'1º turno'},{codigo:'T2',nome:'2º turno'},{codigo:'T3',nome:'3º turno'}]}
 /* equipamentos de um ponto: o vínculo gravado vale; sem vínculo, sugere pelo nome ou apelido do cadastro (marcado como "sugerido") */
-function eqDoPonto(p){if(Array.isArray(p.equipamentos))return{lista:p.equipamentos.map(String),sugerido:false};const ch=(p.chaves||[]).map(norm).filter(Boolean);
+function eqDoPonto(p){if(Array.isArray(p.equipamentos))return{lista:p.equipamentos.map(String),sugerido:false};if(p.tipo==='equipamento')return{lista:eqs().filter(e=>e.pontoLinha360===p.id).map(e=>e.codigo),sugerido:false};const ch=(p.chaves||[]).map(norm).filter(Boolean);
  const L=eqs().filter(e=>{const n=[e.nome].concat(e.apelidos).map(norm);return ch.some(c=>n.some(x=>x&amp;&amp;(x===c||x.includes(c))))}).map(e=>e.codigo);return{lista:L,sugerido:L.length>0}}
 function mapaEq(){const m={};for(const p of pontos())for(const c of eqDoPonto(p).lista)if(!m[c])m[c]=p.id;return m}
 
@@ -35891,9 +35924,9 @@ function turnoAgora(){try{if(typeof vacTurnosEm==='function'){const L=vacTurnosE
 function calcExports(D){const s0=Store.data;Store.data=D;try{const h=hoje(),pend=[];
   const semPessoa=postos().filter(p=>!turnos().some(t=>(pesNome(p,t.codigo)||'').trim()));
   if(semPessoa.length)pend.push({sev:2,tipo:'postoSemPessoa',txt:`${semPessoa.length} posto(s) da linha sem pessoa definida em nenhum turno`,link:'aba=pessoas'});
-  const semEq=pontos().filter(p=>!eqDoPonto(p).lista.length&amp;&amp;p.id!=='18'&amp;&amp;p.id!=='5');
+  const semEq=pontos().filter(p=>(!p.tipo||p.tipo==='equipamento')&amp;&amp;!eqDoPonto(p).lista.length&amp;&amp;p.id!=='18'&amp;&amp;p.id!=='5');
   {const r=fmResumo(D);if(r.vencidos)pend.push({sev:2,tipo:'formularioVencido',txt:`${r.vencidos} formulário(s) com a conclusão esperada vencida`,link:'aba=form'})}
-  if(semEq.length)pend.push({sev:2,tipo:'pontoSemEquipamento',txt:`${semEq.length} ponto(s) da planta sem equipamento do cadastro vinculado: ${semEq.map(p=>p.id).join(', ')}`,link:'aba=config'});
+  if(semEq.length)pend.push({sev:2,tipo:'pontoSemEquipamento',txt:`${semEq.length} ponto(s) da planta sem equipamento do cadastro vinculado: ${semEq.map(numeroPonto).join(', ')}`,link:'aba=config'});
   return{exportsVersion:1,geradoEm:new Date().toISOString(),modulo:'linha',appVersion:APP_VERSION,
    pontos:pontos().map(p=>({id:p.id,nome:p.nome,fluxo:p.fluxo,equipamentos:eqDoPonto(p).lista})),
    areas:areas().map(a=>({id:a.id,nome:a.nome,pontos:a.pts||[]})),
@@ -35925,7 +35958,7 @@ const fmNomeDe=(L,k)=>(L.find(t=>t[0]===k)||L[0])[1];
 const fmData=d=>d?d.split('-').reverse().join('/'):'—';
 const fmAtrasado=f=>f.status==='aberto'&amp;&amp;f.prazo&amp;&amp;f.prazo<hoje();
 const fmAreaDoPonto=pid=>{const a=areas().find(x=>(x.pts||[]).includes(String(pid)));return a?a.id:''};
-const fmLocal=(pid,eq)=>{const p=pid&amp;&amp;P(pid);return[p?p.id+' · '+p.nome:'',eq?eq+(eqNome(eq)?' · '+eqNome(eq):''):''].filter(Boolean).join(' · ')};
+const fmLocal=(pid,eq)=>{const p=pid&amp;&amp;P(pid);return[p?numeroPonto(p)+' · '+p.nome:'',eq?eq+(eqNome(eq)?' · '+eqNome(eq):''):''].filter(Boolean).join(' · ')};
 const fmTurnoNome=c=>{const t=turnos().find(x=>x.codigo===String(c));return t?t.nome:(c||'')};
 const fmPes=(id,nome)=>id||nome?vacPessoa.nome(id,nome):'';
 const fmCodigo=()=>{const d=hoje().replace(/-/g,'').slice(2);return'FM-'+d+'-'+Math.random().toString(36).slice(2,5).toUpperCase()};
@@ -35943,7 +35976,7 @@ async function fmGuardarFoto(formId,fid,file){const{blob,w,h,ext}=await fmReduzi
   catch(e){toast('A foto ficou só nesta sessão: não consegui gravá-la na pasta ('+(e.message||e.name)+')',1)}}
  return{w,h,arq,ext,kb:Math.round(blob.size/1024)}}
 async function fmUrl(f){if(FotoMem.has(f.id))return FotoMem.get(f.id);if(!f.arq||!Store.dir||!Store.perm||Store.test)return'';
- try{const p=f.arq.split('/'),nm=p.pop(),d=await Store.sub(p.join('/')),b=await(await d.getFileHandle(nm)).getFile(),u=URL.createObjectURL(b);FotoMem.set(f.id,u);return u}catch(e){return''}}
+ try{const p=f.arq.split('/'),nm=p.pop(),d=await Store.sub(p.join('/')),b=await(await d.getFileHandle(nm)).getFile(),u=URL.createObjectURL(imagemTipada(b,nm));FotoMem.set(f.id,u);return u}catch(e){return''}}
 async function fmCarregarFotos(raiz){const d=App.fm&amp;&amp;App.fm.d;if(!d)return;for(const el of (raiz||document).querySelectorAll('[data-fid]')){const f=(d.fotos||[]).find(x=>x.id===el.dataset.fid);if(!f)continue;const u=await fmUrl(f);
   if(u){if(el.tagName==='IMG'){if(el.getAttribute('src')!==u)el.src=u}else el.setAttribute('href',u);el.closest('.fm-img')?.classList.remove('falta')}else el.closest('.fm-img')?.classList.add('falta')}}
 
@@ -35970,7 +36003,7 @@ function fmMiniPlanta(d){const a=areas().find(x=>x.id===d.area),p=d.ponto&amp;&a
  const xs=[],ys=[];if(pol&amp;&amp;pol.length>2)for(const q of pol){xs.push(q[0]*LW/100);ys.push(q[1]*LH/100)}if(p){xs.push(p.x*LW/100);ys.push(p.y*LH/100)}
  let vb=`0 0 ${LW} ${LH}`,R=38;if(xs.length){const x0=Math.min(...xs),x1=Math.max(...xs),y0=Math.min(...ys),y1=Math.max(...ys),lado=Math.min(LW,Math.max(380,x1-x0,y1-y0)*1.12),cx=(x0+x1)/2,cy=(y0+y1)/2;
   vb=`${Math.round(cx-lado/2)} ${Math.round(cy-lado/2)} ${Math.round(lado)} ${Math.round(lado)}`;R=Math.max(16,lado*.045)}
- return`<svg class="fm-planta" viewBox="${vb}" preserveAspectRatio="xMidYMid slice" role="img" aria-label="Local na planta: ${esc((a?a.nome:'')+(p?' · ponto '+p.id:''))}"><image href="${Planta.src}" width="${LW}" height="${LH}" preserveAspectRatio="none"/>${pol&amp;&amp;pol.length>2?`<polygon points="${pol.map(q=>q[0]*LW/100+','+q[1]*LH/100).join(' ')}" fill="#E5322D" fill-opacity=".16" stroke="#E5322D" stroke-width="10"/>`:''}${p?`<circle cx="${p.x*LW/100}" cy="${p.y*LH/100}" r="${R}" fill="#E5322D" stroke="#fff" stroke-width="${R/4}"/><text x="${p.x*LW/100}" y="${p.y*LH/100}" dy=".36em" text-anchor="middle" font-size="${R*1.15}" font-weight="800" fill="#fff">${esc(p.id)}</text>`:''}</svg>`}
+ return`<svg class="fm-planta" viewBox="${vb}" preserveAspectRatio="xMidYMid slice" role="img" aria-label="Local na planta: ${esc((a?a.nome:'')+(p?' · ponto '+numeroPonto(p):''))}"><image href="${Planta.src}" width="${LW}" height="${LH}" preserveAspectRatio="none"/>${pol&amp;&amp;pol.length>2?`<polygon points="${pol.map(q=>q[0]*LW/100+','+q[1]*LH/100).join(' ')}" fill="#E5322D" fill-opacity=".16" stroke="#E5322D" stroke-width="10"/>`:''}${p?`<circle cx="${p.x*LW/100}" cy="${p.y*LH/100}" r="${R}" fill="#E5322D" stroke="#fff" stroke-width="${R/4}"/><text x="${p.x*LW/100}" y="${p.y*LH/100}" dy=".36em" text-anchor="middle" font-size="${R*1.15}" font-weight="800" fill="#fff">${esc(numeroPonto(p))}</text>`:''}</svg>`}
 /* ---------- folha A4 (1.4.1 · layout corporativo do modelo do responsável) ----------
    Todas as páginas: marca, título, código e "Página x / N". 1ª página: situação e a grade de dados com o recorte da planta;
    as seguintes: a faixa "Continuação do registro". Corpo em seções numeradas: 01 atividades com referência visual (fotos, com a
@@ -36012,7 +36045,7 @@ function fmPaginas(d){const pp=+d.porPag||2,F=d.fotos||[],T=fmItensTodos(d).filt
 /* 1.5.1 · versão resumida (pedido do responsável, 22/11/2026): a mesma folha A4 sem fotos; cada item diz a máquina/local (o da foto em que
    foi marcado) e o que verificar, com OK / NC / N/A. Cabeçalho, dados, legenda e o quadro de execução e confirmação são os mesmos da detalhada.
    É só uma forma de imprimir: nada muda no formulário gravado; a numeração dos itens é a mesma da versão detalhada. */
-function fmLocalFoto(d,f){const p=f.ponto||d.ponto,pt=p&amp;&amp;P(p),eq=f.eq||(!f.ponto?d.equipamento:'');return[pt?'Ponto '+pt.id+' · '+pt.nome:'',eq?eq+(eqNome(eq)?' · '+eqNome(eq):''):''].filter(Boolean).join(' · ')}
+function fmLocalFoto(d,f){const p=f.ponto||d.ponto,pt=p&amp;&amp;P(p),eq=f.eq||(!f.ponto?d.equipamento:'');return[pt?'Ponto '+numeroPonto(pt)+' · '+pt.nome:'',eq?eq+(eqNome(eq)?' · '+eqNome(eq):''):''].filter(Boolean).join(' · ')}
 function fmItensRes(d){const L=[];let n=0;for(const f of d.fotos||[]){const lc=fmLocalFoto(d,f)||'Local do formulário';for(const m of f.marcas||[])L.push({k:m.id,n:++n,txt:m.txt||'',cor:m.c,lc})}return L}
 function fmPaginasRes(d){const I=fmItensRes(d),T=fmItensTodos(d).filter(i=>i.tarefa),pags=[[]];let k=0,livre=fmCorpoPg(0),sec=0;
  const nova=()=>{pags.push([]);k++;livre=fmCorpoPg(k)},cabe=h=>h<=livre+0.01||!pags[k].length,poe=(b,h)=>{if(!cabe(h))nova();pags[k].push(b);livre-=h},S=()=>++sec,alt=x=>FM_ALT.tar(x.txt)+(x.lc?4:0);
@@ -36040,7 +36073,7 @@ function fmDados(d){const a=areas().find(x=>x.id===d.area),st=FM_ST[d.status||'a
 function fmCont(d){const a=areas().find(x=>x.id===d.area);return`<section class="fm-cont"><div><b>Continuação do registro</b><small>Linha 360° · ${esc(fmLocal(d.ponto,d.equipamento)||(a?a.nome:''))} · ${esc(d.id)}</small></div><span>Execução e confirmação</span></section>`}
 function fmCaixas(v){return`<span class="fm-avs">${FM_AV.map(([k,t])=>`<span class="fm-av${v===k?' on '+k:''}"><i class="fm-cx" aria-hidden="true">${v===k?'✓':''}</i>${t}</span>`).join('')}</span>`}
 const fmNb=(n,cor)=>{const c=cor||'#060A3D',cl=/^#(FFF|F2B705)/i.test(c);return`<span class="fm-nb" style="background:${c};color:${cl?'#111':'#fff'};border-color:${cl?'#111':c}">${n}</span>`};
-function fmFaixa(d,f){const p=f.ponto||d.ponto,pt=p&amp;&amp;P(p),eq=f.eq||(!f.ponto?d.equipamento:''),letra=pt?'Ponto '+pt.id:'Local';
+function fmFaixa(d,f){const p=f.ponto||d.ponto,pt=p&amp;&amp;P(p),eq=f.eq||(!f.ponto?d.equipamento:''),letra=pt?'Ponto '+numeroPonto(pt):'Local';
  return`<div class="fm-faixa"><b>${esc(letra)}</b> / Linha 360° / ${esc([pt?pt.nome:'',eq?eq+(eqNome(eq)?' · '+eqNome(eq):''):''].filter(Boolean).join(' · ')||'local do formulário')}</div>`}
 function fmBlocoFoto(d,f,pp,nb,idx){const dm=fmFotoDim(f,pp),n0=nb[f.id],M=f.marcas||[];
  const itens=`<ol class="fm-it${pp===4?' miudo':''}">${M.map((m,i)=>`<li>${fmNb(n0+i,m.c)}<span class="fm-tx">${esc(m.txt||'')||'<span class="fm-vz">(sem descrição)</span>'}</span>${fmCaixas(fmAval(d,m.id))}</li>`).join('')}</ol>`;
@@ -36154,7 +36187,7 @@ function vFormEd(){const fm=App.fm,d=fm.d,ro=d.status!=='aberto',st=FM_ST[d.stat
   <label>Tipo de tarefa${fmSel('fmRec',FM_REC,d.rec)}</label>
   ${d.rec==='recorrente'?`<label>Frequência${fmSel('fmFreq',FM_FREQ.map(x=>[x[0],x[1]]),d.freq)}</label>`:''}
   <h3>Local (Linha 360°)</h3>
-  <label>Ponto / máquina${fmSel('fmPonto',pontos().map(p=>[p.id,p.id+' · '+p.nome]),d.ponto,'— escolha —')}</label>
+  <label>Ponto / máquina${fmSel('fmPonto',pontos().map(p=>[p.id,numeroPonto(p)+' · '+p.nome]),d.ponto,'— escolha —')}</label>
   <label>Equipamento${fmSel('fmEq',eqL,d.equipamento,'— o ponto inteiro —')}</label>
   <label>Área${fmSel('fmArea',areas().map(a=>[a.id,a.nome]),d.area,'—')}</label>
   <h3>Pessoas e prazo</h3>
@@ -36190,7 +36223,7 @@ function fmEdDesenhar(){const E=App.fm.ed,el=$('#fmEdModal');if(!E||!el)return;c
   ${FM_CORES.map(([c,t])=>`<button class="fm-cor${E.cor===c?' on':''}" data-cor="${c}" style="background:${c}" title="${t}" aria-label="Cor ${t}" aria-pressed="${E.cor===c}"></button>`).join('')}<span class="fm-sep"></span>
   <button class="b sm" id="edDesf"${(f.marcas||[]).length?'':' disabled'}>Desfazer a última</button><button class="b sm" id="edDel"${E.sel?'':' disabled'}>Excluir a selecionada</button></div>`}
  <div class="fm-mc"><div class="fm-cvw"><div class="fm-cv" id="edCv"><img data-fid="${esc(f.id)}" alt="Foto"><svg id="edSvg" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none">${svg}</svg></div></div>
- <aside class="fm-lst"><label>Local desta foto${fmSel('edPonto',pontos().map(p=>[p.id,p.id+' · '+p.nome]),loc,'—')}</label><label>Equipamento${fmSel('edEq',eqL,f.eq||'','— o ponto inteiro —')}</label>
+ <aside class="fm-lst"><label>Local desta foto${fmSel('edPonto',pontos().map(p=>[p.id,numeroPonto(p)+' · '+p.nome]),loc,'—')}</label><label>Equipamento${fmSel('edEq',eqL,f.eq||'','— o ponto inteiro —')}</label>
   ${loc!==d.ponto||(f.eq&amp;&amp;f.eq!==d.equipamento)?`<p class="small"><span class="fm-pill">${esc(fmLocal(loc,f.eq))}</span> aparece sobre a foto (local diferente do cabeçalho).</p>`:''}
   <h3>Itens desta foto</h3>${(f.marcas||[]).length?`<ol class="fm-tl">${f.marcas.map((m,i)=>{const cl=/^#(FFF|F2B705)/i.test(m.c);return`<li class="${E.sel===m.id?'sel':''}"><span class="fm-cx" aria-hidden="true"></span><span class="fm-nb" style="background:${m.c};color:${cl?'#111':'#fff'};border-color:${cl?'#111':m.c}">${n0+i}</span><input data-mtxt="${esc(m.id)}" maxlength="200" value="${esc(m.txt||'')}" placeholder="O que fazer ou em que prestar atenção"${E.ro?' disabled':''} aria-label="Item ${n0+i}"></li>`}).join('')}</ol>`:'<p class="small muted">Nenhuma marcação ainda. Desenhe sobre a foto.</p>'}</aside></div></div>`;
  const box=$('.fm-cvw',el),cv=$('#edCv',el);if(box&amp;&amp;cv){const bw=box.clientWidth-24,bh=box.clientHeight-24,r=W/H;let w=bw,h=bw/r;if(h>bh){h=bh;w=bh*r}cv.style.width=Math.max(60,w)+'px';cv.style.height=Math.max(45,h)+'px'}
@@ -36279,22 +36312,31 @@ function semPasta(){return!Store.test&amp;&amp;(!Store.dir||!Store.perm)?`<p cla
 const dado=(fonte,v)=>fonte?v:'<span class="muted" title="A página de origem não foi lida">sem dados</span>';
 
 /* planta: imagem + áreas + fluxos + pinos. modo: 'mapa' | 'pessoas' | 'config' */
+const lerVertices=pol=>(pol||'').trim().split(/\s+/).map(q=>q.split(',').map(Number)).filter(q=>q.length===2&amp;&amp;q.every(Number.isFinite));
+const pontosSvg=pts=>pts.map(([x,y])=>[x*LW/100,y*LH/100].join(',')).join(' ');
 function plantaHtml(modo,N){const mx=N?Math.max(1,...Object.values(N.R).map(r=>r[App.camada]||0)):1,k=App.camada;
- const zon=(App.zonas||modo==='config')?areas().map(a=>{const pts=(a.pol||'').split(/\s+/).map(q=>q.split(',').map(Number)).filter(q=>q.length===2&amp;&amp;q.every(isFinite));if(pts.length<3)return'';
+ const desenho=modo==='config'?App.desenho:null;
+ const zon=(App.zonas||modo==='config')?areas().map(a=>{if(desenho?.id===a.id)return'';const pts=lerVertices(a.pol);if(pts.length<3)return'';
    const v=N?(a.pts||[]).reduce((s,id)=>s+((N.R[id]||{})[k]||0),0):0,mz=N?Math.max(1,...areas().map(z=>(z.pts||[]).reduce((s,id)=>s+((N.R[id]||{})[k]||0),0))):1,nv=N?nivel(v,mz)[0]:'none',cor={crit:'#C23B3A',warn:'#B26F00',ok:'#14804A',none:'#6F8092'}[nv];
    const cx=pts.reduce((s,q)=>s+q[0],0)/pts.length*LW/100,cy=Math.min(...pts.map(q=>q[1]))*LH/100+34;
    return`<polygon class="zona${App.zona===a.id?' on':''}" data-zona="${esc(a.id)}" points="${pts.map(q=>(q[0]*LW/100)+','+(q[1]*LH/100)).join(' ')}" fill="${cor}" stroke="${cor}" tabindex="0" role="button" aria-label="${esc('Área '+a.nome+(N?': '+fmtCam(k,v):''))}"><title>${esc(a.nome+(N?' · '+camNome(k)+': '+fmtCam(k,v):''))}</title></polygon><text class="zrot" x="${cx}" y="${cy}" text-anchor="middle" fill="${cor}">${esc(a.nome)}</text>`}).join(''):'';
- const des=App.desenho&amp;&amp;App.desenho.pts.length?`<polyline points="${App.desenho.pts.map(q=>(q[0]*LW/100)+','+(q[1]*LH/100)).join(' ')}" fill="none" stroke="#0D5E9C" stroke-width="5" stroke-dasharray="14 8"/>`+App.desenho.pts.map(q=>`<circle cx="${q[0]*LW/100}" cy="${q[1]*LH/100}" r="9" fill="#0D5E9C"/>`).join(''):'';
+ const forma=desenho?.pts.length>=3?'polygon':'polyline';
+ const des=desenho?`<${forma} id="cfPerimetro" class="${forma==='polygon'?'fechado':''}" points="${pontosSvg(desenho.pts)}" fill="none"></${forma}>`:'';
+ const arestas=desenho?.ajustar?desenho.pts.map(([x,y],i)=>{
+  const [x2,y2]=desenho.pts[(i+1)%desenho.pts.length];
+  return `<line data-aresta="${i}" x1="${x}%" y1="${y}%" x2="${x2}%" y2="${y2}%"/>`;
+ }).join(''):'';
+ const vertices=desenho?desenho.pts.map(([x,y],i)=>`<button type="button" class="l3-vertice" data-vertice="${i}" style="left:${x}%;top:${y}%" title="Arraste o vértice ${i+1}" aria-label="Vértice ${i+1}, use as setas para mover"></button>`).join(''):'';
  const fl=(modo==='mapa'&amp;&amp;App.camada==='fluxo')?TRAJETOS.filter(t=>!App.fluxo||t[0]===App.fluxo).map(t=>`<polyline class="fl${t[2]?' t':''}" points="${t[1]}" stroke="${FLUXOS[t[0]][1]}"/>`).join(''):'';
  const pins=modo==='pessoas'?'':pontos().filter(p=>!App.fluxo||p.fluxo===App.fluxo||modo==='config').map(p=>{let cls='info',vl='',tit=p.nome;
-   if(modo==='mapa'&amp;&amp;k==='fotos'){cls='none dim';tit=p.id+' · '+p.nome}
-   else if(modo==='mapa'&amp;&amp;N&amp;&amp;k!=='fluxo'){const v=N.R[p.id][k],nv=nivel(v,mx);cls=Ext.par||k==='os'||k==='ac'?nv[0]:'none';vl=v?`<span class="vl">${esc(fmtCam(k,v))}</span>`:'';tit=`${p.id} · ${p.nome} · ${camNome(k)}: ${fmtCam(k,v)} (intensidade ${nv[1]})`}
-   else if(k==='fluxo'&amp;&amp;modo==='mapa'){cls='';tit=`${p.id} · ${p.nome} · fluxo ${FLUXOS[p.fluxo]?FLUXOS[p.fluxo][0]:''}`}
+   if(modo==='mapa'&amp;&amp;k==='fotos'){cls='none dim';tit=numeroPonto(p)+' · '+p.nome}
+   else if(modo==='mapa'&amp;&amp;N&amp;&amp;k!=='fluxo'){const v=N.R[p.id][k],nv=nivel(v,mx);cls=Ext.par||k==='os'||k==='ac'?nv[0]:'none';vl=v?`<span class="vl">${esc(fmtCam(k,v))}</span>`:'';tit=`${numeroPonto(p)} · ${p.nome} · ${camNome(k)}: ${fmtCam(k,v)} (intensidade ${nv[1]})`}
+   else if(k==='fluxo'&amp;&amp;modo==='mapa'){cls='';tit=`${numeroPonto(p)} · ${p.nome} · fluxo ${FLUXOS[p.fluxo]?FLUXOS[p.fluxo][0]:''}`}
    const st=k==='fluxo'&amp;&amp;modo==='mapa'&amp;&amp;FLUXOS[p.fluxo]?`background:${FLUXOS[p.fluxo][1]};`:'';
-   return`<button type="button" class="l3-pin ${cls}${App.sel===p.id?' on':''}${App.edit?' edit':''}" data-pin="${esc(p.id)}" style="${st}left:${p.x}%;top:${p.y}%" title="${esc(tit)}" aria-label="${esc(tit)}">${esc(p.id)}${vl}</button>`}).join('');
+   return`<button type="button" class="l3-pin ${cls}${App.sel===p.id?' on':''}${App.edit?' edit':''}" data-pin="${esc(p.id)}" style="${st}left:${p.x}%;top:${p.y}%" title="${esc(tit)}" aria-label="${esc(tit)}">${esc(numeroPonto(p))}${vl}</button>`}).join('');
  const ops=modo==='pessoas'||(modo==='config'&amp;&amp;App.edit)?postos().map(p=>{const tem=turnos().some(t=>(pesNome(p,t.codigo)||'').trim());return`<button type="button" class="l3-op${tem?'':' vago'}${App.posto===p.id?' on':''}" data-posto="${esc(p.id)}" style="left:${p.x}%;top:${p.y}%;background-color:${OP_COR[p.op]||'#6F8092'}" title="${esc(p.id+' · '+(p.area||'')+(tem?'':' · sem pessoa definida'))}">${esc(p.op.replace('OP',''))}</button>`}).join(''):'';
  const fts=modo==='mapa'&amp;&amp;k==='fotos'?fotosPins():'';
- return`<div class="l3-vp"><div class="l3-cv" id="cv" style="width:${Math.round(App.zoom*100)}%;aspect-ratio:${Planta.w}/${Planta.h}"${Planta.origem?` data-planta="${esc(Planta.origem)}"`:''}><img src="${Planta.src}" draggable="false" alt="Planta da linha Vacutainer: do Tray Loader (início, ao centro) à saída da linha (à esquerda), com aplicação de gel, EDTA e sílica à direita."><svg class="ov" viewBox="0 0 ${LW} ${LH}" preserveAspectRatio="none" aria-hidden="${zon?'false':'true'}">${zon}${fl}${des}</svg>${pins}${ops}${fts}</div></div>`}
+ return`<div class="l3-vp"><div class="l3-cv" id="cv" tabindex="-1" style="width:${Math.round(App.zoom*100)}%;aspect-ratio:${Planta.w}/${Planta.h}"${Planta.origem?` data-planta="${esc(Planta.origem)}"`:''}><img src="${Planta.src}" draggable="false" alt="Planta da linha Vacutainer: do Tray Loader (início, ao centro) à saída da linha (à esquerda), com aplicação de gel, EDTA e sílica à direita."><svg class="ov" viewBox="0 0 ${LW} ${LH}" preserveAspectRatio="none" aria-hidden="${zon?'false':'true'}">${zon}${fl}${des}${arestas}</svg>${pins}${ops}${fts}${vertices}</div></div>`}
 
 /* 1.3.0 · trazido do Piloto: cada bloco da ficha diz o seu recorte de tempo e a ficha diz de onde vem cada número */
 const secRc=(t,rc)=>`<h4>${esc(t)} <span class="l3-rc">${esc(rc)}</span></h4>`;
@@ -36308,8 +36350,8 @@ function fichaPonto(N){const p=P(App.sel)||pontos()[0];if(!p)return'';const r=N.
  const oss=((Ext.equip&amp;&amp;Ext.equip.os)||[]).filter(o=>!/conclu|cancel/i.test(o.status||'')&amp;&amp;m[String(o.equipamento)]===p.id).slice(0,5);
  const acs=((Ext.inic&amp;&amp;Ext.inic.acoes)||[]).filter(a=>acAberta(a)&amp;&amp;(a.vinculos||[]).some(v=>(v.tipo==='equipamento'&amp;&amp;m[String(v.cod)]===p.id)||(v.tipo==='ponto'&amp;&amp;String(v.cod)===p.id))).slice(0,5);
  const eq1=E.lista[0]||'',h=(s,hash)=>{const x=(typeof systems==='function'?systems():[]).find(y=>y.id===s);return x&amp;&amp;typeof sysHref==='function'?sysHref(x,hash):'#'};
- const nova={titulo:'',descricao:'',origem:{tipo:'linha360',ref:'ponto|'+p.id,resumo:`Ponto ${p.id} · ${p.nome} · ${nf(r.min)} min parados de ${br(de)} a ${br(ate)}`,link:vacAquiHref('ponto='+p.id)},vinculos:[{tipo:'ponto',cod:p.id}].concat(E.lista.map(c=>({tipo:'equipamento',cod:c}))).concat(App.f.ordem?[{tipo:'ordem',cod:App.f.ordem}].concat((ordensPeriodo().find(o=>o.ordem===App.f.ordem)||{}).lote?[{tipo:'lote',cod:ordensPeriodo().find(o=>o.ordem===App.f.ordem).lote}]:[]):[])};   /* 1.0.1 · com o filtro Ordem · lote ligado, a ação nasce ligada à ordem e ao lote */
- return`<aside class="card l3-fi" id="ficha" aria-label="Ficha do ponto selecionado"><div><div class="eb">Ponto ${esc(p.id)} · fluxo ${esc((FLUXOS[p.fluxo]||['—'])[0])}</div><h3>${esc(p.nome)}</h3>
+ const nova={titulo:'',descricao:'',origem:{tipo:'linha360',ref:'ponto|'+p.id,resumo:`Ponto ${numeroPonto(p)} · ${p.nome} · ${nf(r.min)} min parados de ${br(de)} a ${br(ate)}`,link:vacAquiHref('ponto='+p.id)},vinculos:[{tipo:'ponto',cod:p.id}].concat(E.lista.map(c=>({tipo:'equipamento',cod:c}))).concat(App.f.ordem?[{tipo:'ordem',cod:App.f.ordem}].concat((ordensPeriodo().find(o=>o.ordem===App.f.ordem)||{}).lote?[{tipo:'lote',cod:ordensPeriodo().find(o=>o.ordem===App.f.ordem).lote}]:[]):[])};   /* 1.0.1 · com o filtro Ordem · lote ligado, a ação nasce ligada à ordem e ao lote */
+ return`<aside class="card l3-fi" id="ficha" aria-label="Ficha do ponto selecionado"><div><div class="eb">Ponto ${esc(numeroPonto(p))} · fluxo ${esc((FLUXOS[p.fluxo]||['—'])[0])}</div><h3>${esc(p.nome)}</h3>
   <div class="small muted">${E.lista.length?E.lista.map(c=>`<span class="code">${esc(c)}</span> ${esc(eqNome(c))}`).join(' · ')+(E.sugerido?' <span class="pill warn" title="Vínculo sugerido pelo nome; confirme em Configuração">sugerido</span>':''):'Sem equipamento do cadastro vinculado · <a href="#aba=config">vincular</a>'}</div></div>
   <div class="l3-tl"><div class="g"><small>Tempo parado no período</small><b>${dado(Ext.par,nf(r.min)+' min')}</b></div><div><small>Ocorrências</small><b>${dado(Ext.par,nf(r.oc))}</b></div><div><small>Quebras</small><b>${dado(Ext.par,nf(r.queb))}</b></div>
    <div><small>OS abertas</small><b>${dado(Ext.equip,nf(r.os))}</b>${r.osAtr?` <span class="pill crit">${r.osAtr} atrasada(s)</span>`:''}</div><div><small>Ações abertas</small><b>${dado(Ext.inic,nf(r.ac))}</b>${r.acAtr?` <span class="pill crit">${r.acAtr} atrasada(s)</span>`:''}</div></div>
@@ -36322,7 +36364,7 @@ function fichaPonto(N){const p=P(App.sel)||pontos()[0];if(!p)return'';const r=N.
    ${ps.length?ps.map(x=>`<div class="small"><b>${esc(x.id)}</b>${x.area?' · '+esc(x.area):''}</div><ul class="l3-li">${T.map(t=>{const n=(pesNome(x,t.codigo)||'').trim();return`<li><span>${esc(t.nome)}${t.codigo===tn?' <span class="l3-rc">turno atual</span>':''}</span><span class="sp"></span>${n?`<span>${esc(n)}</span>`:'<span class="muted">não definido</span>'}</li>`}).join('')}</ul>`).join(''):'<p class="small muted">Nenhum posto ligado a este ponto.</p>'}</section>
   <h4>Investigar e agir</h4><div class="l3-lk">
    ${eq1?`<a href="${esc(h('paradas','equipamento='+encodeURIComponent(eq1)))}"><span>${ic('paradas')} Paradas deste equipamento</span>${ic('seta','sm')}</a><a href="${esc(h('equip','eq='+encodeURIComponent(eq1)))}"><span>${ic('equip')} Ficha do equipamento</span>${ic('seta','sm')}</a>
-   <a href="${esc(h('equip','novaOS='+encodeURIComponent(JSON.stringify({equipamento:eq1,titulo:'',origem:{tipo:'linha360',ref:'ponto|'+p.id,resumo:'Ponto '+p.id+' · '+p.nome}}))))}" target="_blank" rel="noopener"><span>${ic('mais')} Abrir OS em Equipamentos</span>${ic('seta','sm')}</a>`:''}
+   <a href="${esc(h('equip','novaOS='+encodeURIComponent(JSON.stringify({equipamento:eq1,titulo:'',origem:{tipo:'linha360',ref:'ponto|'+p.id,resumo:'Ponto '+numeroPonto(p)+' · '+p.nome}}))))}" target="_blank" rel="noopener"><span>${ic('mais')} Abrir OS em Equipamentos</span>${ic('seta','sm')}</a>`:''}
    <a href="${esc(vacNovaAcaoHref(nova))}" target="_blank" rel="noopener" title="Abre Iniciativas com a ação preenchida; você confere antes de criar"><span>${ic('inic')} Nova ação em Iniciativas</span>${ic('seta','sm')}</a>
    <a href="${esc(h('oee',''))}"><span>${ic('oee')} Produção e OEE</span>${ic('seta','sm')}</a></div>
   <section id="fFonte">${fontesHtml()}</section></aside>`}
@@ -36346,7 +36388,7 @@ async function emailLinha(){const N=numeros(),T=N.tot,[de,ate]=periodo(),per=br(
  const acs=((Ext.inic&amp;&amp;Ext.inic.acoes)||[]).filter(acAberta).sort((a,b)=>String(a.prazo||'9').localeCompare(String(b.prazo||'9'))).slice(0,5).map(a=>`${a.id} · ${a.titulo} · ${a.responsavel||'sem responsável'} · prazo ${br(a.prazo)}${a.atrasada||(a.prazo&amp;&amp;a.prazo<hoje())?' (atrasada)':''}`);
  const resumo=[];if(chipsAtivos().length)resumo.push({rot:'Filtros',txt:chipsAtivos().map(c=>c[1]).join(' · ')+'.'});resumo.push({rot:'Resultado',txt:Ext.par?`${nf(tm)} min de parada em ${nf(T.oc+N.fora.oc)} ocorrência(s), ${nf(T.queb+N.fora.queb)} quebra(s).`:'Paradas não lido: sem dados de tempo parado.'});
  if(oa)resumo.push({rot:'Ordem',txt:`Em produção: ordem ${oa.ordem}, lote ${oa.lote||'—'}, catálogo ${oa.catalogo||'—'}.`});
- if(top[0])resumo.push({rot:'Onde',txt:`${top[0].p.id} · ${top[0].p.nome} concentra ${nf(top[0].v)} min (${T.min?(top[0].v/T.min*100).toFixed(0):0}% do tempo localizado na planta)${top[1]?`; em seguida ${top[1].p.nome}, com ${nf(top[1].v)} min`:''}.`});
+ if(top[0])resumo.push({rot:'Onde',txt:`${numeroPonto(top[0].p)} · ${top[0].p.nome} concentra ${nf(top[0].v)} min (${T.min?(top[0].v/T.min*100).toFixed(0):0}% do tempo localizado na planta)${top[1]?`; em seguida ${top[1].p.nome}, com ${nf(top[1].v)} min`:''}.`});
  if(Ext.equip||Ext.inic)resumo.push({rot:'Risco',txt:atr?`${T.osAtr} OS e ${T.acAtr} ação(ões) atrasada(s).`:'Nenhuma OS ou ação atrasada nos pontos da planta.'});
  if(Ext.inic)resumo.push({rot:'Ação',txt:`${T.ac} ação(ões) aberta(s) ligada(s) à linha${Ext.equip?` e ${T.os} OS aberta(s)`:''}.`});
  const svg=$('#gPonto svg:not(.vi)'),src=await vacEmail.svgPng(svg),fr=($('#gPonto .res')||{}).textContent||'';
@@ -36358,7 +36400,7 @@ async function emailLinha(){const N=numeros(),T=N.tot,[de,ate]=periodo(),per=br(
 function vMapa(){const N=numeros(),[de,ate]=periodo(),oa=ordemAtual(),T=N.tot,k=App.camada==='fluxo'||App.camada==='fotos'?'min':App.camada,FT=App.camada==='fotos';if(FT&amp;&amp;!Fotos.r)lerFotos();
  const top=pontos().map(p=>({p,v:N.R[p.id].min})).sort((a,b)=>b.v-a.v)[0];const ords=ordensPeriodo();
  const dias=[];for(let d=de;d<=ate&amp;&amp;dias.length<92;d=addDias(d,1))dias.push({d,v:0});const idx=Object.fromEntries(dias.map((x,i)=>[x.d,i]));for(const e of eventos())if(idx[e.dia]!=null)dias[idx[e.dia]].v+=+e.minutos||0;
- const porP=pontos().map(p=>({k:p.id,l:p.id+' · '+p.nome,v:N.R[p.id][k]})),porA=areas().map(a=>({k:a.id,l:a.nome,v:(a.pts||[]).reduce((s,id)=>s+((N.R[id]||{})[k]||0),0)}));
+ const porP=pontos().map(p=>({k:p.id,l:numeroPonto(p)+' · '+p.nome,v:N.R[p.id][k]})),porA=areas().map(a=>({k:a.id,l:a.nome,v:(a.pts||[]).reduce((s,id)=>s+((N.R[id]||{})[k]||0),0)}));
  const un=k==='min'?'min':'',lider=porP.slice().sort((a,b)=>b.v-a.v)[0];
  return`<div class="vk-hd"><div><h2>Visão da linha</h2><p>A planta da linha com o que está acontecendo em cada ponto: paradas, ordens de serviço e ações. Clique num ponto para investigar.</p></div></div>
  ${semPasta()}${avisos()}
@@ -36373,7 +36415,7 @@ function vMapa(){const N=numeros(),[de,ate]=periodo(),oa=ordemAtual(),T=N.tot,k=
  <div class="l3-top">
   <div class="l3-k"><span class="l">${ic('oee','sm')} Ordem em produção</span><span class="v">${oa?esc(oa.ordem):'<span class="muted" style="font-size:16px">sem dados</span>'}</span><span class="s l3-ord">${oa?`lote <b>${esc(oa.lote||'—')}</b> · catálogo ${esc(oa.catalogo||'—')} ${fichaOrd(oa.ordem)}`:'A Produção não publicou ordens'}</span></div>
   <div class="l3-k ${Ext.par?(T.min?'crit':'ok'):'none'}"><span class="l">${ic('paradas','sm')} Tempo parado</span><span class="v">${dado(Ext.par,nf(T.min+N.fora.min)+' min')}</span><span class="s">${Ext.par?`${nf(T.oc+N.fora.oc)} ocorrência(s) · ${nf(T.queb+N.fora.queb)} quebra(s)`:'Paradas não lido'}</span></div>
-  <div class="l3-k ${top&amp;&amp;top.v?'warn':'none'}"><span class="l">${ic('alerta','sm')} Ponto com mais tempo parado</span><span class="v">${top&amp;&amp;top.v?esc(top.p.id+' · '+top.p.nome):'—'}</span><span class="s">${top&amp;&amp;top.v?nf(top.v)+' min · '+(T.min?(top.v/T.min*100).toFixed(0):0)+'% do tempo localizado':'Sem paradas localizadas no período'}</span></div>
+  <div class="l3-k ${top&amp;&amp;top.v?'warn':'none'}"><span class="l">${ic('alerta','sm')} Ponto com mais tempo parado</span><span class="v">${top&amp;&amp;top.v?esc(numeroPonto(top.p)+' · '+top.p.nome):'—'}</span><span class="s">${top&amp;&amp;top.v?nf(top.v)+' min · '+(T.min?(top.v/T.min*100).toFixed(0):0)+'% do tempo localizado':'Sem paradas localizadas no período'}</span></div>
   <div class="l3-k ${Ext.equip?(T.osAtr?'crit':'ok'):'none'}"><span class="l">${ic('equip','sm')} OS abertas</span><span class="v">${dado(Ext.equip,nf(T.os))}</span><span class="s">${Ext.equip?(T.osAtr?T.osAtr+' atrasada(s)':'nenhuma atrasada'):'Equipamentos não lido'}</span></div>
   <div class="l3-k ${Ext.inic?(T.acAtr?'crit':'ok'):'none'}"><span class="l">${ic('inic','sm')} Ações abertas na linha</span><span class="v">${dado(Ext.inic,nf(T.ac))}</span><span class="s">${Ext.inic?(T.acAtr?T.acAtr+' atrasada(s)':'nenhuma atrasada'):'Iniciativas não lido'}</span></div></div>
  ${N.fora.min?`<p class="l3-av">${ic('info','sm')} ${nf(N.fora.min)} min de parada são de equipamento sem ponto na planta (${esc([...N.fora.eq].join(', '))}). Eles entram no total, mas não aparecem no mapa. <a href="#aba=config">Vincular em Configuração</a></p>`:''}
@@ -36404,7 +36446,7 @@ function vPessoas(){const p=postos().find(x=>x.id===App.posto)||postos()[0],T=tu
   <aside class="card l3-fi">${p?`<div><div class="eb">Posto ${esc(p.id)}</div><h3>${esc(p.area||p.id)}</h3><div class="small muted">Ponto da planta: ${p.ponto&amp;&amp;P(p.ponto)?esc(p.ponto+' · '+P(p.ponto).nome):'sem vínculo'}</div></div>
    <form id="fPosto" class="fgrid" style="grid-template-columns:1fr">${T.map(t=>`<label>${esc(t.nome)}<input name="t_${esc(t.codigo)}" list="dlNomes" maxlength="80" placeholder="Não definido" value="${esc(pesNome(p,t.codigo)||'')}"></label>`).join('')}
     <label>Área / atividade<input name="area" maxlength="80" value="${esc(p.area||'')}"></label>
-    <label>Ponto da planta<select name="ponto"><option value="">Sem vínculo</option>${pontos().map(x=>`<option value="${esc(x.id)}"${p.ponto===x.id?' selected':''}>${esc(x.id+' · '+x.nome)}</option>`).join('')}</select></label>
+    <label>Ponto da planta<select name="ponto"><option value="">Sem vínculo</option>${pontos().map(x=>`<option value="${esc(x.id)}"${p.ponto===x.id?' selected':''}>${esc(numeroPonto(x)+' · '+x.nome)}</option>`).join('')}</select></label>
     <label>Observação<input name="nota" maxlength="160" value="${esc(p.nota||'')}"></label><datalist id="dlNomes">${vacPessoa.opcoes(esc)}</datalist>
     <div class="row"><button class="b pri" type="submit">Salvar posto</button></div></form>`:''}</aside></div>
  ${vacLayout.sec('02','Quadro de postos','Todos os postos, por turno')}
@@ -36414,28 +36456,174 @@ function vChecklists(){const h=hoje(),tn=App.chkTurno||turnoAgora(),L=chkAtivos(
  return`<div class="vk-hd"><div><h2>Checklists</h2><p>Verificações de rotina ligadas a um ponto da planta. Marque o que foi feito no turno.</p></div><span class="sp"></span><label class="small">Turno <select id="ckTurno">${turnos().map(t=>`<option value="${esc(t.codigo)}"${tn===t.codigo?' selected':''}>${esc(t.nome)}</option>`).join('')}</select></label></div>${semPasta()}
  <div class="l3-top"><div class="l3-k ${pen.length?'warn':'ok'}"><span class="l">${ic('inic','sm')} Pendentes agora</span><span class="v">${pen.length}</span><span class="s">de ${L.length} checklist(s) · ${br(h)} · ${esc((turnos().find(t=>t.codigo===tn)||{}).nome||tn)}</span></div></div>
  ${vacLayout.sec('01','Hoje','O que falta e o que já foi feito')}
- <div class="l3-ckl">${L.length?L.map(c=>{const f=chkFeito(c,h,tn),p=c.ponto&amp;&amp;P(c.ponto);return`<div class="l3-ck${f?' feito':''}"><span class="pill ${f?'ok':'warn'}">${f?'Feito':'Pendente'}</span><span class="t">${esc(c.titulo)}</span><span class="small muted">${p?esc('ponto '+p.id+' · '+p.nome):'sem ponto'} · ${esc((FREQ.find(x=>x[0]===c.frequencia)||FREQ[0])[1].toLowerCase())}${f?' · '+esc(f.por||'?')+' em '+brh(f.em):''}</span><span class="sp"></span>
+ <div class="l3-ckl">${L.length?L.map(c=>{const f=chkFeito(c,h,tn),p=c.ponto&amp;&amp;P(c.ponto);return`<div class="l3-ck${f?' feito':''}"><span class="pill ${f?'ok':'warn'}">${f?'Feito':'Pendente'}</span><span class="t">${esc(c.titulo)}</span><span class="small muted">${p?esc('ponto '+numeroPonto(p)+' · '+p.nome):'sem ponto'} · ${esc((FREQ.find(x=>x[0]===c.frequencia)||FREQ[0])[1].toLowerCase())}${f?' · '+esc(f.por||'?')+' em '+brh(f.em):''}</span><span class="sp"></span>
    ${f?`<button class="b sm" data-desf="${esc(f.id)}">Desfazer</button>`:`<button class="b sm pri" data-feito="${esc(c.id)}">Marcar como feito</button>`}<button class="b sm" data-chked="${esc(c.id)}" aria-label="Editar checklist">${ic('editar','sm')}</button></div>`}).join(''):'<p class="empty card">Nenhum checklist cadastrado. Cadastre o primeiro abaixo, com o padrão em mãos.</p>'}</div>
  ${vacLayout.sec('02','Cadastrar checklist','O conteúdo vem do padrão da área; a página não inventa verificações')}
  <form class="card fgrid" id="fChk"><input type="hidden" name="id" value=""><label class="w2">Verificação<input name="titulo" required maxlength="150" placeholder="Ex.: Conferir nível de gel antes da partida"></label>
-  <label>Ponto da planta<select name="ponto"><option value="">Sem ponto</option>${pontos().map(x=>`<option value="${esc(x.id)}">${esc(x.id+' · '+x.nome)}</option>`).join('')}</select></label>
+  <label>Ponto da planta<select name="ponto"><option value="">Sem ponto</option>${pontos().map(x=>`<option value="${esc(x.id)}">${esc(numeroPonto(x)+' · '+x.nome)}</option>`).join('')}</select></label>
   <label>Posto responsável<select name="posto"><option value="">Qualquer</option>${postos().map(x=>`<option value="${esc(x.id)}">${esc(x.id+' · '+(x.area||''))}</option>`).join('')}</select></label>
   <label>Frequência<select name="frequencia">${FREQ.map(f=>`<option value="${f[0]}">${f[1]}</option>`).join('')}</select></label>
   <div class="row wf"><button class="b pri" type="submit" id="chkSalvar">Adicionar checklist</button><button class="b" type="button" id="chkDesativar" hidden>Desativar</button><button class="b" type="reset" id="chkLimpar">Limpar</button></div></form>`}
 
+/* As entidades nascem juntas na operação da Linha. O número visível é atribuído
+   sobre a base relida e os vínculos usam o ID estável, inclusive após uma repetição. */
+function aplicarLocal(D,op){
+ let p=op.ponto &amp;&amp; D.pontos.find(q=>q.id===op.ponto.id);
+ if(op.ponto &amp;&amp; !p){
+  const numero=1+Math.max(0,...PONTOS_PADRAO.concat(D.pontos).map(q=>Number(q.numero||q.id)||0));
+  p={...op.ponto,numero,nome:op.rotulo+' '+numero};
+  D.pontos.push(p);
+ }
+ if(p &amp;&amp; op.area){
+  const a=junta(D.areas,AREAS_PADRAO).find(q=>q.id===op.area);
+  if(a &amp;&amp; !(a.pts||[]).includes(p.id))applyOp(D,{k:'area',it:{id:a.id,pts:[...(a.pts||[]),p.id]}});
+ }
+ if(op.registro){
+  const {k,it}=op.registro;
+  const lista=k==='form'?D.formularios:D.checklists;
+  if(!lista?.some(q=>q.id===it.id))applyOp(D,op.registro);
+ }
+}
+function criarLocal(tipo,xy,area,alvo){
+ const rotulo={equipamento:'Equipamento',processo:'Processo',chk:'Checklist',form:'Formulário'}[tipo];
+ const novo=!alvo||tipo==='equipamento'||tipo==='processo';
+ const ponto=novo?{id:uid('pt'),x:xy[0],y:xy[1],fluxo:'comum',tipo}:null;
+ const id=novo?ponto.id:alvo.id;
+ let registro=null;
+ if(tipo==='form'){
+  const it=fmNovo();
+  it.id=it.id+'-'+uid('').slice(-5).toUpperCase();
+  delete it.novo;
+  Object.assign(it,{ponto:id,area:area||fmAreaDoPonto(id),titulo:'Formulário '+it.id,criadoEm:new Date().toISOString()});
+  registro={k:'form',it};
+ }else if(tipo==='chk'){
+  const codigo=uid('CK').toUpperCase();
+  registro={k:'chk',it:{id:codigo,ponto:id,titulo:'Checklist '+codigo,frequencia:'turno',ativo:true}};
+ }
+ App.sel=id;
+ Store.commit({k:'local',it:{id},ponto,rotulo,area,registro});
+ if(tipo==='equipamento')abrirEquipamento(P(id));
+ else toast(rotulo+' adicionado. Abra os detalhes pelo ponto '+numeroPonto(P(id))+'.');
+}
+function abrirEquipamento(p){
+ // Pedido explícito, na mesma pasta e sessão. Um endereço salvo apenas abre a ficha.
+ try{localStorage.setItem('linha.criarEquipamento',JSON.stringify({ponto:p.id,usuario:localStorage.getItem('vac.userId'),em:Date.now()}))}catch(e){}
+ vacIrPortal('cadastros/equipamentos/planta/'+encodeURIComponent(p.id)+'/'+encodeURIComponent(p.nome));
+}
+document.addEventListener('pointerdown',e=>{const menu=$('#cfMenu');if(menu&amp;&amp;!menu.contains(e.target))menu.remove()});
+document.addEventListener('keydown',e=>{if(e.key==='Escape'&amp;&amp;$('#cfMenu')){$('#cfMenu').remove();$('#cv')?.focus({preventScroll:true})}});
+function menuLocal(e){
+ if(App.tab!=='config'||App.desenho||!fmPode('configurar'))return;
+ e.preventDefault();
+ const xy=pctDe(e),pin=e.target.closest('[data-pin]'),p=pin&amp;&amp;P(pin.dataset.pin);
+ const zona=e.target.closest('[data-zona]'),area=zona?.dataset.zona||(p&amp;&amp;fmAreaDoPonto(p.id));
+ const a=area&amp;&amp;areas().find(q=>q.id===area);
+ $('#cfMenu')?.remove();
+ const menu=document.createElement('div');
+ menu.id='cfMenu';menu.className='card';
+ menu.setAttribute('role','group');menu.setAttribute('aria-label','Opções do local');
+ $('#main').appendChild(menu);
+ const acao=(nome,fn)=>{
+  const b=document.createElement('button');b.type='button';b.className='b';b.textContent=nome;
+  b.onclick=()=>{menu.remove();if(fmPode('configurar'))fn();else fmSemPerm('configurar')};
+  menu.appendChild(b);
+ };
+ if(p){
+  acao('Detalhes do ponto '+numeroPonto(p),()=>{const row=$$('tr[data-pt]').find(r=>r.dataset.pt===p.id);$('[data-c=nome]',row).focus()});
+  const codigos=eqDoPonto(p).lista;
+  for(const cod of codigos)acao('Detalhes do equipamento '+cod,()=>vacIrPortal('cadastros/equipamentos/'+encodeURIComponent(cod)));
+  if(p.tipo==='equipamento'&amp;&amp;!codigos.length)acao('Cadastrar equipamento deste ponto',()=>abrirEquipamento(p));
+  for(const c of chkAtivos().filter(q=>q.ponto===p.id))acao('Detalhes · '+c.titulo,()=>{ir('checklists');$$('[data-chked]').find(b=>b.dataset.chked===c.id)?.click()});
+  for(const f of fmLista().filter(q=>q.ponto===p.id))acao('Detalhes · '+f.titulo,()=>{
+   if(App.fm?.sujo&amp;&amp;!confirm('Descartar as alterações do formulário aberto?'))return;
+   ir('form');fmAbrir(f.id);
+  });
+ }
+ if(a){
+  const editar=campo=>{App.areaSel=a.id;render();$(campo)?.focus()};
+  acao('Alterar nome da área',()=>editar('#fArea [name=nome]'));
+  acao('Alterar pontos da área',()=>editar('#fArea [name=pt]'));
+  if(lerVertices(a.pol).length>=3)acao('Redimensionar área',()=>iniciarContorno(a,true));
+  acao('Redesenhar contorno',()=>iniciarContorno(a,false));
+ }
+ for(const [tipo,nome] of [['equipamento','equipamento'],['processo','processo'],['chk','checklist'],['form','formulário']]){
+  acao('Adicionar '+nome,()=>criarLocal(tipo,xy,area,p));
+ }
+
+ const r=menu.getBoundingClientRect(),frame=window.frameElement?.getBoundingClientRect();
+ const topo=frame?Math.max(0,-frame.top):0,fim=frame?Math.min(innerHeight,parent.innerHeight-frame.top):innerHeight;
+ menu.style.maxHeight=Math.max(80,fim-topo-8)+'px';
+ menu.style.left=Math.max(0,Math.min(e.clientX,innerWidth-r.width))+'px';
+ menu.style.top=Math.max(topo,Math.min(e.clientY,fim-r.height))+'px';
+ menu.firstElementChild.focus({preventScroll:true});
+}
+
+function iniciarContorno(area,ajustar){
+ if(!area||!fmPode('configurar'))return;
+ App.areaSel=area.id;App.edit=false;
+ App.desenho={id:area.id,ajustar,pts:ajustar?lerVertices(area.pol):[],historico:[]};
+ render();
+}
+function ligarContorno(d){
+ const cv=$('#cv'),arestas=$$('[data-aresta]',cv),limitar=v=>Math.max(0,Math.min(100,+v.toFixed(2)));
+ cv.onclick=e=>{
+  if(e.target.closest('[data-vertice],[data-pin],[data-posto]')||!fmPode('configurar'))return;
+  const aresta=e.target.closest('[data-aresta]');
+  if(d.ajustar&amp;&amp;!aresta)return;
+  d.historico.push(d.pts.slice());d.pts.splice(aresta?Number(aresta.dataset.aresta)+1:d.pts.length,0,pctDe(e));render();
+ };
+ for(const b of $$('[data-vertice]',cv)){
+  const i=Number(b.dataset.vertice);
+  const mover=(x,y)=>{
+   d.pts[i]=[limitar(x),limitar(y)];
+   b.style.left=d.pts[i][0]+'%';b.style.top=d.pts[i][1]+'%';
+   $('#cfPerimetro',cv).setAttribute('points',pontosSvg(d.pts));
+   if(arestas.length){
+    const anterior=arestas[(i+arestas.length-1)%arestas.length];
+    arestas[i].setAttribute('x1',b.style.left);arestas[i].setAttribute('y1',b.style.top);
+    anterior.setAttribute('x2',b.style.left);anterior.setAttribute('y2',b.style.top);
+   }
+  };
+  b.onpointerdown=e=>{
+   if(e.button!==0||!e.isPrimary||!fmPode('configurar'))return;
+   const antes=d.pts.slice(),[x,y]=antes[i],rect=cv.getBoundingClientRect();
+   const dx=e.clientX-rect.left-x*rect.width/100,dy=e.clientY-rect.top-y*rect.height/100;
+   b.focus({preventScroll:true});b.setPointerCapture(e.pointerId);
+   const atualizar=ev=>{
+    const r=cv.getBoundingClientRect();mover((ev.clientX-r.left-dx)*100/r.width,(ev.clientY-r.top-dy)*100/r.height);
+   };
+   const finalizar=ev=>{
+    if(ev.pointerId!==e.pointerId)return;
+    b.onpointermove=b.onpointerup=b.onpointercancel=b.onlostpointercapture=null;
+    if(ev.type==='pointerup'){
+     atualizar(ev);
+     if(d.pts[i][0]!==x||d.pts[i][1]!==y){d.historico.push(antes);$('#cfDesVolta').disabled=false}
+    }else mover(x,y);
+   };
+   b.onpointermove=ev=>{if(ev.pointerId===e.pointerId)atualizar(ev)};
+   b.onpointerup=b.onpointercancel=b.onlostpointercapture=finalizar;
+  };
+  b.onkeydown=e=>{
+   const delta={ArrowLeft:[-1,0],ArrowRight:[1,0],ArrowUp:[0,-1],ArrowDown:[0,1]}[e.key];
+   if(!delta||!fmPode('configurar'))return;
+   e.preventDefault();const [x,y]=d.pts[i];d.historico.push(d.pts.slice());
+   mover(x+delta[0]*.25,y+delta[1]*.25);$('#cfDesVolta').disabled=false;
+  };
+ }
+}
 function vConfig(){const S=Store,E=eqs(),a=areas().find(x=>x.id===App.areaSel)||areas()[0];
  return`<div class="vk-hd"><div><h2>Configuração</h2><p>Posição e equipamentos de cada ponto, áreas da linha, pasta e base.</p></div></div>
- ${vacLayout.sec('01','Planta','Arraste os pontos e os postos para o lugar certo; desenhe as áreas')}
- <section class="card l3-map" data-vg-nao><div class="l3-cam"><button type="button" id="cfEdit" aria-pressed="${App.edit}">${App.edit?'Concluir edição das posições':'Editar posições (arrastar)'}</button>
-   <label>Área <select id="cfArea">${areas().map(x=>`<option value="${esc(x.id)}"${a&amp;&amp;a.id===x.id?' selected':''}>${esc(x.nome)}</option>`).join('')}</select></label>
-   ${App.desenho?`<button type="button" id="cfDesFim" aria-pressed="true">Concluir desenho (${App.desenho.pts.length} pontos)</button><button type="button" id="cfDesVolta">Desfazer último</button><button type="button" id="cfDesCanc">Cancelar</button>`:`<button type="button" id="cfDes">Redesenhar esta área</button><button type="button" id="cfAreaNova">+ Área</button>`}
-   <span class="small muted">${App.desenho?'Clique na planta para marcar cada canto da área.':App.edit?'Arraste e solte; cada ponto movido é gravado.':''}</span></div>${plantaHtml('config')}</section>
- ${a?`<form class="card fgrid mt" id="fArea"><label>Nome da área<input name="nome" maxlength="60" required value="${esc(a.nome)}"></label><label class="wf">Pontos desta área<span class="l3-eqs">${pontos().map(p=>`<label><input type="checkbox" name="pt" value="${esc(p.id)}"${(a.pts||[]).includes(p.id)?' checked':''}> ${esc(p.id+' · '+p.nome)}</label>`).join('')}</span></label><div class="row wf"><button class="b pri" type="submit">Salvar área</button><button class="b" type="button" id="cfAreaDes">Desativar área</button></div></form>`:''}
+ ${vacLayout.sec('01','Planta','Use o botão direito para adicionar itens ou editar uma área.')}
+ <section class="card l3-map" data-vg-nao><div class="l3-cam"><button type="button" id="cfEdit" ${App.desenho?'disabled':''} aria-pressed="${App.edit}">${App.edit?'Concluir edição das posições':'Editar posições (arrastar)'}</button>
+   <label>Área <select id="cfArea" ${App.desenho?'disabled':''}>${areas().map(x=>`<option value="${esc(x.id)}"${a&amp;&amp;a.id===x.id?' selected':''}>${esc(x.nome)}</option>`).join('')}</select></label>
+   ${App.desenho?`<button type="button" id="cfDesFim" ${App.desenho.pts.length<3?'disabled':''}>Salvar contorno (${App.desenho.pts.length} pontos)</button><button type="button" id="cfDesVolta" ${App.desenho.historico.length?'':'disabled'}>Desfazer</button><button type="button" id="cfDesCanc">Cancelar</button>`:`${a&amp;&amp;lerVertices(a.pol).length>=3?`<button type="button" id="cfAjustar" ${fmPode('configurar')?'':'disabled'}>Redimensionar área</button>`:''}${a?'<button type="button" id="cfDes">Redesenhar esta área</button>':''}<button type="button" id="cfAreaNova">+ Área</button>`}
+   <span class="small muted">${App.desenho?(App.desenho.ajustar?'Arraste os vértices para ajustar a área. Clique numa borda para adicionar um vértice.':'Clique para adicionar cantos ou arraste os vértices para ajustar.'):App.edit?'Arraste e solte; cada ponto movido é gravado.':''}</span></div>${plantaHtml('config')}</section>
+ ${a&amp;&amp;!App.desenho?`<form class="card fgrid mt" id="fArea"><label>Nome da área<input name="nome" maxlength="60" required value="${esc(a.nome)}"></label><label class="wf">Pontos desta área<span class="l3-eqs">${pontos().map(p=>`<label><input type="checkbox" name="pt" value="${esc(p.id)}"${(a.pts||[]).includes(p.id)?' checked':''}> ${esc(numeroPonto(p)+' · '+p.nome)}</label>`).join('')}</span></label><div class="row wf"><button class="b pri" type="submit">Salvar área</button><button class="b" type="button" id="cfAreaDes">Desativar área</button></div></form>`:''}
  ${vacLayout.sec('02','Pontos e equipamentos',"O equipamento do cadastro da Administração é o que liga o ponto às paradas, às OS e às ações")}
  ${E.length?'':`<p class="l3-av">${ic('info','sm')} O cadastro de equipamentos da Administração ainda não foi lido neste computador. <a href="${esc(vacPortalHref('cadastros/equipamentos'))}">Abrir o cadastro na Administração</a></p>`}
  ${ptBarra()}
- <div class="tw"><table class="t"><thead><tr><th scope="col">Ponto</th><th scope="col">Nome</th><th scope="col">Fluxo</th><th scope="col">Equipamentos do cadastro</th></tr></thead><tbody>${pontos().map(p=>{const q=eqDoPonto(p),d=(App.ptRasc||{})[p.id],nm=d?d.nome:p.nome,fx=d?d.fluxo:p.fluxo,L=d?d.equipamentos:q.lista;return`<tr data-pt="${esc(p.id)}"${d?' class="l3-sujo"':''}><td class="code">${esc(p.id)}</td><td><input data-c="nome" maxlength="60" value="${esc(nm)}" aria-label="Nome do ponto ${esc(p.id)}"></td>
-   <td><select data-c="fluxo" aria-label="Fluxo do ponto ${esc(p.id)}">${Object.entries(FLUXOS).map(([c,v])=>`<option value="${c}"${fx===c?' selected':''}>${v[0]}</option>`).join('')}</select></td>
+ <div class="tw"><table class="t"><thead><tr><th scope="col">Ponto</th><th scope="col">Nome</th><th scope="col">Fluxo</th><th scope="col">Equipamentos do cadastro</th></tr></thead><tbody>${pontos().map(p=>{const q=eqDoPonto(p),d=(App.ptRasc||{})[p.id],nm=d?d.nome:p.nome,fx=d?d.fluxo:p.fluxo,L=d?d.equipamentos:q.lista;return`<tr data-pt="${esc(p.id)}"${d?' class="l3-sujo"':''}><td class="code">${esc(numeroPonto(p))}</td><td><input data-c="nome" maxlength="60" value="${esc(nm)}" aria-label="Nome do ponto ${esc(numeroPonto(p))}"></td>
+   <td><select data-c="fluxo" aria-label="Fluxo do ponto ${esc(numeroPonto(p))}">${Object.entries(FLUXOS).map(([c,v])=>`<option value="${c}"${fx===c?' selected':''}>${v[0]}</option>`).join('')}</select></td>
    <td><details class="l3-ms"><summary>${L.length?L.map(c=>`<span class="code">${esc(c)}</span> ${esc(eqNome(c))}`).join(' · '):'<span class="muted">nenhum equipamento</span>'}${q.sugerido&amp;&amp;!d?' <span class="pill warn" title="Sugerido pelo nome; salve para confirmar">sugerido</span>':''} <span class="small muted">· alterar</span></summary><span class="l3-eqs">${E.map(e=>`<label title="${esc(e.nome)}"><input type="checkbox" data-eq value="${esc(e.codigo)}"${L.includes(e.codigo)?' checked':''}> ${esc(e.codigo)} ${esc(e.nome)}</label>`).join('')||'<span class="muted small">sem cadastro</span>'}</span></details></td></tr>`}).join('')}</tbody></table></div>
  ${ptBarra()}
  ${vacLayout.sec('03','Pasta e base','Onde a página grava')}
@@ -36450,7 +36638,7 @@ function render(){topo();const nv=$('#nav');if(nv)nv.innerHTML=navHtml();const m
  scrollTo(0,sy);ligar();if(App.tab==='form')ligarForm();
  if(v2){const w=v2.clientWidth;if(App.tab==='mapa'&amp;&amp;App.camada==='fotos'&amp;&amp;w&amp;&amp;Math.abs(w-(App.vpW||900))>40){App.vpW=w;return render()}App.vpW=w||App.vpW}}
 function pctDe(e){const r=$('#cv').getBoundingClientRect();return[Math.max(0,Math.min(100,+((e.clientX-r.left)/r.width*100).toFixed(2))),Math.max(0,Math.min(100,+((e.clientY-r.top)/r.height*100).toFixed(2)))]}
-function ligar(){const on=(s,ev,f)=>{const e=$(s);if(e)e[ev]=f};const av=$('#avConn');if(av)av.onclick=e=>{e.preventDefault();Store.dir?Store.reconnect():Store.pick()};
+function ligar(){if(App.tab==='config'&amp;&amp;fmPode('configurar'))$('#cv').oncontextmenu=menuLocal;const on=(s,ev,f)=>{const e=$(s);if(e)e[ev]=f};const av=$('#avConn');if(av)av.onclick=e=>{e.preventDefault();Store.dir?Store.reconnect():Store.pick()};
  on('#fPer','onchange',e=>{App.f.per=e.target.value;if(App.f.per==='p'){const[d,a]=periodo();App.f.de=App.f.de||d;App.f.ate=App.f.ate||a}App.f.ordem='';render()});on('#fDe','onchange',e=>{App.f.de=e.target.value;render()});on('#fAte','onchange',e=>{App.f.ate=e.target.value;render()});
  on('#fTurno','onchange',e=>{App.f.turno=e.target.value;render()});on('#fOrdem','onchange',e=>{App.f.ordem=e.target.value;render()});on('#fFluxo','onchange',e=>{App.fluxo=e.target.value;render()});
  $$('[data-cam]').forEach(b=>b.onclick=()=>{App.camada=b.dataset.cam;render()});on('#cZonas','onchange',e=>{App.zonas=e.target.checked;if(!App.zonas)App.zona=null;render()});
@@ -36458,13 +36646,13 @@ function ligar(){const on=(s,ev,f)=>{const e=$(s);if(e)e[ev]=f};const av=$('#avC
  $$('[data-chip]').forEach(b=>b.onclick=()=>{const k=b.dataset.chip;if(k==='turno'||k==='todos')App.f.turno='';if(k==='ordem'||k==='todos')App.f.ordem='';if(k==='fluxo'||k==='todos')App.fluxo='';if(k==='zona'||k==='todos')App.zona=null;render()});
  $$('[data-irp]').forEach(a=>a.onclick=e=>{e.preventDefault();App.sel=a.dataset.irp;render()});
  $$('.l3-ch .bar').forEach(b=>b.onclick=()=>{const k=b.dataset.bar;if(b.closest('#gArea')){App.zonas=true;App.zona=App.zona===k?null:k}else App.sel=k;render()});
- $$('.zona').forEach(z=>{const f=()=>{if(App.tab==='config'){App.areaSel=z.dataset.zona}else App.zona=App.zona===z.dataset.zona?null:z.dataset.zona;render()};z.onclick=f;z.onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();f()}}});
+ $$('.zona').forEach(z=>{const f=()=>{if(App.desenho)return;if(App.tab==='config'){App.areaSel=z.dataset.zona}else App.zona=App.zona===z.dataset.zona?null:z.dataset.zona;render()};z.onclick=f;z.onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();f()}}});
  ligarFotos();
  const vp=$('.l3-vp');if(vp)vp.onwheel=e=>{if(!e.ctrlKey)return;e.preventDefault();if(App._roda)return;App._roda=1;requestAnimationFrame(()=>{App._roda=0});const z0=App.zoom,z=+Math.max(1,Math.min(zMax(),z0*(e.deltaY<0?1.25:.8))).toFixed(2);if(z===z0)return;
   const xy=pctDe(e),r=vp.getBoundingClientRect();App.zoom=z;App.centro=[xy[0],xy[1],e.clientX-r.left,e.clientY-r.top];render()};
  /* pinos e postos: clique seleciona; no modo de edição, arrastar grava a posição */
- const arrastar=(el,salvar)=>{el.onpointerdown=e=>{if(!App.edit)return;e.preventDefault();el.setPointerCapture(e.pointerId);let xy=null;el.onpointermove=ev=>{xy=pctDe(ev);el.style.left=xy[0]+'%';el.style.top=xy[1]+'%'};el.onpointerup=()=>{el.onpointermove=el.onpointerup=null;if(xy)salvar(xy)}}};
- $$('[data-pin]').forEach(b=>{b.onclick=()=>{if(App.edit)return;App.sel=b.dataset.pin;if(App.tab==='mapa')render()};arrastar(b,xy=>{const p=P(b.dataset.pin);Store.commit({k:'ponto',it:{id:p.id,x:xy[0],y:xy[1]}},{silencio:true});toast(`Ponto ${p.id} movido`)})});
+ const arrastar=(el,salvar)=>{el.onpointerdown=e=>{if(!App.edit||e.button!==0)return;e.preventDefault();el.setPointerCapture(e.pointerId);let xy=null;el.onpointermove=ev=>{xy=pctDe(ev);el.style.left=xy[0]+'%';el.style.top=xy[1]+'%'};el.onpointerup=()=>{el.onpointermove=el.onpointerup=null;if(xy)salvar(xy)}}};
+ $$('[data-pin]').forEach(b=>{b.onclick=e=>{if(App.edit||App.desenho)return;App.sel=b.dataset.pin;if(App.tab==='config')menuLocal(e);else if(App.tab==='mapa')render()};arrastar(b,xy=>{const p=P(b.dataset.pin);Store.commit({k:'ponto',it:{id:p.id,x:xy[0],y:xy[1]}},{silencio:true});toast(`Ponto ${numeroPonto(p)} movido`)})});
  $$('button[data-posto]').forEach(b=>{b.onclick=()=>{if(App.edit)return;App.posto=b.dataset.posto;render()};arrastar(b,xy=>{Store.commit({k:'posto',it:{id:b.dataset.posto,x:xy[0],y:xy[1]}},{silencio:true});toast(`Posto ${b.dataset.posto} movido`)})});
  $$('tr[data-posto]').forEach(r=>r.onclick=()=>{App.posto=r.dataset.posto;render()});
  const fp=$('#fPosto');if(fp)fp.onsubmit=e=>{e.preventDefault();const f=new FormData(fp),p=postos().find(x=>x.id===App.posto),pes={},ids={};for(const t of turnos()){const v=String(f.get('t_'+t.codigo)||'').trim(),i0=(p.pessoasIds||{})[t.codigo]||'',n0=(p.pessoas||{})[t.codigo]||'';
@@ -36479,10 +36667,18 @@ function ligar(){const on=(s,ev,f)=>{const e=$(s);if(e)e[ev]=f};const av=$('#avC
   on('#chkDesativar','onclick',()=>{const id=fc.id.value;if(id&amp;&amp;confirm('Desativar este checklist? O histórico continua guardado.'))Store.commit({k:'chk',it:{id,ativo:false}})});on('#chkLimpar','onclick',()=>{fc.id.value='';$('#chkSalvar').textContent='Adicionar checklist';$('#chkDesativar').hidden=true})}
  /* configuração */
  on('#cfEdit','onclick',()=>{App.edit=!App.edit;App.desenho=null;render()});on('#cfArea','onchange',e=>{App.areaSel=e.target.value;render()});
- on('#cfDes','onclick',()=>{App.desenho={id:(areas().find(x=>x.id===App.areaSel)||areas()[0]).id,pts:[]};App.edit=false;render()});on('#cfDesCanc','onclick',()=>{App.desenho=null;render()});on('#cfDesVolta','onclick',()=>{App.desenho.pts.pop();render()});
- on('#cfDesFim','onclick',()=>{const d=App.desenho;if(d.pts.length<3)return toast('Marque pelo menos 3 cantos',1);Store.commit({k:'area',it:{id:d.id,pol:d.pts.map(q=>q.join(',')).join(' ')}});App.desenho=null;toast('Área redesenhada');render()});
- on('#cfAreaNova','onclick',()=>{const n=(prompt('Nome da nova área:')||'').trim();if(!n)return;const id=uid('ar');Store.commit({k:'area',it:{id,nome:n.slice(0,60),pts:[],pol:''}},{silencio:true});App.areaSel=id;App.desenho={id,pts:[]};render();toast('Marque os cantos da área na planta')});
- const cv=$('#cv');if(cv&amp;&amp;App.desenho)cv.onclick=e=>{if(e.target.closest('[data-pin],[data-posto]'))return;App.desenho.pts.push(pctDe(e));render()};
+ const areaAtual=()=>areas().find(x=>x.id===App.areaSel)||areas()[0];
+ on('#cfAjustar','onclick',()=>iniciarContorno(areaAtual(),true));
+ on('#cfDes','onclick',()=>iniciarContorno(areaAtual(),false));
+ on('#cfDesCanc','onclick',()=>{App.desenho=null;render()});
+ on('#cfDesVolta','onclick',()=>{const d=App.desenho;if(d.historico.length){d.pts=d.historico.pop();render()}});
+ on('#cfDesFim','onclick',()=>{
+  if(!fmPode('configurar'))return fmSemPerm('configurar');
+  const d=App.desenho;if(d.pts.length<3)return toast('Marque pelo menos 3 cantos',1);
+  App.desenho=null;Store.commit({k:'area',it:{id:d.id,pol:d.pts.map(q=>q.join(',')).join(' ')}});toast('Contorno salvo');
+ });
+ on('#cfAreaNova','onclick',()=>{if(!fmPode('configurar'))return fmSemPerm('configurar');const n=(prompt('Nome da nova área:')||'').trim();if(!n)return;const a={id:uid('ar'),nome:n.slice(0,60),pts:[],pol:''};Store.commit({k:'area',it:a},{silencio:true});iniciarContorno(a,false);toast('Marque os cantos da área na planta')});
+ if(App.tab==='config'&amp;&amp;App.desenho)ligarContorno(App.desenho);
  const fa=$('#fArea');if(fa){fa.onsubmit=e=>{e.preventDefault();const a=areas().find(x=>x.id===App.areaSel)||areas()[0];Store.commit({k:'area',it:{id:a.id,nome:String(new FormData(fa).get('nome')).trim(),pts:$$('input[name=pt]:checked',fa).map(i=>i.value)}});toast('Área salva')};
   on('#cfAreaDes','onclick',()=>{const a=areas().find(x=>x.id===App.areaSel)||areas()[0];if(confirm(`Desativar a área "${a.nome}"? Ela some da planta; nada é apagado.`)){App.areaSel=null;Store.commit({k:'area',it:{id:a.id,ativo:false}})}})}
  /* 1.4.1 · pedido do responsável (22/11/2026): os pontos se editam todos e gravam de uma vez em "Salvar alterações". O que é digitado fica
@@ -36514,7 +36710,7 @@ function rota(){const h=location.hash.slice(1);if(!h)return;const i=h.indexOf('=
  if(k==='teste')return enterTest();if(k==='aba'&amp;&amp;abaOk(v)){App.tab=v;return render()}
  if(k==='ponto'&amp;&amp;P(v)){App.tab='mapa';App.sel=String(v);history.replaceState(history.state,'','#aba=mapa');return render()}}
 window.addEventListener('hashchange',rota);
-PAGE.busca=q=>{const k=norm(q),R=[];for(const p of pontos())if(norm(p.id+' '+p.nome+' '+eqDoPonto(p).lista.map(c=>c+' '+eqNome(c)).join(' ')).includes(k))R.push({tipo:'Ponto da linha',txt:p.id+' · '+p.nome,sub:'Linha 360° · planta',go:()=>{App.sel=p.id;ir('mapa')}});
+PAGE.busca=q=>{const k=norm(q),R=[];for(const p of pontos())if(norm(numeroPonto(p)+' '+p.nome+' '+eqDoPonto(p).lista.map(c=>c+' '+eqNome(c)).join(' ')).includes(k))R.push({tipo:'Ponto da linha',txt:numeroPonto(p)+' · '+p.nome,sub:'Linha 360° · planta',go:()=>{App.sel=p.id;ir('mapa')}});
  for(const p of postos())if(norm(p.id+' '+(p.area||'')+' '+turnos().map(t=>pesNome(p,t.codigo)).join(' ')).includes(k))R.push({tipo:'Posto',txt:p.id+' · '+(p.area||''),sub:turnos().map(t=>pesNome(p,t.codigo)).filter(Boolean).join(', ')||'sem pessoa',go:()=>{App.posto=p.id;ir('pessoas')}});return R.slice(0,20)};
 function vacAoTrocarUsuario(){render()}
 function vacGuiaAba(){return App.tab}
@@ -36542,7 +36738,7 @@ window.VAC_GUIA.linha = {
   form: { titulo: 'Formulários', para: 'Passar tarefas (pontuais, recorrentes ou planejadas) num formulário A4: checklist, limpeza, confirmação de processo, manutenção, AM ou 5S, com fotos marcadas e numeradas.',
     campos: [{ sel: '#fmNovo', nome: 'Novo formulário', o: 'Título, tipo, local da planta, pessoas, prazo, observação, tarefas e fotos.' }, { sel: '#fmFiltro', nome: 'Mostrar', o: 'Abertos, vencidos, aguardando confirmação ou todos.' }],
     passos: ['Crie o formulário e escolha o ponto da planta.', 'Adicione as fotos e marque com seta, círculo, retângulo ou número; escreva cada item.', 'Salve e imprima (A4). Depois, marque como executado; quem confirma confirma.'] },
-  config: { titulo: 'Configuração', para: 'Posição dos pontos e postos, equipamentos de cada ponto, áreas, pasta e base.', campos: [{ sel: '#cfEdit', nome: 'Editar posições', o: 'Arrastar pontos e postos na planta.' }, { sel: '#cfDes', nome: 'Redesenhar área', o: 'Clicar nos cantos da área na planta.' }] }
+  config: { titulo: 'Configuração', para: 'Posição dos pontos e postos, equipamentos de cada ponto, áreas, pasta e base.', campos: [{ sel: '#cfEdit', nome: 'Editar posições', o: 'Arrastar pontos e postos na planta.' }, { sel: '#cfAjustar', nome: 'Redimensionar área', o: 'Arrastar os vértices do contorno atual e salvar.' }, { sel: '#cfDes', nome: 'Redesenhar área', o: 'Clicar nos cantos da área na planta.' }] }
 };
 </script>
 </body>
@@ -55089,9 +55285,9 @@ body.vac-porta{overflow:hidden}
     {
       "id": "linha",
       "path": "Plataforma.html#motor/linha",
-      "version": "1.5.1",
-      "sha256": "c1642eec47a5c7e3e321403422f319e21273b081c19b622c0e3747287453db35",
-      "bytes": 976936
+      "version": "1.6.1",
+      "sha256": "711d6303d5cdaf41a578cab9a3222171bc6910ef3ed5bc4fc612f5e5f719d8be",
+      "bytes": 987673
     },
     {
       "id": "projetos",
@@ -55103,15 +55299,15 @@ body.vac-porta{overflow:hidden}
     {
       "id": "portal",
       "path": "Plataforma.html#motor/portal",
-      "version": "1.9.75",
-      "sha256": "0ffa9f7f6766178953bc3bb179909a249e7d153f3adbebc2e0fb33ced404873f",
-      "bytes": 1322827
+      "version": "1.9.76",
+      "sha256": "62efa5f248547d45b890f06ace6312f93aa8dfc04c6c4fefccfcac16226b909a",
+      "bytes": 1324542
     }
   ],
   "limitations": [
     "Projetos e conteúdo técnico OSM/MES/AM/TPM mantêm os limites documentados nas fontes."
   ],
-  "enginesSha256": "894c99e5dc9ff78b9c4d074046177925f6b06d424ac67ca12876152012fac5e5",
+  "enginesSha256": "d97cca1ab1de22cc0c891baa3eb3ca044e1aa11382caa4281c24b8e349c40cbc",
   "originRevision": "ffc9ee8",
   "sourceMode": "single-html",
   "originEnginesSha256": "a87a64ad0c328f70e102b2ae888790a9b5d5a9bd05778652a7ce7cae140e40d2"
@@ -55181,7 +55377,7 @@ summary{cursor:pointer;font-weight:600;color:var(--navy)}
 'use strict';
 /* ---------- referência (atualizar quando a plataforma mudar de versão) ---------- */
 // Iguais às do pacote da plataforma (nova-plataforma/src/generated/manifest.json); o teste ferramenta-verificar confere.
-const VERSOES = {"oee":"2.6.39","perdas":"1.12.20","gel":"2.47","paradas":"1.2.22","equip":"1.0.22","inic":"1.1.17","linha":"1.5.1","projetos":"0.1.16","portal":"1.9.75"};
+const VERSOES = {"oee":"2.6.39","perdas":"1.12.20","gel":"2.47","paradas":"1.2.22","equip":"1.0.22","inic":"1.1.17","linha":"1.6.1","projetos":"0.1.16","portal":"1.9.76"};
 const BASES = [
  { arq: 'vacutainer-cadastros.json', mod: 'portal', nome: 'Cadastro geral (Portal)', obrig: true, cadastro: true, bk: 'Cadastros' },
  { arq: 'portal-base.json', mod: 'portal', nome: 'Portal', obrig: true, bk: 'Portal' },
@@ -55772,7 +55968,7 @@ import { Icon, Button, Badge, Empty, Modal, BarChart, BrandLogo, CommandMenu } f
 import { ModuleFrame } from "vac:modulo/components/ModuleFrame";
 import manifest from "vac:recurso/manifesto";
 import { ModuleTabs } from "vac:modulo/components/ModuleTabs";
-const VERSION = "1.8.53";
+const VERSION = "1.8.55";
 /* Navegação 1.3.0 (16/11/2026): Visão da linha, Relatórios e Importações têm abas; as que mostram uma tela do
    Portal (motor da Administração) trazem o 3º campo com a aba dele. Administração fica só com cadastros e configuração. */
 const SHELL_TABS = {
