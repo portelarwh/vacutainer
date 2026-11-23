@@ -19,7 +19,8 @@ const html = fs.readFileSync(path.resolve(__dirname, '../../Plataforma.html'));
     const w = ms => page.waitForTimeout(ms || 500);
 
     // 1) catálogo com gel e sem equipamento de gel na Administração: o botão aparece, desabilitado, com o motivo
-    const ps2 = await o.evaluate(async () => { const day = curDay(), ps = day.shifts[1]; TurnoResumo.escolher(day, ps.id); render(); await new Promise(r => setTimeout(r, 400)); return ps.id; });
+    // (o cenário agora traz equipamentos de gel; aqui eles são tirados só na memória da página)
+    const ps2 = await o.evaluate(async () => { const C00 = GelTurno.ctx() || {}; GelTurno.ctx = () => ({ ...C00, equips: () => [], eq: () => null }); const day = curDay(), ps = day.shifts[1]; TurnoResumo.escolher(day, ps.id); render(); await new Promise(r => setTimeout(r, 400)); return ps.id; });
     const b1 = await o.evaluate(id => { const b = document.querySelector(`section.tl[data-tl="${id}"] .tl-s-scrap [data-gelscrap]`); const cel = b && b.closest('.tl-s-scrap');
       return b && { txt: b.textContent.trim(), dis: b.disabled, depoisDoScrap: !!cel.querySelector('[data-scrapturno]') && cel.querySelector('[data-scrapturno]').compareDocumentPosition(b) === 4, motivo: cel.textContent }; }, ps2);
     assert.ok(b1 && b1.txt === 'Scrap gel' && b1.dis && b1.depoisDoScrap, 'botão Scrap gel abaixo do Editar scrap ' + JSON.stringify(b1));

@@ -21,8 +21,8 @@ const OUT = process.env.SCRAP_PRINT || '';
     const o = await (await page.locator('iframe[title="Módulo Produção"]').elementHandle({ timeout: 60000 })).contentFrame();
     await o.waitForFunction(() => window.vacPagina?.pronto());
 
-    // 4) sem gel: popup só com a máquina
-    const sem = await o.evaluate(async () => { const day = curDay(), ps = day.shifts.find(p => !p.deleted && !locked(day, p)); TurnoCard.abrir(day, ps.id); await new Promise(r => setTimeout(r, 200));
+    // 4) sem gel: popup só com a máquina (o cenário agora traz equipamentos de gel; aqui eles são tirados só na memória)
+    const sem = await o.evaluate(async () => { const C00 = GelTurno.ctx() || {}; GelTurno.ctx = () => ({ ...C00, equips: () => [], eq: () => null }); const day = curDay(), ps = day.shifts.find(p => !p.deleted && !locked(day, p)); TurnoCard.abrir(day, ps.id); await new Promise(r => setTimeout(r, 200));
       const m = document.querySelector('.overlay .modal'), r = { largo: m.classList.contains('sc-largo'), lado: !!m.querySelector('.sc-lado') }; document.querySelectorAll('.overlay').forEach(x => x.remove()); return r; });
     assert.deepEqual(sem, { largo: false, lado: false }, 'sem gel: só a máquina');
 

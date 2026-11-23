@@ -11,16 +11,42 @@ const ID = 'cenario-atualizacao';
 const complementos = [];
 /* Dados fictícios que o cenário antigo não tinha, aplicados pelo próprio código da página (nada é calculado aqui).
    Só entram uma vez: se o dado já existe, nada muda. */
-async function COMPLEMENTO([mod, id]) {
+async function COMPLEMENTO([mod, id, desloc]) {
   // o dia da demonstração é o do cenário deslocado para hoje: as datas criadas aqui partem de hoje e voltam no fim
   if (mod === 'portal') {
-    // Gel lê a produção do turno pela Produção a partir de 30 dias antes do dia do cenário (Fase 4 · 4d)
-    const cad = vacDemo.ler('cad'); cad.parametros = cad.parametros || {}; const g = cad.parametros.gel = cad.parametros.gel || {};
-    if (g.registroPelaProducaoDesde) return '';
-    const d = new Date(); d.setDate(d.getDate() - 30); g.registroPelaProducaoDesde = d.toISOString().slice(0, 10);
     // a demonstração troca o localStorage da página; um quadro vazio da mesma origem grava no armazenamento de verdade da demonstração
-    const f = document.createElement('iframe'); document.body.appendChild(f); f.contentWindow.localStorage.setItem('vac.demo.' + id + '.base.cad', JSON.stringify(cad)); f.remove();
-    return 'cadastro: Gel lê a produção pela Produção desde ' + g.registroPelaProducaoDesde;
+    const gravar = cad => { const f = document.createElement('iframe'); document.body.appendChild(f); f.contentWindow.localStorage.setItem('vac.demo.' + id + '.base.cad', JSON.stringify(cad)); f.remove(); };
+    const cad = vacDemo.ler('cad'), notas = []; cad.parametros = cad.parametros || {}; const g = cad.parametros.gel = cad.parametros.gel || {};
+    // Gel lê a produção do turno pela Produção a partir de 30 dias antes do dia do cenário (Fase 4 · 4d)
+    if (!g.registroPelaProducaoDesde) { const d = new Date(); d.setDate(d.getDate() - 30); g.registroPelaProducaoDesde = d.toISOString().slice(0, 10); notas.push('Gel lê a produção pela Produção desde ' + g.registroPelaProducaoDesde); }
+    // Gel no formato v2 (cadastro central): formato de 01/10/2025 e os 14 locais de descarte da página antiga, ligados aos equipamentos.
+    // A MESMA informação vai para as cópias antigas que o Gel e a Produção ainda leem (parametros.gel.formatos e equipamentos[].gel.descs),
+    // para o código antigo e o novo enxergarem dados idênticos. As datas partem de hoje (deslocamento do cenário) e voltam no fim.
+    if (!(cad.gel && (cad.gel.formatos || []).length)) {
+      const mover = iso => new Date(Date.parse(iso + 'T12:00:00Z') + desloc * 864e5).toISOString().slice(0, 10), de = mover('2025-10-01');
+      cad.schemaVersion = 2;
+      cad.equipamentos = cad.equipamentos || [];
+      if (!cad.equipamentos.some(e => e.codigo === 'EQ13')) cad.equipamentos.push({ codigo: 'EQ13', nome: '3H Delay', linha: 'VAC', tipo: 'equipamento', ativo: true });
+      cad.gel = { formatos: [{ de, ate: null, embalagemG: 75, folhaPurgaG: 5, sobraBarrilKg: 1.6,
+        tubos: { '100': { tuboG: 4.779, gelG: 0.936, aditivoG: 0.02, tampaRolhaG: 2.3 }, '75': { tuboG: 3.56, gelG: 0.834, aditivoG: 0.015, tampaRolhaG: 2.3 } },
+        motivo: '', por: 'demo', em: de + 'T08:00:00' }], locais: [] };
+      const LOC = [['EQ03', 'MAQUINA GEL - VADG01', 'tubogel', 'T'], ['EQ08', 'SPRAY SILICA - VASS01', 'spray', 'T'], ['EQ13', '3H DELAY - VARG01', 'spray', 'T'],
+        ['EQ07', 'PACKOUT - VAEB01', 'completo', 'T'], ['EQ01', 'TULLIP A - CAIXA REJEIÇÃO (VATU01)', 'completo', 'T'], ['EQ01', 'TULLIP A - FUNIL BERÇO (VATU01)', 'completo', 'T'],
+        ['EQ02', 'TULLIP B - CAIXA REJEIÇÃO (VATU02)', 'completo', 'T'], ['EQ02', 'TULLIP B - FUNIL BERÇO (VATU02)', 'completo', 'T'],
+        ['EQ03', 'MAQUINA GEL - PURGA MULTIPLA - CABEÇOTE A', 'gel', 'P'], ['EQ03', 'MAQUINA GEL - PURGA MULTIPLA - CABEÇOTE B', 'gel', 'P'],
+        ['EQ03', 'MAQUINA GEL - PURGA DE AR - CABEÇOTE A', 'gel', 'P'], ['EQ03', 'MAQUINA GEL - PURGA DE AR - CABEÇOTE B', 'gel', 'P'],
+        ['EQ03', 'SALA GEL - PURGA DE AR', 'gel', 'P'], ['EQ03', 'MAQUINA GEL - BARRIL', 'barril', 'B']];
+      LOC.forEach(([eq, local, comp, categoria], i) => {
+        const n = String(i + 1).padStart(4, '0');
+        cad.gel.locais.push({ id: 'L-' + n, equipamento: eq, local, comp, categoria, motivos: [], embalagemG: null, ordem: i + 1, ativo: true });
+        const e = cad.equipamentos.find(x => x.codigo === eq); e.gel = e.gel || { tara: '', descs: [] };
+        e.gel.descs.push({ id: 'd-demo-' + n, local, comp, cat: categoria, mots: [] });
+      });
+      g.formatos = [{ from: de, tara: 75, taraP: 5, sobra: 1.6, f: { '100': { tubo: 4.779, gel: 0.936, adit: 0.02, tr: 2.3 }, '75': { tubo: 3.56, gel: 0.834, adit: 0.015, tr: 2.3 } } }];
+      notas.push('Gel v2: formato de ' + de + ' e ' + LOC.length + ' locais (cadastro v2 e cópias antigas iguais)');
+    }
+    if (!notas.length) return '';
+    gravar(cad); return 'cadastro: ' + notas.join('; ');
   }
   if (mod === 'oee') {
     // caixas do MES do dia, pelo importador do servidor (CSV): o lote da ordem, a mesma produção lançada (881 caixas de 1.000),
@@ -59,11 +85,12 @@ async function COMPLEMENTO([mod, id]) {
   const b = await chromium.launch(require('../testes/plataforma/chromium.cjs')()); const ctx = await b.newContext(); const erros = [];
   await ctx.route(/^https?:\/\/(?!127\.0\.0\.1)/, r => r.abort());
   const cen = JSON.parse(H.current().text('dados/cenario'));
+  const hoje = new Date(), DESLOC = Math.round((Date.parse(hoje.getFullYear() + '-' + String(hoje.getMonth() + 1).padStart(2, '0') + '-' + String(hoje.getDate()).padStart(2, '0') + 'T12:00:00Z') - Date.parse(cen.referencia + 'T12:00:00Z')) / 864e5);   // o mesmo deslocamento que a demonstração aplica
   try {
     for (let volta = 1; volta <= 2; volta++) for (const mod of ORDEM) {   // 2ª volta: quem lê o exports dos outros já vê o novo
       const p = await ctx.newPage(); p.on('pageerror', e => erros.push(mod + ': ' + e.message)); p.on('dialog', d => d.accept());
       await p.goto(U + encodeURI(arquivo[mod]) + '?demo=' + ID); await p.waitForTimeout(2500);
-      if (volta === 1) { const c = await p.evaluate(COMPLEMENTO, [mod, ID]); if (c) complementos.push(mod + ': ' + c); await p.waitForTimeout(800); }
+      if (volta === 1) { const c = await p.evaluate(COMPLEMENTO, [mod, ID, DESLOC]); if (c) complementos.push(mod + ': ' + c); await p.waitForTimeout(800); }
       await p.evaluate(m => { if (!vacDemo.ativo) throw new Error('demonstração não ativa'); vacDemo.publicar(m); }, mod); await p.close();
     }
     console.log(complementos.join('\n') || 'nenhum complemento necessário');
