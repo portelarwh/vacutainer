@@ -1,4 +1,4 @@
-const RAIZ=require('path').resolve(__dirname,'..')+'/';
+
 const {chromium}=require('playwright');const SP=require('path').resolve(__dirname,'..')+'/';(async()=>{const b=await chromium.launch();const ctx=await b.newContext({viewport:{width:1440,height:1000}});const errs=[];
 const C={schema:'vac-cadastros',rev:12,materiais:[{codigo:'10000001',nome:'Gel',tipo:'gel',ativo:true},{codigo:'1034567',nome:'Tampa',tipo:'rolha',ativo:true}],precos:[{material:'10000001',vigencias:[{de:'2026-01-01',ate:null,preco:12,moeda:'USD',porUnidade:'kg'}]}],cambio:[{codigo:'USD',ativo:true,vigencias:[{de:'2026-01-01',ate:null,cotacao:5.5}]}],
  metasArea:[{codigo:'WASTE-MES',nome:'Perda',unidade:'R$',ativo:true,vigencias:[{de:'2026-01-01',ate:null,valor:40000}]}],

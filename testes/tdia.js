@@ -2,7 +2,7 @@
 // só com os exports (regra 1); navegação para o dia anterior/próximo, ordem e lote; Resumo × Detalhado; busca por data; link #ficha=dia/.
 // Também confere a grade de gráficos: disposição aplicada antes da pintura, gráfico que cabe num cartão de 1/3 (sem rolagem lateral, 1.6.0) e Ampliar.
 // Dados fictícios em pasta simulada (OPFS). node testes/tdia.js → "sem erros"; código 1 se falhar. Prints em testes/saida/dia/
-const path = require('path'), fs = require('fs'), http = require('http'); const RAIZ = path.resolve(__dirname, '..');
+const path = require('path'), fs = require('fs'); const RAIZ = path.resolve(__dirname, '..');
 const { chromium } = require('playwright');
 const srv = require('../scripts/servidor-testes.cjs').server();
 const errs = []; const ok = (c, m) => { console.log((c ? 'ok   ' : 'FALHA ') + m); if (!c) errs.push(m); };
@@ -67,7 +67,7 @@ const cab = p => p.evaluate(() => { const a = document.querySelector('#vacFicha 
   }
   { const p = await abre('Paradas.html', '#ficha=dia/' + D2); await p.evaluate(PREP, [BASES, CAD]); await p.evaluate(d => vacFicha.abrir('dia', d), D2); await p.waitForTimeout(600); ok(/05\/03\/2030/.test(await cab(p)), 'link #ficha=dia/<data> abre o resumo'); await p.close(); }
   // Linha 360°: a barra do dia abre o resumo (clique e teclado)
-  { const p = await abre('Linha-360.html'); const tem = await p.evaluate(() => { try { if (typeof enterTest === 'function') enterTest(); } catch (e) { } return 1; }); await p.waitForTimeout(1200);
+  { const p = await abre('Linha-360.html'); await p.evaluate(() => { try { if (typeof enterTest === 'function') enterTest(); } catch (e) { } return 1; }); await p.waitForTimeout(1200);
     const n = await p.evaluate(() => document.querySelectorAll('#gDia rect[data-vac-dia]').length);
     if (n) { const d = await p.evaluate(() => { const r = [...document.querySelectorAll('#gDia rect[data-vac-dia]')].find(x => +x.getAttribute('height') > 2); r.dispatchEvent(new MouseEvent('click', { bubbles: true })); return r.dataset.vacDia; }); await p.waitForTimeout(500);
       const c = await cab(p); ok(/^Dia/.test(c) && c.includes(d.split('-').reverse().join('/')), `Linha 360°: clicar na barra do dia abre o resumo (${d})`);

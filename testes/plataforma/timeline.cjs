@@ -23,7 +23,7 @@ const html = fs.readFileSync(path.resolve(__dirname, '../../Plataforma.html'));
       assert.ok(await p.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1), nome + ': sem rolagem lateral da página');
       assert.ok(r.alto <= h, nome + ': a linha do tempo cabe na altura da tela (rola por dentro)');
       if (w === 1920) {
-        const c = await f.locator('#tloCv').boundingBox(); await f.locator('#tloCv').scrollIntoViewIfNeeded(); const c2 = await f.locator('#tloCv').boundingBox();
+        await f.locator('#tloCv').boundingBox(); await f.locator('#tloCv').scrollIntoViewIfNeeded(); const c2 = await f.locator('#tloCv').boundingBox();
         await p.mouse.move(c2.x + c2.width * 0.3, c2.y + 50); await p.waitForTimeout(250);
         const tip = await f.evaluate(() => { const e = document.querySelector('#tloTip'); return e && !e.hidden ? e.innerText : ''; });
         assert.match(tip, /Produzindo|Parada|Bloqueada|Ociosa/, 'tooltip dentro da plataforma'); assert.match(tip, /Duração/, 'tooltip com a duração');

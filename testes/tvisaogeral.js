@@ -85,7 +85,7 @@ const LER = () => {
     ok(ref.meuPainel === atual.meuPainel, 'Meu painel igual ao de antes');
   }
   // cliques preservados: dia no gráfico → gaveta do dia; Pareto → Paradas
-  const cliq = await o.evaluate(async () => { const w = t => new Promise(r => setTimeout(r, t)), out = {};
+  const cliq = await o.evaluate(async () => { const out = {};
     const sec = t => [...document.querySelectorAll('#main section.card')].find(s => (s.querySelector(':scope > header h3') || {}).textContent && s.querySelector(':scope > header h3').textContent.includes(t));
     const q = t => { const x = sec(t); return x ? x.querySelectorAll('[data-cid][data-i]').length : -1; };
     out.dia = q('OEE × meta'); out.par = q('Pareto de paradas'); out.temClique = out.dia > 0; out.pareto = out.par > 0; out.total = document.querySelectorAll('#main [data-cid]').length; return out; });

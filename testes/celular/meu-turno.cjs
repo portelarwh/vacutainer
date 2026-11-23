@@ -36,7 +36,7 @@ const html = fs.readFileSync(path.resolve(__dirname, '../../CELULAR/index.html')
     // 3) fechar: horas vazias ficam "não informado" (não zero); texto do WhatsApp
     await p.click('#fechar'); assert.match(await p.textContent('.sheet'), /4 hora\(s\) sem produção informada[\s\S]*não como zero/); await p.click('#fok'); await p.waitForSelector('#waTxt');
     const wa = await p.evaluate(() => txtWA(TURNOS[0]));
-    for (const re of [/\*Linha Vacutainer · 2º Turno · 20\/11\/2026\*/, /Produção: 164 de 462 mil\* \(35%\)/, /Paradas: \*25 min\* · Falta de material 25'/, /Scrap: 1\.150 tubos \(0,70%\)/, /Tullip B 1\.150/, /Gel: real 137,0 kg · teórico 136,8 kg/, /18:00  —\/56/, /17:00  28\/56  ⏱25' Falta de material – rack vazio/]) assert.match(wa, re);
+    for (const re of [/\*Linha Vacutainer · 2º Turno · 20\/11\/2026\*/, /Produção: 164 de 462 mil\* \(35%\)/, /Paradas: \*25 min\* · Falta de material 25'/, /Scrap: 1\.150 tubos \(0,70%\)/, /Tullip B 1\.150/, /Gel: real 137,0 kg · teórico 136,8 kg/, /18:00 {2}—\/56/, /17:00 {2}28\/56 {2}⏱25' Falta de material – rack vazio/]) assert.match(wa, re);
     assert.ok(await p.evaluate(() => document.querySelector('#cv').getContext('2d').getImageData(80, 120, 1, 1).data[3] > 0), 'imagem do WhatsApp desenhada');
     console.log('ok fechamento e texto do WhatsApp (hora vazia como "—", não zero); imagem desenhada');
 

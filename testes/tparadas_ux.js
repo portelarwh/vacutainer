@@ -59,7 +59,7 @@ const LER = async () => {
   ok(eq(ref.telaRecor, atual.telaRecor), `tabela de Recorrência com as mesmas linhas (${atual.telaRecor.length})`);
   // ----- tela nova (etapa 1: Visão geral e Pareto)
   const T = await o.evaluate(async () => {
-    const w = t => new Promise(r => setTimeout(r, t)), q = s => document.querySelector(s), qa = s => [...document.querySelectorAll(s)], out = {}, M = () => document.getElementById('main');
+    const w = t => new Promise(r => setTimeout(r, t)), q = s => document.querySelector(s), qa = s => [...document.querySelectorAll(s)], out = {};
     App.go('geral'); await w(300);
     out.faixas = qa('#main .pux-faixa').map(x => x.dataset.puxFaixa).join(',');
     out.principais = qa('#main .pux-kpis-main .kpi .l').map(x => x.textContent.trim()).join('|');

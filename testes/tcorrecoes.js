@@ -1,11 +1,11 @@
 // C2–C6 da contra-análise de 8cad6a6 (08/11/2026). Cada bloco reproduz o achado; na main anterior falha, com a correção passa.
 // C2: AT-04 (resumo de outro dia ao voltar à aba), AT-05 (link da anomalia), AT-10 (troca de usuário na Minha fila), AT-12 (ordem com zeros).
 // Pasta simulada (OPFS) por HTTP local e dados fictícios. node testes/tcorrecoes.js → "sem erros"; código 1 se falhar
-const path = require('path'), fs = require('fs'), http = require('http'); const RAIZ = path.resolve(__dirname, '..');
+ 
 const { chromium } = require('playwright');
 const srv = require('../scripts/servidor-testes.cjs').server();
 const errs = []; const ok = (c, m) => { console.log((c ? 'ok   ' : 'FALHA ') + m); if (!c) errs.push(m); };
-const dorme = ms => new Promise(r => setTimeout(r, ms));
+
 const CAD = { equipamentos: ['EQ01', 'EQ02', 'EQ03', 'EQ 04/B'].map(c => ({ codigo: c, nome: 'Máquina ' + c, ativo: true })),
   usuarios: [{ codigo: '1', nome: 'Ana', ativo: true }, { codigo: '2', nome: 'Bia', ativo: true }] };
 

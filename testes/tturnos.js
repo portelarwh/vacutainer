@@ -67,7 +67,7 @@ const { chromium } = require('playwright');
 
   // tela: quadro do dia e "Habilitar turno" (TUR-02) na base em memória
   const ui = await o.evaluate(async () => {
-    const d = Store.S.db; const X = U.today();
+     U.today();
     await Store.mutate(db => { const sh = db.shifts.find(s => !s.deleted && (s.versions || []).some(v => !v.deleted)); sh.versions.filter(v => !v.deleted).forEach(v => v.productive = false); db.settings.foraTurnoDesde = '2026-01-01'; });
     Engine.bumpConfig();
     const sh = Store.S.db.shifts.find(s => !s.deleted && (s.versions || []).some(v => !v.deleted && v.productive === false));

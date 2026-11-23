@@ -42,7 +42,7 @@ function medir(){
 (async()=>{let b;try{await new Promise(r=>srv.listen(0,'127.0.0.1',r));b=await chromium.launch(require('./chromium.cjs')());const p=await b.newPage({viewport:{width:1600,height:1000}}),errors=[];p.on('pageerror',e=>errors.push(e.message));await p.goto('http://127.0.0.1:'+srv.address().port+'/?demo=1');
  const todas=[],porPagina=[];let n=0;
  for(const name of MODULOS){await p.locator('.sidebar').getByRole('button',{name,exact:false}).click();const t='Módulo '+name;await p.waitForFunction(title=>[...document.querySelectorAll('iframe')].find(f=>f.title===title)?.contentWindow?.__vacBridge?.ready(),t);
-  const fr=()=>p.frames().find(f=>f.parentFrame()===p.mainFrame()&&f.page()&&f.url()!=='about:blank'&&f.name()!=='');
+  
   const handle=await p.locator('iframe[title="'+t+'"]').elementHandle(),frame=await handle.contentFrame();
   const abas=await frame.evaluate(()=>vacPagina.abas().map(a=>a.id));
   for(const aba of abas.length?abas:['']){if(aba){await frame.evaluate(a=>vacPagina.ir(a),aba);}await p.waitForTimeout(700);

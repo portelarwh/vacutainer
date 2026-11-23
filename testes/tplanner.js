@@ -2,7 +2,7 @@
 // Pasta simulada (OPFS) por HTTP local: gravação por operações, releitura, duas estações gravando juntas, erro de leitura,
 // tempos por responsável e por status (transferência, espera, reabertura), exports, link #nova= com aviso de ação parecida, KAS.
 // node testes/tplanner.js → "sem erros"; código 1 se falhar. Prints em testes/saida/planner/
-const path = require('path'), fs = require('fs'), http = require('http'); const RAIZ = path.resolve(__dirname, '..');
+const path = require('path'), fs = require('fs'); const RAIZ = path.resolve(__dirname, '..');
 const { chromium } = require('playwright');
 const verN = v => String(v || '').split(/[^\d]+/).filter(Boolean).slice(0, 4).map(Number).reduce((t, n, i) => t + n * Math.pow(1000, 3 - i), 0);   // versão como número (1.10 > 1.9; texto comparava errado)
 const srv = require('../scripts/servidor-testes.cjs').server();

@@ -1,6 +1,6 @@
 // Exclusivamente cenário fictício, carregado pelos adaptadores atuais de cada motor.
-const {chromium}=require('playwright'),http=require('http'),fs=require('fs'),path=require('path'),assert=require('assert/strict');
-const root=path.resolve(__dirname,'../..'),manifest=require('../../scripts/html.cjs').manifest();
+const {chromium}=require('playwright'),fs=require('fs'),path=require('path'),assert=require('assert/strict');
+const manifest=require('../../scripts/html.cjs').manifest();
 module.exports=async function generate(){const server=require('../../scripts/servidor-testes.cjs').server();let browser;try{await new Promise(r=>server.listen(0,'127.0.0.1',r));browser=await chromium.launch(require('./chromium.cjs')());const context=await browser.newContext({timezoneId:'UTC'}),bases={};
  for(const file of manifest.files.filter(f=>f.id!=='projetos')){const p=await context.newPage();await p.clock.setFixedTime(new Date('2026-11-15T12:00:00Z'));await p.goto('http://127.0.0.1:'+server.address().port+'/__modulos__/'+Object.keys(require('../../scripts/html.cjs').names).find(n=>require('../../scripts/html.cjs').names[n]===file.id)+'?demo=fixture-atual');await p.waitForFunction(()=>window.vacPagina?.pronto());bases[file.id]=await p.evaluate(id=>{
   vacDemo.publicar(id);let b;

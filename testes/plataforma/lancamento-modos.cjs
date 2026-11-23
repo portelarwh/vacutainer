@@ -61,7 +61,7 @@ const html = fs.readFileSync(path.resolve(__dirname, '../../Plataforma.html'));
     await f.waitForFunction(() => curDay().modoLanc === 'dia'); await f.waitForSelector('#diaBloco');
     await f.fill('input[data-lancdia="good"]', '800'); await f.press('input[data-lancdia="good"]', 'Tab'); await f.waitForFunction(() => curDay().lancDia && curDay().lancDia.good === 800000);
     const md = await f.evaluate(() => { const day = curDay(), res = Engine.computeDay(db(), day), r = res.r, tT = Engine.periodResult(db(), [day], { shiftId: day.shifts[0].shiftId });
-      const ex = Store.exportsFor ? null : null;
+      
       return { good: r.good, oee: r.oee, cap: r.cap, net: r.netMin, scrapMode: day.scrapMode, turnos: res.shifts.map(s => [s.porDia, s.r.good, s.r.oee]), horas: HHComum.pontos(day, res).length, tT: [tT.good, tT.cap, tT.diasPorDia],
         tela: { turnos: document.querySelectorAll('section.tl, .tr-faixa').length, rodape: !!document.querySelector('.lc-rodape [data-hhps=""]'), scrapTravado: document.querySelector('[data-scrapmode="shift"]').disabled },
         guardado: day.shifts.map(p => p.intervals.filter(i => !i.deleted && i.good != null).length) }; });

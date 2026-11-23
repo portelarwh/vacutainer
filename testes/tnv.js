@@ -1,9 +1,9 @@
 // NV-01–NV-05: regressões de origem, concorrência e recuperação. Dados fictícios; node testes/tnv.js.
 const {chromium}=require('playwright'),fs=require('fs'),path=require('path');
-const ROOT=path.resolve(__dirname,'..'),OUT=path.join(__dirname,'saida'),R=[];fs.mkdirSync(OUT,{recursive:true});let browser;
+const OUT=path.join(__dirname,'saida'),R=[];fs.mkdirSync(OUT,{recursive:true});let browser;
 /* 13/11/2026 · pelas páginas servidas por HTTP local (como o tbases): no Chromium atual o armazenamento de arquivos do navegador (OPFS) aberto por file:// dá
    "SecurityError: … unsafe for access" e o teste falhava em qualquer versão das páginas */
-const http=require('http');let BASE='';const srv=require('../scripts/servidor-testes.cjs').server();
+let BASE='';const srv=require('../scripts/servidor-testes.cjs').server();
 async function open(ctx,name,hash=''){if(!BASE){await new Promise(r=>srv.listen(0,r));BASE='http://127.0.0.1:'+srv.address().port}const p=await ctx.newPage();p.on('dialog',d=>d.accept());await p.goto(BASE+'/__modulos__/'+encodeURI(name)+hash);await p.waitForTimeout(750);return p;}
 /* 13/11/2026 · navegador que cai no meio do caso (o Chromium deste ambiente cai ao guardar no IndexedDB a pasta do armazenamento do navegador):
    o caso sai como NÃO VERIFICADO (não conta como aprovado) e o navegador é aberto de novo para os casos seguintes */
