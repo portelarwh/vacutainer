@@ -67,8 +67,8 @@ O que o responsável quer:
    7. **Pessoas e acesso:** usuários, perfis, permissões, layout padrão.
    8. **Sistema:** parâmetros de cálculo (semáforo, microparada, parada longa), servidor/MES, backup, programas de melhoria, TV, páginas e versões.
 5. **Código limpo:** cada etapa entra num PR que **remove o caminho antigo na mesma entrega** (tela, cópia, sincronização e campos velhos). Não fica leitor duplo nem campo com dois nomes. A cada etapa, o teste de contrato fica mais rígido.
-6. **Dados atuais:** um importador de uso único na Administração ("Importar das bases atuais") lê o cadastro atual e as cópias das páginas e monta o formato v2, com prévia. Ele sai do código na etapa final. Se o responsável preferir recadastrar, o importador pode nem ser feito.
-7. **Referência do detalhe perdido:** as páginas antigas estão no histórico do Git (ex.: `paginas/Gestão-Gel-Vacutainer.html`) e no HTML do Gel de 12–13/11 do responsável. Cada assunto começa comparando a tela antiga com a atual, item por item.
+6. **Dados atuais (decidido pelo responsável, 23/11/2026):** um importador de uso único na Administração ("Importar das bases atuais") lê o cadastro atual e as cópias das páginas e monta o formato v2, com prévia. Depois da importação na pasta real, **o importador sai do código** (etapa 8).
+7. **Referência do detalhe perdido:** as páginas antigas estão no histórico do Git. Para o Gel vale a versão de 13/11/2026, `git show 2161e02:"paginas/Gestão-Gel-Vacutainer.html"`, que é a das telas mostradas pelo responsável (formato com vigência, composições, cadastro de equipamentos de descarte). Cada assunto começa comparando a tela antiga com a atual, item por item.
 
 ### Chamadas minhas depois da leitura do revisor (a conferir)
 
