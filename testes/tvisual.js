@@ -110,7 +110,7 @@ const MEDIR=()=>{const q=s=>document.querySelector(s),r=e=>e?e.getBoundingClient
  // Paradas no modo de teste: faixa legível e gráficos mensais com uma unidade só na escala (eixo e totais)
  for(const tema of ['light','dark']){const ctx=await b.newContext({viewport:{width:1440,height:900},colorScheme:'light'});await ctx.addInitScript(t=>{try{localStorage.setItem('vac.theme',t)}catch(e){}},tema);
   const p=await ctx.newPage();await p.goto(S+'Paradas.html');await p.waitForTimeout(1000);await p.evaluate(()=>modoTeste());await p.waitForTimeout(700);
-  const k=await p.evaluate(MEDIR);const fx=await p.evaluate(()=>{const e=document.querySelector('#testBar'),s=getComputedStyle(e);return{vis:!e.hidden,c:s.color,bg:s.backgroundColor}});
+  await p.evaluate(MEDIR);const fx=await p.evaluate(()=>{const e=document.querySelector('#testBar'),s=getComputedStyle(e);return{vis:!e.hidden,c:s.color,bg:s.backgroundColor}});
   const lum=c=>{const srgb=/^color\(srgb/.test(c);const m=c.replace(/^color\(srgb/,'').match(/[\d.]+/g);const [R,G,B]=m.slice(0,3).map(x=>{x=srgb?+x:+x/255;return x<=.03928?x/12.92:Math.pow((x+.055)/1.055,2.4)});return .2126*R+.7152*G+.0722*B};
   const kc=(Math.max(lum(fx.c),lum(fx.bg))+.05)/(Math.min(lum(fx.c),lum(fx.bg))+.05);
   ok(fx.vis&&kc>=4.5,`Paradas ${tema}: faixa do modo de teste visível e legível (${kc.toFixed(2)}:1)`);
@@ -119,7 +119,7 @@ const MEDIR=()=>{const q=s=>document.querySelector(s),r=e=>e?e.getBoundingClient
   ok(Object.keys(un).length>0&&!mix.length,`Paradas ${tema}: cada gráfico de barras usa uma unidade só (${JSON.stringify(un)})`);await ctx.close()}
  // tema antigo gravado com aspas (Paradas até 1.0.7): todas as páginas reconhecem
  {const ctx=await b.newContext({colorScheme:'light'});const p=await ctx.newPage();await p.goto(S+'Portal.html');await p.evaluate(()=>localStorage.setItem('vac.theme','"dark"'));
-  for(const [n,arq] of PAGS){await p.goto(S+encodeURI(arq));await p.waitForTimeout(400);const at=await p.evaluate(()=>[document.documentElement.getAttribute('data-theme'),localStorage.getItem('vac.theme')]);ok(at[0]==='dark'&&at[1]==='dark',`${n}: tema antigo "\"dark\"" normalizado e aplicado (${at.join(' / ')})`)}
+  for(const [n,arq] of PAGS){await p.goto(S+encodeURI(arq));await p.waitForTimeout(400);const at=await p.evaluate(()=>[document.documentElement.getAttribute('data-theme'),localStorage.getItem('vac.theme')]);ok(at[0]==='dark'&&at[1]==='dark',`${n}: tema antigo ""dark"" normalizado e aplicado (${at.join(' / ')})`)}
   await ctx.close()}
  // ---- menu Mais do Gel: dentro da tela e com as ações
  for(const w of [1440,390]){const ctx=await b.newContext({viewport:{width:w,height:800}});const p=await ctx.newPage();await p.goto(S+encodeURI('Gestão-Gel-Vacutainer.html'));await p.waitForTimeout(900);

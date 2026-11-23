@@ -1,7 +1,7 @@
 // E5 do plano único (08/11/2026): ficha da ordem/lote/LP, busca Ctrl K por índice, link #ficha=, cópia sem pasta, ← Voltar.
 // Pasta simulada (OPFS) com os exports das 5 páginas em "00. Bases", páginas por HTTP local. A ficha só mostra o exports (regra 1).
 // node testes/tficha.js → "sem erros"; código 1 se falhar. Prints em testes/saida/ficha/
-const path = require('path'), fs = require('fs'), http = require('http'); const RAIZ = path.resolve(__dirname, '..');
+const path = require('path'), fs = require('fs'); const RAIZ = path.resolve(__dirname, '..');
 const { chromium } = require('playwright');
 const srv = require('../scripts/servidor-testes.cjs').server();
 const errs = []; const ok = (c, m) => { console.log((c ? 'ok   ' : 'FALHA ') + m); if (!c) errs.push(m); };

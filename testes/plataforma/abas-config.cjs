@@ -6,7 +6,7 @@ const html=fs.readFileSync(path.resolve(__dirname,'../../Plataforma.html'));cons
  const p=await b.newPage({viewport:{width:1440,height:1000}}),errors=[];p.on('pageerror',e=>errors.push(e.message));
  await p.goto('http://127.0.0.1:'+srv.address().port+'/?demo=1');
  const abrir=async()=>{await p.locator('.sidebar').getByRole('button',{name:'Produção',exact:false}).click();await p.waitForFunction(()=>[...document.querySelectorAll('iframe')].find(f=>f.title==='Módulo Produção')?.contentWindow?.__vacBridge?.ready());};
- await abrir();const fr=p.frameLocator('iframe[title="Módulo Produção"]'),frame=()=>p.frames().find(f=>f.url()&&f!==p.mainFrame()&&f.name()!==''||false);
+ await abrir();const fr=p.frameLocator('iframe[title="Módulo Produção"]');
  const ev=(fn,arg)=>p.evaluate(([src,arg])=>{const w=[...document.querySelectorAll('iframe')].find(f=>f.title==='Módulo Produção').contentWindow;return w.eval('('+src+')')(arg)},[fn.toString(),arg]);
  await p.waitForSelector('.module-tabs button[data-tab-id="stops"]');
  /* sem destaque: nenhuma pílula; o selo só nas abas que já têm estado (a Demonstração traz Equipamentos em construção); a casca abre a primeira aba */

@@ -1,7 +1,7 @@
 // Formulário real, somente dados fictícios: regras do Portal e persistência da parada.
-const fs = require('fs'), path = require('path'), http = require('http'), assert = require('assert/strict');
+const assert = require('assert/strict');
 const { chromium } = require('playwright');
-const root = path.resolve(__dirname, '..');
+
 const srv = require('../scripts/servidor-testes.cjs').server();
 (async () => {
   let browser;

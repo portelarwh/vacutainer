@@ -1,6 +1,6 @@
 import helpers from '../../scripts/html.cjs';
 // A ferramenta ferramentas/Verificar-pasta.html usa as mesmas versões do pacote da plataforma e as mesmas pastas de backup das páginas.
-import {test} from 'node:test';import assert from 'node:assert/strict';import {readFileSync} from 'node:fs';
+import {test} from 'node:test';import assert from 'node:assert/strict';
 const html=helpers.current().text('ferramenta/verificar'),manifest=helpers.manifest();
 test('Verificar pasta: versões de referência iguais às do pacote da plataforma',()=>{
  const versoes=Function('return '+html.match(/const VERSOES = (\{[^}]*\})/)[1])();

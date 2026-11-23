@@ -1,4 +1,4 @@
-const RAIZ=require('path').resolve(__dirname,'..')+'/';
+
 const {chromium}=require('playwright');const S='file://'+require('path').resolve(__dirname,'..')+'/__modulos__/';(async()=>{const b=await chromium.launch();const p=await b.newPage({viewport:{width:1440,height:1000}});const errs=[];p.on('pageerror',e=>errs.push(e.message));p.on('dialog',d=>d.accept());
 await p.goto(S+'Portal.html#geral');await p.waitForTimeout(600);await p.evaluate(()=>enterTest());await p.waitForTimeout(400);await p.evaluate(()=>Lock.on(Cad.D.seguranca.senhaHash));
 console.log('teste tem:',await p.evaluate(()=>CAD_ORD.map(t=>t+':'+(Cad.D[t]||[]).length).join(' ')),'| turnos:',await p.evaluate(()=>Cad.D.turnos.map(t=>t.codigo).join(',')),'| paradas:',await p.evaluate(()=>Cad.D.paradas.map(t=>t.codigo).join(',')),'| materiais:',await p.evaluate(()=>Cad.D.materiais.map(m=>m.codigo+'/'+m.tipo).join(',')));

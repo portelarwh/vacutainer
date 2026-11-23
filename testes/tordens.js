@@ -1,7 +1,7 @@
 // E1 · Produção › Ordens: gravação e backups confiáveis (plano único de 08/11/2026; F01–F04 / B1, B6).
 // Pasta simulada no sistema de arquivos do navegador (OPFS), páginas por HTTP local, falhas injetadas no backend.
 // node testes/tordens.js → "sem erros"; código 1 se falhar
-const path = require('path'), fs = require('fs'), http = require('http'); const RAIZ = path.resolve(__dirname, '..');
+ 
 const { chromium } = require('playwright');
 const srv = require('../scripts/servidor-testes.cjs').server();
 const errs = []; const ok = (c, m) => { console.log((c ? 'ok   ' : 'FALHA ') + m); if (!c) errs.push(m); };

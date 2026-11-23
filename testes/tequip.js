@@ -1,7 +1,7 @@
 // E11 do plano único (08/11/2026): Equipamentos v1 (ficha, OS, TAGs com vigência, anomalia → OS, estrutura AM/TPM) e o Paradas
 // mostrando a OS no evento (lendo o exports de Equipamentos). Pasta simulada (OPFS) por HTTP local.
 // node testes/tequip.js → "sem erros"; código 1 se falhar. Prints em testes/saida/equip/
-const path = require('path'), fs = require('fs'), http = require('http'); const RAIZ = path.resolve(__dirname, '..');
+const path = require('path'), fs = require('fs'); const RAIZ = path.resolve(__dirname, '..');
 const { chromium } = require('playwright');
 const srv = require('../scripts/servidor-testes.cjs').server();
 const errs = []; const ok = (c, m) => { console.log((c ? 'ok   ' : 'FALHA ') + m); if (!c) errs.push(m); };

@@ -36,7 +36,7 @@ await b.close();
 const b2=await chromium.launch();const q=await b2.newPage({viewport:{width:1440,height:900}});q.on('pageerror',e=>errs.push('W '+e.message));q.on('dialog',d=>d.accept());
 await q.goto('file://'+RAIZ+'__modulos__/Perdas-Ordem.html#aba=importar&kkbc=900000001,900000002');await q.waitForTimeout(800);await q.evaluate(()=>{localStorage.setItem('vac.user','Pedro');enterTest()});await q.waitForTimeout(600);
 await q.evaluate(()=>{showTab('importar');kkbcPedLer()});await q.waitForTimeout(300);console.log('faixa:',await q.$eval('#kkbcPed',e=>e.innerText.replace(/\n/g,' ').slice(0,200)));
-await q.evaluate(async()=>{const r0=B.rows[0];const per=r0.per;IMP={R:{recs:[{...r0,ordem:'900000001',id:undefined}],rej:[],dupI:0,subt:0,gran:'ordem × componente',extra:null},meta:{arquivo:'teste.txt',raw:null},headers:[],map:{},list:true};await doImport()});await q.waitForTimeout(800);
+await q.evaluate(async()=>{const r0=B.rows[0];IMP={R:{recs:[{...r0,ordem:'900000001',id:undefined}],rej:[],dupI:0,subt:0,gran:'ordem × componente',extra:null},meta:{arquivo:'teste.txt',raw:null},headers:[],map:{},list:true};await doImport()});await q.waitForTimeout(800);
 console.log('após importar: aba',await q.evaluate(()=>localStorage.getItem('perdas.tab')),'|',await q.$eval('#impOk',e=>e.innerText.replace(/\n/g,' ').slice(0,160)).catch(e=>'sem card'),'| faixa:',await q.$eval('#kkbcPed',e=>e.innerText.replace(/\n/g,' ').slice(0,120)));
 await q.screenshot({path:SS+'testes/saida/z3.png'});
 await q.click('#impProx');await q.waitForTimeout(200);console.log('próxima: foco',await q.evaluate(()=>document.activeElement.id));

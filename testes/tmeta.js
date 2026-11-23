@@ -1,7 +1,7 @@
 /* Portal 1.8.2 · Importar › Meta OEE FY27 (planilha fictícia no formato da aba Meta OEE FY27)
    Usa Playwright e SheetJS 0.20.3 local   ·   uso: node testes/tmeta.js */
 const RAIZ = require('path').resolve(__dirname, '..') + '/';
-const fs = require('fs'), path = require('path');
+const fs = require('fs');
 const { chromium } = require('playwright');
 const XLSX = require('../scripts/html.cjs').library('xlsx');
 if (XLSX.set_fs) XLSX.set_fs(fs);

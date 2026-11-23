@@ -2,7 +2,7 @@
 // as outras páginas leem de 00. Bases (ou da raiz, enquanto a base não foi movida); cópia mais nova na raiz não é apagada.
 // Usa o sistema de arquivos do próprio navegador (OPFS), com as mesmas operações da pasta da rede. Páginas servidas por HTTP local.
 // node testes/tbases.js → "sem erros"; código 1 se falhar
-const path=require('path'),fs=require('fs'),http=require('http');const RAIZ=path.resolve(__dirname,'..');
+const path=require('path'),fs=require('fs');const RAIZ=path.resolve(__dirname,'..');
 const {chromium}=require('playwright');
 const srv=require('../scripts/servidor-testes.cjs').server();
 (async()=>{await new Promise(r=>srv.listen(0,r));const U=`http://127.0.0.1:${srv.address().port}/__modulos__/`;

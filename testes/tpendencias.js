@@ -2,7 +2,7 @@
 // desconhecido não é gravado (AT-03), link de origem só com endereço seguro (AT-11), regravação das confirmadas sobrescritas (R-01),
 // trava da 2ª aba nas páginas que guardam a base inteira (Portal, Waste). Pasta simulada (OPFS) por HTTP local, dados fictícios.
 // node testes/tpendencias.js → "sem erros"; código 1 se falhar
-const path = require('path'), fs = require('fs'), http = require('http'); const RAIZ = path.resolve(__dirname, '..');
+ 
 const { chromium } = require('playwright');
 const srv = require('../scripts/servidor-testes.cjs').server();
 const errs = []; const ok = (c, m) => { console.log((c ? 'ok   ' : 'FALHA ') + m); if (!c) errs.push(m); };
@@ -116,7 +116,7 @@ const BASE = (k, rev, n) => { const b = { schema: PG[k].schema, schemaVersion: 1
   }
 
   // ---------- trava da 2ª aba (Portal e Waste guardam a base inteira pendente): bloqueia sem descartar
-  for (const [arq, faz, pend, nomeP] of [['Portal.html', () => Store.commit('teste', x => { x.config.c1 = (x.config.c1 || 0) + 1; }), () => Store.pending, 'portal'],
+  for (const [arq, faz, pend] of [['Portal.html', () => Store.commit('teste', x => { x.config.c1 = (x.config.c1 || 0) + 1; }), () => Store.pending, 'portal'],
     ['Perdas-Ordem.html', () => commit('teste', x => { x.config.c1 = (x.config.c1 || 0) + 1; }), () => ST.pending, 'perdas']]) {
     const ctx = await b.newContext(); const A = await nova(ctx, arq), Bp = await nova(ctx, arq);
     await ev(A, faz); await dorme(2600);

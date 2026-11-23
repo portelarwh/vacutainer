@@ -16,7 +16,7 @@ const { chromium } = require('playwright');
   /* Portal: seletor de período */
   const po = await nova('Portal.html', 'Portal', '#geral');
   await po.evaluate(() => enterTest()); await po.waitForTimeout(400);
-  const h = await po.evaluate(() => todayISO());
+  await po.evaluate(() => todayISO());
   await po.evaluate(() => { localStorage.removeItem('portal.periodo'); const h = todayISO(), y = addDays(h, -1), y2 = addDays(h, -2), mes = h.slice(0, 7);
     const set = (id, ex) => { MOD.data[id] = MOD.data[id] || { sys: sysOf(id), kpis: [['x', '1', '', '']], pend: [] }; MOD.data[id].ex = Object.assign({ exportsVersion: 1 }, ex); };
     set('oee', { porDia: [{ dia: y, boa: 800, cap: 1000, metaDec: 750, metaOp: 760, scrap: 10, oee: 0.8, oeeMeta: 0.75 }, { dia: y2, boa: 600, cap: 1000, metaDec: 750, metaOp: 760, scrap: 20, oee: 0.6, oeeMeta: 0.75 }],

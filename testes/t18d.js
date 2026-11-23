@@ -1,4 +1,4 @@
-const RAIZ=require('path').resolve(__dirname,'..')+'/';
+
 const {chromium}=require('playwright');const SP=require('path').resolve(__dirname,'..')+'/';(async()=>{const b=await chromium.launch();const p=await b.newPage({viewport:{width:1440,height:1100}});const errs=[];p.on('pageerror',e=>errs.push(e.message));
 await p.goto('file://'+SP+'__modulos__/Portal.html#geral');await p.waitForTimeout(600);await p.evaluate(()=>enterTest());await p.waitForTimeout(400);await p.evaluate(()=>{Lock.on(Cad.D.seguranca.senhaHash);Cad.ui.sec='metasOee';App.show('cad')});await p.waitForTimeout(400);
 await p.click('#cadNovo');await p.waitForTimeout(400);await p.screenshot({path:SP+'testes/saida/m18.png'});

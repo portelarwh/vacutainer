@@ -1,4 +1,4 @@
-// Plataforma 1.8.57 (pedido do responsável, 23/11/2026): o tipo de parada se busca DENTRO da lista, como o filtro do Excel.
+// Plataforma 1.8.58 (pedido do responsável, 23/11/2026): o tipo de parada se busca DENTRO da lista, como o filtro do Excel.
 // Demonstração: Produção › Registrar parada (dados fictícios). O que este teste prova:
 //  1. o campo é um botão com a setinha; ao abrir aparece a caixa de texto com a lista logo abaixo, sem campo de busca separado;
 //  2. digitar filtra a lista; dois cliques escolhem e fecham;

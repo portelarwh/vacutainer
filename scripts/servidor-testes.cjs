@@ -1,6 +1,6 @@
 // Transporte de teste para o código incorporado. Não gera páginas nem é servidor do produto.
 const fs=require('node:fs'),path=require('node:path'),http=require('node:http');
-const {ROOT,FILE,current,names}=require('./html.cjs');
+const {ROOT,current,names}=require('./html.cjs');
 function virtual(url) {
   const pathname=decodeURIComponent(new URL(url,'http://teste.invalid').pathname);
   const name=pathname.split('/').pop();
