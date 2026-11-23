@@ -47,12 +47,13 @@ const html = fs.readFileSync(path.resolve(__dirname, '../../Plataforma.html'));
     await page.keyboard.press('Escape'); await f.evaluate(() => document.querySelectorAll('.overlay,.modal.on').forEach(x => x.remove()));
     console.log('ok menu ⋮ Mais ações: grupos, mesmos IDs, ↑/↓/Home/End, Esc, clique fora e fecha depois de escolher');
     /* 3) travas por perfil continuam pelos mesmos IDs, e o teclado pula o que está travado */
-    const tr = await f.evaluate(async () => { const orig = vacPodeAqui; vacPodeAqui = fn => !['excluir', 'lancar'].includes(fn) && orig(fn); vacTravas.aplicar(); await new Promise(r => setTimeout(r, 50));
-      const out = ['dDel', 'dMove', 'dOff', 'dRestore', 'dEnviar', 'dHist'].map(id => id + ':' + document.getElementById(id).disabled);
-      vacPodeAqui = orig; return out; });
+    /* a permissão restrita fica valendo até o fim da conferência do teclado: as travas podem ser reaplicadas a qualquer momento
+       (numa máquina lenta, devolver a permissão antes do ↓ reabria "Dia sem produção") */
+    const tr = await f.evaluate(async () => { window.__podeOrig = vacPodeAqui; vacPodeAqui = fn => !['excluir', 'lancar'].includes(fn) && window.__podeOrig(fn); vacTravas.aplicar(); await new Promise(r => setTimeout(r, 50));
+      return ['dDel', 'dMove', 'dOff', 'dRestore', 'dEnviar', 'dHist'].map(id => id + ':' + document.getElementById(id).disabled); });
     assert.deepEqual(tr, ['dDel:true', 'dMove:true', 'dOff:true', 'dRestore:true', 'dEnviar:false', 'dHist:false']);
     await f.click('#dMais'); await page.keyboard.press('ArrowDown'); assert.equal(await f.evaluate(() => document.activeElement.id), 'dEnviar', 'pula Dia sem produção e Mover, travados');
-    await page.keyboard.press('Escape'); await f.evaluate(() => render()); await f.waitForSelector('#cabDia #dMais');
+    await page.keyboard.press('Escape'); await f.evaluate(() => { vacPodeAqui = window.__podeOrig; vacTravas.aplicar(); render(); }); await f.waitForSelector('#cabDia #dMais');
     console.log('ok travas por perfil nos itens do menu (mesmos IDs); o teclado pula os travados');
     /* 4) fechado: Reabrir no lugar de Fechar dia; o menu mostra só o que vale */
     const fe = await f.evaluate(async () => { const d = curDay(); const st = d.status; d.status = 'fechado'; render(); await new Promise(r => setTimeout(r, 100));
