@@ -366,3 +366,16 @@ A operação `local` em `linha360-base.json` cria o ponto e o registro associado
 Em **Adicionar equipamento**, a Administração atribui o código e abre a ficha do cadastro geral. O campo opcional `pontoLinha360` conserva a ligação com a planta. Vínculos escolhidos manualmente em **Pontos e equipamentos** têm precedência. Se o cadastro estiver bloqueado para edição, o ponto continua disponível para concluir o cadastro pela ficha após desbloquear.
 
 Em **Configuração**, selecione a área e escolha **Redimensionar área**, ou use o botão direito sobre ela. Arraste os vértices do contorno existente ou clique numa borda para inserir um vértice. **Desfazer** reverte o último ajuste, **Cancelar** descarta a edição e **Salvar contorno** grava o perímetro. O nome e os pontos operacionais vinculados à área continuam preservados.
+
+## FORM-03 · campos do formulário A4 · Linha 360° 1.7.0, plataforma 1.8.56 (23/11/2026)
+
+Pedido do responsável. Campos **aditivos** do item de `formularios` (nada antigo muda de sentido):
+
+- `pontos` (lista de IDs de ponto) e `equipamentos` (lista de códigos do cadastro): o local com várias máquinas e vários equipamentos.
+  `ponto` continua com o 1º ponto e `equipamento` com o único equipamento (vazio quando há vários), para quem lia um só. Escolher a área marca
+  todos os pontos dela e os equipamentos de cada ponto (área → máquina → equipamento); marcar um ponto traz os equipamentos dele, desmarcar leva.
+- `tarefas[].sub` (verdadeiro = subtarefa da tarefa de cima): numeração 5, 5.1, 5.2… na tela e na folha; cada subtarefa tem a sua avaliação
+  OK / NC / N/A (pelo id, como os outros itens). Colar várias linhas numa tarefa cria uma tarefa por linha; linha recuada (tab ou 2 espaços),
+  numerada 1.1 ou na 2ª coluna do Excel vira subtarefa.
+- `obs` (orientação geral): texto livre até 4000 caracteres; o campo e o quadro da folha crescem com o texto (a altura da paginação acompanha).
+- `fotos[].marcas[].rot`: rotação em graus (−180 a 180) do retângulo e do círculo, em volta do centro, no editor e na folha.

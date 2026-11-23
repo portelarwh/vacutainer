@@ -4339,7 +4339,7 @@ function wireConfigComum(){$('#cPasta').onclick=async()=>{if(await Store.pick())
         entrar pelo ID (autocadastro como Consulta); página inicial por perfil (1x por sessão); vigência gravada não se edita (desativar com motivo); painel de vigências; semáforo central; saída do modo de teste.
    1.1.2: aviso da carga diz qual base foi lida.  1.5: páginas Paradas, Máquinas, Manutenção e Projetos na lista (aparecem quando o HTML chega na pasta).  1.4: lista técnica pela CS12 multinível (itens = nível 1, estrutura = níveis 2+); CS03 sai.  1.3: cabeçalho comum (vac-cabecalho v2: barra do sistema + página + abas), busca Ctrl K, acabamento V1.90, Versões com cabeçalho e último backup.  1.2: Configuração › Versões das páginas (versão e data de cada HTML, gravação das bases, cópias repetidas, histórico).
    ===================================================================== */
-const PAGE={id:'portal',titulo:"Administração · Linha Vacutainer",tituloCurto:"Administração",subtitulo:'Sistemas de gestão da linha',versao:'1.9.76',baseFile:'portal-base.json',idb:'vac-portal',backupDir:'00. Backups/Portal',
+const PAGE={id:'portal',titulo:"Administração · Linha Vacutainer",tituloCurto:"Administração",subtitulo:'Sistemas de gestão da linha',versao:'1.9.77',baseFile:'portal-base.json',idb:'vac-portal',backupDir:'00. Backups/Portal',
  vazio:()=>({schema:'portal-base',rev:0,config:{modulos:{},avisoDias:30,notas:{}},audit:[]}),
  /* itens do Portal para a busca Ctrl K: cadastro, pendências e telas */
  busca:q=>{const R=[],D=Cad.D;if(D)for(const t of CAD_ORD){for(const it of D[t]||[]){const c=String(it[kOf(t)]),nm=t==='bom'?((cadItem('catalogos',it.catalogo)||{}).nome||''):it.nome||'';if(norm(c+' '+nm).includes(q))R.push({tipo:CAD_T[t].um,txt:c+(nm?' · '+nm:''),sub:'Cadastros'+(cadAtivo(t,it,D)?'':' · inativo'),href:'#cadastros/'+t+'/'+encodeURIComponent(c)});if(R.length>30)break}}
@@ -5218,6 +5218,7 @@ const CAD_SECS=['inicio','matriz','importar','auditoria','backups','seguranca','
    curtas (macro, sem detalhe técnico). REGRA: toda versão nova da plataforma ganha uma entrada aqui, a mais recente primeiro
    (AGENTS.md e CLAUDE.md). Tipos: nova (função nova), melhoria (algo que já existia ficou melhor), correcao (erro corrigido). */
 const NOVIDADES=[
+ {v:'1.8.56',d:'2026-11-23',itens:[['melhoria','Linha 360° · As fotos se montam em Configuração › Fotos: banco ao lado da planta, arrastar, zoom (botões e Ctrl + roda) e "Colocar foto aqui" no botão direito. A Visão da linha mostra as fotos só para consulta.'],['melhoria','Linha 360° · Miniaturas das fotos mais rápidas; quando uma não abre, o motivo aparece. Passe o mouse no pino para ver a foto.'],['novo','Linha 360° · Botão direito com mais opções: renomear, vincular equipamentos, mover ou desativar ponto; formulário com todos os pontos da área; nova área a partir do local; posto de trabalho.'],['novo','Formulários A4 · Área, pontos/máquinas e equipamentos com várias escolhas: a área marca todos os pontos e equipamentos dela.'],['novo','Formulários A4 · Tarefas com subtarefas (5, 5.1…); colar várias linhas do bloco de notas ou do Excel cria uma tarefa por linha.'],['melhoria','Formulários A4 · Orientação geral em texto livre que cresce com o texto, também na folha; retângulo e círculo podem ser girados.']]},
  {v:'1.8.55',d:'2026-11-23',itens:[['melhoria','Linha 360° · Em Configuração, escolha Redimensionar área, arraste os vértices e salve o contorno. Desfazer e Cancelar ficam disponíveis durante o ajuste.']]},
  {v:'1.8.54',d:'2026-11-23',itens:[['novo','Linha 360° · Use o botão direito na planta de Configuração para adicionar equipamentos, processos, checklists e formulários. Clique sobre uma área para editar seu nome, pontos ou contorno.'],['correção','Fotos da linha · Clique na foto do banco para ampliar. As fotos WebP também abrem quando a miniatura não está disponível.']] },
  {v:'1.8.53',d:'2026-11-22',itens:[['correção','Entrada: a tela não fica mais presa em "Abrindo a plataforma…". Se a pasta (de rede ou OneDrive) demora, em 8 s aparece o arquivo que está sendo lido com as opções Escolher outra pasta e Entrar só para consulta; em 20 s, o arquivo que não respondeu.'],['novo','Formulários A4 (Linha 360°): escolha a versão Detalhada (fotos, marcações e itens) ou Resumida (lista sem fotos, com a máquina / local e o que verificar) para imprimir ou salvar em PDF; a prévia mostra a versão escolhida.']]},
@@ -35160,8 +35161,12 @@ window.VAC_GUIA.inic = {
 .fm-cont{height:11mm;margin-bottom:4mm;background:var(--bg);border-radius:1.6mm;padding:0 4mm;display:flex;align-items:center;justify-content:space-between;flex:none}
 .fm-cont div{display:grid}.fm-cont b{font-size:8.5pt;color:var(--n);text-transform:uppercase}.fm-cont small{text-transform:none;letter-spacing:0;font-weight:400}.fm-cont>span{font-size:8pt;font-weight:800;color:var(--l);text-transform:uppercase}
 .fm-corpo{flex:none;display:flex;flex-direction:column;overflow:hidden}
-.fm-orient{border-left:1.2mm solid var(--o);background:#FBF6F2;border-radius:0 1.6mm 1.6mm 0;padding:1.6mm 3.5mm;margin-bottom:4mm;max-height:16mm;box-sizing:border-box;overflow:hidden;flex:none}
-.fm-orient small{color:var(--n)}.fm-orient p{margin:.6mm 0 0;font-size:9pt;white-space:pre-wrap;line-height:1.25;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+.fm-orient{border-left:1.2mm solid var(--o);background:#FBF6F2;border-radius:0 1.6mm 1.6mm 0;padding:1.6mm 3.5mm;margin-bottom:4mm;box-sizing:border-box;overflow:hidden;flex:none}
+.fm-orient small{color:var(--n)}.fm-orient p{margin:.6mm 0 0;font-size:9pt;white-space:pre-wrap;line-height:1.25}
+.fm-tl2 li.fm-sub{margin-left:9mm;background:#fff;border:.25mm dashed var(--ln)}.fm-tl2 li.fm-sub .fm-nb{border-radius:1.4mm;min-width:7.5mm;width:auto;padding:0 1mm;font-size:7.5pt}
+.fm-tl li.fm-tsub{margin-left:28px}.fm-rot{display:inline-flex;align-items:center;gap:6px}.fm-rot input[type=range]{width:120px;vertical-align:middle}.fm-rot output{min-width:42px;font-variant-numeric:tabular-nums}.fm-tl li.fm-tsub .fm-nb{border-radius:6px;width:auto;min-width:30px;padding:0 4px}
+#fmObs{resize:vertical;overflow:hidden;min-height:4.6em;field-sizing:content}
+.fm-arv{display:grid;gap:6px;border:1px solid var(--line,#d5dde6);border-radius:8px;padding:8px;max-height:360px;overflow:auto}.fm-arv .fm-pt>label{font-weight:600}.fm-arv .fm-eqs2{display:flex;flex-wrap:wrap;gap:2px 12px;margin:2px 0 4px 24px;font-size:12.5px}.fm-arv details>summary{cursor:pointer;color:var(--muted);font-size:12.5px}
 .fm-sec{display:flex;align-items:center;gap:3mm;height:9mm;margin:0 0 4mm;flex:none}
 .fm-sec>b{width:8mm;height:8mm;border-radius:1.6mm;background:var(--n);color:#fff;display:flex;align-items:center;justify-content:center;font-size:9pt}
 .fm-sec h2{margin:0;font-size:12.5pt;font-weight:800;color:var(--n);text-transform:uppercase;flex:1}.fm-sec span{font-size:7.5pt;color:var(--g)}
@@ -35376,7 +35381,7 @@ tr.l3-sujo>td{background:color-mix(in srgb,var(--warn) 10%,transparent)}tr.l3-su
 <main class="wrap" id="main"></main>
 <div class="toasts" id="toasts"></div>
 <script>
-const PAGE={id:"linha",titulo:"Linha 360° · Planta interativa da linha",tituloCurto:"Linha 360°",subtitulo:"Planta interativa: paradas, pessoas e ações em cada ponto da linha",versao:"1.6.1",baseFile:"linha360-base.json",backupDir:"00. Backups/Linha360",estado:"atualizacao",estadoNota:"Primeira versão: planta, pontos, áreas, postos e checklists. MES por equipamento chega depois."};
+const PAGE={id:"linha",titulo:"Linha 360° · Planta interativa da linha",tituloCurto:"Linha 360°",subtitulo:"Planta interativa: paradas, pessoas e ações em cada ponto da linha",versao:"1.7.0",baseFile:"linha360-base.json",backupDir:"00. Backups/Linha360",estado:"atualizacao",estadoNota:"Primeira versão: planta, pontos, áreas, postos e checklists. MES por equipamento chega depois."};
 const APP_VERSION=PAGE.versao;
 /* ---------- vac-cabecalho v2 · JS (igual em todas as páginas) ---------- */
 const VAC_CAB_VERSAO=2;
@@ -35995,8 +36000,8 @@ function fmSvgMarcas(f,n0,selId){const W=1000,H=Math.round(1000*(f.h||750)/(f.w|
   if(m.t==='seta'){const a=Math.atan2(y2-y1,x2-x1),L=Math.hypot(x2-x1,y2-y1),hl=Math.min(46,Math.max(22,L*.3)),p=(r,d)=>[x2-hl*Math.cos(a+r)*d,y2-hl*Math.sin(a+r)*d];
    const[ax,ay]=p(.45,1),[bx2,by2]=p(-.45,1);s+=dupla(`<path d="M${x1},${y1} L${x2},${y2} M${ax},${ay} L${x2},${y2} L${bx2},${by2}" fill="none" stroke="$S" stroke-width="$W" stroke-linecap="round" stroke-linejoin="round"/>`);
    bx=x1-Math.cos(a)*(rb+6);by=y1-Math.sin(a)*(rb+6)}
-  else if(m.t==='circulo'){const cx=(x1+x2)/2,cy=(y1+y2)/2,rx=Math.max(8,Math.abs(x2-x1)/2),ry=Math.max(8,Math.abs(y2-y1)/2);s+=dupla(`<ellipse cx="${cx}" cy="${cy}" rx="${rx}" ry="${ry}" fill="none" stroke="$S" stroke-width="$W"/>`);bx=cx-rx*.72-rb*.5;by=cy-ry*.72-rb*.5}
-  else if(m.t==='retangulo'){const x=Math.min(x1,x2),y=Math.min(y1,y2),w=Math.max(8,Math.abs(x2-x1)),h=Math.max(8,Math.abs(y2-y1));s+=dupla(`<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="4" fill="none" stroke="$S" stroke-width="$W"/>`);bx=x-rb*.6;by=y-rb*.6}
+  else if(m.t==='circulo'){const cx=(x1+x2)/2,cy=(y1+y2)/2,rx=Math.max(8,Math.abs(x2-x1)/2),ry=Math.max(8,Math.abs(y2-y1)/2);s+=dupla(`<ellipse cx="${cx}" cy="${cy}" rx="${rx}" ry="${ry}"${m.rot?` transform="rotate(${+m.rot} ${cx} ${cy})"`:''} fill="none" stroke="$S" stroke-width="$W"/>`);bx=cx-rx*.72-rb*.5;by=cy-ry*.72-rb*.5}
+  else if(m.t==='retangulo'){const x=Math.min(x1,x2),y=Math.min(y1,y2),w=Math.max(8,Math.abs(x2-x1)),h=Math.max(8,Math.abs(y2-y1));s+=dupla(`<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="4"${m.rot?` transform="rotate(${+m.rot} ${x+w/2} ${y+h/2})"`:''} fill="none" stroke="$S" stroke-width="$W"/>`);bx=x-rb*.6;by=y-rb*.6}
   else s+=`<g class="fm-mk${sel}" data-mk="${esc(m.id)}"></g>`;
   bx=Math.max(rb,Math.min(W-rb,bx));by=Math.max(rb,Math.min(H-rb,by));const claro=/^#(FFF|F2B705)/i.test(c);
   bad+=`<g class="fm-nbg${sel}" data-mk="${esc(m.id)}"><circle cx="${bx}" cy="${by}" r="${rb}" fill="${c}" stroke="${claro?'#111':'#fff'}" stroke-width="4"/><text x="${bx}" y="${by}" dy=".35em" text-anchor="middle" font-size="${n>99?20:26}" font-weight="800" fill="${claro?'#111':'#fff'}">${n}</text></g>`});
@@ -36005,13 +36010,13 @@ function fmSvgMarcas(f,n0,selId){const W=1000,H=Math.round(1000*(f.h||750)/(f.w|
 function fmFotoHtml(f,n0,w,h,un){const r=(f.w||4)/(f.h||3);let fw=w,fh=w/r;if(fh>h){fh=h;fw=h*r}const{W,H,svg}=fmSvgMarcas(f,n0);
  return`<div class="fm-img" style="width:${fw.toFixed(2)}${un};height:${fh.toFixed(2)}${un}"><img data-fid="${esc(f.id)}" alt="Foto ${esc(f.id)}"><svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" aria-hidden="true">${svg}</svg><span class="fm-falta">Foto não encontrada na pasta (${esc(f.arq||'só na sessão em que foi escolhida')})</span></div>`}
 
-function fmMiniPlanta(d){const a=areas().find(x=>x.id===d.area),p=d.ponto&amp;&amp;P(d.ponto);
+function fmMiniPlanta(d){const a=areas().find(x=>x.id===d.area),ps=fmPts(d).map(id=>P(id)).filter(Boolean),p=ps[0];
  const pol=a&amp;&amp;(a.pol||'').split(/\s+/).map(q=>q.split(',').map(Number)).filter(q=>q.length===2&amp;&amp;q.every(isFinite));
  /* recorte quadrado em volta da área (ou do ponto); sem os dois, a planta inteira */
- const xs=[],ys=[];if(pol&amp;&amp;pol.length>2)for(const q of pol){xs.push(q[0]*LW/100);ys.push(q[1]*LH/100)}if(p){xs.push(p.x*LW/100);ys.push(p.y*LH/100)}
+ const xs=[],ys=[];if(pol&amp;&amp;pol.length>2)for(const q of pol){xs.push(q[0]*LW/100);ys.push(q[1]*LH/100)}for(const q of ps){xs.push(q.x*LW/100);ys.push(q.y*LH/100)}
  let vb=`0 0 ${LW} ${LH}`,R=38;if(xs.length){const x0=Math.min(...xs),x1=Math.max(...xs),y0=Math.min(...ys),y1=Math.max(...ys),lado=Math.min(LW,Math.max(380,x1-x0,y1-y0)*1.12),cx=(x0+x1)/2,cy=(y0+y1)/2;
   vb=`${Math.round(cx-lado/2)} ${Math.round(cy-lado/2)} ${Math.round(lado)} ${Math.round(lado)}`;R=Math.max(16,lado*.045)}
- return`<svg class="fm-planta" viewBox="${vb}" preserveAspectRatio="xMidYMid slice" role="img" aria-label="Local na planta: ${esc((a?a.nome:'')+(p?' · ponto '+numeroPonto(p):''))}"><image href="${Planta.src}" width="${LW}" height="${LH}" preserveAspectRatio="none"/>${pol&amp;&amp;pol.length>2?`<polygon points="${pol.map(q=>q[0]*LW/100+','+q[1]*LH/100).join(' ')}" fill="#E5322D" fill-opacity=".16" stroke="#E5322D" stroke-width="10"/>`:''}${p?`<circle cx="${p.x*LW/100}" cy="${p.y*LH/100}" r="${R}" fill="#E5322D" stroke="#fff" stroke-width="${R/4}"/><text x="${p.x*LW/100}" y="${p.y*LH/100}" dy=".36em" text-anchor="middle" font-size="${R*1.15}" font-weight="800" fill="#fff">${esc(numeroPonto(p))}</text>`:''}</svg>`}
+ return`<svg class="fm-planta" viewBox="${vb}" preserveAspectRatio="xMidYMid slice" role="img" aria-label="Local na planta: ${esc((a?a.nome:'')+(p?' · ponto '+numeroPonto(p):''))}"><image href="${Planta.src}" width="${LW}" height="${LH}" preserveAspectRatio="none"/>${pol&amp;&amp;pol.length>2?`<polygon points="${pol.map(q=>q[0]*LW/100+','+q[1]*LH/100).join(' ')}" fill="#E5322D" fill-opacity=".16" stroke="#E5322D" stroke-width="10"/>`:''}${ps.map(p=>`<circle cx="${p.x*LW/100}" cy="${p.y*LH/100}" r="${R}" fill="#E5322D" stroke="#fff" stroke-width="${R/4}"/><text x="${p.x*LW/100}" y="${p.y*LH/100}" dy=".36em" text-anchor="middle" font-size="${R*1.15}" font-weight="800" fill="#fff">${esc(numeroPonto(p))}</text>`).join('')}</svg>`}
 /* ---------- folha A4 (1.4.1 · layout corporativo do modelo do responsável) ----------
    Todas as páginas: marca, título, código e "Página x / N". 1ª página: situação e a grade de dados com o recorte da planta;
    as seguintes: a faixa "Continuação do registro". Corpo em seções numeradas: 01 atividades com referência visual (fotos, com a
@@ -36024,8 +36029,25 @@ const fmCorpoPg=k=>297-2*FM_MM.m-FM_MM.cab-(k?FM_MM.cont:FM_MM.dados)-FM_MM.rod;
 const fmCorpo=()=>fmCorpoPg(1);
 const fmLinhas=(t,cpl)=>Math.max(1,Math.ceil(String(t||'').length/cpl));
 /* itens do formulário na ordem da folha: marcações das fotos primeiro, depois as tarefas sem foto */
+/* 1.7.0 · FORM-03 (pedido do responsável, 23/11/2026)
+   - local com vários pontos/máquinas e vários equipamentos (d.pontos, d.equipamentos; d.ponto/d.equipamento continuam com o 1º para
+     o que já lia um só); escolher a área marca todos os pontos dela e os equipamentos de cada um, ramificando área → máquina → equipamento;
+   - tarefas complementares com subtarefas (t.sub: pertence à tarefa de cima; numeração 5, 5.1, 5.2…), e colar várias linhas do bloco de
+     notas ou do Excel cria uma tarefa por linha (linha recuada, 1.1 ou 2ª coluna do Excel = subtarefa);
+   - orientação geral em campo livre que cresce com o texto (também na folha A4). */
+const fmPts=d=>Array.isArray(d.pontos)&amp;&amp;d.pontos.length?d.pontos.map(String):(d.ponto?[String(d.ponto)]:[]);
+const fmEqs=d=>Array.isArray(d.equipamentos)&amp;&amp;d.equipamentos.length?d.equipamentos.map(String):(d.equipamento?[String(d.equipamento)]:[]);
+function fmSyncLocal(d){const pt=fmPts(d),eq=fmEqs(d);d.pontos=pt;d.equipamentos=eq;d.ponto=pt[0]||'';d.equipamento=eq.length===1?eq[0]:''}
+function fmLocalMulti(d){const pt=fmPts(d),eq=fmEqs(d);if(pt.length<=1)return[fmLocal(pt[0]||'',eq.length===1?eq[0]:''),eq.length>1?eq.length+' equipamentos':''].filter(Boolean).join(' · ');
+ return pt.length+' máquinas: '+pt.map(id=>{const q=P(id);return q?numeroPonto(q):id}).join(', ')+(eq.length?' · '+eq.length+' equipamento(s)':'')}
+function fmTarRot(d){const R={};let n=fmNumeros(d).total,pai=0,j=0;for(const t of d.tarefas||[]){if(t.sub&amp;&amp;pai){R[t.id]=pai+'.'+(++j)}else{pai=++n;j=0;R[t.id]=String(pai)}}return R}
+function fmParseTarefas(txt){const out=[];for(const raw of String(txt||'').replace(/\r/g,'').split('\n')){if(!raw.trim())continue;
+  if(raw.includes('\t')){const cols=raw.split('\t').map(c=>c.trim()),a=cols[0],b=cols.slice(1).filter(Boolean).join(' · ');if(a)out.push({txt:a.slice(0,200),sub:false});if(b)out.push({txt:b.slice(0,200),sub:true});continue}
+  const sub=/^(\s{2,}|\s*\d+\.\d+[.)]?\s)/.test(raw)||/^\t/.test(raw),t=raw.replace(/^\s*(?:[-–•*·]|\d+(?:\.\d+)*[.)]?)\s+/,'').trim();if(t)out.push({txt:t.slice(0,200),sub})}
+ if(out[0])out[0].sub=false;return out}
+const fmAltOrient=d=>Math.max(16,8+String(d.obs||'').split('\n').reduce((s,l)=>s+fmLinhas(l,105),0)*4.2);
 function fmItensTodos(d){const L=[];let n=0;for(const f of d.fotos||[])for(const m of f.marcas||[])L.push({k:m.id,n:++n,txt:m.txt||'',cor:m.c,foto:f.id});
- for(const t of (d.tarefas||[]).filter(t=>(t.txt||'').trim()))L.push({k:t.id,n:++n,txt:t.txt,tarefa:true});return L}
+ let pai=0,j=0;for(const t of (d.tarefas||[]).filter(t=>(t.txt||'').trim())){if(t.sub&amp;&amp;pai)L.push({k:t.id,n:pai+'.'+(++j),txt:t.txt,tarefa:true,sub:true});else{pai=++n;j=0;L.push({k:t.id,n:pai,txt:t.txt,tarefa:true})}}return L}
 function fmNumeros(d){let n=0;const R={};for(const f of d.fotos||[]){R[f.id]=n+1;n+=(f.marcas||[]).length}return{base:R,total:n,tarefa:n+1}}
 const fmAval=(d,k)=>((d.exec||{}).aval||{})[k]||'';
 const fmTemNC=d=>fmItensTodos(d).some(i=>fmAval(d,i.k)==='nc');
@@ -36037,7 +36059,7 @@ const FM_ALT={orient:20,sec:13,tar:t=>5.4+fmLinhas(t,70)*4.4,leg:15,fech:88};
 function fmPaginas(d){const pp=+d.porPag||2,F=d.fotos||[],T=fmItensTodos(d).filter(i=>i.tarefa),pags=[[]];let k=0,livre=fmCorpoPg(0),fotosPg=0;
  const nova=()=>{pags.push([]);k++;livre=fmCorpoPg(k);fotosPg=0},cabe=h=>h<=livre+0.01||!pags[k].length,poe=(b,h)=>{if(!cabe(h))nova();pags[k].push(b);livre-=h};
  let sec=0;const S=()=>++sec;
- poe({k:'orient'},FM_ALT.orient);
+ poe({k:'orient'},fmAltOrient(d));
  if(F.length){const n=S(),lim=pp===1?1:pp===2?2:4;let j=0,primeira=true;
   while(j<F.length){const L=pp===4?F.slice(j,j+2):[F[j]],h=pp===4?Math.max(...L.map(f=>fmAltFoto(f,pp,d)))+4:fmAltFoto(L[0],pp,d);
    const extra=primeira?FM_ALT.sec:0;if(fotosPg+L.length>lim||!cabe(h+extra))nova();
@@ -36060,7 +36082,7 @@ function fmPaginasRes(d){const I=fmItensRes(d),T=fmItensTodos(d).filter(i=>i.tar
  const lista=(L,t,nota)=>{if(!L.length)return;const n=S();let i=0,pri=true;
   while(i<L.length){if(!cabe(alt(L[i])+(pri?FM_ALT.sec:0)))nova();if(pri){pags[k].push({k:'sec',n,t,nota});livre-=FM_ALT.sec;pri=false}
    let ate=i;while(ate<L.length&amp;&amp;alt(L[ate])<=livre){livre-=alt(L[ate]);ate++}if(ate===i){livre-=alt(L[i]);ate=i+1}pags[k].push({k:'lista',L:L.slice(i,ate)});i=ate;if(i<L.length)nova()}};
- poe({k:'orient'},FM_ALT.orient);
+ poe({k:'orient'},fmAltOrient(d));
  lista(I,'Itens do checklist','Máquina / local e o que verificar · versão resumida, sem fotos');
  lista(T,I.length?'Atividades complementares':'Atividades',I.length?'Sem referência fotográfica':'Avaliação individual por tarefa');
  if(I.length||T.length)poe({k:'leg'},FM_ALT.leg);
@@ -36074,11 +36096,11 @@ function fmCabecalho(d,pg,N,modo){const fotos=(d.fotos||[]).length;
 function fmDados(d){const a=areas().find(x=>x.id===d.area),st=FM_ST[d.status||'aberto']||FM_ST.aberto,fq=d.rec==='recorrente'?' · '+fmNomeDe(FM_FREQ,d.freq).toLowerCase():'';
  const c=(r,v,cls)=>`<div class="fm-c${cls?' '+cls:''}"><small>${r}</small><b>${v||'<span class="fm-vz">—</span>'}</b></div>`;
  return`<section class="fm-dados"><div class="fm-reg"><span><small>Registro nº</small> <b>${esc(d.id)}</b></span><span><small>Status</small> <b class="fm-st ${st[1]}">${esc(st[0])}</b></span>${d.origem?`<span><small>Emissão anterior</small> <b>${esc(d.origem)}</b></span>`:''}</div>
-  <div class="fm-dg"><div class="fm-cg">${c('Área principal',esc(a?a.nome:''))}${c('Máquina / local',esc(fmLocal(d.ponto,d.equipamento)))}${c('Tipo / programação',esc(fmNomeDe(FM_TIPOS,d.tipo).replace(/ · .*/,'')+' · '+fmNomeDe(FM_REC,d.rec)+fq))}
+  <div class="fm-dg"><div class="fm-cg">${c('Área principal',esc(a?a.nome:''))}${c('Máquina / local',esc(fmLocalMulti(d)))}${c('Tipo / programação',esc(fmNomeDe(FM_TIPOS,d.tipo).replace(/ · .*/,'')+' · '+fmNomeDe(FM_REC,d.rec)+fq))}
    ${c('Emitido por',esc(fmPes(d.emissorId,d.emissor)))}${c('Data de emissão',fmData(d.emissao))}${c('Conclusão prevista',fmData(d.prazo),fmAtrasado(d)?'atr':'')}
    ${c('Turno responsável',esc(fmTurnoNome(d.turno)))}${c('Responsável pela execução',esc(fmPes(d.respId,d.resp)))}${c('Responsável pela confirmação',esc(fmPes(d.confId,d.conf)))}</div>
   <figure class="fm-loc">${fmMiniPlanta(d)}<figcaption>${esc(a?a.nome:'Local')}${d.ponto&amp;&amp;P(d.ponto)?' · ponto '+esc(d.ponto):''}</figcaption></figure></div></section>`}
-function fmCont(d){const a=areas().find(x=>x.id===d.area);return`<section class="fm-cont"><div><b>Continuação do registro</b><small>Linha 360° · ${esc(fmLocal(d.ponto,d.equipamento)||(a?a.nome:''))} · ${esc(d.id)}</small></div><span>Execução e confirmação</span></section>`}
+function fmCont(d){const a=areas().find(x=>x.id===d.area);return`<section class="fm-cont"><div><b>Continuação do registro</b><small>Linha 360° · ${esc(fmLocalMulti(d)||(a?a.nome:''))} · ${esc(d.id)}</small></div><span>Execução e confirmação</span></section>`}
 function fmCaixas(v){return`<span class="fm-avs">${FM_AV.map(([k,t])=>`<span class="fm-av${v===k?' on '+k:''}"><i class="fm-cx" aria-hidden="true">${v===k?'✓':''}</i>${t}</span>`).join('')}</span>`}
 const fmNb=(n,cor)=>{const c=cor||'#060A3D',cl=/^#(FFF|F2B705)/i.test(c);return`<span class="fm-nb" style="background:${c};color:${cl?'#111':'#fff'};border-color:${cl?'#111':c}">${n}</span>`};
 function fmFaixa(d,f){const p=f.ponto||d.ponto,pt=p&amp;&amp;P(p),eq=f.eq||(!f.ponto?d.equipamento:''),letra=pt?'Ponto '+numeroPonto(pt):'Local';
@@ -36095,8 +36117,8 @@ function fmPaginasHtml(d,modo){modo=modo||fmModo();const pags=modo==='res'?fmPag
   if(b.k==='orient')return`<section class="fm-orient"><small>Orientação geral</small><p>${esc(d.obs||'')||'<span class="fm-vz">—</span>'}</p></section>`;
   if(b.k==='sec')return fmSec(b.n,b.t,b.nota);
   if(b.k==='fotos')return`<section class="fm-fl pp${b.pp}">${b.L.map(f=>fmBlocoFoto(d,f,b.pp,nb,F.indexOf(f))).join('')}</section>`;
-  if(b.k==='lista')return`<ol class="fm-tl2 fm-rl">${b.L.map(t=>`<li>${fmNb(t.n,t.cor)}<span class="fm-tx">${t.lc?`<b class="fm-qm">${esc(t.lc)}</b>`:''}${esc(t.txt)||'<span class="fm-vz">(sem descrição)</span>'}</span>${fmCaixas(fmAval(d,t.k))}</li>`).join('')}</ol>`;
-  if(b.k==='tar')return`<ol class="fm-tl2">${T.slice(b.de,b.ate).map(t=>`<li>${fmNb(t.n)}<span class="fm-tx">${esc(t.txt)}</span>${fmCaixas(fmAval(d,t.k))}</li>`).join('')}</ol>`;
+  if(b.k==='lista')return`<ol class="fm-tl2 fm-rl">${b.L.map(t=>`<li${t.sub?' class="fm-sub"':''}>${fmNb(t.n,t.cor)}<span class="fm-tx">${t.lc?`<b class="fm-qm">${esc(t.lc)}</b>`:''}${esc(t.txt)||'<span class="fm-vz">(sem descrição)</span>'}</span>${fmCaixas(fmAval(d,t.k))}</li>`).join('')}</ol>`;
+  if(b.k==='tar')return`<ol class="fm-tl2">${T.slice(b.de,b.ate).map(t=>`<li${t.sub?' class="fm-sub"':''}>${fmNb(t.n)}<span class="fm-tx">${esc(t.txt)}</span>${fmCaixas(fmAval(d,t.k))}</li>`).join('')}</ol>`;
   if(b.k==='leg')return`<section class="fm-leg"><b>Legenda</b><span><b>OK</b> Conforme</span><span><b>NC</b> Não conforme</span><span><b>N/A</b> Não aplicável</span><small>Marque apenas uma condição por item. Toda NC exige registro da tratativa (quadro B).</small></section>`;
   if(b.k==='fech'){const ok=d.status==='confirmado',dev=(d.devolucoes||[]).slice(-1)[0],devolvido=!ok&amp;&amp;dev&amp;&amp;d.status==='aberto',nc=fmTemNC(d);
    return fmSec(b.n,'Execução, desvios e confirmação','Preencher após a rotina · desvios só quando houver NC')+`<section class="fm-fech">
@@ -36177,6 +36199,11 @@ function vForm(){const fm=App.fm||(App.fm={sel:null,d:null,filtro:'abertos'});if
   ${V.map(f=>{const st=FM_ST[f.status]||FM_ST.aberto;return`<tr data-fm="${esc(f.id)}"><td class="code">${esc(f.id)}</td><td>${esc(fmNomeDe(FM_TIPOS,f.tipo))}</td><td>${esc(f.titulo)}</td><td>${esc(fmLocal(f.ponto,f.equipamento)||'—')}</td>
    <td>${esc([fmPes(f.respId,f.resp),f.turno?fmTurnoNome(f.turno):''].filter(Boolean).join(' · ')||'—')}</td><td>${fmData(f.prazo)}${fmAtrasado(f)?' <span class="pill crit">vencida</span>':''}</td><td><span class="pill ${st[1]}">${esc(st[0])}</span></td><td><button class="b sm" data-fmab="${esc(f.id)}">Abrir</button></td></tr>`}).join('')}</tbody></table></div>`
   :`<p class="muted">Nenhum formulário ${fm.filtro==='todos'?'ainda':'neste filtro'}. Use "+ Novo formulário" para criar um checklist, uma limpeza, uma confirmação de processo, uma manutenção, um AM ou um 5S.</p>`}</div>`}
+function fmArvoreHtml(d,ro){const pt=new Set(fmPts(d)),eq=new Set(fmEqs(d)),a=areas().find(x=>x.id===d.area),daArea=a?(a.pts||[]).map(String):[];
+ const linha=p=>{const L=eqDoPonto(p).lista;return`<div class="fm-pt"><label><input type="checkbox" data-fmpt="${esc(p.id)}"${pt.has(p.id)?' checked':''}${ro?' disabled':''}> ${esc(numeroPonto(p)+' · '+p.nome)} <span class="small muted">${L.length?L.length+' equipamento(s)':'sem equipamento vinculado'}</span></label>${L.length&amp;&amp;pt.has(p.id)?`<div class="fm-eqs2">${L.map(c=>`<label><input type="checkbox" data-fmeq="${esc(c)}" data-fmeqpt="${esc(p.id)}"${eq.has(c)?' checked':''}${ro?' disabled':''}> ${esc(c)}${eqNome(c)?' · '+esc(eqNome(c)):''}</label>`).join('')}</div>`:''}</div>`};
+ const dentro=pontos().filter(p=>daArea.includes(p.id)),fora=pontos().filter(p=>!daArea.includes(p.id)),marcadosFora=fora.filter(p=>pt.has(p.id)).length;
+ return`<div class="fm-arv" id="fmArv">${a?`<b class="small">${esc(a.nome)}</b>${dentro.map(linha).join('')||'<span class="small muted">A área não tem pontos vinculados (Configuração › área).</span>'}`:''}
+  <details${!a||marcadosFora?' open':''}><summary>${a?'Outros pontos da linha':'Pontos da linha'}${marcadosFora?` · ${marcadosFora} marcado(s)`:''}</summary>${fora.map(linha).join('')}</details></div>`}
 function fmSel(id,L,v,vazio){return`<select id="${id}">${vazio!=null?`<option value="">${esc(vazio)}</option>`:''}${L.map(([k,t])=>`<option value="${esc(k)}"${String(v)===String(k)?' selected':''}>${esc(t)}</option>`).join('')}</select>`}
 function vFormEd(){const fm=App.fm,d=fm.d,ro=d.status!=='aberto',st=FM_ST[d.status]||FM_ST.aberto,eu=vacPessoa.eu(),nb=fmNumeros(d).base;
  const eqsDo=d.ponto&amp;&amp;P(d.ponto)?eqDoPonto(P(d.ponto)).lista:[],eqL=(eqsDo.length?eqsDo:eqs().map(e=>e.codigo)).map(c=>[c,c+(eqNome(c)?' · '+eqNome(c):'')]);
@@ -36195,9 +36222,8 @@ function vFormEd(){const fm=App.fm,d=fm.d,ro=d.status!=='aberto',st=FM_ST[d.stat
   <label>Tipo de tarefa${fmSel('fmRec',FM_REC,d.rec)}</label>
   ${d.rec==='recorrente'?`<label>Frequência${fmSel('fmFreq',FM_FREQ.map(x=>[x[0],x[1]]),d.freq)}</label>`:''}
   <h3>Local (Linha 360°)</h3>
-  <label>Ponto / máquina${fmSel('fmPonto',pontos().map(p=>[p.id,numeroPonto(p)+' · '+p.nome]),d.ponto,'— escolha —')}</label>
-  <label>Equipamento${fmSel('fmEq',eqL,d.equipamento,'— o ponto inteiro —')}</label>
   <label>Área${fmSel('fmArea',areas().map(a=>[a.id,a.nome]),d.area,'—')}</label>
+  <div class="w2"><small class="muted">Pontos / máquinas e equipamentos · escolher a área marca todos os pontos e equipamentos dela; desmarque o que não entra</small>${fmArvoreHtml(d,ro)}</div>
   <h3>Pessoas e prazo</h3>
   <label>Aberto por<input value="${esc(fmPes(d.emissorId,d.emissor)||'(sem sessão)')}" disabled></label>
   <label>Data de abertura<input type="date" id="fmEmissao" value="${esc(d.emissao||'')}"></label>
@@ -36207,10 +36233,10 @@ function vFormEd(){const fm=App.fm,d=fm.d,ro=d.status!=='aberto',st=FM_ST[d.stat
   <label>Quem confirma a execução<input id="fmConf" list="dlFm" value="${esc(fmPes(d.confId,d.conf))}" placeholder="Nome ou ID do cadastro"></label>
   <datalist id="dlFm">${vacPessoa.opcoes(esc)}</datalist>
   <h3>Orientação geral</h3>
-  <label class="w2"><textarea id="fmObs" rows="3" maxlength="600" placeholder="Aparece logo abaixo do cabeçalho, com a barra laranja">${esc(d.obs||'')}&lt;/textarea></label>
-  <h3>Atividades complementares <span class="small muted">(sem foto; numeradas depois das fotos)</span></h3>
-  <ol class="fm-tl w2">${(d.tarefas||[]).map((t,i)=>`<li><span class="fm-nb">${fmNumeros(d).total+i+1}</span><input data-tar="${esc(t.id)}" maxlength="200" value="${esc(t.txt||'')}" placeholder="O que precisa ser feito ou verificado"><button type="button" class="b sm" data-tardel="${esc(t.id)}" aria-label="Remover tarefa ${i+1}">✕</button></li>`).join('')}</ol>
-  <div class="w2"><button type="button" class="b sm" id="fmTarNova">+ Tarefa</button></div>
+  <label class="w2"><textarea id="fmObs" rows="3" maxlength="4000" placeholder="Texto livre: aparece logo abaixo do cabeçalho, com a barra laranja; o campo cresce conforme o texto">${esc(d.obs||'')}&lt;/textarea></label>
+  <h3>Atividades complementares <span class="small muted">(sem foto; numeradas depois das fotos · tarefa e subtarefa)</span></h3>
+  ${(()=>{const R=fmTarRot(d);return`<ol class="fm-tl w2">${(d.tarefas||[]).map((t,i)=>`<li${t.sub?' class="fm-tsub"':''}><span class="fm-nb">${R[t.id]}</span><input data-tar="${esc(t.id)}" maxlength="200" value="${esc(t.txt||'')}" placeholder="${t.sub?'Subtarefa':'O que precisa ser feito ou verificado'} · cole várias linhas para criar várias"><button type="button" class="b sm" data-tarsub="${esc(t.id)}"${!i&amp;&amp;!t.sub?' disabled':''} title="${t.sub?'Voltar a ser tarefa':'Tornar subtarefa da tarefa de cima'}" aria-label="${t.sub?'Voltar a ser tarefa':'Tornar subtarefa'} ${R[t.id]}">${t.sub?'⇤':'↳'}</button><button type="button" class="b sm" data-tardel="${esc(t.id)}" aria-label="Remover tarefa ${R[t.id]}">✕</button></li>`).join('')}</ol>`})()}
+  <div class="w2 row"><button type="button" class="b sm" id="fmTarNova">+ Tarefa</button><button type="button" class="b sm" id="fmSubNova"${(d.tarefas||[]).length?'':' disabled'}>+ Subtarefa</button><span class="small muted">Dica: copie as linhas do bloco de notas ou do Excel e cole numa tarefa; cada linha vira uma tarefa (linha recuada, 1.1 ou 2ª coluna do Excel = subtarefa).</span></div>
   <h3>Fotos</h3>
   <label>Fotos por página${fmSel('fmPorPag',[[1,'1 por página'],[2,'2 por página'],[4,'4 por página']],d.porPag)}</label>
   <div class="w2 fm-fotos">${(d.fotos||[]).map((f,i)=>`<div class="fm-ft" data-ft="${esc(f.id)}"><div class="fm-fti">${fmFotoHtml(f,nb[f.id],150,100,'px')}</div><div><b>Foto ${i+1}</b> · ${(f.marcas||[]).length} marcação(ões)${(f.marcas||[]).length?' (itens '+nb[f.id]+'–'+(nb[f.id]+f.marcas.length-1)+')':''}<div class="small muted">${esc(fmLocal(f.ponto||d.ponto,f.eq)||'local do formulário')}</div>
@@ -36229,7 +36255,8 @@ function fmEdDesenhar(){const E=App.fm.ed,el=$('#fmEdModal');if(!E||!el)return;c
  el.innerHTML=`<div class="fm-mb"><header class="fm-mh"><h2>Marcações da foto</h2><span class="small muted">${E.ro?'Só consulta':'Escolha a ferramenta e a cor e arraste sobre a foto (a seta aponta para onde você solta). Cada marcação ganha um número e uma linha na lista; clique numa marcação para mudar a cor ou excluir.'}</span><span class="sp"></span><button class="b pri" id="edOk">${E.ro?'Fechar':'Concluir'}</button>${E.ro?'':'<button class="b" id="edCanc">Descartar alterações</button>'}</header>
  ${E.ro?'':`<div class="fm-tb" role="toolbar" aria-label="Ferramentas">${FM_FERR.map(([k,t,i])=>`<button class="b sm${E.ferr===k?' pri':''}" data-ferr="${k}" aria-pressed="${E.ferr===k}" title="${t}"><span aria-hidden="true">${i}</span> ${t}</button>`).join('')}<span class="fm-sep"></span>
   ${FM_CORES.map(([c,t])=>`<button class="fm-cor${E.cor===c?' on':''}" data-cor="${c}" style="background:${c}" title="${t}" aria-label="Cor ${t}" aria-pressed="${E.cor===c}"></button>`).join('')}<span class="fm-sep"></span>
-  <button class="b sm" id="edDesf"${(f.marcas||[]).length?'':' disabled'}>Desfazer a última</button><button class="b sm" id="edDel"${E.sel?'':' disabled'}>Excluir a selecionada</button></div>`}
+  <button class="b sm" id="edDesf"${(f.marcas||[]).length?'':' disabled'}>Desfazer a última</button><button class="b sm" id="edDel"${E.sel?'':' disabled'}>Excluir a selecionada</button>
+  ${(()=>{const m=E.sel&amp;&amp;(f.marcas||[]).find(x=>x.id===E.sel);return m&amp;&amp;(m.t==='retangulo'||m.t==='circulo')?`<span class="fm-sep"></span><span class="fm-rot"><button class="b sm" id="edRotM" title="Girar 15° no sentido anti-horário">⟲</button><label>Rotação <input type="range" id="edRot" min="-180" max="180" step="1" value="${+m.rot||0}" aria-label="Rotação da marcação em graus"></label><output id="edRotV">${+m.rot||0}°</output><button class="b sm" id="edRotP" title="Girar 15° no sentido horário">⟳</button></span>`:''})()}</div>`}
  <div class="fm-mc"><div class="fm-cvw"><div class="fm-cv" id="edCv"><img data-fid="${esc(f.id)}" alt="Foto"><svg id="edSvg" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none">${svg}</svg></div></div>
  <aside class="fm-lst"><label>Local desta foto${fmSel('edPonto',pontos().map(p=>[p.id,numeroPonto(p)+' · '+p.nome]),loc,'—')}</label><label>Equipamento${fmSel('edEq',eqL,f.eq||'','— o ponto inteiro —')}</label>
   ${loc!==d.ponto||(f.eq&amp;&amp;f.eq!==d.equipamento)?`<p class="small"><span class="fm-pill">${esc(fmLocal(loc,f.eq))}</span> aparece sobre a foto (local diferente do cabeçalho).</p>`:''}
@@ -36241,7 +36268,10 @@ function fmEdLigar(){const E=App.fm.ed,el=$('#fmEdModal'),f=E.f;
  $('#edOk',el).onclick=()=>fechar(true);const c=$('#edCanc',el);if(c)c.onclick=()=>fechar(false);
  el.onkeydown=e=>{if(e.key==='Escape'){e.preventDefault();fechar(!E.ro)}};
  $$('[data-ferr]',el).forEach(b=>b.onclick=()=>{E.ferr=b.dataset.ferr;E.sel=null;fmEdDesenhar()});$$('[data-cor]',el).forEach(b=>b.onclick=()=>{E.cor=b.dataset.cor;const m=E.sel&amp;&amp;f.marcas.find(x=>x.id===E.sel);if(m)m.c=E.cor;fmEdDesenhar()});
- const ds=$('#edDesf',el);if(ds)ds.onclick=()=>{f.marcas.pop();E.sel=null;fmEdDesenhar()};const dl=$('#edDel',el);if(dl)dl.onclick=()=>{f.marcas=f.marcas.filter(m=>m.id!==E.sel);E.sel=null;fmEdDesenhar()};
+ const ds=$('#edDesf',el);if(ds)ds.onclick=()=>{f.marcas.pop();E.sel=null;fmEdDesenhar()};
+ /* 1.7.0 · rotação do retângulo e do círculo selecionados (pedido do responsável, 23/11/2026) */
+ const rotM=E.sel&amp;&amp;f.marcas.find(x=>x.id===E.sel),gira=v=>{if(!rotM)return;let g=((+v+180)%360+360)%360-180;rotM.rot=Math.round(g);const n0=fmNumeros({...App.fm.d,fotos:App.fm.d.fotos.map(x=>x.id===f.id?f:x)}).base[f.id];$('#edSvg',el).innerHTML=fmSvgMarcas(f,n0,rotM.id).svg;const rg=$('#edRot',el),o=$('#edRotV',el);if(rg)rg.value=rotM.rot;if(o)o.textContent=rotM.rot+'°'};
+ const rg=$('#edRot',el);if(rg)rg.oninput=()=>gira(rg.value);const rm=$('#edRotM',el);if(rm)rm.onclick=()=>gira((+rotM.rot||0)-15);const rp=$('#edRotP',el);if(rp)rp.onclick=()=>gira((+rotM.rot||0)+15);const dl=$('#edDel',el);if(dl)dl.onclick=()=>{f.marcas=f.marcas.filter(m=>m.id!==E.sel);E.sel=null;fmEdDesenhar()};
  $$('[data-mtxt]',el).forEach(i=>{i.oninput=()=>{const m=f.marcas.find(x=>x.id===i.dataset.mtxt);if(m)m.txt=i.value};i.onfocus=()=>{if(E.sel!==i.dataset.mtxt){E.sel=i.dataset.mtxt;$$('.fm-mk,.fm-nbg',$('#edSvg')).forEach(g=>g.classList.toggle('sel',g.dataset.mk===E.sel));$$('.fm-lst li',el).forEach(li=>li.classList.toggle('sel',li.querySelector('[data-mtxt]')?.dataset.mtxt===E.sel));const b=$('#edDel',el);if(b)b.disabled=false}}});
  const pt=$('#edPonto',el);if(pt){pt.disabled=E.ro;pt.onchange=()=>{f.ponto=pt.value===App.fm.d.ponto?'':pt.value;f.eq='';fmEdDesenhar()}}const eq=$('#edEq',el);if(eq){eq.disabled=E.ro;eq.onchange=()=>{f.eq=eq.value;fmEdDesenhar()}}
  if(E.ro)return;const sv=$('#edSvg',el),pc=e=>{const r=sv.getBoundingClientRect();return[Math.max(0,Math.min(100,(e.clientX-r.left)/r.width*100)),Math.max(0,Math.min(100,(e.clientY-r.top)/r.height*100))].map(v=>+v.toFixed(2))};
@@ -36292,6 +36322,18 @@ function ligarForm(){const fm=App.fm;if(!fm)return;const on=(s,ev,f)=>{const e=$
  ['#fmResp','#fmConf'].forEach(s=>on(s,'onchange',()=>fmPrevAtualizar()));
  on('#fmRec','onchange',()=>{fmLerCampos();fm.sujo=true;render()});
  on('#fmPonto','onchange',e=>{fmLerCampos();d.ponto=e.target.value;d.equipamento='';if(d.ponto)d.area=fmAreaDoPonto(d.ponto)||d.area;fm.sujo=true;render()});
+ /* FORM-03 · área → todos os pontos e equipamentos dela; ponto marcado traz os seus equipamentos; desmarcado leva os seus */
+ const fa0=$('#fmArea');if(fa0)fa0.onchange=()=>{fmLerCampos();d.area=fa0.value;const a=areas().find(x=>x.id===d.area);if(a){d.pontos=(a.pts||[]).map(String).filter(id=>P(id));d.equipamentos=[...new Set(d.pontos.flatMap(id=>eqDoPonto(P(id)).lista))]}fmSyncLocal(d);fm.sujo=true;render()};
+ $$('[data-fmpt]').forEach(c=>c.onchange=()=>{fmLerCampos();const id=c.dataset.fmpt,L=eqDoPonto(P(id)).lista;let pt=fmPts(d),eq=fmEqs(d);if(c.checked){pt=[...new Set([...pt,id])];eq=[...new Set([...eq,...L])]}else{pt=pt.filter(x=>x!==id);eq=eq.filter(x=>!L.includes(x)||pt.some(o=>eqDoPonto(P(o)).lista.includes(x)))}d.pontos=pt;d.equipamentos=eq;if(!d.area&amp;&amp;id)d.area=fmAreaDoPonto(id)||'';fmSyncLocal(d);fm.sujo=true;render()});
+ $$('[data-fmeq]').forEach(c=>c.onchange=()=>{fmLerCampos();let eq=fmEqs(d);eq=c.checked?[...new Set([...eq,c.dataset.fmeq])]:eq.filter(x=>x!==c.dataset.fmeq);d.equipamentos=eq;d.pontos=fmPts(d);fmSyncLocal(d);fm.sujo=true;fmPrevAtualizar()});
+ /* orientação cresce com o texto */
+ const ob=$('#fmObs');if(ob){const cresce=()=>{ob.style.height='auto';ob.style.height=(ob.scrollHeight+2)+'px'};ob.addEventListener('input',cresce);cresce()}
+ /* tarefas: subtarefa, colar várias linhas */
+ on('#fmSubNova','onclick',()=>{fmLerCampos();if(!d.tarefas.length)return;d.tarefas.push({id:uid('tf'),txt:'',sub:true});fm.sujo=true;render();setTimeout(()=>{const L=$$('[data-tar]');L[L.length-1]?.focus()},0)});
+ $$('[data-tarsub]').forEach(b=>b.onclick=()=>{fmLerCampos();const t=d.tarefas.find(x=>x.id===b.dataset.tarsub);if(!t)return;const i=d.tarefas.indexOf(t);if(!t.sub&amp;&amp;!i)return;t.sub=!t.sub;fm.sujo=true;render()});
+ $$('[data-tar]').forEach(inp=>inp.addEventListener('paste',e=>{const txt=(e.clipboardData||window.clipboardData)?.getData('text')||'';if(!/[\r\n\t]/.test(txt.replace(/\s+$/,'')))return;const L=fmParseTarefas(txt);if(L.length<2&amp;&amp;!/\t/.test(txt))return;e.preventDefault();fmLerCampos();
+   const i=d.tarefas.findIndex(x=>x.id===inp.dataset.tar);if(i<0)return;const atual=d.tarefas[i],novas=L.map((x,k)=>k?{id:uid('tf'),txt:x.txt,sub:x.sub}:{...atual,txt:(atual.txt?atual.txt+' ':'')+x.txt,sub:i?x.sub:false});
+   if(i===0)novas[0].sub=false;d.tarefas.splice(i,1,...novas);fm.sujo=true;render();toast(L.length+' linha(s) coladas: '+L.filter(x=>!x.sub).length+' tarefa(s) e '+L.filter(x=>x.sub).length+' subtarefa(s)')}));
  $$('[data-tar]').forEach(i=>i.oninput=()=>fmPrevAtualizar());
  on('#fmTarNova','onclick',()=>{fmLerCampos();d.tarefas.push({id:uid('tf'),txt:''});fm.sujo=true;render();setTimeout(()=>{const L=$$('[data-tar]');L[L.length-1]?.focus()},0)});
  $$('[data-tardel]').forEach(b=>b.onclick=()=>{fmLerCampos();d.tarefas=d.tarefas.filter(t=>t.id!==b.dataset.tardel);fm.sujo=true;render()});
@@ -55310,9 +55352,9 @@ body.vac-porta{overflow:hidden}
     {
       "id": "linha",
       "path": "Plataforma.html#motor/linha",
-      "version": "1.6.1",
-      "sha256": "ee63e0c32f8432266f705a76f849468cec1b2658baaa8e85fa9eebd92e0b150b",
-      "bytes": 993642
+      "version": "1.7.0",
+      "sha256": "637c904cf5ecfba05e3b05b49efe6cffcd03afc59761873f9d3130b1bb6611e2",
+      "bytes": 1002793
     },
     {
       "id": "projetos",
@@ -55324,15 +55366,15 @@ body.vac-porta{overflow:hidden}
     {
       "id": "portal",
       "path": "Plataforma.html#motor/portal",
-      "version": "1.9.76",
-      "sha256": "62efa5f248547d45b890f06ace6312f93aa8dfc04c6c4fefccfcac16226b909a",
-      "bytes": 1324542
+      "version": "1.9.77",
+      "sha256": "ff2dbd3a96289ebeb4bcc9a4be8100fdc87f1d98b1ae77a2beca0e1228bc0750",
+      "bytes": 1325608
     }
   ],
   "limitations": [
     "Projetos e conteúdo técnico OSM/MES/AM/TPM mantêm os limites documentados nas fontes."
   ],
-  "enginesSha256": "6f8831e835ceeca18423648e5fa9246080f9e19b978496d8e9ac55db2f5c683b",
+  "enginesSha256": "f9c33b17dedffb551699bc990b45fafb5087db12426f3c83a691d31be0095412",
   "originRevision": "ffc9ee8",
   "sourceMode": "single-html",
   "originEnginesSha256": "a87a64ad0c328f70e102b2ae888790a9b5d5a9bd05778652a7ce7cae140e40d2"
@@ -55402,7 +55444,7 @@ summary{cursor:pointer;font-weight:600;color:var(--navy)}
 'use strict';
 /* ---------- referência (atualizar quando a plataforma mudar de versão) ---------- */
 // Iguais às do pacote da plataforma (nova-plataforma/src/generated/manifest.json); o teste ferramenta-verificar confere.
-const VERSOES = {"oee":"2.6.39","perdas":"1.12.20","gel":"2.47","paradas":"1.2.22","equip":"1.0.22","inic":"1.1.17","linha":"1.6.1","projetos":"0.1.16","portal":"1.9.76"};
+const VERSOES = {"oee":"2.6.39","perdas":"1.12.20","gel":"2.47","paradas":"1.2.22","equip":"1.0.22","inic":"1.1.17","linha":"1.7.0","projetos":"0.1.16","portal":"1.9.77"};
 const BASES = [
  { arq: 'vacutainer-cadastros.json', mod: 'portal', nome: 'Cadastro geral (Portal)', obrig: true, cadastro: true, bk: 'Cadastros' },
  { arq: 'portal-base.json', mod: 'portal', nome: 'Portal', obrig: true, bk: 'Portal' },
@@ -55993,7 +56035,7 @@ import { Icon, Button, Badge, Empty, Modal, BarChart, BrandLogo, CommandMenu } f
 import { ModuleFrame } from "vac:modulo/components/ModuleFrame";
 import manifest from "vac:recurso/manifesto";
 import { ModuleTabs } from "vac:modulo/components/ModuleTabs";
-const VERSION = "1.8.55";
+const VERSION = "1.8.56";
 /* Navegação 1.3.0 (16/11/2026): Visão da linha, Relatórios e Importações têm abas; as que mostram uma tela do
    Portal (motor da Administração) trazem o 3º campo com a aba dele. Administração fica só com cadastros e configuração. */
 const SHELL_TABS = {

@@ -58,7 +58,7 @@ const html = fs.readFileSync(path.resolve(__dirname, '../../Plataforma.html'));
     await acaoMapa(pin, 'Adicionar formulário');
     const form = await f.evaluate(id => fmLista().find(q => q.ponto === id), ponto.id);
     await acaoMapa(pin, 'Detalhes · ' + form.titulo);
-    assert.equal(await f.inputValue('#fmPonto'), ponto.id);
+    assert.equal(await f.isChecked(`[data-fmpt="${ponto.id}"]`), true, 'o formulário abre com o ponto marcado na lista de pontos');
     await f.fill('#fmTitulo', 'Inspeção fictícia'); await f.click('#fmSalvar');
     assert.equal(await f.evaluate(id => fmLista().find(q => q.id === id).titulo, form.id), 'Inspeção fictícia');
     await f.evaluate(() => ir('config'));
