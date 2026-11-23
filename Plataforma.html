@@ -3043,29 +3043,94 @@ const vacSimbolos = (() => {
         ocorrencias:[texto], acoes:[texto], link, base}. Nenhum número é calculado aqui: a página entrega os valores prontos. ----- */
 /* 1.8.20 · PAR-BUSCA (pedido do responsável, 19/11/2026): busca por texto numa lista de escolha (select). Digite "setup" e ficam só as
    opções com "setup" no código, no nome ou no grupo (sem diferença de acento e maiúscula; várias palavras = todas precisam aparecer).
-   A lista abre aberta enquanto há texto; uma só opção é escolhida sozinha; Enter escolhe a primeira; ↓ vai para a lista. Não muda valores. */
+   1.8.57 · pedido do responsável (23/11/2026): a busca fica DENTRO da lista, como o filtro do Excel. O campo vira um botão com a setinha;
+   ao abrir, aparece a caixa de texto (embaixo do campo, ou em cima quando falta espaço) e a lista filtrada logo abaixo do texto.
+   Um clique (ou ↑/↓) marca a opção; dois cliques, Enter ou clicar fora fecham e confirmam a escolha; Esc fecha sem mudar. A escolha só
+   vale ao fechar: a tela do registro não se redesenha enquanto a lista está aberta. Setas ↑/↓ andam na
+   lista. Quando só uma opção sobra, ela já fica escolhida. O select original continua no lugar (escondido): valor, eventos e IDs não mudam. */
 function vacFiltroSelect(sel, { placeholder = 'Digite para filtrar (ex.: setup)' } = {}) {
   if (!sel || sel.dataset.vacFiltro) return null; sel.dataset.vacFiltro = '1';
+  const doc = sel.ownerDocument, W = doc.defaultView;
+  if (!doc.getElementById('vacFsCss')) { const st = doc.createElement('style'); st.id = 'vacFsCss'; st.textContent =
+    '.vac-fs{position:relative;display:block;width:100%}.vac-fs-nat{position:absolute!important;left:0;top:0;width:1px!important;height:1px!important;min-height:0!important;padding:0!important;border:0!important;opacity:0;pointer-events:none;overflow:hidden}' +
+    '.vac-fs-bt{display:flex;align-items:center;gap:8px;width:100%;min-height:36px;padding:6px 10px;box-sizing:border-box;text-align:left;font:inherit;color:var(--ink,#102333);background:var(--surface,#fff);border:1px solid var(--line,#c8d2dc);border-radius:8px;cursor:pointer}' +
+    '.vac-fs-bt:focus-visible{outline:2px solid var(--accent,#044ED7);outline-offset:1px}.vac-fs-bt[disabled]{opacity:.6;cursor:not-allowed}.vac-fs-v{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.vac-fs-v.vazio{color:var(--muted,#6F8092)}' +
+    '.vac-fs-bt svg{flex:none;transition:transform .15s}.vac-fs-bt[aria-expanded="true"] svg{transform:rotate(180deg)}' +
+    '.vac-fs-pan{position:fixed;z-index:2147483000;display:flex;flex-direction:column;gap:6px;padding:8px;box-sizing:border-box;background:var(--surface,#fff);color:var(--ink,#102333);border:1px solid var(--line,#c8d2dc);border-radius:10px;box-shadow:0 10px 28px rgba(16,35,51,.28)}' +
+    '.vac-fs-pan.acima{flex-direction:column-reverse}.vac-fs-pan[hidden]{display:none}.vac-fs-pan .vac-filtro{width:100%;box-sizing:border-box;margin:0}' +
+    '.vac-fs-lst{list-style:none;margin:0;padding:0;overflow:auto;max-height:260px;border-top:1px solid var(--line,#e1e7ee)}.vac-fs-pan.acima .vac-fs-lst{border-top:0;border-bottom:1px solid var(--line,#e1e7ee)}' +
+    '.vac-fs-lst li{padding:6px 8px;border-radius:6px;cursor:pointer;line-height:1.3}.vac-fs-lst li.g{cursor:default;padding:8px 8px 2px;font-size:11px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--muted,#6F8092)}' +
+    '.vac-fs-lst li[aria-selected="true"]{font-weight:700;color:var(--accent,#044ED7)}.vac-fs-lst li.ativo{background:var(--surface-3,#e8eef6)}.vac-fs-lst li[role=option]:hover{background:var(--surface-3,#eef2f6)}' +
+    '.vac-fs-dica{font-size:11.5px;color:var(--muted,#6F8092)}';
+    doc.head.appendChild(st); }
   const norm = x => String(x || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
-  const rot = (sel.closest('label') &amp;&amp; sel.closest('label').querySelector('span') || {}).textContent || sel.getAttribute('aria-label') || 'opções';
-  const inp = document.createElement('input'); inp.type = 'search'; inp.className = 'vac-filtro'; inp.placeholder = placeholder; inp.autocomplete = 'off';
-  inp.setAttribute('aria-label', 'Filtrar ' + rot.trim()); inp.style.cssText = 'display:block;width:100%;margin:0 0 4px;box-sizing:border-box';
-  const msg = document.createElement('span'); msg.className = 'vac-filtro-msg small muted'; msg.setAttribute('aria-live', 'polite'); msg.style.cssText = 'display:block;min-height:1em';
-  sel.parentNode.insertBefore(inp, sel); sel.after(msg);
-  const ops = [...sel.options], escolher = o => { if (o &amp;&amp; sel.value !== o.value) { sel.value = o.value; sel.dispatchEvent(new Event('change', { bubbles: true })); } };
+  const rot = ((sel.closest('label') &amp;&amp; sel.closest('label').querySelector('span')) || {}).textContent || sel.getAttribute('aria-label') || 'opções';
+  const wrap = doc.createElement('div'); wrap.className = 'vac-fs';
+  const bt = doc.createElement('button'); bt.type = 'button'; bt.className = 'vac-fs-bt'; bt.setAttribute('aria-haspopup', 'listbox'); bt.setAttribute('aria-expanded', 'false');
+  bt.innerHTML = '<span class="vac-fs-v"></span><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>';
+  const pan = doc.createElement('div'); pan.className = 'vac-fs-pan'; pan.hidden = true; pan.setAttribute('role', 'dialog'); pan.setAttribute('aria-label', rot.trim());
+  const inp = doc.createElement('input'); inp.type = 'search'; inp.className = 'vac-filtro'; inp.placeholder = placeholder; inp.autocomplete = 'off'; inp.setAttribute('aria-label', 'Filtrar ' + rot.trim());
+  const lst = doc.createElement('ul'); lst.className = 'vac-fs-lst'; lst.setAttribute('role', 'listbox');
+  const msg = doc.createElement('span'); msg.className = 'vac-filtro-msg vac-fs-dica'; msg.setAttribute('aria-live', 'polite');
+  pan.append(inp, lst, msg); sel.parentNode.insertBefore(wrap, sel); wrap.append(bt, sel, pan); sel.classList.add('vac-fs-nat'); sel.tabIndex = -1; sel.setAttribute('aria-hidden', 'true');
+  const id = 'vfs' + Math.random().toString(36).slice(2, 8); lst.id = id; bt.setAttribute('aria-controls', id);
+  const ops = () => [...sel.options], visiveis = () => ops().filter(o => o.value &amp;&amp; !o.hidden);
+  let ativo = null, antes = null, marcado = false;
+  const rotulo = () => { const o = sel.options[sel.selectedIndex], v = bt.querySelector('.vac-fs-v'), tem = o &amp;&amp; o.value; v.textContent = o ? o.textContent : '— escolha —'; v.classList.toggle('vazio', !tem); bt.title = o ? o.textContent : ''; bt.disabled = sel.disabled; };
+  const escolher = o => { if (o &amp;&amp; sel.value !== o.value) { sel.value = o.value; sel.dispatchEvent(new Event('change', { bubbles: true })); } rotulo(); };
+  const desenhar = () => {
+    const L = []; const item = o => `<li role="option" data-i="${ops().indexOf(o)}" aria-selected="${marcado ? o === ativo : sel.value === o.value}"${o === ativo ? ' class="ativo"' : ''}>${o.textContent.replace(/[&amp;<>]/g, c => ({ '&amp;': '&amp;amp;', '<': '&amp;lt;', '>': '&amp;gt;' }[c]))}</li>`;
+    for (const ch of sel.children) {
+      if (ch.tagName === 'OPTGROUP') { const vis = [...ch.children].filter(o => o.value &amp;&amp; !o.hidden); if (vis.length) L.push(`<li class="g" role="presentation">${ch.label.replace(/[&amp;<>]/g, '')}</li>` + vis.map(item).join('')); }
+      else if (ch.value &amp;&amp; !ch.hidden) L.push(item(ch));
+    }
+    lst.innerHTML = L.join('') || '<li class="g" role="presentation">Nada encontrado</li>';
+    const a = lst.querySelector('li.ativo'); if (a) a.scrollIntoView({ block: 'nearest' });
+  };
   const aplicar = () => {
     const termos = norm(inp.value).split(/\s+/).filter(Boolean); let n = 0, prim = null;
-    for (const o of ops) {
+    for (const o of ops()) {
       if (!o.value) { o.hidden = !!termos.length; continue; }
       const g = o.parentElement &amp;&amp; o.parentElement.tagName === 'OPTGROUP' ? o.parentElement.label : '', ok = termos.every(t => norm(o.textContent + ' ' + g).includes(t));
       o.hidden = !ok; if (ok) { n++; prim = prim || o; }
     }
     sel.querySelectorAll('optgroup').forEach(g => { g.hidden = ![...g.children].some(o => !o.hidden); });
-    if (termos.length) { sel.size = Math.max(2, Math.min(8, n + sel.querySelectorAll('optgroup:not([hidden])').length)); msg.textContent = n ? n + (n === 1 ? ' opção' : ' opções') : 'Nada encontrado com "' + inp.value.trim() + '".'; if (n === 1) escolher(prim); }
-    else { sel.removeAttribute('size'); msg.textContent = ''; }
+    msg.textContent = termos.length ? (n ? n + (n === 1 ? ' opção' : ' opções') + ' · dois cliques ou Enter escolhe' : 'Nada encontrado com "' + inp.value.trim() + '".') : 'Digite para filtrar · dois cliques, Enter ou clicar fora escolhe · Esc volta';
+    if (!visiveis().includes(ativo)) ativo = prim;
+    if (termos.length &amp;&amp; n === 1) { ativo = prim; marcado = true; if (!aberto()) escolher(prim); }
+    desenhar();
   };
-  inp.addEventListener('input', aplicar);
-  inp.addEventListener('keydown', e => { if (e.key === 'ArrowDown') { e.preventDefault(); sel.focus(); } else if (e.key === 'Enter') { e.preventDefault(); escolher(ops.find(o => o.value &amp;&amp; !o.hidden)); } });
+  const posicionar = () => {
+    const r = bt.getBoundingClientRect(), H = W.innerHeight, larg = Math.max(r.width, 300);
+    pan.style.width = larg + 'px'; pan.style.left = Math.max(4, Math.min(r.left, W.innerWidth - larg - 4)) + 'px';
+    const abaixo = H - r.bottom, acima = r.top, cabe = Math.min(340, pan.scrollHeight || 340);
+    if (abaixo < cabe &amp;&amp; acima > abaixo) { pan.classList.add('acima'); pan.style.top = 'auto'; pan.style.bottom = (H - r.top + 4) + 'px'; lst.style.maxHeight = Math.max(120, Math.min(260, acima - 90)) + 'px'; }
+    else { pan.classList.remove('acima'); pan.style.bottom = 'auto'; pan.style.top = (r.bottom + 4) + 'px'; lst.style.maxHeight = Math.max(120, Math.min(260, abaixo - 90)) + 'px'; }
+  };
+  const aberto = () => !pan.hidden;
+  const abrir = () => { if (sel.disabled || aberto()) return; antes = sel.value; marcado = false; ativo = sel.options[sel.selectedIndex] &amp;&amp; sel.value ? sel.options[sel.selectedIndex] : null; pan.hidden = false; bt.setAttribute('aria-expanded', 'true'); aplicar(); posicionar(); inp.focus(); };
+  const fechar = voltar => { if (!aberto()) return; pan.hidden = true; bt.setAttribute('aria-expanded', 'false'); const o = !voltar &amp;&amp; marcado &amp;&amp; ativo &amp;&amp; ativo.value ? ativo : null; marcado = false; if (o) escolher(o); else rotulo(); };
+  const mover = d => { const V = visiveis(); if (!V.length) return; const i = V.indexOf(ativo); ativo = V[Math.max(0, Math.min(V.length - 1, i < 0 ? 0 : i + d))]; marcado = true; desenhar(); };
+  bt.addEventListener('click', () => aberto() ? fechar(false) : abrir());
+  bt.addEventListener('keydown', e => { if (['ArrowDown', 'ArrowUp', 'Enter', ' '].includes(e.key)) { e.preventDefault(); abrir(); } else if (e.key.length === 1 &amp;&amp; !e.ctrlKey &amp;&amp; !e.metaKey &amp;&amp; !e.altKey) { abrir(); inp.value = e.key; e.preventDefault(); aplicar(); } });
+  inp.addEventListener('input', aplicar);   /* a caixa só aparece com a lista aberta; texto posto por código (lista fechada) filtra e, com uma opção, escolhe */
+  inp.addEventListener('keydown', e => {
+    if (e.key === 'ArrowDown') { e.preventDefault(); mover(1); } else if (e.key === 'ArrowUp') { e.preventDefault(); mover(-1); }
+    else if (e.key === 'Enter') { e.preventDefault(); if (!marcado || !ativo || ativo.hidden) ativo = visiveis()[0] || null; marcado = !!ativo; fechar(false); bt.isConnected &amp;&amp; bt.focus(); }
+    else if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); fechar(true); bt.isConnected &amp;&amp; bt.focus(); }
+    else if (e.key === 'Tab') fechar(false);
+  });
+  /* a lista fica dentro do label do campo: sem isto, o clique num item seria repassado ao botão e fecharia a lista */
+  pan.addEventListener('click', e => { e.stopPropagation(); if (e.target !== inp) e.preventDefault(); });
+  /* o clique só marca o item (sem redesenhar a lista), para o segundo clique cair no mesmo item e virar duplo clique */
+  lst.addEventListener('click', e => { const li = e.target.closest('li[role=option]'); if (!li) return; ativo = sel.options[+li.dataset.i]; marcado = true; lst.querySelectorAll('li[role=option]').forEach(x => { const on = x === li; x.classList.toggle('ativo', on); x.setAttribute('aria-selected', String(on)); }); inp.focus({ preventScroll: true }); });
+  lst.addEventListener('dblclick', e => { const li = e.target.closest('li[role=option]'); if (!li) return; ativo = sel.options[+li.dataset.i]; marcado = true; fechar(false); bt.isConnected &amp;&amp; bt.focus(); });
+  doc.addEventListener('pointerdown', e => { if (aberto() &amp;&amp; !wrap.contains(e.target)) fechar(false); }, true);
+  W.addEventListener('resize', () => { if (aberto()) posicionar(); });
+  doc.addEventListener('scroll', e => { if (aberto() &amp;&amp; !pan.contains(e.target)) posicionar(); }, true);
+  sel.addEventListener('change', rotulo);
+  new W.MutationObserver(rotulo).observe(sel, { attributes: true, attributeFilter: ['disabled'], childList: true, subtree: true });
+  rotulo(); aplicar(); pan.hidden = true;
   return inp;
 }
 const vacEmail = (() => {
@@ -4339,7 +4404,7 @@ function wireConfigComum(){$('#cPasta').onclick=async()=>{if(await Store.pick())
         entrar pelo ID (autocadastro como Consulta); página inicial por perfil (1x por sessão); vigência gravada não se edita (desativar com motivo); painel de vigências; semáforo central; saída do modo de teste.
    1.1.2: aviso da carga diz qual base foi lida.  1.5: páginas Paradas, Máquinas, Manutenção e Projetos na lista (aparecem quando o HTML chega na pasta).  1.4: lista técnica pela CS12 multinível (itens = nível 1, estrutura = níveis 2+); CS03 sai.  1.3: cabeçalho comum (vac-cabecalho v2: barra do sistema + página + abas), busca Ctrl K, acabamento V1.90, Versões com cabeçalho e último backup.  1.2: Configuração › Versões das páginas (versão e data de cada HTML, gravação das bases, cópias repetidas, histórico).
    ===================================================================== */
-const PAGE={id:'portal',titulo:"Administração · Linha Vacutainer",tituloCurto:"Administração",subtitulo:'Sistemas de gestão da linha',versao:'1.9.77',baseFile:'portal-base.json',idb:'vac-portal',backupDir:'00. Backups/Portal',
+const PAGE={id:'portal',titulo:"Administração · Linha Vacutainer",tituloCurto:"Administração",subtitulo:'Sistemas de gestão da linha',versao:'1.9.78',baseFile:'portal-base.json',idb:'vac-portal',backupDir:'00. Backups/Portal',
  vazio:()=>({schema:'portal-base',rev:0,config:{modulos:{},avisoDias:30,notas:{}},audit:[]}),
  /* itens do Portal para a busca Ctrl K: cadastro, pendências e telas */
  busca:q=>{const R=[],D=Cad.D;if(D)for(const t of CAD_ORD){for(const it of D[t]||[]){const c=String(it[kOf(t)]),nm=t==='bom'?((cadItem('catalogos',it.catalogo)||{}).nome||''):it.nome||'';if(norm(c+' '+nm).includes(q))R.push({tipo:CAD_T[t].um,txt:c+(nm?' · '+nm:''),sub:'Cadastros'+(cadAtivo(t,it,D)?'':' · inativo'),href:'#cadastros/'+t+'/'+encodeURIComponent(c)});if(R.length>30)break}}
@@ -5218,6 +5283,7 @@ const CAD_SECS=['inicio','matriz','importar','auditoria','backups','seguranca','
    curtas (macro, sem detalhe técnico). REGRA: toda versão nova da plataforma ganha uma entrada aqui, a mais recente primeiro
    (AGENTS.md e CLAUDE.md). Tipos: nova (função nova), melhoria (algo que já existia ficou melhor), correcao (erro corrigido). */
 const NOVIDADES=[
+ {v:'1.8.57',d:'2026-11-23',itens:[['melhoria','Tipo de parada (e as outras listas com busca): a busca fica dentro da lista, como o filtro do Excel. Clique na setinha, digite para filtrar; dois cliques, Enter ou clicar fora confirmam; Esc volta ao que estava.']]},
  {v:'1.8.56',d:'2026-11-23',itens:[['melhoria','Linha 360° · As fotos se montam em Configuração › Fotos: banco ao lado da planta, arrastar, zoom (botões e Ctrl + roda) e "Colocar foto aqui" no botão direito. A Visão da linha mostra as fotos só para consulta.'],['melhoria','Linha 360° · Miniaturas das fotos mais rápidas; quando uma não abre, o motivo aparece. Passe o mouse no pino para ver a foto.'],['novo','Linha 360° · Botão direito com mais opções: renomear, vincular equipamentos, mover ou desativar ponto; formulário com todos os pontos da área; nova área a partir do local; posto de trabalho.'],['novo','Formulários A4 · Área, pontos/máquinas e equipamentos com várias escolhas: a área marca todos os pontos e equipamentos dela.'],['novo','Formulários A4 · Tarefas com subtarefas (5, 5.1…); colar várias linhas do bloco de notas ou do Excel cria uma tarefa por linha.'],['melhoria','Formulários A4 · Orientação geral em texto livre que cresce com o texto, também na folha; retângulo e círculo podem ser girados.']]},
  {v:'1.8.55',d:'2026-11-23',itens:[['melhoria','Linha 360° · Em Configuração, escolha Redimensionar área, arraste os vértices e salve o contorno. Desfazer e Cancelar ficam disponíveis durante o ajuste.']]},
  {v:'1.8.54',d:'2026-11-23',itens:[['novo','Linha 360° · Use o botão direito na planta de Configuração para adicionar equipamentos, processos, checklists e formulários. Clique sobre uma área para editar seu nome, pontos ou contorno.'],['correção','Fotos da linha · Clique na foto do banco para ampliar. As fotos WebP também abrem quando a miniatura não está disponível.']] },
@@ -55311,70 +55377,70 @@ body.vac-porta{overflow:hidden}
       "id": "oee",
       "path": "Plataforma.html#motor/oee",
       "version": "2.6.39",
-      "sha256": "568c893515aea5c96548925ebd82d626557e05e56cde11e694ee694b7e71a436",
-      "bytes": 2389366
+      "sha256": "b8f06d04d183a381c081f16414eff90abdf8184bda83ad36f084a0def003da21",
+      "bytes": 2398069
     },
     {
       "id": "perdas",
       "path": "Plataforma.html#motor/perdas",
       "version": "1.12.20",
-      "sha256": "da9787825164253fb97e6d32b6f28c71f79dea7d381a52d897871d3fdeb2d96e",
-      "bytes": 979623
+      "sha256": "e57b116f91de477bdf9692931b0e20af0951f0da3ad67c1f69379784620b0bed",
+      "bytes": 988326
     },
     {
       "id": "gel",
       "path": "Plataforma.html#motor/gel",
       "version": "2.47",
-      "sha256": "49e20592fb608d595d9cfc92c255624f9349d0cb9c49702db0a8fd758b655016",
-      "bytes": 1625500
+      "sha256": "1eb8f7386f1cdddbeb41c458432e9dda9413eed42a953da7aeb10acf10098703",
+      "bytes": 1634203
     },
     {
       "id": "paradas",
       "path": "Plataforma.html#motor/paradas",
       "version": "1.2.22",
-      "sha256": "14b388743f71112b30de532a50951744ac026c73be3830b6903871b9dfe27bfb",
-      "bytes": 950126
+      "sha256": "50aa93c37425a809fd6c5f9ecf9e25797e73336030e0edc11ed1d6447552b55a",
+      "bytes": 958829
     },
     {
       "id": "equip",
       "path": "Plataforma.html#motor/equip",
       "version": "1.0.22",
-      "sha256": "468b16aefe6683f83ea1601673aa60b7d159c343623873ba4de161e77e91895f",
-      "bytes": 741750
+      "sha256": "f464ac9ac21a75c0268ec87c9fd9abb360c17eaef6b71c3abbc6b146ff9d925e",
+      "bytes": 750453
     },
     {
       "id": "inic",
       "path": "Plataforma.html#motor/inic",
       "version": "1.1.17",
-      "sha256": "1689f774a7c33629c106d7e1f5146537fb791786b2c9b358ae2d8093164d00c1",
-      "bytes": 756255
+      "sha256": "760b8d2443e75ca4e4772012ed87446329a068d01971bcc7c867d4927e884683",
+      "bytes": 764958
     },
     {
       "id": "linha",
       "path": "Plataforma.html#motor/linha",
       "version": "1.7.0",
-      "sha256": "637c904cf5ecfba05e3b05b49efe6cffcd03afc59761873f9d3130b1bb6611e2",
-      "bytes": 1002793
+      "sha256": "27a66daefd7a9241845bc341eb4286599f99c6e88ff142a6a1f0fa992fd0ab53",
+      "bytes": 1011496
     },
     {
       "id": "projetos",
       "path": "Plataforma.html#motor/projetos",
       "version": "0.1.16",
-      "sha256": "acea22f4df592c635b9fba5f0e4ec4d67c0e509c82617fa4db1c5c49f1d87cc6",
-      "bytes": 673434
+      "sha256": "3a98eaa4f40661a1918522266b8dcd3390def07e8a1e269ef80c0b4db11ad04d",
+      "bytes": 682137
     },
     {
       "id": "portal",
       "path": "Plataforma.html#motor/portal",
-      "version": "1.9.77",
-      "sha256": "ff2dbd3a96289ebeb4bcc9a4be8100fdc87f1d98b1ae77a2beca0e1228bc0750",
-      "bytes": 1325608
+      "version": "1.9.78",
+      "sha256": "803d4416cd88ff8dcf958c4ac70edb4ac173187ad2b4ed026a171beb769b770a",
+      "bytes": 1334576
     }
   ],
   "limitations": [
     "Projetos e conteúdo técnico OSM/MES/AM/TPM mantêm os limites documentados nas fontes."
   ],
-  "enginesSha256": "f9c33b17dedffb551699bc990b45fafb5087db12426f3c83a691d31be0095412",
+  "enginesSha256": "ed4e5527a96cbf0180ec112efd8649e366770b34a09da3a1490fb1ce6f793f4d",
   "originRevision": "ffc9ee8",
   "sourceMode": "single-html",
   "originEnginesSha256": "a87a64ad0c328f70e102b2ae888790a9b5d5a9bd05778652a7ce7cae140e40d2"
@@ -55444,7 +55510,7 @@ summary{cursor:pointer;font-weight:600;color:var(--navy)}
 'use strict';
 /* ---------- referência (atualizar quando a plataforma mudar de versão) ---------- */
 // Iguais às do pacote da plataforma (nova-plataforma/src/generated/manifest.json); o teste ferramenta-verificar confere.
-const VERSOES = {"oee":"2.6.39","perdas":"1.12.20","gel":"2.47","paradas":"1.2.22","equip":"1.0.22","inic":"1.1.17","linha":"1.7.0","projetos":"0.1.16","portal":"1.9.77"};
+const VERSOES = {"oee":"2.6.39","perdas":"1.12.20","gel":"2.47","paradas":"1.2.22","equip":"1.0.22","inic":"1.1.17","linha":"1.7.0","projetos":"0.1.16","portal":"1.9.78"};
 const BASES = [
  { arq: 'vacutainer-cadastros.json', mod: 'portal', nome: 'Cadastro geral (Portal)', obrig: true, cadastro: true, bk: 'Cadastros' },
  { arq: 'portal-base.json', mod: 'portal', nome: 'Portal', obrig: true, bk: 'Portal' },
@@ -56035,7 +56101,7 @@ import { Icon, Button, Badge, Empty, Modal, BarChart, BrandLogo, CommandMenu } f
 import { ModuleFrame } from "vac:modulo/components/ModuleFrame";
 import manifest from "vac:recurso/manifesto";
 import { ModuleTabs } from "vac:modulo/components/ModuleTabs";
-const VERSION = "1.8.56";
+const VERSION = "1.8.57";
 /* Navegação 1.3.0 (16/11/2026): Visão da linha, Relatórios e Importações têm abas; as que mostram uma tela do
    Portal (motor da Administração) trazem o 3º campo com a aba dele. Administração fica só com cadastros e configuração. */
 const SHELL_TABS = {

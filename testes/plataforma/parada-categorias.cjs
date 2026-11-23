@@ -27,11 +27,11 @@ const html = fs.readFileSync(path.resolve(__dirname, '../../Plataforma.html'));
     await o.evaluate(() => { const S = db().server, sg = S.segments.find(x => x.t0.slice(0, 10) === App.sel.date) || S.segments[0], dia = sg.t0.slice(0, 10), sep = sg.t0.charAt(10); App.sel.date = dia;
       S.gaps.push({ lot: sg.lot, cat: sg.cat, lineId: sg.lineId, from: dia + sep + '10:00:00', to: dia + sep + '10:25:00' }); S.rev = (S.rev || 0) + 1; render(); });
     await o.waitForSelector('#srvRev'); await o.click('#srvRev'); await o.waitForSelector('select[data-evc]', { state: 'attached' });
-    const r = await o.evaluate(async () => { const s = document.querySelector('select[data-evc]'), inp = s.previousElementSibling, norm = x => x.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
+    const r = await o.evaluate(async () => { const s = document.querySelector('select[data-evc]'), cx = s.closest('.vac-fs'), inp = cx && cx.querySelector('.vac-filtro'),   /* 1.8.57: a busca fica dentro da lista (como o filtro do Excel) */ norm = x => x.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
       const grupos = s.querySelectorAll('optgroup').length, filtro = inp && inp.classList.contains('vac-filtro');
       inp.value = 'setup'; inp.dispatchEvent(new Event('input', { bubbles: true })); await new Promise(r => setTimeout(r, 50));
       const vis = [...s.options].filter(o => o.value && !o.hidden).map(o => (o.textContent + ' ' + (o.parentElement.label || ''))), gruposVis = [...s.querySelectorAll('optgroup')].filter(x => !x.hidden).map(x => x.label);
-      return { grupos, filtro, vis, gruposVis, todos: vis.every(t => norm(t).includes('setup')), msg: s.nextElementSibling.textContent }; });
+      return { grupos, filtro, vis, gruposVis, todos: vis.every(t => norm(t).includes('setup')), msg: cx.querySelector('.vac-filtro-msg').textContent }; });
     assert.ok(r.grupos > 1 && r.filtro, 'categorias e campo de busca'); assert.ok(r.vis.length >= 1 && r.todos, 'só tipos com "setup": ' + JSON.stringify(r.vis));
     assert.match(r.msg, /opç/); console.log(`ok sugestões do servidor: busca "setup" deixa ${r.vis.length} tipo(s) (${r.gruposVis.join(', ')})`);
 
