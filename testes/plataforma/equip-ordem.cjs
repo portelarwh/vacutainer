@@ -34,7 +34,7 @@ const html = fs.readFileSync(path.resolve(__dirname, '../../Plataforma.html'));
     console.log('ok tabela: Pos., Código, Código MES, Foto (miniatura), Nome, Tipo, Papel; a Linha (0) no topo e fixa');
 
     // 2) arrastar EQ12 para antes do EQ03 com o ponteiro: os ativos ficam 1..N e a Linha 0
-    const h = f.locator('tr[data-cod="EQ12"] td.eq-h'); await h.scrollIntoViewIfNeeded(); const a = await h.boundingBox(), d = await f.locator('tr[data-cod="EQ03"]').boundingBox();
+    const h = f.locator('tr[data-cod="EQ12"] td.eq-h'); await h.scrollIntoViewIfNeeded(); /* a rolagem interna da lista deve mostrar ao mesmo tempo a alça do EQ12 e o EQ03 abaixo do cabeçalho fixo (com mais equipamentos, a rolagem automática escondia um deles) */ await f.evaluate(() => { for (let e = document.querySelector('tr[data-cod="EQ03"]').parentElement; e; e = e.parentElement) if (e.scrollHeight > e.clientHeight + 1 && /auto|scroll/.test(getComputedStyle(e).overflowY)) { e.scrollTop = 120; break; } }); await w(700); const a = await h.boundingBox(), d = await f.locator('tr[data-cod="EQ03"]').boundingBox();
     await page.mouse.move(a.x + a.width / 2, a.y + a.height / 2); await page.mouse.down(); await page.mouse.move(a.x + 8, a.y - 10, { steps: 4 }); await page.mouse.move(d.x + 300, d.y + 4, { steps: 12 }); await page.mouse.up(); await w(900);
     assert.equal(dialogos.length, 0, 'sem confirmação ao arrastar (grava direto)');
     const p2 = await pos();
