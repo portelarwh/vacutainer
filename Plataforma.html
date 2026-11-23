@@ -5218,6 +5218,7 @@ const CAD_SECS=['inicio','matriz','importar','auditoria','backups','seguranca','
    curtas (macro, sem detalhe técnico). REGRA: toda versão nova da plataforma ganha uma entrada aqui, a mais recente primeiro
    (AGENTS.md e CLAUDE.md). Tipos: nova (função nova), melhoria (algo que já existia ficou melhor), correcao (erro corrigido). */
 const NOVIDADES=[
+ {v:'1.8.57',d:'2026-11-23',itens:[['correção','Linha 360° · O PDF do formulário A4 não fica mais enorme com fotos: as fotos entram no PDF em JPEG leve (antes passavam de 30 MB, agora poucos MB), e o texto continua selecionável.']]},
  {v:'1.8.56',d:'2026-11-23',itens:[['melhoria','Linha 360° · As fotos se montam em Configuração › Fotos: banco ao lado da planta, arrastar, zoom (botões e Ctrl + roda) e "Colocar foto aqui" no botão direito. A Visão da linha mostra as fotos só para consulta.'],['melhoria','Linha 360° · Miniaturas das fotos mais rápidas; quando uma não abre, o motivo aparece. Passe o mouse no pino para ver a foto.'],['novo','Linha 360° · Botão direito com mais opções: renomear, vincular equipamentos, mover ou desativar ponto; formulário com todos os pontos da área; nova área a partir do local; posto de trabalho.'],['novo','Formulários A4 · Área, pontos/máquinas e equipamentos com várias escolhas: a área marca todos os pontos e equipamentos dela.'],['novo','Formulários A4 · Tarefas com subtarefas (5, 5.1…); colar várias linhas do bloco de notas ou do Excel cria uma tarefa por linha.'],['melhoria','Formulários A4 · Orientação geral em texto livre que cresce com o texto, também na folha; retângulo e círculo podem ser girados.']]},
  {v:'1.8.55',d:'2026-11-23',itens:[['melhoria','Linha 360° · Em Configuração, escolha Redimensionar área, arraste os vértices e salve o contorno. Desfazer e Cancelar ficam disponíveis durante o ajuste.']]},
  {v:'1.8.54',d:'2026-11-23',itens:[['novo','Linha 360° · Use o botão direito na planta de Configuração para adicionar equipamentos, processos, checklists e formulários. Clique sobre uma área para editar seu nome, pontos ou contorno.'],['correção','Fotos da linha · Clique na foto do banco para ampliar. As fotos WebP também abrem quando a miniatura não está disponível.']] },
@@ -35381,7 +35382,7 @@ tr.l3-sujo>td{background:color-mix(in srgb,var(--warn) 10%,transparent)}tr.l3-su
 <main class="wrap" id="main"></main>
 <div class="toasts" id="toasts"></div>
 <script>
-const PAGE={id:"linha",titulo:"Linha 360° · Planta interativa da linha",tituloCurto:"Linha 360°",subtitulo:"Planta interativa: paradas, pessoas e ações em cada ponto da linha",versao:"1.7.0",baseFile:"linha360-base.json",backupDir:"00. Backups/Linha360",estado:"atualizacao",estadoNota:"Primeira versão: planta, pontos, áreas, postos e checklists. MES por equipamento chega depois."};
+const PAGE={id:"linha",titulo:"Linha 360° · Planta interativa da linha",tituloCurto:"Linha 360°",subtitulo:"Planta interativa: paradas, pessoas e ações em cada ponto da linha",versao:"1.7.1",baseFile:"linha360-base.json",backupDir:"00. Backups/Linha360",estado:"atualizacao",estadoNota:"Primeira versão: planta, pontos, áreas, postos e checklists. MES por equipamento chega depois."};
 const APP_VERSION=PAGE.versao;
 /* ---------- vac-cabecalho v2 · JS (igual em todas as páginas) ---------- */
 const VAC_CAB_VERSAO=2;
@@ -35965,7 +35966,7 @@ const FM_FREQ=[['turno','A cada turno',0],['dia','Diária',1],['semana','Semanal
 const FM_ST={aberto:['Aberto','info'],concluido:['Concluído · aguardando confirmação','warn'],confirmado:['Confirmado','ok'],cancelado:['Cancelado','none']};
 const FM_CORES=[['#E5322D','Vermelho'],['#F2B705','Amarelo'],['#1F9D55','Verde'],['#1F6FE5','Azul'],['#FFFFFF','Branco'],['#111111','Preto']];
 const FM_FERR=[['seta','Seta','➚'],['circulo','Círculo','◯'],['retangulo','Retângulo','▭'],['numero','Só o número','①']];
-const FM_DIR='Formularios',FM_MAXPX=1600;
+const FM_DIR='Formularios',FM_MAXPX=1600,FM_PDFPX=1200;
 const fmLista=()=>(Store.data.formularios||[]).filter(f=>f.ativo!==false);
 const fmNomeDe=(L,k)=>(L.find(t=>t[0]===k)||L[0])[1];
 const fmData=d=>d?d.split('-').reverse().join('/'):'—';
@@ -35990,6 +35991,13 @@ async function fmGuardarFoto(formId,fid,file){const{blob,w,h,ext}=await fmReduzi
  return{w,h,arq,ext,kb:Math.round(blob.size/1024)}}
 async function fmUrl(f){if(FotoMem.has(f.id))return FotoMem.get(f.id);if(!f.arq||!Store.dir||!Store.perm||Store.test)return'';
  try{const p=f.arq.split('/'),nm=p.pop(),d=await Store.sub(p.join('/')),b=await(await d.getFileHandle(nm)).getFile(),u=URL.createObjectURL(imagemTipada(b,nm));FotoMem.set(f.id,u);return u}catch(e){return''}}
+/* 1.7.1 · PDF leve (pedido do responsável, 23/11/2026): o Chrome não copia WebP para o PDF, decodifica e guarda os pixels sem compressão (foto de 430 KB virava 4,4 MB;
+   formulário com 8 fotos passava de 30 MB). Só na impressão, cada foto vira JPEG de até FM_PDFPX px (cabe na A4 a ~160 dpi), que o PDF copia como está. A foto gravada
+   na pasta, a tela e as marcações não mudam; texto e marcações continuam vetoriais e selecionáveis. Falhou a conversão: imprime a foto original. */
+const FotoPdf=new Map();
+function fmJpegPdf(f,u){if(FotoPdf.has(f.id))return Promise.resolve(FotoPdf.get(f.id));return new Promise(ok=>{const im=new Image();im.onload=()=>{try{const k=Math.min(1,FM_PDFPX/Math.max(im.naturalWidth,im.naturalHeight)),w=Math.max(1,Math.round(im.naturalWidth*k)),h=Math.max(1,Math.round(im.naturalHeight*k)),c=document.createElement('canvas');c.width=w;c.height=h;const x=c.getContext('2d');x.fillStyle='#fff';x.fillRect(0,0,w,h);x.drawImage(im,0,0,w,h);
+  c.toBlob(b=>{if(!b)return ok(u);const j=URL.createObjectURL(b);FotoPdf.set(f.id,j);ok(j)},'image/jpeg',.82)}catch(e){ok(u)}};im.onerror=()=>ok(u);im.src=u})}
+async function fmFotosParaPdf(raiz){const d=App.fm&amp;&amp;App.fm.d;if(!d)return;for(const el of raiz.querySelectorAll('[data-fid]')){const f=(d.fotos||[]).find(x=>x.id===el.dataset.fid);if(!f)continue;const u=el.tagName==='IMG'?el.getAttribute('src'):el.getAttribute('href');if(!u)continue;const j=await fmJpegPdf(f,u);if(el.tagName==='IMG')el.src=j;else el.setAttribute('href',j)}}
 async function fmCarregarFotos(raiz){const d=App.fm&amp;&amp;App.fm.d;if(!d)return;for(const el of (raiz||document).querySelectorAll('[data-fid]')){const f=(d.fotos||[]).find(x=>x.id===el.dataset.fid);if(!f)continue;const u=await fmUrl(f);
   if(u){if(el.tagName==='IMG'){if(el.getAttribute('src')!==u)el.src=u}else el.setAttribute('href',u);el.closest('.fm-img')?.classList.remove('falta')}else el.closest('.fm-img')?.classList.add('falta')}}
 
@@ -36305,7 +36313,7 @@ function fmImprimir(){fmLerCampos();let pr=$('#fmPrint');if(!pr){pr=document.cre
  /* o nome sugerido do PDF vem do título da página: código, título e a versão */
  const t0=document.title,tp=(()=>{try{return parent!==window?parent.document.title:null}catch(e){return null}})(),nome=[d.id,d.titulo,modo==='res'?'resumido':'detalhado'].filter(Boolean).join(' - ').replace(/[\\/:*?"<>|]+/g,' ');
  document.title=nome;try{if(tp!=null)parent.document.title=nome}catch(e){}addEventListener('afterprint',()=>{document.title=t0;try{if(tp!=null)parent.document.title=tp}catch(e){}},{once:true});setTimeout(()=>{document.title=t0;try{if(tp!=null)parent.document.title=tp}catch(e){}},60000);
- fmCarregarFotos(pr).then(()=>Promise.all([...pr.querySelectorAll('img')].map(i=>i.complete?0:new Promise(r=>{i.onload=i.onerror=r})))).then(()=>{document.body.classList.add('fm-imprimindo');
+ fmCarregarFotos(pr).then(()=>fmFotosParaPdf(pr)).then(()=>Promise.all([...pr.querySelectorAll('img')].map(i=>i.complete?0:new Promise(r=>{i.onload=i.onerror=r})))).then(()=>{document.body.classList.add('fm-imprimindo');
   const fim=()=>{document.body.classList.remove('fm-imprimindo');removeEventListener('afterprint',fim)};addEventListener('afterprint',fim);try{window.print()}finally{setTimeout(fim,1500)}})}
 function fmAbrir(id){const f=fmLista().find(x=>x.id===id);if(!f)return;App.fm.d=clone(f);App.fm.sujo=false;App.fm.d.novo=false;render();scrollTo(0,0)}
 function ligarForm(){const fm=App.fm;if(!fm)return;const on=(s,ev,f)=>{const e=$(s);if(e)e[ev]=f};
@@ -55352,9 +55360,9 @@ body.vac-porta{overflow:hidden}
     {
       "id": "linha",
       "path": "Plataforma.html#motor/linha",
-      "version": "1.7.0",
-      "sha256": "637c904cf5ecfba05e3b05b49efe6cffcd03afc59761873f9d3130b1bb6611e2",
-      "bytes": 1002793
+      "version": "1.7.1",
+      "sha256": "f1573cd45393d20d9460d8850ff6d3f808c0b58a4312123edb12a02d09f30a0a",
+      "bytes": 1004359
     },
     {
       "id": "projetos",
@@ -55367,14 +55375,14 @@ body.vac-porta{overflow:hidden}
       "id": "portal",
       "path": "Plataforma.html#motor/portal",
       "version": "1.9.77",
-      "sha256": "ff2dbd3a96289ebeb4bcc9a4be8100fdc87f1d98b1ae77a2beca0e1228bc0750",
-      "bytes": 1325608
+      "sha256": "8317176daac155e41ea8b3435ba3566fa12b0ea4e94a183ba64934783be99c02",
+      "bytes": 1325849
     }
   ],
   "limitations": [
     "Projetos e conteúdo técnico OSM/MES/AM/TPM mantêm os limites documentados nas fontes."
   ],
-  "enginesSha256": "f9c33b17dedffb551699bc990b45fafb5087db12426f3c83a691d31be0095412",
+  "enginesSha256": "0cc7ccdb33061ec7ac76e7a7d9be05830eb023d5d40c744a19493f933999da59",
   "originRevision": "ffc9ee8",
   "sourceMode": "single-html",
   "originEnginesSha256": "a87a64ad0c328f70e102b2ae888790a9b5d5a9bd05778652a7ce7cae140e40d2"
@@ -56035,7 +56043,7 @@ import { Icon, Button, Badge, Empty, Modal, BarChart, BrandLogo, CommandMenu } f
 import { ModuleFrame } from "vac:modulo/components/ModuleFrame";
 import manifest from "vac:recurso/manifesto";
 import { ModuleTabs } from "vac:modulo/components/ModuleTabs";
-const VERSION = "1.8.56";
+const VERSION = "1.8.57";
 /* Navegação 1.3.0 (16/11/2026): Visão da linha, Relatórios e Importações têm abas; as que mostram uma tela do
    Portal (motor da Administração) trazem o 3º campo com a aba dele. Administração fica só com cadastros e configuração. */
 const SHELL_TABS = {
