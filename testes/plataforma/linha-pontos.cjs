@@ -84,7 +84,10 @@ const html = fs.readFileSync(path.resolve(__dirname, '../../Plataforma.html'));
     const vertice = f.locator('[data-vertice="0"]');
     async function arrastar() {
       await vertice.evaluate(el => el.scrollIntoView({block:'center',inline:'nearest',behavior:'instant'}));
-      const r = await vertice.boundingBox(), x = r.x+r.width/2, y = r.y+r.height/2;
+      /* espera a rolagem da casca terminar: o vértice precisa estar parado antes de medir (senão o clique cai fora dele) */
+      let r = await vertice.boundingBox();
+      for (let k = 0; k < 20; k++) { await page.waitForTimeout(100); const r2 = await vertice.boundingBox(); if (Math.abs(r2.x - r.x) < .5 && Math.abs(r2.y - r.y) < .5) break; r = r2; }
+      const x = r.x+r.width/2, y = r.y+r.height/2;
       await page.mouse.move(x,y); await page.mouse.down();
       await page.mouse.move(x+36,y+25,{steps:5}); await page.mouse.up();
       const pts = await f.evaluate(() => App.desenho.pts);
