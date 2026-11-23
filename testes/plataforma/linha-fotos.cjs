@@ -97,6 +97,19 @@ const PLANTA = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 4000 2000" 
     console.log('ok Visão da linha: só as fotos colocadas, sem arrastar nem tirar do mapa, com o atalho para Configuração › Fotos');
     await f.evaluate(() => { App.tab = 'config'; render(); });
 
+    // Botão direito num local vazio da planta (Configuração): grupos e "Colocar foto aqui" → clicar na foto do banco a coloca no local
+    const alvo = await f.evaluate(async () => { App.cfFotos = false; render(); const cv = document.querySelector('#cv'), r = cv.getBoundingClientRect();
+      cv.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, cancelable: true, clientX: r.left + r.width * .7, clientY: r.top + r.height * .85 }));
+      const m = document.querySelector('#cfMenu'); return { grupos: [...m.querySelectorAll('.cf-mg')].map(g => g.textContent), opcoes: [...m.querySelectorAll('button')].map(b => b.textContent) }; });
+    assert.ok(alvo.grupos.includes('Adicionar aqui') && ['Colocar foto aqui', 'Nova área a partir daqui', 'Posto de trabalho (operador)', 'Adicionar equipamento'].every(o => alvo.opcoes.includes(o)), 'menu com grupos e opções ' + JSON.stringify(alvo));
+    await f.evaluate(() => [...document.querySelectorAll('#cfMenu button')].find(b => b.textContent === 'Colocar foto aqui').click());
+    await f.waitForSelector('#fAlvoCanc');
+    const livre = await f.evaluate(() => document.querySelector('#fGrid [data-fimg]').dataset.fimg);
+    await f.evaluate(a => document.querySelector(`#fGrid [data-fimg="${a}"]`).click(), livre);
+    const posta = await f.evaluate(a => { const x = Store.data.fotos.find(q => q.id === a); return [Math.round(x.x), Math.round(x.y), x.ativo, !!App.fotoAlvo]; }, livre);
+    assert.deepEqual(posta, [70, 85, true, false], 'foto colocada no local do botão direito');
+    console.log('ok botão direito: grupos (ponto, área, adicionar aqui) e "Colocar foto aqui" coloca a foto escolhida no local');
+
     // WebP lido de uma pasta real de teste, incluindo a reserva quando o decodificador de miniaturas falha.
     const imagem = await f.evaluate(async () => {
       const raiz = await navigator.storage.getDirectory();

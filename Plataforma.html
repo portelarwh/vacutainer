@@ -35261,7 +35261,7 @@ window.VAC_GUIA.inic = {
 .l3-vp{overflow:auto;background:var(--surface-3,var(--bg));max-height:78vh}
 #cfMenu{position:fixed;inset:auto;margin:0;max-width:min(320px,100vw);overflow:auto;padding:var(--sp-8,8px)}
 #cfMenu{z-index:1000;display:grid;gap:var(--sp-4,4px)}
-#cfMenu button{text-align:left}
+#cfMenu button{text-align:left}#cfMenu .cf-mg{display:block;margin:6px 2px 0;font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}#cfMenu .cf-mg:first-child{margin-top:0}
 .l3-cv{position:relative;width:100%;aspect-ratio:2000/1125;min-width:680px;background:#fff;user-select:none;touch-action:pan-x pan-y}
 .l3-cv > img{position:absolute;inset:0;width:100%;height:100%;display:block;pointer-events:none}
 :root[data-theme="dark"] .l3-cv{background:#0e1a24}:root[data-theme="dark"] .l3-cv > img{filter:invert(1) hue-rotate(180deg) brightness(.92) contrast(.95);mix-blend-mode:screen}
@@ -36536,24 +36536,40 @@ function menuLocal(e){
   b.onclick=()=>{menu.remove();if(fmPode('configurar'))fn();else fmSemPerm('configurar')};
   menu.appendChild(b);
  };
+ /* 1.7.0 · títulos por grupo e mais opções (pedido do responsável, 23/11/2026: "fique à vontade de incrementar mais pontos") */
+ const grupo=t=>{const h=document.createElement('small');h.className='cf-mg';h.textContent=t;menu.appendChild(h)};
  if(p){
+  grupo('Ponto '+numeroPonto(p)+' · '+p.nome);
   acao('Detalhes do ponto '+numeroPonto(p),()=>{const row=$$('tr[data-pt]').find(r=>r.dataset.pt===p.id);$('[data-c=nome]',row).focus()});
   const codigos=eqDoPonto(p).lista;
   for(const cod of codigos)acao('Detalhes do equipamento '+cod,()=>vacIrPortal('cadastros/equipamentos/'+encodeURIComponent(cod)));
   if(p.tipo==='equipamento'&amp;&amp;!codigos.length)acao('Cadastrar equipamento deste ponto',()=>abrirEquipamento(p));
   for(const c of chkAtivos().filter(q=>q.ponto===p.id))acao('Detalhes · '+c.titulo,()=>{ir('checklists');$$('[data-chked]').find(b=>b.dataset.chked===c.id)?.click()});
-  for(const f of fmLista().filter(q=>q.ponto===p.id))acao('Detalhes · '+f.titulo,()=>{
+  for(const f of fmLista().filter(q=>q.ponto===p.id||(q.pontos||[]).includes(p.id)))acao('Detalhes · '+f.titulo,()=>{
    if(App.fm?.sujo&amp;&amp;!confirm('Descartar as alterações do formulário aberto?'))return;
    ir('form');fmAbrir(f.id);
   });
+  acao('Renomear ponto',()=>{const n=(prompt('Nome do ponto '+numeroPonto(p)+':',p.nome)||'').trim();if(n&amp;&amp;n!==p.nome){Store.commit({k:'ponto',it:{id:p.id,nome:n.slice(0,60)}});toast('Ponto renomeado')}});
+  acao('Vincular equipamentos do cadastro',()=>{const row=$$('tr[data-pt]').find(r=>r.dataset.pt===p.id);if(!row)return;const d=$('details',row);if(d)d.open=true;row.scrollIntoView({block:'center'});$('[data-eq]',row)?.focus()});
+  acao('Mover este ponto (arrastar)',()=>{App.edit=true;App.cfFotos=false;render();toast('Arraste o ponto '+numeroPonto(p)+' até o lugar certo')});
+  acao('Ver o ponto na Visão da linha',()=>{App.sel=p.id;ir('mapa')});
+  acao('Novo formulário neste ponto',()=>criarLocal('form',xy,area,p));
+  acao('Novo checklist neste ponto',()=>criarLocal('chk',xy,area,p));
+  acao('Desativar ponto',()=>{if(confirm('Desativar o ponto '+numeroPonto(p)+' · '+p.nome+'? Ele some da planta; nada é apagado e os registros continuam.')){Store.commit({k:'ponto',it:{id:p.id,ativo:false}});toast('Ponto desativado')}});
  }
  if(a){
+  grupo('Área · '+a.nome);
   const editar=campo=>{App.areaSel=a.id;render();$(campo)?.focus()};
   acao('Alterar nome da área',()=>editar('#fArea [name=nome]'));
   acao('Alterar pontos da área',()=>editar('#fArea [name=pt]'));
   if(lerVertices(a.pol).length>=3)acao('Redimensionar área',()=>iniciarContorno(a,true));
   acao('Redesenhar contorno',()=>iniciarContorno(a,false));
+  acao('Novo formulário da área (todos os pontos)',()=>{const it=fmNovo();it.id=it.id+'-'+uid('').slice(-5).toUpperCase();delete it.novo;Object.assign(it,{area:a.id,pontos:(a.pts||[]).slice(),ponto:(a.pts||[])[0]||'',titulo:'Formulário '+a.nome,criadoEm:new Date().toISOString()});Store.commit({k:'form',it});toast('Formulário '+it.id+' criado com os pontos da área. Abra em Formulários para detalhar.')});
+  acao('Desativar área',()=>{if(confirm(`Desativar a área "${a.nome}"? Ela some da planta; nada é apagado.`)){App.areaSel=null;Store.commit({k:'area',it:{id:a.id,ativo:false}})}});
  }
+ grupo('Adicionar aqui');
+ acao('Nova área a partir daqui',()=>{const n=(prompt('Nome da nova área:')||'').trim();if(!n)return;const na={id:uid('ar'),nome:n.slice(0,60),pts:[],pol:''};Store.commit({k:'area',it:na},{silencio:true});App.areaSel=na.id;App.edit=false;App.cfFotos=false;App.desenho={id:na.id,ajustar:false,pts:[xy],historico:[]};render();toast('Clique nos outros cantos da área e depois em Salvar contorno')});
+ acao('Posto de trabalho (operador)',()=>{const op=(prompt('Grupo do operador (OP1, OP2 ou OP3):','OP1')||'').trim().toUpperCase();if(!/^OP[1-3]$/.test(op))return;const n=postos().filter(q=>q.op===op).length+1;const id=op+'-'+String.fromCharCode(64+Math.min(26,n))+(n>26?n:'');Store.commit({k:'posto',it:{id,op,x:xy[0],y:xy[1],ponto:p?p.id:null,pessoas:{},pessoasIds:{}}});App.posto=id;toast('Posto '+id+' criado; defina as pessoas em Pessoas e postos')});
  acao('Colocar foto aqui',()=>{App.cfFotos=true;App.edit=false;App.fotoAlvo=xy;Fotos.filtro='nao';if(!Fotos.r)lerFotos();render();toast('Clique na foto do banco para colocar neste local')});
  for(const [tipo,nome] of [['equipamento','equipamento'],['processo','processo'],['chk','checklist'],['form','formulário']]){
   acao('Adicionar '+nome,()=>criarLocal(tipo,xy,area,p));
@@ -55295,8 +55311,8 @@ body.vac-porta{overflow:hidden}
       "id": "linha",
       "path": "Plataforma.html#motor/linha",
       "version": "1.6.1",
-      "sha256": "8fa437e673f1c326a6279b8113586c79ad61d0c26b9e28cf510e3f8761167b8f",
-      "bytes": 990582
+      "sha256": "ee63e0c32f8432266f705a76f849468cec1b2658baaa8e85fa9eebd92e0b150b",
+      "bytes": 993642
     },
     {
       "id": "projetos",
@@ -55316,7 +55332,7 @@ body.vac-porta{overflow:hidden}
   "limitations": [
     "Projetos e conteúdo técnico OSM/MES/AM/TPM mantêm os limites documentados nas fontes."
   ],
-  "enginesSha256": "def7397c736f292e7ae8bc8e5ac7b0949947ce4bffe67b0db7079abac04d0b8e",
+  "enginesSha256": "6f8831e835ceeca18423648e5fa9246080f9e19b978496d8e9ac55db2f5c683b",
   "originRevision": "ffc9ee8",
   "sourceMode": "single-html",
   "originEnginesSha256": "a87a64ad0c328f70e102b2ae888790a9b5d5a9bd05778652a7ce7cae140e40d2"
