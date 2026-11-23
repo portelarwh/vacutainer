@@ -52,11 +52,11 @@ const errs = []; const ok = (c, m) => { console.log((c ? 'ok   ' : 'FALHA ') + m
       let n = 0, v = 0; const c = URL.createObjectURL, rv = URL.revokeObjectURL; URL.createObjectURL = x => { n++; return c.call(URL, x); }; URL.revokeObjectURL = x => { v++; return rv.call(URL, x); };
       let txt = null; const db0 = window.downloadBlob; window.downloadBlob = async (bl, nm) => { if (/\.csv$/.test(nm)) txt = await bl.text(); return db0(bl, nm); };
       exportCsv([['Descrição', 'Desvio'], ['=HIPERLINK("x")', -12.5], ['-1.234', 3]], 't.csv'); downloadJSON({ a: 1 }, 't.json');
-      await new Promise(r => setTimeout(r, 900)); window.downloadBlob = db0; URL.createObjectURL = c; URL.revokeObjectURL = rv; return { n, v, txt };
+      /* espera a liberação (o link é liberado 1 s depois do clique; numa máquina carregada pode atrasar): até 5 s */ for (let i = 0; i < 50 && v < 2; i++) await new Promise(r => setTimeout(r, 100)); window.downloadBlob = db0; URL.createObjectURL = c; URL.revokeObjectURL = rv; return { n, v, txt };
     });
     ok(r.txt && r.txt.includes("'=HIPERLINK(\"\"x\"\")") && r.txt.includes(';-12,5') && r.txt.includes('-1.234;3'), 'Waste: CSV exportado com a fórmula como texto e os números iguais');
     ok(r.n === 2 && r.v === 2, `Waste: downloads de CSV e JSON liberam a URL depois (${r.n} criadas, ${r.v} liberadas)`);
-    const comum = await p.evaluate(async () => { let n=0,v=0;const c=URL.createObjectURL,rv=URL.revokeObjectURL;URL.createObjectURL=x=>{n++;return c.call(URL,x)};URL.revokeObjectURL=x=>{v++;return rv.call(URL,x)};try{vacDownloadBlob(new Blob(['teste']),'recuperacao-teste.json');await new Promise(r=>setTimeout(r,1200));return{n,v}}finally{URL.createObjectURL=c;URL.revokeObjectURL=rv} });
+    const comum = await p.evaluate(async () => { let n=0,v=0;const c=URL.createObjectURL,rv=URL.revokeObjectURL;URL.createObjectURL=x=>{n++;return c.call(URL,x)};URL.revokeObjectURL=x=>{v++;return rv.call(URL,x)};try{vacDownloadBlob(new Blob(['teste']),'recuperacao-teste.json');for(let i=0;i<50&&v<1;i++)await new Promise(r=>setTimeout(r,100));return{n,v}}finally{URL.createObjectURL=c;URL.revokeObjectURL=rv} });
     ok(comum.n===1&&comum.v===1,'Kit: download da recuperação libera a URL');
     const fora = []; for (const m of src.matchAll(/createObjectURL/g)) { const ctx = src.slice(Math.max(0, m.index - 120), m.index); if (!/function (?:downloadBlob|vacDownloadBlob)\(|Logo|this\.url/.test(ctx)) fora.push(src.slice(m.index - 60, m.index + 20)); }
     ok(!fora.length, `Waste: createObjectURL só nos helpers de download e no logo${fora.length ? ' (sobrou: ' + fora[0] + ')' : ''}`);
