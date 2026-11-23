@@ -3043,29 +3043,94 @@ const vacSimbolos = (() => {
         ocorrencias:[texto], acoes:[texto], link, base}. Nenhum número é calculado aqui: a página entrega os valores prontos. ----- */
 /* 1.8.20 · PAR-BUSCA (pedido do responsável, 19/11/2026): busca por texto numa lista de escolha (select). Digite "setup" e ficam só as
    opções com "setup" no código, no nome ou no grupo (sem diferença de acento e maiúscula; várias palavras = todas precisam aparecer).
-   A lista abre aberta enquanto há texto; uma só opção é escolhida sozinha; Enter escolhe a primeira; ↓ vai para a lista. Não muda valores. */
+   1.8.58 · pedido do responsável (23/11/2026): a busca fica DENTRO da lista, como o filtro do Excel. O campo vira um botão com a setinha;
+   ao abrir, aparece a caixa de texto (embaixo do campo, ou em cima quando falta espaço) e a lista filtrada logo abaixo do texto.
+   Um clique (ou ↑/↓) marca a opção; dois cliques, Enter ou clicar fora fecham e confirmam a escolha; Esc fecha sem mudar. A escolha só
+   vale ao fechar: a tela do registro não se redesenha enquanto a lista está aberta. Setas ↑/↓ andam na
+   lista. Quando só uma opção sobra, ela já fica escolhida. O select original continua no lugar (escondido): valor, eventos e IDs não mudam. */
 function vacFiltroSelect(sel, { placeholder = 'Digite para filtrar (ex.: setup)' } = {}) {
   if (!sel || sel.dataset.vacFiltro) return null; sel.dataset.vacFiltro = '1';
+  const doc = sel.ownerDocument, W = doc.defaultView;
+  if (!doc.getElementById('vacFsCss')) { const st = doc.createElement('style'); st.id = 'vacFsCss'; st.textContent =
+    '.vac-fs{position:relative;display:block;width:100%}.vac-fs-nat{position:absolute!important;left:0;top:0;width:1px!important;height:1px!important;min-height:0!important;padding:0!important;border:0!important;opacity:0;pointer-events:none;overflow:hidden}' +
+    '.vac-fs-bt{display:flex;align-items:center;gap:8px;width:100%;min-height:36px;padding:6px 10px;box-sizing:border-box;text-align:left;font:inherit;color:var(--ink,#102333);background:var(--surface,#fff);border:1px solid var(--line,#c8d2dc);border-radius:8px;cursor:pointer}' +
+    '.vac-fs-bt:focus-visible{outline:2px solid var(--accent,#044ED7);outline-offset:1px}.vac-fs-bt[disabled]{opacity:.6;cursor:not-allowed}.vac-fs-v{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.vac-fs-v.vazio{color:var(--muted,#6F8092)}' +
+    '.vac-fs-bt svg{flex:none;transition:transform .15s}.vac-fs-bt[aria-expanded="true"] svg{transform:rotate(180deg)}' +
+    '.vac-fs-pan{position:fixed;z-index:2147483000;display:flex;flex-direction:column;gap:6px;padding:8px;box-sizing:border-box;background:var(--surface,#fff);color:var(--ink,#102333);border:1px solid var(--line,#c8d2dc);border-radius:10px;box-shadow:0 10px 28px rgba(16,35,51,.28)}' +
+    '.vac-fs-pan.acima{flex-direction:column-reverse}.vac-fs-pan[hidden]{display:none}.vac-fs-pan .vac-filtro{width:100%;box-sizing:border-box;margin:0}' +
+    '.vac-fs-lst{list-style:none;margin:0;padding:0;overflow:auto;max-height:260px;border-top:1px solid var(--line,#e1e7ee)}.vac-fs-pan.acima .vac-fs-lst{border-top:0;border-bottom:1px solid var(--line,#e1e7ee)}' +
+    '.vac-fs-lst li{padding:6px 8px;border-radius:6px;cursor:pointer;line-height:1.3}.vac-fs-lst li.g{cursor:default;padding:8px 8px 2px;font-size:11px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--muted,#6F8092)}' +
+    '.vac-fs-lst li[aria-selected="true"]{font-weight:700;color:var(--accent,#044ED7)}.vac-fs-lst li.ativo{background:var(--surface-3,#e8eef6)}.vac-fs-lst li[role=option]:hover{background:var(--surface-3,#eef2f6)}' +
+    '.vac-fs-dica{font-size:11.5px;color:var(--muted,#6F8092)}';
+    doc.head.appendChild(st); }
   const norm = x => String(x || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
-  const rot = (sel.closest('label') &amp;&amp; sel.closest('label').querySelector('span') || {}).textContent || sel.getAttribute('aria-label') || 'opções';
-  const inp = document.createElement('input'); inp.type = 'search'; inp.className = 'vac-filtro'; inp.placeholder = placeholder; inp.autocomplete = 'off';
-  inp.setAttribute('aria-label', 'Filtrar ' + rot.trim()); inp.style.cssText = 'display:block;width:100%;margin:0 0 4px;box-sizing:border-box';
-  const msg = document.createElement('span'); msg.className = 'vac-filtro-msg small muted'; msg.setAttribute('aria-live', 'polite'); msg.style.cssText = 'display:block;min-height:1em';
-  sel.parentNode.insertBefore(inp, sel); sel.after(msg);
-  const ops = [...sel.options], escolher = o => { if (o &amp;&amp; sel.value !== o.value) { sel.value = o.value; sel.dispatchEvent(new Event('change', { bubbles: true })); } };
+  const rot = ((sel.closest('label') &amp;&amp; sel.closest('label').querySelector('span')) || {}).textContent || sel.getAttribute('aria-label') || 'opções';
+  const wrap = doc.createElement('div'); wrap.className = 'vac-fs';
+  const bt = doc.createElement('button'); bt.type = 'button'; bt.className = 'vac-fs-bt'; bt.setAttribute('aria-haspopup', 'listbox'); bt.setAttribute('aria-expanded', 'false');
+  bt.innerHTML = '<span class="vac-fs-v"></span><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>';
+  const pan = doc.createElement('div'); pan.className = 'vac-fs-pan'; pan.hidden = true; pan.setAttribute('role', 'dialog'); pan.setAttribute('aria-label', rot.trim());
+  const inp = doc.createElement('input'); inp.type = 'search'; inp.className = 'vac-filtro'; inp.placeholder = placeholder; inp.autocomplete = 'off'; inp.setAttribute('aria-label', 'Filtrar ' + rot.trim());
+  const lst = doc.createElement('ul'); lst.className = 'vac-fs-lst'; lst.setAttribute('role', 'listbox');
+  const msg = doc.createElement('span'); msg.className = 'vac-filtro-msg vac-fs-dica'; msg.setAttribute('aria-live', 'polite');
+  pan.append(inp, lst, msg); sel.parentNode.insertBefore(wrap, sel); wrap.append(bt, sel, pan); sel.classList.add('vac-fs-nat'); sel.tabIndex = -1; sel.setAttribute('aria-hidden', 'true');
+  const id = 'vfs' + Math.random().toString(36).slice(2, 8); lst.id = id; bt.setAttribute('aria-controls', id);
+  const ops = () => [...sel.options], visiveis = () => ops().filter(o => o.value &amp;&amp; !o.hidden);
+  let ativo = null, antes = null, marcado = false;
+  const rotulo = () => { const o = sel.options[sel.selectedIndex], v = bt.querySelector('.vac-fs-v'), tem = o &amp;&amp; o.value; v.textContent = o ? o.textContent : '— escolha —'; v.classList.toggle('vazio', !tem); bt.title = o ? o.textContent : ''; bt.disabled = sel.disabled; };
+  const escolher = o => { if (o &amp;&amp; sel.value !== o.value) { sel.value = o.value; sel.dispatchEvent(new Event('change', { bubbles: true })); } rotulo(); };
+  const desenhar = () => {
+    const L = []; const item = o => `<li role="option" data-i="${ops().indexOf(o)}" aria-selected="${marcado ? o === ativo : sel.value === o.value}"${o === ativo ? ' class="ativo"' : ''}>${o.textContent.replace(/[&amp;<>]/g, c => ({ '&amp;': '&amp;amp;', '<': '&amp;lt;', '>': '&amp;gt;' }[c]))}</li>`;
+    for (const ch of sel.children) {
+      if (ch.tagName === 'OPTGROUP') { const vis = [...ch.children].filter(o => o.value &amp;&amp; !o.hidden); if (vis.length) L.push(`<li class="g" role="presentation">${ch.label.replace(/[&amp;<>]/g, '')}</li>` + vis.map(item).join('')); }
+      else if (ch.value &amp;&amp; !ch.hidden) L.push(item(ch));
+    }
+    lst.innerHTML = L.join('') || '<li class="g" role="presentation">Nada encontrado</li>';
+    const a = lst.querySelector('li.ativo'); if (a) a.scrollIntoView({ block: 'nearest' });
+  };
   const aplicar = () => {
     const termos = norm(inp.value).split(/\s+/).filter(Boolean); let n = 0, prim = null;
-    for (const o of ops) {
+    for (const o of ops()) {
       if (!o.value) { o.hidden = !!termos.length; continue; }
       const g = o.parentElement &amp;&amp; o.parentElement.tagName === 'OPTGROUP' ? o.parentElement.label : '', ok = termos.every(t => norm(o.textContent + ' ' + g).includes(t));
       o.hidden = !ok; if (ok) { n++; prim = prim || o; }
     }
     sel.querySelectorAll('optgroup').forEach(g => { g.hidden = ![...g.children].some(o => !o.hidden); });
-    if (termos.length) { sel.size = Math.max(2, Math.min(8, n + sel.querySelectorAll('optgroup:not([hidden])').length)); msg.textContent = n ? n + (n === 1 ? ' opção' : ' opções') : 'Nada encontrado com "' + inp.value.trim() + '".'; if (n === 1) escolher(prim); }
-    else { sel.removeAttribute('size'); msg.textContent = ''; }
+    msg.textContent = termos.length ? (n ? n + (n === 1 ? ' opção' : ' opções') + ' · dois cliques ou Enter escolhe' : 'Nada encontrado com "' + inp.value.trim() + '".') : 'Digite para filtrar · dois cliques, Enter ou clicar fora escolhe · Esc volta';
+    if (!visiveis().includes(ativo)) ativo = prim;
+    if (termos.length &amp;&amp; n === 1) { ativo = prim; marcado = true; if (!aberto()) escolher(prim); }
+    desenhar();
   };
-  inp.addEventListener('input', aplicar);
-  inp.addEventListener('keydown', e => { if (e.key === 'ArrowDown') { e.preventDefault(); sel.focus(); } else if (e.key === 'Enter') { e.preventDefault(); escolher(ops.find(o => o.value &amp;&amp; !o.hidden)); } });
+  const posicionar = () => {
+    const r = bt.getBoundingClientRect(), H = W.innerHeight, larg = Math.max(r.width, 300);
+    pan.style.width = larg + 'px'; pan.style.left = Math.max(4, Math.min(r.left, W.innerWidth - larg - 4)) + 'px';
+    const abaixo = H - r.bottom, acima = r.top, cabe = Math.min(340, pan.scrollHeight || 340);
+    if (abaixo < cabe &amp;&amp; acima > abaixo) { pan.classList.add('acima'); pan.style.top = 'auto'; pan.style.bottom = (H - r.top + 4) + 'px'; lst.style.maxHeight = Math.max(120, Math.min(260, acima - 90)) + 'px'; }
+    else { pan.classList.remove('acima'); pan.style.bottom = 'auto'; pan.style.top = (r.bottom + 4) + 'px'; lst.style.maxHeight = Math.max(120, Math.min(260, abaixo - 90)) + 'px'; }
+  };
+  const aberto = () => !pan.hidden;
+  const abrir = () => { if (sel.disabled || aberto()) return; antes = sel.value; marcado = false; ativo = sel.options[sel.selectedIndex] &amp;&amp; sel.value ? sel.options[sel.selectedIndex] : null; pan.hidden = false; bt.setAttribute('aria-expanded', 'true'); aplicar(); posicionar(); inp.focus(); };
+  const fechar = voltar => { if (!aberto()) return; pan.hidden = true; bt.setAttribute('aria-expanded', 'false'); const o = !voltar &amp;&amp; marcado &amp;&amp; ativo &amp;&amp; ativo.value ? ativo : null; marcado = false; if (o) escolher(o); else rotulo(); };
+  const mover = d => { const V = visiveis(); if (!V.length) return; const i = V.indexOf(ativo); ativo = V[Math.max(0, Math.min(V.length - 1, i < 0 ? 0 : i + d))]; marcado = true; desenhar(); };
+  bt.addEventListener('click', () => aberto() ? fechar(false) : abrir());
+  bt.addEventListener('keydown', e => { if (['ArrowDown', 'ArrowUp', 'Enter', ' '].includes(e.key)) { e.preventDefault(); abrir(); } else if (e.key.length === 1 &amp;&amp; !e.ctrlKey &amp;&amp; !e.metaKey &amp;&amp; !e.altKey) { abrir(); inp.value = e.key; e.preventDefault(); aplicar(); } });
+  inp.addEventListener('input', aplicar);   /* a caixa só aparece com a lista aberta; texto posto por código (lista fechada) filtra e, com uma opção, escolhe */
+  inp.addEventListener('keydown', e => {
+    if (e.key === 'ArrowDown') { e.preventDefault(); mover(1); } else if (e.key === 'ArrowUp') { e.preventDefault(); mover(-1); }
+    else if (e.key === 'Enter') { e.preventDefault(); if (!marcado || !ativo || ativo.hidden) ativo = visiveis()[0] || null; marcado = !!ativo; fechar(false); bt.isConnected &amp;&amp; bt.focus(); }
+    else if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); fechar(true); bt.isConnected &amp;&amp; bt.focus(); }
+    else if (e.key === 'Tab') fechar(false);
+  });
+  /* a lista fica dentro do label do campo: sem isto, o clique num item seria repassado ao botão e fecharia a lista */
+  pan.addEventListener('click', e => { e.stopPropagation(); if (e.target !== inp) e.preventDefault(); });
+  /* o clique só marca o item (sem redesenhar a lista), para o segundo clique cair no mesmo item e virar duplo clique */
+  lst.addEventListener('click', e => { const li = e.target.closest('li[role=option]'); if (!li) return; ativo = sel.options[+li.dataset.i]; marcado = true; lst.querySelectorAll('li[role=option]').forEach(x => { const on = x === li; x.classList.toggle('ativo', on); x.setAttribute('aria-selected', String(on)); }); inp.focus({ preventScroll: true }); });
+  lst.addEventListener('dblclick', e => { const li = e.target.closest('li[role=option]'); if (!li) return; ativo = sel.options[+li.dataset.i]; marcado = true; fechar(false); bt.isConnected &amp;&amp; bt.focus(); });
+  doc.addEventListener('pointerdown', e => { if (aberto() &amp;&amp; !wrap.contains(e.target)) fechar(false); }, true);
+  W.addEventListener('resize', () => { if (aberto()) posicionar(); });
+  doc.addEventListener('scroll', e => { if (aberto() &amp;&amp; !pan.contains(e.target)) posicionar(); }, true);
+  sel.addEventListener('change', rotulo);
+  new W.MutationObserver(rotulo).observe(sel, { attributes: true, attributeFilter: ['disabled'], childList: true, subtree: true });
+  rotulo(); aplicar(); pan.hidden = true;
   return inp;
 }
 const vacEmail = (() => {
@@ -4339,7 +4404,7 @@ function wireConfigComum(){$('#cPasta').onclick=async()=>{if(await Store.pick())
         entrar pelo ID (autocadastro como Consulta); página inicial por perfil (1x por sessão); vigência gravada não se edita (desativar com motivo); painel de vigências; semáforo central; saída do modo de teste.
    1.1.2: aviso da carga diz qual base foi lida.  1.5: páginas Paradas, Máquinas, Manutenção e Projetos na lista (aparecem quando o HTML chega na pasta).  1.4: lista técnica pela CS12 multinível (itens = nível 1, estrutura = níveis 2+); CS03 sai.  1.3: cabeçalho comum (vac-cabecalho v2: barra do sistema + página + abas), busca Ctrl K, acabamento V1.90, Versões com cabeçalho e último backup.  1.2: Configuração › Versões das páginas (versão e data de cada HTML, gravação das bases, cópias repetidas, histórico).
    ===================================================================== */
-const PAGE={id:'portal',titulo:"Administração · Linha Vacutainer",tituloCurto:"Administração",subtitulo:'Sistemas de gestão da linha',versao:'1.9.77',baseFile:'portal-base.json',idb:'vac-portal',backupDir:'00. Backups/Portal',
+const PAGE={id:'portal',titulo:"Administração · Linha Vacutainer",tituloCurto:"Administração",subtitulo:'Sistemas de gestão da linha',versao:'1.9.78',baseFile:'portal-base.json',idb:'vac-portal',backupDir:'00. Backups/Portal',
  vazio:()=>({schema:'portal-base',rev:0,config:{modulos:{},avisoDias:30,notas:{}},audit:[]}),
  /* itens do Portal para a busca Ctrl K: cadastro, pendências e telas */
  busca:q=>{const R=[],D=Cad.D;if(D)for(const t of CAD_ORD){for(const it of D[t]||[]){const c=String(it[kOf(t)]),nm=t==='bom'?((cadItem('catalogos',it.catalogo)||{}).nome||''):it.nome||'';if(norm(c+' '+nm).includes(q))R.push({tipo:CAD_T[t].um,txt:c+(nm?' · '+nm:''),sub:'Cadastros'+(cadAtivo(t,it,D)?'':' · inativo'),href:'#cadastros/'+t+'/'+encodeURIComponent(c)});if(R.length>30)break}}
@@ -5218,6 +5283,7 @@ const CAD_SECS=['inicio','matriz','importar','auditoria','backups','seguranca','
    curtas (macro, sem detalhe técnico). REGRA: toda versão nova da plataforma ganha uma entrada aqui, a mais recente primeiro
    (AGENTS.md e CLAUDE.md). Tipos: nova (função nova), melhoria (algo que já existia ficou melhor), correcao (erro corrigido). */
 const NOVIDADES=[
+ {v:'1.8.58',d:'2026-11-23',itens:[['melhoria','Produção · Lançar / Editar scrap: com gel no turno, o popup mostra o scrap de máquina e o de gel lado a lado, com um só Gravar.'],['melhoria','Produção · Scrap de gel no jeito da Gestão de Gel: todos os pontos de descarte (Funil, Berço…) por Tubos, Barril e Purga, com o peso, os barris, os motivos com kg e a conta na hora (tubos, gel, materiais).'],['melhoria','Tipo de parada (e as outras listas com busca): a busca fica dentro da lista, como o filtro do Excel. Clique na setinha, digite para filtrar; dois cliques, Enter ou clicar fora confirmam; Esc volta ao que estava.']]},
  {v:'1.8.57',d:'2026-11-23',itens:[['correção','Linha 360° · O PDF do formulário A4 não fica mais enorme com fotos: as fotos entram no PDF em JPEG leve (antes passavam de 30 MB, agora poucos MB), e o texto continua selecionável.']]},
  {v:'1.8.56',d:'2026-11-23',itens:[['melhoria','Linha 360° · As fotos se montam em Configuração › Fotos: banco ao lado da planta, arrastar, zoom (botões e Ctrl + roda) e "Colocar foto aqui" no botão direito. A Visão da linha mostra as fotos só para consulta.'],['melhoria','Linha 360° · Miniaturas das fotos mais rápidas; quando uma não abre, o motivo aparece. Passe o mouse no pino para ver a foto.'],['novo','Linha 360° · Botão direito com mais opções: renomear, vincular equipamentos, mover ou desativar ponto; formulário com todos os pontos da área; nova área a partir do local; posto de trabalho.'],['novo','Formulários A4 · Área, pontos/máquinas e equipamentos com várias escolhas: a área marca todos os pontos e equipamentos dela.'],['novo','Formulários A4 · Tarefas com subtarefas (5, 5.1…); colar várias linhas do bloco de notas ou do Excel cria uma tarefa por linha.'],['melhoria','Formulários A4 · Orientação geral em texto livre que cresce com o texto, também na folha; retângulo e círculo podem ser girados.']]},
  {v:'1.8.55',d:'2026-11-23',itens:[['melhoria','Linha 360° · Em Configuração, escolha Redimensionar área, arraste os vértices e salve o contorno. Desfazer e Cancelar ficam disponíveis durante o ajuste.']]},
@@ -8217,7 +8283,7 @@ function tipoParadaOpts(codes, sel) {
   const cats = [...new Set(codes.map(c => c.category || 'Sem categoria'))];
   return cats.map(cat => `<optgroup label="${esc(cat)}">${codes.filter(c => (c.category || 'Sem categoria') === cat).map(c => `<option value="${c.id}" ${sel === c.id ? 'selected' : ''}>${esc(c.code + ' · ' + c.name)}</option>`).join('')}</optgroup>`).join('');
 }
-const APP_VERSION = '2.6.39';   /* 2.6.39 · MAN-01: leitura do QR no comum (vacQR) */   /* 2.6.38 · MT-01: importar o turno do app Meu Turno (QR pela webcam ou arquivo) */   /* 2.6.37 · CAD-CONS: Consulta de cadastros com ficha lateral */   /* 2.6.36 · CFG-ADM etapa 2: sem telas duplicadas de cadastro; metas em consulta no Plano do mês */   /* 2.6.35 · CFG-ADM: cadastros da Administração abrem direto lá */   /* 2.6.34 · REL-02: PDF e e-mail no molde comum (vacPdf/vacEmail) */   /* 2.6.33 · TL-03: Linha do tempo filtra por Ordem/Lote e mostra Produção, Meta e Aderência no topo */   /* 2.6.32 · TUR-04: Plano do mês distribui o plano pelo tempo programado de cada dia (sábado menor pede menos) */   /* 2.6.31 · mês em português pela peça comum vacCampos (comum/interface) */   /* 2.6.30 · padrão visual (skill padrao-visual): cabeçalho nas abas, filtros de Paradas e Resultados iguais aos da Visão geral, mês em português, controles e textos no tamanho mínimo, cores pela marca; SQDCP com as cores das categorias da empresa */   /* 2.6.29 · design: turnos logo após o resumo do dia, cartões de OEE sem repetição, Visão geral com 1 dia recolhida, títulos em caixa de frase */   /* 2.6.28 · LANC-03 etapa e2: Segurança e qualidade obrigatórias para fechar o dia (desde 21/11/2026), do dia no modo Dia; Excluir dia em dia fechado */   /* 2.6.27 · LANC-03 etapa e1 (itens 3.1 e 4): modo Dia, só no dia, sem rateio */   /* 2.6.26 · LANC-03 etapa d (itens 3, 5 e 6): pílulas Hora a hora / Por turno e Scrap Por turno / Diário, selo de hora extra */   /* 2.6.25 · LANC-03 etapa c (item 9): Validação com Ir para o ajuste e a conta de cada aviso */   /* 2.6.24 · LANC-03 etapa b (itens 1, 2 e 7): cabeçalho do dia numa linha, menu ⋮ Mais ações e rodapé */   /* 2.6.23 · LANC-03 (itens 0 e 1.1): ordem e rótulos das abas da imagem, Modo TV e Resumo do dia recolhível */   /* 2.6.22 · LANC-04: Config. › Abas na plataforma (destaque, selo, aba inicial) e Frequência × duração redesenhado na largura do cartão */   /* 2.6.21 · TUR-07: turno que passa da meia-noite dividido no total diário (depois de 00:00 → dia seguinte; scrap proporcional à produção, paradas sem horário ao tempo) */   /* 2.6.20 · HEX-01: "Houve hora extra?" no cartão do turno (até 60 min antes do início ou depois do fim) */   /* 2.6.19 · TUR-06: produção no turno não produtivo pela meia-noite (antes → turno anterior; depois → próximo) desde 01/11/2026; aviso de hora extra */   /* 2.6.18 · PAR-CAT: tipo de parada por categoria e com busca nas sugestões do servidor, na importação de paradas e no turno sem produção */   /* 2.6.17 · SRV-DIA: dia sem lançamento com produção do servidor: aviso e abrir o dia com os dados */   /* 2.6.16 · TUR-05: dia em aberto passa ao horário vigente do turno; PAR-BUSCA: tipo de parada por texto */   /* 2.6.15 · REL-01: gel no relatório/e-mail do dia e do turno; Enviar relatório na janela do dia */   /* 2.6.14 · GEL-07: Relatório do Gel e Perdas de gel (turno com gel e Relatórios) */   /* 2.6.13 · GEL-06: Scrap gel no detalhe do turno */   /* 2.6.12 · TUR-04: turno com horário diferente no sábado (linhas por dia da semana) */   /* 2.6.11 · abas agrupadas: Ordens e lotes, Resultados, Paradas */   /* 2.6.10 · Lançamento sem turno aberto por padrão; abas visíveis na casca */   /* 2.6.9 · LANC-02: Lançamento unificado (hora a hora no detalhe do turno, 3º turno ao lado, Problemas de QN) */   /* 2.6.5 · IMP-01: contagens das importações nos exports */   /* 2.6.4 · semáforo só pelas faixas configuradas (verde acima de 100% vale) */   /* 2.6.2 · gráficos e números com meta seguem o semáforo de três cores (verde, amarelo, vermelho) */   /* 2.6.1 · gráficos: turno lançado pelo total com o nome do turno no eixo; janelas: rótulo e valor em tamanho de texto */   /* 2.6.0 · produção total do turno (sem hora a hora; períodos na troca de catálogo), aviso do servidor para turno lançado pelo total e para dia com produção apontada */
+const APP_VERSION = '2.6.40';   /* 2.6.40 · GEL-08: scrap de máquina e de gel lado a lado; gel no jeito do Gel */   /* 2.6.39 · MAN-01: leitura do QR no comum (vacQR) */   /* 2.6.38 · MT-01: importar o turno do app Meu Turno (QR pela webcam ou arquivo) */   /* 2.6.37 · CAD-CONS: Consulta de cadastros com ficha lateral */   /* 2.6.36 · CFG-ADM etapa 2: sem telas duplicadas de cadastro; metas em consulta no Plano do mês */   /* 2.6.35 · CFG-ADM: cadastros da Administração abrem direto lá */   /* 2.6.34 · REL-02: PDF e e-mail no molde comum (vacPdf/vacEmail) */   /* 2.6.33 · TL-03: Linha do tempo filtra por Ordem/Lote e mostra Produção, Meta e Aderência no topo */   /* 2.6.32 · TUR-04: Plano do mês distribui o plano pelo tempo programado de cada dia (sábado menor pede menos) */   /* 2.6.31 · mês em português pela peça comum vacCampos (comum/interface) */   /* 2.6.30 · padrão visual (skill padrao-visual): cabeçalho nas abas, filtros de Paradas e Resultados iguais aos da Visão geral, mês em português, controles e textos no tamanho mínimo, cores pela marca; SQDCP com as cores das categorias da empresa */   /* 2.6.29 · design: turnos logo após o resumo do dia, cartões de OEE sem repetição, Visão geral com 1 dia recolhida, títulos em caixa de frase */   /* 2.6.28 · LANC-03 etapa e2: Segurança e qualidade obrigatórias para fechar o dia (desde 21/11/2026), do dia no modo Dia; Excluir dia em dia fechado */   /* 2.6.27 · LANC-03 etapa e1 (itens 3.1 e 4): modo Dia, só no dia, sem rateio */   /* 2.6.26 · LANC-03 etapa d (itens 3, 5 e 6): pílulas Hora a hora / Por turno e Scrap Por turno / Diário, selo de hora extra */   /* 2.6.25 · LANC-03 etapa c (item 9): Validação com Ir para o ajuste e a conta de cada aviso */   /* 2.6.24 · LANC-03 etapa b (itens 1, 2 e 7): cabeçalho do dia numa linha, menu ⋮ Mais ações e rodapé */   /* 2.6.23 · LANC-03 (itens 0 e 1.1): ordem e rótulos das abas da imagem, Modo TV e Resumo do dia recolhível */   /* 2.6.22 · LANC-04: Config. › Abas na plataforma (destaque, selo, aba inicial) e Frequência × duração redesenhado na largura do cartão */   /* 2.6.21 · TUR-07: turno que passa da meia-noite dividido no total diário (depois de 00:00 → dia seguinte; scrap proporcional à produção, paradas sem horário ao tempo) */   /* 2.6.20 · HEX-01: "Houve hora extra?" no cartão do turno (até 60 min antes do início ou depois do fim) */   /* 2.6.19 · TUR-06: produção no turno não produtivo pela meia-noite (antes → turno anterior; depois → próximo) desde 01/11/2026; aviso de hora extra */   /* 2.6.18 · PAR-CAT: tipo de parada por categoria e com busca nas sugestões do servidor, na importação de paradas e no turno sem produção */   /* 2.6.17 · SRV-DIA: dia sem lançamento com produção do servidor: aviso e abrir o dia com os dados */   /* 2.6.16 · TUR-05: dia em aberto passa ao horário vigente do turno; PAR-BUSCA: tipo de parada por texto */   /* 2.6.15 · REL-01: gel no relatório/e-mail do dia e do turno; Enviar relatório na janela do dia */   /* 2.6.14 · GEL-07: Relatório do Gel e Perdas de gel (turno com gel e Relatórios) */   /* 2.6.13 · GEL-06: Scrap gel no detalhe do turno */   /* 2.6.12 · TUR-04: turno com horário diferente no sábado (linhas por dia da semana) */   /* 2.6.11 · abas agrupadas: Ordens e lotes, Resultados, Paradas */   /* 2.6.10 · Lançamento sem turno aberto por padrão; abas visíveis na casca */   /* 2.6.9 · LANC-02: Lançamento unificado (hora a hora no detalhe do turno, 3º turno ao lado, Problemas de QN) */   /* 2.6.5 · IMP-01: contagens das importações nos exports */   /* 2.6.4 · semáforo só pelas faixas configuradas (verde acima de 100% vale) */   /* 2.6.2 · gráficos e números com meta seguem o semáforo de três cores (verde, amarelo, vermelho) */   /* 2.6.1 · gráficos: turno lançado pelo total com o nome do turno no eixo; janelas: rótulo e valor em tamanho de texto */   /* 2.6.0 · produção total do turno (sem hora a hora; períodos na troca de catálogo), aviso do servidor para turno lançado pelo total e para dia com produção apontada */
 const SCHEMA_VERSION = 1;
 const BASE_FILE = 'oee-vacutainer-base.json';
 const BACKUP_DIR = '00. Backups';
@@ -17298,45 +17364,72 @@ const GelTurno = {
     const e = this.estado(day, ps, res) || { pode: !lk, motivo: '' };
     return `<div class="kv" style="grid-column:1/-1"><span class="l">Scrap de gel ${ib('gelScrap')}</span><span class="v small">${txt}</span><button type="button" class="btn sm" data-gelscrap="${ps.id}" ${e.pode ? '' : `disabled title="${esc(e.motivo)}"`}>Registrar scrap</button>${e.pode ? '' : `<span class="small muted">${esc(e.motivo)}</span>`}</div>`;
   },
-  /* formulário (mesmos campos do Registrar scrap da Gestão de Gel) */
+  /* formulário. 2.6.40 · GEL-08 (pedido do responsável, 23/11/2026): o mesmo jeito do Registrar scrap da Gestão de Gel. Ao abrir aparecem
+     todos os pontos de descarte (equipamento × descarte da Administração), agrupados em Tubos, Barril e Purga, cada um com o peso bruto
+     da balança (no barril: barris terminados e, se pesou, o kg), o detalhe da conta (≈ tubos, gel, materiais, embalagem descontada) e
+     "+ motivo" com o kg de cada motivo (vazio = o restante). Campo vazio = não teve. Mesmo registro (ps.gelScrap) e mesma conta (vacGel). */
+  /* 2.6.40 · o formulário é uma peça: o popup próprio (abrir) e o "Lançar / Editar scrap" lado a lado (TurnoCard) usam o mesmo.
+     form() devolve { html, ligar(box), coletar() → { gs } ou { erro } } */
+  form(day, ps, res) {
+    const C = this.ctx(); if (!ps || !C) return null;
+    const cats = this.catsDoTurno(res, ps).filter(c => C.usaGel(c)), eqs = C.equips(), f3 = v => U.fmt(v, 3), f0 = v => U.fmt(Math.round(v || 0));
+    const g0 = ps.gelScrap || {}, W = { none: !!g0.none, cat: ((g0.eq || []).find(x => x.cat) || {}).cat || cats[0] || '', eq: JSON.parse(JSON.stringify(g0.eq || [])) };
+    const kgTxt = v => v == null || v === '' || v === 0 ? '' : String(v).replace('.', ',');
+    const ent = (e, d, criar) => { let x = W.eq.find(z => z.e === e &amp;&amp; z.d === d); if (!x &amp;&amp; criar) { x = { e, d, cat: W.cat, kg: '', nb: 0, mots: [] }; W.eq.push(x); } return x; };
+    const motsDe = dsc => (C.motivos || []).filter(m => m.active !== false &amp;&amp; (!(m.comps || []).length || m.comps.includes(dsc.comp)) &amp;&amp; (!(dsc.mots || []).length || dsc.mots.includes(m.id)));
+    const detalhe = c => { if (!c) return ''; if (c.comp === 'barril') { const so = vacGel.sobraAt(C.fmts, day.date); return c.est ? (so == null ? '<span class="ferr">sobra do barril não cadastrada na Administração</span>' : `${f0(c.nb)} barril(is) × ${U.fmt(so, 2)} kg = gel <b>${f3(c.gel)}</b> kg`) : `gel <b>${f3(c.gel)}</b> kg (pesado)`; }
+      const tara = c.tara ? ` · embalagem ${U.fmt(c.tara, 0)} g descontada` : '';
+      if (c.comp === 'gel') return `gel <b>${f3(c.gel)}</b> kg${tara}`;
+      return `≈${f0(c.n)} tubos · gel <b>${f3(c.gel)}</b> kg · tubo ${f3(c.tubo)} kg${c.tamp ? ` · ${f0(c.tamp)} tampas, ${f0(c.rolha)} rolhas, ${f0(c.etq)} etiquetas` : ''}${c.adit ? ` · aditivo ${f3(c.adit)} kg` : ''}${tara}`; };
+    const calcDe = en => en &amp;&amp; (vacNumero(String(en.kg || '').replace('.', ',')) > 0 || +en.nb > 0) ? this.calc({ ...en, cat: W.cat, kg: typeof en.kg === 'string' ? vacNumero(en.kg) || 0 : +en.kg || 0 }, day.date, C) : null;
+    const k = (e, d) => esc(e) + '|' + esc(d);
+    const item = (e, ds) => { const en = ent(e.codigo, ds.id), c = calcDe(en), comp = (vacGel.COMPS[ds.comp] || {}).l || ds.comp, ops = motsDe(ds), K = k(e.codigo, ds.id);
+      const campos = ds.comp === 'barril'
+        ? `<input data-gnb="${K}" type="number" min="0" step="1" value="${esc(en &amp;&amp; en.nb ? en.nb : '')}" placeholder="barris" style="width:80px" aria-label="Barris terminados · ${esc(e.nome || e.codigo)}"><input data-gkg="${K}" inputmode="decimal" value="${esc(kgTxt(en &amp;&amp; en.kg))}" placeholder="kg pesado (opcional)" style="width:140px" aria-label="Sobra pesada em kg · ${esc(e.nome || e.codigo)}">`
+        : `<input data-gkg="${K}" inputmode="decimal" value="${esc(kgTxt(en &amp;&amp; en.kg))}" placeholder="kg bruto" style="width:100px" aria-label="Peso bruto · ${esc(e.nome || e.codigo)} · ${esc(comp)}">`;
+      const mots = (en &amp;&amp; en.mots || []).map((x, i) => `<div class="gsc-m"><select data-gmot="${K}|${i}" aria-label="Motivo"><option value="">motivo…</option>${ops.concat(x.m &amp;&amp; !ops.some(o => o.id === x.m) ? [{ id: x.m, name: '(motivo fora da lista)' }] : []).map(o => `<option value="${esc(o.id)}" ${o.id === x.m ? 'selected' : ''}>${esc(o.name)}</option>`).join('')}</select><input data-gmotkg="${K}|${i}" inputmode="decimal" value="${esc(kgTxt(x.kg))}" placeholder="kg (vazio = o restante)" style="width:150px" aria-label="kg do motivo"><button type="button" class="btn xs" data-gmotrm="${K}|${i}" aria-label="Remover motivo">✕</button></div>`).join('');
+      return `<div class="gsc-it"><div class="gsc-l"><span class="gsc-n"><b>${esc(e.nome || e.codigo)}</b> <span class="small muted">${esc(e.codigo)} · ${esc(comp)}</span></span>${campos}<span class="small gsc-c" data-gc="${K}">${detalhe(c)}</span></div>
+        ${mots}${ops.length ? `<div class="gsc-m"><button type="button" class="btn xs" data-gmotadd="${K}">+ motivo</button></div>` : ''}</div>`; };
+    const totais = () => { const o = { T: 0, B: 0, P: 0, n: 0 }; for (const en of W.eq) { const c = calcDe(en); if (c) { o[c.scat] += c.gel; o.n += c.n || 0; } } return o; };
+    const html = () => { const t = totais();
+      const grupos = Object.entries(vacGel.SCAT).map(([sc, nome]) => { const L = eqs.flatMap(e => (e.descs || []).filter(ds => ds.cat === sc).map(ds => item(e, ds))); return L.length ? `<div class="gsc-g"><h4>${esc(nome)}</h4>${L.join('')}</div>` : ''; }).join('');
+      return `<style>.gsc-g{margin:10px 0}.gsc-g h4{margin:6px 0;font-size:13px;letter-spacing:.04em;text-transform:uppercase;color:var(--muted)}.gsc-it{padding:6px 8px;border:1px solid var(--line,#dde3ea);border-radius:8px;margin-bottom:6px}.gsc-l{display:flex;flex-wrap:wrap;gap:8px;align-items:center}.gsc-n{min-width:220px;flex:0 1 260px}.gsc-c{color:var(--muted);flex:1 1 260px}.gsc-m{display:flex;gap:6px;align-items:center;margin:4px 0 0 18px}.gsc-tot{margin-top:8px;padding:6px 8px;background:var(--surface-2,#f4f7fa);border-radius:8px}</style><p class="small muted">Os mesmos pontos de descarte e a mesma conta da Gestão de Gel (equipamentos, descartes e motivos da Administração). Informe o <b>peso bruto da balança</b>; campo vazio = não teve. Fica neste turno da Produção e a Gestão de Gel lê daqui.</p>
+      <div class="row wf"><label class="f"><span>Catálogo do scrap</span><select id="gCat">${[...new Set(cats.concat(W.cat ? [W.cat] : []))].map(x => `<option value="${esc(x)}" ${x === W.cat ? 'selected' : ''}>${esc(x)}</option>`).join('') || '<option value="">—</option>'}</select></label>
+       <label class="chk"><input type="checkbox" id="gNone" ${W.none ? 'checked' : ''}> Sem scrap de gel neste turno</label></div>
+      ${W.none ? '' : grupos || ''}
+      ${!eqs.length ? '<p class="ferr small">Nenhum equipamento da categoria Equipamento – Gel com descartes na Administração. Se eles ainda estão só na Gestão de Gel, traga-os em Administração › Trazer das páginas › Só no Gel · equipamentos e parâmetros do gel.</p>' : ''}
+      ${W.none ? '' : `<p class="gsc-tot" data-gtot>Gel líquido: <b>${f3(t.T + t.B + t.P)} kg</b> · Tubos ${f3(t.T)} · Barril ${f3(t.B)} · Purga ${f3(t.P)}${t.n ? ` · ≈${f0(t.n)} tubos` : ''}</p>`}`; };
+    const self = this;
+    const ligar = box => { const draw = () => { const y = box.scrollTop; box.innerHTML = html(); box.scrollTop = y; };
+      const par = s => s.split('|'), achar = s => { const [e, d] = par(s); return ent(e, d, true); };
+      const conta = (K) => { const [e, d] = par(K), en = ent(e, d), c = calcDe(en), sp = box.querySelector(`[data-gc="${CSS.escape(K)}"]`); if (sp) sp.innerHTML = detalhe(c); const t = totais(), tt = box.querySelector('[data-gtot]'); if (tt) tt.innerHTML = `Gel líquido: <b>${f3(t.T + t.B + t.P)} kg</b> · Tubos ${f3(t.T)} · Barril ${f3(t.B)} · Purga ${f3(t.P)}${t.n ? ` · ≈${f0(t.n)} tubos` : ''}`; };
+      /* digitar atualiza a conta da linha e o total sem redesenhar (o cursor não pula) */
+      box.addEventListener('input', e => { const t = e.target;
+        if (t.dataset.gkg) { achar(t.dataset.gkg).kg = t.value; conta(t.dataset.gkg); }
+        else if (t.dataset.gnb) { achar(t.dataset.gnb).nb = +t.value || 0; conta(t.dataset.gnb); }
+        else if (t.dataset.gmotkg) { const p = par(t.dataset.gmotkg), en = ent(p[0], p[1], true), m = en.mots[+p[2]]; if (m) m.kg = t.value; } });
+      box.addEventListener('change', e => { const t = e.target;
+        if (t.id === 'gNone') { W.none = t.checked; return draw(); }
+        if (t.id === 'gCat') { W.cat = t.value; W.eq.forEach(x => x.cat = W.cat); return draw(); }
+        if (t.dataset.gmot) { const p = par(t.dataset.gmot), en = ent(p[0], p[1], true), m = en.mots[+p[2]]; if (m) m.m = t.value; } });
+      box.addEventListener('click', e => { const a = e.target.closest('[data-gmotadd]'), x = e.target.closest('[data-gmotrm]');
+        if (a) { const en = achar(a.dataset.gmotadd); en.mots = en.mots || []; en.mots.push({ m: '', kg: '' }); draw(); }
+        if (x) { const p = par(x.dataset.gmotrm), en = ent(p[0], p[1]); if (en) en.mots.splice(+p[2], 1); draw(); } }); };
+    /* opcional = o lado a lado: nada informado e "sem scrap" desmarcado não é erro (o gel fica como estava) */
+    const coletar = opcional => {
+      const num = v => typeof v === 'string' ? (v.trim() === '' ? 0 : vacNumero(v)) : +v || 0;
+      const eq = W.none ? [] : W.eq.map(en => ({ ...en, cat: W.cat, kg: num(en.kg), nb: +en.nb || 0, mots: (en.mots || []).filter(m => m.m).map(m => ({ m: m.m, kg: num(m.kg) })) })).filter(en => en.kg > 0 || en.nb > 0);
+      if (eq.some(en => !isFinite(en.kg) || en.kg < 0 || en.mots.some(m => !isFinite(m.kg) || m.kg < 0))) return { erro: 'Gel: peso inválido; use número (ex.: 2,345).' };
+      if (!W.none &amp;&amp; !eq.length) return opcional &amp;&amp; !ps.gelScrap ? { nada: true } : { erro: 'Gel: informe o peso de algum ponto ou marque "Sem scrap de gel neste turno".' };
+      return { gs: { none: W.none, eq } };
+    };
+    return { html, ligar, coletar, salvar: gs => self.salvar(day.id, ps.id, gs) };
+  },
   abrir(day, psId, res) {
-    const ps = day.shifts.find(p => p.id === psId), C = this.ctx(); if (!ps || !C) return;
-    const cats = this.catsDoTurno(res, ps).filter(c => C.usaGel(c)); const eqs = C.equips();
-    const W = { none: !!(ps.gelScrap &amp;&amp; ps.gelScrap.none), eq: JSON.parse(JSON.stringify((ps.gelScrap &amp;&amp; ps.gelScrap.eq) || [])) };
-    const novo = () => { const e = eqs[0]; return { e: e ? e.codigo : '', d: e &amp;&amp; e.descs[0] ? e.descs[0].id : '', cat: cats[0] || '', kg: '', nb: 0, mots: [] }; };
-    if (!W.eq.length &amp;&amp; !W.none) W.eq.push(novo());
-    const motsDe = en => { const e = C.eq(en.e), dsc = e &amp;&amp; (e.descs || []).find(x => x.id === en.d); if (!dsc) return []; return (C.motivos || []).filter(m => m.active !== false &amp;&amp; (!(m.comps || []).length || m.comps.includes(dsc.comp)) &amp;&amp; (!(dsc.mots || []).length || dsc.mots.includes(m.id))); };
-    const linha = (en, i) => { const e = C.eq(en.e), dsc = e &amp;&amp; (e.descs || []).find(x => x.id === en.d), c = this.calc(en, day.date, C);
-      return `<tr data-gi="${i}"><td><select data-gf="e">${eqs.map(x => `<option value="${esc(x.codigo)}" ${x.codigo === en.e ? 'selected' : ''}>${esc(x.codigo)} · ${esc(x.nome || '')}</option>`).join('')}</select></td>
-        <td><select data-gf="d">${(e ? e.descs : []).map(x => `<option value="${esc(x.id)}" ${x.id === en.d ? 'selected' : ''}>${esc((vacGel.COMPS[x.comp] || {}).l || x.comp)} → ${esc(vacGel.SCAT[x.cat] || x.cat)}</option>`).join('')}</select></td>
-        <td><select data-gf="cat"><option value="">—</option>${[...new Set(cats.concat(en.cat ? [en.cat] : []))].map(x => `<option value="${esc(x)}" ${x === en.cat ? 'selected' : ''}>${esc(x)}</option>`).join('')}</select></td>
-        <td><input data-gf="kg" inputmode="decimal" value="${esc(en.kg === 0 ? '' : String(en.kg).replace('.', ','))}" style="width:90px" placeholder="kg"></td>
-        <td>${dsc &amp;&amp; dsc.comp === 'barril' ? `<input data-gf="nb" type="number" min="0" step="1" value="${esc(en.nb || '')}" style="width:70px">` : ''}</td>
-        <td class="small">${motsDe(en).map(m => { const x = (en.mots || []).find(y => y.m === m.id); return `<label style="margin-right:8px"><input type="checkbox" data-gm="${esc(m.id)}" ${x ? 'checked' : ''}> ${esc(m.name)}${x ? ` <input data-gmk="${esc(m.id)}" inputmode="decimal" value="${esc(x.kg ? String(x.kg).replace('.', ',') : '')}" placeholder="kg" style="width:60px">` : ''}</label>`; }).join('') || '<span class="muted">—</span>'}</td>
-        <td class="small n">${c ? (c.comp === 'barril' &amp;&amp; c.est &amp;&amp; vacGel.sobraAt(C.fmts, day.date) == null ? "<span class=\"ferr\">sobra do barril não cadastrada na Administração</span>" : `gel <b>${U.fmt(c.gel, 3)}</b> kg${c.n ? ` · ${U.fmt(c.n)} tubos` : ''}`) : '—'}</td><td><button type="button" class="btn xs" data-gdel="${i}">✕</button></td></tr>`; };
-    const html = () => `<p class="small muted">Mesmos campos e a mesma conta da Gestão de Gel. Fica neste turno da Produção e a Gestão de Gel lê daqui. Equipamentos, descartes, formatos e motivos vêm da Administração.</p>
-      <label class="chk"><input type="checkbox" id="gNone" ${W.none ? 'checked' : ''}> Sem scrap de gel neste turno</label>
-      ${W.none ? '' : `<div class="tw"><table><thead><tr><th>Equipamento</th><th>Descarte → categoria</th><th>Catálogo</th><th>Peso bruto</th><th>Barris</th><th>Motivos</th><th class="n">Gel</th><th></th></tr></thead><tbody>${W.eq.map(linha).join('')}</tbody></table></div>
-      <button type="button" class="btn sm" id="gAdd">+ Pesagem</button>`}
-      ${!eqs.length ? "<p class=\"ferr small\">Nenhum equipamento da categoria Equipamento – Gel com descartes na Administração.</p>" : ''}`;
-    modal(`Registrar scrap de gel · ${ps.snap.name} · ${U.brDate(day.date)}`, `<div id="gBox">${html()}</div>`, `<button class="btn" data-close>Cancelar</button><button class="btn primary" id="gOk">Gravar</button>`, (el, close) => {
-      const box = el.querySelector('#gBox'), draw = () => { box.innerHTML = html(); };
-      box.addEventListener('change', e => { const t = e.target, tr = t.closest('[data-gi]');
-        if (t.id === 'gNone') { W.none = t.checked; if (!W.none &amp;&amp; !W.eq.length) W.eq.push(novo()); return draw(); }
-        if (!tr) return; const en = W.eq[+tr.dataset.gi];
-        if (t.dataset.gf === 'e') { en.e = t.value; const x = C.eq(en.e); en.d = x &amp;&amp; x.descs[0] ? x.descs[0].id : ''; en.mots = []; }
-        else if (t.dataset.gf === 'd') { en.d = t.value; en.mots = []; }
-        else if (t.dataset.gf) en[t.dataset.gf] = t.dataset.gf === 'nb' ? (+t.value || 0) : t.value;
-        else if (t.dataset.gm) { en.mots = en.mots || []; if (t.checked) en.mots.push({ m: t.dataset.gm, kg: 0 }); else en.mots = en.mots.filter(m => m.m !== t.dataset.gm); }
-        else if (t.dataset.gmk) { const m = (en.mots || []).find(x => x.m === t.dataset.gmk); if (m) m.kg = vacNumero(t.value) || 0; }
-        draw(); });
-      box.addEventListener('click', e => { const a = e.target.closest('#gAdd'), x = e.target.closest('[data-gdel]'); if (a) { W.eq.push(novo()); draw(); } if (x) { W.eq.splice(+x.dataset.gdel, 1); draw(); } });
-      el.querySelector('#gOk').onclick = () => {
-        const eq = W.none ? [] : W.eq.map(en => ({ ...en, kg: typeof en.kg === 'string' ? (en.kg.trim() === '' ? 0 : vacNumero(en.kg)) : +en.kg || 0 }));
-        if (eq.some(en => !isFinite(en.kg) || en.kg < 0)) return toast('Peso inválido: use número (ex.: 2,345).', true);
-        if (eq.some(en => !(en.kg > 0) &amp;&amp; !(en.nb > 0))) return toast('Cada pesagem precisa do peso (ou do nº de barris, no barril).', true);
-        run(() => this.salvar(day.id, ps.id, { none: W.none, eq }), 'Scrap de gel gravado.').then(() => { close(); render(); });
-      };
+    const ps = day.shifts.find(p => p.id === psId), F = this.form(day, ps, res); if (!F) return;
+    modal(`Registrar scrap de gel · ${ps.snap.name} · ${U.brDate(day.date)}`, `<div id="gBox">${F.html()}</div>`, `<button class="btn" data-close>Cancelar</button><button class="btn primary" id="gOk">Gravar</button>`, (el, close) => {
+      F.ligar(el.querySelector('#gBox'));
+      el.querySelector('#gOk').onclick = () => { const c = F.coletar(false); if (c.erro) return toast(c.erro, true); run(() => F.salvar(c.gs), 'Scrap de gel gravado.').then(() => { close(); render(); }); };
     }, { wide: true });
   },
   mount(root, day, res) { root.querySelectorAll('[data-gelscrap]').forEach(b => b.onclick = () => this.abrir(day, b.dataset.gelscrap, res)); }
@@ -18363,21 +18456,27 @@ const TurnoCard = {
       <div class="tw" id="scMaqBox" style="${W.so ? 'opacity:.5' : ''}"><table><thead><tr><th>Máquina</th><th class="n">Scrap (peças)</th></tr></thead><tbody>
         ${M.map(m => `<tr><td><span class="mono">${esc(m.code)}</span> · ${esc(m.name || '')}</td><td class="n"><input type="text" inputmode="numeric" class="n" data-scm="${esc(m.code)}" value="${esc(W.maq[m.code] ?? '')}" style="width:110px" ${W.so || lk ? 'disabled' : ''}></td></tr>`).join('') || '<tr><td colspan="2" class="muted">Nenhuma máquina da linha no cadastro (Portal › Equipamentos).</td></tr>'}
         <tr class="total"><td>Total por máquina</td><td class="n" id="scSoma">${U.fmt(soma())}</td></tr></tbody></table></div>
-      ${temGel ? `<section class="card" style="margin-top:12px;padding:10px"><b>Gel</b> <span class="small">${this.gelTxt(day, sr, res).replace(/^ · /, '') || 'sem registro'}</span> <button type="button" class="btn sm" id="scGel" ${lk ? 'disabled' : ''}>Registrar scrap de gel (pesagem)</button></section>` : ''}`;
-    modal(`Scrap · ${ps.snap.name} · ${U.brDate(day.date)}`, body, `<button class="btn" data-close>${lk ? 'Fechar' : 'Cancelar'}</button>${lk ? '' : '<button class="btn primary" id="scOk">Gravar</button>'}`, (el, close) => {
+`;
+    /* 2.6.40 · pedido do responsável (23/11/2026): com gel no turno, o popup fica largo com o scrap de máquina (40%) e o de gel (60%) lado
+       a lado e um só Gravar. O gel usa o mesmo formulário do Registrar scrap de gel (GelTurno.form); sem poder lançar o gel (antes da data
+       de corte, sem equipamento ou turno fechado), o lado do gel mostra a situação e o motivo (turno fechado: só consulta). */
+    const gEst = temGel ? GelTurno.estado(day, ps, res) : null, GF = temGel &amp;&amp; !lk ? GelTurno.form(day, ps, res) : null;   /* como o antigo botão do gel deste popup: lança com o turno aberto */
+    const corpo = !temGel ? body : `<div class="sc-lado"><section class="sc-col"><h3>Scrap de máquina <span class="small muted">(peças)</span></h3>${body}</section>
+      <section class="sc-col"><h3>Scrap de gel <span class="small muted">(pesagem)</span></h3>${GF ? `<div id="gBox">${GF.html()}</div>` : `<p class="small">${esc((gEst &amp;&amp; gEst.txt) || this.gelTxt(day, sr, res).replace(/^ · /, '') || 'sem registro')}</p>${gEst &amp;&amp; gEst.motivo ? `<p class="small muted">${esc(gEst.motivo)}</p>` : ''}`}</section></div>`;
+    modal(`Scrap${temGel ? ' do turno (máquina e gel)' : ''} · ${ps.snap.name} · ${U.brDate(day.date)}`, corpo, `<button class="btn" data-close>${lk ? 'Fechar' : 'Cancelar'}</button>${lk ? '' : '<button class="btn primary" id="scOk">Gravar</button>'}`, (el, close) => {
+      if (temGel) el.classList.add('sc-largo'); if (GF) GF.ligar(el.querySelector('#gBox'));
       const so = el.querySelector('#scSo'), tot = el.querySelector('#scTot'), box = el.querySelector('#scMaqBox');
       if (so) so.onchange = () => { W.so = so.checked; tot.disabled = !W.so; box.style.opacity = W.so ? '.5' : ''; el.querySelectorAll('[data-scm]').forEach(i => { i.disabled = W.so; }); };
       el.querySelectorAll('[data-scm]').forEach(i => i.oninput = () => { W.maq[i.dataset.scm] = i.value; el.querySelector('#scSoma').textContent = U.fmt(soma()); });
-      const g = el.querySelector('#scGel'); if (g) g.onclick = () => { close(); GelTurno.abrir(day, ps.id, res); };
       const ok = el.querySelector('#scOk'); if (ok) ok.onclick = () => {
-        let total, maq = null;
+        let total, maq = null; const g = GF ? GF.coletar(true) : null; if (g &amp;&amp; g.erro) return toast(g.erro, true);
         if (W.so) { total = this.num(tot.value); if (Number.isNaN(total)) return toast('Total inválido: informe peças (número inteiro).', true); }
         else {
           const e = Object.entries(W.maq).map(([k, v]) => [k, this.num(v)]);
           if (e.some(([, n]) => Number.isNaN(n))) return toast('Valor inválido numa máquina: informe peças (número inteiro).', true);
           const L = e.filter(([, n]) => n != null); maq = L.length ? Object.fromEntries(L) : null; total = L.length ? U.sum(L, x => x[1]) : null;
         }
-        run(() => { Actions.setShiftField(day.id, ps.id, 'scrap', total); Actions.setShiftField(day.id, ps.id, 'scrapMaq', maq); }, 'Scrap gravado.').then(() => { close(); render(); });
+        run(() => { Actions.setShiftField(day.id, ps.id, 'scrap', total); Actions.setShiftField(day.id, ps.id, 'scrapMaq', maq); if (g &amp;&amp; g.gs) GF.salvar(g.gs); }, g &amp;&amp; g.gs ? 'Scrap de máquina e de gel gravados.' : 'Scrap gravado.').then(() => { close(); render(); });
       };
     });
   },
@@ -18657,6 +18756,7 @@ const TurnoUI = (() => {
   const ic = (k, n = 20) => `<svg class="tl-svg" width="${n}" height="${n}" viewBox="0 0 24 24" aria-hidden="true">${SV[k] || ''}</svg>`;
   const css = `
 /* 2.4.54 · botão Lançar scrap em vermelho pastel com texto branco (pedido do usuário) */
+.modal.sc-largo{width:min(1500px,96vw);max-width:min(1500px,96vw)}.sc-lado{display:grid;grid-template-columns:minmax(300px,2fr) minmax(420px,3fr);gap:18px;align-items:start}.sc-col{border:1px solid var(--line,#dde3ea);border-radius:10px;padding:12px;min-width:0}.sc-col>h3{margin:0 0 6px;font-size:16px}@media(max-width:900px){.sc-lado{grid-template-columns:1fr}}
 button[data-scrapturno]{background:var(--crit-fill,#C62828);border-color:var(--crit-fill,#C62828);color:var(--on-fill,#fff);font-weight:600}button[data-scrapturno]:hover:not(:disabled){background:var(--crit-fill);border-color:var(--crit);color:var(--on-fill);box-shadow:0 0 0 1px var(--crit)}button[data-scrapturno]:focus-visible{outline:2px solid #b23b3b;outline-offset:2px}button[data-scrapturno]:disabled{opacity:.55}
 .tl-list{display:grid;gap:18px;grid-template-columns:minmax(0,1fr)}
 .tl{--t-card:var(--surface);--t-ink:var(--ink);--t-mute:var(--muted);--t-line:var(--line);--t-soft:var(--surface-2);--t-blue:var(--info,#1565A8);--t-blue-soft:var(--info-bg,#E7F0FA);--t-pri:var(--heading,#0D4778);--t-pri-ink:#fff;
@@ -55318,71 +55418,71 @@ body.vac-porta{overflow:hidden}
     {
       "id": "oee",
       "path": "Plataforma.html#motor/oee",
-      "version": "2.6.39",
-      "sha256": "568c893515aea5c96548925ebd82d626557e05e56cde11e694ee694b7e71a436",
-      "bytes": 2389366
+      "version": "2.6.40",
+      "sha256": "e289d8f15cf80d5403253ff6c7a019065a39c1e96b30bd6f2198fd6952854cc0",
+      "bytes": 2403985
     },
     {
       "id": "perdas",
       "path": "Plataforma.html#motor/perdas",
       "version": "1.12.20",
-      "sha256": "da9787825164253fb97e6d32b6f28c71f79dea7d381a52d897871d3fdeb2d96e",
-      "bytes": 979623
+      "sha256": "5b756ee6128162a5f8e69cef922bde78e9bbed7cfc4a9768c4876798289438b7",
+      "bytes": 988326
     },
     {
       "id": "gel",
       "path": "Plataforma.html#motor/gel",
       "version": "2.47",
-      "sha256": "49e20592fb608d595d9cfc92c255624f9349d0cb9c49702db0a8fd758b655016",
-      "bytes": 1625500
+      "sha256": "b52e8b41909281a32b3d143ddd973f20bcbd55bfe853c5c426e77bfaa4822e2a",
+      "bytes": 1634203
     },
     {
       "id": "paradas",
       "path": "Plataforma.html#motor/paradas",
       "version": "1.2.22",
-      "sha256": "14b388743f71112b30de532a50951744ac026c73be3830b6903871b9dfe27bfb",
-      "bytes": 950126
+      "sha256": "fba9dd5009996d631d019f08d2e3ca5bf9f72732dd303c51d46cc05fcf6163bc",
+      "bytes": 958829
     },
     {
       "id": "equip",
       "path": "Plataforma.html#motor/equip",
       "version": "1.0.22",
-      "sha256": "468b16aefe6683f83ea1601673aa60b7d159c343623873ba4de161e77e91895f",
-      "bytes": 741750
+      "sha256": "da2b9e200955ac559c0beef1df9d8dfe13223ce1f76fe638995eabc9fc3c793d",
+      "bytes": 750453
     },
     {
       "id": "inic",
       "path": "Plataforma.html#motor/inic",
       "version": "1.1.17",
-      "sha256": "1689f774a7c33629c106d7e1f5146537fb791786b2c9b358ae2d8093164d00c1",
-      "bytes": 756255
+      "sha256": "04476af9bd4738852492fb52c1e59beccecfc76fbcf7a6ada579799d8cd5982c",
+      "bytes": 764958
     },
     {
       "id": "linha",
       "path": "Plataforma.html#motor/linha",
       "version": "1.7.1",
-      "sha256": "f1573cd45393d20d9460d8850ff6d3f808c0b58a4312123edb12a02d09f30a0a",
-      "bytes": 1004359
+      "sha256": "f7c9dccff67af398637163ab56b9188fee565f6961189b1e8a3cd361247df810",
+      "bytes": 1013062
     },
     {
       "id": "projetos",
       "path": "Plataforma.html#motor/projetos",
       "version": "0.1.16",
-      "sha256": "acea22f4df592c635b9fba5f0e4ec4d67c0e509c82617fa4db1c5c49f1d87cc6",
-      "bytes": 673434
+      "sha256": "d81127aeea57be466681d3d849079b6728b086ac6b6bf2135a85874d5d9d15a6",
+      "bytes": 682137
     },
     {
       "id": "portal",
       "path": "Plataforma.html#motor/portal",
-      "version": "1.9.77",
-      "sha256": "8317176daac155e41ea8b3435ba3566fa12b0ea4e94a183ba64934783be99c02",
-      "bytes": 1325849
+      "version": "1.9.78",
+      "sha256": "d15078b000d52c4da6f5a50269b63966f1f1d6b0e023a2821ad67a9295ef1b67",
+      "bytes": 1335194
     }
   ],
   "limitations": [
     "Projetos e conteúdo técnico OSM/MES/AM/TPM mantêm os limites documentados nas fontes."
   ],
-  "enginesSha256": "0cc7ccdb33061ec7ac76e7a7d9be05830eb023d5d40c744a19493f933999da59",
+  "enginesSha256": "0471854a954e30b4042253502e9a4519372609b022d2b681991bde28ce5f8298",
   "originRevision": "ffc9ee8",
   "sourceMode": "single-html",
   "originEnginesSha256": "a87a64ad0c328f70e102b2ae888790a9b5d5a9bd05778652a7ce7cae140e40d2"
@@ -55452,7 +55552,7 @@ summary{cursor:pointer;font-weight:600;color:var(--navy)}
 'use strict';
 /* ---------- referência (atualizar quando a plataforma mudar de versão) ---------- */
 // Iguais às do pacote da plataforma (nova-plataforma/src/generated/manifest.json); o teste ferramenta-verificar confere.
-const VERSOES = {"oee":"2.6.39","perdas":"1.12.20","gel":"2.47","paradas":"1.2.22","equip":"1.0.22","inic":"1.1.17","linha":"1.7.1","projetos":"0.1.16","portal":"1.9.77"};
+const VERSOES = {"oee":"2.6.40","perdas":"1.12.20","gel":"2.47","paradas":"1.2.22","equip":"1.0.22","inic":"1.1.17","linha":"1.7.1","projetos":"0.1.16","portal":"1.9.78"};
 const BASES = [
  { arq: 'vacutainer-cadastros.json', mod: 'portal', nome: 'Cadastro geral (Portal)', obrig: true, cadastro: true, bk: 'Cadastros' },
  { arq: 'portal-base.json', mod: 'portal', nome: 'Portal', obrig: true, bk: 'Portal' },
@@ -56043,7 +56143,7 @@ import { Icon, Button, Badge, Empty, Modal, BarChart, BrandLogo, CommandMenu } f
 import { ModuleFrame } from "vac:modulo/components/ModuleFrame";
 import manifest from "vac:recurso/manifesto";
 import { ModuleTabs } from "vac:modulo/components/ModuleTabs";
-const VERSION = "1.8.57";
+const VERSION = "1.8.58";
 /* Navegação 1.3.0 (16/11/2026): Visão da linha, Relatórios e Importações têm abas; as que mostram uma tela do
    Portal (motor da Administração) trazem o 3º campo com a aba dele. Administração fica só com cadastros e configuração. */
 const SHELL_TABS = {
