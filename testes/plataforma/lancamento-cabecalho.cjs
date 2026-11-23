@@ -30,6 +30,12 @@ const html = fs.readFileSync(path.resolve(__dirname, '../../Plataforma.html'));
     assert.doesNotMatch(barra, /semana/i, 'a barra do dia não repete semana e situação');
     await f.click('#cabDia [data-dnav="1"]'); assert.equal(await f.evaluate(() => App.sel.date), '2026-11-20', '› vai para o dia seguinte');
     await f.click('[data-dnav="-1"]'); await f.waitForSelector('#cabDia #dMais'); assert.equal(await f.evaluate(() => App.sel.date), '2026-11-19', '‹ volta');
+    /* 2.6.43 · LANC-DT (pedido do responsável, 23/11/2026): dia não criado também mostra a data com o dia da semana */
+    await f.evaluate(() => { App.sel.date = '2026-12-01'; render(); }); await f.waitForSelector('#main .filters .dbdt h3');
+    const sem = await f.evaluate(() => ({ h3: document.querySelector('#main .filters .dbdt h3').textContent.trim(), cab: !!document.querySelector('#cabDia'), cal: !!document.querySelector('#main .filters #cabCal'), sd: document.querySelector('#main .filters #selDate')?.value }));
+    assert.deepEqual(sem, { h3: '01/12/2026 Terça-feira', cab: false, cal: true, sd: '2026-12-01' }, 'dia não criado: data com o dia da semana');
+    if (process.env.PRINT) await page.screenshot({ path: process.env.PRINT });
+    await f.evaluate(() => { App.sel.date = '2026-11-19'; render(); }); await f.waitForSelector('#cabDia #dMais');
     console.log('ok cabeçalho: ' + c.h3 + ' · ' + c.sit + ' · ' + c.sub + '; Fechar dia e Mais ações na mesma linha; sem repetição na barra');
     /* 2) menu: botão, grupos, mesmos IDs, fechado no DOM */
     const m = await f.evaluate(() => { const b = document.querySelector('#dMais'), mm = document.querySelector('#dMaisMenu');
