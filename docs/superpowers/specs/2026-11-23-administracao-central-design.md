@@ -68,7 +68,7 @@ O que o responsável quer:
    8. **Sistema:** parâmetros de cálculo (semáforo, microparada, parada longa), servidor/MES, backup, programas de melhoria, TV, páginas e versões.
 5. **Código limpo:** cada etapa entra num PR que **remove o caminho antigo na mesma entrega** (tela, cópia, sincronização e campos velhos). Não fica leitor duplo nem campo com dois nomes. A cada etapa, o teste de contrato fica mais rígido.
 6. **Dados atuais (decidido pelo responsável, 23/11/2026):** um importador de uso único na Administração ("Importar das bases atuais") lê o cadastro atual e as cópias das páginas e monta o formato v2, com prévia. Depois da importação na pasta real, **o importador sai do código** (etapa 8).
-7. **Referência do detalhe perdido:** as páginas antigas estão no histórico do Git. Para o Gel vale a versão de 13/11/2026, `git show 2161e02:"paginas/Gestão-Gel-Vacutainer.html"`, que é a das telas mostradas pelo responsável (formato com vigência, composições, cadastro de equipamentos de descarte). Cada assunto começa comparando a tela antiga com a atual, item por item.
+7. **Referência do detalhe perdido (todas as páginas, não só o Gel; responsável, 23/11/2026):** o problema está em todas as páginas que foram juntadas. As páginas antigas estão no histórico do Git, na última versão antes da junção (`a2214fd^`, 15/11/2026): `OEE-Vacutainer.html` (Produção), `Gestão-Gel-Vacutainer.html`, `Perdas-Ordem.html` (Waste), `Paradas.html`, `Equipamentos.html`, `Iniciativas.html`, `Linha-360.html`, `Projetos.html` e `Portal.html`. O inventário (etapa 0) compara as configurações de **cada uma** com o que existe hoje e lista o que se perdeu ou foi resumido; cada etapa de assunto recupera esse detalhe. Para o Gel vale a versão de 13/11/2026, `git show 2161e02:"paginas/Gestão-Gel-Vacutainer.html"`, que é a das telas mostradas pelo responsável (formato com vigência, composições, cadastro de equipamentos de descarte). Cada assunto começa comparando a tela antiga com a atual, item por item.
 
 ### Chamadas minhas depois da leitura do revisor (a conferir)
 
@@ -83,7 +83,7 @@ O que o responsável quer:
 
 | Etapa | Entrega | Pronto quando |
 |---|---|---|
-| **0. Inventário** | `docs/CONFIGURACOES.md`: cada configuração existente (página, campo, onde se edita, quem lê, cópias, o que havia na página antiga) e o destino no formato v2 | o responsável conferiu a lista |
+| **0. Inventário** | `docs/CONFIGURACOES.md`: cada configuração existente (página, campo, onde se edita, quem lê, cópias), **comparada com as nove páginas antigas** (o que se perdeu ou foi resumido) e o destino no formato v2 | o responsável conferiu a lista |
 | **1. Fundação** | formato v2 do cadastro, `vacCad` com testes, menu da Administração por assunto (os oito assuntos, ainda apontando para as telas atuais) | testes do leitor passam; nenhuma página mudou de comportamento |
 | **2. Gel** (o exemplo do responsável) | tela Gel completa (formato → composições → locais de descarte); Gel e scrap de gel da Produção leem por `vacCad`; somem `S.config`/`S.catalogs` de cadastro no Gel e a parte de gel do "Trazer" | scrap de gel com os mesmos números do antigo no cenário; nenhuma cópia de cadastro no Gel |
 | 3. Produto | famílias, catálogos, materiais, BOM, gel do produto | Produção, Gel e Waste leem catálogos só por `vacCad` |
