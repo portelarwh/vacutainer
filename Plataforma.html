@@ -3850,7 +3850,7 @@ table.cadst td{vertical-align:middle}
 /* 1.9.51 · EQ-ORD */
 .eq-foto{display:inline-flex;align-items:center;min-height:32px}.eq-foto:not(:has(img))::after{content:'📷'}.eq-semfoto::after{content:'–';color:var(--muted,#64788f)}.eq-mini{height:32px;width:44px;object-fit:cover;border-radius:4px;border:1px solid var(--line,#d5dde6);display:block}.eq-sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
 table.eq-dnd td.eq-h{touch-action:none;cursor:grab;width:28px;text-align:center;font-size:16px;color:var(--muted,#64788f);user-select:none}table.eq-dnd tr.eq-arr{opacity:.45}table.eq-dnd tr.eq-ac td{box-shadow:inset 0 3px 0 var(--accent,#0d5e9c)}table.eq-dnd tr.eq-ab td{box-shadow:inset 0 -3px 0 var(--accent,#0d5e9c)}
-#parGel.eq-real{outline:3px solid var(--accent,#0d5e9c);outline-offset:3px;transition:outline-color .6s}
+#gelLoc.eq-real{outline:3px solid var(--accent,#0d5e9c);outline-offset:3px;transition:outline-color .6s}
 .st-novo{color:var(--ok);font-weight:600}.st-alt{color:var(--warn);font-weight:600}.st-rem{color:var(--crit);font-weight:600}
 details.cd{border:1px solid var(--line);border-radius:var(--r);padding:var(--sp-4,4px) var(--sp-8,8px);margin:var(--sp-4,4px) 0;background:var(--surface)}
 details.cd summary{cursor:pointer;font-family:var(--f-display);font-weight:600;text-transform:uppercase;letter-spacing:.04em}
@@ -5270,7 +5270,6 @@ const AJUDA_CAMPO={
  'gel.processo':'Perdas teóricas de gel, em % do gel consumido, e o gel por tubo padrão (quando o catálogo e o formato não informam). Entram no teórico do dia. Ex.: Tubos 2,24 % · Barril 0,74 % · Purga 0,53 % · 0,98 g/tubo.',
  'gel.formatos':'Peso de cada componente por tubo (Tubo 100 e Tubo 75), a embalagem da pesagem (saco), a folha da purga e a sobra de gel no barril. A conta do scrap tira a embalagem e divide pelo peso da composição.',
  'gel.motivos':'Motivos de descarte do gel (etiqueta ruim, gel com bolhas, quebra de máquina…). Cada motivo pode valer só para algumas composições. No registro, cada pesagem pode ter um ou vários motivos.',
- 'gel.equip':'Para equipamento da categoria Equipamento – Gel: a embalagem própria da pesagem (vazio = a do formato) e os descartes que acontecem nele: como o peso é contabilizado (composição) e em que categoria de scrap entra (Tubos, Barril, Purga).',
  'gel.catalogo':'Dados do gel deste catálogo: formato do tubo (100 ou 75), lote padrão, velocidade de referência e, com vigência, o gel aplicado por tubo e a BOM de gel do SAP (kg a cada N tubos, com a tolerância incluída).',
  'computador.qtd':'Como esta pessoa vê as quantidades nas páginas, neste computador. Não muda a base. Ex.: "61 mil" ou "61.000".',
  'parametros.unidade':'Unidade fabril que aparece nos relatórios. Ex.: BD Curitiba.','parametros.setor':'Setor que aparece nos relatórios. Ex.: Vacutainer.',
@@ -5284,7 +5283,7 @@ const CAT_AJUDA={
  trazerCfg:'Lê as bases da Produção (oee-vacutainer-base.json), Gestão de Gel (fifo-base.json), Waste (perdas-base.json) e Paradas (paradas-base.json) e propõe levar para o cadastro o que hoje só existe nelas: pausas e abonos dos turnos, metas de OEE, regras de apontamento dos códigos de parada, preço do gel (e as cotações gravadas com ele), meta mensal do Waste, parada longa e o de-para de nomes das máquinas. Você escolhe o que entra; nada é gravado sem prévia, e fica na auditoria.',
  'grupo:Planta e linha':'Linhas e calendário de produção: o que define onde e quando a fábrica trabalha.',
  'grupo:Produto':'Famílias, catálogos, materiais, BOM, preços e câmbio, cada um cadastrado uma vez, com vigência quando muda com o tempo.',
- 'grupo:Gel':'Gel: formatos, perdas teóricas e regras do estoque (chegam nas próximas etapas da Administração central).',
+ 'grupo:Gel':'Gel: formato do tubo com vigência, composições, locais de descarte do scrap e motivos. O estoque e o consumo chegam nas próximas etapas da Administração central.',
  'grupo:Equipamentos':'Máquinas, componentes e modos de falha.',
  'grupo:Turnos e metas':'Turnos e metas com vigência: OEE (% por linha, máquina, família ou catálogo), metas gerais da área (Waste, scrap, MTBF…) e OSM (quantidade por pessoa).',
  'grupo:Paradas e perdas':'Códigos de parada e a matriz de quais máquinas apontam cada um.',
@@ -5308,7 +5307,7 @@ const CAT_AJUDA={
  metasOsm:'Meta de observações de segurança (OSM). Ex.: 4 OSM por operador por mês.',
  usuarios:'Pessoas que usam as páginas: ID, nome, perfil e página inicial.',perfis:'O que cada perfil pode ver, lançar, fechar, importar, exportar, excluir e configurar em cada página.'};
 const campoAjuda=(t,f)=>AJUDA_CAMPO[t+'.'+f]||AJUDA_CAMPO[f]||'';
-const CAD_SECS=['inicio','matriz','importar','auditoria','backups','seguranca','vigencias','parametros','novidades','apps'];
+const CAD_SECS=['inicio','gel','matriz','importar','auditoria','backups','seguranca','vigencias','parametros','novidades','apps'];
 /* 1.9.53 · NOV-01 (pedido do responsável, 20/11/2026): Administração › Novidades. O que mudou em cada versão da plataforma, em frases
    curtas (macro, sem detalhe técnico). REGRA: toda versão nova da plataforma ganha uma entrada aqui, a mais recente primeiro
    (AGENTS.md e CLAUDE.md). Tipos: nova (função nova), melhoria (algo que já existia ficou melhor), correcao (erro corrigido). */
@@ -5496,7 +5495,7 @@ function aplicarOp(D,o,aud){
  if(o.acao==='desbloqueio'){L(null,null,null);return{ok:true}}
  if(o.acao==='restauração'){if(D.rev!==o.baseRev)return{ok:false,tipo:'restauracao',motivo:`o cadastro mudou (agora rev ${D.rev}) depois que a restauração foi pedida sobre a rev ${o.baseRev}`};
   for(const t of CAD_ORD)D[t]=clone(o.doc[t]||[]);if(o.doc.parametros)D.parametros=clone(o.doc.parametros);L(null,'rev '+D.rev,'conteúdo do backup '+(o.origem||''));return{ok:true}}
- if(o.tipo==='seguranca'||o.tipo==='parametros'){if(!D[o.tipo]||typeof D[o.tipo]!=='object')D[o.tipo]={};return aplicarMud(D[o.tipo],o,L)}
+ if(o.tipo==='seguranca'||o.tipo==='parametros'||o.tipo==='gel'){if(!D[o.tipo]||typeof D[o.tipo]!=='object')D[o.tipo]={};return aplicarMud(D[o.tipo],o,L)}
  const lista=D[o.tipo];if(!Array.isArray(lista))return{ok:false,tipo:'sumiu',motivo:'tipo desconhecido: '+o.tipo};const k=kOf(o.tipo);
  const i=lista.findIndex(x=>String(x[k])===String(o.codigo));
  if(o.item){if(i>=0){if(deq(lista[i],o.item))return{ok:true};return{ok:false,tipo:'existe',motivo:`o código ${o.codigo} já existe com outros dados`,atual:clone(lista[i])}}
@@ -5508,7 +5507,7 @@ function aplicarMud(alvo,o,L){const conf=[];
  if(conf.length)return{ok:false,tipo:'campos',campos:conf,motivo:conf.map(x=>`"${x.campo}" foi mudado por outra pessoa`).join('; ')};
  for(const[c,m]of Object.entries(o.mudancas||{})){const cur=alvo[c];if(deq(cur,m.depois))continue;if(m.depois==null)delete alvo[c];else alvo[c]=clone(m.depois);L(c,clone(cur),clone(m.depois))}
  return{ok:true}}
-const opTxt=o=>{const T=CAD_T[o.tipo];const alvo=o.tipo==='seguranca'?'segurança':o.tipo==='parametros'?'parâmetros':o.tipo==='*'?'cadastro inteiro':(T?T.um:o.tipo)+' '+(o.codigo||'');
+const opTxt=o=>{const T=CAD_T[o.tipo];const alvo=o.tipo==='seguranca'?'segurança':o.tipo==='parametros'?'parâmetros':o.tipo==='gel'?'Gel (formato e locais)':o.tipo==='*'?'cadastro inteiro':(T?T.um:o.tipo)+' '+(o.codigo||'');
  const campos=o.mudancas?Object.keys(o.mudancas).filter(c=>!/senha|salt/i.test(c)).join(', '):'';return`${o.acao} · ${alvo}${campos?' ('+campos+')':''}`};
 const audTxt=v=>{if(v==null)return'';if(Array.isArray(v)&amp;&amp;v.length&amp;&amp;v[0]&amp;&amp;typeof v[0]==='object'&amp;&amp;'de'in v[0])return v.map(x=>`${fmtD(x.de)}→${x.ate?fmtD(x.ate):'…'}`+Object.entries(x).filter(([k])=>!['de','ate','itens','pausas'].includes(k)&amp;&amp;x[k]!=null).map(([k,y])=>` ${k}=${Array.isArray(y)?y.join('/'):y}`).join('')+(x.itens?` ${x.itens.length} itens`:'')+(x.estrutura&amp;&amp;x.estrutura.length?` +${x.estrutura.length} estrutura`:'')+(x.fonte?` ${x.fonte}`:'')+(x.pausas&amp;&amp;x.pausas.length?` pausas ${x.pausas.map(p=>p.inicio+'–'+p.fim).join(',')}`:'')).join(' | ');
  if(typeof v==='object'){const s=JSON.stringify(v);return s.length>160?s.slice(0,160)+'…':s}return String(v)};
@@ -5702,8 +5701,8 @@ function cs12NovoCat(I,g){const c=g.P.cab,nv=I.novo&amp;&amp;normCat(I.novo.codi
 function cadHash(cod){const s=Cad.ui.sec||'inicio';const h='#cadastros'+(s!=='inicio'?'/'+s:'')+(cod!=null?'/'+encodeURIComponent(cod):'');if(location.hash!==h)history.replaceState(null,'',h)}
 function cadRota(){const raw=location.hash.slice(1);if(/^reuniao=/.test(raw)){let v=raw.slice(8);try{v=decodeURIComponent(v)}catch(e){}const[d,t]=v.split('|');if(/^\d{4}-\d{2}-\d{2}$/.test(d||''))Reu.dia=d;Reu.rec=/^[\w-]{1,12}$/.test(t||'')?t:'dia';App.show('reuniao',{keepHash:true});return true}if(/^cs12=/.test(raw)){cadNovoCS12(raw);return true}if(/^(geral|fila|reuniao|pend|rel|config)$/.test(raw)){App.show(raw);return true}if(/^importacao(\/|$)/.test(raw)){Imp.sec=(raw.split('/')[1]||'').replace(/[^a-z]/g,'')||null;Imp._rolou=null;App.show('imp',{keepHash:true});return true}if(raw==='admin'){App.show('cad');return true}if(/^entrar(=\w*)?$/.test(raw)){const vt=(raw.split('=')[1]||'').replace(/\W/g,'');App.show('geral',{keepHash:true});setTimeout(()=>{if(typeof vacLogin!=='undefined')vacLogin.abrir({trocar:!!vacLogin.sessao(),volta:vt||null});else Entrar.abrir()},450);return true}if(raw==='versoes'){irVersoes();return true}
  if(!/^cadastros(\/|$)/.test(raw))return false;const p=raw.split('/').slice(1).map(x=>{try{return decodeURIComponent(x)}catch(e){return x}});
- const sec=p[0]||'inicio';if(sec==='importar'&amp;&amp;/^meta/i.test(p[1]||'')){const I=Cad.ui.imp=Cad.ui.imp||{modo:'cs12',fmt:'auto',de:todayISO(),map:{},soBOM:true,txt:'',prev:null};I.modo='meta'}Cad.ui.sec=CAD_T[sec]||CAD_SECS.includes(sec)?sec:'inicio';App.show('cad',{keepHash:true});
- if(Cad.ui.sec==='parametros'&amp;&amp;p[1]==='gel')setTimeout(()=>{const x=$('#parGel');if(x){x.scrollIntoView({block:'start'});x.classList.add('eq-real');setTimeout(()=>x.classList.remove('eq-real'),2200)}},80);   /* 1.9.51 */
+ const sec=p[0]||'inicio';if(sec==='importar'&amp;&amp;/^meta/i.test(p[1]||'')){const I=Cad.ui.imp=Cad.ui.imp||{modo:'cs12',fmt:'auto',de:todayISO(),map:{},soBOM:true,txt:'',prev:null};I.modo='meta'}Cad.ui.sec=CAD_T[sec]||CAD_SECS.includes(sec)?sec:'inicio';if(Cad.ui.sec==='parametros'&amp;&amp;p[1]==='gel'){Cad.ui.sec='gel';history.replaceState(null,'',location.pathname+location.search+'#cadastros/gel')}App.show('cad',{keepHash:true});
+ if(Cad.ui.sec==='gel'&amp;&amp;p[1]==='locais')setTimeout(()=>{const x=$('#gelLoc');if(x){x.scrollIntoView({block:'start'});x.classList.add('eq-real');setTimeout(()=>x.classList.remove('eq-real'),2200)}},80);   /* 1.9.51 */
  if(sec==='equipamentos'&amp;&amp;p[1]==='planta'&amp;&amp;/^pt[a-z0-9]{8,30}$/.test(p[2]||'')){
   if(!Cad.D){toast('Carregue o cadastro para abrir a ficha do equipamento.',5000,true);return true}
   const existente=Cad.D.equipamentos.find(e=>e.pontoLinha360===p[2]);
@@ -5744,7 +5743,7 @@ function wireCadBarra(){const on=(id,f)=>{const x=$('#'+id);if(x)x.onclick=f};
 function viewCad(m){const D=Cad.D,sec=Cad.ui.sec||'inicio';
  m.innerHTML=cadBarra()+`<div class="cadg"><aside class="cadside">${cadSide(sec)}</aside><section id="cadMain" style="min-width:0"></section></div>`;
  wireCadBarra();wireAdminSide();const el=$('#cadMain');if(sec==='novidades')return cadNovidades(el);if(!D)return cadSemCadastro(el);
- ({apps:cadApps,cambio:cadCambio,inicio:cadInicio,matriz:cadMatriz,importar:cadImportar,seguranca:cadSeguranca,auditoria:cadAuditoria,backups:cadBackups,vigencias:cadVigencias,parametros:cadParametros}[sec]||(x=>cadLista(x,sec)))(el)}
+ ({apps:cadApps,cambio:cadCambio,inicio:cadInicio,matriz:cadMatriz,importar:cadImportar,seguranca:cadSeguranca,auditoria:cadAuditoria,backups:cadBackups,vigencias:cadVigencias,parametros:cadParametros,gel:cadGel}[sec]||(x=>cadLista(x,sec)))(el)}
 /* 1.9.71 · MT-01 (pedido do responsável, 22/11/2026): Administração › Apps de celular. Gera o app "Meu Turno" (modelo no bloco
    celular/meu-turno, o mesmo arquivo de CELULAR/index.html) com o cadastro atual embutido: linha, turnos (vigência de hoje), catálogos
    com a meta por hora, equipamentos, tipos de parada e pessoas (só ID, nome e turno). Os nomes vão com o código ao lado, e o turno que
@@ -5805,7 +5804,7 @@ function cadApps(el){const D=Cad.D,{c,semMeta}=MT_APP.cfg(D),ok=c.turnos.length&
 const ADM_ASSUNTOS=[
  {id:'planta',nome:'Planta e linha',itens:['linhas','calendario']},
  {id:'produto',nome:'Produto',itens:['familias','catalogos','materiais','bom','cambio','precos']},
- {id:'gel',nome:'Gel',itens:[]},
+ {id:'gel',nome:'Gel',itens:['gel']},
  {id:'equipamentos',nome:'Equipamentos',itens:['equipamentos','componentes','modosFalha']},
  {id:'turnos',nome:'Turnos e metas',itens:['turnos','metasOee','metasArea','metasOsm']},
  {id:'paradas',nome:'Paradas e perdas',itens:['paradas','matriz']},
@@ -5816,7 +5815,7 @@ const admAssuntoDe=x=>{const sec=x&amp;&amp;typeof x==='object'?admAssuntosOp(x)
 function admAssuntosOp(o){const t=o&amp;&amp;o.tipo;if(t==='parametros'){const K=Object.keys((o.mudancas)||{});const g=K.filter(k=>k==='gel'||k.startsWith('gel.')).length;return g&amp;&amp;g===K.length?['gel']:g?['gel','sistema']:['sistema']}
  return[(ADM_ASSUNTOS.find(a=>a.itens.includes(t))||{id:'sistema'}).id]}
 /* rótulo do botão e se a tela só existe com o cadastro carregado */
-const ADM_ROT={matriz:['Matriz de paradas',1],usuarios:['Usuários',1],perfis:['Perfis e permissões',1],vigencias:['Vigências',1],parametros:['Parâmetros',1],novidades:['Novidades',0],apps:['Apps de celular',1],importar:['Integrações SAP',1],config:['Configuração da Administração',0],versoes:['Versões das páginas',0],auditoria:['Auditoria',1],backups:['Backups do cadastro',1],seguranca:['Segurança e senha',1]};
+const ADM_ROT={gel:['Gel',1],matriz:['Matriz de paradas',1],usuarios:['Usuários',1],perfis:['Perfis e permissões',1],vigencias:['Vigências',1],parametros:['Parâmetros',1],novidades:['Novidades',0],apps:['Apps de celular',1],importar:['Integrações SAP',1],config:['Configuração da Administração',0],versoes:['Versões das páginas',0],auditoria:['Auditoria',1],backups:['Backups do cadastro',1],seguranca:['Segurança e senha',1]};
 function cadSide(sec){const D=Cad.D;const btn=(k,l,n)=>`<button data-sec="${k}" class="${sec===k?'on':''}">${l}${n!=null?`<span class="n">${n}</span>`:''}</button>`;
  const cnt=t=>{if(!D)return null;const L=D[t]||[],a=L.filter(x=>cadAtivo(t,x,D)).length;return a+(a!==L.length?'/'+L.length:'')};
  const g=t=>`<div class="sg">${t}${CAT_AJUDA['grupo:'+t]?' '+ib(t,CAT_AJUDA['grupo:'+t]):''}</div>`;
@@ -6071,7 +6070,7 @@ const Ficha={t:null,cod:null,orig:null,W:null,novo:false,edit:false,dirty:false,
   else if(!e&amp;&amp;!this.novo)h+=`<div class="note w">Somente leitura: ${esc(Cad.motivoEdicao()||'edição bloqueada')}. ${!Lock.ok()&amp;&amp;Cad.D&amp;&amp;(Store.mode==='pasta'||Store.mode==='teste')?'<button class="b sm p" onclick="cadDesbloquear(()=>Ficha.reabrir())">Desbloquear edição</button>':''}</div>`;
   if(Lock.ok()&amp;&amp;D.seguranca&amp;&amp;D.seguranca.trocar)h+='<div class="note w">Troque a senha inicial em Cadastros › Segurança para liberar a edição.</div>';
   h+=`<div class="fg">${T.campos.map(f=>this.campo(f)).join('')}</div>`;
-  if(t==='equipamentos')h+=this.dados()+(W.categoria==='gel'||W.gel?this.gelEq():'')+this.comps()+this.arquivos();
+  if(t==='equipamentos')h+=this.dados()+(!this.novo&amp;&amp;(W.categoria==='gel'||W.gel||((Cad.D.gel&amp;&amp;Cad.D.gel.locais)||[]).some(l=>String(l.equipamento)===String(this.cod)))?this.gelLink():'')+this.comps()+this.arquivos();
   if(t==='catalogos'&amp;&amp;W.tipoItem!=='preparacao')h+=this.gelCat();
   if(t==='paradas')h+=this.maqs()+this.guia();
   if(t==='perfis')h+=this.perms()+this.assuntosEd()+this.layoutPerfil();
@@ -6149,19 +6148,9 @@ const Ficha={t:null,cod:null,orig:null,W:null,novo:false,edit:false,dirty:false,
  dados(){const e=this.edit,R=this.W._dados||[];
   return`<h3 style="margin-top:14px">Dados técnicos ${ib('Dados técnicos','Lista livre (nome → valor): velocidade nominal, potência, tensão, capacidade… Base para a Manutenção e o mapa da linha.')}</h3><table class="cadst"><tr><th>Dado</th><th>Valor</th>${e?'<th></th>':''}</tr>${R.map((r,j)=>`<tr><td class="in">${inpRaw('_dados.'+j+'.k','txt',r.k,e)}</td><td class="in">${inpRaw('_dados.'+j+'.v','txt',r.v,e)}</td>${e?`<td><button class="b sm d" data-del="_dados.${j}">×</button></td>`:''}</tr>`).join('')||'<tr><td colspan="3" class="muted small">Nenhum dado técnico.</td></tr>'}</table>
   ${e?`<button class="b sm" data-add="_dados" data-tpl="${esc('{"k":"","v":""}')}" style="margin-top:6px">+ Dado</button>`:''}`},
- /* 1.9.12 · Fase 4 · 4a: dados do gel na ficha (formato igual ao da Gestão de Gel) */
- gelEq(){const e=this.edit,G=this.W.gel||{},D=(G.descs||[]),M=((Cad.D.parametros||{}).gel||{}).motivos||[];
-  /* 1.9.51 · EQ-ORD: o que vale quando a embalagem própria está vazia (formato vigente em Parâmetros › Gestão de Gel), com o link para alterar */
-  const FS=((Cad.D.parametros||{}).gel||{}).formatos||[],h=todayISO(),fv=FS.filter(v=>v.from&amp;&amp;v.from<=h).sort((a,b)=>a.from<b.from?-1:1).pop(),F=fv||GEL_FMT_DEF,g=v=>v==null||v===''?'–':fmtN(+v,3).replace(/,?0+$/,''),gu=(v,u)=>v==null||v===''?'–':g(v)+' '+u;
-  const fmtBox=`<div class="note" style="margin:6px 0 8px"><div style="display:flex;flex-wrap:wrap;gap:6px 14px;align-items:baseline"><b>${G.tara!=null&amp;&amp;G.tara!==''?'Embalagem própria deste equipamento: '+g(G.tara)+' g':'Segue o formato'}</b><span class="small muted">${fv?'Parâmetros › Gestão de Gel, vigência desde '+fmtD(fv.from):'sem vigência em Parâmetros: vale o padrão'}</span><span style="flex:1"></span><a href="#cadastros/parametros/gel" class="b sm" data-irpar="gel">Alterar em Parâmetros › Gestão de Gel ↗</a></div>
-   <div style="display:flex;flex-wrap:wrap;gap:10px;margin-top:6px"><div class="tw" style="flex:0 1 auto"><table class="cadst small"><tr><th>Embalagem</th><th class="n">Valor</th><th>Usado em</th></tr>
-    <tr><td>Saco da pesagem</td><td class="n">${gu(F.tara,'g')}${G.tara!=null&amp;&amp;G.tara!==''?' <span class="muted">(não usado: há embalagem própria)</span>':''}</td><td class="small muted">toda pesagem sem embalagem própria</td></tr>
-    <tr><td>Folha da purga</td><td class="n">${gu(F.taraP,'g')}</td><td class="small muted">descarte de purga</td></tr><tr><td>Sobra no barril</td><td class="n">${gu(F.sobra,'kg')}</td><td class="small muted">descarte "barris × sobra padrão"</td></tr></table></div>
-    <div class="tw" style="flex:0 1 auto"><table class="cadst small"><tr><th>Composição (g por tubo)</th><th class="n">Tubo</th><th class="n">Gel</th><th class="n">Aditivo</th><th class="n">Tampa + rolha</th></tr>${['100','75'].map(f=>{const c=(F.f||{})[f]||{};return`<tr><td>Tubo ${f}</td>${['tubo','gel','adit','tr'].map(k=>`<td class="n">${g(c[k])}</td>`).join('')}</tr>`}).join('')}</table></div></div></div>`;
-  return`<h3 style="margin-top:14px">Gel: embalagem e descartes ${ib('Gel',AJUDA_CAMPO['gel.equip'])}</h3><div class="fg"><label>Embalagem própria (g) · vazio = a do formato${inpRaw('gel.tara','num',G.tara,e)}</label></div>${fmtBox}
-  <div class="tw"><table class="cadst"><tr><th title="Onde o descarte acontece nesta máquina (ex.: Caixa rejeição, Funil berço, Purga múltipla – cabeçote A). Aparece no scrap de gel da Produção.">Local do descarte</th><th>Descarte: como o peso é contabilizado</th><th>Categoria do scrap</th><th>Motivos (vazio = todos)</th>${e?'<th></th>':''}</tr>${D.map((d,j)=>`<tr><td class="in">${inpRaw('gel.descs.'+j+'.local','txt',d.local||'',e,'placeholder="ex.: Funil berço" style="min-width:170px"')}</td><td class="in"><select data-p="gel.descs.${j}.comp" data-k="txt"${e?'':' disabled'}>${Object.entries(GEL_COMPS).map(([k,l])=>`<option value="${k}" ${d.comp===k?'selected':''}>${esc(l)}</option>`).join('')}</select></td><td class="in"><select data-p="gel.descs.${j}.cat" data-k="txt"${e?'':' disabled'}>${Object.entries(GEL_SCAT).map(([k,l])=>`<option value="${k}" ${d.cat===k?'selected':''}>${l}</option>`).join('')}</select></td>
-   <td class="small">${M.filter(m=>m.active!==false&amp;&amp;(!(m.comps||[]).length||m.comps.includes(d.comp))).map(m=>`<label style="margin-right:6px"><input type="checkbox" data-p="gel.descs.${j}.mots" data-k="set" data-val="${esc(m.id)}" ${(d.mots||[]).includes(m.id)?'checked':''}${e?'':' disabled'}> ${esc(m.name)}</label>`).join('')||'<span class="muted">nenhum motivo cadastrado</span>'}</td>${e?`<td><button class="b sm d" data-del="gel.descs.${j}">×</button></td>`:''}</tr>`).join('')||'<tr><td colspan="5" class="small muted">Nenhum descarte.</td></tr>'}</table></div>
-  ${e?`<button class="b sm" data-add="gel.descs" data-tpl="${esc(JSON.stringify({id:'d-'+gelUid(),local:'',comp:'tubogel',cat:'T',mots:[]}))}" style="margin-top:6px">+ Descarte</button>`:''}`},
+ /* ADM-CENTRAL (bloco 1 · tarefa 6): os locais de descarte e a embalagem do gel saíram da ficha; ficam em Administração › Gel */
+ gelLink(){const L=((Cad.D.gel&amp;&amp;Cad.D.gel.locais)||[]).filter(l=>String(l.equipamento)===String(this.cod));
+  return`<h3 style="margin-top:14px">Gel ${ib('Gel','Os locais de descarte deste equipamento, a composição de cada um e a embalagem de pesagem ficam em Administração › Gel, junto com o formato do tubo.')}</h3><p class="small"><a href="#cadastros/gel/locais" data-irhash="#cadastros/gel/locais">Locais de descarte deste equipamento › Gel</a> <span class="muted">· ${L.length?L.length+' local(is) cadastrado(s)':'nenhum local cadastrado'}</span></p>`},
  gelCat(){const e=this.edit,G=this.W.gel||{},V=(G.vig||[]),h=todayISO();
   const fut=v=>!v.from||v.from>=h,inp=(p,k,v,ro)=>inpRaw(p,k,v,e&amp;&amp;!ro,'style="width:96px"');
   return`<details class="cd" style="margin-top:14px"${V.length||G.fmt?' open':''}><summary><b>Gel</b> ${ib('Gel do catálogo',AJUDA_CAMPO['gel.catalogo'])} <span class="small muted">${V.length?V.length+' vigência(s)':'sem dados do gel'}</span></summary>
@@ -6198,6 +6187,7 @@ const Ficha={t:null,cod:null,orig:null,W:null,novo:false,edit:false,dirty:false,
    const lv=e.target.closest('[data-linhavig]');if(lv&amp;&amp;this.edit)return this.novaLinha(+lv.dataset.linhavig);
    const dv=e.target.closest('[data-delvig]');if(dv&amp;&amp;this.edit){const vs=this.W.vigencias,rm=vs[+dv.dataset.delvig];vs.splice(+dv.dataset.delvig,1);if(rm&amp;&amp;this.t==='turnos'&amp;&amp;vigLinhas(vs,rm.de).length){this.dirty=true;return this.draw()}if(rm&amp;&amp;this.t==='turnos'){const ord=[...vs].sort((a,b)=>a.de<b.de?-1:1),ant=ord.filter(x=>x.de<rm.de).pop(),prox=ord.find(x=>x.de>rm.de);if(ant)for(const x of vigLinhas(vs,ant.de))if(!x._nova){const o=(this.orig&amp;&amp;this.orig.vigencias||[]).find(y=>y.de===x.de&amp;&amp;JSON.stringify(y.dias||[])===JSON.stringify(x.dias||[]));x.ate=prox?addDays(prox.de,-1):(o?o.ate:rm.ate||null)}this.dirty=true;return this.draw()}if(rm){const ord=[...vs].sort((a,b)=>a.de<b.de?-1:1),ant=ord.filter(x=>x.de<rm.de).pop(),prox=ord.find(x=>x.de>rm.de);if(ant&amp;&amp;!ant._nova){const o=(this.orig&amp;&amp;this.orig.vigencias||[]).find(x=>x.de===ant.de);ant.ate=prox?addDays(prox.de,-1):(o?o.ate:rm.ate||null)}}this.dirty=true;return this.draw()}
    const od=e.target.closest('[data-opendoc]');if(od)return EqFiles.abrir(od.dataset.opendoc);
+   const ig=e.target.closest('[data-irhash]');if(ig){e.preventDefault();Modal.close();if(!Ficha.aberta())location.hash=ig.dataset.irhash;return}
    const ip=e.target.closest('[data-irpar]');if(ip){e.preventDefault();Modal.close();if(!Ficha.aberta())location.hash='#cadastros/parametros/'+ip.dataset.irpar;return}   /* 1.9.51: fecha a ficha (pergunta se há alteração) e vai ao lugar de alterar */
    const rd=e.target.closest('[data-rmdoc]');if(rd)return this.rmDoc(+rd.dataset.rmdoc)};
   const on=(id,f)=>{const x=box.querySelector('#'+id);if(x)x.onclick=f};
@@ -6536,7 +6526,7 @@ function cadImportarMeta(el,I){const D=Cad.D,pe=Cad.podeEditarAssunto('turnos',t
 
 /* ---------- auditoria ---------- */
 function cadAuditoria(el){const D=Cad.D,F=Cad.ui.aud;const q=norm(F.q);let A=(D.auditoria||[]).slice().reverse();if(F.t)A=A.filter(a=>a.tipo===F.t);if(q)A=A.filter(a=>norm([a.por,a.acao,a.codigo,a.campo,a.motivo,a.origem,audTxt(a.antes),audTxt(a.depois)].join(' ')).includes(q));
- el.innerHTML=`<div class="filters"><label>Tipo<select id="aT"><option value="">todos</option>${CAD_ORD.concat(['seguranca','parametros','*']).map(t=>`<option value="${t}" ${F.t===t?'selected':''}>${esc(CAD_T[t]?CAD_T[t].nome:t==='*'?'cadastro inteiro':t)}</option>`).join('')}</select></label><label>Buscar<input id="aQ" value="${esc(F.q)}" placeholder="pessoa, código, motivo…"></label><span class="small muted" style="align-self:center">${A.length} linha(s) · guarda as últimas ${fmtN(CAD_AUD_MAX)}; o histórico completo fica nos backups</span><span style="flex:1"></span><button class="b" id="aXls">⇩ Excel</button></div>
+ el.innerHTML=`<div class="filters"><label>Tipo<select id="aT"><option value="">todos</option>${CAD_ORD.concat(['seguranca','parametros','gel','*']).map(t=>`<option value="${t}" ${F.t===t?'selected':''}>${esc(CAD_T[t]?CAD_T[t].nome:t==='*'?'cadastro inteiro':t==='gel'?'Gel (formato e locais)':t)}</option>`).join('')}</select></label><label>Buscar<input id="aQ" value="${esc(F.q)}" placeholder="pessoa, código, motivo…"></label><span class="small muted" style="align-self:center">${A.length} linha(s) · guarda as últimas ${fmtN(CAD_AUD_MAX)}; o histórico completo fica nos backups</span><span style="flex:1"></span><button class="b" id="aXls">⇩ Excel</button></div>
  <div class="tw"><table><tr><th>Em</th><th>Por</th><th>Ação</th><th>Tipo</th><th>Código</th><th>Campo</th><th>Antes</th><th>Depois</th><th>Motivo</th></tr>${A.slice(0,500).map(a=>`<tr><td class="small" style="white-space:nowrap">${fmtDT(a.em)}</td><td class="small">${esc(a.por||'')}</td><td class="small">${esc(a.acao)}</td><td class="small">${esc(CAD_T[a.tipo]?CAD_T[a.tipo].um:a.tipo||'')}</td><td class="small mono">${a.codigo&amp;&amp;CAD_T[a.tipo]?`<a href="#cadastros/${a.tipo}/${encodeURIComponent(a.codigo)}">${esc(a.codigo)}</a>`:esc(a.codigo||'')}</td><td class="small mono">${esc(a.campo||'')}</td><td class="small">${esc(audTxt(a.antes))}</td><td class="small">${esc(audTxt(a.depois))}</td><td class="small">${esc(a.motivo||'')}${a.origem?` <span class="tag">${esc(a.origem)}</span>`:''}</td></tr>`).join('')||'<tr><td colspan="9" class="muted">Sem registros.</td></tr>'}</table></div>${A.length>500?'<p class="small muted">Mostrando 500; o Excel traz todas.</p>':''}`;
  $('#aT').onchange=e=>{F.t=e.target.value;cadAuditoria(el)};let tm;$('#aQ').oninput=e=>{clearTimeout(tm);tm=setTimeout(()=>{F.q=e.target.value;cadAuditoria(el);const i=$('#aQ');i.focus();i.setSelectionRange(i.value.length,i.value.length)},250)};
  $('#aXls').onclick=async()=>{try{const X=await Libs.xlsx();const rows=[['Em','Por','Ação','Tipo','Código','Campo','Antes','Depois','Motivo','Origem']].concat(A.map(a=>[fmtDT(a.em),a.por||'',a.acao,a.tipo||'',a.codigo||'',a.campo||'',audTxt(a.antes),audTxt(a.depois),a.motivo||'',a.origem||'']));const wb=X.utils.book_new();X.utils.book_append_sheet(wb,X.utils.aoa_to_sheet(rows),'Auditoria');X.writeFile(wb,'Cadastro_auditoria_'+todayISO()+'.xlsx')}catch(e){toast(e.message,6000,true)}}}
@@ -7306,8 +7296,8 @@ function cadParametros(el){const D=Cad.D,pe=Cad.podeEditar(true),P=D.parametros|
   <div style="display:flex;gap:6px;flex-wrap:wrap;margin:8px 0" id="sPrev"></div>
   <p class="small muted">Significado fixo das cores em todas as páginas: <b style="color:var(--ok)">verde</b> bom · <b style="color:var(--warn)">amarelo</b> atenção · <b style="color:var(--crit)">vermelho</b> ruim · <b style="color:var(--none)">cinza</b> sem dados ou inativo · <b style="color:var(--info)">azul</b> informação · <b style="color:var(--rule)">roxo</b> regra/configuração · <b style="color:var(--pend)">laranja</b> pendência/revisão. Onde menor é melhor (scrap, waste, tempo parado), a régua é invertida.</p></div></div>
  ${pe?'':'<p class="small muted">Desbloqueie a edição (senha) para mudar.</p>'}
- ${parProducaoHtml(P,pe)}${parGelHtml(P,pe)}${parComputadorHtml()}`;
- wireParProducao(P,pe);wireParGel(P,pe);wireParComputador();
+ ${parProducaoHtml(P,pe)}${parComputadorHtml()}`;
+ wireParProducao(P,pe);wireParComputador();
  const prev=()=>{const usa=$('#sUsaAm')?$('#sUsaAm').checked:usaAm,V=parseFloat(($('[data-par="semaforoVerdePct"]')||{}).value)||100,A=parseFloat(($('[data-par="semaforoAmareloPct"]')||{}).value)||90,lab=$('#sAmLab');if(lab)lab.style.display=usa?'':'none';
   const b=$('#sPrev');if(b)b.innerHTML=usa?`<span class="pill ok">verde ≥ ${fmtN(V,1)}%</span><span class="pill warn">amarelo ${fmtN(A,1)}% a ${fmtN(V,1)}%</span><span class="pill crit">vermelho &amp;lt; ${fmtN(A,1)}%</span><span class="pill none">cinza · sem meta ou sem dado</span>`:`<span class="pill ok">verde ≥ ${fmtN(V,1)}%</span><span class="pill crit">vermelho &amp;lt; ${fmtN(V,1)}%</span><span class="pill none">cinza · sem meta ou sem dado</span><span class="small muted" style="align-self:center">sem amarelo</span>`};
  prev();$$('#parSem input').forEach(i=>i.addEventListener('input',prev));
@@ -7351,43 +7341,147 @@ function wireParProducao(P,pe){const ok=$('#ppOk');if(!ok||!pe)return;ok.onclick
  if(deq(Q0,Q))return toast('Nada mudou.');
  Cad.op({acao:'edição',tipo:'parametros',codigo:null,mudancas:{producao:{antes:P.producao?clone(P.producao):null,depois:Q}},motivo:null});toast('Parâmetros da Produção salvos.')}}
 /* "Neste computador": não é cadastro (cada computador tem o seu); fica aqui para estar num lugar só */
-/* ---------- 1.9.12 · Fase 4 · 4a (D10): parâmetros do gel no Portal ---------- */
+/* ---------- ADM-CENTRAL (bloco 1 · tarefa 6, 23/11/2026): Administração › Gel ----------
+   Formato do tubo (vigências em gel.formatos), composições (calculadas por vacCad.gel.composicao, só leitura), locais de descarte
+   (gel.locais, com a ordem do Registrar scrap) e, na 4ª parte, os motivos, as perdas teóricas e o corte, que continuam em parametros.gel.
+   Grava por Cad.ops: tipo 'gel' (formatos e locais) e 'parametros' (motivos, perdas e corte); os dois são do assunto Gel. */
 const GEL_COMPS={completo:'Tubo completo (tubo + tampa + rolha + etiqueta + gel + aditivo)',tubogel:'Tubo + gel',spray:'Tubo + gel + spray (aditivo)',gel:'Gel puro (purga, barril)',barril:'Barril (sobra): barris × sobra padrão'};
+const GEL_COMP_D={completo:['Tubo completo','tubo + tampa + rolha + etiqueta + gel + aditivo'],tubogel:['Tubo + gel','tubo + gel'],spray:['Tubo + gel + spray','tubo + gel + aditivo'],gel:['Gel puro','só gel (purga, barril)'],barril:['Barril (sobra)','sobra de gel no barril ao terminar: barris × sobra padrão']};
 const GEL_SCAT={T:'Tubos',B:'Barril',P:'Purga'};
-const GEL_FMT_DEF={from:'2000-01-01',tara:75,taraP:5,sobra:null,f:{'100':{tubo:4.779,gel:0.834,adit:0.020,tr:2.30},'75':{tubo:3.560,gel:0.834,adit:0.015,tr:2.30}}};
 const GEL_PROC_DEF={from:'2000-01-01',g:0.98,pT:2.2406,pB:0.7352,pP:0.5252};
+const GEL_CAMPOS=[['tuboG','Tubo vazio'],['gelG','Gel'],['aditivoG','Aditivo / spray'],['tampaRolhaG','Tampa + rolha (conjunto)']];
 const gelUid=()=>'m-'+Date.now().toString(36)+Math.random().toString(36).slice(2,6);
-/* editor do grupo Gel (Parâmetros): cópia de trabalho, linhas com data-pg (caminho) e data-pk (num/txt/bool/set) */
+/* número digitado: 1,5 ou 1.5; vazio = null; inválido = NaN */
+const gelNum=s=>{let t=String(s==null?'':s).trim();if(t==='')return null;if(t.includes(','))t=t.replace(/\./g,'').replace(',','.');const v=Number(t);return isFinite(v)?v:NaN};
+const gelIn=v=>v==null||v===''?'':(+v).toLocaleString('pt-BR',{maximumFractionDigits:3,useGrouping:false});
+/* rascunhos da tela (sobrevivem ao redesenho): vig = nova vigência do formato; loc = local em edição; cv = vigência das composições */
+const GelAdm={vig:null,loc:null,cv:null};
 const ParGel={W:null};
-function parGelHtml(P,pe){const G0=P.gel||{};if(!ParGel.W||ParGel.base!==JSON.stringify(G0)){ParGel.W=clone(G0);ParGel.base=JSON.stringify(G0)}const W=ParGel.W,h=todayISO(),dis=pe?'':' disabled';
+function gelRascunho(b){const t=f=>(b&amp;&amp;b.tubos&amp;&amp;b.tubos[f])||{},T={};for(const f of['100','75']){T[f]={};for(const[k]of GEL_CAMPOS)T[f][k]=gelIn(t(f)[k])}
+ return{de:todayISO(),emb:gelIn(b&amp;&amp;b.embalagemG),folha:gelIn(b&amp;&amp;b.folhaPurgaG),sobra:gelIn(b&amp;&amp;b.sobraBarrilKg),t:T,motivo:''}}
+function gelDnd(tb,fim){let de=null,alvo=null,abaixo=false;const linhas=()=>[...tb.querySelectorAll('tr[data-gid]')],limpa=()=>linhas().forEach(r=>r.classList.remove('eq-ac','eq-ab','eq-arr'));
+ const sob=(x,y)=>{const e=document.elementFromPoint(x,y);return e&amp;&amp;e.closest?e.closest('tr[data-gid]'):null};
+ tb.querySelectorAll('td.eq-h[data-arrasta]').forEach(h=>{
+  h.addEventListener('pointerdown',e=>{if(e.button>0)return;e.preventDefault();de=h.closest('tr');alvo=null;de.classList.add('eq-arr');try{h.setPointerCapture(e.pointerId)}catch(x){}});
+  h.addEventListener('pointermove',e=>{if(!de)return;const r=sob(e.clientX,e.clientY);linhas().forEach(x=>x.classList.remove('eq-ac','eq-ab'));alvo=null;if(!r||r===de)return;const b=r.getBoundingClientRect();abaixo=e.clientY>b.top+b.height/2;alvo=r;r.classList.add(abaixo?'eq-ab':'eq-ac')});
+  const sai=e=>{if(!de)return;const r=alvo,o=de;de=null;alvo=null;limpa();if(e.type!=='pointerup'||!r)return;const ids=linhas().map(x=>x.dataset.gid).filter(i=>i!==o.dataset.gid);let i=ids.indexOf(r.dataset.gid);if(abaixo)i++;ids.splice(i,0,o.dataset.gid);fim(ids)};
+  h.addEventListener('pointerup',sai);h.addEventListener('pointercancel',sai)})}
+function cadGel(el){const D=Cad.D,h=todayISO();
+ if(!(+D.schemaVersion>=2)||!D.gel){el.innerHTML=`<div class="card"><h3>Gel</h3><p class="small muted">O cadastro está no formato 1, sem o bloco do Gel. A conversão para o formato 2 chega na próxima etapa da Administração central.</p></div>`;return}
+ const pe=Cad.podeEditarAssunto('gel',true),dis=pe?'':' disabled',P=D.parametros||{},err=m=>toast(m,6000,true);
+ const F=(D.gel.formatos||[]).slice().sort((a,b)=>a.de<b.de?-1:a.de>b.de?1:0),L=(D.gel.locais||[]).slice().sort((a,b)=>(a.ordem??0)-(b.ordem??0));
+ const vig=vacCad.gel.formato(h);if(!GelAdm.vig)GelAdm.vig=gelRascunho(vig||F[F.length-1]||null);const V=GelAdm.vig;
+ if(!F.some(x=>x.de===GelAdm.cv))GelAdm.cv=(vig||F[F.length-1]||{}).de||null;
+ const redo=()=>{const x=$('#cadMain');if(x&amp;&amp;Cad.ui.sec==='gel')cadGel(x)};
+ const gv=(p,w=96,ex='')=>`<input type="text" inputmode="decimal" data-gv="${p}" value="${esc(pget(V,p)??'')}" style="width:${w}px"${dis}${ex}>`;
+ const tub=(x,f)=>GEL_CAMPOS.map(([k])=>fmtQ(((x.tubos||{})[f]||{})[k])).join(' · ');
+ const eqNome=c=>{const q=cadItem('equipamentos',c,D);return q?q.nome:''};
+ /* 1 · formato do tubo */
+ const fmt=`<div class="card form" id="gelFmt">${parHd('Formato do tubo',' '+ib('Formato do tubo',AJUDA_CAMPO['gel.formatos']),'gvOk','Salvar vigência',pe)}
+  <p class="small muted" style="margin:0 0 8px">Pesos de cada componente por tubo. Cada catálogo indica o seu formato (Tubo 100 ou Tubo 75) em Catálogos. O gel por tubo do catálogo, se informado, tem prioridade sobre o gel do formato. Vigência gravada não muda: para mudar, acrescente uma nova.</p>
+  <h4 style="margin:0 0 6px">Nova vigência</h4>
+  <div class="fg"><label>Vale a partir de<input type="date" id="gvDe" data-gv="de" value="${esc(V.de)}"${dis}></label>
+   <label>Peso da embalagem de pesagem (g)${gv('emb',110)}<span class="small muted">saco usado nos scraps de Tubos e Barril</span></label>
+   <label>Folha plástica da purga (g)${gv('folha',110)}<span class="small muted">descontada no lugar do saco em todo scrap de Purga</span></label>
+   <label>Sobra padrão de gel por barril (kg)${gv('sobra',110,' placeholder="ex.: 2,5"')}</label>
+   <label class="w2">Motivo da mudança ${ib('Motivo da mudança','Fica na auditoria junto com a vigência. Ex.: nova receita do gel, troca do fornecedor do tubo.')}<input type="text" id="gvMotivo" data-gv="motivo" value="${esc(V.motivo)}" maxlength="200" placeholder="obrigatório"${dis}></label></div>
+  <p class="small muted" style="margin:8px 0">Componente <b>Barril</b>: a sobra de gel que fica no barril quando ele termina. No registro, a composição "Barril (sobra)" calcula barris × sobra padrão (ou usa o peso, se a sobra for pesada). Quando o barril passar a ser raspado, salve uma nova vigência com a sobra que ainda fica.</p>
+  <div class="tw"><table class="cadst"><tr><th>Componente</th><th class="n">Tubo 100</th><th class="n">Tubo 75</th></tr>${GEL_CAMPOS.map(([k,l])=>`<tr><td>${l}</td>${['100','75'].map(f=>`<td class="n">${gv('t.'+f+'.'+k,90)} g</td>`).join('')}</tr>`).join('')}
+   <tr><td>Etiqueta</td><td class="n muted">contada em unidades</td><td class="n muted">contada em unidades</td></tr></table></div>
+  <h4 style="margin:14px 0 6px">Vigências do formato</h4>
+  <div class="tw"><table class="cadst" id="gelVigs"><tr><th>Vigente desde</th><th>Tubo 100 (tubo · gel · aditivo · tampa+rolha)</th><th>Tubo 75</th><th class="n">Embalagem</th><th class="n">Folha purga</th><th class="n">Sobra/barril</th><th></th></tr>
+   ${F.slice().reverse().map(x=>`<tr data-de="${esc(x.de)}"${x.de>h?'':vig&amp;&amp;vig.de===x.de?'':' class="muted"'} title="${esc((x.motivo?x.motivo+' · ':'')+(x.por||'')+(x.em?' · '+fmtDT(x.em):''))}"><td>${fmtD(x.de)} ${vig&amp;&amp;vig.de===x.de?'<span class="pill ok">vigente</span>':x.de>h?'<span class="pill info">futura</span>':''}</td><td>${tub(x,'100')}</td><td>${tub(x,'75')}</td><td class="n">${x.embalagemG!=null?fmtQ(x.embalagemG)+' g':'–'}</td><td class="n">${x.folhaPurgaG!=null?fmtQ(x.folhaPurgaG)+' g':'–'}</td><td class="n">${x.sobraBarrilKg!=null?fmtQ(x.sobraBarrilKg)+' kg':'—'}</td><td>${pe&amp;&amp;x.de>h?`<button class="b sm d" data-gvdel="${esc(x.de)}">Excluir</button>`:''}</td></tr>`).join('')||'<tr><td colspan="7" class="small muted">Nenhuma vigência: sem formato, o Gel e a Produção não calculam o peso por tubo (nunca zero).</td></tr>'}</table></div></div>`;
+ /* 2 · composições (só leitura) */
+ const cv=GelAdm.cv,comps=['completo','tubogel','spray'],cel=(f,k)=>{const c=cv?vacCad.gel.composicao(f,k,cv):null;return c&amp;&amp;c.gPorTubo!=null?fmtN(c.gPorTubo,3)+' g':'–'};
+ const cmp=`<div class="card form" id="gelCompsCard"><div class="par-hd"><h3>Composições ${ib('Composições','Peso de cada composição por tubo, somando os componentes do formato da vigência escolhida. Só leitura: muda quando se grava uma nova vigência. A etiqueta é contada em unidades e não entra no peso.')}</h3>
+  <label class="small" style="display:flex;gap:6px;align-items:center">Vigência<select id="gelCompSel">${F.slice().reverse().map(x=>`<option value="${esc(x.de)}" ${x.de===cv?'selected':''}>desde ${fmtD(x.de)}${vig&amp;&amp;vig.de===x.de?' (vigente)':x.de>h?' (futura)':''}</option>`).join('')||'<option value="">sem vigência</option>'}</select></label></div>
+  <div class="tw"><table class="cadst" id="gelComps"><tr><th>Composição</th><th>Componentes</th><th class="n">Tubo 100</th><th class="n">Tubo 75</th></tr>${comps.map(k=>`<tr data-comp="${k}"><td><b>${GEL_COMP_D[k][0]}</b></td><td class="small muted">${GEL_COMP_D[k][1]}</td><td class="n">${cel('100',k)}</td><td class="n">${cel('75',k)}</td></tr>`).join('')}</table></div></div>`;
+ /* 3 · locais de descarte */
+ const E=GelAdm.loc,mots=(P.gel&amp;&amp;P.gel.motivos)||[];
+ const eqs=(D.equipamentos||[]).filter(q=>q.ativo!==false||(E&amp;&amp;String(q.codigo)===String(E.equipamento))).sort((a,b)=>String(a.codigo).localeCompare(String(b.codigo),'pt-BR',{numeric:true}));
+ const forma=E?`<div class="note" id="glForm" style="margin:8px 0"><h4 style="margin:0 0 6px">${E.id?'Editar local':'Novo local'}</h4>
+  <div class="fg"><label>Equipamento do cadastro<select id="glEq" data-gl="equipamento"><option value="">escolha…</option>${eqs.map(q=>`<option value="${esc(q.codigo)}" ${String(E.equipamento)===String(q.codigo)?'selected':''}>${esc(q.codigo)} · ${esc(q.nome||'')}${q.categoria==='gel'?' (Gel)':''}${q.ativo===false?' (inativo)':''}</option>`).join('')}</select></label>
+   <label>Local do descarte ${ib('Local do descarte','Onde o descarte acontece nesta máquina (ex.: Caixa rejeição, Funil berço, Purga múltipla – cabeçote A). Aparece no Registrar scrap de cada turno.')}<input type="text" id="glLocal" data-gl="local" value="${esc(E.local)}" maxlength="80" placeholder="ex.: Funil berço"></label>
+   <label>Descarte: como o peso é contabilizado<select id="glComp" data-gl="comp">${Object.entries(GEL_COMPS).map(([k,l])=>`<option value="${k}" ${E.comp===k?'selected':''}>${esc(l)}</option>`).join('')}</select></label>
+   <label>Categoria do scrap<select id="glCat" data-gl="categoria"${E.comp==='barril'?' disabled':''}>${Object.entries(GEL_SCAT).map(([k,l])=>`<option value="${k}" ${E.categoria===k?'selected':''}>${l}</option>`).join('')}</select></label>
+   <label>Embalagem própria (g) · opcional<input type="text" inputmode="decimal" id="glEmb" data-gl="embalagemG" value="${esc(E.embalagemG)}" placeholder="usa a embalagem padrão" style="width:150px"></label>
+   ${E.id?`<label class="kvrow" style="align-self:end"><input type="checkbox" id="glAtivo" data-gl="ativo" ${E.ativo!==false?'checked':''}> <span>Ativo</span></label>`:''}
+   <label class="w2">Motivo da mudança ${ib('Motivo da mudança','Fica na auditoria. Se ficar vazio, vale o texto padrão ("novo local de descarte" ou "edição de local de descarte").')}<input type="text" id="glMotivo" data-gl="motivoTxt" value="${esc(E.motivoTxt)}" maxlength="200" placeholder="opcional"></label></div>
+  <div class="small" style="margin:6px 0"><b>Motivos aceitos</b> ${ib('Motivos aceitos','Motivos de descarte que aparecem no registro deste local. Nenhum marcado = todos os motivos da composição. Os motivos são cadastrados mais abaixo, em Motivos e parâmetros do gel.')} ${mots.filter(m=>m.active!==false&amp;&amp;(!(m.comps||[]).length||m.comps.includes(E.comp))).map(m=>`<label style="margin-right:10px"><input type="checkbox" data-glm="${esc(m.id)}" ${(E.motivos||[]).includes(m.id)?'checked':''}> ${esc(m.name)}</label>`).join('')||'<span class="muted">nenhum motivo cadastrado para esta composição</span>'}</div>
+  <div style="display:flex;gap:8px"><button class="b p" id="glOk">Salvar local</button><button class="b" id="glCancel">Cancelar</button></div></div>`:'';
+ const loc=`<div class="card form" id="gelLoc">${parHd('Locais de descarte',' '+ib('Locais de descarte','Cada local diz onde o descarte de gel acontece, como o peso da balança é contabilizado (a composição) e em que categoria do scrap ele entra (Tubos, Purga ou Barril). A ordem desta lista é a do Registrar scrap de cada turno. Excluir inativa o local: o histórico não muda.'),'gelNovoLocal','+ Local',pe&amp;&amp;!E)}
+  <p class="small muted" style="margin:0 0 6px">Arraste ⠿ (ou use ↑ ↓) para definir a ordem em que os equipamentos aparecem no Registrar scrap de cada turno.</p>${forma}
+  <div class="tw"><table class="cadst${pe?' eq-dnd':''}" id="gelLocs"><tr><th aria-label="Arrastar"></th><th>Equipamento · Local</th><th>Descarte</th><th class="n">Embalagem</th><th>Situação</th><th></th></tr>
+  ${L.map(l=>`<tr data-gid="${esc(l.id)}"${l.ativo===false?' class="muted"':''}><td class="eq-h"${pe?' data-arrasta="1" title="Arraste para mudar a ordem"':''}>${pe?'⠿':''}</td><td><b>${esc(l.local||'')}</b><div class="small muted">${esc(l.equipamento)}${eqNome(l.equipamento)?' · '+esc(eqNome(l.equipamento)):''}</div></td><td>${esc(GEL_SCAT[l.categoria]||l.categoria||'')}: ${esc((GEL_COMP_D[l.comp]||[l.comp])[0])}${(l.motivos||[]).length?` <span class="small muted">· ${l.motivos.length} motivo(s)</span>`:''}</td><td class="n">${l.embalagemG!=null&amp;&amp;l.embalagemG!==''?fmtQ(l.embalagemG)+' g':'padrão'}</td><td>${l.ativo===false?'<span class="pill">inativo</span>':'<span class="pill ok">ativo</span>'}</td>
+   <td style="white-space:nowrap">${pe?`<button class="b sm" data-gmv="-1" aria-label="Subir">↑</button> <button class="b sm" data-gmv="1" aria-label="Descer">↓</button> <button class="b sm" data-gedit="${esc(l.id)}">Editar</button>${l.ativo===false?'':` <button class="b sm d" data-gdel="${esc(l.id)}">Excluir</button>`}`:''}</td></tr>`).join('')||'<tr><td colspan="6" class="small muted">Nenhum local cadastrado.</td></tr>'}</table></div></div>`;
+ el.innerHTML=`<h3 style="margin:0 0 2px">Gel ${ib('Gel','O cadastro único do gel: formato do tubo (com vigência), composições, locais de descarte e motivos. A Gestão de Gel e a Produção leem daqui.')}</h3><p class="small muted" style="margin:0 0 10px">Formato do tubo, composições, locais de descarte do scrap e motivos. Um lugar só, com vigência e auditoria.</p>
+  ${pe?'':`<div class="note w" style="margin:0 0 10px">Somente leitura: ${esc(Cad.motivoEdicao()||'edição bloqueada')}</div>`}${fmt}${cmp}${loc}${gelParHtml(P,pe)}`;
+ /* formato */
+ const bx=$('#gelFmt'),sync=e=>{const x=e.target.closest('[data-gv]');if(x)pset(V,x.dataset.gv,x.value)};bx.addEventListener('input',sync);bx.addEventListener('change',sync);
+ const cs=$('#gelCompSel');if(cs)cs.onchange=()=>{GelAdm.cv=cs.value;redo()};
+ const ok=$('#gvOk');if(ok)ok.onclick=async()=>{if(!Cad.podeEditarAssunto('gel'))return;const FA=Cad.D.gel.formatos||[],hoje=todayISO();
+  if(!/^\d{4}-\d{2}-\d{2}$/.test(V.de||''))return err('Informe a data em que a vigência começa.');
+  if(V.de<hoje)return err('A vigência começa hoje ou depois: o que já aconteceu não muda.');
+  if(FA.some(x=>x.de===V.de))return err('Já existe uma vigência do formato nessa data.');
+  const num=(s,r)=>{const v=gelNum(s);if(v==null||isNaN(v)||v<0){err('Preencha '+r+' com um número em g (zero ou mais).');return undefined}return v};
+  const emb=num(V.emb,'o peso da embalagem de pesagem');if(emb===undefined)return;const fo=num(V.folha,'a folha plástica da purga');if(fo===undefined)return;
+  const so=gelNum(V.sobra);if(so!=null&amp;&amp;(isNaN(so)||so<0))return err('A sobra por barril é um número em kg (ou fica vazia).');
+  const tubos={};for(const f of['100','75']){tubos[f]={};for(const[k,l]of GEL_CAMPOS){const v=num((V.t[f]||{})[k],l.toLowerCase()+' do Tubo '+f);if(v===undefined)return;tubos[f][k]=v}}
+  const mt=String(V.motivo||'').trim();if(!mt)return err('Informe o motivo da mudança.');
+  const novo={de:V.de,ate:null,embalagemG:emb,folhaPurgaG:fo,sobraBarrilKg:so,tubos,motivo:mt,por:user()||null,em:isoLocal()},antes=clone(FA),depois=antes.concat([novo]).sort((a,b)=>a.de<b.de?-1:1);
+  if(await Cad.ops([{acao:'edição',tipo:'gel',codigo:null,mudancas:{formatos:{antes,depois}},motivo:mt}])===false)return;GelAdm.vig=null;GelAdm.cv=novo.de;toast('Vigência do formato salva.');redo()};
+ el.querySelectorAll('[data-gvdel]').forEach(b=>b.onclick=async()=>{if(!Cad.podeEditarAssunto('gel'))return;const de=b.dataset.gvdel;if(de<=todayISO())return err('Só a vigência futura pode ser excluída.');
+  if(!confirm('Excluir a vigência do formato desde '+fmtD(de)+'? Ela ainda não valeu.'))return;const antes=clone(Cad.D.gel.formatos||[]);
+  if(await Cad.ops([{acao:'edição',tipo:'gel',codigo:null,mudancas:{formatos:{antes,depois:antes.filter(x=>x.de!==de)}},motivo:'vigência futura excluída ('+fmtD(de)+')'}])===false)return;toast('Vigência excluída.');redo()});
+ /* locais */
+ const grava=async(depois,motivo,msg)=>{if(!Cad.podeEditarAssunto('gel'))return false;const antes=clone(Cad.D.gel.locais||[]);if(deq(antes,depois))return toast('Nada mudou.'),false;
+  if(await Cad.ops([{acao:'edição',tipo:'gel',codigo:null,mudancas:{locais:{antes,depois}},motivo}])===false)return false;toast(msg);return true};
+ const ordena=ids=>{const A=clone(Cad.D.gel.locais||[]),M=new Map(A.map(l=>[l.id,l])),ord=ids.filter(i=>M.has(i));A.sort((x,y)=>(x.ordem??0)-(y.ordem??0)).forEach(l=>{if(!ord.includes(l.id))ord.push(l.id)});
+  grava(ord.map((i,n)=>({...M.get(i),ordem:n+1})),'reorganização dos locais de descarte','Ordem salva.').then(redo)};
+ const tb=$('#gelLocs');if(tb&amp;&amp;pe)gelDnd(tb,ordena);
+ el.querySelectorAll('[data-gmv]').forEach(b=>b.onclick=()=>{const id=b.closest('tr').dataset.gid,ids=[...tb.querySelectorAll('tr[data-gid]')].map(r=>r.dataset.gid),i=ids.indexOf(id),j=i+(+b.dataset.gmv);if(j<0||j>=ids.length)return;ids.splice(j,0,ids.splice(i,1)[0]);ordena(ids)});
+ const abre=l=>{GelAdm.loc=l?{id:l.id,equipamento:l.equipamento,local:l.local||'',comp:l.comp,categoria:l.categoria,motivos:(l.motivos||[]).slice(),embalagemG:gelIn(l.embalagemG),ativo:l.ativo!==false,motivoTxt:''}:{id:null,equipamento:'',local:'',comp:'tubogel',categoria:'T',motivos:[],embalagemG:'',ativo:true,motivoTxt:''};redo();setTimeout(()=>{const f=$('#glForm');if(f)f.scrollIntoView({block:'nearest'})},30)};
+ const nv=$('#gelNovoLocal');if(nv)nv.onclick=()=>abre(null);
+ el.querySelectorAll('[data-gedit]').forEach(b=>b.onclick=()=>abre((Cad.D.gel.locais||[]).find(l=>l.id===b.dataset.gedit)));
+ el.querySelectorAll('[data-gdel]').forEach(b=>b.onclick=async()=>{const l=(Cad.D.gel.locais||[]).find(x=>x.id===b.dataset.gdel);if(!l)return;
+  if(!confirm('Inativar o local "'+(l.local||l.id)+'"? Ele deixa de aparecer no Registrar scrap; o histórico não muda.'))return;
+  await grava(clone(Cad.D.gel.locais).map(x=>x.id===l.id?{...x,ativo:false}:x),'local de descarte inativado ('+(l.local||l.id)+')','Local inativado.');redo()});
+ const fm=$('#glForm');if(fm){const lê=e=>{const x=e.target.closest('[data-gl]'),m=e.target.closest('[data-glm]');if(m){const s=new Set(E.motivos);m.checked?s.add(m.dataset.glm):s.delete(m.dataset.glm);E.motivos=[...s];return}if(!x)return;E[x.dataset.gl]=x.type==='checkbox'?x.checked:x.value;
+   if(x.dataset.gl==='comp'&amp;&amp;e.type==='change'){if(E.comp==='barril')E.categoria='B';else if(E.categoria==='B')E.categoria='T';const ok=new Set(mots.filter(m=>m.active!==false&amp;&amp;(!(m.comps||[]).length||m.comps.includes(E.comp))).map(m=>m.id));E.motivos=E.motivos.filter(i=>ok.has(i));redo()}};
+  fm.addEventListener('input',lê);fm.addEventListener('change',lê);$('#glCancel').onclick=()=>{GelAdm.loc=null;redo()};
+  $('#glOk').onclick=async()=>{if(!Cad.podeEditarAssunto('gel'))return;const lo=(E.local||'').trim(),emb=gelNum(E.embalagemG);
+   if(!E.equipamento)return err('Escolha o equipamento do cadastro.');if(!lo)return err('Informe o local do descarte.');if(emb!=null&amp;&amp;(isNaN(emb)||emb<0))return err('A embalagem própria é um número em g (ou fica vazia).');
+   const A=clone(Cad.D.gel.locais||[]);if(A.some(l=>l.id!==E.id&amp;&amp;String(l.equipamento)===String(E.equipamento)&amp;&amp;norm(l.local)===norm(lo)))return err('Esse equipamento já tem um local com esse nome.');
+   const campos={equipamento:String(E.equipamento),local:lo,comp:E.comp,categoria:E.comp==='barril'?'B':E.categoria,motivos:E.motivos.slice(),embalagemG:emb,ativo:E.id?E.ativo!==false:true};let dep;
+   if(E.id)dep=A.map(l=>l.id===E.id?{...l,...campos}:l);else{const n=A.reduce((m,l)=>Math.max(m,+String(l.id).replace(/\D/g,'')||0),0)+1;dep=A.concat([{id:'L-'+String(n).padStart(4,'0'),...campos,ordem:A.reduce((m,l)=>Math.max(m,l.ordem??0),0)+1}])}
+   if(await grava(dep,(E.motivoTxt||'').trim()||(E.id?'edição de local de descarte':'novo local de descarte'),E.id?'Local salvo.':'Local cadastrado.'))GelAdm.loc=null;redo()}}
+ wireGelPar(P,pe)}
+/* 4ª parte: motivos, perdas teóricas e corte (continuam em parametros.gel; o formato e os locais estão acima, em gel.formatos e gel.locais) */
+function gelParHtml(P,pe){const G0=P.gel||{};if(!ParGel.W||ParGel.base!==JSON.stringify(G0)){ParGel.W=clone(G0);ParGel.base=JSON.stringify(G0)}const W=ParGel.W,h=todayISO(),dis=pe?'':' disabled';
  const inp=(path,v,k='num',w=80,ro)=>`<input ${k==='num'?'type="number" step="any"':k==='date'?'type="date"':''} data-pg="${path}" data-pk="${k}" value="${esc(v??'')}" style="width:${w}px"${pe&amp;&amp;!ro?'':' disabled'}>`;
  const fut=v=>!v.from||v.from>=h;
  const proc=(W.processo||[]).map((v,i)=>`<tr><td>${inp('processo.'+i+'.from',v.from,'date',140,!fut(v))}</td>${['g','pT','pB','pP'].map(k=>`<td class="n">${inp('processo.'+i+'.'+k,v[k],'num',80,!fut(v))}</td>`).join('')}<td>${pe&amp;&amp;fut(v)?`<button class="b sm d" data-pgdel="processo.${i}">×</button>`:''}</td></tr>`).join('');
- const fmts=(W.formatos||[]).map((v,i)=>`<tr><td>${inp('formatos.'+i+'.from',v.from,'date',140,!fut(v))}</td><td class="n">${inp('formatos.'+i+'.tara',v.tara,'num',64,!fut(v))}</td><td class="n">${inp('formatos.'+i+'.taraP',v.taraP,'num',56,!fut(v))}</td><td class="n">${inp('formatos.'+i+'.sobra',v.sobra,'num',64,!fut(v))}</td>${['100','75'].map(f=>['tubo','gel','adit','tr'].map(k=>`<td class="n">${inp('formatos.'+i+'.f.'+f+'.'+k,((v.f||{})[f]||{})[k],'num',62,!fut(v))}</td>`).join('')).join('')}<td>${pe&amp;&amp;fut(v)?`<button class="b sm d" data-pgdel="formatos.${i}">×</button>`:''}</td></tr>`).join('');
  const mots=(W.motivos||[]).map((m,i)=>`<tr><td>${inp('motivos.'+i+'.name',m.name,'txt',220)}</td><td class="small">${Object.keys(GEL_COMPS).map(c=>`<label style="margin-right:6px"><input type="checkbox" data-pg="motivos.${i}.comps" data-pk="set" data-val="${c}" ${(m.comps||[]).includes(c)?'checked':''}${dis}> ${esc(c)}</label>`).join('')}</td><td><input type="checkbox" data-pg="motivos.${i}.active" data-pk="bool" ${m.active!==false?'checked':''}${dis}></td></tr>`).join('');
- return`<div class="card form" id="parGel" style="margin-top:14px"><div class="par-hd"><h3>Gestão de Gel ${ib('Parâmetros do gel','Parâmetros que a Gestão de Gel e (no Registrar scrap e no Teórico × Real) a Produção usam. Ficam aqui para valer iguais nas duas páginas e em todos os computadores. As vigências gravadas não mudam: para mudar, acrescente uma nova a partir de hoje.')}</h3>${pe?'<button class="b p" id="pgOk">Salvar parâmetros do gel</button>':''}</div>
+ return`<div class="card form" id="gelPar">${parHd('Motivos e parâmetros do gel',' '+ib('Parâmetros do gel','Motivos de descarte, perdas teóricas e o dia de corte que a Gestão de Gel e (no Registrar scrap e no Teórico × Real) a Produção usam. Ficam aqui para valer iguais nas duas páginas e em todos os computadores. As vigências das perdas gravadas não mudam: para mudar, acrescente uma nova a partir de hoje.'),'gpOk','Salvar motivos e parâmetros',pe)}
  <div class="fg"><label>Gel lido da Produção a partir de ${ib('Corte',AJUDA_CAMPO['gel.corte'])}${inp('registroPelaProducaoDesde',W.registroPelaProducaoDesde,'date',160)}</label></div>
  <h4 style="margin:12px 0 4px">Perdas teóricas e gel padrão ${ib('Processo',AJUDA_CAMPO['gel.processo'])}</h4>
  <div class="tw"><table class="cadst"><tr><th>A partir de</th><th class="n">Gel/tubo (g)</th><th class="n">Tubos %</th><th class="n">Barril %</th><th class="n">Purga %</th><th></th></tr>${proc||'<tr><td colspan="6" class="small muted">Sem vigência: o Gel usa a dele (ou o padrão 0,98 g · 2,24 % · 0,74 % · 0,53 %).</td></tr>'}</table></div>
  ${pe?`<button class="b sm" data-pgadd="processo" data-tpl="${esc(JSON.stringify({...((W.processo||[]).slice(-1)[0]||GEL_PROC_DEF),from:h}))}">+ Vigência</button>`:''}
- <h4 style="margin:12px 0 4px">Formatos de tubo ${ib('Formatos',AJUDA_CAMPO['gel.formatos'])}</h4>
- <div class="tw"><table class="cadst small"><tr><th rowspan="2">A partir de</th><th rowspan="2" class="n">Saco (g)</th><th rowspan="2" class="n">Folha (g)</th><th rowspan="2" class="n">Sobra barril (kg)</th><th colspan="4">Tubo 100 (g)</th><th colspan="4">Tubo 75 (g)</th><th rowspan="2"></th></tr><tr>${['tubo','gel','adit','tampa+rolha'].concat(['tubo','gel','adit','tampa+rolha']).map(x=>`<th class="n">${x}</th>`).join('')}</tr>${fmts||'<tr><td colspan="13" class="small muted">Sem vigência: o Gel usa a dele (ou o padrão).</td></tr>'}</table></div>
- ${pe?`<button class="b sm" data-pgadd="formatos" data-tpl="${esc(JSON.stringify({...clone((W.formatos||[]).slice(-1)[0]||GEL_FMT_DEF),from:h}))}">+ Vigência</button>`:''}
  <h4 style="margin:12px 0 4px">Motivos de descarte ${ib('Motivos',AJUDA_CAMPO['gel.motivos'])}</h4>
  <div class="tw"><table class="cadst"><tr><th>Motivo</th><th>Só nas composições (vazio = todas)</th><th>Ativo</th></tr>${mots||'<tr><td colspan="3" class="small muted">Nenhum motivo.</td></tr>'}</table></div>
  ${pe?`<button class="b sm" data-pgadd="motivos" data-tpl="${esc(JSON.stringify({id:'',name:'',comps:[],active:true}))}">+ Motivo</button>`:''}</div>`}
-function wireParGel(P,pe){const box=$('#parGel');if(!box||!pe)return;const W=ParGel.W;
+function wireGelPar(P,pe){const box=$('#gelPar');if(!box||!pe)return;const W=ParGel.W;
  box.oninput=box.onchange=e=>{const el=e.target.closest('[data-pg]');if(!el)return;const p=el.dataset.pg,k=el.dataset.pk;let v;
   if(k==='bool')v=el.checked;else if(k==='set'){const s0=new Set(pget(W,p)||[]);el.checked?s0.add(el.dataset.val):s0.delete(el.dataset.val);v=[...s0]}
   else if(k==='num'){v=el.value===''?null:parseFloat(String(el.value).replace(',','.'));if(v!=null&amp;&amp;!isFinite(v))v=null}else{v=el.value.trim()||null}pset(W,p,v)};
  box.onclick=e=>{const a=e.target.closest('[data-pgadd]');if(a){const L=pget(W,a.dataset.pgadd)||[];const it=JSON.parse(a.dataset.tpl);if(a.dataset.pgadd==='motivos')it.id=gelUid();L.push(it);pset(W,a.dataset.pgadd,L);return App.render()}
   const d=e.target.closest('[data-pgdel]');if(d){const ps=d.dataset.pgdel.split('.'),i=+ps.pop();pget(W,ps.join('.')).splice(i,1);return App.render()}};
- const ok=$('#pgOk');if(ok)ok.onclick=()=>{if(!Cad.podeEditarAssunto('gel'))return;const h=todayISO(),G0=P.gel||{},G=clone(W);
-  for(const k of ['processo','formatos']){const L=G[k]||[];if(L.some(v=>!v.from))return toast('Informe a data de cada vigência.',5000,true);
-   const ant=(G0[k]||[]).filter(v=>v.from<h);if(!deq(ant,L.filter(v=>v.from<h)))return toast('Vigências que já valeram não mudam: acrescente uma nova a partir de hoje.',6000,true);
-   if(new Set(L.map(v=>v.from)).size!==L.length)return toast('Duas vigências com a mesma data.',5000,true);G[k]=L.slice().sort((a,b)=>a.from<b.from?-1:1);if(!G[k].length)delete G[k]}
+ const ok=$('#gpOk');if(ok)ok.onclick=()=>{if(!Cad.podeEditarAssunto('gel'))return;const h=todayISO(),G0=P.gel||{},G=clone(W);
+  {const L=G.processo||[];if(L.some(v=>!v.from))return toast('Informe a data de cada vigência.',5000,true);
+   const ant=(G0.processo||[]).filter(v=>v.from<h);if(!deq(ant,L.filter(v=>v.from<h)))return toast('Vigências que já valeram não mudam: acrescente uma nova a partir de hoje.',6000,true);
+   if(new Set(L.map(v=>v.from)).size!==L.length)return toast('Duas vigências com a mesma data.',5000,true);G.processo=L.slice().sort((a,b)=>a.from<b.from?-1:1);if(!G.processo.length)delete G.processo}
   G.motivos=(G.motivos||[]).filter(m=>m.name);if(!G.motivos.length)delete G.motivos;if(!G.registroPelaProducaoDesde)delete G.registroPelaProducaoDesde;
-  if(deq(G0,G))return toast('Nada mudou.');Cad.op({acao:'edição',tipo:'parametros',codigo:null,mudancas:{gel:{antes:P.gel?clone(P.gel):null,depois:G}},motivo:null});ParGel.W=null;toast('Parâmetros do gel salvos.')}}
+  if(deq(G0,G))return toast('Nada mudou.');Cad.op({acao:'edição',tipo:'parametros',codigo:null,mudancas:{gel:{antes:P.gel?clone(P.gel):null,depois:G}},motivo:null});ParGel.W=null;toast('Motivos e parâmetros do gel salvos.')}}
 function vacQtdModo(){try{const v=localStorage.getItem('vac.qtd');return v==='abs'?'abs':'unit'}catch(e){return'unit'}}
 function parComputadorHtml(){const u=user(),q=vacQtdModo();
  return`<div class="card form" id="parPc" style="margin-top:14px"><h3>Neste computador ${ib('Neste computador','Preferências deste navegador, sem senha e sem revisão do cadastro: valem para todas as páginas abertas aqui. Não mudam as bases nem os outros computadores.')}</h3>
@@ -55649,14 +55743,14 @@ body.vac-porta{overflow:hidden}
       "id": "portal",
       "path": "Plataforma.html#motor/portal",
       "version": "1.9.81",
-      "sha256": "91fdd500048b5cdfb41677e304c3a9b64cbafe5617915976aa5aa8cbbf5d08cb",
-      "bytes": 1367157
+      "sha256": "d7235d718f00654c8ac13c6aae2b1543846f87f27d33ffdce39d2bfea4e9844a",
+      "bytes": 1382825
     }
   ],
   "limitations": [
     "Projetos e conteúdo técnico OSM/MES/AM/TPM mantêm os limites documentados nas fontes."
   ],
-  "enginesSha256": "c33a45946691926a4001dd2e88d20aaf0aa05c02b3658107690d44aca016a72a",
+  "enginesSha256": "6f7005f7b01be698543d1d90259806e5e6c27514c51412919a86796d5ed605ed",
   "originRevision": "ffc9ee8",
   "sourceMode": "single-html",
   "originEnginesSha256": "a87a64ad0c328f70e102b2ae888790a9b5d5a9bd05778652a7ce7cae140e40d2"

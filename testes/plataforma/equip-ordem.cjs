@@ -55,17 +55,17 @@ const html = fs.readFileSync(path.resolve(__dirname, '../../Plataforma.html'));
     console.log('ok ficha: posição 3 ocupada → EQ12 e os seguintes +1 (EQ10 vai a 12); posição 0 recusada; tudo na fila/auditoria');
     await f.evaluate(() => Modal.close(true));
 
-    // 4) gel: ficha do equipamento de gel mostra os dados do formato e o link leva aos Parâmetros › Gestão de Gel
+    // 4) gel: a ficha do equipamento de gel só tem o link para Administração › Gel (formato e locais moraram em Parâmetros e na ficha)
     const g = await f.evaluate(async () => { let q = Cad.D.equipamentos.find(x => x.categoria === 'gel'); if (q) return q.codigo;   /* a demonstração não tem: o EQ03 (dispensor de gel) vira categoria Gel só nesta página */
       q = Cad.D.equipamentos.find(x => x.codigo === 'EQ03'); await Cad.ops([{ acao: 'edição', tipo: 'equipamentos', codigo: 'EQ03', mudancas: { categoria: { antes: q.categoria ?? null, depois: 'gel' } }, motivo: 'teste' }]); return 'EQ03'; });
     assert.ok(g, 'equipamento de gel na demonstração');
     await f.evaluate(c => Ficha.abrir('equipamentos', c), g); await w(400);
-    const t4 = await f.evaluate(() => { const n = document.querySelector('#fBox [data-irpar="gel"]'); const box = n && n.closest('.note'); return { link: !!n, txt: box ? box.textContent.replace(/\s+/g, ' ') : '' }; });
-    assert.ok(t4.link, 'link para alterar'); assert.match(t4.txt, /Saco da pesagem\s*75 g/); assert.match(t4.txt, /Folha da purga\s*5 g/); assert.match(t4.txt, /Sobra no barril\s*–\s*descarte/); assert.match(t4.txt, /Tubo 100\s*4,779/);
-    await f.click('#fBox [data-irpar="gel"]'); await w(900);
-    const t5 = await f.evaluate(() => ({ hash: location.hash, sec: Cad.ui.sec, gel: !!document.querySelector('#parGel'), ficha: Ficha.aberta() }));
-    assert.deepEqual(t5, { hash: '#cadastros/parametros/gel', sec: 'parametros', gel: true, ficha: false });
-    console.log('ok gel: dados do formato (saco, folha, sobra e composição) na ficha; o link abre Parâmetros › Gestão de Gel');
+    const t4 = await f.evaluate(() => { const n = document.querySelector('#fBox [data-irhash]'); const box = n && n.closest('p'); return { link: !!n, txt: box ? box.textContent.replace(/\s+/g, ' ') : '' }; });
+    assert.ok(t4.link, 'link para os locais'); assert.match(t4.txt, /Locais de descarte deste equipamento › Gel/); assert.doesNotMatch(await f.locator('#fBox').innerText(), /Saco da pesagem|Local do descarte/, 'sem a tabela de embalagem e descartes');
+    await f.click('#fBox [data-irhash]'); await w(900);
+    const t5 = await f.evaluate(() => ({ hash: location.hash, sec: Cad.ui.sec, gel: !!document.querySelector('#gelLoc'), ficha: Ficha.aberta() }));
+    assert.deepEqual(t5, { hash: '#cadastros/gel/locais', sec: 'gel', gel: true, ficha: false });
+    console.log('ok gel: ficha só com o link; ele abre Administração › Gel nos locais de descarte');
 
     assert.deepEqual(erros, [], 'sem erro de JavaScript'); console.log('ok equipamentos: sem erro de JavaScript');
   } finally { if (browser) await browser.close(); srv.close(); }

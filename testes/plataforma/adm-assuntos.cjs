@@ -7,7 +7,7 @@
 const { chromium } = require('playwright'), http = require('http'), fs = require('fs'), path = require('path'), assert = require('assert/strict');
 const html = fs.readFileSync(path.resolve(__dirname, '../../Plataforma.html'));
 const ASSUNTOS = [['planta', 'Planta e linha'], ['produto', 'Produto'], ['gel', 'Gel'], ['equipamentos', 'Equipamentos'], ['turnos', 'Turnos e metas'], ['paradas', 'Paradas e perdas'], ['pessoas', 'Pessoas e acesso'], ['sistema', 'Sistema']];
-const SECS = ['linhas', 'familias', 'catalogos', 'materiais', 'bom', 'equipamentos', 'componentes', 'modosFalha', 'turnos', 'calendario', 'metasOee', 'metasArea', 'metasOsm', 'paradas', 'matriz', 'usuarios', 'perfis', 'cambio', 'precos', 'programas', 'vigencias', 'parametros', 'importar', 'apps', 'auditoria', 'backups', 'versoes', 'config', 'novidades', 'seguranca'];
+const SECS = ['gel', 'linhas', 'familias', 'catalogos', 'materiais', 'bom', 'equipamentos', 'componentes', 'modosFalha', 'turnos', 'calendario', 'metasOee', 'metasArea', 'metasOsm', 'paradas', 'matriz', 'usuarios', 'perfis', 'cambio', 'precos', 'programas', 'vigencias', 'parametros', 'importar', 'apps', 'auditoria', 'backups', 'versoes', 'config', 'novidades', 'seguranca'];
 (async () => {
   const srv = http.createServer((q, r) => { r.setHeader('Content-Type', 'text/html'); r.end(html); });
   let browser;

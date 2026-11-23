@@ -62,29 +62,28 @@ const { chromium } = require('playwright');
   const kt = await g4b.evaluate(() => { const r = vacGel.teorico({ tubosPorCat: { a: 1000000 }, date: '2026-03-10', cg: () => ({ fmt: '100', vig: [{ from: '2000-01-01', gTubo: 0.85 }] }), fmts: [], params: [{ from: '2000-01-01', g: 0.97, pT: 2, pB: 1, pP: 1 }] }); return r; });
   ok(Math.abs(kt.gelBons - 850) < 1e-9 && Math.abs(kt.teo - 850 / 0.96) < 1e-9 && Math.abs(kt.sTeo.T - kt.teo * 0.02) < 1e-9, '4b: vacGel.teorico = gel nos tubos bons ÷ (1 − perdas), com a parte de cada categoria');
 
-  /* ---------- Portal: Parâmetros › Gestão de Gel, fichas e migração ---------- */
+  /* ---------- Portal: Administração › Gel (motivos e parâmetros), fichas e migração ---------- */
   const po = await nova('Portal.html', 'Portal', '#geral');
   await po.evaluate(() => enterTest()); await po.waitForTimeout(300);
-  await po.evaluate(() => { location.hash = '#cadastros/parametros'; }); await po.waitForTimeout(500);
-  ok(await po.evaluate(() => !!document.querySelector('#parGel') && !document.querySelector('#pgOk')), '4a Portal: Parâmetros tem o grupo Gestão de Gel (só consulta sem a senha)');
+  await po.evaluate(() => { location.hash = '#cadastros/gel'; }); await po.waitForTimeout(500);
+  ok(await po.evaluate(() => !!document.querySelector('#gelPar') && !document.querySelector('#gpOk') && !document.querySelector('#parGel')), '4a Portal: Administração › Gel tem Motivos e parâmetros do gel (só consulta sem a senha)');
   await po.evaluate(() => { Lock.on(Cad.D.seguranca.senhaHash); App.render(); }); await po.waitForTimeout(300);
-  await po.click('#parGel [data-pgadd="processo"]'); await po.waitForTimeout(200);
-  await po.fill('#parGel [data-pg="processo.0.pT"]', '2.5'); await po.evaluate(() => { const i = document.querySelector('#parGel [data-pg="registroPelaProducaoDesde"]'); i.value = '2026-12-01'; i.dispatchEvent(new Event('input', { bubbles: true })); i.dispatchEvent(new Event('change', { bubbles: true })); });   /* kit: o campo de data visível é o texto DD/MM/AAAA */
-  await po.click('#parGel [data-pgadd="motivos"]'); await po.waitForTimeout(200); await po.fill('#parGel [data-pg="motivos.0.name"]', 'Gel com bolha');
-  await po.click('#pgOk'); await po.waitForTimeout(600);
+  await po.click('#gelPar [data-pgadd="processo"]'); await po.waitForTimeout(200);
+  await po.fill('#gelPar [data-pg="processo.0.pT"]', '2.5'); await po.evaluate(() => { const i = document.querySelector('#gelPar [data-pg="registroPelaProducaoDesde"]'); i.value = '2026-12-01'; i.dispatchEvent(new Event('input', { bubbles: true })); i.dispatchEvent(new Event('change', { bubbles: true })); });   /* kit: o campo de data visível é o texto DD/MM/AAAA */
+  await po.click('#gelPar [data-pgadd="motivos"]'); await po.waitForTimeout(200); await po.fill('#gelPar [data-pg="motivos.0.name"]', 'Gel com bolha');
+  await po.click('#gpOk'); await po.waitForTimeout(600);
   const pg = await po.evaluate(() => (Cad.D.parametros || {}).gel || null), hoje = await po.evaluate(() => todayISO());
   ok(pg && pg.processo && pg.processo[0].pT === 2.5 && pg.processo[0].from === hoje && pg.registroPelaProducaoDesde === '2026-12-01' && pg.motivos[0].name === 'Gel com bolha' && /^m-/.test(pg.motivos[0].id), '4a Portal: grava parametros.gel (perdas com vigência a partir de hoje, motivos com id, data de corte G3)');
-  const recusa = await po.evaluate(() => { App.render(); const W = ParGel.W; W.processo[0].from = '2020-01-01'; W.processo[0].pT = 9; $('#pgOk').click(); return Cad.D.parametros.gel.processo[0].pT; });
+  const recusa = await po.evaluate(() => { App.render(); const W = ParGel.W; W.processo[0].from = '2020-01-01'; W.processo[0].pT = 9; $('#gpOk').click(); return Cad.D.parametros.gel.processo[0].pT; });
   ok(recusa === 2.5, '4a Portal: vigência gravada não muda (data no passado é recusada)');
   await po.waitForTimeout(1200);
   const ficha = await po.evaluate(async () => { const e = Cad.D.equipamentos[0]; location.hash = '#cadastros/equipamentos/' + e.codigo; await new Promise(r => setTimeout(r, 400));
     const sel = document.querySelector('#fBox [data-p="categoria"]'); sel.value = 'gel'; sel.dispatchEvent(new Event('change', { bubbles: true })); await new Promise(r => setTimeout(r, 200));
-    const temBloco = /Gel: embalagem e descartes/i.test(document.querySelector('#fBox').innerText); const add = document.querySelector('#fBox [data-add="gel.descs"]'); if (add) add.click(); await new Promise(r => setTimeout(r, 150));
-    const mot = document.querySelector('#fBox [data-p="gel.descs.0.mots"]'); if (mot) { mot.checked = true; mot.dispatchEvent(new Event('change', { bubbles: true })); }
+    const temBloco = !!document.querySelector('#fBox [data-irhash="#cadastros/gel/locais"]') && !document.querySelector('#fBox [data-add="gel.descs"]') && !/Gel: embalagem e descartes/i.test(document.querySelector('#fBox').innerText);
     const W = Ficha.W; const c = Cad.D.catalogos.find(x => x.tipoItem !== 'preparacao'); Ficha.fechar && Ficha.fechar(); location.hash = '#cadastros/catalogos/' + c.codigo; await new Promise(r => setTimeout(r, 400));
-    return { temBloco, descs: (W.gel || {}).descs, cat: /Gel do catálogo|<b>Gel<\/b>/.test(document.querySelector('#fBox').innerHTML) || /\bGel\b/.test(document.querySelector('#fBox details.cd summary') ? document.querySelector('#fBox').innerText : '') }; });
-  if (!(ficha.temBloco && ficha.descs && ficha.descs.length === 1)) console.log('ficha:', JSON.stringify(ficha));
-  ok(ficha.temBloco && ficha.descs && ficha.descs.length === 1 && (ficha.descs[0].mots || []).length === 1, '4a Portal: ficha do Equipamento – Gel com embalagem e descartes (composição, categoria e motivos do gel)');
+    return { temBloco, cat: /Gel do catálogo|<b>Gel<\/b>/.test(document.querySelector('#fBox').innerHTML) || /\bGel\b/.test(document.querySelector('#fBox details.cd summary') ? document.querySelector('#fBox').innerText : '') }; });
+  if (!ficha.temBloco) console.log('ficha:', JSON.stringify(ficha));
+  ok(ficha.temBloco, '4a Portal: ficha do Equipamento – Gel só com o link para Administração › Gel (os locais e a embalagem saíram da ficha)');
   ok(ficha.cat, '4a Portal: ficha do catálogo com o bloco Gel (formato, lote, velocidade e vigências de gel/BOM)');
   const mig = await po.evaluate(() => { TrazCfg.B = { gel: { config: { params: [{ from: '2000-01-01', g: 0.97, pT: 2.1, pB: 0.71, pP: 0.5 }], fmts: [{ from: '2000-01-01', tara: 70, taraP: 4, sobra: 1.3, f: { '100': { tubo: 4.8, gel: 0.83, adit: 0.02, tr: 2.31 }, '75': { tubo: 3.55, gel: 0.82, adit: 0.015, tr: 2.29 } } }], motivos: [{ id: 'm9', name: 'Quebra', comps: [], active: true }],
       equips: [{ id: 'eq-z', name: Cad.D.equipamentos[1].nome, tara: 80, active: true, descs: [{ id: 'dz', comp: 'gel', cat: 'P' }] }] }, catalogs: { items: [{ id: 'cat-q', num: Cad.D.catalogos[0].codigo, fmt: '75', lotSize: 900000, vig: [{ from: '2000-01-01', gTubo: 0.85, bomKg: 8.84, bomBase: 10000, tol: 6 }] }] } } };
