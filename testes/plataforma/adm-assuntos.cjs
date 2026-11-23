@@ -39,12 +39,14 @@ const SECS = ['linhas', 'familias', 'catalogos', 'materiais', 'bom', 'equipament
 
     // 2) permissão por assunto: perfil com gel = editar e o resto = ver
     await f.evaluate(async () => {
-      const as = (o) => Object.fromEntries(ADM_ASSUNTOS.map(a => [a.id, o[a.id] || 'ver']));
+      const as = (o, d = 'ver') => Object.fromEntries(ADM_ASSUNTOS.map(a => [a.id, o[a.id] || d]));
       await Cad.ops([
         { acao: 'criação', tipo: 'perfis', codigo: 'TGEL', item: { codigo: 'TGEL', nome: 'Teste gel', paginaInicial: 'Portal', semSenha: true, permissoes: permDe(['ver']), assuntos: as({ gel: 'editar' }), ativo: true }, motivo: 'teste' },
         { acao: 'criação', tipo: 'perfis', codigo: 'TPRO', item: { codigo: 'TPRO', nome: 'Teste produto', paginaInicial: 'Portal', semSenha: true, permissoes: permDe(['ver']), assuntos: as({ produto: 'editar' }), ativo: true }, motivo: 'teste' },
         { acao: 'criação', tipo: 'perfis', codigo: 'TPES', item: { codigo: 'TPES', nome: 'Teste pessoas', paginaInicial: 'Portal', semSenha: true, permissoes: permDe(['ver']), assuntos: as({ pessoas: 'editar' }), ativo: true }, motivo: 'teste' },
-        { acao: 'criação', tipo: 'usuarios', codigo: '3003', item: { codigo: '3003', nome: 'Teste (fictício)', perfil: 'TGEL', paginaInicial: '(do perfil)', ativo: true }, motivo: 'teste' }]);
+        { acao: 'criação', tipo: 'perfis', codigo: 'TNPRO', item: { codigo: 'TNPRO', nome: 'Teste sem produto', paginaInicial: 'Portal', semSenha: true, permissoes: permDe(['ver']), assuntos: as({ produto: 'ver' }, 'editar'), ativo: true }, motivo: 'teste' },
+        { acao: 'criação', tipo: 'perfis', codigo: 'TNGEL', item: { codigo: 'TNGEL', nome: 'Teste sem gel', paginaInicial: 'Portal', semSenha: true, permissoes: permDe(['ver']), assuntos: as({ gel: 'ver' }, 'editar'), ativo: true }, motivo: 'teste' },
+        ...[['3003', 'TGEL'], ['3004', 'TPRO'], ['3005', 'TPES'], ['3006', 'TNPRO'], ['3007', 'TNGEL']].map(([c, pf]) => ({ acao: 'criação', tipo: 'usuarios', codigo: c, item: { codigo: c, nome: 'Teste ' + c + ' (fictício)', perfil: pf, paginaInicial: '(do perfil)', ativo: true }, motivo: 'teste' }))]);
       localStorage.setItem('vac.userId', '3003'); App.render();
     });
     const nivel = await f.evaluate(() => ({ pode: Cad.podeEditar(true), gel: Cad.podeEditarAssunto('gel', true), turnos: Cad.podeEditarAssunto('turnos', true), produto: Cad.podeEditarAssunto('produto', true) }));
@@ -52,7 +54,7 @@ const SECS = ['linhas', 'familias', 'catalogos', 'materiais', 'bom', 'equipament
     const novo = async (s) => { await f.evaluate(x => { Cad.ui.sec = x; cadHash(); App.render(); }, s); await f.waitForSelector('#cadQ'); return f.locator('#cadNovo').count(); };
     assert.equal(await novo('turnos'), 0, 'Turnos: sem "+ Novo" para quem só vê');
     assert.equal(await novo('familias'), 0, 'Produto (ver): sem "+ Novo"');
-    await f.evaluate(() => { localStorage.setItem('vac.userId', '3003'); const u = Cad.D.usuarios.find(x => x.codigo === '3003'); return Cad.ops([{ acao: 'edição', tipo: 'usuarios', codigo: '3003', mudancas: { perfil: { antes: u.perfil, depois: 'TPRO' } }, motivo: 'teste' }]); });
+    await f.evaluate(() => { localStorage.setItem('vac.userId', '3004'); App.render(); });
     assert.equal(await f.evaluate(() => Cad.podeEditarAssunto('produto', true)), true);
     assert.equal(await novo('familias'), 1, 'Produto (editar): "+ Novo" aparece');
     assert.equal(await novo('turnos'), 0, 'Turnos continua sem "+ Novo"');
@@ -76,7 +78,7 @@ const SECS = ['linhas', 'familias', 'catalogos', 'materiais', 'bom', 'equipament
     console.log('ok regra de transição: Processos todos, PCP planta+turnos, Almoxarifado gel, outros conforme a edição, gravado vale');
 
     // 4) ficha do perfil: um seletor por assunto
-    await f.evaluate(() => { localStorage.setItem('vac.userId', '3003'); const u = Cad.D.usuarios.find(x => x.codigo === '3003'); return Cad.ops([{ acao: 'edição', tipo: 'usuarios', codigo: '3003', mudancas: { perfil: { antes: u.perfil, depois: 'TPES' } }, motivo: 'teste' }]); });
+    await f.evaluate(() => { localStorage.setItem('vac.userId', '3005'); App.render(); });
     await f.evaluate(() => Ficha.abrir('perfis', 'TPRO')); await page.waitForTimeout(300);
     assert.equal(await f.locator('#fBox select[data-p^="assuntos."]').count(), 8, 'oito seletores, um por assunto');
     assert.equal(await f.evaluate(() => Ficha.edit), true, 'a ficha de perfis edita com Pessoas e acesso = editar');
@@ -84,6 +86,27 @@ const SECS = ['linhas', 'familias', 'catalogos', 'materiais', 'bom', 'equipament
     const gr = await f.evaluate(() => Cad.D.perfis.find(p => p.codigo === 'TPRO').assuntos);
     assert.equal(gr.gel, 'editar'); assert.equal(gr.produto, 'editar'); assert.equal(gr.turnos, 'ver');
     console.log('ok ficha do perfil: seletor por assunto grava a escolha');
+
+    // 5) a gravação confere o assunto de cada operação (importadores, Trazer, usuários, parâmetros do Gel)
+    await f.evaluate(() => { localStorage.setItem('vac.userId', '3006'); });
+    const G = await f.evaluate(async () => {
+      const m = Cad.D.materiais[0], nome0 = m.nome, par = Cad.D.paradas[0], pn0 = par.nome;
+      const a = await Cad.ops([{ acao: 'edição', tipo: 'materiais', codigo: m.codigo, mudancas: { nome: { antes: nome0, depois: nome0 + ' X' } }, motivo: 'teste' }]);
+      const b = await Cad.ops([{ acao: 'edição', tipo: 'paradas', codigo: par.codigo, mudancas: { nome: { antes: pn0, depois: pn0 + ' X' } }, motivo: 'teste' }]);
+      return { a, b, mat: Cad.D.materiais[0].nome === nome0, par: Cad.D.paradas[0].nome === pn0 + ' X' };
+    });
+    assert.equal(G.a, false, 'materiais recusado com Produto = ver'); assert.ok(G.mat, 'a base não mudou');
+    assert.notEqual(G.b, false); assert.ok(G.par, 'paradas continua gravando');
+    const g2 = await f.evaluate(async () => {
+      localStorage.setItem('vac.userId', '3007');
+      const P = Cad.D.parametros || {}, g0 = JSON.stringify(P.gel ?? null);
+      const r = await Cad.ops([{ acao: 'edição', tipo: 'parametros', codigo: null, mudancas: { gel: { antes: P.gel ?? null, depois: { ...(P.gel || {}), teste: 1 } } }, motivo: null }]);
+      const s = await Cad.ops([{ acao: 'edição', tipo: 'parametros', codigo: null, mudancas: { semaforoVerdePct: { antes: P.semaforoVerdePct ?? null, depois: 99 } }, motivo: null }]);
+      return { r, s, gel: JSON.stringify((Cad.D.parametros || {}).gel ?? null) === g0, sis: Cad.D.parametros.semaforoVerdePct === 99 };
+    });
+    assert.equal(g2.r, false, 'parâmetro gel.* recusado com Gel = ver'); assert.ok(g2.gel, 'parâmetros do Gel não mudaram');
+    assert.notEqual(g2.s, false); assert.ok(g2.sis, 'parâmetro do Sistema grava com Sistema = editar');
+    console.log('ok gravação por assunto: materiais recusado (Produto = ver), paradas grava, parametros.gel recusado (Gel = ver), Sistema grava');
 
     assert.deepEqual(erros, [], 'sem erro de JavaScript'); console.log('ok sem erro de JavaScript');
   } finally { if (browser) await browser.close(); srv.close(); }

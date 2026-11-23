@@ -5574,7 +5574,11 @@ const Cad={base:null,D:null,mod:0,fonte:'nenhum',err:'',fila:[],gravando:false,d
   if(x.includes('processos'))return'editar';if(x.includes('pcp'))return id==='planta'||id==='turnos'?'editar':'ver';if(x.includes('almoxarifado'))return id==='gel'?'editar':'ver';
   return this.podeEditar(true)?'editar':'ver'},
  op(o){return this.ops([o])},
- ops(list){const em=isoLocal(),por=user();for(const o of list){o.id=uid('op');o.qid=o.id;o.em=em;o.por=por;this.fila.push(o)}this.persistFila();this.recompute();if(this.status==='salvo')this.status='pendente';this.render();return this.gravar()},
+ ops(list){
+  /* ADM-CENTRAL (bloco 1): o assunto de cada operação decide, em um só lugar, quem grava; login e autocadastro são a transação restrita de conta própria */
+  const p=perfilAtual(this.D),neg=p?list.flatMap(o=>o.origem==='login'||o.origem==='autocadastro'?[]:admAssuntosOp(o)).find(a=>this.nivelAssunto(p,a)!=='editar'):null;
+  if(neg){const m='Seu perfil só consulta o assunto '+((ADM_ASSUNTOS.find(a=>a.id===neg)||{}).nome||neg)+'; nada foi gravado.';this._m=m;toast(m,5000,true);return false}
+  const em=isoLocal(),por=user();for(const o of list){o.id=uid('op');o.qid=o.id;o.em=em;o.por=por;this.fila.push(o)}this.persistFila();this.recompute();if(this.status==='salvo')this.status='pendente';this.render();return this.gravar()},
  async gravar(){
   if(this.gravando){this.denovo=true;return}
   if(!this.fila.length){this.status='salvo';return}
@@ -5785,7 +5789,10 @@ const ADM_ASSUNTOS=[
  {id:'paradas',nome:'Paradas e perdas',itens:['paradas','matriz']},
  {id:'pessoas',nome:'Pessoas e acesso',itens:['usuarios','perfis']},
  {id:'sistema',nome:'Sistema',itens:['vigencias','parametros','programas','novidades','apps','importar','config','versoes','auditoria','backups','seguranca']}];
-const admAssuntoDe=sec=>(ADM_ASSUNTOS.find(a=>a.itens.includes(sec))||{id:'sistema'}).id;
+const admAssuntoDe=x=>{const sec=x&amp;&amp;typeof x==='object'?admAssuntosOp(x)[0]:x;return(ADM_ASSUNTOS.find(a=>a.itens.includes(sec))||{id:'sistema'}).id};
+/* assuntos que uma operação do cadastro altera: tipo = tela; parametros.gel* é do Gel; seguranca, carga e o que não tem tela são do Sistema */
+function admAssuntosOp(o){const t=o&amp;&amp;o.tipo;if(t==='parametros'){const K=Object.keys((o.mudancas)||{});const g=K.filter(k=>k==='gel'||k.startsWith('gel.')).length;return g&amp;&amp;g===K.length?['gel']:g?['gel','sistema']:['sistema']}
+ return[(ADM_ASSUNTOS.find(a=>a.itens.includes(t))||{id:'sistema'}).id]}
 /* rótulo do botão e se a tela só existe com o cadastro carregado */
 const ADM_ROT={matriz:['Matriz de paradas',1],usuarios:['Usuários',1],perfis:['Perfis e permissões',1],vigencias:['Vigências',1],parametros:['Parâmetros',1],novidades:['Novidades',0],apps:['Apps de celular',1],importar:['Integrações SAP',1],config:['Configuração da Administração',0],versoes:['Versões das páginas',0],auditoria:['Auditoria',1],backups:['Backups do cadastro',1],seguranca:['Segurança e senha',1]};
 function cadSide(sec){const D=Cad.D;const btn=(k,l,n)=>`<button data-sec="${k}" class="${sec===k?'on':''}">${l}${n!=null?`<span class="n">${n}</span>`:''}</button>`;
@@ -6363,7 +6370,7 @@ function prevComp(txt){const D=Cad.D,L=String(txt||'').split(/\r?\n/).map(l=>l.r
     if(cadItem('componentes',cod)||R.some(x=>x.codigo===cod))r.erros.push(`código ${cod} repetido`);r.codigo=cod}}
   R.push(r)}
  return{linhas:R,erros:[]}}
-function cadImportarComp(el,I){const pe=Cad.podeEditar(true);
+function cadImportarComp(el,I){const pe=Cad.podeEditarAssunto('equipamentos',true);
  el.innerHTML=`<div class="card form"><h3>Importar componentes ${ib('Importar componentes','Cole uma tabela (Excel ou SAP) com as colunas equipamento, nome, sistema, criticidade e, opcional, material SAP. O equipamento pode ser o código (EQ02) ou o nome (Tullip B). O código do componente é gerado como EQ02-C01, C02… Componente com o mesmo nome no mesmo equipamento é ignorado.')}</h3>
   ${MOF_SEG('comp')}
   <p class="small muted" style="margin:8px 0">Colunas: <b>equipamento · nome · sistema · criticidade · material SAP</b> (com ou sem cabeçalho; separado por tabulação ou ponto e vírgula). Sistemas: ${CAD_T.componentes.campos[3][3].join(', ')}.</p>
@@ -6375,7 +6382,7 @@ function cadImportarComp(el,I){const pe=Cad.podeEditar(true);
   box.innerHTML=`<div class="card"><h3>Prévia · componentes <span class="muted small">${ok.length} entram · ${P.linhas.filter(r=>r.ja).length} já existem · ${P.linhas.filter(r=>r.erros.length).length} com erro</span></h3>${P.erros.map(e=>`<div class="note e">${esc(e)}</div>`).join('')}
   <div class="tw" style="max-height:420px"><table><tr><th>Linha</th><th>Código</th><th>Equipamento</th><th>Nome</th><th>Sistema</th><th>Crit.</th><th>Material SAP</th><th>Situação</th></tr>${P.linhas.map(r=>`<tr><td>${r.n}</td><td class="mono">${esc(r.ja||r.codigo||'')}</td><td class="mono">${esc(r.equipamento||'')}</td><td>${esc(r.nome)}</td><td>${esc(r.sistema||'')}</td><td>${esc(r.criticidade||'')}</td><td class="mono">${esc(r.materialSAP||'')}</td><td class="small">${r.erros.length?`<span class="bad">${esc(r.erros.join('; '))}</span>`:r.ja?'já existe':'<span class="st-novo">novo</span>'}${r.avisos.length?` <span class="warn">${esc(r.avisos.join('; '))}</span>`:''}</td></tr>`).join('')}</table></div>
   ${ok.length?(pe?`<button class="b p" id="iGo" style="margin-top:8px">Importar ${ok.length} componente(s)</button>`:'<p class="small warn">Desbloqueie a edição para importar.</p>'):''}</div>`;
-  const go=$('#iGo');if(go)go.onclick=()=>{if(!Cad.podeEditar())return;const origem='componentes colados em '+fmtD(todayISO());
+  const go=$('#iGo');if(go)go.onclick=()=>{if(!Cad.podeEditarAssunto('equipamentos'))return;const origem='componentes colados em '+fmtD(todayISO());
    Cad.ops(ok.map(r=>({acao:'importação',tipo:'componentes',codigo:r.codigo,item:{codigo:r.codigo,equipamento:r.equipamento,nome:r.nome,sistema:r.sistema,criticidade:r.criticidade,materialSAP:r.materialSAP,ativo:true},origem,motivo:null})));toast(ok.length+' componente(s) importado(s); gravando…');I.txtComp='';Cad.ui.sec='componentes';cadHash();App.render()}}}
 
 /* ===== 1.8.2 · Importar a Meta OEE FY27 (planilha OEE-Vacutainer_v2.xlsm) =====
@@ -6471,7 +6478,7 @@ function mofOps(P,D,mot){const sel=P.recs.filter(r=>r.sel&amp;&amp;!r.erro&amp;&
   else ops.push({acao:'importação',tipo:'metasOee',codigo:cod,mudancas:Object.assign({vigencias:{antes:clone(it.vigencias||[]),depois:vs}},des.length!==(it.vigenciasDesativadas||[]).length?{vigenciasDesativadas:{antes:clone(it.vigenciasDesativadas||null),depois:des}}:{}),origem:P.origem,motivo:mot})}
  return ops}
 const MOF_SEG=m=>`<span class="seg" id="iModo"><button data-m="cs12" class="${m==='cs12'?'on':''}">Lista técnica (CS12)</button><button data-m="mat" class="${m==='mat'?'on':''}">Materiais</button><button data-m="comp" class="${m==='comp'?'on':''}">Componentes</button><button data-m="eqmes" class="${m==='eqmes'?'on':''}">Equipamentos (MES)</button><button data-m="meta" class="${m==='meta'?'on':''}">Meta OEE FY27</button></span>`;
-function cadImportarMeta(el,I){const D=Cad.D,pe=Cad.podeEditar(true),P=I.mof||null;
+function cadImportarMeta(el,I){const D=Cad.D,pe=Cad.podeEditarAssunto('turnos',true),P=I.mof||null;
  el.innerHTML=`<div class="card form"><h3>Importar a Meta OEE FY27 ${ib('Importar a Meta OEE FY27','Lê a aba "Meta OEE FY27" da planilha OEE-Vacutainer_v2.xlsm (o resto do arquivo é ignorado) e grava em Metas de OEE: uma meta por família (OEE-EDTA, OEE-SST…; usa a que já existe para a família), uma vigência por mês a partir do dia 1º, com OEE meta, PPH, meta diária e o quadro hora a hora. O fim de cada vigência é a véspera da próxima; o último mês continua valendo até a próxima importação.\nO PPH vem da aba BASE DE DADOS (bloco FY27) ou do PPH nominal do catálogo da família. Valores em milheiros viram peças.\nMês que já tem vigência igual é ignorado; diferente só é substituído se você marcar (a antiga vai para Desativadas, com motivo). Semáforo, cobertura e divergência da meta são mantidos.\nA Produção recebe as metas pelo cadastro na próxima abertura.')}</h3>
   ${MOF_SEG('meta')}
   <p class="small muted" style="margin:8px 0">Escolha a planilha inteira (<b>OEE-Vacutainer_v2.xlsm</b>, .xlsx ou .xls). Nada é gravado antes da prévia. Se a planilha tiver rótulo de confidencialidade ou senha, salve uma cópia sem proteção.</p>
@@ -6502,7 +6509,7 @@ function cadImportarMeta(el,I){const D=Cad.D,pe=Cad.podeEditar(true),P=I.mof||nu
  const all=$('#mofAll');if(all)all.onchange=()=>{R.forEach(r=>{if(!r.erro&amp;&amp;r.st!=='igual')r.sel=all.checked});redraw()};
  box.querySelectorAll('[data-mo]').forEach(x=>x.onchange=()=>{const r=R[+x.dataset.mo],v=cbNum(x.value);r.oee=v?v/100:null;if(r.oee>0&amp;&amp;r.pph>0&amp;&amp;r.st!=='igual')r.sel=true;redraw()});
  box.querySelectorAll('[data-mp]').forEach(x=>x.onchange=()=>{const r=R[+x.dataset.mp],v=cbNum(String(x.value).replace(/\./g,''));r.pph=v||null;r.pphSrc=v?'informado na prévia':null;if(r.oee>0&amp;&amp;r.pph>0&amp;&amp;r.st!=='igual')r.sel=true;redraw()});
- const go=$('#mofGo');if(go)go.onclick=()=>{if(!Cad.podeEditar())return;const mot=($('#iMot').value||'').trim()||null,ops=mofOps(P,Cad.D,mot);if(!ops.length)return toast('Nada para importar.');
+ const go=$('#mofGo');if(go)go.onclick=()=>{if(!Cad.podeEditarAssunto('turnos'))return;const mot=($('#iMot').value||'').trim()||null,ops=mofOps(P,Cad.D,mot);if(!ops.length)return toast('Nada para importar.');
   const n=sel.length;Cad.ops(ops);toast(`${n} mês(es) da ${MOF_ABA} em ${ops.length} meta(s); gravando…`,6000);I.mof=null;cadImportarMeta(el,I);el.scrollIntoView({block:'start'})}}
 
 /* ---------- auditoria ---------- */
@@ -6948,7 +6955,7 @@ const EqMes={
    if(r.troca&amp;&amp;r.desc&amp;&amp;r.desc!==q.nome){set('nome',r.desc);const ap=String(q.apelidos||'').split(';').map(x=>x.trim()).filter(Boolean);if(q.nome&amp;&amp;!ap.some(a=>this.norm(a)===this.norm(q.nome)))mud.apelidos={antes:q.apelidos??null,depois:ap.concat([q.nome]).join('; ')}}
    if(Object.keys(mud).length)out.push({acao:'importação',tipo:'equipamentos',codigo:q.codigo,origem,motivo:null,mudancas:mud})}
   return out}};
-function cadImportarEqMes(el,I){const D=Cad.D,pe=Cad.podeEditar(true);if(!D){el.innerHTML='<div class="card"><p class="muted">O cadastro ainda não existe.</p></div>';return}
+function cadImportarEqMes(el,I){const D=Cad.D,pe=Cad.podeEditarAssunto('equipamentos',true);if(!D){el.innerHTML='<div class="card"><p class="muted">O cadastro ainda não existe.</p></div>';return}
  el.innerHTML=`<div class="card form"><h3>Importar equipamentos do MES ${ib('Equipamentos do MES','Cole a tabela do MES com Resource Name, Description, Department, Work Center e Resource Type. Cada linha é ligada a um equipamento do cadastro: pelo Código MES, por outro nome ou pelo nome igual; "1 - Collection" é a LINHA. Parecido pelo nome vira sugestão para conferir. Nada é apagado e o código EQ não muda. O nome trocado fica em Outros nomes.')}</h3>
   ${MOF_SEG('eqmes')}
   <p class="small muted" style="margin:8px 0">Colunas: <b>Resource Name · Description · Department · Work Center · Resource Type</b> (com ou sem cabeçalho; tabulação ou ponto e vírgula). 2 - Singular = equipamento; 1 - Collection = a linha inteira (LINHA).</p>
@@ -6958,7 +6965,7 @@ function cadImportarEqMes(el,I){const D=Cad.D,pe=Cad.podeEditar(true);if(!D){el.
  $('#iTxt').oninput=()=>{I.txtEq=$('#iTxt').value};$('#iLimpar').onclick=()=>{I.txtEq='';I.eqP=null;cadImportarEqMes(el,I)};
  $('#iLer').onclick=()=>{I.txtEq=$('#iTxt').value;I.eqP=EqMes.sugerir(EqMes.ler(I.txtEq),Cad.D);eqMesPrev(I)};
  if(I.eqP)eqMesPrev(I)}
-function eqMesPrev(I){const box=$('#iPrev');if(!box)return;const D=Cad.D,P=I.eqP,pe=Cad.podeEditar(true),E=(D.equipamentos||[]).filter(q=>q.ativo!==false).sort((a,b)=>(EqOrd.pos(a)??1e9)-(EqOrd.pos(b)??1e9)||String(a.codigo).localeCompare(String(b.codigo),'pt-BR',{numeric:true}));
+function eqMesPrev(I){const box=$('#iPrev');if(!box)return;const D=Cad.D,P=I.eqP,pe=Cad.podeEditarAssunto('equipamentos',true),E=(D.equipamentos||[]).filter(q=>q.ativo!==false).sort((a,b)=>(EqOrd.pos(a)??1e9)-(EqOrd.pos(b)??1e9)||String(a.codigo).localeCompare(String(b.codigo),'pt-BR',{numeric:true}));
  const dup=new Map();for(const r of P.linhas)if(r.cod&amp;&amp;r.cod!=='+'&amp;&amp;r.cod!=='-')dup.set(r.cod,(dup.get(r.cod)||0)+1);
  const ops=EqMes.ops(P,D),sem=P.linhas.filter(r=>!r.erros.length&amp;&amp;!r.cod).length,repet=[...dup].filter(([,n])=>n>1).map(([c])=>c),conf=P.linhas.filter(r=>/sugest/.test(r.por||'')).length;
  const sit=r=>{if(r.erros.length)return`<span class="bad">${esc(r.erros.join('; '))}</span>`;if(!r.cod)return`<span class="warn">escolha o equipamento${r.aviso?' · '+esc(r.aviso):''}</span>`;if(r.cod==='-')return'<span class="muted">ignorada</span>';if(r.cod==='+')return'<span class="st-novo">novo equipamento</span>';if(dup.get(r.cod)>1)return'<span class="bad">equipamento escolhido em mais de uma linha</span>';const q=cadItem('equipamentos',r.cod,D);const d=[];if(q){if(String(q.codigoMes||'')!==r.mes)d.push('código MES');if(String(q.departamento||'')!==String(r.dep||''))d.push('departamento');if(String(q.centroTrabalho||'')!==String(r.wc||''))d.push('work center');if(r.troca&amp;&amp;r.desc!==q.nome)d.push('nome')}return(d.length?'muda: '+d.join(', '):'<span class="muted">igual</span>')+(r.por?` <span class="small ${/sugest/.test(r.por)?'warn':'muted'}">(${esc(r.por)})</span>`:'')};
@@ -6971,8 +6978,8 @@ function eqMesPrev(I){const box=$('#iPrev');if(!box)return;const D=Cad.D,P=I.eqP
   ${ops.length?(pe?`<button class="b p" id="iGo" ${repet.length?'disabled':''}>Importar ${ops.length} alteração(ões)</button>`:`<p class="small warn">Somente leitura: ${esc(Cad.motivoEdicao()||'desbloqueie a edição para importar')}.</p>`):'<p class="small muted">Nada a importar.</p>'}</div>`;
  box.querySelectorAll('[data-eqi]').forEach(s=>s.onchange=()=>{const r=P.linhas[+s.dataset.eqi];r.cod=s.value;r.por=s.value&amp;&amp;s.value!=='+'&amp;&amp;s.value!=='-'?'escolhido':'';r.troca=true;eqMesPrev(I)});
  box.querySelectorAll('[data-eqn]').forEach(c=>c.onchange=()=>{P.linhas[+c.dataset.eqn].troca=c.checked;eqMesPrev(I)});
- const go=$('#iGo');if(go)go.onclick=()=>{if(!Cad.podeEditar())return;const O=EqMes.ops(P,Cad.D);if(!O.length)return;Cad.ops(O);toast(O.length+' alteração(ões) de equipamentos; gravando…');I.txtEq='';I.eqP=null;Cad.ui.sec='equipamentos';cadHash();App.render()}}
-function cadImportar(el){const I=Cad.ui.imp||(Cad.ui.imp={modo:'cs12',fmt:'auto',de:todayISO(),map:{},soBOM:true,txt:'',prev:null});if(!I.map)I.map={};if(I.modo==='comp')return cadImportarComp(el,I);if(I.modo==='eqmes')return cadImportarEqMes(el,I);if(I.modo==='meta')return cadImportarMeta(el,I);if(I.modo!=='mat')I.modo='cs12';const D=Cad.D,pe=Cad.podeEditar(true);
+ const go=$('#iGo');if(go)go.onclick=()=>{if(!Cad.podeEditarAssunto('equipamentos'))return;const O=EqMes.ops(P,Cad.D);if(!O.length)return;Cad.ops(O);toast(O.length+' alteração(ões) de equipamentos; gravando…');I.txtEq='';I.eqP=null;Cad.ui.sec='equipamentos';cadHash();App.render()}}
+function cadImportar(el){const I=Cad.ui.imp||(Cad.ui.imp={modo:'cs12',fmt:'auto',de:todayISO(),map:{},soBOM:true,txt:'',prev:null});if(!I.map)I.map={};if(I.modo==='comp')return cadImportarComp(el,I);if(I.modo==='eqmes')return cadImportarEqMes(el,I);if(I.modo==='meta')return cadImportarMeta(el,I);if(I.modo!=='mat')I.modo='cs12';const D=Cad.D,pe=Cad.podeEditarAssunto('produto',true);
  el.innerHTML=`<div class="card form"><h3>Importar do SAP ${ib('Importar do SAP','Lista técnica: CS12 "Estrutura multinível" (é a única fonte da BOM do cadastro). Materiais: lista do SAP com Material, Texto breve e UM básica. Nada é gravado antes da prévia; o SAP manda no que vem dele. Exige a edição desbloqueada para gravar.')}</h3>
   ${MOF_SEG(I.modo)}
   ${I.modo==='cs12'&amp;&amp;I.novo?`<div class="note" style="margin:8px 0"><b>Cadastrar o material ${esc(I.novo.codigo)}</b>${I.novo.nome?' · '+esc(I.novo.nome):''} · ${I.novo.tipoItem==='preparacao'?'Preparação (aditivo / solução)':'Tubo'} · ${esc(I.novo.unidade)}<br>No SAP: CS12 › material <b class="mono">${esc(I.novo.codigo)}</b> › Estrutura multinível › copie a lista inteira (Ctrl A, Ctrl C) e cole abaixo. O catálogo é criado junto com a BOM ao importar. <button class="b sm" id="iNovoX">Cancelar este cadastro</button></div>`:''}
@@ -7013,7 +7020,7 @@ function cadImportar(el){const I=Cad.ui.imp||(Cad.ui.imp={modo:'cs12',fmt:'auto'
    ${ok.length?`<div class="filters"><label style="flex:1;min-width:240px">Observação (opcional)<input id="iMot"></label>${pe?`<button class="b p" id="iGo">Importar ${ok.length} lista(s) técnica(s)${P.novosMat.length?' e '+P.novosMat.length+' material(is)':''}</button>`:'<span class="small warn">Desbloqueie a edição para importar.</span>'}</div>`:P.grupos.length?'<p class="small muted">Nada para importar.</p>':''}</div>`;
    box.querySelectorAll('[data-nt]').forEach(s=>s.onchange=()=>{P.novosMat[+s.dataset.nt].tipo=s.value});
    box.querySelectorAll('[data-map]').forEach(s=>s.onchange=()=>{I.map[s.dataset.map]=s.value;ler()});
-   const go=$('#iGo');if(go)go.onclick=()=>{if(!Cad.podeEditar())return;const mot=$('#iMot').value.trim()||null,origem='SAP CS12 colado em '+fmtD(todayISO());
+   const go=$('#iGo');if(go)go.onclick=()=>{if(!Cad.podeEditarAssunto('produto'))return;const mot=$('#iMot').value.trim()||null,origem='SAP CS12 colado em '+fmtD(todayISO());
     const ops=P.novosMat.map(m=>({acao:'importação',tipo:'materiais',codigo:m.codigo,item:clone(m),origem,motivo:mot}));
     ok.filter(g=>g.novoCat).forEach(g=>ops.push({acao:'importação',tipo:'catalogos',codigo:g.novoCat.codigo,item:clone(g.novoCat),origem:origem+(I.novo?' (cadastro a partir da Produção)':''),motivo:mot}));
     ok.forEach(g=>ops.push(g.acao==='criar'?{acao:'importação',tipo:'bom',codigo:g.cat,item:{catalogo:g.cat,vigencias:g.novas},origem,motivo:mot}:{acao:'importação',tipo:'bom',codigo:g.cat,mudancas:{vigencias:{antes:g.antigas,depois:g.novas}},origem,motivo:mot}));
@@ -7025,7 +7032,7 @@ function cadImportar(el){const I=Cad.ui.imp||(Cad.ui.imp={modo:'cs12',fmt:'auto'
    ${P.ignorados.length?`<details class="cd"><summary>Fora da BOM, ignorados (${P.ignorados.length})</summary><p class="small">${P.ignorados.slice(0,200).map(m=>`<span class="mono">${esc(m.codigo)}</span> ${esc(m.nome)}`).join(' · ')}</p></details>`:''}
    ${P.novos.length+P.alterados.length?`<div class="filters"><label style="flex:1;min-width:240px">Observação (opcional)<input id="iMot"></label>${pe?`<button class="b p" id="iGo">Importar ${P.novos.length+P.alterados.length} material(is)</button>`:'<span class="small warn">Desbloqueie a edição para importar.</span>'}</div>`:P.lidas?'<p class="small muted">Nada para importar.</p>':''}</div>`;
    box.querySelectorAll('[data-nt]').forEach(s=>s.onchange=()=>{P.novos[+s.dataset.nt].tipo=s.value});
-   const go=$('#iGo');if(go)go.onclick=()=>{if(!Cad.podeEditar())return;const mot=$('#iMot').value.trim()||null,origem='SAP materiais colado em '+fmtD(todayISO());
+   const go=$('#iGo');if(go)go.onclick=()=>{if(!Cad.podeEditarAssunto('produto'))return;const mot=$('#iMot').value.trim()||null,origem='SAP materiais colado em '+fmtD(todayISO());
     const ops=P.novos.map(m=>({acao:'importação',tipo:'materiais',codigo:m.codigo,item:clone(m),origem,motivo:mot})).concat(P.alterados.map(a=>({acao:'importação',tipo:'materiais',codigo:a.codigo,mudancas:a.mud,origem,motivo:mot})));
     Cad.ops(ops);toast(`${ops.length} alteração(ões) registrada(s); gravando…`);I.prev=null;I.txt='';cadImportar(el);el.scrollIntoView({block:'start'});const tx=$('#iTxt');if(tx)tx.focus()}}};
  drawPrev()}
@@ -7282,10 +7289,10 @@ function cadParametros(el){const D=Cad.D,pe=Cad.podeEditar(true),P=D.parametros|
  const prev=()=>{const usa=$('#sUsaAm')?$('#sUsaAm').checked:usaAm,V=parseFloat(($('[data-par="semaforoVerdePct"]')||{}).value)||100,A=parseFloat(($('[data-par="semaforoAmareloPct"]')||{}).value)||90,lab=$('#sAmLab');if(lab)lab.style.display=usa?'':'none';
   const b=$('#sPrev');if(b)b.innerHTML=usa?`<span class="pill ok">verde ≥ ${fmtN(V,1)}%</span><span class="pill warn">amarelo ${fmtN(A,1)}% a ${fmtN(V,1)}%</span><span class="pill crit">vermelho &amp;lt; ${fmtN(A,1)}%</span><span class="pill none">cinza · sem meta ou sem dado</span>`:`<span class="pill ok">verde ≥ ${fmtN(V,1)}%</span><span class="pill crit">vermelho &amp;lt; ${fmtN(V,1)}%</span><span class="pill none">cinza · sem meta ou sem dado</span><span class="small muted" style="align-self:center">sem amarelo</span>`};
  prev();$$('#parSem input').forEach(i=>i.addEventListener('input',prev));
- const og=$('#sGerOk');if(og)og.onclick=()=>{if(!Cad.podeEditar())return;const mud=parColeta('#parGer',P);
+ const og=$('#sGerOk');if(og)og.onclick=()=>{if(!Cad.podeEditarAssunto('sistema'))return;const mud=parColeta('#parGer',P);
   {const bd=mud.backupDias?mud.backupDias.depois:P.backupDias;if(bd!=null&amp;&amp;(bd<7||bd!==Math.round(bd)))return parAviso('sGerOk','Guardar backups: use um número inteiro de pelo menos 7 dias (ou deixe vazio para guardar tudo).',true)}
   if(!Object.keys(mud).length)return parAviso('sGerOk','Nada mudou.');Cad.op({acao:'edição',tipo:'parametros',codigo:null,mudancas:mud,motivo:null});parAviso('sGerOk','Parâmetros gerais salvos.')};
- const os=$('#sSemOk');if(os)os.onclick=()=>{if(!Cad.podeEditar())return;const mud=parColeta('#parSem',P),nv=k=>mud[k]?mud[k].depois:P[k];
+ const os=$('#sSemOk');if(os)os.onclick=()=>{if(!Cad.podeEditarAssunto('sistema'))return;const mud=parColeta('#parSem',P),nv=k=>mud[k]?mud[k].depois:P[k];
   if(mud.semaforoAmarelo&amp;&amp;mud.semaforoAmarelo.antes==null&amp;&amp;mud.semaforoAmarelo.depois===true)delete mud.semaforoAmarelo;
   const usa=nv('semaforoAmarelo')!==false,V=nv('semaforoVerdePct')??100,A=nv('semaforoAmareloPct')??90;
   if(usa&amp;&amp;A>=V)return parAviso('sSemOk','O amarelo precisa começar abaixo do verde. Para usar só verde e vermelho, desmarque "Usar amarelo".',true);
@@ -7306,7 +7313,7 @@ function parProducaoHtml(P,pe){const Q=P.producao||{},L=(Q.arredondamentoMeta||[
  <div class="tw"><table class="cadst"><tr><th>A partir de</th><th class="n">Múltiplo (peças)</th><th></th></tr>${L.map(v=>`<tr><td>${fmtD(v.de)}</td><td class="n">${fmtN(v.valor)}</td><td>${vig&amp;&amp;v.de===vig.de?'<span class="pill ok">vigente</span>':v.de>h?'<span class="pill info">futura</span>':''}</td></tr>`).join('')||'<tr><td colspan="3" class="small muted">Nenhuma vigência: a Produção usa o valor da própria base até a primeira.</td></tr>'}</table></div>
  ${pe?`<div class="fg" style="margin-top:6px"><label>Nova vigência a partir de<input type="date" id="ppArDe" min="${h}" value="${h}"></label><label>Múltiplo (peças)<input type="number" step="1" min="1" id="ppArV" placeholder="1000"></label></div>`:''}
  </div>`}
-function wireParProducao(P,pe){const ok=$('#ppOk');if(!ok||!pe)return;ok.onclick=()=>{if(!Cad.podeEditar())return;
+function wireParProducao(P,pe){const ok=$('#ppOk');if(!ok||!pe)return;ok.onclick=()=>{if(!Cad.podeEditarAssunto('sistema'))return;
  const Q0=P.producao||{},Q=clone(Q0),h=todayISO();
  const un=$('[data-pprod="unidadeLancamento"]').value.trim(),rt=$('[data-pprod="rotuloUnidade"]').value.trim();
  if(un){const n=vacNumero(un);if(!(n>0)||Math.round(n)!==n)return toast('Unidade de lançamento: número inteiro maior que zero.',5000,true);Q.unidadeLancamento=n}else delete Q.unidadeLancamento;
@@ -7353,7 +7360,7 @@ function wireParGel(P,pe){const box=$('#parGel');if(!box||!pe)return;const W=Par
   else if(k==='num'){v=el.value===''?null:parseFloat(String(el.value).replace(',','.'));if(v!=null&amp;&amp;!isFinite(v))v=null}else{v=el.value.trim()||null}pset(W,p,v)};
  box.onclick=e=>{const a=e.target.closest('[data-pgadd]');if(a){const L=pget(W,a.dataset.pgadd)||[];const it=JSON.parse(a.dataset.tpl);if(a.dataset.pgadd==='motivos')it.id=gelUid();L.push(it);pset(W,a.dataset.pgadd,L);return App.render()}
   const d=e.target.closest('[data-pgdel]');if(d){const ps=d.dataset.pgdel.split('.'),i=+ps.pop();pget(W,ps.join('.')).splice(i,1);return App.render()}};
- const ok=$('#pgOk');if(ok)ok.onclick=()=>{if(!Cad.podeEditar())return;const h=todayISO(),G0=P.gel||{},G=clone(W);
+ const ok=$('#pgOk');if(ok)ok.onclick=()=>{if(!Cad.podeEditarAssunto('gel'))return;const h=todayISO(),G0=P.gel||{},G=clone(W);
   for(const k of ['processo','formatos']){const L=G[k]||[];if(L.some(v=>!v.from))return toast('Informe a data de cada vigência.',5000,true);
    const ant=(G0[k]||[]).filter(v=>v.from<h);if(!deq(ant,L.filter(v=>v.from<h)))return toast('Vigências que já valeram não mudam: acrescente uma nova a partir de hoje.',6000,true);
    if(new Set(L.map(v=>v.from)).size!==L.length)return toast('Duas vigências com a mesma data.',5000,true);G[k]=L.slice().sort((a,b)=>a.from<b.from?-1:1);if(!G[k].length)delete G[k]}
@@ -7383,7 +7390,7 @@ function usuSenhaHtml(W){const s=W.senha,ok=s&amp;&amp;s.hash;
  <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px"><button type="button" class="b sm" data-usen="prov" data-cod="${esc(W.codigo)}">Gerar senha provisória</button>${ok?`<button type="button" class="b sm d" data-usen="zerar" data-cod="${esc(W.codigo)}">Zerar senha</button>`:''}</div></div>`}
 function usuSenhaOp(cod,depois,mot){const it=cadItem('usuarios',cod);if(!it)return Promise.reject(new Error('usuário '+cod+' não existe no cadastro'));
  return Cad.ops([{acao:'edição',tipo:'usuarios',codigo:String(cod),mudancas:{senha:{antes:it.senha?clone(it.senha):null,depois}},motivo:mot,origem:'login'}])}
-document.addEventListener('click',async ev=>{const b=ev.target.closest('[data-usen]');if(!b)return;if(!Cad.podeEditar())return;const cod=b.dataset.cod,u=cadItem('usuarios',cod);if(!u)return;
+document.addEventListener('click',async ev=>{const b=ev.target.closest('[data-usen]');if(!b)return;if(!Cad.podeEditarAssunto('pessoas'))return;const cod=b.dataset.cod,u=cadItem('usuarios',cod);if(!u)return;
  if(b.dataset.usen==='zerar'){if(!confirm('Zerar a senha de '+u.nome+'? A pessoa cria uma nova no próximo login.'))return;await usuSenhaOp(cod,null,'senha zerada pelo administrador');toast('Senha zerada.')}
  else{const pin=vacLogin.provisoriaNova(),s=await vacLogin.gerar(pin,true,user());await usuSenhaOp(cod,s,'senha provisória gerada pelo administrador');
   Modal.open(`<h2>Senha provisória</h2><p>Entregue esta senha a <b>${esc(u.nome)}</b> (ID <span class="mono">${esc(u.codigo)}</span>):</p><p class="mono" id="usuProv" style="font-size:30px;letter-spacing:.2em;margin:10px 0">${pin}</p><p class="small muted">Ela vale só para a primeira entrada: a pessoa cria a senha definitiva logo em seguida. Esta tela não volta a mostrar o número.</p><div style="margin-top:10px"><button class="b p" onclick="Modal.close(true)">Entendi</button></div>`,{wide:false})}
@@ -55620,14 +55627,14 @@ body.vac-porta{overflow:hidden}
       "id": "portal",
       "path": "Plataforma.html#motor/portal",
       "version": "1.9.81",
-      "sha256": "3d8f42796774082317d75174f016b7b7811fce5021890e94ed3e0523051f87af",
-      "bytes": 1357504
+      "sha256": "986e5b59afac1eca1a241ba9e622644610783e4f432b27e003bff6dc26416f8d",
+      "bytes": 1358784
     }
   ],
   "limitations": [
     "Projetos e conteúdo técnico OSM/MES/AM/TPM mantêm os limites documentados nas fontes."
   ],
-  "enginesSha256": "5bebb62333d77c4868ab8cde7aff940bc47d163e6b7864b61f3ecf3aa826fb75",
+  "enginesSha256": "9b6775fef681c95c11ff57a6fc6426ce867a762ee0442df167ff3cd1ad441038",
   "originRevision": "ffc9ee8",
   "sourceMode": "single-html",
   "originEnginesSha256": "a87a64ad0c328f70e102b2ae888790a9b5d5a9bd05778652a7ce7cae140e40d2"
