@@ -1,6 +1,6 @@
 // Produção 2.6.40 · GEL-08 (pedido do responsável, 23/11/2026): "Lançar / Editar scrap" com o scrap de máquina (40%) e o de gel (60%)
 // lado a lado, um só Gravar; o gel no jeito do Registrar scrap da Gestão de Gel (todos os pontos por Tubos/Barril/Purga).
-// Demonstração: dados e pontos de gel fictícios (Funil, Berço, Envasadora). O que este teste prova:
+// Demonstração: dados e pontos de gel fictícios (Funil; Tullip A com dois locais: Caixa rejeição e Funil berço; Envasadora). O que este teste prova:
 //  1. com gel no turno, o popup fica largo e tem as duas colunas (≈40% e ≈60%);
 //  2. o gel mostra todos os pontos agrupados (Tubos, Barril, Purga), e digitar o peso mostra a conta (≈ tubos, gel) na hora;
 //  3. um só Gravar grava o total da máquina (ps.scrap) e as pesagens do gel (ps.gelScrap), com o motivo;
@@ -28,7 +28,7 @@ const OUT = process.env.SCRAP_PRINT || '';
 
     // pontos de gel fictícios (o que viria da Administração › Equipamentos, categoria Gel)
     await o.evaluate(() => { const C0 = GelTurno.ctx() || {};
-      const E = [{ codigo: 'EQ31', nome: 'Funil', descs: [{ id: 'f1', comp: 'tubogel', cat: 'T', mots: [] }] }, { codigo: 'EQ32', nome: 'Berço', descs: [{ id: 'b1', comp: 'completo', cat: 'T', mots: [] }] },
+      const E = [{ codigo: 'EQ31', nome: 'Funil', descs: [{ id: 'f1', comp: 'tubogel', cat: 'T', mots: [] }] }, { codigo: 'EQ32', nome: 'Tullip A', descs: [{ id: 'b1', local: 'Caixa rejeição', comp: 'completo', cat: 'T', mots: [] }, { id: 'b2', local: 'Funil berço', comp: 'completo', cat: 'T', mots: [] }] },
         { codigo: 'EQ33', nome: 'Envasadora de gel', descs: [{ id: 'e1', comp: 'barril', cat: 'B', mots: [] }, { id: 'e2', comp: 'gel', cat: 'P', mots: [] }] }];
       const fmts = [{ from: '2000-01-01', tara: 70, taraP: 4, sobra: 1.3, f: { '100': { tubo: 4.8, gel: 0.83, adit: 0.02, tr: 2.31 }, '75': { tubo: 3.55, gel: 0.82, adit: 0.015, tr: 2.29 } } }];
       const fake = { ...C0, fmts, params: [{ from: '2000-01-01', g: 0.97, pT: 2.1, pB: .71, pP: .5 }], equips: () => E, eq: c => E.find(x => x.codigo === c) || null, cat: () => ({ fmt: '100' }), usaGel: () => true, corte: '2026-11-01', motivos: [{ id: 'm1', name: 'Vazamento', comps: [] }, { id: 'm2', name: 'Bolha', comps: [] }] };
@@ -37,9 +37,9 @@ const OUT = process.env.SCRAP_PRINT || '';
     // 1) largo, duas colunas 40/60
     const ps = await o.evaluate(async () => { const day = curDay(), ps = day.shifts.find(p => !p.deleted && !locked(day, p)); TurnoCard.abrir(day, ps.id); await new Promise(r => setTimeout(r, 300)); return ps.id; });
     const lay = await o.evaluate(() => { const m = document.querySelector('.overlay .modal'), c = [...m.querySelectorAll('.sc-lado > .sc-col')].map(x => x.getBoundingClientRect().width);
-      return { largo: m.classList.contains('sc-largo'), n: c.length, prop: c.length === 2 ? +(c[0] / (c[0] + c[1])).toFixed(2) : 0, grupos: [...m.querySelectorAll('.gsc-g h4')].map(h => h.textContent), pontos: [...m.querySelectorAll('.gsc-n b')].map(b => b.textContent) }; });
+      return { largo: m.classList.contains('sc-largo'), n: c.length, prop: c.length === 2 ? +(c[0] / (c[0] + c[1])).toFixed(2) : 0, grupos: [...m.querySelectorAll('.gsc-g h4')].map(h => h.textContent), pontos: [...m.querySelectorAll('.gsc-n')].map(n => [...n.querySelectorAll('b')].map(b => b.textContent).join(' · ')) }; });
     assert.ok(lay.largo && lay.n === 2 && lay.prop >= .36 && lay.prop <= .44, 'popup largo, máquina ≈40% e gel ≈60% ' + JSON.stringify(lay));
-    assert.deepEqual(lay.grupos, ['Tubos', 'Barril', 'Purga']); assert.deepEqual(lay.pontos, ['Funil', 'Berço', 'Envasadora de gel', 'Envasadora de gel']);
+    assert.deepEqual(lay.grupos, ['Tubos', 'Barril', 'Purga']); assert.deepEqual(lay.pontos, ['Funil', 'Tullip A · Caixa rejeição', 'Tullip A · Funil berço', 'Envasadora de gel', 'Envasadora de gel'], 'cada ponto com o local (GEL-09)');
     console.log('ok popup largo com máquina (' + Math.round(lay.prop * 100) + '%) e gel lado a lado; gel com Tubos, Barril e Purga e todos os pontos');
 
     // 2) digitar o peso mostra a conta

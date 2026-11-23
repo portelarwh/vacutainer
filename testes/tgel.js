@@ -93,6 +93,20 @@ const { chromium } = require('playwright');
     return { n: L.length, pg: W2.parametros.gel, eq: W2.equipamentos[1].gel, cat: W2.catalogos[0].gel, catg: W2.equipamentos[1].categoria }; });
   ok(mig.n === 5 && mig.pg.processo[0].pT === 2.1 && mig.pg.formatos[0].sobra === 1.3 && mig.pg.motivos[0].id === 'm9' && mig.eq.descs[0].cat === 'P' && mig.catg === 'gel' && mig.cat.fmt === '75' && mig.cat.vig[0].bomKg === 8.84, '4a migração: Trazer configurações leva processo, formatos, motivos, descartes (Equipamento – Gel) e o gel do catálogo, com a mesma estrutura');
 
+  /* GEL-09 (23/11/2026): vários pontos do Gel na mesma máquina da Administração juntam-se, cada um com o seu Local; se a máquina ficou
+     só com o último ponto (o Trazer antigo sobrescrevia), a proposta "Refazer descartes" acrescenta os que faltam e preenche o local */
+  const g9 = await po.evaluate(() => { const alvo = Cad.D.equipamentos.find(x => /tullip a/i.test(x.nome)) || Cad.D.equipamentos[0], tag = 'VATU01';
+    const eqs = [{ id: 'g1', name: alvo.nome.toUpperCase() + ' - CAIXA REJEIÇÃO - ' + tag, portal: alvo.codigo, tara: 80, active: true, descs: [{ id: 'dcr', comp: 'completo', cat: 'T' }] },
+      { id: 'g2', name: alvo.nome.toUpperCase() + ' - FUNIL BERÇO - ' + tag, portal: alvo.codigo, tara: 80, active: true, descs: [{ id: 'dfb', comp: 'completo', cat: 'T' }] }];
+    const rodar = () => { TrazCfg.P = []; TrazCfg.avisos = []; TrazCfg.montar(); const L = TrazCfg.P.filter(i => i.grupo === 'Só no Gel · parâmetros do gel' && /descartes/i.test(i.titulo)); const W2 = JSON.parse(JSON.stringify(Cad.D)); L.forEach(i => i.fn(W2)); return { n: L.length, titulo: L.map(i => i.titulo).join(' | '), descs: (W2.equipamentos.find(x => x.codigo === alvo.codigo).gel || {}).descs || [] }; };
+    TrazCfg.B.gel.config.equips = eqs; alvo.gel = null; const a = rodar();
+    alvo.gel = { tara: 80, descs: [{ id: 'dfb', comp: 'completo', cat: 'T' }] }; const b = rodar();
+    alvo.gel = { tara: 80, descs: [{ id: 'dcr', comp: 'completo', cat: 'T', local: 'CAIXA REJEIÇÃO' }, { id: 'dfb', comp: 'completo', cat: 'T', local: 'FUNIL BERÇO' }] }; const c = rodar();
+    return { a: a.descs.map(d => d.id + ':' + d.local), an: a.n, b: b.descs.map(d => d.id + ':' + d.local), bt: b.titulo, cn: c.n }; });
+  ok(g9.an === 1 && JSON.stringify(g9.a) === JSON.stringify(['dcr:CAIXA REJEIÇÃO', 'dfb:FUNIL BERÇO']), 'GEL-09: dois pontos do Gel na mesma máquina juntam-se, cada descarte com o seu Local ' + JSON.stringify(g9));
+  ok(/Refazer descartes/.test(g9.bt) && JSON.stringify(g9.b) === JSON.stringify(['dfb:FUNIL BERÇO', 'dcr:CAIXA REJEIÇÃO']), 'GEL-09: máquina que ficou só com o último ponto: "Refazer descartes" acrescenta o que falta e preenche o local');
+  ok(g9.cn === 0, 'GEL-09: com todos os pontos e locais, nada a propor');
+
   /* ---------- 4c (GEL-03 / PRD-10): Registrar scrap de gel no turno da Produção ---------- */
   const o = await nova('OEE-Vacutainer.html', 'Produção 4c');
   const p4c = await o.evaluate(async () => { document.querySelectorAll('.overlay').forEach(x => x.remove()); Demo.enterExample(); await new Promise(r => setTimeout(r, 300));
