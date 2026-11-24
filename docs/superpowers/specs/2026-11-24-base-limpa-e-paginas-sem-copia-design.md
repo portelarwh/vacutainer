@@ -1,6 +1,6 @@
 # Base limpa, carga por tabela e páginas sem cópia: desenho
 
-Data: 24/11/2026 · Pedido do responsável · Continua o desenho [Administração central](2026-11-23-administracao-central-design.md) (o bloco 1 já entrou: PR #148 e o ajuste do PR #149).
+Data: 24/11/2026 · Pedido do responsável · Aguardando aprovação · Continua o desenho [Administração central](2026-11-23-administracao-central-design.md) (o bloco 1 já entrou: PR #148 e o ajuste do PR #149).
 
 ## 1. Intenção
 
@@ -148,6 +148,7 @@ Cada bloco entra num PR próprio. Cada um tem versão nova, Novidades, PENDENCIA
 - Ordem: limpeza → Produção → outras páginas → Pessoas e Sistema (24/11/2026).
 - Produção: caminho 1, tabelas montadas na memória (24/11/2026).
 - Carga por tabela para os cadastros, por arquivo ou por tabela colada do Excel (24/11/2026).
+- **Recadastro só depois do bloco 5** (24/11/2026). Até lá os blocos 2 a 5 mudam o formato do cadastro e das bases livremente, sem compatibilidade entre eles. Os testes usam o cenário de demonstração ou pastas descartáveis. O tempo não é restrição; o que importa é a plataforma limpa.
 - As 14 decisões do inventário (`docs/CONFIGURACOES.md`, 23/11/2026) continuam valendo, menos as que tratavam de dado antigo (10 e 12 perdem o objeto).
 
 ## 7. Chamadas minhas (a conferir)
