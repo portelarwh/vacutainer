@@ -18238,7 +18238,6 @@ window.VAC_GUIA.oee = {
       { sel: '#sqFontes', nome: 'Atualizar fontes', o: 'Lê de novo o Waste, o Gel e Iniciativas. Os filtros escolhidos ficam como estão.' },
       { sel: '#sqCsv', nome: 'Exportar CSV', o: 'Segurança e QN por turno no mês da referência.' },
       { sel: '#sqReuniao', nome: 'Modo Reunião', o: 'Só o quadro, em tela cheia, com data, linha, turno e horário; botões S Q D C P ampliam um pilar. Esc ou Sair volta. Nada é gravado.' },
-      { sel: '.sqdcp-resumo', nome: 'Resumo executivo', o: 'Um cartão por pilar com a 1ª posição configurada dele (o mesmo resultado do card). Sem dado: — e Não informado (nunca zero).' },
       { sel: '.sq-quadro', nome: 'Posições', o: 'Valor, meta e situação pelo sentido do indicador (verde dentro, vermelho fora, âmbar parcial, cinza não informado). Prévia / Imprimir abre a folha A4; a engrenagem configura.' }
     ],
     duvidas: [['Por que "Não informado" e não 0?', 'Ausência de resposta nunca é zero: o turno sem a pergunta de acidente/QN respondida ou o dia sem lançamento ficam como não informado.'],
@@ -20963,12 +20962,6 @@ document.addEventListener('DOMContentLoaded', () => { boot().catch(e => { consol
 .sqdcp-acoes{display:flex;flex-wrap:wrap;gap:8px;justify-content:flex-end;align-items:center}
 .sqdcp-page .btn{display:inline-flex;align-items:center;gap:6px;border-radius:10px}
 /* resumo executivo */
-.sqdcp-resumo{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:12px}
-.sqdcp-rcard{min-width:0;background:var(--sqdcp-card);border:1px solid var(--sqdcp-border);border-top:4px solid var(--pillar-color);border-radius:12px;padding:11px 13px;display:flex;flex-direction:column;gap:4px;box-shadow:0 2px 6px rgba(15,35,55,.05)}
-.sqdcp-rtop{display:flex;justify-content:space-between;align-items:center;gap:6px}.sqdcp-rpil{display:inline-flex;align-items:center;gap:6px;font-weight:700;color:var(--pillar-color);font-size:13px;text-transform:uppercase;letter-spacing:.4px}
-.sqdcp-rpil b{font-size:15px}.sqdcp-rpos{font-size:12px;color:var(--sqdcp-muted);border:1px solid var(--sqdcp-border);border-radius:6px;padding:1px 6px}
-.sqdcp-rind{font-size:12.5px;color:var(--sqdcp-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.sqdcp-rv{font-size:clamp(20px,1.7vw,26px);font-weight:750;font-variant-numeric:tabular-nums;line-height:1.15}
 /* quadro: 5 colunas × 5 posições, as linhas alinhadas entre os pilares (subgrid) */
 .sq-quadro.sqdcp-board{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));grid-template-rows:auto repeat(5,minmax(190px,auto));gap:12px;margin:0;align-items:stretch}
 .sq-coluna.sqdcp-column{min-width:0;display:grid;grid-template-rows:subgrid;grid-row:span 6}
@@ -20989,8 +20982,7 @@ document.addEventListener('DOMContentLoaded', () => { boot().catch(e => { consol
 .sq-tag.ok{color:var(--st-ok);background:var(--st-ok-bg)}.sq-tag.crit{color:var(--st-crit);background:var(--st-crit-bg)}.sq-tag.parcial,.sq-tag.carregando{color:var(--st-warn);background:var(--st-warn-bg)}
 .sq-tag.info{color:var(--st-info);background:var(--st-info-bg)}.sq-tag.sem{color:var(--st-sem);background:var(--st-sem-bg)}.sq-tag.erro{color:var(--st-crit);background:var(--st-crit-bg);outline:1px dashed var(--st-crit)}
 .sqdcp-st-ok{border-left-color:var(--st-ok)!important}.sqdcp-st-crit{border-left-color:var(--st-crit)!important}.sqdcp-st-parcial,.sqdcp-st-carregando{border-left-color:var(--st-warn)!important}
-.sqdcp-st-sem{border-left-color:var(--sqdcp-border)!important}.sqdcp-st-sem .sqdcp-card-value,.sqdcp-rcard.sqdcp-st-sem .sqdcp-rv{color:var(--sqdcp-muted)}.sqdcp-st-erro{border-left-color:var(--st-crit)!important;border-left-style:dashed!important}
-.sqdcp-rcard.sqdcp-st-ok .sqdcp-rv{color:var(--st-ok)}.sqdcp-rcard.sqdcp-st-crit .sqdcp-rv{color:var(--st-crit)}
+.sqdcp-st-sem{border-left-color:var(--sqdcp-border)!important}.sqdcp-st-sem .sqdcp-card-value{color:var(--sqdcp-muted)}.sqdcp-st-erro{border-left-color:var(--st-crit)!important;border-left-style:dashed!important}
 .sqdcp-nota{font-size:12px;line-height:1.4;color:var(--sqdcp-muted);display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
 .sqdcp-card-actions{display:flex;gap:8px;margin-top:auto;padding-top:10px;align-items:center}
 .sqdcp-card-actions .sqdcp-prev{flex:1;justify-content:center;white-space:nowrap;min-width:0}
@@ -21021,11 +21013,11 @@ body.sqdcp-reuniao .sqdcp-page{padding:10px;gap:10px}
 /* larguras */
 @media(max-width:1280px){.sqdcp-head{grid-template-columns:1fr 1fr}.sqdcp-acoes{grid-column:1/-1;justify-content:flex-start}}
 @media(max-width:1100px){.sq-quadro.sqdcp-board{grid-template-columns:repeat(3,minmax(0,1fr));grid-template-rows:none}.sq-coluna.sqdcp-column{grid-row:auto;grid-template-rows:none;display:flex;flex-direction:column;gap:10px}
-  .sqdcp-resumo{grid-template-columns:repeat(3,minmax(0,1fr))}.sqdcp-page[data-sq-zoom-ativo] .sq-coluna.sqdcp-column{display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}}
+  .sqdcp-page[data-sq-zoom-ativo] .sq-coluna.sqdcp-column{display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:760px){.sqdcp-head{grid-template-columns:1fr}.sqdcp-acoes{justify-content:stretch}.sqdcp-acoes .btn{flex:1 1 140px;justify-content:center}.sq-oc-grid{grid-template-columns:1fr}.sq-filtros label{max-width:100%}}
-@media(max-width:700px){.sq-quadro.sqdcp-board{grid-template-columns:1fr}.sqdcp-resumo{grid-template-columns:repeat(2,minmax(0,1fr))}.sqdcp-page{padding:8px}
+@media(max-width:700px){.sq-quadro.sqdcp-board{grid-template-columns:1fr}.sqdcp-page{padding:8px}
   .sqdcp-page[data-sq-zoom-ativo] .sq-coluna.sqdcp-column{grid-template-columns:1fr}}
-@media(max-width:420px){.sqdcp-resumo{grid-template-columns:1fr}.sq-filtros{align-items:stretch}.sq-filtros>*{flex:1 1 130px}.sqdcp-dia{flex-wrap:wrap}}
+@media(max-width:420px){.sq-filtros{align-items:stretch}.sq-filtros>*{flex:1 1 130px}.sqdcp-dia{flex-wrap:wrap}}
 /* impressão da tela (Ctrl+P no quadro): só o quadro e o resumo, claros, sem botões; a folha A4 de cada posição continua pela Prévia */
 @media print{body>header.vsuite,body>.vpage,body>nav.vtabs,body>#banner,.sqdcp-head,.sqdcp-rbar,.sqdcp-card-actions,.sqdcp-retry{display:none!important}
   .sqdcp-page{background:#fff!important;padding:0}.sq-quadro.sqdcp-board{grid-template-columns:repeat(5,minmax(0,1fr))!important;gap:6px}.sq-vaga.sqdcp-card{min-height:0;box-shadow:none;break-inside:avoid;padding:8px}
@@ -21632,18 +21624,6 @@ const Sqdcp = (() => {
       (est === 'erro' ? '<button type="button" class="btn sqdcp-retry" data-sq-retry="1">' + svg('atual', 15) + ' Tentar novamente</button>' : '') +
       '<div class="sqdcp-card-actions">' + prev + (r.c.id === 'manual' &amp;&amp; pode('lancar') ? '<button type="button" class="btn" data-sq-manual="' + key + '">Registrar valor</button>' : '') + gear + '</div></article>';
   }
-  /* resumo executivo: a 1ª posição configurada (fora os Blocos do Painel) de cada pilar, com o mesmo resultado do card */
-  function resumoHtml(R) {
-    return '<section class="sqdcp-resumo" aria-label="Resumo executivo por pilar">' + PIL.map(([l, nome, cor, icp]) => {
-      let k = null; for (let n = 0; n < 5; n++) { const r = R[l + n]; if (r &amp;&amp; !r.painel) { k = l + n; break; } }
-      const r = k &amp;&amp; R[k], est = r ? estadoTela(r) : 'sem', tem = r &amp;&amp; r.valor != null;
-      return '<article class="sqdcp-rcard sqdcp-st-' + est + '" data-sq-pilar="' + l + '"' + (k ? ' data-sq-fonte-key="' + k + '"' : '') + ' style="--pillar-color:' + cor + '">' +
-        '<div class="sqdcp-rtop"><span class="sqdcp-rpil">' + svg(icp, 18) + '<b>' + l + '</b> ' + e(l === 'P' ? nomeP() : nome) + '</span>' + (k ? '<span class="sqdcp-rpos">' + k[0] + (+k[1] + 1) + '</span>' : '') + '</div>' +
-        '<div class="sqdcp-rind">' + e(r ? r.titulo : 'Nenhum indicador configurado') + '</div>' +
-        '<div class="sqdcp-vline"><strong class="sqdcp-rv">' + e(tem ? fmt(r.valor) : '—') + '</strong><span class="sqdcp-un">' + e(tem ? r.unidade : '') + '</span></div>' +
-        '<div class="sqdcp-meta"><span>' + e(r ? metaTxt(r) : '') + '</span><span class="sq-tag ' + (tem || !r ? est : est) + '">' + e(!r ? 'Não informado' : est === r.estado ? rotEstado(r) : ROT_TELA[est]) + '</span></div></article>';
-    }).join('') + '</section>';
-  }
   function renderQuadro() {
     conferirOrigem();
     const q = quadro(), R = {};
@@ -21668,7 +21648,6 @@ const Sqdcp = (() => {
       '<span class="sqdcp-zoom" role="group" aria-label="Pilar ampliado"><button type="button" data-sq-zoom=""' + (!UI.pilar ? ' aria-pressed="true"' : '') + '>Todos</button>' +
       PIL.map(([l]) => '<button type="button" data-sq-zoom="' + l + '"' + (UI.pilar === l ? ' aria-pressed="true"' : '') + '>' + l + '</button>').join('') + '</span>' +
       '<button type="button" class="btn" id="sqSairReuniao">' + svg('sair', 16) + ' Sair do modo reunião</button></div>' +
-      resumoHtml(R) +
       '<div class="sq-quadro sqdcp-board">' + PIL.map(([l, nome, cor, icp], i) => '<section class="sq-coluna sq-col-' + l + ' sqdcp-column" data-sq-pilar="' + l + '" style="--pillar-color:' + cor + ';--pillar-ink:var(--sqdcp-' + l.toLowerCase() + '-ink)"' + (UI.pilar &amp;&amp; UI.pilar !== l ? ' hidden' : '') + '>' +
         '<h3 class="sqdcp-column-header"><b>' + l + '</b><span>' + e(i === 4 ? nomeP() : nome) + '</span>' + svg(icp, 22) + '</h3>' +
         Array.from({ length: 5 }, (_, n) => cardHtml(l + n, R[l + n], n)).join('') + '</section>').join('') + '</div></div>';
@@ -53718,7 +53697,6 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var r,n,i,a,
  .pill[style*="--tc"] { color:var(--ink); }
  .seg button.on,.tree .q .nq { color:var(--accent-ink); }
  :root .sqdcp-page { --st-ok:var(--ok); --st-ok-bg:var(--ok-bg); --st-crit:var(--crit); --st-crit-bg:var(--crit-bg); }
- .sqdcp-page .sqdcp-rpil { color:var(--ink); }
  .sqdcp-page .sqdcp-column-header { background:color-mix(in srgb,var(--pillar-color) 15%,var(--surface)); color:var(--ink); border-top:4px solid var(--pillar-color); }
  .fp h1,.fp h2 { color:inherit; }
  .drum>header .pill { color:var(--on-fill); }
@@ -55872,8 +55850,8 @@ body.vac-porta{overflow:hidden}
       "id": "oee",
       "path": "Plataforma.html#motor/oee",
       "version": "2.6.44",
-      "sha256": "c4ec0f7050c2d44a51a5f653650fa037ec4a3ad71c65998626cfde737c8984c8",
-      "bytes": 2416047
+      "sha256": "d0cd43e1424ce5bdb9f0d6e854499590d9270109b4b2fcc54a34c1add629ecce",
+      "bytes": 2413131
     },
     {
       "id": "perdas",
@@ -55935,7 +55913,7 @@ body.vac-porta{overflow:hidden}
   "limitations": [
     "Projetos e conteúdo técnico OSM/MES/AM/TPM mantêm os limites documentados nas fontes."
   ],
-  "enginesSha256": "bc51f04a145b4700499e0bcf99f6d99a383c00fc983bd08cd367efd56afd7727",
+  "enginesSha256": "46d61349487c2e8e0edce682ce9d06ecaa3015583c9be1a4816a6418cded56dd",
   "originRevision": "ffc9ee8",
   "sourceMode": "single-html",
   "originEnginesSha256": "a87a64ad0c328f70e102b2ae888790a9b5d5a9bd05778652a7ce7cae140e40d2"
