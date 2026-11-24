@@ -78,3 +78,10 @@ PASSAGEM (24/11): sessão parou por falta de tokens; T8 não começada (árvore 
 - Remoções: formatos e descartes saíram de Trazer configurações. A importação v1 mantém as referências históricas quando consegue ligar o código e o ID original do descarte. Ela também traz os parâmetros operacionais do Gel que faltarem no cadastro. Os testes de migração e a matriz de 1.440 pesagens passaram.
 - Ruling: cabeçotes e barris por cabeçote são regras de estoque no inventário. A edição agora está em Administração › Gel e o importador conserva os valores existentes. Quando esses campos não foram preenchidos, o painel de estoque preserva a disposição operacional de dois por dois. Os pesos e a composição do scrap exigem cadastro.
 - Contrato: os nove motores foram verificados. `adm-importar`, `tgel`, `tportalfonte` e a paridade do cenário passaram após as remoções.
+
+## Task 9
+- Cenário regravado pelo gerador, com 14 locais e 0,936 g no Tubo 100. As cópias antigas de formatos e descartes saíram após a primeira comparação. A referência ficou intacta e voltou a passar após a regravação.
+- Versões: plataforma 1.8.63, Administração 1.9.82, Gel 2.49, Produção 2.6.44. Novidades, manifesto, verificador de pasta, contrato dos motores e pendência para o responsável atualizados.
+- Ordenação de equipamentos: a rolagem usa os offsets das linhas e o teste confere os pontos de arraste e soltura antes de mover o ponteiro. A fixture v1 é montada no teste de importação, sem guardar cópias no cenário.
+- Revisão contra `main` (`d78275a`): conferidos os 14 pontos do inventário, o cadastro v2, os oito assuntos e as permissões, a edição por vigência, a importação, a leitura dos motores e a entrega. Conferidos a ausência de cálculo no cadastro v1, o nome de reserva nas pesagens e o corte do scrap entre os motores. A importação da pasta real permanece sob responsabilidade de quem opera a base.
+- Verificação local: build, lint, unitários, contrato e os nove testes focados. As suítes completas e o CI do PR #148 registram os resultados da entrega.

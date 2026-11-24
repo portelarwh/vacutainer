@@ -28,6 +28,17 @@ const w = (f, ms = 300) => f.waitForTimeout ? f.waitForTimeout(ms) : new Promise
     // o cadastro v1: sem o bloco gel; a tara do equipamento (uma por equipamento) como na página antiga
     await f.evaluate(() => {
       const d = JSON.parse(JSON.stringify(Cad.base));
+      const { formatos, locais } = d.gel;
+      const tubo = t => ({ tubo: t.tuboG, gel: t.gelG, adit: t.aditivoG, tr: t.tampaRolhaG });
+      d.parametros.gel.formatos = formatos.map(f => ({
+        from: f.de, tara: f.embalagemG, taraP: f.folhaPurgaG, sobra: f.sobraBarrilKg,
+        f: { '100': tubo(f.tubos['100']), '75': tubo(f.tubos['75']) },
+      }));
+      for (const l of locais) {
+        const e = d.equipamentos.find(eq => eq.codigo === l.equipamento);
+        e.gel ??= { tara: '', descs: [] };
+        e.gel.descs.push({ id: 'antigo-' + l.id, local: l.local, comp: l.comp, cat: l.categoria, mots: l.motivos });
+      }
       d.schemaVersion = 1; delete d.gel;
       d.equipamentos.find(e => e.codigo === 'EQ03').gel.tara = '75';
       d.equipamentos.find(e => e.codigo === 'EQ01').gel.tara = '80,5';
@@ -108,7 +119,9 @@ const w = (f, ms = 300) => f.waitForTimeout ? f.waitForTimeout(ms) : new Promise
 
     // 5) fonte alternativa: base do Gel
     const P = await f.evaluate(() => {
-      const cad = JSON.parse(JSON.stringify(Cad.D)); cad.schemaVersion = 1; delete cad.gel; cad.perfis.forEach(p => delete p.assuntos); delete (cad.parametros.gel || {}).formatos; cad.equipamentos.forEach(e => { if (e.gel) { delete e.gel.descs; delete e.gel.tara; } });
+      const cad = JSON.parse(JSON.stringify(Cad.D)); cad.schemaVersion = 1; delete cad.gel; cad.perfis.forEach(p => delete p.assuntos); delete (cad.parametros.gel || {}).formatos;
+      delete cad.parametros.gel.cabecotes; delete cad.parametros.gel.barrisPorCabecote;
+      cad.equipamentos.forEach(e => { if (e.gel) { delete e.gel.descs; delete e.gel.tara; } });
       const gel = { config: { lineHeads: 3, barrelsPerHead: 4, params: [{ from: '2025-10-15', pT: 2.24 }], fmts: [{ from: '2025-10-15', tara: 75, taraP: 5, sobra: 1.6, f: { '100': { tubo: 4.779, gel: 0.936, adit: 0.02, tr: 2.3 }, '75': { tubo: 3.56, gel: 0.834, adit: 0.015, tr: 2.3 } } }],
         equips: [{ id: 'e1', name: 'Gel dispensor', portal: 'EQ03', tara: 70, descs: [{ id: 'd1', local: 'MAQUINA GEL - VADG01', comp: 'tubogel', cat: 'T', mots: [] }] },
           { id: 'e2', name: 'SALA GEL', portal: null, descs: [{ id: 'd2', local: 'SALA GEL', comp: 'gel', cat: 'P', mots: [] }] }] } };

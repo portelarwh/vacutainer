@@ -34,7 +34,29 @@ const html = fs.readFileSync(path.resolve(__dirname, '../../Plataforma.html'));
     console.log('ok tabela: Pos., Código, Código MES, Foto (miniatura), Nome, Tipo, Papel; a Linha (0) no topo e fixa');
 
     // 2) arrastar EQ12 para antes do EQ03 com o ponteiro: os ativos ficam 1..N e a Linha 0
-    const h = f.locator('tr[data-cod="EQ12"] td.eq-h'); await h.scrollIntoViewIfNeeded(); /* a rolagem interna da lista deve mostrar ao mesmo tempo a alça do EQ12 e o EQ03 abaixo do cabeçalho fixo (com mais equipamentos, a rolagem automática escondia um deles) */ await f.evaluate(() => { for (let e = document.querySelector('tr[data-cod="EQ03"]').parentElement; e; e = e.parentElement) if (e.scrollHeight > e.clientHeight + 1 && /auto|scroll/.test(getComputedStyle(e).overflowY)) { e.scrollTop = 120; break; } }); await w(700); const a = await h.boundingBox(), d = await f.locator('tr[data-cod="EQ03"]').boundingBox();
+    const h = f.locator('tr[data-cod="EQ12"] td.eq-h'), alvo = f.locator('tr[data-cod="EQ03"]');
+    await h.scrollIntoViewIfNeeded();
+    const visiveis = await f.evaluate(() => {
+      const origem = document.querySelector('tr[data-cod="EQ12"]'), destino = document.querySelector('tr[data-cod="EQ03"]');
+      const table = origem.closest('table'), cabecalho = table.rows[0];
+      let lista = table.parentElement;
+      while (lista && !(lista.scrollHeight > lista.clientHeight + 1 && /auto|scroll/.test(getComputedStyle(lista).overflowY))) {
+        lista = lista.parentElement;
+      }
+      if (!lista) return { origem: false, destino: false };
+      const topo = table.getBoundingClientRect().top - lista.getBoundingClientRect().top + lista.scrollTop - lista.clientTop;
+      const offset = linha => topo + linha.offsetTop - cabecalho.offsetTop;
+      const minimo = Math.max(0, offset(origem) + origem.offsetHeight - lista.clientHeight);
+      const maximo = offset(destino) - cabecalho.offsetHeight;
+      lista.scrollTop = Math.max(minimo, Math.min(lista.scrollTop, maximo));
+      const O = origem.querySelector('.eq-h').getBoundingClientRect(), A = destino.getBoundingClientRect();
+      return {
+        origem: origem.contains(document.elementFromPoint(O.left + O.width / 2, O.top + O.height / 2)),
+        destino: destino.contains(document.elementFromPoint(A.left + 300, A.top + 4)),
+      };
+    });
+    assert.deepEqual(visiveis, { origem: true, destino: true }, 'a alça e o destino estão visíveis sem sobreposição do cabeçalho');
+    const a = await h.boundingBox(), d = await alvo.boundingBox();
     await page.mouse.move(a.x + a.width / 2, a.y + a.height / 2); await page.mouse.down(); await page.mouse.move(a.x + 8, a.y - 10, { steps: 4 }); await page.mouse.move(d.x + 300, d.y + 4, { steps: 12 }); await page.mouse.up(); await w(900);
     assert.equal(dialogos.length, 0, 'sem confirmação ao arrastar (grava direto)');
     const p2 = await pos();

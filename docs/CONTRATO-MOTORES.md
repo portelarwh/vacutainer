@@ -171,6 +171,14 @@ Pedido do responsável: os relatórios da Produção não traziam o consumo nem 
 - **"Enviar relatório" (janela do dia, ao lado de "Hora a hora"):** pergunta Dia inteiro, Um turno (escolha do turno), Só o gel do dia ou Scrap e perdas; "Copiar para o Outlook" (o mesmo e-mail da aba Relatórios) ou "Abrir na aba Relatórios" (já no tipo, dia e turno). "Só o gel" abre o relatório da própria Gestão de Gel no dia (`#relgel`). "Scrap e perdas": scrap de tubos por turno (Produção), gel do dia e o **Waste (MUV) das ordens que rodaram no dia, por ordem e acumulado da competência** (o Waste não tem valor por dia; o e-mail diz isso). Ordens do dia pela ligação dia ↔ lote (a mesma dos `diasLote` do exports); Waste lido de `perdas-base.json › exports.porOrdem` (competência do mês do dia, ou a mais recente). Só leitura: nada é gravado.
 - Teste: `testes/plataforma/enviar-relatorio.cjs` (demonstração, dados fictícios).
 
+## ADM-CENTRAL · Gel e Produção (plataforma 1.8.63)
+
+A Administração grava os formatos com vigência e os locais em `vacutainer-cadastros.json`. Os motores Gel e Produção leem pelo `vacCad.gel` de `comum/bases`. A pesagem usa a vigência da data do fato. A embalagem própria é uma propriedade do local. A falta de cadastro, vigência ou peso necessário deixa o cálculo indisponível.
+
+Novas pesagens guardam o ID e o nome do local. A consulta exibe o nome atual quando o ID resolve e o nome gravado quando o local foi removido. A importação guarda as referências dos IDs antigos no cadastro e preserva os lançamentos originais. Locais de equipamentos inativos ficam fora dos novos lançamentos e continuam disponíveis na consulta.
+
+Na pasta real, a conversão é acionada em Administração › Sistema › **Importar das bases atuais**. Confira a prévia, importe e revise Administração › Gel. A data de corte do scrap entre Gel e Produção continua no cadastro.
+
 ## GEL-07 · Gestão de Gel com os números da Produção e relatório completo · Produção 2.6.14, Gestão de Gel 2.42, plataforma 1.8.18 (18/11/2026)
 
 Pedido do responsável: o OEE do Gel deve estar certo e toda a produção deve vir do que foi lançado na Produção; o relatório do Gel deve trazer ordem e lote; a Produção deve abrir o relatório do Gel e das perdas de gel; o relatório do Gel ganha as funções das demais páginas (Copiar para o Outlook etc.).

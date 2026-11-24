@@ -109,7 +109,7 @@ const { chromium } = require('playwright');
   const ficha = await po.evaluate(async () => { const e = Cad.D.equipamentos[0]; location.hash = '#cadastros/equipamentos/' + e.codigo; await new Promise(r => setTimeout(r, 400));
     const sel = document.querySelector('#fBox [data-p="categoria"]'); sel.value = 'gel'; sel.dispatchEvent(new Event('change', { bubbles: true })); await new Promise(r => setTimeout(r, 200));
     const temBloco = !!document.querySelector('#fBox [data-irhash="#cadastros/gel/locais"]') && !document.querySelector('#fBox [data-add="gel.descs"]') && !/Gel: embalagem e descartes/i.test(document.querySelector('#fBox').innerText);
-    const W = Ficha.W; const c = Cad.D.catalogos.find(x => x.tipoItem !== 'preparacao'); Ficha.fechar && Ficha.fechar(); location.hash = '#cadastros/catalogos/' + c.codigo; await new Promise(r => setTimeout(r, 400));
+    const c = Cad.D.catalogos.find(x => x.tipoItem !== 'preparacao'); Ficha.fechar && Ficha.fechar(); location.hash = '#cadastros/catalogos/' + c.codigo; await new Promise(r => setTimeout(r, 400));
     return { temBloco, cat: /Gel do catálogo|<b>Gel<\/b>/.test(document.querySelector('#fBox').innerHTML) || /\bGel\b/.test(document.querySelector('#fBox details.cd summary') ? document.querySelector('#fBox').innerText : '') }; });
   if (!ficha.temBloco) console.log('ficha:', JSON.stringify(ficha));
   ok(ficha.temBloco, '4a Portal: ficha do Equipamento – Gel só com o link para Administração › Gel (os locais e a embalagem saíram da ficha)');

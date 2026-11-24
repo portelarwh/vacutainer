@@ -23,7 +23,18 @@ const LER = () => {
   const b = await chromium.launch(); const pe = [];
   const nova = async (w, h, tema) => { const c = await b.newContext({ viewport: { width: w, height: h }, colorScheme: tema }); await c.clock.setFixedTime(new Date('2026-11-11T12:00:00')); const o = await c.newPage();   /* data fixa: a referência vale em qualquer dia */ o.on('pageerror', e => pe.push(e.message)); o.on('dialog', d => d.accept());
     await o.goto('file://' + RAIZ + encodeURI('__modulos__/Gestão-Gel-Vacutainer.html')); await o.waitForTimeout(1200);
-    await o.evaluate(() => { document.querySelectorAll('.overlay').forEach(x => x.remove()); localStorage.removeItem('vac.cadastros'); enterDemo(); ui.tab = 'painel'; render(); }); await o.waitForTimeout(1200); return { c, o }; };
+    await o.evaluate(() => {
+      document.querySelectorAll('.overlay').forEach(x => x.remove());
+      // O cenário deste teste mantém o peso que foi usado na referência de layout.
+      const tubos = {
+        '100': { tuboG: 4.779, gelG: 0.834, aditivoG: 0.02, tampaRolhaG: 2.3 },
+        '75': { tuboG: 3.56, gelG: 0.834, aditivoG: 0.015, tampaRolhaG: 2.3 },
+      };
+      localStorage.setItem('vac.cadastros', JSON.stringify({
+        schemaVersion: 2, gel: { locais: [], formatos: [{ de: '2000-01-01', embalagemG: 75, folhaPurgaG: 5, tubos }] },
+      }));
+      enterDemo(); ui.tab = 'painel'; render();
+    }); await o.waitForTimeout(1200); return { c, o }; };
   const { c, o } = await nova(1440, 900, 'light');
   const atual = await o.evaluate(LER);
   ok(Object.keys(atual.kpis).length >= 6 && Object.keys(atual.blocos).length >= 4, `indicadores (${Object.keys(atual.kpis).length}) e blocos (${Object.keys(atual.blocos).length}) lidos`);

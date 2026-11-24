@@ -20,8 +20,7 @@ async function COMPLEMENTO([mod, id, desloc]) {
     // Gel lê a produção do turno pela Produção a partir de 30 dias antes do dia do cenário (Fase 4 · 4d)
     if (!g.registroPelaProducaoDesde) { const d = new Date(); d.setDate(d.getDate() - 30); g.registroPelaProducaoDesde = d.toISOString().slice(0, 10); notas.push('Gel lê a produção pela Produção desde ' + g.registroPelaProducaoDesde); }
     // Gel no formato v2 (cadastro central): formato de 01/10/2025 e os 14 locais de descarte da página antiga, ligados aos equipamentos.
-    // A MESMA informação vai para as cópias antigas que o Gel e a Produção ainda leem (parametros.gel.formatos e equipamentos[].gel.descs),
-    // para o código antigo e o novo enxergarem dados idênticos. As datas partem de hoje (deslocamento do cenário) e voltam no fim.
+    // As datas partem de hoje (deslocamento do cenário) e voltam no fim.
     if (!(cad.gel && (cad.gel.formatos || []).length)) {
       const mover = iso => new Date(Date.parse(iso + 'T12:00:00Z') + desloc * 864e5).toISOString().slice(0, 10), de = mover('2025-10-01');
       cad.schemaVersion = 2;
@@ -39,11 +38,24 @@ async function COMPLEMENTO([mod, id, desloc]) {
       LOC.forEach(([eq, local, comp, categoria], i) => {
         const n = String(i + 1).padStart(4, '0');
         cad.gel.locais.push({ id: 'L-' + n, equipamento: eq, local, comp, categoria, motivos: [], embalagemG: null, ordem: i + 1, ativo: true });
-        const e = cad.equipamentos.find(x => x.codigo === eq); e.gel = e.gel || { tara: '', descs: [] };
-        e.gel.descs.push({ id: 'd-demo-' + n, local, comp, cat: categoria, mots: [] });
       });
-      g.formatos = [{ from: de, tara: 75, taraP: 5, sobra: 1.6, f: { '100': { tubo: 4.779, gel: 0.936, adit: 0.02, tr: 2.3 }, '75': { tubo: 3.56, gel: 0.834, adit: 0.015, tr: 2.3 } } }];
-      notas.push('Gel v2: formato de ' + de + ' e ' + LOC.length + ' locais (cadastro v2 e cópias antigas iguais)');
+      notas.push('Gel v2: formato de ' + de + ' e ' + LOC.length + ' locais');
+    }
+    if (g.cabecotes == null || g.barrisPorCabecote == null) {
+      const cfg = vacDemo.ler('gel')?.config;
+      g.cabecotes ??= cfg?.lineHeads ?? 2;
+      g.barrisPorCabecote ??= cfg?.barrelsPerHead ?? 2;
+      notas.push('cabeçotes e barris por cabeçote no cadastro');
+    }
+    if ('formatos' in g || cad.equipamentos.some(e => e.gel?.descs || e.gel?.tara != null)) {
+      delete g.formatos;
+      for (const e of cad.equipamentos) {
+        if (!e.gel) continue;
+        delete e.gel.descs;
+        delete e.gel.tara;
+        if (!Object.keys(e.gel).length) delete e.gel;
+      }
+      notas.push('cópias antigas de formato e locais removidas');
     }
     if (!notas.length) return '';
     gravar(cad); return 'cadastro: ' + notas.join('; ');

@@ -81,7 +81,7 @@ const aviso = /Cadastro do gel não importado — Administração › Sistema �
           ? rgScrapHtml({ date: hoje, turns: {}, orders: [] }, 'T1')
           : GelTurno.estado({ date: hoje }, { gelScrap: { eq: [en] } }, { flat: [] }).motivo;
         const bloqueado = gel
-          ? !mensagem.includes('data-rgscrap')
+          ? !mensagem.includes('data-rgscrap') && !renderProd().includes('data-rg="sT"')
           : GelTurno.form({ date: hoje }, { gelScrap: { eq: [en] } }, { flat: [] }) === null
             && GelTurno.exp({ gelScrap: { eq: [en] } }, hoje).kg === null;
         return { bloqueado, original, vigenteHoje, vigenteAmanha, anterior, ativoAntes, ativoDepois, historico, renomeado, excluido, semCalc, mensagem };
