@@ -68,3 +68,8 @@ Task 7: minor (deferred): Tubo ausente gera aviso por bloco + por campo (ruidoso
 Task 8: dispatched (BASE 5bddb87, opus — integração grande em motor/gel e motor/oee; inclui baseline T9 step 1 primeiro)
 Task 8: agente opus parou por limite semanal antes de alterar algo (árvore limpa em 5bddb87). Ruling: redisparar com sonnet — mesma instrução; custo: modelo menos forte numa tarefa grande, compensado pela revisão.
 PASSAGEM (24/11): sessão parou por falta de tokens; T8 não começada (árvore limpa em 5bddb87). Ver docs/superpowers/handoff/2026-11-24-bloco1/LEIA-PRIMEIRO.md
+
+## Retomada da Task 8
+- Referência (`4b814c7`): cenário fixado em 09/11/2026. Cinco pesagens fictícias, em dois dias, nas composições Tubo + gel, Gel puro, Tubo completo, Spray e Barril. Exporta g/kg por local e categoria, gel nos tubos bons, teórico, baixado, real e scrap do mês. Primeiro ensaio sem o arquivo falhou com ENOENT. A criação é exclusiva e a comparação passou com o código anterior.
+- Gel: `vacCad.gel` fornece formato vigente e locais para cálculo, registro, filtros e consulta. O histórico resolve locais inativos e usa o nome gravado se o local foi excluído. O vínculo de catálogos, a programação e o estoque continuam com os contratos atuais. A Produção ainda usa os leitores antigos até a próxima etapa.
+- O contrato novo falhou em `S.config.fmts` e o teste de fonte única falhou ao procurar um ID v2 no código anterior. Após a troca no Gel, a fonte única (somente Gel), o relatório e a referência dos dois motores passaram.

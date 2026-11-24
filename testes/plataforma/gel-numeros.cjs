@@ -48,8 +48,9 @@ async function capturar() {
       page.on('pageerror', erro => erros.push(erro.message));
       await page.clock.setFixedTime(new Date('2026-11-09T15:00:00Z'));
       await page.goto('http://127.0.0.1:' + srv.address().port + '/Plataforma.html?demo=1#/' + rota);
-      const el = await page.locator(`iframe[title="${titulo}"]`).elementHandle({ timeout: 30000 });
-      const frame = await el.contentFrame();
+      const quadro = page.locator(`iframe[title="${titulo}"]`);
+      await quadro.contentFrame().locator('body').waitFor({ state: 'attached', timeout: 30000 });
+      const frame = await (await quadro.elementHandle()).contentFrame();
       await frame.waitForFunction(pronto, null, { timeout: 30000 });
       return frame;
     }

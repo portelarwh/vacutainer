@@ -661,6 +661,121 @@ vacCad.gel = (() => {
   return { formato, composicao, locais };
 })();
 
+/* ===== vacGel · conta do gel comum (Fase 4 · 4b do briefing de 09/11/2026) =====
+   A mesma conta na Gestão de Gel e na Produção (Registrar scrap e Teórico × Real), sem cópia divergente.
+   Funções puras: recebem os parâmetros (formatos, perdas, gel do catálogo, descarte do equipamento) e devolvem números.
+   A Gestão de Gel chama com os dados dela (que desde a 2.17 vêm do Portal); a Produção chama com o cadastro do Portal (vacGel.ctx()).
+   Estruturas iguais às do Gel: formatos [{from,tara,taraP,sobra,f:{'100':{tubo,gel,adit,tr},'75':{…}}}], processo [{from,g,pT,pB,pP}],
+   gel do catálogo {fmt, vig:[{from,gTubo,bomKg,bomBase,tol}]}, equipamento {tara, descs:[{id,comp,cat,mots}]}. */
+const vacGel = (() => {
+  const FMT_DEF = { from: '2000-01-01', tara: 75, taraP: 5, f: { '100': { tubo: 4.779, gel: 0.834, adit: 0.020, tr: 2.30 }, '75': { tubo: 3.560, gel: 0.834, adit: 0.015, tr: 2.30 } } };
+  const PROC_DEF = { from: '', g: 0.98, pT: 2.2406, pB: 0.7352, pP: 0.5252 };
+  const COMPS = { completo: { l: 'Tubo completo', parts: ['tubo', 'tr', 'gel', 'adit'], cap: 1 }, tubogel: { l: 'Tubo + gel', parts: ['tubo', 'gel'] }, spray: { l: 'Tubo + gel + spray', parts: ['tubo', 'gel', 'adit'] }, gel: { l: 'Gel puro', parts: ['gel'] }, barril: { l: 'Barril (sobra)', parts: ['gel'] } };
+  const SCAT = { T: 'Tubos', B: 'Barril', P: 'Purga' };
+  const ord = L => (L || []).slice().sort((a, b) => a.from < b.from ? -1 : a.from > b.from ? 1 : 0);
+  /* vigência dos formatos na data (a 1ª, se a data for anterior a todas) */
+  function fmtAt(fmts, date) { const L = ord(fmts &amp;&amp; fmts.length ? fmts : [FMT_DEF]); let v = L[0]; for (const x of L) if (x.from <= date) v = x; return v; }
+  function procAt(params, date) { const L = ord(params).filter(p => p.from <= date); return L.length ? { ...PROC_DEF, ...L[L.length - 1] } : { ...PROC_DEF }; }
+  function sobraAt(fmts, date) { const L = ord(fmts &amp;&amp; fmts.length ? fmts : [FMT_DEF]).filter(x => x.from <= date &amp;&amp; x.sobra != null &amp;&amp; x.sobra !== ''); return L.length ? +L[L.length - 1].sobra : null; }
+  const taraP = FM => FM &amp;&amp; FM.taraP != null &amp;&amp; FM.taraP !== '' ? +FM.taraP : 5;
+  /* vigências do gel do catálogo (aceita o cadastro antigo: gTubo/bom no próprio catálogo) */
+  function vigList(cg) { if (!cg) return []; const L = cg.vig &amp;&amp; cg.vig.length ? cg.vig : (cg.gTubo || cg.bomG || cg.bomKg ? [{ from: '2000-01-01', gTubo: cg.gTubo || null, bomG: cg.bomG || null, bomPct: cg.bomPct || 106, bomKg: cg.bomKg || null, bomBase: cg.bomBase || 10000, tol: cg.tol ?? 6 }] : []); return ord(L); }
+  function vigAt(cg, date) { const L = vigList(cg); if (!L.length) return {}; let v = L[0]; for (const x of L) if (x.from <= date) v = x; return v; }
+  /* gel por tubo: o do catálogo; senão o do formato; senão o de processo */
+  function gelPorTubo(cg, date, fmts, params) { const v = vigAt(cg, date); if (+v.gTubo) return +v.gTubo; const F = fmtAt(fmts, date).f[(cg &amp;&amp; cg.fmt) || '100']; return F &amp;&amp; +F.gel ? +F.gel : procAt(params, date).g; }
+  function bomVals(v) { if (+v.bomKg) return { kg: +v.bomKg, base: +v.bomBase || 10000, tol: v.tol != null &amp;&amp; v.tol !== '' ? +v.tol : 6 }; if (+v.bomG) { const p = +(v.bomPct || 106); return { kg: +v.bomG * p / 100 * 10, base: 10000, tol: p - 100 }; } return { kg: null, base: +v.bomBase || 10000, tol: v.tol != null &amp;&amp; v.tol !== '' ? +v.tol : 6 }; }
+  /* BOM do catálogo na data: permitido (com a tolerância) e meta (sem); sem BOM, estimada pelo gel do formato + tolerância */
+  function bom(cg, date, fmts, params) { const b = bomVals(vigAt(cg, date)); let allowed, est = false; if (b.kg) allowed = b.kg * 1000 / b.base; else { const F = fmtAt(fmts, date).f[(cg &amp;&amp; cg.fmt) || '100']; allowed = (F &amp;&amp; +F.gel ? +F.gel : procAt(params, date).g) * (1 + b.tol / 100); est = true; } return { ...b, allowed, meta: allowed / (1 + b.tol / 100), lim: 100 + b.tol, est }; }
+  /* uma pesagem: peso bruto da balança (kg) → gel líquido, tubos e materiais. desc = {comp, cat}; taraEq = embalagem própria do equipamento */
+  function pesagem({ desc, taraEq, kg, nb, cg, date, fmts, params }) {
+    if (!desc) return null; const FM = fmtAt(fmts, date), F = FM.f[(cg &amp;&amp; cg.fmt) || '100'] || FM.f['100'], g = gelPorTubo(cg, date, fmts, params);
+    const tara = desc.cat === 'P' ? taraP(FM) : taraEq != null &amp;&amp; taraEq !== '' ? +taraEq : +FM.tara || 0, net = Math.max(0, (+kg || 0) * 1000 - tara);
+    const comp = COMPS[desc.comp] || COMPS.gel;
+    if (desc.comp === 'gel') return { scat: desc.cat, comp: desc.comp, tara, gross: +kg || 0, gel: net / 1000, n: 0, tubo: 0, tamp: 0, rolha: 0, etq: 0, adit: 0 };
+    if (desc.comp === 'barril') { const n0 = +nb || 0, kr = +kg || 0, gel = kr > 0 ? kr : n0 * (sobraAt(fmts, date) || 0); return { scat: desc.cat, comp: desc.comp, gross: gel, gel, nb: n0, est: !(kr > 0), n: 0, tubo: 0, tamp: 0, rolha: 0, etq: 0, adit: 0 }; }
+    const w = { tubo: +F.tubo || 0, gel: g, adit: +F.adit || 0, tr: +F.tr || 0 }, unit = comp.parts.reduce((s, k) => s + w[k], 0) || 1, n = net / unit;
+    return { scat: desc.cat, comp: desc.comp, tara, gross: +kg || 0, unit, n, gel: n * g / 1000, tubo: n * w.tubo / 1000, tamp: comp.cap ? n : 0, rolha: comp.cap ? n : 0, etq: comp.cap ? n : 0, adit: comp.parts.includes('adit') ? n * w.adit / 1000 : 0, trKg: comp.cap ? n * w.tr / 1000 : 0 };
+  }
+  const avisoImportacao = 'Cadastro do gel não importado — Administração › Sistema › Importar das bases atuais';
+  function cadastroOk() {
+    const cad = vacCad();
+    return !!(cad &amp;&amp; +cad.schemaVersion >= 2 &amp;&amp; cad.gel);
+  }
+  function avisoCadastro(date) {
+    if (!cadastroOk()) return avisoImportacao;
+    if (!vacCad.gel.formato(date)) {
+      const [a, m, d] = date.split('-');
+      return `Sem formato do gel vigente em ${d}/${m}/${a}. Confira Administração › Gel.`;
+    }
+    return '';
+  }
+  function equipamentosGel(ativos = true) {
+    const grupos = new Map();
+    for (const local of vacCad.gel.locais({ ativos })) {
+      const codigo = String(local.equipamento);
+      const eq = vacCad.item('equipamentos', codigo);
+      if (!grupos.has(codigo)) grupos.set(codigo, { id: 'eq-' + codigo, codigo, name: eq?.nome || codigo, nome: eq?.nome || codigo, descs: [] });
+      grupos.get(codigo).descs.push({ ...local, cat: local.categoria, mots: local.motivos });
+    }
+    return [...grupos.values()];
+  }
+  function localGel(equipamento, id) {
+    const codigo = String(equipamento || '').replace(/^eq-/, '');
+    const locais = vacCad.gel.locais({ ativos: false });
+    return locais.find(l => l.id === id) || locais.find(l => l.legado?.some(ref => ref.e === equipamento &amp;&amp; ref.d === id))
+      || locais.find(l => String(l.equipamento) === codigo &amp;&amp; l.legado?.some(ref => ref.d === id)) || null;
+  }
+  function valorPeso(v) {
+    return v != null &amp;&amp; v !== '' &amp;&amp; Number.isFinite(+v) &amp;&amp; +v >= 0 ? +v : null;
+  }
+  /* Peso bruto da balança em kg. O peso da embalagem e das partes do tubo vem da vigência do fato. */
+  function pesagemCadastro({ local, kg, nb, cg, date }) {
+    const formato = cadastroOk() &amp;&amp; vacCad.gel.formato(date);
+    if (!formato || !local) return null;
+    const scat = local.categoria, comp = local.comp;
+    const bruto = +kg || 0;
+    const materiais = { n: 0, tubo: 0, tamp: 0, rolha: 0, etq: 0, adit: 0 };
+    if (comp === 'barril') {
+      const sobra = valorPeso(formato.sobraBarrilKg), barris = +nb || 0;
+      if (!(bruto > 0) &amp;&amp; (sobra == null || !(barris > 0))) return null;
+      const gel = bruto > 0 ? bruto : barris * sobra;
+      return { scat, comp, gross: gel, gel, nb: barris, est: !(bruto > 0), ...materiais };
+    }
+    const tara = valorPeso(local.embalagemG) ?? valorPeso(scat === 'P' ? formato.folhaPurgaG : formato.embalagemG);
+    if (tara == null) return null;
+    const net = Math.max(0, bruto * 1000 - tara);
+    if (comp === 'gel') return { scat, comp, tara, gross: bruto, gel: net / 1000, ...materiais };
+    const tipo = cg?.fmt || '100';
+    const composicao = vacCad.gel.composicao(tipo, comp, date);
+    if (!composicao) return null;
+    const f = formato.tubos[tipo], g = valorPeso(vigAt(cg, date).gTubo) ?? valorPeso(f.gelG);
+    const pesos = { tubo: +f.tuboG, gel: g, aditivo: +f.aditivoG, tampaRolha: +f.tampaRolhaG };
+    const unit = composicao.partes.reduce((s, p) => s + pesos[p], 0);
+    if (!(unit > 0)) return null;
+    const n = net / unit, completo = composicao.etiqueta;
+    return { scat, comp, tara, gross: bruto, unit, n, gel: n * g / 1000, tubo: n * pesos.tubo / 1000,
+      tamp: completo ? n : 0, rolha: completo ? n : 0, etq: completo ? n : 0,
+      adit: composicao.partes.includes('aditivo') ? n * pesos.aditivo / 1000 : 0, trKg: completo ? n * pesos.tampaRolha / 1000 : 0 };
+  }
+  /* teórico de gel de uma produção: tubos bons por catálogo → gel nos tubos ÷ (1 − perdas teóricas); por categoria T/B/P */
+  function teorico({ tubosPorCat, date, cg, fmts, params }) {
+    const P = procAt(params, date); let gelBons = 0; for (const [cat, t] of Object.entries(tubosPorCat || {})) gelBons += (+t || 0) * gelPorTubo(cg(cat), date, fmts, params) / 1000;
+    const perda = ((+P.pT || 0) + (+P.pB || 0) + (+P.pP || 0)) / 100, teo = gelBons / Math.max(.01, 1 - perda);   /* igual ao prodCalc do Gel */
+    return { gelBons, teo, sTeo: { T: teo * (+P.pT || 0) / 100, B: teo * (+P.pB || 0) / 100, P: teo * (+P.pP || 0) / 100 }, perdas: P };
+  }
+  /* contexto a partir do cadastro do Portal (Produção) */
+  function ctx(c) {
+    c = c || (vacCad()); const G = (c &amp;&amp; c.parametros &amp;&amp; c.parametros.gel) || {};
+    const cat = cod => { const k = (c &amp;&amp; c.catalogos || []).find(x => x &amp;&amp; String(x.codigo) === String(cod)); if (!k) return null; const g = k.gel || {}; const f = g.fmt || (/75/.test(k.formato || '') ? '75' : /100/.test(k.formato || '') ? '100' : null); return { ...g, fmt: f || '100' }; };
+    const eq = cod => { const e = (c &amp;&amp; c.equipamentos || []).find(x => x &amp;&amp; String(x.codigo) === String(cod)); return e &amp;&amp; e.gel ? { codigo: e.codigo, nome: e.nome, ativo: e.ativo !== false, tara: e.gel.tara, descs: e.gel.descs || [] } : null; };
+    const equips = () => (c &amp;&amp; c.equipamentos || []).filter(e => e &amp;&amp; e.gel &amp;&amp; e.ativo !== false &amp;&amp; (e.gel.descs || []).length).map(e => eq(e.codigo));
+    const gelMats = new Set((c &amp;&amp; c.materiais || []).filter(m => m &amp;&amp; m.tipo === 'gel').map(m => String(m.codigo)));
+    const usaGel = cod => { const k = cat(cod); if (k &amp;&amp; (k.vig || []).length) return true; if (!gelMats.size) return false; const b = (c &amp;&amp; c.bom || []).find(x => x &amp;&amp; String(x.catalogo) === String(cod)); return !!b &amp;&amp; (b.vigencias || []).some(v => (v.itens || []).concat(v.estrutura || []).some(i => gelMats.has(String(i.material)))); };
+    return { fmts: G.formatos || [], params: G.processo || [], motivos: G.motivos || [], corte: G.registroPelaProducaoDesde || null, cat, eq, equips, usaGel };
+  }
+  return { FMT_DEF, PROC_DEF, COMPS, SCAT, fmtAt, procAt, sobraAt, taraP, vigList, vigAt, gelPorTubo, bomVals, bom, pesagem, teorico, ctx, cadastroOk, avisoCadastro, equipamentosGel, localGel, pesagemCadastro };
+})();
+
 const vacPessoa = (() => {
   const norm = s => String(s == null ? '' : s).normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/\s+/g, ' ').trim().toLowerCase();
   const lista = () => { try { const c = vacCad(); return (c &amp;&amp; c.usuarios) || []; } catch (e) { return []; } };
@@ -1863,60 +1978,6 @@ function vacNovaAcaoHref(d) {
 function vacNovaAcaoBotao(d, rot = '+ Ação no Planner', cls = 'b sm') { const e = s => String(s ?? '').replace(/[&amp;<>"']/g, c => ({ '&amp;': '&amp;amp;', '<': '&amp;lt;', '>': '&amp;gt;', '"': '&amp;quot;', "'": '&amp;#39;' }[c])); return `<a class="${e(cls)}" href="${e(vacNovaAcaoHref(d))}" target="_blank" rel="noopener" title="Abre Iniciativas com a ação preenchida (você confere antes de criar)">${e(rot)}</a>`; }
 /* endereço desta página com uma rota (para o "reconsultar" da ação) */
 function vacAquiHref(hash) { if (window.__vacEmbedded) return parent.vacAppHost.link(PAGE.id,hash?'#'+hash:''); return vacDemo.ativo ? vacDemo.paginas[PAGE.id] + (hash ? '#' + hash : '') : location.href.split('#')[0].split('/').pop() + (hash ? '#' + hash : ''); }
-
-/* ===== vacGel · conta do gel comum (Fase 4 · 4b do briefing de 09/11/2026) =====
-   A mesma conta na Gestão de Gel e na Produção (Registrar scrap e Teórico × Real), sem cópia divergente.
-   Funções puras: recebem os parâmetros (formatos, perdas, gel do catálogo, descarte do equipamento) e devolvem números.
-   A Gestão de Gel chama com os dados dela (que desde a 2.17 vêm do Portal); a Produção chama com o cadastro do Portal (vacGel.ctx()).
-   Estruturas iguais às do Gel: formatos [{from,tara,taraP,sobra,f:{'100':{tubo,gel,adit,tr},'75':{…}}}], processo [{from,g,pT,pB,pP}],
-   gel do catálogo {fmt, vig:[{from,gTubo,bomKg,bomBase,tol}]}, equipamento {tara, descs:[{id,comp,cat,mots}]}. */
-const vacGel = (() => {
-  const FMT_DEF = { from: '2000-01-01', tara: 75, taraP: 5, f: { '100': { tubo: 4.779, gel: 0.834, adit: 0.020, tr: 2.30 }, '75': { tubo: 3.560, gel: 0.834, adit: 0.015, tr: 2.30 } } };
-  const PROC_DEF = { from: '', g: 0.98, pT: 2.2406, pB: 0.7352, pP: 0.5252 };
-  const COMPS = { completo: { l: 'Tubo completo', parts: ['tubo', 'tr', 'gel', 'adit'], cap: 1 }, tubogel: { l: 'Tubo + gel', parts: ['tubo', 'gel'] }, spray: { l: 'Tubo + gel + spray', parts: ['tubo', 'gel', 'adit'] }, gel: { l: 'Gel puro', parts: ['gel'] }, barril: { l: 'Barril (sobra)', parts: ['gel'] } };
-  const SCAT = { T: 'Tubos', B: 'Barril', P: 'Purga' };
-  const ord = L => (L || []).slice().sort((a, b) => a.from < b.from ? -1 : a.from > b.from ? 1 : 0);
-  /* vigência dos formatos na data (a 1ª, se a data for anterior a todas) */
-  function fmtAt(fmts, date) { const L = ord(fmts &amp;&amp; fmts.length ? fmts : [FMT_DEF]); let v = L[0]; for (const x of L) if (x.from <= date) v = x; return v; }
-  function procAt(params, date) { const L = ord(params).filter(p => p.from <= date); return L.length ? { ...PROC_DEF, ...L[L.length - 1] } : { ...PROC_DEF }; }
-  function sobraAt(fmts, date) { const L = ord(fmts &amp;&amp; fmts.length ? fmts : [FMT_DEF]).filter(x => x.from <= date &amp;&amp; x.sobra != null &amp;&amp; x.sobra !== ''); return L.length ? +L[L.length - 1].sobra : null; }
-  const taraP = FM => FM &amp;&amp; FM.taraP != null &amp;&amp; FM.taraP !== '' ? +FM.taraP : 5;
-  /* vigências do gel do catálogo (aceita o cadastro antigo: gTubo/bom no próprio catálogo) */
-  function vigList(cg) { if (!cg) return []; const L = cg.vig &amp;&amp; cg.vig.length ? cg.vig : (cg.gTubo || cg.bomG || cg.bomKg ? [{ from: '2000-01-01', gTubo: cg.gTubo || null, bomG: cg.bomG || null, bomPct: cg.bomPct || 106, bomKg: cg.bomKg || null, bomBase: cg.bomBase || 10000, tol: cg.tol ?? 6 }] : []); return ord(L); }
-  function vigAt(cg, date) { const L = vigList(cg); if (!L.length) return {}; let v = L[0]; for (const x of L) if (x.from <= date) v = x; return v; }
-  /* gel por tubo: o do catálogo; senão o do formato; senão o de processo */
-  function gelPorTubo(cg, date, fmts, params) { const v = vigAt(cg, date); if (+v.gTubo) return +v.gTubo; const F = fmtAt(fmts, date).f[(cg &amp;&amp; cg.fmt) || '100']; return F &amp;&amp; +F.gel ? +F.gel : procAt(params, date).g; }
-  function bomVals(v) { if (+v.bomKg) return { kg: +v.bomKg, base: +v.bomBase || 10000, tol: v.tol != null &amp;&amp; v.tol !== '' ? +v.tol : 6 }; if (+v.bomG) { const p = +(v.bomPct || 106); return { kg: +v.bomG * p / 100 * 10, base: 10000, tol: p - 100 }; } return { kg: null, base: +v.bomBase || 10000, tol: v.tol != null &amp;&amp; v.tol !== '' ? +v.tol : 6 }; }
-  /* BOM do catálogo na data: permitido (com a tolerância) e meta (sem); sem BOM, estimada pelo gel do formato + tolerância */
-  function bom(cg, date, fmts, params) { const b = bomVals(vigAt(cg, date)); let allowed, est = false; if (b.kg) allowed = b.kg * 1000 / b.base; else { const F = fmtAt(fmts, date).f[(cg &amp;&amp; cg.fmt) || '100']; allowed = (F &amp;&amp; +F.gel ? +F.gel : procAt(params, date).g) * (1 + b.tol / 100); est = true; } return { ...b, allowed, meta: allowed / (1 + b.tol / 100), lim: 100 + b.tol, est }; }
-  /* uma pesagem: peso bruto da balança (kg) → gel líquido, tubos e materiais. desc = {comp, cat}; taraEq = embalagem própria do equipamento */
-  function pesagem({ desc, taraEq, kg, nb, cg, date, fmts, params }) {
-    if (!desc) return null; const FM = fmtAt(fmts, date), F = FM.f[(cg &amp;&amp; cg.fmt) || '100'] || FM.f['100'], g = gelPorTubo(cg, date, fmts, params);
-    const tara = desc.cat === 'P' ? taraP(FM) : taraEq != null &amp;&amp; taraEq !== '' ? +taraEq : +FM.tara || 0, net = Math.max(0, (+kg || 0) * 1000 - tara);
-    const comp = COMPS[desc.comp] || COMPS.gel;
-    if (desc.comp === 'gel') return { scat: desc.cat, comp: desc.comp, tara, gross: +kg || 0, gel: net / 1000, n: 0, tubo: 0, tamp: 0, rolha: 0, etq: 0, adit: 0 };
-    if (desc.comp === 'barril') { const n0 = +nb || 0, kr = +kg || 0, gel = kr > 0 ? kr : n0 * (sobraAt(fmts, date) || 0); return { scat: desc.cat, comp: desc.comp, gross: gel, gel, nb: n0, est: !(kr > 0), n: 0, tubo: 0, tamp: 0, rolha: 0, etq: 0, adit: 0 }; }
-    const w = { tubo: +F.tubo || 0, gel: g, adit: +F.adit || 0, tr: +F.tr || 0 }, unit = comp.parts.reduce((s, k) => s + w[k], 0) || 1, n = net / unit;
-    return { scat: desc.cat, comp: desc.comp, tara, gross: +kg || 0, unit, n, gel: n * g / 1000, tubo: n * w.tubo / 1000, tamp: comp.cap ? n : 0, rolha: comp.cap ? n : 0, etq: comp.cap ? n : 0, adit: comp.parts.includes('adit') ? n * w.adit / 1000 : 0, trKg: comp.cap ? n * w.tr / 1000 : 0 };
-  }
-  /* teórico de gel de uma produção: tubos bons por catálogo → gel nos tubos ÷ (1 − perdas teóricas); por categoria T/B/P */
-  function teorico({ tubosPorCat, date, cg, fmts, params }) {
-    const P = procAt(params, date); let gelBons = 0; for (const [cat, t] of Object.entries(tubosPorCat || {})) gelBons += (+t || 0) * gelPorTubo(cg(cat), date, fmts, params) / 1000;
-    const perda = ((+P.pT || 0) + (+P.pB || 0) + (+P.pP || 0)) / 100, teo = gelBons / Math.max(.01, 1 - perda);   /* igual ao prodCalc do Gel */
-    return { gelBons, teo, sTeo: { T: teo * (+P.pT || 0) / 100, B: teo * (+P.pB || 0) / 100, P: teo * (+P.pP || 0) / 100 }, perdas: P };
-  }
-  /* contexto a partir do cadastro do Portal (Produção) */
-  function ctx(c) {
-    c = c || (vacCad()); const G = (c &amp;&amp; c.parametros &amp;&amp; c.parametros.gel) || {};
-    const cat = cod => { const k = (c &amp;&amp; c.catalogos || []).find(x => x &amp;&amp; String(x.codigo) === String(cod)); if (!k) return null; const g = k.gel || {}; const f = g.fmt || (/75/.test(k.formato || '') ? '75' : /100/.test(k.formato || '') ? '100' : null); return { ...g, fmt: f || '100' }; };
-    const eq = cod => { const e = (c &amp;&amp; c.equipamentos || []).find(x => x &amp;&amp; String(x.codigo) === String(cod)); return e &amp;&amp; e.gel ? { codigo: e.codigo, nome: e.nome, ativo: e.ativo !== false, tara: e.gel.tara, descs: e.gel.descs || [] } : null; };
-    const equips = () => (c &amp;&amp; c.equipamentos || []).filter(e => e &amp;&amp; e.gel &amp;&amp; e.ativo !== false &amp;&amp; (e.gel.descs || []).length).map(e => eq(e.codigo));
-    const gelMats = new Set((c &amp;&amp; c.materiais || []).filter(m => m &amp;&amp; m.tipo === 'gel').map(m => String(m.codigo)));
-    const usaGel = cod => { const k = cat(cod); if (k &amp;&amp; (k.vig || []).length) return true; if (!gelMats.size) return false; const b = (c &amp;&amp; c.bom || []).find(x => x &amp;&amp; String(x.catalogo) === String(cod)); return !!b &amp;&amp; (b.vigencias || []).some(v => (v.itens || []).concat(v.estrutura || []).some(i => gelMats.has(String(i.material)))); };
-    return { fmts: G.formatos || [], params: G.processo || [], motivos: G.motivos || [], corte: G.registroPelaProducaoDesde || null, cat, eq, equips, usaGel };
-  }
-  return { FMT_DEF, PROC_DEF, COMPS, SCAT, fmtAt, procAt, sobraAt, taraP, vigList, vigAt, gelPorTubo, bomVals, bom, pesagem, teorico, ctx };
-})();
 
 /* ===== kit v2.1 · UX-02 (briefing 09/11/2026): guia por aba =====
    Botão "?" no cabeçalho (ao lado do tema) e F1 abrem um painel com o guia DA ABA ABERTA: para que serve, cada campo (o que é,
@@ -26437,7 +26498,7 @@ let LCACHE=null,lcT=null;
 async function lcPreload(){if(lcDirty)return;try{const v=await idb.get('data');if(typeof v==='string'&amp;&amp;v)LCACHE=v}catch(e){}}
 let lcDirty=false;
 function lcWrite(json){if(json!=null){LCACHE=json;lcDirty=false}else lcDirty=true;clearTimeout(lcT);lcT=setTimeout(async()=>{if(lcDirty){LCACHE=lcSnap();lcDirty=false}try{await idb.set('data',LCACHE);const back=await idb.get('data');if(back===LCACHE){try{localStorage.removeItem('fifo.data.v1')}catch(e){}}else LS.set('fifo.data.v1',LCACHE)}catch(e){LS.set('fifo.data.v1',LCACHE)}},400);return true}
-function lcSnap(){return JSON.stringify({lps:[...S.lps.values()].map(clean),closed:[...S.closed.values()].map(clean),events:S.events,imports:S.imports,config:S.config,plan:S.plan,catalogs:S.catalogs,prodlog:plBase(S.prodlog),supply:S.supply,supplyOn:S.supplyOn,supplyCfg:S.supplyCfg})}
+function lcSnap(){return JSON.stringify({lps:[...S.lps.values()].map(clean),closed:[...S.closed.values()].map(clean),events:S.events,imports:S.imports,config:configGelBase(),plan:S.plan,catalogs:S.catalogs,prodlog:plBase(S.prodlog),supply:S.supply,supplyOn:S.supplyOn,supplyCfg:S.supplyCfg})}
 const localBackend={kind:'local',async commit(ch){applyLocal(ch);if(!this.save())toast('Não consegui salvar neste navegador (armazenamento bloqueado).')},
   save(){return lcWrite(null)},
   load(){const raw=LCACHE||LS.get('fifo.data.v1');if(!raw)return false;try{const d=JSON.parse(raw);resetState();d.lps.forEach(l=>S.lps.set(l.lp,l));d.closed.forEach(l=>S.closed.set(l.lp,l));S.events=d.events||[];S.imports=(d.imports||[]).sort((a,b)=>a.at<b.at?-1:1);S.config={...DEFAULT_CFG,...(d.config||{})};S.plan=d.plan||{};S.catalogs=d.catalogs||[];S.prodlog=d.prodlog||{};S.supply=d.supply||{};S.supplyOn=!!d.supplyOn;S.supplyCfg={kg:200,shelf:180,lag:1,...(d.supplyCfg||{})};return S.imports.length>0||S.lps.size>0}catch(e){return false}}};
@@ -26472,7 +26533,12 @@ const idb={open(){return new Promise((res,rej)=>{try{const r=indexedDB.open('fif
   async set(k,v){try{const db=await this.open();await new Promise(res=>{const t=db.transaction('h','readwrite');v==null?t.objectStore('h').delete(k):t.objectStore('h').put(v,k);t.oncomplete=res;t.onerror=res})}catch(e){}}};
 const FS={base:null,sapOther:null,on:false,pending:[],busy:false,again:false,mod:0,err:'',log:[]};
 const fsLog=t=>{FS.log.push(nowDT().slice(11,16)+' · '+t);if(FS.log.length>30)FS.log.shift()};
-const snapshotData=()=>({version:1,savedAt:nowDT(),lps:[...S.lps.values()].map(clean),closed:[...S.closed.values()].map(clean),events:S.events,imports:S.imports,config:S.config,plan:S.plan,catalogs:S.catalogs,prodlog:plBase(S.prodlog),supply:S.supply,supplyOn:S.supplyOn,supplyCfg:S.supplyCfg});
+function configGelBase(){
+  if(!vacGel.cadastroOk())return S.config;
+  const { fmts, equips, motivos, params, ...config }=S.config;
+  return config;
+}
+const snapshotData=()=>({version:1,savedAt:nowDT(),lps:[...S.lps.values()].map(clean),closed:[...S.closed.values()].map(clean),events:S.events,imports:S.imports,config:configGelBase(),plan:S.plan,catalogs:S.catalogs,prodlog:plBase(S.prodlog),supply:S.supply,supplyOn:S.supplyOn,supplyCfg:S.supplyCfg});
 function loadData(d){memoClear();resetState();(d.lps||[]).forEach(l=>S.lps.set(l.lp,l));(d.closed||[]).forEach(l=>S.closed.set(l.lp,l));S.events=d.events||[];S.imports=(d.imports||[]).sort((a,b)=>a.at<b.at?-1:1);S.config={...DEFAULT_CFG,...(d.config||{})};S.plan=d.plan||{};S.catalogs=d.catalogs||[];S.prodlog=d.prodlog||{};S.supply=d.supply||{};S.supplyOn=!!d.supplyOn;S.supplyCfg={kg:200,shelf:180,lag:1,...(d.supplyCfg||{})}}
 async function fsPerm(h,ask,mode){if(!h)return false;try{const o={mode:mode||'readwrite'};if(await h.queryPermission(o)==='granted')return true;if(!ask)return false;return (await h.requestPermission(o))==='granted'}catch(e){return false}}
 // known = {mod, rev, by} da última leitura/gravação: igual (data e rev) = não precisa reler o arquivo inteiro
@@ -27338,7 +27404,7 @@ const sinceDays=(n)=>isoDate(new Date(Date.now()-n*DAY));
 // programação: cada dia guarda {orders:[{n,cat}]} (formato antigo: número de barris)
 // parâmetros de processo com vigência (percentuais sobre o gel consumido)
 const DEF_PARAMS={from:'',g:0.98,pT:2.2406,pB:0.7352,pP:0.5252};
-function paramsAt(date){const L=(S.config.params||[]).filter(p=>p.from<=date).sort((a,b)=>a.from<b.from?-1:1);return L.length?{...DEF_PARAMS,...L[L.length-1]}:{...DEF_PARAMS}}
+function paramsAt(date){const L=(vacCad.param('gel.processo')||[]).filter(p=>p.from<=date).sort((a,b)=>a.from<b.from?-1:1);return L.length?{...DEF_PARAMS,...L[L.length-1]}:{...DEF_PARAMS}}
 // perdas reais dos últimos n dias (% do gel consumido = gel nos tubos bons + scrap), pelos dias com scrap registrado
 function realLossPct(n){n=n||90;const b=todayISO(),a=addDays(b,-(n-1));let inT=0,nd=0;const sc={T:0,B:0,P:0};
   for(let k=a;k<=b;k=addDays(k,1)){if(!S.prodlog[k])continue;const d=dbDay(k,{});if(!d.hasScr||!d.tubes)continue;nd++;inT+=d.inT;d.parts.forEach(x=>{if(sc[x.area]!=null)sc[x.area]+=x.gel})}
@@ -27405,7 +27471,12 @@ function dayPlan(date){
   return {unit,orders,barrels:orders.reduce((s,o)=>s+o.n,0),tubes:0,kg:0};
 }
 function planOrders(date){const d=dayPlan(date);return d?d.orders:null}
-const catById=id=>id?S.catalogs.find(x=>x.id===id):null;
+function catById(id){
+  const local=id&amp;&amp;S.catalogs.find(x=>x.id===id);if(!local)return null;
+  const gel=GelCad.cat(local.num)?.gel;if(!gel)return local;
+  const {fmt,lotSize,rateH,vig}=gel;
+  return {...local,fmt:fmt||local.fmt,lotSize:lotSize??local.lotSize,rateH:rateH??local.rateH,vig:vig?.length?vig:local.vig};
+}
 function textOn(hex){const h=String(hex||'#888').replace('#','');const f=h.length===3?h.split('').map(x=>x+x).join(''):h;const r=parseInt(f.slice(0,2),16),g=parseInt(f.slice(2,4),16),b=parseInt(f.slice(4,6),16);return (0.299*r+0.587*g+0.114*b)>150?'#111':'#fff'}
 const pillHtml=(txt,color)=>`<span class="pill forte" style="--pc:${esc(color)};color:${textOn(color)}">${esc(txt)}</span>`;
 function catPill(id){const c=catById(id);return c?`<span class="pill forte" style="--pc:${esc(c.color)};color:${textOn(c.color)}" title="${esc(c.desc||'Catálogo '+c.num)}">${esc(c.num)}</span>`:''}
@@ -28680,7 +28751,8 @@ function render(){memoClear();try{GelCad.aplicar()}catch(e){console.warn('GelCad
   if(!visibleTabs().some(t=>t[0]===ui.tab))ui.tab=visibleTabs()[0][0];
   derive();renderMeta();renderKpis();renderTabs();
   const f={op:renderOp,sim:renderSim,prod:renderProd,painel:renderDash,val:renderVal,cons:renderCons,adh:renderAdh,pend:renderPend,aud:renderAud,lotes:renderLotes,hist:renderHist}[ui.tab]||renderOp;
-  $('#panel').innerHTML=f();
+  const aviso=vacGel.avisoCadastro(todayISO());
+  $('#panel').innerHTML=(aviso?`<div class="alert">${esc(aviso)}</div>`:'')+f();
   enhanceTables();
   if(ui.tab==='prod')try{rgTubesLive()}catch(e){console.warn(e)}
   try{applyCollapse()}catch(e){console.error(e)}
@@ -29316,7 +29388,7 @@ function openConfig(sec){
     }
     if(s==='backup'){
       backupListHtml().then(h=>{const el=$('#bkList');if(el){el.innerHTML=h;backupListWire()}}).catch(e=>console.warn(e));
-      $('#bkE').addEventListener('click',()=>offerFile(`backup_fifo_${stamp()}.json`,JSON.stringify({version:2,exportedAt:nowDT(),lps:[...S.lps.values()].map(clean),closed:[...S.closed.values()].map(clean),events:S.events,imports:S.imports,config:S.config,plan:S.plan,catalogs:S.catalogs,prodlog:plBase(S.prodlog),supply:S.supply,supplyOn:S.supplyOn,supplyCfg:S.supplyCfg})));
+      $('#bkE').addEventListener('click',()=>offerFile(`backup_fifo_${stamp()}.json`,JSON.stringify({version:2,exportedAt:nowDT(),lps:[...S.lps.values()].map(clean),closed:[...S.closed.values()].map(clean),events:S.events,imports:S.imports,config:configGelBase(),plan:S.plan,catalogs:S.catalogs,prodlog:plBase(S.prodlog),supply:S.supply,supplyOn:S.supplyOn,supplyCfg:S.supplyCfg})));
       $('#bkI').addEventListener('change',async e=>{const f=e.target.files[0];e.target.value='';if(!f)return;try{const d=JSON.parse(await f.text());if(!d.lps||!d.imports)throw new Error('Arquivo de backup inválido.');
         /* 2.04 · pede confirmação antes de substituir e, se a cópia da base atual falhar, só continua com decisão explícita (antes restaurava direto e ignorava a falha) */
         if(!confirm(`Substituir os dados atuais pelo backup "${f.name}"? Antes, a base atual é copiada para ${PAGE.backupDir}.`))return;
@@ -29406,56 +29478,20 @@ function cadTurnosGel(date){if(typeof vacTurnosEm!=='function')return null;const
  return turns.length?{from:date,days:[...days].sort(),turns,portal:true}:null}
 function gelMaterialPortal(){const c=typeof vacCad==='function'?vacCad():null;return c?(c.materiais||[]).find(m=>m.tipo==='gel'&amp;&amp;m.ativo!==false&amp;&amp;(c.precos||[]).some(p=>String(p.material)===String(m.codigo)))||null:null}
 function precoGelPortal(date){const m=gelMaterialPortal();return m&amp;&amp;typeof vacPrecoEm==='function'?vacPrecoEm(m.codigo,date):null}
-/* ===== 2.15 · ARQ-05 / ARQ-07 (briefing 09/11/2026, D0): o Portal é a fonte única de catálogos e equipamentos =====
-   Vínculo por código, com a cópia na base do Gel só de leitura (como a Produção faz com o CadSync):
-   - catálogo do Gel = catálogo do Portal com o mesmo número: nome, cor, situação e formato vêm do Portal;
-     o que é só do gel (BOM de gel, tolerância, g/tubo e as vigências) continua aqui, sem mudar nenhuma conta (GEL-06);
-   - catálogo do Portal que usa gel (BOM com material do tipo gel) e ainda não está no Gel entra sozinho;
-   - equipamento do Gel = equipamento do Portal (código em e.portal; na 1ª vez, pelo nome ou pelos "outros nomes");
-     nome e situação vêm do Portal; embalagem e descartes continuam aqui.
-   Sem cadastro do Portal no navegador, tudo fica como antes. */
+/* Vínculo dos catálogos por código. O cadastro do produto será centralizado na etapa de Produto. */
 const GelCad={
- doc(){const c=typeof vacCad==='function'?vacCad():null;return c&amp;&amp;(Array.isArray(c.catalogos)||Array.isArray(c.equipamentos))?c:null},
- norm(x){return String(x==null?'':x).trim().toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/\s+/g,' ')},
- cat(num,c=this.doc()){return c?(c.catalogos||[]).find(x=>x&amp;&amp;String(x.codigo)===String(num)&amp;&amp;x.tipoItem!=='preparacao')||null:null},
- eq(e,c=this.doc()){if(!c)return null;const L=(c.equipamentos||[]).filter(Boolean);if(e.portal)return L.find(x=>String(x.codigo)===String(e.portal))||null;const n=this.norm(e.name);if(!n)return null;
-  return L.find(x=>this.norm(x.nome)===n)||L.find(x=>String(x.apelidos||'').split(';').some(a=>this.norm(a)===n))||null},
- fmt(p){const f=String(p&amp;&amp;p.formato||'');return /75/.test(f)?'75':/100/.test(f)?'100':null},
+ doc(){return vacCad()},
+ cat(num,c=this.doc()){return (c?.catalogos||[]).find(x=>x&amp;&amp;String(x.codigo)===String(num)&amp;&amp;x.tipoItem!=='preparacao')||null},
+ fmt(p){const f=String(p?.formato||'');return /75/.test(f)?'75':/100/.test(f)?'100':null},
  usaGel(cod,c){const gel=new Set((c.materiais||[]).filter(m=>m&amp;&amp;m.tipo==='gel').map(m=>String(m.codigo)));if(!gel.size)return false;const b=(c.bom||[]).find(x=>x&amp;&amp;String(x.catalogo)===String(cod));
   return !!b&amp;&amp;(b.vigencias||[]).some(v=>(v.itens||[]).concat(v.estrutura||[]).some(i=>gel.has(String(i.material))))},
- /* aplica na memória (idempotente); devolve se mudou algo que entra na conta (formato/situação) */
- /* 2.17 · Fase 4 · 4a (D10): parâmetros do gel do Portal (parametros.gel, equipamentos[].gel, catalogos[].gel), mesma estrutura do Gel */
- pg(c=this.doc()){return c&amp;&amp;c.parametros&amp;&amp;c.parametros.gel||null},
- troca(o,k,v){const a=JSON.stringify(o[k]??null),b=JSON.stringify(v??null);if(a===b)return false;o[k]=v==null?v:JSON.parse(b);return true},
- aplicarGel(c){let m=false;const G=this.pg(c)||{};S.config=S.config||{};
-  if((G.processo||[]).length)m=this.troca(S.config,'params',G.processo)||m;
-  if((G.formatos||[]).length)m=this.troca(S.config,'fmts',G.formatos)||m;
-  if((G.motivos||[]).length)m=this.troca(S.config,'motivos',G.motivos)||m;
-  for(const e of S.config.equips||[]){if(!e.portal)continue;const p=(c.equipamentos||[]).find(x=>String(x.codigo)===String(e.portal));if(!p||!p.gel)continue;
-   m=this.troca(e,'tara',p.gel.tara??'')||m;if(Array.isArray(p.gel.descs))m=this.troca(e,'descs',p.gel.descs)||m}
-  for(const k of S.catalogs||[]){const p=k.portal?this.cat(k.portal,c):null;if(!p||!p.gel)continue;const g=p.gel;
-   if(Array.isArray(g.vig)&amp;&amp;g.vig.length)m=this.troca(k,'vig',g.vig)||m;if(g.fmt)m=this.troca(k,'fmt',g.fmt)||m;
-   if(g.lotSize!=null)m=this.troca(k,'lotSize',g.lotSize)||m;if(g.rateH!=null)m=this.troca(k,'rateH',g.rateH)||m}
-  return m},
  aplicar(){const c=this.doc();if(!c)return false;let conta=false;
   for(const k of S.catalogs||[]){const p=this.cat(k.num,c);if(!p){if(k.portal)delete k.portal;continue}k.portal=String(p.codigo);if(p.nome&amp;&amp;k.desc!==p.nome)k.desc=p.nome;if(p.cor&amp;&amp;k.color!==p.cor)k.color=p.cor;
    const at=p.ativo!==false;if(k.active!==at){k.active=at;conta=true}const f=this.fmt(p);if(f&amp;&amp;(k.fmt||'100')!==f){k.fmt=f;conta=true}}
   for(const p of (c.catalogos||[]).filter(x=>x&amp;&amp;x.codigo&amp;&amp;x.tipoItem!=='preparacao'&amp;&amp;x.ativo!==false)){if((S.catalogs||[]).some(k=>String(k.num)===String(p.codigo))||!this.usaGel(p.codigo,c))continue;
    const v=(p.vigencias||[]).slice().sort((a,b)=>a.de<b.de?1:-1)[0]||{};
    S.catalogs.push({id:'cat-'+p.codigo,num:String(p.codigo),desc:p.nome||'',color:p.cor||PALETA[S.catalogs.length%PALETA.length],active:true,fmt:this.fmt(p)||'100',lotSize:v.caixasPorLote&amp;&amp;v.tubosPorCaixa?+v.caixasPorLote*+v.tubosPorCaixa:null,rateH:v.pphNominal?+v.pphNominal:null,portal:String(p.codigo),origem:'Portal'});conta=true}
-  /* 2.46 · CFG-ADM: equipamento da Administração com dados de gel (embalagem e descartes) que ainda não está no Gel entra sozinho,
-     como os catálogos (a tela de cadastro do Gel saiu; o cadastro é só na Administração) */
-  {const E=(S.config&amp;&amp;S.config.equips)||[];   /* só cria a lista quando há o que incluir: a base não muda à toa */
-   for(const p of (c.equipamentos||[]).filter(x=>x&amp;&amp;x.codigo&amp;&amp;x.gel&amp;&amp;x.ativo!==false)){if(E.some(e=>String(e.portal||'')===String(p.codigo)||this.eq(e,c)===p))continue;
-    S.config=S.config||{};if(!S.config.equips)S.config.equips=E;
-    E.push({id:'eq-'+p.codigo,name:p.nome||String(p.codigo),tara:p.gel.tara??'',active:true,descs:Array.isArray(p.gel.descs)?JSON.parse(JSON.stringify(p.gel.descs)):[],portal:String(p.codigo)});conta=true}}
-  for(const e of (S.config&amp;&amp;S.config.equips)||[]){const p=this.eq(e,c);if(!p)continue;e.portal=String(p.codigo);if(p.nome&amp;&amp;e.name!==p.nome)e.name=p.nome;const at=p.ativo!==false;if((e.active!==false)!==at){e.active=at;conta=true}}
-  try{conta=this.aplicarGel(c)||conta}catch(e){console.warn('GelCad.gel',e)}   /* por último: o gel do catálogo manda no formato */
-  if(conta&amp;&amp;typeof memoClear==='function')memoClear();return conta},
- /* equipamentos do Portal que ainda não estão no Gel (categoria gel primeiro) */
- eqLivres(){const c=this.doc();if(!c)return[];const usados=new Set(((S.config&amp;&amp;S.config.equips)||[]).map(e=>e.portal).filter(Boolean));
-  return (c.equipamentos||[]).filter(x=>x&amp;&amp;x.codigo&amp;&amp;x.ativo!==false&amp;&amp;!usados.has(String(x.codigo))).sort((a,b)=>(a.categoria==='gel'?0:1)-(b.categoria==='gel'?0:1)||String(a.codigo).localeCompare(String(b.codigo)))},
- catLivres(){const c=this.doc();if(!c)return[];return (c.catalogos||[]).filter(x=>x&amp;&amp;x.codigo&amp;&amp;x.tipoItem!=='preparacao'&amp;&amp;x.ativo!==false&amp;&amp;!(S.catalogs||[]).some(k=>String(k.num)===String(x.codigo)))}
+  if(conta)memoClear();return conta}
 };
 
 /* ===== 2.19 · Fase 4 · 4d do briefing (GEL-02 / GEL-05, G3 / G5): o Gel lê da Produção a partir da data de corte =====
@@ -29465,7 +29501,7 @@ const GelCad={
    As contas do Gel (teórico, índice, BOM, saving, relatório) ficam iguais e usam esses números. Os campos manuais somem nesses dias
    (Resumo do dia, só leitura). Dias anteriores ao corte continuam com o registro do Gel. */
 const GelProd={oee:null,lendo:false,lidoEm:0,
- corte(){const G=GelCad.pg();return G&amp;&amp;G.registroPelaProducaoDesde||null},
+ corte(){return vacCad.param('gel.registroPelaProducaoDesde')},
  /* 2.42 · GEL-07 (pedido do responsável): tudo de produção vem da Produção, em todo dia que ela tem (até 120 dias), mesmo antes da
     data de corte. O corte continua decidindo só o scrap de gel: a partir dele, lançado na Produção; antes dele, o registrado aqui. */
  resumo(date){const c=this.corte();return !!date&amp;&amp;((!!c&amp;&amp;date>=c)||this.temDia(date))},
@@ -29483,14 +29519,13 @@ const GelProd={oee:null,lendo:false,lidoEm:0,
  /* chamado no render: lê de novo depois de 1 min e redesenha quando chega */
  talvez(){if(!this.lendo&amp;&amp;Date.now()-this.lidoEm>60000)this.ler().then(()=>{if(this.oee)render()})},
  rec(dia,x){const catId=code=>{const k=(S.catalogs||[]).find(c=>String(c.num)===String(code));return k?k.id:null};
-  const eqId=code=>{const e=(S.config.equips||[]).find(e=>String(e.portal||'')===String(code));return e?e.id:null};
   const turns={};let anyGel=false;
   for(const t of x.turnos){const g=t.gel||null,tt={t:+t.boa||0,x:t.extraMin?+(t.extraMin/60).toFixed(4):0,off:t.semProducao==='programado'};
-   if(g){anyGel=true;if(g.none)tt.none=true;else{tt.eq=(g.pesagens||[]).map(p=>({e:eqId(p.e),d:p.d,kg:+p.kg||0,nb:+p.nb||0,cat:catId(p.cat)||'',mots:(p.mots||[]).slice()})).filter(p=>p.e)}}
+   if(g){anyGel=true;if(g.none)tt.none=true;else{tt.eq=(g.pesagens||[]).map(p=>({e:'eq-'+p.e,d:p.d,local:p.local,kg:+p.kg||0,nb:+p.nb||0,cat:catId(p.cat)||'',mots:(p.mots||[]).slice()}))}}
    turns[t.turno]=tt}
   const M={};for(const k of x.cats){const id=catId(k.catalogo);if(!id)continue;M[id]=(M[id]||0)+(+k.boa||0)}
   const rec={date:dia,turns,orders:Object.entries(M).map(([cat,t])=>({cat,t})),sT:'',sB:'',sP:'',resp:'Produção',obs:'',fromProd:true,prodGeradoEm:this.oee.geradoEm||null,savedAt:this.oee.geradoEm||null};
-  if(anyGel){const es=recEquipScrap(rec,dia);rec.sT=+es.T.toFixed(3);rec.sB=+es.B.toFixed(3);rec.sP=+es.P.toFixed(3);rec.eqScrap=es.any}
+  if(anyGel&amp;&amp;!vacGel.avisoCadastro(dia)){const es=recEquipScrap(rec,dia);if(!es.pendentes.length){rec.sT=+es.T.toFixed(3);rec.sB=+es.B.toFixed(3);rec.sP=+es.P.toFixed(3);rec.eqScrap=es.any}}
   return rec},
  /* 2.41 · GEL-06: tubos bons de cada catálogo lançado na Produção no dia, com a ordem e o lote do PCP (exports.porOrdem) e o aviso
     do catálogo que o Gel não reconhece (os tubos dele não entram no teórico: antes sumiam sem aviso) */
@@ -29934,13 +29969,7 @@ function lineEstimates(){
 }
 // cálculo de um dia: teórico pelos parâmetros; real = barris baixados (indicativo no dia)
 /* ================= formatos de tubo, equipamentos, scrap por equipamento e saving pela BOM ================= */
-const FMT_DEF={from:'2000-01-01',tara:75,taraP:5,f:{'100':{tubo:4.779,gel:0.834,adit:0.020,tr:2.30},'75':{tubo:3.560,gel:0.834,adit:0.015,tr:2.30}}};
-const fmtList=()=>(S.config.fmts&amp;&amp;S.config.fmts.length?S.config.fmts:[FMT_DEF]).slice().sort((a,b)=>a.from<b.from?-1:1);
-const fmtAt=date=>{const L=fmtList();let v=L[0];for(const x of L)if(x.from<=date)v=x;return v};
-// sobra padrão de gel por barril (kg), pela vigência dos formatos
-// embalagem da purga: a purga é pesada numa folha plástica (não no saco); vigências antigas sem o campo usam 5 g
-const taraPAt=FM=>FM&amp;&amp;FM.taraP!=null&amp;&amp;FM.taraP!==''?+FM.taraP:5;
-const sobraAt=date=>{const L=fmtList().filter(x=>x.from<=(date||todayISO())&amp;&amp;x.sobra!=null&amp;&amp;x.sobra!=='');return L.length?+L[L.length-1].sobra:null};
+const sobraAt=date=>vacCad.gel.formato(date)?.sobraBarrilKg??null;
 // barris baixados como consumidos dentro do horário de um turno
 const barrelsInDay=date=>S.events.filter(e=>liveBx(e)&amp;&amp;e.total&amp;&amp;e.mov==='Consumido'&amp;&amp;(!D||!D.planMat||!e.material||e.material===D.planMat)&amp;&amp;(e.at||'').slice(0,10)===date).length;
 const turnLbl=tn=>tn==='_dia'?'Dia (sem turno)':tn;
@@ -29951,39 +29980,41 @@ const kg3=v=>new Intl.NumberFormat('pt-BR',{minimumFractionDigits:3,maximumFract
 const scTara=c=>c&amp;&amp;c.tara?` (− ${nf0.format(c.tara)} g ${c.scat==='P'?'da folha':'do saco'})`:'';
 const scDesc=(c,date)=>!c?'':c.comp==='barril'?(c.est?`${nf0.format(c.nb)} barril(is) × ${sobraAt(date)!=null?nf2s(sobraAt(date))+' kg':'sobra não cadastrada'} = gel ${kg3(c.gel)} kg`:`gel ${kg3(c.gel)} kg (pesado)`):c.comp==='gel'?`gel ${kg3(c.gel)} kg${scTara(c)}`:`≈${nf0.format(c.n)} tubos · gel ${kg3(c.gel)} kg${scTara(c)}`;
 const entOk=z=>kgOf(z.kg)>0||+z.nb>0;
-const catFmt=cat=>{const c=catById(cat);return (c&amp;&amp;c.fmt)||'100'};
-const COMPS={completo:{l:'Tubo completo',d:'tubo + tampa + rolha + etiqueta + gel + aditivo',parts:['tubo','tr','gel','adit'],cap:1},tubogel:{l:'Tubo + gel',d:'tubo + gel',parts:['tubo','gel']},spray:{l:'Tubo + gel + spray',d:'tubo + gel + aditivo',parts:['tubo','gel','adit']},gel:{l:'Gel puro',d:'só gel (purga, barril)',parts:['gel']},barril:{l:'Barril (sobra)',d:'sobra de gel no barril ao terminar: barris × sobra padrão',parts:['gel']}};
+const catFmt=cat=>catById(cat)?.fmt||'100';
+const compNome=comp=>vacGel.COMPS[comp]?.l||'';
 const SCAT={T:'Tubos',B:'Barril',P:'Purga'};
 // gel aplicado por tubo: o do catálogo; sem ele, o do formato (quando os formatos foram cadastrados); senão o parâmetro de processo
 // gel aplicado e BOM do catálogo, com vigência
 const catVigList=c=>!c?[]:(c.vig&amp;&amp;c.vig.length?c.vig:(c.gTubo||c.bomG||c.bomKg?[{from:'2000-01-01',gTubo:c.gTubo||null,bomG:c.bomG||null,bomPct:c.bomPct||106,bomKg:c.bomKg||null,bomBase:c.bomBase||10000,tol:c.tol??6}]:[])).slice().sort((a,b)=>a.from<b.from?-1:1);
 function catVig(cat,date){const L=catVigList(catById(cat));if(!L.length)return {};let v=L[0];for(const x of L)if(x.from<=(date||todayISO()))v=x;return v}
-const fmtGel=(cat,date,fmt)=>{const F=fmtAt(date||todayISO()).f[fmt||catFmt(cat)];return F&amp;&amp;+F.gel?+F.gel:paramsAt(date||todayISO()).g};
+const fmtGel=(cat,date,fmt)=>vacCad.gel.formato(date||todayISO())?.tubos?.[fmt||catFmt(cat)]?.gelG??null;
 function gelReal(cat,date){const v=catVig(cat,date);if(+v.gTubo)return +v.gTubo;return fmtGel(cat,date)}
 // valores da BOM de uma vigência (aceita o cadastro antigo: g/tubo × %)
 function bomVals(v){if(+v.bomKg)return {kg:+v.bomKg,base:+v.bomBase||10000,tol:v.tol!=null&amp;&amp;v.tol!==''?+v.tol:6};if(+v.bomG){const p=+(v.bomPct||106);return {kg:+v.bomG*p/100*10,base:10000,tol:p-100}}return {kg:null,base:+v.bomBase||10000,tol:v.tol!=null&amp;&amp;v.tol!==''?+v.tol:6}}
-function bomFrom(v,cat,date){const b=bomVals(v);let allowed,est=false;if(b.kg)allowed=b.kg*1000/b.base;else{allowed=fmtGel(cat,date)*(1+b.tol/100);est=true}return {...b,allowed,meta:allowed/(1+b.tol/100),lim:100+b.tol,est}}
+function bomFrom(v,cat,date){const b=bomVals(v);let allowed,est=false;if(b.kg)allowed=b.kg*1000/b.base;else{const g=fmtGel(cat,date);allowed=g==null?null:g*(1+b.tol/100);est=true}return {...b,allowed,meta:allowed==null?null:allowed/(1+b.tol/100),lim:100+b.tol,est}}
 const z0=v=>Math.abs(v)<5e-4?0:v;
 const bomInfo=(cat,date)=>bomFrom(catVig(cat,date),cat,date);
 const bomAllowed=(cat,date)=>bomInfo(cat,date).allowed;
 const bomMeta=(cat,date)=>bomInfo(cat,date).meta;
 const idxColor=(i,lim)=>i==null?'inherit':i<=100.05?'var(--ok)':i<=(lim||106)?'var(--warn)':'var(--crit)';
 const idxTxt=(i,lim)=>i==null?'':i<=100.05?(i<99.95?'abaixo da meta':'na meta'):i<=(lim||106)?'acima da meta, dentro da BOM':'acima da BOM';
-const equipList=()=>(S.config.equips||[]).filter(e=>e.active!==false);
-const equipById=id=>(S.config.equips||[]).find(e=>e.id===id);
+const equipList=(ativos=true)=>vacGel.equipamentosGel(ativos);
+const equipById=id=>equipList(false).find(e=>e.id===id);
+const scrapLocal=en=>vacGel.localGel(en.e,en.d);
+const scrapNome=en=>scrapLocal(en)?.local||en.local||'';
 // peso bruto da balança → tubos, gel líquido e materiais
 // ordens com tubos; no rascunho, se só os turnos foram preenchidos e há uma ordem, ela recebe a soma dos turnos
 function recOrdersEff(rec){const o=(rec&amp;&amp;rec.orders||[]);const f=o.filter(x=>+x.t>0);if(f.length||o.length!==1)return f;const ts=Object.values((rec&amp;&amp;rec.turns)||{}).reduce((a,x)=>a+(+x.t||0),0);return ts>0?[{...o[0],t:ts}]:[]}
 const kgOf=v=>v==null||v===''?0:typeof v==='string'?(parseNum(v)||0):(+v||0);
 /* 2.18 · Fase 4 · 4b: a conta da pesagem é a do kit (vacGel.pesagem), a mesma que a Produção usa no Registrar scrap */
 function scrapCalc(ent,date){
-  const e=equipById(ent.e);const d=e&amp;&amp;(e.descs||[]).find(x=>x.id===ent.d);if(!e||!d)return null;
-  return vacGel.pesagem({desc:d,taraEq:e.tara,kg:kgOf(ent.kg),nb:ent.nb,cg:{fmt:catFmt(ent.cat),vig:catVigList(catById(ent.cat))},date,fmts:S.config.fmts,params:S.config.params});
+  return vacGel.pesagemCadastro({local:scrapLocal(ent),kg:kgOf(ent.kg),nb:ent.nb,
+    cg:{fmt:catFmt(ent.cat),vig:catVigList(catById(ent.cat))},date});
 }
-// scrap do turno por categoria (gel líquido, kg) a partir dos equipamentos
-function turnScrap(rec,date,tn){const t=rec&amp;&amp;rec.turns&amp;&amp;rec.turns[tn];const out={T:0,B:0,P:0,any:false,ents:[]};if(!t||!t.eq||t.none)return out;
-  t.eq.forEach(en=>{if(!entOk(en))return;const c=scrapCalc(en,date);if(!c)return;out[c.scat]+=c.gel;out.any=true;out.ents.push({...en,c})});return out}
-function recEquipScrap(rec,date){const o={T:0,B:0,P:0,any:false,ents:[]};Object.keys((rec&amp;&amp;rec.turns)||{}).forEach(tn=>{const x=turnScrap(rec,date,tn);if(x.any){o.any=true;o.T+=x.T;o.B+=x.B;o.P+=x.P;o.ents.push(...x.ents.map(e=>({...e,turn:tn})))}});return o}
+// scrap do turno por categoria (gel líquido, kg) a partir dos locais
+function turnScrap(rec,date,tn){const t=rec?.turns?.[tn];const out={T:0,B:0,P:0,any:false,ents:[],pendentes:[]};if(!t?.eq||t.none)return out;
+  t.eq.forEach(en=>{if(!entOk(en))return;const c=scrapCalc(en,date);if(!c){out.pendentes.push(en);return}out[c.scat]+=c.gel;out.any=true;out.ents.push({...en,c})});return out}
+function recEquipScrap(rec,date){const o={T:0,B:0,P:0,any:false,ents:[],pendentes:[]};Object.keys(rec?.turns||{}).forEach(tn=>{const x=turnScrap(rec,date,tn);if(x.any){o.any=true;o.T+=x.T;o.B+=x.B;o.P+=x.P;o.ents.push(...x.ents.map(e=>({...e,turn:tn})))}o.pendentes.push(...x.pendentes.map(e=>({...e,turn:tn})))});return o}
 // saving pela BOM: gel permitido (BOM × %) pela produção − gel real (tubos bons + scrap registrado)
 function bomDay(rec,date){
   const orders=recOrdersEff(rec);let allowed=0,inTubes=0,cov=0,tubes=0;
@@ -29996,7 +30027,7 @@ function bomDay(rec,date){
 const nf3=v=>v==null||v===''?'':new Intl.NumberFormat('pt-BR',{maximumFractionDigits:3}).format(+v);
 /* ---- configuração: equipamentos da linha ---- */
 /* ---- motivos de descarte ---- */
-const motList=()=>S.config.motivos||[];
+const motList=()=>vacCad.param('gel.motivos')||[];
 const motById=id=>motList().find(m=>m.id===id);
 const motName=id=>id?((motById(id)||{}).name||'(motivo excluído)'):'Não informado';
 const motFor=ds=>motList().filter(m=>m.active!==false&amp;&amp;(!(m.comps&amp;&amp;m.comps.length)||m.comps.includes(ds.comp))&amp;&amp;(!(ds.mots&amp;&amp;ds.mots.length)||ds.mots.includes(m.id)));
@@ -30017,32 +30048,34 @@ function rgMotRows(tn,e,ds,ent){const opts=motFor(ds);if(!opts.length&amp;&amp;!
 /* 2.41 · GEL-06: dia a partir do corte: o scrap de gel do turno vem da Produção (Lançamento › turno › Scrap gel). Aqui é consulta:
    as pesagens como foram lançadas e o atalho que abre o Lançamento daquele dia com o turno aberto. */
 function prodHref(h){const s=(typeof systems==='function'?systems():[]).find(x=>x.id==='oee')||{id:'oee',html:'OEE-Vacutainer.html'};return typeof sysHref==='function'?sysHref(s,h):'OEE-Vacutainer.html#'+h}
-function rgScrapProd(d,tn){const daProd=GelProd.scrapProd(d.date),t=(d.turns||{})[tn]||{},sc=turnScrap({turns:d.turns},d.date,tn);
- const linhas=sc.ents.map(en=>{const e=equipById(en.e),ds=e&amp;&amp;(e.descs||[]).find(x=>x.id===en.d);return`<li>${esc(e?e.name:'equipamento ?')}${ds&amp;&amp;ds.local?' · <b>'+esc(ds.local)+'</b>':''}${ds&amp;&amp;COMPS[ds.comp]?' · '+esc(COMPS[ds.comp].l):''} → ${esc(SCAT[en.c.scat]||en.c.scat)}: ${kg3(en.kg)} kg bruto → <b>${kg3(en.c.gel)} kg de gel</b>${+en.nb?' · '+en.nb+' barril(is)':''}${(en.mots||[]).length?' · '+esc(en.mots.map(m=>m.m).filter(Boolean).join(', ')):''}</li>`}).join('');
+function rgScrapProd(d,tn){const aviso=vacGel.avisoCadastro(d.date);if(aviso)return `<div class="alert">${esc(aviso)}</div>`;const daProd=GelProd.scrapProd(d.date),t=(d.turns||{})[tn]||{},sc=turnScrap({turns:d.turns},d.date,tn);
+ const linhas=sc.ents.map(en=>{const e=equipById(en.e),ds=scrapLocal(en),nome=scrapNome(en);return`<li>${esc(e?e.name:'equipamento ?')}${nome?' · <b>'+esc(nome)+'</b>':''}${ds?' · '+esc(compNome(ds.comp)):''} → ${esc(SCAT[en.c.scat]||en.c.scat)}: ${kg3(en.kg)} kg bruto → <b>${kg3(en.c.gel)} kg de gel</b>${+en.nb?' · '+en.nb+' barril(is)':''}${(en.mots||[]).length?' · '+esc(en.mots.map(m=>m.m).filter(Boolean).join(', ')):''}</li>`}).join('')+sc.pendentes.map(en=>`<li>${esc(scrapNome(en)||en.d)} · pesagem registrada, cálculo indisponível</li>`).join('');
  const st=t.none?'<b>sem scrap de gel neste turno</b>':sc.any?`gel líquido <b>${kg3(sc.T+sc.B+sc.P)} kg</b> (Tubos ${kg3(sc.T)} · Barril ${kg3(sc.B)} · Purga ${kg3(sc.P)})`:`<span style="color:var(--muted)">sem registro${daProd?' na Produção':''}</span>`;
  if(!daProd)return`<div class="scro"><b>Scrap de gel</b> <span class="sub" style="margin:0">${st} · registrado na Gestão de Gel (antes da data de corte)</span>${linhas?`<ul class="sub" style="margin:4px 0 0 18px;padding:0">${linhas}</ul>`:''}</div>`;
  return`<div class="scro"><b>Scrap de gel</b> <span class="sub" style="margin:0">${st}${t.none||sc.any?' · lançado na Produção':' · lança-se no turno, na Produção'}</span> <a class="btn sm" href="${esc(prodHref('dia='+d.date+'&amp;turno='+encodeURIComponent(tn)))}" title="O scrap de gel deste dia é lançado na Produção, no turno">Editar na Produção ↗</a>${linhas?`<ul class="sub" style="margin:4px 0 0 18px;padding:0">${linhas}</ul>`:''}</div>`}
 function rgScrapHtml(d,tn){
+  const aviso=vacGel.avisoCadastro(d.date);if(aviso)return `<div class="alert">${esc(aviso)}</div>`;
   if(GelProd.resumo(d.date)&amp;&amp;(tn!=='_dia'||!GelProd.scrapProd(d.date)))return rgScrapProd(d,tn);
   const t=(d.turns||{})[tn]||{};const open=(ui.rgScrapOpen||{})[tn];const sc=turnScrap({turns:d.turns},d.date,tn);const tot=sc.T+sc.B+sc.P;
   const head=`<button type="button" class="btn sm ${open?'primary':''}" data-rgscrap="${esc(tn)}">${open?'▾':'▸'} ${tn==='_dia'?'Registrar scrap do dia (sem turno)':'Registrar scrap'}</button> <span class="sub" style="margin:0" data-rgeqs="${esc(tn)}">${t.none?'<b>sem scrap neste turno</b>':sc.any?`gel líquido ${kg3(tot)} kg (tubos ${kg3(sc.T)} · barril ${kg3(sc.B)} · purga ${kg3(sc.P)})`:'nada registrado'}</span>`;
   if(!open)return head;
-  const eqs=equipList();if(!eqs.length)return head+`<div class="info" style="margin-top:6px">Cadastre os equipamentos em <button class="linkish" data-act="config" data-sec="equip">Configuração › Equipamentos da linha</button>.</div>`;
+  const eqs=equipList();if(!eqs.length)return head+`<div class="info" style="margin-top:6px">Cadastre os locais de descarte em Administração › Gel.</div>`;
   const cat=t.scat||(d.orders[0]&amp;&amp;d.orders[0].cat)||'';
-  const val=(e,ds)=>{const x=(t.eq||[]).find(z=>z.e===e&amp;&amp;z.d===ds);return x?x.kg:''};
-  const groups=Object.entries(SCAT).map(([k,l])=>{const items=eqs.flatMap(e=>(e.descs||[]).filter(ds=>ds.cat===k).map(ds=>({e,ds})));if(!items.length)return '';
-    return `<div class="scg"><b>${l}</b>${ib('scrap'+k)}${items.map(({e,ds})=>{const kgv=val(e.id,ds.id);const c=kgv!==''?scrapCalc({e:e.id,d:ds.id,kg:parseNum(kgv),cat},d.date):null;
-      const ent=(t.eq||[]).find(z=>z.e===e.id&amp;&amp;z.d===ds.id);
+  const val=ds=>{const x=(t.eq||[]).find(z=>scrapLocal(z)?.id===ds);return x?x.kg:''};
+  const groups=Object.entries(SCAT).map(([k,l])=>{const items=eqs.flatMap(e=>(e.descs||[]).filter(ds=>ds.cat===k).map(ds=>({e,ds}))).sort((a,b)=>a.ds.ordem-b.ds.ordem);if(!items.length)return '';
+    return `<div class="scg"><b>${l}</b>${ib('scrap'+k)}${items.map(({e,ds})=>{const kgv=val(ds.id);const c=kgv!==''?scrapCalc({e:e.id,d:ds.id,kg:parseNum(kgv),cat},d.date):null;
+      const ent=(t.eq||[]).find(z=>scrapLocal(z)?.id===ds.id);
       if(ds.comp==='barril'){const k=`${esc(tn)}|${esc(e.id)}|${esc(ds.id)}`;const cb=ent&amp;&amp;entOk(ent)?scrapCalc({...ent,cat},d.date):null;const sug=tn==='_dia'?barrelsInDay(d.date):barrelsInTurn(d.date,tn);const so=sobraAt(d.date);
         return `<div class="sciw"><div class="sci"><span>${esc(e.name)}${ds.local?' · <b>'+esc(ds.local)+'</b>':''} <span class="sub" style="margin:0">· Barril (sobra)</span></span><input type="text" inputmode="numeric" data-rgeqnb="${k}" value="${esc(ent&amp;&amp;ent.nb!=null?ent.nb:'')}" placeholder="barris" style="width:70px" aria-label="Barris terminados"><input type="text" inputmode="decimal" data-rgeq="${k}" value="${esc(kgv)}" placeholder="kg pesado (opcional)" style="width:130px" aria-label="Sobra pesada em kg"><span class="sub" style="margin:0" data-rgeqc="${k}">${scDesc(cb,d.date)}</span>${sug?`<button type="button" class="btn sm ghost" data-rgnbsug="${k}|${sug}" title="Barris baixados como consumidos ${tn==='_dia'?'no dia':'no horário deste turno'}">${sug} baixado(s) ${tn==='_dia'?'no dia':'no turno'} · usar</button>`:''}${so==null?'<span class="sub" style="margin:0;color:var(--warn)">cadastre a sobra padrão em Formatos de tubo</span>':''}</div>${rgMotRows(tn,e,ds,ent)}</div>`}
-      return `<div class="sciw"><label class="sci"><span>${esc(e.name)}${ds.local?' · <b>'+esc(ds.local)+'</b>':''} <span class="sub" style="margin:0">· ${COMPS[ds.comp].l}</span></span><input type="text" inputmode="decimal" data-rgeq="${esc(tn)}|${esc(e.id)}|${esc(ds.id)}" value="${esc(kgv)}" placeholder="kg bruto" style="width:90px"><span class="sub" style="margin:0" data-rgeqc="${esc(tn)}|${esc(e.id)}|${esc(ds.id)}">${scDesc(c,d.date)}</span></label>${rgMotRows(tn,e,ds,ent)}</div>`}).join('')}</div>`}).join('');
+      return `<div class="sciw"><label class="sci"><span>${esc(e.name)}${ds.local?' · <b>'+esc(ds.local)+'</b>':''} <span class="sub" style="margin:0">· ${compNome(ds.comp)}</span></span><input type="text" inputmode="decimal" data-rgeq="${esc(tn)}|${esc(e.id)}|${esc(ds.id)}" value="${esc(kgv)}" placeholder="kg bruto" style="width:90px"><span class="sub" style="margin:0" data-rgeqc="${esc(tn)}|${esc(e.id)}|${esc(ds.id)}">${scDesc(c,d.date)}</span></label>${rgMotRows(tn,e,ds,ent)}</div>`}).join('')}</div>`}).join('');
   return head+`<div class="scbox"><div class="fg"><label class="f"><span>Catálogo do scrap</span><select data-rgscat="${esc(tn)}">${catOptions(cat)}</select></label></div>${groups}
    <div style="display:flex;gap:8px;flex-wrap:wrap">${tn==='_dia'?'':`<button type="button" class="btn sm" data-rgnone="${esc(tn)}">${t.none?'✓ Sem scrap neste turno':'Sem scrap neste turno'}</button>`}<span class="sub" style="margin:0">Peso bruto da balança; o peso da embalagem de pesagem é descontado (na purga, a folha plástica). Campo vazio = não teve.</span></div></div>`;
 }
 // lê os campos de scrap por equipamento do formulário
 function rgSyncScrap(d){
-  document.querySelectorAll('[data-rgeq]').forEach(el=>{const [tn,e,ds]=el.dataset.rgeq.split('|');d.turns[tn]=d.turns[tn]||{};const old=(d.turns[tn].eq||[]).find(z=>z.e===e&amp;&amp;z.d===ds);const L=(d.turns[tn].eq||[]).filter(z=>z!==old);const mots=old&amp;&amp;old.mots||[];const nbEl=document.querySelector(`[data-rgeqnb="${CSS.escape(el.dataset.rgeq)}"]`);const nb=nbEl?nbEl.value.trim():(old&amp;&amp;old.nb!=null?String(old.nb):'');if(el.value.trim()!==''||nb!==''||mots.length)L.push({e,d:ds,kg:el.value.trim(),nb,mots});d.turns[tn].eq=L});
-  const motEnt=k=>{const [tn,e,ds]=k.split('|');return ((d.turns[tn]||{}).eq||[]).find(z=>z.e===e&amp;&amp;z.d===ds)};
+  if(vacGel.avisoCadastro(d.date))return;
+  document.querySelectorAll('[data-rgeq]').forEach(el=>{const [tn,e,ds]=el.dataset.rgeq.split('|');d.turns[tn]=d.turns[tn]||{};const old=(d.turns[tn].eq||[]).find(z=>scrapLocal(z)?.id===ds);const L=(d.turns[tn].eq||[]).filter(z=>z!==old);const mots=old&amp;&amp;old.mots||[];const nbEl=document.querySelector(`[data-rgeqnb="${CSS.escape(el.dataset.rgeq)}"]`);const nb=nbEl?nbEl.value.trim():(old&amp;&amp;old.nb!=null?String(old.nb):'');if(el.value.trim()!==''||nb!==''||mots.length)L.push({e:old?.e??e,d:old?.d??ds,local:old?.local??scrapLocal({e,d:ds})?.local,kg:el.value.trim(),nb,mots});d.turns[tn].eq=L});
+  const motEnt=k=>{const [tn,,ds]=k.split('|');return ((d.turns[tn]||{}).eq||[]).find(z=>scrapLocal(z)?.id===ds)};
   document.querySelectorAll('[data-rgmot]').forEach(el=>{const p=el.dataset.rgmot.split('|');const en=motEnt(p.slice(0,3).join('|'));if(en&amp;&amp;en.mots[+p[3]])en.mots[+p[3]].m=el.value});
   document.querySelectorAll('[data-rgmotkg]').forEach(el=>{const p=el.dataset.rgmotkg.split('|');const en=motEnt(p.slice(0,3).join('|'));if(en&amp;&amp;en.mots[+p[3]])en.mots[+p[3]].kg=el.value.trim()});
   document.querySelectorAll('[data-rgscat]').forEach(el=>{const tn=el.dataset.rgscat;d.turns[tn]=d.turns[tn]||{};d.turns[tn].scat=el.value});
@@ -30050,6 +30083,7 @@ function rgSyncScrap(d){
   Object.values(d.turns).forEach(t=>{(t.eq||[]).forEach(z=>z.cat=t.scat||(d.orders[0]&amp;&amp;d.orders[0].cat)||'')});
   Object.values(d.turns).forEach(t=>{if((t.eq||[]).some(entOk))t.none=false});
   const es=recEquipScrap(d,d.date);
+  if(es.pendentes.length)return;
   if(es.any){['T','B','P'].forEach(k=>{d['s'+k]=String(Math.round(es[k]*1000)/1000).replace('.',',')});d.eqScrap=true}else if(d.eqScrap){d.sT=d.sB=d.sP='';d.eqScrap=false}
   if(Object.values(d.turns).some(t=>t.none)&amp;&amp;!es.any&amp;&amp;!['sT','sB','sP'].some(k=>d[k]!==''&amp;&amp;d[k]!=null)){d.sT=d.sB=d.sP='0';d.eqScrap=true}
   ['sT','sB','sP'].forEach(k=>{const el=document.querySelector(`[data-rg="${k}"]`);if(el){el.value=d[k]??'';el.readOnly=!!d.eqScrap}});
@@ -30072,10 +30106,10 @@ function gelData(a,b){
     let sv=null,svR=null,svU=null;if(bd.saving!=null){sv=bd.saving;T.allowed+=bd.allowed;T.meta+=bd.meta;T.realCov+=bd.real;T.inCov+=bd.inTubes;T.saving+=sv;T.tubesCov+=tubes;if(bd.price){svR=sv*bd.price;T.savingR+=svR}if(bd.priceU){svU=sv*bd.priceU;T.savingU+=svU}}
     const bx=rgBaixas(k).reduce((s,e)=>s+bxNet(e),0);T.baix+=bx;
     let gross=0;const es=recEquipScrap(r,k);
-    es.ents.forEach(en=>{const e=equipById(en.e);const ds=e&amp;&amp;(e.descs||[]).find(x=>x.id===en.d);const c=en.c;gross+=c.gross;
-      const eqN=e?e.name:'(excluído)',dl=ds?COMPS[ds.comp].l:'';
+    es.ents.forEach(en=>{const e=equipById(en.e);const ds=scrapLocal(en);const c=en.c;gross+=c.gross;
+      const eqN=e?e.name:'(excluído)',dl=scrapNome(en)||compNome(ds?.comp);
       const add=(M,key,lbl,extra)=>{const q=M[key]=M[key]||{k:key,l:lbl,gel:0,gross:0,n:0,cnt:0,...extra};q.gel+=c.gel;q.gross+=c.gross;q.n+=c.n;q.cnt++};
-      add(byEq,en.e,eqN,{});add(byEqD,en.e+'|'+en.d,eqN+' · '+dl,{cat:c.scat});add(byComp,c.comp,COMPS[c.comp].l,{});
+      add(byEq,en.e,eqN,{});add(byEqD,en.e+'|'+en.d,eqN+' · '+dl,{cat:c.scat});add(byComp,c.comp,compNome(c.comp),{});
       ['n','tubo','tamp','rolha','etq','adit'].forEach(m=>T.mat[m]+=c[m]||0);
       const parts=motSplit(en);parts.forEach(pt=>{const f=c.gross?pt.kg/c.gross:0;const mk=pt.m||'_';const mn=motName(pt.m);
         const q=byMot[mk]=byMot[mk]||{k:mk,l:mn,gel:0,gross:0,n:0,cnt:0};q.gel+=c.gel*f;q.gross+=pt.kg;q.n+=c.n*f;q.cnt++;
@@ -30442,7 +30476,7 @@ function rgTurnsHtml(d){
    ${v.turns.map(t=>{const x=T[t.n]||{};const h=x.off?0:Math.max(0,turnHours(t)+(x.x!=null&amp;&amp;x.x!==''?+String(x.x).replace(',','.'):(+ex[t.n]||0))-abMin(x)/60);const abs=abList(x);const mots=(S.config.abMotivos||[]);const sc=k=>`<label style="display:inline-flex;gap:4px;align-items:center;margin-right:10px">${k==='sT'?'Tubos':k==='sB'?'Barril':'Purga'} <input type="text" inputmode="decimal" data-rgturn="${esc(t.n)}" data-k="${k}" value="${esc(x[k]??'')}" placeholder="kg" style="width:64px"></label>`;
      return `<tr class="trow"><td><b>${esc(t.n)}</b> <span class="sub" style="margin:0">${esc(t.a)}–${esc(t.b)}</span></td><td class="n"><input type="text" inputmode="numeric" data-rgturn="${esc(t.n)}" data-k="t" value="${x.t?nf0.format(x.t):''}" style="width:100px"></td><td class="n"><input type="text" inputmode="decimal" data-rgturn="${esc(t.n)}" data-k="x" value="${esc(x.x??'')}" placeholder="${+ex[t.n]?nf1.format(+ex[t.n])+' plan.':'0'}" style="width:64px"></td><td><input type="checkbox" data-rgturn="${esc(t.n)}" data-k="off" ${x.off?'checked':''} aria-label="Turno ${esc(t.n)} sem produção"></td><td class="n" data-rglive="${esc(t.n)}|r">${x.t&amp;&amp;h?nf0.format(x.t/h):'—'}</td><td class="n" data-rglive="${esc(t.n)}|o" style="color:${oeeColor(oeeProd([d.date],t.n),[d.date],t.n)}">${oeeProd([d.date],t.n)!=null?pct(oeeProd([d.date],t.n)):'—'}</td></tr>
      <tr class="srow abrow"><td class="sub" style="margin:0;padding-left:18px">Abono (min)</td><td colspan="5"><div class="abcell">${abs.map((a,i)=>`<span class="abent"><input type="text" inputmode="numeric" data-rgab="${esc(t.n)}|${i}" data-k="min" value="${esc(a.min??'')}" placeholder="min" style="width:54px" aria-label="Minutos de abono"><select data-rgab="${esc(t.n)}|${i}" data-k="m" aria-label="Motivo do abono"><option value="">motivo…</option>${mots.concat(a.m&amp;&amp;!mots.includes(a.m)?[a.m]:[]).map(m=>`<option ${a.m===m?'selected':''}>${esc(m)}</option>`).join('')}</select><button type="button" class="btn sm ghost" data-act="rgAbRm" data-tn="${esc(t.n)}" data-i="${i}" aria-label="Remover abono">✕</button></span>`).join('')}<button type="button" class="btn sm ghost" data-act="rgAbAdd" data-tn="${esc(t.n)}">+ abono</button></div></td></tr>
-     ${GelProd.resumo(d.date)||equipList().length||(x.eq&amp;&amp;x.eq.length)?`<tr class="srow"><td colspan="6" style="padding-left:18px">${rgScrapHtml(d,t.n)}</td></tr>`:`<tr class="srow"><td class="sub" style="margin:0;padding-left:18px">Registro de scrap (kg)</td><td colspan="5">${sc('sT')}${sc('sB')}${sc('sP')}</td></tr>`}`}).join('')}
+     ${GelProd.resumo(d.date)||vacGel.avisoCadastro(d.date)||equipList().length||(x.eq&amp;&amp;x.eq.length)?`<tr class="srow"><td colspan="6" style="padding-left:18px">${rgScrapHtml(d,t.n)}</td></tr>`:`<tr class="srow"><td class="sub" style="margin:0;padding-left:18px">Registro de scrap (kg)</td><td colspan="5">${sc('sT')}${sc('sB')}${sc('sP')}</td></tr>`}`}).join('')}
    ${!GelProd.scrapProd(d.date)&amp;&amp;(equipList().length||((T._dia||{}).eq||[]).length)?`<tr class="srow dayrow"><td colspan="6" style="padding-left:18px">${rgScrapHtml(d,'_dia')}<div class="sub" style="margin:2px 0 0">Para o que é registrado no dia todo (ex.: sobra dos barris). Soma com o scrap dos turnos.</div></td></tr>`:''}
    </tbody></table></div><span class="sub" style="margin:0">Horas disponíveis do dia: ${nf2.format(hrs)} h${(()=>{const m=Object.values(T).reduce((q,x)=>q+abMin(x),0);return m?` (já descontados ${nf0.format(m)} min de abono)`:''})()}${tot&amp;&amp;hrs?` · ritmo ${nf0.format(tot/hrs)} tubos/h · <b style="color:${oeeColor(oeeProd([d.date]),[d.date])}">OEE do dia ${oeeProd([d.date])!=null?pct(oeeProd([d.date])):'— (sem a Produção)'}</b> (máx. ${nf0.format(maxRate())}/h)`:''}. O scrap dos turnos soma o scrap do dia.</span></div>`;
 }
@@ -30638,6 +30672,13 @@ function rgTubesLive(){const d=ui.rgDraft;if(!d||ui.tab!=='prod')return;const M=
   const h=$('#rgTubesHint');if(h)h.innerHTML=M.m==='turn'?(O.length>1?`Total do dia = soma dos turnos (${nf0.format(M.ts)}). O último catálogo recebe o que falta${M.over?' · <b style="color:var(--crit)">os outros catálogos passam da soma dos turnos</b>':''}.`:`Total do dia = soma dos turnos (${nf0.format(M.ts)}). Para lançar só o total, apague os tubos dos turnos.`):M.m==='day'?'Produção lançada só no dia: os tubos por turno ficam bloqueados. Apague o total do dia para lançar por turno.':'Preencha os tubos por turno (o dia soma sozinho) ou, se não souber o turno, só o total do dia.'}
 async function rgSave(){
   if(!requireWritable())return;rgSyncFromDom();const d=ui.rgDraft;
+  const antes=(S.prodlog[d.date]||{}).turns||{};
+  const scrapManual=['sT','sB','sP'];
+  if(vacGel.avisoCadastro(d.date)&amp;&amp;Object.entries(d.turns||{}).some(([tn,x])=>scrapManual.some(k=>(x[k]??'')!==(antes[tn]?.[k]??'')))){
+    toast(vacGel.avisoCadastro(d.date),6000);return}
+  const pendentes=recEquipScrap(d,d.date).pendentes;
+  if(pendentes.some(en=>!(antes[en.turn]?.eq||[]).some(a=>a.d===en.d&amp;&amp;a.e===en.e&amp;&amp;kgOf(a.kg)===kgOf(en.kg)&amp;&amp;(+a.nb||0)===(+en.nb||0)))){
+    toast('Confira o cadastro do local, da composição e da embalagem em Administração › Gel.',6000);return}
   if(!d.resp){toast('Informe o responsável.');return}
   {const M=rgTubesApply(d);if(M.over){toast('Os outros catálogos somam mais que a produção dos turnos. Confira os tubos por catálogo.',6000);return}}
   if(!d.orders.some(o=>o.t>0)){toast('Informe os tubos bons produzidos.');return}
@@ -30648,7 +30689,7 @@ async function rgSave(){
     if(bad.length){toast(`O abono passa da duração do turno (${bad.join(', ')}). Para um turno parado inteiro, marque Sem produção.`,7000);return}
     if(Object.values(d.turns||{}).some(x=>abList(x).some(a=>parseNum(a.min)<0))){toast('O abono não pode ser negativo.');return}}
   LS.set('fifo.resp',d.resp);
-  const turns=Object.fromEntries(Object.entries(d.turns||{}).filter(([k,x])=>x&amp;&amp;(+x.t||x.off||x.none||abMin(x)>0||(x.eq&amp;&amp;x.eq.length)||(x.x!==''&amp;&amp;x.x!=null)||['sT','sB','sP'].some(q=>x[q]!==''&amp;&amp;x[q]!=null))).map(([k,x])=>[k,{t:+x.t||0,x:x.x===''||x.x==null?null:+String(x.x).replace(',','.'),off:!!x.off,...(abMin(x)>0?{ab:abList(x).filter(a=>parseNum(a.min)>0).map(a=>({min:parseNum(a.min),m:a.m||''}))}:{}),...(x.none?{none:true}:{}),...(x.eq&amp;&amp;x.eq.length?{eq:x.eq.filter(entOk).map(z=>({e:z.e,d:z.d,kg:kgOf(z.kg),...(+z.nb>0?{nb:+z.nb}:{}),cat:z.cat||'',...((z.mots||[]).some(m=>m.m)?{mots:z.mots.filter(m=>m.m).map(m=>({m:m.m,kg:kgOf(m.kg)||null}))}:{})})),scat:x.scat||''}:{}),...Object.fromEntries(['sT','sB','sP'].filter(q=>x[q]!==''&amp;&amp;x[q]!=null).map(q=>[q,x[q]]))}]));
+  const turns=Object.fromEntries(Object.entries(d.turns||{}).filter(([k,x])=>x&amp;&amp;(+x.t||x.off||x.none||abMin(x)>0||(x.eq&amp;&amp;x.eq.length)||(x.x!==''&amp;&amp;x.x!=null)||['sT','sB','sP'].some(q=>x[q]!==''&amp;&amp;x[q]!=null))).map(([k,x])=>[k,{t:+x.t||0,x:x.x===''||x.x==null?null:+String(x.x).replace(',','.'),off:!!x.off,...(abMin(x)>0?{ab:abList(x).filter(a=>parseNum(a.min)>0).map(a=>({min:parseNum(a.min),m:a.m||''}))}:{}),...(x.none?{none:true}:{}),...(x.eq&amp;&amp;x.eq.length?{eq:x.eq.filter(entOk).map(z=>({e:z.e,d:z.d,...(z.local?{local:z.local}:{}),kg:kgOf(z.kg),...(+z.nb>0?{nb:+z.nb}:{}),cat:z.cat||'',...((z.mots||[]).some(m=>m.m)?{mots:z.mots.filter(m=>m.m).map(m=>({m:m.m,kg:kgOf(m.kg)||null}))}:{})})),scat:x.scat||''}:{}),...Object.fromEntries(['sT','sB','sP'].filter(q=>x[q]!==''&amp;&amp;x[q]!=null).map(q=>[q,x[q]]))}]));
   const rec={date:d.date,turns,orders:d.orders.filter(o=>o.t>0).map(o=>({cat:o.cat||'',t:o.t})),sT:d.sT,sB:d.sB,sP:d.sP,resp:d.resp,obs:d.obs,material:D.planMat||'',savedAt:nowDT()};
   // tubos acima da capacidade do turno (OEE > 100%) costumam ser erro de digitação: pede confirmação com um segundo clique
   {const over=Object.entries(turns).filter(([tn,x])=>x.t>0&amp;&amp;tn!=='_dia').map(([tn,x])=>{const h=dbTurnH(d.date,rec,tn);return h>0&amp;&amp;x.t>h*maxRate()*1.0001?`${turnLbl(tn)}: ${nf0.format(x.t)} tubos em ${nf2.format(h)} h (OEE ${pct(x.t/(h*maxRate()))})`:null}).filter(Boolean);
@@ -31422,8 +31463,8 @@ function dbDayCalc(k,f){
   const bx=(f.cat||f.turn)?0:rgBaixas(k).reduce((s,e)=>s+bxNet(e),0);const nbx=(f.cat||f.turn)?0:rgBaixas(k).filter(e=>e.total).length;
   const parts=[];let hasScr=false;
   if(r){const es=recEquipScrap(r,k);hasScr=es.any||Object.values(turns).some(t=>t.none)||['sT','sB','sP'].some(q=>rgNum(r[q])!=null);
-    if(es.any)es.ents.forEach(en=>{const e=equipById(en.e);const ds=e&amp;&amp;(e.descs||[]).find(x=>x.id===en.d);const c=en.c;
-      motSplit(en).forEach(pt=>{const q=c.gross?pt.kg/c.gross:0;parts.push({k,turn:en.turn,cat:en.cat||'',eq:en.e,eqN:e?e.name:'(excluído)',comp:c.comp,desc:ds?COMPS[ds.comp].l:'',area:c.scat,mot:pt.m||'',gel:c.gel*q,gross:pt.kg,n:c.n*q,tamp:(c.tamp||0)*q,rolha:(c.rolha||0)*q,etq:(c.etq||0)*q,adit:(c.adit||0)*q,tubo:(c.tubo||0)*q,nb:(c.nb||0)*q})})});
+    if(es.any)es.ents.forEach(en=>{const e=equipById(en.e);const ds=scrapLocal(en);const c=en.c;
+      motSplit(en).forEach(pt=>{const q=c.gross?pt.kg/c.gross:0;parts.push({k,turn:en.turn,cat:en.cat||'',eq:en.e,eqN:e?e.name:'(excluído)',localId:ds?.id||en.d,comp:c.comp,desc:scrapNome(en)||compNome(ds?.comp),area:c.scat,mot:pt.m||'',gel:c.gel*q,gross:pt.kg,n:c.n*q,tamp:(c.tamp||0)*q,rolha:(c.rolha||0)*q,etq:(c.etq||0)*q,adit:(c.adit||0)*q,tubo:(c.tubo||0)*q,nb:(c.nb||0)*q})})});
     else{const tt=Object.entries(turns).filter(([tn,t])=>['sT','sB','sP'].some(q=>rgNum(t[q])!=null));const cat1=ordAll.length===1?ordAll[0].cat:'';
       const add=(turn,q,v)=>{if(v>0)parts.push({k,turn,cat:cat1,eq:'_manual',eqN:'Sem equipamento',comp:'',desc:'',area:q.slice(1),mot:'',gel:v,gross:v,n:0})};
       if(tt.length)tt.forEach(([tn,t])=>['sT','sB','sP'].forEach(q=>add(tn,q,rgNum(t[q])||0)));else ['sT','sB','sP'].forEach(q=>add('',q,rgNum(r[q])||0))}}
@@ -31463,7 +31504,7 @@ function dbData(a,b,f,grp,meas){
   B.forEach(x=>{const M={};x.days.forEach(d=>Object.entries(d.catG).forEach(([c,q])=>{const m=M[c]=M[c]||{kg:0,usd:0,brl:0};const g=q.allow-q.inT-q.scr;m.kg+=g;if(d.priceU)m.usd+=g*d.priceU;if(d.price)m.brl+=g*d.price}));x.catG=M;
     x.gK=Object.values(M).reduce((s,m)=>s+m.kg,0);x.gU=Object.values(M).reduce((s,m)=>s+m.usd,0);x.gR=Object.values(M).reduce((s,m)=>s+m.brl,0)});
   return {a,b,days,B,T:sum(days),parts,base,turnNames,catG:agg('catG'),turnG:agg('turnG'),
-    byEq:grpBy(p=>p.eq,p=>p.eqN),byMot:grpBy(p=>p.mot||'_',p=>motName(p.mot)),byArea:grpBy(p=>p.area,p=>SCAT[p.area]),byDesc:grpBy(p=>p.eq+'|'+p.comp,p=>p.eqN+(p.desc?' · '+p.desc:'')),byComp:grpBy(p=>p.comp||'_m',p=>p.comp?COMPS[p.comp].l:'Sem equipamento'),turns};
+    byEq:grpBy(p=>p.eq,p=>p.eqN),byMot:grpBy(p=>p.mot||'_',p=>motName(p.mot)),byArea:grpBy(p=>p.area,p=>SCAT[p.area]),byDesc:grpBy(p=>p.eq+'|'+(p.localId||p.comp),p=>p.eqN+(p.desc?' · '+p.desc:'')),byComp:grpBy(p=>p.comp||'_m',p=>p.comp?compNome(p.comp):'Sem equipamento'),turns};
 }
 /* ---- gráficos ---- */
 // rótulo de valor numa coluna: dentro (horizontal se couber, senão vertical 90°, branco); se não couber, em cima (escuro)
@@ -31698,7 +31739,7 @@ function renderDash(){
    <div class="dbrow"><label>Catálogo ${sel('cat',catOpts)}</label>
     <label>Turno ${sel('turn',`<option value="">Todos</option>${G.turnNames.map(t=>`<option ${f.turn===t?'selected':''}>${esc(t)}</option>`).join('')}`)}</label>
     <label>Área ${sel('area',`<option value="">Todas</option>${Object.entries(SCAT).map(([k,l])=>`<option value="${k}" ${f.area===k?'selected':''}>${l}</option>`).join('')}`)}</label>
-    <label>Equipamento ${sel('eq',`<option value="">Todos</option>${(S.config.equips||[]).map(e=>`<option value="${esc(e.id)}" ${f.eq===e.id?'selected':''}>${esc(e.name)}</option>`).join('')}<option value="_manual" ${f.eq==='_manual'?'selected':''}>Sem equipamento</option>`)}</label>
+    <label>Equipamento ${sel('eq',`<option value="">Todos</option>${equipList(false).map(e=>`<option value="${esc(e.id)}" ${f.eq===e.id?'selected':''}>${esc(e.name)}</option>`).join('')}<option value="_manual" ${f.eq==='_manual'?'selected':''}>Sem equipamento</option>`)}</label>
     <label>Motivo ${sel('mot',`<option value="">Todos</option>${motList().map(m=>`<option value="${esc(m.id)}" ${f.mot===m.id?'selected':''}>${esc(m.name)}</option>`).join('')}<option value="_" ${f.mot==='_'?'selected':''}>Não informado</option>`)}</label>
     <span class="seg" title="Medida do scrap">${[['gel','Gel líquido'],['gross','Peso bruto'],['rel',relLbl()]].map(([k,l])=>`<button type="button" data-dbmeas="${k}" aria-pressed="${o.meas===k}">${l}</button>`).join('')}</span></div>
    ${chips.length?`<div class="dbrow">${chips.map(([k,l])=>`<button type="button" class="dbchip" data-dbchip="${k}">${esc(l)} ✕</button>`).join('')}<button type="button" class="btn sm ghost" data-dbchip="*">Limpar filtros</button></div>`:''}
@@ -55769,70 +55810,70 @@ body.vac-porta{overflow:hidden}
       "id": "oee",
       "path": "Plataforma.html#motor/oee",
       "version": "2.6.43",
-      "sha256": "8a0fb651a3780930b44df9dd1b1425ee5e2817eb7d8987e2635a79017ff5b445",
-      "bytes": 2417211
+      "sha256": "a8536535317953f7421d7982956d2c9d1d5481bd601bc499e15ad7e9896c1b3e",
+      "bytes": 2420671
     },
     {
       "id": "perdas",
       "path": "Plataforma.html#motor/perdas",
       "version": "1.12.20",
-      "sha256": "c24872fadf35c0497c674f4879436f8cdfb28f931dc438f9be48daad49539c02",
-      "bytes": 996778
+      "sha256": "821c0f55f157673c7cbe66491114bbe857c400db7581c7695a6c78353fcdf357",
+      "bytes": 1000238
     },
     {
       "id": "gel",
       "path": "Plataforma.html#motor/gel",
       "version": "2.48",
-      "sha256": "65f765d52026c5163b0ad7540dd09030f40b450896953d3b5444ac79d6b538fc",
-      "bytes": 1642882
+      "sha256": "ebe34ec257776fe46d228fd71bdfd4f472695af2435834aac8d5a88944b22092",
+      "bytes": 1642299
     },
     {
       "id": "paradas",
       "path": "Plataforma.html#motor/paradas",
       "version": "1.2.22",
-      "sha256": "95bb86dbe9692359356286dceea61ad4f19b3b53f66a33a26225f3188e98872f",
-      "bytes": 967289
+      "sha256": "ee809c74302893da8acc73d2df8fc47e1011e4c0e0257b138a846a614fa662fd",
+      "bytes": 970749
     },
     {
       "id": "equip",
       "path": "Plataforma.html#motor/equip",
       "version": "1.0.22",
-      "sha256": "ad34bee04c1c761cd808082687765f7cbfa7aefd67af95e79b9cc596e16f9362",
-      "bytes": 758881
+      "sha256": "c89f6891287271b7b8f44d4dbb1575590dcca0e4118bc893d6cc573c053914c2",
+      "bytes": 762341
     },
     {
       "id": "inic",
       "path": "Plataforma.html#motor/inic",
       "version": "1.1.17",
-      "sha256": "d1382c51141ab347511fc7405d18645f604ce658ae9ff3920ee2db026b7e3b8b",
-      "bytes": 773410
+      "sha256": "07503c2c42a4b9d7f9b169ca910e83061ffec466e0763666a95fda8723273610",
+      "bytes": 776870
     },
     {
       "id": "linha",
       "path": "Plataforma.html#motor/linha",
       "version": "1.7.1",
-      "sha256": "6743e19314b4f75236fa5f22c82df1ba7ba4db653bec35a01574e8473fc56fa7",
-      "bytes": 1021514
+      "sha256": "975f82f57b4f94b70843e509eefbbf416fde479b29ef214146f5df63a62cd85c",
+      "bytes": 1024974
     },
     {
       "id": "projetos",
       "path": "Plataforma.html#motor/projetos",
       "version": "0.1.16",
-      "sha256": "5e13f8fbc183a353c8e1187c0e94c72e4c76d99cc6591da8de9d99e96ca8fcc5",
-      "bytes": 690589
+      "sha256": "8faeb33dae5201d453b5b1b9b0a5764d762b9408c3d5a54e2e1fdb364b6d1e33",
+      "bytes": 694049
     },
     {
       "id": "portal",
       "path": "Plataforma.html#motor/portal",
       "version": "1.9.81",
-      "sha256": "b64da289f392b6d9a729205127c63bb55a88ec2b48b29e51e77dd4a2718afbf7",
-      "bytes": 1396023
+      "sha256": "1accc6afdefd700340bf70bf3c090960732c2e0ca0c67c868c10ef8c933b5ab6",
+      "bytes": 1399483
     }
   ],
   "limitations": [
     "Projetos e conteúdo técnico OSM/MES/AM/TPM mantêm os limites documentados nas fontes."
   ],
-  "enginesSha256": "894ea4dd688d8aeaeb4647189b477bd754432871308ef308cbd094da3278924f",
+  "enginesSha256": "f06c89d92f013ec73c42b29ae673952179ed5200eca55a7f9cee58d81f446084",
   "originRevision": "ffc9ee8",
   "sourceMode": "single-html",
   "originEnginesSha256": "a87a64ad0c328f70e102b2ae888790a9b5d5a9bd05778652a7ce7cae140e40d2"
