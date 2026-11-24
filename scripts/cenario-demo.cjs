@@ -41,6 +41,12 @@ async function COMPLEMENTO([mod, id, desloc]) {
       });
       notas.push('Gel v2: formato de ' + de + ' e ' + LOC.length + ' locais');
     }
+    // perdas teóricas do gel (Administração › Gel): sem vigência o teórico não é calculado; o cenário traz uma vigência para todos os formatos
+    if (!(g.processo || []).length) {
+      const de = new Date(Date.parse('2000-01-01T12:00:00Z') + desloc * 864e5).toISOString().slice(0, 10);
+      g.processo = [{ from: de, g: 0.98, pT: 2.2406, pB: 0.7352, pP: 0.5252 }];
+      notas.push('perdas teóricas do gel vigentes desde 01/01/2000');
+    }
     if (g.cabecotes == null || g.barrisPorCabecote == null) {
       const cfg = vacDemo.ler('gel')?.config;
       g.cabecotes ??= cfg?.lineHeads ?? 2;

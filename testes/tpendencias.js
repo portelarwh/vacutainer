@@ -64,35 +64,29 @@ const BASE = (k, rev, n) => { const b = { schema: PG[k].schema, schemaVersion: 1
     await ctx.close();
   }
 
-  // ---------- AT-01 · fila antiga (localStorage, versão anterior) entra uma vez e a original fica guardada; IndexedDB com falha avisa
+  // ---------- AT-01 · IndexedDB com falha avisa (a importação da fila antiga de localStorage saiu: base limpa, 24/11/2026)
   {
-    const ctx = await b.newContext(); const A = await nova(ctx, PG.inic.arq);
-    await ev(A, ops => { localStorage.setItem('inic.fila', JSON.stringify(ops)); }, [Object.assign(PG.inic.op('VELHA-1'), { id: 'opv1' }), Object.assign(PG.inic.op('VELHA-2'), { id: 'opv2' })]); await A.close();
-    const B = await nova(ctx, PG.inic.arq); const r = await ids(B, 'inic'); const ls = await ev(B, () => ({ fila: localStorage.getItem('inic.fila'), antiga: JSON.parse(localStorage.getItem('inic.fila.antiga') || '[]').length })); await B.close();
-    const C = await nova(ctx, PG.inic.arq); const r2 = await ids(C, 'inic');
-    ok(r === 'VELHA-1,VELHA-2' && ls.fila === null && ls.antiga === 2 && r2 === 'VELHA-1,VELHA-2', `AT-01 importação da fila antiga: uma vez, sem duplicar ao reabrir (${r2}); original em inic.fila.antiga (${ls.antiga})`);
-    await ctx.close();
     const c2 = await b.newContext(); await c2.addInitScript(() => { const o = indexedDB.open.bind(indexedDB); indexedDB.open = (n, v) => { if (n === 'vac-fila') throw new Error('IndexedDB indisponível (simulado)'); return o(n, v); }; });
     const P = await nova(c2, PG.inic.arq); await ev(P, o => Store.commit(o), PG.inic.op('SEM-IDB')); await dorme(400); await ev(P, () => topo());
     const t = await ev(P, () => ({ pill: /alterações não protegidas/.test(document.getElementById('stBase').innerText), res: JSON.parse(localStorage.getItem('inic.fila.reserva') || '[]').length + Object.keys(localStorage).filter(k => k.startsWith('vac.reserva.inic|')).length }));
     ok(t.pill && t.res === 1, `AT-01 IndexedDB com falha: aviso "alterações não protegidas" e reserva em localStorage (${t.res})`); await c2.close();
   }
 
-  // ---------- revisão do PR #18 (Codex): reserva e fila antiga não se perdem quando o IndexedDB volta; erro antigo não pula a pergunta
+  // ---------- revisão do PR #18 (Codex): a reserva não se perde quando o IndexedDB volta; erro antigo não pula a pergunta
+  // (a fila antiga de localStorage saiu do código: base limpa, 24/11/2026)
   for (const k of ['inic', 'equip', 'paradas']) {
     const ctx = await b.newContext(); await ctx.addInitScript(() => { const o = indexedDB.open.bind(indexedDB); indexedDB.open = (n, v) => { if (n === 'vac-fila' && localStorage.getItem('teste.semidb') === '1') throw new Error('IndexedDB indisponível (simulado)'); return o(n, v); }; });
     const A = await nova(ctx, PG[k].arq); await ev(A, () => localStorage.setItem('teste.semidb', '1')); await A.close();
     const B = await nova(ctx, PG[k].arq); await ev(B, o => Store.commit(o), PG[k].op('RES-1')); await dorme(400);
     const res = await ev(B, p => JSON.parse(localStorage.getItem(p + '.fila.reserva') || '[]').length + Object.keys(localStorage).filter(k => k.startsWith('vac.reserva.' + p + '|')).length, PG[k].ls); await B.close();
-    // fila antiga com o IndexedDB ainda fora: não pode sumir da fila ativa
-    const C0 = await nova(ctx, PG[k].arq); await ev(C0, ([p, op]) => localStorage.setItem(p + '.fila', JSON.stringify([op])), [PG[k].ls, Object.assign(PG[k].op('VELHA-X'), { id: 'opvx', qid: 'opvx' })]); await C0.close();
-    const C = await nova(ctx, PG[k].arq); const rC = await ids(C, k); const velha = await ev(C, p => !!localStorage.getItem(p + '.fila'), PG[k].ls); await ev(C, () => localStorage.setItem('teste.semidb', '0')); await C.close();
-    ok(res === 1 && rC === 'RES-1,VELHA-X' && velha, `PR #18 ${PG[k].arq}: IndexedDB fora → reserva (${res}) e fila antiga continuam na fila ativa (${rC}); a fila antiga fica no localStorage até migrar`);
-    // IndexedDB volta: as duas entram na fila durável, a reserva só sai depois disso, e nada se repete ao reabrir
+    // reabrir com o IndexedDB ainda fora: a reserva continua na fila ativa
+    const C = await nova(ctx, PG[k].arq); const rC = await ids(C, k); await ev(C, () => localStorage.setItem('teste.semidb', '0')); await C.close();
+    ok(res === 1 && rC === 'RES-1', `PR #18 ${PG[k].arq}: IndexedDB fora → a reserva (${res}) continua na fila ativa (${rC})`);
+    // IndexedDB volta: a reserva entra na fila durável, a reserva só sai depois disso, e nada se repete ao reabrir
     const D = await nova(ctx, PG[k].arq); const rD = await ids(D, k); await ev(D, o => Store.commit(o), PG[k].op('DEPOIS')); await dorme(500);
     const ls = await ev(D, p => ({ res: localStorage.getItem(p + '.fila.reserva'), novas: Object.keys(localStorage).filter(k => k.startsWith('vac.reserva.' + p + '|')).length, fila: localStorage.getItem(p + '.fila') }), PG[k].ls); await D.close();
     const E = await nova(ctx, PG[k].arq); const rE = await ids(E, k);
-    ok(rD === 'RES-1,VELHA-X' && rE === 'DEPOIS,RES-1,VELHA-X' && ls.res === null && ls.novas === 0 && ls.fila === null, `PR #18 ${PG[k].arq}: IndexedDB de volta → reserva e fila antiga recuperadas (${rD}); reabrir tem tudo uma vez (${rE}); reserva e fila antiga saem do localStorage`);
+    ok(rD === 'RES-1' && rE === 'DEPOIS,RES-1' && ls.res === null && ls.novas === 0, `PR #18 ${PG[k].arq}: IndexedDB de volta → reserva recuperada (${rD}); reabrir tem tudo uma vez (${rE}); a reserva sai do localStorage`);
     await ctx.close();
   }
   {
@@ -151,13 +145,13 @@ const BASE = (k, rev, n) => { const b = { schema: PG[k].schema, schemaVersion: 1
     ok(nada === null && !con && criada && criada.rev === 1, `AT-02 ${PG[k].arq}: pasta sem a base → pergunta; "não" não conecta nem cria; "sim" cria (rev ${criada && criada.rev})`); await c2.close();
   }
 
-  // ---------- AT-03 · formato desconhecido: zero gravações e o motivo; base antiga sem schema continua gravando
+  // ---------- AT-03 · formato desconhecido ou de versão anterior: zero gravações e o motivo (base limpa, 24/11/2026: base sem schemaVersion ou com versão menor não grava)
   for (const k of Object.keys(PG)) {
-    for (const [rot, mod, grava] of [['versão futura', x => Object.assign(x, { schemaVersion: 99 }), false], ['schema de outra página', x => Object.assign(x, { schema: 'vac-outra' }), false], ['base antiga sem schema', x => { delete x.schema; delete x.schemaVersion; return x; }, true]]) {
+    for (const [rot, mod, grava] of [['versão futura', x => Object.assign(x, { schemaVersion: 99 }), false], ['schema de outra página', x => Object.assign(x, { schema: 'vac-outra' }), false], ['versão anterior (sem schemaVersion)', x => { delete x.schema; delete x.schemaVersion; return x; }, false], ['versão anterior (0)', x => Object.assign(x, { schemaVersion: 0 }), false]]) {
       const ctx = await b.newContext(); const p = await nova(ctx, PG[k].arq); await ev(p, PASTA.limpa); const base = mod(BASE(k, 7, 1)); await ev(p, PASTA.grava, [PG[k].base, base]);
       await ev(p, PASTA.conecta); await ev(p, o => { Store.commit(o); clearTimeout(Store.t); return Store.save(); }, PG[k].op('F1')); await p.waitForTimeout(200);
       const j = JSON.parse(await ev(p, PASTA.le, PG[k].base)); const msg = await ev(p, () => Store.readErr || Store.lastErr || '');
-      const temF1 = JSON.stringify(j).includes('F1'); ok(grava ? j.rev > 7 && temF1 : j.rev === 7 && !temF1 && /versão mais nova|outro tipo/.test(msg), `AT-03 ${PG[k].arq} · ${rot}: ${grava ? 'grava normalmente (rev ' + j.rev + ')' : 'nenhuma gravação (rev ' + j.rev + '), motivo: ' + msg.slice(0, 70)}`);
+      const temF1 = JSON.stringify(j).includes('F1'); ok(grava ? j.rev > 7 && temF1 : j.rev === 7 && !temF1 && /versão mais nova|outro tipo|Base de versão anterior\. Comece uma base nova nesta pasta\./.test(msg), `AT-03 ${PG[k].arq} · ${rot}: ${grava ? 'grava normalmente (rev ' + j.rev + ')' : 'nenhuma gravação (rev ' + j.rev + '), motivo: ' + msg.slice(0, 70)}`);
       await ctx.close();
     }
   }

@@ -10,8 +10,9 @@ const errs = []; const ok = (c, m) => { console.log((c ? 'ok   ' : 'FALHA ') + m
 const PREP = async () => {
   const d = await navigator.storage.getDirectory(); for await (const [n] of d.entries()) await d.removeEntry(n, { recursive: true });
   const w = async (dir, n, t) => { const fh = await dir.getFileHandle(n, { create: true }); const s = await fh.createWritable(); await s.write(t); await s.close(); };
-  const db = Model.emptyBase('teste'); db.databaseVersion = 5; await w(d, 'oee-vacutainer-base.json', JSON.stringify(db));
-  await w(d, 'ordens-base.json', JSON.stringify({ schema: 'vac-ordens', schemaVersion: 1, rev: 3, revId: 'rA', revBy: 'Estação A', competencias: { '2026-09': { mb51: { arquivo: 'set.txt' }, resultado: null } }, auditoria: [], exports: {} }));
+  const bases = await d.getDirectoryHandle('00. Bases', { create: true });   // pasta nova nasce com 00. Bases (a mudança da raiz saiu: base limpa)
+  const db = Model.emptyBase('teste'); db.databaseVersion = 5; await w(bases, 'oee-vacutainer-base.json', JSON.stringify(db));
+  await w(bases, 'ordens-base.json', JSON.stringify({ schema: 'vac-ordens', schemaVersion: 1, rev: 3, revId: 'rA', revBy: 'Estação A', competencias: { '2026-09': { mb51: { arquivo: 'set.txt' }, resultado: null } }, auditoria: [], exports: {} }));
   const bk = await d.getDirectoryHandle('00. Backups', { create: true }); await w(bk, 'oee-vacutainer-base_2026-01-01.json', '{"legado":true}');
   const mod = await bk.getDirectoryHandle('OEE', { create: true }); await w(mod, 'oee-vacutainer-base_2026-02-01.json', '{"modulo":true}');
   await IDB.set('ordens', null); await IDB.set('ordens.pend', null); try { localStorage.removeItem('ordens.bk'); } catch (e) { }

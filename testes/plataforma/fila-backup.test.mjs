@@ -49,9 +49,11 @@ test('homônimos sem ID não entram na fila de nenhuma das duas pessoas',()=>{
   assert.ok(p.opcoes().includes('value="001" label="Pessoa Teste"'));
   assert.ok(p.opcoes().includes('value="002" label="Pessoa Teste"'));
 });
-test('registro antigo com nome único continua reconhecido pelo ID textual',()=>{
+test('registro só com nome não é ligado a ninguém, nem com nome único (base limpa)',()=>{
   const p=pessoa({usuarios:[{codigo:'0001',nome:'Ana Lima'}]});
-  assert.equal(p.mesma('','ana lima','0001','Ana Lima'),true);
+  assert.equal(p.id('Ana Lima',''),'');assert.equal(p.nome('','Ana Lima'),'Ana Lima');
+  assert.equal(p.mesma('','ana lima','0001','Ana Lima'),false);
+  assert.equal(p.mesma('0001','Nome antigo','0001','Ana Lima'),true);
   assert.equal(p.mesma('0001','Ana Lima','1','Ana Lima'),false);
   assert.equal(p.mesma('','','0001','Ana Lima'),false);
 });
@@ -74,12 +76,12 @@ test('sem Web Locks, instâncias diferentes continuam sem compartilhar o arquivo
   await Promise.all([station({storage,locks:null}).registrar('gel',{erro:'falha A',dir:f.dir}),station({storage,locks:null}).registrar('gel',{erro:'falha B',dir:f.dir})]);
   assert.equal(f.rows().length,2);assert.equal(new Set(f.writes).size,2);
 });
-test('leitura consolida log antigo e estações, sem escrever durante a consulta',async()=>{
+test('leitura consolida só os logs das estações (o registro-backup.log único saiu), sem escrever durante a consulta',async()=>{
   const legacy=JSON.stringify({em:'2026-11-15T12:00:00Z',pagina:'paradas',ok:false,erro:'erro legado'})+'\n';
   const f=folder({'registro-backup.log':legacy}),s=station();
   await s.registrar('paradas',{ok:true,arquivo:'backup-ficticio.json',dir:f.dir});
   const writes=f.writes.length,r=await s.ler('paradas',f.dir);
-  assert.equal(r.aberta,false);assert.equal(r.falha.erro,'erro legado');assert.equal(r.ok.arquivo,'backup-ficticio.json');
+  assert.equal(r.aberta,false);assert.equal(r.falha,null);assert.equal(r.ok.arquivo,'backup-ficticio.json');
   assert.equal(f.data.get('registro-backup.log'),legacy);assert.equal(f.writes.length,writes);
 });
 test('falha sem pasta persiste o aviso de registro só local e permite recuperação posterior',async()=>{

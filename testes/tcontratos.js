@@ -102,7 +102,7 @@ const errs = []; const ok = (c, m) => { console.log((c ? 'ok   ' : 'FALHA ') + m
   {
     const p = await nova('Portal.html', '');
     const r = await p.evaluate(() => [vacExportsOk({ exportsVersion: 1 }).ok, vacExportsOk({}).ok, vacExportsOk({ exportsVersion: 2 }).ok, vacExportsOk(null).ok, vacExportsOk({ exportsVersion: 2 }, 2).ok]);
-    ok(JSON.stringify(r) === '[true,true,false,false,true]', `kit vacExportsOk: v1 e sem número usam; v2 desconhecida não; sem exports não (${r})`);
+    ok(JSON.stringify(r) === '[true,false,false,false,true]', `kit vacExportsOk: só a versão conhecida usa; sem número (versão anterior), v2 desconhecida e sem exports não (${r})`);
     await p.close();
   }
   await b.close();

@@ -92,10 +92,10 @@ const w = (f, ms = 300) => f.waitForTimeout ? f.waitForTimeout(ms) : new Promise
     // 4) motivos e parâmetros do gel
     const antigo = await f.evaluate(() => JSON.stringify((Cad.D.parametros.gel || {}).formatos ?? null));
     await f.click('#gelPar [data-pgadd="motivos"]'); await f.fill('#gelPar [data-pg="motivos.0.name"]', 'Gel com bolha');
-    await f.click('#gelPar [data-pgadd="processo"]:has-text("todos os formatos")'); await f.fill('#gelPar [data-pg="processo.0.pT"]', '2,5'.replace(',', '.'));
+    await f.click('#gelPar [data-pgadd="processo"]:has-text("todos os formatos")'); await f.fill('#gelPar [data-pg="processo.1.pT"]', '2,5'.replace(',', '.'));   // a 0 é a vigência do cenário (gravada, não muda)
     await dt('#gelPar [data-pg="registroPelaProducaoDesde"]', '2026-12-01'); await f.click('#gpOk'); await w(page, 600);
     const pg = await f.evaluate(() => Cad.D.parametros.gel);
-    assert.ok(pg.motivos[0].name === 'Gel com bolha' && /^m-/.test(pg.motivos[0].id) && pg.processo[0].pT === 2.5 && pg.registroPelaProducaoDesde === '2026-12-01', 'parametros.gel ' + JSON.stringify(pg).slice(0, 200));
+    assert.ok(pg.motivos[0].name === 'Gel com bolha' && /^m-/.test(pg.motivos[0].id) && pg.processo[1].pT === 2.5 && pg.registroPelaProducaoDesde === '2026-12-01', 'parametros.gel ' + JSON.stringify(pg).slice(0, 200));
     assert.equal(JSON.stringify(pg.formatos ?? null), antigo, 'a cópia antiga do formato não foi tocada');
     console.log('ok motivos, perdas e corte do gel gravam em parametros.gel');
 

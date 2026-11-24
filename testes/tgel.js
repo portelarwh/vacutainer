@@ -13,10 +13,9 @@ const { chromium } = require('playwright');
     const locais = [];
     for (const { codigo, nome, gel } of doc.equipamentos) {
       for (const d of gel.descs) {
-        const id = locais.some(l => l.id === d.id) ? codigo + '-' + d.id : d.id;
+        const id = d.id;   // o local é achado pelo ID + equipamento (o campo legado saiu: base limpa)
         locais.push({ id, equipamento: codigo, local: d.local || nome, comp: d.comp, categoria: d.cat,
-          motivos: d.mots || [], embalagemG: d.cat === 'P' ? null : (gel.tara || null), ativo: true, ordem: locais.length,
-          legado: [{ e: codigo, d: d.id }] });
+          motivos: d.mots || [], embalagemG: d.cat === 'P' ? null : (gel.tara || null), ativo: true, ordem: locais.length });
       }
     }
     return { ...doc, schemaVersion: 2, parametros: { gel: parametros }, gel: { locais, formatos: formatos.map(v => {
@@ -76,7 +75,7 @@ const { chromium } = require('playwright');
     const comps = ['completo', 'tubogel', 'spray', 'gel', 'barril'], cats = ['T', 'B', 'P'];
     S.config.equips = [{ id: 'eqA', name: 'A', tara: '', active: true, descs: [] }, { id: 'eqB', name: 'B', tara: 90, active: true, descs: [] }];
     for (const e of S.config.equips) comps.forEach(c => cats.forEach(k => e.descs.push({ id: c + '-' + k, comp: c, cat: k })));
-    S.catalogs = [{ id: 'c1', num: '111111', fmt: '100', vig: [{ from: '2000-01-01', gTubo: 0.85, bomKg: 8.8, bomBase: 10000, tol: 6 }, { from: '2026-07-01', gTubo: 0.87, bomKg: 8.9, bomBase: 10000, tol: 6 }] }, { id: 'c2', num: '222222', fmt: '75' }, { id: 'c3', num: '333333', fmt: '100', gTubo: 0.9 }];
+    S.catalogs = [{ id: 'c1', num: '111111', fmt: '100', vig: [{ from: '2000-01-01', gTubo: 0.85, bomKg: 8.8, bomBase: 10000, tol: 6 }, { from: '2026-07-01', gTubo: 0.87, bomKg: 8.9, bomBase: 10000, tol: 6 }] }, { id: 'c2', num: '222222', fmt: '75' }, { id: 'c3', num: '333333', fmt: '100', vig: [{ from: '2000-01-01', gTubo: 0.9 }] }];
     localStorage.setItem('vac.cadastros', JSON.stringify(cadastroGelTeste({
       parametros: { gel: { formatos: S.config.fmts, processo: S.config.params } },
       equipamentos: S.config.equips.map(e => ({ codigo: e.id, nome: e.name, gel: e })),

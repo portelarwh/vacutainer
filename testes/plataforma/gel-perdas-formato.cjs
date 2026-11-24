@@ -2,6 +2,7 @@
 // 1) vacGel.procAt(data, formato): vigência sem formato vale para todos; a do formato vence na mesma data; sem formato, só as de todos;
 // 2) vacGel.teorico: cada catálogo usa as perdas do formato do seu tubo; com um só formato o resultado é o de sempre (gel ÷ (1 − perdas));
 // 3) a tela grava a vigência por formato (3 botões "+ Vigência"), recusa data e formato repetidos e a leitura pega o que foi gravado.
+//    O cenário traz uma vigência para todos os formatos (não há valor de fábrica desde a base limpa, 24/11/2026); a nova entra depois dela.
 const { chromium } = require('playwright'), http = require('http'), fs = require('fs'), path = require('path'), assert = require('assert/strict');
 const html = fs.readFileSync(path.resolve(__dirname, '../../Plataforma.html'));
 const w = ms => new Promise(r => setTimeout(r, ms));
@@ -46,17 +47,17 @@ const w = ms => new Promise(r => setTimeout(r, ms));
     await f.evaluate(() => { Cad.ui.sec = 'inicio'; App.render(); }); await f.click('.cadside [data-sec="gel"]'); await f.waitForSelector('#gelPar');
     assert.equal(await f.locator('#gelPar [data-pgadd="processo"]').count(), 3, 'três botões de vigência: Tubo 100, Tubo 75 e todos');
     await f.click('#gelPar [data-pgadd="processo"]:has-text("Tubo 75")'); await w(300);
-    assert.equal(await f.inputValue('#gelPar [data-pg="processo.0.fmt"]'), '75', 'a linha nova vem com o formato 75');
-    await f.fill('#gelPar [data-pg="processo.0.pT"]', '5'); await f.fill('#gelPar [data-pg="processo.0.g"]', '0.7');
+    assert.equal(await f.inputValue('#gelPar [data-pg="processo.1.fmt"]'), '75', 'a linha nova vem com o formato 75');
+    await f.fill('#gelPar [data-pg="processo.1.pT"]', '5'); await f.fill('#gelPar [data-pg="processo.1.g"]', '0.7');
     await f.click('#gelPar [data-pgadd="processo"]:has-text("Tubo 75")'); await w(300);   // segunda vigência do mesmo formato e da mesma data
     await f.click('#gpOk'); await w(500);
-    assert.equal(await f.evaluate(() => (Cad.D.parametros.gel || {}).processo), undefined, 'data e formato repetidos: recusado, nada gravado');
-    await f.evaluate(() => { document.querySelector('#gelPar [data-pgdel="processo.1"]').click(); });
+    assert.equal(await f.evaluate(() => ((Cad.D.parametros.gel || {}).processo || []).length), 1, 'data e formato repetidos: recusado, nada gravado (fica só a vigência do cenário)');
+    await f.evaluate(() => { document.querySelector('#gelPar [data-pgdel="processo.2"]').click(); });
     await w(300);
-    await f.fill('#gelPar [data-pg="processo.0.pT"]', '5'); await f.click('#gpOk'); await w(600);
+    await f.fill('#gelPar [data-pg="processo.1.pT"]', '5'); await f.click('#gpOk'); await w(600);
     const g = await f.evaluate(() => ({ P: Cad.D.parametros.gel.processo, t75: vacGel.procAt('2099-01-01', '75').pT, t100: vacGel.procAt('2099-01-01', '100').pT }));
-    assert.deepEqual(g.P.map(x => [x.fmt, x.pT, x.g]), [['75', 5, 0.7]], 'gravou a vigência do Tubo 75 ' + JSON.stringify(g.P));
-    assert.equal(g.t75, 5, 'o cálculo do Tubo 75 lê a vigência gravada'); assert.equal(g.t100, 2.2406, 'Tubo 100 sem vigência continua no padrão');
+    assert.deepEqual(g.P.map(x => [x.fmt, x.pT, x.g]), [[undefined, 2.2406, 0.98], ['75', 5, 0.7]], 'gravou a vigência do Tubo 75 ' + JSON.stringify(g.P));
+    assert.equal(g.t75, 5, 'o cálculo do Tubo 75 lê a vigência gravada'); assert.equal(g.t100, 2.2406, 'Tubo 100 sem vigência própria usa a de todos os formatos');
     console.log('ok tela: vigência por formato gravada; data e formato repetidos recusados');
 
     assert.deepEqual(erros, [], 'sem erro de JavaScript'); console.log('ok sem erro de JavaScript');

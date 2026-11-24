@@ -32,8 +32,8 @@ const {handler}=require('../../scripts/servidor-testes.cjs');
   });
   await Promise.all([a.evaluate(()=>vacBackupRegistro.registrar('paradas',{erro:'falha estação A',dir:structuredClone(parent.shared)})),b.evaluate(()=>vacBackupRegistro.registrar('paradas',{erro:'falha estação B',dir:structuredClone(parent.shared)}))]);
   const result=await a.evaluate(()=>vacBackupRegistro.ler('paradas',structuredClone(parent.shared)));
-  assert.equal(result.registros.length,3);assert.deepEqual(result.registros.map(r=>r.erro).sort(),['falha estação A','falha estação B','falha legada'].sort());assert.equal(result.aberta,true);
+  assert.equal(result.registros.length,2);assert.deepEqual(result.registros.map(r=>r.erro).sort(),['falha estação A','falha estação B']);assert.equal(result.aberta,true);   // o registro-backup.log único não é lido (base limpa)
   assert.equal(await page.evaluate(async()=>await(await(await shared.getFileHandle('registro-backup.log')).getFile()).text()===legacy),true);
-  assert.deepEqual(errors,[]);console.log('ok duas estações simuladas em OPFS: eventos preservados, leitura consolidada e log legado intacto');
+  assert.deepEqual(errors,[]);console.log('ok duas estações simuladas em OPFS: eventos preservados, leitura consolidada e o registro-backup.log único ignorado e intacto');
  }finally{await browser?.close();server.close();}
 })().catch(e=>{console.error(e);process.exitCode=1;});

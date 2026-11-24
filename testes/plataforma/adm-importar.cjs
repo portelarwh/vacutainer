@@ -120,7 +120,7 @@ const w = (f, ms = 300) => f.waitForTimeout ? f.waitForTimeout(ms) : new Promise
     // 5) fonte alternativa: base do Gel
     const P = await f.evaluate(() => {
       const cad = JSON.parse(JSON.stringify(Cad.D)); cad.schemaVersion = 1; delete cad.gel; cad.perfis.forEach(p => delete p.assuntos); delete (cad.parametros.gel || {}).formatos;
-      delete cad.parametros.gel.cabecotes; delete cad.parametros.gel.barrisPorCabecote;
+      delete cad.parametros.gel.cabecotes; delete cad.parametros.gel.barrisPorCabecote; delete cad.parametros.gel.processo;   // o cenário traz as perdas; o v1 simulado não
       cad.equipamentos.forEach(e => { if (e.gel) { delete e.gel.descs; delete e.gel.tara; } });
       const gel = { config: { lineHeads: 3, barrelsPerHead: 4, params: [{ from: '2025-10-15', pT: 2.24 }], fmts: [{ from: '2025-10-15', tara: 75, taraP: 5, sobra: 1.6, f: { '100': { tubo: 4.779, gel: 0.936, adit: 0.02, tr: 2.3 }, '75': { tubo: 3.56, gel: 0.834, adit: 0.015, tr: 2.3 } } }],
         equips: [{ id: 'e1', name: 'Gel dispensor', portal: 'EQ03', tara: 70, descs: [{ id: 'd1', local: 'MAQUINA GEL - VADG01', comp: 'tubogel', cat: 'T', mots: [] }] },
