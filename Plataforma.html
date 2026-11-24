@@ -716,7 +716,7 @@ const vacGel = (() => {
   function localGel(equipamento, id) {
     const codigo = String(equipamento || '').replace(/^eq-/, '');
     const locais = vacCad.gel.locais({ ativos: false });
-    return locais.find(l => l.id === id) || locais.find(l => l.legado?.some(ref => ref.e === equipamento &amp;&amp; ref.d === id))
+    return locais.find(l => l.id === id &amp;&amp; (!codigo || String(l.equipamento) === codigo)) || locais.find(l => l.legado?.some(ref => ref.e === equipamento &amp;&amp; ref.d === id))
       || locais.find(l => String(l.equipamento) === codigo &amp;&amp; l.legado?.some(ref => ref.d === id)) || null;
   }
   function valorPeso(v) {
@@ -5871,7 +5871,6 @@ const ImportarV1={MOTIVO:'importação do formato 1',
  /* o que a Administração ainda pode gravar com o cadastro no formato 1: a importação, a conta própria (login), a segurança (senha inicial), o desbloqueio, a carga e a restauração de backup */
  permitida(o){return o.acao==='importação v1'||o.origem==='login'||o.origem==='autocadastro'||o.tipo==='seguranca'||['desbloqueio','carga','restauração'].includes(o.acao)},
  num(x){const v=gelNum(x);return v==null||isNaN(v)?null:v},
- precisaGel(cad){const g=(cad.parametros&amp;&amp;cad.parametros.gel)||{};return!((g.formatos||[]).length&amp;&amp;(cad.equipamentos||[]).some(e=>e.gel&amp;&amp;(e.gel.descs||[]).length))},
  /* cad: cadastro v1; gelBase: fifo-base.json ou null. Devolve o que entra no cadastro v2, sem mexer em cad. */
  plano(cad,gelBase){const av=[],cfg=(gelBase&amp;&amp;gelBase.config)||{},pg=(cad.parametros&amp;&amp;cad.parametros.gel)||{},eqs=cad.equipamentos||[];
   /* formatos: parametros.gel.formatos; senão config.fmts do Gel */
@@ -5888,20 +5887,43 @@ const ImportarV1={MOTIVO:'importação do formato 1',
   /* locais: equipamentos[].gel.descs (+ tara); senão config.equips do Gel */
   const L=[];let fonteL=null;
   for(const e of eqs){const g=e.gel;if(!g||!(g.descs||[]).length)continue;const t=this.num(g.tara);if(g.tara!==''&amp;&amp;g.tara!=null&amp;&amp;t==null)av.push(`tara de ${e.nome||e.codigo} inválida (${g.tara}): ficou sem peso`);
-   for(const d of g.descs){L.push({eq:e.codigo,d,emb:t,ativo:true})}}
+   for(const d of g.descs){L.push({eq:e.codigo,d,emb:t,ativo:true,origem:e.codigo})}}
   if(L.length)fonteL='cadastro';
   else for(const e of cfg.equips||[]){const eq=e&amp;&amp;e.portal!=null&amp;&amp;e.portal!==''?eqs.find(x=>String(x.codigo)===String(e.portal)):null,t=this.num(e&amp;&amp;e.tara);
-   for(const d of(e&amp;&amp;e.descs)||[]){if(!eq){av.push('local sem equipamento correspondente: '+(d.local||e.name||'?'));continue}L.push({eq:eq.codigo,d,emb:t,ativo:e.active!==false});fonteL='Gel'}}
+   for(const d of(e&amp;&amp;e.descs)||[]){if(!eq){av.push('local sem equipamento correspondente: '+(d.local||e.name||'?'));continue}L.push({eq:eq.codigo,d,emb:t,ativo:e.active!==false,origem:e.id||e.portal});fonteL='Gel'}}
   if(!L.length)av.push('nenhum local de descarte encontrado: a tela Gel começa sem locais');
-  const locais=L.map((x,i)=>({id:'L-'+String(i+1).padStart(4,'0'),equipamento:x.eq,local:String(x.d.local||'').trim()||(eqs.find(e=>e.codigo===x.eq)||{}).nome||x.eq,comp:x.d.comp||'completo',categoria:x.d.cat||'T',motivos:Array.isArray(x.d.mots)?x.d.mots.slice():[],embalagemG:x.emb,ordem:i+1,ativo:x.ativo}));
+  const locais=L.map((x,i)=>{
+   const legado=x.d.id?[{e:String(x.origem),d:String(x.d.id)}]:[];
+   /* O Gel antigo podia guardar um ID próprio do equipamento. Vincula pelo código e ID do descarte. */
+   if(fonteL==='cadastro'&amp;&amp;x.d.id)for(const e of cfg.equips||[]){
+    if(!e?.id||String(e.portal)!==String(x.eq)||!(e.descs||[]).some(d=>String(d.id)===String(x.d.id)))continue;
+    if(!legado.some(r=>r.e===String(e.id)))legado.push({e:String(e.id),d:String(x.d.id)});
+   }
+   const nome=String(x.d.local||'').trim()||(eqs.find(e=>String(e.codigo)===String(x.eq))||{}).nome||x.eq;
+   return {id:'L-'+String(i+1).padStart(4,'0'),equipamento:x.eq,local:nome,comp:x.d.comp||'completo',categoria:x.d.cat||'T',
+    motivos:Array.isArray(x.d.mots)?x.d.mots.slice():[],embalagemG:x.emb,ordem:i+1,ativo:x.ativo,...(legado.length?{legado}:{})};
+  });
+  const parametros={};
+  for(const [campo,legado,max] of [['cabecotes','lineHeads',6],['barrisPorCabecote','barrelsPerHead',4]]){
+   const v=this.num(cfg[legado]);if(pg[campo]==null&amp;&amp;Number.isInteger(v)&amp;&amp;v>=1&amp;&amp;v<=max)parametros[campo]=v;
+  }
+  for(const [campo,legado] of [['processo','params'],['motivos','motivos']])
+   if(!(pg[campo]||[]).length&amp;&amp;Array.isArray(cfg[legado])&amp;&amp;cfg[legado].length)parametros[campo]=clone(cfg[legado]);
   /* perfis sem assuntos gravados recebem a regra de transição */
   const perfis=(cad.perfis||[]).filter(p=>!(p.assuntos&amp;&amp;typeof p.assuntos==='object')).map(p=>({codigo:p.codigo,nome:p.nome,assuntos:Object.fromEntries(ADM_ASSUNTOS.map(a=>[a.id,admNivelTransicao(p,a.id)]))}));
-  return{gel:{formatos,locais},perfis,avisos:av,pares,fontes:{formatos:fonteF,locais:fonteL}}},
+  return{gel:{formatos,locais},parametros,perfis,avisos:av,pares,fontes:{formatos:fonteF,locais:fonteL}}},
  /* aplica a importação sobre o cadastro D (na fila e ao regravar sobre a versão da pasta); se já for v2, não faz nada */
  aplicar(D,o,L){if(+D.schemaVersion>=2)return{ok:true};const P=o.plano||{},g=P.gel||{};
   const nF=((D.parametros&amp;&amp;D.parametros.gel&amp;&amp;D.parametros.gel.formatos)||[]).length;let nD=0,nP=0;
   D.gel={formatos:clone(g.formatos||[]),locais:clone(g.locais||[])};if(D.parametros&amp;&amp;D.parametros.gel)delete D.parametros.gel.formatos;
   for(const e of D.equipamentos||[]){if(!e.gel)continue;nD+=(e.gel.descs||[]).length;delete e.gel.descs;delete e.gel.tara;if(!Object.keys(e.gel).length)delete e.gel}
+  if(Object.keys(P.parametros||{}).length){
+   const parametros=D.parametros=D.parametros||{}, gel=parametros.gel=parametros.gel||{};
+   for(const [k,v] of Object.entries(P.parametros)){
+    if(gel[k]!=null&amp;&amp;(!Array.isArray(gel[k])||gel[k].length))continue;
+    const antes=gel[k]??null;gel[k]=clone(v);L(k,antes,gel[k],'importação','gel',null);
+   }
+  }
   for(const q of P.perfis||[]){const p=(D.perfis||[]).find(x=>x.codigo===q.codigo);if(p&amp;&amp;!(p.assuntos&amp;&amp;typeof p.assuntos==='object')){p.assuntos=clone(q.assuntos);nP++}}
   D.schemaVersion=2;
   L('schemaVersion',1,2,'importação','sistema',null);
@@ -5911,7 +5933,15 @@ const ImportarV1={MOTIVO:'importação do formato 1',
   return{ok:true}},
  /* prévia em modal; Importar grava uma só operação (com auditoria "importação do formato 1") */
  async abrir(){if(!Cad.podeEditarAssunto('sistema'))return;const D=Cad.D;if(!D)return toast('O cadastro ainda não existe.',4000,true);if(+D.schemaVersion>=2)return toast('O cadastro já está no formato 2.',4000);
-  let gel=null,lido='';if(this.precisaGel(D)&amp;&amp;Store.mode==='pasta'&amp;&amp;Store.dir){Modal.open('<h2>Importar das bases atuais</h2><p class="muted">Lendo a base da Gestão de Gel na pasta…</p>');try{await TrazCfg.ler();gel=TrazCfg.B.gel||null}catch(e){gel=null}if(!gel)lido='Não consegui ler a base da Gestão de Gel (fifo-base.json) na pasta; só o que está no cadastro entra.'}
+  let gel=null,lido='';
+  if(Store.mode==='pasta'&amp;&amp;Store.dir){
+   Modal.open('<h2>Importar das bases atuais</h2><p class="muted">Lendo a base da Gestão de Gel na pasta…</p>');
+   try{
+    const sy=sysOf('gel'), loc=sy&amp;&amp;await findModule(sy);
+    if(loc)gel=JSON.parse(await(await(await loc.dir.getFileHandle(sy.base)).getFile()).text());
+   }catch(e){console.warn('Importar das bases atuais: leitura do Gel',e)}
+   if(!gel)lido='Não consegui ler a base da Gestão de Gel (fifo-base.json). A prévia usa o cadastro disponível.';
+  }
   const P=this.plano(D,gel);if(lido)P.avisos.unshift(lido);this.desenhar(P)},
  desenhar(P){const D=Cad.D,nm=id=>(ADM_ASSUNTOS.find(a=>a.id===id)||{}).nome||id,n1=(n,u,m)=>n+' '+(n===1?u:m);
   const fv=(v,u)=>v==null?'—':fmtN(v)+(u?' '+u:'');
@@ -5928,13 +5958,17 @@ const ImportarV1={MOTIVO:'importação do formato 1',
     <tr><td>${esc(nm('pessoas'))}</td><td><b data-v1="perfis">${n1(P.perfis.length,'perfil','perfis')}</b> com permissão por assunto gravada</td><td class="small">regra atual (Processos, PCP, Almoxarifado e demais)</td></tr>
     <tr><td>${esc(nm('sistema'))}</td><td><b data-v1="versao">schemaVersion ${+D.schemaVersion||1} → 2</b></td><td class="small">libera a gravação da Administração</td></tr></table></div>
    ${P.avisos.length?`<div class="note w" data-v1="avisos"><b>Avisos (${P.avisos.length})</b><ul class="pl">${P.avisos.map(a=>`<li class="small">${esc(a)}</li>`).join('')}</ul></div>`:''}
+   ${Object.keys(P.parametros).length?`<h4>Parâmetros da base do Gel</h4><ul class="pl">${Object.entries(P.parametros).map(([k,v])=>{
+    const rotulos={cabecotes:'Cabeçotes da máquina',barrisPorCabecote:'Barris por cabeçote',processo:'Vigências de processo',motivos:'Motivos de descarte'};
+    return `<li>${esc(rotulos[k])} · ${Array.isArray(v)?v.length:v}</li>`;
+   }).join('')}</ul>`:''}
    ${fmts}
    ${loc?`<h4 style="margin:10px 0 4px">Locais de descarte</h4><div class="tw" style="max-height:30vh"><table class="cadst small"><tr><th>Local</th><th>Equipamento</th><th>Composição</th><th class="n">Embalagem (tara)</th></tr>${loc}</table></div>`:''}
    ${pf?`<h4 style="margin:10px 0 4px">Perfis</h4><div class="tw"><table class="cadst small"><tr><th>Perfil</th><th>Permissão por assunto</th></tr>${pf}</table></div><p class="small muted">Ajuste depois em Pessoas e acesso › Perfis e permissões.</p>`:''}
    <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:10px"><button class="b" id="v1Canc">Cancelar</button><button class="b p" id="v1Ok">Importar</button></div></div>`);
   mb.querySelector('#v1Canc').onclick=()=>Modal.close(true);
   mb.querySelector('#v1Ok').onclick=async()=>{if(!Cad.podeEditarAssunto('sistema'))return;Modal.close(true);
-   const r=await Cad.ops([{acao:'importação v1',tipo:'*',codigo:null,plano:{gel:P.gel,perfis:P.perfis.map(p=>({codigo:p.codigo,assuntos:p.assuntos}))},motivo:this.MOTIVO}]);if(r===false)return;
+   const r=await Cad.ops([{acao:'importação v1',tipo:'*',codigo:null,plano:{gel:P.gel,parametros:P.parametros,perfis:P.perfis.map(p=>({codigo:p.codigo,assuntos:p.assuntos}))},motivo:this.MOTIVO}]);if(r===false)return;
    toast(`Cadastro no formato 2: ${n1(P.gel.formatos.length,'formato','formatos')}, ${n1(P.gel.locais.length,'local','locais')} e ${n1(P.perfis.length,'perfil','perfis')} com permissão por assunto.`,7000);Cad.ui.sec='gel';cadHash();App.render()}}};
 function cadImportarV1(el){const D=Cad.D,v2=+D.schemaVersion>=2;
  el.innerHTML=`<div class="card"><h3>Importar das bases atuais ${ib('Importar das bases atuais','Uso único: converte o cadastro do formato 1 para o formato 2. O formato do gel e os locais de descarte saem de "parametros.gel.formatos" e "equipamentos[].gel" (ou, se o cadastro não tiver, da base da Gestão de Gel) e passam a morar no bloco Gel; cada perfil recebe a permissão por assunto; o schemaVersion sobe para 2.')}</h3>
@@ -5956,6 +5990,7 @@ const admAssuntoDe=x=>{const sec=x&amp;&amp;typeof x==='object'?admAssuntosOp(x)
 function admAssuntosOp(o){const t=o&amp;&amp;o.tipo;if(t==='parametros'){const K=Object.keys((o.mudancas)||{});const g=K.filter(k=>k==='gel'||k.startsWith('gel.')).length;return g&amp;&amp;g===K.length?['gel']:g?['gel','sistema']:['sistema']}
  return[(ADM_ASSUNTOS.find(a=>a.itens.includes(t))||{id:'sistema'}).id]}
 /* rótulo do botão e se a tela só existe com o cadastro carregado */
+/* Segundo item: esta rota só aparece com o cadastro carregado. */
 const ADM_ROT={gel:['Gel',1],matriz:['Matriz de paradas',1],usuarios:['Usuários',1],perfis:['Perfis e permissões',1],vigencias:['Vigências',1],parametros:['Parâmetros',1],novidades:['Novidades',0],apps:['Apps de celular',1],importar:['Integrações SAP',1],importarV1:['Importar das bases atuais',1],config:['Configuração da Administração',0],versoes:['Versões das páginas',0],auditoria:['Auditoria',1],backups:['Backups do cadastro',1],seguranca:['Segurança e senha',1]};
 function cadSide(sec){const D=Cad.D;const btn=(k,l,n)=>`<button data-sec="${k}" class="${sec===k?'on':''}">${l}${n!=null?`<span class="n">${n}</span>`:''}</button>`;
  const cnt=t=>{if(!D)return null;const L=D[t]||[],a=L.filter(x=>cadAtivo(t,x,D)).length;return a+(a!==L.length?'/'+L.length:'')};
@@ -7312,48 +7347,12 @@ const TrazCfg={B:{},lidos:[],avisos:[],P:[],
      const ps=br.map(b=>({codigo:codeOf(b.codeId),nome:b.label||'Pausa',inicio:b.start&amp;&amp;b.end?b.start:'',fim:b.start&amp;&amp;b.end?b.end:'',duracaoMin:b.start&amp;&amp;b.end?null:(+b.minutes||null),dias:Array.isArray(b.weekdays)?b.weekdays.slice():[],desconta:b.deducts!==false}));
      add('Pausas e abonos',`Turno ${t.codigo} (vigência desde ${fmtD(v.de)}): ${ps.length} pausa(s) da Produção`,ps.map(p=>`${p.nome} ${p.inicio?p.inicio+'–'+p.fim:p.duracaoMin+' min'}${p.dias.length?' ('+p.dias.map(d=>DIAS[d]).join(', ')+')':''}${p.codigo?' · '+p.codigo:''}`).join('; '),
       W2=>{const it=W2.turnos.find(x=>x.codigo===t.codigo);const vv=it.vigencias[i];vv.pausas=(vv.pausas||[]).concat(clone(ps))})})}}
-  /* 2a. 1.9.9 · ARQ-05/ARQ-07: catálogos e equipamentos que só existem na Gestão de Gel. O Gel liga sozinho pelo número do catálogo
-     e pelo nome do equipamento (ou "Outros nomes"); os dados do gel (BOM de gel, descartes) continuam lá. */
-  if(G){const gcats=((G.catalogs&amp;&amp;G.catalogs.items)||[]).filter(c=>c&amp;&amp;c.num!=null&amp;&amp;String(c.num).trim()!==''),geqs=((G.config&amp;&amp;G.config.equips)||[]).filter(e=>e&amp;&amp;e.name);
+  /* Catálogos da Gestão de Gel entram na importação de produto. Locais e formatos usam a importação do cadastro v1. */
+  if(G){const gcats=(Array.isArray(G.catalogs)?G.catalogs:(G.catalogs?.items||[])).filter(c=>c&amp;&amp;c.num!=null&amp;&amp;String(c.num).trim()!=='');
    for(const c of gcats){const cod=String(c.num).trim();if(cadItem('catalogos',cod,D)||P.some(x=>x.cat===cod))continue;
     const it={codigo:cod,tipoItem:'tubo',unidade:'UN',nome:c.desc||('Catálogo '+cod),familia:null,linha:L0,formato:c.fmt?String(c.fmt):null,volumeMl:null,aditivo:'SST',cor:c.color||null,codigoSAP:null,ativo:c.active!==false,vigencias:[{de:'2025-01-01',ate:null,pphNominal:+c.rateH>0?Math.round(+c.rateH):null,tubosPorCaixa:1000,caixasPorLote:+c.lotSize>0?Math.round(+c.lotSize/1000):null}]};
     P.push({id:'p'+P.length,grupo:'Só no Gel · catálogos',titulo:`Catálogo ${cod} · ${it.nome}`,detalhe:`Formato ${it.formato||'—'}${it.vigencias[0].pphNominal?' · '+fmtN(it.vigencias[0].pphNominal)+' tubos/h':''}. Aditivo SST (usa gel): confira família e código SAP na ficha depois.`,fn:W2=>{W2.catalogos.push(clone(it))},marcado:true,cat:cod})}
-   const norm=x=>String(x||'').trim().toLowerCase();const achou=n=>(D.equipamentos||[]).some(e=>norm(e.nome)===norm(n)||String(e.apelidos||'').split(';').some(a=>norm(a)===norm(n)));
-   let prox=Math.max(0,...(D.equipamentos||[]).map(e=>+(String(e.codigo).match(/^EQ(\d+)$/)||[])[1]||0));const pos0=Math.max(0,...(D.equipamentos||[]).map(e=>+e.posicao||0));
-   for(const e of geqs){if(e.portal&amp;&amp;cadItem('equipamentos',e.portal,D))continue;if(achou(e.name))continue;const cod='EQ'+String(++prox).padStart(2,'0');
-    const it={codigo:cod,nome:e.name,linha:L0,posicao:pos0+prox,tipo:'equipamento',papel:'equipamento',categoria:'gel',fabricante:null,modelo:null,numeroSerie:null,ano:null,dados:{},foto:null,documentos:[],ativo:e.active!==false};
-    add('Só no Gel · equipamentos',`${cod} · ${e.name} (Equipamento – Gel)`,`Equipamento da linha da Gestão de Gel. O Gel liga pelo nome; a embalagem e os descartes continuam lá. Se já existe na Administração com outro nome, não traga: ponha "${e.name}" em Outros nomes daquele equipamento.`,W2=>{W2.equipamentos.push(clone(it))})}}
-  /* 2b. 1.9.12 · Fase 4 · 4a (D10): parâmetros do gel que hoje só estão na Gestão de Gel (mesma estrutura; sem mudar nenhuma conta) */
-  if(G&amp;&amp;G.config){const c=G.config,PG=(D.parametros||{}).gel||{};const gcats=((G.catalogs&amp;&amp;G.catalogs.items)||[]),norm=x=>String(x||'').trim().toLowerCase();
-   const bloco=(k,campo,titulo,det,L)=>{if(!(L||[]).length||(PG[campo]||[]).length)return;add('Só no Gel · parâmetros do gel',titulo,det,W2=>{W2.parametros=W2.parametros||{};W2.parametros.gel=Object.assign({},W2.parametros.gel||PG);W2.parametros.gel[campo]=clone(L)})};
-   bloco('proc','processo',`Perdas teóricas e gel padrão: ${(c.params||[]).length} vigência(s)`,(c.params||[]).map(v=>`desde ${fmtD(v.from)}: ${fmtN(v.g,3)} g · T ${fmtN(v.pT,2)}% · B ${fmtN(v.pB,2)}% · P ${fmtN(v.pP,2)}%`).join(' · '),c.params);
-   bloco('fmts','formatos',`Formatos de tubo: ${(c.fmts||[]).length} vigência(s)`,'Pesos dos componentes (Tubo 100 e 75), embalagem, folha da purga e sobra do barril, como estão no Gel.',c.fmts);
-   bloco('mot','motivos',`Motivos de descarte: ${(c.motivos||[]).length}`,(c.motivos||[]).map(m=>m.name).join(' · '),c.motivos);
-   /* 1.9.79 · GEL-09 (pedido do responsável, 23/11/2026): no Gel, cada ponto de descarte era um equipamento com o local no nome
-      ("TULLIP A - CAIXA REJEIÇÃO - VATU01", "TULLIP A - FUNIL BERÇO - VATU01"), vários ligados à mesma máquina da Administração.
-      Antes, cada ponto sobrescrevia o anterior (ficava só o último). Agora os pontos da mesma máquina se juntam, cada descarte com o seu
-      Local (o nome do Gel sem a máquina e sem a etiqueta, ex.: "CAIXA REJEIÇÃO"); se a máquina já tem descartes e falta algum ponto do
-      Gel, a proposta refaz juntando (o que já está na Administração é mantido; nada do Gel é apagado). */
-   const semAc=x=>norm(x).normalize('NFD').replace(/[\u0300-\u036f]/g,'');
-   const alvoDe=(W,e)=>(W.equipamentos||[]).find(x=>e.portal?String(x.codigo)===String(e.portal):(norm(x.nome)===norm(e.name)||String(x.apelidos||'').split(';').some(a=>norm(a)===norm(e.name))));
-   const localDe=(e,x)=>{const tira=new Set([x&amp;&amp;x.nome,x&amp;&amp;x.codigo,x&amp;&amp;x.codigoSAP,...String(x&amp;&amp;x.apelidos||'').split(';')].filter(Boolean).map(semAc));
-    const P=String(e.name||'').split(/\s+[-–]\s+/).map(t=>t.trim()).filter(Boolean).filter(t=>!tira.has(semAc(t))&amp;&amp;!/^[A-Z]{2,}\d{2,}$/.test(t));
-    return P.length>1||(x&amp;&amp;P.length===1&amp;&amp;semAc(P[0])!==semAc(e.name))?P.join(' – '):''};
-   const grupos=new Map();for(const e of (c.equips||[]).filter(e=>e&amp;&amp;(e.descs||[]).length)){const x=alvoDe(D,e),k=x?'adm:'+x.codigo:'nome:'+norm(e.name);if(!grupos.has(k))grupos.set(k,[]);grupos.get(k).push(e)}
-   for(const [k,L] of grupos){const ja=alvoDe(D,L[0]);
-    const junto=W=>{const x=alvoDe(W,L[0]),usados=new Set(),out=[];for(const e of L)for(const d of e.descs||[]){let id=d.id||('d-'+e.id);if(usados.has(id))id=id+'-'+(e.id||out.length);usados.add(id);out.push({...clone(d),id,local:d.local||localDe(e,x)})}return out};
-    const desejado=junto(D),atuais=(ja&amp;&amp;ja.gel&amp;&amp;ja.gel.descs)||[],faltam=desejado.filter(d=>!atuais.some(a=>a.id===d.id)),semLocal=atuais.filter(a=>!a.local&amp;&amp;desejado.some(d=>d.id===a.id&amp;&amp;d.local));
-    if(ja&amp;&amp;ja.gel&amp;&amp;!faltam.length&amp;&amp;!semLocal.length)continue;
-    const nomes=L.map(e=>e.name).join(' · '),refaz=!!(ja&amp;&amp;ja.gel);
-    add('Só no Gel · parâmetros do gel',`${refaz?'Refazer descartes':'Descartes'} de ${ja?ja.codigo+' · '+ja.nome:L[0].name}: ${desejado.length} ponto(s) do Gel${refaz?' (faltam '+faltam.length+(semLocal.length?', '+semLocal.length+' sem local':'')+')':''}`,
-     `${desejado.map(d=>(d.local?d.local+': ':'')+d.comp+' → '+({T:'Tubos',B:'Barril',P:'Purga'}[d.cat]||d.cat)).join(' · ')}. Pontos do Gel: ${nomes}.${refaz?' O que já está na Administração continua; entram os pontos que faltam e o local dos que estão sem.':''}`,
-     W2=>{const x=alvoDe(W2,L[0]);if(!x)return;const des=junto(W2),cur=(x.gel&amp;&amp;x.gel.descs)||[];
-      const desc=cur.map(a=>{const d=des.find(z=>z.id===a.id);return d&amp;&amp;!a.local&amp;&amp;d.local?{...a,local:d.local}:a}).concat(des.filter(d=>!cur.some(a=>a.id===d.id)));
-      const t=L.map(e=>e.tara).find(v=>v!==''&amp;&amp;v!=null);x.gel={tara:x.gel&amp;&amp;x.gel.tara!=null&amp;&amp;x.gel.tara!==''?x.gel.tara:(t==null?null:+t),descs:desc};x.categoria='gel'})}
-   for(const k of gcats.filter(k=>k&amp;&amp;k.num!=null&amp;&amp;((k.vig||[]).length||k.gTubo||k.bomKg||k.lotSize||k.rateH))){const cod=String(k.num).trim(),ja=cadItem('catalogos',cod,D);if(ja&amp;&amp;ja.gel)continue;
-    const vig=(k.vig&amp;&amp;k.vig.length?k.vig:[{from:'2000-01-01',gTubo:k.gTubo||null,bomKg:k.bomKg||null,bomBase:k.bomBase||10000,tol:k.tol??6}]).map(v=>({from:v.from,gTubo:v.gTubo??null,bomKg:v.bomKg??null,bomBase:v.bomBase??10000,tol:v.tol??6,...(v.bomG?{bomG:v.bomG,bomPct:v.bomPct}:{})}));
-    add('Só no Gel · parâmetros do gel',`Gel do catálogo ${cod}: ${vig.length} vigência(s)`,`Formato ${k.fmt||'100'}${k.lotSize?' · lote '+fmtN(k.lotSize):''}${k.rateH?' · '+fmtN(k.rateH)+' tubos/h':''} · ${vig.map(v=>`desde ${v.from==='2000-01-01'?'o início':fmtD(v.from)}: ${v.gTubo?fmtN(v.gTubo,3)+' g/tubo':'g do formato'}${v.bomKg?' · BOM '+fmtN(v.bomKg,3)+' kg/'+fmtN(v.bomBase):''}`).join(' · ')}.`,
-     W2=>{const x=(W2.catalogos||[]).find(y=>String(y.codigo)===cod);if(!x)return;x.gel={fmt:k.fmt||null,lotSize:k.lotSize||null,rateH:k.rateH||null,vig}})}}
+  }
   /* 2. pausa fixa e abono do Gel */
   if(G&amp;&amp;G.config){const c=G.config,sh=(c.shifts||[]).slice().sort((a,b)=>a.from<b.from?1:-1)[0];
    if(sh)for(const tu of sh.turns||[])if(+tu.p>0){const t=cadItem('turnos',tu.n,D);if(!t)continue;add('Pausas e abonos',`Turno ${tu.n}: pausa fixa de ${tu.p} min (Gestão de Gel)`,'Todos os dias do turno, desconta do planejado. Confira se a Produção já não tem a mesma pausa.',W2=>{const it=W2.turnos.find(x=>x.codigo===tu.n);const vv=vigEm(it.vigencias,todayISO())||it.vigencias[it.vigencias.length-1];if(vv)vv.pausas=(vv.pausas||[]).concat([{codigo:null,nome:'Pausa fixa',inicio:'',fim:'',duracaoMin:+tu.p,dias:[],desconta:true}])},false)}
@@ -7604,7 +7603,8 @@ function gelParHtml(P,pe){const G0=P.gel||{};if(!ParGel.W||ParGel.base!==JSON.st
  const proc=(W.processo||[]).map((v,i)=>`<tr><td>${inp('processo.'+i+'.from',v.from,'date',140,!fut(v))}</td>${['g','pT','pB','pP'].map(k=>`<td class="n">${inp('processo.'+i+'.'+k,v[k],'num',80,!fut(v))}</td>`).join('')}<td>${pe&amp;&amp;fut(v)?`<button class="b sm d" data-pgdel="processo.${i}">×</button>`:''}</td></tr>`).join('');
  const mots=(W.motivos||[]).map((m,i)=>`<tr><td>${inp('motivos.'+i+'.name',m.name,'txt',220)}</td><td class="small">${Object.keys(GEL_COMPS).map(c=>`<label style="margin-right:6px"><input type="checkbox" data-pg="motivos.${i}.comps" data-pk="set" data-val="${c}" ${(m.comps||[]).includes(c)?'checked':''}${dis}> ${esc(c)}</label>`).join('')}</td><td><input type="checkbox" data-pg="motivos.${i}.active" data-pk="bool" ${m.active!==false?'checked':''}${dis}></td></tr>`).join('');
  return`<div class="card form" id="gelPar">${parHd('Motivos e parâmetros do gel',' '+ib('Parâmetros do gel','Motivos de descarte, perdas teóricas e o dia de corte que a Gestão de Gel e (no Registrar scrap e no Teórico × Real) a Produção usam. Ficam aqui para valer iguais nas duas páginas e em todos os computadores. As vigências das perdas gravadas não mudam: para mudar, acrescente uma nova a partir de hoje.'),'gpOk','Salvar motivos e parâmetros',pe)}
- <div class="fg"><label>Gel lido da Produção a partir de ${ib('Corte',AJUDA_CAMPO['gel.corte'])}${inp('registroPelaProducaoDesde',W.registroPelaProducaoDesde,'date',160)}</label></div>
+ <div class="fg"><label>Gel lido da Produção a partir de ${ib('Corte',AJUDA_CAMPO['gel.corte'])}${inp('registroPelaProducaoDesde',W.registroPelaProducaoDesde,'date',160)}</label>
+ <label>Cabeçotes da máquina de gel ${inp('cabecotes',W.cabecotes)}</label><label>Barris por cabeçote ${inp('barrisPorCabecote',W.barrisPorCabecote)}</label></div>
  <h4 style="margin:12px 0 4px">Perdas teóricas e gel padrão ${ib('Processo',AJUDA_CAMPO['gel.processo'])}</h4>
  <div class="tw"><table class="cadst"><tr><th>A partir de</th><th class="n">Gel/tubo (g)</th><th class="n">Tubos %</th><th class="n">Barril %</th><th class="n">Purga %</th><th></th></tr>${proc||'<tr><td colspan="6" class="small muted">Sem vigência: o Gel usa a dele (ou o padrão 0,98 g · 2,24 % · 0,74 % · 0,53 %).</td></tr>'}</table></div>
  ${pe?`<button class="b sm" data-pgadd="processo" data-tpl="${esc(JSON.stringify({...((W.processo||[]).slice(-1)[0]||GEL_PROC_DEF),from:h}))}">+ Vigência</button>`:''}
@@ -7622,6 +7622,10 @@ function wireGelPar(P,pe){const box=$('#gelPar');if(!box||!pe)return;const W=Par
    const ant=(G0.processo||[]).filter(v=>v.from<h);if(!deq(ant,L.filter(v=>v.from<h)))return toast('Vigências que já valeram não mudam: acrescente uma nova a partir de hoje.',6000,true);
    if(new Set(L.map(v=>v.from)).size!==L.length)return toast('Duas vigências com a mesma data.',5000,true);G.processo=L.slice().sort((a,b)=>a.from<b.from?-1:1);if(!G.processo.length)delete G.processo}
   G.motivos=(G.motivos||[]).filter(m=>m.name);if(!G.motivos.length)delete G.motivos;if(!G.registroPelaProducaoDesde)delete G.registroPelaProducaoDesde;
+  for(const [k,max,rotulo] of [['cabecotes',6,'Cabeçotes da máquina de gel'],['barrisPorCabecote',4,'Barris por cabeçote']]){
+   if(G[k]==null){delete G[k];continue}
+   if(!Number.isInteger(G[k])||G[k]<1||G[k]>max)return toast(rotulo+': informe um inteiro de 1 a '+max+'.',6000,true);
+  }
   if(deq(G0,G))return toast('Nada mudou.');Cad.op({acao:'edição',tipo:'parametros',codigo:null,mudancas:{gel:{antes:P.gel?clone(P.gel):null,depois:G}},motivo:null});ParGel.W=null;toast('Motivos e parâmetros do gel salvos.')}}
 function vacQtdModo(){try{const v=localStorage.getItem('vac.qtd');return v==='abs'?'abs':'unit'}catch(e){return'unit'}}
 function parComputadorHtml(){const u=user(),q=vacQtdModo();
@@ -26316,7 +26320,7 @@ function parseDateCell(v,dayFirst){
 }
 
 /* ================= state ================= */
-const DEFAULT_CFG={remKg:38,kgPerCm:2.58,abMotivos:['Almoço','Produção encerrada antes','Falta de material','Outro'],abDefault:{6:{min:60,m:'Almoço'}},critDays:30,warnDays:60,nextBatches:3,rateWindow:56,holdAlertDays:14,tvSeconds:20,maxPerDay:8,typicalPerDay:6,lineHeads:2,barrelsPerHead:2,planMaterial:'',fifoMode:'plano',useCatalog:true,planView:'barris',params:[],prices:[],zoneSteps:{},flow:{by:'location',steps:{}},locAlerts:[{key:'RECPAS',field:'location',msg:'Transferência errada'}]};
+const DEFAULT_CFG={remKg:38,kgPerCm:2.58,abMotivos:['Almoço','Produção encerrada antes','Falta de material','Outro'],abDefault:{6:{min:60,m:'Almoço'}},critDays:30,warnDays:60,nextBatches:3,rateWindow:56,holdAlertDays:14,tvSeconds:20,maxPerDay:8,typicalPerDay:6,planMaterial:'',fifoMode:'plano',useCatalog:true,planView:'barris',params:[],prices:[],zoneSteps:{},flow:{by:'location',steps:{}},locAlerts:[{key:'RECPAS',field:'location',msg:'Transferência errada'}]};
 const S={mode:'demo',lps:new Map(),closed:new Map(),events:[],imports:[],config:{...DEFAULT_CFG},plan:{},catalogs:[],prodlog:{},supply:{},supplyOn:false,supplyCfg:{kg:200,shelf:180,lag:1}};
 const ui={round:(()=>{try{const r=JSON.parse(LS.get('fifo.round')||'null');return r&amp;&amp;r.mode!=='demo'&amp;&amp;r.place?r:null}catch(e){return null}})(),divOnly:false,audDays:'30',tab:LS.get('fifo.tab')||'op',material:'all',zone:'',loc:'',val:'',obsOnly:false,group:'lp',q:'',lotSort:'pos',lotDir:1,histType:'',histDays:'90',adhDays:'90',lotView:'lote',finDays:'30',finSt:'',finMov:'',remixOnly:false,simDays:14,simTo:'',simShowAll:false,cfgSec:'geral',catEdit:null,prefs:{tabs:null,home:null,rep:[],theme:'auto',tvTheme:'dark'},rgDate:'',rgDraft:null,rgDays:14,tsort:{},tfil:{},rep:null,qs:{}};
 let backend=null, dbRef=null, userRef=null, dlRef=null, myName='';
@@ -26583,7 +26587,7 @@ const FS={base:null,sapOther:null,on:false,pending:[],busy:false,again:false,mod
 const fsLog=t=>{FS.log.push(nowDT().slice(11,16)+' · '+t);if(FS.log.length>30)FS.log.shift()};
 function configGelBase(){
   if(!vacGel.cadastroOk())return S.config;
-  const { fmts, equips, motivos, params, ...config }=S.config;
+  const { fmts, equips, motivos, params, lineHeads, barrelsPerHead, ...config }=S.config;
   return config;
 }
 const snapshotData=()=>({version:1,savedAt:nowDT(),lps:[...S.lps.values()].map(clean),closed:[...S.closed.values()].map(clean),events:S.events,imports:S.imports,config:configGelBase(),plan:S.plan,catalogs:S.catalogs,prodlog:plBase(S.prodlog),supply:S.supply,supplyOn:S.supplyOn,supplyCfg:S.supplyCfg});
@@ -27606,7 +27610,10 @@ function simulate(h,from){
   out.left=rest;
   return out;
 }
-const lineSlots=()=>Math.max(1,(+S.config.lineHeads||2)*(+S.config.barrelsPerHead||2));
+// A geometria da máquina vem da Administração. Sem a configuração, o painel conserva o layout operacional de dois por dois.
+const lineHeads=()=>vacCad.param('gel.cabecotes')??2;
+const barrelsPerHead=()=>vacCad.param('gel.barrisPorCabecote')??2;
+const lineSlots=()=>Math.max(1,(lineHeads())*(barrelsPerHead()));
 // saldo estimado de um barril na linha: kg − parte do consumo teórico desde que entrou (dividido entre os barris em paralelo)
 function lineRemaining(l,includeToday){
   const since=((l.inUse&amp;&amp;l.inUse.since)||todayISO()).slice(0,10);const end=includeToday?todayISO():isoDate(new Date(Date.now()-DAY));
@@ -27984,21 +27991,21 @@ function lineBarCard(l){const L=drumLevel(l);const fl=[];
    <div class="lbar-f"><button class="btn sm primary" data-baixa="${esc(l.lp)}">Registrar consumido</button><button class="btn sm" data-hmeas="${esc(l.lp)}">Registrar altura</button>
     <details class="lbar-more"><summary class="btn sm" aria-label="Mais ações">⋯</summary><div class="lbar-menu"><button class="btn sm" data-obs="${esc(l.lp)}">Observação</button><button class="btn sm" data-linedit="${esc(l.lp)}">Editar cabeçote</button><button class="btn sm" data-unline="${esc(l.lp)}">Tirar da linha</button><button class="btn sm" data-audit="${esc(l.lp)}">Auditar</button><button class="btn sm" data-detail="${esc(l.lp)}">Ver LP</button></div></details></div></div>`}
 // faixa "Barris nos cabeçotes": barris da linha lado a lado, por cabeçote, com as posições livres
-function opDrumBand(){const H=+S.config.lineHeads||2,P=+S.config.barrelsPerHead||2;const lines=(D.lines||[]).filter(l=>matOk(l)&amp;&amp;!l._purga);const mat=lines[0]?lines[0].material:(D.planMat||'');
+function opDrumBand(){const H=lineHeads(),P=barrelsPerHead();const lines=(D.lines||[]).filter(l=>matOk(l)&amp;&amp;!l._purga);const mat=lines[0]?lines[0].material:(D.planMat||'');
   const nx=nextForLine(mat);let shownNext=false;
   const free=h=>{const s=!shownNext&amp;&amp;nx;shownNext=true;return `<div class="lbar free"><div class="lbar-free"><b>Posição livre</b>${s?`<div class="sub" style="margin:4px 0">Próximo pelo FIFO: lote <b>${esc(nx.batch)}</b> · LP ${esc(nx.lp)} · ${esc(nx.location||'')} · ${kg1(nx._remain||nx.qtyKg)} kg</div><button class="btn sm primary" data-online="${esc(nx.lp)}">Colocar na linha</button>`:`<div class="sub" style="margin:4px 0">${nx?'mesmo próximo barril da posição anterior':'nenhum barril liberado em "Consumir agora"'}</div>`}</div></div>`};
   const groups=[...Array(H)].map((_,i)=>{const h=i+1;const ls=lines.filter(l=>+l.inUse.head===h).sort((a,b)=>a.inUse.since<b.inUse.since?-1:1);const cards=ls.map(lineBarCard);for(let k=ls.length;k<P;k++)cards.push(free(h));return `<div class="lb-head"><div class="lb-ht"><span class="tg">Cabeçote ${esc(HN(h))}</span> <span class="sub" style="margin:0">${ls.length}/${P} barris</span></div><div class="lb-cards">${cards.join('')}</div></div>`});
   const noHead=lines.filter(l=>!(+l.inUse.head>=1&amp;&amp;+l.inUse.head<=H));if(noHead.length)groups.push(`<div class="lb-head"><div class="lb-ht">Sem cabeçote</div><div class="lb-cards">${noHead.map(lineBarCard).join('')}</div></div>`);
   return `<section class="lineband"><div class="lb-top">${ICO.drum}<h3>Barris nos cabeçotes ${ib('capbarril')}</h3><span class="sub" style="margin:0">${lines.length} de ${H*P} posições · nível estimado pela produção e corrigido pelas medições · capacidade ${kg1(drumCap())} kg · pare em ${nf1.format(remKg()/kgPerCm())} cm</span><span style="flex:1"></span><button class="btn sm" data-act="lineCheck">Conferir linha</button><button class="btn sm" data-tvkind2="barris">TV dos barris</button></div><div class="lb-grid">${groups.join('')}</div></section>`}
 // Modo TV "Barris": tela fixa perto das bombas, com registro de altura por toque
-function tvBarris(){const H=+S.config.lineHeads||2;const lines=(D.lines||[]).filter(l=>!l._purga);const nx=nextForLine(lines[0]?lines[0].material:D.planMat);
+function tvBarris(){const H=lineHeads();const lines=(D.lines||[]).filter(l=>!l._purga);const nx=nextForLine(lines[0]?lines[0].material:D.planMat);
   const tile=l=>{const v=drumLevel(l);return `<div class="tvdrum${v.low?' low':''}">${drumSvg(v.cm,v.meas&amp;&amp;v.meas.cm,120,true)}<div style="min-width:0">
     <div style="font:700 2.4em/1.05 var(--f-display);white-space:nowrap;color:${v.low?'var(--crit)':'var(--tv-fg,var(--ink))'}">${nf0.format(v.kg)} kg</div><div class="tvsub">${nf1.format(v.cm)} cm · ${nf0.format(v.pctCap*100)}% da capacidade</div>
     <div style="margin-top:.35em;font-size:1.15em">${v.low?'<b class="tvblink" style="color:var(--crit);white-space:nowrap">TROCAR BARRIL</b>':`usa <b>${nf0.format(v.use)} kg</b>${v.hLeft!=null?' · ≈ '+hTxt(v.hLeft):''}${v.endAt?' · até '+dtHM(v.endAt):''}`}</div>
     <div class="tvsub" style="font-size:.9em">Lote ${esc(l.batch)} · LP ${esc(l.lp)}${v.meas?` · ▸ ${nf1.format(v.meas.cm)} cm às ${dtHM(v.meas.at)}`:''}</div>${v.stale?`<div style="font-size:.95em;color:var(--warn);font-weight:700">${v.mAt?'MEDIR: '+staleTxt(v):'MEDIR: sem medição de altura'}</div>`:''}
     <button class="tvbtn" data-hmeas="${esc(l.lp)}">Registrar altura</button></div></div>`};
   const heads=[...Array(H)].map((_,i)=>lines.filter(l=>+l.inUse.head===i+1));const other=lines.filter(l=>!(+l.inUse.head>=1&amp;&amp;+l.inUse.head<=H));
-  const P=+S.config.barrelsPerHead||2;const freeT='<div class="tvdrum" style="border:.15em dashed var(--tv-line,var(--line));background:transparent;display:flex;align-items:center;justify-content:center;min-height:8em"><div class="tvsub" style="text-align:center">Posição livre<br><b style="color:var(--ok)">colocar o próximo barril</b></div></div>';
+  const P=barrelsPerHead();const freeT='<div class="tvdrum" style="border:.15em dashed var(--tv-line,var(--line));background:transparent;display:flex;align-items:center;justify-content:center;min-height:8em"><div class="tvsub" style="text-align:center">Posição livre<br><b style="color:var(--ok)">colocar o próximo barril</b></div></div>';
   return `<div class="tvbarris">${heads.map((ls,i)=>`<div class="tvbh"><div class="tvbh-t">Cabeçote ${esc(HN(i+1))}</div><div class="tvdrums">${ls.map(tile).join('')}${ls.length<P?freeT.repeat(P-ls.length):''}</div></div>`).join('')}${other.length?`<div class="tvbh"><div class="tvbh-t">Sem cabeçote</div><div class="tvdrums">${other.map(tile).join('')}</div></div>`:''}</div>
    <div class="tvnext">${nx?`<span class="k">Próximo barril a colocar</span><b>Lote ${esc(nx.batch)}</b><span>LP ${esc(nx.lp)}</span><span>${esc(nx.location||'')}</span><span>${kg1(nx._remain||nx.qtyKg)} kg</span><span>validade ${fmtD(nx.expiry)}</span>`:'<span class="k">Próximo barril</span><span>nenhum barril liberado em "Consumir agora"</span>'}</div>`}
 // capacidade por LP (baixa total como consumido) e resumo compacto
@@ -28226,7 +28233,7 @@ function renderAud(){
 
 /* ================= rodada de auditoria: estou num local e confiro o que há nele ================= */
 const saveRoundDraft=()=>{if(!ui.demo)LS.set('fifo.round',JSON.stringify(ui.round||null))};
-const headList=()=>[...Array(+S.config.lineHeads||2)].map((_,i)=>i+1);
+const headList=()=>[...Array(lineHeads())].map((_,i)=>i+1);
 const isLineLoc=p=>{const t=locType(p).t;const m=flowMax();return !!m&amp;&amp;/^\d$/.test(t)&amp;&amp;+t===m};
 const defHead=l=>(l&amp;&amp;l.inUse&amp;&amp;+l.inUse.head)||0;
 function openRoundNew(){
@@ -28955,7 +28962,7 @@ function lineEntry(l,head,at,r,chk,motivo,extra){
 }
 // editar cabeçote e horário de entrada de um barril que já está na linha
 function openLineEdit(lpId){
-  const l=S.lps.get(lpId);if(!l||!l.inUse||!requireWritable())return;const H=+S.config.lineHeads||2,P=+S.config.barrelsPerHead||2;
+  const l=S.lps.get(lpId);if(!l||!l.inUse||!requireWritable())return;const H=lineHeads(),P=barrelsPerHead();
   modal('Editar barril na linha',`<p>LP <span class="mono">${esc(l.lp)}</span> · lote ${esc(l.batch)}</p>
    <div class="f"><span>Cabeçote</span><div class="radios">${[...Array(H)].map((_,i)=>{const h=i+1,n=headLoad(l.material,h)-(+l.inUse.head===h?1:0);return `<label><input type="radio" name="leH" value="${h}" ${+l.inUse.head===h?'checked':''}> Cabeçote ${HN(h)} <span style="color:var(--muted)">(${n}/${P} outros)</span></label>`}).join('')}</div></div>
    <div class="fg"><label class="f"><span>Entrou na linha em</span><input type="datetime-local" id="leAt" value="${esc((l.inUse.since||nowDT()).slice(0,16))}" max="${nowDT()}"></label><label class="f"><span>Responsável *</span><input type="text" id="leR" value="${esc(lastResp())}"></label></div><div id="leErr"></div>`,
@@ -28976,7 +28983,7 @@ function openLineEdit(lpId){
 }
 // conferência física da linha: o operador informa o que está em cada posição
 function openLineCheck(){
-  if(!requireWritable())return;const mat=D.planMat;const H=+S.config.lineHeads||2,P=+S.config.barrelsPerHead||2;
+  if(!requireWritable())return;const mat=D.planMat;const H=lineHeads(),P=barrelsPerHead();
   const cur=D.act.filter(x=>x.inUse&amp;&amp;!x._purga&amp;&amp;x.material===mat);
   const slots=[];for(let h=1;h<=H;h++){const inH=cur.filter(x=>+x.inUse.head===h);for(let p=0;p<P;p++)slots.push({h,lp:(inH[p]||{}).lp||''})}
   cur.filter(x=>!x.inUse.head).forEach(x=>{const s=slots.find(s=>!s.lp);if(s)s.lp=x.lp});
@@ -29040,7 +29047,7 @@ function lineAdhHtml(since){
 
 const headLoad=(mat,h)=>D.act.filter(x=>x.inUse&amp;&amp;!x._purga&amp;&amp;x.material===mat&amp;&amp;+x.inUse.head===+h).length;
 function openLineHead(lpId){
-  const l=S.lps.get(lpId);if(!l||!requireWritable())return;const c=S.config,H=+c.lineHeads||2,P=+c.barrelsPerHead||2;
+  const l=S.lps.get(lpId);if(!l||!requireWritable())return;const H=lineHeads(),P=barrelsPerHead();
   const free=[...Array(H)].map((_,i)=>i+1).find(h=>headLoad(l.material,h)<P)||1;
   const inUse=D.act.filter(x=>x.inUse&amp;&amp;!x._purga&amp;&amp;x.material===l.material).map(x=>x.lp);const chk=lineFifoCheck(l.material,[l.lp],inUse,{k:Math.max(1,lineSlots()-inUse.length)});
   modal('Colocar na linha',`<p>LP <span class="mono">${esc(l.lp)}</span> · lote ${esc(l.batch)} · ${kg(l._remain)} kg</p>
@@ -29322,11 +29329,8 @@ function exportHist(){
 /* ================= configuração ================= */
 const PALETA=['#F2C200','#E03131','#1C7ED6','#2F9E44','#F76707','#7048E8','#0C8599','#C2255C','#495057','#8D6E63'];
 const CFG_SECS=[['geral','Geral'],['apar','Aparência'],['prog','Programação'],['zonas','Locais'],['consulta','Consulta de cadastros'],['tv','Modo TV e apresentação'],['abas','Abas'],['pasta','Pasta da rede'],['backup','Backup']];
-/* 2.46 · CFG-ADM etapa 2 (decisão do responsável, 22/11/2026): turnos, preço do gel, parâmetros de processo, formatos, motivos, equipamentos
-   (embalagem e descartes) e o gel de cada catálogo são cadastro da Administração. Aqui não há mais tela para eles: o menu abre a Administração
-   na seção certa, e o que o Gel tinha passa para lá em Administração › Trazer configurações (Só no Gel). As contas continuam lendo o cadastro
-   da Administração quando ele tem o dado e, até a passagem, os valores já gravados no Gel (nenhum número muda). */
-const CFG_ADM_GEL={turnos:'cadastros/turnos',preco:'cadastros/precos',proc:'cadastros/parametros',fmts:'cadastros/parametros',motivos:'cadastros/parametros',equip:'cadastros/equipamentos',cat:'cadastros/catalogos'};
+/* As rotas antigas abrem a consulta de cadastros, com vínculo para Administração. */
+const CFG_ADM_GEL={turnos:'cadastros/turnos',preco:'cadastros/precos',proc:'cadastros/gel',fmts:'cadastros/gel',motivos:'cadastros/gel',equip:'cadastros/gel',cat:'cadastros/catalogos'};
 function cfgAdmGel(k){return CFG_ADM_GEL[k]||null}
 function openConfig(sec){
   if(cfgAdmGel(sec))sec='consulta';   /* 2.47 · CAD-CONS: seção antiga de cadastro abre a consulta (ficha com "Editar na Administração") */
@@ -29339,7 +29343,7 @@ function openConfig(sec){
   /* 2.47 · CAD-CONS (pedido do responsável, 22/11/2026): os cadastros da Administração que o Gel usa, só para consulta; o clique abre a
      ficha lateral, com "Editar na Administração" (clicar fora fecha e a Configuração continua aberta) */
   if(s==='consulta'){const C=vacCad()||{},gm=new Set((C.materiais||[]).filter(m=>m&amp;&amp;m.tipo==='gel').map(m=>String(m.codigo)));
-   body=vacConsultaCad.html(['turnos','precos','catalogos','equipamentos','materiais','gel'],{filtro:{precos:x=>gm.has(String(x.material)),catalogos:x=>GelCad.usaGel(x.codigo,C)||!!x.gel,equipamentos:x=>!!x.gel||x.categoria==='gel',materiais:x=>x.tipo==='gel'},sub:'Cadastros da Administração que a Gestão de Gel usa (turnos, preço, catálogos e equipamentos com gel, material e parâmetros do gel). Clique num item para ver tudo; para mudar, use "Editar na Administração" na ficha.'})}
+   body=vacConsultaCad.html(['turnos','precos','catalogos','equipamentos','materiais','gel'],{filtro:{precos:x=>gm.has(String(x.material)),catalogos:x=>GelCad.usaGel(x.codigo,C)||!!x.gel,equipamentos:x=>x.categoria==='gel'||vacCad.gel.locais({equipamento:x.codigo,ativos:false}).length>0,materiais:x=>x.tipo==='gel'},sub:'Cadastros da Administração que a Gestão de Gel usa (turnos, preço, catálogos e equipamentos com gel, material e parâmetros do gel). Clique num item para ver tudo; para mudar, use "Editar na Administração" na ficha.'})}
   if(s==='geral')body=`<div class="fg">
     <label class="f"><span>Vencimento crítico (dias)</span><input type="number" id="cC" value="${c.critDays}" min="1"></label>
     <label class="f"><span>Atenção de vencimento (dias)</span><input type="number" id="cW" value="${c.warnDays}" min="1"></label>
@@ -29359,8 +29363,7 @@ function openConfig(sec){
     <div class="fg">
     <label class="f"><span>Barris por dia (típico)</span><input type="number" id="cTy" value="${c.typicalPerDay}" min="1" max="20"></label>
     <label class="f"><span>Barris por dia (máximo)</span><input type="number" id="cMx" value="${c.maxPerDay}" min="1" max="20"></label>
-    <label class="f"><span>Cabeçotes da máquina de gel</span><input type="number" id="cHd" value="${c.lineHeads||2}" min="1" max="6"></label>
-    <label class="f"><span>Barris por cabeçote</span><input type="number" id="cBh" value="${c.barrelsPerHead||2}" min="1" max="4"></label></div>
+    <p class="sub">Cabeçotes e barris por cabeçote são configurados em Administração › Gel.</p></div>
     <label><input type="checkbox" id="cUC" ${c.useCatalog!==false?'checked':''}> Mostrar e usar catálogos na programação</label>
     <div class="catform"><h3 style="margin:0">Fim do barril</h3><p class="sub" style="margin:0">A linha para antes do barril acabar. O gel que fica vai para o <b>remix</b> (não é perda) e não conta como consumido na baixa. O plano usa só o gel útil de cada barril (peso − remanescente).</p>
      <div class="fg"><label class="f"><span>Gel remanescente padrão (kg)</span><input type="text" inputmode="decimal" id="cRem" value="${nf2.format(remKg())}"></label>
@@ -29412,7 +29415,7 @@ function openConfig(sec){
       const ld=$('#lgDel');ld&amp;&amp;ld.addEventListener('click',async()=>{await saveCfg({logo:''},'Logo removida.');openConfig('geral')});
     }
     if(sv&amp;&amp;s==='geral')sv.addEventListener('click',()=>saveCfg({critDays:+$('#cC').value||30,warnDays:+$('#cW').value||60,nextBatches:Math.min(10,+$('#cN').value||3),rateWindow:+$('#cR').value||56,holdAlertDays:+$('#cH').value||14}));
-    if(sv&amp;&amp;s==='prog')sv.addEventListener('click',()=>saveCfg({fifoMode:document.querySelector('input[name=fm]:checked').value,typicalPerDay:+$('#cTy').value||6,maxPerDay:+$('#cMx').value||8,useCatalog:$('#cUC').checked,lineHeads:Math.max(1,+$('#cHd').value||2),barrelsPerHead:Math.max(1,+$('#cBh').value||2),remKg:Math.max(0,parseNum($('#cRem').value)),remTol:parseNum($('#cRemTol').value)>0?parseNum($('#cRemTol').value):5,sapFrom:$('#cSapFrom').value||'',kgPerCm:parseNum($('#cKcm').value)>0?parseNum($('#cKcm').value):2.58,drumH:parseNum($('#cDrumH').value)>0?parseNum($('#cDrumH').value):87,measStaleH:parseNum($('#cStaleH').value)>0?parseNum($('#cStaleH').value):4}));
+    if(sv&amp;&amp;s==='prog')sv.addEventListener('click',()=>saveCfg({fifoMode:document.querySelector('input[name=fm]:checked').value,typicalPerDay:+$('#cTy').value||6,maxPerDay:+$('#cMx').value||8,useCatalog:$('#cUC').checked,remKg:Math.max(0,parseNum($('#cRem').value)),remTol:parseNum($('#cRemTol').value)>0?parseNum($('#cRemTol').value):5,sapFrom:$('#cSapFrom').value||'',kgPerCm:parseNum($('#cKcm').value)>0?parseNum($('#cKcm').value):2.58,drumH:parseNum($('#cDrumH').value)>0?parseNum($('#cDrumH').value):87,measStaleH:parseNum($('#cStaleH').value)>0?parseNum($('#cStaleH').value):4}));
     if(s==='apar'){
       $('#apSave').addEventListener('click',()=>saveCfg({pageName:$('#apName').value.trim()},'Nome salvo.'));
       $('#apReset').addEventListener('click',()=>{$('#apName').value='';saveCfg({pageName:''},'Nome padrão restaurado.')});
@@ -30097,14 +30100,14 @@ function rgMotRows(tn,e,ds,ent){const opts=motFor(ds);if(!opts.length&amp;&amp;!
 function prodHref(h){const s=(typeof systems==='function'?systems():[]).find(x=>x.id==='oee')||{id:'oee',html:'OEE-Vacutainer.html'};return typeof sysHref==='function'?sysHref(s,h):'OEE-Vacutainer.html#'+h}
 function rgScrapProd(d,tn){const aviso=vacGel.avisoCadastro(d.date);if(aviso)return `<div class="alert">${esc(aviso)}</div>`;const daProd=GelProd.scrapProd(d.date),t=(d.turns||{})[tn]||{},sc=turnScrap({turns:d.turns},d.date,tn);
  const linhas=sc.ents.map(en=>{const e=equipById(en.e),ds=scrapLocal(en),nome=scrapNome(en);return`<li>${esc(e?e.name:'equipamento ?')}${nome?' · <b>'+esc(nome)+'</b>':''}${ds?' · '+esc(compNome(ds.comp)):''} → ${esc(SCAT[en.c.scat]||en.c.scat)}: ${kg3(en.kg)} kg bruto → <b>${kg3(en.c.gel)} kg de gel</b>${+en.nb?' · '+en.nb+' barril(is)':''}${(en.mots||[]).length?' · '+esc(en.mots.map(m=>m.m).filter(Boolean).join(', ')):''}</li>`}).join('')+sc.pendentes.map(en=>`<li>${esc(scrapNome(en)||en.d)} · pesagem registrada, cálculo indisponível</li>`).join('');
- const st=t.none?'<b>sem scrap de gel neste turno</b>':sc.any?`gel líquido <b>${kg3(sc.T+sc.B+sc.P)} kg</b> (Tubos ${kg3(sc.T)} · Barril ${kg3(sc.B)} · Purga ${kg3(sc.P)})`:`<span style="color:var(--muted)">sem registro${daProd?' na Produção':''}</span>`;
+ const st=t.none?'<b>sem scrap de gel neste turno</b>':sc.pendentes.length?'cálculo indisponível':sc.any?`gel líquido <b>${kg3(sc.T+sc.B+sc.P)} kg</b> (Tubos ${kg3(sc.T)} · Barril ${kg3(sc.B)} · Purga ${kg3(sc.P)})`:`<span style="color:var(--muted)">sem registro${daProd?' na Produção':''}</span>`;
  if(!daProd)return`<div class="scro"><b>Scrap de gel</b> <span class="sub" style="margin:0">${st} · registrado na Gestão de Gel (antes da data de corte)</span>${linhas?`<ul class="sub" style="margin:4px 0 0 18px;padding:0">${linhas}</ul>`:''}</div>`;
  return`<div class="scro"><b>Scrap de gel</b> <span class="sub" style="margin:0">${st}${t.none||sc.any?' · lançado na Produção':' · lança-se no turno, na Produção'}</span> <a class="btn sm" href="${esc(prodHref('dia='+d.date+'&amp;turno='+encodeURIComponent(tn)))}" title="O scrap de gel deste dia é lançado na Produção, no turno">Editar na Produção ↗</a>${linhas?`<ul class="sub" style="margin:4px 0 0 18px;padding:0">${linhas}</ul>`:''}</div>`}
 function rgScrapHtml(d,tn){
   const aviso=vacGel.avisoCadastro(d.date);if(aviso)return `<div class="alert">${esc(aviso)}</div>`;
   if(GelProd.resumo(d.date)&amp;&amp;(tn!=='_dia'||!GelProd.scrapProd(d.date)))return rgScrapProd(d,tn);
   const t=(d.turns||{})[tn]||{};const open=(ui.rgScrapOpen||{})[tn];const sc=turnScrap({turns:d.turns},d.date,tn);const tot=sc.T+sc.B+sc.P;
-  const head=`<button type="button" class="btn sm ${open?'primary':''}" data-rgscrap="${esc(tn)}">${open?'▾':'▸'} ${tn==='_dia'?'Registrar scrap do dia (sem turno)':'Registrar scrap'}</button> <span class="sub" style="margin:0" data-rgeqs="${esc(tn)}">${t.none?'<b>sem scrap neste turno</b>':sc.any?`gel líquido ${kg3(tot)} kg (tubos ${kg3(sc.T)} · barril ${kg3(sc.B)} · purga ${kg3(sc.P)})`:'nada registrado'}</span>`;
+  const head=`<button type="button" class="btn sm ${open?'primary':''}" data-rgscrap="${esc(tn)}">${open?'▾':'▸'} ${tn==='_dia'?'Registrar scrap do dia (sem turno)':'Registrar scrap'}</button> <span class="sub" style="margin:0" data-rgeqs="${esc(tn)}">${t.none?'<b>sem scrap neste turno</b>':sc.pendentes.length?'cálculo indisponível':sc.any?`gel líquido ${kg3(tot)} kg (tubos ${kg3(sc.T)} · barril ${kg3(sc.B)} · purga ${kg3(sc.P)})`:'nada registrado'}</span>`;
   if(!open)return head;
   const eqs=equipList();if(!eqs.length)return head+`<div class="info" style="margin-top:6px">Cadastre os locais de descarte em Administração › Gel.</div>`;
   const cat=t.scat||(d.orders[0]&amp;&amp;d.orders[0].cat)||'';
@@ -30425,7 +30428,7 @@ function rgScrapRefresh(){const d=ui.rgDraft;if(!d)return;
   document.querySelectorAll('[data-rgeqc]').forEach(sp=>{const [tn,e,ds]=sp.dataset.rgeqc.split('|');const t=d.turns[tn]||{};const z=(t.eq||[]).find(x=>x.e===e&amp;&amp;x.d===ds);const c=z&amp;&amp;entOk(z)?scrapCalc(z,d.date):null;
     sp.textContent=scDesc(c,d.date)});
   document.querySelectorAll('[data-rgeqs]').forEach(sp=>{const tn=sp.dataset.rgeqs;const t=d.turns[tn]||{};const sc=turnScrap(d,d.date,tn);const tot=sc.T+sc.B+sc.P;
-    sp.innerHTML=t.none?'<b>sem scrap neste turno</b>':sc.any?`gel líquido ${kg3(tot)} kg (tubos ${kg3(sc.T)} · barril ${kg3(sc.B)} · purga ${kg3(sc.P)})`:'nada registrado'});
+    sp.innerHTML=t.none?'<b>sem scrap neste turno</b>':sc.pendentes.length?'cálculo indisponível':sc.any?`gel líquido ${kg3(tot)} kg (tubos ${kg3(sc.T)} · barril ${kg3(sc.B)} · purga ${kg3(sc.P)})`:'nada registrado'});
   document.querySelectorAll('[data-rgmotw]').forEach(sp=>{const [tn,e,ds]=sp.dataset.rgmotw.split('|');const en=((d.turns[tn]||{}).eq||[]).find(z=>z.e===e&amp;&amp;z.d===ds);if(!en||!(en.mots||[]).length){sp.textContent='';return}
     const ov=motOver(en);if(ov){sp.innerHTML=`<span style="color:var(--crit)">os motivos somam ${kg1(ov)} kg, mais que o peso (${kg1(kgOf(en.kg))} kg): serão ajustados na proporção</span>`;return}
     const sp2=motSplit(en);const ni=sp2.find(x=>!x.m);sp.textContent=ni&amp;&amp;ni.kg>0?`${kg1(ni.kg)} kg sem motivo`:''});
@@ -30579,7 +30582,7 @@ function rgBomHtml(c){
      ${b.hasScrap&amp;&amp;c.tubes?`<tr><td>Scrap relativo</td><td class="n">${nf2v(b.scrap/c.tubes*relBase())} ${relLbl()}</td></tr>`:''}
      <tr><td><b>Gel real usado</b> (tubos bons + scrap)</td><td class="n"><b>${kg1(b.real)} kg</b></td></tr></tbody></table></div>${b.hasScrap?'':'<p class="sub" style="margin:4px 0 0">Sem scrap registrado, o índice conta só o gel dos tubos bons.</p>'}`}
   if(e&amp;&amp;e.any){const M={n:0,tubo:0,tamp:0,etq:0,adit:0};e.ents.forEach(x=>{M.n+=x.c.n;M.tubo+=x.c.tubo;M.tamp+=x.c.tamp;M.etq+=x.c.etq;M.adit+=x.c.adit});
-    out+=`<div class="sec-h" style="margin:14px 0 6px"><h3 style="font-size:15px">Scrap por equipamento</h3></div><div class="tw"><table><thead><tr><th>Turno</th><th>Equipamento · descarte</th><th>Motivo</th><th class="n">Bruto</th><th class="n">Tubos</th><th class="n">Gel líquido</th></tr></thead><tbody>${e.ents.map(x=>{const q=equipById(x.e);const ds=q&amp;&amp;(q.descs||[]).find(z=>z.id===x.d);const pts=motSplit(x);return `<tr><td>${esc(turnLbl(x.turn))}</td><td>${esc(q?q.name:'(excluído)')} · ${ds?COMPS[ds.comp].l:''}</td><td>${pts.map(p=>esc(motName(p.m))+(pts.length>1?' '+kg1(p.kg)+' kg':'')).join('<br>')}</td><td class="n">${kg1(x.c.gross)} kg</td><td class="n">${x.c.n?nf0.format(x.c.n):'—'}</td><td class="n">${kg1(x.c.gel)} kg</td></tr>`}).join('')}</tbody></table></div>
+    out+=`<div class="sec-h" style="margin:14px 0 6px"><h3 style="font-size:15px">Scrap por equipamento</h3></div><div class="tw"><table><thead><tr><th>Turno</th><th>Equipamento · descarte</th><th>Motivo</th><th class="n">Bruto</th><th class="n">Tubos</th><th class="n">Gel líquido</th></tr></thead><tbody>${e.ents.map(x=>{const q=equipById(x.e);const nome=scrapNome(x)||compNome(x.c.comp);const pts=motSplit(x);return `<tr><td>${esc(turnLbl(x.turn))}</td><td>${esc(q?q.name:'(excluído)')} · ${esc(nome)}</td><td>${pts.map(p=>esc(motName(p.m))+(pts.length>1?' '+kg1(p.kg)+' kg':'')).join('<br>')}</td><td class="n">${kg1(x.c.gross)} kg</td><td class="n">${x.c.n?nf0.format(x.c.n):'—'}</td><td class="n">${kg1(x.c.gel)} kg</td></tr>`}).join('')}</tbody></table></div>
      <p class="sub" style="margin:4px 0 0">Materiais perdidos: ${nf0.format(M.n)} tubos (${kg1(M.tubo)} kg de tubo vazio) · ${nf0.format(M.tamp)} tampas · ${nf0.format(M.tamp)} rolhas · ${nf0.format(M.etq)} etiquetas · ${nf2.format(M.adit*1000)} g de aditivo.</p>`}
   return out;
 }
@@ -30623,7 +30626,7 @@ function rgDefaultAt(date){return date===todayISO()?nowDT():date+'T18:00'}
 function openRgPick(){
   const date=ui.rgDraft.date;const m=D.mats.get(D.planMat);
   const sug=[];(D.lines||[]).forEach(l=>sug.push({l,tag:'Na linha'+(l.inUse.head?' · Cab. '+HN(l.inUse.head):'')}));(m?m.elig:[]).filter(l=>!l.inUse).slice(0,6).forEach(l=>sug.push({l,tag:'Fila #'+l._pos}));
-  const H=+S.config.lineHeads||2,P=+S.config.barrelsPerHead||2;
+  const H=lineHeads(),P=barrelsPerHead();
   modal('Adicionar barril em '+dayLabel(date),`
    <div class="f"><span>Barril</span><div class="pick">${sug.map((s,i)=>`<label class="pk"><input type="radio" name="pkLp" value="${esc(s.l.lp)}" ${i===0?'checked':''}> <span class="mono">${esc(s.l.lp)}</span> · lote ${esc(s.l.batch)} · ${kg1(s.l._remain)} kg <span class="pill ${s.tag.startsWith('Na linha')?'p-today':'p-next'}">${s.tag}</span>${isRemix(s.l)?' <span class="pill p-remix">REMIX</span>':''}</label>`).join('')}
     <label class="pk"><input type="radio" name="pkLp" value="__other"> Outro LP: <input type="text" id="pkOther" list="pkList" placeholder="digite o LP" style="width:180px"></label>
@@ -30971,7 +30974,7 @@ function suggestRetro(list){
     ls.sort(sortPrio).forEach((l,i)=>{out[l.lp]=isoDT(new Date(a+(b-a)*(i+1)/(ls.length+1)))})});
   return out;
 }
-const headOpts=sel=>`<option value="">—</option>${[...Array(+S.config.lineHeads||2)].map((_,i)=>`<option value="${i+1}" ${String(sel||'')===String(i+1)?'selected':''}>Cabeçote ${HN(i+1)}</option>`).join('')}`;
+const headOpts=sel=>`<option value="">—</option>${[...Array(lineHeads())].map((_,i)=>`<option value="${i+1}" ${String(sel||'')===String(i+1)?'selected':''}>Cabeçote ${HN(i+1)}</option>`).join('')}`;
 const REG_MOTIVOS=['Operador esqueceu de apontar','Apontamento perdido ou não salvo','Correção informada pelo Almox','Outro'];
 function openRegularize(ids){
   const list=ids.map(id=>S.closed.get(id)).filter(l=>l&amp;&amp;finStatus(l)!=='reg'&amp;&amp;finStatus(l)!=='conf');if(!list.length||!requireWritable())return;
@@ -32506,7 +32509,7 @@ function buildDemo(){
   derive();
   const nb=D.mats.get(D.planMat);if(nb&amp;&amp;nb.next[0]){nb.elig.filter(l=>l.batch===nb.next[0]).slice(0,2).forEach((x,i)=>{const l=S.lps.get(x.lp);if(i===0)l.refComment='REMIX';else l.remix=true})}
   // registros de produção de exemplo (últimos dias úteis), coerentes com baixas e saldo da linha
-  {const loss=lossFrac(DEF_PARAMS);const seq=[...S.closed.values()].sort((a,b)=>a.closedAt<b.closedAt?1:-1).slice(0,80).reverse();let qi=0,cur=null;
+  {const loss=lossFrac(vacGel.procAt(null));const seq=[...S.closed.values()].sort((a,b)=>a.closedAt<b.closedAt?1:-1).slice(0,80).reverse();let qi=0,cur=null;
    const ds=[];for(let i=12;i>=1;i--){const d=new Date(Date.now()-i*DAY);if(d.getDay()===0||d.getDay()===6)continue;ds.push(isoDate(d))}
    const nb=()=>{const l=seq[qi++];return l?{lp:l.lp,batch:l.batch,kg:+l.lastQtyKg||200,rem:+l.lastQtyKg||200}:null};
    ds.forEach((k,idx)=>{const C=1000+rnd()*320;let need=C;const fin=[];if(!cur)cur=nb();if(!cur)return;const first=cur,S0=cur.rem;
@@ -55857,70 +55860,70 @@ body.vac-porta{overflow:hidden}
       "id": "oee",
       "path": "Plataforma.html#motor/oee",
       "version": "2.6.43",
-      "sha256": "29916bacdaa88fd2cd51aa17cdb0d1770f35f069122f85efe854dbd7c05c3b93",
-      "bytes": 2419741
+      "sha256": "d4418bea2574d6e18c97dba3ece2db6438eada938eed250fcc9ecfef827c033d",
+      "bytes": 2419790
     },
     {
       "id": "perdas",
       "path": "Plataforma.html#motor/perdas",
       "version": "1.12.20",
-      "sha256": "4715ab8c220a2fc3fad647c1df00dfb7e6b9bfa68043062ebc122b2d0f6ff5c7",
-      "bytes": 997046
+      "sha256": "5f03dd3a1ff2ad1cfdee1eb748d7f0573305d81b4dc4165a70088f0d807b40c6",
+      "bytes": 997095
     },
     {
       "id": "gel",
       "path": "Plataforma.html#motor/gel",
       "version": "2.48",
-      "sha256": "45bb4a2c2e2d301f7eb354f9daab4818e1a09cfb70ff452fa0e88b6f8f0c053c",
-      "bytes": 1638887
+      "sha256": "441e3a082f6bb972af67e20f158bedc9da4a4e28046f7aa3f78da8d1ddf56549",
+      "bytes": 1638413
     },
     {
       "id": "paradas",
       "path": "Plataforma.html#motor/paradas",
       "version": "1.2.22",
-      "sha256": "a05b5a68c48935c1886ede02c69dbd0d6642fd66b78c7520588b42d39b5e807f",
-      "bytes": 967557
+      "sha256": "1ab597fadec2973ec2e232d4942a3ac26633e298d05216e3aa9ae0dba0dfab8a",
+      "bytes": 967606
     },
     {
       "id": "equip",
       "path": "Plataforma.html#motor/equip",
       "version": "1.0.22",
-      "sha256": "b20f07fba6e07429786d0784c824a2b4b91e91fa23862a4143c4def63850bb67",
-      "bytes": 759149
+      "sha256": "09babcdd47f344de6215e064ece1bf9e5fe2342fc23b90091760d842a2b953d8",
+      "bytes": 759198
     },
     {
       "id": "inic",
       "path": "Plataforma.html#motor/inic",
       "version": "1.1.17",
-      "sha256": "46686cd1bed2e81bf262e8a265889a7066e8512eb1c703765b4aa2e5e912118e",
-      "bytes": 773678
+      "sha256": "81546c4f5bae8f0aff4461ae03757edf819f62f50fa600a4adc55ba6c193ff5e",
+      "bytes": 773727
     },
     {
       "id": "linha",
       "path": "Plataforma.html#motor/linha",
       "version": "1.7.1",
-      "sha256": "203a9d5151387f9417534491045ab72be50cebb83399f3198f30df38f1e7f6ad",
-      "bytes": 1021782
+      "sha256": "4bc1537781d76e0215097f986147cb1435832cb0455e96efe4175bf22f43d33e",
+      "bytes": 1021831
     },
     {
       "id": "projetos",
       "path": "Plataforma.html#motor/projetos",
       "version": "0.1.16",
-      "sha256": "f840ad8b3a3441444e8b561a67dee5c52d8f55066255bf6e4fa90a78dbc51745",
-      "bytes": 690857
+      "sha256": "2c41866cf92ba99b16f9d81275bbd35eb594f114fc30619a6c4ff2ebf5a6415b",
+      "bytes": 690906
     },
     {
       "id": "portal",
       "path": "Plataforma.html#motor/portal",
       "version": "1.9.81",
-      "sha256": "881ec298ba4232e0c052d612611ad48d5747e3e91edbb2c2cfdc6e1359a1b2d7",
-      "bytes": 1396291
+      "sha256": "f736e9ec00ea5fc72a09834068368beabaddf377bbf040a3847a46596619c312",
+      "bytes": 1392034
     }
   ],
   "limitations": [
     "Projetos e conteúdo técnico OSM/MES/AM/TPM mantêm os limites documentados nas fontes."
   ],
-  "enginesSha256": "0e079c26e76bd0b46da8e6d68aea507d6c1f12429ad6172588c546eb3165fd61",
+  "enginesSha256": "cdbf4e402058c2464d7ee9c6af52f0faf64564b514e367998a1430fb06117768",
   "originRevision": "ffc9ee8",
   "sourceMode": "single-html",
   "originEnginesSha256": "a87a64ad0c328f70e102b2ae888790a9b5d5a9bd05778652a7ce7cae140e40d2"

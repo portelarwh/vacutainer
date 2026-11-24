@@ -105,22 +105,28 @@ const { chromium } = require('playwright');
   const marca = () => g.evaluate(() => { const ex = gelExports(); delete ex.geradoEm; const h = todayISO(), d30 = addDays(h, -30);
     const cats = S.catalogs.filter(c => c.origem !== 'Portal').map(c => [c.num, gelReal(c.id, h), JSON.stringify(bomInfo(c.id, h)), gelReal(c.id, d30), JSON.stringify(bomInfo(c.id, d30))]);
     return JSON.stringify({ ex, cats }); });
+  await g.evaluate(() => {
+    const tubos = { '100': { tuboG: 4.779, gelG: 0.936 }, '75': { tuboG: 3.56, gelG: 0.834 } };
+    const locais = S.config.equips.map((e, i) => ({ id: 'L-' + i, equipamento: 'EQ9' + i, local: e.name, categoria: 'T', comp: 'tubogel', ativo: true }));
+    localStorage.setItem('vac.cadastros', JSON.stringify({ schemaVersion: 2, gel: { locais, formatos: [{ de: '2025-01-01', tubos }] } }));
+  });
   const g0 = await marca();
   await g.evaluate(() => {
     const cats = S.catalogs.map(c => ({ codigo: String(c.num), tipoItem: 'tubo', nome: 'Portal ' + c.num, cor: '#123456', formato: '13x' + (c.fmt || '100'), ativo: c.active !== false, vigencias: [] }));
     const eqs = (S.config.equips || []).map((e, i) => ({ codigo: 'EQ9' + i, nome: e.name, ativo: e.active !== false, categoria: 'gel' })).concat([{ codigo: 'EQ80', nome: 'Dosadora nova', ativo: true, categoria: 'gel' }]);
-    localStorage.setItem('vac.cadastros', JSON.stringify({ schema: 'vac-cadastros', rev: 5, catalogos: cats, equipamentos: eqs, materiais: [], bom: [] }));
+    const cad = vacCad();
+    localStorage.setItem('vac.cadastros', JSON.stringify({ ...cad, catalogos: cats, equipamentos: eqs }));
     render(); return { n: cats.length, e: eqs.length };
   });
   const g1 = await marca();
   ok(g0 === g1, 'GEL-06: com catálogos e equipamentos ligados ao Portal, os números do gel (exports, gel aplicado, BOM e meta) são os mesmos');
-  const lig = await g.evaluate(() => ({ desc: S.catalogs.every(c => /^Portal /.test(c.desc) && c.color === '#123456' && c.portal), eq: (S.config.equips || []).every(e => /^EQ9/.test(e.portal || '')), n: (S.config.equips || []).length }));
+  const lig = await g.evaluate(() => ({ desc: S.catalogs.every(c => /^Portal /.test(c.desc) && c.color === '#123456' && c.portal), eq: equipList().every(e => /^EQ9/.test(e.codigo)), n: equipList().length }));
   ok(lig.desc, 'ARQ-05: nome e cor do catálogo vêm do Portal (vínculo pelo número)');
-  ok(lig.eq && lig.n === 2, 'ARQ-07: equipamento do Gel liga ao do Portal pelo nome (código guardado no vínculo)');
+  ok(lig.eq && lig.n === 2, 'ARQ-07: o Gel lê o equipamento dos locais pelo código no cadastro da Administração');
   /* 1.8.47 · CFG-ADM: Catálogos e Equipamentos do Gel abrem na Administração; equipamento da Administração com dados de gel entra sozinho */
   const ui5 = await g.evaluate(() => { const ir = [], o = window.vacIrPortal; window.vacIrPortal = h => ir.push(h); openConfig('cat'); openConfig('equip'); window.vacIrPortal = o;
-    const c = JSON.parse(localStorage.getItem('vac.cadastros')); const e = (c.equipamentos || []).find(x => x.codigo === 'EQ80'); if (e) e.gel = { tara: 12, descs: [] }; localStorage.setItem('vac.cadastros', JSON.stringify(c)); render();
-    const q = (S.config.equips || []).find(x => x.portal === 'EQ80'); return { ir, modal: !!document.querySelector('#ov .cfgbody [data-vcc]'), eq: q ? { tara: q.tara, nome: q.name } : null }; });
+    const c = vacCad(); c.gel.locais.push({ id: 'novo', equipamento: 'EQ80', local: 'Dosadora', embalagemG: 12, categoria: 'T', comp: 'tubogel', ativo: true }); localStorage.setItem('vac.cadastros', JSON.stringify(c)); render();
+    const q = equipList().find(x => x.codigo === 'EQ80'); return { ir, modal: !!document.querySelector('#ov .cfgbody [data-vcc]'), eq: q ? { tara: q.descs[0].embalagemG, nome: q.name } : null }; });
   ok(!ui5.ir.length && ui5.modal, 'CAD-CONS: Gel › Catálogos e Equipamentos abrem a Consulta de cadastros (só leitura), sem tela de edição');
   ok(ui5.eq && ui5.eq.tara === 12, 'CFG-ADM: equipamento da Administração com embalagem e descartes do gel entra sozinho no Gel (' + JSON.stringify(ui5.eq) + ')');
   const auto = await g.evaluate(() => { const c = JSON.parse(localStorage.getItem('vac.cadastros')); c.materiais = [{ codigo: '10000001', tipo: 'gel', ativo: true }]; c.catalogos.push({ codigo: '777777', tipoItem: 'tubo', nome: 'Tubo SST novo', cor: '#00aa00', formato: '13x75', ativo: true, vigencias: [{ de: '2025-01-01', pphNominal: 40000, tubosPorCaixa: 1000, caixasPorLote: 900 }] });
@@ -132,8 +138,8 @@ const { chromium } = require('playwright');
   const mig5 = await po.evaluate(() => {
     TrazCfg.B = { gel: { config: { equips: [{ id: 'eq-x', name: 'Balança do gel', active: true, descs: [] }] }, catalogs: { items: [{ id: 'cat-z', num: '888888', desc: 'SST gel', fmt: '75', color: '#ff0000', active: true, lotSize: 900000, rateH: 38000 }] } } };
     TrazCfg.P = []; TrazCfg.avisos = []; TrazCfg.montar(); const P = TrazCfg.P, W2 = { catalogos: [], equipamentos: [] };
-    const c = P.find(i => i.grupo === 'Só no Gel · catálogos'), e = P.find(i => i.grupo === 'Só no Gel · equipamentos'); if (c) c.fn(W2); if (e) e.fn(W2); return W2; });
-  ok(mig5.catalogos[0] && mig5.catalogos[0].codigo === '888888' && mig5.catalogos[0].vigencias[0].caixasPorLote === 900 && mig5.equipamentos[0] && mig5.equipamentos[0].categoria === 'gel' && /^EQ\d+$/.test(mig5.equipamentos[0].codigo), 'ARQ-05/07 migração: Trazer configurações leva catálogos e equipamentos que só existem no Gel (Equipamento – Gel)');
+    const c = P.find(i => i.grupo === 'Só no Gel · catálogos'), e = P.find(i => i.grupo === 'Só no Gel · equipamentos'); if (c) c.fn(W2); return { ...W2, equipamentoProposto: !!e }; });
+  ok(mig5.catalogos[0] && mig5.catalogos[0].codigo === '888888' && mig5.catalogos[0].vigencias[0].caixasPorLote === 900 && !mig5.equipamentoProposto, 'ARQ-05/07 migração: Trazer configurações propõe catálogos; os locais usam a importação v1');
   ok(await po.evaluate(() => CAD_T.equipamentos.campos.some(c => c[0] === 'categoria') && !!AJUDA_CAMPO['equipamentos.categoria']), 'ARQ-07: Portal › Equipamentos tem a Categoria (Equipamento – Gel) com ⓘ');
 
   await b.close();

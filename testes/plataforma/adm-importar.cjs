@@ -109,13 +109,14 @@ const w = (f, ms = 300) => f.waitForTimeout ? f.waitForTimeout(ms) : new Promise
     // 5) fonte alternativa: base do Gel
     const P = await f.evaluate(() => {
       const cad = JSON.parse(JSON.stringify(Cad.D)); cad.schemaVersion = 1; delete cad.gel; cad.perfis.forEach(p => delete p.assuntos); delete (cad.parametros.gel || {}).formatos; cad.equipamentos.forEach(e => { if (e.gel) { delete e.gel.descs; delete e.gel.tara; } });
-      const gel = { config: { fmts: [{ from: '2025-10-15', tara: 75, taraP: 5, sobra: 1.6, f: { '100': { tubo: 4.779, gel: 0.936, adit: 0.02, tr: 2.3 }, '75': { tubo: 3.56, gel: 0.834, adit: 0.015, tr: 2.3 } } }],
+      const gel = { config: { lineHeads: 3, barrelsPerHead: 4, params: [{ from: '2025-10-15', pT: 2.24 }], fmts: [{ from: '2025-10-15', tara: 75, taraP: 5, sobra: 1.6, f: { '100': { tubo: 4.779, gel: 0.936, adit: 0.02, tr: 2.3 }, '75': { tubo: 3.56, gel: 0.834, adit: 0.015, tr: 2.3 } } }],
         equips: [{ id: 'e1', name: 'Gel dispensor', portal: 'EQ03', tara: 70, descs: [{ id: 'd1', local: 'MAQUINA GEL - VADG01', comp: 'tubogel', cat: 'T', mots: [] }] },
           { id: 'e2', name: 'SALA GEL', portal: null, descs: [{ id: 'd2', local: 'SALA GEL', comp: 'gel', cat: 'P', mots: [] }] }] } };
-      const p = ImportarV1.plano(cad, gel); return { f: p.gel.formatos.length, de: p.gel.formatos[0].de, l: p.gel.locais.map(l => [l.equipamento, l.local, l.embalagemG]), av: p.avisos, perfis: p.perfis.length };
+      const p = ImportarV1.plano(cad, gel); return { f: p.gel.formatos.length, de: p.gel.formatos[0].de, l: p.gel.locais.map(l => [l.equipamento, l.local, l.embalagemG, l.legado]), parametros: p.parametros, av: p.avisos, perfis: p.perfis.length };
     });
-    assert.equal(P.f, 1); assert.equal(P.de, '2025-10-15'); assert.deepEqual(P.l, [['EQ03', 'MAQUINA GEL - VADG01', 70]], 'só o local com equipamento correspondente entra');
+    assert.equal(P.f, 1); assert.equal(P.de, '2025-10-15'); assert.deepEqual(P.l, [['EQ03', 'MAQUINA GEL - VADG01', 70, [{ e: 'e1', d: 'd1' }]]], 'só o local com equipamento correspondente entra');
     assert.ok(P.av.some(a => a === 'local sem equipamento correspondente: SALA GEL'), 'aviso ' + JSON.stringify(P.av)); assert.equal(P.perfis, 10);
+    assert.deepEqual(P.parametros, { cabecotes: 3, barrisPorCabecote: 4, processo: [{ from: '2025-10-15', pT: 2.24 }] });
     const PN = await f.evaluate(() => { const cad = { schemaVersion: 1, equipamentos: [], perfis: [], parametros: { gel: { formatos: [{ from: '2025-10-15', tara: '', taraP: 5, sobra: '', f: { '100': { tubo: 4.779, gel: 0.936, adit: '', tr: 2.3 } } }] } } };
       const x = ImportarV1.plano(cad, null).gel.formatos[0]; return { e: x.embalagemG, fp: x.folhaPurgaG, s: x.sobraBarrilKg, t100: x.tubos['100'], t75: x.tubos['75'] }; });
     assert.deepEqual(PN, { e: null, fp: 5, s: null, t100: { tuboG: 4.779, gelG: 0.936, aditivoG: null, tampaRolhaG: 2.3 }, t75: { tuboG: null, gelG: null, aditivoG: null, tampaRolhaG: null } }, 'ausência vira null, nunca 0 ' + JSON.stringify(PN));
