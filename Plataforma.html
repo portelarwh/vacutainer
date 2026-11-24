@@ -8739,7 +8739,7 @@ const Model = (() => {
     // retrabalho: pela política da empresa o tempo e as peças saem do OEE (desconta do planejado, fora do Pareto)
     if (db.downtimeCodes.length &amp;&amp; !db.downtimeCodes.some(c => c.code === 'RTB')) db.downtimeCodes.push({ id: db.downtimeCodes.some(c => c.id === 'dc_RTB') ? U.uid('dc') : 'dc_RTB', code: 'RTB', name: 'Retrabalho (fora do OEE)', description: 'Tempo de retrabalho de lote: sai do tempo planejado e as peças não contam (política da empresa).', category: 'Planejada', subcategory: 'Retrabalho', color: '#a3adb8', planned: true, deductsPlanned: true, affectsA: false, affectsP: false, affectsQ: false, inReport: true, inPareto: false, requiresNote: false, requiresTimes: false, allowsManualDuration: true, requiresPrevCatalog: false, requiresNextCatalog: false, validFrom: '2025-01-01', validTo: null, active: true, ...meta('Sistema') });
     if (db.databaseVersion == null) db.databaseVersion = 0;
-    if (!db.schemaVersion) db.schemaVersion = SCHEMA_VERSION;
+    /* base limpa (24/11/2026): ensure não inventa schemaVersion; base sem ele é de versão anterior e fica só para consulta */
     // calendário do plano (versões antigas guardavam no próprio plano) → marca única do dia, lida por todas as abas
     for (const p of db.monthPlans) {
       for (const [arr, kind] of [[p.exc, 'off'], [p.extra, 'extra']]) for (const x of arr || []) if (!db.calendar.some(c => !c.deleted &amp;&amp; c.date === x.date &amp;&amp; c.lineId === p.lineId)) db.calendar.push({ id: 'cal_' + p.lineId + '_' + x.date, date: x.date, lineId: p.lineId, kind, reason: x.reason || '', reasonType: 'prog', by: p.updatedBy || p.createdBy || '', at: p.updatedAt || p.createdAt || '' });
@@ -9885,7 +9885,7 @@ const Store = (() => {
 
   // há pasta salva mas sem permissão ainda: mostra a cópia do navegador sem permitir edição
   async function startAwaiting(db, dir) {
-    S.mode = 'aguardando'; S.backend = dir ? FolderBackend(dir) : null; S.db = Model.ensure(db); S.baseVersion = S.db.databaseVersion; Engine.bumpConfig();
+    S.mode = 'aguardando'; S.backend = dir ? FolderBackend(dir) : null; S.formato = vacFormatoBase(db, undefined, SCHEMA_VERSION); S.db = Model.ensure(db); S.baseVersion = S.db.databaseVersion; Engine.bumpConfig();
     setStatus('reconectar'); emit('data');
   }
   // modo exemplo: trabalha numa cópia em memória; nada vai para a pasta nem para o cache
@@ -9905,7 +9905,7 @@ const Store = (() => {
   }
   async function startLocal(db) {
     S.mode = 'local'; S.backend = null;
-    S.db = Model.ensure(db); S.baseVersion = S.db.databaseVersion; Engine.bumpConfig();
+    S.formato = vacFormatoBase(db, undefined, SCHEMA_VERSION); S.db = Model.ensure(db); S.baseVersion = S.db.databaseVersion; Engine.bumpConfig();
     setStatus('cache'); emit('data');
   }
   // modo alternativo sem acesso à pasta: abre um JSON e baixa a versão atualizada
@@ -9934,6 +9934,7 @@ const Store = (() => {
     if (S.dirty) await flush();
     const text = await S.backend.readBackup(name, legacy);
     const rdb = Model.parseBaseText(text);
+    if (rdb._formato) throw new Error(rdb._formato);   /* backup de versão anterior não volta como base atual */
     const ext = await readExternal();
     await S.backend.backup(bkNome('antes'), ext ? ext.text : serialize(S.db));
     const prevLog = S.db.auditLog || [];
@@ -9948,6 +9949,7 @@ const Store = (() => {
   }
   async function replaceWithImported(text, reason) {
     const idb = Model.parseBaseText(text, undefined, { strict: true });
+    if (idb._formato) throw new Error(idb._formato);   /* base de versão anterior não é importada como atual */
     if (S.mode === 'pasta') { if (S.dirty) await flush(); await manualBackup('antes-importacao-json'); }
     const ext = S.mode === 'pasta' ? await readExternal() : null;
     const prevLog = S.db ? S.db.auditLog : [];
@@ -29805,7 +29807,7 @@ function renderSim0(){
     ${S.supplyOn?`<label>kg por barril <input type="number" id="supKg" value="${sc.kg}" min="1" style="width:80px"></label><label>Validade do gel novo (dias) <input type="number" id="supShelf" value="${sc.shelf}" min="1" style="width:80px"></label><label>Liberado para uso após (dias) <input type="number" id="supLag" value="${sc.lag}" min="0" style="width:64px"></label><span class="sub" style="flex-basis:100%;margin:0">Em cada dia, <b>+P</b> = barris de gel produzidos e <b>+R</b> = barris de REMIX. Entram na fila com validade calculada e são ordenados pela mesma regra FIFO.</span>`:''}</div>`;
   const catSum={};prodDays.forEach(d=>d.cats.forEach(k=>{if(k)catSum[k]=(catSum[k]||0)+1}));
   if(sFrom)h1+=`<div class="info" style="margin-bottom:10px"><b>Simulando a partir de ${dayLabel(sFrom)}.</b> O estoque daquela data foi reconstruído pelos registros: barris que já existiam e ainda não tinham saído; os criados depois entram na data de criação. Dias passados usam a programação do dia ou, sem ela, a produção registrada. "Real" mostra os lotes efetivamente baixados, para comparar com o FIFO simulado. ${sim.startLine&amp;&amp;sim.startLine.length?`Na linha em ${fmtD(sFrom).slice(0,5)}: ${sim.startLine.map(l=>'LP '+esc(l.lp)).join(', ')}.`:''}</div>`;
-  h1+=`<div class="card"><h3>Programação de produção com gel</h3>${sim.semPerdas?`<div class="alert" data-gel-perdas>Sem perdas teóricas do gel vigentes em parte do período: o consumo em kg desses dias não é estimado. Confira Administração › Gel.</div>`:''}${supBox}${sim.lines&amp;&amp;sim.lines.length?`<div class="info" style="margin-bottom:8px"><b>Na linha agora (${sim.lines.length} de ${lineSlots()}):</b> ${sim.lines.map(l=>`LP ${esc(l.lp)}${l.inUse.head?' · cabeçote '+HN(l.inUse.head):''} · ${(r=>r==null?'sem estimativa':'~'+kg(r)+' kg')(lineRemaining(l,true))}`).join(' | ')}. Consomem em paralelo e só saem com a baixa.</div>`:''}<p class="sub">${view==='tubos'?`Informe quantos tubos bons cada dia vai produzir. O gel necessário é calculado com ${nf2.format(pa.g)} g por tubo e as perdas vigentes (tubos ${nf2.format(pa.pT)}%, barril ${nf2.format(pa.pB)}%, purga ${nf2.format(pa.pP)}%), e o barril da linha continua até acabar`:'Informe quantos barris cada dia vai consumir'}${useCat?'; se quiser, o catálogo produzido':''}. A fila FIFO com proteção de validade é distribuída automaticamente pelos dias programados, pulando barris bloqueados, em Hold ou que venceriam antes do dia de uso.${D.today.done?` Hoje já foram retirados <b>${D.today.done}</b> barris; eles saem da conta do dia.`:''}</p>${cal}</div>
+  h1+=`<div class="card"><h3>Programação de produção com gel</h3>${sim.semPerdas?`<div class="alert" data-gel-perdas>Sem perdas teóricas do gel vigentes em parte do período: o consumo em kg desses dias não é estimado. Confira Administração › Gel.</div>`:''}${supBox}${sim.lines&amp;&amp;sim.lines.length?`<div class="info" style="margin-bottom:8px"><b>Na linha agora (${sim.lines.length} de ${lineSlots()}):</b> ${sim.lines.map(l=>`LP ${esc(l.lp)}${l.inUse.head?' · cabeçote '+HN(l.inUse.head):''} · ${(r=>r==null?'sem estimativa':'~'+kg(r)+' kg')(lineRemaining(l,true))}`).join(' | ')}. Consomem em paralelo e só saem com a baixa.</div>`:''}<p class="sub">${view==='tubos'?`Informe quantos tubos bons cada dia vai produzir. ${pa?`O gel necessário é calculado com ${nf2.format(pa.g)} g por tubo e as perdas vigentes (tubos ${nf2.format(pa.pT)}%, barril ${nf2.format(pa.pB)}%, purga ${nf2.format(pa.pP)}%), e o barril da linha continua até acabar`:esc(semPa)+' O gel necessário em kg não é calculado'}`:'Informe quantos barris cada dia vai consumir'}${useCat?'; se quiser, o catálogo produzido':''}. A fila FIFO com proteção de validade é distribuída automaticamente pelos dias programados, pulando barris bloqueados, em Hold ou que venceriam antes do dia de uso.${D.today.done?` Hoje já foram retirados <b>${D.today.done}</b> barris; eles saem da conta do dia.`:''}</p>${cal}</div>
   <div class="card" style="margin-top:14px"><div class="stat-row">
     <div class="stat"><div class="l">Dias com produção</div><div class="v">${prodDays.length}</div></div>
     <div class="stat"><div class="l">Barris programados</div><div class="v">${tubesT?'≈'+nf1.format(planned):planned}</div></div>
@@ -55769,8 +55771,8 @@ body.vac-porta{overflow:hidden}
       "id": "oee",
       "path": "Plataforma.html#motor/oee",
       "version": "2.6.45",
-      "sha256": "6f0a356dae5220a7b3be01dd39895a8619b5f710fd4f76979ae23402983d75d8",
-      "bytes": 2406876
+      "sha256": "23213d9904d866c059c34eb6e3eadcd1144fda9f8c1d70ff03ab0a83cba97995",
+      "bytes": 2407293
     },
     {
       "id": "perdas",
@@ -55783,8 +55785,8 @@ body.vac-porta{overflow:hidden}
       "id": "gel",
       "path": "Plataforma.html#motor/gel",
       "version": "2.50",
-      "sha256": "90c45b049da7abf6d2c15304649d65b249cd60380e092f8bc846222918f40095",
-      "bytes": 1629929
+      "sha256": "c7f1cb5282da9745a3f81cbc47cfd48fe68c3aa784c3f2e789337648badec4b0",
+      "bytes": 1629993
     },
     {
       "id": "paradas",
@@ -55832,7 +55834,7 @@ body.vac-porta{overflow:hidden}
   "limitations": [
     "Projetos e conteúdo técnico OSM/MES/AM/TPM mantêm os limites documentados nas fontes."
   ],
-  "enginesSha256": "bd5b4a6a12bc38e69d3dc68b44bf62dfca7ff4acbebb7991373f702875293c1b",
+  "enginesSha256": "ad72b3cca615c673dc6113f33afee819190a149790b954f2458663d43efa40d6",
   "originRevision": "ffc9ee8",
   "sourceMode": "single-html",
   "originEnginesSha256": "a87a64ad0c328f70e102b2ae888790a9b5d5a9bd05778652a7ce7cae140e40d2"

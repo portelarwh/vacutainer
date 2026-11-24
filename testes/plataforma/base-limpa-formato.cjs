@@ -6,6 +6,9 @@
 //     scrap continuam listadas (o scrap não depende das perdas); com pesagem pendente em algum turno, índice e ganho não saem;
 // (c) vacPessoa não acha o ID de registro que só tem o nome;
 // (d) o export do Gel em versão anterior não é usado pela Produção, que avisa "Dados de Gestão de Gel em versão anterior";
+// (a2) modo arquivo: base sem schemaVersion aberta por arquivo, e reaberta da cópia do navegador, continua bloqueada e não é
+//      convertida (Model.ensure não inventa schemaVersion); importar ou restaurar uma base de versão anterior é recusado;
+// (f) Gestão de Gel › programação em tubos sem vigência de perdas: a tela abre com o aviso (sem erro);
 // (e) nenhum erro de JavaScript.
 const { chromium } = require('playwright'), http = require('http'), fs = require('fs'), path = require('path'), assert = require('assert/strict');
 const html = fs.readFileSync(path.resolve(__dirname, '../../Plataforma.html'));
@@ -115,6 +118,52 @@ const BLOQUEIO = 'Base de versão anterior. Comece uma base nova nesta pasta.';
       assert.equal(a.base, caso, 'a base anterior não foi convertida nem regravada');
     }
     console.log('ok (a) base da Produção sem schemaVersion ou com versão 0: só consulta, "' + BLOQUEIO + '"');
+
+    // (f) Gestão de Gel › programação em tubos sem vigência de perdas: aviso, sem erro de JavaScript
+    await page.evaluate(() => { location.hash = '#/gel'; });
+    const g = await (await page.locator('iframe[title="Módulo Gestão de Gel"]').elementHandle({ timeout: 60000 })).contentFrame();
+    await g.waitForFunction(() => typeof S !== 'undefined' && S && S.config && typeof render === 'function', null, { timeout: 60000 });
+    const f = await g.evaluate(async () => {
+      const cad = vacCad(), orig = JSON.stringify(cad.parametros.gel || {});
+      cad.parametros.gel = { ...(cad.parametros.gel || {}), processo: [] }; vacDemo.salvar('cad', cad);
+      const vista = S.config.planView; S.config.planView = 'tubos'; ui.tab = 'sim'; let erro = '';
+      try { if (typeof memoClear === 'function') memoClear(); derive(); render(); await new Promise(r => setTimeout(r, 300)); } catch (e) { erro = e.message; }
+      const txt = document.body.textContent;
+      S.config.planView = vista; cad.parametros.gel = JSON.parse(orig); vacDemo.salvar('cad', cad);
+      return { erro, card: txt.includes('Programação de produção com gel'), aviso: /Sem perdas teóricas do gel vigentes em \d{2}\/\d{2}\/\d{4}\. Confira Administração › Gel\./.test(txt) };
+    });
+    assert.deepEqual(f, { erro: '', card: true, aviso: true }, 'programação em tubos sem perdas vigentes: card com o aviso, sem erro ' + JSON.stringify(f));
+    console.log('ok (f) Gestão de Gel › programação em tubos sem perdas vigentes: aviso e card sem erro');
+
+    // (a2) modo arquivo e cópia do navegador (fora da demonstração)
+    {
+      const srv2 = require('../../scripts/servidor-testes.cjs').server(); await new Promise(r => srv2.listen(0, '127.0.0.1', r));
+      const ctx2 = await browser.newContext({ viewport: { width: 1280, height: 900 } });
+      try {
+        const p2 = await ctx2.newPage(); p2.on('pageerror', e => erros.push('arquivo: ' + e.message)); p2.on('dialog', d => d.accept());
+        await p2.goto('http://127.0.0.1:' + srv2.address().port + '/__modulos__/OEE-Vacutainer.html');
+        await p2.waitForFunction(() => typeof Store !== 'undefined' && Store.S && Store.S.db, null, { timeout: 60000 });
+        const r1 = await p2.evaluate(async () => {
+          const b = Model.emptyBase('teste'); delete b.schemaVersion; const txt = JSON.stringify(b);
+          await Store.openFileFallback(txt, 'antiga.json'); const c = await Store.IDB.get('cache');
+          let erro = ''; try { Store.mutate(d => { d.settings.x = 1; }); } catch (e) { erro = e.message; }
+          let imp = ''; try { await Store.replaceWithImported(txt, 'teste'); } catch (e) { imp = e.message; }
+          return { formato: Store.S.formato, cacheSv: c && c.db ? (c.db.schemaVersion ?? 'sem') : 'sem cópia', erro, imp };
+        });
+        assert.deepEqual(r1, { formato: BLOQUEIO, cacheSv: 'sem', erro: BLOQUEIO, imp: BLOQUEIO }, 'arquivo: bloqueada, cópia do navegador sem schemaVersion inventado, importação recusada ' + JSON.stringify(r1));
+        await p2.reload();
+        await p2.waitForFunction(() => typeof Store !== 'undefined' && Store.S && Store.S.mode === 'arquivo' && Store.S.db, null, { timeout: 60000 });
+        const r2 = await p2.evaluate(async () => {
+          document.querySelectorAll('.overlay').forEach(o => o.remove()); renderBanner();
+          let erro = ''; try { Store.mutate(d => { d.settings.x = 1; }); } catch (e) { erro = e.message; }
+          const c = await Store.IDB.get('cache');
+          return { formato: Store.S.formato, banner: document.querySelector('#banner').textContent.includes(Store.S.formato || '???'), erro,
+            sv: Store.S.db.schemaVersion ?? 'sem', cacheSv: c && c.db ? (c.db.schemaVersion ?? 'sem') : 'sem cópia', lancar: vacPode('oee', 'lancar') };
+        });
+        assert.deepEqual(r2, { formato: BLOQUEIO, banner: true, erro: BLOQUEIO, sv: 'sem', cacheSv: 'sem', lancar: false }, 'reaberta da cópia do navegador: continua bloqueada e sem conversão ' + JSON.stringify(r2));
+        console.log('ok (a2) modo arquivo: base sem schemaVersion continua bloqueada ao reabrir a cópia do navegador; importar versão anterior é recusado');
+      } finally { await ctx2.close(); srv2.close(); }
+    }
 
     assert.deepEqual(erros, [], 'sem erro de JavaScript'); console.log('ok (e) sem erro de JavaScript');
   } finally { if (browser) await browser.close(); srv.close(); }
