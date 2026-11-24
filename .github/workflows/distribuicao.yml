@@ -46,11 +46,21 @@ jobs:
       - run: npm run test:reprodutibilidade
       - name: Validar o HTML isolado por file://, sem HTTP, e obter a versao
         run: |
-          node scripts/distribuicao.cjs "$RUNNER_TEMP/versao.txt"
+          node scripts/distribuicao.cjs "$RUNNER_TEMP/validacao-distribuicao.json"
           git diff --exit-code -- Plataforma.html
-      - name: Empacotar somente arquivos permitidos
+      - name: Empacotar candidato com somente os arquivos permitidos
         run: |
-          python3 scripts/empacotar-release.py "$(cat "$RUNNER_TEMP/versao.txt")" "$GITHUB_SHA" "$RUNNER_TEMP/release"
+          set -euo pipefail
+          if [[ "$GITHUB_EVENT_NAME" != pull_request ]]; then
+            echo "Empacotamento oficial depende de compatibilidade aprovada." >&2
+            exit 1
+          fi
+          python3 scripts/empacotar-release.py "$RUNNER_TEMP/validacao-distribuicao.json" "$GITHUB_SHA" "$RUNNER_TEMP/release" --candidato
+          python3 scripts/empacotar-release.py "$RUNNER_TEMP/validacao-distribuicao.json" "$GITHUB_SHA" "$RUNNER_TEMP/release-repeticao" --candidato
+          diff -qr "$RUNNER_TEMP/release" "$RUNNER_TEMP/release-repeticao"
+          cd "$RUNNER_TEMP/release"
+          sha256sum -c SHA256SUMS.txt
+          unzip -p Vacutainer-v*-Completo.zip Plataforma.html | cmp - Plataforma.html
       - uses: actions/upload-artifact@v4
         with:
           name: vacutainer-distribuicao
