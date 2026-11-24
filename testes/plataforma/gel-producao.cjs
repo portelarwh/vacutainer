@@ -24,7 +24,7 @@ const html = fs.readFileSync(path.resolve(__dirname, '../../Plataforma.html'));
     const b1 = await o.evaluate(id => { const b = document.querySelector(`section.tl[data-tl="${id}"] .tl-s-scrap [data-gelscrap]`); const cel = b && b.closest('.tl-s-scrap');
       return b && { txt: b.textContent.trim(), dis: b.disabled, depoisDoScrap: !!cel.querySelector('[data-scrapturno]') && cel.querySelector('[data-scrapturno]').compareDocumentPosition(b) === 4, motivo: cel.textContent }; }, ps2);
     assert.ok(b1 && b1.txt === 'Scrap gel' && b1.dis && b1.depoisDoScrap, 'botão Scrap gel abaixo do Editar scrap ' + JSON.stringify(b1));
-    assert.match(b1.motivo, /Cadastre os equipamentos de pesagem de gel na Administração/);
+    assert.match(b1.motivo, /Cadastre os locais de descarte na Administração › Gel/);
     console.log('ok Produção: "Scrap gel" abaixo do "Editar scrap", desabilitado sem equipamento de gel na Administração (com o motivo)');
 
     // 2) com equipamento e data de corte (simulados): habilita e abre o formulário de sempre; antes do corte, desabilita

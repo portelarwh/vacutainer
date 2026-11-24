@@ -26,20 +26,33 @@ const OUT = process.env.SCRAP_PRINT || '';
       const m = document.querySelector('.overlay .modal'), r = { largo: m.classList.contains('sc-largo'), lado: !!m.querySelector('.sc-lado') }; document.querySelectorAll('.overlay').forEach(x => x.remove()); return r; });
     assert.deepEqual(sem, { largo: false, lado: false }, 'sem gel: só a máquina');
 
-    // pontos de gel fictícios (o que viria da Administração › Equipamentos, categoria Gel)
-    await o.evaluate(() => { const C0 = GelTurno.ctx() || {};
-      const E = [{ codigo: 'EQ31', nome: 'Funil', descs: [{ id: 'f1', comp: 'tubogel', cat: 'T', mots: [] }] }, { codigo: 'EQ32', nome: 'Tullip A', descs: [{ id: 'b1', local: 'Caixa rejeição', comp: 'completo', cat: 'T', mots: [] }, { id: 'b2', local: 'Funil berço', comp: 'completo', cat: 'T', mots: [] }] },
-        { codigo: 'EQ33', nome: 'Envasadora de gel', descs: [{ id: 'e1', comp: 'barril', cat: 'B', mots: [] }, { id: 'e2', comp: 'gel', cat: 'P', mots: [] }] }];
-      const fmts = [{ from: '2000-01-01', tara: 70, taraP: 4, sobra: 1.3, f: { '100': { tubo: 4.8, gel: 0.83, adit: 0.02, tr: 2.31 }, '75': { tubo: 3.55, gel: 0.82, adit: 0.015, tr: 2.29 } } }];
-      const fake = { ...C0, fmts, params: [{ from: '2000-01-01', g: 0.97, pT: 2.1, pB: .71, pP: .5 }], equips: () => E, eq: c => E.find(x => x.codigo === c) || null, cat: () => ({ fmt: '100' }), usaGel: () => true, corte: '2026-11-01', motivos: [{ id: 'm1', name: 'Vazamento', comps: [] }, { id: 'm2', name: 'Bolha', comps: [] }] };
-      GelTurno.ctx = () => fake; GelTurno.mostra = () => true; });
+    // Pontos fictícios na mesma estrutura gravada por Administração › Gel.
+    await o.evaluate(() => {
+      const cad = vacCad();
+      cad.equipamentos.push(
+        { codigo: 'EQ31', nome: 'Funil' },
+        { codigo: 'EQ32', nome: 'Tullip A' },
+        { codigo: 'EQ33', nome: 'Envasadora de gel' },
+      );
+      const pontos = [
+        ['EQ31', 'f1', 'Funil de descarte', 'tubogel', 'T'],
+        ['EQ32', 'b1', 'Caixa rejeição', 'completo', 'T'],
+        ['EQ32', 'b2', 'Funil berço', 'completo', 'T'],
+        ['EQ33', 'e1', 'Sobra', 'barril', 'B'],
+        ['EQ33', 'e2', 'Purga', 'gel', 'P'],
+      ];
+      cad.gel.locais = pontos.map(([equipamento, id, local, comp, categoria], ordem) => ({ equipamento, id, local, comp, categoria, ordem, motivos: [], ativo: true }));
+      cad.parametros.gel.motivos = [{ id: 'm1', name: 'Vazamento', comps: [] }, { id: 'm2', name: 'Bolha', comps: [] }];
+      vacDemo.salvar('cad', cad);
+      GelTurno.ctx = () => vacGel.ctx();
+    });
 
     // 1) largo, duas colunas 40/60
     const ps = await o.evaluate(async () => { const day = curDay(), ps = day.shifts.find(p => !p.deleted && !locked(day, p)); TurnoCard.abrir(day, ps.id); await new Promise(r => setTimeout(r, 300)); return ps.id; });
     const lay = await o.evaluate(() => { const m = document.querySelector('.overlay .modal'), c = [...m.querySelectorAll('.sc-lado > .sc-col')].map(x => x.getBoundingClientRect().width);
       return { largo: m.classList.contains('sc-largo'), n: c.length, prop: c.length === 2 ? +(c[0] / (c[0] + c[1])).toFixed(2) : 0, grupos: [...m.querySelectorAll('.gsc-g h4')].map(h => h.textContent), pontos: [...m.querySelectorAll('.gsc-n')].map(n => [...n.querySelectorAll('b')].map(b => b.textContent).join(' · ')) }; });
     assert.ok(lay.largo && lay.n === 2 && lay.prop >= .36 && lay.prop <= .44, 'popup largo, máquina ≈40% e gel ≈60% ' + JSON.stringify(lay));
-    assert.deepEqual(lay.grupos, ['Tubos', 'Barril', 'Purga']); assert.deepEqual(lay.pontos, ['Funil', 'Tullip A · Caixa rejeição', 'Tullip A · Funil berço', 'Envasadora de gel', 'Envasadora de gel'], 'cada ponto com o local (GEL-09)');
+    assert.deepEqual(lay.grupos, ['Tubos', 'Barril', 'Purga']); assert.deepEqual(lay.pontos, ['Funil · Funil de descarte', 'Tullip A · Caixa rejeição', 'Tullip A · Funil berço', 'Envasadora de gel · Sobra', 'Envasadora de gel · Purga'], 'cada ponto com o local (GEL-09)');
     console.log('ok popup largo com máquina (' + Math.round(lay.prop * 100) + '%) e gel lado a lado; gel com Tubos, Barril e Purga e todos os pontos');
 
     // 2) digitar o peso mostra a conta
@@ -53,8 +66,8 @@ const OUT = process.env.SCRAP_PRINT || '';
     // 3) um só Gravar grava as duas partes
     const tot = o.locator('#scTot'); if (await tot.isDisabled()) await o.click('#scSo'); await o.fill('#scTot', '3227');
     await o.click('#scOk'); await page.waitForTimeout(600);
-    const g = await o.evaluate(id => { const day = db().productionDays.find(d => d.shifts.some(p => p.id === id)), p = day.shifts.find(x => x.id === id); return { scrap: p.scrap, gel: p.gelScrap && p.gelScrap.eq.map(e => [e.e, e.d, e.kg, (e.mots || []).map(m => m.m).join()]), aberto: !!document.querySelector('.overlay') }; }, ps);
-    assert.deepEqual(g, { scrap: 3227, gel: [['EQ31', 'f1', 1.84, 'm1']], aberto: false }, 'Gravar grava máquina e gel ' + JSON.stringify(g));
+    const g = await o.evaluate(id => { const day = db().productionDays.find(d => d.shifts.some(p => p.id === id)), p = day.shifts.find(x => x.id === id); return { scrap: p.scrap, gel: p.gelScrap && p.gelScrap.eq.map(e => [e.e, e.d, e.local, e.kg, (e.mots || []).map(m => m.m).join()]), aberto: !!document.querySelector('.overlay') }; }, ps);
+    assert.deepEqual(g, { scrap: 3227, gel: [['EQ31', 'f1', 'Funil de descarte', 1.84, 'm1']], aberto: false }, 'Gravar grava máquina e gel ' + JSON.stringify(g));
     console.log('ok um só Gravar grava o total da máquina (3227) e a pesagem do gel (Funil 1,84 kg, Vazamento)');
     assert.deepEqual(erros, [], 'sem erro de JavaScript'); console.log('ok sem gel no turno o popup fica só com a máquina; sem erro de JavaScript');
   } finally { if (browser) await browser.close(); srv.close(); }

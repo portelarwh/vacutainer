@@ -664,37 +664,31 @@ vacCad.gel = (() => {
 /* ===== vacGel · conta do gel comum (Fase 4 · 4b do briefing de 09/11/2026) =====
    A mesma conta na Gestão de Gel e na Produção (Registrar scrap e Teórico × Real), sem cópia divergente.
    Funções puras: recebem os parâmetros (formatos, perdas, gel do catálogo, descarte do equipamento) e devolvem números.
-   A Gestão de Gel chama com os dados dela (que desde a 2.17 vêm do Portal); a Produção chama com o cadastro do Portal (vacGel.ctx()).
-   Estruturas iguais às do Gel: formatos [{from,tara,taraP,sobra,f:{'100':{tubo,gel,adit,tr},'75':{…}}}], processo [{from,g,pT,pB,pP}],
-   gel do catálogo {fmt, vig:[{from,gTubo,bomKg,bomBase,tol}]}, equipamento {tara, descs:[{id,comp,cat,mots}]}. */
+   Os pesos e locais de descarte são lidos no cadastro central, pela vigência do fato. */
 const vacGel = (() => {
-  const FMT_DEF = { from: '2000-01-01', tara: 75, taraP: 5, f: { '100': { tubo: 4.779, gel: 0.834, adit: 0.020, tr: 2.30 }, '75': { tubo: 3.560, gel: 0.834, adit: 0.015, tr: 2.30 } } };
   const PROC_DEF = { from: '', g: 0.98, pT: 2.2406, pB: 0.7352, pP: 0.5252 };
-  const COMPS = { completo: { l: 'Tubo completo', parts: ['tubo', 'tr', 'gel', 'adit'], cap: 1 }, tubogel: { l: 'Tubo + gel', parts: ['tubo', 'gel'] }, spray: { l: 'Tubo + gel + spray', parts: ['tubo', 'gel', 'adit'] }, gel: { l: 'Gel puro', parts: ['gel'] }, barril: { l: 'Barril (sobra)', parts: ['gel'] } };
+  const COMPS = { completo: { l: 'Tubo completo' }, tubogel: { l: 'Tubo + gel' }, spray: { l: 'Tubo + gel + spray' }, gel: { l: 'Gel puro' }, barril: { l: 'Barril (sobra)' } };
   const SCAT = { T: 'Tubos', B: 'Barril', P: 'Purga' };
   const ord = L => (L || []).slice().sort((a, b) => a.from < b.from ? -1 : a.from > b.from ? 1 : 0);
-  /* vigência dos formatos na data (a 1ª, se a data for anterior a todas) */
-  function fmtAt(fmts, date) { const L = ord(fmts &amp;&amp; fmts.length ? fmts : [FMT_DEF]); let v = L[0]; for (const x of L) if (x.from <= date) v = x; return v; }
-  function procAt(params, date) { const L = ord(params).filter(p => p.from <= date); return L.length ? { ...PROC_DEF, ...L[L.length - 1] } : { ...PROC_DEF }; }
-  function sobraAt(fmts, date) { const L = ord(fmts &amp;&amp; fmts.length ? fmts : [FMT_DEF]).filter(x => x.from <= date &amp;&amp; x.sobra != null &amp;&amp; x.sobra !== ''); return L.length ? +L[L.length - 1].sobra : null; }
-  const taraP = FM => FM &amp;&amp; FM.taraP != null &amp;&amp; FM.taraP !== '' ? +FM.taraP : 5;
+  function procAt(date) {
+    const L = ord(vacCad.param('gel.processo')).filter(p => p.from <= date);
+    return L.length ? { ...PROC_DEF, ...L[L.length - 1] } : { ...PROC_DEF };
+  }
+  const sobraAt = date => valorPeso(vacCad.gel.formato(date)?.sobraBarrilKg);
   /* vigências do gel do catálogo (aceita o cadastro antigo: gTubo/bom no próprio catálogo) */
   function vigList(cg) { if (!cg) return []; const L = cg.vig &amp;&amp; cg.vig.length ? cg.vig : (cg.gTubo || cg.bomG || cg.bomKg ? [{ from: '2000-01-01', gTubo: cg.gTubo || null, bomG: cg.bomG || null, bomPct: cg.bomPct || 106, bomKg: cg.bomKg || null, bomBase: cg.bomBase || 10000, tol: cg.tol ?? 6 }] : []); return ord(L); }
   function vigAt(cg, date) { const L = vigList(cg); if (!L.length) return {}; let v = L[0]; for (const x of L) if (x.from <= date) v = x; return v; }
-  /* gel por tubo: o do catálogo; senão o do formato; senão o de processo */
-  function gelPorTubo(cg, date, fmts, params) { const v = vigAt(cg, date); if (+v.gTubo) return +v.gTubo; const F = fmtAt(fmts, date).f[(cg &amp;&amp; cg.fmt) || '100']; return F &amp;&amp; +F.gel ? +F.gel : procAt(params, date).g; }
+  function gelPorTubo(cg, date) {
+    const v = vigAt(cg, date);
+    return valorPeso(v.gTubo) ?? valorPeso(vacCad.gel.formato(date)?.tubos?.[cg?.fmt || '100']?.gelG);
+  }
   function bomVals(v) { if (+v.bomKg) return { kg: +v.bomKg, base: +v.bomBase || 10000, tol: v.tol != null &amp;&amp; v.tol !== '' ? +v.tol : 6 }; if (+v.bomG) { const p = +(v.bomPct || 106); return { kg: +v.bomG * p / 100 * 10, base: 10000, tol: p - 100 }; } return { kg: null, base: +v.bomBase || 10000, tol: v.tol != null &amp;&amp; v.tol !== '' ? +v.tol : 6 }; }
-  /* BOM do catálogo na data: permitido (com a tolerância) e meta (sem); sem BOM, estimada pelo gel do formato + tolerância */
-  function bom(cg, date, fmts, params) { const b = bomVals(vigAt(cg, date)); let allowed, est = false; if (b.kg) allowed = b.kg * 1000 / b.base; else { const F = fmtAt(fmts, date).f[(cg &amp;&amp; cg.fmt) || '100']; allowed = (F &amp;&amp; +F.gel ? +F.gel : procAt(params, date).g) * (1 + b.tol / 100); est = true; } return { ...b, allowed, meta: allowed / (1 + b.tol / 100), lim: 100 + b.tol, est }; }
-  /* uma pesagem: peso bruto da balança (kg) → gel líquido, tubos e materiais. desc = {comp, cat}; taraEq = embalagem própria do equipamento */
-  function pesagem({ desc, taraEq, kg, nb, cg, date, fmts, params }) {
-    if (!desc) return null; const FM = fmtAt(fmts, date), F = FM.f[(cg &amp;&amp; cg.fmt) || '100'] || FM.f['100'], g = gelPorTubo(cg, date, fmts, params);
-    const tara = desc.cat === 'P' ? taraP(FM) : taraEq != null &amp;&amp; taraEq !== '' ? +taraEq : +FM.tara || 0, net = Math.max(0, (+kg || 0) * 1000 - tara);
-    const comp = COMPS[desc.comp] || COMPS.gel;
-    if (desc.comp === 'gel') return { scat: desc.cat, comp: desc.comp, tara, gross: +kg || 0, gel: net / 1000, n: 0, tubo: 0, tamp: 0, rolha: 0, etq: 0, adit: 0 };
-    if (desc.comp === 'barril') { const n0 = +nb || 0, kr = +kg || 0, gel = kr > 0 ? kr : n0 * (sobraAt(fmts, date) || 0); return { scat: desc.cat, comp: desc.comp, gross: gel, gel, nb: n0, est: !(kr > 0), n: 0, tubo: 0, tamp: 0, rolha: 0, etq: 0, adit: 0 }; }
-    const w = { tubo: +F.tubo || 0, gel: g, adit: +F.adit || 0, tr: +F.tr || 0 }, unit = comp.parts.reduce((s, k) => s + w[k], 0) || 1, n = net / unit;
-    return { scat: desc.cat, comp: desc.comp, tara, gross: +kg || 0, unit, n, gel: n * g / 1000, tubo: n * w.tubo / 1000, tamp: comp.cap ? n : 0, rolha: comp.cap ? n : 0, etq: comp.cap ? n : 0, adit: comp.parts.includes('adit') ? n * w.adit / 1000 : 0, trKg: comp.cap ? n * w.tr / 1000 : 0 };
+  /* BOM do catálogo na data: permitido com a tolerância e meta sem a tolerância. */
+  function bom(cg, date) {
+    const b = bomVals(vigAt(cg, date));
+    const g = valorPeso(vacCad.gel.formato(date)?.tubos?.[cg?.fmt || '100']?.gelG);
+    const allowed = b.kg ? b.kg * 1000 / b.base : g == null ? null : g * (1 + b.tol / 100);
+    return { ...b, allowed, meta: allowed == null ? null : allowed / (1 + b.tol / 100), lim: 100 + b.tol, est: !b.kg };
   }
   const avisoImportacao = 'Cadastro do gel não importado — Administração › Sistema › Importar das bases atuais';
   function cadastroOk() {
@@ -729,7 +723,7 @@ const vacGel = (() => {
     return v != null &amp;&amp; v !== '' &amp;&amp; Number.isFinite(+v) &amp;&amp; +v >= 0 ? +v : null;
   }
   /* Peso bruto da balança em kg. O peso da embalagem e das partes do tubo vem da vigência do fato. */
-  function pesagemCadastro({ local, kg, nb, cg, date }) {
+  function pesagem({ local, kg, nb, cg, date }) {
     const formato = cadastroOk() &amp;&amp; vacCad.gel.formato(date);
     if (!formato || !local) return null;
     const scat = local.categoria, comp = local.comp;
@@ -758,22 +752,26 @@ const vacGel = (() => {
       adit: composicao.partes.includes('aditivo') ? n * pesos.aditivo / 1000 : 0, trKg: completo ? n * pesos.tampaRolha / 1000 : 0 };
   }
   /* teórico de gel de uma produção: tubos bons por catálogo → gel nos tubos ÷ (1 − perdas teóricas); por categoria T/B/P */
-  function teorico({ tubosPorCat, date, cg, fmts, params }) {
-    const P = procAt(params, date); let gelBons = 0; for (const [cat, t] of Object.entries(tubosPorCat || {})) gelBons += (+t || 0) * gelPorTubo(cg(cat), date, fmts, params) / 1000;
-    const perda = ((+P.pT || 0) + (+P.pB || 0) + (+P.pP || 0)) / 100, teo = gelBons / Math.max(.01, 1 - perda);   /* igual ao prodCalc do Gel */
+  function teorico({ tubosPorCat, date, cg }) {
+    const P = procAt(date);
+    let gelBons = 0;
+    for (const [cat, t] of Object.entries(tubosPorCat || {})) {
+      const g = gelPorTubo(cg(cat), date);
+      if (g == null) return null;
+      gelBons += (+t || 0) * g / 1000;
+    }
+    const perda = ((+P.pT || 0) + (+P.pB || 0) + (+P.pP || 0)) / 100, teo = gelBons / Math.max(.01, 1 - perda);
     return { gelBons, teo, sTeo: { T: teo * (+P.pT || 0) / 100, B: teo * (+P.pB || 0) / 100, P: teo * (+P.pP || 0) / 100 }, perdas: P };
   }
   /* contexto a partir do cadastro do Portal (Produção) */
-  function ctx(c) {
-    c = c || (vacCad()); const G = (c &amp;&amp; c.parametros &amp;&amp; c.parametros.gel) || {};
+  function ctx() {
+    const c = vacCad();
     const cat = cod => { const k = (c &amp;&amp; c.catalogos || []).find(x => x &amp;&amp; String(x.codigo) === String(cod)); if (!k) return null; const g = k.gel || {}; const f = g.fmt || (/75/.test(k.formato || '') ? '75' : /100/.test(k.formato || '') ? '100' : null); return { ...g, fmt: f || '100' }; };
-    const eq = cod => { const e = (c &amp;&amp; c.equipamentos || []).find(x => x &amp;&amp; String(x.codigo) === String(cod)); return e &amp;&amp; e.gel ? { codigo: e.codigo, nome: e.nome, ativo: e.ativo !== false, tara: e.gel.tara, descs: e.gel.descs || [] } : null; };
-    const equips = () => (c &amp;&amp; c.equipamentos || []).filter(e => e &amp;&amp; e.gel &amp;&amp; e.ativo !== false &amp;&amp; (e.gel.descs || []).length).map(e => eq(e.codigo));
     const gelMats = new Set((c &amp;&amp; c.materiais || []).filter(m => m &amp;&amp; m.tipo === 'gel').map(m => String(m.codigo)));
     const usaGel = cod => { const k = cat(cod); if (k &amp;&amp; (k.vig || []).length) return true; if (!gelMats.size) return false; const b = (c &amp;&amp; c.bom || []).find(x => x &amp;&amp; String(x.catalogo) === String(cod)); return !!b &amp;&amp; (b.vigencias || []).some(v => (v.itens || []).concat(v.estrutura || []).some(i => gelMats.has(String(i.material)))); };
-    return { fmts: G.formatos || [], params: G.processo || [], motivos: G.motivos || [], corte: G.registroPelaProducaoDesde || null, cat, eq, equips, usaGel };
+    return { motivos: vacCad.param('gel.motivos') || [], corte: vacCad.param('gel.registroPelaProducaoDesde'), cat, equips: equipamentosGel, usaGel };
   }
-  return { FMT_DEF, PROC_DEF, COMPS, SCAT, fmtAt, procAt, sobraAt, taraP, vigList, vigAt, gelPorTubo, bomVals, bom, pesagem, teorico, ctx, cadastroOk, avisoCadastro, equipamentosGel, localGel, pesagemCadastro };
+  return { COMPS, SCAT, procAt, sobraAt, vigList, vigAt, gelPorTubo, bomVals, bom, pesagem, teorico, ctx, cadastroOk, avisoCadastro, equipamentosGel, localGel };
 })();
 
 const vacPessoa = (() => {
@@ -17725,19 +17723,43 @@ const GelTurno = {
   /* o turno mostra o gel? há equipamento de gel no Portal e algum catálogo do turno usa gel (ou já tem registro) */
   mostra(res, ps, C) { if (ps.gelScrap) return true; if (!C || !C.equips().length) return false; return this.catsDoTurno(res, ps).some(c => C.usaGel(c)); },
   /* conta de uma pesagem (mesma da Gestão de Gel) */
-  calc(en, date, C) { const eq = C &amp;&amp; C.eq(en.e); if (!eq) return null; const desc = (eq.descs || []).find(x => x.id === en.d); if (!desc) return null;
-    const kg = typeof en.kg === 'string' ? (vacNumero(en.kg) || 0) : (+en.kg || 0);
-    return vacGel.pesagem({ desc, taraEq: eq.tara, kg, nb: en.nb, cg: C.cat(en.cat) || { fmt: '100' }, date, fmts: C.fmts, params: C.params }); },
-  soma(gs, date, C) { const o = { T: 0, B: 0, P: 0, n: 0 }; if (!gs || gs.none) return o; for (const en of gs.eq || []) { const c = this.calc(en, date, C); if (!c) continue; o[c.scat] += c.gel; o.n++; } return o; },
+  calc(en, date, C) {
+    const kg = typeof en.kg === 'string' ? vacNumero(en.kg) : en.kg;
+    return vacGel.pesagem({ local: vacGel.localGel(en.e, en.d), kg, nb: en.nb, cg: C?.cat(en.cat), date });
+  },
+  soma(gs, date, C) {
+    const o = { T: 0, B: 0, P: 0, n: 0, pendentes: [] };
+    if (!gs || gs.none) return o;
+    for (const en of gs.eq || []) {
+      const c = this.calc(en, date, C);
+      if (!c) { o.pendentes.push(vacGel.localGel(en.e, en.d)?.local || en.local || en.d); continue; }
+      o[c.scat] += c.gel; o.n++;
+    }
+    return o;
+  },
   /* para o exports (porDiaTurno[].gel): as pesagens como foram registradas e o gel por categoria */
   exp(ps, date) { const gs = ps.gelScrap; if (!gs) return undefined; const C = this.ctx(), k = this.soma(gs, date, C), r3 = v => Math.round(v * 1000) / 1000;
-    return { none: !!gs.none, pesagens: (gs.none ? [] : gs.eq || []).map(e => ({ e: e.e, d: e.d, cat: e.cat || null, kg: +e.kg || 0, nb: +e.nb || 0, mots: (e.mots || []).map(m => ({ m: m.m, kg: +m.kg || 0 })) })), kg: { T: r3(k.T), B: r3(k.B), P: r3(k.P) }, em: gs.em || null, por: gs.por || null }; },
+    return { none: !!gs.none, pesagens: (gs.none ? [] : gs.eq || []).map(e => ({ e: e.e, d: e.d, ...(e.local ? { local: e.local } : {}), cat: e.cat || null, kg: +e.kg || 0, nb: +e.nb || 0, mots: (e.mots || []).map(m => ({ m: m.m, kg: +m.kg || 0 })) })), kg: vacGel.avisoCadastro(date) || k.pendentes.length ? null : { T: r3(k.T), B: r3(k.B), P: r3(k.P) }, em: gs.em || null, por: gs.por || null }; },
   salvar(dayId, psId, gs) {
     Store.mutate((d, audit) => {
       const day = d.productionDays.find(x => x.id === dayId &amp;&amp; !x.deleted); const ps = day &amp;&amp; day.shifts.find(p => p.id === psId &amp;&amp; !p.deleted); if (!ps) throw new Error('Turno não encontrado.');
       if (day.status === 'fechado' || ps.status === 'fechado') throw new Error('O turno está fechado. Reabra para registrar o scrap de gel.');
+      const aviso = vacGel.avisoCadastro(day.date);
+      if (aviso) throw new Error(aviso);
+      const invalidas = this.soma(gs, day.date, this.ctx()).pendentes;
+      const antigas = ps.gelScrap?.eq || [];
+      if (invalidas.length &amp;&amp; (gs.eq || []).some(e => !this.calc(e, day.date, this.ctx()) &amp;&amp;
+          !antigas.some(a => a.e === e.e &amp;&amp; a.d === e.d &amp;&amp; a.kg === e.kg &amp;&amp; a.nb === e.nb))) {
+        throw new Error('Confira o cadastro do local, da composição e da embalagem em Administração › Gel.');
+      }
       const by = Store.S.user || '—', antes = ps.gelScrap ? JSON.stringify(ps.gelScrap.none ? 'sem scrap' : (ps.gelScrap.eq || []).length + ' pesagem(ns)') : null;
-      ps.gelScrap = { none: !!gs.none, eq: gs.none ? [] : (gs.eq || []).map(e => ({ e: String(e.e), d: String(e.d), cat: e.cat ? String(e.cat) : null, kg: +e.kg || 0, nb: +e.nb || 0, mots: (e.mots || []).filter(m => m.m).map(m => ({ m: String(m.m), kg: +m.kg || 0 })) })), em: U.nowIso(), por: by };
+      const eq = gs.none ? [] : (gs.eq || []).map(e => {
+        const antiga = antigas.find(a => a.e === e.e &amp;&amp; a.d === e.d);
+        const local = e.local || antiga?.local || (!antiga &amp;&amp; vacGel.localGel(e.e, e.d)?.local);
+        return { e: String(e.e), d: String(e.d), ...(local ? { local } : {}), cat: e.cat ? String(e.cat) : null, kg: +e.kg || 0, nb: +e.nb || 0,
+          mots: (e.mots || []).filter(m => m.m).map(m => ({ m: String(m.m), kg: +m.kg || 0 })) };
+      });
+      ps.gelScrap = { none: !!gs.none, eq, em: U.nowIso(), por: by };
       audit({ action: 'edição', entity: 'turno', entityId: ps.id, field: 'scrap de gel', before: antes, after: ps.gelScrap.none ? 'sem scrap' : ps.gelScrap.eq.length + ' pesagem(ns)', reason: 'GEL-03' });
       day._rev = (day._rev || 0) + 1; day.updatedAt = U.nowIso(); day.updatedBy = by;
     });
@@ -17748,13 +17770,12 @@ const GelTurno = {
   estado(day, ps, res) {
     const C = this.ctx(), usa = !!ps.gelScrap || (!!C &amp;&amp; this.catsDoTurno(res, ps).some(c => C.usaGel(c))); if (!usa) return null;
     const corte = C &amp;&amp; C.corte, lk = day.status === 'fechado' || ps.status === 'fechado';
-    const motivo = !C ? 'Cadastro do gel indisponível (Administração).'
-      : !C.equips().length ? 'Cadastre os equipamentos de pesagem de gel na Administração › Equipamentos (categoria Gel) para lançar aqui.'
+    const motivo = vacGel.avisoCadastro(day.date) || (!C || !C.equips().length ? 'Cadastre os locais de descarte na Administração › Gel para lançar aqui.'
       : !corte ? 'O scrap de gel ainda é registrado na Gestão de Gel: defina "Gel lido da Produção a partir de" em Administração › Parâmetros › Gestão de Gel.'
       : day.date < corte ? `Antes de ${U.brDate(corte)} o scrap de gel é registrado na Gestão de Gel.`
-      : lk ? 'Turno fechado: reabra para lançar.' : '';
+      : lk ? 'Turno fechado: reabra para lançar.' : '');
     const gs = ps.gelScrap, k = gs ? this.soma(gs, day.date, C) : null, f3 = v => U.fmt(v, 3);
-    const txt = !gs ? 'gel: sem registro' : gs.none ? 'gel: sem scrap neste turno' : `gel: Tubos ${f3(k.T)} kg · Barril ${f3(k.B)} kg · Purga ${f3(k.P)} kg`;
+    const txt = !gs ? 'gel: sem registro' : gs.none ? 'gel: sem scrap neste turno' : k.pendentes.length ? `gel: cálculo indisponível · ${k.pendentes.join(', ')}` : `gel: Tubos ${f3(k.T)} kg · Barril ${f3(k.B)} kg · Purga ${f3(k.P)} kg`;
     return { pode: !motivo, motivo, txt, pend: !gs };
   },
   /* 2.6.14 · GEL-07: abre o relatório da própria Gestão de Gel (não uma cópia) no período; foco 'perdas' = scrap e pesagens */
@@ -17770,7 +17791,7 @@ const GelTurno = {
   bloco(day, sr, res) {
     const ps = sr.ps, C = this.ctx(); if (!this.mostra(res, ps, C)) return '';
     const gs = ps.gelScrap, k = this.soma(gs, day.date, C), lk = day.status === 'fechado' || ps.status === 'fechado', f3 = v => U.fmt(v, 3);
-    const txt = !gs ? '<span class="muted">sem registro</span>' : gs.none ? 'sem scrap de gel neste turno' : `${k.n} pesagem(ns) · gel Tubos ${f3(k.T)} kg · Barril ${f3(k.B)} kg · Purga ${f3(k.P)} kg`;
+    const txt = !gs ? '<span class="muted">sem registro</span>' : gs.none ? 'sem scrap de gel neste turno' : k.pendentes.length ? esc('Cálculo indisponível · ' + k.pendentes.join(', ')) : `${k.n} pesagem(ns) · gel Tubos ${f3(k.T)} kg · Barril ${f3(k.B)} kg · Purga ${f3(k.P)} kg`;
     const e = this.estado(day, ps, res) || { pode: !lk, motivo: '' };
     return `<div class="kv" style="grid-column:1/-1"><span class="l">Scrap de gel ${ib('gelScrap')}</span><span class="v small">${txt}</span><button type="button" class="btn sm" data-gelscrap="${ps.id}" ${e.pode ? '' : `disabled title="${esc(e.motivo)}"`}>Registrar scrap</button>${e.pode ? '' : `<span class="small muted">${esc(e.motivo)}</span>`}</div>`;
   },
@@ -17781,38 +17802,59 @@ const GelTurno = {
   /* 2.6.40 · o formulário é uma peça: o popup próprio (abrir) e o "Lançar / Editar scrap" lado a lado (TurnoCard) usam o mesmo.
      form() devolve { html, ligar(box), coletar() → { gs } ou { erro } } */
   form(day, ps, res) {
-    const C = this.ctx(); if (!ps || !C) return null;
+    const C = this.ctx(); if (!ps || !C || vacGel.avisoCadastro(day.date)) return null;
     const cats = this.catsDoTurno(res, ps).filter(c => C.usaGel(c)), eqs = C.equips(), f3 = v => U.fmt(v, 3), f0 = v => U.fmt(Math.round(v || 0));
     const g0 = ps.gelScrap || {}, W = { none: !!g0.none, cat: ((g0.eq || []).find(x => x.cat) || {}).cat || cats[0] || '', eq: JSON.parse(JSON.stringify(g0.eq || [])) };
     const kgTxt = v => v == null || v === '' || v === 0 ? '' : String(v).replace('.', ',');
-    const ent = (e, d, criar) => { let x = W.eq.find(z => z.e === e &amp;&amp; z.d === d); if (!x &amp;&amp; criar) { x = { e, d, cat: W.cat, kg: '', nb: 0, mots: [] }; W.eq.push(x); } return x; };
+    const ent = (e, d, criar) => {
+      let x = W.eq.find(z => vacGel.localGel(z.e, z.d)?.id === d);
+      if (!x &amp;&amp; criar) { x = { e, d, local: vacGel.localGel(e, d)?.local, cat: W.cat, kg: '', nb: 0, mots: [] }; W.eq.push(x); }
+      return x;
+    };
     const motsDe = dsc => (C.motivos || []).filter(m => m.active !== false &amp;&amp; (!(m.comps || []).length || m.comps.includes(dsc.comp)) &amp;&amp; (!(dsc.mots || []).length || dsc.mots.includes(m.id)));
-    const detalhe = c => { if (!c) return ''; if (c.comp === 'barril') { const so = vacGel.sobraAt(C.fmts, day.date); return c.est ? (so == null ? '<span class="ferr">sobra do barril não cadastrada na Administração</span>' : `${f0(c.nb)} barril(is) × ${U.fmt(so, 2)} kg = gel <b>${f3(c.gel)}</b> kg`) : `gel <b>${f3(c.gel)}</b> kg (pesado)`; }
+    const temPeso = en => en &amp;&amp; (vacNumero(String(en.kg || '').replace('.', ',')) > 0 || +en.nb > 0);
+    const detalhe = (c, en) => { if (!c) return temPeso(en) ? '<span class="ferr">Confira a composição e a embalagem em Administração › Gel.</span>' : ''; if (c.comp === 'barril') { const so = vacGel.sobraAt(day.date); return c.est ? (so == null ? '<span class="ferr">sobra do barril não cadastrada na Administração</span>' : `${f0(c.nb)} barril(is) × ${U.fmt(so, 2)} kg = gel <b>${f3(c.gel)}</b> kg`) : `gel <b>${f3(c.gel)}</b> kg (pesado)`; }
       const tara = c.tara ? ` · embalagem ${U.fmt(c.tara, 0)} g descontada` : '';
       if (c.comp === 'gel') return `gel <b>${f3(c.gel)}</b> kg${tara}`;
       return `≈${f0(c.n)} tubos · gel <b>${f3(c.gel)}</b> kg · tubo ${f3(c.tubo)} kg${c.tamp ? ` · ${f0(c.tamp)} tampas, ${f0(c.rolha)} rolhas, ${f0(c.etq)} etiquetas` : ''}${c.adit ? ` · aditivo ${f3(c.adit)} kg` : ''}${tara}`; };
-    const calcDe = en => en &amp;&amp; (vacNumero(String(en.kg || '').replace('.', ',')) > 0 || +en.nb > 0) ? this.calc({ ...en, cat: W.cat, kg: typeof en.kg === 'string' ? vacNumero(en.kg) || 0 : +en.kg || 0 }, day.date, C) : null;
+    const calcDe = en => temPeso(en) ? this.calc({ ...en, cat: W.cat, kg: typeof en.kg === 'string' ? vacNumero(en.kg) || 0 : +en.kg || 0 }, day.date, C) : null;
     const k = (e, d) => esc(e) + '|' + esc(d);
     const item = (e, ds) => { const en = ent(e.codigo, ds.id), c = calcDe(en), comp = (vacGel.COMPS[ds.comp] || {}).l || ds.comp, ops = motsDe(ds), K = k(e.codigo, ds.id);
       const campos = ds.comp === 'barril'
         ? `<input data-gnb="${K}" type="number" min="0" step="1" value="${esc(en &amp;&amp; en.nb ? en.nb : '')}" placeholder="barris" style="width:80px" aria-label="Barris terminados · ${esc(e.nome || e.codigo)}"><input data-gkg="${K}" inputmode="decimal" value="${esc(kgTxt(en &amp;&amp; en.kg))}" placeholder="kg pesado (opcional)" style="width:140px" aria-label="Sobra pesada em kg · ${esc(e.nome || e.codigo)}">`
         : `<input data-gkg="${K}" inputmode="decimal" value="${esc(kgTxt(en &amp;&amp; en.kg))}" placeholder="kg bruto" style="width:100px" aria-label="Peso bruto · ${esc(e.nome || e.codigo)} · ${esc(comp)}">`;
       const mots = (en &amp;&amp; en.mots || []).map((x, i) => `<div class="gsc-m"><select data-gmot="${K}|${i}" aria-label="Motivo"><option value="">motivo…</option>${ops.concat(x.m &amp;&amp; !ops.some(o => o.id === x.m) ? [{ id: x.m, name: '(motivo fora da lista)' }] : []).map(o => `<option value="${esc(o.id)}" ${o.id === x.m ? 'selected' : ''}>${esc(o.name)}</option>`).join('')}</select><input data-gmotkg="${K}|${i}" inputmode="decimal" value="${esc(kgTxt(x.kg))}" placeholder="kg (vazio = o restante)" style="width:150px" aria-label="kg do motivo"><button type="button" class="btn xs" data-gmotrm="${K}|${i}" aria-label="Remover motivo">✕</button></div>`).join('');
-      return `<div class="gsc-it"><div class="gsc-l"><span class="gsc-n"><b>${esc(e.nome || e.codigo)}</b>${ds.local ? ` · <b class="gsc-loc">${esc(ds.local)}</b>` : ''} <span class="small muted">${esc(e.codigo)} · ${esc(comp)}</span></span>${campos}<span class="small gsc-c" data-gc="${K}">${detalhe(c)}</span></div>
+      return `<div class="gsc-it"><div class="gsc-l"><span class="gsc-n"><b>${esc(e.nome || e.codigo)}</b>${ds.local ? ` · <b class="gsc-loc">${esc(ds.local)}</b>` : ''} <span class="small muted">${esc(e.codigo)} · ${esc(comp)}</span></span>${campos}<span class="small gsc-c" data-gc="${K}">${detalhe(c, en)}</span></div>
         ${mots}${ops.length ? `<div class="gsc-m"><button type="button" class="btn xs" data-gmotadd="${K}">+ motivo</button></div>` : ''}</div>`; };
-    const totais = () => { const o = { T: 0, B: 0, P: 0, n: 0 }; for (const en of W.eq) { const c = calcDe(en); if (c) { o[c.scat] += c.gel; o.n += c.n || 0; } } return o; };
+    const totais = () => {
+      const o = { T: 0, B: 0, P: 0, n: 0, incompleto: false };
+      for (const en of W.eq.filter(temPeso)) {
+        const c = calcDe(en);
+        if (!c) { o.incompleto = true; continue; }
+        o[c.scat] += c.gel; o.n += c.n || 0;
+      }
+      return o;
+    };
+    const totalHtml = t => t.incompleto ? 'Gel líquido: cálculo indisponível' : `Gel líquido: <b>${f3(t.T + t.B + t.P)} kg</b> · Tubos ${f3(t.T)} · Barril ${f3(t.B)} · Purga ${f3(t.P)}${t.n ? ` · ≈${f0(t.n)} tubos` : ''}`;
+    const ativos = new Set(eqs.flatMap(e => e.descs.map(d => d.id)));
     const html = () => { const t = totais();
-      const grupos = Object.entries(vacGel.SCAT).map(([sc, nome]) => { const L = eqs.flatMap(e => (e.descs || []).filter(ds => ds.cat === sc).map(ds => item(e, ds))); return L.length ? `<div class="gsc-g"><h4>${esc(nome)}</h4>${L.join('')}</div>` : ''; }).join('');
+      const grupos = Object.entries(vacGel.SCAT).map(([sc, nome]) => { const L = eqs.flatMap(e => e.descs.filter(ds => ds.cat === sc).map(ds => ({ e, ds }))).sort((a,b) => (a.ds.ordem??0) - (b.ds.ordem??0)).map(({ e, ds }) => item(e, ds)); return L.length ? `<div class="gsc-g"><h4>${esc(nome)}</h4>${L.join('')}</div>` : ''; }).join('');
       return `<style>.gsc-g{margin:10px 0}.gsc-g h4{margin:6px 0;font-size:13px;letter-spacing:.04em;text-transform:uppercase;color:var(--muted)}.gsc-it{padding:6px 8px;border:1px solid var(--line,#dde3ea);border-radius:8px;margin-bottom:6px}.gsc-l{display:flex;flex-wrap:wrap;gap:8px;align-items:center}.gsc-n{min-width:220px;flex:0 1 260px}.gsc-c{color:var(--muted);flex:1 1 260px}.gsc-m{display:flex;gap:6px;align-items:center;margin:4px 0 0 18px}.gsc-tot{margin-top:8px;padding:6px 8px;background:var(--surface-2,#f4f7fa);border-radius:8px}</style><p class="small muted">Os mesmos pontos de descarte e a mesma conta da Gestão de Gel (equipamentos, descartes e motivos da Administração). Informe o <b>peso bruto da balança</b>; campo vazio = não teve. Fica neste turno da Produção e a Gestão de Gel lê daqui.</p>
       <div class="row wf"><label class="f"><span>Catálogo do scrap</span><select id="gCat">${[...new Set(cats.concat(W.cat ? [W.cat] : []))].map(x => `<option value="${esc(x)}" ${x === W.cat ? 'selected' : ''}>${esc(x)}</option>`).join('') || '<option value="">—</option>'}</select></label>
        <label class="chk"><input type="checkbox" id="gNone" ${W.none ? 'checked' : ''}> Sem scrap de gel neste turno</label></div>
-      ${W.none ? '' : grupos || ''}
-      ${!eqs.length ? '<p class="ferr small">Nenhum equipamento da categoria Equipamento – Gel com descartes na Administração. Se eles ainda estão só na Gestão de Gel, traga-os em Administração › Trazer das páginas › Só no Gel · equipamentos e parâmetros do gel.</p>' : ''}
-      ${W.none ? '' : `<p class="gsc-tot" data-gtot>Gel líquido: <b>${f3(t.T + t.B + t.P)} kg</b> · Tubos ${f3(t.T)} · Barril ${f3(t.B)} · Purga ${f3(t.P)}${t.n ? ` · ≈${f0(t.n)} tubos` : ''}</p>`}`; };
+      ${W.none ? '' : grupos}
+      ${W.none ? '' : W.eq.filter(temPeso).map(en => {
+        const local = vacGel.localGel(en.e,en.d);
+        if (local &amp;&amp; ativos.has(local.id)) return '';
+        const c = calcDe(en);
+        return `<p class="small">${esc(local?.local || en.local || en.d)} · pesagem registrada${c ? ' · ' + f3(c.gel) + ' kg de gel' : ', cálculo indisponível'}</p>`;
+      }).join('')}
+      ${!eqs.length ? '<p class="ferr small">Nenhum local de descarte ativo. Confira Administração › Gel.</p>' : ''}
+      ${W.none ? '' : `<p class="gsc-tot" data-gtot>${totalHtml(t)}</p>`}`; };
     const self = this;
     const ligar = box => { const draw = () => { const y = box.scrollTop; box.innerHTML = html(); box.scrollTop = y; };
       const par = s => s.split('|'), achar = s => { const [e, d] = par(s); return ent(e, d, true); };
-      const conta = (K) => { const [e, d] = par(K), en = ent(e, d), c = calcDe(en), sp = box.querySelector(`[data-gc="${CSS.escape(K)}"]`); if (sp) sp.innerHTML = detalhe(c); const t = totais(), tt = box.querySelector('[data-gtot]'); if (tt) tt.innerHTML = `Gel líquido: <b>${f3(t.T + t.B + t.P)} kg</b> · Tubos ${f3(t.T)} · Barril ${f3(t.B)} · Purga ${f3(t.P)}${t.n ? ` · ≈${f0(t.n)} tubos` : ''}`; };
+      const conta = (K) => { const [e, d] = par(K), en = ent(e, d), c = calcDe(en), sp = box.querySelector(`[data-gc="${CSS.escape(K)}"]`); if (sp) sp.innerHTML = detalhe(c, en); const t = totais(), tt = box.querySelector('[data-gtot]'); if (tt) tt.innerHTML = totalHtml(t); };
       /* digitar atualiza a conta da linha e o total sem redesenhar (o cursor não pula) */
       box.addEventListener('input', e => { const t = e.target;
         if (t.dataset.gkg) { achar(t.dataset.gkg).kg = t.value; conta(t.dataset.gkg); }
@@ -17830,6 +17872,9 @@ const GelTurno = {
       const num = v => typeof v === 'string' ? (v.trim() === '' ? 0 : vacNumero(v)) : +v || 0;
       const eq = W.none ? [] : W.eq.map(en => ({ ...en, cat: W.cat, kg: num(en.kg), nb: +en.nb || 0, mots: (en.mots || []).filter(m => m.m).map(m => ({ m: m.m, kg: num(m.kg) })) })).filter(en => en.kg > 0 || en.nb > 0);
       if (eq.some(en => !isFinite(en.kg) || en.kg < 0 || en.mots.some(m => !isFinite(m.kg) || m.kg < 0))) return { erro: 'Gel: peso inválido; use número (ex.: 2,345).' };
+      if (eq.some(en => !this.calc(en, day.date, C) &amp;&amp; !(g0.eq || []).some(a => a.e === en.e &amp;&amp; a.d === en.d &amp;&amp; a.kg === en.kg &amp;&amp; a.nb === en.nb))) {
+        return { erro: 'Confira o cadastro do local, da composição e da embalagem em Administração › Gel.' };
+      }
       if (!W.none &amp;&amp; !eq.length) return opcional &amp;&amp; !ps.gelScrap ? { nada: true } : { erro: 'Gel: informe o peso de algum ponto ou marque "Sem scrap de gel neste turno".' };
       return { gs: { none: W.none, eq } };
     };
@@ -17853,12 +17898,13 @@ const GelDia = {
   ler() { if (this.lendo || typeof vacFicha === 'undefined') return Promise.resolve(); this.lendo = true;
     return vacFicha.carregar().then(() => { const x = vacFicha.dados('gel'); this.gel = x &amp;&amp; x.d ? x : null; this.lidoEm = Date.now(); }).catch(e => console.warn('GelDia', e)).finally(() => { this.lendo = false; }); },
   calc(day, res) {
-    const C = GelTurno.ctx(); if (!C) return null; const d = db(), tub = {};
+    const C = GelTurno.ctx(); if (!C || vacGel.avisoCadastro(day.date)) return null; const d = db(), tub = {};
     for (const f of res.flat || []) { if (!f.cat || !(f.good > 0)) continue; const code = ((d.catalogs || []).find(c => c.id === f.cat) || {}).code; if (code &amp;&amp; C.usaGel(code)) tub[code] = (tub[code] || 0) + f.good; }
     if (!Object.keys(tub).length) return null;
-    const cg = code => C.cat(code) || { fmt: '100' }, teo = vacGel.teorico({ tubosPorCat: tub, date: day.date, cg, fmts: C.fmts, params: C.params });
-    let meta = 0, allowed = 0; for (const [code, t] of Object.entries(tub)) { const b = vacGel.bom(cg(code), day.date, C.fmts, C.params); meta += t * b.meta / 1000; allowed += t * b.allowed / 1000; }
-    const sc = { T: 0, B: 0, P: 0 }; let pesou = false; for (const sr of res.shifts) { const k = GelTurno.soma(sr.ps.gelScrap, day.date, C); if (sr.ps.gelScrap) pesou = true; sc.T += k.T; sc.B += k.B; sc.P += k.P; }
+    const cg = code => C.cat(code) || { fmt: '100' }, teo = vacGel.teorico({ tubosPorCat: tub, date: day.date, cg });
+    if (!teo) return null;
+    let meta = 0, allowed = 0; for (const [code, t] of Object.entries(tub)) { const b = vacGel.bom(cg(code), day.date); if (b.meta == null) return null; meta += t * b.meta / 1000; allowed += t * b.allowed / 1000; }
+    const sc = { T: 0, B: 0, P: 0 }; let pesou = false; for (const sr of res.shifts) { const k = GelTurno.soma(sr.ps.gelScrap, day.date, C); if (sr.ps.gelScrap &amp;&amp; !k.pendentes.length) pesou = true; sc.T += k.T; sc.B += k.B; sc.P += k.P; }
     const scrap = sc.T + sc.B + sc.P, real = teo.gelBons + scrap;
     const g = this.gel &amp;&amp; this.gel.d ? (this.gel.d.porDiaGel || []).find(x => x.dia === day.date) : null;
     return { tub, tubos: Object.values(tub).reduce((a, b) => a + b, 0), teo, sc, pesou, meta, allowed, real, idx: meta > 0 &amp;&amp; pesou ? real / meta * 100 : null, saving: pesou ? allowed - real : null, g, desvio: g &amp;&amp; g.baixadoKg &amp;&amp; teo.teo > 0 ? g.baixadoKg / teo.teo - 1 : null };
@@ -17883,15 +17929,17 @@ const GelDia = {
   tabela(rows) { return `<div class="tw"><table><thead><tr><th>Gel</th><th class="n">Valor</th><th>Referência</th></tr></thead><tbody>${rows.map(r => `<tr><td>${esc(r[0])}</td><td class="n">${esc(r[1])}</td><td class="small muted">${esc(r[2])}</td></tr>`).join('')}</tbody></table></div>`; },
   bloco(day, res) { const L = this.linhas(day, res); if (!L) return null;
     return { id: 'gel', l: 'Gel do dia · teórico × real', w: 'f', html: `<p class="small muted">Catálogos com gel: ${esc(L.cats.join(', '))}. Mesma conta da Gestão de Gel (parâmetros da Administração).</p>` + this.tabela(L.rows) }; },
-  texto(day, res) { const L = this.linhas(day, res); if (!L) return ''; const x = L.x, f3 = v => U.fmt(v, 3);
+  texto(day, res) { const L = this.linhas(day, res); if (!L) return vacGel.avisoCadastro(day.date); const x = L.x, f3 = v => U.fmt(v, 3);
     return `Gel: teórico ${f3(x.teo.teo)} kg; ` + (x.pesou ? `scrap pesado ${f3(x.sc.T + x.sc.B + x.sc.P)} kg (Tubos ${f3(x.sc.T)} · Barril ${f3(x.sc.B)} · Purga ${f3(x.sc.P)})` : 'scrap de gel ainda não pesado nos turnos')
       + (x.idx != null ? `; índice ${U.fmt(x.idx, 2)} (meta 100)` : '') + (x.saving != null ? `; ganho s/ BOM ${x.saving >= 0 ? '+' : ''}${f3(x.saving)} kg` : '') + (x.g &amp;&amp; x.g.baixadoKg != null ? `; barris baixados ${f3(x.g.baixadoKg)} kg` : '') + '.'; },
-  turno(day, sr, res) { const e = GelTurno.estado(day, sr.ps, res); if (!e) return null; const C = GelTurno.ctx(), gs = sr.ps.gelScrap, k = gs &amp;&amp; !gs.none ? GelTurno.soma(gs, day.date, C) : null;
+  turno(day, sr, res) { const e = GelTurno.estado(day, sr.ps, res); if (!e) return null; const C = GelTurno.ctx(), gs = sr.ps.gelScrap, k = gs &amp;&amp; !gs.none &amp;&amp; !vacGel.avisoCadastro(day.date) ? GelTurno.soma(gs, day.date, C) : null;
     const f3 = v => U.fmt(v, 3) + ' kg';
-    return { e, rows: [['Situação', !gs ? 'sem registro' : gs.none ? 'sem scrap de gel' : k.n + ' pesagem(ns)', gs &amp;&amp; gs.por ? 'por ' + gs.por : ''], ['Scrap de gel · Tubos', k ? f3(k.T) : '—', ''], ['Scrap de gel · Barril', k ? f3(k.B) : '—', ''], ['Scrap de gel · Purga', k ? f3(k.P) : '—', ''], ['Scrap de gel · total', k ? f3(k.T + k.B + k.P) : gs &amp;&amp; gs.none ? f3(0) : '—', '']] }; },
+    return { e, rows: [['Situação', !gs ? 'sem registro' : gs.none ? 'sem scrap de gel' : k &amp;&amp; !k.pendentes.length ? k.n + ' pesagem(ns)' : e.txt, gs &amp;&amp; gs.por ? 'por ' + gs.por : ''], ['Scrap de gel · Tubos', k &amp;&amp; !k.pendentes.length ? f3(k.T) : '—', ''], ['Scrap de gel · Barril', k &amp;&amp; !k.pendentes.length ? f3(k.B) : '—', ''], ['Scrap de gel · Purga', k &amp;&amp; !k.pendentes.length ? f3(k.P) : '—', ''], ['Scrap de gel · total', k &amp;&amp; !k.pendentes.length ? f3(k.T + k.B + k.P) : gs &amp;&amp; gs.none ? f3(0) : '—', '']] }; },
   blocoTurno(day, sr, res) { const t = this.turno(day, sr, res); if (!t) return null; return { id: 'gelt', l: 'Gel · scrap pesado no turno', w: 'f', html: this.tabela(t.rows) }; },
   textoTurno(day, sr, res) { const t = this.turno(day, sr, res); return t ? 'Gel no turno: ' + t.e.txt.replace(/^gel: /, '') + '.' : ''; },
   card(day, res) {
+    const aviso = vacGel.avisoCadastro(day.date);
+    if (aviso) return `<div class="alert">${esc(aviso)}</div>`;
     const x = this.calc(day, res); if (!x) return '';
     if (!this.gel &amp;&amp; !this.lendo &amp;&amp; Date.now() - this.lidoEm > 60000) this.ler().then(() => { if (this.gel) render(); });
     const f3 = v => v == null ? '—' : U.fmt(v, 3), pc = v => v == null ? '—' : (v >= 0 ? '+' : '') + U.fmt(v * 100, 1) + '%';
@@ -17910,7 +17958,7 @@ const GelDia = {
 };
 HELP.gelTeoReal = ['Gel · teórico × real do dia', [['Quando aparece?', "Só quando algum catálogo produzido no dia usa gel (BOM da Administração com material de gel, ou o bloco Gel do catálogo)."], ['Teórico', 'Gel nos tubos bons (tubos × gramas de gel por tubo do catálogo, com vigência) ÷ (1 − perdas teóricas), dividido em Tubos, Barril e Purga.'], ['Real', 'O scrap pesado nos turnos (Registrar scrap) e os barris baixados na Gestão de Gel.'], ['Índice de uso', '(Gel nos tubos bons + scrap pesado) ÷ meta da BOM × 100. Abaixo de 100 é melhor que a meta; acima da BOM (ex.: 106) passa o permitido.']]];
 HELP.gelBaixado = ['Gel baixado', [['O que é?', 'Os barris baixados como consumidos na Gestão de Gel neste dia (kg líquidos). Vem do exports do Gel: aparece depois que o Gel grava a base.']]];
-HELP.gelScrap = ['Scrap de gel do turno', [['O que é?', 'As pesagens de scrap de gel do turno (Registrar scrap): equipamento, descarte, catálogo e peso da balança. A conta tira a embalagem e divide pelo peso da composição, igual à Gestão de Gel.'], ['Onde fica?', "No turno da Produção. A Gestão de Gel lê daqui (a partir da data de corte da Administração) para o resumo do dia, o índice e o saving."], ['De onde vêm os equipamentos e os pesos?', "Da Administração: equipamentos da categoria Equipamento – Gel (descartes) e Parâmetros › Gestão de Gel (formatos, perdas e motivos)."]]];
+HELP.gelScrap = ['Scrap de gel do turno', [['O que é?', 'As pesagens de scrap de gel do turno (Registrar scrap): equipamento, descarte, catálogo e peso da balança. A conta tira a embalagem e divide pelo peso da composição, igual à Gestão de Gel.'], ['Onde fica?', "No turno da Produção. A Gestão de Gel lê daqui (a partir da data de corte da Administração) para o resumo do dia, o índice e o saving."], ['De onde vêm os equipamentos e os pesos?', "Da Administração › Gel: locais de descarte, formatos, perdas e motivos."]]];
 
 /* ===== Produção 2.4.31 · Fase 5 · 5b do briefing (PRD-01, D9): Painel e Visão Geral numa aba só, Visão Geral =====
    - A montagem atual da Visão Geral é a visão "Visão Geral · padrão" (sempre existe, só leitura).
@@ -18847,7 +18895,7 @@ const TurnoCard = {
   gelTxt(day, sr, res) {
     let C = null; try { C = GelTurno.ctx(); if (!GelTurno.mostra(res, sr.ps, C)) return ''; } catch (e) { return ''; }
     const gs = sr.ps.gelScrap; if (!gs) return ' · gel: sem registro'; if (gs.none) return ' · gel: sem scrap';
-    const k = GelTurno.soma(gs, day.date, C); return ` · gel ${U.fmt(k.T + k.B + k.P, 3)} kg`;
+    const k = GelTurno.soma(gs, day.date, C); if (k.pendentes.length) return ' · gel: cálculo indisponível'; return ` · gel ${U.fmt(k.T + k.B + k.P, 3)} kg`;
   },
   scrapBtn(day, sr, res, lk) {
     const ps = sr.ps, txt = ps.scrap == null ? '<span class="muted">não informado</span>' : `${U.fmt(ps.scrap)} peças${ps.scrapMaq ? ' · por máquina' : ' · só o total'}`;
@@ -27403,8 +27451,7 @@ const devEvents=()=>S.events.filter(e=>e.type==='desvio'||(e.type==='baixa'&amp;
 const sinceDays=(n)=>isoDate(new Date(Date.now()-n*DAY));
 // programação: cada dia guarda {orders:[{n,cat}]} (formato antigo: número de barris)
 // parâmetros de processo com vigência (percentuais sobre o gel consumido)
-const DEF_PARAMS={from:'',g:0.98,pT:2.2406,pB:0.7352,pP:0.5252};
-function paramsAt(date){const L=(vacCad.param('gel.processo')||[]).filter(p=>p.from<=date).sort((a,b)=>a.from<b.from?-1:1);return L.length?{...DEF_PARAMS,...L[L.length-1]}:{...DEF_PARAMS}}
+const paramsAt=date=>vacGel.procAt(date);
 // perdas reais dos últimos n dias (% do gel consumido = gel nos tubos bons + scrap), pelos dias com scrap registrado
 function realLossPct(n){n=n||90;const b=todayISO(),a=addDays(b,-(n-1));let inT=0,nd=0;const sc={T:0,B:0,P:0};
   for(let k=a;k<=b;k=addDays(k,1)){if(!S.prodlog[k])continue;const d=dbDay(k,{});if(!d.hasScr||!d.tubes)continue;nd++;inT+=d.inT;d.parts.forEach(x=>{if(sc[x.area]!=null)sc[x.area]+=x.gel})}
@@ -30008,7 +30055,7 @@ function recOrdersEff(rec){const o=(rec&amp;&amp;rec.orders||[]);const f=o.filte
 const kgOf=v=>v==null||v===''?0:typeof v==='string'?(parseNum(v)||0):(+v||0);
 /* 2.18 · Fase 4 · 4b: a conta da pesagem é a do kit (vacGel.pesagem), a mesma que a Produção usa no Registrar scrap */
 function scrapCalc(ent,date){
-  return vacGel.pesagemCadastro({local:scrapLocal(ent),kg:kgOf(ent.kg),nb:ent.nb,
+  return vacGel.pesagem({local:scrapLocal(ent),kg:kgOf(ent.kg),nb:ent.nb,
     cg:{fmt:catFmt(ent.cat),vig:catVigList(catById(ent.cat))},date});
 }
 // scrap do turno por categoria (gel líquido, kg) a partir dos locais
@@ -55810,70 +55857,70 @@ body.vac-porta{overflow:hidden}
       "id": "oee",
       "path": "Plataforma.html#motor/oee",
       "version": "2.6.43",
-      "sha256": "a8536535317953f7421d7982956d2c9d1d5481bd601bc499e15ad7e9896c1b3e",
-      "bytes": 2420671
+      "sha256": "29916bacdaa88fd2cd51aa17cdb0d1770f35f069122f85efe854dbd7c05c3b93",
+      "bytes": 2419741
     },
     {
       "id": "perdas",
       "path": "Plataforma.html#motor/perdas",
       "version": "1.12.20",
-      "sha256": "821c0f55f157673c7cbe66491114bbe857c400db7581c7695a6c78353fcdf357",
-      "bytes": 1000238
+      "sha256": "4715ab8c220a2fc3fad647c1df00dfb7e6b9bfa68043062ebc122b2d0f6ff5c7",
+      "bytes": 997046
     },
     {
       "id": "gel",
       "path": "Plataforma.html#motor/gel",
       "version": "2.48",
-      "sha256": "ebe34ec257776fe46d228fd71bdfd4f472695af2435834aac8d5a88944b22092",
-      "bytes": 1642299
+      "sha256": "45bb4a2c2e2d301f7eb354f9daab4818e1a09cfb70ff452fa0e88b6f8f0c053c",
+      "bytes": 1638887
     },
     {
       "id": "paradas",
       "path": "Plataforma.html#motor/paradas",
       "version": "1.2.22",
-      "sha256": "ee809c74302893da8acc73d2df8fc47e1011e4c0e0257b138a846a614fa662fd",
-      "bytes": 970749
+      "sha256": "a05b5a68c48935c1886ede02c69dbd0d6642fd66b78c7520588b42d39b5e807f",
+      "bytes": 967557
     },
     {
       "id": "equip",
       "path": "Plataforma.html#motor/equip",
       "version": "1.0.22",
-      "sha256": "c89f6891287271b7b8f44d4dbb1575590dcca0e4118bc893d6cc573c053914c2",
-      "bytes": 762341
+      "sha256": "b20f07fba6e07429786d0784c824a2b4b91e91fa23862a4143c4def63850bb67",
+      "bytes": 759149
     },
     {
       "id": "inic",
       "path": "Plataforma.html#motor/inic",
       "version": "1.1.17",
-      "sha256": "07503c2c42a4b9d7f9b169ca910e83061ffec466e0763666a95fda8723273610",
-      "bytes": 776870
+      "sha256": "46686cd1bed2e81bf262e8a265889a7066e8512eb1c703765b4aa2e5e912118e",
+      "bytes": 773678
     },
     {
       "id": "linha",
       "path": "Plataforma.html#motor/linha",
       "version": "1.7.1",
-      "sha256": "975f82f57b4f94b70843e509eefbbf416fde479b29ef214146f5df63a62cd85c",
-      "bytes": 1024974
+      "sha256": "203a9d5151387f9417534491045ab72be50cebb83399f3198f30df38f1e7f6ad",
+      "bytes": 1021782
     },
     {
       "id": "projetos",
       "path": "Plataforma.html#motor/projetos",
       "version": "0.1.16",
-      "sha256": "8faeb33dae5201d453b5b1b9b0a5764d762b9408c3d5a54e2e1fdb364b6d1e33",
-      "bytes": 694049
+      "sha256": "f840ad8b3a3441444e8b561a67dee5c52d8f55066255bf6e4fa90a78dbc51745",
+      "bytes": 690857
     },
     {
       "id": "portal",
       "path": "Plataforma.html#motor/portal",
       "version": "1.9.81",
-      "sha256": "1accc6afdefd700340bf70bf3c090960732c2e0ca0c67c868c10ef8c933b5ab6",
-      "bytes": 1399483
+      "sha256": "881ec298ba4232e0c052d612611ad48d5747e3e91edbb2c2cfdc6e1359a1b2d7",
+      "bytes": 1396291
     }
   ],
   "limitations": [
     "Projetos e conteúdo técnico OSM/MES/AM/TPM mantêm os limites documentados nas fontes."
   ],
-  "enginesSha256": "f06c89d92f013ec73c42b29ae673952179ed5200eca55a7f9cee58d81f446084",
+  "enginesSha256": "0e079c26e76bd0b46da8e6d68aea507d6c1f12429ad6172588c546eb3165fd61",
   "originRevision": "ffc9ee8",
   "sourceMode": "single-html",
   "originEnginesSha256": "a87a64ad0c328f70e102b2ae888790a9b5d5a9bd05778652a7ce7cae140e40d2"
