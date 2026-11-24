@@ -4177,7 +4177,7 @@ const Store={B:null,mode:'local',dir:null,mod:0,pending:false,pendFrom:0,err:'',
     else{if(this.pending){downloadBlob(new Blob([JSON.stringify(this.B)],{type:'application/json'}),PAGE.baseFile.replace('.json','')+'_NAO-GRAVADO_'+todayISO()+'.json');toast('A base da pasta mudou enquanto você estava sem acesso. Suas alterações locais foram baixadas para conferência.',8000)}
       this.B=this.fix(remote.data);this.mod=remote.mod;this.pending=false}}
   else{/* 1.8.5 · ADM-01: a Administração continua no HTML único e usa 00. Bases/portal-base.json (configuração da Administração e da plataforma). Com backup, restaurar é melhor que criar vazia */
-   if(!confirm('A pasta não tem 00. Bases/'+PAGE.baseFile+', a base da Administração (configuração da Administração e da plataforma; o cadastro fica em vacutainer-cadastros.json).\n\nSe você tem o backup dela, clique em Cancelar, copie o arquivo para a pasta 00. Bases e conecte de novo.\n\nCriar uma base nova, vazia, agora?')){this.motivo='falta 00. Bases/'+PAGE.baseFile+' (restaure o backup ou permita criar uma nova)';this.dir=null;this.mode='local';return false}await this.writeRemote()}
+   if(!confirm('A pasta não tem 00. Bases/'+PAGE.baseFile+', a base da Administração (configuração da Administração e da plataforma; o cadastro fica em vacutainer-cadastros.json).\n\nSe você tem o backup dela, clique em Cancelar, copie o arquivo para a pasta 00. Bases e conecte de novo.\n\nCriar uma base nova, vazia, agora?')){this.motivo='falta 00. Bases/'+PAGE.baseFile+' (restaure o backup ou permita criar uma nova)';this.dir=null;this.mode='local';return false}/* base limpa: a cópia deste navegador de uma base de versão anterior não vira a base nova */if(this.formato){this.B=this.fix(PAGE.vazio());this.pending=false}await this.writeRemote()}
   await this.idb.set('base',this.B);await this.idb.set('pending',{p:this.pending,from:this.pendFrom,aba:vacFila('portal').aba});this.waiting=false;return true},
  async pick(){if(!window.showDirectoryPicker){alert('Este navegador não permite acessar pastas. Use o Chrome ou o Edge.');return false}
   try{const d=await window.showDirectoryPicker({mode:'readwrite',id:PAGE.id});if(await this.connect(d,{ask:true})){await this.idb.set('dir',d);return true}}catch(e){if(e.name!=='AbortError')alert('Não consegui abrir a pasta: '+e.message+'\nDica: escolha a pasta pela unidade mapeada (ex.: Z:).')}return false},
@@ -4469,17 +4469,18 @@ function saveSysPath(id,html){const list=systems().map(x=>x.id===id?{...x,html}:
 /* base limpa (24/11/2026): exports de outra página em versão anterior (ou mais nova) não é usado: a página mostra o aviso
    ("Dados de <página> em versão anterior"), nunca zero. Sem exports, os dados brutos (demonstração) continuam. */
 function adapt(s,d,mod){if(d&amp;&amp;d.exports){const v=vacExportsOk(d.exports,1,s.nome);if(!v.ok)return{sys:s,erro:v.motivo,mod}}
- const f={oee:adaptOEE,gel:adaptGel,perdas:adaptPerdas,paradas:adaptParadas}[s.id]||adaptGeneric;const r=f(d);r.ex=d.exports||null;r.sys=s;(r.pend||[]).forEach(p=>{if(!p.mod)p.mod=s.id});r.mod=mod;r.updatedAt=d.updatedAt||d.savedAt||d.lastSavedAt||d.lastModifiedAt||null;r.updatedBy=d.updatedBy||d.savedBy||d.lastModifiedBy||'';r.temExports=!!d.exports;return r}
+ const f={oee:adaptOEE,gel:adaptGel,perdas:adaptPerdas,paradas:adaptParadas}[s.id]||adaptGeneric;const r=f(d,s.nome);r.ex=d.exports||null;r.sys=s;(r.pend||[]).forEach(p=>{if(!p.mod)p.mod=s.id});r.mod=mod;r.updatedAt=d.updatedAt||d.savedAt||d.lastSavedAt||d.lastModifiedAt||null;r.updatedBy=d.updatedBy||d.savedBy||d.lastModifiedBy||'';r.temExports=!!d.exports;return r}
 /* ----- severidade: no exports das páginas (exportsVersion 1) sev 1 = urgente, 2 = atenção.
    Dentro do Portal vale a mesma escala: 1 = urgente, 2 = atenção (decisão PR76). ----- */
+/* cada adaptX também confere a versão (vacExportsOk com o nome da página): exports fora da versão conhecida não é usado */
+const exAtual=(ex,id,nome)=>vacExportsOk(ex,1,nome||(sysOf(id)||{}).nome||id).ok;
 const sevDoModulo=s=>+s===1?1:2;
 /* aPartirDe (opcional): a pendência só vale a partir desse dia (ex.: ação do Waste que vence sem nova gravação lá) */
 const pendDoModulo=(ex,mod)=>{const hoje=todayISO();return(ex&amp;&amp;Array.isArray(ex.pendencias)?ex.pendencias:[]).filter(p=>p&amp;&amp;p.txt&amp;&amp;(!p.aPartirDe||p.aPartirDe<=hoje)).map(p=>({sev:sevDoModulo(p.sev),mod,txt:String(p.txt),link:p.link||'',quando:p.quando||'',tipo:p.tipo||'',responsavel:p.responsavel||'',apoios:Array.isArray(p.apoios)?p.apoios:[],prazo:p.prazo||null,id:p.id||null}))};
-const exAtual=ex=>vacExportsOk(ex,1).ok;
 
 /* ----- OEE: números, pendências e série vêm do exports do OEE (o motor dele); sem exports soma a produção lançada (dados brutos) ----- */
 function adaptOEE(d){const ex=d.exports;
- if(exAtual(ex)&amp;&amp;Array.isArray(ex.porMes)&amp;&amp;Array.isArray(ex.kpis)){const hoje=todayISO(),mes=curM(),m=ex.porMes.find(p=>p.mes===mes)||null;
+ if(exAtual(ex,'oee')&amp;&amp;Array.isArray(ex.porMes)&amp;&amp;Array.isArray(ex.kpis)){const hoje=todayISO(),mes=curM(),m=ex.porMes.find(p=>p.mes===mes)||null;
   const serie=(ex.porDia||[]).filter(x=>x.dia>=addDays(hoje,-20)&amp;&amp;x.dia<=hoje).sort((a,b)=>a.dia<b.dia?-1:1).map(x=>({label:x.dia.slice(8,10)+'/'+x.dia.slice(5,7),value:+x.boa||0,key:x.dia}));
   const emProd=(ex.ordens||[]).filter(o=>o.mes===mes&amp;&amp;o.inicioReal&amp;&amp;!o.fimReal).map(o=>`${o.ordem} · lote ${o.lote||'–'}`);
   return{kpis:ex.kpis,pend:pendDoModulo(ex,'oee'),serie,serieTit:'Produção boa por dia · últimos 21 dias (tubos)',extra:{emProd,atual:ex.atual||null},oeePct:m?m.oee:null}}
@@ -4497,7 +4498,7 @@ function adaptOEEBruto(d){
  for(const x of days)for(const ps of x.shifts||[]){if(ps.status==='pendente de conferência')pend.push({sev:2,mod:'oee',txt:`Turno ${ps.snap&amp;&amp;ps.snap.name||''} de ${fmtD(x.date)} aguardando conferência`,link:'',quando:x.date})}
  for(const x of days)if(x.date<hoje&amp;&amp;(x.status==='em lançamento'||x.status==='não iniciado')&amp;&amp;!off.has(x.date))pend.push({sev:x.date<addDays(hoje,-2)?1:2,mod:'oee',txt:`Lançamento de ${fmtD(x.date)} ainda aberto (${x.status})`,quando:x.date});
  const ords=plan&amp;&amp;plan.orders||[];const emProd=ords.filter(o=>o.startReal&amp;&amp;!o.endReal);
- const ex=exAtual(d.exports)?d.exports:null;let oeeMes=null,oeeMeta=null;
+ const ex=exAtual(d.exports,'oee')?d.exports:null;let oeeMes=null,oeeMeta=null;
  if(ex&amp;&amp;ex.porMes){const m=(ex.porMes||[]).find(p=>(p.mes||p.per||p.month)===mes);if(m){oeeMes=m.oee;oeeMeta=m.oeeMeta??m.oeeTarget}}
  const serie=datas.filter(dt=>dt>=addDays(hoje,-20)&amp;&amp;dt<=hoje).map(dt=>({label:dt.slice(8,10)+'/'+dt.slice(5,7),value:byDate[dt].g,key:dt}));
  const kpis=[
@@ -4509,7 +4510,7 @@ function adaptOEEBruto(d){
 }
 /* ----- Gel: saldo (já descontadas as retiradas parciais), validade e pendências vêm do exports do Gel; sem exports, dados brutos ----- */
 function adaptGel(d){const ex=d.exports;
- if(exAtual(ex)&amp;&amp;ex.estoque&amp;&amp;Array.isArray(ex.kpis)){const pl=Array.isArray(ex.estoque.porLocal)?ex.estoque.porLocal:[];
+ if(exAtual(ex,'gel')&amp;&amp;ex.estoque&amp;&amp;Array.isArray(ex.kpis)){const pl=Array.isArray(ex.estoque.porLocal)?ex.estoque.porLocal:[];
   const serie=pl.slice().sort((a,b)=>b.kg-a.kg).slice(0,8).map(x=>({label:x.local||'sem local',value:+x.kg||0,key:x.local||''}));
   return{kpis:ex.kpis,pend:pendDoModulo(ex,'gel'),serie,serieTit:'Saldo de gel por local (kg)',serieFmt:v=>fmtN(v)+' kg'}}
  return adaptGelBruto(d)}
@@ -4530,7 +4531,7 @@ function adaptGelBruto(d){
 }
 /* ----- Waste: tudo do exports (Waste 1.8.8 publica pendências e a última KKBC); base antiga sem pendências no exports: dados brutos ----- */
 function adaptPerdas(d){
- const ex=exAtual(d.exports)?d.exports:{};const pm=ex.porMes||[];const mes=curM();const m=pm.find(p=>p.per===mes)||pm[pm.length-1]||null;
+ const ex=exAtual(d.exports,'perdas')?d.exports:{};const pm=ex.porMes||[];const mes=curM();const m=pm.find(p=>p.per===mes)||pm[pm.length-1]||null;
  const doExports=Array.isArray(ex.pendencias);let pend,nVenc,nSem,imp;
  if(doExports){const P=pendDoModulo(ex,'perdas');const sc=P.filter(p=>p.tipo==='semCausa');nVenc=P.filter(p=>p.tipo==='acaoVencida').length;nSem=sc.length;
   pend=P.filter(p=>p.tipo!=='semCausa').concat(sc.slice(0,15));imp=ex.ultimaImportacao||null}
@@ -4553,8 +4554,8 @@ function adaptPerdas(d){
 }
 /* série no exports: lista [{label,value,key}] ou {rotulo, pontos:[{x,y}]} (Paradas); x = 'AAAA-MM' vira mês */
 function serieDoModulo(s){if(Array.isArray(s))return s;if(s&amp;&amp;Array.isArray(s.pontos))return s.pontos.map(p=>({label:/^\d{4}-\d{2}$/.test(String(p.x))?fmtM(p.x):String(p.x),value:+p.y||0,key:String(p.x)}));return[]}
-function adaptGeneric(d){const ex=d.exports,ok=exAtual(ex);return{kpis:ok&amp;&amp;ex.kpis?ex.kpis:[['Base','lida',fmtDT(d.updatedAt||d.revAt),'']],pend:ok?pendDoModulo(ex,undefined):[],serie:ok?serieDoModulo(ex.serie):[],bruto:!ok}}
-function adaptParadas(d){const r=adaptGeneric(d);const ex=d.exports;if(ex&amp;&amp;ex.serie&amp;&amp;!Array.isArray(ex.serie)){r.serieFmt=v=>fmtN(v)+' min';r.serieTit=(ex.serie.rotulo||'Minutos de parada por mês')+' (min)'}return r}
+function adaptGeneric(d,nome){const ex=d.exports,ok=exAtual(ex,null,nome||'outra página');return{kpis:ok&amp;&amp;ex.kpis?ex.kpis:[['Base','lida',fmtDT(d.updatedAt||d.revAt),'']],pend:ok?pendDoModulo(ex,undefined):[],serie:ok?serieDoModulo(ex.serie):[],bruto:!ok}}
+function adaptParadas(d,nome){const r=adaptGeneric(d,nome||(sysOf('paradas')||{}).nome);const ex=d.exports;if(ex&amp;&amp;ex.serie&amp;&amp;!Array.isArray(ex.serie)){r.serieFmt=v=>fmtN(v)+' min';r.serieTit=(ex.serie.rotulo||'Minutos de parada por mês')+' (min)'}return r}
 
 
 /* =====================================================================
@@ -5553,7 +5554,7 @@ const Cad={base:null,D:null,mod:0,fonte:'nenhum',err:'',fila:[],gravando:false,d
  /* lê o arquivo da pasta; devolve true se mudou */
  async ler(){if(Store.mode==='teste'||this.gravando)return false;if(Store.mode!=='pasta'||!Store.dir){if(this.base&amp;&amp;this.fonte==='pasta')this.fonte='copia';return false}
   let f;try{f=await (await Store.dir.getFileHandle(CAD_FILE)).getFile()}
-  catch(e){if(e&amp;&amp;e.name==='NotFoundError'){const a=this.fonte;this.fonte=this.base?'sumiu':'nenhum';this.mod=0;return a!==this.fonte}this.err='Não consegui ler o cadastro: '+(e.message||e);return false}
+  catch(e){if(e&amp;&amp;e.name==='NotFoundError'){/* base limpa: cópia de versão anterior não fica no lugar do arquivo que saiu da pasta; a tela oferece "Criar cadastro vazio" */if(this.base&amp;&amp;this.formato){this.base=null;Store.idb.set('cad',null);this.recompute()}const a=this.fonte;this.fonte=this.base?'sumiu':'nenhum';this.mod=0;return a!==this.fonte}this.err='Não consegui ler o cadastro: '+(e.message||e);return false}
   if(this.fonte==='pasta'&amp;&amp;f.lastModified===this.mod)return false;
   let d;try{d=JSON.parse(await f.text())}catch(e){this.fonte='erro';this.err=CAD_FILE+' não é um JSON válido ('+e.message+'). Restaure um backup em Cadastros › Backups.';return true}
   const v=cadValida(d);if(v.length){this.fonte='erro';this.err=CAD_FILE+': '+v.join('; ');return true}
@@ -7148,7 +7149,8 @@ function wireParComputador(){const b=$('#pcUser');if(b)b.onclick=()=>{if(typeof 
 /* ---------- 1.7 · quem está usando: entrar pelo ID, autocadastro, perfil e página inicial ---------- */
 const uidAtual=()=>localStorage.getItem('vac.userId')||'';
 function usuarioAtual(D=Cad.D){const id=uidAtual();return id&amp;&amp;D?cadItem('usuarios',id,D):null}
-function perfilAtual(D=Cad.D){const u=usuarioAtual(D);if(!u||!D)return null;return cadItem('perfis',u.perfil,D)||DEFAULT_PERFIS.find(x=>x.codigo===u.perfil)||null}
+/* base limpa (24/11/2026): o perfil que vale é o gravado no cadastro; DEFAULT_PERFIS é só semente ("Criar os perfis padrão" e autocadastro), nunca permissão */
+function perfilAtual(D=Cad.D){const u=usuarioAtual(D);if(!u||!D)return null;return cadItem('perfis',u.perfil,D)}
 function podeVer(mod){const p=perfilAtual();if(!p||!p.permissoes||!p.permissoes[mod])return true;return p.permissoes[mod].ver!==false}
 function paginaInicialDe(u,D=Cad.D){if(u&amp;&amp;u.paginaInicial&amp;&amp;u.paginaInicial!=='(do perfil)')return u.paginaInicial;const p=u&amp;&amp;(cadItem('perfis',u.perfil,D)||DEFAULT_PERFIS.find(x=>x.codigo===u.perfil));return(p&amp;&amp;p.paginaInicial)||'Portal'}
 function alvoInicial(u){const a=INICIAL_ALVO[paginaInicialDe(u)];if(!a||a[0]==='portal')return null;const s=sysOf(a[0]);if(!s||!s.html||s.futuro||s.oculto)return null;return sysHref(s,a[1])}
@@ -7197,7 +7199,7 @@ const Entrar={
   const u={codigo:id,nome,perfil:'CONSULTA',turno:tu&amp;&amp;tu.value||null,especialidade:esp,email:null,paginaInicial:'(do perfil)',ativo:true,origem:'autocadastro',primeiroAcessoEm:isoLocal()};
   ops.push({acao:'criação',tipo:'usuarios',codigo:id,item:u,motivo:'1º acesso (autocadastro)',origem:'autocadastro'});Cad.ops(ops);this.entrar(cadItem('usuarios',id)||u,true)},
  entrar(u,primeiro){setUser(u.nome);localStorage.setItem('vac.userId',u.codigo);localStorage.setItem('vac.perfil',u.perfil||'');renderTop();
-  const p=cadItem('perfis',u.perfil)||DEFAULT_PERFIS.find(x=>x.codigo===u.perfil);const P=(p&amp;&amp;p.permissoes)||{};const pg=paginaInicialDe(u),alvo=alvoInicial(u);
+  const p=cadItem('perfis',u.perfil);const P=(p&amp;&amp;p.permissoes)||{};const pg=paginaInicialDe(u),alvo=alvoInicial(u);
   const lista=f=>PERM_MODS.filter(m=>P[m]&amp;&amp;P[m][f]).map(m=>esc(sysOf(m).nome||m)).join(' · ')||'–';
   if(!$('#enBox')){App.render();return}   /* 1.9.22: a janela é o login do kit; aqui só troca a pessoa */
   $('#enBox').innerHTML=`<div class="note ok-note"><b>${primeiro?'Cadastro feito. ':''}Olá, ${esc(u.nome)}.</b></div>
@@ -55410,14 +55412,14 @@ body.vac-porta{overflow:hidden}
       "id": "portal",
       "path": "Plataforma.html#motor/portal",
       "version": "1.9.83",
-      "sha256": "89934bfd3ab5f91394220242dd70d7109b1d2387b33028201cd6ffd7828096bc",
-      "bytes": 1307833
+      "sha256": "0d8cf37dbaf8d1cc6ebf51b7cb4e2e11c40aa89addaf0c954061126728ca7753",
+      "bytes": 1308558
     }
   ],
   "limitations": [
     "Projetos e conteúdo técnico OSM/MES/AM/TPM mantêm os limites documentados nas fontes."
   ],
-  "enginesSha256": "5862f10a555471fc5b93d8bb946df20475060f62ae32d37f6eefc47920249005",
+  "enginesSha256": "e23506e6694b6f6c292eb1f3504d1311b7977e0f812d83dd8192458fd913a851",
   "originRevision": "ffc9ee8",
   "sourceMode": "single-html",
   "originEnginesSha256": "a87a64ad0c328f70e102b2ae888790a9b5d5a9bd05778652a7ce7cae140e40d2"

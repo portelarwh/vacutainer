@@ -88,6 +88,18 @@ const SECS = ['gel', 'linhas', 'familias', 'catalogos', 'materiais', 'bom', 'equ
       localStorage.removeItem('vac.userId'); out.semSessao = Cad.podeEditarAssunto('produto', true); return out;
     });
     assert.deepEqual(P2, { perfil: null, pode: [], r: false, igual: true, semSessao: true }, 'perfil não encontrado: só vê e nada grava; sem sessão vale só a edição liberada ' + JSON.stringify(P2));
+    // a semente não dá edição: perfil ADMIN excluído do cadastro, usuário com perfil 'ADMIN' só vê
+    const P3 = await f.evaluate(async () => {
+      localStorage.setItem('vac.userId', '3005');
+      await Cad.ops([{ acao: 'criação', tipo: 'usuarios', codigo: '3010', item: { codigo: '3010', nome: 'Teste 3010 (fictício)', perfil: 'ADMIN', paginaInicial: '(do perfil)', ativo: true }, motivo: 'teste' }]);
+      const salvo = clone(Cad.base.perfis); Cad.base.perfis = Cad.base.perfis.filter(p => p.codigo !== 'ADMIN'); Cad.recompute(); localStorage.setItem('vac.userId', '3010');
+      try {
+        const m = Cad.D.materiais[0], n0 = m.nome;
+        const r = await Cad.ops([{ acao: 'edição', tipo: 'materiais', codigo: m.codigo, mudancas: { nome: { antes: n0, depois: n0 + ' W' } }, motivo: 'teste' }]);
+        return { perfil: perfilAtual(), pode: ADM_ASSUNTOS.filter(a => Cad.podeEditarAssunto(a.id, true)).map(a => a.id), r, igual: Cad.D.materiais[0].nome === n0, semSenha: Lock.porPerfil() };
+      } finally { Cad.base.perfis = salvo; Cad.recompute(); localStorage.setItem('vac.userId', '3005'); }
+    });
+    assert.deepEqual(P3, { perfil: null, pode: [], r: false, igual: true, semSenha: false }, 'perfil ADMIN fora do cadastro: a semente não dá edição ' + JSON.stringify(P3));
     console.log('ok usuário com perfil que não existe só vê; sem sessão vale a edição liberada (contrato 4)');
 
     // 3c) "Criar os perfis padrão": Processos e ADMIN editam tudo, PCP planta e turnos, Almoxarifado gel, os outros só veem

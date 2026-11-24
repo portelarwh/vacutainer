@@ -12,6 +12,7 @@
 // (g) Administração: portal-base sem schemaVersion (ou com versão anterior) abre só para consulta com o texto exato, sem conversão
 //     (Store.fix não inventa schemaVersion) e sem gravação; restaurar uma cópia de versão anterior é recusado; o cadastro
 //     (vacutainer-cadastros) de versão anterior também só consulta;
+// (g2) Administração na pasta: tiradas as bases anteriores, a página cria a portal-base nova e oferece "Criar cadastro vazio";
 // (e) nenhum erro de JavaScript.
 const { chromium } = require('playwright'), http = require('http'), fs = require('fs'), path = require('path'), assert = require('assert/strict');
 const html = fs.readFileSync(path.resolve(__dirname, '../../Plataforma.html'));
@@ -165,6 +166,31 @@ const BLOQUEIO = 'Base de versão anterior. Comece uma base nova nesta pasta.';
         });
         assert.deepEqual(r2, { formato: BLOQUEIO, banner: true, erro: BLOQUEIO, sv: 'sem', cacheSv: 'sem', lancar: false }, 'reaberta da cópia do navegador: continua bloqueada e sem conversão ' + JSON.stringify(r2));
         console.log('ok (a2) modo arquivo: base sem schemaVersion continua bloqueada ao reabrir a cópia do navegador; importar versão anterior é recusado');
+        // (g2) Administração na pasta: tirar a base anterior da pasta e começar uma nova (o aviso diz "Comece uma base nova nesta pasta.")
+        const p3 = await ctx2.newPage(); p3.on('pageerror', e => erros.push('adm pasta: ' + e.message)); p3.on('dialog', d => d.accept());
+        await p3.goto('http://127.0.0.1:' + srv2.address().port + '/__modulos__/Portal.html');
+        await p3.waitForFunction(() => typeof Store !== 'undefined' && Store.idb && typeof Cad !== 'undefined' && Cad.fq, null, { timeout: 60000 });
+        const g2 = await p3.evaluate(async () => {
+          const raiz = await (await navigator.storage.getDirectory()).getDirectoryHandle('Pasta-Ficticia-G2', { create: true }), bases = await raiz.getDirectoryHandle('00. Bases', { create: true });
+          const grava = async (n, o) => { const w = await (await bases.getFileHandle(n, { create: true })).createWritable(); await w.write(JSON.stringify(o)); await w.close(); };
+          const le = async n => { try { return JSON.parse(await (await (await bases.getFileHandle(n)).getFile()).text()); } catch (e) { return null; } };
+          const velha = PAGE.vazio(); delete velha.schemaVersion; velha.rev = 4; await grava(PAGE.baseFile, velha);
+          const cv = cadFix(cadVazio()); cv.schemaVersion = 1; cv.rev = 3; cv.revId = 'r-velha'; await grava(CAD_FILE, cv);
+          const r = {};
+          await Store._connect(raiz); await Cad.ler(); r.antes = [Store.formato, Cad.formato];
+          // a pessoa tira as bases anteriores da pasta
+          await bases.removeEntry(PAGE.baseFile); await bases.removeEntry(CAD_FILE);
+          await Store._connect(raiz); const pb = await le(PAGE.baseFile);
+          r.portal = { formato: Store.formato, sv: pb && pb.schemaVersion, schema: pb && pb.schema };
+          await Cad.ler(); if (!user()) setUser('Teste (fictício)'); App.show('cad'); Cad.ui.sec = 'inicio'; App.render();
+          r.cad = { D: !!Cad.D, fonte: Cad.fonte, botao: !!document.querySelector('#cadNovoVazio') };
+          if (r.cad.botao) { document.querySelector('#cnS1').value = 'abcd'; document.querySelector('#cnS2').value = 'abcd'; await cadCriarVazio(); if (typeof Modal !== 'undefined') Modal.close(true); }
+          const cn = await le(CAD_FILE); r.novo = { sv: cn && cn.schemaVersion, rev: cn && cn.rev, formato: Cad.formato };
+          return r;
+        });
+        assert.deepEqual(g2, { antes: [BLOQUEIO, BLOQUEIO], portal: { formato: '', sv: 1, schema: 'portal-base' }, cad: { D: false, fonte: 'nenhum', botao: true }, novo: { sv: 2, rev: 1, formato: '' } },
+          'base anterior tirada da pasta: portal-base nova e "Criar cadastro vazio" ' + JSON.stringify(g2));
+        console.log('ok (g2) Administração: tirando as bases anteriores da pasta, nasce a portal-base nova e o cadastro vazio');
       } finally { await ctx2.close(); srv2.close(); }
     }
 
