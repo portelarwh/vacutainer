@@ -85,3 +85,9 @@ PASSAGEM (24/11): sessão parou por falta de tokens; T8 não começada (árvore 
 - Ordenação de equipamentos: a rolagem usa os offsets das linhas e o teste confere os pontos de arraste e soltura antes de mover o ponteiro. A fixture v1 é montada no teste de importação, sem guardar cópias no cenário.
 - Revisão contra `main` (`d78275a`): conferidos os 14 pontos do inventário, o cadastro v2, os oito assuntos e as permissões, a edição por vigência, a importação, a leitura dos motores e a entrega. Conferidos a ausência de cálculo no cadastro v1, o nome de reserva nas pesagens e o corte do scrap entre os motores. A importação da pasta real permanece sob responsabilidade de quem opera a base.
 - Verificação local: build, lint, unitários, contrato e os nove testes focados. As suítes completas e o CI do PR #148 registram os resultados da entrega.
+
+## Ajustes após a conferência do responsável (24/11/2026)
+- SQDCP: faixa de resumo executivo removida (repetia a posição 1 de cada pilar); `tsqdcp_layout` confere 5 posições 1 e nenhum resumo.
+- Gel: `parametros.gel.processo[]` aceita `fmt` ('100' ou '75'; sem `fmt` vale para todos). `vacGel.procAt(data, fmt)`; `vacGel.teorico` e `prodCalc` do Gel somam o teórico por grupo de perdas do formato de cada catálogo (um só formato = conta de sempre). Teste `gel-perdas-formato`. Versões: plataforma 1.8.64, Administração 1.9.83, Gel 2.50, Produção 2.6.45.
+- Verificação: lint, test:unit, test:plataforma e npm test (71 suítes) verdes; gel-numeros igual à referência.
+- Pendente do responsável: os locais de descarte não vieram na importação da pasta real (cadastrados à mão); a causa não foi investigada.
