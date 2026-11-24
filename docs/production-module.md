@@ -3,7 +3,7 @@
 **Sistema:** Vacutainer · Plataforma da Linha  
 **Documento:** Especificação funcional do módulo de Produção  
 **Owner:** Pedro Portela  
-**Status:** Em definição  
+**Status:** Especificação de referência. Consulte a seção 20 para a implementação entregue em Produção 2.5.0 e [PENDENCIAS](../PENDENCIAS.md) para o estado atual.\
 **Versão:** 1.0  
 **Última atualização:** 16/11/2026
 
@@ -329,7 +329,7 @@ Também devem ser validados:
 ## 18. Definition of Done
 
 - Código revisado e integrado à página atual;
-- Modelo de dados e endpoints documentados;
+- Modelo de dados documentado. A implementação usa arquivos locais e o [contrato dos motores](CONTRATO-MOTORES.md).
 - Mapeamento inicial de tags configurado;
 - Testes unitários das regras de tempo e sobreposição aprovados;
 - Testes de integração das três origens aprovados;

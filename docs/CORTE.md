@@ -2,7 +2,9 @@
 
 **NÃO EXECUTADO.** Preparação documental. A rodada usa apenas dados fictícios; não há autorização para testar ou gravar nas bases reais.
 
-Antes do corte, concluir os itens 1 a 8 e aprovar a homologação de file:// no Chrome e Edge corporativos, SMB, perda de permissão/rede e duas estações. Comparar números com a referência atual, testar login/perfil Consulta, fila pendente e uma base mais nova em somente leitura. Registrar versão do artefato e hashes das bases da cópia usada.
+Antes do corte, aprovar a homologação de file:// no Chrome e Edge corporativos, SMB, perda de permissão/rede e duas estações. Comparar números com a referência atual, testar login/perfil Consulta, fila pendente e uma base mais nova em somente leitura. Registrar versão do artefato e hashes das bases da cópia usada.
+
+Na janela de corte, siga os passos 1 a 5. O passo 6 orienta o retorno se houver divergência.
 
 1. Responsável agenda pausa e confirma ausência de fila em todas as estações.
 2. Última gravação pelas páginas atuais; fechar todas as instâncias e fazer cópia das bases e do aplicativo anterior.

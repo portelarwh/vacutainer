@@ -1,6 +1,6 @@
 # Pendências atuais · Vacutainer
 
-Atualizado em 24/11/2026. Só itens em aberto: o que está pronto e conferido sai daqui (histórico no Git e em docs/CONTRATO-MOTORES.md). Este arquivo é a fonte única do **estado** das entregas. O [plano](docs/PLANO-DE-MELHORIAS.md) define a ordem e os critérios de aceite, usando os mesmos IDs. Item recusado no [histórico](docs/DECISOES-HISTORICAS.md) só volta com fato novo.
+Atualizado em 24/11/2026. Só itens em aberto: o que está pronto e conferido sai daqui (histórico no Git e em docs/CONTRATO-MOTORES.md). Este arquivo acompanha as homologações, dependências operacionais e tarefas ainda sem Issue. Para o trabalho de consolidação arquitetural e documental, o estado de desenvolvimento fica na [Issue #151](https://github.com/portelarwh/vacutainer/issues/151). Acompanhe as tarefas já registradas em Issues pelos respectivos links. O [plano](docs/PLANO-DE-MELHORIAS.md) define a ordem e os critérios de aceite, usando os mesmos IDs. Item recusado no [histórico](docs/DECISOES-HISTORICAS.md) só volta com fato novo.
 
 ## Como ler
 

@@ -1,6 +1,6 @@
 # Configurações: inventário comparado com as nove páginas antigas
 
-Etapa 0 do desenho [Administração central](superpowers/specs/2026-11-23-administracao-central-design.md). Data do levantamento: 23/11/2026, plataforma 1.9.x.
+Etapa 0 do desenho [Administração central](superpowers/specs/2026-11-23-administracao-central-design.md). Data do levantamento: 23/11/2026, plataforma 1.9.x. Inventário histórico anterior à incorporação do bloco 1 pela [PR #148](https://github.com/portelarwh/vacutainer/pull/148). Para o contrato vigente, consulte [CONTRATO-MOTORES](CONTRATO-MOTORES.md). O estado de homologação está em [PENDENCIAS](../PENDENCIAS.md).
 
 Este documento lista **tudo o que hoje é configuração ou cadastro**, onde fica, quantas cópias existem, quem lê, o que se perdeu ou foi resumido em relação às páginas antigas e para onde vai no formato v2. As etapas 1 a 8 seguem esta tabela.
 
