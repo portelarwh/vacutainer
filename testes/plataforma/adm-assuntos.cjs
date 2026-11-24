@@ -67,11 +67,11 @@ const SECS = ['gel', 'linhas', 'familias', 'catalogos', 'materiais', 'bom', 'equ
     // 3) regra de transição, sem assuntos gravados
     const T = await f.evaluate(() => {
       const ids = ADM_ASSUNTOS.map(a => a.id), ed = p => ids.filter(i => Cad.nivelAssunto(p, i) === 'editar');
-      return { proc: ed({ codigo: 'PROC', nome: 'Processos' }), pcp: ed({ codigo: 'PCP', nome: 'PCP' }), alm: ed({ codigo: 'ALMOX', nome: 'Almoxarifado' }), outro: ed({ codigo: 'LIDER', nome: 'Liderança' }), gravado: ed({ codigo: 'PCP', nome: 'PCP', assuntos: { gel: 'editar' } }) };
+      return { proc: ed({ codigo: 'PROC', nome: 'Processos' }), pcp: ed({ codigo: 'PCP', nome: 'PCP' }), alm: ed({ codigo: 'ALMOX', nome: 'Almoxarifado' }), outro: ed({ codigo: 'LIDER', nome: 'Liderança' }), cfg: ed({ codigo: 'X', nome: 'Config', permissoes: { portal: { configurar: true } } }), semsenha: ed({ codigo: 'Y', nome: 'Y', semSenha: true }), gravado: ed({ codigo: 'PCP', nome: 'PCP', assuntos: { gel: 'editar' } }) };
     });
     assert.equal(T.proc.length, 8, 'Processos edita todos'); assert.deepEqual(T.pcp, ['planta', 'turnos'], 'PCP: planta e turnos');
     assert.deepEqual(T.alm, ['gel'], 'Almoxarifado: gel'); assert.deepEqual(T.gravado, ['gel'], 'o que está gravado vale');
-    assert.equal(T.outro.length, 8, 'outro perfil, com a edição liberada, edita todos (transição)');
+    assert.equal(T.outro.length, 0, 'perfil sem poder de editar no Portal só vê (transição)'); assert.equal(T.cfg.length, 8, 'configurar no Portal edita todos'); assert.equal(T.semsenha.length, 8, 'semSenha edita todos');
     await f.evaluate(() => { localStorage.setItem('vac.userId', '0000'); Lock.off(); });
     const sem = await f.evaluate(() => ADM_ASSUNTOS.filter(a => Cad.nivelAssunto({ codigo: 'LIDER', nome: 'Liderança' }, a.id) === 'editar').length);
     assert.equal(sem, 0, 'sem a edição liberada, todos só veem');

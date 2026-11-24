@@ -5592,7 +5592,7 @@ const Cad={base:null,D:null,mod:0,fonte:'nenhum',err:'',fila:[],gravando:false,d
   const ok=this.nivelAssunto(p,id)==='editar';if(!ok){this._m='Seu perfil só consulta este assunto ('+((ADM_ASSUNTOS.find(a=>a.id===id)||{}).nome||id)+').';if(!silent)toast(this._m,5000,true)}return ok},
  nivelAssunto(p,id){if(p&amp;&amp;p.assuntos&amp;&amp;typeof p.assuntos==='object')return p.assuntos[id]==='editar'?'editar':'ver';
   /* ADM-CENTRAL: transição até o importador (a regra mora em admNivelTransicao, junto do ImportarV1) */
-  return admNivelTransicao(p,id,()=>this.podeEditar(true))},
+  return admNivelTransicao(p,id)},
  op(o){return this.ops([o])},
  ops(list){
   /* ADM-CENTRAL (bloco 1): o assunto de cada operação decide, em um só lugar, quem grava; login e autocadastro são a transação restrita de conta própria */
@@ -5802,10 +5802,11 @@ function cadApps(el){const D=Cad.D,{c,semMeta}=MT_APP.cfg(D),ok=c.turnos.length&
  const g=$('#mtGerar');if(g)g.onclick=()=>{try{const h=MT_APP.gerar(D),b=new Blob([h],{type:'text/html'}),a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='MeuTurno.html';document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),4000);toast('MeuTurno.html gerado com o cadastro rev '+(D.rev??'—')+'. Envie aos celulares.')}catch(e){toast(e.message||String(e),6000,true)}}}
 /* ADM-CENTRAL: importador de uso único — sai na etapa 8 */
 /* Regra provisória de permissão por assunto de perfil sem assuntos gravados (era o nivelAssunto): Processos edita tudo, PCP planta e turnos,
-   Almoxarifado o gel; os demais, o que a sessão já pode (pode()). O importador grava esse resultado em cada perfil. */
-function admNivelTransicao(p,id,pode){const x=String((p&amp;&amp;p.nome)||'').toLowerCase()+' '+String((p&amp;&amp;p.codigo)||'').toLowerCase();
+   Almoxarifado o gel; os demais, só quem edita pelo próprio perfil (admPerfilEdita). O importador grava esse resultado em cada perfil. */
+function admPerfilEdita(p){const pm=(p&amp;&amp;p.permissoes&amp;&amp;p.permissoes.portal)||{};return!!p&amp;&amp;(p.semSenha===true||(p.semSenha==null&amp;&amp;p.codigo==='ADMIN')||pm.configurar===true||pm.lancar===true)}
+function admNivelTransicao(p,id){const x=String((p&amp;&amp;p.nome)||'').toLowerCase()+' '+String((p&amp;&amp;p.codigo)||'').toLowerCase();
  if(x.includes('processos'))return'editar';if(x.includes('pcp'))return id==='planta'||id==='turnos'?'editar':'ver';if(x.includes('almoxarifado'))return id==='gel'?'editar':'ver';
- return pode()?'editar':'ver'}
+ return admPerfilEdita(p)?'editar':'ver'}
 /* ADM-CENTRAL: importador de uso único — sai na etapa 8 */
 const ImportarV1={MOTIVO:'importação do formato 1',
  /* o que a Administração ainda pode gravar com o cadastro no formato 1: a importação, a conta própria (login), a segurança (senha inicial), o desbloqueio, a carga e a restauração de backup */
@@ -5819,8 +5820,8 @@ const ImportarV1={MOTIVO:'importação do formato 1',
   const formatos=[],pares=[],vistos=new Set();
   for(const x of fm.slice().sort((a,b)=>String(a&amp;&amp;a.from)<String(b&amp;&amp;b.from)?-1:1)){if(!x)continue;const de=x.from;
    if(!/^\d{4}-\d{2}-\d{2}$/.test(de||'')){av.push('formato sem data de início válida: não importado');continue}if(vistos.has(de)){av.push('formato repetido em '+fmtD(de)+': ficou o primeiro');continue}vistos.add(de);
-   const n=(v,rot)=>{const r=this.num(v);if(r==null){av.push(`formato de ${fmtD(de)}: ${rot} vazio ou inválido; ficou 0 (confira em Gel)`);return 0}return r};
-   const tubos={};for(const f of['100','75']){const o=(x.f||{})[f]||{};tubos[f]={tuboG:n(o.tubo,'tubo vazio do Tubo '+f),gelG:n(o.gel,'gel do Tubo '+f),aditivoG:n(o.adit,'aditivo do Tubo '+f),tampaRolhaG:n(o.tr,'tampa + rolha do Tubo '+f)}}
+   const n=(v,rot)=>{const r=this.num(v);if(r==null){av.push(`formato de ${fmtD(de)}: ${rot} vazio ou inválido; ficou não cadastrado (preencha em Gel)`);return null}return r};
+   const tubos={};for(const f of['100','75']){const o=(x.f||{})[f]||{};if(!(x.f||{})[f])av.push(`formato de ${fmtD(de)}: sem o Tubo ${f}; ficou não cadastrado (preencha em Gel)`);tubos[f]={tuboG:n(o.tubo,'tubo vazio do Tubo '+f),gelG:n(o.gel,'gel do Tubo '+f),aditivoG:n(o.adit,'aditivo do Tubo '+f),tampaRolhaG:n(o.tr,'tampa + rolha do Tubo '+f)}}
    const so=this.num(x.sobra);
    const novo={de,ate:null,embalagemG:n(x.tara,'peso da embalagem (tara)'),folhaPurgaG:n(x.taraP,'folha da purga (taraP)'),sobraBarrilKg:so,tubos,motivo:this.MOTIVO,por:user()||null,em:isoLocal()};
    formatos.push(novo);pares.push({ant:x,novo})}
@@ -5835,7 +5836,7 @@ const ImportarV1={MOTIVO:'importação do formato 1',
   if(!L.length)av.push('nenhum local de descarte encontrado: a tela Gel começa sem locais');
   const locais=L.map((x,i)=>({id:'L-'+String(i+1).padStart(4,'0'),equipamento:x.eq,local:String(x.d.local||'').trim()||(eqs.find(e=>e.codigo===x.eq)||{}).nome||x.eq,comp:x.d.comp||'completo',categoria:x.d.cat||'T',motivos:Array.isArray(x.d.mots)?x.d.mots.slice():[],embalagemG:x.emb,ordem:i+1,ativo:x.ativo}));
   /* perfis sem assuntos gravados recebem a regra de transição */
-  const perfis=(cad.perfis||[]).filter(p=>!(p.assuntos&amp;&amp;typeof p.assuntos==='object')).map(p=>({codigo:p.codigo,nome:p.nome,assuntos:Object.fromEntries(ADM_ASSUNTOS.map(a=>[a.id,admNivelTransicao(p,a.id,()=>true)]))}));
+  const perfis=(cad.perfis||[]).filter(p=>!(p.assuntos&amp;&amp;typeof p.assuntos==='object')).map(p=>({codigo:p.codigo,nome:p.nome,assuntos:Object.fromEntries(ADM_ASSUNTOS.map(a=>[a.id,admNivelTransicao(p,a.id)]))}));
   return{gel:{formatos,locais},perfis,avisos:av,pares,fontes:{formatos:fonteF,locais:fonteL}}},
  /* aplica a importação sobre o cadastro D (na fila e ao regravar sobre a versão da pasta); se já for v2, não faz nada */
  aplicar(D,o,L){if(+D.schemaVersion>=2)return{ok:true};const P=o.plano||{},g=P.gel||{};
@@ -55824,14 +55825,14 @@ body.vac-porta{overflow:hidden}
       "id": "portal",
       "path": "Plataforma.html#motor/portal",
       "version": "1.9.81",
-      "sha256": "99f8c5f7b6928acf53fc6902251f60e4a37a3427dc03c4a4451251c87db1fbf3",
-      "bytes": 1395715
+      "sha256": "b64da289f392b6d9a729205127c63bb55a88ec2b48b29e51e77dd4a2718afbf7",
+      "bytes": 1396023
     }
   ],
   "limitations": [
     "Projetos e conteúdo técnico OSM/MES/AM/TPM mantêm os limites documentados nas fontes."
   ],
-  "enginesSha256": "b54c3dbb0bf7812108ac02714c47d18968e01e3d71ffc88addb245f30a9ec03f",
+  "enginesSha256": "894ea4dd688d8aeaeb4647189b477bd754432871308ef308cbd094da3278924f",
   "originRevision": "ffc9ee8",
   "sourceMode": "single-html",
   "originEnginesSha256": "a87a64ad0c328f70e102b2ae888790a9b5d5a9bd05778652a7ce7cae140e40d2"

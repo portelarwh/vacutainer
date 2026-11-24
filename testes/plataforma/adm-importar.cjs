@@ -87,7 +87,8 @@ const w = (f, ms = 300) => f.waitForTimeout ? f.waitForTimeout(ms) : new Promise
     assert.ok(ids.every(i => pf.PROC[i] === 'editar'), 'Processos edita tudo');
     assert.deepEqual(ids.filter(i => pf.PCP[i] === 'editar'), ['planta', 'turnos'], 'PCP edita planta e turnos');
     assert.deepEqual(ids.filter(i => pf.ALMOX[i] === 'editar'), ['gel'], 'Almoxarifado edita o gel');
-    assert.ok(ids.every(i => pf.LIDER[i] === 'editar'), 'os demais perfis, que passam em podeEditar, editam tudo (regra de transição)');
+    for (const c of ['CONSULTA', 'TV', 'OPER', 'LIDER', 'QUAL', 'TEC']) assert.ok(ids.every(i => pf[c][i] === 'ver'), c + ' só consulta em todos os assuntos');
+    assert.ok(ids.every(i => pf.ADMIN[i] === 'editar'), 'ADMIN (edita sem senha) edita tudo');
     // auditoria
     const aud = await f.evaluate(() => Cad.D.auditoria.filter(a => a.motivo === 'importação do formato 1').map(a => [a.acao, a.tipo, a.campo]));
     assert.ok(aud.length >= 4 && aud.some(a => a[1] === 'gel' && a[2] === 'formatos') && aud.some(a => a[1] === 'gel' && a[2] === 'locais') && aud.some(a => a[1] === 'perfis') && aud.some(a => a[2] === 'schemaVersion'), 'auditoria da importação ' + JSON.stringify(aud));
@@ -115,6 +116,9 @@ const w = (f, ms = 300) => f.waitForTimeout ? f.waitForTimeout(ms) : new Promise
     });
     assert.equal(P.f, 1); assert.equal(P.de, '2025-10-15'); assert.deepEqual(P.l, [['EQ03', 'MAQUINA GEL - VADG01', 70]], 'só o local com equipamento correspondente entra');
     assert.ok(P.av.some(a => a === 'local sem equipamento correspondente: SALA GEL'), 'aviso ' + JSON.stringify(P.av)); assert.equal(P.perfis, 10);
+    const PN = await f.evaluate(() => { const cad = { schemaVersion: 1, equipamentos: [], perfis: [], parametros: { gel: { formatos: [{ from: '2025-10-15', tara: '', taraP: 5, sobra: '', f: { '100': { tubo: 4.779, gel: 0.936, adit: '', tr: 2.3 } } }] } } };
+      const x = ImportarV1.plano(cad, null).gel.formatos[0]; return { e: x.embalagemG, fp: x.folhaPurgaG, s: x.sobraBarrilKg, t100: x.tubos['100'], t75: x.tubos['75'] }; });
+    assert.deepEqual(PN, { e: null, fp: 5, s: null, t100: { tuboG: 4.779, gelG: 0.936, aditivoG: null, tampaRolhaG: 2.3 }, t75: { tuboG: null, gelG: null, aditivoG: null, tampaRolhaG: null } }, 'ausência vira null, nunca 0 ' + JSON.stringify(PN));
     const P0 = await f.evaluate(() => { const p = ImportarV1.plano({ schemaVersion: 1, equipamentos: [], perfis: [], parametros: {} }, null); return [p.gel.formatos.length, p.gel.locais.length, p.avisos.length]; });
     assert.equal(P0[0], 0); assert.equal(P0[1], 0); assert.ok(P0[2] >= 1, 'sem fonte nenhuma: avisa que não há nada para importar');
     console.log('ok sem cópias no cadastro: lê o Gel (config.fmts/equips) e avisa "local sem equipamento correspondente: SALA GEL"');
