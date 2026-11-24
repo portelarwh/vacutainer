@@ -5,7 +5,27 @@ const { chromium } = require('playwright');
 (async () => {
   const b = await chromium.launch(); const ctx = await b.newContext({ viewport: { width: 1440, height: 1000 } }); const errs = [];
   const ok = (c, msg) => { console.log((c ? 'ok   ' : 'FALHA ') + msg); if (!c) errs.push('falhou: ' + msg); };
-  const nova = async (arq, tag, hash = '') => { const p = await ctx.newPage(); p.on('pageerror', e => errs.push(tag + ' ' + e.message)); p.on('dialog', d => d.accept()); await p.goto(S + encodeURI(arq) + hash); await p.waitForTimeout(1500); return p; };
+  // As entradas históricas das regressões são reapresentadas no formato do cadastro atual.
+  const cadastroGelTeste = doc => {
+    const { formatos, ...parametros } = doc.parametros.gel;
+    let sobra = null;
+    const peso = f => ({ tuboG: f.tubo, gelG: f.gel, aditivoG: f.adit, tampaRolhaG: f.tr });
+    const locais = [];
+    for (const { codigo, nome, gel } of doc.equipamentos) {
+      for (const d of gel.descs) {
+        const id = locais.some(l => l.id === d.id) ? codigo + '-' + d.id : d.id;
+        locais.push({ id, equipamento: codigo, local: d.local || nome, comp: d.comp, categoria: d.cat,
+          motivos: d.mots || [], embalagemG: d.cat === 'P' ? null : (gel.tara || null), ativo: true, ordem: locais.length,
+          legado: [{ e: codigo, d: d.id }] });
+      }
+    }
+    return { ...doc, schemaVersion: 2, parametros: { gel: parametros }, gel: { locais, formatos: formatos.map(v => {
+      sobra = v.sobra ?? sobra;
+      return { de: v.from, ate: null, embalagemG: v.tara, folhaPurgaG: v.taraP, sobraBarrilKg: sobra,
+        tubos: { '100': peso(v.f['100']), '75': peso(v.f['75']) } };
+    }) } };
+  };
+  const nova = async (arq, tag, hash = '') => { const p = await ctx.newPage(); p.on('pageerror', e => errs.push(tag + ' ' + e.message)); p.on('dialog', d => d.accept()); await p.addInitScript({ content: 'window.cadastroGelTeste = ' + cadastroGelTeste.toString() + ';' }); await p.goto(S + encodeURI(arq) + hash); await p.waitForTimeout(1500); return p; };
 
   /* ---------- Gel: contas iguais com os parâmetros vindos do Portal ---------- */
   const g = await nova('Gestão-Gel-Vacutainer.html', 'Gel');
@@ -16,20 +36,21 @@ const { chromium } = require('playwright');
     S.config.motivos = [{ id: 'm1', name: 'Gel com bolha', comps: [], active: true }, { id: 'm2', name: 'Etiqueta ruim', comps: ['completo'], active: true }];
     S.config.equips = [{ id: 'eq-1', name: 'Máquina de gel', tara: 80, active: true, descs: [{ id: 'd1', comp: 'tubogel', cat: 'T', mots: ['m1'] }, { id: 'd2', comp: 'gel', cat: 'P' }] }];
     S.catalogs.forEach((k, i) => { k.fmt = i % 2 ? '75' : '100'; k.lotSize = 900000; k.rateH = 38000 + i; k.vig = [{ from: '2000-01-01', gTubo: 0.85 + i / 100, bomKg: 8.84, bomBase: 10000, tol: 6 }, { from: addDays(todayISO(), -5), gTubo: 0.86 + i / 100, bomKg: 8.9, bomBase: 10000, tol: 6 }]; });
-    render(); });
-  const marca = () => g.evaluate(() => { const ex = gelExports(); delete ex.geradoEm; const h = todayISO();
-    const dias = Object.keys(S.prodlog || {}).sort().slice(-6).map(d => { const r = prodCalc(d, S.prodlog[d]); return [d, JSON.stringify(r, (k, v) => typeof v === 'function' ? undefined : v)]; });
-    const cats = S.catalogs.map(c => [c.num, gelReal(c.id, h), JSON.stringify(bomInfo(c.id, h)), gelReal(c.id, addDays(h, -8)), catFmt(c.id)]);
-    return JSON.stringify({ ex, dias, cats, p: [paramsAt(h), paramsAt(addDays(h, -20))], f: fmtAt(h), sob: sobraAt(h), mot: motList(), eq: S.config.equips.map(e => [e.tara, e.descs]) }); });
-  const g0 = await marca();
-  const nDias = await g.evaluate(() => Object.keys(S.prodlog || {}).length);
-  await g.evaluate(() => {   // o mesmo conteúdo, agora no cadastro do Portal (como o Trazer configurações deixa)
     const C = { schema: 'vac-cadastros', rev: 8, parametros: { gel: { processo: JSON.parse(JSON.stringify(S.config.params)), formatos: JSON.parse(JSON.stringify(S.config.fmts)), motivos: JSON.parse(JSON.stringify(S.config.motivos)), registroPelaProducaoDesde: '2026-12-01' } },
       equipamentos: [{ codigo: 'EQ90', nome: 'Máquina de gel', ativo: true, categoria: 'gel', gel: { tara: 80, descs: JSON.parse(JSON.stringify(S.config.equips[0].descs)) } }],
       catalogos: S.catalogs.map(k => ({ codigo: k.num, tipoItem: 'tubo', nome: k.desc, cor: k.color, ativo: k.active !== false, formato: '13x' + k.fmt, gel: { fmt: k.fmt, lotSize: k.lotSize, rateH: k.rateH, vig: JSON.parse(JSON.stringify(k.vig)) } })), materiais: [], bom: [] };
-    // a cópia local do Gel é zerada: tudo tem que vir do Portal
-    S.config.params = []; S.config.fmts = []; S.config.motivos = []; S.config.equips[0].descs = []; S.config.equips[0].tara = ''; S.catalogs.forEach(k => { k.vig = []; k.fmt = '100'; k.lotSize = null; k.rateH = null; });
-    localStorage.setItem('vac.cadastros', JSON.stringify(C)); render(); });
+    localStorage.setItem('vac.cadastros', JSON.stringify(cadastroGelTeste(C))); render(); });
+  const marca = () => g.evaluate(() => { const ex = gelExports(); delete ex.geradoEm; const h = todayISO();
+    const dias = Object.keys(S.prodlog || {}).sort().slice(-6).map(d => { const r = prodCalc(d, S.prodlog[d]); return [d, JSON.stringify(r, (k, v) => typeof v === 'function' ? undefined : v)]; });
+    const cats = S.catalogs.map(c => [c.num, gelReal(c.id, h), JSON.stringify(bomInfo(c.id, h)), gelReal(c.id, addDays(h, -8)), catFmt(c.id)]);
+    return JSON.stringify({ ex, dias, cats, p: [paramsAt(h), paramsAt(addDays(h, -20))], f: vacCad.gel.formato(h), sob: sobraAt(h), mot: motList(), locais: vacCad.gel.locais() }); });
+  const g0 = await marca();
+  const nDias = await g.evaluate(() => Object.keys(S.prodlog || {}).length);
+  await g.evaluate(() => {
+    // Apagar as cópias antigas da página não altera a leitura do cadastro central.
+    delete S.config.params; delete S.config.fmts; delete S.config.motivos; delete S.config.equips;
+    render();
+  });
   const g1 = await marca();
   ok(nDias > 0, `GEL-06: base de exemplo com ${nDias} dia(s) de registro para comparar`);
   ok(g0 === g1, 'GEL-06 / 4a: com processo, formatos, motivos, descartes e gel do catálogo vindos do Portal, todas as contas do gel dão os mesmos números');
@@ -37,7 +58,7 @@ const { chromium } = require('playwright');
     C.parametros.gel.processo.push({ from: addDays(h, -1), g: 0.96, pT: 3.5, pB: 0.7, pP: 0.48 }); localStorage.setItem('vac.cadastros', JSON.stringify(C)); render(); return [antes, paramsAt(h).pT, paramsAt(addDays(h, -3)).pT]; });
   ok(mud[0] === 2.0 && mud[1] === 3.5 && mud[2] === 2.0, '4a: vigência nova de perdas no Portal vale da data dela em diante (dias anteriores ficam com a anterior)');
   const cruz = await g.evaluate(() => Object.keys(S.prodlog || {}).map(d => { const rec = S.prodlog[d], pc = prodCalc(d, rec); const t = {}; recOrdersEff(rec).forEach(o => t[o.cat] = (t[o.cat] || 0) + (+o.t || 0));
-    const k = vacGel.teorico({ tubosPorCat: t, date: d, cg: id => ({ fmt: catFmt(id), vig: catVigList(catById(id)) }), fmts: S.config.fmts, params: S.config.params }); return [d, pc.teo, k.teo, pc.gelBons, k.gelBons]; }).filter(x => Math.abs(x[1] - x[2]) > 1e-9 || Math.abs(x[3] - x[4]) > 1e-9));
+    const k = vacGel.teorico({ tubosPorCat: t, date: d, cg: id => ({ fmt: catFmt(id), vig: catVigList(catById(id)) }) }); return [d, pc.teo, k.teo, pc.gelBons, k.gelBons]; }).filter(x => Math.abs(x[1] - x[2]) > 1e-9 || Math.abs(x[3] - x[4]) > 1e-9));
   ok(!cruz.length, '4b: teórico do kit (vacGel.teorico) igual ao prodCalc do Gel em todos os dias registrados' + (cruz.length ? ' · ' + JSON.stringify(cruz[0]) : ''));
   /* 1.8.47 · CFG-ADM: processo, formatos, motivos e equipamentos são cadastro da Administração; o Gel não tem mais tela para eles */
   const trav = await g.evaluate(() => { const ir = [], o = window.vacIrPortal; window.vacIrPortal = h => ir.push(h); const r = {};
@@ -56,56 +77,69 @@ const { chromium } = require('playwright');
     S.config.equips = [{ id: 'eqA', name: 'A', tara: '', active: true, descs: [] }, { id: 'eqB', name: 'B', tara: 90, active: true, descs: [] }];
     for (const e of S.config.equips) comps.forEach(c => cats.forEach(k => e.descs.push({ id: c + '-' + k, comp: c, cat: k })));
     S.catalogs = [{ id: 'c1', num: '111111', fmt: '100', vig: [{ from: '2000-01-01', gTubo: 0.85, bomKg: 8.8, bomBase: 10000, tol: 6 }, { from: '2026-07-01', gTubo: 0.87, bomKg: 8.9, bomBase: 10000, tol: 6 }] }, { id: 'c2', num: '222222', fmt: '75' }, { id: 'c3', num: '333333', fmt: '100', gTubo: 0.9 }];
+    localStorage.setItem('vac.cadastros', JSON.stringify(cadastroGelTeste({
+      parametros: { gel: { formatos: S.config.fmts, processo: S.config.params } },
+      equipamentos: S.config.equips.map(e => ({ codigo: e.id, nome: e.name, gel: e })),
+    })));
     const eqv = (a, b) => JSON.stringify(a, (k, v) => typeof v === 'number' ? +v.toFixed(9) : v) === JSON.stringify(b, (k, v) => typeof v === 'number' ? +v.toFixed(9) : v);
     return ref.filter(c => !eqv(scrapCalc(c.ent, c.date), c.r)).slice(0, 3).map(c => [c, scrapCalc(c.ent, c.date)]); }, ref);
   ok(ref.length === 1440 && dif.length === 0, `4b: pesagem do Gel pela conta comum (vacGel) igual à anterior nos ${ref.length} casos (5 composições × 3 categorias × 2 formatos × vigências × embalagem)${dif.length ? ' · diferença: ' + JSON.stringify(dif[0]).slice(0, 300) : ''}`);
-  const kt = await g4b.evaluate(() => { const r = vacGel.teorico({ tubosPorCat: { a: 1000000 }, date: '2026-03-10', cg: () => ({ fmt: '100', vig: [{ from: '2000-01-01', gTubo: 0.85 }] }), fmts: [], params: [{ from: '2000-01-01', g: 0.97, pT: 2, pB: 1, pP: 1 }] }); return r; });
+  const kt = await g4b.evaluate(() => {
+    const cad = vacCad();
+    cad.parametros.gel.processo = [{ from: '2000-01-01', g: 0.97, pT: 2, pB: 1, pP: 1 }];
+    localStorage.setItem('vac.cadastros', JSON.stringify(cad));
+    const r = vacGel.teorico({ tubosPorCat: { a: 1000000 }, date: '2026-03-10', cg: () => ({ fmt: '100', vig: [{ from: '2000-01-01', gTubo: 0.85 }] }) }); return r; });
   ok(Math.abs(kt.gelBons - 850) < 1e-9 && Math.abs(kt.teo - 850 / 0.96) < 1e-9 && Math.abs(kt.sTeo.T - kt.teo * 0.02) < 1e-9, '4b: vacGel.teorico = gel nos tubos bons ÷ (1 − perdas), com a parte de cada categoria');
 
-  /* ---------- Portal: Parâmetros › Gestão de Gel, fichas e migração ---------- */
+  /* ---------- Portal: Administração › Gel (motivos e parâmetros), fichas e migração ---------- */
   const po = await nova('Portal.html', 'Portal', '#geral');
   await po.evaluate(() => enterTest()); await po.waitForTimeout(300);
-  await po.evaluate(() => { location.hash = '#cadastros/parametros'; }); await po.waitForTimeout(500);
-  ok(await po.evaluate(() => !!document.querySelector('#parGel') && !document.querySelector('#pgOk')), '4a Portal: Parâmetros tem o grupo Gestão de Gel (só consulta sem a senha)');
+  await po.evaluate(() => { location.hash = '#cadastros/gel'; }); await po.waitForTimeout(500);
+  ok(await po.evaluate(() => !!document.querySelector('#gelPar') && !document.querySelector('#gpOk') && !document.querySelector('#parGel')), '4a Portal: Administração › Gel tem Motivos e parâmetros do gel (só consulta sem a senha)');
   await po.evaluate(() => { Lock.on(Cad.D.seguranca.senhaHash); App.render(); }); await po.waitForTimeout(300);
-  await po.click('#parGel [data-pgadd="processo"]'); await po.waitForTimeout(200);
-  await po.fill('#parGel [data-pg="processo.0.pT"]', '2.5'); await po.evaluate(() => { const i = document.querySelector('#parGel [data-pg="registroPelaProducaoDesde"]'); i.value = '2026-12-01'; i.dispatchEvent(new Event('input', { bubbles: true })); i.dispatchEvent(new Event('change', { bubbles: true })); });   /* kit: o campo de data visível é o texto DD/MM/AAAA */
-  await po.click('#parGel [data-pgadd="motivos"]'); await po.waitForTimeout(200); await po.fill('#parGel [data-pg="motivos.0.name"]', 'Gel com bolha');
-  await po.click('#pgOk'); await po.waitForTimeout(600);
+  await po.click('#gelPar [data-pgadd="processo"]'); await po.waitForTimeout(200);
+  await po.fill('#gelPar [data-pg="processo.0.pT"]', '2.5'); await po.evaluate(() => { const i = document.querySelector('#gelPar [data-pg="registroPelaProducaoDesde"]'); i.value = '2026-12-01'; i.dispatchEvent(new Event('input', { bubbles: true })); i.dispatchEvent(new Event('change', { bubbles: true })); });   /* kit: o campo de data visível é o texto DD/MM/AAAA */
+  await po.click('#gelPar [data-pgadd="motivos"]'); await po.waitForTimeout(200); await po.fill('#gelPar [data-pg="motivos.0.name"]', 'Gel com bolha');
+  await po.click('#gpOk'); await po.waitForTimeout(600);
   const pg = await po.evaluate(() => (Cad.D.parametros || {}).gel || null), hoje = await po.evaluate(() => todayISO());
   ok(pg && pg.processo && pg.processo[0].pT === 2.5 && pg.processo[0].from === hoje && pg.registroPelaProducaoDesde === '2026-12-01' && pg.motivos[0].name === 'Gel com bolha' && /^m-/.test(pg.motivos[0].id), '4a Portal: grava parametros.gel (perdas com vigência a partir de hoje, motivos com id, data de corte G3)');
-  const recusa = await po.evaluate(() => { App.render(); const W = ParGel.W; W.processo[0].from = '2020-01-01'; W.processo[0].pT = 9; $('#pgOk').click(); return Cad.D.parametros.gel.processo[0].pT; });
+  const recusa = await po.evaluate(() => { App.render(); const W = ParGel.W; W.processo[0].from = '2020-01-01'; W.processo[0].pT = 9; $('#gpOk').click(); return Cad.D.parametros.gel.processo[0].pT; });
   ok(recusa === 2.5, '4a Portal: vigência gravada não muda (data no passado é recusada)');
   await po.waitForTimeout(1200);
   const ficha = await po.evaluate(async () => { const e = Cad.D.equipamentos[0]; location.hash = '#cadastros/equipamentos/' + e.codigo; await new Promise(r => setTimeout(r, 400));
     const sel = document.querySelector('#fBox [data-p="categoria"]'); sel.value = 'gel'; sel.dispatchEvent(new Event('change', { bubbles: true })); await new Promise(r => setTimeout(r, 200));
-    const temBloco = /Gel: embalagem e descartes/i.test(document.querySelector('#fBox').innerText); const add = document.querySelector('#fBox [data-add="gel.descs"]'); if (add) add.click(); await new Promise(r => setTimeout(r, 150));
-    const mot = document.querySelector('#fBox [data-p="gel.descs.0.mots"]'); if (mot) { mot.checked = true; mot.dispatchEvent(new Event('change', { bubbles: true })); }
-    const W = Ficha.W; const c = Cad.D.catalogos.find(x => x.tipoItem !== 'preparacao'); Ficha.fechar && Ficha.fechar(); location.hash = '#cadastros/catalogos/' + c.codigo; await new Promise(r => setTimeout(r, 400));
-    return { temBloco, descs: (W.gel || {}).descs, cat: /Gel do catálogo|<b>Gel<\/b>/.test(document.querySelector('#fBox').innerHTML) || /\bGel\b/.test(document.querySelector('#fBox details.cd summary') ? document.querySelector('#fBox').innerText : '') }; });
-  if (!(ficha.temBloco && ficha.descs && ficha.descs.length === 1)) console.log('ficha:', JSON.stringify(ficha));
-  ok(ficha.temBloco && ficha.descs && ficha.descs.length === 1 && (ficha.descs[0].mots || []).length === 1, '4a Portal: ficha do Equipamento – Gel com embalagem e descartes (composição, categoria e motivos do gel)');
+    const temBloco = !!document.querySelector('#fBox [data-irhash="#cadastros/gel/locais"]') && !document.querySelector('#fBox [data-add="gel.descs"]') && !/Gel: embalagem e descartes/i.test(document.querySelector('#fBox').innerText);
+    const c = Cad.D.catalogos.find(x => x.tipoItem !== 'preparacao'); Ficha.fechar && Ficha.fechar(); location.hash = '#cadastros/catalogos/' + c.codigo; await new Promise(r => setTimeout(r, 400));
+    return { temBloco, cat: /Gel do catálogo|<b>Gel<\/b>/.test(document.querySelector('#fBox').innerHTML) || /\bGel\b/.test(document.querySelector('#fBox details.cd summary') ? document.querySelector('#fBox').innerText : '') }; });
+  if (!ficha.temBloco) console.log('ficha:', JSON.stringify(ficha));
+  ok(ficha.temBloco, '4a Portal: ficha do Equipamento – Gel só com o link para Administração › Gel (os locais e a embalagem saíram da ficha)');
   ok(ficha.cat, '4a Portal: ficha do catálogo com o bloco Gel (formato, lote, velocidade e vigências de gel/BOM)');
-  const mig = await po.evaluate(() => { TrazCfg.B = { gel: { config: { params: [{ from: '2000-01-01', g: 0.97, pT: 2.1, pB: 0.71, pP: 0.5 }], fmts: [{ from: '2000-01-01', tara: 70, taraP: 4, sobra: 1.3, f: { '100': { tubo: 4.8, gel: 0.83, adit: 0.02, tr: 2.31 }, '75': { tubo: 3.55, gel: 0.82, adit: 0.015, tr: 2.29 } } }], motivos: [{ id: 'm9', name: 'Quebra', comps: [], active: true }],
-      equips: [{ id: 'eq-z', name: Cad.D.equipamentos[1].nome, tara: 80, active: true, descs: [{ id: 'dz', comp: 'gel', cat: 'P' }] }] }, catalogs: { items: [{ id: 'cat-q', num: Cad.D.catalogos[0].codigo, fmt: '75', lotSize: 900000, vig: [{ from: '2000-01-01', gTubo: 0.85, bomKg: 8.84, bomBase: 10000, tol: 6 }] }] } } };
-    Cad.D.parametros.gel = {}; Cad.D.equipamentos[1].gel = null; Cad.D.catalogos[0].gel = null;
-    TrazCfg.P = []; TrazCfg.avisos = []; TrazCfg.montar(); const L = TrazCfg.P.filter(i => i.grupo === 'Só no Gel · parâmetros do gel'); const W2 = JSON.parse(JSON.stringify(Cad.D)); L.forEach(i => i.fn(W2));
-    return { n: L.length, pg: W2.parametros.gel, eq: W2.equipamentos[1].gel, cat: W2.catalogos[0].gel, catg: W2.equipamentos[1].categoria }; });
-  ok(mig.n === 5 && mig.pg.processo[0].pT === 2.1 && mig.pg.formatos[0].sobra === 1.3 && mig.pg.motivos[0].id === 'm9' && mig.eq.descs[0].cat === 'P' && mig.catg === 'gel' && mig.cat.fmt === '75' && mig.cat.vig[0].bomKg === 8.84, '4a migração: Trazer configurações leva processo, formatos, motivos, descartes (Equipamento – Gel) e o gel do catálogo, com a mesma estrutura');
-
-  /* GEL-09 (23/11/2026): vários pontos do Gel na mesma máquina da Administração juntam-se, cada um com o seu Local; se a máquina ficou
-     só com o último ponto (o Trazer antigo sobrescrevia), a proposta "Refazer descartes" acrescenta os que faltam e preenche o local */
-  const g9 = await po.evaluate(() => { const alvo = Cad.D.equipamentos.find(x => /tullip a/i.test(x.nome)) || Cad.D.equipamentos[0], tag = 'VATU01';
-    const eqs = [{ id: 'g1', name: alvo.nome.toUpperCase() + ' - CAIXA REJEIÇÃO - ' + tag, portal: alvo.codigo, tara: 80, active: true, descs: [{ id: 'dcr', comp: 'completo', cat: 'T' }] },
-      { id: 'g2', name: alvo.nome.toUpperCase() + ' - FUNIL BERÇO - ' + tag, portal: alvo.codigo, tara: 80, active: true, descs: [{ id: 'dfb', comp: 'completo', cat: 'T' }] }];
-    const rodar = () => { TrazCfg.P = []; TrazCfg.avisos = []; TrazCfg.montar(); const L = TrazCfg.P.filter(i => i.grupo === 'Só no Gel · parâmetros do gel' && /descartes/i.test(i.titulo)); const W2 = JSON.parse(JSON.stringify(Cad.D)); L.forEach(i => i.fn(W2)); return { n: L.length, titulo: L.map(i => i.titulo).join(' | '), descs: (W2.equipamentos.find(x => x.codigo === alvo.codigo).gel || {}).descs || [] }; };
-    TrazCfg.B.gel.config.equips = eqs; alvo.gel = null; const a = rodar();
-    alvo.gel = { tara: 80, descs: [{ id: 'dfb', comp: 'completo', cat: 'T' }] }; const b = rodar();
-    alvo.gel = { tara: 80, descs: [{ id: 'dcr', comp: 'completo', cat: 'T', local: 'CAIXA REJEIÇÃO' }, { id: 'dfb', comp: 'completo', cat: 'T', local: 'FUNIL BERÇO' }] }; const c = rodar();
-    return { a: a.descs.map(d => d.id + ':' + d.local), an: a.n, b: b.descs.map(d => d.id + ':' + d.local), bt: b.titulo, cn: c.n }; });
-  ok(g9.an === 1 && JSON.stringify(g9.a) === JSON.stringify(['dcr:CAIXA REJEIÇÃO', 'dfb:FUNIL BERÇO']), 'GEL-09: dois pontos do Gel na mesma máquina juntam-se, cada descarte com o seu Local ' + JSON.stringify(g9));
-  ok(/Refazer descartes/.test(g9.bt) && JSON.stringify(g9.b) === JSON.stringify(['dfb:FUNIL BERÇO', 'dcr:CAIXA REJEIÇÃO']), 'GEL-09: máquina que ficou só com o último ponto: "Refazer descartes" acrescenta o que falta e preenche o local');
-  ok(g9.cn === 0, 'GEL-09: com todos os pontos e locais, nada a propor');
+  const mig = await po.evaluate(() => {
+    const cad = JSON.parse(JSON.stringify(Cad.D));
+    const alvo = cad.equipamentos[0];
+    alvo.gel = { tara: 80, descs: [
+      { id: 'dcr', comp: 'completo', cat: 'T', local: 'CAIXA REJEIÇÃO' },
+      { id: 'dfb', comp: 'completo', cat: 'T', local: 'FUNIL BERÇO' },
+    ] };
+    const cfg = { config: {
+      params: [{ from: '2000-01-01', pT: 2.1, pB: 0.71, pP: 0.5 }],
+      fmts: [{ from: '2000-01-01', tara: 70, taraP: 4, sobra: 1.3,
+        f: { '100': { tubo: 4.8, gel: 0.83, adit: 0.02, tr: 2.31 }, '75': { tubo: 3.55, gel: 0.82, adit: 0.015, tr: 2.29 } } }],
+      motivos: [{ id: 'm9', name: 'Quebra', comps: [], active: true }],
+      equips: [{ id: 'g1', portal: alvo.codigo, descs: [{ id: 'dcr' }] }, { id: 'g2', portal: alvo.codigo, descs: [{ id: 'dfb' }] }],
+    } };
+    cad.parametros.gel = {};
+    const plano = ImportarV1.plano(cad, cfg);
+    TrazCfg.B = { gel: cfg }; TrazCfg.P = []; TrazCfg.avisos = []; TrazCfg.montar();
+    return { plano, antigas: TrazCfg.P.filter(i => /^Só no Gel · (equipamentos|parâmetros do gel)$/.test(i.grupo)) };
+  });
+  const mg = mig.plano;
+  ok(!mig.antigas.length && mg.parametros.processo[0].pT === 2.1 && mg.gel.formatos[0].sobraBarrilKg === 1.3 && mg.parametros.motivos[0].id === 'm9',
+    '4a migração: só a importação v1 leva processo, formatos e motivos do Gel');
+  const pontos = mg.gel.locais.filter(l => ['CAIXA REJEIÇÃO', 'FUNIL BERÇO'].includes(l.local));
+  ok(pontos.length === 2 && pontos.every(p => p.embalagemG === 80), 'GEL-09: dois locais no mesmo equipamento, cada um com seu nome e embalagem');
+  ok(pontos.some(p => p.legado.some(r => r.e === 'g1' && r.d === 'dcr')) && pontos.some(p => p.legado.some(r => r.e === 'g2' && r.d === 'dfb')),
+    'GEL-09: as pesagens dos dois locais antigos resolvem seus IDs sem regravar o histórico');
 
   /* ---------- 4c (GEL-03 / PRD-10): Registrar scrap de gel no turno da Produção ---------- */
   const o = await nova('OEE-Vacutainer.html', 'Produção 4c');
@@ -116,7 +150,7 @@ const { chromium } = require('playwright');
     const C = { schema: 'vac-cadastros', rev: 11, parametros: { gel: { formatos: [{ from: '2000-01-01', tara: 70, taraP: 4, sobra: 1.3, f: { '100': { tubo: 4.8, gel: 0.83, adit: 0.02, tr: 2.31 }, '75': { tubo: 3.55, gel: 0.82, adit: 0.015, tr: 2.29 } } }], processo: [{ from: '2000-01-01', g: 0.97, pT: 2.1, pB: 0.71, pP: 0.5 }], motivos: [{ id: 'm1', name: 'Gel com bolha', comps: [], active: true }] } },
       equipamentos: [{ codigo: 'EQ90', nome: 'Máquina de gel', ativo: true, categoria: 'gel', gel: { tara: 80, descs: [{ id: 'd1', comp: 'tubogel', cat: 'T', mots: [] }, { id: 'd2', comp: 'barril', cat: 'B' }] } }],
       catalogos: [{ codigo: catCode, tipoItem: 'tubo', nome: 'Tubo', ativo: true, formato: '13x100', gel: { fmt: '100', vig: [{ from: '2000-01-01', gTubo: 0.85, bomKg: 8.84, bomBase: 10000, tol: 6 }] } }], materiais: [], bom: [] };
-    localStorage.setItem('vac.cadastros', JSON.stringify(C)); Engine.bumpConfig();
+    localStorage.setItem('vac.cadastros', JSON.stringify(cadastroGelTeste(C))); Engine.bumpConfig();
     App.sel.dayId = day.id; App.sel.date = day.date; go('launch'); await new Promise(r => setTimeout(r, 400));
     /* 2.4.41 (PRD-13): o gel fica no popup "Lançar scrap" do turno → "Registrar scrap de gel (pesagem)" */
     const sb = document.querySelector(`[data-scrapturno="${ps.id}"]`); if (!sb) return { semBotao: true };
@@ -130,7 +164,7 @@ const { chromium } = require('playwright');
     const prev = m.querySelector('[data-gc="EQ90|d1"]').innerText;
     m.querySelector('#scOk').click(); await new Promise(r => setTimeout(r, 500));
     const d2 = Store.S.db.productionDays.find(x => x.id === day.id), ps2 = d2.shifts.find(p => p.id === ps.id), gs = ps2.gelScrap;
-    const esperado = vacGel.pesagem({ desc: { comp: 'tubogel', cat: 'T' }, taraEq: 80, kg: 2.345, cg: { fmt: '100', vig: [{ from: '2000-01-01', gTubo: 0.85 }] }, date: day.date, fmts: C.parametros.gel.formatos, params: C.parametros.gel.processo });
+    const esperado = vacGel.pesagem({ local: vacGel.localGel('EQ90', 'd1'), kg: 2.345, cg: { fmt: '100', vig: [{ from: '2000-01-01', gTubo: 0.85 }] }, date: day.date });
     d2.demo = false;   // o exports ignora dias de demonstração; aqui o dia faz papel de dia real
     const ex = Exports.build(db()), linha = (ex.porDiaTurno || []).find(x => x.dia === day.date && x.turno === (ps.snap.code || ps.snap.name));
     // tela do turno (operador)
@@ -152,14 +186,14 @@ const { chromium } = require('playwright');
     const antesA = JSON.stringify(S.prodlog[A]);
     S.config.equips = [{ id: 'eq-1', name: 'Máquina de gel', tara: '', active: true, descs: [] }];
     const G = { formatos: [{ from: '2000-01-01', tara: 70, taraP: 4, sobra: 1.3, f: { '100': { tubo: 4.8, gel: 0.83, adit: 0.02, tr: 2.31 }, '75': { tubo: 3.55, gel: 0.82, adit: 0.015, tr: 2.29 } } }], processo: [{ from: '2000-01-01', g: 0.97, pT: 2.1, pB: 0.71, pP: 0.5 }], motivos: [], registroPelaProducaoDesde: addDays(h, -2) };
-    localStorage.setItem('vac.cadastros', JSON.stringify({ schema: 'vac-cadastros', rev: 12, parametros: { gel: G }, equipamentos: [{ codigo: 'EQ90', nome: 'Máquina de gel', ativo: true, categoria: 'gel', gel: { tara: 80, descs: [{ id: 'd1', comp: 'tubogel', cat: 'T', mots: [] }] } }],
-      catalogos: S.catalogs.map(k => ({ codigo: k.num, tipoItem: 'tubo', nome: k.desc, ativo: true, gel: { fmt: '100', vig: [{ from: '2000-01-01', gTubo: 0.85, bomKg: 8.84, bomBase: 10000, tol: 6 }] } })), materiais: [], bom: [] }));
+    localStorage.setItem('vac.cadastros', JSON.stringify(cadastroGelTeste({ schema: 'vac-cadastros', rev: 12, parametros: { gel: G }, equipamentos: [{ codigo: 'EQ90', nome: 'Máquina de gel', ativo: true, categoria: 'gel', gel: { tara: 80, descs: [{ id: 'd1', comp: 'tubogel', cat: 'T', mots: [] }] } }],
+      catalogos: S.catalogs.map(k => ({ codigo: k.num, tipoItem: 'tubo', nome: k.desc, ativo: true, gel: { fmt: '100', vig: [{ from: '2000-01-01', gTubo: 0.85, bomKg: 8.84, bomBase: 10000, tol: 6 }] } })), materiais: [], bom: [] })));
     GelProd.oee = { estado: 'pasta', geradoEm: h + 'T07:00', d: { porDiaTurno: [{ dia: X, turno: 'T1', boa: 500000, extraMin: 30, semProducao: null, gel: { none: false, pesagens: [{ e: 'EQ90', d: 'd1', cat: num, kg: 2.345, nb: 0, mots: [] }], kg: { T: 0.4, B: 0, P: 0 } } }, { dia: X, turno: 'T2', boa: 400000, extraMin: 0, semProducao: null, gel: { none: true, pesagens: [], kg: { T: 0, B: 0, P: 0 } } }, { dia: A, turno: 'T1', boa: 999000 }],
       porDiaCatalogo: [{ dia: X, turno: 'T1', catalogo: num, boa: 500000 }, { dia: X, turno: 'T2', catalogo: num, boa: 400000 }, { dia: A, turno: 'T1', catalogo: num, boa: 999000 }] } };
     GelProd.lidoEm = Date.now(); render();
     const rec = S.prodlog[X], pc = prodCalc(X, rec);
-    const pes = vacGel.pesagem({ desc: { comp: 'tubogel', cat: 'T' }, taraEq: 80, kg: 2.345, cg: { fmt: '100', vig: [{ from: '2000-01-01', gTubo: 0.85 }] }, date: X, fmts: G.formatos, params: G.processo });
-    const teo = vacGel.teorico({ tubosPorCat: { x: 900000 }, date: X, cg: () => ({ fmt: '100', vig: [{ from: '2000-01-01', gTubo: 0.85 }] }), fmts: G.formatos, params: G.processo });
+    const pes = vacGel.pesagem({ local: vacGel.localGel('EQ90', 'd1'), kg: 2.345, cg: { fmt: '100', vig: [{ from: '2000-01-01', gTubo: 0.85 }] }, date: X });
+    const teo = vacGel.teorico({ tubosPorCat: { x: 900000 }, date: X, cg: () => ({ fmt: '100', vig: [{ from: '2000-01-01', gTubo: 0.85 }] }) });
     ui.tab = 'prod'; ui.rgDate = X; ui.rgDraft = null; render(); await new Promise(r => setTimeout(r, 200));
     const fs = document.querySelector('fieldset[disabled] .rgform'), aba = (TABS.find(t => t[0] === 'prod') || [])[1];
     return { from: rec && rec.fromProd, tubes: pc.tubes, x: rec.turns.T1.x, none: !!rec.turns.T2.none, sT: rec.sT, pesGel: +pes.gel.toFixed(3), teoGel: pc.teo, teoKit: teo.teo, aEscopo: (() => { GelProd.aplicar(); GelProd.aplicar();   /* revisão do PR #108: sincronizar de novo não apaga o scrap manual */
@@ -173,11 +207,11 @@ const { chromium } = require('playwright');
   ok(r4d.aEscopo.vista && r4d.aEscopo.tubos === 999000 && r4d.aEscopo.scrap, 'G3 (GEL-07): antes do corte os tubos vêm da Produção (vista) e o scrap manual do Gel continua, mesmo sincronizando de novo ' + JSON.stringify(r4d.aEscopo));
   ok(r4d.aEscopo.base && r4d.aEscopo.exp, 'G3 (GEL-07): a base e os exports do Gel guardam o registro original do dia (a vista da Produção fica só na tela)');
   ok(r4d.fs && r4d.salvar && r4d.txt && r4d.aba === 'Resumo do dia', 'GEL-05: Registro do dia vira Resumo do dia (só leitura, com o aviso de que vem da Produção)');
-  await g4d.evaluate(() => localStorage.removeItem('vac.cadastros'));
 
   /* ---------- 4e (GEL-04): Teórico × Real na Produção, só com catálogo que usa gel ---------- */
   const eg = await g4d.evaluate(() => { const ex = gelExports(), L = ex.porDiaGel || [], x = L[L.length - 1]; if (!x) return null; const c = prodCalc(x.dia, S.prodlog[x.dia]); return { n: L.length, ok: Math.abs(x.teoKg - Math.round(c.teo * 1000) / 1000) < 1e-9 && x.baixadoKg === Math.round(c.baixKg * 1000) / 1000 }; });
   ok(eg && eg.n > 0 && eg.ok, 'GEL-04: o exports do Gel publica o teórico × real de cada dia (porDiaGel), com as baixas de barril (G4)');
+  await g4d.evaluate(() => localStorage.removeItem('vac.cadastros'));
   const o5 = await nova('OEE-Vacutainer.html', 'Produção 4e');
   const r4e = await o5.evaluate(async () => { document.querySelectorAll('.overlay').forEach(x => x.remove()); Demo.enterExample(); await new Promise(r => setTimeout(r, 300));
     const day = Store.S.db.productionDays.filter(x => !x.deleted && x.status !== 'fechado').sort((a, b) => a.date < b.date ? 1 : -1)[0];
@@ -187,14 +221,14 @@ const { chromium } = require('playwright');
       equipamentos: [{ codigo: 'EQ90', nome: 'Máquina de gel', ativo: true, categoria: 'gel', gel: { tara: 80, descs: [{ id: 'd1', comp: 'tubogel', cat: 'T' }] } }],
       catalogos: [{ codigo: code, tipoItem: 'tubo', nome: 'Tubo', ativo: true, ...(gel ? { gel: { fmt: '100', vig: [{ from: '2000-01-01', gTubo: 0.85, bomKg: 8.84, bomBase: 10000, tol: 6 }] } } : {}) }], materiais: [], bom: [] });
     // sem gel no catálogo: o quadro não aparece
-    localStorage.setItem('vac.cadastros', JSON.stringify(cad(false))); App.sel.dayId = day.id; App.sel.date = day.date; go('launch'); await new Promise(r => setTimeout(r, 300)); const semGel = !document.querySelector('#gelDia');
-    localStorage.setItem('vac.cadastros', JSON.stringify(cad(true)));
+    localStorage.setItem('vac.cadastros', JSON.stringify(cadastroGelTeste(cad(false)))); App.sel.dayId = day.id; App.sel.date = day.date; go('launch'); await new Promise(r => setTimeout(r, 300)); const semGel = !document.querySelector('#gelDia');
+    localStorage.setItem('vac.cadastros', JSON.stringify(cadastroGelTeste(cad(true))));
     GelTurno.salvar(day.id, ps.id, { none: false, eq: [{ e: 'EQ90', d: 'd1', cat: code, kg: 2.345, nb: 0, mots: [] }] });
     GelDia.gel = { geradoEm: day.date + 'T23:00', d: { porDiaGel: [{ dia: day.date, baixadoKg: 900, barris: 5 }] } }; GelDia.lidoEm = Date.now();
     render(); await new Promise(r => setTimeout(r, 300));
     const card = document.querySelector('#gelDia'); const res = Engine.computeDay(db(), Store.S.db.productionDays.find(x => x.id === day.id)), x = GelDia.calc(Store.S.db.productionDays.find(x => x.id === day.id), res);
     const tub = res.flat.filter(f => f.cat === catId && f.good > 0).reduce((a, f) => a + f.good, 0);
-    const C = vacGel.ctx(), teo = vacGel.teorico({ tubosPorCat: { [code]: tub }, date: day.date, cg: c => C.cat(c), fmts: C.fmts, params: C.params });
+    const C = vacGel.ctx(), teo = vacGel.teorico({ tubosPorCat: { [code]: tub }, date: day.date, cg: c => C.cat(c) });
     return { semGel, card: !!card, txt: card ? card.innerText : '', tubos: x.tubos, tub, teo: x.teo.teo, teoK: teo.teo, desvio: x.desvio, idx: x.idx, sT: x.sc.T };
   });
   ok(r4e.semGel, 'GEL-04: sem catálogo com gel no dia, o quadro de Teórico × Real nem aparece');

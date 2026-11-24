@@ -29,7 +29,7 @@ const PAGS = ['Portal.html', 'OEE-Vacutainer.html', 'Perdas-Ordem.html', 'Gestã
     const r = await p.evaluate(() => {
       localStorage.setItem('vac.cadastros', JSON.stringify({ schema: 'vac-cadastros', rev: 1, cambio: [{ codigo: 'USD', ativo: true, vigencias: [{ de: '2026-11-01', ate: '2026-11-30', cotacao: 5 }, { de: '2026-12-01', cotacao: 6 }] }] }));
       const vs = [{ de: '2026-11-01', ate: '2026-11-30', v: 'nov' }, { de: '2026-12-01', v: 'dez' }];
-      return { hoje: vacHoje(), vig: (vacVig(vs) || {}).v, vigData: (vacVig(vs, '2026-12-01') || {}).v, cambio: (vacCambio(undefined, 'USD') || {}).cotacao, cambioData: (vacCambio('2026-12-02', 'USD') || {}).cotacao };
+      return { hoje: vacHoje(), vig: (vacCad.vigente(vs) || {}).v, vigData: (vacCad.vigente(vs, '2026-12-01') || {}).v, cambio: (vacCambio(undefined, 'USD') || {}).cotacao, cambioData: (vacCambio('2026-12-02', 'USD') || {}).cotacao };
     });
     ok(r.hoje === '2026-11-30' && r.vig === 'nov' && r.cambio === 5, `22h30 de 30/11 (Brasília), sem data: dia ${r.hoje}, vigência ${r.vig}, câmbio ${r.cambio} (antes: dezembro e 6)`);
     ok(r.vigData === 'dez' && r.cambioData === 6, 'com data explícita: a data do fato continua valendo');

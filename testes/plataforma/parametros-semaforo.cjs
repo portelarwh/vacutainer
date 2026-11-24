@@ -17,11 +17,11 @@ const html = fs.readFileSync(path.resolve(__dirname, '../../Plataforma.html'));
     const f = await (await el.elementHandle()).contentFrame(); await f.waitForFunction(() => typeof Cad !== 'undefined' && Cad.D);
     await f.evaluate(() => { location.hash = '#cadastros/parametros'; }); await f.waitForSelector('#sSemOk');
 
-    // 1) cada cartão com o próprio Salvar no topo (gerais, semáforo, Produção, Gel)
-    const topo = await f.evaluate(() => ['#parGer #sGerOk', '#parSem #sSemOk', '#parProd #ppOk', '#parGel #pgOk'].map(s => { const b = document.querySelector(s); return !!b && !!b.closest('.par-hd') && b.closest('.card').firstElementChild === b.closest('.par-hd'); }));
-    assert.deepEqual(topo, [true, true, true, true], 'Salvar no topo de cada cartão');
+    // 1) cada cartão com o próprio Salvar no topo (gerais, semáforo, Produção; o Gel foi para Administração › Gel)
+    const topo = await f.evaluate(() => ['#parGer #sGerOk', '#parSem #sSemOk', '#parProd #ppOk'].map(s => { const b = document.querySelector(s); return !!b && !!b.closest('.par-hd') && b.closest('.card').firstElementChild === b.closest('.par-hd'); }));
+    assert.deepEqual(topo, [true, true, true], 'Salvar no topo de cada cartão');
     assert.equal(await f.locator('#sParOk').count(), 0, 'sem o botão único do fim');
-    console.log('ok Parâmetros: Salvar no topo dos cartões gerais, semáforo, Produção e Gel');
+    console.log('ok Parâmetros: Salvar no topo dos cartões gerais, semáforo e Produção');
 
     // 2) com amarelo, amarelo >= verde é recusado e a mensagem aparece logo abaixo do botão
     await f.fill('[data-par="semaforoVerdePct"]', '100'); await f.fill('[data-par="semaforoAmareloPct"]', '100'); await f.click('#sSemOk');

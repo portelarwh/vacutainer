@@ -34,7 +34,29 @@ const html = fs.readFileSync(path.resolve(__dirname, '../../Plataforma.html'));
     console.log('ok tabela: Pos., Código, Código MES, Foto (miniatura), Nome, Tipo, Papel; a Linha (0) no topo e fixa');
 
     // 2) arrastar EQ12 para antes do EQ03 com o ponteiro: os ativos ficam 1..N e a Linha 0
-    const h = f.locator('tr[data-cod="EQ12"] td.eq-h'); await h.scrollIntoViewIfNeeded(); const a = await h.boundingBox(), d = await f.locator('tr[data-cod="EQ03"]').boundingBox();
+    const h = f.locator('tr[data-cod="EQ12"] td.eq-h'), alvo = f.locator('tr[data-cod="EQ03"]');
+    await h.scrollIntoViewIfNeeded();
+    const visiveis = await f.evaluate(() => {
+      const origem = document.querySelector('tr[data-cod="EQ12"]'), destino = document.querySelector('tr[data-cod="EQ03"]');
+      const table = origem.closest('table'), cabecalho = table.rows[0];
+      let lista = table.parentElement;
+      while (lista && !(lista.scrollHeight > lista.clientHeight + 1 && /auto|scroll/.test(getComputedStyle(lista).overflowY))) {
+        lista = lista.parentElement;
+      }
+      if (!lista) return { origem: false, destino: false };
+      const topo = table.getBoundingClientRect().top - lista.getBoundingClientRect().top + lista.scrollTop - lista.clientTop;
+      const offset = linha => topo + linha.offsetTop - cabecalho.offsetTop;
+      const minimo = Math.max(0, offset(origem) + origem.offsetHeight - lista.clientHeight);
+      const maximo = offset(destino) - cabecalho.offsetHeight;
+      lista.scrollTop = Math.max(minimo, Math.min(lista.scrollTop, maximo));
+      const O = origem.querySelector('.eq-h').getBoundingClientRect(), A = destino.getBoundingClientRect();
+      return {
+        origem: origem.contains(document.elementFromPoint(O.left + O.width / 2, O.top + O.height / 2)),
+        destino: destino.contains(document.elementFromPoint(A.left + 300, A.top + 4)),
+      };
+    });
+    assert.deepEqual(visiveis, { origem: true, destino: true }, 'a alça e o destino estão visíveis sem sobreposição do cabeçalho');
+    const a = await h.boundingBox(), d = await alvo.boundingBox();
     await page.mouse.move(a.x + a.width / 2, a.y + a.height / 2); await page.mouse.down(); await page.mouse.move(a.x + 8, a.y - 10, { steps: 4 }); await page.mouse.move(d.x + 300, d.y + 4, { steps: 12 }); await page.mouse.up(); await w(900);
     assert.equal(dialogos.length, 0, 'sem confirmação ao arrastar (grava direto)');
     const p2 = await pos();
@@ -55,17 +77,17 @@ const html = fs.readFileSync(path.resolve(__dirname, '../../Plataforma.html'));
     console.log('ok ficha: posição 3 ocupada → EQ12 e os seguintes +1 (EQ10 vai a 12); posição 0 recusada; tudo na fila/auditoria');
     await f.evaluate(() => Modal.close(true));
 
-    // 4) gel: ficha do equipamento de gel mostra os dados do formato e o link leva aos Parâmetros › Gestão de Gel
+    // 4) gel: a ficha do equipamento de gel só tem o link para Administração › Gel (formato e locais moraram em Parâmetros e na ficha)
     const g = await f.evaluate(async () => { let q = Cad.D.equipamentos.find(x => x.categoria === 'gel'); if (q) return q.codigo;   /* a demonstração não tem: o EQ03 (dispensor de gel) vira categoria Gel só nesta página */
       q = Cad.D.equipamentos.find(x => x.codigo === 'EQ03'); await Cad.ops([{ acao: 'edição', tipo: 'equipamentos', codigo: 'EQ03', mudancas: { categoria: { antes: q.categoria ?? null, depois: 'gel' } }, motivo: 'teste' }]); return 'EQ03'; });
     assert.ok(g, 'equipamento de gel na demonstração');
     await f.evaluate(c => Ficha.abrir('equipamentos', c), g); await w(400);
-    const t4 = await f.evaluate(() => { const n = document.querySelector('#fBox [data-irpar="gel"]'); const box = n && n.closest('.note'); return { link: !!n, txt: box ? box.textContent.replace(/\s+/g, ' ') : '' }; });
-    assert.ok(t4.link, 'link para alterar'); assert.match(t4.txt, /Saco da pesagem\s*75 g/); assert.match(t4.txt, /Folha da purga\s*5 g/); assert.match(t4.txt, /Sobra no barril\s*–\s*descarte/); assert.match(t4.txt, /Tubo 100\s*4,779/);
-    await f.click('#fBox [data-irpar="gel"]'); await w(900);
-    const t5 = await f.evaluate(() => ({ hash: location.hash, sec: Cad.ui.sec, gel: !!document.querySelector('#parGel'), ficha: Ficha.aberta() }));
-    assert.deepEqual(t5, { hash: '#cadastros/parametros/gel', sec: 'parametros', gel: true, ficha: false });
-    console.log('ok gel: dados do formato (saco, folha, sobra e composição) na ficha; o link abre Parâmetros › Gestão de Gel');
+    const t4 = await f.evaluate(() => { const n = document.querySelector('#fBox [data-irhash]'); const box = n && n.closest('p'); return { link: !!n, txt: box ? box.textContent.replace(/\s+/g, ' ') : '' }; });
+    assert.ok(t4.link, 'link para os locais'); assert.match(t4.txt, /Locais de descarte deste equipamento › Gel/); assert.doesNotMatch(await f.locator('#fBox').innerText(), /Saco da pesagem|Local do descarte/, 'sem a tabela de embalagem e descartes');
+    await f.click('#fBox [data-irhash]'); await w(900);
+    const t5 = await f.evaluate(() => ({ hash: location.hash, sec: Cad.ui.sec, gel: !!document.querySelector('#gelLoc'), ficha: Ficha.aberta() }));
+    assert.deepEqual(t5, { hash: '#cadastros/gel/locais', sec: 'gel', gel: true, ficha: false });
+    console.log('ok gel: ficha só com o link; ele abre Administração › Gel nos locais de descarte');
 
     assert.deepEqual(erros, [], 'sem erro de JavaScript'); console.log('ok equipamentos: sem erro de JavaScript');
   } finally { if (browser) await browser.close(); srv.close(); }

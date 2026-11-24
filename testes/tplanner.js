@@ -92,6 +92,10 @@ const espera = p => p.waitForFunction(() => !Store.saving && !Store.queue.length
   await Promise.all([p1.evaluate(() => Store.save()), p2.evaluate(() => Store.save())]); await espera(p1); await espera(p2);
   // a releitura confirma a gravação, mas não é transação: a próxima leitura confere se as alterações confirmadas continuam na base
   await p1.evaluate(() => Store.reload()); await p2.evaluate(() => Store.reload()); await p1.waitForTimeout(300); await espera(p1); await espera(p2);
+  /* numa máquina carregada a segunda gravação (com releitura e nova tentativa) passa dos 8 s de espera(), que desiste em silêncio:
+     espera aqui até as duas estações terem gravado tudo (até 30 s) e só então confere a base */
+  for (let t0 = Date.now(); Date.now() - t0 < 30000;) { const n = await Promise.all([p1, p2].map(p => p.evaluate(() => (Store.saving ? 1 : 0) + Store.queue.length))); B = await p1.evaluate(LER);
+    if (!n[0] && !n[1] && ['AC-1', 'AC-2', 'AC-3', 'AC-4'].every(id => B.acoes.some(a => a.id === id))) break; await p1.waitForTimeout(250); }
   B = await p1.evaluate(LER); const A1 = B.acoes.find(a => a.id === 'AC-1');
   ok(['AC-1', 'AC-2', 'AC-3', 'AC-4'].every(id => B.acoes.some(a => a.id === id)) && A1.status === 'em andamento' && A1.prazo > A1.prazoOriginal, `duas estações juntas: 4 ações, status de uma e prazo da outra na mesma ação (rev ${B.rev})`);
   ok(B.eventos.some(e => e.tipo === 'status' && e.acao === 'AC-1') && B.eventos.some(e => e.tipo === 'prazo' && e.motivo === 'peça'), 'as duas mudanças ficam no histórico');

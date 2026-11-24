@@ -1,6 +1,6 @@
 # Pendências atuais · Vacutainer
 
-Atualizado em 21/11/2026. Só itens em aberto: o que está pronto e conferido sai daqui (histórico no Git e em docs/CONTRATO-MOTORES.md). Este arquivo é a fonte única do **estado** das entregas. O [plano](docs/PLANO-DE-MELHORIAS.md) define a ordem e os critérios de aceite, usando os mesmos IDs. Item recusado no [histórico](docs/DECISOES-HISTORICAS.md) só volta com fato novo.
+Atualizado em 24/11/2026. Só itens em aberto: o que está pronto e conferido sai daqui (histórico no Git e em docs/CONTRATO-MOTORES.md). Este arquivo é a fonte única do **estado** das entregas. O [plano](docs/PLANO-DE-MELHORIAS.md) define a ordem e os critérios de aceite, usando os mesmos IDs. Item recusado no [histórico](docs/DECISOES-HISTORICAS.md) só volta com fato novo.
 
 ## Como ler
 
@@ -16,6 +16,7 @@ Encerrados por decisão do responsável em 21/11/2026: TL-02 (as duas regras da 
 
 | ID | Prioridade | Estado | O que é e o que falta | Responsável |
 |---|---|---|---|---|
+| ADM-CENTRAL bloco 1 | P1 | Pronto, aguardando importação | Administração por assunto, cadastro v2 e Gestão de Gel e Produção com a mesma leitura de formatos e locais. Na pasta real, abra Administração › Sistema › **Importar das bases atuais**, confira a prévia, importe e confira Administração › Gel. | Responsável |
 | ADM-01 | P1 | Pronto, aguardando conferência | **O que é:** na plataforma 1.8.5 a Administração diz por que não conectou à pasta (permissão, erro de leitura ou falta de `00. Bases/portal-base.json`), oferece "Conectar agora" e a casca mostra "Tentar conexão novamente". **Falta:** copiar o `portal-base.json` do backup para `00. Bases` (o arquivo foi apagado quando a página Portal virou a Administração dentro do HTML único) e conferir que a Administração conecta e permite editar. | Responsável |
 | LOGIN-01 | P2 | Pronto, aguardando conferência (plataforma 1.8.43) | **O que é:** plataforma 1.8.9: tela de entrada com foto desfocada e login por ID e senha ou "Entrar só para consulta". Na 1.8.43 a foto de fundo e a logo BD (`Marca/BD_2-Color_RGB.svg`) aparecem também sem a pasta da linha conectada, e a janela de login dos módulos usa a mesma logo; teste `testes/plataforma/login-marca.cjs`. As fotos e a logo já estão na pasta Marca (informado pelo responsável, 21/11/2026). **Falta:** conferir a entrada no computador da linha. | Responsável |
 | EQP-02 | P2 | Pronto, aguardando conferência | **O que é:** na plataforma 1.8.5, botão Editar nas listas de cadastro, motivo quando a edição está bloqueada, campos Código MES, Departamento e Work Center no equipamento e Administração › Importar › Equipamentos (MES). **Falta:** colar a planilha real do MES, escolher na prévia os casos sem ligação automática (Cap Placer, Metro, elevadores, novos) e conferir o resultado. | Responsável |
