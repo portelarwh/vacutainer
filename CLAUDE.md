@@ -58,7 +58,7 @@ npm run test:reprodutibilidade
 
 A cada versão nova da plataforma, acrescente a entrada em **Administração › Novidades** (`NOVIDADES` em motor/portal; frases curtas: novo, melhoria ou correção); o teste `novidades` exige que a versão da plataforma seja a primeira.
 
-`npm run atualizar:metadados` valida e atualiza hashes após mudanças no código incorporado. `npm run dev` serve o próprio arquivo apenas para desenvolvimento. Não recriar build.py, aplicar_kit21.py ou um empacotador que dependa de páginas separadas. A regressão preserva as suítes operacionais de `testes/tudo.js` (71 em 21/11/2026) e os testes de integração da plataforma; testes de geradores removidos foram substituídos pela validação do HTML canônico.
+`npm run atualizar:metadados` valida e atualiza hashes após mudanças no código incorporado. `npm run dev` serve o próprio arquivo apenas para desenvolvimento. Não recriar build.py, aplicar_kit21.py ou um empacotador que dependa de páginas separadas. A regressão preserva as suítes operacionais de `testes/tudo.js` (70 em 24/11/2026) e os testes de integração da plataforma; testes de geradores removidos foram substituídos pela validação do HTML canônico.
 
 Aparência de página: skill [padrao-visual](.claude/skills/padrao-visual/SKILL.md), com `node scripts/varredura-visual.mjs --modulo "<Módulo>" --aba <id>`; só visual, sem fórmula.
 

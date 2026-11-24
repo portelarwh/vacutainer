@@ -9,6 +9,9 @@
 // (a2) modo arquivo: base sem schemaVersion aberta por arquivo, e reaberta da cópia do navegador, continua bloqueada e não é
 //      convertida (Model.ensure não inventa schemaVersion); importar ou restaurar uma base de versão anterior é recusado;
 // (f) Gestão de Gel › programação em tubos sem vigência de perdas: a tela abre com o aviso (sem erro);
+// (g) Administração: portal-base sem schemaVersion (ou com versão anterior) abre só para consulta com o texto exato, sem conversão
+//     (Store.fix não inventa schemaVersion) e sem gravação; restaurar uma cópia de versão anterior é recusado; o cadastro
+//     (vacutainer-cadastros) de versão anterior também só consulta;
 // (e) nenhum erro de JavaScript.
 const { chromium } = require('playwright'), http = require('http'), fs = require('fs'), path = require('path'), assert = require('assert/strict');
 const html = fs.readFileSync(path.resolve(__dirname, '../../Plataforma.html'));
@@ -163,6 +166,48 @@ const BLOQUEIO = 'Base de versão anterior. Comece uma base nova nesta pasta.';
         assert.deepEqual(r2, { formato: BLOQUEIO, banner: true, erro: BLOQUEIO, sv: 'sem', cacheSv: 'sem', lancar: false }, 'reaberta da cópia do navegador: continua bloqueada e sem conversão ' + JSON.stringify(r2));
         console.log('ok (a2) modo arquivo: base sem schemaVersion continua bloqueada ao reabrir a cópia do navegador; importar versão anterior é recusado');
       } finally { await ctx2.close(); srv2.close(); }
+    }
+
+    // (g) Administração: portal-base e cadastro de versão anterior
+    {
+      const adm = async () => { const f = await (await page.locator('iframe[title="Módulo Administração"]').elementHandle({ timeout: 60000 })).contentFrame();
+        await f.waitForFunction(() => typeof Cad !== 'undefined' && Cad.D && typeof Store !== 'undefined' && Store.B, null, { timeout: 60000 }); return f; };
+      await page.evaluate(() => { location.hash = '#/portal'; });
+      let a = await adm();
+      const cad0 = await a.evaluate(() => JSON.stringify(vacDemo.ler('cad')));
+      for (const caso of ['sem', 0]) {
+        await a.evaluate(v => { const b = vacDemo.ler('portal'); if (v === 'sem') delete b.schemaVersion; else b.schemaVersion = v; vacDemo.salvar('portal', b); }, caso);
+        await a.evaluate(() => location.reload()); a = await adm();
+        const r = await a.evaluate(async () => {
+          const rev = Store.B.rev; let erro = ''; try { await Store.commit('teste', b => { b.config.avisoDias = 99; }); } catch (e) { erro = e.message; }
+          let arq = ''; try { await Store.writeRemote(); } catch (e) { arq = e.message; }
+          renderTop(); const fx = Store.fix({ schema: 'portal-base', rev: 3, config: {}, audit: [] });
+          return { formato: Store.formato, topo: document.querySelector('#stBase').textContent, erro, arq, rev: Store.B.rev === rev, dias: Store.B.config.avisoDias !== 99,
+            fix: 'schemaVersion' in fx, base: vacDemo.ler('portal').schemaVersion ?? 'sem', novo: vacFormatoBase(PAGE.vazio(), 'portal-base', 1) };
+        });
+        assert.deepEqual(r, { formato: BLOQUEIO, topo: r.topo, erro: BLOQUEIO, arq: BLOQUEIO, rev: true, dias: true, fix: false, base: caso, novo: '' }, `(${caso}) portal-base só consulta ` + JSON.stringify(r));
+        assert.ok(r.topo.includes(BLOQUEIO), 'o topo da Administração mostra o texto exato: ' + r.topo);
+      }
+      await a.evaluate(() => { const b = vacDemo.ler('portal'); b.schemaVersion = 1; vacDemo.salvar('portal', b); });
+      // restaurar uma cópia de versão anterior é recusado
+      await a.evaluate(() => location.reload()); a = await adm();
+      const msgs = [], ouve = d => msgs.push(d.message()); page.on('dialog', ouve);
+      const antes = await a.evaluate(() => { App.show('config'); return JSON.stringify(Store.B); });
+      const copia = await a.evaluate(() => { const b = JSON.parse(JSON.stringify(Store.B)); delete b.schemaVersion; b.config.avisoDias = 77; return JSON.stringify(b); });
+      await a.setInputFiles('#cRest', { name: 'portal-base_copia.json', mimeType: 'application/json', buffer: Buffer.from(copia) }); await page.waitForTimeout(600);
+      page.off('dialog', ouve);
+      assert.ok(msgs.some(m => m.includes(BLOQUEIO)), 'restaurar cópia de versão anterior avisa o bloqueio ' + JSON.stringify(msgs));
+      assert.equal(await a.evaluate(() => JSON.stringify(Store.B)), antes, 'a base não mudou');
+      // cadastro de versão anterior: consulta, sem gravar e sem converter
+      await a.evaluate(() => { const c = vacDemo.ler('cad'); c.schemaVersion = 1; vacDemo.salvar('cad', c); location.reload(); }); a = await adm();
+      const c = await a.evaluate(async () => {
+        const m = Cad.D.materiais[0], n0 = m.nome;
+        const r = await Cad.ops([{ acao: 'edição', tipo: 'materiais', codigo: m.codigo, mudancas: { nome: { antes: n0, depois: n0 + ' Z' } }, motivo: 'teste' }]);
+        return { formato: Cad.formato, pode: Cad.podeEditar(true), motivo: Cad.motivoEdicao(), r, igual: Cad.D.materiais[0].nome === n0, sv: vacDemo.ler('cad').schemaVersion, lista: Cad.D.materiais.length > 0 };
+      });
+      assert.deepEqual(c, { formato: BLOQUEIO, pode: false, motivo: BLOQUEIO, r: false, igual: true, sv: 1, lista: true }, 'cadastro de versão anterior só consulta ' + JSON.stringify(c));
+      await a.evaluate(t => { vacDemo.salvar('cad', JSON.parse(t)); }, cad0);
+      console.log('ok (g) Administração: portal-base e cadastro de versão anterior só consulta, "' + BLOQUEIO + '", sem conversão nem gravação');
     }
 
     assert.deepEqual(erros, [], 'sem erro de JavaScript'); console.log('ok (e) sem erro de JavaScript');

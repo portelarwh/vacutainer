@@ -19,7 +19,8 @@ const COMUM = [
 export const PROIBIDO = {
   'comum/bases': COMUM.concat([/vacMoverBases/, /vacAvisoBases/, /\.migrando/, /registro-backup\.log/, /avisoImportacao/, /bomPct/, /cg\.gTubo/]),
   'comum/interface': COMUM.concat([/acoesLegado/, /#mwTrazer/]),
-  'motor/portal': [/vacMoverBases/, /vacAvisoBases/, /\.importar\(/],
+  'motor/portal': [/vacMoverBases/, /vacAvisoBases/, /\.importar\(/, /ImportarV1/, /importação v1/, /cadV1/, /admNivelTransicao/, /TrazCfg/, /cadTrazerCfg/,
+    /Carga\.abrir/, /Carga\.completar/, /Criar cadastro a partir das páginas/, /GEL_PROC_DEF/, /schemaVersion\s*<\s*2/, /formato antigo/],
   'motor/oee': [/vacMoverBases/, /vacAvisoBases/, /\.importar\(/, /db\.schemaVersion = SCHEMA_VERSION/],
   'motor/gel': [/vacMoverBases/, /vacAvisoBases/, /\.importar\(/, /procAt\(null\)/, /nf2\.format\(pa\.g\)\} g por tubo e as perdas vigentes(?![^`]*`:esc\(semPa\))/],
   'motor/perdas': [/vacMoverBases/, /vacAvisoBases/, /\.importar\(/],

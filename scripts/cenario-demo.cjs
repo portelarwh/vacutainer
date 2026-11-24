@@ -63,6 +63,11 @@ async function COMPLEMENTO([mod, id, desloc]) {
       }
       notas.push('cópias antigas de formato e locais removidas');
     }
+    // base limpa (24/11/2026): perfil sem assuntos só vê; os perfis do cenário trazem os assuntos explícitos da semente (DEFAULT_PERFIS)
+    if ((cad.perfis || []).some(p => !p.assuntos)) {
+      for (const p of cad.perfis) if (!p.assuntos) { const s = DEFAULT_PERFIS.find(x => x.codigo === p.codigo); p.assuntos = s ? JSON.parse(JSON.stringify(s.assuntos)) : Object.fromEntries(ADM_ASSUNTOS.map(a => [a.id, 'ver'])); }
+      notas.push('perfis com os assuntos explícitos');
+    }
     if (!notas.length) return '';
     gravar(cad); return 'cadastro: ' + notas.join('; ');
   }

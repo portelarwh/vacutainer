@@ -5,7 +5,9 @@
 //  3. arrastar o 3º local para o 1º lugar grava a ordem e reabrir a tela a mantém; "+ Local" e Excluir (inativar, nunca apagar);
 //  4. motivos e parâmetros do gel (4ª parte) gravam em parametros.gel sem tocar nas cópias antigas do formato;
 //  5. #parGel não existe mais e a ficha do equipamento não tem a tabela de descartes, só o link para Gel;
-//  6. perfil com Gel = ver só consulta; a auditoria registra cada gravação (tipo gel, com motivo); nenhum erro de JavaScript.
+//  6. perfil com Gel = ver só consulta; a auditoria registra cada gravação (tipo gel, com motivo);
+//  7. restaurar um backup volta também o bloco gel (formatos e locais) (defeito 1 do bloco 1);
+//  8. sem vigência de perdas teóricas, "+ Vigência" abre com os campos vazios (sem valor de fábrica); nenhum erro de JavaScript.
 const { chromium } = require('playwright'), http = require('http'), fs = require('fs'), path = require('path'), assert = require('assert/strict');
 const html = fs.readFileSync(path.resolve(__dirname, '../../Plataforma.html'));
 const w = (f, ms = 300) => f.waitForTimeout ? f.waitForTimeout(ms) : new Promise(r => setTimeout(r, ms));
@@ -127,6 +129,27 @@ const w = (f, ms = 300) => f.waitForTimeout ? f.waitForTimeout(ms) : new Promise
     assert.deepEqual(aud.map(a => a[1]), ['formatos', 'formatos', 'formatos', 'locais', 'locais', 'locais', 'locais', 'locais', 'locais'].slice(0, aud.length), 'auditoria do Gel por campo ' + JSON.stringify(aud));
     assert.ok(aud.every(a => a[2]), 'toda gravação do Gel tem motivo ' + JSON.stringify(aud)); assert.ok(aud.length >= 3);
     console.log('ok Gel = ver só consulta; auditoria: ' + aud.map(a => a[1] + ' (' + a[2] + ')').join(' | '));
+
+    // 7) restauração de backup volta o bloco gel (defeito 1 do bloco 1)
+    const R = await f.evaluate(async () => {
+      const backup = clone(Cad.D), gel0 = JSON.stringify(backup.gel);
+      const loc = Cad.D.gel.locais[0];
+      await Cad.ops([{ acao: 'edição', tipo: 'gel', codigo: null, mudancas: { locais: { antes: clone(Cad.D.gel.locais), depois: Cad.D.gel.locais.map(l => l.id === loc.id ? { ...l, local: l.local + ' MUDOU' } : l) } }, motivo: 'teste da restauração' }]);
+      const mudou = JSON.stringify(Cad.D.gel) !== gel0, doc = cadDocBackup(backup);
+      await Cad.ops([{ acao: 'restauração', tipo: '*', codigo: null, doc, baseRev: Cad.base.rev, origem: 'backup-teste.json', motivo: 'teste' }]);
+      return { mudou, docGel: !!doc.gel, volta: JSON.stringify(Cad.D.gel) === gel0 };
+    });
+    assert.deepEqual(R, { mudou: true, docGel: true, volta: true }, 'restaurar o backup volta formatos e locais do Gel ' + JSON.stringify(R));
+    console.log('ok restauração de backup volta o bloco gel');
+
+    // 8) sem vigência de perdas: "+ Vigência" com os campos vazios
+    await f.evaluate(() => { Cad.base.parametros.gel.processo = []; Cad.recompute(); ParGel.W = null; Cad.ui.sec = 'gel'; App.render(); });
+    await f.waitForSelector('#gelPar');
+    const V = await f.evaluate(() => ({ tpl: [...document.querySelectorAll('#gelPar [data-pgadd="processo"]')].map(b => JSON.parse(b.dataset.tpl)), txt: document.querySelector('#gelPar').innerText }));
+    assert.equal(V.tpl.length, 3, 'três botões "+ Vigência"');
+    assert.ok(V.tpl.every(t => ['g', 'pT', 'pB', 'pP'].every(k => t[k] == null)), 'sem vigência anterior os campos vêm vazios ' + JSON.stringify(V.tpl));
+    assert.ok(!/0,98 g/.test(V.txt), 'a tela não promete valor de fábrica');
+    console.log('ok "+ Vigência" sem vigência anterior abre vazio');
 
     assert.deepEqual(erros, [], 'sem erro de JavaScript'); console.log('ok sem erro de JavaScript');
   } finally { if (browser) await browser.close(); srv.close(); }

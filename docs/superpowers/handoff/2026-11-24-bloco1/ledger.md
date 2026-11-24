@@ -118,3 +118,18 @@ Não encontrei outros defeitos de correção. Itens de revisão anteriores já r
 ### Repasse para o bloco 2
 - Defeito 1 e 2 viram itens da Task 3; defeito 3, da Task 2.
 - Ponto aberto: `portal-base`, `perdas-base` e `fifo-base` não gravam `schemaVersion`; a Task 3 e a Task 5 acrescentam `schemaVersion: 1` antes de ligar o bloqueio (ver "Pontos de atenção" em `docs/BASE-LIMPA.md`).
+
+## Bloco 2 · Task 3 (motor/portal): Administração sem importadores nem transição
+
+- Saíram `ImportarV1`, a trava v1, `#cadV1`, `admNivelTransicao`/`admPerfilEdita`, `TrazCfg`, `Carga` (com `parCarga*` e a pendência do catálogo proposto do Paradas) e `GEL_PROC_DEF`. Sem cadastro, a Administração oferece só "Criar cadastro vazio" (rev 1 no formato atual, com a senha inicial).
+- `DEFAULT_PERFIS` traz `assuntos` explícitos (Processos e ADMIN tudo, PCP planta e turnos, Almoxarifado gel, os outros só veem); o cenário da demonstração ganhou os mesmos `assuntos` (`scripts/cenario-demo.cjs`).
+- Defeito 1 corrigido: a restauração de backup leva o bloco `gel` (`cadDocBackup`, `aplicarOp`). Teste: `adm-gel.cjs` (7).
+- Defeito 2 corrigido: com sessão, perfil que não existe só vê (`podeEditarAssunto` e `Cad.ops`); sem sessão vale só `podeEditar` (contrato 4). Teste: `adm-assuntos.cjs` (3b).
+- `portal-base` e o cadastro de versão anterior abrem só para consulta com o texto exato; `Store.fix` não inventa `schemaVersion`. Teste: `base-limpa-formato.cjs` (g).
+- Testes removidos (só testavam código removido):
+  - `testes/plataforma/adm-importar.cjs` (importação v1 do cadastro formato 1), tirado de `scripts/testar-plataforma.mjs`;
+  - `testes/t18c.js` (só exercitava `#cadTrazerCfg`), tirado de `testes/tudo.js` (70 suítes);
+  - em `testes/tportalfonte.js`, as conferências `ARQ-06 migração`, `ARQ-01/02/04 migração` e `ARQ-05/07 migração` (Trazer configurações);
+  - em `testes/tgel.js`, o trecho `4a migração` e `GEL-09` que chamava `ImportarV1.plano` e `TrazCfg.montar`.
+- Ajustados (não removidos): `testes/plataforma/vaccad-gel.test.mjs` (regex de `VAC_CAD_VERSAO`); `testes/bases/portal-vg-referencia.json` só no cartão do Waste ("MUV" no lugar de "Desvio líquido": o caso do Waste sem `muv` saiu; o modo de teste do Portal passou a publicar o export do Waste com `exportsVersion: 1` e `muv`).
+- Não feito nesta task: a busca de base e HTML em subpastas e nomes antigos (`findModule`, `def.alt`, `cardPastaUnica`, `bkpAnt`), listada no inventário mas fora da brief.

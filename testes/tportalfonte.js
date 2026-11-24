@@ -15,8 +15,6 @@ const { chromium } = require('playwright');
   ok(await po.evaluate(() => !!document.querySelector('#parProd') && !!document.querySelector('#parPc')), 'ARQ-06 Portal: Parâmetros tem os grupos Produção e Neste computador');
   ok(await po.evaluate(() => [...document.querySelectorAll('.cadside [data-sec="parametros"]')].some(x => /^Parâmetros/.test(x.textContent.trim()))), 'ARQ-06 Portal: menu "Parâmetros"');
   ok(await po.evaluate(() => !document.querySelector('#ppOk')), 'ARQ-06 Portal: sem a senha, o grupo Produção é só consulta');
-  const mig6 = await po.evaluate(() => { TrazCfg.B = { oee: { shifts: [], downtimeCodes: [], targets: [], settings: { entryUnit: 1000, unitLabel: 'mil', roundingUnit: 1000 }, productionDays: [{ date: '2025-03-10' }] } }; TrazCfg.P = []; TrazCfg.avisos = []; TrazCfg.montar(); const x = (TrazCfg.P || []).find(i => i.grupo === 'Parâmetros' && /lançamento em/.test(i.titulo)); if (!x) return null; const W2 = { parametros: {} }; x.fn(W2); return W2.parametros.producao; });
-  ok(mig6 && mig6.unidadeLancamento === 1000 && mig6.arredondamentoMeta[0].de === '2025-03-10' && mig6.arredondamentoMeta[0].valor === 1000, 'ARQ-06 migração: "Trazer das páginas" leva unidade, rótulo e arredondamento da Produção (vigência desde o 1º dia lançado)');
   await po.click('[data-pcq="abs"]'); await po.waitForTimeout(300);
   ok(await po.evaluate(() => localStorage.getItem('vac.qtd') === 'abs'), 'ARQ-06 Portal: exibição das quantidades grava vac.qtd (neste computador)');
   await po.evaluate(() => Lock.on(Cad.D.seguranca.senhaHash)); await po.evaluate(() => App.render()); await po.waitForTimeout(400);
@@ -83,19 +81,6 @@ const { chromium } = require('playwright');
   });
   ok(r3.semDoc === 'consulta' && r3.comDoc === r3.semDoc, 'CAD-CONS: com ou sem o cadastro do Portal, o menu tem só "Consulta de cadastros" no lugar de estrutura, turnos, catálogos, metas e tipos de parada (' + r3.semDoc + ')');
   for (const sec of ['turnos', 'catalogos', 'metas', 'paradas', 'estrutura']) ok(r3[sec], `CAD-CONS: Produção › Configurações › ${sec} não tem tela própria; abre a consulta (só leitura)`);
-  // Portal: Trazer configurações oferece o que só existe na Produção, com o mesmo código
-  const mig1 = await po.evaluate(() => {
-    TrazCfg.B = { oee: { lines: [], families: [], shifts: [{ id: 'sh_tc', code: 'TC', name: 'Turno C local', status: 'ativo', versions: [{ id: 'v1', validFrom: '2025-01-01', start: '22:47', end: '06:00', weekdays: [1, 2, 3, 4, 5], active: true, breaks: [{ label: 'Jantar', start: '02:00', end: '02:30', weekdays: [], deducts: true }], template: null }] }],
-      catalogs: [{ id: 'cat_x', code: '999991', name: 'Tubo teste', pph: 30000, validFrom: '2025-01-01', active: true }], downtimeCodes: [{ id: 'dc_z', code: 'ZZZ', name: 'Parada só local', affectsA: true, active: true }], targets: [], settings: {}, productionDays: [] } };
-    TrazCfg.P = []; TrazCfg.avisos = []; TrazCfg.montar(); const P = TrazCfg.P;
-    const t = P.find(i => i.grupo === 'Só na Produção · turnos'), c = P.find(i => i.grupo === 'Só na Produção · catálogos'), z = P.find(i => i.grupo === 'Só na Produção · tipos de parada');
-    const W2 = { turnos: [], catalogos: [], paradas: [] }; if (t) t.fn(W2); if (c) c.fn(W2); if (z) z.fn(W2);
-    return { t: !!t, tMarc: t && t.marcado, temT: (Cad.D.turnos || []).length, c: !!c, z: !!z, W2 };
-  });
-  ok(mig1.t && mig1.c && mig1.z, 'ARQ-01/02/04 migração: Trazer configurações lista turno, catálogo e tipo de parada que só existem na Produção');
-  ok(mig1.temT ? mig1.tMarc === false : mig1.tMarc === true, 'ARQ-01 migração: turno só da Produção vem desmarcado quando o Portal já tem turnos (provável duplicado)');
-  const tw = mig1.W2.turnos[0] || {}, vw = (tw.vigencias || [])[0] || {};
-  ok(tw.codigo === 'TC' && vw.inicio === '22:47' && vw.fim === '06:00' && (vw.pausas || []).length === 1 && mig1.W2.catalogos[0].codigo === '999991' && mig1.W2.catalogos[0].vigencias[0].pphNominal === 30000 && mig1.W2.paradas[0].codigo === 'ZZZ', 'ARQ-01/02/04 migração: mesmo código, vigências, pausas e PPH preservados');
 
   /* ================= ARQ-05 / ARQ-07 · Gestão de Gel (GEL-06: contas iguais) ================= */
   const g = await nova('Gestão-Gel-Vacutainer.html', 'Gel');
@@ -134,12 +119,6 @@ const { chromium } = require('playwright');
     const k = S.catalogs.find(x => x.num === '777777'); return k ? { fmt: k.fmt, lot: k.lotSize, rate: k.rateH, portal: k.portal } : null; });
   ok(auto && auto.fmt === '75' && auto.lot === 900000 && auto.rate === 40000 && auto.portal === '777777', 'ARQ-05: catálogo do Portal com gel na BOM entra sozinho no Gel (formato, lote e velocidade do Portal)');
   await g.evaluate(() => localStorage.removeItem('vac.cadastros'));
-  // Portal: Trazer configurações oferece o que só existe no Gel
-  const mig5 = await po.evaluate(() => {
-    TrazCfg.B = { gel: { config: { equips: [{ id: 'eq-x', name: 'Balança do gel', active: true, descs: [] }] }, catalogs: { items: [{ id: 'cat-z', num: '888888', desc: 'SST gel', fmt: '75', color: '#ff0000', active: true, lotSize: 900000, rateH: 38000 }] } } };
-    TrazCfg.P = []; TrazCfg.avisos = []; TrazCfg.montar(); const P = TrazCfg.P, W2 = { catalogos: [], equipamentos: [] };
-    const c = P.find(i => i.grupo === 'Só no Gel · catálogos'), e = P.find(i => i.grupo === 'Só no Gel · equipamentos'); if (c) c.fn(W2); return { ...W2, equipamentoProposto: !!e }; });
-  ok(mig5.catalogos[0] && mig5.catalogos[0].codigo === '888888' && mig5.catalogos[0].vigencias[0].caixasPorLote === 900 && !mig5.equipamentoProposto, 'ARQ-05/07 migração: Trazer configurações propõe catálogos; os locais usam a importação v1');
   ok(await po.evaluate(() => CAD_T.equipamentos.campos.some(c => c[0] === 'categoria') && !!AJUDA_CAMPO['equipamentos.categoria']), 'ARQ-07: Portal › Equipamentos tem a Categoria (Equipamento – Gel) com ⓘ');
 
   await b.close();
