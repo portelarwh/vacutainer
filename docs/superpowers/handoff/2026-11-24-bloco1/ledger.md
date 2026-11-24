@@ -91,3 +91,30 @@ PASSAGEM (24/11): sessão parou por falta de tokens; T8 não começada (árvore 
 - Gel: `parametros.gel.processo[]` aceita `fmt` ('100' ou '75'; sem `fmt` vale para todos). `vacGel.procAt(data, fmt)`; `vacGel.teorico` e `prodCalc` do Gel somam o teórico por grupo de perdas do formato de cada catálogo (um só formato = conta de sempre). Teste `gel-perdas-formato`. Versões: plataforma 1.8.64, Administração 1.9.83, Gel 2.50, Produção 2.6.45.
 - Verificação: lint, test:unit, test:plataforma e npm test (71 suítes) verdes; gel-numeros igual à referência.
 - Pendente do responsável: os locais de descarte não vieram na importação da pasta real (cadastrados à mão); a causa não foi investigada.
+
+## Revisão do bloco 1 (bloco 2, Task 1)
+
+Revisão de `git diff d78275a..HEAD -- Plataforma.html` contra a regra nova (base limpa, sem compatibilidade) e contra o desenho. O inventário completo está em `docs/BASE-LIMPA.md`.
+
+### (a) Existe só para cadastro v1 ou base antiga (sai no bloco 2)
+- `ImportarV1`, `cadImportarV1`, faixa `#cadV1` e o botão `cadV1Abrir`, caso `'importação v1'` em `aplicarOp`, item `importarV1` em `CAD_SECS`, no menu Sistema, em `ADM_ROT` e no mapa de telas (Task 3).
+- Trava v1 em `Cad.ops` (linha com `ImportarV1.permitida`) (Task 3).
+- `admNivelTransicao` e a transição em `Cad.nivelAssunto`; `admPerfilEdita` se ficar sem uso (Task 3).
+- `legado` em `vacGel.localGel` (dois `find` com `l.legado?.some`) e o campo `legado` gravado por `ImportarV1` (Tasks 2 e 3).
+- `vigList` com `gTubo`/`bomG`/`bomKg`/`bomPct` soltos no catálogo, em `vacGel` (comum/bases) e na cópia local `catVigList`/`bomVals` (motor/gel); ramo `bomG × bomPct` de `bomVals` (Tasks 2 e 5).
+- `vacGel.cadastroOk` com `+cad.schemaVersion >= 2`, `avisoImportacao` ("Importar das bases atuais") e a tela Gel "cadastro no formato 1" (Tasks 2 e 3).
+- `cadFix` com `+d.schemaVersion>=2` e `novo.schemaVersion=Math.max(1,...)` na gravação (Task 3).
+- `vacGel.ctx().cat` deduz o formato 100/75 do texto do catálogo (Task 2).
+- `PROC_DEF` (comum/bases) e `GEL_PROC_DEF` (motor/portal) (Tasks 2 e 3).
+- Fora do bloco 1, mas na mesma regra: `TrazCfg`, `Carga` (carga inicial), `parCarga*`, mudança da base da raiz para `00. Bases`, importação de fila antiga, log `registro-backup.log` legado, `vacPessoa` por nome, `vacExportsOk` e `exV1` aceitando export sem número, `acoesLegado`/"Trazer ações do Waste", busca de base em local antigo.
+
+### (b) Defeitos de correção
+1. **Restauração de backup não restaura o bloco `gel` (Task 3, `motor/portal`).** `aplicarOp` caso `'restauração'` copia só os tipos de `CAD_ORD` e `parametros`; `D.gel` (`formatos` e `locais`) fica como está, e a operação a monta com `doc` só desses tipos (`Cad` restaurar, `{parametros, ...CAD_ORD}`). Caso: gravar um novo formato do gel (vigência 01/12) depois do backup, restaurar o backup. Turnos, metas e `parametros.gel.processo` voltam ao estado antigo, e o formato do gel continua o novo, então o teórico e o scrap passam a misturar perdas antigas com pesos novos. A auditoria diz "conteúdo do backup".
+2. **Perfil não encontrado libera a edição de todos os assuntos (Task 3, `motor/portal`).** `Cad.podeEditarAssunto` faz `if(!p) return true` e `Cad.ops` só nega quando `p` existe (`const p=perfilAtual(...), neg=p?...:null`). `perfilAtual` devolve `null` para usuário logado cujo `perfil` não está em `perfis` do cadastro nem em `DEFAULT_PERFIS` (perfil renomeado ou excluído). Caso: usuário "1001" com `perfil:'LIDER_ANTIGO'`, desbloqueio de edição feito: `Cad.podeEditarAssunto('turnos')` dá `true` e a operação grava. A regra do desenho é "sem `assuntos` só vê". Sem sessão (`usuarioAtual` nulo) continua valendo só `podeEditar`, por contrato 4.
+3. **Índice do dia calculado com scrap parcial (Task 2, `GelDia.calc` em `motor/oee`; a Task 2 já edita essa função).** `pesou` vira `true` se algum turno está completo, mas `sc` soma também as pesagens válidas de um turno que tem pesagem pendente (`k.pendentes.length`). Caso: turno 1 com todas as pesagens válidas e turno 2 com 3 pesagens, uma delas de local sem composição vigente. `pesou = true`, `real = teo.gelBons + scrap` sem os kg da pesagem pendente, e `idx`/`saving` aparecem como número. Contrato 1: ausência não vira zero. O correto é `pesou = false` (índice e ganho `null`) enquanto algum turno tiver pendente.
+
+Não encontrei outros defeitos de correção. Itens de revisão anteriores já resolvidos (Task 7: `pode ()=>true`, `n()`), e as duas observações "minor" do ledger (aviso de Tubo ausente duplicado e a trava v1 que deixa passar qualquer op `seguranca`) somem com a remoção do importador e da trava.
+
+### Repasse para o bloco 2
+- Defeito 1 e 2 viram itens da Task 3; defeito 3, da Task 2.
+- Ponto aberto: `portal-base`, `perdas-base` e `fifo-base` não gravam `schemaVersion`; a Task 3 e a Task 5 acrescentam `schemaVersion: 1` antes de ligar o bloqueio (ver "Pontos de atenção" em `docs/BASE-LIMPA.md`).
