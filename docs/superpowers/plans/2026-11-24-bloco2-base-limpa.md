@@ -103,7 +103,8 @@
   - (a) com a base da Produção alterada na memória para `schemaVersion: 1` ou sem `schemaVersion`, a página mostra o texto exato do bloqueio e o botão de gravar fica indisponível;
   - (b) com `parametros.gel.processo` vazio na memória, `vacGel.teorico({...})` devolve `null`, o Teórico × Real mostra o aviso e as pesagens de scrap continuam listadas;
   - (c) `vacPessoa` com registro que só tem nome (sem ID) **não** resolve o ID;
-  - (d) nenhum erro de JavaScript.
+  - (d) o export do Gel com versão anterior à esperada (alterado na memória) faz a Produção mostrar "Dados de Gestão de Gel em versão anterior" e não usar o dado (a função que hoje compara a versão do export, em `comum/bases` ou `modulo/core/data`);
+  - (e) nenhum erro de JavaScript.
 - [ ] **Step 3: Rodar e ver falhar.** `node --test testes/plataforma/base-limpa.test.mjs` → FAIL listando os padrões. `node testes/plataforma/base-limpa-formato.cjs` → FAIL em (a).
 - [ ] **Step 4: Remover os itens "Task 2" do inventário.**
   - mudança da base da raiz para `00. Bases` (trava `.migrando` e `raiz-antiga`);
