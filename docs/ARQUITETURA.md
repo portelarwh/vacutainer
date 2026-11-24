@@ -8,7 +8,7 @@ Plataforma.html é simultaneamente o arquivo de distribuição e a fonte editáv
 
 Blocos comum/* e css/kit são compartilhados por referências internas @@vac:ID@@; a montagem é estrita, rejeitando fragmento ausente ou ciclo. A extração inicial reproduziu os nove motores byte por byte. Na consolidação, o Portal foi adaptado para ler versões/páginas em construção e bibliotecas pelo pacote interno. A evolução posterior de identificação por ID e registro de backups está descrita no CONTRATO-MOTORES.md; não equivale a mudar fórmulas ou modelo das bases.
 
-A fonte não contém os arquivos comerciais de fontes/logos. Marca/ é opcional e há fallback offline. React/ReactDOM, Zod, SheetJS, jsPDF e AutoTable são código local incorporado com licenças preservadas.
+Os arquivos comerciais de fontes e logos são opcionais. A localização e as alternativas offline estão no [contrato de marca](MARCA.md). React/ReactDOM, Zod, SheetJS, jsPDF e AutoTable são código local incorporado com licenças preservadas.
 
 ## Dados e responsabilidade
 

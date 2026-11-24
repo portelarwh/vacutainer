@@ -1,5 +1,7 @@
 # Especificação Funcional — Linha 360°
 
+Esta especificação reúne requisitos de evolução da Linha 360°. Consulte [ARQUITETURA](ARQUITETURA.md), [CONTRATO-MOTORES](CONTRATO-MOTORES.md) e [PENDENCIAS](../PENDENCIAS.md) para a implementação e as homologações atuais. Os trechos sobre servidor e API descrevem requisitos de evolução que dependem de decisão arquitetural. A plataforma atual executa localmente.
+
 ## 1. Visão geral
 
 A **Linha 360°** será a central visual e operacional para gestão integrada da linha produtiva.
