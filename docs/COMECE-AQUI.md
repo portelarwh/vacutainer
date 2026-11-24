@@ -2,11 +2,12 @@
 
 15/11/2026. O aplicativo inteiro está em **Plataforma.html, na raiz**, incluindo código editável, componentes, estilos, motores, bibliotecas e ferramentas. Nenhum build procura paginas/, fontes/ ou outro projeto. O arquivo pode ser copiado sozinho para usar o sistema; bases e backups são dados externos obrigatórios para o uso real, não código.
 
-## Referências obrigatórias
+## Índice de referências — leitura proporcional à tarefa
 
 | Documento | Papel |
 |---|---|
 | [AGENTS](../AGENTS.md) e [CLAUDE](../CLAUDE.md) | Procedimento, mapa do código e contratos protegidos, iguais para os dois agentes. |
+| [CODEX](CODEX.md) | Roteamento de modelos, esforço e delegação específicos do Codex. |
 | [DESIGN_SYSTEM](DESIGN_SYSTEM.md) | Aplicação visual, componentes, acessibilidade e dashboards. |
 | [padrao-visual](../.claude/skills/padrao-visual/SKILL.md) | Modelo de página (Produção › Visão geral e Lançamento) e varredura para adequar outra página. |
 | [BD_Dashboard_Brand_Guidelines](BD_Dashboard_Brand_Guidelines.md) | Referência fornecida pelo responsável, preservada integralmente. |
@@ -21,7 +22,7 @@
 | [CORTE](CORTE.md) | Homologação, instalação e retorno. |
 | [DECISOES-HISTORICAS](DECISOES-HISTORICAS.md) | Decisões anteriores preservadas; caminhos de fontes no corpo são históricos. |
 
-Instrução explícita do responsável prevalece. Marca corporativa vigente no Maxwell tem precedência sobre a adaptação do PPTX; diretriz visual não altera classificação ou fórmula. Requisitos desejados não autorizam inventar regras técnicas.
+Consulte apenas as referências e seções pertinentes, conforme AGENTS.md; alterações críticas exigem revisar todos os contratos afetados. Instrução explícita do responsável prevalece. Marca corporativa vigente no Maxwell tem precedência sobre a adaptação do PPTX; diretriz visual não altera classificação ou fórmula. Requisitos desejados não autorizam inventar regras técnicas.
 
 ## Como localizar e editar
 
