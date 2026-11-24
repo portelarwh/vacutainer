@@ -77,8 +77,8 @@ A fonte técnica única da identidade é o bloco `css/brand` do `Plataforma.html
 
 - Base institucional: navy #060A3D, azul #044ED7; realces #1D74FF; lavanda #9199D8; laranja #FF6E00; neutros do anexo.
 - Laranja pontual (aproximadamente 5–10% de área), distinguindo destaque de marca de alerta operacional.
-- Verde e vermelho preservam o significado de resultado versus meta, inclusive SQDCP. Não substituir uma regra de cor funcional por uma sequência de séries institucionais.
-- Títulos em FS Albert Pro Light; corpo em FS Albert Pro; fallback Arial/Helvetica Neue/sans-serif. Sem CDN. Nenhum arquivo de fonte é redistribuído sem a licença aplicável.
+- Indicadores com meta seguem o semáforo e as exceções da [seção 20](#20-semáforo-de-três-cores--plataforma-182). As séries institucionais mantêm sua função de identificação.
+- A referência de marca indica FS Albert Pro Light para títulos. A implementação usa FS Albert Pro Regular do kit local quando Light não está disponível e Arial/Helvetica Neue/sans-serif na ausência dos arquivos comerciais. O corpo usa FS Albert Pro com a mesma reserva de sistema. Os arquivos e pesos do kit estão no [contrato de marca](MARCA.md).
 - Logotipo somente com arquivo oficial. O ícone V existente identifica a aplicação; não é uma reprodução do logotipo BD.
 - Tema escuro: adaptação técnica acessível dos aliases, mantendo os valores institucionais originais. Conferência corporativa do tema segue pendente.
 
