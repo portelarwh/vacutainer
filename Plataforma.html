@@ -670,8 +670,11 @@ const vacGel = (() => {
   const COMPS = { completo: { l: 'Tubo completo' }, tubogel: { l: 'Tubo + gel' }, spray: { l: 'Tubo + gel + spray' }, gel: { l: 'Gel puro' }, barril: { l: 'Barril (sobra)' } };
   const SCAT = { T: 'Tubos', B: 'Barril', P: 'Purga' };
   const ord = L => (L || []).slice().sort((a, b) => a.from < b.from ? -1 : a.from > b.from ? 1 : 0);
-  function procAt(date) {
-    const L = ord(vacCad.param('gel.processo')).filter(p => p.from <= date);
+  /* Perdas teóricas e gel padrão por vigência e por formato do tubo (fmt '100' ou '75'). Vigência sem fmt vale para todos os formatos
+     (cadastro anterior). Vale a de data mais recente; na mesma data, a do formato vence a de todos. Sem fmt: só as de todos os formatos. */
+  function procAt(date, fmt) {
+    const L = (vacCad.param('gel.processo') || []).filter(p => p.from <= date &amp;&amp; (!p.fmt || (fmt != null &amp;&amp; String(p.fmt) === String(fmt))))
+      .sort((a, b) => a.from < b.from ? -1 : a.from > b.from ? 1 : (a.fmt ? 1 : 0) - (b.fmt ? 1 : 0));
     return L.length ? { ...PROC_DEF, ...L[L.length - 1] } : { ...PROC_DEF };
   }
   const sobraAt = date => valorPeso(vacCad.gel.formato(date)?.sobraBarrilKg);
@@ -753,15 +756,22 @@ const vacGel = (() => {
   }
   /* teórico de gel de uma produção: tubos bons por catálogo → gel nos tubos ÷ (1 − perdas teóricas); por categoria T/B/P */
   function teorico({ tubosPorCat, date, cg }) {
-    const P = procAt(date);
+    /* cada catálogo usa as perdas do formato do seu tubo; catálogos com as mesmas perdas somam no mesmo grupo */
+    const grupos = new Map();
     let gelBons = 0;
     for (const [cat, t] of Object.entries(tubosPorCat || {})) {
-      const g = gelPorTubo(cg(cat), date);
+      const c = cg(cat), g = gelPorTubo(c, date);
       if (g == null) return null;
-      gelBons += (+t || 0) * g / 1000;
+      const P = procAt(date, c?.fmt || '100'), k = [P.pT, P.pB, P.pP].join('|'), G = grupos.get(k) || { P, gel: 0 };
+      G.gel += (+t || 0) * g / 1000; grupos.set(k, G); gelBons += (+t || 0) * g / 1000;
     }
-    const perda = ((+P.pT || 0) + (+P.pB || 0) + (+P.pP || 0)) / 100, teo = gelBons / Math.max(.01, 1 - perda);
-    return { gelBons, teo, sTeo: { T: teo * (+P.pT || 0) / 100, B: teo * (+P.pB || 0) / 100, P: teo * (+P.pP || 0) / 100 }, perdas: P };
+    if (!grupos.size) grupos.set('', { P: procAt(date), gel: 0 });
+    let teo = 0; const sTeo = { T: 0, B: 0, P: 0 };
+    for (const { P, gel } of grupos.values()) {
+      const perda = ((+P.pT || 0) + (+P.pB || 0) + (+P.pP || 0)) / 100, x = gel / Math.max(.01, 1 - perda);
+      teo += x; sTeo.T += x * (+P.pT || 0) / 100; sTeo.B += x * (+P.pB || 0) / 100; sTeo.P += x * (+P.pP || 0) / 100;
+    }
+    return { gelBons, teo, sTeo, perdas: [...grupos.values()][0].P };
   }
   /* contexto a partir do cadastro do Portal (Produção) */
   function ctx() {
@@ -4490,7 +4500,7 @@ function wireConfigComum(){$('#cPasta').onclick=async()=>{if(await Store.pick())
         entrar pelo ID (autocadastro como Consulta); página inicial por perfil (1x por sessão); vigência gravada não se edita (desativar com motivo); painel de vigências; semáforo central; saída do modo de teste.
    1.1.2: aviso da carga diz qual base foi lida.  1.5: páginas Paradas, Máquinas, Manutenção e Projetos na lista (aparecem quando o HTML chega na pasta).  1.4: lista técnica pela CS12 multinível (itens = nível 1, estrutura = níveis 2+); CS03 sai.  1.3: cabeçalho comum (vac-cabecalho v2: barra do sistema + página + abas), busca Ctrl K, acabamento V1.90, Versões com cabeçalho e último backup.  1.2: Configuração › Versões das páginas (versão e data de cada HTML, gravação das bases, cópias repetidas, histórico).
    ===================================================================== */
-const PAGE={id:'portal',titulo:"Administração · Linha Vacutainer",tituloCurto:"Administração",subtitulo:'Sistemas de gestão da linha',versao:'1.9.82',baseFile:'portal-base.json',idb:'vac-portal',backupDir:'00. Backups/Portal',
+const PAGE={id:'portal',titulo:"Administração · Linha Vacutainer",tituloCurto:"Administração",subtitulo:'Sistemas de gestão da linha',versao:'1.9.83',baseFile:'portal-base.json',idb:'vac-portal',backupDir:'00. Backups/Portal',
  vazio:()=>({schema:'portal-base',rev:0,config:{modulos:{},avisoDias:30,notas:{}},audit:[]}),
  /* itens do Portal para a busca Ctrl K: cadastro, pendências e telas */
  busca:q=>{const R=[],D=Cad.D;if(D)for(const t of CAD_ORD){for(const it of D[t]||[]){const c=String(it[kOf(t)]),nm=t==='bom'?((cadItem('catalogos',it.catalogo)||{}).nome||''):it.nome||'';if(norm(c+' '+nm).includes(q))R.push({tipo:CAD_T[t].um,txt:c+(nm?' · '+nm:''),sub:'Cadastros'+(cadAtivo(t,it,D)?'':' · inativo'),href:'#cadastros/'+t+'/'+encodeURIComponent(c)});if(R.length>30)break}}
@@ -5326,7 +5336,7 @@ const AJUDA_CAMPO={
  'trazer.Só na Produção · catálogos':'Catálogos que só a Produção tem. Vêm com o mesmo código e o PPH de cada vigência; o resto da ficha (formato, aditivo, SAP) se completa depois.',
  'trazer.Só na Produção · tipos de parada':'Tipos de parada que só a Produção tem. Vêm com o mesmo código e as regras de apontamento; pilar e classe se completam na ficha.',
  'gel.corte':'G3: a partir deste dia a Gestão de Gel deixa de aceitar o registro manual (tubos bons, hora extra, sem produção, pesagens de scrap) e passa a ler da Produção. Dias anteriores continuam com o registro feito no Gel (nada é apagado). Ex.: 01/12/2026.',
- 'gel.processo':'Perdas teóricas de gel, em % do gel consumido, e o gel por tubo padrão (quando o catálogo e o formato não informam). Entram no teórico do dia. Ex.: Tubos 2,24 % · Barril 0,74 % · Purga 0,53 % · 0,98 g/tubo.',
+ 'gel.processo':'Perdas teóricas de gel, em % do gel consumido, e o gel por tubo padrão, por formato do tubo (Tubo 100 ou Tubo 75; "Todos" vale para os dois). Na mesma data, a vigência do formato vence a de todos. Entram no teórico do dia. Ex.: Tubos 2,24 % · Barril 0,74 % · Purga 0,53 % · 0,98 g/tubo.',
  'gel.formatos':'Peso de cada componente por tubo (Tubo 100 e Tubo 75), a embalagem da pesagem (saco), a folha da purga e a sobra de gel no barril. A conta do scrap tira a embalagem e divide pelo peso da composição.',
  'gel.motivos':'Motivos de descarte do gel (etiqueta ruim, gel com bolhas, quebra de máquina…). Cada motivo pode valer só para algumas composições. No registro, cada pesagem pode ter um ou vários motivos.',
  'gel.catalogo':'Dados do gel deste catálogo: formato do tubo (100 ou 75), lote padrão, velocidade de referência e, com vigência, o gel aplicado por tubo e a BOM de gel do SAP (kg a cada N tubos, com a tolerância incluída).',
@@ -5371,6 +5381,9 @@ const CAD_SECS=['inicio','gel','matriz','importar','importarV1','auditoria','bac
    curtas (macro, sem detalhe técnico). REGRA: toda versão nova da plataforma ganha uma entrada aqui, a mais recente primeiro
    (AGENTS.md e CLAUDE.md). Tipos: nova (função nova), melhoria (algo que já existia ficou melhor), correcao (erro corrigido). */
 const NOVIDADES=[
+ {v:'1.8.64',d:'2026-11-24',itens:[
+  ['novo','Administração › Gel: perdas teóricas e gel padrão por formato do tubo (Tubo 100 e Tubo 75), cada um com a sua vigência; o teórico usa as perdas do formato de cada catálogo.'],
+  ['correção','Produção › SQDCP: a faixa de resumo repetia a posição 1 de cada pilar; ficam só as 25 posições.']]},
  {v:'1.8.63',d:'2026-11-24',itens:[
   ['novo','Administração organizada por assunto, com importação do cadastro atual e permissões por assunto.'],
   ['novo','Administração › Gel reúne formatos com vigência, composições e locais de descarte.'],
@@ -7605,14 +7618,15 @@ function cadGel(el){const D=Cad.D,h=todayISO();
 function gelParHtml(P,pe){const G0=P.gel||{};if(!ParGel.W||ParGel.base!==JSON.stringify(G0)){ParGel.W=clone(G0);ParGel.base=JSON.stringify(G0)}const W=ParGel.W,h=todayISO(),dis=pe?'':' disabled';
  const inp=(path,v,k='num',w=80,ro)=>`<input ${k==='num'?'type="number" step="any"':k==='date'?'type="date"':''} data-pg="${path}" data-pk="${k}" value="${esc(v??'')}" style="width:${w}px"${pe&amp;&amp;!ro?'':' disabled'}>`;
  const fut=v=>!v.from||v.from>=h;
- const proc=(W.processo||[]).map((v,i)=>`<tr><td>${inp('processo.'+i+'.from',v.from,'date',140,!fut(v))}</td>${['g','pT','pB','pP'].map(k=>`<td class="n">${inp('processo.'+i+'.'+k,v[k],'num',80,!fut(v))}</td>`).join('')}<td>${pe&amp;&amp;fut(v)?`<button class="b sm d" data-pgdel="processo.${i}">×</button>`:''}</td></tr>`).join('');
+ const fsel=(i,v)=>`<select data-pg="processo.${i}.fmt" data-pk="txt"${pe&amp;&amp;fut(v)?'':' disabled'}><option value=""${!v.fmt?' selected':''}>Todos</option><option value="100"${String(v.fmt)==='100'?' selected':''}>Tubo 100</option><option value="75"${String(v.fmt)==='75'?' selected':''}>Tubo 75</option></select>`;
+ const proc=(W.processo||[]).map((v,i)=>`<tr><td>${inp('processo.'+i+'.from',v.from,'date',140,!fut(v))}</td><td>${fsel(i,v)}</td>${['g','pT','pB','pP'].map(k=>`<td class="n">${inp('processo.'+i+'.'+k,v[k],'num',80,!fut(v))}</td>`).join('')}<td>${pe&amp;&amp;fut(v)?`<button class="b sm d" data-pgdel="processo.${i}">×</button>`:''}</td></tr>`).join('');
  const mots=(W.motivos||[]).map((m,i)=>`<tr><td>${inp('motivos.'+i+'.name',m.name,'txt',220)}</td><td class="small">${Object.keys(GEL_COMPS).map(c=>`<label style="margin-right:6px"><input type="checkbox" data-pg="motivos.${i}.comps" data-pk="set" data-val="${c}" ${(m.comps||[]).includes(c)?'checked':''}${dis}> ${esc(c)}</label>`).join('')}</td><td><input type="checkbox" data-pg="motivos.${i}.active" data-pk="bool" ${m.active!==false?'checked':''}${dis}></td></tr>`).join('');
  return`<div class="card form" id="gelPar">${parHd('Motivos e parâmetros do gel',' '+ib('Parâmetros do gel','Motivos de descarte, perdas teóricas e o dia de corte que a Gestão de Gel e (no Registrar scrap e no Teórico × Real) a Produção usam. Ficam aqui para valer iguais nas duas páginas e em todos os computadores. As vigências das perdas gravadas não mudam: para mudar, acrescente uma nova a partir de hoje.'),'gpOk','Salvar motivos e parâmetros',pe)}
  <div class="fg"><label>Gel lido da Produção a partir de ${ib('Corte',AJUDA_CAMPO['gel.corte'])}${inp('registroPelaProducaoDesde',W.registroPelaProducaoDesde,'date',160)}</label>
  <label>Cabeçotes da máquina de gel ${inp('cabecotes',W.cabecotes)}</label><label>Barris por cabeçote ${inp('barrisPorCabecote',W.barrisPorCabecote)}</label></div>
  <h4 style="margin:12px 0 4px">Perdas teóricas e gel padrão ${ib('Processo',AJUDA_CAMPO['gel.processo'])}</h4>
- <div class="tw"><table class="cadst"><tr><th>A partir de</th><th class="n">Gel/tubo (g)</th><th class="n">Tubos %</th><th class="n">Barril %</th><th class="n">Purga %</th><th></th></tr>${proc||'<tr><td colspan="6" class="small muted">Sem vigência: o Gel usa a dele (ou o padrão 0,98 g · 2,24 % · 0,74 % · 0,53 %).</td></tr>'}</table></div>
- ${pe?`<button class="b sm" data-pgadd="processo" data-tpl="${esc(JSON.stringify({...((W.processo||[]).slice(-1)[0]||GEL_PROC_DEF),from:h}))}">+ Vigência</button>`:''}
+ <div class="tw"><table class="cadst"><tr><th>A partir de</th><th>Formato</th><th class="n">Gel/tubo (g)</th><th class="n">Tubos %</th><th class="n">Barril %</th><th class="n">Purga %</th><th></th></tr>${proc||'<tr><td colspan="7" class="small muted">Sem vigência: o Gel usa o padrão 0,98 g · 2,24 % · 0,74 % · 0,53 %.</td></tr>'}</table></div>
+ ${pe?['100','75',''].map(f=>{const ult=(W.processo||[]).filter(v=>(v.fmt||'')===f).slice(-1)[0]||(W.processo||[]).filter(v=>!v.fmt).slice(-1)[0]||GEL_PROC_DEF,tpl={...ult,from:h};if(f)tpl.fmt=f;else delete tpl.fmt;return`<button class="b sm" data-pgadd="processo" data-tpl="${esc(JSON.stringify(tpl))}">+ Vigência ${f?'do Tubo '+f:'(todos os formatos)'}</button> `}).join(''):''}
  <h4 style="margin:12px 0 4px">Motivos de descarte ${ib('Motivos',AJUDA_CAMPO['gel.motivos'])}</h4>
  <div class="tw"><table class="cadst"><tr><th>Motivo</th><th>Só nas composições (vazio = todas)</th><th>Ativo</th></tr>${mots||'<tr><td colspan="3" class="small muted">Nenhum motivo.</td></tr>'}</table></div>
  ${pe?`<button class="b sm" data-pgadd="motivos" data-tpl="${esc(JSON.stringify({id:'',name:'',comps:[],active:true}))}">+ Motivo</button>`:''}</div>`}
@@ -7625,7 +7639,8 @@ function wireGelPar(P,pe){const box=$('#gelPar');if(!box||!pe)return;const W=Par
  const ok=$('#gpOk');if(ok)ok.onclick=()=>{if(!Cad.podeEditarAssunto('gel'))return;const h=todayISO(),G0=P.gel||{},G=clone(W);
   {const L=G.processo||[];if(L.some(v=>!v.from))return toast('Informe a data de cada vigência.',5000,true);
    const ant=(G0.processo||[]).filter(v=>v.from<h);if(!deq(ant,L.filter(v=>v.from<h)))return toast('Vigências que já valeram não mudam: acrescente uma nova a partir de hoje.',6000,true);
-   if(new Set(L.map(v=>v.from)).size!==L.length)return toast('Duas vigências com a mesma data.',5000,true);G.processo=L.slice().sort((a,b)=>a.from<b.from?-1:1);if(!G.processo.length)delete G.processo}
+   if(new Set(L.map(v=>v.from+'|'+(v.fmt||''))).size!==L.length)return toast('Duas vigências com a mesma data e o mesmo formato.',5000,true);
+   L.forEach(v=>{if(!v.fmt)delete v.fmt});G.processo=L.slice().sort((a,b)=>a.from<b.from?-1:a.from>b.from?1:(a.fmt?1:0)-(b.fmt?1:0));if(!G.processo.length)delete G.processo}
   G.motivos=(G.motivos||[]).filter(m=>m.name);if(!G.motivos.length)delete G.motivos;if(!G.registroPelaProducaoDesde)delete G.registroPelaProducaoDesde;
   for(const [k,max,rotulo] of [['cabecotes',6,'Cabeçotes da máquina de gel'],['barrisPorCabecote',4,'Barris por cabeçote']]){
    if(G[k]==null){delete G[k];continue}
@@ -8694,7 +8709,7 @@ function tipoParadaOpts(codes, sel) {
   const cats = [...new Set(codes.map(c => c.category || 'Sem categoria'))];
   return cats.map(cat => `<optgroup label="${esc(cat)}">${codes.filter(c => (c.category || 'Sem categoria') === cat).map(c => `<option value="${c.id}" ${sel === c.id ? 'selected' : ''}>${esc(c.code + ' · ' + c.name)}</option>`).join('')}</optgroup>`).join('');
 }
-const APP_VERSION = '2.6.44';   /* ADM-CENTRAL: scrap de gel pelo cadastro */   /* 2.6.43 · LANC-DT: data com o dia da semana também sem o dia criado */   /* 2.6.42 · LANC-CAB: cabeçalho do Lançamento numa linha */   /* 2.6.41 · GEL-09: local de cada descarte no scrap de gel */   /* 2.6.40 · GEL-08: scrap de máquina e de gel lado a lado; gel no jeito do Gel */   /* 2.6.39 · MAN-01: leitura do QR no comum (vacQR) */   /* 2.6.38 · MT-01: importar o turno do app Meu Turno (QR pela webcam ou arquivo) */   /* 2.6.37 · CAD-CONS: Consulta de cadastros com ficha lateral */   /* 2.6.36 · CFG-ADM etapa 2: sem telas duplicadas de cadastro; metas em consulta no Plano do mês */   /* 2.6.35 · CFG-ADM: cadastros da Administração abrem direto lá */   /* 2.6.34 · REL-02: PDF e e-mail no molde comum (vacPdf/vacEmail) */   /* 2.6.33 · TL-03: Linha do tempo filtra por Ordem/Lote e mostra Produção, Meta e Aderência no topo */   /* 2.6.32 · TUR-04: Plano do mês distribui o plano pelo tempo programado de cada dia (sábado menor pede menos) */   /* 2.6.31 · mês em português pela peça comum vacCampos (comum/interface) */   /* 2.6.30 · padrão visual (skill padrao-visual): cabeçalho nas abas, filtros de Paradas e Resultados iguais aos da Visão geral, mês em português, controles e textos no tamanho mínimo, cores pela marca; SQDCP com as cores das categorias da empresa */   /* 2.6.29 · design: turnos logo após o resumo do dia, cartões de OEE sem repetição, Visão geral com 1 dia recolhida, títulos em caixa de frase */   /* 2.6.28 · LANC-03 etapa e2: Segurança e qualidade obrigatórias para fechar o dia (desde 21/11/2026), do dia no modo Dia; Excluir dia em dia fechado */   /* 2.6.27 · LANC-03 etapa e1 (itens 3.1 e 4): modo Dia, só no dia, sem rateio */   /* 2.6.26 · LANC-03 etapa d (itens 3, 5 e 6): pílulas Hora a hora / Por turno e Scrap Por turno / Diário, selo de hora extra */   /* 2.6.25 · LANC-03 etapa c (item 9): Validação com Ir para o ajuste e a conta de cada aviso */   /* 2.6.24 · LANC-03 etapa b (itens 1, 2 e 7): cabeçalho do dia numa linha, menu ⋮ Mais ações e rodapé */   /* 2.6.23 · LANC-03 (itens 0 e 1.1): ordem e rótulos das abas da imagem, Modo TV e Resumo do dia recolhível */   /* 2.6.22 · LANC-04: Config. › Abas na plataforma (destaque, selo, aba inicial) e Frequência × duração redesenhado na largura do cartão */   /* 2.6.21 · TUR-07: turno que passa da meia-noite dividido no total diário (depois de 00:00 → dia seguinte; scrap proporcional à produção, paradas sem horário ao tempo) */   /* 2.6.20 · HEX-01: "Houve hora extra?" no cartão do turno (até 60 min antes do início ou depois do fim) */   /* 2.6.19 · TUR-06: produção no turno não produtivo pela meia-noite (antes → turno anterior; depois → próximo) desde 01/11/2026; aviso de hora extra */   /* 2.6.18 · PAR-CAT: tipo de parada por categoria e com busca nas sugestões do servidor, na importação de paradas e no turno sem produção */   /* 2.6.17 · SRV-DIA: dia sem lançamento com produção do servidor: aviso e abrir o dia com os dados */   /* 2.6.16 · TUR-05: dia em aberto passa ao horário vigente do turno; PAR-BUSCA: tipo de parada por texto */   /* 2.6.15 · REL-01: gel no relatório/e-mail do dia e do turno; Enviar relatório na janela do dia */   /* 2.6.14 · GEL-07: Relatório do Gel e Perdas de gel (turno com gel e Relatórios) */   /* 2.6.13 · GEL-06: Scrap gel no detalhe do turno */   /* 2.6.12 · TUR-04: turno com horário diferente no sábado (linhas por dia da semana) */   /* 2.6.11 · abas agrupadas: Ordens e lotes, Resultados, Paradas */   /* 2.6.10 · Lançamento sem turno aberto por padrão; abas visíveis na casca */   /* 2.6.9 · LANC-02: Lançamento unificado (hora a hora no detalhe do turno, 3º turno ao lado, Problemas de QN) */   /* 2.6.5 · IMP-01: contagens das importações nos exports */   /* 2.6.4 · semáforo só pelas faixas configuradas (verde acima de 100% vale) */   /* 2.6.2 · gráficos e números com meta seguem o semáforo de três cores (verde, amarelo, vermelho) */   /* 2.6.1 · gráficos: turno lançado pelo total com o nome do turno no eixo; janelas: rótulo e valor em tamanho de texto */   /* 2.6.0 · produção total do turno (sem hora a hora; períodos na troca de catálogo), aviso do servidor para turno lançado pelo total e para dia com produção apontada */
+const APP_VERSION = '2.6.45';   /* GEL-FMT: perdas teóricas por formato; SQDCP sem resumo repetido */   /* 2.6.44 · ADM-CENTRAL: scrap de gel pelo cadastro */   /* 2.6.43 · LANC-DT: data com o dia da semana também sem o dia criado */   /* 2.6.42 · LANC-CAB: cabeçalho do Lançamento numa linha */   /* 2.6.41 · GEL-09: local de cada descarte no scrap de gel */   /* 2.6.40 · GEL-08: scrap de máquina e de gel lado a lado; gel no jeito do Gel */   /* 2.6.39 · MAN-01: leitura do QR no comum (vacQR) */   /* 2.6.38 · MT-01: importar o turno do app Meu Turno (QR pela webcam ou arquivo) */   /* 2.6.37 · CAD-CONS: Consulta de cadastros com ficha lateral */   /* 2.6.36 · CFG-ADM etapa 2: sem telas duplicadas de cadastro; metas em consulta no Plano do mês */   /* 2.6.35 · CFG-ADM: cadastros da Administração abrem direto lá */   /* 2.6.34 · REL-02: PDF e e-mail no molde comum (vacPdf/vacEmail) */   /* 2.6.33 · TL-03: Linha do tempo filtra por Ordem/Lote e mostra Produção, Meta e Aderência no topo */   /* 2.6.32 · TUR-04: Plano do mês distribui o plano pelo tempo programado de cada dia (sábado menor pede menos) */   /* 2.6.31 · mês em português pela peça comum vacCampos (comum/interface) */   /* 2.6.30 · padrão visual (skill padrao-visual): cabeçalho nas abas, filtros de Paradas e Resultados iguais aos da Visão geral, mês em português, controles e textos no tamanho mínimo, cores pela marca; SQDCP com as cores das categorias da empresa */   /* 2.6.29 · design: turnos logo após o resumo do dia, cartões de OEE sem repetição, Visão geral com 1 dia recolhida, títulos em caixa de frase */   /* 2.6.28 · LANC-03 etapa e2: Segurança e qualidade obrigatórias para fechar o dia (desde 21/11/2026), do dia no modo Dia; Excluir dia em dia fechado */   /* 2.6.27 · LANC-03 etapa e1 (itens 3.1 e 4): modo Dia, só no dia, sem rateio */   /* 2.6.26 · LANC-03 etapa d (itens 3, 5 e 6): pílulas Hora a hora / Por turno e Scrap Por turno / Diário, selo de hora extra */   /* 2.6.25 · LANC-03 etapa c (item 9): Validação com Ir para o ajuste e a conta de cada aviso */   /* 2.6.24 · LANC-03 etapa b (itens 1, 2 e 7): cabeçalho do dia numa linha, menu ⋮ Mais ações e rodapé */   /* 2.6.23 · LANC-03 (itens 0 e 1.1): ordem e rótulos das abas da imagem, Modo TV e Resumo do dia recolhível */   /* 2.6.22 · LANC-04: Config. › Abas na plataforma (destaque, selo, aba inicial) e Frequência × duração redesenhado na largura do cartão */   /* 2.6.21 · TUR-07: turno que passa da meia-noite dividido no total diário (depois de 00:00 → dia seguinte; scrap proporcional à produção, paradas sem horário ao tempo) */   /* 2.6.20 · HEX-01: "Houve hora extra?" no cartão do turno (até 60 min antes do início ou depois do fim) */   /* 2.6.19 · TUR-06: produção no turno não produtivo pela meia-noite (antes → turno anterior; depois → próximo) desde 01/11/2026; aviso de hora extra */   /* 2.6.18 · PAR-CAT: tipo de parada por categoria e com busca nas sugestões do servidor, na importação de paradas e no turno sem produção */   /* 2.6.17 · SRV-DIA: dia sem lançamento com produção do servidor: aviso e abrir o dia com os dados */   /* 2.6.16 · TUR-05: dia em aberto passa ao horário vigente do turno; PAR-BUSCA: tipo de parada por texto */   /* 2.6.15 · REL-01: gel no relatório/e-mail do dia e do turno; Enviar relatório na janela do dia */   /* 2.6.14 · GEL-07: Relatório do Gel e Perdas de gel (turno com gel e Relatórios) */   /* 2.6.13 · GEL-06: Scrap gel no detalhe do turno */   /* 2.6.12 · TUR-04: turno com horário diferente no sábado (linhas por dia da semana) */   /* 2.6.11 · abas agrupadas: Ordens e lotes, Resultados, Paradas */   /* 2.6.10 · Lançamento sem turno aberto por padrão; abas visíveis na casca */   /* 2.6.9 · LANC-02: Lançamento unificado (hora a hora no detalhe do turno, 3º turno ao lado, Problemas de QN) */   /* 2.6.5 · IMP-01: contagens das importações nos exports */   /* 2.6.4 · semáforo só pelas faixas configuradas (verde acima de 100% vale) */   /* 2.6.2 · gráficos e números com meta seguem o semáforo de três cores (verde, amarelo, vermelho) */   /* 2.6.1 · gráficos: turno lançado pelo total com o nome do turno no eixo; janelas: rótulo e valor em tamanho de texto */   /* 2.6.0 · produção total do turno (sem hora a hora; períodos na troca de catálogo), aviso do servidor para turno lançado pelo total e para dia com produção apontada */
 const SCHEMA_VERSION = 1;
 const BASE_FILE = 'oee-vacutainer-base.json';
 const BACKUP_DIR = '00. Backups';
@@ -26629,7 +26644,7 @@ const fileBackend={kind:'file',async commit(ch){applyLocal(ch);FS.pending.push(c
 async function fsRefresh(){if(S.mode!=='file'||FS.busy||ui.demo)return;try{const cur=await fsReadBase(fsKnown());if(cur&amp;&amp;!cur.same){FS.mod=cur.mod;FS.rev=cur.rev;FS.revBy=cur.by;loadData(cur.data);FS.pending.forEach(applyLocal);localBackend.save();render()}}catch(e){}}
 /* ================= V1.89 · integração com as outras páginas (Portal, OEE, Perdas) ================= */
 // versão da página (topo, Guia e base gravada)
-const APP_VERSION='2.49';   /* ADM-CENTRAL: formatos e locais pelo cadastro */   /* 2.48 · GEL-09: local de cada descarte no registro e nas pesagens da Produção */   /* 2.47 · CAD-CONS: Consulta de cadastros com ficha lateral */   /* 2.46 · CFG-ADM etapa 2: cadastros do gel só na Administração */   /* 2.45 · CFG-ADM: seções com cadastro na Administração abrem direto lá */   /* 2.44 · REL-02: cabeçalho, rodapé e tabela dos PDFs no molde comum */   /* 2.43 · padrão visual: rótulo do barril na fonte da marca (era Barlow Condensed); cabeçalho das abas e Limpar filtros pela peça comum */   /* 2.42 · GEL-07: OEE e produção da Produção em todo dia que ela tem; OP/lote e relatório comum */   /* 2.41 · GEL-06: dia da Produção com pesagens, ordem/lote e "Editar na Produção" */   /* 2.35 · #aba=relatorios (Portal › Relatórios) abre as fichas e relatórios em PDF */   /* 2.34 · D8: Pareto comum do kit (vacPareto) */   /* 2.33 · Fase 5: layout no arquivo da pessoa (vacPrefs do kit) */   /* 2.32 · D6: botões de gravação travados conforme o perfil (vacTravas do kit) */   /* 2.29 · Design System (barra lateral, paleta, grade de gráficos) */   /* 2.28 · gráficos: "Valores em …" (kg, tubos, barris, dias, índice) onde o eixo não diz a unidade (docs/graficos-padrao.md) */   /* 2.27 · Visão Geral no padrão comum (vacLayout): situação, números, diagnóstico, análises do painel, explorar */   /* 2.26 · kit: padrão visual comum (vacLayout) */   /* 2.25 · kit: login com ID e senha */   /* 2.22 · UX-02: guia por aba */   /* 2.21 · Fase 7 (UX-03, GEL-01): Painel → Visão Geral */   /* 2.20 · Fase 4 · 4e: exports porDiaGel (teórico × real por dia) */   /* 2.19 · Fase 4 · 4d: lê da Produção a partir do corte (GelProd); Resumo do dia */   /* 2.18 · Fase 4 · 4b: pesagem pela conta comum do kit (vacGel) */   /* 2.17 · Fase 4 · 4a: parâmetros do gel do Portal (processo, formatos, motivos, descartes, gel do catálogo) */   /* 2.16 · Fase 3 (IMP-04): importações no exports; #importar abre a importação */   /* 2.15 · ARQ-05/ARQ-07: catálogos e equipamentos do Portal (GelCad); contas do gel iguais */   /* 2.14 · ARQ-09: sem entrada própria de "Modo exemplo" */   /* 2.11 · C2–C6: kit com a ficha por pasta (AT-08) e a contagem da fila durável (Portal › Versões) */   /* 2.10 · C1: alterações pendentes na fila durável do kit (sem perda entre abas) */   /* 2.09 · E11: busca do kit leva o equipamento à ficha em Equipamentos */   /* 2.08 · E8: kit com "+ Abrir ação" na ficha da ordem */   /* 2.07 · E5: ficha da ordem comum (botão na ordem) e busca por ordem, lote e LP */   /* 2.06 · E3: número digitado só aceito inteiro; E4: cobertura das ordens no exports */   /* 2.05 · E2: a versão da tela vem desta constante (o rótulo estava fixo em v2.01); kit com data local e meta do mês ponderada */   /* 2.04 · revisão 065fe6f: restauração por arquivo confirma e não segue sem a cópia anterior; CSV sem fórmulas; índice por dia no Painel */
+const APP_VERSION='2.50';   /* GEL-FMT: perdas teóricas por formato do tubo */   /* 2.49 · ADM-CENTRAL: formatos e locais pelo cadastro */   /* 2.48 · GEL-09: local de cada descarte no registro e nas pesagens da Produção */   /* 2.47 · CAD-CONS: Consulta de cadastros com ficha lateral */   /* 2.46 · CFG-ADM etapa 2: cadastros do gel só na Administração */   /* 2.45 · CFG-ADM: seções com cadastro na Administração abrem direto lá */   /* 2.44 · REL-02: cabeçalho, rodapé e tabela dos PDFs no molde comum */   /* 2.43 · padrão visual: rótulo do barril na fonte da marca (era Barlow Condensed); cabeçalho das abas e Limpar filtros pela peça comum */   /* 2.42 · GEL-07: OEE e produção da Produção em todo dia que ela tem; OP/lote e relatório comum */   /* 2.41 · GEL-06: dia da Produção com pesagens, ordem/lote e "Editar na Produção" */   /* 2.35 · #aba=relatorios (Portal › Relatórios) abre as fichas e relatórios em PDF */   /* 2.34 · D8: Pareto comum do kit (vacPareto) */   /* 2.33 · Fase 5: layout no arquivo da pessoa (vacPrefs do kit) */   /* 2.32 · D6: botões de gravação travados conforme o perfil (vacTravas do kit) */   /* 2.29 · Design System (barra lateral, paleta, grade de gráficos) */   /* 2.28 · gráficos: "Valores em …" (kg, tubos, barris, dias, índice) onde o eixo não diz a unidade (docs/graficos-padrao.md) */   /* 2.27 · Visão Geral no padrão comum (vacLayout): situação, números, diagnóstico, análises do painel, explorar */   /* 2.26 · kit: padrão visual comum (vacLayout) */   /* 2.25 · kit: login com ID e senha */   /* 2.22 · UX-02: guia por aba */   /* 2.21 · Fase 7 (UX-03, GEL-01): Painel → Visão Geral */   /* 2.20 · Fase 4 · 4e: exports porDiaGel (teórico × real por dia) */   /* 2.19 · Fase 4 · 4d: lê da Produção a partir do corte (GelProd); Resumo do dia */   /* 2.18 · Fase 4 · 4b: pesagem pela conta comum do kit (vacGel) */   /* 2.17 · Fase 4 · 4a: parâmetros do gel do Portal (processo, formatos, motivos, descartes, gel do catálogo) */   /* 2.16 · Fase 3 (IMP-04): importações no exports; #importar abre a importação */   /* 2.15 · ARQ-05/ARQ-07: catálogos e equipamentos do Portal (GelCad); contas do gel iguais */   /* 2.14 · ARQ-09: sem entrada própria de "Modo exemplo" */   /* 2.11 · C2–C6: kit com a ficha por pasta (AT-08) e a contagem da fila durável (Portal › Versões) */   /* 2.10 · C1: alterações pendentes na fila durável do kit (sem perda entre abas) */   /* 2.09 · E11: busca do kit leva o equipamento à ficha em Equipamentos */   /* 2.08 · E8: kit com "+ Abrir ação" na ficha da ordem */   /* 2.07 · E5: ficha da ordem comum (botão na ordem) e busca por ordem, lote e LP */   /* 2.06 · E3: número digitado só aceito inteiro; E4: cobertura das ordens no exports */   /* 2.05 · E2: a versão da tela vem desta constante (o rótulo estava fixo em v2.01); kit com data local e meta do mês ponderada */   /* 2.04 · revisão 065fe6f: restauração por arquivo confirma e não segue sem a cópia anterior; CSV sem fórmulas; índice por dia no Painel */
 /* 2.03 · situação "em atualização" (kit: selo, pílula e faixa; docs/paginas-construcao.md) */
 /* 2.02 · relatório montado: todas as linhas no PDF, comentário, aviso de corte no texto; Painel em 1º; aba inicial do perfil; impressão e PDF no tema claro */
 /* 1.99 · menu Mais do cabeçalho (vac-visual v1): fecha ao escolher uma ação, ao clicar fora e com Esc */
@@ -27439,13 +27454,13 @@ const devEvents=()=>S.events.filter(e=>e.type==='desvio'||(e.type==='baixa'&amp;
 const sinceDays=(n)=>isoDate(new Date(Date.now()-n*DAY));
 // programação: cada dia guarda {orders:[{n,cat}]} (formato antigo: número de barris)
 // parâmetros de processo com vigência (percentuais sobre o gel consumido)
-const paramsAt=date=>vacGel.procAt(date);
+const paramsAt=(date,fmt)=>vacGel.procAt(date,fmt);
 // perdas reais dos últimos n dias (% do gel consumido = gel nos tubos bons + scrap), pelos dias com scrap registrado
 function realLossPct(n){n=n||90;const b=todayISO(),a=addDays(b,-(n-1));let inT=0,nd=0;const sc={T:0,B:0,P:0};
   for(let k=a;k<=b;k=addDays(k,1)){if(!S.prodlog[k])continue;const d=dbDay(k,{});if(!d.hasScr||!d.tubes)continue;nd++;inT+=d.inT;d.parts.forEach(x=>{if(sc[x.area]!=null)sc[x.area]+=x.gel})}
   const tot=inT+sc.T+sc.B+sc.P;return nd&amp;&amp;tot>0?{n:nd,pT:sc.T/tot*100,pB:sc.B/tot*100,pP:sc.P/tot*100}:null}
 const lossFrac=p=>((+p.pT||0)+(+p.pB||0)+(+p.pP||0))/100;
-function gelKg(tubes,date,cat){const p=paramsAt(date);const g=gelReal(cat,date);return (+tubes||0)*g/1000/Math.max(.01,1-lossFrac(p))}
+function gelKg(tubes,date,cat){const p=paramsAt(date,catFmt(cat));const g=gelReal(cat,date);return (+tubes||0)*g/1000/Math.max(.01,1-lossFrac(p))}
 // preço do gel com vigência (R$/kg); sem preço vale o valor do SAP
 function priceFrom(date){const L=(S.config.prices||[]).filter(p=>p.from<=date).sort((a,b)=>a.from<b.from?-1:1);return L.length?L[L.length-1].from:null}
 function priceRec(date){const L=(S.config.prices||[]).filter(p=>p.from<=date).sort((a,b)=>a.from<b.from?-1:1);return L.length?L[L.length-1]:null}
@@ -30521,9 +30536,12 @@ function prodCalc(date,rec){
   const p=paramsAt(date),loss=lossFrac(p),avg=useKgDrum();
   const orders=recOrdersEff(rec);
   const tubes=orders.reduce((s,o)=>s+(+o.t),0);
-  const gelBons=orders.reduce((s,o)=>s+(+o.t)*gelReal(o.cat,date)/1000,0);
-  const teo=gelBons/Math.max(.01,1-loss);
-  const sTeo={T:teo*p.pT/100,B:teo*p.pB/100,P:teo*p.pP/100};
+  /* perdas do formato do tubo de cada ordem (ordens com as mesmas perdas somam no mesmo grupo) */
+  const grp=new Map();let gelBons=0;
+  for(const o of orders){const g=(+o.t)*gelReal(o.cat,date)/1000,q=paramsAt(date,catFmt(o.cat)),k=[q.pT,q.pB,q.pP].join('|'),G=grp.get(k)||{p:q,gel:0};G.gel+=g;grp.set(k,G);gelBons+=g}
+  if(!grp.size)grp.set('',{p,gel:0});
+  let teo=0;const sTeo={T:0,B:0,P:0};
+  for(const {p:q,gel} of grp.values()){const x=gel/Math.max(.01,1-lossFrac(q));teo+=x;sTeo.T+=x*q.pT/100;sTeo.B+=x*q.pB/100;sTeo.P+=x*q.pP/100}
   const sReal={T:rgNum(rec&amp;&amp;rec.sT),B:rgNum(rec&amp;&amp;rec.sB),P:rgNum(rec&amp;&amp;rec.sP)};
   const anyScrap=sReal.T!=null||sReal.B!=null||sReal.P!=null;
   const scrapAdj=(sReal.T??sTeo.T)+(sReal.B??sTeo.B)+(sReal.P??sTeo.P);
@@ -55849,71 +55867,71 @@ body.vac-porta{overflow:hidden}
     {
       "id": "oee",
       "path": "Plataforma.html#motor/oee",
-      "version": "2.6.44",
-      "sha256": "d0cd43e1424ce5bdb9f0d6e854499590d9270109b4b2fcc54a34c1add629ecce",
-      "bytes": 2413131
+      "version": "2.6.45",
+      "sha256": "8009310bf38c674fe641800f6d1d5ecaae9023a58066e0f3f8c1200ccee5aae2",
+      "bytes": 2414178
     },
     {
       "id": "perdas",
       "path": "Plataforma.html#motor/perdas",
       "version": "1.12.20",
-      "sha256": "9e27e25234a061cfabb16bb4efdca5782b12740f242d69ea07451a3a649beb21",
-      "bytes": 993304
+      "sha256": "2ae7eaa7bec360d2a89cd20b6383cd26109e591469284decb3c3224e526b65f8",
+      "bytes": 994268
     },
     {
       "id": "gel",
       "path": "Plataforma.html#motor/gel",
-      "version": "2.49",
-      "sha256": "62e72235eb6cda87efa77825163c2388a8bac70bbf90a58dd2521e2c27e955d0",
-      "bytes": 1635233
+      "version": "2.50",
+      "sha256": "7f834dcce8793517625292399006dff77dc6c61d4d89c3ee820fe700c78b8aa7",
+      "bytes": 1636644
     },
     {
       "id": "paradas",
       "path": "Plataforma.html#motor/paradas",
       "version": "1.2.22",
-      "sha256": "5a6da57b315711eadcfe49392edfe5fec628881e6dec2fb795b12eb29560d700",
-      "bytes": 963815
+      "sha256": "cf07fc9b4da02f83cc6e4ab142f7d81cf225e3ee5f5640b8560a0783475ba4f2",
+      "bytes": 964779
     },
     {
       "id": "equip",
       "path": "Plataforma.html#motor/equip",
       "version": "1.0.22",
-      "sha256": "d6351b5626d67ff18277984d67e699640524efc06a10cb4d3ff06604eafba66b",
-      "bytes": 755407
+      "sha256": "bb47dd1c60feb61be5c23ff5c944ea0b831380a251ccba6ca4170ccd87b4782f",
+      "bytes": 756371
     },
     {
       "id": "inic",
       "path": "Plataforma.html#motor/inic",
       "version": "1.1.17",
-      "sha256": "c849534bac1697ac557b5fdcc4f0f33d1563b1b0c8d82150bb4f25497ec43295",
-      "bytes": 769936
+      "sha256": "52a839dc342a9ff14f94c8e637f06282329fcd8b93d27030bf002b7e95685444",
+      "bytes": 770900
     },
     {
       "id": "linha",
       "path": "Plataforma.html#motor/linha",
       "version": "1.7.1",
-      "sha256": "cb987c099302a810818267ba88183d62e6d452455688c2f64e21b4eaf43de80a",
-      "bytes": 1018040
+      "sha256": "7ed639301226b73c92323d86d0996160ab8f9157bfbde7562c9bea691fc9233f",
+      "bytes": 1019004
     },
     {
       "id": "projetos",
       "path": "Plataforma.html#motor/projetos",
       "version": "0.1.16",
-      "sha256": "3304da7ca51631438dbeae8a187e61107cb08637f0617f35700a5d34f74b745e",
-      "bytes": 687115
+      "sha256": "1d96b085317167711147eeca4ff1c23bf533f0e75310f444032a322f7ca2b612",
+      "bytes": 688079
     },
     {
       "id": "portal",
       "path": "Plataforma.html#motor/portal",
-      "version": "1.9.82",
-      "sha256": "d7baf705e1f6d37fa32791983a423851b5a9cfb2837cdeb38631df5ca6f29fbf",
-      "bytes": 1388698
+      "version": "1.9.83",
+      "sha256": "9983f50f4e87138d94352108a898ac1e6c97d9e67034e5fbc6af7fe921f06cc8",
+      "bytes": 1390767
     }
   ],
   "limitations": [
     "Projetos e conteúdo técnico OSM/MES/AM/TPM mantêm os limites documentados nas fontes."
   ],
-  "enginesSha256": "46d61349487c2e8e0edce682ce9d06ecaa3015583c9be1a4816a6418cded56dd",
+  "enginesSha256": "fb81c0ea2fbc3947929140d5a6185a713d5359802634197f9058a5f3646a703a",
   "originRevision": "ffc9ee8",
   "sourceMode": "single-html",
   "originEnginesSha256": "a87a64ad0c328f70e102b2ae888790a9b5d5a9bd05778652a7ce7cae140e40d2"
@@ -55983,7 +56001,7 @@ summary{cursor:pointer;font-weight:600;color:var(--navy)}
 'use strict';
 /* ---------- referência (atualizar quando a plataforma mudar de versão) ---------- */
 // Iguais às do pacote da plataforma (nova-plataforma/src/generated/manifest.json); o teste ferramenta-verificar confere.
-const VERSOES = {"oee":"2.6.44","perdas":"1.12.20","gel":"2.49","paradas":"1.2.22","equip":"1.0.22","inic":"1.1.17","linha":"1.7.1","projetos":"0.1.16","portal":"1.9.82"};
+const VERSOES = {"oee":"2.6.45","perdas":"1.12.20","gel":"2.50","paradas":"1.2.22","equip":"1.0.22","inic":"1.1.17","linha":"1.7.1","projetos":"0.1.16","portal":"1.9.83"};
 const BASES = [
  { arq: 'vacutainer-cadastros.json', mod: 'portal', nome: 'Cadastro geral (Portal)', obrig: true, cadastro: true, bk: 'Cadastros' },
  { arq: 'portal-base.json', mod: 'portal', nome: 'Portal', obrig: true, bk: 'Portal' },
@@ -56574,7 +56592,7 @@ import { Icon, Button, Badge, Empty, Modal, BarChart, BrandLogo, CommandMenu } f
 import { ModuleFrame } from "vac:modulo/components/ModuleFrame";
 import manifest from "vac:recurso/manifesto";
 import { ModuleTabs } from "vac:modulo/components/ModuleTabs";
-const VERSION = "1.8.63";
+const VERSION = "1.8.64";
 /* Navegação 1.3.0 (16/11/2026): Visão da linha, Relatórios e Importações têm abas; as que mostram uma tela do
    Portal (motor da Administração) trazem o 3º campo com a aba dele. Administração fica só com cadastros e configuração. */
 const SHELL_TABS = {
