@@ -108,7 +108,7 @@ const PASTA = 'Migracao-Ficticia', BLOQUEIO = 'Base de versão anterior';
     await t.locator('#apB').click();
     await t.locator('#sAplicar').getByText('Concluído.', {exact: true}).waitFor({timeout: 60000});
     const res = await t.locator('#sAplicar').innerText();
-    assert.match(res, /abra cada módulo uma vez/i);
+    assert.match(res, /não recalcula|ainda são os de antes da migração/i);
     const bk = await page.evaluate(async nome => {
       const raiz = await (await navigator.storage.getDirectory()).getDirectoryHandle(nome), m = await (await raiz.getDirectoryHandle('00. Backups')).getDirectoryHandle('Migracao'), L = [];
       for await (const [n, h] of m.entries()) { if (h.kind === 'directory') for await (const [f] of h.entries()) L.push(n + '/' + f); else L.push(n); }
