@@ -54,6 +54,8 @@ const files={portal:'portal-base.json',oee:'oee-vacutainer-base.json',perdas:'pe
   const saved=await page.evaluate(async file=>JSON.parse(await(await(await fixtureDir.getFileHandle(file)).getFile()).text()),files[entry.id]);
   expected.exports=reference.exportsEsperado;
   if(entry.id==='oee'){assert.match(saved.saveId,/^sv_/);assert.notEqual(saved.saveId,baseline.saveId);expected.saveId=saved.saveId;
+   // base limpa (bloco 3): as tabelas de cadastro e as marcas de calendário do cadastro não vão para o arquivo gravado
+   for(const k of ['lines','machines','families','catalogs','shifts','targets','downtimeCodes'])delete expected[k];expected.calendar=(expected.calendar||[]).filter(x=>x.origin!=='portal');
    // db.timeline é bloco aditivo que a própria Linha do tempo completa (TL.store); a gravação da base não o cria (base limpa: Model.ensure não completa campos).
    }
   const auditKey=entry.id==='oee'?'auditLog':['portal','perdas'].includes(entry.id)?'audit':'auditoria';
