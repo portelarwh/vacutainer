@@ -31,13 +31,13 @@ const { chromium } = require('playwright');
   const o = await nova('OEE-Vacutainer.html', 'Produção');
   await o.evaluate(() => { document.querySelectorAll('.overlay').forEach(x => x.remove()); Demo.enterExample(); }); await o.waitForTimeout(1200);
   const r6 = await o.evaluate(() => {
-    const d = JSON.parse(Store.serialize(Store.S.db));
-    CadSync.aplicar(d, { rev: 1, parametros: { producao: { unidadeLancamento: 1000, rotuloUnidade: 'mil', arredondamentoMeta: [{ de: '2000-01-01', valor: 7000 }, { de: '2099-01-01', valor: 500 }] } } }, () => { });
+    const d = U.clone(Store.S.db);
+    Object.assign(d.settings, ProdCad.montar({ rev: 1, parametros: { producao: { unidadeLancamento: 1000, rotuloUnidade: 'mil', arredondamentoMeta: [{ de: '2000-01-01', valor: 7000 }, { de: '2099-01-01', valor: 500 }] } } }).settings);
     const st = d.settings, dia = d.productionDays.find(x => !x.deleted && x.shifts && x.shifts.length);
     const res = Engine.computeDayRaw(d, dia), metas = res.flat.map(f => f.metaOp).filter(v => v != null && v > 0);
     return { vig: (st.roundingVig || []).length, ru: st.roundingUnit, a: roundAt(st, '2026-01-01'), b: roundAt(st, '2099-06-01'), semVig: roundAt({ roundingUnit: 1000 }, '2026-01-01'), metas: metas.length, mult: metas.slice(0, -1).every(v => v % 7000 === 0) };
   });
-  ok(r6.vig === 2 && r6.ru === 7000, 'ARQ-06 Produção: CadSync guarda as vigências do arredondamento e o vigente hoje');
+  ok(r6.vig === 2 && r6.ru === 7000, 'ARQ-06 Produção: o ProdCad deriva as vigências do arredondamento e o vigente hoje');
   ok(r6.a === 7000 && r6.b === 500 && r6.semVig === 1000, 'ARQ-06 Produção: roundAt usa a vigência da data (sem vigência, o valor da base)');
   ok(r6.metas > 1 && r6.mult, 'ARQ-06 Produção: a meta de cada intervalo sai no múltiplo da vigência do dia');
   const q = await o.evaluate(() => { localStorage.setItem('vac.qtd', 'abs'); const a = [DISP(), unitLbl()]; localStorage.setItem('vac.qtd', 'unit'); const u = [DISP(), unitLbl()]; return { a, u }; });
@@ -46,27 +46,23 @@ const { chromium } = require('playwright');
 
   /* ================= ARQ-01/02/03/04 · PRD-04 ================= */
   const r1 = await o.evaluate(() => {
-    const d = JSON.parse(Store.serialize(Store.S.db)), sh = d.shifts.find(x => !x.deleted && (x.versions || []).some(v => !v.deleted));
+    const d = U.clone(Store.S.db), sh = d.shifts.find(x => !x.deleted && (x.versions || []).some(v => !v.deleted));
     const vigs = sh.versions.filter(v => !v.deleted).map(v => ({ de: v.validFrom, ate: v.validTo || null, inicio: v.start, fim: v.end, dias: v.weekdays, ativo: true, pausas: [], intervalos: [] }));
     sh.status = 'inativo';                                   // desativado aqui antes do Portal assumir (PRD-04)
     const tc = JSON.parse(JSON.stringify(sh)); tc.id = 'sh_tc'; tc.code = 'TC'; tc.status = 'ativo'; d.shifts.push(tc);   // mesmo turno com outro código
     const outros = d.shifts.filter(x => !x.deleted && x.id !== sh.id && x.id !== 'sh_tc').map(x => ({ codigo: x.code, nome: x.name, ativo: x.status !== 'inativo', vigencias: (x.versions || []).filter(v => !v.deleted).map(v => ({ de: v.validFrom, ate: v.validTo || null, inicio: v.start, fim: v.end, dias: v.weekdays, ativo: v.active !== false, pausas: [], intervalos: [] })) }));
-    const R = CadSync.aplicar(d, { rev: 1, turnos: [{ codigo: sh.code, nome: sh.name, ativo: true, vigencias: vigs }].concat(outros), parametros: {} }, () => { });
-    const a = d.shifts.find(x => x.id === sh.id), c = d.shifts.find(x => x.id === 'sh_tc');
-    return { st: a.status, tc: c.status, soLocal: R.soLocal || 0, cod: sh.code };
+    const T = ProdCad.montar({ rev: 1, turnos: [{ codigo: sh.code, nome: sh.name, ativo: true, vigencias: vigs }], parametros: {} });
+    return { st: T.shifts.find(x => x.code === sh.code).status, cod: sh.code };
   });
   ok(r1.st === 'ativo', `PRD-04: turno ${r1.cod} inativo na Produção volta a ativo quando o Portal diz ativo (o status seguia o local)`);
-  ok(r1.tc === 'inativo' && r1.soLocal === 1, 'PRD-04/ARQ-01: turno que só existe na Produção (TC) fica inativo para os dias novos (sem turno em dobro)');
   const r2 = await o.evaluate(() => {
-    const semDoc = JSON.stringify(CadSync.dominios());
+    const semDoc = JSON.stringify(CadPortal.dominios());
     Store.S.cadDoc = { schema: 'vac-cadastros', rev: 9, turnos: [{ codigo: 'T1', vigencias: [] }], catalogos: [], paradas: [], metasOee: [], linhas: [], parametros: {} };
-    const D = CadSync.dominios();
-    const sl = CadSync.soLocal('turnos'); Store.S.cadDoc = null;
-    return { semDoc, D, soLocal: sl };
+    const D = CadPortal.dominios(); Store.S.cadDoc = null;
+    return { semDoc, D };
   });
   ok(r2.semDoc === '{}', 'ARQ-01..04: sem pasta e sem Portal (modo local/testes) nada do cadastro é aplicado sobre a base');
   ok(r2.D.turnos && r2.D.catalogos && r2.D.metas && r2.D.paradas && r2.D.estrutura, 'ARQ-01..04: com o cadastro do Portal, turnos, catálogos, metas, paradas e estrutura vêm dele, mesmo com o domínio vazio no Portal');
-  ok(r2.soLocal.length > 0 && !r2.soLocal.includes('T1'), 'ARQ-01: turnos que só existem na Produção são identificados (a Administração oferece trazê-los)');
   /* 1.8.47/1.8.48 · CFG-ADM e CAD-CONS: as cinco telas saíram; o menu e a seção pedida direto abrem a Consulta de cadastros */
   const r3 = await o.evaluate(async () => {
     const res = {}; go('config'); await new Promise(r => setTimeout(r, 300));

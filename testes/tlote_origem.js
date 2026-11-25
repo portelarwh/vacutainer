@@ -11,7 +11,7 @@ const { chromium } = require('playwright');
 const V = Object.fromEntries(require('../scripts/html.cjs').manifest().files.map(f => [f.id, f.version]));
 const errs = []; const ok = (c, m) => { console.log((c ? 'ok   ' : 'FALHA ') + m); if (!c) errs.push(m); };
 const PREP = () => {
-  const d = JSON.parse(Store.serialize(Store.S.db)), SD = ServerData, LINE = 'line_vac', DIA = '2026-03-11';
+  const d = U.clone(Store.S.db), SD = ServerData, LINE = 'line_vac', DIA = '2026-03-11';
   const mkShift = (code, name, start, end) => ({ id: 'sh_' + code.toLowerCase(), code, name, lineId: LINE, status: 'ativo', versions: [{ id: 'v_' + code, validFrom: '2000-01-01', validTo: null, start, end, weekdays: [0, 1, 2, 3, 4, 5, 6], active: true, breaks: [], template: null }] });
   d.shifts = [mkShift('T1', 'Turno A', '06:00', '14:00'), mkShift('T2', 'Turno B', '14:00', '22:00')];
   d.calendar = []; d.productionDays = []; d.events = (d.events || []).filter(e => !e.demo);

@@ -27,6 +27,16 @@ O carregador monta os documentos a partir dos blocos do próprio HTML. As adapta
 
 Essas proteções são controles do aplicativo, sem substituir permissões de arquivo da rede. Não constituem comprovação de concorrência segura em SMB: essa homologação continua obrigatória antes do corte.
 
+## Bloco 3 · Produção sem cópia dos cadastros · Produção 2.6.47, plataforma 1.8.66 (25/11/2026)
+
+- A base da Produção (`oee-vacutainer-base.json`, `schemaVersion` 2) **não guarda** `lines`, `machines`, `families`, `catalogs`, `shifts`, `targets` nem `downtimeCodes`. O `ProdCad.montar` (motor/oee) gera essas tabelas, as marcas de calendário do cadastro e os parâmetros derivados, **em memória**, a partir de `vacutainer-cadastros.json`, toda vez que a base ou o cadastro mudam. O `serialize` as deixa fora do arquivo.
+- IDs derivados do código: `line_<código>`, `fam_<código>`, `mac_<código>`, `cat_<código>_<de>`, `sh_<código>`, versão de turno `sv_<código>_<de>_<dias>`, `dc_<código>`, meta `tg_<código da meta>_<de>`. Os lançamentos gravam esses ids; nenhum índice é guardado.
+- Vigência desativada na Administração continua na tabela, inativa, para o dia já lançado achar o catálogo (contrato 2).
+- O ponto de medição do OEE (`mac_line`, código LINHA, papel `oee`) é acrescentado em memória para a linha que não tiver equipamento de papel `oee` no cadastro.
+- Cadastro ausente (sem arquivo) e ilegível (JSON inválido ou outro tipo) são estados diferentes (`Store.S.cadastroEstado`: `ok`, `ausente`, `erro`); em ambos a Produção avisa e não calcula com ele.
+- Sai o `CadSync` e a semente (`Model.seed`). `CadPortal` guarda só o que as telas de Configuração usam (`dominios`, `portalHref`, `SEC_PORTAL`).
+- Prova: `testes/plataforma/prod-numeros.cjs` (OEE, D, P, Q, paradas, hora a hora e agregados do mês iguais aos de antes da troca), `prodcad-equivalencia` (contra a saída congelada do `CadSync`), `prodcad-casos` e `prodcad-memoria`.
+
 ## Troca de pasta com pendência (casca 1.0.2, 15/11/2026)
 
 Antes era só uma mensagem e a troca ficava bloqueada; um módulo parado conectando (por exemplo, esperando confirmação depois de escolher a pasta errada) prendia a pessoa na pasta. Agora a casca abre a janela "Há alterações pendentes nesta pasta", que diz o que está pendente e onde: cada módulo aberto com o motivo (ainda abrindo, conectando à pasta, alteração não gravada ou formulário aberto, não respondeu) e o que está guardado no navegador por módulo (`queueDetail`, em `modulo/core/scopes`; `pendingDetail`, em `modulo/core/runtime`). Falha ao consultar a fila aparece na janela e conta como pendência.

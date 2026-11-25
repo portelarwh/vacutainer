@@ -11,7 +11,7 @@ const { chromium } = require('playwright');
   await o.evaluate(() => { document.querySelectorAll('.overlay').forEach(x => x.remove()); Demo.enterExample(); }); await o.waitForTimeout(800);
   const R = await o.evaluate(async () => {
     const w = t => new Promise(r => setTimeout(r, t)), out = {};
-    const d = JSON.parse(Store.serialize(Store.S.db)), SD = ServerData, X = '2026-03-10', X1 = '2026-03-11', LINE = 'line_vac';
+    const d = U.clone(Store.S.db), SD = ServerData, X = '2026-03-10', X1 = '2026-03-11', LINE = 'line_vac';
     const mkShift = (code, name, start, end) => ({ id: 'sh_' + code.toLowerCase(), code, name, lineId: LINE, status: 'ativo', versions: [{ id: 'v_' + code, validFrom: '2000-01-01', validTo: null, start, end, weekdays: [0, 1, 2, 3, 4, 5, 6], active: true, breaks: [], template: null }] });
     d.shifts = [mkShift('T1', 'Turno A', '06:00', '14:30'), mkShift('T2', 'Turno B', '14:30', '22:47'), mkShift('T3', 'Turno C', '22:47', '30:00')];
     d.shifts[2].versions[0].productive = false;

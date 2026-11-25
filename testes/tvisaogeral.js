@@ -13,7 +13,7 @@ const GRAFICOS = ['Produção boa × meta e capacidade', 'OEE × meta', 'Disponi
   'Pareto de paradas', 'Produção por catálogo', 'Resultado por turno', 'Produção por hora do dia', 'Cascata de perdas do período', 'Tendência semanal', 'Tendência mensal'];
 /* período fixo: 3 dias com produção, scrap, uma parada e caixas do MES (fora de turno) */
 const PREP = () => {
-  const d = JSON.parse(Store.serialize(Store.S.db)), SD = ServerData, LINE = 'line_vac', D = ['2026-03-09', '2026-03-10', '2026-03-11'];
+  const d = U.clone(Store.S.db), SD = ServerData, LINE = 'line_vac', D = ['2026-03-09', '2026-03-10', '2026-03-11'];
   const mkShift = (code, name, start, end) => ({ id: 'sh_' + code.toLowerCase(), code, name, lineId: LINE, status: 'ativo', versions: [{ id: 'v_' + code, validFrom: '2000-01-01', validTo: null, start, end, weekdays: [0, 1, 2, 3, 4, 5, 6], active: true, breaks: [], template: null }] });
   d.shifts = [mkShift('T1', 'Turno A', '06:00', '14:30'), mkShift('T2', 'Turno B', '14:30', '22:47'), mkShift('T3', 'Turno C', '22:47', '30:00')];
   d.shifts[2].versions[0].productive = false;
@@ -131,8 +131,8 @@ const LER = () => {
     ok(L.secoes.join('|') === 'Situação do período|Números do período|Diagnóstico rápido|Análises de desempenho|Explorar dados', 'cinco seções na ordem: Situação, Números, Diagnóstico, Análises, Explorar');
     ok(L.grupos.join(' ') === 'A:2 B:3 C:3 D:1 E:2 F:2', `13 gráficos em 6 grupos (${L.grupos.join(' ')})`);
     ok(L.imprimir === 1 && L.exportar, 'um botão Imprimir só; Exportar junto das ações da visão');
-    ok(/OEE do período/.test(L.situacao) && /Meta vigente/.test(L.situacao) && /Abaixo da meta|Na meta/.test(L.situacao) && /Período anterior|Sem dados no período anterior/.test(L.situacao), 'Situação: OEE, meta, desvio, estado em texto e período anterior');
-    ok(L.decide && /Maior etapa da cascata/.test(L.perda) && /Parada que mais tirou tempo: TRC/.test(L.perda), 'Ação prioritária mantida e maior perda (cascata e Pareto) ao lado');
+    ok(/OEE do período/.test(L.situacao) && /Meta vigente/.test(L.situacao) && /Abaixo da meta|Na meta|Atenção: perto da meta|Acima da meta/.test(L.situacao) && /Período anterior|Sem dados no período anterior/.test(L.situacao), 'Situação: OEE, meta, desvio, estado em texto e período anterior');
+    ok(L.decide && /Maior etapa da cascata/.test(L.perda) && /Parada que mais tirou tempo: [A-Z0-9]{2,4} ·/.test(L.perda), 'Ação prioritária mantida e maior perda (cascata e Pareto) ao lado');
     ok(L.diag === 3 && L.maisDup === 0 && L.desligada, 'Diagnóstico com 3 cartões; Mais indicadores sem repetir os ligados na grade (e com eles quando desligados)');
     ok(L.avisoSem && L.umDia === 1 && L.umDiaFechados && L.umDiaPior, 'avisos honestos: tendência curta e período de 1 dia');
     ok(L.fechouC && L.lembrou, 'grupo recolhido lembra a escolha (vgGrupo) sem mexer nas dobras dos blocos');

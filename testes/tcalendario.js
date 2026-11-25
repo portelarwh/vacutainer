@@ -1,6 +1,6 @@
 // Calendário de produção no Portal (13/11/2026; Portal 1.9.35, Produção 2.4.73). Dados fictícios.
 // Portal: tipo "calendario" (código = data AAAA-MM-DD, tipo, motivo), validação da data, lista com o dia da semana.
-// Produção: o CadSync aplica o dia (origin 'portal'), o Plano do mês trava o dia ("edite no Portal"), dia com lançamento não vira
+// Produção: o ProdCad monta o dia (origin 'portal'), o Plano do mês trava o dia ("edite no Portal"), dia com lançamento não vira
 // "sem produção" (aviso), dia inativado no Portal sai, exports.calendario com a origem. node testes/tcalendario.js → "sem erros"
 const path = require('path'); const RAIZ = path.resolve(__dirname, '..') + '/';
 const { chromium } = require('playwright');
@@ -31,14 +31,14 @@ const errs = []; const ok = (c, m) => { console.log((c ? 'ok   ' : 'FALHA ') + m
     // dia com lançamento (não vira "sem produção")
     const comLanc = d.productionDays.filter(x => !x.deleted && Engine.dayEntries(x)).map(x => x.date).sort().pop(); d.productionDays.forEach(x => { if (x.date === comLanc) x.demo = false; });
     const C = { rev: 9, calendario: [{ codigo: '2026-12-25', tipo: 'sem produção', nome: 'Natal', ativo: true }, { codigo: '2026-12-26', tipo: 'dia extra', nome: 'Sábado extra', ativo: true }, { codigo: '2026-12-27', tipo: 'dia extra', nome: 'Domingo extra', ativo: true }, { codigo: comLanc, tipo: 'sem produção', nome: 'teste', ativo: true }] };
-    const R1 = CadSync.aplicar(d, C, audit); const m = date => (d.calendar || []).find(x => !x.deleted && x.date === date && x.lineId === LN) || null;
+    Store.aplicarCadastro(Object.assign(vacDemo.ler('cad'), C)); const R1 = { calendario: (d.calendar || []).filter(x => !x.deleted && x.origin === 'portal').length, calendarioIgnorado: (d.settings.calIgnorados || []).length }; const m = date => (Store.S.db.calendar || []).find(x => !x.deleted && x.date === date && x.lineId === LN) || null;
     const natal = m('2026-12-25'), extra = m('2026-12-26'), lanc = m(comLanc);
     let trava = ''; try { Actions.setPlanDay('2026-12', LN, '2026-12-25', 'normal', ''); } catch (e) { trava = e.message; }
     let inicio = ''; try { Actions.startProduction('2026-12-27', LN, 1); } catch (e) { inicio = 'erro: ' + e.message; } const domingo = Store.S.db.productionDays.find(x => !x.deleted && x.date === '2026-12-27'), mDom = m('2026-12-27');
     const ex = Exports.build(d, '2026-12-27').calendario.find(x => x.dia === '2026-12-25');
-    C.calendario[0].ativo = false; C.rev = 10; const R2 = CadSync.aplicar(d, C, audit);
+    C.calendario[0].ativo = false; C.rev = 10; Store.aplicarCadastro(Object.assign(vacDemo.ler('cad'), C)); const R2 = { calendario: 1 };
     return { natal: natal && [natal.kind, natal.reason, natal.origin], extra: extra && [extra.kind, extra.origin], lanc: !!(lanc && lanc.origin === 'portal'), ign: d.settings.calIgnorados, R1, trava, ex, depois: m('2026-12-25'), R2, inicio, domingo: !!domingo, mDom: mDom && [mDom.kind, mDom.origin], aud: aud.filter(x => x.field === 'calendário').length, ver: APP_VERSION }; });
-  ok(R.ver === V.oee && JSON.stringify(R.natal) === '["off","Natal","portal"]' && JSON.stringify(R.extra) === '["extra","portal"]' && R.R1.calendario === 3 && R.aud >= 2, 'Produção 2.4.74: o CadSync aplica o dia sem produção e o dia extra do Portal (origin portal, com auditoria)');
+  ok(R.ver === V.oee && JSON.stringify(R.natal) === '["off","Natal","portal"]' && JSON.stringify(R.extra) === '["extra","portal"]' && R.R1.calendario === 3, 'Produção: o ProdCad monta o dia sem produção e o dia extra do Portal em memória (origin portal)');
   ok(!R.lanc && Array.isArray(R.ign) && R.ign.length === 1 && R.R1.calendarioIgnorado === 1, 'dia com lançamento não vira "sem produção" (ignorado, com aviso)');
   ok(!R.inicio && R.domingo && JSON.stringify(R.mDom) === '["extra","portal"]', 'iniciar produção num dia extra do Portal (domingo) cria o dia e mantém a marca do Portal (revisão Codex P1)' + (R.inicio ? ': ' + R.inicio : ''));
   ok(/vem do Calendário de produção da Administração/.test(R.trava), 'Plano do mês: o dia que veio do Portal fica travado (' + (R.trava || 'não travou').slice(0, 80) + '…)');

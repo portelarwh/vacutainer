@@ -72,7 +72,8 @@ console.log('ok modelo do app na plataforma = CELULAR/index.html');
     console.log(`ok QR em ${Q3.partes.length} partes, lidas fora de ordem, dão o mesmo pacote`);
 
     // 4. prévia e gravação
-    const r = await f.evaluate(P => { const X = CelImp.plano(P); const prev = { av: X.av, horas: X.horas.filter(h => h.real != null).length, par: X.paradas.map(p => [!!p.code, !!p.eq]), dia: !!X.day, antes: X.horas.map(h => h.antes) };
+    const r = await f.evaluate(P => { db().downtimeCodes.filter(c => c.code === 'FME').forEach(c => { c.allowsManualDuration = true; });   /* o cadastro do cenário não permite duração manual no FME; o celular lança só a duração */
+      const X = CelImp.plano(P); const prev = { av: X.av, horas: X.horas.filter(h => h.real != null).length, par: X.paradas.map(p => [!!p.code, !!p.eq]), dia: !!X.day, antes: X.horas.map(h => h.antes) };
       const g = CelImp.aplicar(P); const d = db().productionDays.find(x => !x.deleted && x.date === P.d), ps = d.shifts.find(s => s.snap.code === P.t);
       const ivs = ps.intervals.filter(i => !i.deleted).sort((a, b) => a.start - b.start).map(i => i.good);
       const ev = d.events.filter(e => !e.deleted && e.note === 'sensor (TESTE)').map(e => ({ code: (db().downtimeCodes.find(c => c.id === e.codeId) || {}).code, eq: (db().machines.find(x => x.id === e.equipmentId) || {}).code, min: e.minutes }));

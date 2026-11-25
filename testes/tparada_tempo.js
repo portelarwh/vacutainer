@@ -11,14 +11,14 @@ const srv = require('../scripts/servidor-testes.cjs').server();
     const p = await browser.newPage({ viewport: { width: 1440, height: 1000 } }), errors = [];
     p.on('pageerror', e => errors.push(e.message));
     await p.goto('http://127.0.0.1:' + srv.address().port + '/__modulos__/OEE-Vacutainer.html?demo=teste-parada-tempo');
-    await p.waitForFunction(() => typeof CadSync !== 'undefined' && Store.S.mode === 'exemplo');
+    await p.waitForFunction(() => typeof ProdCad !== 'undefined' && Store.S.mode === 'exemplo');
     await p.evaluate(() => Store.mutate((d, audit) => {
       d.productionDays[0].status = 'em lançamento'; d.productionDays[0].events = [];
       d.productionDays[0].shifts.forEach(s => s.status = 'em lançamento');
-      CadSync.aplicar(d, { schema: 'vac-cadastros', rev: 100, paradas: [
+      d.downtimeCodes.push(...ProdCad.montar({ schema: 'vac-cadastros', rev: 100, paradas: [
         { codigo: 'MIS', duracaoManual: false }, { codigo: 'MAN', duracaoManual: true },
         { codigo: 'HOR', duracaoManual: true, exigeHorario: true }, { codigo: 'SEM' }
-      ].map(c => ({ nome: c.codigo, categoria: 'Teste', ativo: true, ...c })) }, audit);
+      ].map(c => ({ nome: c.codigo, categoria: 'Teste', ativo: true, ...c })) }).downtimeCodes);
     }));
     const open = () => p.evaluate(() => eventModal(db().productionDays[0], null, db().productionDays[0].shifts[0].intervals[0].id));
     const select = async code => p.selectOption('#eCode', await p.evaluate(code => db().downtimeCodes.find(c => c.code === code).id, code));

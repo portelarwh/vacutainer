@@ -11,7 +11,7 @@ const { chromium } = require('playwright');
   /* ---------- exports.importacoes em cada página (IMP-04) ---------- */
   const o = await nova('OEE-Vacutainer.html', 'Produção');
   await o.evaluate(() => { document.querySelectorAll('.overlay').forEach(x => x.remove()); Demo.enterExample(); }); await o.waitForTimeout(800);
-  const eo = await o.evaluate(() => { const d = JSON.parse(Store.serialize(Store.S.db)); d.server = ServerData.ensureStore(d);
+  const eo = await o.evaluate(() => { const d = U.clone(Store.S.db); d.server = ServerData.ensureStore(d);
     d.server.imports.push({ id: 'i1', at: '2026-03-11T08:00', by: 'Ana', file: 'mes.csv', from: '2026-03-10T05:00:00', to: '2026-03-11T07:00:00', boxes: 900 });
     d.imports = (d.imports || []).concat([{ id: 'p1', at: '2026-03-01T09:00', by: 'Ana', kind: 'planos', source: 'plano.xlsx' }]);
     const ex = Exports.build(d); const ob = Ord.exportsBuild.call({ B: { competencias: { '2026-03': { mb51: { em: '2026-03-11T09:00', por: 'Ana', arquivo: 'mb51.xlsx' }, coois: { em: '2026-03-11T09:10', por: 'Ana' } } } } });

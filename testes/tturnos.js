@@ -13,7 +13,7 @@ const { chromium } = require('playwright');
   // cenário montado numa cópia da base de exemplo (o cálculo é o mesmo da tela)
   const R = await o.evaluate(() => {
     const out = {};
-    const d = JSON.parse(Store.serialize(Store.S.db)), SD = ServerData, X = '2026-03-10', X1 = '2026-03-11', LINE = 'line_vac';
+    const d = U.clone(Store.S.db), SD = ServerData, X = '2026-03-10', X1 = '2026-03-11', LINE = 'line_vac';
     const mkShift = (code, name, start, end) => ({ id: 'sh_' + code.toLowerCase(), code, name, lineId: LINE, status: 'ativo', versions: [{ id: 'v_' + code, validFrom: '2000-01-01', validTo: null, start, end, weekdays: [0, 1, 2, 3, 4, 5, 6], active: true, breaks: [], template: null }] });
     d.shifts = [mkShift('T1', 'Turno A', '06:00', '14:30'), mkShift('T2', 'Turno B', '14:30', '22:47'), mkShift('T3', 'Turno C', '22:47', '30:00')];
     d.shifts[2].versions[0].productive = false;                         // TUR-01: C ativo e não produtivo
@@ -89,11 +89,11 @@ const { chromium } = require('playwright');
   ok(pt.v && pt.aj, 'TUR-01 Portal: vigência do turno tem "Turno não produtivo" com ⓘ');
   await po.evaluate(() => { location.hash = '#cadastros/parametros'; }); await po.waitForTimeout(500);
   ok(await po.evaluate(() => !!document.querySelector('[data-pprod="continuidadeMin"]') && !!document.querySelector('[data-pprod="foraTurnoDesde"]')), 'TUR-01 Portal: Parâmetros › Produção tem continuidade (min) e "vale a partir de"');
-  // CadSync leva a flag e os parâmetros
-  const cs = await o.evaluate(() => { const d = JSON.parse(Store.serialize(Store.S.db));
-    CadSync.aplicar(d, { rev: 3, turnos: [{ codigo: 'T9', nome: 'Turno C', ativo: true, vigencias: [{ de: '2026-05-01', inicio: '22:47', fim: '30:00', dias: [1, 2, 3, 4, 5], ativo: true, naoProdutivo: true, pausas: [], intervalos: [] }] }], parametros: { producao: { continuidadeMin: 15 } } }, () => { });
+  // o ProdCad leva a flag e os parâmetros
+  const cs = await o.evaluate(() => { const d = U.clone(Store.S.db);
+    const T = ProdCad.montar({ rev: 3, turnos: [{ codigo: 'T9', nome: 'Turno C', ativo: true, vigencias: [{ de: '2026-05-01', inicio: '22:47', fim: '30:00', dias: [1, 2, 3, 4, 5], ativo: true, naoProdutivo: true, pausas: [], intervalos: [] }] }], parametros: { producao: { continuidadeMin: 15 } } }); d.shifts = T.shifts; Object.assign(d.settings, T.settings);
     const t = d.shifts.find(s => s.code === 'T9'); return { prod: t.versions[0].productive, lim: d.settings.continuityMin, desde: d.settings.foraTurnoDesde }; });
-  ok(cs.prod === false && cs.lim === 15 && cs.desde === '2026-05-01', 'TUR-01 CadSync: vigência não produtiva, continuidade e data (padrão = 1ª vigência não produtiva) chegam à Produção');
+  ok(cs.prod === false && cs.lim === 15 && cs.desde === '2026-05-01', 'TUR-01 ProdCad: vigência não produtiva, continuidade e data (padrão = 1ª vigência não produtiva) chegam à Produção');
 
   await b.close();
   if (errs.length) { console.log('\n' + errs.join('\n')); process.exit(1); } else console.log('\nsem erros');

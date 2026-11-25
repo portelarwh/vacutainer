@@ -20,7 +20,12 @@ const OUT = process.env.FILTRO_PRINT || '';
     await page.goto('http://127.0.0.1:' + srv.address().port + '/?demo=1#/oee?tab=launch');
     const o = await (await page.locator('iframe[title="Módulo Produção"]').elementHandle({ timeout: 60000 })).contentFrame();
     await o.waitForFunction(() => window.vacPagina?.pronto());
-    await o.evaluate(() => { eventModal(curDay(), null, null); });
+    /* o cadastro do cenário tem poucos tipos de parada; o teste declara os de que precisa para ter uma lista longa e itens "Setup" */
+    await o.evaluate(() => {
+      const extras = ProdCad.montar({ paradas: [['SET', 'Setup inicial / sanitização', 'Setup', 'Partida'], ['TRC', 'Troca de catálogo', 'Setup', 'Troca'], ['TRL', 'Troca de lote', 'Setup', 'Troca'], ['AJP', 'Ajuste de processo', 'Processo', 'Ajuste'],
+        ['LIM', 'Limpeza', 'Planejada', 'Limpeza'], ['MPL', 'Manutenção planejada', 'Manutenção', 'Planejada'], ['FEL', 'Falha elétrica', 'Quebra', 'Elétrica']].map(([codigo, nome, categoria, subcategoria]) => ({ codigo, nome, categoria, subcategoria, ativo: true, afetaD: true, duracaoManual: true })) }).downtimeCodes;
+      for (const x of extras) if (!db().downtimeCodes.some(c => c.code === x.code)) db().downtimeCodes.push(x);
+      Engine.bumpConfig(); eventModal(curDay(), null, null); });
     await o.waitForSelector('#eCode');
     const bt = o.locator('.vac-fs-bt').first(), pan = o.locator('.vac-fs-pan').first();
     const est = () => o.evaluate(() => { const s = document.querySelector('#eCode'), w = s.closest('.vac-fs'), p = w.querySelector('.vac-fs-pan');

@@ -23,7 +23,7 @@ const html = fs.readFileSync(path.resolve(__dirname, '../../Plataforma.html'));
         /* 2.6.42 · LANC-CAB (modelo do responsável, 23/11/2026): data ‹ › Hoje no cabeçalho do dia; sem a barra de data separada */
         nav: ['[data-dnav="-1"]', '#cabCal', '#selDate', '[data-dnav="1"]', '[data-dnav="0"]'].every(q => c.querySelector('header ' + q)), barra: !!document.querySelector('#main .filters #selDate'),
         pil: !!c.querySelector('header .cab2-pil [data-modolanc]') && !!c.querySelector('header .cab2-pil [data-scrapmode]'), dia24: !!document.querySelector('#dMaisMenu [data-dia24]') }; });
-    assert.equal(c.h3, '19/11/2026 Quinta-feira'); assert.equal(c.sit, 'Em produção'); assert.match(c.sub, /^Semana \d+ · seg–sáb · Vacutainer$/);
+    assert.equal(c.h3, '19/11/2026 Quinta-feira'); assert.equal(c.sit, 'Em produção'); assert.match(c.sub, /^Semana \d+ · seg–sáb · (?:Linha )?Vacutainer$/);
     assert.ok(c.nav && !c.barra && c.pil && c.dia24, 'data, Lançamento e Scrap no cabeçalho; Ver o dia inteiro em Mais ações ' + JSON.stringify(c));
     assert.deepEqual(c.velhos.filter(x => /Linha|Calendário|^Data$/.test(x)), [], 'saem Data, Linha · máquina e Calendário'); assert.ok(c.fechar, 'Fechar dia no cabeçalho'); assert.equal(c.linha1, 1, 'data, Fechar dia e Mais ações na mesma linha');
     const barra = await f.evaluate(() => (document.querySelector('#main .filters') || {}).textContent || '');

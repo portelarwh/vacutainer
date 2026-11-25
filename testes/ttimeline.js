@@ -13,10 +13,19 @@ const D = '2031-03-10', D2 = '2031-03-11';   // segunda e terça, sem nada lanç
     await p.goto(PG); await p.waitForTimeout(1300); await p.evaluate(() => { document.querySelectorAll('.overlay').forEach(o => o.remove()); Demo.enterExample(); document.querySelectorAll('.overlay').forEach(o => o.remove()); }); await p.waitForTimeout(500); return p; };
   /* cenário: um turno de 480 min (06:00–14:00) em D, com paradas do operador, um intervalo sem caixas do MES e tags */
   const CENARIO = ([D, fechado]) => Store.mutate(B => {
+    /* os códigos de parada que este cenário usa (antes vinham da semente de fábrica; agora o cadastro é que os traz) */
+    for (const x of ProdCad.montar({ paradas: [
+      { codigo: 'REF', nome: 'Refeição', categoria: 'Planejada', subcategoria: 'Pausa', cor: '#8d99a6', planejada: true, descontaPlanejado: true, pareto: false, duracaoManual: true },
+      { codigo: 'FME', nome: 'Falha mecânica', categoria: 'Quebra', subcategoria: 'Mecânica', cor: '#c22a2a', afetaD: true, duracaoManual: true },
+      { codigo: 'FMA', nome: 'Falta de material', categoria: 'Logística', subcategoria: 'Material', cor: '#b8620a', afetaD: true, duracaoManual: true },
+      { codigo: 'FEL', nome: 'Falha elétrica', categoria: 'Quebra', subcategoria: 'Elétrica', cor: '#d14b2a', afetaD: true, duracaoManual: true },
+      { codigo: 'TRL', nome: 'Troca de lote', categoria: 'Setup', subcategoria: 'Troca', cor: '#7d55b5', planejada: true, afetaD: true, duracaoManual: true },
+      { codigo: 'OUT', nome: 'Outros', categoria: 'Outros', subcategoria: '', cor: '#94a2b1', afetaD: true, exigeObservacao: true, duracaoManual: true }] }).downtimeCodes)
+      if (!B.downtimeCodes.some(c => c.code === x.code)) B.downtimeCodes.push(x);
     const cod = c => B.downtimeCodes.find(x => x.code === c).id, M = B.machines.filter(m => !m.deleted && m.role !== 'oee'), at = '2031-03-10T15:00:00.000Z', meta = { createdAt: at, createdBy: 'Operador Teste', updatedAt: at, updatedBy: 'Operador Teste', status: 'ativo', revision: 1 };
     B.productionDays = B.productionDays.filter(d => d.date !== D);
     B.productionDays.push({ ...meta, id: 'day_tl', date: D, lineId: 'line_vac', machineId: 'mac_line', status: fechado ? 'fechado' : 'em lançamento', responsible: 'Operador Teste', note: '', scrapMode: 'shift', scrapDay: null, gapJustification: '', origin: 'manual',
-      shifts: [{ id: 'ps_tl', shiftId: 'sh_1', status: fechado ? 'fechado' : 'em lançamento', snap: { name: 'Turno Teste', start: '06:00', end: '14:00', breaks: [] }, intervals: [], initialCatalogId: null }],
+      shifts: [{ id: 'ps_tl', shiftId: (B.shifts.find(s => s.code === 'T1') || B.shifts[0]).id, status: fechado ? 'fechado' : 'em lançamento', snap: { name: 'Turno Teste', start: '06:00', end: '14:00', breaks: [] }, intervals: [], initialCatalogId: null }],
       events: [
         { id: 'ev_fme', codeId: cod('FME'), start: 490, end: 515, minutes: null, equipmentId: M[0].id, note: 'Falta de sílica identificada no abastecimento.\nAguardando recebimento do material.', manual: true, ...meta },
         { id: 'ev_fma', codeId: cod('FMA'), start: 540, end: 580, minutes: null, equipmentId: M[1].id, note: 'Sem tampa na linha', manual: true, ...meta },
@@ -141,7 +150,7 @@ const D = '2031-03-10', D2 = '2031-03-11';   // segunda e terça, sem nada lanç
       // recolher máquinas, estados da interface, mapa de tags
       const e = await p.evaluate(async D => { const espera = ms => new Promise(r => setTimeout(r, ms)), o = {}; document.querySelector('#tloRec').click(); await espera(300); o.rec = document.querySelectorAll('.tlo-lab .r').length === 0 && !!document.querySelector('#tloCv'); document.querySelector('#tloRec').click(); await espera(300);
         o.avisos = [...document.querySelectorAll('[data-tlav]')].map(x => x.dataset.tlav); App.tl.modo = 'periodo'; App.tl.de = D + 'T08:00'; App.tl.ate = '2031-06-10T08:00'; render(); await espera(400); o.erro = (document.querySelector('[data-tlav="erro"]') || {}).innerText || '';
-        App.tl.modo = 'dia'; App.tl.date = '2031-03-16'; render(); await espera(400); o.vazio = !!document.querySelector('[data-tlav="vazio"]') && TLV.modelo().t.ociosa === 1440; App.tl.date = D; App.tl.modo = 'turno'; render(); await espera(300); return o; }, D);
+        App.tl.modo = 'dia'; App.tl.date = '2031-03-16'; db().shifts.filter(s => s.code === 'T3').forEach(s => s.versions.forEach(v => { v.active = false; })); Engine.bumpConfig(); render();   /* sem o 3º turno ativo (o cenário o tem) o domingo não herda as horas do sábado */ await espera(400); o.vazio = !!document.querySelector('[data-tlav="vazio"]') && TLV.modelo().t.ociosa === 1440; App.tl.date = D; App.tl.modo = 'turno'; render(); await espera(300); return o; }, D);
       ok(e.rec, 'máquinas recolhem e voltam; a faixa da linha continua');
       ok(e.avisos.includes('semhora') && /31 dias/.test(e.erro) && e.vazio, 'estados da tela: parada sem horário avisada, período inválido com mensagem e período sem dados explícito');
       await p.evaluate(() => document.querySelector('#tlMapa').click()); await p.waitForSelector('#tgNew'); await p.click('#tgNew'); await p.waitForSelector('#ff_code');

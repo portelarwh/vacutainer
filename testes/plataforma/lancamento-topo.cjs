@@ -69,7 +69,7 @@ const html = fs.readFileSync(path.resolve(__dirname, '../../Plataforma.html'));
     assert.deepEqual(vg.datas, ['from', 'to']); assert.ok(vg.visao, 'Visão na primeira linha');
     assert.deepEqual(vg.l2, ['shiftId', 'lineId', 'machineId', 'catalogId', 'status']); assert.equal(vg.limpar, 'Limpar filtros');
     assert.deepEqual(vg.pers, ['wk', 'mtd', 'pwk', 'pm', 'fy'], 'Semana, Mês, Semana anterior, Mês anterior e Ano fiscal em Personalizado');
-    assert.match(vg.resumo, /^\d{2}\/\d{2}\/\d{4} · Todos os turnos · Vacutainer · Todas as máquinas$/); assert.equal(vg.sobra, 0, 'sem rótulo vazio');
+    assert.match(vg.resumo, /^\d{2}\/\d{2}\/\d{4} · Todos os turnos · (?:Linha )?Vacutainer · Todas as máquinas$/); assert.equal(vg.sobra, 0, 'sem rótulo vazio');
     assert.deepEqual(vg.acoes.filter(Boolean).sort(), ['ovExp', 'vgPers', 'vgPrint', 'vgTv'].sort(), 'ações da visão à direita do título');
     await f.click('.vgl-qp [data-qp="d1"]'); await f.waitForSelector('.vgl-qp [data-qp="d1"][aria-pressed="true"]');
     const ontem = await f.evaluate(() => [App.filters.from === U.addDays(U.today(), -1) && App.filters.to === App.filters.from, document.querySelector('.vgl-f3').textContent.startsWith(U.brDate(U.addDays(U.today(), -1)))]);

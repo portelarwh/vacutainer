@@ -12,7 +12,7 @@ const path = require('path'); const RAIZ = path.resolve(__dirname, '..') + '/';
 const { chromium } = require('playwright');
 const errs = []; const ok = (c, m) => { console.log((c ? 'ok   ' : 'FALHA ') + m); if (!c) errs.push(m); };
 const PREP = () => {
-  const d = JSON.parse(Store.serialize(Store.S.db)), SD = ServerData, LINE = 'line_vac', D = ['2026-03-10', '2026-03-11'];
+  const d = U.clone(Store.S.db), SD = ServerData, LINE = 'line_vac', D = ['2026-03-10', '2026-03-11'];
   const mkShift = (code, name, start, end) => ({ id: 'sh_' + code.toLowerCase(), code, name, lineId: LINE, status: 'ativo', versions: [{ id: 'v_' + code, validFrom: '2000-01-01', validTo: null, start, end, weekdays: [0, 1, 2, 3, 4, 5, 6], active: true, breaks: [], template: null }] });
   d.shifts = [mkShift('T1', 'Turno A', '06:00', '14:30'), mkShift('T2', 'Turno B', '14:30', '22:47'), mkShift('T3', 'Turno C', '22:47', '30:00')];
   d.shifts[2].versions[0].productive = false;
