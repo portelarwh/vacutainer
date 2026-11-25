@@ -667,7 +667,9 @@ const vacGel = (() => {
   function procAt(date, fmt) {
     const L = (vacCad.param('gel.processo') || []).filter(p => p.from <= date &amp;&amp; (!p.fmt || (fmt != null &amp;&amp; String(p.fmt) === String(fmt))))
       .sort((a, b) => a.from < b.from ? -1 : a.from > b.from ? 1 : (a.fmt ? 1 : 0) - (b.fmt ? 1 : 0));
-    return L.length ? { ...L[L.length - 1] } : null;
+    /* contrato 1: vigência sem o gel padrão ou sem uma das perdas não vale como zero; fica sem valor */
+    const P = L.length ? { ...L[L.length - 1] } : null;
+    return P &amp;&amp; ['g', 'pT', 'pB', 'pP'].every(k => P[k] != null &amp;&amp; P[k] !== '' &amp;&amp; Number.isFinite(+P[k]) &amp;&amp; +P[k] >= 0) ? P : null;
   }
   const sobraAt = date => valorPeso(vacCad.gel.formato(date)?.sobraBarrilKg);
   /* vigências do gel do catálogo (cg.vig) */
@@ -7129,6 +7131,7 @@ function wireGelPar(P,pe){const box=$('#gelPar');if(!box||!pe)return;const W=Par
   const d=e.target.closest('[data-pgdel]');if(d){const ps=d.dataset.pgdel.split('.'),i=+ps.pop();pget(W,ps.join('.')).splice(i,1);return App.render()}};
  const ok=$('#gpOk');if(ok)ok.onclick=()=>{if(!Cad.podeEditarAssunto('gel'))return;const h=todayISO(),G0=P.gel||{},G=clone(W);
   {const L=G.processo||[];if(L.some(v=>!v.from))return toast('Informe a data de cada vigência.',5000,true);
+   if(L.some(v=>v.from>=h&amp;&amp;['g','pT','pB','pP'].some(k=>v[k]==null||!isFinite(v[k])||v[k]<0)))return toast('Informe o gel padrão e as três perdas de cada vigência nova.',6000,true);
    const ant=(G0.processo||[]).filter(v=>v.from<h);if(!deq(ant,L.filter(v=>v.from<h)))return toast('Vigências que já valeram não mudam: acrescente uma nova a partir de hoje.',6000,true);
    if(new Set(L.map(v=>v.from+'|'+(v.fmt||''))).size!==L.length)return toast('Duas vigências com a mesma data e o mesmo formato.',5000,true);
    L.forEach(v=>{if(!v.fmt)delete v.fmt});G.processo=L.slice().sort((a,b)=>a.from<b.from?-1:a.from>b.from?1:(a.fmt?1:0)-(b.fmt?1:0));if(!G.processo.length)delete G.processo}
@@ -55356,70 +55359,70 @@ body.vac-porta{overflow:hidden}
       "id": "oee",
       "path": "Plataforma.html#motor/oee",
       "version": "2.6.45",
-      "sha256": "f574f48eabced6ef69771fa36d449eeeb0104c3362f3a7c6d6692316c2745233",
-      "bytes": 2408750
+      "sha256": "7378bd69f434c73b5cb46997f6c484a8ef8c4a083808474855dca0d631b055ab",
+      "bytes": 2408993
     },
     {
       "id": "perdas",
       "path": "Plataforma.html#motor/perdas",
       "version": "1.12.20",
-      "sha256": "55e3a086311ca61bbbd2caaff4a277f8c9ce77816d30a34a1f5132296c2e0b57",
-      "bytes": 986388
+      "sha256": "f7d8fc073e00c7b041841b36d19e5f139202464a42526f8519d669bd98ff1cab",
+      "bytes": 986631
     },
     {
       "id": "gel",
       "path": "Plataforma.html#motor/gel",
       "version": "2.50",
-      "sha256": "d3f77f1f1532c794e216ac3ed6df07d9f58f273b07d08d9cc15843e0bb51f235",
-      "bytes": 1631450
+      "sha256": "c222fbfdfd604c923e0fa103170aa552b3b081b9e1d105cd054d509571a6df74",
+      "bytes": 1631693
     },
     {
       "id": "paradas",
       "path": "Plataforma.html#motor/paradas",
       "version": "1.2.22",
-      "sha256": "a364958979b6baf3132d1ad2fa8eedd5a74ab33a542fccd19333e2f92065e197",
-      "bytes": 956501
+      "sha256": "7b6e469274e5baa553ce8febfd9dd808ee5f8329bd4bbf822849074f1b1772f6",
+      "bytes": 956744
     },
     {
       "id": "equip",
       "path": "Plataforma.html#motor/equip",
       "version": "1.0.22",
-      "sha256": "36e2c28407a110a4029440db979f4fab6388902e31ebb12b7cf3d81d84170377",
-      "bytes": 747903
+      "sha256": "8608929b2f768a354f3cdca561633c749ce04e65dab8ce11401a425335d4961c",
+      "bytes": 748146
     },
     {
       "id": "inic",
       "path": "Plataforma.html#motor/inic",
       "version": "1.1.17",
-      "sha256": "3a934ae586ae873f4e4925fb20244388627dbf8fa8b1f4cf3c4957800b077a2b",
-      "bytes": 762438
+      "sha256": "ae47708c31fc125783ee7af647e4438a05b9c10a349bf1b0a2082a56c3bd07fa",
+      "bytes": 762681
     },
     {
       "id": "linha",
       "path": "Plataforma.html#motor/linha",
       "version": "1.7.1",
-      "sha256": "b851f635ddb35eb792f446d1b52e99ff200f6560a9b9ca0f37c0ee9e01d5e514",
-      "bytes": 1010536
+      "sha256": "6dd8b804ecd71193a7c8bd53ef37f58efffa0a89cbf909946e8de8a0cd7238f7",
+      "bytes": 1010779
     },
     {
       "id": "projetos",
       "path": "Plataforma.html#motor/projetos",
       "version": "0.1.16",
-      "sha256": "626b04c77bb8fe209448d5d2d1fa8036d2be12c281f309d2d3aa13bcf6760b31",
-      "bytes": 680354
+      "sha256": "4228e8e295b8a10af12c8763177fe041fa55c71d77f47a54385f3fb5ef362abd",
+      "bytes": 680597
     },
     {
       "id": "portal",
       "path": "Plataforma.html#motor/portal",
       "version": "1.9.83",
-      "sha256": "0d8cf37dbaf8d1cc6ebf51b7cb4e2e11c40aa89addaf0c954061126728ca7753",
-      "bytes": 1308558
+      "sha256": "553c7fb3c949d49cfe15583e64365a335d3a7744c62c1535864c90ab187da60a",
+      "bytes": 1308986
     }
   ],
   "limitations": [
     "Projetos e conteúdo técnico OSM/MES/AM/TPM mantêm os limites documentados nas fontes."
   ],
-  "enginesSha256": "e23506e6694b6f6c292eb1f3504d1311b7977e0f812d83dd8192458fd913a851",
+  "enginesSha256": "88f2a18cc4059866f6ee7f51e33de235adcc802e5b0b5f3d489b16fd7972214e",
   "originRevision": "ffc9ee8",
   "sourceMode": "single-html",
   "originEnginesSha256": "a87a64ad0c328f70e102b2ae888790a9b5d5a9bd05778652a7ce7cae140e40d2"
