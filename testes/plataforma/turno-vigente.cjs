@@ -16,6 +16,24 @@ const html = fs.readFileSync(path.resolve(__dirname, '../../Plataforma.html'));
     await page.getByRole('heading', { name: 'Visão da linha' }).waitFor();
     const w = ms => page.waitForTimeout(ms || 500);
 
+    // 0a) Produção primeiro: dois sábados criados ANTES de ler o horário novo (horário antigo 06:00–14:30), com produção lançada.
+    //     A Produção monta os turnos do cadastro ao abrir; para o dia nascer com o horário antigo, ele tem de existir antes de o cadastro mudar.
+    const iso = x => x.toISOString().slice(0, 10), h0 = new Date(); h0.setUTCHours(12, 0, 0, 0);
+    const s1 = new Date(h0); do s1.setUTCDate(s1.getUTCDate() + 1); while (s1.getUTCDay() !== 6); const s2 = new Date(s1); s2.setUTCDate(s2.getUTCDate() + 7);
+    const sabados = { sab: iso(s1), sab2: iso(s2) };
+    await page.evaluate(() => { location.hash = '#/oee?tab=launch'; });
+    let o = await (await page.locator('iframe[title="Módulo Produção"]').elementHandle()).contentFrame(); await o.waitForFunction(() => window.vacPagina?.pronto());
+    const antesHorario = await o.evaluate(({ sab, sab2 }) => {
+      const ivDe = (dt, ini) => { const d = db().productionDays.find(x => !x.deleted && x.date === dt), ps = d.shifts.find(p => p.snap.code === 'T1'); return { d, iv: ps.intervals.find(i => !i.deleted && U.hhmm(i.start) === ini) }; };
+      Actions.createDay(sab, 'line_vac', 'mac_line'); Actions.createDay(sab2, 'line_vac', 'mac_line');
+      let x = ivDe(sab, '06:00'); Actions.setIv(x.d.id, x.iv.id, 'good', 50000);           // hora que continua
+      x = ivDe(sab, '12:00'); Actions.setIv(x.d.id, x.iv.id, 'good', 40000);               // 12:00–13:00 cabe no novo 12:00–13:30: vai junto
+      const cat2 = db().catalogs.filter(c => c.active !== false)[1]; Actions.setIv(x.d.id, x.iv.id, 'catalogId', cat2.id);   // troca de catálogo às 12:00 (revisão do PR #110)
+      x = ivDe(sab2, '13:00'); Actions.setIv(x.d.id, x.iv.id, 'good', 30000);              // 13:00–14:30: deixa de existir no sábado (vira 12:00–13:30)
+      return db().productionDays.find(d => !d.deleted && d.date === sab).shifts.find(p => p.snap.code === 'T1').snap.end;
+    }, sabados);
+    assert.equal(antesHorario, '14:30', 'sábado criado antes ficou com o horário antigo');
+
     // 0) Administração: o 1º turno ganha, a partir de um dia passado, a linha do sábado 06:00–13:30
     await page.evaluate(() => { location.hash = '#/portal'; });
     const f = await (await page.locator('iframe[title="Módulo Administração"]').elementHandle()).contentFrame(); await f.waitForFunction(() => typeof Cad !== 'undefined' && Cad.D);
@@ -27,18 +45,12 @@ const html = fs.readFileSync(path.resolve(__dirname, '../../Plataforma.html'));
       await Cad.ops([{ acao: 'edição', tipo: 'turnos', codigo: 'T1', mudancas: { vigencias: { antes, depois: dep } }, motivo: 'sábado com 1 h a menos' }]);
       return { sab: iso(sab), sab2: iso(sab2) }; });
 
-    // 1) Produção: dois sábados criados ANTES de ler o cadastro (horário antigo 06:00–14:30), com produção lançada
+    // 1) volta à Produção: lê o horário novo do cadastro; o dia de antes continua com o horário antigo e o Lançamento avisa
     await page.evaluate(() => { location.hash = '#/oee?tab=launch'; });
-    const o = await (await page.locator('iframe[title="Módulo Produção"]').elementHandle()).contentFrame(); await o.waitForFunction(() => window.vacPagina?.pronto());
-    const r1 = await o.evaluate(async ({ sab, sab2 }) => {
-      const ivDe = (dt, ini) => { const d = db().productionDays.find(x => !x.deleted && x.date === dt), ps = d.shifts.find(p => p.snap.code === 'T1'); return { d, iv: ps.intervals.find(i => !i.deleted && U.hhmm(i.start) === ini) }; };
-      Actions.createDay(sab, 'line_vac', 'mac_line'); Actions.createDay(sab2, 'line_vac', 'mac_line');
-      let x = ivDe(sab, '06:00'); Actions.setIv(x.d.id, x.iv.id, 'good', 50000);           // hora que continua
-      x = ivDe(sab, '12:00'); Actions.setIv(x.d.id, x.iv.id, 'good', 40000);               // 12:00–13:00 cabe no novo 12:00–13:30: vai junto
-      const cat2 = db().catalogs.filter(c => c.active !== false)[1]; Actions.setIv(x.d.id, x.iv.id, 'catalogId', cat2.id);   // troca de catálogo às 12:00 (revisão do PR #110)
-      x = ivDe(sab2, '13:00'); Actions.setIv(x.d.id, x.iv.id, 'good', 30000);              // 13:00–14:30: deixa de existir no sábado (vira 12:00–13:30)
-      const antes = db().productionDays.find(d => !d.deleted && d.date === sab).shifts.find(p => p.snap.code === 'T1').snap.end;
+    o = await (await page.locator('iframe[title="Módulo Produção"]').elementHandle()).contentFrame(); await o.waitForFunction(() => window.vacPagina?.pronto());
+    const r1 = await o.evaluate(async ({ sab }) => {
       Store.S.db = Store.S.db; try { Engine.bumpConfig(); } catch (e) { }   // remonta as tabelas a partir do cadastro (o que acontece quando o cadastro da pasta muda)
+      const antes = db().productionDays.find(d => !d.deleted && d.date === sab).shifts.find(p => p.snap.code === 'T1').snap.end;
       App.sel.date = sab; go('launch'); render(); await new Promise(r => setTimeout(r, 400));
       const b = document.querySelector('#horNovo'); return { antes, aviso: b ? b.textContent.replace(/\s+/g, ' ') : '' };
     }, datas);

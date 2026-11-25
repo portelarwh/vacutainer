@@ -92,6 +92,7 @@ const html = fs.readFileSync(path.resolve(__dirname, '../../Plataforma.html'));
     // ---------- 4. proteções, paradas e volta ----------
     const prot = await f.evaluate(s => { const d = __tt.dia(s), ps = d.shifts[0], iv = ps.intervals[0];
       // parada só com o tempo no 2º período (vai para a hora certa na volta)
+      db().downtimeCodes.filter(c => c.code === 'FME').forEach(c => { c.allowsManualDuration = true; });   /* o cadastro do cenário não permite duração manual no FME; o teste lança parada só com o tempo */
       const code = db().downtimeCodes.find(c => c.active !== false && !c.deleted && c.allowsManualDuration && !c.requiresPrevCatalog && !c.requiresNextCatalog && !c.deductsPlanned);
       Actions.saveEvent(d.id, { codeId: code.id, start: null, end: null, minutes: 15, intervalId: ps.intervals[1].id, note: 'teste' });
       Actions.saveEvent(d.id, { codeId: code.id, start: null, end: null, minutes: 120, intervalId: ps.intervals[0].id, note: 'longa' });
