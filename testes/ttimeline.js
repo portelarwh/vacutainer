@@ -18,12 +18,14 @@ const D = '2031-03-10', D2 = '2031-03-11';   // segunda e terça, sem nada lanç
       { codigo: 'REF', nome: 'Refeição', categoria: 'Planejada', subcategoria: 'Pausa', cor: '#8d99a6', planejada: true, descontaPlanejado: true, pareto: false, duracaoManual: true },
       { codigo: 'FME', nome: 'Falha mecânica', categoria: 'Quebra', subcategoria: 'Mecânica', cor: '#c22a2a', afetaD: true, duracaoManual: true },
       { codigo: 'FMA', nome: 'Falta de material', categoria: 'Logística', subcategoria: 'Material', cor: '#b8620a', afetaD: true, duracaoManual: true },
+      { codigo: 'FEL', nome: 'Falha elétrica', categoria: 'Quebra', subcategoria: 'Elétrica', cor: '#d14b2a', afetaD: true, duracaoManual: true },
+      { codigo: 'TRL', nome: 'Troca de lote', categoria: 'Setup', subcategoria: 'Troca', cor: '#7d55b5', planejada: true, afetaD: true, duracaoManual: true },
       { codigo: 'OUT', nome: 'Outros', categoria: 'Outros', subcategoria: '', cor: '#94a2b1', afetaD: true, exigeObservacao: true, duracaoManual: true }] }).downtimeCodes)
       if (!B.downtimeCodes.some(c => c.code === x.code)) B.downtimeCodes.push(x);
     const cod = c => B.downtimeCodes.find(x => x.code === c).id, M = B.machines.filter(m => !m.deleted && m.role !== 'oee'), at = '2031-03-10T15:00:00.000Z', meta = { createdAt: at, createdBy: 'Operador Teste', updatedAt: at, updatedBy: 'Operador Teste', status: 'ativo', revision: 1 };
     B.productionDays = B.productionDays.filter(d => d.date !== D);
     B.productionDays.push({ ...meta, id: 'day_tl', date: D, lineId: 'line_vac', machineId: 'mac_line', status: fechado ? 'fechado' : 'em lançamento', responsible: 'Operador Teste', note: '', scrapMode: 'shift', scrapDay: null, gapJustification: '', origin: 'manual',
-      shifts: [{ id: 'ps_tl', shiftId: 'sh_1', status: fechado ? 'fechado' : 'em lançamento', snap: { name: 'Turno Teste', start: '06:00', end: '14:00', breaks: [] }, intervals: [], initialCatalogId: null }],
+      shifts: [{ id: 'ps_tl', shiftId: (B.shifts.find(s => s.code === 'T1') || B.shifts[0]).id, status: fechado ? 'fechado' : 'em lançamento', snap: { name: 'Turno Teste', start: '06:00', end: '14:00', breaks: [] }, intervals: [], initialCatalogId: null }],
       events: [
         { id: 'ev_fme', codeId: cod('FME'), start: 490, end: 515, minutes: null, equipmentId: M[0].id, note: 'Falta de sílica identificada no abastecimento.\nAguardando recebimento do material.', manual: true, ...meta },
         { id: 'ev_fma', codeId: cod('FMA'), start: 540, end: 580, minutes: null, equipmentId: M[1].id, note: 'Sem tampa na linha', manual: true, ...meta },
