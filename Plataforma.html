@@ -8217,7 +8217,7 @@ const Model = (() => {
   const meta = (by) => { const t = nowIso(); return { createdAt: t, createdBy: by, updatedAt: t, updatedBy: by, status: 'ativo', revision: 1 }; };
 
   const DEFAULT_SETTINGS = {
-    unitName: 'BD Curitiba', sector: 'Vacutainer', timezone: 'America/Sao_Paulo', calendar: 'Segunda a sábado',
+    unitName: '', sector: '', timezone: 'America/Sao_Paulo', calendar: '',
     entryUnit: 1000,            // produção digitada em milheiros (61 = 61.000 tubos)
     roundingUnit: 1000,         // meta operacional arredondada para o milheiro superior
     unitLabel: 'mil',
@@ -9420,7 +9420,7 @@ const Store = (() => {
     if (!ext) {
       // pasta sem base: cria a partir dos dados locais ou de uma base nova
       if (S.access !== 'readwrite') throw new Error('A pasta não tem a base e não há permissão para criá-la.');
-      const db = S.db || Model.seed(Model.emptyBase(S.user), S.user);
+      const db = S.db || Model.emptyBase(S.user);
       db.databaseVersion = 0; S.db = db; S.baseVersion = null;
       audit(db, { action: 'criação', entity: 'base', entityId: db.baseId, after: BASE_FILE, origin: 'pasta da rede' });
       S.dirty = true; S.baseVersion = null;
@@ -12284,7 +12284,7 @@ function welcome() {
     el.querySelector('#wUser').onclick = () => askUser();
     el.querySelector('#wFolder').onclick = async () => { const d = await run(pickFolder); if (!d) return; close(); await run(() => connectFolder(d, true)); };
     el.querySelector('#wFile').onclick = async () => { const f = await run(() => pickFile('.json,application/json')); if (!f) return; await run(async () => { await Store.openFileFallback(await f.text(), f.name); close(); render(); }, 'Base aberta em modo arquivo.'); };
-    el.querySelector('#wLocal').onclick = async () => { if (!db()) await Store.startLocal(Model.seed(Model.emptyBase(Store.S.user), Store.S.user)); close(); render(); };
+    el.querySelector('#wLocal').onclick = async () => { if (!db()) await Store.startLocal(Model.emptyBase(Store.S.user)); close(); render(); };
   }, { sticky: true });
 }
 
@@ -20393,7 +20393,7 @@ async function boot() {
       const perm = await be.permission(false);
       if (perm !== 'none') { const r = await Store.connect(be, { ask: false }); started = true; if (r &amp;&amp; r.pending) offerPending(r.pending); }
       else if (cache &amp;&amp; cache.db) { await Store.startAwaiting(cache.db, dir); started = true; }
-      else { await Store.startAwaiting(Model.seed(Model.emptyBase(Store.S.user), Store.S.user), dir); started = true; }
+      else { await Store.startAwaiting(Model.emptyBase(Store.S.user), dir); started = true; }
     } catch (e) {
       console.warn(e);
       if (cache &amp;&amp; cache.db) { await Store.startAwaiting(cache.db, dir); Store.S.error = 'A pasta da rede não respondeu: ' + friendly(e); started = true; }
@@ -20405,7 +20405,7 @@ async function boot() {
     const pend = await IDB.get('pending'); if (pend &amp;&amp; pend.db &amp;&amp; pend.mode !== 'pasta') { Store.S.db = Model.ensure(pend.db); Store.S.dirty = true; Store.S.pendingSince = pend.at; }
     started = true;
   }
-  if (!started) await Store.startLocal(Model.seed(Model.emptyBase(Store.S.user || 'Administrador'), Store.S.user || 'Administrador'));
+  if (!started) await Store.startLocal(Model.emptyBase(Store.S.user || 'Administrador'));
   App.sel.lineId = 'line_vac';
   { const ai = typeof vacAbaInicial === 'function' ? vacAbaInicial('oee') : null; if (ai) try { history.replaceState(null, '', '#' + ai); } catch (e) { } }
   App.op = location.hash === '#turno'; if (App.op) App.route = 'shift'; else applyHash();
@@ -55305,8 +55305,8 @@ body.vac-porta{overflow:hidden}
       "id": "oee",
       "path": "Plataforma.html#motor/oee",
       "version": "2.6.46",
-      "sha256": "6907676e5ae9e46edd49fc5b33dac991babe2306abb6f3d1a0fbc9ea30094568",
-      "bytes": 2403786
+      "sha256": "42c7a90ee482e6c5b5f44ef30392fcb512955130e17f363eab17ef8ac7ebede3",
+      "bytes": 2403631
     },
     {
       "id": "perdas",
@@ -55368,7 +55368,7 @@ body.vac-porta{overflow:hidden}
   "limitations": [
     "Projetos e conteúdo técnico OSM/MES/AM/TPM mantêm os limites documentados nas fontes."
   ],
-  "enginesSha256": "17b79d2f83c14fb98657157f56d0f92d28ab1f9528a235915893a3914639783e",
+  "enginesSha256": "ae1d9010611de18a00bbf4cc75845f7a685a6041c294a4762c51a92fbc8861c0",
   "originRevision": "ffc9ee8",
   "sourceMode": "single-html",
   "originEnginesSha256": "a87a64ad0c328f70e102b2ae888790a9b5d5a9bd05778652a7ce7cae140e40d2"
