@@ -8251,7 +8251,6 @@ const Model = (() => {
       schemaVersion: SCHEMA_VERSION, databaseVersion: 0, applicationVersion: APP_VERSION,
       baseId: uid('base'), createdAt: t, lastModifiedAt: t, lastModifiedBy: by,
       settings: U.clone(DEFAULT_SETTINGS),
-      lines: [], machines: [], families: [], shifts: [], catalogs: [], targets: [], downtimeCodes: [],
       productionDays: [], auditLog: [], imports: [], monthPlans: [], panelViews: [], reportNotes: [], calendar: [],
       server: { segments: [], gaps: [], mes: [], lotClass: {}, dayLot: {}, imports: [] }
     };
@@ -8325,7 +8324,7 @@ const Model = (() => {
 
   // base limpa (24/11/2026): a estrutura da base nova (emptyBase) é exigida inteira; nada é completado na leitura
   const REQUIRED = ['schemaVersion', 'databaseVersion', 'createdAt', 'lastModifiedAt', 'lastModifiedBy', 'applicationVersion', 'settings', 'server'];
-  const LISTAS = ['lines', 'machines', 'families', 'shifts', 'catalogs', 'targets', 'downtimeCodes', 'productionDays', 'auditLog', 'imports', 'monthPlans', 'panelViews', 'reportNotes', 'calendar'];
+  const LISTAS = ['productionDays', 'auditLog', 'imports', 'monthPlans', 'panelViews', 'reportNotes', 'calendar'];
   const ISO = /^\d{4}-\d{2}-\d{2}$/;
   const objeto = v => !!v &amp;&amp; typeof v === 'object' &amp;&amp; !Array.isArray(v);
   function validateStructure(db) {
@@ -8376,7 +8375,7 @@ const Model = (() => {
     const ids = new Set();
     const chk = (arr, name) => { for (const x of arr) { if (!x.id) E(`Registro sem ID em ${name}.`); else if (ids.has(x.id)) E(`ID duplicado: ${x.id} (${name}).`); else ids.add(x.id); } };
     ['lines', 'machines', 'families', 'shifts', 'catalogs', 'targets', 'downtimeCodes', 'productionDays', 'monthPlans', 'panelViews', 'calendar'].forEach(k => chk(db[k] || [], k));
-    const cat = new Set(db.catalogs.map(c => c.id)), dc = new Set(db.downtimeCodes.map(c => c.id));
+    const cat = new Set((db.catalogs || []).map(c => c.id)), dc = new Set((db.downtimeCodes || []).map(c => c.id));   /* sem cadastro carregado a referência não se confere */
     const dates = new Map();
     for (const d of db.productionDays) {
       if (d.deleted) continue;
@@ -8387,15 +8386,15 @@ const Model = (() => {
         const iv = s.intervals.filter(i => !i.deleted).sort((a, b) => a.start - b.start);
         for (let i = 0; i < iv.length; i++) {
           const x = iv[i];
-          if (x.catalogId &amp;&amp; !cat.has(x.catalogId)) E(`Intervalo ${U.range(x.start, x.end)} de ${U.brDate(d.date)} aponta para um catálogo inexistente.`);
+          if (cat.size &amp;&amp; x.catalogId &amp;&amp; !cat.has(x.catalogId)) E(`Intervalo ${U.range(x.start, x.end)} de ${U.brDate(d.date)} aponta para um catálogo inexistente.`);
           if (x.end <= x.start) E(`Intervalo com fim antes do início em ${U.brDate(d.date)}.`);
           if (x.good != null &amp;&amp; x.good < 0) E(`Produção negativa em ${U.brDate(d.date)} ${U.range(x.start, x.end)}.`);
           if (i &amp;&amp; iv[i - 1].end > x.start) E(`Intervalos sobrepostos em ${U.brDate(d.date)} (${U.range(x.start, x.end)}).`);
         }
       }
-      for (const ev of d.events) { if (!ev.deleted &amp;&amp; !dc.has(ev.codeId)) A(`Parada de ${U.brDate(d.date)} usa um código que não existe mais.`); }
+      for (const ev of d.events) { if (dc.size &amp;&amp; !ev.deleted &amp;&amp; !dc.has(ev.codeId)) A(`Parada de ${U.brDate(d.date)} usa um código que não existe mais.`); }
     }
-    if (!out.length) out.push({ level: 'info', msg: `Base íntegra: ${db.productionDays.filter(d => !d.deleted).length} dias, ${db.targets.length} metas, ${db.auditLog.length} registros de auditoria.` });
+    if (!out.length) out.push({ level: 'info', msg: `Base íntegra: ${db.productionDays.filter(d => !d.deleted).length} dias, ${(db.targets || []).length} metas, ${db.auditLog.length} registros de auditoria.` });
     return out;
   }
 
@@ -9246,16 +9245,113 @@ function MemoryBackend(initial) {
 const MODULE_BK = 'OEE';
 const bkNome = (tipo) => { const b = BASE_FILE.replace(/\.json$/i, ''), d = U.today(), h = new Date().toTimeString().slice(0, 5).replace(':', 'h');
   return tipo === 'diario' ? `${b}_${d}.json` : tipo === 'antes' ? `${b}_antes-restaurar_${d}_${h}.json` : `${b}_${d}_${h}.json`; };
+/* Bloco 3 · ProdCad: monta, só na memória, as tabelas de cadastro que o motor lê (linhas, equipamentos, famílias, catálogos, turnos, metas e
+   códigos de parada), as marcas de calendário e os parâmetros derivados, a partir do cadastro da Administração. Função pura: não grava nada.
+   Os ids derivam do código (e da vigência): nenhum índice é guardado. Substitui o CadSync (que sai na Task 4 do bloco 3). */
+const ProdCad = (() => {
+  const slug = s => String(s).toLowerCase().replace(/[^a-z0-9]+/g, '_');
+  const stOf = a => a !== false ? 'ativo' : 'inativo';
+  const pct = x => x == null || x === '' ? null : +x / 100;
+  function montar(C) {
+    C = C || {};
+    const T = { lines: [], machines: [], families: [], catalogs: [], shifts: [], targets: [], downtimeCodes: [], calendar: [], settings: {} };
+    const lineId = cod => { const o = T.lines.find(x => x.code === cod) || (T.lines.length === 1 ? T.lines[0] : null); return o ? o.id : (T.lines[0] || {}).id || null; };
+    const famId = cod => cod ? (T.families.find(x => x.code === cod) || {}).id || null : null;
+    const macId = cod => cod ? (T.machines.find(x => x.code === cod) || {}).id || null : null;
+    const catId = (cod, data) => { if (!cod) return null; const L = T.catalogs.filter(x => x.code === cod); return (L.find(x => (!data || (x.validFrom || '') <= data) &amp;&amp; (!x.validTo || !data || x.validTo >= data)) || L[0] || {}).id || null; };
+    const dcId = cod => cod ? (T.downtimeCodes.find(x => x.code === cod) || {}).id || null : null;
+    for (const l of (C.linhas || []).filter(x => x &amp;&amp; x.codigo)) T.lines.push({ id: 'line_' + slug(l.codigo), code: l.codigo, name: l.nome || l.codigo, unit: l.unidade || null, sector: l.setor || null, status: stOf(l.ativo) });
+    for (const f of (C.familias || []).filter(x => x &amp;&amp; x.codigo)) T.families.push({ id: 'fam_' + slug(f.codigo), code: f.codigo, name: f.nome || f.codigo, color: f.cor || '#2f6db5', active: f.ativo !== false, status: stOf(f.ativo) });
+    for (const e of (C.equipamentos || []).filter(x => x &amp;&amp; x.codigo)) T.machines.push({ id: 'mac_' + slug(e.codigo), description: '', code: e.codigo, name: e.nome || e.codigo, lineId: lineId(e.linha), role: e.papel === 'oee' ? 'oee' : 'equipamento', active: e.ativo !== false, status: stOf(e.ativo) });
+    /* catálogos (só tubos: preparação de aditivo não tem OEE da linha); a 1ª vigência é cat_<código> e as seguintes cat_<código>_<de> */
+    for (const c of (C.catalogos || []).filter(x => x &amp;&amp; x.codigo &amp;&amp; x.tipoItem !== 'preparacao')) {
+      (c.vigencias || []).slice().sort((a, b) => a.de < b.de ? -1 : 1).forEach((v, k) => T.catalogs.push({ id: 'cat_' + c.codigo + (k ? '_' + v.de : ''), machineId: null, note: 'Origem: cadastro da Administração',
+        code: c.codigo, name: c.nome || c.codigo, familyId: famId(c.familia), lineId: lineId(c.linha), pph: v.pphNominal != null ? +v.pphNominal : null, color: c.cor || null,
+        validFrom: v.de, validTo: v.ate || null, portalDe: v.de, active: c.ativo !== false, status: stOf(c.ativo) }));
+    }
+    for (const p0 of (C.paradas || []).filter(x => x &amp;&amp; x.codigo)) T.downtimeCodes.push({ id: 'dc_' + slug(p0.codigo), validFrom: '2025-01-01', validTo: null,
+      code: p0.codigo, name: p0.nome || p0.codigo, description: (p0.guia &amp;&amp; p0.guia.descricao) || '', category: p0.categoria || null, subcategory: p0.subcategoria || null, color: p0.cor || '#888888',
+      planned: !!p0.planejada, deductsPlanned: !!p0.descontaPlanejado, affectsA: !!p0.afetaD, affectsP: !!p0.afetaP, affectsQ: !!p0.afetaQ, inReport: p0.relatorio !== false, inPareto: p0.pareto !== false,
+      requiresNote: !!p0.exigeObservacao, requiresTimes: !!p0.exigeHorario, allowsManualDuration: !!p0.duracaoManual, requiresPrevCatalog: !!p0.exigeCatalogoAnterior, requiresNextCatalog: !!p0.exigeCatalogoSeguinte, active: p0.ativo !== false, status: stOf(p0.ativo) });
+    /* turnos: a versão é sv_<código>_<de>_<dias> (dias colados, ex.: 12345); repetida, ganha _<n> */
+    for (const t of (C.turnos || []).filter(x => x &amp;&amp; x.codigo)) {
+      const o = { id: 'sh_' + slug(t.codigo), code: t.codigo, name: t.nome || t.codigo, lineId: lineId(t.linha), versions: [], status: stOf(t.ativo) }, vistos = new Set();
+      for (const v of (t.vigencias || []).slice().sort((a, b) => a.de < b.de ? -1 : 1)) {
+        let id = 'sv_' + slug(t.codigo) + '_' + v.de + '_' + (v.dias || []).slice().sort((a, b) => a - b).join(''), n = 1;
+        while (vistos.has(id)) id = id.replace(/(_\d+)?$/, '') + '_' + (++n);
+        vistos.add(id);
+        o.versions.push({ id, validFrom: v.de, validTo: v.ate || null, start: v.inicio, end: v.fim, weekdays: (v.dias || []).slice(), color: t.cor || null, active: v.ativo !== false &amp;&amp; t.ativo !== false,
+          productive: v.naoProdutivo ? false : true,
+          breaks: (v.pausas || []).map(x => ({ label: x.nome || (x.codigo || 'Pausa'), start: x.inicio || '', end: x.fim || '', minutes: x.inicio &amp;&amp; x.fim ? null : (+x.duracaoMin || null), weekdays: (x.dias || []).slice(), deducts: x.desconta !== false, codeId: dcId(x.codigo) })),
+          tailMergeMax: v.regraPedacoFinal != null &amp;&amp; v.regraPedacoFinal !== '' ? +v.regraPedacoFinal : null,
+          template: (v.intervalos || []).length ? v.intervalos.map(x => ({ start: x.inicio, end: x.fim })) : null });
+      }
+      T.shifts.push(o);
+    }
+    /* metas de OEE: o id é tg_<código da meta>_<de> */
+    if ((C.metasOee || []).some(m => m &amp;&amp; m.codigo)) {
+      for (const m of (C.metasOee || []).filter(x => x &amp;&amp; x.ativo !== false)) for (const v of (m.vigencias || [])) {
+        T.targets.push({ id: 'tg_' + slug(m.codigo) + '_' + v.de, status: 'ativo', lineId: lineId(m.linha), machineId: macId(m.equipamento), familyId: famId(m.familia), catalogId: catId(m.catalogo, v.de),
+          validFrom: v.de, validTo: v.ate || null, pph: v.pph ? +v.pph : null, oee: pct(v.oeeMetaPct), dailyTarget: v.metaDiaria ? +v.metaDiaria : null, semGreen: pct(v.semaforoVerdePct), semYellow: pct(v.semaforoAmareloPct),
+          coverageMin: pct(v.coberturaMinPct), divergenceMax: pct(v.divergenciaMaxPct), note: m.observacao || null, intervalBoard: Array.isArray(v.quadro) &amp;&amp; v.quadro.length ? v.quadro : null,
+          rounding: 'teto + compensação na última hora', portalCode: m.codigo });
+      }
+    }
+    /* parâmetros comuns (só o que o cadastro define; o resto fica como está) */
+    const P = C.parametros || {}, S = T.settings, PP = P.producao || {};
+    if (P.paradaLongaMin) S.longStopMin = +P.paradaLongaMin;
+    if (P.semaforoVerdePct &amp;&amp; (P.semaforoAmareloPct || P.semaforoAmarelo === false)) S.semaphore = { green: +P.semaforoVerdePct / 100, yellow: (P.semaforoAmarelo === false ? +P.semaforoVerdePct : +P.semaforoAmareloPct) / 100 };
+    if ((P.motivosAbono || []).length) S.abMotivos = P.motivosAbono.slice();
+    if ((P.motivosSemProducaoProg || []).length) S.offMotivosProg = P.motivosSemProducaoProg.slice();
+    if ((P.motivosSemProducaoNP || []).length) S.offMotivosNP = P.motivosSemProducaoNP.slice();
+    if (+PP.unidadeLancamento > 0) S.entryUnit = +PP.unidadeLancamento;
+    if (PP.rotuloUnidade) S.unitLabel = String(PP.rotuloUnidade);
+    if (+PP.continuidadeMin > 0) S.continuityMin = +PP.continuidadeMin;
+    const npDe = (C.turnos || []).flatMap(t => (t.vigencias || []).filter(v => v &amp;&amp; v.naoProdutivo).map(v => v.de)).filter(Boolean).sort()[0] || null;
+    const desde = PP.foraTurnoDesde || npDe; if (desde) S.foraTurnoDesde = String(desde);
+    const AR = (Array.isArray(PP.arredondamentoMeta) ? PP.arredondamentoMeta : []).filter(v => v &amp;&amp; v.de &amp;&amp; +v.valor > 0).map(v => ({ de: v.de, valor: +v.valor })).sort((a, b) => a.de < b.de ? -1 : 1);
+    if (AR.length) { S.roundingVig = AR; const h = U.today(), vg = AR.filter(v => v.de <= h).slice(-1)[0] || AR[0]; S.roundingUnit = vg.valor; }
+    /* calendário: dia sem produção ou dia extra vindo da Administração (origem 'portal'); o id é calp_<data> */
+    for (const x of (Array.isArray(C.calendario) ? C.calendario : [])) {
+      const date = String((x &amp;&amp; x.codigo) || ''); if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || x.ativo === false) continue;
+      const kind = /extra/i.test(x.tipo || '') ? 'extra' : 'off';
+      T.calendar.push({ id: 'calp_' + date, date, lineId: (T.lines[0] || {}).id || null, kind, reason: String(x.nome || '').trim(), reasonType: kind === 'off' ? 'prog' : null, origin: 'portal', status: 'ativo' });
+    }
+    return T;
+  }
+  return { montar };
+})();
+
 const Store = (() => {
   const S = {
     db: null, baseVersion: null, mode: 'local', backend: null, access: 'none',
     status: 'iniciando', user: '', lastSavedAt: null, lastReadAt: null, error: null, conflict: null,
     dirty: false, pendingSince: null, listeners: new Set(), saving: false, lastDailyBackup: null, fileName: null,
-    rev: 0, ops: [], opsOk: true, cadastro: null, formato: ''   // formato: motivo de só consulta (base de versão anterior) · rev: nº da última alteração local · ops: alterações ainda não gravadas (para reaplicar num conflito)
+    rev: 0, ops: [], opsOk: true, cadastro: null, cadastroEstado: 'ausente', formato: ''   // cadastroEstado: ok | ausente | erro · formato: motivo de só consulta (base de versão anterior) · rev: nº da última alteração local · ops: alterações ainda não gravadas (para reaplicar num conflito)
   };
   const emit = (what) => S.listeners.forEach(f => { try { f(what); } catch (e) { console.error(e); } });
+  /* Bloco 3 · as tabelas de cadastro (linhas, equipamentos, famílias, catálogos, turnos, metas e códigos de parada) não são da base da Produção:
+     o ProdCad as monta em memória a partir do cadastro da Administração toda vez que a base ou o cadastro mudam, e elas ficam fora do
+     arquivo gravado. Estado do cadastro: 'ok' | 'ausente' (sem arquivo) | 'erro' (ilegível ou de outro tipo). */
+  const TABELAS_CAD = ['lines', 'machines', 'families', 'catalogs', 'shifts', 'targets', 'downtimeCodes'];
+  const cadastroAtual = () => S.cadDoc || ((typeof vacDemo !== 'undefined' &amp;&amp; vacDemo.ativo &amp;&amp; typeof vacCad === 'function') ? (vacCad() || null) : null);
+  function aplicarCadastro() {
+    const db = S.db; if (!db || S.mode === 'exemplo') return;
+    const C = cadastroAtual(); if (C) S.cadastroEstado = 'ok';
+    const T = ProdCad.montar(C || {});
+    for (const k of TABELAS_CAD) db[k] = T[k];
+    if (C) { db.settings = db.settings || {}; Object.assign(db.settings, T.settings); }
+    /* marca de "sem produção" não vale em dia já fechado ou com lançamento (fica em settings.calIgnorados); a local do mesmo dia é substituída */
+    const ign = [], marcas = T.calendar.filter(m => { if (m.kind !== 'off') return true; const d0 = (db.productionDays || []).find(y => !y.deleted &amp;&amp; y.date === m.date &amp;&amp; y.lineId === m.lineId); if (d0 &amp;&amp; (d0.status === 'fechado' || Engine.dayEntries(d0))) { ign.push(m.date); return false; } return true; });
+    db.calendar = (db.calendar || []).filter(c => c.origin !== 'portal').map(c => !c.deleted &amp;&amp; marcas.some(m => m.date === c.date &amp;&amp; m.lineId === c.lineId) ? { ...c, deleted: true } : c).concat(marcas);
+    if (C) db.settings.calIgnorados = ign;
+    try { Model.ensure(db); Engine.bumpConfig(); } catch (e) { /* o motor ainda não subiu */ }
+  }
+  let _db = null;
+  Object.defineProperty(S, 'db', { get: () => _db, set: v => { _db = v; if (v) { try { aplicarCadastro(); } catch (e) { console.warn('ProdCad', e); } } }, enumerable: true, configurable: true });
+  const semCadastro = db => { const c = Object.assign({}, db); for (const k of TABELAS_CAD) delete c[k]; if (Array.isArray(c.calendar)) c.calendar = c.calendar.filter(x => x.origin !== 'portal'); return c; };
   const replacer = (k, v) => (k &amp;&amp; k[0] === '_') ? undefined : v;
-  const serialize = db => JSON.stringify(db, replacer);
+  const serialize = db => JSON.stringify(semCadastro(db), replacer);
   let queue = Promise.resolve();
   const serial = fn => (queue = queue.then(fn, fn));
   const flushSoon = U.debounce(() => flush().catch(() => { }), 1200);
@@ -9406,10 +9502,20 @@ const Store = (() => {
 
   // cadastro base do Portal na mesma pasta: guarda o documento e aplica na base quando a revisão muda (CadSync, Produção 2.4)
   async function readCadastro() {
-    if (!S.backend || !S.backend.readSibling) { S.cadastro = null; return null; }
-    try { const t = await S.backend.readSibling('vacutainer-cadastros.json'); if (!t) { S.cadastro = null; S.cadDocAusente = !!S.cadDoc; return null; } const c = JSON.parse(t); S.cadastro = c &amp;&amp; c.schema === 'vac-cadastros' ? { rev: c.rev, revAt: c.revAt, revBy: c.revBy } : null; S.cadDoc = S.cadastro ? c : null; S.cadDocAusente = false; if (S.cadDoc &amp;&amp; typeof CadSync !== 'undefined') setTimeout(() => CadSync.talvez(), 0); }
-    catch (e) { S.cadastro = null; }
-    emit('status'); return S.cadastro;
+    const pronto = (estado, c) => {
+      const stamp = estado + '|' + (c ? c.rev + '|' + (c.revId || '') : '');
+      S.cadastroEstado = estado; S.cadDoc = c || null;
+      if (stamp !== S._cadStamp) { S._cadStamp = stamp; aplicarCadastro(); emit('data'); }
+      emit('status'); return S.cadastro;
+    };
+    if (!S.backend || !S.backend.readSibling) { S.cadastro = null; return pronto('ausente', null); }
+    try {
+      const t = await S.backend.readSibling('vacutainer-cadastros.json');
+      if (!t) { S.cadastro = null; S.cadDocAusente = !!S.cadDoc; return pronto('ausente', null); }
+      const c = JSON.parse(t);
+      if (c &amp;&amp; c.schema === 'vac-cadastros') { S.cadastro = { rev: c.rev, revAt: c.revAt, revBy: c.revBy }; S.cadDocAusente = false; return pronto('ok', c); }
+      S.cadastro = null; return pronto('erro', null);
+    } catch (e) { S.cadastro = null; S.cadastroEstado = 'erro'; S._cadStamp = null; aplicarCadastro(); emit('status'); return null; }
   }
   async function connect(backend, opts = {}) {
     S.backend = backend; S.mode = 'pasta';
@@ -9420,7 +9526,7 @@ const Store = (() => {
     if (!ext) {
       // pasta sem base: cria a partir dos dados locais ou de uma base nova
       if (S.access !== 'readwrite') throw new Error('A pasta não tem a base e não há permissão para criá-la.');
-      const db = S.db || Model.seed(Model.emptyBase(S.user), S.user);
+      const db = S.db || Model.emptyBase(S.user);
       db.databaseVersion = 0; S.db = db; S.baseVersion = null;
       audit(db, { action: 'criação', entity: 'base', entityId: db.baseId, after: BASE_FILE, origin: 'pasta da rede' });
       S.dirty = true; S.baseVersion = null;
@@ -9458,7 +9564,7 @@ const Store = (() => {
     if (S.mode === 'exemplo') return;
     if (S.dirty &amp;&amp; S.mode === 'pasta') throw new Error('Há alterações ainda não gravadas. Aguarde a gravação antes de entrar no modo exemplo.');
     S.prev = { db: S.db, mode: S.mode, backend: S.backend, baseVersion: S.baseVersion, status: S.status, access: S.access, formato: S.formato };
-    S.formato = vacFormatoBase(db, undefined, SCHEMA_VERSION); S.db = Model.ensure(db); S.mode = 'exemplo'; S.dirty = false; S.conflict = null; Engine.bumpConfig();
+    S.formato = vacFormatoBase(db, undefined, SCHEMA_VERSION); S.mode = 'exemplo'; S.db = Model.ensure(db); S.dirty = false; S.conflict = null; Engine.bumpConfig();
     setStatus('exemplo'); emit('data');
   }
   function exitExample() {
@@ -12209,6 +12315,7 @@ function renderTop() {
 function openBadge() { const n = db().productionDays.filter(d => !d.deleted &amp;&amp; !d.demo &amp;&amp; d.status !== 'fechado' &amp;&amp; d.date <= U.today() &amp;&amp; !Engine.isOffDay(db(), d)).length; return n ? `<span class="cnt" data-goto="pend-open" role="link" title="${n} lançamento(s) em aberto (não fechados). Clique para ver o que falta em Pendências.">${n}</span>` : ''; }
 function renderBanner() {
   const S = Store.S; let h = '';
+  if (S.mode === 'pasta' &amp;&amp; S.cadastroEstado !== 'ok') h += `<div class="banner crit" role="alert" data-vac-cadastro><p><b>${S.cadastroEstado === 'erro' ? 'Cadastro da Administração ilegível.' : 'Cadastro da Administração não encontrado.'}</b> A Produção lê linhas, equipamentos, catálogos, turnos, metas e códigos de parada só da Administração${S.cadastroEstado === 'erro' ? ': não consegui ler o arquivo, então nada é calculado com ele até a leitura funcionar.' : ': cadastre-os lá (ou conecte a pasta certa). Sem cadastro nada é calculado.'}</p></div>`;
   if (S.formato) h += `<div class="banner crit" role="alert" data-vac-formato><p><b>${esc(S.formato)}</b> A base fica só para consulta: nada é gravado nela.</p></div>`;
   if (S.mode === 'exemplo') h += `<div class="banner demo" role="status"><p><b>Demonstração.</b> Você está numa cópia com dados fictícios. Nada é gravado na base da pasta; ao sair, tudo volta como estava.</p><button class="btn sm primary" data-act="exitex">Sair da demonstração</button></div>`;
   else if (S.status === 'conflito') h += `<div class="banner crit" role="alert"><p><b>A base externa foi alterada depois da última leitura.</b> ${S.conflict ? `Versão ${S.conflict.externalVersion} gravada por ${esc(S.conflict.externalBy || '—')} em ${U.brDT(S.conflict.externalAt)}. Sua cópia partiu da versão ${S.conflict.localVersion}.` : ''} Nada foi sobrescrito.</p><button class="btn primary sm" data-act="conflict">Resolver</button></div>`;
@@ -12284,7 +12391,7 @@ function welcome() {
     el.querySelector('#wUser').onclick = () => askUser();
     el.querySelector('#wFolder').onclick = async () => { const d = await run(pickFolder); if (!d) return; close(); await run(() => connectFolder(d, true)); };
     el.querySelector('#wFile').onclick = async () => { const f = await run(() => pickFile('.json,application/json')); if (!f) return; await run(async () => { await Store.openFileFallback(await f.text(), f.name); close(); render(); }, 'Base aberta em modo arquivo.'); };
-    el.querySelector('#wLocal').onclick = async () => { if (!db()) await Store.startLocal(Model.seed(Model.emptyBase(Store.S.user), Store.S.user)); close(); render(); };
+    el.querySelector('#wLocal').onclick = async () => { if (!db()) await Store.startLocal(Model.emptyBase(Store.S.user)); close(); render(); };
   }, { sticky: true });
 }
 
@@ -20393,7 +20500,7 @@ async function boot() {
       const perm = await be.permission(false);
       if (perm !== 'none') { const r = await Store.connect(be, { ask: false }); started = true; if (r &amp;&amp; r.pending) offerPending(r.pending); }
       else if (cache &amp;&amp; cache.db) { await Store.startAwaiting(cache.db, dir); started = true; }
-      else { await Store.startAwaiting(Model.seed(Model.emptyBase(Store.S.user), Store.S.user), dir); started = true; }
+      else { await Store.startAwaiting(Model.emptyBase(Store.S.user), dir); started = true; }
     } catch (e) {
       console.warn(e);
       if (cache &amp;&amp; cache.db) { await Store.startAwaiting(cache.db, dir); Store.S.error = 'A pasta da rede não respondeu: ' + friendly(e); started = true; }
@@ -20405,7 +20512,7 @@ async function boot() {
     const pend = await IDB.get('pending'); if (pend &amp;&amp; pend.db &amp;&amp; pend.mode !== 'pasta') { Store.S.db = Model.ensure(pend.db); Store.S.dirty = true; Store.S.pendingSince = pend.at; }
     started = true;
   }
-  if (!started) await Store.startLocal(Model.seed(Model.emptyBase(Store.S.user || 'Administrador'), Store.S.user || 'Administrador'));
+  if (!started) await Store.startLocal(Model.emptyBase(Store.S.user || 'Administrador'));
   App.sel.lineId = 'line_vac';
   { const ai = typeof vacAbaInicial === 'function' ? vacAbaInicial('oee') : null; if (ai) try { history.replaceState(null, '', '#' + ai); } catch (e) { } }
   App.op = location.hash === '#turno'; if (App.op) App.route = 'shift'; else applyHash();
@@ -22120,83 +22227,6 @@ function oeeAcaoPlanner(dim, pick, evs) {
    Quando a revisão do cadastro muda, a Produção copia esses dados para a própria base numa alteração só (com auditoria),
    mantendo os ids já usados nos lançamentos. Só entra o que o Portal tem: domínio vazio no Portal continua com o cadastro local.
    Nas Configurações, os domínios que vêm do Portal ficam só para consulta, com "Editar no Portal". */
-/* Bloco 3 · ProdCad: monta, só na memória, as tabelas de cadastro que o motor lê (linhas, equipamentos, famílias, catálogos, turnos, metas e
-   códigos de parada), as marcas de calendário e os parâmetros derivados, a partir do cadastro da Administração. Função pura: não grava nada.
-   Os ids derivam do código (e da vigência): nenhum índice é guardado. Substitui o CadSync (que sai na Task 4 do bloco 3). */
-const ProdCad = (() => {
-  const slug = s => String(s).toLowerCase().replace(/[^a-z0-9]+/g, '_');
-  const stOf = a => a !== false ? 'ativo' : 'inativo';
-  const pct = x => x == null || x === '' ? null : +x / 100;
-  function montar(C) {
-    C = C || {};
-    const T = { lines: [], machines: [], families: [], catalogs: [], shifts: [], targets: [], downtimeCodes: [], calendar: [], settings: {} };
-    const lineId = cod => { const o = T.lines.find(x => x.code === cod) || (T.lines.length === 1 ? T.lines[0] : null); return o ? o.id : (T.lines[0] || {}).id || null; };
-    const famId = cod => cod ? (T.families.find(x => x.code === cod) || {}).id || null : null;
-    const macId = cod => cod ? (T.machines.find(x => x.code === cod) || {}).id || null : null;
-    const catId = (cod, data) => { if (!cod) return null; const L = T.catalogs.filter(x => x.code === cod); return (L.find(x => (!data || (x.validFrom || '') <= data) &amp;&amp; (!x.validTo || !data || x.validTo >= data)) || L[0] || {}).id || null; };
-    const dcId = cod => cod ? (T.downtimeCodes.find(x => x.code === cod) || {}).id || null : null;
-    for (const l of (C.linhas || []).filter(x => x &amp;&amp; x.codigo)) T.lines.push({ id: 'line_' + slug(l.codigo), code: l.codigo, name: l.nome || l.codigo, unit: l.unidade || null, sector: l.setor || null, status: stOf(l.ativo) });
-    for (const f of (C.familias || []).filter(x => x &amp;&amp; x.codigo)) T.families.push({ id: 'fam_' + slug(f.codigo), code: f.codigo, name: f.nome || f.codigo, color: f.cor || '#2f6db5', active: f.ativo !== false, status: stOf(f.ativo) });
-    for (const e of (C.equipamentos || []).filter(x => x &amp;&amp; x.codigo)) T.machines.push({ id: 'mac_' + slug(e.codigo), description: '', code: e.codigo, name: e.nome || e.codigo, lineId: lineId(e.linha), role: e.papel === 'oee' ? 'oee' : 'equipamento', active: e.ativo !== false, status: stOf(e.ativo) });
-    /* catálogos (só tubos: preparação de aditivo não tem OEE da linha); a 1ª vigência é cat_<código> e as seguintes cat_<código>_<de> */
-    for (const c of (C.catalogos || []).filter(x => x &amp;&amp; x.codigo &amp;&amp; x.tipoItem !== 'preparacao')) {
-      (c.vigencias || []).slice().sort((a, b) => a.de < b.de ? -1 : 1).forEach((v, k) => T.catalogs.push({ id: 'cat_' + c.codigo + (k ? '_' + v.de : ''), machineId: null, note: 'Origem: cadastro da Administração',
-        code: c.codigo, name: c.nome || c.codigo, familyId: famId(c.familia), lineId: lineId(c.linha), pph: v.pphNominal != null ? +v.pphNominal : null, color: c.cor || null,
-        validFrom: v.de, validTo: v.ate || null, portalDe: v.de, active: c.ativo !== false, status: stOf(c.ativo) }));
-    }
-    for (const p0 of (C.paradas || []).filter(x => x &amp;&amp; x.codigo)) T.downtimeCodes.push({ id: 'dc_' + slug(p0.codigo), validFrom: '2025-01-01', validTo: null,
-      code: p0.codigo, name: p0.nome || p0.codigo, description: (p0.guia &amp;&amp; p0.guia.descricao) || '', category: p0.categoria || null, subcategory: p0.subcategoria || null, color: p0.cor || '#888888',
-      planned: !!p0.planejada, deductsPlanned: !!p0.descontaPlanejado, affectsA: !!p0.afetaD, affectsP: !!p0.afetaP, affectsQ: !!p0.afetaQ, inReport: p0.relatorio !== false, inPareto: p0.pareto !== false,
-      requiresNote: !!p0.exigeObservacao, requiresTimes: !!p0.exigeHorario, allowsManualDuration: !!p0.duracaoManual, requiresPrevCatalog: !!p0.exigeCatalogoAnterior, requiresNextCatalog: !!p0.exigeCatalogoSeguinte, active: p0.ativo !== false, status: stOf(p0.ativo) });
-    /* turnos: a versão é sv_<código>_<de>_<dias> (dias colados, ex.: 12345); repetida, ganha _<n> */
-    for (const t of (C.turnos || []).filter(x => x &amp;&amp; x.codigo)) {
-      const o = { id: 'sh_' + slug(t.codigo), code: t.codigo, name: t.nome || t.codigo, lineId: lineId(t.linha), versions: [], status: stOf(t.ativo) }, vistos = new Set();
-      for (const v of (t.vigencias || []).slice().sort((a, b) => a.de < b.de ? -1 : 1)) {
-        let id = 'sv_' + slug(t.codigo) + '_' + v.de + '_' + (v.dias || []).slice().sort((a, b) => a - b).join(''), n = 1;
-        while (vistos.has(id)) id = id.replace(/(_\d+)?$/, '') + '_' + (++n);
-        vistos.add(id);
-        o.versions.push({ id, validFrom: v.de, validTo: v.ate || null, start: v.inicio, end: v.fim, weekdays: (v.dias || []).slice(), color: t.cor || null, active: v.ativo !== false &amp;&amp; t.ativo !== false,
-          productive: v.naoProdutivo ? false : true,
-          breaks: (v.pausas || []).map(x => ({ label: x.nome || (x.codigo || 'Pausa'), start: x.inicio || '', end: x.fim || '', minutes: x.inicio &amp;&amp; x.fim ? null : (+x.duracaoMin || null), weekdays: (x.dias || []).slice(), deducts: x.desconta !== false, codeId: dcId(x.codigo) })),
-          tailMergeMax: v.regraPedacoFinal != null &amp;&amp; v.regraPedacoFinal !== '' ? +v.regraPedacoFinal : null,
-          template: (v.intervalos || []).length ? v.intervalos.map(x => ({ start: x.inicio, end: x.fim })) : null });
-      }
-      T.shifts.push(o);
-    }
-    /* metas de OEE: o id é tg_<código da meta>_<de> */
-    if ((C.metasOee || []).some(m => m &amp;&amp; m.codigo)) {
-      for (const m of (C.metasOee || []).filter(x => x &amp;&amp; x.ativo !== false)) for (const v of (m.vigencias || [])) {
-        T.targets.push({ id: 'tg_' + slug(m.codigo) + '_' + v.de, status: 'ativo', lineId: lineId(m.linha), machineId: macId(m.equipamento), familyId: famId(m.familia), catalogId: catId(m.catalogo, v.de),
-          validFrom: v.de, validTo: v.ate || null, pph: v.pph ? +v.pph : null, oee: pct(v.oeeMetaPct), dailyTarget: v.metaDiaria ? +v.metaDiaria : null, semGreen: pct(v.semaforoVerdePct), semYellow: pct(v.semaforoAmareloPct),
-          coverageMin: pct(v.coberturaMinPct), divergenceMax: pct(v.divergenciaMaxPct), note: m.observacao || null, intervalBoard: Array.isArray(v.quadro) &amp;&amp; v.quadro.length ? v.quadro : null,
-          rounding: 'teto + compensação na última hora', portalCode: m.codigo });
-      }
-    }
-    /* parâmetros comuns (só o que o cadastro define; o resto fica como está) */
-    const P = C.parametros || {}, S = T.settings, PP = P.producao || {};
-    if (P.paradaLongaMin) S.longStopMin = +P.paradaLongaMin;
-    if (P.semaforoVerdePct &amp;&amp; (P.semaforoAmareloPct || P.semaforoAmarelo === false)) S.semaphore = { green: +P.semaforoVerdePct / 100, yellow: (P.semaforoAmarelo === false ? +P.semaforoVerdePct : +P.semaforoAmareloPct) / 100 };
-    if ((P.motivosAbono || []).length) S.abMotivos = P.motivosAbono.slice();
-    if ((P.motivosSemProducaoProg || []).length) S.offMotivosProg = P.motivosSemProducaoProg.slice();
-    if ((P.motivosSemProducaoNP || []).length) S.offMotivosNP = P.motivosSemProducaoNP.slice();
-    if (+PP.unidadeLancamento > 0) S.entryUnit = +PP.unidadeLancamento;
-    if (PP.rotuloUnidade) S.unitLabel = String(PP.rotuloUnidade);
-    if (+PP.continuidadeMin > 0) S.continuityMin = +PP.continuidadeMin;
-    const npDe = (C.turnos || []).flatMap(t => (t.vigencias || []).filter(v => v &amp;&amp; v.naoProdutivo).map(v => v.de)).filter(Boolean).sort()[0] || null;
-    const desde = PP.foraTurnoDesde || npDe; if (desde) S.foraTurnoDesde = String(desde);
-    const AR = (Array.isArray(PP.arredondamentoMeta) ? PP.arredondamentoMeta : []).filter(v => v &amp;&amp; v.de &amp;&amp; +v.valor > 0).map(v => ({ de: v.de, valor: +v.valor })).sort((a, b) => a.de < b.de ? -1 : 1);
-    if (AR.length) { S.roundingVig = AR; const h = U.today(), vg = AR.filter(v => v.de <= h).slice(-1)[0] || AR[0]; S.roundingUnit = vg.valor; }
-    /* calendário: dia sem produção ou dia extra vindo da Administração (origem 'portal'); o id é calp_<data> */
-    for (const x of (Array.isArray(C.calendario) ? C.calendario : [])) {
-      const date = String((x &amp;&amp; x.codigo) || ''); if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || x.ativo === false) continue;
-      const kind = /extra/i.test(x.tipo || '') ? 'extra' : 'off';
-      T.calendar.push({ id: 'calp_' + date, date, lineId: (T.lines[0] || {}).id || null, kind, reason: String(x.nome || '').trim(), reasonType: kind === 'off' ? 'prog' : null, origin: 'portal', status: 'ativo' });
-    }
-    return T;
-  }
-  return { montar };
-})();
-
 const CadSync = (() => {
   const SEC_PORTAL = { estrutura: 'linhas', turnos: 'turnos', catalogos: 'catalogos', metas: 'metasOee', paradas: 'paradas' };
   const doc = () => Store.S.cadDoc || null;
@@ -55382,8 +55412,8 @@ body.vac-porta{overflow:hidden}
       "id": "oee",
       "path": "Plataforma.html#motor/oee",
       "version": "2.6.46",
-      "sha256": "428077fb42babfad3633233fa96e6d4036f74b63d6084e748861b8cc63082abb",
-      "bytes": 2412262
+      "sha256": "a676b7144d1bb496a3441c06f1547ca94eee501712db76b6535077006885c533",
+      "bytes": 2415338
     },
     {
       "id": "perdas",
@@ -55445,7 +55475,7 @@ body.vac-porta{overflow:hidden}
   "limitations": [
     "Projetos e conteúdo técnico OSM/MES/AM/TPM mantêm os limites documentados nas fontes."
   ],
-  "enginesSha256": "6c0c692bd64781b7d651613055c3c02dfdde0b4db59428b0fb62e86703fb8711",
+  "enginesSha256": "6a110550e908b64dccd9fd4c733cedfe5e7c58333411776407812fd75d711fe9",
   "originRevision": "ffc9ee8",
   "sourceMode": "single-html",
   "originEnginesSha256": "a87a64ad0c328f70e102b2ae888790a9b5d5a9bd05778652a7ce7cae140e40d2"

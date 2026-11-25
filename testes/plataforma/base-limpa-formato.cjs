@@ -170,7 +170,7 @@ const BLOQUEIO = 'Base de versão anterior. Comece uma base nova nesta pasta.';
         console.log('ok (a2) modo arquivo: base sem schemaVersion continua bloqueada ao reabrir a cópia do navegador; importar versão anterior é recusado');
         // (a3) estrutura sem conversão: a base nasce completa e Model.ensure não completa campos; o que faltar recusa a base
         const r3 = await p2.evaluate(() => {
-          const nova = Model.seed(Model.emptyBase('teste'), 'teste'), txt = JSON.stringify(nova), lida = Model.parseBaseText(txt);
+          const nova = Model.emptyBase('teste'), txt = JSON.stringify(nova), lida = Model.parseBaseText(txt);
           const tenta = (mudar) => { const b = JSON.parse(txt); mudar(b); try { Model.parseBaseText(JSON.stringify(b)); return 'aceita'; } catch (e) { return e.message; } };
           return { igual: JSON.stringify(Model.ensure(JSON.parse(txt))) === txt && JSON.stringify(lida) === txt, formato: lida._formato || '',
             listas: ['monthPlans', 'panelViews', 'reportNotes', 'calendar'].every(k => Array.isArray(nova[k])), dayLot: !!(nova.server && nova.server.dayLot),
@@ -186,14 +186,14 @@ const BLOQUEIO = 'Base de versão anterior. Comece uma base nova nesta pasta.';
         // (a4) pasta com base de versão anterior: restaurar backup anterior e importar base anterior são recusados; importar base atual
         //      substitui a base bloqueada pela gravação normal (releitura, backup, confirmação) e tira o bloqueio
         const r4 = await p2.evaluate(async () => {
-          const velha = Model.seed(Model.emptyBase('teste'), 'teste'); delete velha.schemaVersion; velha.databaseVersion = 5;
+          const velha = Model.emptyBase('teste'); delete velha.schemaVersion; velha.databaseVersion = 5;
           const be = MemoryBackend(JSON.stringify(velha)); await Store.connect(be);
           const r = { antes: Store.S.formato };
-          const bk = Model.seed(Model.emptyBase('teste'), 'teste'); bk.schemaVersion = 0; be.files.backups.set('OEE/oee-vacutainer-base_2026-11-20.json', JSON.stringify(bk));
+          const bk = Model.emptyBase('teste'); bk.schemaVersion = 0; be.files.backups.set('OEE/oee-vacutainer-base_2026-11-20.json', JSON.stringify(bk));
           try { await Store.restoreBackup('oee-vacutainer-base_2026-11-20.json', 'teste'); r.rest = 'restaurou'; } catch (e) { r.rest = e.message; }
           try { await Store.replaceWithImported(JSON.stringify(bk), 'teste'); r.impAnt = 'importou'; } catch (e) { r.impAnt = e.message; }
           r.intacta = JSON.parse(be.files.base).schemaVersion ?? 'sem'; r.bk0 = be.files.backups.size;
-          const nova = Model.seed(Model.emptyBase('teste'), 'teste'); nova.settings.unitName = 'Unidade fictícia importada';
+          const nova = Model.emptyBase('teste'); nova.settings.unitName = 'Unidade fictícia importada';
           await Store.replaceWithImported(JSON.stringify(nova), 'teste');
           const g = JSON.parse(be.files.base);
           r.depois = { formato: Store.S.formato, sv: g.schemaVersion, unidade: g.settings.unitName, versao: g.databaseVersion, status: Store.S.status,
