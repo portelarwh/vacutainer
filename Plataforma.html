@@ -56525,8 +56525,9 @@ const vacMigracao = (() => {
   const DIR_BK = '00. Backups', DIR_REG = 'Migracao';
   /* Os assuntos da Administração (ADM_ASSUNTOS do motor/portal; o teste confere que são os mesmos). Só edita a Administração quem edita todos. */
   const ASSUNTOS_ADM = Object.freeze(['planta', 'produto', 'gel', 'equipamentos', 'turnos', 'paradas', 'pessoas', 'sistema']);
-  const AVISO_JANELA = 'A ferramenta não impede que outra pessoa grave durante a migração: as travas do navegador (Web Locks) só coordenam as abas deste navegador. '
-    + 'Feche as páginas da plataforma nas outras estações e abas antes de aplicar.';
+  const AVISO_JANELA = 'A ferramenta não impede que outra pessoa grave durante a migração. As travas do navegador (Web Locks) só valem neste navegador '
+    + 'e só a Administração e o Waste as usam; a ferramenta recusa enquanto houver página da plataforma aberta neste navegador, mas não vê as outras estações. '
+    + 'Feche a plataforma em todas as estações antes de aplicar.';
   const FIFO = 'fifo-base.json', OEE = 'oee-vacutainer-base.json';
   /* Ordem de gravação e dono de cada arquivo: [arquivo, página (trava vac-editar-<página>), subpasta do backup, nome].
      O Waste (perdas-base.json) fica entre as Paradas e o Gel: só recebe IDs de pessoa (M2); as ações dele são copiadas
@@ -56654,6 +56655,46 @@ const vacMigracao = (() => {
   const nomeTrava = t => { const p = DONOS.find(d => 'vac-editar-' + d[1] === t); return p ? (p[1] === 'portal' ? 'Administração' : p[3]) + ' (' + p[1] + ')' : 'outra migração'; };
   function travasPadrao(op) { return 'travas' in op ? op.travas : (typeof navigator !== 'undefined' &amp;&amp; navigator.locks) || null; }
 
+  /* Abas vivas da plataforma neste navegador (vac.aba.<página>.<id> = {t, pend}, renovado a cada 5 s: o mesmo dado do vacFila.abas).
+     As travas só excluem quem as pede (Administração e Waste); as outras páginas gravam sem elas, então a migração recusa
+     enquanto houver página envolvida aberta neste navegador. Outras estações não aparecem aqui: é a confirmação da janela. */
+  const ABAS = {[CAD]: ['portal', 'portal-cad'], [INIC]: ['inic'], 'equipamentos-base.json': ['equip'], 'linha360-base.json': ['linha'],
+    'paradas-base.json': ['paradas'], [PERD]: ['perdas'], [FIFO]: ['gel'], [OEE]: ['oee'], [PORTAL]: ['portal']};
+  const NOME_PAGINA = {portal: 'Administração', 'portal-cad': 'Administração', inic: 'Iniciativas', equip: 'Equipamentos', linha: 'Linha 360°',
+    paradas: 'Paradas', perdas: 'Waste', gel: 'Gestão de Gel', oee: 'Produção'};
+  function abasLocais(pagina) {
+    const L = [];
+    try {
+      const ls = globalThis.localStorage;
+      if (!ls) return L;
+      for (let i = 0; i < ls.length; i++) {
+        const k = ls.key(i);
+        if (!k || !k.startsWith('vac.aba.' + pagina + '.')) continue;
+        let v = null; try { v = JSON.parse(ls.getItem(k)); } catch (e) { }
+        if (v &amp;&amp; Date.now() - (+v.t || 0) < 20000) L.push({id: k.slice(('vac.aba.' + pagina + '.').length), pend: !!v.pend});
+      }
+    } catch (e) { }
+    return L;
+  }
+  function abasAbertas(op, arquivos) {
+    const abas = typeof op.abas === 'function' ? op.abas : abasLocais, nomes = new Set();
+    for (const f of ORDEM.filter(f => arquivos.includes(f))) for (const p of ABAS[f]) {
+      let L = []; try { L = abas(p) || []; } catch (e) { }
+      if (L.length) nomes.add(NOME_PAGINA[p]);
+    }
+    return nomes.size ? 'Há página da plataforma aberta neste navegador: ' + [...nomes].join(', ') + '. Ela grava sem a trava da migração: feche-a e tente de novo.' : '';
+  }
+  /* O arquivo nunca foi gravado pela migração (pendente, pulado ou erro de leitura antes de gravar): se mudou, é de outro gravador. */
+  const naoTocou = e => !!e &amp;&amp; (['pendente', 'pulado-mudou', 'nao-tocado'].includes(e.estado) || (e.estado === 'erro' &amp;&amp; e.naoGravado === true));
+  const caminhoRegistro = id => DIR_BK + '/' + DIR_REG + '/' + nomeRegistro(id);
+  /* O registro passado tem de ser o que está na pasta (outra estação pode ter anotado retomadas ou restaurações). */
+  async function conferirRegistro(pasta, reg) {
+    let disco;
+    try { disco = JSON.parse(await lerCaminho(pasta, caminhoRegistro(reg.id))); }
+    catch (e) { return naoAchou(e) ? 'O registro ' + reg.id + ' não está na pasta.' : 'Não foi possível ler o registro ' + reg.id + ': ' + msg(e); }
+    return canonico(disco) === canonico(reg) ? '' : 'O registro mudou na pasta desde que foi lido (outra estação?). Use Retomar de novo.';
+  }
+
   async function conferirAcesso(pasta, op, palavra) {
     if (!pasta || !pasta.__vacRaiz) return 'Conecte a pasta principal da plataforma.';
     if (op.confirmacao !== palavra) return 'Digite ' + palavra + ' para confirmar.';
@@ -56664,10 +56705,10 @@ const vacMigracao = (() => {
     return p.ok ? p : p.motivo;
   }
 
-  /* aplicar(pasta, plano, {escolhas, sessao, confirmacao, janela, registro?, aoGravar?, travas?})
-     → {ok, motivo, resultado: {[arquivo]: 'gravado'|'pulado-mudou'|'ja-concluido'|'erro'|'nao-gravado'}, registro, mudaram?, backupsFalhos?}.
-     registro: o devolvido por retomar, para continuar a mesma migração. aoGravar(arquivo): gancho de teste, chamado logo depois de gravar
-     cada arquivo e antes de o registro anotar; lançar nele simula a queda. */
+  /* aplicar(pasta, plano, {escolhas, sessao, confirmacao, janela, registro?, aoGravar?, travas?, abas?})
+     → {ok, motivo, resultado: {[arquivo]: 'gravado'|'pulado-mudou'|'ja-concluido'|'nao-tocado'|'erro'|'nao-gravado'}, registro, mudaram?, backupsFalhos?}.
+     registro: o devolvido por retomar (conferido com o da pasta), para continuar a mesma migração. aoGravar(arquivo): gancho de teste,
+     chamado logo depois de gravar cada arquivo e antes de o registro anotar 'gravado'; lançar nele simula a queda. */
   async function aplicar(pasta, plano, op = {}) {
     const recusa = motivo => ({ok: false, motivo, resultado: {}, registro: null});
     if (!objeto(plano) || !objeto(plano.alteracoes) || !Object.keys(plano.alteracoes).length) return recusa('Não há alteração para aplicar. Faça a prévia.');
@@ -56682,7 +56723,12 @@ const vacMigracao = (() => {
     if (anterior &amp;&amp; (!objeto(anterior) || !objeto(anterior.arquivos) || vazio(anterior.id))) return recusa('O registro a retomar não é válido.');
     const quem = await conferirAcesso(pasta, op, CONFIRMACAO);
     if (typeof quem === 'string') return recusa(quem);
-    const r = await comTravas(travasPadrao(op), travasDe(arquivos), () => executar(pasta, plano, escolhas, meta, quem, anterior, op));
+    const r = await comTravas(travasPadrao(op), travasDe(arquivos), async () => {
+      const aberta = abasAbertas(op, arquivos);
+      if (aberta) return recusa(aberta);
+      if (anterior) { const m = await conferirRegistro(pasta, anterior); if (m) return recusa(m); }
+      return executar(pasta, plano, escolhas, meta, quem, anterior, op);
+    });
     if (r &amp;&amp; r.ocupada) return recusa('Outra aba deste navegador está com ' + nomeTrava(r.ocupada) + ' aberta para edição. Feche-a e tente de novo.');
     return r;
   }
@@ -56695,11 +56741,13 @@ const vacMigracao = (() => {
       if (a.erro) { erros.push(f + ': ' + a.erro); continue; }
       if (ant &amp;&amp; a.hash &amp;&amp; a.hash === ant.hashDepois) estado[f] = 'ja-concluido';
       else if (a.hash &amp;&amp; a.hash === plano.alteracoes[f].hashAntes) estado[f] = 'pendente';
+      else if (ant &amp;&amp; naoTocou(ant)) estado[f] = 'nao-tocado';   /* mudou sem a migração: fica, para refazer a prévia dele */
       else mudaram.push(f);
     }
     const pendentes = lista.filter(f => estado[f] === 'pendente');
     const parado = (motivo, extra) => {
-      for (const f of lista) resultado[f] = mudaram.includes(f) ? 'pulado-mudou' : estado[f] === 'ja-concluido' ? 'ja-concluido' : erros.some(e => e.startsWith(f + ':')) ? 'erro' : 'nao-gravado';
+      for (const f of lista) resultado[f] = mudaram.includes(f) ? 'pulado-mudou' : ['ja-concluido', 'nao-tocado'].includes(estado[f]) ? estado[f]
+        : erros.some(e => e.startsWith(f + ':')) ? 'erro' : 'nao-gravado';
       return {ok: false, motivo, resultado, registro: anterior, ...extra};
     };
     if (erros.length) return parado('Não foi possível ler: ' + erros.join('; ') + '. Nada foi gravado.', {mudaram});
@@ -56710,9 +56758,7 @@ const vacMigracao = (() => {
     const fin = {};
     for (const f of pendentes) {
       fin[f] = await finalDe(f, plano.alteracoes[f], q);
-      if (anterior &amp;&amp; anterior.arquivos[f] &amp;&amp; fin[f].hashDepois !== anterior.arquivos[f].hashDepois) {
-        erros.push(f + ': o plano do registro não reproduz o mesmo conteúdo');
-      }
+      if (anterior &amp;&amp; anterior.arquivos[f] &amp;&amp; fin[f].hashDepois !== anterior.arquivos[f].hashDepois) erros.push(f + ': o plano do registro não reproduz o mesmo conteúdo');
     }
     if (erros.length) return parado(erros.join('; ') + '. Nada foi gravado.', {mudaram});
     /* 3 · backups de todos os pendentes, relidos e conferidos, antes de qualquer gravação */
@@ -56732,30 +56778,47 @@ const vacMigracao = (() => {
     for (const f of lista) {
       if (!anterior) reg.arquivos[f] = {ordem: lista.indexOf(f) + 1, dono: DONO[f].nome, hashAntes: plano.alteracoes[f].hashAntes,
         hashDepois: fin[f].hashDepois, backup: bk[f], auditoria: fin[f].auditoria, itens: (plano.alteracoes[f].itens || []).length, estado: 'pendente'};
-      else if (estado[f] === 'ja-concluido') reg.arquivos[f].estado = 'ja-concluido';
-      else reg.arquivos[f] = {...reg.arquivos[f], backup: bk[f], estado: 'pendente'};
+      else if (estado[f] === 'ja-concluido' || estado[f] === 'nao-tocado') reg.arquivos[f].estado = estado[f];
+      else { reg.arquivos[f] = {...reg.arquivos[f], backup: bk[f], estado: 'pendente'}; delete reg.arquivos[f].erro; delete reg.arquivos[f].naoGravado; }
     }
-    if (anterior) { reg.retomadas = (reg.retomadas || []).concat([{em: new Date().toISOString(), por: quem.nome, porId: quem.id, janela}]); reg.estado = 'em-andamento'; }
-    await salvarRegistro(pasta, reg);
-    /* 5 · grava na ordem: relê e confere hashAntes, grava, anota gravado, relê e confere hashDepois, anota verificado */
+    if (anterior) { reg.retomadas = (reg.retomadas || []).concat([{em: new Date().toISOString(), por: quem.nome, porId: quem.id, janela}]); reg.estado = 'em-andamento'; delete reg.mudaramDepois; }
+    const salvar = () => salvarRegistro(pasta, reg);
+    await salvar();
+    /* 5 · grava na ordem: relê e confere, anota gravando, grava, anota gravado, relê e confere hashDepois, anota verificado.
+       Erro de leitura, de gravação ou de conferência para a aplicação (erro não é arquivo mudado, contrato 3). */
+    let parar = false;
     for (const f of lista) {
-      if (estado[f] === 'ja-concluido') { resultado[f] = 'ja-concluido'; continue; }
+      if (estado[f] === 'ja-concluido' || estado[f] === 'nao-tocado') { resultado[f] = estado[f]; continue; }
+      if (parar) continue;
       const e = reg.arquivos[f], a = await lerBase(pasta, f);
-      if (a.hash !== e.hashAntes) { resultado[f] = e.estado = 'pulado-mudou'; await salvarRegistro(pasta, reg); continue; }
+      if (a.erro) { resultado[f] = e.estado = 'erro'; e.erro = 'Leitura: ' + a.erro; e.naoGravado = true; await salvar(); parar = true; continue; }
+      if (a.hash === e.hashDepois) { resultado[f] = e.estado = 'ja-concluido'; await salvar(); continue; }
+      if (a.hash !== e.hashAntes) { resultado[f] = e.estado = 'pulado-mudou'; await salvar(); continue; }
+      e.estado = 'gravando'; await salvar();
       try { await gravarTexto(pasta, f, fin[f].texto); }
-      catch (x) { resultado[f] = e.estado = 'erro'; e.erro = msg(x); await salvarRegistro(pasta, reg); break; }
+      catch (x) { resultado[f] = e.estado = 'erro'; e.erro = 'Gravação: ' + msg(x); await salvar(); parar = true; continue; }
       if (op.aoGravar) await op.aoGravar(f);
-      e.estado = 'gravado'; await salvarRegistro(pasta, reg);
+      e.estado = 'gravado'; await salvar();
       const b = await lerBase(pasta, f);
-      if (b.hash !== e.hashDepois) { resultado[f] = e.estado = 'erro'; e.erro = 'A releitura não confere com o gravado.'; await salvarRegistro(pasta, reg); break; }
-      e.estado = 'verificado'; resultado[f] = 'gravado'; await salvarRegistro(pasta, reg);
+      if (b.hash !== e.hashDepois) { resultado[f] = e.estado = 'erro'; e.erro = b.erro ? 'Releitura: ' + b.erro : 'A releitura não confere com o gravado.'; await salvar(); parar = true; continue; }
+      e.estado = 'verificado'; resultado[f] = 'gravado'; await salvar();
     }
     for (const f of lista) if (!resultado[f]) resultado[f] = 'nao-gravado';
+    /* 6 · conferência final: outro gravador pode ter gravado por cima depois da conferência de cada arquivo */
+    const depois = [];
+    for (const f of lista) {
+      const e = reg.arquivos[f];
+      if (!['verificado', 'ja-concluido'].includes(e.estado)) continue;
+      const c = await lerBase(pasta, f);
+      if (c.hash !== e.hashDepois) { depois.push(f); resultado[f] = e.estado = 'erro'; e.erro = c.erro ? 'Conferência final: ' + c.erro : 'Mudou depois da gravação (outro gravador).'; }
+    }
+    if (depois.length) reg.mudaramDepois = depois;
     const ok = lista.every(f => ['gravado', 'ja-concluido'].includes(resultado[f]));
     reg.estado = ok ? 'concluido' : 'incompleto';
-    await salvarRegistro(pasta, reg);
+    await salvar();
     const falta = lista.filter(f => !['gravado', 'ja-concluido'].includes(resultado[f]));
-    return {ok, motivo: ok ? '' : 'Não concluído: ' + falta.map(f => f + ' (' + resultado[f] + ')').join(', ') + '. Use Retomar ou Restaurar.', resultado, registro: reg};
+    return {ok, motivo: ok ? '' : 'Não concluído: ' + falta.map(f => f + ' (' + resultado[f] + ')').join(', ')
+      + (depois.length ? '. Mudou depois da gravação: ' + depois.join(', ') : '') + '. Use Retomar ou Restaurar.', resultado, registro: reg};
   }
 
   /* Registros em 00. Backups/Migracao. Lista os legíveis; os ilegíveis vão para o chamador. */
@@ -56769,25 +56832,30 @@ const vacMigracao = (() => {
     }
     return {L, ilegiveis};
   }
-  /* retomar(pasta) → {registro, pendentes, concluidos, mudaram, ilegiveis}: o registro mais recente não concluído nem restaurado,
-     com cada arquivo classificado pelo hash atual (hashDepois = concluído; hashAntes = pendente; outro = mudou). */
+  /* retomar(pasta) → {registro, pendentes, concluidos, naoTocados, mudaram, erros:[{arquivo, erro}], ilegiveis}: o registro mais recente
+     não concluído nem restaurado, com cada arquivo pelo hash atual: hashDepois = concluído; hashAntes = pendente; outro hash num arquivo
+     que a migração não gravou = não tocado (refazer a prévia deste arquivo; não impede os outros); outro hash num arquivo que ela gravou
+     ou começou a gravar = mudou (para a retomada); erro de leitura = erro. */
   async function retomar(pasta) {
     const {L, ilegiveis} = await registros(pasta);
     const reg = L.filter(r => r.estado !== 'concluido' &amp;&amp; r.estado !== 'restaurado').sort((a, b) => String(a.em + a.id).localeCompare(String(b.em + b.id))).pop() || null;
-    const out = {registro: reg, pendentes: [], concluidos: [], mudaram: [], ilegiveis};
+    const out = {registro: reg, pendentes: [], concluidos: [], naoTocados: [], mudaram: [], erros: [], ilegiveis};
     if (!reg) return out;
     for (const f of ORDEM.filter(f => f in reg.arquivos)) {
       const a = await lerBase(pasta, f), e = reg.arquivos[f];
-      if (a.hash &amp;&amp; a.hash === e.hashDepois) out.concluidos.push(f);
+      if (a.erro) out.erros.push({arquivo: f, erro: a.erro});
+      else if (a.hash &amp;&amp; a.hash === e.hashDepois) out.concluidos.push(f);
       else if (a.hash &amp;&amp; a.hash === e.hashAntes) out.pendentes.push(f);
+      else if (naoTocou(e)) out.naoTocados.push(f);
       else out.mudaram.push(f);
     }
     return out;
   }
 
-  /* restaurar(pasta, registro, arquivos|null, {sessao, confirmacao, janela, travas?}) → {ok, motivo, resultado: {[arquivo]:
-     'restaurado'|'ja-restaurado'|'pulado-mudou'|'erro'}, registro}. Devolve o conteúdo do backup a cada arquivo ainda no hashDepois.
-     Arquivo gravado depois do corte (outro hash) não é sobrescrito: exige conciliação. */
+  /* restaurar(pasta, registro, arquivos|null, {sessao, confirmacao, janela, travas?, abas?}) → {ok, motivo, resultado: {[arquivo]:
+     'restaurado'|'ja-restaurado'|'nao-tocado'|'pulado-mudou'|'erro'}, registro}. Devolve o conteúdo do backup a cada arquivo ainda no
+     hashDepois. Arquivo que a migração não gravou e outro mudou fica (nao-tocado, conta como resolvido). Arquivo gravado pela migração
+     e mudado depois do corte não é sobrescrito: exige conciliação. */
   async function restaurar(pasta, registro, arquivos, op = {}) {
     const recusa = motivo => ({ok: false, motivo, resultado: {}, registro: null});
     if (!objeto(registro) || !objeto(registro.arquivos) || vazio(registro.id)) return recusa('Escolha o registro da migração a restaurar.');
@@ -56797,15 +56865,21 @@ const vacMigracao = (() => {
     const fora = alvo.filter(f => !(f in registro.arquivos) || !ORDEM.includes(f));
     if (fora.length) return recusa('Arquivo fora deste registro: ' + fora.join(', ') + '.');
     const r = await comTravas(travasPadrao(op), travasDe(alvo), async () => {
-      let reg = registro;
-      try { reg = JSON.parse(await lerCaminho(pasta, DIR_BK + '/' + DIR_REG + '/' + nomeRegistro(registro.id))); } catch (e) { reg = copia(registro); }
+      const aberta = abasAbertas(op, alvo);
+      if (aberta) return recusa(aberta);
+      let reg;
+      try { reg = JSON.parse(await lerCaminho(pasta, caminhoRegistro(registro.id))); }
+      catch (e) { if (!naoAchou(e)) return recusa('Não foi possível ler o registro ' + registro.id + ': ' + msg(e)); reg = copia(registro); }
+      if (!objeto(reg) || !objeto(reg.arquivos)) return recusa('O registro ' + registro.id + ' na pasta não é válido.');
       const resultado = {};
       for (const f of [...ORDEM].reverse().filter(f => alvo.includes(f))) {
         const e = reg.arquivos[f];
+        if (!objeto(e)) { resultado[f] = 'erro'; continue; }
         try {
           const a = await lerBase(pasta, f);
+          if (a.erro) throw new Error('leitura: ' + a.erro);
           if (a.hash &amp;&amp; a.hash === e.hashAntes) { resultado[f] = 'ja-restaurado'; e.estado = 'restaurado'; continue; }
-          if (!a.hash || a.hash !== e.hashDepois) { resultado[f] = 'pulado-mudou'; continue; }
+          if (!a.hash || a.hash !== e.hashDepois) { if (naoTocou(e)) resultado[f] = e.estado = 'nao-tocado'; else resultado[f] = 'pulado-mudou'; continue; }
           if (vazio(e.backup)) throw new Error('sem backup no registro');
           const texto = await lerCaminho(pasta, e.backup);
           if (await hash(JSON.parse(texto)) !== e.hashAntes) throw new Error('o backup não confere com o conteúdo de antes');
@@ -56816,9 +56890,9 @@ const vacMigracao = (() => {
         } catch (x) { resultado[f] = 'erro'; e.erroRestauracao = msg(x); }
       }
       reg.restauracoes = (reg.restauracoes || []).concat([{em: new Date().toISOString(), por: quem.nome, porId: quem.id, resultado}]);
-      if (Object.values(reg.arquivos).every(e => e.estado === 'restaurado')) reg.estado = 'restaurado';
+      if (Object.values(reg.arquivos).every(e => objeto(e) &amp;&amp; ['restaurado', 'nao-tocado'].includes(e.estado))) reg.estado = 'restaurado';
       await salvarRegistro(pasta, reg);
-      const ruins = Object.keys(resultado).filter(f => !['restaurado', 'ja-restaurado'].includes(resultado[f]));
+      const ruins = Object.keys(resultado).filter(f => !['restaurado', 'ja-restaurado', 'nao-tocado'].includes(resultado[f]));
       return {ok: !ruins.length, motivo: ruins.length ? 'Não restaurado: ' + ruins.map(f => f + ' (' + resultado[f] + ')').join(', ') + '.' : '', resultado, registro: reg};
     });
     if (r &amp;&amp; r.ocupada) return recusa('Outra aba deste navegador está com ' + nomeTrava(r.ocupada) + ' aberta para edição. Feche-a e tente de novo.');

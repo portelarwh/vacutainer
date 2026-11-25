@@ -140,7 +140,7 @@ test('(b) diário antes do 1º arquivo, com plano, escolhas e hashes; pendente �
   }
   // estados do cadastro em cada versão do diário
   const estados = fs.log.filter(x => x.caminho === REG).map(x => JSON.parse(x.texto).arquivos[CAD].estado);
-  assert.deepEqual([...new Set(estados)], ['pendente', 'gravado', 'verificado']);
+  assert.deepEqual([...new Set(estados)], ['pendente', 'gravando', 'gravado', 'verificado']);
   const fim = JSON.parse(await fs.ler(REG));
   assert.equal(fim.estado, 'concluido');
   for (const f of ORDEM) {

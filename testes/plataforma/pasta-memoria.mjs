@@ -7,14 +7,15 @@ const naoAchou = nome => new DOMException(nome + ' não existe', 'NotFoundError'
 
 /* pastaMemoria() → {raiz, ler(caminho), gravar(caminho, texto), existe(caminho), log, ganchos}.
    log: lista de {op:'gravou', caminho} na ordem em que cada arquivo foi fechado (createWritable → close).
-   ganchos.aoFechar(caminho, texto) → texto: deixa o teste trocar o conteúdo gravado (backup ilegível etc.). */
+   ganchos.aoFechar(caminho, texto) → texto: deixa o teste trocar o conteúdo gravado (backup ilegível etc.); lançar nele falha a gravação.
+   ganchos.aoLer(caminho): lançar nele simula erro de leitura. */
 export function pastaMemoria() {
-  const log = [], ganchos = {aoFechar: null};
+  const log = [], ganchos = {aoFechar: null, aoLer: null};
   function arquivo(nome, caminho) {
     let conteudo = '', mod = 0;
     return {
       kind: 'file', name: nome,
-      async getFile() { const t = conteudo; return {name: nome, lastModified: mod, size: t.length, text: async () => t}; },
+      async getFile() { if (ganchos.aoLer) ganchos.aoLer(caminho); const t = conteudo; return {name: nome, lastModified: mod, size: t.length, text: async () => t}; },
       async createWritable() {
         let buf = '';
         return {

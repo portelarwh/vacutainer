@@ -72,23 +72,25 @@ for (const alvo of [CAD, INIC]) test('(c) interrupção depois de gravar ' + alv
   assert.equal(bases({log: fs.log.slice(n)}).length, 0);
 });
 
-test('(c) retomar confere os pendentes contra hashAntes: pendente mudado não é gravado', async () => {
+test('(c) retomar: pendente mudado por outro gravador fica não tocado, sem impedir os outros', async () => {
   const {fs, pasta, plano} = await montar();
   await assert.rejects(aplicar(pasta, plano, opcoes(interrompe(CAD))), /queda simulada/);
   const eq = await lerBase(fs, EQUIP); eq.os[0].titulo = 'Outra pessoa gravou';
   await fs.gravar('00. Bases/' + EQUIP, JSON.stringify(eq));
   const ret = await retomar(pasta);
-  assert.deepEqual(ret.mudaram, [EQUIP]);
+  assert.deepEqual(ret.naoTocados, [EQUIP]);
+  assert.deepEqual(ret.mudaram, []);
   const n = fs.log.length;
   const r = await aplicar(pasta, ret.registro.plano, opcoes({escolhas: ret.registro.escolhas, registro: ret.registro}));
   assert.equal(r.ok, false);
-  assert.equal(r.resultado[EQUIP], 'pulado-mudou');
-  assert.equal(bases({log: fs.log.slice(n)}).length, 0);
+  assert.equal(r.resultado[EQUIP], 'nao-tocado');
+  assert.deepEqual(bases({log: fs.log.slice(n)}).map(x => x.caminho.slice('00. Bases/'.length)), ORDEM.filter(f => ![CAD, EQUIP].includes(f)));
+  assert.equal((await lerBase(fs, EQUIP)).os[0].titulo, 'Outra pessoa gravou');
 });
 
 test('retomar sem diário pendente devolve registro nulo', async () => {
   const {pasta} = await montar();
-  assert.deepEqual(await retomar(pasta), {registro: null, pendentes: [], concluidos: [], mudaram: [], ilegiveis: []});
+  assert.deepEqual(await retomar(pasta), {registro: null, pendentes: [], concluidos: [], naoTocados: [], mudaram: [], erros: [], ilegiveis: []});
 });
 
 test('(d) restaurar devolve os arquivos afetados ao conteúdo do backup', async () => {
