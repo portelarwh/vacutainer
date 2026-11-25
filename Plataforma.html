@@ -56599,6 +56599,62 @@ const vacMigracao = (() => {
     return {ok: true, id: String(u.codigo), nome: String(u.nome || u.codigo)};
   }
 
+  /* Sessão presa à pasta escolhida. A casca da plataforma (modulo/core/scopes) guarda, no IndexedDB "vac-nova-plataforma" › app,
+     um registro {handle, scope} por pasta conectada ("scopes"; antes só "folder" + "scope") e cada módulo grava a sessão do vacLogin
+     com o prefixo do escopo: vac.app.<escopo>.vac.sessao e vac.app.<escopo>.vac.userId. A plataforma não grava sessão sem escopo.
+     Aqui só se lê: pasta que a plataforma nunca conectou neste navegador não tem escopo, e então não há sessão (só a prévia).
+     op.escopos(): gancho de teste com a lista de registros; sem ele, o banco da casca. */
+  const SEM_SESSAO = 'Sem sessão nesta pasta: só a prévia. Entre na plataforma com a sua senha, com esta pasta conectada, e abra esta ferramenta de novo.';
+  function lerCasca(chaves) {
+    return new Promise((ok, no) => {
+      const idb = globalThis.indexedDB;
+      if (!idb || typeof idb.open !== 'function') return no(new Error('IndexedDB indisponível'));
+      let r; try { r = idb.open('vac-nova-plataforma'); } catch (e) { return no(e); }
+      let novo = false;
+      r.onupgradeneeded = () => { novo = true; try { r.transaction.abort(); } catch (e) { } };   // o banco não existe: não cria
+      r.onerror = () => novo ? ok({}) : no(r.error);
+      r.onsuccess = () => {
+        const db = r.result, v = {};
+        if (!db.objectStoreNames.contains('app')) { db.close(); return ok(v); }
+        let falta = chaves.length;
+        for (const k of chaves) {
+          const q = db.transaction('app').objectStore('app').get(k);
+          q.onsuccess = () => { v[k] = q.result; if (!--falta) { db.close(); ok(v); } };
+          q.onerror = () => { db.close(); no(q.error); };
+        }
+      };
+    });
+  }
+  async function registrosDeEscopo(op) {
+    if (typeof op.escopos === 'function') return (await op.escopos()) || [];
+    const v = await lerCasca(['scopes', 'folder', 'scope']);
+    const L = Array.isArray(v.scopes) ? v.scopes.slice() : [];
+    if (!L.length &amp;&amp; v.folder &amp;&amp; v.scope) L.push({handle: v.folder, scope: v.scope});   // como o rememberFolder lê o registro antigo
+    return L;
+  }
+  /* sessaoDaPasta(pasta, op?) → {escopo, sessao: {...vac.sessao, escopo} | null, motivo} */
+  async function sessaoDaPasta(pasta, op = {}) {
+    const h = pasta &amp;&amp; pasta.__vacRaiz ? pasta.raiz : pasta;
+    if (!h || typeof h.isSameEntry !== 'function') return {escopo: '', sessao: null, motivo: 'Conecte a pasta principal da plataforma.'};
+    let escopo = '';
+    try {
+      for (const e of await registrosDeEscopo(op)) {
+        if (!objeto(e) || !e.handle || vazio(e.scope)) continue;
+        let igual = false; try { igual = await h.isSameEntry(e.handle); } catch (x) { }
+        if (igual) { escopo = String(e.scope); break; }
+      }
+    } catch (e) { return {escopo: '', sessao: null, motivo: 'Não foi possível identificar a pasta na plataforma (' + msg(e) + '). Sem sessão, só a prévia.'}; }
+    if (!escopo) return {escopo: '', sessao: null, motivo: 'Esta pasta não foi aberta na plataforma neste navegador. Sem sessão, só a prévia: conecte a pasta na plataforma, entre com a sua senha e abra esta ferramenta de novo.'};
+    let s = null, id = '';
+    try {
+      const ls = globalThis.localStorage, p = 'vac.app.' + escopo + '.';
+      s = JSON.parse(ls.getItem(p + 'vac.sessao') || 'null'); id = ls.getItem(p + 'vac.userId') || '';
+    } catch (e) { return {escopo, sessao: null, motivo: 'Não foi possível ler a sessão neste navegador (' + msg(e) + '). Sem sessão, só a prévia.'}; }
+    /* a mesma regra do vacLogin.sessao (comum/bases) */
+    if (!objeto(s) || vazio(s.id) || String(s.id) !== String(id) || !(+s.ate > Date.now())) return {escopo, sessao: null, motivo: SEM_SESSAO};
+    return {escopo, sessao: {...s, escopo}, motivo: ''};
+  }
+
   /* ----- pasta: tudo passa pelo vacRaiz (bases em 00. Bases; backups e registro em 00. Backups, na raiz) ----- */
   async function subpasta(pasta, partes, criar) { let d = pasta; for (const p of partes) d = await d.getDirectoryHandle(p, {create: !!criar}); return d; }
   async function lerTexto(dir, nome) { return (await (await dir.getFileHandle(nome)).getFile()).text(); }
@@ -56701,6 +56757,7 @@ const vacMigracao = (() => {
   /* Abas vivas da plataforma neste navegador (vac.aba.<página>.<id> = {t, pend}, renovado a cada 5 s: o mesmo dado do vacFila.abas).
      As travas só excluem quem as pede (Administração e Waste); as outras páginas gravam sem elas, então a migração recusa
      enquanto houver página envolvida aberta neste navegador. Outras estações não aparecem aqui: é a confirmação da janela. */
+  /* Produção (oee) não tem vacFila nem heartbeat: a entrada de OEE não acha nada, e a Produção fica protegida só pela confirmação da janela. */
   const ABAS = {[CAD]: ['portal', 'portal-cad'], [INIC]: ['inic'], 'equipamentos-base.json': ['equip'], 'linha360-base.json': ['linha'],
     'paradas-base.json': ['paradas'], [PERD]: ['perdas'], [FIFO]: ['gel'], [OEE]: ['oee'], [PORTAL]: ['portal']};
   const NOME_PAGINA = {portal: 'Administração', 'portal-cad': 'Administração', inic: 'Iniciativas', equip: 'Equipamentos', linha: 'Linha 360°',
@@ -56732,7 +56789,7 @@ const vacMigracao = (() => {
       try { L = abas(p) || []; } catch (e) { return 'Não foi possível conferir as abas abertas neste navegador (' + msg(e) + '). Nada foi gravado.'; }
       if (L.length) nomes.add(NOME_PAGINA[p]);
     }
-    return nomes.size ? 'Há página da plataforma aberta neste navegador: ' + [...nomes].join(', ') + '. Ela grava sem a trava da migração: feche-a e tente de novo.' : '';
+    return nomes.size ? 'Há abas da plataforma abertas neste navegador, de qualquer pasta: ' + [...nomes].join(', ') + '. Elas gravam sem a trava da migração: feche-as e tente de novo.' : '';
   }
   /* O arquivo nunca foi gravado pela migração (pendente, pulado ou erro de leitura antes de gravar): se mudou, é de outro gravador. */
   const naoTocou = e => !!e &amp;&amp; (['pendente', 'pulado-mudou', 'nao-tocado'].includes(e.estado) || (e.estado === 'erro' &amp;&amp; e.naoGravado === true));
@@ -56751,8 +56808,14 @@ const vacMigracao = (() => {
     if (op.janela !== true) return 'Confirme a janela: os outros gravadores estão parados. ' + AVISO_JANELA;
     const travas = travasPadrao(op);
     if (!travas || typeof travas.request !== 'function') return 'Este navegador não oferece proteção entre abas (Web Locks). Use Chrome ou Edge atualizado.';
+    /* a sessão passada pela tela tem de ser a sessão da pasta, no escopo dela; de outra pasta ou sem escopo não vale */
+    const d = await sessaoDaPasta(pasta, op);
+    if (!d.sessao) return d.motivo;
+    if (!objeto(op.sessao) || String(op.sessao.id) !== String(d.sessao.id)) return 'A sessão não é a desta pasta. Abra esta ferramenta de novo depois de entrar na plataforma com esta pasta conectada.';
     const c = await lerBase(pasta, CAD), p = podeAdministrar(c.doc, op.sessao);
-    return p.ok ? p : p.motivo;
+    if (!p.ok) return p.motivo;
+    const q = podeAdministrar(c.doc, d.sessao);
+    return q.ok ? q : q.motivo;
   }
 
   /* aplicar(pasta, plano, {escolhas, sessao, confirmacao, janela, registro?, aoGravar?, travas?, abas?})
@@ -56973,7 +57036,7 @@ const vacMigracao = (() => {
     return r;
   }
 
-  return Object.freeze({planejar, hash, canonico, pessoa, conferirM5, aplicar, retomar, restaurar, listar, lerPasta, podeAdministrar,
+  return Object.freeze({planejar, hash, canonico, pessoa, conferirM5, aplicar, retomar, restaurar, listar, lerPasta, podeAdministrar, sessaoDaPasta,
     CONFIRMACAO, CONFIRMACAO_RESTAURAR, ORDEM, ASSUNTOS_ADM, AVISO_JANELA});
 })();
 globalThis.vacMigracao = vacMigracao;
@@ -57028,27 +57091,12 @@ function vacRaiz(raiz) {
   const E = {pasta: null, nomePasta: '', ret: null, regs: null, lido: null, plano: null, sel: {}, escolhas: null, em: '', sessao: null, quem: null,
     janela: false, palavra: '', palavraR: '', alvoR: '', ocupado: false, relato: null, fila: null};
 
-  /* ----- sessão (vacLogin): vac.sessao + vac.userId, sem ou com o escopo da pasta (vac.app.<escopo>.) ----- */
-  function sessoes() {
-    const L = [];
-    try {
-      const ls = localStorage;
-      for (let i = 0; i < ls.length; i++) {
-        const k = ls.key(i), m = k &amp;&amp; /^(vac\.app\.[^.]+\.)?vac\.sessao$/.exec(k);
-        if (!m) continue;
-        let s = null; try { s = JSON.parse(ls.getItem(k)); } catch (e) { }
-        const id = ls.getItem((m[1] || '') + 'vac.userId');
-        if (s &amp;&amp; s.id &amp;&amp; String(s.id) === String(id) &amp;&amp; +s.ate > Date.now()) L.push(s);
-      }
-    } catch (e) { }
-    return L;
-  }
-  function conferirSessao(cad) {
-    const L = sessoes();
-    if (!L.length) return {sessao: null, quem: {ok: false, motivo: 'Sem sessão: só a prévia. Entre na plataforma com a sua senha e abra esta ferramenta de novo.'}};
-    let ult = null;
-    for (const s of L) { const q = M.podeAdministrar(cad, s); if (q.ok) return {sessao: s, quem: q}; ult = {sessao: s, quem: q}; }
-    return ult;
+  /* ----- sessão (vacLogin): só a do escopo da pasta escolhida (vac.app.<escopo>.vac.sessao), resolvido pelo núcleo como a casca
+     resolve (modulo/core/scopes). Sessão de outra pasta, ou sem escopo, não vale: só a prévia. ----- */
+  async function conferirSessao(cad) {
+    const d = await M.sessaoDaPasta(E.pasta);
+    if (!d.sessao) return {sessao: null, quem: {ok: false, motivo: d.motivo}};
+    return {sessao: d.sessao, quem: M.podeAdministrar(cad, d.sessao)};
   }
   const agoraIso = () => { const d = new Date(), p = n => String(n).padStart(2, '0'); return d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate()) + 'T' + p(d.getHours()) + ':' + p(d.getMinutes()) + ':' + p(d.getSeconds()); };
   const brh = iso => { const m = /^(\d{4})-(\d\d)-(\d\d)T(\d\d):(\d\d)/.exec(String(iso || '')); return m ? m[3] + '/' + m[2] + '/' + m[1] + ' ' + m[4] + ':' + m[5] : String(iso || ''); };
@@ -57146,7 +57194,7 @@ function vacRaiz(raiz) {
       E.lido = await M.lerPasta(E.pasta);
       E.plano = null;
       const cad = E.lido.arqs['vacutainer-cadastros.json'];
-      const c = conferirSessao(cad); E.sessao = c.sessao; E.quem = c.quem;
+      const c = await conferirSessao(cad); E.sessao = c.sessao; E.quem = c.quem;
       if (!E.ret.registro &amp;&amp; !E.lido.erros.length &amp;&amp; !E.lido.ilegiveis.length &amp;&amp; Object.keys(E.lido.arqs).length) await planejar();
     } catch (e) { $('sPrevia').innerHTML = `<div class="erro">Não foi possível ler a pasta: ${esc(msg(e))}</div>`; }
     E.ocupado = false;
@@ -57244,9 +57292,9 @@ function vacRaiz(raiz) {
       <div class="bar"><label for="${id}P">Digite <b>${palavra}</b> para confirmar</label><input type="text" id="${id}P" value="${esc(valor)}" autocomplete="off" size="14">
       <button class="${classe}" id="${id}B" type="button"${ativo &amp;&amp; E.janela &amp;&amp; valor === palavra ? '' : ' disabled'}>${rotulo}</button></div>`;
   }
-  function ligarConfirma(id, palavra, campo, fazer) {
+  function ligarConfirma(id, palavra, campo, fazer, ativo = true) {
     const j = $(id + 'J'), p = $(id + 'P'), b = $(id + 'B');
-    const atualiza = () => { E[campo] = p.value; E.janela = j.checked; b.disabled = !(j.checked &amp;&amp; p.value === palavra); };
+    const atualiza = () => { E[campo] = p.value; E.janela = j.checked; b.disabled = !(ativo &amp;&amp; j.checked &amp;&amp; p.value === palavra); };
     j.onchange = atualiza; p.oninput = atualiza; b.onclick = fazer;
   }
   const avisoSessao = () => !E.sessao ? `<div class="aviso">${esc(E.quem.motivo)}</div>` : !E.quem.ok ? `<div class="aviso">${esc(E.quem.motivo)}</div>` : `<p class="muted">Sessão de <b>${esc(E.quem.nome)}</b>.</p>`;
@@ -57281,7 +57329,7 @@ function vacRaiz(raiz) {
     }
     if (E.relato &amp;&amp; E.relato.onde === 'aplicar') h += relatoHtml();
     el.innerHTML = h;
-    if ($('apB')) ligarConfirma('ap', M.CONFIRMACAO, 'palavra', () => rodar('aplicar', () => M.aplicar(E.pasta, E.plano, {escolhas: E.escolhas, sessao: E.sessao, confirmacao: E.palavra, janela: E.janela, ignorarAbas: []})));
+    if ($('apB')) ligarConfirma('ap', M.CONFIRMACAO, 'palavra', () => rodar('aplicar', () => M.aplicar(E.pasta, E.plano, {escolhas: E.escolhas, sessao: E.sessao, confirmacao: E.palavra, janela: E.janela, ignorarAbas: []})), !semEsc);
   }
 
   function telaRegistros() {
@@ -57322,7 +57370,7 @@ function vacRaiz(raiz) {
     E.relato = {onde, res}; E.janela = false; E.palavra = ''; E.palavraR = '';
     try {
       E.ret = await M.retomar(E.pasta); E.regs = await M.listar(E.pasta); E.lido = await M.lerPasta(E.pasta);
-      const c = conferirSessao(E.lido.arqs['vacutainer-cadastros.json']); E.sessao = c.sessao; E.quem = c.quem;
+      const c = await conferirSessao(E.lido.arqs['vacutainer-cadastros.json']); E.sessao = c.sessao; E.quem = c.quem;
       E.em = ''; E.plano = null;
       if (!E.ret.registro &amp;&amp; !E.lido.erros.length &amp;&amp; !E.lido.ilegiveis.length &amp;&amp; Object.keys(E.lido.arqs).length) await planejar();
     } catch (e) { res.motivo += ' (Não foi possível reler a pasta: ' + msg(e) + ')'; }

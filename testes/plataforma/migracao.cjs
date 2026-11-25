@@ -1,15 +1,17 @@
 // Migrador pontual (D02) · tela em Saúde dos dados. Pasta fictícia no formato da main (OPFS), dados só de teste.
 // (a) a prévia mostra contagens por item e por arquivo e a tabela de exceções; "Baixar relatório" gera um CSV com uma linha por exceção;
-// (b) sem sessão: só a prévia, sem o botão Aplicar; (c) com sessão ADMIN: decide as exceções, aplica com a confirmação digitada e os
+// (b) sem sessão: só a prévia, sem o botão Aplicar; sessão de administrador de outra pasta (outro escopo) ou sem escopo também não libera;
+// com exceção sem decisão, janela e palavra não liberam o botão; (c) com sessão ADMIN no escopo da pasta: decide as exceções, aplica com a confirmação digitada e os
 // backups aparecem na pasta; (d) depois, Administração, Iniciativas, Equipamentos, Linha 360° e Paradas abrem sem "Base de versão anterior";
-// (e) a Reunião diária mostra a mesma pauta e a Minha fila da pessoa mostra os itens dela; (f) o gel teórico do catálogo migrado é o da main;
+// (e) a Reunião diária mostra a mesma pauta e a Minha fila da pessoa mostra os itens dela; (f) o gel teórico (vacGel.teorico) e o BOM do
+// catálogo migrado são os que a main calculava com o cadastro de antes (fórmula da main executada, não constantes);
 // (g) segunda execução: "Nada a migrar"; (h) M6: com inic.fila e vac-portal › cadFila não vazios, "Esta estação" lista as duas filas;
 // com tudo vazio, "Sem fila antiga nesta estação"; (i) nenhum erro de JavaScript.
 const {chromium} = require('playwright'), http = require('http'), fs = require('fs'), path = require('path'), assert = require('assert/strict');
 const html = fs.readFileSync(path.resolve(__dirname, '../../Plataforma.html'));
 const PASTA = 'Migracao-Ficticia', BLOQUEIO = 'Base de versão anterior';
 (async () => {
-  const {arqsTeste, M, ESC} = await import('./migracao-aplicar-comum.mjs');
+  const {arqsTeste, M, ESC} = await import('./migracao-aplicar-comum.mjs'), {gelMain} = await import('./migracao-gel-main.mjs');
   const arqs = arqsTeste(), JS = x => JSON.parse(JSON.stringify(x));
   /* sem nenhuma decisão (a prévia ao abrir) e com todas (depois de decidir) */
   const esperado = await M.planejar(arqs, {__meta: ESC.__meta}), final = await M.planejar(arqs, ESC);
@@ -66,14 +68,28 @@ const PASTA = 'Migracao-Ficticia', BLOQUEIO = 'Base de versão anterior';
 
     // (b) sem sessão: só a prévia
     assert.equal(await t.locator('#apB').count(), 0, 'sem sessão não há botão Aplicar');
-    assert.match(await t.locator('#sAplicar').innerText(), /Sem sessão: só a prévia/);
-    console.log('ok (b) sem sessão: só a prévia');
+    assert.match(await t.locator('#sAplicar').innerText(), /Sem sessão, só a prévia/);
+    /* a plataforma conecta a pasta (escopo dela em vac-nova-plataforma › scopes); sessões de outro escopo e sem escopo não valem */
+    await page.evaluate(() => { location.hash = '#/'; });
+    await page.locator('.heading-actions').locator('[data-act="connect"]').click(); await page.locator('.folder-info strong').filter({hasText: PASTA}).waitFor();
+    await page.evaluate(() => { const s = JSON.stringify({id: '9001', nome: 'Pessoa de demonstração', ate: Date.now() + 36e5});
+      for (const p of ['', 'vac.app.outra-pasta.']) { localStorage.setItem(p + 'vac.sessao', s); localStorage.setItem(p + 'vac.userId', '9001'); } });
+    await t.locator('#bRefazer').click(); await t.locator('#tExc').waitFor();
+    assert.equal(await t.locator('#apB').count(), 0, 'sessão de outra pasta ou sem escopo não libera Aplicar');
+    assert.match(await t.locator('#sAplicar').innerText(), /Sem sessão nesta pasta: só a prévia/);
+    console.log('ok (b) sem sessão: só a prévia; sessão de administrador de outra pasta ou sem escopo também');
 
     // (c) sessão ADMIN: decide as exceções, aplica
-    await page.evaluate(() => { const s = JSON.stringify({id: '9001', nome: 'Pessoa de demonstração', ate: Date.now() + 36e5}); localStorage.setItem('vac.sessao', s); localStorage.setItem('vac.userId', '9001'); });
+    await page.evaluate(() => { const s = JSON.stringify({id: '9001', nome: 'Pessoa de demonstração', ate: Date.now() + 36e5}), p = 'vac.app.' + vacAppHost.scope + '.';
+      for (const k of ['', 'vac.app.outra-pasta.']) { localStorage.removeItem(k + 'vac.sessao'); localStorage.removeItem(k + 'vac.userId'); }
+      localStorage.setItem(p + 'vac.sessao', s); localStorage.setItem(p + 'vac.userId', '9001'); });
     await t.locator('#bRefazer').click();
     await t.locator('#tExc').waitFor();
     assert.match(await t.locator('#sAplicar').innerText(), /Sessão de Pessoa de demonstração/);
+    /* exceções sem decisão: marcar a janela e digitar a palavra não libera */
+    await t.locator('#apJ').check(); await t.locator('#apP').fill('MIGRAR');
+    assert.equal(await t.locator('#apB').isDisabled(), true, 'com exceção sem decisão, o botão continua bloqueado');
+    await t.locator('#apJ').uncheck(); await t.locator('#apP').fill('');
     for (let n = 0; n < nExc; n++) {
       const sel = t.locator('#tExc select').nth(n), tipo = esperado.excecoes[n].tipo, ops = esperado.excecoes[n].opcoes;
       let i = ops.findIndex(o => o.valor === 'sem' || o.valor === 'manter');
@@ -121,7 +137,7 @@ const PASTA = 'Migracao-Ficticia', BLOQUEIO = 'Base de versão anterior';
     // (d) a plataforma na pasta migrada: nenhuma página abre como "Base de versão anterior"
     await page.evaluate(() => { location.hash = '#/'; });
     const conectar = page.locator('.heading-actions').locator('[data-act="connect"]');
-    await conectar.click(); await page.locator('.folder-info strong').filter({hasText: PASTA}).waitFor();
+    await conectar.waitFor(); await page.locator('.folder-info strong').filter({hasText: PASTA}).waitFor();
     await page.evaluate(() => { const p = 'vac.app.' + vacAppHost.scope + '.'; localStorage.setItem(p + 'vac.userId', '1001'); localStorage.setItem(p + 'vac.user', 'Ana Líder (TESTE)');
       localStorage.setItem(p + 'vac.sessao', JSON.stringify({id: '1001', nome: 'Ana Líder (TESTE)', ate: Date.now() + 36e5})); });
     const NOMES = {portal: 'Administração', inic: 'Iniciativas / Ações', equip: 'Equipamentos', linha: 'Linha 360°', paradas: 'Paradas', gel: 'Gestão de Gel', perdas: 'Waste', oee: 'Produção'};
@@ -160,12 +176,18 @@ const PASTA = 'Migracao-Ficticia', BLOQUEIO = 'Base de versão anterior';
     assert.match(carla, /MINHAS \(2\)/); assert.match(carla, /Ação fictícia homônima/); assert.match(carla, /Ação antiga de homônimo/);
     console.log('ok (e) Reunião diária com a mesma pauta; Minha fila mostra as ações da Ana (1) e da Carla (2, uma delas vinda do Waste)');
 
-    // (f) gel teórico: gramas por tubo e BOM do catálogo migrado iguais ao que a main lia (gTubo; bomG × bomPct ÷ 100, tolerância bomPct − 100)
-    const gel = await pf.evaluate(() => { const o = {}; for (const c of ['cat-a', 'cat-b', 'cat-c']) { const cg = vacGel.ctx().cat(c), b = vacGel.bom(cg, '2026-11-19'); o[c] = {g: vacGel.gelPorTubo(cg, '2026-11-19'), allowed: b.allowed, tol: b.tol}; } return o; });
-    const aprox = (a, b) => Math.abs(a - b) < 1e-9;
-    const ESP = {'cat-a': [0.85, 9 * 106 / 100, 6], 'cat-b': [0.9, 10 * 105 / 100, 5], 'cat-c': [0.93, 9.8 * 1000 / 10000, 6]};
-    for (const [c, [g, allowed, tol]] of Object.entries(ESP)) assert.ok(aprox(gel[c].g, g) && aprox(gel[c].allowed, allowed) && gel[c].tol === tol, c + ' ' + JSON.stringify(gel[c]));
-    console.log('ok (f) gel do catálogo migrado: g/tubo e BOM iguais aos da main');
+    // (f) gel teórico e BOM: a fórmula da main (vigList/bomVals + procAt) sobre o cadastro de antes × o vacGel atual sobre o migrado
+    const DATA = '2026-11-19', TUBOS = {'cat-a': 12000, 'cat-b': 8000, 'cat-c': 5000}, CATS = Object.keys(TUBOS), G0 = gelMain(arqs['vacutainer-cadastros.json']);
+    const antes = {teo: JS(G0.teorico(TUBOS, DATA)), bom: Object.fromEntries(CATS.map(c => [c, JS(G0.bom(c, DATA))]))};
+    const depois = await pf.evaluate(({TUBOS, DATA, CATS}) => { const cat = vacGel.ctx().cat;
+      return {teo: vacGel.teorico({tubosPorCat: TUBOS, date: DATA, cg: cat}), bom: Object.fromEntries(CATS.map(c => [c, vacGel.bom(cat(c), DATA)]))}; }, {TUBOS, DATA, CATS});
+    const aprox = (a, b, o) => assert.ok(typeof a === 'number' && typeof b === 'number' && Math.abs(a - b) < 1e-9, o + ': main ' + a + ', migrado ' + b);
+    assert.ok(antes.teo && depois.teo, 'teórico calculado nos dois lados: ' + JSON.stringify(depois.teo));
+    for (const k of ['gelBons', 'teo']) aprox(antes.teo[k], depois.teo[k], k);
+    for (const k of ['T', 'B', 'P']) aprox(antes.teo.sTeo[k], depois.teo.sTeo[k], 'sTeo.' + k);
+    for (const k of ['g', 'pT', 'pB', 'pP']) aprox(+antes.teo.perdas[k], +depois.teo.perdas[k], 'perdas.' + k);
+    for (const c of CATS) { for (const k of ['allowed', 'meta', 'kg', 'base']) aprox(antes.bom[c][k], depois.bom[c][k], c + ' bom.' + k); assert.equal(depois.bom[c].tol, antes.bom[c].tol, c + ' tol'); }
+    console.log('ok (f) gel teórico (' + depois.teo.teo.toFixed(3) + ' kg) e BOM do catálogo migrado iguais aos da fórmula da main');
 
     assert.deepEqual(erros, [], 'nenhum erro de JavaScript');
     console.log('ok (i) nenhum erro de JavaScript');

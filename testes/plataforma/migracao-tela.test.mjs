@@ -2,14 +2,17 @@
 // registro sem pendência real não volta como não concluído, listagem de registros e a cópia do vacRaiz na ferramenta. Dados fictícios.
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
-import {carregarMigracao, armazenamento} from './migracao-fixtures.mjs';
+import {carregarMigracao, armazenamento, registrarPasta} from './migracao-fixtures.mjs';
 import {CAD, EQUIP, SESSAO, ESC, arqsTeste, lerBase} from './migracao-aplicar-comum.mjs';
 import {pastaMemoria, carregarRaiz, travasTeste} from './pasta-memoria.mjs';
 import helpers from '../../scripts/html.cjs';
+import {execFileSync} from 'node:child_process';
+import {MAIN} from './migracao-gel-main.mjs';
 
 const viva = (extra = {}) => JSON.stringify({t: Date.now(), pend: false, ...extra});
 async function montarCom(M, arqs = arqsTeste()) {
   const fs = pastaMemoria(), vacRaiz = carregarRaiz();
+  registrarPasta(fs.raiz);
   for (const [f, c] of Object.entries(arqs)) await fs.gravar('00. Bases/' + f, JSON.stringify(c));
   const plano = JSON.parse(JSON.stringify(await M.planejar(arqs, ESC)));
   return {fs, pasta: vacRaiz(fs.raiz), plano};
@@ -24,6 +27,7 @@ test('abas: heartbeat da plataforma com escopo da pasta (vac.app.<escopo>.vac.ab
   const {fs, pasta, plano} = await montarCom(M);
   const r = J(await M.aplicar(pasta, plano, op(M)));
   assert.equal(r.ok, false); assert.match(r.motivo, /Iniciativas/);
+  assert.match(r.motivo, /neste navegador, de qualquer pasta/, 'heartbeats de outras pastas também bloqueiam, e o texto diz isso');
   assert.deepEqual(fs.log, [], 'nada gravado');
 });
 
@@ -51,16 +55,17 @@ test('abas: ids em ignorarAbas (a própria janela da ferramenta) não contam; as
   assert.equal(r.ok, false); assert.match(r.motivo, /Equipamentos/);
 });
 
-test('abas: falha fechado quando o localStorage não pode ser lido, ou não existe', async () => {
-  const ls = armazenamento(); ls.quebrar = true;
-  for (const [rotulo, extra] of [['ilegível', {localStorage: ls}], ['ausente', {localStorage: undefined}]]) {
+test('abas: falha fechado quando o localStorage não pode ser listado, ou não existe', async () => {
+  /* ilegível só na listagem: a sessão da pasta (getItem) é lida, e a conferência das abas é que falha */
+  const ls = armazenamento(); ls.quebrar = 'lista';
+  for (const [rotulo, extra, motivo] of [['ilegível', {localStorage: ls}, SEM_ABAS], ['ausente', {localStorage: undefined}, /sessão/i]]) {
     const M = carregarMigracao(extra);
     const {fs, pasta, plano} = await montarCom(M);
     const r = J(await M.aplicar(pasta, plano, op(M)));
-    assert.equal(r.ok, false, rotulo); assert.match(r.motivo, SEM_ABAS, rotulo);
+    assert.equal(r.ok, false, rotulo); assert.match(r.motivo, motivo, rotulo);
     assert.deepEqual(fs.log, [], rotulo + ': nada gravado');
     const rs = J(await M.restaurar(pasta, {id: 'x', arquivos: {[CAD]: {}}}, null, RESTAURAR(M)));
-    assert.equal(rs.ok, false, rotulo); assert.match(rs.motivo, SEM_ABAS, rotulo);
+    assert.equal(rs.ok, false, rotulo); assert.match(rs.motivo, motivo, rotulo);
   }
 });
 
@@ -135,4 +140,12 @@ test('a cópia do vacRaiz na ferramenta é a mesma de comum/bases', () => {
     const m = t.match(re); assert.ok(m, 'comum/bases mudou: ' + re);
     assert.ok(f.includes(m[0]), 'a ferramenta precisa da mesma linha: ' + re);
   }
+});
+
+test('a fórmula do gel da main usada no teste da tela é cópia literal do vacGel da main (91744b5)', t => {
+  let main;
+  try { main = execFileSync('git', ['show', '91744b5:Plataforma.html'], {encoding: 'utf8', maxBuffer: 64 << 20, stdio: ['ignore', 'pipe', 'ignore']}); }
+  catch (e) { t.skip('commit 91744b5 indisponível neste clone'); return; }
+  const a = main.indexOf('const vacGel = (() => {'), gel = main.slice(a, main.indexOf('return { COMPS', a)).replace(/&amp;/g, '&');
+  for (const l of MAIN) assert.ok(gel.includes(l), 'linha que não está no vacGel da main: ' + l.trim().slice(0, 80));
 });

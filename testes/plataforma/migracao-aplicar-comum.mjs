@@ -1,5 +1,5 @@
 // Migrador pontual (D02): preparação comum dos testes de aplicação (pasta em memória, plano, sessão e opções). Dados fictícios.
-import {carregarMigracao, pastaMain} from './migracao-fixtures.mjs';
+import {carregarMigracao, pastaMain, registrarPasta, SESSAO_TESTE} from './migracao-fixtures.mjs';
 import {pastaMemoria, carregarRaiz, travasTeste} from './pasta-memoria.mjs';
 
 export const M = carregarMigracao(), vacRaiz = carregarRaiz();
@@ -21,7 +21,8 @@ export const ESC = {__meta: META, ['M2-nenhum|' + PERD + '|actions[0].resp']: 's
   ['M4-sem-local|' + FIFO + '|prodlog[2026-11-19].turns[T1].eq[2]']: 'manter'};
 export const ASSUNTOS = ['planta', 'produto', 'gel', 'equipamentos', 'turnos', 'paradas', 'pessoas', 'sistema'];
 export const assuntos = (f = () => 'editar') => Object.fromEntries(ASSUNTOS.map(a => [a, f(a)]));
-export const SESSAO = {id: '9001', nome: 'Pessoa de demonstração', em: '2026-11-25T14:00:00', ate: Date.now() + 36e5};
+/* a mesma sessão gravada no escopo da pasta de teste (migracao-fixtures): o núcleo confere uma com a outra */
+export const SESSAO = SESSAO_TESTE;
 
 export function arqsTeste() {
   const a = pastaMain();
@@ -32,6 +33,7 @@ export function arqsTeste() {
 }
 export async function montar(arqs = arqsTeste()) {
   const fs = pastaMemoria();
+  registrarPasta(fs.raiz);
   for (const [f, c] of Object.entries(arqs)) await fs.gravar('00. Bases/' + f, JSON.stringify(c));
   const plano = JSON.parse(JSON.stringify(await M.planejar(arqs, ESC)));
   return {fs, pasta: vacRaiz(fs.raiz), plano, arqs};

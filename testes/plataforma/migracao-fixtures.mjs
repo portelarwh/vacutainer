@@ -3,21 +3,56 @@
 import vm from 'node:vm';
 import helpers from '../../scripts/html.cjs';
 
-/* Núcleo do bloco ferramenta/migracao, avaliado sem DOM (crypto.subtle do Node). */
-/* localStorage de teste: {chave: valor}; `quebrar` faz toda leitura lançar (armazenamento ilegível). */
-export function armazenamento(inicial = {}) {
-  const m = new Map(Object.entries(inicial)), a = {quebrar: false};
-  const ler = () => { if (a.quebrar) throw new DOMException('armazenamento bloqueado', 'SecurityError'); };
-  Object.defineProperty(a, 'length', {get() { ler(); return m.size; }});
-  return Object.assign(a, {key: i => { ler(); return [...m.keys()][i] ?? null; },
+/* Sessão e escopo de teste. A casca da plataforma guarda um escopo por pasta conectada (modulo/core/scopes: IndexedDB
+   "vac-nova-plataforma" › app › "scopes" = [{handle, scope}]) e a sessão do vacLogin em vac.app.<escopo>.vac.sessao. */
+export const ESCOPO_TESTE = 'escopo-teste';
+export const SESSAO_TESTE = {id: '9001', nome: 'Pessoa de demonstração', em: '2026-11-25T14:00:00', ate: Date.now() + 36e5};
+export const chavesSessao = (sessao = SESSAO_TESTE, escopo = ESCOPO_TESTE) => {
+  const p = escopo == null ? '' : 'vac.app.' + escopo + '.';
+  return {[p + 'vac.sessao']: JSON.stringify(sessao), [p + 'vac.userId']: String(sessao.id)};
+};
+/* Pastas que a "plataforma" já conectou neste navegador de teste (o que rememberFolder grava). */
+export const PASTAS_TESTE = [];
+export const registrarPasta = (raiz, escopo = ESCOPO_TESTE) => { PASTAS_TESTE.push({handle: raiz, scope: escopo}); return raiz; };
+
+/* localStorage de teste: {chave: valor}, já com a sessão de teste no escopo de teste (semSessao: sem ela).
+   `quebrar` = true faz toda leitura lançar (armazenamento ilegível); 'lista' só a enumeração (length/key). */
+export function armazenamento(inicial = {}, {semSessao = false} = {}) {
+  const m = new Map(Object.entries({...(semSessao ? {} : chavesSessao()), ...inicial})), a = {quebrar: false};
+  const ler = () => { if (a.quebrar === true) throw new DOMException('armazenamento bloqueado', 'SecurityError'); };
+  const listar = () => { if (a.quebrar) throw new DOMException('armazenamento bloqueado', 'SecurityError'); };
+  Object.defineProperty(a, 'length', {get() { listar(); return m.size; }});
+  return Object.assign(a, {key: i => { listar(); return [...m.keys()][i] ?? null; },
     getItem: k => { ler(); return m.has(k) ? m.get(k) : null; }, setItem: (k, v) => m.set(k, String(v)), removeItem: k => m.delete(k)});
 }
 
+/* IndexedDB de teste: só o banco da casca "vac-nova-plataforma" › app, lido como a ferramenta lê (get de uma chave).
+   valores(): {scopes, folder?, scope?}; por padrão as PASTAS_TESTE. Outro banco: "não existe" (onupgradeneeded). */
+export function idbPlataforma(valores = () => ({scopes: PASTAS_TESTE})) {
+  const pedido = () => ({onsuccess: null, onerror: null, onupgradeneeded: null, result: undefined, error: null});
+  return {
+    open(nome) {
+      const r = pedido();
+      setTimeout(() => {
+        if (nome !== 'vac-nova-plataforma') { r.transaction = {abort() { r.error = new DOMException('abortado', 'AbortError'); setTimeout(() => r.onerror && r.onerror()); }}; return r.onupgradeneeded && r.onupgradeneeded(); }
+        const v = valores();
+        r.result = {objectStoreNames: {contains: n => n === 'app'}, close() {},
+          transaction: () => ({objectStore: () => ({get(k) { const q = pedido(); setTimeout(() => { q.result = v[k]; q.onsuccess && q.onsuccess(); }); return q; }})})};
+        r.onsuccess && r.onsuccess();
+      });
+      return r;
+    },
+  };
+}
+
+/* Núcleo do bloco ferramenta/migracao, avaliado sem DOM (crypto.subtle do Node). */
 export function carregarMigracao(extra = {}) {
   const bloco = helpers.current().text('ferramenta/migracao');
   const nucleo = bloco.match(/<script id="vacMigracaoNucleo">([\s\S]*?)<\/script>/);
   if (!nucleo) throw new Error('Núcleo vacMigracao ausente do bloco ferramenta/migracao.');
-  const ctx = vm.createContext({crypto: globalThis.crypto, TextEncoder, localStorage: 'localStorage' in extra ? extra.localStorage : armazenamento()});
+  const ctx = vm.createContext({crypto: globalThis.crypto, TextEncoder, setTimeout,
+    localStorage: 'localStorage' in extra ? extra.localStorage : armazenamento(),
+    indexedDB: 'indexedDB' in extra ? extra.indexedDB : idbPlataforma()});
   vm.runInContext(nucleo[1], ctx, {filename: 'ferramenta/migracao'});
   if (!ctx.vacMigracao) throw new Error('O núcleo não definiu vacMigracao.');
   return ctx.vacMigracao;
@@ -48,7 +83,9 @@ function cadastro() {
       {codigo: 'cat-d', nome: 'Preparação D (TESTE)', familia: 'F1', linha: 'L1', ativo: true},
     ],
     materiais: [], bom: [], equipamentos: [{codigo: 'EQ03', nome: 'Máquina de gel (TESTE)', ativo: true}, {codigo: 'EQ08', nome: 'Spray (TESTE)', ativo: true}],
-    turnos: [], paradas: [], parametros: {}, auditoria: [], usuarios: usuarios(), perfis: [],
+    turnos: [], paradas: [],
+    // perdas teóricas do gel (vigência completa: g, pT, pB, pP), para o teórico sair igual antes e depois da migração
+    parametros: {gel: {processo: [{from: '2025-01-01', g: 0.95, pT: 2.1, pB: 0.8, pP: 0.5}]}}, auditoria: [], usuarios: usuarios(), perfis: [],
     gel: {
       formatos: [{de: '2025-01-01', ate: null, embalagemG: 75, sobraBarrilKg: 1.6, tubos: {'100': {tuboG: 4.779, gelG: 0.936, aditivoG: 0.02, tampaRolhaG: 2.3}}}],
       locais: [

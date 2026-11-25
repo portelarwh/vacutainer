@@ -2,6 +2,7 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {pastaMemoria, travasTeste} from './pasta-memoria.mjs';
+import {registrarPasta} from './migracao-fixtures.mjs';
 import {CAD, EQUIP, ESC, FIFO, INIC, LINHA, M, META, OEE, ORDEM, PAR, PERD, PORTAL, REG, SESSAO, aplicar, arqsTeste, backup, bases, hashTexto, lerBase, montar, opcoes, vacRaiz} from './migracao-aplicar-comum.mjs';
 
 test('o plano da pasta fictícia altera os nove arquivos, um de cada dono', async () => {
@@ -43,6 +44,7 @@ test('o plano de teste tem todas as exceções decididas', async () => {
 
 test('(f) exceção sem escolha no plano: recusa, diz quantas faltam e não grava nada', async () => {
   const arqs = arqsTeste(), fs = pastaMemoria();
+  registrarPasta(fs.raiz);
   for (const [f, c] of Object.entries(arqs)) await fs.gravar('00. Bases/' + f, JSON.stringify(c));
   const esc = {...ESC};
   delete esc['M2-nenhum|' + LINHA + '|formularios[0].emissor'];
