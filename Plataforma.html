@@ -10301,12 +10301,15 @@ const Actions = (() => {
       mk(fam.id, 0.70, 90000); mk(sst.id, 0.775, 72000);
       const start = U.addDays(U.today(), -20);
       let seed = 7; const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+      /* catálogos da demonstração: os do cadastro (o 360060 e o 360057, se existirem; senão os dois primeiros ativos) */
+      const cats = db.catalogs.filter(c => Engine.catalogValid(c, start)), catA = (cats.find(c => c.code === '360060') || cats[0] || {}).id, catB = (cats.find(c => c.code === '360057') || cats[1] || cats[0] || {}).id;
+      if (!catA) throw new Error('A demonstração precisa de catálogos no cadastro da Administração.');
       for (let k = 0; k < 20; k++) {
         const date = U.addDays(start, k); if (U.weekday(date) === 0) continue;
         if (db.productionDays.some(x => !x.deleted &amp;&amp; x.date === date &amp;&amp; x.lineId === LINE)) continue;
         // a linha de demonstração usa os turnos da linha Vacutainer
         const day = Engine.buildDay(db, date, LINE, 'mac_line', by(), { shiftLineId: 'line_vac' }); if (!day.shifts.length) continue;
-        day.demo = true; day.origin = 'demonstração'; day.shifts[0].initialCatalogId = k % 3 === 0 ? 'cat_360060' : 'cat_360057';
+        day.demo = true; day.origin = 'demonstração'; day.shifts[0].initialCatalogId = k % 3 === 0 ? catA : catB;
         for (const ps of day.shifts) { for (const iv of ps.intervals) { const f = Engine.resolveTarget(db, date, day.shifts[0].initialCatalogId, null, LINE); const cap = f ? f.pph * (iv.end - iv.start) / 60 : 60000; iv.good = Math.round(cap * (0.55 + rnd() * 0.3) / 1000) * 1000; } ps.scrap = Math.round(2000 + rnd() * 4000); }
         const codes = ['FME', 'ENR', 'TRL', 'FEL', 'AJP', 'MIC'];
         for (let e = 0; e < 4; e++) { const pick = codes[Math.floor(rnd() * codes.length)]; const c = db.downtimeCodes.find(x => x.code === pick); if (!c) continue; const s = U.toMin('06:00') + Math.floor(rnd() * 900); const len = 5 + Math.floor(rnd() * 40); if (day.events.some(o => U.overlap(o.start, o.end, s, s + len) > 0)) continue; day.events.push({ id: uid('ev'), codeId: c.id, start: s, end: s + len, minutes: null, equipmentId: db.machines[1 + Math.floor(rnd() * 8)].id, note: 'Dados de demonstração', impact: impactSnap(c), demo: true, ...Model.meta(by()) }); }
@@ -55190,8 +55193,8 @@ body.vac-porta{overflow:hidden}
       "id": "oee",
       "path": "Plataforma.html#motor/oee",
       "version": "2.6.46",
-      "sha256": "d95134d880157d902491f90024fb9440781e569849085b9176c5f0e83663dc26",
-      "bytes": 2390773
+      "sha256": "44f348df92ceb6fdcdacd93de2d772ae14c70c0b23faf2ef301ead00a0e55b92",
+      "bytes": 2391209
     },
     {
       "id": "perdas",
@@ -55253,7 +55256,7 @@ body.vac-porta{overflow:hidden}
   "limitations": [
     "Projetos e conteúdo técnico OSM/MES/AM/TPM mantêm os limites documentados nas fontes."
   ],
-  "enginesSha256": "6e599f7cc1732f434cb633876c06fde5bf4c12242fa24f2856735d699dd41c85",
+  "enginesSha256": "4488a44eeed0a9328e3035916d16031f07f2d8cd3277ac3e1dbbfa805cb21ac9",
   "originRevision": "ffc9ee8",
   "sourceMode": "single-html",
   "originEnginesSha256": "a87a64ad0c328f70e102b2ae888790a9b5d5a9bd05778652a7ce7cae140e40d2"

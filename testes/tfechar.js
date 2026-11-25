@@ -31,7 +31,7 @@ const errs = []; const ok = (c, m) => { console.log((c ? 'ok   ' : 'FALHA ') + m
     const s = await st(p, id);
     ok(r.every(x => x === 'ok') && s.dia === 'fechado', `fechar os turnos um a um fecha o dia, mesmo com turno desabilitado (${r.join(', ')} · dia ${s.dia})`);
     const rv = await p.evaluate(id => { try { Actions.reopen(id, null, 'teste'); } catch (e) { return 'ERRO: ' + e.message; } const x = db().productionDays.find(y => y.id === id); return x.status + ' / ' + x.shifts.map(s => s.status + (s.deleted ? '(desab.)' : '')).join(','); }, id);
-    ok(/^reaberto \/ reaberto,reaberto,em lançamento\(desab\.\)$/.test(rv), `reabrir o dia não mexe no turno desabilitado (${rv})`);
+    ok(/^reaberto \/ (reaberto,)+em lançamento\(desab\.\)$/.test(rv), `reabrir o dia não mexe no turno desabilitado (${rv})`);
     await p.context().close();
   }
   for (const tema of ['light', 'dark']) {

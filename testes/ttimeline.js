@@ -13,6 +13,13 @@ const D = '2031-03-10', D2 = '2031-03-11';   // segunda e terça, sem nada lanç
     await p.goto(PG); await p.waitForTimeout(1300); await p.evaluate(() => { document.querySelectorAll('.overlay').forEach(o => o.remove()); Demo.enterExample(); document.querySelectorAll('.overlay').forEach(o => o.remove()); }); await p.waitForTimeout(500); return p; };
   /* cenário: um turno de 480 min (06:00–14:00) em D, com paradas do operador, um intervalo sem caixas do MES e tags */
   const CENARIO = ([D, fechado]) => Store.mutate(B => {
+    /* os códigos de parada que este cenário usa (antes vinham da semente de fábrica; agora o cadastro é que os traz) */
+    for (const x of ProdCad.montar({ paradas: [
+      { codigo: 'REF', nome: 'Refeição', categoria: 'Planejada', subcategoria: 'Pausa', cor: '#8d99a6', planejada: true, descontaPlanejado: true, pareto: false, duracaoManual: true },
+      { codigo: 'FME', nome: 'Falha mecânica', categoria: 'Quebra', subcategoria: 'Mecânica', cor: '#c22a2a', afetaD: true, duracaoManual: true },
+      { codigo: 'FMA', nome: 'Falta de material', categoria: 'Logística', subcategoria: 'Material', cor: '#b8620a', afetaD: true, duracaoManual: true },
+      { codigo: 'OUT', nome: 'Outros', categoria: 'Outros', subcategoria: '', cor: '#94a2b1', afetaD: true, exigeObservacao: true, duracaoManual: true }] }).downtimeCodes)
+      if (!B.downtimeCodes.some(c => c.code === x.code)) B.downtimeCodes.push(x);
     const cod = c => B.downtimeCodes.find(x => x.code === c).id, M = B.machines.filter(m => !m.deleted && m.role !== 'oee'), at = '2031-03-10T15:00:00.000Z', meta = { createdAt: at, createdBy: 'Operador Teste', updatedAt: at, updatedBy: 'Operador Teste', status: 'ativo', revision: 1 };
     B.productionDays = B.productionDays.filter(d => d.date !== D);
     B.productionDays.push({ ...meta, id: 'day_tl', date: D, lineId: 'line_vac', machineId: 'mac_line', status: fechado ? 'fechado' : 'em lançamento', responsible: 'Operador Teste', note: '', scrapMode: 'shift', scrapDay: null, gapJustification: '', origin: 'manual',
