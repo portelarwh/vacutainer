@@ -92,8 +92,7 @@ export function pastaMain() {
       postos: [{id: 'P1', nome: 'Posto fictício', pessoas: {T1: 'Ana Líder (TESTE)', T2: 'Carla Souza (TESTE)'}, pessoasIds: {T1: '', T3: '1002'}}],
       feitos: [{id: 'f1', por: 'Bruno Operador (TESTE)', em: '2026-11-19T09:00:00Z'}],
       formularios: [{id: 'FM-1', resp: 'Ana Líder (TESTE)', conf: 'Bruno Operador (TESTE)', emissor: 'Pessoa Ausente', desvio: {resp: 'Ana Líder (TESTE)'}, exec: {por: 'Carla Souza (TESTE)', aval: {}},
-        concluidoPor: 'Ana Líder (TESTE)', confirmadoPor: 'Bruno Operador (TESTE)', devolucoes: [{em: '2026-11-19T10:00:00Z', por: 'Bruno Operador (TESTE)'}],
-        fotos: [{id: 'ft1', por: 'Bruno Operador (TESTE)', tiradaPor: 'Ana Líder (TESTE)'}]}],
+        concluidoPor: 'Ana Líder (TESTE)', confirmadoPor: 'Bruno Operador (TESTE)', devolucoes: [{em: '2026-11-19T10:00:00Z', por: 'Bruno Operador (TESTE)'}]}],
       fotos: [{id: 'ft2', tiradaPor: 'Ana Líder (TESTE)'}],
     }),
     'paradas-base.json': base('vac-paradas', {

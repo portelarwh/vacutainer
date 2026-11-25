@@ -36,8 +36,8 @@ test('M2: nome único preenche o ID vazio em cada caminho da tabela', async () =
   assert.equal(d(LINHA).postos[0].pessoasIds.T3, '1002', 'ID gravado de outro turno fica');
   assert.equal(d(LINHA).feitos[0].porId, '1002');
   const fm = d(LINHA).formularios[0];
-  assert.deepEqual([fm.respId, fm.confId, fm.desvio.respId, fm.exec.porId, fm.concluidoPorId, fm.confirmadoPorId, fm.devolucoes[0].porId, fm.fotos[0].porId, fm.fotos[0].tiradaPorId],
-    ['1001', '1002', '1001', undefined, '1001', '1002', '1002', '1002', '1001']);
+  assert.deepEqual([fm.respId, fm.confId, fm.desvio.respId, fm.exec.porId, fm.concluidoPorId, fm.confirmadoPorId, fm.devolucoes[0].porId],
+    ['1001', '1002', '1001', undefined, '1001', '1002', '1002']);
   assert.equal(d(LINHA).fotos[0].tiradaPorId, '1001');
   assert.equal(d(PAR).tecnico['EV-1'].tecnicoId, '1001');
   const c = d(PERD).comments[0];
@@ -154,4 +154,14 @@ test('M2 e M4 sem cadastro de usuários ou de locais viram exceção de estrutur
   assert.equal(exc(p, 'M4-estrutura').length, 1);
   assert.equal(p.alteracoes[INIC], undefined);
   assert.equal(p.alteracoes[FIFO], undefined);
+});
+
+test('M2b: entrada de tecnico{} sem técnico (só codigoValidado) recebe tecnico e tecnicoId e mantém o resto', async () => {
+  const pasta = pastaMain();
+  pasta[PAR].eventos[1].tecnicoForms = 'Ana Líder (TESTE)';
+  pasta[PAR].tecnico['EV-2'] = {codigoValidado: 'FME'};
+  const p = await plano(pasta);
+  assert.deepEqual(p.alteracoes[PAR].depois.tecnico['EV-2'], {codigoValidado: 'FME', tecnico: ANA, tecnicoId: '1001'});
+  const q = await plano(aplicado(pasta, p));
+  assert.deepEqual(q.itens.M2b, []);
 });

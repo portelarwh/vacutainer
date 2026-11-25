@@ -56283,7 +56283,6 @@ const vacMigracao = (() => {
       ['formularios[].desvio', [['resp', 'respId']]],
       ['formularios[].exec', [['por', 'porId']]],
       ['formularios[].devolucoes[]', [['por', 'porId']]],
-      ['formularios[].fotos[]', [['por', 'porId'], ['tiradaPor', 'tiradaPorId']]],
       ['fotos[]', [['por', 'porId'], ['tiradaPor', 'tiradaPorId']]],
       ['feitos[]', [['por', 'porId']]],
     ],
@@ -56361,13 +56360,16 @@ const vacMigracao = (() => {
     const par = ctx.arqs['paradas-base.json'];
     if (objeto(par) &amp;&amp; Array.isArray(par.eventos) &amp;&amp; (par.tecnico == null || objeto(par.tecnico))) par.eventos.forEach((ev, i) => {
       if (!objeto(ev) || vazio(ev.id) || !texto(ev.tecnicoForms)) return;
-      if (objeto(par.tecnico) &amp;&amp; Object.prototype.hasOwnProperty.call(par.tecnico, ev.id)) return;
+      /* entrada criada por outro motivo (codigoValidado, componente…) sem técnico: a main usava tecnicoForms (idTec) */
+      const atual = objeto(par.tecnico) &amp;&amp; Object.prototype.hasOwnProperty.call(par.tecnico, ev.id) ? par.tecnico[ev.id] : null;
+      if (atual &amp;&amp; (!objeto(atual) || !vazio(atual.tecnico) || !vazio(atual.tecnicoId))) return;
       const id = resolver('paradas-base.json', 'eventos[' + i + '].tecnicoForms', ev.tecnicoForms);
       if (!id) return;
       const u = usuarios.find(x => objeto(x) &amp;&amp; String(x.codigo) === id), doc = ctx.doc('paradas-base.json');
       if (!objeto(doc.tecnico)) doc.tecnico = {};
-      doc.tecnico[ev.id] = {tecnico: u.nome, tecnicoId: id, por: AUTOR, porId: ''};
-      ctx.alterar('M2b', 'paradas-base.json', 'tecnico[' + ev.id + ']', null, doc.tecnico[ev.id]);
+      if (atual) Object.assign(doc.tecnico[ev.id], {tecnico: u.nome, tecnicoId: id});
+      else doc.tecnico[ev.id] = {tecnico: u.nome, tecnicoId: id, por: AUTOR, porId: ''};
+      ctx.alterar('M2b', 'paradas-base.json', 'tecnico[' + ev.id + ']', atual, doc.tecnico[ev.id]);
     });
   }
 
@@ -56390,7 +56392,7 @@ const vacMigracao = (() => {
       return;
     }
     for (const [arquivo, base, eq] of grupos) eq.forEach((r, i) => {
-      if (!objeto(r) || vazio(r.d)) return;
+      if (!objeto(r) || vazio(r.d)) return; /* sem d a main também não acha local */
       const caminho = base + '[' + i + ']', l = acharLocal(locais, r.e, r.d);
       if (!l) {
         const x = ctx.excecao({tipo: 'M4-sem-local', arquivo, caminho, valor: {e: r.e ?? null, d: r.d},
