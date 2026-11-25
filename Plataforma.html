@@ -56293,26 +56293,27 @@ const vacMigracao = (() => {
       ['exclusoes[]', [['por', 'porId']]],
     ],
   };
+  /* Resolve um nome. Devolve o ID, ou null quando vira exceção ou decisão do responsável. */
+  function resolverPessoa(ctx, usuarios, arquivo, caminho, texto) {
+    const r = pessoa(texto, usuarios);
+    if (r.id) return r.id;
+    const ambiguo = !!r.ambiguo;
+    const e = ctx.excecao({tipo: ambiguo ? 'M2-ambiguo' : 'M2-nenhum', arquivo, caminho, valor: texto,
+      motivo: ambiguo ? 'Mais de uma pessoa do cadastro tem este nome (' + r.ambiguo.length + ').' : 'Nenhuma pessoa do cadastro tem este nome.',
+      candidatos: r.ambiguo || [], opcoes: [...(r.ambiguo || []).map(u => ({valor: {id: u.codigo}, rotulo: 'Usar ' + u.nome + ' (' + u.codigo + ')'})),
+        {campo: 'id', rotulo: 'ID de outra pessoa do cadastro'}, SEM]});
+    const esc = ctx.escolhas[e.id];
+    if (esc === 'sem') e.escolha = 'sem';
+    else if (objeto(esc) &amp;&amp; usuarios.some(u => objeto(u) &amp;&amp; String(u.codigo) === String(esc.id))) { e.escolha = {id: String(esc.id)}; return String(esc.id); }
+    else if (esc != null) e.motivo += ' A escolha não vale.';
+    return null;
+  }
   function planoM2(ctx) {
     const c = ctx.arqs[CAD], usuarios = objeto(c) ? c.usuarios : undefined;
     if (!Object.keys(PESSOAS).some(a => ctx.arqs[a] !== undefined)) return;
     if (!Array.isArray(usuarios))
       return ctx.excecao({tipo: 'M2-estrutura', arquivo: CAD, caminho: 'usuarios', valor: null, motivo: 'O cadastro não tem a lista de usuários. Não dá para ligar as pessoas.'});
-    /* Resolve um nome. Devolve o ID, ou null quando vira exceção ou decisão do responsável. */
-    function resolver(arquivo, caminho, texto) {
-      const r = pessoa(texto, usuarios);
-      if (r.id) return r.id;
-      const ambiguo = !!r.ambiguo;
-      const e = ctx.excecao({tipo: ambiguo ? 'M2-ambiguo' : 'M2-nenhum', arquivo, caminho, valor: texto,
-        motivo: ambiguo ? 'Mais de uma pessoa do cadastro tem este nome (' + r.ambiguo.length + ').' : 'Nenhuma pessoa do cadastro tem este nome.',
-        candidatos: r.ambiguo || [], opcoes: [...(r.ambiguo || []).map(u => ({valor: {id: u.codigo}, rotulo: 'Usar ' + u.nome + ' (' + u.codigo + ')'})),
-          {campo: 'id', rotulo: 'ID de outra pessoa do cadastro'}, SEM]});
-      const esc = ctx.escolhas[e.id];
-      if (esc === 'sem') e.escolha = 'sem';
-      else if (objeto(esc) &amp;&amp; usuarios.some(u => objeto(u) &amp;&amp; String(u.codigo) === String(esc.id))) { e.escolha = {id: String(esc.id)}; return String(esc.id); }
-      else if (esc != null) e.motivo += ' A escolha não vale.';
-      return null;
-    }
+    const resolver = (arquivo, caminho, texto) => resolverPessoa(ctx, usuarios, arquivo, caminho, texto);
     /* 'migração' é o autor das entradas criadas aqui (M2b), não uma pessoa */
     const texto = v => typeof v === 'string' &amp;&amp; v.trim() !== '' &amp;&amp; v !== AUTOR;
     for (const [arquivo, regras] of Object.entries(PESSOAS)) {
@@ -56360,16 +56361,19 @@ const vacMigracao = (() => {
     const par = ctx.arqs['paradas-base.json'];
     if (objeto(par) &amp;&amp; Array.isArray(par.eventos) &amp;&amp; (par.tecnico == null || objeto(par.tecnico))) par.eventos.forEach((ev, i) => {
       if (!objeto(ev) || vazio(ev.id) || !texto(ev.tecnicoForms)) return;
+      const tem = objeto(par.tecnico) &amp;&amp; Object.prototype.hasOwnProperty.call(par.tecnico, ev.id), atual = tem ? par.tecnico[ev.id] : undefined;
+      /* valor que não é objeto (null, 0, texto…) não se troca por um objeto novo: fica para o responsável */
+      if (tem &amp;&amp; !objeto(atual)) return ctx.excecao({tipo: 'M2-estrutura', arquivo: 'paradas-base.json', caminho: 'tecnico[' + ev.id + ']', valor: atual,
+        motivo: 'A entrada do técnico deste evento não é um objeto. Não foi alterada.'});
       /* entrada criada por outro motivo (codigoValidado, componente…) sem técnico: a main usava tecnicoForms (idTec) */
-      const atual = objeto(par.tecnico) &amp;&amp; Object.prototype.hasOwnProperty.call(par.tecnico, ev.id) ? par.tecnico[ev.id] : null;
-      if (atual &amp;&amp; (!objeto(atual) || !vazio(atual.tecnico) || !vazio(atual.tecnicoId))) return;
+      if (tem &amp;&amp; (!vazio(atual.tecnico) || !vazio(atual.tecnicoId))) return;
       const id = resolver('paradas-base.json', 'eventos[' + i + '].tecnicoForms', ev.tecnicoForms);
       if (!id) return;
       const u = usuarios.find(x => objeto(x) &amp;&amp; String(x.codigo) === id), doc = ctx.doc('paradas-base.json');
       if (!objeto(doc.tecnico)) doc.tecnico = {};
-      if (atual) Object.assign(doc.tecnico[ev.id], {tecnico: u.nome, tecnicoId: id});
+      if (tem) Object.assign(doc.tecnico[ev.id], {tecnico: u.nome, tecnicoId: id});
       else doc.tecnico[ev.id] = {tecnico: u.nome, tecnicoId: id, por: AUTOR, porId: ''};
-      ctx.alterar('M2b', 'paradas-base.json', 'tecnico[' + ev.id + ']', atual, doc.tecnico[ev.id]);
+      ctx.alterar('M2b', 'paradas-base.json', 'tecnico[' + ev.id + ']', tem ? atual : null, doc.tecnico[ev.id]);
     });
   }
 
@@ -56408,7 +56412,97 @@ const vacMigracao = (() => {
     });
   }
 
-  const ITENS = [['M1', planoM1], ['M2', planoM2], ['M3', planoM3], ['M4', planoM4]];
+  /* ----- M5 · ações do Waste → Iniciativas (MigWaste.converter da main). As originais ficam no Waste. ----- */
+  const ST_W = {'aberta': 'a fazer', 'em análise': 'a fazer', 'planejada': 'a fazer', 'em andamento': 'em andamento', 'aguardando recurso': 'aguardando',
+    'aguardando validação': 'aguardando', 'concluída': 'concluída', 'eficácia em acompanhamento': 'concluída', 'encerrada eficaz': 'concluída',
+    'encerrada sem eficácia': 'concluída', 'cancelada': 'cancelada'};
+  const EF_W = {'eficácia em acompanhamento': 'acompanhamento', 'encerrada eficaz': 'eficaz', 'encerrada sem eficácia': 'sem'};
+  const PR_W = {'baixa': 'baixa', 'média': 'media', 'media': 'media', 'alta': 'alta'};
+  const INIC = 'iniciativas-base.json', PERD = 'perdas-base.json';
+  const dt = d => /^\d{4}-\d{2}-\d{2}/.test(String(d || '')) ? String(d).slice(0, 10) : null;
+  const nf = n => n == null || !isFinite(n) ? '—' : (+n).toLocaleString('pt-BR', {minimumFractionDigits: 0, maximumFractionDigits: 0});
+  const brh = iso => {
+    if (!iso) return '—';
+    const d = new Date(iso);
+    if (isNaN(d)) return String(iso);
+    const p = n => String(n).padStart(2, '0');
+    return p(d.getDate()) + '/' + p(d.getMonth() + 1) + ' ' + p(d.getHours()) + ':' + p(d.getMinutes());
+  };
+  const tituloW = w => String(w.desc || '(sem descrição)').slice(0, 200);
+  const statusW = w => ST_W[w.status] || 'a fazer';
+  /* ID da pessoa vem do chamador (regra do M2); o resto repete o conversor da main. */
+  function converterW(w, em, respId, criadaPorId) {
+    const st = statusW(w), ab = dt(w.abertura), cc = dt(w.conclusao);
+    const det = [w.causa ? 'Causa: ' + w.causa : '', w.comp ? 'Componente: ' + w.comp : '', w.area ? 'Área: ' + w.area : '',
+      w.econ != null ? 'Economia estimada: R$ ' + nf(w.econ) + '/mês' : '', w.obs ? 'Evidência / observação: ' + w.obs : ''].filter(Boolean).join('\n');
+    const hist = Array.isArray(w.hist) ? w.hist : [];
+    return {id: 'AC-W-' + w.id, titulo: tituloW(w), descricao: det, status: st, prioridade: PR_W[w.pri] || 'media', responsavel: w.resp || '', responsavelId: respId,
+      apoios: [], apoiosIds: [], prazo: dt(w.prazo), prazoOriginal: dt(((hist.find(h => h &amp;&amp; h.prazo) || {}).prazo)) || dt(w.prazo),
+      criadaEm: ab ? ab + 'T12:00:00' : em, criadaPor: w.user || '', criadaPorId,
+      concluidaEm: st === 'concluída' ? (cc ? cc + 'T12:00:00' : em) : null, eficacia: EF_W[w.status] || null,
+      origem: {tipo: 'waste', ref: 'waste|' + w.id, resumo: 'Trazida do Waste em ' + brh(em) + (w.ordem ? ' · ordem ' + w.ordem : '') + ' · status lá: ' + (w.status || '—')},
+      vinculos: w.ordem ? [{tipo: 'ordem', cod: String(w.ordem)}] : [], checklist: [], comentarios: [], evidencias: [],
+      legado: {pagina: 'Waste', id: w.id, status: w.status || null, causa: w.causa || null, comp: w.comp || null, area: w.area || null, econ: w.econ ?? null,
+        abertura: ab, conclusao: cc, hist: hist.filter(h => h &amp;&amp; typeof h === 'object').map(h => ({data: h.data || null, user: h.user || null, status: h.status || null, prazo: h.prazo || null}))}};
+  }
+  const jaW = (acoes, id) => acoes.some(a => objeto(a) &amp;&amp; (a.id === 'AC-W-' + id || (objeto(a.origem) &amp;&amp; a.origem.ref === 'waste|' + id)));
+  /* A hora e o autor do evento e da importação vêm de escolhas.__meta = {em, por}: o planejamento não tem relógio. */
+  function planoM5(ctx) {
+    const perd = ctx.arqs[PERD], inic = ctx.arqs[INIC], c = ctx.arqs[CAD];
+    if (!objeto(perd) || !Array.isArray(perd.actions)) return;
+    const pendentes = perd.actions.map((w, i) => ({w, i})).filter(x => objeto(x.w) &amp;&amp; !vazio(x.w.id) &amp;&amp; !(Array.isArray(inic &amp;&amp; inic.acoes) &amp;&amp; jaW(inic.acoes, x.w.id)));
+    if (!pendentes.length) return;
+    if (!objeto(c) || !Array.isArray(c.usuarios)) return; /* o M2 já registrou a falta do cadastro */
+    if (!objeto(inic) || !Array.isArray(inic.acoes) || (inic.eventos != null &amp;&amp; !Array.isArray(inic.eventos)) || (inic.importacoes != null &amp;&amp; !Array.isArray(inic.importacoes)))
+      return ctx.excecao({tipo: 'M5-estrutura', arquivo: INIC, caminho: 'acoes', valor: null,
+        motivo: 'Não há base das Iniciativas legível nesta pasta. As ações continuam só no Waste.'});
+    const meta = objeto(ctx.escolhas.__meta) ? ctx.escolhas.__meta : {};
+    if (vazio(meta.em))
+      return ctx.excecao({tipo: 'M5-meta', arquivo: INIC, caminho: 'importacoes', valor: null, opcoes: [],
+        motivo: 'Falta a hora da migração. As ações continuam só no Waste até a aplicação.'});
+    const doc = ctx.doc(INIC);
+    if (!Array.isArray(doc.eventos)) doc.eventos = [];
+    const novas = [];
+    for (const {w, i} of pendentes) {
+      if (jaW(doc.acoes, w.id)) continue;
+      const quem = campo => {
+        if (vazio(w[campo])) return {id: ''};
+        const n = ctx.excecoes.length, id = resolverPessoa(ctx, c.usuarios, PERD, 'actions[' + i + '].' + campo, w[campo]);
+        if (id) return {id};
+        return ctx.excecoes[n] &amp;&amp; ctx.excecoes[n].escolha === 'sem' ? {id: ''} : {espera: true};
+      };
+      const resp = quem('resp'), user = quem('user');
+      /* sem decisão sobre a pessoa, a ação espera: o original segue no Waste */
+      if (resp.espera || user.espera) continue;
+      const a = converterW(w, meta.em, resp.id, user.id);
+      doc.acoes.push(a);
+      const ev = {id: 'MIGW-EV-' + w.id, em: meta.em, por: meta.por || '', acao: a.id, tipo: 'criação', para: a.status, resp: w.resp || ''};
+      doc.eventos.push(ev);
+      ctx.alterar('M5', INIC, 'acoes[' + (doc.acoes.length - 1) + ']', null, a);
+      ctx.alterar('M5', INIC, 'eventos[' + (doc.eventos.length - 1) + ']', null, ev);
+      novas.push(a);
+    }
+    if (!novas.length) return;
+    if (!Array.isArray(doc.importacoes)) doc.importacoes = [];
+    const imp = {id: 'MIGW-' + meta.em, em: meta.em, por: meta.por || '', programa: 'waste', nome: 'Ações do Waste (migração)', linhas: novas.length};
+    doc.importacoes.push(imp);
+    ctx.alterar('M5', INIC, 'importacoes[' + (doc.importacoes.length - 1) + ']', null, imp);
+  }
+  /* conferirM5(perdas, inic): cada ação original tem a cópia AC-W-<id> com o mesmo título, status mapeado, prazo e responsável? */
+  function conferirM5(perdas, inic) {
+    const orig = objeto(perdas) &amp;&amp; Array.isArray(perdas.actions) ? perdas.actions : [], copias = objeto(inic) &amp;&amp; Array.isArray(inic.acoes) ? inic.acoes : [];
+    const faltam = [], divergentes = [];
+    for (const w of orig.filter(x => objeto(x) &amp;&amp; !vazio(x.id))) {
+      const a = copias.find(x => objeto(x) &amp;&amp; (x.id === 'AC-W-' + w.id || (objeto(x.origem) &amp;&amp; x.origem.ref === 'waste|' + w.id)));
+      if (!a) { faltam.push(String(w.id)); continue; }
+      const campos = [['titulo', tituloW(w), a.titulo], ['status', statusW(w), a.status], ['prazo', dt(w.prazo), a.prazo ?? null], ['responsavel', w.resp || '', a.responsavel ?? '']]
+        .filter(([, e, f]) => e !== f).map(([campo, original, copia]) => ({campo, original, copia}));
+      if (campos.length) divergentes.push({id: String(w.id), campos});
+    }
+    return {ok: !faltam.length &amp;&amp; !divergentes.length, faltam, divergentes};
+  }
+
+  const ITENS = [['M1', planoM1], ['M2', planoM2], ['M5', planoM5], ['M3', planoM3], ['M4', planoM4]];
 
   /* planejar(arqs, escolhas) → {itens, alteracoes, excecoes}. O cadastro é arqs['vacutainer-cadastros.json']. Não grava nem altera o que recebe. */
   async function planejar(arqs, escolhas) {
@@ -56421,7 +56515,7 @@ const vacMigracao = (() => {
     return {itens: ctx.itens, alteracoes, excecoes: ctx.excecoes};
   }
 
-  return Object.freeze({planejar, hash, canonico, pessoa});
+  return Object.freeze({planejar, hash, canonico, pessoa, conferirM5});
 })();
 globalThis.vacMigracao = vacMigracao;
 </script>
