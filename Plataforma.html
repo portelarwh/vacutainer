@@ -21543,7 +21543,10 @@ const Ord = {
         this.audPend = (this.pend.aud || []).slice(); this.B.auditoria = ordJuntaAud(this.B.auditoria, this.audPend);
       }
     } else if (loc) { this.B = loc; if (this.fonte === 'ausente' || falhou) this.fonte = 'cache'; if (this.pend) this.audPend = (this.pend.aud || []).slice(); }
-    if (falhou) this.err = `Não consegui ler ${ORD_FILE} na pasta (${ordMotivo(falhou)}). ${this.B ? 'Mostrando a cópia deste navegador' + (this.B.revAt ? ' de ' + new Date(this.B.revAt).toLocaleString('pt-BR') : '') + '. ' : ''}Nada será gravado na pasta até ela voltar a responder.`;
+    /* base limpa (25/11/2026): ordens-base.json sem schemaVersion ou de versão anterior fica só para consulta, sem conversão e sem gravar */
+    this.formato = this.B ? vacFormatoBase(this.B, 'vac-ordens', 1) : '';
+    if (this.formato) this.err = this.formato + ' (' + ORD_FILE + ')';
+    else if (falhou) this.err = `Não consegui ler ${ORD_FILE} na pasta (${ordMotivo(falhou)}). ${this.B ? 'Mostrando a cópia deste navegador' + (this.B.revAt ? ' de ' + new Date(this.B.revAt).toLocaleString('pt-BR') : '') + '. ' : ''}Nada será gravado na pasta até ela voltar a responder.`;
     else if (this.fonte === 'cache') this.err = `${ORD_FILE} ainda não existe na pasta: mostrando a cópia deste navegador. A próxima gravação cria o arquivo na pasta.`;
     if (!this.B) this.B = this.vazio(); this.B.competencias = this.B.competencias || {}; this.B.auditoria = this.B.auditoria || [];
     await this.lerWaste();
@@ -21556,6 +21559,7 @@ const Ord = {
   aud(acao, det) { const a = { em: new Date().toISOString(), por: this.quem(), acao, comp: this.comp, det }; this.B.auditoria.push(a); this.audPend.push(a); },
   async gravar(comps, motivo) {
     comps = [].concat(comps);
+    if (this.formato) throw new Error(this.formato + ' Nada foi gravado.');
     const mode = this.modo(), naPasta = mode === 'pasta' &amp;&amp; Store.S.backend &amp;&amp; Store.S.backend.writeSibling;
     // a alteração fica pendente neste navegador até a releitura confirmar a gravação na pasta
     const ant = this.pend, todas = [...new Set([...(ant ? ant.comps : []), ...comps])];
@@ -21569,6 +21573,7 @@ const Ord = {
       catch (e) { return falha(`Não consegui ler ${ORD_FILE} na pasta (${ordMotivo(e)}); nada foi gravado. A alteração continua pendente neste navegador.`); }
       if (remoteTxt) {
         let R; try { R = JSON.parse(remoteTxt); } catch (e) { return falha(ORD_FILE + ' na pasta não é um JSON válido; nada foi gravado. A alteração continua pendente neste navegador.'); }
+        const fmR = vacFormatoBase(R, 'vac-ordens', 1); if (fmR) return falha(fmR + ' Nada foi gravado. A alteração continua pendente neste navegador.');
         const B = this.B;
         if (R.rev !== B.rev || R.revId !== B.revId) { // outra pessoa gravou: aplica só as competências pendentes sobre a versão nova
           R.competencias = R.competencias || {}; for (const comp of todas) { const mine = B.competencias[comp]; if (mine) R.competencias[comp] = mine; else delete R.competencias[comp]; }
@@ -23230,7 +23235,9 @@ const IDB={db:null,
 
 /* ---------- Pasta da rede ---------- */
 async function subDir(path,create=true){let d=ST.dir;for(const p of path.split('/'))d=await d.getDirectoryHandle(p,{create});return d}
-async function readRemote(){const fh=await ST.dir.getFileHandle(BASE_FN);const f=await fh.getFile();return{data:JSON.parse(await f.text()),mod:f.lastModified}}
+/* base limpa (25/11/2026): perdas-base.json sem schemaVersion ou de versão anterior não é lida nem convertida (a página não grava por cima) */
+const fmtPerdas=d=>vacFormatoBase(d,'perdas-base',1);
+async function readRemote(){const fh=await ST.dir.getFileHandle(BASE_FN);const f=await fh.getFile();const data=JSON.parse(await f.text());const fm=fmtPerdas(data);if(fm)throw new Error(BASE_FN+': '+fm);return{data,mod:f.lastModified}}
 async function writeFile(dir,name,content){const fh=await dir.getFileHandle(name,{create:true});const w=await fh.createWritable();await w.write(content);await w.close()}
 /* nomes padrão de backup (kit · seção 5) */
 const bkNome=(tipo)=>{const b=PAGE.baseFile.replace(/\.json$/i,''),d=todayISO(),h=new Date().toTimeString().slice(0,5).replace(':','h');
@@ -23268,7 +23275,7 @@ const semMudanca=(d,mod)=>(ST.mod!=null&amp;&amp;mod===ST.mod)||d.rev===ST.pendF
 async function conflitoPendente(d,mod){downloadJSON(B,'perdas-base_NAO-GRAVADO_'+todayISO()+'.json');
  toast('A base da pasta foi alterada por outra pessoa enquanto a sua alteração não tinha sido gravada. Sua cópia foi baixada (_NAO-GRAVADO) para conferência; a página agora mostra a base da pasta.',9000);
  B=fixBase(d);ST.mod=mod;ST.pending=false;await IDB.set('base',B);await IDB.set('pending',{p:false})}
-async function pendenteAtual(){const p=await IDB.get('pending');vacGuardaAba('perdas',!!ST.pending,p);if(p&amp;&amp;p.p){const b=await IDB.get('base');if(b){B=fixBase(b);ST.pending=true;ST.pendFrom=p.from||0}}}
+async function pendenteAtual(){const p=await IDB.get('pending');vacGuardaAba('perdas',!!ST.pending,p);if(p&amp;&amp;p.p){const b=await IDB.get('base');if(b&amp;&amp;!fmtPerdas(b)){B=fixBase(b);ST.pending=true;ST.pendFrom=p.from||0}}}
 async function commit(label,mut,det=''){if(ST.mode==='teste')return commitBase(label,mut,det);return vacEditarBase('perdas',async()=>{vacGuardaAba('perdas',!!ST.pending);await pendenteAtual();return commitBase(label,mut,det)},()=>ST.pending)}
 async function commitBase(label,mut,det=''){
  /* C1 · trava da 2ª aba: outra aba do Waste com alteração não gravada → esta não altera (nada é descartado) */
@@ -23294,9 +23301,9 @@ async function syncBase(silent){
  if((ST.mode!=='pasta'&amp;&amp;!vacDemo.ativo)||!ST.dir)return;
  {const had=OEE.mod,hg=GEL.mod,ho=ORDX.mod;await Promise.all([loadOEE(!silent),loadGel(!silent),loadOrdens(!silent)]);if(!silent){Logo.load();scanSystems()}if((OEE.mod!==had||GEL.mod!==hg||ORDX.mod!==ho)&amp;&amp;!$('.modal.on'))renderTab(curTab())}
  try{const fh=await ST.dir.getFileHandle(BASE_FN);const f=await fh.getFile();
-   if(ST.pending){try{const d=JSON.parse(await f.text());if(!semMudanca(d,f.lastModified)){await conflitoPendente(d,f.lastModified);ST.err='';renderAll();return renderMeta()}
+   if(ST.pending){try{const d=JSON.parse(await f.text());if(fmtPerdas(d)){ST.err=BASE_FN+': '+fmtPerdas(d);return renderMeta()}if(!semMudanca(d,f.lastModified)){await conflitoPendente(d,f.lastModified);ST.err='';renderAll();return renderMeta()}
      await writeRemote();ST.pending=false;ST.err='';await IDB.set('pending',{p:false});toast('Alterações pendentes gravadas.')}catch(e){}return renderMeta()}
-   if(f.lastModified!==ST.mod){const d=JSON.parse(await f.text());if(d.rev!==B.rev){B=fixBase(d);ST.mod=f.lastModified;await IDB.set('base',B);if(!$('.modal.on'))renderAll();else renderMeta();if(!silent)toast('Base atualizada.')}else ST.mod=f.lastModified}
+   if(f.lastModified!==ST.mod){const d=JSON.parse(await f.text());const fm=fmtPerdas(d);if(fm){ST.err=BASE_FN+': '+fm;return renderMeta()}if(d.rev!==B.rev){B=fixBase(d);ST.mod=f.lastModified;await IDB.set('base',B);if(!$('.modal.on'))renderAll();else renderMeta();if(!silent)toast('Base atualizada.')}else ST.mod=f.lastModified}
    else if(!silent)toast('A base já está atualizada.');
    ST.err=''}catch(e){ST.err=String(e.message||e)}
  renderMeta();
@@ -24991,6 +24998,7 @@ $('#btnPasta').onclick=async()=>{if(!window.showDirectoryPicker){alert('Este nav
 $('#btnBaixar').onclick=()=>downloadJSON(B,`perdas-base_copia_${todayISO()}.json`);
 /* restaurar: sempre grava antes o _antes-restaurar_ em PAGE.backupDir */
 async function restoreBase(d,nome){if(!d||d.schema!=='perdas-base')throw new Error('não é uma base de Perdas');
+ const fm=fmtPerdas(d);if(fm)throw new Error(fm);
  if(!confirm(`Substituir a base atual (rev ${B.rev}) pela cópia "${nome}" (rev ${d.rev})? Antes, a base atual é salva em ${PAGE.backupDir}.`))return false;
  if(ST.mode==='pasta'){try{await writeFile(await subDir(PAGE.backupDir),bkNome('antes'),JSON.stringify(B))}catch(x){if(!confirm('Não consegui salvar a cópia da base atual antes de restaurar ('+(x.message||x)+'). Restaurar mesmo assim?'))return false}}
  const keep=B.rev;await commit('Base restaurada de cópia',b=>{const n=fixBase(d);for(const k in n)b[k]=n[k];b.rev=keep},nome);return true}
@@ -25027,7 +25035,7 @@ function kkbcPedRender(){const sec=$('#t-importar');if(!sec)return;let el=$('#kk
 /* ===================== INÍCIO ===================== */
 (async function init(){
  if(vacDemo.ativo){ST.mode='teste';ST.dir=vacDemo.pasta;vacDemo.registrar('perdas',()=>({...B,exports:buildExports()}),d=>{B=fixBase(d)},()=>{loadOEE(true);loadGel(true);loadOrdens(true);renderAll()});vacDemo.publicar('perdas')}else{
- try{const cached=await IDB.get('base');if(cached)B=fixBase(cached);const p=await IDB.get('pending');if(p){ST.pending=!!p.p;ST.pendFrom=p.from||0}}catch(e){console.warn(e)}
+ try{const cached=await IDB.get('base');if(cached&amp;&amp;!fmtPerdas(cached))B=fixBase(cached);const p=await IDB.get('pending');if(p){ST.pending=!!p.p;ST.pendFrom=p.from||0}}catch(e){console.warn(e)}
  try{const h=await IDB.get('dir');if(h){if(!(await connectDir(h)))ST.handleWaiting=true}}catch(e){console.warn(e);ST.handleWaiting=true}
  }
  const t=localStorage.getItem('perdas.tab');showTab(t&amp;&amp;$('#t-'+t)?t:'painel');renderAll();renderEntrada();
@@ -26057,7 +26065,10 @@ async function fsPerm(h,ask,mode){if(!h)return false;try{const o={mode:mode||'re
 // known = {mod, rev, by} da última leitura/gravação: igual (data e rev) = não precisa reler o arquivo inteiro
 async function fsReadBase(known){let fh;try{fh=await FS.base.getFileHandle(BASE_FILE)}catch(e){return null}const h=await fsReadHead(fh);const f=h?h.f:await fh.getFile();
   if(known&amp;&amp;known.mod&amp;&amp;f.lastModified===known.mod&amp;&amp;(!h||h.rev==null||(h.rev===known.rev&amp;&amp;h.by===known.by)))return {same:true,mod:f.lastModified};
-  const data=JSON.parse(await f.text()||'{}');return {data,mod:f.lastModified,rev:+data.rev||0,by:data.revBy||''}}
+  const data=JSON.parse(await f.text()||'{}');
+  /* base limpa (25/11/2026): fifo-base.json sem schemaVersion ou de versão anterior não é lida nem convertida; a página não grava por cima */
+  const fm=vacFormatoBase(data,undefined,1);if(fm)throw new Error(BASE_FILE+': '+fm);
+  return {data,mod:f.lastModified,rev:+data.rev||0,by:data.revBy||''}}
 const fsKnown=()=>({mod:FS.mod,rev:FS.rev||0,by:FS.revBy||''});
 // cópia de segurança diária (ao conectar e antes da primeira gravação do dia); se a subpasta falhar, grava na pasta da base
 async function fsBackup(force){
@@ -26405,6 +26416,7 @@ async function fsBackupList(){const out=[];const base=PAGE.baseFile.replace(/\.j
   return out.sort((a,b)=>b.mod-a.mod)}
 // aplica um backup (mesma regra do "Restaurar backup" por arquivo)
 async function restoreData(d){if(!d||!d.lps||!d.imports)throw new Error('Arquivo de backup inválido.');
+  {const fm=vacFormatoBase(d,undefined,1);if(fm)throw new Error(fm)}
   if(ui.demo&amp;&amp;!vacDemo.ativo)exitDemo(true);
   const ch=newCh();ch.lps.set=d.lps;ch.closed.set=d.closed||[];ch.events=(d.events||[]).filter(x=>!S.events.some(y=>y.id===x.id));ch.imports=(d.imports||[]).filter(x=>!S.imports.some(y=>y.id===x.id));ch.config=d.config||null;
   if(d.plan)ch.plan=d.plan;if(d.catalogs)ch.catalogs=d.catalogs;if(d.prodlog)ch.prodlog=Object.values(d.prodlog);if(d.supply)ch.supply={supply:d.supply,supplyOn:!!d.supplyOn,supplyCfg:d.supplyCfg||{}};
@@ -55289,22 +55301,22 @@ body.vac-porta{overflow:hidden}
       "id": "oee",
       "path": "Plataforma.html#motor/oee",
       "version": "2.6.45",
-      "sha256": "ff7512e593eb8f37361a4db36294e166433709c4e46474531fe0abc84dfc8b56",
-      "bytes": 2403165
+      "sha256": "c3276b3d1cca61c17037e27fdda3a9879c8c247a9d6bfab4ce7e700102b5607b",
+      "bytes": 2403692
     },
     {
       "id": "perdas",
       "path": "Plataforma.html#motor/perdas",
       "version": "1.12.20",
-      "sha256": "f7d8fc073e00c7b041841b36d19e5f139202464a42526f8519d669bd98ff1cab",
-      "bytes": 986631
+      "sha256": "bf61ede6cc6284855f4f2ac20dfaaf9dd2c5ee03ba694728a9b991d91ac364d3",
+      "bytes": 987136
     },
     {
       "id": "gel",
       "path": "Plataforma.html#motor/gel",
       "version": "2.50",
-      "sha256": "c222fbfdfd604c923e0fa103170aa552b3b081b9e1d105cd054d509571a6df74",
-      "bytes": 1631693
+      "sha256": "5bcd2dc89de143b05f904c525560ae27952af4efcd41619ad73749fe85f0ac52",
+      "bytes": 1631999
     },
     {
       "id": "paradas",
@@ -55352,7 +55364,7 @@ body.vac-porta{overflow:hidden}
   "limitations": [
     "Projetos e conteúdo técnico OSM/MES/AM/TPM mantêm os limites documentados nas fontes."
   ],
-  "enginesSha256": "ae6286c56b7e47d78c16d9d6fd268ea6f7b49cd16b1d7a2efdf6defd9c690c15",
+  "enginesSha256": "0935c5c9026649deb75ac2ae03703c35db4c87a57fa48c705536b7f4f8240559",
   "originRevision": "ffc9ee8",
   "sourceMode": "single-html",
   "originEnginesSha256": "a87a64ad0c328f70e102b2ae888790a9b5d5a9bd05778652a7ce7cae140e40d2"
