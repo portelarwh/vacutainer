@@ -175,7 +175,7 @@ const BLOQUEIO = 'Base de versão anterior. Comece uma base nova nesta pasta.';
           return { igual: JSON.stringify(Model.ensure(JSON.parse(txt))) === txt && JSON.stringify(lida) === txt, formato: lida._formato || '',
             listas: ['monthPlans', 'panelViews', 'reportNotes', 'calendar'].every(k => Array.isArray(nova[k])), dayLot: !!(nova.server && nova.server.dayLot),
             atualSemLista: tenta(b => { delete b.calendar; }), atualSemServidor: tenta(b => { delete b.server; }),
-            anteriorSemLista: tenta(b => { delete b.schemaVersion; delete b.monthPlans; }), maisNova: tenta(b => { b.schemaVersion = 2; }) };
+            anteriorSemLista: tenta(b => { delete b.schemaVersion; delete b.monthPlans; }), maisNova: tenta(b => { b.schemaVersion = 3; }) };
         });
         assert.deepEqual([r3.igual, r3.formato, r3.listas, r3.dayLot], [true, '', true, true], 'base nova completa e lida sem completar campos ' + JSON.stringify(r3));
         assert.match(r3.atualSemLista, /não é uma base válida do OEE: calendar ausente/, 'base atual sem lista é recusada, não completada');
@@ -203,7 +203,7 @@ const BLOQUEIO = 'Base de versão anterior. Comece uma base nova nesta pasta.';
           return r;
         });
         assert.deepEqual(r4, { antes: BLOQUEIO, rest: BLOQUEIO, impAnt: BLOQUEIO, intacta: 'sem', bk0: 1,
-          depois: { formato: '', sv: 1, unidade: 'Unidade fictícia importada', versao: 6, status: 'salvo', backup: true, auditoria: true }, edita: 'Unidade fictícia editada' },
+          depois: { formato: '', sv: 2, unidade: 'Unidade fictícia importada', versao: 6, status: 'salvo', backup: true, auditoria: true }, edita: 'Unidade fictícia editada' },
           'pasta: anterior recusada; base atual importada pela gravação normal tira o bloqueio ' + JSON.stringify(r4));
         console.log('ok (a4) pasta: backup e importação de versão anterior recusados; importar base atual grava com backup e tira o bloqueio');
         // (g2) Administração na pasta: tirar a base anterior da pasta e começar uma nova (o aviso diz "Comece uma base nova nesta pasta.")
