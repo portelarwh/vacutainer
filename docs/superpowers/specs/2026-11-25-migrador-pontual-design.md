@@ -66,7 +66,7 @@ A #149 retira do caminho normal toda leitura de formato antigo. Bases e vínculo
 
 ## Fora do caminho normal, mas consertado nesta frente
 
-- O botão `#mwTrazer` do Iniciativas (`MigWaste`) continua aparecendo e falha na #149. Ele sai na Task 5, porque o M5 o substitui.
+- O botão `#mwTrazer` do Iniciativas (`MigWaste`) falhava na #149 e saiu no commit `0dcb9a2`; o M5 o substitui.
 
 ## Testes (dados fictícios)
 
