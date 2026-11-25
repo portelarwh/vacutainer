@@ -109,20 +109,28 @@ test('(d) restaurar devolve os arquivos afetados ao conteúdo do backup', async 
   assert.equal((await retomar(pasta)).registro, null, 'restaurado não é retomado');
 });
 
-test('(d) restaurar só os arquivos pedidos; arquivo mudado depois do corte não é sobrescrito', async () => {
+test('(d) restauração é tudo ou nada: arquivo mudado depois do corte recusa a restauração inteira e não grava nada', async () => {
   const {fs, pasta, plano} = await montar();
   const ap = await aplicar(pasta, plano, opcoes());
   assert.equal(ap.ok, true);
   const eq = await lerBase(fs, EQUIP); eq.os[0].titulo = 'Gravado depois do corte';
   await fs.gravar('00. Bases/' + EQUIP, JSON.stringify(eq));
   const op = {sessao: SESSAO, confirmacao: M.CONFIRMACAO_RESTAURAR, janela: true, travas: travasTeste()};
-  const r = await restaurar(pasta, ap.registro, [CAD, EQUIP], op);
-  assert.equal(r.resultado[CAD], 'restaurado');
-  assert.equal(r.resultado[EQUIP], 'pulado-mudou');
-  assert.equal(r.resultado[INIC], undefined);
-  assert.equal(await M.hash(await lerBase(fs, CAD)), plano.alteracoes[CAD].hashAntes);
-  assert.equal((await lerBase(fs, EQUIP)).os[0].titulo, 'Gravado depois do corte');
+  for (const pedido of [null, [CAD, EQUIP]]) {
+    const n = fs.log.length;
+    const r = await restaurar(pasta, ap.registro, pedido, op);
+    assert.equal(r.ok, false);
+    assert.equal(r.resultado[EQUIP], 'pulado-mudou');
+    assert.match(r.motivo, /nada foi gravado/);
+    assert.equal(fs.log.length, n, 'nenhuma escrita: nem base nem registro');
+  }
+  assert.equal(await M.hash(await lerBase(fs, CAD)), ap.registro.arquivos[CAD].hashDepois, 'os outros arquivos continuam no formato novo');
   assert.equal(await M.hash(await lerBase(fs, INIC)), ap.registro.arquivos[INIC].hashDepois);
+  assert.equal((await lerBase(fs, EQUIP)).os[0].titulo, 'Gravado depois do corte');
+  // sem o arquivo mudado no pedido, a restauração parcial pedida de propósito segue permitida
+  const r2 = await restaurar(pasta, ap.registro, [CAD], op);
+  assert.equal(r2.resultado[CAD], 'restaurado');
+  assert.equal(await M.hash(await lerBase(fs, CAD)), plano.alteracoes[CAD].hashAntes);
 });
 
 test('(d) restaurar sem sessão ou com confirmação errada recusa sem gravar', async () => {

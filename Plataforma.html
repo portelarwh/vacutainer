@@ -56983,6 +56983,23 @@ const vacMigracao = (() => {
       try { reg = JSON.parse(await lerCaminho(pasta, caminhoRegistro(registro.id))); }
       catch (e) { if (!naoAchou(e)) return recusa('Não foi possível ler o registro ' + registro.id + ': ' + msg(e)); reg = copia(registro); }
       if (!objeto(reg) || !objeto(reg.arquivos)) return recusa('O registro ' + registro.id + ' na pasta não é válido.');
+      /* Tudo ou nada: antes de gravar qualquer arquivo, confere todos. Se um deles não pode voltar (mudou depois do corte ou não foi
+         possível ler), nada é gravado e a pasta continua como está; uma restauração parcial deixaria a pasta mista (nem a main nem a
+         base limpa operam). Arquivo já restaurado ou que a migração não tocou não impede a restauração. */
+      const barrados = {};
+      for (const f of alvo) {
+        const e = reg.arquivos[f];
+        if (!objeto(e)) { barrados[f] = 'erro'; continue; }
+        let a;
+        try { a = await lerBase(pasta, f); } catch (x) { barrados[f] = 'erro'; continue; }
+        if (a.erro) { barrados[f] = 'erro'; continue; }
+        if (a.hash &amp;&amp; a.hash === e.hashAntes) continue;
+        if ((!a.hash || a.hash !== e.hashDepois) &amp;&amp; !naoTocou(e)) barrados[f] = 'pulado-mudou';
+      }
+      const barrou = Object.keys(barrados);
+      if (barrou.length) return {ok: false, resultado: barrados, registro: null,
+        motivo: 'Restauração recusada, nada foi gravado: ' + barrou.map(f => f + (barrados[f] === 'erro' ? ' (não foi possível ler)' : ' (mudou depois da migração)')).join(', ')
+          + '. Feche a plataforma em todas as estações, decida o que fazer com o que foi gravado depois e tente de novo; a restauração só roda com todos os arquivos prontos para voltar.'};
       const resultado = {};
       for (const f of [...ORDEM].reverse().filter(f => alvo.includes(f))) {
         const e = reg.arquivos[f];
