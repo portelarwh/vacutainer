@@ -1,47 +1,8 @@
 // Migrador pontual (D02): aplicação com pré-voo, diário, retomada e reversão, numa pasta em memória e com dados fictícios.
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
-import helpers from '../../scripts/html.cjs';
-import {carregarMigracao, pastaMain} from './migracao-fixtures.mjs';
-import {pastaMemoria, carregarRaiz, travasTeste} from './pasta-memoria.mjs';
-
-const M = carregarMigracao(), vacRaiz = carregarRaiz();
-const CAD = 'vacutainer-cadastros.json', PORTAL = 'portal-base.json', INIC = 'iniciativas-base.json', EQUIP = 'equipamentos-base.json',
-  LINHA = 'linha360-base.json', PAR = 'paradas-base.json', PERD = 'perdas-base.json', FIFO = 'fifo-base.json', OEE = 'oee-vacutainer-base.json';
-const ORDEM = [CAD, INIC, EQUIP, LINHA, PAR, PERD, FIFO, OEE, PORTAL];
-const BK = {[CAD]: 'Cadastros', [PORTAL]: 'Portal', [INIC]: 'Iniciativas', [EQUIP]: 'Equipamentos', [LINHA]: 'Linha360', [PAR]: 'Paradas',
-  [PERD]: 'Perdas', [FIFO]: 'Gel', [OEE]: 'OEE'};
-const META = {em: '2026-11-25T14:30:00', por: 'Pessoa de demonstração', porId: '9001'};
-const REG = '00. Backups/Migracao/registro-2026-11-25T14-30-00.json';
-const backup = f => '00. Backups/' + BK[f] + '/antes-da-migracao-2026-11-25.json';
-const ESC = {__meta: META, ['M2-nenhum|' + PERD + '|actions[0].resp']: 'sem', ['M2-ambiguo|' + PERD + '|actions[1].resp']: {id: '1003'},
-  ['M2-ambiguo|' + PERD + '|actions[1].user']: {id: '1003'}, ['M3-data|' + CAD + '|catalogos[0].gel']: {from: '2025-01-01'}};
-const ASSUNTOS = ['planta', 'produto', 'gel', 'equipamentos', 'turnos', 'paradas', 'pessoas', 'sistema'];
-const assuntos = (f = () => 'editar') => Object.fromEntries(ASSUNTOS.map(a => [a, f(a)]));
-const SESSAO = {id: '9001', nome: 'Pessoa de demonstração', em: '2026-11-25T14:00:00', ate: Date.now() + 36e5};
-
-function arqsTeste() {
-  const a = pastaMain();
-  a[CAD].perfis = [{codigo: 'ADMIN', nome: 'Administrador (TESTE)', assuntos: assuntos()},
-    {codigo: 'LIDER', nome: 'Líder (TESTE)', assuntos: assuntos(x => x === 'pessoas' ? 'ver' : 'editar')},
-    {codigo: 'OPER', nome: 'Operador (TESTE)', assuntos: assuntos(() => 'ver')}];
-  return JSON.parse(JSON.stringify(a));
-}
-async function montar(arqs = arqsTeste()) {
-  const fs = pastaMemoria();
-  for (const [f, c] of Object.entries(arqs)) await fs.gravar('00. Bases/' + f, JSON.stringify(c));
-  const plano = JSON.parse(JSON.stringify(await M.planejar(arqs, ESC)));
-  return {fs, pasta: vacRaiz(fs.raiz), plano, arqs};
-}
-const opcoes = extra => ({escolhas: ESC, sessao: SESSAO, confirmacao: M.CONFIRMACAO, janela: true, travas: travasTeste(), ...extra});
-const lerBase = async (fs, f) => JSON.parse(await fs.ler('00. Bases/' + f));
-const bases = fs => fs.log.filter(x => x.caminho.startsWith('00. Bases/'));
-const hashTexto = t => M.hash(JSON.parse(t));
-/* resultados do núcleo (outro realm do vm) em objetos deste realm, para o deepEqual */
-const J = x => x == null ? x : JSON.parse(JSON.stringify(x));
-const aplicar = async (...a) => J(await M.aplicar(...a));
-const retomar = async (...a) => J(await M.retomar(...a));
-const restaurar = async (...a) => J(await M.restaurar(...a));
+import {pastaMemoria, travasTeste} from './pasta-memoria.mjs';
+import {CAD, EQUIP, ESC, FIFO, INIC, LINHA, M, META, OEE, ORDEM, PAR, PERD, PORTAL, REG, SESSAO, aplicar, arqsTeste, backup, bases, hashTexto, lerBase, montar, opcoes, vacRaiz} from './migracao-aplicar-comum.mjs';
 
 test('o plano da pasta fictícia altera os nove arquivos, um de cada dono', async () => {
   const {plano} = await montar();
@@ -72,6 +33,26 @@ test('(f) sem sessão de quem edita a Administração, ou sem confirmação digi
     assert.deepEqual(fs.log, [], nome + ': nada gravado');
   }
   // perfis da pessoa: Ana (1001) é LIDER e Bruno (1002) é OPER; a sessão válida é a 9001 (ADMIN)
+});
+
+test('o plano de teste tem todas as exceções decididas', async () => {
+  const {plano} = await montar();
+  assert.ok(plano.excecoes.length >= 10);
+  assert.deepEqual(plano.excecoes.filter(e => e.escolha == null).map(e => e.id), []);
+});
+
+test('(f) exceção sem escolha no plano: recusa, diz quantas faltam e não grava nada', async () => {
+  const arqs = arqsTeste(), fs = pastaMemoria();
+  for (const [f, c] of Object.entries(arqs)) await fs.gravar('00. Bases/' + f, JSON.stringify(c));
+  const esc = {...ESC};
+  delete esc['M2-nenhum|' + LINHA + '|formularios[0].emissor'];
+  delete esc['M4-sem-local|' + FIFO + '|prodlog[2026-11-19].turns[T1].eq[2]'];
+  const plano = JSON.parse(JSON.stringify(await M.planejar(arqs, esc)));
+  const r = await aplicar(vacRaiz(fs.raiz), plano, opcoes({escolhas: esc}));
+  assert.equal(r.ok, false);
+  assert.match(r.motivo, /\b2 exceç(ões|ão)/);
+  assert.equal(r.registro, null);
+  assert.deepEqual(fs.log, []);
 });
 
 test('(f) outra aba com a trava de edição de uma página: recusa sem gravar', async () => {
@@ -135,7 +116,7 @@ test('(a) backup não sobrescreve um backup anterior com outro conteúdo', async
   assert.equal(r.ok, true, r.motivo);
   assert.equal(await fs.ler(backup(CAD)), '{"outro":"backup"}');
   const nome = r.registro.arquivos[CAD].backup;
-  assert.equal(nome, '00. Backups/Cadastros/antes-da-migracao-2026-11-25-2.json');
+  assert.equal(nome, '00. Backups/Migracao/Cadastros/antes-da-migracao-2026-11-25-2.json');
   assert.equal(await hashTexto(await fs.ler(nome)), plano.alteracoes[CAD].hashAntes);
 });
 
@@ -217,123 +198,4 @@ test('(g) cada base alterada recebe uma entrada na própria auditoria (e rev qua
   // o que o plano mudou continua no arquivo gravado
   assert.equal(d[PORTAL].schemaVersion, 1);
   assert.equal(d[INIC].acoes.filter(x => /^AC-W-/.test(x.id)).length, 2);
-});
-
-/* Execução completa numa pasta, para comparar com a retomada. */
-async function completa() {
-  const {fs, pasta, plano} = await montar();
-  const r = await aplicar(pasta, plano, opcoes());
-  assert.equal(r.ok, true, r.motivo);
-  const out = {};
-  for (const f of ORDEM) out[f] = await lerBase(fs, f);
-  return out;
-}
-const interrompe = alvo => ({aoGravar: f => { if (f === alvo) throw new Error('queda simulada em ' + f); }});
-
-for (const alvo of [CAD, INIC]) test('(c) interrupção depois de gravar ' + alvo + ': retomar conclui sem duplicar', async () => {
-  const esperado = await completa();
-  const {fs, pasta, plano} = await montar();
-  await assert.rejects(aplicar(pasta, plano, opcoes(interrompe(alvo))), /queda simulada/);
-  const gravados = bases(fs).map(x => x.caminho.slice('00. Bases/'.length));
-  assert.deepEqual(gravados, ORDEM.slice(0, ORDEM.indexOf(alvo) + 1));
-  const ret = await retomar(pasta);
-  assert.ok(ret.registro, 'achou o diário');
-  assert.equal(ret.registro.id, '2026-11-25T14-30-00');
-  assert.deepEqual(ret.concluidos, gravados);
-  assert.deepEqual(ret.pendentes, ORDEM.filter(f => !gravados.includes(f)));
-  assert.deepEqual(ret.mudaram, []);
-  const antes = fs.log.length;
-  const r = await aplicar(pasta, ret.registro.plano, opcoes({escolhas: ret.registro.escolhas, registro: ret.registro}));
-  assert.equal(r.ok, true, r.motivo);
-  for (const f of gravados) assert.equal(r.resultado[f], 'ja-concluido', f);
-  for (const f of ret.pendentes) assert.equal(r.resultado[f], 'gravado', f);
-  assert.deepEqual(bases({log: fs.log.slice(antes)}).map(x => x.caminho.slice('00. Bases/'.length)), ret.pendentes, 'só os pendentes, na ordem');
-  for (const f of ORDEM) assert.equal(M.canonico(await lerBase(fs, f)), M.canonico(esperado[f]), f + ': igual à execução sem queda');
-  const inic = await lerBase(fs, INIC), cad = await lerBase(fs, CAD);
-  const ids = inic.acoes.map(a => a.id);
-  assert.equal(new Set(ids).size, ids.length, 'sem ação duplicada');
-  assert.equal(ids.filter(x => /^AC-W-/.test(x)).length, 2);
-  assert.equal(inic.eventos.filter(e => /^MIGW-EV-/.test(e.id)).length, 2);
-  assert.equal(inic.importacoes.length, 1);
-  for (const c of cad.catalogos) if (c.gel && c.gel.vig) assert.equal(new Set(c.gel.vig.map(v => v.from)).size, c.gel.vig.length, c.codigo + ': sem vigência duplicada');
-  assert.equal(cad.auditoria.length, 1, 'uma entrada de auditoria no cadastro');
-  const fim = JSON.parse(await fs.ler(REG));
-  assert.equal(fim.estado, 'concluido');
-  for (const f of gravados) assert.equal(fim.arquivos[f].estado, 'ja-concluido', f);
-  // depois de concluído, nada mais a retomar; aplicar de novo o mesmo plano não grava nada
-  const de2 = await retomar(pasta);
-  assert.equal(de2.registro, null);
-  const n = fs.log.length;
-  const r2 = await aplicar(pasta, plano, opcoes());
-  assert.equal(r2.ok, false);
-  assert.equal(bases({log: fs.log.slice(n)}).length, 0);
-});
-
-test('(c) retomar confere os pendentes contra hashAntes: pendente mudado não é gravado', async () => {
-  const {fs, pasta, plano} = await montar();
-  await assert.rejects(aplicar(pasta, plano, opcoes(interrompe(CAD))), /queda simulada/);
-  const eq = await lerBase(fs, EQUIP); eq.os[0].titulo = 'Outra pessoa gravou';
-  await fs.gravar('00. Bases/' + EQUIP, JSON.stringify(eq));
-  const ret = await retomar(pasta);
-  assert.deepEqual(ret.mudaram, [EQUIP]);
-  const n = fs.log.length;
-  const r = await aplicar(pasta, ret.registro.plano, opcoes({escolhas: ret.registro.escolhas, registro: ret.registro}));
-  assert.equal(r.ok, false);
-  assert.equal(r.resultado[EQUIP], 'pulado-mudou');
-  assert.equal(bases({log: fs.log.slice(n)}).length, 0);
-});
-
-test('retomar sem diário pendente devolve registro nulo', async () => {
-  const {pasta} = await montar();
-  assert.deepEqual(await retomar(pasta), {registro: null, pendentes: [], concluidos: [], mudaram: [], ilegiveis: []});
-});
-
-test('(d) restaurar devolve os arquivos afetados ao conteúdo do backup', async () => {
-  const {fs, pasta, plano} = await montar();
-  await assert.rejects(aplicar(pasta, plano, opcoes(interrompe(INIC))), /queda simulada/);
-  const {registro} = await retomar(pasta);
-  const r = await restaurar(pasta, registro, null, {sessao: SESSAO, confirmacao: M.CONFIRMACAO_RESTAURAR, janela: true, travas: travasTeste()});
-  assert.equal(r.ok, true, r.motivo);
-  assert.equal(r.resultado[CAD], 'restaurado');
-  assert.equal(r.resultado[INIC], 'restaurado');
-  for (const f of ORDEM.slice(2)) assert.equal(r.resultado[f], 'ja-restaurado', f);
-  for (const f of ORDEM) assert.equal(await M.hash(await lerBase(fs, f)), plano.alteracoes[f].hashAntes, f);
-  const fim = JSON.parse(await fs.ler(REG));
-  assert.equal(fim.estado, 'restaurado');
-  assert.equal(fim.arquivos[CAD].estado, 'restaurado');
-  assert.equal((await retomar(pasta)).registro, null, 'restaurado não é retomado');
-});
-
-test('(d) restaurar só os arquivos pedidos; arquivo mudado depois do corte não é sobrescrito', async () => {
-  const {fs, pasta, plano} = await montar();
-  const ap = await aplicar(pasta, plano, opcoes());
-  assert.equal(ap.ok, true);
-  const eq = await lerBase(fs, EQUIP); eq.os[0].titulo = 'Gravado depois do corte';
-  await fs.gravar('00. Bases/' + EQUIP, JSON.stringify(eq));
-  const op = {sessao: SESSAO, confirmacao: M.CONFIRMACAO_RESTAURAR, janela: true, travas: travasTeste()};
-  const r = await restaurar(pasta, ap.registro, [CAD, EQUIP], op);
-  assert.equal(r.resultado[CAD], 'restaurado');
-  assert.equal(r.resultado[EQUIP], 'pulado-mudou');
-  assert.equal(r.resultado[INIC], undefined);
-  assert.equal(await M.hash(await lerBase(fs, CAD)), plano.alteracoes[CAD].hashAntes);
-  assert.equal((await lerBase(fs, EQUIP)).os[0].titulo, 'Gravado depois do corte');
-  assert.equal(await M.hash(await lerBase(fs, INIC)), ap.registro.arquivos[INIC].hashDepois);
-});
-
-test('(d) restaurar sem sessão ou com confirmação errada recusa sem gravar', async () => {
-  const {fs, pasta, plano} = await montar();
-  const ap = await aplicar(pasta, plano, opcoes());
-  const n = fs.log.length;
-  for (const op of [{sessao: null, confirmacao: M.CONFIRMACAO_RESTAURAR}, {sessao: SESSAO, confirmacao: 'x'}]) {
-    const r = await restaurar(pasta, ap.registro, null, {...op, janela: true, travas: travasTeste()});
-    assert.equal(r.ok, false);
-  }
-  assert.equal(fs.log.length, n);
-});
-
-test('a lista de assuntos da Administração do migrador é a mesma do motor/portal', () => {
-  const t = helpers.current().text('motor/portal');
-  const ids = [...t.match(/const ADM_ASSUNTOS=\[([\s\S]*?)\];/)[1].matchAll(/\{id:'([a-z]+)'/g)].map(m => m[1]);
-  assert.deepEqual(ids, ASSUNTOS);
-  assert.deepEqual([...M.ASSUNTOS_ADM], ASSUNTOS);
 });

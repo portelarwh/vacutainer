@@ -56528,8 +56528,9 @@ const vacMigracao = (() => {
   const AVISO_JANELA = 'A ferramenta não impede que outra pessoa grave durante a migração: as travas do navegador (Web Locks) só coordenam as abas deste navegador. '
     + 'Feche as páginas da plataforma nas outras estações e abas antes de aplicar.';
   const FIFO = 'fifo-base.json', OEE = 'oee-vacutainer-base.json';
-  /* Ordem de gravação e dono de cada arquivo: [arquivo, página (trava vac-editar-<página>), pasta de backup, nome].
-     O Waste não estava na ordem combinada; fica depois das Paradas e antes do Gel (só recebe IDs de pessoa). */
+  /* Ordem de gravação e dono de cada arquivo: [arquivo, página (trava vac-editar-<página>), subpasta do backup, nome].
+     O Waste (perdas-base.json) fica entre as Paradas e o Gel: só recebe IDs de pessoa (M2); as ações dele são copiadas
+     para as Iniciativas (M5) sem mudar o Waste, então a posição não depende de outro arquivo. */
   const DONOS = [
     [CAD, 'portal', 'Cadastros', 'Cadastro'], [INIC, 'inic', 'Iniciativas', 'Iniciativas'], ['equipamentos-base.json', 'equip', 'Equipamentos', 'Equipamentos'],
     ['linha360-base.json', 'linha', 'Linha360', 'Linha 360°'], ['paradas-base.json', 'paradas', 'Paradas', 'Paradas'], [PERD, 'perdas', 'Perdas', 'Waste'],
@@ -56569,11 +56570,13 @@ const vacMigracao = (() => {
   }
   async function lerCaminho(pasta, caminho) { const p = caminho.split('/'); return lerTexto(await subpasta(pasta, p.slice(0, -1), false), p.at(-1)); }
 
-  /* Backup antes-da-migracao-<data>.json na pasta de backup do dono. Nunca sobrescreve outro conteúdo: usa -2, -3…; relê e confere o hash. */
+  /* Backup 00. Backups/Migracao/<módulo>/antes-da-migracao-<data>.json. Fica fora da pasta de backup do próprio módulo
+     (00. Backups/<módulo>), que a retenção do vacBackupRegistro (parametros.backupDias) limpa: o backup da reversão nunca é apagado.
+     Nunca sobrescreve outro conteúdo: usa -2, -3…; relê e confere o hash. */
   async function fazerBackup(pasta, arquivo, texto, hashAntes, data) {
-    const dir = await subpasta(pasta, [DIR_BK, DONO[arquivo].backup], true), base = 'antes-da-migracao-' + data;
+    const dir = await subpasta(pasta, [DIR_BK, DIR_REG, DONO[arquivo].backup], true), base = 'antes-da-migracao-' + data;
     for (let n = 1; n < 100; n++) {
-      const nome = base + (n > 1 ? '-' + n : '') + '.json', caminho = DIR_BK + '/' + DONO[arquivo].backup + '/' + nome;
+      const nome = base + (n > 1 ? '-' + n : '') + '.json', caminho = DIR_BK + '/' + DIR_REG + '/' + DONO[arquivo].backup + '/' + nome;
       let existente = null;
       try { existente = await lerTexto(dir, nome); } catch (e) { if (!naoAchou(e)) throw e; }
       if (existente != null) {
@@ -56672,6 +56675,9 @@ const vacMigracao = (() => {
     if (fora.length) return recusa('Arquivo fora das bases da migração: ' + fora.join(', ') + '.');
     const escolhas = objeto(op.escolhas) ? op.escolhas : {}, meta = objeto(escolhas.__meta) ? escolhas.__meta : {};
     if (!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(String(meta.em || ''))) return recusa('Falta a hora da migração (a mesma da prévia).');
+    /* toda exceção decidida pelo responsável antes do corte (sem escolha, nada é gravado) */
+    const semEscolha = (Array.isArray(plano.excecoes) ? plano.excecoes : []).filter(e => !objeto(e) || e.escolha == null).length;
+    if (semEscolha) return recusa(semEscolha + (semEscolha === 1 ? ' exceção ainda não foi decidida' : ' exceções ainda não foram decididas') + '. Decida todas na prévia antes de aplicar.');
     const anterior = op.registro == null ? null : op.registro;
     if (anterior &amp;&amp; (!objeto(anterior) || !objeto(anterior.arquivos) || vazio(anterior.id))) return recusa('O registro a retomar não é válido.');
     const quem = await conferirAcesso(pasta, op, CONFIRMACAO);
@@ -56713,7 +56719,7 @@ const vacMigracao = (() => {
     const bk = {}, falhos = [];
     for (const f of pendentes) {
       try { bk[f] = await fazerBackup(pasta, f, atuais[f].texto, plano.alteracoes[f].hashAntes, q.em.slice(0, 10)); }
-      catch (e) { falhos.push(f); erros.push(f + ' (00. Backups/' + DONO[f].backup + '): ' + msg(e)); }
+      catch (e) { falhos.push(f); erros.push(f + ' (00. Backups/Migracao/' + DONO[f].backup + '): ' + msg(e)); }
     }
     if (falhos.length) return parado('Backup não confirmado: ' + erros.join('; ') + '. Nada foi gravado.', {backupsFalhos: falhos});
     /* 4 · registro antes do 1º arquivo */
@@ -56721,7 +56727,7 @@ const vacMigracao = (() => {
     const reg = anterior ? copia(anterior) : {
       id, tipo: 'migracao-pontual', versao: 1, em: q.em, por: q.por, porId: q.porId, sessao: {id: quem.id, nome: quem.nome},
       confirmacao: op.confirmacao, janela, estado: 'em-andamento', ordem: lista, plano, escolhas,
-      excecoesSemEscolha: (Array.isArray(plano.excecoes) ? plano.excecoes : []).filter(e => objeto(e) &amp;&amp; e.escolha == null).length, arquivos: {},
+      excecoes: (Array.isArray(plano.excecoes) ? plano.excecoes : []).length, arquivos: {},
     };
     for (const f of lista) {
       if (!anterior) reg.arquivos[f] = {ordem: lista.indexOf(f) + 1, dono: DONO[f].nome, hashAntes: plano.alteracoes[f].hashAntes,

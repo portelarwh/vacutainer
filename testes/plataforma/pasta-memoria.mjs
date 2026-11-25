@@ -24,7 +24,8 @@ export function pastaMemoria() {
         };
       },
       _texto: () => conteudo,
-      _gravar: t => { conteudo = t; },
+      _gravar: t => { conteudo = t; mod = Date.now(); },
+      _idade: ms => { mod = ms; },
     };
   }
   function pasta(nome, caminho) {
@@ -69,6 +70,9 @@ export function pastaMemoria() {
     async existe(caminho) { try { await no(caminho, false); return true; } catch (e) { return false; } },
     /* grava sem passar pelo log (preparação do teste ou "outra pessoa gravou") */
     async gravar(caminho, texto) { (await no(caminho, true))._gravar(texto); },
+    /* muda a data de modificação (lastModified) de um arquivo, para simular arquivo antigo */
+    async datar(caminho, ms) { (await no(caminho, false))._idade(ms); },
+    async pasta(dir) { let d = raiz; for (const x of partes(dir)) d = await d.getDirectoryHandle(x); return d; },
     async listar(dir) { let d = raiz; for (const x of partes(dir)) d = await d.getDirectoryHandle(x); const L = []; for await (const [n] of d.entries()) L.push(n); return L.sort(); },
   };
 }
@@ -88,6 +92,18 @@ export function carregarRaiz() {
   const ctx = vm.createContext({DOMException});
   vm.runInContext(codigo, ctx, {filename: 'comum/bases (vacRaiz)'});
   return ctx.vacRaiz;
+}
+
+/* vacBackupRegistro real do comum/bases (retenção limpar), com o prazo de backup do cadastro dado. */
+export function carregarBackupRegistro(backupDias) {
+  const t = helpers.current().text('comum/bases');
+  const m = t.match(/const vacBackupRegistro = \(\(\) => \{[\s\S]*?\n\}\)\(\);/);
+  if (!m) throw new Error('comum/bases mudou: vacBackupRegistro');
+  const mem = new Map();
+  const localStorage = {getItem: k => mem.has(k) ? mem.get(k) : null, setItem: (k, v) => mem.set(k, String(v))};
+  const ctx = vm.createContext({localStorage, crypto: globalThis.crypto, vacCad: () => ({parametros: {backupDias}})});
+  vm.runInContext(m[0] + '\nglobalThis.vacBackupRegistro = vacBackupRegistro;', ctx, {filename: 'comum/bases (vacBackupRegistro)'});
+  return ctx.vacBackupRegistro;
 }
 
 /* Web Locks de teste: guarda os nomes pedidos; nomes em ocupados[] respondem como trava de outra aba. */
