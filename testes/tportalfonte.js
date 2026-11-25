@@ -31,7 +31,7 @@ const { chromium } = require('playwright');
   const o = await nova('OEE-Vacutainer.html', 'Produção');
   await o.evaluate(() => { document.querySelectorAll('.overlay').forEach(x => x.remove()); Demo.enterExample(); }); await o.waitForTimeout(1200);
   const r6 = await o.evaluate(() => {
-    const d = JSON.parse(Store.serialize(Store.S.db));
+    const d = U.clone(Store.S.db);
     CadSync.aplicar(d, { rev: 1, parametros: { producao: { unidadeLancamento: 1000, rotuloUnidade: 'mil', arredondamentoMeta: [{ de: '2000-01-01', valor: 7000 }, { de: '2099-01-01', valor: 500 }] } } }, () => { });
     const st = d.settings, dia = d.productionDays.find(x => !x.deleted && x.shifts && x.shifts.length);
     const res = Engine.computeDayRaw(d, dia), metas = res.flat.map(f => f.metaOp).filter(v => v != null && v > 0);
@@ -46,7 +46,7 @@ const { chromium } = require('playwright');
 
   /* ================= ARQ-01/02/03/04 · PRD-04 ================= */
   const r1 = await o.evaluate(() => {
-    const d = JSON.parse(Store.serialize(Store.S.db)), sh = d.shifts.find(x => !x.deleted && (x.versions || []).some(v => !v.deleted));
+    const d = U.clone(Store.S.db), sh = d.shifts.find(x => !x.deleted && (x.versions || []).some(v => !v.deleted));
     const vigs = sh.versions.filter(v => !v.deleted).map(v => ({ de: v.validFrom, ate: v.validTo || null, inicio: v.start, fim: v.end, dias: v.weekdays, ativo: true, pausas: [], intervalos: [] }));
     sh.status = 'inativo';                                   // desativado aqui antes do Portal assumir (PRD-04)
     const tc = JSON.parse(JSON.stringify(sh)); tc.id = 'sh_tc'; tc.code = 'TC'; tc.status = 'ativo'; d.shifts.push(tc);   // mesmo turno com outro código

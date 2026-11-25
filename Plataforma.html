@@ -9208,6 +9208,9 @@ const ProdCad = (() => {
     for (const l of (C.linhas || []).filter(x => x &amp;&amp; x.codigo)) T.lines.push({ id: 'line_' + slug(l.codigo), code: l.codigo, name: l.nome || l.codigo, unit: l.unidade || null, sector: l.setor || null, status: stOf(l.ativo) });
     for (const f of (C.familias || []).filter(x => x &amp;&amp; x.codigo)) T.families.push({ id: 'fam_' + slug(f.codigo), code: f.codigo, name: f.nome || f.codigo, color: f.cor || '#2f6db5', active: f.ativo !== false, status: stOf(f.ativo) });
     for (const e of (C.equipamentos || []).filter(x => x &amp;&amp; x.codigo)) T.machines.push({ id: 'mac_' + slug(e.codigo), description: '', code: e.codigo, name: e.nome || e.codigo, lineId: lineId(e.linha), role: e.papel === 'oee' ? 'oee' : 'equipamento', active: e.ativo !== false, status: stOf(e.ativo) });
+    /* ponto de medição do OEE (saída da linha): o motor cria os dias nele. Se o cadastro não tem equipamento de papel 'oee' para a linha, ele é
+       acrescentado só em memória (nada é gravado): mac_line para a primeira linha e mac_line_<código> para as demais */
+    T.lines.forEach((l, i) => { if (!T.machines.some(m => m.role === 'oee' &amp;&amp; m.lineId === l.id)) T.machines.push({ id: i ? 'mac_line_' + slug(l.code) : 'mac_line', description: 'Ponto de medição do OEE (saída da linha)', code: 'LINHA', name: 'Linha ' + (l.name || l.code), lineId: l.id, role: 'oee', active: true, status: 'ativo' }); });
     /* catálogos (só tubos: preparação de aditivo não tem OEE da linha). O id é sempre cat_<código>_<de>: uma vigência nova não muda o id das
        antigas, que os lançamentos já gravaram. Vigência desativada na Administração continua na tabela, inativa, para o dia já lançado
        com esse id achar o catálogo (contrato 2); ela só não vale para dias novos. */
@@ -9284,9 +9287,11 @@ const Store = (() => {
      arquivo gravado. Estado do cadastro: 'ok' | 'ausente' (sem arquivo) | 'erro' (ilegível ou de outro tipo). */
   const TABELAS_CAD = ['lines', 'machines', 'families', 'catalogs', 'shifts', 'targets', 'downtimeCodes'];
   const cadastroAtual = () => S.cadDoc || ((typeof vacDemo !== 'undefined' &amp;&amp; vacDemo.ativo &amp;&amp; typeof vacCad === 'function') ? (vacCad() || null) : null);
-  function aplicarCadastro() {
-    const db = S.db; if (!db || S.mode === 'exemplo') return;
-    const C = cadastroAtual(); if (C) S.cadastroEstado = 'ok';
+  /* aplicarCadastro(C0): sem argumento usa o cadastro lido da pasta (ou o da demonstração); com C0 usa esse cadastro, também no modo exemplo
+     (que não mexe no estado do cadastro real). */
+  function aplicarCadastro(C0) {
+    const db = S.db; if (!db || (S.mode === 'exemplo' &amp;&amp; !C0)) return;
+    const C = C0 || cadastroAtual(); if (C &amp;&amp; !C0) S.cadastroEstado = 'ok';
     const T = ProdCad.montar(C || {});
     for (const k of TABELAS_CAD) db[k] = T[k];
     if (C) { db.settings = db.settings || {}; Object.assign(db.settings, T.settings); }
@@ -9589,7 +9594,7 @@ const Store = (() => {
 
   function snapshotText() { return serialize(S.db); }
 
-  return { S, IDB, mutate, flush, readCadastro, checkExternal, resolveReload, resolveCancel, pendingExport, connect, applyPending, discardPending, startLocal, startAwaiting, enterExample, exitExample, openFileFallback, downloadText, markDownloaded, manualBackup, listBackups, restoreBackup, replaceWithImported, audit, serialize, snapshotText, on: f => S.listeners.add(f), saveCache };
+  return { S, IDB, mutate, flush, readCadastro, aplicarCadastro, checkExternal, resolveReload, resolveCancel, pendingExport, connect, applyPending, discardPending, startLocal, startAwaiting, enterExample, exitExample, openFileFallback, downloadText, markDownloaded, manualBackup, listBackups, restoreBackup, replaceWithImported, audit, serialize, snapshotText, on: f => S.listeners.add(f), saveCache };
 })();
 
 
@@ -14427,6 +14432,7 @@ const Demo = {
     const clone = U.clone(db());
     clone.productionDays = clone.productionDays.filter(d => !d.demo);
     Store.enterExample(clone);
+    Store.aplicarCadastro(vacDemo.ler('cad'));   /* o exemplo tem a estrutura do cadastro do cenário (fictício), não a da pasta */
     try { Actions.loadDemo('line_vac'); } catch (e) { Store.exitExample(); throw e; }
     App.sel.lineId = 'line_vac'; App.filters.lineId = 'line_vac'; App.filters.from = U.addDays(U.today(), -21); App.filters.to = U.today();
     toast('Demonstração: nada do que você fizer será gravado.'); go('overview');
@@ -55184,8 +55190,8 @@ body.vac-porta{overflow:hidden}
       "id": "oee",
       "path": "Plataforma.html#motor/oee",
       "version": "2.6.46",
-      "sha256": "e4e38ae550a5abb8d6ac10ce7b48b4191c87ef18ce8d89474e5fbebb5552e7f1",
-      "bytes": 2389784
+      "sha256": "d95134d880157d902491f90024fb9440781e569849085b9176c5f0e83663dc26",
+      "bytes": 2390773
     },
     {
       "id": "perdas",
@@ -55247,7 +55253,7 @@ body.vac-porta{overflow:hidden}
   "limitations": [
     "Projetos e conteúdo técnico OSM/MES/AM/TPM mantêm os limites documentados nas fontes."
   ],
-  "enginesSha256": "7e2a3ab42ae3f5e4beadab96f9cb367f431a037aee878aac93693c143a4c4f9b",
+  "enginesSha256": "6e599f7cc1732f434cb633876c06fde5bf4c12242fa24f2856735d699dd41c85",
   "originRevision": "ffc9ee8",
   "sourceMode": "single-html",
   "originEnginesSha256": "a87a64ad0c328f70e102b2ae888790a9b5d5a9bd05778652a7ce7cae140e40d2"

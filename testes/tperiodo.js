@@ -9,7 +9,7 @@ const { chromium } = require('playwright');
 
   /* Produção publica capacidade e meta por dia e por turno (OEE de qualquer período sem média de médias) */
   const o = await nova('OEE-Vacutainer.html', 'Produção');
-  const eo = await o.evaluate(() => { document.querySelectorAll('.overlay').forEach(x => x.remove()); Demo.enterExample(); const d = JSON.parse(Store.serialize(Store.S.db)); d.productionDays.forEach(x => x.demo = false); const ex = Exports.build(d);
+  const eo = await o.evaluate(() => { document.querySelectorAll('.overlay').forEach(x => x.remove()); Demo.enterExample(); const d = U.clone(Store.S.db); d.productionDays.forEach(x => x.demo = false); const ex = Exports.build(d);
     const p = (ex.porDia || [])[0] || {}, t = (ex.porDiaTurno || [])[0] || {}; return { p: 'cap' in p && 'metaDec' in p && p.cap > 0, t: 'cap' in t && 'metaOp' in t && 'oeeMeta' in t, n: (ex.porDia || []).length }; });
   ok(eo.n > 0 && eo.p && eo.t, 'D6: Produção publica cap e metaDec por dia e por turno');
 

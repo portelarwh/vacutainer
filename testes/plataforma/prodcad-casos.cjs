@@ -20,6 +20,9 @@ const { CADASTRO } = require('./prodcad-fixture.cjs');
       const v = (d, wd) => { const x = Engine.shiftVersionAt(t1, d, wd); return x ? x.start + '-' + x.end : null; };
       return { pph2025: pphEm('2025-06-10'), pph2026: pphEm('2026-03-10'), pph2024: pphEm('2024-06-10'),
         t1Seg2025: v('2025-06-09', 1), t1Seg2026: v('2026-03-09', 1), t1Sab2026: v('2026-03-14', 6), t1Sab2025: v('2025-06-14', 6),
+        semOee: (() => { const C2 = JSON.parse(JSON.stringify(C)); C2.equipamentos = C2.equipamentos.filter(e => e.papel !== 'oee'); const M = ProdCad.montar(C2).machines.filter(m => m.role === 'oee'); return M.map(m => [m.id, m.code, m.lineId]); })(),
+        comOee: T.machines.filter(m => m.role === 'oee').map(m => m.id),
+        duasLinhas: (() => { const C3 = JSON.parse(JSON.stringify(C)); C3.equipamentos = []; C3.linhas.push({ codigo: 'B2', nome: 'Linha B', ativo: true }); return ProdCad.montar(C3).machines.filter(m => m.role === 'oee').map(m => m.id); })(),
         idsCat: T.catalogs.map(c => c.id + (c.active === false ? '(inativo)' : '')),
         desativada: (() => { const c = T.catalogs.find(x => x.id === 'cat_360060_2024-01-01'); return c ? { ativo: c.active, status: c.status, de: c.validFrom, valida: !!Engine.catalogValid(c, '2024-06-10') } : null; })(),
         versoes: t1.versions.map(x => [x.validFrom, x.validTo, x.weekdays.join('')]), idsUnicos: new Set(t1.versions.map(x => x.id)).size === t1.versions.length };
@@ -32,6 +35,9 @@ const { CADASTRO } = require('./prodcad-fixture.cjs');
     assert.equal(r.t1Sab2026, '06:00-13:30', 'sábado de 2026 usa a versão própria (1 h a menos)');
     assert.equal(r.t1Sab2025, null, 'sábado de 2025 não tinha turno (a versão de sábado só existe desde 2026)');
     assert.equal(r.idsUnicos, true, 'cada versão de turno tem id próprio');
+    assert.deepEqual(r.semOee, [['mac_line', 'LINHA', 'line_vac']], 'cadastro sem equipamento de papel oee: o ProdCad acrescenta, em memória, o ponto de medição do OEE da linha');
+    assert.deepEqual(r.comOee, ['mac_linha'], 'cadastro que já tem o equipamento oee: nada é acrescentado');
+    assert.deepEqual(r.duasLinhas, ['mac_line', 'mac_line_b2'], 'uma linha sem ponto OEE ganha o seu, com id próprio');
     assert.deepEqual(r.idsCat, ['cat_360060_2025-01-01', 'cat_360060_2026-01-01', 'cat_360060_2024-01-01(inativo)', 'cat_360055_2025-01-01'], 'o id do catálogo é sempre cat_<código>_<de> (estável: uma vigência nova não muda o id das antigas)');
     assert.deepEqual(r.desativada, { ativo: false, status: 'inativo', de: '2024-01-01', valida: false }, 'vigência desativada na Administração continua na tabela, inativa: o dia já lançado com esse id continua achando o catálogo (contrato 2)');
     assert.deepEqual(erros, []);
