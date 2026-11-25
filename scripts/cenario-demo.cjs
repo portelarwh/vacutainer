@@ -41,6 +41,12 @@ async function COMPLEMENTO([mod, id, desloc]) {
       });
       notas.push('Gel v2: formato de ' + de + ' e ' + LOC.length + ' locais');
     }
+    // perdas teóricas do gel (Administração › Gel): sem vigência o teórico não é calculado; o cenário traz uma vigência para todos os formatos
+    if (!(g.processo || []).length) {
+      const de = new Date(Date.parse('2000-01-01T12:00:00Z') + desloc * 864e5).toISOString().slice(0, 10);
+      g.processo = [{ from: de, g: 0.98, pT: 2.2406, pB: 0.7352, pP: 0.5252 }];
+      notas.push('perdas teóricas do gel vigentes desde 01/01/2000');
+    }
     if (g.cabecotes == null || g.barrisPorCabecote == null) {
       const cfg = vacDemo.ler('gel')?.config;
       g.cabecotes ??= cfg?.lineHeads ?? 2;
@@ -56,6 +62,11 @@ async function COMPLEMENTO([mod, id, desloc]) {
         if (!Object.keys(e.gel).length) delete e.gel;
       }
       notas.push('cópias antigas de formato e locais removidas');
+    }
+    // base limpa (24/11/2026): perfil sem assuntos só vê; os perfis do cenário trazem os assuntos explícitos da semente (DEFAULT_PERFIS)
+    if ((cad.perfis || []).some(p => !p.assuntos)) {
+      for (const p of cad.perfis) if (!p.assuntos) { const s = DEFAULT_PERFIS.find(x => x.codigo === p.codigo); p.assuntos = s ? JSON.parse(JSON.stringify(s.assuntos)) : Object.fromEntries(ADM_ASSUNTOS.map(a => [a.id, 'ver'])); }
+      notas.push('perfis com os assuntos explícitos');
     }
     if (!notas.length) return '';
     gravar(cad); return 'cadastro: ' + notas.join('; ');

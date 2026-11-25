@@ -78,5 +78,6 @@ test('cadVazio nasce na versao 2 com gel vazio e a validacao recusa versao maior
   const t = html.text('motor/portal');
   assert.match(t, /schemaVersion:2,rev:0/);
   assert.match(t, /gel:\{formatos:\[\],locais:\[\]\}/);
-  assert.match(t, /\+d\.schemaVersion>2/);
+  assert.match(t, /\+d\.schemaVersion>VAC_CAD_VERSAO/);
+  assert.match(t, /novo\.schemaVersion=VAC_CAD_VERSAO;/, 'a gravação escreve sempre a versão atual');
 });

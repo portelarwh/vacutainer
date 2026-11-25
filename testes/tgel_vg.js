@@ -32,6 +32,7 @@ const LER = () => {
       };
       localStorage.setItem('vac.cadastros', JSON.stringify({
         schemaVersion: 2, gel: { locais: [], formatos: [{ de: '2000-01-01', embalagemG: 75, folhaPurgaG: 5, tubos }] },
+        parametros: { gel: { processo: [{ from: '2000-01-01', g: 0.98, pT: 2.2406, pB: 0.7352, pP: 0.5252 }] } },   // perdas teóricas vigentes (sem valor de fábrica desde a base limpa)
       }));
       enterDemo(); ui.tab = 'painel'; render();
     }); await o.waitForTimeout(1200); return { c, o }; };

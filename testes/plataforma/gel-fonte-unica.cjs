@@ -4,7 +4,7 @@ const { server } = require('../../scripts/servidor-testes.cjs');
 
 const hoje = '2026-11-09';
 const futuro = '2026-11-10';
-const aviso = /Cadastro do gel não importado — Administração › Sistema › Importar das bases atuais/;
+const aviso = /Dados de Administração em versão anterior/;   // cadastro de versão anterior não é lido (base limpa, 24/11/2026)
 
 (async () => {
   const srv = server();

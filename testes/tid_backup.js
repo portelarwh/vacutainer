@@ -23,9 +23,9 @@ const RENOMEADO = { ...CAD, rev: 5, usuarios: CAD.usuarios.map(u => u.codigo ===
   {
     const ctx = await b.newContext(); const p = await nova(ctx, 'Iniciativas.html', '#teste');
     const r = await p.evaluate(() => ({ porNome: vacPessoa.id('ana lima'), porId: vacPessoa.deTexto('U7'), homonimo: vacPessoa.id('Bia'), fora: vacPessoa.deTexto('Carlos'),
-      eu: vacPessoa.eu(), mesma: vacPessoa.mesma('U7', 'Nome antigo', '', 'Ana Lima'), outra: vacPessoa.mesma('U8', 'Bia', 'U9', 'Bia') }));
-    ok(r.porNome === 'U7' && r.porId.id === 'U7' && r.porId.nome === 'Ana Lima' && r.homonimo === '' && r.fora.id === '' && r.fora.nome === 'Carlos' && r.eu.id === 'U7' && r.mesma && !r.outra,
-      `vacPessoa: nome → ID ${r.porNome}, ID → ${JSON.stringify(r.porId)}, nome repetido sem ID, fora do cadastro só com nome, mesma pessoa pelo ID mesmo com nome antigo, homônimos com IDs diferentes não são a mesma`);
+      eu: vacPessoa.eu(), mesma: vacPessoa.mesma('U7', 'Nome antigo', 'U7', 'Ana Lima'), soNome: vacPessoa.mesma('U7', 'Ana Lima', '', 'Ana Lima'), outra: vacPessoa.mesma('U8', 'Bia', 'U9', 'Bia') }));
+    ok(r.porNome === '' && r.porId.id === 'U7' && r.porId.nome === 'Ana Lima' && r.homonimo === '' && r.fora.id === '' && r.fora.nome === 'Carlos' && r.eu.id === 'U7' && r.mesma && !r.soNome && !r.outra,
+      `vacPessoa: registro só com nome não tem ID (${JSON.stringify(r.porNome)}; base limpa), ID → ${JSON.stringify(r.porId)}, nome repetido sem ID, fora do cadastro só com nome, mesma pessoa pelo ID mesmo com nome antigo, homônimos com IDs diferentes não são a mesma`);
     await ctx.close();
   }
 
@@ -69,7 +69,7 @@ const RENOMEADO = { ...CAD, rev: 5, usuarios: CAD.usuarios.map(u => u.codigo ===
       const Q = filaQuem(), I = filaItens().filter(i => i.tipo === 'acao'), minhas = I.filter(i => filaDe(i, Q.u, Q.uid)).map(i => i.id), equipe = I.filter(i => filaEquipe(i, Q)).map(i => i.id);
       return { uid: Q.uid, u: Q.u, minhas, equipe, nome: I.find(i => i.id === 'AC-1').resp };
     });
-    ok(r.uid === 'U7' && r.u === 'Ana Lima Souza' && r.minhas.join() === 'AC-1,AC-3' && r.nome === 'Ana Lima Souza', `Portal › Minhas pela sessão U7: ${r.minhas.join(', ')} (nome antigo guardado vale pelo ID; ação só com o nome novo vale pelo nome); mostra "${r.nome}"`);
+    ok(r.uid === 'U7' && r.u === 'Ana Lima Souza' && r.minhas.join() === 'AC-1' && r.nome === 'Ana Lima Souza', `Portal › Minhas pela sessão U7: ${r.minhas.join(', ')} (nome antigo guardado vale pelo ID; ação só com o nome, sem ID, não entra: base limpa); mostra "${r.nome}"`);
     ok(!r.equipe.includes('AC-2'), `Minha equipe pelo ID: a Bia da Manutenção (U9) não entra na equipe de Produção (${r.equipe.join(', ') || 'nenhuma'})`);
     const ambigua = await p.evaluate(() => {
       const I = filaItens().filter(i => i.tipo === 'acao');
