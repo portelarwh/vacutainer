@@ -57,7 +57,8 @@ test('M1: config ou reunioes em lista não ganha versão e vira exceção M1-est
     const e = p.excecoes.find(x => x.item === 'M1');
     assert.equal(e.arquivo, PORTAL);
     assert.equal(e.caminho, campo);
-    assert.ok(e.motivo && e.opcoes.length, 'motivo e opções');
+    assert.ok(e.motivo, 'motivo');
+    assert.deepEqual(e.opcoes, [], 'sem causa corrigida não há decisão possível: sem opções');
   }
 });
 

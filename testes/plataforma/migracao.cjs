@@ -115,7 +115,7 @@ const PASTA = 'Migracao-Ficticia', BLOQUEIO = 'Base de versão anterior';
       return L;
     }, PASTA);
     assert.equal(bk.filter(x => /\/antes-da-migracao-\d{4}-\d\d-\d\d\.json$/.test(x)).length, Object.keys(final.alteracoes).length, 'um backup por arquivo gravado: ' + bk.join(', '));
-    assert.ok(bk.some(x => /^registro-.*\.json$/.test(x)), 'registro da migração');
+    assert.ok(bk.some(x => /^registro-\d{4}-\d\d-\d\dT\d\d-\d\d-\d\d-\d{3}Z\.json$/.test(x)), 'registro da migração, com a hora em UTC: ' + bk.join(', '));
     console.log('ok (c) com sessão ADMIN: exceções decididas, aplicada com a confirmação digitada, backups na pasta');
 
     // (g) segunda execução
@@ -123,6 +123,34 @@ const PASTA = 'Migracao-Ficticia', BLOQUEIO = 'Base de versão anterior';
     await t.locator('#sPrevia').getByText('Nada a migrar').waitFor();
     assert.equal(await t.locator('#apB').count(), 0);
     console.log('ok (g) segunda execução: Nada a migrar');
+
+    // (g2) exceção só de relatório (config da Administração em lista, sem versão): sem controle de decisão, sem "Nada a migrar"
+    const portalOpfs = async texto => page.evaluate(async ({nome, texto}) => {
+      const dir = await (await (await navigator.storage.getDirectory()).getDirectoryHandle(nome)).getDirectoryHandle('00. Bases'), fh = await dir.getFileHandle('portal-base.json');
+      const antes = await (await fh.getFile()).text();
+      if (texto != null) { const w = await fh.createWritable(); await w.write(texto); await w.close(); }
+      return antes;
+    }, {nome: PASTA, texto});
+    const portalMigrado = await portalOpfs(null), quebrado = JS(JSON.parse(portalMigrado)); delete quebrado.schemaVersion; quebrado.config = [];
+    await portalOpfs(JSON.stringify(quebrado));
+    await t.locator('#bRefazer').click(); await t.locator('#tExc').waitFor();
+    const linhaM1 = t.locator('#tExc tbody tr').filter({hasText: 'A configuração não é um objeto'});
+    assert.equal(await linhaM1.count(), 1); assert.equal(await linhaM1.locator('select').count(), 0, 'sem opção de decisão para exceção só de relatório');
+    assert.match(await linhaM1.innerText(), /Sem opção: corrija a causa/);
+    assert.equal(await t.locator('#sPrevia').getByText('Nada a migrar').count(), 0, 'não diz "Nada a migrar" com exceção sem decisão possível');
+    assert.match(await t.locator('#sPrevia').innerText(), /Nada é gravado/);
+    await portalOpfs(portalMigrado);
+    await t.locator('#bRefazer').click(); await t.locator('#sPrevia').getByText('Nada a migrar').waitFor();
+    console.log('ok (g2) exceção só de relatório: sem controle de decisão e sem "Nada a migrar"');
+
+    // (g3) Conferir M5: só leitura, mesmo resultado do núcleo sobre a pasta migrada
+    const perdasM = (final.alteracoes['perdas-base.json'] || {}).depois || arqs['perdas-base.json'], esperadoM5 = JS(M.conferirM5(perdasM, final.alteracoes['iniciativas-base.json'].depois));
+    await t.locator('#bM5').click();
+    await t.locator('#sM5').getByText(esperadoM5.ok ? 'Conferido.' : 'Há diferenças.').waitFor();
+    const m5 = await t.locator('#sM5').innerText();
+    assert.equal(/Faltam \(/.test(m5), esperadoM5.faltam.length > 0); assert.equal(/Divergentes \(/.test(m5), esperadoM5.divergentes.length > 0);
+    if (esperadoM5.faltam.length) { assert.match(m5, new RegExp('Faltam \\(' + esperadoM5.faltam.length + '\\)')); assert.match(m5, /adiadas à espera da decisão/); }
+    console.log('ok (g3) Conferir M5: ' + (esperadoM5.ok ? 'conferido' : esperadoM5.faltam.length + ' faltam, ' + esperadoM5.divergentes.length + ' divergentes'));
 
     // (h) com tudo vazio
     await page.evaluate(async () => {

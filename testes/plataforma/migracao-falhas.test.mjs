@@ -2,7 +2,7 @@
 // registro que não grava, arquivo pela metade, aba viva, mudança depois da gravação). Pasta em memória, dados fictícios.
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
-import {CAD, EQUIP, INIC, ORDEM, PORTAL, REG, SESSAO, M, montar, opcoes, lerBase, bases, aplicar, retomar, restaurar} from './migracao-aplicar-comum.mjs';
+import {CAD, ESC, EQUIP, INIC, ORDEM, PORTAL, REG, SESSAO, M, arqsTeste, montar, opcoes, lerBase, bases, aplicar, retomar, restaurar} from './migracao-aplicar-comum.mjs';
 import {travasTeste} from './pasta-memoria.mjs';
 
 const RESTAURAR = {sessao: SESSAO, confirmacao: M.CONFIRMACAO_RESTAURAR, janela: true, travas: travasTeste()};
@@ -124,4 +124,21 @@ test('reconferência por arquivo: arquivo já no hashDepois vira ja-concluido', 
   assert.equal(ok.ok, true);
   assert.equal(r.ok, true, r.motivo);
   assert.equal(r.resultado[EQUIP], 'ja-concluido');
+});
+
+test('exceção só de relatório (M1-estrutura): sem opções, "manter" não decide e aplicar recusa', async () => {
+  const arqs = arqsTeste();
+  arqs[PORTAL].config = [];
+  const {fs, pasta} = await montar(arqs);
+  const id = 'M1-estrutura|' + PORTAL + '|config', escolhas = {...ESC, [id]: 'manter'};
+  const plano = JSON.parse(JSON.stringify(await M.planejar(arqs, escolhas)));
+  const e = plano.excecoes.find(x => x.id === id);
+  assert.ok(e, 'a exceção existe');
+  assert.deepEqual(e.opcoes, [], 'sem opção de decisão');
+  assert.equal(e.escolha, undefined, '"manter" não decide uma exceção só de relatório');
+  const n = fs.log.length;
+  const r = await aplicar(pasta, plano, opcoes({escolhas}));
+  assert.equal(r.ok, false);
+  assert.match(r.motivo, /ainda não foi decidida/);
+  assert.equal(fs.log.length, n, 'nada gravado');
 });

@@ -56141,6 +56141,7 @@ ul{margin:6px 0;padding-left:20px}
  <section id="sPrevia" hidden></section>
  <section id="sAplicar" hidden></section>
  <section id="sRegistros" hidden></section>
+ <section id="sM5" hidden></section>
 </main>
 <script id="vacMigracaoNucleo">
 /* ===== Núcleo puro: sem DOM e sem pasta. Recebe {arquivo: conteúdo} e devolve o plano. ===== */
@@ -56180,8 +56181,9 @@ const vacMigracao = (() => {
         (porArquivo[arquivo] = porArquivo[arquivo] || []).push({item, caminho, de: copia(de) ?? null, para: copia(para) ?? null});
         (itens[item] = itens[item] || []).push({arquivo, caminho, de: copia(de) ?? null, para: copia(para) ?? null});
       },
-      /* A escolha do responsável entra pelo id da exceção; a exceção continua no relatório com a escolha aplicada. */
-      excecao({tipo, arquivo, caminho, valor, motivo, candidatos = [], opcoes = [MANTER]}) {
+      /* A escolha do responsável entra pelo id da exceção; a exceção continua no relatório com a escolha aplicada.
+         Sem opções, a exceção é só de relatório: nada a decidir, corrige-se a causa no arquivo. */
+      excecao({tipo, arquivo, caminho, valor, motivo, candidatos = [], opcoes = []}) {
         const e = {id: tipo + '|' + arquivo + '|' + caminho, item: tipo.split('-')[0], tipo, arquivo, caminho,
           valor: copia(valor) ?? null, motivo, candidatos: copia(candidatos), opcoes: copia(opcoes)};
         excecoes.push(e);
@@ -56445,7 +56447,7 @@ const vacMigracao = (() => {
       const caminho = base + '[' + i + ']', l = acharLocal(locais, r.e, r.d);
       if (!l) {
         const x = ctx.excecao({tipo: 'M4-sem-local', arquivo, caminho, valor: {e: r.e ?? null, d: r.d},
-          motivo: 'Nenhum local do cadastro corresponde a este registro. Ele fica como está e aparece sem local.'});
+          motivo: 'Nenhum local do cadastro corresponde a este registro. Ele fica como está e aparece sem local.', opcoes: [MANTER]});
         if (ctx.escolhas[x.id] === 'manter') x.escolha = 'manter';
         return;
       }
@@ -56500,7 +56502,7 @@ const vacMigracao = (() => {
     if (!objeto(c) || !Array.isArray(c.usuarios)) return; /* o M2 já registrou a falta do cadastro */
     if (!objeto(inic) || !Array.isArray(inic.acoes) || (inic.eventos != null &amp;&amp; !Array.isArray(inic.eventos)) || (inic.importacoes != null &amp;&amp; !Array.isArray(inic.importacoes)))
       return ctx.excecao({tipo: 'M5-estrutura', arquivo: INIC, caminho: 'acoes', valor: null,
-        motivo: 'Não há base das Iniciativas legível nesta pasta. As ações continuam só no Waste.'});
+        motivo: 'Não há base das Iniciativas legível nesta pasta. Corrija ou crie essa base: sem ela a migração não pode ser aplicada, e as ações continuam só no Waste.'});
     const meta = objeto(ctx.escolhas.__meta) ? ctx.escolhas.__meta : {};
     if (vazio(meta.em))
       return ctx.excecao({tipo: 'M5-meta', arquivo: INIC, caminho: 'importacoes', valor: null, opcoes: [],
@@ -57015,7 +57017,7 @@ const vacMigracao = (() => {
         try {
           const a = await lerBase(pasta, f);
           if (a.erro) throw new Error('leitura: ' + a.erro);
-          if (a.hash &amp;&amp; a.hash === e.hashAntes) { resultado[f] = 'ja-restaurado'; e.estado = 'restaurado'; continue; }
+          if (a.hash &amp;&amp; a.hash === e.hashAntes) { resultado[f] = 'ja-restaurado'; e.estado = 'restaurado'; delete e.erroRestauracao; continue; }
           if (!a.hash || a.hash !== e.hashDepois) { if (naoTocou(e)) resultado[f] = e.estado = 'nao-tocado'; else resultado[f] = 'pulado-mudou'; continue; }
           if (vazio(e.backup)) throw new Error('sem backup no registro');
           const texto = await lerCaminho(pasta, e.backup);
@@ -57023,7 +57025,7 @@ const vacMigracao = (() => {
           await gravarTexto(pasta, f, texto);
           const b = await lerBase(pasta, f);
           if (b.hash !== e.hashAntes) throw new Error('a releitura não confere com o backup');
-          resultado[f] = 'restaurado'; e.estado = 'restaurado';
+          resultado[f] = 'restaurado'; e.estado = 'restaurado'; delete e.erroRestauracao;
         } catch (x) { resultado[f] = 'erro'; e.erroRestauracao = msg(x); }
       }
       reg.restauracoes = (reg.restauracoes || []).concat([{em: new Date().toISOString(), por: quem.nome, porId: quem.id, resultado}]);
@@ -57098,7 +57100,7 @@ function vacRaiz(raiz) {
     if (!d.sessao) return {sessao: null, quem: {ok: false, motivo: d.motivo}};
     return {sessao: d.sessao, quem: M.podeAdministrar(cad, d.sessao)};
   }
-  const agoraIso = () => { const d = new Date(), p = n => String(n).padStart(2, '0'); return d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate()) + 'T' + p(d.getHours()) + ':' + p(d.getMinutes()) + ':' + p(d.getSeconds()); };
+  const agoraIso = () => new Date().toISOString();
   const brh = iso => { const m = /^(\d{4})-(\d\d)-(\d\d)T(\d\d):(\d\d)/.exec(String(iso || '')); return m ? m[3] + '/' + m[2] + '/' + m[1] + ' ' + m[4] + ':' + m[5] : String(iso || ''); };
 
   /* ----- textos fixos ----- */
@@ -57181,7 +57183,7 @@ function vacRaiz(raiz) {
       const h = await window.showDirectoryPicker({id: 'vac-migracao', mode: 'readwrite'});
       try { await h.getDirectoryHandle('00. Bases'); }
       catch (e) { est.innerHTML = '<span style="color:var(--crit)">A pasta escolhida não tem <code>00. Bases</code>. Escolha a raiz da linha.</span>'; return; }
-      E.pasta = vacRaiz(h); E.nomePasta = h.name; E.relato = null; E.sel = {}; E.janela = false; E.palavra = ''; E.palavraR = ''; E.em = '';
+      E.pasta = vacRaiz(h); E.nomePasta = h.name; E.relato = null; E.sel = {}; E.janela = false; E.palavra = ''; E.palavraR = ''; E.em = ''; E.m5 = null;
     } catch (e) { est.textContent = e &amp;&amp; e.name === 'AbortError' ? 'Nenhuma pasta escolhida.' : 'Não foi possível abrir a pasta: ' + msg(e); return; }
     telaPasta();
     await carregar();
@@ -57232,12 +57234,14 @@ function vacRaiz(raiz) {
     if (!P) { el.innerHTML = h + '<p class="muted">Prévia ainda não feita.</p>' + botoesPrevia(); ligarPrevia(); return; }
     const arqs = Object.keys(P.alteracoes), exc = P.excecoes || [];
     if (L.ausentes.length) h += `<p class="muted">Arquivos que não existem na pasta (nada a migrar neles): ${esc(L.ausentes.map(f => NOMES[f] || f).join(', '))}.</p>`;
-    if (!arqs.length) {
+    const semOpcao = exc.filter(e => !e.opcoes.length);
+    if (!arqs.length &amp;&amp; !semOpcao.length) {
       h += '<div class="certo"><b>Nada a migrar.</b> As bases desta pasta já estão no formato atual.</div>';
       if (exc.length) h += `<p class="muted">${exc.length} ${exc.length === 1 ? 'item continua' : 'itens continuam'} sem ID, como decidido antes. Não há o que gravar.</p>` + botoesPrevia(true);
       else h += botoesPrevia();
       el.innerHTML = h; ligarPrevia(); return;
     }
+    if (!arqs.length) h += `<div class="erro"><b>Nada é gravado.</b> Há ${semOpcao.length === 1 ? 'uma exceção' : semOpcao.length + ' exceções'} sem decisão possível: corrija a causa no arquivo ou abra o módulo uma vez e refaça a prévia.</div>`;
     const total = Object.values(P.itens).reduce((n, l) => n + l.length, 0), semEsc = contar(exc, e => e.escolha == null);
     h += `<div class="cards"><div class="k"><b>${total}</b><span>alterações planejadas</span></div><div class="k"><b>${arqs.length}</b><span>arquivos a gravar</span></div>
       <div class="k"><b>${exc.length}</b><span>exceções</span></div><div class="k"><b>${semEsc}</b><span>exceções sem decisão</span></div></div>`;
@@ -57248,7 +57252,7 @@ function vacRaiz(raiz) {
     h += `<h3>Exceções</h3>`;
     if (!exc.length) h += '<p class="muted">Nenhuma exceção.</p>';
     else {
-      h += `<p class="sub">O que a ferramenta não resolve sozinha. Decida cada uma: nada é gravado enquanto houver exceção sem decisão. Nome repetido ou fora do cadastro não é ligado a ninguém por conta própria.</p>
+      h += `<p class="sub">O que a ferramenta não resolve sozinha. Decida cada uma: nada é gravado enquanto houver exceção sem decisão. Onde não há opção, a decisão não existe: corrija a causa no arquivo (ou abra o módulo uma vez) e refaça a prévia. Nome repetido ou fora do cadastro não é ligado a ninguém por conta própria.</p>
         <div class="scroll"><table id="tExc"><thead><tr><th>Item</th><th>Arquivo</th><th>Onde</th><th>Valor</th><th>Motivo</th><th>Decisão</th></tr></thead><tbody>${exc.map((e, n) => {
         const v = E.sel[e.id] || {i: -1, texto: ''}, o = e.opcoes[v.i];
         const sel = e.opcoes.length ? `<select data-n="${n}" aria-label="Decisão da exceção ${n + 1}"><option value="-1">Decidir…</option>${e.opcoes.map((x, i) => `<option value="${i}"${v.i === i ? ' selected' : ''}>${esc(x.rotulo)}</option>`).join('')}</select>`
@@ -57282,7 +57286,7 @@ function vacRaiz(raiz) {
   }
   function baixarCsv() {
     const a = document.createElement('a'), u = URL.createObjectURL(new Blob([csv(E.plano)], {type: 'text/csv;charset=utf-8'}));
-    a.href = u; a.download = 'migracao-excecoes-' + (E.em || agoraIso()).replace(/[:T]/g, '-') + '.csv'; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(u), 4000);
+    a.href = u; a.download = 'migracao-excecoes-' + (E.em || agoraIso()).replace(/[:T.]/g, '-') + '.csv'; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(u), 4000);
   }
 
   /* ----- confirmação (aplicar, continuar, restaurar) ----- */
@@ -57324,7 +57328,7 @@ function vacRaiz(raiz) {
     const semEsc = contar(P.excecoes || [], e => e.escolha == null);
     let h = '<h2>Aplicar</h2>' + avisoSessao();
     if (E.quem &amp;&amp; E.quem.ok) {
-      if (semEsc) h += `<div class="aviso">${semEsc} ${semEsc === 1 ? 'exceção ainda não foi decidida' : 'exceções ainda não foram decididas'}. Decida todas na prévia para liberar a aplicação.</div>`;
+      if (semEsc) h += `<div class="aviso">${semEsc} ${semEsc === 1 ? 'exceção ainda não foi decidida' : 'exceções ainda não foram decididas'}. Decida todas na prévia para liberar a aplicação.${contar(P.excecoes || [], e => !e.opcoes.length) ? ' As que estão sem opção não têm decisão: corrija a causa no arquivo e refaça a prévia.' : ''}</div>`;
       h += blocoConfirma(M.CONFIRMACAO, !semEsc, 'Aplicar migração', 'ap', E.palavra, 'p');
     }
     if (E.relato &amp;&amp; E.relato.onde === 'aplicar') h += relatoHtml();
@@ -57367,7 +57371,7 @@ function vacRaiz(raiz) {
     let res;
     try { res = await fazer(); } catch (e) { res = {ok: false, motivo: 'Erro inesperado: ' + msg(e), resultado: {}, registro: null}; }
     res = JSON.parse(JSON.stringify(res));
-    E.relato = {onde, res}; E.janela = false; E.palavra = ''; E.palavraR = '';
+    E.m5 = null; E.relato = {onde, res}; E.janela = false; E.palavra = ''; E.palavraR = '';
     try {
       E.ret = await M.retomar(E.pasta); E.regs = await M.listar(E.pasta); E.lido = await M.lerPasta(E.pasta);
       const c = await conferirSessao(E.lido.arqs['vacutainer-cadastros.json']); E.sessao = c.sessao; E.quem = c.quem;
@@ -57378,7 +57382,36 @@ function vacRaiz(raiz) {
     telas(); telaEstacao(); telaPasta();
   }
 
-  function telas() { telaPrevia(); telaRetomada(); telaAplicar(); telaRegistros(); }
+  /* Conferir M5: só leitura. Compara cada ação do Waste com a cópia nas Iniciativas (título, status, prazo e responsável). */
+  async function conferirM5Tela() {
+    E.m5 = {lendo: true}; telaM5();
+    try {
+      const L = await M.lerPasta(E.pasta);
+      if (L.erros.length || L.ilegiveis.length) E.m5 = {erro: 'Não foi possível ler: ' + L.erros.map(x => (NOMES[x.arquivo] || x.arquivo) + ' (' + x.erro + ')').concat(L.ilegiveis.map(f => (NOMES[f] || f) + ' (ilegível)')).join('; ') + '.'};
+      else if (!L.arqs['perdas-base.json']) E.m5 = {erro: 'Não há base do Waste nesta pasta: nada a conferir.'};
+      else E.m5 = {res: JSON.parse(JSON.stringify(M.conferirM5(L.arqs['perdas-base.json'], L.arqs['iniciativas-base.json'])))};
+    } catch (e) { E.m5 = {erro: 'Não foi possível conferir: ' + msg(e)}; }
+    telaM5();
+  }
+  function telaM5() {
+    const el = $('sM5');
+    if (!E.pasta) { el.hidden = true; el.innerHTML = ''; return; }
+    el.hidden = false;
+    const m = E.m5 || {};
+    let h = `<h2>Conferir M5 · ações do Waste</h2><p class="sub">Só leitura. Confere se cada ação do Waste tem a cópia nas Iniciativas (título, status, prazo e responsável). Faça depois da aplicação e antes de qualquer limpeza no Waste.</p>`;
+    if (m.lendo) h += '<p class="muted">Conferindo…</p>';
+    else if (m.erro) h += `<div class="erro">${esc(m.erro)}</div>`;
+    else if (m.res) {
+      const r = m.res;
+      h += r.ok ? '<div class="certo"><b>Conferido.</b> Toda ação do Waste tem a cópia certa nas Iniciativas.</div>' : '<div class="aviso"><b>Há diferenças.</b></div>';
+      if (r.faltam.length) h += `<p><b>Faltam (${r.faltam.length}):</b> ${esc(r.faltam.join(', '))}.</p><p class="muted">Faltam inclui as ações adiadas à espera da decisão sobre a pessoa: elas só são criadas depois dessa decisão.</p>`;
+      if (r.divergentes.length) h += `<p><b>Divergentes (${r.divergentes.length}):</b></p><ul>${r.divergentes.map(d => `<li>${esc(d.id)}: ${esc(d.campos.map(c => c.campo + ' (Waste: ' + txt(c.original) + ' · Iniciativas: ' + txt(c.copia) + ')').join('; '))}</li>`).join('')}</ul>`;
+    }
+    h += '<div class="bar"><button id="bM5" type="button">Conferir M5</button></div>';
+    el.innerHTML = h;
+    $('bM5').onclick = conferirM5Tela;
+  }
+  function telas() { telaPrevia(); telaRetomada(); telaAplicar(); telaRegistros(); telaM5(); }
   telaEstacao(); telaPasta(); conferirFilas();
   window.vacMigracaoTela = {estado: E};
 })();
