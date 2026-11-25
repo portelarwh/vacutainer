@@ -22120,6 +22120,83 @@ function oeeAcaoPlanner(dim, pick, evs) {
    Quando a revisão do cadastro muda, a Produção copia esses dados para a própria base numa alteração só (com auditoria),
    mantendo os ids já usados nos lançamentos. Só entra o que o Portal tem: domínio vazio no Portal continua com o cadastro local.
    Nas Configurações, os domínios que vêm do Portal ficam só para consulta, com "Editar no Portal". */
+/* Bloco 3 · ProdCad: monta, só na memória, as tabelas de cadastro que o motor lê (linhas, equipamentos, famílias, catálogos, turnos, metas e
+   códigos de parada), as marcas de calendário e os parâmetros derivados, a partir do cadastro da Administração. Função pura: não grava nada.
+   Os ids derivam do código (e da vigência): nenhum índice é guardado. Substitui o CadSync (que sai na Task 4 do bloco 3). */
+const ProdCad = (() => {
+  const slug = s => String(s).toLowerCase().replace(/[^a-z0-9]+/g, '_');
+  const stOf = a => a !== false ? 'ativo' : 'inativo';
+  const pct = x => x == null || x === '' ? null : +x / 100;
+  function montar(C) {
+    C = C || {};
+    const T = { lines: [], machines: [], families: [], catalogs: [], shifts: [], targets: [], downtimeCodes: [], calendar: [], settings: {} };
+    const lineId = cod => { const o = T.lines.find(x => x.code === cod) || (T.lines.length === 1 ? T.lines[0] : null); return o ? o.id : (T.lines[0] || {}).id || null; };
+    const famId = cod => cod ? (T.families.find(x => x.code === cod) || {}).id || null : null;
+    const macId = cod => cod ? (T.machines.find(x => x.code === cod) || {}).id || null : null;
+    const catId = (cod, data) => { if (!cod) return null; const L = T.catalogs.filter(x => x.code === cod); return (L.find(x => (!data || (x.validFrom || '') <= data) &amp;&amp; (!x.validTo || !data || x.validTo >= data)) || L[0] || {}).id || null; };
+    const dcId = cod => cod ? (T.downtimeCodes.find(x => x.code === cod) || {}).id || null : null;
+    for (const l of (C.linhas || []).filter(x => x &amp;&amp; x.codigo)) T.lines.push({ id: 'line_' + slug(l.codigo), code: l.codigo, name: l.nome || l.codigo, unit: l.unidade || null, sector: l.setor || null, status: stOf(l.ativo) });
+    for (const f of (C.familias || []).filter(x => x &amp;&amp; x.codigo)) T.families.push({ id: 'fam_' + slug(f.codigo), code: f.codigo, name: f.nome || f.codigo, color: f.cor || '#2f6db5', active: f.ativo !== false, status: stOf(f.ativo) });
+    for (const e of (C.equipamentos || []).filter(x => x &amp;&amp; x.codigo)) T.machines.push({ id: 'mac_' + slug(e.codigo), description: '', code: e.codigo, name: e.nome || e.codigo, lineId: lineId(e.linha), role: e.papel === 'oee' ? 'oee' : 'equipamento', active: e.ativo !== false, status: stOf(e.ativo) });
+    /* catálogos (só tubos: preparação de aditivo não tem OEE da linha); a 1ª vigência é cat_<código> e as seguintes cat_<código>_<de> */
+    for (const c of (C.catalogos || []).filter(x => x &amp;&amp; x.codigo &amp;&amp; x.tipoItem !== 'preparacao')) {
+      (c.vigencias || []).slice().sort((a, b) => a.de < b.de ? -1 : 1).forEach((v, k) => T.catalogs.push({ id: 'cat_' + c.codigo + (k ? '_' + v.de : ''), machineId: null, note: 'Origem: cadastro da Administração',
+        code: c.codigo, name: c.nome || c.codigo, familyId: famId(c.familia), lineId: lineId(c.linha), pph: v.pphNominal != null ? +v.pphNominal : null, color: c.cor || null,
+        validFrom: v.de, validTo: v.ate || null, portalDe: v.de, active: c.ativo !== false, status: stOf(c.ativo) }));
+    }
+    for (const p0 of (C.paradas || []).filter(x => x &amp;&amp; x.codigo)) T.downtimeCodes.push({ id: 'dc_' + slug(p0.codigo), validFrom: '2025-01-01', validTo: null,
+      code: p0.codigo, name: p0.nome || p0.codigo, description: (p0.guia &amp;&amp; p0.guia.descricao) || '', category: p0.categoria || null, subcategory: p0.subcategoria || null, color: p0.cor || '#888888',
+      planned: !!p0.planejada, deductsPlanned: !!p0.descontaPlanejado, affectsA: !!p0.afetaD, affectsP: !!p0.afetaP, affectsQ: !!p0.afetaQ, inReport: p0.relatorio !== false, inPareto: p0.pareto !== false,
+      requiresNote: !!p0.exigeObservacao, requiresTimes: !!p0.exigeHorario, allowsManualDuration: !!p0.duracaoManual, requiresPrevCatalog: !!p0.exigeCatalogoAnterior, requiresNextCatalog: !!p0.exigeCatalogoSeguinte, active: p0.ativo !== false, status: stOf(p0.ativo) });
+    /* turnos: a versão é sv_<código>_<de>_<dias> (dias colados, ex.: 12345); repetida, ganha _<n> */
+    for (const t of (C.turnos || []).filter(x => x &amp;&amp; x.codigo)) {
+      const o = { id: 'sh_' + slug(t.codigo), code: t.codigo, name: t.nome || t.codigo, lineId: lineId(t.linha), versions: [], status: stOf(t.ativo) }, vistos = new Set();
+      for (const v of (t.vigencias || []).slice().sort((a, b) => a.de < b.de ? -1 : 1)) {
+        let id = 'sv_' + slug(t.codigo) + '_' + v.de + '_' + (v.dias || []).slice().sort((a, b) => a - b).join(''), n = 1;
+        while (vistos.has(id)) id = id.replace(/(_\d+)?$/, '') + '_' + (++n);
+        vistos.add(id);
+        o.versions.push({ id, validFrom: v.de, validTo: v.ate || null, start: v.inicio, end: v.fim, weekdays: (v.dias || []).slice(), color: t.cor || null, active: v.ativo !== false &amp;&amp; t.ativo !== false,
+          productive: v.naoProdutivo ? false : true,
+          breaks: (v.pausas || []).map(x => ({ label: x.nome || (x.codigo || 'Pausa'), start: x.inicio || '', end: x.fim || '', minutes: x.inicio &amp;&amp; x.fim ? null : (+x.duracaoMin || null), weekdays: (x.dias || []).slice(), deducts: x.desconta !== false, codeId: dcId(x.codigo) })),
+          tailMergeMax: v.regraPedacoFinal != null &amp;&amp; v.regraPedacoFinal !== '' ? +v.regraPedacoFinal : null,
+          template: (v.intervalos || []).length ? v.intervalos.map(x => ({ start: x.inicio, end: x.fim })) : null });
+      }
+      T.shifts.push(o);
+    }
+    /* metas de OEE: o id é tg_<código da meta>_<de> */
+    if ((C.metasOee || []).some(m => m &amp;&amp; m.codigo)) {
+      for (const m of (C.metasOee || []).filter(x => x &amp;&amp; x.ativo !== false)) for (const v of (m.vigencias || [])) {
+        T.targets.push({ id: 'tg_' + slug(m.codigo) + '_' + v.de, status: 'ativo', lineId: lineId(m.linha), machineId: macId(m.equipamento), familyId: famId(m.familia), catalogId: catId(m.catalogo, v.de),
+          validFrom: v.de, validTo: v.ate || null, pph: v.pph ? +v.pph : null, oee: pct(v.oeeMetaPct), dailyTarget: v.metaDiaria ? +v.metaDiaria : null, semGreen: pct(v.semaforoVerdePct), semYellow: pct(v.semaforoAmareloPct),
+          coverageMin: pct(v.coberturaMinPct), divergenceMax: pct(v.divergenciaMaxPct), note: m.observacao || null, intervalBoard: Array.isArray(v.quadro) &amp;&amp; v.quadro.length ? v.quadro : null,
+          rounding: 'teto + compensação na última hora', portalCode: m.codigo });
+      }
+    }
+    /* parâmetros comuns (só o que o cadastro define; o resto fica como está) */
+    const P = C.parametros || {}, S = T.settings, PP = P.producao || {};
+    if (P.paradaLongaMin) S.longStopMin = +P.paradaLongaMin;
+    if (P.semaforoVerdePct &amp;&amp; (P.semaforoAmareloPct || P.semaforoAmarelo === false)) S.semaphore = { green: +P.semaforoVerdePct / 100, yellow: (P.semaforoAmarelo === false ? +P.semaforoVerdePct : +P.semaforoAmareloPct) / 100 };
+    if ((P.motivosAbono || []).length) S.abMotivos = P.motivosAbono.slice();
+    if ((P.motivosSemProducaoProg || []).length) S.offMotivosProg = P.motivosSemProducaoProg.slice();
+    if ((P.motivosSemProducaoNP || []).length) S.offMotivosNP = P.motivosSemProducaoNP.slice();
+    if (+PP.unidadeLancamento > 0) S.entryUnit = +PP.unidadeLancamento;
+    if (PP.rotuloUnidade) S.unitLabel = String(PP.rotuloUnidade);
+    if (+PP.continuidadeMin > 0) S.continuityMin = +PP.continuidadeMin;
+    const npDe = (C.turnos || []).flatMap(t => (t.vigencias || []).filter(v => v &amp;&amp; v.naoProdutivo).map(v => v.de)).filter(Boolean).sort()[0] || null;
+    const desde = PP.foraTurnoDesde || npDe; if (desde) S.foraTurnoDesde = String(desde);
+    const AR = (Array.isArray(PP.arredondamentoMeta) ? PP.arredondamentoMeta : []).filter(v => v &amp;&amp; v.de &amp;&amp; +v.valor > 0).map(v => ({ de: v.de, valor: +v.valor })).sort((a, b) => a.de < b.de ? -1 : 1);
+    if (AR.length) { S.roundingVig = AR; const h = U.today(), vg = AR.filter(v => v.de <= h).slice(-1)[0] || AR[0]; S.roundingUnit = vg.valor; }
+    /* calendário: dia sem produção ou dia extra vindo da Administração (origem 'portal'); o id é calp_<data> */
+    for (const x of (Array.isArray(C.calendario) ? C.calendario : [])) {
+      const date = String((x &amp;&amp; x.codigo) || ''); if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || x.ativo === false) continue;
+      const kind = /extra/i.test(x.tipo || '') ? 'extra' : 'off';
+      T.calendar.push({ id: 'calp_' + date, date, lineId: (T.lines[0] || {}).id || null, kind, reason: String(x.nome || '').trim(), reasonType: kind === 'off' ? 'prog' : null, origin: 'portal', status: 'ativo' });
+    }
+    return T;
+  }
+  return { montar };
+})();
+
 const CadSync = (() => {
   const SEC_PORTAL = { estrutura: 'linhas', turnos: 'turnos', catalogos: 'catalogos', metas: 'metasOee', paradas: 'paradas' };
   const doc = () => Store.S.cadDoc || null;
@@ -55305,8 +55382,8 @@ body.vac-porta{overflow:hidden}
       "id": "oee",
       "path": "Plataforma.html#motor/oee",
       "version": "2.6.46",
-      "sha256": "6907676e5ae9e46edd49fc5b33dac991babe2306abb6f3d1a0fbc9ea30094568",
-      "bytes": 2403786
+      "sha256": "428077fb42babfad3633233fa96e6d4036f74b63d6084e748861b8cc63082abb",
+      "bytes": 2412262
     },
     {
       "id": "perdas",
@@ -55368,7 +55445,7 @@ body.vac-porta{overflow:hidden}
   "limitations": [
     "Projetos e conteúdo técnico OSM/MES/AM/TPM mantêm os limites documentados nas fontes."
   ],
-  "enginesSha256": "17b79d2f83c14fb98657157f56d0f92d28ab1f9528a235915893a3914639783e",
+  "enginesSha256": "6c0c692bd64781b7d651613055c3c02dfdde0b4db59428b0fb62e86703fb8711",
   "originRevision": "ffc9ee8",
   "sourceMode": "single-html",
   "originEnginesSha256": "a87a64ad0c328f70e102b2ae888790a9b5d5a9bd05778652a7ce7cae140e40d2"
