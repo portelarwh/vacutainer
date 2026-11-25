@@ -56232,19 +56232,194 @@ const vacMigracao = (() => {
     ctx.alterar('M3', CAD, caminho, v, nova);
   }
 
-  const ITENS = [['M1', planoM1], ['M3', planoM3]];
+  /* ----- M2 · pessoa: ID vazio recebe o ID do cadastro (mesma regra de achar da main, inativos contam) ----- */
+  const norm = s => String(s == null ? '' : s).normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/\s+/g, ' ').trim().toLowerCase();
+  /* pessoa(texto, usuarios) → {id} | {ambiguo:[usuários]} | {nenhum:true}. O ID exato vale primeiro; depois o nome normalizado único. */
+  function pessoa(texto, usuarios) {
+    const k = String(texto == null ? '' : texto).trim(), L = Array.isArray(usuarios) ? usuarios.filter(objeto) : [];
+    if (!k) return {nenhum: true};
+    const u = L.find(x => String(x.codigo) === k);
+    if (u) return {id: String(u.codigo)};
+    const N = L.filter(x => norm(x.nome) === norm(k));
+    if (N.length === 1) return {id: String(N[0].codigo)};
+    return N.length ? {ambiguo: N.map(x => ({codigo: String(x.codigo), nome: x.nome, ativo: x.ativo !== false}))} : {nenhum: true};
+  }
+  const AUTOR = 'migração';
+  const SEM = {valor: 'sem', rotulo: 'Sem responsável (deixar o ID vazio)'};
+  /* Percorre um padrão como 'acoes[]', 'formularios[].fotos[]' ou 'tecnico{}' e devolve {pai, caminho} de cada objeto alcançado. */
+  function alcancar(raiz, padrao) {
+    let nos = [{pai: raiz, caminho: ''}];
+    for (const seg of padrao.split('.')) {
+      const nome = seg.replace(/(\[\]|\{\})$/, ''), lista = seg.endsWith('[]'), mapa = seg.endsWith('{}'), prox = [];
+      for (const n of nos) {
+        const v = objeto(n.pai) ? n.pai[nome] : undefined, base = n.caminho + (n.caminho ? '.' : '') + nome;
+        if (lista &amp;&amp; Array.isArray(v)) v.forEach((x, i) => prox.push({pai: x, caminho: base + '[' + i + ']'}));
+        else if (mapa &amp;&amp; objeto(v)) Object.keys(v).forEach(k => prox.push({pai: v[k], caminho: base + '[' + k + ']'}));
+        else if (!lista &amp;&amp; !mapa &amp;&amp; v !== undefined) prox.push({pai: v, caminho: base});
+      }
+      nos = prox;
+    }
+    return nos.filter(n => objeto(n.pai));
+  }
+  /* Navega no documento copiado até o mesmo caminho do original. */
+  function noDoc(raiz, caminho) {
+    let o = raiz;
+    for (const m of caminho.matchAll(/([^.[\]]+)|\[([^\]]*)\]/g)) o = o[m[1] ?? m[2]];
+    return o;
+  }
+  /* Pares nome/ID por arquivo: [padrão do objeto, [[campo do nome, campo do ID]…], filtro?]. */
+  const PESSOAS = {
+    'iniciativas-base.json': [
+      ['acoes[]', [['responsavel', 'responsavelId'], ['criadaPor', 'criadaPorId']]],
+      ['eventos[]', [['de', 'deId'], ['para', 'paraId']], e => e.tipo === 'responsável'],
+    ],
+    'equipamentos-base.json': [
+      ['os[]', [['responsavel', 'responsavelId'], ['criadaPor', 'criadaPorId']]],
+      ['os[].apontamentos[]', [['por', 'porId']]],
+    ],
+    'linha360-base.json': [
+      ['formularios[]', [['resp', 'respId'], ['conf', 'confId'], ['emissor', 'emissorId'], ['concluidoPor', 'concluidoPorId'],
+        ['confirmadoPor', 'confirmadoPorId'], ['canceladoPor', 'canceladoPorId']]],
+      ['formularios[].desvio', [['resp', 'respId']]],
+      ['formularios[].exec', [['por', 'porId']]],
+      ['formularios[].devolucoes[]', [['por', 'porId']]],
+      ['formularios[].fotos[]', [['por', 'porId'], ['tiradaPor', 'tiradaPorId']]],
+      ['fotos[]', [['por', 'porId'], ['tiradaPor', 'tiradaPorId']]],
+      ['feitos[]', [['por', 'porId']]],
+    ],
+    'paradas-base.json': [['tecnico{}', [['tecnico', 'tecnicoId'], ['por', 'porId']]]],
+    'perdas-base.json': [
+      ['comments[]', [['user', 'userId'], ['alteradoPor', 'alteradoPorId'], ['excluidoPor', 'excluidoPorId']]],
+      ['comments[].hist[]', [['user', 'userId']]],
+      ['exclusoes[]', [['por', 'porId']]],
+    ],
+  };
+  function planoM2(ctx) {
+    const c = ctx.arqs[CAD], usuarios = objeto(c) ? c.usuarios : undefined;
+    if (!Object.keys(PESSOAS).some(a => ctx.arqs[a] !== undefined)) return;
+    if (!Array.isArray(usuarios))
+      return ctx.excecao({tipo: 'M2-estrutura', arquivo: CAD, caminho: 'usuarios', valor: null, motivo: 'O cadastro não tem a lista de usuários. Não dá para ligar as pessoas.'});
+    /* Resolve um nome. Devolve o ID, ou null quando vira exceção ou decisão do responsável. */
+    function resolver(arquivo, caminho, texto) {
+      const r = pessoa(texto, usuarios);
+      if (r.id) return r.id;
+      const ambiguo = !!r.ambiguo;
+      const e = ctx.excecao({tipo: ambiguo ? 'M2-ambiguo' : 'M2-nenhum', arquivo, caminho, valor: texto,
+        motivo: ambiguo ? 'Mais de uma pessoa do cadastro tem este nome (' + r.ambiguo.length + ').' : 'Nenhuma pessoa do cadastro tem este nome.',
+        candidatos: r.ambiguo || [], opcoes: [...(r.ambiguo || []).map(u => ({valor: {id: u.codigo}, rotulo: 'Usar ' + u.nome + ' (' + u.codigo + ')'})),
+          {campo: 'id', rotulo: 'ID de outra pessoa do cadastro'}, SEM]});
+      const esc = ctx.escolhas[e.id];
+      if (esc === 'sem') e.escolha = 'sem';
+      else if (objeto(esc) &amp;&amp; usuarios.some(u => objeto(u) &amp;&amp; String(u.codigo) === String(esc.id))) { e.escolha = {id: String(esc.id)}; return String(esc.id); }
+      else if (esc != null) e.motivo += ' A escolha não vale.';
+      return null;
+    }
+    /* 'migração' é o autor das entradas criadas aqui (M2b), não uma pessoa */
+    const texto = v => typeof v === 'string' &amp;&amp; v.trim() !== '' &amp;&amp; v !== AUTOR;
+    for (const [arquivo, regras] of Object.entries(PESSOAS)) {
+      const orig = ctx.arqs[arquivo];
+      if (!objeto(orig)) continue;
+      for (const [padrao, pares, filtro] of regras) for (const {pai, caminho} of alcancar(orig, padrao)) {
+        if (filtro &amp;&amp; !filtro(pai)) continue;
+        for (const [nk, ik] of pares) {
+          if (!vazio(pai[ik]) || !texto(pai[nk])) continue;
+          const id = resolver(arquivo, caminho + '.' + nk, pai[nk]);
+          if (!id) continue;
+          noDoc(ctx.doc(arquivo), caminho)[ik] = id;
+          ctx.alterar('M2', arquivo, caminho + '.' + ik, pai[ik] ?? null, id);
+        }
+        /* apoios[i] e apoiosIds[i], no mesmo índice */
+        if (padrao === 'acoes[]' &amp;&amp; Array.isArray(pai.apoios)) pai.apoios.forEach((nome, i) => {
+          const ids = Array.isArray(pai.apoiosIds) ? pai.apoiosIds : [];
+          if (!vazio(ids[i]) || !texto(nome)) return;
+          const id = resolver(arquivo, caminho + '.apoios[' + i + ']', nome);
+          if (!id) return;
+          const alvo = noDoc(ctx.doc(arquivo), caminho);
+          if (!Array.isArray(alvo.apoiosIds)) alvo.apoiosIds = [];
+          while (alvo.apoiosIds.length < pai.apoios.length) alvo.apoiosIds.push('');
+          alvo.apoiosIds[i] = id;
+          ctx.alterar('M2', arquivo, caminho + '.apoiosIds[' + i + ']', ids[i] ?? null, id);
+        });
+      }
+    }
+    /* postos da Linha 360°: pessoas{turno} e pessoasIds{turno} */
+    const lin = ctx.arqs['linha360-base.json'];
+    if (objeto(lin) &amp;&amp; Array.isArray(lin.postos)) lin.postos.forEach((p, i) => {
+      if (!objeto(p) || !objeto(p.pessoas)) return;
+      const ids = objeto(p.pessoasIds) ? p.pessoasIds : {};
+      for (const t of Object.keys(p.pessoas)) {
+        if (!vazio(ids[t]) || !texto(p.pessoas[t])) continue;
+        const id = resolver('linha360-base.json', 'postos[' + i + '].pessoas[' + t + ']', p.pessoas[t]);
+        if (!id) continue;
+        const alvo = ctx.doc('linha360-base.json').postos[i];
+        if (!objeto(alvo.pessoasIds)) alvo.pessoasIds = {};
+        alvo.pessoasIds[t] = id;
+        ctx.alterar('M2', 'linha360-base.json', 'postos[' + i + '].pessoasIds[' + t + ']', ids[t] ?? null, id);
+      }
+    });
+    /* M2b · técnico do Forms sem entrada em tecnico{} (a main resolvia na leitura, idTec) */
+    const par = ctx.arqs['paradas-base.json'];
+    if (objeto(par) &amp;&amp; Array.isArray(par.eventos) &amp;&amp; (par.tecnico == null || objeto(par.tecnico))) par.eventos.forEach((ev, i) => {
+      if (!objeto(ev) || vazio(ev.id) || !texto(ev.tecnicoForms)) return;
+      if (objeto(par.tecnico) &amp;&amp; Object.prototype.hasOwnProperty.call(par.tecnico, ev.id)) return;
+      const id = resolver('paradas-base.json', 'eventos[' + i + '].tecnicoForms', ev.tecnicoForms);
+      if (!id) return;
+      const u = usuarios.find(x => objeto(x) &amp;&amp; String(x.codigo) === id), doc = ctx.doc('paradas-base.json');
+      if (!objeto(doc.tecnico)) doc.tecnico = {};
+      doc.tecnico[ev.id] = {tecnico: u.nome, tecnicoId: id, por: AUTOR, porId: ''};
+      ctx.alterar('M2b', 'paradas-base.json', 'tecnico[' + ev.id + ']', null, doc.tecnico[ev.id]);
+    });
+  }
+
+  /* ----- M4 · locais antigos do Gel: {e,d} reescrito pelo local do cadastro (busca da main, localGel) ----- */
+  function acharLocal(locais, e, d) {
+    const codigo = String(e || '').replace(/^eq-/, ''), leg = l => Array.isArray(l.legado) ? l.legado : [];
+    return locais.find(l => l.id === d &amp;&amp; (!codigo || String(l.equipamento) === codigo))
+      || locais.find(l => leg(l).some(r => objeto(r) &amp;&amp; r.e === e &amp;&amp; r.d === d))
+      || locais.find(l => String(l.equipamento) === codigo &amp;&amp; leg(l).some(r => objeto(r) &amp;&amp; r.d === d)) || null;
+  }
+  function planoM4(ctx) {
+    const c = ctx.arqs[CAD], locais = objeto(c) &amp;&amp; objeto(c.gel) &amp;&amp; Array.isArray(c.gel.locais) ? c.gel.locais.filter(objeto) : null;
+    const grupos = [], fifo = ctx.arqs['fifo-base.json'], oee = ctx.arqs['oee-vacutainer-base.json'];
+    if (objeto(fifo)) for (const {pai, caminho} of alcancar(fifo, 'prodlog{}.turns{}')) if (Array.isArray(pai.eq)) grupos.push(['fifo-base.json', caminho + '.eq', pai.eq]);
+    if (objeto(oee)) for (const {pai, caminho} of alcancar(oee, 'productionDays[].shifts[].gelScrap')) if (Array.isArray(pai.eq)) grupos.push(['oee-vacutainer-base.json', caminho + '.eq', pai.eq]);
+    if (!grupos.length) return;
+    if (!locais) {
+      if (grupos.some(g => g[2].some(r => objeto(r) &amp;&amp; !vazio(r.d))))
+        ctx.excecao({tipo: 'M4-estrutura', arquivo: CAD, caminho: 'gel.locais', valor: null, motivo: 'O cadastro não tem a lista de locais do Gel. Não dá para ligar os registros antigos.'});
+      return;
+    }
+    for (const [arquivo, base, eq] of grupos) eq.forEach((r, i) => {
+      if (!objeto(r) || vazio(r.d)) return;
+      const caminho = base + '[' + i + ']', l = acharLocal(locais, r.e, r.d);
+      if (!l) {
+        const x = ctx.excecao({tipo: 'M4-sem-local', arquivo, caminho, valor: {e: r.e ?? null, d: r.d},
+          motivo: 'Nenhum local do cadastro corresponde a este registro. Ele fica como está e aparece sem local.'});
+        if (ctx.escolhas[x.id] === 'manter') x.escolha = 'manter';
+        return;
+      }
+      const e = 'eq-' + l.equipamento, d = l.id;
+      if (r.e === e &amp;&amp; r.d === d) return;
+      const alvo = noDoc(ctx.doc(arquivo), caminho);
+      alvo.e = e; alvo.d = d;
+      ctx.alterar('M4', arquivo, caminho, {e: r.e ?? null, d: r.d}, {e, d});
+    });
+  }
+
+  const ITENS = [['M1', planoM1], ['M2', planoM2], ['M3', planoM3], ['M4', planoM4]];
 
   /* planejar(arqs, escolhas) → {itens, alteracoes, excecoes}. O cadastro é arqs['vacutainer-cadastros.json']. Não grava nem altera o que recebe. */
   async function planejar(arqs, escolhas) {
     const ctx = contexto(arqs || {}, escolhas);
     for (const [item, fazer] of ITENS) { ctx.itens[item] = ctx.itens[item] || []; fazer(ctx); }
+    ctx.itens.M2b = ctx.itens.M2b || [];
     const alteracoes = {};
     for (const [arquivo, itens] of Object.entries(ctx.porArquivo))
       alteracoes[arquivo] = {hashAntes: await hash(ctx.arqs[arquivo]), depois: ctx.depois[arquivo], itens};
     return {itens: ctx.itens, alteracoes, excecoes: ctx.excecoes};
   }
 
-  return Object.freeze({planejar, hash, canonico});
+  return Object.freeze({planejar, hash, canonico, pessoa});
 })();
 globalThis.vacMigracao = vacMigracao;
 </script>

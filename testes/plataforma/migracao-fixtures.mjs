@@ -44,7 +44,7 @@ function cadastro() {
       formatos: [{de: '2025-01-01', ate: null, embalagemG: 75, sobraBarrilKg: 1.6, tubos: {'100': {tuboG: 4.779, gelG: 0.936, aditivoG: 0.02, tampaRolhaG: 2.3}}}],
       locais: [
         {id: 'L-0001', equipamento: 'EQ03', local: 'Máquina de gel (TESTE)', comp: 'tubogel', ordem: 1, ativo: true, legado: [{e: 'eq-EQ03', d: 'd-gel-1'}]},
-        {id: 'L-0002', equipamento: 'EQ08', local: 'Spray (TESTE)', comp: 'spray', ordem: 2, ativo: true, legado: [{e: 'eq-EQ08', d: 'd-spray'}]},
+        {id: 'L-0002', equipamento: 'EQ08', local: 'Spray (TESTE)', comp: 'spray', ordem: 2, ativo: true, legado: [{e: 'eq-EQ08', d: 'd-spray'}, {e: 'eq-ANT', d: 'd-passo3'}]},
       ],
     },
   };
@@ -78,7 +78,8 @@ export function pastaMain() {
         {id: 'AC-T-0002', titulo: 'Ação fictícia homônima', status: 'a fazer', responsavel: 'Carla Souza (TESTE)', apoios: ['Ninguém Cadastrado'], criadaPor: 'Pessoa Ausente'},
         {id: 'AC-T-0003', titulo: 'Ação com ID gravado', status: 'feita', responsavel: 'Nome Antigo', responsavelId: '1002'},
       ],
-      eventos: [{id: 'e1', acao: 'AC-T-0001', tipo: 'criação', de: '', para: 'Ana Líder (TESTE)', em: '2026-11-19T08:00:00Z', por: 'Ana Líder (TESTE)'}],
+      eventos: [{id: 'e1', acao: 'AC-T-0001', tipo: 'criação', de: '', para: 'Ana Líder (TESTE)', em: '2026-11-19T08:00:00Z', por: 'Ana Líder (TESTE)'},
+        {id: 'e2', acao: 'AC-T-0001', tipo: 'responsável', de: 'Ana Líder (TESTE)', para: 'Bruno Operador (TESTE)', paraId: '', em: '2026-11-19T09:00:00Z', por: 'Ana Líder (TESTE)'}],
       kas: [],
     }),
     'equipamentos-base.json': base('vac-equipamentos', {
@@ -88,9 +89,12 @@ export function pastaMain() {
     }),
     'linha360-base.json': base('vac-linha360', {
       pontos: [], areas: [], checklists: [], eventos: [],
-      postos: [{id: 'P1', nome: 'Posto fictício', pessoas: ['Ana Líder (TESTE)', 'Carla Souza (TESTE)']}],
+      postos: [{id: 'P1', nome: 'Posto fictício', pessoas: {T1: 'Ana Líder (TESTE)', T2: 'Carla Souza (TESTE)'}, pessoasIds: {T1: '', T3: '1002'}}],
       feitos: [{id: 'f1', por: 'Bruno Operador (TESTE)', em: '2026-11-19T09:00:00Z'}],
-      formularios: [{id: 'FM-1', resp: 'Ana Líder (TESTE)', emissor: 'Pessoa Ausente', fotos: [{id: 'ft1', por: 'Bruno Operador (TESTE)'}], devolucoes: []}],
+      formularios: [{id: 'FM-1', resp: 'Ana Líder (TESTE)', conf: 'Bruno Operador (TESTE)', emissor: 'Pessoa Ausente', desvio: {resp: 'Ana Líder (TESTE)'}, exec: {por: 'Carla Souza (TESTE)', aval: {}},
+        concluidoPor: 'Ana Líder (TESTE)', confirmadoPor: 'Bruno Operador (TESTE)', devolucoes: [{em: '2026-11-19T10:00:00Z', por: 'Bruno Operador (TESTE)'}],
+        fotos: [{id: 'ft1', por: 'Bruno Operador (TESTE)', tiradaPor: 'Ana Líder (TESTE)'}]}],
+      fotos: [{id: 'ft2', tiradaPor: 'Ana Líder (TESTE)'}],
     }),
     'paradas-base.json': base('vac-paradas', {
       eventos: [
@@ -103,7 +107,8 @@ export function pastaMain() {
     'perdas-base.json': {
       schema: 'perdas-base', appVersion: '1.12.19', rev: 9, createdAt: '2026-01-01T00:00:00Z', updatedAt: '2026-11-20T10:00:00Z', updatedBy: 'Ana Líder (TESTE)',
       config: {}, imports: [], rows: [], closings: [], audit: [],
-      comments: [{id: 'c1', ordem: '100234567', comp: '1034567', texto: 'Comentário fictício', user: 'Ana Líder (TESTE)', data: '2026-11-19T08:00:00Z', ativo: true}],
+      comments: [{id: 'c1', ordem: '100234567', comp: '1034567', texto: 'Comentário fictício', user: 'Ana Líder (TESTE)', data: '2026-11-19T08:00:00Z', ativo: true,
+        alteradoPor: 'Bruno Operador (TESTE)', excluidoPor: 'Ana Líder (TESTE)', hist: [{data: '2026-11-19T07:00:00Z', user: 'Bruno Operador (TESTE)'}]}],
       actions: [
         {id: 'w1', ordem: '100234567', comp: '1034567', desc: 'Ação antiga fictícia', causa: 'Embalagem', status: 'em andamento', resp: 'Qualidade', prazo: '2026-11-30', abertura: '2026-11-09', user: 'Ana Líder (TESTE)'},
         {id: 'w2', ordem: '100234568', comp: '1034568', desc: 'Ação antiga de homônimo', causa: 'Processo', status: 'aberta', resp: 'Carla Souza (TESTE)', prazo: '2026-12-05', abertura: '2026-11-10', user: 'Carla Souza (TESTE)'},
@@ -117,7 +122,7 @@ export function pastaMain() {
     },
     'oee-vacutainer-base.json': {
       databaseVersion: 3, applicationVersion: '2.6.44', baseId: 'oee-teste', productionDays: [{id: 'D1', date: '2026-11-19', shifts: [{id: 'S1',
-        gelScrap: {none: false, em: '2026-11-19T15:00:00Z', por: 'Ana Líder (TESTE)', eq: [{e: 'eq-EQ08', d: 'd-spray', cat: 'cat-a', kg: 0.3, nb: 0, mots: []}]}}]}],
+        gelScrap: {none: false, em: '2026-11-19T15:00:00Z', por: 'Ana Líder (TESTE)', eq: [{e: 'eq-EQ08', d: 'd-spray', cat: 'cat-a', kg: 0.3, nb: 0, mots: []}, {e: 'eq-EQ08', d: 'd-passo3', cat: 'cat-a', kg: 0.1, nb: 0, mots: []}]}}]}],
     },
   };
 }

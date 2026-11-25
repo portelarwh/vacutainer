@@ -11,7 +11,12 @@ const comCatalogos = catalogos => {
   pasta[CAD].catalogos = catalogos;
   return pasta;
 };
-const plano = (arqs, escolhas) => M.planejar(arqs, escolhas).then(json);
+/* Este arquivo cobre M1 e M3; M2 e M4 têm o migracao-pessoas.test.mjs. */
+const plano = (arqs, escolhas) => M.planejar(arqs, escolhas).then(p => {
+  p = json(p);
+  p.excecoes = p.excecoes.filter(e => e.item === 'M1' || e.item === 'M3');
+  return p;
+});
 const aplicado = (arqs, p) => ({...arqs, ...Object.fromEntries(Object.entries(p.alteracoes).map(([a, x]) => [a, x.depois]))});
 const tipos = (p, item) => p.excecoes.filter(e => e.item === item).map(e => e.tipo);
 
@@ -113,7 +118,7 @@ test('M3: escolha "Deixar como está" ou data inválida não grava', async () =>
 test('M3: vigência com bomG sem bomKg é convertida pela mesma conta', async () => {
   const pasta = comCatalogos([{codigo: 'cat-b', gel: {vig: [{from: '2025-03-01', gTubo: 0.9, bomG: 10, bomPct: 105}, {from: '2025-09-01', gTubo: 0.9, bomKg: 11, bomBase: 10000, tol: 6}]}}]);
   const p = await plano(pasta);
-  assert.deepEqual(p.excecoes, []);
+  assert.deepEqual(tipos(p, 'M3'), []);
   assert.deepEqual(p.alteracoes[CAD].depois.catalogos[0].gel.vig, [
     {from: '2025-03-01', gTubo: 0.9, bomKg: 10 * 105 / 100 * 10, bomBase: 10000, tol: 5},
     {from: '2025-09-01', gTubo: 0.9, bomKg: 11, bomBase: 10000, tol: 6},
@@ -170,7 +175,7 @@ test('M3: catálogo atual, sem gel ou só com vigências convertidas não muda',
   const pasta = comCatalogos(pastaMain()[CAD].catalogos.slice(2));
   const p = await plano(pasta);
   assert.equal(p.alteracoes[CAD], undefined);
-  assert.deepEqual(p.excecoes, []);
+  assert.deepEqual(tipos(p, 'M3'), []);
 });
 
 test('idempotência: planejar a pasta já aplicada não encontra alterações', async () => {
@@ -178,7 +183,7 @@ test('idempotência: planejar a pasta já aplicada não encontra alterações', 
   const primeiro = await plano(pasta);
   const escolhas = Object.fromEntries(primeiro.excecoes.filter(e => e.tipo === 'M3-data').map(e => [e.id, {from: '2025-01-01'}]));
   const p = await plano(pasta, escolhas);
-  assert.deepEqual(Object.keys(p.alteracoes).sort(), [PORTAL, CAD].sort());
+  assert.ok(p.alteracoes[PORTAL] && p.alteracoes[CAD]);
   assert.equal(p.alteracoes[CAD].depois.catalogos.length, pasta[CAD].catalogos.length, 'nenhum catálogo some ou duplica');
   const depois = aplicado(pasta, p);
   for (const esc of [escolhas, {}]) {

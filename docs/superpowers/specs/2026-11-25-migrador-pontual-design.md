@@ -28,7 +28,7 @@ A #149 retira do caminho normal toda leitura de formato antigo. Bases e vínculo
 
 ## Estrutura
 
-- **Núcleo puro:** `vacMigracao.planejar(arquivos) → { alteracoes: {<arquivo>: {antes, depois, itens[]}}, excecoes[] }`. Não toca a pasta e é testável em Node com dados fictícios.
+- **Núcleo puro:** `vacMigracao.planejar(arqs, escolhas) → { itens, alteracoes: {<arquivo>: {hashAntes, depois, itens[]}}, excecoes[] }` (assíncrona; `arqs` é `{arquivo: conteúdo}` e o cadastro vem de `arqs['vacutainer-cadastros.json']`). Não toca a pasta e é testável em Node com dados fictícios.
 - **Aplicação:** `vacMigracao.aplicar(plano, escolhas)`. Exige sessão com permissão de edição da Administração e confirmação digitada. Grava na ordem cadastro → Iniciativas → Equipamentos → Linha 360° → Paradas → Gel → Produção → Administração. Para cada arquivo:
   1. relê o arquivo;
   2. compara o hash com o da prévia; se mudou, pula o arquivo e manda refazer a prévia;
