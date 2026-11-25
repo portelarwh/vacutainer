@@ -11,6 +11,7 @@ const cen = JSON.parse(cp.execFileSync('node', ['scripts/bloco.mjs', 'dados/cena
   const srv = server(); await new Promise(r => srv.listen(0, '127.0.0.1', r));
   const b = await chromium.launch(require('../testes/plataforma/chromium.cjs')()); const p = await (await b.newContext()).newPage();
   await p.goto('http://127.0.0.1:' + srv.address().port + '/__modulos__/OEE-Vacutainer.html'); await p.waitForFunction(() => typeof ProdCad !== 'undefined');
+  /* global ProdCad */
   const T = await p.evaluate(C => ProdCad.montar(C), cen.bases.cad); await b.close(); srv.close();
   const o = cen.bases.oee, slug = s => String(s).toLowerCase().replace(/[^a-z0-9]+/g, '_');
   const porCod = (lista, cod) => lista.filter(x => x.code === cod);

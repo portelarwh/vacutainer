@@ -50,7 +50,7 @@ const { chromium } = require('playwright');
     const vigs = sh.versions.filter(v => !v.deleted).map(v => ({ de: v.validFrom, ate: v.validTo || null, inicio: v.start, fim: v.end, dias: v.weekdays, ativo: true, pausas: [], intervalos: [] }));
     sh.status = 'inativo';                                   // desativado aqui antes do Portal assumir (PRD-04)
     const tc = JSON.parse(JSON.stringify(sh)); tc.id = 'sh_tc'; tc.code = 'TC'; tc.status = 'ativo'; d.shifts.push(tc);   // mesmo turno com outro código
-    const outros = d.shifts.filter(x => !x.deleted && x.id !== sh.id && x.id !== 'sh_tc').map(x => ({ codigo: x.code, nome: x.name, ativo: x.status !== 'inativo', vigencias: (x.versions || []).filter(v => !v.deleted).map(v => ({ de: v.validFrom, ate: v.validTo || null, inicio: v.start, fim: v.end, dias: v.weekdays, ativo: v.active !== false, pausas: [], intervalos: [] })) }));
+    void d.shifts.filter(x => !x.deleted && x.id !== sh.id && x.id !== 'sh_tc').map(x => ({ codigo: x.code, nome: x.name, ativo: x.status !== 'inativo', vigencias: (x.versions || []).filter(v => !v.deleted).map(v => ({ de: v.validFrom, ate: v.validTo || null, inicio: v.start, fim: v.end, dias: v.weekdays, ativo: v.active !== false, pausas: [], intervalos: [] })) }));
     const T = ProdCad.montar({ rev: 1, turnos: [{ codigo: sh.code, nome: sh.name, ativo: true, vigencias: vigs }], parametros: {} });
     return { st: T.shifts.find(x => x.code === sh.code).status, cod: sh.code };
   });

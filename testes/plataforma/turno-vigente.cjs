@@ -49,7 +49,7 @@ const html = fs.readFileSync(path.resolve(__dirname, '../../Plataforma.html'));
     await page.evaluate(() => { location.hash = '#/oee?tab=launch'; });
     o = await (await page.locator('iframe[title="Módulo Produção"]').elementHandle()).contentFrame(); await o.waitForFunction(() => window.vacPagina?.pronto());
     const r1 = await o.evaluate(async ({ sab }) => {
-      Store.S.db = Store.S.db; try { Engine.bumpConfig(); } catch (e) { }   // remonta as tabelas a partir do cadastro (o que acontece quando o cadastro da pasta muda)
+      { const d0 = Store.S.db; Store.S.db = d0; } try { Engine.bumpConfig(); } catch (e) { }   // remonta as tabelas a partir do cadastro (o que acontece quando o cadastro da pasta muda)
       const antes = db().productionDays.find(d => !d.deleted && d.date === sab).shifts.find(p => p.snap.code === 'T1').snap.end;
       App.sel.date = sab; go('launch'); render(); await new Promise(r => setTimeout(r, 400));
       const b = document.querySelector('#horNovo'); return { antes, aviso: b ? b.textContent.replace(/\s+/g, ' ') : '' };

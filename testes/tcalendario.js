@@ -27,7 +27,7 @@ const errs = []; const ok = (c, m) => { console.log((c ? 'ok   ' : 'FALHA ') + m
   const o = await c.newPage(); o.on('pageerror', e => pe.push('Produção: ' + e.message)); o.on('dialog', d => d.accept());
   await o.goto('file://' + RAIZ + '__modulos__/OEE-Vacutainer.html'); await o.waitForTimeout(900);
   const R = await o.evaluate(() => { document.querySelectorAll('.overlay').forEach(x => x.remove()); Demo.enterExample(); document.querySelectorAll('.overlay').forEach(x => x.remove());
-    const d = Store.S.db, LN = 'line_vac', aud = [], audit = x => aud.push(x);
+    const d = Store.S.db, LN = 'line_vac';
     // dia com lançamento (não vira "sem produção")
     const comLanc = d.productionDays.filter(x => !x.deleted && Engine.dayEntries(x)).map(x => x.date).sort().pop(); d.productionDays.forEach(x => { if (x.date === comLanc) x.demo = false; });
     const C = { rev: 9, calendario: [{ codigo: '2026-12-25', tipo: 'sem produção', nome: 'Natal', ativo: true }, { codigo: '2026-12-26', tipo: 'dia extra', nome: 'Sábado extra', ativo: true }, { codigo: '2026-12-27', tipo: 'dia extra', nome: 'Domingo extra', ativo: true }, { codigo: comLanc, tipo: 'sem produção', nome: 'teste', ativo: true }] };

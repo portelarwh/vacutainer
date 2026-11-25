@@ -55,7 +55,7 @@ const html = fs.readFileSync(path.resolve(__dirname, '../../Plataforma.html'));
     const o = await (await page.locator('iframe[title="Módulo Produção"]').elementHandle()).contentFrame(); await o.waitForFunction(() => window.vacPagina?.pronto());
     await w(1500);
     const R = await o.evaluate(nova => {
-      Store.S.db = Store.S.db; try { Engine.bumpConfig(); } catch (e) { }   // remonta as tabelas a partir do cadastro
+      { const d0 = Store.S.db; Store.S.db = d0; } try { Engine.bumpConfig(); } catch (e) { }   // remonta as tabelas a partir do cadastro
       const mk = dt => { const d = Engine.buildDay(db(), dt, 'line_vac', 'mac_line', 'x'), cat = db().catalogs.find(c => c.active !== false); d.shifts.forEach(p => { p.initialCatalogId = cat.id; });
         const r = Engine.computeDayRaw(db(), d), sr = r.shifts.find(x => x.ps.snap.code === 'T1'); return { janela: sr.ps.snap.start + '–' + sr.ps.snap.end, ivs: sr.ps.intervals.length, meta: sr.r.metaOp }; };
       /* a primeira sexta e o sábado seguinte a partir do início da vigência nova (antes eram datas fixas) */
