@@ -20,6 +20,8 @@ const { CADASTRO } = require('./prodcad-fixture.cjs');
       const v = (d, wd) => { const x = Engine.shiftVersionAt(t1, d, wd); return x ? x.start + '-' + x.end : null; };
       return { pph2025: pphEm('2025-06-10'), pph2026: pphEm('2026-03-10'), pph2024: pphEm('2024-06-10'),
         t1Seg2025: v('2025-06-09', 1), t1Seg2026: v('2026-03-09', 1), t1Sab2026: v('2026-03-14', 6), t1Sab2025: v('2025-06-14', 6),
+        idsCat: T.catalogs.map(c => c.id + (c.active === false ? '(inativo)' : '')),
+        desativada: (() => { const c = T.catalogs.find(x => x.id === 'cat_360060_2024-01-01'); return c ? { ativo: c.active, status: c.status, de: c.validFrom, valida: !!Engine.catalogValid(c, '2024-06-10') } : null; })(),
         versoes: t1.versions.map(x => [x.validFrom, x.validTo, x.weekdays.join('')]), idsUnicos: new Set(t1.versions.map(x => x.id)).size === t1.versions.length };
     }, CADASTRO);
     assert.equal(r.pph2025, 100, 'dia de 2025 usa a vigência de 2025 do catálogo');
@@ -30,6 +32,8 @@ const { CADASTRO } = require('./prodcad-fixture.cjs');
     assert.equal(r.t1Sab2026, '06:00-13:30', 'sábado de 2026 usa a versão própria (1 h a menos)');
     assert.equal(r.t1Sab2025, null, 'sábado de 2025 não tinha turno (a versão de sábado só existe desde 2026)');
     assert.equal(r.idsUnicos, true, 'cada versão de turno tem id próprio');
+    assert.deepEqual(r.idsCat, ['cat_360060_2025-01-01', 'cat_360060_2026-01-01', 'cat_360060_2024-01-01(inativo)', 'cat_360055_2025-01-01'], 'o id do catálogo é sempre cat_<código>_<de> (estável: uma vigência nova não muda o id das antigas)');
+    assert.deepEqual(r.desativada, { ativo: false, status: 'inativo', de: '2024-01-01', valida: false }, 'vigência desativada na Administração continua na tabela, inativa: o dia já lançado com esse id continua achando o catálogo (contrato 2)');
     assert.deepEqual(erros, []);
     console.log('ok ProdCad: catálogo e turno respeitam a vigência da data do fato (2025, 2026, sábado e antes da 1ª vigência)');
   } finally { await browser.close(); srv.close(); }

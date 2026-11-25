@@ -37,7 +37,7 @@ const TAB = ['lines', 'machines', 'families', 'catalogs', 'shifts', 'targets', '
       return out;
     }, [CADASTRO, TAB]);
     assert.equal(a.estado, 'ok', 'cadastro lido: estado ok');
-    assert.equal(a.contagens, 'lines=1 machines=3 families=2 catalogs=3 shifts=3 targets=2 downtimeCodes=3', 'tabelas montadas em memória (os 3 códigos de parada são REF, FME e o RTB que o Model.ensure acrescenta por política de retrabalho): ' + a.contagens);
+    assert.equal(a.contagens, 'lines=1 machines=3 families=2 catalogs=4 shifts=3 targets=2 downtimeCodes=3', 'tabelas montadas em memória (os 3 códigos de parada são REF, FME e o RTB que o Model.ensure acrescenta por política de retrabalho): ' + a.contagens);
     assert.equal(a.arquivoSemTabelas, true, 'o arquivo gravado não tem as 7 tabelas');
     assert.equal(a.marcasPortalNoArquivo, 0, 'marcas de calendário do cadastro não vão para o arquivo');
     assert.equal(a.marcasPortalNaMemoria, 2, 'mas existem em memória');

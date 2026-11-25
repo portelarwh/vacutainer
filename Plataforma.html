@@ -2658,7 +2658,7 @@ window.vacPagina = (() => {
   document.addEventListener('input', ev => { const el = ev.target; if (el &amp;&amp; el.closest) rascunho = el.closest('.overlay,.mod-bg,.modal.on,#mForm') || rascunho; }, true);
   function pronto() {
     try {
-      if (id() === 'oee') return typeof CadSync !== 'undefined' &amp;&amp; !!db();
+      if (id() === 'oee') return typeof ProdCad !== 'undefined' &amp;&amp; !!db();
       if (id() === 'portal') return typeof Cad !== 'undefined' &amp;&amp; !!Store.B;
       if (id() === 'perdas') return typeof B !== 'undefined' &amp;&amp; !!B;
       if (id() === 'gel') return typeof gelExports === 'function' &amp;&amp; typeof backend !== 'undefined';
@@ -5080,7 +5080,7 @@ const CAD_T={
 CAD_T.componentes={nome:'Componentes',um:'componente',campos:[['codigo','Código (<EQ>-Cnn)','cod'],['equipamento','Equipamento','refcod','equipamentos'],['nome','Nome','txt',null,{w:2}],['sistema','Sistema','sel',['mecânico','elétrico','pneumático','hidráulico','automação','visão','ferramental','outro']],['criticidade','Criticidade','sel',['A','B','C']],['materialSAP','Material SAP','txt']]};
 CAD_T.modosFalha={nome:'Modos de falha',um:'modo de falha',campos:[['codigo','Código','cod'],['nome','Nome','txt',null,{w:2}]]};
 /* 1.9.35 · calendário de produção (pendência da centralização): dias sem produção programada (feriado, parada da planta) e dias extras da linha.
-   Código = a data (AAAA-MM-DD, texto); "Motivo" é o nome. A Produção aplica pelo CadSync (dia com lançamento ou fechado não vira "sem produção").
+   Código = a data (AAAA-MM-DD, texto); "Motivo" é o nome. A Produção monta em memória (ProdCad); dia com lançamento ou fechado não vira "sem produção".
    Nada se apaga: para desfazer, inative o dia. */
 CAD_T.calendario={nome:'Calendário de produção',um:'dia do calendário',campos:[['codigo','Data (AAAA-MM-DD)','cod'],['tipo','Tipo','sel',['sem produção','dia extra']],['nome','Motivo','txt',null,{w:2}]]};
 /* 1.9.14 · INI-02 (Fase 6): programas de melhoria (KAS, OSM, 5S e outros); Iniciativas / Ações abre uma aba para cada um */
@@ -6969,7 +6969,7 @@ function cadParametros(el){const D=Cad.D,pe=Cad.podeEditar(true),P=D.parametros|
 /* ---------- 1.9.7 · ARQ-06: parâmetros por página e "Neste computador" ----------
    parametros.producao = {unidadeLancamento, rotuloUnidade, arredondamentoMeta:[{de, valor}], casasPct (1.9.20: casas decimais dos percentuais da Produção; vazio = 2)}.
    O arredondamento muda a meta: vale por vigência (D7). Só se acrescenta vigência a partir de hoje; as gravadas não mudam (regra 3).
-   A Produção aplica pelo CadSync e trava os campos na Configuração dela. */
+   A Produção monta em memória (ProdCad) e trava os campos na Configuração dela. */
 function parArredEm(L,data){return(L||[]).filter(v=>v&amp;&amp;v.de&amp;&amp;v.de<=data).sort((a,b)=>a.de<b.de?1:-1)[0]||null}
 function parProducaoHtml(P,pe){const Q=P.producao||{},L=(Q.arredondamentoMeta||[]).slice().sort((a,b)=>a.de<b.de?-1:1),h=todayISO(),vig=parArredEm(L,h),dis=pe?'':' disabled';
  return`<div class="card form" id="parProd" style="margin-top:14px"><div class="par-hd"><h3>Produção ${ib('Parâmetros da Produção','Valores que só a Produção usa, mas que ficam aqui para valerem iguais em todos os computadores. A Produção recebe na próxima revisão do cadastro e trava esses campos na Configuração dela.')}</h3>${pe?'<button class="b p" id="ppOk">Salvar parâmetros da Produção</button>':''}</div>
@@ -8256,61 +8256,6 @@ const Model = (() => {
     };
   }
 
-  // Estrutura inicial da linha Vacutainer. Catálogos, PPH e equipamentos vêm da própria planilha
-  // (abas "Códigos SM", "BASE DE DADOS" e "PARADAS"). Metas de OEE não são criadas aqui: vêm da importação.
-  function seed(db, by) {
-    const L = { id: 'line_vac', code: 'VAC', name: 'Vacutainer', unit: db.settings.unitName, sector: 'Vacutainer', description: 'Linha Vacutainer 13×75 / 13×100', timezone: db.settings.timezone, calendar: db.settings.calendar, ...meta(by) };
-    db.lines.push(L);
-    db.machines.push({ id: 'mac_line', lineId: L.id, code: 'LINHA', name: 'Linha Vacutainer', description: 'Ponto de medição do OEE (saída da linha)', role: 'oee', ...meta(by) });
-    ['Tullip A', 'Tullip B', 'Gel dispensor', 'Metro', 'Evacuator', 'Cap Placer', 'Packout', 'Silica spray coater', 'Kallfass', 'Tray Loader', 'Transporte de bandejas', 'Etiquetagem']
-      .forEach((n, i) => db.machines.push({ id: 'mac_' + (i + 1), lineId: L.id, code: 'EQ' + String(i + 1).padStart(2, '0'), name: n, description: '', role: 'equipamento', ...meta(by) }));
-    db.families.push({ id: 'fam_edta', code: 'EDTA', name: 'EDTA', color: '#7b5ea7', ...meta(by) }, { id: 'fam_sst', code: 'SST', name: 'SST', color: '#c08a1e', ...meta(by) });
-    const cats = [
-      ['360051', 'Tubo 13x75mm Hemogard 3ml Sem Aditivo', 'fam_edta', 90000],
-      ['360053', 'Tubo 13x75mm Hemogard 4ml Silica', 'fam_sst', 72000],
-      ['360055', 'Tubo 13x75mm Hemogard 2ml EDTA', 'fam_edta', 90000],
-      ['360056', 'Tubo 13x75mm Hemogard 3ml EDTA', 'fam_edta', 90000],
-      ['360057', 'Tubo 13x75mm Hemogard 4ml EDTA', 'fam_edta', 90000],
-      ['360059', 'Tubo 13x75mm Hemogard 3.5ml SST (Silica + Gel)', 'fam_sst', 72000],
-      ['360060', 'Tubo 13x100mm Hemogard 5ml SST (Silica + Gel)', 'fam_sst', 72000],
-      ['360050', 'Tubo 13x100mm Hemogard 5ml SST (Silica + Gel)', 'fam_sst', 72000],
-      ['360037', 'Tubo 13x75mm Hemogard 4ml EDTA', 'fam_edta', 90000]];
-    const pal = ['#2f6db5', '#b5562f', '#3a8f5c', '#8a5cc2', '#c2932f', '#2f9fb5', '#b52f6d', '#6d7f2f', '#5c6fc2'];
-    cats.forEach(([code, name, fam, pph], i) => db.catalogs.push({ id: 'cat_' + code, code, name, familyId: fam, lineId: L.id, machineId: null, pph, color: pal[i % pal.length], note: 'Origem: aba Códigos SM', validFrom: '2025-01-01', validTo: null, active: true, ...meta(by) }));
-    const sh = (id, code, name, s, e, wd, color, active) => ({ id, code, name, lineId: L.id, ...meta(by), versions: [{ id: id + '_v1', validFrom: '2025-01-01', validTo: null, start: s, end: e, weekdays: wd, breaks: [], color, active, tailMergeMax: null }] });
-    db.shifts.push(sh('sh_1', 'T1', '1º Turno', '06:00', '14:30', [1, 2, 3, 4, 5, 6], '#2f6db5', true));
-    db.shifts.push(sh('sh_2', 'T2', '2º Turno', '14:30', '22:47', [1, 2, 3, 4, 5, 6], '#3a8f5c', true));
-    db.shifts.push(sh('sh_3', 'T3', '3º Turno', '22:47', '30:00', [1, 2, 3, 4, 5], '#8a5cc2', false));
-    const C = (code, name, category, sub, color, f) => db.downtimeCodes.push({
-      id: 'dc_' + code, code, name, description: '', category, subcategory: sub, color,
-      planned: !!f.pl, deductsPlanned: !!f.dd, affectsA: !!f.a, affectsP: !!f.p, affectsQ: !!f.q,
-      inReport: f.rep !== false, inPareto: f.par !== false &amp;&amp; !f.dd, requiresNote: !!f.note, requiresTimes: !!f.times, allowsManualDuration: f.manual !== false,
-      requiresPrevCatalog: !!f.prev, requiresNextCatalog: !!f.next, validFrom: '2025-01-01', validTo: null, active: true, ...meta(by) });
-    C('REF', 'Refeição', 'Planejada', 'Pausa', '#8d99a6', { pl: 1, dd: 1 });
-    C('REV', 'Revezamento / abono', 'Planejada', 'Pausa', '#8d99a6', { pl: 1, dd: 1 });
-    C('APG', 'Ausência de programação', 'Planejada', 'Demanda', '#8d99a6', { pl: 1, dd: 1, note: 1 });
-    C('TRC', 'Troca de catálogo', 'Setup', 'Troca', '#6a3d9e', { pl: 1, a: 1, prev: 1, next: 1 });
-    C('TRL', 'Troca de lote', 'Setup', 'Troca', '#7d55b5', { pl: 1, a: 1 });
-    C('SET', 'Setup inicial / sanitização', 'Setup', 'Partida', '#9575c9', { pl: 1, a: 1 });
-    C('3HD', 'Três horas iniciais (3 hours delay)', 'Processo', 'Partida', '#b38bd6', { pl: 1, a: 1 });
-    C('AJP', 'Ajuste de processo', 'Processo', 'Ajuste', '#2360a8', { a: 1 });
-    C('LIM', 'Limpeza', 'Planejada', 'Limpeza', '#3f7fbf', { pl: 1, a: 1 });
-    C('MPL', 'Manutenção planejada', 'Manutenção', 'Planejada', '#1d8048', { pl: 1, a: 1 });
-    C('FME', 'Falha mecânica', 'Quebra', 'Mecânica', '#c22a2a', { a: 1 });
-    C('FEL', 'Falha elétrica', 'Quebra', 'Elétrica', '#d14b2a', { a: 1 });
-    C('FPN', 'Falha pneumática', 'Quebra', 'Pneumática', '#d9682a', { a: 1 });
-    C('ENR', 'Enrosco / atolamento', 'Quebra', 'Operacional', '#e08a2a', { a: 1 });
-    C('FMA', 'Falta de material', 'Logística', 'Material', '#b8620a', { a: 1 });
-    C('FOP', 'Falta de operador', 'Pessoas', 'Operador', '#a0520a', { a: 1 });
-    C('REU', 'Reunião', 'Planejada', 'Pessoas', '#768290', { pl: 1, a: 1 });
-    C('TTU', 'Troca de turno', 'Planejada', 'Pessoas', '#5f6b78', { pl: 1, a: 1 });
-    C('TES', 'Teste programado / engenharia', 'Planejada', 'Engenharia', '#2f9fb5', { pl: 1, a: 1, note: 1 });
-    C('FQL', 'Falha de qualidade', 'Qualidade', 'Processo', '#b52f6d', { a: 1, q: 1, note: 1 });
-    C('MIC', 'Microparada / velocidade reduzida', 'Performance', 'Velocidade', '#c2932f', { p: 1 });
-    C('OUT', 'Outros', 'Outros', '', '#94a2b1', { a: 1, note: 1 });
-    C('RTB', 'Retrabalho (fora do OEE)', 'Planejada', 'Retrabalho', '#a3adb8', { pl: 1, dd: 1, par: false });
-    return db;
-  }
 
   /* base limpa (24/11/2026): a base nasce completa (emptyBase) e é validada na leitura; ensure não completa campos nem converte
      formato. Fica só a regra da política de retrabalho (tipo RTB, que desconta do planejado), que não é compatibilidade de formato.
@@ -8398,7 +8343,7 @@ const Model = (() => {
     return out;
   }
 
-  return { emptyBase, seed, ensure, parseBaseText, validateStructure, integrity, meta, DEFAULT_SETTINGS, REQUIRED };
+  return { emptyBase, ensure, parseBaseText, validateStructure, integrity, meta, DEFAULT_SETTINGS, REQUIRED };
 })();
 
 
@@ -9247,7 +9192,7 @@ const bkNome = (tipo) => { const b = BASE_FILE.replace(/\.json$/i, ''), d = U.to
   return tipo === 'diario' ? `${b}_${d}.json` : tipo === 'antes' ? `${b}_antes-restaurar_${d}_${h}.json` : `${b}_${d}_${h}.json`; };
 /* Bloco 3 · ProdCad: monta, só na memória, as tabelas de cadastro que o motor lê (linhas, equipamentos, famílias, catálogos, turnos, metas e
    códigos de parada), as marcas de calendário e os parâmetros derivados, a partir do cadastro da Administração. Função pura: não grava nada.
-   Os ids derivam do código (e da vigência): nenhum índice é guardado. Substitui o CadSync (que sai na Task 4 do bloco 3). */
+   Os ids derivam do código (e da vigência): nenhum índice é guardado. Substituiu a antiga sincronização do cadastro com a base. */
 const ProdCad = (() => {
   const slug = s => String(s).toLowerCase().replace(/[^a-z0-9]+/g, '_');
   const stOf = a => a !== false ? 'ativo' : 'inativo';
@@ -9263,11 +9208,15 @@ const ProdCad = (() => {
     for (const l of (C.linhas || []).filter(x => x &amp;&amp; x.codigo)) T.lines.push({ id: 'line_' + slug(l.codigo), code: l.codigo, name: l.nome || l.codigo, unit: l.unidade || null, sector: l.setor || null, status: stOf(l.ativo) });
     for (const f of (C.familias || []).filter(x => x &amp;&amp; x.codigo)) T.families.push({ id: 'fam_' + slug(f.codigo), code: f.codigo, name: f.nome || f.codigo, color: f.cor || '#2f6db5', active: f.ativo !== false, status: stOf(f.ativo) });
     for (const e of (C.equipamentos || []).filter(x => x &amp;&amp; x.codigo)) T.machines.push({ id: 'mac_' + slug(e.codigo), description: '', code: e.codigo, name: e.nome || e.codigo, lineId: lineId(e.linha), role: e.papel === 'oee' ? 'oee' : 'equipamento', active: e.ativo !== false, status: stOf(e.ativo) });
-    /* catálogos (só tubos: preparação de aditivo não tem OEE da linha); a 1ª vigência é cat_<código> e as seguintes cat_<código>_<de> */
+    /* catálogos (só tubos: preparação de aditivo não tem OEE da linha). O id é sempre cat_<código>_<de>: uma vigência nova não muda o id das
+       antigas, que os lançamentos já gravaram. Vigência desativada na Administração continua na tabela, inativa, para o dia já lançado
+       com esse id achar o catálogo (contrato 2); ela só não vale para dias novos. */
     for (const c of (C.catalogos || []).filter(x => x &amp;&amp; x.codigo &amp;&amp; x.tipoItem !== 'preparacao')) {
-      (c.vigencias || []).slice().sort((a, b) => a.de < b.de ? -1 : 1).forEach((v, k) => T.catalogs.push({ id: 'cat_' + c.codigo + (k ? '_' + v.de : ''), machineId: null, note: 'Origem: cadastro da Administração',
-        code: c.codigo, name: c.nome || c.codigo, familyId: famId(c.familia), lineId: lineId(c.linha), pph: v.pphNominal != null ? +v.pphNominal : null, color: c.cor || null,
-        validFrom: v.de, validTo: v.ate || null, portalDe: v.de, active: c.ativo !== false, status: stOf(c.ativo) }));
+      const comum = { machineId: null, note: 'Origem: cadastro da Administração', code: c.codigo, name: c.nome || c.codigo, familyId: famId(c.familia), lineId: lineId(c.linha), color: c.cor || null };
+      const vs = (c.vigencias || []).slice().sort((a, b) => a.de < b.de ? -1 : 1);
+      for (const v of vs) T.catalogs.push({ id: 'cat_' + c.codigo + '_' + v.de, ...comum, pph: v.pphNominal != null ? +v.pphNominal : null, validFrom: v.de, validTo: v.ate || null, portalDe: v.de, active: c.ativo !== false, status: stOf(c.ativo) });
+      for (const w of (c.vigenciasDesativadas || []).filter(x => x &amp;&amp; x.de &amp;&amp; !vs.some(v => v.de === x.de)))
+        T.catalogs.push({ id: 'cat_' + c.codigo + '_' + w.de, ...comum, pph: w.pphNominal != null ? +w.pphNominal : null, validFrom: w.de, validTo: null, portalDe: w.de, active: false, status: 'inativo' });
     }
     for (const p0 of (C.paradas || []).filter(x => x &amp;&amp; x.codigo)) T.downtimeCodes.push({ id: 'dc_' + slug(p0.codigo), validFrom: '2025-01-01', validTo: null,
       code: p0.codigo, name: p0.nome || p0.codigo, description: (p0.guia &amp;&amp; p0.guia.descricao) || '', category: p0.categoria || null, subcategory: p0.subcategoria || null, color: p0.cor || '#888888',
@@ -9500,12 +9449,17 @@ const Store = (() => {
   function pendingExport() { return serialize(Object.assign({}, S.db, { _exportNote: undefined, pendingExportedAt: U.nowIso(), pendingBaseVersion: S.baseVersion })); }
   function resolveCancel() { setStatus('conflito'); }
 
-  // cadastro base do Portal na mesma pasta: guarda o documento e aplica na base quando a revisão muda (CadSync, Produção 2.4)
+  // cadastro base do Portal na mesma pasta: guarda o documento e monta as tabelas em memória quando a revisão muda (ProdCad)
   async function readCadastro() {
     const pronto = (estado, c) => {
       const stamp = estado + '|' + (c ? c.rev + '|' + (c.revId || '') : '');
       S.cadastroEstado = estado; S.cadDoc = c || null;
-      if (stamp !== S._cadStamp) { S._cadStamp = stamp; aplicarCadastro(); emit('data'); }
+      if (stamp !== S._cadStamp) {
+        S._cadStamp = stamp; const sig = () => JSON.stringify(((S.db &amp;&amp; S.db.shifts) || []).map(t => [t.id, t.versions])), antes = sig();
+        aplicarCadastro(); emit('data');
+        /* TUR-05: os turnos do cadastro mudaram: oferece levar o horário novo aos dias em aberto */
+        if (antes !== '[]' &amp;&amp; antes !== sig() &amp;&amp; typeof offerCadShiftApply === 'function') setTimeout(() => { try { offerCadShiftApply(); } catch (e) { console.warn('TUR-05', e); } }, 400);
+      }
       emit('status'); return S.cadastro;
     };
     if (!S.backend || !S.backend.readSibling) { S.cadastro = null; return pronto('ausente', null); }
@@ -13723,7 +13677,7 @@ Cfg.consulta = { render() { return `<section class="card">${vacConsultaCad.html(
 /* 2.6.35 · CFG-ADM (pedido do responsável, 22/11/2026): seção de Configurações que é cadastro da Administração abre direto na
    Administração, na mesma seção (não há mais duas telas do mesmo cadastro). 2.6.36 · etapa 2: sempre, também sem pasta (o modo em que a
    Produção editava esses cadastros saiu). */
-function cfgAdmRota(sec) { const P = CadSync.SEC_PORTAL; return P[sec] ? 'cadastros/' + P[sec] : null; }
+function cfgAdmRota(sec) { const P = CadPortal.SEC_PORTAL; return P[sec] ? 'cadastros/' + P[sec] : null; }
 function cfgAbrir(sec, codigo) { const r = cfgAdmRota(sec); if (r) return vacIrPortal(r + (codigo != null ? '/' + encodeURIComponent(codigo) : '')); App.cfgSec = sec; go('config'); }
 App.views.config = {
   render() {
@@ -18619,7 +18573,7 @@ function metasConsulta(M) {
   const std = t => { const c = t.catalogId || (d.catalogs.find(c => c.familyId === t.familyId) || {}).id; if (!c) return '—';
     for (let dt = t.validFrom > a ? t.validFrom : a, i = 0; i < 31 &amp;&amp; dt <= b &amp;&amp; (!t.validTo || dt <= t.validTo); dt = U.addDays(dt, 1), i++) { const m = Engine.standardDayMeta(d, dt, c, t.lineId, t.machineId); if (m) return `${fq(m.meta)} ${esc(unitLbl())} <span class="muted small">(${esc(U.brDate(dt).slice(0, 5))})</span>`; }
     return '—'; };
-  const adm = typeof cfgAdmRota === 'function' ? CadSync.portalHref('cadastros/metasOee') : '';
+  const adm = typeof cfgAdmRota === 'function' ? CadPortal.portalHref('cadastros/metasOee') : '';
   return `<section class="card" id="plMetas"><details><summary><b>Metas de OEE do mês</b> <span class="muted small">· ${list.length} vigência(s) · meta dia-padrão e quadro hora a hora</span></summary>
     <p class="q">Consulta. As metas são cadastradas na Administração${adm ? ` · <a href="${esc(adm)}" data-keep="1">Editar na Administração ↗</a>` : ''}. A meta dia-padrão e o quadro hora a hora são calculados aqui, pela Produção.</p>
     ${list.length ? `<div class="tw"><table><thead><tr><th>Escopo ${ib('tgtScope')}</th><th>Vigência</th><th class="n">PPH</th><th class="n">PPM</th><th class="n">OEE meta</th><th class="n">Meta dia-padrão ${ib('metaDaily')}</th><th>Quadro hora a hora ${ib('board')}</th><th>Origem</th><th>Status</th></tr></thead><tbody>${list.map(t => `<tr><td>${esc(scope(t))}</td><td>${U.brDate(t.validFrom)} – ${t.validTo ? U.brDate(t.validTo) : 'sem fim'}</td><td class="n">${U.fmt(t.pph)}</td><td class="n">${t.pph ? U.fmt(t.pph / 60) : '—'}</td><td class="n"><b>${U.pct(t.oee)}</b></td><td class="n">${std(t)}</td><td>${t.intervalBoard ? `<button class="btn xs" data-board="${t.id}">${t.intervalBoard.length} intervalos</button>` : '<span class="muted small">calculado</span>'}</td><td class="small">${t.source ? esc(t.source.sheet + (t.source.file ? ' · ' + t.source.file : '')) : 'manual'}</td><td>${t.status !== 'inativo' ? semB('ok', 'ativa') : semB('sem', 'inativa')}</td></tr>`).join('')}</tbody></table></div>
@@ -22227,200 +22181,18 @@ function oeeAcaoPlanner(dim, pick, evs) {
    Quando a revisão do cadastro muda, a Produção copia esses dados para a própria base numa alteração só (com auditoria),
    mantendo os ids já usados nos lançamentos. Só entra o que o Portal tem: domínio vazio no Portal continua com o cadastro local.
    Nas Configurações, os domínios que vêm do Portal ficam só para consulta, com "Editar no Portal". */
-const CadSync = (() => {
+/* Administração como fonte única dos cadastros: o que as telas de Configuração da Produção usam para ficar só para consulta e apontar para a
+   Administração. A Produção não sincroniza nada: o ProdCad monta as tabelas em memória a partir do cadastro (Store.aplicarCadastro). */
+const CadPortal = (() => {
   const SEC_PORTAL = { estrutura: 'linhas', turnos: 'turnos', catalogos: 'catalogos', metas: 'metasOee', paradas: 'paradas' };
   const doc = () => Store.S.cadDoc || null;
-  const tem = t => { const d = doc(); return !!(d &amp;&amp; Array.isArray(d[t]) &amp;&amp; d[t].length); };
-  /* domínios que vêm do Portal nesta base.
-     2.4.23 · ARQ-01 a ARQ-04 (D0): o Portal é a fonte única. Com o cadastro do Portal (ou na pasta da rede, ou na Demonstração) as cinco
-     seções ficam só para consulta, mesmo com o domínio vazio no Portal: antes, domínio vazio deixava editar aqui (cadastro paralelo).
-     O que já estava na base continua valendo (lançamentos antigos), só não se edita mais aqui. Sem pasta e sem Portal (modo local, testes),
-     fica como antes. */
   const fonteUnica = () => !!doc() || Store.S.mode === 'pasta' || (typeof vacDemo !== 'undefined' &amp;&amp; vacDemo.ativo);
   function dominios() {
     const d = doc(); if (!fonteUnica()) return {};
     return { estrutura: true, turnos: true, catalogos: true, metas: true, paradas: true, parametros: !!(d &amp;&amp; d.parametros) };
   }
-  /* códigos que só existem aqui (turnos, catálogos, tipos de parada): o aviso mostra e o Portal oferece trazer */
-  function soLocal(sec) {
-    const d = doc(), b = Store.S.db; if (!d || !b) return [];
-    const M = { turnos: ['shifts', 'turnos'], catalogos: ['catalogs', 'catalogos'], paradas: ['downtimeCodes', 'paradas'] }[sec]; if (!M || !tem(M[1])) return [];
-    const P = new Set(d[M[1]].map(x => String(x.codigo)));
-    return [...new Set((b[M[0]] || []).filter(x => !x.deleted &amp;&amp; !x.demo &amp;&amp; x.code != null &amp;&amp; !P.has(String(x.code))).map(x => String(x.code)))];
-  }
-  const stampOf = d => d ? `${d.rev}|${d.revId || ''}` : '';
-  const pend = () => { const d = doc(); if (!d) return false; const s = (db().settings || {}).cadSync; return !s || s.stamp !== stampOf(d); };
-  const vigHoje = vs => { const h = U.today(); return (vs || []).filter(v => v.de <= h &amp;&amp; (!v.ate || v.ate >= h)).sort((a, b) => a.de < b.de ? 1 : -1)[0] || (vs || []).slice().sort((a, b) => a.de < b.de ? 1 : -1)[0] || null; };
-
-  /* aplica o cadastro do Portal na base (dentro do Store.mutate) e devolve o resumo */
-  function aplicar(d, C, audit) {
-    const by = "Administração", now = U.nowIso(), R = { linhas: 0, familias: 0, maquinas: 0, catalogos: 0, turnos: 0, paradas: 0, metas: 0, parametros: 0, removidas: 0 };
-    const reason = `sincronizado do cadastro do Portal (rev ${C.rev})`;
-    const novo = () => ({ createdAt: now, createdBy: by, updatedAt: now, updatedBy: by, status: 'ativo', revision: 1 });
-    /* muda só o que difere, com auditoria por campo */
-    const upd = (o, patch, entity, cont) => { let n = 0; for (const [k, v] of Object.entries(patch)) { if (JSON.stringify(o[k] ?? null) === JSON.stringify(v ?? null)) continue; audit({ action: "sincronização da Administração", entity, entityId: o.id, field: k, before: o[k] ?? null, after: v ?? null, reason }); o[k] = v; n++; } if (n) { o.updatedAt = now; o.updatedBy = by; o.revision = (o.revision || 1) + 1; R[cont]++; } return n; };
-    const add = (arr, o, entity, cont) => { arr.push(o); audit({ action: "sincronização da Administração", entity, entityId: o.id, field: null, before: null, after: o.code || o.id, reason }); R[cont]++; return o; };
-    const live = arr => (arr || []).filter(x => !x.deleted);
-    const slug = s => String(s).toLowerCase().replace(/[^a-z0-9]+/g, '_');
-    /* 2.4.23 · PRD-04: a Produção desativa linha e turno pelo campo status (e não por active). A sincronização só mexia em active,
-       então um turno desativado aqui antes do Portal assumir continuava inativo com o Portal dizendo ativo. Agora o status segue o Portal. */
-    const stOf = a => a !== false ? 'ativo' : 'inativo';
-    for (const k of ['lines', 'families', 'machines', 'catalogs', 'shifts', 'downtimeCodes', 'targets']) d[k] = d[k] || [];
-
-    /* linhas */
-    const linhas = (C.linhas || []).filter(l => l &amp;&amp; l.codigo);
-    if (linhas.length) for (const l of linhas) {
-      let o = live(d.lines).find(x => x.code === l.codigo); if (!o &amp;&amp; linhas.length === 1 &amp;&amp; live(d.lines).length === 1) o = live(d.lines)[0];
-      const p = { code: l.codigo, name: l.nome || l.codigo, unit: l.unidade || null, sector: l.setor || null, status: stOf(l.ativo) };
-      if (o) upd(o, p, 'linha', 'linhas'); else add(d.lines, { id: 'line_' + slug(l.codigo), ...novo(), ...p }, 'linha', 'linhas');
-    }
-    const lineId = cod => { const o = live(d.lines).find(x => x.code === cod) || (live(d.lines).length === 1 ? live(d.lines)[0] : null); return o ? o.id : (live(d.lines)[0] || {}).id || null; };
-    /* famílias */
-    for (const f of (C.familias || []).filter(x => x &amp;&amp; x.codigo)) {
-      const o = live(d.families).find(x => x.code === f.codigo), p = { code: f.codigo, name: f.nome || f.codigo, color: f.cor || (o &amp;&amp; o.color) || '#2f6db5', active: f.ativo !== false, status: stOf(f.ativo) };
-      if (o) upd(o, p, 'família', 'familias'); else add(d.families, { id: 'fam_' + slug(f.codigo), ...novo(), ...p }, 'família', 'familias');
-    }
-    const famId = cod => cod ? (live(d.families).find(x => x.code === cod) || {}).id || null : null;
-    /* máquinas */
-    for (const e of (C.equipamentos || []).filter(x => x &amp;&amp; x.codigo)) {
-      const o = live(d.machines).find(x => x.code === e.codigo), p = { code: e.codigo, name: e.nome || e.codigo, lineId: lineId(e.linha), role: e.papel === 'oee' ? 'oee' : 'equipamento', active: e.ativo !== false, status: stOf(e.ativo) };
-      if (o) upd(o, p, 'máquina', 'maquinas'); else add(d.machines, { id: 'mac_' + slug(e.codigo), description: '', ...novo(), ...p }, 'máquina', 'maquinas');
-    }
-    const macId = cod => cod ? (live(d.machines).find(x => x.code === cod) || {}).id || null : null;
-    /* catálogos (só tubos: preparação de aditivo não tem OEE da linha) */
-    for (const c of (C.catalogos || []).filter(x => x &amp;&amp; x.codigo &amp;&amp; x.tipoItem !== 'preparacao')) {
-      const desat = new Set((c.vigenciasDesativadas || []).map(w => w &amp;&amp; w.de).filter(Boolean));
-      const vs = (c.vigencias || []).slice().sort((a, b) => a.de < b.de ? -1 : 1), ex = live(d.catalogs).filter(x => x.code === c.codigo).sort((a, b) => String(a.validFrom) < String(b.validFrom) ? -1 : 1), usados = new Set();
-      vs.forEach((v, k) => {
-        /* 2.4.4 · reaproveitar um registro com outra data só no mapeamento inicial de um catálogo local (nunca sincronizado: sem portalDe,
-           não criado pelo Portal e com data que não é de vigência desativada). Antes, uma vigência antiga podia virar a nova (mesmo id,
-           outra data e PPH) e as referências históricas passavam a apontar para outros parâmetros */
-        let o = ex.find(x => x.validFrom === v.de &amp;&amp; !usados.has(x.id)) || ex.find(x => !usados.has(x.id) &amp;&amp; !vs.some(w => w.de === x.validFrom) &amp;&amp; !x.portalDe &amp;&amp; x.createdBy !== 'Portal' &amp;&amp; !desat.has(x.validFrom));
-        const p = { code: c.codigo, name: c.nome || c.codigo, familyId: famId(c.familia), lineId: lineId(c.linha), pph: v.pphNominal != null ? +v.pphNominal : (o ? o.pph : null), color: c.cor || (o &amp;&amp; o.color) || null, validFrom: v.de, validTo: v.ate || null, portalDe: v.de, active: c.ativo !== false, status: stOf(c.ativo) };
-        if (o) { usados.add(o.id); upd(o, p, 'catálogo', 'catalogos'); } else { const id = 'cat_' + c.codigo + (k &amp;&amp; ex.some(x => x.id === 'cat_' + c.codigo) ? '_' + v.de : ''); const id2 = d.catalogs.some(x => x.id === id) ? U.uid('cat') : id; usados.add(id2); /* 2.4.4 · marca o id que o registro recebe de fato */ add(d.catalogs, { id: id2, machineId: null, note: "Origem: cadastro da Administração", ...novo(), ...p }, 'catálogo', 'catalogos'); }
-      });
-      /* 2.4.3 · vigência desativada no Portal (não está mais nas vigências válidas): fica inativa aqui. Não é apagada:
-         os registros antigos continuam achando o catálogo pelo id. Só quando o Portal tem vigências (válidas ou desativadas) */
-      if (vs.length || (c.vigenciasDesativadas || []).length) for (const x of ex) if (!usados.has(x.id) &amp;&amp; x.active !== false) upd(x, { active: false }, 'catálogo', 'catalogos');
-    }
-    const catId = (cod, data) => { if (!cod) return null; const L = live(d.catalogs).filter(x => x.code === cod); return (L.find(x => (!data || (x.validFrom || '') <= data) &amp;&amp; (!x.validTo || !data || x.validTo >= data)) || L[0] || {}).id || null; };
-    /* tipos de parada */
-    for (const p0 of (C.paradas || []).filter(x => x &amp;&amp; x.codigo)) {
-      const o = live(d.downtimeCodes).find(x => x.code === p0.codigo);
-      const p = { code: p0.codigo, name: p0.nome || p0.codigo, description: (p0.guia &amp;&amp; p0.guia.descricao) || (o &amp;&amp; o.description) || '', category: p0.categoria || null, subcategory: p0.subcategoria || null, color: p0.cor || (o &amp;&amp; o.color) || '#888888',
-        planned: !!p0.planejada, deductsPlanned: !!p0.descontaPlanejado, affectsA: !!p0.afetaD, affectsP: !!p0.afetaP, affectsQ: !!p0.afetaQ, inReport: p0.relatorio !== false, inPareto: p0.pareto !== false,
-        requiresNote: !!p0.exigeObservacao, requiresTimes: !!p0.exigeHorario, allowsManualDuration: !!p0.duracaoManual, requiresPrevCatalog: !!p0.exigeCatalogoAnterior, requiresNextCatalog: !!p0.exigeCatalogoSeguinte, active: p0.ativo !== false, status: stOf(p0.ativo) };
-      if (o) upd(o, p, 'código de parada', 'paradas'); else add(d.downtimeCodes, { id: 'dc_' + slug(p0.codigo), validFrom: '2025-01-01', validTo: null, ...novo(), ...p }, 'código de parada', 'paradas');
-    }
-    const dcId = cod => cod ? (live(d.downtimeCodes).find(x => x.code === cod) || {}).id || null : null;
-    /* turnos: horário, dias, pausas (código de parada), regra do pedaço final e intervalos do Hora a Hora */
-    for (const t of (C.turnos || []).filter(x => x &amp;&amp; x.codigo)) {
-      let o = live(d.shifts).find(x => x.code === t.codigo);
-      const versoes = (t.vigencias || []).slice().sort((a, b) => a.de < b.de ? -1 : 1).map(v => ({ v, p: {
-        validFrom: v.de, validTo: v.ate || null, start: v.inicio, end: v.fim, weekdays: (v.dias || []).slice(), color: t.cor || null, active: v.ativo !== false &amp;&amp; t.ativo !== false,   /* 2.4.3 · turno inativo no Portal = vigências inativas */
-        productive: v.naoProdutivo ? false : true,   /* 2.4.24 · TUR-01: ativo e não produtivo */
-        breaks: (v.pausas || []).map(x => ({ label: x.nome || (x.codigo || 'Pausa'), start: x.inicio || '', end: x.fim || '', minutes: x.inicio &amp;&amp; x.fim ? null : (+x.duracaoMin || null), weekdays: (x.dias || []).slice(), deducts: x.desconta !== false, codeId: dcId(x.codigo) })),
-        tailMergeMax: v.regraPedacoFinal != null &amp;&amp; v.regraPedacoFinal !== '' ? +v.regraPedacoFinal : null,
-        template: (v.intervalos || []).length ? v.intervalos.map(x => ({ start: x.inicio, end: x.fim })) : null } }));
-      if (!o) { o = add(d.shifts, { id: 'sh_' + slug(t.codigo), code: t.codigo, name: t.nome || t.codigo, lineId: lineId(t.linha), versions: [], ...novo(), status: stOf(t.ativo) }, 'turno', 'turnos'); }
-      else upd(o, { name: t.nome || t.codigo, lineId: lineId(t.linha), status: stOf(t.ativo) }, 'turno', 'turnos');
-      const usados = new Set(); let n = 0;
-      for (const { v, p } of versoes) {
-        /* 2.6.12 · TUR-04: duas linhas no mesmo período (ex.: Seg–Sex e Sáb) têm o mesmo início; a versão casa pelo início e pelos dias.
-           Só o início serve quando aquele período tem uma linha só (ex.: os dias da vigência foram corrigidos) */
-        const dk = a => JSON.stringify((a || []).slice().sort((x, y) => x - y));
-        let ver = (o.versions || []).find(x => !x.deleted &amp;&amp; !usados.has(x.id) &amp;&amp; x.validFrom === v.de &amp;&amp; dk(x.weekdays) === dk(v.dias))
-          || ((t.vigencias || []).filter(y => y &amp;&amp; y.de === v.de).length === 1 ? (o.versions || []).find(x => !x.deleted &amp;&amp; !usados.has(x.id) &amp;&amp; x.validFrom === v.de) : null);
-        if (ver) { usados.add(ver.id); for (const [k, val] of Object.entries(p)) if (JSON.stringify(ver[k] ?? null) !== JSON.stringify(val ?? null)) { audit({ action: "sincronização da Administração", entity: 'turno', entityId: o.id, field: 'vigência ' + v.de + ' · ' + k, before: ver[k] ?? null, after: val ?? null, reason }); ver[k] = val; n++; } }
-        else { ver = { id: U.uid('sv'), ...p }; o.versions.push(ver); usados.add(ver.id); audit({ action: "sincronização da Administração", entity: 'turno', entityId: o.id, field: 'vigência', before: null, after: v.de, reason }); n++; }
-      }
-      for (const ver of o.versions || []) if (!ver.deleted &amp;&amp; !usados.has(ver.id)) { ver.deleted = true; audit({ action: "sincronização da Administração", entity: 'turno', entityId: o.id, field: 'vigência ' + ver.validFrom, before: 'ativa', after: "removida (não está na Administração)", reason }); n++; }
-      if (n) { o.updatedAt = now; o.updatedBy = by; R.turnos++; }
-    }
-    /* 2.4.23 · PRD-04 / ARQ-01: com turnos no Portal, turno que só existe aqui (outro código, ex.: TC × T3) fica inativo: senão os dois
-       entram nos dias novos (turno em dobro). Os dias já lançados guardam o próprio turno e não mudam. Para usar o turno:
-       cadastre-o em Administração › Cadastros. */
-    const codT = new Set((C.turnos || []).filter(x => x &amp;&amp; x.codigo).map(x => String(x.codigo)));
-    if (codT.size) for (const o of live(d.shifts)) if (!o.demo &amp;&amp; !codT.has(String(o.code)) &amp;&amp; o.status !== 'inativo') {
-      audit({ action: "sincronização da Administração", entity: 'turno', entityId: o.id, field: 'status', before: o.status || 'ativo', after: 'inativo', reason: reason + ' · não está nos turnos do Portal' });
-      o.status = 'inativo'; o.updatedAt = now; o.updatedBy = by; o.revision = (o.revision || 1) + 1; R.turnos++; R.soLocal = (R.soLocal || 0) + 1;
-    }
-    /* metas de OEE: o Portal manda quando tem pelo menos uma */
-    /* 2.4.3 · o Portal manda quando tem metas cadastradas, mesmo todas inativas (antes, desativar a última mantinha a cópia local) */
-    const metas = (C.metasOee || []).filter(m => m &amp;&amp; m.ativo !== false);
-    if ((C.metasOee || []).some(m => m &amp;&amp; m.codigo)) {
-      const toq = new Set();
-      for (const m of metas) for (const v of (m.vigencias || [])) {
-        const sc = { lineId: lineId(m.linha), machineId: macId(m.equipamento), familyId: famId(m.familia), catalogId: catId(m.catalogo, v.de) };
-        const pct = x => x == null || x === '' ? null : +x / 100;
-        const p = { ...sc, validFrom: v.de, validTo: v.ate || null, pph: v.pph ? +v.pph : null, oee: pct(v.oeeMetaPct), dailyTarget: v.metaDiaria ? +v.metaDiaria : null, semGreen: pct(v.semaforoVerdePct), semYellow: pct(v.semaforoAmareloPct), coverageMin: pct(v.coberturaMinPct), divergenceMax: pct(v.divergenciaMaxPct), note: m.observacao || null, intervalBoard: Array.isArray(v.quadro) &amp;&amp; v.quadro.length ? v.quadro : null, rounding: 'teto + compensação na última hora', portalCode: m.codigo };
-        let o = live(d.targets).find(t => !t.demo &amp;&amp; t.validFrom === v.de &amp;&amp; (t.lineId || null) === sc.lineId &amp;&amp; (t.machineId || null) === sc.machineId &amp;&amp; (t.familyId || null) === sc.familyId &amp;&amp; (t.catalogId || null) === sc.catalogId);
-        if (o) { toq.add(o.id); upd(o, p, 'meta', 'metas'); } else { o = add(d.targets, { id: U.uid('tg'), ...novo(), ...p }, 'meta', 'metas'); toq.add(o.id); }
-      }
-      for (const t of live(d.targets)) if (!t.demo &amp;&amp; !toq.has(t.id)) { t.deleted = true; audit({ action: "sincronização da Administração", entity: 'meta', entityId: t.id, field: 'situação', before: 'ativa', after: "removida (não está nas Metas de OEE da Administração)", reason }); R.removidas++; }
-    }
-    /* parâmetros comuns */
-    const P = C.parametros || {}, st = d.settings = d.settings || {};
-    const sp = (k, v) => { if (v == null) return; if (JSON.stringify(st[k] ?? null) === JSON.stringify(v)) return; audit({ action: "sincronização da Administração", entity: 'parâmetros', entityId: 'settings', field: k, before: st[k] ?? null, after: v, reason }); st[k] = v; R.parametros++; };
-    if (P.paradaLongaMin) sp('longStopMin', +P.paradaLongaMin);
-    /* 2.6.8 · parametros.semaforoAmarelo === false (Administração › Parâmetros › Semáforo): sem amarelo, o amarelo começa onde começa o verde */
-    if (P.semaforoVerdePct &amp;&amp; (P.semaforoAmareloPct || P.semaforoAmarelo === false)) sp('semaphore', { green: +P.semaforoVerdePct / 100, yellow: (P.semaforoAmarelo === false ? +P.semaforoVerdePct : +P.semaforoAmareloPct) / 100 });
-    if ((P.motivosAbono || []).length) sp('abMotivos', P.motivosAbono.slice());
-    if ((P.motivosSemProducaoProg || []).length) sp('offMotivosProg', P.motivosSemProducaoProg.slice());
-    if ((P.motivosSemProducaoNP || []).length) sp('offMotivosNP', P.motivosSemProducaoNP.slice());
-    /* 2.4.22 · ARQ-06: parâmetros da Produção (Portal › Parâmetros › Produção). O arredondamento tem vigência (D7):
-       a lista inteira vai para settings.roundingVig (cada dia usa a da própria data, roundAt); roundingUnit fica com a vigente hoje */
-    const PP = P.producao || {};
-    if (+PP.unidadeLancamento > 0) sp('entryUnit', +PP.unidadeLancamento);
-    if (PP.rotuloUnidade) sp('unitLabel', String(PP.rotuloUnidade));
-    /* 2.4.24 · TUR-01/POR-10: continuidade e data de início da reatribuição. Sem data no Portal, vale a 1ª vigência não produtiva */
-    if (+PP.continuidadeMin > 0) sp('continuityMin', +PP.continuidadeMin);
-    const npDe = (C.turnos || []).flatMap(t => (t.vigencias || []).filter(v => v &amp;&amp; v.naoProdutivo).map(v => v.de)).filter(Boolean).sort()[0] || null;
-    const desde = PP.foraTurnoDesde || npDe; if (desde) sp('foraTurnoDesde', String(desde));
-    const AR = (Array.isArray(PP.arredondamentoMeta) ? PP.arredondamentoMeta : []).filter(v => v &amp;&amp; v.de &amp;&amp; +v.valor > 0).map(v => ({ de: v.de, valor: +v.valor })).sort((a, b) => a.de < b.de ? -1 : 1);
-    if (AR.length) { sp('roundingVig', AR); const h = U.today(), vg = AR.filter(v => v.de <= h).slice(-1)[0] || AR[0]; sp('roundingUnit', vg.valor); }
-    /* 2.4.73 · calendário de produção do Portal (cadastro `calendario`: código = data AAAA-MM-DD, tipo 'sem produção' | 'dia extra', motivo = nome).
-       Vai para db.calendar com origin 'portal' (o Plano do mês trava o dia: "edite no Portal"). Dia fechado ou com lançamento não vira
-       "sem produção" (fica em st.cadSync.calIgnorados e no aviso). Dia inativado no Portal: a marca que veio dele sai; marca local do mesmo dia
-       é substituída pela do Portal (fonte única). */
-    if (Array.isArray(C.calendario)) {
-      d.calendar = d.calendar || []; const LN = 'line_vac', ign = [];
-      for (const x of C.calendario) {
-        const date = String((x &amp;&amp; x.codigo) || ''); if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) continue;
-        const cur = d.calendar.find(c => !c.deleted &amp;&amp; c.date === date &amp;&amp; c.lineId === LN), kind = /extra/i.test(x.tipo || '') ? 'extra' : 'off', motivo = String(x.nome || '').trim();
-        const sai = m => { m.deleted = true; m.updatedAt = now; m.updatedBy = by; };
-        if (x.ativo === false) { if (cur &amp;&amp; cur.origin === 'portal') { sai(cur); audit({ action: "sincronização da Administração", entity: 'dia', entityId: date, field: 'calendário', before: cur.kind, after: 'normal', reason }); R.calendario = (R.calendario || 0) + 1; } continue; }
-        if (cur &amp;&amp; cur.origin === 'portal' &amp;&amp; cur.kind === kind &amp;&amp; (cur.reason || '') === motivo) continue;
-        if (kind === 'off') { const d0 = (d.productionDays || []).find(y => !y.deleted &amp;&amp; y.date === date &amp;&amp; y.lineId === LN); if (d0 &amp;&amp; (d0.status === 'fechado' || Engine.dayEntries(d0))) { ign.push(date); continue; } }
-        if (cur) sai(cur);
-        d.calendar.push({ id: 'calp_' + date + '_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 5), date, lineId: LN, kind, reason: motivo, reasonType: kind === 'off' ? 'prog' : null, origin: 'portal', by, at: now, createdAt: now, createdBy: by, updatedAt: now, updatedBy: by, status: 'ativo', revision: 1 });
-        audit({ action: "sincronização da Administração", entity: 'dia', entityId: date, field: 'calendário', before: cur ? cur.kind : 'normal', after: kind, reason });
-        R.calendario = (R.calendario || 0) + 1;
-      }
-      if (ign.length) R.calendarioIgnorado = ign.length; st.calIgnorados = ign;
-    }
-    st.cadSync = { stamp: stampOf(C), rev: C.rev, revAt: C.revAt || null, em: now, resumo: R };
-    return R;
-  }
-
-  let rodando = false;
-  /* chamado depois de cada leitura do cadastro: aplica se a revisão mudou */
-  function talvez() {
-    try {
-      const S = Store.S, C = doc();
-      if (rodando || !C || !S.db || S.mode !== 'pasta' || S.conflict || S.access === 'read' || S.formato || S.mode === 'aguardando' || !pend()) return;
-      rodando = true;
-      let R; Store.mutate((d, audit) => { R = aplicar(d, C, audit); }, { flush: true });
-      try { Engine.bumpConfig(); } catch (e) { }
-      const n = Object.entries(R).filter(([k, v]) => v &amp;&amp; k !== 'removidas' &amp;&amp; k !== 'soLocal').map(([k, v]) => `${v} ${k}`).join(', ');
-      if (R.turnos) setTimeout(() => { try { offerCadShiftApply(); } catch (e) { console.warn('TUR-05', e); } }, 400);   /* 2.6.16 · TUR-05 */
-      if (n || R.removidas) toast(`Cadastro da Administração (rev ${C.rev}) aplicado: ${n || 'nada mudou'}${R.removidas ? ` · ${R.removidas} meta(s) antiga(s) substituída(s)` : ''}${R.soLocal ? ` · ${R.soLocal} turno(s) que não está(ão) na Administração ficou(aram) inativo(s)` : ''}.`);
-      render();
-    } catch (e) { console.warn('CadSync', e); toast('Não consegui aplicar o cadastro do Portal: ' + (e.message || e), true); }
-    finally { rodando = false; }
-  }
   function portalHref(h) { const port = (typeof systems === 'function' ? systems() : []).find(s => s.id === 'portal') || { id: 'portal', html: 'Portal.html' }; return typeof sysHref === 'function' ? sysHref(port, h) : 'Portal.html#' + h; }
-  return { aplicar, talvez, dominios, pend, portalHref, SEC_PORTAL, soLocal };   /* 2.6.36 · CFG-ADM: banner e travar saíram com as telas */
+  return { dominios, portalHref, SEC_PORTAL };
 })();
 
 /* Configurações: seções que vêm do Portal ficam só para consulta */
@@ -22430,8 +22202,8 @@ const CadSync = (() => {
   const P = Cfg.parametros;
   if (P &amp;&amp; !P._portal) {
     P._portal = 1; const r0 = P.render, m0 = P.mount;
-    P.render = function () { const D = CadSync.dominios(), pp = !!(Store.S.cadDoc &amp;&amp; (Store.S.cadDoc.parametros || {}).producao); return (D.parametros ? `<div class="banner info" style="margin-bottom:10px"><p><b>Parada longa e semáforo comum${pp ? ', unidade de lançamento, rótulo e arredondamento da meta' : ''} vêm da Administração</b> (Parâmetros) e ficam travados aqui. <a class="btn sm" href="${esc(CadSync.portalHref('cadastros/parametros'))}">Editar na Administração ↗</a></p></div>` : '') + r0.apply(this, arguments); };
-    P.mount = function (root) { if (m0) m0.apply(this, arguments); if (!CadSync.dominios().parametros) return; for (const k of ['longStopMin', 'semGreen', 'semYellow']) { const el = root.querySelector(`[data-k="${k}"]`); if (el) { el.disabled = true; el.title = "Vem da Administração (Parâmetros e semáforo)"; } }
+    P.render = function () { const D = CadPortal.dominios(), pp = !!(Store.S.cadDoc &amp;&amp; (Store.S.cadDoc.parametros || {}).producao); return (D.parametros ? `<div class="banner info" style="margin-bottom:10px"><p><b>Parada longa e semáforo comum${pp ? ', unidade de lançamento, rótulo e arredondamento da meta' : ''} vêm da Administração</b> (Parâmetros) e ficam travados aqui. <a class="btn sm" href="${esc(CadPortal.portalHref('cadastros/parametros'))}">Editar na Administração ↗</a></p></div>` : '') + r0.apply(this, arguments); };
+    P.mount = function (root) { if (m0) m0.apply(this, arguments); if (!CadPortal.dominios().parametros) return; for (const k of ['longStopMin', 'semGreen', 'semYellow']) { const el = root.querySelector(`[data-k="${k}"]`); if (el) { el.disabled = true; el.title = "Vem da Administração (Parâmetros e semáforo)"; } }
       /* 2.4.22 · ARQ-06: unidade, rótulo e arredondamento, quando o Portal tem o grupo Produção */
       const d = Store.S.cadDoc, pp = d &amp;&amp; d.parametros &amp;&amp; d.parametros.producao; if (!pp) return;
       for (const k of ['entryUnit', 'unitLabel', 'roundingUnit']) { const el = root.querySelector(`[data-k="${k}"]`); if (el) { el.disabled = true; el.title = "Vem da Administração (Parâmetros › Produção)"; } }
@@ -22444,11 +22216,11 @@ const CadSync = (() => {
   if (Im &amp;&amp; !Im._portal) {
     Im._portal = 1; const m0 = Im.mount;
     Im.mount = function (root) {
-      if (m0) m0.apply(this, arguments); if (!CadSync.dominios().metas) return;
+      if (m0) m0.apply(this, arguments); if (!CadPortal.dominios().metas) return;
       const b = root.querySelector('#imMeta'); if (!b) return;
       const card = b.closest('.card'), p = card &amp;&amp; card.querySelector('p.small');
       if (p) p.innerHTML = "As metas de OEE vêm do cadastro da Administração: a aba Meta OEE FY27 é importada lá (mesma leitura, com prévia) e chega aqui na próxima revisão do cadastro.";
-      const a = document.createElement('a'); a.className = 'btn primary'; a.href = CadSync.portalHref('cadastros/importar/metaoee'); a.textContent = "Importar na Administração ↗"; a.title = "Administração › Cadastros › Importar › Meta OEE FY27"; b.replaceWith(a);
+      const a = document.createElement('a'); a.className = 'btn primary'; a.href = CadPortal.portalHref('cadastros/importar/metaoee'); a.textContent = "Importar na Administração ↗"; a.title = "Administração › Cadastros › Importar › Meta OEE FY27"; b.replaceWith(a);
     };
   }
   /* Usuário: o nome vem do "Entrar" pelo ID (cabeçalho comum) */
@@ -22457,7 +22229,7 @@ const CadSync = (() => {
     Uu._portal = 1; const r0 = Uu.render, m0 = Uu.mount;
     /* 2.4.22 · ARQ-06: a exibição das quantidades é do computador (vac.qtd) e se escolhe no Portal › Parâmetros › Neste computador */
     Uu.mount = function (root) { if (m0) m0.apply(this, arguments); const q = vacQtd(); root.querySelectorAll('[data-qd]').forEach(b => { b.setAttribute('aria-pressed', String(b.dataset.qd === q)); b.disabled = true; b.title = "Escolha na Administração › Parâmetros › Neste computador"; });
-      const g = root.querySelector('[data-qd]'), sec = g &amp;&amp; g.closest('section'); if (sec &amp;&amp; !sec.querySelector('[data-qdportal]')) { const a = document.createElement('p'); a.className = 'small'; a.setAttribute('data-qdportal', '1'); a.innerHTML = `Vale para todas as páginas deste computador. <a class="btn sm" data-keep="1" href="${esc(CadSync.portalHref('cadastros/parametros'))}">Mudar na Administração ↗</a>`; sec.appendChild(a); } };
+      const g = root.querySelector('[data-qd]'), sec = g &amp;&amp; g.closest('section'); if (sec &amp;&amp; !sec.querySelector('[data-qdportal]')) { const a = document.createElement('p'); a.className = 'small'; a.setAttribute('data-qdportal', '1'); a.innerHTML = `Vale para todas as páginas deste computador. <a class="btn sm" data-keep="1" href="${esc(CadPortal.portalHref('cadastros/parametros'))}">Mudar na Administração ↗</a>`; sec.appendChild(a); } };
     Uu.render = function () { return `<div class="banner info" style="margin-bottom:10px"><p>Quem está usando vem do <b>Entrar</b> do cabeçalho (ID do cadastro de Usuários da Administração). <button class="btn sm" type="button" onclick="VacEntrar.abrir()">Entrar / trocar</button></p></div>` + r0.apply(this, arguments); };
   }
 })();
@@ -55412,70 +55184,70 @@ body.vac-porta{overflow:hidden}
       "id": "oee",
       "path": "Plataforma.html#motor/oee",
       "version": "2.6.46",
-      "sha256": "a676b7144d1bb496a3441c06f1547ca94eee501712db76b6535077006885c533",
-      "bytes": 2415338
+      "sha256": "e4e38ae550a5abb8d6ac10ce7b48b4191c87ef18ce8d89474e5fbebb5552e7f1",
+      "bytes": 2389784
     },
     {
       "id": "perdas",
       "path": "Plataforma.html#motor/perdas",
       "version": "1.12.21",
-      "sha256": "5386a7e44879c2a65fa2593dbe6b9f2d6d53364ced3b848086ed12511af1f908",
+      "sha256": "be5724e3bf1321f9ff7208cfb9c3c5adf1adb8db80c056da69bb57a455c88f1c",
       "bytes": 987194
     },
     {
       "id": "gel",
       "path": "Plataforma.html#motor/gel",
       "version": "2.51",
-      "sha256": "391320885f3419be2980daee2516cbbaf07d018688b6762d85a0dfb0acbf155d",
+      "sha256": "0e5329adfebc3c0a2f7ad902861d23812fb6975f59611fbf56c3fe4bf9a0d66d",
       "bytes": 1632054
     },
     {
       "id": "paradas",
       "path": "Plataforma.html#motor/paradas",
       "version": "1.2.22",
-      "sha256": "7b6e469274e5baa553ce8febfd9dd808ee5f8329bd4bbf822849074f1b1772f6",
+      "sha256": "688e25efd6a454298dab7c04ec7a6c9865554c274aa15f14d2101417061353b5",
       "bytes": 956744
     },
     {
       "id": "equip",
       "path": "Plataforma.html#motor/equip",
       "version": "1.0.22",
-      "sha256": "8608929b2f768a354f3cdca561633c749ce04e65dab8ce11401a425335d4961c",
+      "sha256": "4c18cc44648bea5beaeb2e017d41ae7fb48291d5450ad42860d41c8831cce9cf",
       "bytes": 748146
     },
     {
       "id": "inic",
       "path": "Plataforma.html#motor/inic",
       "version": "1.1.17",
-      "sha256": "9eeffc1840fc4938275c685c524982a7eca719dbd8945f95907255b0562350af",
+      "sha256": "3d11dc5f4dda957d900c2d706472dfdb0e47aabb081c000c26ab1e610dca82bc",
       "bytes": 757747
     },
     {
       "id": "linha",
       "path": "Plataforma.html#motor/linha",
       "version": "1.7.1",
-      "sha256": "6dd8b804ecd71193a7c8bd53ef37f58efffa0a89cbf909946e8de8a0cd7238f7",
+      "sha256": "308c4825f1b3e333e2897c98eabe95a7969034907e02f5f2a36bd85413ce2a79",
       "bytes": 1010779
     },
     {
       "id": "projetos",
       "path": "Plataforma.html#motor/projetos",
       "version": "0.1.16",
-      "sha256": "4228e8e295b8a10af12c8763177fe041fa55c71d77f47a54385f3fb5ef362abd",
+      "sha256": "3ef2a104a105e40159f7be78a2fa868a07266c27dc076f96c43f95a031300c1a",
       "bytes": 680597
     },
     {
       "id": "portal",
       "path": "Plataforma.html#motor/portal",
       "version": "1.9.84",
-      "sha256": "ff99ba5546250d39ea3a3cf9acba13b492c8101b7cf943262b2ccca83cc21a53",
-      "bytes": 1309524
+      "sha256": "8adf8fb939d5cfbc079c4f1297788ea16770bd557562e42400451875ede9e17b",
+      "bytes": 1309539
     }
   ],
   "limitations": [
     "Projetos e conteúdo técnico OSM/MES/AM/TPM mantêm os limites documentados nas fontes."
   ],
-  "enginesSha256": "6a110550e908b64dccd9fd4c733cedfe5e7c58333411776407812fd75d711fe9",
+  "enginesSha256": "7e2a3ab42ae3f5e4beadab96f9cb367f431a037aee878aac93693c143a4c4f9b",
   "originRevision": "ffc9ee8",
   "sourceMode": "single-html",
   "originEnginesSha256": "a87a64ad0c328f70e102b2ae888790a9b5d5a9bd05778652a7ce7cae140e40d2"

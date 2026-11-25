@@ -22,18 +22,6 @@ const f01=await o.evaluate(async()=>{const St=Store.S;
 ok(f01.estados[0]==='pendente/true','F01: releitura com a gravação de outra pessoa (mesma versão) não é dada como salva ('+f01.estados[0]+')');
 ok(f01.A==='A'&&f01.B==='B'&&f01.v===12,`F01: na tentativa seguinte as duas alterações ficam no arquivo (A=${f01.A}, B=${f01.B}, versão ${f01.v}); situação ${f01.estados[1]}`);
 
-// ---- F04 · CadSync: desativações do Portal
-const f04=await o.evaluate(()=>{const d={lines:[],families:[],machines:[],catalogs:[{id:'cat_1',code:'360060',validFrom:'2025-01-01',validTo:null,active:true},{id:'cat_2',code:'360060',validFrom:'2026-01-01',validTo:null,active:true}],
-   shifts:[],downtimeCodes:[],targets:[{id:'tg1',validFrom:'2026-01-01',lineId:null,machineId:null,familyId:null,catalogId:null,oee:.7}],settings:{}};
-  const C={rev:5,catalogos:[{codigo:'360060',nome:'Tubo',ativo:true,vigencias:[{de:'2025-01-01',ate:null,pphNominal:100}],vigenciasDesativadas:[{de:'2026-01-01',pphNominal:120}]}],
-   metasOee:[{codigo:'OEE-LINHA',ativo:false,vigencias:[{de:'2026-01-01',oeeMetaPct:70}]}],
-   turnos:[{codigo:'T1',nome:'1º',ativo:false,vigencias:[{de:'2025-01-01',ate:null,inicio:'06:00',fim:'14:20',dias:[1,2,3,4,5],ativo:true}]}],parametros:{}};
-  CadSync.aplicar(d,C,()=>{});
-  return{c2:d.catalogs.find(x=>x.id==='cat_2'),c1:d.catalogs.find(x=>x.id==='cat_1').active,meta:d.targets.find(x=>x.id==='tg1').deleted,turno:d.shifts[0].versions.map(v=>v.active)}});
-ok(f04.c2&&f04.c2.active===false&&!f04.c2.deleted&&f04.c1===true,'F04: vigência desativada no Portal fica inativa na Produção (não apagada: o histórico acha pelo id)');
-ok(f04.meta===true,'F04: Portal com todas as metas inativas tira a meta local');
-ok(f04.turno.every(a=>a===false),'F04: turno inativo no Portal deixa as vigências inativas');
-
 // ---- F05 · importador SAP: datas e números
 const f05=await o.evaluate(()=>({d1:OrdensSAP.data('31.02.2026'),d2:OrdensSAP.data('29.02.2028'),n1:OrdensSAP.num('123abc'),n2:OrdensSAP.num('1.234,56'),n3:OrdensSAP.num('15-')}));
 ok(f05.d1===null&&f05.d2==='2028-02-29','F05: data inexistente recusada (31.02.2026), 29.02.2028 aceita');
@@ -128,18 +116,6 @@ const m1w=await w1.evaluate(async PASTA=>{const X=eval(PASTA);const baixados=[];
   return{disco,pend,disco2,baixados}},PASTA);
 ok(m1w.disco.B===1&&!m1w.disco.A2&&m1w.pend,'M01 Waste: leitura prévia falhou → não grava; B continua na pasta e a alteração fica pendente');
 ok(m1w.disco2.B===1&&m1w.baixados.some(n=>/_NAO-GRAVADO_/.test(n)),'M01 Waste: na sincronização, B é preservado e a cópia local vai para o _NAO-GRAVADO');
-
-// ---- M02 · CadSync: vigência antiga não vira a nova
-const m2=await o.evaluate(()=>{const d={lines:[],families:[],machines:[],catalogs:[],shifts:[],downtimeCodes:[],targets:[],settings:{}};
-  CadSync.aplicar(d,{rev:1,catalogos:[{codigo:'360060',nome:'Tubo',vigencias:[{de:'2025-01-01',pphNominal:100}]}],parametros:{}},()=>{});
-  const id1=d.catalogs[0].id;
-  CadSync.aplicar(d,{rev:2,catalogos:[{codigo:'360060',nome:'Tubo',vigencias:[{de:'2026-01-01',pphNominal:200}],vigenciasDesativadas:[{de:'2025-01-01',pphNominal:100}]}],parametros:{}},()=>{});
-  const velho=d.catalogs.find(x=>x.id===id1),novo=d.catalogs.find(x=>x.id!==id1);
-  const L={lines:[],families:[],machines:[],catalogs:[{id:'cat_leg',code:'360061',validFrom:'2024-01-01',pph:90,active:true,createdBy:'Ana'}],shifts:[],downtimeCodes:[],targets:[],settings:{}};
-  CadSync.aplicar(L,{rev:1,catalogos:[{codigo:'360061',nome:'Tubo 2',vigencias:[{de:'2025-01-01',pphNominal:95}]}],parametros:{}},()=>{});
-  return{n:d.catalogs.length,velho:velho&&[velho.validFrom,velho.pph,velho.active],novo:novo&&[novo.validFrom,novo.pph,novo.active],leg:[L.catalogs.length,L.catalogs[0].id,L.catalogs[0].validFrom]}});
-ok(m2.n===2&&JSON.stringify(m2.velho)==='["2025-01-01",100,false]'&&JSON.stringify(m2.novo)==='["2026-01-01",200,true]',`M02: registro antigo mantém data e PPH (${m2.velho}); a nova vigência ganha outro registro (${m2.novo})`);
-ok(m2.leg[0]===1&&m2.leg[1]==='cat_leg'&&m2.leg[2]==='2025-01-01','M02: catálogo local nunca sincronizado continua sendo aproveitado no mapeamento inicial');
 
 // ---- M03 · Portal: volta para a página no dia seguinte redesenha a tela
 const p3=await nova('Portal.html#geral','PV',async p=>{await p.clock.install({time:new Date('2026-11-06T10:00:00')})});

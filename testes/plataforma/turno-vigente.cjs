@@ -38,7 +38,7 @@ const html = fs.readFileSync(path.resolve(__dirname, '../../Plataforma.html'));
       const cat2 = db().catalogs.filter(c => c.active !== false)[1]; Actions.setIv(x.d.id, x.iv.id, 'catalogId', cat2.id);   // troca de catálogo às 12:00 (revisão do PR #110)
       x = ivDe(sab2, '13:00'); Actions.setIv(x.d.id, x.iv.id, 'good', 30000);              // 13:00–14:30: deixa de existir no sábado (vira 12:00–13:30)
       const antes = db().productionDays.find(d => !d.deleted && d.date === sab).shifts.find(p => p.snap.code === 'T1').snap.end;
-      CadSync.aplicar(db(), vacCad(), () => {}); try { Engine.bumpConfig(); } catch (e) { }   // o que a sincronização faz com a pasta conectada
+      Store.S.db = Store.S.db; try { Engine.bumpConfig(); } catch (e) { }   // remonta as tabelas a partir do cadastro (o que acontece quando o cadastro da pasta muda)
       App.sel.date = sab; go('launch'); render(); await new Promise(r => setTimeout(r, 400));
       const b = document.querySelector('#horNovo'); return { antes, aviso: b ? b.textContent.replace(/\s+/g, ' ') : '' };
     }, datas);
