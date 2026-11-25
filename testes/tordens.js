@@ -112,12 +112,12 @@ const PREP = async () => {
   });
   ok(r.novos === 2 && new Set(r.L).size === r.L.length, `duas substituições no mesmo minuto: ${r.novos} backups distintos`);
 
-  // 8. F04 · readBackup lê o local novo e o antigo
+  // 8. F04 · readBackup lê só o local do módulo (o local antigo saiu na base limpa)
   r = await p.evaluate(async () => {
     const L = await Store.S.backend.listBackups(); const leg = L.find(x => x.legacy), mod = L.find(x => !x.legacy && /2026-02-01/.test(x.name));
     return { leg: leg && await Store.S.backend.readBackup(leg.name, true), mod: mod && await Store.S.backend.readBackup(mod.name, false) };
   });
-  ok(r.leg === '{"legado":true}' && r.mod === '{"modulo":true}', 'backups: lê o do local antigo (00. Backups/) e o do módulo (00. Backups/OEE)');
+  ok(!r.leg && r.mod === '{"modulo":true}', 'backups: só o do módulo (00. Backups/OEE); o do local antigo (00. Backups/) não é mais lido (base limpa)');
 
   // 9. arquivo realmente ausente: a gravação cria (decisão explícita, com aviso)
   r = await p.evaluate(async () => {
