@@ -9309,7 +9309,7 @@ const Store = (() => {
   }
   let _db = null;
   Object.defineProperty(S, 'db', { get: () => _db, set: v => { _db = v; if (v) { try { aplicarCadastro(); } catch (e) { console.warn('ProdCad', e); } } }, enumerable: true, configurable: true });
-  const semCadastro = db => { const c = Object.assign({}, db); for (const k of TABELAS_CAD) delete c[k]; if (Array.isArray(c.calendar)) c.calendar = c.calendar.filter(x => x.origin !== 'portal'); return c; };
+  const semCadastro = db => { const c = Object.assign({}, db); if (c.settings) { c.settings = Object.assign({}, c.settings); for (const k of PARAM_ADM) delete c.settings[k]; } for (const k of TABELAS_CAD) delete c[k]; if (Array.isArray(c.calendar)) c.calendar = c.calendar.filter(x => x.origin !== 'portal'); return c; };
   const replacer = (k, v) => (k &amp;&amp; k[0] === '_') ? undefined : v;
   const serialize = db => JSON.stringify(semCadastro(db), replacer);
   let queue = Promise.resolve();
@@ -10231,6 +10231,7 @@ const Actions = (() => {
     Store.mutate((db, audit) => { const t = db.targets.find(x => x.id === id); if (date < t.validFrom) throw new Error('A data de encerramento é anterior ao início da vigência.'); const b = t.validTo; t.validTo = date; touch(t); Engine.bumpConfig(); audit({ action: 'alteração de meta', entity: 'meta', entityId: id, field: 'validTo', before: b, after: date, reason: 'encerramento de vigência' }); }, { backup: true, backupReason: 'alteração de meta' });
   }
   function setSettings(patch) {
+    const ja = Object.keys(patch).filter(k => PARAM_ADM.includes(k)); if (ja.length) throw new Error('Definido na Administração: ' + ja.join(', ') + '. Altere no cadastro.');
     Store.mutate((db, audit) => { for (const [k, v] of Object.entries(patch)) { const b = db.settings[k]; if (JSON.stringify(b) === JSON.stringify(v)) continue; db.settings[k] = v; audit({ action: 'edição', entity: 'configuração', entityId: k, field: k, before: b, after: v }); } Engine.bumpConfig(); });
   }
 
@@ -13443,7 +13444,7 @@ App.views.stops = {
   render() {
     const st = db().settings, days = filteredDays(), evs = A.events(days);
     const S = App.stops; S.page = S.page || 0;
-    let h = filterBar({ extra: `<label class="f"><span>Limite (min)</span><input type="number" min="1" id="stLim" value="${st.longStopMin}" style="width:80px"></label>` });
+    let h = filterBar({ extra: `<label class="f"><span>Limite (min)</span><input type="number" min="1" id="stLim" value="${st.longStopMin}" style="width:80px" disabled title="Definido na Administração"></label>` });
     if (!evs.length) return h + `<div class="empty">Sem paradas registradas no período.</div>`;
     const par = A.pareto(evs, S.dim);
     const totalMin = U.sum(evs, e => e.minutes), planned = U.sum(evs.filter(e => e.code.planned), e => e.minutes);
@@ -13473,7 +13474,6 @@ App.views.stops = {
     root.querySelectorAll('[data-pg]').forEach(b => b.onclick = () => { S.page += +b.dataset.pg; render(); });
     root.querySelectorAll('[data-openday]').forEach(r => r.onclick = () => { const d = db().productionDays.find(x => x.id === r.dataset.openday); if (d) openDayDrawer(d); });
     const c = root.querySelector('#stClr'); if (c) c.onclick = () => { S.pick = null; render(); };
-    const l = root.querySelector('#stLim'); if (l) l.onchange = () => { const v = +l.value; if (v > 0) run(() => Actions.setSettings({ longStopMin: v })); };
     const csv = root.querySelector('#stCsv'); if (csv) csv.onclick = () => Exporter.stopsCsv(A.events(filteredDays()));
   }
 };
@@ -13837,29 +13837,33 @@ Cfg.qn = {
 };
 
 /* ---------- parâmetros ---------- */
+/* parâmetros que a Administração define (ProdCad os deriva do cadastro); aqui só leitura */
+const PARAM_ADM = ['longStopMin', 'semaphore', 'abMotivos', 'offMotivosProg', 'offMotivosNP', 'entryUnit', 'unitLabel', 'roundingUnit', 'roundingVig', 'continuityMin', 'foraTurnoDesde'];
+function viaAdmHtml() {
+  const s = db().settings, pc = x => U.pct(x, 0), rv = (s.roundingVig || []).map(v => v.de + ' → ' + U.fmt(v.valor, 0)).join(' · ');
+  const L = [['Unidade de lançamento (peças)', U.fmt(s.entryUnit, 0)], ['Rótulo da unidade', s.unitLabel], ['Arredondar metas para cima em múltiplos de (peças)', rv || U.fmt(s.roundingUnit, 0)],
+    ['Semáforo: verde a partir de / amarelo a partir de (% da meta)', pc(s.semaphore.green) + ' / ' + pc(s.semaphore.yellow)], ['Limite de parada longa (min)', U.fmt(s.longStopMin, 0)]];
+  const link = typeof cfgAdmRota === 'function' ? CadPortal.portalHref('cadastros/parametros') : '';
+  return `<div class="small muted" data-vac-via-adm style="margin-bottom:10px"><b>Definidos na Administração</b> (somente leitura aqui): ${L.map(x => esc(x[0]) + ' <b>' + esc(String(x[1])) + '</b>').join(' · ')}${link ? ` · <a href="${esc(link)}">Abrir na Administração</a>` : ''}</div>`;
+}
 Cfg.parametros = {
   fields: [
-    { help: 'entryUnit', k: 'entryUnit', label: 'Unidade de lançamento da produção (peças)', type: 'number', req: 1, hint: '1000 = digitar em milheiros (61 = 61.000 tubos)' }, { help: 'unitLabel', k: 'unitLabel', label: 'Rótulo da unidade', req: 1, hint: 'Ex.: mil' },
-    { help: 'roundingUnit', k: 'roundingUnit', label: 'Arredondar metas para cima em múltiplos de (peças)', type: 'number', req: 1, hint: '1000 reproduz o quadro da planilha' },
-    { help: 'semGreen', k: 'semGreen', label: 'Verde a partir de (% da meta)', type: 'pct', req: 1 }, { help: 'semYellow', k: 'semYellow', label: 'Amarelo a partir de (% da meta)', type: 'pct', req: 1 },
     { help: 'coverageMin', k: 'coverageMin', label: 'Cobertura mínima do apontamento (%)', type: 'pct', req: 1 }, { help: 'divergenceMax', k: 'divergenceMax', label: 'Divergência máxima (% do tempo planejado)', type: 'pct', req: 1 },
     { help: 'perfMode', k: 'perfMode', label: 'Modo da Performance na cascata', type: 'select', empty: false, options: [['1', '1 · fecha pelos minutos medidos'], ['2', '2 · premissa de perda de velocidade (CALCv3)']] },
     { help: 'speedLossPremise', k: 'speedLossPremise', label: 'Premissa de perda de velocidade e microparadas (%)', type: 'pct', hint: 'Usada só no modo 2' },
     { help: 'tailMergeMax', k: 'tailMergeMax', label: 'Somar o pedaço final do turno ao intervalo anterior se tiver até (min)', type: 'number', hint: '30 gera 13:00–14:30; 47 min (22:00–22:47) fica separado' },
     { help: 'pendDaysBack', k: 'pendDaysBack', label: 'Pendências: procurar dias sem lançamento nos últimos (dias)', type: 'number' }, { help: 'openHoursAlert', k: 'openHoursAlert', label: 'Pendências: alertar lançamento aberto há mais de (h) após o último turno', type: 'number' },
-    { help: 'longStopMin', k: 'longStopMin', label: 'Limite de parada longa (min)', type: 'number' }, { help: 'serverBoxQty', k: 'serverBoxQty', label: 'Servidor: peças por caixa', type: 'number', req: 1, hint: 'lote de 1.260 caixas = 1.260.000 tubos → 1000' }, { help: 'serverGapMin', k: 'serverGapMin', label: 'Servidor: sem caixa por mais de (min) vira sugestão de parada', type: 'number' }, { help: 'serverHourTol', k: 'serverHourTol', label: 'Servidor: tolerância por hora (caixas)', type: 'number', hint: 'diferença menor ou compensada na hora vizinha não gera aviso' }, { help: 'serverSetupMax', k: 'serverSetupMax', label: 'Servidor: troca acima de (min) provavelmente inclui parada longa', type: 'number' }, { help: 'autoReloadSec', k: 'autoReloadSec', label: 'Releitura automática da base (s)', type: 'number' }, { help: 'tvRotateSec', k: 'tvRotateSec', label: 'Rotação do modo TV (s)', type: 'number' }],
+    { help: 'serverBoxQty', k: 'serverBoxQty', label: 'Servidor: peças por caixa', type: 'number', req: 1, hint: 'lote de 1.260 caixas = 1.260.000 tubos → 1000' }, { help: 'serverGapMin', k: 'serverGapMin', label: 'Servidor: sem caixa por mais de (min) vira sugestão de parada', type: 'number' }, { help: 'serverHourTol', k: 'serverHourTol', label: 'Servidor: tolerância por hora (caixas)', type: 'number', hint: 'diferença menor ou compensada na hora vizinha não gera aviso' }, { help: 'serverSetupMax', k: 'serverSetupMax', label: 'Servidor: troca acima de (min) provavelmente inclui parada longa', type: 'number' }, { help: 'autoReloadSec', k: 'autoReloadSec', label: 'Releitura automática da base (s)', type: 'number' }, { help: 'tvRotateSec', k: 'tvRotateSec', label: 'Rotação do modo TV (s)', type: 'number' }],
   render() {
-    const s = db().settings; const o = { ...s, semGreen: s.semaphore.green, semYellow: s.semaphore.yellow, perfMode: String(s.perfMode) };
-    return `<section class="card"><header><h3>Parâmetros de cálculo</h3></header><div class="form" id="pForm">${this.fields.map(f => field(f, o[f.k])).join('')}</div>
+    const s = db().settings; const o = { ...s, perfMode: String(s.perfMode) };
+    return `<section class="card"><header><h3>Parâmetros de cálculo</h3></header>${viaAdmHtml()}<div class="form" id="pForm">${this.fields.map(f => field(f, o[f.k])).join('')}</div>
       <div class="row" style="margin-top:12px"><button class="btn primary" id="pSave">Salvar parâmetros</button></div>
       <p class="small muted" style="margin-top:10px">Exemplo do semáforo com meta de OEE 78,0%: verde a partir de ${U.pct(0.78 * s.semaphore.green)}, amarelo a partir de ${U.pct(0.78 * s.semaphore.yellow)}, vermelho abaixo disso. A cor é sempre relativa à meta vigente.</p></section>`;
   },
   mount(root) {
     root.querySelector('#pSave').onclick = () => run(() => {
       const d = collect(root.querySelector('#pForm'), this.fields);
-      if (!(d.entryUnit > 0) || !(d.roundingUnit > 0)) throw new Error('Unidade e arredondamento devem ser maiores que zero.');
-      if (d.semYellow > d.semGreen) throw new Error('O limite amarelo deve ser menor que o verde.');
-      d.semaphore = { green: d.semGreen, yellow: d.semYellow }; delete d.semGreen; delete d.semYellow; d.perfMode = +d.perfMode;
+      d.perfMode = +d.perfMode;
       Actions.setSettings(d);
     }, 'Parâmetros salvos.');
   }
@@ -14783,26 +14787,21 @@ function abonoCfgHtml() {
     <p class="q">Abono padrão por dia da semana: já vem preenchido em cada turno daquele dia (só o tempo) e pode ser alterado no lançamento. Por padrão não há abono.</p>
     <div class="tw"><table><thead><tr><th>Dia</th><th class="n">Abono padrão por turno (min)</th><th>Motivo</th></tr></thead><tbody>${[1, 2, 3, 4, 5, 6, 0].map(i => { const x = D[i] || {}; return `<tr><td>${dn[i]}</td><td class="n"><input type="number" min="0" step="1" data-abd="${i}" value="${+x.min > 0 ? x.min : ''}" placeholder="0" style="width:90px" aria-label="Abono de ${dn[i]}"></td><td><input type="text" data-abm="${i}" list="abMots" value="${esc(x.motivo || '')}" maxlength="60" aria-label="Motivo de ${dn[i]}"></td></tr>`; }).join('')}</tbody></table></div>
     <datalist id="abMots">${M.map(m => `<option value="${esc(m)}">`).join('')}</datalist>
-    <label class="f section" style="display:flex;flex-direction:column;gap:4px"><span class="small muted">Motivos de abono (um por linha)</span><textarea id="abMotTxt" rows="5">${esc(M.join('\n'))}&lt;/textarea></label>
+    <p class="small muted section">Motivos de abono (definidos na Administração): ${esc(M.join(' · ')) || 'nenhum cadastrado'}</p>
     <div class="row" style="margin-top:8px"><button class="btn primary" id="abSave">Salvar abonos</button><span class="small muted">Vale para os dias criados a partir de agora.</span></div></section>`;
 }
 function offMotCfgHtml() {
   const st = db().settings;
-  return `<section class="card section"><header><h3>Motivos de "sem produção"</h3></header><p class="q">Aparecem como lista ao marcar um dia ou turno sem produção. Um por linha.</p>
-    <div class="grid g2"><label class="f"><span><b>Programado</b> (o dia/turno sai do plano e do OEE)</span><textarea id="omP" rows="6">${esc((st.offMotivosProg || []).join('\n'))}&lt;/textarea></label>
-    <label class="f"><span><b>Não programado</b> (conta como parada no OEE)</span><textarea id="omN" rows="6">${esc((st.offMotivosNP || []).join('\n'))}&lt;/textarea></label></div>
-    <div class="row" style="margin-top:8px"><button class="btn primary" id="omSave">Salvar motivos</button></div></section>`;
+  return `<section class="card section"><header><h3>Motivos de "sem produção"</h3></header><p class="q">Aparecem como lista ao marcar um dia ou turno sem produção. Definidos na Administração (somente leitura aqui).</p>
+    <div class="grid g2"><div><b>Programado</b> (o dia/turno sai do plano e do OEE)<ul>${(st.offMotivosProg || []).map(m => `<li>${esc(m)}</li>`).join('') || '<li class="muted">nenhum cadastrado</li>'}</ul></div>
+    <div><b>Não programado</b> (conta como parada no OEE)<ul>${(st.offMotivosNP || []).map(m => `<li>${esc(m)}</li>`).join('') || '<li class="muted">nenhum cadastrado</li>'}</ul></div></div></section>`;
 }
-function bindOffMotCfg(root) {
-  const b = root.querySelector('#omSave'); if (!b) return;
-  b.onclick = () => run(() => { const L = id => [...new Set(root.querySelector(id).value.split('\n').map(x => x.trim()).filter(Boolean))]; const P = L('#omP'), N = L('#omN'); if (!P.length) throw new Error('Deixe pelo menos um motivo programado.'); Actions.setSettings({ offMotivosProg: P, offMotivosNP: N }); }, 'Motivos salvos.');
-}
+function bindOffMotCfg(root) { /* somente leitura: os motivos vêm do cadastro */ }
 function bindAbonoCfg(root) {
   const b = root.querySelector('#abSave'); if (!b) return;
   b.onclick = () => run(() => {
     const D = {}; root.querySelectorAll('[data-abd]').forEach(i => { const v = +i.value; if (v > 0) D[i.dataset.abd] = { min: v, motivo: root.querySelector(`[data-abm="${i.dataset.abd}"]`).value.trim() }; });
-    const M = [...new Set(root.querySelector('#abMotTxt').value.split('\n').map(x => x.trim()).filter(Boolean))];
-    Actions.setSettings({ abDefault: D, abMotivos: M });
+    Actions.setSettings({ abDefault: D });
   }, 'Abonos salvos.');
 }
 
@@ -55199,8 +55198,8 @@ body.vac-porta{overflow:hidden}
       "id": "oee",
       "path": "Plataforma.html#motor/oee",
       "version": "2.6.47",
-      "sha256": "f132ab17a1b8be62e537c0e59ed1b9200cb09d354f03ead991ee31d9bf0cb3b9",
-      "bytes": 2382254
+      "sha256": "34056419bcd70b447462bc3d4d3df00104e2502d196500ffc1046b56f951ef15",
+      "bytes": 2381933
     },
     {
       "id": "perdas",
@@ -55262,7 +55261,7 @@ body.vac-porta{overflow:hidden}
   "limitations": [
     "Projetos e conteúdo técnico OSM/MES/AM/TPM mantêm os limites documentados nas fontes."
   ],
-  "enginesSha256": "b96df95737d3e73c0e79676bed42a3ef1aecf6d8f68e14162ab50411e840c506",
+  "enginesSha256": "5ee559d36596ba68080d97a69b189e457767720f48c4fd68e00339b5439f2a1a",
   "originRevision": "ffc9ee8",
   "sourceMode": "single-html",
   "originEnginesSha256": "a87a64ad0c328f70e102b2ae888790a9b5d5a9bd05778652a7ce7cae140e40d2"
