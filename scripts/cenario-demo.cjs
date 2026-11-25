@@ -17,6 +17,8 @@ async function COMPLEMENTO([mod, id, desloc]) {
     // a demonstração troca o localStorage da página; um quadro vazio da mesma origem grava no armazenamento de verdade da demonstração
     const gravar = cad => { const f = document.createElement('iframe'); document.body.appendChild(f); f.contentWindow.localStorage.setItem('vac.demo.' + id + '.base.cad', JSON.stringify(cad)); f.remove(); };
     const cad = vacDemo.ler('cad'), notas = []; cad.parametros = cad.parametros || {}; const g = cad.parametros.gel = cad.parametros.gel || {};
+    // planta do SAP do cenário (a Ordens lê do cadastro; a instalação limpa começa vazia)
+    if (!cad.parametros.plantaSap) { cad.parametros.plantaSap = '4017'; notas.push('planta do SAP 4017 no cadastro'); }
     // Gel lê a produção do turno pela Produção a partir de 30 dias antes do dia do cenário (Fase 4 · 4d)
     if (!g.registroPelaProducaoDesde) { const d = new Date(); d.setDate(d.getDate() - 30); g.registroPelaProducaoDesde = d.toISOString().slice(0, 10); notas.push('Gel lê a produção pela Produção desde ' + g.registroPelaProducaoDesde); }
     // Gel no formato v2 (cadastro central): formato de 01/10/2025 e os 14 locais de descarte da página antiga, ligados aos equipamentos.

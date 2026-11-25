@@ -193,13 +193,13 @@ const BLOQUEIO = 'Base de versão anterior. Comece uma base nova nesta pasta.';
           try { await Store.restoreBackup('oee-vacutainer-base_2026-11-20.json', 'teste'); r.rest = 'restaurou'; } catch (e) { r.rest = e.message; }
           try { await Store.replaceWithImported(JSON.stringify(bk), 'teste'); r.impAnt = 'importou'; } catch (e) { r.impAnt = e.message; }
           r.intacta = JSON.parse(be.files.base).schemaVersion ?? 'sem'; r.bk0 = be.files.backups.size;
-          const nova = Model.emptyBase('teste'); nova.settings.unitName = 'Unidade fictícia importada';
+          const nova = Model.emptyBase('teste'); nova.settings.marcaTeste = 'Unidade fictícia importada';
           await Store.replaceWithImported(JSON.stringify(nova), 'teste');
           const g = JSON.parse(be.files.base);
-          r.depois = { formato: Store.S.formato, sv: g.schemaVersion, unidade: g.settings.unitName, versao: g.databaseVersion, status: Store.S.status,
+          r.depois = { formato: Store.S.formato, sv: g.schemaVersion, unidade: g.settings.marcaTeste, versao: g.databaseVersion, status: Store.S.status,
             backup: be.files.backups.size > r.bk0, auditoria: g.auditLog.some(a => a.action === 'importação' && a.reason === 'teste') };
-          Store.mutate(d => { d.settings.unitName = 'Unidade fictícia editada'; }); await Store.flush();
-          r.edita = JSON.parse(be.files.base).settings.unitName;
+          Store.mutate(d => { d.settings.marcaTeste = 'Unidade fictícia editada'; }); await Store.flush();
+          r.edita = JSON.parse(be.files.base).settings.marcaTeste;
           return r;
         });
         assert.deepEqual(r4, { antes: BLOQUEIO, rest: BLOQUEIO, impAnt: BLOQUEIO, intacta: 'sem', bk0: 1,
