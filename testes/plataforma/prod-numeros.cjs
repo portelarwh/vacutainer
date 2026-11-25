@@ -58,16 +58,18 @@ async function capturar() {
       for (const l of d.lines) mapa.set(l.id, 'L:' + l.code);
       for (const m of d.machines) mapa.set(m.id, 'M:' + m.code);
       for (const f of d.families) mapa.set(f.id, 'F:' + f.code);
-      for (const c of d.catalogs) mapa.set(c.id, 'C:' + c.code + '@' + (c.validFrom || ''));
-      for (const t of d.shifts) { mapa.set(t.id, 'S:' + t.code); for (const v of t.versions || []) mapa.set(v.id, 'S:' + t.code + '@' + (v.validFrom || '')); }
+      for (const c of d.catalogs) mapa.set(c.id, 'C:' + c.code);
+      for (const t of d.shifts) { mapa.set(t.id, 'S:' + t.code); for (const v of t.versions || []) mapa.set(v.id, 'S:' + t.code); }
       for (const x of d.downtimeCodes) mapa.set(x.id, 'D:' + x.code);
       const porCodigo = v => {
         if (Array.isArray(v)) return v.map(porCodigo);
         if (v && typeof v === 'object') return Object.fromEntries(Object.entries(v).map(([k, x]) => [mapa.get(k) ?? k, porCodigo(x)]));
-        return typeof v === 'string' && mapa.has(v) ? mapa.get(v) : v;
+        return typeof v === 'string' ? (mapa.has(v) ? mapa.get(v) : /^tg_/.test(v) ? 'TG' : v) : v;   // id de meta (aleatório antes, derivado agora)
       };
-      return estavel(porCodigo({ dias: porDia, agregados, listas: estavel({ linhas: d.lines.length, equipamentos: d.machines.length, catalogos: d.catalogs.length,
-        turnos: d.shifts.length, paradas: d.downtimeCodes.length }) }));
+      const DESCRITIVOS = new Set(['createdAt', 'createdBy', 'updatedAt', 'updatedBy', 'revision', 'note', 'portalDe', 'portalCode', 'rounding', 'demo', 'name', 'description', 'validFrom', 'validTo']);   // campos que só descrevem o registro do cadastro; valores nulos também saem (presença de chave vazia não é número)
+      const semDescritivos = v => Array.isArray(v) ? v.map(semDescritivos) : v && typeof v === 'object' ? Object.fromEntries(Object.entries(v).filter(([k, x]) => !DESCRITIVOS.has(k) && x !== null).map(([k, x]) => [k, semDescritivos(x)])) : v;
+      return estavel(semDescritivos(porCodigo({ dias: porDia, agregados, listas: estavel({ linhas: d.lines.length, equipamentos: d.machines.length, catalogos: d.catalogs.length,
+        turnos: d.shifts.length, paradas: d.downtimeCodes.length }) })));
     })()`);
     assert.deepEqual(erros, []);
     assert.ok(numeros.dias.length >= 1, 'o cenário tem ao menos um dia de produção');

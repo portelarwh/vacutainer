@@ -30,7 +30,7 @@ const files={portal:'portal-base.json',oee:'oee-vacutainer-base.json',perdas:'pe
   const reference=await frame.evaluate(async({id,expected,text})=>{
    // Referência calculada ANTES da escrita, sobre a alteração explícita.
    const ex=()=>{
-    if(id==='oee')return Exports.build(expected);
+    if(id==='oee'){const x={...expected,settings:db().settings,calendar:db().calendar};for(const k of ['lines','machines','families','catalogs','shifts','targets','downtimeCodes'])x[k]=db()[k];return Exports.build(x)}   // as tabelas de cadastro vêm do cadastro, em memória (não estão no arquivo)
     if(id==='portal')return PAGE.exports(expected);
     if(id==='perdas'){const old=B;try{B=expected;return buildExports()}finally{B=old}}
     if(id==='gel'){const old=snapshotData();try{loadData(expected);return gelExports()}finally{loadData(old)}}
