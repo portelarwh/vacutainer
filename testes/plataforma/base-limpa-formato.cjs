@@ -8,6 +8,8 @@
 // (d) o export do Gel em versão anterior não é usado pela Produção, que avisa "Dados de Gestão de Gel em versão anterior";
 // (a2) modo arquivo: base sem schemaVersion aberta por arquivo, e reaberta da cópia do navegador, continua bloqueada e não é
 //      convertida (Model.ensure não inventa schemaVersion); importar ou restaurar uma base de versão anterior é recusado;
+// (a3) a base nova nasce completa; Model.ensure não completa campos; base incompleta é recusada (anterior: texto do bloqueio);
+// (a4) pasta com base anterior: importar uma base atual substitui a bloqueada pela gravação normal e tira o bloqueio;
 // (f) Gestão de Gel › programação em tubos sem vigência de perdas: a tela abre com o aviso (sem erro);
 // (g) Administração: portal-base sem schemaVersion (ou com versão anterior) abre só para consulta com o texto exato, sem conversão
 //     (Store.fix não inventa schemaVersion) e sem gravação; restaurar uma cópia de versão anterior é recusado; o cadastro
@@ -166,6 +168,44 @@ const BLOQUEIO = 'Base de versão anterior. Comece uma base nova nesta pasta.';
         });
         assert.deepEqual(r2, { formato: BLOQUEIO, banner: true, erro: BLOQUEIO, sv: 'sem', cacheSv: 'sem', lancar: false }, 'reaberta da cópia do navegador: continua bloqueada e sem conversão ' + JSON.stringify(r2));
         console.log('ok (a2) modo arquivo: base sem schemaVersion continua bloqueada ao reabrir a cópia do navegador; importar versão anterior é recusado');
+        // (a3) estrutura sem conversão: a base nasce completa e Model.ensure não completa campos; o que faltar recusa a base
+        const r3 = await p2.evaluate(() => {
+          const nova = Model.seed(Model.emptyBase('teste'), 'teste'), txt = JSON.stringify(nova), lida = Model.parseBaseText(txt);
+          const tenta = (mudar) => { const b = JSON.parse(txt); mudar(b); try { Model.parseBaseText(JSON.stringify(b)); return 'aceita'; } catch (e) { return e.message; } };
+          return { igual: JSON.stringify(Model.ensure(JSON.parse(txt))) === txt && JSON.stringify(lida) === txt, formato: lida._formato || '',
+            listas: ['monthPlans', 'panelViews', 'reportNotes', 'calendar'].every(k => Array.isArray(nova[k])), dayLot: !!(nova.server && nova.server.dayLot),
+            atualSemLista: tenta(b => { delete b.calendar; }), atualSemServidor: tenta(b => { delete b.server; }),
+            anteriorSemLista: tenta(b => { delete b.schemaVersion; delete b.monthPlans; }), maisNova: tenta(b => { b.schemaVersion = 2; }) };
+        });
+        assert.deepEqual([r3.igual, r3.formato, r3.listas, r3.dayLot], [true, '', true, true], 'base nova completa e lida sem completar campos ' + JSON.stringify(r3));
+        assert.match(r3.atualSemLista, /não é uma base válida do OEE: calendar ausente/, 'base atual sem lista é recusada, não completada');
+        assert.match(r3.atualSemServidor, /não é uma base válida do OEE: server ausente/, 'base atual sem server é recusada, não completada');
+        assert.equal(r3.anteriorSemLista, BLOQUEIO, 'base anterior incompleta: o texto exato do bloqueio, sem completar');
+        assert.match(r3.maisNova, /versão mais nova da aplicação/, 'base mais nova continua com o aviso de versão mais nova');
+        console.log('ok (a3) base nova completa; Model.ensure não completa campos; incompleta é recusada (anterior: texto do bloqueio)');
+        // (a4) pasta com base de versão anterior: restaurar backup anterior e importar base anterior são recusados; importar base atual
+        //      substitui a base bloqueada pela gravação normal (releitura, backup, confirmação) e tira o bloqueio
+        const r4 = await p2.evaluate(async () => {
+          const velha = Model.seed(Model.emptyBase('teste'), 'teste'); delete velha.schemaVersion; velha.databaseVersion = 5;
+          const be = MemoryBackend(JSON.stringify(velha)); await Store.connect(be);
+          const r = { antes: Store.S.formato };
+          const bk = Model.seed(Model.emptyBase('teste'), 'teste'); bk.schemaVersion = 0; be.files.backups.set('OEE/oee-vacutainer-base_2026-11-20.json', JSON.stringify(bk));
+          try { await Store.restoreBackup('oee-vacutainer-base_2026-11-20.json', 'teste'); r.rest = 'restaurou'; } catch (e) { r.rest = e.message; }
+          try { await Store.replaceWithImported(JSON.stringify(bk), 'teste'); r.impAnt = 'importou'; } catch (e) { r.impAnt = e.message; }
+          r.intacta = JSON.parse(be.files.base).schemaVersion ?? 'sem'; r.bk0 = be.files.backups.size;
+          const nova = Model.seed(Model.emptyBase('teste'), 'teste'); nova.settings.unitName = 'Unidade fictícia importada';
+          await Store.replaceWithImported(JSON.stringify(nova), 'teste');
+          const g = JSON.parse(be.files.base);
+          r.depois = { formato: Store.S.formato, sv: g.schemaVersion, unidade: g.settings.unitName, versao: g.databaseVersion, status: Store.S.status,
+            backup: be.files.backups.size > r.bk0, auditoria: g.auditLog.some(a => a.action === 'importação' && a.reason === 'teste') };
+          Store.mutate(d => { d.settings.unitName = 'Unidade fictícia editada'; }); await Store.flush();
+          r.edita = JSON.parse(be.files.base).settings.unitName;
+          return r;
+        });
+        assert.deepEqual(r4, { antes: BLOQUEIO, rest: BLOQUEIO, impAnt: BLOQUEIO, intacta: 'sem', bk0: 1,
+          depois: { formato: '', sv: 1, unidade: 'Unidade fictícia importada', versao: 6, status: 'salvo', backup: true, auditoria: true }, edita: 'Unidade fictícia editada' },
+          'pasta: anterior recusada; base atual importada pela gravação normal tira o bloqueio ' + JSON.stringify(r4));
+        console.log('ok (a4) pasta: backup e importação de versão anterior recusados; importar base atual grava com backup e tira o bloqueio');
         // (g2) Administração na pasta: tirar a base anterior da pasta e começar uma nova (o aviso diz "Comece uma base nova nesta pasta.")
         const p3 = await ctx2.newPage(); p3.on('pageerror', e => erros.push('adm pasta: ' + e.message)); p3.on('dialog', d => d.accept());
         await p3.goto('http://127.0.0.1:' + srv2.address().port + '/__modulos__/Portal.html');

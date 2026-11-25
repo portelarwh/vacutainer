@@ -41,11 +41,11 @@ ok(f05.n1===null&&f05.n2===1234.56&&f05.n3===-15,'F05: "123abc" recusado; "1.234
 
 // ---- F02 · Gel: colisão em todas as tentativas
 const g=await nova('Gestão-Gel-Vacutainer.html','G');
-const f02=await g.evaluate(async()=>{let txt='{"rev":5,"revBy":"outro","lps":[]}',mod=1;
+const f02=await g.evaluate(async()=>{let txt='{"rev":5,"revBy":"outro","schemaVersion":1,"lps":[]}',mod=1;
   const arq={kind:'file',async getFile(){const t=txt,m=mod;return{lastModified:m,size:t.length,text:async()=>t,slice:(a,b2)=>({text:async()=>t.slice(a,b2)})}},
     async createWritable(){let buf='';return{write:async t=>{buf+=t},close:async()=>{const o=JSON.parse(buf);txt=buf;mod++;
       // outra pessoa grava logo depois, toda vez
-      const x={rev:o.rev+1,revBy:'outro'};txt=JSON.stringify({...x,lps:[]});mod++}}}};
+      const x={rev:o.rev+1,revBy:'outro',schemaVersion:1};txt=JSON.stringify({...x,lps:[]});mod++}}}};
   const dir={async getFileHandle(){return arq},async getDirectoryHandle(){return dir},async *entries(){}};
   S.mode='file';FS.base=dir;FS.mod=0;FS.rev=5;FS.revBy='outro';FS.pending=[];FS.err='';ui.demo=false;
   const ch={lps:{del:[],set:[]},closed:{del:[],set:[]},events:[{id:'tE',type:'nota',at:nowDT(),text:'teste F02'}],imports:[]};
@@ -170,7 +170,7 @@ ok(s2.includes('teste SOME')&&!s2.includes('Não encontrei perdas-base.json'),'B
 
 // ---- M04 · Gel: gravação sem releitura válida não esvazia a fila
 const g4=await nova('Gestão-Gel-Vacutainer.html','GM');
-const m4=await g4.evaluate(async PASTA=>{const X=eval(PASTA);X.files[BASE_FILE]={txt:'{"rev":5,"revBy":"outro","lps":[]}',mod:1};X.F.cabFalha=true;
+const m4=await g4.evaluate(async PASTA=>{const X=eval(PASTA);X.files[BASE_FILE]={txt:'{"rev":5,"revBy":"outro","schemaVersion":1,"lps":[]}',mod:1};X.F.cabFalha=true;
   S.mode='file';FS.base=X.dir;FS.mod=0;FS.rev=5;FS.revBy='outro';FS.pending=[];FS.err='';ui.demo=false;
   FS.pending.push({lps:{del:[],set:[]},closed:{del:[],set:[]},events:[{id:'tM4',type:'nota',at:nowDT(),text:'teste M04'}],imports:[]});
   await fsFlush();const r={pend:FS.pending.length,err:FS.err};S.mode='local';FS.base=null;FS.pending=[];return r},PASTA);
