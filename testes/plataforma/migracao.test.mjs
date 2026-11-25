@@ -11,7 +11,7 @@ const comCatalogos = catalogos => {
   pasta[CAD].catalogos = catalogos;
   return pasta;
 };
-const plano = (arqs, escolhas) => M.planejar(arqs, arqs[CAD], escolhas).then(json);
+const plano = (arqs, escolhas) => M.planejar(arqs, escolhas).then(json);
 const aplicado = (arqs, p) => ({...arqs, ...Object.fromEntries(Object.entries(p.alteracoes).map(([a, x]) => [a, x.depois]))});
 const tipos = (p, item) => p.excecoes.filter(e => e.item === item).map(e => e.tipo);
 
@@ -25,7 +25,7 @@ test('hash: SHA-256 do JSON canônico, sem depender da ordem das chaves', async 
 
 test('planejar não altera os arquivos recebidos', async () => {
   const pasta = pastaMain(), antes = json(pasta);
-  await M.planejar(pasta, pasta[CAD], {});
+  await M.planejar(pasta, {});
   assert.deepEqual(json(pasta), antes);
 });
 
@@ -129,6 +129,32 @@ test('M3: vigência a converter com data 2000-01-01 ou sem data vai para exceç�
   const escolhas = Object.fromEntries(p.excecoes.map((e, i) => [e.id, {from: '2025-0' + (i + 1) + '-01'}]));
   const vig = (await plano(pasta, escolhas)).alteracoes[CAD].depois.catalogos[0].gel.vig;
   assert.deepEqual(vig, [{from: '2025-01-01', bomKg: 10 * 106 / 100 * 10, bomBase: 10000, tol: 6}, {from: '2025-02-01', gTubo: 0.9, bomKg: 11}]);
+});
+
+test('M3: vigência já convertida com data 2000-01-01 vai para exceção e só muda com a data escolhida', async () => {
+  const v = {from: '2000-01-01', gTubo: 0.9, bomKg: 11, bomBase: 10000, tol: 6};
+  const pasta = comCatalogos([{codigo: 'cat-c', gel: {vig: [v]}}]);
+  const p = await plano(pasta);
+  assert.equal(p.alteracoes[CAD], undefined);
+  assert.deepEqual(p.excecoes.map(e => [e.tipo, e.caminho]), [['M3-data', 'catalogos[0].gel.vig[0]']]);
+  const id = p.excecoes[0].id;
+  assert.equal((await plano(pasta, {[id]: 'manter'})).alteracoes[CAD], undefined);
+  const com = await plano(pasta, {[id]: {from: '2024-01-01'}});
+  assert.deepEqual(com.alteracoes[CAD].depois.catalogos[0].gel.vig, [{...v, from: '2024-01-01'}]);
+});
+
+test('M3: sem bomKg nem bomG a tolerância e o BOM seguem a main (vigList/bomVals)', async () => {
+  const casos = [[{gTubo: 0.9, tol: 8}, 8], [{gTubo: 0.9, bomPct: 110}, 6]];
+  for (const [gel, tol] of casos) {
+    const pasta = comCatalogos([{codigo: 'x', gel}]);
+    const [e] = (await plano(pasta)).excecoes;
+    const p = await plano(pasta, {[e.id]: {from: '2025-01-01'}});
+    assert.deepEqual(p.alteracoes[CAD].depois.catalogos[0].gel, {vig: [{from: '2025-01-01', gTubo: 0.9, bomKg: null, bomBase: 10000, tol}]}, JSON.stringify(gel));
+  }
+});
+
+test('planejar recebe só os arquivos e as escolhas', () => {
+  assert.equal(M.planejar.length, 2);
 });
 
 test('M3: valor não numérico gera a exceção M3-valor e nenhuma alteração', async () => {

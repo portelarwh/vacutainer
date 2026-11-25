@@ -60,10 +60,10 @@
   - `testes/plataforma/base-limpa.test.mjs`, que passa a isentar só `ferramenta/migracao` das proibições de leitura antiga.
 
 **Interfaces (produz):**
-- `vacMigracao.planejar(arqs, cad) → { itens: {M1:[…], M3:[…], …}, alteracoes: { [arquivo]: { hashAntes, depois, itens:[{item, caminho, de, para}] } }, excecoes: [{id, item, arquivo, caminho, valor, motivo, candidatos:[{id, nome}], opcoes:[…]}] }`.
+- `vacMigracao.planejar(arqs, escolhas) → { itens: {M1:[…], M3:[…], …}, alteracoes: { [arquivo]: { hashAntes, depois, itens:[{item, caminho, de, para}] } }, excecoes: [{id, item, arquivo, caminho, valor, motivo, candidatos:[{id, nome}], opcoes:[…]}] }`.
   - `arqs` é `{ 'portal-base.json': obj, 'vacutainer-cadastros.json': obj, … }`.
-  - `cad` é o cadastro lido.
-  - É uma função pura. As escolhas entram por `planejar(arqs, cad, escolhas)`, com `escolhas = { [excecao.id]: valor }`.
+  - O cadastro é lido de `arqs['vacutainer-cadastros.json']`.
+  - É assíncrona (o `hashAntes` usa `crypto.subtle`) e pura. As escolhas entram por `escolhas = { [excecao.id]: valor }`. Cada exceção traz também `tipo` (ex.: `M3-data`) e, se decidida, `escolha`.
 - `vacMigracao.hash(obj)` devolve SHA-256 do JSON canônico (chaves em ordem). É assíncrono, via `crypto.subtle`.
 - `migracao-fixtures.mjs` exporta `pastaMain()`: um objeto `{arquivo: conteúdo}` fictício no formato da main. Inclui portal-base sem versão, com `reunioes` e `config`; cadastro v2 com catálogos de gel solto; Iniciativas, Equipamentos, Linha, Paradas e Waste com pessoas só com nome (únicas, repetidas e ausentes); prodlog e gelScrap com `{e,d}` antigos e `legado` no cadastro; Waste com `actions[]`.
 

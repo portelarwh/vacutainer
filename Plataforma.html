@@ -56128,10 +56128,10 @@ const vacMigracao = (() => {
     &amp;&amp; new Date(s + 'T00:00:00Z').toISOString().slice(0, 10) === s;
 
   /* Contexto de um planejamento: cópias dos arquivos alterados, itens e exceções. */
-  function contexto(arqs, cad, escolhas) {
+  function contexto(arqs, escolhas) {
     const depois = {}, porArquivo = {}, itens = {}, excecoes = [];
     return {
-      arqs, cad, escolhas: escolhas || {}, depois, porArquivo, itens, excecoes,
+      arqs, escolhas: escolhas || {}, depois, porArquivo, itens, excecoes,
       doc(arquivo) { if (!(arquivo in depois)) depois[arquivo] = copia(arqs[arquivo]); return depois[arquivo]; },
       alterar(item, arquivo, caminho, de, para) {
         (porArquivo[arquivo] = porArquivo[arquivo] || []).push({item, caminho, de: copia(de) ?? null, para: copia(para) ?? null});
@@ -56169,7 +56169,7 @@ const vacMigracao = (() => {
   const OPCOES_DATA = [{campo: 'from', rotulo: 'Data de início da vigência (AAAA-MM-DD)'}, MANTER];
   /* Valores gravados que não são número (vazio conta como ausente). */
   const naoNumericos = (o, campos) => campos.filter(k => !vazio(o[k]) &amp;&amp; !numero(o[k]));
-  /* BOM de uma vigência como a main lia (bomVals), no formato atual {bomKg, bomBase, tol}. */
+  /* BOM de uma vigência como a main lia (vigList guarda tol??6; bomVals ignora bomPct sem bomG), no formato atual {bomKg, bomBase, tol}. */
   function bomAtual(v) {
     const tol = vazio(v.tol) ? 6 : +v.tol;
     if (+v.bomKg) return {bomKg: +v.bomKg, bomBase: +v.bomBase || 10000, tol};
@@ -56217,7 +56217,7 @@ const vacMigracao = (() => {
     const caminho = 'catalogos[' + i + '].gel.vig[' + j + ']';
     if (!objeto(v)) return ctx.excecao({tipo: 'M3-estrutura', arquivo: CAD, caminho, valor: v, motivo: 'Vigência do gel não é um objeto.'});
     const converter = !+v.bomKg &amp;&amp; !!+v.bomG;
-    if (!converter &amp;&amp; !vazio(v.from)) return;
+    if (!converter &amp;&amp; dataValida(v.from)) return;
     if (converter) {
       const ruins = naoNumericos(v, SOLTOS);
       if (ruins.length) return ctx.excecao({tipo: 'M3-valor', arquivo: CAD, caminho,
@@ -56234,9 +56234,9 @@ const vacMigracao = (() => {
 
   const ITENS = [['M1', planoM1], ['M3', planoM3]];
 
-  /* planejar(arqs, cad, escolhas) → {itens, alteracoes, excecoes}. Não grava nem altera o que recebe. */
-  async function planejar(arqs, cad, escolhas) {
-    const ctx = contexto(arqs || {}, cad, escolhas);
+  /* planejar(arqs, escolhas) → {itens, alteracoes, excecoes}. O cadastro é arqs['vacutainer-cadastros.json']. Não grava nem altera o que recebe. */
+  async function planejar(arqs, escolhas) {
+    const ctx = contexto(arqs || {}, escolhas);
     for (const [item, fazer] of ITENS) { ctx.itens[item] = ctx.itens[item] || []; fazer(ctx); }
     const alteracoes = {};
     for (const [arquivo, itens] of Object.entries(ctx.porArquivo))
