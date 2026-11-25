@@ -28,7 +28,7 @@ Nada disto foi homologado em SMB. H01 e H02 (PENDENCIAS.md) seguem pendentes. Fa
 3. Decida **toda exceção** (pessoa, "Sem responsável" ou "Deixar como está"). A gravação recusa com exceção pendente. As exceções são decisão do responsável. Exceção **sem opção** ("Sem opção: corrija a causa") não tem decisão: a gravação fica bloqueada até a causa ser corrigida no arquivo (ou o módulo ser aberto uma vez) e a prévia ser refeita.
 4. Baixe o relatório CSV e guarde-o junto do backup. Evidência: nome do arquivo e quem decidiu.
 5. Confirme a janela, digite **MIGRAR** e aplique. Cada arquivo é relido, tem backup e é conferido depois.
-6. **Interrompeu?** Use **Retomar** (continua sem duplicar) ou **Restaurar** (digite **RESTAURAR**; volta os arquivos pelos backups). Nunca refaça a prévia por cima de um registro incompleto.
+6. **Interrompeu?** Use **Retomar** (continua sem duplicar) ou **Restaurar** (digite **RESTAURAR**; volta os arquivos pelos backups). Nunca refaça a prévia por cima de um registro incompleto. O resultado da retomada aparece no quadro "Resultado" da aplicação.
 7. Registro em **concluído parcial** ou arquivo **não tocado**: a migração não gravou aquele arquivo porque outra pessoa o mudou depois da prévia. Refaça a prévia desse arquivo (depois de fechar o registro) e aplique de novo; não restaure por cima.
 
 Os backups da migração ficam em `00. Backups/Migracao/<módulo>/antes-da-migracao-<data>.json`. A retenção do contrato 9 não os apaga. Copie para fora antes de qualquer limpeza. O registro fica em `00. Backups/Migracao/registro-<data-hora>.json`.
@@ -36,10 +36,28 @@ Os backups da migração ficam em `00. Backups/Migracao/<módulo>/antes-da-migra
 ## Depois do corte
 
 - [ ] **Conferir M5** (botão **Conferir M5** na ferramenta, só leitura; usa `conferirM5`) antes de qualquer limpeza no Waste. As ações originais continuam no Waste; as cópias vão para as Iniciativas. Ação com pessoa sem decisão não é criada e aparece em "faltam" (a tela explica isso); "divergentes" lista título, status, prazo ou responsável diferentes.
-- [ ] **Abrir cada módulo uma vez.** Os exports só se atualizam na próxima gravação de cada módulo; até lá, os módulos que leem o export veem o formato antigo.
+- [ ] **Republicar os exports (resumos) de cada módulo.** A migração grava só as bases; **não recalcula os exports** (`exports` dentro de cada `*-base.json`), que é o que os outros módulos leem. Quem republica é o próprio módulo, quando grava. Abrir **não** basta para todos (comprovado no ensaio com a cópia fictícia, `testes/plataforma/migracao-ensaio.cjs`):
+
+  | Módulo | Abrir regrava o resumo? | Para regravar |
+  |---|---|---|
+  | Administração, Iniciativas, Equipamentos, Linha 360° | Sim, **se** o resumo falta, é de outra versão do módulo **ou foi gerado em outro dia**. Se já foi gerado hoje, **não**. | Abrir com sessão que grava (e permissão da pasta). Se o módulo já gravou hoje: qualquer gravação real dele, ou abrir no dia seguinte. |
+  | Produção | Sim, observado com base válida e sem resumo. A regra do mesmo dia não foi provada. | Abrir; ou qualquer lançamento. |
+  | Paradas | **Não** (só grava ao abrir se houver fila). | Botão **Sincronizar** (ou qualquer gravação). |
+  | Waste | **Não**, nem com Sincronizar. | Qualquer gravação do módulo; a mais neutra é **Salvar configuração** (grava a configuração como está, com uma linha na auditoria). |
+  | Gestão de Gel | **Não**, nem com Sincronizar. | Qualquer gravação do módulo (estoque, consumo, scrap). |
+
+  Detalhes que mudam a conferência:
+  - Iniciativas, ao abrir, também importa as ações da Reunião diária (Portal) e grava por isso; a primeira reabertura pode alterar a base além do resumo.
+  - Sem sessão que grava, o módulo só consulta e não regrava nada.
+  - Conferir pelo campo `exports.geradoEm` de cada base (deve ser da data do corte ou depois). Enquanto o resumo é o antigo, o consumidor lê o antigo: na demonstração, o Waste via 5 ações de Iniciativas e passou a ver 6 só depois que Iniciativas republicou. Resumo ausente aparece para o consumidor como "sem exports", nunca como zero.
+  - O ensaio não prova a Produção no mesmo dia, nem o comportamento com a base real de qualquer módulo (arquivos reais são maiores e têm mais gravadores).
 - [ ] Conferir Reunião diária, Minha fila e o teórico do gel (comparar com o valor anotado antes).
-- [ ] Se houve **restauração**: ela baixa a revisão das bases. Estações com fila guardada podem reenviar. Conferir antes de liberar as estações.
-- [ ] **Gravações feitas depois do corte** exigem conciliação à mão se for preciso reverter: restaurar volta o arquivo ao estado de antes e perde o que foi gravado depois.
+- [ ] Se houve **restauração**: ela baixa a revisão das bases. Estações com fila guardada podem reenviar. Conferir antes de liberar as estações. Uma pasta restaurada volta ao formato da main: esta plataforma deixa de operar nela (mostra "Erro a conferir") até migrar de novo; o que ficou guardado no navegador continua lá.
+- [ ] **Gravações feitas depois do corte e a restauração (comprovado no ensaio).** Restaurar **nunca** sobrescreve um arquivo que mudou depois da migração: o arquivo fica como está e aparece como "Mudou desde a prévia". Mas a restauração é **por arquivo**, não atômica: os demais voltam ao formato anterior e a pasta fica **mista**, sem servir à main nem a esta plataforma. Por isso, antes de restaurar: (1) feche a plataforma em todas as estações (com aba aberta a ferramenta recusa e não grava nada); (2) se algum módulo gravou depois da migração, decida primeiro se quer perder essa gravação; (3) se a restauração terminar com arquivo pulado, não libere ninguém: restaure esse arquivo à mão a partir do backup (`00. Backups/Migracao/<módulo>/antes-da-migracao-<data>.json`) depois de guardar uma cópia do que está lá, ou migre de novo.
+
+## Ensaio com dados fictícios
+
+`FASE=exports|restauracao|restauracao-total node testes/plataforma/migracao-ensaio.cjs` monta uma pasta fictícia conectada (OPFS do Chromium), mede prévia, aplicação interrompida depois de uma gravação, retomada, quais operações regravam cada export, restauração recusada com aba viva e com arquivo alterado, restauração total, M5, duração e tamanho do diário, e grava a evidência em `testes/saida/migracao-ensaio-<fase>.json`. Não substitui H01/H02: não é SMB, nem duas estações, nem a fila durável de um módulo (os módulos rodam em quadros de origem opaca, fora do alcance do ensaio).
 
 ## Evidências do corte
 
@@ -51,5 +69,5 @@ Os backups da migração ficam em `00. Backups/Migracao/<módulo>/antes-da-migra
 | Relatório CSV e decisões | |
 | Registro da aplicação | |
 | Conferência M5 | |
-| Cada módulo aberto uma vez | |
+| Exports republicados (`exports.geradoEm` de cada base, por módulo) | |
 | Cópia dos backups da migração fora da pasta | |

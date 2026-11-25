@@ -57079,8 +57079,8 @@ function vacRaiz(raiz) {
   /* ----- textos fixos ----- */
   $('sIntro').innerHTML = `<h2>Antes de começar</h2><ul>
    <li>A ferramenta <b>não vê as outras estações</b>. Antes de aplicar, feche a plataforma e as páginas antigas em todas as estações e confirme abaixo que elas pararam de gravar.</li>
-   <li>Depois de migrar, <b>abra cada módulo uma vez</b>: cada um republica os seus resumos (exports) a partir da base nova. Até lá, os números que dependem deles podem mostrar a versão antiga.</li>
-   <li>Restaurar devolve a base ao conteúdo de antes e <b>baixa a revisão</b> dela. Estação com fila salva pode reenviar alterações que já tinham entrado: confira essas estações depois.</li>
+   <li>A migração <b>não recalcula os resumos (exports)</b>. Cada módulo só os regrava quando grava: abrir basta para Administração, Iniciativas, Equipamentos e Linha 360° quando o resumo não é de hoje; Paradas pede <b>Sincronizar</b>; Waste e Gestão de Gel pedem uma gravação real. Até lá, os números que leem esses resumos mostram a versão antiga. Veja o roteiro.</li>
+   <li>Restaurar devolve cada base ao conteúdo de antes e <b>baixa a revisão</b> dela. Restaura arquivo por arquivo: o que mudou depois da migração fica como está e a pasta pode ficar mista (leia o roteiro). Estação com fila salva pode reenviar alterações que já tinham entrado: confira essas estações depois.</li>
    <li>Cada arquivo é gravado pela ordem do seu dono, com backup em <code>00. Backups/Migracao</code> (fora da retenção) e registro que permite retomar ou restaurar.</li></ul>`;
 
   /* ----- M6 · filas antigas desta estação (só leitura; nada é importado) ----- */
@@ -57296,7 +57296,8 @@ function vacRaiz(raiz) {
 
   function telaAplicar() {
     const el = $('sAplicar'), P = E.plano;
-    if (!P || !Object.keys(P.alteracoes).length || (E.ret &amp;&amp; E.ret.registro)) { el.hidden = !(E.relato &amp;&amp; E.relato.onde === 'aplicar'); el.innerHTML = el.hidden ? '' : relatoHtml(); return; }
+    if (!P || !Object.keys(P.alteracoes).length || (E.ret &amp;&amp; E.ret.registro)) { const mostra = E.relato &amp;&amp; (E.relato.onde === 'aplicar' || (E.relato.onde === 'retomada' &amp;&amp; !(E.ret &amp;&amp; E.ret.registro))); /* retomada concluída: o diário fechou e #sRetomada some, o resultado aparece aqui */
+    el.hidden = !mostra; el.innerHTML = el.hidden ? '' : relatoHtml(); return; }
     el.hidden = false;
     const semEsc = contar(P.excecoes || [], e => e.escolha == null);
     let h = '<h2>Aplicar</h2>' + avisoSessao();
@@ -57334,7 +57335,7 @@ function vacRaiz(raiz) {
     const arq = Object.keys(r.resultado || {});
     if (arq.length) h += `<div class="scroll"><table><thead><tr><th>Arquivo</th><th>Resultado</th></tr></thead><tbody>${arq.map(f => `<tr><td>${esc(NOMES[f] || f)}</td><td>${esc(ROT_RES[r.resultado[f]] || r.resultado[f])}</td></tr>`).join('')}</tbody></table></div>`;
     if (r.registro) h += `<p class="muted">Registro <code>${esc(r.registro.id)}</code>${r.registro.estado ? ' · ' + esc(ROT_ESTADO[r.registro.estado] || r.registro.estado) : ''}.</p>`;
-    if (r.ok &amp;&amp; E.relato.onde !== 'restaurar') h += '<div class="aviso"><b>Agora:</b> abra cada módulo uma vez para que ele republique os resumos (exports). Depois confira as estações com fila salva.</div>';
+    if (r.ok &amp;&amp; E.relato.onde !== 'restaurar') h += '<div class="aviso"><b>Agora:</b> os resumos (exports) ainda são os de antes da migração. Cada módulo os regrava quando grava (roteiro: tabela de exports). Depois confira as estações com fila salva.</div>';
     if (r.ok &amp;&amp; E.relato.onde === 'restaurar') h += '<div class="aviso">A revisão das bases baixou. Estações com fila salva podem reenviar alterações: confira essas estações.</div>';
     return h;
   }
