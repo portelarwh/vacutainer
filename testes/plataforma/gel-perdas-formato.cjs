@@ -60,6 +60,26 @@ const w = ms => new Promise(r => setTimeout(r, ms));
     assert.equal(g.t75, 5, 'o cálculo do Tubo 75 lê a vigência gravada'); assert.equal(g.t100, 2.2406, 'Tubo 100 sem vigência própria usa a de todos os formatos');
     console.log('ok tela: vigência por formato gravada; data e formato repetidos recusados');
 
+    // 4) vigência incompleta não vira perda zero (contrato 1): sem o gel padrão ou uma das perdas, não há teórico
+    const inc = await f.evaluate(() => {
+      const orig = vacCad.param, V = [{ from: '2025-01-01', g: .98, pT: 2, pB: null }];
+      vacCad.param = c => c === 'gel.processo' ? V : orig(c);
+      try { const cg = () => ({ fmt: '100', vig: [{ from: '2000-01-01', gTubo: 1 }] });
+        return { p: vacGel.procAt('2026-06-01', '100'), t: vacGel.teorico({ tubosPorCat: { A: 1e6 }, date: '2026-06-01', cg }) };
+      } finally { vacCad.param = orig; }
+    });
+    assert.deepEqual(inc, { p: null, t: null }, 'vigência sem pB/pP: sem valor, não zero ' + JSON.stringify(inc));
+    console.log('ok vigência incompleta: sem teórico (não vira perda zero)');
+
+    // 5) a tela recusa gravar vigência nova com campo vazio
+    const antes = await f.evaluate(() => JSON.stringify(Cad.D.parametros.gel.processo));
+    await f.click('#gelPar [data-pgadd="processo"]:has-text("Tubo 100")'); await w(300);
+    const iN = await f.evaluate(() => document.querySelectorAll('#gelPar [data-pg$=".pB"]').length - 1);
+    await f.fill(`#gelPar [data-pg="processo.${iN}.from"]`, '2099-02-01');
+    await f.fill(`#gelPar [data-pg="processo.${iN}.pB"]`, ''); await f.click('#gpOk'); await w(600);
+    assert.equal(await f.evaluate(() => JSON.stringify(Cad.D.parametros.gel.processo)), antes, 'vigência com perda vazia: recusada, nada gravado');
+    console.log('ok tela: vigência com gel padrão ou perda vazia é recusada');
+
     assert.deepEqual(erros, [], 'sem erro de JavaScript'); console.log('ok sem erro de JavaScript');
   } finally { if (browser) await browser.close(); srv.close(); }
 })().catch(e => { console.error(e); process.exit(1); });

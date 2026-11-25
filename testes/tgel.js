@@ -97,7 +97,7 @@ const { chromium } = require('playwright');
   ok(await po.evaluate(() => !!document.querySelector('#gelPar') && !document.querySelector('#gpOk') && !document.querySelector('#parGel')), '4a Portal: Administração › Gel tem Motivos e parâmetros do gel (só consulta sem a senha)');
   await po.evaluate(() => { Lock.on(Cad.D.seguranca.senhaHash); App.render(); }); await po.waitForTimeout(300);
   await po.click('#gelPar [data-pgadd="processo"]'); await po.waitForTimeout(200);
-  await po.fill('#gelPar [data-pg="processo.0.pT"]', '2.5'); await po.evaluate(() => { const i = document.querySelector('#gelPar [data-pg="registroPelaProducaoDesde"]'); i.value = '2026-12-01'; i.dispatchEvent(new Event('input', { bubbles: true })); i.dispatchEvent(new Event('change', { bubbles: true })); });   /* kit: o campo de data visível é o texto DD/MM/AAAA */
+  for (const [k, v] of [['g', '0.98'], ['pT', '2.5'], ['pB', '0.7'], ['pP', '0.5']]) await po.fill(`#gelPar [data-pg="processo.0.${k}"]`, v);   /* vigência nova exige o gel padrão e as três perdas (contrato 1) */ await po.evaluate(() => { const i = document.querySelector('#gelPar [data-pg="registroPelaProducaoDesde"]'); i.value = '2026-12-01'; i.dispatchEvent(new Event('input', { bubbles: true })); i.dispatchEvent(new Event('change', { bubbles: true })); });   /* kit: o campo de data visível é o texto DD/MM/AAAA */
   await po.click('#gelPar [data-pgadd="motivos"]'); await po.waitForTimeout(200); await po.fill('#gelPar [data-pg="motivos.0.name"]', 'Gel com bolha');
   await po.click('#gpOk'); await po.waitForTimeout(600);
   const pg = await po.evaluate(() => (Cad.D.parametros || {}).gel || null), hoje = await po.evaluate(() => todayISO());
