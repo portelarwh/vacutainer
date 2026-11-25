@@ -56294,19 +56294,21 @@ const vacMigracao = (() => {
     ],
   };
   /* Resolve um nome. Devolve o ID, ou null quando vira exceção ou decisão do responsável. */
-  function resolverPessoa(ctx, usuarios, arquivo, caminho, texto) {
+  /* comExcecao: devolve {id, excecao} em vez do ID, para o chamador ler a escolha da própria exceção. */
+  function resolverPessoa(ctx, usuarios, arquivo, caminho, texto, comExcecao) {
     const r = pessoa(texto, usuarios);
-    if (r.id) return r.id;
+    if (r.id) return comExcecao ? {id: r.id, excecao: null} : r.id;
     const ambiguo = !!r.ambiguo;
     const e = ctx.excecao({tipo: ambiguo ? 'M2-ambiguo' : 'M2-nenhum', arquivo, caminho, valor: texto,
       motivo: ambiguo ? 'Mais de uma pessoa do cadastro tem este nome (' + r.ambiguo.length + ').' : 'Nenhuma pessoa do cadastro tem este nome.',
       candidatos: r.ambiguo || [], opcoes: [...(r.ambiguo || []).map(u => ({valor: {id: u.codigo}, rotulo: 'Usar ' + u.nome + ' (' + u.codigo + ')'})),
         {campo: 'id', rotulo: 'ID de outra pessoa do cadastro'}, SEM]});
     const esc = ctx.escolhas[e.id];
+    let id = null;
     if (esc === 'sem') e.escolha = 'sem';
-    else if (objeto(esc) &amp;&amp; usuarios.some(u => objeto(u) &amp;&amp; String(u.codigo) === String(esc.id))) { e.escolha = {id: String(esc.id)}; return String(esc.id); }
+    else if (objeto(esc) &amp;&amp; usuarios.some(u => objeto(u) &amp;&amp; String(u.codigo) === String(esc.id))) { e.escolha = {id: String(esc.id)}; id = String(esc.id); }
     else if (esc != null) e.motivo += ' A escolha não vale.';
-    return null;
+    return comExcecao ? {id, excecao: e} : id;
   }
   function planoM2(ctx) {
     const c = ctx.arqs[CAD], usuarios = objeto(c) ? c.usuarios : undefined;
@@ -56467,9 +56469,9 @@ const vacMigracao = (() => {
       if (jaW(doc.acoes, w.id)) continue;
       const quem = campo => {
         if (vazio(w[campo])) return {id: ''};
-        const n = ctx.excecoes.length, id = resolverPessoa(ctx, c.usuarios, PERD, 'actions[' + i + '].' + campo, w[campo]);
-        if (id) return {id};
-        return ctx.excecoes[n] &amp;&amp; ctx.excecoes[n].escolha === 'sem' ? {id: ''} : {espera: true};
+        const r = resolverPessoa(ctx, c.usuarios, PERD, 'actions[' + i + '].' + campo, w[campo], true);
+        if (r.id) return {id: r.id};
+        return r.excecao &amp;&amp; r.excecao.escolha === 'sem' ? {id: ''} : {espera: true};
       };
       const resp = quem('resp'), user = quem('user');
       /* sem decisão sobre a pessoa, a ação espera: o original segue no Waste */
@@ -56491,6 +56493,7 @@ const vacMigracao = (() => {
   /* conferirM5(perdas, inic): cada ação original tem a cópia AC-W-<id> com o mesmo título, status mapeado, prazo e responsável? */
   function conferirM5(perdas, inic) {
     const orig = objeto(perdas) &amp;&amp; Array.isArray(perdas.actions) ? perdas.actions : [], copias = objeto(inic) &amp;&amp; Array.isArray(inic.acoes) ? inic.acoes : [];
+    /* faltam inclui as ações adiadas à espera da decisão sobre a pessoa (M5 não cria sem decisão) */
     const faltam = [], divergentes = [];
     for (const w of orig.filter(x => objeto(x) &amp;&amp; !vazio(x.id))) {
       const a = copias.find(x => objeto(x) &amp;&amp; (x.id === 'AC-W-' + w.id || (objeto(x.origem) &amp;&amp; x.origem.ref === 'waste|' + w.id)));
@@ -56515,7 +56518,309 @@ const vacMigracao = (() => {
     return {itens: ctx.itens, alteracoes, excecoes: ctx.excecoes};
   }
 
-  return Object.freeze({planejar, hash, canonico, pessoa, conferirM5});
+
+  /* ===== Aplicação: grava o plano na pasta (vacRaiz do comum/bases), dono por dono, com pré-voo, registro (diário), retomada e reversão.
+     Sem protocolo paralelo (contrato 3): relê antes, faz backup e confere, grava, relê e confere; Web Locks nas mesmas travas das páginas. ===== */
+  const CONFIRMACAO = 'MIGRAR', CONFIRMACAO_RESTAURAR = 'RESTAURAR';
+  const DIR_BK = '00. Backups', DIR_REG = 'Migracao';
+  /* Os assuntos da Administração (ADM_ASSUNTOS do motor/portal; o teste confere que são os mesmos). Só edita a Administração quem edita todos. */
+  const ASSUNTOS_ADM = Object.freeze(['planta', 'produto', 'gel', 'equipamentos', 'turnos', 'paradas', 'pessoas', 'sistema']);
+  const AVISO_JANELA = 'A ferramenta não impede que outra pessoa grave durante a migração: as travas do navegador (Web Locks) só coordenam as abas deste navegador. '
+    + 'Feche as páginas da plataforma nas outras estações e abas antes de aplicar.';
+  const FIFO = 'fifo-base.json', OEE = 'oee-vacutainer-base.json';
+  /* Ordem de gravação e dono de cada arquivo: [arquivo, página (trava vac-editar-<página>), pasta de backup, nome].
+     O Waste não estava na ordem combinada; fica depois das Paradas e antes do Gel (só recebe IDs de pessoa). */
+  const DONOS = [
+    [CAD, 'portal', 'Cadastros', 'Cadastro'], [INIC, 'inic', 'Iniciativas', 'Iniciativas'], ['equipamentos-base.json', 'equip', 'Equipamentos', 'Equipamentos'],
+    ['linha360-base.json', 'linha', 'Linha360', 'Linha 360°'], ['paradas-base.json', 'paradas', 'Paradas', 'Paradas'], [PERD, 'perdas', 'Perdas', 'Waste'],
+    [FIFO, 'gel', 'Gel', 'Gestão de Gel'], [OEE, 'oee', 'OEE', 'Produção'], [PORTAL, 'portal', 'Portal', 'Administração'],
+  ];
+  const ORDEM = Object.freeze(DONOS.map(d => d[0]));
+  const DONO = Object.fromEntries(DONOS.map(([arquivo, pagina, backup, nome]) => [arquivo, {pagina, backup, nome}]));
+  const naoAchou = e => !!e &amp;&amp; (e.name === 'NotFoundError' || e.name === 'TypeMismatchError');
+  const msg = e => String((e &amp;&amp; e.message) || e).slice(0, 300);
+
+  /* Quem pode aplicar: sessão válida (vacLogin.sessao) de pessoa ativa do cadastro cujo perfil edita todos os assuntos da Administração. */
+  function podeAdministrar(cad, sessao, agora = Date.now()) {
+    if (!objeto(sessao) || vazio(sessao.id)) return {ok: false, motivo: 'Entre com a sua senha para aplicar. Sem sessão, só a prévia.'};
+    if (!(+sessao.ate > agora)) return {ok: false, motivo: 'A sessão terminou. Entre de novo para aplicar.'};
+    if (!objeto(cad) || !Array.isArray(cad.usuarios)) return {ok: false, motivo: 'Não foi possível ler o cadastro para conferir a permissão.'};
+    const u = cad.usuarios.find(x => objeto(x) &amp;&amp; String(x.codigo) === String(sessao.id));
+    if (!u || u.ativo === false) return {ok: false, motivo: 'A pessoa da sessão não está ativa no cadastro.'};
+    const p = (Array.isArray(cad.perfis) ? cad.perfis : []).find(x => objeto(x) &amp;&amp; x.codigo === u.perfil);
+    const edita = !!p &amp;&amp; objeto(p.assuntos) &amp;&amp; ASSUNTOS_ADM.every(a => p.assuntos[a] === 'editar')
+      &amp;&amp; !(objeto(p.permissoes) &amp;&amp; objeto(p.permissoes.portal) &amp;&amp; p.permissoes.portal.configurar === false);
+    if (!edita) return {ok: false, motivo: 'O perfil de ' + (u.nome || u.codigo) + ' não edita toda a Administração.'};
+    return {ok: true, id: String(u.codigo), nome: String(u.nome || u.codigo)};
+  }
+
+  /* ----- pasta: tudo passa pelo vacRaiz (bases em 00. Bases; backups e registro em 00. Backups, na raiz) ----- */
+  async function subpasta(pasta, partes, criar) { let d = pasta; for (const p of partes) d = await d.getDirectoryHandle(p, {create: !!criar}); return d; }
+  async function lerTexto(dir, nome) { return (await (await dir.getFileHandle(nome)).getFile()).text(); }
+  async function gravarTexto(dir, nome, texto) {
+    const w = await (await dir.getFileHandle(nome, {create: true})).createWritable();
+    try { await w.write(texto); await w.close(); } catch (e) { try { if (w.abort) await w.abort(); } catch (_) { } throw e; }
+  }
+  /* Lê uma base: {texto, doc, hash} | {ausente} | {erro}. Ausência não é erro (contrato 3). JSON ilegível conta como mudado. */
+  async function lerBase(pasta, arquivo) {
+    let texto;
+    try { texto = await lerTexto(pasta, arquivo); } catch (e) { return naoAchou(e) ? {ausente: true} : {erro: msg(e)}; }
+    try { const doc = JSON.parse(texto); return {texto, doc, hash: await hash(doc)}; } catch (e) { return {ilegivel: true, texto}; }
+  }
+  async function lerCaminho(pasta, caminho) { const p = caminho.split('/'); return lerTexto(await subpasta(pasta, p.slice(0, -1), false), p.at(-1)); }
+
+  /* Backup antes-da-migracao-<data>.json na pasta de backup do dono. Nunca sobrescreve outro conteúdo: usa -2, -3…; relê e confere o hash. */
+  async function fazerBackup(pasta, arquivo, texto, hashAntes, data) {
+    const dir = await subpasta(pasta, [DIR_BK, DONO[arquivo].backup], true), base = 'antes-da-migracao-' + data;
+    for (let n = 1; n < 100; n++) {
+      const nome = base + (n > 1 ? '-' + n : '') + '.json', caminho = DIR_BK + '/' + DONO[arquivo].backup + '/' + nome;
+      let existente = null;
+      try { existente = await lerTexto(dir, nome); } catch (e) { if (!naoAchou(e)) throw e; }
+      if (existente != null) {
+        let igual = false; try { igual = await hash(JSON.parse(existente)) === hashAntes; } catch (e) { }
+        if (igual) return caminho;
+        continue;
+      }
+      await gravarTexto(dir, nome, texto);
+      const relido = await lerTexto(dir, nome);
+      if (await hash(JSON.parse(relido)) !== hashAntes) throw new Error('backup relido com outro conteúdo');
+      return caminho;
+    }
+    throw new Error('nomes de backup esgotados');
+  }
+
+  /* Registro (diário) 00. Backups/Migracao/registro-<id>.json: gravado antes do 1º arquivo, relido e conferido a cada passo. */
+  const nomeRegistro = id => 'registro-' + id + '.json';
+  async function salvarRegistro(pasta, reg) {
+    const dir = await subpasta(pasta, [DIR_BK, DIR_REG], true), texto = JSON.stringify(reg);
+    await gravarTexto(dir, nomeRegistro(reg.id), texto);
+    if (canonico(JSON.parse(await lerTexto(dir, nomeRegistro(reg.id)))) !== canonico(reg)) throw new Error('O registro da migração não foi confirmado na releitura.');
+  }
+  async function idLivre(pasta, em) {
+    const base = String(em).replace(/[^0-9A-Za-z-]/g, '-');
+    let dir = null; try { dir = await subpasta(pasta, [DIR_BK, DIR_REG], false); } catch (e) { if (!naoAchou(e)) throw e; }
+    for (let n = 1; ; n++) {
+      const id = base + (n > 1 ? '-' + n : '');
+      if (!dir) return id;
+      try { await dir.getFileHandle(nomeRegistro(id)); } catch (e) { if (naoAchou(e)) return id; throw e; }
+    }
+  }
+
+  /* Conteúdo final de um arquivo: o "depois" do plano + rev e uma entrada na auditoria da própria base, no formato dela.
+     Determinístico (hora, pessoa e id vêm do registro): a retomada reproduz o mesmo hashDepois. */
+  const resumoDe = itens => 'Migração pontual: ' + Object.entries((itens || []).reduce((n, x) => (n[x.item] = (n[x.item] || 0) + 1, n), {}))
+    .map(([k, v]) => k + ' ' + v).join(' · ');
+  function carimbar(arquivo, doc, {em, por, porId, reg, resumo}) {
+    const motivo = 'Migração pontual da base limpa (registro ' + reg + ')', idOp = 'mig-' + reg;
+    const lista = k => { if (!Array.isArray(doc[k])) doc[k] = []; return doc[k]; };
+    const rev = () => { doc.rev = (+doc.rev || 0) + 1; doc.revBy = por; doc.revAt = em; doc.revId = idOp; };
+    if (arquivo === CAD) { rev(); lista('auditoria').push({em, por, porId, acao: 'migração', tipo: '*', codigo: null, campo: null, antes: null, depois: resumo, motivo}); return 'auditoria'; }
+    if (arquivo === PORTAL || arquivo === PERD) {
+      doc.rev = (+doc.rev || 0) + 1; doc.updatedAt = em; doc.updatedBy = por;
+      lista('audit').push({t: em, u: por, a: 'Migração pontual', d: resumo + ' · registro ' + reg}); return 'audit';
+    }
+    if (arquivo === INIC) { rev(); lista('auditoria').push({em, por, porId, k: 'migração', id: idOp, acao: ''}); return 'auditoria'; }
+    if (arquivo === 'equipamentos-base.json' || arquivo === 'linha360-base.json') { rev(); lista('auditoria').push({em, por, porId, k: 'migração', id: idOp, ref: resumo}); return 'auditoria'; }
+    if (arquivo === 'paradas-base.json') { rev(); lista('auditoria').push({em, por, porId, acao: 'migração', c: '', txt: resumo, id: idOp}); return 'auditoria'; }
+    if (arquivo === OEE) {
+      const v = (+doc.databaseVersion || 0) + 1;
+      lista('auditLog').push({id: 'au-' + idOp, ts: em, user: por, userId: porId || null, action: 'migração', entity: 'base', entityId: null, field: null,
+        before: null, after: resumo, reason: motivo, origin: 'migração', dbVersion: v});
+      doc.databaseVersion = v; doc.saveId = idOp; doc.lastModifiedAt = em; doc.lastModifiedBy = por; return 'auditLog';
+    }
+    /* Gel: a base não tem auditoria; rev e revBy no início do arquivo (conferência rápida do motor/gel). A alteração fica só no registro. */
+    if (arquivo === FIFO) { doc.rev = (+doc.rev || 0) + 1; doc.revBy = por; return 'só no registro'; }
+    return 'só no registro';
+  }
+  async function finalDe(arquivo, alt, q) {
+    const doc = copia(alt.depois), auditoria = carimbar(arquivo, doc, {...q, resumo: resumoDe(alt.itens)});
+    let texto;
+    if (arquivo === FIFO) { const {rev, revBy, ...resto} = doc; texto = JSON.stringify({rev, revBy, ...resto}); }
+    else texto = JSON.stringify(doc);
+    return {texto, auditoria, hashDepois: await hash(JSON.parse(texto))};
+  }
+
+  /* Pega as travas na ordem (vac-migracao e vac-editar-<página>), sem esperar: trava de outra aba recusa a aplicação. */
+  async function comTravas(travas, nomes, fn) {
+    if (!nomes.length) return fn();
+    let livre = true;
+    const r = await travas.request(nomes[0], {ifAvailable: true}, lock => { if (!lock) { livre = false; return null; } return comTravas(travas, nomes.slice(1), fn); });
+    return livre ? r : {ocupada: nomes[0]};
+  }
+  const travasDe = arquivos => ['vac-migracao', ...new Set(ORDEM.filter(f => arquivos.includes(f)).map(f => 'vac-editar-' + DONO[f].pagina))];
+  const nomeTrava = t => { const p = DONOS.find(d => 'vac-editar-' + d[1] === t); return p ? (p[1] === 'portal' ? 'Administração' : p[3]) + ' (' + p[1] + ')' : 'outra migração'; };
+  function travasPadrao(op) { return 'travas' in op ? op.travas : (typeof navigator !== 'undefined' &amp;&amp; navigator.locks) || null; }
+
+  async function conferirAcesso(pasta, op, palavra) {
+    if (!pasta || !pasta.__vacRaiz) return 'Conecte a pasta principal da plataforma.';
+    if (op.confirmacao !== palavra) return 'Digite ' + palavra + ' para confirmar.';
+    if (op.janela !== true) return 'Confirme a janela: os outros gravadores estão parados. ' + AVISO_JANELA;
+    const travas = travasPadrao(op);
+    if (!travas || typeof travas.request !== 'function') return 'Este navegador não oferece proteção entre abas (Web Locks). Use Chrome ou Edge atualizado.';
+    const c = await lerBase(pasta, CAD), p = podeAdministrar(c.doc, op.sessao);
+    return p.ok ? p : p.motivo;
+  }
+
+  /* aplicar(pasta, plano, {escolhas, sessao, confirmacao, janela, registro?, aoGravar?, travas?})
+     → {ok, motivo, resultado: {[arquivo]: 'gravado'|'pulado-mudou'|'ja-concluido'|'erro'|'nao-gravado'}, registro, mudaram?, backupsFalhos?}.
+     registro: o devolvido por retomar, para continuar a mesma migração. aoGravar(arquivo): gancho de teste, chamado logo depois de gravar
+     cada arquivo e antes de o registro anotar; lançar nele simula a queda. */
+  async function aplicar(pasta, plano, op = {}) {
+    const recusa = motivo => ({ok: false, motivo, resultado: {}, registro: null});
+    if (!objeto(plano) || !objeto(plano.alteracoes) || !Object.keys(plano.alteracoes).length) return recusa('Não há alteração para aplicar. Faça a prévia.');
+    const arquivos = Object.keys(plano.alteracoes), fora = arquivos.filter(f => !ORDEM.includes(f));
+    if (fora.length) return recusa('Arquivo fora das bases da migração: ' + fora.join(', ') + '.');
+    const escolhas = objeto(op.escolhas) ? op.escolhas : {}, meta = objeto(escolhas.__meta) ? escolhas.__meta : {};
+    if (!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(String(meta.em || ''))) return recusa('Falta a hora da migração (a mesma da prévia).');
+    const anterior = op.registro == null ? null : op.registro;
+    if (anterior &amp;&amp; (!objeto(anterior) || !objeto(anterior.arquivos) || vazio(anterior.id))) return recusa('O registro a retomar não é válido.');
+    const quem = await conferirAcesso(pasta, op, CONFIRMACAO);
+    if (typeof quem === 'string') return recusa(quem);
+    const r = await comTravas(travasPadrao(op), travasDe(arquivos), () => executar(pasta, plano, escolhas, meta, quem, anterior, op));
+    if (r &amp;&amp; r.ocupada) return recusa('Outra aba deste navegador está com ' + nomeTrava(r.ocupada) + ' aberta para edição. Feche-a e tente de novo.');
+    return r;
+  }
+
+  async function executar(pasta, plano, escolhas, meta, quem, anterior, op) {
+    const lista = ORDEM.filter(f => f in plano.alteracoes), resultado = {}, estado = {}, atuais = {}, mudaram = [], erros = [];
+    /* 1 · pré-voo: relê todos e compara com a prévia (ou, na retomada, com o hashDepois do registro) */
+    for (const f of lista) {
+      const a = atuais[f] = await lerBase(pasta, f), ant = anterior &amp;&amp; anterior.arquivos[f];
+      if (a.erro) { erros.push(f + ': ' + a.erro); continue; }
+      if (ant &amp;&amp; a.hash &amp;&amp; a.hash === ant.hashDepois) estado[f] = 'ja-concluido';
+      else if (a.hash &amp;&amp; a.hash === plano.alteracoes[f].hashAntes) estado[f] = 'pendente';
+      else mudaram.push(f);
+    }
+    const pendentes = lista.filter(f => estado[f] === 'pendente');
+    const parado = (motivo, extra) => {
+      for (const f of lista) resultado[f] = mudaram.includes(f) ? 'pulado-mudou' : estado[f] === 'ja-concluido' ? 'ja-concluido' : erros.some(e => e.startsWith(f + ':')) ? 'erro' : 'nao-gravado';
+      return {ok: false, motivo, resultado, registro: anterior, ...extra};
+    };
+    if (erros.length) return parado('Não foi possível ler: ' + erros.join('; ') + '. Nada foi gravado.', {mudaram});
+    if (mudaram.length) return parado('Mudou desde a prévia: ' + mudaram.join(', ') + '. Nada foi gravado. Refaça a prévia.', {mudaram});
+    /* 2 · conteúdo final e hashDepois; a hora, a pessoa e o id são os do registro (iguais na retomada) */
+    const id = anterior ? anterior.id : await idLivre(pasta, meta.em);
+    const q = anterior ? {em: anterior.em, por: anterior.por, porId: anterior.porId, reg: id} : {em: meta.em, por: quem.nome, porId: quem.id, reg: id};
+    const fin = {};
+    for (const f of pendentes) {
+      fin[f] = await finalDe(f, plano.alteracoes[f], q);
+      if (anterior &amp;&amp; anterior.arquivos[f] &amp;&amp; fin[f].hashDepois !== anterior.arquivos[f].hashDepois) {
+        erros.push(f + ': o plano do registro não reproduz o mesmo conteúdo');
+      }
+    }
+    if (erros.length) return parado(erros.join('; ') + '. Nada foi gravado.', {mudaram});
+    /* 3 · backups de todos os pendentes, relidos e conferidos, antes de qualquer gravação */
+    const bk = {}, falhos = [];
+    for (const f of pendentes) {
+      try { bk[f] = await fazerBackup(pasta, f, atuais[f].texto, plano.alteracoes[f].hashAntes, q.em.slice(0, 10)); }
+      catch (e) { falhos.push(f); erros.push(f + ' (00. Backups/' + DONO[f].backup + '): ' + msg(e)); }
+    }
+    if (falhos.length) return parado('Backup não confirmado: ' + erros.join('; ') + '. Nada foi gravado.', {backupsFalhos: falhos});
+    /* 4 · registro antes do 1º arquivo */
+    const janela = {confirmada: true, em: meta.em, por: quem.nome, porId: quem.id, aviso: AVISO_JANELA};
+    const reg = anterior ? copia(anterior) : {
+      id, tipo: 'migracao-pontual', versao: 1, em: q.em, por: q.por, porId: q.porId, sessao: {id: quem.id, nome: quem.nome},
+      confirmacao: op.confirmacao, janela, estado: 'em-andamento', ordem: lista, plano, escolhas,
+      excecoesSemEscolha: (Array.isArray(plano.excecoes) ? plano.excecoes : []).filter(e => objeto(e) &amp;&amp; e.escolha == null).length, arquivos: {},
+    };
+    for (const f of lista) {
+      if (!anterior) reg.arquivos[f] = {ordem: lista.indexOf(f) + 1, dono: DONO[f].nome, hashAntes: plano.alteracoes[f].hashAntes,
+        hashDepois: fin[f].hashDepois, backup: bk[f], auditoria: fin[f].auditoria, itens: (plano.alteracoes[f].itens || []).length, estado: 'pendente'};
+      else if (estado[f] === 'ja-concluido') reg.arquivos[f].estado = 'ja-concluido';
+      else reg.arquivos[f] = {...reg.arquivos[f], backup: bk[f], estado: 'pendente'};
+    }
+    if (anterior) { reg.retomadas = (reg.retomadas || []).concat([{em: new Date().toISOString(), por: quem.nome, porId: quem.id, janela}]); reg.estado = 'em-andamento'; }
+    await salvarRegistro(pasta, reg);
+    /* 5 · grava na ordem: relê e confere hashAntes, grava, anota gravado, relê e confere hashDepois, anota verificado */
+    for (const f of lista) {
+      if (estado[f] === 'ja-concluido') { resultado[f] = 'ja-concluido'; continue; }
+      const e = reg.arquivos[f], a = await lerBase(pasta, f);
+      if (a.hash !== e.hashAntes) { resultado[f] = e.estado = 'pulado-mudou'; await salvarRegistro(pasta, reg); continue; }
+      try { await gravarTexto(pasta, f, fin[f].texto); }
+      catch (x) { resultado[f] = e.estado = 'erro'; e.erro = msg(x); await salvarRegistro(pasta, reg); break; }
+      if (op.aoGravar) await op.aoGravar(f);
+      e.estado = 'gravado'; await salvarRegistro(pasta, reg);
+      const b = await lerBase(pasta, f);
+      if (b.hash !== e.hashDepois) { resultado[f] = e.estado = 'erro'; e.erro = 'A releitura não confere com o gravado.'; await salvarRegistro(pasta, reg); break; }
+      e.estado = 'verificado'; resultado[f] = 'gravado'; await salvarRegistro(pasta, reg);
+    }
+    for (const f of lista) if (!resultado[f]) resultado[f] = 'nao-gravado';
+    const ok = lista.every(f => ['gravado', 'ja-concluido'].includes(resultado[f]));
+    reg.estado = ok ? 'concluido' : 'incompleto';
+    await salvarRegistro(pasta, reg);
+    const falta = lista.filter(f => !['gravado', 'ja-concluido'].includes(resultado[f]));
+    return {ok, motivo: ok ? '' : 'Não concluído: ' + falta.map(f => f + ' (' + resultado[f] + ')').join(', ') + '. Use Retomar ou Restaurar.', resultado, registro: reg};
+  }
+
+  /* Registros em 00. Backups/Migracao. Lista os legíveis; os ilegíveis vão para o chamador. */
+  async function registros(pasta) {
+    const L = [], ilegiveis = [];
+    let dir = null; try { dir = await subpasta(pasta, [DIR_BK, DIR_REG], false); } catch (e) { if (!naoAchou(e)) throw e; }
+    if (dir) for await (const [nome, h] of dir.entries()) {
+      if (h.kind !== 'file' || !/^registro-.+\.json$/.test(nome)) continue;
+      try { const r = JSON.parse(await (await h.getFile()).text()); if (objeto(r) &amp;&amp; objeto(r.arquivos) &amp;&amp; !vazio(r.id)) L.push(r); else ilegiveis.push(nome); }
+      catch (e) { ilegiveis.push(nome); }
+    }
+    return {L, ilegiveis};
+  }
+  /* retomar(pasta) → {registro, pendentes, concluidos, mudaram, ilegiveis}: o registro mais recente não concluído nem restaurado,
+     com cada arquivo classificado pelo hash atual (hashDepois = concluído; hashAntes = pendente; outro = mudou). */
+  async function retomar(pasta) {
+    const {L, ilegiveis} = await registros(pasta);
+    const reg = L.filter(r => r.estado !== 'concluido' &amp;&amp; r.estado !== 'restaurado').sort((a, b) => String(a.em + a.id).localeCompare(String(b.em + b.id))).pop() || null;
+    const out = {registro: reg, pendentes: [], concluidos: [], mudaram: [], ilegiveis};
+    if (!reg) return out;
+    for (const f of ORDEM.filter(f => f in reg.arquivos)) {
+      const a = await lerBase(pasta, f), e = reg.arquivos[f];
+      if (a.hash &amp;&amp; a.hash === e.hashDepois) out.concluidos.push(f);
+      else if (a.hash &amp;&amp; a.hash === e.hashAntes) out.pendentes.push(f);
+      else out.mudaram.push(f);
+    }
+    return out;
+  }
+
+  /* restaurar(pasta, registro, arquivos|null, {sessao, confirmacao, janela, travas?}) → {ok, motivo, resultado: {[arquivo]:
+     'restaurado'|'ja-restaurado'|'pulado-mudou'|'erro'}, registro}. Devolve o conteúdo do backup a cada arquivo ainda no hashDepois.
+     Arquivo gravado depois do corte (outro hash) não é sobrescrito: exige conciliação. */
+  async function restaurar(pasta, registro, arquivos, op = {}) {
+    const recusa = motivo => ({ok: false, motivo, resultado: {}, registro: null});
+    if (!objeto(registro) || !objeto(registro.arquivos) || vazio(registro.id)) return recusa('Escolha o registro da migração a restaurar.');
+    const quem = await conferirAcesso(pasta, op, CONFIRMACAO_RESTAURAR);
+    if (typeof quem === 'string') return recusa(quem);
+    const alvo = Array.isArray(arquivos) &amp;&amp; arquivos.length ? arquivos : Object.keys(registro.arquivos);
+    const fora = alvo.filter(f => !(f in registro.arquivos) || !ORDEM.includes(f));
+    if (fora.length) return recusa('Arquivo fora deste registro: ' + fora.join(', ') + '.');
+    const r = await comTravas(travasPadrao(op), travasDe(alvo), async () => {
+      let reg = registro;
+      try { reg = JSON.parse(await lerCaminho(pasta, DIR_BK + '/' + DIR_REG + '/' + nomeRegistro(registro.id))); } catch (e) { reg = copia(registro); }
+      const resultado = {};
+      for (const f of [...ORDEM].reverse().filter(f => alvo.includes(f))) {
+        const e = reg.arquivos[f];
+        try {
+          const a = await lerBase(pasta, f);
+          if (a.hash &amp;&amp; a.hash === e.hashAntes) { resultado[f] = 'ja-restaurado'; e.estado = 'restaurado'; continue; }
+          if (!a.hash || a.hash !== e.hashDepois) { resultado[f] = 'pulado-mudou'; continue; }
+          if (vazio(e.backup)) throw new Error('sem backup no registro');
+          const texto = await lerCaminho(pasta, e.backup);
+          if (await hash(JSON.parse(texto)) !== e.hashAntes) throw new Error('o backup não confere com o conteúdo de antes');
+          await gravarTexto(pasta, f, texto);
+          const b = await lerBase(pasta, f);
+          if (b.hash !== e.hashAntes) throw new Error('a releitura não confere com o backup');
+          resultado[f] = 'restaurado'; e.estado = 'restaurado';
+        } catch (x) { resultado[f] = 'erro'; e.erroRestauracao = msg(x); }
+      }
+      reg.restauracoes = (reg.restauracoes || []).concat([{em: new Date().toISOString(), por: quem.nome, porId: quem.id, resultado}]);
+      if (Object.values(reg.arquivos).every(e => e.estado === 'restaurado')) reg.estado = 'restaurado';
+      await salvarRegistro(pasta, reg);
+      const ruins = Object.keys(resultado).filter(f => !['restaurado', 'ja-restaurado'].includes(resultado[f]));
+      return {ok: !ruins.length, motivo: ruins.length ? 'Não restaurado: ' + ruins.map(f => f + ' (' + resultado[f] + ')').join(', ') + '.' : '', resultado, registro: reg};
+    });
+    if (r &amp;&amp; r.ocupada) return recusa('Outra aba deste navegador está com ' + nomeTrava(r.ocupada) + ' aberta para edição. Feche-a e tente de novo.');
+    return r;
+  }
+
+  return Object.freeze({planejar, hash, canonico, pessoa, conferirM5, aplicar, retomar, restaurar, podeAdministrar,
+    CONFIRMACAO, CONFIRMACAO_RESTAURAR, ORDEM, ASSUNTOS_ADM, AVISO_JANELA});
 })();
 globalThis.vacMigracao = vacMigracao;
 </script>
