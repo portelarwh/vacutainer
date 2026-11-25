@@ -17,6 +17,9 @@ Este documento é a lista de trabalho das Tasks 2 a 5 do plano `docs/superpowers
 5. **Leitura "dados brutos" do Portal** (`adaptOEE`, `adaptGel`, `adaptPerdas`, com `bruto:true`) é a única via da demonstração do Portal (`MOD.data.* = adapt(...)`, `motor/portal` 4205-4211). Está marcada "fica" abaixo; só sai se a demonstração passar a gerar exports.
 6. **Fora da lista do desenho, marcado "fica":** preferências do navegador (nomes antigos de tema em português, lista `vac.sistemas` com nome antigo, aspas em chaves comuns do Paradas), aliases de navegação (`#aba=piloto`, `#aba=panel`) e caminhos de arquivos de marca. Não são base, cadastro nem export. Se o responsável quiser tirá-los também, mudam para "sai" sem outro efeito.
 
+
+Os dados históricos chegam ao formato atual pela migração pontual (Saúde dos dados › Migração pontual), de uso único. Roteiro do corte: [MIGRACAO-BASE-LIMPA](MIGRACAO-BASE-LIMPA.md).
+
 ---
 
 ## comum/bases

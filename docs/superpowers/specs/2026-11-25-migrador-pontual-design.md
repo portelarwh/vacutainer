@@ -35,6 +35,7 @@ A #149 retira do caminho normal toda leitura de formato antigo. Bases e vínculo
   3. faz backup em `00. Backups/Migracao/<módulo>/antes-da-migracao-<data>.json` (fora da pasta de backup do módulo, que a retenção `backupDias` limpa);
   4. grava;
   5. relê e confere.
+- **Sessão da pasta:** `vacMigracao.sessaoDaPasta(pasta)` devolve a sessão vacLogin presa ao escopo da pasta conectada; sessão de outro escopo não autoriza `aplicar` nem `restaurar`. `op.escopos`, `op.abas` e `op.travas` são ganchos de teste, não interface.
 - **Registro:**
   - `00. Backups/Migracao/registro-<data-hora>.json`, com plano, escolhas, hashes antes e depois, e resultado por arquivo;
   - uma entrada na auditoria de cada base alterada.
