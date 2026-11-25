@@ -12,7 +12,7 @@ const EV = {etapas: []}, marca = (n, d) => { EV.etapas.push({n, ...d}); console.
 
 (async () => {
   const {arqsTeste, M, ESC, ORDEM, BK} = await import('./migracao-aplicar-comum.mjs');
-  const arqs = arqsTeste(), JS = x => JSON.parse(JSON.stringify(x)), final = await M.planejar(arqs, ESC);
+  const arqs = arqsTeste(), JS = x => JSON.parse(JSON.stringify(x));
   const srv = http.createServer((q, r) => { r.setHeader('Content-Type', 'text/html'); r.end(q.url.startsWith('/aux') ? '<!doctype html><title>aux</title>' : html); });
   let browser; const erros = [];
   EV.ambiente = {onde: 'container de nuvem (Claude Code), sem SMB', so: os.type() + ' ' + os.release(), node: process.version, cpus: os.cpus().length,
@@ -37,7 +37,6 @@ const EV = {etapas: []}, marca = (n, d) => { EV.etapas.push({n, ...d}); console.
     const listar = (rel) => H.evaluate(async ({nome, rel}) => { let d = await (await navigator.storage.getDirectory()).getDirectoryHandle(nome); for (const s of rel.split('/').filter(Boolean)) d = await d.getDirectoryHandle(s);
       const L = []; for await (const [n, h] of d.entries()) L.push(h.kind === 'file' ? n + '|' + (await h.getFile()).size : n + '/'); return L.sort(); }, {nome: PASTA, rel});
     const base = async f => JSON.parse(await lerArq('00. Bases/' + f));
-    const estadoExports = async () => { const o = {}; for (const f of ORDEM) { const b = await base(f), e = b.exports || null; o[f] = {rev: b.rev ?? b.databaseVersion ?? b.version ?? null, geradoEm: e && (e.geradoEm || e.generatedAt) || null, temExports: !!e, tam: JSON.stringify(e || {}).length}; } return o; };
     EV.arquivos = Object.fromEntries(ORDEM.map(f => [f, JSON.stringify(arqs[f]).length]));
 
     /* ---- pasta fictícia, plataforma conectada, sessão ADMIN no escopo da pasta ---- */
@@ -80,7 +79,6 @@ const EV = {etapas: []}, marca = (n, d) => { EV.etapas.push({n, ...d}); console.
     const cards = (await t.locator('#sPrevia .cards .k b').allInnerTexts()).map(Number);
     for (const f of ORDEM) assert.equal(await lerArq('00. Bases/' + f), antes[f], 'a prévia não grava: ' + f);
     marca('1 prévia', {alteracoes: cards[0], arquivos: cards[1], excecoes: cards[2], gravouAlgo: false, resumo: cards[0] + ' alterações em ' + cards[1] + ' arquivos, ' + cards[2] + ' exceções, nada gravado'});
-    const exportsAntes = await estadoExports();
 
     /* ---- (2) aplicação interrompida depois de UMA gravação ---- */
     await decidir(t, esperado);
@@ -127,9 +125,6 @@ const EV = {etapas: []}, marca = (n, d) => { EV.etapas.push({n, ...d}); console.
       const abrirModulo = async (id) => { await page.evaluate(id => { location.hash = '#/' + id; }, id); const f = page.locator('iframe[title="Módulo ' + NOMES[id] + '"]'); await f.waitFor({timeout: 60000});
         let fr = null; for (let n = 0; n < 60 && !fr; n++) { fr = await (await f.elementHandle()).contentFrame(); if (!fr) await page.waitForTimeout(500); }
         await fr.waitForFunction(() => window.vacPagina?.conectado(), null, {timeout: 60000}).catch(() => {}); await page.waitForTimeout(2500); return fr; };
-      const instalaBloq = (nomes) => { const w = window; w.__bloq = nomes; if (w.__bloqOk) return; w.__bloqOk = true; const o = FileSystemFileHandle.prototype.createWritable;
-        FileSystemFileHandle.prototype.createWritable = async function (...a) { if ((w.__bloq || []).includes(this.name)) throw new DOMException('gravação bloqueada pelo ensaio', 'NotAllowedError'); return o.apply(this, a); }; };
-      const bloq = async (nomes, fr) => { const L = nomes ? [nomes] : []; await page.evaluate(instalaBloq, L); if (fr) await fr.evaluate(instalaBloq, L); for (const f of page.frames()) if (f !== page.mainFrame()) { try { await f.evaluate(instalaBloq, L); } catch (e) { } } };
       const texto = async f => (await lerArq('00. Bases/' + f)); const migradaTxt = {}; for (const f of ORDEM) migradaTxt[f] = await texto(f);
       const conferirM5 = async (tt) => { await tt.locator('#bM5').click(); await tt.locator('#sM5').getByText(/Conferido\.|Há diferenças\./).waitFor({timeout: 30000}); return (await tt.locator('#sM5 .certo, #sM5 .aviso').first().innerText()).replace(/\s+/g, ' ').slice(0, 300); };
       /* M5 na pasta migrada, antes de qualquer restauração */
@@ -270,7 +265,7 @@ const EV = {etapas: []}, marca = (n, d) => { EV.etapas.push({n, ...d}); console.
     const inicObj = await base('iniciativas-base.json'), extra = JSON.parse(JSON.stringify(inicObj.acoes[0])); extra.id = 'AC-X-POS-MIGRACAO'; extra.titulo = 'Ação gravada fora do módulo (simula a migração)';
     inicObj.acoes.push(extra); await gravarArq('00. Bases/iniciativas-base.json', JSON.stringify(inicObj));
     await reiniciar('2026-11-30T15:00:00Z'); const mesmoDia0 = await snap(); await abrirModulo('inic'); const mesmoDia1 = await snap(), cMesmo = await nExp();
-    await reiniciar('2026-11-30T16:00:00Z'); const consMesmo = await lerCons(), consMesmoBase = await nExp();
+    await reiniciar('2026-11-30T16:00:00Z'); const consMesmo = await lerCons();
     await reiniciar('2026-12-01T12:00:00Z'); await abrirModulo('inic'); const diaSeg = await snap(), cSeg = await nExp();
     await reiniciar('2026-12-01T13:00:00Z'); const consSeg = await lerCons();
     EV.mesmoDia = {regravouAoAbrir: !igual(mesmoDia0.inic, mesmoDia1.inic), exportsTemAcaoNova: cMesmo.exportsComExtra, baseTemAcaoNova: true, consumidorVeAcaoNova: !!(await page.evaluate(() => true)) && consMesmo.acoes};
