@@ -34989,39 +34989,12 @@ function viewOsm(){return`<div class="card"><h2 class="ttl">OSM</h2><p>A importa
  <p class="small muted">Enquanto isso, ações de OSM podem ser criadas em Ações com a origem "OSM" (e o número da OSM no título): elas já entram no quadro, em Pendências e ações da Visão da linha e nos tempos.</p><button class="b" id="osmNova">+ Ação de OSM</button> <button class="b" data-importar="osm">Importar dados</button></div>`}
 function viewS5(){return`<div class="card"><h2 class="ttl">5S</h2><p>As auditorias 5S entram junto com o motor de checklist de AM/TPM (E13), quando os padrões técnicos chegarem. Nenhum critério é inventado aqui.</p>
  <p class="small muted">Ações de 5S podem ser criadas em Ações com a origem "5S".</p><button class="b" id="s5Nova">+ Ação de 5S</button> <button class="b" data-importar="s5">Importar dados</button></div>`}
-/* 1.1.0 · WST-03 / INI-04 (Fase 6, I1/I2): as ações do Waste passam a ser criadas aqui (+ Ação do Waste abre o formulário com a
-   ordem). As antigas vêm UMA vez, pelo exports do Waste (acoesLegado), com o histórico: id AC-W-<id do Waste> e ref waste|<id>, então
-   trazer de novo (ou em duas estações) não duplica. Status: aberta/em análise/planejada → a fazer; aguardando recurso/validação →
-   aguardando; eficácia em acompanhamento / encerrada eficaz / sem eficácia → concluída com o campo eficácia (I2). No Waste, a ação
-   trazida fica só leitura e leva para cá. */
+/* M5 · ações antigas do Waste. A cópia para Iniciativas deixou de ser feita aqui: o botão "Trazer ações do Waste" dependia de
+   acoesLegado pelo vacFicha, que a base limpa deixou de repassar, e falhava. A cópia única é a migração pontual M5 (ferramenta de
+   uso único, Saúde dos dados). Ações já trazidas (campo legado) continuam com o histórico do Waste no detalhe. */
 const MigWaste={
- ST:{'aberta':'a fazer','em análise':'a fazer','planejada':'a fazer','em andamento':'em andamento','aguardando recurso':'aguardando','aguardando validação':'aguardando',
-  'concluída':'concluída','eficácia em acompanhamento':'concluída','encerrada eficaz':'concluída','encerrada sem eficácia':'concluída','cancelada':'cancelada'},
- EF:{'eficácia em acompanhamento':'acompanhamento','encerrada eficaz':'eficaz','encerrada sem eficácia':'sem'},
- PR:{'baixa':'baixa','média':'media','media':'media','alta':'alta'},
- ja(id){return Store.data.acoes.some(a=>a.id==='AC-W-'+id||(a.origem||{}).ref==='waste|'+id)},
- converter(w,em){const st=this.ST[w.status]||'a fazer',dt=d=>/^\d{4}-\d{2}-\d{2}/.test(String(d||''))?String(d).slice(0,10):null;
-  const ab=dt(w.abertura),cc=dt(w.conclusao);
-  const det=[w.causa?'Causa: '+w.causa:'',w.comp?'Componente: '+w.comp:'',w.area?'Área: '+w.area:'',w.econ!=null?'Economia estimada: R$ '+nf(w.econ)+'/mês':'',w.obs?'Evidência / observação: '+w.obs:''].filter(Boolean).join('\n');
-  return{id:'AC-W-'+w.id,titulo:String(w.desc||'(sem descrição)').slice(0,200),descricao:det,status:st,prioridade:this.PR[w.pri]||'media',responsavel:w.resp||'',responsavelId:vacPessoa.id(w.resp),apoios:[],
-   prazo:dt(w.prazo),prazoOriginal:dt(((w.hist||[]).find(h=>h&amp;&amp;h.prazo)||{}).prazo)||dt(w.prazo),criadaEm:ab?ab+'T12:00:00':em,criadaPor:w.user||'',
-   concluidaEm:st==='concluída'?(cc?cc+'T12:00:00':em):null,eficacia:this.EF[w.status]||null,
-   origem:{tipo:'waste',ref:'waste|'+w.id,resumo:`Trazida do Waste em ${brh(em)}${w.ordem?' · ordem '+w.ordem:''} · status lá: ${w.status||'—'}`},
-   vinculos:w.ordem?[{tipo:'ordem',cod:String(w.ordem)}]:[],checklist:[],comentarios:[],evidencias:[],
-   legado:{pagina:'Waste',id:w.id,status:w.status||null,causa:w.causa||null,comp:w.comp||null,area:w.area||null,econ:w.econ??null,abertura:ab,conclusao:cc,
-    hist:(w.hist||[]).filter(h=>h&amp;&amp;typeof h==='object').map(h=>({data:h.data||null,user:h.user||null,status:h.status||null,prazo:h.prazo||null}))}}},
  legadoHtml(a){const L=a.legado;if(!L)return'';const H=L.hist||[];
-  return`<div class="small muted" style="margin-top:4px">Do Waste (id ${esc(L.id)}): status lá <b>${esc(L.status||'—')}</b>${L.abertura?' · aberta em '+br(L.abertura):''}${L.conclusao?' · conclusão '+br(L.conclusao):''}${H.length?' · histórico: '+H.map(h=>`${brh(h.data)} ${esc(h.user||'')} (${esc(h.status||'')}${h.prazo?', prazo '+br(h.prazo):''})`).join('; '):''}</div>`},
- cartao(){return`<div class="card"><h2 class="ttl">Ações do Waste</h2><p class="small">Desde a 1.1.0 as ações do Waste são criadas aqui (o "+ Ação" do Waste abre o formulário com a ordem). As ações antigas do Waste vêm uma vez, com o histórico; depois ficam só leitura lá. Trazer de novo não duplica.</p>
-  <div class="row"><button class="b" id="mwTrazer">Trazer ações do Waste</button><span class="small muted">${Store.data.acoes.filter(a=>(a.origem||{}).tipo==='waste'&amp;&amp;a.legado).length} já trazida(s)</span></div></div>`},
- async abrir(){let x=null;try{if(typeof vacFicha!=='undefined'){await vacFicha.carregar();x=vacFicha.dados('perdas')}}catch(e){console.warn(e)}
-  const L=x&amp;&amp;x.d&amp;&amp;Array.isArray(x.d.acoesLegado)?x.d.acoesLegado:null;
-  if(!L){janela({titulo:'Trazer ações do Waste',ok:'Fechar',corpo:`<p class="small">Não consegui ler as ações do Waste (${esc(x&amp;&amp;x.motivo||'pasta não conectada ou base do Waste sem o resumo das ações: abra o Waste 1.8.28 ou mais novo e grave uma vez')}).</p>`,acao:()=>true});return}
-  const nov=L.filter(w=>w&amp;&amp;w.id&amp;&amp;!this.ja(w.id)),j=L.length-nov.length;
-  janela({titulo:'Trazer ações do Waste',ok:nov.length?`Trazer ${nov.length} ação(ões)`:'Fechar',corpo:`<p class="small">${L.length} ação(ões) no Waste (lido ${x.geradoEm?'em '+brh(x.geradoEm):''}${x.estado==='cache'?', cópia local':''}): <b>${nov.length} nova(s)</b>, ${j} já trazida(s).</p>
-   ${nov.length?`<div class="tw" style="max-height:260px"><table class="t"><tr><th>Ordem</th><th>Ação</th><th>Status no Waste</th><th>Fica aqui</th><th>Responsável</th><th>Prazo</th></tr>${nov.map(w=>{const c=this.converter(w,'');return`<tr><td class="code">${esc(w.ordem||'—')}</td><td>${esc(c.titulo)}</td><td>${esc(w.status||'')}</td><td>${esc(stNome(c.status))}${c.eficacia?' · eficácia/confirmação de processo: '+esc(efNome(c.eficacia)):''}</td><td>${esc(c.responsavel||'—')}</td><td>${c.prazo?br(c.prazo):'—'}</td></tr>`}).join('')}</table></div>`:''}`,
-   acao:()=>{if(!nov.length)return true;const em=new Date().toISOString();for(const w of nov){if(this.ja(w.id))continue;Store.commit({k:'nova',a:this.converter(w,em)},{silencio:true})}
-    Store.commit({k:'imp',it:{id:'MIGW-'+em,em,por:user()||'',programa:'waste',nome:'Ações do Waste (migração)',linhas:nov.length}});toast(`${nov.length} ação(ões) trazida(s) do Waste.`);render();return true}})}};
+  return`<div class="small muted" style="margin-top:4px">Do Waste (id ${esc(L.id)}): status lá <b>${esc(L.status||'—')}</b>${L.abertura?' · aberta em '+br(L.abertura):''}${L.conclusao?' · conclusão '+br(L.conclusao):''}${H.length?' · histórico: '+H.map(h=>`${brh(h.data)} ${esc(h.user||'')} (${esc(h.status||'')}${h.prazo?', prazo '+br(h.prazo):''})`).join('; '):''}</div>`}};
 /* Pauta automática (Portal 1.9.21 / Iniciativas 1.1.5): ações registradas na Reunião diária do Portal (exports.acoesReuniao)
    viram ações aqui ao abrir a página. Id fixo AC-R-<id> e ref da origem: abrir de novo (ou em outra estação) não duplica. */
 const ImpReuniao={
@@ -35039,7 +35012,7 @@ function viewConfig(){const S=Store,D=S.data;return`<div class="grid g2"><div cl
  <p class="small">Revisão ${D.rev||0}${D.revBy?` · gravada por ${esc(D.revBy)} em ${brh(D.revAt)}`:''} · ${D.acoes.length} ação(ões) · ${(D.kas||[]).length} KAS · ${S.queue.length} alteração(ões) pendente(s)</p>
  ${S.readErr?`<p class="small" style="color:var(--crit)">${esc(S.readErr)}</p>`:''}${S.lastErr?`<p class="small" style="color:var(--crit)">${esc(S.lastErr)}</p>`:''}
  <div class="row">${S.test?'<button class="b" id="cSairT">Sair do modo de teste</button>':`<button class="b pri" id="cConn">${S.dir?S.perm?'Trocar pasta':'Reconectar':'Conectar pasta'}</button><button class="b" id="cSave"${S.dir&amp;&amp;S.perm?'':' disabled'}>Gravar agora</button><button class="b" id="cBk"${S.dir&amp;&amp;S.perm?'':' disabled'}>Backup agora</button><button class="b" id="cTeste">Ver com dados de teste</button>`}</div></div>
- <div class="card"><h2 class="ttl">Como funciona</h2><ul class="lst small"><li>Cada ação tem dono, prazo (o original fica guardado), situação, checklist, comentários, evidências (link) e histórico.</li><li>Ações abertas a partir do Paradas, da Produção ou da ficha da ordem trazem a fotografia do que motivou e o link para reconsultar.</li><li>A Visão da linha lê o resumo (exports): indicadores, pendências e ações. As outras páginas não gravam aqui.</li><li>Tempos em dias corridos, pelo histórico; dias úteis, SLA e regras de prioridade ficam para depois (PLA-04, PLA-07).</li></ul></div>${MigWaste.cartao()}</div>`}
+ <div class="card"><h2 class="ttl">Como funciona</h2><ul class="lst small"><li>Cada ação tem dono, prazo (o original fica guardado), situação, checklist, comentários, evidências (link) e histórico.</li><li>Ações abertas a partir do Paradas, da Produção ou da ficha da ordem trazem a fotografia do que motivou e o link para reconsultar.</li><li>A Visão da linha lê o resumo (exports): indicadores, pendências e ações. As outras páginas não gravam aqui.</li><li>Tempos em dias corridos, pelo histórico; dias úteis, SLA e regras de prioridade ficam para depois (PLA-04, PLA-07).</li></ul></div></div>`}
 
 function render(){$('#nav').innerHTML=navHtml()+`<button class="novo-prog" title="Novo programa (cadastro na Administração › Programas)" data-novoprog>+</button>`;topo();const v={acoes:viewAcoes,kas:viewKas,osm:viewOsm,s5:viewS5,config:viewConfig}[App.tab]||(/^prog-/.test(App.tab)?viewPrograma:viewAcoes);
  const det=$('#det'),rol=det?det.scrollTop:0;$('#main').innerHTML=v();const d2=$('#det');if(d2)d2.scrollTop=rol;ligar()}
@@ -35066,7 +35039,7 @@ function ligar(){const A=id=>Store.data.acoes.find(a=>a.id===id);
  $$('[data-ir-acao]').forEach(x=>x.onclick=e=>{e.preventDefault();App.sel=x.dataset.irAcao;App.f.fechadas=true;ir('acoes')});
  const on=$('#osmNova');if(on)on.onclick=()=>formAcao(null,{origem:{tipo:'osm'}});const sn=$('#s5Nova');if(sn)sn.onclick=()=>formAcao(null,{origem:{tipo:'5s'}});
  const cc=$('#cConn');if(cc)cc.onclick=()=>Store.dir&amp;&amp;!Store.perm?Store.reconnect():Store.pick();const cs=$('#cSave');if(cs)cs.onclick=async()=>{await Store.reload();await Store.save();render();toast(Store.lastErr?'Gravação pendente':'Gravado · rev '+Store.data.rev)};
- const cb=$('#cBk');if(cb)cb.onclick=()=>Store.backupAgora();const ct=$('#cTeste');if(ct)ct.onclick=()=>vacDemo.entrar();const mw=$('#mwTrazer');if(mw)mw.onclick=()=>MigWaste.abrir();const cx=$('#cSairT');if(cx)cx.onclick=()=>{location.hash='';location.reload()}}
+ const cb=$('#cBk');if(cb)cb.onclick=()=>Store.backupAgora();const ct=$('#cTeste');if(ct)ct.onclick=()=>vacDemo.entrar();const cx=$('#cSairT');if(cx)cx.onclick=()=>{location.hash='';location.reload()}}
 
 /* ---------- modo de teste (dados fictícios; nada é gravado) ---------- */
 function enterTest(){Store.test=true;Store.queue=[];const h=hoje(),D=completar(vazio()),ag=Date.now(),iso=d=>new Date(ag-d*864e5).toISOString();
@@ -35130,7 +35103,7 @@ window.VAC_GUIA.inic = {
     para: "Aba de um programa cadastrado na Administração (Cadastros › Programas), com as ações dele. O \"+\" ao lado das abas abre o cadastro.",
     campos: [{ sel: '#pgNova', nome: '+ Ação', o: 'Nova ação do programa.' }, { sel: '[data-importar^="prog-"]', nome: 'Importar dados', o: 'Cole as linhas do Excel com o cabeçalho (Título, Responsável, Prazo, Status, Prioridade, Descrição). A prévia mostra nova / já importada / erro; repetir não duplica.', ex: 'Título: Limpar guia da esteira · Prazo: 20/11/2026.' }]
   },
-  config: { titulo: 'Configuração', para: 'Pasta e base, como funciona e a migração das ações antigas do Waste.', campos: [{ sel: '#mwTrazer', nome: 'Trazer ações do Waste', o: 'Copia uma vez as ações antigas do Waste, com o histórico. Trazer de novo não duplica.' }] }
+  config: { titulo: 'Configuração', para: 'Pasta e base e como funciona.', campos: [] }
 };
 </script>
 </body>
@@ -55394,8 +55367,8 @@ body.vac-porta{overflow:hidden}
       "id": "inic",
       "path": "Plataforma.html#motor/inic",
       "version": "1.1.17",
-      "sha256": "ae47708c31fc125783ee7af647e4438a05b9c10a349bf1b0a2082a56c3bd07fa",
-      "bytes": 762681
+      "sha256": "9eeffc1840fc4938275c685c524982a7eca719dbd8945f95907255b0562350af",
+      "bytes": 757747
     },
     {
       "id": "linha",
@@ -55422,7 +55395,7 @@ body.vac-porta{overflow:hidden}
   "limitations": [
     "Projetos e conteúdo técnico OSM/MES/AM/TPM mantêm os limites documentados nas fontes."
   ],
-  "enginesSha256": "88f2a18cc4059866f6ee7f51e33de235adcc802e5b0b5f3d489b16fd7972214e",
+  "enginesSha256": "f3141bc4e541b99e97e5c8ca9e75b74c1525de415a01539f6d92e872506b3290",
   "originRevision": "ffc9ee8",
   "sourceMode": "single-html",
   "originEnginesSha256": "a87a64ad0c328f70e102b2ae888790a9b5d5a9bd05778652a7ce7cae140e40d2"

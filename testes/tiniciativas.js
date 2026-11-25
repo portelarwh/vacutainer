@@ -58,21 +58,14 @@ const LEG = [
       return { ef: Store.data.acoes.find(y => y.id === a.id).eficacia, ex: x && x.eficacia, ev: ev.length, pill: /Confirmação de Processo: Eficaz/i.test(document.getElementById('det').innerText) }; });
     ok(efi.ef === 'eficaz' && efi.ex === 'eficaz' && efi.ev === 1 && efi.pill, `I2: eficácia "eficaz" gravada, no histórico, no detalhe e no exports (${JSON.stringify(efi)})`);
 
-    // 4. WST-03/INI-04: trazer as ações antigas do Waste (uma vez, com histórico)
-    const mig = async () => p.evaluate(async L => { vacFicha.carregar = async () => { }; vacFicha._S.dados.perdas = { estado: 'pasta', geradoEm: '2026-11-10T10:00:00Z', d: { porOrdem: [], acoesLegado: L } };
-      App.tab = 'config'; render(); await MigWaste.abrir(); await new Promise(r => setTimeout(r, 50)); const t = document.querySelector('.mod').innerText; document.querySelector('.mod [data-ok]').click(); await new Promise(r => setTimeout(r, 50)); return t; }, LEG);
-    const m1 = await mig();
-    const s4 = await p.evaluate(() => { const g = id => Store.data.acoes.find(a => a.id === id) || {}; const ex = calcExports(Store.data).acoes; return {
-      w1: g('AC-W-w1'), w2: g('AC-W-w2'), w3: g('AC-W-w3'), ex1: ex.find(a => a.id === 'AC-W-w1'), n: Store.data.acoes.filter(a => (a.origem || {}).tipo === 'waste').length }; });
-    ok(/3 nova\(s\), 0 já trazida/.test(m1.replace(/<[^>]+>/g, '')), `migração: prévia com 3 novas (${m1.split('\n').slice(0, 3).join(' / ')})`);
-    ok(s4.n === 3 && s4.w1.status === 'a fazer' && s4.w2.status === 'concluída' && s4.w2.eficacia === 'eficaz' && s4.w3.status === 'aguardando', 'migração: em análise → a fazer; encerrada eficaz → concluída + eficácia eficaz; aguardando validação → aguardando');
-    ok(s4.w1.prioridade === 'alta' && s4.w1.responsavel === 'Qualidade' && s4.w1.prazo === '2026-10-15' && s4.w1.prazoOriginal === '2026-10-10' && /Economia estimada/.test(s4.w1.descricao) && /Causa: Embalagem/.test(s4.w1.descricao), 'migração: prioridade, responsável, prazo (original do histórico) e causa/economia na descrição');
-    ok(s4.w1.legado && s4.w1.legado.hist.length === 1 && s4.w1.origem.ref === 'waste|w1' && s4.ex1 && s4.ex1.vinculos.some(v => v.tipo === 'ordem' && v.cod === '100234567'), 'migração: histórico do Waste guardado, ref waste|<id> e vínculo com a ordem no exports');
-    const m2 = await mig(); const n2 = await p.evaluate(() => Store.data.acoes.filter(a => (a.origem || {}).tipo === 'waste').length);
-    ok(/0 nova\(s\), 3 já trazida/.test(m2) && n2 === 3, 'migração: trazer de novo não duplica');
-    await p.evaluate(() => { App.tab = 'acoes'; App.sel = 'AC-W-w1'; App.f.fechadas = true; render(); });
-    ok(/Do Waste \(id w1\)/.test(await p.evaluate(() => document.getElementById('det').innerText)), 'migração: detalhe mostra o status e o histórico de lá');
-    await p.screenshot({ path: path.join(SAI, 'migrada.png') });
+    // 4. MIG-01: a cópia das ações antigas do Waste é a migração pontual M5; a interface não oferece mais o botão que falhava
+    const s4 = await p.evaluate(async () => { App.tab = 'config'; render(); await new Promise(r => setTimeout(r, 50));
+      const cfg = document.body.innerText, botao = !!document.getElementById('mwTrazer');
+      const a = { ...Store.data.acoes[0], id: 'AC-W-w1', origem: { tipo: 'waste', ref: 'waste|w1' }, legado: { pagina: 'Waste', id: 'w1', status: 'em análise', hist: [{ data: '2026-10-01', user: 'Teste', status: 'aberta', prazo: '2026-10-10' }] } };
+      Store.data.acoes.push(a); App.tab = 'acoes'; App.sel = a.id; App.f.fechadas = true; render(); await new Promise(r => setTimeout(r, 50));
+      return { botao, cfgTexto: /Trazer ações do Waste/.test(cfg), abrir: typeof MigWaste.abrir, cartao: typeof MigWaste.cartao, detalhe: document.getElementById('det').innerText }; });
+    ok(!s4.botao && !s4.cfgTexto && s4.abrir === 'undefined' && s4.cartao === 'undefined', `migração: Configuração não oferece mais "Trazer ações do Waste" (${JSON.stringify({ b: s4.botao, t: s4.cfgTexto, a: s4.abrir })})`);
+    ok(/Do Waste \(id w1\)/.test(s4.detalhe), 'migração: ação já trazida continua mostrando o status e o histórico de lá');
     await p.close();
   }
 
