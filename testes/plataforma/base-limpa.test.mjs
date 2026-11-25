@@ -39,6 +39,26 @@ for (const [bloco, padroes] of Object.entries(PROIBIDO)) {
   });
 }
 
+// Migrador pontual (D02): único bloco que lê o formato da main, fora do caminho normal. Sai depois do corte.
+export const ISENTO = 'ferramenta/migracao';
+const LEITURA_ANTIGA = COMUM.concat([/bomPct/, /cg\.gTubo/, /vacMoverBases/, /vacAvisoBases/]);
+
+test('leitura do formato antigo isenta só no migrador pontual', () => {
+  assert.ok(!(ISENTO in PROIBIDO), 'o migrador não entra na lista de proibições');
+  for (const id of html.sources.keys()) {
+    if (!id.startsWith('ferramenta/') || id === ISENTO) continue;
+    const achados = LEITURA_ANTIGA.filter(p => p.test(html.text(id))).map(String);
+    assert.deepEqual(achados, [], `${id} ainda tem: ${achados.join(', ')}`);
+  }
+});
+
+test('nenhum motor, módulo ou código comum chama o migrador pontual', () => {
+  for (const [id, texto] of html.sources) {
+    if (!/^(motor|modulo|comum|recurso)\//.test(id)) continue;
+    assert.ok(!/vacMigracao/.test(texto), `${id} não deveria chamar vacMigracao`);
+  }
+});
+
 test('comum/bases: constante do cadastro e texto exato do bloqueio da base', () => {
   const texto = html.text('comum/bases');
   assert.match(texto, /const VAC_CAD_VERSAO = 2;/);

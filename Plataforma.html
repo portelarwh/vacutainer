@@ -56070,6 +56070,188 @@ mostrarRef();
 </html>
 </textarea>
 
+<!-- ferramenta/migracao -->
+<textarea data-vac-source="ferramenta/migracao" spellcheck="false"><!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Migração pontual</title>
+<!--
+  Migração pontual da base limpa (D02, 25/11/2026) · ferramenta de uso único.
+  Leva uma vez ao formato atual os dados gravados pela main (91744b5) que a base limpa deixou de ler.
+  Fica fora do caminho normal: nenhum motor chama este bloco. Sai do código depois do corte aceito (contrato 10).
+  Núcleo puro (vacMigracao): planeja sem tocar a pasta; é testado em Node (testes/plataforma/migracao.test.mjs).
+  As regras repetem a main, sem fórmula nova (contrato 7). O que não é inequívoco vira exceção para o responsável.
+-->
+<style>
+:root{--bg:#11161b;--surface:#182029;--line:#2d3945;--ink:#e6ebf0;--muted:#93a1ae;color-scheme:dark;--f:"Barlow","Segoe UI",system-ui,sans-serif}
+:root[data-theme="light"]{--bg:#eef1f4;--surface:#fff;--line:#d4dbe2;--ink:#17212b;--muted:#5a6876;color-scheme:light}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 var(--f)}
+.wrap{max-width:1180px;margin:0 auto;padding:18px 16px 60px}
+h1{font-size:22px;margin:0;letter-spacing:.02em;text-transform:uppercase}.sub{color:var(--muted);margin:4px 0 0;max-width:80ch}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:14px;margin-top:14px}
+</style>
+</head>
+<body>
+<div class="wrap">
+ <h1>Migração pontual</h1>
+ <p class="sub">Uso único. Leva os dados da versão anterior ao formato atual, com prévia, exceções, backup e confirmação.</p>
+ <div class="card" id="mgTela">A tela de prévia e aplicação ainda não está pronta.</div>
+</div>
+<script id="vacMigracaoNucleo">
+/* ===== Núcleo puro: sem DOM e sem pasta. Recebe {arquivo: conteúdo} e devolve o plano. ===== */
+const vacMigracao = (() => {
+  'use strict';
+  const PORTAL = 'portal-base.json', CAD = 'vacutainer-cadastros.json';
+  const DATA_INDETERMINADA = '2000-01-01';
+  const MANTER = {valor: 'manter', rotulo: 'Deixar como está'};
+  const objeto = v => !!v &amp;&amp; typeof v === 'object' &amp;&amp; !Array.isArray(v);
+  const vazio = v => v == null || v === '';
+  const copia = v => v === undefined ? undefined : JSON.parse(JSON.stringify(v));
+  const numero = v => (typeof v === 'number' || typeof v === 'string') &amp;&amp; v !== '' &amp;&amp; Number.isFinite(+v);
+
+  /* JSON canônico: chaves em ordem, como o JSON.stringify trataria cada valor. */
+  function canonico(v) {
+    if (v &amp;&amp; typeof v.toJSON === 'function') v = v.toJSON();
+    if (Array.isArray(v)) return '[' + v.map(x => x === undefined || typeof x === 'function' ? 'null' : canonico(x)).join(',') + ']';
+    if (objeto(v)) return '{' + Object.keys(v).sort().filter(k => v[k] !== undefined &amp;&amp; typeof v[k] !== 'function')
+      .map(k => JSON.stringify(k) + ':' + canonico(v[k])).join(',') + '}';
+    return JSON.stringify(v) ?? 'null';
+  }
+  async function hash(obj) {
+    const bytes = new TextEncoder().encode(canonico(obj));
+    const d = new Uint8Array(await crypto.subtle.digest('SHA-256', bytes));
+    return Array.from(d, b => b.toString(16).padStart(2, '0')).join('');
+  }
+  const dataValida = s => typeof s === 'string' &amp;&amp; /^\d{4}-\d{2}-\d{2}$/.test(s) &amp;&amp; s !== DATA_INDETERMINADA
+    &amp;&amp; new Date(s + 'T00:00:00Z').toISOString().slice(0, 10) === s;
+
+  /* Contexto de um planejamento: cópias dos arquivos alterados, itens e exceções. */
+  function contexto(arqs, cad, escolhas) {
+    const depois = {}, porArquivo = {}, itens = {}, excecoes = [];
+    return {
+      arqs, cad, escolhas: escolhas || {}, depois, porArquivo, itens, excecoes,
+      doc(arquivo) { if (!(arquivo in depois)) depois[arquivo] = copia(arqs[arquivo]); return depois[arquivo]; },
+      alterar(item, arquivo, caminho, de, para) {
+        (porArquivo[arquivo] = porArquivo[arquivo] || []).push({item, caminho, de: copia(de) ?? null, para: copia(para) ?? null});
+        (itens[item] = itens[item] || []).push({arquivo, caminho, de: copia(de) ?? null, para: copia(para) ?? null});
+      },
+      /* A escolha do responsável entra pelo id da exceção; a exceção continua no relatório com a escolha aplicada. */
+      excecao({tipo, arquivo, caminho, valor, motivo, candidatos = [], opcoes = [MANTER]}) {
+        const e = {id: tipo + '|' + arquivo + '|' + caminho, item: tipo.split('-')[0], tipo, arquivo, caminho,
+          valor: copia(valor) ?? null, motivo, candidatos: copia(candidatos), opcoes: copia(opcoes)};
+        excecoes.push(e);
+        return e;
+      },
+    };
+  }
+
+  /* ----- M1 · portal-base.json ganha schemaVersion 1; o resto não muda ----- */
+  function planoM1(ctx) {
+    const b = ctx.arqs[PORTAL];
+    if (b === undefined) return;
+    if (objeto(b) &amp;&amp; b.schemaVersion === 1) return;
+    const falha = (caminho, motivo, tipo = 'M1-estrutura') => ctx.excecao({tipo, arquivo: PORTAL, caminho,
+      valor: objeto(b) &amp;&amp; caminho ? b[caminho] : b, motivo});
+    if (!objeto(b)) return falha('', 'O arquivo não é uma base da Administração.');
+    if (!vazio(b.schemaVersion)) return falha('schemaVersion', 'A base já tem outra versão do formato (' + String(b.schemaVersion).slice(0, 20) + ').', 'M1-versao');
+    if (b.schema != null &amp;&amp; b.schema !== 'portal-base') return falha('schema', 'O arquivo é de outro tipo.');
+    if (!objeto(b.config)) return falha('config', 'A configuração não é um objeto.');
+    if (b.reunioes != null &amp;&amp; !objeto(b.reunioes)) return falha('reunioes', 'A pauta das reuniões não é um objeto.');
+    if (!Array.isArray(b.audit)) return falha('audit', 'A auditoria não é uma lista.');
+    ctx.doc(PORTAL).schemaVersion = 1;
+    ctx.alterar('M1', PORTAL, 'schemaVersion', b.schemaVersion ?? null, 1);
+  }
+
+  /* ----- M3 · gel solto no catálogo → vigência (regras da main: vigList e bomVals) ----- */
+  const SOLTOS = ['gTubo', 'bomG', 'bomPct', 'bomKg', 'bomBase', 'tol'];
+  const OPCOES_DATA = [{campo: 'from', rotulo: 'Data de início da vigência (AAAA-MM-DD)'}, MANTER];
+  /* Valores gravados que não são número (vazio conta como ausente). */
+  const naoNumericos = (o, campos) => campos.filter(k => !vazio(o[k]) &amp;&amp; !numero(o[k]));
+  /* BOM de uma vigência como a main lia (bomVals), no formato atual {bomKg, bomBase, tol}. */
+  function bomAtual(v) {
+    const tol = vazio(v.tol) ? 6 : +v.tol;
+    if (+v.bomKg) return {bomKg: +v.bomKg, bomBase: +v.bomBase || 10000, tol};
+    if (+v.bomG) { const p = +(v.bomPct || 106); return {bomKg: +v.bomG * p / 100 * 10, bomBase: 10000, tol: p - 100}; }
+    return {bomKg: null, bomBase: +v.bomBase || 10000, tol};
+  }
+  /* Data da vigência: a gravada, ou a escolhida pelo responsável quando é indeterminada. */
+  function dataDa(ctx, caminho, valor, from) {
+    if (dataValida(from)) return from;
+    const e = ctx.excecao({tipo: 'M3-data', arquivo: CAD, caminho, valor,
+      motivo: vazio(from) ? 'Vigência sem data de início.' : 'Data de início indeterminada (' + String(from).slice(0, 20) + ').', opcoes: OPCOES_DATA});
+    const esc = ctx.escolhas[e.id];
+    if (esc &amp;&amp; dataValida(esc.from)) { e.escolha = {from: esc.from}; return esc.from; }
+    if (esc === 'manter') e.escolha = 'manter';
+    else if (esc != null) e.motivo += ' A data escolhida não vale.';
+    return null;
+  }
+  function planoM3(ctx) {
+    const c = ctx.arqs[CAD];
+    if (c === undefined) return;
+    if (!objeto(c) || !Array.isArray(c.catalogos) || +c.schemaVersion !== 2)
+      return ctx.excecao({tipo: 'M3-estrutura', arquivo: CAD, caminho: 'catalogos', valor: objeto(c) ? c.schemaVersion ?? null : null,
+        motivo: 'O cadastro não está no formato 2 com a lista de catálogos.'});
+    c.catalogos.forEach((cat, i) => {
+      const g = objeto(cat) ? cat.gel : null, base = 'catalogos[' + i + '].gel';
+      if (!objeto(g)) return;
+      if (g.vig != null &amp;&amp; !Array.isArray(g.vig))
+        return ctx.excecao({tipo: 'M3-estrutura', arquivo: CAD, caminho: base + '.vig', valor: g.vig, motivo: 'As vigências do gel não são uma lista.'});
+      if (g.vig &amp;&amp; g.vig.length) return g.vig.forEach((v, j) => vigenciaM3(ctx, i, j, v));
+      if (!(g.gTubo || g.bomG || g.bomKg)) return;
+      const ruins = naoNumericos(g, SOLTOS);
+      if (ruins.length) return ctx.excecao({tipo: 'M3-valor', arquivo: CAD, caminho: base,
+        valor: Object.fromEntries(ruins.map(k => [k, g[k]])), motivo: 'Valor não numérico no gel do catálogo: ' + ruins.join(', ') + '.'});
+      const nova = {from: DATA_INDETERMINADA, gTubo: g.gTubo ? +g.gTubo : null, ...bomAtual(g)};
+      const from = dataDa(ctx, base, nova, DATA_INDETERMINADA);
+      if (!from) return;
+      const antes = Object.fromEntries(SOLTOS.concat('vig').filter(k => k in g).map(k => [k, g[k]]));
+      const gel = ctx.doc(CAD).catalogos[i].gel;
+      for (const k of SOLTOS) delete gel[k];
+      gel.vig = [{...nova, from}];
+      ctx.alterar('M3', CAD, base, antes, {vig: gel.vig});
+    });
+  }
+  function vigenciaM3(ctx, i, j, v) {
+    const caminho = 'catalogos[' + i + '].gel.vig[' + j + ']';
+    if (!objeto(v)) return ctx.excecao({tipo: 'M3-estrutura', arquivo: CAD, caminho, valor: v, motivo: 'Vigência do gel não é um objeto.'});
+    const converter = !+v.bomKg &amp;&amp; !!+v.bomG;
+    if (!converter &amp;&amp; !vazio(v.from)) return;
+    if (converter) {
+      const ruins = naoNumericos(v, SOLTOS);
+      if (ruins.length) return ctx.excecao({tipo: 'M3-valor', arquivo: CAD, caminho,
+        valor: Object.fromEntries(ruins.map(k => [k, v[k]])), motivo: 'Valor não numérico na vigência do gel: ' + ruins.join(', ') + '.'});
+    }
+    const nova = {...v};
+    if (converter) { delete nova.bomG; delete nova.bomPct; Object.assign(nova, bomAtual(v)); }
+    const from = dataDa(ctx, caminho, nova, v.from);
+    if (!from) return;
+    nova.from = from;
+    ctx.doc(CAD).catalogos[i].gel.vig[j] = nova;
+    ctx.alterar('M3', CAD, caminho, v, nova);
+  }
+
+  const ITENS = [['M1', planoM1], ['M3', planoM3]];
+
+  /* planejar(arqs, cad, escolhas) → {itens, alteracoes, excecoes}. Não grava nem altera o que recebe. */
+  async function planejar(arqs, cad, escolhas) {
+    const ctx = contexto(arqs || {}, cad, escolhas);
+    for (const [item, fazer] of ITENS) { ctx.itens[item] = ctx.itens[item] || []; fazer(ctx); }
+    const alteracoes = {};
+    for (const [arquivo, itens] of Object.entries(ctx.porArquivo))
+      alteracoes[arquivo] = {hashAntes: await hash(ctx.arqs[arquivo]), depois: ctx.depois[arquivo], itens};
+    return {itens: ctx.itens, alteracoes, excecoes: ctx.excecoes};
+  }
+
+  return Object.freeze({planejar, hash, canonico});
+})();
+globalThis.vacMigracao = vacMigracao;
+</script>
+</body>
+</html>
+</textarea>
+
 <!-- modulo/App -->
 <textarea data-vac-source="modulo/App" spellcheck="false">import { Fragment, jsx, jsxs } from "vac:vendor/react";
 import brandCss from "vac:recurso/brand";
