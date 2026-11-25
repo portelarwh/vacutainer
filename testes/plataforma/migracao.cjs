@@ -58,7 +58,7 @@ const PASTA = 'Migracao-Ficticia', BLOQUEIO = 'Base de versão anterior';
     const cards = await t.locator('#sPrevia .cards .k b').allInnerTexts();
     assert.deepEqual(cards.map(Number), [nAlt, nArq, nExc, nExc], 'alterações, arquivos, exceções e exceções sem decisão');
     const porItem = await t.locator('#sPrevia table').first().locator('tbody tr').allInnerTexts();
-    assert.ok(porItem.some(l => /M5 · Ações antigas/.test(l)) && porItem.length === 6);
+    assert.ok(porItem.some(l => /M5 · Ações antigas/.test(l)) && porItem.length === 7);
     assert.equal(await t.locator('#sPrevia table').nth(1).locator('tbody tr').count(), nArq, 'uma linha por arquivo');
     assert.equal(await t.locator('#tExc tbody tr').count(), nExc, 'tabela de exceções');
     const baixar = t.waitForEvent('download'); await t.locator('#bCsv').click();

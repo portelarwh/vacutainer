@@ -56182,6 +56182,23 @@ const vacMigracao = (() => {
     ctx.alterar('M1', PORTAL, 'schemaVersion', b.schemaVersion ?? null, 1);
   }
 
+  /* ----- M1b · perdas-base.json e fifo-base.json (Waste e Gestão de Gel) ganham schemaVersion 1; o resto não muda -----
+     A main não gravava a versão nesses dois arquivos; com o bloqueio de versão anterior (bloco 2) eles abririam só para consulta. */
+  function planoM1b(ctx) {
+    for (const [arq, schema] of [[PERD, 'perdas-base'], ['fifo-base.json', null]]) {
+      const b = ctx.arqs[arq];
+      if (b === undefined) continue;
+      if (objeto(b) &amp;&amp; b.schemaVersion === 1) continue;
+      const falha = (caminho, motivo, tipo = 'M1b-estrutura') => ctx.excecao({tipo, arquivo: arq, caminho,
+        valor: objeto(b) &amp;&amp; caminho ? b[caminho] : b, motivo});
+      if (!objeto(b)) { falha('', 'O arquivo não é uma base desta página.'); continue; }
+      if (!vazio(b.schemaVersion)) { falha('schemaVersion', 'A base já tem outra versão do formato (' + String(b.schemaVersion).slice(0, 20) + ').', 'M1b-versao'); continue; }
+      if (schema ? (b.schema != null &amp;&amp; b.schema !== schema) : b.schema != null) { falha('schema', 'O arquivo é de outro tipo.'); continue; }
+      ctx.doc(arq).schemaVersion = 1;
+      ctx.alterar('M1b', arq, 'schemaVersion', b.schemaVersion ?? null, 1);
+    }
+  }
+
   /* ----- M3 · gel solto no catálogo → vigência (regras da main: vigList e bomVals) ----- */
   const SOLTOS = ['gTubo', 'bomG', 'bomPct', 'bomKg', 'bomBase', 'tol'];
   const OPCOES_DATA = [{campo: 'from', rotulo: 'Data de início da vigência (AAAA-MM-DD)'}, MANTER];
@@ -56523,7 +56540,7 @@ const vacMigracao = (() => {
     return {ok: !faltam.length &amp;&amp; !divergentes.length, faltam, divergentes};
   }
 
-  const ITENS = [['M1', planoM1], ['M2', planoM2], ['M5', planoM5], ['M3', planoM3], ['M4', planoM4]];
+  const ITENS = [['M1', planoM1], ['M1b', planoM1b], ['M2', planoM2], ['M5', planoM5], ['M3', planoM3], ['M4', planoM4]];
 
   /* planejar(arqs, escolhas) → {itens, alteracoes, excecoes}. O cadastro é arqs['vacutainer-cadastros.json']. Não grava nem altera o que recebe. */
   async function planejar(arqs, escolhas) {
@@ -57075,7 +57092,7 @@ function vacRaiz(raiz) {
   const NOMES = {'vacutainer-cadastros.json': 'Cadastro geral', 'portal-base.json': 'Administração', 'iniciativas-base.json': 'Iniciativas',
     'equipamentos-base.json': 'Equipamentos', 'linha360-base.json': 'Linha 360°', 'paradas-base.json': 'Paradas', 'perdas-base.json': 'Waste',
     'fifo-base.json': 'Gestão de Gel', 'oee-vacutainer-base.json': 'Produção'};
-  const ITENS = {M1: 'M1 · Formato da base da Administração', M2: 'M2 · IDs de pessoas', M2b: 'M2b · Técnico do Forms (Paradas)',
+  const ITENS = {M1: 'M1 · Formato da base da Administração', M1b: 'M1b · Versão do formato do Waste e da Gestão de Gel', M2: 'M2 · IDs de pessoas', M2b: 'M2b · Técnico do Forms (Paradas)',
     M3: 'M3 · Gel solto no catálogo', M4: 'M4 · Locais antigos do Gel', M5: 'M5 · Ações antigas do Waste nas Iniciativas'};
   const ROT_ESTADO = {concluido: 'Concluído', 'concluido-parcial': 'Concluído em parte', incompleto: 'Incompleto', 'em-andamento': 'Em andamento', restaurado: 'Restaurado'};
   const ROT_RES = {gravado: 'Gravado', 'ja-concluido': 'Já estava gravado', 'pulado-mudou': 'Mudou desde a prévia', 'nao-tocado': 'Não tocado', erro: 'Erro',

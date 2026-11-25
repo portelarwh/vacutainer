@@ -153,7 +153,7 @@ test('M2 e M4 sem cadastro de usuários ou de locais viram exceção de estrutur
   assert.equal(exc(p, 'M2-estrutura').length, 1);
   assert.equal(exc(p, 'M4-estrutura').length, 1);
   assert.equal(p.alteracoes[INIC], undefined);
-  assert.equal(p.alteracoes[FIFO], undefined);
+  assert.deepEqual((p.alteracoes[FIFO] || {itens: []}).itens.map(i => i.item), ['M1b'], 'só o carimbo de versão (M1b) chega ao Gel; M4 não muda nada');
 });
 
 test('M2b: entrada de tecnico{} sem técnico (só codigoValidado) recebe tecnico e tecnicoId e mantém o resto', async () => {

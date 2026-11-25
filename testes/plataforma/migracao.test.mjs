@@ -195,3 +195,34 @@ test('idempotência: planejar a pasta já aplicada não encontra alterações', 
     assert.deepEqual(de_novo.excecoes.filter(e => ['M1', 'M3'].includes(e.item)), []);
   }
 });
+
+/* M1b: a main não gravava schemaVersion no Waste nem na Gestão de Gel. Com o bloqueio de versão anterior nesses dois (bloco 2), sem o
+   carimbo as bases reais abririam só para consulta depois do corte. */
+const PERD = 'perdas-base.json', FIFO = 'fifo-base.json';
+const planoM1b = arqs => M.planejar(arqs, {}).then(p => json(p));
+
+test('M1b: perdas-base e fifo-base sem schemaVersion ganham 1 e o resto fica igual', async () => {
+  const pasta = pastaMain(), p = await planoM1b(pasta);
+  for (const arq of [PERD, FIFO]) {
+    const alt = p.alteracoes[arq];
+    assert.ok(alt, arq + ' deveria ter alteração');
+    assert.equal(alt.depois.schemaVersion, 1, arq);
+    assert.ok(alt.itens.some(i => i.item === 'M1b' && i.caminho === 'schemaVersion' && i.de === null && i.para === 1), arq);
+  }
+  assert.equal(p.itens.M1b.length, 2);
+  assert.deepEqual(p.excecoes.filter(e => e.item === 'M1b'), []);
+  const {schemaVersion: _, ...resto} = p.alteracoes[PERD].depois;
+  assert.deepEqual(Object.keys(resto).filter(k => !(k in pasta[PERD])), [], 'só schemaVersion foi acrescentado no Waste');
+});
+
+test('M1b: já com schemaVersion 1 não há nada a fazer; outra versão ou outro tipo vira exceção', async () => {
+  const ok = pastaMain(); ok[PERD].schemaVersion = 1; ok[FIFO].schemaVersion = 1;
+  const p1 = await planoM1b(ok);
+  assert.deepEqual(p1.itens.M1b, []);
+  assert.deepEqual(p1.excecoes.filter(e => e.item === 'M1b'), []);
+  const outra = pastaMain(); outra[PERD].schemaVersion = 7; outra[FIFO].schema = 'outra-coisa';
+  const p2 = await planoM1b(outra);
+  assert.deepEqual(p2.excecoes.filter(e => e.item === 'M1b').map(e => e.tipo + '|' + e.arquivo).sort(),
+    ['M1b-estrutura|' + FIFO, 'M1b-versao|' + PERD]);
+  assert.ok(!p2.alteracoes[PERD] || p2.alteracoes[PERD].depois.schemaVersion === 7, 'a versão já gravada não é trocada');
+});

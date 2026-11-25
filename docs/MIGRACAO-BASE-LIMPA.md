@@ -10,6 +10,10 @@ Nada disto foi homologado em SMB. H01 e H02 (PENDENCIAS.md) seguem pendentes. Fa
 - Login de quem **edita todos os assuntos da Administração**. Quem tem um assunto só em "ver" não consegue aplicar.
 - Web Locks só coordenam abas do **mesmo navegador** e só a Administração e o Waste os usam. A ferramenta **não vê outras estações**. A Produção não avisa abas abertas: feche todas.
 
+## Carimbo de versão do Waste e do Gel (M1b)
+
+A main não gravava `schemaVersion` em `perdas-base.json` (Waste) nem em `fifo-base.json` (Gestão de Gel). Depois do bloqueio de versão anterior (bloco 2), uma base sem `schemaVersion` abre só para consulta. Por isso o item **M1b** acrescenta `schemaVersion: 1` nesses dois arquivos (e só isso: o resto não muda). Sem a migração, Waste e Gel abririam bloqueados na pasta real. Arquivo com outra versão ou de outro tipo vira exceção `M1b-versao` ou `M1b-estrutura`. Ordens (`ordens-base.json`) já grava a versão na main e não precisa de carimbo.
+
 ## Antes do corte
 
 - [ ] **Janela combinada.** Todos os demais gravadores parados: outras estações, outras abas, celulares que importam turno. Fechar todas as abas da Produção.
