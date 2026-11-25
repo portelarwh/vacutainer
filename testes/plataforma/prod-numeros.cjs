@@ -53,8 +53,21 @@ async function capturar() {
       // agregado do período (o mesmo que alimenta painel e relatórios): o mês do cenário e o dia a dia
       const noMes = dias.filter(x => x.date >= '2026-11-01' && x.date <= '2026-11-30');
       const agregados = { oeeMes: estavel(Engine.periodResult(d, noMes, {})), oeeDiaADia: noMes.map(x => estavel(Engine.periodResult(d, [x], {}))) };
-      return { dias: porDia, agregados, listas: estavel({ linhas: d.lines.length, equipamentos: d.machines.length, catalogos: d.catalogs.length,
-        turnos: d.shifts.length, paradas: d.downtimeCodes.length }) };
+      // IDs das tabelas de cadastro trocados pelo código (e pela vigência, quando há): a prova não depende de como o ID é montado
+      const mapa = new Map();
+      for (const l of d.lines) mapa.set(l.id, 'L:' + l.code);
+      for (const m of d.machines) mapa.set(m.id, 'M:' + m.code);
+      for (const f of d.families) mapa.set(f.id, 'F:' + f.code);
+      for (const c of d.catalogs) mapa.set(c.id, 'C:' + c.code + '@' + (c.validFrom || ''));
+      for (const t of d.shifts) { mapa.set(t.id, 'S:' + t.code); for (const v of t.versions || []) mapa.set(v.id, 'S:' + t.code + '@' + (v.validFrom || '')); }
+      for (const x of d.downtimeCodes) mapa.set(x.id, 'D:' + x.code);
+      const porCodigo = v => {
+        if (Array.isArray(v)) return v.map(porCodigo);
+        if (v && typeof v === 'object') return Object.fromEntries(Object.entries(v).map(([k, x]) => [mapa.get(k) ?? k, porCodigo(x)]));
+        return typeof v === 'string' && mapa.has(v) ? mapa.get(v) : v;
+      };
+      return estavel(porCodigo({ dias: porDia, agregados, listas: estavel({ linhas: d.lines.length, equipamentos: d.machines.length, catalogos: d.catalogs.length,
+        turnos: d.shifts.length, paradas: d.downtimeCodes.length }) }));
     })()`);
     assert.deepEqual(erros, []);
     assert.ok(numeros.dias.length >= 1, 'o cenário tem ao menos um dia de produção');
