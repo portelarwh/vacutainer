@@ -158,8 +158,16 @@ Aguardando conferência na pasta real: ADM-01, LOGIN-01, EQP-02, IMP-01, TL-01, 
 
 ---
 
-## Apêndice A · Resultado final da suíte `wip/producao-vazia`
-*(a preencher quando a execução terminar; resultado parcial em 5.1)*
+## Apêndice A · Resultado da suíte `wip/producao-vazia`
+A execução foi **interrompida de propósito** com 24 de 70 suítes rodadas e **12 falhas**: `tid_backup`, `ttimeline`, `tlote_origem`, `tpermissoes`, `tcalendario`, `temail`, `tgrade`, `tfechar`, `thh24`, `thh_todos`, `tsqdcp_layout`, `tvisaogeral`. Motivo da interrupção: mudança de rumo (seção 9). O branch `wip/producao-vazia` (`a5a9bdc`) fica salvo, **sem previsão de PR**.
+
+## 9. Atualização de rumo (25/11/2026, noite)
+
+O responsável esclareceu o princípio: **fórmulas e cálculos não mudam; muda só a base de cadastros, centralizada na Administração**. A ordem desejada é: Administração completa e ajustada, depois módulo a módulo, ligando cada um aos cadastros dela; coisas muito específicas podem ter cadastro interno da página; cada página consulta os dados da Administração filtrados para o que importa a ela.
+
+Consequência: o atalho "Produção vazia + `CadSync`" (5.1) **foi abandonado**, porque quebrava ~metade das suítes por depender da semente e seria refeito no bloco 3. O caminho passa a ser o **bloco 3 do desenho** (Produção monta a estrutura em memória a partir do cadastro; sai o `CadSync`; a semente some).
+
+Primeiro passo já entregue: **`testes/plataforma/prod-numeros.cjs`** (referência `testes/amostras/prod-numeros-antes.json`), a rede de segurança que o desenho exige. Captura, no cenário de demonstração, `Engine.computeDay` (agg, officialDaily, r, comp, msgs, por turno, hora a hora) e `Engine.periodResult` (mês e dia a dia). Determinístico (gravado e comparado duas vezes). **Limite:** o cenário tem **apenas 1 dia** de produção (2026-11-09), então a prova cobre um dia; para provar a troca de forma robusta convém ampliar o cenário (ver pergunta 8.2). O SQDCP continua coberto por `tsqdcp_layout`.
 
 ## Apêndice B · Comandos de verificação
 ```bash
