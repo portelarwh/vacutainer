@@ -4,11 +4,20 @@ import vm from 'node:vm';
 import helpers from '../../scripts/html.cjs';
 
 /* Núcleo do bloco ferramenta/migracao, avaliado sem DOM (crypto.subtle do Node). */
-export function carregarMigracao() {
+/* localStorage de teste: {chave: valor}; `quebrar` faz toda leitura lançar (armazenamento ilegível). */
+export function armazenamento(inicial = {}) {
+  const m = new Map(Object.entries(inicial)), a = {quebrar: false};
+  const ler = () => { if (a.quebrar) throw new DOMException('armazenamento bloqueado', 'SecurityError'); };
+  Object.defineProperty(a, 'length', {get() { ler(); return m.size; }});
+  return Object.assign(a, {key: i => { ler(); return [...m.keys()][i] ?? null; },
+    getItem: k => { ler(); return m.has(k) ? m.get(k) : null; }, setItem: (k, v) => m.set(k, String(v)), removeItem: k => m.delete(k)});
+}
+
+export function carregarMigracao(extra = {}) {
   const bloco = helpers.current().text('ferramenta/migracao');
   const nucleo = bloco.match(/<script id="vacMigracaoNucleo">([\s\S]*?)<\/script>/);
   if (!nucleo) throw new Error('Núcleo vacMigracao ausente do bloco ferramenta/migracao.');
-  const ctx = vm.createContext({crypto: globalThis.crypto, TextEncoder});
+  const ctx = vm.createContext({crypto: globalThis.crypto, TextEncoder, localStorage: 'localStorage' in extra ? extra.localStorage : armazenamento()});
   vm.runInContext(nucleo[1], ctx, {filename: 'ferramenta/migracao'});
   if (!ctx.vacMigracao) throw new Error('O núcleo não definiu vacMigracao.');
   return ctx.vacMigracao;

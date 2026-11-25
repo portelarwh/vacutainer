@@ -38,6 +38,9 @@ A #149 retira do caminho normal toda leitura de formato antigo. Bases e vínculo
 - **Registro:**
   - `00. Backups/Migracao/registro-<data-hora>.json`, com plano, escolhas, hashes antes e depois, e resultado por arquivo;
   - uma entrada na auditoria de cada base alterada.
+  - estados finais: `concluido`, `concluido-parcial` (só ficaram arquivos que a migração não tocou: não volta em `retomar`, e ainda dá para restaurar), `incompleto` e `restaurado`;
+  - `listar(pasta)` devolve os registros para a tela de restauração; `lerPasta(pasta)` lê as bases para a prévia (erro de leitura nunca vira arquivo ausente).
+- **Abas vivas:** a conferência lê `vac.aba.<página>.<id>` com e sem o escopo da pasta (`vac.app.<escopo>.`), aceita `ignorarAbas` (ids da própria janela da ferramenta) e falha fechado: sem como ler o `localStorage`, a aplicação e a restauração recusam. A Produção não tem heartbeat: a tela exige a confirmação "todas as abas ... fechadas e as outras estações pararam de gravar".
 - **Tela:**
   - conectar a pasta;
   - prévia: contagens por item e por arquivo;

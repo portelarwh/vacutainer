@@ -56085,20 +56085,63 @@ mostrarRef();
   As regras repetem a main, sem fórmula nova (contrato 7). O que não é inequívoco vira exceção para o responsável.
 -->
 <style>
-:root{--bg:#11161b;--surface:#182029;--line:#2d3945;--ink:#e6ebf0;--muted:#93a1ae;color-scheme:dark;--f:"Barlow","Segoe UI",system-ui,sans-serif}
-:root[data-theme="light"]{--bg:#eef1f4;--surface:#fff;--line:#d4dbe2;--ink:#17212b;--muted:#5a6876;color-scheme:light}
-*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 var(--f)}
-.wrap{max-width:1180px;margin:0 auto;padding:18px 16px 60px}
-h1{font-size:22px;margin:0;letter-spacing:.02em;text-transform:uppercase}.sub{color:var(--muted);margin:4px 0 0;max-width:80ch}
-.card{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:14px;margin-top:14px}
+/* Mesma identidade das outras ferramentas locais (Verificar pasta): marca BD, caixa de frase, um botão primário por região. */
+:root{--navy:#060A3D;--blue:#044ED7;--ink:#3D3E41;--muted:#62616A;--line:#DBD8D7;--bg:#F9F4F1;--surface:#fff;
+ --ok:#197A4A;--ok-bg:#E9F5EE;--warn:#8F3B00;--warn-bg:#FFF0E5;--crit:#C62828;--crit-bg:#FCECEE;--info:#044ED7;--info-bg:#EDF2FF}
+*{box-sizing:border-box}
+body{margin:0;font:14px/1.5 "FS Albert Pro",Arial,"Helvetica Neue",sans-serif;color:var(--ink);background:var(--bg)}
+header{background:var(--navy);color:#fff;padding:18px 24px}
+header h1{margin:0;font-size:22px;font-weight:300}
+header p{margin:4px 0 0;color:#E0E5FF;font-size:13px;max-width:90ch}
+main{max-width:1100px;margin:0 auto;padding:20px 16px 40px}
+button{font:inherit;font-weight:600;border:1px solid #85828B;background:#fff;color:var(--navy);border-radius:8px;padding:10px 14px;cursor:pointer;min-height:40px}
+button.p{background:var(--blue);border-color:var(--blue);color:#fff}
+button.perigo{background:var(--crit);border-color:var(--crit);color:#fff}
+button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid #1D74FF;outline-offset:2px}
+button:disabled{opacity:.5;cursor:default}
+input[type=text],select{font:inherit;border:1px solid #85828B;border-radius:8px;padding:8px 10px;min-height:40px;background:#fff;color:var(--ink);max-width:100%}
+.muted{color:var(--muted)}
+section{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:14px 16px;margin-bottom:14px}
+section h2{margin:0 0 4px;font-size:17px;font-weight:600;color:var(--navy)}
+section h3{margin:14px 0 6px;font-size:15px;font-weight:600;color:var(--navy)}
+.sub{margin:0 0 10px;color:var(--muted)}
+.bar{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin:10px 0}
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px;margin:10px 0}
+.k{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:10px 14px}
+.k b{display:block;font-size:26px;font-weight:300;color:var(--navy)}
+.k span{font-size:12px;color:var(--muted)}
+table{width:100%;border-collapse:collapse}
+th,td{text-align:left;padding:7px 8px;border-bottom:1px solid var(--line);vertical-align:top}
+th{font-size:12px;color:var(--muted);font-weight:600}
+td.n{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+.scroll{overflow-x:auto}
+.st{display:inline-block;font-size:12px;font-weight:700;border-radius:999px;padding:2px 10px}
+.st.ok{color:var(--ok);background:var(--ok-bg)}.st.aviso{color:var(--warn);background:var(--warn-bg)}
+.st.erro{color:var(--crit);background:var(--crit-bg)}.st.info{color:var(--info);background:var(--info-bg)}
+.aviso{border:1px solid var(--line);border-left:4px solid var(--warn);background:var(--warn-bg);border-radius:8px;padding:10px 12px;margin:10px 0}
+.erro{border:1px solid var(--line);border-left:4px solid var(--crit);background:var(--crit-bg);border-radius:8px;padding:10px 12px;margin:10px 0}
+.certo{border:1px solid var(--line);border-left:4px solid var(--ok);background:var(--ok-bg);border-radius:8px;padding:10px 12px;margin:10px 0}
+label.linha{display:flex;gap:8px;align-items:flex-start;margin:8px 0}
+label.linha input{margin-top:4px}
+code{background:#F0F3FC;padding:1px 5px;border-radius:4px}
+ul{margin:6px 0;padding-left:20px}
+@media print{.bar button{display:none}section{break-inside:avoid}}
 </style>
 </head>
 <body>
-<div class="wrap">
+<header>
  <h1>Migração pontual</h1>
- <p class="sub">Uso único. Leva os dados da versão anterior ao formato atual, com prévia, exceções, backup e confirmação.</p>
- <div class="card" id="mgTela">A tela de prévia e aplicação ainda não está pronta.</div>
-</div>
+ <p>Uso único. Leva os dados gravados pela versão anterior ao formato atual, com prévia, exceções decididas por você, backup de cada arquivo e confirmação digitada.</p>
+</header>
+<main>
+ <section id="sIntro"></section>
+ <section id="sEstacao"></section>
+ <section id="sPasta"></section>
+ <section id="sRetomada" hidden></section>
+ <section id="sPrevia" hidden></section>
+ <section id="sAplicar" hidden></section>
+ <section id="sRegistros" hidden></section>
+</main>
 <script id="vacMigracaoNucleo">
 /* ===== Núcleo puro: sem DOM e sem pasta. Recebe {arquivo: conteúdo} e devolve o plano. ===== */
 const vacMigracao = (() => {
@@ -56662,24 +56705,31 @@ const vacMigracao = (() => {
     'paradas-base.json': ['paradas'], [PERD]: ['perdas'], [FIFO]: ['gel'], [OEE]: ['oee'], [PORTAL]: ['portal']};
   const NOME_PAGINA = {portal: 'Administração', 'portal-cad': 'Administração', inic: 'Iniciativas', equip: 'Equipamentos', linha: 'Linha 360°',
     paradas: 'Paradas', perdas: 'Waste', gel: 'Gestão de Gel', oee: 'Produção'};
-  function abasLocais(pagina) {
-    const L = [];
-    try {
-      const ls = globalThis.localStorage;
-      if (!ls) return L;
-      for (let i = 0; i < ls.length; i++) {
-        const k = ls.key(i);
-        if (!k || !k.startsWith('vac.aba.' + pagina + '.')) continue;
-        let v = null; try { v = JSON.parse(ls.getItem(k)); } catch (e) { }
-        if (v &amp;&amp; Date.now() - (+v.t || 0) < 20000) L.push({id: k.slice(('vac.aba.' + pagina + '.').length), pend: !!v.pend});
-      }
-    } catch (e) { }
+  /* Heartbeats frescos de uma página neste navegador. Dentro da plataforma a página grava com o escopo da pasta
+     (vac.app.<escopo>.vac.aba.<página>.<id>); fora dela, sem escopo. As duas formas contam. `ignorar`: ids da própria janela da ferramenta.
+     Falha fechado: localStorage ausente ou ilegível lança, e a migração recusa (não dá para provar que não há outra aba). */
+  function abasLocais(pagina, ignorar) {
+    const L = [], ls = globalThis.localStorage;
+    if (!ls) throw new Error('localStorage ausente');
+    const alvo = 'vac.aba.' + pagina + '.', n = ls.length;
+    for (let i = 0; i < n; i++) {
+      const k = ls.key(i);
+      if (!k) continue;
+      const c = k.replace(/^vac\.app\.[^.]+\./, '');
+      if (!c.startsWith(alvo)) continue;
+      const id = c.slice(alvo.length);
+      if (ignorar.includes(id)) continue;
+      let v = null; try { v = JSON.parse(ls.getItem(k)); } catch (e) { if (e &amp;&amp; e.name === 'SecurityError') throw e; }
+      if (v &amp;&amp; Date.now() - (+v.t || 0) < 20000) L.push({id, pend: !!v.pend});
+    }
     return L;
   }
   function abasAbertas(op, arquivos) {
-    const abas = typeof op.abas === 'function' ? op.abas : abasLocais, nomes = new Set();
+    const ignorar = Array.isArray(op.ignorarAbas) ? op.ignorarAbas.map(String) : [], nomes = new Set();
+    const abas = typeof op.abas === 'function' ? op.abas : p => abasLocais(p, ignorar);
     for (const f of ORDEM.filter(f => arquivos.includes(f))) for (const p of ABAS[f]) {
-      let L = []; try { L = abas(p) || []; } catch (e) { }
+      let L;
+      try { L = abas(p) || []; } catch (e) { return 'Não foi possível conferir as abas abertas neste navegador (' + msg(e) + '). Nada foi gravado.'; }
       if (L.length) nomes.add(NOME_PAGINA[p]);
     }
     return nomes.size ? 'Há página da plataforma aberta neste navegador: ' + [...nomes].join(', ') + '. Ela grava sem a trava da migração: feche-a e tente de novo.' : '';
@@ -56814,7 +56864,9 @@ const vacMigracao = (() => {
     }
     if (depois.length) reg.mudaramDepois = depois;
     const ok = lista.every(f => ['gravado', 'ja-concluido'].includes(resultado[f]));
-    reg.estado = ok ? 'concluido' : 'incompleto';
+    /* só arquivos que a migração não tocou ficaram para trás: nada mais a retomar (a prévia deles se refaz) */
+    const parcial = !ok &amp;&amp; lista.every(f => ['gravado', 'ja-concluido', 'nao-tocado'].includes(resultado[f]));
+    reg.estado = ok ? 'concluido' : parcial ? 'concluido-parcial' : 'incompleto';
     await salvar();
     const falta = lista.filter(f => !['gravado', 'ja-concluido'].includes(resultado[f]));
     return {ok, motivo: ok ? '' : 'Não concluído: ' + falta.map(f => f + ' (' + resultado[f] + ')').join(', ')
@@ -56832,13 +56884,35 @@ const vacMigracao = (() => {
     }
     return {L, ilegiveis};
   }
+  /* Registro que ainda pede retomada: não concluído, nem concluído em parte, nem restaurado, e com algo que não seja só arquivo resolvido.
+     Um 'incompleto' antigo cujos arquivos estão todos fechados ou não tocados não volta para sempre. */
+  const FECHADOS = ['verificado', 'ja-concluido', 'nao-tocado', 'restaurado'];
+  const aberto = r => !['concluido', 'concluido-parcial', 'restaurado'].includes(r.estado)
+    &amp;&amp; !(r.estado === 'incompleto' &amp;&amp; Object.values(r.arquivos).every(e => objeto(e) &amp;&amp; FECHADOS.includes(e.estado)));
+  /* listar(pasta) → {registros (do mais novo ao mais antigo), ilegiveis}: todos os registros da migração na pasta, para restaurar. */
+  async function listar(pasta) {
+    const {L, ilegiveis} = await registros(pasta);
+    return {registros: L.sort((a, b) => String(b.em + b.id).localeCompare(String(a.em + a.id))), ilegiveis};
+  }
+  /* lerPasta(pasta) → {arqs: {arquivo: documento}, ausentes, ilegiveis, erros: [{arquivo, erro}]}: o que a prévia planeja. Erro de leitura não é ausência. */
+  async function lerPasta(pasta) {
+    const out = {arqs: {}, ausentes: [], ilegiveis: [], erros: []};
+    for (const f of ORDEM) {
+      const a = await lerBase(pasta, f);
+      if (a.erro) out.erros.push({arquivo: f, erro: a.erro});
+      else if (a.ausente) out.ausentes.push(f);
+      else if (a.ilegivel) out.ilegiveis.push(f);
+      else out.arqs[f] = a.doc;
+    }
+    return out;
+  }
   /* retomar(pasta) → {registro, pendentes, concluidos, naoTocados, mudaram, erros:[{arquivo, erro}], ilegiveis}: o registro mais recente
      não concluído nem restaurado, com cada arquivo pelo hash atual: hashDepois = concluído; hashAntes = pendente; outro hash num arquivo
      que a migração não gravou = não tocado (refazer a prévia deste arquivo; não impede os outros); outro hash num arquivo que ela gravou
      ou começou a gravar = mudou (para a retomada); erro de leitura = erro. */
   async function retomar(pasta) {
     const {L, ilegiveis} = await registros(pasta);
-    const reg = L.filter(r => r.estado !== 'concluido' &amp;&amp; r.estado !== 'restaurado').sort((a, b) => String(a.em + a.id).localeCompare(String(b.em + b.id))).pop() || null;
+    const reg = L.filter(aberto).sort((a, b) => String(a.em + a.id).localeCompare(String(b.em + b.id))).pop() || null;
     const out = {registro: reg, pendentes: [], concluidos: [], naoTocados: [], mudaram: [], erros: [], ilegiveis};
     if (!reg) return out;
     for (const f of ORDEM.filter(f => f in reg.arquivos)) {
@@ -56899,10 +56973,368 @@ const vacMigracao = (() => {
     return r;
   }
 
-  return Object.freeze({planejar, hash, canonico, pessoa, conferirM5, aplicar, retomar, restaurar, podeAdministrar,
+  return Object.freeze({planejar, hash, canonico, pessoa, conferirM5, aplicar, retomar, restaurar, listar, lerPasta, podeAdministrar,
     CONFIRMACAO, CONFIRMACAO_RESTAURAR, ORDEM, ASSUNTOS_ADM, AVISO_JANELA});
 })();
 globalThis.vacMigracao = vacMigracao;
+</script>
+<script id="vacMigracaoTela">
+/* ===== Tela: pasta, prévia, exceções, aplicação, retomada, restauração e diagnóstico das filas antigas (M6) desta estação. ===== */
+/* Cópia de vacRaiz (comum/bases): a ferramenta abre numa janela própria e não carrega o comum. O teste migracao-tela confere que o texto é o mesmo. */
+const VAC_BASES_DIR = '00. Bases';
+const VAC_BASES = ['portal-base.json', 'vacutainer-cadastros.json', 'oee-vacutainer-base.json', 'ordens-base.json', 'perdas-base.json', 'fifo-base.json', 'paradas-base.json', 'iniciativas-base.json', 'equipamentos-base.json', 'linha360-base.json'];
+function vacEhBase(nome) { return VAC_BASES.includes(String(nome)); }
+const vacNaoAchou = e => !!e &amp;&amp; (e.name === 'NotFoundError' || e.name === 'TypeMismatchError');
+function vacRaiz(raiz) {
+  if (!raiz || raiz.__vacRaiz) return raiz;
+  let sub = null;
+  const pastaBases = async criar => {
+    if (sub) return sub;
+    try { const d = await raiz.getDirectoryHandle(VAC_BASES_DIR, { create: !!criar }); sub = d; return d; }
+    catch (e) { if (criar || !vacNaoAchou(e)) throw e; return null; }   // só "não existe" vira ausência
+  };
+  return {
+    __vacRaiz: true, raiz, kind: 'directory',
+    get name() { return raiz.name; },
+    async getFileHandle(nome, o) {
+      if (!vacEhBase(nome)) return raiz.getFileHandle(nome, o);
+      if (o &amp;&amp; o.create) return (await pastaBases(true)).getFileHandle(nome, o);
+      const d = await pastaBases(false);
+      if (!d) throw new DOMException(nome + ': a pasta ' + VAC_BASES_DIR + ' não existe', 'NotFoundError');
+      return d.getFileHandle(nome);
+    },
+    getDirectoryHandle: (n, o) => raiz.getDirectoryHandle(n, o),
+    removeEntry: (n, o) => raiz.removeEntry(n, o),
+    entries: () => raiz.entries(), values: () => raiz.values(), keys: () => raiz.keys(),
+    [Symbol.asyncIterator]: () => raiz.entries(),
+    queryPermission: o => raiz.queryPermission(o), requestPermission: o => raiz.requestPermission(o),
+    isSameEntry: h => raiz.isSameEntry(h &amp;&amp; h.__vacRaiz ? h.raiz : h), resolve: h => raiz.resolve(h)
+  };
+}
+(() => {
+  'use strict';
+  const M = vacMigracao;
+  const $ = id => document.getElementById(id);
+  const esc = s => String(s == null ? '' : s).replace(/[&amp;<>"']/g, c => ({'&amp;': '&amp;amp;', '<': '&amp;lt;', '>': '&amp;gt;', '"': '&amp;quot;', "'": '&amp;#39;'}[c]));
+  const msg = e => String((e &amp;&amp; e.message) || e).slice(0, 300);
+  const NOMES = {'vacutainer-cadastros.json': 'Cadastro geral', 'portal-base.json': 'Administração', 'iniciativas-base.json': 'Iniciativas',
+    'equipamentos-base.json': 'Equipamentos', 'linha360-base.json': 'Linha 360°', 'paradas-base.json': 'Paradas', 'perdas-base.json': 'Waste',
+    'fifo-base.json': 'Gestão de Gel', 'oee-vacutainer-base.json': 'Produção'};
+  const ITENS = {M1: 'M1 · Formato da base da Administração', M2: 'M2 · IDs de pessoas', M2b: 'M2b · Técnico do Forms (Paradas)',
+    M3: 'M3 · Gel solto no catálogo', M4: 'M4 · Locais antigos do Gel', M5: 'M5 · Ações antigas do Waste nas Iniciativas'};
+  const ROT_ESTADO = {concluido: 'Concluído', 'concluido-parcial': 'Concluído em parte', incompleto: 'Incompleto', 'em-andamento': 'Em andamento', restaurado: 'Restaurado'};
+  const ROT_RES = {gravado: 'Gravado', 'ja-concluido': 'Já estava gravado', 'pulado-mudou': 'Mudou desde a prévia', 'nao-tocado': 'Não tocado', erro: 'Erro',
+    'nao-gravado': 'Não gravado', restaurado: 'Restaurado', 'ja-restaurado': 'Já estava restaurado'};
+  const E = {pasta: null, nomePasta: '', ret: null, regs: null, lido: null, plano: null, sel: {}, escolhas: null, em: '', sessao: null, quem: null,
+    janela: false, palavra: '', palavraR: '', alvoR: '', ocupado: false, relato: null, fila: null};
+
+  /* ----- sessão (vacLogin): vac.sessao + vac.userId, sem ou com o escopo da pasta (vac.app.<escopo>.) ----- */
+  function sessoes() {
+    const L = [];
+    try {
+      const ls = localStorage;
+      for (let i = 0; i < ls.length; i++) {
+        const k = ls.key(i), m = k &amp;&amp; /^(vac\.app\.[^.]+\.)?vac\.sessao$/.exec(k);
+        if (!m) continue;
+        let s = null; try { s = JSON.parse(ls.getItem(k)); } catch (e) { }
+        const id = ls.getItem((m[1] || '') + 'vac.userId');
+        if (s &amp;&amp; s.id &amp;&amp; String(s.id) === String(id) &amp;&amp; +s.ate > Date.now()) L.push(s);
+      }
+    } catch (e) { }
+    return L;
+  }
+  function conferirSessao(cad) {
+    const L = sessoes();
+    if (!L.length) return {sessao: null, quem: {ok: false, motivo: 'Sem sessão: só a prévia. Entre na plataforma com a sua senha e abra esta ferramenta de novo.'}};
+    let ult = null;
+    for (const s of L) { const q = M.podeAdministrar(cad, s); if (q.ok) return {sessao: s, quem: q}; ult = {sessao: s, quem: q}; }
+    return ult;
+  }
+  const agoraIso = () => { const d = new Date(), p = n => String(n).padStart(2, '0'); return d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate()) + 'T' + p(d.getHours()) + ':' + p(d.getMinutes()) + ':' + p(d.getSeconds()); };
+  const brh = iso => { const m = /^(\d{4})-(\d\d)-(\d\d)T(\d\d):(\d\d)/.exec(String(iso || '')); return m ? m[3] + '/' + m[2] + '/' + m[1] + ' ' + m[4] + ':' + m[5] : String(iso || ''); };
+
+  /* ----- textos fixos ----- */
+  $('sIntro').innerHTML = `<h2>Antes de começar</h2><ul>
+   <li>A ferramenta <b>não vê as outras estações</b>. Antes de aplicar, feche a plataforma e as páginas antigas em todas as estações e confirme abaixo que elas pararam de gravar.</li>
+   <li>Depois de migrar, <b>abra cada módulo uma vez</b>: cada um republica os seus resumos (exports) a partir da base nova. Até lá, os números que dependem deles podem mostrar a versão antiga.</li>
+   <li>Restaurar devolve a base ao conteúdo de antes e <b>baixa a revisão</b> dela. Estação com fila salva pode reenviar alterações que já tinham entrado: confira essas estações depois.</li>
+   <li>Cada arquivo é gravado pela ordem do seu dono, com backup em <code>00. Backups/Migracao</code> (fora da retenção) e registro que permite retomar ou restaurar.</li></ul>`;
+
+  /* ----- M6 · filas antigas desta estação (só leitura; nada é importado) ----- */
+  const LS_FILAS = ['inic.fila', 'inic.conf', 'equip.fila', 'equip.conf', 'linha.fila', 'linha.conf', 'paradas.fila'];
+  const IDB_FILAS = [{banco: 'fifo-fs', loja: 'h', chave: 'fsPending', rotulo: 'Gestão de Gel · fifo-fs › fsPending'},
+    {banco: 'vac-portal', loja: 'kv', chave: 'cadFila', rotulo: 'Administração · vac-portal › cadFila'}];
+  const semEscopo = k => String(k).replace(/^vac\.app\.[^.]+\./, '');
+  const naoVazio = v => Array.isArray(v) ? v.length : v != null &amp;&amp; v !== '' &amp;&amp; !(typeof v === 'object' &amp;&amp; !Object.keys(v).length);
+  function lerIdb(nome, loja, chave) {
+    return new Promise((ok, no) => {
+      let r; try { r = indexedDB.open(nome); } catch (e) { return no(e); }
+      r.onerror = () => no(r.error);
+      r.onupgradeneeded = () => { try { r.transaction.abort(); } catch (e) { } no(new Error('banco inexistente')); };
+      r.onsuccess = () => {
+        const db = r.result;
+        try {
+          if (!db.objectStoreNames.contains(loja)) { db.close(); return ok(null); }
+          const q = db.transaction(loja).objectStore(loja).get(chave);
+          q.onsuccess = () => { db.close(); ok(q.result === undefined ? null : q.result); };
+          q.onerror = () => { db.close(); no(q.error); };
+        } catch (e) { db.close(); no(e); }
+      };
+    });
+  }
+  async function diagnosticarFilas() {
+    const itens = [], erros = [];
+    try {
+      const ls = localStorage;
+      for (let i = 0; i < ls.length; i++) {
+        const k = ls.key(i), nome = k &amp;&amp; semEscopo(k);
+        if (!nome || !LS_FILAS.includes(nome)) continue;
+        const bruto = ls.getItem(k); let v = bruto;
+        try { v = JSON.parse(bruto); } catch (e) { }
+        if (naoVazio(v)) itens.push({onde: 'Navegador · ' + nome, quantidade: Array.isArray(v) ? v.length : null});
+      }
+    } catch (e) { erros.push('Armazenamento do navegador: ' + msg(e)); }
+    let bancos = null;
+    try { bancos = typeof indexedDB.databases === 'function' ? (await indexedDB.databases()).map(b => b.name) : null; } catch (e) { erros.push('Lista de bancos do navegador: ' + msg(e)); }
+    if (!bancos &amp;&amp; !erros.length) erros.push('Este navegador não lista os bancos (IndexedDB). Use Chrome ou Edge atualizado para conferir ' + IDB_FILAS.map(f => f.banco).join(' e ') + '.');
+    for (const f of IDB_FILAS) for (const nome of (bancos || []).filter(n => n === f.banco || semEscopo(n) === f.banco)) {
+      try { const v = await lerIdb(nome, f.loja, f.chave); if (naoVazio(v)) itens.push({onde: f.rotulo, quantidade: Array.isArray(v) ? v.length : null}); }
+      catch (e) { erros.push(f.rotulo + ': ' + msg(e)); }
+    }
+    return {itens, erros};
+  }
+  function telaEstacao() {
+    const f = E.fila;
+    let h = `<h2>Esta estação · filas antigas</h2><p class="sub">Alterações que a versão anterior guardou neste navegador e ainda não enviou. Só leitura: nada é importado.</p>`;
+    if (!f) h += '<p class="muted">Conferindo…</p>';
+    else {
+      if (f.erros.length) h += `<div class="erro"><b>Não foi possível conferir tudo.</b><ul>${f.erros.map(e => `<li>${esc(e)}</li>`).join('')}</ul>Sem a conferência completa, não dá para afirmar que não há fila antiga.</div>`;
+      if (f.itens.length) h += `<div class="aviso"><b>Há fila antiga nesta estação.</b> Abra a versão anterior da plataforma neste navegador e envie as alterações <b>antes do corte</b>; depois repita esta conferência.</div>
+        <div class="scroll"><table><thead><tr><th>Onde</th><th>Itens</th></tr></thead><tbody>${f.itens.map(i => `<tr><td>${esc(i.onde)}</td><td class="n">${i.quantidade == null ? 'não vazia' : i.quantidade}</td></tr>`).join('')}</tbody></table></div>`;
+      else if (!f.erros.length) h += '<div class="certo"><b>Sem fila antiga nesta estação.</b></div>';
+      h += `<p class="muted">O resultado vale só para a estação (computador e navegador) em que esta conferência foi feita. O histórico de importações da base não prova que todas as estações passaram por aqui: repita em cada estação antes do corte.</p>`;
+    }
+    h += '<div class="bar"><button id="bFilas" type="button">Conferir de novo</button></div>';
+    $('sEstacao').innerHTML = h;
+    $('bFilas').onclick = conferirFilas;
+  }
+  async function conferirFilas() { E.fila = null; telaEstacao(); E.fila = await diagnosticarFilas(); telaEstacao(); }
+
+  /* ----- pasta ----- */
+  function telaPasta() {
+    $('sPasta').innerHTML = `<h2>Pasta da linha</h2><p class="sub">Escolha a raiz da linha (a pasta que contém <code>00. Bases</code>), não a própria <code>00. Bases</code>.</p>
+      <div class="bar"><button class="p" id="bPasta" type="button">Escolher a pasta da linha</button><span class="muted" id="estadoPasta">${E.pasta ? 'Pasta <b>' + esc(E.nomePasta) + '</b> conectada.' : 'Nenhuma pasta escolhida.'}</span></div>`;
+    $('bPasta').onclick = escolherPasta;
+  }
+  async function escolherPasta() {
+    const est = $('estadoPasta');
+    if (!window.showDirectoryPicker) { est.textContent = 'Este navegador não abre pastas. Use Chrome ou Edge atualizado.'; return; }
+    try {
+      const h = await window.showDirectoryPicker({id: 'vac-migracao', mode: 'readwrite'});
+      try { await h.getDirectoryHandle('00. Bases'); }
+      catch (e) { est.innerHTML = '<span style="color:var(--crit)">A pasta escolhida não tem <code>00. Bases</code>. Escolha a raiz da linha.</span>'; return; }
+      E.pasta = vacRaiz(h); E.nomePasta = h.name; E.relato = null; E.sel = {}; E.janela = false; E.palavra = ''; E.palavraR = ''; E.em = '';
+    } catch (e) { est.textContent = e &amp;&amp; e.name === 'AbortError' ? 'Nenhuma pasta escolhida.' : 'Não foi possível abrir a pasta: ' + msg(e); return; }
+    telaPasta();
+    await carregar();
+  }
+  async function carregar() {
+    E.ocupado = true; $('sPrevia').hidden = false; $('sPrevia').innerHTML = '<p class="muted">Lendo a pasta…</p>';
+    try {
+      E.ret = await M.retomar(E.pasta);
+      E.regs = await M.listar(E.pasta);
+      E.lido = await M.lerPasta(E.pasta);
+      E.plano = null;
+      const cad = E.lido.arqs['vacutainer-cadastros.json'];
+      const c = conferirSessao(cad); E.sessao = c.sessao; E.quem = c.quem;
+      if (!E.ret.registro &amp;&amp; !E.lido.erros.length &amp;&amp; !E.lido.ilegiveis.length &amp;&amp; Object.keys(E.lido.arqs).length) await planejar();
+    } catch (e) { $('sPrevia').innerHTML = `<div class="erro">Não foi possível ler a pasta: ${esc(msg(e))}</div>`; }
+    E.ocupado = false;
+    telas();
+  }
+  async function planejar() {
+    if (!E.em) E.em = agoraIso();
+    const esc2 = {__meta: {em: E.em, por: E.sessao ? E.sessao.nome || E.sessao.id : 'Migração pontual'}};
+    for (const [id, v] of Object.entries(E.sel)) { const x = valorEscolha(id, v); if (x !== undefined) esc2[id] = x; }
+    E.escolhas = esc2;
+    E.plano = JSON.parse(JSON.stringify(await M.planejar(E.lido.arqs, esc2)));
+  }
+  function valorEscolha(id, v) {
+    const e = (E.plano &amp;&amp; E.plano.excecoes || []).find(x => x.id === id), o = e &amp;&amp; e.opcoes[v.i];
+    if (!o) return undefined;
+    if (o.valor !== undefined) return o.valor;
+    const t = String(v.texto || '').trim();
+    return t ? {[o.campo]: t} : undefined;
+  }
+
+  /* ----- prévia ----- */
+  const contar = (L, f) => L.filter(f).length;
+  function telaPrevia() {
+    const el = $('sPrevia'), L = E.lido;
+    el.hidden = false;
+    if (!L) { el.hidden = true; return; }
+    let h = '<h2>Prévia</h2>';
+    const bloq = [];
+    if (L.erros.length) bloq.push('Não foi possível ler: ' + L.erros.map(x => (NOMES[x.arquivo] || x.arquivo) + ' (' + x.erro + ')').join('; ') + '. Erro de leitura não é arquivo ausente.');
+    if (L.ilegiveis.length) bloq.push('Arquivo com conteúdo ilegível: ' + L.ilegiveis.map(f => NOMES[f] || f).join(', ') + '. Corrija ou restaure um backup antes de migrar.');
+    if (!Object.keys(L.arqs).length) bloq.push('Nenhuma base encontrada em 00. Bases.');
+    if (bloq.length) { el.innerHTML = h + bloq.map(b => `<div class="erro">${esc(b)}</div>`).join('') + botoesPrevia(); ligarPrevia(); return; }
+    if (E.ret &amp;&amp; E.ret.registro) { el.innerHTML = h + '<div class="aviso">Há uma migração começada nesta pasta. Continue ou restaure essa migração antes de fazer uma prévia nova.</div>' + botoesPrevia(); ligarPrevia(); return; }
+    const P = E.plano;
+    if (!P) { el.innerHTML = h + '<p class="muted">Prévia ainda não feita.</p>' + botoesPrevia(); ligarPrevia(); return; }
+    const arqs = Object.keys(P.alteracoes), exc = P.excecoes || [];
+    if (L.ausentes.length) h += `<p class="muted">Arquivos que não existem na pasta (nada a migrar neles): ${esc(L.ausentes.map(f => NOMES[f] || f).join(', '))}.</p>`;
+    if (!arqs.length) {
+      h += '<div class="certo"><b>Nada a migrar.</b> As bases desta pasta já estão no formato atual.</div>';
+      if (exc.length) h += `<p class="muted">${exc.length} ${exc.length === 1 ? 'item continua' : 'itens continuam'} sem ID, como decidido antes. Não há o que gravar.</p>` + botoesPrevia(true);
+      else h += botoesPrevia();
+      el.innerHTML = h; ligarPrevia(); return;
+    }
+    const total = Object.values(P.itens).reduce((n, l) => n + l.length, 0), semEsc = contar(exc, e => e.escolha == null);
+    h += `<div class="cards"><div class="k"><b>${total}</b><span>alterações planejadas</span></div><div class="k"><b>${arqs.length}</b><span>arquivos a gravar</span></div>
+      <div class="k"><b>${exc.length}</b><span>exceções</span></div><div class="k"><b>${semEsc}</b><span>exceções sem decisão</span></div></div>`;
+    h += `<h3>Por item</h3><div class="scroll"><table><thead><tr><th>Item</th><th>Alterações</th><th>Exceções</th></tr></thead><tbody>${Object.keys(ITENS).map(i =>
+      `<tr><td>${esc(ITENS[i])}</td><td class="n">${(P.itens[i] || []).length}</td><td class="n">${contar(exc, e => e.item === i)}</td></tr>`).join('')}</tbody></table></div>`;
+    h += `<h3>Por arquivo</h3><div class="scroll"><table><thead><tr><th>Arquivo</th><th>Dono</th><th>Alterações</th></tr></thead><tbody>${M.ORDEM.filter(f => P.alteracoes[f]).map(f =>
+      `<tr><td><code>${esc(f)}</code></td><td>${esc(NOMES[f] || '')}</td><td class="n">${P.alteracoes[f].itens.length}</td></tr>`).join('')}</tbody></table></div>`;
+    h += `<h3>Exceções</h3>`;
+    if (!exc.length) h += '<p class="muted">Nenhuma exceção.</p>';
+    else {
+      h += `<p class="sub">O que a ferramenta não resolve sozinha. Decida cada uma: nada é gravado enquanto houver exceção sem decisão. Nome repetido ou fora do cadastro não é ligado a ninguém por conta própria.</p>
+        <div class="scroll"><table id="tExc"><thead><tr><th>Item</th><th>Arquivo</th><th>Onde</th><th>Valor</th><th>Motivo</th><th>Decisão</th></tr></thead><tbody>${exc.map((e, n) => {
+        const v = E.sel[e.id] || {i: -1, texto: ''}, o = e.opcoes[v.i];
+        const sel = e.opcoes.length ? `<select data-n="${n}" aria-label="Decisão da exceção ${n + 1}"><option value="-1">Decidir…</option>${e.opcoes.map((x, i) => `<option value="${i}"${v.i === i ? ' selected' : ''}>${esc(x.rotulo)}</option>`).join('')}</select>`
+          + (o &amp;&amp; o.campo ? ` <input type="text" data-t="${n}" value="${esc(v.texto)}" aria-label="${esc(o.rotulo)}" placeholder="${o.campo === 'from' ? 'AAAA-MM-DD' : 'ID'}">` : '') : '<span class="muted">Sem opção: corrija a causa.</span>';
+        return `<tr><td>${esc(e.item)}</td><td>${esc(NOMES[e.arquivo] || e.arquivo)}</td><td><code>${esc(e.caminho)}</code></td><td>${esc(txt(e.valor))}</td><td>${esc(e.motivo)}</td>
+          <td>${sel}<br><span class="st ${e.escolha == null ? 'aviso' : 'ok'}">${e.escolha == null ? 'Sem decisão' : 'Decidida'}</span></td></tr>`;
+      }).join('')}</tbody></table></div>`;
+    }
+    el.innerHTML = h + botoesPrevia(true);
+    ligarPrevia();
+  }
+  const txt = v => v == null ? '' : typeof v === 'string' ? v : JSON.stringify(v);
+  const botoesPrevia = (relatorio) => `<div class="bar"><button id="bRefazer" type="button">Refazer a prévia</button>${relatorio ? '<button id="bCsv" type="button">Baixar relatório</button>' : ''}</div>`;
+  function ligarPrevia() {
+    const r = $('bRefazer'); if (r) r.onclick = async () => { E.em = ''; E.sel = {}; await carregar(); };
+    const c = $('bCsv'); if (c) c.onclick = baixarCsv;
+    document.querySelectorAll('#tExc select').forEach(s => s.onchange = async () => {
+      const e = E.plano.excecoes[+s.dataset.n]; E.sel[e.id] = {i: +s.value, texto: ''}; if (+s.value < 0) delete E.sel[e.id];
+      await planejar(); telas();
+    });
+    document.querySelectorAll('#tExc input[data-t]').forEach(i => i.onchange = async () => {
+      const e = E.plano.excecoes[+i.dataset.t]; E.sel[e.id].texto = i.value; await planejar(); telas();
+    });
+  }
+  /* CSV com uma linha por exceção (ponto e vírgula, UTF-8 com BOM, para abrir direto no Excel) */
+  const celula = v => { let s = txt(v); if (/^[=+\-@\t\r]/.test(s)) s = "'" + s; return '"' + s.replace(/"/g, '""') + '"'; };
+  function csv(P) {
+    const cab = ['Item', 'Tipo', 'Arquivo', 'Onde', 'Valor', 'Motivo', 'Decisão'];
+    const dec = e => e.escolha == null ? '' : e.escolha === 'manter' ? 'Deixar como está' : e.escolha === 'sem' ? 'Sem responsável' : e.escolha.id ? 'ID ' + e.escolha.id : e.escolha.from ? 'Início ' + e.escolha.from : txt(e.escolha);
+    return '﻿' + [cab.map(celula).join(';')].concat((P.excecoes || []).map(e => [e.item, e.tipo, e.arquivo, e.caminho, e.valor, e.motivo, dec(e)].map(celula).join(';'))).join('\r\n') + '\r\n';
+  }
+  function baixarCsv() {
+    const a = document.createElement('a'), u = URL.createObjectURL(new Blob([csv(E.plano)], {type: 'text/csv;charset=utf-8'}));
+    a.href = u; a.download = 'migracao-excecoes-' + (E.em || agoraIso()).replace(/[:T]/g, '-') + '.csv'; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(u), 4000);
+  }
+
+  /* ----- confirmação (aplicar, continuar, restaurar) ----- */
+  function blocoConfirma(palavra, ativo, rotulo, id, valor, classe) {
+    return `<label class="linha"><input type="checkbox" id="${id}J"${E.janela ? ' checked' : ''}><span>Todas as abas da Produção e das outras páginas estão fechadas, e as outras estações pararam de gravar.</span></label>
+      <p class="muted">${esc(M.AVISO_JANELA)}</p>
+      <div class="bar"><label for="${id}P">Digite <b>${palavra}</b> para confirmar</label><input type="text" id="${id}P" value="${esc(valor)}" autocomplete="off" size="14">
+      <button class="${classe}" id="${id}B" type="button"${ativo &amp;&amp; E.janela &amp;&amp; valor === palavra ? '' : ' disabled'}>${rotulo}</button></div>`;
+  }
+  function ligarConfirma(id, palavra, campo, fazer) {
+    const j = $(id + 'J'), p = $(id + 'P'), b = $(id + 'B');
+    const atualiza = () => { E[campo] = p.value; E.janela = j.checked; b.disabled = !(j.checked &amp;&amp; p.value === palavra); };
+    j.onchange = atualiza; p.oninput = atualiza; b.onclick = fazer;
+  }
+  const avisoSessao = () => !E.sessao ? `<div class="aviso">${esc(E.quem.motivo)}</div>` : !E.quem.ok ? `<div class="aviso">${esc(E.quem.motivo)}</div>` : `<p class="muted">Sessão de <b>${esc(E.quem.nome)}</b>.</p>`;
+
+  function telaRetomada() {
+    const el = $('sRetomada'), R = E.ret;
+    if (!R || !R.registro) { el.hidden = true; el.innerHTML = ''; return; }
+    el.hidden = false;
+    const r = R.registro, bloqueia = R.mudaram.length || R.erros.length;
+    const lista = (t, l) => l.length ? `<li>${t}: ${esc(l.map(f => NOMES[f] || f).join(', '))}</li>` : '';
+    let h = `<h2>Migração começada e não concluída</h2><p class="sub">Registro <code>${esc(r.id)}</code>, de ${esc(brh(r.em))} por ${esc(r.por || '')}. Situação: ${esc(ROT_ESTADO[r.estado] || r.estado)}.</p><ul>`
+      + lista('Já gravados', R.concluidos) + lista('Ainda a gravar', R.pendentes) + lista('Não tocados pela migração (refazer a prévia depois)', R.naoTocados)
+      + lista('Mudaram depois da gravação', R.mudaram) + (R.erros.length ? `<li>Erro de leitura: ${esc(R.erros.map(x => (NOMES[x.arquivo] || x.arquivo) + ' (' + x.erro + ')').join('; '))}</li>` : '') + '</ul>';
+    if (bloqueia) h += '<div class="erro">Há arquivo que mudou depois da gravação, ou que não pôde ser lido. Não dá para continuar sem conciliar. Restaure o registro abaixo ou fale com o responsável.</div>';
+    h += avisoSessao();
+    if (E.quem &amp;&amp; E.quem.ok &amp;&amp; !bloqueia) h += blocoConfirma(M.CONFIRMACAO, true, 'Continuar a migração', 'rc', E.palavra, 'p');
+    if (E.relato &amp;&amp; E.relato.onde === 'retomada') h += relatoHtml();
+    el.innerHTML = h;
+    if ($('rcB')) ligarConfirma('rc', M.CONFIRMACAO, 'palavra', () => rodar('retomada', () => M.aplicar(E.pasta, R.registro.plano, {escolhas: R.registro.escolhas, registro: R.registro, sessao: E.sessao,
+      confirmacao: E.palavra, janela: E.janela, ignorarAbas: []})));
+  }
+
+  function telaAplicar() {
+    const el = $('sAplicar'), P = E.plano;
+    if (!P || !Object.keys(P.alteracoes).length || (E.ret &amp;&amp; E.ret.registro)) { el.hidden = !(E.relato &amp;&amp; E.relato.onde === 'aplicar'); el.innerHTML = el.hidden ? '' : relatoHtml(); return; }
+    el.hidden = false;
+    const semEsc = contar(P.excecoes || [], e => e.escolha == null);
+    let h = '<h2>Aplicar</h2>' + avisoSessao();
+    if (E.quem &amp;&amp; E.quem.ok) {
+      if (semEsc) h += `<div class="aviso">${semEsc} ${semEsc === 1 ? 'exceção ainda não foi decidida' : 'exceções ainda não foram decididas'}. Decida todas na prévia para liberar a aplicação.</div>`;
+      h += blocoConfirma(M.CONFIRMACAO, !semEsc, 'Aplicar migração', 'ap', E.palavra, 'p');
+    }
+    if (E.relato &amp;&amp; E.relato.onde === 'aplicar') h += relatoHtml();
+    el.innerHTML = h;
+    if ($('apB')) ligarConfirma('ap', M.CONFIRMACAO, 'palavra', () => rodar('aplicar', () => M.aplicar(E.pasta, E.plano, {escolhas: E.escolhas, sessao: E.sessao, confirmacao: E.palavra, janela: E.janela, ignorarAbas: []})));
+  }
+
+  function telaRegistros() {
+    const el = $('sRegistros'), L = E.regs;
+    if (!L || (!L.registros.length &amp;&amp; !L.ilegiveis.length)) { el.hidden = true; el.innerHTML = ''; return; }
+    el.hidden = false;
+    if (!L.registros.some(r => r.id === E.alvoR)) E.alvoR = L.registros.length ? L.registros[0].id : '';
+    let h = `<h2>Registros da migração e restauração</h2><p class="sub">Cada migração deixa um registro em <code>00. Backups/Migracao</code>. Restaurar devolve cada arquivo ao backup de antes. Arquivo que outra pessoa gravou depois da migração não é sobrescrito.</p>
+      <div class="scroll"><table><thead><tr><th></th><th>Registro</th><th>Quando</th><th>Quem</th><th>Situação</th><th>Arquivos</th></tr></thead><tbody>${L.registros.map(r => `<tr><td><input type="radio" name="alvoR" value="${esc(r.id)}"${r.id === E.alvoR ? ' checked' : ''} aria-label="Escolher ${esc(r.id)}"></td>
+        <td><code>${esc(r.id)}</code></td><td>${esc(brh(r.em))}</td><td>${esc(r.por || '')}</td><td>${esc(ROT_ESTADO[r.estado] || r.estado)}</td><td class="n">${Object.keys(r.arquivos).length}</td></tr>`).join('')}</tbody></table></div>`;
+    if (L.ilegiveis.length) h += `<div class="aviso">Registro ilegível na pasta: ${esc(L.ilegiveis.join(', '))}.</div>`;
+    if (E.quem &amp;&amp; E.quem.ok &amp;&amp; L.registros.length) {
+      h += `<div class="aviso">Restaurar baixa a revisão da base. Estação com fila salva pode reenviar alterações que já tinham entrado: confira essas estações depois.</div>` + blocoConfirma(M.CONFIRMACAO_RESTAURAR, true, 'Restaurar o registro escolhido', 'rs', E.palavraR, 'perigo');
+    } else h += avisoSessao();
+    if (E.relato &amp;&amp; E.relato.onde === 'restaurar') h += relatoHtml();
+    el.innerHTML = h;
+    el.querySelectorAll('input[name=alvoR]').forEach(i => i.onchange = () => { E.alvoR = i.value; });
+    if ($('rsB')) ligarConfirma('rs', M.CONFIRMACAO_RESTAURAR, 'palavraR', () => rodar('restaurar', () => M.restaurar(E.pasta, E.regs.registros.find(r => r.id === E.alvoR), null,
+      {sessao: E.sessao, confirmacao: E.palavraR, janela: E.janela, ignorarAbas: []})));
+  }
+
+  function relatoHtml() {
+    const r = E.relato.res;
+    let h = `<h3>Resultado</h3><div class="${r.ok ? 'certo' : 'erro'}"><b>${r.ok ? 'Concluído.' : 'Não concluído.'}</b> ${esc(r.motivo || '')}</div>`;
+    const arq = Object.keys(r.resultado || {});
+    if (arq.length) h += `<div class="scroll"><table><thead><tr><th>Arquivo</th><th>Resultado</th></tr></thead><tbody>${arq.map(f => `<tr><td>${esc(NOMES[f] || f)}</td><td>${esc(ROT_RES[r.resultado[f]] || r.resultado[f])}</td></tr>`).join('')}</tbody></table></div>`;
+    if (r.registro) h += `<p class="muted">Registro <code>${esc(r.registro.id)}</code>${r.registro.estado ? ' · ' + esc(ROT_ESTADO[r.registro.estado] || r.registro.estado) : ''}.</p>`;
+    if (r.ok &amp;&amp; E.relato.onde !== 'restaurar') h += '<div class="aviso"><b>Agora:</b> abra cada módulo uma vez para que ele republique os resumos (exports). Depois confira as estações com fila salva.</div>';
+    if (r.ok &amp;&amp; E.relato.onde === 'restaurar') h += '<div class="aviso">A revisão das bases baixou. Estações com fila salva podem reenviar alterações: confira essas estações.</div>';
+    return h;
+  }
+  async function rodar(onde, fazer) {
+    if (E.ocupado) return;
+    E.ocupado = true; document.querySelectorAll('button').forEach(b => { b.disabled = true; });
+    let res;
+    try { res = await fazer(); } catch (e) { res = {ok: false, motivo: 'Erro inesperado: ' + msg(e), resultado: {}, registro: null}; }
+    res = JSON.parse(JSON.stringify(res));
+    E.relato = {onde, res}; E.janela = false; E.palavra = ''; E.palavraR = '';
+    try {
+      E.ret = await M.retomar(E.pasta); E.regs = await M.listar(E.pasta); E.lido = await M.lerPasta(E.pasta);
+      const c = conferirSessao(E.lido.arqs['vacutainer-cadastros.json']); E.sessao = c.sessao; E.quem = c.quem;
+      E.em = ''; E.plano = null;
+      if (!E.ret.registro &amp;&amp; !E.lido.erros.length &amp;&amp; !E.lido.ilegiveis.length &amp;&amp; Object.keys(E.lido.arqs).length) await planejar();
+    } catch (e) { res.motivo += ' (Não foi possível reler a pasta: ' + msg(e) + ')'; }
+    E.ocupado = false;
+    telas(); telaEstacao(); telaPasta();
+  }
+
+  function telas() { telaPrevia(); telaRetomada(); telaAplicar(); telaRegistros(); }
+  telaEstacao(); telaPasta(); conferirFilas();
+  window.vacMigracaoTela = {estado: E};
+})();
+
 </script>
 </body>
 </html>
@@ -57572,10 +58004,11 @@ function App() {
         route.page === "saude" &amp;&amp; /* @__PURE__ */ jsxs(Fragment, { children: [
           /* @__PURE__ */ jsx("section", { className: "panel intro-panel", children: /* @__PURE__ */ jsxs("div", { children: [
             /* @__PURE__ */ jsx("h2", { children: "Ferramentas locais" }),
-            /* @__PURE__ */ jsx("p", { children: "Verifique a pasta ou compare o formato de uma importa\xE7\xE3o sem sair deste aplicativo." }),
+            /* @__PURE__ */ jsx("p", { children: "Verifique a pasta, compare o formato de uma importa\xE7\xE3o ou, uma \xFAnica vez, leve os dados da vers\xE3o anterior ao formato atual." }),
             /* @__PURE__ */ jsxs("div", { className: "welcome-actions", children: [
               /* @__PURE__ */ jsx(Button, { onClick: () => window.vacFonte.abrirFerramenta("verificar"), children: "Verificar pasta" }),
-              /* @__PURE__ */ jsx(Button, { onClick: () => window.vacFonte.abrirFerramenta("comparar"), children: "Comparar importa\xE7\xE3o" })
+              /* @__PURE__ */ jsx(Button, { onClick: () => window.vacFonte.abrirFerramenta("comparar"), children: "Comparar importa\xE7\xE3o" }),
+              /* @__PURE__ */ jsx(Button, { onClick: () => window.vacFonte.abrirFerramenta("migracao"), children: "Migra\xE7\xE3o pontual (uso \xFAnico)" })
             ] })
           ] }) }),
           /* @__PURE__ */ jsxs("section", { className: "metrics-grid", children: [
