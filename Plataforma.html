@@ -907,7 +907,12 @@ const vacBackupRegistro = (() => {
    guardado por 12 meses. Melhor esforço: falha aqui não impede a gravação da base (só registra no console). */
 const vacHistoricoAuditoria = (() => {
   const RX = /^historico-auditoria_(\d{4}-\d{2})\.jsonl$/, mesDe = e => String((e &amp;&amp; (e.t || e.em)) || '').slice(0, 7) || 'sem-data';
-  async function arquivar(pasta, entradas) {
+  let fila = Promise.resolve();
+  function arquivar(pasta, entradas) {   /* leitura + acréscimo + escrita do mesmo mês não podem se sobrepor: fila nesta página e Web Lock entre abas (P2 do Codex) */
+    const p = fila.then(() => (typeof navigator !== 'undefined' &amp;&amp; navigator.locks &amp;&amp; navigator.locks.request ? navigator.locks.request('vac.historico-auditoria', () => gravar(pasta, entradas)) : gravar(pasta, entradas)));
+    fila = p.catch(() => { }); return p;
+  }
+  async function gravar(pasta, entradas) {
     if (!entradas || !entradas.length) return false;
     try {
       const d = typeof pasta === 'function' ? await pasta() : pasta; if (!d) return false;
@@ -12067,7 +12072,7 @@ const Exports = (() => {
       const res = Engine.computeDay(db, d), r = res.r;
       /* C01/P2 (análise comum 26/11/2026): produção em branco é AUSÊNCIA, não zero (contrato 1). Dia sem nenhum intervalo lançado sai com semLancamento e sem boa/OEE/capacidade/meta (fora dos consolidados);
          dia parcial segue com o lançado e informa quantos intervalos faltam em `ausentes`. */
-      const semLanc = !res.modoDia &amp;&amp; res.flat.length > 0 &amp;&amp; res.flat.every(f => f.good == null), faltam = res.agg ? res.agg.goodMissing || 0 : 0;
+      const semLanc = !res.modoDia &amp;&amp; res.flat.length > 0 &amp;&amp; res.flat.every(f => f.good == null) &amp;&amp; !(r.good > 0), faltam = res.agg ? res.agg.goodMissing || 0 : 0;
       porDia.push({ dia: d.date, ...(res.modoDia ? { lancadoPorDia: true } : {}), ...(semLanc ? { semLancamento: true } : {}), ...(!semLanc &amp;&amp; faltam > 0 ? { ausentes: faltam } : {}),
         oee: semLanc ? null : r4(r.oee), oeeMeta: r4(r.oeeTarget), boa: semLanc ? null : n0(r.good), scrap: n0(r.scrap), metaOp: semLanc ? null : n0(r.metaOp), cap: semLanc ? null : n0(r.cap), metaDec: semLanc ? null : n0(r.metaDec), status: d.status || 'não iniciado', origem: d.origin === 'importação' ? 'importado' : 'lançado' });
       for (const sr of res.shifts) tempoProgramadoTurnos.push({
@@ -55506,70 +55511,70 @@ body.vac-porta{overflow:hidden}
       "id": "oee",
       "path": "Plataforma.html#motor/oee",
       "version": "2.6.50",
-      "sha256": "9d110757914a73d1bfdb6257f44fe0fbcec9e292865db0af00235cc430276f08",
-      "bytes": 2391335
+      "sha256": "95752046327cc16055c4c7a9cf626bbdeb03667a0cfe836928948160db7fdb38",
+      "bytes": 2391821
     },
     {
       "id": "perdas",
       "path": "Plataforma.html#motor/perdas",
       "version": "1.12.21",
-      "sha256": "747e538c60e2102ec7b39afd508b7566685279ce66e64c004c52e1f8b371e1f1",
-      "bytes": 983440
+      "sha256": "82be4e7041911b1e990b7ab894f6364a4a5c8b7abfaa2f175616dbcbab1e0c59",
+      "bytes": 983909
     },
     {
       "id": "gel",
       "path": "Plataforma.html#motor/gel",
       "version": "2.52",
-      "sha256": "acd0aea2715319392d50edaa6f5ff8839b26ccb12eac4eba9a878b504048537f",
-      "bytes": 1627123
+      "sha256": "0b2f9ec7a3999f61d3fa8be69ed1b58625b25b53c5e0e019a76e4ee1055450ec",
+      "bytes": 1627592
     },
     {
       "id": "paradas",
       "path": "Plataforma.html#motor/paradas",
       "version": "1.2.22",
-      "sha256": "4a1258a1952578105dc7cd6f3fe9efe6d37fda2ace3ecd5330a44defcf39adae",
-      "bytes": 952372
+      "sha256": "0aacdc7a0fe00d6daf8cede11b089f4f952c08dbd9e60960d3729ae093b5b367",
+      "bytes": 952841
     },
     {
       "id": "equip",
       "path": "Plataforma.html#motor/equip",
       "version": "1.0.22",
-      "sha256": "82edf5eb06cc459529cfee05ce5aa145b720fecb3ba637f0a8d36e37df0b42b6",
-      "bytes": 743196
+      "sha256": "8209cd87a965fa99703dd70c1f64313165a77507a3b9aa87f57c97c0aaf13d7d",
+      "bytes": 743665
     },
     {
       "id": "inic",
       "path": "Plataforma.html#motor/inic",
       "version": "1.1.17",
-      "sha256": "1706f25b271f60ce5ca8f96032367b5256edc716506cc5f2a365d501d76fe022",
-      "bytes": 752797
+      "sha256": "4b4181569ff66d66ae020ad6c50e262ba4778c9d59fc4ef359e8a065afd0cfa2",
+      "bytes": 753266
     },
     {
       "id": "linha",
       "path": "Plataforma.html#motor/linha",
       "version": "1.7.1",
-      "sha256": "96bca024ad7916ea63aa8c2619d463e9d87e91f172b8b22886fc3b52e07f786d",
-      "bytes": 1005829
+      "sha256": "cb55885134b43509cb62d7b806f628e43f676afe0c0e6eb5b5f3e1393b340f75",
+      "bytes": 1006298
     },
     {
       "id": "projetos",
       "path": "Plataforma.html#motor/projetos",
       "version": "0.1.16",
-      "sha256": "865be3782ff5fe061ea1125ea9d78600365400795ce9e72cd851a2bc9bcfea8c",
-      "bytes": 675647
+      "sha256": "bc7654b2c4cae94ff9f885fc48acfc506a72bd09725587dab2ae9afad8e3202e",
+      "bytes": 676116
     },
     {
       "id": "portal",
       "path": "Plataforma.html#motor/portal",
       "version": "1.9.94",
-      "sha256": "c9e0002a103994427b0e81ac4ecb9cb324048e553180a7a1f5513b0424240859",
-      "bytes": 1338419
+      "sha256": "1365de253061104c14cb59de4c97c20b9db5f36392d98720e372516364db58ce",
+      "bytes": 1338888
     }
   ],
   "limitations": [
     "Projetos e conteúdo técnico OSM/MES/AM/TPM mantêm os limites documentados nas fontes."
   ],
-  "enginesSha256": "498c9cc1f5ca176dfce21efcaace4c21dc0aa8289d59be7bf2990d8d510b5f8d",
+  "enginesSha256": "cfe1e1bf1ee735a029d437b643cdfd6676b0cbab3bed78b39b0dc76b5537f89c",
   "originRevision": "ffc9ee8",
   "sourceMode": "single-html",
   "originEnginesSha256": "a87a64ad0c328f70e102b2ae888790a9b5d5a9bd05778652a7ce7cae140e40d2"

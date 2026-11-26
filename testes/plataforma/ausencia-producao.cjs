@@ -20,6 +20,11 @@ const html = fs.readFileSync(path.resolve(__dirname, '../../Plataforma.html'));
       x.shifts = JSON.parse(JSON.stringify(orig)); x._rev++;
       // intervalo invertido
       const i0 = ivs()[0], e0 = i0.end; i0.end = i0.start; x._rev++; out.msgInvertido = Engine.computeDay(d, x).msgs.filter(m => /início igual ou depois do fim/.test(m.msg)).map(m => m.level); i0.end = e0; x._rev++;
+      // P1 do Codex: produção que chega de fora dos intervalos do dia (virada da madrugada) não é ausência
+      { const ant = JSON.parse(JSON.stringify(x)); ant.id = 'ant_virada'; ant.date = U.addDays(x.date, -1); ant.shifts.forEach(s => s.intervals.forEach(i => { i.good = 0; }));
+        const ult = ant.shifts[ant.shifts.length - 1].intervals; ult[ult.length - 1].end = 1500; ult[ult.length - 1].start = 1380; ult[ult.length - 1].good = 6000; ant._rev = 1; d.productionDays.push(ant);
+        x.shifts.forEach(s => s.intervals.forEach(i => { i.good = null; })); x._rev++; const pd = Exports.build(d).porDia.find(e => e.dia === x.date); out.virada = { semLancamento: !!pd.semLancamento, boa: pd.boa };
+        d.productionDays.splice(d.productionDays.indexOf(ant), 1); x.shifts = JSON.parse(JSON.stringify(orig)); x._rev++; }
       // Performance acima de 100% no relatório do turno
       ivs().forEach(i => { i.good = 5e6; }); x._rev++; const R = rpState(); R.type = 'shift'; R.date = x.date; R.psId = x.shifts[0].id; const M = rpModel(R); out.kpiP = (M.kpis.find(k => k.l === 'Performance') || {}).s || '';
       return out;
@@ -27,6 +32,7 @@ const html = fs.readFileSync(path.resolve(__dirname, '../../Plataforma.html'));
     assert.ok(r.base.boa > 0 && r.base.oee > 0 && !r.base.semLancamento && r.base.ausentes === undefined, 'dia completo segue igual: ' + JSON.stringify(r.base));
     assert.equal(r.vazio.semLancamento, true, 'dia em branco é marcado sem lançamento'); assert.deepEqual([r.vazio.boa, r.vazio.oee, r.vazio.cap, r.vazio.metaOp], [null, null, null, null], 'e não vira zero: ' + JSON.stringify(r.vazio));
     assert.equal(r.parcial.ausentes, 1, 'dia parcial informa quantos intervalos faltam'); assert.ok(r.parcial.boa > 0 && !r.parcial.semLancamento, 'e continua com o lançado: ' + JSON.stringify(r.parcial));
+    assert.deepEqual(r.virada, { semLancamento: false, boa: 3000 }, 'dia em branco que recebe produção da virada não vira ausência e mantém o que recebeu: ' + JSON.stringify(r.virada));
     assert.deepEqual(r.msgInvertido, ['erro'], 'intervalo com início igual ao fim vira erro visível'); assert.match(r.kpiP, /acima de 100%/, 'o relatório avisa Performance acima de 100%: ' + r.kpiP);
     assert.deepEqual(erros, [], 'sem erro de JavaScript'); console.log('ok ausência: produção em branco não vira zero e fica fora dos consolidados; intervalo invertido é erro; relatório avisa Performance > 100%');
   } finally { if (browser) await browser.close(); srv.close(); }
