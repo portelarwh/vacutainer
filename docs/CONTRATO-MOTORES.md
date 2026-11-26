@@ -46,6 +46,13 @@ Essas proteções são controles do aplicativo, sem substituir permissões de ar
 - Ficam como estão, por contrato 7 ou por não terem tela na Administração: `abDefault` (abono padrão por dia), tags (`TAGS_PADRAO`, decisão 5), `DEFAULT_CAUSAS`/`DEFAULT_TIPOS` do Paradas (classificação).
 - Prova: `prod-numeros` e `prodcad-equivalencia` iguais; `prod-config-adm` (campos só leitura, recusa, sem cópia no arquivo, derivação e ausência sem invenção).
 
+## Carga por tabela e abono na Administração · Produção 2.6.49, plataforma 1.8.68, Administração 1.9.87 (26/11/2026)
+
+- `CargaTab` (motor/portal): ⇩ Modelo e ⇧ Importar planilha em Linhas, Famílias, Materiais, Equipamentos, Componentes, Modos de falha, Programas, Calendário, Catálogos e Turnos (`CARGA_T`). Prévia (novo, alterado campo a campo, igual, erro); só o marcado é gravado, pelas operações de sempre (`Cad.ops`: auditoria, fila, releitura) e com a mesma validação da ficha (`cadValidarItem`).
+- Célula vazia não apaga; código fora da planilha não muda; valor igual ao gravado não é erro, mesmo fora da lista de hoje. Catálogo e turno novos nascem com UMA vigência (`vigDe` e as colunas do período); em item existente a vigência gravada não muda (contrato 2): diferença vira aviso "use a ficha". A BOM segue pela importação CS12; Códigos de parada têm o seu lote (`ParLote`).
+- Abono: `parametros.producao.abonoPadrao` (`{dia: {min, motivo}}`) vem da Administração e o `ProdCad` o entrega como `abDefault`; os tipos continuam em `motivosAbono`. A Produção mostra somente leitura; o lançamento do abono por turno continua nela.
+- Prova: `carga-tabela` (ida e volta sem mudança nas 10 tabelas, importação em ordem, vigência única, existente só no cabeçalho, erros) e `prod-config-adm`.
+
 ## Troca de pasta com pendência (casca 1.0.2, 15/11/2026)
 
 Antes era só uma mensagem e a troca ficava bloqueada; um módulo parado conectando (por exemplo, esperando confirmação depois de escolher a pasta errada) prendia a pessoa na pasta. Agora a casca abre a janela "Há alterações pendentes nesta pasta", que diz o que está pendente e onde: cada módulo aberto com o motivo (ainda abrindo, conectando à pasta, alteração não gravada ou formulário aberto, não respondeu) e o que está guardado no navegador por módulo (`queueDetail`, em `modulo/core/scopes`; `pendingDetail`, em `modulo/core/runtime`). Falha ao consultar a fila aparece na janela e conta como pendência.

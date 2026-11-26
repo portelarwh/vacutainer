@@ -4416,7 +4416,7 @@ function wireConfigComum(){$('#cPasta').onclick=async()=>{if(await Store.pick())
         entrar pelo ID (autocadastro como Consulta); página inicial por perfil (1x por sessão); vigência gravada não se edita (desativar com motivo); painel de vigências; semáforo central; saída do modo de teste.
    1.1.2: aviso da carga diz qual base foi lida.  1.5: páginas Paradas, Máquinas, Manutenção e Projetos na lista (aparecem quando o HTML chega na pasta).  1.4: lista técnica pela CS12 multinível (itens = nível 1, estrutura = níveis 2+); CS03 sai.  1.3: cabeçalho comum (vac-cabecalho v2: barra do sistema + página + abas), busca Ctrl K, acabamento V1.90, Versões com cabeçalho e último backup.  1.2: Configuração › Versões das páginas (versão e data de cada HTML, gravação das bases, cópias repetidas, histórico).
    ===================================================================== */
-const PAGE={id:'portal',titulo:"Administração · Linha Vacutainer",tituloCurto:"Administração",subtitulo:'Sistemas de gestão da linha',versao:'1.9.86',baseFile:'portal-base.json',idb:'vac-portal',backupDir:'00. Backups/Portal',
+const PAGE={id:'portal',titulo:"Administração · Linha Vacutainer",tituloCurto:"Administração",subtitulo:'Sistemas de gestão da linha',versao:'1.9.87',baseFile:'portal-base.json',idb:'vac-portal',backupDir:'00. Backups/Portal',
  vazio:()=>({schema:'portal-base',schemaVersion:1,rev:0,config:{modulos:{},avisoDias:30,notas:{}},audit:[]}),
  /* itens do Portal para a busca Ctrl K: cadastro, pendências e telas */
  busca:q=>{const R=[],D=Cad.D;if(D)for(const t of CAD_ORD){for(const it of D[t]||[]){const c=String(it[kOf(t)]),nm=t==='bom'?((cadItem('catalogos',it.catalogo)||{}).nome||''):it.nome||'';if(norm(c+' '+nm).includes(q))R.push({tipo:CAD_T[t].um,txt:c+(nm?' · '+nm:''),sub:'Cadastros'+(cadAtivo(t,it,D)?'':' · inativo'),href:'#cadastros/'+t+'/'+encodeURIComponent(c)});if(R.length>30)break}}
@@ -5286,6 +5286,10 @@ const CAD_SECS=['inicio','gel','matriz','importar','auditoria','backups','segura
    curtas (macro, sem detalhe técnico). REGRA: toda versão nova da plataforma ganha uma entrada aqui, a mais recente primeiro
    (AGENTS.md e CLAUDE.md). Tipos: nova (função nova), melhoria (algo que já existia ficou melhor), correcao (erro corrigido). */
 const NOVIDADES=[
+ {v:'1.8.68',d:'2026-11-26',itens:[
+  ['novo','Carga por tabela: linhas, famílias, materiais, equipamentos, componentes, modos de falha, programas, calendário, catálogos e turnos têm ⇩ Modelo e ⇧ Importar planilha, com prévia (novo, alterado, igual, erro) e grava só o que você marcar.'],
+  ['melhoria','Catálogo e turno novos entram com uma vigência; em item existente a vigência gravada não muda e célula vazia não apaga nada.'],
+  ['melhoria','Abono padrão por dia da semana e tipos de abono ficam na Administração (Parâmetros › Produção); o lançamento do abono continua na Produção.']]},
  {v:'1.8.67',d:'2026-11-25',itens:[
   ['novo','Administração › Parâmetros › Produção: modo da Performance, cobertura e divergência, pendências, servidor, hora extra, dias do plano e Problemas de QN; Parâmetros gerais ganhou a planta do SAP.'],
   ['melhoria','A Produção só lê esses parâmetros, a unidade, o setor e o fuso da Administração: a tela mostra os valores e não grava cópia no arquivo.'],
@@ -5988,6 +5992,87 @@ const ParLote={
    box.querySelector('#plOk').onclick=()=>{if(!Cad.podeEditarAssunto('paradas'))return;const M2=mudas();if(M2.erro||!M2.length)return;const motivo=st.atalho?'em lote: hora exata ou duração (Permite duração manual = SIM, Exige horário = NÃO)':`em lote: ${this.rotulo(st.k)} = ${this.txt(st.k,mudas().length?M2[0][1][st.k].depois:'')}`;
     Modal.close(true);Cad.ops(M2.map(([x,m])=>({acao:'edição',tipo:'paradas',codigo:x.codigo,mudancas:m,motivo,origem:'lote'})));toast(`${M2.length} código(s) de parada alterado(s); gravando…`);if(depois)depois()}};
   draw()}};
+/* CARGA-TAB (26/11/2026) · carga por tabela: cada tabela de cadastro (linhas, famílias, materiais, equipamentos, componentes, modos de falha,
+   programas, calendário, catálogos e turnos) tem ⇩ Modelo (planilha com o nome técnico na 1ª linha, os cadastros atuais e a aba "Campos") e
+   ⇧ Importar planilha (prévia: novo, alterado campo a campo, igual, erro; só o que for marcado é gravado, pelas operações de sempre: auditoria,
+   fila e releitura). Célula vazia não apaga nada; código que não está na planilha não muda. Tabelas com vigência (catálogos, turnos): item novo
+   nasce com UMA vigência (colunas "vigDe" e as do período); em item existente a vigência gravada não muda (contrato 2): diferença nas colunas do
+   período vira aviso "use a ficha" e só os campos do cabeçalho do item são gravados. Ordem sugerida: linhas, famílias, equipamentos, catálogos,
+   materiais, componentes, turnos. A BOM continua pela importação CS12. */
+const CARGA_T=['linhas','familias','materiais','equipamentos','componentes','modosFalha','programas','calendario','catalogos','turnos'];
+const CargaTab={
+ vcol:{catalogos:[['pphNominal','PPH nominal (peças/h)','int'],['tubosPorCaixa','Tubos por caixa','int'],['caixasPorLote','Caixas por lote','int']],
+  turnos:[['inicio','Início (HH:MM)','hora'],['fim','Fim (HH:MM, 24 h+ ex.: 30:00)','hora'],['dias','Dias (0=dom … 6=sáb, separados por vírgula)','dias'],['naoProdutivo','Turno não produtivo','bool'],['regraPedacoFinal','Somar pedaço final de até (min)','int']]},
+ cols(t){const T=CAD_T[t],c=T.campos.map(([k,l,ty,o])=>({k,l:String(l).replace(/<[^>]+>/g,''),ty,o,v:0}));c.push({k:'ativo',l:'Ativo',ty:'bool',v:0});
+  if(T.vig){c.push({k:'vigDe',l:'Vigência a partir de (AAAA-MM-DD)',ty:'data',v:1});for(const[k,l,ty]of this.vcol[t]||[])c.push({k,l,ty,v:1})}
+  return c},
+ opcoes(c){const o=Array.isArray(c.o)?c.o:[];return o},
+ txt(c,v){if(v==null||v==='')return'(vazio)';if(c.ty==='bool')return v?'SIM':'NÃO';if(c.ty==='dias')return(v||[]).join(',');if(typeof v==='object')return JSON.stringify(v);return String(v)},
+ celula(c,v){if(v==null)return c.ty==='bool'?'':'';if(c.ty==='bool')return v?'SIM':'NÃO';if(c.ty==='dias')return(v||[]).join(',');if(typeof v==='object')return JSON.stringify(v);return v},
+ /* texto da célula → {v} ou {erro}; vazio → {v:undefined} (não mexe) */
+ ler(c,raw){const s=raw==null?'':String(raw).trim();if(s==='')return{v:undefined};
+  switch(c.ty){
+   case'bool':if(/^(sim|s|true|verdadeiro|1|x)$/i.test(norm(s)))return{v:true};if(/^(nao|n|false|falso|0)$/i.test(norm(s)))return{v:false};return{erro:`${c.l}: "${s}" não é SIM ou NÃO`};
+   case'sel':{const o=this.opcoes(c).find(x=>norm(x)===norm(s)||norm((c.o2&amp;&amp;c.o2.lab&amp;&amp;c.o2.lab[x])||'')===norm(s));return o!=null?{v:o}:{erro:`${c.l}: "${s}" não é um valor aceito (${this.opcoes(c).join(', ')})`}}
+   case'int':{const n=vacNumero(s,{ponto:'milhar'});return Number.isInteger(n)?{v:n}:{erro:`${c.l}: "${s}" não é um número inteiro`}}
+   case'num':{const n=vacNumero(s);return Number.isFinite(n)?{v:n}:{erro:`${c.l}: "${s}" não é um número`}}
+   case'cor':return/^#[0-9a-f]{6}$/i.test(s)?{v:s.toLowerCase()}:{erro:`${c.l}: "${s}" não é uma cor #RRGGBB`};
+   case'hora':{const m=/^(\d{1,2}):(\d{2})$/.exec(s);return m&amp;&amp;+m[2]<60?{v:String(+m[1]).padStart(2,'0')+':'+m[2]}:{erro:`${c.l}: "${s}" não é HH:MM`}}
+   case'dias':{const L=s.split(/[,;\s]+/).filter(Boolean).map(Number);return L.length&amp;&amp;L.every(n=>Number.isInteger(n)&amp;&amp;n>=0&amp;&amp;n<=6)?{v:[...new Set(L)].sort()}:{erro:`${c.l}: use números de 0 a 6 separados por vírgula`}}
+   case'data':{const br=/^(\d{2})\/(\d{2})\/(\d{4})$/.exec(s),iso=br?`${br[3]}-${br[2]}-${br[1]}`:s;return/^\d{4}-\d{2}-\d{2}$/.test(iso)&amp;&amp;!isNaN(new Date(iso+'T12:00:00'))?{v:iso}:{erro:`${c.l}: "${s}" não é uma data AAAA-MM-DD`}}
+   default:{if(c.k==='codigo'&amp;&amp;CAD_T.calendario&amp;&amp;this.t==='calendario'){const br=/^(\d{2})\/(\d{2})\/(\d{4})$/.exec(s);if(br)return{v:`${br[3]}-${br[2]}-${br[1]}`}}return{v:s}}}},
+ colsT(t){this.t=t;return this.cols(t).map(c=>({...c,o2:(CAD_T[t].campos.find(x=>x[0]===c.k)||[])[4]}))},
+ igual(a,b){if((a==null||a==='')&amp;&amp;(b==null||b===''))return true;if(a!=null&amp;&amp;b!=null&amp;&amp;typeof a!=='object'&amp;&amp;typeof b!=='object')return String(a)===String(b);return deq(a??null,b??null)},
+ async exportar(t,D){const X=await Libs.xlsx(),C=this.colsT(t),T=CAD_T[t],hoje=todayISO();
+  const lin=(D[t]||[]).map(it=>{const v=T.vig?vigEm(it.vigencias,hoje)||(it.vigencias||[]).slice(-1)[0]||{}:{};return C.map(c=>c.k==='vigDe'?(v.de||''):c.v?this.celula(c,v[c.k]):this.celula(c,it[c.k]))});
+  const info=[['Coluna','Campo','Valores aceitos']].concat(C.map(c=>[c.k,c.l+(c.v?' (do período)':''),c.ty==='bool'?'SIM ou NÃO':c.ty==='sel'?this.opcoes(c).join(' | '):c.ty==='int'?'número inteiro':c.ty==='num'?'número':c.ty==='cor'?'#RRGGBB':c.ty==='hora'?'HH:MM':c.ty==='dias'?'0 a 6 separados por vírgula':c.ty==='data'?'AAAA-MM-DD':c.ty==='ref'||c.ty==='refcod'?'código já cadastrado em '+(CAD_T[c.o]||{nome:c.o}).nome:'texto']));
+  info.push([],['Como usar','Preencha uma linha por item (a 1ª linha, com o nome técnico, não muda). Célula vazia não altera nada; código que não está na planilha não muda; código novo = linha nova. '+(T.vig?'Catálogos e turnos: item novo nasce com uma vigência (vigDe e as colunas do período); a vigência de item existente muda pela ficha. ':'')+'Importe de volta em Administração › '+T.nome+' › ⇧ Importar planilha. Ordem sugerida: linhas, famílias, equipamentos, catálogos, materiais, componentes, turnos.']);
+  const wb=X.utils.book_new();X.utils.book_append_sheet(wb,X.utils.aoa_to_sheet([C.map(c=>c.k)].concat(lin)),T.nome.slice(0,30));X.utils.book_append_sheet(wb,X.utils.aoa_to_sheet(info),'Campos');
+  X.writeFile(wb,`Carga_${t}_${hoje}.xlsx`)},
+ async lerArquivo(f,t){const X=await Libs.xlsx(),wb=X.read(new Uint8Array(await f.arrayBuffer()),{type:'array'}),nm=wb.SheetNames.find(n=>norm(n)===norm(CAD_T[t].nome))||wb.SheetNames.find(n=>norm(n)!=='campos')||wb.SheetNames[0];
+  return X.utils.sheet_to_json(wb.Sheets[nm],{header:1,raw:false,defval:''})},
+ plano(t,D,rows,arq){const C=this.colsT(t),T=CAD_T[t],porRot=new Map(C.map(c=>[norm(c.l),c]));
+  const head=(rows[0]||[]).map(h=>{const s=String(h||'').trim();return C.find(c=>c.k===s)||porRot.get(norm(s))||null});
+  if(!head.some(c=>c&amp;&amp;c.k==='codigo'))return{erro:'A planilha precisa da coluna "codigo" na 1ª linha (use ⇩ Modelo).'};
+  const vistos=new Set(),L=[],hoje=todayISO();let pos=Math.max(0,...(D.equipamentos||[]).map(e=>+e.posicao||0));
+  for(let i=1;i<rows.length;i++){const r=rows[i];if(!r||r.every(x=>String(x).trim()===''))continue;
+   const lin=i+1,val={},vv={},erros=[],avisos=[];
+   const jc=head.findIndex(c=>c&amp;&amp;c.k==='codigo'),cod0=String(jc>=0?(this.ler(head[jc],r[jc]).v??''):'').trim(),cur=cod0?(D[t]||[]).find(x=>String(x.codigo)===cod0):null;
+   head.forEach((c,j)=>{if(!c)return;
+    if(cur&amp;&amp;!c.v&amp;&amp;c.k!=='codigo'&amp;&amp;String(r[j]??'').trim()!==''&amp;&amp;String(r[j]).trim()===String(this.celula(c,cur[c.k])??'').trim())return;   /* igual ao gravado (mesmo fora da lista de hoje): não muda e não é erro */
+    const x=this.ler(c,r[j]);if(x.erro)erros.push(x.erro);else if(x.v!==undefined)(c.v?vv:val)[c.k]=x.v});
+   const cod=String(cod0).trim();if(!cod){L.push({lin,cod:'',erros:['linha sem código']});continue}
+   val.codigo=cod;
+   if(vistos.has(cod)){L.push({lin,cod,erros:['código repetido na planilha']});continue}vistos.add(cod);
+   if(!cur){const item=clone(cadModelo(t));item.codigo=cod;
+    for(const[k,x]of Object.entries(val))if(k!=='codigo')item[k]=x;
+    if(t==='equipamentos'&amp;&amp;val.posicao==null)item.posicao=++pos;else if(t==='equipamentos')pos=Math.max(pos,+val.posicao||0);
+    if(T.vig){const v0=(item.vigencias||[{}])[0];v0.de=vv.vigDe||hoje;for(const[k,x]of Object.entries(vv))if(k!=='vigDe')v0[k]=x;
+     if(t==='turnos'){v0.ativo=true;if(!vv.regraPedacoFinal&amp;&amp;vv.regraPedacoFinal!==0)v0.regraPedacoFinal=30}}
+    cadFinal(t,item);erros.push(...cadValidarItem(t,item,D,{novo:true}));
+    L.push({lin,cod,novo:true,item,erros:[...new Set(erros)],marcado:!erros.length});continue}
+   const mud={};for(const[k,x]of Object.entries(val)){if(k==='codigo')continue;if(!this.igual(cur[k],x))mud[k]={antes:cur[k]??null,depois:x}}
+   if(T.vig){const v=vigEm(cur.vigencias,hoje)||(cur.vigencias||[]).slice(-1)[0]||{};for(const[k,x]of Object.entries(vv)){if(k==='vigDe'?(x!==v.de&amp;&amp;v.de):!this.igual(v[k],x))avisos.push(k)}}
+   if(Object.keys(mud).length){const m2=clone(cur);for(const[k,x]of Object.entries(mud))m2[k]=x.depois;cadFinal(t,m2);erros.push(...cadValidarItem(t,m2,D))}
+   L.push({lin,cod:cur.codigo,mud,erros:[...new Set(erros)],avisos,marcado:!erros.length&amp;&amp;Object.keys(mud).length>0,igual:!Object.keys(mud).length})}
+  if(t==='equipamentos'){const vistoMes=new Map();   /* o lote inteiro: dois itens da planilha não podem trazer o mesmo código MES (a ficha confere só contra o que já está gravado) */
+   for(const x of L){if(x.erros.length)continue;const m=String((x.novo?x.item.codigoMes:x.mud&amp;&amp;x.mud.codigoMes?x.mud.codigoMes.depois:'')??'').trim().toUpperCase();if(!m)continue;
+    if(vistoMes.has(m)){x.erros.push(`o código MES ${m} repete a linha ${vistoMes.get(m)} da planilha`);x.marcado=false}else vistoMes.set(m,x.lin)}}
+  return{t,arq,L,C}},
+ ops(P){const motivo=`carga por tabela (${P.arq})`;return P.L.filter(x=>x.marcado&amp;&amp;!x.erros.length).map(x=>x.novo?{acao:'criação',tipo:P.t,codigo:x.cod,item:x.item,motivo,origem:'planilha'}:{acao:'edição',tipo:P.t,codigo:x.cod,mudancas:x.mud,motivo,origem:'planilha'})},
+ prev(P,depois){const T=CAD_T[P.t],lab=k=>(P.C.find(c=>c.k===k)||{l:k}).l,col=k=>P.C.find(c=>c.k===k)||{ty:'txt'};
+  const mb=Modal.open('<div id="cgBox"></div>'),box=mb.querySelector('#cgBox');
+  const draw=()=>{const nv=P.L.filter(x=>x.novo&amp;&amp;!x.erros.length).length,alt=P.L.filter(x=>!x.novo&amp;&amp;!x.igual&amp;&amp;!x.erros.length).length,ig=P.L.filter(x=>x.igual&amp;&amp;!x.erros.length&amp;&amp;!(x.avisos&amp;&amp;x.avisos.length)).length,pe2=P.L.filter(x=>x.igual&amp;&amp;!x.erros.length&amp;&amp;x.avisos&amp;&amp;x.avisos.length).length,er=P.L.filter(x=>x.erros.length).length,sel=P.L.filter(x=>x.marcado&amp;&amp;!x.erros.length).length;
+   box.innerHTML=`<h2>Importar ${esc(T.nome.toLowerCase())}</h2><p class="small muted">${esc(P.arq)} · <b>${nv}</b> novo(s) · <b>${alt}</b> alterado(s) · ${ig} igual(is) · ${pe2?`<b>${pe2}</b> só com período diferente (use a ficha) · `:''}${er?`<b style="color:var(--crit)">${er} com erro</b>`:'0 com erro'}. Só o que estiver marcado é gravado; o que não está na planilha não muda.</p>
+    <div class="tw" style="max-height:56vh"><table class="cadst small"><tr><th><input type="checkbox" id="cgTodos" aria-label="Marcar todos"></th><th>Linha</th><th>Código</th><th>Situação</th><th>O que muda</th></tr>
+    ${P.L.filter(x=>!x.igual||x.erros.length||(x.avisos&amp;&amp;x.avisos.length)).map(x=>{const idx=P.L.indexOf(x);return`<tr><td>${x.erros.length||x.igual?'':`<input type="checkbox" data-cg="${idx}" ${x.marcado?'checked':''} aria-label="Gravar ${esc(x.cod)}">`}</td><td class="n">${x.lin}</td><td class="mono">${esc(x.cod||'—')}</td><td>${x.erros.length?'<span class="pill crit">erro</span>':x.novo?'<span class="pill ok">novo</span>':x.igual?'<span class="pill none">só período</span>':'<span class="pill warn">alterado</span>'}</td>
+     <td>${x.erros.length?esc(x.erros.join(' · ')):x.novo?esc(x.item.nome||'')+' <span class="muted">('+Object.keys(x.item).length+' campos)</span>':Object.entries(x.mud).map(([k,m])=>`<div><b>${esc(lab(k))}</b>: ${esc(this.txt(col(k),m.antes))} → <b>${esc(this.txt(col(k),m.depois))}</b></div>`).join('')}${x.avisos&amp;&amp;x.avisos.length?`<div class="small muted">Período diferente do vigente (${esc(x.avisos.map(lab).join(', '))}): a vigência gravada não muda; use a ficha.</div>`:''}</td></tr>`}).join('')||'<tr><td colspan="5" class="muted">Nada muda: a planilha é igual ao cadastro.</td></tr>'}</table></div>
+    <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:10px"><button class="b" id="cgCanc">Cancelar</button><button class="b p" id="cgOk" ${sel?'':'disabled'}>Gravar ${sel} item(ns)</button></div>`;
+   box.querySelectorAll('[data-cg]').forEach(c=>c.onchange=()=>{P.L[+c.dataset.cg].marcado=c.checked;draw()});
+   const tt=box.querySelector('#cgTodos');tt.onchange=()=>{P.L.forEach(x=>{if(!x.erros.length&amp;&amp;!x.igual)x.marcado=tt.checked});draw()};
+   box.querySelector('#cgCanc').onclick=()=>Modal.close(true);
+   box.querySelector('#cgOk').onclick=()=>{if(!Cad.podeEditarAssunto(admAssuntoDe(P.t)))return;const ops=this.ops(P);if(!ops.length)return;Modal.close(true);Cad.ops(ops);toast(`${ops.length} item(ns) de ${T.nome.toLowerCase()} importado(s); gravando…`);if(depois)depois()}};
+  draw()}};
 function cadLista(el,t){const D=Cad.D,T=CAD_T[t],cols=cadCols(t,D),k=kOf(t);const q=norm(Cad.ui.q),sit=Cad.ui.sit||'ativos';
  let L=(D[t]||[]).filter(it=>sit==='todos'||(sit==='ativos')===cadAtivo(t,it,D));if(q)L=L.filter(it=>cadBusca(t,it,D).includes(q));
  const FP=t==='paradas'?(Cad.ui.fp||(Cad.ui.fp={})):null;if(FP)L=parFiltrar(L,FP);   /* 1.9.16 · POR-02 */
@@ -5998,7 +6083,7 @@ function cadLista(el,t){const D=Cad.D,T=CAD_T[t],cols=cadCols(t,D),k=kOf(t);cons
  el.innerHTML=`<h3 style="margin:0 0 8px">${esc(T.nome)}${CAT_AJUDA[t]?' '+ib(T.nome,CAT_AJUDA[t]):''}</h3><div class="filters"><label>Buscar<input id="cadQ" value="${esc(Cad.ui.q)}" placeholder="código, nome, qualquer campo" style="min-width:220px"></label>
   <span class="seg" id="cadSit">${[['ativos','Ativos'],['inativos','Inativos'],['todos','Todos']].map(([v,l])=>`<button data-v="${v}" class="${sit===v?'on':''}">${l}</button>`).join('')}</span>
   ${FP?parFiltrosHtml(D,FP):''}<span class="small muted" style="align-self:center">${L.length} de ${(D[t]||[]).length}</span><span style="flex:1"></span>
-  ${pe&amp;&amp;t==='perfis'&amp;&amp;DEFAULT_PERFIS.some(x=>!cadItem('perfis',x.codigo,D))?'<button class="b" id="cadPerfisPad">Criar os perfis padrão</button>':''}${pe?`<button class="b p" id="cadNovo">+ ${t==='bom'?'Nova BOM':'Novo '+esc(T.um)}</button>`:''}${t==='equipamentos'?formBtn(null,'Imprimir todos os formulários'):''}<button class="b" id="cadXls">⇩ Excel</button>${t==='paradas'?`<button class="b" id="parExp" title="Planilha com todos os campos de cada código, para editar e importar de volta">⇩ Exportar para editar</button>${pe?'<label class="b" title="Lê a planilha exportada (ou CSV), mostra a prévia e grava só o que for marcado">⇧ Importar planilha<input type="file" id="parImp" accept=".xlsx,.xls,.csv" hidden></label><button class="b" id="parLote" title="Um campo e um valor para vários códigos (a lista filtrada), ou o atalho Hora exata ou duração">Alterar em lote</button>':''}`:''}</div>
+  ${pe&amp;&amp;t==='perfis'&amp;&amp;DEFAULT_PERFIS.some(x=>!cadItem('perfis',x.codigo,D))?'<button class="b" id="cadPerfisPad">Criar os perfis padrão</button>':''}${pe?`<button class="b p" id="cadNovo">+ ${t==='bom'?'Nova BOM':'Novo '+esc(T.um)}</button>`:''}${t==='equipamentos'?formBtn(null,'Imprimir todos os formulários'):''}<button class="b" id="cadXls">⇩ Excel</button>${CARGA_T.includes(t)?`<button class="b" id="cgMod" title="Planilha com o nome técnico na 1ª linha, os cadastros atuais e a aba Campos; preencha e importe de volta">⇩ Modelo</button>${pe?'<label class="b" title="Lê a planilha do modelo (ou CSV), mostra a prévia e grava só o que for marcado">⇧ Importar planilha<input type="file" id="cgImp" accept=".xlsx,.xls,.csv" hidden></label>':''}`:''}${t==='paradas'?`<button class="b" id="parExp" title="Planilha com todos os campos de cada código, para editar e importar de volta">⇩ Exportar para editar</button>${pe?'<label class="b" title="Lê a planilha exportada (ou CSV), mostra a prévia e grava só o que for marcado">⇧ Importar planilha<input type="file" id="parImp" accept=".xlsx,.xls,.csv" hidden></label><button class="b" id="parLote" title="Um campo e um valor para vários códigos (a lista filtrada), ou o atalho Hora exata ou duração">Alterar em lote</button>':''}`:''}</div>
   ${pe?'':`<div class="note w" style="margin:8px 0">Somente leitura: ${esc(Cad.motivoEdicao()||'edição bloqueada')} ${!Lock.ok()&amp;&amp;Cad.D&amp;&amp;(Store.mode==='pasta'||Store.mode==='teste')?'<button class="b sm p" id="cadDesbl">Desbloquear edição</button>':Store.mode!=='pasta'&amp;&amp;Store.mode!=='teste'?'<button class="b sm p" id="cadConectar">Conectar agora</button>':''}</div>`}
   ${t==='equipamentos'?(()=>{const dnd=pe&amp;&amp;!q&amp;&amp;sit==='ativos'&amp;&amp;!OR;return`<p class="small muted" style="margin:6px 0">${dnd?'Arraste pela alça ⠿ para reorganizar (a Linha é a posição 0 e fica no topo); ou digite a posição na ficha: quem já está nela e os seguintes andam +1.':pe?'Para reorganizar arrastando, mostre os <b>ativos</b>, sem busca e sem ordenar por coluna.':''}</p>`})():''}<div class="tw"><table${t==='equipamentos'&amp;&amp;pe&amp;&amp;!q&amp;&amp;sit==='ativos'&amp;&amp;!OR?' class="eq-dnd"':''}><tr>${t==='equipamentos'&amp;&amp;pe&amp;&amp;!q&amp;&amp;sit==='ativos'&amp;&amp;!OR?'<th aria-label="Arrastar"></th>':''}${cols.map((c,i)=>`<th class="${c[2]||''}" data-ci="${i}" style="cursor:pointer" title="Ordenar por ${esc(c[0])}" aria-sort="${OR&amp;&amp;OR.c===i?(OR.d>0?'ascending':'descending'):'none'}">${esc(c[0])}${OR&amp;&amp;OR.c===i?(OR.d>0?' ▲':' ▼'):''}</th>`).join('')}<th aria-label="Abrir a ficha"></th></tr>${L.map(it=>`<tr class="click" data-cod="${esc(it[k])}"${t==='equipamentos'&amp;&amp;pe&amp;&amp;!q&amp;&amp;sit==='ativos'&amp;&amp;!OR?` data-linha="${esc(it.linha||'')}"${EqOrd.ehLinha(it)?' data-fixo="1"':''}`:''}>${t==='equipamentos'&amp;&amp;pe&amp;&amp;!q&amp;&amp;sit==='ativos'&amp;&amp;!OR?(EqOrd.ehLinha(it)?'<td class="eq-h muted" title="A Linha é sempre a posição 0">0</td>':`<td class="eq-h" data-arrasta="1" title="Arraste para mudar a posição" aria-label="Arrastar ${esc(it.codigo)}">⠿</td>`):''}${cols.map(c=>`<td class="${c[2]||''}">${c[1](it)??''}</td>`).join('')}<td class="r"><button type="button" class="b sm" data-abrir="${esc(it[k])}">${pe?'Editar':'Ver'}</button></td></tr>`).join('')||`<tr><td colspan="${cols.length+1}" class="muted">Nenhum item${q?' para esta busca':''}.</td></tr>`}</table></div>
   ${t==='bom'?'<p class="small muted">Quantidades por 1.000 tubos. Itens = nível 1 (o que a ordem consome); estrutura = níveis 2+. Para trazer do SAP, use Importar do SAP › Lista técnica (CS12).</p>':''}`;
@@ -6012,6 +6097,8 @@ function cadLista(el,t){const D=Cad.D,T=CAD_T[t],cols=cadCols(t,D),k=kOf(t);cons
  const nv=$('#cadNovo');if(nv)nv.onclick=()=>Ficha.abrir(t,null,{novo:true});
  const pp=$('#cadPerfisPad');if(pp)pp.onclick=()=>{if(!Cad.podeEditarAssunto('pessoas'))return;const F=DEFAULT_PERFIS.filter(x=>!cadItem('perfis',x.codigo,D));if(!confirm(`Criar ${F.length} perfil(is) padrão: ${F.map(x=>x.nome).join(', ')}?`))return;Cad.ops(F.map(x=>({acao:'criação',tipo:'perfis',codigo:x.codigo,item:clone(x),motivo:'perfis padrão (Portal 1.7)'})));toast(F.length+' perfil(is) criados.')};
  if(t==='usuarios')el.insertAdjacentHTML('afterbegin','<div class="note">Cada pessoa entra pelo <b>ID</b> e pela <b>senha de 6 números</b> no login que abre em todas as páginas. Quem não está aqui se cadastra sozinho no 1º acesso (nome + ID) e entra com o perfil <b>Consulta</b>; o administrador muda o perfil aqui, com a senha.</div>');
+ if(CARGA_T.includes(t)){const m=$('#cgMod');if(m)m.onclick=async()=>{try{await CargaTab.exportar(t,Cad.D)}catch(e){toast(e.message,6000,true)}};
+  const im=$('#cgImp');if(im)im.onchange=async()=>{const f=im.files[0];im.value='';if(!f)return;try{const P=CargaTab.plano(t,Cad.D,await CargaTab.lerArquivo(f,t),f.name);if(P.erro)return toast(P.erro,7000,true);CargaTab.prev(P,()=>App.render())}catch(e){toast('Não consegui ler a planilha: '+e.message,7000,true)}}}
  if(t==='paradas'){   /* 1.9.81 · PAR-LOTE */
   const ex=$('#parExp');if(ex)ex.onclick=async()=>{try{await ParLote.exportar(D)}catch(e){toast(e.message,6000,true)}};
   const im=$('#parImp');if(im)im.onchange=async()=>{const f=im.files[0];im.value='';if(!f)return;try{const P=ParLote.plano(Cad.D,await ParLote.lerArquivo(f),f.name);if(P.erro)return toast(P.erro,7000,true);ParLote.prevImportar(Cad.D,P,()=>App.render())}catch(e){toast('Não consegui ler a planilha: '+e.message,7000,true)}};
@@ -7005,6 +7092,9 @@ function parProducaoHtml(P,pe){const Q=P.producao||{},L=(Q.arredondamentoMeta||[
  <div class="fg"><label>Casas decimais de OEE e percentuais ${ib('Casas decimais',AJUDA_CAMPO['parametros.producao.casasPct'])}<input type="number" step="1" min="0" max="3" data-pprod="casasPct" value="${esc(Q.casasPct??'')}" placeholder="2"${dis}></label></div>
  <h4 style="margin:12px 0 4px">Parâmetros de cálculo e listas</h4>
  <div class="fg">${PROD_EXTRA.map(([k, l, ph]) => `<label>${l}<input data-pprx="${k}" value="${esc(Array.isArray(Q[k]) ? Q[k].join(',') : (Q[k] ?? ''))}" placeholder="${ph}"${dis}></label>`).join('')}</div>
+ <h4 style="margin:12px 0 4px">Abono padrão por dia da semana</h4>
+ <p class="small muted">Já vem preenchido em cada turno daquele dia (só o tempo); o lançamento do abono continua na Produção e pode ser alterado lá. O tipo vem da lista de motivos de abono (Parâmetros).</p>
+ <div class="tw"><table class="cadst"><tr><th>Dia</th><th class="n">Minutos por turno</th><th>Tipo</th></tr>${[1,2,3,4,5,6,0].map(i=>{const x=(Q.abonoPadrao||{})[i]||{};return`<tr><td>${['Domingo','Segunda','Terça','Quarta','Quinta','Sexta','Sábado'][i]}</td><td class="n"><input type="number" min="0" step="1" data-pab="${i}" value="${+x.min>0?x.min:''}" placeholder="0" style="width:90px"${dis}></td><td><input data-pabm="${i}" list="pabMots" value="${esc(x.motivo||'')}" maxlength="60"${dis}></td></tr>`}).join('')}</table><datalist id="pabMots">${(P.motivosAbono||[]).map(m=>`<option value="${esc(m)}">`).join('')}</datalist></div>
  <label style="display:block;margin-top:8px">Problemas de QN (um por linha; aparecem como lista no lançamento do turno)<textarea data-pprq rows="6" maxlength="6000"${dis}>${esc((Q.qnProblemas || []).join('\n'))}&lt;/textarea></label>
  <h4 style="margin:12px 0 4px">Arredondamento da meta ${ib('Arredondamento da meta',AJUDA_CAMPO['parametros.producao.arredondamentoMeta'])}</h4>
  <div class="tw"><table class="cadst"><tr><th>A partir de</th><th class="n">Múltiplo (peças)</th><th></th></tr>${L.map(v=>`<tr><td>${fmtD(v.de)}</td><td class="n">${fmtN(v.valor)}</td><td>${vig&amp;&amp;v.de===vig.de?'<span class="pill ok">vigente</span>':v.de>h?'<span class="pill info">futura</span>':''}</td></tr>`).join('')||'<tr><td colspan="3" class="small muted">Nenhuma vigência: a Produção usa o valor da própria base até a primeira.</td></tr>'}</table></div>
@@ -7021,6 +7111,7 @@ function wireParProducao(P,pe){const ok=$('#ppOk');if(!ok||!pe)return;ok.onclick
  for(const [k,l,ph,r] of PROD_EXTRA){const t=$('[data-pprx="'+k+'"]').value.trim();if(!t){delete Q[k];continue}
   if(r.lista){const v=t.split(',').map(x=>x.trim()).filter(Boolean).map(Number);if(!v.length||v.some(n=>!Number.isInteger(n)||n<0||n>6))return toast('Dias do plano: números de 0 a 6, separados por vírgula.',5000,true);Q[k]=[...new Set(v)].sort();continue}
   const n=vacNumero(t);if(!(n>=r.min)||(r.max!=null&amp;&amp;n>r.max)||(r.int&amp;&amp;Math.round(n)!==n))return toast(l.split(' (')[0]+': valor inválido.',5000,true);Q[k]=n}
+ {const A={};$$('[data-pab]').forEach(i=>{const n=vacNumero(i.value.trim());if(n>0)A[i.dataset.pab]={min:n,motivo:($('[data-pabm="'+i.dataset.pab+'"]').value||'').trim()}});if(Object.keys(A).length)Q.abonoPadrao=A;else delete Q.abonoPadrao}
  {const L=[...new Set($('[data-pprq]').value.split('\n').map(x=>x.trim()).filter(Boolean))];if(L.some(x=>x.length>120)||L.length>200)return toast('Problemas de QN: até 200 itens de até 120 caracteres.',5000,true);if(L.length)Q.qnProblemas=L;else delete Q.qnProblemas}
  if(fd){if(Q0.foraTurnoDesde!==fd&amp;&amp;fd<h&amp;&amp;!confirm('A data está no passado: os dias desde '+fmtD(fd)+' passam a contar a produção fora de turno (o OEE desses dias muda, inclusive dos fechados). Continuar?'))return;Q.foraTurnoDesde=fd}else delete Q.foraTurnoDesde;
  const de=$('#ppArDe').value,vt=$('#ppArV').value.trim();
@@ -8239,7 +8330,7 @@ function tipoParadaOpts(codes, sel) {
   const cats = [...new Set(codes.map(c => c.category || 'Sem categoria'))];
   return cats.map(cat => `<optgroup label="${esc(cat)}">${codes.filter(c => (c.category || 'Sem categoria') === cat).map(c => `<option value="${c.id}" ${sel === c.id ? 'selected' : ''}>${esc(c.code + ' · ' + c.name)}</option>`).join('')}</optgroup>`).join('');
 }
-const APP_VERSION = '2.6.48';   /* BLOCO-3: a Produção monta os cadastros em memória, a partir da Administração; base versão 2 */   /* 2.6.46 · BASE-LIMPA: Produção e Ordens sem migrações; base anterior só consulta */   /* 2.6.45 · GEL-FMT: perdas teóricas por formato; SQDCP sem resumo repetido */   /* 2.6.44 · ADM-CENTRAL: scrap de gel pelo cadastro */   /* 2.6.43 · LANC-DT: data com o dia da semana também sem o dia criado */   /* 2.6.42 · LANC-CAB: cabeçalho do Lançamento numa linha */   /* 2.6.41 · GEL-09: local de cada descarte no scrap de gel */   /* 2.6.40 · GEL-08: scrap de máquina e de gel lado a lado; gel no jeito do Gel */   /* 2.6.39 · MAN-01: leitura do QR no comum (vacQR) */   /* 2.6.38 · MT-01: importar o turno do app Meu Turno (QR pela webcam ou arquivo) */   /* 2.6.37 · CAD-CONS: Consulta de cadastros com ficha lateral */   /* 2.6.36 · CFG-ADM etapa 2: sem telas duplicadas de cadastro; metas em consulta no Plano do mês */   /* 2.6.35 · CFG-ADM: cadastros da Administração abrem direto lá */   /* 2.6.34 · REL-02: PDF e e-mail no molde comum (vacPdf/vacEmail) */   /* 2.6.33 · TL-03: Linha do tempo filtra por Ordem/Lote e mostra Produção, Meta e Aderência no topo */   /* 2.6.32 · TUR-04: Plano do mês distribui o plano pelo tempo programado de cada dia (sábado menor pede menos) */   /* 2.6.31 · mês em português pela peça comum vacCampos (comum/interface) */   /* 2.6.30 · padrão visual (skill padrao-visual): cabeçalho nas abas, filtros de Paradas e Resultados iguais aos da Visão geral, mês em português, controles e textos no tamanho mínimo, cores pela marca; SQDCP com as cores das categorias da empresa */   /* 2.6.29 · design: turnos logo após o resumo do dia, cartões de OEE sem repetição, Visão geral com 1 dia recolhida, títulos em caixa de frase */   /* 2.6.28 · LANC-03 etapa e2: Segurança e qualidade obrigatórias para fechar o dia (desde 21/11/2026), do dia no modo Dia; Excluir dia em dia fechado */   /* 2.6.27 · LANC-03 etapa e1 (itens 3.1 e 4): modo Dia, só no dia, sem rateio */   /* 2.6.26 · LANC-03 etapa d (itens 3, 5 e 6): pílulas Hora a hora / Por turno e Scrap Por turno / Diário, selo de hora extra */   /* 2.6.25 · LANC-03 etapa c (item 9): Validação com Ir para o ajuste e a conta de cada aviso */   /* 2.6.24 · LANC-03 etapa b (itens 1, 2 e 7): cabeçalho do dia numa linha, menu ⋮ Mais ações e rodapé */   /* 2.6.23 · LANC-03 (itens 0 e 1.1): ordem e rótulos das abas da imagem, Modo TV e Resumo do dia recolhível */   /* 2.6.22 · LANC-04: Config. › Abas na plataforma (destaque, selo, aba inicial) e Frequência × duração redesenhado na largura do cartão */   /* 2.6.21 · TUR-07: turno que passa da meia-noite dividido no total diário (depois de 00:00 → dia seguinte; scrap proporcional à produção, paradas sem horário ao tempo) */   /* 2.6.20 · HEX-01: "Houve hora extra?" no cartão do turno (até 60 min antes do início ou depois do fim) */   /* 2.6.19 · TUR-06: produção no turno não produtivo pela meia-noite (antes → turno anterior; depois → próximo) desde 01/11/2026; aviso de hora extra */   /* 2.6.18 · PAR-CAT: tipo de parada por categoria e com busca nas sugestões do servidor, na importação de paradas e no turno sem produção */   /* 2.6.17 · SRV-DIA: dia sem lançamento com produção do servidor: aviso e abrir o dia com os dados */   /* 2.6.16 · TUR-05: dia em aberto passa ao horário vigente do turno; PAR-BUSCA: tipo de parada por texto */   /* 2.6.15 · REL-01: gel no relatório/e-mail do dia e do turno; Enviar relatório na janela do dia */   /* 2.6.14 · GEL-07: Relatório do Gel e Perdas de gel (turno com gel e Relatórios) */   /* 2.6.13 · GEL-06: Scrap gel no detalhe do turno */   /* 2.6.12 · TUR-04: turno com horário diferente no sábado (linhas por dia da semana) */   /* 2.6.11 · abas agrupadas: Ordens e lotes, Resultados, Paradas */   /* 2.6.10 · Lançamento sem turno aberto por padrão; abas visíveis na casca */   /* 2.6.9 · LANC-02: Lançamento unificado (hora a hora no detalhe do turno, 3º turno ao lado, Problemas de QN) */   /* 2.6.5 · IMP-01: contagens das importações nos exports */   /* 2.6.4 · semáforo só pelas faixas configuradas (verde acima de 100% vale) */   /* 2.6.2 · gráficos e números com meta seguem o semáforo de três cores (verde, amarelo, vermelho) */   /* 2.6.1 · gráficos: turno lançado pelo total com o nome do turno no eixo; janelas: rótulo e valor em tamanho de texto */   /* 2.6.0 · produção total do turno (sem hora a hora; períodos na troca de catálogo), aviso do servidor para turno lançado pelo total e para dia com produção apontada */
+const APP_VERSION = '2.6.49';   /* BLOCO-3: a Produção monta os cadastros em memória, a partir da Administração; base versão 2 */   /* 2.6.46 · BASE-LIMPA: Produção e Ordens sem migrações; base anterior só consulta */   /* 2.6.45 · GEL-FMT: perdas teóricas por formato; SQDCP sem resumo repetido */   /* 2.6.44 · ADM-CENTRAL: scrap de gel pelo cadastro */   /* 2.6.43 · LANC-DT: data com o dia da semana também sem o dia criado */   /* 2.6.42 · LANC-CAB: cabeçalho do Lançamento numa linha */   /* 2.6.41 · GEL-09: local de cada descarte no scrap de gel */   /* 2.6.40 · GEL-08: scrap de máquina e de gel lado a lado; gel no jeito do Gel */   /* 2.6.39 · MAN-01: leitura do QR no comum (vacQR) */   /* 2.6.38 · MT-01: importar o turno do app Meu Turno (QR pela webcam ou arquivo) */   /* 2.6.37 · CAD-CONS: Consulta de cadastros com ficha lateral */   /* 2.6.36 · CFG-ADM etapa 2: sem telas duplicadas de cadastro; metas em consulta no Plano do mês */   /* 2.6.35 · CFG-ADM: cadastros da Administração abrem direto lá */   /* 2.6.34 · REL-02: PDF e e-mail no molde comum (vacPdf/vacEmail) */   /* 2.6.33 · TL-03: Linha do tempo filtra por Ordem/Lote e mostra Produção, Meta e Aderência no topo */   /* 2.6.32 · TUR-04: Plano do mês distribui o plano pelo tempo programado de cada dia (sábado menor pede menos) */   /* 2.6.31 · mês em português pela peça comum vacCampos (comum/interface) */   /* 2.6.30 · padrão visual (skill padrao-visual): cabeçalho nas abas, filtros de Paradas e Resultados iguais aos da Visão geral, mês em português, controles e textos no tamanho mínimo, cores pela marca; SQDCP com as cores das categorias da empresa */   /* 2.6.29 · design: turnos logo após o resumo do dia, cartões de OEE sem repetição, Visão geral com 1 dia recolhida, títulos em caixa de frase */   /* 2.6.28 · LANC-03 etapa e2: Segurança e qualidade obrigatórias para fechar o dia (desde 21/11/2026), do dia no modo Dia; Excluir dia em dia fechado */   /* 2.6.27 · LANC-03 etapa e1 (itens 3.1 e 4): modo Dia, só no dia, sem rateio */   /* 2.6.26 · LANC-03 etapa d (itens 3, 5 e 6): pílulas Hora a hora / Por turno e Scrap Por turno / Diário, selo de hora extra */   /* 2.6.25 · LANC-03 etapa c (item 9): Validação com Ir para o ajuste e a conta de cada aviso */   /* 2.6.24 · LANC-03 etapa b (itens 1, 2 e 7): cabeçalho do dia numa linha, menu ⋮ Mais ações e rodapé */   /* 2.6.23 · LANC-03 (itens 0 e 1.1): ordem e rótulos das abas da imagem, Modo TV e Resumo do dia recolhível */   /* 2.6.22 · LANC-04: Config. › Abas na plataforma (destaque, selo, aba inicial) e Frequência × duração redesenhado na largura do cartão */   /* 2.6.21 · TUR-07: turno que passa da meia-noite dividido no total diário (depois de 00:00 → dia seguinte; scrap proporcional à produção, paradas sem horário ao tempo) */   /* 2.6.20 · HEX-01: "Houve hora extra?" no cartão do turno (até 60 min antes do início ou depois do fim) */   /* 2.6.19 · TUR-06: produção no turno não produtivo pela meia-noite (antes → turno anterior; depois → próximo) desde 01/11/2026; aviso de hora extra */   /* 2.6.18 · PAR-CAT: tipo de parada por categoria e com busca nas sugestões do servidor, na importação de paradas e no turno sem produção */   /* 2.6.17 · SRV-DIA: dia sem lançamento com produção do servidor: aviso e abrir o dia com os dados */   /* 2.6.16 · TUR-05: dia em aberto passa ao horário vigente do turno; PAR-BUSCA: tipo de parada por texto */   /* 2.6.15 · REL-01: gel no relatório/e-mail do dia e do turno; Enviar relatório na janela do dia */   /* 2.6.14 · GEL-07: Relatório do Gel e Perdas de gel (turno com gel e Relatórios) */   /* 2.6.13 · GEL-06: Scrap gel no detalhe do turno */   /* 2.6.12 · TUR-04: turno com horário diferente no sábado (linhas por dia da semana) */   /* 2.6.11 · abas agrupadas: Ordens e lotes, Resultados, Paradas */   /* 2.6.10 · Lançamento sem turno aberto por padrão; abas visíveis na casca */   /* 2.6.9 · LANC-02: Lançamento unificado (hora a hora no detalhe do turno, 3º turno ao lado, Problemas de QN) */   /* 2.6.5 · IMP-01: contagens das importações nos exports */   /* 2.6.4 · semáforo só pelas faixas configuradas (verde acima de 100% vale) */   /* 2.6.2 · gráficos e números com meta seguem o semáforo de três cores (verde, amarelo, vermelho) */   /* 2.6.1 · gráficos: turno lançado pelo total com o nome do turno no eixo; janelas: rótulo e valor em tamanho de texto */   /* 2.6.0 · produção total do turno (sem hora a hora; períodos na troca de catálogo), aviso do servidor para turno lançado pelo total e para dia com produção apontada */
 const SCHEMA_VERSION = 2;   /* 2 (bloco 3): a base da Produção não guarda as tabelas de cadastro; a de versão 1 abre só para consulta */
 const BASE_FILE = 'oee-vacutainer-base.json';
 const BACKUP_DIR = '00. Backups';
@@ -9297,6 +9388,7 @@ const ProdCad = (() => {
     nn('servCaixaQtd', v => { S.serverBoxQty = v; }); nn('servLacunaMin', v => { S.serverGapMin = v; }); nn('servTolHora', v => { S.serverHourTol = v; });
     nn('servTrocaMaxMin', v => { S.serverSetupMax = v; }); nn('horaExtraMaxMin', v => { S.horaExtraMax = v; });
     if (Array.isArray(PP.diasPlano) &amp;&amp; PP.diasPlano.length) S.planWorkdays = PP.diasPlano.map(Number).filter(n => n >= 0 &amp;&amp; n <= 6);
+    if (PP.abonoPadrao &amp;&amp; typeof PP.abonoPadrao === 'object' &amp;&amp; !Array.isArray(PP.abonoPadrao)) { const ab = {}; for (const [d, x] of Object.entries(PP.abonoPadrao)) if (/^[0-6]$/.test(d) &amp;&amp; x &amp;&amp; +x.min > 0) ab[d] = { min: +x.min, motivo: String(x.motivo || '').trim() }; S.abDefault = ab; }
     if (Array.isArray(PP.qnProblemas)) S.qnProblemas = PP.qnProblemas.map(x => String(x).trim()).filter(Boolean);
     if (+PP.unidadeLancamento > 0) S.entryUnit = +PP.unidadeLancamento;
     if (PP.rotuloUnidade) S.unitLabel = String(PP.rotuloUnidade);
@@ -13866,7 +13958,7 @@ Cfg.qn = {
 };
 /* ---------- parâmetros ---------- */
 /* parâmetros que a Administração define (ProdCad os deriva do cadastro); aqui só leitura */
-const PARAM_ADM = ['unitName', 'sector', 'timezone', 'calendar', 'users', 'perfMode', 'speedLossPremise', 'coverageMin', 'divergenceMax', 'tailMergeMax', 'pendDaysBack', 'openHoursAlert', 'serverBoxQty', 'serverGapMin', 'serverHourTol', 'serverSetupMax', 'horaExtraMax', 'planWorkdays', 'qnProblemas', 'longStopMin', 'semaphore', 'abMotivos', 'offMotivosProg', 'offMotivosNP', 'entryUnit', 'unitLabel', 'roundingUnit', 'roundingVig', 'continuityMin', 'foraTurnoDesde'];
+const PARAM_ADM = ['abDefault', 'unitName', 'sector', 'timezone', 'calendar', 'users', 'perfMode', 'speedLossPremise', 'coverageMin', 'divergenceMax', 'tailMergeMax', 'pendDaysBack', 'openHoursAlert', 'serverBoxQty', 'serverGapMin', 'serverHourTol', 'serverSetupMax', 'horaExtraMax', 'planWorkdays', 'qnProblemas', 'longStopMin', 'semaphore', 'abMotivos', 'offMotivosProg', 'offMotivosNP', 'entryUnit', 'unitLabel', 'roundingUnit', 'roundingVig', 'continuityMin', 'foraTurnoDesde'];
 function viaAdmHtml() {
   const s = db().settings, pc = x => U.pct(x, 0), rv = (s.roundingVig || []).map(v => v.de + ' → ' + U.fmt(v.valor, 0)).join(' · ');
   const L = [['Unidade de lançamento (peças)', U.fmt(s.entryUnit, 0)], ['Rótulo da unidade', s.unitLabel], ['Arredondar metas para cima em múltiplos de (peças)', rv || U.fmt(s.roundingUnit, 0)],
@@ -14808,11 +14900,9 @@ function abonoCfgHtml() {
   const st = db().settings, D = st.abDefault || {}, M = st.abMotivos || [];
   const dn = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'];
   return `<section class="card section"><header><h3>Abonos ${ib('breaks')}</h3></header>
-    <p class="q">Abono padrão por dia da semana: já vem preenchido em cada turno daquele dia (só o tempo) e pode ser alterado no lançamento. Por padrão não há abono.</p>
-    <div class="tw"><table><thead><tr><th>Dia</th><th class="n">Abono padrão por turno (min)</th><th>Motivo</th></tr></thead><tbody>${[1, 2, 3, 4, 5, 6, 0].map(i => { const x = D[i] || {}; return `<tr><td>${dn[i]}</td><td class="n"><input type="number" min="0" step="1" data-abd="${i}" value="${+x.min > 0 ? x.min : ''}" placeholder="0" style="width:90px" aria-label="Abono de ${dn[i]}"></td><td><input type="text" data-abm="${i}" list="abMots" value="${esc(x.motivo || '')}" maxlength="60" aria-label="Motivo de ${dn[i]}"></td></tr>`; }).join('')}</tbody></table></div>
-    <datalist id="abMots">${M.map(m => `<option value="${esc(m)}">`).join('')}</datalist>
-    <p class="small muted section">Motivos de abono (definidos na Administração): ${esc(M.join(' · ')) || 'nenhum cadastrado'}</p>
-    <div class="row" style="margin-top:8px"><button class="btn primary" id="abSave">Salvar abonos</button><span class="small muted">Vale para os dias criados a partir de agora.</span></div></section>`;
+    <p class="q">Abono padrão por dia da semana: já vem preenchido em cada turno daquele dia (só o tempo) e pode ser alterado no lançamento, que continua aqui. Os tipos de abono e o padrão por dia são definidos na Administração (Parâmetros › Produção); aqui é somente leitura.</p>
+    <div class="tw"><table><thead><tr><th>Dia</th><th class="n">Abono padrão por turno (min)</th><th>Tipo</th></tr></thead><tbody>${[1, 2, 3, 4, 5, 6, 0].map(i => { const x = D[i] || {}; return `<tr><td>${dn[i]}</td><td class="n">${+x.min > 0 ? x.min : '—'}</td><td>${esc(x.motivo || '')}</td></tr>`; }).join('')}</tbody></table></div>
+    <p class="small muted section">Tipos de abono: ${esc(M.join(' · ')) || 'nenhum cadastrado'}</p></section>`;
 }
 function offMotCfgHtml() {
   const st = db().settings;
@@ -14821,13 +14911,7 @@ function offMotCfgHtml() {
     <div><b>Não programado</b> (conta como parada no OEE)<ul>${(st.offMotivosNP || []).map(m => `<li>${esc(m)}</li>`).join('') || '<li class="muted">nenhum cadastrado</li>'}</ul></div></div></section>`;
 }
 function bindOffMotCfg(root) { /* somente leitura: os motivos vêm do cadastro */ }
-function bindAbonoCfg(root) {
-  const b = root.querySelector('#abSave'); if (!b) return;
-  b.onclick = () => run(() => {
-    const D = {}; root.querySelectorAll('[data-abd]').forEach(i => { const v = +i.value; if (v > 0) D[i.dataset.abd] = { min: v, motivo: root.querySelector(`[data-abm="${i.dataset.abd}"]`).value.trim() }; });
-    Actions.setSettings({ abDefault: D });
-  }, 'Abonos salvos.');
-}
+function bindAbonoCfg(root) { /* somente leitura: o abono padrão vem do cadastro */ }
 
 /* ---------- abas: visíveis, ordem, destaque, aba inicial (por pessoa) e estado (para todos) ---------- */
 const TAB_STATES = [['normal', 'Normal'], ['atualização', 'Em atualização'], ['construção', 'Em construção'], ['oculta', 'Oculta para todos']];
@@ -55225,9 +55309,9 @@ body.vac-porta{overflow:hidden}
     {
       "id": "oee",
       "path": "Plataforma.html#motor/oee",
-      "version": "2.6.48",
-      "sha256": "0da917bf15ea66d81d4a6cb22c3809dcbc75ffd1f685d9087b81b9245f9494e0",
-      "bytes": 2381518
+      "version": "2.6.49",
+      "sha256": "4fe35c85e3c862cc605f4ae1203c418090c01c3062a100f2e5a86dfd688d7708",
+      "bytes": 2381083
     },
     {
       "id": "perdas",
@@ -55281,15 +55365,15 @@ body.vac-porta{overflow:hidden}
     {
       "id": "portal",
       "path": "Plataforma.html#motor/portal",
-      "version": "1.9.86",
-      "sha256": "f7ee38cf936c9367657f3f063ec405160408db1f1096e741a7094212e5a39a40",
-      "bytes": 1303154
+      "version": "1.9.87",
+      "sha256": "dce9ebbfcdb095568523e31aa8f42f2e7a08422581aa9fd132a246c4d215f7b2",
+      "bytes": 1318593
     }
   ],
   "limitations": [
     "Projetos e conteúdo técnico OSM/MES/AM/TPM mantêm os limites documentados nas fontes."
   ],
-  "enginesSha256": "1fb29ed928dacfb24af7e3d58143f4234ff1d3915ee8fa9a2dc4af0a00bc7743",
+  "enginesSha256": "f56f418603208fb70b0756da37510eedcc695f1e5385151b2657e06e2056d728",
   "originRevision": "ffc9ee8",
   "sourceMode": "single-html",
   "originEnginesSha256": "a87a64ad0c328f70e102b2ae888790a9b5d5a9bd05778652a7ce7cae140e40d2"
@@ -55359,7 +55443,7 @@ summary{cursor:pointer;font-weight:600;color:var(--navy)}
 'use strict';
 /* ---------- referência (atualizar quando a plataforma mudar de versão) ---------- */
 // Iguais às do pacote da plataforma (nova-plataforma/src/generated/manifest.json); o teste ferramenta-verificar confere.
-const VERSOES = {"oee":"2.6.48","perdas":"1.12.21","gel":"2.51","paradas":"1.2.22","equip":"1.0.22","inic":"1.1.17","linha":"1.7.1","projetos":"0.1.16","portal":"1.9.86"};
+const VERSOES = {"oee":"2.6.49","perdas":"1.12.21","gel":"2.51","paradas":"1.2.22","equip":"1.0.22","inic":"1.1.17","linha":"1.7.1","projetos":"0.1.16","portal":"1.9.87"};
 const BASES = [
  { arq: 'vacutainer-cadastros.json', mod: 'portal', nome: 'Cadastro geral (Portal)', obrig: true, cadastro: true, bk: 'Cadastros' },
  { arq: 'portal-base.json', mod: 'portal', nome: 'Portal', obrig: true, bk: 'Portal' },
@@ -55950,7 +56034,7 @@ import { Icon, Button, Badge, Empty, Modal, BarChart, BrandLogo, CommandMenu } f
 import { ModuleFrame } from "vac:modulo/components/ModuleFrame";
 import manifest from "vac:recurso/manifesto";
 import { ModuleTabs } from "vac:modulo/components/ModuleTabs";
-const VERSION = "1.8.67";
+const VERSION = "1.8.68";
 /* Navegação 1.3.0 (16/11/2026): Visão da linha, Relatórios e Importações têm abas; as que mostram uma tela do
    Portal (motor da Administração) trazem o 3º campo com a aba dele. Administração fica só com cadastros e configuração. */
 const SHELL_TABS = {
