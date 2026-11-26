@@ -1,6 +1,6 @@
 # Roteiro de homologação · pasta de rede e duas estações (26/11/2026)
 
-Objetivo: provar em rede real o que a análise comum só provou por simulação (casos C10 a C13 e o resumo em [analise-comum](../Relatórios%20Atualizações/2026-11-26-analise-comum.md)). Todos os testes usam uma **pasta de teste** com a base de demonstração; nunca a pasta de produção.
+Objetivo: provar em rede real o que a análise comum só provou por simulação (casos C10 a C13 e o resumo em `Relatórios Atualizações/2026-11-26-analise-comum.md`). Todos os testes usam uma **pasta de teste** com a base de demonstração; nunca a pasta de produção.
 
 ## Preparação
 1. Crie na rede uma pasta nova (ex.: `\\servidor\vacutainer-teste`) e, nela, abra a plataforma pela primeira vez (roteiro [PRIMEIRO-USO](PRIMEIRO-USO.md)). Cadastre duas pessoas de teste (ID A e ID B) com perfil que grave em todos os módulos.
