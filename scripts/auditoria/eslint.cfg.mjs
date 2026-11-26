@@ -1,0 +1,3 @@
+import globals from '/home/user/vacutainer/node_modules/globals/index.js';
+export default [{ files: ['**/*.js'], languageOptions: { ecmaVersion: 2022, sourceType: 'script', globals: { ...globals.browser, ...globals.es2021, XLSX: 'readonly', jspdf: 'readonly', React: 'readonly', ReactDOM: 'readonly' } },
+  rules: { 'no-undef': 'error', 'no-unused-vars': ['warn', { args: 'none', caughtErrors: 'none' }], 'no-dupe-keys': 'error', 'no-redeclare': 'error', 'no-unreachable': 'error', 'no-self-assign': 'error', 'no-self-compare': 'warn', 'no-dupe-else-if': 'error', 'no-duplicate-case': 'error', 'no-constant-condition': ['warn', { checkLoops: false }], 'no-loss-of-precision': 'error', 'no-unsafe-finally': 'error', 'no-useless-escape': 'warn', 'eqeqeq': ['warn', 'smart'] } }];
