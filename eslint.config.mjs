@@ -65,5 +65,6 @@ export default defineConfig([
   globalIgnores([
     ".claude/**", "node_modules/**", ".test-cache/**", "testes/saida/**",
     "package-lock.json", "Plataforma.html",
+    "scripts/auditoria/**",   // scripts de uma auditoria pontual (26/11/2026), lidos por quem reproduz; não fazem parte do produto
   ]),
 ]);
