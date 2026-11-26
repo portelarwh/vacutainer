@@ -903,6 +903,33 @@ const vacBackupRegistro = (() => {
   return { limpar, PREFIXO, registrar, ler, linhas };
 })();
 
+/* P4 (análise comum 26/11/2026): o que sai da lista ativa da trilha de auditoria vai para um arquivo mensal (JSON por linha) em 00. Backups/<módulo>/,
+   guardado por 12 meses. Melhor esforço: falha aqui não impede a gravação da base (só registra no console). */
+const vacHistoricoAuditoria = (() => {
+  const RX = /^historico-auditoria_(\d{4}-\d{2})\.jsonl$/, mesDe = e => String((e &amp;&amp; (e.t || e.em)) || '').slice(0, 7) || 'sem-data';
+  let fila = Promise.resolve();
+  function arquivar(pasta, entradas) {   /* leitura + acréscimo + escrita do mesmo mês não podem se sobrepor: fila nesta página e Web Lock entre abas (P2 do Codex) */
+    const p = fila.then(() => (typeof navigator !== 'undefined' &amp;&amp; navigator.locks &amp;&amp; navigator.locks.request ? navigator.locks.request('vac.historico-auditoria', () => gravar(pasta, entradas)) : gravar(pasta, entradas)));
+    fila = p.catch(() => { }); return p;
+  }
+  async function gravar(pasta, entradas) {
+    if (!entradas || !entradas.length) return false;
+    try {
+      const d = typeof pasta === 'function' ? await pasta() : pasta; if (!d) return false;
+      const porMes = new Map(); for (const e of entradas) { const m = mesDe(e); if (!porMes.has(m)) porMes.set(m, []); porMes.get(m).push(e); }
+      for (const [mes, L] of porMes) {
+        const nome = 'historico-auditoria_' + mes + '.jsonl'; let atual = '';
+        try { atual = await (await (await d.getFileHandle(nome)).getFile()).text(); } catch (e) { if (!vacNaoAchou(e)) throw e; }
+        const w = await (await d.getFileHandle(nome, { create: true })).createWritable(); await w.write(atual + L.map(x => JSON.stringify(x)).join('\n') + '\n'); await w.close();
+      }
+      const h = typeof vacHoje === 'function' ? vacHoje() : new Date().toISOString().slice(0, 10), lim = (+h.slice(0, 4) - 1) + '-' + h.slice(5, 7);
+      for await (const [n] of d.entries()) { const m = RX.exec(n); if (m &amp;&amp; m[1] < lim) { try { await d.removeEntry(n); } catch (e) { } } }
+      return true;
+    } catch (e) { console.warn('histórico da auditoria', e); return false; }
+  }
+  return { arquivar, RX };
+})();
+
 function vacRaiz(raiz) {
   if (!raiz || raiz.__vacRaiz) return raiz;
   let sub = null;
@@ -1777,12 +1804,12 @@ const vacFicha = (() => {
   const diaOk = c => /^\d{4}-\d{2}-\d{2}$/.test(tx(c)) &amp;&amp; !isNaN(Date.parse(tx(c) + 'T12:00:00Z'));
   const diaMais = (d, n) => new Date(Date.parse(d + 'T12:00:00Z') + n * 864e5).toISOString().slice(0, 10);
   const pc = (v, d = 1) => v == null || !Number.isFinite(+v) ? '—' : nf(100 * v, d) + '%';
-  function diasComDado() { const P = D('oee') || {}, st = new Set(); for (const x of P.porDia || []) if (x.dia) st.add(x.dia); for (const e of (D('paradas') || {}).todos || []) if (e.dia) st.add(e.dia); for (const g of (D('gel') || {}).porDiaGel || []) if (g.dia) st.add(g.dia); return [...st].sort(); }
+  function diasComDado() { const P = D('oee') || {}, st = new Set(); for (const x of P.porDia || []) if (x.dia &amp;&amp; !x.semLancamento) st.add(x.dia); for (const e of (D('paradas') || {}).todos || []) if (e.dia) st.add(e.dia); for (const g of (D('gel') || {}).porDiaGel || []) if (g.dia) st.add(g.dia); return [...st].sort(); }
   function htmlDia(cod) {
     const dia = tx(cod); if (!diaOk(dia)) return { cab: '<div class="vf-t1"><span class="vf-tp">Dia</span><h2>—</h2></div>', corpo: '<p class="vf-aviso">Data inválida.</p>' };
     const det = modo() === 'det', P = D('oee') || {}, C = vacCad();
     const eqNome = c => { const e = C &amp;&amp; (C.equipamentos || []).find(x => tx(x.codigo) === tx(c)); return e &amp;&amp; e.nome ? tx(c) + ' · ' + e.nome : tx(c); };
-    const pd = (P.porDia || []).find(x => x.dia === dia), tur = (P.porDiaTurno || []).filter(x => x.dia === dia), cats = (P.porDiaCatalogo || []).filter(x => x.dia === dia);
+    const pd0 = (P.porDia || []).find(x => x.dia === dia), pd = pd0 &amp;&amp; !pd0.semLancamento ? pd0 : null, tur = (P.porDiaTurno || []).filter(x => x.dia === dia), cats = (P.porDiaCatalogo || []).filter(x => x.dia === dia);
     const T = (P.trechos || []).filter(t => tx(t.ini).slice(0, 10) <= dia &amp;&amp; tx(t.fim).slice(0, 10) >= dia), tro = (P.trocas || []).filter(x => tx(x.em).slice(0, 10) === dia);
     const cal = (P.calendario || []).find(x => (x.dia || x.data || x.codigo) === dia);
     const par = ((D('paradas') || {}).todos || []).filter(e => e.dia === dia), usados = new Set(par.map(e => e.eventoId).filter(Boolean));
@@ -4232,14 +4259,16 @@ const Store={B:null,mode:'local',dir:null,mod:0,pending:false,pendFrom:0,err:'',
    else if(r.data.rev!==this.B.rev){this.B=this.fix(r.data);this.mod=r.mod;toast('A base foi alterada por outra pessoa; sua alteração foi aplicada sobre a versão mais nova.')}}}
   if(this.formato)throw new Error(this.formato);
   const aplicar=()=>{const b0=this.B.rev||0;mut(this.B);this.B.rev=b0+1;this.B.updatedAt=nowISO();this.B.updatedBy=user();this.B.appVersion=PAGE.versao;
-   this.B.audit.push({t:this.B.updatedAt,u:user(),uid:userId(),a:label,d:det});if(this.B.audit.length>3000)this.B.audit.splice(0,this.B.audit.length-3000);
+   this.B.audit.push({t:this.B.updatedAt,u:user(),uid:userId(),a:label,d:det});cortadas=this.B.audit.length>3000?this.B.audit.splice(0,this.B.audit.length-3000):[];
    try{if(PAGE.exports)this.B.exports=PAGE.exports(this.B)}catch(e){console.warn('exports',e)}return b0};
+  let cortadas=[];
   let before=aplicar();
   /* C12 (análise comum): outra estação pode gravar entre a releitura e a gravação. Relê logo antes de gravar; se a base mudou, adota a nova e reaplica esta alteração sobre ela (até 3 vezes). Sem pendência local. */
   if(this.mode==='pasta'&amp;&amp;lida&amp;&amp;!this.pending){for(let k=0;k<3;k++){let chk=null;try{chk=await this.readRemote()}catch(e){chk=null}if(!chk||(chk.data.rev===lida.data.rev&amp;&amp;chk.mod===lida.mod))break;lida=chk;this.B=this.fix(chk.data);this.mod=chk.mod;before=aplicar()}}
   if(this.mode==='pasta'&amp;&amp;!lida){this.err='Não consegui ler a base da pasta antes de gravar';if(!this.pending){this.pending=true;this.pendFrom=before}toast('Não consegui ler a base da pasta. A alteração ficou neste computador e será gravada depois de conferir a base da pasta.',6000,true)}
   else if(this.mode==='pasta'){try{await this.writeRemote();this.err='';this.pending=false}catch(e){this.err=String(e.message||e);if(!this.pending){this.pending=true;this.pendFrom=before}toast('Não consegui gravar na pasta. A alteração ficou neste computador e será gravada quando a pasta responder.',6000,true)}}
   else if(!this.pending){this.pending=true;this.pendFrom=before}
+  if(cortadas.length&amp;&amp;this.mode==='pasta'&amp;&amp;!this.pending)vacHistoricoAuditoria.arquivar(()=>this.sub(PAGE.backupDir),cortadas);   /* P4: o que saiu da lista ativa fica no arquivo histórico (12 meses) */
   await this.idb.set('base',this.B);await this.idb.set('pending',{p:this.pending,from:this.pendFrom,aba:vacFila('portal').aba});App.afterChange()},
  /* 1.8.3 · alteração pendente (gravação que falhou) só vai para a pasta se a base de lá não mudou desde então;
     se mudou, a cópia local é baixada (_NAO-GRAVADO) e a página passa a usar a base da pasta: nunca grava por cima de outra pessoa */
@@ -4456,7 +4485,7 @@ function wireConfigComum(){$('#cPasta').onclick=async()=>{if(await Store.pick())
         entrar pelo ID (autocadastro como Consulta); página inicial por perfil (1x por sessão); vigência gravada não se edita (desativar com motivo); painel de vigências; semáforo central; saída do modo de teste.
    1.1.2: aviso da carga diz qual base foi lida.  1.5: páginas Paradas, Máquinas, Manutenção e Projetos na lista (aparecem quando o HTML chega na pasta).  1.4: lista técnica pela CS12 multinível (itens = nível 1, estrutura = níveis 2+); CS03 sai.  1.3: cabeçalho comum (vac-cabecalho v2: barra do sistema + página + abas), busca Ctrl K, acabamento V1.90, Versões com cabeçalho e último backup.  1.2: Configuração › Versões das páginas (versão e data de cada HTML, gravação das bases, cópias repetidas, histórico).
    ===================================================================== */
-const PAGE={id:'portal',titulo:"Administração · Linha Vacutainer",tituloCurto:"Administração",subtitulo:'Sistemas de gestão da linha',versao:'1.9.93',baseFile:'portal-base.json',idb:'vac-portal',backupDir:'00. Backups/Portal',
+const PAGE={id:'portal',titulo:"Administração · Linha Vacutainer",tituloCurto:"Administração",subtitulo:'Sistemas de gestão da linha',versao:'1.9.94',baseFile:'portal-base.json',idb:'vac-portal',backupDir:'00. Backups/Portal',
  vazio:()=>({schema:'portal-base',schemaVersion:1,rev:0,config:{modulos:{},avisoDias:30,notas:{}},audit:[]}),
  /* itens do Portal para a busca Ctrl K: cadastro, pendências e telas */
  busca:q=>{const R=[],D=Cad.D;if(D)for(const t of CAD_ORD){for(const it of D[t]||[]){const c=String(it[kOf(t)]),nm=t==='bom'?((cadItem('catalogos',it.catalogo)||{}).nome||''):it.nome||'';if(norm(c+' '+nm).includes(q))R.push({tipo:CAD_T[t].um,txt:c+(nm?' · '+nm:''),sub:'Cadastros'+(cadAtivo(t,it,D)?'':' · inativo'),href:'#cadastros/'+t+'/'+encodeURIComponent(c)});if(R.length>30)break}}
@@ -4525,7 +4554,7 @@ const pendDoModulo=(ex,mod)=>{const hoje=todayISO();return(ex&amp;&amp;Array.isA
 /* ----- OEE: números, pendências e série vêm do exports do OEE (o motor dele); sem exports soma a produção lançada (dados brutos) ----- */
 function adaptOEE(d){const ex=d.exports;
  if(exAtual(ex,'oee')&amp;&amp;Array.isArray(ex.porMes)&amp;&amp;Array.isArray(ex.kpis)){const hoje=todayISO(),mes=curM(),m=ex.porMes.find(p=>p.mes===mes)||null;
-  const serie=(ex.porDia||[]).filter(x=>x.dia>=addDays(hoje,-20)&amp;&amp;x.dia<=hoje).sort((a,b)=>a.dia<b.dia?-1:1).map(x=>({label:x.dia.slice(8,10)+'/'+x.dia.slice(5,7),value:+x.boa||0,key:x.dia}));
+  const serie=(ex.porDia||[]).filter(x=>!x.semLancamento&amp;&amp;x.dia>=addDays(hoje,-20)&amp;&amp;x.dia<=hoje).sort((a,b)=>a.dia<b.dia?-1:1).map(x=>({label:x.dia.slice(8,10)+'/'+x.dia.slice(5,7),value:+x.boa||0,key:x.dia}));
   const emProd=(ex.ordens||[]).filter(o=>o.mes===mes&amp;&amp;o.inicioReal&amp;&amp;!o.fimReal).map(o=>`${o.ordem} · lote ${o.lote||'–'}`);
   return{kpis:ex.kpis,pend:pendDoModulo(ex,'oee'),serie,serieTit:'Produção boa por dia · últimos 21 dias (tubos)',extra:{emProd,atual:ex.atual||null},oeePct:m?m.oee:null}}
  return adaptOEEBruto(d)}
@@ -4638,7 +4667,7 @@ function kpisPer(id){const x=MOD.data[id],ex=x&amp;&amp;x.ex;if(!ex)return null;
  const serieDias=(L,val)=>{const m=new Map();L.forEach(r=>m.set(r.dia,(m.get(r.dia)||0)+(+val(r)||0)));const ds=[...m.keys()].sort();return ds.length>1&amp;&amp;ds.length<=62?ds.map(d=>({label:d.slice(8,10)+'/'+d.slice(5,7),value:m.get(d),key:d})):[]};
  if(id==='oee'){if(Per.sel==='turno'){const L=(ex.porDiaTurno||[]).filter(t=>t.dia===a&amp;&amp;t.turno===Per.turno);if(!L.length)return{kpis:[['Turno '+(Per.turno||''),'–',fmtD(a),'']],serie:[],nota:'sem dado do turno (a Produção publica 60 dias por turno)'};const t=L[0],oee=t.cap?t.boa/t.cap:t.oee,meta=t.cap&amp;&amp;t.metaDec?t.metaDec/t.cap:t.oeeMeta;
    return{kpis:[['OEE',perPct(oee),meta!=null?'meta '+perPct(meta):'',oee!=null&amp;&amp;meta!=null?(oee>=meta?'good':'bad'):''],['Produção boa',fmtN(t.boa),t.metaOp?'meta '+fmtN(t.metaOp):'',t.metaOp?(t.boa>=t.metaOp?'good':'bad'):''],['Scrap',fmtN(t.scrap),'peças','']],serie:[]}}
-  const L=(ex.porDia||[]).filter(r=>dentro(r.dia)),cob=(ex.porDia||[]).reduce((m,r)=>!m||r.dia<m?r.dia:m,null);
+  const L=(ex.porDia||[]).filter(r=>dentro(r.dia)&amp;&amp;!r.semLancamento),cob=(ex.porDia||[]).reduce((m,r)=>!m||r.dia<m?r.dia:m,null);
   if(!L.length)return{kpis:[['OEE','–','sem dia lançado no período',''],['Produção boa','–','','']],serie:[],nota:cob&amp;&amp;a<cob?'a Produção publica os últimos 120 dias':''};
   const s=k=>L.reduce((t,r)=>t+(+r[k]||0),0),cap=s('cap'),boa=s('boa'),metaOp=s('metaOp'),scrap=s('scrap');
   const oee=cap>0?boa/cap:(boa>0?L.reduce((t,r)=>t+(+r.oee||0)*(+r.boa||0),0)/boa:null),meta=cap>0&amp;&amp;s('metaDec')>0?s('metaDec')/cap:(boa>0?L.reduce((t,r)=>t+(+r.oeeMeta||0)*(+r.boa||0),0)/boa:null);
@@ -5330,6 +5359,12 @@ const CAD_SECS=['inicio','gel','matriz','importar','auditoria','backups','segura
    curtas (macro, sem detalhe técnico). REGRA: toda versão nova da plataforma ganha uma entrada aqui, a mais recente primeiro
    (AGENTS.md e CLAUDE.md). Tipos: nova (função nova), melhoria (algo que já existia ficou melhor), correcao (erro corrigido). */
 const NOVIDADES=[
+ {v:'1.8.76',d:'2026-11-26',itens:[
+  ['correcao','Produção em branco não vira mais zero no resumo publicado: o dia sai como "sem lançamento", fora do OEE e dos consolidados; dia parcial informa quantos intervalos faltam.'],
+  ['correcao','Intervalo com início igual ou depois do fim aparece como erro no cálculo do dia (antes era ignorado em silêncio).'],
+  ['melhoria','Relatório do turno avisa quando a Performance passa de 100% (confira o PPH do catálogo, os minutos e a produção).'],
+  ['novo','Histórico da trilha de auditoria: o que sai da lista ativa do Waste e da Administração vai para um arquivo mensal em 00. Backups, guardado por 12 meses.'],
+  ['novo','Roteiro de homologação em pasta de rede com duas estações (docs/HOMOLOGACAO-REDE.md).']]},
  {v:'1.8.75',d:'2026-11-26',itens:[
   ['correcao','Gestão de Gel: se a leitura da pasta for negada por um instante, a plataforma não grava por cima do que outra estação gravou; a alteração fica na fila e entra depois.'],
   ['correcao','Gel, Waste e Administração releem a base logo antes de gravar e mantêm o que outra estação gravou nesse intervalo.'],
@@ -8832,6 +8867,7 @@ const Engine = (() => {
     // turno "sem produção" programado não entra em meta, capacidade nem OEE; o NÃO programado entra, com o tempo todo como parada
     const npOff = ps => ps.off &amp;&amp; ps.offType === 'np';
     for (const ps of shifts) if (!ps.off || npOff(ps)) for (const iv of ps.intervals.filter(i => !i.deleted)) flat.push({ iv, ps });
+    for (const f of flat) if (!(f.iv.end > f.iv.start)) M('erro', `${f.ps.snap.name}: o intervalo ${U.range(f.iv.start, f.iv.end)} tem início igual ou depois do fim e não conta no tempo. Corrija o horário.`, { iv: f.iv.id });   /* C07 (análise comum): antes era ignorado em silêncio */
     flat.sort((a, b) => a.iv.start - b.iv.start || a.iv.end - b.iv.end);
     // catálogo efetivo: herda do intervalo anterior (atravessa a troca de turno) ou do catálogo inicial do turno
     let cur = null; const seen = new Set();
@@ -12034,7 +12070,11 @@ const Exports = (() => {
     const paradasEventos = [], pe90 = U.addDays(today, -89), pePorDia = [];   /* 2.4.68 */
     for (const d of days.filter(x => x.date >= d120 &amp;&amp; x.date <= today).sort((a, b) => a.date.localeCompare(b.date))) {
       const res = Engine.computeDay(db, d), r = res.r;
-      porDia.push({ dia: d.date, ...(res.modoDia ? { lancadoPorDia: true } : {}), oee: r4(r.oee), oeeMeta: r4(r.oeeTarget), boa: n0(r.good), scrap: n0(r.scrap), metaOp: n0(r.metaOp), cap: n0(r.cap), metaDec: n0(r.metaDec), status: d.status || 'não iniciado', origem: d.origin === 'importação' ? 'importado' : 'lançado' });
+      /* C01/P2 (análise comum 26/11/2026): produção em branco é AUSÊNCIA, não zero (contrato 1). Dia sem nenhum intervalo lançado sai com semLancamento e sem boa/OEE/capacidade/meta (fora dos consolidados);
+         dia parcial segue com o lançado e informa quantos intervalos faltam em `ausentes`. */
+      const semLanc = !res.modoDia &amp;&amp; res.flat.length > 0 &amp;&amp; res.flat.every(f => f.good == null) &amp;&amp; !(r.good > 0), faltam = res.agg ? res.agg.goodMissing || 0 : 0;
+      porDia.push({ dia: d.date, ...(res.modoDia ? { lancadoPorDia: true } : {}), ...(semLanc ? { semLancamento: true } : {}), ...(!semLanc &amp;&amp; faltam > 0 ? { ausentes: faltam } : {}),
+        oee: semLanc ? null : r4(r.oee), oeeMeta: r4(r.oeeTarget), boa: semLanc ? null : n0(r.good), scrap: n0(r.scrap), metaOp: semLanc ? null : n0(r.metaOp), cap: semLanc ? null : n0(r.cap), metaDec: semLanc ? null : n0(r.metaDec), status: d.status || 'não iniciado', origem: d.origin === 'importação' ? 'importado' : 'lançado' });
       for (const sr of res.shifts) tempoProgramadoTurnos.push({
         dia: d.date, turno: sr.ps.snap.code || sr.ps.snap.name,
         minutosProgramados: r4(Math.max(0, (sr.porDia ? sr.aggTempo : sr.r).netMin)),   /* LANC-03 · no modo Dia o tempo do turno continua conhecido */
@@ -16552,7 +16592,7 @@ function rpShiftModel(R) {
   const kpis = [
     { l: 'Produção boa', v: fq(r.good), u, s: `meta ${fq(r.metaOp)} ${semB(r.semAttain, U.pct(r.attain, 0))}` },
     { l: 'OEE', v: U.pct(r.oee), s: `meta ${U.pct(r.oeeTarget)} ${semB(r.semOee, '')}` },
-    { l: 'Disponibilidade', v: U.pct(r.D) }, { l: 'Performance', v: U.pct(r.P) }, { l: 'Qualidade', v: U.pct(r.Q, 2) },
+    { l: 'Disponibilidade', v: U.pct(r.D) }, { l: 'Performance', v: U.pct(r.P), s: r.perfAlert ? 'acima de 100%: confira o PPH do catálogo, os minutos e a produção (divergência de capacidade)' : undefined }, { l: 'Qualidade', v: U.pct(r.Q, 2) },
     { l: 'Scrap', v: ps.scrap == null &amp;&amp; day.scrapMode !== 'day' ? '—' : U.fmt(r.scrap), u: 'un', s: ps.scrap == null &amp;&amp; day.scrapMode !== 'day' ? 'não informado' : U.pct(r.scrapPct, 2) },
     { l: 'Paradas', v: U.fmt(r.apontMin), u: 'min', s: `${stops.length} registro(s)` }
   ];
@@ -23451,8 +23491,9 @@ async function commitBase(label,mut,det=''){
    if(lida){const r=lida;if(ST.pending){if(!semMudanca(r.data,r.mod))await conflitoPendente(r.data,r.mod)}
    else if(r.data.rev!==B.rev){B=fixBase(r.data);ST.mod=r.mod;toast('A base foi alterada por outra pessoa; sua alteração foi aplicada sobre a versão mais nova.')}}}
  const aplicar=()=>{const b0=B.rev;mut(B);B.rev=(B.rev||0)+1;B.updatedAt=nowISO();B.updatedBy=user();B.appVersion=APP_VER;
-  B.audit.push({t:B.updatedAt,u:user(),uid:userId(),a:label,d:det});if(B.audit.length>3000)B.audit.splice(0,B.audit.length-3000);
+  B.audit.push({t:B.updatedAt,u:user(),uid:userId(),a:label,d:det});cortadas=B.audit.length>3000?B.audit.splice(0,B.audit.length-3000):[];
   B.exports=buildExports();return b0};
+ let cortadas=[];
  let before=aplicar();
  /* C12 (análise comum): relê logo antes de gravar; se outra estação gravou nesse intervalo, adota a base nova e reaplica esta alteração (até 3 vezes). Sem pendência local. */
  if(ST.mode==='pasta'&amp;&amp;lida&amp;&amp;!ST.pending){for(let k=0;k<3;k++){let chk=null;try{chk=await readRemote()}catch(e){chk=null}if(!chk||(chk.data.rev===lida.data.rev&amp;&amp;chk.mod===lida.mod))break;lida=chk;B=fixBase(chk.data);ST.mod=chk.mod;before=aplicar()}}
@@ -23460,6 +23501,7 @@ async function commitBase(label,mut,det=''){
  if(ST.mode==='pasta'&amp;&amp;!lida){ST.err='Não consegui ler a base da pasta antes de gravar';if(!ST.pending){ST.pending=true;ST.pendFrom=before}toast('Não consegui ler a base da pasta. A alteração ficou neste computador e será gravada depois de conferir a base da pasta.',6000)}
  else if(ST.mode==='pasta'){try{await writeRemote();ST.err='';ST.pending=false}catch(e){console.warn(e);ST.err=String(e.message||e);if(!ST.pending){ST.pending=true;ST.pendFrom=before}toast('Não consegui gravar na pasta. A alteração ficou neste computador e será gravada quando a pasta responder.',6000)}}
  else if(!ST.pending){ST.pending=true;ST.pendFrom=before}
+ if(cortadas.length&amp;&amp;ST.mode==='pasta'&amp;&amp;!ST.pending)vacHistoricoAuditoria.arquivar(()=>subDir(PAGE.backupDir),cortadas);   /* P4: arquivo histórico (12 meses) */
  await IDB.set('base',B);await IDB.set('pending',{p:ST.pending,from:ST.pendFrom,aba:vacFila('perdas').aba});
  renderAll();
 }
@@ -55469,70 +55511,70 @@ body.vac-porta{overflow:hidden}
       "id": "oee",
       "path": "Plataforma.html#motor/oee",
       "version": "2.6.50",
-      "sha256": "94c419b403c136b5e78ca6a121629dbae9a443d89eaa15a3cdc308e2cc2cc503",
-      "bytes": 2388550
+      "sha256": "95752046327cc16055c4c7a9cf626bbdeb03667a0cfe836928948160db7fdb38",
+      "bytes": 2391821
     },
     {
       "id": "perdas",
       "path": "Plataforma.html#motor/perdas",
       "version": "1.12.21",
-      "sha256": "ea0224afe76ba2e20974efb2603dc94a56d09ea2cf56d41287be3965d2736383",
-      "bytes": 981539
+      "sha256": "82be4e7041911b1e990b7ab894f6364a4a5c8b7abfaa2f175616dbcbab1e0c59",
+      "bytes": 983909
     },
     {
       "id": "gel",
       "path": "Plataforma.html#motor/gel",
       "version": "2.52",
-      "sha256": "96a552001216c2bc460e02f44b0eba07fb210e8a65a56d2446e35b2e51175520",
-      "bytes": 1625412
+      "sha256": "0b2f9ec7a3999f61d3fa8be69ed1b58625b25b53c5e0e019a76e4ee1055450ec",
+      "bytes": 1627592
     },
     {
       "id": "paradas",
       "path": "Plataforma.html#motor/paradas",
       "version": "1.2.22",
-      "sha256": "2815e8e10b16c0418a2e23b4cd88a52fb46095d015d82f34497000164eaa176d",
-      "bytes": 950661
+      "sha256": "0aacdc7a0fe00d6daf8cede11b089f4f952c08dbd9e60960d3729ae093b5b367",
+      "bytes": 952841
     },
     {
       "id": "equip",
       "path": "Plataforma.html#motor/equip",
       "version": "1.0.22",
-      "sha256": "c1dd4981b04a5b4eac84aecce805fdbd636d6dd40cacedf4d3bd11d11e7ce05b",
-      "bytes": 741485
+      "sha256": "8209cd87a965fa99703dd70c1f64313165a77507a3b9aa87f57c97c0aaf13d7d",
+      "bytes": 743665
     },
     {
       "id": "inic",
       "path": "Plataforma.html#motor/inic",
       "version": "1.1.17",
-      "sha256": "ab49ce8ef24e5474381626623bd1aa28b957a44523f27ad1bbb668304395cf9a",
-      "bytes": 751086
+      "sha256": "4b4181569ff66d66ae020ad6c50e262ba4778c9d59fc4ef359e8a065afd0cfa2",
+      "bytes": 753266
     },
     {
       "id": "linha",
       "path": "Plataforma.html#motor/linha",
       "version": "1.7.1",
-      "sha256": "6e2457e1faf2cf2bd9c6558e76921ac1a5ddf770edb8b30ce567819beefe2d64",
-      "bytes": 1004118
+      "sha256": "cb55885134b43509cb62d7b806f628e43f676afe0c0e6eb5b5f3e1393b340f75",
+      "bytes": 1006298
     },
     {
       "id": "projetos",
       "path": "Plataforma.html#motor/projetos",
       "version": "0.1.16",
-      "sha256": "b7de6ed6fa921900028c5c779931afd9def48fba04b8810258358f6bd84e7c3f",
-      "bytes": 673936
+      "sha256": "bc7654b2c4cae94ff9f885fc48acfc506a72bd09725587dab2ae9afad8e3202e",
+      "bytes": 676116
     },
     {
       "id": "portal",
       "path": "Plataforma.html#motor/portal",
-      "version": "1.9.93",
-      "sha256": "3a8efb7f46d0843e9d853d488883bc6d62886a82a77cab7790fe63a340995d12",
-      "bytes": 1335664
+      "version": "1.9.94",
+      "sha256": "1365de253061104c14cb59de4c97c20b9db5f36392d98720e372516364db58ce",
+      "bytes": 1338888
     }
   ],
   "limitations": [
     "Projetos e conteúdo técnico OSM/MES/AM/TPM mantêm os limites documentados nas fontes."
   ],
-  "enginesSha256": "297b4c5f49ce5be8d7b3365eab4310135b63369711ba285d08a8ce48fc2c31fa",
+  "enginesSha256": "cfe1e1bf1ee735a029d437b643cdfd6676b0cbab3bed78b39b0dc76b5537f89c",
   "originRevision": "ffc9ee8",
   "sourceMode": "single-html",
   "originEnginesSha256": "a87a64ad0c328f70e102b2ae888790a9b5d5a9bd05778652a7ce7cae140e40d2"
@@ -55602,7 +55644,7 @@ summary{cursor:pointer;font-weight:600;color:var(--navy)}
 'use strict';
 /* ---------- referência (atualizar quando a plataforma mudar de versão) ---------- */
 // Iguais às do pacote da plataforma (nova-plataforma/src/generated/manifest.json); o teste ferramenta-verificar confere.
-const VERSOES = {"oee":"2.6.50","perdas":"1.12.21","gel":"2.52","paradas":"1.2.22","equip":"1.0.22","inic":"1.1.17","linha":"1.7.1","projetos":"0.1.16","portal":"1.9.93"};
+const VERSOES = {"oee":"2.6.50","perdas":"1.12.21","gel":"2.52","paradas":"1.2.22","equip":"1.0.22","inic":"1.1.17","linha":"1.7.1","projetos":"0.1.16","portal":"1.9.94"};
 const BASES = [
  { arq: 'vacutainer-cadastros.json', mod: 'portal', nome: 'Cadastro geral (Portal)', obrig: true, cadastro: true, bk: 'Cadastros' },
  { arq: 'portal-base.json', mod: 'portal', nome: 'Portal', obrig: true, bk: 'Portal' },
@@ -56193,7 +56235,7 @@ import { Icon, Button, Badge, Empty, Modal, BarChart, BrandLogo, CommandMenu } f
 import { ModuleFrame } from "vac:modulo/components/ModuleFrame";
 import manifest from "vac:recurso/manifesto";
 import { ModuleTabs } from "vac:modulo/components/ModuleTabs";
-const VERSION = "1.8.75";
+const VERSION = "1.8.76";
 /* Navegação 1.3.0 (16/11/2026): Visão da linha, Relatórios e Importações têm abas; as que mostram uma tela do
    Portal (motor da Administração) trazem o 3º campo com a aba dele. Administração fica só com cadastros e configuração. */
 const SHELL_TABS = {
