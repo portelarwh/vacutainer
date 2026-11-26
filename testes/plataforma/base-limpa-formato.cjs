@@ -224,7 +224,7 @@ const BLOQUEIO = 'Base de versão anterior. Comece uma base nova nesta pasta.';
           r.portal = { formato: Store.formato, sv: pb && pb.schemaVersion, schema: pb && pb.schema };
           await Cad.ler(); if (!user()) setUser('Teste (fictício)'); App.show('cad'); Cad.ui.sec = 'inicio'; App.render();
           r.cad = { D: !!Cad.D, fonte: Cad.fonte, botao: !!document.querySelector('#cadNovoVazio') };
-          if (r.cad.botao) { document.querySelector('#cnS1').value = 'abcd'; document.querySelector('#cnS2').value = 'abcd'; await cadCriarVazio(); if (typeof Modal !== 'undefined') Modal.close(true); }
+          if (r.cad.botao) { document.querySelector('#cnId').value = '9001'; document.querySelector('#cnNome').value = 'Admin Fictício'; document.querySelector('#cnS1').value = '482915'; document.querySelector('#cnS2').value = '482915'; await cadCriarInicial(); if (typeof Modal !== 'undefined') Modal.close(true); }
           const cn = await le(CAD_FILE); r.novo = { sv: cn && cn.schemaVersion, rev: cn && cn.rev, formato: Cad.formato };
           return r;
         });
