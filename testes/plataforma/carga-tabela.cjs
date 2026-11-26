@@ -64,6 +64,15 @@ const html = fs.readFileSync(path.resolve(__dirname, '../../Plataforma.html'));
     assert.deepEqual(h, ['Catálogo de carga (renomeado)', 'FCARGA', 1, 60000], 'nome mudou; família e vigência intactas');
     console.log('ok item existente: só o cabeçalho muda; vigência gravada intacta (aviso); célula vazia não apaga');
 
+    // 3b) só o período difere: a linha continua na prévia (aviso), sem caixa para gravar; MES repetido dentro do lote é erro
+    const pv = await f.evaluate(() => { const P = CargaTab.plano('catalogos', Cad.D, [['codigo', 'pphNominal'], ['999001', '99.000']], 'periodo.xlsx'); CargaTab.prev(P, () => {});
+      const txt = document.querySelector('#cgBox').textContent, caixa = !!document.querySelector('[data-cg]'); document.querySelector('#cgCanc').click();
+      const Q = CargaTab.plano('equipamentos', Cad.D, [['codigo', 'nome', 'linha', 'codigoMes'], ['EMES1', 'A', 'LCARGA', 'RES-9'], ['EMES2', 'B', 'LCARGA', 'res-9']], 'mes.xlsx');
+      return { txt, caixa, igual: P.L[0].igual, mes: Q.L.map(x => x.erros[0] || 'ok') }; });
+    assert.ok(pv.igual && !pv.caixa && /use a ficha/.test(pv.txt) && !/Nada muda/.test(pv.txt), 'linha só com período aparece na prévia: ' + pv.txt.slice(0, 200));
+    assert.deepEqual(pv.mes, ['ok', 'o código MES RES-9 repete a linha 2 da planilha']);
+    console.log('ok prévia mostra o item só com período diferente; código MES repetido no lote é erro');
+
     // 4) código repetido e sem código
     const r = await f.evaluate(() => { const P = CargaTab.plano('linhas', Cad.D, [['codigo', 'nome'], ['LREP', 'A'], ['LREP', 'B'], ['', 'C']], 'x.xlsx'); return P.L.map(x => x.erros[0] || 'ok'); });
     assert.deepEqual(r, ['ok', 'código repetido na planilha', 'linha sem código']);

@@ -6055,14 +6055,17 @@ const CargaTab={
    if(T.vig){const v=vigEm(cur.vigencias,hoje)||(cur.vigencias||[]).slice(-1)[0]||{};for(const[k,x]of Object.entries(vv)){if(k==='vigDe'?(x!==v.de&amp;&amp;v.de):!this.igual(v[k],x))avisos.push(k)}}
    if(Object.keys(mud).length){const m2=clone(cur);for(const[k,x]of Object.entries(mud))m2[k]=x.depois;cadFinal(t,m2);erros.push(...cadValidarItem(t,m2,D))}
    L.push({lin,cod:cur.codigo,mud,erros:[...new Set(erros)],avisos,marcado:!erros.length&amp;&amp;Object.keys(mud).length>0,igual:!Object.keys(mud).length})}
+  if(t==='equipamentos'){const vistoMes=new Map();   /* o lote inteiro: dois itens da planilha não podem trazer o mesmo código MES (a ficha confere só contra o que já está gravado) */
+   for(const x of L){if(x.erros.length)continue;const m=String((x.novo?x.item.codigoMes:x.mud&amp;&amp;x.mud.codigoMes?x.mud.codigoMes.depois:'')??'').trim().toUpperCase();if(!m)continue;
+    if(vistoMes.has(m)){x.erros.push(`o código MES ${m} repete a linha ${vistoMes.get(m)} da planilha`);x.marcado=false}else vistoMes.set(m,x.lin)}}
   return{t,arq,L,C}},
  ops(P){const motivo=`carga por tabela (${P.arq})`;return P.L.filter(x=>x.marcado&amp;&amp;!x.erros.length).map(x=>x.novo?{acao:'criação',tipo:P.t,codigo:x.cod,item:x.item,motivo,origem:'planilha'}:{acao:'edição',tipo:P.t,codigo:x.cod,mudancas:x.mud,motivo,origem:'planilha'})},
  prev(P,depois){const T=CAD_T[P.t],lab=k=>(P.C.find(c=>c.k===k)||{l:k}).l,col=k=>P.C.find(c=>c.k===k)||{ty:'txt'};
   const mb=Modal.open('<div id="cgBox"></div>'),box=mb.querySelector('#cgBox');
-  const draw=()=>{const nv=P.L.filter(x=>x.novo&amp;&amp;!x.erros.length).length,alt=P.L.filter(x=>!x.novo&amp;&amp;!x.igual&amp;&amp;!x.erros.length).length,ig=P.L.filter(x=>x.igual&amp;&amp;!x.erros.length).length,er=P.L.filter(x=>x.erros.length).length,sel=P.L.filter(x=>x.marcado&amp;&amp;!x.erros.length).length;
-   box.innerHTML=`<h2>Importar ${esc(T.nome.toLowerCase())}</h2><p class="small muted">${esc(P.arq)} · <b>${nv}</b> novo(s) · <b>${alt}</b> alterado(s) · ${ig} igual(is) · ${er?`<b style="color:var(--crit)">${er} com erro</b>`:'0 com erro'}. Só o que estiver marcado é gravado; o que não está na planilha não muda.</p>
+  const draw=()=>{const nv=P.L.filter(x=>x.novo&amp;&amp;!x.erros.length).length,alt=P.L.filter(x=>!x.novo&amp;&amp;!x.igual&amp;&amp;!x.erros.length).length,ig=P.L.filter(x=>x.igual&amp;&amp;!x.erros.length&amp;&amp;!(x.avisos&amp;&amp;x.avisos.length)).length,pe2=P.L.filter(x=>x.igual&amp;&amp;!x.erros.length&amp;&amp;x.avisos&amp;&amp;x.avisos.length).length,er=P.L.filter(x=>x.erros.length).length,sel=P.L.filter(x=>x.marcado&amp;&amp;!x.erros.length).length;
+   box.innerHTML=`<h2>Importar ${esc(T.nome.toLowerCase())}</h2><p class="small muted">${esc(P.arq)} · <b>${nv}</b> novo(s) · <b>${alt}</b> alterado(s) · ${ig} igual(is) · ${pe2?`<b>${pe2}</b> só com período diferente (use a ficha) · `:''}${er?`<b style="color:var(--crit)">${er} com erro</b>`:'0 com erro'}. Só o que estiver marcado é gravado; o que não está na planilha não muda.</p>
     <div class="tw" style="max-height:56vh"><table class="cadst small"><tr><th><input type="checkbox" id="cgTodos" aria-label="Marcar todos"></th><th>Linha</th><th>Código</th><th>Situação</th><th>O que muda</th></tr>
-    ${P.L.filter(x=>!x.igual||x.erros.length).map(x=>{const idx=P.L.indexOf(x);return`<tr><td>${x.erros.length?'':`<input type="checkbox" data-cg="${idx}" ${x.marcado?'checked':''} aria-label="Gravar ${esc(x.cod)}">`}</td><td class="n">${x.lin}</td><td class="mono">${esc(x.cod||'—')}</td><td>${x.erros.length?'<span class="pill crit">erro</span>':x.novo?'<span class="pill ok">novo</span>':'<span class="pill warn">alterado</span>'}</td>
+    ${P.L.filter(x=>!x.igual||x.erros.length||(x.avisos&amp;&amp;x.avisos.length)).map(x=>{const idx=P.L.indexOf(x);return`<tr><td>${x.erros.length||x.igual?'':`<input type="checkbox" data-cg="${idx}" ${x.marcado?'checked':''} aria-label="Gravar ${esc(x.cod)}">`}</td><td class="n">${x.lin}</td><td class="mono">${esc(x.cod||'—')}</td><td>${x.erros.length?'<span class="pill crit">erro</span>':x.novo?'<span class="pill ok">novo</span>':x.igual?'<span class="pill none">só período</span>':'<span class="pill warn">alterado</span>'}</td>
      <td>${x.erros.length?esc(x.erros.join(' · ')):x.novo?esc(x.item.nome||'')+' <span class="muted">('+Object.keys(x.item).length+' campos)</span>':Object.entries(x.mud).map(([k,m])=>`<div><b>${esc(lab(k))}</b>: ${esc(this.txt(col(k),m.antes))} → <b>${esc(this.txt(col(k),m.depois))}</b></div>`).join('')}${x.avisos&amp;&amp;x.avisos.length?`<div class="small muted">Período diferente do vigente (${esc(x.avisos.map(lab).join(', '))}): a vigência gravada não muda; use a ficha.</div>`:''}</td></tr>`}).join('')||'<tr><td colspan="5" class="muted">Nada muda: a planilha é igual ao cadastro.</td></tr>'}</table></div>
     <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:10px"><button class="b" id="cgCanc">Cancelar</button><button class="b p" id="cgOk" ${sel?'':'disabled'}>Gravar ${sel} item(ns)</button></div>`;
    box.querySelectorAll('[data-cg]').forEach(c=>c.onchange=()=>{P.L[+c.dataset.cg].marcado=c.checked;draw()});
@@ -55363,14 +55366,14 @@ body.vac-porta{overflow:hidden}
       "id": "portal",
       "path": "Plataforma.html#motor/portal",
       "version": "1.9.87",
-      "sha256": "b9c02ae3012d993120afaaf7411e014272341cc1935a99f09859f2024c572818",
-      "bytes": 1317804
+      "sha256": "dce9ebbfcdb095568523e31aa8f42f2e7a08422581aa9fd132a246c4d215f7b2",
+      "bytes": 1318593
     }
   ],
   "limitations": [
     "Projetos e conteúdo técnico OSM/MES/AM/TPM mantêm os limites documentados nas fontes."
   ],
-  "enginesSha256": "73912867d8d942eaca79fdce966002aa096fba00361a06e0bab7499adb791660",
+  "enginesSha256": "f56f418603208fb70b0756da37510eedcc695f1e5385151b2657e06e2056d728",
   "originRevision": "ffc9ee8",
   "sourceMode": "single-html",
   "originEnginesSha256": "a87a64ad0c328f70e102b2ae888790a9b5d5a9bd05778652a7ce7cae140e40d2"
