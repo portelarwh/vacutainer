@@ -4485,7 +4485,7 @@ function wireConfigComum(){$('#cPasta').onclick=async()=>{if(await Store.pick())
         entrar pelo ID (autocadastro como Consulta); página inicial por perfil (1x por sessão); vigência gravada não se edita (desativar com motivo); painel de vigências; semáforo central; saída do modo de teste.
    1.1.2: aviso da carga diz qual base foi lida.  1.5: páginas Paradas, Máquinas, Manutenção e Projetos na lista (aparecem quando o HTML chega na pasta).  1.4: lista técnica pela CS12 multinível (itens = nível 1, estrutura = níveis 2+); CS03 sai.  1.3: cabeçalho comum (vac-cabecalho v2: barra do sistema + página + abas), busca Ctrl K, acabamento V1.90, Versões com cabeçalho e último backup.  1.2: Configuração › Versões das páginas (versão e data de cada HTML, gravação das bases, cópias repetidas, histórico).
    ===================================================================== */
-const PAGE={id:'portal',titulo:"Administração · Linha Vacutainer",tituloCurto:"Administração",subtitulo:'Sistemas de gestão da linha',versao:'1.9.94',baseFile:'portal-base.json',idb:'vac-portal',backupDir:'00. Backups/Portal',
+const PAGE={id:'portal',titulo:"Administração · Linha Vacutainer",tituloCurto:"Administração",subtitulo:'Sistemas de gestão da linha',versao:'1.9.95',baseFile:'portal-base.json',idb:'vac-portal',backupDir:'00. Backups/Portal',
  vazio:()=>({schema:'portal-base',schemaVersion:1,rev:0,config:{modulos:{},avisoDias:30,notas:{}},audit:[]}),
  /* itens do Portal para a busca Ctrl K: cadastro, pendências e telas */
  busca:q=>{const R=[],D=Cad.D;if(D)for(const t of CAD_ORD){for(const it of D[t]||[]){const c=String(it[kOf(t)]),nm=t==='bom'?((cadItem('catalogos',it.catalogo)||{}).nome||''):it.nome||'';if(norm(c+' '+nm).includes(q))R.push({tipo:CAD_T[t].um,txt:c+(nm?' · '+nm:''),sub:'Cadastros'+(cadAtivo(t,it,D)?'':' · inativo'),href:'#cadastros/'+t+'/'+encodeURIComponent(c)});if(R.length>30)break}}
@@ -5359,6 +5359,8 @@ const CAD_SECS=['inicio','gel','matriz','importar','auditoria','backups','segura
    curtas (macro, sem detalhe técnico). REGRA: toda versão nova da plataforma ganha uma entrada aqui, a mais recente primeiro
    (AGENTS.md e CLAUDE.md). Tipos: nova (função nova), melhoria (algo que já existia ficou melhor), correcao (erro corrigido). */
 const NOVIDADES=[
+ {v:'1.8.77',d:'2026-11-26',itens:[
+  ['correcao','Primeiro uso: se o arquivo de cadastro ficou vazio (0 bytes) por uma gravação interrompida, a entrada volta a oferecer "Criar o cadastro inicial" e ele é criado normalmente. Arquivo com conteúdo inválido continua como erro.']]},
  {v:'1.8.76',d:'2026-11-26',itens:[
   ['correcao','Produção em branco não vira mais zero no resumo publicado: o dia sai como "sem lançamento", fora do OEE e dos consolidados; dia parcial informa quantos intervalos faltam.'],
   ['correcao','Intervalo com início igual ou depois do fim aparece como erro no cálculo do dia (antes era ignorado em silêncio).'],
@@ -5689,7 +5691,8 @@ const Cad={base:null,D:null,mod:0,fonte:'nenhum',err:'',fila:[],gravando:false,d
  render(){if(App.tab==='cad'&amp;&amp;!emEdicao())App.render();else renderTop()},
  /* lê o arquivo da pasta; devolve true se mudou */
  async ler(){if(Store.mode==='teste'||this.gravando)return false;if(Store.mode!=='pasta'||!Store.dir){if(this.base&amp;&amp;this.fonte==='pasta')this.fonte='copia';return false}
-  let f;try{f=await (await Store.dir.getFileHandle(CAD_FILE)).getFile()}
+  /* E02 (26/11/2026, decisão do responsável) · arquivo com exatamente 0 bytes (gravação interrompida) conta como ausente: volta a valer a criação inicial; conteúdo inválido continua erro */
+  let f;try{f=await (await Store.dir.getFileHandle(CAD_FILE)).getFile();if(f.size===0)throw new DOMException(CAD_FILE+' vazio (0 bytes)','NotFoundError')}
   catch(e){if(e&amp;&amp;e.name==='NotFoundError'){/* base limpa: cópia de versão anterior não fica no lugar do arquivo que saiu da pasta; a tela oferece "Criar cadastro vazio" */if(this.base&amp;&amp;this.formato){this.base=null;Store.idb.set('cad',null);this.recompute()}const a=this.fonte;this.fonte=this.base?'sumiu':'nenhum';this.mod=0;return a!==this.fonte}this.err='Não consegui ler o cadastro: '+(e.message||e);return false}
   if(this.fonte==='pasta'&amp;&amp;f.lastModified===this.mod)return false;
   let d;try{d=JSON.parse(await f.text())}catch(e){this.fonte='erro';this.err=CAD_FILE+' não é um JSON válido ('+e.message+'). Restaure um backup em Cadastros › Backups.';return true}
@@ -5725,7 +5728,7 @@ const Cad={base:null,D:null,mod:0,fonte:'nenhum',err:'',fila:[],gravando:false,d
   try{for(let volta=0;volta<6&amp;&amp;this.fila.length;volta++){this.denovo=false;const lote=this.fila.slice();
     /* 1. versão atual da pasta */
     let txt=null,remoto=null;
-    try{const f=await (await Store.dir.getFileHandle(CAD_FILE)).getFile();txt=await f.text();remoto=JSON.parse(txt);const v=cadValida(remoto);if(v.length)throw new Error('o arquivo na pasta está com problema ('+v[0]+'); nada foi gravado');const fv=vacFormatoBase(remoto,'vac-cadastros',VAC_CAD_VERSAO);if(fv)throw new Error(fv)}
+    try{const f=await (await Store.dir.getFileHandle(CAD_FILE)).getFile();txt=await f.text();if(txt===''){txt=null;throw new DOMException(CAD_FILE+' vazio (0 bytes)','NotFoundError')}/* E02 · 0 bytes conta como ausente */remoto=JSON.parse(txt);const v=cadValida(remoto);if(v.length)throw new Error('o arquivo na pasta está com problema ('+v[0]+'); nada foi gravado');const fv=vacFormatoBase(remoto,'vac-cadastros',VAC_CAD_VERSAO);if(fv)throw new Error(fv)}
     catch(e){if(!(e&amp;&amp;e.name==='NotFoundError'))throw e}
     if(remoto&amp;&amp;this.base&amp;&amp;(remoto.rev!==this.base.rev||remoto.revId!==this.base.revId))reapl=true;
     /* 2. reaplicar a fila sobre ela */
@@ -55566,15 +55569,15 @@ body.vac-porta{overflow:hidden}
     {
       "id": "portal",
       "path": "Plataforma.html#motor/portal",
-      "version": "1.9.94",
-      "sha256": "1365de253061104c14cb59de4c97c20b9db5f36392d98720e372516364db58ce",
-      "bytes": 1338888
+      "version": "1.9.95",
+      "sha256": "69aaccc970b03c02aff9d5b9a5a7d5a4221acfa3494ba6773e7113201a9d4774",
+      "bytes": 1339584
     }
   ],
   "limitations": [
     "Projetos e conteúdo técnico OSM/MES/AM/TPM mantêm os limites documentados nas fontes."
   ],
-  "enginesSha256": "cfe1e1bf1ee735a029d437b643cdfd6676b0cbab3bed78b39b0dc76b5537f89c",
+  "enginesSha256": "427a7a2ddad301c6edfb0c780ecf6cbe0d96d390e330238fd6d7293cc16c4e56",
   "originRevision": "ffc9ee8",
   "sourceMode": "single-html",
   "originEnginesSha256": "a87a64ad0c328f70e102b2ae888790a9b5d5a9bd05778652a7ce7cae140e40d2"
@@ -55644,7 +55647,7 @@ summary{cursor:pointer;font-weight:600;color:var(--navy)}
 'use strict';
 /* ---------- referência (atualizar quando a plataforma mudar de versão) ---------- */
 // Iguais às do pacote da plataforma (nova-plataforma/src/generated/manifest.json); o teste ferramenta-verificar confere.
-const VERSOES = {"oee":"2.6.50","perdas":"1.12.21","gel":"2.52","paradas":"1.2.22","equip":"1.0.22","inic":"1.1.17","linha":"1.7.1","projetos":"0.1.16","portal":"1.9.94"};
+const VERSOES = {"oee":"2.6.50","perdas":"1.12.21","gel":"2.52","paradas":"1.2.22","equip":"1.0.22","inic":"1.1.17","linha":"1.7.1","projetos":"0.1.16","portal":"1.9.95"};
 const BASES = [
  { arq: 'vacutainer-cadastros.json', mod: 'portal', nome: 'Cadastro geral (Portal)', obrig: true, cadastro: true, bk: 'Cadastros' },
  { arq: 'portal-base.json', mod: 'portal', nome: 'Portal', obrig: true, bk: 'Portal' },
@@ -56235,7 +56238,7 @@ import { Icon, Button, Badge, Empty, Modal, BarChart, BrandLogo, CommandMenu } f
 import { ModuleFrame } from "vac:modulo/components/ModuleFrame";
 import manifest from "vac:recurso/manifesto";
 import { ModuleTabs } from "vac:modulo/components/ModuleTabs";
-const VERSION = "1.8.76";
+const VERSION = "1.8.77";
 /* Navegação 1.3.0 (16/11/2026): Visão da linha, Relatórios e Importações têm abas; as que mostram uma tela do
    Portal (motor da Administração) trazem o 3º campo com a aba dele. Administração fica só com cadastros e configuração. */
 const SHELL_TABS = {
@@ -57543,7 +57546,10 @@ async function protectFolder(root, files, version, canWrite = () => true) {
   for (const baseDir of [null, "00. Bases"]) for (const file of typeof files === "string" ? [files] : files) {
     try {
       const dir = baseDir ? await root.getDirectoryHandle(baseDir) : root;
-      const base = JSON.parse(await (await (await dir.getFileHandle(file)).getFile()).text());
+      /* E02 · arquivo com 0 bytes não tem versão a comparar: o leitor do próprio motor decide (o cadastro vazio conta como ausente) */
+      const texto = await (await (await dir.getFileHandle(file)).getFile()).text();
+      if (texto === "") continue;
+      const base = JSON.parse(texto);
       const v = base.appVersion || base.applicationVersion || base.exports?.appVersion;
       if (v &amp;&amp; compareVersions(String(v).replace(/^(Portal|Produção)\s+/, ""), version) > 0) {
         readOnly = true;
@@ -57650,7 +57656,10 @@ async function readSources(root) {
   }));
   let cad = null, cadErro = "";
   try {
-    const c = JSON.parse(await lerTextoComPrazo(dir, "vacutainer-cadastros.json"));
+    /* E02 · cadastro com 0 bytes (gravação interrompida) conta como ausente, como na Administração: a porta oferece a criação inicial */
+    const texto = await lerTextoComPrazo(dir, "vacutainer-cadastros.json");
+    if (texto === "") throw new DOMException("vacutainer-cadastros.json vazio (0 bytes)", "NotFoundError");
+    const c = JSON.parse(texto);
     if (!z.object({ schema: z.literal("vac-cadastros"), rev: z.number().int().nonnegative().optional(), usuarios: z.array(z.object({ codigo: z.string(), nome: z.string() }).passthrough()).optional(), turnos: z.array(z.object({ codigo: z.string() }).passthrough()).optional(), perfis: z.array(z.object({ codigo: z.string() }).passthrough()).optional() }).passthrough().safeParse(c).success) throw new Error("Cadastro com formato desconhecido ou listas inv\xE1lidas.");
     cad = c;
   } catch (e) {
