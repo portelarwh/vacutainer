@@ -4299,12 +4299,12 @@ const Logo={url:null,
   fr.onload=()=>{const im=new Image();im.onerror=()=>ko(new Error('Formato de imagem não reconhecido.'));im.onload=()=>{const h=Math.min(h0,im.height),w=Math.round(im.width*h/im.height);const c=document.createElement('canvas');c.width=w;c.height=h;c.getContext('2d').drawImage(im,0,0,w,h);ok(c.toDataURL('image/png'))};im.src=fr.result};fr.readAsDataURL(file)})},
  async dataUrl(){const s=this.src();if(!s)return null;if(s.startsWith('data:'))return s;return new Promise(ok=>{const im=new Image();im.onload=()=>{const c=document.createElement('canvas');c.width=im.width;c.height=im.height;c.getContext('2d').drawImage(im,0,0);try{ok(c.toDataURL('image/png'))}catch(e){ok(null)}};im.onerror=()=>ok(null);im.src=s})}};
 
-/* ---------- bibliotecas (pasta lib/ ao lado do HTML; internet como reserva) ---------- */
+/* ---------- bibliotecas incorporadas ao HTML (C46: o carregador entrega o código pelo nome do arquivo; nada vem da pasta lib/ nem da internet) ---------- */
 function loadScript(srcs){return srcs.reduce((p,src)=>p.catch(()=>new Promise((ok,ko)=>{const s=document.createElement('script');s.src=src;s.onload=ok;s.onerror=()=>{s.remove();ko()};document.head.appendChild(s)})),Promise.reject())}
 const Libs={
- xlsx(){return window.XLSX?Promise.resolve(window.XLSX):loadScript(['lib/xlsx.full.min.js','https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js']).then(()=>window.XLSX).catch(()=>{throw new Error('Não consegui carregar lib/xlsx.full.min.js.')})},
+ xlsx(){return window.XLSX?Promise.resolve(window.XLSX):loadScript(['xlsx.full.min.js']).then(()=>window.XLSX).catch(()=>{throw new Error('Não consegui carregar a biblioteca de planilhas incorporada ao aplicativo.')})},
  pdf(){if(window.jspdf&amp;&amp;window.jspdf.jsPDF&amp;&amp;window.jspdf.jsPDF.API.autoTable)return Promise.resolve(window.jspdf.jsPDF);
-  return loadScript(['lib/jspdf.umd.min.js','https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js']).then(()=>loadScript(['lib/jspdf.plugin.autotable.min.js','https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js'])).then(()=>window.jspdf.jsPDF).catch(()=>{throw new Error('Não consegui carregar o gerador de PDF (lib/jspdf.umd.min.js e lib/jspdf.plugin.autotable.min.js).')})}};
+  return loadScript(['jspdf.umd.min.js']).then(()=>loadScript(['jspdf.plugin.autotable.min.js'])).then(()=>window.jspdf.jsPDF).catch(()=>{throw new Error('Não consegui carregar o gerador de PDF incorporado ao aplicativo.')})}};
 
 /* ---------- janela (modal) ---------- */
 const Modal={guard:null,onClose:null,owner:null,open(html,{wide=true}={}){this.guard=null;this.onClose=null;this.owner=null;let m=$('#coreModal');if(!m){m=document.createElement('div');m.id='coreModal';m.className='modal';m.innerHTML='<div class="box"><button class="x" aria-label="Fechar">×</button><div class="mb"></div></div>';document.body.appendChild(m);
@@ -5359,6 +5359,8 @@ const CAD_SECS=['inicio','gel','matriz','importar','auditoria','backups','segura
    curtas (macro, sem detalhe técnico). REGRA: toda versão nova da plataforma ganha uma entrada aqui, a mais recente primeiro
    (AGENTS.md e CLAUDE.md). Tipos: nova (função nova), melhoria (algo que já existia ficou melhor), correcao (erro corrigido). */
 const NOVIDADES=[
+ {v:'1.8.79',d:'2026-11-26',itens:[
+  ['melhoria','Planilhas e PDF usam só as bibliotecas que já vêm dentro do aplicativo; as mensagens não pedem mais para copiar a pasta lib/ nem para ligar a internet.']]},
  {v:'1.8.78',d:'2026-11-26',itens:[
   ['correcao','Produção: fechar a janela de escolha de arquivo sem escolher nada (abrir base, importar planilha ou CSV) não deixa mais a tela esperando.']]},
  {v:'1.8.77',d:'2026-11-26',itens:[
@@ -12532,18 +12534,18 @@ function pickFile(accept, maxMB = 60) {
 /* ---------- bibliotecas externas sob demanda (SheetJS) ---------- */
 const Libs = {
   xlsx: null,
-  // versões até 0.19.2 têm falhas de segurança conhecidas na leitura de planilhas: avisa para trocar o arquivo da pasta lib/
-  checkXLSX(X) { const v = String((X &amp;&amp; X.version) || '0').split('.').map(Number); const old = v[0] === 0 &amp;&amp; (v[1] < 19 || (v[1] === 19 &amp;&amp; v[2] < 3)); Libs.xlsxOld = old ? X.version : null; if (old &amp;&amp; !Libs._warned) { Libs._warned = true; setTimeout(() => toast(`Biblioteca de planilhas desatualizada (SheetJS ${X.version}). Troque lib/xlsx.full.min.js pela versão 0.20.3 (cdn.sheetjs.com). Veja Configurações › Ajuda.`), 50); } },
+  // versões até 0.19.2 têm falhas de segurança conhecidas na leitura de planilhas (a incorporada é a 0.20.3; C46: nada vem da pasta lib/ nem da internet)
+  checkXLSX(X) { const v = String((X &amp;&amp; X.version) || '0').split('.').map(Number); const old = v[0] === 0 &amp;&amp; (v[1] < 19 || (v[1] === 19 &amp;&amp; v[2] < 3)); Libs.xlsxOld = old ? X.version : null; if (old &amp;&amp; !Libs._warned) { Libs._warned = true; setTimeout(() => toast(`Biblioteca de planilhas desatualizada (SheetJS ${X.version}). Atualize a plataforma (a biblioteca vem incorporada ao HTML).`), 50); } },
   async loadXLSX() {
     if (window.XLSX) return window.XLSX;
     if (this.xlsx) return this.xlsx;
-    const tries = ['lib/xlsx.full.min.js', 'https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js', 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js', 'https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js'];
+    const tries = ['xlsx.full.min.js'];   /* C46 · o carregador entrega o código incorporado pelo nome do arquivo */
     this.xlsx = (async () => {
       for (const src of tries) {
         try { await new Promise((res, rej) => { const s = document.createElement('script'); s.src = src; s.onload = res; s.onerror = () => { s.remove(); rej(); }; document.head.appendChild(s); }); if (window.XLSX) { Libs.checkXLSX(window.XLSX); return window.XLSX; } } catch (e) { /* próxima origem */ }
       }
       this.xlsx = null;
-      throw new Error('Não foi possível carregar a biblioteca de planilhas (SheetJS). Coloque o arquivo lib/xlsx.full.min.js na mesma pasta do HTML ou conecte-se à internet. Importação e exportação Excel ficam indisponíveis; CSV e JSON continuam funcionando.');
+      throw new Error('Não foi possível carregar a biblioteca de planilhas (SheetJS) incorporada ao aplicativo. Importação e exportação Excel ficam indisponíveis; CSV e JSON continuam funcionando.');
     })();
     return this.xlsx;
   }
@@ -14292,7 +14294,7 @@ Cfg.importacao = {
         <div class="card"><h4>3 · Paradas (aba PARADAS) ${ib('importPar')}</h4><p class="small">Importa as paradas por turno (sem horário). Importe depois do histórico: cada parada precisa do dia de produção.</p><button class="btn primary" id="imPar">${I.up} Escolher planilha</button></div>
         <div class="card"><h4>4 · Planos do mês (aba CALC) ${ib('importPlan')}</h4><p class="small">Importa primeiro e último plano de cada mês e a quantidade de exceções. Meses que já têm plano são mantidos.</p><button class="btn primary" id="imPlan">${I.up} Escolher planilha</button></div>
         <div class="card"><h4>5 · Dados do servidor (CSV do MES) ${ib('serverData')}</h4><p class="small">Troca de catálogo, troca de lote e contador de caixas exportados do servidor. Vira linha do tempo do dia, sugestões de produção e paradas, início/fim das ordens e trocas do mês, sempre para você confirmar.</p><button class="btn primary" id="imSrv">${I.up} Escolher CSV</button></div>
-      </div><p class="small muted" style="margin-top:8px">A planilha é lida com a biblioteca SheetJS (arquivo lib/xlsx.full.min.js ao lado do HTML, ou internet).</p></section>
+      </div><p class="small muted" style="margin-top:8px">A planilha é lida com a biblioteca SheetJS incorporada ao aplicativo (sem internet).</p></section>
       <section class="card section"><header><h3>Importações realizadas</h3></header>${imps.length ? `<div class="tw"><table><thead><tr><th>Quando</th><th>Usuário</th><th>Aba</th><th>Arquivo</th><th class="n">Encontrados</th><th class="n">Importados</th><th class="n">Atualizados</th><th class="n">Ignorados</th><th></th></tr></thead><tbody>${imps.map(i => `<tr><td>${U.brDT(i.at)}</td><td>${esc(i.by)}</td><td>${esc(i.sheet)}</td><td class="small">${esc(i.source || '')}</td><td class="n">${U.fmt(i.found)}</td><td class="n">${U.fmt(i.imported)}</td><td class="n">${U.fmt(i.updated || 0)}</td><td class="n">${U.fmt(i.skipped || 0)}</td><td><button class="btn xs" data-imp="${i.id}">Relatório</button></td></tr>`).join('')}</tbody></table></div>` : '<p class="muted small">Nenhuma importação ainda.</p>'}</section>`;
   },
   mount(root) {
@@ -14444,7 +14446,7 @@ Cfg.ajuda = {
     return `<section class="card"><header><h3>Como usar</h3></header>
       <h4>Rotina diária</h4><ol><li>Abra o HTML pela pasta da rede (Edge ou Chrome) e confirme seu nome.</li><li>Em <b>Lançamento</b>, escolha a data e crie o lançamento: os intervalos saem dos turnos vigentes.</li><li>Em <b>Hora a Hora</b>, informe a produção boa de cada intervalo (Enter avança). Troque o catálogo onde mudou; ele segue nas horas e no turno seguintes.</li><li>Registre as paradas pelo botão + da linha. Uma parada que atravessa intervalos ou turnos é um único evento.</li><li>Informe o scrap por turno (ou o total diário) e feche o turno. Erros impeditivos bloqueiam o fechamento; alertas não.</li></ol>
       <h4 class="section">Regras de cálculo</h4><ul><li><b>OEE oficial</b> = produção boa ÷ capacidade planejada (PPH × tempo planejado líquido ÷ 60), como no RELATÓRIO.</li><li><b>Tempo planejado líquido</b> = minutos dos intervalos − paradas que descontam do planejado (refeição, abono, ausência de programação…).</li><li><b>D</b> = (tempo líquido − paradas de Disponibilidade) ÷ tempo líquido · <b>Q</b> = boa ÷ (boa + scrap) · <b>P</b> = OEE ÷ (D × Q). D × P × Q fecha com o OEE oficial.</li><li><b>Meta do intervalo</b> = PPH × minutos ÷ 60 × OEE meta, arredondada para cima em ${esc(unitLbl())}. A última hora do dia recebe a diferença para que a soma seja a meta diária oficial (teto da soma dos decimais). Quando o intervalo coincide com o quadro importado da planilha, vale o valor do quadro.</li><li><b>Consolidação</b>: semanas, meses e filtros somam produção, capacidade e tempos antes de dividir (nunca média simples de percentuais).</li><li><b>Cascata</b> (CALCv3): modo 1 fecha pelos minutos medidos; modo 2 usa a premissa de perda de velocidade. A divergência mostra quantos minutos a premissa esconde.</li><li><b>Semáforo</b>: verde ≥ 100% da meta, amarelo ≥ 90%, vermelho abaixo (configurável); sempre relativo à meta vigente.</li></ul>
-      <h4 class="section">Base e segurança</h4><ul><li>Biblioteca de planilhas: ${Libs.xlsxOld ? `<b class="ferr">SheetJS ${esc(Libs.xlsxOld)} desatualizada</b> — baixe <span class="mono">https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js</span> e salve como <span class="mono">lib/xlsx.full.min.js</span>` : 'use a SheetJS 0.20.3 em <span class="mono">lib/xlsx.full.min.js</span> (cdn.sheetjs.com); versões até 0.19.2 têm falhas de segurança conhecidas'}.</li><li>Fonte oficial: <span class="mono">${BASE_FILE}</span> na pasta da rede. O navegador guarda uma cópia de recuperação e alterações pendentes.</li><li>Antes de gravar, a versão da pasta é comparada com a carregada. Se outra pessoa gravou antes, nada é sobrescrito: recarregue, exporte suas alterações ou cancele.</li><li>Backups automáticos em <span class="mono">${PAGE.backupDir}</span>. A restauração copia a base atual antes e mantém a auditoria.</li><li>Sem internet, a aplicação funciona; para Excel, mantenha <span class="mono">lib/xlsx.full.min.js</span> ao lado do HTML.</li></ul></section>
+      <h4 class="section">Base e segurança</h4><ul><li>Biblioteca de planilhas: ${Libs.xlsxOld ? `<b class="ferr">SheetJS ${esc(Libs.xlsxOld)} desatualizada</b> — atualize a plataforma` : 'SheetJS 0.20.3 incorporada ao aplicativo; versões até 0.19.2 têm falhas de segurança conhecidas'}.</li><li>Fonte oficial: <span class="mono">${BASE_FILE}</span> na pasta da rede. O navegador guarda uma cópia de recuperação e alterações pendentes.</li><li>Antes de gravar, a versão da pasta é comparada com a carregada. Se outra pessoa gravou antes, nada é sobrescrito: recarregue, exporte suas alterações ou cancele.</li><li>Backups automáticos em <span class="mono">${PAGE.backupDir}</span>. A restauração copia a base atual antes e mantém a auditoria.</li><li>Sem internet, a aplicação funciona; para Excel, mantenha <span class="mono">lib/xlsx.full.min.js</span> ao lado do HTML.</li></ul></section>
       <section class="card section"><header><h3>Critérios de aceite</h3><span class="pill ok">${crit.length}/32</span></header><div class="tw"><table><thead><tr><th>#</th><th>Critério</th><th>Onde</th></tr></thead><tbody>${crit.map((c, i) => `<tr><td>${i + 1}</td><td>${semB('ok', '')} ${esc(c[0])}</td><td class="small">${esc(c[1])}</td></tr>`).join('')}</tbody></table></div></section>
       ${T.length ? `<section class="card section"><header><h3>Testes executados na entrega</h3><span class="pill ${T.every(t => t.ok) ? 'ok' : 'crit'}">${T.filter(t => t.ok).length}/${T.length}</span></header><div class="tw"><table><tbody>${T.map(t => `<tr><td>${t.ok ? semB('ok', '') : semB('crit', '')}</td><td>${esc(t.name)}</td><td class="small wrap">${esc(String(t.info || '').split('\n')[0])}</td></tr>`).join('')}</tbody></table></div></section>` : ''}`;
   }
@@ -16713,10 +16715,10 @@ function rpBlockParts(sec) {
 const rpLoadScript = src => new Promise((res, rej) => { const s = document.createElement('script'); s.src = src; s.onload = res; s.onerror = () => { s.remove(); rej(); }; document.head.appendChild(s); });
 Libs.loadPDF = async function () {
   if (window.jspdf &amp;&amp; window.jspdf.jsPDF &amp;&amp; window.jspdf.jsPDF.API.autoTable) return window.jspdf.jsPDF;
-  const A1 = ['lib/jspdf.umd.min.js', 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js'], A2 = ['lib/jspdf.plugin.autotable.min.js', 'https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js'];
+  const A1 = ['jspdf.umd.min.js'], A2 = ['jspdf.plugin.autotable.min.js'];   /* C46 · código incorporado, entregue pelo carregador */
   for (const s of A1) { if (window.jspdf) break; try { await rpLoadScript(s); } catch (e) { } }
   for (const s of A2) { if (window.jspdf &amp;&amp; window.jspdf.jsPDF.API.autoTable) break; try { await rpLoadScript(s); } catch (e) { } }
-  if (!(window.jspdf &amp;&amp; window.jspdf.jsPDF &amp;&amp; window.jspdf.jsPDF.API.autoTable)) throw new Error('Não foi possível carregar a biblioteca de PDF. Coloque os arquivos lib/jspdf.umd.min.js e lib/jspdf.plugin.autotable.min.js ao lado do HTML ou conecte-se à internet.');
+  if (!(window.jspdf &amp;&amp; window.jspdf.jsPDF &amp;&amp; window.jspdf.jsPDF.API.autoTable)) throw new Error('Não foi possível carregar a biblioteca de PDF incorporada ao aplicativo.');
   return window.jspdf.jsPDF;
 };
 
@@ -23566,7 +23568,7 @@ function parsePer(v,exer,fallback){
 let XLSXlib=null;
 function loadXLSX(){if(window.XLSX)return Promise.resolve(window.XLSX);
  const tryLoad=src=>new Promise((ok,ko)=>{const s=document.createElement('script');s.src=src;s.onload=()=>window.XLSX?ok(window.XLSX):ko();s.onerror=ko;document.head.appendChild(s)});
- return tryLoad('lib/xlsx.full.min.js').catch(()=>tryLoad('https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js')).catch(()=>{throw new Error('Não consegui carregar a biblioteca de Excel (lib/xlsx.full.min.js). Salve o arquivo como CSV ou cole os dados.')})}
+ return tryLoad('xlsx.full.min.js').catch(()=>{throw new Error('Não consegui carregar a biblioteca de Excel incorporada ao aplicativo. Salve o arquivo como CSV ou cole os dados.')})}
 
 /* ---------- cabeçalho e mapeamento ---------- */
 function aliasIndex(){const idx={};const a=CFG().alias;for(const k in a)for(const n of String(a[k]).split(';')){const h=normHp(n);if(h&amp;&amp;!(h in idx))idx[h]=k}
@@ -24803,12 +24805,12 @@ document.addEventListener('click',e=>{const b=e.target.closest('.ib');const old=
 const help={_last:null};
 const ib=(t,txt)=>`<button type="button" class="ib" data-help="${esc(txt?t+'|'+txt:t)}" aria-label="Ajuda">i</button>`;
 
-/* ---------- bibliotecas (pasta lib/ ao lado do HTML; internet como reserva) ---------- */
+/* ---------- bibliotecas incorporadas ao HTML (C46: o carregador entrega o código pelo nome do arquivo; nada vem da pasta lib/ nem da internet) ---------- */
 function loadScript(srcs){return srcs.reduce((p,src)=>p.catch(()=>new Promise((ok,ko)=>{const s=document.createElement('script');s.src=src;s.onload=ok;s.onerror=()=>{s.remove();ko()};document.head.appendChild(s)})),Promise.reject())}
 const Libs={
- xlsx(){return window.XLSX?Promise.resolve(window.XLSX):loadScript(['lib/xlsx.full.min.js','https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js']).then(()=>window.XLSX).catch(()=>{throw new Error('Não consegui carregar lib/xlsx.full.min.js.')})},
+ xlsx(){return window.XLSX?Promise.resolve(window.XLSX):loadScript(['xlsx.full.min.js']).then(()=>window.XLSX).catch(()=>{throw new Error('Não consegui carregar a biblioteca de planilhas incorporada ao aplicativo.')})},
  pdf(){if(window.jspdf&amp;&amp;window.jspdf.jsPDF&amp;&amp;window.jspdf.jsPDF.API.autoTable)return Promise.resolve(window.jspdf.jsPDF);
-  return loadScript(['lib/jspdf.umd.min.js','https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js']).then(()=>loadScript(['lib/jspdf.plugin.autotable.min.js','https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js'])).then(()=>window.jspdf.jsPDF).catch(()=>{throw new Error('Não consegui carregar o gerador de PDF (lib/jspdf.umd.min.js e lib/jspdf.plugin.autotable.min.js).')})}};
+  return loadScript(['jspdf.umd.min.js']).then(()=>loadScript(['jspdf.plugin.autotable.min.js'])).then(()=>window.jspdf.jsPDF).catch(()=>{throw new Error('Não consegui carregar o gerador de PDF incorporado ao aplicativo.')})}};
 
 /* ---------- janela (modal) ---------- */
 const Modal={open(html,{wide=true}={}){let m=$('#coreModal');if(!m){m=document.createElement('div');m.id='coreModal';m.className='modal';m.innerHTML='<div class="box"><button class="x" aria-label="Fechar">×</button><div class="mb"></div></div>';document.body.appendChild(m);
@@ -26104,13 +26106,13 @@ function parseText(txt){
   return rowsFromMatrix(splitDelim(txt.replace(/^\ufeff/,''),sep));
 }
 /* bibliotecas de Excel e PDF: carregadas depois que a página abre (não atrasam a abertura) */
-// primeiro a pasta lib/ da rede (funciona sem internet), depois a internet
-const LIBS={xlsx:{f:'xlsx.full.min.js',cdn:'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js'},pdf:{f:'jspdf.umd.min.js',cdn:'https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js'}};const LIBSRC={};
-function libSrcs(k){const L=LIBS[k];return (vacDemo.ativo?new URL(document.baseURI).protocol:location.protocol)==='file:'?['lib/'+L.f,L.cdn]:[L.cdn]}
+// C46 · bibliotecas incorporadas: o carregador entrega o código pelo nome do arquivo (sem pasta lib/ nem internet)
+const LIBS={xlsx:{f:'xlsx.full.min.js'},pdf:{f:'jspdf.umd.min.js'}};const LIBSRC={};
+function libSrcs(k){return [LIBS[k].f]}
 const libReady=k=>k==='xlsx'?!!window.XLSX:!!(window.jspdf&amp;&amp;window.jspdf.jsPDF);const libP={};
 function needLib(k){if(libReady(k))return Promise.resolve(true);return libP[k]=libP[k]||new Promise(res=>{const srcs=libSrcs(k);let i=0;
   const next=()=>{if(i>=srcs.length){delete libP[k];res(false);return}const s=document.createElement('script');s.src=srcs[i++];s.async=true;s.onload=()=>{if(libReady(k)){LIBSRC[k]=s.src;res(true)}else{s.remove();next()}};s.onerror=()=>{s.remove();next()};document.head.appendChild(s)};next()})}
-async function parseWorkbookAsync(buf){if(!(await needLib('xlsx')))throw new Error('O leitor de Excel não carregou. Verifique a conexão com a internet (ou a pasta lib/ na pasta da rede) e tente de novo.');return parseWorkbook(buf)}
+async function parseWorkbookAsync(buf){if(!(await needLib('xlsx')))throw new Error('O leitor de Excel incorporado ao aplicativo não carregou. Recarregue a página e tente de novo.');return parseWorkbook(buf)}
 const PROTECTED_MSG='O arquivo está protegido (rótulo de confidencialidade com criptografia) e o navegador não consegue abri-lo. No Excel, faça uma destas opções: (1) Arquivo › Salvar como › CSV UTF-8 (delimitado por vírgulas) e importe o .csv (pode salvar na pasta do SAP); ou (2) selecione tudo na planilha (Ctrl+A), copie (Ctrl+C) e cole no campo "Ou cole as linhas" desta tela.';
 function parseWorkbook(buf){
   if(!window.XLSX)throw new Error('A biblioteca de leitura de Excel não carregou. Use "Colar do Excel" como alternativa.');
@@ -32929,11 +32931,11 @@ function wireFiltros(){const on=(id,fn)=>{const el=$(id);if(el)el.onchange=()=>{
 /* =====================================================================================
    PARADAS · importação (Forms novo, Forms antigo, HTML antigo), indicadores e exports
    ===================================================================================== */
-/* ---------- planilhas: lib/xlsx local (SheetJS 0.20.3) com a internet como reserva ---------- */
+/* ---------- planilhas: SheetJS 0.20.3 incorporada (C46: sem pasta lib/ nem internet) ---------- */
 let XLSXp=null;
 function loadXLSX(){if(window.XLSX)return Promise.resolve(window.XLSX);if(XLSXp)return XLSXp;
  const tryS=src=>new Promise((ok,err)=>{const s=document.createElement('script');s.src=src;s.onload=()=>window.XLSX?ok(window.XLSX):err();s.onerror=err;document.head.appendChild(s)});
- return XLSXp=tryS('lib/xlsx.full.min.js').catch(()=>tryS('https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js')).catch(()=>{XLSXp=null;throw new Error('Biblioteca de planilhas não encontrada (lib/xlsx.full.min.js)')})}
+ return XLSXp=tryS('xlsx.full.min.js').catch(()=>{XLSXp=null;throw new Error('Biblioteca de planilhas incorporada ao aplicativo não carregou.')})}
 async function lerArquivo(file){const nm=file.name.toLowerCase();
  if(/\.html?$/.test(nm)){const t=await file.text();const m=t.match(/EMBEDDED_DATA\s*=\s*(\[[\s\S]*?\]);\s*\n/)||t.match(/EMBEDDED_DATA\s*=\s*(\[.*?\]);/s);
   if(!m)throw new Error('Não achei os dados (EMBEDDED_DATA) no HTML');return{rows:JSON.parse(m[1]),fonte:'html-antigo'}}
@@ -33890,7 +33892,7 @@ function modoTeste(){Store.test=true;$('#testBar').hidden=false;const nomes=['Tu
 const RepLibs={xlsx:()=>loadXLSX(),
  pdf(){const L=srcs=>srcs.reduce((p,src)=>p.catch(()=>new Promise((ok,ko)=>{const s=document.createElement('script');s.src=src;s.onload=ok;s.onerror=()=>{s.remove();ko()};document.head.appendChild(s)})),Promise.reject());
   if(window.jspdf&amp;&amp;window.jspdf.jsPDF&amp;&amp;window.jspdf.jsPDF.API.autoTable)return Promise.resolve(window.jspdf.jsPDF);
-  return L(['lib/jspdf.umd.min.js','https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js']).then(()=>L(['lib/jspdf.plugin.autotable.min.js','https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js'])).then(()=>window.jspdf.jsPDF).catch(()=>{throw new Error('Não consegui carregar o gerador de PDF (lib/jspdf.umd.min.js e lib/jspdf.plugin.autotable.min.js).')})}};
+  return L(['jspdf.umd.min.js']).then(()=>L(['jspdf.plugin.autotable.min.js'])).then(()=>window.jspdf.jsPDF).catch(()=>{throw new Error('Não consegui carregar o gerador de PDF incorporado ao aplicativo.')})}};
 const RepModal={open(html){const m=modal({title:'Relatório',body:html,wide:true});return m.el.querySelector('.mb')}};
 const repDT=iso=>{const d=new Date(iso),p=n=>String(n).padStart(2,'0');return`${p(d.getDate())}/${p(d.getMonth()+1)}/${d.getFullYear()} ${p(d.getHours())}:${p(d.getMinutes())}`};
 function repLogo(){const im=$('#brandLogo');const s=im&amp;&amp;!im.hidden&amp;&amp;im.src;if(!s)return Promise.resolve(null);if(s.startsWith('data:'))return Promise.resolve(s);return new Promise(ok=>{const i=new Image();i.onload=()=>{const c=document.createElement('canvas');c.width=i.width;c.height=i.height;c.getContext('2d').drawImage(i,0,0);try{ok(c.toDataURL('image/png'))}catch(e){ok(null)}};i.onerror=()=>ok(null);i.src=s})}
@@ -55516,29 +55518,29 @@ body.vac-porta{overflow:hidden}
       "id": "oee",
       "path": "Plataforma.html#motor/oee",
       "version": "2.6.50",
-      "sha256": "82a6d85d4770ac5fe8945cce417e19a90c1feb6dc4442154b34dd7af7097eb35",
-      "bytes": 2391939
+      "sha256": "aa6d5f553c0529b5811ade1767cef2b962ff7596eb823633b43acfe90cd54001",
+      "bytes": 2391329
     },
     {
       "id": "perdas",
       "path": "Plataforma.html#motor/perdas",
       "version": "1.12.21",
-      "sha256": "82be4e7041911b1e990b7ab894f6364a4a5c8b7abfaa2f175616dbcbab1e0c59",
-      "bytes": 983909
+      "sha256": "3fb3dc557d82c40e9018bfcc7528a74a5dc59a7142b8f5f9e15c4f78fcfe27f9",
+      "bytes": 983639
     },
     {
       "id": "gel",
       "path": "Plataforma.html#motor/gel",
       "version": "2.52",
-      "sha256": "0b2f9ec7a3999f61d3fa8be69ed1b58625b25b53c5e0e019a76e4ee1055450ec",
-      "bytes": 1627592
+      "sha256": "c39d1796268fab5af31e2ee1f88ceccf3f81cec74f8d1214ef63ed8ef67de205",
+      "bytes": 1627357
     },
     {
       "id": "paradas",
       "path": "Plataforma.html#motor/paradas",
       "version": "1.2.22",
-      "sha256": "0aacdc7a0fe00d6daf8cede11b089f4f952c08dbd9e60960d3729ae093b5b367",
-      "bytes": 952841
+      "sha256": "1c4e5ae870d58b457986e95ae72a04d4a6bfcaa2bd88fcc043f518a56d0ed90e",
+      "bytes": 952552
     },
     {
       "id": "equip",
@@ -55572,14 +55574,14 @@ body.vac-porta{overflow:hidden}
       "id": "portal",
       "path": "Plataforma.html#motor/portal",
       "version": "1.9.95",
-      "sha256": "29a8f1b02a72564ab67dc76814d57186185a4f5b37b17f9bdd389e7806342210",
-      "bytes": 1339781
+      "sha256": "214bca94939f096b91eed2b9a4fcb63385a3e8c11ee186b0774cfdbfd8a760fb",
+      "bytes": 1339814
     }
   ],
   "limitations": [
     "Projetos e conteúdo técnico OSM/MES/AM/TPM mantêm os limites documentados nas fontes."
   ],
-  "enginesSha256": "e44dcbab24236b5ff1fad41985280c9217a4fb68c6a2d93ad3cea0100fb68864",
+  "enginesSha256": "52f30f6bb475130be66e21ba6352d83d3e1375a2f5c004fc026fca573513fcb3",
   "originRevision": "ffc9ee8",
   "sourceMode": "single-html",
   "originEnginesSha256": "a87a64ad0c328f70e102b2ae888790a9b5d5a9bd05778652a7ce7cae140e40d2"
@@ -56240,7 +56242,7 @@ import { Icon, Button, Badge, Empty, Modal, BarChart, BrandLogo, CommandMenu } f
 import { ModuleFrame } from "vac:modulo/components/ModuleFrame";
 import manifest from "vac:recurso/manifesto";
 import { ModuleTabs } from "vac:modulo/components/ModuleTabs";
-const VERSION = "1.8.78";
+const VERSION = "1.8.79";
 /* Navegação 1.3.0 (16/11/2026): Visão da linha, Relatórios e Importações têm abas; as que mostram uma tela do
    Portal (motor da Administração) trazem o 3º campo com a aba dele. Administração fica só com cadastros e configuração. */
 const SHELL_TABS = {
