@@ -23,7 +23,12 @@ Lista única, sem repetição, das dúvidas de negócio das duas auditorias. Cad
 | P10 | **Guardar o ID** na trilha do Waste e da Administração | C17: ID ao lado do nome nas entradas novas |
 | P11 | **Posso homologar esta semana** (pasta de rede e duas estações) | C16: preparar o roteiro de homologação de duas estações |
 
-Restam abertas: P6 (anexos), P8 (códigos de família FY27) e P9 (celular e Gel).
+| P6 | **Prévia só de PDF, imagens (JPG, PNG) e texto simples (TXT, CSV)**; os demais só baixam | C24: limitar a prévia a esses tipos, sem executar conteúdo |
+| P8 | **Letras e dígitos** (ex.: `FX1`) | C42: os dois leitores da Meta OEE FY27 aceitam o mesmo formato |
+| P9 | **Operador e líder, Android comum** | C51 a C53: testar a 360–412 px no Chrome Android |
+| E02 | **0 bytes = ausente** (decisão sobre a exceção do contrato 4) | Cadastro com exatamente 0 bytes conta como ausente; conteúdo inválido continua erro |
+
+Todas as perguntas da análise comum estão respondidas.
 
 ## Em aberto (ainda sem resposta)
 | # | Pergunta | Origem | O que muda conforme a resposta | Linhas |
