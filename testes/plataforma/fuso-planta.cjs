@@ -27,6 +27,13 @@ const html = fs.readFileSync(path.resolve(__dirname, '../../Plataforma.html'));
     await g.waitForFunction(() => typeof todayISO === 'function' && typeof vacHoje === 'function', null, { timeout: 30000 });
     const gl = await g.evaluate(() => { const orig = vacCad.param; vacCad.param = k => k === 'fusoHorario' ? 'Asia/Tokyo' : orig(k); const x = { gel: todayISO(), vacHoje: vacHoje() }; vacCad.param = orig; return x; });
     assert.deepEqual(gl, { gel: '2026-11-09', vacHoje: '2026-11-09' }, 'o Gel usa o mesmo hoje da planta');
+    // P2 do Codex: lacuna de horário de verão do navegador não desloca a hora da planta (navegador New_York, planta UTC, 08/03/2026 02:30 UTC)
+    const ctx2 = await browser.newContext({ timezoneId: 'America/New_York', viewport: { width: 1440, height: 900 } }), p2 = await ctx2.newPage();
+    await p2.clock.setFixedTime(new Date('2026-03-08T02:30:00Z')); await p2.goto('http://127.0.0.1:' + srv.address().port + '/?demo=1#/oee?tab=launch');
+    const q2 = p2.locator('iframe[title="Módulo Produção"]'); await q2.contentFrame().locator('body').waitFor({ state: 'attached', timeout: 30000 });
+    const f2 = await (await q2.elementHandle()).contentFrame(); await f2.waitForFunction(() => window.vacPagina?.pronto() && typeof U !== 'undefined' && typeof vacAgora === 'function', null, { timeout: 30000 });
+    const dst = await f2.evaluate(() => { const orig = vacCad.param; vacCad.param = k => k === 'fusoHorario' ? 'UTC' : orig(k); const n = U.agora(); const x = { h: n.getHours(), m: n.getMinutes(), hoje: U.today() }; vacCad.param = orig; return x; });
+    assert.deepEqual(dst, { h: 2, m: 30, hoje: '2026-03-08' }, 'planta UTC 02:30 não vira 03:30 pela lacuna do navegador');
     assert.deepEqual(erros, [], 'sem erro de JavaScript');
     console.log('ok fuso da planta: hoje e relógio seguem parametros.fusoHorario; sem ele ou inválido, o do navegador; o Gel acompanha');
   } finally { if (browser) await browser.close(); srv.close(); }

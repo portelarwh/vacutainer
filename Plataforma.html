@@ -1240,13 +1240,14 @@ const vacPareto = (() => {
 /* kit v2.1 · E2 (08/11/2026): "hoje" no dia local do computador (antes, sem data, valia o dia em UTC: às 22h de Brasília já era amanhã).
    Os leitores abaixo usam a data do fato quando recebem uma; vacHoje() é só o padrão quando não recebem. */
 /* A04 (auditoria 26/11/2026, autorizado pelo responsável): "hoje" e o relógio dos turnos seguem o fuso da planta (parametros.fusoHorario do cadastro);
-   sem ele, ou se inválido, o fuso do navegador (como antes). vacAgora() devolve um Date cujos campos locais (getHours...) são os da planta. */
+   sem ele, ou se inválido, o fuso do navegador (como antes). vacAgora() devolve um objeto com os getters de Date (getHours...) lendo os campos da planta, sem passar por um Date local (que deslocaria a hora numa lacuna de horário de verão do navegador). */
 function vacFuso() { try { const f = typeof vacCad === 'function' &amp;&amp; vacCad.param ? vacCad.param('fusoHorario') : null; if (f) { new Intl.DateTimeFormat('pt-BR', { timeZone: String(f) }); return String(f); } } catch (e) { } return ''; }
 function vacAgora() {
   const tz = vacFuso(); if (!tz) return new Date();
   try {
     const p = Object.fromEntries(new Intl.DateTimeFormat('en-CA', { timeZone: tz, hourCycle: 'h23', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit' }).formatToParts(new Date()).map(x => [x.type, x.value]));
-    return new Date(+p.year, +p.month - 1, +p.day, +p.hour, +p.minute, +p.second);
+    const Y = +p.year, M = +p.month - 1, D = +p.day, h = +p.hour, mi = +p.minute, se = +p.second, z = n => String(n).padStart(2, '0');
+    return { getFullYear: () => Y, getMonth: () => M, getDate: () => D, getHours: () => h, getMinutes: () => mi, getSeconds: () => se, toTimeString: () => z(h) + ':' + z(mi) + ':' + z(se) };
   } catch (e) { return new Date(); }
 }
 function vacHoje() { const d = vacAgora(), z = n => String(n).padStart(2, '0'); return d.getFullYear() + '-' + z(d.getMonth() + 1) + '-' + z(d.getDate()); }
@@ -8842,7 +8843,7 @@ const Engine = (() => {
         if (trimmed > 0.01) { er.simultanea = trimmed; M('alerta', `A parada ${U.range(ev.start, ev.end)} coincide com outra já contada: ${U.fmt(trimmed)} min não somam de novo.`, { ev: ev.id }); }
         for (const [sg0, sg1] of segs) for (const f of flat) { const o = overlap(sg0, sg1, f.iv.start, f.iv.end); if (o > 0) { f[b] += o; f.evIds.push(ev.id); er.splits.push({ ivId: f.iv.id, min: o }); er.shiftIds.add(f.ps.id);
           /* TUR-07: minutos com horário no intervalo e os que caem depois de 00:00 (a divisão segue o horário real, não a proporção) */
-          f.tAll = f.tAll || {}; f.tAll[b] = (f.tAll[b] || 0) + o; const oPos = overlap(ev.start, ev.end, Math.max(f.iv.start, 1440), f.iv.end); if (oPos > 0) { f.tPos = f.tPos || {}; f.tPos[b] = (f.tPos[b] || 0) + oPos; } } }
+          f.tAll = f.tAll || {}; f.tAll[b] = (f.tAll[b] || 0) + o; const oPos = overlap(sg0, sg1, Math.max(f.iv.start, 1440), f.iv.end); if (oPos > 0) { f.tPos = f.tPos || {}; f.tPos[b] = (f.tPos[b] || 0) + oPos; } } }
         const covered = sum(er.splits, s => s.min);
         if (covered + trimmed < er.minutes - 0.01) M('erro', `A parada ${U.range(ev.start, ev.end)} tem ${U.fmt(er.minutes - covered - trimmed)} min fora dos intervalos do dia.`, { ev: ev.id });
       } else if (ev.intervalId &amp;&amp; ivMap.has(ev.intervalId)) {
@@ -55433,70 +55434,70 @@ body.vac-porta{overflow:hidden}
       "id": "oee",
       "path": "Plataforma.html#motor/oee",
       "version": "2.6.50",
-      "sha256": "98837440186fca9eb57a5406ae46601830a135e46b7646143b7832e434510dfc",
-      "bytes": 2385766
+      "sha256": "186791f059c680117e0611f8d545c30b3f59941faae0f6b57e5d2e7db593bb24",
+      "bytes": 2386115
     },
     {
       "id": "perdas",
       "path": "Plataforma.html#motor/perdas",
       "version": "1.12.21",
-      "sha256": "0c0afca272315f9b61c7c3b36180506952c60157489738593a949377fcb3c488",
-      "bytes": 980012
+      "sha256": "0fff2328ed80562674eb7639470d168efaa7dc6c231c918aa26e6f306314e4fd",
+      "bytes": 980369
     },
     {
       "id": "gel",
       "path": "Plataforma.html#motor/gel",
       "version": "2.52",
-      "sha256": "35c36e1cc8876dbb46483f5c2d9e7c8e9754a296108ea8c4157d73ebfe4aa56a",
-      "bytes": 1624187
+      "sha256": "bdd187e7ec0cf38518355c9e06299e7aa79ca733285f1fa3bd974afaafa8795f",
+      "bytes": 1624544
     },
     {
       "id": "paradas",
       "path": "Plataforma.html#motor/paradas",
       "version": "1.2.22",
-      "sha256": "aa293213dbe7602c0e48bdd3e1fcc657eae0db2026bfb5a96a81fd2707839521",
-      "bytes": 949268
+      "sha256": "7aac79f33fa6cb314387b835db9e0e4d5e202c7962be572b6c8549c2c715a0fa",
+      "bytes": 949625
     },
     {
       "id": "equip",
       "path": "Plataforma.html#motor/equip",
       "version": "1.0.22",
-      "sha256": "571ff7500bc626fef1cfb5df215baceb97e2d83183f8ee00b84508bbfca24140",
-      "bytes": 740622
+      "sha256": "4c5165a9e268acb3b2c4f10bd9e4f1d26eeaf019393f5aa7102ca246f9391964",
+      "bytes": 740979
     },
     {
       "id": "inic",
       "path": "Plataforma.html#motor/inic",
       "version": "1.1.17",
-      "sha256": "8331224ab966d5f6c19374f9f9d743c4d2c6d25a766a3381e39c7307d87a4ad8",
-      "bytes": 750223
+      "sha256": "aec06469b261920d6dd4742770b63dd138fd14d92014d284c2ff3668d9fe4e25",
+      "bytes": 750580
     },
     {
       "id": "linha",
       "path": "Plataforma.html#motor/linha",
       "version": "1.7.1",
-      "sha256": "51b800ab5dbac7a8da188ed5b39a39581f81563d1f296913fa6cfdc2f868ff61",
-      "bytes": 1003255
+      "sha256": "a47941a6f56828112f2b8c6ba539cf5f4881e1cf5feff7e3bd00fdca8696b52d",
+      "bytes": 1003612
     },
     {
       "id": "projetos",
       "path": "Plataforma.html#motor/projetos",
       "version": "0.1.16",
-      "sha256": "3f0b03ae9a412f42c6bf78aa1e8635b1c187eee3eb9b9e2844e80abe577a76f4",
-      "bytes": 673073
+      "sha256": "91ce7202d9e9159b74daccfbb248643372756c1343ea8928581a5bd0657dcfdf",
+      "bytes": 673430
     },
     {
       "id": "portal",
       "path": "Plataforma.html#motor/portal",
       "version": "1.9.92",
-      "sha256": "74368d4bfe6e9035b15fddeb119653b67ea5d7234077151e11826c3105fbcb2b",
-      "bytes": 1332514
+      "sha256": "d87261764ac6031ec6f8e44c40274a3f7988c4ac6d607438d421e645fff1f849",
+      "bytes": 1332871
     }
   ],
   "limitations": [
     "Projetos e conteúdo técnico OSM/MES/AM/TPM mantêm os limites documentados nas fontes."
   ],
-  "enginesSha256": "8758562359c7c01bffba900cc91fd878235e11d90b2e75a03a3549dd534a0d16",
+  "enginesSha256": "e826aeac2c9985cdb9316d368e462cdfd48ff79bceffb1ba9e758ba11e616e0e",
   "originRevision": "ffc9ee8",
   "sourceMode": "single-html",
   "originEnginesSha256": "a87a64ad0c328f70e102b2ae888790a9b5d5a9bd05778652a7ce7cae140e40d2"

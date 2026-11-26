@@ -23,5 +23,12 @@ abrir(async (f, erros) => {
   assert.ok(r.igual.msgs.some(m => /coincide com outra já contada/.test(m)), 'avisa que parte não soma de novo');
   assert.ok(!r.separadas.msgs.some(m => /coincide com outra/.test(m)), 'sem aviso quando não há coincidência');
   assert.ok(r.igual.D > 0.93 && r.igual.D < 0.95, 'D coerente com 60 min parados: ' + r.igual.D);
+  // P1 do Codex: paradas sobrepostas depois da meia-noite: o que passa para o dia seguinte (tPos) também é a união
+  const m = await f.evaluate(() => { const d = db(), x = JSON.parse(JSON.stringify(d.productionDays.find(y => !y.deleted)));
+    const ps = x.shifts.find(s => (s.intervals || []).length) || x.shifts[0], ivs = ps.intervals; ivs[ivs.length - 1].end = 1500; ivs[ivs.length - 1].start = Math.min(ivs[ivs.length - 1].start, 1380);
+    x.events = []; const ev = (s, e) => ({ id: 'm' + s + e, codeId: 'dc_fme', start: s, end: e, minutes: null, equipmentId: 'mac_eq03', note: 'x', impact: { deducts: false, a: true, p: false, q: false, pareto: true, report: true } });
+    x.events.push(ev(1450, 1460), ev(1440, 1470)); const res = Engine.computeDayRaw(d, x);
+    return { tPos: res.flat.reduce((a, f) => a + ((f.tPos && Object.values(f.tPos).reduce((u, v) => u + v, 0)) || 0), 0), aMin: res.agg ? res.agg.aMin : null, fim: ivs[ivs.length - 1].end }; });
+  assert.equal(m.tPos, 30, 'depois da meia-noite: 00:10–00:20 e 00:00–00:30 = união de 30 min (não 40 nem 70): ' + JSON.stringify(m));
   assert.deepEqual(erros, []); console.log('ok paradas simultâneas contam uma vez: igual 150→60, parcial=união, contíguas e separadas somam, aviso quando coincide');
 }).catch(e => { console.error(e); process.exit(1); });
