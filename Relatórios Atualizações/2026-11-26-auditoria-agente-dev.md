@@ -4,8 +4,8 @@ Base: `main` em `e22cb92` (plataforma 1.8.71). Roteiro seguido: [roteiro-auditor
 Esta é a análise **A**. A análise **B** (contraparte) ainda não foi entregue; a análise comum vem depois (seção 8).
 
 ## 1. Resumo executivo
-1. **Nenhum erro crítico de cálculo foi provado.** Em mais de 700 cenários aleatórios (zero, nulo, extremos, madrugada, hora extra, texto no lugar de número) o motor não lançou exceção, não produziu NaN nem Infinity, e a identidade OEE = D × P × Q se manteve. A exportação do Excel reconcilia com a tela.
-2. **O ponto fraco do motor é o que ele faz com dado impossível:** em vez de limitar, calcula e só avisa por texto. Com produção acima da capacidade o OEE chega a 72.906%; com uma parada maior que o turno a Disponibilidade fica negativa (-2,98%) e a Performance, -2471%. Também soma paradas sobrepostas em duplicidade. (A01 a A03)
+1. **Nenhum erro crítico de cálculo foi provado.** Em mais de 700 cenários aleatórios (zero, nulo, extremos, turno de madrugada com intervalos além de 24:00, intervalo invertido, parada na virada, hora extra, refugo enorme ou negativo, texto no lugar de número) o motor não lançou exceção, não produziu NaN nem Infinity, e a identidade OEE = D × P × Q se manteve. A exportação do Excel reconcilia com a tela.
+2. **O ponto fraco do motor é o que ele faz com dado impossível:** em vez de limitar, calcula e só avisa por texto. Com produção acima da capacidade o OEE chega a 72.906%; com um refugo digitado com dígitos a mais a Performance chega a 170.665%; com uma parada maior que o turno a Disponibilidade fica negativa (-2,98%) e a Performance, -2471%; refugo negativo é aceito (Qualidade 100,11%); intervalo invertido é ignorado em silêncio. Também soma paradas sobrepostas em duplicidade. (A01 a A03, A08 a A10)
 3. **O parâmetro "Fuso horário" não é aplicado:** "hoje" e os turnos usam o relógio e o fuso do navegador, ao contrário do que a ajuda diz. (A04, Alta)
 4. **Segurança de HTML está boa** (escape consistente, nenhum eval ou javascript:). O ponto sensível é o modelo: perfis e PIN existem só no cliente, e o hash do PIN de 6 dígitos mora num arquivo compartilhado. A segurança real é a permissão da pasta. (B02)
 5. **A arquitetura é a maior dívida técnica, não um risco imediato:** 336 KB de código repetido entre blocos (8 cópias de `esc`, 7 de `Store`) e funções com mais de mil linhas.
@@ -37,6 +37,7 @@ Motor robusto a entradas ruins sem quebrar; identidade OEE = D×P×Q; tela e Exc
 - **A01 (Média)** produção acima da capacidade vira P e OEE absurdos; só aviso.
 - **A02 (Alta)** parada maior que o turno: D e P negativos.
 - **A03 (Média)** paradas sobrepostas somam em duplicidade (D de 97,0% para 85,1% no exemplo).
+- **A08 (Média)** refugo absurdo infla a Performance (170.665%); **A09 (Baixa)** refugo negativo aceito (Q 100,11%); **A10 (Média)** intervalo invertido ou de duração zero é ignorado em silêncio.
 - **A04 (Alta)** fuso horário configurado não é usado.
 - A07 (Média, suspeita) falta teste do conjunto: vários dias com madrugada + hora extra + parada na virada, tela × exportação.
 
@@ -65,6 +66,8 @@ E01/E02 baixas (chave duplicada idêntica, auto-atribuição a confirmar); F01 l
 3. **Fuso (A04):** existe estação fora do fuso da planta? O parâmetro deve passar a valer?
 4. **Modelo de acesso (B02):** quem tem acesso de leitura e escrita à pasta de rede? O ID e a senha são identificação (registrar quem fez) ou controle (impedir quem não pode)?
 5. **Arquitetura (H01):** vale investir em unificar o código repetido, ou cada módulo autônomo é uma escolha de manter?
+
+**Correção da própria auditoria:** a primeira versão do teste de propriedade não exercitava a madrugada nem o refugo (mudava só o snapshot do turno e passava um objeto como refugo). O revisor automático apontou, o script foi corrigido e agora confirma por si que cada cenário chega à condição pretendida; os achados A08 a A10 vieram dessa correção.
 
 ## 8. Análise comum com a contraparte (próximo passo)
 Quando a contraparte entregar `auditoria-contraparte.md` e `.csv`: juntar as tabelas por lugar (bloco e linha ou função), classificar cada achado como **Convergente**, **Só um viu** ou **Divergente**, rodar a prova nas divergências, e produzir uma tabela única com a coluna "Quem viu" e um roadmap único.
