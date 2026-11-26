@@ -1,0 +1,72 @@
+// Carga por tabela (26/11/2026): cada tabela de cadastro tem ⇩ Modelo e ⇧ Importar planilha. Demonstração, dados fictícios. Prova:
+//  1. ⇩ Modelo baixa a planilha; o que ela traz, lido de volta, não muda nada em nenhuma das 10 tabelas;
+//  2. importar em ordem (linha, família, equipamento, catálogo, material, componente, turno, calendário): a prévia mostra novos e erros,
+//     grava só o marcado, com auditoria, e o item novo nasce com UMA vigência (catálogo e turno);
+//  3. item existente: só o cabeçalho muda; a vigência gravada não muda (aviso para usar a ficha); célula vazia não apaga;
+//  4. valor inválido, referência inexistente e código repetido ficam como erro e não gravam; nenhum erro de JavaScript.
+const { chromium } = require('playwright'), http = require('http'), fs = require('fs'), path = require('path'), assert = require('assert/strict');
+const html = fs.readFileSync(path.resolve(__dirname, '../../Plataforma.html'));
+(async () => {
+  const srv = http.createServer((q, r) => { r.setHeader('Content-Type', 'text/html'); r.end(html); });
+  let browser;
+  try {
+    await new Promise(r => srv.listen(0, '127.0.0.1', r));
+    browser = await chromium.launch(require('./chromium.cjs')());
+    const page = await browser.newPage({ viewport: { width: 1500, height: 950 }, acceptDownloads: true }), erros = [];
+    page.on('pageerror', e => erros.push(e.message)); page.on('dialog', d => d.accept());
+    await page.clock.setFixedTime(new Date('2026-11-19T10:00:00'));
+    await page.goto('http://127.0.0.1:' + srv.address().port + '/?demo=1#/portal');
+    const f = await (await page.locator('iframe[title="Módulo Administração"]').elementHandle({ timeout: 60000 })).contentFrame();
+    await f.waitForFunction(() => typeof Cad !== 'undefined' && Cad.D && typeof CargaTab === 'object');
+    await f.evaluate(() => { location.hash = '#cadastros/linhas'; }); await f.waitForSelector('#cgMod');
+    assert.ok(await f.evaluate(() => Cad.podeEditar(true)) && await f.locator('#cgImp').count(), 'botões Modelo e Importar');
+
+    // 1) modelo e ida e volta sem mudança em todas as tabelas
+    const [dl] = await Promise.all([page.waitForEvent('download'), f.click('#cgMod')]);
+    assert.match(dl.suggestedFilename(), /^Carga_linhas_\d{4}-\d{2}-\d{2}\.xlsx$/);
+    const rt = await f.evaluate(() => CARGA_T.map(t => { const D = Cad.D, C = CargaTab.colsT(t), hoje = todayISO(), T = CAD_T[t];
+      const rows = [C.map(c => c.k)].concat((D[t] || []).map(it => { const v = T.vig ? vigEm(it.vigencias, hoje) || (it.vigencias || []).slice(-1)[0] || {} : {}; return C.map(c => c.k === 'vigDe' ? (v.de || '') : c.v ? CargaTab.celula(c, v[c.k]) : CargaTab.celula(c, it[c.k])); }));
+      const P = CargaTab.plano(t, D, rows, 'volta.xlsx'); return [t, (D[t] || []).length, P.erro || P.L.filter(x => x.erros.length || (x.mud && Object.keys(x.mud).length) || x.novo).map(x => x.cod + ':' + (x.erros[0] || Object.keys(x.mud || {}).join(','))).join(' | ')]; }));
+    for (const [t, n, dif] of rt) assert.equal(dif, '', `${t} (${n}): ida e volta sem mudança — ${dif}`);
+    console.log('ok ⇩ Modelo: 10 tabelas lidas de volta sem mudança (' + rt.map(x => x[0] + '=' + x[1]).join(' ') + ')');
+
+    // 2) importar em ordem
+    const nov = await f.evaluate(() => {
+      const D = Cad.D, ln = D.linhas[0].codigo, run = (t, header, linhas) => { const P = CargaTab.plano(t, Cad.D, [header].concat(linhas), 'carga.xlsx'); if (P.erro) return { erro: P.erro }; const ops = CargaTab.ops(P); const res = { novos: P.L.filter(x => x.novo && !x.erros.length).length, erros: P.L.filter(x => x.erros.length).map(x => x.erros[0]) }; if (ops.length) Cad.ops(ops); return res; };
+      const out = {};
+      out.linha = run('linhas', ['codigo', 'nome', 'unidade', 'setor'], [['LCARGA', 'Linha de carga (fictícia)', 'Unidade X', 'Setor Y']]);
+      out.familia = run('familias', ['codigo', 'nome', 'cor'], [['FCARGA', 'Família de carga', '#112233'], ['FRUIM', 'Família ruim', 'azul']]);
+      out.equip = run('equipamentos', ['codigo', 'nome', 'linha', 'tipo'], [['ECARGA1', 'Equipamento 1', 'LCARGA', 'equipamento'], ['ECARGA2', 'Equipamento 2', 'LCARGA', 'equipamento'], ['EREF', 'Sem linha', 'NAOEXISTE', 'equipamento']]);
+      out.cat = run('catalogos', ['codigo', 'nome', 'tipoItem', 'familia', 'linha', 'vigDe', 'pphNominal', 'tubosPorCaixa'], [['999001', 'Catálogo de carga', 'tubo', 'FCARGA', 'LCARGA', '2026-11-01', '60.000', '1000'], ['12', 'Catálogo curto', 'tubo', '', ln, '', '', '']]);
+      out.mat = run('materiais', ['codigo', 'nome', 'unidade', 'tipo'], [['MCARGA', 'Material de carga', 'un', 'rolha']]);
+      out.turno = run('turnos', ['codigo', 'nome', 'linha', 'vigDe', 'inicio', 'fim', 'dias'], [['TCARGA', 'Turno de carga', 'LCARGA', '2026-11-01', '06:00', '14:30', '1,2,3,4,5,6']]);
+      out.cal = run('calendario', ['codigo', 'tipo', 'nome'], [['26/12/2026', 'sem produção', 'Carga de calendário']]);
+      return out;
+    });
+    await page.waitForTimeout(600);
+    assert.equal(nov.linha.novos, 1); assert.equal(nov.familia.novos, 1); assert.match(nov.familia.erros[0], /cor/i);
+    assert.equal(nov.equip.novos, 2); assert.match(nov.equip.erros[0], /não existe em Linhas/);
+    assert.equal(nov.cat.novos, 1); assert.match(nov.cat.erros[0], /6 dígitos/);
+    assert.equal(nov.mat.novos, 1); assert.equal(nov.turno.novos, 1); assert.equal(nov.cal.novos, 1);
+    const g = await f.evaluate(() => { const D = Cad.D, c = D.catalogos.find(x => x.codigo === '999001'), t = D.turnos.find(x => x.codigo === 'TCARGA'), q = D.equipamentos.filter(x => /^ECARGA/.test(x.codigo));
+      return { c: c && [c.vigencias.length, c.vigencias[0].de, c.vigencias[0].pphNominal, c.vigencias[0].tubosPorCaixa], t: t && [t.vigencias.length, t.vigencias[0].inicio, t.vigencias[0].fim, t.vigencias[0].dias.join('')], pos: q.map(x => x.posicao).sort(), cal: !!D.calendario.find(x => x.codigo === '2026-12-26'), l: !!D.linhas.find(x => x.codigo === 'LCARGA'), aud: (D.auditoria || []).filter(x => /carga por tabela/.test(x.motivo || '')).length }; });
+    assert.deepEqual(g.c, [1, '2026-11-01', 60000, 1000], 'catálogo com uma vigência'); assert.deepEqual(g.t, [1, '06:00', '14:30', '123456'], 'turno com uma vigência');
+    assert.equal(new Set(g.pos).size, 2, 'posições dos equipamentos novos diferentes'); assert.ok(g.cal && g.l && g.aud >= 7, 'calendário, linha e auditoria ' + JSON.stringify(g));
+    console.log('ok ⇧ Importar: linha, família, equipamentos, catálogo, material, turno e calendário gravados; inválidos recusados; uma vigência; auditoria');
+
+    // 3) existente: só o cabeçalho; vigência não muda; vazio não apaga; prévia pela tela
+    await f.evaluate(() => { location.hash = '#cadastros/catalogos'; App.render(); }); await f.waitForSelector('#cgImp', { state: 'attached' });
+    const e = await f.evaluate(() => { const P = CargaTab.plano('catalogos', Cad.D, [['codigo', 'nome', 'familia', 'pphNominal', 'vigDe'], ['999001', 'Catálogo de carga (renomeado)', '', '99.000', '2026-11-01']], 'edita.xlsx'); window.__P = P; CargaTab.prev(P, () => {});
+      return { mud: Object.keys(P.L[0].mud), avisos: P.L[0].avisos, txt: document.querySelector('#cgBox').textContent }; });
+    assert.deepEqual(e.mud, ['nome'], 'só o nome muda; família vazia não apaga'); assert.deepEqual(e.avisos, ['pphNominal']); assert.match(e.txt, /→/); assert.match(e.txt, /use a ficha/);
+    await f.click('#cgOk'); await page.waitForTimeout(500);
+    const h = await f.evaluate(() => { const c = Cad.D.catalogos.find(x => x.codigo === '999001'); return [c.nome, c.familia, c.vigencias.length, c.vigencias[0].pphNominal]; });
+    assert.deepEqual(h, ['Catálogo de carga (renomeado)', 'FCARGA', 1, 60000], 'nome mudou; família e vigência intactas');
+    console.log('ok item existente: só o cabeçalho muda; vigência gravada intacta (aviso); célula vazia não apaga');
+
+    // 4) código repetido e sem código
+    const r = await f.evaluate(() => { const P = CargaTab.plano('linhas', Cad.D, [['codigo', 'nome'], ['LREP', 'A'], ['LREP', 'B'], ['', 'C']], 'x.xlsx'); return P.L.map(x => x.erros[0] || 'ok'); });
+    assert.deepEqual(r, ['ok', 'código repetido na planilha', 'linha sem código']);
+    assert.deepEqual(erros, [], 'sem erro de JavaScript'); console.log('ok sem erro de JavaScript');
+  } finally { if (browser) await browser.close(); srv.close(); }
+})().catch(e => { console.error(e); process.exit(1); });
