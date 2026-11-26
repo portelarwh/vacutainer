@@ -4367,8 +4367,8 @@ function configComum(){return`<div class="card form"><h3>Pasta da rede ${ib('Pas
  <h3 style="margin-top:16px">Quem está usando</h3><p class="small">${user()?`<b>${esc(user())}</b>${uidAtual()?' · ID '+esc(uidAtual()):''}${perfilAtual()?' · perfil '+esc(perfilAtual().nome||perfilAtual().codigo):''}`:'Ninguém entrou neste navegador.'} <button type="button" class="b sm" id="cUser">${user()?'Trocar usuário':'Entrar'}</button></p></div>`}
 function wireConfigComum(){$('#cPasta').onclick=async()=>{if(await Store.pick()){await App.onConnect();toast('Pasta conectada.')}};$('#cBaixar').onclick=()=>Store.download();
  $('#cUser').onclick=()=>Entrar.abrir();
- $('#cLogo').onchange=async e=>{const f=e.target.files[0];e.target.value='';if(!f)return;try{const d=await Logo.toDataUrl(f);localStorage.setItem('vac.logo',d);await Store.commit('Logo enviada',b=>{b.config.logo=d});const naPasta=await Logo.gravarPasta(d);Logo.apply();toast(naPasta?'Logo salva e gravada na pasta (Logo.png): todas as páginas passam a usar esta.':'Logo salva neste navegador e na base. Conecte a pasta e envie de novo para valer em todas as páginas.',naPasta?4000:7000,!naPasta)}catch(x){alert(x.message)}};
- $('#cLogoDel').onclick=async()=>{if(Logo.url&amp;&amp;!confirm('Remover também o Logo.png da pasta? Todas as páginas ficam sem logo.'))return;localStorage.removeItem('vac.logo');await Logo.removerPasta();Store.commit('Logo removida',b=>{delete b.config.logo}).then(()=>Logo.apply())};
+ $('#cLogo').onchange=async e=>{const f=e.target.files[0];e.target.value='';if(!f)return;try{const d=await Logo.toDataUrl(f);await Store.commit('Logo enviada',b=>{b.config.logo=d});localStorage.setItem('vac.logo',d);const naPasta=await Logo.gravarPasta(d);Logo.apply();toast(naPasta?'Logo salva e gravada na pasta (Logo.png): todas as páginas passam a usar esta.':'Logo salva neste navegador e na base. Conecte a pasta e envie de novo para valer em todas as páginas.',naPasta?4000:7000,!naPasta)}catch(x){alert(x.message)}};
+ $('#cLogoDel').onclick=async()=>{const daPasta=!!Logo.url;if(daPasta&amp;&amp;!confirm('Remover também o Logo.png da pasta? Todas as páginas ficam sem logo.'))return;try{await Store.commit('Logo removida',b=>{delete b.config.logo});localStorage.removeItem('vac.logo');if(daPasta)await Logo.removerPasta();Logo.apply()}catch(x){/* base recusou (formato ou trava): nada foi apagado */}};
  $('#cRest').onchange=async e=>{const f=e.target.files[0];e.target.value='';if(!f)return;try{const d=JSON.parse(await f.text());if(d.schema!==PAGE.vazio().schema)throw new Error('não é uma base desta página');{const fv=vacFormatoBase(d,PAGE.vazio().schema,1);if(fv)throw new Error(fv)}if(!confirm(`Substituir a base atual (rev ${Store.B.rev}) pela cópia "${f.name}"?`))return;
   /* 1.8.13 · se a cópia da base atual falhar, avisa e só continua com decisão explícita (antes a falha era ignorada e restaurava sem cópia) */
   if(Store.mode==='pasta'){try{await Store.writeFile(await Store.sub(PAGE.backupDir),PAGE.baseFile.replace('.json','')+'_antes-restaurar_'+todayISO()+'_'+new Date().toTimeString().slice(0,5).replace(':','h')+'.json',JSON.stringify(Store.B))}catch(x){if(!confirm(`Não consegui salvar a cópia da base atual em ${PAGE.backupDir} antes de restaurar (${x.message||x}).\n\nSem essa cópia, a base atual (rev ${Store.B.rev}) não poderá ser recuperada. Restaurar mesmo assim?`))return}}
@@ -5084,7 +5084,7 @@ const CAD_T={
 CAD_T.componentes={nome:'Componentes',um:'componente',campos:[['codigo','Código (<EQ>-Cnn)','cod'],['equipamento','Equipamento','refcod','equipamentos'],['nome','Nome','txt',null,{w:2}],['sistema','Sistema','sel',['mecânico','elétrico','pneumático','hidráulico','automação','visão','ferramental','outro']],['criticidade','Criticidade','sel',['A','B','C']],['materialSAP','Material SAP','txt']]};
 /* 26/11/2026 · tags da linha do tempo (decisão 5): cada tag do equipamento ou do MES vira um dos quatro estados da Linha do tempo da Produção. Antes ficava na Produção (Config › Mapa de tags).
    Código = identificador da linha; "Tag" é o texto que chega do equipamento/MES (vazio = o próprio código); "Máquina" vazia vale para todas. Estado, categoria e prioridade vão na vigência: o evento antigo mantém o estado que valia na data dele. */
-CAD_T.tagsMapa={nome:'Tags da linha do tempo',um:'tag',vig:true,campos:[['codigo','Código','cod'],['nome','Descrição','txt',null,{w:2}],['tag','Tag (texto do equipamento/MES; vazio = o código)','txt'],['equipamento','Máquina (vazio = todas)','ref','equipamentos']],
+CAD_T.tagsMapa={nome:'Tags da linha do tempo',um:'tag',vig:true,campos:[['codigo','Código','cod'],['nome','Descrição','txt',null,{w:2}],['tag','Tag (texto do equipamento/MES; vazio = o código)','txt',null,{trava:1}],['equipamento','Máquina (vazio = todas)','ref','equipamentos',{trava:1}]],
   vcampos:[['estado','Estado macro','sel',['prod','parada','bloq','ociosa'],{lab:{prod:'Produzindo',parada:'Parada',bloq:'Bloqueada',ociosa:'Ociosa'}}],['categoria','Categoria','txt'],['prioridade','Prioridade (0 a 9)','int']]};
 CAD_T.modosFalha={nome:'Modos de falha',um:'modo de falha',campos:[['codigo','Código','cod'],['nome','Nome','txt',null,{w:2}]]};
 /* 1.9.35 · calendário de produção (pendência da centralização): dias sem produção programada (feriado, parada da planta) e dias extras da linha.
@@ -6070,6 +6070,7 @@ const CargaTab={
     L.push({lin,cod,novo:true,item,erros:[...new Set(erros)],marcado:!erros.length});continue}
    const mud={};for(const[k,x]of Object.entries(val)){if(k==='codigo')continue;if(!this.igual(cur[k],x))mud[k]={antes:cur[k]??null,depois:x}}
    if(T.vig){const v=vigEm(cur.vigencias,hoje)||(cur.vigencias||[]).slice(-1)[0]||{};for(const[k,x]of Object.entries(vv)){if(k==='vigDe'?(x!==v.de&amp;&amp;v.de):!this.igual(v[k],x))avisos.push(k)}}
+   for(const c of C)if(!c.v&amp;&amp;c.o2&amp;&amp;c.o2.trava&amp;&amp;mud[c.k])erros.push(`${c.l}: não muda depois de gravado (o histórico usa o valor gravado); cadastre outro item`);
    if(Object.keys(mud).length){const m2=clone(cur);for(const[k,x]of Object.entries(mud))m2[k]=x.depois;cadFinal(t,m2);erros.push(...cadValidarItem(t,m2,D))}
    L.push({lin,cod:cur.codigo,mud,erros:[...new Set(erros)],avisos,marcado:!erros.length&amp;&amp;Object.keys(mud).length>0,igual:!Object.keys(mud).length})}
   if(t==='equipamentos'){const vistoMes=new Map();   /* o lote inteiro: dois itens da planilha não podem trazer o mesmo código MES (a ficha confere só contra o que já está gravado) */
@@ -6195,7 +6196,7 @@ const Ficha={t:null,cod:null,orig:null,W:null,novo:false,edit:false,dirty:false,
   if(!this.novo)h+=this.audit();
   if(t==='bom')h+=`<datalist id="cadMats">${D.materiais.filter(m=>m.ativo!==false).map(m=>`<option value="${esc(m.codigo)}">${esc(m.nome||'')}</option>`).join('')}</datalist>`;
   return h},
- campo([f,lab,ty,arg,o],base=''){const p=base+f,v=pget(this.W,p),dis=(!this.edit||((ty==='cod'||ty==='refcod')&amp;&amp;!this.novo))?' disabled':'',w=o&amp;&amp;o.w===2?' class="w2"':'';
+ campo([f,lab,ty,arg,o],base=''){const p=base+f,v=pget(this.W,p),dis=(!this.edit||((ty==='cod'||ty==='refcod'||(o&amp;&amp;o.trava))&amp;&amp;!this.novo))?' disabled':'',w=o&amp;&amp;o.w===2?' class="w2"':'';
   if(ty==='bool'){const ab=campoAjuda(this.t,f);return`<label class="ck"><input type="checkbox" data-p="${p}" data-k="bool" ${v?'checked':''}${dis}> ${esc(lab)}${ab?' '+ib(lab,ab):''}</label>`}
   if(ty==='dias'){const ad=campoAjuda(this.t,f);let usa=new Set();const mm=this.t==='turnos'?/^vigencias\.(\d+)\.dias$/.exec(p):null;
    if(mm){const vs=this.W.vigencias||[],me=vs[+mm[1]];if(me)usa=new Set(vs.filter((o,j)=>j!==+mm[1]&amp;&amp;o&amp;&amp;o.de<=(me.ate||'9999-12-31')&amp;&amp;(!o.ate||o.ate>=me.de)).flatMap(o=>o.dias||[]))}
@@ -55375,14 +55376,14 @@ body.vac-porta{overflow:hidden}
       "id": "portal",
       "path": "Plataforma.html#motor/portal",
       "version": "1.9.88",
-      "sha256": "eaf66726ba28f6fff85f1721b124755cd3bb65da5dcde0d58fb852b619525225",
-      "bytes": 1322844
+      "sha256": "f730ddf5c3deacabac77daa765db5e21c67b94d24537ad470a474a21bd61c118",
+      "bytes": 1323147
     }
   ],
   "limitations": [
     "Projetos e conteúdo técnico OSM/MES/AM/TPM mantêm os limites documentados nas fontes."
   ],
-  "enginesSha256": "4234c0bef54237c026dfc6327bd9c315dab2867a2c3038bef567fca741ad20b6",
+  "enginesSha256": "cbfcdf53e8ec5baa22d6754b1e3ecd547ac542148f262f015ba7de4e0e47331e",
   "originRevision": "ffc9ee8",
   "sourceMode": "single-html",
   "originEnginesSha256": "a87a64ad0c328f70e102b2ae888790a9b5d5a9bd05778652a7ce7cae140e40d2"

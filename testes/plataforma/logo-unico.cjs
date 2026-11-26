@@ -26,6 +26,10 @@ const html = fs.readFileSync(path.resolve(__dirname, '../../Plataforma.html'));
       Store.mode = m0; Store.dir = d0; return { ok, temArq, url, rem, aposRem, semPasta };
     });
     assert.deepEqual(r, { ok: true, temArq: true, url: true, rem: true, aposRem: false, semPasta: false });
+    const ordem = texto.match(/\$\('#cLogoDel'\)\.onclick=async\(\)=>\{[^\n]*\}/)[0];
+    assert.ok(ordem.indexOf("Store.commit('Logo removida'") > 0 && ordem.indexOf("Store.commit('Logo removida'") < ordem.indexOf('removerPasta()'), 'a base decide antes de apagar o Logo.png');
+    const envio = texto.match(/\$\('#cLogo'\)\.onchange=async e=>\{[^\n]*\}/)[0];
+    assert.ok(envio.indexOf("Store.commit('Logo enviada'") < envio.indexOf("localStorage.setItem('vac.logo'") && envio.indexOf("Store.commit('Logo enviada'") < envio.indexOf('gravarPasta(d)'), 'a base decide antes de gravar a imagem local e o Logo.png');
     assert.deepEqual(erros, [], 'sem erro de JavaScript');
     console.log('ok logo único: envio só na Administração; grava e remove o Logo.png na pasta; sem pasta, não grava; Waste e Gel sem envio próprio');
   } finally { if (browser) await browser.close(); srv.close(); }

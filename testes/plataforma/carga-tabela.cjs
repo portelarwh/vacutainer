@@ -76,6 +76,17 @@ const html = fs.readFileSync(path.resolve(__dirname, '../../Plataforma.html'));
     assert.deepEqual(pv.mes, ['ok', 'o código MES RES-9 repete a linha 2 da planilha']);
     console.log('ok prévia mostra o item só com período diferente; código MES repetido no lote é erro');
 
+    // 3b2) tag e máquina do mapa não mudam depois de gravados (o histórico usa o valor gravado)
+    const tv = await f.evaluate(() => { const P = CargaTab.plano('tagsMapa', Cad.D, [['codigo', 'tag', 'nome'], ['TGC1', 'OUTRA', 'Falha de carga (renomeada)']], 'trava.xlsx');
+      return { erro: P.L[0].erros[0] || '', marcado: P.L[0].marcado }; });
+    assert.match(tv.erro, /não muda depois de gravado/); assert.equal(tv.marcado, false);
+    await f.evaluate(() => { location.hash = '#cadastros/tagsMapa'; App.render(); }); await page.waitForTimeout(400);
+    await f.evaluate(() => Ficha.abrir('tagsMapa', 'TGC1')); await f.waitForSelector('[data-p="tag"]');
+    assert.equal(await f.locator('[data-p="tag"]').isDisabled(), true, 'campo Tag travado na ficha de item gravado');
+    assert.equal(await f.locator('[data-p="equipamento"]').isDisabled(), true, 'campo Máquina travado na ficha de item gravado');
+    await f.evaluate(() => Modal.close(true));
+    console.log('ok tag e máquina do mapa de tags travadas depois de gravadas (ficha e carga)');
+
     // 3c) código de parada: descrição e vigência (decisão 7), validadas
     const pv2 = await f.evaluate(() => { const base = { codigo: 'PVX', nome: 'X', classe: 'fixa', ondeAponta: 'Máquina' }, v = it => cadValidarItem('paradas', { ...base, ...it }, Cad.D, { novo: true });
       return { ok: v({ descricao: 'texto', vigenciaDe: '2026-01-01', vigenciaAte: '2026-12-31' }).filter(x => /vigência/.test(x)), data: v({ vigenciaDe: '01/01/2026' }), ordem: v({ vigenciaDe: '2026-05-01', vigenciaAte: '2026-04-01' }), cols: ParLote.colunas(Cad.D).filter(k => /^(descricao|vigenciaDe|vigenciaAte)$/.test(k)) }; });
