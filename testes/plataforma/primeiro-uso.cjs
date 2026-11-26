@@ -34,7 +34,8 @@ const html = fs.readFileSync(path.resolve(__dirname, '../../Plataforma.html'));
     assert.match(await f.locator('#cnErr').innerText(), /ID válido/);
     await tenta('9001', 'Admin Fictício', '482915', '482916'); await p.waitForTimeout(400);
     assert.match(await f.locator('#cnErr').innerText(), /não são iguais/);
-    await tenta('9001', 'Admin Fictício', '482915', '482915');
+    /* dois cliques seguidos enquanto a senha vira hash: uma só carga entra na fila e o cadastro é gravado */
+    await f.evaluate(() => { document.querySelector('#cnId').value = '9001'; document.querySelector('#cnNome').value = 'Admin Fictício'; document.querySelector('#cnS1').value = '482915'; document.querySelector('#cnS2').value = '482915'; const b = document.querySelector('#cadNovoVazio'); b.click(); b.click(); cadCriarInicial(); });
     await p.waitForFunction(() => document.querySelector('.porta-login'), null, { timeout: 30000 });
     const doc = await p.evaluate(async () => { const r = await (await navigator.storage.getDirectory()).getDirectoryHandle('Pasta-Nova-Ficticia'), b = await r.getDirectoryHandle('00. Bases'), t = await (await (await b.getFileHandle('vacutainer-cadastros.json')).getFile()).text(); return JSON.parse(t); });
     assert.equal(doc.rev, 1); assert.equal(doc.usuarios.length, 1); assert.equal(doc.usuarios[0].perfil, 'ADMIN'); assert.equal(doc.usuarios[0].codigo, '9001');

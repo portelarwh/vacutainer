@@ -5879,7 +5879,10 @@ function cadSemCadastro(el){
  $('#cadNovoVazio').onclick=()=>cadCriarInicial()}
 /* 26/11/2026 · primeiro uso: sem cadastro ninguém tem ID nem senha, então a criação do arquivo é a única gravação liberada sem login
    (vale só com a pasta sem cadastro, uma operação 'carga' com origem 'bootstrap' e um único usuário ADMIN; ver filaBootstrap/validarDocumentoInicial) */
-async function cadCriarInicial(){const id=String($('#cnId').value||'').trim(),nome=String($('#cnNome').value||'').trim(),s1=$('#cnS1').value,s2=$('#cnS2').value,err=m=>$('#cnErr').innerHTML=`<div class="note e">${esc(m)}</div>`;
+async function cadCriarInicial(){if(cadCriarInicial.em)return;   /* um envio por vez: dois cliques enquanto a senha vira hash enfileirariam duas cargas e a guarda recusaria as duas */
+ cadCriarInicial.em=true;const bt=$('#cadNovoVazio');if(bt)bt.disabled=true;
+ try{await cadCriarInicial1()}finally{cadCriarInicial.em=false;const b2=$('#cadNovoVazio');if(b2)b2.disabled=false}}
+async function cadCriarInicial1(){const id=String($('#cnId').value||'').trim(),nome=String($('#cnNome').value||'').trim(),s1=$('#cnS1').value,s2=$('#cnS2').value,err=m=>$('#cnErr').innerHTML=`<div class="note e">${esc(m)}</div>`;
  if(!id||/[\/#]/.test(id)||id.length>30)return err('Informe um ID válido (sem "/" nem "#", até 30 caracteres).');
  if(nome.length<2)return err('Informe o nome completo.');
  if(vacLogin.fraca(s1))return err('A senha precisa ter 6 números, não todos iguais nem em sequência.');if(s1!==s2)return err('As senhas não são iguais.');
@@ -5887,6 +5890,7 @@ async function cadCriarInicial(){const id=String($('#cnId').value||'').trim(),no
  doc.seguranca=null;doc.perfis=clone(DEFAULT_PERFIS);
  doc.usuarios=[{codigo:id,nome,perfil:'ADMIN',turno:null,especialidade:null,email:null,paginaInicial:'(do perfil)',ativo:true,origem:'bootstrap',primeiroAcessoEm:isoLocal(),senha}];
  setUser(nome);
+ if(Cad.fila.some(o=>o.origem==='bootstrap')){Cad.fila=Cad.fila.filter(o=>o.origem!=='bootstrap');await Cad.persistFila()}   /* sobra de uma tentativa que falhou: a fila do cadastro inicial tem uma operação só */
  await Cad.op({acao:'carga',tipo:'*',codigo:null,doc,motivo:'cadastro inicial: primeiro administrador',origem:'bootstrap'});
  if(Cad.base&amp;&amp;Cad.base.rev>=1){toast('Cadastro criado (rev '+Cad.base.rev+'). Entre com o ID e a senha.',6000);try{if(window.parent&amp;&amp;parent.vacAppHost&amp;&amp;parent.vacAppHost.sairConsulta)parent.vacAppHost.sairConsulta();else vacLogin.abrir()}catch(e){}App.render()}}
 function cadInicio(el){const D=Cad.D,P=cadProblemas(D);const A=(D.auditoria||[]).slice(-10).reverse();
@@ -55405,14 +55409,14 @@ body.vac-porta{overflow:hidden}
       "id": "portal",
       "path": "Plataforma.html#motor/portal",
       "version": "1.9.89",
-      "sha256": "9cd3c2c2bda74958c144ba6cdf983fd7a5b6a01e32e389608df215aac5df0aa3",
-      "bytes": 1326324
+      "sha256": "b01d666729717a524290544de8513d4c51e75cd71680d115e443530951756bed",
+      "bytes": 1326919
     }
   ],
   "limitations": [
     "Projetos e conteúdo técnico OSM/MES/AM/TPM mantêm os limites documentados nas fontes."
   ],
-  "enginesSha256": "baf95529f4ce59509d38aa163d0a789782495a7ed3987fb6e3144ae56b4e224e",
+  "enginesSha256": "35af59c7cf9a8c24cf269a39c582672eb794e09da5b5bfe8f1dbaec688b57787",
   "originRevision": "ffc9ee8",
   "sourceMode": "single-html",
   "originEnginesSha256": "a87a64ad0c328f70e102b2ae888790a9b5d5a9bd05778652a7ce7cae140e40d2"
