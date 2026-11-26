@@ -71,7 +71,7 @@ const html = fs.readFileSync(path.resolve(__dirname, '../../Plataforma.html'));
     console.log('ok produção lançada no hora a hora do detalhe do turno');
 
     // 5) Segurança e Qualidade: campos só com "Sim"; Problema da lista de Configurações; aviso de salvo visível
-    await f.evaluate(() => Actions.setSettings({ qnProblemas: ['Tampa solta', 'Rótulo ilegível'] })); await w(400);
+    await f.evaluate(() => { Store.mutate(d => { d.settings.qnProblemas = ['Tampa solta', 'Rótulo ilegível']; }); render(); }); await w(400);
     await f.click(`[data-trturno="${ids[0]}"]`); await w(300);
     const box = `.sq-ocorrencias[data-sq-turno="${ids[0]}"]`;
     await f.selectOption(`${box} [data-sq-resp="qn"]`, 'nao');
@@ -93,12 +93,11 @@ const html = fs.readFileSync(path.resolve(__dirname, '../../Plataforma.html'));
     assert.match(sq.txt, /^✓ Salvo · último registro: .+ · \d{2}\/\d{2}\/\d{4}/); assert.equal(sq.q.problema, 'Rótulo ilegível'); assert.equal(sq.q.resumo, 'Lote fictício');
     console.log('ok S&Q: campos só com Sim, Problema da lista (' + sq.q.problema + ') e aviso "' + sq.txt + '"');
 
-    // 6) Configurações › Problemas de QN
+    // 6) Configurações › Problemas de QN: só leitura (a lista é da Administração)
     await f.evaluate(() => { App.cfgSec = 'qn'; go('config'); }); await w(500);
-    assert.match(await f.evaluate(() => document.querySelector('#qnLista').value), /Tampa solta\nRótulo ilegível/);
-    await f.fill('#qnLista', 'Tampa solta\nVolume baixo\nTampa solta'); await f.click('#qnSave'); await w(500);
-    assert.deepEqual(await f.evaluate(() => db().settings.qnProblemas), ['Tampa solta', 'Volume baixo'], 'lista sem repetição');
-    console.log('ok Configurações › Problemas de QN');
+    assert.match(await f.evaluate(() => document.querySelector('main, #app, body').innerText), /Tampa solta[\s\S]*Rótulo ilegível/);
+    assert.equal(await f.evaluate(() => !!document.querySelector('#qnLista, #qnSave')), false, 'sem campo editável na Produção');
+    console.log('ok Configurações › Problemas de QN (somente leitura)');
 
     // 7) líder sugerido pelo histórico do mesmo turno
     await f.evaluate(() => go('launch')); await w(400);

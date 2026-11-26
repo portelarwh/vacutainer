@@ -37,6 +37,15 @@ Essas proteções são controles do aplicativo, sem substituir permissões de ar
 - Sai o `CadSync` e a semente (`Model.seed`). `CadPortal` guarda só o que as telas de Configuração usam (`dominios`, `portalHref`, `SEC_PORTAL`).
 - Prova: `testes/plataforma/prod-numeros.cjs` (OEE, D, P, Q, paradas, hora a hora e agregados do mês iguais aos de antes da troca), `prodcad-equivalencia` (contra a saída congelada do `CadSync`), `prodcad-casos` e `prodcad-memoria`.
 
+## Bloco 3b · Configurações da Produção vêm da Administração · Produção 2.6.48, plataforma 1.8.67, Administração 1.9.86 (25/11/2026)
+
+- `ProdCad.montar` passa a derivar também de `parametros` e `parametros.producao`: `unidade`→`unitName`, `setor`→`sector`, `fusoHorario`→`timezone`; `perfModo`, `perdaVelocidadePct`, `coberturaMinPct`, `divergenciaMaxPct`, `fimTurnoMaxMin`, `pendDias`, `pendHoras`, `servCaixaQtd`, `servLacunaMin`, `servTolHora`, `servTrocaMaxMin`, `horaExtraMaxMin`, `diasPlano` e `qnProblemas`. Campo vazio no cadastro = padrão do cálculo (os mesmos de antes; fórmulas e números não mudam). Os campos são opcionais: **não há troca de `schemaVersion`**.
+- Na Produção essas chaves de `settings` (lista `PARAM_ADM`) são só leitura: a tela mostra os valores com link para a Administração, `Actions.setSettings` as recusa e `serialize` não as grava (base antiga com cópia local é limpa na próxima gravação).
+- Administração › Parâmetros › Produção ganhou os campos acima e a lista de Problemas de QN; Parâmetros gerais ganhou `plantaSap`. A Ordens lê a planta do SAP de `parametros.plantaSap` (vazia se não cadastrada; a constante `4017` saiu do código).
+- Saíram dos padrões de código `unitName`, `sector`, `timezone`, `calendar` e `users`. A lista de nomes do "Quem está usando?" vem de `usuarios[]` do cadastro.
+- Ficam como estão, por contrato 7 ou por não terem tela na Administração: `abDefault` (abono padrão por dia), tags (`TAGS_PADRAO`, decisão 5), `DEFAULT_CAUSAS`/`DEFAULT_TIPOS` do Paradas (classificação).
+- Prova: `prod-numeros` e `prodcad-equivalencia` iguais; `prod-config-adm` (campos só leitura, recusa, sem cópia no arquivo, derivação e ausência sem invenção).
+
 ## Troca de pasta com pendência (casca 1.0.2, 15/11/2026)
 
 Antes era só uma mensagem e a troca ficava bloqueada; um módulo parado conectando (por exemplo, esperando confirmação depois de escolher a pasta errada) prendia a pessoa na pasta. Agora a casca abre a janela "Há alterações pendentes nesta pasta", que diz o que está pendente e onde: cada módulo aberto com o motivo (ainda abrindo, conectando à pasta, alteração não gravada ou formulário aberto, não respondeu) e o que está guardado no navegador por módulo (`queueDetail`, em `modulo/core/scopes`; `pendingDetail`, em `modulo/core/runtime`). Falha ao consultar a fila aparece na janela e conta como pendência.
