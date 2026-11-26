@@ -1,0 +1,3 @@
+const abrir = require('./h.cjs');
+abrir(process.argv[2], async f => { console.log(JSON.stringify(await f.evaluate(() => { const d = db(); const R = {}, T = RpTab.st(R); T.mod = 'lotes'; T.from = '2026-11-01'; T.to = '2026-11-30'; const M = () => RpTab.model(R); const lin = () => { const m = M(); const t = JSON.stringify(m.blocks).replace(/<\/t[dh]>/g, ' | ').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' '); return t.slice(t.indexOf('Lote'), t.indexOf('Lote') + 330); };
+  const o = { semFiltro: lin() }; T.turno = 'sh_t1'; o.t1 = lin(); T.turno = 'sh_t3'; o.t3 = lin(); o.sub = M().sub || M().title; return o; }), null, 1)); }).catch(e => console.error(e.message.slice(0, 500)));
