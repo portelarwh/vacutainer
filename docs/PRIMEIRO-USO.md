@@ -10,6 +10,7 @@ Vale para instalar a plataforma pela primeira vez: pasta nova, nenhum cadastro, 
 1. Clique em **Conectar pasta da linha** e escolha a pasta.
 2. A tela mostra "Cadastro não encontrado". Clique em **Criar o cadastro inicial (primeiro administrador)**.
 3. Informe o ID (matrícula), o nome completo e uma senha de 6 números (não todos iguais, nem em sequência). A plataforma cria `00. Bases/vacutainer-cadastros.json` (rev 1) vazio, com os perfis padrão e você como administrador. Só o hash da senha é gravado.
+   Se o arquivo `vacutainer-cadastros.json` existir com **0 bytes** (gravação interrompida), ele conta como ausente e a criação inicial funciona do mesmo jeito (E02, decisão do responsável em 26/11/2026). Arquivo com conteúdo inválido continua erro: restaure um backup de `00. Backups/Cadastros`.
 4. A tela volta para a entrada: entre com o ID e a senha.
 
 Esta é a única gravação permitida sem login, e só enquanto a pasta não tem cadastro. Depois disso, toda gravação exige entrar com ID e senha ([CLAUDE](../CLAUDE.md), contrato 4).
