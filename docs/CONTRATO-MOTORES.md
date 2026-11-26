@@ -53,6 +53,16 @@ Essas proteções são controles do aplicativo, sem substituir permissões de ar
 - Abono: `parametros.producao.abonoPadrao` (`{dia: {min, motivo}}`) vem da Administração e o `ProdCad` o entrega como `abDefault`; os tipos continuam em `motivosAbono`. A Produção mostra somente leitura; o lançamento do abono por turno continua nela.
 - Prova: `carga-tabela` (ida e volta sem mudança nas 10 tabelas, importação em ordem, vigência única, existente só no cabeçalho, erros) e `prod-config-adm`.
 
+## Itens do contrato 7 autorizados e logo único · Produção 2.6.50, plataforma 1.8.69, Administração 1.9.88 (26/11/2026)
+
+Autorizados pelo responsável em 26/11/2026 (decisões 5, 7 e 9 de `CONFIGURACOES`) e o logo único (decisão 14).
+
+- **Tags (decisão 5):** o mapa de tags da Linha do tempo é cadastro da Administração, `CAD_T.tagsMapa` (Equipamentos › Tags da linha do tempo), com vigência (`estado`, `categoria`, `prioridade` por período), `tag` (texto do equipamento/MES; vazio = o código) e `equipamento` opcional. O `ProdCad` o entrega como `db.timeline.tagMap`, uma linha por vigência, id `tm_<código>_<de>`; o arquivo da Produção não o guarda (`semCadastro`). Cfg.tags na Produção é só leitura. Estados, regras de resolução e `TAGS_PADRAO` (mapeamento inicial) não mudam; as TAGs de Equipamentos (`D.tags`, base própria, TPM) não foram tocadas.
+- **Paradas (decisão 7):** `CAD_T.paradas` ganha `descricao`, `vigenciaDe` e `vigenciaAte` (opcionais). O `ProdCad` usa `vigenciaDe`/`vigenciaAte` como `validFrom`/`validTo` do código (sem eles, 2025-01-01 e sem fim, como antes) e `descricao` (ou a do guia). Classificação, pilar, classe e impacto não mudaram.
+- **Padrões do Waste (decisão 9):** a base nova do Waste nasce com `config.causas = ''` e `config.tipos = null`; `DEFAULT_TIPOS` e `DEFAULT_CAUSAS` só entram no campo pelo botão "Usar a sugestão de partida" e valem depois de salvar. Base já gravada mantém o que tem. Sem tipos, todo material fica em "Outros". (`GEL_FMT_DEF` já tinha saído; `DEFAULT_PERFIS` é só semente.)
+- **Logo (decisão 14):** o envio fica só na Administração (Configuração › Logo); com a pasta conectada grava `Logo.png` nela (as páginas já o liam) e a remoção apaga o arquivo. Waste e Gel perderam o envio próprio.
+- Prova: `prod-config-adm` (tagMap e códigos de parada derivados), `carga-tabela` (tagsMapa e validação das paradas), `logo-unico`, `padroes-embutidos`, `ttimeline`.
+
 ## Troca de pasta com pendência (casca 1.0.2, 15/11/2026)
 
 Antes era só uma mensagem e a troca ficava bloqueada; um módulo parado conectando (por exemplo, esperando confirmação depois de escolher a pasta errada) prendia a pessoa na pasta. Agora a casca abre a janela "Há alterações pendentes nesta pasta", que diz o que está pendente e onde: cada módulo aberto com o motivo (ainda abrindo, conectando à pasta, alteração não gravada ou formulário aberto, não respondeu) e o que está guardado no navegador por módulo (`queueDetail`, em `modulo/core/scopes`; `pendingDetail`, em `modulo/core/runtime`). Falha ao consultar a fila aparece na janela e conta como pendência.
