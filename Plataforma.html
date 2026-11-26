@@ -5323,6 +5323,11 @@ const CAD_SECS=['inicio','gel','matriz','importar','auditoria','backups','segura
    curtas (macro, sem detalhe técnico). REGRA: toda versão nova da plataforma ganha uma entrada aqui, a mais recente primeiro
    (AGENTS.md e CLAUDE.md). Tipos: nova (função nova), melhoria (algo que já existia ficou melhor), correcao (erro corrigido). */
 const NOVIDADES=[
+ {v:'1.8.74',d:'2026-11-26',itens:[
+  ['correcao','Relatórios em tabela: a Lista de paradas passa a respeitar o filtro de família.'],
+  ['correcao','Excel: quantidades pequenas (como 0,5 mil) não viram mais porcentagem, e códigos de lote, catálogo, ordem e equipamento mantêm os zeros à esquerda.'],
+  ['correcao','Lotes do MES: com um turno escolhido, as caixas de cada lote entram pela parte do tempo que cai dentro do turno.'],
+  ['melhoria','Central de importações: descrições dos cartões em 12 px no celular.']]},
  {v:'1.8.73',d:'2026-11-26',itens:[
   ['correcao','O fuso horário da planta (Parâmetros) agora vale para "hoje" e para o relógio dos turnos em todos os módulos.'],
   ['correcao','Paradas simultâneas contam uma vez só no tempo parado da linha; o trecho repetido aparece como alerta.'],
@@ -16748,9 +16753,12 @@ async function rpXlsx(c) {
     const b = M.blocks[+sec.dataset.rpb], P = rpBlockParts(sec);
     const tabs = P.tables.length ? P.tables : P.dataTables; if (!tabs.length) continue;
     let nm = b.l.replace(/[\\/?*[\]:]/g, ' ').slice(0, 28).trim(), k = 2; while (used.has(nm)) nm = b.l.slice(0, 25).trim() + ' ' + k++; used.add(nm);
-    const aoa = []; tabs.forEach((t, i) => { if (i) aoa.push([]); aoa.push(t.head); t.rows.forEach(r => aoa.push(r.map(num))); });
+    /* C29/C30 (análise comum 26/11/2026): % só onde o texto da tela era %; colunas de código (lote, catálogo, ordem, equipamento, família) vão como texto, sem perder zeros */
+    const aoa = [], pct = new Set(), txtCol = /^(Lote|Cat[aá]logo|C[oó]digo|Ordem|Pedido|Equipamento|Fam[ií]lia|1ª caixa|Última caixa)/i, txt = v => { const x = String(v == null ? '' : v); return /^[=+\-@]/.test(x) ? "'" + x : x; };
+    tabs.forEach((t, i) => { if (i) aoa.push([]); aoa.push(t.head); const tx = (t.head || []).map(h => txtCol.test(String(h)));
+      t.rows.forEach(r => { const ri = aoa.length; aoa.push(r.map((v, j) => { if (/^[+−-]?[\d.]+(,\d+)?\s*%$/.test(String(v).trim())) pct.add(XLSX.utils.encode_cell({ r: ri, c: j })); return tx[j] ? txt(v) : num(v); })); }); });
     const ws = XLSX.utils.aoa_to_sheet(aoa); ws['!cols'] = (tabs[0].head || []).map(h => ({ wch: Math.max(10, String(h).length + 2) }));
-    Object.keys(ws).forEach(a => { const cell = ws[a]; if (cell &amp;&amp; cell.t === 'n' &amp;&amp; cell.v > -1.5 &amp;&amp; cell.v < 1.5 &amp;&amp; !Number.isInteger(cell.v)) cell.z = '0.0%'; });
+    pct.forEach(a => { const cell = ws[a]; if (cell &amp;&amp; cell.t === 'n') cell.z = '0.0%'; });
     XLSX.utils.book_append_sheet(wb, ws, nm);
   }
   const out = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
@@ -18965,15 +18973,22 @@ const RpTab = {
       cab = ['Data', 'Turno', 'Início', 'Fim', 'Min', 'Código', 'Descrição', 'Equipamento', 'Observação'];
       let sm = 0;
       for (const e of Engine.eventsIn(d, days)) { if (T.turno) { const ps = e.day.shifts.find(p => p.shiftId === T.turno); if (!ps || !e.shifts.includes(ps.snap.name)) continue; } if (T.cat &amp;&amp; e.catalogId !== T.cat) continue;
+        if (T.fam &amp;&amp; !T.cat &amp;&amp; (byIdCat(e.catalogId) || {}).familyId !== T.fam) continue;   /* C31 (análise comum 26/11/2026): o filtro de família também vale para a lista de paradas */
         sm += e.minutes || 0;
         L.push([dl(e.day.date), esc(e.shifts.join(', ')), e.ev.start != null ? U.hhmm(e.ev.start) : '—', e.ev.end != null ? U.hhmm(e.ev.end) : '—', U.fmt(e.minutes), esc(e.code.code || ''), esc(e.code.name || ''), esc(e.ev.equipment || ''), esc((e.ev.note || '').slice(0, 120))]); }
       total = ['Total', '', '', '', U.fmt(sm), '', '', '', ''];
     } else if (T.mod === 'lotes') {
       cab = ['Lote', 'Catálogo', '1ª caixa', 'Última caixa', 'Caixas', 'Produção (' + u + ')', 'Ordem'];
       const S = ServerData, qty = +(d.settings || {}).serverBoxQty || 1000, byLot = S.orderByLot ? S.orderByLot(d, 'line_vac') : new Map(), G = new Map();
-      for (const s of S.segsOf(d, 'line_vac')) { const dia = s.t0.slice(0, 10); if (dia < T.from || dia > T.to) continue; if (T.wd.length &amp;&amp; !T.wd.includes(U.weekday(dia))) continue;
+      /* C32/P7 (análise comum 26/11/2026): com um turno escolhido, cada caixa conta no turno em que foi registrada (minuto de cada caixa, ServerData.countWindow), usando as janelas do turno do dia (dia lançado ou turnos vigentes do cadastro) */
+      const cnt = new Map(), shSel = T.turno ? (d.shifts || []).find(x => x.id === T.turno) : null;
+      if (shSel) for (let dt = U.addDays(T.from, -1); dt <= T.to; dt = U.addDays(dt, 1)) { if (dt < T.from || (T.wd.length &amp;&amp; !T.wd.includes(U.weekday(dt)))) continue; const base = Date.parse(dt + 'T00:00:00Z') / 60000;
+        for (const w of ForaTurno.turnosDoDia(d, dt, 'line_vac')) if (w.code === shSel.code) for (const x of S.countWindow(d, 'line_vac', base + w.s, base + w.e)) cnt.set(x.lot, (cnt.get(x.lot) || 0) + x.n); }
+      for (const s0 of S.segsOf(d, 'line_vac')) { const dia = s0.t0.slice(0, 10); if (dia < T.from || dia > T.to) continue; if (T.wd.length &amp;&amp; !T.wd.includes(U.weekday(dia))) continue;
+        const s = s0;
         const c = (d.catalogs || []).find(x => !x.deleted &amp;&amp; String(x.code) === String(s.cat)); if (T.cat &amp;&amp; (!c || c.id !== T.cat)) continue; if (T.fam &amp;&amp; !T.cat &amp;&amp; (!c || c.familyId !== T.fam)) continue;
         const g = G.get(s.lot) || { lot: s.lot, cat: s.cat, t0: s.t0, t1: s.t1, n: 0 }; g.n += s.n; if (s.t0 < g.t0) g.t0 = s.t0; if (s.t1 > g.t1) g.t1 = s.t1; G.set(s.lot, g); }
+      if (shSel) for (const [k, g] of [...G]) { g.n = cnt.get(k) || 0; if (!g.n) G.delete(k); }
       const br = t => `${t.slice(8, 10)}/${t.slice(5, 7)}/${t.slice(0, 4)} ${t.slice(11, 16)}`;
       for (const g of [...G.values()].sort((a, b) => a.t0 < b.t0 ? -1 : 1)) { const m = byLot.get ? byLot.get(g.lot) : null;
         L.push([esc(g.lot || '—'), esc(g.cat || '—'), br(g.t0), br(g.t1), U.fmt(g.n), fq(g.n * qty), esc(m &amp;&amp; m.o ? m.o.order || '—' : '—')]); }
@@ -54251,7 +54266,7 @@ select,input[type=date] {
   margin-top:var(--sp-4,4px)
 }
 .import-row p {
-  font-size:11px;
+  font-size:12px;
   color:var(--muted);
   margin-top:var(--sp-4,4px)
 }
@@ -55434,8 +55449,8 @@ body.vac-porta{overflow:hidden}
       "id": "oee",
       "path": "Plataforma.html#motor/oee",
       "version": "2.6.50",
-      "sha256": "186791f059c680117e0611f8d545c30b3f59941faae0f6b57e5d2e7db593bb24",
-      "bytes": 2386115
+      "sha256": "4ae4ece46fed416442156519773408b3ef05f104df5c6c75e1ca3be566ac3e8c",
+      "bytes": 2387776
     },
     {
       "id": "perdas",
@@ -55490,14 +55505,14 @@ body.vac-porta{overflow:hidden}
       "id": "portal",
       "path": "Plataforma.html#motor/portal",
       "version": "1.9.92",
-      "sha256": "d87261764ac6031ec6f8e44c40274a3f7988c4ac6d607438d421e645fff1f849",
-      "bytes": 1332871
+      "sha256": "f490056f331fc6bb1d9f0435c1718d431dc1482638d91a6343f08912e533dfca",
+      "bytes": 1333402
     }
   ],
   "limitations": [
     "Projetos e conteúdo técnico OSM/MES/AM/TPM mantêm os limites documentados nas fontes."
   ],
-  "enginesSha256": "e826aeac2c9985cdb9316d368e462cdfd48ff79bceffb1ba9e758ba11e616e0e",
+  "enginesSha256": "052574f31d015b870704580dbc5ab4d30ef1ddfb01cc3245fe34fa5240962627",
   "originRevision": "ffc9ee8",
   "sourceMode": "single-html",
   "originEnginesSha256": "a87a64ad0c328f70e102b2ae888790a9b5d5a9bd05778652a7ce7cae140e40d2"
@@ -56158,7 +56173,7 @@ import { Icon, Button, Badge, Empty, Modal, BarChart, BrandLogo, CommandMenu } f
 import { ModuleFrame } from "vac:modulo/components/ModuleFrame";
 import manifest from "vac:recurso/manifesto";
 import { ModuleTabs } from "vac:modulo/components/ModuleTabs";
-const VERSION = "1.8.73";
+const VERSION = "1.8.74";
 /* Navegação 1.3.0 (16/11/2026): Visão da linha, Relatórios e Importações têm abas; as que mostram uma tela do
    Portal (motor da Administração) trazem o 3º campo com a aba dele. Administração fica só com cadastros e configuração. */
 const SHELL_TABS = {
