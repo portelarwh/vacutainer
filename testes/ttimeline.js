@@ -153,10 +153,11 @@ const D = '2031-03-10', D2 = '2031-03-11';   // segunda e terça, sem nada lanç
         App.tl.modo = 'dia'; App.tl.date = '2031-03-16'; db().shifts.filter(s => s.code === 'T3').forEach(s => s.versions.forEach(v => { v.active = false; })); Engine.bumpConfig(); render();   /* sem o 3º turno ativo (o cenário o tem) o domingo não herda as horas do sábado */ await espera(400); o.vazio = !!document.querySelector('[data-tlav="vazio"]') && TLV.modelo().t.ociosa === 1440; App.tl.date = D; App.tl.modo = 'turno'; render(); await espera(300); return o; }, D);
       ok(e.rec, 'máquinas recolhem e voltam; a faixa da linha continua');
       ok(e.avisos.includes('semhora') && /31 dias/.test(e.erro) && e.vazio, 'estados da tela: parada sem horário avisada, período inválido com mensagem e período sem dados explícito');
-      await p.evaluate(() => document.querySelector('#tlMapa').click()); await p.waitForSelector('#tgNew'); await p.click('#tgNew'); await p.waitForSelector('#ff_code');
-      await p.fill('#ff_code', 'm-alarme'); await p.fill('#ff_description', 'Alarme de porta'); await p.selectOption('#ff_state', 'bloq'); await p.click('#emOk'); await p.waitForTimeout(400);
-      const mp = await p.evaluate(() => ({ m: db().timeline.tagMap.find(x => x.code === 'M-ALARME'), aud: db().auditLog.filter(x => x.entity === 'mapa de tags').length, tab: document.querySelector('#main').innerText.includes('M-ALARME') }));
-      ok(mp.m && mp.m.state === 'bloq' && mp.m.validFrom && mp.m.active === true && mp.aud === 1 && mp.tab, 'mapa de tags administrável em Configurações, com auditoria');
+      /* decisão 5 (26/11/2026): o mapa de tags vem do cadastro da Administração (ProdCad); na Produção a tela é só leitura */
+      const mp = await p.evaluate(async () => { const C = { tagsMapa: [{ codigo: 'M-ALARME', nome: 'Alarme de porta', tag: 'alarme-porta', equipamento: null, ativo: true, vigencias: [{ de: '2031-01-01', ate: null, estado: 'bloq', categoria: 'Fluxo', prioridade: 2 }] }] };
+        const T = ProdCad.montar(C).tagMap; db().timeline.tagMap = T; document.querySelector('#tlMapa').click(); await new Promise(r => setTimeout(r, 400));
+        return { t: T[0], novo: !!document.querySelector('#tgNew'), imp: !!document.querySelector('#tgImp'), tab: document.querySelector('#main').innerText.includes('ALARME-PORTA'), so: /somente leitura/.test(document.querySelector('#main').innerText) }; });
+      ok(mp.t && mp.t.id === 'tm_m_alarme_2031-01-01' && mp.t.code === 'ALARME-PORTA' && mp.t.state === 'bloq' && mp.t.validFrom === '2031-01-01' && !mp.novo && !mp.imp && mp.tab && mp.so, 'mapa de tags vem do cadastro (ProdCad) e a tela da Produção é só leitura ' + JSON.stringify(mp));
       await p.close(); }
 
     /* ================= responsividade (CA-16) ================= */

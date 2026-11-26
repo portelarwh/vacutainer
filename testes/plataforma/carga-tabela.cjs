@@ -40,6 +40,7 @@ const html = fs.readFileSync(path.resolve(__dirname, '../../Plataforma.html'));
       out.cat = run('catalogos', ['codigo', 'nome', 'tipoItem', 'familia', 'linha', 'vigDe', 'pphNominal', 'tubosPorCaixa'], [['999001', 'Catálogo de carga', 'tubo', 'FCARGA', 'LCARGA', '2026-11-01', '60.000', '1000'], ['12', 'Catálogo curto', 'tubo', '', ln, '', '', '']]);
       out.mat = run('materiais', ['codigo', 'nome', 'unidade', 'tipo'], [['MCARGA', 'Material de carga', 'un', 'rolha']]);
       out.turno = run('turnos', ['codigo', 'nome', 'linha', 'vigDe', 'inicio', 'fim', 'dias'], [['TCARGA', 'Turno de carga', 'LCARGA', '2026-11-01', '06:00', '14:30', '1,2,3,4,5,6']]);
+      out.tag = run('tagsMapa', ['codigo', 'nome', 'tag', 'vigDe', 'estado', 'categoria', 'prioridade'], [['TGC1', 'Falha de carga', 'FAULT', '2026-11-01', 'parada', 'Falha', '1'], ['TGC2', 'Estado ruim', '', '2026-11-01', 'voando', '', '']]);
       out.cal = run('calendario', ['codigo', 'tipo', 'nome'], [['26/12/2026', 'sem produção', 'Carga de calendário']]);
       return out;
     });
@@ -47,9 +48,11 @@ const html = fs.readFileSync(path.resolve(__dirname, '../../Plataforma.html'));
     assert.equal(nov.linha.novos, 1); assert.equal(nov.familia.novos, 1); assert.match(nov.familia.erros[0], /cor/i);
     assert.equal(nov.equip.novos, 2); assert.match(nov.equip.erros[0], /não existe em Linhas/);
     assert.equal(nov.cat.novos, 1); assert.match(nov.cat.erros[0], /6 dígitos/);
+    assert.equal(nov.tag.novos, 1); assert.match(nov.tag.erros[0], /Estado macro/);
     assert.equal(nov.mat.novos, 1); assert.equal(nov.turno.novos, 1); assert.equal(nov.cal.novos, 1);
     const g = await f.evaluate(() => { const D = Cad.D, c = D.catalogos.find(x => x.codigo === '999001'), t = D.turnos.find(x => x.codigo === 'TCARGA'), q = D.equipamentos.filter(x => /^ECARGA/.test(x.codigo));
       return { c: c && [c.vigencias.length, c.vigencias[0].de, c.vigencias[0].pphNominal, c.vigencias[0].tubosPorCaixa], t: t && [t.vigencias.length, t.vigencias[0].inicio, t.vigencias[0].fim, t.vigencias[0].dias.join('')], pos: q.map(x => x.posicao).sort(), cal: !!D.calendario.find(x => x.codigo === '2026-12-26'), l: !!D.linhas.find(x => x.codigo === 'LCARGA'), aud: (D.auditoria || []).filter(x => /carga por tabela/.test(x.motivo || '')).length }; });
+    assert.deepEqual(await f.evaluate(() => { const t = Cad.D.tagsMapa.find(x => x.codigo === 'TGC1'); return t && [t.tag, t.vigencias.length, t.vigencias[0].estado, t.vigencias[0].prioridade]; }), ['FAULT', 1, 'parada', 1], 'tag da linha do tempo com uma vigência');
     assert.deepEqual(g.c, [1, '2026-11-01', 60000, 1000], 'catálogo com uma vigência'); assert.deepEqual(g.t, [1, '06:00', '14:30', '123456'], 'turno com uma vigência');
     assert.equal(new Set(g.pos).size, 2, 'posições dos equipamentos novos diferentes'); assert.ok(g.cal && g.l && g.aud >= 7, 'calendário, linha e auditoria ' + JSON.stringify(g));
     console.log('ok ⇧ Importar: linha, família, equipamentos, catálogo, material, turno e calendário gravados; inválidos recusados; uma vigência; auditoria');
@@ -72,6 +75,23 @@ const html = fs.readFileSync(path.resolve(__dirname, '../../Plataforma.html'));
     assert.ok(pv.igual && !pv.caixa && /use a ficha/.test(pv.txt) && !/Nada muda/.test(pv.txt), 'linha só com período aparece na prévia: ' + pv.txt.slice(0, 200));
     assert.deepEqual(pv.mes, ['ok', 'o código MES RES-9 repete a linha 2 da planilha']);
     console.log('ok prévia mostra o item só com período diferente; código MES repetido no lote é erro');
+
+    // 3b2) tag e máquina do mapa não mudam depois de gravados (o histórico usa o valor gravado)
+    const tv = await f.evaluate(() => { const P = CargaTab.plano('tagsMapa', Cad.D, [['codigo', 'tag', 'nome'], ['TGC1', 'OUTRA', 'Falha de carga (renomeada)']], 'trava.xlsx');
+      return { erro: P.L[0].erros[0] || '', marcado: P.L[0].marcado }; });
+    assert.match(tv.erro, /não muda depois de gravado/); assert.equal(tv.marcado, false);
+    await f.evaluate(() => { location.hash = '#cadastros/tagsMapa'; App.render(); }); await page.waitForTimeout(400);
+    await f.evaluate(() => Ficha.abrir('tagsMapa', 'TGC1')); await f.waitForSelector('[data-p="tag"]');
+    assert.equal(await f.locator('[data-p="tag"]').isDisabled(), true, 'campo Tag travado na ficha de item gravado');
+    assert.equal(await f.locator('[data-p="equipamento"]').isDisabled(), true, 'campo Máquina travado na ficha de item gravado');
+    await f.evaluate(() => Modal.close(true));
+    console.log('ok tag e máquina do mapa de tags travadas depois de gravadas (ficha e carga)');
+
+    // 3c) código de parada: descrição e vigência (decisão 7), validadas
+    const pv2 = await f.evaluate(() => { const base = { codigo: 'PVX', nome: 'X', classe: 'fixa', ondeAponta: 'Máquina' }, v = it => cadValidarItem('paradas', { ...base, ...it }, Cad.D, { novo: true });
+      return { ok: v({ descricao: 'texto', vigenciaDe: '2026-01-01', vigenciaAte: '2026-12-31' }).filter(x => /vigência/.test(x)), data: v({ vigenciaDe: '01/01/2026' }), ordem: v({ vigenciaDe: '2026-05-01', vigenciaAte: '2026-04-01' }), cols: ParLote.colunas(Cad.D).filter(k => /^(descricao|vigenciaDe|vigenciaAte)$/.test(k)) }; });
+    assert.deepEqual(pv2.ok, []); assert.ok(pv2.data.some(x => /vigência inicial/.test(x)) && pv2.ordem.some(x => /final é antes/.test(x)) && pv2.cols.length === 3, JSON.stringify(pv2));
+    console.log('ok código de parada: descrição e vigência inicial/final no cadastro, validadas e no lote');
 
     // 4) código repetido e sem código
     const r = await f.evaluate(() => { const P = CargaTab.plano('linhas', Cad.D, [['codigo', 'nome'], ['LREP', 'A'], ['LREP', 'B'], ['', 'C']], 'x.xlsx'); return P.L.map(x => x.erros[0] || 'ok'); });
