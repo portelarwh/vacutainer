@@ -32,7 +32,7 @@ A aplicação da proposta executiva foi autorizada: hierarquia resultado → an�
 
 - Pode avançar com dados fictícios: revisão de consultas, hierarquia visual, legibilidade, teclado, filtros e detalhamento, mantendo valores e permissões.
 - E10c valida o conteúdo de cada perfil. Um modelo visual pode ser preparado antes; não apresentar a seleção de indicadores por perfil como aprovada.
-- E7, E9, E12, E13 e E15 continuam nas dependências da lista única. Nenhuma regra de OSM, conciliação MES, TPM/5S ou Projetos será inventada.
+- E7, E12, E13 e E15 continuam nas dependências da lista única. E9 (coleta automática por pasta) foi encerrado pelo responsável em 21/11/2026: a importação continua manual. Nenhuma regra de OSM, conciliação MES, TPM/5S ou Projetos será inventada.
 - Coleta automática por pasta vem depois da definição da estação e de um fluxo manual de importação conferível. Deve prever arquivos repetidos, reprocessamento, falha e retomada. Não funciona como serviço com o navegador fechado.
 - Microparadas 5/10 minutos e critérios de madrugada exigem a decisão vigente; layout não escolhe regras operacionais.
 - Não criar nova página agora. Evoluir Central de importações, Saúde dos dados e módulos existentes.
