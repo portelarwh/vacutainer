@@ -8,14 +8,14 @@ const assert = require('assert/strict'), abrir = require('./pasta-ficticia.cjs')
     const r = await f.evaluate(async () => {
       const arq = async () => JSON.parse(await (await (await parent.fixtureDir.getFileHandle('fifo-base.json')).getFile()).text()), a = await arq();
       const ext = { ...a, rev: 8, revBy: 'Outra Estação', config: { ...(a.config || {}), notaExterna: 'DA-OUTRA-ESTACAO' } }; const w = await (await parent.fixtureDir.getFileHandle('fifo-base.json')).createWritable(); await w.write(JSON.stringify(ext)); await w.close();
-      const orig = FileSystemDirectoryHandle.prototype.getFileHandle; let negou = 0;
-      FileSystemDirectoryHandle.prototype.getFileHandle = function (n, o) { if (n === 'fifo-base.json' && !(o && o.create) && !negou) { negou = 1; const e = new Error('transitório'); e.name = 'NotAllowedError'; return Promise.reject(e); } return orig.call(this, n, o); };
+      const orig = FileSystemDirectoryHandle.prototype.getFileHandle; let negou = 0;   // a leitura fica negada durante toda a janela (inclusive a releitura periódica de fundo), sem depender de qual chamada chega primeiro
+      FileSystemDirectoryHandle.prototype.getFileHandle = function (n, o) { if (n === 'fifo-base.json' && !(o && o.create)) { negou++; const e = new Error('transitório'); e.name = 'NotAllowedError'; return Promise.reject(e); } return orig.call(this, n, o); };
       const ch = newCh(); ch.config = { notaGeral: 'LOCAL' }; await fileBackend.commit(ch); await new Promise(r => setTimeout(r, 1500));
       const durante = await arq(); const pend = FS.pending.length;
       FileSystemDirectoryHandle.prototype.getFileHandle = orig; await fsFlush(); await new Promise(r => setTimeout(r, 1500)); const depois = await arq();
       return { negou, durante: { rev: durante.rev, ext: !!(durante.config && durante.config.notaExterna) }, pend, depois: { rev: depois.rev, ext: !!(depois.config && depois.config.notaExterna), loc: !!(depois.config && depois.config.notaGeral === 'LOCAL') } };
     });
-    assert.equal(r.negou, 1); assert.deepEqual(r.durante, { rev: 8, ext: true }, 'com a leitura negada o arquivo da outra estação (rev 8) não é tocado: ' + JSON.stringify(r)); assert.ok(r.pend >= 1, 'a alteração fica na fila');
+    assert.ok(r.negou >= 1); assert.deepEqual(r.durante, { rev: 8, ext: true }, 'com a leitura negada o arquivo da outra estação (rev 8) não é tocado: ' + JSON.stringify(r)); assert.ok(r.pend >= 1, 'a alteração fica na fila');
     assert.deepEqual(r.depois, { rev: 9, ext: true, loc: true }, 'depois que a leitura volta, as duas alterações estão no arquivo: ' + JSON.stringify(r));
     console.log('ok Gel: leitura negada não grava por cima e a fila segue; depois grava com a alteração da outra estação');
   });

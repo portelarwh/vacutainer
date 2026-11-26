@@ -21930,7 +21930,7 @@ const Ord = {
           const t = new Date(), h = [t.getHours(), t.getMinutes(), t.getSeconds()].map(n => String(n).padStart(2, '0')), suf = Math.random().toString(36).slice(2, 5);
           const nome = `ordens-base_${dia}${crit ? '_antes-substituir_' + todas.join('_') : ''}_${h[0]}h${h[1]}m${h[2]}s_${suf}.json`;
           try { await Store.S.backend.backupSub(ORD_BK, nome, remoteTxt); try { localStorage.setItem(k, dia); } catch (e) { } }
-          catch (e) { if (crit) return falha(`Não consegui salvar a cópia de ${ORD_FILE} em 00. Backups/${ORD_BK} antes de substituir (${ordMotivo(e)}); nada foi gravado. A alteração continua pendente neste navegador.`); console.warn('backup ordens', e); try { await vacBackupRegistro.registrar('ordens', { erro: `Backup diário de ${ORD_FILE}: ${ordMotivo(e)}`, arquivo: nome }); } catch (e2) { } }
+          catch (e) { if (crit) return falha(`Não consegui salvar a cópia de ${ORD_FILE} em 00. Backups/${ORD_BK} antes de substituir (${ordMotivo(e)}); nada foi gravado. A alteração continua pendente neste navegador.`); console.warn('backup ordens', e); try { await vacBackupRegistro.registrar('ordens', { erro: `Backup diário de ${ORD_FILE}: ${ordMotivo(e)}`, arquivo: nome, dir: async () => { const rz = await Store.S.backend.backupRoot(); return rz.getDirectoryHandle(ORD_BK, { create: true }); } }); } catch (e2) { } }
         }
       } else toast(ORD_FILE + ' ainda não existia na pasta: o arquivo foi criado.');
     }
@@ -55469,8 +55469,8 @@ body.vac-porta{overflow:hidden}
       "id": "oee",
       "path": "Plataforma.html#motor/oee",
       "version": "2.6.50",
-      "sha256": "2cd7d4ebdc27fb6b6960275d2a628fa4ad7425eb5f66943a5254c3a8eae35feb",
-      "bytes": 2388425
+      "sha256": "94c419b403c136b5e78ca6a121629dbae9a443d89eaa15a3cdc308e2cc2cc503",
+      "bytes": 2388550
     },
     {
       "id": "perdas",
@@ -55532,7 +55532,7 @@ body.vac-porta{overflow:hidden}
   "limitations": [
     "Projetos e conteúdo técnico OSM/MES/AM/TPM mantêm os limites documentados nas fontes."
   ],
-  "enginesSha256": "6cf8d441b44ddaf59975a19087680db46daaefe03f44932b61cab5023aa7a589",
+  "enginesSha256": "297b4c5f49ce5be8d7b3365eab4310135b63369711ba285d08a8ce48fc2c31fa",
   "originRevision": "ffc9ee8",
   "sourceMode": "single-html",
   "originEnginesSha256": "a87a64ad0c328f70e102b2ae888790a9b5d5a9bd05778652a7ce7cae140e40d2"
