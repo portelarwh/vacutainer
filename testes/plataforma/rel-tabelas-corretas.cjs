@@ -27,6 +27,12 @@ const html = fs.readFileSync(path.resolve(__dirname, '../../Plataforma.html'));
       // C32: lotes por turno
       const R3 = {}, T3 = RpTab.st(R3); T3.mod = 'lotes'; T3.from = '2026-11-01'; T3.to = '2026-11-30'; const caixas = () => { const t = txt(RpTab.model(R3)); const i = t.indexOf('Total'); const m = t.slice(i).match(/Total[^0-9]*([\d.]+)/); return m ? +m[1].replace(/\./g, '') : null; };
       T3.turno = ''; out.todos = caixas(); out.turnos = {}; for (const sh of d.shifts.filter(s => !s.deleted).map(s => s.id)) { T3.turno = sh; out.turnos[sh] = caixas(); }
+      // C32 (Codex #167): caixas contadas pelo minuto registrado, inclusive em dia sem lançamento de produção
+      const real = d.server.segments.slice(); d.productionDays.forEach(x => { x.deleted = true; });
+      const mk = (lot, base, mins) => ({ lineId: 'line_vac', lot, cat: '360060', t0: '2026-11-19T06:00:00', t1: '2026-11-19T21:59:00', n: mins.length, b0: 1, b1: mins.length, base, m: mins.map((x, i) => i === 0 ? '0' : String(x - mins[i - 1])).join(',') });
+      const t0 = Date.parse('2026-11-19T06:00:00Z') / 60000; d.server.segments = [mk('LOTE-X', t0, [0, 1, 2, 959])];   // 3 caixas cedo e 1 às 21:59
+      const R4 = {}, T4 = RpTab.st(R4); T4.mod = 'lotes'; T4.from = '2026-11-19'; T4.to = '2026-11-19'; const c4 = () => { const t = txt(RpTab.model(R4)); const i = t.indexOf('Total'); const m = t.slice(i).match(/Total[^0-9]*([\d.]+)/); return m ? +m[1] : null; };
+      out.semDia = {}; for (const sh of d.shifts.filter(s => !s.deleted)) { T4.turno = sh.id; out.semDia[sh.code || sh.id] = c4(); } T4.turno = ''; out.semDia.todos = c4(); d.server.segments = real;
       return out;
     });
     assert.equal(r.fam.todas, true, 'sem filtro de família a parada aparece'); assert.equal(r.fam.fam_sst, true, 'família do catálogo da parada: aparece');
@@ -37,6 +43,9 @@ const html = fs.readFileSync(path.resolve(__dirname, '../../Plataforma.html'));
     const soma = Object.values(r.turnos).reduce((a, v) => a + v, 0);
     assert.ok(r.todos > 0 && Math.abs(soma - r.todos) <= Object.keys(r.turnos).length, `caixas dos turnos somam o total (${JSON.stringify(r.turnos)} → ${soma} vs ${r.todos})`);
     assert.ok(Object.values(r.turnos).every(v => v < r.todos) && Object.values(r.turnos).some(v => v > 0), 'cada turno recebe só a sua parte');
+    assert.ok(r.semDia.todos === 4, 'sem lançamento de produção o lote aparece (4 caixas): ' + JSON.stringify(r.semDia));
+    assert.equal(Object.entries(r.semDia).filter(([k]) => k !== 'todos').reduce((a, [, v]) => a + (v || 0), 0), 4, 'os turnos do cadastro dividem as 4 caixas pelo minuto de cada uma, sem fração: ' + JSON.stringify(r.semDia));
+    assert.ok(Object.values(r.semDia).some(v => v === 3), 'as 3 caixas de 06:00 a 06:02 ficam no turno da manhã: ' + JSON.stringify(r.semDia));
     // K03: 12 px nas descrições da Central de importações
     await p.setViewportSize({ width: 390, height: 844 }); await p.goto('http://127.0.0.1:' + srv.address().port + '/?demo=1#/importacoes'); await p.waitForTimeout(2500);
     const fs12 = await p.evaluate(() => { const e = document.querySelector('.import-row p'); return e && getComputedStyle(e).fontSize; }); assert.equal(fs12, '12px', 'descrição dos cartões de importação em 12 px');

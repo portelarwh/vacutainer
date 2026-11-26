@@ -18980,13 +18980,15 @@ const RpTab = {
     } else if (T.mod === 'lotes') {
       cab = ['Lote', 'Catálogo', '1ª caixa', 'Última caixa', 'Caixas', 'Produção (' + u + ')', 'Ordem'];
       const S = ServerData, qty = +(d.settings || {}).serverBoxQty || 1000, byLot = S.orderByLot ? S.orderByLot(d, 'line_vac') : new Map(), G = new Map();
-      /* C32/P7 (análise comum 26/11/2026): com um turno escolhido, cada segmento entra com a parte do tempo que cai dentro da janela desse turno (caixa pela hora em que foi produzida) */
-      const jan = []; if (T.turno) for (const dy of (d.productionDays || []).filter(x => !x.deleted &amp;&amp; x.lineId === 'line_vac')) { const ps = (dy.shifts || []).find(p => !p.deleted &amp;&amp; p.shiftId === T.turno); if (!ps || !ps.snap) continue; const a = U.toMin(ps.snap.start), b = U.toMin(ps.snap.end); if (a == null || b == null) continue; const base = Date.parse(dy.date + 'T00:00:00Z') / 60000; jan.push([base + a, base + (b <= a ? b + 1440 : b)]); }
-      const minAbs = t => Date.parse(t.slice(0, 16) + ':00Z') / 60000, parte = s => { if (!T.turno) return 1; const x0 = minAbs(s.t0), x1 = minAbs(s.t1); if (!(x1 > x0)) return jan.some(w => x0 >= w[0] &amp;&amp; x0 < w[1]) ? 1 : 0; let o = 0; for (const w of jan) o += Math.max(0, Math.min(x1, w[1]) - Math.max(x0, w[0])); return Math.min(1, o / (x1 - x0)); };
+      /* C32/P7 (análise comum 26/11/2026): com um turno escolhido, cada caixa conta no turno em que foi registrada (minuto de cada caixa, ServerData.countWindow), usando as janelas do turno do dia (dia lançado ou turnos vigentes do cadastro) */
+      const cnt = new Map(), shSel = T.turno ? (d.shifts || []).find(x => x.id === T.turno) : null;
+      if (shSel) for (let dt = U.addDays(T.from, -1); dt <= T.to; dt = U.addDays(dt, 1)) { if (dt < T.from || (T.wd.length &amp;&amp; !T.wd.includes(U.weekday(dt)))) continue; const base = Date.parse(dt + 'T00:00:00Z') / 60000;
+        for (const w of ForaTurno.turnosDoDia(d, dt, 'line_vac')) if (w.code === shSel.code) for (const x of S.countWindow(d, 'line_vac', base + w.s, base + w.e)) cnt.set(x.lot, (cnt.get(x.lot) || 0) + x.n); }
       for (const s0 of S.segsOf(d, 'line_vac')) { const dia = s0.t0.slice(0, 10); if (dia < T.from || dia > T.to) continue; if (T.wd.length &amp;&amp; !T.wd.includes(U.weekday(dia))) continue;
-        const fr = parte(s0); if (fr <= 0) continue; const s = fr === 1 ? s0 : { ...s0, n: s0.n * fr };
+        const s = s0;
         const c = (d.catalogs || []).find(x => !x.deleted &amp;&amp; String(x.code) === String(s.cat)); if (T.cat &amp;&amp; (!c || c.id !== T.cat)) continue; if (T.fam &amp;&amp; !T.cat &amp;&amp; (!c || c.familyId !== T.fam)) continue;
         const g = G.get(s.lot) || { lot: s.lot, cat: s.cat, t0: s.t0, t1: s.t1, n: 0 }; g.n += s.n; if (s.t0 < g.t0) g.t0 = s.t0; if (s.t1 > g.t1) g.t1 = s.t1; G.set(s.lot, g); }
+      if (shSel) for (const [k, g] of [...G]) { g.n = cnt.get(k) || 0; if (!g.n) G.delete(k); }
       const br = t => `${t.slice(8, 10)}/${t.slice(5, 7)}/${t.slice(0, 4)} ${t.slice(11, 16)}`;
       for (const g of [...G.values()].sort((a, b) => a.t0 < b.t0 ? -1 : 1)) { const m = byLot.get ? byLot.get(g.lot) : null;
         L.push([esc(g.lot || '—'), esc(g.cat || '—'), br(g.t0), br(g.t1), U.fmt(g.n), fq(g.n * qty), esc(m &amp;&amp; m.o ? m.o.order || '—' : '—')]); }
@@ -55447,8 +55449,8 @@ body.vac-porta{overflow:hidden}
       "id": "oee",
       "path": "Plataforma.html#motor/oee",
       "version": "2.6.50",
-      "sha256": "742fd31ec8acf3184a7c7c757ff879c497681ef6ebfd0f97551b1c70547b5156",
-      "bytes": 2387977
+      "sha256": "4ae4ece46fed416442156519773408b3ef05f104df5c6c75e1ca3be566ac3e8c",
+      "bytes": 2387776
     },
     {
       "id": "perdas",
@@ -55510,7 +55512,7 @@ body.vac-porta{overflow:hidden}
   "limitations": [
     "Projetos e conteúdo técnico OSM/MES/AM/TPM mantêm os limites documentados nas fontes."
   ],
-  "enginesSha256": "2709acf4e91eb2f419beb7faee1c07541bd75a0f33e8a5fc11c949c596b03662",
+  "enginesSha256": "052574f31d015b870704580dbc5ab4d30ef1ddfb01cc3245fe34fa5240962627",
   "originRevision": "ffc9ee8",
   "sourceMode": "single-html",
   "originEnginesSha256": "a87a64ad0c328f70e102b2ae888790a9b5d5a9bd05778652a7ce7cae140e40d2"
