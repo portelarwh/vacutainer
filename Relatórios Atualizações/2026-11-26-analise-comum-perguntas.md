@@ -11,7 +11,21 @@ Lista única, sem repetição, das dúvidas de negócio das duas auditorias. Cad
 | Vale unificar o código repetido (A5) | **Sim** | `docs/PLANO-H01-CODIGO-REPETIDO.md` (C38) |
 | Modelo de acesso: documentar ou endurecer (A4) | **Documentar** | `docs/MODELO-DE-ACESSO.md`; a pergunta de fundo continua em P1 |
 
-## Em aberto
+## Respondidas depois da análise comum (26/11/2026)
+| # | Resposta | Consequência |
+|---|---|---|
+| P1 | **Só registrar quem fez**; a permissão da pasta controla o acesso | Mantém `docs/MODELO-DE-ACESSO.md`; C21 sai do roadmap de endurecimento |
+| P2 | **Ausente e fora do consolidado**: "sem lançamento"; zero só quando digitarem 0 | C01 a corrigir (exports e Visão da linha precisam carregar a ausência; nada de zero implícito) |
+| P3 | **3x serve**; relatório oficial **mostra com aviso** quando a Performance passa de 100% | `LIMITE_X` = 3 confirmado; falta o aviso de divergência de capacidade no relatório |
+| P4 | **1 ano, com arquivo histórico consultável** | C18: arquivar o que sai da lista ativa |
+| P5 | **Bloquear a restauração até gravar a fila** | C13: restauração recusa com fila pendente |
+| P7 | **Pela hora de cada caixa** | C32: o filtro de turno passa a atribuir cada caixa ao seu turno |
+| P10 | **Guardar o ID** na trilha do Waste e da Administração | C17: ID ao lado do nome nas entradas novas |
+| P11 | **Posso homologar esta semana** (pasta de rede e duas estações) | C16: preparar o roteiro de homologação de duas estações |
+
+Restam abertas: P6 (anexos), P8 (códigos de família FY27) e P9 (celular e Gel).
+
+## Em aberto (ainda sem resposta)
 | # | Pergunta | Origem | O que muda conforme a resposta | Linhas |
 |---|---|---|---|---|
 | P1 | Quem pode ler e gravar na pasta compartilhada e usar o perfil do navegador onde o aplicativo roda? O ID e a senha servem para **registrar quem fez** ou para **impedir** quem não pode? | A4, B5 | Se for só identificação, a documentação atual basta. Se for controle, a segurança precisa sair do cliente (evolução grande). | C21 |
