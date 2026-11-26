@@ -63,6 +63,13 @@ Autorizados pelo responsável em 26/11/2026 (decisões 5, 7 e 9 de `CONFIGURACOE
 - **Logo (decisão 14):** o envio fica só na Administração (Configuração › Logo); com a pasta conectada grava `Logo.png` nela (as páginas já o liam) e a remoção apaga o arquivo. Waste e Gel perderam o envio próprio.
 - Prova: `prod-config-adm` (tagMap e códigos de parada derivados), `carga-tabela` (tagsMapa e validação das paradas), `logo-unico`, `padroes-embutidos`, `ttimeline`.
 
+## Primeiro uso: cadastro inicial com o primeiro administrador · Administração 1.9.89, plataforma 1.8.70 (26/11/2026)
+
+- Problema: numa pasta sem cadastro, a gravação exigia sessão e a sessão depende do cadastro; "Criar cadastro vazio" era recusado (a recusa chegava como `NotFoundError`).
+- Decisão do responsável (26/11/2026): a Administração cria o primeiro administrador. `cadCriarInicial` grava uma operação `carga` com `origem: 'bootstrap'` (um usuário ADMIN com senha de 6 números, perfis padrão, nenhuma outra tabela). A guarda do quadro (runtime) libera só `00. Bases` e `vacutainer-cadastros.json` (arquivo novo e vazio) enquanto `vacPagina.filaBootstrap()` for verdadeira; o documento é conferido por `validarDocumentoInicial` (rev 1, `appVersion`, mesmo conteúdo da operação). Com o cadastro criado, a exceção deixa de valer (`Cad.fonte !== 'nenhum'`).
+- A casca ganhou o botão "Criar o cadastro inicial (primeiro administrador)" no cartão "Cadastro não encontrado" e `vacAppHost.sairConsulta()`, usado depois da criação para a tela pedir ID e senha. A senha de edição inicial (`seguranca`) saiu da criação: o perfil ADMIN edita sem ela.
+- Prova: `testes/plataforma/primeiro-uso.cjs` (pasta nova → cadastro inicial → entrar → cadastrar → Produção monta; sem sessão e com o cadastro criado nada grava).
+
 ## Troca de pasta com pendência (casca 1.0.2, 15/11/2026)
 
 Antes era só uma mensagem e a troca ficava bloqueada; um módulo parado conectando (por exemplo, esperando confirmação depois de escolher a pasta errada) prendia a pessoa na pasta. Agora a casca abre a janela "Há alterações pendentes nesta pasta", que diz o que está pendente e onde: cada módulo aberto com o motivo (ainda abrindo, conectando à pasta, alteração não gravada ou formulário aberto, não respondeu) e o que está guardado no navegador por módulo (`queueDetail`, em `modulo/core/scopes`; `pendingDetail`, em `modulo/core/runtime`). Falha ao consultar a fila aparece na janela e conta como pendência.

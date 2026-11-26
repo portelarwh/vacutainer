@@ -158,13 +158,13 @@ const SECS = ['gel', 'linhas', 'familias', 'catalogos', 'materiais', 'bom', 'equ
       const salvo = clone(Cad.base); localStorage.removeItem('vac.userId'); if (!user()) setUser('Teste (fictício)');
       Cad.base = null; Cad.recompute(); Cad.ui.sec = 'inicio'; App.render();
       const tela = document.querySelector('#cadMain').innerText;
-      document.querySelector('#cnS1').value = 'abcd'; document.querySelector('#cnS2').value = 'abcd'; await cadCriarVazio();
-      const b = Cad.base, r = { tela: /Criar cadastro vazio/.test(tela) && !/a partir das páginas/.test(tela), sv: b && b.schemaVersion, rev: b && b.rev,
-        vazio: !!b && CAD_ORD.every(t => !b[t].length), gel: b && JSON.stringify(b.gel), trocar: !!(b && b.seguranca && b.seguranca.trocar === true && b.seguranca.senhaHash) };
+      document.querySelector('#cnId').value = '9001'; document.querySelector('#cnNome').value = 'Admin Fictício'; document.querySelector('#cnS1').value = '482915'; document.querySelector('#cnS2').value = '482915'; await cadCriarInicial();
+      const b = Cad.base, r = { tela: /primeiro administrador/.test(tela) && !/a partir das páginas/.test(tela), sv: b && b.schemaVersion, rev: b && b.rev,
+        vazio: !!b && CAD_ORD.every(t => t === 'usuarios' || t === 'perfis' || !b[t].length), gel: b && JSON.stringify(b.gel), admin: !!(b && b.usuarios.length === 1 && b.usuarios[0].perfil === 'ADMIN' && b.usuarios[0].senha.hash && b.perfis.length >= 5) };
       Modal.close(true); Cad.base = salvo; Cad.recompute(); vacDemo.salvar('cad', Cad.D); App.render(); return r;
     });
-    assert.deepEqual(V, { tela: true, sv: 2, rev: 1, vazio: true, gel: '{"formatos":[],"locais":[]}', trocar: true }, 'cadastro novo vazio ' + JSON.stringify(V));
-    console.log('ok sem cadastro: "Criar cadastro vazio" grava a rev 1 vazia, no formato atual, com a senha inicial');
+    assert.deepEqual(V, { tela: true, sv: 2, rev: 1, vazio: true, gel: '{"formatos":[],"locais":[]}', admin: true }, 'cadastro novo vazio ' + JSON.stringify(V));
+    console.log('ok sem cadastro: o cadastro inicial grava a rev 1, no formato atual, só com o primeiro administrador e os perfis padrão');
 
     assert.deepEqual(erros, [], 'sem erro de JavaScript'); console.log('ok sem erro de JavaScript');
   } finally { if (browser) await browser.close(); srv.close(); }

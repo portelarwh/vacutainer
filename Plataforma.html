@@ -2825,6 +2825,26 @@ window.vacPagina = (() => {
       return usuarios > 0;
     } catch (e) { return false; }
   }
+  /* 26/11/2026 · primeiro uso: a única gravação sem login é a criação do cadastro inicial (pasta sem cadastro, uma operação 'carga' de origem
+     'bootstrap', um usuário ADMIN com senha, nada mais). O arquivo ainda não existe, então não há o que proteger nem sobrescrever. */
+  function filaBootstrap() {
+    try {
+      if (id() !== 'portal' || Store.mode !== 'pasta' || Cad.base || Cad.fonte !== 'nenhum' || Cad.fila.length !== 1) return false;
+      const op = Cad.fila[0], d = op.doc;
+      if (op.acao !== 'carga' || op.origem !== 'bootstrap' || !d || !Array.isArray(d.usuarios) || d.usuarios.length !== 1) return false;
+      const u = d.usuarios[0];
+      if (u.perfil !== 'ADMIN' || u.ativo !== true || !u.senha || !u.senha.hash || !u.codigo || !u.nome) return false;
+      if (CAD_ORD.some(t => t !== 'usuarios' &amp;&amp; t !== 'perfis' &amp;&amp; (d[t] || []).length)) return false;
+      return canon(d.perfis || []) === canon(DEFAULT_PERFIS);
+    } catch (e) { return false; }
+  }
+  async function validarDocumentoInicial(texto) {
+    if (!filaBootstrap()) throw new DOMException('Fila não autorizada para o cadastro inicial.', 'NotAllowedError');
+    const proximo = JSON.parse(texto), esperado = cadFix(clone(Cad.fila[0].doc));
+    const negocio = b => Object.fromEntries(Object.entries(b).filter(([k]) => !['rev','revId','revAt','revBy','appVersion','auditoria','schema','schemaVersion'].includes(k)));
+    if (canon(negocio(esperado)) !== canon(negocio(proximo)) || proximo.rev !== 1 || proximo.appVersion !== 'Portal ' + PAGE.versao || proximo.schema !== 'vac-cadastros' || proximo.schemaVersion !== VAC_CAD_VERSAO)
+      throw new DOMException('O documento contém mais do que o cadastro inicial.', 'NotAllowedError');
+  }
   async function validarDocumentoConta(texto, backup) {
     if (!filaSoContaPropria()) throw new DOMException('Fila não autorizada para conta própria.', 'NotAllowedError');
     const atualTexto = await (await (await Store.dir.getFileHandle(CAD_FILE)).getFile()).text();
@@ -2851,7 +2871,7 @@ window.vacPagina = (() => {
     } finally { conta = null; }
   }
   return { pronto, pendente, conectado, conectar, ir: irAba, abas, comandos,
-    executarContaPropria, filaSoContaPropria, validarDocumentoConta,
+    executarContaPropria, filaSoContaPropria, validarDocumentoConta, filaBootstrap, validarDocumentoInicial,
     pode: (modulo, acao) => vacPodeComum(vacCad(), vacUsuario(), modulo, acao),
     get contaPropria() { return conta; },
     descartar: () => window.__vacRuntimeDispose &amp;&amp; window.__vacRuntimeDispose(),
@@ -4418,7 +4438,7 @@ function wireConfigComum(){$('#cPasta').onclick=async()=>{if(await Store.pick())
         entrar pelo ID (autocadastro como Consulta); página inicial por perfil (1x por sessão); vigência gravada não se edita (desativar com motivo); painel de vigências; semáforo central; saída do modo de teste.
    1.1.2: aviso da carga diz qual base foi lida.  1.5: páginas Paradas, Máquinas, Manutenção e Projetos na lista (aparecem quando o HTML chega na pasta).  1.4: lista técnica pela CS12 multinível (itens = nível 1, estrutura = níveis 2+); CS03 sai.  1.3: cabeçalho comum (vac-cabecalho v2: barra do sistema + página + abas), busca Ctrl K, acabamento V1.90, Versões com cabeçalho e último backup.  1.2: Configuração › Versões das páginas (versão e data de cada HTML, gravação das bases, cópias repetidas, histórico).
    ===================================================================== */
-const PAGE={id:'portal',titulo:"Administração · Linha Vacutainer",tituloCurto:"Administração",subtitulo:'Sistemas de gestão da linha',versao:'1.9.88',baseFile:'portal-base.json',idb:'vac-portal',backupDir:'00. Backups/Portal',
+const PAGE={id:'portal',titulo:"Administração · Linha Vacutainer",tituloCurto:"Administração",subtitulo:'Sistemas de gestão da linha',versao:'1.9.89',baseFile:'portal-base.json',idb:'vac-portal',backupDir:'00. Backups/Portal',
  vazio:()=>({schema:'portal-base',schemaVersion:1,rev:0,config:{modulos:{},avisoDias:30,notas:{}},audit:[]}),
  /* itens do Portal para a busca Ctrl K: cadastro, pendências e telas */
  busca:q=>{const R=[],D=Cad.D;if(D)for(const t of CAD_ORD){for(const it of D[t]||[]){const c=String(it[kOf(t)]),nm=t==='bom'?((cadItem('catalogos',it.catalogo)||{}).nome||''):it.nome||'';if(norm(c+' '+nm).includes(q))R.push({tipo:CAD_T[t].um,txt:c+(nm?' · '+nm:''),sub:'Cadastros'+(cadAtivo(t,it,D)?'':' · inativo'),href:'#cadastros/'+t+'/'+encodeURIComponent(c)});if(R.length>30)break}}
@@ -5292,6 +5312,10 @@ const CAD_SECS=['inicio','gel','matriz','importar','auditoria','backups','segura
    curtas (macro, sem detalhe técnico). REGRA: toda versão nova da plataforma ganha uma entrada aqui, a mais recente primeiro
    (AGENTS.md e CLAUDE.md). Tipos: nova (função nova), melhoria (algo que já existia ficou melhor), correcao (erro corrigido). */
 const NOVIDADES=[
+ {v:'1.8.70',d:'2026-11-26',itens:[
+  ['novo','Primeiro uso: numa pasta nova, a tela de entrada oferece "Criar o cadastro inicial (primeiro administrador)". Informe ID, nome e uma senha de 6 números; a plataforma cria o cadastro vazio com os perfis padrão e você entra em seguida.'],
+  ['correcao','Antes, numa pasta sem cadastro ninguém conseguia gravar o primeiro cadastro (a gravação exigia entrar, e o login fica dentro do cadastro).'],
+  ['melhoria','Guia de primeiro uso em docs/PRIMEIRO-USO.md: ordem de cadastro, planilhas modelo e o que conferir.']]},
  {v:'1.8.69',d:'2026-11-26',itens:[
   ['novo','Administração › Equipamentos › Tags da linha do tempo: o mapa de tags (tag → Produzindo, Parada, Bloqueada ou Ociosa) é cadastrado com vigência, tem Modelo e Importar planilha, e a Produção só lê.'],
   ['novo','Códigos de parada ganham Descrição e Vigência inicial/final no cadastro (também no lote por planilha).'],
@@ -5846,20 +5870,29 @@ function viewAdminConfig(m){m.innerHTML=`<div class="cadg"><aside class="cadside
 function cadSemCadastro(el){
  if(Store.mode!=='pasta'&amp;&amp;Store.mode!=='teste'){el.innerHTML=`<div class="card"><h3>Cadastro base</h3><p>Conecte a Administração à pasta da rede em <a href="#config">Configuração</a> para ler ou criar o <span class="mono">${CAD_FILE}</span>.</p></div>`;return}
  if(Cad.fonte==='erro'){el.innerHTML=`<div class="card"><h3>Cadastro base</h3><p>O arquivo existe mas não pôde ser lido. Restaure um backup de <span class="mono">${CAD_BKP}/</span> (copie o arquivo para a pasta principal com o nome ${CAD_FILE}).</p></div>`;return}
- el.innerHTML=`<div class="card form"><h3>Cadastro base ainda não criado ${ib('Cadastro base',"Um cadastro só para todas as páginas: linhas, famílias, catálogos, materiais, BOM, equipamentos, turnos e códigos de parada, por código e com vigência. Só a Administração grava; as outras páginas leem e mostram em modo consulta, com \"Editar na Administração\".")}</h3>
-  <p>Cria a <b>rev 1</b> de <span class="mono">${CAD_FILE}</span> vazia, com a senha de edição. Depois, cada tabela é preenchida na própria tela da Administração. Os dados das páginas não são trazidos (base limpa).</p>
-  <div class="fg"><label>Senha inicial<input type="password" id="cnS1" autocomplete="off"></label><label>Confirme a senha inicial<input type="password" id="cnS2" autocomplete="off"></label><label class="w2">Editores (separados por vírgula)<input id="cnEd" value="${esc(user()||'')}"></label></div>
-  <p class="small muted">No arquivo fica só o hash (SHA-256 de salt + senha). Logo depois de criar, a Administração pede para trocar a senha inicial.</p>
-  <div id="cnErr"></div><button class="b p" id="cadNovoVazio">Criar cadastro vazio</button></div>`;
- $('#cadNovoVazio').onclick=()=>cadCriarVazio()}
-/* base limpa (24/11/2026): o cadastro nasce vazio (formato atual), com a senha de edição; nada é lido das bases das páginas */
-async function cadCriarVazio(){const s1=$('#cnS1').value,s2=$('#cnS2').value,err=m=>$('#cnErr').innerHTML=`<div class="note e">${esc(m)}</div>`;
- if(s1.length<4)return err('A senha inicial precisa de pelo menos 4 caracteres.');if(s1!==s2)return err('As senhas não são iguais.');
- if(!user()){const n=(prompt('Seu nome (fica na auditoria):')||'').trim();if(!n)return;setUser(n);renderTop()}
- const eds=[...new Set(String($('#cnEd').value||'').split(/[,;\n]/).map(x=>x.trim()).filter(Boolean))];if(!eds.length)eds.push(user());
- const doc=cadFix(cadVazio()),salt=randHex(16),h=await sha256hex(salt+s1);doc.seguranca={senhaHash:h,salt,alteradaEm:isoLocal(),alteradaPor:user(),editores:eds,trocar:true};
- await Cad.op({acao:'carga',tipo:'*',codigo:null,doc,motivo:'cadastro novo, vazio (base limpa)'});
- if(Cad.base&amp;&amp;Cad.base.rev>=1){Lock.on(h);toast('Cadastro criado (rev '+Cad.base.rev+').');cadTrocarSenha(true,()=>App.render())}}
+  el.innerHTML=`<div class="card form"><h3>Cadastro base ainda não criado ${ib('Cadastro base',"Um cadastro só para todas as páginas: linhas, famílias, catálogos, materiais, BOM, equipamentos, turnos e códigos de parada, por código e com vigência. Só a Administração grava; as outras páginas leem e mostram em modo consulta, com \"Editar na Administração\".")}</h3>
+  <p>Esta pasta ainda não tem cadastro. Informe o <b>primeiro administrador</b>: a plataforma cria o <span class="mono">${CAD_FILE}</span> (rev 1) vazio, com os perfis padrão e esta pessoa como administradora. Depois, é só entrar com o ID e a senha e preencher cada tabela na Administração. Os dados das páginas não são trazidos (base limpa).</p>
+  <div class="fg"><label>ID / matrícula<input id="cnId" autocomplete="off" maxlength="30"></label><label class="w2">Nome completo<input id="cnNome" autocomplete="off" value="${esc(user()||'')}"></label>
+   <label>Senha (6 números)<input type="password" id="cnS1" autocomplete="new-password" inputmode="numeric" maxlength="6"></label><label>Confirme a senha<input type="password" id="cnS2" autocomplete="new-password" inputmode="numeric" maxlength="6"></label></div>
+  <p class="small muted">Só o hash da senha é gravado. Esta etapa vale uma vez: com o cadastro criado, qualquer gravação passa a exigir entrar com ID e senha.</p>
+  <div id="cnErr"></div><button class="b p" id="cadNovoVazio">Criar cadastro e entrar</button></div>`;
+ $('#cadNovoVazio').onclick=()=>cadCriarInicial()}
+/* 26/11/2026 · primeiro uso: sem cadastro ninguém tem ID nem senha, então a criação do arquivo é a única gravação liberada sem login
+   (vale só com a pasta sem cadastro, uma operação 'carga' com origem 'bootstrap' e um único usuário ADMIN; ver filaBootstrap/validarDocumentoInicial) */
+async function cadCriarInicial(){if(cadCriarInicial.em)return;   /* um envio por vez: dois cliques enquanto a senha vira hash enfileirariam duas cargas e a guarda recusaria as duas */
+ cadCriarInicial.em=true;const bt=$('#cadNovoVazio');if(bt)bt.disabled=true;
+ try{await cadCriarInicial1()}finally{cadCriarInicial.em=false;const b2=$('#cadNovoVazio');if(b2)b2.disabled=false}}
+async function cadCriarInicial1(){const id=String($('#cnId').value||'').trim(),nome=String($('#cnNome').value||'').trim(),s1=$('#cnS1').value,s2=$('#cnS2').value,err=m=>$('#cnErr').innerHTML=`<div class="note e">${esc(m)}</div>`;
+ if(!id||/[\/#]/.test(id)||id.length>30)return err('Informe um ID válido (sem "/" nem "#", até 30 caracteres).');
+ if(nome.length<2)return err('Informe o nome completo.');
+ if(vacLogin.fraca(s1))return err('A senha precisa ter 6 números, não todos iguais nem em sequência.');if(s1!==s2)return err('As senhas não são iguais.');
+ const senha=await vacLogin.gerar(s1,false,nome),doc=cadFix(cadVazio());
+ doc.seguranca=null;doc.perfis=clone(DEFAULT_PERFIS);
+ doc.usuarios=[{codigo:id,nome,perfil:'ADMIN',turno:null,especialidade:null,email:null,paginaInicial:'(do perfil)',ativo:true,origem:'bootstrap',primeiroAcessoEm:isoLocal(),senha}];
+ setUser(nome);
+ if(Cad.fila.some(o=>o.origem==='bootstrap')){Cad.fila=Cad.fila.filter(o=>o.origem!=='bootstrap');await Cad.persistFila()}   /* sobra de uma tentativa que falhou: a fila do cadastro inicial tem uma operação só */
+ await Cad.op({acao:'carga',tipo:'*',codigo:null,doc,motivo:'cadastro inicial: primeiro administrador',origem:'bootstrap'});
+ if(Cad.base&amp;&amp;Cad.base.rev>=1){toast('Cadastro criado (rev '+Cad.base.rev+'). Entre com o ID e a senha.',6000);try{if(window.parent&amp;&amp;parent.vacAppHost&amp;&amp;parent.vacAppHost.sairConsulta)parent.vacAppHost.sairConsulta();else vacLogin.abrir()}catch(e){}App.render()}}
 function cadInicio(el){const D=Cad.D,P=cadProblemas(D);const A=(D.auditoria||[]).slice(-10).reverse();
  el.innerHTML=`<div class="kpis">${CAD_ORD.map(t=>{const L=D[t]||[],a=L.filter(x=>cadAtivo(t,x,D)).length;return`<div class="kpi click" data-sec="${t}"><div class="l">${esc(CAD_T[t].nome)}</div><div class="v">${a}</div><div class="s">${L.length-a?(L.length-a)+' inativo(s)':'ativos'}</div></div>`}).join('')}</div>
  ${Cad.fila.length?`<div class="card"><h3>Alterações ainda não gravadas <span class="muted small">${Cad.fila.length}</span></h3><ul class="pl">${Cad.fila.map(o=>`<li><span class="t">${esc(opTxt(o))}${o._erro?` <span class="bad small">· ${esc(o._erro)}</span>`:''}</span><span class="small muted">${esc(o.por||'')} · ${fmtDT(o.em)}</span></li>`).join('')}</ul></div>`:''}
@@ -55320,70 +55353,70 @@ body.vac-porta{overflow:hidden}
       "id": "oee",
       "path": "Plataforma.html#motor/oee",
       "version": "2.6.50",
-      "sha256": "a813cbf4dc8224d2907cb3c2570f681a7aea5619a31121dcb1581181b83f13dc",
-      "bytes": 2378833
+      "sha256": "4effcf76b9f2d23f5c0239e00227f5734e7531d4fa46106655ed1afe00a8b4ca",
+      "bytes": 2380616
     },
     {
       "id": "perdas",
       "path": "Plataforma.html#motor/perdas",
       "version": "1.12.21",
-      "sha256": "9cb2c5d89a90d53d3f63cb918d8a78f1a39d475de1df76656a1b1481d42c8d7e",
-      "bytes": 977141
+      "sha256": "331b02ce0f9cd195c11ee5c63338352112cd73129a55da2103251954ccf9a4c8",
+      "bytes": 978924
     },
     {
       "id": "gel",
       "path": "Plataforma.html#motor/gel",
       "version": "2.51",
-      "sha256": "be0fd9280ea0ed7f39ad47f82d1bff100b9d9f7b6de5cbabf8840ae5149dc7b2",
-      "bytes": 1621079
+      "sha256": "41bb57a8a0a5cf89879756315bb3a61bbb3ca8abc6c9e449fa02df1064a38c30",
+      "bytes": 1622862
     },
     {
       "id": "paradas",
       "path": "Plataforma.html#motor/paradas",
       "version": "1.2.22",
-      "sha256": "87875cb974780e5702c3d318022c39633e6430c79a10238b3c781f9459a1d9a4",
-      "bytes": 946397
+      "sha256": "102e2526ff0edd7b2f7bd33cbcc93d4ebe9adfc53c4bdb42d99e01cc8bf80371",
+      "bytes": 948180
     },
     {
       "id": "equip",
       "path": "Plataforma.html#motor/equip",
       "version": "1.0.22",
-      "sha256": "0aca0a6c4a6d30c8159c52e1978c6d6815b3408846e21b3b3610a02ba6a2fe9a",
-      "bytes": 737799
+      "sha256": "48e91d2983d1d2cce89118f6e7bf17666f0661d5d8a17b922a4ae0c71f7621e1",
+      "bytes": 739582
     },
     {
       "id": "inic",
       "path": "Plataforma.html#motor/inic",
       "version": "1.1.17",
-      "sha256": "b7aece7ce9cc2fa1af2fe36c03f76424da1f7b4332acef1ae2801243e87832cf",
-      "bytes": 747400
+      "sha256": "add22e8b9b8d30a26d9fb80c19f6fc18f82a5bc034445c154b5c9d221bf04f8a",
+      "bytes": 749183
     },
     {
       "id": "linha",
       "path": "Plataforma.html#motor/linha",
       "version": "1.7.1",
-      "sha256": "c922960fac7067173ac259a8406e08aacc7597578536faf69308d8708d64954c",
-      "bytes": 1000432
+      "sha256": "c3511a56fee013e47c05c40ae9a412a4194ef8cffc3950d9194e2cce29638fd7",
+      "bytes": 1002215
     },
     {
       "id": "projetos",
       "path": "Plataforma.html#motor/projetos",
       "version": "0.1.16",
-      "sha256": "a6e9c92cc80bef76e39521e5633dc660a99b5f5cd3198e65517d800ed9fdf9c7",
-      "bytes": 670250
+      "sha256": "5589a5b58d1aa82a22907e3827310b1fdb36bf1aabc74c8c3ef96fa28dc07fc4",
+      "bytes": 672033
     },
     {
       "id": "portal",
       "path": "Plataforma.html#motor/portal",
-      "version": "1.9.88",
-      "sha256": "f730ddf5c3deacabac77daa765db5e21c67b94d24537ad470a474a21bd61c118",
-      "bytes": 1323147
+      "version": "1.9.89",
+      "sha256": "b01d666729717a524290544de8513d4c51e75cd71680d115e443530951756bed",
+      "bytes": 1326919
     }
   ],
   "limitations": [
     "Projetos e conteúdo técnico OSM/MES/AM/TPM mantêm os limites documentados nas fontes."
   ],
-  "enginesSha256": "cbfcdf53e8ec5baa22d6754b1e3ecd547ac542148f262f015ba7de4e0e47331e",
+  "enginesSha256": "35af59c7cf9a8c24cf269a39c582672eb794e09da5b5bfe8f1dbaec688b57787",
   "originRevision": "ffc9ee8",
   "sourceMode": "single-html",
   "originEnginesSha256": "a87a64ad0c328f70e102b2ae888790a9b5d5a9bd05778652a7ce7cae140e40d2"
@@ -55453,7 +55486,7 @@ summary{cursor:pointer;font-weight:600;color:var(--navy)}
 'use strict';
 /* ---------- referência (atualizar quando a plataforma mudar de versão) ---------- */
 // Iguais às do pacote da plataforma (nova-plataforma/src/generated/manifest.json); o teste ferramenta-verificar confere.
-const VERSOES = {"oee":"2.6.50","perdas":"1.12.21","gel":"2.51","paradas":"1.2.22","equip":"1.0.22","inic":"1.1.17","linha":"1.7.1","projetos":"0.1.16","portal":"1.9.88"};
+const VERSOES = {"oee":"2.6.50","perdas":"1.12.21","gel":"2.51","paradas":"1.2.22","equip":"1.0.22","inic":"1.1.17","linha":"1.7.1","projetos":"0.1.16","portal":"1.9.89"};
 const BASES = [
  { arq: 'vacutainer-cadastros.json', mod: 'portal', nome: 'Cadastro geral (Portal)', obrig: true, cadastro: true, bk: 'Cadastros' },
  { arq: 'portal-base.json', mod: 'portal', nome: 'Portal', obrig: true, bk: 'Portal' },
@@ -56044,7 +56077,7 @@ import { Icon, Button, Badge, Empty, Modal, BarChart, BrandLogo, CommandMenu } f
 import { ModuleFrame } from "vac:modulo/components/ModuleFrame";
 import manifest from "vac:recurso/manifesto";
 import { ModuleTabs } from "vac:modulo/components/ModuleTabs";
-const VERSION = "1.8.69";
+const VERSION = "1.8.70";
 /* Navegação 1.3.0 (16/11/2026): Visão da linha, Relatórios e Importações têm abas; as que mostram uma tela do
    Portal (motor da Administração) trazem o 3º campo com a aba dele. Administração fica só com cadastros e configuração. */
 const SHELL_TABS = {
@@ -56126,6 +56159,18 @@ function App() {
     }
     setConsulta(true);
   }
+  function sairConsulta() {
+    try {
+      sessionStorage.removeItem("vac.platform.consulta");
+    } catch {
+    }
+    setConsulta(false);
+  }
+  /* 26/11/2026 · primeiro uso: pasta sem cadastro. Abre a Administração (só consulta) no formulário do primeiro administrador */
+  function criarCadastroInicial() {
+    entrarConsulta();
+    setTimeout(() => { location.hash = "#/portal?tab=cadastros"; }, 50);
+  }
   const [statusOpen,setStatusOpen] = useState(false);
   const [period, setPeriod] = useState(demo ? "hoje" : "ontem"), [from, setFrom] = useState(today()), [to, setTo] = useState(today()), [turno, setTurno] = useState(""), [detail, setDetail] = useState(false), [navOpen, setNavOpen] = useState(false), [help, setHelp] = useState(false), [search, setSearch] = useState(false), [query, setQuery] = useState(""), [selectedOrder, setSelectedOrder] = useState(null), [userDialog, setUserDialog] = useState(false);
   const [theme, setTheme] = useState(() => localStorage.getItem(demo ? "vac.platform.demo.theme" : "vac.platform.theme") || "light"), [userId, setUserId] = useState(() => demo ? localStorage.getItem("vac.platform.demo.user") || "9001" : "");
@@ -56180,7 +56225,7 @@ function App() {
   const refreshRef = useRef(refresh);
   refreshRef.current = refresh;
   const debounce = useRef(void 0);
-  useEffect(() => configureRuntime(demo, folder, session, cad, { cadastro: setCad, search: () => {
+  useEffect(() => configureRuntime(demo, folder, session, cad, { cadastro: setCad, sairConsulta: () => sairConsulta(), search: () => {
     setQuery("");
     setSearch(true);
   }, navigate: (id, tab, hash) => navigate(id, tab, hash), demonstrate: async () => {
@@ -56474,7 +56519,8 @@ function App() {
           /* @__PURE__ */ jsx("h1", { children: "Cadastro n\xE3o encontrado" }),
           /* @__PURE__ */ jsx("p", { className: "porta-txt", children: "A pasta " + (folder?.name || "") + " n\xE3o tem o cadastro de usu\xE1rios (00. Bases/vacutainer-cadastros.json) ou ele n\xE3o p\xF4de ser lido. Escolha a pasta da linha." }),
           folderError &amp;&amp; /* @__PURE__ */ jsx("p", { className: "porta-erro", role: "alert", children: folderError }),
-          /* @__PURE__ */ jsx(Button, { primary: true, icon: "folder", onClick: () => connect(), disabled: busy, children: "Escolher outra pasta" })
+          /* @__PURE__ */ jsx(Button, { primary: true, icon: "settings", onClick: () => criarCadastroInicial(), disabled: busy, children: "Criar o cadastro inicial (primeiro administrador)" }),
+          /* @__PURE__ */ jsx(Button, { icon: "folder", onClick: () => connect(), disabled: busy, children: "Escolher outra pasta" })
         ] }) : /* @__PURE__ */ jsxs(Fragment, { children: [
           /* @__PURE__ */ jsx("h1", { children: "Entrar" }),
           /* @__PURE__ */ jsx("p", { className: "porta-txt", children: "Conecte a pasta da linha para entrar com o seu ID e a sua senha." }),
@@ -57716,7 +57762,7 @@ function configureRuntime(demo, folder, identity, c, cb) {
     } catch {
       return false;
     }
-  }, get usuario() {
+  }, sairConsulta: () => callbacks.sairConsulta &amp;&amp; callbacks.sairConsulta(), get usuario() {
     return mode ? (cad?.usuarios || []).find((u) => String(u.codigo) === (localStorage.getItem("vac.platform.demo.user") || "9001")) || null : sessionUser(scopedStorage(), cad);
   }, status: (id, s) => callbacks.status(id, { ...s, ...policies.get(id)?.readOnly ? { readOnly: true, error: policies.get(id).reason } : {} }), changed: () => callbacks.changed(), link: (id, route = "") => appLink(id, route), scope: identity };
   window.vacAppHost = host;
@@ -57990,6 +58036,13 @@ function runtimePrelude(config) {
       if (!path) throw denied();
       return [...path, ...name ? [name] : []];
     }
+    /* 26/11/2026 · primeiro uso: sem cadastro não há login; a Administração pode criar 00. Bases e o vacutainer-cadastros.json (vazio, com o 1º administrador) e nada mais */
+    async function bootstrapPath(handle, name) {
+      if (config.id !== "portal" || !host.policy(config.id) || host.policy(config.id).readOnly || !W.vacPagina?.filaBootstrap?.()) throw denied();
+      const path = await (await host.pasta()).resolve(handle);
+      if (!path) throw denied();
+      return [...path, ...name ? [name] : []];
+    }
     const main = (path) => path.join("/") === "00. Bases/vacutainer-cadastros.json";
     const backup = (path) => path.length === 3 &amp;&amp; path[0] === "00. Backups" &amp;&amp; path[1] === "Cadastros" &amp;&amp; /^vacutainer-cadastros_\d{4}-\d{2}-\d{2}_\d{2}h\d{2}m\d{2}s_rev\d+\.json$/.test(path[2]);
     const fp = W.FileSystemFileHandle?.prototype;
@@ -57997,16 +58050,17 @@ function runtimePrelude(config) {
       const create = fp.createWritable;
       fp.createWritable = async function(...args) {
         if (normal()) return create.apply(this, args);
-        const path = await accountPath(this);
-        if (!main(path) &amp;&amp; !backup(path)) throw denied();
+        let path, inicial = false;
+        try { path = await accountPath(this); } catch { path = await bootstrapPath(this); inicial = true; }
+        if (inicial ? !main(path) || (await this.getFile()).size !== 0 : !main(path) &amp;&amp; !backup(path)) throw denied();
         const stream = await create.apply(this, args);
         let validated = false;
         return new Proxy(stream, { get: (target, key) => {
           if (key === "write") return async (data) => {
-            await accountPath(this);
+            await (inicial ? bootstrapPath(this) : accountPath(this));
             if (typeof data !== "string") throw denied();
             try {
-              await W.vacPagina.validarDocumentoConta(data, backup(path));
+              if (inicial) await W.vacPagina.validarDocumentoInicial(data); else await W.vacPagina.validarDocumentoConta(data, backup(path));
               validated = true;
               return await target.write(data);
             } catch (e) {
@@ -58017,7 +58071,7 @@ function runtimePrelude(config) {
           };
           if (key === "close") return async () => {
             try {
-              await accountPath(this);
+              await (inicial ? bootstrapPath(this) : accountPath(this));
               if (!validated) throw denied();
               return await target.close();
             } catch (e) {
@@ -58051,6 +58105,13 @@ function runtimePrelude(config) {
             const path = await accountPath(this, name), joined = path.join("/");
             allowed = key === "getFileHandle" ? main(path) || backup(path) : ["00. Backups", "00. Backups/Cadastros"].includes(joined);
           } catch {
+          }
+          if (!allowed) {
+            try {
+              const path = await bootstrapPath(this, name);
+              allowed = key === "getFileHandle" ? main(path) : path.join("/") === "00. Bases";
+            } catch {
+            }
           }
           if (!allowed) return original.call(this, name);
         }
