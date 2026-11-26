@@ -813,7 +813,9 @@ const vacPessoa = (() => {
 const vacBackupRegistro = (() => {
   const PREFIXO = 'registro-backup-', MAX = 50;
   const ls = k => { try { return localStorage.getItem(k); } catch (e) { return null; } };
-  const chave = p => 'vac.backup.' + p;
+  /* B05 (análise comum 26/11/2026): o status local de backup é por módulo E por pasta (nome da pasta conectada); sem pasta conectada fica na chave do módulo, que vale para todas */
+  const escopoPasta = () => { try { const d = typeof vacPastaAtual === 'function' ? vacPastaAtual() : null, r = d &amp;&amp; d.__vacRaiz ? d.raiz : d; return r &amp;&amp; r.name ? '.' + r.name : ''; } catch (e) { return ''; } };
+  const chave = p => 'vac.backup.' + p + escopoPasta(), chaveBase = p => 'vac.backup.' + p;
   const msg = e => !e ? '' : String((e.name &amp;&amp; e.name !== 'Error' ? e.name + ': ' : '') + (e.message || e)).slice(0, 300);
   const novoId = () => typeof crypto !== 'undefined' &amp;&amp; crypto.randomUUID ? crypto.randomUUID().replace(/-/g, '') : Date.now().toString(36) + Math.random().toString(36).slice(2) + Math.random().toString(36).slice(2);
   const instancia = novoId();
@@ -887,7 +889,7 @@ const vacBackupRegistro = (() => {
         } catch (e) { if (!vacNaoAchou(e)) erros.push(nome + ': ' + msg(e)); }
       }
     }
-    try { const a = JSON.parse(ls(chave(pagina)) || '{}'); for (const k of ['ok', 'falha']) if (a[k] &amp;&amp; a[k].em) L.push({ ...a[k], local: true }); } catch (e) { }
+    for (const ch of new Set([chave(pagina), chaveBase(pagina)])) { try { const a = JSON.parse(ls(ch) || '{}'); for (const k of ['ok', 'falha']) if (a[k] &amp;&amp; a[k].em) L.push({ ...a[k], local: true }); } catch (e) { } }
     const unicos = new Map();
     for (const x of L) {
       const key = x.id || JSON.stringify([x.em, x.pagina, x.ok, x.erro, x.arquivo, x.porId]);
@@ -4057,6 +4059,7 @@ function toast(m,ms=3500,err){let box=$('#toasts');if(!box){box=document.createE
  const t=document.createElement('div');t.className='toast'+(err?' err':'');t.textContent=m;box.appendChild(t);setTimeout(()=>t.remove(),ms)}
 function downloadBlob(blob,name){const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name;document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},500)}
 const user=()=>localStorage.getItem('vac.user')||localStorage.getItem('perdas.user')||'';
+const userId=()=>{try{return localStorage.getItem('vac.userId')||''}catch(e){return ''}};   /* P10 (análise comum): a trilha guarda o ID ao lado do nome (contrato 8) */
 const setUser=n=>localStorage.setItem('vac.user',n);
 
 /* ---------- sistemas da linha (lista comum, guardada no navegador e editada no Portal) ---------- */
@@ -4228,9 +4231,12 @@ const Store={B:null,mode:'local',dir:null,mod:0,pending:false,pendFrom:0,err:'',
    if(lida){const r=lida;if(this.pending){if(!this.semMudanca(r.data,r.mod))this.conflito(r.data,r.mod)}
    else if(r.data.rev!==this.B.rev){this.B=this.fix(r.data);this.mod=r.mod;toast('A base foi alterada por outra pessoa; sua alteração foi aplicada sobre a versão mais nova.')}}}
   if(this.formato)throw new Error(this.formato);
-  const before=this.B.rev||0;mut(this.B);this.B.rev=before+1;this.B.updatedAt=nowISO();this.B.updatedBy=user();this.B.appVersion=PAGE.versao;
-  this.B.audit.push({t:this.B.updatedAt,u:user(),a:label,d:det});if(this.B.audit.length>3000)this.B.audit.splice(0,this.B.audit.length-3000);
-  try{if(PAGE.exports)this.B.exports=PAGE.exports(this.B)}catch(e){console.warn('exports',e)}
+  const aplicar=()=>{const b0=this.B.rev||0;mut(this.B);this.B.rev=b0+1;this.B.updatedAt=nowISO();this.B.updatedBy=user();this.B.appVersion=PAGE.versao;
+   this.B.audit.push({t:this.B.updatedAt,u:user(),uid:userId(),a:label,d:det});if(this.B.audit.length>3000)this.B.audit.splice(0,this.B.audit.length-3000);
+   try{if(PAGE.exports)this.B.exports=PAGE.exports(this.B)}catch(e){console.warn('exports',e)}return b0};
+  let before=aplicar();
+  /* C12 (análise comum): outra estação pode gravar entre a releitura e a gravação. Relê logo antes de gravar; se a base mudou, adota a nova e reaplica esta alteração sobre ela (até 3 vezes). Sem pendência local. */
+  if(this.mode==='pasta'&amp;&amp;lida&amp;&amp;!this.pending){for(let k=0;k<3;k++){let chk=null;try{chk=await this.readRemote()}catch(e){chk=null}if(!chk||(chk.data.rev===lida.data.rev&amp;&amp;chk.mod===lida.mod))break;lida=chk;this.B=this.fix(chk.data);this.mod=chk.mod;before=aplicar()}}
   if(this.mode==='pasta'&amp;&amp;!lida){this.err='Não consegui ler a base da pasta antes de gravar';if(!this.pending){this.pending=true;this.pendFrom=before}toast('Não consegui ler a base da pasta. A alteração ficou neste computador e será gravada depois de conferir a base da pasta.',6000,true)}
   else if(this.mode==='pasta'){try{await this.writeRemote();this.err='';this.pending=false}catch(e){this.err=String(e.message||e);if(!this.pending){this.pending=true;this.pendFrom=before}toast('Não consegui gravar na pasta. A alteração ficou neste computador e será gravada quando a pasta responder.',6000,true)}}
   else if(!this.pending){this.pending=true;this.pendFrom=before}
@@ -4244,7 +4250,8 @@ const Store={B:null,mode:'local',dir:null,mod:0,pending:false,pendFrom:0,err:'',
  sync(silent){const run=()=>this.mode==='teste'?this._sync(silent):vacEditarBase('portal',async()=>{vacGuardaAba('portal',!!this.pending);await this.pendenteAtual();return this._sync(silent)},()=>this.pending);this._q=(this._q||Promise.resolve()).then(run,run);return this._q},
  async _sync(silent){if(this.mode!=='pasta'||!this.dir)return;
   try{const fh=await this.dir.getFileHandle(PAGE.baseFile);const f=await fh.getFile();
-   if(this.pending){const d=JSON.parse(await f.text());if(!this.semMudanca(d,f.lastModified)){this.conflito(d,f.lastModified);this.err='';return true}
+   if(this.pending){const d=JSON.parse(await f.text());const fm=vacFormatoBase(d,'portal-base',1);if(fm){this.err=PAGE.baseFile+': '+fm;return false}   /* C11: base de outra versão não é sobrescrita pela pendência */
+    if(!this.semMudanca(d,f.lastModified)){this.conflito(d,f.lastModified);this.err='';return true}
     await this.writeRemote();this.pending=false;this.err='';await this.idb.set('pending',{p:false});toast('Alterações pendentes gravadas.')}
    else if(f.lastModified!==this.mod){const d=JSON.parse(await f.text());this.mod=f.lastModified;if(d.rev!==this.B.rev){this.B=this.fix(d);await this.idb.set('base',this.B);if(!silent)toast('Base atualizada.');return true}}
    else if(!silent)toast('A base já está atualizada.');this.err=''}catch(e){this.err=String(e.message||e)}return false},
@@ -4449,7 +4456,7 @@ function wireConfigComum(){$('#cPasta').onclick=async()=>{if(await Store.pick())
         entrar pelo ID (autocadastro como Consulta); página inicial por perfil (1x por sessão); vigência gravada não se edita (desativar com motivo); painel de vigências; semáforo central; saída do modo de teste.
    1.1.2: aviso da carga diz qual base foi lida.  1.5: páginas Paradas, Máquinas, Manutenção e Projetos na lista (aparecem quando o HTML chega na pasta).  1.4: lista técnica pela CS12 multinível (itens = nível 1, estrutura = níveis 2+); CS03 sai.  1.3: cabeçalho comum (vac-cabecalho v2: barra do sistema + página + abas), busca Ctrl K, acabamento V1.90, Versões com cabeçalho e último backup.  1.2: Configuração › Versões das páginas (versão e data de cada HTML, gravação das bases, cópias repetidas, histórico).
    ===================================================================== */
-const PAGE={id:'portal',titulo:"Administração · Linha Vacutainer",tituloCurto:"Administração",subtitulo:'Sistemas de gestão da linha',versao:'1.9.92',baseFile:'portal-base.json',idb:'vac-portal',backupDir:'00. Backups/Portal',
+const PAGE={id:'portal',titulo:"Administração · Linha Vacutainer",tituloCurto:"Administração",subtitulo:'Sistemas de gestão da linha',versao:'1.9.93',baseFile:'portal-base.json',idb:'vac-portal',backupDir:'00. Backups/Portal',
  vazio:()=>({schema:'portal-base',schemaVersion:1,rev:0,config:{modulos:{},avisoDias:30,notas:{}},audit:[]}),
  /* itens do Portal para a busca Ctrl K: cadastro, pendências e telas */
  busca:q=>{const R=[],D=Cad.D;if(D)for(const t of CAD_ORD){for(const it of D[t]||[]){const c=String(it[kOf(t)]),nm=t==='bom'?((cadItem('catalogos',it.catalogo)||{}).nome||''):it.nome||'';if(norm(c+' '+nm).includes(q))R.push({tipo:CAD_T[t].um,txt:c+(nm?' · '+nm:''),sub:'Cadastros'+(cadAtivo(t,it,D)?'':' · inativo'),href:'#cadastros/'+t+'/'+encodeURIComponent(c)});if(R.length>30)break}}
@@ -5323,6 +5330,13 @@ const CAD_SECS=['inicio','gel','matriz','importar','auditoria','backups','segura
    curtas (macro, sem detalhe técnico). REGRA: toda versão nova da plataforma ganha uma entrada aqui, a mais recente primeiro
    (AGENTS.md e CLAUDE.md). Tipos: nova (função nova), melhoria (algo que já existia ficou melhor), correcao (erro corrigido). */
 const NOVIDADES=[
+ {v:'1.8.75',d:'2026-11-26',itens:[
+  ['correcao','Gestão de Gel: se a leitura da pasta for negada por um instante, a plataforma não grava por cima do que outra estação gravou; a alteração fica na fila e entra depois.'],
+  ['correcao','Gel, Waste e Administração releem a base logo antes de gravar e mantêm o que outra estação gravou nesse intervalo.'],
+  ['correcao','Administração: uma alteração pendente não sobrescreve mais uma base gravada por outra versão.'],
+  ['correcao','Paradas: não restaura backup sem versão e espera a fila de alterações ser gravada antes de restaurar.'],
+  ['correcao','Backup: o status local passa a ser por pasta, e a falha do backup diário das Ordens aparece no registro de backup.'],
+  ['melhoria','A trilha de auditoria do Waste e da Administração passa a guardar o ID da pessoa ao lado do nome.']]},
  {v:'1.8.74',d:'2026-11-26',itens:[
   ['correcao','Relatórios em tabela: a Lista de paradas passa a respeitar o filtro de família.'],
   ['correcao','Excel: quantidades pequenas (como 0,5 mil) não viram mais porcentagem, e códigos de lote, catálogo, ordem e equipamento mantêm os zeros à esquerda.'],
@@ -21916,7 +21930,7 @@ const Ord = {
           const t = new Date(), h = [t.getHours(), t.getMinutes(), t.getSeconds()].map(n => String(n).padStart(2, '0')), suf = Math.random().toString(36).slice(2, 5);
           const nome = `ordens-base_${dia}${crit ? '_antes-substituir_' + todas.join('_') : ''}_${h[0]}h${h[1]}m${h[2]}s_${suf}.json`;
           try { await Store.S.backend.backupSub(ORD_BK, nome, remoteTxt); try { localStorage.setItem(k, dia); } catch (e) { } }
-          catch (e) { if (crit) return falha(`Não consegui salvar a cópia de ${ORD_FILE} em 00. Backups/${ORD_BK} antes de substituir (${ordMotivo(e)}); nada foi gravado. A alteração continua pendente neste navegador.`); console.warn('backup ordens', e); }
+          catch (e) { if (crit) return falha(`Não consegui salvar a cópia de ${ORD_FILE} em 00. Backups/${ORD_BK} antes de substituir (${ordMotivo(e)}); nada foi gravado. A alteração continua pendente neste navegador.`); console.warn('backup ordens', e); try { await vacBackupRegistro.registrar('ordens', { erro: `Backup diário de ${ORD_FILE}: ${ordMotivo(e)}`, arquivo: nome }); } catch (e2) { } }
         }
       } else toast(ORD_FILE + ' ainda não existia na pasta: o arquivo foi criado.');
     }
@@ -23377,6 +23391,7 @@ function acumFY(trend){if(!trend.length)return[];const fy=fyOf(trend[trend.lengt
 const metaPer=per=>{const m=metaMesInfo(per);return m?m.valor:null};
 const metaNota=per=>{const m=metaMesInfo(per);if(!m)return'';if(m.linhas)return' (target MUV'+(m.linhas.length>1?' das linhas: '+m.linhas.map(x=>linhaNome(x.linha)+' '+fmtR(x.valor)).join(' + '):' · '+linhaNome(m.linhas[0].linha))+(m.ponderada?'; vigência ponderada pelos dias':'')+(m.semCambio?'; sem cotação para converter uma das metas':'')+')';return m.ponderada&amp;&amp;m.partes?' (ponderada pelos dias: '+m.partes.map(x=>fmtR(x.valor)+' × '+x.dias+' d').join(' + ')+')':''};
 const user=()=>localStorage.getItem('vac.user')||localStorage.getItem('perdas.user')||'';
+const userId=()=>{try{return localStorage.getItem('vac.userId')||''}catch(e){return ''}};   /* P10 (análise comum): a trilha guarda o ID ao lado do nome (contrato 8) */
 
 /* ---------- IndexedDB (cache local + handle da pasta) ---------- */
 const IDB={db:null,
@@ -23435,11 +23450,12 @@ async function commitBase(label,mut,det=''){
  let lida=null;if(ST.mode==='pasta'){try{lida=await readRemote()}catch(e){lida=null}
    if(lida){const r=lida;if(ST.pending){if(!semMudanca(r.data,r.mod))await conflitoPendente(r.data,r.mod)}
    else if(r.data.rev!==B.rev){B=fixBase(r.data);ST.mod=r.mod;toast('A base foi alterada por outra pessoa; sua alteração foi aplicada sobre a versão mais nova.')}}}
- const before=B.rev;
- mut(B);
- B.rev=(B.rev||0)+1;B.updatedAt=nowISO();B.updatedBy=user();B.appVersion=APP_VER;
- B.audit.push({t:B.updatedAt,u:user(),a:label,d:det});if(B.audit.length>3000)B.audit.splice(0,B.audit.length-3000);
- B.exports=buildExports();
+ const aplicar=()=>{const b0=B.rev;mut(B);B.rev=(B.rev||0)+1;B.updatedAt=nowISO();B.updatedBy=user();B.appVersion=APP_VER;
+  B.audit.push({t:B.updatedAt,u:user(),uid:userId(),a:label,d:det});if(B.audit.length>3000)B.audit.splice(0,B.audit.length-3000);
+  B.exports=buildExports();return b0};
+ let before=aplicar();
+ /* C12 (análise comum): relê logo antes de gravar; se outra estação gravou nesse intervalo, adota a base nova e reaplica esta alteração (até 3 vezes). Sem pendência local. */
+ if(ST.mode==='pasta'&amp;&amp;lida&amp;&amp;!ST.pending){for(let k=0;k<3;k++){let chk=null;try{chk=await readRemote()}catch(e){chk=null}if(!chk||(chk.data.rev===lida.data.rev&amp;&amp;chk.mod===lida.mod))break;lida=chk;B=fixBase(chk.data);ST.mod=chk.mod;before=aplicar()}}
  if(ST.mode==='teste'){vacDemo.publicar('perdas');renderAll();return}
  if(ST.mode==='pasta'&amp;&amp;!lida){ST.err='Não consegui ler a base da pasta antes de gravar';if(!ST.pending){ST.pending=true;ST.pendFrom=before}toast('Não consegui ler a base da pasta. A alteração ficou neste computador e será gravada depois de conferir a base da pasta.',6000)}
  else if(ST.mode==='pasta'){try{await writeRemote();ST.err='';ST.pending=false}catch(e){console.warn(e);ST.err=String(e.message||e);if(!ST.pending){ST.pending=true;ST.pendFrom=before}toast('Não consegui gravar na pasta. A alteração ficou neste computador e será gravada quando a pasta responder.',6000)}}
@@ -26212,7 +26228,7 @@ const snapshotData=()=>({schemaVersion:1,version:1,savedAt:nowDT(),lps:[...S.lps
 function loadData(d){memoClear();resetState();(d.lps||[]).forEach(l=>S.lps.set(l.lp,l));(d.closed||[]).forEach(l=>S.closed.set(l.lp,l));S.events=d.events||[];S.imports=(d.imports||[]).sort((a,b)=>a.at<b.at?-1:1);S.config={...DEFAULT_CFG,...(d.config||{})};S.plan=d.plan||{};S.catalogs=d.catalogs||[];S.prodlog=d.prodlog||{};S.supply=d.supply||{};S.supplyOn=!!d.supplyOn;S.supplyCfg={kg:200,shelf:180,lag:1,...(d.supplyCfg||{})}}
 async function fsPerm(h,ask,mode){if(!h)return false;try{const o={mode:mode||'readwrite'};if(await h.queryPermission(o)==='granted')return true;if(!ask)return false;return (await h.requestPermission(o))==='granted'}catch(e){return false}}
 // known = {mod, rev, by} da última leitura/gravação: igual (data e rev) = não precisa reler o arquivo inteiro
-async function fsReadBase(known){let fh;try{fh=await FS.base.getFileHandle(BASE_FILE)}catch(e){return null}const h=await fsReadHead(fh);const f=h?h.f:await fh.getFile();
+async function fsReadBase(known){let fh;try{fh=await FS.base.getFileHandle(BASE_FILE)}catch(e){if(vacNaoAchou(e))return null;throw e}   /* C10: erro de leitura (permissão, rede) não é arquivo ausente; quem chamou preserva a fila e tenta de novo */const h=await fsReadHead(fh);const f=h?h.f:await fh.getFile();
   if(known&amp;&amp;known.mod&amp;&amp;f.lastModified===known.mod&amp;&amp;(!h||h.rev==null||(h.rev===known.rev&amp;&amp;h.by===known.by)))return {same:true,mod:f.lastModified};
   const data=JSON.parse(await f.text()||'{}');
   /* base limpa (25/11/2026): fifo-base.json sem schemaVersion ou de versão anterior não é lida nem convertida; a página não grava por cima */
@@ -26246,7 +26262,8 @@ async function fsFlush(){
   let tries=0;
   try{do{FS.again=false;const chs=FS.pending.slice();if(!chs.length)break;
       // outra pessoa gravou (data ou rev diferente): carrega a versão nova e reaplica por cima as alterações desta pessoa
-      const cur=await fsReadBase(fsKnown());if(cur&amp;&amp;!cur.same){FS.mod=cur.mod;FS.rev=cur.rev;FS.revBy=cur.by;loadData(cur.data);chs.forEach(applyLocal)}
+      /* C12 (análise comum): relê até a base ficar estável (no máximo 3 vezes) e só então grava; o que outra estação gravou nesse intervalo é aplicado por baixo desta alteração */
+      for(let k=0;k<3;k++){const cur=await fsReadBase(fsKnown());if(!cur||cur.same)break;FS.mod=cur.mod;FS.rev=cur.rev;FS.revBy=cur.by;loadData(cur.data);chs.forEach(applyLocal)}
       await fsWriteBase(snapshotData());
       // confere: se outra gravação entrou logo depois desta, grava de novo (até 3 vezes) para não perder as alterações
       const fh=await FS.base.getFileHandle(BASE_FILE);const hd=await fsReadHead(fh);
@@ -32683,6 +32700,9 @@ const Store={origem:'',dir:null,dirName:'',perm:false,data:completar(vazio()),qu
   try{const d=await this.sub('00. Backups',false);for await(const[n,h]of d.entries())if(h.kind==='file'&amp;&amp;n.startsWith(b+'_'))out.push({nome:n,h,dir:d,antigo:true})}catch(e){}
   return out.sort((a,b)=>b.nome.localeCompare(a.nome))},
  async restaurar(bk){const t=await(await bk.h.getFile()).text();const obj=JSON.parse(t);const e=validarBase(obj);if(e.length)return toast('Backup com problema: '+e.join('; '),1);
+  /* B04/P5 (análise comum 26/11/2026): backup sem versão ou de versão anterior não é restaurado (contrato 10), e a restauração espera a fila gravada (contrato 3) */
+  const fmB=typeof vacFormatoBase==='function'?vacFormatoBase(obj,'vac-paradas',1):'';if(fmB)return toast('Backup de versão anterior ou sem versão: '+fmB,1);
+  if((this.queue||[]).length)return toast('Há '+this.queue.length+' alteração(ões) ainda não gravada(s) na pasta. Grave a fila (ou espere a pasta responder) antes de restaurar um backup.',1);
   const cur=await this.findBase();if(cur){const d=await this.sub(PAGE.backupDir,true);await this.writeJSON(bkNome('antes'),cur.obj,d)}
   const D=completar(obj);D.rev=(cur?.obj.rev||0)+1;D.revBy=user();D.revAt=new Date().toISOString();D.revId=uid('r');D.appVersion=APP_VERSION;D.auditoria.push({em:D.revAt,por:user(),acao:'restauração',txt:bk.nome});D.exports=calcExports(D);
   await this.writeJSON(PAGE.baseFile,D,this.baseDir||this.dir);this.queue=[];this.data=D;this.cache();App.render();toast('Restaurado: '+bk.nome)}};
@@ -55449,70 +55469,70 @@ body.vac-porta{overflow:hidden}
       "id": "oee",
       "path": "Plataforma.html#motor/oee",
       "version": "2.6.50",
-      "sha256": "4ae4ece46fed416442156519773408b3ef05f104df5c6c75e1ca3be566ac3e8c",
-      "bytes": 2387776
+      "sha256": "2cd7d4ebdc27fb6b6960275d2a628fa4ad7425eb5f66943a5254c3a8eae35feb",
+      "bytes": 2388425
     },
     {
       "id": "perdas",
       "path": "Plataforma.html#motor/perdas",
       "version": "1.12.21",
-      "sha256": "0fff2328ed80562674eb7639470d168efaa7dc6c231c918aa26e6f306314e4fd",
-      "bytes": 980369
+      "sha256": "ea0224afe76ba2e20974efb2603dc94a56d09ea2cf56d41287be3965d2736383",
+      "bytes": 981539
     },
     {
       "id": "gel",
       "path": "Plataforma.html#motor/gel",
       "version": "2.52",
-      "sha256": "bdd187e7ec0cf38518355c9e06299e7aa79ca733285f1fa3bd974afaafa8795f",
-      "bytes": 1624544
+      "sha256": "96a552001216c2bc460e02f44b0eba07fb210e8a65a56d2446e35b2e51175520",
+      "bytes": 1625412
     },
     {
       "id": "paradas",
       "path": "Plataforma.html#motor/paradas",
       "version": "1.2.22",
-      "sha256": "7aac79f33fa6cb314387b835db9e0e4d5e202c7962be572b6c8549c2c715a0fa",
-      "bytes": 949625
+      "sha256": "2815e8e10b16c0418a2e23b4cd88a52fb46095d015d82f34497000164eaa176d",
+      "bytes": 950661
     },
     {
       "id": "equip",
       "path": "Plataforma.html#motor/equip",
       "version": "1.0.22",
-      "sha256": "4c5165a9e268acb3b2c4f10bd9e4f1d26eeaf019393f5aa7102ca246f9391964",
-      "bytes": 740979
+      "sha256": "c1dd4981b04a5b4eac84aecce805fdbd636d6dd40cacedf4d3bd11d11e7ce05b",
+      "bytes": 741485
     },
     {
       "id": "inic",
       "path": "Plataforma.html#motor/inic",
       "version": "1.1.17",
-      "sha256": "aec06469b261920d6dd4742770b63dd138fd14d92014d284c2ff3668d9fe4e25",
-      "bytes": 750580
+      "sha256": "ab49ce8ef24e5474381626623bd1aa28b957a44523f27ad1bbb668304395cf9a",
+      "bytes": 751086
     },
     {
       "id": "linha",
       "path": "Plataforma.html#motor/linha",
       "version": "1.7.1",
-      "sha256": "a47941a6f56828112f2b8c6ba539cf5f4881e1cf5feff7e3bd00fdca8696b52d",
-      "bytes": 1003612
+      "sha256": "6e2457e1faf2cf2bd9c6558e76921ac1a5ddf770edb8b30ce567819beefe2d64",
+      "bytes": 1004118
     },
     {
       "id": "projetos",
       "path": "Plataforma.html#motor/projetos",
       "version": "0.1.16",
-      "sha256": "91ce7202d9e9159b74daccfbb248643372756c1343ea8928581a5bd0657dcfdf",
-      "bytes": 673430
+      "sha256": "b7de6ed6fa921900028c5c779931afd9def48fba04b8810258358f6bd84e7c3f",
+      "bytes": 673936
     },
     {
       "id": "portal",
       "path": "Plataforma.html#motor/portal",
-      "version": "1.9.92",
-      "sha256": "f490056f331fc6bb1d9f0435c1718d431dc1482638d91a6343f08912e533dfca",
-      "bytes": 1333402
+      "version": "1.9.93",
+      "sha256": "3a8efb7f46d0843e9d853d488883bc6d62886a82a77cab7790fe63a340995d12",
+      "bytes": 1335664
     }
   ],
   "limitations": [
     "Projetos e conteúdo técnico OSM/MES/AM/TPM mantêm os limites documentados nas fontes."
   ],
-  "enginesSha256": "052574f31d015b870704580dbc5ab4d30ef1ddfb01cc3245fe34fa5240962627",
+  "enginesSha256": "6cf8d441b44ddaf59975a19087680db46daaefe03f44932b61cab5023aa7a589",
   "originRevision": "ffc9ee8",
   "sourceMode": "single-html",
   "originEnginesSha256": "a87a64ad0c328f70e102b2ae888790a9b5d5a9bd05778652a7ce7cae140e40d2"
@@ -55582,7 +55602,7 @@ summary{cursor:pointer;font-weight:600;color:var(--navy)}
 'use strict';
 /* ---------- referência (atualizar quando a plataforma mudar de versão) ---------- */
 // Iguais às do pacote da plataforma (nova-plataforma/src/generated/manifest.json); o teste ferramenta-verificar confere.
-const VERSOES = {"oee":"2.6.50","perdas":"1.12.21","gel":"2.52","paradas":"1.2.22","equip":"1.0.22","inic":"1.1.17","linha":"1.7.1","projetos":"0.1.16","portal":"1.9.92"};
+const VERSOES = {"oee":"2.6.50","perdas":"1.12.21","gel":"2.52","paradas":"1.2.22","equip":"1.0.22","inic":"1.1.17","linha":"1.7.1","projetos":"0.1.16","portal":"1.9.93"};
 const BASES = [
  { arq: 'vacutainer-cadastros.json', mod: 'portal', nome: 'Cadastro geral (Portal)', obrig: true, cadastro: true, bk: 'Cadastros' },
  { arq: 'portal-base.json', mod: 'portal', nome: 'Portal', obrig: true, bk: 'Portal' },
@@ -56173,7 +56193,7 @@ import { Icon, Button, Badge, Empty, Modal, BarChart, BrandLogo, CommandMenu } f
 import { ModuleFrame } from "vac:modulo/components/ModuleFrame";
 import manifest from "vac:recurso/manifesto";
 import { ModuleTabs } from "vac:modulo/components/ModuleTabs";
-const VERSION = "1.8.74";
+const VERSION = "1.8.75";
 /* Navegação 1.3.0 (16/11/2026): Visão da linha, Relatórios e Importações têm abas; as que mostram uma tela do
    Portal (motor da Administração) trazem o 3º campo com a aba dele. Administração fica só com cadastros e configuração. */
 const SHELL_TABS = {
