@@ -50,7 +50,7 @@ const html = fs.readFileSync(path.resolve(__dirname, '../../Plataforma.html'));
       const tenta = async (nome, create) => { try { const h = await b.getFileHandle(nome, { create }), w = await h.createWritable(); await w.write('{"x":1}'); await w.close(); return 'GRAVOU'; } catch (e) { return e.name; } };
       o.cadastro = await tenta('vacutainer-cadastros.json', false); o.outro = await tenta('outro-arquivo.json', true); o.dir = await (async () => { try { await root.getDirectoryHandle('Outra-Pasta', { create: true }); return 'CRIOU'; } catch (e) { return e.name; } })();
       return o; });
-    assert.ok(neg.cadastro !== 'GRAVOU' && neg.outro !== 'GRAVOU' && neg.dir !== 'CRIOU', 'sem sessão e com cadastro criado nada grava: ' + JSON.stringify(neg));
+    assert.deepEqual(neg, { cadastro: 'NotAllowedError', outro: 'NotAllowedError', dir: 'NotAllowedError' }, 'sem sessão e com cadastro criado nada grava, e a recusa se diz permissão (não "não encontrado"): ' + JSON.stringify(neg));
     const intacto = await p.evaluate(async () => { const r = await (await navigator.storage.getDirectory()).getDirectoryHandle('Pasta-Nova-Ficticia'), b = await r.getDirectoryHandle('00. Bases'); return JSON.parse(await (await (await b.getFileHandle('vacutainer-cadastros.json')).getFile()).text()).rev; });
     assert.equal(intacto, 1, 'o cadastro continua na rev 1');
     console.log('ok sem sessão, com o cadastro criado: nenhuma gravação passa (' + JSON.stringify(neg) + ')');
