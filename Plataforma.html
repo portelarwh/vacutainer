@@ -6111,14 +6111,21 @@ const CargaTab={
    for(const c of C)if(!c.v&amp;&amp;c.o2&amp;&amp;c.o2.trava&amp;&amp;mud[c.k])erros.push(`${c.l}: não muda depois de gravado (o histórico usa o valor gravado); cadastre outro item`);
    if(Object.keys(mud).length){const m2=clone(cur);for(const[k,x]of Object.entries(mud))m2[k]=x.depois;cadFinal(t,m2);erros.push(...cadValidarItem(t,m2,D))}
    L.push({lin,cod:cur.codigo,mud,erros:[...new Set(erros)],avisos,marcado:!erros.length&amp;&amp;Object.keys(mud).length>0,igual:!Object.keys(mud).length})}
-  if(t==='equipamentos'){   /* código MES conferido contra o ESTADO RESULTANTE do lote: o que o lote libera deixa de ser conflito e o que o lote repete vira erro */
-   const dupMes=e=>/^o código MES .* já é de outro equipamento$/.test(e),mesDe=x=>String((x.novo?x.item.codigoMes:x.mud&amp;&amp;x.mud.codigoMes?x.mud.codigoMes.depois:undefined)??'').trim().toUpperCase();
-   const fin=new Map((D.equipamentos||[]).map(e=>[String(e.codigo),String(e.codigoMes||'').trim().toUpperCase()]));
-   for(const x of L){x.erros=x.erros.filter(e=>!dupMes(e));if(x.erros.length)continue;const m=mesDe(x);if(x.novo||x.mud&amp;&amp;x.mud.codigoMes)fin.set(String(x.cod),m)}
-   const por=new Map();for(const[c,m]of fin)if(m){if(!por.has(m))por.set(m,[]);por.get(m).push(c)}
-   for(const x of L){if(x.erros.length)continue;const m=fin.get(String(x.cod))||'';if(m&amp;&amp;por.get(m).length>1){x.erros.push(`o código MES ${m} ficaria em mais de um equipamento (${por.get(m).join(', ')})`);x.marcado=false}
-    else x.marcado=!x.erros.length&amp;&amp;(!!x.novo||!x.igual)}}
+  if(t==='equipamentos'){   /* código MES conferido contra o ESTADO RESULTANTE do lote; a cada linha recusada o resultado é refeito, até estabilizar */
+   const dupMes=e=>/^o código MES .* já é de outro equipamento$/.test(e);
+   for(const x of L)x.erros=x.erros.filter(e=>!dupMes(e));
+   let ativas=L.filter(x=>!x.erros.length);
+   for(;;){const r=this.mesConf(D,ativas);if(!r.size)break;
+    for(const[x,c]of r){x.erros.push(`o código MES ${c.m} ficaria em mais de um equipamento (${c.cods.join(', ')})`);x.marcado=false}
+    ativas=ativas.filter(x=>!r.has(x))}
+   for(const x of L)if(!x.erros.length)x.marcado=!!x.novo||!x.igual}
   return{t,arq,L,C}},
+ /* equipamentos: devolve, para as linhas dadas (as que valem), as que deixariam o mesmo código MES em mais de um equipamento (estado resultante: gravado + lote) */
+ mesConf(D,rows){const up=v=>String(v??'').trim().toUpperCase(),mesDe=x=>x.novo?up(x.item.codigoMes):x.mud&amp;&amp;x.mud.codigoMes?up(x.mud.codigoMes.depois):null;
+  const fin=new Map((D.equipamentos||[]).map(e=>[String(e.codigo),up(e.codigoMes)]));
+  for(const x of rows){const m=mesDe(x);if(m!==null)fin.set(String(x.cod),m)}
+  const por=new Map();for(const[c,m]of fin)if(m){if(!por.has(m))por.set(m,[]);por.get(m).push(c)}
+  const r=new Map();for(const x of rows){const m=fin.get(String(x.cod))||'';if(m&amp;&amp;por.get(m).length>1)r.set(x,{m,cods:por.get(m)})}return r},
  ops(P){const motivo=`carga por tabela (${P.arq})`;return P.L.filter(x=>x.marcado&amp;&amp;!x.erros.length).map(x=>x.novo?{acao:'criação',tipo:P.t,codigo:x.cod,item:x.item,motivo,origem:'planilha'}:{acao:'edição',tipo:P.t,codigo:x.cod,mudancas:x.mud,motivo,origem:'planilha'})},
  prev(P,depois){const T=CAD_T[P.t],lab=k=>(P.C.find(c=>c.k===k)||{l:k}).l,col=k=>P.C.find(c=>c.k===k)||{ty:'txt'};
   const mb=Modal.open('<div id="cgBox"></div>'),box=mb.querySelector('#cgBox');
@@ -6131,7 +6138,9 @@ const CargaTab={
    box.querySelectorAll('[data-cg]').forEach(c=>c.onchange=()=>{P.L[+c.dataset.cg].marcado=c.checked;draw()});
    const tt=box.querySelector('#cgTodos');tt.onchange=()=>{P.L.forEach(x=>{if(!x.erros.length&amp;&amp;!x.igual)x.marcado=tt.checked});draw()};
    box.querySelector('#cgCanc').onclick=()=>Modal.close(true);
-   box.querySelector('#cgOk').onclick=()=>{if(!Cad.podeEditarAssunto(admAssuntoDe(P.t)))return;const ops=this.ops(P);if(!ops.length)return;Modal.close(true);Cad.ops(ops);toast(`${ops.length} item(ns) de ${T.nome.toLowerCase()} importado(s); gravando…`);if(depois)depois()}};
+   box.querySelector('#cgOk').onclick=()=>{if(!Cad.podeEditarAssunto(admAssuntoDe(P.t)))return;const ops=this.ops(P);if(!ops.length)return;
+    if(P.t==='equipamentos'){const rc=this.mesConf(Cad.D,P.L.filter(x=>x.marcado&amp;&amp;!x.erros.length));if(rc.size){const [c]=[...rc.values()];return toast(`Com as linhas marcadas, o código MES ${c.m} ficaria em mais de um equipamento (${c.cods.join(', ')}). Marque também a linha que o libera ou desmarque a que o recebe.`,8000,true)}}
+    Modal.close(true);Cad.ops(ops);toast(`${ops.length} item(ns) de ${T.nome.toLowerCase()} importado(s); gravando…`);if(depois)depois()}};
   draw()}};
 function cadLista(el,t){const D=Cad.D,T=CAD_T[t],cols=cadCols(t,D),k=kOf(t);const q=norm(Cad.ui.q),sit=Cad.ui.sit||'ativos';
  let L=(D[t]||[]).filter(it=>sit==='todos'||(sit==='ativos')===cadAtivo(t,it,D));if(q)L=L.filter(it=>cadBusca(t,it,D).includes(q));
@@ -55427,14 +55436,14 @@ body.vac-porta{overflow:hidden}
       "id": "portal",
       "path": "Plataforma.html#motor/portal",
       "version": "1.9.90",
-      "sha256": "370e9337a3c0a40b28a0a8d3abf8926badfb86067bbfa25d459548a0ebf01e67",
-      "bytes": 1329687
+      "sha256": "f800befef467423a29f65a1dc29259167142ca8b8bc346b16083f3fe247af184",
+      "bytes": 1330366
     }
   ],
   "limitations": [
     "Projetos e conteúdo técnico OSM/MES/AM/TPM mantêm os limites documentados nas fontes."
   ],
-  "enginesSha256": "d5b3f4bc0409d9be3625631bdc49d24c8ee0ef47a956cd2ee8e18c51c35e3881",
+  "enginesSha256": "c89e834016351eb06f7207441ecfa4fb4c22ee9385da3e08d37a4f2528cfa8fa",
   "originRevision": "ffc9ee8",
   "sourceMode": "single-html",
   "originEnginesSha256": "a87a64ad0c328f70e102b2ae888790a9b5d5a9bd05778652a7ce7cae140e40d2"

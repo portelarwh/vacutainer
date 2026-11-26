@@ -79,6 +79,17 @@ const html = fs.readFileSync(path.resolve(__dirname, '../../Plataforma.html'));
       const a = E[0], b = E[1], c = E[2]; a.codigoMes = 'MES-A'; b.codigoMes = null; c.codigoMes = null;
       const troca = CargaTab.plano('equipamentos', D, [['codigo', 'codigoMes'], [a.codigo, 'MES-Z'], [b.codigo, 'MES-A']], 't.xlsx').L.map(x => x.erros[0] || 'ok');
       const toma = CargaTab.plano('equipamentos', D, [['codigo', 'codigoMes'], [c.codigo, 'MES-A']], 't.xlsx').L.map(x => x.erros[0] || 'ok'); return { troca, toma }; });
+    // achado do Codex: a linha que libera o MES é recusada e a que o recebe seria aceita; ou o usuário desmarca a que libera
+    const cx = await f.evaluate(async () => { const D = Cad.D, E = D.equipamentos.filter(e => e.codigo !== 'LINHA').slice(0, 3); if (E.length < 3) return null;
+      const [a, b, c] = E; a.codigoMes = 'MES-A'; b.codigoMes = null; c.codigoMes = 'MES-C';
+      const P = CargaTab.plano('equipamentos', D, [['codigo', 'codigoMes'], [a.codigo, 'MES-C'], [b.codigo, 'MES-A']], 'x.xlsx');
+      const recusadas = P.L.map(x => x.erros.length > 0);
+      const Q = CargaTab.plano('equipamentos', D, [['codigo', 'codigoMes'], [a.codigo, 'MES-Z'], [b.codigo, 'MES-A']], 'y.xlsx'); const ok0 = Q.L.map(x => x.erros.length === 0);
+      Q.L[0].marcado = false; CargaTab.prev(Q, () => {}); document.querySelector('#cgOk').click(); await new Promise(r => setTimeout(r, 300));
+      const gravou = Cad.D.equipamentos.find(e => e.codigo === b.codigo).codigoMes === 'MES-A'; document.querySelector('#cgCanc') && document.querySelector('#cgCanc').click();
+      return { recusadas, ok0, gravou }; });
+    assert.ok(cx, 'três equipamentos'); assert.deepEqual(cx.recusadas, [true, true], 'as duas linhas ficam recusadas: o resultado é refeito sem a linha recusada'); assert.deepEqual(cx.ok0, [true, true]);
+    assert.equal(cx.gravou, false, 'desmarcar a linha que libera impede gravar a que recebe');
     assert.ok(tr, 'ao menos três equipamentos no cenário'); assert.deepEqual(tr.troca, ['ok', 'ok']); assert.match(tr.toma[0], /MES-A ficaria em mais de um equipamento/);
     console.log('ok prévia mostra o item só com período diferente; código MES repetido no lote é erro');
 
