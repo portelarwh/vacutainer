@@ -73,7 +73,13 @@ const html = fs.readFileSync(path.resolve(__dirname, '../../Plataforma.html'));
       const Q = CargaTab.plano('equipamentos', Cad.D, [['codigo', 'nome', 'linha', 'codigoMes'], ['EMES1', 'A', 'LCARGA', 'RES-9'], ['EMES2', 'B', 'LCARGA', 'res-9']], 'mes.xlsx');
       return { txt, caixa, igual: P.L[0].igual, mes: Q.L.map(x => x.erros[0] || 'ok') }; });
     assert.ok(pv.igual && !pv.caixa && /use a ficha/.test(pv.txt) && !/Nada muda/.test(pv.txt), 'linha só com período aparece na prévia: ' + pv.txt.slice(0, 200));
-    assert.deepEqual(pv.mes, ['ok', 'o código MES RES-9 repete a linha 2 da planilha']);
+    assert.match(pv.mes[0], /RES-9 ficaria em mais de um equipamento/); assert.match(pv.mes[1], /RES-9 ficaria em mais de um equipamento/);   /* as duas linhas ficam sem gravar: o conflito é das duas */
+    // o lote que libera um MES e o entrega a outro equipamento passa; o que toma um MES de quem continua com ele é erro
+    const tr = await f.evaluate(() => { const D = Cad.D, E = D.equipamentos.filter(e => e.codigo !== 'LINHA').slice(0, 3); if (E.length < 3) return null;
+      const a = E[0], b = E[1], c = E[2]; a.codigoMes = 'MES-A'; b.codigoMes = null; c.codigoMes = null;
+      const troca = CargaTab.plano('equipamentos', D, [['codigo', 'codigoMes'], [a.codigo, 'MES-Z'], [b.codigo, 'MES-A']], 't.xlsx').L.map(x => x.erros[0] || 'ok');
+      const toma = CargaTab.plano('equipamentos', D, [['codigo', 'codigoMes'], [c.codigo, 'MES-A']], 't.xlsx').L.map(x => x.erros[0] || 'ok'); return { troca, toma }; });
+    assert.ok(tr, 'ao menos três equipamentos no cenário'); assert.deepEqual(tr.troca, ['ok', 'ok']); assert.match(tr.toma[0], /MES-A ficaria em mais de um equipamento/);
     console.log('ok prévia mostra o item só com período diferente; código MES repetido no lote é erro');
 
     // 3b2) tag e máquina do mapa não mudam depois de gravados (o histórico usa o valor gravado)

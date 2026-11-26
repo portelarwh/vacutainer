@@ -70,6 +70,14 @@ Autorizados pelo responsável em 26/11/2026 (decisões 5, 7 e 9 de `CONFIGURACOE
 - A casca ganhou o botão "Criar o cadastro inicial (primeiro administrador)" no cartão "Cadastro não encontrado" e `vacAppHost.sairConsulta()`, usado depois da criação para a tela pedir ID e senha. A senha de edição inicial (`seguranca`) saiu da criação: o perfil ADMIN edita sem ela.
 - Prova: `testes/plataforma/primeiro-uso.cjs` (pasta nova → cadastro inicial → entrar → cadastrar → Produção monta; sem sessão e com o cadastro criado nada grava).
 
+## Gel, textos de local e MES no lote · Gel 2.52, Administração 1.9.90, plataforma 1.8.71 (26/11/2026)
+
+- `parametros.gel.ritmo` (`meta`, `nominal`, `avgDays`, `maxRate`, `oeeMeta` em %) e `parametros.gel.scrapBase` vêm de Administração › Parâmetros › Gel; o Gel os lê por `vacCad.param` (`pcpPar`, `relK`) e, no que faltar, usa o padrão do cálculo (900.000, 1.200.000, 10, 72.000 e 100). `S.config.pcpParams` e `S.config.scrapBase` saíram.
+- Preço do Gel: `priceRec`/`priceFrom` não leem mais `S.config.prices`; vale `precoGelPortal` e `fxCad` (Preços e Câmbio). Sem preço, o custo fica sem valor.
+- `cadVazio` e o modelo de linha não trazem mais unidade e setor de local; o fuso parte do navegador.
+- `CargaTab` (equipamentos): o código MES é conferido contra o estado resultante do lote (erro "ficaria em mais de um equipamento"; o lote que libera um MES e o entrega a outro passa).
+- Prova: `gel-ritmo`, `carga-tabela` (3b2, 3b3), `primeiro-uso`.
+
 ## Troca de pasta com pendência (casca 1.0.2, 15/11/2026)
 
 Antes era só uma mensagem e a troca ficava bloqueada; um módulo parado conectando (por exemplo, esperando confirmação depois de escolher a pasta errada) prendia a pessoa na pasta. Agora a casca abre a janela "Há alterações pendentes nesta pasta", que diz o que está pendente e onde: cada módulo aberto com o motivo (ainda abrindo, conectando à pasta, alteração não gravada ou formulário aberto, não respondeu) e o que está guardado no navegador por módulo (`queueDetail`, em `modulo/core/scopes`; `pendingDetail`, em `modulo/core/runtime`). Falha ao consultar a fila aparece na janela e conta como pendência.

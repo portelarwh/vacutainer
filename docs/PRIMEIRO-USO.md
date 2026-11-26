@@ -37,6 +37,21 @@ Cada tabela tem **⇩ Modelo** (planilha com o nome técnico na 1ª linha e a ab
 ## 4. Abrir as páginas
 Na primeira abertura, cada página pergunta **Criar base nesta pasta?**: responda **Criar base**. A base guarda só o que se lança (não os cadastros). Se aparecer o aviso de cadastro ausente ou ilegível na Produção, o cadastro não foi lido: confira a pasta.
 
+## 4b. Importações do dia a dia (Central de importações)
+As tabelas de **cadastro** entram pela Administração (item 3). O que **chega todo dia ou todo mês** tem a sua importação na própria página, reunidas em *Importações* (com a conferência de prazo por período):
+
+| Fonte | Página | Frequência | Para que serve |
+|---|---|---|---|
+| MES (eventos) e Forms de paradas | Paradas | diária | paradas e tags da linha |
+| Estoque de LPs (SAP) | Gestão de Gel | diária | estoque e fila de gel |
+| MB51 e COOIS | Waste (ordens) | semanal | ordens produzidas e consumo |
+| KKBC_ORD | Waste | mensal (fechamento) | custos por ordem |
+| Plano do mês (PCP, aba CALC) | Produção | início do mês | plano e ritmo do plano |
+| Meta OEE FY27 e CS12 (BOM, materiais) | Administração | quando mudam | metas e BOM |
+| Ações de um programa (Excel/CSV) | Iniciativas / Ações | quando houver lista | ações de KAS, OSM, 5S |
+
+As cargas históricas (aba RELATÓRIO e aba PARADAS da planilha antiga) são opcionais e **não** fazem parte do primeiro uso: a plataforma começa de base limpa e o histórico se forma dia a dia.
+
 ## 5. Conferir antes de usar
 - Produção abre sem aviso de cadastro; linha, catálogo e turno aparecem nos filtros.
 - Lançar um turno de teste e ver o OEE; o SQDCP segue A4 paisagem.

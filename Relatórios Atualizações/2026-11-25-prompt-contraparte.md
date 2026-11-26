@@ -1,4 +1,6 @@
-# Prompt para a contraparte (revisão técnica do relatório de 25/11/2026)
+# Prompt para a contraparte
+
+> **SUBSTITUÍDO em 26/11/2026** por `2026-11-26-prompt-contraparte.md`. (revisão técnica do relatório de 25/11/2026)
 
 Copie o bloco abaixo e envie ao outro agente, junto com o acesso ao repositório `portelarwh/vacutainer` (branch `main`, e as branches citadas no relatório).
 

@@ -41,6 +41,7 @@ const html = fs.readFileSync(path.resolve(__dirname, '../../Plataforma.html'));
     assert.equal(doc.rev, 1); assert.equal(doc.usuarios.length, 1); assert.equal(doc.usuarios[0].perfil, 'ADMIN'); assert.equal(doc.usuarios[0].codigo, '9001');
     assert.ok(doc.usuarios[0].senha.hash && !JSON.stringify(doc).includes('482915'), 'só o hash da senha vai para o arquivo');
     assert.ok(doc.perfis.length >= 5 && doc.linhas.length === 0 && doc.catalogos.length === 0, 'perfis padrão e nenhuma outra tabela');
+    assert.ok(!doc.parametros.unidade && !doc.parametros.setor, 'cadastro novo sem unidade nem setor de nenhum local (preenche-se na Administração)');
     console.log('ok cadastro inicial gravado: rev 1, um administrador, perfis padrão, só o hash da senha; a tela volta para a entrada');
 
     // 2b) a exceção não serve para mais nada: já com o cadastro criado e sem sessão, nenhuma gravação passa
@@ -79,7 +80,7 @@ const html = fs.readFileSync(path.resolve(__dirname, '../../Plataforma.html'));
     await fo.getByRole('button', { name: 'Criar base' }).click({ timeout: 60000 });
     await fo.waitForFunction(() => typeof Store !== 'undefined' && Store.S && Store.S.db && Store.S.cadastroEstado === 'ok' && db().lines.length > 0, null, { timeout: 60000 });
     const pr = await fo.evaluate(() => ({ linhas: db().lines.map(x => x.code), cat: db().catalogs.map(x => x.code), tur: db().shifts.map(x => x.code), maq: db().machines.length, estado: Store.S.cadastroEstado, sector: db().settings.sector, unit: db().settings.unitName }));
-    assert.deepEqual([pr.linhas, pr.cat, pr.tur, pr.estado], [['VAC'], ['360060'], ['T1'], 'ok']); assert.ok(pr.maq >= 1);
+    assert.deepEqual([pr.linhas, pr.cat, pr.tur, pr.estado], [['VAC'], ['360060'], ['T1'], 'ok']); assert.ok(pr.maq >= 1); assert.ok(!pr.sector && !pr.unit, 'sem texto de local fixo na Produção: ' + JSON.stringify([pr.sector, pr.unit]));
     console.log('ok a Produção monta linha, catálogo, turno e máquina do cadastro recém-criado (' + JSON.stringify({ sector: pr.sector, unit: pr.unit }) + ')');
     assert.deepEqual(erros, [], 'sem erro de JavaScript');
   } finally { if (browser) await browser.close(); srv.close(); }

@@ -1,5 +1,7 @@
 # Relatório de pendências e estado técnico · Vacutainer
 
+> **SUBSTITUÍDO em 26/11/2026** por `2026-11-26-relatorio-estado.md`. Este texto fica como histórico do estado de 25/11.
+
 Data: 25/11/2026 · Repositório: `portelarwh/vacutainer` · Main: `4e36199` (plataforma 1.8.65)
 Autor: agente de desenvolvimento (sessão de continuidade que centralizou três chats anteriores).
 Destino: revisão técnica por uma contraparte (outro agente). Este documento não contém dados reais; tudo o que foi testado usou dados fictícios.
