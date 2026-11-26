@@ -2500,12 +2500,12 @@ const VAC_PODE_MAPA = {
     fechar: '#dClose,#dReopen,#dPend,#clsOk,#enOk,[data-closeps],#horRecalc',
     importar: '#imMeta,#imPar,#imPlan,#imRel,#imSrv,#ltImp,#mGo,#bImport,#rMap',
     excluir: '#dDel,#hdDel,#hdMv,#dmDel',
-    configurar: '#cNew,#dcNew,#brAdd,#pSave,#omSave,#lgDel,#pnSaveAs,#pnDel'
+    configurar: '#cNew,#dcNew,#brAdd,#pSave,#omSave,#pnSaveAs,#pnDel'
   },
   perdas: {
     lancar: '#acSave,#cmSave',
     importar: '#btnInterp,#btnDoImp,#entGo,#impProx',
-    configurar: '#btnSaveCfg,#btnSaveTipos,#btnSaveAlias,#btnResetAlias,#btnSaveCausas,#logoDel,[data-bkr]'
+    configurar: '#btnSaveCfg,#btnSaveTipos,#btnSaveAlias,#btnResetAlias,#btnSaveCausas,[data-bkr]'
   },
   paradas: {
     lancar: '#evNovo,#aplSug,#acNova,#pAcao,[data-ac]',
@@ -4225,6 +4225,8 @@ const Store={B:null,mode:'local',dir:null,mod:0,pending:false,pendFrom:0,err:'',
 const Logo={url:null,
  src(){return this.url||(Store.B&amp;&amp;Store.B.config&amp;&amp;Store.B.config.logo)||localStorage.getItem('vac.logo')||null},
  async load(){if(Store.mode==='pasta'&amp;&amp;Store.dir){try{const f=await (await Store.dir.getFileHandle('Logo.png')).getFile();if(this.url)URL.revokeObjectURL(this.url);this.url=URL.createObjectURL(f)}catch(e){this.url=null}}this.apply()},
+ async gravarPasta(dataUrl){if(Store.mode!=='pasta'&amp;&amp;Store.mode!=='teste'||!Store.dir)return false;try{const b=await (await fetch(dataUrl)).blob(),h=await Store.dir.getFileHandle('Logo.png',{create:true}),w=await h.createWritable();await w.write(b);await w.close();this.load&amp;&amp;await this.load();return true}catch(e){return false}},
+ async removerPasta(){if(!Store.dir)return false;try{await Store.dir.removeEntry('Logo.png');this.url=null;return true}catch(e){return false}},
  apply(){$$('.brandLogo,#brandLogo').forEach(img=>{const s=this.src();if(s){if(img.getAttribute('src')!==s)img.src=s;img.hidden=false}else{img.hidden=true;img.removeAttribute('src')}})},
  toDataUrl(file,h0=120){return new Promise((ok,ko)=>{if(file.size>5e6)return ko(new Error('Arquivo muito grande (máx. 5 MB).'));const fr=new FileReader();fr.onerror=()=>ko(new Error('Não foi possível ler o arquivo.'));
   fr.onload=()=>{const im=new Image();im.onerror=()=>ko(new Error('Formato de imagem não reconhecido.'));im.onload=()=>{const h=Math.min(h0,im.height),w=Math.round(im.width*h/im.height);const c=document.createElement('canvas');c.width=w;c.height=h;c.getContext('2d').drawImage(im,0,0,w,h);ok(c.toDataURL('image/png'))};im.src=fr.result};fr.readAsDataURL(file)})},
@@ -4359,14 +4361,14 @@ function wireTop(){wireCabecalho();{const ad=$('#btnAdmin');if(ad)ad.onclick=()=
 function configComum(){return`<div class="card form"><h3>Pasta da rede ${ib('Pasta da rede','Escolha a pasta onde fica este HTML. A base ('+PAGE.baseFile+') é gravada nela e todos que abrirem a página pela pasta veem os mesmos dados. Backup diário automático em "'+PAGE.backupDir+'".')}</h3>
  <div id="cfgPasta">${Store.mode==='pasta'?`<p><span class="pill ok"><span class="dot"></span>Conectado</span> <b>${esc(Store.dir.name)}</b> · ${PAGE.baseFile} · rev ${Store.B.rev||0}${Store.B.updatedBy?' · última gravação por '+esc(Store.B.updatedBy)+' em '+fmtDT(Store.B.updatedAt):''}</p>`:Store.mode==='teste'?'<p class="warn">Modo de teste: nada é gravado. Use "Sair do modo de teste" na faixa roxa do topo.</p>':'<p><span class="pill warn"><span class="dot"></span>Sem pasta</span> Os dados ficam só neste navegador.</p>'}</div>
  <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="b p" id="cPasta">Escolher pasta</button><button class="b" id="cBaixar">⇩ Baixar cópia da base</button><label class="b">⇧ Restaurar cópia<input type="file" id="cRest" accept=".json" hidden></label></div>
- <h3 style="margin-top:16px">Logo ${ib('Logo','Coloque um arquivo Logo.png na pasta (ao lado do HTML): todos que abrirem pela pasta veem a logo. Sem acesso à pasta, envie a imagem aqui; ela fica guardada na base e neste navegador. O Logo.png da pasta tem prioridade.')}</h3>
+ <h3 style="margin-top:16px">Logo ${ib('Logo','Este é o único lugar para enviar a logo. Com a pasta conectada, o envio grava o Logo.png na pasta e todas as páginas (Produção, Waste, Gel, Paradas…) passam a usar essa imagem. Sem a pasta, ela fica só na base e neste navegador.')}</h3>
  <div class="logoprev">${Logo.src()?`<img src="${Logo.src()}" alt="Logo"><span class="small muted" style="margin-left:10px">${Logo.url?'Logo.png da pasta':'imagem enviada'}</span>`:'<span class="small muted">Sem logo.</span>'}</div>
  <div style="display:flex;gap:8px;flex-wrap:wrap"><label class="b">Enviar imagem<input type="file" id="cLogo" accept="image/*" hidden></label><button class="b d" id="cLogoDel">Remover imagem enviada</button></div>
  <h3 style="margin-top:16px">Quem está usando</h3><p class="small">${user()?`<b>${esc(user())}</b>${uidAtual()?' · ID '+esc(uidAtual()):''}${perfilAtual()?' · perfil '+esc(perfilAtual().nome||perfilAtual().codigo):''}`:'Ninguém entrou neste navegador.'} <button type="button" class="b sm" id="cUser">${user()?'Trocar usuário':'Entrar'}</button></p></div>`}
 function wireConfigComum(){$('#cPasta').onclick=async()=>{if(await Store.pick()){await App.onConnect();toast('Pasta conectada.')}};$('#cBaixar').onclick=()=>Store.download();
  $('#cUser').onclick=()=>Entrar.abrir();
- $('#cLogo').onchange=async e=>{const f=e.target.files[0];e.target.value='';if(!f)return;try{const d=await Logo.toDataUrl(f);localStorage.setItem('vac.logo',d);await Store.commit('Logo enviada',b=>{b.config.logo=d});Logo.apply();toast('Logo salva.')}catch(x){alert(x.message)}};
- $('#cLogoDel').onclick=()=>{localStorage.removeItem('vac.logo');Store.commit('Logo removida',b=>{delete b.config.logo}).then(()=>Logo.apply())};
+ $('#cLogo').onchange=async e=>{const f=e.target.files[0];e.target.value='';if(!f)return;try{const d=await Logo.toDataUrl(f);localStorage.setItem('vac.logo',d);await Store.commit('Logo enviada',b=>{b.config.logo=d});const naPasta=await Logo.gravarPasta(d);Logo.apply();toast(naPasta?'Logo salva e gravada na pasta (Logo.png): todas as páginas passam a usar esta.':'Logo salva neste navegador e na base. Conecte a pasta e envie de novo para valer em todas as páginas.',naPasta?4000:7000,!naPasta)}catch(x){alert(x.message)}};
+ $('#cLogoDel').onclick=async()=>{if(Logo.url&amp;&amp;!confirm('Remover também o Logo.png da pasta? Todas as páginas ficam sem logo.'))return;localStorage.removeItem('vac.logo');await Logo.removerPasta();Store.commit('Logo removida',b=>{delete b.config.logo}).then(()=>Logo.apply())};
  $('#cRest').onchange=async e=>{const f=e.target.files[0];e.target.value='';if(!f)return;try{const d=JSON.parse(await f.text());if(d.schema!==PAGE.vazio().schema)throw new Error('não é uma base desta página');{const fv=vacFormatoBase(d,PAGE.vazio().schema,1);if(fv)throw new Error(fv)}if(!confirm(`Substituir a base atual (rev ${Store.B.rev}) pela cópia "${f.name}"?`))return;
   /* 1.8.13 · se a cópia da base atual falhar, avisa e só continua com decisão explícita (antes a falha era ignorada e restaurava sem cópia) */
   if(Store.mode==='pasta'){try{await Store.writeFile(await Store.sub(PAGE.backupDir),PAGE.baseFile.replace('.json','')+'_antes-restaurar_'+todayISO()+'_'+new Date().toTimeString().slice(0,5).replace(':','h')+'.json',JSON.stringify(Store.B))}catch(x){if(!confirm(`Não consegui salvar a cópia da base atual em ${PAGE.backupDir} antes de restaurar (${x.message||x}).\n\nSem essa cópia, a base atual (rev ${Store.B.rev}) não poderá ser recuperada. Restaurar mesmo assim?`))return}}
@@ -22980,7 +22982,7 @@ button.b,label.b,a.b{border-radius:8px}
       <div id="bkList"></div>
       <h3 style="margin-top:16px">Logo <i class="i" title="Igual ao OEE: salve um arquivo Logo.png na pasta da base, ao lado do HTML, e todos que abrirem pela pasta veem a logo. Sem acesso à pasta, envie a imagem aqui: ela fica guardada na base (versão reduzida). O Logo.png da pasta tem prioridade.">i</i></h3>
       <div class="logoprev" id="logoPrev"></div>
-      <div style="display:flex;gap:8px;flex-wrap:wrap"><label class="b">Enviar imagem<input type="file" id="logoFile" accept="image/*" hidden></label><button class="b d" id="logoDel">Remover imagem enviada</button></div>
+      <p class="small muted">A logo é enviada na Administração (Sistema › Marca); aqui só é usada.</p>
       <h3 style="margin-top:16px">Quem está usando</h3>
       <label>Seu nome (fica registrado nas importações, comentários e ações)<input id="cfgUser"></label>
       <label>Valores em R$ nos cards <i class="i" title="Vale só para você (fica neste navegador). Tabelas e gráficos não mudam.">i</i>
@@ -24983,8 +24985,6 @@ $('#cfgCentsTab').onchange=e=>{localStorage.setItem('perdas.centsTab',e.target.v
 function toggleCents(){localStorage.setItem('perdas.centsTab',tabCentsOn()?'0':'1');renderTab(curTab());if(CUR_ORD&amp;&amp;$('#mOrd.on'))openOrder(CUR_ORD);syncCentsBtns();toast(tabCentsOn()?'Tabelas com centavos.':'Tabelas sem centavos.')}
 function syncCentsBtns(){$$('.btnCents').forEach(b=>{b.classList.toggle('p',tabCentsOn());b.title=tabCentsOn()?'Mostrando centavos nas tabelas (clique para tirar)':'Sem centavos nas tabelas (clique para mostrar)'})}
 document.addEventListener('click',e=>{if(e.target.closest('.btnCents'))toggleCents()});
-$('#logoFile').onchange=async e=>{const f=e.target.files[0];e.target.value='';if(!f)return;try{const d=await Logo.toDataUrl(f);await commit('Logo enviada',b=>{b.config.logo=d});Logo.apply();toast('Logo salva.')}catch(x){alert(x.message)}};
-$('#logoDel').onclick=()=>{if(!CFG().logo)return toast('Não há imagem enviada.');commit('Logo removida',b=>{delete b.config.logo}).then(()=>Logo.apply())};
 /* 1.12.20 · CAD-CONS (pedido do responsável, 22/11/2026): os cadastros da Administração que o Waste usa, só para consulta, com ficha lateral */
 {let n=0;const vccW=()=>{if(typeof vacConsultaCad==='undefined'){if(n++<50)setTimeout(vccW,200);return}try{vacConsultaCad.montar(document.getElementById('cfgCadCons'),['catalogos','materiais','bom','metasArea','cambio'],{sub:'Cadastros da Administração que o Waste usa. Clique num item para ver tudo; para mudar, use "Editar na Administração" na ficha.'})}catch(e){console.warn('CAD-CONS',e)}};vccW()}   /* o kit comum carrega depois deste script: espera o componente */
 $('#btnTV').onclick=startTV;$('#btnBackup').onclick=async()=>{if(ST.mode!=='pasta')return toast('Conecte a pasta da rede para fazer backup.');try{const n=bkNome('manual');await writeFile(await subDir(PAGE.backupDir),n,JSON.stringify(B));toast('Backup criado: '+PAGE.backupDir+'/'+n);if(curTab()==='config')renderBackups()}catch(e){toast('Não consegui criar o backup: '+(e.message||e),6000)}};
@@ -28839,7 +28839,7 @@ function openConfig(sec){
     <div class="catform"><h3 style="margin:0">Logo do cabeçalho</h3><p class="sub" style="margin:0">Envie o arquivo da logo (PNG, JPG ou SVG). Ela é ajustada à altura do cabeçalho e também sai nos PDFs. Fundo transparente fica melhor no tema escuro.</p>
      ${S.mode==='file'&amp;&amp;FS.logo?`<div class="info">A logo está vindo do arquivo <b>${esc(FS.logoName)}</b> da pasta da base. Para trocar, substitua o arquivo na pasta.</div>`:''}
      <div class="logoprev">${logoUrl()?`<img src="${logoUrl()}" alt="Logo atual">`:'<span style="color:var(--muted)">Nenhuma logo enviada</span>'}</div>
-     <div style="display:flex;gap:8px;flex-wrap:wrap"><label class="btn">${c.logo?'Trocar logo':'Enviar logo'}<input type="file" id="lgFile" accept="image/png,image/jpeg,image/svg+xml,image/webp" hidden></label>${c.logo?'<button class="btn danger" id="lgDel">Remover logo</button>':''}</div><div id="lgMsg"></div></div>`;
+     <p class="small muted">A logo é enviada na Administração (Sistema › Marca); aqui só é usada.</p><div id="lgMsg"></div></div>`;
   if(s==='prog')body=`<div class="f"><span>Como a fila do dia é definida</span>
     <div class="radios" style="flex-direction:column;gap:6px">
      <label><input type="radio" name="fm" value="plano" ${c.fifoMode!=='apontamento'?'checked':''}> <b>Pela programação de barris por dia</b>: a tela HOJE, a TV e as fichas seguem a quantidade programada em cada dia.</label>
@@ -28896,8 +28896,6 @@ function openConfig(sec){
     const saveCfg=async(patch,msg)=>{const ch=newCh();ch.config=patch;try{await backend.commit(ch)}catch(e){return}toast(msg||'Configuração salva.');render()};
     const sv=$('#cfgSave');
     if(s==='geral'){
-      $('#lgFile').addEventListener('change',async e=>{const f=e.target.files[0];if(!f)return;try{const url=await logoToDataUrl(f);await saveCfg({logo:url},'Logo salva.');openConfig('geral')}catch(err){$('#lgMsg').innerHTML=`<div class="alert">${esc(err.message||'Não foi possível ler a imagem.')}</div>`}});
-      const ld=$('#lgDel');ld&amp;&amp;ld.addEventListener('click',async()=>{await saveCfg({logo:''},'Logo removida.');openConfig('geral')});
     }
     if(sv&amp;&amp;s==='geral')sv.addEventListener('click',()=>saveCfg({critDays:+$('#cC').value||30,warnDays:+$('#cW').value||60,nextBatches:Math.min(10,+$('#cN').value||3),rateWindow:+$('#cR').value||56,holdAlertDays:+$('#cH').value||14}));
     if(sv&amp;&amp;s==='prog')sv.addEventListener('click',()=>saveCfg({fifoMode:document.querySelector('input[name=fm]:checked').value,typicalPerDay:+$('#cTy').value||6,maxPerDay:+$('#cMx').value||8,useCatalog:$('#cUC').checked,remKg:Math.max(0,parseNum($('#cRem').value)),remTol:parseNum($('#cRemTol').value)>0?parseNum($('#cRemTol').value):5,sapFrom:$('#cSapFrom').value||'',kgPerCm:parseNum($('#cKcm').value)>0?parseNum($('#cKcm').value):2.58,drumH:parseNum($('#cDrumH').value)>0?parseNum($('#cDrumH').value):87,measStaleH:parseNum($('#cStaleH').value)>0?parseNum($('#cStaleH').value):4}));
@@ -55310,70 +55308,70 @@ body.vac-porta{overflow:hidden}
       "id": "oee",
       "path": "Plataforma.html#motor/oee",
       "version": "2.6.49",
-      "sha256": "4fe35c85e3c862cc605f4ae1203c418090c01c3062a100f2e5a86dfd688d7708",
-      "bytes": 2381083
+      "sha256": "ffa6f05d7d173104807f86debdcc2c8515a10a9ead0d3a3e28abb4db1fd28d0e",
+      "bytes": 2381067
     },
     {
       "id": "perdas",
       "path": "Plataforma.html#motor/perdas",
       "version": "1.12.21",
-      "sha256": "d459b8378780a4351e46ec84dbe2bdf0ea3df2e144cf2de8bef39c5c1b5230d4",
-      "bytes": 976863
+      "sha256": "72ad505d02933e1fd2b44556662b047ccbf816f2b132b71b179382e4cd649398",
+      "bytes": 976338
     },
     {
       "id": "gel",
       "path": "Plataforma.html#motor/gel",
       "version": "2.51",
-      "sha256": "680b9353c835bc3b1922f7daba6a1259752204621c4772a38598710184bc2290",
-      "bytes": 1621723
+      "sha256": "be0fd9280ea0ed7f39ad47f82d1bff100b9d9f7b6de5cbabf8840ae5149dc7b2",
+      "bytes": 1621079
     },
     {
       "id": "paradas",
       "path": "Plataforma.html#motor/paradas",
       "version": "1.2.22",
-      "sha256": "07d8124b92b1944d07d81aace4b76dae1f5b3f872dbf22b16a2e09368fbdab3f",
-      "bytes": 946413
+      "sha256": "87875cb974780e5702c3d318022c39633e6430c79a10238b3c781f9459a1d9a4",
+      "bytes": 946397
     },
     {
       "id": "equip",
       "path": "Plataforma.html#motor/equip",
       "version": "1.0.22",
-      "sha256": "aaceefc0056372a4bbb8abd88912f23e45f464dcd9098d6906f38852efaf1f4f",
-      "bytes": 737815
+      "sha256": "0aca0a6c4a6d30c8159c52e1978c6d6815b3408846e21b3b3610a02ba6a2fe9a",
+      "bytes": 737799
     },
     {
       "id": "inic",
       "path": "Plataforma.html#motor/inic",
       "version": "1.1.17",
-      "sha256": "cd373add25acbc7450d52c6a1f02747e1127347602a94e9bc1dad15b585b1e74",
-      "bytes": 747416
+      "sha256": "b7aece7ce9cc2fa1af2fe36c03f76424da1f7b4332acef1ae2801243e87832cf",
+      "bytes": 747400
     },
     {
       "id": "linha",
       "path": "Plataforma.html#motor/linha",
       "version": "1.7.1",
-      "sha256": "58f01352a5a791543704a6649a6a920db6b3a9b7710cf18c04c66d6348372280",
-      "bytes": 1000448
+      "sha256": "c922960fac7067173ac259a8406e08aacc7597578536faf69308d8708d64954c",
+      "bytes": 1000432
     },
     {
       "id": "projetos",
       "path": "Plataforma.html#motor/projetos",
       "version": "0.1.16",
-      "sha256": "256310ce78eb445395c94270a183dfb4d8a0e58eed1cf038dcc487a7da9f62aa",
-      "bytes": 670266
+      "sha256": "a6e9c92cc80bef76e39521e5633dc660a99b5f5cd3198e65517d800ed9fdf9c7",
+      "bytes": 670250
     },
     {
       "id": "portal",
       "path": "Plataforma.html#motor/portal",
       "version": "1.9.87",
-      "sha256": "dce9ebbfcdb095568523e31aa8f42f2e7a08422581aa9fd132a246c4d215f7b2",
-      "bytes": 1318593
+      "sha256": "4359b81b75e54b2dcb5f4698b895ad20c8bf8ece96a4d883292d78bbe8332a04",
+      "bytes": 1319450
     }
   ],
   "limitations": [
     "Projetos e conteúdo técnico OSM/MES/AM/TPM mantêm os limites documentados nas fontes."
   ],
-  "enginesSha256": "f56f418603208fb70b0756da37510eedcc695f1e5385151b2657e06e2056d728",
+  "enginesSha256": "a02c452048c04711b42d674ea136d8ab9a6ac119bb73aeff122fd5fdd3dd45b9",
   "originRevision": "ffc9ee8",
   "sourceMode": "single-html",
   "originEnginesSha256": "a87a64ad0c328f70e102b2ae888790a9b5d5a9bd05778652a7ce7cae140e40d2"
