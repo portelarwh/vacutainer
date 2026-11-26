@@ -1,0 +1,13 @@
+const { chromium } = require('playwright'), http = require('http'), fs = require('fs');
+const html = fs.readFileSync(require('path').resolve(__dirname, '../../../Plataforma.html'));
+const conta = txt => { const s = JSON.parse(txt), m = s.snapshot.meta, NF = m.node_fields.length, iN = m.node_fields.indexOf('name'), iT = m.node_fields.indexOf('type'), iD = m.node_fields.indexOf('detachedness'), c = {};
+  for (let i = 0; i < s.nodes.length; i += NF) { const t = m.node_fields && m.node_types[0][s.nodes[i + iT]]; if (t !== 'native') continue; const n = s.strings[s.nodes[i + iN]].slice(0, 70) + '|d' + s.nodes[i + iD]; c[n] = (c[n] || 0) + 1; } return c; };
+(async () => { const srv = http.createServer((q, r) => r.end(html)); await new Promise(r => srv.listen(0, '127.0.0.1', r));
+  const b = await chromium.launch(), ctx = await b.newContext({ viewport: { width: 1440, height: 900 } }), p = await ctx.newPage(), cdp = await ctx.newCDPSession(p);
+  await p.goto('http://127.0.0.1:' + srv.address().port + '/?demo=1#/inicio'); await p.waitForTimeout(4000);
+  const ir = async h => { await p.evaluate(h => { location.hash = h; }, h); await p.waitForTimeout(1800); };
+  const snap = async () => { const ch = []; const f = e => ch.push(e.chunk); cdp.on('HeapProfiler.addHeapSnapshotChunk', f); await cdp.send('HeapProfiler.takeHeapSnapshot', { reportProgress: false }); cdp.off('HeapProfiler.addHeapSnapshotChunk', f); return conta(ch.join('')); };
+  for (let i = 0; i < 2; i++) { await ir('#/gel'); await ir('#/inicio'); } const a = await snap();
+  for (let i = 0; i < 4; i++) { await ir('#/gel'); await ir('#/inicio'); } const d = await snap();
+  const diff = Object.keys(d).map(k => [k, d[k] - (a[k] || 0)]).filter(x => x[1] > 0).sort((x, y) => y[1] - x[1]).slice(0, 30); console.log(diff);
+  await b.close(); srv.close(); })();
