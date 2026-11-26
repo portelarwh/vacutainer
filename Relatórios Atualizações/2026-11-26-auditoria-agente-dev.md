@@ -35,8 +35,8 @@ Motor robusto a entradas ruins sem quebrar; identidade OEE = D×P×Q; tela e Exc
 ## 5. Achados por frente (resumo; detalhes na tabela CSV)
 **A · Cálculo e operação**
 - **A01 (Média)** produção acima da capacidade vira P e OEE absurdos; só aviso.
-- **A02 (Alta)** parada maior que o turno: D e P negativos.
-- **A03 (Média)** paradas sobrepostas somam em duplicidade (D de 97,0% para 85,1% no exemplo).
+- **A02 (Média, corrigida)** parada maior que o turno: D e P negativos. A tela (`validateEvent`) já impede isso na digitação; só chega por importação ou dado externo. Reclassificada de Alta.
+- **A03 (Média, corrigida em 1.8.73)** paradas sobrepostas somam em duplicidade (a tela já barra sobreposição na digitação; vale para importação) (D de 97,0% para 85,1% no exemplo).
 - **A08 (Média)** refugo absurdo infla a Performance (170.665%); **A09 (Baixa)** refugo negativo aceito (Q 100,11%); **A10 (Média)** intervalo invertido ou de duração zero é ignorado em silêncio.
 - **A04 (Alta)** fuso horário configurado não é usado.
 - A07 (Média, suspeita) falta teste do conjunto: vários dias com madrugada + hora extra + parada na virada, tela × exportação.
@@ -68,6 +68,9 @@ E01/E02 baixas (chave duplicada idêntica, auto-atribuição a confirmar); F01 l
 5. **Arquitetura (H01):** vale investir em unificar o código repetido, ou cada módulo autônomo é uma escolha de manter?
 
 **Correção da própria auditoria:** a primeira versão do teste de propriedade não exercitava a madrugada nem o refugo (mudava só o snapshot do turno e passava um objeto como refugo). O revisor automático apontou, o script foi corrigido e agora confirma por si que cada cenário chega à condição pretendida; os achados A08 a A10 vieram dessa correção.
+
+## 7b. Decisões do responsável (26/11/2026) e correções feitas
+Dado impossível: bloquear a gravação. Paradas simultâneas: contar uma vez. Fuso: usar o da planta. Corrigidos na plataforma 1.8.73 (A01, A03, A04, A08, A09, A10), com os testes `dado-impossivel`, `paradas-simultaneas` e `fuso-planta`. Limite de produção/scrap: 3x a capacidade (constante `LIMITE_X`, ajustável).
 
 ## 8. Análise comum com a contraparte (próximo passo)
 Quando a contraparte entregar `auditoria-contraparte.md` e `.csv`: juntar as tabelas por lugar (bloco e linha ou função), classificar cada achado como **Convergente**, **Só um viu** ou **Divergente**, rodar a prova nas divergências, e produzir uma tabela única com a coluna "Quem viu" e um roadmap único.

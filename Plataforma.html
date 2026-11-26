@@ -1239,7 +1239,18 @@ const vacPareto = (() => {
 /* kit v2.1 · câmbio do cadastro geral (Portal › Câmbio): cotação vigente numa data, em R$ por 1 unidade da moeda. null = sem cadastro. */
 /* kit v2.1 · E2 (08/11/2026): "hoje" no dia local do computador (antes, sem data, valia o dia em UTC: às 22h de Brasília já era amanhã).
    Os leitores abaixo usam a data do fato quando recebem uma; vacHoje() é só o padrão quando não recebem. */
-function vacHoje() { const d = new Date(); return new Date(d - d.getTimezoneOffset() * 6e4).toISOString().slice(0, 10); }
+/* A04 (auditoria 26/11/2026, autorizado pelo responsável): "hoje" e o relógio dos turnos seguem o fuso da planta (parametros.fusoHorario do cadastro);
+   sem ele, ou se inválido, o fuso do navegador (como antes). vacAgora() devolve um objeto com os getters de Date (getHours...) lendo os campos da planta, sem passar por um Date local (que deslocaria a hora numa lacuna de horário de verão do navegador). */
+function vacFuso() { try { const f = typeof vacCad === 'function' &amp;&amp; vacCad.param ? vacCad.param('fusoHorario') : null; if (f) { new Intl.DateTimeFormat('pt-BR', { timeZone: String(f) }); return String(f); } } catch (e) { } return ''; }
+function vacAgora() {
+  const tz = vacFuso(); if (!tz) return new Date();
+  try {
+    const p = Object.fromEntries(new Intl.DateTimeFormat('en-CA', { timeZone: tz, hourCycle: 'h23', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit' }).formatToParts(new Date()).map(x => [x.type, x.value]));
+    const Y = +p.year, M = +p.month - 1, D = +p.day, h = +p.hour, mi = +p.minute, se = +p.second, z = n => String(n).padStart(2, '0');
+    return { getFullYear: () => Y, getMonth: () => M, getDate: () => D, getHours: () => h, getMinutes: () => mi, getSeconds: () => se, toTimeString: () => z(h) + ':' + z(mi) + ':' + z(se) };
+  } catch (e) { return new Date(); }
+}
+function vacHoje() { const d = vacAgora(), z = n => String(n).padStart(2, '0'); return d.getFullYear() + '-' + z(d.getMonth() + 1) + '-' + z(d.getDate()); }
 function vacCambio(data, moeda = 'USD') {
   const c = vacCad(), m = c &amp;&amp; (c.cambio || []).find(x => String(x.codigo).toUpperCase() === moeda &amp;&amp; x.ativo !== false); if (!m) return null;
   const d = String(data || '').slice(0, 10) || vacHoje();
@@ -4025,7 +4036,7 @@ const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 const esc=s=>String(s??'').replace(/[&amp;<>"']/g,c=>({'&amp;':'&amp;amp;','<':'&amp;lt;','>':'&amp;gt;','"':'&amp;quot;',"'":'&amp;#39;'}[c]));
 const uid=(p='')=>p+Date.now().toString(36)+Math.random().toString(36).slice(2,7);
 const nowISO=()=>new Date().toISOString();
-const todayISO=()=>{const d=new Date();return new Date(d-d.getTimezoneOffset()*6e4).toISOString().slice(0,10)};
+const todayISO=()=>{if(typeof vacHoje==='function')return vacHoje();const d=new Date();return new Date(d-d.getTimezoneOffset()*6e4).toISOString().slice(0,10)};
 const addDays=(iso,n)=>{const d=new Date(iso+'T12:00:00');d.setDate(d.getDate()+n);return d.toISOString().slice(0,10)};
 const MESES=['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'];
 const MESES_L=['janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'];
@@ -4438,7 +4449,7 @@ function wireConfigComum(){$('#cPasta').onclick=async()=>{if(await Store.pick())
         entrar pelo ID (autocadastro como Consulta); página inicial por perfil (1x por sessão); vigência gravada não se edita (desativar com motivo); painel de vigências; semáforo central; saída do modo de teste.
    1.1.2: aviso da carga diz qual base foi lida.  1.5: páginas Paradas, Máquinas, Manutenção e Projetos na lista (aparecem quando o HTML chega na pasta).  1.4: lista técnica pela CS12 multinível (itens = nível 1, estrutura = níveis 2+); CS03 sai.  1.3: cabeçalho comum (vac-cabecalho v2: barra do sistema + página + abas), busca Ctrl K, acabamento V1.90, Versões com cabeçalho e último backup.  1.2: Configuração › Versões das páginas (versão e data de cada HTML, gravação das bases, cópias repetidas, histórico).
    ===================================================================== */
-const PAGE={id:'portal',titulo:"Administração · Linha Vacutainer",tituloCurto:"Administração",subtitulo:'Sistemas de gestão da linha',versao:'1.9.91',baseFile:'portal-base.json',idb:'vac-portal',backupDir:'00. Backups/Portal',
+const PAGE={id:'portal',titulo:"Administração · Linha Vacutainer",tituloCurto:"Administração",subtitulo:'Sistemas de gestão da linha',versao:'1.9.92',baseFile:'portal-base.json',idb:'vac-portal',backupDir:'00. Backups/Portal',
  vazio:()=>({schema:'portal-base',schemaVersion:1,rev:0,config:{modulos:{},avisoDias:30,notas:{}},audit:[]}),
  /* itens do Portal para a busca Ctrl K: cadastro, pendências e telas */
  busca:q=>{const R=[],D=Cad.D;if(D)for(const t of CAD_ORD){for(const it of D[t]||[]){const c=String(it[kOf(t)]),nm=t==='bom'?((cadItem('catalogos',it.catalogo)||{}).nome||''):it.nome||'';if(norm(c+' '+nm).includes(q))R.push({tipo:CAD_T[t].um,txt:c+(nm?' · '+nm:''),sub:'Cadastros'+(cadAtivo(t,it,D)?'':' · inativo'),href:'#cadastros/'+t+'/'+encodeURIComponent(c)});if(R.length>30)break}}
@@ -5312,6 +5323,10 @@ const CAD_SECS=['inicio','gel','matriz','importar','auditoria','backups','segura
    curtas (macro, sem detalhe técnico). REGRA: toda versão nova da plataforma ganha uma entrada aqui, a mais recente primeiro
    (AGENTS.md e CLAUDE.md). Tipos: nova (função nova), melhoria (algo que já existia ficou melhor), correcao (erro corrigido). */
 const NOVIDADES=[
+ {v:'1.8.73',d:'2026-11-26',itens:[
+  ['correcao','O fuso horário da planta (Parâmetros) agora vale para "hoje" e para o relógio dos turnos em todos os módulos.'],
+  ['correcao','Paradas simultâneas contam uma vez só no tempo parado da linha; o trecho repetido aparece como alerta.'],
+  ['melhoria','Produção ou scrap negativo, não numérico ou acima de 3x a capacidade é recusado no lançamento e na importação, com o motivo.']]},
  {v:'1.8.72',d:'2026-11-26',itens:[
   ['correcao','Quando a gravação é negada por falta de sessão ou perfil, a plataforma agora diz que é permissão (antes aparecia "arquivo ou pasta não encontrado").'],
   ['correcao','Lançamento no celular: a navegação do dia quebra de linha e a tela não alarga mais a página.'],
@@ -8351,7 +8366,8 @@ const U = (() => {
   const addDays = (s, n) => { const d = parseDate(s); d.setDate(d.getDate() + n); return isoDate(d); };
   const weekday = s => parseDate(s).getDay(); // 0 = domingo
   const daysBetween = (a, b) => Math.round((parseDate(b) - parseDate(a)) / 864e5);
-  const today = () => isoDate(new Date());
+  const today = () => typeof vacHoje === 'function' ? vacHoje() : isoDate(new Date());
+  const agora = () => typeof vacAgora === 'function' ? vacAgora() : new Date();   /* relógio da planta (A04) */
   const monthKey = s => s.slice(0, 7);
   const monthStart = s => s.slice(0, 7) + '-01';
   const monthEnd = s => { const d = parseDate(monthStart(s)); d.setMonth(d.getMonth() + 1); d.setDate(0); return isoDate(d); };
@@ -8399,7 +8415,7 @@ const U = (() => {
     return s;
   }
   const norm = s => String(s == null ? '' : s).normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/\s+/g, ' ').trim().toLowerCase();
-  return { pad, EPS, toMin, hhmm, range, isoDate, parseDate, addDays, weekday, daysBetween, today, monthKey, monthStart, monthEnd, brDate, brDateShort, MONTHS, WD, monthName, weekStart, weekNum, nowIso, brDT, stamp, uid, clone, esc, num, sum, ceilTo, r6, div, fmt, pct, pp, signed, overlap, between, rangesOverlap, debounce, csvCell, norm };
+  return { pad, EPS, toMin, hhmm, range, isoDate, parseDate, addDays, weekday, daysBetween, today, agora, monthKey, monthStart, monthEnd, brDate, brDateShort, MONTHS, WD, monthName, weekStart, weekNum, nowIso, brDT, stamp, uid, clone, esc, num, sum, ceilTo, r6, div, fmt, pct, pp, signed, overlap, between, rangesOverlap, debounce, csvCell, norm };
 })();
 
 
@@ -8813,16 +8829,23 @@ const Engine = (() => {
     const shiftManual = {}; shifts.forEach(ps => shiftManual[ps.id] = { deduct: 0, a: 0, p: 0, info: 0, n: 0 });
     const dayManual = { deduct: 0, a: 0, p: 0, info: 0, n: 0 }; // paradas sem turno (ex.: linhas da aba PARADAS sem turno)
     let foraDoModo = 0;
+    /* A03 (auditoria 26/11/2026, autorizado pelo responsável): paradas simultâneas contam UMA vez. Em cada categoria (descontada, D, P, informativa) o tempo
+       parado da linha é a união dos intervalos; o trecho que já foi contado por uma parada anterior (na ordem do dia) não soma de novo. */
+    const uniParadas = { deduct: [], a: [], p: [], info: [] };
+    const subtraiUniao = (s0, e0, L) => { let out = [[s0, e0]]; for (const [x0, y0] of L) { const nx = []; for (const [x, y] of out) { if (y0 <= x || x0 >= y) nx.push([x, y]); else { if (x0 > x) nx.push([x, x0]); if (y0 < y) nx.push([y0, y]); } } out = nx; } return out; };
     for (const ev of (day.events || []).filter(e => !e.deleted)) {
       if ((modoDia &amp;&amp; ev.abono &amp;&amp; !ev.dayLevel) || (!modoDia &amp;&amp; ev.nivel === 'dia')) { foraDoModo++; continue; }   /* guardado, não conta neste modo */
       const imp = impactOf(ev, db), b = bucketOf(imp);
       const er = { ev, imp, bucket: b, minutes: eventMinutes(ev), splits: [], shiftIds: new Set() };
       if (ev.start != null &amp;&amp; ev.end != null) {
-        for (const f of flat) { const o = overlap(ev.start, ev.end, f.iv.start, f.iv.end); if (o > 0) { f[b] += o; f.evIds.push(ev.id); er.splits.push({ ivId: f.iv.id, min: o }); er.shiftIds.add(f.ps.id);
+        let segs = [[ev.start, ev.end]], trimmed = 0;
+        if (ev.end > ev.start &amp;&amp; uniParadas[b]) { segs = subtraiUniao(ev.start, ev.end, uniParadas[b]); trimmed = (ev.end - ev.start) - segs.reduce((a, g) => a + (g[1] - g[0]), 0); uniParadas[b].push([ev.start, ev.end]); }
+        if (trimmed > 0.01) { er.simultanea = trimmed; M('alerta', `A parada ${U.range(ev.start, ev.end)} coincide com outra já contada: ${U.fmt(trimmed)} min não somam de novo.`, { ev: ev.id }); }
+        for (const [sg0, sg1] of segs) for (const f of flat) { const o = overlap(sg0, sg1, f.iv.start, f.iv.end); if (o > 0) { f[b] += o; f.evIds.push(ev.id); er.splits.push({ ivId: f.iv.id, min: o }); er.shiftIds.add(f.ps.id);
           /* TUR-07: minutos com horário no intervalo e os que caem depois de 00:00 (a divisão segue o horário real, não a proporção) */
-          f.tAll = f.tAll || {}; f.tAll[b] = (f.tAll[b] || 0) + o; const oPos = overlap(ev.start, ev.end, Math.max(f.iv.start, 1440), f.iv.end); if (oPos > 0) { f.tPos = f.tPos || {}; f.tPos[b] = (f.tPos[b] || 0) + oPos; } } }
+          f.tAll = f.tAll || {}; f.tAll[b] = (f.tAll[b] || 0) + o; const oPos = overlap(sg0, sg1, Math.max(f.iv.start, 1440), f.iv.end); if (oPos > 0) { f.tPos = f.tPos || {}; f.tPos[b] = (f.tPos[b] || 0) + oPos; } } }
         const covered = sum(er.splits, s => s.min);
-        if (covered < er.minutes - 0.01) M('erro', `A parada ${U.range(ev.start, ev.end)} tem ${U.fmt(er.minutes - covered)} min fora dos intervalos do dia.`, { ev: ev.id });
+        if (covered + trimmed < er.minutes - 0.01) M('erro', `A parada ${U.range(ev.start, ev.end)} tem ${U.fmt(er.minutes - covered - trimmed)} min fora dos intervalos do dia.`, { ev: ev.id });
       } else if (ev.intervalId &amp;&amp; ivMap.has(ev.intervalId)) {
         const f = ivMap.get(ev.intervalId); const m = er.minutes; f[b] += m; f.evIds.push(ev.id); er.splits.push({ ivId: f.iv.id, min: m }); er.shiftIds.add(f.ps.id);
       } else if (ev.productionShiftId &amp;&amp; shiftManual[ev.productionShiftId]) {
@@ -9856,6 +9879,7 @@ const Actions = (() => {
   function setDayField(dayId, field, value) {
     Store.mutate((db, audit) => {
       const d = dayById(db, dayId); if (['note', 'responsible', 'gapJustification'].indexOf(field) < 0) assertEditable(d);
+      if (field === 'scrapDay') conferirScrapDia(db, d, value);
       const before = d[field]; if (before === value) return;
       d[field] = value; if (field === 'responsible' &amp;&amp; typeof vacPessoa !== 'undefined') d.responsibleId = vacPessoa.deTexto(value).id || null;   /* 2.4.78 · R-02 */
       touch(d); startEditing(d);
@@ -9947,6 +9971,7 @@ const Actions = (() => {
       const d = dayById(db, dayId); const ps = d.shifts.find(s => s.id === psId);
       if (field !== 'note' &amp;&amp; field !== 'responsible') assertEditable(d, ps);   /* 2.4.34 · PRD-05: responsável como a observação */
       if (field === 'scrap' &amp;&amp; d.scrapMode === 'day') throw new Error('O scrap deste dia é lançado como total diário. Mude o modo para "por turno" para lançar por turno.');
+      if (field === 'scrap') conferirScrapTurno(db, d, ps, value);
       const before = ps[field];
       if (field === 'initialCatalogId') { const first = ps.intervals.filter(i => !i.deleted).sort((x, y) => x.start - y.start)[0]; if (first &amp;&amp; first.catalogId) { delete first.catalogId; ps.intervals.forEach(i => { delete i.tgt; }); } else if (before === value) return; }
       else if (before === value) return;
@@ -9957,9 +9982,31 @@ const Actions = (() => {
   }
 
   /* ---------- intervalos ---------- */
+  /* Dado impossível não entra (A01, A08, A09): negativo, não numérico, ou acima de LIMITE_X vezes a capacidade do trecho (PPH do catálogo x minutos).
+     Sem PPH ou capacidade conhecida, só vale a regra do sinal. O limite é uma constante para poder ser ajustada com o responsável. */
+  const LIMITE_X = 3;
+  const numeroOk = (valor, rot) => { if (valor == null) return; if (typeof valor !== 'number' || !isFinite(valor)) throw new Error(`${rot}: informe um número.`); if (valor < 0) throw new Error(`${rot} não pode ser negativa.`); };
+  function conferirProducao(db, d, ps, iv, valor) {
+    numeroOk(valor, 'A produção'); if (valor == null || valor === 0) return;
+    const antes = iv.good; iv.good = valor; let res; try { res = Engine.computeDayRaw(db, d); } finally { iv.good = antes; }
+    const f = res.flat.find(x => x.iv === iv);
+    if (f &amp;&amp; f.pph > 0 &amp;&amp; f.min > 0) { const cap = f.pph * f.min / 60; if (valor > LIMITE_X * cap) throw new Error(`Produção de ${U.fmt(valor)} em ${U.fmt(f.min)} min é mais de ${LIMITE_X}x a capacidade do catálogo (${U.fmt(cap)}). Confira o número.`); }
+  }
+  function conferirScrapTurno(db, d, ps, valor) {
+    numeroOk(valor, 'O scrap'); if (valor == null || valor === 0) return;
+    const antes = ps.scrap; ps.scrap = valor; let res; try { res = Engine.computeDayRaw(db, d); } finally { ps.scrap = antes; }
+    const sr = res.shifts.find(x => x.ps === ps);
+    if (sr &amp;&amp; sr.agg &amp;&amp; sr.agg.cap > 0 &amp;&amp; valor > LIMITE_X * sr.agg.cap) throw new Error(`Scrap de ${U.fmt(valor)} é mais de ${LIMITE_X}x a capacidade do turno (${U.fmt(sr.agg.cap)}). Confira o número.`);
+  }
+  function conferirScrapDia(db, d, valor) {
+    numeroOk(valor, 'O scrap do dia'); if (valor == null || valor === 0) return;
+    const res = Engine.computeDayRaw(db, d), cap = res.agg ? res.agg.cap : 0;
+    if (cap > 0 &amp;&amp; valor > LIMITE_X * cap) throw new Error(`Scrap do dia de ${U.fmt(valor)} é mais de ${LIMITE_X}x a capacidade do dia (${U.fmt(cap)}). Confira o número.`);
+  }
   function setIv(dayId, ivId, field, value) {
     Store.mutate((db, audit) => {
       const d = dayById(db, dayId); const { ps, iv } = findIv(d, ivId); assertEditable(d, ps); if (field === 'good' || field === 'catalogId') assertHoras(ps);
+      if (field === 'good') conferirProducao(db, d, ps, iv, value);
       // catálogo da 1ª hora do turno = catálogo inicial do turno (uma única informação; o card do turno e o hora a hora sempre batem)
       if (field === 'catalogId') {
         const first = ps.intervals.filter(i => !i.deleted).sort((x, y) => x.start - y.start)[0];
@@ -10299,7 +10346,7 @@ const Actions = (() => {
   function setGoods(dayId, pairs) {
     Store.mutate((db, audit) => {
       const d = dayById(db, dayId);
-      for (const { ivId, good } of pairs) { const { ps, iv } = findIv(d, ivId); assertEditable(d, ps); assertHoras(ps); const b = iv.good; if (b === good) continue; iv.good = good; audit({ action: 'edição', entity: 'intervalo', entityId: iv.id, field: 'good', before: b, after: good, origin: 'colado' }); }
+      for (const { ivId, good } of pairs) { const { ps, iv } = findIv(d, ivId); assertEditable(d, ps); assertHoras(ps); const b = iv.good; if (b === good) continue; conferirProducao(db, d, ps, iv, good); iv.good = good; audit({ action: 'edição', entity: 'intervalo', entityId: iv.id, field: 'good', before: b, after: good, origin: 'colado' }); }
       touch(d); startEditing(d);
     });
   }
@@ -11123,6 +11170,8 @@ const Importers = (() => {
       const good = typeof row.good === 'number' ? row.good : (row.good === '' || row.good == null ? null : +String(row.good).replace(/\./g, '').replace(',', '.'));
       if (good == null || isNaN(good)) { out.empty.push({ line: row.line, reason: row.date ? 'sem produção (linha vazia ou fórmula sem valor)' : 'linha sem data e sem produção' }); continue; }
       if (!row.date) { out.invalid.push({ line: row.line, reason: `data inválida (${row.dateRaw})` }); continue; }
+      if (good < 0) { out.invalid.push({ line: row.line, reason: `produção negativa (${good})` }); continue; }
+      if (row.scrap !== '' &amp;&amp; row.scrap != null &amp;&amp; +row.scrap < 0) { out.invalid.push({ line: row.line, reason: `scrap negativo (${row.scrap})` }); continue; }
       const shTxt = String(row.shift == null ? '' : row.shift).trim().toUpperCase();
       if (shTxt === 'DIA') { out.totals.push({ line: row.line, date: row.date, good, planned: +row.planned || 0, scrap: +row.scrap || 0, lossMin: +row.lossMin || 0, plannedMin: +row.plannedMin || 0 }); continue; }
       const sn = parseInt(shTxt, 10);
@@ -13341,7 +13390,7 @@ App.views.hourly = {
     const cats = db().catalogs.filter(c => c.active !== false &amp;&amp; Engine.catalogValid(c, day.date));
     const lkDay = day.status === 'fechado';
     const errs = res.msgs.filter(m => m.level === 'erro');
-    const now = new Date(); const nowMin = opNowMin(day.date);
+    const now = U.agora(); const nowMin = opNowMin(day.date);
     let h = dayBar('hourly');
     h += `<div class="row" style="margin-bottom:10px">
       <span id="hhSt" class="pill ${(BASE_ST[Store.S.status] || ['none'])[0]}" aria-live="polite"><span class="dot"></span>${esc((BASE_ST[Store.S.status] || [, Store.S.status])[1])}</span>
@@ -14427,7 +14476,7 @@ const TV = {
     if (t === 'dark' || t === 'light') document.documentElement.setAttribute('data-theme', t);
     try { if (document.documentElement.requestFullscreen) document.documentElement.requestFullscreen().catch(() => { }); } catch (e) { }
     this.idx = 0; this.render(); this.schedule();
-    this.clock = setInterval(() => { const c = this.el &amp;&amp; this.el.querySelector('.clock'); if (c) c.textContent = new Date().toTimeString().slice(0, 5); }, 5000);
+    this.clock = setInterval(() => { const c = this.el &amp;&amp; this.el.querySelector('.clock'); if (c) c.textContent = U.agora().toTimeString().slice(0, 5); }, 5000);
     this.onKey = e => { if (e.key === 'Escape') this.close(); if (e.key === 'ArrowRight') this.step(1); if (e.key === 'ArrowLeft') this.step(-1); if (e.key === ' ') { this.paused = !this.paused; this.render(); } };
     document.addEventListener('keydown', this.onKey);
     this.unsub = what => { if (what === 'data' &amp;&amp; this.el) this.render(); }; Store.on(this.unsub);
@@ -14463,7 +14512,7 @@ const TV = {
   dia(day) {
     if (!day) return '<div class="empty">Nenhum lançamento ainda.</div>';
     const res = Engine.computeDay(db(), day), r = res.r, st = db().settings;
-    const now = new Date(), nm = opNowMin(day.date, 99999);
+    const now = U.agora(), nm = opNowMin(day.date, 99999);
     const done = res.flat.filter(f => f.iv.end <= nm || f.good != null);
     const metaNow = U.sum(done, f => f.metaOp), att = metaNow ? r.good / metaNow : null;
     const bk = (l, v, s, state, small) => `<div class="bk"><div class="l">${esc(l)}</div><div class="v${small ? ' sm' : ''}${state === 'crit' ? ' below' : state === 'warn' ? ' below bw' : ''}">${v}</div><div class="s">${s}</div>${state ? `<div class="s">${semB(state)}</div>` : ''}</div>`;
@@ -14658,7 +14707,7 @@ const Demo = {
 /* ---- 16-ui-operator.js ---- */
 /* ================= tela do operador: "Lançar meu turno" ================= */
 // sugere o turno pelo horário: o turno em andamento; fora dele, o último turno encerrado
-function suggestShift(now = new Date()) {
+function suggestShift(now = U.agora()) {
   const d = db(), today = U.isoDate(now), nm = now.getHours() * 60 + now.getMinutes();
   const act = Engine.activeShiftsAt(d, today, 'line_vac');
   for (const { shift, v } of act) { const s = U.toMin(v.start), e = U.toMin(v.end); if (nm >= s &amp;&amp; nm < e) return { date: today, shiftId: shift.id }; if (e > 1440 &amp;&amp; nm + 1440 < e &amp;&amp; nm < s) { /* turno da madrugada iniciado ontem */ } }
@@ -14697,7 +14746,7 @@ App.views.shift = {
     const lk = ps.status === 'fechado' || day.status === 'fechado';
     const fs = res.flat.filter(f => f.ps === ps);
     const cats = d.catalogs.filter(c => c.active !== false &amp;&amp; Engine.catalogValid(c, day.date));
-    const now = new Date(), nowMin = opNowMin(day.date);
+    const now = U.agora(), nowMin = opNowMin(day.date);
     if (lk) h += `<div class="banner info section"><p>${I.lock} Turno fechado pela liderança${ps.closing ? ` (${esc(ps.closing.by)}, ${U.brDT(ps.closing.at)})` : ''}. Para corrigir, peça a reabertura.</p></div>`;
     else if (ps.returned &amp;&amp; ps.status === 'em lançamento') h += `<div class="banner warn section" role="alert"><p><b>Devolvido pela liderança</b> (${esc(ps.returned.by)}, ${U.brDT(ps.returned.at)}): ${esc(ps.returned.reason)}. Corrija e conclua o turno de novo.</p></div>`;
     else if (ps.status === 'pendente de conferência') h += `<div class="banner pend section"><p>Turno enviado para conferência${ps.submitted ? ` por ${esc(ps.submitted.by)} em ${U.brDT(ps.submitted.at)}` : ''}. Você ainda pode corrigir até a liderança fechar.</p></div>`;
@@ -14822,7 +14871,7 @@ function dayTimeIn(day, v) {
   return m;
 }
 // "agora" em minutos do dia de produção: hoje = 0–1439; madrugada do dia seguinte = 1440+ (turno da noite); senão null
-function opNowMin(date, dflt = null) { const n = new Date(), m = n.getHours() * 60 + n.getMinutes(); if (date === U.today()) return m; if (date === U.addDays(U.today(), -1)) return m + 1440; return dflt; }
+function opNowMin(date, dflt = null) { const n = U.agora(), m = n.getHours() * 60 + n.getMinutes(); if (date === U.today()) return m; if (date === U.addDays(U.today(), -1)) return m + 1440; return dflt; }
 // HH:MM de minutos que podem passar de 24 h ("30:00" = 06:00 do dia seguinte)
 const hm24 = m => m == null ? '' : String(Math.floor(m / 60)).padStart(2, '0') + ':' + String(m % 60).padStart(2, '0');
 
@@ -15050,7 +15099,7 @@ const Timeline = (() => {
   const iso = m => ServerData.fromMin(m);
   const diaDe = m => iso(m).slice(0, 10);
   const inicioDia = d => ServerData.dayStartMin(d);
-  const relogio = () => { const d = new Date(); return Date.UTC(d.getFullYear(), d.getMonth(), d.getDate(), d.getHours(), d.getMinutes(), d.getSeconds()) / 60000; };
+  const relogio = () => { const d = U.agora(); return Date.UTC(d.getFullYear(), d.getMonth(), d.getDate(), d.getHours(), d.getMinutes(), d.getSeconds()) / 60000; };
   function store(db) {
     if (!db.timeline || typeof db.timeline !== 'object') db.timeline = {};
     for (const k of ['tagMap', 'tagEvents', 'imports']) if (!Array.isArray(db.timeline[k])) db.timeline[k] = [];
@@ -15659,7 +15708,7 @@ const DateFields = {
 const Pend = {
   // lista o que precisa de ação; cada seção só aparece quando tem itens
   compute() {
-    const d = db(), st = d.settings, today = U.today(), now = new Date(), nowMin = now.getHours() * 60 + now.getMinutes();
+    const d = db(), st = d.settings, today = U.today(), now = U.agora(), nowMin = now.getHours() * 60 + now.getMinutes();
     const allDays = d.productionDays.filter(x => !x.deleted &amp;&amp; !x.demo &amp;&amp; x.lineId === 'line_vac'), days = allDays.filter(x => !Engine.isOffDay(d, x));
     const out = { review: [], missing: [], overdue: [], open: [], scrap: [], errors: [], coverage: [], targets: [] };
     // turnos enviados pelo operador
@@ -15896,7 +15945,7 @@ App.views.plan = {
   orders(plan) {
     const L = (plan.orders || []).slice().sort((a, b) => String(a.start || '9').localeCompare(String(b.start || '9')) || String(a.order).localeCompare(String(b.order)));
     if (!L.length) return `<section class="card section"><header><h3>Ordens do mês</h3>${ib('planPaste')}</header><p class="q">Nenhuma ordem ainda. Em "${Actions.planLocked(plan) ? 'Revisar' : 'Editar'} plano" › Colar do Excel, cole o plano do PCP com o cabeçalho: cada linha vira uma ordem com início e fim previstos.</p></section>`;
-    const G = Engine.orderProgress(db(), plan), n = new Date(), now = `${U.today()}T${String(n.getHours()).padStart(2, '0')}:${String(n.getMinutes()).padStart(2, '0')}`;
+    const G = Engine.orderProgress(db(), plan), n = U.agora(), now = `${U.today()}T${String(n.getHours()).padStart(2, '0')}:${String(n.getMinutes()).padStart(2, '0')}`;
     const dt = v => v ? `${U.brDate(v.slice(0, 10)).slice(0, 5)}${v.length > 10 ? ' ' + v.slice(11, 16) : ''}` : '—';
     const S0 = v => v &amp;&amp; v.length === 10 ? v + 'T00:00' : v, E1 = v => v &amp;&amp; v.length === 10 ? v + 'T23:59' : v;
     const st = (o, g) => {
@@ -23132,7 +23181,7 @@ const esc=s=>String(s??'').replace(/[&amp;<>"']/g,c=>({'&amp;':'&amp;amp;','<':'
 const jsArg=v=>esc(JSON.stringify(String(v??'')));
 const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,7);
 const nowISO=()=>new Date().toISOString();
-const todayISO=()=>{const d=new Date();return new Date(d-d.getTimezoneOffset()*6e4).toISOString().slice(0,10)};
+const todayISO=()=>{if(typeof vacHoje==='function')return vacHoje();const d=new Date();return new Date(d-d.getTimezoneOffset()*6e4).toISOString().slice(0,10)};
 /* R$ nas tabelas: com ou sem centavos (preferência de cada pessoa); quem passa as casas (ex.: fmtR(v,2)) não muda */
 const tabCentsOn=()=>localStorage.getItem('perdas.centsTab')==='1';
 const fmtR=(v,d)=>{if(d==null)d=tabCentsOn()?2:0;return v==null||!isFinite(v)?'–':v.toLocaleString('pt-BR',{style:'currency',currency:moedaVer(),minimumFractionDigits:d,maximumFractionDigits:d})};
@@ -25817,7 +25866,7 @@ const pad=n=>String(n).padStart(2,'0');
 const isoDate=d=>`${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
 const isoDT=d=>`${isoDate(d)}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
 const nowDT=()=>isoDT(new Date());
-const todayISO=()=>isoDate(new Date());
+const todayISO=()=>typeof vacHoje==='function'?vacHoje():isoDate(new Date());
 const toDate=s=>{if(!s)return null;const [a,b]=s.split('T');const [y,m,d]=a.split('-').map(Number);let h=0,mi=0;if(b){[h,mi]=b.split(':').map(Number)}return new Date(y,m-1,d,h||0,mi||0)};
 const daysBetween=(a,b)=>Math.round((toDate(b.slice(0,10))-toDate(a.slice(0,10)))/DAY);
 const fmtD=s=>{if(!s)return '—';const [y,m,d]=s.slice(0,10).split('-');return `${d}/${m}/${y}`};
@@ -32440,7 +32489,7 @@ const esc=s=>String(s??'').replace(/[&amp;<>"']/g,c=>({'&amp;':'&amp;amp;','<':'
 const norm=s=>String(s??'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/\s+/g,' ').trim();
 const nf0=new Intl.NumberFormat('pt-BR',{maximumFractionDigits:0}),nf1=new Intl.NumberFormat('pt-BR',{minimumFractionDigits:1,maximumFractionDigits:1});
 const n0=v=>v==null||isNaN(v)?'—':nf0.format(v),n1=v=>v==null||isNaN(v)?'—':nf1.format(v),pct=v=>v==null||isNaN(v)?'—':nf1.format(v*100)+'%';
-const todayISO=()=>{const d=new Date();return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`};
+const todayISO=()=>{if(typeof vacHoje==='function')return vacHoje();const d=new Date();return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`};
 const isoD=d=>`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
 const br=s=>s?`${s.slice(8,10)}/${s.slice(5,7)}/${s.slice(0,4)}`:'—';
 const brM=m=>{const n=['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'];return m?`${n[+m.slice(5,7)-1]}/${m.slice(2,4)}`:'—'};
@@ -55385,70 +55434,70 @@ body.vac-porta{overflow:hidden}
       "id": "oee",
       "path": "Plataforma.html#motor/oee",
       "version": "2.6.50",
-      "sha256": "46463bb5ee02e1e263df011f9923aa2097525768a875cc9ed3f3cbb170df7c3f",
-      "bytes": 2380889
+      "sha256": "186791f059c680117e0611f8d545c30b3f59941faae0f6b57e5d2e7db593bb24",
+      "bytes": 2386115
     },
     {
       "id": "perdas",
       "path": "Plataforma.html#motor/perdas",
       "version": "1.12.21",
-      "sha256": "331b02ce0f9cd195c11ee5c63338352112cd73129a55da2103251954ccf9a4c8",
-      "bytes": 978924
+      "sha256": "0fff2328ed80562674eb7639470d168efaa7dc6c231c918aa26e6f306314e4fd",
+      "bytes": 980369
     },
     {
       "id": "gel",
       "path": "Plataforma.html#motor/gel",
       "version": "2.52",
-      "sha256": "555bb70ce0b8aec91fdc49dec1d15e68a139304bb5cb4eb896a8fd29d8d8a1af",
-      "bytes": 1623109
+      "sha256": "bdd187e7ec0cf38518355c9e06299e7aa79ca733285f1fa3bd974afaafa8795f",
+      "bytes": 1624544
     },
     {
       "id": "paradas",
       "path": "Plataforma.html#motor/paradas",
       "version": "1.2.22",
-      "sha256": "102e2526ff0edd7b2f7bd33cbcc93d4ebe9adfc53c4bdb42d99e01cc8bf80371",
-      "bytes": 948180
+      "sha256": "7aac79f33fa6cb314387b835db9e0e4d5e202c7962be572b6c8549c2c715a0fa",
+      "bytes": 949625
     },
     {
       "id": "equip",
       "path": "Plataforma.html#motor/equip",
       "version": "1.0.22",
-      "sha256": "48e91d2983d1d2cce89118f6e7bf17666f0661d5d8a17b922a4ae0c71f7621e1",
-      "bytes": 739582
+      "sha256": "4c5165a9e268acb3b2c4f10bd9e4f1d26eeaf019393f5aa7102ca246f9391964",
+      "bytes": 740979
     },
     {
       "id": "inic",
       "path": "Plataforma.html#motor/inic",
       "version": "1.1.17",
-      "sha256": "add22e8b9b8d30a26d9fb80c19f6fc18f82a5bc034445c154b5c9d221bf04f8a",
-      "bytes": 749183
+      "sha256": "aec06469b261920d6dd4742770b63dd138fd14d92014d284c2ff3668d9fe4e25",
+      "bytes": 750580
     },
     {
       "id": "linha",
       "path": "Plataforma.html#motor/linha",
       "version": "1.7.1",
-      "sha256": "c3511a56fee013e47c05c40ae9a412a4194ef8cffc3950d9194e2cce29638fd7",
-      "bytes": 1002215
+      "sha256": "a47941a6f56828112f2b8c6ba539cf5f4881e1cf5feff7e3bd00fdca8696b52d",
+      "bytes": 1003612
     },
     {
       "id": "projetos",
       "path": "Plataforma.html#motor/projetos",
       "version": "0.1.16",
-      "sha256": "5589a5b58d1aa82a22907e3827310b1fdb36bf1aabc74c8c3ef96fa28dc07fc4",
-      "bytes": 672033
+      "sha256": "91ce7202d9e9159b74daccfbb248643372756c1343ea8928581a5bd0657dcfdf",
+      "bytes": 673430
     },
     {
       "id": "portal",
       "path": "Plataforma.html#motor/portal",
-      "version": "1.9.91",
-      "sha256": "1a9ac81da8fbdcfe850d4575d91878ef3defdcb63848e806d2d141934c5f12f5",
-      "bytes": 1330982
+      "version": "1.9.92",
+      "sha256": "d87261764ac6031ec6f8e44c40274a3f7988c4ac6d607438d421e645fff1f849",
+      "bytes": 1332871
     }
   ],
   "limitations": [
     "Projetos e conteúdo técnico OSM/MES/AM/TPM mantêm os limites documentados nas fontes."
   ],
-  "enginesSha256": "6ddf403c9da8b783a94b9cfdd02490d55c60839b92972a732901fdc89dd5d0a0",
+  "enginesSha256": "e826aeac2c9985cdb9316d368e462cdfd48ff79bceffb1ba9e758ba11e616e0e",
   "originRevision": "ffc9ee8",
   "sourceMode": "single-html",
   "originEnginesSha256": "a87a64ad0c328f70e102b2ae888790a9b5d5a9bd05778652a7ce7cae140e40d2"
@@ -55518,7 +55567,7 @@ summary{cursor:pointer;font-weight:600;color:var(--navy)}
 'use strict';
 /* ---------- referência (atualizar quando a plataforma mudar de versão) ---------- */
 // Iguais às do pacote da plataforma (nova-plataforma/src/generated/manifest.json); o teste ferramenta-verificar confere.
-const VERSOES = {"oee":"2.6.50","perdas":"1.12.21","gel":"2.52","paradas":"1.2.22","equip":"1.0.22","inic":"1.1.17","linha":"1.7.1","projetos":"0.1.16","portal":"1.9.91"};
+const VERSOES = {"oee":"2.6.50","perdas":"1.12.21","gel":"2.52","paradas":"1.2.22","equip":"1.0.22","inic":"1.1.17","linha":"1.7.1","projetos":"0.1.16","portal":"1.9.92"};
 const BASES = [
  { arq: 'vacutainer-cadastros.json', mod: 'portal', nome: 'Cadastro geral (Portal)', obrig: true, cadastro: true, bk: 'Cadastros' },
  { arq: 'portal-base.json', mod: 'portal', nome: 'Portal', obrig: true, bk: 'Portal' },
@@ -56109,7 +56158,7 @@ import { Icon, Button, Badge, Empty, Modal, BarChart, BrandLogo, CommandMenu } f
 import { ModuleFrame } from "vac:modulo/components/ModuleFrame";
 import manifest from "vac:recurso/manifesto";
 import { ModuleTabs } from "vac:modulo/components/ModuleTabs";
-const VERSION = "1.8.72";
+const VERSION = "1.8.73";
 /* Navegação 1.3.0 (16/11/2026): Visão da linha, Relatórios e Importações têm abas; as que mostram uma tela do
    Portal (motor da Administração) trazem o 3º campo com a aba dele. Administração fica só com cadastros e configuração. */
 const SHELL_TABS = {
