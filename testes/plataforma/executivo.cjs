@@ -7,7 +7,9 @@ const H=require('../../scripts/html.cjs');
   await new Promise(r=>server.listen(0,'127.0.0.1',r));browser=await chromium.launch(require('./chromium.cjs')());
   const output=path.join(__dirname,'../saida/plataforma/executivo');fs.mkdirSync(output,{recursive:true});
   for(const width of [390,768,1440,1920])for(const theme of ['light','dark']) {
-   const context=await browser.newContext({viewport:{width,height:width===390?844:1080},reducedMotion:'reduce'}),page=await context.newPage(),errors=[],remote=[];
+   const context=await browser.newContext({viewport:{width,height:width===390?844:1080},reducedMotion:'reduce',timezoneId:'UTC'}),page=await context.newPage(),errors=[],remote=[];
+   /* relógio fixo às 15:00 do dia: entre 0h e 6h o "hoje" da demonstração é a madrugada do dia de produção anterior e a jornada mudava conforme a hora em que o teste rodava */
+   {const a=new Date();await page.clock.setFixedTime(new Date(Date.UTC(a.getUTCFullYear(),a.getUTCMonth(),a.getUTCDate(),15,0,0)))}
    page.on('pageerror',e=>errors.push(e.message));page.on('request',r=>{if(/^https?:/.test(r.url())&&!r.url().startsWith('http://127.0.0.1:'))remote.push(r.url())});
    await context.addInitScript(theme=>{localStorage.setItem('vac.platform.demo.theme',theme);window.print=()=>{}},theme);
    await page.goto('http://127.0.0.1:'+server.address().port+'/?demo=1');await page.getByRole('heading',{name:'Visão da linha',exact:true}).waitFor();await page.locator('.executive-metrics .metric-value').filter({hasText:'881.000'}).waitFor();await context.setOffline(true);
