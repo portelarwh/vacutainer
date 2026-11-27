@@ -125,8 +125,9 @@ const errs = []; const ok = (c, m) => { console.log((c ? 'ok   ' : 'FALHA ') + m
   // Os geradores antigos foram removidos; os testes de atualização atômica e
   // integridade do HTML único estão em testes/plataforma/arquivo-unico.test.mjs.
   for (const id of ['equip','inic','projetos']) {
-    const n=(require('../scripts/html.cjs').engine(id).match(/^function toast\(/mg)||[]).length;
-    ok(n===1,id+': toast declarado uma vez');
+    // H01 (1.8.92): o aviso é vacToast, declarado uma vez no kit comum; o motor só usa o apelido toast=vacToast.
+    const t=require('../scripts/html.cjs').engine(id), n=(t.match(/^function vacToast\(/mg)||[]).length+(t.match(/^function toast\(/mg)||[]).length;
+    ok(n===1&&/toast=vacToast/.test(t),id+': toast declarado uma vez');
   }
   await b.close();
   console.log(errs.length ? `\n${errs.length} falha(s)` : '\nsem erros'); process.exit(errs.length ? 1 : 0);
