@@ -10,6 +10,8 @@ const assert = require('assert/strict'), abrir = require('./pasta-ficticia.cjs')
       await put('00. Backups/Cadastros', 'historico-auditoria_2026-08.jsonl', [{ em: '2026-08-03T10:00:00', por: 'Pessoa A', acao: 'edição', tipo: 'linhas', codigo: 'VAC', campo: 'nome', antes: 'X', depois: 'Y', motivo: 'ajuste' }]);
       await put('00. Backups/Cadastros', 'historico-auditoria_2026-09.jsonl', [{ em: '2026-09-04T10:00:00', por: 'Pessoa B', acao: 'criação', tipo: 'turnos', codigo: 'T9' }, 'linha {quebrada']);
       await put('00. Backups/Perdas', 'historico-auditoria_2026-07.jsonl', [{ t: '2026-07-05T08:00:00Z', u: 'Pessoa C', uid: '9101', a: 'Lançamento', d: 'scrap 12 kg' }, { t: '2026-07-06T08:00:00Z', u: 'Pessoa D', uid: '9102', a: 'Exclusão', d: 'registro 7' }]);
+      await put('00. Backups/Paradas', 'historico-auditoria_2026-05.jsonl', [{ em: '2026-05-02T09:00:00Z', por: 'Pessoa E', acao: 'evento', c: 'P12', txt: 'parada de 15 min', id: 'q1' }]);
+      await put('00. Backups/Equipamentos', 'historico-auditoria_2026-04.jsonl', [{ em: '2026-04-02T09:00:00Z', por: 'Pessoa F', k: 'os', id: 'op1', ref: 'EQ-07' }]);
       const box = document.createElement('div'); box.id = 'caixaTeste'; document.body.appendChild(box); const el = document.createElement('div'); box.appendChild(el);
       const espera = () => new Promise(r => setTimeout(r, 400)), linhas = () => [...document.querySelectorAll('#audHist table tr')].slice(1).map(tr => tr.innerText.replace(/\s+/g, ' ').trim());
       const antes = []; for await (const [n] of (await Store.sub('00. Backups/Cadastros', false)).entries()) antes.push(n);
@@ -19,6 +21,9 @@ const assert = require('assert/strict'), abrir = require('./pasta-ficticia.cjs')
       sel('#hMes', '2026-08'); await espera(); o.cadAgo = linhas();
       sel('#hMod', 'Perdas'); await espera(); o.waste = linhas();
       const q = document.querySelector('#hQ'); q.value = '9102'; q.dispatchEvent(new Event('input')); await new Promise(r => setTimeout(r, 900)); o.busca = linhas();
+      q.value = ''; q.dispatchEvent(new Event('input')); await new Promise(r => setTimeout(r, 900));
+      sel('#hMod', 'Paradas'); await espera(); o.paradas = linhas();
+      sel('#hMod', 'Equipamentos'); await espera(); o.equip = linhas();
       sel('#hMod', 'Ordens'); await espera(); o.ordens = document.querySelector('#audHist').innerText.replace(/\s+/g, ' ');
       const depois = []; for await (const [n] of (await Store.sub('00. Backups/Cadastros', false)).entries()) depois.push(n);
       o.semGravar = JSON.stringify(antes.sort()) === JSON.stringify(depois.sort());
@@ -29,6 +34,8 @@ const assert = require('assert/strict'), abrir = require('./pasta-ficticia.cjs')
     assert.equal(r.cadAgo.length, 1); assert.match(r.cadAgo[0], /Pessoa A.*edição.*VAC.*nome.*X → Y.*ajuste/, JSON.stringify(r.cadAgo));
     assert.equal(r.waste.length, 2); assert.match(r.waste[0], /Pessoa D 9102 Exclusão registro 7/, 'Waste: mais recente primeiro, com o ID: ' + JSON.stringify(r.waste));
     assert.deepEqual(r.busca.length, 1); assert.match(r.busca[0], /9102/);
+    assert.match(r.paradas[0] || '', /Pessoa E evento P12 · parada de 15 min/, JSON.stringify(r.paradas));
+    assert.match(r.equip[0] || '', /Pessoa F os EQ-07/, JSON.stringify(r.equip));
     assert.match(r.ordens, /Nenhum arquivo de histórico em 00\. Backups\/Ordens/, 'módulo sem arquivo avisa, sem erro: ' + r.ordens);
     assert.ok(r.semGravar, 'a consulta não grava nada');
     console.log('ok histórico arquivado: módulo e mês, formatos das trilhas normalizados (com ID), busca, linha ilegível marcada, módulo sem arquivo avisa e nada é gravado');
