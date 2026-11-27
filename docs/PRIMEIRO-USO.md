@@ -6,6 +6,12 @@ Vale para instalar a plataforma pela primeira vez: pasta nova, nenhum cadastro, 
 1. Crie uma pasta na rede (ex.: `Vacutainer`) e copie o `Plataforma.html` para ela. A pasta externa `IMAGENS/Marca` (fonte e logos) é opcional ([MARCA](MARCA.md)).
 2. Abra o `Plataforma.html` no Chrome ou no Edge.
 
+**O que a pasta nova precisa ter:** só o `Plataforma.html`, e nem ele é obrigatório lá dentro (a pasta conectada é a dos dados; o HTML pode ser aberto de outro lugar). Não crie subpastas nem arquivos à mão: a plataforma cria `00. Bases`, `00. Backups` e o cadastro conforme o uso. A pasta precisa:
+- ser uma pasta comum, com permissão de **gravação** para quem usa. O Chrome e o Edge recusam a raiz do disco (`C:\`), pastas do sistema e as próprias pastas Downloads, Área de trabalho e Documentos (uma subpasta delas, como `Documentos\Vacutainer`, funciona);
+- ao conectar, receber a permissão: quando o navegador perguntar, escolha **Editar arquivos** (ou Permitir). Se recusar, a tela de entrada mostra o motivo no cartão (1.8.94) e basta clicar de novo.
+
+**Não precisa limpar cookies.** O navegador guarda só a pasta lembrada (o botão vira "Reconectar <pasta>") e a fila de gravações pendentes; limpar os dados do site apaga essa fila. Se o botão mostrar "Reconectar <pasta>" e essa não for a pasta certa, ele reconecta a antiga; na tela seguinte use **Escolher outra pasta**.
+
 ## 2. Criar o cadastro inicial
 1. Clique em **Conectar pasta da linha** e escolha a pasta.
 2. A tela mostra "Cadastro não encontrado". Clique em **Criar o cadastro inicial (primeiro administrador)**.
