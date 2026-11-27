@@ -4485,7 +4485,7 @@ function wireConfigComum(){$('#cPasta').onclick=async()=>{if(await Store.pick())
         entrar pelo ID (autocadastro como Consulta); página inicial por perfil (1x por sessão); vigência gravada não se edita (desativar com motivo); painel de vigências; semáforo central; saída do modo de teste.
    1.1.2: aviso da carga diz qual base foi lida.  1.5: páginas Paradas, Máquinas, Manutenção e Projetos na lista (aparecem quando o HTML chega na pasta).  1.4: lista técnica pela CS12 multinível (itens = nível 1, estrutura = níveis 2+); CS03 sai.  1.3: cabeçalho comum (vac-cabecalho v2: barra do sistema + página + abas), busca Ctrl K, acabamento V1.90, Versões com cabeçalho e último backup.  1.2: Configuração › Versões das páginas (versão e data de cada HTML, gravação das bases, cópias repetidas, histórico).
    ===================================================================== */
-const PAGE={id:'portal',titulo:"Administração · Linha Vacutainer",tituloCurto:"Administração",subtitulo:'Sistemas de gestão da linha',versao:'1.9.96',baseFile:'portal-base.json',idb:'vac-portal',backupDir:'00. Backups/Portal',
+const PAGE={id:'portal',titulo:"Administração · Linha Vacutainer",tituloCurto:"Administração",subtitulo:'Sistemas de gestão da linha',versao:'1.9.97',baseFile:'portal-base.json',idb:'vac-portal',backupDir:'00. Backups/Portal',
  vazio:()=>({schema:'portal-base',schemaVersion:1,rev:0,config:{modulos:{},avisoDias:30,notas:{}},audit:[]}),
  /* itens do Portal para a busca Ctrl K: cadastro, pendências e telas */
  busca:q=>{const R=[],D=Cad.D;if(D)for(const t of CAD_ORD){for(const it of D[t]||[]){const c=String(it[kOf(t)]),nm=t==='bom'?((cadItem('catalogos',it.catalogo)||{}).nome||''):it.nome||'';if(norm(c+' '+nm).includes(q))R.push({tipo:CAD_T[t].um,txt:c+(nm?' · '+nm:''),sub:'Cadastros'+(cadAtivo(t,it,D)?'':' · inativo'),href:'#cadastros/'+t+'/'+encodeURIComponent(c)});if(R.length>30)break}}
@@ -5359,6 +5359,8 @@ const CAD_SECS=['inicio','gel','matriz','importar','auditoria','backups','segura
    curtas (macro, sem detalhe técnico). REGRA: toda versão nova da plataforma ganha uma entrada aqui, a mais recente primeiro
    (AGENTS.md e CLAUDE.md). Tipos: nova (função nova), melhoria (algo que já existia ficou melhor), correcao (erro corrigido). */
 const NOVIDADES=[
+ {v:'1.8.85',d:'2026-11-26',itens:[
+  ['novo','Histórico da trilha de auditoria também nas Ordens da Produção e no cadastro: o que sai da lista ativa vai para o arquivo mensal em 00. Backups, guardado por 12 meses.']]},
  {v:'1.8.84',d:'2026-11-26',itens:[
   ['correcao','Produção no celular: depois de confirmar a produção de uma hora com Enter, a tabela não volta mais para o começo e o próximo campo aparece inteiro.']]},
  {v:'1.8.83',d:'2026-11-26',itens:[
@@ -5768,11 +5770,12 @@ const Cad={base:null,D:null,mod:0,fonte:'nenhum',err:'',fila:[],gravando:false,d
     if(txt){const st=todayISO()+'_'+new Date().toTimeString().slice(0,8).replace(/:/,'h').replace(/:/,'m')+'s';await Store.writeFile(await Store.sub(CAD_BKP),`vacutainer-cadastros_${st}_rev${remoto.rev}.json`,txt)}
     /* 4. gravar rev + 1 */
     novo.rev=Math.max(remoto?remoto.rev||0:0,novo.rev||0)+1;novo.revBy=user();novo.revAt=isoLocal();novo.revId=uid('r');novo.appVersion='Portal '+PAGE.versao;novo.schema='vac-cadastros';novo.schemaVersion=VAC_CAD_VERSAO;
-    novo.auditoria=novo.auditoria.concat(aud);if(novo.auditoria.length>CAD_AUD_MAX)novo.auditoria.splice(0,novo.auditoria.length-CAD_AUD_MAX);
+    novo.auditoria=novo.auditoria.concat(aud);const cortadas=novo.auditoria.length>CAD_AUD_MAX?novo.auditoria.splice(0,novo.auditoria.length-CAD_AUD_MAX):[];   /* P4 · histórico do cadastro: o que sai da lista ativa vai para 00. Backups/Cadastros depois da confirmação */
     await Store.writeFile(Store.dir,CAD_FILE,JSON.stringify(novo,null,1));
     /* 5. conferir relendo (se outra pessoa gravou a mesma rev ao mesmo tempo, reaplica de novo) */
     await sleep(600);const f2=await (await Store.dir.getFileHandle(CAD_FILE)).getFile();const chk=JSON.parse(await f2.text());
     if(chk.revId!==novo.revId&amp;&amp;!(chk.rev>novo.rev)){reapl=true;continue}
+    if(cortadas.length)vacHistoricoAuditoria.arquivar(()=>Store.sub(CAD_BKP,true),cortadas);
     const ids=new Set(lote.map(o=>o.id));this.fila=this.fila.filter(o=>!ids.has(o.id));
     this.base=cadFix(chk);this.mod=f2.lastModified;this.fonte='pasta';this.err='';await this.persistFila();this.salvarCopia();this.recompute()}
    this.status=this.fila.length?'pendente':'salvo';
@@ -22015,7 +22018,8 @@ const Ord = {
       } else toast(ORD_FILE + ' ainda não existia na pasta: o arquivo foi criado.');
     }
     const b = this.B; b.rev = (b.rev || 0) + 1; b.revBy = this.quem(); b.revAt = new Date().toISOString(); b.revId = 'r' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6); b.appVersion = 'Produção ' + APP_VERSION;
-    if (b.auditoria.length > 5000) b.auditoria.splice(0, b.auditoria.length - 5000);
+    /* P4 · histórico: o que sai da lista ativa (5.000) fica guardado até a gravação ser confirmada e então vai para o arquivo mensal em 00. Backups/Ordens */
+    if (b.auditoria.length > 5000) this.audCortadas = (this.audCortadas || []).concat(b.auditoria.splice(0, b.auditoria.length - 5000));
     try { b.exports = this.exportsBuild(); } catch (e) { console.warn('exports ordens', e); }
     const txt = JSON.stringify(b);
     if (naPasta) {
@@ -22027,6 +22031,7 @@ const Ord = {
       if (!ok) return falha(`A gravação de ${ORD_FILE} não foi confirmada: ${why}. A alteração continua pendente neste navegador; use "Gravar de novo".`);
     }
     this.pend = null; this.audPend = []; this.err = ''; this.fonte = naPasta ? 'pasta' : this.fonte;
+    if (naPasta &amp;&amp; this.audCortadas &amp;&amp; this.audCortadas.length) { const L = this.audCortadas; this.audCortadas = []; vacHistoricoAuditoria.arquivar(async () => (await Store.S.backend.backupRoot()).getDirectoryHandle(ORD_BK, { create: true }), L); }
     if (mode !== 'exemplo') { try { await IDB.set('ordens', b); await IDB.set('ordens.pend', null); } catch (e) { } }
   },
   async reenviar() { if (!this.pend) return; await this.gravar(this.pend.comps, this.pend.motivo); },
@@ -55555,8 +55560,8 @@ body.vac-porta{overflow:hidden}
       "id": "oee",
       "path": "Plataforma.html#motor/oee",
       "version": "2.6.50",
-      "sha256": "c8883d8747aa4cdba8cf8e38da2fb91194eed6b3f03780303c9888276230deff",
-      "bytes": 2393038
+      "sha256": "f5b4849071a26b766d2edbb9967b14db942d19eeeefad1efe6de2d10aa336ec1",
+      "bytes": 2393504
     },
     {
       "id": "perdas",
@@ -55610,15 +55615,15 @@ body.vac-porta{overflow:hidden}
     {
       "id": "portal",
       "path": "Plataforma.html#motor/portal",
-      "version": "1.9.96",
-      "sha256": "909ef48823e951a77312aba0aa3cdeec02091f5e9306a4b8f31c0954e3e5dafc",
-      "bytes": 1341866
+      "version": "1.9.97",
+      "sha256": "57b6ed5321893c047da6a2cb480cbcc8b647866884d7ac6515284b485835e097",
+      "bytes": 1342316
     }
   ],
   "limitations": [
     "Projetos e conteúdo técnico OSM/MES/AM/TPM mantêm os limites documentados nas fontes."
   ],
-  "enginesSha256": "31052265d901c7d942e3973ee2caedf725a0fb35c211d861355a7dea9d852b4f",
+  "enginesSha256": "3fc652a7da94a449ddebf2c6a3a0b4a84bc45693481e55e9a1077c156671bae4",
   "originRevision": "ffc9ee8",
   "sourceMode": "single-html",
   "originEnginesSha256": "a87a64ad0c328f70e102b2ae888790a9b5d5a9bd05778652a7ce7cae140e40d2"
@@ -55688,7 +55693,7 @@ summary{cursor:pointer;font-weight:600;color:var(--navy)}
 'use strict';
 /* ---------- referência (atualizar quando a plataforma mudar de versão) ---------- */
 // Iguais às do pacote da plataforma (nova-plataforma/src/generated/manifest.json); o teste ferramenta-verificar confere.
-const VERSOES = {"oee":"2.6.50","perdas":"1.12.21","gel":"2.52","paradas":"1.2.22","equip":"1.0.22","inic":"1.1.17","linha":"1.7.1","projetos":"0.1.16","portal":"1.9.96"};
+const VERSOES = {"oee":"2.6.50","perdas":"1.12.21","gel":"2.52","paradas":"1.2.22","equip":"1.0.22","inic":"1.1.17","linha":"1.7.1","projetos":"0.1.16","portal":"1.9.97"};
 const BASES = [
  { arq: 'vacutainer-cadastros.json', mod: 'portal', nome: 'Cadastro geral (Portal)', obrig: true, cadastro: true, bk: 'Cadastros' },
  { arq: 'portal-base.json', mod: 'portal', nome: 'Portal', obrig: true, bk: 'Portal' },
@@ -56279,7 +56284,7 @@ import { Icon, Button, Badge, Empty, Modal, BarChart, BrandLogo, CommandMenu } f
 import { ModuleFrame } from "vac:modulo/components/ModuleFrame";
 import manifest from "vac:recurso/manifesto";
 import { ModuleTabs } from "vac:modulo/components/ModuleTabs";
-const VERSION = "1.8.84";
+const VERSION = "1.8.85";
 /* Navegação 1.3.0 (16/11/2026): Visão da linha, Relatórios e Importações têm abas; as que mostram uma tela do
    Portal (motor da Administração) trazem o 3º campo com a aba dele. Administração fica só com cadastros e configuração. */
 const SHELL_TABS = {
