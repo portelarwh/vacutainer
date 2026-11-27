@@ -648,6 +648,13 @@ const vacNaoAchou = e => !!e &amp;&amp; (e.name === 'NotFoundError' || e.name ==
    quem compara usa o ID. Registro sem ID não é ligado a ninguém pelo nome. */
 // Documento do cadastro: Cad.D na Administração, senão a cópia vac.cadastros, senão null. Único lugar.
 function vacCad(){if(typeof Cad!=='undefined'&amp;&amp;Cad&amp;&amp;Cad.D)return Cad.D;try{return JSON.parse(localStorage.getItem('vac.cadastros')||'null')}catch(e){return null}}
+/* H01 etapa 1 (27/11/2026) · nomes do sistema e pessoa/perfil atuais: antes copiados, iguais, nos nove motores */
+const VAC_NOMES_V2={oee:{OEE:'Produção'},perdas:{Perdas:'Waste'},gel:{Gel:'Gestão de Gel'}};
+const VAC_OUTROS_V2=['maquinas','manut'],vacEhOutros=s=>s.grupo==='outros'||VAC_OUTROS_V2.includes(s.id);
+const vacNomeSis=s=>(s&amp;&amp;VAC_NOMES_V2[s.id]&amp;&amp;VAC_NOMES_V2[s.id][s.nome])||(s&amp;&amp;s.nome)||'';
+function vacUsuario(c=vacCad()){let id='';try{id=localStorage.getItem('vac.userId')||''}catch(e){}return id&amp;&amp;c?(c.usuarios||[]).find(u=>String(u.codigo)===String(id))||null:null}
+function vacPerfil(c=vacCad()){const u=vacUsuario(c);return u&amp;&amp;c?(c.perfis||[]).find(p=>p.codigo===u.perfil)||null:null}
+function vacNomeUsuario(){try{return(typeof user==='function'&amp;&amp;user())||localStorage.getItem('vac.user')||''}catch(e){return''}}
 // Leituras do cadastro geral (vigência por data do fato; ausência é null, nunca zero).
 vacCad.vigente = (vigencias, data) => { const d = String(data || '').slice(0, 10) || vacHoje(); return (vigencias || []).filter(v => v.de <= d &amp;&amp; (!v.ate || v.ate >= d)).sort((a, b) => a.de < b.de ? 1 : -1)[0] || null; };
 vacCad.item = (tipo, codigo) => { const c = vacCad(); return ((c &amp;&amp; c[tipo]) || []).find(x => String(x.codigo) === String(codigo)) || null; };
@@ -4172,17 +4179,11 @@ function wireCabecalho(){const b=$('#vacBusca');if(b)b.onclick=()=>Busca.abrir()
    nomes exibidos novos (Produção, Waste, Gestão de Gel), entrar pelo ID (usuários do cadastro: cópia vac.cadastros),
    barra filtrada pela permissão "ver" do perfil e semáforo comum (parametros do cadastro).
    A página pode definir vacAoTrocarUsuario(nome) para atualizar o próprio estado quando a pessoa entra. */
-const VAC_NOMES_V2={oee:{OEE:'Produção'},perdas:{Perdas:'Waste'},gel:{Gel:'Gestão de Gel'}};
-const VAC_OUTROS_V2=['maquinas','manut'],vacEhOutros=s=>s.grupo==='outros'||VAC_OUTROS_V2.includes(s.id);
-const vacNomeSis=s=>(s&amp;&amp;VAC_NOMES_V2[s.id]&amp;&amp;VAC_NOMES_V2[s.id][s.nome])||(s&amp;&amp;s.nome)||'';
-function vacUsuario(c=vacCad()){let id='';try{id=localStorage.getItem('vac.userId')||''}catch(e){}return id&amp;&amp;c?(c.usuarios||[]).find(u=>String(u.codigo)===String(id))||null:null}
-function vacPerfil(c=vacCad()){const u=vacUsuario(c);return u&amp;&amp;c?(c.perfis||[]).find(p=>p.codigo===u.perfil)||null:null}
 /* permissão do perfil na página (sem perfil, sem cadastro ou sem a página no perfil = pode) */
 function vacPode(mod,fn='ver'){return vacPodeComum(vacCad(),vacUsuario(),mod,fn)}
 /* semáforo comum: 'ok' | 'warn' | 'crit' | 'none' em relação à meta (inverso: menor é melhor, ex.: scrap, waste) */
 function vacSemaforo(v,meta,{inverso=false}={}){if(v==null||meta==null||!isFinite(v)||!isFinite(meta)||!meta)return'none';const c=vacCad(),P=(c&amp;&amp;c.parametros)||{};
  const vd=(+P.semaforoVerdePct||100)/100,am=P.semaforoAmarelo===false?vd:(+P.semaforoAmareloPct||90)/100,r=inverso?(v<=0?Infinity:meta/v):v/meta;return r>=vd?'ok':r>=am?'warn':'crit'}
-function vacNomeUsuario(){try{return(typeof user==='function'&amp;&amp;user())||localStorage.getItem('vac.user')||''}catch(e){return''}}
 function renderSysNav(){const el=$('#sysNav');if(!el)return;const cur=vacAtual(),port=systems().find(s=>s.id==='portal')||{id:'portal',html:'Portal.html'};
  const vis=systems().filter(s=>!s.oculto&amp;&amp;!s.futuro&amp;&amp;(vacPode(s.id)||s.id===PAGE.id)),href=s=>PAGE.id==='portal'&amp;&amp;s.id==='portal'?'#geral':sysHref(s);
  el.innerHTML=vis.filter(s=>!vacEhOutros(s)).map(s=>`<a href="${esc(href(s))}" class="${s.id===cur?'cur':''}"${s.id===cur?' aria-current="page"':''}${s.sub?` title="${esc(s.sub)}"`:''}>${esc(vacNomeSis(s))}</a>`).join('');
@@ -5380,6 +5381,8 @@ const CAD_SECS=['inicio','gel','matriz','importar','auditoria','backups','segura
    curtas (macro, sem detalhe técnico). REGRA: toda versão nova da plataforma ganha uma entrada aqui, a mais recente primeiro
    (AGENTS.md e CLAUDE.md). Tipos: nova (função nova), melhoria (algo que já existia ficou melhor), correcao (erro corrigido). */
 const NOVIDADES=[
+ {v:'1.8.90',d:'2026-11-27',itens:[
+  ['melhoria','Organização interna: nome dos sistemas e pessoa e perfil atuais vêm de um só lugar em todos os módulos (nada muda no uso).']]},
  {v:'1.8.89',d:'2026-11-27',itens:[
   ['correcao','Excel dos relatórios do Waste, das Paradas e da Administração igual ao PDF: valores e porcentagens como número (dá para somar e filtrar), % com formato de %, e a linha Total também no Excel.']]},
  {v:'1.8.88',d:'2026-11-26',itens:[
@@ -12962,17 +12965,11 @@ function wireCabecalho(){const b=$('#vacBusca');if(b)b.onclick=()=>Busca.abrir()
    nomes exibidos novos (Produção, Waste, Gestão de Gel), entrar pelo ID (usuários do cadastro: cópia vac.cadastros),
    barra filtrada pela permissão "ver" do perfil e semáforo comum (parametros do cadastro).
    A página pode definir vacAoTrocarUsuario(nome) para atualizar o próprio estado quando a pessoa entra. */
-const VAC_NOMES_V2={oee:{OEE:'Produção'},perdas:{Perdas:'Waste'},gel:{Gel:'Gestão de Gel'}};
-const VAC_OUTROS_V2=['maquinas','manut'],vacEhOutros=s=>s.grupo==='outros'||VAC_OUTROS_V2.includes(s.id);
-const vacNomeSis=s=>(s&amp;&amp;VAC_NOMES_V2[s.id]&amp;&amp;VAC_NOMES_V2[s.id][s.nome])||(s&amp;&amp;s.nome)||'';
-function vacUsuario(c=vacCad()){let id='';try{id=localStorage.getItem('vac.userId')||''}catch(e){}return id&amp;&amp;c?(c.usuarios||[]).find(u=>String(u.codigo)===String(id))||null:null}
-function vacPerfil(c=vacCad()){const u=vacUsuario(c);return u&amp;&amp;c?(c.perfis||[]).find(p=>p.codigo===u.perfil)||null:null}
 /* permissão do perfil na página (sem perfil, sem cadastro ou sem a página no perfil = pode) */
 function vacPode(mod,fn='ver'){if(mod==='oee'&amp;&amp;fn!=='ver'&amp;&amp;typeof Store!=='undefined'&amp;&amp;Store.S.formato)return false;return vacPodeComum(vacCad(),vacUsuario(),mod,fn)}   /* base de versão anterior: só consulta */
 /* semáforo comum: 'ok' | 'warn' | 'crit' | 'none' em relação à meta (inverso: menor é melhor, ex.: scrap, waste) */
 function vacSemaforo(v,meta,{inverso=false}={}){if(v==null||meta==null||!isFinite(v)||!isFinite(meta)||!meta)return'none';const c=vacCad(),P=(c&amp;&amp;c.parametros)||{};
  const vd=(+P.semaforoVerdePct||100)/100,am=(+P.semaforoAmareloPct||90)/100,r=inverso?(v<=0?Infinity:meta/v):v/meta;return r>=vd?'ok':r>=am?'warn':'crit'}
-function vacNomeUsuario(){try{return(typeof user==='function'&amp;&amp;user())||localStorage.getItem('vac.user')||''}catch(e){return''}}
 function renderSysNav(){const el=$('#sysNav');if(!el)return;const cur=vacAtual(),port=systems().find(s=>s.id==='portal')||{id:'portal',html:'Portal.html'};
  const vis=systems().filter(s=>!s.oculto&amp;&amp;!s.futuro&amp;&amp;(vacPode(s.id)||s.id===PAGE.id)),href=s=>PAGE.id==='portal'&amp;&amp;s.id==='portal'?'#geral':sysHref(s);
  el.innerHTML=vis.filter(s=>!vacEhOutros(s)).map(s=>`<a href="${esc(href(s))}" class="${s.id===cur?'cur':''}"${s.id===cur?' aria-current="page"':''}${s.sub?` title="${esc(s.sub)}"`:''}>${esc(vacNomeSis(s))}</a>`).join('');
@@ -24552,17 +24549,11 @@ function wireCabecalho(){const b=$('#vacBusca');if(b)b.onclick=()=>Busca.abrir()
    nomes exibidos novos (Produção, Waste, Gestão de Gel), entrar pelo ID (usuários do cadastro: cópia vac.cadastros),
    barra filtrada pela permissão "ver" do perfil e semáforo comum (parametros do cadastro).
    A página pode definir vacAoTrocarUsuario(nome) para atualizar o próprio estado quando a pessoa entra. */
-const VAC_NOMES_V2={oee:{OEE:'Produção'},perdas:{Perdas:'Waste'},gel:{Gel:'Gestão de Gel'}};
-const VAC_OUTROS_V2=['maquinas','manut'],vacEhOutros=s=>s.grupo==='outros'||VAC_OUTROS_V2.includes(s.id);
-const vacNomeSis=s=>(s&amp;&amp;VAC_NOMES_V2[s.id]&amp;&amp;VAC_NOMES_V2[s.id][s.nome])||(s&amp;&amp;s.nome)||'';
-function vacUsuario(c=vacCad()){let id='';try{id=localStorage.getItem('vac.userId')||''}catch(e){}return id&amp;&amp;c?(c.usuarios||[]).find(u=>String(u.codigo)===String(id))||null:null}
-function vacPerfil(c=vacCad()){const u=vacUsuario(c);return u&amp;&amp;c?(c.perfis||[]).find(p=>p.codigo===u.perfil)||null:null}
 /* permissão do perfil na página (sem perfil, sem cadastro ou sem a página no perfil = pode) */
 function vacPode(mod,fn='ver'){return vacPodeComum(vacCad(),vacUsuario(),mod,fn)}
 /* semáforo comum: 'ok' | 'warn' | 'crit' | 'none' em relação à meta (inverso: menor é melhor, ex.: scrap, waste) */
 function vacSemaforo(v,meta,{inverso=false}={}){if(v==null||meta==null||!isFinite(v)||!isFinite(meta)||!meta)return'none';const c=vacCad(),P=(c&amp;&amp;c.parametros)||{};
  const vd=(+P.semaforoVerdePct||100)/100,am=P.semaforoAmarelo===false?vd:(+P.semaforoAmareloPct||90)/100,r=inverso?(v<=0?Infinity:meta/v):v/meta;return r>=vd?'ok':r>=am?'warn':'crit'}
-function vacNomeUsuario(){try{return(typeof user==='function'&amp;&amp;user())||localStorage.getItem('vac.user')||''}catch(e){return''}}
 function renderSysNav(){const el=$('#sysNav');if(!el)return;const cur=vacAtual(),port=systems().find(s=>s.id==='portal')||{id:'portal',html:'Portal.html'};
  const vis=systems().filter(s=>!s.oculto&amp;&amp;!s.futuro&amp;&amp;(vacPode(s.id)||s.id===PAGE.id)),href=s=>PAGE.id==='portal'&amp;&amp;s.id==='portal'?'#geral':sysHref(s);
  el.innerHTML=vis.filter(s=>!vacEhOutros(s)).map(s=>`<a href="${esc(href(s))}" class="${s.id===cur?'cur':''}"${s.id===cur?' aria-current="page"':''}${s.sub?` title="${esc(s.sub)}"`:''}>${esc(vacNomeSis(s))}</a>`).join('');
@@ -26659,17 +26650,11 @@ function wireCabecalho(){const b=$('#vacBusca');if(b)b.onclick=()=>Busca.abrir()
    nomes exibidos novos (Produção, Waste, Gestão de Gel), entrar pelo ID (usuários do cadastro: cópia vac.cadastros),
    barra filtrada pela permissão "ver" do perfil e semáforo comum (parametros do cadastro).
    A página pode definir vacAoTrocarUsuario(nome) para atualizar o próprio estado quando a pessoa entra. */
-const VAC_NOMES_V2={oee:{OEE:'Produção'},perdas:{Perdas:'Waste'},gel:{Gel:'Gestão de Gel'}};
-const VAC_OUTROS_V2=['maquinas','manut'],vacEhOutros=s=>s.grupo==='outros'||VAC_OUTROS_V2.includes(s.id);
-const vacNomeSis=s=>(s&amp;&amp;VAC_NOMES_V2[s.id]&amp;&amp;VAC_NOMES_V2[s.id][s.nome])||(s&amp;&amp;s.nome)||'';
-function vacUsuario(c=vacCad()){let id='';try{id=localStorage.getItem('vac.userId')||''}catch(e){}return id&amp;&amp;c?(c.usuarios||[]).find(u=>String(u.codigo)===String(id))||null:null}
-function vacPerfil(c=vacCad()){const u=vacUsuario(c);return u&amp;&amp;c?(c.perfis||[]).find(p=>p.codigo===u.perfil)||null:null}
 /* permissão do perfil na página (sem perfil, sem cadastro ou sem a página no perfil = pode) */
 function vacPode(mod,fn='ver'){return vacPodeComum(vacCad(),vacUsuario(),mod,fn)}
 /* semáforo comum: 'ok' | 'warn' | 'crit' | 'none' em relação à meta (inverso: menor é melhor, ex.: scrap, waste) */
 function vacSemaforo(v,meta,{inverso=false}={}){if(v==null||meta==null||!isFinite(v)||!isFinite(meta)||!meta)return'none';const c=vacCad(),P=(c&amp;&amp;c.parametros)||{};
  const vd=(+P.semaforoVerdePct||100)/100,am=P.semaforoAmarelo===false?vd:(+P.semaforoAmareloPct||90)/100,r=inverso?(v<=0?Infinity:meta/v):v/meta;return r>=vd?'ok':r>=am?'warn':'crit'}
-function vacNomeUsuario(){try{return(typeof user==='function'&amp;&amp;user())||localStorage.getItem('vac.user')||''}catch(e){return''}}
 function renderSysNav(){const el=$('#sysNav');if(!el)return;const cur=vacAtual(),port=systems().find(s=>s.id==='portal')||{id:'portal',html:'Portal.html'};
  const vis=systems().filter(s=>!s.oculto&amp;&amp;!s.futuro&amp;&amp;(vacPode(s.id)||s.id===PAGE.id)),href=s=>PAGE.id==='portal'&amp;&amp;s.id==='portal'?'#geral':sysHref(s);
  el.innerHTML=vis.filter(s=>!vacEhOutros(s)).map(s=>`<a href="${esc(href(s))}" class="${s.id===cur?'cur':''}"${s.id===cur?' aria-current="page"':''}${s.sub?` title="${esc(s.sub)}"`:''}>${esc(vacNomeSis(s))}</a>`).join('');
@@ -33443,17 +33428,11 @@ function wireCabecalho(){const b=$('#vacBusca');if(b)b.onclick=()=>Busca.abrir()
    nomes exibidos novos (Produção, Waste, Gestão de Gel), entrar pelo ID (usuários do cadastro: cópia vac.cadastros),
    barra filtrada pela permissão "ver" do perfil e semáforo comum (parametros do cadastro).
    A página pode definir vacAoTrocarUsuario(nome) para atualizar o próprio estado quando a pessoa entra. */
-const VAC_NOMES_V2={oee:{OEE:'Produção'},perdas:{Perdas:'Waste'},gel:{Gel:'Gestão de Gel'}};
-const VAC_OUTROS_V2=['maquinas','manut'],vacEhOutros=s=>s.grupo==='outros'||VAC_OUTROS_V2.includes(s.id);
-const vacNomeSis=s=>(s&amp;&amp;VAC_NOMES_V2[s.id]&amp;&amp;VAC_NOMES_V2[s.id][s.nome])||(s&amp;&amp;s.nome)||'';
-function vacUsuario(c=vacCad()){let id='';try{id=localStorage.getItem('vac.userId')||''}catch(e){}return id&amp;&amp;c?(c.usuarios||[]).find(u=>String(u.codigo)===String(id))||null:null}
-function vacPerfil(c=vacCad()){const u=vacUsuario(c);return u&amp;&amp;c?(c.perfis||[]).find(p=>p.codigo===u.perfil)||null:null}
 /* permissão do perfil na página (sem perfil, sem cadastro ou sem a página no perfil = pode) */
 function vacPode(mod,fn='ver'){return vacPodeComum(vacCad(),vacUsuario(),mod,fn)}
 /* semáforo comum: 'ok' | 'warn' | 'crit' | 'none' em relação à meta (inverso: menor é melhor, ex.: scrap, waste) */
 function vacSemaforo(v,meta,{inverso=false}={}){if(v==null||meta==null||!isFinite(v)||!isFinite(meta)||!meta)return'none';const c=vacCad(),P=(c&amp;&amp;c.parametros)||{};
  const vd=(+P.semaforoVerdePct||100)/100,am=P.semaforoAmarelo===false?vd:(+P.semaforoAmareloPct||90)/100,r=inverso?(v<=0?Infinity:meta/v):v/meta;return r>=vd?'ok':r>=am?'warn':'crit'}
-function vacNomeUsuario(){try{return(typeof user==='function'&amp;&amp;user())||localStorage.getItem('vac.user')||''}catch(e){return''}}
 function renderSysNav(){const el=$('#sysNav');if(!el)return;const cur=vacAtual(),port=systems().find(s=>s.id==='portal')||{id:'portal',html:'Portal.html'};
  const vis=systems().filter(s=>!s.oculto&amp;&amp;!s.futuro&amp;&amp;(vacPode(s.id)||s.id===PAGE.id)),href=s=>PAGE.id==='portal'&amp;&amp;s.id==='portal'?'#geral':sysHref(s);
  el.innerHTML=vis.filter(s=>!vacEhOutros(s)).map(s=>`<a href="${esc(href(s))}" class="${s.id===cur?'cur':''}"${s.id===cur?' aria-current="page"':''}${s.sub?` title="${esc(s.sub)}"`:''}>${esc(vacNomeSis(s))}</a>`).join('');
@@ -34287,17 +34266,11 @@ function wireCabecalho(){const b=$('#vacBusca');if(b)b.onclick=()=>Busca.abrir()
    nomes exibidos novos (Produção, Waste, Gestão de Gel), entrar pelo ID (usuários do cadastro: cópia vac.cadastros),
    barra filtrada pela permissão "ver" do perfil e semáforo comum (parametros do cadastro).
    A página pode definir vacAoTrocarUsuario(nome) para atualizar o próprio estado quando a pessoa entra. */
-const VAC_NOMES_V2={oee:{OEE:'Produção'},perdas:{Perdas:'Waste'},gel:{Gel:'Gestão de Gel'}};
-const VAC_OUTROS_V2=['maquinas','manut'],vacEhOutros=s=>s.grupo==='outros'||VAC_OUTROS_V2.includes(s.id);
-const vacNomeSis=s=>(s&amp;&amp;VAC_NOMES_V2[s.id]&amp;&amp;VAC_NOMES_V2[s.id][s.nome])||(s&amp;&amp;s.nome)||'';
-function vacUsuario(c=vacCad()){let id='';try{id=localStorage.getItem('vac.userId')||''}catch(e){}return id&amp;&amp;c?(c.usuarios||[]).find(u=>String(u.codigo)===String(id))||null:null}
-function vacPerfil(c=vacCad()){const u=vacUsuario(c);return u&amp;&amp;c?(c.perfis||[]).find(p=>p.codigo===u.perfil)||null:null}
 /* permissão do perfil na página (sem perfil, sem cadastro ou sem a página no perfil = pode) */
 function vacPode(mod,fn='ver'){return vacPodeComum(vacCad(),vacUsuario(),mod,fn)}
 /* semáforo comum: 'ok' | 'warn' | 'crit' | 'none' em relação à meta (inverso: menor é melhor, ex.: scrap, waste) */
 function vacSemaforo(v,meta,{inverso=false}={}){if(v==null||meta==null||!isFinite(v)||!isFinite(meta)||!meta)return'none';const c=vacCad(),P=(c&amp;&amp;c.parametros)||{};
  const vd=(+P.semaforoVerdePct||100)/100,am=P.semaforoAmarelo===false?vd:(+P.semaforoAmareloPct||90)/100,r=inverso?(v<=0?Infinity:meta/v):v/meta;return r>=vd?'ok':r>=am?'warn':'crit'}
-function vacNomeUsuario(){try{return(typeof user==='function'&amp;&amp;user())||localStorage.getItem('vac.user')||''}catch(e){return''}}
 function renderSysNav(){const el=$('#sysNav');if(!el)return;const cur=vacAtual(),port=systems().find(s=>s.id==='portal')||{id:'portal',html:'Portal.html'};
  const vis=systems().filter(s=>!s.oculto&amp;&amp;!s.futuro&amp;&amp;(vacPode(s.id)||s.id===PAGE.id)),href=s=>PAGE.id==='portal'&amp;&amp;s.id==='portal'?'#geral':sysHref(s);
  el.innerHTML=vis.filter(s=>!vacEhOutros(s)).map(s=>`<a href="${esc(href(s))}" class="${s.id===cur?'cur':''}"${s.id===cur?' aria-current="page"':''}${s.sub?` title="${esc(s.sub)}"`:''}>${esc(vacNomeSis(s))}</a>`).join('');
@@ -34851,17 +34824,11 @@ function wireCabecalho(){const b=$('#vacBusca');if(b)b.onclick=()=>Busca.abrir()
    nomes exibidos novos (Produção, Waste, Gestão de Gel), entrar pelo ID (usuários do cadastro: cópia vac.cadastros),
    barra filtrada pela permissão "ver" do perfil e semáforo comum (parametros do cadastro).
    A página pode definir vacAoTrocarUsuario(nome) para atualizar o próprio estado quando a pessoa entra. */
-const VAC_NOMES_V2={oee:{OEE:'Produção'},perdas:{Perdas:'Waste'},gel:{Gel:'Gestão de Gel'}};
-const VAC_OUTROS_V2=['maquinas','manut'],vacEhOutros=s=>s.grupo==='outros'||VAC_OUTROS_V2.includes(s.id);
-const vacNomeSis=s=>(s&amp;&amp;VAC_NOMES_V2[s.id]&amp;&amp;VAC_NOMES_V2[s.id][s.nome])||(s&amp;&amp;s.nome)||'';
-function vacUsuario(c=vacCad()){let id='';try{id=localStorage.getItem('vac.userId')||''}catch(e){}return id&amp;&amp;c?(c.usuarios||[]).find(u=>String(u.codigo)===String(id))||null:null}
-function vacPerfil(c=vacCad()){const u=vacUsuario(c);return u&amp;&amp;c?(c.perfis||[]).find(p=>p.codigo===u.perfil)||null:null}
 /* permissão do perfil na página (sem perfil, sem cadastro ou sem a página no perfil = pode) */
 function vacPode(mod,fn='ver'){return vacPodeComum(vacCad(),vacUsuario(),mod,fn)}
 /* semáforo comum: 'ok' | 'warn' | 'crit' | 'none' em relação à meta (inverso: menor é melhor, ex.: scrap, waste) */
 function vacSemaforo(v,meta,{inverso=false}={}){if(v==null||meta==null||!isFinite(v)||!isFinite(meta)||!meta)return'none';const c=vacCad(),P=(c&amp;&amp;c.parametros)||{};
  const vd=(+P.semaforoVerdePct||100)/100,am=P.semaforoAmarelo===false?vd:(+P.semaforoAmareloPct||90)/100,r=inverso?(v<=0?Infinity:meta/v):v/meta;return r>=vd?'ok':r>=am?'warn':'crit'}
-function vacNomeUsuario(){try{return(typeof user==='function'&amp;&amp;user())||localStorage.getItem('vac.user')||''}catch(e){return''}}
 function renderSysNav(){const el=$('#sysNav');if(!el)return;const cur=vacAtual(),port=systems().find(s=>s.id==='portal')||{id:'portal',html:'Portal.html'};
  const vis=systems().filter(s=>!s.oculto&amp;&amp;!s.futuro&amp;&amp;(vacPode(s.id)||s.id===PAGE.id)),href=s=>PAGE.id==='portal'&amp;&amp;s.id==='portal'?'#geral':sysHref(s);
  el.innerHTML=vis.filter(s=>!vacEhOutros(s)).map(s=>`<a href="${esc(href(s))}" class="${s.id===cur?'cur':''}"${s.id===cur?' aria-current="page"':''}${s.sub?` title="${esc(s.sub)}"`:''}>${esc(vacNomeSis(s))}</a>`).join('');
@@ -35734,17 +35701,11 @@ function wireCabecalho(){const b=$('#vacBusca');if(b)b.onclick=()=>Busca.abrir()
    nomes exibidos novos (Produção, Waste, Gestão de Gel), entrar pelo ID (usuários do cadastro: cópia vac.cadastros),
    barra filtrada pela permissão "ver" do perfil e semáforo comum (parametros do cadastro).
    A página pode definir vacAoTrocarUsuario(nome) para atualizar o próprio estado quando a pessoa entra. */
-const VAC_NOMES_V2={oee:{OEE:'Produção'},perdas:{Perdas:'Waste'},gel:{Gel:'Gestão de Gel'}};
-const VAC_OUTROS_V2=['maquinas','manut'],vacEhOutros=s=>s.grupo==='outros'||VAC_OUTROS_V2.includes(s.id);
-const vacNomeSis=s=>(s&amp;&amp;VAC_NOMES_V2[s.id]&amp;&amp;VAC_NOMES_V2[s.id][s.nome])||(s&amp;&amp;s.nome)||'';
-function vacUsuario(c=vacCad()){let id='';try{id=localStorage.getItem('vac.userId')||''}catch(e){}return id&amp;&amp;c?(c.usuarios||[]).find(u=>String(u.codigo)===String(id))||null:null}
-function vacPerfil(c=vacCad()){const u=vacUsuario(c);return u&amp;&amp;c?(c.perfis||[]).find(p=>p.codigo===u.perfil)||null:null}
 /* permissão do perfil na página (sem perfil, sem cadastro ou sem a página no perfil = pode) */
 function vacPode(mod,fn='ver'){return vacPodeComum(vacCad(),vacUsuario(),mod,fn)}
 /* semáforo comum: 'ok' | 'warn' | 'crit' | 'none' em relação à meta (inverso: menor é melhor, ex.: scrap, waste) */
 function vacSemaforo(v,meta,{inverso=false}={}){if(v==null||meta==null||!isFinite(v)||!isFinite(meta)||!meta)return'none';const c=vacCad(),P=(c&amp;&amp;c.parametros)||{};
  const vd=(+P.semaforoVerdePct||100)/100,am=P.semaforoAmarelo===false?vd:(+P.semaforoAmareloPct||90)/100,r=inverso?(v<=0?Infinity:meta/v):v/meta;return r>=vd?'ok':r>=am?'warn':'crit'}
-function vacNomeUsuario(){try{return(typeof user==='function'&amp;&amp;user())||localStorage.getItem('vac.user')||''}catch(e){return''}}
 function renderSysNav(){const el=$('#sysNav');if(!el)return;const cur=vacAtual(),port=systems().find(s=>s.id==='portal')||{id:'portal',html:'Portal.html'};
  const vis=systems().filter(s=>!s.oculto&amp;&amp;!s.futuro&amp;&amp;(vacPode(s.id)||s.id===PAGE.id)),href=s=>PAGE.id==='portal'&amp;&amp;s.id==='portal'?'#geral':sysHref(s);
  el.innerHTML=vis.filter(s=>!vacEhOutros(s)).map(s=>`<a href="${esc(href(s))}" class="${s.id===cur?'cur':''}"${s.id===cur?' aria-current="page"':''}${s.sub?` title="${esc(s.sub)}"`:''}>${esc(vacNomeSis(s))}</a>`).join('');
@@ -37208,17 +37169,11 @@ function wireCabecalho(){const b=$('#vacBusca');if(b)b.onclick=()=>Busca.abrir()
    nomes exibidos novos (Produção, Waste, Gestão de Gel), entrar pelo ID (usuários do cadastro: cópia vac.cadastros),
    barra filtrada pela permissão "ver" do perfil e semáforo comum (parametros do cadastro).
    A página pode definir vacAoTrocarUsuario(nome) para atualizar o próprio estado quando a pessoa entra. */
-const VAC_NOMES_V2={oee:{OEE:'Produção'},perdas:{Perdas:'Waste'},gel:{Gel:'Gestão de Gel'}};
-const VAC_OUTROS_V2=['maquinas','manut'],vacEhOutros=s=>s.grupo==='outros'||VAC_OUTROS_V2.includes(s.id);
-const vacNomeSis=s=>(s&amp;&amp;VAC_NOMES_V2[s.id]&amp;&amp;VAC_NOMES_V2[s.id][s.nome])||(s&amp;&amp;s.nome)||'';
-function vacUsuario(c=vacCad()){let id='';try{id=localStorage.getItem('vac.userId')||''}catch(e){}return id&amp;&amp;c?(c.usuarios||[]).find(u=>String(u.codigo)===String(id))||null:null}
-function vacPerfil(c=vacCad()){const u=vacUsuario(c);return u&amp;&amp;c?(c.perfis||[]).find(p=>p.codigo===u.perfil)||null:null}
 /* permissão do perfil na página (sem perfil, sem cadastro ou sem a página no perfil = pode) */
 function vacPode(mod,fn='ver'){return vacPodeComum(vacCad(),vacUsuario(),mod,fn)}
 /* semáforo comum: 'ok' | 'warn' | 'crit' | 'none' em relação à meta (inverso: menor é melhor, ex.: scrap, waste) */
 function vacSemaforo(v,meta,{inverso=false}={}){if(v==null||meta==null||!isFinite(v)||!isFinite(meta)||!meta)return'none';const c=vacCad(),P=(c&amp;&amp;c.parametros)||{};
  const vd=(+P.semaforoVerdePct||100)/100,am=P.semaforoAmarelo===false?vd:(+P.semaforoAmareloPct||90)/100,r=inverso?(v<=0?Infinity:meta/v):v/meta;return r>=vd?'ok':r>=am?'warn':'crit'}
-function vacNomeUsuario(){try{return(typeof user==='function'&amp;&amp;user())||localStorage.getItem('vac.user')||''}catch(e){return''}}
 function renderSysNav(){const el=$('#sysNav');if(!el)return;const cur=vacAtual(),port=systems().find(s=>s.id==='portal')||{id:'portal',html:'Portal.html'};
  const vis=systems().filter(s=>!s.oculto&amp;&amp;!s.futuro&amp;&amp;(vacPode(s.id)||s.id===PAGE.id)),href=s=>PAGE.id==='portal'&amp;&amp;s.id==='portal'?'#geral':sysHref(s);
  el.innerHTML=vis.filter(s=>!vacEhOutros(s)).map(s=>`<a href="${esc(href(s))}" class="${s.id===cur?'cur':''}"${s.id===cur?' aria-current="page"':''}${s.sub?` title="${esc(s.sub)}"`:''}>${esc(vacNomeSis(s))}</a>`).join('');
@@ -55617,70 +55572,70 @@ body.vac-porta{overflow:hidden}
       "id": "oee",
       "path": "Plataforma.html#motor/oee",
       "version": "2.6.50",
-      "sha256": "45fecd5ad79b6d13b5629b4955de8d7b6c2a9e0fd8a21537f6325889b39857d9",
-      "bytes": 2395347
+      "sha256": "2be88020649f0c21afccda30ea4d44574e7036c86c8ee8bdc19b8e82d2cb2cca",
+      "bytes": 2395463
     },
     {
       "id": "perdas",
       "path": "Plataforma.html#motor/perdas",
       "version": "1.12.21",
-      "sha256": "ce5f677345f425a0476a36dcccc021e5fee070d85ee7e3b7db832f3a1fd45820",
-      "bytes": 985634
+      "sha256": "6deeda0f4cf242171011edafeee12e80b99365f2bacdc83a36f7575aba6d7b3c",
+      "bytes": 985750
     },
     {
       "id": "gel",
       "path": "Plataforma.html#motor/gel",
       "version": "2.52",
-      "sha256": "cd7bc1c9550e6aa96ac91620fa9e0f7add37cb82aed09995f5db659f7de8d218",
-      "bytes": 1629918
+      "sha256": "8ad65d84131b0f81e90ee98bdd9c23ed94ca21f8f85df5b325f0012338093136",
+      "bytes": 1630034
     },
     {
       "id": "paradas",
       "path": "Plataforma.html#motor/paradas",
       "version": "1.2.22",
-      "sha256": "1992e96e326d1707c47adda955679afeff85fd4e6e2acc7c9c8c242fd9b7f3c8",
-      "bytes": 954582
+      "sha256": "4d29c448acbdc28d6536dc96c32ef94dbcfad0fa8c62ae6064757e16d917b1b5",
+      "bytes": 954698
     },
     {
       "id": "equip",
       "path": "Plataforma.html#motor/equip",
       "version": "1.0.22",
-      "sha256": "6a45b7fd3b1474dd32e3752e4d9a75a3aaf723a359a6dbf7821392b6e51edea8",
-      "bytes": 745745
+      "sha256": "2ba3cba09cfeb15a9d086fcbd2e55c26f84afc0bea4a56aa48434d21fef752cd",
+      "bytes": 745861
     },
     {
       "id": "inic",
       "path": "Plataforma.html#motor/inic",
       "version": "1.1.17",
-      "sha256": "7ea3b8b8d3c6966e58ecfa5d6d2e7e2bf7d8d5321df8e7514a4d0983983d7b02",
-      "bytes": 755346
+      "sha256": "5359233abe74dc253d18ef3bc5bb9feea7a9e19ad0fd428d19a9deabb98394f8",
+      "bytes": 755462
     },
     {
       "id": "linha",
       "path": "Plataforma.html#motor/linha",
       "version": "1.7.1",
-      "sha256": "c47cbaf10f88966a1f4a566e4462aa74fe62d1c2f5f89f837b42eb93d6ba05c9",
-      "bytes": 1008378
+      "sha256": "066e8efa06882888bc43eb428f0cbb6bd38e9afa2bafe1fb9eab5240111e9005",
+      "bytes": 1008494
     },
     {
       "id": "projetos",
       "path": "Plataforma.html#motor/projetos",
       "version": "0.1.16",
-      "sha256": "2ad04a7d78d0538cc92ec356df9cc50e596ea4e70c2f5220fa994cbc0fd30e52",
-      "bytes": 677988
+      "sha256": "4c8c7a176c64760e5369e4cb32b7a47225ad989ebe305bae974db21b86b9491b",
+      "bytes": 678104
     },
     {
       "id": "portal",
       "path": "Plataforma.html#motor/portal",
       "version": "1.9.100",
-      "sha256": "1aed4be2639512411f603ceea53e02df167022f020b5aae8aa872d54f3c33ba6",
-      "bytes": 1350016
+      "sha256": "d49a022ad7762ed9f648ad1bfad09710c013e5886ae4c5b6baeb9c94deb85e5a",
+      "bytes": 1350316
     }
   ],
   "limitations": [
     "Projetos e conteúdo técnico OSM/MES/AM/TPM mantêm os limites documentados nas fontes."
   ],
-  "enginesSha256": "5834d30538359cccc24a7c8bdc76b1ee9521ecefeea783679fa04bbf099d3f6c",
+  "enginesSha256": "955986f3d6d8316585ab20dfec4cd256fe76702384c7b73d3c5f6d13ea677731",
   "originRevision": "ffc9ee8",
   "sourceMode": "single-html",
   "originEnginesSha256": "a87a64ad0c328f70e102b2ae888790a9b5d5a9bd05778652a7ce7cae140e40d2"
@@ -56341,7 +56296,7 @@ import { Icon, Button, Badge, Empty, Modal, BarChart, BrandLogo, CommandMenu } f
 import { ModuleFrame } from "vac:modulo/components/ModuleFrame";
 import manifest from "vac:recurso/manifesto";
 import { ModuleTabs } from "vac:modulo/components/ModuleTabs";
-const VERSION = "1.8.89";
+const VERSION = "1.8.90";
 /* Navegação 1.3.0 (16/11/2026): Visão da linha, Relatórios e Importações têm abas; as que mostram uma tela do
    Portal (motor da Administração) trazem o 3º campo com a aba dele. Administração fica só com cadastros e configuração. */
 const SHELL_TABS = {
