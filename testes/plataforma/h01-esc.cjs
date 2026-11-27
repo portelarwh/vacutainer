@@ -15,6 +15,11 @@ console.log('ok as três formas antigas e vacEsc dão a mesma saída em ' + ENTR
 const MOTORES = ['portal', 'oee', 'perdas', 'gel', 'paradas', 'equip', 'inic', 'linha', 'projetos'];
 for (const id of MOTORES) { const t = S.get('motor/' + id); assert.doesNotMatch(t, /const esc ?= ?[sv] ?=>/, 'motor/' + id + ' sem cópia própria do escape'); assert.match(t, /const esc ?= ?vacEsc;/, 'motor/' + id + ' usa vacEsc'); }
 console.log('ok nenhum dos nove motores guarda cópia própria do escape');
+// etapa 1, 2ª entrega: nomes do sistema e pessoa/perfil atuais também só no kit
+const KIT = ['VAC_NOMES_V2', 'VAC_OUTROS_V2', 'vacEhOutros', 'vacNomeSis', 'vacUsuario', 'vacPerfil', 'vacNomeUsuario'];
+const def = n => new RegExp('^(?:const|let|function)\\s+' + n + '\\b|,' + n + '=', 'm');
+for (const n of KIT) { assert.match(S.get('comum/bases'), def(n), n + ' no kit'); for (const id of MOTORES) assert.doesNotMatch(S.get('motor/' + id), def(n), 'motor/' + id + ' sem cópia de ' + n); }
+console.log('ok ' + KIT.length + ' definições de sistema e pessoa (vacUsuario, vacPerfil, vacNomeSis…) só no kit');
 (async () => {
   const srv = http.createServer((q, r) => { r.setHeader('Content-Type', 'text/html'); r.end(html); }); let browser;
   try {
@@ -25,10 +30,10 @@ console.log('ok nenhum dos nove motores guarda cópia própria do escape');
       await p.goto('http://127.0.0.1:' + srv.address().port + '/?demo=1#/' + id);
       const q = p.locator(`iframe[title="Módulo ${titulos[id]}"]`); await q.waitFor({ state: 'attached', timeout: 60000 });
       const f = await (await q.elementHandle()).contentFrame(); await f.waitForFunction(() => typeof vacEsc === 'function' && typeof esc === 'function', null, { timeout: 60000 });
-      r[id] = await f.evaluate(() => [esc === vacEsc, typeof U === 'object' && U && U.esc ? U.esc === vacEsc : true, esc('<a title="x">&\'</a>')]);
+      r[id] = await f.evaluate(() => [esc === vacEsc, typeof U === 'object' && U && U.esc ? U.esc === vacEsc : true, esc('<a title="x">&\'</a>'), vacNomeSis({ id: 'oee', nome: 'OEE' }), vacEhOutros({ id: 'manut' }), typeof vacUsuario + typeof vacPerfil + typeof vacNomeUsuario]);
     }
-    for (const id of MOTORES) assert.deepEqual(r[id], [true, true, '&lt;a title=&quot;x&quot;&gt;&amp;&#39;&lt;/a&gt;'], id + ': ' + JSON.stringify(r[id]));
+    for (const id of MOTORES) assert.deepEqual(r[id], [true, true, '&lt;a title=&quot;x&quot;&gt;&amp;&#39;&lt;/a&gt;', 'Produção', true, 'functionfunctionfunction'], id + ': ' + JSON.stringify(r[id]));
     assert.deepEqual(erros, [], 'sem erro de JavaScript');
-    console.log('ok nas páginas dos nove motores esc é o vacEsc do kit');
+    console.log('ok nas páginas dos nove motores esc é o vacEsc do kit e as funções de sistema e pessoa vêm do kit');
   } finally { if (browser) await browser.close(); srv.close(); }
 })().catch(e => { console.error(e); process.exit(1); });
