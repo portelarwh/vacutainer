@@ -668,6 +668,48 @@ function vacUser(){return vacLS.get('vac.user','')||''}
 function vacSysHref(s,hash=''){return String(s.html||s.url||'').split('/').pop()+(hash?'#'+hash:'')}
 // Permissão do usuário atual no módulo (vacPodeComum). Um motor pode recusar antes, por regra própria, definindo vacPodeBloqueio(mod, fn); hoje só a Produção (base de versão anterior: só consulta) (H01).
 function vacPode(mod,fn='ver'){if(typeof vacPodeBloqueio==='function'&amp;&amp;vacPodeBloqueio(mod,fn))return false;return vacPodeComum(vacCad(),vacUsuario(),mod,fn)}
+// Cabeçalho comum (H01 etapa 2, 1.8.97): lista de sistemas padrão, menu de sistemas, usuário atual e janela Entrar pelo ID, iguais nos nove motores.
+const DEFAULT_SYSTEMS=[
+ {id:'portal',nome:"Administração",html:'Portal.html',base:'portal-base.json'},
+ {id:'oee',nome:'Produção',html:'OEE-Vacutainer.html',base:'oee-vacutainer-base.json'},
+ {id:'perdas',nome:'Waste',html:'Perdas-Ordem.html',base:'perdas-base.json'},
+ {id:'gel',nome:'Gestão de Gel',html:'Gestão-Gel-Vacutainer.html',alt:['Gestao-Gel-Vacutainer.html','controle-fifo-gel.html'],base:'fifo-base.json',estado:'atualizacao'},
+ {id:'paradas',nome:'Paradas',html:'Paradas.html',base:'paradas-base.json',estado:'atualizacao'},
+ {id:'equip',nome:'Equipamentos',html:'Equipamentos.html',base:'equipamentos-base.json',sub:'Ficha · OS · TAGs · AM/TPM',estado:'atualizacao'},
+ {id:'inic',nome:'Iniciativas / Ações',html:'Iniciativas.html',base:'iniciativas-base.json',sub:'Ações · KAS · OSM · 5S',estado:'atualizacao'},
+ {id:'linha',nome:'Linha 360°',html:'Linha-360.html',base:'linha360-base.json',sub:'Planta interativa · pessoas · checklists',estado:'atualizacao'},
+ {id:'projetos',nome:'Projetos',html:'Projetos.html',base:'projetos-base.json',futuro:true,estado:'construcao'}];
+function renderSysNav(){const el=$('#sysNav');if(!el)return;const cur=vacAtual(),port=systems().find(s=>s.id==='portal')||{id:'portal',html:'Portal.html'};
+ const vis=systems().filter(s=>!s.oculto&amp;&amp;!s.futuro&amp;&amp;(vacPode(s.id)||s.id===PAGE.id)),href=s=>PAGE.id==='portal'&amp;&amp;s.id==='portal'?'#geral':sysHref(s);
+ el.innerHTML=vis.filter(s=>!vacEhOutros(s)).map(s=>`<a href="${esc(href(s))}" class="${s.id===cur?'cur':''}"${s.id===cur?' aria-current="page"':''}${s.sub?` title="${esc(s.sub)}"`:''}>${esc(vacNomeSis(s))}</a>`).join('');
+ const o=$('#sysOutros');if(o){let lk=[];try{lk=JSON.parse(localStorage.getItem('vac.links')||'[]')||[]}catch(e){}const ex=vis.filter(vacEhOutros);
+  o.innerHTML=ex.length||lk.length?`<details class="vmenu"><summary>Outros</summary><div class="vmenu-l">${ex.map(s=>`<a href="${esc(href(s))}">${esc(vacNomeSis(s))}</a>`).join('')}${lk.map(l=>`<a href="${esc(l.url)}" target="_blank" rel="noopener">${esc(l.nome)} ↗</a>`).join('')}</div></details>`:'';
+  const d=o.querySelector('details');if(d&amp;&amp;!o._wired){o._wired=1;document.addEventListener('click',e=>{const dd=o.querySelector('details');if(dd&amp;&amp;!dd.contains(e.target))dd.open=false})}}
+ const ad=$('#btnAdmin');if(ad&amp;&amp;ad.tagName==='A')ad.href=sysHref(port,'admin');
+ const me=systems().find(s=>s.id===PAGE.id),nm=cur==='cadastros'?'Administração':(me&amp;&amp;vacNomeSis(me))||PAGE.tituloCurto||PAGE.titulo.split('·')[0].trim();
+ const t=$('#vacTitulo');if(t)t.textContent=nm;const sb=$('#vacSub');if(sb)sb.textContent=cur==='cadastros'?'Cadastros e configuração':(PAGE.subtitulo||'');
+ const n=$('#vacNome');if(n)n.href=PAGE.id==='portal'?'#geral':sysHref(port);document.title=nm+' · Linha Vacutainer';
+ if(PAGE.id!=='portal')vacUserRender()}
+function vacUserRender(){const el=$('#stUser');if(!el||PAGE.id==='portal')return;const nm=vacNomeUsuario(),p=vacPerfil();let id='';try{id=localStorage.getItem('vac.userId')||''}catch(e){}
+ el.innerHTML=nm?`<a href="#" id="vacUserA" title="${esc((id?'ID '+id+' · ':'')+(p?'perfil '+p.nome+' · ':'')+'clique para trocar de usuário')}" style="color:inherit;text-decoration:none"><b>${esc(nm)}</b>${p?` <span style="opacity:.75;font-size:12px">· ${esc(p.nome)}</span>`:''}</a>`:'<a href="#" id="vacUserA" style="color:inherit"><b>Entrar</b></a>';
+ $('#vacUserA').onclick=e=>{e.preventDefault();VacEntrar.abrir()}}
+const VacEntrar={el:null,
+ abrir(){if(PAGE.id==='portal'&amp;&amp;typeof Entrar!=='undefined')return Entrar.abrir();this.fechar();const c=vacCad();let id0='';try{id0=localStorage.getItem('vac.userId')||''}catch(e){}
+  const d=document.createElement('div');d.className='vbusca';d.innerHTML=`<div class="bx vent" role="dialog" aria-label="Entrar"><h3>Entrar</h3><p class="small">Digite seu ID (matrícula). Seu nome fica registrado em tudo o que você alterar, em todas as páginas.</p>
+  <input id="veId" placeholder="ID / matrícula" value="${esc(id0)}" autocomplete="off"><div id="veMsg" class="small"></div>
+  <div class="vrow"><button type="button" class="b p" id="veOk">Entrar</button>${vacNomeUsuario()?'<button type="button" class="b" id="veSair">Sair</button>':''}<button type="button" class="b" id="veX">Cancelar</button></div>${c?'':"<p class=\"small\" style=\"opacity:.75\">Sem a cópia do cadastro neste navegador: abra a Administração pela pasta uma vez para carregar os usuários.</p>"}</div>`;
+  document.body.appendChild(d);this.el=d;d.onclick=e=>{if(e.target===d)this.fechar()};const i=d.querySelector('#veId');i.focus();i.select();
+  i.onkeydown=e=>{if(e.key==='Enter')this.id(i.value);if(e.key==='Escape')this.fechar()};d.querySelector('#veOk').onclick=()=>this.id(i.value);d.querySelector('#veX').onclick=()=>this.fechar();
+  const sa=d.querySelector('#veSair');if(sa)sa.onclick=()=>{try{['vac.user','vac.userId','vac.perfil'].forEach(k=>localStorage.removeItem(k))}catch(e){}this.aviso('');this.fechar()}},
+ fechar(){if(this.el){this.el.remove();this.el=null}},
+ id(v){v=String(v||'').trim();const m=this.el.querySelector('#veMsg');if(!v){m.textContent='Digite o ID.';return}const c=vacCad(),u=c&amp;&amp;(c.usuarios||[]).find(x=>String(x.codigo)===v);
+  if(u&amp;&amp;u.ativo===false){m.innerHTML='<span style="color:var(--crit)">Este ID está inativo no cadastro. Fale com o administrador.</span>';return}
+  if(u){try{localStorage.setItem('vac.user',u.nome);localStorage.setItem('vac.userId',u.codigo);localStorage.setItem('vac.perfil',u.perfil||'')}catch(e){}this.aviso(u.nome);this.fechar();return}
+  const port=systems().find(s=>s.id==='portal')||{html:'Portal.html'};
+  m.innerHTML=`<p>O ID <b>${esc(v)}</b> não está no cadastro. O <b>primeiro acesso</b> (nome + ID) é feito na Administração.</p><div class="vrow"><a class="b p" href="${esc(sysHref(port,'entrar'))}">Fazer o 1º acesso na Administração</a></div>
+  <p style="margin-top:8px">Ou use só um nome neste navegador:</p><div class="vrow"><input id="veNome" placeholder="Seu nome" style="flex:1"><button type="button" class="b" id="veNomeOk">Usar este nome</button></div>`;
+  m.querySelector('#veNomeOk').onclick=()=>{const n=m.querySelector('#veNome').value.trim();if(n.length<2)return;try{localStorage.setItem('vac.user',n);localStorage.removeItem('vac.userId');localStorage.removeItem('vac.perfil')}catch(e){}this.aviso(n);this.fechar()}},
+ aviso(nome){try{if(typeof vacAoTrocarUsuario==='function')vacAoTrocarUsuario(nome)}catch(e){console.warn(e)}window.dispatchEvent(new CustomEvent('vac:usuario',{detail:{nome}}));renderSysNav();vacUserRender()}};
 // Leituras do cadastro geral (vigência por data do fato; ausência é null, nunca zero).
 vacCad.vigente = (vigencias, data) => { const d = String(data || '').slice(0, 10) || vacHoje(); return (vigencias || []).filter(v => v.de <= d &amp;&amp; (!v.ate || v.ate >= d)).sort((a, b) => a.de < b.de ? 1 : -1)[0] || null; };
 vacCad.item = (tipo, codigo) => { const c = vacCad(); return ((c &amp;&amp; c[tipo]) || []).find(x => String(x.codigo) === String(codigo)) || null; };
@@ -4131,16 +4173,6 @@ const userId=()=>{try{return localStorage.getItem('vac.userId')||''}catch(e){ret
 const setUser=n=>localStorage.setItem('vac.user',n);
 
 /* ---------- sistemas da linha (lista comum, guardada no navegador e editada no Portal) ---------- */
-const DEFAULT_SYSTEMS=[
- {id:'portal',nome:"Administração",html:'Portal.html',base:'portal-base.json'},
- {id:'oee',nome:'Produção',html:'OEE-Vacutainer.html',base:'oee-vacutainer-base.json'},
- {id:'perdas',nome:'Waste',html:'Perdas-Ordem.html',base:'perdas-base.json'},
- {id:'gel',nome:'Gestão de Gel',html:'Gestão-Gel-Vacutainer.html',alt:['Gestao-Gel-Vacutainer.html','controle-fifo-gel.html'],base:'fifo-base.json',estado:'atualizacao'},
- {id:'paradas',nome:'Paradas',html:'Paradas.html',base:'paradas-base.json',estado:'atualizacao'},
- {id:'equip',nome:'Equipamentos',html:'Equipamentos.html',base:'equipamentos-base.json',sub:'Ficha · OS · TAGs · AM/TPM',estado:'atualizacao'},
- {id:'inic',nome:'Iniciativas / Ações',html:'Iniciativas.html',base:'iniciativas-base.json',sub:'Ações · KAS · OSM · 5S',estado:'atualizacao'},
- {id:'linha',nome:'Linha 360°',html:'Linha-360.html',base:'linha360-base.json',sub:'Planta interativa · pessoas · checklists',estado:'atualizacao'},
- {id:'projetos',nome:'Projetos',html:'Projetos.html',base:'projetos-base.json',futuro:true,estado:'construcao'}];
 /* 1.7 · nomes exibidos novos (arquivos, bases e ids não mudam); Máquinas e Manutenção saem (manutenção fica em Equipamentos).
    grupo:'outros' = aparece no menu "Outros ▾" da barra, não como item principal. */
 const NOMES_ANTIGOS={oee:['OEE'],perdas:['Perdas'],gel:['Gel']},IDS_SAIRAM=['maquinas','manut'];
@@ -4194,38 +4226,7 @@ function wireCabecalho(){const b=$('#vacBusca');if(b)b.onclick=()=>Busca.abrir()
    A página pode definir vacAoTrocarUsuario(nome) para atualizar o próprio estado quando a pessoa entra. */
 /* permissão do perfil na página (sem perfil, sem cadastro ou sem a página no perfil = pode) */
 /* semáforo comum: 'ok' | 'warn' | 'crit' | 'none' em relação à meta (inverso: menor é melhor, ex.: scrap, waste) */
-function renderSysNav(){const el=$('#sysNav');if(!el)return;const cur=vacAtual(),port=systems().find(s=>s.id==='portal')||{id:'portal',html:'Portal.html'};
- const vis=systems().filter(s=>!s.oculto&amp;&amp;!s.futuro&amp;&amp;(vacPode(s.id)||s.id===PAGE.id)),href=s=>PAGE.id==='portal'&amp;&amp;s.id==='portal'?'#geral':sysHref(s);
- el.innerHTML=vis.filter(s=>!vacEhOutros(s)).map(s=>`<a href="${esc(href(s))}" class="${s.id===cur?'cur':''}"${s.id===cur?' aria-current="page"':''}${s.sub?` title="${esc(s.sub)}"`:''}>${esc(vacNomeSis(s))}</a>`).join('');
- const o=$('#sysOutros');if(o){let lk=[];try{lk=JSON.parse(localStorage.getItem('vac.links')||'[]')||[]}catch(e){}const ex=vis.filter(vacEhOutros);
-  o.innerHTML=ex.length||lk.length?`<details class="vmenu"><summary>Outros</summary><div class="vmenu-l">${ex.map(s=>`<a href="${esc(href(s))}">${esc(vacNomeSis(s))}</a>`).join('')}${lk.map(l=>`<a href="${esc(l.url)}" target="_blank" rel="noopener">${esc(l.nome)} ↗</a>`).join('')}</div></details>`:'';
-  const d=o.querySelector('details');if(d&amp;&amp;!o._wired){o._wired=1;document.addEventListener('click',e=>{const dd=o.querySelector('details');if(dd&amp;&amp;!dd.contains(e.target))dd.open=false})}}
- const ad=$('#btnAdmin');if(ad&amp;&amp;ad.tagName==='A')ad.href=sysHref(port,'admin');
- const me=systems().find(s=>s.id===PAGE.id),nm=cur==='cadastros'?'Administração':(me&amp;&amp;vacNomeSis(me))||PAGE.tituloCurto||PAGE.titulo.split('·')[0].trim();
- const t=$('#vacTitulo');if(t)t.textContent=nm;const sb=$('#vacSub');if(sb)sb.textContent=cur==='cadastros'?'Cadastros e configuração':(PAGE.subtitulo||'');
- const n=$('#vacNome');if(n)n.href=PAGE.id==='portal'?'#geral':sysHref(port);document.title=nm+' · Linha Vacutainer';
- if(PAGE.id!=='portal')vacUserRender()}
-function vacUserRender(){const el=$('#stUser');if(!el||PAGE.id==='portal')return;const nm=vacNomeUsuario(),p=vacPerfil();let id='';try{id=localStorage.getItem('vac.userId')||''}catch(e){}
- el.innerHTML=nm?`<a href="#" id="vacUserA" title="${esc((id?'ID '+id+' · ':'')+(p?'perfil '+p.nome+' · ':'')+'clique para trocar de usuário')}" style="color:inherit;text-decoration:none"><b>${esc(nm)}</b>${p?` <span style="opacity:.75;font-size:12px">· ${esc(p.nome)}</span>`:''}</a>`:'<a href="#" id="vacUserA" style="color:inherit"><b>Entrar</b></a>';
- $('#vacUserA').onclick=e=>{e.preventDefault();VacEntrar.abrir()}}
 /* entrar pelo ID: lê os usuários da cópia do cadastro; o 1º acesso (cadastro de nome + ID) é feito no Portal */
-const VacEntrar={el:null,
- abrir(){if(PAGE.id==='portal'&amp;&amp;typeof Entrar!=='undefined')return Entrar.abrir();this.fechar();const c=vacCad();let id0='';try{id0=localStorage.getItem('vac.userId')||''}catch(e){}
-  const d=document.createElement('div');d.className='vbusca';d.innerHTML=`<div class="bx vent" role="dialog" aria-label="Entrar"><h3>Entrar</h3><p class="small">Digite seu ID (matrícula). Seu nome fica registrado em tudo o que você alterar, em todas as páginas.</p>
-  <input id="veId" placeholder="ID / matrícula" value="${esc(id0)}" autocomplete="off"><div id="veMsg" class="small"></div>
-  <div class="vrow"><button type="button" class="b p" id="veOk">Entrar</button>${vacNomeUsuario()?'<button type="button" class="b" id="veSair">Sair</button>':''}<button type="button" class="b" id="veX">Cancelar</button></div>${c?'':"<p class=\"small\" style=\"opacity:.75\">Sem a cópia do cadastro neste navegador: abra a Administração pela pasta uma vez para carregar os usuários.</p>"}</div>`;
-  document.body.appendChild(d);this.el=d;d.onclick=e=>{if(e.target===d)this.fechar()};const i=d.querySelector('#veId');i.focus();i.select();
-  i.onkeydown=e=>{if(e.key==='Enter')this.id(i.value);if(e.key==='Escape')this.fechar()};d.querySelector('#veOk').onclick=()=>this.id(i.value);d.querySelector('#veX').onclick=()=>this.fechar();
-  const sa=d.querySelector('#veSair');if(sa)sa.onclick=()=>{try{['vac.user','vac.userId','vac.perfil'].forEach(k=>localStorage.removeItem(k))}catch(e){}this.aviso('');this.fechar()}},
- fechar(){if(this.el){this.el.remove();this.el=null}},
- id(v){v=String(v||'').trim();const m=this.el.querySelector('#veMsg');if(!v){m.textContent='Digite o ID.';return}const c=vacCad(),u=c&amp;&amp;(c.usuarios||[]).find(x=>String(x.codigo)===v);
-  if(u&amp;&amp;u.ativo===false){m.innerHTML='<span style="color:var(--crit)">Este ID está inativo no cadastro. Fale com o administrador.</span>';return}
-  if(u){try{localStorage.setItem('vac.user',u.nome);localStorage.setItem('vac.userId',u.codigo);localStorage.setItem('vac.perfil',u.perfil||'')}catch(e){}this.aviso(u.nome);this.fechar();return}
-  const port=systems().find(s=>s.id==='portal')||{html:'Portal.html'};
-  m.innerHTML=`<p>O ID <b>${esc(v)}</b> não está no cadastro. O <b>primeiro acesso</b> (nome + ID) é feito na Administração.</p><div class="vrow"><a class="b p" href="${esc(sysHref(port,'entrar'))}">Fazer o 1º acesso na Administração</a></div>
-  <p style="margin-top:8px">Ou use só um nome neste navegador:</p><div class="vrow"><input id="veNome" placeholder="Seu nome" style="flex:1"><button type="button" class="b" id="veNomeOk">Usar este nome</button></div>`;
-  m.querySelector('#veNomeOk').onclick=()=>{const n=m.querySelector('#veNome').value.trim();if(n.length<2)return;try{localStorage.setItem('vac.user',n);localStorage.removeItem('vac.userId');localStorage.removeItem('vac.perfil')}catch(e){}this.aviso(n);this.fechar()}},
- aviso(nome){try{if(typeof vacAoTrocarUsuario==='function')vacAoTrocarUsuario(nome)}catch(e){console.warn(e)}window.dispatchEvent(new CustomEvent('vac:usuario',{detail:{nome}}));renderSysNav();vacUserRender()}};
 window.addEventListener('storage',e=>{if(['vac.user','vac.userId','vac.cadastros','vac.links'].includes(e.key)){try{renderSysNav();vacUserRender()}catch(x){}}});
 /* ===== fim vac-cabecalho v2 · JS ===== */
 
@@ -4517,7 +4518,7 @@ function wireConfigComum(){$('#cPasta').onclick=async()=>{if(await Store.pick())
         entrar pelo ID (autocadastro como Consulta); página inicial por perfil (1x por sessão); vigência gravada não se edita (desativar com motivo); painel de vigências; semáforo central; saída do modo de teste.
    1.1.2: aviso da carga diz qual base foi lida.  1.5: páginas Paradas, Máquinas, Manutenção e Projetos na lista (aparecem quando o HTML chega na pasta).  1.4: lista técnica pela CS12 multinível (itens = nível 1, estrutura = níveis 2+); CS03 sai.  1.3: cabeçalho comum (vac-cabecalho v2: barra do sistema + página + abas), busca Ctrl K, acabamento V1.90, Versões com cabeçalho e último backup.  1.2: Configuração › Versões das páginas (versão e data de cada HTML, gravação das bases, cópias repetidas, histórico).
    ===================================================================== */
-const PAGE={id:'portal',titulo:"Administração · Linha Vacutainer",tituloCurto:"Administração",subtitulo:'Sistemas de gestão da linha',versao:'1.9.102',baseFile:'portal-base.json',idb:'vac-portal',backupDir:'00. Backups/Portal',
+const PAGE={id:'portal',titulo:"Administração · Linha Vacutainer",tituloCurto:"Administração",subtitulo:'Sistemas de gestão da linha',versao:'1.9.103',baseFile:'portal-base.json',idb:'vac-portal',backupDir:'00. Backups/Portal',
  vazio:()=>({schema:'portal-base',schemaVersion:1,rev:0,config:{modulos:{},avisoDias:30,notas:{}},audit:[]}),
  /* itens do Portal para a busca Ctrl K: cadastro, pendências e telas */
  busca:q=>{const R=[],D=Cad.D;if(D)for(const t of CAD_ORD){for(const it of D[t]||[]){const c=String(it[kOf(t)]),nm=t==='bom'?((cadItem('catalogos',it.catalogo)||{}).nome||''):it.nome||'';if(norm(c+' '+nm).includes(q))R.push({tipo:CAD_T[t].um,txt:c+(nm?' · '+nm:''),sub:'Cadastros'+(cadAtivo(t,it,D)?'':' · inativo'),href:'#cadastros/'+t+'/'+encodeURIComponent(c)});if(R.length>30)break}}
@@ -5391,6 +5392,8 @@ const CAD_SECS=['inicio','gel','matriz','importar','auditoria','backups','segura
    curtas (macro, sem detalhe técnico). REGRA: toda versão nova da plataforma ganha uma entrada aqui, a mais recente primeiro
    (AGENTS.md e CLAUDE.md). Tipos: nova (função nova), melhoria (algo que já existia ficou melhor), correcao (erro corrigido). */
 const NOVIDADES=[
+ {v:'1.8.97',d:'2026-11-27',itens:[
+  ['melhoria','Organização interna: a lista de sistemas, o menu de sistemas, o nome de quem está usando e a janela Entrar pelo ID vêm de um só lugar em todos os módulos (nada muda no uso).']]},
  {v:'1.8.96',d:'2026-11-27',itens:[
   ['nova','Tela de entrada: botão Primeiro acesso, um guia que confere sozinho cada etapa (navegador, pasta, permissão de gravação, cadastro e entrada) e mostra OK em cada uma.']]},
  {v:'1.8.95',d:'2026-11-27',itens:[
@@ -12942,16 +12945,6 @@ const PAGE = { id: 'oee', titulo: 'Produção · Linha Vacutainer', tituloCurto:
    busca(q) → [{tipo, txt, sub, href | go()}] com os itens dela (dia, ordem, lote, LP, catálogo…).
    Usa: systems(), sysHref(), esc(), cycleTheme(), Logo.apply() do núcleo. OEE: as abas usam data-route (adaptado na busca). */
 const VAC_CAB_VERSAO=2;
-const DEFAULT_SYSTEMS=[
- {id:'portal',nome:"Administração",html:'Portal.html',base:'portal-base.json'},
- {id:'oee',nome:'Produção',html:'OEE-Vacutainer.html',base:'oee-vacutainer-base.json'},
- {id:'perdas',nome:'Waste',html:'Perdas-Ordem.html',base:'perdas-base.json'},
- {id:'gel',nome:'Gestão de Gel',html:'Gestão-Gel-Vacutainer.html',alt:['Gestao-Gel-Vacutainer.html','controle-fifo-gel.html'],base:'fifo-base.json',estado:'atualizacao'},
- {id:'paradas',nome:'Paradas',html:'Paradas.html',base:'paradas-base.json',estado:'atualizacao'},
- {id:'equip',nome:'Equipamentos',html:'Equipamentos.html',base:'equipamentos-base.json',sub:'Ficha · OS · TAGs · AM/TPM',estado:'atualizacao'},
- {id:'inic',nome:'Iniciativas / Ações',html:'Iniciativas.html',base:'iniciativas-base.json',sub:'Ações · KAS · OSM · 5S',estado:'atualizacao'},
- {id:'linha',nome:'Linha 360°',html:'Linha-360.html',base:'linha360-base.json',sub:'Planta interativa · pessoas · checklists',estado:'atualizacao'},
- {id:'projetos',nome:'Projetos',html:'Projetos.html',base:'projetos-base.json',futuro:true,estado:'construcao'}];
 function systems(){try{const s=JSON.parse(localStorage.getItem('vac.sistemas')||'null');if(Array.isArray(s)&amp;&amp;s.length){const ids=new Set(s.map(x=>x.id));return s.concat(DEFAULT_SYSTEMS.filter(d=>!ids.has(d.id)))}}catch(e){}return DEFAULT_SYSTEMS.map(x=>({...x}))}
 /* pasta única: todas as páginas na mesma pasta, então o link é só o nome do arquivo */
 function sysHref(s,hash=''){return vacSysHref(s,hash)}
@@ -12990,38 +12983,7 @@ function wireCabecalho(){const b=$('#vacBusca');if(b)b.onclick=()=>Busca.abrir()
 /* permissão do perfil na página (sem perfil, sem cadastro ou sem a página no perfil = pode) */
 function vacPodeBloqueio(mod,fn){return mod==='oee'&amp;&amp;fn!=='ver'&amp;&amp;typeof Store!=='undefined'&amp;&amp;!!Store.S.formato}   /* base de versão anterior: só consulta (o vacPode do kit pergunta aqui antes) */
 /* semáforo comum: 'ok' | 'warn' | 'crit' | 'none' em relação à meta (inverso: menor é melhor, ex.: scrap, waste) */
-function renderSysNav(){const el=$('#sysNav');if(!el)return;const cur=vacAtual(),port=systems().find(s=>s.id==='portal')||{id:'portal',html:'Portal.html'};
- const vis=systems().filter(s=>!s.oculto&amp;&amp;!s.futuro&amp;&amp;(vacPode(s.id)||s.id===PAGE.id)),href=s=>PAGE.id==='portal'&amp;&amp;s.id==='portal'?'#geral':sysHref(s);
- el.innerHTML=vis.filter(s=>!vacEhOutros(s)).map(s=>`<a href="${esc(href(s))}" class="${s.id===cur?'cur':''}"${s.id===cur?' aria-current="page"':''}${s.sub?` title="${esc(s.sub)}"`:''}>${esc(vacNomeSis(s))}</a>`).join('');
- const o=$('#sysOutros');if(o){let lk=[];try{lk=JSON.parse(localStorage.getItem('vac.links')||'[]')||[]}catch(e){}const ex=vis.filter(vacEhOutros);
-  o.innerHTML=ex.length||lk.length?`<details class="vmenu"><summary>Outros</summary><div class="vmenu-l">${ex.map(s=>`<a href="${esc(href(s))}">${esc(vacNomeSis(s))}</a>`).join('')}${lk.map(l=>`<a href="${esc(l.url)}" target="_blank" rel="noopener">${esc(l.nome)} ↗</a>`).join('')}</div></details>`:'';
-  const d=o.querySelector('details');if(d&amp;&amp;!o._wired){o._wired=1;document.addEventListener('click',e=>{const dd=o.querySelector('details');if(dd&amp;&amp;!dd.contains(e.target))dd.open=false})}}
- const ad=$('#btnAdmin');if(ad&amp;&amp;ad.tagName==='A')ad.href=sysHref(port,'admin');
- const me=systems().find(s=>s.id===PAGE.id),nm=cur==='cadastros'?'Administração':(me&amp;&amp;vacNomeSis(me))||PAGE.tituloCurto||PAGE.titulo.split('·')[0].trim();
- const t=$('#vacTitulo');if(t)t.textContent=nm;const sb=$('#vacSub');if(sb)sb.textContent=cur==='cadastros'?'Cadastros e configuração':(PAGE.subtitulo||'');
- const n=$('#vacNome');if(n)n.href=PAGE.id==='portal'?'#geral':sysHref(port);document.title=nm+' · Linha Vacutainer';
- if(PAGE.id!=='portal')vacUserRender()}
-function vacUserRender(){const el=$('#stUser');if(!el||PAGE.id==='portal')return;const nm=vacNomeUsuario(),p=vacPerfil();let id='';try{id=localStorage.getItem('vac.userId')||''}catch(e){}
- el.innerHTML=nm?`<a href="#" id="vacUserA" title="${esc((id?'ID '+id+' · ':'')+(p?'perfil '+p.nome+' · ':'')+'clique para trocar de usuário')}" style="color:inherit;text-decoration:none"><b>${esc(nm)}</b>${p?` <span style="opacity:.75;font-size:12px">· ${esc(p.nome)}</span>`:''}</a>`:'<a href="#" id="vacUserA" style="color:inherit"><b>Entrar</b></a>';
- $('#vacUserA').onclick=e=>{e.preventDefault();VacEntrar.abrir()}}
 /* entrar pelo ID: lê os usuários da cópia do cadastro; o 1º acesso (cadastro de nome + ID) é feito no Portal */
-const VacEntrar={el:null,
- abrir(){if(PAGE.id==='portal'&amp;&amp;typeof Entrar!=='undefined')return Entrar.abrir();this.fechar();const c=vacCad();let id0='';try{id0=localStorage.getItem('vac.userId')||''}catch(e){}
-  const d=document.createElement('div');d.className='vbusca';d.innerHTML=`<div class="bx vent" role="dialog" aria-label="Entrar"><h3>Entrar</h3><p class="small">Digite seu ID (matrícula). Seu nome fica registrado em tudo o que você alterar, em todas as páginas.</p>
-  <input id="veId" placeholder="ID / matrícula" value="${esc(id0)}" autocomplete="off"><div id="veMsg" class="small"></div>
-  <div class="vrow"><button type="button" class="b p" id="veOk">Entrar</button>${vacNomeUsuario()?'<button type="button" class="b" id="veSair">Sair</button>':''}<button type="button" class="b" id="veX">Cancelar</button></div>${c?'':"<p class=\"small\" style=\"opacity:.75\">Sem a cópia do cadastro neste navegador: abra a Administração pela pasta uma vez para carregar os usuários.</p>"}</div>`;
-  document.body.appendChild(d);this.el=d;d.onclick=e=>{if(e.target===d)this.fechar()};const i=d.querySelector('#veId');i.focus();i.select();
-  i.onkeydown=e=>{if(e.key==='Enter')this.id(i.value);if(e.key==='Escape')this.fechar()};d.querySelector('#veOk').onclick=()=>this.id(i.value);d.querySelector('#veX').onclick=()=>this.fechar();
-  const sa=d.querySelector('#veSair');if(sa)sa.onclick=()=>{try{['vac.user','vac.userId','vac.perfil'].forEach(k=>localStorage.removeItem(k))}catch(e){}this.aviso('');this.fechar()}},
- fechar(){if(this.el){this.el.remove();this.el=null}},
- id(v){v=String(v||'').trim();const m=this.el.querySelector('#veMsg');if(!v){m.textContent='Digite o ID.';return}const c=vacCad(),u=c&amp;&amp;(c.usuarios||[]).find(x=>String(x.codigo)===v);
-  if(u&amp;&amp;u.ativo===false){m.innerHTML='<span style="color:var(--crit)">Este ID está inativo no cadastro. Fale com o administrador.</span>';return}
-  if(u){try{localStorage.setItem('vac.user',u.nome);localStorage.setItem('vac.userId',u.codigo);localStorage.setItem('vac.perfil',u.perfil||'')}catch(e){}this.aviso(u.nome);this.fechar();return}
-  const port=systems().find(s=>s.id==='portal')||{html:'Portal.html'};
-  m.innerHTML=`<p>O ID <b>${esc(v)}</b> não está no cadastro. O <b>primeiro acesso</b> (nome + ID) é feito na Administração.</p><div class="vrow"><a class="b p" href="${esc(sysHref(port,'entrar'))}">Fazer o 1º acesso na Administração</a></div>
-  <p style="margin-top:8px">Ou use só um nome neste navegador:</p><div class="vrow"><input id="veNome" placeholder="Seu nome" style="flex:1"><button type="button" class="b" id="veNomeOk">Usar este nome</button></div>`;
-  m.querySelector('#veNomeOk').onclick=()=>{const n=m.querySelector('#veNome').value.trim();if(n.length<2)return;try{localStorage.setItem('vac.user',n);localStorage.removeItem('vac.userId');localStorage.removeItem('vac.perfil')}catch(e){}this.aviso(n);this.fechar()}},
- aviso(nome){try{if(typeof vacAoTrocarUsuario==='function')vacAoTrocarUsuario(nome)}catch(e){console.warn(e)}window.dispatchEvent(new CustomEvent('vac:usuario',{detail:{nome}}));renderSysNav();vacUserRender()}};
 window.addEventListener('storage',e=>{if(['vac.user','vac.userId','vac.cadastros','vac.links'].includes(e.key)){try{renderSysNav();vacUserRender()}catch(x){}}});
 /* ===== fim vac-cabecalho v2 · JS ===== */
 
@@ -24515,16 +24477,6 @@ const Logo={url:null,
   fr.onload=()=>{const im=new Image();im.onerror=()=>ko(new Error('Formato de imagem não reconhecido.'));im.onload=()=>{const h=Math.min(120,im.height),w=Math.round(im.width*h/im.height);const c=document.createElement('canvas');c.width=w;c.height=h;c.getContext('2d').drawImage(im,0,0,w,h);ok(c.toDataURL('image/png'))};im.src=fr.result};fr.readAsDataURL(file)})}};
 
 /* ===================== SISTEMAS DA LINHA (navegação entre páginas da mesma pasta) ===================== */
-const DEFAULT_SYSTEMS=[
- {id:'portal',nome:"Administração",html:'Portal.html',base:'portal-base.json'},
- {id:'oee',nome:'Produção',html:'OEE-Vacutainer.html',base:'oee-vacutainer-base.json'},
- {id:'perdas',nome:'Waste',html:'Perdas-Ordem.html',base:'perdas-base.json'},
- {id:'gel',nome:'Gestão de Gel',html:'Gestão-Gel-Vacutainer.html',alt:['Gestao-Gel-Vacutainer.html','controle-fifo-gel.html'],base:'fifo-base.json',estado:'atualizacao'},
- {id:'paradas',nome:'Paradas',html:'Paradas.html',base:'paradas-base.json',estado:'atualizacao'},
- {id:'equip',nome:'Equipamentos',html:'Equipamentos.html',base:'equipamentos-base.json',sub:'Ficha · OS · TAGs · AM/TPM',estado:'atualizacao'},
- {id:'inic',nome:'Iniciativas / Ações',html:'Iniciativas.html',base:'iniciativas-base.json',sub:'Ações · KAS · OSM · 5S',estado:'atualizacao'},
- {id:'linha',nome:'Linha 360°',html:'Linha-360.html',base:'linha360-base.json',sub:'Planta interativa · pessoas · checklists',estado:'atualizacao'},
- {id:'projetos',nome:'Projetos',html:'Projetos.html',base:'projetos-base.json',futuro:true,estado:'construcao'}];
 function systems(){const ren=l=>l.map(x=>x&amp;&amp;x.id==='perdas'&amp;&amp;(!x.nome||x.nome==='Perdas')?{...x,nome:'Waste'}:x);try{const s=JSON.parse(localStorage.getItem('vac.sistemas')||'null');if(Array.isArray(s)&amp;&amp;s.length){const ids=new Set(s.map(x=>x.id));return ren(s.concat(DEFAULT_SYSTEMS.filter(d=>!ids.has(d.id))))}}catch(e){}return ren(DEFAULT_SYSTEMS.map(x=>({...x})))}
 /* pasta única: todas as páginas na mesma pasta, então o link é só o nome do arquivo */
 function sysHref(s,hash=''){return vacSysHref(s,hash)}
@@ -24571,38 +24523,7 @@ function wireCabecalho(){const b=$('#vacBusca');if(b)b.onclick=()=>Busca.abrir()
    A página pode definir vacAoTrocarUsuario(nome) para atualizar o próprio estado quando a pessoa entra. */
 /* permissão do perfil na página (sem perfil, sem cadastro ou sem a página no perfil = pode) */
 /* semáforo comum: 'ok' | 'warn' | 'crit' | 'none' em relação à meta (inverso: menor é melhor, ex.: scrap, waste) */
-function renderSysNav(){const el=$('#sysNav');if(!el)return;const cur=vacAtual(),port=systems().find(s=>s.id==='portal')||{id:'portal',html:'Portal.html'};
- const vis=systems().filter(s=>!s.oculto&amp;&amp;!s.futuro&amp;&amp;(vacPode(s.id)||s.id===PAGE.id)),href=s=>PAGE.id==='portal'&amp;&amp;s.id==='portal'?'#geral':sysHref(s);
- el.innerHTML=vis.filter(s=>!vacEhOutros(s)).map(s=>`<a href="${esc(href(s))}" class="${s.id===cur?'cur':''}"${s.id===cur?' aria-current="page"':''}${s.sub?` title="${esc(s.sub)}"`:''}>${esc(vacNomeSis(s))}</a>`).join('');
- const o=$('#sysOutros');if(o){let lk=[];try{lk=JSON.parse(localStorage.getItem('vac.links')||'[]')||[]}catch(e){}const ex=vis.filter(vacEhOutros);
-  o.innerHTML=ex.length||lk.length?`<details class="vmenu"><summary>Outros</summary><div class="vmenu-l">${ex.map(s=>`<a href="${esc(href(s))}">${esc(vacNomeSis(s))}</a>`).join('')}${lk.map(l=>`<a href="${esc(l.url)}" target="_blank" rel="noopener">${esc(l.nome)} ↗</a>`).join('')}</div></details>`:'';
-  const d=o.querySelector('details');if(d&amp;&amp;!o._wired){o._wired=1;document.addEventListener('click',e=>{const dd=o.querySelector('details');if(dd&amp;&amp;!dd.contains(e.target))dd.open=false})}}
- const ad=$('#btnAdmin');if(ad&amp;&amp;ad.tagName==='A')ad.href=sysHref(port,'admin');
- const me=systems().find(s=>s.id===PAGE.id),nm=cur==='cadastros'?'Administração':(me&amp;&amp;vacNomeSis(me))||PAGE.tituloCurto||PAGE.titulo.split('·')[0].trim();
- const t=$('#vacTitulo');if(t)t.textContent=nm;const sb=$('#vacSub');if(sb)sb.textContent=cur==='cadastros'?'Cadastros e configuração':(PAGE.subtitulo||'');
- const n=$('#vacNome');if(n)n.href=PAGE.id==='portal'?'#geral':sysHref(port);document.title=nm+' · Linha Vacutainer';
- if(PAGE.id!=='portal')vacUserRender()}
-function vacUserRender(){const el=$('#stUser');if(!el||PAGE.id==='portal')return;const nm=vacNomeUsuario(),p=vacPerfil();let id='';try{id=localStorage.getItem('vac.userId')||''}catch(e){}
- el.innerHTML=nm?`<a href="#" id="vacUserA" title="${esc((id?'ID '+id+' · ':'')+(p?'perfil '+p.nome+' · ':'')+'clique para trocar de usuário')}" style="color:inherit;text-decoration:none"><b>${esc(nm)}</b>${p?` <span style="opacity:.75;font-size:12px">· ${esc(p.nome)}</span>`:''}</a>`:'<a href="#" id="vacUserA" style="color:inherit"><b>Entrar</b></a>';
- $('#vacUserA').onclick=e=>{e.preventDefault();VacEntrar.abrir()}}
 /* entrar pelo ID: lê os usuários da cópia do cadastro; o 1º acesso (cadastro de nome + ID) é feito no Portal */
-const VacEntrar={el:null,
- abrir(){if(PAGE.id==='portal'&amp;&amp;typeof Entrar!=='undefined')return Entrar.abrir();this.fechar();const c=vacCad();let id0='';try{id0=localStorage.getItem('vac.userId')||''}catch(e){}
-  const d=document.createElement('div');d.className='vbusca';d.innerHTML=`<div class="bx vent" role="dialog" aria-label="Entrar"><h3>Entrar</h3><p class="small">Digite seu ID (matrícula). Seu nome fica registrado em tudo o que você alterar, em todas as páginas.</p>
-  <input id="veId" placeholder="ID / matrícula" value="${esc(id0)}" autocomplete="off"><div id="veMsg" class="small"></div>
-  <div class="vrow"><button type="button" class="b p" id="veOk">Entrar</button>${vacNomeUsuario()?'<button type="button" class="b" id="veSair">Sair</button>':''}<button type="button" class="b" id="veX">Cancelar</button></div>${c?'':"<p class=\"small\" style=\"opacity:.75\">Sem a cópia do cadastro neste navegador: abra a Administração pela pasta uma vez para carregar os usuários.</p>"}</div>`;
-  document.body.appendChild(d);this.el=d;d.onclick=e=>{if(e.target===d)this.fechar()};const i=d.querySelector('#veId');i.focus();i.select();
-  i.onkeydown=e=>{if(e.key==='Enter')this.id(i.value);if(e.key==='Escape')this.fechar()};d.querySelector('#veOk').onclick=()=>this.id(i.value);d.querySelector('#veX').onclick=()=>this.fechar();
-  const sa=d.querySelector('#veSair');if(sa)sa.onclick=()=>{try{['vac.user','vac.userId','vac.perfil'].forEach(k=>localStorage.removeItem(k))}catch(e){}this.aviso('');this.fechar()}},
- fechar(){if(this.el){this.el.remove();this.el=null}},
- id(v){v=String(v||'').trim();const m=this.el.querySelector('#veMsg');if(!v){m.textContent='Digite o ID.';return}const c=vacCad(),u=c&amp;&amp;(c.usuarios||[]).find(x=>String(x.codigo)===v);
-  if(u&amp;&amp;u.ativo===false){m.innerHTML='<span style="color:var(--crit)">Este ID está inativo no cadastro. Fale com o administrador.</span>';return}
-  if(u){try{localStorage.setItem('vac.user',u.nome);localStorage.setItem('vac.userId',u.codigo);localStorage.setItem('vac.perfil',u.perfil||'')}catch(e){}this.aviso(u.nome);this.fechar();return}
-  const port=systems().find(s=>s.id==='portal')||{html:'Portal.html'};
-  m.innerHTML=`<p>O ID <b>${esc(v)}</b> não está no cadastro. O <b>primeiro acesso</b> (nome + ID) é feito na Administração.</p><div class="vrow"><a class="b p" href="${esc(sysHref(port,'entrar'))}">Fazer o 1º acesso na Administração</a></div>
-  <p style="margin-top:8px">Ou use só um nome neste navegador:</p><div class="vrow"><input id="veNome" placeholder="Seu nome" style="flex:1"><button type="button" class="b" id="veNomeOk">Usar este nome</button></div>`;
-  m.querySelector('#veNomeOk').onclick=()=>{const n=m.querySelector('#veNome').value.trim();if(n.length<2)return;try{localStorage.setItem('vac.user',n);localStorage.removeItem('vac.userId');localStorage.removeItem('vac.perfil')}catch(e){}this.aviso(n);this.fechar()}},
- aviso(nome){try{if(typeof vacAoTrocarUsuario==='function')vacAoTrocarUsuario(nome)}catch(e){console.warn(e)}window.dispatchEvent(new CustomEvent('vac:usuario',{detail:{nome}}));renderSysNav();vacUserRender()}};
 window.addEventListener('storage',e=>{if(['vac.user','vac.userId','vac.cadastros','vac.links'].includes(e.key)){try{renderSysNav();vacUserRender()}catch(x){}}});
 /* ===== fim vac-cabecalho v2 · JS ===== */
 
@@ -26596,16 +26517,6 @@ const PAGE={id:'gel',titulo:'Gel · Linha Vacutainer',tituloCurto:'Gel',subtitul
   busca:q=>gelBusca(q)};
 const $$=s=>[...document.querySelectorAll(s)];
 /* lista comum de páginas (vac.sistemas, gravada pelo Portal); pasta única: o link é só o nome do arquivo */
-const DEFAULT_SYSTEMS=[
- {id:'portal',nome:"Administração",html:'Portal.html',base:'portal-base.json'},
- {id:'oee',nome:'Produção',html:'OEE-Vacutainer.html',base:'oee-vacutainer-base.json'},
- {id:'perdas',nome:'Waste',html:'Perdas-Ordem.html',base:'perdas-base.json'},
- {id:'gel',nome:'Gestão de Gel',html:'Gestão-Gel-Vacutainer.html',alt:['Gestao-Gel-Vacutainer.html','controle-fifo-gel.html'],base:'fifo-base.json',estado:'atualizacao'},
- {id:'paradas',nome:'Paradas',html:'Paradas.html',base:'paradas-base.json',estado:'atualizacao'},
- {id:'equip',nome:'Equipamentos',html:'Equipamentos.html',base:'equipamentos-base.json',sub:'Ficha · OS · TAGs · AM/TPM',estado:'atualizacao'},
- {id:'inic',nome:'Iniciativas / Ações',html:'Iniciativas.html',base:'iniciativas-base.json',sub:'Ações · KAS · OSM · 5S',estado:'atualizacao'},
- {id:'linha',nome:'Linha 360°',html:'Linha-360.html',base:'linha360-base.json',sub:'Planta interativa · pessoas · checklists',estado:'atualizacao'},
- {id:'projetos',nome:'Projetos',html:'Projetos.html',base:'projetos-base.json',futuro:true,estado:'construcao'}];
 function systems(){try{const s=JSON.parse(localStorage.getItem('vac.sistemas')||'null');if(Array.isArray(s)&amp;&amp;s.length){const ids=new Set(s.map(x=>x.id));return s.concat(DEFAULT_SYSTEMS.filter(d=>!ids.has(d.id)))}}catch(e){}return DEFAULT_SYSTEMS.map(x=>({...x}))}
 function sysHref(s,hash=''){return vacSysHref(s,hash)}
 /* usuário e tema comuns (vac.user, vac.theme) */
@@ -26669,38 +26580,7 @@ function wireCabecalho(){const b=$('#vacBusca');if(b)b.onclick=()=>Busca.abrir()
    A página pode definir vacAoTrocarUsuario(nome) para atualizar o próprio estado quando a pessoa entra. */
 /* permissão do perfil na página (sem perfil, sem cadastro ou sem a página no perfil = pode) */
 /* semáforo comum: 'ok' | 'warn' | 'crit' | 'none' em relação à meta (inverso: menor é melhor, ex.: scrap, waste) */
-function renderSysNav(){const el=$('#sysNav');if(!el)return;const cur=vacAtual(),port=systems().find(s=>s.id==='portal')||{id:'portal',html:'Portal.html'};
- const vis=systems().filter(s=>!s.oculto&amp;&amp;!s.futuro&amp;&amp;(vacPode(s.id)||s.id===PAGE.id)),href=s=>PAGE.id==='portal'&amp;&amp;s.id==='portal'?'#geral':sysHref(s);
- el.innerHTML=vis.filter(s=>!vacEhOutros(s)).map(s=>`<a href="${esc(href(s))}" class="${s.id===cur?'cur':''}"${s.id===cur?' aria-current="page"':''}${s.sub?` title="${esc(s.sub)}"`:''}>${esc(vacNomeSis(s))}</a>`).join('');
- const o=$('#sysOutros');if(o){let lk=[];try{lk=JSON.parse(localStorage.getItem('vac.links')||'[]')||[]}catch(e){}const ex=vis.filter(vacEhOutros);
-  o.innerHTML=ex.length||lk.length?`<details class="vmenu"><summary>Outros</summary><div class="vmenu-l">${ex.map(s=>`<a href="${esc(href(s))}">${esc(vacNomeSis(s))}</a>`).join('')}${lk.map(l=>`<a href="${esc(l.url)}" target="_blank" rel="noopener">${esc(l.nome)} ↗</a>`).join('')}</div></details>`:'';
-  const d=o.querySelector('details');if(d&amp;&amp;!o._wired){o._wired=1;document.addEventListener('click',e=>{const dd=o.querySelector('details');if(dd&amp;&amp;!dd.contains(e.target))dd.open=false})}}
- const ad=$('#btnAdmin');if(ad&amp;&amp;ad.tagName==='A')ad.href=sysHref(port,'admin');
- const me=systems().find(s=>s.id===PAGE.id),nm=cur==='cadastros'?'Administração':(me&amp;&amp;vacNomeSis(me))||PAGE.tituloCurto||PAGE.titulo.split('·')[0].trim();
- const t=$('#vacTitulo');if(t)t.textContent=nm;const sb=$('#vacSub');if(sb)sb.textContent=cur==='cadastros'?'Cadastros e configuração':(PAGE.subtitulo||'');
- const n=$('#vacNome');if(n)n.href=PAGE.id==='portal'?'#geral':sysHref(port);document.title=nm+' · Linha Vacutainer';
- if(PAGE.id!=='portal')vacUserRender()}
-function vacUserRender(){const el=$('#stUser');if(!el||PAGE.id==='portal')return;const nm=vacNomeUsuario(),p=vacPerfil();let id='';try{id=localStorage.getItem('vac.userId')||''}catch(e){}
- el.innerHTML=nm?`<a href="#" id="vacUserA" title="${esc((id?'ID '+id+' · ':'')+(p?'perfil '+p.nome+' · ':'')+'clique para trocar de usuário')}" style="color:inherit;text-decoration:none"><b>${esc(nm)}</b>${p?` <span style="opacity:.75;font-size:12px">· ${esc(p.nome)}</span>`:''}</a>`:'<a href="#" id="vacUserA" style="color:inherit"><b>Entrar</b></a>';
- $('#vacUserA').onclick=e=>{e.preventDefault();VacEntrar.abrir()}}
 /* entrar pelo ID: lê os usuários da cópia do cadastro; o 1º acesso (cadastro de nome + ID) é feito no Portal */
-const VacEntrar={el:null,
- abrir(){if(PAGE.id==='portal'&amp;&amp;typeof Entrar!=='undefined')return Entrar.abrir();this.fechar();const c=vacCad();let id0='';try{id0=localStorage.getItem('vac.userId')||''}catch(e){}
-  const d=document.createElement('div');d.className='vbusca';d.innerHTML=`<div class="bx vent" role="dialog" aria-label="Entrar"><h3>Entrar</h3><p class="small">Digite seu ID (matrícula). Seu nome fica registrado em tudo o que você alterar, em todas as páginas.</p>
-  <input id="veId" placeholder="ID / matrícula" value="${esc(id0)}" autocomplete="off"><div id="veMsg" class="small"></div>
-  <div class="vrow"><button type="button" class="b p" id="veOk">Entrar</button>${vacNomeUsuario()?'<button type="button" class="b" id="veSair">Sair</button>':''}<button type="button" class="b" id="veX">Cancelar</button></div>${c?'':"<p class=\"small\" style=\"opacity:.75\">Sem a cópia do cadastro neste navegador: abra a Administração pela pasta uma vez para carregar os usuários.</p>"}</div>`;
-  document.body.appendChild(d);this.el=d;d.onclick=e=>{if(e.target===d)this.fechar()};const i=d.querySelector('#veId');i.focus();i.select();
-  i.onkeydown=e=>{if(e.key==='Enter')this.id(i.value);if(e.key==='Escape')this.fechar()};d.querySelector('#veOk').onclick=()=>this.id(i.value);d.querySelector('#veX').onclick=()=>this.fechar();
-  const sa=d.querySelector('#veSair');if(sa)sa.onclick=()=>{try{['vac.user','vac.userId','vac.perfil'].forEach(k=>localStorage.removeItem(k))}catch(e){}this.aviso('');this.fechar()}},
- fechar(){if(this.el){this.el.remove();this.el=null}},
- id(v){v=String(v||'').trim();const m=this.el.querySelector('#veMsg');if(!v){m.textContent='Digite o ID.';return}const c=vacCad(),u=c&amp;&amp;(c.usuarios||[]).find(x=>String(x.codigo)===v);
-  if(u&amp;&amp;u.ativo===false){m.innerHTML='<span style="color:var(--crit)">Este ID está inativo no cadastro. Fale com o administrador.</span>';return}
-  if(u){try{localStorage.setItem('vac.user',u.nome);localStorage.setItem('vac.userId',u.codigo);localStorage.setItem('vac.perfil',u.perfil||'')}catch(e){}this.aviso(u.nome);this.fechar();return}
-  const port=systems().find(s=>s.id==='portal')||{html:'Portal.html'};
-  m.innerHTML=`<p>O ID <b>${esc(v)}</b> não está no cadastro. O <b>primeiro acesso</b> (nome + ID) é feito na Administração.</p><div class="vrow"><a class="b p" href="${esc(sysHref(port,'entrar'))}">Fazer o 1º acesso na Administração</a></div>
-  <p style="margin-top:8px">Ou use só um nome neste navegador:</p><div class="vrow"><input id="veNome" placeholder="Seu nome" style="flex:1"><button type="button" class="b" id="veNomeOk">Usar este nome</button></div>`;
-  m.querySelector('#veNomeOk').onclick=()=>{const n=m.querySelector('#veNome').value.trim();if(n.length<2)return;try{localStorage.setItem('vac.user',n);localStorage.removeItem('vac.userId');localStorage.removeItem('vac.perfil')}catch(e){}this.aviso(n);this.fechar()}},
- aviso(nome){try{if(typeof vacAoTrocarUsuario==='function')vacAoTrocarUsuario(nome)}catch(e){console.warn(e)}window.dispatchEvent(new CustomEvent('vac:usuario',{detail:{nome}}));renderSysNav();vacUserRender()}};
 window.addEventListener('storage',e=>{if(['vac.user','vac.userId','vac.cadastros','vac.links'].includes(e.key)){try{renderSysNav();vacUserRender()}catch(x){}}});
 /* ===== fim vac-cabecalho v2 · JS ===== */
 
@@ -33395,16 +33275,6 @@ function renderTop(){renderSysNav();$('#appVer').textContent='v'+PAGE.versao;con
 
 /* ---------- vac-cabecalho v2 · JS (igual em todas as páginas) ---------- */
 const VAC_CAB_VERSAO=2;
-const DEFAULT_SYSTEMS=[
- {id:'portal',nome:"Administração",html:'Portal.html',base:'portal-base.json'},
- {id:'oee',nome:'Produção',html:'OEE-Vacutainer.html',base:'oee-vacutainer-base.json'},
- {id:'perdas',nome:'Waste',html:'Perdas-Ordem.html',base:'perdas-base.json'},
- {id:'gel',nome:'Gestão de Gel',html:'Gestão-Gel-Vacutainer.html',alt:['Gestao-Gel-Vacutainer.html','controle-fifo-gel.html'],base:'fifo-base.json',estado:'atualizacao'},
- {id:'paradas',nome:'Paradas',html:'Paradas.html',base:'paradas-base.json',estado:'atualizacao'},
- {id:'equip',nome:'Equipamentos',html:'Equipamentos.html',base:'equipamentos-base.json',sub:'Ficha · OS · TAGs · AM/TPM',estado:'atualizacao'},
- {id:'inic',nome:'Iniciativas / Ações',html:'Iniciativas.html',base:'iniciativas-base.json',sub:'Ações · KAS · OSM · 5S',estado:'atualizacao'},
- {id:'linha',nome:'Linha 360°',html:'Linha-360.html',base:'linha360-base.json',sub:'Planta interativa · pessoas · checklists',estado:'atualizacao'},
- {id:'projetos',nome:'Projetos',html:'Projetos.html',base:'projetos-base.json',futuro:true,estado:'construcao'}];
 function systems(){let L;try{const s=JSON.parse(localStorage.getItem('vac.sistemas')||'null');if(Array.isArray(s)&amp;&amp;s.length){const ids=new Set(s.map(x=>x.id));L=s.concat(DEFAULT_SYSTEMS.filter(d=>!ids.has(d.id)))}}catch(e){}
  L=L||DEFAULT_SYSTEMS.map(x=>({...x}));/* esta página existe (está aberta) mesmo que o Portal ainda a marque como futura */return L.map(x=>x.id==='paradas'?{...x,futuro:false,oculto:false}:x)}
 function sysHref(s,hash=''){return vacSysHref(s,hash)}
@@ -33440,38 +33310,7 @@ function wireCabecalho(){const b=$('#vacBusca');if(b)b.onclick=()=>Busca.abrir()
    A página pode definir vacAoTrocarUsuario(nome) para atualizar o próprio estado quando a pessoa entra. */
 /* permissão do perfil na página (sem perfil, sem cadastro ou sem a página no perfil = pode) */
 /* semáforo comum: 'ok' | 'warn' | 'crit' | 'none' em relação à meta (inverso: menor é melhor, ex.: scrap, waste) */
-function renderSysNav(){const el=$('#sysNav');if(!el)return;const cur=vacAtual(),port=systems().find(s=>s.id==='portal')||{id:'portal',html:'Portal.html'};
- const vis=systems().filter(s=>!s.oculto&amp;&amp;!s.futuro&amp;&amp;(vacPode(s.id)||s.id===PAGE.id)),href=s=>PAGE.id==='portal'&amp;&amp;s.id==='portal'?'#geral':sysHref(s);
- el.innerHTML=vis.filter(s=>!vacEhOutros(s)).map(s=>`<a href="${esc(href(s))}" class="${s.id===cur?'cur':''}"${s.id===cur?' aria-current="page"':''}${s.sub?` title="${esc(s.sub)}"`:''}>${esc(vacNomeSis(s))}</a>`).join('');
- const o=$('#sysOutros');if(o){let lk=[];try{lk=JSON.parse(localStorage.getItem('vac.links')||'[]')||[]}catch(e){}const ex=vis.filter(vacEhOutros);
-  o.innerHTML=ex.length||lk.length?`<details class="vmenu"><summary>Outros</summary><div class="vmenu-l">${ex.map(s=>`<a href="${esc(href(s))}">${esc(vacNomeSis(s))}</a>`).join('')}${lk.map(l=>`<a href="${esc(l.url)}" target="_blank" rel="noopener">${esc(l.nome)} ↗</a>`).join('')}</div></details>`:'';
-  const d=o.querySelector('details');if(d&amp;&amp;!o._wired){o._wired=1;document.addEventListener('click',e=>{const dd=o.querySelector('details');if(dd&amp;&amp;!dd.contains(e.target))dd.open=false})}}
- const ad=$('#btnAdmin');if(ad&amp;&amp;ad.tagName==='A')ad.href=sysHref(port,'admin');
- const me=systems().find(s=>s.id===PAGE.id),nm=cur==='cadastros'?'Administração':(me&amp;&amp;vacNomeSis(me))||PAGE.tituloCurto||PAGE.titulo.split('·')[0].trim();
- const t=$('#vacTitulo');if(t)t.textContent=nm;const sb=$('#vacSub');if(sb)sb.textContent=cur==='cadastros'?'Cadastros e configuração':(PAGE.subtitulo||'');
- const n=$('#vacNome');if(n)n.href=PAGE.id==='portal'?'#geral':sysHref(port);document.title=nm+' · Linha Vacutainer';
- if(PAGE.id!=='portal')vacUserRender()}
-function vacUserRender(){const el=$('#stUser');if(!el||PAGE.id==='portal')return;const nm=vacNomeUsuario(),p=vacPerfil();let id='';try{id=localStorage.getItem('vac.userId')||''}catch(e){}
- el.innerHTML=nm?`<a href="#" id="vacUserA" title="${esc((id?'ID '+id+' · ':'')+(p?'perfil '+p.nome+' · ':'')+'clique para trocar de usuário')}" style="color:inherit;text-decoration:none"><b>${esc(nm)}</b>${p?` <span style="opacity:.75;font-size:12px">· ${esc(p.nome)}</span>`:''}</a>`:'<a href="#" id="vacUserA" style="color:inherit"><b>Entrar</b></a>';
- $('#vacUserA').onclick=e=>{e.preventDefault();VacEntrar.abrir()}}
 /* entrar pelo ID: lê os usuários da cópia do cadastro; o 1º acesso (cadastro de nome + ID) é feito no Portal */
-const VacEntrar={el:null,
- abrir(){if(PAGE.id==='portal'&amp;&amp;typeof Entrar!=='undefined')return Entrar.abrir();this.fechar();const c=vacCad();let id0='';try{id0=localStorage.getItem('vac.userId')||''}catch(e){}
-  const d=document.createElement('div');d.className='vbusca';d.innerHTML=`<div class="bx vent" role="dialog" aria-label="Entrar"><h3>Entrar</h3><p class="small">Digite seu ID (matrícula). Seu nome fica registrado em tudo o que você alterar, em todas as páginas.</p>
-  <input id="veId" placeholder="ID / matrícula" value="${esc(id0)}" autocomplete="off"><div id="veMsg" class="small"></div>
-  <div class="vrow"><button type="button" class="b p" id="veOk">Entrar</button>${vacNomeUsuario()?'<button type="button" class="b" id="veSair">Sair</button>':''}<button type="button" class="b" id="veX">Cancelar</button></div>${c?'':"<p class=\"small\" style=\"opacity:.75\">Sem a cópia do cadastro neste navegador: abra a Administração pela pasta uma vez para carregar os usuários.</p>"}</div>`;
-  document.body.appendChild(d);this.el=d;d.onclick=e=>{if(e.target===d)this.fechar()};const i=d.querySelector('#veId');i.focus();i.select();
-  i.onkeydown=e=>{if(e.key==='Enter')this.id(i.value);if(e.key==='Escape')this.fechar()};d.querySelector('#veOk').onclick=()=>this.id(i.value);d.querySelector('#veX').onclick=()=>this.fechar();
-  const sa=d.querySelector('#veSair');if(sa)sa.onclick=()=>{try{['vac.user','vac.userId','vac.perfil'].forEach(k=>localStorage.removeItem(k))}catch(e){}this.aviso('');this.fechar()}},
- fechar(){if(this.el){this.el.remove();this.el=null}},
- id(v){v=String(v||'').trim();const m=this.el.querySelector('#veMsg');if(!v){m.textContent='Digite o ID.';return}const c=vacCad(),u=c&amp;&amp;(c.usuarios||[]).find(x=>String(x.codigo)===v);
-  if(u&amp;&amp;u.ativo===false){m.innerHTML='<span style="color:var(--crit)">Este ID está inativo no cadastro. Fale com o administrador.</span>';return}
-  if(u){try{localStorage.setItem('vac.user',u.nome);localStorage.setItem('vac.userId',u.codigo);localStorage.setItem('vac.perfil',u.perfil||'')}catch(e){}this.aviso(u.nome);this.fechar();return}
-  const port=systems().find(s=>s.id==='portal')||{html:'Portal.html'};
-  m.innerHTML=`<p>O ID <b>${esc(v)}</b> não está no cadastro. O <b>primeiro acesso</b> (nome + ID) é feito na Administração.</p><div class="vrow"><a class="b p" href="${esc(sysHref(port,'entrar'))}">Fazer o 1º acesso na Administração</a></div>
-  <p style="margin-top:8px">Ou use só um nome neste navegador:</p><div class="vrow"><input id="veNome" placeholder="Seu nome" style="flex:1"><button type="button" class="b" id="veNomeOk">Usar este nome</button></div>`;
-  m.querySelector('#veNomeOk').onclick=()=>{const n=m.querySelector('#veNome').value.trim();if(n.length<2)return;try{localStorage.setItem('vac.user',n);localStorage.removeItem('vac.userId');localStorage.removeItem('vac.perfil')}catch(e){}this.aviso(n);this.fechar()}},
- aviso(nome){try{if(typeof vacAoTrocarUsuario==='function')vacAoTrocarUsuario(nome)}catch(e){console.warn(e)}window.dispatchEvent(new CustomEvent('vac:usuario',{detail:{nome}}));renderSysNav();vacUserRender()}};
 window.addEventListener('storage',e=>{if(['vac.user','vac.userId','vac.cadastros','vac.links'].includes(e.key)){try{renderSysNav();vacUserRender()}catch(x){}}});
 /* ===== fim vac-cabecalho v2 · JS ===== */
 function buscaPagina(k){const R=[];
@@ -34230,16 +34069,6 @@ const PAGE={id:"equip",titulo:"Equipamentos · Máquinas da linha e manutenção
 const APP_VERSION=PAGE.versao;
 /* ---------- vac-cabecalho v2 · JS (igual em todas as páginas) ---------- */
 const VAC_CAB_VERSAO=2;
-const DEFAULT_SYSTEMS=[
- {id:'portal',nome:"Administração",html:'Portal.html',base:'portal-base.json'},
- {id:'oee',nome:'Produção',html:'OEE-Vacutainer.html',base:'oee-vacutainer-base.json'},
- {id:'perdas',nome:'Waste',html:'Perdas-Ordem.html',base:'perdas-base.json'},
- {id:'gel',nome:'Gestão de Gel',html:'Gestão-Gel-Vacutainer.html',alt:['Gestao-Gel-Vacutainer.html','controle-fifo-gel.html'],base:'fifo-base.json',estado:'atualizacao'},
- {id:'paradas',nome:'Paradas',html:'Paradas.html',base:'paradas-base.json',estado:'atualizacao'},
- {id:'equip',nome:'Equipamentos',html:'Equipamentos.html',base:'equipamentos-base.json',sub:'Ficha · OS · TAGs · AM/TPM',estado:'atualizacao'},
- {id:'inic',nome:'Iniciativas / Ações',html:'Iniciativas.html',base:'iniciativas-base.json',sub:'Ações · KAS · OSM · 5S',estado:'atualizacao'},
- {id:'linha',nome:'Linha 360°',html:'Linha-360.html',base:'linha360-base.json',sub:'Planta interativa · pessoas · checklists',estado:'atualizacao'},
- {id:'projetos',nome:'Projetos',html:'Projetos.html',base:'projetos-base.json',futuro:true,estado:'construcao'}];
 function systems(){let L;try{const s=JSON.parse(localStorage.getItem('vac.sistemas')||'null');if(Array.isArray(s)&amp;&amp;s.length){const ids=new Set(s.map(x=>x.id));L=s.concat(DEFAULT_SYSTEMS.filter(d=>!ids.has(d.id)))}}catch(e){}
  L=L||DEFAULT_SYSTEMS.map(x=>({...x}));/* esta página existe (está aberta) mesmo que o Portal ainda a marque como futura */return L.map(x=>x.id===PAGE.id?{...x,futuro:false,oculto:false}:x)}
 function sysHref(s,hash=''){return vacSysHref(s,hash)}
@@ -34275,38 +34104,7 @@ function wireCabecalho(){const b=$('#vacBusca');if(b)b.onclick=()=>Busca.abrir()
    A página pode definir vacAoTrocarUsuario(nome) para atualizar o próprio estado quando a pessoa entra. */
 /* permissão do perfil na página (sem perfil, sem cadastro ou sem a página no perfil = pode) */
 /* semáforo comum: 'ok' | 'warn' | 'crit' | 'none' em relação à meta (inverso: menor é melhor, ex.: scrap, waste) */
-function renderSysNav(){const el=$('#sysNav');if(!el)return;const cur=vacAtual(),port=systems().find(s=>s.id==='portal')||{id:'portal',html:'Portal.html'};
- const vis=systems().filter(s=>!s.oculto&amp;&amp;!s.futuro&amp;&amp;(vacPode(s.id)||s.id===PAGE.id)),href=s=>PAGE.id==='portal'&amp;&amp;s.id==='portal'?'#geral':sysHref(s);
- el.innerHTML=vis.filter(s=>!vacEhOutros(s)).map(s=>`<a href="${esc(href(s))}" class="${s.id===cur?'cur':''}"${s.id===cur?' aria-current="page"':''}${s.sub?` title="${esc(s.sub)}"`:''}>${esc(vacNomeSis(s))}</a>`).join('');
- const o=$('#sysOutros');if(o){let lk=[];try{lk=JSON.parse(localStorage.getItem('vac.links')||'[]')||[]}catch(e){}const ex=vis.filter(vacEhOutros);
-  o.innerHTML=ex.length||lk.length?`<details class="vmenu"><summary>Outros</summary><div class="vmenu-l">${ex.map(s=>`<a href="${esc(href(s))}">${esc(vacNomeSis(s))}</a>`).join('')}${lk.map(l=>`<a href="${esc(l.url)}" target="_blank" rel="noopener">${esc(l.nome)} ↗</a>`).join('')}</div></details>`:'';
-  const d=o.querySelector('details');if(d&amp;&amp;!o._wired){o._wired=1;document.addEventListener('click',e=>{const dd=o.querySelector('details');if(dd&amp;&amp;!dd.contains(e.target))dd.open=false})}}
- const ad=$('#btnAdmin');if(ad&amp;&amp;ad.tagName==='A')ad.href=sysHref(port,'admin');
- const me=systems().find(s=>s.id===PAGE.id),nm=cur==='cadastros'?'Administração':(me&amp;&amp;vacNomeSis(me))||PAGE.tituloCurto||PAGE.titulo.split('·')[0].trim();
- const t=$('#vacTitulo');if(t)t.textContent=nm;const sb=$('#vacSub');if(sb)sb.textContent=cur==='cadastros'?'Cadastros e configuração':(PAGE.subtitulo||'');
- const n=$('#vacNome');if(n)n.href=PAGE.id==='portal'?'#geral':sysHref(port);document.title=nm+' · Linha Vacutainer';
- if(PAGE.id!=='portal')vacUserRender()}
-function vacUserRender(){const el=$('#stUser');if(!el||PAGE.id==='portal')return;const nm=vacNomeUsuario(),p=vacPerfil();let id='';try{id=localStorage.getItem('vac.userId')||''}catch(e){}
- el.innerHTML=nm?`<a href="#" id="vacUserA" title="${esc((id?'ID '+id+' · ':'')+(p?'perfil '+p.nome+' · ':'')+'clique para trocar de usuário')}" style="color:inherit;text-decoration:none"><b>${esc(nm)}</b>${p?` <span style="opacity:.75;font-size:12px">· ${esc(p.nome)}</span>`:''}</a>`:'<a href="#" id="vacUserA" style="color:inherit"><b>Entrar</b></a>';
- $('#vacUserA').onclick=e=>{e.preventDefault();VacEntrar.abrir()}}
 /* entrar pelo ID: lê os usuários da cópia do cadastro; o 1º acesso (cadastro de nome + ID) é feito no Portal */
-const VacEntrar={el:null,
- abrir(){if(PAGE.id==='portal'&amp;&amp;typeof Entrar!=='undefined')return Entrar.abrir();this.fechar();const c=vacCad();let id0='';try{id0=localStorage.getItem('vac.userId')||''}catch(e){}
-  const d=document.createElement('div');d.className='vbusca';d.innerHTML=`<div class="bx vent" role="dialog" aria-label="Entrar"><h3>Entrar</h3><p class="small">Digite seu ID (matrícula). Seu nome fica registrado em tudo o que você alterar, em todas as páginas.</p>
-  <input id="veId" placeholder="ID / matrícula" value="${esc(id0)}" autocomplete="off"><div id="veMsg" class="small"></div>
-  <div class="vrow"><button type="button" class="b p" id="veOk">Entrar</button>${vacNomeUsuario()?'<button type="button" class="b" id="veSair">Sair</button>':''}<button type="button" class="b" id="veX">Cancelar</button></div>${c?'':"<p class=\"small\" style=\"opacity:.75\">Sem a cópia do cadastro neste navegador: abra a Administração pela pasta uma vez para carregar os usuários.</p>"}</div>`;
-  document.body.appendChild(d);this.el=d;d.onclick=e=>{if(e.target===d)this.fechar()};const i=d.querySelector('#veId');i.focus();i.select();
-  i.onkeydown=e=>{if(e.key==='Enter')this.id(i.value);if(e.key==='Escape')this.fechar()};d.querySelector('#veOk').onclick=()=>this.id(i.value);d.querySelector('#veX').onclick=()=>this.fechar();
-  const sa=d.querySelector('#veSair');if(sa)sa.onclick=()=>{try{['vac.user','vac.userId','vac.perfil'].forEach(k=>localStorage.removeItem(k))}catch(e){}this.aviso('');this.fechar()}},
- fechar(){if(this.el){this.el.remove();this.el=null}},
- id(v){v=String(v||'').trim();const m=this.el.querySelector('#veMsg');if(!v){m.textContent='Digite o ID.';return}const c=vacCad(),u=c&amp;&amp;(c.usuarios||[]).find(x=>String(x.codigo)===v);
-  if(u&amp;&amp;u.ativo===false){m.innerHTML='<span style="color:var(--crit)">Este ID está inativo no cadastro. Fale com o administrador.</span>';return}
-  if(u){try{localStorage.setItem('vac.user',u.nome);localStorage.setItem('vac.userId',u.codigo);localStorage.setItem('vac.perfil',u.perfil||'')}catch(e){}this.aviso(u.nome);this.fechar();return}
-  const port=systems().find(s=>s.id==='portal')||{html:'Portal.html'};
-  m.innerHTML=`<p>O ID <b>${esc(v)}</b> não está no cadastro. O <b>primeiro acesso</b> (nome + ID) é feito na Administração.</p><div class="vrow"><a class="b p" href="${esc(sysHref(port,'entrar'))}">Fazer o 1º acesso na Administração</a></div>
-  <p style="margin-top:8px">Ou use só um nome neste navegador:</p><div class="vrow"><input id="veNome" placeholder="Seu nome" style="flex:1"><button type="button" class="b" id="veNomeOk">Usar este nome</button></div>`;
-  m.querySelector('#veNomeOk').onclick=()=>{const n=m.querySelector('#veNome').value.trim();if(n.length<2)return;try{localStorage.setItem('vac.user',n);localStorage.removeItem('vac.userId');localStorage.removeItem('vac.perfil')}catch(e){}this.aviso(n);this.fechar()}},
- aviso(nome){try{if(typeof vacAoTrocarUsuario==='function')vacAoTrocarUsuario(nome)}catch(e){console.warn(e)}window.dispatchEvent(new CustomEvent('vac:usuario',{detail:{nome}}));renderSysNav();vacUserRender()}};
 window.addEventListener('storage',e=>{if(['vac.user','vac.userId','vac.cadastros','vac.links'].includes(e.key)){try{renderSysNav();vacUserRender()}catch(x){}}});
 /* ===== fim vac-cabecalho v2 · JS ===== */
 </script>
@@ -34781,16 +34579,6 @@ const PAGE={id:"inic",titulo:"Iniciativas / Ações · KAS · OSM · 5S",tituloC
 const APP_VERSION=PAGE.versao;
 /* ---------- vac-cabecalho v2 · JS (igual em todas as páginas) ---------- */
 const VAC_CAB_VERSAO=2;
-const DEFAULT_SYSTEMS=[
- {id:'portal',nome:"Administração",html:'Portal.html',base:'portal-base.json'},
- {id:'oee',nome:'Produção',html:'OEE-Vacutainer.html',base:'oee-vacutainer-base.json'},
- {id:'perdas',nome:'Waste',html:'Perdas-Ordem.html',base:'perdas-base.json'},
- {id:'gel',nome:'Gestão de Gel',html:'Gestão-Gel-Vacutainer.html',alt:['Gestao-Gel-Vacutainer.html','controle-fifo-gel.html'],base:'fifo-base.json',estado:'atualizacao'},
- {id:'paradas',nome:'Paradas',html:'Paradas.html',base:'paradas-base.json',estado:'atualizacao'},
- {id:'equip',nome:'Equipamentos',html:'Equipamentos.html',base:'equipamentos-base.json',sub:'Ficha · OS · TAGs · AM/TPM',estado:'atualizacao'},
- {id:'inic',nome:'Iniciativas / Ações',html:'Iniciativas.html',base:'iniciativas-base.json',sub:'Ações · KAS · OSM · 5S',estado:'atualizacao'},
- {id:'linha',nome:'Linha 360°',html:'Linha-360.html',base:'linha360-base.json',sub:'Planta interativa · pessoas · checklists',estado:'atualizacao'},
- {id:'projetos',nome:'Projetos',html:'Projetos.html',base:'projetos-base.json',futuro:true,estado:'construcao'}];
 function systems(){let L;try{const s=JSON.parse(localStorage.getItem('vac.sistemas')||'null');if(Array.isArray(s)&amp;&amp;s.length){const ids=new Set(s.map(x=>x.id));L=s.concat(DEFAULT_SYSTEMS.filter(d=>!ids.has(d.id)))}}catch(e){}
  L=L||DEFAULT_SYSTEMS.map(x=>({...x}));/* esta página existe (está aberta) mesmo que o Portal ainda a marque como futura */return L.map(x=>x.id===PAGE.id?{...x,futuro:false,oculto:false}:x)}
 function sysHref(s,hash=''){return vacSysHref(s,hash)}
@@ -34826,38 +34614,7 @@ function wireCabecalho(){const b=$('#vacBusca');if(b)b.onclick=()=>Busca.abrir()
    A página pode definir vacAoTrocarUsuario(nome) para atualizar o próprio estado quando a pessoa entra. */
 /* permissão do perfil na página (sem perfil, sem cadastro ou sem a página no perfil = pode) */
 /* semáforo comum: 'ok' | 'warn' | 'crit' | 'none' em relação à meta (inverso: menor é melhor, ex.: scrap, waste) */
-function renderSysNav(){const el=$('#sysNav');if(!el)return;const cur=vacAtual(),port=systems().find(s=>s.id==='portal')||{id:'portal',html:'Portal.html'};
- const vis=systems().filter(s=>!s.oculto&amp;&amp;!s.futuro&amp;&amp;(vacPode(s.id)||s.id===PAGE.id)),href=s=>PAGE.id==='portal'&amp;&amp;s.id==='portal'?'#geral':sysHref(s);
- el.innerHTML=vis.filter(s=>!vacEhOutros(s)).map(s=>`<a href="${esc(href(s))}" class="${s.id===cur?'cur':''}"${s.id===cur?' aria-current="page"':''}${s.sub?` title="${esc(s.sub)}"`:''}>${esc(vacNomeSis(s))}</a>`).join('');
- const o=$('#sysOutros');if(o){let lk=[];try{lk=JSON.parse(localStorage.getItem('vac.links')||'[]')||[]}catch(e){}const ex=vis.filter(vacEhOutros);
-  o.innerHTML=ex.length||lk.length?`<details class="vmenu"><summary>Outros</summary><div class="vmenu-l">${ex.map(s=>`<a href="${esc(href(s))}">${esc(vacNomeSis(s))}</a>`).join('')}${lk.map(l=>`<a href="${esc(l.url)}" target="_blank" rel="noopener">${esc(l.nome)} ↗</a>`).join('')}</div></details>`:'';
-  const d=o.querySelector('details');if(d&amp;&amp;!o._wired){o._wired=1;document.addEventListener('click',e=>{const dd=o.querySelector('details');if(dd&amp;&amp;!dd.contains(e.target))dd.open=false})}}
- const ad=$('#btnAdmin');if(ad&amp;&amp;ad.tagName==='A')ad.href=sysHref(port,'admin');
- const me=systems().find(s=>s.id===PAGE.id),nm=cur==='cadastros'?'Administração':(me&amp;&amp;vacNomeSis(me))||PAGE.tituloCurto||PAGE.titulo.split('·')[0].trim();
- const t=$('#vacTitulo');if(t)t.textContent=nm;const sb=$('#vacSub');if(sb)sb.textContent=cur==='cadastros'?'Cadastros e configuração':(PAGE.subtitulo||'');
- const n=$('#vacNome');if(n)n.href=PAGE.id==='portal'?'#geral':sysHref(port);document.title=nm+' · Linha Vacutainer';
- if(PAGE.id!=='portal')vacUserRender()}
-function vacUserRender(){const el=$('#stUser');if(!el||PAGE.id==='portal')return;const nm=vacNomeUsuario(),p=vacPerfil();let id='';try{id=localStorage.getItem('vac.userId')||''}catch(e){}
- el.innerHTML=nm?`<a href="#" id="vacUserA" title="${esc((id?'ID '+id+' · ':'')+(p?'perfil '+p.nome+' · ':'')+'clique para trocar de usuário')}" style="color:inherit;text-decoration:none"><b>${esc(nm)}</b>${p?` <span style="opacity:.75;font-size:12px">· ${esc(p.nome)}</span>`:''}</a>`:'<a href="#" id="vacUserA" style="color:inherit"><b>Entrar</b></a>';
- $('#vacUserA').onclick=e=>{e.preventDefault();VacEntrar.abrir()}}
 /* entrar pelo ID: lê os usuários da cópia do cadastro; o 1º acesso (cadastro de nome + ID) é feito no Portal */
-const VacEntrar={el:null,
- abrir(){if(PAGE.id==='portal'&amp;&amp;typeof Entrar!=='undefined')return Entrar.abrir();this.fechar();const c=vacCad();let id0='';try{id0=localStorage.getItem('vac.userId')||''}catch(e){}
-  const d=document.createElement('div');d.className='vbusca';d.innerHTML=`<div class="bx vent" role="dialog" aria-label="Entrar"><h3>Entrar</h3><p class="small">Digite seu ID (matrícula). Seu nome fica registrado em tudo o que você alterar, em todas as páginas.</p>
-  <input id="veId" placeholder="ID / matrícula" value="${esc(id0)}" autocomplete="off"><div id="veMsg" class="small"></div>
-  <div class="vrow"><button type="button" class="b p" id="veOk">Entrar</button>${vacNomeUsuario()?'<button type="button" class="b" id="veSair">Sair</button>':''}<button type="button" class="b" id="veX">Cancelar</button></div>${c?'':"<p class=\"small\" style=\"opacity:.75\">Sem a cópia do cadastro neste navegador: abra a Administração pela pasta uma vez para carregar os usuários.</p>"}</div>`;
-  document.body.appendChild(d);this.el=d;d.onclick=e=>{if(e.target===d)this.fechar()};const i=d.querySelector('#veId');i.focus();i.select();
-  i.onkeydown=e=>{if(e.key==='Enter')this.id(i.value);if(e.key==='Escape')this.fechar()};d.querySelector('#veOk').onclick=()=>this.id(i.value);d.querySelector('#veX').onclick=()=>this.fechar();
-  const sa=d.querySelector('#veSair');if(sa)sa.onclick=()=>{try{['vac.user','vac.userId','vac.perfil'].forEach(k=>localStorage.removeItem(k))}catch(e){}this.aviso('');this.fechar()}},
- fechar(){if(this.el){this.el.remove();this.el=null}},
- id(v){v=String(v||'').trim();const m=this.el.querySelector('#veMsg');if(!v){m.textContent='Digite o ID.';return}const c=vacCad(),u=c&amp;&amp;(c.usuarios||[]).find(x=>String(x.codigo)===v);
-  if(u&amp;&amp;u.ativo===false){m.innerHTML='<span style="color:var(--crit)">Este ID está inativo no cadastro. Fale com o administrador.</span>';return}
-  if(u){try{localStorage.setItem('vac.user',u.nome);localStorage.setItem('vac.userId',u.codigo);localStorage.setItem('vac.perfil',u.perfil||'')}catch(e){}this.aviso(u.nome);this.fechar();return}
-  const port=systems().find(s=>s.id==='portal')||{html:'Portal.html'};
-  m.innerHTML=`<p>O ID <b>${esc(v)}</b> não está no cadastro. O <b>primeiro acesso</b> (nome + ID) é feito na Administração.</p><div class="vrow"><a class="b p" href="${esc(sysHref(port,'entrar'))}">Fazer o 1º acesso na Administração</a></div>
-  <p style="margin-top:8px">Ou use só um nome neste navegador:</p><div class="vrow"><input id="veNome" placeholder="Seu nome" style="flex:1"><button type="button" class="b" id="veNomeOk">Usar este nome</button></div>`;
-  m.querySelector('#veNomeOk').onclick=()=>{const n=m.querySelector('#veNome').value.trim();if(n.length<2)return;try{localStorage.setItem('vac.user',n);localStorage.removeItem('vac.userId');localStorage.removeItem('vac.perfil')}catch(e){}this.aviso(n);this.fechar()}},
- aviso(nome){try{if(typeof vacAoTrocarUsuario==='function')vacAoTrocarUsuario(nome)}catch(e){console.warn(e)}window.dispatchEvent(new CustomEvent('vac:usuario',{detail:{nome}}));renderSysNav();vacUserRender()}};
 window.addEventListener('storage',e=>{if(['vac.user','vac.userId','vac.cadastros','vac.links'].includes(e.key)){try{renderSysNav();vacUserRender()}catch(x){}}});
 /* ===== fim vac-cabecalho v2 · JS ===== */
 </script>
@@ -35651,16 +35408,6 @@ const PAGE={id:"linha",titulo:"Linha 360° · Planta interativa da linha",titulo
 const APP_VERSION=PAGE.versao;
 /* ---------- vac-cabecalho v2 · JS (igual em todas as páginas) ---------- */
 const VAC_CAB_VERSAO=2;
-const DEFAULT_SYSTEMS=[
- {id:'portal',nome:"Administração",html:'Portal.html',base:'portal-base.json'},
- {id:'oee',nome:'Produção',html:'OEE-Vacutainer.html',base:'oee-vacutainer-base.json'},
- {id:'perdas',nome:'Waste',html:'Perdas-Ordem.html',base:'perdas-base.json'},
- {id:'gel',nome:'Gestão de Gel',html:'Gestão-Gel-Vacutainer.html',alt:['Gestao-Gel-Vacutainer.html','controle-fifo-gel.html'],base:'fifo-base.json',estado:'atualizacao'},
- {id:'paradas',nome:'Paradas',html:'Paradas.html',base:'paradas-base.json',estado:'atualizacao'},
- {id:'equip',nome:'Equipamentos',html:'Equipamentos.html',base:'equipamentos-base.json',sub:'Ficha · OS · TAGs · AM/TPM',estado:'atualizacao'},
- {id:'inic',nome:'Iniciativas / Ações',html:'Iniciativas.html',base:'iniciativas-base.json',sub:'Ações · KAS · OSM · 5S',estado:'atualizacao'},
- {id:'linha',nome:'Linha 360°',html:'Linha-360.html',base:'linha360-base.json',sub:'Planta interativa · pessoas · checklists',estado:'atualizacao'},
- {id:'projetos',nome:'Projetos',html:'Projetos.html',base:'projetos-base.json',futuro:true,estado:'construcao'}];
 function systems(){let L;try{const s=JSON.parse(localStorage.getItem('vac.sistemas')||'null');if(Array.isArray(s)&amp;&amp;s.length){const ids=new Set(s.map(x=>x.id));L=s.concat(DEFAULT_SYSTEMS.filter(d=>!ids.has(d.id)))}}catch(e){}
  L=L||DEFAULT_SYSTEMS.map(x=>({...x}));/* esta página existe (está aberta) mesmo que o Portal ainda a marque como futura */return L.map(x=>x.id===PAGE.id?{...x,futuro:false,oculto:false}:x)}
 function sysHref(s,hash=''){return vacSysHref(s,hash)}
@@ -35696,38 +35443,7 @@ function wireCabecalho(){const b=$('#vacBusca');if(b)b.onclick=()=>Busca.abrir()
    A página pode definir vacAoTrocarUsuario(nome) para atualizar o próprio estado quando a pessoa entra. */
 /* permissão do perfil na página (sem perfil, sem cadastro ou sem a página no perfil = pode) */
 /* semáforo comum: 'ok' | 'warn' | 'crit' | 'none' em relação à meta (inverso: menor é melhor, ex.: scrap, waste) */
-function renderSysNav(){const el=$('#sysNav');if(!el)return;const cur=vacAtual(),port=systems().find(s=>s.id==='portal')||{id:'portal',html:'Portal.html'};
- const vis=systems().filter(s=>!s.oculto&amp;&amp;!s.futuro&amp;&amp;(vacPode(s.id)||s.id===PAGE.id)),href=s=>PAGE.id==='portal'&amp;&amp;s.id==='portal'?'#geral':sysHref(s);
- el.innerHTML=vis.filter(s=>!vacEhOutros(s)).map(s=>`<a href="${esc(href(s))}" class="${s.id===cur?'cur':''}"${s.id===cur?' aria-current="page"':''}${s.sub?` title="${esc(s.sub)}"`:''}>${esc(vacNomeSis(s))}</a>`).join('');
- const o=$('#sysOutros');if(o){let lk=[];try{lk=JSON.parse(localStorage.getItem('vac.links')||'[]')||[]}catch(e){}const ex=vis.filter(vacEhOutros);
-  o.innerHTML=ex.length||lk.length?`<details class="vmenu"><summary>Outros</summary><div class="vmenu-l">${ex.map(s=>`<a href="${esc(href(s))}">${esc(vacNomeSis(s))}</a>`).join('')}${lk.map(l=>`<a href="${esc(l.url)}" target="_blank" rel="noopener">${esc(l.nome)} ↗</a>`).join('')}</div></details>`:'';
-  const d=o.querySelector('details');if(d&amp;&amp;!o._wired){o._wired=1;document.addEventListener('click',e=>{const dd=o.querySelector('details');if(dd&amp;&amp;!dd.contains(e.target))dd.open=false})}}
- const ad=$('#btnAdmin');if(ad&amp;&amp;ad.tagName==='A')ad.href=sysHref(port,'admin');
- const me=systems().find(s=>s.id===PAGE.id),nm=cur==='cadastros'?'Administração':(me&amp;&amp;vacNomeSis(me))||PAGE.tituloCurto||PAGE.titulo.split('·')[0].trim();
- const t=$('#vacTitulo');if(t)t.textContent=nm;const sb=$('#vacSub');if(sb)sb.textContent=cur==='cadastros'?'Cadastros e configuração':(PAGE.subtitulo||'');
- const n=$('#vacNome');if(n)n.href=PAGE.id==='portal'?'#geral':sysHref(port);document.title=nm+' · Linha Vacutainer';
- if(PAGE.id!=='portal')vacUserRender()}
-function vacUserRender(){const el=$('#stUser');if(!el||PAGE.id==='portal')return;const nm=vacNomeUsuario(),p=vacPerfil();let id='';try{id=localStorage.getItem('vac.userId')||''}catch(e){}
- el.innerHTML=nm?`<a href="#" id="vacUserA" title="${esc((id?'ID '+id+' · ':'')+(p?'perfil '+p.nome+' · ':'')+'clique para trocar de usuário')}" style="color:inherit;text-decoration:none"><b>${esc(nm)}</b>${p?` <span style="opacity:.75;font-size:12px">· ${esc(p.nome)}</span>`:''}</a>`:'<a href="#" id="vacUserA" style="color:inherit"><b>Entrar</b></a>';
- $('#vacUserA').onclick=e=>{e.preventDefault();VacEntrar.abrir()}}
 /* entrar pelo ID: lê os usuários da cópia do cadastro; o 1º acesso (cadastro de nome + ID) é feito no Portal */
-const VacEntrar={el:null,
- abrir(){if(PAGE.id==='portal'&amp;&amp;typeof Entrar!=='undefined')return Entrar.abrir();this.fechar();const c=vacCad();let id0='';try{id0=localStorage.getItem('vac.userId')||''}catch(e){}
-  const d=document.createElement('div');d.className='vbusca';d.innerHTML=`<div class="bx vent" role="dialog" aria-label="Entrar"><h3>Entrar</h3><p class="small">Digite seu ID (matrícula). Seu nome fica registrado em tudo o que você alterar, em todas as páginas.</p>
-  <input id="veId" placeholder="ID / matrícula" value="${esc(id0)}" autocomplete="off"><div id="veMsg" class="small"></div>
-  <div class="vrow"><button type="button" class="b p" id="veOk">Entrar</button>${vacNomeUsuario()?'<button type="button" class="b" id="veSair">Sair</button>':''}<button type="button" class="b" id="veX">Cancelar</button></div>${c?'':"<p class=\"small\" style=\"opacity:.75\">Sem a cópia do cadastro neste navegador: abra a Administração pela pasta uma vez para carregar os usuários.</p>"}</div>`;
-  document.body.appendChild(d);this.el=d;d.onclick=e=>{if(e.target===d)this.fechar()};const i=d.querySelector('#veId');i.focus();i.select();
-  i.onkeydown=e=>{if(e.key==='Enter')this.id(i.value);if(e.key==='Escape')this.fechar()};d.querySelector('#veOk').onclick=()=>this.id(i.value);d.querySelector('#veX').onclick=()=>this.fechar();
-  const sa=d.querySelector('#veSair');if(sa)sa.onclick=()=>{try{['vac.user','vac.userId','vac.perfil'].forEach(k=>localStorage.removeItem(k))}catch(e){}this.aviso('');this.fechar()}},
- fechar(){if(this.el){this.el.remove();this.el=null}},
- id(v){v=String(v||'').trim();const m=this.el.querySelector('#veMsg');if(!v){m.textContent='Digite o ID.';return}const c=vacCad(),u=c&amp;&amp;(c.usuarios||[]).find(x=>String(x.codigo)===v);
-  if(u&amp;&amp;u.ativo===false){m.innerHTML='<span style="color:var(--crit)">Este ID está inativo no cadastro. Fale com o administrador.</span>';return}
-  if(u){try{localStorage.setItem('vac.user',u.nome);localStorage.setItem('vac.userId',u.codigo);localStorage.setItem('vac.perfil',u.perfil||'')}catch(e){}this.aviso(u.nome);this.fechar();return}
-  const port=systems().find(s=>s.id==='portal')||{html:'Portal.html'};
-  m.innerHTML=`<p>O ID <b>${esc(v)}</b> não está no cadastro. O <b>primeiro acesso</b> (nome + ID) é feito na Administração.</p><div class="vrow"><a class="b p" href="${esc(sysHref(port,'entrar'))}">Fazer o 1º acesso na Administração</a></div>
-  <p style="margin-top:8px">Ou use só um nome neste navegador:</p><div class="vrow"><input id="veNome" placeholder="Seu nome" style="flex:1"><button type="button" class="b" id="veNomeOk">Usar este nome</button></div>`;
-  m.querySelector('#veNomeOk').onclick=()=>{const n=m.querySelector('#veNome').value.trim();if(n.length<2)return;try{localStorage.setItem('vac.user',n);localStorage.removeItem('vac.userId');localStorage.removeItem('vac.perfil')}catch(e){}this.aviso(n);this.fechar()}},
- aviso(nome){try{if(typeof vacAoTrocarUsuario==='function')vacAoTrocarUsuario(nome)}catch(e){console.warn(e)}window.dispatchEvent(new CustomEvent('vac:usuario',{detail:{nome}}));renderSysNav();vacUserRender()}};
 window.addEventListener('storage',e=>{if(['vac.user','vac.userId','vac.cadastros','vac.links'].includes(e.key)){try{renderSysNav();vacUserRender()}catch(x){}}});
 /* ===== fim vac-cabecalho v2 · JS ===== */
 </script>
@@ -37112,16 +36828,6 @@ PAGE.busca=q=>{const k=norm(q),R=[];for(const a of PLANO.abas){if(norm(a.aba+' '
 const APP_VERSION=PAGE.versao;
 /* ---------- vac-cabecalho v2 · JS (igual em todas as páginas) ---------- */
 const VAC_CAB_VERSAO=2;
-const DEFAULT_SYSTEMS=[
- {id:'portal',nome:"Administração",html:'Portal.html',base:'portal-base.json'},
- {id:'oee',nome:'Produção',html:'OEE-Vacutainer.html',base:'oee-vacutainer-base.json'},
- {id:'perdas',nome:'Waste',html:'Perdas-Ordem.html',base:'perdas-base.json'},
- {id:'gel',nome:'Gestão de Gel',html:'Gestão-Gel-Vacutainer.html',alt:['Gestao-Gel-Vacutainer.html','controle-fifo-gel.html'],base:'fifo-base.json',estado:'atualizacao'},
- {id:'paradas',nome:'Paradas',html:'Paradas.html',base:'paradas-base.json',estado:'atualizacao'},
- {id:'equip',nome:'Equipamentos',html:'Equipamentos.html',base:'equipamentos-base.json',sub:'Ficha · OS · TAGs · AM/TPM',estado:'atualizacao'},
- {id:'inic',nome:'Iniciativas / Ações',html:'Iniciativas.html',base:'iniciativas-base.json',sub:'Ações · KAS · OSM · 5S',estado:'atualizacao'},
- {id:'linha',nome:'Linha 360°',html:'Linha-360.html',base:'linha360-base.json',sub:'Planta interativa · pessoas · checklists',estado:'atualizacao'},
- {id:'projetos',nome:'Projetos',html:'Projetos.html',base:'projetos-base.json',futuro:true,estado:'construcao'}];
 function systems(){let L;try{const s=JSON.parse(localStorage.getItem('vac.sistemas')||'null');if(Array.isArray(s)&amp;&amp;s.length){const ids=new Set(s.map(x=>x.id));L=s.concat(DEFAULT_SYSTEMS.filter(d=>!ids.has(d.id)))}}catch(e){}
  L=L||DEFAULT_SYSTEMS.map(x=>({...x}));/* esta página existe (está aberta) mesmo que o Portal ainda a marque como futura */return L.map(x=>x.id===PAGE.id?{...x,futuro:false,oculto:false}:x)}
 function sysHref(s,hash=''){return vacSysHref(s,hash)}
@@ -37157,38 +36863,7 @@ function wireCabecalho(){const b=$('#vacBusca');if(b)b.onclick=()=>Busca.abrir()
    A página pode definir vacAoTrocarUsuario(nome) para atualizar o próprio estado quando a pessoa entra. */
 /* permissão do perfil na página (sem perfil, sem cadastro ou sem a página no perfil = pode) */
 /* semáforo comum: 'ok' | 'warn' | 'crit' | 'none' em relação à meta (inverso: menor é melhor, ex.: scrap, waste) */
-function renderSysNav(){const el=$('#sysNav');if(!el)return;const cur=vacAtual(),port=systems().find(s=>s.id==='portal')||{id:'portal',html:'Portal.html'};
- const vis=systems().filter(s=>!s.oculto&amp;&amp;!s.futuro&amp;&amp;(vacPode(s.id)||s.id===PAGE.id)),href=s=>PAGE.id==='portal'&amp;&amp;s.id==='portal'?'#geral':sysHref(s);
- el.innerHTML=vis.filter(s=>!vacEhOutros(s)).map(s=>`<a href="${esc(href(s))}" class="${s.id===cur?'cur':''}"${s.id===cur?' aria-current="page"':''}${s.sub?` title="${esc(s.sub)}"`:''}>${esc(vacNomeSis(s))}</a>`).join('');
- const o=$('#sysOutros');if(o){let lk=[];try{lk=JSON.parse(localStorage.getItem('vac.links')||'[]')||[]}catch(e){}const ex=vis.filter(vacEhOutros);
-  o.innerHTML=ex.length||lk.length?`<details class="vmenu"><summary>Outros</summary><div class="vmenu-l">${ex.map(s=>`<a href="${esc(href(s))}">${esc(vacNomeSis(s))}</a>`).join('')}${lk.map(l=>`<a href="${esc(l.url)}" target="_blank" rel="noopener">${esc(l.nome)} ↗</a>`).join('')}</div></details>`:'';
-  const d=o.querySelector('details');if(d&amp;&amp;!o._wired){o._wired=1;document.addEventListener('click',e=>{const dd=o.querySelector('details');if(dd&amp;&amp;!dd.contains(e.target))dd.open=false})}}
- const ad=$('#btnAdmin');if(ad&amp;&amp;ad.tagName==='A')ad.href=sysHref(port,'admin');
- const me=systems().find(s=>s.id===PAGE.id),nm=cur==='cadastros'?'Administração':(me&amp;&amp;vacNomeSis(me))||PAGE.tituloCurto||PAGE.titulo.split('·')[0].trim();
- const t=$('#vacTitulo');if(t)t.textContent=nm;const sb=$('#vacSub');if(sb)sb.textContent=cur==='cadastros'?'Cadastros e configuração':(PAGE.subtitulo||'');
- const n=$('#vacNome');if(n)n.href=PAGE.id==='portal'?'#geral':sysHref(port);document.title=nm+' · Linha Vacutainer';
- if(PAGE.id!=='portal')vacUserRender()}
-function vacUserRender(){const el=$('#stUser');if(!el||PAGE.id==='portal')return;const nm=vacNomeUsuario(),p=vacPerfil();let id='';try{id=localStorage.getItem('vac.userId')||''}catch(e){}
- el.innerHTML=nm?`<a href="#" id="vacUserA" title="${esc((id?'ID '+id+' · ':'')+(p?'perfil '+p.nome+' · ':'')+'clique para trocar de usuário')}" style="color:inherit;text-decoration:none"><b>${esc(nm)}</b>${p?` <span style="opacity:.75;font-size:12px">· ${esc(p.nome)}</span>`:''}</a>`:'<a href="#" id="vacUserA" style="color:inherit"><b>Entrar</b></a>';
- $('#vacUserA').onclick=e=>{e.preventDefault();VacEntrar.abrir()}}
 /* entrar pelo ID: lê os usuários da cópia do cadastro; o 1º acesso (cadastro de nome + ID) é feito no Portal */
-const VacEntrar={el:null,
- abrir(){if(PAGE.id==='portal'&amp;&amp;typeof Entrar!=='undefined')return Entrar.abrir();this.fechar();const c=vacCad();let id0='';try{id0=localStorage.getItem('vac.userId')||''}catch(e){}
-  const d=document.createElement('div');d.className='vbusca';d.innerHTML=`<div class="bx vent" role="dialog" aria-label="Entrar"><h3>Entrar</h3><p class="small">Digite seu ID (matrícula). Seu nome fica registrado em tudo o que você alterar, em todas as páginas.</p>
-  <input id="veId" placeholder="ID / matrícula" value="${esc(id0)}" autocomplete="off"><div id="veMsg" class="small"></div>
-  <div class="vrow"><button type="button" class="b p" id="veOk">Entrar</button>${vacNomeUsuario()?'<button type="button" class="b" id="veSair">Sair</button>':''}<button type="button" class="b" id="veX">Cancelar</button></div>${c?'':"<p class=\"small\" style=\"opacity:.75\">Sem a cópia do cadastro neste navegador: abra a Administração pela pasta uma vez para carregar os usuários.</p>"}</div>`;
-  document.body.appendChild(d);this.el=d;d.onclick=e=>{if(e.target===d)this.fechar()};const i=d.querySelector('#veId');i.focus();i.select();
-  i.onkeydown=e=>{if(e.key==='Enter')this.id(i.value);if(e.key==='Escape')this.fechar()};d.querySelector('#veOk').onclick=()=>this.id(i.value);d.querySelector('#veX').onclick=()=>this.fechar();
-  const sa=d.querySelector('#veSair');if(sa)sa.onclick=()=>{try{['vac.user','vac.userId','vac.perfil'].forEach(k=>localStorage.removeItem(k))}catch(e){}this.aviso('');this.fechar()}},
- fechar(){if(this.el){this.el.remove();this.el=null}},
- id(v){v=String(v||'').trim();const m=this.el.querySelector('#veMsg');if(!v){m.textContent='Digite o ID.';return}const c=vacCad(),u=c&amp;&amp;(c.usuarios||[]).find(x=>String(x.codigo)===v);
-  if(u&amp;&amp;u.ativo===false){m.innerHTML='<span style="color:var(--crit)">Este ID está inativo no cadastro. Fale com o administrador.</span>';return}
-  if(u){try{localStorage.setItem('vac.user',u.nome);localStorage.setItem('vac.userId',u.codigo);localStorage.setItem('vac.perfil',u.perfil||'')}catch(e){}this.aviso(u.nome);this.fechar();return}
-  const port=systems().find(s=>s.id==='portal')||{html:'Portal.html'};
-  m.innerHTML=`<p>O ID <b>${esc(v)}</b> não está no cadastro. O <b>primeiro acesso</b> (nome + ID) é feito na Administração.</p><div class="vrow"><a class="b p" href="${esc(sysHref(port,'entrar'))}">Fazer o 1º acesso na Administração</a></div>
-  <p style="margin-top:8px">Ou use só um nome neste navegador:</p><div class="vrow"><input id="veNome" placeholder="Seu nome" style="flex:1"><button type="button" class="b" id="veNomeOk">Usar este nome</button></div>`;
-  m.querySelector('#veNomeOk').onclick=()=>{const n=m.querySelector('#veNome').value.trim();if(n.length<2)return;try{localStorage.setItem('vac.user',n);localStorage.removeItem('vac.userId');localStorage.removeItem('vac.perfil')}catch(e){}this.aviso(n);this.fechar()}},
- aviso(nome){try{if(typeof vacAoTrocarUsuario==='function')vacAoTrocarUsuario(nome)}catch(e){console.warn(e)}window.dispatchEvent(new CustomEvent('vac:usuario',{detail:{nome}}));renderSysNav();vacUserRender()}};
 window.addEventListener('storage',e=>{if(['vac.user','vac.userId','vac.cadastros','vac.links'].includes(e.key)){try{renderSysNav();vacUserRender()}catch(x){}}});
 /* ===== fim vac-cabecalho v2 · JS ===== */
 </script>
@@ -55563,70 +55238,70 @@ body.vac-porta{overflow:hidden}
       "id": "oee",
       "path": "Plataforma.html#motor/oee",
       "version": "2.6.50",
-      "sha256": "906e7b416d0b95ab559e7ce7586e861651d836ae99976e466d0eba66cba2018d",
-      "bytes": 2397085
+      "sha256": "17b065a8a04182e9b55adb02feab34ab5968df896267f0fb26b011888acb1ab8",
+      "bytes": 2397238
     },
     {
       "id": "perdas",
       "path": "Plataforma.html#motor/perdas",
       "version": "1.12.21",
-      "sha256": "6b719090719ed3a659bc3ff22f9eb43a57fe14cb4b386e2e3fe93fa0147ed3a5",
-      "bytes": 987277
+      "sha256": "75cb15dc564c02518b210d5ea2438abdb0b81b2b62f55f92fd52e4469d2ee04a",
+      "bytes": 987430
     },
     {
       "id": "gel",
       "path": "Plataforma.html#motor/gel",
       "version": "2.52",
-      "sha256": "52986e2982dc26d5b1d6258c598d0d1e6bcc582eff0da2862a1d55f368bed12c",
-      "bytes": 1631561
+      "sha256": "da7465914660a24cb1b884a23f53d4c217156e25097890ca7b19fc477ab05629",
+      "bytes": 1631714
     },
     {
       "id": "paradas",
       "path": "Plataforma.html#motor/paradas",
       "version": "1.2.22",
-      "sha256": "8499eab16ae116289ab058dcb1b9234b8f42e013f9e15b5cbcf03abad507b258",
-      "bytes": 955650
+      "sha256": "3e7183df636e9ae965af897a3c87d6ca288f4b51ba241530502f6b51ae1a0b64",
+      "bytes": 955803
     },
     {
       "id": "equip",
       "path": "Plataforma.html#motor/equip",
       "version": "1.0.22",
-      "sha256": "703e799ca3c1222d493867bed6404d10646918e85f68c7e4ece298894c30f8ad",
-      "bytes": 746813
+      "sha256": "1baaa05092d7ef7780b61b89c70786662beab84ccd6ba15b34b52f26bf68d4de",
+      "bytes": 746966
     },
     {
       "id": "inic",
       "path": "Plataforma.html#motor/inic",
       "version": "1.1.17",
-      "sha256": "4d8dd47ed40f4b6060bbaf2673dc17709b9c3031fc5841a1262523b1d26397c0",
-      "bytes": 756414
+      "sha256": "2c8bc53f15e979dd3951df37c78f99f6c2f4ed661dae491a2a4fb9cea9bdeafd",
+      "bytes": 756567
     },
     {
       "id": "linha",
       "path": "Plataforma.html#motor/linha",
       "version": "1.7.1",
-      "sha256": "f979ae687be09488f8361ef101822d7bdd668fb70759892a38bd56903d6da5ed",
-      "bytes": 1009446
+      "sha256": "35ccd8421a53b542d77c2fbcc076a83d057bf0c14fb80ac87face8ef0757786f",
+      "bytes": 1009599
     },
     {
       "id": "projetos",
       "path": "Plataforma.html#motor/projetos",
       "version": "0.1.16",
-      "sha256": "5ebceae9ff395f58076049d5116d2d4f8aa2d6108dc9900ae935ff53753013db",
-      "bytes": 679056
+      "sha256": "4bf62a371743f99d52e434ac3f4d9e82e996a50203cc557271a291b38182a161",
+      "bytes": 679209
     },
     {
       "id": "portal",
       "path": "Plataforma.html#motor/portal",
-      "version": "1.9.102",
-      "sha256": "d92c05f1d675d01246e60e16f17096b2f11bf3fb7009a2b754bc3e9e54f8fa18",
-      "bytes": 1353105
+      "version": "1.9.103",
+      "sha256": "2f2ee98ea2aa81e257cadebc6e6106f6eda07ed21ef0ac13da6a94807835a2c0",
+      "bytes": 1353494
     }
   ],
   "limitations": [
     "Projetos e conteúdo técnico OSM/MES/AM/TPM mantêm os limites documentados nas fontes."
   ],
-  "enginesSha256": "29b1cdccb8daea6761ee0cf06d9e55b9f34ecbb1a1a8eb7eeceea91c8e2fda81",
+  "enginesSha256": "e004df7856af6955caa5904e84faa183a749f0faca3feecf2b7d6ef3f885cc3d",
   "originRevision": "ffc9ee8",
   "sourceMode": "single-html",
   "originEnginesSha256": "a87a64ad0c328f70e102b2ae888790a9b5d5a9bd05778652a7ce7cae140e40d2"
@@ -55696,7 +55371,7 @@ summary{cursor:pointer;font-weight:600;color:var(--navy)}
 'use strict';
 /* ---------- referência (atualizar quando a plataforma mudar de versão) ---------- */
 // Iguais às do pacote da plataforma (nova-plataforma/src/generated/manifest.json); o teste ferramenta-verificar confere.
-const VERSOES = {"oee":"2.6.50","perdas":"1.12.21","gel":"2.52","paradas":"1.2.22","equip":"1.0.22","inic":"1.1.17","linha":"1.7.1","projetos":"0.1.16","portal":"1.9.102"};
+const VERSOES = {"oee":"2.6.50","perdas":"1.12.21","gel":"2.52","paradas":"1.2.22","equip":"1.0.22","inic":"1.1.17","linha":"1.7.1","projetos":"0.1.16","portal":"1.9.103"};
 const BASES = [
  { arq: 'vacutainer-cadastros.json', mod: 'portal', nome: 'Cadastro geral (Portal)', obrig: true, cadastro: true, bk: 'Cadastros' },
  { arq: 'portal-base.json', mod: 'portal', nome: 'Portal', obrig: true, bk: 'Portal' },
@@ -56287,7 +55962,7 @@ import { Icon, Button, Badge, Empty, Modal, BarChart, BrandLogo, CommandMenu } f
 import { ModuleFrame } from "vac:modulo/components/ModuleFrame";
 import manifest from "vac:recurso/manifesto";
 import { ModuleTabs } from "vac:modulo/components/ModuleTabs";
-const VERSION = "1.8.96";
+const VERSION = "1.8.97";
 /* Navegação 1.3.0 (16/11/2026): Visão da linha, Relatórios e Importações têm abas; as que mostram uma tela do
    Portal (motor da Administração) trazem o 3º campo com a aba dele. Administração fica só com cadastros e configuração. */
 const SHELL_TABS = {
