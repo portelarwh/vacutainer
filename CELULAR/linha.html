@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0f1418">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>Linha no celular</title>
+<!--
+  Linha no celular 0.1 (27/11/2026 · APP-CEL fase 2, docs/PLANO-APP-CELULAR.md): um arquivo só com os dois apps da linha,
+  Operação (Meu Turno, CELULAR/index.html) e Manutenção (CELULAR/manutencao.html). A Administração › Apps de celular gera este
+  arquivo com os dois módulos já configurados com o cadastro (bloco celular/linha); aqui, no repositório, é só o modelo (VAC_MODS null).
+  Cada módulo roda como antes, com os próprios dados no celular (chaves mt. e mm.): este lançador só escolhe qual abrir, lembra a
+  escolha e oferece "Trocar de módulo" (recarrega, porque cada módulo tem as próprias variáveis). Sem internet e sem servidor.
+-->
+<style>
+:root{--bg:#0f1418;--sf:#161d23;--ln:#27323b;--ink:#e8edf1;--mut:#93a1ad;--ac:#4c8bf5;--man:#e0a43a;--r:16px;--f:system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif;color-scheme:dark}
+:root[data-tema="claro"]{--bg:#f3f5f7;--sf:#fff;--ln:#d9e0e6;--ink:#14202b;--mut:#5b6b78;color-scheme:light}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.4 var(--f)}
+main{max-width:560px;margin:0 auto;padding:calc(24px + env(safe-area-inset-top)) max(16px,env(safe-area-inset-right)) calc(24px + env(safe-area-inset-bottom)) max(16px,env(safe-area-inset-left));display:grid;gap:16px}
+h1{margin:0;font-size:24px;font-weight:800}
+.sub{margin:2px 0 0;color:var(--mut);font-size:14px}
+.mod{display:grid;grid-template-columns:56px 1fr;gap:14px;align-items:center;text-align:left;width:100%;padding:18px 16px;border-radius:var(--r);border:1px solid var(--ln);background:var(--sf);color:var(--ink);font:inherit;cursor:pointer;min-height:96px}
+.mod:focus-visible{outline:3px solid var(--ac);outline-offset:2px}
+.mod i{font-style:normal;display:grid;place-items:center;width:56px;height:56px;border-radius:14px;font-size:28px;color:#fff}
+.mod.op i{background:var(--ac)}.mod.man i{background:var(--man)}
+.mod b{display:block;font-size:20px}.mod span{display:block;color:var(--mut);font-size:14px;margin-top:2px}
+.lembra{display:flex;gap:10px;align-items:center;color:var(--mut);font-size:14px}
+.lembra input{width:22px;height:22px}
+.aviso{padding:12px 14px;border-radius:12px;border:1px solid var(--man);color:var(--ink);background:color-mix(in srgb,var(--man) 14%,transparent);font-size:14px}
+.rod{text-align:center;color:var(--mut);font-size:12.5px}
+</style>
+</head>
+<body>
+<main id="vl"></main>
+<script>
+const VAC_MODS=/*MODS*/null/*MODS*/;
+(function(){
+ const VERSAO='0.1',K='linha.modulo',ls={get(k){try{return localStorage.getItem(k)||''}catch(e){return''}},set(k,v){try{localStorage.setItem(k,v)}catch(e){}}};
+ const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+ const br=iso=>iso?String(iso).slice(0,10).split('-').reverse().join('/'):'';
+ try{const t=localStorage.getItem('mt.tema');if(t)document.documentElement.dataset.tema=JSON.parse(t)}catch(e){}
+ const M=VAC_MODS||{},meta=M.meta||{};
+ /* abrir um módulo: substitui esta página pelo app escolhido (o mesmo HTML do app separado); só um módulo por carregamento */
+ function abrir(id){const h=M[id];if(!h)return;window.VAC_LINHA={modulo:id,trocar(){ls.set(K,'');location.replace(location.pathname+location.search)}};
+  try{history.replaceState(null,'',location.pathname+location.search)}catch(e){}
+  document.open();document.write(h);document.close()}
+ function menu(){const el=document.getElementById('vl'),ok=!!(M.op||M.man),lem=!!ls.get(K+'.lembrar');
+  el.innerHTML=`<header><h1>${esc(meta.linha||'Linha no celular')}</h1><p class="sub">Escolha o módulo</p></header>
+   ${ok?'':'<div class="aviso">Este é o modelo do app. Gere o arquivo pela plataforma: Administração › Apps de celular › Gerar Linha.html.</div>'}
+   ${M.op?'<button class="mod op" data-m="op"><i>✎</i><div><b>Operação</b><span>Lançar meu turno, histórico e gel na ordem</span></div></button>':''}
+   ${M.man?'<button class="mod man" data-m="man"><i>⚙</i><div><b>Manutenção</b><span>Atendimento corretivo e envio para a plataforma</span></div></button>':''}
+   ${ok?`<label class="lembra"><input type="checkbox" id="lem"${lem?' checked':''}> Abrir direto no último módulo usado</label>`:''}
+   <p class="rod">Linha no celular ${VERSAO}${meta.geradoEm?` · cadastro de ${esc(br(meta.geradoEm))}${meta.cadRev!=null?' (rev '+esc(meta.cadRev)+')':''}`:''} · os dados ficam neste celular</p>`;
+  el.querySelectorAll('[data-m]').forEach(b=>b.onclick=()=>{ls.set(K,b.dataset.m);abrir(b.dataset.m)});
+  const l=document.getElementById('lem');if(l)l.onchange=()=>ls.set(K+'.lembrar',l.checked?'1':'')}
+ const ult=ls.get(K);
+ if(ult&&M[ult]&&ls.get(K+'.lembrar'))abrir(ult);else menu();
+})();
+</script>
+</body>
+</html>

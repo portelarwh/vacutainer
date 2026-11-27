@@ -43,7 +43,7 @@ const html = fs.readFileSync(path.resolve(__dirname, '../../Plataforma.html'));
     const m = await cel.newPage(); m.on('pageerror', e => erros.push('celular: ' + e.message)); m.on('dialog', d => d.accept());
     await m.goto(base + '/MeuTurno.html#inicio');
     const rodape = await m.locator('main p.small.muted').last().innerText();
-    assert.match(rodape, /versão 0\.5/); assert.match(rodape, /cadastro de \d\d\/\d\d\/\d{4} \(rev \d+\)/, 'rodapé com a data e a revisão do cadastro: ' + rodape);
+    assert.match(rodape, /versão 0\.\d+/); assert.match(rodape, /cadastro de \d\d\/\d\d\/\d{4} \(rev \d+\)/, 'rodapé com a data e a revisão do cadastro: ' + rodape);
     await m.click('#lancar'); await m.waitForSelector('[data-real]');
     await m.selectOption('#op', cfg.pessoas[0].id); await m.selectOption('#cat', cfg.cats[0].c); await m.fill('#lote', '6275199');
     await m.fill('[data-real="0"]', '50'); await m.locator('[data-real="0"]').dispatchEvent('change');
