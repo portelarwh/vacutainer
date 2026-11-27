@@ -9,7 +9,9 @@ const html = fs.readFileSync(path.resolve(__dirname, '../../Plataforma.html'));
   try {
     await new Promise(r => srv.listen(0, '127.0.0.1', r));
     browser = await chromium.launch(require('./chromium.cjs')());
-    const page = await browser.newPage({ viewport: { width: 1440, height: 1000 } }), erros = [];
+    const page = await browser.newPage({ viewport: { width: 1440, height: 1000 }, timezoneId: 'UTC' }), erros = [];
+    /* relógio fixo às 15:00 do dia: entre 0h e 6h o "agora" é a madrugada do dia de produção anterior e os blocos mudavam conforme a hora do teste */
+    { const a = new Date(); await page.clock.setFixedTime(new Date(Date.UTC(a.getUTCFullYear(), a.getUTCMonth(), a.getUTCDate(), 15, 0, 0))); }
     page.on('pageerror', e => erros.push(e.message));
     const base = 'http://127.0.0.1:' + srv.address().port + '/?demo=1';
     const frame = async () => { const el = page.locator('iframe[title="Módulo Linha 360°"]'); await el.waitFor(); const f = await (await el.elementHandle()).contentFrame(); await f.waitForSelector('#ficha'); return f; };

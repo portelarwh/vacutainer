@@ -4485,7 +4485,7 @@ function wireConfigComum(){$('#cPasta').onclick=async()=>{if(await Store.pick())
         entrar pelo ID (autocadastro como Consulta); página inicial por perfil (1x por sessão); vigência gravada não se edita (desativar com motivo); painel de vigências; semáforo central; saída do modo de teste.
    1.1.2: aviso da carga diz qual base foi lida.  1.5: páginas Paradas, Máquinas, Manutenção e Projetos na lista (aparecem quando o HTML chega na pasta).  1.4: lista técnica pela CS12 multinível (itens = nível 1, estrutura = níveis 2+); CS03 sai.  1.3: cabeçalho comum (vac-cabecalho v2: barra do sistema + página + abas), busca Ctrl K, acabamento V1.90, Versões com cabeçalho e último backup.  1.2: Configuração › Versões das páginas (versão e data de cada HTML, gravação das bases, cópias repetidas, histórico).
    ===================================================================== */
-const PAGE={id:'portal',titulo:"Administração · Linha Vacutainer",tituloCurto:"Administração",subtitulo:'Sistemas de gestão da linha',versao:'1.9.95',baseFile:'portal-base.json',idb:'vac-portal',backupDir:'00. Backups/Portal',
+const PAGE={id:'portal',titulo:"Administração · Linha Vacutainer",tituloCurto:"Administração",subtitulo:'Sistemas de gestão da linha',versao:'1.9.96',baseFile:'portal-base.json',idb:'vac-portal',backupDir:'00. Backups/Portal',
  vazio:()=>({schema:'portal-base',schemaVersion:1,rev:0,config:{modulos:{},avisoDias:30,notas:{}},audit:[]}),
  /* itens do Portal para a busca Ctrl K: cadastro, pendências e telas */
  busca:q=>{const R=[],D=Cad.D;if(D)for(const t of CAD_ORD){for(const it of D[t]||[]){const c=String(it[kOf(t)]),nm=t==='bom'?((cadItem('catalogos',it.catalogo)||{}).nome||''):it.nome||'';if(norm(c+' '+nm).includes(q))R.push({tipo:CAD_T[t].um,txt:c+(nm?' · '+nm:''),sub:'Cadastros'+(cadAtivo(t,it,D)?'':' · inativo'),href:'#cadastros/'+t+'/'+encodeURIComponent(c)});if(R.length>30)break}}
@@ -5359,6 +5359,8 @@ const CAD_SECS=['inicio','gel','matriz','importar','auditoria','backups','segura
    curtas (macro, sem detalhe técnico). REGRA: toda versão nova da plataforma ganha uma entrada aqui, a mais recente primeiro
    (AGENTS.md e CLAUDE.md). Tipos: nova (função nova), melhoria (algo que já existia ficou melhor), correcao (erro corrigido). */
 const NOVIDADES=[
+ {v:'1.8.82',d:'2026-11-26',itens:[
+  ['melhoria','Anexos da ficha de equipamento: PDF, fotos (JPG, PNG) e texto (TXT, CSV) abrem na prévia; os demais formatos são baixados, sem abrir dentro do aplicativo.']]},
  {v:'1.8.81',d:'2026-11-26',itens:[
   ['correcao','Meta OEE FY27 na Produção: quadros hora a hora de famílias com dígitos no código (ex.: FX1) passam a ser lidos, como já acontecia na Administração.']]},
  {v:'1.8.80',d:'2026-11-26',itens:[
@@ -5654,7 +5656,16 @@ setInterval(()=>{const ok=!!(Cad.D&amp;&amp;Lock.ok());if(ok!==Cad._lk){Cad._lk=
 const EqFiles={
  async handle(path){const ps=String(path).split('/');let d=Store.dir;for(const p of ps.slice(0,-1))d=await d.getDirectoryHandle(p);return d.getFileHandle(ps[ps.length-1])},
  async url(path){if(Store.mode!=='pasta'||!Store.dir||!path)return null;try{return URL.createObjectURL(await (await this.handle(path)).getFile())}catch(e){return null}},
- async abrir(path){const u=await this.url(path);if(!u)return toast('Não encontrei '+path+' na pasta.',5000,true);const w=window.open(u,'_blank');if(!w){const a=document.createElement('a');a.href=u;a.download=String(path).split('/').pop();a.click()}setTimeout(()=>URL.revokeObjectURL(u),60000)},   /* 1.9.35 · libera o link (1 min: tempo de a aba nova carregar o arquivo) */
+ /* C24 · P6 (26/11/2026): só PDF, imagem (JPG, PNG) e texto (TXT, CSV) abrem na prévia, com o tipo fixado aqui (texto sempre como texto simples,
+    nunca como página); qualquer outro formato (HTML, SVG, Office, executável…) só é baixado, sem rodar nada na origem do aplicativo */
+ PREVIA:{pdf:'application/pdf',jpg:'image/jpeg',jpeg:'image/jpeg',png:'image/png',txt:'text/plain;charset=utf-8',csv:'text/plain;charset=utf-8'},
+ previa(nome){const m=/\.([^./]+)$/.exec(String(nome||''));return m&amp;&amp;Object.hasOwn(this.PREVIA,m[1].toLowerCase())?this.PREVIA[m[1].toLowerCase()]:null},
+ async abrir(path){if(Store.mode!=='pasta'||!Store.dir||!path)return toast('Conecte a pasta da rede para abrir '+path+'.',5000,true);
+  const nome=String(path).split('/').pop();let f;try{f=await (await this.handle(path)).getFile()}catch(e){return toast('Não encontrei '+path+' na pasta.',5000,true)}
+  const tipo=this.previa(nome),u=URL.createObjectURL(tipo?new Blob([f],{type:tipo}):f);
+  const baixar=()=>{const a=document.createElement('a');a.href=u;a.download=nome;document.body.appendChild(a);a.click();a.remove()};
+  if(!tipo){baixar();toast(nome+': formato sem prévia no aplicativo; o arquivo foi baixado.',5000)}else if(!window.open(u,'_blank'))baixar();
+  setTimeout(()=>URL.revokeObjectURL(u),60000)},   /* 1.9.35 · libera o link (1 min: tempo de a aba nova carregar o arquivo) */
  async salvar(cod,file){const pasta='Equipamentos/'+safeName(cod);const d=await Store.sub(pasta,true);let nome=safeName(file.name);const[b,ext]=/^(.*?)(\.[^.]*)?$/.exec(nome).slice(1);
   for(let i=2;i<100;i++){try{await d.getFileHandle(nome);nome=b+'_'+i+(ext||'')}catch(e){break}}
   await Store.writeFile(d,nome,file);return pasta+'/'+nome}};
@@ -55586,15 +55597,15 @@ body.vac-porta{overflow:hidden}
     {
       "id": "portal",
       "path": "Plataforma.html#motor/portal",
-      "version": "1.9.95",
-      "sha256": "7b7c425298edd53a83540c6025be16d2682e0ba0466384677d72c139c34efb4a",
-      "bytes": 1340205
+      "version": "1.9.96",
+      "sha256": "a5e41f672f9371b57bf5c149831f15969712029b34c75d13a667ac0fa430cdc0",
+      "bytes": 1341427
     }
   ],
   "limitations": [
     "Projetos e conteúdo técnico OSM/MES/AM/TPM mantêm os limites documentados nas fontes."
   ],
-  "enginesSha256": "0dd94b8ffeb57982f345e831b2aefa4d050e3f6d2fea7a929b8ea3118e2bd11d",
+  "enginesSha256": "dcd84478f6ec4778ed0db8e143b4611ca54a9bf643f15d2ecb9ef43bcc043c07",
   "originRevision": "ffc9ee8",
   "sourceMode": "single-html",
   "originEnginesSha256": "a87a64ad0c328f70e102b2ae888790a9b5d5a9bd05778652a7ce7cae140e40d2"
@@ -55664,7 +55675,7 @@ summary{cursor:pointer;font-weight:600;color:var(--navy)}
 'use strict';
 /* ---------- referência (atualizar quando a plataforma mudar de versão) ---------- */
 // Iguais às do pacote da plataforma (nova-plataforma/src/generated/manifest.json); o teste ferramenta-verificar confere.
-const VERSOES = {"oee":"2.6.50","perdas":"1.12.21","gel":"2.52","paradas":"1.2.22","equip":"1.0.22","inic":"1.1.17","linha":"1.7.1","projetos":"0.1.16","portal":"1.9.95"};
+const VERSOES = {"oee":"2.6.50","perdas":"1.12.21","gel":"2.52","paradas":"1.2.22","equip":"1.0.22","inic":"1.1.17","linha":"1.7.1","projetos":"0.1.16","portal":"1.9.96"};
 const BASES = [
  { arq: 'vacutainer-cadastros.json', mod: 'portal', nome: 'Cadastro geral (Portal)', obrig: true, cadastro: true, bk: 'Cadastros' },
  { arq: 'portal-base.json', mod: 'portal', nome: 'Portal', obrig: true, bk: 'Portal' },
@@ -56255,7 +56266,7 @@ import { Icon, Button, Badge, Empty, Modal, BarChart, BrandLogo, CommandMenu } f
 import { ModuleFrame } from "vac:modulo/components/ModuleFrame";
 import manifest from "vac:recurso/manifesto";
 import { ModuleTabs } from "vac:modulo/components/ModuleTabs";
-const VERSION = "1.8.81";
+const VERSION = "1.8.82";
 /* Navegação 1.3.0 (16/11/2026): Visão da linha, Relatórios e Importações têm abas; as que mostram uma tela do
    Portal (motor da Administração) trazem o 3º campo com a aba dele. Administração fica só com cadastros e configuração. */
 const SHELL_TABS = {
