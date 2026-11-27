@@ -15,7 +15,7 @@ const H=require('../../scripts/html.cjs');
    await page.goto('http://127.0.0.1:'+server.address().port+'/?demo=1');await page.getByRole('heading',{name:'Visão da linha',exact:true}).waitFor();await page.locator('.executive-metrics .metric-value').filter({hasText:'881.000'}).waitFor();await context.setOffline(true);
    const metric=label=>page.locator('.executive-metrics .metric').filter({has:page.locator('.metric-label',{hasText:label})});
    assert.equal(await page.locator('.executive-metrics .metric').count(),4);
-   assert.match(await metric('Produção boa').innerText(),/937\.000/);assert.match(await metric('Scrap informado').innerText(),/8\.610/);assert.match(await metric('Paradas registradas').innerText(),/369/);
+   assert.match(await metric('Produção boa').innerText(),/949\.000/);assert.match(await metric('Scrap informado').innerText(),/8\.610/);assert.match(await metric('Paradas registradas').innerText(),/369/);
    assert.match(await page.locator('.safety-strip').innerText(),/1 QN informada/);assert.doesNotMatch(await page.locator('.safety-strip').innerText(),/QN aberta/);
    assert.equal(await page.locator('.priority-table tbody tr').count(),3);assert.equal(await page.locator('.executive-details').count(),0);
    assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),'resumo sem rolagem horizontal '+width);

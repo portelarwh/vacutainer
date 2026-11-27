@@ -9,14 +9,14 @@ const day='2026-11-09';
 test('resumo mantém os números publicados e a meta operacional, sem criar taxa de scrap',()=>{
  const s=demo(),v=executiveView(s,day,day,'',bases.cad);
  assert.deepEqual(v.prod,productionView(bases.oee.exports,day,day,''));
- assert.equal(v.prod.good,881000);assert.equal(v.prod.scrap,8610);assert.equal(v.prod.rate,.7291);assert.equal(v.target,937000);
+ assert.equal(v.prod.good,881000);assert.equal(v.prod.scrap,8610);assert.equal(v.prod.rate,.7198);assert.equal(v.target,949000);   /* CEN-T2 (27/11/2026): 2º turno do demo até 23:00 */
  assert.equal(v.chartRows.length,2);assert.deepEqual(v.chartRows.map(r=>r.boa),[449000,432000]);
  assert.equal(v.stopMinutes,369);assert.equal(v.equipment.reduce((n,r)=>n+r.minutes,0),369);
  assert.equal('scrapPct' in v,false);assert.equal('stopTarget' in v,false);
 });
 test('turno selecionado mantém sua própria produção, meta, reportes e paradas',()=>{
  const v=executiveView(demo(),day,day,'T2',bases.cad);
- assert.equal(v.prod.good,432000);assert.equal(v.prod.scrap,5383);assert.equal(v.target,461000);assert.equal(v.prod.rate,.7243);
+ assert.equal(v.prod.good,432000);assert.equal(v.prod.scrap,5383);assert.equal(v.target,473000);assert.equal(v.prod.rate,.7059);
  assert.equal(v.chartRows.length,1);assert.equal(v.chartRows[0].turno,'T2');assert.equal(v.safety.quantity,0);assert.equal(v.quality.quantity,1);
 });
 test('QN repetida em dois turnos usa a quantidade consolidada publicada, sem somar duas vezes',()=>{

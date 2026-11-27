@@ -23,6 +23,9 @@ const html = fs.readFileSync(path.resolve(__dirname, '../../Plataforma.html'));
       const d = db(), day = d.productionDays.find(x => !x.deleted && x.date === App.sel.date), D = day.date, D1 = U.addDays(D, 1), L = day.lineId;
       const t3 = day.shifts.find(p => !p.deleted && /3/.test(p.snap.code + p.snap.name)); if (t3) t3.deleted = true;   /* 3º turno fora do dia (não produtivo) */
       const t2 = day.shifts.filter(p => !p.deleted).sort((a, b) => a.intervals[0].start - b.intervals[0].start).pop();
+      /* o cenário tem o 2º turno até 23:00 (CEN-T2): com ele, fim + 60 min cai na meia-noite e não sobra hora extra antes dela. Para medir o
+         aviso de hora extra antes da meia-noite, este dia de teste encerra o 2º turno às 22:47 (só na memória do teste; nada é gravado). */
+      { const ul = t2.intervals.filter(i => !i.deleted).sort((a, b) => a.end - b.end).pop(); if (ul.end > 22 * 60 + 47) { ul.end = 22 * 60 + 47; t2.snap = { ...t2.snap, end: '22:47' }; } }
       d.settings.foraTurnoDesde = '2026-11-01';
       const seg = (data, hh, mm, n, id) => { const t0 = `${data}T${hh}:${mm}:00`, base = ServerData.tm(t0), fim = new Date((base + n - 1) * 60000).toISOString().slice(11, 19);
         const t1d = base + n - 1 >= ServerData.dayStartMin(data) + 1440 ? D1 : data;

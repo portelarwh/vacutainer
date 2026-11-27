@@ -77,7 +77,17 @@ async function COMPLEMENTO([mod, id, desloc]) {
     // caixas do MES do dia, pelo importador do servidor (CSV): o lote da ordem, a mesma produção lançada (881 caixas de 1.000),
     // com a pausa das 07:00 às 07:30 da parada fictícia do Paradas
     const db = Store.S.db, dia = db.productionDays.find(d => !d.deleted).date;
-    if ((db.server && db.server.segments || []).length) { if ((db.server.dayLot || {})[dia + '|6275187']) return ''; await Srv.markDayLot(dia, '6275187', 'normal'); return 'MES: lote 6275187 confirmado no dia'; }
+    /* CEN-T2 (decisão do responsável, 27/11/2026): o 2º turno do cenário é o do cadastro fictício, 14:30–23:00 (contínuo com o T3).
+       Dias gravados com o horário antigo (14:30–22:47) passam ao vigente pelo próprio recurso da Produção (TUR-05): o dia aberto
+       aplica o horário novo; o fechado é reaberto, recalculado e fechado de novo. Só entra uma vez: sem diferença, nada muda. */
+    const hor = [];
+    for (const d of db.productionDays.filter(x => !x.deleted)) {
+      const L = Actions.shiftScheduleDiff(db, d, true); if (!L.length) continue;
+      if (d.status === 'fechado') { const r = Actions.recalcClosedSchedule(d.id); if (!r.fechado) throw new Error(d.date + ': ' + r.erro); hor.push(d.date + ' ' + r.resumo); }
+      else hor.push(d.date + ' ' + Actions.applyShiftSchedule(d.id));
+    }
+    const pre = hor.length ? 'horário vigente dos turnos: ' + hor.join(' | ') : '', junta = x => [pre, x].filter(Boolean).join('; ');
+    if ((db.server && db.server.segments || []).length) { if ((db.server.dayLot || {})[dia + '|6275187']) return junta(''); await Srv.markDayLot(dia, '6275187', 'normal'); return junta('MES: lote 6275187 confirmado no dia'); }
     const [a, m, dd] = dia.split('-').map(Number), p2 = n => String(n).padStart(2, '0');
     const hora = s => { const h = Math.floor(s / 3600), mi = Math.floor(s % 3600 / 60), se = s % 60, ap = h < 12 ? 'AM' : 'PM'; return `${m}/${dd}/${a} ${h % 12 || 12}:${p2(mi)}:${p2(se)}.000 ${ap}`; };
     const L = ['Time,VAEB01_MES_Catalogo_Atual,VAEB01_MES_Lote_Atual,VAEB01_MES_Caixa_Atual', `${m}/${dd}/${a} 12:00:01.000 AM,360060.000,6275187.000,0.0`];
@@ -85,7 +95,7 @@ async function COMPLEMENTO([mod, id, desloc]) {
     const an = ServerData.analyze(ServerData.parseCsv(L.join('\n')));
     await Srv.importData(an, { file: 'mes-demonstracao.csv', lines: L.length - 1, ignored: 0, lots: ['6275187'] }, { '6275187': 'normal' });
     await Srv.markDayLot(dia, '6275187', 'normal');   // o lote confirmado no dia (Lotes do dia), como faria a pessoa
-    return `MES: ${an.boxes} caixas em ${an.segments.length} trecho(s) do lote 6275187 (importador do servidor), lote confirmado no dia`;
+    return junta(`MES: ${an.boxes} caixas em ${an.segments.length} trecho(s) do lote 6275187 (importador do servidor), lote confirmado no dia`);
   }
   if (mod === 'gel') {
     // o lote da ordem na programação do Gel (PCP), para os tubos e o gel por ordem saírem da produção do turno
