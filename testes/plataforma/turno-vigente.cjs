@@ -71,11 +71,10 @@ const html = fs.readFileSync(path.resolve(__dirname, '../../Plataforma.html'));
     const r2b = await o.evaluate(() => { const hoje = db().productionDays.find(d => !d.deleted && new Date(d.date + 'T12:00:00Z').getUTCDay() >= 1 && new Date(d.date + 'T12:00:00Z').getUTCDay() <= 5 && d.status !== 'fechado');
       if (!hoje) return { semDia: true }; const copia = JSON.parse(JSON.stringify(hoje)), ps = copia.shifts.find(p => p.snap.code === 'T1'), iv = ps.intervals.find(i => !i.deleted), meio = iv.start + 30;
       ps.intervals.splice(ps.intervals.indexOf(iv), 1, { ...iv, end: meio }, { ...iv, id: 'iv-x', start: meio });   // dividido à mão
-      /* só o T1 (o turno que este teste muda). Em 23/11/2026 (segunda) o dia de hoje da demonstração trouxe o T2 com 14:30–22:47 contra 23:00
-         da versão da Produção: divergência do cenário, fora do que este teste mede (PENDENCIAS › CEN-T2) */
-      const t1 = L => L.filter(x => ((x.ps || x.f || {}).snap || {}).code === 'T1').length;
-      return { normal: t1(Actions.shiftScheduleDiff(db(), hoje)), dividido: t1(Actions.shiftScheduleDiff(db(), copia)) }; });
-    assert.ok(r2b.semDia || (r2b.normal === 0 && r2b.dividido === 0), 'sem aviso sem mudança de horário ' + JSON.stringify(r2b));
+      /* todos os turnos: o cenário da demonstração tem o T2 em 14:30–23:00, igual ao cadastro (CEN-T2, decisão do responsável em 27/11/2026) */
+      const dif = L => L.map(x => (x.ps.snap || {}).code + ' ' + x.de + ' → ' + x.para);
+      return { normal: dif(Actions.shiftScheduleDiff(db(), hoje)), dividido: dif(Actions.shiftScheduleDiff(db(), copia)) }; });
+    assert.ok(r2b.semDia || (r2b.normal.length === 0 && r2b.dividido.length === 0), 'sem aviso sem mudança de horário, em nenhum turno ' + JSON.stringify(r2b));
     console.log('ok dia de semana: versão nova com o mesmo horário e intervalos divididos à mão não acusam mudança');
 
     // 3) produção numa hora que some (13:00–14:30): recusa e diz qual; nada muda
