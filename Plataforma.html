@@ -5359,6 +5359,8 @@ const CAD_SECS=['inicio','gel','matriz','importar','auditoria','backups','segura
    curtas (macro, sem detalhe técnico). REGRA: toda versão nova da plataforma ganha uma entrada aqui, a mais recente primeiro
    (AGENTS.md e CLAUDE.md). Tipos: nova (função nova), melhoria (algo que já existia ficou melhor), correcao (erro corrigido). */
 const NOVIDADES=[
+ {v:'1.8.83',d:'2026-11-26',itens:[
+  ['melhoria','Gestão de Gel: no tema escuro os números dentro das barras ganham contorno e ficam legíveis; no celular os gráficos usam a largura da tela e o texto não encolhe mais.']]},
  {v:'1.8.82',d:'2026-11-26',itens:[
   ['melhoria','Anexos da ficha de equipamento: PDF, fotos (JPG, PNG) e texto (TXT, CSV) abrem na prévia; os demais formatos são baixados, sem abrir dentro do aplicativo.']]},
  {v:'1.8.81',d:'2026-11-26',itens:[
@@ -25598,7 +25600,10 @@ input.autof[readonly]{cursor:default;color:var(--ink)!important;font-weight:600}
 .tvdrop button{display:flex;flex-direction:column;align-items:flex-start;gap:2px;text-align:left;border:0;background:transparent;color:var(--ink);padding:var(--sp-8,8px) var(--sp-12,12px);border-radius:8px;cursor:pointer;font:inherit}
 .tvdrop button:hover,.tvdrop button:focus-visible{background:var(--surface-2)}
 .tvdrop b{font-family:var(--f-display);font-size:15px;letter-spacing:.03em}.tvdrop small{font-size:12px;color:var(--muted)}
-.chart text.blbl{fill:#fff;font-weight:700}.chart text.blbo{fill:var(--ink);font-weight:600}
+.chart text.blbl{fill:#fff;font-weight:700}
+/* C52 · K01 (26/11/2026): no tema escuro as barras ficam claras; o rótulo branco ganha contorno escuro e fica legível sobre qualquer barra */
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]) .chart text.blbl{paint-order:stroke;stroke:#0b1117;stroke-width:3px;stroke-linejoin:round}}
+:root[data-theme="dark"] .chart text.blbl{paint-order:stroke;stroke:#0b1117;stroke-width:3px;stroke-linejoin:round}.chart text.blbo{fill:var(--ink);font-weight:600}
 .chrow{display:flex;justify-content:flex-end;margin:-4px 0 var(--sp-4,4px)}.seg.chmode button{font-size:12px;padding:3px var(--sp-8,8px)}
 .chart .gl{stroke:var(--line);stroke-width:1}
 .chart .ax{stroke:var(--muted);stroke-width:1}
@@ -31311,7 +31316,8 @@ const chartMode=(id,def)=>((ui.prefs&amp;&amp;ui.prefs.chartMode)||{})[id]||def;
 const chartModeBtns=(id,def)=>{const m=chartMode(id,def);return `<div class="chrow"><span class="seg chmode">${[['line','Linhas'],['col','Colunas']].map(([k,l])=>`<button type="button" data-chmode="${id}|${k}" aria-pressed="${m===k}">${l}</button>`).join('')}</span></div>`};
 function dbTip(lines){return esc(lines.filter(Boolean).join('\n'))}
 function dbTime(id,B,o){
-  const W=o.w||720,H=o.h||240,L=o.L||56,R=40,Tp=14,Bt=28;const n=B.length;const hide=dbState().hide;
+  /* C53 · K02 (26/11/2026): no celular (até 650 px) o desenho usa a largura da tela, sem encolher o texto (o viewBox de 1.440 px deixava rótulos de 2,5 px) */
+  const vw=typeof innerWidth==='number'&amp;&amp;innerWidth>0?innerWidth:1440,W=vw<=650?Math.round(Math.max(300,vw-40)):(o.w||720),H=o.h||240,L=o.L||56,R=40,Tp=14,Bt=28;const n=B.length;const hide=dbState().hide;
   if(o.trend){const tv=trendVals(o.trend.vals);if(tv.some(v=>v!=null))o.lines=(o.lines||[]).concat([{name:o.trend.name||'Tendência',color:o.trend.color||TREND_C,vals:tv,noDots:true,w:2}])}
   const bars=(o.bars||[]).filter(s=>!hide[id+'|'+s.name]),lines=(o.lines||[]).filter(s=>!hide[id+'|'+s.name]);
   const top=B.map((_,i)=>bars.reduce((s,b)=>s+(b.vals[i]||0),0));
@@ -55556,8 +55562,8 @@ body.vac-porta{overflow:hidden}
       "id": "gel",
       "path": "Plataforma.html#motor/gel",
       "version": "2.52",
-      "sha256": "c39d1796268fab5af31e2ee1f88ceccf3f81cec74f8d1214ef63ed8ef67de205",
-      "bytes": 1627357
+      "sha256": "6a0e4048b98a270c9092b3fa619079aa30b529fbfafd06c4c945f2574bf8a2d7",
+      "bytes": 1628046
     },
     {
       "id": "paradas",
@@ -55598,14 +55604,14 @@ body.vac-porta{overflow:hidden}
       "id": "portal",
       "path": "Plataforma.html#motor/portal",
       "version": "1.9.96",
-      "sha256": "a5e41f672f9371b57bf5c149831f15969712029b34c75d13a667ac0fa430cdc0",
-      "bytes": 1341427
+      "sha256": "c9b402db0265cb59e88372bac211719c604245a1af14853cf5e431d355b533b5",
+      "bytes": 1341655
     }
   ],
   "limitations": [
     "Projetos e conteúdo técnico OSM/MES/AM/TPM mantêm os limites documentados nas fontes."
   ],
-  "enginesSha256": "dcd84478f6ec4778ed0db8e143b4611ca54a9bf643f15d2ecb9ef43bcc043c07",
+  "enginesSha256": "68d038978aae1a1a5dd99580ecdc55fd63c0ea054acd150289787a3c525cae4b",
   "originRevision": "ffc9ee8",
   "sourceMode": "single-html",
   "originEnginesSha256": "a87a64ad0c328f70e102b2ae888790a9b5d5a9bd05778652a7ce7cae140e40d2"
@@ -56266,7 +56272,7 @@ import { Icon, Button, Badge, Empty, Modal, BarChart, BrandLogo, CommandMenu } f
 import { ModuleFrame } from "vac:modulo/components/ModuleFrame";
 import manifest from "vac:recurso/manifesto";
 import { ModuleTabs } from "vac:modulo/components/ModuleTabs";
-const VERSION = "1.8.82";
+const VERSION = "1.8.83";
 /* Navegação 1.3.0 (16/11/2026): Visão da linha, Relatórios e Importações têm abas; as que mostram uma tela do
    Portal (motor da Administração) trazem o 3º campo com a aba dele. Administração fica só com cadastros e configuração. */
 const SHELL_TABS = {
