@@ -658,6 +658,12 @@ function vacNomeUsuario(){try{return(typeof user==='function'&amp;&amp;user())||
 /* H01 etapa 1 · semáforo de meta único (verde, amarelo se parametros.semaforoAmarelo não for false, vermelho); a cópia da Produção divergia (ignorava o "Usar amarelo") mas não era usada */
 function vacSemaforo(v,meta,{inverso=false}={}){if(v==null||meta==null||!isFinite(v)||!isFinite(meta)||!meta)return'none';const c=vacCad(),P=(c&amp;&amp;c.parametros)||{};
  const vd=(+P.semaforoVerdePct||100)/100,am=P.semaforoAmarelo===false?vd:(+P.semaforoAmareloPct||90)/100,r=inverso?(v<=0?Infinity:meta/v):v/meta;return r>=vd?'ok':r>=am?'warn':'crit'}
+// Preferências locais (texto puro para tema, nome, ID, perfil e logo; JSON para o resto), aviso rápido e nome digitado (H01).
+const VAC_LS_TEXTO=new Set(['vac.theme','vac.user','vac.userId','vac.perfil','vac.logo']);
+const vacLS={get(k,d){try{const v=localStorage.getItem(k);if(v==null)return d;if(VAC_LS_TEXTO.has(k)){if(/^".*"$/s.test(v)){try{return JSON.parse(v)}catch(e){}}return v}return JSON.parse(v)}catch(e){return d}},
+ set(k,v){try{localStorage.setItem(k,VAC_LS_TEXTO.has(k)?String(v):JSON.stringify(v))}catch(e){}},del(k){try{localStorage.removeItem(k)}catch(e){}}};
+function vacToast(msg,err){const t=document.createElement('div');t.className='toast'+(err?' err':'');t.textContent=msg;document.querySelector('#toasts').appendChild(t);setTimeout(()=>t.remove(),err?7000:3800)}
+function vacUser(){return vacLS.get('vac.user','')||''}
 // Leituras do cadastro geral (vigência por data do fato; ausência é null, nunca zero).
 vacCad.vigente = (vigencias, data) => { const d = String(data || '').slice(0, 10) || vacHoje(); return (vigencias || []).filter(v => v.de <= d &amp;&amp; (!v.ate || v.ate >= d)).sort((a, b) => a.de < b.de ? 1 : -1)[0] || null; };
 vacCad.item = (tipo, codigo) => { const c = vacCad(); return ((c &amp;&amp; c[tipo]) || []).find(x => String(x.codigo) === String(codigo)) || null; };
@@ -5382,6 +5388,8 @@ const CAD_SECS=['inicio','gel','matriz','importar','auditoria','backups','segura
    curtas (macro, sem detalhe técnico). REGRA: toda versão nova da plataforma ganha uma entrada aqui, a mais recente primeiro
    (AGENTS.md e CLAUDE.md). Tipos: nova (função nova), melhoria (algo que já existia ficou melhor), correcao (erro corrigido). */
 const NOVIDADES=[
+ {v:'1.8.92',d:'2026-11-27',itens:[
+  ['melhoria','Organização interna: preferências do navegador, avisos rápidos e nome digitado vêm de um só lugar em Paradas, Equipamentos, Iniciativas, Linha 360° e Projetos (nada muda no uso).']]},
  {v:'1.8.91',d:'2026-11-27',itens:[
   ['melhoria','Organização interna: o semáforo de meta (verde, amarelo, vermelho) vem de um só lugar em todos os módulos (nada muda no uso).']]},
  {v:'1.8.90',d:'2026-11-27',itens:[
@@ -32658,11 +32666,7 @@ const uid=p=>(p||'')+Date.now().toString(36)+Math.random().toString(36).slice(2,
 const clone=o=>JSON.parse(JSON.stringify(o));
 /* 1.0.8 · chaves comuns a todas as páginas (tema, usuário, logo…) ficam em texto simples, como no Portal e nas outras páginas.
    Lê também o formato antigo com aspas (gravado pelo Paradas até a 1.0.7). As preferências próprias continuam em JSON. */
-const LS_TEXTO=new Set(['vac.theme','vac.user','vac.userId','vac.perfil','vac.logo']);
-const LS={get(k,d){try{const v=localStorage.getItem(k);if(v==null)return d;if(LS_TEXTO.has(k)){if(/^".*"$/s.test(v)){try{return JSON.parse(v)}catch(e){}}return v}return JSON.parse(v)}catch(e){return d}},
- set(k,v){try{localStorage.setItem(k,LS_TEXTO.has(k)?String(v):JSON.stringify(v))}catch(e){}},del(k){try{localStorage.removeItem(k)}catch(e){}}};
-function toast(msg,err){const t=document.createElement('div');t.className='toast'+(err?' err':'');t.textContent=msg;$('#toasts').appendChild(t);setTimeout(()=>t.remove(),err?7000:3800)}
-function user(){return LS.get('vac.user','')||''}
+const LS=vacLS;function toast(msg,err){return vacToast(msg,err)}function user(){return vacUser()}
 function setUser(){modal({title:'Seu nome',body:`<p class="muted small">Fica gravado em cada alteração (vale para todas as páginas da linha).</p><input id="uNome" style="width:100%" value="${esc(user())}">`,
  buttons:[{t:'Salvar',pri:1,fn:()=>{const v=$('#uNome').value.trim();if(!v)return false;LS.set('vac.user',v);renderTop();}}]});setTimeout(()=>$('#uNome')?.focus(),50)}
 function applyTheme(){const t=LS.get('vac.theme','auto');if(t==='auto')document.documentElement.removeAttribute('data-theme');else document.documentElement.setAttribute('data-theme',t)}
@@ -34310,11 +34314,7 @@ window.addEventListener('storage',e=>{if(['vac.user','vac.userId','vac.cadastros
 const $=(s,r=document)=>r.querySelector(s),$$=(s,r=document)=>[...r.querySelectorAll(s)];
 const esc=vacEsc;   /* H01 etapa 1: escape único do kit (comum/bases) */
 const norm=s=>String(s??'').normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase().replace(/\s+/g,' ').trim();
-const LS_TEXTO=new Set(['vac.theme','vac.user','vac.userId','vac.perfil','vac.logo']);
-const LS={get(k,d){try{const v=localStorage.getItem(k);if(v==null)return d;if(LS_TEXTO.has(k)){if(/^".*"$/s.test(v)){try{return JSON.parse(v)}catch(e){}}return v}return JSON.parse(v)}catch(e){return d}},
- set(k,v){try{localStorage.setItem(k,LS_TEXTO.has(k)?String(v):JSON.stringify(v))}catch(e){}},del(k){try{localStorage.removeItem(k)}catch(e){}}};
-function toast(msg,err){const t=document.createElement('div');t.className='toast'+(err?' err':'');t.textContent=msg;$('#toasts').appendChild(t);setTimeout(()=>t.remove(),err?7000:3800)}
-function user(){return LS.get('vac.user','')||''}
+const LS=vacLS;function toast(msg,err){return vacToast(msg,err)}function user(){return vacUser()}
 function applyTheme(){const t=LS.get('vac.theme','auto');if(t==='auto')document.documentElement.removeAttribute('data-theme');else document.documentElement.setAttribute('data-theme',t)}
 function cycleTheme(){const o=['auto','light','dark'];const t=LS.get('vac.theme','auto');LS.set('vac.theme',o[(o.indexOf(t)+1)%3]);applyTheme();toast('Tema: '+({auto:'automático',light:'claro',dark:'escuro'})[LS.get('vac.theme')])}
 const help=t=>`<span class="help" data-help="${esc(t)}">i</span>`;
@@ -34868,11 +34868,7 @@ window.addEventListener('storage',e=>{if(['vac.user','vac.userId','vac.cadastros
 const $=(s,r=document)=>r.querySelector(s),$$=(s,r=document)=>[...r.querySelectorAll(s)];
 const esc=vacEsc;   /* H01 etapa 1: escape único do kit (comum/bases) */
 const norm=s=>String(s??'').normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase().replace(/\s+/g,' ').trim();
-const LS_TEXTO=new Set(['vac.theme','vac.user','vac.userId','vac.perfil','vac.logo']);
-const LS={get(k,d){try{const v=localStorage.getItem(k);if(v==null)return d;if(LS_TEXTO.has(k)){if(/^".*"$/s.test(v)){try{return JSON.parse(v)}catch(e){}}return v}return JSON.parse(v)}catch(e){return d}},
- set(k,v){try{localStorage.setItem(k,LS_TEXTO.has(k)?String(v):JSON.stringify(v))}catch(e){}},del(k){try{localStorage.removeItem(k)}catch(e){}}};
-function toast(msg,err){const t=document.createElement('div');t.className='toast'+(err?' err':'');t.textContent=msg;$('#toasts').appendChild(t);setTimeout(()=>t.remove(),err?7000:3800)}
-function user(){return LS.get('vac.user','')||''}
+const LS=vacLS;function toast(msg,err){return vacToast(msg,err)}function user(){return vacUser()}
 function applyTheme(){const t=LS.get('vac.theme','auto');if(t==='auto')document.documentElement.removeAttribute('data-theme');else document.documentElement.setAttribute('data-theme',t)}
 function cycleTheme(){const o=['auto','light','dark'];const t=LS.get('vac.theme','auto');LS.set('vac.theme',o[(o.indexOf(t)+1)%3]);applyTheme();toast('Tema: '+({auto:'automático',light:'claro',dark:'escuro'})[LS.get('vac.theme')])}
 const help=t=>`<span class="help" data-help="${esc(t)}">i</span>`;
@@ -35737,11 +35733,7 @@ const PLANTA='data:image/webp;base64,UklGRhAzAQBXRUJQVlA4IAQzAQAwCAedASrQB2UEPsF
 const $=(s,r=document)=>r.querySelector(s),$$=(s,r=document)=>[...r.querySelectorAll(s)];
 const esc=vacEsc;   /* H01 etapa 1: escape único do kit (comum/bases) */
 const norm=s=>String(s??'').normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase().replace(/\s+/g,' ').trim();
-const LS_TEXTO=new Set(['vac.theme','vac.user','vac.userId','vac.perfil','vac.logo']);
-const LS={get(k,d){try{const v=localStorage.getItem(k);if(v==null)return d;if(LS_TEXTO.has(k)){if(/^".*"$/s.test(v)){try{return JSON.parse(v)}catch(e){}}return v}return JSON.parse(v)}catch(e){return d}},
- set(k,v){try{localStorage.setItem(k,LS_TEXTO.has(k)?String(v):JSON.stringify(v))}catch(e){}},del(k){try{localStorage.removeItem(k)}catch(e){}}};
-function toast(msg,err){const t=document.createElement('div');t.className='toast'+(err?' err':'');t.textContent=msg;$('#toasts').appendChild(t);setTimeout(()=>t.remove(),err?7000:3800)}
-function user(){return LS.get('vac.user','')||''}
+const LS=vacLS;function toast(msg,err){return vacToast(msg,err)}function user(){return vacUser()}
 function applyTheme(){const t=LS.get('vac.theme','auto');if(t==='auto')document.documentElement.removeAttribute('data-theme');else document.documentElement.setAttribute('data-theme',t)}
 function cycleTheme(){const o=['auto','light','dark'];const t=LS.get('vac.theme','auto');LS.set('vac.theme',o[(o.indexOf(t)+1)%3]);applyTheme();toast('Tema: '+({auto:'automático',light:'claro',dark:'escuro'})[LS.get('vac.theme')])}
 const help=t=>`<span class="help" data-help="${esc(t)}">i</span>`;
@@ -37207,11 +37199,7 @@ const PLANO=JSON.parse(document.getElementById('vac-planejado').textContent);
 const $=(s,r=document)=>r.querySelector(s),$$=(s,r=document)=>[...r.querySelectorAll(s)];
 const esc=vacEsc;   /* H01 etapa 1: escape único do kit (comum/bases) */
 const norm=s=>String(s??'').normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase().replace(/\s+/g,' ').trim();
-const LS_TEXTO=new Set(['vac.theme','vac.user','vac.userId','vac.perfil','vac.logo']);
-const LS={get(k,d){try{const v=localStorage.getItem(k);if(v==null)return d;if(LS_TEXTO.has(k)){if(/^".*"$/s.test(v)){try{return JSON.parse(v)}catch(e){}}return v}return JSON.parse(v)}catch(e){return d}},
- set(k,v){try{localStorage.setItem(k,LS_TEXTO.has(k)?String(v):JSON.stringify(v))}catch(e){}},del(k){try{localStorage.removeItem(k)}catch(e){}}};
-function toast(msg,err){const t=document.createElement('div');t.className='toast'+(err?' err':'');t.textContent=msg;$('#toasts').appendChild(t);setTimeout(()=>t.remove(),err?7000:3800)}
-function user(){return LS.get('vac.user','')||''}
+const LS=vacLS;function toast(msg,err){return vacToast(msg,err)}function user(){return vacUser()}
 function applyTheme(){const t=LS.get('vac.theme','auto');if(t==='auto')document.documentElement.removeAttribute('data-theme');else document.documentElement.setAttribute('data-theme',t)}
 function cycleTheme(){const o=['auto','light','dark'];const t=LS.get('vac.theme','auto');LS.set('vac.theme',o[(o.indexOf(t)+1)%3]);applyTheme();toast('Tema: '+({auto:'automático',light:'claro',dark:'escuro'})[LS.get('vac.theme')])}
 const help=t=>`<span class="help" data-help="${esc(t)}">i</span>`;
@@ -55559,70 +55547,70 @@ body.vac-porta{overflow:hidden}
       "id": "oee",
       "path": "Plataforma.html#motor/oee",
       "version": "2.6.50",
-      "sha256": "bdbe18527fb76e5aa26e6d7fc3e9d3d3c01a43f6ce9ea38953f9f70b977d8a6e",
-      "bytes": 2395690
+      "sha256": "07dde5de7c7a1f369ba599a6bd9e0ba5f81023f86eebd069fc28717f65dacdb6",
+      "bytes": 2396537
     },
     {
       "id": "perdas",
       "path": "Plataforma.html#motor/perdas",
       "version": "1.12.21",
-      "sha256": "8cf8876a7607e75ae269e644f5ef807e827686b7ada46df8937e70eef06a761c",
-      "bytes": 985948
+      "sha256": "382a5feee8bc4202eb9944c909a1ed55ae91c69da3d451e20a4c34367304024d",
+      "bytes": 986795
     },
     {
       "id": "gel",
       "path": "Plataforma.html#motor/gel",
       "version": "2.52",
-      "sha256": "bd59c64452cb3d1f1bf222977af5cb1d5497d741130f6893578375e5e16298a9",
-      "bytes": 1630232
+      "sha256": "263b433677b656c3cb5aec938f81760d9dfaec85570be3dcd808c44f05364974",
+      "bytes": 1631079
     },
     {
       "id": "paradas",
       "path": "Plataforma.html#motor/paradas",
       "version": "1.2.22",
-      "sha256": "86f9a722dec79434e7ba93a68986bb8d375eefbc736347b672786b4d9f57c6c9",
-      "bytes": 954896
+      "sha256": "873292b6359699eb33bb8579509a78d81f27da7ea9c79c448da0098c7dd52748",
+      "bytes": 955168
     },
     {
       "id": "equip",
       "path": "Plataforma.html#motor/equip",
       "version": "1.0.22",
-      "sha256": "d0b76076f9df765e4e5011f9cf667f4bebbc1aae3c480574114414559922f781",
-      "bytes": 746059
+      "sha256": "a39e29a60809d8084c5b846f409ea940c5741b3d27fadf4af5c20f3704a891fb",
+      "bytes": 746331
     },
     {
       "id": "inic",
       "path": "Plataforma.html#motor/inic",
       "version": "1.1.17",
-      "sha256": "29b3dcb1573de64188a6121fe36a10a422480ab999580882ba9539a67e23e059",
-      "bytes": 755660
+      "sha256": "6a53b1ceed1d060da3859d61d24d3c4ef9195ab2b50cd9e683a4eee728fbc77c",
+      "bytes": 755932
     },
     {
       "id": "linha",
       "path": "Plataforma.html#motor/linha",
       "version": "1.7.1",
-      "sha256": "cc74837732baadba391eb46721f59ee5799562bec4144c60a9a46b06fa9e078f",
-      "bytes": 1008692
+      "sha256": "f3935ff6d81ffdceebcb0e4633261b4ed12979be88a46054a9c3cb094aaa4c33",
+      "bytes": 1008964
     },
     {
       "id": "projetos",
       "path": "Plataforma.html#motor/projetos",
       "version": "0.1.16",
-      "sha256": "4c5c065db1523cbfb46d2e0da29d54e0692f17191162135ddb62704885bad19b",
-      "bytes": 678302
+      "sha256": "4bfa4890094de63a0444ee9f614a70d77b515abc77573ba161d7acc8b230a348",
+      "bytes": 678574
     },
     {
       "id": "portal",
       "path": "Plataforma.html#motor/portal",
       "version": "1.9.100",
-      "sha256": "5782ba1c1702b537fff9a8b5d435882e254471bf0036d2dbb0ba852b700524fd",
-      "bytes": 1350701
+      "sha256": "d3e104d367f8b4234d57205c2ad8ee851b63a44793bd501314b9fc9d2bf88db7",
+      "bytes": 1351790
     }
   ],
   "limitations": [
     "Projetos e conteúdo técnico OSM/MES/AM/TPM mantêm os limites documentados nas fontes."
   ],
-  "enginesSha256": "058fdd6b4f5d1868ddac12e65806179cf8ac5ff0d2ceb5733822ba4d90f16a57",
+  "enginesSha256": "777a6690c81f2672766f0f95ee40d2313a19ead6cfc625cc8c0f5fc1e60d79ee",
   "originRevision": "ffc9ee8",
   "sourceMode": "single-html",
   "originEnginesSha256": "a87a64ad0c328f70e102b2ae888790a9b5d5a9bd05778652a7ce7cae140e40d2"
@@ -56283,7 +56271,7 @@ import { Icon, Button, Badge, Empty, Modal, BarChart, BrandLogo, CommandMenu } f
 import { ModuleFrame } from "vac:modulo/components/ModuleFrame";
 import manifest from "vac:recurso/manifesto";
 import { ModuleTabs } from "vac:modulo/components/ModuleTabs";
-const VERSION = "1.8.91";
+const VERSION = "1.8.92";
 /* Navegação 1.3.0 (16/11/2026): Visão da linha, Relatórios e Importações têm abas; as que mostram uma tela do
    Portal (motor da Administração) trazem o 3º campo com a aba dele. Administração fica só com cadastros e configuração. */
 const SHELL_TABS = {
