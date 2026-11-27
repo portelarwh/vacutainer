@@ -664,6 +664,8 @@ const vacLS={get(k,d){try{const v=localStorage.getItem(k);if(v==null)return d;if
  set(k,v){try{localStorage.setItem(k,VAC_LS_TEXTO.has(k)?String(v):JSON.stringify(v))}catch(e){}},del(k){try{localStorage.removeItem(k)}catch(e){}}};
 function vacToast(msg,err){const t=document.createElement('div');t.className='toast'+(err?' err':'');t.textContent=msg;document.querySelector('#toasts').appendChild(t);setTimeout(()=>t.remove(),err?7000:3800)}
 function vacUser(){return vacLS.get('vac.user','')||''}
+// Endereço de outro módulo pelo nome do arquivo do sistema (o roteador do arquivo único resolve o nome), com aba opcional (H01).
+function vacSysHref(s,hash=''){return String(s.html||s.url||'').split('/').pop()+(hash?'#'+hash:'')}
 // Leituras do cadastro geral (vigência por data do fato; ausência é null, nunca zero).
 vacCad.vigente = (vigencias, data) => { const d = String(data || '').slice(0, 10) || vacHoje(); return (vigencias || []).filter(v => v.de <= d &amp;&amp; (!v.ate || v.ate >= d)).sort((a, b) => a.de < b.de ? 1 : -1)[0] || null; };
 vacCad.item = (tipo, codigo) => { const c = vacCad(); return ((c &amp;&amp; c[tipo]) || []).find(x => String(x.codigo) === String(codigo)) || null; };
@@ -4146,7 +4148,7 @@ function migrarSistemas(L){if(!Array.isArray(L))return L;const out=[];for(const 
 /* futuro:true = página ainda não criada (some da barra até o HTML aparecer na pasta; o Portal então grava futuro:false em vac.sistemas) */
 function systems(){try{const s=JSON.parse(localStorage.getItem('vac.sistemas')||'null');if(Array.isArray(s)&amp;&amp;s.length){const ids=new Set(s.map(x=>x.id)),o=id=>{const i=DEFAULT_SYSTEMS.findIndex(d=>d.id===id);return i<0?99:i};return s.concat(DEFAULT_SYSTEMS.filter(d=>!ids.has(d.id))).map(x=>x.id==='portal'&amp;&amp;x.nome==='Portal'?{...x,nome:'Administração'}:x).sort((a,b)=>o(a.id)-o(b.id))}}catch(e){}return DEFAULT_SYSTEMS.map(x=>({...x}))}
 /* link de um sistema visto a partir desta página: caminhos guardados relativos à pasta do Portal */
-function sysHref(s,hash=''){const here=PAGE.id==='portal'?'':(localStorage.getItem('vac.prefix.'+PAGE.id)||'');return (here+(s.html||''))+(hash?'#'+hash:'')}
+function sysHref(s,hash=''){return vacSysHref(s,hash)}
 /* ===== vac-cabecalho v2 · JS (igual em todas as páginas) =====
    A página define em PAGE: id ('portal'|'oee'|'gel'|'perdas'), titulo, subtitulo, versao e, se quiser,
    busca(q) → [{tipo, txt, sub, href | go()}] com os itens dela (dia, ordem, lote, LP, catálogo…).
@@ -4514,7 +4516,7 @@ function wireConfigComum(){$('#cPasta').onclick=async()=>{if(await Store.pick())
         entrar pelo ID (autocadastro como Consulta); página inicial por perfil (1x por sessão); vigência gravada não se edita (desativar com motivo); painel de vigências; semáforo central; saída do modo de teste.
    1.1.2: aviso da carga diz qual base foi lida.  1.5: páginas Paradas, Máquinas, Manutenção e Projetos na lista (aparecem quando o HTML chega na pasta).  1.4: lista técnica pela CS12 multinível (itens = nível 1, estrutura = níveis 2+); CS03 sai.  1.3: cabeçalho comum (vac-cabecalho v2: barra do sistema + página + abas), busca Ctrl K, acabamento V1.90, Versões com cabeçalho e último backup.  1.2: Configuração › Versões das páginas (versão e data de cada HTML, gravação das bases, cópias repetidas, histórico).
    ===================================================================== */
-const PAGE={id:'portal',titulo:"Administração · Linha Vacutainer",tituloCurto:"Administração",subtitulo:'Sistemas de gestão da linha',versao:'1.9.100',baseFile:'portal-base.json',idb:'vac-portal',backupDir:'00. Backups/Portal',
+const PAGE={id:'portal',titulo:"Administração · Linha Vacutainer",tituloCurto:"Administração",subtitulo:'Sistemas de gestão da linha',versao:'1.9.101',baseFile:'portal-base.json',idb:'vac-portal',backupDir:'00. Backups/Portal',
  vazio:()=>({schema:'portal-base',schemaVersion:1,rev:0,config:{modulos:{},avisoDias:30,notas:{}},audit:[]}),
  /* itens do Portal para a busca Ctrl K: cadastro, pendências e telas */
  busca:q=>{const R=[],D=Cad.D;if(D)for(const t of CAD_ORD){for(const it of D[t]||[]){const c=String(it[kOf(t)]),nm=t==='bom'?((cadItem('catalogos',it.catalogo)||{}).nome||''):it.nome||'';if(norm(c+' '+nm).includes(q))R.push({tipo:CAD_T[t].um,txt:c+(nm?' · '+nm:''),sub:'Cadastros'+(cadAtivo(t,it,D)?'':' · inativo'),href:'#cadastros/'+t+'/'+encodeURIComponent(c)});if(R.length>30)break}}
@@ -5388,6 +5390,8 @@ const CAD_SECS=['inicio','gel','matriz','importar','auditoria','backups','segura
    curtas (macro, sem detalhe técnico). REGRA: toda versão nova da plataforma ganha uma entrada aqui, a mais recente primeiro
    (AGENTS.md e CLAUDE.md). Tipos: nova (função nova), melhoria (algo que já existia ficou melhor), correcao (erro corrigido). */
 const NOVIDADES=[
+ {v:'1.8.93',d:'2026-11-27',itens:[
+  ['melhoria','Organização interna: os links entre módulos são montados num só lugar, igual em todas as páginas (nada muda no uso).']]},
  {v:'1.8.92',d:'2026-11-27',itens:[
   ['melhoria','Organização interna: preferências do navegador, avisos rápidos e nome digitado vêm de um só lugar em Paradas, Equipamentos, Iniciativas, Linha 360° e Projetos (nada muda no uso).']]},
  {v:'1.8.91',d:'2026-11-27',itens:[
@@ -12943,7 +12947,7 @@ const DEFAULT_SYSTEMS=[
  {id:'projetos',nome:'Projetos',html:'Projetos.html',base:'projetos-base.json',futuro:true,estado:'construcao'}];
 function systems(){try{const s=JSON.parse(localStorage.getItem('vac.sistemas')||'null');if(Array.isArray(s)&amp;&amp;s.length){const ids=new Set(s.map(x=>x.id));return s.concat(DEFAULT_SYSTEMS.filter(d=>!ids.has(d.id)))}}catch(e){}return DEFAULT_SYSTEMS.map(x=>({...x}))}
 /* pasta única: todas as páginas na mesma pasta, então o link é só o nome do arquivo */
-function sysHref(s,hash=''){return String(s.html||s.url||'').split('/').pop()+(hash?'#'+hash:'')}
+function sysHref(s,hash=''){return vacSysHref(s,hash)}
 function vacAtual(){return PAGE.id==='portal'&amp;&amp;typeof App!=='undefined'&amp;&amp;App.tab==='cad'?'cadastros':PAGE.id}
 function renderSysNav_v1(){const el=$('#sysNav');if(!el)return;const cur=vacAtual(),port=systems().find(s=>s.id==='portal')||{id:'portal',html:'Portal.html'};
  const L=systems().filter(s=>!s.oculto&amp;&amp;!s.futuro).map(s=>({id:s.id,nome:s.nome,href:PAGE.id==='portal'&amp;&amp;s.id==='portal'?'#geral':sysHref(s)}));
@@ -24516,7 +24520,7 @@ const DEFAULT_SYSTEMS=[
  {id:'projetos',nome:'Projetos',html:'Projetos.html',base:'projetos-base.json',futuro:true,estado:'construcao'}];
 function systems(){const ren=l=>l.map(x=>x&amp;&amp;x.id==='perdas'&amp;&amp;(!x.nome||x.nome==='Perdas')?{...x,nome:'Waste'}:x);try{const s=JSON.parse(localStorage.getItem('vac.sistemas')||'null');if(Array.isArray(s)&amp;&amp;s.length){const ids=new Set(s.map(x=>x.id));return ren(s.concat(DEFAULT_SYSTEMS.filter(d=>!ids.has(d.id))))}}catch(e){}return ren(DEFAULT_SYSTEMS.map(x=>({...x})))}
 /* pasta única: todas as páginas na mesma pasta, então o link é só o nome do arquivo */
-function sysHref(s,hash=''){return String(s.html||s.url||'').split('/').pop()+(hash?'#'+hash:'')}
+function sysHref(s,hash=''){return vacSysHref(s,hash)}
 const sysLink=(id,hash)=>{const x=systems().find(s=>s.id===id);return x?sysHref(x,hash):'#'};
 const SYS={found:null};
 async function scanSystems(){renderSys()}
@@ -26597,7 +26601,7 @@ const DEFAULT_SYSTEMS=[
  {id:'linha',nome:'Linha 360°',html:'Linha-360.html',base:'linha360-base.json',sub:'Planta interativa · pessoas · checklists',estado:'atualizacao'},
  {id:'projetos',nome:'Projetos',html:'Projetos.html',base:'projetos-base.json',futuro:true,estado:'construcao'}];
 function systems(){try{const s=JSON.parse(localStorage.getItem('vac.sistemas')||'null');if(Array.isArray(s)&amp;&amp;s.length){const ids=new Set(s.map(x=>x.id));return s.concat(DEFAULT_SYSTEMS.filter(d=>!ids.has(d.id)))}}catch(e){}return DEFAULT_SYSTEMS.map(x=>({...x}))}
-function sysHref(s,hash=''){return String(s.html||s.url||'').split('/').pop()+(hash?'#'+hash:'')}
+function sysHref(s,hash=''){return vacSysHref(s,hash)}
 /* usuário e tema comuns (vac.user, vac.theme) */
 const user=()=>lastResp();
 function setUser(n){n=String(n||'').trim();if(!n)return;LS.set('fifo.resp',n);renderUser()}
@@ -33398,7 +33402,7 @@ const DEFAULT_SYSTEMS=[
  {id:'projetos',nome:'Projetos',html:'Projetos.html',base:'projetos-base.json',futuro:true,estado:'construcao'}];
 function systems(){let L;try{const s=JSON.parse(localStorage.getItem('vac.sistemas')||'null');if(Array.isArray(s)&amp;&amp;s.length){const ids=new Set(s.map(x=>x.id));L=s.concat(DEFAULT_SYSTEMS.filter(d=>!ids.has(d.id)))}}catch(e){}
  L=L||DEFAULT_SYSTEMS.map(x=>({...x}));/* esta página existe (está aberta) mesmo que o Portal ainda a marque como futura */return L.map(x=>x.id==='paradas'?{...x,futuro:false,oculto:false}:x)}
-function sysHref(s,hash=''){return String(s.html||s.url||'').split('/').pop()+(hash?'#'+hash:'')}
+function sysHref(s,hash=''){return vacSysHref(s,hash)}
 function vacAtual(){return PAGE.id}
 function renderSysNav_v1(){const el=$('#sysNav');if(!el)return;const cur=vacAtual(),port=systems().find(s=>s.id==='portal')||{id:'portal',html:'Portal.html'};
  const L=systems().filter(s=>!s.oculto&amp;&amp;!s.futuro).map(s=>({id:s.id,nome:s.nome,href:sysHref(s)}));
@@ -34234,7 +34238,7 @@ const DEFAULT_SYSTEMS=[
  {id:'projetos',nome:'Projetos',html:'Projetos.html',base:'projetos-base.json',futuro:true,estado:'construcao'}];
 function systems(){let L;try{const s=JSON.parse(localStorage.getItem('vac.sistemas')||'null');if(Array.isArray(s)&amp;&amp;s.length){const ids=new Set(s.map(x=>x.id));L=s.concat(DEFAULT_SYSTEMS.filter(d=>!ids.has(d.id)))}}catch(e){}
  L=L||DEFAULT_SYSTEMS.map(x=>({...x}));/* esta página existe (está aberta) mesmo que o Portal ainda a marque como futura */return L.map(x=>x.id===PAGE.id?{...x,futuro:false,oculto:false}:x)}
-function sysHref(s,hash=''){return String(s.html||s.url||'').split('/').pop()+(hash?'#'+hash:'')}
+function sysHref(s,hash=''){return vacSysHref(s,hash)}
 function vacAtual(){return PAGE.id}
 function renderSysNav_v1(){const el=$('#sysNav');if(!el)return;const cur=vacAtual(),port=systems().find(s=>s.id==='portal')||{id:'portal',html:'Portal.html'};
  const L=systems().filter(s=>!s.oculto&amp;&amp;!s.futuro).map(s=>({id:s.id,nome:s.nome,href:sysHref(s)}));
@@ -34786,7 +34790,7 @@ const DEFAULT_SYSTEMS=[
  {id:'projetos',nome:'Projetos',html:'Projetos.html',base:'projetos-base.json',futuro:true,estado:'construcao'}];
 function systems(){let L;try{const s=JSON.parse(localStorage.getItem('vac.sistemas')||'null');if(Array.isArray(s)&amp;&amp;s.length){const ids=new Set(s.map(x=>x.id));L=s.concat(DEFAULT_SYSTEMS.filter(d=>!ids.has(d.id)))}}catch(e){}
  L=L||DEFAULT_SYSTEMS.map(x=>({...x}));/* esta página existe (está aberta) mesmo que o Portal ainda a marque como futura */return L.map(x=>x.id===PAGE.id?{...x,futuro:false,oculto:false}:x)}
-function sysHref(s,hash=''){return String(s.html||s.url||'').split('/').pop()+(hash?'#'+hash:'')}
+function sysHref(s,hash=''){return vacSysHref(s,hash)}
 function vacAtual(){return PAGE.id}
 function renderSysNav_v1(){const el=$('#sysNav');if(!el)return;const cur=vacAtual(),port=systems().find(s=>s.id==='portal')||{id:'portal',html:'Portal.html'};
  const L=systems().filter(s=>!s.oculto&amp;&amp;!s.futuro).map(s=>({id:s.id,nome:s.nome,href:sysHref(s)}));
@@ -35657,7 +35661,7 @@ const DEFAULT_SYSTEMS=[
  {id:'projetos',nome:'Projetos',html:'Projetos.html',base:'projetos-base.json',futuro:true,estado:'construcao'}];
 function systems(){let L;try{const s=JSON.parse(localStorage.getItem('vac.sistemas')||'null');if(Array.isArray(s)&amp;&amp;s.length){const ids=new Set(s.map(x=>x.id));L=s.concat(DEFAULT_SYSTEMS.filter(d=>!ids.has(d.id)))}}catch(e){}
  L=L||DEFAULT_SYSTEMS.map(x=>({...x}));/* esta página existe (está aberta) mesmo que o Portal ainda a marque como futura */return L.map(x=>x.id===PAGE.id?{...x,futuro:false,oculto:false}:x)}
-function sysHref(s,hash=''){return String(s.html||s.url||'').split('/').pop()+(hash?'#'+hash:'')}
+function sysHref(s,hash=''){return vacSysHref(s,hash)}
 function vacAtual(){return PAGE.id}
 function renderSysNav_v1(){const el=$('#sysNav');if(!el)return;const cur=vacAtual(),port=systems().find(s=>s.id==='portal')||{id:'portal',html:'Portal.html'};
  const L=systems().filter(s=>!s.oculto&amp;&amp;!s.futuro).map(s=>({id:s.id,nome:s.nome,href:sysHref(s)}));
@@ -37119,7 +37123,7 @@ const DEFAULT_SYSTEMS=[
  {id:'projetos',nome:'Projetos',html:'Projetos.html',base:'projetos-base.json',futuro:true,estado:'construcao'}];
 function systems(){let L;try{const s=JSON.parse(localStorage.getItem('vac.sistemas')||'null');if(Array.isArray(s)&amp;&amp;s.length){const ids=new Set(s.map(x=>x.id));L=s.concat(DEFAULT_SYSTEMS.filter(d=>!ids.has(d.id)))}}catch(e){}
  L=L||DEFAULT_SYSTEMS.map(x=>({...x}));/* esta página existe (está aberta) mesmo que o Portal ainda a marque como futura */return L.map(x=>x.id===PAGE.id?{...x,futuro:false,oculto:false}:x)}
-function sysHref(s,hash=''){return String(s.html||s.url||'').split('/').pop()+(hash?'#'+hash:'')}
+function sysHref(s,hash=''){return vacSysHref(s,hash)}
 function vacAtual(){return PAGE.id}
 function renderSysNav_v1(){const el=$('#sysNav');if(!el)return;const cur=vacAtual(),port=systems().find(s=>s.id==='portal')||{id:'portal',html:'Portal.html'};
  const L=systems().filter(s=>!s.oculto&amp;&amp;!s.futuro).map(s=>({id:s.id,nome:s.nome,href:sysHref(s)}));
@@ -55547,70 +55551,70 @@ body.vac-porta{overflow:hidden}
       "id": "oee",
       "path": "Plataforma.html#motor/oee",
       "version": "2.6.50",
-      "sha256": "07dde5de7c7a1f369ba599a6bd9e0ba5f81023f86eebd069fc28717f65dacdb6",
-      "bytes": 2396537
+      "sha256": "6e1e98061f86dac9547381498c9b4d248833d6fb66dd840d96124d38f16bbda5",
+      "bytes": 2396728
     },
     {
       "id": "perdas",
       "path": "Plataforma.html#motor/perdas",
       "version": "1.12.21",
-      "sha256": "382a5feee8bc4202eb9944c909a1ed55ae91c69da3d451e20a4c34367304024d",
-      "bytes": 986795
+      "sha256": "968a9d7a37224b7c0d6344ae8db0c67f71e84a68175bbce4a1f45d04518be8e7",
+      "bytes": 986986
     },
     {
       "id": "gel",
       "path": "Plataforma.html#motor/gel",
       "version": "2.52",
-      "sha256": "263b433677b656c3cb5aec938f81760d9dfaec85570be3dcd808c44f05364974",
-      "bytes": 1631079
+      "sha256": "2ad2cf0406869ffe26f7d3b7eeda5d85d69d0bc1247c80ef67c667eafeffb036",
+      "bytes": 1631270
     },
     {
       "id": "paradas",
       "path": "Plataforma.html#motor/paradas",
       "version": "1.2.22",
-      "sha256": "873292b6359699eb33bb8579509a78d81f27da7ea9c79c448da0098c7dd52748",
-      "bytes": 955168
+      "sha256": "34352ae8ebfbc85bf66382146bcf1b71cf00952e59a577f98a35acbbd2f5e654",
+      "bytes": 955359
     },
     {
       "id": "equip",
       "path": "Plataforma.html#motor/equip",
       "version": "1.0.22",
-      "sha256": "a39e29a60809d8084c5b846f409ea940c5741b3d27fadf4af5c20f3704a891fb",
-      "bytes": 746331
+      "sha256": "21a397a4bebe16e800395d3980e02a1dada966204fa10818a9cf1b6a08e6e14f",
+      "bytes": 746522
     },
     {
       "id": "inic",
       "path": "Plataforma.html#motor/inic",
       "version": "1.1.17",
-      "sha256": "6a53b1ceed1d060da3859d61d24d3c4ef9195ab2b50cd9e683a4eee728fbc77c",
-      "bytes": 755932
+      "sha256": "3aac10c1d854c7a0679ebc41a1b0b19e54ef547b53f343a348cab56effb4da98",
+      "bytes": 756123
     },
     {
       "id": "linha",
       "path": "Plataforma.html#motor/linha",
       "version": "1.7.1",
-      "sha256": "f3935ff6d81ffdceebcb0e4633261b4ed12979be88a46054a9c3cb094aaa4c33",
-      "bytes": 1008964
+      "sha256": "3497a75d8bcf216b6d74db16fe4dcc0f03479df5898d4bab9c3db8c9ae716157",
+      "bytes": 1009155
     },
     {
       "id": "projetos",
       "path": "Plataforma.html#motor/projetos",
       "version": "0.1.16",
-      "sha256": "4bfa4890094de63a0444ee9f614a70d77b515abc77573ba161d7acc8b230a348",
-      "bytes": 678574
+      "sha256": "34c3d5ed2877577f73ccc6825cec3a8aba80ed697fc9a7214d51702599a23dc6",
+      "bytes": 678765
     },
     {
       "id": "portal",
       "path": "Plataforma.html#motor/portal",
-      "version": "1.9.100",
-      "sha256": "d3e104d367f8b4234d57205c2ad8ee851b63a44793bd501314b9fc9d2bf88db7",
-      "bytes": 1351790
+      "version": "1.9.101",
+      "sha256": "83f3f4b69b5459ca0057b62898b5798a54c4b48864fc5b2cfd29381ab924544b",
+      "bytes": 1352100
     }
   ],
   "limitations": [
     "Projetos e conteúdo técnico OSM/MES/AM/TPM mantêm os limites documentados nas fontes."
   ],
-  "enginesSha256": "777a6690c81f2672766f0f95ee40d2313a19ead6cfc625cc8c0f5fc1e60d79ee",
+  "enginesSha256": "bb24a33f5b5d74ca54d1a83476ace25d6b6a9e15a751338b73c601032bb261f1",
   "originRevision": "ffc9ee8",
   "sourceMode": "single-html",
   "originEnginesSha256": "a87a64ad0c328f70e102b2ae888790a9b5d5a9bd05778652a7ce7cae140e40d2"
@@ -55680,7 +55684,7 @@ summary{cursor:pointer;font-weight:600;color:var(--navy)}
 'use strict';
 /* ---------- referência (atualizar quando a plataforma mudar de versão) ---------- */
 // Iguais às do pacote da plataforma (nova-plataforma/src/generated/manifest.json); o teste ferramenta-verificar confere.
-const VERSOES = {"oee":"2.6.50","perdas":"1.12.21","gel":"2.52","paradas":"1.2.22","equip":"1.0.22","inic":"1.1.17","linha":"1.7.1","projetos":"0.1.16","portal":"1.9.100"};
+const VERSOES = {"oee":"2.6.50","perdas":"1.12.21","gel":"2.52","paradas":"1.2.22","equip":"1.0.22","inic":"1.1.17","linha":"1.7.1","projetos":"0.1.16","portal":"1.9.101"};
 const BASES = [
  { arq: 'vacutainer-cadastros.json', mod: 'portal', nome: 'Cadastro geral (Portal)', obrig: true, cadastro: true, bk: 'Cadastros' },
  { arq: 'portal-base.json', mod: 'portal', nome: 'Portal', obrig: true, bk: 'Portal' },
@@ -56271,7 +56275,7 @@ import { Icon, Button, Badge, Empty, Modal, BarChart, BrandLogo, CommandMenu } f
 import { ModuleFrame } from "vac:modulo/components/ModuleFrame";
 import manifest from "vac:recurso/manifesto";
 import { ModuleTabs } from "vac:modulo/components/ModuleTabs";
-const VERSION = "1.8.92";
+const VERSION = "1.8.93";
 /* Navegação 1.3.0 (16/11/2026): Visão da linha, Relatórios e Importações têm abas; as que mostram uma tela do
    Portal (motor da Administração) trazem o 3º campo com a aba dele. Administração fica só com cadastros e configuração. */
 const SHELL_TABS = {
