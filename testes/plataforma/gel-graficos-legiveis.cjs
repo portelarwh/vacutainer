@@ -5,7 +5,9 @@
 const { chromium } = require('playwright'), http = require('http'), fs = require('fs'), path = require('path'), assert = require('assert/strict');
 const html = fs.readFileSync(path.resolve(__dirname, '../../Plataforma.html'));
 async function medir(browser, base, largura, tema) {
-  const ctx = await browser.newContext({ viewport: { width: largura, height: 900 }, colorScheme: tema }), p = await ctx.newPage(), erros = [];
+  const ctx = await browser.newContext({ viewport: { width: largura, height: 900 }, colorScheme: tema, timezoneId: 'UTC' }), p = await ctx.newPage(), erros = [];
+  /* relógio fixo às 15:00 do dia: de madrugada o período padrão ainda não tem barras com rótulo */
+  { const a = new Date(); await p.clock.setFixedTime(new Date(Date.UTC(a.getUTCFullYear(), a.getUTCMonth(), a.getUTCDate(), 15, 0, 0))); }
   p.on('pageerror', e => erros.push(e.message));
   await ctx.addInitScript(t => { try { localStorage.setItem('vac.platform.demo.theme', t); } catch (e) { } }, tema);
   await p.goto(base + '/?demo=1#/gel'); const q = p.locator('iframe[title="Módulo Gestão de Gel"]'); await q.waitFor({ state: 'attached', timeout: 60000 });
