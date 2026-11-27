@@ -12,6 +12,14 @@ Arquivo único: [index.html](index.html), HTML, CSS e JavaScript nativos, sem in
 - **Relatório do turno › Enviar para a plataforma:** mostra o QR (partes de até 450 caracteres, compactadas, que passam sozinhas) e baixa o arquivo `.mt.json` com o mesmo conteúdo.
 - Na plataforma, **Produção › Lançamento › Importar do celular** lê os QR pela webcam (ou abre o arquivo), mostra a prévia e grava hora a hora, paradas (tipo e máquina), scrap, operador e observações pelas ações normais do Lançamento. Hora vazia no celular não muda o que está lançado; reimportar não duplica paradas. O gel do celular não é gravado (é da Gestão de Gel).
 
+## Mensagem do WhatsApp editável (0.5 · APP-CEL fase 1, 27/11/2026)
+
+- **Administração › Apps de celular › Mensagem do WhatsApp:** modelo com marcadores entre chaves e prévia com valores fictícios. Fica em `parametros.celular.mensagemWhats` e vai embutido no app gerado (`CFG.modeloWa`). Depois de salvar, gere o `MeuTurno.html` de novo e reenvie.
+- Marcadores: `{linha}`, `{turno}`, `{data}`, `{operador}`, `{catalogo}`, `{lote}`, `{op}`, `{producao}`, `{plano}`, `{unidade}`, `{aderencia}`, `{semaforo}`, `{paradas_min}`, `{paradas_motivos}`, `{scrap}`, `{gel}`, `{hora_a_hora}`, `{obs}`. Marcador desconhecido fica como está.
+- Sem modelo (vazio), o app usa a mensagem padrão de sempre (`txtWA`).
+- O rodapé da tela inicial mostra a data e a revisão do cadastro embutido (ex.: "cadastro de 27/11/2026 (rev 8)"), para saber quando a base do celular está velha.
+- Teste: [testes/plataforma/app-cel-whats.cjs](../testes/plataforma/app-cel-whats.cjs).
+
 ## Telas
 
 | Tela | O que faz |
