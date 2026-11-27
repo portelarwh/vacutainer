@@ -710,6 +710,24 @@ const VacEntrar={el:null,
   <p style="margin-top:8px">Ou use só um nome neste navegador:</p><div class="vrow"><input id="veNome" placeholder="Seu nome" style="flex:1"><button type="button" class="b" id="veNomeOk">Usar este nome</button></div>`;
   m.querySelector('#veNomeOk').onclick=()=>{const n=m.querySelector('#veNome').value.trim();if(n.length<2)return;try{localStorage.setItem('vac.user',n);localStorage.removeItem('vac.userId');localStorage.removeItem('vac.perfil')}catch(e){}this.aviso(n);this.fechar()}},
  aviso(nome){try{if(typeof vacAoTrocarUsuario==='function')vacAoTrocarUsuario(nome)}catch(e){console.warn(e)}window.dispatchEvent(new CustomEvent('vac:usuario',{detail:{nome}}));renderSysNav();vacUserRender()}};
+// Busca do cabeçalho (H01, 1.8.98): a mesma em Waste, Gel, Paradas, Equipamentos, Iniciativas, Linha 360° e Projetos. Administração e Produção têm a própria (texto e abas diferentes).
+const vacBusca={el:null,i:0,R:[],
+ abrir(q=''){if(this.el)return;const d=document.createElement('div');d.className='vbusca';d.innerHTML='<div class="bx" role="dialog" aria-label="Buscar"><input id="vbQ" placeholder="Buscar nesta página ou ir para outra…" autocomplete="off"><ul id="vbL"></ul><div class="rod">↑ ↓ escolher · Enter abrir · Esc fechar</div></div>';
+  document.body.appendChild(d);this.el=d;d.onclick=e=>{if(e.target===d)this.fechar()};const inp=d.querySelector('#vbQ');inp.value=q;inp.oninput=()=>{this.i=0;this.lista(inp.value)};
+  inp.onkeydown=e=>{if(e.key==='ArrowDown'){this.i=Math.min(this.R.length-1,this.i+1);this.marca();e.preventDefault()}else if(e.key==='ArrowUp'){this.i=Math.max(0,this.i-1);this.marca();e.preventDefault()}else if(e.key==='Enter'){this.ir(this.R[this.i])}else if(e.key==='Escape'){this.fechar()}};
+  inp.focus();this.lista(q)},
+ fechar(){if(this.el){this.el.remove();this.el=null}},
+ itens(q){const n=s=>String(s??'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();const k=n(q).trim();const R=[];
+  const port=systems().find(s=>s.id==='portal')||{html:'Portal.html'};
+  systems().filter(s=>!s.oculto&amp;&amp;!s.futuro).forEach(s=>R.push({tipo:'Ir para',txt:s.nome,sub:s.html,href:PAGE.id==='portal'&amp;&amp;s.id==='portal'?'#geral':sysHref(s)}));
+  R.push({tipo:'Ir para',txt:'Cadastros',sub:"cadastro base na Administração",href:PAGE.id==='portal'?'#cadastros':sysHref(port,'cadastros')},{tipo:'Ir para',txt:'Versões das páginas',sub:"Administração › Configuração",href:PAGE.id==='portal'?'#versoes':sysHref(port,'versoes')});
+  $$('#nav [data-t]').forEach(b=>R.push({tipo:'Aba',txt:b.textContent.trim(),go:()=>b.click()}));
+  let P=[];try{P=k&amp;&amp;PAGE.busca?PAGE.busca(k)||[]:[]}catch(e){console.warn(e)}
+  const F=R.filter(x=>!k||n(x.txt+' '+(x.sub||'')).includes(k));return(k?P.concat(F):F).slice(0,40)},
+ lista(q){this.R=this.itens(q);const ul=this.el.querySelector('#vbL');ul.innerHTML=this.R.length?this.R.map((x,j)=>`<li data-j="${j}" class="${j===this.i?'on':''}"><span class="tp">${esc(x.tipo)}</span><span class="tx">${esc(x.txt)}${x.sub?`<div class="sb">${esc(x.sub)}</div>`:''}</span></li>`).join(''):'<div class="vz">Nada encontrado.</div>';
+  ul.onclick=e=>{const li=e.target.closest('li');if(li)this.ir(this.R[+li.dataset.j])}},
+ marca(){this.el.querySelectorAll('#vbL li').forEach((li,j)=>{li.classList.toggle('on',j===this.i);if(j===this.i)li.scrollIntoView({block:'nearest'})})},
+ ir(x){if(!x)return;this.fechar();if(x.go)x.go();else if(x.href){if(x.href.startsWith('#')){if(location.hash===x.href)window.dispatchEvent(new HashChangeEvent('hashchange'));else location.hash=x.href}else vacDemo.ir(x.href)}}};
 // Leituras do cadastro geral (vigência por data do fato; ausência é null, nunca zero).
 vacCad.vigente = (vigencias, data) => { const d = String(data || '').slice(0, 10) || vacHoje(); return (vigencias || []).filter(v => v.de <= d &amp;&amp; (!v.ate || v.ate >= d)).sort((a, b) => a.de < b.de ? 1 : -1)[0] || null; };
 vacCad.item = (tipo, codigo) => { const c = vacCad(); return ((c &amp;&amp; c[tipo]) || []).find(x => String(x.codigo) === String(codigo)) || null; };
@@ -5392,6 +5410,8 @@ const CAD_SECS=['inicio','gel','matriz','importar','auditoria','backups','segura
    curtas (macro, sem detalhe técnico). REGRA: toda versão nova da plataforma ganha uma entrada aqui, a mais recente primeiro
    (AGENTS.md e CLAUDE.md). Tipos: nova (função nova), melhoria (algo que já existia ficou melhor), correcao (erro corrigido). */
 const NOVIDADES=[
+ {v:'1.8.98',d:'2026-11-27',itens:[
+  ['melhoria','Organização interna: a busca do cabeçalho vem de um só lugar em Waste, Gel, Paradas, Equipamentos, Iniciativas, Linha 360° e Projetos (nada muda no uso).']]},
  {v:'1.8.97',d:'2026-11-27',itens:[
   ['melhoria','Organização interna: a lista de sistemas, o menu de sistemas, o nome de quem está usando e a janela Entrar pelo ID vêm de um só lugar em todos os módulos (nada muda no uso).']]},
  {v:'1.8.96',d:'2026-11-27',itens:[
@@ -24497,23 +24517,7 @@ function renderSysNav_v1(){const el=$('#sysNav');if(!el)return;const cur=vacAtua
  const t=$('#vacTitulo');if(t){t.textContent=cur==='cadastros'?'Cadastros':(PAGE.tituloCurto||PAGE.titulo.split('·')[0].trim())}const s=$('#vacSub');if(s)s.textContent=cur==='cadastros'?'Cadastro base da linha':(PAGE.subtitulo||'');
  const n=$('#vacNome');if(n)n.href=PAGE.id==='portal'?'#geral':sysHref(port);document.title=(cur==='cadastros'?'Cadastros':(PAGE.tituloCurto||PAGE.titulo.split('·')[0].trim()))+' · Linha Vacutainer'}
 /* busca: páginas, abas da página e o que a página oferecer em PAGE.busca(q) */
-const Busca={el:null,i:0,R:[],
- abrir(q=''){if(this.el)return;const d=document.createElement('div');d.className='vbusca';d.innerHTML='<div class="bx" role="dialog" aria-label="Buscar"><input id="vbQ" placeholder="Buscar nesta página ou ir para outra…" autocomplete="off"><ul id="vbL"></ul><div class="rod">↑ ↓ escolher · Enter abrir · Esc fechar</div></div>';
-  document.body.appendChild(d);this.el=d;d.onclick=e=>{if(e.target===d)this.fechar()};const inp=d.querySelector('#vbQ');inp.value=q;inp.oninput=()=>{this.i=0;this.lista(inp.value)};
-  inp.onkeydown=e=>{if(e.key==='ArrowDown'){this.i=Math.min(this.R.length-1,this.i+1);this.marca();e.preventDefault()}else if(e.key==='ArrowUp'){this.i=Math.max(0,this.i-1);this.marca();e.preventDefault()}else if(e.key==='Enter'){this.ir(this.R[this.i])}else if(e.key==='Escape'){this.fechar()}};
-  inp.focus();this.lista(q)},
- fechar(){if(this.el){this.el.remove();this.el=null}},
- itens(q){const n=s=>String(s??'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();const k=n(q).trim();const R=[];
-  const port=systems().find(s=>s.id==='portal')||{html:'Portal.html'};
-  systems().filter(s=>!s.oculto&amp;&amp;!s.futuro).forEach(s=>R.push({tipo:'Ir para',txt:s.nome,sub:s.html,href:PAGE.id==='portal'&amp;&amp;s.id==='portal'?'#geral':sysHref(s)}));
-  R.push({tipo:'Ir para',txt:'Cadastros',sub:"cadastro base na Administração",href:PAGE.id==='portal'?'#cadastros':sysHref(port,'cadastros')},{tipo:'Ir para',txt:'Versões das páginas',sub:"Administração › Configuração",href:PAGE.id==='portal'?'#versoes':sysHref(port,'versoes')});
-  $$('#nav [data-t]').forEach(b=>R.push({tipo:'Aba',txt:b.textContent.trim(),go:()=>b.click()}));
-  let P=[];try{P=k&amp;&amp;PAGE.busca?PAGE.busca(k)||[]:[]}catch(e){console.warn(e)}
-  const F=R.filter(x=>!k||n(x.txt+' '+(x.sub||'')).includes(k));return(k?P.concat(F):F).slice(0,40)},
- lista(q){this.R=this.itens(q);const ul=this.el.querySelector('#vbL');ul.innerHTML=this.R.length?this.R.map((x,j)=>`<li data-j="${j}" class="${j===this.i?'on':''}"><span class="tp">${esc(x.tipo)}</span><span class="tx">${esc(x.txt)}${x.sub?`<div class="sb">${esc(x.sub)}</div>`:''}</span></li>`).join(''):'<div class="vz">Nada encontrado.</div>';
-  ul.onclick=e=>{const li=e.target.closest('li');if(li)this.ir(this.R[+li.dataset.j])}},
- marca(){this.el.querySelectorAll('#vbL li').forEach((li,j)=>{li.classList.toggle('on',j===this.i);if(j===this.i)li.scrollIntoView({block:'nearest'})})},
- ir(x){if(!x)return;this.fechar();if(x.go)x.go();else if(x.href){if(x.href.startsWith('#')){if(location.hash===x.href)window.dispatchEvent(new HashChangeEvent('hashchange'));else location.hash=x.href}else vacDemo.ir(x.href)}}};
+const Busca=vacBusca;
 document.addEventListener('keydown',e=>{if((e.ctrlKey||e.metaKey)&amp;&amp;(e.key==='k'||e.key==='K')){e.preventDefault();Busca.el?Busca.fechar():Busca.abrir()}});
 function wireCabecalho(){const b=$('#vacBusca');if(b)b.onclick=()=>Busca.abrir();const v=$('#appVer');if(v&amp;&amp;!v.onclick){const port=systems().find(s=>s.id==='portal')||{html:'Portal.html'};v.onclick=()=>{if(PAGE.id==='portal')irVersoes();else vacDemo.ir(sysHref(port,'versoes'))}}}
 /* ----- vac-cabecalho v2 · acréscimos de 05/11/2026 (iguais em todas as páginas; não editar só numa) -----
@@ -26554,23 +26558,7 @@ function renderSysNav_v1(){const el=$('#sysNav');if(!el)return;const cur=vacAtua
  const t=$('#vacTitulo');if(t){t.textContent=cur==='cadastros'?'Cadastros':(PAGE.tituloCurto||PAGE.titulo.split('·')[0].trim())}const s=$('#vacSub');if(s)s.textContent=cur==='cadastros'?'Cadastro base da linha':(PAGE.subtitulo||'');
  const n=$('#vacNome');if(n)n.href=PAGE.id==='portal'?'#geral':sysHref(port);document.title=(cur==='cadastros'?'Cadastros':(PAGE.tituloCurto||PAGE.titulo.split('·')[0].trim()))+' · Linha Vacutainer'}
 /* busca: páginas, abas da página e o que a página oferecer em PAGE.busca(q) */
-const Busca={el:null,i:0,R:[],
- abrir(q=''){if(this.el)return;const d=document.createElement('div');d.className='vbusca';d.innerHTML='<div class="bx" role="dialog" aria-label="Buscar"><input id="vbQ" placeholder="Buscar nesta página ou ir para outra…" autocomplete="off"><ul id="vbL"></ul><div class="rod">↑ ↓ escolher · Enter abrir · Esc fechar</div></div>';
-  document.body.appendChild(d);this.el=d;d.onclick=e=>{if(e.target===d)this.fechar()};const inp=d.querySelector('#vbQ');inp.value=q;inp.oninput=()=>{this.i=0;this.lista(inp.value)};
-  inp.onkeydown=e=>{if(e.key==='ArrowDown'){this.i=Math.min(this.R.length-1,this.i+1);this.marca();e.preventDefault()}else if(e.key==='ArrowUp'){this.i=Math.max(0,this.i-1);this.marca();e.preventDefault()}else if(e.key==='Enter'){this.ir(this.R[this.i])}else if(e.key==='Escape'){this.fechar()}};
-  inp.focus();this.lista(q)},
- fechar(){if(this.el){this.el.remove();this.el=null}},
- itens(q){const n=s=>String(s??'').normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase();const k=n(q).trim();const R=[];
-  const port=systems().find(s=>s.id==='portal')||{html:'Portal.html'};
-  systems().filter(s=>!s.oculto&amp;&amp;!s.futuro).forEach(s=>R.push({tipo:'Ir para',txt:s.nome,sub:s.html,href:PAGE.id==='portal'&amp;&amp;s.id==='portal'?'#geral':sysHref(s)}));
-  R.push({tipo:'Ir para',txt:'Cadastros',sub:"cadastro base na Administração",href:PAGE.id==='portal'?'#cadastros':sysHref(port,'cadastros')},{tipo:'Ir para',txt:'Versões das páginas',sub:"Administração › Configuração",href:PAGE.id==='portal'?'#versoes':sysHref(port,'versoes')});
-  $$('#nav [data-t]').forEach(b=>R.push({tipo:'Aba',txt:b.textContent.trim(),go:()=>b.click()}));
-  let P=[];try{P=k&amp;&amp;PAGE.busca?PAGE.busca(k)||[]:[]}catch(e){console.warn(e)}
-  const F=R.filter(x=>!k||n(x.txt+' '+(x.sub||'')).includes(k));return(k?P.concat(F):F).slice(0,40)},
- lista(q){this.R=this.itens(q);const ul=this.el.querySelector('#vbL');ul.innerHTML=this.R.length?this.R.map((x,j)=>`<li data-j="${j}" class="${j===this.i?'on':''}"><span class="tp">${esc(x.tipo)}</span><span class="tx">${esc(x.txt)}${x.sub?`<div class="sb">${esc(x.sub)}</div>`:''}</span></li>`).join(''):'<div class="vz">Nada encontrado.</div>';
-  ul.onclick=e=>{const li=e.target.closest('li');if(li)this.ir(this.R[+li.dataset.j])}},
- marca(){this.el.querySelectorAll('#vbL li').forEach((li,j)=>{li.classList.toggle('on',j===this.i);if(j===this.i)li.scrollIntoView({block:'nearest'})})},
- ir(x){if(!x)return;this.fechar();if(x.go)x.go();else if(x.href){if(x.href.startsWith('#')){if(location.hash===x.href)window.dispatchEvent(new HashChangeEvent('hashchange'));else location.hash=x.href}else vacDemo.ir(x.href)}}};
+const Busca=vacBusca;
 document.addEventListener('keydown',e=>{if((e.ctrlKey||e.metaKey)&amp;&amp;(e.key==='k'||e.key==='K')){e.preventDefault();Busca.el?Busca.fechar():Busca.abrir()}});
 function wireCabecalho(){const b=$('#vacBusca');if(b)b.onclick=()=>Busca.abrir();const v=$('#appVer');if(v)v.textContent='v'+APP_VERSION;if(v&amp;&amp;!v.onclick){const port=systems().find(s=>s.id==='portal')||{html:'Portal.html'};v.onclick=()=>{if(PAGE.id==='portal')irVersoes();else vacDemo.ir(sysHref(port,'versoes'))}}}
 /* ----- vac-cabecalho v2 · acréscimos de 05/11/2026 (iguais em todas as páginas; não editar só numa) -----
@@ -33284,23 +33272,7 @@ function renderSysNav_v1(){const el=$('#sysNav');if(!el)return;const cur=vacAtua
  L.push({id:'cadastros',nome:'Cadastros',href:sysHref(port,'cadastros')});
  el.innerHTML=L.map(x=>`<a href="${esc(x.href)}" class="${x.id===cur?'cur':''}"${x.id===cur?' aria-current="page"':''}>${esc(x.nome)}</a>`).join('');
  const t=$('#vacTitulo');if(t)t.textContent=PAGE.tituloCurto;const s=$('#vacSub');if(s)s.textContent=PAGE.subtitulo;const n=$('#vacNome');if(n)n.href=sysHref(port);document.title=PAGE.tituloCurto+' · Linha Vacutainer'}
-const Busca={el:null,i:0,R:[],
- abrir(q=''){if(this.el)return;const d=document.createElement('div');d.className='vbusca';d.innerHTML='<div class="bx" role="dialog" aria-label="Buscar"><input id="vbQ" placeholder="Buscar nesta página ou ir para outra…" autocomplete="off"><ul id="vbL"></ul><div class="rod">↑ ↓ escolher · Enter abrir · Esc fechar</div></div>';
-  document.body.appendChild(d);this.el=d;d.onclick=e=>{if(e.target===d)this.fechar()};const inp=d.querySelector('#vbQ');inp.value=q;inp.oninput=()=>{this.i=0;this.lista(inp.value)};
-  inp.onkeydown=e=>{if(e.key==='ArrowDown'){this.i=Math.min(this.R.length-1,this.i+1);this.marca();e.preventDefault()}else if(e.key==='ArrowUp'){this.i=Math.max(0,this.i-1);this.marca();e.preventDefault()}else if(e.key==='Enter'){this.ir(this.R[this.i])}else if(e.key==='Escape'){this.fechar()}};
-  inp.focus();this.lista(q)},
- fechar(){if(this.el){this.el.remove();this.el=null}},
- itens(q){const n=s=>String(s??'').normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase();const k=n(q).trim();const R=[];
-  const port=systems().find(s=>s.id==='portal')||{html:'Portal.html'};
-  systems().filter(s=>!s.oculto&amp;&amp;!s.futuro).forEach(s=>R.push({tipo:'Ir para',txt:s.nome,sub:s.html,href:sysHref(s)}));
-  R.push({tipo:'Ir para',txt:'Cadastros',sub:"cadastro base na Administração",href:sysHref(port,'cadastros')},{tipo:'Ir para',txt:'Versões das páginas',sub:"Administração › Configuração",href:sysHref(port,'versoes')});
-  $$('#nav [data-t]').forEach(b=>R.push({tipo:'Aba',txt:b.textContent.trim(),go:()=>b.click()}));
-  let P=[];try{P=k&amp;&amp;PAGE.busca?PAGE.busca(k)||[]:[]}catch(e){console.warn(e)}
-  const F2=R.filter(x=>!k||n(x.txt+' '+(x.sub||'')).includes(k));return(k?P.concat(F2):F2).slice(0,40)},
- lista(q){this.R=this.itens(q);const ul=this.el.querySelector('#vbL');ul.innerHTML=this.R.length?this.R.map((x,j)=>`<li data-j="${j}" class="${j===this.i?'on':''}"><span class="tp">${esc(x.tipo)}</span><span class="tx">${esc(x.txt)}${x.sub?`<div class="sb">${esc(x.sub)}</div>`:''}</span></li>`).join(''):'<div class="vz">Nada encontrado.</div>';
-  ul.onclick=e=>{const li=e.target.closest('li');if(li)this.ir(this.R[+li.dataset.j])}},
- marca(){this.el.querySelectorAll('#vbL li').forEach((li,j)=>{li.classList.toggle('on',j===this.i);if(j===this.i)li.scrollIntoView({block:'nearest'})})},
- ir(x){if(!x)return;this.fechar();if(x.go)x.go();else if(x.href){if(x.href.startsWith('#')){if(location.hash===x.href)window.dispatchEvent(new HashChangeEvent('hashchange'));else location.hash=x.href}else vacDemo.ir(x.href)}}};
+const Busca=vacBusca;
 document.addEventListener('keydown',e=>{if((e.ctrlKey||e.metaKey)&amp;&amp;(e.key==='k'||e.key==='K')){e.preventDefault();Busca.el?Busca.fechar():Busca.abrir()}});
 function wireCabecalho(){const b=$('#vacBusca');if(b)b.onclick=()=>Busca.abrir();const v=$('#appVer');if(v&amp;&amp;!v.onclick){const port=systems().find(s=>s.id==='portal')||{html:'Portal.html'};v.onclick=()=>{vacDemo.ir(sysHref(port,'versoes'))}}}
 /* ----- vac-cabecalho v2 · acréscimos de 05/11/2026 (iguais em todas as páginas; não editar só numa) -----
@@ -34078,23 +34050,7 @@ function renderSysNav_v1(){const el=$('#sysNav');if(!el)return;const cur=vacAtua
  L.push({id:'cadastros',nome:'Cadastros',href:sysHref(port,'cadastros')});
  el.innerHTML=L.map(x=>`<a href="${esc(x.href)}" class="${x.id===cur?'cur':''}"${x.id===cur?' aria-current="page"':''}>${esc(x.nome)}</a>`).join('');
  const t=$('#vacTitulo');if(t)t.textContent=PAGE.tituloCurto;const s=$('#vacSub');if(s)s.textContent=PAGE.subtitulo;const n=$('#vacNome');if(n)n.href=sysHref(port);document.title=PAGE.tituloCurto+' · Linha Vacutainer'}
-const Busca={el:null,i:0,R:[],
- abrir(q=''){if(this.el)return;const d=document.createElement('div');d.className='vbusca';d.innerHTML='<div class="bx" role="dialog" aria-label="Buscar"><input id="vbQ" placeholder="Buscar nesta página ou ir para outra…" autocomplete="off"><ul id="vbL"></ul><div class="rod">↑ ↓ escolher · Enter abrir · Esc fechar</div></div>';
-  document.body.appendChild(d);this.el=d;d.onclick=e=>{if(e.target===d)this.fechar()};const inp=d.querySelector('#vbQ');inp.value=q;inp.oninput=()=>{this.i=0;this.lista(inp.value)};
-  inp.onkeydown=e=>{if(e.key==='ArrowDown'){this.i=Math.min(this.R.length-1,this.i+1);this.marca();e.preventDefault()}else if(e.key==='ArrowUp'){this.i=Math.max(0,this.i-1);this.marca();e.preventDefault()}else if(e.key==='Enter'){this.ir(this.R[this.i])}else if(e.key==='Escape'){this.fechar()}};
-  inp.focus();this.lista(q)},
- fechar(){if(this.el){this.el.remove();this.el=null}},
- itens(q){const n=s=>String(s??'').normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase();const k=n(q).trim();const R=[];
-  const port=systems().find(s=>s.id==='portal')||{html:'Portal.html'};
-  systems().filter(s=>!s.oculto&amp;&amp;!s.futuro).forEach(s=>R.push({tipo:'Ir para',txt:s.nome,sub:s.html,href:sysHref(s)}));
-  R.push({tipo:'Ir para',txt:'Cadastros',sub:"cadastro base na Administração",href:sysHref(port,'cadastros')},{tipo:'Ir para',txt:'Versões das páginas',sub:"Administração › Configuração",href:sysHref(port,'versoes')});
-  $$('#nav [data-t]').forEach(b=>R.push({tipo:'Aba',txt:b.textContent.trim(),go:()=>b.click()}));
-  let P=[];try{P=k&amp;&amp;PAGE.busca?PAGE.busca(k)||[]:[]}catch(e){console.warn(e)}
-  const F2=R.filter(x=>!k||n(x.txt+' '+(x.sub||'')).includes(k));return(k?P.concat(F2):F2).slice(0,40)},
- lista(q){this.R=this.itens(q);const ul=this.el.querySelector('#vbL');ul.innerHTML=this.R.length?this.R.map((x,j)=>`<li data-j="${j}" class="${j===this.i?'on':''}"><span class="tp">${esc(x.tipo)}</span><span class="tx">${esc(x.txt)}${x.sub?`<div class="sb">${esc(x.sub)}</div>`:''}</span></li>`).join(''):'<div class="vz">Nada encontrado.</div>';
-  ul.onclick=e=>{const li=e.target.closest('li');if(li)this.ir(this.R[+li.dataset.j])}},
- marca(){this.el.querySelectorAll('#vbL li').forEach((li,j)=>{li.classList.toggle('on',j===this.i);if(j===this.i)li.scrollIntoView({block:'nearest'})})},
- ir(x){if(!x)return;this.fechar();if(x.go)x.go();else if(x.href){if(x.href.startsWith('#')){if(location.hash===x.href)window.dispatchEvent(new HashChangeEvent('hashchange'));else location.hash=x.href}else vacDemo.ir(x.href)}}};
+const Busca=vacBusca;
 document.addEventListener('keydown',e=>{if((e.ctrlKey||e.metaKey)&amp;&amp;(e.key==='k'||e.key==='K')){e.preventDefault();Busca.el?Busca.fechar():Busca.abrir()}});
 function wireCabecalho(){const b=$('#vacBusca');if(b)b.onclick=()=>Busca.abrir();const v=$('#appVer');if(v&amp;&amp;!v.onclick){const port=systems().find(s=>s.id==='portal')||{html:'Portal.html'};v.onclick=()=>{vacDemo.ir(sysHref(port,'versoes'))}}}
 /* ----- vac-cabecalho v2 · acréscimos de 05/11/2026 (iguais em todas as páginas; não editar só numa) -----
@@ -34588,23 +34544,7 @@ function renderSysNav_v1(){const el=$('#sysNav');if(!el)return;const cur=vacAtua
  L.push({id:'cadastros',nome:'Cadastros',href:sysHref(port,'cadastros')});
  el.innerHTML=L.map(x=>`<a href="${esc(x.href)}" class="${x.id===cur?'cur':''}"${x.id===cur?' aria-current="page"':''}>${esc(x.nome)}</a>`).join('');
  const t=$('#vacTitulo');if(t)t.textContent=PAGE.tituloCurto;const s=$('#vacSub');if(s)s.textContent=PAGE.subtitulo;const n=$('#vacNome');if(n)n.href=sysHref(port);document.title=PAGE.tituloCurto+' · Linha Vacutainer'}
-const Busca={el:null,i:0,R:[],
- abrir(q=''){if(this.el)return;const d=document.createElement('div');d.className='vbusca';d.innerHTML='<div class="bx" role="dialog" aria-label="Buscar"><input id="vbQ" placeholder="Buscar nesta página ou ir para outra…" autocomplete="off"><ul id="vbL"></ul><div class="rod">↑ ↓ escolher · Enter abrir · Esc fechar</div></div>';
-  document.body.appendChild(d);this.el=d;d.onclick=e=>{if(e.target===d)this.fechar()};const inp=d.querySelector('#vbQ');inp.value=q;inp.oninput=()=>{this.i=0;this.lista(inp.value)};
-  inp.onkeydown=e=>{if(e.key==='ArrowDown'){this.i=Math.min(this.R.length-1,this.i+1);this.marca();e.preventDefault()}else if(e.key==='ArrowUp'){this.i=Math.max(0,this.i-1);this.marca();e.preventDefault()}else if(e.key==='Enter'){this.ir(this.R[this.i])}else if(e.key==='Escape'){this.fechar()}};
-  inp.focus();this.lista(q)},
- fechar(){if(this.el){this.el.remove();this.el=null}},
- itens(q){const n=s=>String(s??'').normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase();const k=n(q).trim();const R=[];
-  const port=systems().find(s=>s.id==='portal')||{html:'Portal.html'};
-  systems().filter(s=>!s.oculto&amp;&amp;!s.futuro).forEach(s=>R.push({tipo:'Ir para',txt:s.nome,sub:s.html,href:sysHref(s)}));
-  R.push({tipo:'Ir para',txt:'Cadastros',sub:"cadastro base na Administração",href:sysHref(port,'cadastros')},{tipo:'Ir para',txt:'Versões das páginas',sub:"Administração › Configuração",href:sysHref(port,'versoes')});
-  $$('#nav [data-t]').forEach(b=>R.push({tipo:'Aba',txt:b.textContent.trim(),go:()=>b.click()}));
-  let P=[];try{P=k&amp;&amp;PAGE.busca?PAGE.busca(k)||[]:[]}catch(e){console.warn(e)}
-  const F2=R.filter(x=>!k||n(x.txt+' '+(x.sub||'')).includes(k));return(k?P.concat(F2):F2).slice(0,40)},
- lista(q){this.R=this.itens(q);const ul=this.el.querySelector('#vbL');ul.innerHTML=this.R.length?this.R.map((x,j)=>`<li data-j="${j}" class="${j===this.i?'on':''}"><span class="tp">${esc(x.tipo)}</span><span class="tx">${esc(x.txt)}${x.sub?`<div class="sb">${esc(x.sub)}</div>`:''}</span></li>`).join(''):'<div class="vz">Nada encontrado.</div>';
-  ul.onclick=e=>{const li=e.target.closest('li');if(li)this.ir(this.R[+li.dataset.j])}},
- marca(){this.el.querySelectorAll('#vbL li').forEach((li,j)=>{li.classList.toggle('on',j===this.i);if(j===this.i)li.scrollIntoView({block:'nearest'})})},
- ir(x){if(!x)return;this.fechar();if(x.go)x.go();else if(x.href){if(x.href.startsWith('#')){if(location.hash===x.href)window.dispatchEvent(new HashChangeEvent('hashchange'));else location.hash=x.href}else vacDemo.ir(x.href)}}};
+const Busca=vacBusca;
 document.addEventListener('keydown',e=>{if((e.ctrlKey||e.metaKey)&amp;&amp;(e.key==='k'||e.key==='K')){e.preventDefault();Busca.el?Busca.fechar():Busca.abrir()}});
 function wireCabecalho(){const b=$('#vacBusca');if(b)b.onclick=()=>Busca.abrir();const v=$('#appVer');if(v&amp;&amp;!v.onclick){const port=systems().find(s=>s.id==='portal')||{html:'Portal.html'};v.onclick=()=>{vacDemo.ir(sysHref(port,'versoes'))}}}
 /* ----- vac-cabecalho v2 · acréscimos de 05/11/2026 (iguais em todas as páginas; não editar só numa) -----
@@ -35417,23 +35357,7 @@ function renderSysNav_v1(){const el=$('#sysNav');if(!el)return;const cur=vacAtua
  L.push({id:'cadastros',nome:'Cadastros',href:sysHref(port,'cadastros')});
  el.innerHTML=L.map(x=>`<a href="${esc(x.href)}" class="${x.id===cur?'cur':''}"${x.id===cur?' aria-current="page"':''}>${esc(x.nome)}</a>`).join('');
  const t=$('#vacTitulo');if(t)t.textContent=PAGE.tituloCurto;const s=$('#vacSub');if(s)s.textContent=PAGE.subtitulo;const n=$('#vacNome');if(n)n.href=sysHref(port);document.title=PAGE.tituloCurto+' · Linha Vacutainer'}
-const Busca={el:null,i:0,R:[],
- abrir(q=''){if(this.el)return;const d=document.createElement('div');d.className='vbusca';d.innerHTML='<div class="bx" role="dialog" aria-label="Buscar"><input id="vbQ" placeholder="Buscar nesta página ou ir para outra…" autocomplete="off"><ul id="vbL"></ul><div class="rod">↑ ↓ escolher · Enter abrir · Esc fechar</div></div>';
-  document.body.appendChild(d);this.el=d;d.onclick=e=>{if(e.target===d)this.fechar()};const inp=d.querySelector('#vbQ');inp.value=q;inp.oninput=()=>{this.i=0;this.lista(inp.value)};
-  inp.onkeydown=e=>{if(e.key==='ArrowDown'){this.i=Math.min(this.R.length-1,this.i+1);this.marca();e.preventDefault()}else if(e.key==='ArrowUp'){this.i=Math.max(0,this.i-1);this.marca();e.preventDefault()}else if(e.key==='Enter'){this.ir(this.R[this.i])}else if(e.key==='Escape'){this.fechar()}};
-  inp.focus();this.lista(q)},
- fechar(){if(this.el){this.el.remove();this.el=null}},
- itens(q){const n=s=>String(s??'').normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase();const k=n(q).trim();const R=[];
-  const port=systems().find(s=>s.id==='portal')||{html:'Portal.html'};
-  systems().filter(s=>!s.oculto&amp;&amp;!s.futuro).forEach(s=>R.push({tipo:'Ir para',txt:s.nome,sub:s.html,href:sysHref(s)}));
-  R.push({tipo:'Ir para',txt:'Cadastros',sub:"cadastro base na Administração",href:sysHref(port,'cadastros')},{tipo:'Ir para',txt:'Versões das páginas',sub:"Administração › Configuração",href:sysHref(port,'versoes')});
-  $$('#nav [data-t]').forEach(b=>R.push({tipo:'Aba',txt:b.textContent.trim(),go:()=>b.click()}));
-  let P=[];try{P=k&amp;&amp;PAGE.busca?PAGE.busca(k)||[]:[]}catch(e){console.warn(e)}
-  const F2=R.filter(x=>!k||n(x.txt+' '+(x.sub||'')).includes(k));return(k?P.concat(F2):F2).slice(0,40)},
- lista(q){this.R=this.itens(q);const ul=this.el.querySelector('#vbL');ul.innerHTML=this.R.length?this.R.map((x,j)=>`<li data-j="${j}" class="${j===this.i?'on':''}"><span class="tp">${esc(x.tipo)}</span><span class="tx">${esc(x.txt)}${x.sub?`<div class="sb">${esc(x.sub)}</div>`:''}</span></li>`).join(''):'<div class="vz">Nada encontrado.</div>';
-  ul.onclick=e=>{const li=e.target.closest('li');if(li)this.ir(this.R[+li.dataset.j])}},
- marca(){this.el.querySelectorAll('#vbL li').forEach((li,j)=>{li.classList.toggle('on',j===this.i);if(j===this.i)li.scrollIntoView({block:'nearest'})})},
- ir(x){if(!x)return;this.fechar();if(x.go)x.go();else if(x.href){if(x.href.startsWith('#')){if(location.hash===x.href)window.dispatchEvent(new HashChangeEvent('hashchange'));else location.hash=x.href}else vacDemo.ir(x.href)}}};
+const Busca=vacBusca;
 document.addEventListener('keydown',e=>{if((e.ctrlKey||e.metaKey)&amp;&amp;(e.key==='k'||e.key==='K')){e.preventDefault();Busca.el?Busca.fechar():Busca.abrir()}});
 function wireCabecalho(){const b=$('#vacBusca');if(b)b.onclick=()=>Busca.abrir();const v=$('#appVer');if(v&amp;&amp;!v.onclick){const port=systems().find(s=>s.id==='portal')||{html:'Portal.html'};v.onclick=()=>{vacDemo.ir(sysHref(port,'versoes'))}}}
 /* ----- vac-cabecalho v2 · acréscimos de 05/11/2026 (iguais em todas as páginas; não editar só numa) -----
@@ -36837,23 +36761,7 @@ function renderSysNav_v1(){const el=$('#sysNav');if(!el)return;const cur=vacAtua
  L.push({id:'cadastros',nome:'Cadastros',href:sysHref(port,'cadastros')});
  el.innerHTML=L.map(x=>`<a href="${esc(x.href)}" class="${x.id===cur?'cur':''}"${x.id===cur?' aria-current="page"':''}>${esc(x.nome)}</a>`).join('');
  const t=$('#vacTitulo');if(t)t.textContent=PAGE.tituloCurto;const s=$('#vacSub');if(s)s.textContent=PAGE.subtitulo;const n=$('#vacNome');if(n)n.href=sysHref(port);document.title=PAGE.tituloCurto+' · Linha Vacutainer'}
-const Busca={el:null,i:0,R:[],
- abrir(q=''){if(this.el)return;const d=document.createElement('div');d.className='vbusca';d.innerHTML='<div class="bx" role="dialog" aria-label="Buscar"><input id="vbQ" placeholder="Buscar nesta página ou ir para outra…" autocomplete="off"><ul id="vbL"></ul><div class="rod">↑ ↓ escolher · Enter abrir · Esc fechar</div></div>';
-  document.body.appendChild(d);this.el=d;d.onclick=e=>{if(e.target===d)this.fechar()};const inp=d.querySelector('#vbQ');inp.value=q;inp.oninput=()=>{this.i=0;this.lista(inp.value)};
-  inp.onkeydown=e=>{if(e.key==='ArrowDown'){this.i=Math.min(this.R.length-1,this.i+1);this.marca();e.preventDefault()}else if(e.key==='ArrowUp'){this.i=Math.max(0,this.i-1);this.marca();e.preventDefault()}else if(e.key==='Enter'){this.ir(this.R[this.i])}else if(e.key==='Escape'){this.fechar()}};
-  inp.focus();this.lista(q)},
- fechar(){if(this.el){this.el.remove();this.el=null}},
- itens(q){const n=s=>String(s??'').normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase();const k=n(q).trim();const R=[];
-  const port=systems().find(s=>s.id==='portal')||{html:'Portal.html'};
-  systems().filter(s=>!s.oculto&amp;&amp;!s.futuro).forEach(s=>R.push({tipo:'Ir para',txt:s.nome,sub:s.html,href:sysHref(s)}));
-  R.push({tipo:'Ir para',txt:'Cadastros',sub:"cadastro base na Administração",href:sysHref(port,'cadastros')},{tipo:'Ir para',txt:'Versões das páginas',sub:"Administração › Configuração",href:sysHref(port,'versoes')});
-  $$('#nav [data-t]').forEach(b=>R.push({tipo:'Aba',txt:b.textContent.trim(),go:()=>b.click()}));
-  let P=[];try{P=k&amp;&amp;PAGE.busca?PAGE.busca(k)||[]:[]}catch(e){console.warn(e)}
-  const F2=R.filter(x=>!k||n(x.txt+' '+(x.sub||'')).includes(k));return(k?P.concat(F2):F2).slice(0,40)},
- lista(q){this.R=this.itens(q);const ul=this.el.querySelector('#vbL');ul.innerHTML=this.R.length?this.R.map((x,j)=>`<li data-j="${j}" class="${j===this.i?'on':''}"><span class="tp">${esc(x.tipo)}</span><span class="tx">${esc(x.txt)}${x.sub?`<div class="sb">${esc(x.sub)}</div>`:''}</span></li>`).join(''):'<div class="vz">Nada encontrado.</div>';
-  ul.onclick=e=>{const li=e.target.closest('li');if(li)this.ir(this.R[+li.dataset.j])}},
- marca(){this.el.querySelectorAll('#vbL li').forEach((li,j)=>{li.classList.toggle('on',j===this.i);if(j===this.i)li.scrollIntoView({block:'nearest'})})},
- ir(x){if(!x)return;this.fechar();if(x.go)x.go();else if(x.href){if(x.href.startsWith('#')){if(location.hash===x.href)window.dispatchEvent(new HashChangeEvent('hashchange'));else location.hash=x.href}else vacDemo.ir(x.href)}}};
+const Busca=vacBusca;
 document.addEventListener('keydown',e=>{if((e.ctrlKey||e.metaKey)&amp;&amp;(e.key==='k'||e.key==='K')){e.preventDefault();Busca.el?Busca.fechar():Busca.abrir()}});
 function wireCabecalho(){const b=$('#vacBusca');if(b)b.onclick=()=>Busca.abrir();const v=$('#appVer');if(v&amp;&amp;!v.onclick){const port=systems().find(s=>s.id==='portal')||{html:'Portal.html'};v.onclick=()=>{vacDemo.ir(sysHref(port,'versoes'))}}}
 /* ----- vac-cabecalho v2 · acréscimos de 05/11/2026 (iguais em todas as páginas; não editar só numa) -----
@@ -55238,70 +55146,70 @@ body.vac-porta{overflow:hidden}
       "id": "oee",
       "path": "Plataforma.html#motor/oee",
       "version": "2.6.50",
-      "sha256": "17b065a8a04182e9b55adb02feab34ab5968df896267f0fb26b011888acb1ab8",
-      "bytes": 2397238
+      "sha256": "f8b275867569e5f56861c1a3e7cf724f53da85af057338606bcc33c0ea71924a",
+      "bytes": 2400119
     },
     {
       "id": "perdas",
       "path": "Plataforma.html#motor/perdas",
       "version": "1.12.21",
-      "sha256": "75cb15dc564c02518b210d5ea2438abdb0b81b2b62f55f92fd52e4469d2ee04a",
-      "bytes": 987430
+      "sha256": "b19117acc24fcc75a078b04a66c4a7933f5f76c0c17da686288a1d287cbdba14",
+      "bytes": 987648
     },
     {
       "id": "gel",
       "path": "Plataforma.html#motor/gel",
       "version": "2.52",
-      "sha256": "da7465914660a24cb1b884a23f53d4c217156e25097890ca7b19fc477ab05629",
-      "bytes": 1631714
+      "sha256": "e8b2d8858f342036c55465fd24490e856ba87fa559b524bd4f8052736bedb77b",
+      "bytes": 1631940
     },
     {
       "id": "paradas",
       "path": "Plataforma.html#motor/paradas",
       "version": "1.2.22",
-      "sha256": "3e7183df636e9ae965af897a3c87d6ca288f4b51ba241530502f6b51ae1a0b64",
-      "bytes": 955803
+      "sha256": "5755a5172a5cc1d621fb9398d25dfbd286c2ef16a03e4eff513fe8c9adbe936a",
+      "bytes": 956133
     },
     {
       "id": "equip",
       "path": "Plataforma.html#motor/equip",
       "version": "1.0.22",
-      "sha256": "1baaa05092d7ef7780b61b89c70786662beab84ccd6ba15b34b52f26bf68d4de",
-      "bytes": 746966
+      "sha256": "d7096e4688eea3d335804ee3a052d33ddcfa3d2e768e772c3a5afbc6ea4a8470",
+      "bytes": 747296
     },
     {
       "id": "inic",
       "path": "Plataforma.html#motor/inic",
       "version": "1.1.17",
-      "sha256": "2c8bc53f15e979dd3951df37c78f99f6c2f4ed661dae491a2a4fb9cea9bdeafd",
-      "bytes": 756567
+      "sha256": "79e8534bcbce700cf5811540651942f33423fb36ae758c267d13a40bc9fb236d",
+      "bytes": 756897
     },
     {
       "id": "linha",
       "path": "Plataforma.html#motor/linha",
       "version": "1.7.1",
-      "sha256": "35ccd8421a53b542d77c2fbcc076a83d057bf0c14fb80ac87face8ef0757786f",
-      "bytes": 1009599
+      "sha256": "43893d01a8c14fec28e622c1e97668c4863c5c0654b6a398a287e65d9dfee221",
+      "bytes": 1009929
     },
     {
       "id": "projetos",
       "path": "Plataforma.html#motor/projetos",
       "version": "0.1.16",
-      "sha256": "4bf62a371743f99d52e434ac3f4d9e82e996a50203cc557271a291b38182a161",
-      "bytes": 679209
+      "sha256": "eadcb446a1fd1f319dfa6104abc3350630624cd5b295563f217f64322b678fab",
+      "bytes": 679539
     },
     {
       "id": "portal",
       "path": "Plataforma.html#motor/portal",
       "version": "1.9.103",
-      "sha256": "2f2ee98ea2aa81e257cadebc6e6106f6eda07ed21ef0ac13da6a94807835a2c0",
-      "bytes": 1353494
+      "sha256": "5f1caf205a6af70a30ee3607215151fd5a7dea4a74811e040adf37604ad56654",
+      "bytes": 1356590
     }
   ],
   "limitations": [
     "Projetos e conteúdo técnico OSM/MES/AM/TPM mantêm os limites documentados nas fontes."
   ],
-  "enginesSha256": "e004df7856af6955caa5904e84faa183a749f0faca3feecf2b7d6ef3f885cc3d",
+  "enginesSha256": "c78bc6c5b8b5530bedd9241e937267fec4e5a487b61351be7cb544617508ee5e",
   "originRevision": "ffc9ee8",
   "sourceMode": "single-html",
   "originEnginesSha256": "a87a64ad0c328f70e102b2ae888790a9b5d5a9bd05778652a7ce7cae140e40d2"
@@ -55962,7 +55870,7 @@ import { Icon, Button, Badge, Empty, Modal, BarChart, BrandLogo, CommandMenu } f
 import { ModuleFrame } from "vac:modulo/components/ModuleFrame";
 import manifest from "vac:recurso/manifesto";
 import { ModuleTabs } from "vac:modulo/components/ModuleTabs";
-const VERSION = "1.8.97";
+const VERSION = "1.8.98";
 /* Navegação 1.3.0 (16/11/2026): Visão da linha, Relatórios e Importações têm abas; as que mostram uma tela do
    Portal (motor da Administração) trazem o 3º campo com a aba dele. Administração fica só com cadastros e configuração. */
 const SHELL_TABS = {
