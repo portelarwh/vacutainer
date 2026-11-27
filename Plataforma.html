@@ -655,6 +655,9 @@ const vacNomeSis=s=>(s&amp;&amp;VAC_NOMES_V2[s.id]&amp;&amp;VAC_NOMES_V2[s.id][s
 function vacUsuario(c=vacCad()){let id='';try{id=localStorage.getItem('vac.userId')||''}catch(e){}return id&amp;&amp;c?(c.usuarios||[]).find(u=>String(u.codigo)===String(id))||null:null}
 function vacPerfil(c=vacCad()){const u=vacUsuario(c);return u&amp;&amp;c?(c.perfis||[]).find(p=>p.codigo===u.perfil)||null:null}
 function vacNomeUsuario(){try{return(typeof user==='function'&amp;&amp;user())||localStorage.getItem('vac.user')||''}catch(e){return''}}
+/* H01 etapa 1 · semáforo de meta único (verde, amarelo se parametros.semaforoAmarelo não for false, vermelho); a cópia da Produção divergia (ignorava o "Usar amarelo") mas não era usada */
+function vacSemaforo(v,meta,{inverso=false}={}){if(v==null||meta==null||!isFinite(v)||!isFinite(meta)||!meta)return'none';const c=vacCad(),P=(c&amp;&amp;c.parametros)||{};
+ const vd=(+P.semaforoVerdePct||100)/100,am=P.semaforoAmarelo===false?vd:(+P.semaforoAmareloPct||90)/100,r=inverso?(v<=0?Infinity:meta/v):v/meta;return r>=vd?'ok':r>=am?'warn':'crit'}
 // Leituras do cadastro geral (vigência por data do fato; ausência é null, nunca zero).
 vacCad.vigente = (vigencias, data) => { const d = String(data || '').slice(0, 10) || vacHoje(); return (vigencias || []).filter(v => v.de <= d &amp;&amp; (!v.ate || v.ate >= d)).sort((a, b) => a.de < b.de ? 1 : -1)[0] || null; };
 vacCad.item = (tipo, codigo) => { const c = vacCad(); return ((c &amp;&amp; c[tipo]) || []).find(x => String(x.codigo) === String(codigo)) || null; };
@@ -4182,8 +4185,6 @@ function wireCabecalho(){const b=$('#vacBusca');if(b)b.onclick=()=>Busca.abrir()
 /* permissão do perfil na página (sem perfil, sem cadastro ou sem a página no perfil = pode) */
 function vacPode(mod,fn='ver'){return vacPodeComum(vacCad(),vacUsuario(),mod,fn)}
 /* semáforo comum: 'ok' | 'warn' | 'crit' | 'none' em relação à meta (inverso: menor é melhor, ex.: scrap, waste) */
-function vacSemaforo(v,meta,{inverso=false}={}){if(v==null||meta==null||!isFinite(v)||!isFinite(meta)||!meta)return'none';const c=vacCad(),P=(c&amp;&amp;c.parametros)||{};
- const vd=(+P.semaforoVerdePct||100)/100,am=P.semaforoAmarelo===false?vd:(+P.semaforoAmareloPct||90)/100,r=inverso?(v<=0?Infinity:meta/v):v/meta;return r>=vd?'ok':r>=am?'warn':'crit'}
 function renderSysNav(){const el=$('#sysNav');if(!el)return;const cur=vacAtual(),port=systems().find(s=>s.id==='portal')||{id:'portal',html:'Portal.html'};
  const vis=systems().filter(s=>!s.oculto&amp;&amp;!s.futuro&amp;&amp;(vacPode(s.id)||s.id===PAGE.id)),href=s=>PAGE.id==='portal'&amp;&amp;s.id==='portal'?'#geral':sysHref(s);
  el.innerHTML=vis.filter(s=>!vacEhOutros(s)).map(s=>`<a href="${esc(href(s))}" class="${s.id===cur?'cur':''}"${s.id===cur?' aria-current="page"':''}${s.sub?` title="${esc(s.sub)}"`:''}>${esc(vacNomeSis(s))}</a>`).join('');
@@ -5381,6 +5382,8 @@ const CAD_SECS=['inicio','gel','matriz','importar','auditoria','backups','segura
    curtas (macro, sem detalhe técnico). REGRA: toda versão nova da plataforma ganha uma entrada aqui, a mais recente primeiro
    (AGENTS.md e CLAUDE.md). Tipos: nova (função nova), melhoria (algo que já existia ficou melhor), correcao (erro corrigido). */
 const NOVIDADES=[
+ {v:'1.8.91',d:'2026-11-27',itens:[
+  ['melhoria','Organização interna: o semáforo de meta (verde, amarelo, vermelho) vem de um só lugar em todos os módulos (nada muda no uso).']]},
  {v:'1.8.90',d:'2026-11-27',itens:[
   ['melhoria','Organização interna: nome dos sistemas e pessoa e perfil atuais vêm de um só lugar em todos os módulos (nada muda no uso).']]},
  {v:'1.8.89',d:'2026-11-27',itens:[
@@ -12968,8 +12971,6 @@ function wireCabecalho(){const b=$('#vacBusca');if(b)b.onclick=()=>Busca.abrir()
 /* permissão do perfil na página (sem perfil, sem cadastro ou sem a página no perfil = pode) */
 function vacPode(mod,fn='ver'){if(mod==='oee'&amp;&amp;fn!=='ver'&amp;&amp;typeof Store!=='undefined'&amp;&amp;Store.S.formato)return false;return vacPodeComum(vacCad(),vacUsuario(),mod,fn)}   /* base de versão anterior: só consulta */
 /* semáforo comum: 'ok' | 'warn' | 'crit' | 'none' em relação à meta (inverso: menor é melhor, ex.: scrap, waste) */
-function vacSemaforo(v,meta,{inverso=false}={}){if(v==null||meta==null||!isFinite(v)||!isFinite(meta)||!meta)return'none';const c=vacCad(),P=(c&amp;&amp;c.parametros)||{};
- const vd=(+P.semaforoVerdePct||100)/100,am=(+P.semaforoAmareloPct||90)/100,r=inverso?(v<=0?Infinity:meta/v):v/meta;return r>=vd?'ok':r>=am?'warn':'crit'}
 function renderSysNav(){const el=$('#sysNav');if(!el)return;const cur=vacAtual(),port=systems().find(s=>s.id==='portal')||{id:'portal',html:'Portal.html'};
  const vis=systems().filter(s=>!s.oculto&amp;&amp;!s.futuro&amp;&amp;(vacPode(s.id)||s.id===PAGE.id)),href=s=>PAGE.id==='portal'&amp;&amp;s.id==='portal'?'#geral':sysHref(s);
  el.innerHTML=vis.filter(s=>!vacEhOutros(s)).map(s=>`<a href="${esc(href(s))}" class="${s.id===cur?'cur':''}"${s.id===cur?' aria-current="page"':''}${s.sub?` title="${esc(s.sub)}"`:''}>${esc(vacNomeSis(s))}</a>`).join('');
@@ -24552,8 +24553,6 @@ function wireCabecalho(){const b=$('#vacBusca');if(b)b.onclick=()=>Busca.abrir()
 /* permissão do perfil na página (sem perfil, sem cadastro ou sem a página no perfil = pode) */
 function vacPode(mod,fn='ver'){return vacPodeComum(vacCad(),vacUsuario(),mod,fn)}
 /* semáforo comum: 'ok' | 'warn' | 'crit' | 'none' em relação à meta (inverso: menor é melhor, ex.: scrap, waste) */
-function vacSemaforo(v,meta,{inverso=false}={}){if(v==null||meta==null||!isFinite(v)||!isFinite(meta)||!meta)return'none';const c=vacCad(),P=(c&amp;&amp;c.parametros)||{};
- const vd=(+P.semaforoVerdePct||100)/100,am=P.semaforoAmarelo===false?vd:(+P.semaforoAmareloPct||90)/100,r=inverso?(v<=0?Infinity:meta/v):v/meta;return r>=vd?'ok':r>=am?'warn':'crit'}
 function renderSysNav(){const el=$('#sysNav');if(!el)return;const cur=vacAtual(),port=systems().find(s=>s.id==='portal')||{id:'portal',html:'Portal.html'};
  const vis=systems().filter(s=>!s.oculto&amp;&amp;!s.futuro&amp;&amp;(vacPode(s.id)||s.id===PAGE.id)),href=s=>PAGE.id==='portal'&amp;&amp;s.id==='portal'?'#geral':sysHref(s);
  el.innerHTML=vis.filter(s=>!vacEhOutros(s)).map(s=>`<a href="${esc(href(s))}" class="${s.id===cur?'cur':''}"${s.id===cur?' aria-current="page"':''}${s.sub?` title="${esc(s.sub)}"`:''}>${esc(vacNomeSis(s))}</a>`).join('');
@@ -26653,8 +26652,6 @@ function wireCabecalho(){const b=$('#vacBusca');if(b)b.onclick=()=>Busca.abrir()
 /* permissão do perfil na página (sem perfil, sem cadastro ou sem a página no perfil = pode) */
 function vacPode(mod,fn='ver'){return vacPodeComum(vacCad(),vacUsuario(),mod,fn)}
 /* semáforo comum: 'ok' | 'warn' | 'crit' | 'none' em relação à meta (inverso: menor é melhor, ex.: scrap, waste) */
-function vacSemaforo(v,meta,{inverso=false}={}){if(v==null||meta==null||!isFinite(v)||!isFinite(meta)||!meta)return'none';const c=vacCad(),P=(c&amp;&amp;c.parametros)||{};
- const vd=(+P.semaforoVerdePct||100)/100,am=P.semaforoAmarelo===false?vd:(+P.semaforoAmareloPct||90)/100,r=inverso?(v<=0?Infinity:meta/v):v/meta;return r>=vd?'ok':r>=am?'warn':'crit'}
 function renderSysNav(){const el=$('#sysNav');if(!el)return;const cur=vacAtual(),port=systems().find(s=>s.id==='portal')||{id:'portal',html:'Portal.html'};
  const vis=systems().filter(s=>!s.oculto&amp;&amp;!s.futuro&amp;&amp;(vacPode(s.id)||s.id===PAGE.id)),href=s=>PAGE.id==='portal'&amp;&amp;s.id==='portal'?'#geral':sysHref(s);
  el.innerHTML=vis.filter(s=>!vacEhOutros(s)).map(s=>`<a href="${esc(href(s))}" class="${s.id===cur?'cur':''}"${s.id===cur?' aria-current="page"':''}${s.sub?` title="${esc(s.sub)}"`:''}>${esc(vacNomeSis(s))}</a>`).join('');
@@ -33431,8 +33428,6 @@ function wireCabecalho(){const b=$('#vacBusca');if(b)b.onclick=()=>Busca.abrir()
 /* permissão do perfil na página (sem perfil, sem cadastro ou sem a página no perfil = pode) */
 function vacPode(mod,fn='ver'){return vacPodeComum(vacCad(),vacUsuario(),mod,fn)}
 /* semáforo comum: 'ok' | 'warn' | 'crit' | 'none' em relação à meta (inverso: menor é melhor, ex.: scrap, waste) */
-function vacSemaforo(v,meta,{inverso=false}={}){if(v==null||meta==null||!isFinite(v)||!isFinite(meta)||!meta)return'none';const c=vacCad(),P=(c&amp;&amp;c.parametros)||{};
- const vd=(+P.semaforoVerdePct||100)/100,am=P.semaforoAmarelo===false?vd:(+P.semaforoAmareloPct||90)/100,r=inverso?(v<=0?Infinity:meta/v):v/meta;return r>=vd?'ok':r>=am?'warn':'crit'}
 function renderSysNav(){const el=$('#sysNav');if(!el)return;const cur=vacAtual(),port=systems().find(s=>s.id==='portal')||{id:'portal',html:'Portal.html'};
  const vis=systems().filter(s=>!s.oculto&amp;&amp;!s.futuro&amp;&amp;(vacPode(s.id)||s.id===PAGE.id)),href=s=>PAGE.id==='portal'&amp;&amp;s.id==='portal'?'#geral':sysHref(s);
  el.innerHTML=vis.filter(s=>!vacEhOutros(s)).map(s=>`<a href="${esc(href(s))}" class="${s.id===cur?'cur':''}"${s.id===cur?' aria-current="page"':''}${s.sub?` title="${esc(s.sub)}"`:''}>${esc(vacNomeSis(s))}</a>`).join('');
@@ -34269,8 +34264,6 @@ function wireCabecalho(){const b=$('#vacBusca');if(b)b.onclick=()=>Busca.abrir()
 /* permissão do perfil na página (sem perfil, sem cadastro ou sem a página no perfil = pode) */
 function vacPode(mod,fn='ver'){return vacPodeComum(vacCad(),vacUsuario(),mod,fn)}
 /* semáforo comum: 'ok' | 'warn' | 'crit' | 'none' em relação à meta (inverso: menor é melhor, ex.: scrap, waste) */
-function vacSemaforo(v,meta,{inverso=false}={}){if(v==null||meta==null||!isFinite(v)||!isFinite(meta)||!meta)return'none';const c=vacCad(),P=(c&amp;&amp;c.parametros)||{};
- const vd=(+P.semaforoVerdePct||100)/100,am=P.semaforoAmarelo===false?vd:(+P.semaforoAmareloPct||90)/100,r=inverso?(v<=0?Infinity:meta/v):v/meta;return r>=vd?'ok':r>=am?'warn':'crit'}
 function renderSysNav(){const el=$('#sysNav');if(!el)return;const cur=vacAtual(),port=systems().find(s=>s.id==='portal')||{id:'portal',html:'Portal.html'};
  const vis=systems().filter(s=>!s.oculto&amp;&amp;!s.futuro&amp;&amp;(vacPode(s.id)||s.id===PAGE.id)),href=s=>PAGE.id==='portal'&amp;&amp;s.id==='portal'?'#geral':sysHref(s);
  el.innerHTML=vis.filter(s=>!vacEhOutros(s)).map(s=>`<a href="${esc(href(s))}" class="${s.id===cur?'cur':''}"${s.id===cur?' aria-current="page"':''}${s.sub?` title="${esc(s.sub)}"`:''}>${esc(vacNomeSis(s))}</a>`).join('');
@@ -34827,8 +34820,6 @@ function wireCabecalho(){const b=$('#vacBusca');if(b)b.onclick=()=>Busca.abrir()
 /* permissão do perfil na página (sem perfil, sem cadastro ou sem a página no perfil = pode) */
 function vacPode(mod,fn='ver'){return vacPodeComum(vacCad(),vacUsuario(),mod,fn)}
 /* semáforo comum: 'ok' | 'warn' | 'crit' | 'none' em relação à meta (inverso: menor é melhor, ex.: scrap, waste) */
-function vacSemaforo(v,meta,{inverso=false}={}){if(v==null||meta==null||!isFinite(v)||!isFinite(meta)||!meta)return'none';const c=vacCad(),P=(c&amp;&amp;c.parametros)||{};
- const vd=(+P.semaforoVerdePct||100)/100,am=P.semaforoAmarelo===false?vd:(+P.semaforoAmareloPct||90)/100,r=inverso?(v<=0?Infinity:meta/v):v/meta;return r>=vd?'ok':r>=am?'warn':'crit'}
 function renderSysNav(){const el=$('#sysNav');if(!el)return;const cur=vacAtual(),port=systems().find(s=>s.id==='portal')||{id:'portal',html:'Portal.html'};
  const vis=systems().filter(s=>!s.oculto&amp;&amp;!s.futuro&amp;&amp;(vacPode(s.id)||s.id===PAGE.id)),href=s=>PAGE.id==='portal'&amp;&amp;s.id==='portal'?'#geral':sysHref(s);
  el.innerHTML=vis.filter(s=>!vacEhOutros(s)).map(s=>`<a href="${esc(href(s))}" class="${s.id===cur?'cur':''}"${s.id===cur?' aria-current="page"':''}${s.sub?` title="${esc(s.sub)}"`:''}>${esc(vacNomeSis(s))}</a>`).join('');
@@ -35704,8 +35695,6 @@ function wireCabecalho(){const b=$('#vacBusca');if(b)b.onclick=()=>Busca.abrir()
 /* permissão do perfil na página (sem perfil, sem cadastro ou sem a página no perfil = pode) */
 function vacPode(mod,fn='ver'){return vacPodeComum(vacCad(),vacUsuario(),mod,fn)}
 /* semáforo comum: 'ok' | 'warn' | 'crit' | 'none' em relação à meta (inverso: menor é melhor, ex.: scrap, waste) */
-function vacSemaforo(v,meta,{inverso=false}={}){if(v==null||meta==null||!isFinite(v)||!isFinite(meta)||!meta)return'none';const c=vacCad(),P=(c&amp;&amp;c.parametros)||{};
- const vd=(+P.semaforoVerdePct||100)/100,am=P.semaforoAmarelo===false?vd:(+P.semaforoAmareloPct||90)/100,r=inverso?(v<=0?Infinity:meta/v):v/meta;return r>=vd?'ok':r>=am?'warn':'crit'}
 function renderSysNav(){const el=$('#sysNav');if(!el)return;const cur=vacAtual(),port=systems().find(s=>s.id==='portal')||{id:'portal',html:'Portal.html'};
  const vis=systems().filter(s=>!s.oculto&amp;&amp;!s.futuro&amp;&amp;(vacPode(s.id)||s.id===PAGE.id)),href=s=>PAGE.id==='portal'&amp;&amp;s.id==='portal'?'#geral':sysHref(s);
  el.innerHTML=vis.filter(s=>!vacEhOutros(s)).map(s=>`<a href="${esc(href(s))}" class="${s.id===cur?'cur':''}"${s.id===cur?' aria-current="page"':''}${s.sub?` title="${esc(s.sub)}"`:''}>${esc(vacNomeSis(s))}</a>`).join('');
@@ -37172,8 +37161,6 @@ function wireCabecalho(){const b=$('#vacBusca');if(b)b.onclick=()=>Busca.abrir()
 /* permissão do perfil na página (sem perfil, sem cadastro ou sem a página no perfil = pode) */
 function vacPode(mod,fn='ver'){return vacPodeComum(vacCad(),vacUsuario(),mod,fn)}
 /* semáforo comum: 'ok' | 'warn' | 'crit' | 'none' em relação à meta (inverso: menor é melhor, ex.: scrap, waste) */
-function vacSemaforo(v,meta,{inverso=false}={}){if(v==null||meta==null||!isFinite(v)||!isFinite(meta)||!meta)return'none';const c=vacCad(),P=(c&amp;&amp;c.parametros)||{};
- const vd=(+P.semaforoVerdePct||100)/100,am=P.semaforoAmarelo===false?vd:(+P.semaforoAmareloPct||90)/100,r=inverso?(v<=0?Infinity:meta/v):v/meta;return r>=vd?'ok':r>=am?'warn':'crit'}
 function renderSysNav(){const el=$('#sysNav');if(!el)return;const cur=vacAtual(),port=systems().find(s=>s.id==='portal')||{id:'portal',html:'Portal.html'};
  const vis=systems().filter(s=>!s.oculto&amp;&amp;!s.futuro&amp;&amp;(vacPode(s.id)||s.id===PAGE.id)),href=s=>PAGE.id==='portal'&amp;&amp;s.id==='portal'?'#geral':sysHref(s);
  el.innerHTML=vis.filter(s=>!vacEhOutros(s)).map(s=>`<a href="${esc(href(s))}" class="${s.id===cur?'cur':''}"${s.id===cur?' aria-current="page"':''}${s.sub?` title="${esc(s.sub)}"`:''}>${esc(vacNomeSis(s))}</a>`).join('');
@@ -55572,70 +55559,70 @@ body.vac-porta{overflow:hidden}
       "id": "oee",
       "path": "Plataforma.html#motor/oee",
       "version": "2.6.50",
-      "sha256": "2be88020649f0c21afccda30ea4d44574e7036c86c8ee8bdc19b8e82d2cb2cca",
-      "bytes": 2395463
+      "sha256": "bdbe18527fb76e5aa26e6d7fc3e9d3d3c01a43f6ce9ea38953f9f70b977d8a6e",
+      "bytes": 2395690
     },
     {
       "id": "perdas",
       "path": "Plataforma.html#motor/perdas",
       "version": "1.12.21",
-      "sha256": "6deeda0f4cf242171011edafeee12e80b99365f2bacdc83a36f7575aba6d7b3c",
-      "bytes": 985750
+      "sha256": "8cf8876a7607e75ae269e644f5ef807e827686b7ada46df8937e70eef06a761c",
+      "bytes": 985948
     },
     {
       "id": "gel",
       "path": "Plataforma.html#motor/gel",
       "version": "2.52",
-      "sha256": "8ad65d84131b0f81e90ee98bdd9c23ed94ca21f8f85df5b325f0012338093136",
-      "bytes": 1630034
+      "sha256": "bd59c64452cb3d1f1bf222977af5cb1d5497d741130f6893578375e5e16298a9",
+      "bytes": 1630232
     },
     {
       "id": "paradas",
       "path": "Plataforma.html#motor/paradas",
       "version": "1.2.22",
-      "sha256": "4d29c448acbdc28d6536dc96c32ef94dbcfad0fa8c62ae6064757e16d917b1b5",
-      "bytes": 954698
+      "sha256": "86f9a722dec79434e7ba93a68986bb8d375eefbc736347b672786b4d9f57c6c9",
+      "bytes": 954896
     },
     {
       "id": "equip",
       "path": "Plataforma.html#motor/equip",
       "version": "1.0.22",
-      "sha256": "2ba3cba09cfeb15a9d086fcbd2e55c26f84afc0bea4a56aa48434d21fef752cd",
-      "bytes": 745861
+      "sha256": "d0b76076f9df765e4e5011f9cf667f4bebbc1aae3c480574114414559922f781",
+      "bytes": 746059
     },
     {
       "id": "inic",
       "path": "Plataforma.html#motor/inic",
       "version": "1.1.17",
-      "sha256": "5359233abe74dc253d18ef3bc5bb9feea7a9e19ad0fd428d19a9deabb98394f8",
-      "bytes": 755462
+      "sha256": "29b3dcb1573de64188a6121fe36a10a422480ab999580882ba9539a67e23e059",
+      "bytes": 755660
     },
     {
       "id": "linha",
       "path": "Plataforma.html#motor/linha",
       "version": "1.7.1",
-      "sha256": "066e8efa06882888bc43eb428f0cbb6bd38e9afa2bafe1fb9eab5240111e9005",
-      "bytes": 1008494
+      "sha256": "cc74837732baadba391eb46721f59ee5799562bec4144c60a9a46b06fa9e078f",
+      "bytes": 1008692
     },
     {
       "id": "projetos",
       "path": "Plataforma.html#motor/projetos",
       "version": "0.1.16",
-      "sha256": "4c8c7a176c64760e5369e4cb32b7a47225ad989ebe305bae974db21b86b9491b",
-      "bytes": 678104
+      "sha256": "4c5c065db1523cbfb46d2e0da29d54e0692f17191162135ddb62704885bad19b",
+      "bytes": 678302
     },
     {
       "id": "portal",
       "path": "Plataforma.html#motor/portal",
       "version": "1.9.100",
-      "sha256": "d49a022ad7762ed9f648ad1bfad09710c013e5886ae4c5b6baeb9c94deb85e5a",
-      "bytes": 1350316
+      "sha256": "5782ba1c1702b537fff9a8b5d435882e254471bf0036d2dbb0ba852b700524fd",
+      "bytes": 1350701
     }
   ],
   "limitations": [
     "Projetos e conteúdo técnico OSM/MES/AM/TPM mantêm os limites documentados nas fontes."
   ],
-  "enginesSha256": "955986f3d6d8316585ab20dfec4cd256fe76702384c7b73d3c5f6d13ea677731",
+  "enginesSha256": "058fdd6b4f5d1868ddac12e65806179cf8ac5ff0d2ceb5733822ba4d90f16a57",
   "originRevision": "ffc9ee8",
   "sourceMode": "single-html",
   "originEnginesSha256": "a87a64ad0c328f70e102b2ae888790a9b5d5a9bd05778652a7ce7cae140e40d2"
@@ -56296,7 +56283,7 @@ import { Icon, Button, Badge, Empty, Modal, BarChart, BrandLogo, CommandMenu } f
 import { ModuleFrame } from "vac:modulo/components/ModuleFrame";
 import manifest from "vac:recurso/manifesto";
 import { ModuleTabs } from "vac:modulo/components/ModuleTabs";
-const VERSION = "1.8.90";
+const VERSION = "1.8.91";
 /* Navegação 1.3.0 (16/11/2026): Visão da linha, Relatórios e Importações têm abas; as que mostram uma tela do
    Portal (motor da Administração) trazem o 3º campo com a aba dele. Administração fica só com cadastros e configuração. */
 const SHELL_TABS = {
