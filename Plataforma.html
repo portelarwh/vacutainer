@@ -510,6 +510,25 @@ a:not([class]){color:var(--link,var(--accent,#044DD6))}
 <textarea data-vac-source="comum/bases" spellcheck="false"><script id="vac-bases">
 /* H01 etapa 1 (26/11/2026) · escape de HTML único para todos os motores; antes cada motor tinha a sua cópia, equivalente a esta */
 const vacEsc = s => String(s ?? '').replace(/[&amp;<>"']/g, c => ({ '&amp;': '&amp;amp;', '<': '&amp;lt;', '>': '&amp;gt;', '"': '&amp;quot;', "'": '&amp;#39;' })[c]);
+/* C33 (análise comum 26/11/2026) · aba de Excel de uma tabela de relatório (Administração, Waste, Paradas): as colunas numéricas (b.num)
+   vão como número, não como o texto do PDF ("R$ 1.234,56" → 1234,56; "31,2%" → 0,312 com formato %; "369 min" → 369); o que não é
+   número puro ("845,4 mil", "—", códigos) fica como texto. Com b.bruto (números já crus), só aplica o formato % onde o PDF mostra %. */
+function vacXlsxNumero(s) {
+  if (typeof s === 'number') return { v: s, pct: false, casas: null };
+  const t = String(s == null ? '' : s).trim(), m = /^(-?)\s*(?:R\$\s*)?(-?)(\d{1,3}(?:\.\d{3})*|\d+)(?:,(\d+))?\s*(%|min)?$/.exec(t);
+  if (!m) return null;
+  const v = Number((m[1] || m[2] ? '-' : '') + m[3].replace(/\./g, '') + (m[4] ? '.' + m[4] : ''));
+  if (!isFinite(v)) return null;
+  return m[5] === '%' ? { v: v / 100, pct: true, casas: (m[4] || '').length } : { v, pct: false, casas: null };
+}
+function vacXlsxTabela(X, b) {
+  const num = new Set(b.num || []), pctCol = {}, linhas = b.linhas || [];
+  linhas.forEach(r => r.forEach((c, j) => { if (num.has(j)) { const p = vacXlsxNumero(c); if (p &amp;&amp; p.pct) pctCol[j] = Math.max(pctCol[j] || 0, p.casas); } }));
+  const corpo = b.bruto || linhas.map(r => r.map((c, j) => { if (!num.has(j)) return c; const p = vacXlsxNumero(c); return p ? p.v : c; }));
+  const ws = X.utils.aoa_to_sheet([b.cab, ...corpo]);
+  corpo.forEach((r, i) => r.forEach((v, j) => { if (pctCol[j] == null || typeof v !== 'number') return; const c = ws[X.utils.encode_cell({ r: i + 1, c: j })]; if (c) c.z = pctCol[j] ? '0.' + '0'.repeat(pctCol[j]) + '%' : '0%'; }));
+  return ws;
+}
 // Regra pura compartilhada pelos motores e pela casca. Ausência preserva o contrato do kit;
 // a exigência de sessão válida pertence à camada de acesso, não muda esta regra.
 const VAC_PODE_MOD = Object.freeze({ linha: 'equip' });
@@ -4380,7 +4399,7 @@ const Report={
  async xlsx(doc){const X=await Libs.xlsx();const wb=X.utils.book_new();const res=[[doc.titulo],[[doc.subtitulo,doc.periodo].filter(Boolean).join(' · ')],[]];if(doc.comentario)res.push(['Comentário',doc.comentario],[]);
   for(const b of doc.blocos||[])if(b.tipo==='kpis'){if(b.titulo)res.push([b.titulo]);b.itens.forEach(k=>res.push([k[0],k[1],k[2]||'']));res.push([])}else if(b.tipo==='texto')res.push([b.titulo||'',b.texto],[]);
   X.utils.book_append_sheet(wb,X.utils.aoa_to_sheet(res),'Resumo');let n=0;
-  for(const b of doc.blocos||[])if(b.tipo==='tabela'){n++;const rows=[b.cab,...(b.bruto||b.linhas)];X.utils.book_append_sheet(wb,X.utils.aoa_to_sheet(rows),String(b.titulo||'Tabela '+n).replace(/[\\/?*\[\]:]/g,' ').slice(0,30)||('Tabela '+n))}
+  for(const b of doc.blocos||[])if(b.tipo==='tabela'){n++;X.utils.book_append_sheet(wb,vacXlsxTabela(X,b),String(b.titulo||'Tabela '+n).replace(/[\\/?*\[\]:]/g,' ').slice(0,30)||('Tabela '+n))}
   X.writeFile(wb,(doc.arquivo||doc.titulo).replace(/[\\/:*?"<>|]/g,'_')+'.xlsx');toast('Excel gerado.')},
  async txt(doc){await navigator.clipboard.writeText(this.texto(doc));toast('Texto copiado. Cole no WhatsApp ou no Teams.')},
  async mail(doc){const img=$('#repImg')?$('#repImg').checked:this.comImg();   /* 1.8.45 · REL-02: e-mail no molde comum do Outlook (vacEmail), igual aos outros relatórios */
@@ -4487,7 +4506,7 @@ function wireConfigComum(){$('#cPasta').onclick=async()=>{if(await Store.pick())
         entrar pelo ID (autocadastro como Consulta); página inicial por perfil (1x por sessão); vigência gravada não se edita (desativar com motivo); painel de vigências; semáforo central; saída do modo de teste.
    1.1.2: aviso da carga diz qual base foi lida.  1.5: páginas Paradas, Máquinas, Manutenção e Projetos na lista (aparecem quando o HTML chega na pasta).  1.4: lista técnica pela CS12 multinível (itens = nível 1, estrutura = níveis 2+); CS03 sai.  1.3: cabeçalho comum (vac-cabecalho v2: barra do sistema + página + abas), busca Ctrl K, acabamento V1.90, Versões com cabeçalho e último backup.  1.2: Configuração › Versões das páginas (versão e data de cada HTML, gravação das bases, cópias repetidas, histórico).
    ===================================================================== */
-const PAGE={id:'portal',titulo:"Administração · Linha Vacutainer",tituloCurto:"Administração",subtitulo:'Sistemas de gestão da linha',versao:'1.9.99',baseFile:'portal-base.json',idb:'vac-portal',backupDir:'00. Backups/Portal',
+const PAGE={id:'portal',titulo:"Administração · Linha Vacutainer",tituloCurto:"Administração",subtitulo:'Sistemas de gestão da linha',versao:'1.9.100',baseFile:'portal-base.json',idb:'vac-portal',backupDir:'00. Backups/Portal',
  vazio:()=>({schema:'portal-base',schemaVersion:1,rev:0,config:{modulos:{},avisoDias:30,notas:{}},audit:[]}),
  /* itens do Portal para a busca Ctrl K: cadastro, pendências e telas */
  busca:q=>{const R=[],D=Cad.D;if(D)for(const t of CAD_ORD){for(const it of D[t]||[]){const c=String(it[kOf(t)]),nm=t==='bom'?((cadItem('catalogos',it.catalogo)||{}).nome||''):it.nome||'';if(norm(c+' '+nm).includes(q))R.push({tipo:CAD_T[t].um,txt:c+(nm?' · '+nm:''),sub:'Cadastros'+(cadAtivo(t,it,D)?'':' · inativo'),href:'#cadastros/'+t+'/'+encodeURIComponent(c)});if(R.length>30)break}}
@@ -5361,6 +5380,8 @@ const CAD_SECS=['inicio','gel','matriz','importar','auditoria','backups','segura
    curtas (macro, sem detalhe técnico). REGRA: toda versão nova da plataforma ganha uma entrada aqui, a mais recente primeiro
    (AGENTS.md e CLAUDE.md). Tipos: nova (função nova), melhoria (algo que já existia ficou melhor), correcao (erro corrigido). */
 const NOVIDADES=[
+ {v:'1.8.89',d:'2026-11-27',itens:[
+  ['correcao','Excel dos relatórios do Waste, das Paradas e da Administração igual ao PDF: valores e porcentagens como número (dá para somar e filtrar), % com formato de %, e a linha Total também no Excel.']]},
  {v:'1.8.88',d:'2026-11-26',itens:[
   ['melhoria','Organização interna: os módulos passam a usar uma única rotina para mostrar textos com segurança na tela (nada muda no uso).']]},
  {v:'1.8.87',d:'2026-11-26',itens:[
@@ -24953,7 +24974,7 @@ const Report={
  async xlsx(doc){const X=await Libs.xlsx();const wb=X.utils.book_new();const res=[[doc.titulo],[[doc.subtitulo,doc.periodo].filter(Boolean).join(' · ')],[]];if(doc.comentario)res.push(['Comentário',doc.comentario],[]);
   for(const b of doc.blocos||[])if(b.tipo==='kpis'){if(b.titulo)res.push([b.titulo]);b.itens.forEach(k=>res.push([k[0],k[1],k[2]||'']));res.push([])}else if(b.tipo==='texto')res.push([b.titulo||'',b.texto],[]);
   X.utils.book_append_sheet(wb,X.utils.aoa_to_sheet(res),'Resumo');let n=0;
-  for(const b of doc.blocos||[])if(b.tipo==='tabela'){n++;const rows=[b.cab,...(b.bruto||b.linhas)];X.utils.book_append_sheet(wb,X.utils.aoa_to_sheet(rows),String(b.titulo||'Tabela '+n).replace(/[\\/?*\[\]:]/g,' ').slice(0,30)||('Tabela '+n))}
+  for(const b of doc.blocos||[])if(b.tipo==='tabela'){n++;X.utils.book_append_sheet(wb,vacXlsxTabela(X,b),String(b.titulo||'Tabela '+n).replace(/[\\/?*\[\]:]/g,' ').slice(0,30)||('Tabela '+n))}
   X.writeFile(wb,(doc.arquivo||doc.titulo).replace(/[\\/:*?"<>|]/g,'_')+'.xlsx');toast('Excel gerado.')},
  async txt(doc){await navigator.clipboard.writeText(this.texto(doc));toast('Texto copiado. Cole no WhatsApp ou no Teams.')},
  async mail(doc){const img=$('#repImg')?$('#repImg').checked:this.comImg();   /* 1.8.45 · REL-02: e-mail no molde comum do Outlook (vacEmail), igual aos outros relatórios */
@@ -25010,7 +25031,7 @@ function docPorTipo(de,ate){const T=porTipoOrdem(de,ate),per=de===ate?fmtML(de):
  const tabOrd=(k,nome)=>{const os=T.G[k].ords.slice().sort((a,b)=>b.muv-a.muv);if(!os.length)return null;const t=lin2(os);
   return{tipo:'tabela',titulo:nome+' · '+os.length,cab:['Ordem','Mês','Catálogo','Descrição','Custo teórico','Custo real','MUV','MUV %','Nível','Causa'],num:[4,5,6,7],
    linhas:os.map(o=>[o.ordem,fmtM(o.per),o.cat||'',o.prodDesc||'',fmtR(o.cTc),fmtR(o.cRc),fmtR(o.muv),fmtP(o.pct),LV[o.lvl],causeOf(o.ordem)||'']).concat([['Total','','','',fmtR(t.cT),fmtR(t.cR),fmtR(t.d),fmtP(t.pct),'','']]),
-   bruto:os.map(o=>[o.ordem,o.per,o.cat||'',o.prodDesc||'',+o.cTc.toFixed(2),+o.cRc.toFixed(2),+o.muv.toFixed(2),o.pct==null?null:+o.pct.toFixed(4),LV[o.lvl],causeOf(o.ordem)||''])}};
+   bruto:os.map(o=>[o.ordem,o.per,o.cat||'',o.prodDesc||'',+o.cTc.toFixed(2),+o.cRc.toFixed(2),+o.muv.toFixed(2),o.pct==null?null:+o.pct.toFixed(4),LV[o.lvl],causeOf(o.ordem)||'']).concat([['Total','','','',+t.cT.toFixed(2),+t.cR.toFixed(2),+t.d.toFixed(2),t.pct==null?null:+t.pct.toFixed(4),'','']])}};   /* C33 · a linha Total do PDF também no Excel */
  function lin2(os){const cT=sum(os,o=>o.cTc),cR=sum(os,o=>o.cRc),d=sum(os,o=>o.muv),b=sum(os,o=>o.base);return{cT,cR,d,pct:b?d/b:null}}
  const kp=[...T.L.map(x=>[x.nome.replace(/^Ordens de /,'').replace(/^./,c=>c.toUpperCase())+' · MUV',fmtC(x.muv),`${x.n} ordens · ${fmtP(x.pctM)}`,x.muv>0?'bad':'good']),['Total · MUV',fmtC(T.tot.muv),`${T.tot.n} ordens · ${fmtP(T.tot.pctM)}`,T.tot.muv>0?'bad':'good']];
  return{titulo:'Waste por tipo de ordem · '+per,subtitulo:'Produção × preparação de aditivo · KKBC_ORD · '+seloTexto({de,ate}),periodo:per,arquivo:'Waste_tipo_ordem_'+de+(de!==ate?'_'+ate:''),blocos:[
@@ -34023,7 +34044,7 @@ const Report={
  async xlsx(doc){const X=await RepLibs.xlsx();const wb=X.utils.book_new();const res=[[doc.titulo],[[doc.subtitulo,doc.periodo].filter(Boolean).join(' · ')],[]];if(doc.comentario)res.push(['Comentário',doc.comentario],[]);
   for(const b of doc.blocos||[])if(b.tipo==='kpis'){if(b.titulo)res.push([b.titulo]);b.itens.forEach(k=>res.push([k[0],k[1],k[2]||'']));res.push([])}else if(b.tipo==='texto')res.push([b.titulo||'',b.texto],[]);
   X.utils.book_append_sheet(wb,X.utils.aoa_to_sheet(res),'Resumo');let n=0;
-  for(const b of doc.blocos||[])if(b.tipo==='tabela'){n++;const rows=[b.cab,...(b.bruto||b.linhas)];X.utils.book_append_sheet(wb,X.utils.aoa_to_sheet(rows),String(b.titulo||'Tabela '+n).replace(/[\\/?*\[\]:]/g,' ').slice(0,30)||('Tabela '+n))}
+  for(const b of doc.blocos||[])if(b.tipo==='tabela'){n++;X.utils.book_append_sheet(wb,vacXlsxTabela(X,b),String(b.titulo||'Tabela '+n).replace(/[\\/?*\[\]:]/g,' ').slice(0,30)||('Tabela '+n))}
   X.writeFile(wb,(doc.arquivo||doc.titulo).replace(/[\\/:*?"<>|]/g,'_')+'.xlsx');toast('Excel gerado.')},
  async txt(doc){await navigator.clipboard.writeText(this.texto(doc));toast('Texto copiado. Cole no WhatsApp ou no Teams.')},
  async mail(doc){const img=$('#repImg')?$('#repImg').checked:this.comImg();   /* 1.8.45 · REL-02: e-mail no molde comum do Outlook (vacEmail), igual aos outros relatórios */
@@ -55596,70 +55617,70 @@ body.vac-porta{overflow:hidden}
       "id": "oee",
       "path": "Plataforma.html#motor/oee",
       "version": "2.6.50",
-      "sha256": "156ea3a57cd1ca5d5afc8ce83252f7227fd454d8a17733ac37fe7999bcd70cf2",
-      "bytes": 2393707
+      "sha256": "45fecd5ad79b6d13b5629b4955de8d7b6c2a9e0fd8a21537f6325889b39857d9",
+      "bytes": 2395347
     },
     {
       "id": "perdas",
       "path": "Plataforma.html#motor/perdas",
       "version": "1.12.21",
-      "sha256": "b360270fe25297fcd12dfa277454de9c5e7bf9a38b37b63f9cbdf9666f8ed574",
-      "bytes": 983871
+      "sha256": "ce5f677345f425a0476a36dcccc021e5fee070d85ee7e3b7db832f3a1fd45820",
+      "bytes": 985634
     },
     {
       "id": "gel",
       "path": "Plataforma.html#motor/gel",
       "version": "2.52",
-      "sha256": "2213447795ac99ac6bdf08b4887d349b8d3d44f470ab50ae903e18cf6f8b604b",
-      "bytes": 1628278
+      "sha256": "cd7bc1c9550e6aa96ac91620fa9e0f7add37cb82aed09995f5db659f7de8d218",
+      "bytes": 1629918
     },
     {
       "id": "paradas",
       "path": "Plataforma.html#motor/paradas",
       "version": "1.2.22",
-      "sha256": "224704545b128c06123a202eb443d839452b1fd26ca3e5bfcd017885bd71a642",
-      "bytes": 952992
+      "sha256": "1992e96e326d1707c47adda955679afeff85fd4e6e2acc7c9c8c242fd9b7f3c8",
+      "bytes": 954582
     },
     {
       "id": "equip",
       "path": "Plataforma.html#motor/equip",
       "version": "1.0.22",
-      "sha256": "e383916955edccc794c3c6bd98b4c2285e041e23b2da247572d3b5976aec36e2",
-      "bytes": 744105
+      "sha256": "6a45b7fd3b1474dd32e3752e4d9a75a3aaf723a359a6dbf7821392b6e51edea8",
+      "bytes": 745745
     },
     {
       "id": "inic",
       "path": "Plataforma.html#motor/inic",
       "version": "1.1.17",
-      "sha256": "69dca65f917d9a93ef28b9edbc315a94521d16557211ac43eae54ee062c92a19",
-      "bytes": 753706
+      "sha256": "7ea3b8b8d3c6966e58ecfa5d6d2e7e2bf7d8d5321df8e7514a4d0983983d7b02",
+      "bytes": 755346
     },
     {
       "id": "linha",
       "path": "Plataforma.html#motor/linha",
       "version": "1.7.1",
-      "sha256": "c1f9be56469bd2e35d7c24f2067bb98ea43655c8c0b1c8d931526fc46447b082",
-      "bytes": 1006738
+      "sha256": "c47cbaf10f88966a1f4a566e4462aa74fe62d1c2f5f89f837b42eb93d6ba05c9",
+      "bytes": 1008378
     },
     {
       "id": "projetos",
       "path": "Plataforma.html#motor/projetos",
       "version": "0.1.16",
-      "sha256": "981d1748c05b99af33a403b035f8a7670c54889085f875b07ca1cd313152743f",
-      "bytes": 676348
+      "sha256": "2ad04a7d78d0538cc92ec356df9cc50e596ea4e70c2f5220fa994cbc0fd30e52",
+      "bytes": 677988
     },
     {
       "id": "portal",
       "path": "Plataforma.html#motor/portal",
-      "version": "1.9.99",
-      "sha256": "bd747058209d31e662d9fce9b23dc10b07091053bec3a402d8e6afb42d4345bd",
-      "bytes": 1348172
+      "version": "1.9.100",
+      "sha256": "1aed4be2639512411f603ceea53e02df167022f020b5aae8aa872d54f3c33ba6",
+      "bytes": 1350016
     }
   ],
   "limitations": [
     "Projetos e conteúdo técnico OSM/MES/AM/TPM mantêm os limites documentados nas fontes."
   ],
-  "enginesSha256": "960322b13a56c28c07c30cd5ff33b689fe6f07303584939c76e87d2468755844",
+  "enginesSha256": "5834d30538359cccc24a7c8bdc76b1ee9521ecefeea783679fa04bbf099d3f6c",
   "originRevision": "ffc9ee8",
   "sourceMode": "single-html",
   "originEnginesSha256": "a87a64ad0c328f70e102b2ae888790a9b5d5a9bd05778652a7ce7cae140e40d2"
@@ -55729,7 +55750,7 @@ summary{cursor:pointer;font-weight:600;color:var(--navy)}
 'use strict';
 /* ---------- referência (atualizar quando a plataforma mudar de versão) ---------- */
 // Iguais às do pacote da plataforma (nova-plataforma/src/generated/manifest.json); o teste ferramenta-verificar confere.
-const VERSOES = {"oee":"2.6.50","perdas":"1.12.21","gel":"2.52","paradas":"1.2.22","equip":"1.0.22","inic":"1.1.17","linha":"1.7.1","projetos":"0.1.16","portal":"1.9.99"};
+const VERSOES = {"oee":"2.6.50","perdas":"1.12.21","gel":"2.52","paradas":"1.2.22","equip":"1.0.22","inic":"1.1.17","linha":"1.7.1","projetos":"0.1.16","portal":"1.9.100"};
 const BASES = [
  { arq: 'vacutainer-cadastros.json', mod: 'portal', nome: 'Cadastro geral (Portal)', obrig: true, cadastro: true, bk: 'Cadastros' },
  { arq: 'portal-base.json', mod: 'portal', nome: 'Portal', obrig: true, bk: 'Portal' },
@@ -56320,7 +56341,7 @@ import { Icon, Button, Badge, Empty, Modal, BarChart, BrandLogo, CommandMenu } f
 import { ModuleFrame } from "vac:modulo/components/ModuleFrame";
 import manifest from "vac:recurso/manifesto";
 import { ModuleTabs } from "vac:modulo/components/ModuleTabs";
-const VERSION = "1.8.88";
+const VERSION = "1.8.89";
 /* Navegação 1.3.0 (16/11/2026): Visão da linha, Relatórios e Importações têm abas; as que mostram uma tela do
    Portal (motor da Administração) trazem o 3º campo com a aba dele. Administração fica só com cadastros e configuração. */
 const SHELL_TABS = {
