@@ -13,5 +13,6 @@
 ## Pré-requisito técnico
 Um mecanismo de injeção do kit em cada página no carregamento (hoje cada cópia é literal). Desenhar primeiro e provar com uma página (Gel) antes das demais.
 
-## Não feito ainda
-Nenhuma linha de código foi movida neste lote; o objetivo foi medir, ordenar e fixar a regra. Primeira entrega sugerida: etapa 1, em PR próprio.
+## Andamento
+- **Etapa 1, `esc` (plataforma 1.8.88):** o mecanismo de injeção já existia (cada motor inclui `@@vac:comum/bases@@` antes do próprio script). `vacEsc` ficou em `comum/bases` e os nove motores usam `const esc = vacEsc`. Identidade provada no teste `h01-esc` (as três formas antigas e `vacEsc` dão a mesma saída; nenhum motor guarda cópia; em cada página `esc === vacEsc`). Ficaram de fora, por não carregarem o kit: apps de celular, `ferramenta/*` e a casca (`modulo/core/data`).
+- **Próximo da etapa 1:** outros formatadores puros repetidos, um de cada vez, com a mesma prova.
