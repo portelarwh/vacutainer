@@ -12,6 +12,8 @@ Vale para instalar a plataforma pela primeira vez: pasta nova, nenhum cadastro, 
 
 **Não precisa limpar cookies.** O navegador guarda só a pasta lembrada (o botão vira "Reconectar <pasta>") e a fila de gravações pendentes; limpar os dados do site apaga essa fila. Se o botão mostrar "Reconectar <pasta>" e essa não for a pasta certa, ele reconecta a antiga; na tela seguinte use **Escolher outra pasta**.
 
+**Guia na tela de entrada (1.8.96):** o botão **Primeiro acesso** abre um passo a passo que confere sozinho cada etapa e mostra OK: navegador, pasta da linha, permissão de gravação, cadastro de usuários e entrada. A etapa da vez tem o botão que resolve (Escolher a pasta, Permitir gravação, Criar o cadastro inicial); se algo falhar, o motivo aparece no próprio guia. As etapas abaixo são as mesmas, feitas à mão.
+
 ## 2. Criar o cadastro inicial
 1. Clique em **Conectar pasta da linha** e escolha a pasta.
 2. A tela mostra "Cadastro não encontrado". Clique em **Criar o cadastro inicial (primeiro administrador)**.
