@@ -4536,7 +4536,7 @@ function wireConfigComum(){$('#cPasta').onclick=async()=>{if(await Store.pick())
         entrar pelo ID (autocadastro como Consulta); página inicial por perfil (1x por sessão); vigência gravada não se edita (desativar com motivo); painel de vigências; semáforo central; saída do modo de teste.
    1.1.2: aviso da carga diz qual base foi lida.  1.5: páginas Paradas, Máquinas, Manutenção e Projetos na lista (aparecem quando o HTML chega na pasta).  1.4: lista técnica pela CS12 multinível (itens = nível 1, estrutura = níveis 2+); CS03 sai.  1.3: cabeçalho comum (vac-cabecalho v2: barra do sistema + página + abas), busca Ctrl K, acabamento V1.90, Versões com cabeçalho e último backup.  1.2: Configuração › Versões das páginas (versão e data de cada HTML, gravação das bases, cópias repetidas, histórico).
    ===================================================================== */
-const PAGE={id:'portal',titulo:"Administração · Linha Vacutainer",tituloCurto:"Administração",subtitulo:'Sistemas de gestão da linha',versao:'1.9.109',baseFile:'portal-base.json',idb:'vac-portal',backupDir:'00. Backups/Portal',
+const PAGE={id:'portal',titulo:"Administração · Linha Vacutainer",tituloCurto:"Administração",subtitulo:'Sistemas de gestão da linha',versao:'1.9.110',baseFile:'portal-base.json',idb:'vac-portal',backupDir:'00. Backups/Portal',
  vazio:()=>({schema:'portal-base',schemaVersion:1,rev:0,config:{modulos:{},avisoDias:30,notas:{}},audit:[]}),
  /* itens do Portal para a busca Ctrl K: cadastro, pendências e telas */
  busca:q=>{const R=[],D=Cad.D;if(D)for(const t of CAD_ORD){for(const it of D[t]||[]){const c=String(it[kOf(t)]),nm=t==='bom'?((cadItem('catalogos',it.catalogo)||{}).nome||''):it.nome||'';if(norm(c+' '+nm).includes(q))R.push({tipo:CAD_T[t].um,txt:c+(nm?' · '+nm:''),sub:'Cadastros'+(cadAtivo(t,it,D)?'':' · inativo'),href:'#cadastros/'+t+'/'+encodeURIComponent(c)});if(R.length>30)break}}
@@ -5410,6 +5410,8 @@ const CAD_SECS=['inicio','gel','matriz','importar','auditoria','backups','segura
    curtas (macro, sem detalhe técnico). REGRA: toda versão nova da plataforma ganha uma entrada aqui, a mais recente primeiro
    (AGENTS.md e CLAUDE.md). Tipos: nova (função nova), melhoria (algo que já existia ficou melhor), correcao (erro corrigido). */
 const NOVIDADES=[
+ {v:'1.8.111',d:'2026-11-28',itens:[
+  ['melhoria','Mensagem do WhatsApp do Meu Turno em blocos curtos: identificação, desempenho, paradas, scrap por estação, gel e hora a hora em tabelas alinhadas (fonte monoespaçada), com 🟢 na meta e 🔴 abaixo, hora como 06h e — quando não há dado. A Administração mostra o mesmo modelo e os novos marcadores.']]},
  {v:'1.8.110',d:'2026-11-28',itens:[
   ['correção','Linha no celular: um cadastro mais antigo não substitui o mais novo; um pacote só da Operação não libera a Manutenção; as metas de hoje aparecem mesmo sem o plano do mês; o aviso da câmera não apaga mais o resultado do arquivo escolhido.'],
   ['correção','Meu Turno: Reabrir abre o turno reaberto; as ordens do pacote do dia só aparecem no mesmo dia; zero bons com descarte é 100% de scrap; quando o celular não consegue gravar, não diz que gravou.'],
@@ -6032,9 +6034,10 @@ const MT_APP={
    pessoas,scrapGel:['Purga','Sobra no barril','Outros'],modeloWa:String(((D.parametros||{}).celular||{}).mensagemWhats||''),fonte:{cadRev:D.rev??null,geradoEm:new Date().toISOString(),por:user()||''},rev:Date.now()},semMeta:av};},
  /* 1.9.104 · APP-CEL fase 1 (27/11/2026): modelo da mensagem do WhatsApp do Meu Turno (parametros.celular.mensagemWhats). Marcadores entre
     chaves, os mesmos do app (WA_MARCAS em celular/meu-turno); vazio = a mensagem padrão do app. A prévia usa valores fictícios. */
- WA_MARCAS:[['linha','Linha'],['turno','Turno'],['data','Data'],['operador','Operador'],['catalogo','Catálogo'],['lote','Lote'],['op','OP'],['producao','Produção'],['plano','Plano'],['unidade','Unidade'],['aderencia','Aderência %'],['semaforo','Bolinha (verde, amarela, vermelha)'],['paradas_min','Paradas (min)'],['paradas_motivos','Paradas por motivo'],['scrap','Scrap'],['gel','Gel'],['hora_a_hora','Hora a hora'],['obs','Observações']],
- WA_PADRAO:'*{linha} · {turno} · {data}*\nOperador: {operador}\nCatálogo {catalogo} · Lote {lote}\n\n{semaforo} *Produção: {producao} de {plano} {unidade}* ({aderencia})\n⏱ Paradas: *{paradas_min} min* · {paradas_motivos}\n🗑 Scrap: {scrap}\n\n*Hora a hora* (real/plano)\n{hora_a_hora}\n\n📝 {obs}',
- WA_EXEMPLO:{linha:'Linha Vacutainer',turno:'1º Turno',data:'27/11/2026',operador:'Pessoa Fictícia',catalogo:'360060 (Tubo SST)',lote:'6275187',op:'100234567',producao:'449',plano:'476',unidade:'mil',aderencia:'94,3%',semaforo:'🟡',paradas_min:'40',paradas_motivos:"Setup 25', Falta de material 15'",scrap:'3.227 tubos (0,71%)',gel:'',hora_a_hora:"06:00  62/63\n07:00  55/63  ⏱25' Setup\n08:00  63/63",obs:'Turno de demonstração'},
+ WA_MARCAS:[["titulo","Título (LINHA | TURNO)"],["data","Data"],["operador","Operador"],["catalogo_codigo","Catálogo (código)"],["produto","Produto"],["catalogo","Catálogo com o nome"],["lote","Lote"],["op","OP"],["semaforo","Bolinha (🟢 na meta, 🔴 abaixo)"],["aderencia","Atingimento %"],["producao","Produção"],["plano","Planejado"],["unidade","Unidade"],["paradas_min","Paradas (min)"],["paradas_motivos","Paradas por motivo (texto)"],["scrap","Scrap"],["gel","Gel (texto)"],["hora_a_hora","Tabela hora a hora"],["nota_unidade","Nota da unidade"],["bloco_paradas","Bloco de paradas"],["bloco_scrap","Bloco de scrap por estação"],["bloco_gel","Bloco de gel"],["bloco_obs","Bloco de observações"],["linha","Linha"],["turno","Turno"],["obs","Observações (texto)"]],
+ /* 1.9.110 · WhatsApp em blocos (28/11/2026): o mesmo modelo padrão do app (WA_PADRAO de celular/meu-turno); tabelas entre três crases */
+ WA_PADRAO:"📊 *{titulo}*\n📅 {data}\n\n*IDENTIFICAÇÃO*\nOperador: {operador}\nCatálogo: {catalogo_codigo}\nProduto: {produto}\nLote: {lote}\nOP: {op}\n\n📈 *DESEMPENHO*\n{semaforo} *Atingimento: {aderencia}*\nProdução: {producao} {unidade}\nPlanejado: {plano} {unidade}\nParadas: {paradas_min} min\nScrap: {scrap}\n\n{bloco_paradas}\n\n{bloco_scrap}\n\n{bloco_gel}\n\n🕒 *PRODUÇÃO HORA A HORA*\n{hora_a_hora}\n{nota_unidade}\n\n{bloco_obs}",
+ WA_EXEMPLO:{"titulo": "LINHA VACUTAINER | 1º TURNO", "linha": "Linha Vacutainer", "turno": "1º Turno", "data": "28/11/2026", "operador": "Pessoa Fictícia", "catalogo": "360060 (13x100 · 5 ml SST)", "catalogo_codigo": "360060", "produto": "13x100 · 5 ml SST", "lote": "6264985", "op": "19457510", "producao": "493", "plano": "476", "unidade": "mil", "aderencia": "104%", "semaforo": "🟢", "paradas_min": "25", "paradas_motivos": "Setup 25'", "scrap": "274 tubos (0,06%)", "gel": "real — · teórico 411,2 kg", "hora_a_hora": "```\nHORA   REAL  META  ST\n06h      50    56  🔴\n07h      56    56  🟢\n08h      90    56  🟢\n09h      42    56  🔴\n10h      60    56  🟢\n11h      65    56  🟢\n12h      90    56  🟢\n13h30    40    84  🔴\n────────────────────────\nTOTAL   493   476  🟢\n```", "nota_unidade": "Valores em milhares de tubos.", "bloco_paradas": "⏱️ *PARADAS (min)*\n```\nSetup                 25\n────────────────────────\nTOTAL                 25\n```", "bloco_scrap": "🗑️ *SCRAP POR ESTAÇÃO (tubos)*\n```\nGel Dispenser        100\nEtiquetagem           64\nEvacuator             60\nTullip A              50\n────────────────────────\nTOTAL                274\n```", "bloco_gel": "🧪 *CONSUMO DE GEL*\n```\nReal                   —\nTeórico         411,2 kg\nScrap                0 g\n```", "bloco_obs": "📝 *OBSERVAÇÕES*\nTurno de demonstração", "obs": "Turno de demonstração"},
  waPreencher(m,V){return String(m).replace(/\{([a-z_]+)\}/g,(x,k)=>Object.prototype.hasOwnProperty.call(V,k)?V[k]:x)},
  /* 1.9.72 · MAN-01: app Manutenção (técnico): equipamentos, modos de falha e pessoas da manutenção (só ID, nome e turno) */
  cfgMan(D){const at=x=>x&amp;&amp;x.ativo!==false,linha=(D.linhas||[]).find(at)||{};
@@ -6126,7 +6129,7 @@ function cadApps(el){const D=Cad.D,{c,semMeta}=MT_APP.cfg(D),ok=c.turnos.length&
   <div class="tw"><table><thead><tr><th>Vai no app</th><th class="n">Itens</th><th></th></tr></thead><tbody>${li(m.maqs.length,'Equipamentos','')}${li(m.modos.length,'Modos de falha','sem modo cadastrado o técnico escreve')}${li(m.pessoas.length,'Pessoas da manutenção (só ID, nome e turno)','área Manutenção ou perfil técnico; sem nenhuma, todas')}</tbody></table></div>
   <div class="row"><button class="b pri" id="mmGerar" ${m.maqs.length?'':'disabled'}>Gerar Manutencao.html</button></div>`})()}</div>`;
  const baixar=(app,nome)=>{try{const h=MT_APP.gerar(D,app),b=new Blob([h],{type:'text/html'}),a=document.createElement('a');a.href=URL.createObjectURL(b);a.download=nome;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),4000);toast(nome+' gerado com o cadastro rev '+(D.rev??'—')+'. Envie aos celulares.')}catch(e){toast(e.message||String(e),6000,true)}};
- {const ta=$('#mtWa'),pv=$('#mtWaPrev'),prev=()=>{if(pv)pv.textContent=MT_APP.waPreencher((ta&amp;&amp;ta.value.trim())?ta.value:MT_APP.WA_PADRAO,MT_APP.WA_EXEMPLO)+((ta&amp;&amp;ta.value.trim())?'':'\n\n(mensagem padrão do app)')};
+ {const ta=$('#mtWa'),pv=$('#mtWaPrev'),prev=()=>{if(pv)pv.textContent=MT_APP.waPreencher((ta&amp;&amp;ta.value.trim())?ta.value:MT_APP.WA_PADRAO,MT_APP.WA_EXEMPLO).replace(/[ \t]+\n/g,'\n').replace(/\n{3,}/g,'\n\n').trim()+((ta&amp;&amp;ta.value.trim())?'':'\n\n(mensagem padrão do app)')};
   if(ta){ta.addEventListener('input',prev);prev();
    $$('#mtWaMarcas [data-wa]').forEach(b=>b.onclick=()=>{const s=ta.selectionStart??ta.value.length,e=ta.selectionEnd??s,ins='{'+b.dataset.wa+'}';ta.value=ta.value.slice(0,s)+ins+ta.value.slice(e);ta.focus();ta.selectionStart=ta.selectionEnd=s+ins.length;prev()});
    const pad=$('#mtWaPad');if(pad)pad.onclick=()=>{ta.value=MT_APP.WA_PADRAO;prev()};
@@ -49742,7 +49745,7 @@ const hm2min=s=>{const[h,m]=String(s||'0:0').split(':').map(Number);return h*60+
 const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,6);
 const addDias=(iso,n)=>{const d=new Date(iso+'T12:00:00');d.setDate(d.getDate()+n);return hojeISO(d)};
 function toast(t){const e=document.createElement('div');e.className='toast';e.textContent=t;document.body.appendChild(e);setTimeout(()=>e.remove(),2600)}
-const VERSAO='0.8';
+const VERSAO='0.9';
 /* o arquivo é enviado aos celulares e aberto direto (sem servidor): se o navegador que abriu não guarda dados, o operador é avisado */
 const GUARDA=(()=>{try{localStorage.setItem('mt.teste','1');localStorage.removeItem('mt.teste');return true}catch(e){return false}})();
 const LS={get(k,d){try{const v=localStorage.getItem('mt.'+k);return v?JSON.parse(v):d}catch(e){return d}},set(k,v){try{localStorage.setItem('mt.'+k,JSON.stringify(v));return true}catch(e){toast('Não gravou neste celular (memória cheia?): exporte o histórico e tente de novo');return false}}};   /* 0.8 · A21: quem chama sabe se gravou */
@@ -49900,28 +49903,42 @@ function fecharTurno(T){const r=resumo(T),vaz=T.slots.filter(s=>s.real==null);co
 /* 0.5 · APP-CEL fase 1 (27/11/2026): mensagem do WhatsApp pelo modelo da Administração (Apps de celular › Mensagem do WhatsApp),
    embutido em CFG.modeloWa. Marcadores entre chaves; marcador desconhecido fica como está; sem modelo, a mensagem padrão abaixo. */
 const WA_MARCAS=['linha','turno','data','operador','catalogo','lote','op','producao','plano','unidade','aderencia','semaforo','paradas_min','paradas_motivos','scrap','gel','hora_a_hora','obs'];
-function waCampos(T){const r=resumo(T),t=turnoDe(T.turno)||{n:T.turno},c=r.c;let aP=0;
- const hh=T.slots.map(s=>{const p=planoSlot(T,s),pm=s.par.reduce((a,x)=>a+x.min,0);aP+=p;return `${s.de}  ${s.real==null?'—':nf(s.real)}/${nf(p)}${pm?`  ⏱${pm}' ${s.par.map(x=>x.mot+(x.obs?' – '+x.obs:'')).join('; ')}`:''}`}).join('\n');
- return{linha:CFG.linha||'',turno:t.n||'',data:br(T.data),operador:T.operador||'—',catalogo:`${T.cat||''}${c&amp;&amp;c.n?' ('+c.n+')':''}`,lote:T.lote||'—',op:T.op||'—',
-  producao:nf(r.re),plano:nf(r.pl),unidade:CFG.unidade||'',aderencia:r.ader==null?'—':nf(r.ader*100)+'%',semaforo:r.ader==null?'⚪':r.ader>=1?'🟢':r.ader>=.9?'🟡':'🔴',
+/* 0.9 · WhatsApp em blocos (pedido do responsável, 28/11/2026): blocos curtos com títulos em negrito; as tabelas vão entre três crases
+   (fonte monoespaçada no WhatsApp) e são alinhadas com espaços (padStart/padEnd, nunca tabulação), com até 26 caracteres por linha para caber
+   em qualquer aparelho; hora como 06h (06:00 vira link em alguns aparelhos); 🟢 produção igual ou acima da meta, 🔴 abaixo; sem dado, "—"
+   (ausência não é zero). Os blocos opcionais (paradas, scrap por estação, gel, observações) só aparecem quando há o que mostrar. */
+const WA_LARG=24;
+const WA_PADRAO='📊 *{titulo}*\n📅 {data}\n\n*IDENTIFICAÇÃO*\nOperador: {operador}\nCatálogo: {catalogo_codigo}\nProduto: {produto}\nLote: {lote}\nOP: {op}\n\n📈 *DESEMPENHO*\n{semaforo} *Atingimento: {aderencia}*\nProdução: {producao} {unidade}\nPlanejado: {plano} {unidade}\nParadas: {paradas_min} min\nScrap: {scrap}\n\n{bloco_paradas}\n\n{bloco_scrap}\n\n{bloco_gel}\n\n🕒 *PRODUÇÃO HORA A HORA*\n{hora_a_hora}\n{nota_unidade}\n\n{bloco_obs}';
+const waHora=de=>{const m=/^(\d{1,2}):(\d{2})/.exec(String(de||''));return m?m[1].padStart(2,'0')+'h'+(m[2]==='00'?'':m[2]):String(de||'')};
+const waTab=L=>'```\n'+L.join('\n')+'\n```';
+const waSep=()=>'─'.repeat(WA_LARG);
+function waCol(a,b){a=String(a);b=String(b);const lim=WA_LARG-b.length-1;if(a.length>lim)a=a.slice(0,Math.max(1,lim-1))+'.';return a.padEnd(WA_LARG-b.length)+b}
+const waSt=(re,pl)=>re==null||pl==null?'—':re>=pl?'🟢':'🔴';
+function waCampos(T){const r=resumo(T),t=turnoDe(T.turno)||{n:T.turno},c=r.c;
+ /* hora a hora: HORA REAL META STATUS; hora sem produção informada mostra "—" */
+ const H=['HORA'.padEnd(6)+'REAL'.padStart(5)+'META'.padStart(6)+'  ST'];
+ for(const s of T.slots){const p=planoSlot(T,s);H.push(waHora(s.de).padEnd(6)+(s.real==null?'—':nf(s.real)).padStart(5)+nf(p).padStart(6)+'  '+(s.real==null?'—':waSt(+s.real,p)))}
+ H.push(waSep(),'TOTAL'.padEnd(6)+nf(r.re).padStart(5)+nf(r.pl).padStart(6)+'  '+waSt(r.falta<T.slots.length?r.re:null,r.pl));
+ const obsP=T.slots.flatMap(s=>s.par.filter(x=>x.obs).map(x=>`• ${waHora(s.de)} ${x.mot}: ${x.obs}`));   /* a observação de cada parada vai abaixo da tabela, fora dela (texto livre não cabe nas colunas) */
+ const par=r.mot.length?'⏱️ *PARADAS (min)*\n'+waTab([...r.mot.map(([m,v])=>waCol(m,nf(v))),waSep(),waCol('TOTAL',nf(r.pm))])+(obsP.length?'\n'+obsP.join('\n'):''):'';
+ const M=T.scrapModo==='maq'?Object.entries(T.scrapMaq||{}).filter(([,v])=>+v>0).sort((a,b)=>b[1]-a[1]):[];
+ const scr=M.length?'🗑️ *SCRAP POR ESTAÇÃO (tubos)*\n'+waTab([...M.map(([m,v])=>waCol(m,nf(v))),waSep(),waCol('TOTAL',nf(M.reduce((a,[,v])=>a+(+v||0),0)))]):'';
+ const gel=c&amp;&amp;c.gel?'🧪 *CONSUMO DE GEL*\n'+waTab([waCol('Real',r.gR==null?'—':nf(r.gR,1)+' kg'),waCol('Teórico',r.gT==null?'—':nf(r.gT,1)+' kg'),...(r.gIdx!=null?[waCol('Real/teórico',nf(r.gIdx*100,1)+'%')]:[]),waCol('Scrap',nf(r.gS)+' g')]):'';
+ const u=CFG.unidade||'';
+ return{linha:CFG.linha||'',turno:t.n||'',titulo:`${CFG.linha||''} | ${t.n||''}`.toUpperCase(),data:br(T.data),operador:T.operador||'—',catalogo:`${T.cat||''}${c&amp;&amp;c.n?' ('+c.n+')':''}`,catalogo_codigo:T.cat||'—',produto:c&amp;&amp;c.n?c.n:'—',lote:T.lote||'—',op:T.op||'—',
+  producao:r.falta<T.slots.length?nf(r.re):'—',plano:nf(r.pl),unidade:u,aderencia:r.ader==null||r.falta===T.slots.length?'—':nf(r.ader*100)+'%',semaforo:r.ader==null||r.falta===T.slots.length?'⚪':waSt(r.re,r.pl),
   paradas_min:String(r.pm),paradas_motivos:r.mot.slice(0,3).map(([m,v])=>`${m} ${v}'`).join(', ')||'—',
-  scrap:r.scrap==null?'não informado':nf(r.scrap)+' tubos'+(r.scrapPct!=null?` (${nf(r.scrapPct*100,2)}%)`:''),
-  gel:c&amp;&amp;c.gel?`real ${r.gR==null?'—':nf(r.gR,1)+' kg'} · teórico ${nf(r.gT,1)} kg${r.gIdx!=null?` (${nf(r.gIdx*100,1)}%)`:''}`:'',hora_a_hora:hh,obs:T.obs||''}}
+  scrap:r.scrap==null?'—':nf(r.scrap)+' tubos'+(r.scrapPct!=null?` (${nf(r.scrapPct*100,2)}%)`:''),
+  gel:c&amp;&amp;c.gel?`real ${r.gR==null?'—':nf(r.gR,1)+' kg'} · teórico ${nf(r.gT,1)} kg${r.gIdx!=null?` (${nf(r.gIdx*100,1)}%)`:''}`:'',hora_a_hora:waTab(H),
+  nota_unidade:u==='mil'?'Valores em milhares de tubos.':u?`Valores em ${u}.`:'',
+  bloco_paradas:par,bloco_scrap:scr,bloco_gel:gel,bloco_obs:T.obs?'📝 *OBSERVAÇÕES*\n'+T.obs:'',obs:T.obs||''}}
 function waPreencher(modelo,V){return String(modelo).replace(/\{([a-z_]+)\}/g,(m,k)=>Object.prototype.hasOwnProperty.call(V,k)?V[k]:m)}
 /* 0.7 · APP-CEL fase 3, parte 2: ordens e lotes do pacote do dia (Linha.html › Atualizar cadastro ou dia) viram a lista do campo Lote;
    escolher o lote preenche a OP quando ela está vazia. Sem pacote, o campo é o de sempre. */
 /* 0.8 · A20 (auditoria 28/11/2026): só o pacote do mesmo dia do turno oferece ordens e lotes */
 function ordensDia(dia){try{const d=JSON.parse(localStorage.getItem('linha.dia')||'null');if(!d||(dia&amp;&amp;d.dia&amp;&amp;d.dia!==dia))return[];return Array.isArray(d.ordens)?d.ordens.filter(o=>o&amp;&amp;o.lote):[]}catch(e){return[]}}
-function txtWA(T){if(CFG.modeloWa&amp;&amp;String(CFG.modeloWa).trim())return waPreencher(CFG.modeloWa,waCampos(T));
- const r=resumo(T),t=turnoDe(T.turno)||{n:T.turno},c=r.c,u=CFG.unidade,ic=r.ader==null?'⚪':r.ader>=1?'🟢':r.ader>=.9?'🟡':'🔴';
- const L=[`*${CFG.linha} · ${t.n} · ${br(T.data)}*`,`Operador: ${T.operador||'—'}`,`Catálogo ${T.cat}${c&amp;&amp;c.n?' ('+c.n+')':''} · Lote ${T.lote||'—'}${T.op?' · OP '+T.op:''}`,'',
-  `${ic} *Produção: ${nf(r.re)} de ${nf(r.pl)} ${u}* (${r.ader==null?'—':nf(r.ader*100)+'%'})`,`⏱ Paradas: *${r.pm} min*${r.mot.length?' · '+r.mot.slice(0,3).map(([m,v])=>`${m} ${v}'`).join(', '):''}`,
-  `🗑 Scrap: ${r.scrap==null?'não informado':nf(r.scrap)+' tubos'+(r.scrapPct!=null?` (${nf(r.scrapPct*100,2)}%)`:'')}`];
- if(T.scrapModo==='maq'){const M=Object.entries(T.scrapMaq).filter(([,v])=>+v>0).sort((a,b)=>b[1]-a[1]);if(M.length)L.push('   '+M.map(([m,v])=>`${m} ${nf(v)}`).join(' · '))}
- if(c&amp;&amp;c.gel)L.push(`🧪 Gel: real ${r.gR==null?'—':nf(r.gR,1)+' kg'} · teórico ${nf(r.gT,1)} kg${r.gIdx!=null?` (${nf(r.gIdx*100,1)}%)`:''} · scrap ${nf(r.gS)} g`);
- L.push('','*Hora a hora* (real/plano)');let aP=0,aR=0;for(const s of T.slots){const p=planoSlot(T,s);aP+=p;aR+=+s.real||0;const pm=s.par.reduce((a,x)=>a+x.min,0);
-  L.push(`${s.de}  ${s.real==null?'—':nf(s.real)}/${nf(p)}${pm?`  ⏱${pm}' ${s.par.map(x=>x.mot+(x.obs?' – '+x.obs:'')).join('; ')}`:''}`)}
- if(T.obs)L.push('',`📝 ${T.obs}`);return L.join('\n')}
+/* 0.9 · a mensagem padrão é o mesmo modelo que a Administração mostra (WA_PADRAO); linhas vazias de blocos ausentes saem */
+function txtWA(T){const m=CFG.modeloWa&amp;&amp;String(CFG.modeloWa).trim()?CFG.modeloWa:WA_PADRAO;return waPreencher(m,waCampos(T)).replace(/[ \t]+\n/g,'\n').replace(/\n{3,}/g,'\n\n').trim()}
 function vRel(id){const T=TURNOS.find(x=>x.id===id);if(!T)return topo('Relatório')+'<main><div class="card">Turno não encontrado.</div></main>';const r=resumo(T),t=turnoDe(T.turno)||{n:T.turno};
  return topo('Relatório do turno',`${t.n} · ${br(T.data)}`,'<a class="ib" href="#historico" aria-label="Voltar" style="text-decoration:none">‹</a>')+`<main>
  <div class="card"><canvas id="cv" width="1080" height="1350" style="width:100%;border-radius:12px;display:block"></canvas></div>
@@ -55511,15 +55528,15 @@ body.vac-porta{overflow:hidden}
     {
       "id": "portal",
       "path": "Plataforma.html#motor/portal",
-      "version": "1.9.109",
-      "sha256": "3ae831fb99d7d20b9898515b67a579cf35d34483ef226feba1da84a0156c85ed",
-      "bytes": 1376994
+      "version": "1.9.110",
+      "sha256": "9a6d35e793e0995a7911ad2d5d1e06d9f5b73f5159d4a1ccc13c9c24a79c070e",
+      "bytes": 1379195
     }
   ],
   "limitations": [
     "Projetos e conteúdo técnico OSM/MES/AM/TPM mantêm os limites documentados nas fontes."
   ],
-  "enginesSha256": "c5355b3405d56aa2390dfc3a9ae92d913ada7e4e11e53c4a74ed387ca6df044f",
+  "enginesSha256": "edfeda40ec3c4e83374df9ee982919e036b49522ecf45496b1bba13d4c72da60",
   "originRevision": "ffc9ee8",
   "sourceMode": "single-html",
   "originEnginesSha256": "a87a64ad0c328f70e102b2ae888790a9b5d5a9bd05778652a7ce7cae140e40d2"
@@ -55590,7 +55607,7 @@ summary{cursor:pointer;font-weight:600;color:var(--navy)}
 /* ---------- referência (atualizar quando a plataforma mudar de versão) ---------- */
 // Iguais às do pacote da plataforma (nova-plataforma/src/generated/manifest.json); o teste ferramenta-verificar confere.
 const VAC_CAD_FORMATO = 2;   /* versão do formato de vacutainer-cadastros.json (VAC_CAD_VERSAO do kit) */
-const VERSOES = {"oee":"2.6.51","perdas":"1.12.22","gel":"2.53","paradas":"1.2.23","equip":"1.0.23","inic":"1.1.18","linha":"1.7.2","projetos":"0.1.16","portal":"1.9.109"};
+const VERSOES = {"oee":"2.6.51","perdas":"1.12.22","gel":"2.53","paradas":"1.2.23","equip":"1.0.23","inic":"1.1.18","linha":"1.7.2","projetos":"0.1.16","portal":"1.9.110"};
 const BASES = [
  { arq: 'vacutainer-cadastros.json', mod: 'portal', nome: 'Cadastro geral (Portal)', obrig: true, cadastro: true, bk: 'Cadastros' },
  { arq: 'portal-base.json', mod: 'portal', nome: 'Portal', obrig: true, bk: 'Portal' },
@@ -56192,7 +56209,7 @@ import { Icon, Button, Badge, Empty, Modal, BarChart, BrandLogo, CommandMenu } f
 import { ModuleFrame } from "vac:modulo/components/ModuleFrame";
 import manifest from "vac:recurso/manifesto";
 import { ModuleTabs } from "vac:modulo/components/ModuleTabs";
-const VERSION = "1.8.110";
+const VERSION = "1.8.111";
 /* Navegação 1.3.0 (16/11/2026): Visão da linha, Relatórios e Importações têm abas; as que mostram uma tela do
    Portal (motor da Administração) trazem o 3º campo com a aba dele. Administração fica só com cadastros e configuração. */
 const SHELL_TABS = {

@@ -30,7 +30,7 @@ const html = fs.readFileSync(path.resolve(__dirname, '../../Plataforma.html'));
     const MODELO = 'Turno {turno} de {data} · {linha}\nOperador: {operador}\n{semaforo} {producao}/{plano} {unidade} ({aderencia})\nParadas: {paradas_min} min\n{xyz}';
     await f.fill('#mtWa', MODELO);
     const prev = await f.locator('#mtWaPrev').innerText();
-    assert.match(prev, /Turno 1º Turno de 27\/11\/2026 · Linha Vacutainer/); assert.match(prev, /Operador: Pessoa Fictícia/); assert.match(prev, /449\/476 mil \(94,3%\)/); assert.match(prev, /\{xyz\}/);
+    assert.match(prev, /Turno 1º Turno de 28\/11\/2026 · Linha Vacutainer/); assert.match(prev, /Operador: Pessoa Fictícia/); assert.match(prev, /493\/476 mil \(104%\)/); assert.match(prev, /\{xyz\}/);
     await f.click('[data-wa="obs"]'); assert.match(await f.inputValue('#mtWa'), /\{obs\}$/, 'o botão do marcador insere {obs} no cursor');
     await f.fill('#mtWa', MODELO); await f.click('#mtWaOk');
     await f.waitForFunction(m => (((Cad.D.parametros || {}).celular || {}).mensagemWhats) === m, MODELO, { timeout: 15000 });
@@ -58,7 +58,7 @@ const html = fs.readFileSync(path.resolve(__dirname, '../../Plataforma.html'));
     await m0.evaluate(() => localStorage.clear()); await m0.reload(); await m0.click('#lancar'); await m0.waitForSelector('[data-real]');
     await m0.selectOption('#op', cfg.pessoas[0].id); await m0.selectOption('#cat', cfg.cats[0].c);
     const t0 = await m0.evaluate(() => txtWA(atual()));
-    assert.match(t0, /^\*.+ · .+ · \d\d\/\d\d\/\d{4}\*\nOperador: /); assert.match(t0, /\*Hora a hora\* \(real\/plano\)/);
+    assert.match(t0, /^📊 \*.+ \| .+\*\n📅 \d\d\/\d\d\/\d{4}\n\n\*IDENTIFICAÇÃO\*\nOperador: /); assert.match(t0, /🕒 \*PRODUÇÃO HORA A HORA\*\n```\nHORA/);   /* 0.9 · mensagem padrão em blocos */
     console.log('ok sem modelo: o app mantém a mensagem padrão de antes');
     assert.deepEqual(erros, [], 'sem erro de JavaScript');
   } finally { if (browser) await browser.close(); srv.close(); }

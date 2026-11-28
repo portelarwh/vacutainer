@@ -36,12 +36,16 @@ const html = fs.readFileSync(path.resolve(__dirname, '../../CELULAR/index.html')
     // 3) fechar: horas vazias ficam "não informado" (não zero); texto do WhatsApp
     await p.click('#fechar'); assert.match(await p.textContent('.sheet'), /4 hora\(s\) sem produção informada[\s\S]*não como zero/); await p.click('#fok'); await p.waitForSelector('#waTxt');
     const wa = await p.evaluate(() => txtWA(TURNOS[0]));
-    for (const re of [/\*Linha Vacutainer · 2º Turno · 20\/11\/2026\*/, /Produção: 164 de 462 mil\* \(35%\)/, /Paradas: \*25 min\* · Falta de material 25'/, /Scrap: 1\.150 tubos \(0,70%\)/, /Tullip B 1\.150/, /Gel: real 137,0 kg · teórico 136,8 kg/, /18:00 {2}—\/56/, /17:00 {2}28\/56 {2}⏱25' Falta de material – rack vazio/]) assert.match(wa, re);
+    /* 0.9 · WhatsApp em blocos: tabelas entre três crases, hora como 17h, 🟢 na meta e 🔴 abaixo, "—" sem dado */
+    for (const re of [/^📊 \*LINHA VACUTAINER \| 2º TURNO\*\n📅 20\/11\/2026/, /🔴 \*Atingimento: 35%\*/, /\nProdução: 164 mil\nPlanejado: 462 mil\nParadas: 25 min\nScrap: 1\.150 tubos \(0,70%\)/, /⏱️ \*PARADAS \(min\)\*\n```\nFalta de material +25\n─+\nTOTAL +25\n```\n• 17h Falta de material: rack vazio/, /Tullip B +1\.150/, /```\nReal +137,0 kg\nTeórico +136,8 kg/, /\n18h +— +56 +—\n/, /\n17h +28 +56 +🔴\n/, /\nTOTAL +164 +462 +🔴\n```\nValores em milhares de tubos\./]) assert.match(wa, re);
+    const tabelas = [...wa.matchAll(/```\n([\s\S]*?)\n```/g)].flatMap(m => m[1].split('\n'));   /* linhas dentro das três crases; emoji ocupa duas colunas */
+    assert.ok(tabelas.length > 10 && tabelas.every(l => [...l.replace(/[🟢🔴]/gu, 'xx')].length <= 26), 'linhas das tabelas com até 26 caracteres: ' + tabelas.filter(l => [...l].length > 26).join(' | '));
+    assert.doesNotMatch(wa, /\t/, 'sem tabulação');
     assert.ok(await p.evaluate(() => document.querySelector('#cv').getContext('2d').getImageData(80, 120, 1, 1).data[3] > 0), 'imagem do WhatsApp desenhada');
     console.log('ok fechamento e texto do WhatsApp (hora vazia como "—", não zero); imagem desenhada');
 
     // 3b) mudar a meta e o gel do catálogo na configuração não altera o turno já lançado (catSnap)
-    const snap = await p.evaluate(() => { const c = CFG.cats.find(x => x.c === '360060'); c.meta = 100; c.gel = 1; LS.set('cfg', CFG); const r = resumo(TURNOS[0]); const t = txtWA(TURNOS[0]); c.meta = 56; c.gel = 0.834; LS.set('cfg', CFG); return { pl: r.pl, gT: +r.gT.toFixed(3), t: /Produção: 164 de 462 mil/.test(t) }; });
+    const snap = await p.evaluate(() => { const c = CFG.cats.find(x => x.c === '360060'); c.meta = 100; c.gel = 1; LS.set('cfg', CFG); const r = resumo(TURNOS[0]); const t = txtWA(TURNOS[0]); c.meta = 56; c.gel = 0.834; LS.set('cfg', CFG); return { pl: r.pl, gT: +r.gT.toFixed(3), t: /Produção: 164 mil\nPlanejado: 462 mil/.test(t) }; });
     assert.deepEqual(snap, { pl: 462, gT: 136.776, t: true }, 'turno lançado mantém a meta e o gel do momento');
     console.log('ok mudar a meta (56 → 100) e o gel depois do fechamento não altera o turno lançado nem o texto do WhatsApp');
 
