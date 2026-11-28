@@ -74,3 +74,9 @@ test("A17 (auditoria 28/11/2026): hoje e ontem da casca no fuso da planta", () =
     assert.match(periodRange("hoje")[0], /^\d{4}-\d{2}-\d{2}$/, "fuso inv\xE1lido: o do navegador");
   } finally { definirFuso(""); mock.timers.reset(); }
 });
+test("ORD-CHAVE (28/11/2026): a mesma ordem com e sem zeros à esquerda é uma ordem só na busca", () => {
+  const a = sourceFrom("oee", { exports: { exportsVersion: 1, porDia: [], porMes: [], porOrdem: [{ ordem: "000100234567", lote: "6275187" }] } }), b = sourceFrom("perdas", { exports: { exportsVersion: 1, porMes: [], porOrdem: [{ ordem: "100234567" }] } });
+  const r = searchOrders([a, b], "100234567");
+  assert.equal(r.length, 1); assert.deepEqual(r[0].modules, ["oee", "perdas"]); assert.equal(r[0].code, "000100234567", "mostra o código como veio");
+  assert.equal(searchOrders([a, b], "000100234567").length, 1, "buscar com os zeros também acha");
+});
