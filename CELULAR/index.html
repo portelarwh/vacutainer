@@ -2405,7 +2405,7 @@ const hm2min=s=>{const[h,m]=String(s||'0:0').split(':').map(Number);return h*60+
 const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,6);
 const addDias=(iso,n)=>{const d=new Date(iso+'T12:00:00');d.setDate(d.getDate()+n);return hojeISO(d)};
 function toast(t){const e=document.createElement('div');e.className='toast';e.textContent=t;document.body.appendChild(e);setTimeout(()=>e.remove(),2600)}
-const VERSAO='0.6';
+const VERSAO='0.7';
 /* o arquivo é enviado aos celulares e aberto direto (sem servidor): se o navegador que abriu não guarda dados, o operador é avisado */
 const GUARDA=(()=>{try{localStorage.setItem('mt.teste','1');localStorage.removeItem('mt.teste');return true}catch(e){return false}})();
 const LS={get(k,d){try{const v=localStorage.getItem('mt.'+k);return v?JSON.parse(v):d}catch(e){return d}},set(k,v){try{localStorage.setItem('mt.'+k,JSON.stringify(v))}catch(e){toast('Memória do celular cheia: exporte o histórico')}}};
@@ -2498,7 +2498,7 @@ function vTurno(){const T=atual();if(!T)return topo('Meu turno')+`<main><div cla
   <div class="chips" role="radiogroup" aria-label="Turno">${CFG.turnos.map(t=>`<button class="chip${T.turno===t.c?' on':''}" data-tc="${t.c}">${esc(t.n)}</button>`).join('')}</div>
   ${pessoas().length?`<label class="f">Operador<select class="in" id="op"><option value="">— escolha seu nome —</option>${pessoas().map(x=>`<option value="${esc(x.id)}"${String(x.id)===String(T.operadorId||'')?' selected':''}>${esc(x.n)}${x.t?' · '+esc(x.t):''}</option>`).join('')}</select></label>`:`<label class="f">Operador<input class="in" id="op" value="${esc(T.operador)}" placeholder="Seu nome" autocomplete="name"></label>`}
   <label class="f">Catálogo<select class="in" id="cat">${CFG.cats.map(x=>`<option value="${esc(x.c)}"${x.c===T.cat?' selected':''}>${esc(x.c+' · '+x.n)}</option>`).join('')}</select></label>
-  <div class="g2"><label class="f">Lote<input class="in" id="lote" inputmode="numeric" value="${esc(T.lote)}" placeholder="Ex.: 6275187"></label><label class="f">Ordem (OP)<input class="in" id="opn" inputmode="numeric" value="${esc(T.op)}" placeholder="opcional"></label></div>
+  <div class="g2"><label class="f">Lote<input class="in" id="lote" inputmode="numeric" value="${esc(T.lote)}" placeholder="Ex.: 6275187"${ordensDia().length?' list="lotesDia"':''}></label>${ordensDia().length?`<datalist id="lotesDia">${ordensDia().map(o=>`<option value="${esc(o.lote)}">OP ${esc(o.ordem)} · catálogo ${esc(o.catalogo)}</option>`).join('')}</datalist>`:''}<label class="f">Ordem (OP)<input class="in" id="opn" inputmode="numeric" value="${esc(T.op)}" placeholder="opcional"></label></div>
   <div class="small muted">Meta ${nf(c.meta)} ${CFG.unidade}/h${c.gel?` · gel ${nf(c.gel,3)} g/tubo`:''}</div></div></div>
  <div class="card"><h2>Hora a hora <span class="sp"></span><span class="small" style="text-transform:none;letter-spacing:0">${CFG.unidade} tubos</span></h2><div style="display:grid;gap:10px">
   ${T.slots.map((s,i)=>{const p=planoSlot(T,s);acP+=p;if(s.real!=null)acR+=+s.real;const pm=s.par.reduce((a,x)=>a+(+x.min||0),0);
@@ -2525,7 +2525,7 @@ function vTurno(){const T=atual();if(!T)return topo('Meu turno')+`<main><div cla
  <div class="bar"><div class="k"><span>Produzido / plano</span><b class="tn"><span class="${corAder(r.ader)}">${nf(r.re)}</span> / ${nf(r.pl)} ${CFG.unidade}</b><span class="tn">${r.ader==null?'':nf(r.ader*100)+'% · '}${r.pm} min parado</span></div><button class="btn ok" id="fechar">Fechar turno</button></div>`}
 function ligTurno(){const T=atual();comum();if(!T)return;const sv=()=>{salvarT()},rr=()=>{salvarT();const y=scrollY;render();scrollTo(0,y)};
  $$('[data-tc]').forEach(b=>b.onclick=()=>{if(b.dataset.tc===T.turno)return;if(T.slots.some(s=>s.real!=null||s.par.length)&&!confirm('Trocar o turno refaz o hora a hora. Continuar?'))return;T.turno=b.dataset.tc;T.slots=intervalos(turnoDe(T.turno)).map(s=>({...s,real:null,par:[]}));rr()});
- if($('#op').tagName==='SELECT')$('#op').onchange=e=>{const x=pessoas().find(y=>String(y.id)===e.target.value);T.operadorId=x?String(x.id):'';T.operador=x?x.n:'';LS.set('operador',T.operador);LS.set('operadorId',T.operadorId);sv()};else $('#op').oninput=e=>{T.operador=e.target.value;LS.set('operador',T.operador);sv()};$('#lote').oninput=e=>{T.lote=e.target.value.trim();sv()};$('#opn').oninput=e=>{T.op=e.target.value.trim();sv()};
+ if($('#op').tagName==='SELECT')$('#op').onchange=e=>{const x=pessoas().find(y=>String(y.id)===e.target.value);T.operadorId=x?String(x.id):'';T.operador=x?x.n:'';LS.set('operador',T.operador);LS.set('operadorId',T.operadorId);sv()};else $('#op').oninput=e=>{T.operador=e.target.value;LS.set('operador',T.operador);sv()};$('#lote').oninput=e=>{T.lote=e.target.value.trim();const o=ordensDia().find(x=>x.lote===T.lote);if(o&&o.ordem&&!T.op){T.op=o.ordem;const n=$('#opn');if(n)n.value=o.ordem}sv()};$('#opn').oninput=e=>{T.op=e.target.value.trim();sv()};
  $('#cat').onchange=e=>{T.cat=e.target.value;T.catSnap=fotoCat(cat(T.cat));rr()};
  $$('[data-real]').forEach(i=>{i.onchange=()=>{const v=i.value.trim();T.slots[+i.dataset.real].real=v===''?null:Math.max(0,+v.replace(',','.'));rr()}});
  $$('[data-addp]').forEach(b=>b.onclick=()=>parada(T,+b.dataset.addp,rr));
@@ -2570,6 +2570,9 @@ function waCampos(T){const r=resumo(T),t=turnoDe(T.turno)||{n:T.turno},c=r.c;let
   scrap:r.scrap==null?'não informado':nf(r.scrap)+' tubos'+(r.scrapPct!=null?` (${nf(r.scrapPct*100,2)}%)`:''),
   gel:c&&c.gel?`real ${r.gR==null?'—':nf(r.gR,1)+' kg'} · teórico ${nf(r.gT,1)} kg${r.gIdx!=null?` (${nf(r.gIdx*100,1)}%)`:''}`:'',hora_a_hora:hh,obs:T.obs||''}}
 function waPreencher(modelo,V){return String(modelo).replace(/\{([a-z_]+)\}/g,(m,k)=>Object.prototype.hasOwnProperty.call(V,k)?V[k]:m)}
+/* 0.7 · APP-CEL fase 3, parte 2: ordens e lotes do pacote do dia (Linha.html › Atualizar cadastro ou dia) viram a lista do campo Lote;
+   escolher o lote preenche a OP quando ela está vazia. Sem pacote, o campo é o de sempre. */
+function ordensDia(){try{const d=JSON.parse(localStorage.getItem('linha.dia')||'null');return d&&Array.isArray(d.ordens)?d.ordens.filter(o=>o&&o.lote):[]}catch(e){return[]}}
 function txtWA(T){if(CFG.modeloWa&&String(CFG.modeloWa).trim())return waPreencher(CFG.modeloWa,waCampos(T));
  const r=resumo(T),t=turnoDe(T.turno)||{n:T.turno},c=r.c,u=CFG.unidade,ic=r.ader==null?'⚪':r.ader>=1?'🟢':r.ader>=.9?'🟡':'🔴';
  const L=[`*${CFG.linha} · ${t.n} · ${br(T.data)}*`,`Operador: ${T.operador||'—'}`,`Catálogo ${T.cat}${c&&c.n?' ('+c.n+')':''} · Lote ${T.lote||'—'}${T.op?' · OP '+T.op:''}`,'',
