@@ -41,6 +41,8 @@ const html = fs.readFileSync(path.resolve(__dirname, '../../CELULAR/index.html')
     const tabelas = [...wa.matchAll(/```\n([\s\S]*?)\n```/g)].flatMap(m => m[1].split('\n'));   /* linhas dentro das três crases; emoji ocupa duas colunas */
     assert.ok(tabelas.length > 10 && tabelas.every(l => [...l.replace(/[🟢🔴]/gu, 'xx')].length <= 26), 'linhas das tabelas com até 26 caracteres: ' + tabelas.filter(l => [...l].length > 26).join(' | '));
     assert.doesNotMatch(wa, /\t/, 'sem tabulação');
+    const vazio = await p.evaluate(() => { const T = novoTurno(TURNOS[0].turno, TURNOS[0].data); return txtWA(T); });   /* nenhuma hora lançada: — no total, nunca 0 */
+    assert.match(vazio, /\nProdução: — mil\n/); assert.match(vazio, /\nTOTAL +— +[\d.,]+ +—\n/, 'total sem hora lançada é —: ' + vazio.split('TOTAL')[1]);
     assert.ok(await p.evaluate(() => document.querySelector('#cv').getContext('2d').getImageData(80, 120, 1, 1).data[3] > 0), 'imagem do WhatsApp desenhada');
     console.log('ok fechamento e texto do WhatsApp (hora vazia como "—", não zero); imagem desenhada');
 

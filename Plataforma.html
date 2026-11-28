@@ -49918,7 +49918,8 @@ function waCampos(T){const r=resumo(T),t=turnoDe(T.turno)||{n:T.turno},c=r.c;
  /* hora a hora: HORA REAL META STATUS; hora sem produção informada mostra "—" */
  const H=['HORA'.padEnd(6)+'REAL'.padStart(5)+'META'.padStart(6)+'  ST'];
  for(const s of T.slots){const p=planoSlot(T,s);H.push(waHora(s.de).padEnd(6)+(s.real==null?'—':nf(s.real)).padStart(5)+nf(p).padStart(6)+'  '+(s.real==null?'—':waSt(+s.real,p)))}
- H.push(waSep(),'TOTAL'.padEnd(6)+nf(r.re).padStart(5)+nf(r.pl).padStart(6)+'  '+waSt(r.falta<T.slots.length?r.re:null,r.pl));
+ const algum=r.falta<T.slots.length;   /* nenhuma hora lançada: o total é ausente (—), não zero */
+ H.push(waSep(),'TOTAL'.padEnd(6)+(algum?nf(r.re):'—').padStart(5)+nf(r.pl).padStart(6)+'  '+waSt(algum?r.re:null,r.pl));
  const obsP=T.slots.flatMap(s=>s.par.filter(x=>x.obs).map(x=>`• ${waHora(s.de)} ${x.mot}: ${x.obs}`));   /* a observação de cada parada vai abaixo da tabela, fora dela (texto livre não cabe nas colunas) */
  const par=r.mot.length?'⏱️ *PARADAS (min)*\n'+waTab([...r.mot.map(([m,v])=>waCol(m,nf(v))),waSep(),waCol('TOTAL',nf(r.pm))])+(obsP.length?'\n'+obsP.join('\n'):''):'';
  const M=T.scrapModo==='maq'?Object.entries(T.scrapMaq||{}).filter(([,v])=>+v>0).sort((a,b)=>b[1]-a[1]):[];
