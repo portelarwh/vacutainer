@@ -20,6 +20,13 @@ Arquivo único: [index.html](index.html), HTML, CSS e JavaScript nativos, sem in
 - Para quem já usa os arquivos separados: abra o `Linha.html` no Chrome, do mesmo jeito; antes, por segurança, use **Exportar histórico**. Se o celular abrir o arquivo por outro caminho (outro app de arquivos), os dados podem ficar em outro lugar: o histórico exportado volta por Importar histórico.
 - Teste: [testes/plataforma/app-cel-linha.cjs](../testes/plataforma/app-cel-linha.cjs).
 
+## Mensagem do WhatsApp em blocos (Meu Turno 0.9 · plataforma 1.8.111, 28/11/2026, pedido do responsável)
+
+- Blocos curtos com o título em negrito: identificação, desempenho, paradas (por motivo; a observação de cada parada vai abaixo da tabela), scrap por estação, consumo de gel, hora a hora e observações. Blocos sem dado não aparecem.
+- Tabelas entre três crases (fonte monoespaçada no WhatsApp), alinhadas com espaços (`padStart`/`padEnd`, nunca tabulação) e com até 26 caracteres por linha. Hora como `06h` (06:00 vira link em alguns aparelhos).
+- 🟢 produção igual ou acima da meta, 🔴 abaixo; sem dado, `—` (ausência não é zero).
+- A mensagem padrão é o modelo `WA_PADRAO`, o mesmo que a Administração › Apps de celular mostra. Os marcadores novos (`{titulo}`, `{catalogo_codigo}`, `{produto}`, `{nota_unidade}`, `{bloco_paradas}`, `{bloco_scrap}`, `{bloco_gel}`, `{bloco_obs}`) também servem para um modelo próprio, e `{hora_a_hora}` agora é a tabela.
+
 ## Correções da auditoria de 28/11/2026 (Linha no celular 0.5, Meu Turno 0.8, Manutenção 0.3 · plataforma 1.8.110)
 
 - **Linha no celular:** cadastro mais antigo (rev menor) não substitui o deste celular; cada módulo espera o próprio cadastro (um pacote só da Operação não libera a Manutenção); as metas de hoje aparecem mesmo sem o plano do mês; escolher o arquivo para a câmera, e o aviso de câmera indisponível não apaga o resultado.
