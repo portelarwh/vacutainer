@@ -4536,7 +4536,7 @@ function wireConfigComum(){$('#cPasta').onclick=async()=>{if(await Store.pick())
         entrar pelo ID (autocadastro como Consulta); página inicial por perfil (1x por sessão); vigência gravada não se edita (desativar com motivo); painel de vigências; semáforo central; saída do modo de teste.
    1.1.2: aviso da carga diz qual base foi lida.  1.5: páginas Paradas, Máquinas, Manutenção e Projetos na lista (aparecem quando o HTML chega na pasta).  1.4: lista técnica pela CS12 multinível (itens = nível 1, estrutura = níveis 2+); CS03 sai.  1.3: cabeçalho comum (vac-cabecalho v2: barra do sistema + página + abas), busca Ctrl K, acabamento V1.90, Versões com cabeçalho e último backup.  1.2: Configuração › Versões das páginas (versão e data de cada HTML, gravação das bases, cópias repetidas, histórico).
    ===================================================================== */
-const PAGE={id:'portal',titulo:"Administração · Linha Vacutainer",tituloCurto:"Administração",subtitulo:'Sistemas de gestão da linha',versao:'1.9.110',baseFile:'portal-base.json',idb:'vac-portal',backupDir:'00. Backups/Portal',
+const PAGE={id:'portal',titulo:"Administração · Linha Vacutainer",tituloCurto:"Administração",subtitulo:'Sistemas de gestão da linha',versao:'1.9.111',baseFile:'portal-base.json',idb:'vac-portal',backupDir:'00. Backups/Portal',
  vazio:()=>({schema:'portal-base',schemaVersion:1,rev:0,config:{modulos:{},avisoDias:30,notas:{}},audit:[]}),
  /* itens do Portal para a busca Ctrl K: cadastro, pendências e telas */
  busca:q=>{const R=[],D=Cad.D;if(D)for(const t of CAD_ORD){for(const it of D[t]||[]){const c=String(it[kOf(t)]),nm=t==='bom'?((cadItem('catalogos',it.catalogo)||{}).nome||''):it.nome||'';if(norm(c+' '+nm).includes(q))R.push({tipo:CAD_T[t].um,txt:c+(nm?' · '+nm:''),sub:'Cadastros'+(cadAtivo(t,it,D)?'':' · inativo'),href:'#cadastros/'+t+'/'+encodeURIComponent(c)});if(R.length>30)break}}
@@ -5410,6 +5410,9 @@ const CAD_SECS=['inicio','gel','matriz','importar','auditoria','backups','segura
    curtas (macro, sem detalhe técnico). REGRA: toda versão nova da plataforma ganha uma entrada aqui, a mais recente primeiro
    (AGENTS.md e CLAUDE.md). Tipos: nova (função nova), melhoria (algo que já existia ficou melhor), correcao (erro corrigido). */
 const NOVIDADES=[
+ {v:'1.8.112',d:'2026-11-28',itens:[
+  ['novo','Meu Turno: OEE do turno (produção boa ÷ capacidade no tempo disponível, a mesma conta da Produção) e OEE do dia: o turno seguinte digita a produção boa dos anteriores (do quadro) e a mensagem do WhatsApp mostra o dia inteiro, com a meta.'],
+  ['melhoria','Administração: o cadastro do celular leva o PPH nominal, a meta de OEE de cada catálogo e as pausas que descontam de cada turno.']]},
  {v:'1.8.111',d:'2026-11-28',itens:[
   ['melhoria','Mensagem do WhatsApp do Meu Turno em blocos curtos: identificação, desempenho, paradas, scrap por estação, gel e hora a hora em tabelas alinhadas (fonte monoespaçada), com 🟢 na meta e 🔴 abaixo, hora como 06h e — quando não há dado. A Administração mostra o mesmo modelo e os novos marcadores.']]},
  {v:'1.8.110',d:'2026-11-28',itens:[
@@ -6017,14 +6020,14 @@ const MT_APP={
  metaCat(D,c,d){const v=this.vig(c.vigencias,d)||{},pph=+v.pphNominal||0;if(!pph)return{meta:0,oee:null};
   const M=(D.metasOee||[]).filter(m=>m&amp;&amp;m.ativo!==false),pega=f=>M.filter(f).map(m=>({m,v:this.vig(m.vigencias,d)})).find(x=>x.v&amp;&amp;+x.v.oeeMetaPct>0);
   const hit=pega(m=>String(m.catalogo||'')===String(c.codigo))||pega(m=>!m.catalogo&amp;&amp;m.familia&amp;&amp;String(m.familia)===String(c.familia))||pega(m=>!m.catalogo&amp;&amp;!m.familia);
-  const base=hit&amp;&amp;+hit.v.pph>0?+hit.v.pph:pph,oee=hit?+hit.v.oeeMetaPct/100:null;return{meta:Math.round(base*(oee==null?1:oee)/100)/10,oee}},
+  const base=hit&amp;&amp;+hit.v.pph>0?+hit.v.pph:pph,oee=hit?+hit.v.oeeMetaPct/100:null;return{meta:Math.round(base*(oee==null?1:oee)/100)/10,oee,pph:base}},
  gelCat(D,c,d){const g=c.gel&amp;&amp;this.vig(c.gel.vig,d);if(g&amp;&amp;+g.gTubo>0)return+g.gTubo;
   const gel=new Set((D.materiais||[]).filter(m=>m&amp;&amp;m.tipo==='gel').map(m=>String(m.codigo))),b=(D.bom||[]).find(x=>x&amp;&amp;String(x.catalogo)===String(c.codigo)),v=b&amp;&amp;this.vig(b.vigencias,d);
   if(!v)return 0;const it=(v.itens||[]).concat(v.estrutura||[]).find(i=>gel.has(String(i.material)));return it?+it.qtdPorMilheiro||0:0},   /* kg por mil tubos = g por tubo */
  cfg(D){const d=this.hoje(),at=x=>x&amp;&amp;x.ativo!==false,av=[];
   const linha=(D.linhas||[]).find(at)||{};
-  const turnos=(D.turnos||[]).filter(at).map(t=>{const v=this.vig(t.vigencias,d);return v&amp;&amp;v.inicio&amp;&amp;v.fim?{c:String(t.codigo),n:t.nome||String(t.codigo),i:v.inicio,f:v.fim}:null}).filter(Boolean).sort((a,b)=>a.c.localeCompare(b.c));
-  const cats=(D.catalogos||[]).filter(c=>at(c)&amp;&amp;c.tipoItem!=='preparacao').map(c=>{const m=this.metaCat(D,c,d);if(m.oee==null)av.push(c.codigo);return{c:String(c.codigo),n:c.nome||String(c.codigo),meta:m.meta,gel:this.gelCat(D,c,d)}}).filter(c=>c.meta>0);
+  const turnos=(D.turnos||[]).filter(at).map(t=>{const v=this.vig(t.vigencias,d);return v&amp;&amp;v.inicio&amp;&amp;v.fim?{c:String(t.codigo),n:t.nome||String(t.codigo),i:v.inicio,f:v.fim,p:(v.pausas||[]).filter(x=>x&amp;&amp;x.desconta!==false).map(x=>({i:x.inicio||'',f:x.fim||'',min:x.inicio&amp;&amp;x.fim?null:(+x.duracaoMin||null),dias:(x.dias||[]).slice()}))}:null}).filter(Boolean).sort((a,b)=>a.c.localeCompare(b.c));
+  const cats=(D.catalogos||[]).filter(c=>at(c)&amp;&amp;c.tipoItem!=='preparacao').map(c=>{const m=this.metaCat(D,c,d);if(m.oee==null)av.push(c.codigo);return{c:String(c.codigo),n:c.nome||String(c.codigo),meta:m.meta,gel:this.gelCat(D,c,d),pph:m.pph||null,oeeMeta:m.oee}}).filter(c=>c.meta>0);   /* 1.9.111 · OEE no celular: PPH nominal (tubos/h) e meta de OEE */
   const uniq=(L,k,n)=>{const vist={};return L.map(x=>{let nm=String(x[n]||x[k]);if(vist[nm])nm+=' ('+x[k]+')';vist[nm]=1;return{c:String(x[k]),n:nm}})};
   const maqs=uniq((D.equipamentos||[]).filter(at).sort((a,b)=>String(a.codigo).localeCompare(String(b.codigo))),'codigo','nome');
   const mots=uniq((D.paradas||[]).filter(at),'codigo','nome');
@@ -6034,10 +6037,10 @@ const MT_APP={
    pessoas,scrapGel:['Purga','Sobra no barril','Outros'],modeloWa:String(((D.parametros||{}).celular||{}).mensagemWhats||''),fonte:{cadRev:D.rev??null,geradoEm:new Date().toISOString(),por:user()||''},rev:Date.now()},semMeta:av};},
  /* 1.9.104 · APP-CEL fase 1 (27/11/2026): modelo da mensagem do WhatsApp do Meu Turno (parametros.celular.mensagemWhats). Marcadores entre
     chaves, os mesmos do app (WA_MARCAS em celular/meu-turno); vazio = a mensagem padrão do app. A prévia usa valores fictícios. */
- WA_MARCAS:[["titulo","Título (LINHA | TURNO)"],["data","Data"],["operador","Operador"],["catalogo_codigo","Catálogo (código)"],["produto","Produto"],["catalogo","Catálogo com o nome"],["lote","Lote"],["op","OP"],["semaforo","Bolinha (🟢 na meta, 🔴 abaixo)"],["aderencia","Atingimento %"],["producao","Produção"],["plano","Planejado"],["unidade","Unidade"],["paradas_min","Paradas (min)"],["paradas_motivos","Paradas por motivo (texto)"],["scrap","Scrap"],["gel","Gel (texto)"],["hora_a_hora","Tabela hora a hora"],["nota_unidade","Nota da unidade"],["bloco_paradas","Bloco de paradas"],["bloco_scrap","Bloco de scrap por estação"],["bloco_gel","Bloco de gel"],["bloco_obs","Bloco de observações"],["linha","Linha"],["turno","Turno"],["obs","Observações (texto)"]],
- /* 1.9.110 · WhatsApp em blocos (28/11/2026): o mesmo modelo padrão do app (WA_PADRAO de celular/meu-turno); tabelas entre três crases */
- WA_PADRAO:"📊 *{titulo}*\n📅 {data}\n\n*IDENTIFICAÇÃO*\nOperador: {operador}\nCatálogo: {catalogo_codigo}\nProduto: {produto}\nLote: {lote}\nOP: {op}\n\n📈 *DESEMPENHO*\n{semaforo} *Atingimento: {aderencia}*\nProdução: {producao} {unidade}\nPlanejado: {plano} {unidade}\nParadas: {paradas_min} min\nScrap: {scrap}\n\n{bloco_paradas}\n\n{bloco_scrap}\n\n{bloco_gel}\n\n🕒 *PRODUÇÃO HORA A HORA*\n{hora_a_hora}\n{nota_unidade}\n\n{bloco_obs}",
- WA_EXEMPLO:{"titulo": "LINHA VACUTAINER | 1º TURNO", "linha": "Linha Vacutainer", "turno": "1º Turno", "data": "28/11/2026", "operador": "Pessoa Fictícia", "catalogo": "360060 (13x100 · 5 ml SST)", "catalogo_codigo": "360060", "produto": "13x100 · 5 ml SST", "lote": "6264985", "op": "19457510", "producao": "493", "plano": "476", "unidade": "mil", "aderencia": "104%", "semaforo": "🟢", "paradas_min": "25", "paradas_motivos": "Setup 25'", "scrap": "274 tubos (0,06%)", "gel": "real — · teórico 411,2 kg", "hora_a_hora": "```\nHORA   REAL  META  ST\n06h      50    56  🔴\n07h      56    56  🟢\n08h      90    56  🟢\n09h      42    56  🔴\n10h      60    56  🟢\n11h      65    56  🟢\n12h      90    56  🟢\n13h30    40    84  🔴\n────────────────────────\nTOTAL   493   476  🟢\n```", "nota_unidade": "Valores em milhares de tubos.", "bloco_paradas": "⏱️ *PARADAS (min)*\n```\nSetup                 25\n────────────────────────\nTOTAL                 25\n```", "bloco_scrap": "🗑️ *SCRAP POR ESTAÇÃO (tubos)*\n```\nGel Dispenser        100\nEtiquetagem           64\nEvacuator             60\nTullip A              50\n────────────────────────\nTOTAL                274\n```", "bloco_gel": "🧪 *CONSUMO DE GEL*\n```\nReal                   —\nTeórico         411,2 kg\nScrap                0 g\n```", "bloco_obs": "📝 *OBSERVAÇÕES*\nTurno de demonstração", "obs": "Turno de demonstração"},
+ WA_MARCAS:[["titulo","Título (LINHA | TURNO)"],["data","Data"],["operador","Operador"],["catalogo_codigo","Catálogo (código)"],["produto","Produto"],["catalogo","Catálogo com o nome"],["lote","Lote"],["op","OP"],["semaforo","Bolinha do plano (🟢 na meta, 🔴 abaixo)"],["aderencia","Atingimento do plano %"],["producao","Produção"],["plano","Planejado"],["unidade","Unidade"],["semaforo_oee","Bolinha do OEE"],["oee_turno","OEE do turno"],["oee_meta","Meta de OEE"],["capacidade","Capacidade do turno"],["tempo","Tempo disponível"],["bloco_dia","Bloco do dia (OEE do dia)"],["paradas_min","Paradas (min)"],["paradas_motivos","Paradas por motivo (texto)"],["scrap","Scrap"],["gel","Gel (texto)"],["hora_a_hora","Tabela hora a hora"],["nota_unidade","Nota da unidade"],["bloco_paradas","Bloco de paradas"],["bloco_scrap","Bloco de scrap por estação"],["bloco_gel","Bloco de gel"],["bloco_obs","Bloco de observações"],["linha","Linha"],["turno","Turno"],["obs","Observações (texto)"]],
+ /* 1.9.111 · OEE do turno e do dia na mensagem (28/11/2026); o mesmo modelo padrão do app (WA_PADRAO de celular/meu-turno) */
+ WA_PADRAO:"📊 *{titulo}*\n📅 {data}\n\n*IDENTIFICAÇÃO*\nOperador: {operador}\nCatálogo: {catalogo_codigo}\nProduto: {produto}\nLote: {lote}\nOP: {op}\n\n📈 *DESEMPENHO DO TURNO*\n{semaforo} *Plano: {aderencia}* ({producao} de {plano} {unidade})\n{semaforo_oee} *OEE do turno: {oee_turno}* (meta {oee_meta})\nCapacidade: {capacidade} {unidade} em {tempo}\nParadas: {paradas_min} min\nScrap: {scrap}\n\n{bloco_dia}\n\n{bloco_paradas}\n\n{bloco_scrap}\n\n{bloco_gel}\n\n🕒 *PRODUÇÃO HORA A HORA*\n{hora_a_hora}\n{nota_unidade}\n\n{bloco_obs}",
+ WA_EXEMPLO:{"titulo": "LINHA VACUTAINER | 2º TURNO", "linha": "Linha Vacutainer", "turno": "2º Turno", "data": "28/11/2026", "operador": "Pessoa Fictícia", "catalogo": "360060 (13x100 · 5 ml SST)", "catalogo_codigo": "360060", "produto": "13x100 · 5 ml SST", "lote": "6264985", "op": "19457510", "producao": "432", "plano": "476", "unidade": "mil", "aderencia": "91%", "semaforo": "🔴", "oee_turno": "70,6%", "oee_meta": "77,5%", "semaforo_oee": "🔴", "capacidade": "612", "tempo": "8h30", "paradas_min": "25", "paradas_motivos": "Setup 25'", "scrap": "274 tubos (0,06%)", "gel": "real — · teórico 360,3 kg", "bloco_dia": "📅 *DIA 28/11 ATÉ O 2º TURNO* (2 de 3 turnos)\n```\nTURNO    BOA   CAP    OEE\nT1 ✎     493   686  71,9%\nT2       432   612  70,6%\n────────────────────────\nDIA      925 1.298  71,3%\n```\n🔴 *OEE do dia: 71,3%* (meta 77,5%)\n✎ informado pelo quadro", "hora_a_hora": "```\nHORA   REAL  META  ST\n14h30    50    56  🔴\n15h      56    56  🟢\n────────────────────────\nTOTAL   432   476  🔴\n```", "nota_unidade": "Valores em milhares de tubos.", "bloco_paradas": "⏱️ *PARADAS (min)*\n```\nSetup                 25\n────────────────────────\nTOTAL                 25\n```", "bloco_scrap": "", "bloco_gel": "", "bloco_obs": "📝 *OBSERVAÇÕES*\nTurno de demonstração", "obs": "Turno de demonstração"},
  waPreencher(m,V){return String(m).replace(/\{([a-z_]+)\}/g,(x,k)=>Object.prototype.hasOwnProperty.call(V,k)?V[k]:x)},
  /* 1.9.72 · MAN-01: app Manutenção (técnico): equipamentos, modos de falha e pessoas da manutenção (só ID, nome e turno) */
  cfgMan(D){const at=x=>x&amp;&amp;x.ativo!==false,linha=(D.linhas||[]).find(at)||{};
@@ -49745,7 +49748,7 @@ const hm2min=s=>{const[h,m]=String(s||'0:0').split(':').map(Number);return h*60+
 const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,6);
 const addDias=(iso,n)=>{const d=new Date(iso+'T12:00:00');d.setDate(d.getDate()+n);return hojeISO(d)};
 function toast(t){const e=document.createElement('div');e.className='toast';e.textContent=t;document.body.appendChild(e);setTimeout(()=>e.remove(),2600)}
-const VERSAO='0.9';
+const VERSAO='1.0';
 /* o arquivo é enviado aos celulares e aberto direto (sem servidor): se o navegador que abriu não guarda dados, o operador é avisado */
 const GUARDA=(()=>{try{localStorage.setItem('mt.teste','1');localStorage.removeItem('mt.teste');return true}catch(e){return false}})();
 const LS={get(k,d){try{const v=localStorage.getItem('mt.'+k);return v?JSON.parse(v):d}catch(e){return d}},set(k,v){try{localStorage.setItem('mt.'+k,JSON.stringify(v));return true}catch(e){toast('Não gravou neste celular (memória cheia?): exporte o histórico e tente de novo');return false}}};   /* 0.8 · A21: quem chama sabe se gravou */
@@ -49780,17 +49783,35 @@ function turnoAgora(d=new Date()){const m=d.getHours()*60+d.getMinutes();for(con
 let TURNOS=LS.get('turnos',[]);const salvarT=()=>LS.set('turnos',TURNOS);
 /* 0.3 · o turno guarda a meta, o gel e o nome do catálogo do momento do lançamento (catSnap): mudar a configuração depois não
    altera turnos já lançados nem os relatórios refeitos deles. Turno antigo sem catSnap usa a configuração atual. */
-const fotoCat=c=>c?{c:c.c,n:c.n,meta:c.meta,gel:c.gel}:null;
+const fotoCat=c=>c?{c:c.c,n:c.n,meta:c.meta,gel:c.gel,pph:c.pph,oeeMeta:c.oeeMeta}:null;
 const catDo=T=>T.catSnap&amp;&amp;T.catSnap.c===T.cat?T.catSnap:cat(T.cat);
 function novoTurno(tc,data){const t=turnoDe(tc),c=CFG.cats[0];return{id:uid(),data,turno:tc,operador:LS.get('operador',''),operadorId:LS.get('operadorId',''),cat:c.c,catSnap:fotoCat(c),lote:'',op:'',
  slots:intervalos(t).map(s=>({...s,real:null,par:[]})),scrapModo:'total',scrapTotal:null,scrapMaq:{},gel:{aplicadoKg:null,itens:{}},foto:null,obs:'',fechado:false,criadoEm:new Date().toISOString()}}
 const planoSlot=(T,s)=>{const c=catDo(T);return c?Math.round(c.meta*s.min/60):0};
+/* 1.0 · OEE do turno e do dia (pedido do responsável, 28/11/2026). A mesma conta da Produção: capacidade = PPH nominal × tempo disponível
+   (o tempo do turno menos as pausas que descontam, cadastradas no turno da Administração); OEE = produção boa ÷ capacidade; o do dia é
+   Σ produção boa ÷ Σ capacidade dos turnos (nunca média de porcentagens). No celular é prévia: o oficial é o da Produção depois da
+   importação (outras paradas que descontam, como retrabalho, só entram lá). Sem PPH no cadastro, o OEE fica "—". */
+function pausasDe(t,data){const wd=data?new Date(data+'T12:00:00').getDay():null;return(t&amp;&amp;t.p||[]).filter(x=>!x.dias||!x.dias.length||wd==null||x.dias.includes(wd))}
+function tempoTurno(t,data){if(!t)return null;const a0=hm2min(t.i);let b0=hm2min(t.f);if(b0<=a0)b0+=1440;let min=b0-a0;
+ for(const x of pausasDe(t,data)){if(x.i&amp;&amp;x.f){let pa=hm2min(x.i),pb=hm2min(x.f);if(pa<a0){pa+=1440;pb+=1440}if(pb<=pa)pb+=1440;min-=Math.max(0,Math.min(pb,b0)-Math.max(pa,a0))}else if(+x.min>0)min-=+x.min}
+ return Math.max(0,min)}
+function capDe(tc,cc,data){const m=tempoTurno(turnoDe(tc),data);return cc&amp;&amp;cc.pph&amp;&amp;m!=null?cc.pph/1000*m/60:null}   /* mil tubos */
+const turnosAntes=T=>{const i=CFG.turnos.findIndex(x=>x.c===T.turno);return i>0?CFG.turnos.slice(0,i):[]};
+function diaDe(T){const r=resumo(T),L=[];
+ for(const t of turnosAntes(T)){const a=(T.ant||{})[t.c]||{},cc=cat(a.cat||T.cat)||catDo(T),cap=capDe(t.c,cc,T.data),boa=a.boa==null||a.boa===''?null:+a.boa;
+  L.push({c:t.c,n:t.n,boa,cap,oee:boa!=null&amp;&amp;cap?boa/cap:null,meta:cc&amp;&amp;cc.oeeMeta!=null?cc.oeeMeta:null,ant:true})}
+ L.push({c:T.turno,n:(turnoDe(T.turno)||{}).n||T.turno,boa:r.algum?r.re:null,cap:r.cap,oee:r.oee,meta:r.oeeMeta,ant:false});
+ const ok=L.every(x=>x.boa!=null&amp;&amp;x.cap),sb=L.reduce((a,x)=>a+(x.boa||0),0),sc=L.reduce((a,x)=>a+(x.cap||0),0);
+ const sm=ok&amp;&amp;L.every(x=>x.meta!=null)?L.reduce((a,x)=>a+x.meta*x.cap,0)/sc:null;   /* meta do dia ponderada pela capacidade */
+ return{L,ok,boa:ok?sb:null,cap:ok?sc:null,oee:ok&amp;&amp;sc?sb/sc:null,meta:sm,faltam:L.filter(x=>x.boa==null||!x.cap).map(x=>x.c)}}
 function resumo(T){const c=catDo(T)||{},pl=T.slots.reduce((a,s)=>a+planoSlot(T,s),0),inf=T.slots.filter(s=>s.real!=null),re=inf.reduce((a,s)=>a+(+s.real||0),0);
  const par=T.slots.flatMap(s=>s.par.map(p=>({...p,de:s.de,ate:s.ate}))),pm=par.reduce((a,p)=>a+(+p.min||0),0);
  const scrap=T.scrapModo==='maq'?Object.values(T.scrapMaq).reduce((a,v)=>a+(+v||0),0):(T.scrapTotal==null?null:+T.scrapTotal);
  const gT=c.gel?re*1000*c.gel/1000:null /* re (mil tubos) × 1000 × g/tubo ÷ 1000 = kg */, gR=T.gel.aplicadoKg==null?null:+T.gel.aplicadoKg, gS=Object.values(T.gel.itens||{}).reduce((a,v)=>a+(+v||0),0);
  const mot={};for(const p of par)mot[p.mot]=(mot[p.mot]||0)+(+p.min||0);
- return{pl,re,ader:pl?re/pl:null,falta:T.slots.length-inf.length,par,pm,mot:Object.entries(mot).sort((a,b)=>b[1]-a[1]),scrap,scrapPct:scrap!=null&amp;&amp;(re*1000+scrap)>0?scrap/(re*1000+scrap):null /* 0.8 · A20: zero bons e scrap > 0 é 100%, não ausente */,gT,gR,gS,gIdx:gT&amp;&amp;gR!=null?gR/gT:null,c}}
+ const algum=inf.length>0,capT=capDe(T.turno,c&amp;&amp;c.pph?c:null,T.data),tMin=tempoTurno(turnoDe(T.turno),T.data);
+ return{algum,cap:capT,tempoMin:tMin,oee:algum&amp;&amp;capT?re/capT:null,oeeMeta:c.oeeMeta!=null?c.oeeMeta:null,pl,re,ader:pl?re/pl:null,falta:T.slots.length-inf.length,par,pm,mot:Object.entries(mot).sort((a,b)=>b[1]-a[1]),scrap,scrapPct:scrap!=null&amp;&amp;(re*1000+scrap)>0?scrap/(re*1000+scrap):null /* 0.8 · A20: zero bons e scrap > 0 é 100%, não ausente */,gT,gR,gS,gIdx:gT&amp;&amp;gR!=null?gR/gT:null,c}}
 const corAder=a=>a==null?'muted':a>=1?'okc':a>=.9?'warnc':'critc';
 
 /* fotos no IndexedDB (não enchem o localStorage) */
@@ -49849,6 +49870,7 @@ function vTurno(){const T=atual();if(!T)return topo('Meu turno')+`<main><div cla
    ${s.par.length?`<div class="pars">${s.par.map((x,k)=>`<div class="par"><span class="m tn">${x.min}'</span><span>${esc(x.mot)}${x.maq?' · '+esc(x.maq):''}${x.obs?`<span class="muted"> · ${esc(x.obs)}</span>`:''}</span><button class="x" data-delp="${i}:${k}" aria-label="Remover parada">×</button></div>`).join('')}</div>`:''}
    <button class="addp" data-addp="${i}">+ parada${pm?` (${pm} min)`:''}</button></div>`}).join('')}
  </div></div>
+ ${turnosAntes(T).length?cartaoDia(T):''}
  <div class="card"><h2>Scrap de tubos</h2><div style="display:grid;gap:10px"><div class="seg"><button data-sm="total" class="${T.scrapModo==='total'?'on':''}">Total</button><button data-sm="maq" class="${T.scrapModo==='maq'?'on':''}">Por máquina</button></div>
   ${T.scrapModo==='total'?`<label class="f">Scrap total (tubos)<input class="in tn" id="scT" inputmode="numeric" value="${T.scrapTotal??''}" placeholder="0"></label>`
    :`<div style="display:grid;gap:8px">${CFG.maqs.map(m=>`<label class="f" style="grid-template-columns:1fr 120px;align-items:center">${esc(m)}<input class="in tn" data-scm="${esc(m)}" inputmode="numeric" value="${T.scrapMaq[m]??''}" placeholder="0" style="min-height:44px;font-size:16px;text-align:right"></label>`).join('')}</div>`}
@@ -49864,10 +49886,19 @@ function vTurno(){const T=atual();if(!T)return topo('Meu turno')+`<main><div cla
  <div class="card"><h2>Observações</h2><textarea class="in" id="obs" rows="3" placeholder="O que o próximo turno precisa saber">${esc(T.obs)}&lt;/textarea></div>
  <div style="height:70px"></div></main>
  <div class="bar"><div class="k"><span>Produzido / plano</span><b class="tn"><span class="${corAder(r.ader)}">${nf(r.re)}</span> / ${nf(r.pl)} ${CFG.unidade}</b><span class="tn">${r.ader==null?'':nf(r.ader*100)+'% · '}${r.pm} min parado</span></div><button class="btn ok" id="fechar">Fechar turno</button></div>`}
+/* 1.0 · cartão "Dia até agora": a produção boa dos turnos anteriores de hoje, copiada do quadro (só a boa; a capacidade sai do cadastro) */
+function cartaoDia(T){const D=diaDe(T),pc=v=>v==null?'—':nf(v*100,1)+'%';
+ return `<div class="card"><h2>Dia até agora <span class="sp"></span><span class="small" style="text-transform:none;letter-spacing:0">do quadro</span></h2><div style="display:grid;gap:10px">
+  <p class="small muted" style="margin:0">Digite a produção boa dos turnos anteriores de hoje (${CFG.unidade} tubos), como está no quadro. A capacidade vem do cadastro.</p>
+  ${D.L.filter(x=>x.ant).map(x=>{const a=(T.ant||{})[x.c]||{};return`<div class="g2"><label class="f">${esc(x.n)} · produção boa<input class="in" data-ant="${esc(x.c)}" inputmode="decimal" value="${a.boa==null?'':esc(String(a.boa))}" placeholder="${CFG.unidade}"></label><label class="f">Catálogo<select class="in" data-antcat="${esc(x.c)}">${CFG.cats.map(c=>`<option value="${esc(c.c)}"${c.c===(a.cat||T.cat)?' selected':''}>${esc(c.c)}</option>`).join('')}</select></label></div>
+  <div class="small muted" style="margin-top:-4px">Capacidade ${nf(x.cap)} ${CFG.unidade} · OEE ${pc(x.oee)}</div>`}).join('')}
+  <div class="small"><b>OEE do dia:</b> ${D.oee==null?'— <span class="muted">(falta '+esc(D.faltam.join(', '))+')</span>':pc(D.oee)}${D.meta!=null?' · meta '+pc(D.meta):''}</div></div></div>`}
 function ligTurno(){const T=atual();comum();if(!T)return;const sv=()=>{salvarT()},rr=()=>{salvarT();const y=scrollY;render();scrollTo(0,y)};
  $$('[data-tc]').forEach(b=>b.onclick=()=>{if(b.dataset.tc===T.turno)return;if(T.slots.some(s=>s.real!=null||s.par.length)&amp;&amp;!confirm('Trocar o turno refaz o hora a hora. Continuar?'))return;T.turno=b.dataset.tc;T.slots=intervalos(turnoDe(T.turno)).map(s=>({...s,real:null,par:[]}));rr()});
  if($('#op').tagName==='SELECT')$('#op').onchange=e=>{const x=pessoas().find(y=>String(y.id)===e.target.value);T.operadorId=x?String(x.id):'';T.operador=x?x.n:'';LS.set('operador',T.operador);LS.set('operadorId',T.operadorId);sv()};else $('#op').oninput=e=>{T.operador=e.target.value;LS.set('operador',T.operador);sv()};$('#lote').oninput=e=>{T.lote=e.target.value.trim();const o=ordensDia(T.data).find(x=>x.lote===T.lote);if(o&amp;&amp;o.ordem&amp;&amp;!T.op){T.op=o.ordem;const n=$('#opn');if(n)n.value=o.ordem}sv()};$('#opn').oninput=e=>{T.op=e.target.value.trim();sv()};
  $('#cat').onchange=e=>{T.cat=e.target.value;T.catSnap=fotoCat(cat(T.cat));rr()};
+ $$('[data-ant]').forEach(i=>i.onchange=()=>{const k=i.dataset.ant,v=i.value.trim().replace(',','.');T.ant=T.ant||{};T.ant[k]={...(T.ant[k]||{}),boa:v===''?null:Math.max(0,+v)};rr()});
+ $$('[data-antcat]').forEach(s=>s.onchange=()=>{const k=s.dataset.antcat;T.ant=T.ant||{};T.ant[k]={...(T.ant[k]||{}),cat:s.value};rr()});
  $$('[data-real]').forEach(i=>{i.onchange=()=>{const v=i.value.trim();T.slots[+i.dataset.real].real=v===''?null:Math.max(0,+v.replace(',','.'));rr()}});
  $$('[data-addp]').forEach(b=>b.onclick=()=>parada(T,+b.dataset.addp,rr));
  $$('[data-delp]').forEach(b=>b.onclick=()=>{const[i,k]=b.dataset.delp.split(':').map(Number);T.slots[i].par.splice(k,1);rr()});
@@ -49908,12 +49939,20 @@ const WA_MARCAS=['linha','turno','data','operador','catalogo','lote','op','produ
    em qualquer aparelho; hora como 06h (06:00 vira link em alguns aparelhos); 🟢 produção igual ou acima da meta, 🔴 abaixo; sem dado, "—"
    (ausência não é zero). Os blocos opcionais (paradas, scrap por estação, gel, observações) só aparecem quando há o que mostrar. */
 const WA_LARG=24;
-const WA_PADRAO='📊 *{titulo}*\n📅 {data}\n\n*IDENTIFICAÇÃO*\nOperador: {operador}\nCatálogo: {catalogo_codigo}\nProduto: {produto}\nLote: {lote}\nOP: {op}\n\n📈 *DESEMPENHO*\n{semaforo} *Atingimento: {aderencia}*\nProdução: {producao} {unidade}\nPlanejado: {plano} {unidade}\nParadas: {paradas_min} min\nScrap: {scrap}\n\n{bloco_paradas}\n\n{bloco_scrap}\n\n{bloco_gel}\n\n🕒 *PRODUÇÃO HORA A HORA*\n{hora_a_hora}\n{nota_unidade}\n\n{bloco_obs}';
+const WA_PADRAO='📊 *{titulo}*\n📅 {data}\n\n*IDENTIFICAÇÃO*\nOperador: {operador}\nCatálogo: {catalogo_codigo}\nProduto: {produto}\nLote: {lote}\nOP: {op}\n\n📈 *DESEMPENHO DO TURNO*\n{semaforo} *Plano: {aderencia}* ({producao} de {plano} {unidade})\n{semaforo_oee} *OEE do turno: {oee_turno}* (meta {oee_meta})\nCapacidade: {capacidade} {unidade} em {tempo}\nParadas: {paradas_min} min\nScrap: {scrap}\n\n{bloco_dia}\n\n{bloco_paradas}\n\n{bloco_scrap}\n\n{bloco_gel}\n\n🕒 *PRODUÇÃO HORA A HORA*\n{hora_a_hora}\n{nota_unidade}\n\n{bloco_obs}';
 const waHora=de=>{const m=/^(\d{1,2}):(\d{2})/.exec(String(de||''));return m?m[1].padStart(2,'0')+'h'+(m[2]==='00'?'':m[2]):String(de||'')};
 const waTab=L=>'```\n'+L.join('\n')+'\n```';
 const waSep=()=>'─'.repeat(WA_LARG);
 function waCol(a,b){a=String(a);b=String(b);const lim=WA_LARG-b.length-1;if(a.length>lim)a=a.slice(0,Math.max(1,lim-1))+'.';return a.padEnd(WA_LARG-b.length)+b}
 const waSt=(re,pl)=>re==null||pl==null?'—':re>=pl?'🟢':'🔴';
+const pcW=v=>v==null?'—':nf(v*100,1)+'%';
+/* 1.0 · bloco do dia: turnos anteriores (✎ informados do quadro) e o atual; DIA = Σ boa ÷ Σ capacidade; falta um turno, o dia fica "—" */
+function blocoDia(T){const D=diaDe(T),n=CFG.turnos.length,pos=CFG.turnos.findIndex(x=>x.c===T.turno)+1;
+ const lin=(a,b,c,d)=>String(a).padEnd(7)+String(b).padStart(5)+String(c).padStart(6)+String(d).padStart(7);
+ const L=[lin('TURNO','BOA','CAP','OEE'),...D.L.map(x=>lin(x.c+(x.ant?' ✎':''),x.boa==null?'—':nf(x.boa),x.cap==null?'—':nf(x.cap),pcW(x.oee))),waSep(),lin('DIA',D.boa==null?'—':nf(D.boa),D.cap==null?'—':nf(D.cap),pcW(D.oee))];
+ const tit=`📅 *DIA ${br(T.data).slice(0,5)} ATÉ O ${String((turnoDe(T.turno)||{}).n||T.turno).toUpperCase()}* (${pos} de ${n} turnos)`;
+ const fim=D.oee==null?`⚪ *OEE do dia: —* (falta ${D.faltam.join(', ')})`:`${waSt(D.oee,D.meta)} *OEE do dia: ${pcW(D.oee)}* (meta ${pcW(D.meta)})`;
+ return tit+'\n'+waTab(L)+'\n'+fim+(D.L.some(x=>x.ant)?'\n✎ informado pelo quadro':'')}
 function waCampos(T){const r=resumo(T),t=turnoDe(T.turno)||{n:T.turno},c=r.c;
  /* hora a hora: HORA REAL META STATUS; hora sem produção informada mostra "—" */
  const H=['HORA'.padEnd(6)+'REAL'.padStart(5)+'META'.padStart(6)+'  ST'];
@@ -49932,7 +49971,8 @@ function waCampos(T){const r=resumo(T),t=turnoDe(T.turno)||{n:T.turno},c=r.c;
   scrap:r.scrap==null?'—':nf(r.scrap)+' tubos'+(r.scrapPct!=null?` (${nf(r.scrapPct*100,2)}%)`:''),
   gel:c&amp;&amp;c.gel?`real ${r.gR==null?'—':nf(r.gR,1)+' kg'} · teórico ${nf(r.gT,1)} kg${r.gIdx!=null?` (${nf(r.gIdx*100,1)}%)`:''}`:'',hora_a_hora:waTab(H),
   nota_unidade:u==='mil'?'Valores em milhares de tubos.':u?`Valores em ${u}.`:'',
-  bloco_paradas:par,bloco_scrap:scr,bloco_gel:gel,bloco_obs:T.obs?'📝 *OBSERVAÇÕES*\n'+T.obs:'',obs:T.obs||''}}
+  oee_turno:pcW(r.oee),oee_meta:pcW(r.oeeMeta),semaforo_oee:r.oee==null||r.oeeMeta==null?'⚪':waSt(r.oee,r.oeeMeta),capacidade:r.cap==null?'—':nf(r.cap),tempo:r.tempoMin==null?'—':Math.floor(r.tempoMin/60)+'h'+(r.tempoMin%60?String(r.tempoMin%60).padStart(2,'0'):''),
+  bloco_dia:blocoDia(T),bloco_paradas:par,bloco_scrap:scr,bloco_gel:gel,bloco_obs:T.obs?'📝 *OBSERVAÇÕES*\n'+T.obs:'',obs:T.obs||''}}
 function waPreencher(modelo,V){return String(modelo).replace(/\{([a-z_]+)\}/g,(m,k)=>Object.prototype.hasOwnProperty.call(V,k)?V[k]:m)}
 /* 0.7 · APP-CEL fase 3, parte 2: ordens e lotes do pacote do dia (Linha.html › Atualizar cadastro ou dia) viram a lista do campo Lote;
    escolher o lote preenche a OP quando ela está vazia. Sem pacote, o campo é o de sempre. */
@@ -55529,15 +55569,15 @@ body.vac-porta{overflow:hidden}
     {
       "id": "portal",
       "path": "Plataforma.html#motor/portal",
-      "version": "1.9.110",
-      "sha256": "9a6d35e793e0995a7911ad2d5d1e06d9f5b73f5159d4a1ccc13c9c24a79c070e",
-      "bytes": 1379195
+      "version": "1.9.111",
+      "sha256": "50009ef1de6beb99e503d017b9317ce7974b845cbe0b14a76e82bd3679804622",
+      "bytes": 1380134
     }
   ],
   "limitations": [
     "Projetos e conteúdo técnico OSM/MES/AM/TPM mantêm os limites documentados nas fontes."
   ],
-  "enginesSha256": "edfeda40ec3c4e83374df9ee982919e036b49522ecf45496b1bba13d4c72da60",
+  "enginesSha256": "5ed0fdbb6eec72b9c9540d55ffbd10d1b0c94bf4db3f0babd8b3cd3cc0e4beca",
   "originRevision": "ffc9ee8",
   "sourceMode": "single-html",
   "originEnginesSha256": "a87a64ad0c328f70e102b2ae888790a9b5d5a9bd05778652a7ce7cae140e40d2"
@@ -55608,7 +55648,7 @@ summary{cursor:pointer;font-weight:600;color:var(--navy)}
 /* ---------- referência (atualizar quando a plataforma mudar de versão) ---------- */
 // Iguais às do pacote da plataforma (nova-plataforma/src/generated/manifest.json); o teste ferramenta-verificar confere.
 const VAC_CAD_FORMATO = 2;   /* versão do formato de vacutainer-cadastros.json (VAC_CAD_VERSAO do kit) */
-const VERSOES = {"oee":"2.6.51","perdas":"1.12.22","gel":"2.53","paradas":"1.2.23","equip":"1.0.23","inic":"1.1.18","linha":"1.7.2","projetos":"0.1.16","portal":"1.9.110"};
+const VERSOES = {"oee":"2.6.51","perdas":"1.12.22","gel":"2.53","paradas":"1.2.23","equip":"1.0.23","inic":"1.1.18","linha":"1.7.2","projetos":"0.1.16","portal":"1.9.111"};
 const BASES = [
  { arq: 'vacutainer-cadastros.json', mod: 'portal', nome: 'Cadastro geral (Portal)', obrig: true, cadastro: true, bk: 'Cadastros' },
  { arq: 'portal-base.json', mod: 'portal', nome: 'Portal', obrig: true, bk: 'Portal' },
@@ -56210,7 +56250,7 @@ import { Icon, Button, Badge, Empty, Modal, BarChart, BrandLogo, CommandMenu } f
 import { ModuleFrame } from "vac:modulo/components/ModuleFrame";
 import manifest from "vac:recurso/manifesto";
 import { ModuleTabs } from "vac:modulo/components/ModuleTabs";
-const VERSION = "1.8.111";
+const VERSION = "1.8.112";
 /* Navegação 1.3.0 (16/11/2026): Visão da linha, Relatórios e Importações têm abas; as que mostram uma tela do
    Portal (motor da Administração) trazem o 3º campo com a aba dele. Administração fica só com cadastros e configuração. */
 const SHELL_TABS = {
