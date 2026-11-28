@@ -5410,6 +5410,8 @@ const CAD_SECS=['inicio','gel','matriz','importar','auditoria','backups','segura
    curtas (macro, sem detalhe técnico). REGRA: toda versão nova da plataforma ganha uma entrada aqui, a mais recente primeiro
    (AGENTS.md e CLAUDE.md). Tipos: nova (função nova), melhoria (algo que já existia ficou melhor), correcao (erro corrigido). */
 const NOVIDADES=[
+ {v:'1.8.106',d:'2026-11-28',itens:[
+  ['correção','Produção › Config. › Usuário voltou a abrir: mostrava um erro em vez do usuário atual e da exibição das quantidades.']]},
  {v:'1.8.105',d:'2026-11-28',itens:[
   ['nova','App da linha como página (GitHub Pages): só o código, instalável no celular e funciona sem internet depois de aberto uma vez. O cadastro continua entrando pelo QR ou arquivo da plataforma.']]},
  {v:'1.8.104',d:'2026-11-28',itens:[
@@ -14322,9 +14324,8 @@ Cfg.usuario = {
   render() { return `<section class="card"><header><h3>Usuário atual</h3></header><p>Você está identificado como <b>${esc(Store.S.user || '—')}</b>. O nome aparece em criação, alteração, fechamento, reabertura, configuração, importação e restauração. Não é autenticação.</p><button class="btn primary" id="uChange">${I.user} Trocar usuário</button></section>
     <section class="card section"><header><h3>Exibição das quantidades ${ib('qtyDisplay')}</h3></header><p class="q">Só para você, neste navegador. A base e os outros usuários não mudam.</p>
       <div class="seg" role="group" aria-label="Exibição das quantidades"><button type="button" data-qd="unit" aria-pressed="${App.prefs.qtyDisplay !== 'abs'}">Em milheiros (61 ${esc(db().settings.unitLabel || 'mil')})</button><button type="button" data-qd="abs" aria-pressed="${App.prefs.qtyDisplay === 'abs'}">Número completo (61.000)</button></div>
-      <p class="small muted" style="margin-top:6px">Nos dois modos dá para digitar 61 ou 61.000 na produção da hora: valores abaixo de 10.000 são lidos em milheiros.</p></section>
-    <section class="card section"><header><h3>Nomes já usados</h3></header>${u.length ? `<div class="row">${u.map(n => `<span class="pill none">${esc(n)} <button class="btn xs ghost" data-urm="${esc(n)}" aria-label="Remover ${esc(n)} da lista">✕</button></span>`).join('')}</div><p class="small muted">Remover da lista não altera registros já feitos.</p>` : '<p class="muted small">Nenhum.</p>'}</section>`; },
-  mount(root) { root.querySelectorAll('[data-qd]').forEach(b => b.onclick = () => { App.prefs.qtyDisplay = b.dataset.qd; savePrefs(); render(); toast(b.dataset.qd === 'abs' ? 'Quantidades no número completo.' : 'Quantidades em milheiros.'); }); root.querySelector('#uChange').onclick = () => askUser(); root.querySelectorAll('[data-urm]').forEach(b => b.onclick = () => run(() => Actions.setSettings({ users: (db().settings.users || []).filter(n => n !== b.dataset.urm) }))); }
+      <p class="small muted" style="margin-top:6px">Nos dois modos dá para digitar 61 ou 61.000 na produção da hora: valores abaixo de 10.000 são lidos em milheiros.</p></section>`; },   /* 1.8.106 · BUG-01: a lista "Nomes já usados" saiu com settings.users (Bloco 3b, #158); quem usa vem do Entrar */
+  mount(root) { root.querySelectorAll('[data-qd]').forEach(b => b.onclick = () => { App.prefs.qtyDisplay = b.dataset.qd; savePrefs(); render(); toast(b.dataset.qd === 'abs' ? 'Quantidades no número completo.' : 'Quantidades em milheiros.'); }); root.querySelector('#uChange').onclick = () => askUser(); }
 };
 
 /* 2.6.36 · CFG-ADM etapa 2 (decisão do responsável, 22/11/2026): Estrutura, Turnos, Catálogos, Metas e Tipos de parada são cadastro da
@@ -55390,8 +55391,8 @@ body.vac-porta{overflow:hidden}
       "id": "oee",
       "path": "Plataforma.html#motor/oee",
       "version": "2.6.50",
-      "sha256": "0ae6f0c6a2cc54ed74fe85e06420942a4f06fa3aaf45b8bd54ab2bfaa8e85463",
-      "bytes": 2400439
+      "sha256": "1f85cbe78d765e0f2de3b2e2f39f1f8d7123085816c557b8bda3118935ed9415",
+      "bytes": 2399974
     },
     {
       "id": "perdas",
@@ -55446,14 +55447,14 @@ body.vac-porta{overflow:hidden}
       "id": "portal",
       "path": "Plataforma.html#motor/portal",
       "version": "1.9.107",
-      "sha256": "fa171f1be760579958e24f903c9001bcc124d8c281767a1f53512f6b9136c6d5",
-      "bytes": 1373157
+      "sha256": "9d7354072fa85797b9e7b8cece8c0ef6168915c159463a8fbc90f4b4ecf01893",
+      "bytes": 1373343
     }
   ],
   "limitations": [
     "Projetos e conteúdo técnico OSM/MES/AM/TPM mantêm os limites documentados nas fontes."
   ],
-  "enginesSha256": "528efec026c6041d23dc354998f3f110b37ab6b1b0bfc6739ac50e4dea4a50a5",
+  "enginesSha256": "05073a0fac3fb6763d7df085144d82cc40a943a310285cab9dbc1e76f3aed3fc",
   "originRevision": "ffc9ee8",
   "sourceMode": "single-html",
   "originEnginesSha256": "a87a64ad0c328f70e102b2ae888790a9b5d5a9bd05778652a7ce7cae140e40d2"
@@ -56114,7 +56115,7 @@ import { Icon, Button, Badge, Empty, Modal, BarChart, BrandLogo, CommandMenu } f
 import { ModuleFrame } from "vac:modulo/components/ModuleFrame";
 import manifest from "vac:recurso/manifesto";
 import { ModuleTabs } from "vac:modulo/components/ModuleTabs";
-const VERSION = "1.8.105";
+const VERSION = "1.8.106";
 /* Navegação 1.3.0 (16/11/2026): Visão da linha, Relatórios e Importações têm abas; as que mostram uma tela do
    Portal (motor da Administração) trazem o 3º campo com a aba dele. Administração fica só com cadastros e configuração. */
 const SHELL_TABS = {
