@@ -23,10 +23,10 @@ const html = fs.readFileSync(process.env.PLATAFORMA_HTML || path.resolve(__dirna
     { const { ctx, f } = await modulo('oee?tab=reports', 'Produção');
       const r = await f.evaluate(() => {
         const d = db(), x = d.productionDays.filter(y => !y.deleted).sort((a, b) => b.date.localeCompare(a.date))[0], m = x.date.slice(0, 7);
-        const E0 = Exports.build(d, x.date), antes = { mes: !!E0.porMes.find(e => e.mes === m), turnos: E0.porDiaTurno.filter(e => e.dia === x.date).length, cat: E0.porDiaCatalogo.filter(e => e.dia === x.date).length };
+        const E0 = Exports.build(d, x.date), antes = { mes: !!E0.porMes.find(e => e.mes === m), turnos: E0.porDiaTurno.filter(e => e.dia === x.date).length, cat: E0.porDiaCatalogo.filter(e => e.dia === x.date).length, gel: E0.porDiaTurno.filter(e => e.dia === x.date).map(e => JSON.stringify([e.turno, e.gel ?? null, e.extraMin, e.semProducao])) };
         const orig = JSON.parse(JSON.stringify(x.shifts)); x.shifts.forEach(s => s.intervals.forEach(i => { i.good = null; })); x._rev++;
         const E = Exports.build(d, x.date), dia = E.porDia.find(e => e.dia === x.date);
-        const depois = { semLancamento: !!dia.semLancamento, mes: E.porMes.find(e => e.mes === m) || null, turnos: E.porDiaTurno.filter(e => e.dia === x.date), cat: E.porDiaCatalogo.filter(e => e.dia === x.date) };
+        const T = E.porDiaTurno.filter(e => e.dia === x.date), depois = { semLancamento: !!dia.semLancamento, mes: E.porMes.find(e => e.mes === m) || null, turnos: T.map(e => [e.semLancamento, e.boa, e.oee, e.cap, e.metaOp]), gel: T.map(e => JSON.stringify([e.turno, e.gel ?? null, e.extraMin, e.semProducao])), cat: E.porDiaCatalogo.filter(e => e.dia === x.date) };
         x.shifts = orig; x._rev++;
         // A08
         const o0 = pontoOee('line_vac'), maq0 = d.machines; d.machines = maq0.filter(y => y.id !== 'mac_line').concat([{ id: 'mac_med_ficticio', code: 'MED-FICT', name: 'Medidor fictício', lineId: 'line_vac', role: 'oee', active: true, status: 'ativo' }]);   /* cadastro com MEDIDOR: o ProdCad não cria mac_line */
@@ -36,8 +36,9 @@ const html = fs.readFileSync(process.env.PLATAFORMA_HTML || path.resolve(__dirna
       assert.ok(r.antes.mes && r.antes.turnos > 0 && r.antes.cat > 0, 'com o dia lançado, o mês, os turnos e o catálogo aparecem: ' + JSON.stringify(r.antes));
       assert.equal(r.depois.semLancamento, true);
       assert.equal(r.depois.mes, null, 'mês só com o dia em branco não é publicado com zero (A03): ' + JSON.stringify(r.depois.mes));
-      assert.deepEqual(r.depois.turnos, [], 'turnos sem lançamento ficam fora do porDiaTurno'); assert.deepEqual(r.depois.cat, [], 'e do porDiaCatalogo');
-      console.log('ok A03 Produção: dia sem lançamento fica fora do mês, do turno e do catálogo (antes: OEE 0, scrap 100%)');
+      assert.deepEqual(r.depois.turnos, r.depois.turnos.map(() => [true, null, null, null, null]), 'turno sem lançamento: semLancamento e produção, OEE, capacidade e meta nulos'); assert.equal(r.depois.turnos.length, r.antes.turnos, 'os turnos continuam publicados');
+      assert.deepEqual(r.depois.gel, r.antes.gel, 'gel, hora extra e sem produção do turno continuam (lidos pela Gestão de Gel)'); assert.deepEqual(r.depois.cat, [], 'catálogo sem lançamento fica fora do porDiaCatalogo');
+      console.log('ok A03 Produção: dia sem lançamento fica fora do mês e do catálogo; o turno segue publicado sem produção (gel, hora extra e sem produção preservados)');
       assert.equal(r.o0, 'mac_line', 'sem equipamento de papel OEE, o ponto em memória'); assert.equal(r.o1, 'mac_med_ficticio', 'com o MEDIDOR, o equipamento do cadastro (A08)'); assert.equal(r.dd, 'mac_med_ficticio');
       console.log('ok A08 Produção: o lançamento usa o equipamento de papel OEE do cadastro (mac_med_ficticio); sem ele, mac_line');
       await ctx.close(); }

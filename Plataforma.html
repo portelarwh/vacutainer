@@ -12347,7 +12347,11 @@ const Exports = (() => {
         const byCat = {};
         for (const f of res.flat) { if (!f.cat) continue; const c = (db.catalogs || []).find(x => x.id === f.cat); const k = (c ? c.code : f.cat) + '|' + (f.ps.snap.code || f.ps.snap.name); const o = byCat[k] || (byCat[k] = { dia: d.date, turno: f.ps.snap.code || f.ps.snap.name, catalogo: c ? c.code : null, boa: 0, cap: 0, meta: 0, min: 0 }); if (f.good != null) o.lanc = true; o.boa += f.good || 0; o.cap += f.capDec || 0; o.meta += f.metaOp || 0; o.min += f.min; }
         for (const o of Object.values(byCat)) if (o.lanc || o.boa > 0) porDiaCatalogo.push({ dia: o.dia, turno: o.turno, catalogo: o.catalogo, boa: n0(o.boa), metaOp: n0(o.meta), oee: r4(o.cap ? o.boa / o.cap : null), minutos: n0(o.min) });
-        for (const sr of res.shifts.filter(x => !x.porDia &amp;&amp; (x.r.good > 0 || res.flat.some(f => f.ps.id === x.ps.id &amp;&amp; f.good != null)))) porDiaTurno.push({   /* LANC-03 · dia lançado por dia: fora do porDiaTurno (ausência, não zero) */ dia: d.date, turno: sr.ps.snap.code || sr.ps.snap.name, oee: r4(sr.r.oee), oeeMeta: r4(sr.r.oeeTarget), boa: n0(sr.r.good), scrap: n0(sr.r.scrap), cap: n0(sr.r.cap), metaDec: n0(sr.r.metaDec), metaOp: n0(sr.r.metaOp), abonoMin: n0(abByPs[sr.ps.id] || 0), descontoMin: n0(sr.r.deductMin), semProducao: sr.ps.off ? (sr.ps.offType === 'np' ? 'não programado' : 'programado') : null, motivo: sr.ps.off ? (sr.ps.offReason || '') : undefined, status: sr.ps.status, extraMin: n0(sr.agg.extraMin || 0), gel: GelTurno.exp(sr.ps, d.date), scrapMaq: sr.ps.scrapMaq || undefined });
+        for (const sr of res.shifts.filter(x => !x.porDia)) {   /* LANC-03 · dia lançado por dia: fora do porDiaTurno (ausência, não zero) */
+          /* 2.6.51 · A03 (revisão do PR 206): turno sem nenhum intervalo lançado continua publicado (gel, hora extra e "sem produção" do
+             turno são lidos pela Gestão de Gel), mas sem produção, OEE, capacidade e metas (ausência, não zero) */
+          const ivT = res.flat.filter(f => f.ps.id === sr.ps.id), semT = !sr.ps.off &amp;&amp; ivT.length > 0 &amp;&amp; ivT.every(f => f.good == null) &amp;&amp; !(sr.r.good > 0);
+          porDiaTurno.push({ dia: d.date, turno: sr.ps.snap.code || sr.ps.snap.name, ...(semT ? { semLancamento: true } : {}), oee: semT ? null : r4(sr.r.oee), oeeMeta: r4(sr.r.oeeTarget), boa: semT ? null : n0(sr.r.good), scrap: n0(sr.r.scrap), cap: semT ? null : n0(sr.r.cap), metaDec: semT ? null : n0(sr.r.metaDec), metaOp: semT ? null : n0(sr.r.metaOp), abonoMin: n0(abByPs[sr.ps.id] || 0), descontoMin: n0(sr.r.deductMin), semProducao: sr.ps.off ? (sr.ps.offType === 'np' ? 'não programado' : 'programado') : null, motivo: sr.ps.off ? (sr.ps.offReason || '') : undefined, status: sr.ps.status, extraMin: n0(sr.agg.extraMin || 0), gel: GelTurno.exp(sr.ps, d.date), scrapMaq: sr.ps.scrapMaq || undefined }); }
       }
     }
     const paradas = {}, d90 = U.addDays(today, -89);
@@ -55452,8 +55456,8 @@ body.vac-porta{overflow:hidden}
       "id": "oee",
       "path": "Plataforma.html#motor/oee",
       "version": "2.6.51",
-      "sha256": "88e0f24b3387a4d71b94ab053878bba0e457def6a127e216ddd7a79b9a5e10d1",
-      "bytes": 2401366
+      "sha256": "afb8b78f7ad69d7948ea637406da144dc56fb8a3532d6fea25c8d72860220c05",
+      "bytes": 2401835
     },
     {
       "id": "perdas",
@@ -55515,7 +55519,7 @@ body.vac-porta{overflow:hidden}
   "limitations": [
     "Projetos e conteúdo técnico OSM/MES/AM/TPM mantêm os limites documentados nas fontes."
   ],
-  "enginesSha256": "5169f3407d8b22453398970105b802ce4e1c7e01da9a0c4235480cb58dbf4e9a",
+  "enginesSha256": "c5355b3405d56aa2390dfc3a9ae92d913ada7e4e11e53c4a74ed387ca6df044f",
   "originRevision": "ffc9ee8",
   "sourceMode": "single-html",
   "originEnginesSha256": "a87a64ad0c328f70e102b2ae888790a9b5d5a9bd05778652a7ce7cae140e40d2"
