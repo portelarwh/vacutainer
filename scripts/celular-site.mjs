@@ -36,12 +36,16 @@ if('serviceWorker' in navigator&&(location.protocol==='https:'||/^(localhost|127
 const icone = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 192 192"><rect width="192" height="192" rx="40" fill="#0f1418"/><rect x="36" y="44" width="120" height="104" rx="16" fill="#4c8bf5"/><path d="M60 84h72M60 108h48" stroke="#fff" stroke-width="12" stroke-linecap="round"/></svg>`;
 const manifesto = { name: 'Linha no celular', short_name: 'Linha', start_url: './', scope: './', display: 'standalone', background_color: '#0f1418', theme_color: '#0f1418', lang: 'pt-BR',
   icons: [{ src: 'icone.svg', sizes: 'any', type: 'image/svg+xml', purpose: 'any maskable' }] };
-// rede primeiro (busca a versão nova quando há internet) e, sem rede, o que ficou guardado
+// rede primeiro (busca a versão nova quando há internet) e, sem rede, o que ficou guardado.
+// A22 (auditoria 28/11/2026): no GitHub Pages a origem é a mesma para todos os sites do usuário, então a ativação só apaga os caches deste app
+// (linha-*); só resposta 200 da própria origem vai para o cache (um 503 não substitui a cópia boa); a página (index.html) só responde por
+// navegação, nunca no lugar de ícone, manifesto ou outro arquivo
 const sw = `const C='linha-${versao}',A=['./','index.html','manifest.webmanifest','icone.svg'];
 self.addEventListener('install',e=>{e.waitUntil(caches.open(C).then(c=>c.addAll(A)).then(()=>self.skipWaiting()))});
-self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(k=>Promise.all(k.filter(x=>x!==C).map(x=>caches.delete(x)))).then(()=>self.clients.claim()))});
+self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(k=>Promise.all(k.filter(x=>/^linha-/.test(x)&&x!==C).map(x=>caches.delete(x)))).then(()=>self.clients.claim()))});
 self.addEventListener('fetch',e=>{if(e.request.method!=='GET'||new URL(e.request.url).origin!==location.origin)return;
- e.respondWith(fetch(e.request).then(r=>{const c=r.clone();caches.open(C).then(x=>x.put(e.request,c));return r}).catch(()=>caches.match(e.request,{ignoreSearch:true}).then(r=>r||caches.match('index.html'))))});
+ const guardada=()=>caches.match(e.request,{ignoreSearch:true}).then(r=>r||(e.request.mode==='navigate'?caches.match('index.html'):Response.error()));
+ e.respondWith(fetch(e.request).then(r=>{if(r.ok&&r.type==='basic'){const c=r.clone();caches.open(C).then(x=>x.put(e.request,c))}else if(!r.ok)return guardada().then(g=>g.type==='error'?r:g);return r}).catch(guardada))});
 `;
 fs.mkdirSync(saida, { recursive: true });
 fs.writeFileSync(path.join(saida, 'index.html'), h);

@@ -20,6 +20,13 @@ Arquivo único: [index.html](index.html), HTML, CSS e JavaScript nativos, sem in
 - Para quem já usa os arquivos separados: abra o `Linha.html` no Chrome, do mesmo jeito; antes, por segurança, use **Exportar histórico**. Se o celular abrir o arquivo por outro caminho (outro app de arquivos), os dados podem ficar em outro lugar: o histórico exportado volta por Importar histórico.
 - Teste: [testes/plataforma/app-cel-linha.cjs](../testes/plataforma/app-cel-linha.cjs).
 
+## Correções da auditoria de 28/11/2026 (Linha no celular 0.5, Meu Turno 0.8, Manutenção 0.3 · plataforma 1.8.110)
+
+- **Linha no celular:** cadastro mais antigo (rev menor) não substitui o deste celular; cada módulo espera o próprio cadastro (um pacote só da Operação não libera a Manutenção); as metas de hoje aparecem mesmo sem o plano do mês; escolher o arquivo para a câmera, e o aviso de câmera indisponível não apaga o resultado.
+- **Meu Turno:** Reabrir abre o turno reaberto; as ordens do pacote do dia só aparecem no turno do mesmo dia; zero bons com descarte é 100% de scrap; se o celular não gravar (memória cheia), não diz "Turno fechado" e o turno continua aberto; foto que não grava avisa e não trava a tela. **Manutenção:** "Marcado como enviado" só depois de gravar.
+- **Página publicada (service worker):** apaga só os caches deste app (linha-*), guarda só resposta 200 da própria origem e só entrega a página (index.html) para navegação. O workflow também publica quando muda `scripts/html.cjs`.
+- Teste: [testes/plataforma/celular-auditoria.cjs](../testes/plataforma/celular-auditoria.cjs). Celular físico continua na homologação.
+
 ## Página publicada: o app sempre atualizado (Linha no celular 0.4 · APP-CEL fase 4, 28/11/2026)
 
 - `npm run celular:site` (scripts/celular-site.mjs) monta a pasta `_site` com o Linha (Operação + Manutenção + leitor de QR), o manifesto de instalação, o service worker e o ícone. **Só o código:** nenhum cadastro embutido, e a configuração de exemplo dos apps é trocada por uma neutra (sem nomes de máquinas nem catálogos). Decisão: a TI aceita página pública só com o código (27/11/2026).

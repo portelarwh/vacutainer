@@ -46,3 +46,12 @@ test("item 2: arquivo auxiliar mais novo tamb\xE9m protege seu m\xF3dulo", async
   const result = await protectFolder(dir, ["portal-base.json", "vacutainer-cadastros.json"], "1.9.37");
   assert.equal(result.readOnly, true);
 });
+test("A15 (auditoria 28/11/2026): cópia antiga solta na raiz não bloqueia a base válida de 00. Bases", async () => {
+  const arq = (v) => ({ getFile: async () => ({ text: async () => JSON.stringify({ appVersion: v }) }) });
+  const bases = { name: "00. Bases", getFileHandle: async () => arq("2.4.74") };
+  const raiz = { name: "ficticia", getDirectoryHandle: async (n) => { if (n === "00. Bases") return bases; throw new DOMException("ausente", "NotFoundError"); }, getFileHandle: async () => arq("9.9.9") };
+  const p = await protectFolder(raiz, "oee-vacutainer-base.json", "2.4.74");
+  assert.equal(p.readOnly, false, "a raiz não é a base que o motor lê");
+  const semBases = { ...raiz, getDirectoryHandle: async () => { throw new DOMException("ausente", "NotFoundError"); } };
+  assert.equal((await protectFolder(semBases, "oee-vacutainer-base.json", "2.4.74")).readOnly, true, "sem 00. Bases, a raiz é a base");
+});

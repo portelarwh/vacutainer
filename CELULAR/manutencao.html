@@ -2390,7 +2390,7 @@ var qrcode = function() {
    modos de falha e pessoas (só ID, nome e turno). Os dados ficam só no celular; nada sai sozinho. */
 const FONTE='<!doctype html>\n'+document.documentElement.outerHTML;
 const CFG_EMB=/*CFG*/null/*CFG*/;
-const VERSAO='0.2';
+const VERSAO='0.3';
 const $=(s,r=document)=>r.querySelector(s),$$=(s,r=document)=>[...r.querySelectorAll(s)];
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const pad=n=>String(n).padStart(2,'0');
@@ -2398,7 +2398,7 @@ const agoraLocal=(d=new Date())=>`${d.getFullYear()}-${pad(d.getMonth()+1)}-${pa
 const brh=s=>s?s.slice(8,10)+'/'+s.slice(5,7)+' '+s.slice(11,16):'—';
 const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,6);
 function toast(t){const e=document.createElement('div');e.className='toast';e.textContent=t;document.body.appendChild(e);setTimeout(()=>e.remove(),2600)}
-const LS={get(k,d){try{const v=localStorage.getItem('mm.'+k);return v?JSON.parse(v):d}catch(e){return d}},set(k,v){try{localStorage.setItem('mm.'+k,JSON.stringify(v))}catch(e){toast('Memória do celular cheia: envie e apague atendimentos antigos')}}};
+const LS={get(k,d){try{const v=localStorage.getItem('mm.'+k);return v?JSON.parse(v):d}catch(e){return d}},set(k,v){try{localStorage.setItem('mm.'+k,JSON.stringify(v));return true}catch(e){toast('Não gravou neste celular (memória cheia?): envie e apague atendimentos antigos');return false}}};   /* 0.3 · A21: quem chama sabe se gravou */
 /* configuração: a embutida vale quando é mais nova que a do aparelho; sem ela, dados fictícios (TESTE) */
 const CFG0={linha:'Linha (TESTE)',maqs:[{c:'EQ01',n:'Máquina A (TESTE)'},{c:'EQ02',n:'Máquina B (TESTE)'}],modos:[{c:'MF01',n:'Desgaste'},{c:'MF02',n:'Ruptura'},{c:'MF03',n:'Folga'}],pessoas:[],rev:0};
 let CFG=(()=>{const l=LS.get('cfg',null);if(CFG_EMB&&(!l||(l.rev||0)<(CFG_EMB.rev||0))){LS.set('cfg',CFG_EMB);return JSON.parse(JSON.stringify(CFG_EMB))}return l||JSON.parse(JSON.stringify(CFG0))})();
@@ -2467,7 +2467,7 @@ async function ligEnv(id){comum();const a=AT.find(x=>x.id===id);if(!a)return;cle
  if(ENV.partes.length>1)ENV.auto=setInterval(()=>{if(!$('#qr')){clearInterval(ENV.auto);return}passo(1)},1600);else $('#qrp').disabled=true;
  $('#qra').onclick=()=>passo(-1);$('#qrn').onclick=()=>passo(1);$('#qrp').onclick=()=>{if(ENV.auto){clearInterval(ENV.auto);ENV.auto=null;$('#qrp').textContent='Continuar'}else if(ENV.partes.length>1){ENV.auto=setInterval(()=>passo(1),1600);$('#qrp').textContent='Pausar'}};
  $('#arq').onclick=()=>{const b=new Blob([JSON.stringify(P,null,1)],{type:'application/json'}),l=document.createElement('a');l.href=URL.createObjectURL(b);l.download=`atendimento-${a.ini.slice(0,10)}-${a.eq}.mm.json`;l.click();toast('Arquivo salvo')};
- $('#ok').onclick=()=>{a.enviado=true;salvar();toast('Marcado como enviado');ir('inicio')}}
+ $('#ok').onclick=()=>{a.enviado=true;if(!salvar()){a.enviado=false;return}toast('Marcado como enviado');ir('inicio')}}
 if(LS.get('tema',''))document.documentElement.dataset.tema=LS.get('tema','');
 render();
 </script>
