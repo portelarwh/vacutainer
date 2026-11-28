@@ -20,6 +20,14 @@ Arquivo único: [index.html](index.html), HTML, CSS e JavaScript nativos, sem in
 - Para quem já usa os arquivos separados: abra o `Linha.html` no Chrome, do mesmo jeito; antes, por segurança, use **Exportar histórico**. Se o celular abrir o arquivo por outro caminho (outro app de arquivos), os dados podem ficar em outro lugar: o histórico exportado volta por Importar histórico.
 - Teste: [testes/plataforma/app-cel-linha.cjs](../testes/plataforma/app-cel-linha.cjs).
 
+## Página publicada: o app sempre atualizado (Linha no celular 0.4 · APP-CEL fase 4, 28/11/2026)
+
+- `npm run celular:site` (scripts/celular-site.mjs) monta a pasta `_site` com o Linha (Operação + Manutenção + leitor de QR), o manifesto de instalação, o service worker e o ícone. **Só o código:** nenhum cadastro embutido, e a configuração de exemplo dos apps é trocada por uma neutra (sem nomes de máquinas nem catálogos). Decisão: a TI aceita página pública só com o código (27/11/2026).
+- Na página, sem cadastro, os módulos ficam desligados com o aviso; o cadastro entra pelo **QR** ou **arquivo** da plataforma (Atualizar cadastro ou dia). Depois de aberta uma vez, funciona sem internet; com internet, busca a versão nova sozinha.
+- **Como ligar (uma vez, pelo responsável):** no GitHub, `Settings › Pages › Build and deployment › Source = GitHub Actions`. Depois, ou rode à mão `Actions › App da linha (página) › Run workflow`, ou crie em `Settings › Secrets and variables › Actions › Variables` a variável `PUBLICAR_APP_LINHA` = `sim` para publicar sozinho a cada mudança na main. O endereço aparece no resultado do workflow (algo como `https://<usuário>.github.io/vacutainer/`). Repositório privado precisa de plano que permita Pages; a página publicada é pública.
+- No celular: abrir o endereço no Chrome › menu › **Adicionar à tela inicial** (ou Instalar app). No iPhone: Safari › Compartilhar › Adicionar à Tela de Início.
+- Teste: [testes/plataforma/app-cel-site.cjs](../testes/plataforma/app-cel-site.cjs).
+
 ## Pacote do dia (Linha no celular 0.3, Meu Turno 0.7 · APP-CEL fase 3, parte 2, 28/11/2026)
 
 - Na plataforma: **Administração › Apps de celular › Enviar o dia ao celular (QR)** (ou o arquivo `dia-linha.json`). O pacote sai dos exports já publicados, sem cálculo novo: **ordens e lotes** em aberto (Produção), **plano e meta** (plano do mês e meta de hoje por turno), **ações abertas** (Iniciativas, atrasadas primeiro) e o **resumo de ontem** (OEE, produção, meta e scrap do dia e dos turnos). O que não foi publicado vai como ausente e aparece como "—", nunca como zero.
