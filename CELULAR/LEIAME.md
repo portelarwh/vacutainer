@@ -20,6 +20,13 @@ Arquivo único: [index.html](index.html), HTML, CSS e JavaScript nativos, sem in
 - Para quem já usa os arquivos separados: abra o `Linha.html` no Chrome, do mesmo jeito; antes, por segurança, use **Exportar histórico**. Se o celular abrir o arquivo por outro caminho (outro app de arquivos), os dados podem ficar em outro lugar: o histórico exportado volta por Importar histórico.
 - Teste: [testes/plataforma/app-cel-linha.cjs](../testes/plataforma/app-cel-linha.cjs).
 
+## OEE do turno e do dia (Meu Turno 1.0 · plataforma 1.8.112, 28/11/2026, pedido do responsável)
+
+- **OEE do turno** = produção boa ÷ capacidade; capacidade = PPH nominal do catálogo × tempo disponível do turno (o horário menos as pausas que descontam, cadastradas no turno). É a mesma conta da Produção (o teste `app-cel-oee` confere que a capacidade é igual à publicada); no celular é prévia, e o oficial é o da Produção (outras paradas que descontam, como retrabalho, só entram lá).
+- **OEE do dia** = Σ produção boa ÷ Σ capacidade dos turnos até agora (nunca média de porcentagens). No cartão **Dia até agora**, o turno seguinte digita só a **produção boa** dos turnos anteriores de hoje, como está no quadro, e confere o catálogo; a capacidade sai do cadastro. Faltando um turno, o dia fica "—".
+- **Plano** (produção ÷ meta do plano) continua separado do OEE. Na mensagem: "Plano", "OEE do turno" (com a meta) e o bloco "Dia até o Nº turno", com ✎ nos turnos informados do quadro.
+- A Administração manda no cadastro o PPH nominal, a meta de OEE de cada catálogo e as pausas que descontam de cada turno: gere o Linha.html (ou o cadastro por QR) de novo.
+
 ## Mensagem do WhatsApp em blocos (Meu Turno 0.9 · plataforma 1.8.111, 28/11/2026, pedido do responsável)
 
 - Blocos curtos com o título em negrito: identificação, desempenho, paradas (por motivo; a observação de cada parada vai abaixo da tabela), scrap por estação, consumo de gel, hora a hora e observações. Blocos sem dado não aparecem.
