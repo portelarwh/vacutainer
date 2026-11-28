@@ -20,6 +20,11 @@ const html = fs.readFileSync(process.env.PLATAFORMA_HTML || path.resolve(__dirna
     assert.deepEqual(r.chave, ['100234567', '100234567', 'ABC-01', '0']);
     assert.ok(r.ordem, 'a demonstração tem ordem no Gel'); assert.equal(r.com, true, 'com zeros à esquerda, o Gel acha a ordem'); assert.equal(r.sem, true); assert.equal(r.outra, false);
     console.log('ok Gel abre a ordem ' + r.ordem + ' pedida com ou sem zeros à esquerda; vacChaveOrdem comum');
+    // revisão do PR 209: o PCP com zeros e o SAP sem zeros podem virar dois registros; a grafia exata vem primeiro e, entre as equivalentes, a que tem lote/tubos
+    const dup = await f.evaluate(() => { const g0 = gelOrders; gelOrders = () => [{ ordem: '123', lote: null, tubos: 0, fonte: 'SAP' }, { ordem: '000123', lote: 'L-FICT', tubos: 1000, fonte: 'PCP' }];
+      try { return [gelOrder('000123').fonte, gelOrder('123').fonte, gelOrder('0123').fonte]; } finally { gelOrders = g0; } });
+    assert.deepEqual(dup, ['PCP', 'SAP', 'PCP'], 'grafia exata primeiro; sem exata, a equivalente com lote e tubos');
+    console.log('ok registros equivalentes no Gel: a grafia exata vem primeiro; sem ela, o registro com lote e tubos');
 
     const app = H.fromHtml(html.toString()), B = JSON.parse(app.text('dados/cenario')).bases, ex = k => (B[k] && B[k].exports) || {}, nk = v => { const s = String(v ?? '').trim(); return /^\d+$/.test(s) ? s.replace(/^0+(?=\d)/, '') : s.toUpperCase(); };
     const P = []; const add = (m, o, l) => { if (o || l) P.push({ m, o: o == null ? '' : String(o), l: l == null ? '' : String(l) }); };

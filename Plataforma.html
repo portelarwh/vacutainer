@@ -26548,7 +26548,8 @@ function gelOrdersCalc(){const P=pcpCfg();const A=P.lots.length?pcpAttr():{};con
     o.consumoKg=q.kg;o.lps=[...q.lps].map(String);o.sapPrimeira=q.first;o.sapUltima=q.last;if(!o.lote&amp;&amp;q.lote)o.lote=q.lote;if(!o.catalogo&amp;&amp;q.cat){const ct=catById(q.cat);if(ct&amp;&amp;ct.num)o.catalogo=String(ct.num)}
     if(!o.inicio)o.inicio=q.first.slice(0,10);if(!o.fim&amp;&amp;q.done)o.fim=q.last.slice(0,10);o.gPorTubo=q.g;o.indice=q.idx;o.metaG=q.bi?q.bi.meta:null;o.bomG=q.bi?q.bi.allowed:null;o.concluida=!!q.done;o.fonte=o.fonte==='PCP'?'PCP + SAP':'SAP';out.set(k,o)});
   return [...out.values()].sort((a,b)=>(a.inicio||'9999')<(b.inicio||'9999')?-1:1)}
-const gelOrder=wo=>{const k=vacChaveOrdem(wo);return gelOrders().find(o=>vacChaveOrdem(o.ordem)===k)||null};   /* 1.8.113 · ORD-CHAVE: com ou sem zeros à esquerda */
+const gelOrder=wo=>{const s=String(wo).trim(),k=vacChaveOrdem(s),L=gelOrders(),ex=L.find(o=>o.ordem===s);if(ex)return ex;   /* 1.8.113 · ORD-CHAVE: com ou sem zeros à esquerda; a grafia exata vem primeiro */
+ const eq=L.filter(o=>vacChaveOrdem(o.ordem)===k);return eq.find(o=>o.lote||+o.tubos>0||+o.qtd>0)||eq[0]||null};   /* revisão do PR 209: entre as grafias equivalentes, a que tem lote ou tubos */
 function openOrder(wo){const o=gelOrder(wo);if(!o){toast(`Ordem ${wo} sem registro no Gel.`);return}const u=perdasUrl(o.ordem);
   const r=(l,v)=>`<dt>${l}</dt><dd>${v}</dd>`;
   modal('Ordem '+o.ordem,`${typeof vacFichaBotao==='function'?'<p style="margin:0 0 8px">'+vacFichaBotao(o.ordem)+' <span class="sub">tudo sobre a ordem nas outras páginas</span></p>':''}<dl class="kv">${r('Lote',esc(o.lote||'—'))}${r('Catálogo',esc(o.catalogo||'—'))}${r('Período',o.inicio?(o.fim?fmtD(o.inicio)+' a '+fmtD(o.fim):'desde '+fmtD(o.inicio)+' (em andamento)'):'—')}${r('Tubos (Registro de produção)',o.tubos?nf0.format(o.tubos)+(o.tamanho?' de '+nf0.format(o.tamanho):''):'—')}${r('Gel baixado no SAP',o.consumoKg!=null?kg1(o.consumoKg)+' kg':'—')}${o.gPorTubo!=null?r('g/tubo SAP',nf3(o.gPorTubo)+(o.metaG?' · meta '+nf3(o.metaG):'')+(o.bomG?' · BOM '+nf3(o.bomG):'')):''}${r('Scrap de gel (estimado)',o.scrapKg!=null?kg3(o.scrapKg)+' kg':'—')}${r('Origem',esc(o.fonte))}</dl>
@@ -55538,8 +55539,8 @@ body.vac-porta{overflow:hidden}
       "id": "gel",
       "path": "Plataforma.html#motor/gel",
       "version": "2.54",
-      "sha256": "ea32cc275190f15346e67582f9145396cd8de90686cf2b59fc85872546460eca",
-      "bytes": 1633538
+      "sha256": "3c617ea8f2d8b060f817719f2611ec19ac0e0fae3718963cb7cbb13bad91f79e",
+      "bytes": 1633776
     },
     {
       "id": "paradas",
@@ -55587,7 +55588,7 @@ body.vac-porta{overflow:hidden}
   "limitations": [
     "Projetos e conteúdo técnico OSM/MES/AM/TPM mantêm os limites documentados nas fontes."
   ],
-  "enginesSha256": "d63aab984bc6695f5d1c41c95ce55cd98a75a0943138248192fbdb279db7140d",
+  "enginesSha256": "b206febe7172db96a1e67420f113ad2f1fdac587b315cea8e8ee50a221f01642",
   "originRevision": "ffc9ee8",
   "sourceMode": "single-html",
   "originEnginesSha256": "a87a64ad0c328f70e102b2ae888790a9b5d5a9bd05778652a7ce7cae140e40d2"
