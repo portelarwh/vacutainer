@@ -2442,7 +2442,7 @@ let TURNOS=LS.get('turnos',[]);const salvarT=()=>LS.set('turnos',TURNOS);
    altera turnos já lançados nem os relatórios refeitos deles. Turno antigo sem catSnap usa a configuração atual. */
 const fotoCat=c=>c?{c:c.c,n:c.n,meta:c.meta,gel:c.gel,pph:c.pph,oeeMeta:c.oeeMeta}:null;
 const catDo=T=>T.catSnap&&T.catSnap.c===T.cat?T.catSnap:cat(T.cat);
-function novoTurno(tc,data){const t=turnoDe(tc),c=CFG.cats[0];return{id:uid(),data,turno:tc,operador:LS.get('operador',''),operadorId:LS.get('operadorId',''),cat:c.c,catSnap:fotoCat(c),lote:'',op:'',
+function novoTurno(tc,data){const t=turnoDe(tc),c=CFG.cats[0];return{id:uid(),data,turno:tc,tSnap:turnoSnap(t),operador:LS.get('operador',''),operadorId:LS.get('operadorId',''),cat:c.c,catSnap:fotoCat(c),lote:'',op:'',
  slots:intervalos(t).map(s=>({...s,real:null,par:[]})),scrapModo:'total',scrapTotal:null,scrapMaq:{},gel:{aplicadoKg:null,itens:{}},foto:null,obs:'',fechado:false,criadoEm:new Date().toISOString()}}
 const planoSlot=(T,s)=>{const c=catDo(T);return c?Math.round(c.meta*s.min/60):0};
 /* 1.0 · OEE do turno e do dia (pedido do responsável, 28/11/2026). A mesma conta da Produção: capacidade = PPH nominal × tempo disponível
@@ -2453,10 +2453,14 @@ function pausasDe(t,data){const wd=data?new Date(data+'T12:00:00').getDay():null
 function tempoTurno(t,data){if(!t)return null;const a0=hm2min(t.i);let b0=hm2min(t.f);if(b0<=a0)b0+=1440;let min=b0-a0;
  for(const x of pausasDe(t,data)){if(x.i&&x.f){let pa=hm2min(x.i),pb=hm2min(x.f);if(pa<a0){pa+=1440;pb+=1440}if(pb<=pa)pb+=1440;min-=Math.max(0,Math.min(pb,b0)-Math.max(pa,a0))}else if(+x.min>0)min-=+x.min}
  return Math.max(0,min)}
-function capDe(tc,cc,data){const m=tempoTurno(turnoDe(tc),data);return cc&&cc.pph&&m!=null?cc.pph/1000*m/60:null}   /* mil tubos */
+function capDe(tt,cc,data){const m=tempoTurno(tt,data);return cc&&cc.pph&&m!=null?cc.pph/1000*m/60:null}   /* mil tubos; tt = horário do turno (com pausas) */
+/* revisão do PR 208: o turno guarda o horário e as pausas (tSnap) e, de cada turno anterior informado, o horário e o catálogo com o PPH do
+   momento (ant[x].t e ant[x].snap): reabrir o relatório depois de um cadastro novo não muda o OEE já registrado (como o catSnap da meta) */
+const turnoSnap=x=>x?{c:x.c,n:x.n,i:x.i,f:x.f,p:(x.p||[]).map(y=>({...y,dias:(y.dias||[]).slice()}))}:null;
+const turnoDoT=T=>T.tSnap&&T.tSnap.c===T.turno?T.tSnap:turnoDe(T.turno);
 const turnosAntes=T=>{const i=CFG.turnos.findIndex(x=>x.c===T.turno);return i>0?CFG.turnos.slice(0,i):[]};
 function diaDe(T){const r=resumo(T),L=[];
- for(const t of turnosAntes(T)){const a=(T.ant||{})[t.c]||{},cc=cat(a.cat||T.cat)||catDo(T),cap=capDe(t.c,cc,T.data),boa=a.boa==null||a.boa===''?null:+a.boa;
+ for(const t of turnosAntes(T)){const a=(T.ant||{})[t.c]||{},cc0=a.cat||T.cat,cc=a.snap&&a.snap.c===cc0?a.snap:cat(cc0)||catDo(T),cap=capDe(a.t||t,cc,T.data),boa=a.boa==null||a.boa===''?null:+a.boa;
   L.push({c:t.c,n:t.n,boa,cap,oee:boa!=null&&cap?boa/cap:null,meta:cc&&cc.oeeMeta!=null?cc.oeeMeta:null,ant:true})}
  L.push({c:T.turno,n:(turnoDe(T.turno)||{}).n||T.turno,boa:r.algum?r.re:null,cap:r.cap,oee:r.oee,meta:r.oeeMeta,ant:false});
  const ok=L.every(x=>x.boa!=null&&x.cap),sb=L.reduce((a,x)=>a+(x.boa||0),0),sc=L.reduce((a,x)=>a+(x.cap||0),0);
@@ -2467,7 +2471,7 @@ function resumo(T){const c=catDo(T)||{},pl=T.slots.reduce((a,s)=>a+planoSlot(T,s
  const scrap=T.scrapModo==='maq'?Object.values(T.scrapMaq).reduce((a,v)=>a+(+v||0),0):(T.scrapTotal==null?null:+T.scrapTotal);
  const gT=c.gel?re*1000*c.gel/1000:null /* re (mil tubos) × 1000 × g/tubo ÷ 1000 = kg */, gR=T.gel.aplicadoKg==null?null:+T.gel.aplicadoKg, gS=Object.values(T.gel.itens||{}).reduce((a,v)=>a+(+v||0),0);
  const mot={};for(const p of par)mot[p.mot]=(mot[p.mot]||0)+(+p.min||0);
- const algum=inf.length>0,capT=capDe(T.turno,c&&c.pph?c:null,T.data),tMin=tempoTurno(turnoDe(T.turno),T.data);
+ const algum=inf.length>0,capT=capDe(turnoDoT(T),c&&c.pph?c:null,T.data),tMin=tempoTurno(turnoDoT(T),T.data);
  return{algum,cap:capT,tempoMin:tMin,oee:algum&&capT?re/capT:null,oeeMeta:c.oeeMeta!=null?c.oeeMeta:null,pl,re,ader:pl?re/pl:null,falta:T.slots.length-inf.length,par,pm,mot:Object.entries(mot).sort((a,b)=>b[1]-a[1]),scrap,scrapPct:scrap!=null&&(re*1000+scrap)>0?scrap/(re*1000+scrap):null /* 0.8 · A20: zero bons e scrap > 0 é 100%, não ausente */,gT,gR,gS,gIdx:gT&&gR!=null?gR/gT:null,c}}
 const corAder=a=>a==null?'muted':a>=1?'okc':a>=.9?'warnc':'critc';
 
@@ -2551,11 +2555,12 @@ function cartaoDia(T){const D=diaDe(T),pc=v=>v==null?'—':nf(v*100,1)+'%';
   <div class="small muted" style="margin-top:-4px">Capacidade ${nf(x.cap)} ${CFG.unidade} · OEE ${pc(x.oee)}</div>`}).join('')}
   <div class="small"><b>OEE do dia:</b> ${D.oee==null?'— <span class="muted">(falta '+esc(D.faltam.join(', '))+')</span>':pc(D.oee)}${D.meta!=null?' · meta '+pc(D.meta):''}</div></div></div>`}
 function ligTurno(){const T=atual();comum();if(!T)return;const sv=()=>{salvarT()},rr=()=>{salvarT();const y=scrollY;render();scrollTo(0,y)};
- $$('[data-tc]').forEach(b=>b.onclick=()=>{if(b.dataset.tc===T.turno)return;if(T.slots.some(s=>s.real!=null||s.par.length)&&!confirm('Trocar o turno refaz o hora a hora. Continuar?'))return;T.turno=b.dataset.tc;T.slots=intervalos(turnoDe(T.turno)).map(s=>({...s,real:null,par:[]}));rr()});
+ $$('[data-tc]').forEach(b=>b.onclick=()=>{if(b.dataset.tc===T.turno)return;if(T.slots.some(s=>s.real!=null||s.par.length)&&!confirm('Trocar o turno refaz o hora a hora. Continuar?'))return;T.turno=b.dataset.tc;T.tSnap=turnoSnap(turnoDe(T.turno));T.slots=intervalos(turnoDe(T.turno)).map(s=>({...s,real:null,par:[]}));rr()});
  if($('#op').tagName==='SELECT')$('#op').onchange=e=>{const x=pessoas().find(y=>String(y.id)===e.target.value);T.operadorId=x?String(x.id):'';T.operador=x?x.n:'';LS.set('operador',T.operador);LS.set('operadorId',T.operadorId);sv()};else $('#op').oninput=e=>{T.operador=e.target.value;LS.set('operador',T.operador);sv()};$('#lote').oninput=e=>{T.lote=e.target.value.trim();const o=ordensDia(T.data).find(x=>x.lote===T.lote);if(o&&o.ordem&&!T.op){T.op=o.ordem;const n=$('#opn');if(n)n.value=o.ordem}sv()};$('#opn').oninput=e=>{T.op=e.target.value.trim();sv()};
  $('#cat').onchange=e=>{T.cat=e.target.value;T.catSnap=fotoCat(cat(T.cat));rr()};
- $$('[data-ant]').forEach(i=>i.onchange=()=>{const k=i.dataset.ant,v=i.value.trim().replace(',','.');T.ant=T.ant||{};T.ant[k]={...(T.ant[k]||{}),boa:v===''?null:Math.max(0,+v)};rr()});
- $$('[data-antcat]').forEach(s=>s.onchange=()=>{const k=s.dataset.antcat;T.ant=T.ant||{};T.ant[k]={...(T.ant[k]||{}),cat:s.value};rr()});
+ const fixa=(k,o)=>{const a={...(T.ant[k]||{}),...o},c0=a.cat||T.cat;a.cat=c0;a.snap=a.snap&&a.snap.c===c0?a.snap:fotoCat(cat(c0));a.t=a.t||turnoSnap(turnoDe(k));T.ant[k]=a};
+ $$('[data-ant]').forEach(i=>i.onchange=()=>{const k=i.dataset.ant,v=i.value.trim().replace(',','.');T.ant=T.ant||{};fixa(k,{boa:v===''?null:Math.max(0,+v)});rr()});
+ $$('[data-antcat]').forEach(s=>s.onchange=()=>{const k=s.dataset.antcat;T.ant=T.ant||{};fixa(k,{cat:s.value,snap:null});rr()});
  $$('[data-real]').forEach(i=>{i.onchange=()=>{const v=i.value.trim();T.slots[+i.dataset.real].real=v===''?null:Math.max(0,+v.replace(',','.'));rr()}});
  $$('[data-addp]').forEach(b=>b.onclick=()=>parada(T,+b.dataset.addp,rr));
  $$('[data-delp]').forEach(b=>b.onclick=()=>{const[i,k]=b.dataset.delp.split(':').map(Number);T.slots[i].par.splice(k,1);rr()});

@@ -35,11 +35,11 @@ const mt = fs.readFileSync(path.resolve(__dirname, '../../CELULAR/index.html'));
     const m = await cel.newPage(); m.on('pageerror', e => erros.push('celular: ' + e.message)); m.on('dialog', d => d.accept());
     await m.clock.setFixedTime(new Date(prod.dia + 'T16:00:00-03:00'));
     await m.goto(base + '/mt.html'); await m.waitForFunction(() => typeof capDe === 'function' && typeof txtWA === 'function');
-    const caps = await m.evaluate(T => T.map(x => ({ turno: x.turno, cel: Math.round(capDe(x.turno, cat('360060'), x.dia) * 1000), prod: x.cap })), prod.T.map(x => ({ ...x, dia: prod.dia })));
+    const caps = await m.evaluate(T => T.map(x => ({ turno: x.turno, cel: Math.round(capDe(turnoDe(x.turno), cat('360060'), x.dia) * 1000), prod: x.cap })), prod.T.map(x => ({ ...x, dia: prod.dia })));
     for (const x of caps) assert.equal(x.cel, x.prod, `capacidade do ${x.turno} no celular = a da Produção (${x.cel} × ${x.prod})`);
     console.log('ok capacidade no celular = a publicada pela Produção em ' + prod.dia + ': ' + caps.map(x => `${x.turno} ${x.cel}`).join(', '));
     const pz = await m.evaluate(dia => { const t = CFG.turnos.find(x => x.c === 'T1'), p0 = t.p; t.p = [{ i: '10:00', f: '10:30', min: null, dias: [] }, { i: '', f: '', min: 10, dias: [] }];
-      try { return { min: tempoTurno(t, dia), cap: capDe('T1', cat('360060'), dia) }; } finally { t.p = p0; } }, prod.dia);
+      try { return { min: tempoTurno(t, dia), cap: capDe(t, cat('360060'), dia) }; } finally { t.p = p0; } }, prod.dia);
     assert.equal(pz.min, 510 - 40, 'pausas que descontam saem do tempo disponível (30 min com horário + 10 min sem horário)'); assert.equal(Math.round(pz.cap * 1000), 72000 * 470 / 60);
     console.log('ok pausas que descontam: 8h30 − 40 min = ' + pz.min + ' min disponíveis');
 
@@ -47,7 +47,7 @@ const mt = fs.readFileSync(path.resolve(__dirname, '../../CELULAR/index.html'));
     const r = await m.evaluate(dia => {
       const T = novoTurno('T2', dia); T.cat = '360060'; T.catSnap = fotoCat(cat('360060')); T.slots.forEach((s, i) => { s.real = i < 4 ? 60 : null; });
       TURNOS.push(T); salvarT(); const sem = txtWA(T);
-      T.ant = { T1: { boa: 480, cat: '360060' } }; salvarT(); const D = diaDe(T), R = resumo(T);
+      T.ant = { T1: { boa: 480, cat: '360060', snap: fotoCat(cat('360060')), t: turnoSnap(turnoDe('T1')) } }; salvarT(); const D = diaDe(T), R = resumo(T);
       return { sem, com: txtWA(T), D: { oee: D.oee, boa: D.boa, cap: D.cap }, oee: R.oee, cap: R.cap, id: T.id };
     }, prod.dia);
     const capT2 = caps.find(x => x.turno === 'T2').cel / 1000, capT1 = caps.find(x => x.turno === 'T1').cel / 1000;
@@ -67,6 +67,12 @@ const mt = fs.readFileSync(path.resolve(__dirname, '../../CELULAR/index.html'));
     assert.match(await m.locator('.card', { hasText: 'Dia até agora' }).innerText(), /OEE do dia:\s*[\d,]+%/);
     console.log('ok tela: o cartão "Dia até agora" recebe a produção boa do 1º turno e mostra o OEE do dia');
     console.log((await m.evaluate(() => txtWA(atual()))).split('\n').slice(10, 30).join('\n'));
+    // revisão do PR 208: cadastro novo (PPH e pausas diferentes) não muda o OEE de um turno já registrado
+    const hist = await m.evaluate(() => { const T = atual(), antes = txtWA(T), c = CFG.cats.find(x => x.c === '360060'), p0 = c.pph, t1 = CFG.turnos.find(x => x.c === 'T1'), t2 = CFG.turnos.find(x => x.c === 'T2'), q1 = t1.p, q2 = t2.p;
+      c.pph = p0 * 2; t1.p = [{ i: '08:00', f: '09:00', min: null, dias: [] }]; t2.p = [{ i: '16:00', f: '17:00', min: null, dias: [] }];
+      try { return { antes, depois: txtWA(T) }; } finally { c.pph = p0; t1.p = q1; t2.p = q2; } });
+    assert.equal(hist.depois, hist.antes, 'o relatório do turno guarda o horário, as pausas e o PPH do momento');
+    console.log('ok cadastro novo (PPH dobrado, pausas novas) não muda o OEE já registrado do turno nem do dia');
     assert.deepEqual(erros, [], 'sem erro de JavaScript');
   } finally { if (browser) await browser.close(); srv.close(); }
 })().catch(e => { console.error(e); process.exit(1); });
