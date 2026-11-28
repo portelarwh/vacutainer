@@ -4315,7 +4315,7 @@ const Store={B:null,mode:'local',dir:null,mod:0,pending:false,pendFrom:0,err:'',
   let cortadas=[];
   let before=aplicar();
   /* C12 (análise comum): outra estação pode gravar entre a releitura e a gravação. Relê logo antes de gravar; se a base mudou, adota a nova e reaplica esta alteração sobre ela (até 3 vezes). Sem pendência local. */
-  if(this.mode==='pasta'&amp;&amp;lida&amp;&amp;!this.pending){for(let k=0;k<3;k++){let chk=null;try{chk=await this.readRemote()}catch(e){chk=null}if(!chk||(chk.data.rev===lida.data.rev&amp;&amp;chk.mod===lida.mod))break;lida=chk;this.B=this.fix(chk.data);this.mod=chk.mod;before=aplicar()}}
+  if(this.mode==='pasta'&amp;&amp;lida&amp;&amp;!this.pending){for(let k=0;k<3;k++){let chk=null;try{chk=await this.readRemote()}catch(e){chk=null}if(!chk){lida=null;break}/* 1.9.108 · A02 (auditoria 28/11/2026): releitura final que falhou não confirma a base; a alteração fica pendente neste computador */if(chk.data.rev===lida.data.rev&amp;&amp;chk.mod===lida.mod)break;lida=chk;this.B=this.fix(chk.data);this.mod=chk.mod;before=aplicar()}}
   if(this.mode==='pasta'&amp;&amp;!lida){this.err='Não consegui ler a base da pasta antes de gravar';if(!this.pending){this.pending=true;this.pendFrom=before}toast('Não consegui ler a base da pasta. A alteração ficou neste computador e será gravada depois de conferir a base da pasta.',6000,true)}
   else if(this.mode==='pasta'){try{await this.writeRemote();this.err='';this.pending=false}catch(e){this.err=String(e.message||e);if(!this.pending){this.pending=true;this.pendFrom=before}toast('Não consegui gravar na pasta. A alteração ficou neste computador e será gravada quando a pasta responder.',6000,true)}}
   else if(!this.pending){this.pending=true;this.pendFrom=before}
@@ -4536,7 +4536,7 @@ function wireConfigComum(){$('#cPasta').onclick=async()=>{if(await Store.pick())
         entrar pelo ID (autocadastro como Consulta); página inicial por perfil (1x por sessão); vigência gravada não se edita (desativar com motivo); painel de vigências; semáforo central; saída do modo de teste.
    1.1.2: aviso da carga diz qual base foi lida.  1.5: páginas Paradas, Máquinas, Manutenção e Projetos na lista (aparecem quando o HTML chega na pasta).  1.4: lista técnica pela CS12 multinível (itens = nível 1, estrutura = níveis 2+); CS03 sai.  1.3: cabeçalho comum (vac-cabecalho v2: barra do sistema + página + abas), busca Ctrl K, acabamento V1.90, Versões com cabeçalho e último backup.  1.2: Configuração › Versões das páginas (versão e data de cada HTML, gravação das bases, cópias repetidas, histórico).
    ===================================================================== */
-const PAGE={id:'portal',titulo:"Administração · Linha Vacutainer",tituloCurto:"Administração",subtitulo:'Sistemas de gestão da linha',versao:'1.9.107',baseFile:'portal-base.json',idb:'vac-portal',backupDir:'00. Backups/Portal',
+const PAGE={id:'portal',titulo:"Administração · Linha Vacutainer",tituloCurto:"Administração",subtitulo:'Sistemas de gestão da linha',versao:'1.9.108',baseFile:'portal-base.json',idb:'vac-portal',backupDir:'00. Backups/Portal',
  vazio:()=>({schema:'portal-base',schemaVersion:1,rev:0,config:{modulos:{},avisoDias:30,notas:{}},audit:[]}),
  /* itens do Portal para a busca Ctrl K: cadastro, pendências e telas */
  busca:q=>{const R=[],D=Cad.D;if(D)for(const t of CAD_ORD){for(const it of D[t]||[]){const c=String(it[kOf(t)]),nm=t==='bom'?((cadItem('catalogos',it.catalogo)||{}).nome||''):it.nome||'';if(norm(c+' '+nm).includes(q))R.push({tipo:CAD_T[t].um,txt:c+(nm?' · '+nm:''),sub:'Cadastros'+(cadAtivo(t,it,D)?'':' · inativo'),href:'#cadastros/'+t+'/'+encodeURIComponent(c)});if(R.length>30)break}}
@@ -5410,6 +5410,13 @@ const CAD_SECS=['inicio','gel','matriz','importar','auditoria','backups','segura
    curtas (macro, sem detalhe técnico). REGRA: toda versão nova da plataforma ganha uma entrada aqui, a mais recente primeiro
    (AGENTS.md e CLAUDE.md). Tipos: nova (função nova), melhoria (algo que já existia ficou melhor), correcao (erro corrigido). */
 const NOVIDADES=[
+ {v:'1.8.107',d:'2026-11-28',itens:[
+  ['correção','Gestão de Gel: uma alteração feita enquanto a página relia a base gravada por outra pessoa não se perde mais; a reserva das alterações pendentes volta a ser lida; base que sumiu da pasta não é recriada.'],
+  ['correção','Administração: se a última releitura antes de gravar falhar, a alteração fica pendente neste computador em vez de gravar sem conferir.'],
+  ['correção','Paradas: a mensagem da importação conta só as paradas que entraram de fato.'],
+  ['correção','Equipamentos: duas vigências da mesma TAG com a mesma data de início não entram mais pela fila de outra estação.'],
+  ['correção','Linha 360°: Desfazer a marcação do checklist volta a funcionar.'],
+  ['correção','Duas abas conectando a mesma pasta ao mesmo tempo usam o mesmo escopo.']]},
  {v:'1.8.106',d:'2026-11-28',itens:[
   ['correção','Produção › Config. › Usuário voltou a abrir: mostrava um erro em vez do usuário atual e da exibição das quantidades.']]},
  {v:'1.8.105',d:'2026-11-28',itens:[
@@ -26435,7 +26442,10 @@ async function fsFlush(){
   try{do{FS.again=false;const chs=FS.pending.slice();if(!chs.length)break;
       // outra pessoa gravou (data ou rev diferente): carrega a versão nova e reaplica por cima as alterações desta pessoa
       /* C12 (análise comum): relê até a base ficar estável (no máximo 3 vezes) e só então grava; o que outra estação gravou nesse intervalo é aplicado por baixo desta alteração */
-      for(let k=0;k<3;k++){const cur=await fsReadBase(fsKnown());if(!cur||cur.same)break;FS.mod=cur.mod;FS.rev=cur.rev;FS.revBy=cur.by;loadData(cur.data);chs.forEach(applyLocal)}
+      /* 2.53 · A01 (auditoria 28/11/2026): depois de recarregar a base, reaplica a fila INTEIRA (não só a captura do início): uma edição feita
+         durante a releitura já estava aplicada na memória e sumiria da gravação. A09: base que já foi lida e sumiu da pasta não é recriada
+         com a cópia local; a fila fica guardada */
+      for(let k=0;k<3;k++){const cur=await fsReadBase(fsKnown());if(!cur&amp;&amp;FS.on)throw new Error(BASE_FILE+' sumiu da pasta: nada foi gravado. As alterações continuam guardadas neste computador; confira a pasta.');if(!cur||cur.same)break;FS.mod=cur.mod;FS.rev=cur.rev;FS.revBy=cur.by;loadData(cur.data);FS.pending.forEach(applyLocal)}
       await fsWriteBase(snapshotData());
       // confere: se outra gravação entrou logo depois desta, grava de novo (até 3 vezes) para não perder as alterações
       const fh=await FS.base.getFileHandle(BASE_FILE);const hd=await fsReadHead(fh);
@@ -26455,7 +26465,7 @@ const fileBackend={kind:'file',async commit(ch){applyLocal(ch);FS.pending.push(c
 async function fsRefresh(){if(S.mode!=='file'||FS.busy||ui.demo)return;try{const cur=await fsReadBase(fsKnown());if(cur&amp;&amp;!cur.same){FS.mod=cur.mod;FS.rev=cur.rev;FS.revBy=cur.by;loadData(cur.data);FS.pending.forEach(applyLocal);localBackend.save();render()}}catch(e){}}
 /* ================= V1.89 · integração com as outras páginas (Portal, OEE, Perdas) ================= */
 // versão da página (topo, Guia e base gravada)
-const APP_VERSION='2.52';   /* ritmo e indicador de scrap vêm da Administração; sem preço próprio */   /* BASE-LIMPA: base anterior só consulta */   /* 2.50 · GEL-FMT: perdas teóricas por formato do tubo */   /* 2.49 · ADM-CENTRAL: formatos e locais pelo cadastro */   /* 2.48 · GEL-09: local de cada descarte no registro e nas pesagens da Produção */   /* 2.47 · CAD-CONS: Consulta de cadastros com ficha lateral */   /* 2.46 · CFG-ADM etapa 2: cadastros do gel só na Administração */   /* 2.45 · CFG-ADM: seções com cadastro na Administração abrem direto lá */   /* 2.44 · REL-02: cabeçalho, rodapé e tabela dos PDFs no molde comum */   /* 2.43 · padrão visual: rótulo do barril na fonte da marca (era Barlow Condensed); cabeçalho das abas e Limpar filtros pela peça comum */   /* 2.42 · GEL-07: OEE e produção da Produção em todo dia que ela tem; OP/lote e relatório comum */   /* 2.41 · GEL-06: dia da Produção com pesagens, ordem/lote e "Editar na Produção" */   /* 2.35 · #aba=relatorios (Portal › Relatórios) abre as fichas e relatórios em PDF */   /* 2.34 · D8: Pareto comum do kit (vacPareto) */   /* 2.33 · Fase 5: layout no arquivo da pessoa (vacPrefs do kit) */   /* 2.32 · D6: botões de gravação travados conforme o perfil (vacTravas do kit) */   /* 2.29 · Design System (barra lateral, paleta, grade de gráficos) */   /* 2.28 · gráficos: "Valores em …" (kg, tubos, barris, dias, índice) onde o eixo não diz a unidade (docs/graficos-padrao.md) */   /* 2.27 · Visão Geral no padrão comum (vacLayout): situação, números, diagnóstico, análises do painel, explorar */   /* 2.26 · kit: padrão visual comum (vacLayout) */   /* 2.25 · kit: login com ID e senha */   /* 2.22 · UX-02: guia por aba */   /* 2.21 · Fase 7 (UX-03, GEL-01): Painel → Visão Geral */   /* 2.20 · Fase 4 · 4e: exports porDiaGel (teórico × real por dia) */   /* 2.19 · Fase 4 · 4d: lê da Produção a partir do corte (GelProd); Resumo do dia */   /* 2.18 · Fase 4 · 4b: pesagem pela conta comum do kit (vacGel) */   /* 2.17 · Fase 4 · 4a: parâmetros do gel do Portal (processo, formatos, motivos, descartes, gel do catálogo) */   /* 2.16 · Fase 3 (IMP-04): importações no exports; #importar abre a importação */   /* 2.15 · ARQ-05/ARQ-07: catálogos e equipamentos do Portal (GelCad); contas do gel iguais */   /* 2.14 · ARQ-09: sem entrada própria de "Modo exemplo" */   /* 2.11 · C2–C6: kit com a ficha por pasta (AT-08) e a contagem da fila durável (Portal › Versões) */   /* 2.10 · C1: alterações pendentes na fila durável do kit (sem perda entre abas) */   /* 2.09 · E11: busca do kit leva o equipamento à ficha em Equipamentos */   /* 2.08 · E8: kit com "+ Abrir ação" na ficha da ordem */   /* 2.07 · E5: ficha da ordem comum (botão na ordem) e busca por ordem, lote e LP */   /* 2.06 · E3: número digitado só aceito inteiro; E4: cobertura das ordens no exports */   /* 2.05 · E2: a versão da tela vem desta constante (o rótulo estava fixo em v2.01); kit com data local e meta do mês ponderada */   /* 2.04 · revisão 065fe6f: restauração por arquivo confirma e não segue sem a cópia anterior; CSV sem fórmulas; índice por dia no Painel */
+const APP_VERSION='2.53';   /* A01/A09 (auditoria 28/11/2026): fila inteira reaplicada; reserva da fila lida; base sumida não é recriada */   /* ritmo e indicador de scrap vêm da Administração; sem preço próprio */   /* BASE-LIMPA: base anterior só consulta */   /* 2.50 · GEL-FMT: perdas teóricas por formato do tubo */   /* 2.49 · ADM-CENTRAL: formatos e locais pelo cadastro */   /* 2.48 · GEL-09: local de cada descarte no registro e nas pesagens da Produção */   /* 2.47 · CAD-CONS: Consulta de cadastros com ficha lateral */   /* 2.46 · CFG-ADM etapa 2: cadastros do gel só na Administração */   /* 2.45 · CFG-ADM: seções com cadastro na Administração abrem direto lá */   /* 2.44 · REL-02: cabeçalho, rodapé e tabela dos PDFs no molde comum */   /* 2.43 · padrão visual: rótulo do barril na fonte da marca (era Barlow Condensed); cabeçalho das abas e Limpar filtros pela peça comum */   /* 2.42 · GEL-07: OEE e produção da Produção em todo dia que ela tem; OP/lote e relatório comum */   /* 2.41 · GEL-06: dia da Produção com pesagens, ordem/lote e "Editar na Produção" */   /* 2.35 · #aba=relatorios (Portal › Relatórios) abre as fichas e relatórios em PDF */   /* 2.34 · D8: Pareto comum do kit (vacPareto) */   /* 2.33 · Fase 5: layout no arquivo da pessoa (vacPrefs do kit) */   /* 2.32 · D6: botões de gravação travados conforme o perfil (vacTravas do kit) */   /* 2.29 · Design System (barra lateral, paleta, grade de gráficos) */   /* 2.28 · gráficos: "Valores em …" (kg, tubos, barris, dias, índice) onde o eixo não diz a unidade (docs/graficos-padrao.md) */   /* 2.27 · Visão Geral no padrão comum (vacLayout): situação, números, diagnóstico, análises do painel, explorar */   /* 2.26 · kit: padrão visual comum (vacLayout) */   /* 2.25 · kit: login com ID e senha */   /* 2.22 · UX-02: guia por aba */   /* 2.21 · Fase 7 (UX-03, GEL-01): Painel → Visão Geral */   /* 2.20 · Fase 4 · 4e: exports porDiaGel (teórico × real por dia) */   /* 2.19 · Fase 4 · 4d: lê da Produção a partir do corte (GelProd); Resumo do dia */   /* 2.18 · Fase 4 · 4b: pesagem pela conta comum do kit (vacGel) */   /* 2.17 · Fase 4 · 4a: parâmetros do gel do Portal (processo, formatos, motivos, descartes, gel do catálogo) */   /* 2.16 · Fase 3 (IMP-04): importações no exports; #importar abre a importação */   /* 2.15 · ARQ-05/ARQ-07: catálogos e equipamentos do Portal (GelCad); contas do gel iguais */   /* 2.14 · ARQ-09: sem entrada própria de "Modo exemplo" */   /* 2.11 · C2–C6: kit com a ficha por pasta (AT-08) e a contagem da fila durável (Portal › Versões) */   /* 2.10 · C1: alterações pendentes na fila durável do kit (sem perda entre abas) */   /* 2.09 · E11: busca do kit leva o equipamento à ficha em Equipamentos */   /* 2.08 · E8: kit com "+ Abrir ação" na ficha da ordem */   /* 2.07 · E5: ficha da ordem comum (botão na ordem) e busca por ordem, lote e LP */   /* 2.06 · E3: número digitado só aceito inteiro; E4: cobertura das ordens no exports */   /* 2.05 · E2: a versão da tela vem desta constante (o rótulo estava fixo em v2.01); kit com data local e meta do mês ponderada */   /* 2.04 · revisão 065fe6f: restauração por arquivo confirma e não segue sem a cópia anterior; CSV sem fórmulas; índice por dia no Painel */
 /* 2.03 · situação "em atualização" (kit: selo, pílula e faixa; docs/paginas-construcao.md) */
 /* 2.02 · relatório montado: todas as linhas no PDF, comentário, aviso de corte no texto; Painel em 1º; aba inicial do perfil; impressão e PDF no tema claro */
 /* 1.99 · menu Mais do cabeçalho (vac-visual v1): fecha ao escolher uma ação, ao clicar fora e com Esc */
@@ -26712,7 +26722,7 @@ async function fsUse(h,{create}={}){
   const cur=await fsReadBase();
   if(cur){loadData(cur.data);FS.mod=cur.mod;FS.rev=cur.rev||0;FS.revBy=cur.by||'';
     try{const F=vacFila('gel');
-      const pend=(await F.minhas())||(await idb.get('fsPending.reserva'))||[];if(Array.isArray(pend)&amp;&amp;pend.length&amp;&amp;!FS.pending.length){FS.pending=pend;pend.forEach(applyLocal);setTimeout(()=>fsFlush(),300)}}catch(e){console.warn('fsPending',e)}
+      const m=await F.minhas(),pend=Array.isArray(m)&amp;&amp;m.length?m:((await idb.get('fsPending.reserva'))||[]);   /* 2.53 · A09: fila vazia ([]) não pula a reserva */if(Array.isArray(pend)&amp;&amp;pend.length&amp;&amp;!FS.pending.length){FS.pending=pend;pend.forEach(applyLocal);setTimeout(()=>fsFlush(),300)}}catch(e){console.warn('fsPending',e)}
     localBackend.save()}
   else if(create){await fsWriteBase(snapshotData())}
   else return false;
@@ -32620,7 +32630,7 @@ const MATRIZ_PROPOSTA={"OUT": ["Tullip A", "Tullip B", "Packout", "Metro", "Cap 
    PARADAS · núcleo (pasta, base, fila de gravação, backups, cadastro, utilidades)
    ===================================================================================== */
 const PAGE={id:'paradas',titulo:'Paradas · Análise de falhas e paradas de máquina',tituloCurto:'Paradas',subtitulo:'Análise de falhas e paradas de máquina',
-  versao:'1.2.22',estado:'atualizacao',estadoNota:"Matriz, componentes e limite de microparada passam a vir só da Administração; eventos da Produção entram como sugestão.",baseFile:'paradas-base.json',backupDir:'00. Backups/Paradas',busca:q=>buscaPagina(q)};
+  versao:'1.2.23',estado:'atualizacao',estadoNota:"Matriz, componentes e limite de microparada passam a vir só da Administração; eventos da Produção entram como sugestão.",baseFile:'paradas-base.json',backupDir:'00. Backups/Paradas',busca:q=>buscaPagina(q)};
 const APP_VERSION=PAGE.versao;
 const CAD_FILE='vacutainer-cadastros.json',OEE_FILE='oee-vacutainer-base.json';
 const $=(s,r=document)=>r.querySelector(s),$$=(s,r=document)=>[...r.querySelectorAll(s)];
@@ -33811,7 +33821,7 @@ async function prevImport(file){if(!vacPodeAqui('importar'))return;let r;try{r=a
    Store.commit({k:'importar',lote:imp,itens:items.map(evento=>({evento,esperada:versaoEvento(cur.get(evento.id))})),aud:'importou '+file.name});
    if($('#impSalva').checked){const dm={...Store.data.config.deparaMaquina};for(const[k,v]of Object.entries(st.dep))if(v)dm[k]=v;else delete dm[k];const dt={...Store.data.config.deparaTipo,...st.map};
     Store.commit({k:'cfg',key:'deparaMaquina',v:dm,aud:'de-para de máquinas'});if(Object.keys(st.map).length)Store.commit({k:'cfg',key:'deparaTipo',v:dt,aud:'de-para de tipos'})}
-   Cad.build();F.init();toast(`${n0(items.length)} paradas importadas`);App.go('geral')}}]})}
+   Cad.build();F.init();/* 1.2.23 · A10 (auditoria 28/11/2026): a mensagem conta o que entrou de fato; linha que outra pessoa mudou desde a prévia fica de fora */const L=(Store.data.importacoes||[]).find(i=>i.id===imp.id),feitas=L?(L.novas||0)+(L.atualizadas||0):0;if(feitas<items.length)toast(`${n0(feitas)} de ${n0(items.length)} paradas importadas: ${n0(items.length-feitas)} mudaram na base desde a prévia. Abra o arquivo de novo para conferir as que faltaram.`,1);else toast(`${n0(items.length)} paradas importadas`);App.go('geral')}}]})}
 
 /* ---------- Configuração ---------- */
 VIEWS.config={html(){const D=Store.data,c=D.config;const prov=Cad.eqs.filter(e=>e.prov);const dep=Object.entries(c.deparaMaquina||{});
@@ -34133,7 +34143,7 @@ table.t tr.on td{background:var(--accent-soft)}
 <main class="wrap" id="main"></main>
 <div class="toasts" id="toasts"></div>
 <script>
-const PAGE={id:"equip",titulo:"Equipamentos · Máquinas da linha e manutenção",tituloCurto:"Equipamentos",subtitulo:"Ficha, OS, TAGs e AM/TPM",versao:"1.0.22",baseFile:"equipamentos-base.json",backupDir:"00. Backups/Equipamentos",estado:"atualizacao",estadoNota:"Primeira versão: ficha, ordens de serviço, TAGs e estrutura AM/TPM. MES e conteúdo dos padrões chegam nas próximas etapas."};
+const PAGE={id:"equip",titulo:"Equipamentos · Máquinas da linha e manutenção",tituloCurto:"Equipamentos",subtitulo:"Ficha, OS, TAGs e AM/TPM",versao:"1.0.23",baseFile:"equipamentos-base.json",backupDir:"00. Backups/Equipamentos",estado:"atualizacao",estadoNota:"Primeira versão: ficha, ordens de serviço, TAGs e estrutura AM/TPM. MES e conteúdo dos padrões chegam nas próximas etapas."};
 const APP_VERSION=PAGE.versao;
 /* ---------- vac-cabecalho v2 · JS (igual em todas as páginas) ---------- */
 const VAC_CAB_VERSAO=2;
@@ -34228,7 +34238,7 @@ function applyOp(D,op){const ev=x=>{if(!D.eventos.some(e=>e.id===op.id))D.evento
  else if(op.k==='osc'){const o=D.os.find(x=>x.id===op.ac);if(!o)return D;for(const[k,v]of Object.entries(op.f))o[k]=v;o.atualizadaEm=op.em;if(op.ev)ev({os:op.ac,...op.ev})}
  else if(op.k==='apont'){const o=D.os.find(x=>x.id===op.ac);if(!o)return D;const L=o.apontamentos||(o.apontamentos=[]);if(!L.some(x=>x.id===op.it.id))L.push(clone(op.it))}
  else if(op.k==='tag'){const t=D.tags.find(x=>x.codigo===op.it.codigo);if(t)Object.assign(t,clone(op.it));else D.tags.push({vigencias:[],vigenciasDesativadas:[],...clone(op.it)})}
- else if(op.k==='tagvig'){const t=D.tags.find(x=>x.codigo===op.cod);if(t&amp;&amp;!t.vigencias.some(v=>v.id===op.vig.id))t.vigencias.push(clone(op.vig))}
+ else if(op.k==='tagvig'){const t=D.tags.find(x=>x.codigo===op.cod);/* 1.0.23 · A11 (auditoria 28/11/2026): na reaplicação da fila, segunda vigência da TAG com a mesma data de início não entra (a vigente deixaria de depender da data) */if(t&amp;&amp;!t.vigencias.some(v=>v.id===op.vig.id)){if(t.vigencias.some(v=>v.de===op.vig.de))console.warn('tagvig: vigência de '+op.cod+' começando em '+op.vig.de+' já existe; a outra fica de fora');else t.vigencias.push(clone(op.vig))}}
  else if(op.k==='tagdes'){const t=D.tags.find(x=>x.codigo===op.cod);if(!t)return D;const i=t.vigencias.findIndex(v=>v.id===op.vid);if(i>=0){const v=t.vigencias.splice(i,1)[0];(t.vigenciasDesativadas||(t.vigenciasDesativadas=[])).push({...v,desativadaEm:op.em,desativadaPor:op.por,motivo:op.motivo||''})}}
  else if(op.k==='pad')up(D.padroes,op.it);
  else if(op.k==='anom')up(D.anomalias,op.it);
@@ -35440,7 +35450,7 @@ tr.l3-sujo>td{background:color-mix(in srgb,var(--warn) 10%,transparent)}tr.l3-su
 <main class="wrap" id="main"></main>
 <div class="toasts" id="toasts"></div>
 <script>
-const PAGE={id:"linha",titulo:"Linha 360° · Planta interativa da linha",tituloCurto:"Linha 360°",subtitulo:"Planta interativa: paradas, pessoas e ações em cada ponto da linha",versao:"1.7.1",baseFile:"linha360-base.json",backupDir:"00. Backups/Linha360",estado:"atualizacao",estadoNota:"Primeira versão: planta, pontos, áreas, postos e checklists. MES por equipamento chega depois."};
+const PAGE={id:"linha",titulo:"Linha 360° · Planta interativa da linha",tituloCurto:"Linha 360°",subtitulo:"Planta interativa: paradas, pessoas e ações em cada ponto da linha",versao:"1.7.2",baseFile:"linha360-base.json",backupDir:"00. Backups/Linha360",estado:"atualizacao",estadoNota:"Primeira versão: planta, pontos, áreas, postos e checklists. MES por equipamento chega depois."};
 const APP_VERSION=PAGE.versao;
 /* ---------- vac-cabecalho v2 · JS (igual em todas as páginas) ---------- */
 const VAC_CAB_VERSAO=2;
@@ -35642,7 +35652,7 @@ function validarBase(D){const e=[];if(!D||typeof D!=='object')return['não é um
 function applyOp(D,op){const up=(L,it)=>{const i=L.findIndex(x=>x.id===it.id);if(i>=0)L[i]={...L[i],...clone(it)};else L.push(clone(it))};
  if(op.k==='local')aplicarLocal(D,op);else if(op.k==='ponto')up(D.pontos,op.it);else if(op.k==='area')up(D.areas,op.it);else if(op.k==='posto')up(D.postos,op.it);else if(op.k==='chk')up(D.checklists,op.it);else if(op.k==='form'){if(!Array.isArray(D.formularios))D.formularios=[];up(D.formularios,op.it)}else if(op.k==='foto'){if(!Array.isArray(D.fotos))D.fotos=[];up(D.fotos,op.it)}
  else if(op.k==='feito'){const f=D.feitos.find(x=>x.id===op.it.id);if(f)Object.assign(f,clone(op.it),{anulado:false});else D.feitos.push(clone(op.it))}
- else if(op.k==='desfeito'){const f=D.feitos.find(x=>x.id===op.id);if(f){f.anulado=true;f.anuladoEm=op.em;f.anuladoPor=op.por}}
+ else if(op.k==='desfeito'){/* 1.7.2 · A12 (auditoria 28/11/2026): o commit troca op.id pelo id da operação; a marcação desfeita vai em op.alvo */const f=D.feitos.find(x=>x.id===(op.alvo||op.id));if(f){f.anulado=true;f.anuladoEm=op.em;f.anuladoPor=op.por}}
  return D}
 const junta=(base,pad)=>{const m=new Map(pad.map(x=>[x.id,{...x}]));for(const x of base||[])m.set(x.id,{...(m.get(x.id)||{}),...x});return[...m.values()].filter(x=>x.ativo!==false)};
 const numeroPonto=p=>p.numero||p.id;
@@ -36719,7 +36729,7 @@ function ligar(){if(App.tab==='config'&amp;&amp;fmPode('configurar'))$('#cv').on
   Store.commit({k:'posto',it:{id:p.id,pessoas:pes,pessoasIds:ids,area:String(f.get('area')||'').trim(),ponto:String(f.get('ponto')||'')||null,nota:String(f.get('nota')||'').trim()}});toast('Posto salvo')};
  on('#ckTurno','onchange',e=>{App.chkTurno=e.target.value;render()});
  $$('[data-feito]').forEach(b=>b.onclick=()=>{const c=Store.data.checklists.find(x=>x.id===b.dataset.feito),h=hoje(),tn=App.chkTurno||turnoAgora();Store.commit({k:'feito',it:{id:c.id+'|'+(c.frequencia==='semana'?semanaDe(h):h)+'|'+(c.frequencia==='turno'?tn:''),checklist:c.id,dia:h,turno:tn,por:user()||'',porId:vacPessoa.eu().id,em:new Date().toISOString()}})});
- $$('[data-desf]').forEach(b=>b.onclick=()=>{if(confirm('Desfazer a marcação deste checklist?'))Store.commit({k:'desfeito',id:b.dataset.desf})});
+ $$('[data-desf]').forEach(b=>b.onclick=()=>{if(confirm('Desfazer a marcação deste checklist?'))Store.commit({k:'desfeito',alvo:b.dataset.desf})});
  const fc=$('#fChk');if(fc){fc.onsubmit=e=>{e.preventDefault();const f=new FormData(fc),id=String(f.get('id')||'')||uid('CK');Store.commit({k:'chk',it:{id,titulo:String(f.get('titulo')).trim(),ponto:String(f.get('ponto')||'')||null,posto:String(f.get('posto')||'')||null,frequencia:String(f.get('frequencia')||'turno'),ativo:true}});toast('Checklist salvo')};
   $$('[data-chked]').forEach(b=>b.onclick=()=>{const c=Store.data.checklists.find(x=>x.id===b.dataset.chked);if(!c)return;fc.id.value=c.id;fc.titulo.value=c.titulo;fc.ponto.value=c.ponto||'';fc.posto.value=c.posto||'';fc.frequencia.value=c.frequencia||'turno';$('#chkSalvar').textContent='Salvar alteração';$('#chkDesativar').hidden=false;fc.scrollIntoView({block:'center'});fc.titulo.focus()});
   on('#chkDesativar','onclick',()=>{const id=fc.id.value;if(id&amp;&amp;confirm('Desativar este checklist? O histórico continua guardado.'))Store.commit({k:'chk',it:{id,ativo:false}})});on('#chkLimpar','onclick',()=>{fc.id.value='';$('#chkSalvar').textContent='Adicionar checklist';$('#chkDesativar').hidden=true})}
@@ -55404,23 +55414,23 @@ body.vac-porta{overflow:hidden}
     {
       "id": "gel",
       "path": "Plataforma.html#motor/gel",
-      "version": "2.52",
-      "sha256": "ea6a9a71378b9dad16f30644a37e073bc1d50e39a34e2980edd9ea55f970b0e8",
-      "bytes": 1632260
+      "version": "2.53",
+      "sha256": "0ce08b7c797a5c9693dc4ad6279d256b2c05810ac4af4687cf5eb00b1b66d6cc",
+      "bytes": 1632970
     },
     {
       "id": "paradas",
       "path": "Plataforma.html#motor/paradas",
-      "version": "1.2.22",
-      "sha256": "4f8a5eee3963dd1a6e09b532b16a7c1de8434db0023081d0c8b695d74c473aef",
-      "bytes": 956453
+      "version": "1.2.23",
+      "sha256": "45854af8fb8397788d347d68595239cb909853b8e951e1b55f6ccc503061965c",
+      "bytes": 956906
     },
     {
       "id": "equip",
       "path": "Plataforma.html#motor/equip",
-      "version": "1.0.22",
-      "sha256": "84b1e0123f08b4648420b1cba6c1bb4618426f74e5142a954305c7c6ad90152c",
-      "bytes": 747616
+      "version": "1.0.23",
+      "sha256": "6b49e03bc1d8a8b585f9c642f1616a99cd88abcdda914e1af24b9ae873875e21",
+      "bytes": 747947
     },
     {
       "id": "inic",
@@ -55432,9 +55442,9 @@ body.vac-porta{overflow:hidden}
     {
       "id": "linha",
       "path": "Plataforma.html#motor/linha",
-      "version": "1.7.1",
-      "sha256": "da435d181abdaeedda58ad772def6759d741c6992946565eb6f6cea43b22371b",
-      "bytes": 1010249
+      "version": "1.7.2",
+      "sha256": "4822c3a27dcacbc7f9bf7edb3d4fb320f137670aba6ed0cb50c556b2b2bdeb5d",
+      "bytes": 1010385
     },
     {
       "id": "projetos",
@@ -55446,15 +55456,15 @@ body.vac-porta{overflow:hidden}
     {
       "id": "portal",
       "path": "Plataforma.html#motor/portal",
-      "version": "1.9.107",
-      "sha256": "9d7354072fa85797b9e7b8cece8c0ef6168915c159463a8fbc90f4b4ecf01893",
-      "bytes": 1373343
+      "version": "1.9.108",
+      "sha256": "f349626927c1a85e8c320b46e7df7cd9f244118bfb8efc26e21328dca090686b",
+      "bytes": 1374344
     }
   ],
   "limitations": [
     "Projetos e conteúdo técnico OSM/MES/AM/TPM mantêm os limites documentados nas fontes."
   ],
-  "enginesSha256": "05073a0fac3fb6763d7df085144d82cc40a943a310285cab9dbc1e76f3aed3fc",
+  "enginesSha256": "8eb5969181ee2cf91e7bfdfaba1b1cfc34dba460c11e95012c254ae95848ba33",
   "originRevision": "ffc9ee8",
   "sourceMode": "single-html",
   "originEnginesSha256": "a87a64ad0c328f70e102b2ae888790a9b5d5a9bd05778652a7ce7cae140e40d2"
@@ -55524,7 +55534,7 @@ summary{cursor:pointer;font-weight:600;color:var(--navy)}
 'use strict';
 /* ---------- referência (atualizar quando a plataforma mudar de versão) ---------- */
 // Iguais às do pacote da plataforma (nova-plataforma/src/generated/manifest.json); o teste ferramenta-verificar confere.
-const VERSOES = {"oee":"2.6.50","perdas":"1.12.21","gel":"2.52","paradas":"1.2.22","equip":"1.0.22","inic":"1.1.17","linha":"1.7.1","projetos":"0.1.16","portal":"1.9.107"};
+const VERSOES = {"oee":"2.6.50","perdas":"1.12.21","gel":"2.53","paradas":"1.2.23","equip":"1.0.23","inic":"1.1.17","linha":"1.7.2","projetos":"0.1.16","portal":"1.9.108"};
 const BASES = [
  { arq: 'vacutainer-cadastros.json', mod: 'portal', nome: 'Cadastro geral (Portal)', obrig: true, cadastro: true, bk: 'Cadastros' },
  { arq: 'portal-base.json', mod: 'portal', nome: 'Portal', obrig: true, bk: 'Portal' },
@@ -56115,7 +56125,7 @@ import { Icon, Button, Badge, Empty, Modal, BarChart, BrandLogo, CommandMenu } f
 import { ModuleFrame } from "vac:modulo/components/ModuleFrame";
 import manifest from "vac:recurso/manifesto";
 import { ModuleTabs } from "vac:modulo/components/ModuleTabs";
-const VERSION = "1.8.106";
+const VERSION = "1.8.107";
 /* Navegação 1.3.0 (16/11/2026): Visão da linha, Relatórios e Importações têm abas; as que mostram uma tela do
    Portal (motor da Administração) trazem o 3º campo com a aba dele. Administração fica só com cadastros e configuração. */
 const SHELL_TABS = {
@@ -58461,7 +58471,13 @@ async function scopeFor(handle, records) {
   records.push({ handle, scope });
   return scope;
 }
-async function rememberFolder(handle) {
+/* 1.8.107 · A14 (auditoria 28/11/2026): duas abas conectando a mesma pasta ao mesmo tempo liam a lista, criavam escopos diferentes e só
+   um ficava gravado. A leitura, a criação e a gravação do par pasta/escopo agora acontecem sob a mesma Web Lock (sem Web Locks, como antes) */
+function rememberFolder(handle) {
+  const locks = typeof navigator !== "undefined" &amp;&amp; navigator.locks;
+  return locks ? locks.request("vac-scopes", () => rememberFolderNow(handle)) : rememberFolderNow(handle);
+}
+async function rememberFolderNow(handle) {
   const records = await dbGet("scopes") || [];
   if (!records.length) {
     const old = await dbGet("folder"), scope2 = await dbGet("scope");
