@@ -2390,7 +2390,7 @@ var qrcode = function() {
    modos de falha e pessoas (só ID, nome e turno). Os dados ficam só no celular; nada sai sozinho. */
 const FONTE='<!doctype html>\n'+document.documentElement.outerHTML;
 const CFG_EMB=/*CFG*/null/*CFG*/;
-const VERSAO='0.1';
+const VERSAO='0.2';
 const $=(s,r=document)=>r.querySelector(s),$$=(s,r=document)=>[...r.querySelectorAll(s)];
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const pad=n=>String(n).padStart(2,'0');
@@ -2414,10 +2414,10 @@ window.addEventListener('hashchange',render);
 function render(){const [rota,arg]=(location.hash||'#inicio').slice(1).split('/');const a=$('#app');
  a.innerHTML=rota==='at'?vAt(arg):rota==='env'?vEnv(arg):vInicio();({at:ligAt,env:ligEnv}[rota]||ligInicio)(arg);scrollTo(0,0)}
 function vInicio(){const L=AT.slice().sort((a,b)=>b.criadoEm.localeCompare(a.criadoEm));
- return topo('Manutenção',CFG.linha)+`<main><button class="btn pri blk" id="novo">+ Novo atendimento</button>
+ return topo('Manutenção',CFG.linha)+`<main><button class="btn pri blk" id="novo">+ Novo atendimento</button>${window.VAC_LINHA?'<button class="btn blk" id="trocaMod">⇄ Trocar de módulo (Operação / Manutenção)</button>':''}
   <div class="card"><h2>Atendimentos</h2>${L.length?L.map(a=>{const m=maq(a.eq);return`<button class="it" data-at="${a.id}"><div><b>${esc(m?m.n:a.eq||'sem equipamento')}</b><span>${brh(a.ini)} · ${esc((modo(a.mf)||{}).n||a.mfTxt||'—')} · ${a.sit==='concluida'?'concluído':'pendente'}${a.enviado?' · enviado':''}</span></div><i>›</i></button>`}).join(''):'<p class="small muted">Nenhum atendimento ainda.</p>'}</div>
   <p class="small muted" style="text-align:center">Os dados ficam neste celular e vão para a plataforma por QR ou arquivo. · versão ${VERSAO}${CFG.fonte&&CFG.fonte.cadRev!=null?' · cadastro rev '+esc(CFG.fonte.cadRev):''}</p></main>`}
-function ligInicio(){comum();$('#novo').onclick=()=>{const a=novo();AT.push(a);salvar();ir('at/'+a.id)};$$('[data-at]').forEach(b=>b.onclick=()=>ir('at/'+b.dataset.at))}
+function ligInicio(){comum();const tm=$('#trocaMod');if(tm)tm.onclick=()=>window.VAC_LINHA.trocar();$('#novo').onclick=()=>{const a=novo();AT.push(a);salvar();ir('at/'+a.id)};$$('[data-at]').forEach(b=>b.onclick=()=>ir('at/'+b.dataset.at))}
 function vAt(id){const a=AT.find(x=>x.id===id);if(!a)return topo('Atendimento')+'<main><div class="card">Não encontrado.</div></main>';const P=CFG.pessoas||[];
  return topo('Atendimento',brh(a.ini),'<a class="ib" href="#inicio" aria-label="Voltar" style="text-decoration:none">‹</a>')+`<main>
  <div class="card"><h2>Quem e onde</h2><div style="display:grid;gap:10px">

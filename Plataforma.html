@@ -4536,7 +4536,7 @@ function wireConfigComum(){$('#cPasta').onclick=async()=>{if(await Store.pick())
         entrar pelo ID (autocadastro como Consulta); página inicial por perfil (1x por sessão); vigência gravada não se edita (desativar com motivo); painel de vigências; semáforo central; saída do modo de teste.
    1.1.2: aviso da carga diz qual base foi lida.  1.5: páginas Paradas, Máquinas, Manutenção e Projetos na lista (aparecem quando o HTML chega na pasta).  1.4: lista técnica pela CS12 multinível (itens = nível 1, estrutura = níveis 2+); CS03 sai.  1.3: cabeçalho comum (vac-cabecalho v2: barra do sistema + página + abas), busca Ctrl K, acabamento V1.90, Versões com cabeçalho e último backup.  1.2: Configuração › Versões das páginas (versão e data de cada HTML, gravação das bases, cópias repetidas, histórico).
    ===================================================================== */
-const PAGE={id:'portal',titulo:"Administração · Linha Vacutainer",tituloCurto:"Administração",subtitulo:'Sistemas de gestão da linha',versao:'1.9.104',baseFile:'portal-base.json',idb:'vac-portal',backupDir:'00. Backups/Portal',
+const PAGE={id:'portal',titulo:"Administração · Linha Vacutainer",tituloCurto:"Administração",subtitulo:'Sistemas de gestão da linha',versao:'1.9.105',baseFile:'portal-base.json',idb:'vac-portal',backupDir:'00. Backups/Portal',
  vazio:()=>({schema:'portal-base',schemaVersion:1,rev:0,config:{modulos:{},avisoDias:30,notas:{}},audit:[]}),
  /* itens do Portal para a busca Ctrl K: cadastro, pendências e telas */
  busca:q=>{const R=[],D=Cad.D;if(D)for(const t of CAD_ORD){for(const it of D[t]||[]){const c=String(it[kOf(t)]),nm=t==='bom'?((cadItem('catalogos',it.catalogo)||{}).nome||''):it.nome||'';if(norm(c+' '+nm).includes(q))R.push({tipo:CAD_T[t].um,txt:c+(nm?' · '+nm:''),sub:'Cadastros'+(cadAtivo(t,it,D)?'':' · inativo'),href:'#cadastros/'+t+'/'+encodeURIComponent(c)});if(R.length>30)break}}
@@ -5410,6 +5410,8 @@ const CAD_SECS=['inicio','gel','matriz','importar','auditoria','backups','segura
    curtas (macro, sem detalhe técnico). REGRA: toda versão nova da plataforma ganha uma entrada aqui, a mais recente primeiro
    (AGENTS.md e CLAUDE.md). Tipos: nova (função nova), melhoria (algo que já existia ficou melhor), correcao (erro corrigido). */
 const NOVIDADES=[
+ {v:'1.8.102',d:'2026-11-27',itens:[
+  ['nova','Apps de celular: um app só, o Linha.html, com os módulos Operação e Manutenção. A pessoa abre, escolhe o módulo e pode trocar quando quiser; cada módulo guarda os próprios dados. Os arquivos separados continuam disponíveis.']]},
  {v:'1.8.101',d:'2026-11-27',itens:[
   ['nova','Administração › Apps de celular: a mensagem do WhatsApp do Meu Turno pode ser editada, com marcadores (turno, produção, paradas…) e prévia. O app (0.5) mostra no rodapé a data do cadastro embutido.']]},
  {v:'1.8.100',d:'2026-11-27',itens:[
@@ -6010,6 +6012,15 @@ const MT_APP={
   const U=(D.usuarios||[]).filter(at),man=U.filter(u=>/manut/i.test(u.area||'')||/MANUT|TEC|MECAN|ELETR/i.test(u.perfil||''));
   const pessoas=(man.length?man:U).map(u=>({id:String(u.codigo),n:u.nome||String(u.codigo),t:u.turno||''})).sort((a,b)=>a.n.localeCompare(b.n,'pt-BR'));
   return{linha:linha.nome||'Linha',maqs,modos,pessoas,fonte:{cadRev:D.rev??null,geradoEm:new Date().toISOString(),por:user()||''},rev:Date.now()}},
+ /* 1.9.105 · APP-CEL fase 2 (27/11/2026): um arquivo só com os dois módulos (Operação e Manutenção). O lançador (bloco celular/linha)
+    recebe os dois apps já gerados com o cadastro, como texto; cada módulo roda como o app separado, com os próprios dados no celular. */
+ gerarLinha(D){const t=typeof vacCodigo!=='undefined'&amp;&amp;vacCodigo.celular?vacCodigo.celular('linha'):null;if(!t)throw new Error('Modelo do app da linha não encontrado nesta plataforma.');
+  const M='/*MODS*/',i=t.indexOf(M+'null'+M);if(i<0)throw new Error('Modelo do app da linha sem o marcador dos módulos.');
+  const at=x=>x&amp;&amp;x.ativo!==false,linha=((D.linhas||[]).find(at)||{}).nome||'Linha',cfgOp=this.cfg(D).c;
+  const mods={op:cfgOp.turnos.length&amp;&amp;cfgOp.cats.length?this.gerar(D,'meu-turno'):null,man:this.cfgMan(D).maqs.length?this.gerar(D,'manutencao'):null,meta:{linha,geradoEm:new Date().toISOString(),cadRev:D.rev??null}};
+  if(!mods.op&amp;&amp;!mods.man)throw new Error('Cadastre turnos e catálogos com PPH (Operação) ou equipamentos (Manutenção) antes de gerar.');
+  const js=JSON.stringify(mods).replace(/</g,'\\u003c').replace(/\u2028/g,'\\u2028').replace(/\u2029/g,'\\u2029');
+  return t.slice(0,i+M.length)+js+t.slice(i+M.length+4)},
  gerar(D,app='meu-turno'){const t=typeof vacCodigo!=='undefined'&amp;&amp;vacCodigo.celular?vacCodigo.celular(app):null;if(!t)throw new Error('Modelo do app não encontrado nesta plataforma.');
   const M='/*CFG*/',i=t.indexOf(M+'null'+M);if(i<0)throw new Error('Modelo do app sem o marcador de configuração.');const c=app==='manutencao'?this.cfgMan(D):this.cfg(D).c;
   return t.slice(0,i+M.length)+JSON.stringify(c).replace(/</g,'\\u003c')+t.slice(i+M.length+4)}
@@ -6018,6 +6029,8 @@ function cadApps(el){const D=Cad.D,{c,semMeta}=MT_APP.cfg(D),ok=c.turnos.length&
  const li=(n,t,obs)=>`<tr><td>${esc(t)}</td><td class="n"><b>${n}</b></td><td class="muted small">${obs||''}</td></tr>`;
  el.innerHTML=`<div class="card"><h3>Apps de celular ${ib('Apps de celular','Gera o app com o cadastro de hoje embutido. Envie o arquivo aos celulares (WhatsApp, Teams ou cabo) e abra no Chrome. Quando o cadastro mudar, gere de novo e reenvie com o mesmo nome: o histórico de cada celular continua.')}</h3>
   <p class="sub">O app usa os mesmos códigos do cadastro. O turno volta para a plataforma por QR (webcam) ou arquivo em Produção › Lançamento › Importar do celular.</p>
+  <div class="note" style="margin:10px 0"><b>App da linha (Operação + Manutenção)</b> · um arquivo só: o celular abre e a pessoa escolhe o módulo. ${ib('App da linha','Gera o Linha.html com os dois módulos configurados com o cadastro de hoje. Cada módulo funciona como o app separado e guarda os próprios dados no celular; quem já usa MeuTurno.html ou Manutencao.html no Chrome continua com o histórico. Os arquivos separados abaixo continuam disponíveis.')}
+   <div class="row" style="margin-top:8px"><button class="b pri" id="linhaGerar" ${ok||MT_APP.cfgMan(D).maqs.length?'':'disabled'}>Gerar Linha.html</button><span class="small muted">Arquivos separados (como antes) logo abaixo.</span></div></div>
   <h4 style="margin:12px 0 6px">Meu Turno (operador)</h4>
   <div class="tw"><table><thead><tr><th>Vai no app</th><th class="n">Itens</th><th></th></tr></thead><tbody>
    ${li(c.turnos.length,'Turnos',c.turnos.map(t=>esc(t.c+' '+t.i+'–'+t.f)).join(' · '))}
@@ -6046,6 +6059,7 @@ function cadApps(el){const D=Cad.D,{c,semMeta}=MT_APP.cfg(D),ok=c.turnos.length&
     if(((an&amp;&amp;an.mensagemWhats)||'')===nv)return parAviso('mtWaOk','Nada mudou.');
     Cad.op({acao:'edição',tipo:'parametros',codigo:null,mudancas:{celular:{antes:an,depois:{...(an||{}),mensagemWhats:nv}}},motivo:null});
     parAviso('mtWaOk',nv?'Mensagem salva. Gere o MeuTurno.html de novo e reenvie aos celulares.':'Voltou à mensagem padrão do app. Gere o MeuTurno.html de novo e reenvie.')}}}
+ const gl=$('#linhaGerar');if(gl)gl.onclick=()=>{try{const h=MT_APP.gerarLinha(D),b=new Blob([h],{type:'text/html'}),a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='Linha.html';document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),4000);toast('Linha.html gerado com o cadastro rev '+(D.rev??'—')+'. Envie aos celulares.')}catch(e){toast(e.message||String(e),6000,true)}};
  const gm=$('#mmGerar');if(gm)gm.onclick=()=>baixar('manutencao','Manutencao.html');
  const g=$('#mtGerar');if(g)g.onclick=()=>{try{const h=MT_APP.gerar(D),b=new Blob([h],{type:'text/html'}),a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='MeuTurno.html';document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),4000);toast('MeuTurno.html gerado com o cadastro rev '+(D.rev??'—')+'. Envie aos celulares.')}catch(e){toast(e.message||String(e),6000,true)}}}
 /* 1.7 · menu da Administração (o mesmo na aba de cadastros e na Configuração do Portal) */
@@ -49617,7 +49631,7 @@ const hm2min=s=>{const[h,m]=String(s||'0:0').split(':').map(Number);return h*60+
 const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,6);
 const addDias=(iso,n)=>{const d=new Date(iso+'T12:00:00');d.setDate(d.getDate()+n);return hojeISO(d)};
 function toast(t){const e=document.createElement('div');e.className='toast';e.textContent=t;document.body.appendChild(e);setTimeout(()=>e.remove(),2600)}
-const VERSAO='0.5';
+const VERSAO='0.6';
 /* o arquivo é enviado aos celulares e aberto direto (sem servidor): se o navegador que abriu não guarda dados, o operador é avisado */
 const GUARDA=(()=>{try{localStorage.setItem('mt.teste','1');localStorage.removeItem('mt.teste');return true}catch(e){return false}})();
 const LS={get(k,d){try{const v=localStorage.getItem('mt.'+k);return v?JSON.parse(v):d}catch(e){return d}},set(k,v){try{localStorage.setItem('mt.'+k,JSON.stringify(v))}catch(e){toast('Memória do celular cheia: exporte o histórico')}}};
@@ -49689,14 +49703,14 @@ function vInicio(){const a=turnoAgora(),t=turnoDe(a.t),ab=abertoHoje(),ult=TURNO
  return topo(CFG.linha,'Meu Turno · '+br(hojeISO()))+`<main><section class="hero">
   <button class="big" id="lancar"><span>${esc(t.n)} · ${t.i}–${t.f} · ${br(a.data)}</span><b>${ab?'Continuar meu turno':'Lançar meu turno'}</b><span>${ab?`${nf(r.re)} ${CFG.unidade} de ${nf(r.pl)} · ${ab.slots.filter(s=>s.real!=null).length} de ${ab.slots.length} horas lançadas`:'Hora a hora, paradas, scrap, gel e foto do quadro'}</span></button>
   <button class="tile" id="hist"><i>☰</i><div><b>Histórico</b><span>Por turno ou por período</span></div></button>
-  <button class="tile" id="gel"><i>⚗</i><div><b>Gel na ordem</b><span>Quanto gel apontar para a ordem ficar sem perda</span></div></button></section>
+  <button class="tile" id="gel"><i>⚗</i><div><b>Gel na ordem</b><span>Quanto gel apontar para a ordem ficar sem perda</span></div></button>${window.VAC_LINHA?'<button class="tile" id="trocaMod"><i>⇄</i><div><b>Trocar de módulo</b><span>Voltar para Operação / Manutenção</span></div></button>':''}</section>
   ${ult?`<div class="card"><h2>Último turno fechado</h2>${itemTurno(ult)}</div>`:''}
   ${GUARDA?'':'<div class="warnbox"><b>Este navegador não está guardando os dados.</b> Abra o arquivo pelo Chrome (Abrir com › Chrome); assim o turno não se perde.</div>'}
   <p class="small muted" style="text-align:center">Os dados ficam neste celular e saem por WhatsApp ou PDF. Sem ligação com o servidor. · versão ${VERSAO}${CFG.fonte&amp;&amp;CFG.fonte.geradoEm?` · cadastro de ${esc(br(String(CFG.fonte.geradoEm).slice(0,10)))}${CFG.fonte.cadRev!=null?' (rev '+esc(CFG.fonte.cadRev)+')':''}`:''}</p></main>`}
 function itemTurno(T){const r=resumo(T),t=turnoDe(T.turno)||{n:T.turno};return`<button class="it" data-rel="${T.id}"><span class="dot" style="background:var(--${r.ader==null?'ln':r.ader>=1?'ok':r.ader>=.9?'warn':'crit'})"></span>
  <div><b>${br(T.data)} · ${esc(t.n)}</b><div class="small muted">${esc(T.cat)} · lote ${esc(T.lote||'—')} · ${esc(T.operador||'—')}</div></div>
  <div style="text-align:right"><b class="tn ${corAder(r.ader)}">${r.ader==null?'—':nf(r.ader*100)+'%'}</b><div class="small muted tn">${nf(r.re)} / ${nf(r.pl)}</div></div></button>`}
-function ligInicio(){$('#lancar').onclick=()=>{const a=turnoAgora();if(!abertoHoje()){TURNOS.push(novoTurno(a.t,a.data));salvarT()}ir('turno')};$('#hist').onclick=()=>ir('historico');$('#gel').onclick=()=>ir('gel');comum()}
+function ligInicio(){$('#lancar').onclick=()=>{const a=turnoAgora();if(!abertoHoje()){TURNOS.push(novoTurno(a.t,a.data));salvarT()}ir('turno')};$('#hist').onclick=()=>ir('historico');$('#gel').onclick=()=>ir('gel');const tm=$('#trocaMod');if(tm)tm.onclick=()=>window.VAC_LINHA.trocar();comum()}
 function comum(){const t=$('#tema');if(t)t.onclick=()=>{const c=document.documentElement.dataset.tema==='claro'?'':'claro';document.documentElement.dataset.tema=c;LS.set('tema',c)};$$('[data-rel]').forEach(b=>b.onclick=()=>ir('rel/'+b.dataset.rel))}
 
 /* ============================ meu turno ============================ */
@@ -52327,7 +52341,7 @@ var qrcode = function() {
    modos de falha e pessoas (só ID, nome e turno). Os dados ficam só no celular; nada sai sozinho. */
 const FONTE='<!doctype html>\n'+document.documentElement.outerHTML;
 const CFG_EMB=/*CFG*/null/*CFG*/;
-const VERSAO='0.1';
+const VERSAO='0.2';
 const $=(s,r=document)=>r.querySelector(s),$$=(s,r=document)=>[...r.querySelectorAll(s)];
 const esc=s=>String(s??'').replace(/[&amp;<>"']/g,c=>({'&amp;':'&amp;amp;','<':'&amp;lt;','>':'&amp;gt;','"':'&amp;quot;',"'":'&amp;#39;'}[c]));
 const pad=n=>String(n).padStart(2,'0');
@@ -52351,10 +52365,10 @@ window.addEventListener('hashchange',render);
 function render(){const [rota,arg]=(location.hash||'#inicio').slice(1).split('/');const a=$('#app');
  a.innerHTML=rota==='at'?vAt(arg):rota==='env'?vEnv(arg):vInicio();({at:ligAt,env:ligEnv}[rota]||ligInicio)(arg);scrollTo(0,0)}
 function vInicio(){const L=AT.slice().sort((a,b)=>b.criadoEm.localeCompare(a.criadoEm));
- return topo('Manutenção',CFG.linha)+`<main><button class="btn pri blk" id="novo">+ Novo atendimento</button>
+ return topo('Manutenção',CFG.linha)+`<main><button class="btn pri blk" id="novo">+ Novo atendimento</button>${window.VAC_LINHA?'<button class="btn blk" id="trocaMod">⇄ Trocar de módulo (Operação / Manutenção)</button>':''}
   <div class="card"><h2>Atendimentos</h2>${L.length?L.map(a=>{const m=maq(a.eq);return`<button class="it" data-at="${a.id}"><div><b>${esc(m?m.n:a.eq||'sem equipamento')}</b><span>${brh(a.ini)} · ${esc((modo(a.mf)||{}).n||a.mfTxt||'—')} · ${a.sit==='concluida'?'concluído':'pendente'}${a.enviado?' · enviado':''}</span></div><i>›</i></button>`}).join(''):'<p class="small muted">Nenhum atendimento ainda.</p>'}</div>
   <p class="small muted" style="text-align:center">Os dados ficam neste celular e vão para a plataforma por QR ou arquivo. · versão ${VERSAO}${CFG.fonte&amp;&amp;CFG.fonte.cadRev!=null?' · cadastro rev '+esc(CFG.fonte.cadRev):''}</p></main>`}
-function ligInicio(){comum();$('#novo').onclick=()=>{const a=novo();AT.push(a);salvar();ir('at/'+a.id)};$$('[data-at]').forEach(b=>b.onclick=()=>ir('at/'+b.dataset.at))}
+function ligInicio(){comum();const tm=$('#trocaMod');if(tm)tm.onclick=()=>window.VAC_LINHA.trocar();$('#novo').onclick=()=>{const a=novo();AT.push(a);salvar();ir('at/'+a.id)};$$('[data-at]').forEach(b=>b.onclick=()=>ir('at/'+b.dataset.at))}
 function vAt(id){const a=AT.find(x=>x.id===id);if(!a)return topo('Atendimento')+'<main><div class="card">Não encontrado.</div></main>';const P=CFG.pessoas||[];
  return topo('Atendimento',brh(a.ini),'<a class="ib" href="#inicio" aria-label="Voltar" style="text-decoration:none">‹</a>')+`<main>
  <div class="card"><h2>Quem e onde</h2><div style="display:grid;gap:10px">
@@ -52407,6 +52421,71 @@ async function ligEnv(id){comum();const a=AT.find(x=>x.id===id);if(!a)return;cle
  $('#ok').onclick=()=>{a.enviado=true;salvar();toast('Marcado como enviado');ir('inicio')}}
 if(LS.get('tema',''))document.documentElement.dataset.tema=LS.get('tema','');
 render();
+</script>
+</body>
+</html>
+</textarea>
+<!-- celular/linha -->
+<textarea data-vac-source="celular/linha" spellcheck="false"><!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0f1418">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>Linha no celular</title>
+<!--
+  Linha no celular 0.1 (27/11/2026 · APP-CEL fase 2, docs/PLANO-APP-CELULAR.md): um arquivo só com os dois apps da linha,
+  Operação (Meu Turno, CELULAR/index.html) e Manutenção (CELULAR/manutencao.html). A Administração › Apps de celular gera este
+  arquivo com os dois módulos já configurados com o cadastro (bloco celular/linha); aqui, no repositório, é só o modelo (VAC_MODS null).
+  Cada módulo roda como antes, com os próprios dados no celular (chaves mt. e mm.): este lançador só escolhe qual abrir, lembra a
+  escolha e oferece "Trocar de módulo" (recarrega, porque cada módulo tem as próprias variáveis). Sem internet e sem servidor.
+-->
+<style>
+:root{--bg:#0f1418;--sf:#161d23;--ln:#27323b;--ink:#e8edf1;--mut:#93a1ad;--ac:#4c8bf5;--man:#e0a43a;--r:16px;--f:system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif;color-scheme:dark}
+:root[data-tema="claro"]{--bg:#f3f5f7;--sf:#fff;--ln:#d9e0e6;--ink:#14202b;--mut:#5b6b78;color-scheme:light}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.4 var(--f)}
+main{max-width:560px;margin:0 auto;padding:calc(24px + env(safe-area-inset-top)) max(16px,env(safe-area-inset-right)) calc(24px + env(safe-area-inset-bottom)) max(16px,env(safe-area-inset-left));display:grid;gap:16px}
+h1{margin:0;font-size:24px;font-weight:800}
+.sub{margin:2px 0 0;color:var(--mut);font-size:14px}
+.mod{display:grid;grid-template-columns:56px 1fr;gap:14px;align-items:center;text-align:left;width:100%;padding:18px 16px;border-radius:var(--r);border:1px solid var(--ln);background:var(--sf);color:var(--ink);font:inherit;cursor:pointer;min-height:96px}
+.mod:focus-visible{outline:3px solid var(--ac);outline-offset:2px}
+.mod i{font-style:normal;display:grid;place-items:center;width:56px;height:56px;border-radius:14px;font-size:28px;color:#fff}
+.mod.op i{background:var(--ac)}.mod.man i{background:var(--man)}
+.mod b{display:block;font-size:20px}.mod span{display:block;color:var(--mut);font-size:14px;margin-top:2px}
+.lembra{display:flex;gap:10px;align-items:center;color:var(--mut);font-size:14px}
+.lembra input{width:22px;height:22px}
+.aviso{padding:12px 14px;border-radius:12px;border:1px solid var(--man);color:var(--ink);background:color-mix(in srgb,var(--man) 14%,transparent);font-size:14px}
+.rod{text-align:center;color:var(--mut);font-size:12.5px}
+</style>
+</head>
+<body>
+<main id="vl"></main>
+<script>
+const VAC_MODS=/*MODS*/null/*MODS*/;
+(function(){
+ const VERSAO='0.1',K='linha.modulo',ls={get(k){try{return localStorage.getItem(k)||''}catch(e){return''}},set(k,v){try{localStorage.setItem(k,v)}catch(e){}}};
+ const esc=s=>String(s??'').replace(/[&amp;<>"']/g,c=>({'&amp;':'&amp;amp;','<':'&amp;lt;','>':'&amp;gt;','"':'&amp;quot;',"'":'&amp;#39;'}[c]));
+ const br=iso=>iso?String(iso).slice(0,10).split('-').reverse().join('/'):'';
+ try{const t=localStorage.getItem('mt.tema');if(t)document.documentElement.dataset.tema=JSON.parse(t)}catch(e){}
+ const M=VAC_MODS||{},meta=M.meta||{};
+ /* abrir um módulo: substitui esta página pelo app escolhido (o mesmo HTML do app separado); só um módulo por carregamento */
+ function abrir(id){const h=M[id];if(!h)return;window.VAC_LINHA={modulo:id,trocar(){ls.set(K,'');location.replace(location.pathname+location.search)}};
+  try{history.replaceState(null,'',location.pathname+location.search)}catch(e){}
+  document.open();document.write(h);document.close()}
+ function menu(){const el=document.getElementById('vl'),ok=!!(M.op||M.man),lem=!!ls.get(K+'.lembrar');
+  el.innerHTML=`<header><h1>${esc(meta.linha||'Linha no celular')}</h1><p class="sub">Escolha o módulo</p></header>
+   ${ok?'':'<div class="aviso">Este é o modelo do app. Gere o arquivo pela plataforma: Administração › Apps de celular › Gerar Linha.html.</div>'}
+   ${M.op?'<button class="mod op" data-m="op"><i>✎</i><div><b>Operação</b><span>Lançar meu turno, histórico e gel na ordem</span></div></button>':''}
+   ${M.man?'<button class="mod man" data-m="man"><i>⚙</i><div><b>Manutenção</b><span>Atendimento corretivo e envio para a plataforma</span></div></button>':''}
+   ${ok?`<label class="lembra"><input type="checkbox" id="lem"${lem?' checked':''}> Abrir direto no último módulo usado</label>`:''}
+   <p class="rod">Linha no celular ${VERSAO}${meta.geradoEm?` · cadastro de ${esc(br(meta.geradoEm))}${meta.cadRev!=null?' (rev '+esc(meta.cadRev)+')':''}`:''} · os dados ficam neste celular</p>`;
+  el.querySelectorAll('[data-m]').forEach(b=>b.onclick=()=>{ls.set(K,b.dataset.m);abrir(b.dataset.m)});
+  const l=document.getElementById('lem');if(l)l.onchange=()=>ls.set(K+'.lembrar',l.checked?'1':'')}
+ const ult=ls.get(K);
+ if(ult&amp;&amp;M[ult]&amp;&amp;ls.get(K+'.lembrar'))abrir(ult);else menu();
+})();
 </script>
 </body>
 </html>
@@ -55241,15 +55320,15 @@ body.vac-porta{overflow:hidden}
     {
       "id": "portal",
       "path": "Plataforma.html#motor/portal",
-      "version": "1.9.104",
-      "sha256": "c01f9d8dd8e68a331852778c34cb9b014bedd6c29428c5cec1bb75c1c1084977",
-      "bytes": 1362252
+      "version": "1.9.105",
+      "sha256": "80c75fd785ba8e1c95a341095aefc665dd5459dbc3925ad81bb61ca1f9432e92",
+      "bytes": 1364927
     }
   ],
   "limitations": [
     "Projetos e conteúdo técnico OSM/MES/AM/TPM mantêm os limites documentados nas fontes."
   ],
-  "enginesSha256": "8294993d317139c3217dda81c9f6ced839313c8e4b77cc9aeb9db7c8da7ff1a1",
+  "enginesSha256": "f75c3267c556332c9feefe2f452652bcc6cfa27d0957f9c2b1418be16887a82f",
   "originRevision": "ffc9ee8",
   "sourceMode": "single-html",
   "originEnginesSha256": "a87a64ad0c328f70e102b2ae888790a9b5d5a9bd05778652a7ce7cae140e40d2"
@@ -55319,7 +55398,7 @@ summary{cursor:pointer;font-weight:600;color:var(--navy)}
 'use strict';
 /* ---------- referência (atualizar quando a plataforma mudar de versão) ---------- */
 // Iguais às do pacote da plataforma (nova-plataforma/src/generated/manifest.json); o teste ferramenta-verificar confere.
-const VERSOES = {"oee":"2.6.50","perdas":"1.12.21","gel":"2.52","paradas":"1.2.22","equip":"1.0.22","inic":"1.1.17","linha":"1.7.1","projetos":"0.1.16","portal":"1.9.104"};
+const VERSOES = {"oee":"2.6.50","perdas":"1.12.21","gel":"2.52","paradas":"1.2.22","equip":"1.0.22","inic":"1.1.17","linha":"1.7.1","projetos":"0.1.16","portal":"1.9.105"};
 const BASES = [
  { arq: 'vacutainer-cadastros.json', mod: 'portal', nome: 'Cadastro geral (Portal)', obrig: true, cadastro: true, bk: 'Cadastros' },
  { arq: 'portal-base.json', mod: 'portal', nome: 'Portal', obrig: true, bk: 'Portal' },
@@ -55910,7 +55989,7 @@ import { Icon, Button, Badge, Empty, Modal, BarChart, BrandLogo, CommandMenu } f
 import { ModuleFrame } from "vac:modulo/components/ModuleFrame";
 import manifest from "vac:recurso/manifesto";
 import { ModuleTabs } from "vac:modulo/components/ModuleTabs";
-const VERSION = "1.8.101";
+const VERSION = "1.8.102";
 /* Navegação 1.3.0 (16/11/2026): Visão da linha, Relatórios e Importações têm abas; as que mostram uma tela do
    Portal (motor da Administração) trazem o 3º campo com a aba dele. Administração fica só com cadastros e configuração. */
 const SHELL_TABS = {

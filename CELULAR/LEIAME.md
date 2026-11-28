@@ -12,6 +12,14 @@ Arquivo único: [index.html](index.html), HTML, CSS e JavaScript nativos, sem in
 - **Relatório do turno › Enviar para a plataforma:** mostra o QR (partes de até 450 caracteres, compactadas, que passam sozinhas) e baixa o arquivo `.mt.json` com o mesmo conteúdo.
 - Na plataforma, **Produção › Lançamento › Importar do celular** lê os QR pela webcam (ou abre o arquivo), mostra a prévia e grava hora a hora, paradas (tipo e máquina), scrap, operador e observações pelas ações normais do Lançamento. Hora vazia no celular não muda o que está lançado; reimportar não duplica paradas. O gel do celular não é gravado (é da Gestão de Gel).
 
+## Um app só: Linha no celular (APP-CEL fase 2, 27/11/2026)
+
+- [linha.html](linha.html) é o lançador (bloco `celular/linha`; ao mudar, `node scripts/bloco.mjs celular/linha CELULAR/linha.html`). No repositório ele é só o modelo e avisa que o arquivo é gerado pela plataforma.
+- **Administração › Apps de celular › Gerar Linha.html** junta os dois apps já configurados com o cadastro: **Operação** (Meu Turno, este `index.html`) e **Manutenção** (`manutencao.html`). No celular, a pessoa abre o arquivo e escolhe o módulo; na tela inicial de cada módulo, **Trocar de módulo** volta à escolha. Opcional: "Abrir direto no último módulo usado".
+- Cada módulo é o mesmo app de sempre e guarda os próprios dados (chaves `mt.` e `mm.`); o lançador só escolhe qual abrir (substitui a página pelo módulo; trocar recarrega). Os arquivos separados `MeuTurno.html` e `Manutencao.html` continuam disponíveis.
+- Para quem já usa os arquivos separados: abra o `Linha.html` no Chrome, do mesmo jeito; antes, por segurança, use **Exportar histórico**. Se o celular abrir o arquivo por outro caminho (outro app de arquivos), os dados podem ficar em outro lugar: o histórico exportado volta por Importar histórico.
+- Teste: [testes/plataforma/app-cel-linha.cjs](../testes/plataforma/app-cel-linha.cjs).
+
 ## Mensagem do WhatsApp editável (0.5 · APP-CEL fase 1, 27/11/2026)
 
 - **Administração › Apps de celular › Mensagem do WhatsApp:** modelo com marcadores entre chaves e prévia com valores fictícios. Fica em `parametros.celular.mensagemWhats` e vai embutido no app gerado (`CFG.modeloWa`). Depois de salvar, gere o `MeuTurno.html` de novo e reenvie.
