@@ -20,6 +20,12 @@ Arquivo único: [index.html](index.html), HTML, CSS e JavaScript nativos, sem in
 - Para quem já usa os arquivos separados: abra o `Linha.html` no Chrome, do mesmo jeito; antes, por segurança, use **Exportar histórico**. Se o celular abrir o arquivo por outro caminho (outro app de arquivos), os dados podem ficar em outro lugar: o histórico exportado volta por Importar histórico.
 - Teste: [testes/plataforma/app-cel-linha.cjs](../testes/plataforma/app-cel-linha.cjs).
 
+## Pacote do dia (Linha no celular 0.3, Meu Turno 0.7 · APP-CEL fase 3, parte 2, 28/11/2026)
+
+- Na plataforma: **Administração › Apps de celular › Enviar o dia ao celular (QR)** (ou o arquivo `dia-linha.json`). O pacote sai dos exports já publicados, sem cálculo novo: **ordens e lotes** em aberto (Produção), **plano e meta** (plano do mês e meta de hoje por turno), **ações abertas** (Iniciativas, atrasadas primeiro) e o **resumo de ontem** (OEE, produção, meta e scrap do dia e dos turnos). O que não foi publicado vai como ausente e aparece como "—", nunca como zero.
+- No celular: **Linha.html › Atualizar cadastro ou dia** recebe o pacote; o botão **Dia dd/mm** mostra os quatro blocos (só consulta). Na **Operação**, as ordens do dia viram a lista do campo **Lote**; escolher o lote preenche a OP quando ela está vazia.
+- Teste: [testes/plataforma/app-cel-dia.cjs](../testes/plataforma/app-cel-dia.cjs).
+
 ## Cadastro da plataforma para o celular, sem reenviar o app (Linha no celular 0.2 · APP-CEL fase 3, 28/11/2026)
 
 - Na plataforma: **Administração › Apps de celular › Enviar cadastro ao celular (QR)** mostra o cadastro em QR (as partes se alternam na tela) e **Baixar arquivo (.json)** salva o mesmo pacote (`cadastro-linha.json`).

@@ -12,6 +12,7 @@
   arquivo com os dois módulos já configurados com o cadastro (bloco celular/linha); aqui, no repositório, é só o modelo (VAC_MODS null).
   Cada módulo roda como antes, com os próprios dados no celular (chaves mt. e mm.): este lançador só escolhe qual abrir, lembra a
   escolha e oferece "Trocar de módulo" (recarrega, porque cada módulo tem as próprias variáveis). Sem internet e sem servidor.
+  0.3 (APP-CEL fase 3, parte 2): também o pacote do dia (plano e meta, ordens e lotes, ações abertas, resumo de ontem), só consulta.
   0.2 (APP-CEL fase 3): "Atualizar cadastro" recebe o cadastro da plataforma por QR (câmera, jsQR embutido na geração) ou arquivo .json
   e grava em mt.cfg e mm.cfg, sem reenviar o app.
 -->
@@ -40,7 +41,7 @@ h1{margin:0;font-size:24px;font-weight:800}
 const VAC_MODS=/*MODS*/null/*MODS*/;
 const VAC_JSQR=/*JSQR*/null/*JSQR*/;
 (function(){
- const VERSAO='0.2',K='linha.modulo',ls={get(k){try{return localStorage.getItem(k)||''}catch(e){return''}},set(k,v){try{localStorage.setItem(k,v)}catch(e){}}};
+ const VERSAO='0.3',K='linha.modulo',ls={get(k){try{return localStorage.getItem(k)||''}catch(e){return''}},set(k,v){try{localStorage.setItem(k,v)}catch(e){}}};
  const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
  const br=iso=>iso?String(iso).slice(0,10).split('-').reverse().join('/'):'';
  try{const t=localStorage.getItem('mt.tema');if(t)document.documentElement.dataset.tema=JSON.parse(t)}catch(e){}
@@ -61,21 +62,24 @@ const VAC_JSQR=/*JSQR*/null/*JSQR*/;
    return JSON.parse(new TextDecoder().decode(u))},
   async pacote(e){let t='';for(let k=1;k<=e.n;k++)t+=e.p[k];return this.decodificar(t)},
   /* grava a configuração de cada módulo onde o próprio módulo lê (mt.cfg, mm.cfg); o módulo usa a mais nova (rev) */
-  aplicar(o){if(!o||o.a!=='linha-cadastro'||!(o.op||o.man))throw new Error('Este QR ou arquivo não é o cadastro da linha.');
+  aplicar(o){if(o&&o.a==='linha-dia'){localStorage.setItem('linha.dia',JSON.stringify(o));return['Dia '+br(o.dia)]}
+   if(!o||o.a!=='linha-cadastro'||!(o.op||o.man))throw new Error('Este QR ou arquivo não é o cadastro nem o dia da linha.');
    const ok=[];if(o.op){localStorage.setItem('mt.cfg',JSON.stringify(o.op));ok.push('Operação')}if(o.man){localStorage.setItem('mm.cfg',JSON.stringify(o.man));ok.push('Manutenção')}
    localStorage.setItem('linha.meta',JSON.stringify(o.meta||{}));return ok}
  };
  window.VAC_LINHA_QR=QR;
  function feito(ok,meta){const el=document.getElementById('vl');
-  el.innerHTML=`<header><h1>Cadastro atualizado</h1><p class="sub">${esc(ok.join(' e '))} · cadastro de ${esc(br(meta.geradoEm))}${meta.cadRev!=null?' (rev '+esc(meta.cadRev)+')':''}</p></header>
-   <div class="aviso" style="border-color:var(--ac)">Pronto. Os módulos já abrem com o cadastro novo; os turnos e atendimentos deste celular continuam.</div>
+  const dia=/^Dia /.test(ok[0]||'');
+  el.innerHTML=(dia?`<header><h1>Dia recebido</h1><p class="sub">${esc(ok[0])}</p></header><div class="aviso" style="border-color:var(--ac)">Pronto. Veja em "Dia de hoje"; as ordens e lotes aparecem na lista do lote na Operação.</div>`
+   :`<header><h1>Cadastro atualizado</h1><p class="sub">${esc(ok.join(' e '))} · cadastro de ${esc(br(meta.geradoEm))}${meta.cadRev!=null?' (rev '+esc(meta.cadRev)+')':''}</p></header>
+   <div class="aviso" style="border-color:var(--ac)">Pronto. Os módulos já abrem com o cadastro novo; os turnos e atendimentos deste celular continuam.</div>`)+`
    <button class="mod op" id="volta"><i>✓</i><div><b>Voltar</b><span>Escolher o módulo</span></div></button>`;
   document.getElementById('volta').onclick=menu}
  function receber(){const el=document.getElementById('vl');let parar=()=>{};
-  el.innerHTML=`<header><h1>Atualizar cadastro</h1><p class="sub">Na plataforma: Administração › Apps de celular › Enviar cadastro ao celular (QR). Aponte a câmera para a tela.</p></header>
+  el.innerHTML=`<header><h1>Atualizar cadastro ou dia</h1><p class="sub">Na plataforma: Administração › Apps de celular › Enviar cadastro ao celular ou Enviar o dia ao celular. Aponte a câmera para a tela.</p></header>
    <video id="cam" playsinline muted style="width:100%;border-radius:12px;background:#000;max-height:50vh"></video>
    <p class="sub" id="st" role="status">Ligando a câmera…</p>
-   <label class="mod" style="grid-template-columns:1fr"><div><b>Abrir arquivo (.json)</b><span>Sem câmera: o arquivo "cadastro-linha.json" que a plataforma baixa</span></div><input type="file" id="arq" accept=".json,application/json" style="margin-top:8px"></label>
+   <label class="mod" style="grid-template-columns:1fr"><div><b>Abrir arquivo (.json)</b><span>Sem câmera: o arquivo "cadastro-linha.json" ou "dia-linha.json" que a plataforma baixa</span></div><input type="file" id="arq" accept=".json,application/json" style="margin-top:8px"></label>
    <button class="mod" id="canc" style="grid-template-columns:1fr;min-height:56px"><div><b>Cancelar</b></div></button>`;
   const st=t=>{const s=document.getElementById('st');if(s)s.textContent=t};
   const fim=async o=>{parar();try{const ok=QR.aplicar(o);feito(ok,o.meta||{})}catch(x){st(x.message||String(x))}};
@@ -89,16 +93,32 @@ const VAC_JSQR=/*JSQR*/null/*JSQR*/;
       if(q&&QR.juntar(e,q.data)){st(`Partes lidas: ${Object.keys(e.p).length} de ${e.n}`);if(QR.completo(e)){parar();try{fim(await QR.pacote(e))}catch(x){st('Não consegui montar o cadastro ('+(x.message||x)+'). Tente de novo.')}return}}}
      raf=requestAnimationFrame(loop)};loop()}
    catch(x){st('Não consegui usar a câmera ('+(x.message||x.name||x)+'). Use "Abrir arquivo".')}})()}
+ /* 0.3 · pacote do dia (APP-CEL fase 3, parte 2): só consulta; ausente aparece como "—", nunca como zero */
+ const lerDia=()=>{try{return JSON.parse(localStorage.getItem('linha.dia')||'null')}catch(e){return null}};
+ const nf=(v,d=0)=>v==null||!isFinite(v)?'—':Number(v).toLocaleString('pt-BR',{minimumFractionDigits:d,maximumFractionDigits:d});
+ const pc=v=>v==null?'—':nf(v*100,1)+'%';
+ function vDia(){const D=lerDia(),el=document.getElementById('vl');if(!D)return menu();
+  const sec=(t,h)=>`<section style="display:grid;gap:8px"><h2 style="margin:6px 0 0;font-size:13px;letter-spacing:.07em;text-transform:uppercase;color:var(--mut)">${t}</h2>${h}</section>`;
+  const cx=h=>`<div style="background:var(--sf);border:1px solid var(--ln);border-radius:12px;padding:10px 12px;font-size:14px">${h}</div>`;
+  const P=D.plano,R=D.resumo;
+  el.innerHTML=`<header><h1>Dia ${esc(br(D.dia))}</h1><p class="sub">Recebido da plataforma em ${esc(br(D.geradoEm))} ${esc(String(D.geradoEm||'').slice(11,16))}</p></header>
+   ${sec('Plano e meta',P?cx(`Mês ${esc(P.mes)}: plano <b>${nf(P.atual)}</b> · realizado ${nf(P.realizado)} · saldo ${nf(P.saldo)} · necessidade por dia ${nf(P.necessidadeDia)}`)+((D.metasHoje||[]).length?cx('Meta de hoje por turno: '+D.metasHoje.map(m=>`<b>${esc(m.turno)}</b> ${nf(m.metaOp)}`).join(' · ')):''):cx('Plano não publicado.'))}
+   ${sec('Ordens e lotes',(D.ordens||[]).length?D.ordens.map(o=>cx(`<b>Lote ${esc(o.lote||'—')}</b> · OP ${esc(o.ordem||'—')} · catálogo ${esc(o.catalogo||'—')}<br><span style="color:var(--mut)">qtd ${nf(o.qtd)} · produzido ${nf(o.produzido)}</span>`)).join(''):cx('Nenhuma ordem em aberto publicada.'))}
+   ${sec('Ações abertas',D.acoes==null?cx('Ações não publicadas.'):D.acoes.length?D.acoes.map(a=>cx(`${a.atrasada?'<b style="color:var(--man)">Atrasada</b> · ':''}<b>${esc(a.titulo)}</b><br><span style="color:var(--mut)">${esc(a.responsavel||'sem responsável')} · prazo ${esc(br(a.prazo))} · ${esc(a.status)}</span>`)).join(''):cx('Nenhuma ação aberta.'))}
+   ${sec('Resumo de ontem',R?cx(`${esc(br(R.dia))}: OEE <b>${pc(R.oee)}</b> (meta ${pc(R.oeeMeta)}) · produção ${nf(R.boa)} de ${nf(R.metaOp)} · scrap ${nf(R.scrap)}`)+(R.turnos||[]).map(x=>cx(`<b>${esc(x.turno)}</b>: OEE ${pc(x.oee)} · ${nf(x.boa)} de ${nf(x.metaOp)} · scrap ${nf(x.scrap)}`)).join(''):cx('Sem dia anterior publicado.'))}
+   <button class="mod" id="volta" style="grid-template-columns:1fr;min-height:56px"><div><b>Voltar</b></div></button>`;
+  document.getElementById('volta').onclick=menu;scrollTo(0,0)}
  function menu(){const el=document.getElementById('vl'),ok=!!(M.op||M.man),lem=!!ls.get(K+'.lembrar'),meta=metaAtual();
   el.innerHTML=`<header><h1>${esc(meta.linha||'Linha no celular')}</h1><p class="sub">Escolha o módulo</p></header>
    ${ok?'':'<div class="aviso">Este é o modelo do app. Gere o arquivo pela plataforma: Administração › Apps de celular › Gerar Linha.html.</div>'}
    ${M.op?'<button class="mod op" data-m="op"><i>✎</i><div><b>Operação</b><span>Lançar meu turno, histórico e gel na ordem</span></div></button>':''}
    ${M.man?'<button class="mod man" data-m="man"><i>⚙</i><div><b>Manutenção</b><span>Atendimento corretivo e envio para a plataforma</span></div></button>':''}
-   ${ok?`<button class="mod" id="atu"><i style="background:var(--mut)">⟳</i><div><b>Atualizar cadastro</b><span>Pelo QR da plataforma ou pelo arquivo, sem reenviar o app</span></div></button>
+   ${lerDia()?`<button class="mod" id="dia"><i style="background:var(--ac)">☀</i><div><b>Dia ${esc(br(lerDia().dia))}</b><span>Plano e meta, ordens e lotes, ações abertas e o resumo de ontem</span></div></button>`:''}
+   ${ok?`<button class="mod" id="atu"><i style="background:var(--mut)">⟳</i><div><b>Atualizar cadastro ou dia</b><span>Pelo QR da plataforma ou pelo arquivo, sem reenviar o app</span></div></button>
    <label class="lembra"><input type="checkbox" id="lem"${lem?' checked':''}> Abrir direto no último módulo usado</label>`:''}
    <p class="rod">Linha no celular ${VERSAO}${meta.geradoEm?` · cadastro de ${esc(br(meta.geradoEm))}${meta.cadRev!=null?' (rev '+esc(meta.cadRev)+')':''}`:''} · os dados ficam neste celular</p>`;
   el.querySelectorAll('[data-m]').forEach(b=>b.onclick=()=>{ls.set(K,b.dataset.m);abrir(b.dataset.m)});
-  const a=document.getElementById('atu');if(a)a.onclick=receber;
+  const a=document.getElementById('atu');if(a)a.onclick=receber;const dd=document.getElementById('dia');if(dd)dd.onclick=vDia;
   const l=document.getElementById('lem');if(l)l.onchange=()=>ls.set(K+'.lembrar',l.checked?'1':'')}
  const ult=ls.get(K);
  if(ult&&M[ult]&&ls.get(K+'.lembrar'))abrir(ult);else menu();

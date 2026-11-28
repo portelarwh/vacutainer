@@ -64,7 +64,7 @@ const html = fs.readFileSync(path.resolve(__dirname, '../../Plataforma.html'));
     await m.click('#volta'); assert.match(await m.locator('.rod').innerText(), /cadastro de \d\d\/\d\d\/\d{4} \(rev \d+\)/);
     // arquivo que não é cadastro: avisa e não grava
     await m.click('#atu'); await m.setInputFiles('#arq', { name: 'x.json', mimeType: 'application/json', buffer: Buffer.from('{"a":"outra-coisa"}') });
-    await m.waitForFunction(() => /não é o cadastro da linha/.test(document.getElementById('st').textContent), null, { timeout: 10000 });
+    await m.waitForFunction(() => /não é o cadastro nem o dia da linha/.test(document.getElementById('st').textContent), null, { timeout: 10000 });
     console.log('ok arquivo .json atualiza o cadastro; arquivo de outra coisa é recusado com aviso');
     assert.deepEqual(erros, [], 'sem erro de JavaScript'); assert.deepEqual(externos, [], 'sem pedido à internet');
   } finally { if (browser) await browser.close(); srv.close(); }
