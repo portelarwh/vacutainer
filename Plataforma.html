@@ -656,6 +656,9 @@ function vacUsuario(c=vacCad()){let id='';try{id=localStorage.getItem('vac.userI
 function vacPerfil(c=vacCad()){const u=vacUsuario(c);return u&amp;&amp;c?(c.perfis||[]).find(p=>p.codigo===u.perfil)||null:null}
 function vacNomeUsuario(){try{return(typeof user==='function'&amp;&amp;user())||localStorage.getItem('vac.user')||''}catch(e){return''}}
 /* H01 etapa 1 · semáforo de meta único (verde, amarelo se parametros.semaforoAmarelo não for false, vermelho); a cópia da Produção divergia (ignorava o "Usar amarelo") mas não era usada */
+/* 1.8.113 · ORD-CHAVE (28/11/2026): ordem e lote comparados pela mesma regra em todas as páginas: só dígitos → sem zeros à esquerda (o SAP
+   traz 000100234567 num relatório e 100234567 em outro); com letras → maiúsculas. Só para comparar: o código gravado e mostrado é o original. */
+function vacChaveOrdem(v){const s=String(v??'').trim();return/^\d+$/.test(s)?s.replace(/^0+(?=\d)/,''):s.toUpperCase()}
 function vacSemaforo(v,meta,{inverso=false}={}){if(v==null||meta==null||!isFinite(v)||!isFinite(meta)||!meta)return'none';const c=vacCad(),P=(c&amp;&amp;c.parametros)||{};
  const vd=(+P.semaforoVerdePct||100)/100,am=P.semaforoAmarelo===false?vd:(+P.semaforoAmareloPct||90)/100,r=inverso?(v<=0?Infinity:meta/v):v/meta;return r>=vd?'ok':r>=am?'warn':'crit'}
 // Preferências locais (texto puro para tema, nome, ID, perfil e logo; JSON para o resto), aviso rápido e nome digitado (H01).
@@ -5410,6 +5413,8 @@ const CAD_SECS=['inicio','gel','matriz','importar','auditoria','backups','segura
    curtas (macro, sem detalhe técnico). REGRA: toda versão nova da plataforma ganha uma entrada aqui, a mais recente primeiro
    (AGENTS.md e CLAUDE.md). Tipos: nova (função nova), melhoria (algo que já existia ficou melhor), correcao (erro corrigido). */
 const NOVIDADES=[
+ {v:'1.8.113',d:'2026-11-28',itens:[
+  ['correção','Ordem com e sem zeros à esquerda (como o SAP traz em relatórios diferentes) é a mesma ordem na busca da plataforma e ao abrir a ordem no Gel a partir de outra página.']]},
  {v:'1.8.112',d:'2026-11-28',itens:[
   ['novo','Meu Turno: OEE do turno (produção boa ÷ capacidade no tempo disponível, a mesma conta da Produção) e OEE do dia: o turno seguinte digita a produção boa dos anteriores (do quadro) e a mensagem do WhatsApp mostra o dia inteiro, com a meta.'],
   ['melhoria','Administração: o cadastro do celular leva o PPH nominal, a meta de OEE de cada catálogo e as pausas que descontam de cada turno.']]},
@@ -26512,7 +26517,7 @@ const fileBackend={kind:'file',async commit(ch){applyLocal(ch);FS.pending.push(c
 async function fsRefresh(){if(S.mode!=='file'||FS.busy||ui.demo)return;try{const cur=await fsReadBase(fsKnown());if(cur&amp;&amp;!cur.same){FS.mod=cur.mod;FS.rev=cur.rev;FS.revBy=cur.by;loadData(cur.data);FS.pending.forEach(applyLocal);localBackend.save();render()}}catch(e){}}
 /* ================= V1.89 · integração com as outras páginas (Portal, OEE, Perdas) ================= */
 // versão da página (topo, Guia e base gravada)
-const APP_VERSION='2.53';   /* A01/A09 (auditoria 28/11/2026): fila inteira reaplicada; reserva da fila lida; base sumida não é recriada */   /* ritmo e indicador de scrap vêm da Administração; sem preço próprio */   /* BASE-LIMPA: base anterior só consulta */   /* 2.50 · GEL-FMT: perdas teóricas por formato do tubo */   /* 2.49 · ADM-CENTRAL: formatos e locais pelo cadastro */   /* 2.48 · GEL-09: local de cada descarte no registro e nas pesagens da Produção */   /* 2.47 · CAD-CONS: Consulta de cadastros com ficha lateral */   /* 2.46 · CFG-ADM etapa 2: cadastros do gel só na Administração */   /* 2.45 · CFG-ADM: seções com cadastro na Administração abrem direto lá */   /* 2.44 · REL-02: cabeçalho, rodapé e tabela dos PDFs no molde comum */   /* 2.43 · padrão visual: rótulo do barril na fonte da marca (era Barlow Condensed); cabeçalho das abas e Limpar filtros pela peça comum */   /* 2.42 · GEL-07: OEE e produção da Produção em todo dia que ela tem; OP/lote e relatório comum */   /* 2.41 · GEL-06: dia da Produção com pesagens, ordem/lote e "Editar na Produção" */   /* 2.35 · #aba=relatorios (Portal › Relatórios) abre as fichas e relatórios em PDF */   /* 2.34 · D8: Pareto comum do kit (vacPareto) */   /* 2.33 · Fase 5: layout no arquivo da pessoa (vacPrefs do kit) */   /* 2.32 · D6: botões de gravação travados conforme o perfil (vacTravas do kit) */   /* 2.29 · Design System (barra lateral, paleta, grade de gráficos) */   /* 2.28 · gráficos: "Valores em …" (kg, tubos, barris, dias, índice) onde o eixo não diz a unidade (docs/graficos-padrao.md) */   /* 2.27 · Visão Geral no padrão comum (vacLayout): situação, números, diagnóstico, análises do painel, explorar */   /* 2.26 · kit: padrão visual comum (vacLayout) */   /* 2.25 · kit: login com ID e senha */   /* 2.22 · UX-02: guia por aba */   /* 2.21 · Fase 7 (UX-03, GEL-01): Painel → Visão Geral */   /* 2.20 · Fase 4 · 4e: exports porDiaGel (teórico × real por dia) */   /* 2.19 · Fase 4 · 4d: lê da Produção a partir do corte (GelProd); Resumo do dia */   /* 2.18 · Fase 4 · 4b: pesagem pela conta comum do kit (vacGel) */   /* 2.17 · Fase 4 · 4a: parâmetros do gel do Portal (processo, formatos, motivos, descartes, gel do catálogo) */   /* 2.16 · Fase 3 (IMP-04): importações no exports; #importar abre a importação */   /* 2.15 · ARQ-05/ARQ-07: catálogos e equipamentos do Portal (GelCad); contas do gel iguais */   /* 2.14 · ARQ-09: sem entrada própria de "Modo exemplo" */   /* 2.11 · C2–C6: kit com a ficha por pasta (AT-08) e a contagem da fila durável (Portal › Versões) */   /* 2.10 · C1: alterações pendentes na fila durável do kit (sem perda entre abas) */   /* 2.09 · E11: busca do kit leva o equipamento à ficha em Equipamentos */   /* 2.08 · E8: kit com "+ Abrir ação" na ficha da ordem */   /* 2.07 · E5: ficha da ordem comum (botão na ordem) e busca por ordem, lote e LP */   /* 2.06 · E3: número digitado só aceito inteiro; E4: cobertura das ordens no exports */   /* 2.05 · E2: a versão da tela vem desta constante (o rótulo estava fixo em v2.01); kit com data local e meta do mês ponderada */   /* 2.04 · revisão 065fe6f: restauração por arquivo confirma e não segue sem a cópia anterior; CSV sem fórmulas; índice por dia no Painel */
+const APP_VERSION='2.54';   /* ORD-CHAVE: ordem com ou sem zeros à esquerda */   /* A01/A09 (auditoria 28/11/2026): fila inteira reaplicada; reserva da fila lida; base sumida não é recriada */   /* ritmo e indicador de scrap vêm da Administração; sem preço próprio */   /* BASE-LIMPA: base anterior só consulta */   /* 2.50 · GEL-FMT: perdas teóricas por formato do tubo */   /* 2.49 · ADM-CENTRAL: formatos e locais pelo cadastro */   /* 2.48 · GEL-09: local de cada descarte no registro e nas pesagens da Produção */   /* 2.47 · CAD-CONS: Consulta de cadastros com ficha lateral */   /* 2.46 · CFG-ADM etapa 2: cadastros do gel só na Administração */   /* 2.45 · CFG-ADM: seções com cadastro na Administração abrem direto lá */   /* 2.44 · REL-02: cabeçalho, rodapé e tabela dos PDFs no molde comum */   /* 2.43 · padrão visual: rótulo do barril na fonte da marca (era Barlow Condensed); cabeçalho das abas e Limpar filtros pela peça comum */   /* 2.42 · GEL-07: OEE e produção da Produção em todo dia que ela tem; OP/lote e relatório comum */   /* 2.41 · GEL-06: dia da Produção com pesagens, ordem/lote e "Editar na Produção" */   /* 2.35 · #aba=relatorios (Portal › Relatórios) abre as fichas e relatórios em PDF */   /* 2.34 · D8: Pareto comum do kit (vacPareto) */   /* 2.33 · Fase 5: layout no arquivo da pessoa (vacPrefs do kit) */   /* 2.32 · D6: botões de gravação travados conforme o perfil (vacTravas do kit) */   /* 2.29 · Design System (barra lateral, paleta, grade de gráficos) */   /* 2.28 · gráficos: "Valores em …" (kg, tubos, barris, dias, índice) onde o eixo não diz a unidade (docs/graficos-padrao.md) */   /* 2.27 · Visão Geral no padrão comum (vacLayout): situação, números, diagnóstico, análises do painel, explorar */   /* 2.26 · kit: padrão visual comum (vacLayout) */   /* 2.25 · kit: login com ID e senha */   /* 2.22 · UX-02: guia por aba */   /* 2.21 · Fase 7 (UX-03, GEL-01): Painel → Visão Geral */   /* 2.20 · Fase 4 · 4e: exports porDiaGel (teórico × real por dia) */   /* 2.19 · Fase 4 · 4d: lê da Produção a partir do corte (GelProd); Resumo do dia */   /* 2.18 · Fase 4 · 4b: pesagem pela conta comum do kit (vacGel) */   /* 2.17 · Fase 4 · 4a: parâmetros do gel do Portal (processo, formatos, motivos, descartes, gel do catálogo) */   /* 2.16 · Fase 3 (IMP-04): importações no exports; #importar abre a importação */   /* 2.15 · ARQ-05/ARQ-07: catálogos e equipamentos do Portal (GelCad); contas do gel iguais */   /* 2.14 · ARQ-09: sem entrada própria de "Modo exemplo" */   /* 2.11 · C2–C6: kit com a ficha por pasta (AT-08) e a contagem da fila durável (Portal › Versões) */   /* 2.10 · C1: alterações pendentes na fila durável do kit (sem perda entre abas) */   /* 2.09 · E11: busca do kit leva o equipamento à ficha em Equipamentos */   /* 2.08 · E8: kit com "+ Abrir ação" na ficha da ordem */   /* 2.07 · E5: ficha da ordem comum (botão na ordem) e busca por ordem, lote e LP */   /* 2.06 · E3: número digitado só aceito inteiro; E4: cobertura das ordens no exports */   /* 2.05 · E2: a versão da tela vem desta constante (o rótulo estava fixo em v2.01); kit com data local e meta do mês ponderada */   /* 2.04 · revisão 065fe6f: restauração por arquivo confirma e não segue sem a cópia anterior; CSV sem fórmulas; índice por dia no Painel */
 /* 2.03 · situação "em atualização" (kit: selo, pílula e faixa; docs/paginas-construcao.md) */
 /* 2.02 · relatório montado: todas as linhas no PDF, comentário, aviso de corte no texto; Painel em 1º; aba inicial do perfil; impressão e PDF no tema claro */
 /* 1.99 · menu Mais do cabeçalho (vac-visual v1): fecha ao escolher uma ação, ao clicar fora e com Esc */
@@ -26543,7 +26548,7 @@ function gelOrdersCalc(){const P=pcpCfg();const A=P.lots.length?pcpAttr():{};con
     o.consumoKg=q.kg;o.lps=[...q.lps].map(String);o.sapPrimeira=q.first;o.sapUltima=q.last;if(!o.lote&amp;&amp;q.lote)o.lote=q.lote;if(!o.catalogo&amp;&amp;q.cat){const ct=catById(q.cat);if(ct&amp;&amp;ct.num)o.catalogo=String(ct.num)}
     if(!o.inicio)o.inicio=q.first.slice(0,10);if(!o.fim&amp;&amp;q.done)o.fim=q.last.slice(0,10);o.gPorTubo=q.g;o.indice=q.idx;o.metaG=q.bi?q.bi.meta:null;o.bomG=q.bi?q.bi.allowed:null;o.concluida=!!q.done;o.fonte=o.fonte==='PCP'?'PCP + SAP':'SAP';out.set(k,o)});
   return [...out.values()].sort((a,b)=>(a.inicio||'9999')<(b.inicio||'9999')?-1:1)}
-const gelOrder=wo=>gelOrders().find(o=>o.ordem===String(wo).trim())||null;
+const gelOrder=wo=>{const k=vacChaveOrdem(wo);return gelOrders().find(o=>vacChaveOrdem(o.ordem)===k)||null};   /* 1.8.113 · ORD-CHAVE: com ou sem zeros à esquerda */
 function openOrder(wo){const o=gelOrder(wo);if(!o){toast(`Ordem ${wo} sem registro no Gel.`);return}const u=perdasUrl(o.ordem);
   const r=(l,v)=>`<dt>${l}</dt><dd>${v}</dd>`;
   modal('Ordem '+o.ordem,`${typeof vacFichaBotao==='function'?'<p style="margin:0 0 8px">'+vacFichaBotao(o.ordem)+' <span class="sub">tudo sobre a ordem nas outras páginas</span></p>':''}<dl class="kv">${r('Lote',esc(o.lote||'—'))}${r('Catálogo',esc(o.catalogo||'—'))}${r('Período',o.inicio?(o.fim?fmtD(o.inicio)+' a '+fmtD(o.fim):'desde '+fmtD(o.inicio)+' (em andamento)'):'—')}${r('Tubos (Registro de produção)',o.tubos?nf0.format(o.tubos)+(o.tamanho?' de '+nf0.format(o.tamanho):''):'—')}${r('Gel baixado no SAP',o.consumoKg!=null?kg1(o.consumoKg)+' kg':'—')}${o.gPorTubo!=null?r('g/tubo SAP',nf3(o.gPorTubo)+(o.metaG?' · meta '+nf3(o.metaG):'')+(o.bomG?' · BOM '+nf3(o.bomG):'')):''}${r('Scrap de gel (estimado)',o.scrapKg!=null?kg3(o.scrapKg)+' kg':'—')}${r('Origem',esc(o.fonte))}</dl>
@@ -55519,70 +55524,70 @@ body.vac-porta{overflow:hidden}
       "id": "oee",
       "path": "Plataforma.html#motor/oee",
       "version": "2.6.51",
-      "sha256": "afb8b78f7ad69d7948ea637406da144dc56fb8a3532d6fea25c8d72860220c05",
-      "bytes": 2401835
+      "sha256": "e7a3ebe0dd32bb6feb7ae58b50c9b50d002b9f230fc01b3a603712a841617989",
+      "bytes": 2402255
     },
     {
       "id": "perdas",
       "path": "Plataforma.html#motor/perdas",
       "version": "1.12.22",
-      "sha256": "b85665b5a4a088878f3755f2c7c3a810bbd21866c5510678d8c666859a0c94a0",
-      "bytes": 989823
+      "sha256": "51862bff299d7c68bfdc6336d9f653696545152a82bad62ba7f342ae4f4888eb",
+      "bytes": 990243
     },
     {
       "id": "gel",
       "path": "Plataforma.html#motor/gel",
-      "version": "2.53",
-      "sha256": "ba64a4a835a22c883f497d8e2f306ec361ec238c18678982e883c42948e96f30",
-      "bytes": 1632971
+      "version": "2.54",
+      "sha256": "ea32cc275190f15346e67582f9145396cd8de90686cf2b59fc85872546460eca",
+      "bytes": 1633538
     },
     {
       "id": "paradas",
       "path": "Plataforma.html#motor/paradas",
       "version": "1.2.23",
-      "sha256": "67a76428c28ce849528236a0f59ff00b39d809d550513710a22f00d842325a90",
-      "bytes": 956907
+      "sha256": "391148742fc2de0d4448d0b36e6f29f60daedece5d807a06dc01e14497d6448b",
+      "bytes": 957327
     },
     {
       "id": "equip",
       "path": "Plataforma.html#motor/equip",
       "version": "1.0.23",
-      "sha256": "4b436005fae4bb9f796f67b1571fe622a75ac7d50ac630c67335ad89b5d55b4e",
-      "bytes": 747948
+      "sha256": "154563bd40ad60f782c4ca94e0261cef6324ca8252db76987c97794d7ce157b0",
+      "bytes": 748368
     },
     {
       "id": "inic",
       "path": "Plataforma.html#motor/inic",
       "version": "1.1.18",
-      "sha256": "8c80b3bea2e28f534d8ed6926ed5ad840324c927b4ac050b345dde0e81f27234",
-      "bytes": 758501
+      "sha256": "052a3eb5c57db6712c87a329ade344000ea7dc2ddf2d9ebf506afce3c8765ee4",
+      "bytes": 758921
     },
     {
       "id": "linha",
       "path": "Plataforma.html#motor/linha",
       "version": "1.7.2",
-      "sha256": "7d3fb1ae096d6e61e07861b60c8ab01e70cd2da9bd55d17f6573daf7b55bf5de",
-      "bytes": 1010386
+      "sha256": "8dd52981ae7e18375243121cc7ed76738d9aaae788e1cd0eaf74f14af98ce2a5",
+      "bytes": 1010806
     },
     {
       "id": "projetos",
       "path": "Plataforma.html#motor/projetos",
       "version": "0.1.16",
-      "sha256": "ec9d5847baf25c12451bc477f2396e43b34a5414f7cc0686ef73bdc4818a95ad",
-      "bytes": 679860
+      "sha256": "2ba6df59f60012d0faba3a582199a43771e41825e8443a438b9ecbf6f9b605dd",
+      "bytes": 680280
     },
     {
       "id": "portal",
       "path": "Plataforma.html#motor/portal",
       "version": "1.9.111",
-      "sha256": "50009ef1de6beb99e503d017b9317ce7974b845cbe0b14a76e82bd3679804622",
-      "bytes": 1380134
+      "sha256": "91c2e9742eab5be46d517cf0f2b7250aef7b6f710bfe49e5d57bae1a95c4dae5",
+      "bytes": 1380784
     }
   ],
   "limitations": [
     "Projetos e conteúdo técnico OSM/MES/AM/TPM mantêm os limites documentados nas fontes."
   ],
-  "enginesSha256": "5ed0fdbb6eec72b9c9540d55ffbd10d1b0c94bf4db3f0babd8b3cd3cc0e4beca",
+  "enginesSha256": "d63aab984bc6695f5d1c41c95ce55cd98a75a0943138248192fbdb279db7140d",
   "originRevision": "ffc9ee8",
   "sourceMode": "single-html",
   "originEnginesSha256": "a87a64ad0c328f70e102b2ae888790a9b5d5a9bd05778652a7ce7cae140e40d2"
@@ -55653,7 +55658,7 @@ summary{cursor:pointer;font-weight:600;color:var(--navy)}
 /* ---------- referência (atualizar quando a plataforma mudar de versão) ---------- */
 // Iguais às do pacote da plataforma (nova-plataforma/src/generated/manifest.json); o teste ferramenta-verificar confere.
 const VAC_CAD_FORMATO = 2;   /* versão do formato de vacutainer-cadastros.json (VAC_CAD_VERSAO do kit) */
-const VERSOES = {"oee":"2.6.51","perdas":"1.12.22","gel":"2.53","paradas":"1.2.23","equip":"1.0.23","inic":"1.1.18","linha":"1.7.2","projetos":"0.1.16","portal":"1.9.111"};
+const VERSOES = {"oee":"2.6.51","perdas":"1.12.22","gel":"2.54","paradas":"1.2.23","equip":"1.0.23","inic":"1.1.18","linha":"1.7.2","projetos":"0.1.16","portal":"1.9.111"};
 const BASES = [
  { arq: 'vacutainer-cadastros.json', mod: 'portal', nome: 'Cadastro geral (Portal)', obrig: true, cadastro: true, bk: 'Cadastros' },
  { arq: 'portal-base.json', mod: 'portal', nome: 'Portal', obrig: true, bk: 'Portal' },
@@ -56255,7 +56260,7 @@ import { Icon, Button, Badge, Empty, Modal, BarChart, BrandLogo, CommandMenu } f
 import { ModuleFrame } from "vac:modulo/components/ModuleFrame";
 import manifest from "vac:recurso/manifesto";
 import { ModuleTabs } from "vac:modulo/components/ModuleTabs";
-const VERSION = "1.8.112";
+const VERSION = "1.8.113";
 /* Navegação 1.3.0 (16/11/2026): Visão da linha, Relatórios e Importações têm abas; as que mostram uma tela do
    Portal (motor da Administração) trazem o 3º campo com a aba dele. Administração fica só com cadastros e configuração. */
 const SHELL_TABS = {
@@ -57818,14 +57823,15 @@ function pending(sources) {
 }
 function searchOrders(sources, query) {
   const map = /* @__PURE__ */ new Map();
-  const key = (s) => String(s ?? "").trim();
+  /* 1.8.113 · ORD-CHAVE: a mesma ordem com e sem zeros à esquerda (SAP) é uma ordem só; o texto mostrado é o primeiro que chegou */
+  const key = (s) => { const t = String(s ?? "").trim(); return /^\d+$/.test(t) ? t.replace(/^0+(?=\d)/, "") : t.toUpperCase(); };
   for (const s of sources) {
     if (s.state !== "ok") continue;
     const lista = (v) => Array.isArray(v) ? v.filter((r) => r &amp;&amp; typeof r === "object") : [];
     for (const row of [...lista(s.exports?.porOrdem), ...lista(s.exports?.ordens)]) {
-      const code = key(row.ordem ?? row.order);
-      if (!code || !code.toLowerCase().includes(query.toLowerCase())) continue;
-      const prev = map.get(code) || { code, modules: [], rows: [] };
+      const code = key(row.ordem ?? row.order), q = key(query);
+      if (!code || !code.toLowerCase().includes(q.toLowerCase())) continue;
+      const prev = map.get(code) || { code: String(row.ordem ?? row.order).trim(), modules: [], rows: [] };
       if (!prev.modules.includes(s.id)) prev.modules.push(s.id);
       prev.rows.push({ module: s.id, ...row });
       map.set(code, prev);
