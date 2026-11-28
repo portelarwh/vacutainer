@@ -12,6 +12,8 @@
   arquivo com os dois módulos já configurados com o cadastro (bloco celular/linha); aqui, no repositório, é só o modelo (VAC_MODS null).
   Cada módulo roda como antes, com os próprios dados no celular (chaves mt. e mm.): este lançador só escolhe qual abrir, lembra a
   escolha e oferece "Trocar de módulo" (recarrega, porque cada módulo tem as próprias variáveis). Sem internet e sem servidor.
+  0.2 (APP-CEL fase 3): "Atualizar cadastro" recebe o cadastro da plataforma por QR (câmera, jsQR embutido na geração) ou arquivo .json
+  e grava em mt.cfg e mm.cfg, sem reenviar o app.
 -->
 <style>
 :root{--bg:#0f1418;--sf:#161d23;--ln:#27323b;--ink:#e8edf1;--mut:#93a1ad;--ac:#4c8bf5;--man:#e0a43a;--r:16px;--f:system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif;color-scheme:dark}
@@ -36,24 +38,67 @@ h1{margin:0;font-size:24px;font-weight:800}
 <main id="vl"></main>
 <script>
 const VAC_MODS=/*MODS*/null/*MODS*/;
+const VAC_JSQR=/*JSQR*/null/*JSQR*/;
 (function(){
- const VERSAO='0.1',K='linha.modulo',ls={get(k){try{return localStorage.getItem(k)||''}catch(e){return''}},set(k,v){try{localStorage.setItem(k,v)}catch(e){}}};
+ const VERSAO='0.2',K='linha.modulo',ls={get(k){try{return localStorage.getItem(k)||''}catch(e){return''}},set(k,v){try{localStorage.setItem(k,v)}catch(e){}}};
  const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
  const br=iso=>iso?String(iso).slice(0,10).split('-').reverse().join('/'):'';
  try{const t=localStorage.getItem('mt.tema');if(t)document.documentElement.dataset.tema=JSON.parse(t)}catch(e){}
- const M=VAC_MODS||{},meta=M.meta||{};
+ const M=VAC_MODS||{};
+ /* o cadastro recebido da plataforma (QR ou arquivo) fica em linha.meta; vale o mais novo entre ele e o embutido */
+ const metaAtual=()=>{let r={};try{r=JSON.parse(localStorage.getItem('linha.meta')||'{}')||{}}catch(e){}const e=M.meta||{};return(r.geradoEm||'')>(e.geradoEm||'')?r:e};
  /* abrir um módulo: substitui esta página pelo app escolhido (o mesmo HTML do app separado); só um módulo por carregamento */
  function abrir(id){const h=M[id];if(!h)return;window.VAC_LINHA={modulo:id,trocar(){ls.set(K,'');location.replace(location.pathname+location.search)}};
   try{history.replaceState(null,'',location.pathname+location.search)}catch(e){}
   document.open();document.write(h);document.close()}
- function menu(){const el=document.getElementById('vl'),ok=!!(M.op||M.man),lem=!!ls.get(K+'.lembrar');
+ /* 0.2 · APP-CEL fase 3: receber o cadastro da plataforma (Administração › Apps de celular › Enviar cadastro ao celular). Mesmo formato
+    do envio do celular para a plataforma: partes "MT1:id:k/n:" com 'Z' (deflate-raw em base64) ou 'J' (JSON em base64). */
+ const QR={
+  juntar(e,txt){const m=/^MT1:([A-Za-z0-9]+):(\d+)\/(\d+):(.*)$/s.exec(String(txt||''));if(!m)return false;const[,id,k,n,d]=m;if(e.id!==id){e.id=id;e.n=+n;e.p={}}e.p[+k]=d;return true},
+  completo(e){return!!e.n&&Object.keys(e.p||{}).length===e.n},
+  async decodificar(t){const tipo=t[0],u=Uint8Array.from(atob(t.slice(1)),c=>c.charCodeAt(0));
+   if(tipo==='Z'){const s=new Blob([u]).stream().pipeThrough(new DecompressionStream('deflate-raw'));return JSON.parse(await new Response(s).text())}
+   return JSON.parse(new TextDecoder().decode(u))},
+  async pacote(e){let t='';for(let k=1;k<=e.n;k++)t+=e.p[k];return this.decodificar(t)},
+  /* grava a configuração de cada módulo onde o próprio módulo lê (mt.cfg, mm.cfg); o módulo usa a mais nova (rev) */
+  aplicar(o){if(!o||o.a!=='linha-cadastro'||!(o.op||o.man))throw new Error('Este QR ou arquivo não é o cadastro da linha.');
+   const ok=[];if(o.op){localStorage.setItem('mt.cfg',JSON.stringify(o.op));ok.push('Operação')}if(o.man){localStorage.setItem('mm.cfg',JSON.stringify(o.man));ok.push('Manutenção')}
+   localStorage.setItem('linha.meta',JSON.stringify(o.meta||{}));return ok}
+ };
+ window.VAC_LINHA_QR=QR;
+ function feito(ok,meta){const el=document.getElementById('vl');
+  el.innerHTML=`<header><h1>Cadastro atualizado</h1><p class="sub">${esc(ok.join(' e '))} · cadastro de ${esc(br(meta.geradoEm))}${meta.cadRev!=null?' (rev '+esc(meta.cadRev)+')':''}</p></header>
+   <div class="aviso" style="border-color:var(--ac)">Pronto. Os módulos já abrem com o cadastro novo; os turnos e atendimentos deste celular continuam.</div>
+   <button class="mod op" id="volta"><i>✓</i><div><b>Voltar</b><span>Escolher o módulo</span></div></button>`;
+  document.getElementById('volta').onclick=menu}
+ function receber(){const el=document.getElementById('vl');let parar=()=>{};
+  el.innerHTML=`<header><h1>Atualizar cadastro</h1><p class="sub">Na plataforma: Administração › Apps de celular › Enviar cadastro ao celular (QR). Aponte a câmera para a tela.</p></header>
+   <video id="cam" playsinline muted style="width:100%;border-radius:12px;background:#000;max-height:50vh"></video>
+   <p class="sub" id="st" role="status">Ligando a câmera…</p>
+   <label class="mod" style="grid-template-columns:1fr"><div><b>Abrir arquivo (.json)</b><span>Sem câmera: o arquivo "cadastro-linha.json" que a plataforma baixa</span></div><input type="file" id="arq" accept=".json,application/json" style="margin-top:8px"></label>
+   <button class="mod" id="canc" style="grid-template-columns:1fr;min-height:56px"><div><b>Cancelar</b></div></button>`;
+  const st=t=>{const s=document.getElementById('st');if(s)s.textContent=t};
+  const fim=async o=>{parar();try{const ok=QR.aplicar(o);feito(ok,o.meta||{})}catch(x){st(x.message||String(x))}};
+  document.getElementById('canc').onclick=()=>{parar();menu()};
+  document.getElementById('arq').onchange=async ev=>{const f=ev.target.files[0];if(!f)return;try{fim(JSON.parse(await f.text()))}catch(x){st('Não consegui ler o arquivo ('+(x.message||x)+').')}};
+  (async()=>{let stream=null,raf=0,vivo=true;parar=()=>{vivo=false;cancelAnimationFrame(raf);if(stream)stream.getTracks().forEach(t=>t.stop());stream=null};
+   try{if(!window.jsQR&&VAC_JSQR)(0,eval)(VAC_JSQR);if(!window.jsQR)throw new Error('leitor de QR ausente');
+    stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:'environment',width:{ideal:1280}}});if(!vivo){parar();return}
+    const v=document.getElementById('cam');v.srcObject=stream;await v.play();st('Procurando o QR…');const e={},cv=document.createElement('canvas'),g=cv.getContext('2d',{willReadFrequently:true});
+    const loop=async()=>{if(!stream)return;if(v.videoWidth){cv.width=v.videoWidth;cv.height=v.videoHeight;g.drawImage(v,0,0);const q=window.jsQR(g.getImageData(0,0,cv.width,cv.height).data,cv.width,cv.height,{inversionAttempts:'dontInvert'});
+      if(q&&QR.juntar(e,q.data)){st(`Partes lidas: ${Object.keys(e.p).length} de ${e.n}`);if(QR.completo(e)){parar();try{fim(await QR.pacote(e))}catch(x){st('Não consegui montar o cadastro ('+(x.message||x)+'). Tente de novo.')}return}}}
+     raf=requestAnimationFrame(loop)};loop()}
+   catch(x){st('Não consegui usar a câmera ('+(x.message||x.name||x)+'). Use "Abrir arquivo".')}})()}
+ function menu(){const el=document.getElementById('vl'),ok=!!(M.op||M.man),lem=!!ls.get(K+'.lembrar'),meta=metaAtual();
   el.innerHTML=`<header><h1>${esc(meta.linha||'Linha no celular')}</h1><p class="sub">Escolha o módulo</p></header>
    ${ok?'':'<div class="aviso">Este é o modelo do app. Gere o arquivo pela plataforma: Administração › Apps de celular › Gerar Linha.html.</div>'}
    ${M.op?'<button class="mod op" data-m="op"><i>✎</i><div><b>Operação</b><span>Lançar meu turno, histórico e gel na ordem</span></div></button>':''}
    ${M.man?'<button class="mod man" data-m="man"><i>⚙</i><div><b>Manutenção</b><span>Atendimento corretivo e envio para a plataforma</span></div></button>':''}
-   ${ok?`<label class="lembra"><input type="checkbox" id="lem"${lem?' checked':''}> Abrir direto no último módulo usado</label>`:''}
+   ${ok?`<button class="mod" id="atu"><i style="background:var(--mut)">⟳</i><div><b>Atualizar cadastro</b><span>Pelo QR da plataforma ou pelo arquivo, sem reenviar o app</span></div></button>
+   <label class="lembra"><input type="checkbox" id="lem"${lem?' checked':''}> Abrir direto no último módulo usado</label>`:''}
    <p class="rod">Linha no celular ${VERSAO}${meta.geradoEm?` · cadastro de ${esc(br(meta.geradoEm))}${meta.cadRev!=null?' (rev '+esc(meta.cadRev)+')':''}`:''} · os dados ficam neste celular</p>`;
   el.querySelectorAll('[data-m]').forEach(b=>b.onclick=()=>{ls.set(K,b.dataset.m);abrir(b.dataset.m)});
+  const a=document.getElementById('atu');if(a)a.onclick=receber;
   const l=document.getElementById('lem');if(l)l.onchange=()=>ls.set(K+'.lembrar',l.checked?'1':'')}
  const ult=ls.get(K);
  if(ult&&M[ult]&&ls.get(K+'.lembrar'))abrir(ult);else menu();
