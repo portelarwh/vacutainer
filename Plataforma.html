@@ -5410,6 +5410,10 @@ const CAD_SECS=['inicio','gel','matriz','importar','auditoria','backups','segura
    curtas (macro, sem detalhe técnico). REGRA: toda versão nova da plataforma ganha uma entrada aqui, a mais recente primeiro
    (AGENTS.md e CLAUDE.md). Tipos: nova (função nova), melhoria (algo que já existia ficou melhor), correcao (erro corrigido). */
 const NOVIDADES=[
+ {v:'1.8.110',d:'2026-11-28',itens:[
+  ['correção','Linha no celular: um cadastro mais antigo não substitui o mais novo; um pacote só da Operação não libera a Manutenção; as metas de hoje aparecem mesmo sem o plano do mês; o aviso da câmera não apaga mais o resultado do arquivo escolhido.'],
+  ['correção','Meu Turno: Reabrir abre o turno reaberto; as ordens do pacote do dia só aparecem no mesmo dia; zero bons com descarte é 100% de scrap; quando o celular não consegue gravar, não diz que gravou.'],
+  ['correção','Página do app publicada: não apaga o cache de outros sites da mesma origem, não guarda resposta de erro e não entrega a página no lugar de um arquivo.']]},
  {v:'1.8.109',d:'2026-11-28',itens:[
   ['correção','Trocar de pasta enquanto a anterior ainda é lida não mistura mais a pasta nova com o cadastro da antiga.'],
   ['correção','Cópia antiga de uma base solta na raiz da pasta não deixa mais a base de 00. Bases em somente leitura; resumo sem versão (de versão anterior) não é usado e item vazio não derruba a busca.'],
@@ -49734,10 +49738,10 @@ const hm2min=s=>{const[h,m]=String(s||'0:0').split(':').map(Number);return h*60+
 const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,6);
 const addDias=(iso,n)=>{const d=new Date(iso+'T12:00:00');d.setDate(d.getDate()+n);return hojeISO(d)};
 function toast(t){const e=document.createElement('div');e.className='toast';e.textContent=t;document.body.appendChild(e);setTimeout(()=>e.remove(),2600)}
-const VERSAO='0.7';
+const VERSAO='0.8';
 /* o arquivo é enviado aos celulares e aberto direto (sem servidor): se o navegador que abriu não guarda dados, o operador é avisado */
 const GUARDA=(()=>{try{localStorage.setItem('mt.teste','1');localStorage.removeItem('mt.teste');return true}catch(e){return false}})();
-const LS={get(k,d){try{const v=localStorage.getItem('mt.'+k);return v?JSON.parse(v):d}catch(e){return d}},set(k,v){try{localStorage.setItem('mt.'+k,JSON.stringify(v))}catch(e){toast('Memória do celular cheia: exporte o histórico')}}};
+const LS={get(k,d){try{const v=localStorage.getItem('mt.'+k);return v?JSON.parse(v):d}catch(e){return d}},set(k,v){try{localStorage.setItem('mt.'+k,JSON.stringify(v));return true}catch(e){toast('Não gravou neste celular (memória cheia?): exporte o histórico e tente de novo');return false}}};   /* 0.8 · A21: quem chama sabe se gravou */
 
 /* ======== configuração (a mesma lógica da plataforma; dados fictícios até o cadastro inicial) ======== */
 const CFG0={linha:'Linha Vacutainer',unidade:'mil',junta:45,   /* sobra final que junta à hora anterior (o quadro da linha: 21:00–22:45 = 98) */
@@ -49779,12 +49783,12 @@ function resumo(T){const c=catDo(T)||{},pl=T.slots.reduce((a,s)=>a+planoSlot(T,s
  const scrap=T.scrapModo==='maq'?Object.values(T.scrapMaq).reduce((a,v)=>a+(+v||0),0):(T.scrapTotal==null?null:+T.scrapTotal);
  const gT=c.gel?re*1000*c.gel/1000:null /* re (mil tubos) × 1000 × g/tubo ÷ 1000 = kg */, gR=T.gel.aplicadoKg==null?null:+T.gel.aplicadoKg, gS=Object.values(T.gel.itens||{}).reduce((a,v)=>a+(+v||0),0);
  const mot={};for(const p of par)mot[p.mot]=(mot[p.mot]||0)+(+p.min||0);
- return{pl,re,ader:pl?re/pl:null,falta:T.slots.length-inf.length,par,pm,mot:Object.entries(mot).sort((a,b)=>b[1]-a[1]),scrap,scrapPct:scrap!=null&amp;&amp;re?scrap/(re*1000+scrap):null,gT,gR,gS,gIdx:gT&amp;&amp;gR!=null?gR/gT:null,c}}
+ return{pl,re,ader:pl?re/pl:null,falta:T.slots.length-inf.length,par,pm,mot:Object.entries(mot).sort((a,b)=>b[1]-a[1]),scrap,scrapPct:scrap!=null&amp;&amp;(re*1000+scrap)>0?scrap/(re*1000+scrap):null /* 0.8 · A20: zero bons e scrap > 0 é 100%, não ausente */,gT,gR,gS,gIdx:gT&amp;&amp;gR!=null?gR/gT:null,c}}
 const corAder=a=>a==null?'muted':a>=1?'okc':a>=.9?'warnc':'critc';
 
 /* fotos no IndexedDB (não enchem o localStorage) */
 const FotoDB={db:null,async abrir(){if(this.db)return this.db;return this.db=await new Promise((ok,ko)=>{const r=indexedDB.open('meuturno',1);r.onupgradeneeded=()=>r.result.createObjectStore('fotos');r.onsuccess=()=>ok(r.result);r.onerror=()=>ko(r.error)})},
- async por(id,blob){const d=await this.abrir();return new Promise(ok=>{const t=d.transaction('fotos','readwrite');t.objectStore('fotos').put(blob,id);t.oncomplete=()=>ok()})},
+ async por(id,blob){const d=await this.abrir();return new Promise((ok,no)=>{const t=d.transaction('fotos','readwrite');t.objectStore('fotos').put(blob,id);t.oncomplete=()=>ok();t.onerror=()=>no(t.error||new Error('foto não gravada'));t.onabort=()=>no(t.error||new Error('gravação da foto cancelada'))})},   /* 0.8 · A21: falha da foto não deixa o fluxo pendurado */
  async ler(id){const d=await this.abrir();return new Promise(ok=>{const q=d.transaction('fotos').objectStore('fotos').get(id);q.onsuccess=()=>ok(q.result||null);q.onerror=()=>ok(null)})}};
 function reduzir(file,max=1600){return new Promise((ok,ko)=>{const u=URL.createObjectURL(file),im=new Image();im.onload=()=>{const k=Math.min(1,max/Math.max(im.naturalWidth,im.naturalHeight)),c=document.createElement('canvas');c.width=Math.round(im.naturalWidth*k);c.height=Math.round(im.naturalHeight*k);c.getContext('2d').drawImage(im,0,0,c.width,c.height);URL.revokeObjectURL(u);
  c.toBlob(b=>b&amp;&amp;b.type==='image/webp'?ok(b):c.toBlob(ok,'image/jpeg',.82),'image/webp',.8)};im.onerror=()=>ko(new Error('não é imagem'));im.src=u})}
@@ -49817,7 +49821,8 @@ function ligInicio(){$('#lancar').onclick=()=>{const a=turnoAgora();if(!abertoHo
 function comum(){const t=$('#tema');if(t)t.onclick=()=>{const c=document.documentElement.dataset.tema==='claro'?'':'claro';document.documentElement.dataset.tema=c;LS.set('tema',c)};$$('[data-rel]').forEach(b=>b.onclick=()=>ir('rel/'+b.dataset.rel))}
 
 /* ============================ meu turno ============================ */
-const atual=()=>abertoHoje()||TURNOS.filter(x=>!x.fechado).slice(-1)[0];
+/* 0.8 · A20: o turno reaberto é o que abre em Meu turno (antes, outro turno aberto hoje podia ser escolhido) */
+let turnoSel=null;const atual=()=>(turnoSel&amp;&amp;TURNOS.find(x=>x.id===turnoSel&amp;&amp;!x.fechado))||abertoHoje()||TURNOS.filter(x=>!x.fechado).slice(-1)[0];
 function slotAgora(T){const a=turnoAgora();if(a.data!==T.data||a.t!==T.turno)return -1;const d=new Date(),m=d.getHours()*60+d.getMinutes();
  return T.slots.findIndex(s=>{let x=hm2min(s.de),y=hm2min(s.ate);if(y<=x)y+=1440;let mm=m;if(mm<x)mm+=1440;return mm>=x&amp;&amp;mm<y})}
 function vTurno(){const T=atual();if(!T)return topo('Meu turno')+`<main><div class="card">Nenhum turno aberto. <button class="btn pri blk" onclick="ir('inicio')">Voltar</button></div></main>`;
@@ -49827,7 +49832,7 @@ function vTurno(){const T=atual();if(!T)return topo('Meu turno')+`<main><div cla
   <div class="chips" role="radiogroup" aria-label="Turno">${CFG.turnos.map(t=>`<button class="chip${T.turno===t.c?' on':''}" data-tc="${t.c}">${esc(t.n)}</button>`).join('')}</div>
   ${pessoas().length?`<label class="f">Operador<select class="in" id="op"><option value="">— escolha seu nome —</option>${pessoas().map(x=>`<option value="${esc(x.id)}"${String(x.id)===String(T.operadorId||'')?' selected':''}>${esc(x.n)}${x.t?' · '+esc(x.t):''}</option>`).join('')}</select></label>`:`<label class="f">Operador<input class="in" id="op" value="${esc(T.operador)}" placeholder="Seu nome" autocomplete="name"></label>`}
   <label class="f">Catálogo<select class="in" id="cat">${CFG.cats.map(x=>`<option value="${esc(x.c)}"${x.c===T.cat?' selected':''}>${esc(x.c+' · '+x.n)}</option>`).join('')}</select></label>
-  <div class="g2"><label class="f">Lote<input class="in" id="lote" inputmode="numeric" value="${esc(T.lote)}" placeholder="Ex.: 6275187"${ordensDia().length?' list="lotesDia"':''}></label>${ordensDia().length?`<datalist id="lotesDia">${ordensDia().map(o=>`<option value="${esc(o.lote)}">OP ${esc(o.ordem)} · catálogo ${esc(o.catalogo)}</option>`).join('')}</datalist>`:''}<label class="f">Ordem (OP)<input class="in" id="opn" inputmode="numeric" value="${esc(T.op)}" placeholder="opcional"></label></div>
+  <div class="g2"><label class="f">Lote<input class="in" id="lote" inputmode="numeric" value="${esc(T.lote)}" placeholder="Ex.: 6275187"${ordensDia(T.data).length?' list="lotesDia"':''}></label>${ordensDia(T.data).length?`<datalist id="lotesDia">${ordensDia(T.data).map(o=>`<option value="${esc(o.lote)}">OP ${esc(o.ordem)} · catálogo ${esc(o.catalogo)}</option>`).join('')}</datalist>`:''}<label class="f">Ordem (OP)<input class="in" id="opn" inputmode="numeric" value="${esc(T.op)}" placeholder="opcional"></label></div>
   <div class="small muted">Meta ${nf(c.meta)} ${CFG.unidade}/h${c.gel?` · gel ${nf(c.gel,3)} g/tubo`:''}</div></div></div>
  <div class="card"><h2>Hora a hora <span class="sp"></span><span class="small" style="text-transform:none;letter-spacing:0">${CFG.unidade} tubos</span></h2><div style="display:grid;gap:10px">
   ${T.slots.map((s,i)=>{const p=planoSlot(T,s);acP+=p;if(s.real!=null)acR+=+s.real;const pm=s.par.reduce((a,x)=>a+(+x.min||0),0);
@@ -49854,7 +49859,7 @@ function vTurno(){const T=atual();if(!T)return topo('Meu turno')+`<main><div cla
  <div class="bar"><div class="k"><span>Produzido / plano</span><b class="tn"><span class="${corAder(r.ader)}">${nf(r.re)}</span> / ${nf(r.pl)} ${CFG.unidade}</b><span class="tn">${r.ader==null?'':nf(r.ader*100)+'% · '}${r.pm} min parado</span></div><button class="btn ok" id="fechar">Fechar turno</button></div>`}
 function ligTurno(){const T=atual();comum();if(!T)return;const sv=()=>{salvarT()},rr=()=>{salvarT();const y=scrollY;render();scrollTo(0,y)};
  $$('[data-tc]').forEach(b=>b.onclick=()=>{if(b.dataset.tc===T.turno)return;if(T.slots.some(s=>s.real!=null||s.par.length)&amp;&amp;!confirm('Trocar o turno refaz o hora a hora. Continuar?'))return;T.turno=b.dataset.tc;T.slots=intervalos(turnoDe(T.turno)).map(s=>({...s,real:null,par:[]}));rr()});
- if($('#op').tagName==='SELECT')$('#op').onchange=e=>{const x=pessoas().find(y=>String(y.id)===e.target.value);T.operadorId=x?String(x.id):'';T.operador=x?x.n:'';LS.set('operador',T.operador);LS.set('operadorId',T.operadorId);sv()};else $('#op').oninput=e=>{T.operador=e.target.value;LS.set('operador',T.operador);sv()};$('#lote').oninput=e=>{T.lote=e.target.value.trim();const o=ordensDia().find(x=>x.lote===T.lote);if(o&amp;&amp;o.ordem&amp;&amp;!T.op){T.op=o.ordem;const n=$('#opn');if(n)n.value=o.ordem}sv()};$('#opn').oninput=e=>{T.op=e.target.value.trim();sv()};
+ if($('#op').tagName==='SELECT')$('#op').onchange=e=>{const x=pessoas().find(y=>String(y.id)===e.target.value);T.operadorId=x?String(x.id):'';T.operador=x?x.n:'';LS.set('operador',T.operador);LS.set('operadorId',T.operadorId);sv()};else $('#op').oninput=e=>{T.operador=e.target.value;LS.set('operador',T.operador);sv()};$('#lote').oninput=e=>{T.lote=e.target.value.trim();const o=ordensDia(T.data).find(x=>x.lote===T.lote);if(o&amp;&amp;o.ordem&amp;&amp;!T.op){T.op=o.ordem;const n=$('#opn');if(n)n.value=o.ordem}sv()};$('#opn').oninput=e=>{T.op=e.target.value.trim();sv()};
  $('#cat').onchange=e=>{T.cat=e.target.value;T.catSnap=fotoCat(cat(T.cat));rr()};
  $$('[data-real]').forEach(i=>{i.onchange=()=>{const v=i.value.trim();T.slots[+i.dataset.real].real=v===''?null:Math.max(0,+v.replace(',','.'));rr()}});
  $$('[data-addp]').forEach(b=>b.onclick=()=>parada(T,+b.dataset.addp,rr));
@@ -49863,7 +49868,7 @@ function ligTurno(){const T=atual();comum();if(!T)return;const sv=()=>{salvarT()
  const sT=$('#scT');if(sT)sT.onchange=()=>{T.scrapTotal=sT.value===''?null:+sT.value;rr()};$$('[data-scm]').forEach(i=>i.onchange=()=>{if(i.value==='')delete T.scrapMaq[i.dataset.scm];else T.scrapMaq[i.dataset.scm]=+i.value;rr()});
  const gA=$('#gA');if(gA)gA.onchange=()=>{T.gel.aplicadoKg=gA.value===''?null:+gA.value.replace(',','.');rr()};$$('[data-sg]').forEach(i=>i.onchange=()=>{T.gel.itens[i.dataset.sg]=i.value===''?null:+i.value.replace(',','.');rr()});
  $('#obs').oninput=e=>{T.obs=e.target.value;sv()};
- const f=$('#foto');f.onchange=async()=>{if(!f.files[0])return;try{const b=await reduzir(f.files[0]);const id='f'+T.id;await FotoDB.por(id,b);T.foto=id;rr();toast('Foto do quadro anexada')}catch(e){toast('Não consegui ler a foto')}};
+ const f=$('#foto');f.onchange=async()=>{if(!f.files[0])return;try{const b=await reduzir(f.files[0]);const id='f'+T.id;await FotoDB.por(id,b);T.foto=id;rr();toast('Foto do quadro anexada')}catch(e){toast('Não consegui guardar a foto ('+(e&amp;&amp;e.message||e)+')')}};
  if(T.foto)FotoDB.ler(T.foto).then(b=>{const v=$('#fotoV');if(b&amp;&amp;v)v.src=URL.createObjectURL(b)});
  $('#fechar').onclick=()=>fecharTurno(T);
  const ag=$('.slot.agora');if(ag&amp;&amp;!sessionStorage.mtRolou){sessionStorage.mtRolou=1;setTimeout(()=>ag.scrollIntoView({block:'center'}),60)}}
@@ -49885,7 +49890,7 @@ function fecharTurno(T){const r=resumo(T),vaz=T.slots.filter(s=>s.real==null);co
   ${vaz.length?`<div class="warnbox">${vaz.length} hora(s) sem produção informada: ${vaz.map(s=>s.de).join(', ')}. Elas vão como "não informado", não como zero.</div>`:''}
   ${av.length?`<div class="warnbox">${av.join(' ')}</div>`:''}
   <button class="btn ok blk" id="fok"${av.length?' disabled style="opacity:.5"':''}>Fechar e gerar relatório</button><button class="btn blk" id="fno">Continuar lançando</button>`,(m,fim)=>{
-  $('#fno',m).onclick=fim;$('#fok',m).onclick=()=>{T.fechado=true;T.fechadoEm=new Date().toISOString();salvarT();fim();toast('Turno fechado');ir('rel/'+T.id)}})}
+  $('#fno',m).onclick=fim;$('#fok',m).onclick=()=>{T.fechado=true;T.fechadoEm=new Date().toISOString();if(!salvarT()){T.fechado=false;delete T.fechadoEm;return}fim();toast('Turno fechado');ir('rel/'+T.id)}})}
 
 /* ============================ relatório do turno ============================ */
 /* 0.5 · APP-CEL fase 1 (27/11/2026): mensagem do WhatsApp pelo modelo da Administração (Apps de celular › Mensagem do WhatsApp),
@@ -49901,7 +49906,8 @@ function waCampos(T){const r=resumo(T),t=turnoDe(T.turno)||{n:T.turno},c=r.c;let
 function waPreencher(modelo,V){return String(modelo).replace(/\{([a-z_]+)\}/g,(m,k)=>Object.prototype.hasOwnProperty.call(V,k)?V[k]:m)}
 /* 0.7 · APP-CEL fase 3, parte 2: ordens e lotes do pacote do dia (Linha.html › Atualizar cadastro ou dia) viram a lista do campo Lote;
    escolher o lote preenche a OP quando ela está vazia. Sem pacote, o campo é o de sempre. */
-function ordensDia(){try{const d=JSON.parse(localStorage.getItem('linha.dia')||'null');return d&amp;&amp;Array.isArray(d.ordens)?d.ordens.filter(o=>o&amp;&amp;o.lote):[]}catch(e){return[]}}
+/* 0.8 · A20 (auditoria 28/11/2026): só o pacote do mesmo dia do turno oferece ordens e lotes */
+function ordensDia(dia){try{const d=JSON.parse(localStorage.getItem('linha.dia')||'null');if(!d||(dia&amp;&amp;d.dia&amp;&amp;d.dia!==dia))return[];return Array.isArray(d.ordens)?d.ordens.filter(o=>o&amp;&amp;o.lote):[]}catch(e){return[]}}
 function txtWA(T){if(CFG.modeloWa&amp;&amp;String(CFG.modeloWa).trim())return waPreencher(CFG.modeloWa,waCampos(T));
  const r=resumo(T),t=turnoDe(T.turno)||{n:T.turno},c=r.c,u=CFG.unidade,ic=r.ader==null?'⚪':r.ader>=1?'🟢':r.ader>=.9?'🟡':'🔴';
  const L=[`*${CFG.linha} · ${t.n} · ${br(T.data)}*`,`Operador: ${T.operador||'—'}`,`Catálogo ${T.cat}${c&amp;&amp;c.n?' ('+c.n+')':''} · Lote ${T.lote||'—'}${T.op?' · OP '+T.op:''}`,'',
@@ -49936,7 +49942,7 @@ function ligRel(id){comum();const T=TURNOS.find(x=>x.id===id);if(!T)return;const
  $('#waTxt').onclick=()=>{location.href='https://wa.me/?text='+encodeURIComponent(txt)};
  $('#waImg').onclick=async()=>{const b=await new Promise(r=>cv.toBlob(r,'image/png')),f=new File([b],`turno-${T.data}-${T.turno}.png`,{type:'image/png'});
   if(navigator.canShare&amp;&amp;navigator.canShare({files:[f]})){try{await navigator.share({files:[f],text:txt})}catch(e){}}else{const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download=f.name;a.click();toast('Imagem salva; o texto abre no WhatsApp');setTimeout(()=>location.href='https://wa.me/?text='+encodeURIComponent(txt),900)}};
- $('#pdf').onclick=()=>imprimir(T);$('#env').onclick=()=>ir('env/'+T.id);const rb=$('#reab');if(rb)rb.onclick=()=>{T.fechado=false;salvarT();ir('turno')}}
+ $('#pdf').onclick=()=>imprimir(T);$('#env').onclick=()=>ir('env/'+T.id);const rb=$('#reab');if(rb)rb.onclick=()=>{T.fechado=false;if(!salvarT()){T.fechado=true;return}turnoSel=T.id;ir('turno')}}
 async function imprimir(T){const r=resumo(T),t=turnoDe(T.turno)||{n:T.turno};let foto='';if(T.foto){const b=await FotoDB.ler(T.foto);if(b)foto=await new Promise(ok=>{const f=new FileReader();f.onload=()=>ok(f.result);f.readAsDataURL(b)})}
  let aP=0,aR=0;$('#print').innerHTML=`<div class="rp"><div class="cab"><div><div style="color:#1f4fb0;font-weight:700;font-size:8.5pt">${esc(CFG.linha.toUpperCase())} · RELATÓRIO DO TURNO</div><h1>${esc(t.n)} · ${br(T.data)}</h1></div><div style="text-align:right;font-size:9pt">Operador: <b>${esc(T.operador||'—')}</b><br>Catálogo <b>${esc(T.cat)}</b> · Lote <b>${esc(T.lote||'—')}</b>${T.op?' · OP '+esc(T.op):''}</div></div>
  <div class="kpi"><div><small>Produzido</small><b>${nf(r.re)} ${CFG.unidade}</b></div><div><small>Plano</small><b>${nf(r.pl)} ${CFG.unidade}</b></div><div><small>Aderência</small><b class="${r.ader>=1?'pos':'neg'}">${r.ader==null?'—':nf(r.ader*100)+'%'}</b></div><div><small>Paradas</small><b>${r.pm} min</b></div></div>
@@ -50002,7 +50008,7 @@ function ligHist(){comum();$$('[data-hm]').forEach(b=>b.onclick=()=>{H.modo=b.da
  $('#hde').onchange=e=>{H.de=e.target.value;render()};$('#hate').onchange=e=>{H.ate=e.target.value;render()};
  const w=$('#pWa');if(w)w.onclick=()=>location.href='https://wa.me/?text='+encodeURIComponent(txtPeriodo());const p=$('#pPdf');if(p)p.onclick=()=>imprimirPeriodo();
  $('#exp').onclick=()=>{const b=new Blob([JSON.stringify({app:'meu-turno',versao:1,cfg:CFG,turnos:TURNOS},null,1)],{type:'application/json'}),a=document.createElement('a');a.href=URL.createObjectURL(b);a.download=`meu-turno-${hojeISO()}.json`;a.click()};
- $('#imp').onchange=async e=>{try{const j=JSON.parse(await e.target.files[0].text());const ids=new Set(TURNOS.map(t=>t.id));const n=(j.turnos||[]).filter(t=>!ids.has(t.id));TURNOS.push(...n);salvarT();toast(n.length+' turno(s) importado(s)');render()}catch(er){toast('Arquivo inválido')}}}
+ $('#imp').onchange=async e=>{try{const j=JSON.parse(await e.target.files[0].text());const ids=new Set(TURNOS.map(t=>t.id));const n=(j.turnos||[]).filter(t=>!ids.has(t.id));TURNOS.push(...n);if(!salvarT()){TURNOS.splice(TURNOS.length-n.length,n.length);return}toast(n.length+' turno(s) importado(s)');render()}catch(er){toast('Arquivo inválido')}}}
 function imprimirPeriodo(){const L=TURNOS.filter(x=>x.fechado&amp;&amp;x.data>=H.de&amp;&amp;x.data<=H.ate&amp;&amp;(!H.tc||x.turno===H.tc)).sort((a,b)=>(a.data+a.turno).localeCompare(b.data+b.turno)),R=L.map(resumo),pl=R.reduce((a,r)=>a+r.pl,0),re=R.reduce((a,r)=>a+r.re,0),pm=R.reduce((a,r)=>a+r.pm,0),mot={};R.forEach(r=>r.mot.forEach(([m,v])=>mot[m]=(mot[m]||0)+v));
  $('#print').innerHTML=`<div class="rp"><div class="cab"><div><div style="color:#1f4fb0;font-weight:700;font-size:8.5pt">${esc(CFG.linha.toUpperCase())} · RELATÓRIO DO PERÍODO</div><h1>${br(H.de)} a ${br(H.ate)}${H.tc?' · '+esc(turnoDe(H.tc).n):''}</h1></div><div style="font-size:9pt">${L.length} turno(s)</div></div>
  <div class="kpi"><div><small>Produzido</small><b>${nf(re)} ${CFG.unidade}</b></div><div><small>Plano</small><b>${nf(pl)} ${CFG.unidade}</b></div><div><small>Aderência</small><b class="${re>=pl?'pos':'neg'}">${pl?nf(re/pl*100)+'%':'—'}</b></div><div><small>Paradas</small><b>${nf(pm)} min</b></div></div>
@@ -52447,7 +52453,7 @@ var qrcode = function() {
    modos de falha e pessoas (só ID, nome e turno). Os dados ficam só no celular; nada sai sozinho. */
 const FONTE='<!doctype html>\n'+document.documentElement.outerHTML;
 const CFG_EMB=/*CFG*/null/*CFG*/;
-const VERSAO='0.2';
+const VERSAO='0.3';
 const $=(s,r=document)=>r.querySelector(s),$$=(s,r=document)=>[...r.querySelectorAll(s)];
 const esc=s=>String(s??'').replace(/[&amp;<>"']/g,c=>({'&amp;':'&amp;amp;','<':'&amp;lt;','>':'&amp;gt;','"':'&amp;quot;',"'":'&amp;#39;'}[c]));
 const pad=n=>String(n).padStart(2,'0');
@@ -52455,7 +52461,7 @@ const agoraLocal=(d=new Date())=>`${d.getFullYear()}-${pad(d.getMonth()+1)}-${pa
 const brh=s=>s?s.slice(8,10)+'/'+s.slice(5,7)+' '+s.slice(11,16):'—';
 const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,6);
 function toast(t){const e=document.createElement('div');e.className='toast';e.textContent=t;document.body.appendChild(e);setTimeout(()=>e.remove(),2600)}
-const LS={get(k,d){try{const v=localStorage.getItem('mm.'+k);return v?JSON.parse(v):d}catch(e){return d}},set(k,v){try{localStorage.setItem('mm.'+k,JSON.stringify(v))}catch(e){toast('Memória do celular cheia: envie e apague atendimentos antigos')}}};
+const LS={get(k,d){try{const v=localStorage.getItem('mm.'+k);return v?JSON.parse(v):d}catch(e){return d}},set(k,v){try{localStorage.setItem('mm.'+k,JSON.stringify(v));return true}catch(e){toast('Não gravou neste celular (memória cheia?): envie e apague atendimentos antigos');return false}}};   /* 0.3 · A21: quem chama sabe se gravou */
 /* configuração: a embutida vale quando é mais nova que a do aparelho; sem ela, dados fictícios (TESTE) */
 const CFG0={linha:'Linha (TESTE)',maqs:[{c:'EQ01',n:'Máquina A (TESTE)'},{c:'EQ02',n:'Máquina B (TESTE)'}],modos:[{c:'MF01',n:'Desgaste'},{c:'MF02',n:'Ruptura'},{c:'MF03',n:'Folga'}],pessoas:[],rev:0};
 let CFG=(()=>{const l=LS.get('cfg',null);if(CFG_EMB&amp;&amp;(!l||(l.rev||0)<(CFG_EMB.rev||0))){LS.set('cfg',CFG_EMB);return JSON.parse(JSON.stringify(CFG_EMB))}return l||JSON.parse(JSON.stringify(CFG0))})();
@@ -52524,7 +52530,7 @@ async function ligEnv(id){comum();const a=AT.find(x=>x.id===id);if(!a)return;cle
  if(ENV.partes.length>1)ENV.auto=setInterval(()=>{if(!$('#qr')){clearInterval(ENV.auto);return}passo(1)},1600);else $('#qrp').disabled=true;
  $('#qra').onclick=()=>passo(-1);$('#qrn').onclick=()=>passo(1);$('#qrp').onclick=()=>{if(ENV.auto){clearInterval(ENV.auto);ENV.auto=null;$('#qrp').textContent='Continuar'}else if(ENV.partes.length>1){ENV.auto=setInterval(()=>passo(1),1600);$('#qrp').textContent='Pausar'}};
  $('#arq').onclick=()=>{const b=new Blob([JSON.stringify(P,null,1)],{type:'application/json'}),l=document.createElement('a');l.href=URL.createObjectURL(b);l.download=`atendimento-${a.ini.slice(0,10)}-${a.eq}.mm.json`;l.click();toast('Arquivo salvo')};
- $('#ok').onclick=()=>{a.enviado=true;salvar();toast('Marcado como enviado');ir('inicio')}}
+ $('#ok').onclick=()=>{a.enviado=true;if(!salvar()){a.enviado=false;return}toast('Marcado como enviado');ir('inicio')}}
 if(LS.get('tema',''))document.documentElement.dataset.tema=LS.get('tema','');
 render();
 </script>
@@ -52576,7 +52582,7 @@ h1{margin:0;font-size:24px;font-weight:800}
 const VAC_MODS=/*MODS*/null/*MODS*/;
 const VAC_JSQR=/*JSQR*/null/*JSQR*/;
 (function(){
- const VERSAO='0.4',K='linha.modulo',ls={get(k){try{return localStorage.getItem(k)||''}catch(e){return''}},set(k,v){try{localStorage.setItem(k,v)}catch(e){}}};
+ const VERSAO='0.5',K='linha.modulo',ls={get(k){try{return localStorage.getItem(k)||''}catch(e){return''}},set(k,v){try{localStorage.setItem(k,v)}catch(e){}}};
  const esc=s=>String(s??'').replace(/[&amp;<>"']/g,c=>({'&amp;':'&amp;amp;','<':'&amp;lt;','>':'&amp;gt;','"':'&amp;quot;',"'":'&amp;#39;'}[c]));
  const br=iso=>iso?String(iso).slice(0,10).split('-').reverse().join('/'):'';
  try{const t=localStorage.getItem('mt.tema');if(t)document.documentElement.dataset.tema=JSON.parse(t)}catch(e){}
@@ -52599,6 +52605,10 @@ const VAC_JSQR=/*JSQR*/null/*JSQR*/;
   /* grava a configuração de cada módulo onde o próprio módulo lê (mt.cfg, mm.cfg); o módulo usa a mais nova (rev) */
   aplicar(o){if(o&amp;&amp;o.a==='linha-dia'){localStorage.setItem('linha.dia',JSON.stringify(o));return['Dia '+br(o.dia)]}
    if(!o||o.a!=='linha-cadastro'||!(o.op||o.man))throw new Error('Este QR ou arquivo não é o cadastro nem o dia da linha.');
+   /* 0.5 · A19 (auditoria 28/11/2026): cadastro mais antigo que o deste celular não substitui o mais novo (nem os metadados dele) */
+   const ant=metaAtual(),nr=x=>x!=null&amp;&amp;x!==''&amp;&amp;isFinite(x)?+x:null,m=o.meta||{};
+   if((nr(m.cadRev)!=null&amp;&amp;nr(ant.cadRev)!=null&amp;&amp;nr(m.cadRev)<nr(ant.cadRev))||(nr(m.cadRev)==null&amp;&amp;m.geradoEm&amp;&amp;ant.geradoEm&amp;&amp;String(m.geradoEm)<String(ant.geradoEm)))
+    throw new Error('Este cadastro'+(nr(m.cadRev)!=null?' (rev '+m.cadRev+')':'')+' é mais antigo que o deste celular'+(nr(ant.cadRev)!=null?' (rev '+ant.cadRev+')':'')+'. Nada foi trocado.');
    const ok=[];if(o.op){localStorage.setItem('mt.cfg',JSON.stringify(o.op));ok.push('Operação')}if(o.man){localStorage.setItem('mm.cfg',JSON.stringify(o.man));ok.push('Manutenção')}
    localStorage.setItem('linha.meta',JSON.stringify(o.meta||{}));return ok}
  };
@@ -52619,15 +52629,16 @@ const VAC_JSQR=/*JSQR*/null/*JSQR*/;
   const st=t=>{const s=document.getElementById('st');if(s)s.textContent=t};
   const fim=async o=>{parar();try{const ok=QR.aplicar(o);feito(ok,o.meta||{})}catch(x){st(x.message||String(x))}};
   document.getElementById('canc').onclick=()=>{parar();menu()};
-  document.getElementById('arq').onchange=async ev=>{const f=ev.target.files[0];if(!f)return;try{fim(JSON.parse(await f.text()))}catch(x){st('Não consegui ler o arquivo ('+(x.message||x)+').')}};
+  /* 0.5 · com o arquivo escolhido a câmera para: o aviso atrasado de câmera indisponível não apaga mais o resultado do arquivo */
+  document.getElementById('arq').onchange=async ev=>{const f=ev.target.files[0];if(!f)return;parar();try{fim(JSON.parse(await f.text()))}catch(x){st('Não consegui ler o arquivo ('+(x.message||x)+').')}};
   (async()=>{let stream=null,raf=0,vivo=true;parar=()=>{vivo=false;cancelAnimationFrame(raf);if(stream)stream.getTracks().forEach(t=>t.stop());stream=null};
    try{if(!window.jsQR&amp;&amp;VAC_JSQR)(0,eval)(VAC_JSQR);if(!window.jsQR)throw new Error('leitor de QR ausente');
     stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:'environment',width:{ideal:1280}}});if(!vivo){parar();return}
-    const v=document.getElementById('cam');v.srcObject=stream;await v.play();st('Procurando o QR…');const e={},cv=document.createElement('canvas'),g=cv.getContext('2d',{willReadFrequently:true});
-    const loop=async()=>{if(!stream)return;if(v.videoWidth){cv.width=v.videoWidth;cv.height=v.videoHeight;g.drawImage(v,0,0);const q=window.jsQR(g.getImageData(0,0,cv.width,cv.height).data,cv.width,cv.height,{inversionAttempts:'dontInvert'});
+    const v=document.getElementById('cam');v.srcObject=stream;await v.play();if(!vivo){parar();return}st('Procurando o QR…');const e={},cv=document.createElement('canvas'),g=cv.getContext('2d',{willReadFrequently:true});
+    const loop=async()=>{if(!stream||!vivo)return;if(v.videoWidth){cv.width=v.videoWidth;cv.height=v.videoHeight;g.drawImage(v,0,0);const q=window.jsQR(g.getImageData(0,0,cv.width,cv.height).data,cv.width,cv.height,{inversionAttempts:'dontInvert'});
       if(q&amp;&amp;QR.juntar(e,q.data)){st(`Partes lidas: ${Object.keys(e.p).length} de ${e.n}`);if(QR.completo(e)){parar();try{fim(await QR.pacote(e))}catch(x){st('Não consegui montar o cadastro ('+(x.message||x)+'). Tente de novo.')}return}}}
      raf=requestAnimationFrame(loop)};loop()}
-   catch(x){st('Não consegui usar a câmera ('+(x.message||x.name||x)+'). Use "Abrir arquivo".')}})()}
+   catch(x){if(vivo)st('Não consegui usar a câmera ('+(x.message||x.name||x)+'). Use "Abrir arquivo".')}})()}
  /* 0.3 · pacote do dia (APP-CEL fase 3, parte 2): só consulta; ausente aparece como "—", nunca como zero */
  const lerDia=()=>{try{return JSON.parse(localStorage.getItem('linha.dia')||'null')}catch(e){return null}};
  const nf=(v,d=0)=>v==null||!isFinite(v)?'—':Number(v).toLocaleString('pt-BR',{minimumFractionDigits:d,maximumFractionDigits:d});
@@ -52637,20 +52648,21 @@ const VAC_JSQR=/*JSQR*/null/*JSQR*/;
   const cx=h=>`<div style="background:var(--sf);border:1px solid var(--ln);border-radius:12px;padding:10px 12px;font-size:14px">${h}</div>`;
   const P=D.plano,R=D.resumo;
   el.innerHTML=`<header><h1>Dia ${esc(br(D.dia))}</h1><p class="sub">Recebido da plataforma em ${esc(br(D.geradoEm))} ${esc(String(D.geradoEm||'').slice(11,16))}</p></header>
-   ${sec('Plano e meta',P?cx(`Mês ${esc(P.mes)}: plano <b>${nf(P.atual)}</b> · realizado ${nf(P.realizado)} · saldo ${nf(P.saldo)} · necessidade por dia ${nf(P.necessidadeDia)}`)+((D.metasHoje||[]).length?cx('Meta de hoje por turno: '+D.metasHoje.map(m=>`<b>${esc(m.turno)}</b> ${nf(m.metaOp)}`).join(' · ')):''):cx('Plano não publicado.'))}
+   ${sec('Plano e meta',(P?cx(`Mês ${esc(P.mes)}: plano <b>${nf(P.atual)}</b> · realizado ${nf(P.realizado)} · saldo ${nf(P.saldo)} · necessidade por dia ${nf(P.necessidadeDia)}`):cx('Plano não publicado.'))+((D.metasHoje||[]).length?cx('Meta de hoje por turno: '+D.metasHoje.map(m=>`<b>${esc(m.turno)}</b> ${nf(m.metaOp)}`).join(' · ')):''))}
    ${sec('Ordens e lotes',(D.ordens||[]).length?D.ordens.map(o=>cx(`<b>Lote ${esc(o.lote||'—')}</b> · OP ${esc(o.ordem||'—')} · catálogo ${esc(o.catalogo||'—')}<br><span style="color:var(--mut)">qtd ${nf(o.qtd)} · produzido ${nf(o.produzido)}</span>`)).join(''):cx('Nenhuma ordem em aberto publicada.'))}
    ${sec('Ações abertas',D.acoes==null?cx('Ações não publicadas.'):D.acoes.length?D.acoes.map(a=>cx(`${a.atrasada?'<b style="color:var(--man)">Atrasada</b> · ':''}<b>${esc(a.titulo)}</b><br><span style="color:var(--mut)">${esc(a.responsavel||'sem responsável')} · prazo ${esc(br(a.prazo))} · ${esc(a.status)}</span>`)).join(''):cx('Nenhuma ação aberta.'))}
    ${sec('Resumo de ontem',R?cx(`${esc(br(R.dia))}: OEE <b>${pc(R.oee)}</b> (meta ${pc(R.oeeMeta)}) · produção ${nf(R.boa)} de ${nf(R.metaOp)} · scrap ${nf(R.scrap)}`)+(R.turnos||[]).map(x=>cx(`<b>${esc(x.turno)}</b>: OEE ${pc(x.oee)} · ${nf(x.boa)} de ${nf(x.metaOp)} · scrap ${nf(x.scrap)}`)).join(''):cx('Sem dia anterior publicado.'))}
    <button class="mod" id="volta" style="grid-template-columns:1fr;min-height:56px"><div><b>Voltar</b></div></button>`;
   document.getElementById('volta').onclick=menu;scrollTo(0,0)}
  /* 0.4 · APP-CEL fase 4: na página publicada (só o código, M.meta.site) os módulos esperam o cadastro chegar pelo QR ou arquivo */
- const semCad=()=>!!(M.meta&amp;&amp;M.meta.site)&amp;&amp;!ls.get('mt.cfg')&amp;&amp;!ls.get('mm.cfg');
+ /* 0.5 · A19: cada módulo espera o próprio cadastro (um pacote só da Operação não libera a Manutenção com as opções de exemplo) */
+ const semCadDe=m=>!!(M.meta&amp;&amp;M.meta.site)&amp;&amp;!ls.get(m==='man'?'mm.cfg':'mt.cfg'),semCad=()=>(!!M.op&amp;&amp;semCadDe('op'))||(!!M.man&amp;&amp;semCadDe('man'));
  function menu(){const el=document.getElementById('vl'),ok=!!(M.op||M.man),lem=!!ls.get(K+'.lembrar'),meta=metaAtual(),sc=semCad();
   el.innerHTML=`<header><h1>${esc(meta.linha||'Linha no celular')}</h1><p class="sub">Escolha o módulo</p></header>
    ${ok?'':'<div class="aviso">Este é o modelo do app. Gere o arquivo pela plataforma: Administração › Apps de celular › Gerar Linha.html.</div>'}
    ${sc?'<div class="aviso" id="semcad">Para começar, receba o cadastro da linha: na plataforma, Administração › Apps de celular › Enviar cadastro ao celular; aqui, Atualizar cadastro ou dia.</div>':''}
-   ${M.op?'<button class="mod op" data-m="op"'+(sc?' disabled style="opacity:.5"':'')+'><i>✎</i><div><b>Operação</b><span>Lançar meu turno, histórico e gel na ordem</span></div></button>':''}
-   ${M.man?'<button class="mod man" data-m="man"'+(sc?' disabled style="opacity:.5"':'')+'><i>⚙</i><div><b>Manutenção</b><span>Atendimento corretivo e envio para a plataforma</span></div></button>':''}
+   ${M.op?'<button class="mod op" data-m="op"'+(semCadDe('op')?' disabled style="opacity:.5"':'')+'><i>✎</i><div><b>Operação</b><span>Lançar meu turno, histórico e gel na ordem</span></div></button>':''}
+   ${M.man?'<button class="mod man" data-m="man"'+(semCadDe('man')?' disabled style="opacity:.5"':'')+'><i>⚙</i><div><b>Manutenção</b><span>Atendimento corretivo e envio para a plataforma</span></div></button>':''}
    ${lerDia()?`<button class="mod" id="dia"><i style="background:var(--ac)">☀</i><div><b>Dia ${esc(br(lerDia().dia))}</b><span>Plano e meta, ordens e lotes, ações abertas e o resumo de ontem</span></div></button>`:''}
    ${ok?`<button class="mod" id="atu"><i style="background:var(--mut)">⟳</i><div><b>Atualizar cadastro ou dia</b><span>Pelo QR da plataforma ou pelo arquivo, sem reenviar o app</span></div></button>
    <label class="lembra"><input type="checkbox" id="lem"${lem?' checked':''}> Abrir direto no último módulo usado</label>`:''}
@@ -52659,7 +52671,7 @@ const VAC_JSQR=/*JSQR*/null/*JSQR*/;
   const a=document.getElementById('atu');if(a)a.onclick=receber;const dd=document.getElementById('dia');if(dd)dd.onclick=vDia;
   const l=document.getElementById('lem');if(l)l.onchange=()=>ls.set(K+'.lembrar',l.checked?'1':'')}
  const ult=ls.get(K);
- if(ult&amp;&amp;M[ult]&amp;&amp;ls.get(K+'.lembrar')&amp;&amp;!semCad())abrir(ult);else menu();
+ if(ult&amp;&amp;M[ult]&amp;&amp;ls.get(K+'.lembrar')&amp;&amp;!semCadDe(ult))abrir(ult);else menu();
 })();
 </script>
 </body>
@@ -55496,14 +55508,14 @@ body.vac-porta{overflow:hidden}
       "id": "portal",
       "path": "Plataforma.html#motor/portal",
       "version": "1.9.109",
-      "sha256": "579384cd493e94c5e991f6019828f80e7d7ae657e593d8cf4a9bee45f8831ec6",
-      "bytes": 1376294
+      "sha256": "3ae831fb99d7d20b9898515b67a579cf35d34483ef226feba1da84a0156c85ed",
+      "bytes": 1376994
     }
   ],
   "limitations": [
     "Projetos e conteúdo técnico OSM/MES/AM/TPM mantêm os limites documentados nas fontes."
   ],
-  "enginesSha256": "b9c0cc74562482621b7353710152837c5915ed297b142b4c845da5c7203e3911",
+  "enginesSha256": "5169f3407d8b22453398970105b802ce4e1c7e01da9a0c4235480cb58dbf4e9a",
   "originRevision": "ffc9ee8",
   "sourceMode": "single-html",
   "originEnginesSha256": "a87a64ad0c328f70e102b2ae888790a9b5d5a9bd05778652a7ce7cae140e40d2"
@@ -56176,7 +56188,7 @@ import { Icon, Button, Badge, Empty, Modal, BarChart, BrandLogo, CommandMenu } f
 import { ModuleFrame } from "vac:modulo/components/ModuleFrame";
 import manifest from "vac:recurso/manifesto";
 import { ModuleTabs } from "vac:modulo/components/ModuleTabs";
-const VERSION = "1.8.109";
+const VERSION = "1.8.110";
 /* Navegação 1.3.0 (16/11/2026): Visão da linha, Relatórios e Importações têm abas; as que mostram uma tela do
    Portal (motor da Administração) trazem o 3º campo com a aba dele. Administração fica só com cadastros e configuração. */
 const SHELL_TABS = {
@@ -57681,14 +57693,16 @@ async function readSources(root) {
 }
 /* 1.8.109 · A17 (auditoria 28/11/2026): hoje e ontem da casca seguem o fuso da planta (parametros.fusoHorario do cadastro), como os motores
    (A04 de 26/11); sem fuso ou com fuso inválido, o do navegador */
-let fusoPlanta = "";
+let fusoPedido = null, fusoFmt = null;   /* o formatador é criado só quando o fuso muda: a casca chama definirFuso a cada renderização */
 function definirFuso(f) {
-  fusoPlanta = "";
-  try { if (f) { new Intl.DateTimeFormat("pt-BR", { timeZone: String(f) }); fusoPlanta = String(f); } } catch (e) { }
+  const k = f ? String(f) : "";
+  if (k === fusoPedido) return;
+  fusoPedido = k; fusoFmt = null;
+  try { if (k) fusoFmt = new Intl.DateTimeFormat("en-CA", { timeZone: k, year: "numeric", month: "2-digit", day: "2-digit" }); } catch (e) { fusoFmt = null; }
 }
 function today() {
-  if (fusoPlanta) try {
-    const p = Object.fromEntries(new Intl.DateTimeFormat("en-CA", { timeZone: fusoPlanta, year: "numeric", month: "2-digit", day: "2-digit" }).formatToParts(/* @__PURE__ */ new Date()).map((x) => [x.type, x.value]));
+  if (fusoFmt) try {
+    const p = {}; for (const x of fusoFmt.formatToParts(/* @__PURE__ */ new Date())) p[x.type] = x.value;
     if (p.year &amp;&amp; p.month &amp;&amp; p.day) return `${p.year}-${p.month}-${p.day}`;
   } catch (e) { }
   const d = /* @__PURE__ */ new Date();
