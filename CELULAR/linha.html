@@ -12,6 +12,7 @@
   arquivo com os dois módulos já configurados com o cadastro (bloco celular/linha); aqui, no repositório, é só o modelo (VAC_MODS null).
   Cada módulo roda como antes, com os próprios dados no celular (chaves mt. e mm.): este lançador só escolhe qual abrir, lembra a
   escolha e oferece "Trocar de módulo" (recarrega, porque cada módulo tem as próprias variáveis). Sem internet e sem servidor.
+  0.4 (APP-CEL fase 4): na página publicada (só o código) os módulos esperam o cadastro chegar (aviso e botões desligados).
   0.3 (APP-CEL fase 3, parte 2): também o pacote do dia (plano e meta, ordens e lotes, ações abertas, resumo de ontem), só consulta.
   0.2 (APP-CEL fase 3): "Atualizar cadastro" recebe o cadastro da plataforma por QR (câmera, jsQR embutido na geração) ou arquivo .json
   e grava em mt.cfg e mm.cfg, sem reenviar o app.
@@ -41,7 +42,7 @@ h1{margin:0;font-size:24px;font-weight:800}
 const VAC_MODS=/*MODS*/null/*MODS*/;
 const VAC_JSQR=/*JSQR*/null/*JSQR*/;
 (function(){
- const VERSAO='0.3',K='linha.modulo',ls={get(k){try{return localStorage.getItem(k)||''}catch(e){return''}},set(k,v){try{localStorage.setItem(k,v)}catch(e){}}};
+ const VERSAO='0.4',K='linha.modulo',ls={get(k){try{return localStorage.getItem(k)||''}catch(e){return''}},set(k,v){try{localStorage.setItem(k,v)}catch(e){}}};
  const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
  const br=iso=>iso?String(iso).slice(0,10).split('-').reverse().join('/'):'';
  try{const t=localStorage.getItem('mt.tema');if(t)document.documentElement.dataset.tema=JSON.parse(t)}catch(e){}
@@ -108,11 +109,14 @@ const VAC_JSQR=/*JSQR*/null/*JSQR*/;
    ${sec('Resumo de ontem',R?cx(`${esc(br(R.dia))}: OEE <b>${pc(R.oee)}</b> (meta ${pc(R.oeeMeta)}) · produção ${nf(R.boa)} de ${nf(R.metaOp)} · scrap ${nf(R.scrap)}`)+(R.turnos||[]).map(x=>cx(`<b>${esc(x.turno)}</b>: OEE ${pc(x.oee)} · ${nf(x.boa)} de ${nf(x.metaOp)} · scrap ${nf(x.scrap)}`)).join(''):cx('Sem dia anterior publicado.'))}
    <button class="mod" id="volta" style="grid-template-columns:1fr;min-height:56px"><div><b>Voltar</b></div></button>`;
   document.getElementById('volta').onclick=menu;scrollTo(0,0)}
- function menu(){const el=document.getElementById('vl'),ok=!!(M.op||M.man),lem=!!ls.get(K+'.lembrar'),meta=metaAtual();
+ /* 0.4 · APP-CEL fase 4: na página publicada (só o código, M.meta.site) os módulos esperam o cadastro chegar pelo QR ou arquivo */
+ const semCad=()=>!!(M.meta&&M.meta.site)&&!ls.get('mt.cfg')&&!ls.get('mm.cfg');
+ function menu(){const el=document.getElementById('vl'),ok=!!(M.op||M.man),lem=!!ls.get(K+'.lembrar'),meta=metaAtual(),sc=semCad();
   el.innerHTML=`<header><h1>${esc(meta.linha||'Linha no celular')}</h1><p class="sub">Escolha o módulo</p></header>
    ${ok?'':'<div class="aviso">Este é o modelo do app. Gere o arquivo pela plataforma: Administração › Apps de celular › Gerar Linha.html.</div>'}
-   ${M.op?'<button class="mod op" data-m="op"><i>✎</i><div><b>Operação</b><span>Lançar meu turno, histórico e gel na ordem</span></div></button>':''}
-   ${M.man?'<button class="mod man" data-m="man"><i>⚙</i><div><b>Manutenção</b><span>Atendimento corretivo e envio para a plataforma</span></div></button>':''}
+   ${sc?'<div class="aviso" id="semcad">Para começar, receba o cadastro da linha: na plataforma, Administração › Apps de celular › Enviar cadastro ao celular; aqui, Atualizar cadastro ou dia.</div>':''}
+   ${M.op?'<button class="mod op" data-m="op"'+(sc?' disabled style="opacity:.5"':'')+'><i>✎</i><div><b>Operação</b><span>Lançar meu turno, histórico e gel na ordem</span></div></button>':''}
+   ${M.man?'<button class="mod man" data-m="man"'+(sc?' disabled style="opacity:.5"':'')+'><i>⚙</i><div><b>Manutenção</b><span>Atendimento corretivo e envio para a plataforma</span></div></button>':''}
    ${lerDia()?`<button class="mod" id="dia"><i style="background:var(--ac)">☀</i><div><b>Dia ${esc(br(lerDia().dia))}</b><span>Plano e meta, ordens e lotes, ações abertas e o resumo de ontem</span></div></button>`:''}
    ${ok?`<button class="mod" id="atu"><i style="background:var(--mut)">⟳</i><div><b>Atualizar cadastro ou dia</b><span>Pelo QR da plataforma ou pelo arquivo, sem reenviar o app</span></div></button>
    <label class="lembra"><input type="checkbox" id="lem"${lem?' checked':''}> Abrir direto no último módulo usado</label>`:''}
@@ -121,7 +125,7 @@ const VAC_JSQR=/*JSQR*/null/*JSQR*/;
   const a=document.getElementById('atu');if(a)a.onclick=receber;const dd=document.getElementById('dia');if(dd)dd.onclick=vDia;
   const l=document.getElementById('lem');if(l)l.onchange=()=>ls.set(K+'.lembrar',l.checked?'1':'')}
  const ult=ls.get(K);
- if(ult&&M[ult]&&ls.get(K+'.lembrar'))abrir(ult);else menu();
+ if(ult&&M[ult]&&ls.get(K+'.lembrar')&&!semCad())abrir(ult);else menu();
 })();
 </script>
 </body>

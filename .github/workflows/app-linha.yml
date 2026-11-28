@@ -1,0 +1,39 @@
+name: App da linha (página)
+# APP-CEL fase 4: publica o app do celular (Linha no celular, só o código, sem cadastro) no GitHub Pages.
+# Para ligar: Settings › Pages › Source = "GitHub Actions"; depois Settings › Secrets and variables › Actions › Variables:
+# PUBLICAR_APP_LINHA = sim (publica sozinho a cada mudança na main) ou rode à mão em Actions › App da linha (página) › Run workflow.
+on:
+  push:
+    branches: [main]
+    paths: ['Plataforma.html', 'CELULAR/**', 'scripts/celular-site.mjs', '.github/workflows/app-linha.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+concurrency:
+  group: app-linha-pages
+  cancel-in-progress: true
+jobs:
+  montar:
+    if: vars.PUBLICAR_APP_LINHA == 'sim' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Montar a página (só o código, sem cadastro)
+        run: node scripts/celular-site.mjs _site
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+  publicar:
+    needs: montar
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - id: deploy
+        uses: actions/deploy-pages@v4
