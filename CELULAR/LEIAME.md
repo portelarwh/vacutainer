@@ -20,6 +20,14 @@ Arquivo único: [index.html](index.html), HTML, CSS e JavaScript nativos, sem in
 - Para quem já usa os arquivos separados: abra o `Linha.html` no Chrome, do mesmo jeito; antes, por segurança, use **Exportar histórico**. Se o celular abrir o arquivo por outro caminho (outro app de arquivos), os dados podem ficar em outro lugar: o histórico exportado volta por Importar histórico.
 - Teste: [testes/plataforma/app-cel-linha.cjs](../testes/plataforma/app-cel-linha.cjs).
 
+## Cadastro da plataforma para o celular, sem reenviar o app (Linha no celular 0.2 · APP-CEL fase 3, 28/11/2026)
+
+- Na plataforma: **Administração › Apps de celular › Enviar cadastro ao celular (QR)** mostra o cadastro em QR (as partes se alternam na tela) e **Baixar arquivo (.json)** salva o mesmo pacote (`cadastro-linha.json`).
+- No celular: **Linha.html › Atualizar cadastro** liga a câmera e lê as partes (em qualquer ordem) ou abre o arquivo. Grava a configuração da Operação em `mt.cfg` e a da Manutenção em `mm.cfg`; os módulos abrem com o cadastro novo e os turnos e atendimentos do celular continuam. Arquivo que não é o cadastro é recusado com aviso.
+- Formato: o mesmo do celular para a plataforma (`MT1:id:k/n:` + `Z` deflate-raw em base64). O Linha.html gerado leva o leitor jsQR (biblioteca/jsqr, Apache 2.0), cerca de 270 KB; o gerador de QR da plataforma é o mesmo do app (qrcode-generator, MIT), lido do modelo do Meu Turno.
+- Ainda a testar no celular real: a câmera com o app aberto direto do arquivo no Chrome do Android. Sem câmera, o caminho é o arquivo pelo WhatsApp.
+- Teste: [testes/plataforma/app-cel-qr.cjs](../testes/plataforma/app-cel-qr.cjs).
+
 ## Mensagem do WhatsApp editável (0.5 · APP-CEL fase 1, 27/11/2026)
 
 - **Administração › Apps de celular › Mensagem do WhatsApp:** modelo com marcadores entre chaves e prévia com valores fictícios. Fica em `parametros.celular.mensagemWhats` e vai embutido no app gerado (`CFG.modeloWa`). Depois de salvar, gere o `MeuTurno.html` de novo e reenvie.
